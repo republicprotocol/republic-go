@@ -1,8 +1,8 @@
 package swarm
 
 import (
-	"github.com/republic/swarm/dht"
-	"github.com/republic/swarm/rpc"
+	"github.com/republicprotocol/republic/dht"
+	"github.com/republicprotocol/republic/rpc"
 	"golang.org/x/net/context"
 )
 
