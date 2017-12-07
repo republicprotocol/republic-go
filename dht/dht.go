@@ -1,6 +1,9 @@
 package dht
 
-import "container/list"
+import (
+	"container/list"
+	"fmt"
+)
 
 // IDLength is the number of bytes needed to store an ID.
 const (
@@ -20,12 +23,40 @@ type RoutingTable struct {
 }
 
 // Createing new routing table
-func newRoutingTable() *RoutingTable {
+func NewRoutingTable() *RoutingTable {
 	var buckets [IDLengthInBits]list.List
 	return &RoutingTable{Buckets:buckets}
 }
 
-func (rt *RoutingTable) Update(node){
+// Get distance of two ID
+func (node ID) Xor(other ID) ID {
+	nodeByte ,otherByte:= []byte(node), []byte(other)
+	var xor [IDLength]byte
+	for i := 0; i < IDLength; i++ {
+		xor[i] = nodeByte[i] ^ otherByte[i]
+	}
+	return ID(xor[:])
+}
 
-
+// Similar postfix bits length with another ID
+func (node ID) SimilarPostfixLen(other ID) int {
+	diff := []byte(node.Xor(other))
+	fmt.Println(diff)
+	ret := 0
+	for i:= len(diff)-1;i>=0;i--{
+		if diff[i] == uint8(0){
+			ret+=8
+		}else{
+			bit:= fmt.Sprintf("%08b", diff[i])
+			fmt.Println(bit)
+			for j:=len(bit)-1;j>=0;j--{
+				if bit[j]=='1'{
+					fmt.Println("ret=",ret)
+					return ret
+				}
+				ret++
+			}
+		}
+	}
+	return ret
 }
