@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package rpc;
+
+// Node services provide peer-to-peer discovery.
+service Node {
+  
+  // Ping the Node to test the connection.
+  rpc Ping (Nothing) returns (MultiAddress);
+
+  // Get peers connected to the Node.
+  rpc Peers (Nothing) returns (MultiAddresses);
+
+  // Find peers that are closer to the target than the Node.
+  rpc CloserPeers (ID) returns (MultiAddresses);
+}
+
+// ID is the public address of an entity in the overlay network. It does not
+// contain connection details for the entity, which are usually held alongside
+// this ID in a MultiAddress.
+message ID {
+  string address = 1;
+}
+
+// MultiAddress messages contain the public multiaddress of a Node in the
+// overlay network.
+message MultiAddress {
+  string multi = 1;
+}
+
+// MultiAddresses messages contain the public multiaddress of multiple Nodes in
+// the overlay network.
+message MultiAddresses {
+  repeated string multis = 1;
+}
+
+// Nothing messages are empty.
+message Nothing {}
