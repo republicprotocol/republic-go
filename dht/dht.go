@@ -4,7 +4,7 @@ import "container/list"
 
 // IDLength is the number of bytes needed to store an ID.
 const (
-	IDLength       = 30
+	IDLength       = 20
 	IDLengthInBits = IDLength * 8
 )
 
@@ -17,4 +17,15 @@ type ID string
 // their ID.
 type RoutingTable struct {
 	Buckets [IDLengthInBits]list.List
+}
+
+// Createing new routing table
+func newRoutingTable() *RoutingTable {
+	var buckets [IDLengthInBits]list.List
+	return &RoutingTable{Buckets:buckets}
+}
+
+func (rt *RoutingTable) Update(node){
+
+
 }

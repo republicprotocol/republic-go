@@ -6,6 +6,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+const IdLength = 20
+
 // Node implements the gRPC Node service.
 type Node struct {
 	ID  *rpc.ID
