@@ -10,6 +10,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+// PublicAddressLength is the number of bytes in a public address.
+const PublicAddressLength = 20
+
 // SECP256K1 is an implementation of the Identity interface. It is the elliptic
 // key pair scheme used by Ethereum.
 type SECP256K1 struct {
@@ -65,15 +68,13 @@ func NewSECP256K1FromJSONFile(filename string) (SECP256K1, error) {
 }
 
 // PublicAddress returns the public address of a SECP256K1 public key. The
-// public key is hashed using Keccak256, then the hash is Base64 encoded and
-// the first 42 runes are returned.
+// public key is hashed using Keccak256, then the first 160 bits of the hash
+// is returned in a Base64 encoding.
 func (id SECP256K1) PublicAddress() string {
-	// Hash the public key.
-	hash := crypto.Keccak256(id.PublicKey())
-	// Convert to runes to preserve UTF-8 character counting.
-	runes := []rune(base64.StdEncoding.EncodeToString(hash))
-	// Return the first 42 runes.
-	return string(runes[0:42])
+	// Hash the public key and take the first 20 bytes.
+	hash := crypto.Keccak256(id.PublicKey())[0:PublicAddressLength]
+	// Convert to bytes to a Base64 encoded string.
+	return base64.StdEncoding.EncodeToString(hash)
 }
 
 // PublicKey returns the public key as a slice of bytes.

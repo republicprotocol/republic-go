@@ -4,6 +4,7 @@ import (
 	"github.com/republicprotocol/republic/dht"
 	"github.com/republicprotocol/republic/rpc"
 	"golang.org/x/net/context"
+	"container/list"
 )
 
 // Node implements the gRPC Node service.
@@ -17,15 +18,15 @@ func NewNode(id dht.ID) *Node {
 }
 
 // Ping is used to test connections to a Node. The Node will respond with its
-// rpc.MultiAddress. If the Node does not respond, or it responds with an
-// error, then the connection is considered unhealthy.
+// rpc.ID. If the Node does not respond, or it responds with an error, then the
+// connection is considered unhealthy.
 func (node *Node) Ping(ctx context.Context, id *rpc.ID) (*rpc.ID, error) {
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
 		return &rpc.ID{Address: string(node.DHT.ID)}, err
 	}
 
-	// Update the client in the node routing table
+	// Update the sender in the node routing table
 	if err := node.DHT.Update(dht.ID(id.Address)); err !=nil{
 		return &rpc.ID{Address: string(node.DHT.ID)}, err
 	}
@@ -87,9 +88,16 @@ func (node *Node) CloserPeers(ctx context.Context, target *rpc.ID) (*rpc.MultiAd
 	}
 }
 
-func (node *Node) peers()  {
-
+func (node *Node) peers() *rpc.MultiAddresses {
+	peers := node.DHT.All()
+	var ret []string
+	for e := peers.Front(); e != nil ;e.Next(){
+		ret = append(ret, e.Value.(string))
+	}
+	return &rpc.MultiAddresses{Multis:ret}
 }
 
 func (nod *Node) closerPeers() {
+
+
 }
