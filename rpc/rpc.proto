@@ -9,10 +9,10 @@ service Node {
   rpc Ping (ID) returns (ID);
 
   // Get peers connected to the Node.
-  rpc Peers (Nothing) returns (MultiAddresses);
+  rpc Peers (ID) returns (MultiAddresses);
 
   // Find peers that are closer to the target than the Node.
-  rpc CloserPeers (ID) returns (MultiAddresses);
+  rpc CloserPeers (Path) returns (MultiAddresses);
 }
 
 // ID is the public address of an entity in the overlay network. It does not
@@ -20,6 +20,13 @@ service Node {
 // this ID in a MultiAddress.
 message ID {
   string address = 1;
+}
+
+// Path messages represent a sender attempting to reach a target. Both the
+// sender and the target are represented by an ID.
+message Path {
+  ID to = 1;
+  ID from = 2;
 }
 
 // MultiAddress messages contain the public multiaddress of a Node in the

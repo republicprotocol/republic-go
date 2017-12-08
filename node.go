@@ -27,8 +27,8 @@ func (node *Node) Ping(ctx context.Context, id *rpc.ID) (*rpc.ID, error) {
 	}
 
 	// Update the sender in the node routing table
-	if err := node.DHT.Update(dht.ID(id.Address)); err !=nil{
-		return &rpc.ID{Address: string(node.DHT.ID)}, err
+	if err := node.updateSender(id); err !=nil{
+		return nil, err
 	}
 
 	return &rpc.ID{Address: string(node.DHT.ID)}, nil
@@ -37,10 +37,15 @@ func (node *Node) Ping(ctx context.Context, id *rpc.ID) (*rpc.ID, error) {
 // Peers is used to return the rpc.MultiAddresses to which a Node is connected.
 // The rpc.MultiAddresses returned are not guaranteed to provide healthy
 // connections and should be pinged.
-func (node *Node) Peers(ctx context.Context, _ *rpc.Nothing) (*rpc.MultiAddresses, error) {
+func (node *Node) Peers(ctx context.Context, id *rpc.ID) (*rpc.MultiAddresses, error) {
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
 		return &rpc.MultiAddresses{}, err
+	}
+
+	// Update the sender in the node routing table
+	if err := node.updateSender(id); err !=nil{
+		return nil, err
 	}
 
 	// Spawn a goroutine to evaluate the return value.
@@ -64,17 +69,22 @@ func (node *Node) Peers(ctx context.Context, _ *rpc.Nothing) (*rpc.MultiAddresse
 // CloserPeers returns the peers of an rpc.Node that are closer to a target
 // than the rpc.Node itself. Distance is calculated by evaluating a XOR with
 // the target address and each peer address.
-func (node *Node) CloserPeers(ctx context.Context, target *rpc.ID) (*rpc.MultiAddresses, error) {
+func (node *Node) CloserPeers(ctx context.Context, path *rpc.Path) (*rpc.MultiAddresses, error) {
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
 		return &rpc.MultiAddresses{}, err
+	}
+
+	// Update the sender in the node routing table
+	if err := node.updateSender(path.From); err !=nil{
+		return nil, err
 	}
 
 	// Spawn a goroutine to evaluate the return value.
 	wait := make(chan *rpc.MultiAddresses)
 	go func() {
 		defer close(wait)
-		peers, _:= node.closerPeers(target.Address)
+		peers, _:= node.closerPeers(path.To.Address)
 		wait <- peers
 	}()
 
@@ -89,6 +99,7 @@ func (node *Node) CloserPeers(ctx context.Context, target *rpc.ID) (*rpc.MultiAd
 	}
 }
 
+// Return all peers in the node routing table
 func (node *Node) peers() *rpc.MultiAddresses {
 	peers := node.DHT.All()
 	var ret []string
@@ -98,6 +109,7 @@ func (node *Node) peers() *rpc.MultiAddresses {
 	return &rpc.MultiAddresses{Multis:ret}
 }
 
+// Return the closer peers in the node routing table
 func (node *Node) closerPeers(id string) (*rpc.MultiAddresses,error){
 	peers,err  := node.DHT.FindClosest(dht.ID(id))
 	if err != nil {
@@ -108,4 +120,10 @@ func (node *Node) closerPeers(id string) (*rpc.MultiAddresses,error){
 		ret = append(ret, e.Value.(string))
 	}
 	return &rpc.MultiAddresses{Multis:ret},nil
+}
+
+// Every time we receive a request, update the sender
+// as a active peer in the node routing table
+func (node *Node) updateSender(id *rpc.ID) error{
+	return node.DHT.Update(dht.ID(id.Address))
 }
