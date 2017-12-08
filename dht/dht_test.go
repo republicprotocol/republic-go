@@ -3,6 +3,7 @@ package dht
 import (
 	"encoding/base64"
 	"testing"
+	"fmt"
 )
 
 func TestNewID(t *testing.T) {
@@ -102,7 +103,7 @@ func TestID_SimilarPostfixLen(t *testing.T) {
 	}
 
 	// Get the similar postfix bits length
-	same, err := id1.SimilarPostfixLen(id2)
+	same, err := id1.SamePrefixLen(id2)
 
 	if err != nil {
 		t.Fatal("error in getting the result", err)
@@ -112,7 +113,7 @@ func TestID_SimilarPostfixLen(t *testing.T) {
 	}
 
 	// Try swap the two ID and check if we still get the same difference
-	commutativeSame, err := id2.SimilarPostfixLen(id1)
+	commutativeSame, err := id2.SamePrefixLen(id1)
 	if err != nil {
 		t.Fatal("error in running the function:", err)
 	}
@@ -125,13 +126,20 @@ func TestID_SimilarPostfixLen1(t *testing.T) {
 	// Create two new IDs
 	id1, id2 := ID("ikuMqMkI9GcY/viwBiXnh3s7Mn4="), ID("WPBI8Kni4fKfArBrFH4umRU4czA=")
 
+	//id1Byte, _ := base64.StdEncoding.DecodeString(string(id1))
+	//id2Byte, _ := base64.StdEncoding.DecodeString(string(id2))
+
+	diff, _:= id1.Xor(id2)
+	fmt.Printf("%08b", diff)
+
+
 	// Get the xor difference
-	same, err := id1.SimilarPostfixLen(id2)
+	same, err := id1.SamePrefixLen(id2)
 	if err != nil {
 		t.Fatal("error in running the function:", err)
 	}
 
-	if same != 1 {
+	if same != 0 {
 		t.Fatal("wrong result")
 	}
 }
@@ -167,26 +175,24 @@ func TestRoutingTable_Update(t *testing.T) {
 		t.Fatal("new routing table is nil")
 	}
 
+	// Update id2 into the routing table
 	err := rt.Update(id2)
 	if err != nil {
 		t.Fatal("error in updating another peer:", err)
 	}
 
-	for i, j := range rt.Buckets {
-		// Check if id2 is updated in the right bucket
-		if j.Front() != nil {
-			if i != 1 {
-				t.Fatal("peer address is stored in the wrong bucket")
-			}
-			if j.Front().Value != "/republic/"+id2 && j.Front().Next() == nil {
-				t.Fatal("fail to store the right multiaddress of a id")
-			}
-			break
-		}
+	// Check if id2 is correctly inserted into the bucket
+	list := rt.Buckets[1]
+	if list.Front() == nil || list.Front().Value != "/republic/"+id2 {
+		t.Fatal("fail to store the right multiaddress of a id")
+	}
 
-		// if no peer is found, throw an error
-		if i == len(rt.Buckets)-1 && j.Front() == nil {
-			t.Fatal("fail to update the id in the routing table")
+	// Check if all other buckets are empty
+	for i, j := range rt.Buckets {
+		if i != 1{
+			if j.Front() != nil {
+				t.Fatal("bucket["+ string(i)+"] should be empty, but got:",list.Front().Value)
+			}
 		}
 	}
 
@@ -197,22 +203,32 @@ func TestRoutingTable_Update(t *testing.T) {
 		t.Fatal("error in updating another peer:", err)
 	}
 
-	for i, j := range rt.Buckets {
-		// Check if id2 is updated in the right bucket
-		if j.Front() != nil {
-			if j.Front().Next() == nil {
-				t.Fatal("id3 wasn't updated into the routing table ")
-			}
-			break
-		}
-
-		// if no peer is found, throw an error
-		if i == len(rt.Buckets)-1 && j.Front() == nil {
-			t.Fatal("fail to update the id in the routing table")
-		}
-
+	// Check if id3 is correctly inserted into the bucket
+	list = rt.Buckets[1]
+	if list.Front() == nil || list.Front().Value != "/republic/"+id3 || list.Front().Next().Value!= "/republic/"+id2{
+		t.Fatal("fail to store the right multiaddress of a id")
 	}
 
+	// Check if all other buckets are empty
+	for i, j := range rt.Buckets {
+		if i != 1{
+			if j.Front() != nil {
+				t.Fatal("bucket["+ string(i)+"] should be empty, but got:",list.Front().Value)
+			}
+		}
+	}
+
+	// update id2 again to see if id2 is ahead of id3
+	err = rt.Update(id2)
+	if err != nil {
+		t.Fatal("error in updating another peer:", err)
+	}
+
+	// Check if id2 is correctly uodated into the bucket
+	list = rt.Buckets[1]
+	if list.Front() == nil || list.Front().Value != "/republic/"+id2 || list.Front().Next().Value!= "/republic/"+id3{
+		t.Fatal("fail to store the right multiaddress of a id")
+	}
 }
 
 func TestRoutingTable_FindClosest(t *testing.T) {

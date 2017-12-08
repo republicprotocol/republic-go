@@ -50,19 +50,19 @@ func (id ID) Xor(other ID) ([]byte, error) {
 }
 
 // Similar postfix bits length with another ID
-func (id ID) SimilarPostfixLen(other ID) (int, error) {
+func (id ID) SamePrefixLen(other ID) (int, error) {
 	diff, err := id.Xor(other)
 	if err != nil {
 		return 0, err
 	}
 
 	ret := 0
-	for i := len(diff) - 1; i >= 0; i-- {
+	for i := 0; i <IDLength; i++ {
 		if diff[i] == uint8(0) {
 			ret += 8
 		} else {
 			bit := fmt.Sprintf("%08b", diff[i])
-			for j := len(bit) - 1; j >= 0; j-- {
+			for j :=0; j <len(bit); j++ {
 				if bit[j] == '1' {
 					return ret, nil
 				}
@@ -70,6 +70,7 @@ func (id ID) SimilarPostfixLen(other ID) (int, error) {
 			}
 		}
 	}
+
 	return ret, nil
 }
 
@@ -89,12 +90,13 @@ func NewRoutingTable(id ID) *RoutingTable {
 // Updating the new id in the routing table
 func (rt *RoutingTable) Update(id ID) error {
 
-	index, err := rt.ID.SimilarPostfixLen(id)
-
+	same, err := rt.ID.SamePrefixLen(id)
 	if err != nil {
 		return err
 	}
-	if index == IDLengthInBits {
+
+	index := IDLengthInBits-same
+	if index == 0 {
 		return errors.New("Can not updating node itself")
 	}
 
@@ -118,7 +120,7 @@ func (rt *RoutingTable) Update(id ID) error {
 
 // Return the addresses in the closest bucket
 func (rt *RoutingTable) FindClosest(id ID) (*list.List, error) {
-	index, err := rt.ID.SimilarPostfixLen(id)
+	index, err := rt.ID.SamePrefixLen(id)
 	if err != nil {
 		return nil, err
 	}
