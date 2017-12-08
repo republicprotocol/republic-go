@@ -3,6 +3,8 @@ package dht
 import (
 	"container/list"
 	"fmt"
+	"github.com/pkg/errors"
+	"github.com/republicprotocol/republic/crypto"
 )
 
 // IDLength is the number of bytes needed to store an ID.
@@ -15,43 +17,38 @@ const (
 // overlay network. It is generated from the public key of a key pair.
 type ID string
 
-// RoutingTable is a k-bucket routing table, where each bucket is a list of
-// multiaddress strings, identifying peers by their network address as well as
-// their ID.
-type RoutingTable struct {
-	Buckets [IDLengthInBits]list.List
-}
 
-// Createing new routing table
-func NewRoutingTable() *RoutingTable {
-	var buckets [IDLengthInBits]list.List
-	return &RoutingTable{Buckets:buckets}
+// NewID creates a new set of public/private SECP256K1 key pair and
+// returns the public address as the ID string
+func NewID() (ID,error) {
+	secp, err:= crypto.NewSECP256K1()
+	if err != nil {
+		return "",err
+	}
+	return ID(secp.PublicAddress()),nil
 }
 
 // Get distance of two ID
-func (node ID) Xor(other ID) ID {
-	nodeByte ,otherByte:= []byte(node), []byte(other)
+func (id ID) Xor(other ID) ID {
+	idByte ,otherByte:= []byte(id), []byte(other)
 	var xor [IDLength]byte
 	for i := 0; i < IDLength; i++ {
-		xor[i] = nodeByte[i] ^ otherByte[i]
+		xor[i] = idByte[i] ^ otherByte[i]
 	}
 	return ID(xor[:])
 }
 
 // Similar postfix bits length with another ID
-func (node ID) SimilarPostfixLen(other ID) int {
-	diff := []byte(node.Xor(other))
-	fmt.Println(diff)
+func (id ID) SimilarPostfixLen(other ID) int {
+	diff := []byte(id.Xor(other))
 	ret := 0
 	for i:= len(diff)-1;i>=0;i--{
 		if diff[i] == uint8(0){
 			ret+=8
 		}else{
 			bit:= fmt.Sprintf("%08b", diff[i])
-			fmt.Println(bit)
 			for j:=len(bit)-1;j>=0;j--{
 				if bit[j]=='1'{
-					fmt.Println("ret=",ret)
 					return ret
 				}
 				ret++
@@ -59,4 +56,38 @@ func (node ID) SimilarPostfixLen(other ID) int {
 		}
 	}
 	return ret
+}
+
+// RoutingTable is a k-bucket routing table, where each bucket is a list of
+// multiaddress strings, identifying peers by their network address as well as
+// their ID.
+type RoutingTable struct {
+	ID ID
+	Buckets [IDLengthInBits]list.List
+}
+
+// Createing new routing table
+func NewRoutingTable(id ID) *RoutingTable {
+	return &RoutingTable{ID: id, Buckets: [IDLengthInBits]list.List{}}
+}
+
+
+// Updating the new id in the routing table
+func (rt *RoutingTable) Update(id ID) error {
+	index:= rt.ID.SimilarPostfixLen(id)
+	if index == IDLength {
+		return errors.New("Can not updating node itself")
+	}
+
+	list := rt.Buckets[index]
+	for e := list.Front(); e != nil; e = e.Next() {
+		if id == e.Value{
+			rt.Buckets[index].MoveToFront(e)
+			break
+		}
+		if e.Next() == nil {
+			rt.Buckets[index].InsertBefore(id,rt.Buckets[index].Front())
+		}
+	}
+	return nil
 }

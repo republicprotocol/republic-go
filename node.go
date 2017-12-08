@@ -6,28 +6,31 @@ import (
 	"golang.org/x/net/context"
 )
 
-const IdLength = 20
-
 // Node implements the gRPC Node service.
 type Node struct {
-	ID  *rpc.ID
 	DHT *dht.RoutingTable
 }
 
 // NewNode returns a new node with no connections.
-func NewNode(id *rpc.ID) *Node {
-	return &Node{id, &dht.RoutingTable{}}
+func NewNode(id dht.ID) *Node {
+	return &Node{DHT: dht.NewRoutingTable(id)}
 }
 
 // Ping is used to test connections to a Node. The Node will respond with its
 // rpc.MultiAddress. If the Node does not respond, or it responds with an
 // error, then the connection is considered unhealthy.
-func (node *Node) Ping(ctx context.Context, _ *rpc.Nothing) (*rpc.ID, error) {
+func (node *Node) Ping(ctx context.Context, id *rpc.ID) (*rpc.ID, error) {
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
-		return node.ID, err
+		return &rpc.ID{Address: string(node.DHT.ID)}, err
 	}
-	return node.ID, nil
+
+	// Update the client in the node routing table
+	if err := node.DHT.Update(dht.ID(id.Address)); err !=nil{
+		return &rpc.ID{Address: string(node.DHT.ID)}, err
+	}
+
+	return &rpc.ID{Address: string(node.DHT.ID)}, nil
 }
 
 // Peers is used to return the rpc.MultiAddresses to which a Node is connected.
@@ -43,7 +46,7 @@ func (node *Node) Peers(ctx context.Context, _ *rpc.Nothing) (*rpc.MultiAddresse
 	wait := make(chan *rpc.MultiAddresses)
 	go func() {
 		defer close(wait)
-		// TODO: implement Peers.
+		wait <- node.peers()
 	}()
 
 	select {
@@ -70,7 +73,7 @@ func (node *Node) CloserPeers(ctx context.Context, target *rpc.ID) (*rpc.MultiAd
 	wait := make(chan *rpc.MultiAddresses)
 	go func() {
 		defer close(wait)
-		// TODO: implement CloserPeers
+		wait <- node.closerPeers()
 	}()
 
 	select {
@@ -84,5 +87,9 @@ func (node *Node) CloserPeers(ctx context.Context, target *rpc.ID) (*rpc.MultiAd
 	}
 }
 
+func (node *Node) peers()  {
 
+}
 
+func (nod *Node) closerPeers() {
+}

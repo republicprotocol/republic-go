@@ -6,7 +6,7 @@ package rpc;
 service Node {
   
   // Ping the Node to test the connection.
-  rpc Ping (Nothing) returns (ID);
+  rpc Ping (ID) returns (ID);
 
   // Get peers connected to the Node.
   rpc Peers (Nothing) returns (MultiAddresses);
