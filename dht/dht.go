@@ -31,32 +31,32 @@ func NewID() (ID,error) {
 }
 
 // Get distance of two ID
-func (id ID) Xor(other ID) (ID,error) {
+func (id ID) Xor(other ID) ([]byte,error) {
+	// Decode both the IDs into bytes
+	idByte, err := base64.StdEncoding.DecodeString(string(id))
+	if err != nil {
+		return nil, err
+	}
+	otherByte, err:= base64.StdEncoding.DecodeString(string(other))
+	if err != nil {
+		return nil, err
+	}
 
-	decodedID, err := base64.StdEncoding.DecodeString(string(id))
-	if err != nil {
-		return "", err
-	}
-	decodedOther, err:= base64.StdEncoding.DecodeString(string(other))
-	if err != nil {
-		return "", err
-	}
-	idByte , otherByte := []byte(decodedID), []byte(decodedOther)
-	var xor [IDLength]byte
+	xor := make([]byte, 20)
 	for i := 0; i < IDLength; i++ {
 		xor[i] = idByte[i] ^ otherByte[i]
 	}
-	return ID(xor[:]) , nil
+	return xor , nil
 }
 
 // Similar postfix bits length with another ID
 func (id ID) SimilarPostfixLen(other ID) (int, error) {
-	diffID, err := id.Xor(other)
+	diff, err := id.Xor(other)
 	if err != nil {
 		return 0, err
 	}
 
-	diff, ret := []byte(diffID) , 0
+	ret := 0
 	for i:= len(diff)-1;i>=0;i--{
 		if diff[i] == uint8(0){
 			ret+=8
@@ -111,6 +111,16 @@ func (rt *RoutingTable) Update(id ID) error {
 		}
 	}
 	return nil
+}
+
+// Return the addresses in the closest bucket
+func (rt *RoutingTable) FindClosest(id ID) (*list.List, error){
+	index,err := rt.ID.SimilarPostfixLen(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &rt.Buckets[index],nil
 }
 
 // Return all multiaddresses in the routing table

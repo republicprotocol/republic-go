@@ -4,7 +4,7 @@ import (
 	"github.com/republicprotocol/republic/dht"
 	"github.com/republicprotocol/republic/rpc"
 	"golang.org/x/net/context"
-	"container/list"
+	_ "container/list"
 )
 
 // Node implements the gRPC Node service.
@@ -74,7 +74,8 @@ func (node *Node) CloserPeers(ctx context.Context, target *rpc.ID) (*rpc.MultiAd
 	wait := make(chan *rpc.MultiAddresses)
 	go func() {
 		defer close(wait)
-		wait <- node.closerPeers()
+		peers, _:= node.closerPeers(target.Address)
+		wait <- peers
 	}()
 
 	select {
@@ -97,7 +98,14 @@ func (node *Node) peers() *rpc.MultiAddresses {
 	return &rpc.MultiAddresses{Multis:ret}
 }
 
-func (nod *Node) closerPeers() {
-
-
+func (node *Node) closerPeers(id string) (*rpc.MultiAddresses,error){
+	peers,err  := node.DHT.FindClosest(dht.ID(id))
+	if err != nil {
+		return nil, err
+	}
+	var ret []string
+	for e := peers.Front(); e != nil ;e.Next(){
+		ret = append(ret, e.Value.(string))
+	}
+	return &rpc.MultiAddresses{Multis:ret},nil
 }
