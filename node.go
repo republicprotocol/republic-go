@@ -1,10 +1,10 @@
 package swarm
 
 import (
+	_ "container/list"
 	"github.com/republicprotocol/republic/dht"
 	"github.com/republicprotocol/republic/rpc"
 	"golang.org/x/net/context"
-	_ "container/list"
 )
 
 // Node implements the gRPC Node service.
@@ -27,7 +27,7 @@ func (node *Node) Ping(ctx context.Context, id *rpc.ID) (*rpc.ID, error) {
 	}
 
 	// Update the sender in the node routing table
-	if err := node.updateSender(id); err !=nil{
+	if err := node.updateSender(id); err != nil {
 		return nil, err
 	}
 
@@ -44,7 +44,7 @@ func (node *Node) Peers(ctx context.Context, id *rpc.ID) (*rpc.MultiAddresses, e
 	}
 
 	// Update the sender in the node routing table
-	if err := node.updateSender(id); err !=nil{
+	if err := node.updateSender(id); err != nil {
 		return nil, err
 	}
 
@@ -76,7 +76,7 @@ func (node *Node) CloserPeers(ctx context.Context, path *rpc.Path) (*rpc.MultiAd
 	}
 
 	// Update the sender in the node routing table
-	if err := node.updateSender(path.From); err !=nil{
+	if err := node.updateSender(path.From); err != nil {
 		return nil, err
 	}
 
@@ -84,7 +84,7 @@ func (node *Node) CloserPeers(ctx context.Context, path *rpc.Path) (*rpc.MultiAd
 	wait := make(chan *rpc.MultiAddresses)
 	go func() {
 		defer close(wait)
-		peers, _:= node.closerPeers(path.To.Address)
+		peers, _ := node.closerPeers(path.To.Address)
 		wait <- peers
 	}()
 
@@ -103,27 +103,27 @@ func (node *Node) CloserPeers(ctx context.Context, path *rpc.Path) (*rpc.MultiAd
 func (node *Node) peers() *rpc.MultiAddresses {
 	peers := node.DHT.All()
 	var ret []string
-	for e := peers.Front(); e != nil ;e.Next(){
+	for e := peers.Front(); e != nil; e.Next() {
 		ret = append(ret, e.Value.(string))
 	}
-	return &rpc.MultiAddresses{Multis:ret}
+	return &rpc.MultiAddresses{Multis: ret}
 }
 
 // Return the closer peers in the node routing table
-func (node *Node) closerPeers(id string) (*rpc.MultiAddresses,error){
-	peers,err  := node.DHT.FindClosest(dht.ID(id))
+func (node *Node) closerPeers(id string) (*rpc.MultiAddresses, error) {
+	peers, err := node.DHT.FindClosest(dht.ID(id))
 	if err != nil {
 		return nil, err
 	}
 	var ret []string
-	for e := peers.Front(); e != nil ;e.Next(){
+	for e := peers.Front(); e != nil; e.Next() {
 		ret = append(ret, e.Value.(string))
 	}
-	return &rpc.MultiAddresses{Multis:ret},nil
+	return &rpc.MultiAddresses{Multis: ret}, nil
 }
 
 // Every time we receive a request, update the sender
 // as a active peer in the node routing table
-func (node *Node) updateSender(id *rpc.ID) error{
+func (node *Node) updateSender(id *rpc.ID) error {
 	return node.DHT.Update(dht.ID(id.Address))
 }
