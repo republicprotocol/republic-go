@@ -95,13 +95,13 @@ func (rt *RoutingTable) Update(id ID) error {
 		return err
 	}
 
-	index := IDLengthInBits-same
-	if index == 0 {
+	// The more same prefix-bit , the closer they are
+	index := IDLengthInBits -1 -same
+	if index < 0  {
 		return errors.New("Can not updating node itself")
 	}
 
-	// todo : hard code for the mulpti address of the id
-	IdAddress := "/republic/" + id
+	IdAddress := multiAddress(id)
 	if rt.Buckets[index].Front() == nil {
 		rt.Buckets[index].PushFront(IdAddress)
 	}
@@ -135,4 +135,9 @@ func (rt *RoutingTable) All() *list.List {
 		all.PushBackList(&list)
 	}
 	return all
+}
+
+// todo: to be decided
+func multiAddress(id ID) string {
+	return  "/republic/" + string(id)
 }
