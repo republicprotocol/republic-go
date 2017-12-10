@@ -218,18 +218,6 @@ func TestRoutingTable_Update(t *testing.T) {
 			}
 		}
 	}
-
-	//// update id2 again to see if id2 is ahead of id3
-	//err = rt.Update(id2)
-	//if err != nil {
-	//	t.Fatal("error in updating another peer:", err)
-	//}
-	//
-	//// Check if id2 is correctly uodated into the bucket
-	//list = rt.Buckets[1]
-	//if list.Front() == nil || list.Front().Value != "/republic/"+id2 || list.Front().Next().Value!= "/republic/"+id3{
-	//	t.Fatal("fail to store the right multiaddress of a id")
-	//}
 }
 
 func TestNewRoutingTable2(t *testing.T) {
@@ -289,8 +277,6 @@ func TestNewRoutingTable2(t *testing.T) {
 	if list.Front() == nil || list.Front().Value != "/republic/"+string(id2)|| list.Front().Next().Value != "/republic/"+string(id3) {
 		t.Fatal("fail to store the right multiaddress of a id")
 	}
-
-
 }
 
 func TestRoutingTable_FindClosest(t *testing.T) {

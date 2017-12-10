@@ -101,10 +101,12 @@ func (rt *RoutingTable) Update(id ID) error {
 		return errors.New("Can not updating node itself")
 	}
 
+	// If not exist, insert into the front of the bucket
 	IdAddress := multiAddress(id)
 	if rt.Buckets[index].Front() == nil {
 		rt.Buckets[index].PushFront(IdAddress)
 	}
+	// Otherwise, move it to the front
 	for e := rt.Buckets[index].Front(); e != nil; e = e.Next() {
 		if IdAddress == e.Value {
 			rt.Buckets[index].MoveToFront(e)
@@ -120,9 +122,15 @@ func (rt *RoutingTable) Update(id ID) error {
 
 // Return the addresses in the closest bucket
 func (rt *RoutingTable) FindClosest(id ID) (*list.List, error) {
-	index, err := rt.ID.SamePrefixLen(id)
+	same, err := rt.ID.SamePrefixLen(id)
 	if err != nil {
 		return nil, err
+	}
+
+	// The more same prefix-bit , the closer they are
+	index := IDLengthInBits -1 -same
+	if index < 0  {
+		return nil, errors.New("Can not updating node itself")
 	}
 
 	return &rt.Buckets[index], nil
@@ -132,7 +140,7 @@ func (rt *RoutingTable) FindClosest(id ID) (*list.List, error) {
 func (rt *RoutingTable) All() *list.List {
 	all := list.New()
 	for _, list := range rt.Buckets {
-		all.PushBackList(&list)
+		all.PushFrontList(&list)
 	}
 	return all
 }
