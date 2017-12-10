@@ -8,8 +8,8 @@ import (
 	"github.com/republicprotocol/republic/dht"
 	"github.com/republicprotocol/republic/rpc"
 	"google.golang.org/grpc"
-	"net"
 	"google.golang.org/grpc/reflection"
+	"net"
 )
 
 // Declare command line arguments.

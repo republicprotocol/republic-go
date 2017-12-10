@@ -57,12 +57,12 @@ func (id ID) SamePrefixLen(other ID) (int, error) {
 	}
 
 	ret := 0
-	for i := 0; i <IDLength; i++ {
+	for i := 0; i < IDLength; i++ {
 		if diff[i] == uint8(0) {
 			ret += 8
 		} else {
 			bit := fmt.Sprintf("%08b", diff[i])
-			for j :=0; j <len(bit); j++ {
+			for j := 0; j < len(bit); j++ {
 				if bit[j] == '1' {
 					return ret, nil
 				}
@@ -96,8 +96,8 @@ func (rt *RoutingTable) Update(id ID) error {
 	}
 
 	// The more same prefix-bit , the closer they are
-	index := IDLengthInBits -1 -same
-	if index < 0  {
+	index := IDLengthInBits - 1 - same
+	if index < 0 {
 		return errors.New("Can not updating node itself")
 	}
 
@@ -128,8 +128,8 @@ func (rt *RoutingTable) FindClosest(id ID) (*list.List, error) {
 	}
 
 	// The more same prefix-bit , the closer they are
-	index := IDLengthInBits -1 -same
-	if index < 0  {
+	index := IDLengthInBits - 1 - same
+	if index < 0 {
 		return nil, errors.New("Can not updating node itself")
 	}
 
@@ -147,5 +147,5 @@ func (rt *RoutingTable) All() *list.List {
 
 // todo: to be decided
 func multiAddress(id ID) string {
-	return  "/republic/" + string(id)
+	return "/republic/" + string(id)
 }

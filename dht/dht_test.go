@@ -190,9 +190,9 @@ func TestRoutingTable_Update(t *testing.T) {
 
 	// Check if all other buckets are empty
 	for i, j := range rt.Buckets {
-		if i != 138{
+		if i != 138 {
 			if j.Front() != nil {
-				t.Fatal("bucket["+ string(i)+"] should be empty, but got:",list.Front().Value)
+				t.Fatal("bucket["+string(i)+"] should be empty, but got:", list.Front().Value)
 			}
 		}
 	}
@@ -212,9 +212,9 @@ func TestRoutingTable_Update(t *testing.T) {
 
 	// Check if all other buckets are empty
 	for i, j := range rt.Buckets {
-		if i != 138 && i != 140{
+		if i != 138 && i != 140 {
 			if j.Front() != nil {
-				t.Fatal("bucket["+ string(i)+"] should be empty, but got:",list.Front().Value)
+				t.Fatal("bucket["+string(i)+"] should be empty, but got:", list.Front().Value)
 			}
 		}
 	}
@@ -246,9 +246,9 @@ func TestNewRoutingTable2(t *testing.T) {
 
 	// Check if all other buckets are empty
 	for i, j := range rt.Buckets {
-		if i != 138{
+		if i != 138 {
 			if j.Front() != nil {
-				t.Fatal("bucket["+ string(i)+"] should be empty, but got:",list.Front().Value)
+				t.Fatal("bucket["+string(i)+"] should be empty, but got:", list.Front().Value)
 			}
 		}
 	}
@@ -262,7 +262,7 @@ func TestNewRoutingTable2(t *testing.T) {
 
 	// Check if id3 is correctly inserted into the bucket
 	list = rt.Buckets[138]
-	if list.Front() == nil || list.Front().Value != "/republic/"+string(id3)|| list.Front().Next().Value != "/republic/"+string(id2) {
+	if list.Front() == nil || list.Front().Value != "/republic/"+string(id3) || list.Front().Next().Value != "/republic/"+string(id2) {
 		t.Fatal("fail to store the right multiaddress of a id")
 	}
 
@@ -274,7 +274,7 @@ func TestNewRoutingTable2(t *testing.T) {
 
 	// Check if id2 is been pushed into the front of the list
 	list = rt.Buckets[138]
-	if list.Front() == nil || list.Front().Value != "/republic/"+string(id2)|| list.Front().Next().Value != "/republic/"+string(id3) {
+	if list.Front() == nil || list.Front().Value != "/republic/"+string(id2) || list.Front().Next().Value != "/republic/"+string(id3) {
 		t.Fatal("fail to store the right multiaddress of a id")
 	}
 }

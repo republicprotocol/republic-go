@@ -1,15 +1,15 @@
 package main
 
 import (
-	"google.golang.org/grpc"
-	"log"
+	"github.com/republicprotocol/republic/crypto"
 	"github.com/republicprotocol/republic/rpc"
 	"golang.org/x/net/context"
-	"github.com/republicprotocol/republic/crypto"
+	"google.golang.org/grpc"
+	"log"
 )
 
 const (
-	address     = "localhost:8080"
+	address = "localhost:8080"
 )
 
 func main() {
@@ -31,7 +31,7 @@ func main() {
 
 	// Ping the server
 	rID, err := c.Ping(context.Background(), &rpc.ID{Address: id})
-	log.Println("Ping: "+address)
+	log.Println("Ping: " + address)
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}
