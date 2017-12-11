@@ -1,1 +1,4 @@
 package sss
+
+func Stub() {
+}
