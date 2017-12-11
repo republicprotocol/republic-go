@@ -131,7 +131,8 @@ func (rt *RoutingTable) FindClosest(id ID) (*list.List, error) {
 	if index < 0 {
 		return nil, errors.New("Can not updating node itself")
 	}
-	res := rt.Buckets[index]
+	res := list.New()
+	res.PushBackList(&rt.Buckets[index])
 
 	// Keep adding nodes adjacent to the target bucket until we get enough node
 	for i := 1; i < IDLengthInBits; i++ {
@@ -148,8 +149,7 @@ func (rt *RoutingTable) FindClosest(id ID) (*list.List, error) {
 		}
 	}
 
-	// return sortNode(res, id), nil
-	return &res, nil
+	return sortNode(res, id), nil
 }
 
 // Return all multiaddresses in the routing table
@@ -169,15 +169,16 @@ func multiAddress(id ID) string {
 }
 
 // Sort the node list and return the closets 20 nodes to the target
-func sortNode(lt list.List, target ID) *list.List {
+func sortNode(lt *list.List, target ID) *list.List {
 	if lt.Len() == 0 {
-		return &lt
+		return lt
 	}
 	ret := list.New()
 
 	// Define less function between IDs
-	// todo : need to compare between their multi-address
-	less := func(id1, id2 ID) bool {
+	less := func(add1, add2 string ) bool {
+		// todo : need to update when we decied the format of multi-address
+		id1, id2 := ID(add1[10:]) ,ID(add2[10:])
 		xor1, _ := id1.Xor(target)
 		xor2, _ := id2.Xor(target)
 
@@ -193,12 +194,12 @@ func sortNode(lt list.List, target ID) *list.List {
 
 	// Select sort the list
 	for i := 0; i < IDLength; i++ {
-		if ret.Len() == 0 {
-			break
+		if lt.Len() == 0 {
+			return ret
 		}
 		min := lt.Front()
-		for e := ret.Front(); e != nil; e = e.Next() {
-			if !less(min.Value.(ID), e.Value.(ID)) {
+		for e := lt.Front(); e != nil; e = e.Next() {
+			if !less(min.Value.(string), e.Value.(string)) {
 				min = e
 			}
 		}
