@@ -192,7 +192,7 @@ func sortNode(lt *list.List, target ID) *list.List {
 		return false
 	}
 
-	// Select sort the list
+	// Selection sort the list
 	for i := 0; i < IDLength; i++ {
 		if lt.Len() == 0 {
 			return ret
