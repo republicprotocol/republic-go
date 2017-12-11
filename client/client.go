@@ -27,13 +27,39 @@ func main() {
 		log.Fatalf("failed to identify self: %v", err)
 	}
 	id := secp.PublicAddress()
+	grpcID := &rpc.ID{Address: id}
 	log.Println("Republic address:", id)
 
+
 	// Ping the server
-	rID, err := c.Ping(context.Background(), &rpc.ID{Address: id})
 	log.Println("Ping: " + address)
+	rID, err := c.Ping(context.Background(), grpcID)
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}
 	log.Printf("Pong: %s \n", rID.Address)
+
+	// Get all peers from the server
+	log.Printf("Ask all peers from : %s \n", rID.Address)
+	rMultiAddresses ,err := c.Peers(context.Background(),grpcID)
+	if err != nil {
+		log.Fatalf("could not get peers: %v", err)
+	}
+
+	for _, j := range rMultiAddresses.Multis{
+		log.Printf("Get Peer from server : %s \n", j)
+	}
+
+	// Get peers from a node that are closer to a target than the node itself
+	log.Printf("Ask peers close to: %s \n", id)
+	rMultiAddresses ,err = c.CloserPeers(context.Background(),&rpc.Path{To:grpcID,From:grpcID})
+	if err != nil {
+		log.Fatalf("could not get peers: %v", err)
+	}
+
+	for _, j := range rMultiAddresses.Multis{
+		log.Printf("Close peer : %s \n", j)
+	}
+
+
 }

@@ -103,7 +103,7 @@ func (node *Node) CloserPeers(ctx context.Context, path *rpc.Path) (*rpc.MultiAd
 func (node *Node) peers() *rpc.MultiAddresses {
 	peers := node.DHT.All()
 	var ret []string
-	for e := peers.Front(); e != nil; e.Next() {
+	for e := peers.Front(); e != nil; e = e.Next() {
 		ret = append(ret, e.Value.(string))
 	}
 	return &rpc.MultiAddresses{Multis: ret}
@@ -116,8 +116,10 @@ func (node *Node) closerPeers(id string) (*rpc.MultiAddresses, error) {
 		return nil, err
 	}
 	var ret []string
-	for e := peers.Front(); e != nil; e.Next() {
-		ret = append(ret, e.Value.(string))
+	for e := peers.Front(); e != nil; e= e.Next() {
+		if e.Value != nil {
+			ret = append(ret, e.Value.(string))
+		}
 	}
 	return &rpc.MultiAddresses{Multis: ret}, nil
 }
