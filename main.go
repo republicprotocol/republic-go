@@ -13,7 +13,6 @@ import (
 )
 
 // Declare command line arguments.
-var bind = flag.String("bind", "0.0.0.0", "Binding address")
 var port = flag.String("port", "8080", "RPC listening port")
 
 func main() {
@@ -46,3 +45,4 @@ func main() {
 		log.Fatalf("failed to serve: %v", err)
 	}
 }
+

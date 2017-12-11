@@ -13,6 +13,7 @@ const (
 )
 
 func main() {
+
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
@@ -21,7 +22,7 @@ func main() {
 	defer conn.Close()
 	c := rpc.NewNodeClient(conn)
 
-	// Generating idendity for the client node
+	// Generating identity for the client node
 	secp, err := crypto.NewSECP256K1()
 	if err != nil {
 		log.Fatalf("failed to identify self: %v", err)
@@ -59,5 +60,4 @@ func main() {
 	for _, j := range rMultiAddresses.Multis {
 		log.Printf("Close peer : %s \n", j)
 	}
-
 }
