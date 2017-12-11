@@ -116,7 +116,7 @@ func (node *Node) closerPeers(id string) (*rpc.MultiAddresses, error) {
 		return nil, err
 	}
 	var ret []string
-	for e := peers.Front(); e != nil; e= e.Next() {
+	for e := peers.Front(); e != nil; e = e.Next() {
 		if e.Value != nil {
 			ret = append(ret, e.Value.(string))
 		}

@@ -174,14 +174,6 @@ func TestRoutingTable_Update(t *testing.T) {
 		t.Fatal("error in updating another peer:", err)
 	}
 
-	//for i:=0; i < 160;i ++{
-	//	list := rt.Buckets[i]
-	//	if list.Front()!= nil {
-	//		fmt.Println("i:",i)
-	//		fmt.Println("value: ",list.Front().Value)
-	//	}
-	//}
-
 	// Check if id2 is correctly inserted into the bucket
 	list := rt.Buckets[138]
 	if list.Front() == nil || list.Front().Value != "/republic/"+string(id2) {
@@ -279,10 +271,43 @@ func TestNewRoutingTable2(t *testing.T) {
 	}
 }
 
-func TestRoutingTable_FindClosest(t *testing.T) {
+func TestRoutingTable_All(t *testing.T) {
+	id := ID("ikuMqMkI9GcY/viwBiXnh3s7Mn4=")
+	id2 := ID("ikuI8Kni4fKfArBrFH4umRU4czA=")
+	id3 := ID("ikuIowkI9GcY/viwBiXnh3s7Mn4=")
 
+	rt := NewRoutingTable(id)
+	if rt == nil {
+		t.Fatal("new routing table is nil")
+	}
+
+	// Update id2 into the routing table
+	err := rt.Update(id2)
+	if err != nil {
+		t.Fatal("error in updating another peer:", err)
+	}
+
+	// Check if id2 is correctly inserted into the bucket
+	list := rt.All()
+	if list.Front() == nil || list.Front().Value != "/republic/"+string(id2) {
+		t.Fatal("fail to store the right multiaddress of a id")
+	}
+
+	// update id3 into the routing table which should be updated into
+	// bucket[1], same bucket as id2
+	err = rt.Update(id3)
+	if err != nil {
+		t.Fatal("error in updating another peer:", err)
+	}
+
+	// Check if id3 is correctly inserted into the bucket
+	list = rt.All()
+	if list.Front() == nil || list.Front().Value != "/republic/"+string(id3) || list.Front().Next().Value != "/republic/"+string(id2) {
+		t.Fatal("fail to store the right multiaddress of a id")
+	}
 }
 
-func TestRoutingTable_All(t *testing.T) {
+// Test function of finding closer nodes of a target
+func TestRoutingTable_FindClosest(t *testing.T) {
 
 }
