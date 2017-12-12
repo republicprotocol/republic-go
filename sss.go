@@ -46,14 +46,22 @@ func (shamir *Shamir) Encode(secret *big.Int) (Shares, error) {
 		coefficients[i] = coefficient
 	}
 
+	// Setup big numbers so that we do not have to keep recreating them in each
+	// loop.
+	accum := big.NewInt(0)
+	co := big.NewInt(0)
+	base := big.NewInt(0)
+	exp := big.NewInt(0)
+	expMod := big.NewInt(0)
+
 	// Create N shares.
 	shares := make(Shares, shamir.N)
 	for x := int64(1); x <= shamir.N; x++ {
-		co := big.NewInt(0)
-		accum := big.NewInt(0).Set(coefficients[0])
-		base := big.NewInt(x)
-		exp := big.NewInt(0).Set(base)
-		expMod := big.NewInt(0).Mod(exp, shamir.Prime)
+		accum.Set(coefficients[0])
+		base.SetInt64(x)
+		exp.Set(base)
+		expMod.Mod(exp, shamir.Prime)
+		// Evaluate the polyomial at x.
 		for _, coefficient := range coefficients[1:] {
 			co.Set(coefficient)
 			co.Mul(co, expMod)
@@ -65,7 +73,7 @@ func (shamir *Shamir) Encode(secret *big.Int) (Shares, error) {
 		}
 		shares[x-1] = Share{
 			Key:   x,
-			Value: accum,
+			Value: big.NewInt(0).Set(accum),
 		}
 	}
 	return shares, nil
@@ -79,36 +87,37 @@ func (shamir *Shamir) Decode(shares Shares) (*big.Int, error) {
 		shares = shares[:shamir.K]
 	}
 
-	for i := 0; i < len(shares); i++ {
+	// Setup big numbers so that we do not have to keep recreating them in each
+	// loop.
+	value := big.NewInt(0)
+	num := big.NewInt(1)
+	den := big.NewInt(1)
+	start := big.NewInt(0)
+	next := big.NewInt(0)
+	nextNeg := big.NewInt(0)
+	nextDiff := big.NewInt(0)
 
-		num := big.NewInt(1)
-		den := big.NewInt(1)
+	// Compute the Lagrange basic polynomial interpolation.
+	for i := 0; i < len(shares); i++ {
+		num.SetInt64(1)
+		den.SetInt64(1)
 		for j := 0; j < len(shares); j++ {
 			if i == j {
 				continue
 			}
-
-			start := big.NewInt(int64(shares[i].Key))
-			next := big.NewInt(int64(shares[j].Key))
-
-			negNext := big.NewInt(0)
-			negNext.Sub(negNext, next)
-			num.Mul(num, negNext)
+			start.SetInt64(int64(shares[i].Key))
+			next.SetInt64(int64(shares[j].Key))
+			nextNeg.SetInt64(0)
+			nextNeg.Sub(nextNeg, next)
+			num.Mul(num, nextNeg)
 			num.Mod(num, shamir.Prime)
-
-			startDiffNext := big.NewInt(0).Set(start)
-			startDiffNext.Sub(startDiffNext, next)
-			den.Mul(den, startDiffNext)
+			nextDiff.Sub(start, next)
+			den.Mul(den, nextDiff)
 			den.Mod(den, shamir.Prime)
 		}
-
-		value := big.NewInt(0).Set(shares[i].Value)
-		modInverseDen := big.NewInt(0)
-		modInverseDen.ModInverse(den, shamir.Prime)
-		value.Mul(value, num)
-		value.Mul(value, modInverseDen)
-
-		secret.Add(secret, shamir.Prime)
+		den.ModInverse(den, shamir.Prime)
+		value.Mul(shares[i].Value, num)
+		value.Mul(value, den)
 		secret.Add(secret, value)
 		secret.Mod(secret, shamir.Prime)
 	}
