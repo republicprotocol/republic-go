@@ -6,19 +6,19 @@ import (
 )
 
 type Share struct {
-	Key   int
+	Key   int64
 	Value *big.Int
 }
 
 type Shares []Share
 
 type Shamir struct {
-	N     int
-	K     int
+	N     int64
+	K     int64
 	Prime *big.Int
 }
 
-func NewShamir(n int, k int, prime *big.Int) *Shamir {
+func NewShamir(n int64, k int64, prime *big.Int) *Shamir {
 	return &Shamir{N: n, K: k, Prime: prime}
 }
 
@@ -38,7 +38,7 @@ func (shamir *Shamir) Encode(secret *big.Int) (Shares, error) {
 	max.Sub(max, big.NewInt(1))
 	coefficients := make([]*big.Int, shamir.K)
 	coefficients[0] = secret
-	for i := 1; i < shamir.K; i++ {
+	for i := int64(1); i < shamir.K; i++ {
 		coefficient, err := rand.Int(rand.Reader, max)
 		if err != nil {
 			return nil, err
@@ -48,9 +48,9 @@ func (shamir *Shamir) Encode(secret *big.Int) (Shares, error) {
 
 	// Create N shares.
 	shares := make(Shares, shamir.N)
-	for x := 1; x <= shamir.N; x++ {
+	for x := int64(1); x <= shamir.N; x++ {
 		accum := big.NewInt(0).Set(coefficients[0])
-		for exp := 1; exp < shamir.K; exp++ {
+		for exp := int64(1); exp < shamir.K; exp++ {
 			a := big.NewInt(int64(x))
 			a.Exp(a, big.NewInt(int64(exp)), shamir.Prime)
 			b := big.NewInt(0).Set(coefficients[exp])
@@ -69,19 +69,23 @@ func (shamir *Shamir) Encode(secret *big.Int) (Shares, error) {
 
 func (shamir *Shamir) Decode(shares Shares) (*big.Int, error) {
 	secret := big.NewInt(0)
-	ks := shares[:shamir.K]
 
-	for i := 0; i < len(ks); i++ {
+	// If we have more shares than necessary, take the first K shares.
+	if int64(len(shares)) > shamir.K {
+		shares = shares[:shamir.K]
+	}
+
+	for i := 0; i < len(shares); i++ {
 
 		num := big.NewInt(1)
 		den := big.NewInt(1)
-		for j := 0; j < len(ks); j++ {
+		for j := 0; j < len(shares); j++ {
 			if i == j {
 				continue
 			}
 
-			start := big.NewInt(int64(ks[i].Key))
-			next := big.NewInt(int64(ks[j].Key))
+			start := big.NewInt(int64(shares[i].Key))
+			next := big.NewInt(int64(shares[j].Key))
 
 			negNext := big.NewInt(0)
 			negNext.Sub(negNext, next)
@@ -94,7 +98,7 @@ func (shamir *Shamir) Decode(shares Shares) (*big.Int, error) {
 			den.Mod(den, shamir.Prime)
 		}
 
-		value := ks[i].Value
+		value := big.NewInt(0).Set(shares[i].Value)
 		modInverseDen := big.NewInt(0)
 		modInverseDen.ModInverse(den, shamir.Prime)
 		value.Mul(value, num)

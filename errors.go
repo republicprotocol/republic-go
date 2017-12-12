@@ -12,8 +12,8 @@ type NKError string
 // NewNKError returns a new NKError. The number of shares generated when
 // encoding the secret is given by N, and the number of shares required for
 // reconstruction is K.
-func NewNKError(n, k int) NKError {
-	return NKError(fmt.Sprintf("expected n = %d to be greater than or equal to k = %d", n, k))
+func NewNKError(n, k int64) NKError {
+	return NKError(fmt.Sprintf("expected n = %v to be greater than or equal to k = %v", n, k))
 }
 
 // Error implements the Error interface for NKError.
