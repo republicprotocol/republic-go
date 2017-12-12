@@ -1,6 +1,7 @@
 package sss
 
 import (
+	"crypto/rand"
 	"math/big"
 )
 
@@ -37,15 +38,13 @@ func (shamir *Shamir) Encode(secret *big.Int) (Shares, error) {
 	max.Sub(max, big.NewInt(1))
 	coefficients := make([]*big.Int, shamir.K)
 	coefficients[0] = secret
-	// for i := 1; i < shamir.K; i++ {
-	// 	coefficient, err := rand.Int(rand.Reader, max)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	coefficients[i] = coefficient
-	// }
-	coefficients[1] = big.NewInt(166)
-	coefficients[2] = big.NewInt(94)
+	for i := 1; i < shamir.K; i++ {
+		coefficient, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			return nil, err
+		}
+		coefficients[i] = coefficient
+	}
 
 	// Create N shares.
 	shares := make(Shares, shamir.N)
