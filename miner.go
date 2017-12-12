@@ -1,0 +1,5 @@
+package miner
+
+func main() {
+
+}
