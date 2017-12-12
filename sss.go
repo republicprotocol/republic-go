@@ -49,15 +49,19 @@ func (shamir *Shamir) Encode(secret *big.Int) (Shares, error) {
 	// Create N shares.
 	shares := make(Shares, shamir.N)
 	for x := int64(1); x <= shamir.N; x++ {
+		co := big.NewInt(0)
 		accum := big.NewInt(0).Set(coefficients[0])
-		for exp := int64(1); exp < shamir.K; exp++ {
-			a := big.NewInt(int64(x))
-			a.Exp(a, big.NewInt(int64(exp)), shamir.Prime)
-			b := big.NewInt(0).Set(coefficients[exp])
-			b.Mul(b, a)
-			b.Mod(b, shamir.Prime)
-			accum.Add(accum, b)
+		base := big.NewInt(x)
+		exp := big.NewInt(0).Set(base)
+		expMod := big.NewInt(0).Mod(exp, shamir.Prime)
+		for _, coefficient := range coefficients[1:] {
+			co.Set(coefficient)
+			co.Mul(co, expMod)
+			co.Mod(co, shamir.Prime)
+			accum.Add(accum, co)
 			accum.Mod(accum, shamir.Prime)
+			exp.Mul(exp, base)
+			expMod.Mod(exp, shamir.Prime)
 		}
 		shares[x-1] = Share{
 			Key:   x,
