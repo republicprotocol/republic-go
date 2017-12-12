@@ -35,7 +35,7 @@ func main() {
 	log.Println("Ping: " + address)
 	rID, err := c.Ping(context.Background(), grpcID)
 	if err != nil {
-		log.Fatalf("could not greet: %v", err)
+		log.Fatalf("could not ping: %v", err)
 	}
 	log.Printf("Pong: %s \n", rID.Address)
 
@@ -47,7 +47,7 @@ func main() {
 	}
 
 	for _, j := range rMultiAddresses.Multis {
-		log.Printf("Get Peer from server : %s \n", j)
+		log.Printf("Get peer from server : %s \n", j)
 	}
 
 	// Get peers from a node that are closer to a target than the node itself
@@ -58,6 +58,6 @@ func main() {
 	}
 
 	for _, j := range rMultiAddresses.Multis {
-		log.Printf("Close peer : %s \n", j)
+		log.Printf("Closer peer : %s \n", j)
 	}
 }

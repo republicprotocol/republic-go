@@ -30,7 +30,7 @@ func NewID() (ID, error) {
 	return ID(secp.PublicAddress()), nil
 }
 
-// Get distance of two ID
+// Useing xor to calculate distance between two IDs
 func (id ID) Xor(other ID) ([]byte, error) {
 	// Decode both the IDs into bytes
 	idByte, err := base64.StdEncoding.DecodeString(string(id))
@@ -42,14 +42,14 @@ func (id ID) Xor(other ID) ([]byte, error) {
 		return nil, err
 	}
 
-	xor := make([]byte, 20)
+	xor := make([]byte, IDLength)
 	for i := 0; i < IDLength; i++ {
 		xor[i] = idByte[i] ^ otherByte[i]
 	}
 	return xor, nil
 }
 
-// Similar postfix bits length with another ID
+// Same prefix bits length with another ID
 func (id ID) SamePrefixLen(other ID) (int, error) {
 	diff, err := id.Xor(other)
 	if err != nil {
@@ -61,9 +61,9 @@ func (id ID) SamePrefixLen(other ID) (int, error) {
 		if diff[i] == uint8(0) {
 			ret += 8
 		} else {
-			bit := fmt.Sprintf("%08b", diff[i])
-			for j := 0; j < len(bit); j++ {
-				if bit[j] == '1' {
+			bits := fmt.Sprintf("%08b", diff[i])
+			for j := 0; j < len(bits); j++ {
+				if bits[j] == '1' {
 					return ret, nil
 				}
 				ret++
@@ -82,12 +82,12 @@ type RoutingTable struct {
 	Buckets [IDLengthInBits]list.List
 }
 
-// Createing new routing table
+// Create new routing table
 func NewRoutingTable(id ID) *RoutingTable {
 	return &RoutingTable{ID: id, Buckets: [IDLengthInBits]list.List{}}
 }
 
-// Updating the new id in the routing table
+// Update the new id in the routing table
 func (rt *RoutingTable) Update(id ID) error {
 
 	same, err := rt.ID.SamePrefixLen(id)
@@ -100,21 +100,22 @@ func (rt *RoutingTable) Update(id ID) error {
 	if index < 0 {
 		return errors.New("Can not updating node itself")
 	}
-
-	// If not exist, insert into the front of the bucket
 	IdAddress := multiAddress(id)
-	if rt.Buckets[index].Front() == nil {
-		rt.Buckets[index].PushFront(IdAddress)
-	}
-	// Otherwise, move it to the front
+
+	// If the node already exists, move it to the front
 	for e := rt.Buckets[index].Front(); e != nil; e = e.Next() {
 		if IdAddress == e.Value {
 			rt.Buckets[index].MoveToFront(e)
 			return nil
 		}
-		if e.Next() == nil {
-			rt.Buckets[index].InsertBefore(IdAddress, rt.Buckets[index].Front())
-		}
+	}
+
+	// If we have reach the bucket limit, Ping the last node in the bucket
+	if rt.Buckets[index].Len() == IDLength{
+		//todo : need to redesign the structure?
+	}else{
+		// Otherwise simply insert the node into the front
+		rt.Buckets[index].PushFront(IdAddress)
 	}
 
 	return nil
@@ -131,6 +132,7 @@ func (rt *RoutingTable) FindClosest(id ID) (*list.List, error) {
 	if index < 0 {
 		return nil, errors.New("Can not updating node itself")
 	}
+
 	res := list.New()
 	res.PushBackList(&rt.Buckets[index])
 
@@ -152,7 +154,7 @@ func (rt *RoutingTable) FindClosest(id ID) (*list.List, error) {
 	return sortNode(res, id), nil
 }
 
-// Return all multiaddresses in the routing table
+// Return all multi-addresses in the routing table
 func (rt *RoutingTable) All() *list.List {
 	all := list.New()
 	for _, lt := range rt.Buckets {
@@ -176,9 +178,10 @@ func sortNode(lt *list.List, target ID) *list.List {
 	ret := list.New()
 
 	// Define less function between IDs
-	less := func(add1, add2 string ) bool {
-		// todo : need to update when we decied the format of multi-address
-		id1, id2 := ID(add1[10:]) ,ID(add2[10:])
+	less := func(add1, add2 string) bool {
+		// todo : need to update when we decided the format of multi-address
+		// Currenly we assume the address will be sth like : /republic/dshfkadhfhkajdsf=
+		id1, id2 := ID(add1[10:]), ID(add2[10:])
 		xor1, _ := id1.Xor(target)
 		xor2, _ := id2.Xor(target)
 

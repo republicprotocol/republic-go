@@ -8,10 +8,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-const (
-	Alpha = 3
-)
-
 // Node implements the gRPC Node service.
 type Node struct {
 	DHT *dht.RoutingTable
@@ -149,36 +145,36 @@ func connectNode(address string) rpc.NodeClient {
 // Ping a node
 func (node *Node) PingNode(address string) (*rpc.ID, error) {
 	client := connectNode(address)
-	pong, err := client.Ping(context.Background(),&rpc.ID{Address: string(node.DHT.ID)})
+	pong, err := client.Ping(context.Background(), &rpc.ID{Address: string(node.DHT.ID)})
 	if err != nil {
-		return nil , err
+		return nil, err
 	}
-	return pong,nil
+	return pong, nil
 }
 
 // Request all peers of a node
 func (node *Node) PeersNode(address string) (*rpc.MultiAddresses, error) {
 	client := connectNode(address)
-	multiAddresses, err := client.Peers(context.Background(),&rpc.ID{Address: string(node.DHT.ID)})
+	multiAddresses, err := client.Peers(context.Background(), &rpc.ID{Address: string(node.DHT.ID)})
 	if err != nil {
-		return nil , err
+		return nil, err
 	}
-	return multiAddresses,nil
+	return multiAddresses, nil
 }
 
 // Find close peers from a node
 // Ping a node
-func (node *Node) findClosePeers(address string , target dht.ID) (*rpc.MultiAddresses, error) {
+func (node *Node) findClosePeers(address string, target dht.ID) (*rpc.MultiAddresses, error) {
 	client := connectNode(address)
-	multiAddresses, err := client.CloserPeers(context.Background(),&rpc.Path{From: &rpc.ID{Address: string(node.DHT.ID)}, To:&rpc.ID{Address: string(target)}})
+	multiAddresses, err := client.CloserPeers(context.Background(), &rpc.Path{From: &rpc.ID{Address: string(node.DHT.ID)}, To: &rpc.ID{Address: string(target)}})
 	if err != nil {
-		return nil , err
+		return nil, err
 	}
-	return multiAddresses,nil
+	return multiAddresses, nil
 }
 
 // Find a certain node by its ID  throught the kademlia network
-func (node *Node)  FindNode(id dht.ID) (string , error){
+func (node *Node) FindNode(id dht.ID) (string, error) {
 	// todo
-	return "" ,nil
+	return "", nil
 }
