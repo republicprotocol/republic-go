@@ -5,23 +5,34 @@ import (
 	"math/big"
 )
 
+// A Share struct represents some share of a secret after the secret has been
+// encoded.
 type Share struct {
 	Key   int64
 	Value *big.Int
 }
 
+// Shares are a slice of Share structs.
 type Shares []Share
 
+// A Shamir struct hold the configuration details required to encode a secret
+// into N number of Share structs, where at least K Share structs can be used
+// to reconstruct the secret.
 type Shamir struct {
 	N     int64
 	K     int64
 	Prime *big.Int
 }
 
+// NewShamir returns a new Shamir struct. N represents the number of Share
+// structs that secrets will be encoded into, and K represents the number of
+// Share structs required to reconstruct the secret. Prime is used to define
+// the finite field from which secrets can be selected.
 func NewShamir(n int64, k int64, prime *big.Int) *Shamir {
 	return &Shamir{N: n, K: k, Prime: prime}
 }
 
+// Encode a secret into Shares.
 func (shamir *Shamir) Encode(secret *big.Int) (Shares, error) {
 	// Validate the encoding by checking that N is greater than K, and that the
 	// secret is within the finite field.
@@ -79,6 +90,7 @@ func (shamir *Shamir) Encode(secret *big.Int) (Shares, error) {
 	return shares, nil
 }
 
+// Decode a secret from Shares.
 func (shamir *Shamir) Decode(shares Shares) (*big.Int, error) {
 	secret := big.NewInt(0)
 
