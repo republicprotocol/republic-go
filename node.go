@@ -1,11 +1,12 @@
 package main
 
 import (
-	_ "container/list"
+	"container/list"
 	"github.com/republicprotocol/republic/dht"
 	"github.com/republicprotocol/republic/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"github.com/pkg/errors"
 )
 
 // Node implements the gRPC Node service.
@@ -128,7 +129,24 @@ func (node *Node) closerPeers(id string) (*rpc.MultiAddresses, error) {
 // Every time we receive a request, update the sender
 // as a active peer in the node routing table
 func (node *Node) updateSender(id *rpc.ID) error {
+	peer, err  := node.DHT.CheckAvailability(dht.ID(id.Address))
+	if err != nil {
+		return err
+	}
+	// Ping the last node
+	if peer !=  ""{
+		pong, err := node.PingNode(peer)
+		if err != nil {
+			return err
+		}
+		// If no response, kick the last node and update the sender
+		if pong == nil {
+			node.DHT.Kick(peer)
+			node.DHT.Update(dht.ID(id.Address))
+		}
+	}
 	return node.DHT.Update(dht.ID(id.Address))
+
 }
 
 // Connect to other Node and return the grpc client
@@ -149,6 +167,7 @@ func (node *Node) PingNode(address string) (*rpc.ID, error) {
 	if err != nil {
 		return nil, err
 	}
+	node.DHT.Update(dht.ID(pong.Address))
 	return pong, nil
 }
 
@@ -162,8 +181,51 @@ func (node *Node) PeersNode(address string) (*rpc.MultiAddresses, error) {
 	return multiAddresses, nil
 }
 
+// Find a certain node by its ID through the kademlia network
+// Return its multi-adresses
+func (node *Node) FindNode(id dht.ID) (string, error) {
+	// Find closest peers we know from the routing table
+	peers, err := node.DHT.FindClosest(dht.ID(id))
+	if err != nil {
+		return "", err
+	}
+	if peers == nil {
+		return "", errors.New("node hasn't been initialised ")
+	}
+
+	path := &rpc.Path{From: &rpc.ID{Address: string(node.DHT.ID)}, To: &rpc.ID{Address: string(id)}}
+
+	for {
+
+		if peers.Front() != nil && peers.Front().Value == dht.MultiAddress(id) {
+			return peers.Front().Value.(string), nil
+		}
+
+		nPeers := list.New()
+		for e := peers.Front(); e != nil; e = e.Next() {
+			multiAddresses, err := node.CloserPeers(context.Background(), path)
+			if err != nil {
+				return "", err
+			}
+			for _, address := range multiAddresses.Multis {
+				nPeers.PushBack(address)
+			}
+		}
+
+		nPeers = dht.SortNode(nPeers, id)
+		// Check if the new peers are unchanged from the previous list
+		// which means we can't get closer peers from the node we know
+		if dht.CompareList(nPeers, peers, 3) {
+			// todo: what to do if we can't find node
+			return "tried best, only get " + nPeers.Front().Value.(string), nil
+		}
+	}
+
+	return "", nil
+}
+
+
 // Find close peers from a node
-// Ping a node
 func (node *Node) findClosePeers(address string, target dht.ID) (*rpc.MultiAddresses, error) {
 	client := connectNode(address)
 	multiAddresses, err := client.CloserPeers(context.Background(), &rpc.Path{From: &rpc.ID{Address: string(node.DHT.ID)}, To: &rpc.ID{Address: string(target)}})
@@ -171,10 +233,4 @@ func (node *Node) findClosePeers(address string, target dht.ID) (*rpc.MultiAddre
 		return nil, err
 	}
 	return multiAddresses, nil
-}
-
-// Find a certain node by its ID  throught the kademlia network
-func (node *Node) FindNode(id dht.ID) (string, error) {
-	// todo
-	return "", nil
 }

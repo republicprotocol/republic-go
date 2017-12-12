@@ -31,7 +31,7 @@ func (rt *RoutingTable) Update(id ID) error {
 	if index < 0 {
 		return errors.New("Can not updating node itself")
 	}
-	IdAddress := multiAddress(id)
+	IdAddress := MultiAddress(id)
 
 	// If the node already exists, move it to the front
 	for e := rt.Buckets[index].Front(); e != nil; e = e.Next() {
@@ -42,9 +42,9 @@ func (rt *RoutingTable) Update(id ID) error {
 	}
 
 	// If we have reach the bucket limit, Ping the last node in the bucket
-	if rt.Buckets[index].Len() == IDLength{
+	if rt.Buckets[index].Len() == IDLength {
 		//todo : need to redesign the structure?
-	}else{
+	} else {
 		// Otherwise simply insert the node into the front
 		rt.Buckets[index].PushFront(IdAddress)
 	}
@@ -80,7 +80,7 @@ func (rt *RoutingTable) FindClosest(id ID) (*list.List, error) {
 
 	// Keep adding nodes adjacent to the target bucket until we get enough node
 	for i := 1; i < IDLengthInBits; i++ {
-		if res.Len() >= 3 {
+		if res.Len() >= Alpha {
 			return SortNode(res, id), nil
 		}
 
@@ -122,7 +122,7 @@ func SortNode(lt *list.List, target ID) *list.List {
 	}
 
 	// Selection sort the list
-	for i := 0; i < IDLength; i++ {
+	for i := 0; i < Alpha; i++ {
 		if lt.Len() == 0 {
 			return ret
 		}
@@ -138,25 +138,57 @@ func SortNode(lt *list.List, target ID) *list.List {
 	return ret
 }
 
-
 // Compare two lists if they are same in the first n elements
-func CompareList(l1, l2 *list.List,n int) bool {
-	e1,e2 := l1.Front(),l2.Front()
-	for i:=0 ;i <n;i++{
+func CompareList(l1, l2 *list.List, n int) bool {
+	e1, e2 := l1.Front(), l2.Front()
+	for i := 0; i < n; i++ {
 		if e1 != nil && e2 != nil && e1 != e2 {
 			return false
 		}
 
-		if e1 != nil && e2 == nil{
+		if e1 != nil && e2 == nil {
 			return false
-		}else if e1 == nil && e2 != nil{
+		} else if e1 == nil && e2 != nil {
 			return false
-		}else if e1 == nil && e2 == nil {
+		} else if e1 == nil && e2 == nil {
 			return true
 		}
 
-		e1,e2 = e1.Next(), e2.Next()
+		e1, e2 = e1.Next(), e2.Next()
 	}
 
 	return true
+}
+
+// Check if we have enough space to update the id in the bucket
+// Return the last node if the bucket is full
+func (rt *RoutingTable) CheckAvailability(id ID) (string,error) {
+
+	same, err := rt.ID.SamePrefixLen(id)
+	if err != nil {
+		return "", err
+	}
+
+	// The more same prefix-bit, the closer they are
+	index := IDLengthInBits - 1 - same
+	if index < 0 {
+		return "", err
+	}
+	if  rt.Buckets[index].Len() < IDLength {
+		return "", nil
+	}else{
+		return rt.Buckets[index].Back().Value.(string), nil
+	}
+}
+
+// Kick the node from the routing table
+func (rt *RoutingTable) Kick(id string){
+	for i:= 0;i< IDLengthInBits;i++{
+		for e:= rt.Buckets[i].Front();e!= nil; e= e.Next(){
+			if e.Value == id {
+				rt.Buckets[i].Remove(e)
+				return
+			}
+		}
+	}
 }

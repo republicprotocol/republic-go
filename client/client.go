@@ -2,18 +2,18 @@ package main
 
 import (
 	"github.com/republicprotocol/republic/crypto"
-	"github.com/republicprotocol/republic/rpc"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"log"
+	"google.golang.org/grpc"
+	"github.com/republicprotocol/republic/rpc"
+	"context"
 )
 
 const (
 	address = "localhost:8080"
 )
 
-func main() {
 
+func main() {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
@@ -60,4 +60,5 @@ func main() {
 	for _, j := range rMultiAddresses.Multis {
 		log.Printf("Closer peer : %s \n", j)
 	}
+
 }
