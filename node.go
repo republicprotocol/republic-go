@@ -202,8 +202,16 @@ func (node *Node) FindNode(id string) (string, error) {
 		}
 
 		nPeers := list.New()
+		// todo : parallel  and get address from multi address
 		for e := peers.Front(); e != nil; e = e.Next() {
-			multiAddresses, err := node.CloserPeers(context.Background(), path)
+			if e.Value == "/republic/"+node.DHT.ID {
+				continue
+			}
+			address := "localhost:8080"
+			client := connectNode(address)
+
+			multiAddresses, err := client.CloserPeers(context.Background(), path)
+
 			if err != nil {
 				return "", err
 			}
@@ -217,8 +225,9 @@ func (node *Node) FindNode(id string) (string, error) {
 		// which means we can't get closer peers from the node we know
 		if dht.CompareList(nPeers, peers, 3) {
 			// todo: what to do if we can't find node
-			return "tried best, only get " + nPeers.Front().Value.(string), nil
+			return "tried best, only get: " + nPeers.Front().Value.(string), nil
 		}
+		peers = nPeers
 	}
 
 	return "", nil

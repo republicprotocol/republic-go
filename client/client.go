@@ -81,10 +81,11 @@ func main() {
 		log.Printf("Get peer from server : %s \n", j)
 	}
 
-	log.Println("Find node Ugz7rk5EjOSyhIenhKWH6RRW07k= : ")
-	target, err := node.FindNode("wdzieekm4ObvcNfSN2n33sPW8ps=")
-	if err != nil {
-		log.Fatal("err:", err)
-	}
-	log.Println("Find target: "+target)
+	// todo : has bug, need to fix it
+	//log.Println("Find node Ugz7rk5EjOSyhIenhKWH6RRW07k= : ")
+	//target, err := node.FindNode("Ugz7rk5EjOSyhIenhKWH6RRW07k=")
+	//if err != nil {
+	//	log.Fatal("err:", err)
+	//}
+	//log.Println("Find target: "+target)
 }
