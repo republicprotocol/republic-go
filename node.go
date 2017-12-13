@@ -2,11 +2,11 @@ package swarm
 
 import (
 	"container/list"
+
 	"github.com/republicprotocol/go-swarm/dht"
 	"github.com/republicprotocol/go-swarm/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"github.com/pkg/errors"
 )
 
 // Node implements the gRPC Node service.
@@ -103,12 +103,8 @@ func (node *Node) CloserPeers(ctx context.Context, path *rpc.Path) (*rpc.MultiAd
 
 // Return all peers in the node routing table
 func (node *Node) peers() *rpc.MultiAddresses {
-	peers := node.DHT.All()
-	var ret []string
-	for e := peers.Front(); e != nil; e = e.Next() {
-		ret = append(ret, e.Value.(string))
-	}
-	return &rpc.MultiAddresses{Multis: ret}
+	multis := node.DHT.MultiAddresses()
+	return &rpc.MultiAddresses{Multis: multis}
 }
 
 // Return the closer peers in the node routing table
@@ -117,24 +113,18 @@ func (node *Node) closerPeers(id string) (*rpc.MultiAddresses, error) {
 	if err != nil {
 		return nil, err
 	}
-	var ret []string
-	for e := peers.Front(); e != nil; e = e.Next() {
-		if e.Value != nil {
-			ret = append(ret, e.Value.(string))
-		}
-	}
-	return &rpc.MultiAddresses{Multis: ret}, nil
+	return &rpc.MultiAddresses{Multis: peers.MultiAddresses()}, nil
 }
 
 // Every time we receive a request, update the sender
 // as a active peer in the node routing table
 func (node *Node) updateSender(id *rpc.ID) error {
-	peer, err  := node.DHT.CheckAvailability(dht.ID(id.Address))
+	peer, err := node.DHT.CheckAvailability(dht.ID(id.Address))
 	if err != nil {
 		return err
 	}
 	// Ping the last node
-	if peer !=  ""{
+	if peer != "" {
 		pong, err := node.PingNode(peer)
 		if err != nil {
 			return err
@@ -189,9 +179,6 @@ func (node *Node) FindNode(id string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if peers == nil {
-		return "", errors.New("node hasn't been initialised ")
-	}
 
 	path := &rpc.Path{From: &rpc.ID{Address: string(node.DHT.ID)}, To: &rpc.ID{Address: string(id)}}
 
@@ -232,7 +219,6 @@ func (node *Node) FindNode(id string) (string, error) {
 
 	return "", nil
 }
-
 
 // Find close peers from a node
 func (node *Node) findClosePeers(address string, target dht.ID) (*rpc.MultiAddresses, error) {

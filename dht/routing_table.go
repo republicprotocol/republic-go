@@ -5,17 +5,53 @@ import (
 	"errors"
 )
 
+// RoutingBucket is a container List of strings.
+type RoutingBucket struct {
+	list.List
+}
+
+// MultiAddresses returns a string slice of multiaddresses.
+func (bucket RoutingBucket) MultiAddresses() []string {
+	multis := make([]string, bucket.Len())
+	i := 0
+	for it := bucket.Front(); it != nil; it = it.Next() {
+		multis[i] = it.Value.(string)
+		i++
+	}
+	return multis
+}
+
 // RoutingTable is a k-bucket routing table, where each bucket is a list of
 // multiaddress strings, identifying peers by their network address as well as
 // their ID.
 type RoutingTable struct {
 	ID      ID
-	Buckets [IDLengthInBits]list.List
+	Buckets [IDLengthInBits]RoutingBucket
 }
 
 // Create new routing table
 func NewRoutingTable(id ID) *RoutingTable {
-	return &RoutingTable{ID: id, Buckets: [IDLengthInBits]list.List{}}
+	return &RoutingTable{ID: id, Buckets: [IDLengthInBits]RoutingBucket{}}
+}
+
+// MultiAddresses returns all multiaddresses in the table.
+func (rt *RoutingTable) MultiAddresses() []string {
+	// Find the total length.
+	length := 0
+	for _, bucket := range rt.Buckets {
+		length += bucket.Len()
+	}
+	// Create a slice of strings and fill it with multiaddresses from all
+	// buckets.
+	multis := make([]string, length)
+	i := 0
+	for _, bucket := range rt.Buckets {
+		for it := bucket.Front(); it != nil; it = it.Next() {
+			multis[i] = it.Value.(string)
+			i++
+		}
+	}
+	return multis
 }
 
 // Update the new id in the routing table
@@ -52,32 +88,20 @@ func (rt *RoutingTable) Update(id ID) error {
 	return nil
 }
 
-// Return all multi-addresses in the routing table
-func (rt *RoutingTable) All() *list.List {
-	all := list.New()
-	for _, lt := range rt.Buckets {
-		if lt.Front() != nil {
-			all.PushBackList(&lt)
-		}
-	}
-	return all
-}
-
 // Return the addresses in the closest bucket
-func (rt *RoutingTable) FindClosest(id ID) (*list.List, error) {
-	// Find the bucket holding the target id
-
+func (rt *RoutingTable) FindClosest(id ID) (RoutingBucket, error) {
+	// Find the bucket holding the target id.
 	same, err := rt.ID.SamePrefixLen(id)
 	if err != nil {
-		return nil, err
+		return RoutingBucket{}, err
 	}
 	index := IDLengthInBits - 1 - same
 	if index < 0 {
-		return nil, errors.New("Can not update node itself")
+		return RoutingBucket{}, errors.New("Can not update node itself")
 	}
 
-	res := list.New()
-	res.PushBackList(&rt.Buckets[index])
+	res := RoutingBucket{list.List{}}
+	res.PushBackList(&rt.Buckets[index].List)
 
 	// Keep adding nodes adjacent to the target bucket until we get enough node
 	for i := 1; i < IDLengthInBits; i++ {
@@ -86,11 +110,11 @@ func (rt *RoutingTable) FindClosest(id ID) (*list.List, error) {
 		}
 
 		if index-i >= 0 {
-			res.PushBackList(&rt.Buckets[index-i])
+			res.PushBackList(&rt.Buckets[index-i].List)
 		}
 
 		if index+i < IDLengthInBits {
-			res.PushBackList(&rt.Buckets[index+i])
+			res.PushBackList(&rt.Buckets[index+i].List)
 		}
 	}
 
@@ -98,11 +122,11 @@ func (rt *RoutingTable) FindClosest(id ID) (*list.List, error) {
 }
 
 // Sort the node list and return the closets 20 nodes to the target
-func SortNode(lt *list.List, target ID) *list.List {
+func SortNode(lt RoutingBucket, target ID) RoutingBucket {
 	if lt.Len() == 0 {
 		return lt
 	}
-	ret := list.New()
+	ret := RoutingBucket{list.List{}}
 
 	// Define less function between IDs
 	less := func(add1, add2 string) bool {
@@ -163,7 +187,7 @@ func CompareList(l1, l2 *list.List, n int) bool {
 
 // Check if we have enough space to update the id in the bucket
 // Return the last node if the bucket is full
-func (rt *RoutingTable) CheckAvailability(id ID) (string,error) {
+func (rt *RoutingTable) CheckAvailability(id ID) (string, error) {
 
 	same, err := rt.ID.SamePrefixLen(id)
 	if err != nil {
@@ -175,17 +199,17 @@ func (rt *RoutingTable) CheckAvailability(id ID) (string,error) {
 	if index < 0 {
 		return "", err
 	}
-	if  rt.Buckets[index].Len() < IDLength {
+	if rt.Buckets[index].Len() < IDLength {
 		return "", nil
-	}else{
+	} else {
 		return rt.Buckets[index].Back().Value.(string), nil
 	}
 }
 
 // Kick the node from the routing table
-func (rt *RoutingTable) Kick(id string){
-	for i:= 0;i< IDLengthInBits;i++{
-		for e:= rt.Buckets[i].Front();e!= nil; e= e.Next(){
+func (rt *RoutingTable) Kick(id string) {
+	for i := 0; i < IDLengthInBits; i++ {
+		for e := rt.Buckets[i].Front(); e != nil; e = e.Next() {
 			if e.Value == id {
 				rt.Buckets[i].Remove(e)
 				return
