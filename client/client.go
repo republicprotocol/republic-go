@@ -73,6 +73,9 @@ func main() {
 	// ping the server
 	log.Println("Ping: " + address)
 	pong, err := node.PingNode(address)
+	if err != nil {
+		log.Fatal(err)
+	}
 	log.Println("Pong: " + pong.Address)
 
 	log.Printf("Ask all peers from : %s \n", pong.Address)

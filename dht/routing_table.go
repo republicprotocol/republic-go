@@ -6,8 +6,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-const Republic_Protocol_Code = 0
-
 // RoutingBucket is a container List of strings.
 type RoutingBucket struct {
 	list.List
@@ -61,7 +59,7 @@ func (rt *RoutingTable) MultiAddresses() []string {
 func (rt *RoutingTable) Update(multiaddr ma.Multiaddr) error {
 	// Get the node id from its multiaddress
 	// todo: fix the republic protocol in multi-addresses
-	id, err := multiaddr.ValueForProtocol(Republic_Protocol_Code)
+	id, err := multiaddr.ValueForProtocol(Republic_Code)
 	if err != nil {
 		return err
 	}
@@ -85,7 +83,7 @@ func (rt *RoutingTable) Update(multiaddr ma.Multiaddr) error {
 		}
 
 		// Get the id from the value in the bucket
-		valueID,err  := value.ValueForProtocol(Republic_Protocol_Code)
+		valueID,err  := value.ValueForProtocol(Republic_Code)
 		if !ok {
 			return err
 		}
@@ -104,7 +102,7 @@ func (rt *RoutingTable) Update(multiaddr ma.Multiaddr) error {
 	return nil
 }
 
-// Return the addresses in the closest bucket
+// Return the addresses which is closer to the target
 func (rt *RoutingTable) FindClosest(id ID) (RoutingBucket, error) {
 	// Find the bucket holding the target id.
 	same, err := rt.ID.SamePrefixLen(id)
@@ -116,6 +114,7 @@ func (rt *RoutingTable) FindClosest(id ID) (RoutingBucket, error) {
 		return RoutingBucket{}, errors.New("Can not update node itself")
 	}
 
+	// Initialize the returning bucket
 	res := RoutingBucket{list.List{}}
 	res.PushBackList(&rt.Buckets[index].List)
 
@@ -137,7 +136,7 @@ func (rt *RoutingTable) FindClosest(id ID) (RoutingBucket, error) {
 	return SortNode(res, id), nil
 }
 
-// Sort the node list and return the closets 20 nodes to the target
+// Sort the node list and return the closets 3 nodes to the target
 func SortNode(lt RoutingBucket, target ID) RoutingBucket {
 	if lt.Len() == 0 {
 		return lt
@@ -147,10 +146,9 @@ func SortNode(lt RoutingBucket, target ID) RoutingBucket {
 	// Define less function between IDs
 	less := func(add1, add2 string) bool {
 		// todo : need to update when we decided the format of multi-address
-		// Currenly we assume the address will be sth like : /republic/dshfkadhfhkajdsf=
-		id1, id2 := ID(add1[10:]), ID(add2[10:])
-		xor1, _ := id1.Xor(target)
-		xor2, _ := id2.Xor(target)
+		// Currently we assume the address will be sth like : /republic/dshfkadhfhkajdsf=
+		xor1, _ := ID(add1).Xor(target)
+		xor2, _ := ID(add2).Xor(target)
 
 		for i := 0; i < IDLength; i++ {
 			if xor1[i] < xor2[i] {
@@ -167,12 +165,16 @@ func SortNode(lt RoutingBucket, target ID) RoutingBucket {
 		if lt.Len() == 0 {
 			return ret
 		}
-		min := lt.Front()
+		min:= lt.Front()
+
 		for e := lt.Front(); e != nil; e = e.Next() {
-			if !less(min.Value.(string), e.Value.(string)) {
+			minValue, _ :=  min.Value.(ma.Multiaddr).ValueForProtocol(Republic_Code)
+			value, _ := e.Value.(ma.Multiaddr).ValueForProtocol(Republic_Code)
+			if !less(minValue, value) {
 				min = e
 			}
 		}
+
 		ret.PushBack(lt.Remove(min))
 	}
 
@@ -180,24 +182,20 @@ func SortNode(lt RoutingBucket, target ID) RoutingBucket {
 }
 
 // Compare two lists if they are same in the first n elements
-func CompareList(l1, l2 *list.List, n int) bool {
-	e1, e2 := l1.Front(), l2.Front()
+func CompareList(b1,b2 RoutingBucket, n int) bool {
+	e1, e2 := b1.Front(), b2.Front()
 	for i := 0; i < n; i++ {
 		if e1 != nil && e2 != nil && e1 != e2 {
 			return false
-		}
-
-		if e1 != nil && e2 == nil {
+		}else if e1 != nil && e2 == nil {
 			return false
 		} else if e1 == nil && e2 != nil {
 			return false
 		} else if e1 == nil && e2 == nil {
 			return true
 		}
-
 		e1, e2 = e1.Next(), e2.Next()
 	}
-
 	return true
 }
 

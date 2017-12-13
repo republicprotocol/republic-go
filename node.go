@@ -7,6 +7,8 @@ import (
 	"github.com/republicprotocol/go-swarm/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 )
 
 // Node implements the gRPC Node service.
@@ -123,6 +125,7 @@ func (node *Node) updateSender(id *rpc.ID) error {
 	if err != nil {
 		return err
 	}
+	multiAddress, err := multiaddr.NewMultiaddr("/republic/"+id.Address)
 	// Ping the last node
 	if peer != "" {
 		pong, err := node.PingNode(peer)
@@ -132,10 +135,14 @@ func (node *Node) updateSender(id *rpc.ID) error {
 		// If no response, kick the last node and update the sender
 		if pong == nil {
 			node.DHT.Kick(peer)
-			return node.DHT.Update(dht.ID(id.Address))
+			if err!= nil {
+				return err
+			}
+
+			return node.DHT.Update(multiAddress)
 		}
 	}
-	return node.DHT.Update(dht.ID(id.Address))
+	return node.DHT.Update(multiAddress)
 
 }
 
@@ -156,9 +163,12 @@ func (node *Node) PingNode(address string) (*rpc.ID, error) {
 	if err != nil {
 		return nil, err
 	}
-	node.DHT.Update(dht.ID(pong.Address))
+	multiAddress, err := multiaddr.NewMultiaddr("/republic/"+pong.Address)
+	if err != nil {
+		return nil, err
+	}
 
-	return pong, nil
+	return pong, node.DHT.Update(multiAddress)
 }
 
 // Request all peers of a node
@@ -173,22 +183,27 @@ func (node *Node) PeersNode(address string) (*rpc.MultiAddresses, error) {
 
 // Find a certain node by its ID through the kademlia network
 // Return its multi-adresses
-func (node *Node) FindNode(id string) (string, error) {
+func (node *Node) FindNode(id string) (multiaddr.Multiaddr, error) {
 	// Find closest peers we know from the routing table
 	peers, err := node.DHT.FindClosest(dht.ID(id))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	path := &rpc.Path{From: &rpc.ID{Address: string(node.DHT.ID)}, To: &rpc.ID{Address: string(id)}}
 
 	for {
 
-		if peers.Front() != nil && peers.Front().Value == dht.MultiAddress(dht.ID(id)) {
-			return peers.Front().Value.(string), nil
+		peerValue, err  := peers.Front().Value.(multiaddr.Multiaddr).ValueForProtocol(dht.Republic_Code)
+		if err != nil {
+			return nil, nil
+		}
+		// Return the multiaddress if we find the target
+		if peers.Front() != nil && peerValue == id {
+			return peers.Front().Value.(multiaddr.Multiaddr), nil
 		}
 
-		nPeers := list.New()
+		nPeers := dht.RoutingBucket{list.List{}}
 		// todo : parallel  and get address from multi address
 		for e := peers.Front(); e != nil; e = e.Next() {
 			if e.Value == "/republic/"+node.DHT.ID {
@@ -200,7 +215,7 @@ func (node *Node) FindNode(id string) (string, error) {
 			multiAddresses, err := client.CloserPeers(context.Background(), path)
 
 			if err != nil {
-				return "", err
+				return nil, err
 			}
 			for _, address := range multiAddresses.Multis {
 				nPeers.PushBack(address)
@@ -212,12 +227,12 @@ func (node *Node) FindNode(id string) (string, error) {
 		// which means we can't get closer peers from the node we know
 		if dht.CompareList(nPeers, peers, 3) {
 			// todo: what to do if we can't find node
-			return "tried best, only get: " + nPeers.Front().Value.(string), nil
+			return nil, errors.New("can't find target from peers I know, closet peer is:")
 		}
 		peers = nPeers
 	}
 
-	return "", nil
+	return nil, nil
 }
 
 // Find close peers from a node

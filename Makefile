@@ -2,7 +2,7 @@
 
 TAG = $(shell git log --pretty=format:'%h' -n 1)
 
-all: clean rpc test install
+all: clean rpc install
 
 clean:
 	rm -f rpc/*.pb.go

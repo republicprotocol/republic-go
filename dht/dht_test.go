@@ -3,7 +3,31 @@ package dht
 import (
 	"encoding/base64"
 	"testing"
+	ma "github.com/multiformats/go-multiaddr"
 )
+
+func init()  {
+	republic := ma.Protocol{
+		Code:       Republic_Code,
+		Size:       28*8,
+		Name:       "republic",
+		Path:       false,
+		Transcoder: ma.NewTranscoderFromFunctions(s2b,b2s),
+	}
+	ma.AddProtocol(republic)
+}
+
+
+// string to []byte
+func s2b(s string) ([]byte, error) {
+	return []byte(s), nil
+}
+
+// []byte to string
+func b2s(b []byte) (string, error) {
+	return string(b), nil
+}
+
 
 func TestNewID(t *testing.T) {
 
@@ -123,7 +147,7 @@ func TestID_SamePrefixLen(t *testing.T) {
 
 func TestID_SamePrefixLen2(t *testing.T) {
 	// Create two new IDs
-	id1, id2 := ID("ikuMqMkI9GcY/viwBiXnh3s7Mn4="), ID("ikuI8Kni4fKfArBrFH4umRU4czA=")
+	id1, id2 := ID("ikuMqMkI9GcY7viwBiXnh3s7Mn4="), ID("ikuI8Kni4fKfArBrFH4umRU4czA=")
 
 	// Get the same prefix of the two IDs
 	same, err := id1.SamePrefixLen(id2)
@@ -159,9 +183,19 @@ func TestNewRoutingTable(t *testing.T) {
 
 func TestRoutingTable_Update(t *testing.T) {
 	// Generating test IDs
-	id := ID("ikuMqMkI9GcY/viwBiXnh3s7Mn4=")
+	id := ID("ikuMqMkI9GcY7viwBiXnh3s7Mn4=")
 	id2 := ID("ikuI8Kni4fKfArBrFH4umRU4czA=")
-	id3 := ID("ikufowkI9GcY/viwBiXnh3s7Mn4=")
+	id3 := ID("ikufowkI9GcY7viwBiXnh3s7Mn4=")
+
+	multi2,err := ma.NewMultiaddr("/republic/"+string(id2))
+	if err != nil {
+		t.Fatal("error in creating new multi address:", err)
+	}
+
+	multi3,err := ma.NewMultiaddr("/republic/"+string(id3))
+	if err != nil {
+		t.Fatal("error in creating new multi address:", err)
+	}
 
 	rt := NewRoutingTable(id)
 	if rt == nil {
@@ -169,7 +203,7 @@ func TestRoutingTable_Update(t *testing.T) {
 	}
 
 	// Update id2 into the routing table
-	err := rt.Update(id2)
+	err = rt.Update(multi2)
 	if err != nil {
 		t.Fatal("error in updating another peer:", err)
 	}
@@ -191,7 +225,7 @@ func TestRoutingTable_Update(t *testing.T) {
 
 	// update id3 into the routing table which should be updated into
 	// bucket[1], same bucket as id2
-	err = rt.Update(id3)
+	err = rt.Update(multi3)
 	if err != nil {
 		t.Fatal("error in updating another peer:", err)
 	}
@@ -215,9 +249,19 @@ func TestRoutingTable_Update(t *testing.T) {
 func TestNewRoutingTable2(t *testing.T) {
 	// Generating test IDs
 	// id2 ,id3 will be inserted into the same bucket[138]
-	id := ID("ikuMqMkI9GcY/viwBiXnh3s7Mn4=")
+	id := ID("ikuMqMkI9GcY7viwBiXnh3s7Mn4=")
 	id2 := ID("ikuI8Kni4fKfArBrFH4umRU4czA=")
-	id3 := ID("ikuIowkI9GcY/viwBiXnh3s7Mn4=")
+	id3 := ID("ikuIowkI9GcY7viwBiXnh3s7Mn4=")
+
+	multi2,err := ma.NewMultiaddr("/republic/"+string(id2))
+	if err != nil {
+		t.Fatal("error in creating new multi address:", err)
+	}
+
+	multi3,err := ma.NewMultiaddr("/republic/"+string(id3))
+	if err != nil {
+		t.Fatal("error in creating new multi address:", err)
+	}
 
 	rt := NewRoutingTable(id)
 	if rt == nil {
@@ -225,7 +269,7 @@ func TestNewRoutingTable2(t *testing.T) {
 	}
 
 	// Update id2 into the routing table
-	err := rt.Update(id2)
+	err = rt.Update(multi2)
 	if err != nil {
 		t.Fatal("error in updating another peer:", err)
 	}
@@ -247,7 +291,7 @@ func TestNewRoutingTable2(t *testing.T) {
 
 	// update id3 into the routing table which should be updated into
 	// bucket[1], same bucket as id2
-	err = rt.Update(id3)
+	err = rt.Update(multi3)
 	if err != nil {
 		t.Fatal("error in updating another peer:", err)
 	}
@@ -259,7 +303,7 @@ func TestNewRoutingTable2(t *testing.T) {
 	}
 
 	// Update id2 again
-	err = rt.Update(id2)
+	err = rt.Update(multi2)
 	if err != nil {
 		t.Fatal("error in updating another peer:", err)
 	}
@@ -272,37 +316,46 @@ func TestNewRoutingTable2(t *testing.T) {
 }
 
 func TestRoutingTable_All(t *testing.T) {
-	id := ID("ikuMqMkI9GcY/viwBiXnh3s7Mn4=")
+	id := ID("ikuMqMkI9GcY7viwBiXnh3s7Mn4=")
 	id2 := ID("ikuI8Kni4fKfArBrFH4umRU4czA=")
-	id3 := ID("ikuIowkI9GcY/viwBiXnh3s7Mn4=")
+	id3 := ID("ikuIowkI9GcY7viwBiXnh3s7Mn4=")
 
+	multi2,err := ma.NewMultiaddr("/republic/"+string(id2))
+	if err != nil {
+		t.Fatal("error in creating new multi address:", err)
+	}
+
+	multi3,err := ma.NewMultiaddr("/republic/"+string(id3))
+	if err != nil {
+		t.Fatal("error in creating new multi address:", err)
+	}
 	rt := NewRoutingTable(id)
 	if rt == nil {
 		t.Fatal("new routing table is nil")
 	}
 
 	// Update id2 into the routing table
-	err := rt.Update(id2)
+	err = rt.Update(multi2)
 	if err != nil {
 		t.Fatal("error in updating another peer:", err)
 	}
 
 	// Check if id2 is correctly inserted into the bucket
-	list := rt.All()
-	if list.Front() == nil || list.Front().Value != "/republic/"+string(id2) {
+	list := rt.MultiAddresses()
+	if list[0] != "/republic/"+string(id2) {
 		t.Fatal("fail to store the right multiaddress of a id")
 	}
 
 	// update id3 into the routing table which should be updated into
 	// bucket[1], same bucket as id2
-	err = rt.Update(id3)
+	err = rt.Update(multi3)
 	if err != nil {
 		t.Fatal("error in updating another peer:", err)
 	}
 
 	// Check if id3 is correctly inserted into the bucket
-	list = rt.All()
-	if list.Front() == nil || list.Front().Value != "/republic/"+string(id3) || list.Front().Next().Value != "/republic/"+string(id2) {
+	list = rt.MultiAddresses()
+	if list[0] != "/republic/"+string(id3) || list[1] != "/republic/"+string(id2) {
 		t.Fatal("fail to store the right multiaddress of a id")
 	}
 }

@@ -12,6 +12,7 @@ const (
 	IDLengthBase64 = 28
 	IDLengthInBits = IDLength * 8
 	Alpha          = 3
+	Republic_Code= crypto.Republic_Code
 )
 
 // ID is the public address used to identify Nodes, and other entities, in the
@@ -71,9 +72,4 @@ func (id ID) SamePrefixLen(other ID) (int, error) {
 	}
 
 	return ret, nil
-}
-
-// todo: to be decided
-func MultiAddress(id ID) string {
-	return "/republic/" + string(id)
 }
