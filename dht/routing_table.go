@@ -3,7 +3,10 @@ package dht
 import (
 	"container/list"
 	"errors"
+	ma "github.com/multiformats/go-multiaddr"
 )
+
+const Republic_Protocol_Code = 0
 
 // RoutingBucket is a container List of strings.
 type RoutingBucket struct {
@@ -55,35 +58,48 @@ func (rt *RoutingTable) MultiAddresses() []string {
 }
 
 // Update the new id in the routing table
-func (rt *RoutingTable) Update(id ID) error {
-
-	same, err := rt.ID.SamePrefixLen(id)
+func (rt *RoutingTable) Update(multiaddr ma.Multiaddr) error {
+	// Get the node id from its multiaddress
+	// todo: fix the republic protocol in multi-addresses
+	id, err := multiaddr.ValueForProtocol(Republic_Protocol_Code)
 	if err != nil {
 		return err
 	}
 
-	// The more same prefix-bit, the closer they are
+	// Get the index of the bucket we want to store the ID
+	same, err := rt.ID.SamePrefixLen(ID(id))
+	if err != nil {
+		return err
+	}
 	index := IDLengthInBits - 1 - same
 	if index < 0 {
-		return errors.New("Can not update node itself")
+		return errors.New("can't update node itself")
 	}
-	IdAddress := MultiAddress(id)
 
 	// If the node already exists, move it to the front
 	for e := rt.Buckets[index].Front(); e != nil; e = e.Next() {
-		if IdAddress == e.Value {
+		// Check the type of value in the bucket
+		value, ok  := e.Value.(ma.Multiaddr)
+		if !ok {
+			return errors.New("wrong multiaddress type")
+		}
+
+		// Get the id from the value in the bucket
+		valueID,err  := value.ValueForProtocol(Republic_Protocol_Code)
+		if !ok {
+			return err
+		}
+
+		// Override the multiaddress and move it to the front
+		if id == valueID {
+			e.Value = multiaddr
 			rt.Buckets[index].MoveToFront(e)
 			return nil
 		}
 	}
 
-	// If we have reach the bucket limit, Ping the last node in the bucket
-	if rt.Buckets[index].Len() == IDLength {
-		//todo : need to redesign the structure?
-	} else {
-		// Otherwise simply insert the node into the front
-		rt.Buckets[index].PushFront(IdAddress)
-	}
+	// Otherwise insert into the front
+	rt.Buckets[index].PushFront(multiaddr)
 
 	return nil
 }
