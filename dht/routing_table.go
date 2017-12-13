@@ -29,7 +29,7 @@ func (rt *RoutingTable) Update(id ID) error {
 	// The more same prefix-bit, the closer they are
 	index := IDLengthInBits - 1 - same
 	if index < 0 {
-		return errors.New("Can not updating node itself")
+		return errors.New("Can not update node itself")
 	}
 	IdAddress := MultiAddress(id)
 
@@ -66,13 +66,14 @@ func (rt *RoutingTable) All() *list.List {
 // Return the addresses in the closest bucket
 func (rt *RoutingTable) FindClosest(id ID) (*list.List, error) {
 	// Find the bucket holding the target id
+
 	same, err := rt.ID.SamePrefixLen(id)
 	if err != nil {
 		return nil, err
 	}
 	index := IDLengthInBits - 1 - same
 	if index < 0 {
-		return nil, errors.New("Can not updating node itself")
+		return nil, errors.New("Can not update node itself")
 	}
 
 	res := list.New()

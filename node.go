@@ -1,4 +1,4 @@
-package main
+package swarm
 
 import (
 	"container/list"
@@ -142,7 +142,7 @@ func (node *Node) updateSender(id *rpc.ID) error {
 		// If no response, kick the last node and update the sender
 		if pong == nil {
 			node.DHT.Kick(peer)
-			node.DHT.Update(dht.ID(id.Address))
+			return node.DHT.Update(dht.ID(id.Address))
 		}
 	}
 	return node.DHT.Update(dht.ID(id.Address))
@@ -156,7 +156,6 @@ func connectNode(address string) rpc.NodeClient {
 	if err != nil {
 		return nil
 	}
-	defer conn.Close()
 	return rpc.NewNodeClient(conn)
 }
 
@@ -168,6 +167,7 @@ func (node *Node) PingNode(address string) (*rpc.ID, error) {
 		return nil, err
 	}
 	node.DHT.Update(dht.ID(pong.Address))
+
 	return pong, nil
 }
 
@@ -183,7 +183,7 @@ func (node *Node) PeersNode(address string) (*rpc.MultiAddresses, error) {
 
 // Find a certain node by its ID through the kademlia network
 // Return its multi-adresses
-func (node *Node) FindNode(id dht.ID) (string, error) {
+func (node *Node) FindNode(id string) (string, error) {
 	// Find closest peers we know from the routing table
 	peers, err := node.DHT.FindClosest(dht.ID(id))
 	if err != nil {
@@ -197,7 +197,7 @@ func (node *Node) FindNode(id dht.ID) (string, error) {
 
 	for {
 
-		if peers.Front() != nil && peers.Front().Value == dht.MultiAddress(id) {
+		if peers.Front() != nil && peers.Front().Value == dht.MultiAddress(dht.ID(id)) {
 			return peers.Front().Value.(string), nil
 		}
 
@@ -212,7 +212,7 @@ func (node *Node) FindNode(id dht.ID) (string, error) {
 			}
 		}
 
-		nPeers = dht.SortNode(nPeers, id)
+		nPeers = dht.SortNode(nPeers, dht.ID(id))
 		// Check if the new peers are unchanged from the previous list
 		// which means we can't get closer peers from the node we know
 		if dht.CompareList(nPeers, peers, 3) {
