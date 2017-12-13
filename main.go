@@ -4,9 +4,9 @@ import (
 	"flag"
 	"log"
 
-	"github.com/republicprotocol/republic/crypto"
-	"github.com/republicprotocol/republic/dht"
-	"github.com/republicprotocol/republic/rpc"
+	"github.com/republicprotocol/go-swarm/crypto"
+	"github.com/republicprotocol/go-swarm/dht"
+	"github.com/republicprotocol/go-swarm/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"net"

@@ -2,8 +2,8 @@ package swarm
 
 import (
 	"container/list"
-	"github.com/republicprotocol/republic/dht"
-	"github.com/republicprotocol/republic/rpc"
+	"github.com/republicprotocol/go-swarm/dht"
+	"github.com/republicprotocol/go-swarm/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"github.com/pkg/errors"

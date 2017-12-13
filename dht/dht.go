@@ -3,7 +3,7 @@ package dht
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/republicprotocol/republic/crypto"
+	"github.com/republicprotocol/go-swarm/crypto"
 )
 
 // IDLength is the number of bytes needed to store an ID.

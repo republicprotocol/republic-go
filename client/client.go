@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/republicprotocol/republic/crypto"
+	"github.com/republicprotocol/go-swarm/crypto"
 	"log"
-	"github.com/republicprotocol/republic"
-	"github.com/republicprotocol/republic/dht"
+	"github.com/republicprotocol/go-swarm"
+	"github.com/republicprotocol/go-swarm/dht"
 )
 
 const (
