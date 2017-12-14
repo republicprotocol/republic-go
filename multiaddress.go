@@ -72,9 +72,15 @@ func republicBtS(b []byte) (string, error) {
 	return m.B58String(), nil
 }
 
-// Generate a new multi-address from a string
+// NewMultiaddr parses and validates an input string, returning a *Multiaddr
 func NewMultiaddr(s string) (ma.Multiaddr, error) {
 	return ma.NewMultiaddr(s)
+}
+
+// NewMultiaddrBytes initializes a Multiaddr from a byte representation.
+// It validates it as an input string.
+func NewMultiaddrBytes(b []byte) (ma.Multiaddr, error) {
+	return ma.NewMultiaddrBytes(b)
 }
 
 // CodeToVarint converts an integer to a varint-encoded []byte
@@ -93,3 +99,4 @@ func ReadVarintCode(buf []byte) (int, int, error) {
 	}
 	return int(num), n, nil
 }
+
