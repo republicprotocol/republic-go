@@ -6,8 +6,12 @@ import (
 	"crypto/rand"
 
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
-	"golang.org/x/crypto/sha3"
+	"github.com/jbenet/go-base58"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/multiformats/go-multihash"
 )
+
+const HashLength = 20
 
 // RepublicID contains an ECDSA key pair using a SECP256K1 S256 elliptic curve.
 type RepublicID struct {
@@ -30,12 +34,19 @@ func NewRepublicID() (RepublicID, error) {
 
 // PublicAddress implements the Identifier interface.
 func (id RepublicID) PublicAddress() string {
-	return ""
+	hash := []byte{
+		multihash.KECCAK_256,
+		HashLength,
+	}
+	hash = append(hash, id.PublicAddressInBytes()...)
+	return base58.EncodeAlphabet(hash, base58.BTCAlphabet)
 }
 
 // PublicAddressInBytes implements the Identifier interface.
 func (id RepublicID) PublicAddressInBytes() []byte {
 	bytes := elliptic.Marshal(secp256k1.S256(), id.PublicKey.X, id.PublicKey.Y)
-	hash := sha3.Sum256(bytes)
-	return hash[:20]
+	hash := crypto.Keccak256(bytes)
+	return hash[:HashLength]
 }
+
+
