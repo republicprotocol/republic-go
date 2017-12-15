@@ -20,18 +20,6 @@
   version = "1.0.0"
 
 [[projects]]
-  name = "github.com/multiformats/go-multiaddr"
-  packages = ["."]
-  revision = "b90678896b52c3e5a4c8176805c6facc3fe3eb82"
-  version = "0.1.2"
-
-[[projects]]
-  name = "github.com/multiformats/go-multihash"
-  packages = ["."]
-  revision = "f85ddc806c2042548789544758350d503ad36b6d"
-  version = "v1.0.6"
-
-[[projects]]
   name = "github.com/onsi/ginkgo"
   packages = [".","config","internal/codelocation","internal/containernode","internal/failer","internal/leafnodes","internal/remote","internal/spec","internal/spec_iterator","internal/specrunner","internal/suite","internal/testingtproxy","internal/writer","reporters","reporters/stenographer","reporters/stenographer/support/go-colorable","reporters/stenographer/support/go-isatty","types"]
   revision = "9eda700730cba42af70d53180f9dcce9266bc2bc"

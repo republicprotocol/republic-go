@@ -3,10 +3,10 @@ package identity_test
 import (
 	"testing"
 
+	"github.com/jbenet/go-base58"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
-	"github.com/jbenet/go-base58"
 )
 
 func TestAddress(t *testing.T) {
@@ -34,7 +34,7 @@ var _ = Describe("Republic identity", func() {
 		})
 		ID := keyPair.PublicID()
 		It("should have 20 bytes", func() {
-			Ω(len(ID)).Should(Equal(identity.IDLength ))
+			Ω(len(ID)).Should(Equal(identity.IDLength))
 		})
 	})
 
@@ -66,7 +66,7 @@ var _ = Describe("Republic identity", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 		It("should be a string concatenated by '/republic/' and its republic address", func() {
-			Ω(multiaddress.String()).Should(Equal("/republic/"+keyPair.PublicAddress()))
+			Ω(multiaddress.String()).Should(Equal("/republic/" + keyPair.PublicAddress()))
 		})
 	})
 })
