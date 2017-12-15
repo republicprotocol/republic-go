@@ -65,13 +65,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "53aa286056ef226755cd898109dbcdaba8ac0b81"
+  revision = "1d2aa6dbdea45adaaebb9905d0666e4537563829"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["encoding","encoding/charmap","encoding/htmlindex","encoding/internal","encoding/internal/identifier","encoding/japanese","encoding/korean","encoding/simplifiedchinese","encoding/traditionalchinese","encoding/unicode","internal/gen","internal/tag","internal/utf8internal","language","runes","transform","unicode/cldr"]
-  revision = "3b24cac7bc3a458991ab409aa2a339ac9e0d60d6"
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
 
 [[projects]]
   branch = "v2"
