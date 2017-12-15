@@ -2,6 +2,36 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/btcd"
+  packages = ["btcec"]
+  revision = "2e60448ffcc6bf78332d1fe590260095f554dd78"
+
+[[projects]]
+  name = "github.com/ethereum/go-ethereum"
+  packages = ["common","common/hexutil","common/math","crypto","crypto/secp256k1","crypto/sha3","rlp"]
+  revision = "4bb3c89d44e372e6a9ab85a8be0c9345265c763a"
+  version = "v1.7.3"
+
+[[projects]]
+  name = "github.com/jbenet/go-base58"
+  packages = ["."]
+  revision = "6237cf65f3a6f7111cd8a42be3590df99a66bc7d"
+  version = "1.0.0"
+
+[[projects]]
+  name = "github.com/multiformats/go-multiaddr"
+  packages = ["."]
+  revision = "b90678896b52c3e5a4c8176805c6facc3fe3eb82"
+  version = "0.1.2"
+
+[[projects]]
+  name = "github.com/multiformats/go-multihash"
+  packages = ["."]
+  revision = "f85ddc806c2042548789544758350d503ad36b6d"
+  version = "v1.0.6"
+
+[[projects]]
   name = "github.com/onsi/ginkgo"
   packages = [".","config","internal/codelocation","internal/containernode","internal/failer","internal/leafnodes","internal/remote","internal/spec","internal/spec_iterator","internal/specrunner","internal/suite","internal/testingtproxy","internal/writer","reporters","reporters/stenographer","reporters/stenographer/support/go-colorable","reporters/stenographer/support/go-isatty","types"]
   revision = "9eda700730cba42af70d53180f9dcce9266bc2bc"
@@ -12,6 +42,18 @@
   packages = [".","format","internal/assertion","internal/asyncassertion","internal/oraclematcher","internal/testingtsupport","matchers","matchers/support/goraph/bipartitegraph","matchers/support/goraph/edge","matchers/support/goraph/node","matchers/support/goraph/util","types"]
   revision = "c893efa28eb45626cdaa76c9f653b62488858837"
   version = "v1.2.0"
+
+[[projects]]
+  name = "github.com/spaolacci/murmur3"
+  packages = ["."]
+  revision = "9f5d223c60793748f04a9d5b4b4eacddfc1f755d"
+  version = "v1.1"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/crypto"
+  packages = ["blake2b","blake2s","sha3"]
+  revision = "94eea52f7b742c7cbe0b03b22f0c4c8631ece122"
 
 [[projects]]
   branch = "master"
@@ -37,9 +79,15 @@
   packages = ["."]
   revision = "287cf08546ab5e7e37d55a84f7ed3fd1db036de5"
 
+[[projects]]
+  branch = "master"
+  name = "leb.io/hashland"
+  packages = ["keccakpg"]
+  revision = "07375b562deaa8d6891f9618a04e94a0b98e2ee7"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "dca1bcd6639a944d8a343d0f9d51d7e96e82079e138c45cc607f268535967727"
+  inputs-digest = "12f4b92ff507e44144a57a417c86517f579cfe80730d4bf1ce809d2c8e03bc6a"
   solver-name = "gps-cdcl"
   solver-version = 1

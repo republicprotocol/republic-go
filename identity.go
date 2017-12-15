@@ -5,11 +5,11 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/jbenet/go-base58"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/multiformats/go-multihash"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multihash"
 )
 
 const IDLength = 20
@@ -52,7 +52,6 @@ func (keyPair KeyPair) PublicAddress() string {
 
 // MultiAddress returns the Republic multi address of the KeyPair.
 // It can be encapsulated by other multiaddress
-func (keyPair KeyPair) MultiAddress() (multiaddr.Multiaddr, error){
-	return NewMultiaddr("/republic/"+keyPair.PublicAddress())
+func (keyPair KeyPair) MultiAddress() (multiaddr.Multiaddr, error) {
+	return NewMultiaddr("/republic/" + keyPair.PublicAddress())
 }
-
