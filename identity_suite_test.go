@@ -22,8 +22,8 @@ var _ = Describe("Republic identity", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 		It("should have non-nil private-key and public key", func() {
-			Ω(keyPair.PrivateKey).ShouldNot(Equal(nil))
-			Ω(keyPair.PublicKey).ShouldNot(Equal(nil))
+			Ω(keyPair.PrivateKey).ShouldNot(BeNil())
+			Ω(keyPair.PublicKey).ShouldNot(BeNil())
 		})
 	})
 

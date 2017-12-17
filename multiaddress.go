@@ -99,3 +99,13 @@ func ReadVarintCode(buf []byte) (int, int, error) {
 	}
 	return int(num), n, nil
 }
+
+// ProtocolWithName returns the Protocol description with given string name.
+func ProtocolWithName(s string) ma.Protocol {
+	return ma.ProtocolWithName(s)
+}
+
+// ProtocolWithCode returns the Protocol description with given string name.
+func ProtocolWithCode(c int) ma.Protocol {
+	return ma.ProtocolWithCode(c)
+}

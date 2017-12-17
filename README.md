@@ -11,6 +11,7 @@ A Republic ID the first 20 bytes of the Keccak256 hash of the public key of an E
 ```go
 	keyPair, _ := identity.NewKeyPair()
 	republicID := keyPair.PublicID()
+	fmt.Println(republicID) // [247 107 192 130 208 33 69 182 183 127 237 24 22 83 157 99 207 221 9 243]
 ```
 
 ## Republic Address
@@ -20,7 +21,8 @@ A Republic Address is the Base58 encoding of the MultiHash of the Republic ID.
 
 ```go
 	keyPair, _ := identity.NewKeyPair()
-	republicID := keyPair.PublicAddress()
+	republicAddress := keyPair.PublicAddress()
+	fmt.Println(republicAddress) // 8MGHyHWxQ5zUzXXnK5b6LkWGFCWSyX
 ```
 
 ## Republic MultiAddress
