@@ -47,7 +47,7 @@ func (keyPair KeyPair) PublicAddress() string {
 	hash := make([]byte, 0, 2+IDLength)
 	hash = append(hash, multihash.KECCAK_256, IDLength)
 	hash = append(hash, keyPair.PublicID()...)
-	return base58.EncodeAlphabet(hash, base58.BTCAlphabet)
+	return base58.Encode(hash)
 }
 
 // MultiAddress returns the Republic multi address of the KeyPair.
