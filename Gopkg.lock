@@ -20,6 +20,12 @@
   version = "1.0.0"
 
 [[projects]]
+  name = "github.com/multiformats/go-multihash"
+  packages = ["."]
+  revision = "f85ddc806c2042548789544758350d503ad36b6d"
+  version = "v1.0.6"
+
+[[projects]]
   name = "github.com/onsi/ginkgo"
   packages = [".","config","internal/codelocation","internal/containernode","internal/failer","internal/leafnodes","internal/remote","internal/spec","internal/spec_iterator","internal/specrunner","internal/suite","internal/testingtproxy","internal/writer","reporters","reporters/stenographer","reporters/stenographer/support/go-colorable","reporters/stenographer/support/go-isatty","types"]
   revision = "9eda700730cba42af70d53180f9dcce9266bc2bc"
@@ -53,13 +59,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "1d2aa6dbdea45adaaebb9905d0666e4537563829"
+  revision = "571f7bbbe08da2a8955aed9d4db316e78630e9a3"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["encoding","encoding/charmap","encoding/htmlindex","encoding/internal","encoding/internal/identifier","encoding/japanese","encoding/korean","encoding/simplifiedchinese","encoding/traditionalchinese","encoding/unicode","internal/gen","internal/tag","internal/utf8internal","language","runes","transform","unicode/cldr"]
-  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  revision = "d5a9226ed7dd70cade6ccae9d37517fe14dd9fee"
 
 [[projects]]
   branch = "v2"
@@ -76,6 +82,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "12f4b92ff507e44144a57a417c86517f579cfe80730d4bf1ce809d2c8e03bc6a"
+  inputs-digest = "33882a0d432bdaaecea1739d259c23f96c91e4f6cc59d3c8960da58dacc5bc28"
   solver-name = "gps-cdcl"
   solver-version = 1

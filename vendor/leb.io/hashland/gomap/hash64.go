@@ -90,3 +90,4 @@ func rotl_31(x uint64) uint64 {
 func rotl_27(x uint64) uint64 {
 	return (x << 27) | (x >> (64 - 27))
 }
+
