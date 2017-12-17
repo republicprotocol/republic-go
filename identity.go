@@ -53,5 +53,5 @@ func (keyPair KeyPair) PublicAddress() string {
 // MultiAddress returns the Republic multi address of the KeyPair.
 // It can be encapsulated by other multiaddress
 func (keyPair KeyPair) MultiAddress() (multiaddr.Multiaddr, error) {
-	return NewMultiaddr("/republic/" + keyPair.PublicAddress())
+	return multiaddr.NewMultiaddr("/republic/" + keyPair.PublicAddress())
 }
