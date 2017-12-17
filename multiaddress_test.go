@@ -7,16 +7,17 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Multiaddress with republic protocol added", func() {
+var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 
-	Context("After import the indentity package", func() {
-		It("should have a protocol called republic", func() {
+	Context("after importing the identity package", func() {
+
+		It("there should be a protocol called republic", func() {
 			Ω(ProtocolWithName("republic").Name).Should(Equal("republic"))
 		})
 
-		Specify("The republic protocol code should be defined as a constant ", func() {
-			Ω(ProtocolWithCode(P_REPUBLIC).Name).Should(Equal("republic"))
-			Ω(ProtocolWithCode(P_REPUBLIC).Code).Should(Equal(P_REPUBLIC))
+		Specify("the Republic Protocol code should be defined with the correct constants", func() {
+			Ω(ProtocolWithCode(RepublicCode).Name).Should(Equal("republic"))
+			Ω(ProtocolWithCode(RepublicCode).Code).Should(Equal(RepublicCode))
 		})
 	})
 })
