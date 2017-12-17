@@ -3,12 +3,13 @@ package swarm
 import (
 	"container/list"
 
+	"github.com/pkg/errors"
 	"github.com/republicprotocol/go-swarm/dht"
 	"github.com/republicprotocol/go-swarm/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"github.com/republicprotocol/go-identity"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
 )
 
 // Node implements the gRPC Node service.
@@ -72,7 +73,7 @@ func (node *Node) Peers(ctx context.Context, id *rpc.ID) (*rpc.MultiAddresses, e
 
 // CloserPeers returns the peers of an rpc.Node that are closer to a target
 // than the rpc.Node itself. Distance is calculated by evaluating a XOR with
-// the target address and each peer address.
+// the target address and each peer ID.
 func (node *Node) CloserPeers(ctx context.Context, path *rpc.Path) (*rpc.MultiAddresses, error) {
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
@@ -121,29 +122,41 @@ func (node *Node) closerPeers(id string) (*rpc.MultiAddresses, error) {
 // Every time we receive a request, update the sender
 // as a active peer in the node routing table
 func (node *Node) updateSender(id *rpc.ID) error {
+
+	// Check if there still has place for the new id
 	peer, err := node.DHT.CheckAvailability(dht.ID(id.Address))
 	if err != nil {
 		return err
 	}
-	multiAddress, err := multiaddr.NewMultiaddr("/republic/"+id.Address)
-	// Ping the last node
-	if peer != "" {
-		pong, err := node.PingNode(peer)
-		if err != nil {
-			return err
-		}
-		// If no response, kick the last node and update the sender
-		if pong == nil {
-			node.DHT.Kick(peer)
-			if err!= nil {
-				return err
-			}
 
-			return node.DHT.Update(multiAddress)
+	multiAddress, err := identity.NewMultiaddr("/republic/" + id.Address)
+
+	// If the bucket is full
+	if peer != "" {
+		// Try to ping the last node in the bucket
+		wait := make(chan interface{})
+		go func() {
+			defer close(wait)
+			pong, err := node.PingNode(peer)
+			if err != nil {
+				wait <- err
+			}else{
+				wait <- pong
+			}
+		}()
+
+		// Wait for the response
+		resp := <- wait
+		// If the last node is active, we do nothing with the new node
+		switch resp.(type){
+		case error:
+			return resp.(error)
+		case *rpc.ID:
+			return nil
 		}
 	}
-	return node.DHT.Update(multiAddress)
 
+	return node.DHT.Update(multiAddress)
 }
 
 // Connect to other Node and return the grpc client
@@ -163,7 +176,7 @@ func (node *Node) PingNode(address string) (*rpc.ID, error) {
 	if err != nil {
 		return nil, err
 	}
-	multiAddress, err := multiaddr.NewMultiaddr("/republic/"+pong.Address)
+	multiAddress, err := identity.NewMultiaddr("/republic/" + pong.Address)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +207,7 @@ func (node *Node) FindNode(id string) (multiaddr.Multiaddr, error) {
 
 	for {
 
-		peerValue, err  := peers.Front().Value.(multiaddr.Multiaddr).ValueForProtocol(dht.Republic_Code)
+		peerValue, err := peers.Front().Value.(multiaddr.Multiaddr).ValueForProtocol(dht.Republic_Code)
 		if err != nil {
 			return nil, nil
 		}

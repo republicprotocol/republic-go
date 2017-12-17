@@ -2,21 +2,20 @@ package dht
 
 import (
 	"encoding/base64"
-	"testing"
 	ma "github.com/multiformats/go-multiaddr"
+	"testing"
 )
 
-func init()  {
+func init() {
 	republic := ma.Protocol{
 		Code:       Republic_Code,
-		Size:       28*8,
+		Size:       28 * 8,
 		Name:       "republic",
 		Path:       false,
-		Transcoder: ma.NewTranscoderFromFunctions(s2b,b2s),
+		Transcoder: ma.NewTranscoderFromFunctions(s2b, b2s),
 	}
 	ma.AddProtocol(republic)
 }
-
 
 // string to []byte
 func s2b(s string) ([]byte, error) {
@@ -27,7 +26,6 @@ func s2b(s string) ([]byte, error) {
 func b2s(b []byte) (string, error) {
 	return string(b), nil
 }
-
 
 func TestNewID(t *testing.T) {
 
@@ -187,12 +185,12 @@ func TestRoutingTable_Update(t *testing.T) {
 	id2 := ID("ikuI8Kni4fKfArBrFH4umRU4czA=")
 	id3 := ID("ikufowkI9GcY7viwBiXnh3s7Mn4=")
 
-	multi2,err := ma.NewMultiaddr("/republic/"+string(id2))
+	multi2, err := ma.NewMultiaddr("/republic/" + string(id2))
 	if err != nil {
 		t.Fatal("error in creating new multi address:", err)
 	}
 
-	multi3,err := ma.NewMultiaddr("/republic/"+string(id3))
+	multi3, err := ma.NewMultiaddr("/republic/" + string(id3))
 	if err != nil {
 		t.Fatal("error in creating new multi address:", err)
 	}
@@ -253,12 +251,12 @@ func TestNewRoutingTable2(t *testing.T) {
 	id2 := ID("ikuI8Kni4fKfArBrFH4umRU4czA=")
 	id3 := ID("ikuIowkI9GcY7viwBiXnh3s7Mn4=")
 
-	multi2,err := ma.NewMultiaddr("/republic/"+string(id2))
+	multi2, err := ma.NewMultiaddr("/republic/" + string(id2))
 	if err != nil {
 		t.Fatal("error in creating new multi address:", err)
 	}
 
-	multi3,err := ma.NewMultiaddr("/republic/"+string(id3))
+	multi3, err := ma.NewMultiaddr("/republic/" + string(id3))
 	if err != nil {
 		t.Fatal("error in creating new multi address:", err)
 	}
@@ -320,12 +318,12 @@ func TestRoutingTable_All(t *testing.T) {
 	id2 := ID("ikuI8Kni4fKfArBrFH4umRU4czA=")
 	id3 := ID("ikuIowkI9GcY7viwBiXnh3s7Mn4=")
 
-	multi2,err := ma.NewMultiaddr("/republic/"+string(id2))
+	multi2, err := ma.NewMultiaddr("/republic/" + string(id2))
 	if err != nil {
 		t.Fatal("error in creating new multi address:", err)
 	}
 
-	multi3,err := ma.NewMultiaddr("/republic/"+string(id3))
+	multi3, err := ma.NewMultiaddr("/republic/" + string(id3))
 	if err != nil {
 		t.Fatal("error in creating new multi address:", err)
 	}

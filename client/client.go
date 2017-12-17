@@ -1,16 +1,15 @@
 package main
 
 import (
-	"github.com/republicprotocol/go-swarm/crypto"
-	"log"
 	"github.com/republicprotocol/go-swarm"
+	"github.com/republicprotocol/go-swarm/crypto"
 	"github.com/republicprotocol/go-swarm/dht"
+	"log"
 )
 
 const (
 	address = "localhost:8080"
 )
-
 
 func main() {
 	//// Set up a connection to the server.
@@ -79,7 +78,7 @@ func main() {
 	log.Println("Pong: " + pong.Address)
 
 	log.Printf("Ask all peers from : %s \n", pong.Address)
-	peers,_ := node.PeersNode(address)
+	peers, _ := node.PeersNode(address)
 	for _, j := range peers.Multis {
 		log.Printf("Get peer from server : %s \n", j)
 	}

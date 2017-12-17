@@ -1,18 +1,17 @@
 package dht
 
 import (
-	"encoding/base64"
 	"fmt"
-	"github.com/republicprotocol/go-swarm/crypto"
+	"github.com/republicprotocol/go-identity"
+	"github.com/jbenet/go-base58"
 )
 
 // IDLength is the number of bytes needed to store an ID.
 const (
-	IDLength       = crypto.PublicAddressLength
-	IDLengthBase64 = 28
+	IDLength       = identity.IDLength
 	IDLengthInBits = IDLength * 8
 	Alpha          = 3
-	Republic_Code= crypto.Republic_Code
+	Republic_Code  = identity.RepublicCode
 )
 
 // ID is the public address used to identify Nodes, and other entities, in the
@@ -23,39 +22,29 @@ type ID string
 // NewID creates a new set of public/private SECP256K1 key pair and
 // returns the public address as the ID string
 func NewID() (ID, error) {
-	secp, err := crypto.NewSECP256K1()
+	secp, err := identity.NewKeyPair()
 	if err != nil {
 		return "", err
 	}
-	return ID(secp.PublicAddress()), nil
+	return ID(secp.PublicID()), nil
 }
 
 // Using xor to calculate distance between two IDs
-func (id ID) Xor(other ID) ([]byte, error) {
+func (id ID) Xor(other ID) []byte {
 	// Decode both the IDs into bytes
-	idByte, err := base64.StdEncoding.DecodeString(string(id))
-	if err != nil {
-		return nil, err
-	}
-	otherByte, err := base64.StdEncoding.DecodeString(string(other))
-	if err != nil {
-		return nil, err
-	}
+	idByte := base58.Decode(string(id))
+	otherByte := base58.Decode(string(other))
 
 	xor := make([]byte, IDLength)
 	for i := 0; i < IDLength; i++ {
 		xor[i] = idByte[i] ^ otherByte[i]
 	}
-	return xor, nil
+	return xor
 }
 
 // Same prefix bits length with another ID
-func (id ID) SamePrefixLen(other ID) (int, error) {
-	diff, err := id.Xor(other)
-	if err != nil {
-		return 0, err
-	}
-
+func (id ID) SamePrefixLen(other ID) int {
+	diff:= id.Xor(other)
 	ret := 0
 	for i := 0; i < IDLength; i++ {
 		if diff[i] == uint8(0) {
@@ -64,12 +53,12 @@ func (id ID) SamePrefixLen(other ID) (int, error) {
 			bits := fmt.Sprintf("%08b", diff[i])
 			for j := 0; j < len(bits); j++ {
 				if bits[j] == '1' {
-					return ret, nil
+					return ret
 				}
 				ret++
 			}
 		}
 	}
 
-	return ret, nil
+	return ret
 }
