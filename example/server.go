@@ -1,15 +1,15 @@
-package swarm
+package main
 
 import (
 	"flag"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/republicprotocol/go-swarm/dht"
 	"github.com/republicprotocol/go-swarm/rpc"
 	"google.golang.org/grpc"
 	"log"
 	"net"
 	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/go-swarm"
 )
 
 // Declare command line arguments.
@@ -25,8 +25,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to identify self: %v", err)
 	}
-	id := secp.PublicAddress()
-	log.Println("Republic address:", id)
+	address := secp.PublicAddress()
+	log.Println("Republic address:", address)
 
 	// listen to the tcp port
 	lis, err := net.Listen("tcp", ":"+*port)
@@ -35,8 +35,8 @@ func main() {
 	}
 	s := grpc.NewServer()
 	// Create gRPC services.
-	node := NewNode(dht.ID(id))
-	rpc.RegisterNodeServer(s, node)
+	node := swarm.NewNode(address)
+	rpc.RegisterDHTServer(s, node)
 
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
