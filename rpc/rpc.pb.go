@@ -8,7 +8,7 @@ It is generated from these files:
 	rpc.proto
 
 It has these top-level messages:
-	ID
+	Node
 	Path
 	MultiAddress
 	MultiAddresses
@@ -39,16 +39,16 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // ID is the public address of an entity in the overlay network. It does not
 // contain connection details for the entity, which are usually held alongside
 // this ID in a MultiAddress.
-type ID struct {
+type Node struct {
 	Address string `protobuf:"bytes,1,opt,name=address" json:"address,omitempty"`
 }
 
-func (m *ID) Reset()                    { *m = ID{} }
-func (m *ID) String() string            { return proto.CompactTextString(m) }
-func (*ID) ProtoMessage()               {}
-func (*ID) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (m *Node) Reset()                    { *m = Node{} }
+func (m *Node) String() string            { return proto.CompactTextString(m) }
+func (*Node) ProtoMessage()               {}
+func (*Node) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
-func (m *ID) GetAddress() string {
+func (m *Node) GetAddress() string {
 	if m != nil {
 		return m.Address
 	}
@@ -58,8 +58,8 @@ func (m *ID) GetAddress() string {
 // Path messages represent a sender attempting to reach a target. Both the
 // sender and the target are represented by an ID.
 type Path struct {
-	To   *ID `protobuf:"bytes,1,opt,name=to" json:"to,omitempty"`
-	From *ID `protobuf:"bytes,2,opt,name=from" json:"from,omitempty"`
+	To   *Node `protobuf:"bytes,1,opt,name=to" json:"to,omitempty"`
+	From *Node `protobuf:"bytes,2,opt,name=from" json:"from,omitempty"`
 }
 
 func (m *Path) Reset()                    { *m = Path{} }
@@ -67,14 +67,14 @@ func (m *Path) String() string            { return proto.CompactTextString(m) }
 func (*Path) ProtoMessage()               {}
 func (*Path) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
-func (m *Path) GetTo() *ID {
+func (m *Path) GetTo() *Node {
 	if m != nil {
 		return m.To
 	}
 	return nil
 }
 
-func (m *Path) GetFrom() *ID {
+func (m *Path) GetFrom() *Node {
 	if m != nil {
 		return m.From
 	}
@@ -127,7 +127,7 @@ func (*Nothing) ProtoMessage()               {}
 func (*Nothing) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
 func init() {
-	proto.RegisterType((*ID)(nil), "rpc.ID")
+	proto.RegisterType((*Node)(nil), "rpc.Node")
 	proto.RegisterType((*Path)(nil), "rpc.Path")
 	proto.RegisterType((*MultiAddress)(nil), "rpc.MultiAddress")
 	proto.RegisterType((*MultiAddresses)(nil), "rpc.MultiAddresses")
@@ -142,136 +142,136 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Node service
+// Client API for DHT service
 
-type NodeClient interface {
+type DHTClient interface {
 	// Ping the Node to test the connection.
-	Ping(ctx context.Context, in *ID, opts ...grpc.CallOption) (*ID, error)
+	Ping(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Node, error)
 	// Get peers connected to the Node.
-	Peers(ctx context.Context, in *ID, opts ...grpc.CallOption) (*MultiAddresses, error)
+	Peers(ctx context.Context, in *Node, opts ...grpc.CallOption) (*MultiAddresses, error)
 	// Find peers that are closer to the target than the Node.
 	CloserPeers(ctx context.Context, in *Path, opts ...grpc.CallOption) (*MultiAddresses, error)
 }
 
-type nodeClient struct {
+type dHTClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewNodeClient(cc *grpc.ClientConn) NodeClient {
-	return &nodeClient{cc}
+func NewDHTClient(cc *grpc.ClientConn) DHTClient {
+	return &dHTClient{cc}
 }
 
-func (c *nodeClient) Ping(ctx context.Context, in *ID, opts ...grpc.CallOption) (*ID, error) {
-	out := new(ID)
-	err := grpc.Invoke(ctx, "/rpc.Node/Ping", in, out, c.cc, opts...)
+func (c *dHTClient) Ping(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Node, error) {
+	out := new(Node)
+	err := grpc.Invoke(ctx, "/rpc.DHT/Ping", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *nodeClient) Peers(ctx context.Context, in *ID, opts ...grpc.CallOption) (*MultiAddresses, error) {
+func (c *dHTClient) Peers(ctx context.Context, in *Node, opts ...grpc.CallOption) (*MultiAddresses, error) {
 	out := new(MultiAddresses)
-	err := grpc.Invoke(ctx, "/rpc.Node/Peers", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/rpc.DHT/Peers", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *nodeClient) CloserPeers(ctx context.Context, in *Path, opts ...grpc.CallOption) (*MultiAddresses, error) {
+func (c *dHTClient) CloserPeers(ctx context.Context, in *Path, opts ...grpc.CallOption) (*MultiAddresses, error) {
 	out := new(MultiAddresses)
-	err := grpc.Invoke(ctx, "/rpc.Node/CloserPeers", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/rpc.DHT/CloserPeers", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Node service
+// Server API for DHT service
 
-type NodeServer interface {
+type DHTServer interface {
 	// Ping the Node to test the connection.
-	Ping(context.Context, *ID) (*ID, error)
+	Ping(context.Context, *Node) (*Node, error)
 	// Get peers connected to the Node.
-	Peers(context.Context, *ID) (*MultiAddresses, error)
+	Peers(context.Context, *Node) (*MultiAddresses, error)
 	// Find peers that are closer to the target than the Node.
 	CloserPeers(context.Context, *Path) (*MultiAddresses, error)
 }
 
-func RegisterNodeServer(s *grpc.Server, srv NodeServer) {
-	s.RegisterService(&_Node_serviceDesc, srv)
+func RegisterDHTServer(s *grpc.Server, srv DHTServer) {
+	s.RegisterService(&_DHT_serviceDesc, srv)
 }
 
-func _Node_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ID)
+func _DHT_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Node)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NodeServer).Ping(ctx, in)
+		return srv.(DHTServer).Ping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.Node/Ping",
+		FullMethod: "/rpc.DHT/Ping",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeServer).Ping(ctx, req.(*ID))
+		return srv.(DHTServer).Ping(ctx, req.(*Node))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Node_Peers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ID)
+func _DHT_Peers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Node)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NodeServer).Peers(ctx, in)
+		return srv.(DHTServer).Peers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.Node/Peers",
+		FullMethod: "/rpc.DHT/Peers",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeServer).Peers(ctx, req.(*ID))
+		return srv.(DHTServer).Peers(ctx, req.(*Node))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Node_CloserPeers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _DHT_CloserPeers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Path)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NodeServer).CloserPeers(ctx, in)
+		return srv.(DHTServer).CloserPeers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.Node/CloserPeers",
+		FullMethod: "/rpc.DHT/CloserPeers",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeServer).CloserPeers(ctx, req.(*Path))
+		return srv.(DHTServer).CloserPeers(ctx, req.(*Path))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-var _Node_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "rpc.Node",
-	HandlerType: (*NodeServer)(nil),
+var _DHT_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "rpc.DHT",
+	HandlerType: (*DHTServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Ping",
-			Handler:    _Node_Ping_Handler,
+			Handler:    _DHT_Ping_Handler,
 		},
 		{
 			MethodName: "Peers",
-			Handler:    _Node_Peers_Handler,
+			Handler:    _DHT_Peers_Handler,
 		},
 		{
 			MethodName: "CloserPeers",
-			Handler:    _Node_CloserPeers_Handler,
+			Handler:    _DHT_CloserPeers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -281,20 +281,19 @@ var _Node_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("rpc.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 225 bytes of a gzipped FileDescriptorProto
+	// 223 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x2c, 0x2a, 0x48, 0xd6,
-	0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x2e, 0x2a, 0x48, 0x56, 0x92, 0xe3, 0x62, 0xf2, 0x74,
-	0x11, 0x92, 0xe0, 0x62, 0x4f, 0x4c, 0x49, 0x29, 0x4a, 0x2d, 0x2e, 0x96, 0x60, 0x54, 0x60, 0xd4,
-	0xe0, 0x0c, 0x82, 0x71, 0x95, 0x6c, 0xb8, 0x58, 0x02, 0x12, 0x4b, 0x32, 0x84, 0xc4, 0xb9, 0x98,
-	0x4a, 0xf2, 0xc1, 0x92, 0xdc, 0x46, 0xec, 0x7a, 0x20, 0x43, 0x3c, 0x5d, 0x82, 0x98, 0x4a, 0xf2,
-	0x85, 0xa4, 0xb9, 0x58, 0xd2, 0x8a, 0xf2, 0x73, 0x25, 0x98, 0x50, 0xa5, 0xc0, 0x82, 0x4a, 0x2a,
-	0x5c, 0x3c, 0xbe, 0xa5, 0x39, 0x25, 0x99, 0x8e, 0x10, 0xd3, 0x84, 0x44, 0xb8, 0x58, 0x73, 0x41,
-	0x7c, 0xa8, 0x2d, 0x10, 0x8e, 0x92, 0x06, 0x17, 0x1f, 0xb2, 0xaa, 0xd4, 0x62, 0x21, 0x31, 0x2e,
-	0x36, 0xb0, 0x14, 0xc8, 0x39, 0xcc, 0x1a, 0x9c, 0x41, 0x50, 0x9e, 0x12, 0x27, 0x17, 0xbb, 0x5f,
-	0x7e, 0x49, 0x46, 0x66, 0x5e, 0xba, 0x51, 0x19, 0x17, 0x8b, 0x5f, 0x7e, 0x4a, 0xaa, 0x90, 0x04,
-	0x17, 0x4b, 0x40, 0x66, 0x5e, 0xba, 0x10, 0xcc, 0x66, 0x29, 0x18, 0x43, 0x48, 0x95, 0x8b, 0x35,
-	0x20, 0x35, 0xb5, 0xa8, 0x18, 0x21, 0x25, 0x0c, 0x66, 0xa0, 0xd9, 0xa5, 0xcb, 0xc5, 0xed, 0x9c,
-	0x93, 0x5f, 0x9c, 0x5a, 0x04, 0x51, 0xcc, 0x09, 0x56, 0x03, 0xf2, 0x33, 0x56, 0xe5, 0x49, 0x6c,
-	0xe0, 0xc0, 0x33, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff, 0x83, 0xcc, 0xdd, 0xa8, 0x49, 0x01, 0x00,
-	0x00,
+	0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x2e, 0x2a, 0x48, 0x56, 0x52, 0xe0, 0x62, 0xf1, 0xcb,
+	0x4f, 0x49, 0x15, 0x92, 0xe0, 0x62, 0x4f, 0x4c, 0x49, 0x29, 0x4a, 0x2d, 0x2e, 0x96, 0x60, 0x54,
+	0x60, 0xd4, 0xe0, 0x0c, 0x82, 0x71, 0x95, 0x1c, 0xb8, 0x58, 0x02, 0x12, 0x4b, 0x32, 0x84, 0x24,
+	0xb9, 0x98, 0x4a, 0xf2, 0xc1, 0x92, 0xdc, 0x46, 0x9c, 0x7a, 0x20, 0x63, 0x40, 0x1a, 0x83, 0x98,
+	0x4a, 0xf2, 0x85, 0x64, 0xb9, 0x58, 0xd2, 0x8a, 0xf2, 0x73, 0x25, 0x98, 0xd0, 0x25, 0xc1, 0xc2,
+	0x4a, 0x2a, 0x5c, 0x3c, 0xbe, 0xa5, 0x39, 0x25, 0x99, 0x8e, 0x10, 0x13, 0x85, 0x44, 0xb8, 0x58,
+	0x73, 0x41, 0x7c, 0xa8, 0x4d, 0x10, 0x8e, 0x92, 0x06, 0x17, 0x1f, 0xb2, 0xaa, 0xd4, 0x62, 0x21,
+	0x31, 0x2e, 0x36, 0xb0, 0x14, 0xc8, 0x49, 0xcc, 0x1a, 0x9c, 0x41, 0x50, 0x9e, 0x12, 0x27, 0x17,
+	0xbb, 0x5f, 0x7e, 0x49, 0x46, 0x66, 0x5e, 0xba, 0x51, 0x35, 0x17, 0xb3, 0x8b, 0x47, 0x88, 0x90,
+	0x0c, 0x17, 0x4b, 0x40, 0x66, 0x5e, 0xba, 0x10, 0xc2, 0x6a, 0x29, 0x04, 0x53, 0x48, 0x9d, 0x8b,
+	0x35, 0x20, 0x35, 0xb5, 0xa8, 0x18, 0x59, 0x5a, 0x18, 0xcc, 0x44, 0xb3, 0x50, 0x97, 0x8b, 0xdb,
+	0x39, 0x27, 0xbf, 0x38, 0xb5, 0x08, 0x59, 0x39, 0xc8, 0xf3, 0x58, 0x95, 0x27, 0xb1, 0x81, 0xc3,
+	0xd1, 0x18, 0x10, 0x00, 0x00, 0xff, 0xff, 0xb1, 0xa9, 0x04, 0xd3, 0x54, 0x01, 0x00, 0x00,
 }

@@ -12,7 +12,6 @@ rpc: rpc/rpc.proto
 
 test: rpc
 	go test -v
-	go test -v ./crypto
 	go test -v ./dht
 
 install: rpc

@@ -14,22 +14,21 @@ import (
 
 // Node implements the gRPC Node service.
 type Node struct {
-	Address identity.Address
 	DHT *dht.RoutingTable
 }
 
 // NewNode returns a new node with no connections.
 func NewNode(address identity.Address) *Node {
-	return &Node{DHT: dht.NewRoutingTable(id)}
+	return &Node{DHT: dht.NewRoutingTable(address)}
 }
 
 // Ping is used to test connections to a Node. The Node will respond with its
-// rpc.ID. If the Node does not respond, or it responds with an error, then the
+// address. If the Node does not respond, or it responds with an error, then the
 // connection is considered unhealthy.
-func (node *Node) Ping(ctx context.Context, id *rpc.ID) (*rpc.ID, error) {
+func (node *Node) Ping(ctx context.Context, id *rpc.Node) (*rpc.Node, error) {
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
-		return &rpc.ID{Address: string(node.DHT.ID)}, err
+		return &rpc.Node{Address: string(node.DHT.Address)}, err
 	}
 
 	// Update the sender in the node routing table
@@ -37,20 +36,20 @@ func (node *Node) Ping(ctx context.Context, id *rpc.ID) (*rpc.ID, error) {
 		return nil, err
 	}
 
-	return &rpc.ID{Address: string(node.DHT.ID)}, nil
+	return &rpc.Node{Address: string(node.DHT.Address)}, nil
 }
 
 // Peers is used to return the rpc.MultiAddresses to which a Node is connected.
 // The rpc.MultiAddresses returned are not guaranteed to provide healthy
 // connections and should be pinged.
-func (node *Node) Peers(ctx context.Context, id *rpc.ID) (*rpc.MultiAddresses, error) {
+func (node *Node) Peers(ctx context.Context, target *rpc.Node) (*rpc.MultiAddresses, error) {
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
 		return &rpc.MultiAddresses{}, err
 	}
 
 	// Update the sender in the node routing table
-	if err := node.updateSender(id); err != nil {
+	if err := node.updateSender(target); err != nil {
 		return nil, err
 	}
 
@@ -90,7 +89,7 @@ func (node *Node) CloserPeers(ctx context.Context, path *rpc.Path) (*rpc.MultiAd
 	wait := make(chan *rpc.MultiAddresses)
 	go func() {
 		defer close(wait)
-		peers, _ := node.closerPeers(path.To.Address)
+		peers, _ := node.closerPeers(identity.Address(path.To.Address))
 		wait <- peers
 	}()
 
@@ -112,25 +111,28 @@ func (node *Node) peers() *rpc.MultiAddresses {
 }
 
 // Return the closer peers in the node routing table
-func (node *Node) closerPeers(id string) (*rpc.MultiAddresses, error) {
-	peers, err := node.DHT.FindClosest(dht.ID(id))
+func (node *Node) closerPeers(address identity.Address) (*rpc.MultiAddresses, error) {
+	peers, err := node.DHT.FindClosest(address)
 	if err != nil {
 		return nil, err
 	}
 	return &rpc.MultiAddresses{Multis: peers.MultiAddresses()}, nil
 }
 
-// Every time we receive a request, update the sender
-// as a active peer in the node routing table
-func (node *Node) updateSender(id *rpc.ID) error {
-
-	// Check if there still has place for the new id
-	peer, err := node.DHT.CheckAvailability(dht.ID(id.Address))
+// Update the address in the routing table if there is enough space
+func (node *Node) updateSender(address *rpc.Node) error {
+	rAddress := identity.Address(address.Address)
+	// Check if there still has place for the new address
+	peer, err := node.DHT.CheckAvailability(rAddress)
 	if err != nil {
 		return err
 	}
 
-	multiAddress, err := identity.NewMultiaddr("/republic/" + id.Address)
+	// todo : generate the multiaddress from its republic address and ip infor.
+	mAddress, err := rAddress.MultiAddress()
+	if err != nil {
+		return err
+	}
 
 	// If the bucket is full
 	if peer != "" {
@@ -152,28 +154,28 @@ func (node *Node) updateSender(id *rpc.ID) error {
 		switch resp.(type){
 		case error:
 			return resp.(error)
-		case *rpc.ID:
+		case *rpc.Node:
 			return nil
 		}
 	}
 
-	return node.DHT.Update(multiAddress)
+	return node.DHT.Update(mAddress)
 }
 
 // Connect to other Node and return the grpc client
-func connectNode(address string) rpc.NodeClient {
+func connectNode(address string) rpc.DHTClient {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
 		return nil
 	}
-	return rpc.NewNodeClient(conn)
+	return rpc.NewDHTClient(conn)
 }
 
 // Ping a node
-func (node *Node) PingNode(address string) (*rpc.ID, error) {
+func (node *Node) PingNode(address string) (*rpc.Node, error) {
 	client := connectNode(address)
-	pong, err := client.Ping(context.Background(), &rpc.ID{Address: string(node.DHT.ID)})
+	pong, err := client.Ping(context.Background(), &rpc.Node{Address: string(node.DHT.Address)})
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +190,7 @@ func (node *Node) PingNode(address string) (*rpc.ID, error) {
 // Request all peers of a node
 func (node *Node) PeersNode(address string) (*rpc.MultiAddresses, error) {
 	client := connectNode(address)
-	multiAddresses, err := client.Peers(context.Background(), &rpc.ID{Address: string(node.DHT.ID)})
+	multiAddresses, err := client.Peers(context.Background(), &rpc.Node{Address: string(node.DHT.Address)})
 	if err != nil {
 		return nil, err
 	}
@@ -197,30 +199,30 @@ func (node *Node) PeersNode(address string) (*rpc.MultiAddresses, error) {
 
 // Find a certain node by its ID through the kademlia network
 // Return its multi-adresses
-func (node *Node) FindNode(id string) (multiaddr.Multiaddr, error) {
+func (node *Node) FindNode(address identity.Address) (multiaddr.Multiaddr, error) {
 	// Find closest peers we know from the routing table
-	peers, err := node.DHT.FindClosest(dht.ID(id))
+	peers, err := node.DHT.FindClosest(address)
 	if err != nil {
 		return nil, err
 	}
 
-	path := &rpc.Path{From: &rpc.ID{Address: string(node.DHT.ID)}, To: &rpc.ID{Address: string(id)}}
+	path := &rpc.Path{From: &rpc.Node{Address: string(node.DHT.Address)}, To: &rpc.Node{Address: string(address)}}
 
 	for {
 
-		peerValue, err := peers.Front().Value.(multiaddr.Multiaddr).ValueForProtocol(dht.Republic_Code)
+		peerValue, err := peers.Front().Value.(multiaddr.Multiaddr).ValueForProtocol(dht.RepublicCode)
 		if err != nil {
 			return nil, nil
 		}
 		// Return the multiaddress if we find the target
-		if peers.Front() != nil && peerValue == id {
+		if peers.Front() != nil && peerValue == string(address) {
 			return peers.Front().Value.(multiaddr.Multiaddr), nil
 		}
 
 		nPeers := dht.RoutingBucket{list.List{}}
 		// todo : parallel  and get address from multi address
 		for e := peers.Front(); e != nil; e = e.Next() {
-			if e.Value == "/republic/"+node.DHT.ID {
+			if e.Value == "/republic/"+node.DHT.Address {
 				continue
 			}
 			address := "localhost:8080"
@@ -236,7 +238,7 @@ func (node *Node) FindNode(id string) (multiaddr.Multiaddr, error) {
 			}
 		}
 
-		nPeers = dht.SortNode(nPeers, dht.ID(id))
+
 		// Check if the new peers are unchanged from the previous list
 		// which means we can't get closer peers from the node we know
 		if dht.CompareList(nPeers, peers, 3) {
@@ -250,9 +252,10 @@ func (node *Node) FindNode(id string) (multiaddr.Multiaddr, error) {
 }
 
 // Find close peers from a node
-func (node *Node) findClosePeers(address string, target dht.ID) (*rpc.MultiAddresses, error) {
+func (node *Node) findClosePeers(address string, target identity.Address) (*rpc.MultiAddresses, error) {
 	client := connectNode(address)
-	multiAddresses, err := client.CloserPeers(context.Background(), &rpc.Path{From: &rpc.ID{Address: string(node.DHT.ID)}, To: &rpc.ID{Address: string(target)}})
+	multiAddresses, err := client.CloserPeers(context.Background(), &rpc.Path{
+		From: &rpc.Node{Address: string(node.DHT.Address)}, To: &rpc.Node{Address: string(target)}})
 	if err != nil {
 		return nil, err
 	}

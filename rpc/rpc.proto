@@ -2,14 +2,14 @@ syntax = "proto3";
 
 package rpc;
 
-// Node services provide peer-to-peer discovery.
-service Node {
+// DHT services provide peer-to-peer discovery.
+service DHT {
   
   // Ping the Node to test the connection.
-  rpc Ping (ID) returns (ID);
+  rpc Ping (Node) returns (Node);
 
   // Get peers connected to the Node.
-  rpc Peers (ID) returns (MultiAddresses);
+  rpc Peers (Node) returns (MultiAddresses);
 
   // Find peers that are closer to the target than the Node.
   rpc CloserPeers (Path) returns (MultiAddresses);
@@ -18,15 +18,15 @@ service Node {
 // ID is the public address of an entity in the overlay network. It does not
 // contain connection details for the entity, which are usually held alongside
 // this ID in a MultiAddress.
-message ID {
+message Node {
   string address = 1;
 }
 
 // Path messages represent a sender attempting to reach a target. Both the
 // sender and the target are represented by an ID.
 message Path {
-  ID to = 1;
-  ID from = 2;
+  Node to = 1;
+  Node from = 2;
 }
 
 // MultiAddress messages contain the public multiaddress of a Node in the
