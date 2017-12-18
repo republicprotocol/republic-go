@@ -151,7 +151,7 @@ func (rt *RoutingTable) Update(mAddress multiaddr.Multiaddr) error {
 	}
 
 	// Otherwise insert into the front
-	rt.Buckets[index].PushFront(mAddress.String())
+	rt.Buckets[index].PushFront(mAddress)
 
 	return nil
 }

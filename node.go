@@ -32,7 +32,7 @@ func (node *Node) Ping(ctx context.Context, id *rpc.Node) (*rpc.Node, error) {
 	}
 
 	// Update the sender in the node routing table
-	if err := node.updateSender(id); err != nil {
+	if err := node.updateNode(id); err != nil {
 		return nil, err
 	}
 
@@ -49,7 +49,7 @@ func (node *Node) Peers(ctx context.Context, target *rpc.Node) (*rpc.MultiAddres
 	}
 
 	// Update the sender in the node routing table
-	if err := node.updateSender(target); err != nil {
+	if err := node.updateNode(target); err != nil {
 		return nil, err
 	}
 
@@ -81,7 +81,7 @@ func (node *Node) CloserPeers(ctx context.Context, path *rpc.Path) (*rpc.MultiAd
 	}
 
 	// Update the sender in the node routing table
-	if err := node.updateSender(path.From); err != nil {
+	if err := node.updateNode(path.From); err != nil {
 		return nil, err
 	}
 
@@ -120,8 +120,9 @@ func (node *Node) closerPeers(address identity.Address) (*rpc.MultiAddresses, er
 }
 
 // Update the address in the routing table if there is enough space
-func (node *Node) updateSender(address *rpc.Node) error {
+func (node *Node) updateNode(address *rpc.Node) error {
 	rAddress := identity.Address(address.Address)
+
 	// Check if there still has place for the new address
 	peer, err := node.DHT.CheckAvailability(rAddress)
 	if err != nil {
