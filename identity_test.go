@@ -34,7 +34,7 @@ var _ = Describe("Republic identity", func() {
 	Context("getting the address from a key pair", func() {
 		keyPair, _ := identity.NewKeyPair()
 		address := keyPair.PublicAddress()
-		decoded := base58.Decode(address)
+		decoded := base58.Decode(string(address))
 
 		It("should have 0x1B as its first byte", func() {
 			Ω(decoded[0]).Should(Equal(uint8(0x1B)))
@@ -43,7 +43,7 @@ var _ = Describe("Republic identity", func() {
 			Ω(decoded[1]).Should(Equal(uint8(identity.IDLength)))
 		})
 		It("should be a base58 encoding of its public ID after the first two bytes", func() {
-			Ω(decoded[2:]).Should(Equal(keyPair.PublicID()))
+			Ω(decoded[2:]).Should(Equal([]byte(keyPair.PublicID())))
 		})
 	})
 
@@ -55,7 +55,7 @@ var _ = Describe("Republic identity", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 		It("should be a string concatenated by '/republic/' and its republic address", func() {
-			Ω(multiaddress.String()).Should(Equal("/republic/" + keyPair.PublicAddress()))
+			Ω(multiaddress.String()).Should(Equal("/republic/" + string(keyPair.PublicAddress())))
 		})
 	})
 })

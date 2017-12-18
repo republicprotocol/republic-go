@@ -4,15 +4,25 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"fmt"
+
+	"github.com/multiformats/go-multihash"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/jbenet/go-base58"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/multiformats/go-multihash"
 )
 
+// IDLength is the number of bytes in an ID.
 const IDLength = 20
+
+// An ID is a slice of 20 bytes that can be converted into an Address. It must
+// always be example 20 bytes.
+type ID []byte
+
+// An Address is generated from an ID.
+type Address string
 
 // KeyPair contains an ECDSA key pair using a SECP256K1 S256 elliptic curve.
 type KeyPair struct {
@@ -35,23 +45,24 @@ func NewKeyPair() (KeyPair, error) {
 
 // PublicID returns the Republic ID of this KeyPair. The ID is the first 20
 // bytes of Keccak256 hash of the public key.
-func (keyPair KeyPair) PublicID() []byte {
+func (keyPair KeyPair) PublicID() ID {
 	bytes := elliptic.Marshal(secp256k1.S256(), keyPair.PublicKey.X, keyPair.PublicKey.Y)
-	hash := crypto.Keccak256(bytes)
-	return hash[:IDLength]
+	return crypto.Keccak256(bytes)[:20]
 }
 
 // PublicAddress returns the Republic Address of this KeyPair. The Address is
 // the Base58 encoding of the MultiHash of the Republic ID.
-func (keyPair KeyPair) PublicAddress() string {
-	hash := make([]byte, 0, 2+IDLength)
-	hash = append(hash, multihash.KECCAK_256, IDLength)
-	hash = append(hash, keyPair.PublicID()...)
-	return base58.EncodeAlphabet(hash, base58.BTCAlphabet)
+func (keyPair KeyPair) PublicAddress() Address {
+	id := keyPair.PublicID()
+	hash := make([]byte, 2, 20)
+	hash[0] = multihash.KECCAK_256
+	hash[1] = IDLength
+	hash = append(hash, id...)
+	return Address(base58.EncodeAlphabet(hash, base58.BTCAlphabet))
 }
 
 // MultiAddress returns the Republic multi address of the KeyPair.
 // It can be encapsulated by other multiaddress
 func (keyPair KeyPair) MultiAddress() (multiaddr.Multiaddr, error) {
-	return multiaddr.NewMultiaddr("/republic/" + keyPair.PublicAddress())
+	return multiaddr.NewMultiaddr(fmt.Sprintf("/republic/%s", string(keyPair.PublicAddress())))
 }
