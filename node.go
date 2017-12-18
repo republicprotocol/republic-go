@@ -14,11 +14,12 @@ import (
 
 // Node implements the gRPC Node service.
 type Node struct {
+	Address identity.Address
 	DHT *dht.RoutingTable
 }
 
 // NewNode returns a new node with no connections.
-func NewNode(id dht.ID) *Node {
+func NewNode(address identity.Address) *Node {
 	return &Node{DHT: dht.NewRoutingTable(id)}
 }
 
