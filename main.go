@@ -4,12 +4,12 @@ import (
 	"flag"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/republicprotocol/go-swarm/crypto"
 	"github.com/republicprotocol/go-swarm/dht"
 	"github.com/republicprotocol/go-swarm/rpc"
 	"google.golang.org/grpc"
 	"log"
 	"net"
+	"github.com/republicprotocol/go-identity"
 )
 
 // Declare command line arguments.
@@ -21,7 +21,7 @@ func main() {
 	flag.Parse()
 
 	// Generate identity for this node.
-	secp, err := crypto.NewSECP256K1()
+	secp, err := identity.NewKeyPair()
 	if err != nil {
 		log.Fatalf("failed to identify self: %v", err)
 	}

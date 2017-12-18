@@ -65,7 +65,10 @@ func (rt *RoutingTable) Update(multiaddr ma.Multiaddr) error {
 	}
 
 	// Get the index of the bucket we want to store the ID
-	same:= rt.ID.SamePrefixLen(ID(id))
+	same, err := rt.ID.SamePrefixLen(ID(id))
+	if err != nil {
+		return err
+	}
 	index := IDLengthInBits - 1 - same
 	if index < 0 {
 		return errors.New("can't update node itself")
@@ -102,8 +105,10 @@ func (rt *RoutingTable) Update(multiaddr ma.Multiaddr) error {
 // Return the addresses which is closer to the target
 func (rt *RoutingTable) FindClosest(id ID) (RoutingBucket, error) {
 	// Find the bucket holding the target id.
-	same := rt.ID.SamePrefixLen(id)
-
+	same,err := rt.ID.SamePrefixLen(id)
+	if err != nil {
+		return RoutingBucket{}, err
+	}
 	index := IDLengthInBits - 1 - same
 	if index < 0 {
 		return RoutingBucket{}, errors.New("Can not update node itself")
@@ -142,8 +147,9 @@ func SortNode(lt RoutingBucket, target ID) RoutingBucket {
 	less := func(add1, add2 string) bool {
 		// todo : need to update when we decided the format of multi-address
 		// Currently we assume the address will be sth like : /republic/dshfkadhfhkajdsf=
-		xor1:= ID(add1).Xor(target)
-		xor2 := ID(add2).Xor(target)
+		id1, id2 := ID(add1[10:]), ID(add2[10:])
+		xor1, _ := id1.Xor(target)
+		xor2, _ := id2.Xor(target)
 
 		for i := 0; i < IDLength; i++ {
 			if xor1[i] < xor2[i] {
@@ -198,7 +204,10 @@ func CompareList(b1, b2 RoutingBucket, n int) bool {
 // Return the last node if the bucket is full
 func (rt *RoutingTable) CheckAvailability(id ID) (string, error) {
 
-	same:= rt.ID.SamePrefixLen(id)
+	same,err := rt.ID.SamePrefixLen(id)
+	if err!= nil {
+		return "", err
+	}
 
 	// The more same prefix-bit, the closer they are
 	index := IDLengthInBits - 1 - same
