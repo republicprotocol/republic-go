@@ -14,6 +14,9 @@ import (
 	"github.com/multiformats/go-multiaddr"
 )
 
+// Error for not successfully decoding the string in base58
+var ErrFailToDecode = fmt.Errorf("fail to decode the string")
+
 // IDLength is the number of bytes in an ID.
 const IDLength = 20
 
@@ -21,11 +24,78 @@ const IDLength = 20
 // always be example 20 bytes.
 type ID []byte
 
+// NewID generates a new ID from a key value pair
+func NewID() (ID, error)  {
+	keyPair, err := NewKeyPair()
+	if err != nil {
+		return nil, err
+	}
+	return keyPair.PublicID(),nil
+}
+
 // AddressLength is the number of bytes in an Address.
 const AddressLength = 30
 
 // An Address is generated from an ID.
 type Address string
+
+// NewAddress generates a new Address from a key value pair
+func NewAddress() (Address,error)  {
+	keyPair, err := NewKeyPair()
+	if err != nil {
+		return "", err
+	}
+	return keyPair.PublicAddress(),nil
+}
+
+// Use xor to calculate distance between two Addresses
+func (address Address) Distance(other Address) ([]byte ,error) {
+	// Decode both addresses into bytes
+	idByte := base58.Decode(string(address))
+	if len(idByte) == 0 {
+		return nil, ErrFailToDecode
+	}
+	otherByte := base58.Decode(string(other))
+	if len(otherByte) == 0 {
+		return nil, ErrFailToDecode
+	}
+
+	xor := make([]byte, IDLength)
+	for i := 2; i < 2+IDLength; i++ {
+		xor[i] = idByte[i] ^ otherByte[i]
+	}
+	return xor,nil
+}
+
+// Number of same prefix bits with another address excluding the first 2 bytes
+func (address Address) SamePrefixLen(other Address) (int,error) {
+	diff, err := address.Distance(other)
+	if err != nil {
+		return -1, err
+	}
+
+	ret := 0
+	for i := 0; i < IDLength; i++ {
+		if diff[i] == uint8(0) {
+			ret += 8
+		} else {
+			bits := fmt.Sprintf("%08b", diff[i])
+			for j := 0; j < len(bits); j++ {
+				if bits[j] == '1' {
+					return ret,nil
+				}
+				ret++
+			}
+		}
+	}
+	return ret,nil
+}
+
+// MultiAddress returns the Republic multi address of the KeyPair.
+// It can be encapsulated by other multiaddress
+func (address Address) MultiAddress() (multiaddr.Multiaddr, error) {
+	return multiaddr.NewMultiaddr(fmt.Sprintf("/republic/%s", string(address)))
+}
 
 // KeyPair contains an ECDSA key pair using a SECP256K1 S256 elliptic curve.
 type KeyPair struct {
@@ -64,8 +134,3 @@ func (keyPair KeyPair) PublicAddress() Address {
 	return Address(base58.Encode(hash))
 }
 
-// MultiAddress returns the Republic multi address of the KeyPair.
-// It can be encapsulated by other multiaddress
-func (keyPair KeyPair) MultiAddress() (multiaddr.Multiaddr, error) {
-	return multiaddr.NewMultiaddr(fmt.Sprintf("/republic/%s", string(keyPair.PublicAddress())))
-}
