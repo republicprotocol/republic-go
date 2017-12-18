@@ -12,7 +12,8 @@ import (
 	"github.com/multiformats/go-multihash"
 )
 
-const IDLength = 20
+const IDLength      = 20
+const AddressLength = 30
 
 // KeyPair contains an ECDSA key pair using a SECP256K1 S256 elliptic curve.
 type KeyPair struct {
