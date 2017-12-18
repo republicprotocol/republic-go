@@ -21,6 +21,9 @@ const IDLength = 20
 // always be example 20 bytes.
 type ID []byte
 
+// AddressLength is the number of bytes in an Address.
+const AddressLength = 30
+
 // An Address is generated from an ID.
 type Address string
 
@@ -58,7 +61,7 @@ func (keyPair KeyPair) PublicAddress() Address {
 	hash[0] = multihash.KECCAK_256
 	hash[1] = IDLength
 	hash = append(hash, id...)
-	return Address(base58.EncodeAlphabet(hash, base58.BTCAlphabet))
+	return Address(base58.Encode(hash))
 }
 
 // MultiAddress returns the Republic multi address of the KeyPair.

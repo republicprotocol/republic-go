@@ -36,6 +36,9 @@ var _ = Describe("Republic identity", func() {
 		address := keyPair.PublicAddress()
 		decoded := base58.Decode(string(address))
 
+		Specify("the decoded string should not be empty", func() {
+			Ω(decoded).ShouldNot(BeEmpty())
+		})
 		It("should have 0x1B as its first byte", func() {
 			Ω(decoded[0]).Should(Equal(uint8(0x1B)))
 		})
