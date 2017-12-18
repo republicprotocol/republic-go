@@ -97,6 +97,28 @@ func (address Address) MultiAddress() (multiaddr.Multiaddr, error) {
 	return multiaddr.NewMultiaddr(fmt.Sprintf("/republic/%s", string(address)))
 }
 
+// Closer returns the address which is closer to the target
+func Closer(address1, address2, target Address ) (Address, error){
+	distance1, err := address1.Distance(target)
+	if err != nil {
+		return "", err
+	}
+	distance2, err := address2.Distance(target)
+	if err != nil {
+		return "", err
+	}
+
+	for i := 0; i < IDLength; i++ {
+		if distance1[i] < distance2[i] {
+			return address1, nil
+		} else if distance1[i] > distance2[i] {
+			return address2, nil
+		}
+	}
+	// If the addresses are the same, return the first one
+	return address1,nil
+}
+
 // KeyPair contains an ECDSA key pair using a SECP256K1 S256 elliptic curve.
 type KeyPair struct {
 	*ecdsa.PrivateKey
