@@ -61,8 +61,8 @@ func (address Address) Distance(other Address) ([]byte ,error) {
 	}
 
 	xor := make([]byte, IDLength)
-	for i := 2; i < 2+IDLength; i++ {
-		xor[i] = idByte[i] ^ otherByte[i]
+	for i := 0; i < IDLength; i++ {
+		xor[i] = idByte[i+2] ^ otherByte[i+2]
 	}
 	return xor,nil
 }
