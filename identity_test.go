@@ -196,7 +196,7 @@ var _ = Describe("Republic identity", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			It("be a multiaddress type", func() {
+			It("should be able to retrieve the republic address from the multiaddress", func() {
 				Ω(multi.String()).Should(Equal("/republic/" + string(address)))
 				Ω(multi.ValueForProtocol(identity.RepublicCode)).Should(Equal(string(address)))
 			})
