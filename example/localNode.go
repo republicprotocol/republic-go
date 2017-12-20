@@ -4,15 +4,15 @@ import (
 	"flag"
 	"google.golang.org/grpc/reflection"
 
+	"bufio"
+	"fmt"
+	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/go-swarm"
 	"github.com/republicprotocol/go-swarm/rpc"
 	"google.golang.org/grpc"
 	"log"
 	"net"
-	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-swarm"
-	"bufio"
 	"os"
-	"fmt"
 	"strings"
 )
 
@@ -39,7 +39,7 @@ func main() {
 	}
 	s := grpc.NewServer()
 	// Create gRPC services.
-	node := swarm.NewNode("127.0.0.1",fmt.Sprintf("%d",*port),address)
+	node := swarm.NewNode("127.0.0.1", fmt.Sprintf("%d", *port), address)
 	rpc.RegisterDHTServer(s, node)
 
 	// Register reflection service on gRPC server.
@@ -48,40 +48,38 @@ func main() {
 	// Start the server and listen to request in background
 	go s.Serve(lis)
 
-
-
-    // handle request
+	// handle request
 	scanner := bufio.NewScanner(os.Stdin)
 	var text []string
-	for  {
+	for {
 		fmt.Print("Enter command: ")
 		scanner.Scan()
 		text = strings.Split(scanner.Text(), " ")
-		if len(text) == 0{
+		if len(text) == 0 {
 			continue
-		}else if text[0] == "quit"{
+		} else if text[0] == "quit" {
 			break
-		}else if len(text) != 2 {
+		} else if len(text) != 2 {
 			log.Println("Please enter a valid command")
 			continue
 		}
 
 		// command handler
-		switch text[0]{
+		switch text[0] {
 		case "ping":
-			log.Println("Ping: "+ text[1])
+			log.Println("Ping: " + text[1])
 			pong, err := node.PingNode(text[1])
 			if err != nil {
 				log.Fatal(err)
 			}
 			log.Println("Pong: " + pong.Address)
 		case "peers":
-			if len(text) == 1{
+			if len(text) == 1 {
 				log.Println("Peers from the routing table:")
-				for _,multi := range node.DHT.MultiAddresses(){
+				for _, multi := range node.DHT.MultiAddresses() {
 					log.Println(multi)
 				}
-			}else{
+			} else {
 				log.Printf("Ask all peers from : %s \n", text[1])
 				peers, _ := node.PeersNode(text[1])
 				for _, j := range peers.Multis {
@@ -91,7 +89,7 @@ func main() {
 		case "find":
 			log.Printf("Try to find node : %s \n", text[1])
 			peers, err := node.FindNode(text[1])
-			if err!= nil {
+			if err != nil {
 				log.Fatal(err)
 			}
 			for _, j := range peers.Multis {

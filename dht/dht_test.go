@@ -1,8 +1,8 @@
 package dht
 
 import (
-	"testing"
 	"github.com/jbenet/go-base58"
+	"testing"
 )
 
 const IDLengthBase58 = 30
@@ -16,7 +16,7 @@ func TestNewID(t *testing.T) {
 	}
 
 	// Check if the ID is in a base64 coding
-	idBytes:= base58.Decode(string(id))
+	idBytes := base58.Decode(string(id))
 
 	if len(idBytes) == 0 {
 		t.Fatal("fail to decode the id from base58:", err)
@@ -74,7 +74,7 @@ func TestID_Xor1(t *testing.T) {
 	if len(decode1) == 0 {
 		t.Fatal("fail to decode the ID:")
 	}
-	decode2:= base58.Decode(string(id2))
+	decode2 := base58.Decode(string(id2))
 	if len(decode2) == 0 {
 		t.Fatal("fail to decode the ID:")
 	}
