@@ -24,7 +24,7 @@ var _ = Describe("Republic identity", func() {
 		})
 
 		Context("getting the ID from a key pair", func() {
-			keyPair, err  := identity.NewKeyPair()
+			keyPair, err := identity.NewKeyPair()
 
 			It("should not error", func() {
 				Ω(err).ShouldNot(HaveOccurred())
@@ -38,7 +38,7 @@ var _ = Describe("Republic identity", func() {
 		})
 
 		Context("getting the address from a key pair", func() {
-			keyPair, err  := identity.NewKeyPair()
+			keyPair, err := identity.NewKeyPair()
 
 			It("should not error", func() {
 				Ω(err).ShouldNot(HaveOccurred())
@@ -69,9 +69,9 @@ var _ = Describe("Republic identity", func() {
 
 	})
 
-	Describe( "Republic ID", func() {
+	Describe("Republic ID", func() {
 		Context("generating a new ID", func() {
-			id, err:= identity.NewID()
+			id, err := identity.NewID()
 			It("should not error", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
@@ -108,8 +108,8 @@ var _ = Describe("Republic identity", func() {
 			address1 := identity.Address("8MK6bwP1ADVPaMQ4Gxfm85KYbEdJ6Y")
 			address2 := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBgikU")
 			zeroDistance := []byte{}
-			for i:=0; i<20; i++{
-				zeroDistance = append(zeroDistance,uint8(0))
+			for i := 0; i < 20; i++ {
+				zeroDistance = append(zeroDistance, uint8(0))
 			}
 
 			Specify("node should have 0 distance to itself", func() {
@@ -122,17 +122,17 @@ var _ = Describe("Republic identity", func() {
 			})
 
 			Specify("distance from a to b should equals to distance from b to a", func() {
-				distance1 , err := address1.Distance(address2)
+				distance1, err := address1.Distance(address2)
 				Ω(err).ShouldNot(HaveOccurred())
-				distance2 , err := address2.Distance(address1)
+				distance2, err := address2.Distance(address1)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(distance1).Should(Equal(distance2))
 			})
 
 			Specify("correctness of the function", func() {
-				distance1 , err := address1.Distance(address2)
+				distance1, err := address1.Distance(address2)
 				Ω(err).ShouldNot(HaveOccurred())
-				mannuallyCalculatedResult := []byte{160,232,172,153,9,57,197,82,23,48,72,85,64,91,251,207,200,78,138,192}
+				mannuallyCalculatedResult := []byte{160, 232, 172, 153, 9, 57, 197, 82, 23, 48, 72, 85, 64, 91, 251, 207, 200, 78, 138, 192}
 				Ω(distance1).Should(Equal(mannuallyCalculatedResult))
 			})
 
@@ -153,10 +153,10 @@ var _ = Describe("Republic identity", func() {
 			Specify("same prefix of itself should be length bits", func() {
 				same1, err := address1.SamePrefixLen(address1)
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(same1).Should(Equal(identity.IDLength *8))
+				Ω(same1).Should(Equal(identity.IDLength * 8))
 				same2, err := address2.SamePrefixLen(address2)
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(same2).Should(Equal(identity.IDLength *8))
+				Ω(same2).Should(Equal(identity.IDLength * 8))
 			})
 
 			It("should produce the right result", func() {
@@ -171,20 +171,19 @@ var _ = Describe("Republic identity", func() {
 			address1 := identity.Address("8MK6bwP1ADVPaMQ4Gxfm85KYbEdJ6Y")
 			target := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBgikU")
 
-
 			Specify("no one should be closer to the target than the target itself", func() {
-				randomAddress,err  :=identity.NewAddress()
+				randomAddress, err := identity.NewAddress()
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(identity.Closer(address1,randomAddress,address1)).Should(BeTrue())
-				Ω(identity.Closer(randomAddress,address1,randomAddress)).Should(BeTrue())
+				Ω(identity.Closer(address1, randomAddress, address1)).Should(BeTrue())
+				Ω(identity.Closer(randomAddress, address1, randomAddress)).Should(BeTrue())
 			})
 
 			It("should get different result if we swap the two addresses", func() {
-				randomAddress,err  :=identity.NewAddress()
+				randomAddress, err := identity.NewAddress()
 				Ω(err).ShouldNot(HaveOccurred())
-				isAddress1Closer, err := identity.Closer(address1,randomAddress,target)
+				isAddress1Closer, err := identity.Closer(address1, randomAddress, target)
 				Ω(err).ShouldNot(HaveOccurred())
-				isRandomAddressCloser, err :=identity.Closer(randomAddress,address1,target)
+				isRandomAddressCloser, err := identity.Closer(randomAddress, address1, target)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(isAddress1Closer).Should(Equal(!isRandomAddressCloser))
 			})
@@ -198,12 +197,9 @@ var _ = Describe("Republic identity", func() {
 			})
 
 			It("be a multiaddress type", func() {
-				Ω(multi.String()).Should(Equal("/republic/"+string(address)))
+				Ω(multi.String()).Should(Equal("/republic/" + string(address)))
 				Ω(multi.ValueForProtocol(identity.RepublicCode)).Should(Equal(string(address)))
 			})
 		})
-
-
-
 	})
 })

@@ -11,4 +11,3 @@ func TestAddress(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Republic Identity Suite")
 }
-

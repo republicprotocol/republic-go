@@ -6,20 +6,19 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/multiformats/go-multiaddr"
-	"github.com/multiformats/go-multihash"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/jbenet/go-base58"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multihash"
 )
-
 
 var (
 	// Error for not successfully decoding the string in base58
 	ErrFailToDecode = fmt.Errorf("fail to decode the string")
 	// Error for wrong address length
 	ErrWrongAddressLength = fmt.Errorf("wrong address length")
-	)
+)
 
 // KeyPair contains an ECDSA key pair using a SECP256K1 S256 elliptic curve.
 type KeyPair struct {
