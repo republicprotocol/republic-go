@@ -8,7 +8,6 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
-
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/jbenet/go-base58"
@@ -167,6 +166,6 @@ func Closer(address1, address2, target Address) (bool, error) {
 			return false, nil
 		}
 	}
-	// If the addresses are the same, return false
-	return false, nil
+	// If the addresses are the same, return true
+	return true, nil
 }
