@@ -41,11 +41,6 @@ func (node *Node) StartListen() error {
 	return nil
 }
 
-// Close stops the node grpc server
-func (node *Node) Close() {
-
-}
-
 // MultiAddress returns the multiAddress of the node
 func (node *Node) MultiAddress() (multiaddr.Multiaddr, error) {
 	multi, err := identity.NewMultiaddr("/ip4/" + node.ip + "/tcp/" + node.port + "/republic/" + string(node.DHT.Address))
@@ -135,6 +130,11 @@ func (node *Node) CloserPeers(ctx context.Context, path *rpc.Path) (*rpc.MultiAd
 	case ret := <-wait:
 		return ret, nil
 	}
+}
+
+func (node *Node) Send(ctx context.Context, fragment *rpc.Fragment) (*rpc.Nothing, error) {
+
+	return nil, nil
 }
 
 // Return all peers in the node routing table
