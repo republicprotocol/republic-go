@@ -39,8 +39,7 @@ func main() {
 	}
 	s := grpc.NewServer()
 	// Create gRPC services.
-
-	node := swarm.NewNode(net.ParseIP("127.0.0.1"),*port,address)
+	node := swarm.NewNode("127.0.0.1",fmt.Sprintf("%d",*port),address)
 	rpc.RegisterDHTServer(s, node)
 
 	// Register reflection service on gRPC server.
@@ -48,6 +47,8 @@ func main() {
 	log.Printf("Listening for connections on %d...\n", *port)
 	// Start the server and listen to request in background
 	go s.Serve(lis)
+
+
 
     // handle request
 	scanner := bufio.NewScanner(os.Stdin)
@@ -75,18 +76,26 @@ func main() {
 			}
 			log.Println("Pong: " + pong.Address)
 		case "peers":
-			log.Printf("Ask all peers from : %s \n", text[1])
-			peers, _ := node.PeersNode(text[1])
-			for _, j := range peers.Multis {
-				log.Printf("Get peer from server : %s \n", j)
+			if len(text) == 1{
+				log.Println("Peers from the routing table:")
+				for _,multi := range node.DHT.MultiAddresses(){
+					log.Println(multi)
+				}
+			}else{
+				log.Printf("Ask all peers from : %s \n", text[1])
+				peers, _ := node.PeersNode(text[1])
+				for _, j := range peers.Multis {
+					log.Printf("Get peer from server : %s \n", j)
+				}
 			}
 		case "find":
-			log.Println("Trying to find "+ text[1])
-			peers, err := node.FindNode(identity.Address(text[1]))
-			if  err != nil {
-				log.Println(err)
-			}else{
-				log.Println(peers.String())
+			log.Printf("Try to find node : %s \n", text[1])
+			peers, err := node.FindNode(text[1])
+			if err!= nil {
+				log.Fatal(err)
+			}
+			for _, j := range peers.Multis {
+				log.Printf("Peer found : %s \n", j)
 			}
 		}
 

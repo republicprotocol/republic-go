@@ -11,22 +11,25 @@ service DHT {
   // Get peers connected to the Node.
   rpc Peers (Node) returns (MultiAddresses);
 
-  // Find peers that are closer to the target than the Node.
+  // CloserPeers peers that are closer to the target than the Node.
+  // It will return the multiaddress of the target node if target
+  // is known to the server.
   rpc CloserPeers (Path) returns (MultiAddresses);
 }
 
-// ID is the public address of an entity in the overlay network. It does not
-// contain connection details for the entity, which are usually held alongside
-// this ID in a MultiAddress.
+// Node is the public address of an entity in the overlay network. It contains
+// connection details for the entity
 message Node {
   string address = 1;
+  string ip = 2;
+  string port = 3;
 }
 
 // Path messages represent a sender attempting to reach a target. Both the
 // sender and the target are represented by an ID.
 message Path {
-  Node to = 1;
-  Node from = 2;
+  Node from = 1;
+  string to = 2;
 }
 
 // MultiAddress messages contain the public multiaddress of a Node in the

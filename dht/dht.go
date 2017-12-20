@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"github.com/multiformats/go-multiaddr"
 	"fmt"
+	"log"
 )
 
 const (
@@ -176,12 +177,11 @@ func (rt *RoutingTable) FindNode(target identity.Address) (RoutingBucket, error)
 	// Check if we already know the target
 	for e := rt.Buckets[index].Front();e!= nil ; e = e.Next(){
 		rAddres, err := e.Value.(multiaddr.Multiaddr).ValueForProtocol(RepublicCode)
-		// Remove bad element
 		if err != nil {
 			return RoutingBucket{}, err
 		}
 		if rAddres == string(target){
-			res.PushFront(e)
+			res.PushFront(e.Value)
 			return res, nil
 		}
 	}
@@ -201,18 +201,21 @@ func (rt *RoutingTable) FindNode(target identity.Address) (RoutingBucket, error)
 		}
 	}
 
-	// Remove the node which isn't as closer as the routing table itself
-	for e := res.Front();e!= nil ; e = e.Next(){
-		rAddres, err := e.Value.(multiaddr.Multiaddr).ValueForProtocol(RepublicCode)
-		// Remove bad element
-		if err != nil {
-			res.Remove(e)
-		}
-		if closer,err := identity.Closer(rt.Address,identity.Address(rAddres),target); closer == rt.Address || err !=nil{
-			res.Remove(e)
-		}
-	}
+	//// Remove the node which isn't as closer as the routing table itself
+	//for e := res.Front();e!= nil ; e = e.Next(){
+	//	rAddres, err := e.Value.(multiaddr.Multiaddr).ValueForProtocol(RepublicCode)
+	//	if err != nil {
+	//		return RoutingBucket{}, err
+	//	}
+	//	if closer,err := identity.Closer(rt.Address,identity.Address(rAddres),target); closer == rt.Address || err !=nil{
+	//		res.Remove(e)
+	//	}
+	//}
 
+	log.Println("NODES WE FIND BEFORE SORTING: ")
+	for e:= res.Front();e!= nil; e= e.Next(){
+		log.Println( e.Value.(multiaddr.Multiaddr).String())
+	}
 	return SortBucket(res,target)
 }
 
@@ -221,12 +224,8 @@ func SortBucket(lt RoutingBucket, target identity.Address) (RoutingBucket,error)
 	ret := RoutingBucket{list.List{}}
 
 	// Selection sort the list
-	for i := 0; i < Alpha; i++ {
-		if lt.Len() == 0 {
-			return ret, nil
-		}
+	for lt.Len()> 0{
 		min := lt.Front()
-
 		for e := lt.Front(); e != nil; e = e.Next() {
 			minValue, err  := min.Value.(multiaddr.Multiaddr).ValueForProtocol(RepublicCode)
 			if err != nil {
@@ -245,10 +244,17 @@ func SortBucket(lt RoutingBucket, target identity.Address) (RoutingBucket,error)
 				min = e
 			}
 		}
-
-		ret.PushBack(lt.Remove(min))
+		ret.PushBack(min.Value)
+		// remove is not working don know why
+		//lt.Remove(min)
+		lt.MoveToFront(min)
+		return lt,nil
 	}
 
+	log.Println("NODES WE FIND AFTER SORTING: ")
+	for e:= ret.Front();e!= nil; e= e.Next(){
+		log.Println( e.Value.(multiaddr.Multiaddr).String())
+	}
 	return ret,nil
 }
 
