@@ -7,6 +7,7 @@ import (
 
 	multiaddr "github.com/multiformats/go-multiaddr"
 	multihash "github.com/multiformats/go-multihash"
+	"encoding/json"
 )
 
 // Codes for extracting specific protocol values from a multiaddress.
@@ -16,6 +17,25 @@ const (
 	IP6Code      = 0x0029
 	RepublicCode = 0x0065
 )
+
+type MultiAddress struct {
+	multiaddr.Multiaddr
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (multiAddr MultiAddress) MarshalJSON() ([]byte, error) {
+	return json.Marshal(multiAddr.String())
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (multiAddr MultiAddress) UnmarshalJSON(data []byte) error {
+	addr, err := NewMultiAddressBytes(data)
+	if err != nil {
+		return err
+	}
+	multiAddr.Multiaddr = addr.Multiaddr
+	return nil
+}
 
 // Add the republic protocol
 func init() {
@@ -29,15 +49,18 @@ func init() {
 	multiaddr.AddProtocol(republic)
 }
 
-// NewMultiaddr parses and validates an input string, returning a *Multiaddr
-func NewMultiaddr(s string) (multiaddr.Multiaddr, error) {
-	return multiaddr.NewMultiaddr(s)
+// NewMultiAddress parses and validates an input string, returning a
+// MultiAddress. It returns a MultiAddress or an error.
+func NewMultiAddress(s string) (MultiAddress, error) {
+	multiaddr, err := multiaddr.NewMultiaddr(s)
+	return MultiAddress{multiaddr},err
 }
 
-// NewMultiaddrBytes initializes a Multiaddr from a byte representation. It
-// validates it as an input string.
-func NewMultiaddrBytes(b []byte) (multiaddr.Multiaddr, error) {
-	return multiaddr.NewMultiaddrBytes(b)
+// NewMultiAddressBytes initializes a MultiAddress from a byte representation.
+// It returns a MultiAddress or an error.
+func NewMultiAddressBytes(b []byte) (MultiAddress, error) {
+	multiaddr, err := multiaddr.NewMultiaddrBytes(b)
+	return MultiAddress{multiaddr},err
 }
 
 // ProtocolWithName returns the Protocol description with given string name.
