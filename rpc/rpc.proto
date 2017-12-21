@@ -2,42 +2,23 @@ syntax = "proto3";
 
 package rpc;
 
-// DHT services provide peer-to-peer discovery.
-service DHT {
+// Peer services implement the functionality of the overlay network.
+service Peer {
   
-  // Ping the Node to test the connection.
-  rpc Ping (Node) returns (Node);
+  // Ping the connection and swap MultiAddresses.
+  rpc Ping (MultiAddress) returns (MultiAddress);
 
-  // Get peers connected to the Node.
-  rpc Peers (Node) returns (MultiAddresses);
-
-  // CloserPeers peers that are closer to the target than the Node.
-  // It will return the multiaddress of the target node if target
-  // is known to the server.
-  rpc CloserPeers (Path) returns (MultiAddresses);
+  // Get the connected Peers.
+  rpc Peers (Nothing) returns (MultiAddresses);
 
   // Send order fragment to other node
-  rpc Send(Fragment) returns (Nothing);
+  rpc SendOrderFragment(OrderFragment) returns (Nothing);
 }
 
-// Node is the public address of an entity in the overlay network. It contains
-// connection details for the entity
-message Node {
-  string address = 1;
-  string ip = 2;
-  string port = 3;
-}
-
-// Fragment is the order fragment we passed in the overlay network
-message Fragment{
-  string data = 1;
-}
-
-// Path messages represent a sender attempting to reach a target. Both the
-// sender and the target are represented by an ID.
-message Path {
-  Node from = 1;
-  string to = 2;
+// OrderFragment messages contain the order fragment created by a trader and
+// the routing information to distribute it to its destination.
+message OrderFragment {
+  MultiAddress to = 1;
 }
 
 // MultiAddress messages contain the public multiaddress of a Node in the
@@ -49,7 +30,7 @@ message MultiAddress {
 // MultiAddresses messages contain the public multiaddress of multiple Nodes in
 // the overlay network.
 message MultiAddresses {
-  repeated string multis = 1;
+  repeated MultiAddress multis = 1;
 }
 
 // Nothing messages are empty.

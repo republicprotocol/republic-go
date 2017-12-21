@@ -4,6 +4,9 @@ import (
 	"sync"
 	"github.com/republicprotocol/go-identity"
 	"math/rand"
+	"fmt"
+	. "github.com/republicprotocol/go-swarm"
+	"time"
 )
 
 // μ prevents multiple topology tests running in parallel. This is needed to
@@ -16,6 +19,9 @@ var numberOfPeers = 100
 // The number of messages that will be sent through the topology.
 var numberOfMessages = 100
 
+// The duration to wait for peers to start listening for RPCs.
+var startTimeDelay = time.Second
+
 func generatePeers() ([]*Peer, error){
 	peers := make([]*Peer, numberOfPeers)
 	for i := 0; i < numberOfPeers; i++ {
@@ -23,13 +29,15 @@ func generatePeers() ([]*Peer, error){
 		if err != nil {
 			return nil, err
 		}
-		config := Config {
-			Address: keyPair.PublicAddress(),
-			Host: "0.0.0.0",
-			Port: 3000 + i,
-			Peers: make([]Config, 0, numberOfPeers-1),
+		multiAddress, err := identity.NewMultiAddress(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d/republic/%s", 3000+i, keyPair.PublicAddress()))
+		if err != nil {
+			return nil, err
 		}
-		peers[i] = NewPeer(keyPair, config)
+		peers[i] = NewPeer(&Config{
+			KeyPair: keyPair,
+			MultiAddress: multiAddress,
+			Peers: make([]identity.MultiAddress, 0, numberOfPeers-1),
+		})
 	}
 	return peers, nil
 }
@@ -37,17 +45,15 @@ func generatePeers() ([]*Peer, error){
 func sendMessages(peers []*Peer) error {
 	for i := 0; i < numberOfMessages; i++ {
 		left, right := randomPeers(peers)
-		if err := sendMessage(left, right); err != nil {
+		if err := sendMessage(left, right.Config.MultiAddress); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func sendMessage(to *Peer, from *Peer) error {
-	_, err := from.SendOrderFragment(&rpc.OrderFragment{
-		To: to.Config.Address,
-	}, to.Config.Address)
+func sendMessage(from *Peer, to identity.MultiAddress) error {
+	_, err := from.SendFragment(to)
 	return err
 }
 

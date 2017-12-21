@@ -3,7 +3,6 @@ package dht
 import (
 	"container/list"
 	"fmt"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/republicprotocol/go-identity"
 )
 
@@ -11,7 +10,6 @@ const (
 	IDLength       = identity.IDLength
 	AddressLength  = identity.AddressLength
 	IDLengthInBits = IDLength * 8
-	RepublicCode   = identity.RepublicCode
 	Alpha          = 3
 )
 
@@ -31,7 +29,7 @@ func (bucket RoutingBucket) MultiAddresses() []string {
 	multis := make([]string, bucket.Len())
 	i := 0
 	for it := bucket.Front(); it != nil; it = it.Next() {
-		multis[i] = it.Value.(multiaddr.Multiaddr).String()
+		multis[i] = it.Value.(identity.MultiAddress).String()
 		i++
 	}
 	return multis
@@ -51,7 +49,7 @@ func NewRoutingTable(address identity.Address) *RoutingTable {
 }
 
 // MultiAddresses returns all multiaddresses in the table.
-func (rt *RoutingTable) MultiAddresses() []string {
+func (rt *RoutingTable) MultiAddresses() []identity.MultiAddress {
 	// Find the total length.
 	length := 0
 	for _, bucket := range rt.Buckets {
@@ -59,60 +57,60 @@ func (rt *RoutingTable) MultiAddresses() []string {
 	}
 	// Create a slice of strings and fill it with multiaddresses from all
 	// buckets.
-	multis := make([]string, length)
+	multis := make([]identity.MultiAddress, length)
 	i := 0
 	for _, bucket := range rt.Buckets {
 		for it := bucket.Front(); it != nil; it = it.Next() {
-			multis[i] = it.Value.(multiaddr.Multiaddr).String()
+			multis[i] = it.Value.(identity.MultiAddress)
 			i++
 		}
 	}
 	return multis
 }
 
-// Check if we have enough space to update the node in the bucket
-// Return the last node if the bucket is full, empty string otherwise
-func (rt *RoutingTable) CheckAvailability(address identity.Address) (multiaddr.Multiaddr, error) {
+// Check if we have enough space to update the peer in the bucket
+// Return the last peer if the bucket is full, empty string otherwise
+func (rt *RoutingTable) CheckAvailability(address identity.Address) (identity.MultiAddress, error) {
 	same, err := rt.Address.SamePrefixLen(address)
 	if err != nil {
-		return nil, err
+		return identity.EmptyMultiAddress, err
 	}
 
 	// Get the index of the bucket we want to store the ID
 	index := IDLengthInBits - 1 - same
 	if index < 0 || index > IDLengthInBits-1 {
-		return nil, ErrIndexOutOfRange
+		return identity.EmptyMultiAddress, ErrIndexOutOfRange
 	}
 
-	// Iterate the bucket see if we already know the node
+	// Iterate the bucket see if we already know the peer
 	for e := rt.Buckets[index].Front(); e != nil; e = e.Next() {
 
 		// Get the republic address from its multiaddress
-		rAddress, err := e.Value.(multiaddr.Multiaddr).ValueForProtocol(RepublicCode)
+		rAddress, err := e.Value.(identity.MultiAddress).ValueForProtocol(identity.RepublicCode)
 		if err != nil {
-			return nil, err
+			return identity.EmptyMultiAddress, err
 		}
 		if rAddress == string(address) {
-			return nil, nil
+			return identity.EmptyMultiAddress, nil
 		}
 	}
 
 	// Check the bucket length
 	if rt.Buckets[index].Len() < IDLength {
-		return nil, nil
+		return identity.EmptyMultiAddress, nil
 	} else {
-		// Return the multi address of the last node in the bucket
-		mAddress := rt.Buckets[index].Back().Value.(multiaddr.Multiaddr)
+		// Return the multi address of the last peer in the bucket
+		mAddress := rt.Buckets[index].Back().Value.(identity.MultiAddress)
 		return mAddress, nil
 	}
 }
 
-// Update the new node in the routing table.
+// Update the new peer in the routing table.
 // Will only be called after checking availability
-func (rt *RoutingTable) Update(mAddress multiaddr.Multiaddr) error {
+func (rt *RoutingTable) Update(mAddress identity.MultiAddress) error {
 
-	// Get the node address from its multiaddress
-	address, err := mAddress.ValueForProtocol(RepublicCode)
+	// Get the peer address from its multiaddress
+	address, err := mAddress.ValueForProtocol(identity.RepublicCode)
 	if err != nil {
 		return err
 	}
@@ -127,16 +125,16 @@ func (rt *RoutingTable) Update(mAddress multiaddr.Multiaddr) error {
 		return ErrIndexOutOfRange
 	}
 
-	// If the node already exists, move it to the front
+	// If the peer already exists, move it to the front
 	for e := rt.Buckets[index].Front(); e != nil; e = e.Next() {
 		// Check the type of value in the bucket
-		value, ok := e.Value.(multiaddr.Multiaddr)
+		value, ok := e.Value.(identity.MultiAddress)
 		if !ok {
 			return ErrWrongType
 		}
 
 		// Get the republic address from its multiaddress
-		rAddress, err := value.ValueForProtocol(RepublicCode)
+		rAddress, err := value.ValueForProtocol(identity.RepublicCode)
 		if err != nil {
 			return err
 		}
@@ -155,9 +153,9 @@ func (rt *RoutingTable) Update(mAddress multiaddr.Multiaddr) error {
 	return nil
 }
 
-// FindNode returns the target multiaddress if it's in the routing table
-// otherwise return at most the closest 3 nodes it knows.
-func (rt *RoutingTable) FindNode(target identity.Address) (RoutingBucket, error) {
+// FindPeer returns the target multiaddress if it's in the routing table
+// otherwise return at most the closest 3 peers it knows.
+func (rt *RoutingTable) FindPeer(target identity.Address) (RoutingBucket, error) {
 	// Find the bucket holding the target address .
 	same, err := rt.Address.SamePrefixLen(target)
 	if err != nil {
@@ -174,7 +172,7 @@ func (rt *RoutingTable) FindNode(target identity.Address) (RoutingBucket, error)
 
 	// Check if we already know the target
 	for e := rt.Buckets[index].Front(); e != nil; e = e.Next() {
-		rAddres, err := e.Value.(multiaddr.Multiaddr).ValueForProtocol(RepublicCode)
+		rAddres, err := e.Value.(identity.MultiAddress).ValueForProtocol(identity.RepublicCode)
 		if err != nil {
 			return RoutingBucket{}, err
 		}
@@ -184,9 +182,9 @@ func (rt *RoutingTable) FindNode(target identity.Address) (RoutingBucket, error)
 		}
 	}
 
-	// Keep adding nodes adjacent to the target bucket until we get enough nodes
+	// Keep adding peers adjacent to the target bucket until we get enough peers
 	for i := 1; i < IDLengthInBits; i++ {
-		if res.Len() >= 20 {
+		if res.Len() >= 20  {
 			break
 		}
 
@@ -202,22 +200,22 @@ func (rt *RoutingTable) FindNode(target identity.Address) (RoutingBucket, error)
 	return SortBucket(res, target)
 }
 
-// Sort the node list and return the closets 3 nodes to the target
+// Sort the peer list and return the closets 3 peers to the target
 func SortBucket(lt RoutingBucket, target identity.Address) (RoutingBucket, error) {
 	ret := RoutingBucket{list.List{}}
 
 	// Selection sort the list
 	for lt.Len() > 0 {
 		for e := lt.Front(); e != nil; e = e.Next() {
-			minValue, err := lt.Front().Value.(multiaddr.Multiaddr).ValueForProtocol(RepublicCode)
+			minValue, err := lt.Front().Value.(identity.MultiAddress).ValueForProtocol(identity.RepublicCode)
 			if err != nil {
 				return RoutingBucket{}, err
 			}
-			value, err := e.Value.(multiaddr.Multiaddr).ValueForProtocol(RepublicCode)
+			value, err := e.Value.(identity.MultiAddress).ValueForProtocol(identity.RepublicCode)
 			if err != nil {
 				return RoutingBucket{}, err
 			}
-			// Compare the current node distance with the min node.
+			// Compare the current peer distance with the min peer.
 			isCloser, err := identity.Closer(identity.Address(minValue), identity.Address(value), target)
 			if err != nil {
 				return RoutingBucket{}, err

@@ -3,6 +3,7 @@ package topology_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"time"
 )
 
 var _ = Describe("Star topologies", func() {
@@ -27,9 +28,14 @@ var _ = Describe("Star topologies", func() {
 				if i == j {
 					continue
 				}
-				peers[i].Config.Peers = append(peers[i].Config.Peers, peers[j])
+				peers[i].Config.Peers = append(peers[i].Config.Peers, peers[j].Config.MultiAddress)
 			}
 		}
+
+		for _, peer := range peers {
+			go peer.StartListening()
+		}
+		time.Sleep(startTimeDelay)
 
 		// Send messages through the topology
 		err = sendMessages(peers)
@@ -45,9 +51,14 @@ var _ = Describe("Star topologies", func() {
 		// Connect all peers to each other.
 		for i := 0; i < numberOfPeers; i++ {
 			for j := i+1; j < numberOfPeers; j++ {
-				peers[i].Config.Peers = append(peers[i].Config.Peers, peers[j])
+				peers[i].Config.Peers = append(peers[i].Config.Peers, peers[j].Config.MultiAddress)
 			}
 		}
+
+		for _, peer := range peers {
+			go peer.StartListening()
+		}
+		time.Sleep(startTimeDelay)
 
 		// Send messages through the topology
 		err = sendMessages(peers)

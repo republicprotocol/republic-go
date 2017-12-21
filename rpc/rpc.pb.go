@@ -8,9 +8,7 @@ It is generated from these files:
 	rpc.proto
 
 It has these top-level messages:
-	Node
-	Fragment
-	Path
+	OrderFragment
 	MultiAddress
 	MultiAddresses
 	Nothing
@@ -37,81 +35,22 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-// Node is the public address of an entity in the overlay network. It contains
-// connection details for the entity
-type Node struct {
-	Address string `protobuf:"bytes,1,opt,name=address" json:"address,omitempty"`
-	Ip      string `protobuf:"bytes,2,opt,name=ip" json:"ip,omitempty"`
-	Port    string `protobuf:"bytes,3,opt,name=port" json:"port,omitempty"`
+// OrderFragment messages contain the order fragment created by a trader and
+// the routing information to distribute it to its destination.
+type OrderFragment struct {
+	To *MultiAddress `protobuf:"bytes,1,opt,name=to" json:"to,omitempty"`
 }
 
-func (m *Node) Reset()                    { *m = Node{} }
-func (m *Node) String() string            { return proto.CompactTextString(m) }
-func (*Node) ProtoMessage()               {}
-func (*Node) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (m *OrderFragment) Reset()                    { *m = OrderFragment{} }
+func (m *OrderFragment) String() string            { return proto.CompactTextString(m) }
+func (*OrderFragment) ProtoMessage()               {}
+func (*OrderFragment) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
-func (m *Node) GetAddress() string {
-	if m != nil {
-		return m.Address
-	}
-	return ""
-}
-
-func (m *Node) GetIp() string {
-	if m != nil {
-		return m.Ip
-	}
-	return ""
-}
-
-func (m *Node) GetPort() string {
-	if m != nil {
-		return m.Port
-	}
-	return ""
-}
-
-// Fragment is the order fragment we passed in the overlay network
-type Fragment struct {
-	Data string `protobuf:"bytes,1,opt,name=data" json:"data,omitempty"`
-}
-
-func (m *Fragment) Reset()                    { *m = Fragment{} }
-func (m *Fragment) String() string            { return proto.CompactTextString(m) }
-func (*Fragment) ProtoMessage()               {}
-func (*Fragment) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
-
-func (m *Fragment) GetData() string {
-	if m != nil {
-		return m.Data
-	}
-	return ""
-}
-
-// Path messages represent a sender attempting to reach a target. Both the
-// sender and the target are represented by an ID.
-type Path struct {
-	From *Node  `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
-	To   string `protobuf:"bytes,2,opt,name=to" json:"to,omitempty"`
-}
-
-func (m *Path) Reset()                    { *m = Path{} }
-func (m *Path) String() string            { return proto.CompactTextString(m) }
-func (*Path) ProtoMessage()               {}
-func (*Path) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
-
-func (m *Path) GetFrom() *Node {
-	if m != nil {
-		return m.From
-	}
-	return nil
-}
-
-func (m *Path) GetTo() string {
+func (m *OrderFragment) GetTo() *MultiAddress {
 	if m != nil {
 		return m.To
 	}
-	return ""
+	return nil
 }
 
 // MultiAddress messages contain the public multiaddress of a Node in the
@@ -123,7 +62,7 @@ type MultiAddress struct {
 func (m *MultiAddress) Reset()                    { *m = MultiAddress{} }
 func (m *MultiAddress) String() string            { return proto.CompactTextString(m) }
 func (*MultiAddress) ProtoMessage()               {}
-func (*MultiAddress) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+func (*MultiAddress) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 func (m *MultiAddress) GetMulti() string {
 	if m != nil {
@@ -135,15 +74,15 @@ func (m *MultiAddress) GetMulti() string {
 // MultiAddresses messages contain the public multiaddress of multiple Nodes in
 // the overlay network.
 type MultiAddresses struct {
-	Multis []string `protobuf:"bytes,1,rep,name=multis" json:"multis,omitempty"`
+	Multis []*MultiAddress `protobuf:"bytes,1,rep,name=multis" json:"multis,omitempty"`
 }
 
 func (m *MultiAddresses) Reset()                    { *m = MultiAddresses{} }
 func (m *MultiAddresses) String() string            { return proto.CompactTextString(m) }
 func (*MultiAddresses) ProtoMessage()               {}
-func (*MultiAddresses) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+func (*MultiAddresses) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
-func (m *MultiAddresses) GetMultis() []string {
+func (m *MultiAddresses) GetMultis() []*MultiAddress {
 	if m != nil {
 		return m.Multis
 	}
@@ -157,12 +96,10 @@ type Nothing struct {
 func (m *Nothing) Reset()                    { *m = Nothing{} }
 func (m *Nothing) String() string            { return proto.CompactTextString(m) }
 func (*Nothing) ProtoMessage()               {}
-func (*Nothing) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+func (*Nothing) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 func init() {
-	proto.RegisterType((*Node)(nil), "rpc.Node")
-	proto.RegisterType((*Fragment)(nil), "rpc.Fragment")
-	proto.RegisterType((*Path)(nil), "rpc.Path")
+	proto.RegisterType((*OrderFragment)(nil), "rpc.OrderFragment")
 	proto.RegisterType((*MultiAddress)(nil), "rpc.MultiAddress")
 	proto.RegisterType((*MultiAddresses)(nil), "rpc.MultiAddresses")
 	proto.RegisterType((*Nothing)(nil), "rpc.Nothing")
@@ -176,175 +113,136 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for DHT service
+// Client API for Peer service
 
-type DHTClient interface {
-	// Ping the Node to test the connection.
-	Ping(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Node, error)
-	// Get peers connected to the Node.
-	Peers(ctx context.Context, in *Node, opts ...grpc.CallOption) (*MultiAddresses, error)
-	// CloserPeers peers that are closer to the target than the Node.
-	// It will return the multiaddress of the target node if target
-	// is known to the server.
-	CloserPeers(ctx context.Context, in *Path, opts ...grpc.CallOption) (*MultiAddresses, error)
+type PeerClient interface {
+	// Ping the connection and swap MultiAddresses.
+	Ping(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (*MultiAddress, error)
+	// Get the connected Peers.
+	Peers(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*MultiAddresses, error)
 	// Send order fragment to other node
-	Send(ctx context.Context, in *Fragment, opts ...grpc.CallOption) (*Nothing, error)
+	SendOrderFragment(ctx context.Context, in *OrderFragment, opts ...grpc.CallOption) (*Nothing, error)
 }
 
-type dHTClient struct {
+type peerClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewDHTClient(cc *grpc.ClientConn) DHTClient {
-	return &dHTClient{cc}
+func NewPeerClient(cc *grpc.ClientConn) PeerClient {
+	return &peerClient{cc}
 }
 
-func (c *dHTClient) Ping(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Node, error) {
-	out := new(Node)
-	err := grpc.Invoke(ctx, "/rpc.DHT/Ping", in, out, c.cc, opts...)
+func (c *peerClient) Ping(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (*MultiAddress, error) {
+	out := new(MultiAddress)
+	err := grpc.Invoke(ctx, "/rpc.Peer/Ping", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *dHTClient) Peers(ctx context.Context, in *Node, opts ...grpc.CallOption) (*MultiAddresses, error) {
+func (c *peerClient) Peers(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*MultiAddresses, error) {
 	out := new(MultiAddresses)
-	err := grpc.Invoke(ctx, "/rpc.DHT/Peers", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/rpc.Peer/Peers", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *dHTClient) CloserPeers(ctx context.Context, in *Path, opts ...grpc.CallOption) (*MultiAddresses, error) {
-	out := new(MultiAddresses)
-	err := grpc.Invoke(ctx, "/rpc.DHT/CloserPeers", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *dHTClient) Send(ctx context.Context, in *Fragment, opts ...grpc.CallOption) (*Nothing, error) {
+func (c *peerClient) SendOrderFragment(ctx context.Context, in *OrderFragment, opts ...grpc.CallOption) (*Nothing, error) {
 	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/rpc.DHT/Send", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/rpc.Peer/SendOrderFragment", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for DHT service
+// Server API for Peer service
 
-type DHTServer interface {
-	// Ping the Node to test the connection.
-	Ping(context.Context, *Node) (*Node, error)
-	// Get peers connected to the Node.
-	Peers(context.Context, *Node) (*MultiAddresses, error)
-	// CloserPeers peers that are closer to the target than the Node.
-	// It will return the multiaddress of the target node if target
-	// is known to the server.
-	CloserPeers(context.Context, *Path) (*MultiAddresses, error)
+type PeerServer interface {
+	// Ping the connection and swap MultiAddresses.
+	Ping(context.Context, *MultiAddress) (*MultiAddress, error)
+	// Get the connected Peers.
+	Peers(context.Context, *Nothing) (*MultiAddresses, error)
 	// Send order fragment to other node
-	Send(context.Context, *Fragment) (*Nothing, error)
+	SendOrderFragment(context.Context, *OrderFragment) (*Nothing, error)
 }
 
-func RegisterDHTServer(s *grpc.Server, srv DHTServer) {
-	s.RegisterService(&_DHT_serviceDesc, srv)
+func RegisterPeerServer(s *grpc.Server, srv PeerServer) {
+	s.RegisterService(&_Peer_serviceDesc, srv)
 }
 
-func _DHT_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Node)
+func _Peer_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MultiAddress)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DHTServer).Ping(ctx, in)
+		return srv.(PeerServer).Ping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.DHT/Ping",
+		FullMethod: "/rpc.Peer/Ping",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DHTServer).Ping(ctx, req.(*Node))
+		return srv.(PeerServer).Ping(ctx, req.(*MultiAddress))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DHT_Peers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Node)
+func _Peer_Peers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Nothing)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DHTServer).Peers(ctx, in)
+		return srv.(PeerServer).Peers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.DHT/Peers",
+		FullMethod: "/rpc.Peer/Peers",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DHTServer).Peers(ctx, req.(*Node))
+		return srv.(PeerServer).Peers(ctx, req.(*Nothing))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DHT_CloserPeers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Path)
+func _Peer_SendOrderFragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OrderFragment)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DHTServer).CloserPeers(ctx, in)
+		return srv.(PeerServer).SendOrderFragment(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.DHT/CloserPeers",
+		FullMethod: "/rpc.Peer/SendOrderFragment",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DHTServer).CloserPeers(ctx, req.(*Path))
+		return srv.(PeerServer).SendOrderFragment(ctx, req.(*OrderFragment))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DHT_Send_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Fragment)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DHTServer).Send(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/rpc.DHT/Send",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DHTServer).Send(ctx, req.(*Fragment))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-var _DHT_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "rpc.DHT",
-	HandlerType: (*DHTServer)(nil),
+var _Peer_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "rpc.Peer",
+	HandlerType: (*PeerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Ping",
-			Handler:    _DHT_Ping_Handler,
+			Handler:    _Peer_Ping_Handler,
 		},
 		{
 			MethodName: "Peers",
-			Handler:    _DHT_Peers_Handler,
+			Handler:    _Peer_Peers_Handler,
 		},
 		{
-			MethodName: "CloserPeers",
-			Handler:    _DHT_CloserPeers_Handler,
-		},
-		{
-			MethodName: "Send",
-			Handler:    _DHT_Send_Handler,
+			MethodName: "SendOrderFragment",
+			Handler:    _Peer_SendOrderFragment_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -354,23 +252,19 @@ var _DHT_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("rpc.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 274 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x51, 0xd1, 0x4a, 0xc3, 0x30,
-	0x14, 0xa5, 0x6d, 0xb6, 0xd9, 0xbb, 0xb9, 0x87, 0xab, 0x48, 0x19, 0x2a, 0x12, 0x05, 0xfb, 0xe2,
-	0x1e, 0x26, 0x7e, 0x80, 0x38, 0xc4, 0x17, 0x47, 0xa9, 0xfe, 0x40, 0x5d, 0x63, 0x17, 0x58, 0x9b,
-	0x90, 0xc4, 0xff, 0xf1, 0x53, 0x25, 0xd7, 0x94, 0x15, 0xf1, 0xed, 0x9c, 0x7b, 0x0e, 0xf7, 0x9c,
-	0x9b, 0x40, 0x6a, 0xf4, 0x76, 0xa9, 0x8d, 0x72, 0x0a, 0x13, 0xa3, 0xb7, 0x7c, 0x0d, 0x6c, 0xa3,
-	0x6a, 0x81, 0x19, 0x4c, 0xaa, 0xba, 0x36, 0xc2, 0xda, 0x2c, 0xba, 0x8a, 0xf2, 0xb4, 0xec, 0x29,
-	0xce, 0x21, 0x96, 0x3a, 0x8b, 0x69, 0x18, 0x4b, 0x8d, 0x08, 0x4c, 0x2b, 0xe3, 0xb2, 0x84, 0x26,
-	0x84, 0xf9, 0x25, 0x1c, 0x3d, 0x9b, 0xaa, 0x69, 0x45, 0xe7, 0xbc, 0x5e, 0x57, 0xae, 0x0a, 0x6b,
-	0x08, 0xf3, 0x07, 0x60, 0x45, 0xe5, 0x76, 0x78, 0x01, 0xec, 0xd3, 0xa8, 0x96, 0xb4, 0xe9, 0x2a,
-	0x5d, 0xfa, 0x32, 0x3e, 0xbe, 0xa4, 0xb1, 0x8f, 0x72, 0xaa, 0x8f, 0x72, 0x8a, 0xdf, 0xc0, 0xec,
-	0xf5, 0x6b, 0xef, 0xe4, 0x63, 0xa8, 0x72, 0x0a, 0xa3, 0xd6, 0xf3, 0xb0, 0xfb, 0x97, 0xf0, 0x1c,
-	0xe6, 0x43, 0x97, 0xb0, 0x78, 0x06, 0x63, 0x92, 0xfc, 0x2d, 0x49, 0x9e, 0x96, 0x81, 0xf1, 0x14,
-	0x26, 0x1b, 0xe5, 0x76, 0xb2, 0x6b, 0x56, 0xdf, 0x11, 0x24, 0xeb, 0x97, 0x77, 0x3c, 0x07, 0x56,
-	0xc8, 0xae, 0xc1, 0x43, 0x97, 0xc5, 0x01, 0xe2, 0x2d, 0x8c, 0x0a, 0x21, 0x8c, 0x1d, 0xca, 0x27,
-	0x04, 0xff, 0x24, 0xde, 0xc1, 0xf4, 0x69, 0xaf, 0xac, 0x30, 0x43, 0xbb, 0x3f, 0xf9, 0x7f, 0xfb,
-	0x35, 0xb0, 0x37, 0xd1, 0xd5, 0x78, 0x4c, 0x62, 0xff, 0x74, 0x8b, 0x59, 0x48, 0xa1, 0x8a, 0x1f,
-	0x63, 0xfa, 0xa6, 0xfb, 0x9f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xf3, 0x34, 0x53, 0x77, 0xb3, 0x01,
-	0x00, 0x00,
+	// 209 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x2c, 0x2a, 0x48, 0xd6,
+	0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x2e, 0x2a, 0x48, 0x56, 0x32, 0xe2, 0xe2, 0xf5, 0x2f,
+	0x4a, 0x49, 0x2d, 0x72, 0x2b, 0x4a, 0x4c, 0xcf, 0x4d, 0xcd, 0x2b, 0x11, 0x52, 0xe4, 0x62, 0x2a,
+	0xc9, 0x97, 0x60, 0x54, 0x60, 0xd4, 0xe0, 0x36, 0x12, 0xd4, 0x03, 0xa9, 0xf6, 0x2d, 0xcd, 0x29,
+	0xc9, 0x74, 0x4c, 0x49, 0x29, 0x4a, 0x2d, 0x2e, 0x0e, 0x62, 0x2a, 0xc9, 0x57, 0x52, 0xe1, 0xe2,
+	0x41, 0x16, 0x13, 0x12, 0xe1, 0x62, 0xcd, 0x05, 0xf1, 0xc1, 0xba, 0x38, 0x83, 0x20, 0x1c, 0x25,
+	0x6b, 0x2e, 0x3e, 0x64, 0x55, 0xa9, 0xc5, 0x42, 0x9a, 0x5c, 0x6c, 0x60, 0xa9, 0x62, 0x09, 0x46,
+	0x05, 0x66, 0xec, 0xc6, 0x43, 0x15, 0x28, 0x71, 0x72, 0xb1, 0xfb, 0xe5, 0x97, 0x64, 0x64, 0xe6,
+	0xa5, 0x1b, 0x4d, 0x67, 0xe4, 0x62, 0x09, 0x48, 0x4d, 0x2d, 0x12, 0xd2, 0xe1, 0x62, 0x09, 0xc8,
+	0xcc, 0x4b, 0x17, 0xc2, 0xd4, 0x26, 0x85, 0x29, 0x24, 0xa4, 0xc5, 0xc5, 0x0a, 0xd2, 0x55, 0x2c,
+	0xc4, 0x03, 0x96, 0x83, 0x9a, 0x26, 0x25, 0x8c, 0xa1, 0x32, 0xb5, 0x58, 0xc8, 0x94, 0x4b, 0x30,
+	0x38, 0x35, 0x2f, 0x05, 0x35, 0x20, 0x84, 0xc0, 0x2a, 0x51, 0xc4, 0xa4, 0x50, 0xcc, 0x4a, 0x62,
+	0x03, 0x87, 0xa3, 0x31, 0x20, 0x00, 0x00, 0xff, 0xff, 0xfe, 0x26, 0x3e, 0xc4, 0x54, 0x01, 0x00,
+	0x00,
 }
