@@ -38,7 +38,13 @@ var _ = Describe("Node", func() {
 					Peers: make([]identity.MultiAddress, 0, Number_Of_Peers-1),
 				})
 			}
+
 			center = peers[0].Config.KeyPair.PublicAddress()
+			// Connect all peers to the first peer.
+			for i := 1; i < Number_Of_Peers; i++ {
+				peers[0].Config.Peers = append(peers[0].Config.Peers, peers[i].Config.MultiAddress)
+				peers[i].Config.Peers = append(peers[i].Config.Peers, peers[0].Config.MultiAddress)
+			}
 		})
 
 		Context("Test connection of two random nodes", func() {

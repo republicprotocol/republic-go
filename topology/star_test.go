@@ -4,6 +4,7 @@ import (
 . "github.com/onsi/ginkgo"
 . "github.com/onsi/gomega"
 	"time"
+	"github.com/republicprotocol/go-identity"
 )
 
 var _ = Describe("Star topologies", func() {
@@ -25,8 +26,12 @@ var _ = Describe("Star topologies", func() {
 
 		// Connect all peers to the first peer.
 		for i := 1; i < numberOfPeers; i++ {
-			peers[0].Config.Peers = append(peers[0].Config.Peers, peers[i].Config.MultiAddress)
-			peers[i].Config.Peers = append(peers[i].Config.Peers, peers[0].Config.MultiAddress)
+			host, err := peers[i].Config.MultiAddress.ValueForProtocol(identity.IP4Code)
+			Ω(err).ShouldNot(HaveOccurred())
+			port, err := peers[i].Config.MultiAddress.ValueForProtocol(identity.TCPCode)
+			Ω(err).ShouldNot(HaveOccurred())
+			_, err = peers[0].PingPeer(host+":"+port )
+			Ω(err).ShouldNot(HaveOccurred())
 		}
 
 		for _, peer := range peers {

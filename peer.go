@@ -10,6 +10,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"net"
+	"log"
 )
 
 // Peer implements the gRPC Peer service.
@@ -21,9 +22,14 @@ type Peer struct {
 
 // NewPeer returns a Peer with the given Config, a new DHT, and a new set of grpc.Connections.
 func NewPeer(config *Config) *Peer {
+	rt := dht.NewRoutingTable(config.KeyPair.PublicAddress())
+	for _,peer := range config.Peers{
+		rt.Update(peer)
+	}
+
 	return &Peer{
 		Config: 	 config,
-		DHT: 		 dht.NewRoutingTable(config.KeyPair.PublicAddress()),
+		DHT: 		 rt,
 		Connections: map[string]*grpc.ClientConn{},
 	}
 }
@@ -95,6 +101,7 @@ func (peer *Peer) Peers(ctx context.Context, sender *rpc.Nothing) (*rpc.MultiAdd
 	}
 }
 
+// SendOrderFragment is the order fragment handler of the
 func (peer *Peer) SendOrderFragment(ctx context.Context, fragment *rpc.OrderFragment) (*rpc.Nothing, error) {
 	return &rpc.Nothing{}, nil
 }
@@ -257,18 +264,30 @@ func (peer *Peer) AskPeers(address string) (*rpc.MultiAddresses, error) {
 // Find a certain node by its republic address through the p2p network
 // Return its multiAdress
 func (peer *Peer) FindPeer(target identity.Address) (*rpc.MultiAddresses, error) {
-
+	log.Println("start finding ")
 	// Find closest peers we know from the routing table
 	peers, err := peer.DHT.FindPeer(identity.Address(target))
 	if err != nil {
 		return nil, err
 	}
-	visited := map[identity.MultiAddress]bool{}
+	visited := map[identity.MultiAddress]bool{peer.Config.MultiAddress:true}
 
 	for {
 		// Check if we know any peers
 		if peers.Front() == nil {
 			return nil, errors.New("can't find the target from the known peers")
+		}
+		log.Println("start finding ")
+		// Check if we find the peer
+		for e:= peers.Front(); e!= nil ;e = e.Next(){
+			rAddress, err := e.Value.(identity.MultiAddress).ValueForProtocol(identity.RepublicCode)
+			log.Println("we have "+ rAddress)
+			if err != nil {
+				return nil, err
+			}
+			if rAddress == string(target){
+				return &rpc.MultiAddresses{Multis:[]*rpc.MultiAddress{{Multi:e.Value.(identity.MultiAddress).String()}}},nil
+			}
 		}
 
 		// Ping the first node from the bucket
