@@ -52,15 +52,15 @@ func init() {
 // NewMultiAddress parses and validates an input string, returning a
 // MultiAddress. It returns a MultiAddress or an error.
 func NewMultiAddress(s string) (MultiAddress, error) {
-	multiaddr, err := multiaddr.NewMultiaddr(s)
-	return MultiAddress{multiaddr},err
+	multiAddr, err := multiaddr.NewMultiaddr(s)
+	return MultiAddress{multiAddr},err
 }
 
 // NewMultiAddressBytes initializes a MultiAddress from a byte representation.
 // It returns a MultiAddress or an error.
 func NewMultiAddressBytes(b []byte) (MultiAddress, error) {
-	multiaddr, err := multiaddr.NewMultiaddrBytes(b)
-	return MultiAddress{multiaddr},err
+	multiAddr, err := multiaddr.NewMultiaddrBytes(b)
+	return MultiAddress{multiAddr},err
 }
 
 // ProtocolWithName returns the Protocol description with given string name.
