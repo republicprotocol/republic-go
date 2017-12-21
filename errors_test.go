@@ -18,8 +18,8 @@ var _ = Describe("Errors", func() {
 			prime, ok := big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 			Ω(ok).Should(Equal(true))
 			secret := big.NewInt(1234)
-			// Encode the secret.
-			_, err := NewShamir(n, k, prime).Encode(secret)
+			// Split the secret.
+			_, err := Split(n, k, prime, secret)
 			Ω(err).ShouldNot(BeNil())
 			Ω(err).Should(Equal(NewNKError(n, k)))
 		})
@@ -33,8 +33,8 @@ var _ = Describe("Errors", func() {
 			prime, ok := big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 			Ω(ok).Should(Equal(true))
 			secret := big.NewInt(0).Add(prime, big.NewInt(1))
-			// Encode the secret.
-			_, err := NewShamir(n, k, prime).Encode(secret)
+			// Split the secret.
+			_, err := Split(n, k, prime, secret)
 			Ω(err).ShouldNot(BeNil())
 			Ω(err).Should(Equal(NewFiniteFieldError(secret)))
 		})

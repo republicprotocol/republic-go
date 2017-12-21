@@ -32,8 +32,8 @@ var _ = Describe("Shamir's secret sharing", func() {
 			prime, ok := big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 			Ω(ok).Should(Equal(true))
 			secret := big.NewInt(1234)
-			// Encode the secret.
-			shares, err := NewShamir(n, k, prime).Encode(secret)
+			// Split the secret.
+			shares, err := Split(n, k, prime, secret)
 			Ω(err).Should(BeNil())
 			Ω(int64(len(shares))).Should(Equal(n))
 		})
@@ -47,8 +47,8 @@ var _ = Describe("Shamir's secret sharing", func() {
 			prime, ok := big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 			Ω(ok).Should(Equal(true))
 			secret := big.NewInt(1234)
-			// Encode the secret.
-			shares, err := NewShamir(N, K, prime).Encode(secret)
+			// Split the secret.
+			shares, err := Split(N, K, prime, secret)
 			Ω(err).Should(BeNil())
 			Ω(int64(len(shares))).Should(Equal(N))
 			// For all K greater than, or equal to, 50 attempt to decode the secret.
@@ -69,7 +69,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 				for index := range indices {
 					kShares[index] = shares[index]
 				}
-				decodedSecret, err := NewShamir(N, K, prime).Decode(kShares)
+				decodedSecret, err := Join(K, prime, kShares)
 				Ω(err).Should(BeNil())
 				Ω(decodedSecret.Cmp(secret)).Should(Equal(0))
 			}
@@ -82,8 +82,8 @@ var _ = Describe("Shamir's secret sharing", func() {
 			prime, ok := big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 			Ω(ok).Should(Equal(true))
 			secret := big.NewInt(1234)
-			// Encode the secret.
-			shares, err := NewShamir(N, K, prime).Encode(secret)
+			// Split the secret.
+			shares, err := Split(N, K, prime, secret)
 			Ω(err).Should(BeNil())
 			Ω(int64(len(shares))).Should(Equal(N))
 			// For all K less than 50 attempt to decode the secret.
@@ -104,7 +104,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 				for index := range indices {
 					kShares[index] = shares[index]
 				}
-				decodedSecret, err := NewShamir(N, K, prime).Decode(kShares)
+				decodedSecret, err := Join(K, prime, kShares)
 				Ω(err).Should(BeNil())
 				Ω(decodedSecret.Cmp(secret)).ShouldNot(Equal(0))
 			}
