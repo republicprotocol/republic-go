@@ -18,6 +18,18 @@ const (
 	RepublicCode = 0x0065
 )
 
+// Add the republic protocol
+func init() {
+	republic := multiaddr.Protocol{
+		Code:       RepublicCode,
+		Size:       multiaddr.LengthPrefixedVarSize,
+		Name:       "republic",
+		Path:       false,
+		Transcoder: multiaddr.NewTranscoderFromFunctions(republicStB, republicBtS),
+	}
+	multiaddr.AddProtocol(republic)
+}
+
 type MultiAddress struct {
 	multiaddr.Multiaddr
 }
@@ -37,17 +49,8 @@ func (multiAddr MultiAddress) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Add the republic protocol
-func init() {
-	republic := multiaddr.Protocol{
-		Code:       RepublicCode,
-		Size:       multiaddr.LengthPrefixedVarSize,
-		Name:       "republic",
-		Path:       false,
-		Transcoder: multiaddr.NewTranscoderFromFunctions(republicStB, republicBtS),
-	}
-	multiaddr.AddProtocol(republic)
-}
+// Empty MultiAddress
+var EmptyMultiAddress = MultiAddress{}
 
 // NewMultiAddress parses and validates an input string, returning a
 // MultiAddress. It returns a MultiAddress or an error.
