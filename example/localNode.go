@@ -43,9 +43,9 @@ func main() {
 	// Create gRPC services.
 
 	peer := swarm.NewPeer(&swarm.Config{
-		KeyPair: keyPair,
+		KeyPair:      keyPair,
 		MultiAddress: multiAddress,
-		Peers: make([]identity.MultiAddress, 0, 100),
+		Peers:        make([]identity.MultiAddress, 0, 100),
 	})
 
 	// Register reflection service on gRPC server.

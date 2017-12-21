@@ -1,11 +1,11 @@
 package topology_test
 
 import (
-	"sync"
-	"github.com/republicprotocol/go-identity"
-	"math/rand"
 	"fmt"
+	"github.com/republicprotocol/go-identity"
 	. "github.com/republicprotocol/go-swarm"
+	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -22,7 +22,7 @@ var numberOfMessages = 100
 // The duration to wait for peers to start listening for RPCs.
 var startTimeDelay = time.Second
 
-func generatePeers() ([]*Peer, error){
+func generatePeers() ([]*Peer, error) {
 	peers := make([]*Peer, numberOfPeers)
 	for i := 0; i < numberOfPeers; i++ {
 		keyPair, err := identity.NewKeyPair()
@@ -34,9 +34,9 @@ func generatePeers() ([]*Peer, error){
 			return nil, err
 		}
 		peers[i] = NewPeer(&Config{
-			KeyPair: keyPair,
+			KeyPair:      keyPair,
 			MultiAddress: multiAddress,
-			Peers: make([]identity.MultiAddress, 0, numberOfPeers-1),
+			Peers:        make([]identity.MultiAddress, 0, numberOfPeers-1),
 		})
 	}
 	return peers, nil

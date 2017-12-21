@@ -1,31 +1,31 @@
 package swarm
 
 import (
-	"github.com/republicprotocol/go-identity"
-	"os"
 	"encoding/json"
 	"fmt"
+	"github.com/republicprotocol/go-identity"
+	"os"
 )
 
 // Config struct holds configuration details for connecting to peers
 // at boot.
 type Config struct {
-	KeyPair 		identity.KeyPair
-	MultiAddress 	identity.MultiAddress
-	Peers []		identity.MultiAddress
+	KeyPair      identity.KeyPair
+	MultiAddress identity.MultiAddress
+	Peers        []identity.MultiAddress
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config
 // object, or an error.
-func LoadConfig(filename string ) (*Config, error)  {
+func LoadConfig(filename string) (*Config, error) {
 
-	file , err := os.Open(filename)
-	if err !=nil {
+	file, err := os.Open(filename)
+	if err != nil {
 		return nil, err
 	}
 
 	config := new(Config)
-	if err := json.NewDecoder(file).Decode(config); err !=nil {
+	if err := json.NewDecoder(file).Decode(config); err != nil {
 		return nil, err
 	}
 
@@ -36,7 +36,7 @@ func LoadConfig(filename string ) (*Config, error)  {
 func (config *Config) MarshalJSON() ([]byte, error) {
 	obj := map[string]interface{}{
 		"multi_address": config.MultiAddress.String(),
-		"peers": make([]string, len(config.Peers)),
+		"peers":         make([]string, len(config.Peers)),
 	}
 	for i, peer := range config.Peers {
 		obj["peers"].([]string)[i] = peer.String()
@@ -72,4 +72,3 @@ func (config *Config) UnmarshalJSON(data []byte) error {
 	}
 	return nil
 }
-

@@ -50,7 +50,7 @@ var _ = Describe("Star topologies", func() {
 
 		// Connect all peers to each other.
 		for i := 0; i < numberOfPeers; i++ {
-			for j := i+1; j < numberOfPeers; j++ {
+			for j := i + 1; j < numberOfPeers; j++ {
 				peers[i].Config.Peers = append(peers[i].Config.Peers, peers[j].Config.MultiAddress)
 			}
 		}

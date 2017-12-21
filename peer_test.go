@@ -1,7 +1,6 @@
 package swarm_test
 
 import (
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
@@ -33,9 +32,9 @@ var _ = Describe("Node", func() {
 				multiAddress, err := identity.NewMultiAddress(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d/republic/%s", 3000+i, keyPair.PublicAddress()))
 				Ω(err).ShouldNot(HaveOccurred())
 				peers[i] = NewPeer(&Config{
-					KeyPair: keyPair,
+					KeyPair:      keyPair,
 					MultiAddress: multiAddress,
-					Peers: make([]identity.MultiAddress, 0, Number_Of_Peers-1),
+					Peers:        make([]identity.MultiAddress, 0, Number_Of_Peers-1),
 				})
 			}
 

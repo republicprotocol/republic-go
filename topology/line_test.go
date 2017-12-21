@@ -1,9 +1,9 @@
 package topology_test
 
 import (
-. "github.com/onsi/ginkgo"
-. "github.com/onsi/gomega"
-"time"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"time"
 )
 
 var _ = Describe("Line topologies", func() {
@@ -26,7 +26,7 @@ var _ = Describe("Line topologies", func() {
 		for i := 0; i < numberOfPeers-1; i++ {
 			peers[i].Config.Peers = append(peers[i].Config.Peers, peers[i+1].Config.MultiAddress)
 		}
-		for i := numberOfPeers-1; i>0 ;i-- {
+		for i := numberOfPeers - 1; i > 0; i-- {
 			peers[i].Config.Peers = append(peers[i].Config.Peers, peers[i-1].Config.MultiAddress)
 		}
 

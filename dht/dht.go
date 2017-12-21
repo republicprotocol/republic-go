@@ -184,7 +184,7 @@ func (rt *RoutingTable) FindPeer(target identity.Address) (RoutingBucket, error)
 
 	// Keep adding peers adjacent to the target bucket until we get enough peers
 	for i := 1; i < IDLengthInBits; i++ {
-		if res.Len() >= 20  {
+		if res.Len() >= 20 {
 			break
 		}
 
@@ -220,7 +220,7 @@ func SortBucket(lt RoutingBucket, target identity.Address) (RoutingBucket, error
 			if err != nil {
 				return RoutingBucket{}, err
 			}
-			if !isCloser  {
+			if !isCloser {
 				lt.MoveToFront(e)
 			}
 		}

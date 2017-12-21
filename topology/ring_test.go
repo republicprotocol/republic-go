@@ -1,9 +1,9 @@
 package topology_test
 
 import (
-. "github.com/onsi/ginkgo"
-. "github.com/onsi/gomega"
-"time"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"time"
 )
 
 var _ = Describe("Line topologies", func() {
@@ -26,13 +26,13 @@ var _ = Describe("Line topologies", func() {
 		for i := 0; i < numberOfPeers-1; i++ {
 			peers[i].Config.Peers = append(peers[i].Config.Peers, peers[i+1].Config.MultiAddress)
 		}
-		for i := numberOfPeers-1; i>0 ;i-- {
+		for i := numberOfPeers - 1; i > 0; i-- {
 			peers[i].Config.Peers = append(peers[i].Config.Peers, peers[i-1].Config.MultiAddress)
 		}
 
 		// Connect the first and last peer to form a ring
 		peers[0].Config.Peers = append(peers[0].Config.Peers, peers[numberOfPeers-1].Config.MultiAddress)
-		peers[numberOfPeers-1].Config.Peers = append(peers[numberOfPeers-1 ].Config.Peers, peers[0].Config.MultiAddress)
+		peers[numberOfPeers-1].Config.Peers = append(peers[numberOfPeers-1].Config.Peers, peers[0].Config.MultiAddress)
 
 		for _, peer := range peers {
 			go peer.StartListening()
@@ -55,7 +55,7 @@ var _ = Describe("Line topologies", func() {
 			peers[i].Config.Peers = append(peers[i].Config.Peers, peers[i+1].Config.MultiAddress)
 		}
 		// Connect the last peer with the first one
-		peers[numberOfPeers-1].Config.Peers = append(peers[numberOfPeers-1 ].Config.Peers, peers[0].Config.MultiAddress)
+		peers[numberOfPeers-1].Config.Peers = append(peers[numberOfPeers-1].Config.Peers, peers[0].Config.MultiAddress)
 
 		for _, peer := range peers {
 			go peer.StartListening()

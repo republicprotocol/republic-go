@@ -9,27 +9,27 @@ import (
 	"github.com/republicprotocol/go-swarm/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"net"
 	"log"
+	"net"
 )
 
 // Peer implements the gRPC Peer service.
 type Peer struct {
-	Config 		 *Config
-	DHT 		 *dht.RoutingTable
-	Connections  map[string]*grpc.ClientConn
+	Config      *Config
+	DHT         *dht.RoutingTable
+	Connections map[string]*grpc.ClientConn
 }
 
 // NewPeer returns a Peer with the given Config, a new DHT, and a new set of grpc.Connections.
 func NewPeer(config *Config) *Peer {
 	rt := dht.NewRoutingTable(config.KeyPair.PublicAddress())
-	for _,peer := range config.Peers{
+	for _, peer := range config.Peers {
 		rt.Update(peer)
 	}
 
 	return &Peer{
-		Config: 	 config,
-		DHT: 		 rt,
+		Config:      config,
+		DHT:         rt,
 		Connections: map[string]*grpc.ClientConn{},
 	}
 }
@@ -45,7 +45,7 @@ func (peer *Peer) StartListening() error {
 	if err != nil {
 		return err
 	}
-	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", host,port))
+	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", host, port))
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (peer *Peer) SendOrderFragment(ctx context.Context, fragment *rpc.OrderFrag
 	return &rpc.Nothing{}, nil
 }
 
-func (peer *Peer) SendFragment(target identity.MultiAddress) (*rpc.Nothing ,error ){
+func (peer *Peer) SendFragment(target identity.MultiAddress) (*rpc.Nothing, error) {
 	// Resolve the target network address from it multiAddress
 	host, err := target.ValueForProtocol(identity.IP4Code)
 	if err != nil {
@@ -116,38 +116,38 @@ func (peer *Peer) SendFragment(target identity.MultiAddress) (*rpc.Nothing ,erro
 	if err != nil {
 		return nil, nil
 	}
-	address := host+ ":" + port
+	address := host + ":" + port
 
 	// Establish a connection with the address
 	err = peer.ConnectNode(address)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	client := rpc.NewPeerClient(peer.Connections[address])
 	defer peer.CloseConnection(address)
 
-	return client.SendOrderFragment(context.Background(),&rpc.OrderFragment{To:&rpc.MultiAddress{Multi:target.String()}})
+	return client.SendOrderFragment(context.Background(), &rpc.OrderFragment{To: &rpc.MultiAddress{Multi: target.String()}})
 }
 
 // Return all peers in the node routing table
 func (peer *Peer) peers() *rpc.MultiAddresses {
 	multis := peer.DHT.MultiAddresses()
 	ret := make([]*rpc.MultiAddress, len(multis))
-	for i, j:= range multis{
-		ret[i] = &rpc.MultiAddress{ Multi: j.String() }
+	for i, j := range multis {
+		ret[i] = &rpc.MultiAddress{Multi: j.String()}
 	}
-	return &rpc.MultiAddresses{Multis:ret}
+	return &rpc.MultiAddresses{Multis: ret}
 }
 
 // Update the address in the routing table if there is enough space
 func (peer *Peer) updatePeer(newPeer *rpc.MultiAddress) error {
 
 	// Get the republic address of the new peer
-	mAddress, err:= identity.NewMultiAddress(newPeer.Multi)
+	mAddress, err := identity.NewMultiAddress(newPeer.Multi)
 	if err != nil {
 		return err
 	}
-	republicAddress,err  := mAddress.ValueForProtocol(identity.RepublicCode)
+	republicAddress, err := mAddress.ValueForProtocol(identity.RepublicCode)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func (peer *Peer) updatePeer(newPeer *rpc.MultiAddress) error {
 	}
 
 	// If the bucket is full
-	if lastPeer != identity.EmptyMultiAddress{
+	if lastPeer != identity.EmptyMultiAddress {
 		// Try to ping the last peer in the bucket
 		wait := make(chan interface{})
 		go func() {
@@ -169,12 +169,12 @@ func (peer *Peer) updatePeer(newPeer *rpc.MultiAddress) error {
 			if err != nil {
 				wait <- err
 			}
-			port, err :=lastPeer.ValueForProtocol(identity.TCPCode)
+			port, err := lastPeer.ValueForProtocol(identity.TCPCode)
 			if err != nil {
 				wait <- err
 			}
 
-			pong, err := peer.PingPeer(ip+":"+port)
+			pong, err := peer.PingPeer(ip + ":" + port)
 			if err != nil {
 				wait <- err
 			} else {
@@ -199,9 +199,8 @@ func (peer *Peer) updatePeer(newPeer *rpc.MultiAddress) error {
 
 // ConnectNode connects to other Peer via its network address
 func (peer *Peer) ConnectNode(address string) error {
-
 	// Set up a connection to the server.
-	conn ,err := grpc.Dial(address, grpc.WithInsecure())
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	peer.Connections[address] = conn
 	if err != nil {
 		return err
@@ -212,8 +211,8 @@ func (peer *Peer) ConnectNode(address string) error {
 // CloseConnection closes a connection a peer via its network address
 func (peer *Peer) CloseConnection(address string) error {
 	conn := peer.Connections[address]
-	err :=  conn.Close()
-	if err !=nil {
+	err := conn.Close()
+	if err != nil {
 		return err
 	}
 	delete(peer.Connections, address)
@@ -226,12 +225,12 @@ func (peer *Peer) PingPeer(address string) (*rpc.MultiAddress, error) {
 	// Establish a connection with the address
 	err := peer.ConnectNode(address)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	client := rpc.NewPeerClient(peer.Connections[address])
 	defer peer.CloseConnection(address)
 
-	pong, err := client.Ping(context.Background(), &rpc.MultiAddress{Multi:peer.Config.MultiAddress.String()})
+	pong, err := client.Ping(context.Background(), &rpc.MultiAddress{Multi: peer.Config.MultiAddress.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +248,7 @@ func (peer *Peer) AskPeers(address string) (*rpc.MultiAddresses, error) {
 	// Establish a connection with the address
 	err := peer.ConnectNode(address)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	client := rpc.NewPeerClient(peer.Connections[address])
 	defer peer.CloseConnection(address)
@@ -270,7 +269,7 @@ func (peer *Peer) FindPeer(target identity.Address) (*rpc.MultiAddresses, error)
 	if err != nil {
 		return nil, err
 	}
-	visited := map[identity.MultiAddress]bool{peer.Config.MultiAddress:true}
+	visited := map[identity.MultiAddress]bool{peer.Config.MultiAddress: true}
 
 	for {
 		// Check if we know any peers
@@ -279,20 +278,20 @@ func (peer *Peer) FindPeer(target identity.Address) (*rpc.MultiAddresses, error)
 		}
 		log.Println("start finding ")
 		// Check if we find the peer
-		for e:= peers.Front(); e!= nil ;e = e.Next(){
+		for e := peers.Front(); e != nil; e = e.Next() {
 			rAddress, err := e.Value.(identity.MultiAddress).ValueForProtocol(identity.RepublicCode)
-			log.Println("we have "+ rAddress)
+			log.Println("we have " + rAddress)
 			if err != nil {
 				return nil, err
 			}
-			if rAddress == string(target){
-				return &rpc.MultiAddresses{Multis:[]*rpc.MultiAddress{{Multi:e.Value.(identity.MultiAddress).String()}}},nil
+			if rAddress == string(target) {
+				return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{{Multi: e.Value.(identity.MultiAddress).String()}}}, nil
 			}
 		}
 
 		// Ping the first node from the bucket
 		first := peers.Remove(peers.Front()).(identity.MultiAddress)
-		_, in :=  visited[first]
+		_, in := visited[first]
 		if in {
 			continue
 		}
@@ -307,11 +306,11 @@ func (peer *Peer) FindPeer(target identity.Address) (*rpc.MultiAddresses, error)
 			return nil, nil
 		}
 
-		multiAddresses, err := peer.AskPeers(host+":"+port)
+		multiAddresses, err := peer.AskPeers(host + ":" + port)
 		if err != nil {
 			return nil, err
 		}
-		for _,j := range multiAddresses.Multis{
+		for _, j := range multiAddresses.Multis {
 			mAddress, err := identity.NewMultiAddress(j.Multi)
 			if err != nil {
 				return nil, err
@@ -321,8 +320,8 @@ func (peer *Peer) FindPeer(target identity.Address) (*rpc.MultiAddresses, error)
 		visited[first] = true
 
 		// todo : need to figure out how to sort the bucket
-		peers,err  = dht.SortBucket(peers,target)
-		if err!= nil {
+		peers, err = dht.SortBucket(peers, target)
+		if err != nil {
 			return nil, err
 		}
 	}
