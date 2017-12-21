@@ -72,16 +72,16 @@ func (rt *RoutingTable) MultiAddresses() []string {
 
 // Check if we have enough space to update the node in the bucket
 // Return the last node if the bucket is full, empty string otherwise
-func (rt *RoutingTable) CheckAvailability(address identity.Address) (string, error) {
+func (rt *RoutingTable) CheckAvailability(address identity.Address) (multiaddr.Multiaddr, error) {
 	same, err := rt.Address.SamePrefixLen(address)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Get the index of the bucket we want to store the ID
 	index := IDLengthInBits - 1 - same
 	if index < 0 || index > IDLengthInBits-1 {
-		return "", ErrIndexOutOfRange
+		return nil, ErrIndexOutOfRange
 	}
 
 	// Iterate the bucket see if we already know the node
@@ -90,27 +90,25 @@ func (rt *RoutingTable) CheckAvailability(address identity.Address) (string, err
 		// Get the republic address from its multiaddress
 		rAddress, err := e.Value.(multiaddr.Multiaddr).ValueForProtocol(RepublicCode)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		if rAddress == string(address) {
-			return "", nil
+			return nil, nil
 		}
 	}
 
 	// Check the bucket length
 	if rt.Buckets[index].Len() < IDLength {
-		return "", nil
+		return nil, nil
 	} else {
-		// Return the republic address of the last node in the bucket
-		rAddress, err := rt.Buckets[index].Back().Value.(multiaddr.Multiaddr).ValueForProtocol(RepublicCode)
-		if err != nil {
-			return "", err
-		}
-		return rAddress, nil
+		// Return the multi address of the last node in the bucket
+		mAddress := rt.Buckets[index].Back().Value.(multiaddr.Multiaddr)
+		return mAddress, nil
 	}
 }
 
 // Update the new node in the routing table.
+// Will only be called after checking availability
 func (rt *RoutingTable) Update(mAddress multiaddr.Multiaddr) error {
 
 	// Get the node address from its multiaddress
@@ -145,6 +143,7 @@ func (rt *RoutingTable) Update(mAddress multiaddr.Multiaddr) error {
 
 		// Override the multiaddress and move it to the front
 		if address == rAddress {
+			e.Value = mAddress
 			rt.Buckets[index].MoveToFront(e)
 			return nil
 		}
@@ -200,17 +199,6 @@ func (rt *RoutingTable) FindNode(target identity.Address) (RoutingBucket, error)
 		}
 	}
 
-	//// Remove the node which isn't as closer as the routing table itself
-	//for e := res.Front();e!= nil ; e = e.Next(){
-	//	rAddres, err := e.Value.(multiaddr.Multiaddr).ValueForProtocol(RepublicCode)
-	//	if err != nil {
-	//		return RoutingBucket{}, err
-	//	}
-	//	if closer,err := identity.Closer(rt.Address,identity.Address(rAddres),target); closer == rt.Address || err !=nil{
-	//		res.Remove(e)
-	//	}
-	//}
-
 	return SortBucket(res, target)
 }
 
@@ -230,11 +218,11 @@ func SortBucket(lt RoutingBucket, target identity.Address) (RoutingBucket, error
 				return RoutingBucket{}, err
 			}
 			// Compare the current node distance with the min node.
-			closer, err := identity.Closer(identity.Address(minValue), identity.Address(value), target)
+			isCloser, err := identity.Closer(identity.Address(minValue), identity.Address(value), target)
 			if err != nil {
 				return RoutingBucket{}, err
 			}
-			if closer == identity.Address(value) {
+			if !isCloser  {
 				lt.MoveToFront(e)
 			}
 		}
@@ -244,19 +232,4 @@ func SortBucket(lt RoutingBucket, target identity.Address) (RoutingBucket, error
 	}
 
 	return ret, nil
-}
-
-// Compare two lists if they are same in the first n elements
-func CompareList(b1, b2 RoutingBucket) bool {
-	if b1.Len() != b2.Len() {
-		return false
-	}
-	e1, e2 := b1.Front(), b2.Front()
-	for i := 0; i < b1.Len(); i++ {
-		if e1.Value != e2.Value {
-			return false
-		}
-		e1, e2 = e1.Next(), e2.Next()
-	}
-	return true
 }

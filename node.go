@@ -3,6 +3,7 @@ package swarm
 import (
 	"container/list"
 	"errors"
+	"fmt"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-swarm/dht"
@@ -10,14 +11,15 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"net"
+	"log"
 )
 
 // Node implements the gRPC Node service.
 type Node struct {
 	DHT *dht.RoutingTable
+	Config *Config
 
-	ip   string
-	port string
+	conn *grpc.ClientConn
 }
 
 // NewNode returns a new node with no connections.
@@ -26,24 +28,23 @@ func NewNode(ip, port string, address identity.Address) *Node {
 }
 
 // StartListen starts the node as a grpc server and listens for rpc calls
-func (node *Node) StartListen() error {
+func (node *Node) StartListening() error {
 	// listen to the tcp port
-	lis, err := net.Listen("tcp", node.ip+":"+node.port)
+	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", node.ip, node.port))
 	if err != nil {
 		return err
 	}
+
+	// Register the node as a grpc server
 	s := grpc.NewServer()
 	rpc.RegisterDHTServer(s, node)
-
-	if err := s.Serve(lis); err != nil {
-		return err
-	}
-	return nil
+	return s.Serve(lis)
 }
 
 // MultiAddress returns the multiAddress of the node
 func (node *Node) MultiAddress() (multiaddr.Multiaddr, error) {
-	multi, err := identity.NewMultiaddr("/ip4/" + node.ip + "/tcp/" + node.port + "/republic/" + string(node.DHT.Address))
+	address := fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", node.ip, node.port, node.DHT.Address)
+	multi, err := identity.NewMultiaddr(address)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +55,7 @@ func (node *Node) MultiAddress() (multiaddr.Multiaddr, error) {
 // address. If the Node does not respond, or it responds with an error, then the
 // connection is considered unhealthy.
 func (node *Node) Ping(ctx context.Context, id *rpc.Node) (*rpc.Node, error) {
+
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
 		return &rpc.Node{Address: string(node.DHT.Address)}, err
@@ -70,14 +72,14 @@ func (node *Node) Ping(ctx context.Context, id *rpc.Node) (*rpc.Node, error) {
 // Peers is used to return the rpc.MultiAddresses to which a Node is connected.
 // The rpc.MultiAddresses returned are not guaranteed to provide healthy
 // connections and should be pinged.
-func (node *Node) Peers(ctx context.Context, target *rpc.Node) (*rpc.MultiAddresses, error) {
+func (node *Node) Peers(ctx context.Context, sender *rpc.Node) (*rpc.MultiAddresses, error) {
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
 		return &rpc.MultiAddresses{}, err
 	}
 
 	// Update the sender in the node routing table
-	if err := node.updateNode(target); err != nil {
+	if err := node.updateNode(sender); err != nil {
 		return nil, err
 	}
 
@@ -163,19 +165,28 @@ func (node *Node) updateNode(newNode *rpc.Node) error {
 	}
 
 	// Generate multiaddress for the new node
-	multiAddress, err := identity.NewMultiaddr("/ip4/" + newNode.Ip +
-		"/tcp/" + newNode.Port + "/republic/" + newNode.Address)
+	multiAddress, err := identity.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", newNode.Ip, newNode.Port, newNode.Address))
 	if err != nil {
 		return err
 	}
 
 	// If the bucket is full
-	if lastNode != "" {
+	if lastNode != nil {
 		// Try to ping the last node in the bucket
 		wait := make(chan interface{})
 		go func() {
 			defer close(wait)
-			pong, err := node.PingNode(lastNode)
+
+			ip, err := lastNode.ValueForProtocol(identity.IP4Code)
+			if err != nil {
+				wait <- err
+			}
+			port, err :=lastNode.ValueForProtocol(identity.TCPCode)
+			if err != nil {
+				wait <- err
+			}
+
+			pong, err := node.PingNode(ip+":"+port)
 			if err != nil {
 				wait <- err
 			} else {
@@ -188,6 +199,7 @@ func (node *Node) updateNode(newNode *rpc.Node) error {
 		// If the last node is active, we do nothing with the new node
 		switch resp.(type) {
 		case error:
+			// todo : remove the last node
 			return resp.(error)
 		case *rpc.Node:
 			return nil
@@ -198,34 +210,58 @@ func (node *Node) updateNode(newNode *rpc.Node) error {
 }
 
 // Connect to other Node and return the grpc client
-func connectNode(ctx context.Context, address string) rpc.DHTClient {
+func (node *Node) ConnectNode(address string) error {
 	// Set up a connection to the server.
-	conn, err := grpc.DialContext(ctx, address, grpc.WithInsecure())
+
+	conn ,err := grpc.Dial(address, grpc.WithInsecure())
+	node.conn = conn
 	if err != nil {
-		return nil
+		return err
 	}
-	return rpc.NewDHTClient(conn)
+
+	return nil
+}
+
+// Close connection
+func (node *Node) Close() error {
+	return node.conn.Close()
 }
 
 // Ping a node
 func (node *Node) PingNode(address string) (*rpc.Node, error) {
-	client := connectNode(context.Background(), address)
+
+	// Establish a connection with the address
+	err := node.ConnectNode(address)
+	if err != nil {
+		return nil,err
+	}
+	client := rpc.NewDHTClient(node.conn)
+	defer node.Close()
+
 	pong, err := client.Ping(context.Background(), &rpc.Node{Address: string(node.DHT.Address), Ip: node.ip, Port: node.port})
 	if err != nil {
 		return nil, err
 	}
+
 	multiAddress, err := identity.NewMultiaddr("/ip4/" + pong.Ip +
 		"/tcp/" + pong.Port + "/republic/" + pong.Address)
 	if err != nil {
 		return nil, err
 	}
-
 	return pong, node.DHT.Update(multiAddress)
 }
 
 // Request all peers of a node
 func (node *Node) PeersNode(address string) (*rpc.MultiAddresses, error) {
-	client := connectNode(context.Background(), address)
+
+	// Establish a connection with the address
+	err := node.ConnectNode(address)
+	if err != nil {
+		return nil,err
+	}
+	client := rpc.NewDHTClient(node.conn)
+	defer node.Close()
+
 	multiAddresses, err := client.Peers(context.Background(), &rpc.Node{Address: string(node.DHT.Address),
 		Ip: node.ip, Port: node.port})
 	if err != nil {
@@ -233,6 +269,25 @@ func (node *Node) PeersNode(address string) (*rpc.MultiAddresses, error) {
 	}
 	return multiAddresses, nil
 }
+
+// Ask for
+func (node *Node) AskCloserNode(address ,target string)(*rpc.MultiAddresses, error ){
+	// Establish a connection with the address
+	err := node.ConnectNode(address)
+	if err != nil {
+		return nil,err
+	}
+	client := rpc.NewDHTClient(node.conn)
+	defer node.Close()
+
+	path := &rpc.Path{From: &rpc.Node{Address: string(node.DHT.Address), Ip: node.ip, Port: node.port}, To: target}
+	multiAddresses, err := client.CloserPeers(context.Background(), path)
+	if err != nil {
+		return nil, err
+	}
+	return multiAddresses, nil
+}
+
 
 // Find a certain node by its address through the p2p network
 // Return its multi-adress
@@ -268,18 +323,21 @@ func (node *Node) FindNode(target string) (*rpc.MultiAddresses, error) {
 				return nil, nil
 			}
 
-			client := connectNode(context.Background(), ipAddress+":"+port)
-			path := &rpc.Path{From: &rpc.Node{Address: string(node.DHT.Address), Ip: node.ip, Port: node.port}, To: target}
-
 			if e.Next() == nil {
 				go func() {
-					multiAddresses, _ := client.CloserPeers(context.Background(), path)
+					multiAddresses, err := node.PeersNode(ipAddress+":"+port)
+					if err != nil {
+						log.Println(err)
+					}
 					wait <- multiAddresses.Multis
 					close(wait)
 				}()
 			} else {
 				go func() {
-					multiAddresses, _ := client.CloserPeers(context.Background(), path)
+					multiAddresses, err := node.PeersNode(ipAddress+":"+port)
+					if err != nil {
+						log.Println(err)
+					}
 					wait <- multiAddresses.Multis
 
 				}()
@@ -288,7 +346,7 @@ func (node *Node) FindNode(target string) (*rpc.MultiAddresses, error) {
 		}
 		nPeers := dht.RoutingBucket{list.List{}}
 
-		// Check if the node we get is closer than the first node
+		// Push all the node we get into a bucket
 		for closerNodes := range wait {
 			for _, address := range closerNodes {
 				multi, err := identity.NewMultiaddr(address)
@@ -298,13 +356,12 @@ func (node *Node) FindNode(target string) (*rpc.MultiAddresses, error) {
 				nPeers.PushFront(multi)
 			}
 		}
-
 		nPeers, err = dht.SortBucket(nPeers, identity.Address(target))
-
 		if err != nil {
 			return nil, err
 		}
 
+		// Check if we get closer node
 		newcloser, err := nPeers.Front().Value.(multiaddr.Multiaddr).ValueForProtocol(dht.RepublicCode)
 		if err != nil {
 			return nil, err
@@ -314,7 +371,6 @@ func (node *Node) FindNode(target string) (*rpc.MultiAddresses, error) {
 		}
 
 		peers = nPeers
-
 	}
 
 	return nil, nil

@@ -9,5 +9,5 @@ import (
 
 func TestGoSwarm(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "GoSwarm Suite")
+	RunSpecs(t, "Swarm Suite")
 }
