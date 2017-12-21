@@ -15,41 +15,27 @@ type Share struct {
 // Shares are a slice of Share structs.
 type Shares []Share
 
-// A Shamir struct hold the configuration details required to encode a secret
-// into N number of Share structs, where at least K Share structs can be used
-// to reconstruct the secret.
-type Shamir struct {
-	N     int64
-	K     int64
-	Prime *big.Int
-}
-
-// NewShamir returns a new Shamir struct. N represents the number of Share
-// structs that secrets will be encoded into, and K represents the number of
-// Share structs required to reconstruct the secret. Prime is used to define
-// the finite field from which secrets can be selected.
-func NewShamir(n int64, k int64, prime *big.Int) *Shamir {
-	return &Shamir{N: n, K: k, Prime: prime}
-}
-
-// Encode a secret into Shares.
-func (shamir *Shamir) Encode(secret *big.Int) (Shares, error) {
+// Split a secret into Shares. N represents the number of Shares that the
+// secret will be split into, and K represents the number of Share required to
+// reconstruct the secret. Prime is used to define the finite field from which
+// secrets can be selected. A slice of Shares, or an error, is returned.
+func Split(n int64, k int64, prime *big.Int, secret *big.Int) (Shares, error) {
 	// Validate the encoding by checking that N is greater than K, and that the
 	// secret is within the finite field.
-	if shamir.N < shamir.K {
-		return nil, NewNKError(shamir.N, shamir.K)
+	if n < k {
+		return nil, NewNKError(n, k)
 	}
-	if shamir.Prime.Cmp(secret) <= 0 {
+	if prime.Cmp(secret) <= 0 {
 		return nil, NewFiniteFieldError(secret)
 	}
 
 	// Generate K polynomial coefficients, where the first coefficient is the
 	// secret.
-	max := big.NewInt(0).Set(shamir.Prime)
+	max := big.NewInt(0).Set(prime)
 	max.Sub(max, big.NewInt(1))
-	coefficients := make([]*big.Int, shamir.K)
+	coefficients := make([]*big.Int, k)
 	coefficients[0] = secret
-	for i := int64(1); i < shamir.K; i++ {
+	for i := int64(1); i < k; i++ {
 		coefficient, err := rand.Int(rand.Reader, max)
 		if err != nil {
 			return nil, err
@@ -66,21 +52,21 @@ func (shamir *Shamir) Encode(secret *big.Int) (Shares, error) {
 	expMod := big.NewInt(0)
 
 	// Create N shares.
-	shares := make(Shares, shamir.N)
-	for x := int64(1); x <= shamir.N; x++ {
+	shares := make(Shares, n)
+	for x := int64(1); x <= n; x++ {
 		accum.Set(coefficients[0])
 		base.SetInt64(x)
 		exp.Set(base)
-		expMod.Mod(exp, shamir.Prime)
+		expMod.Mod(exp, prime)
 		// Evaluate the polyomial at x.
 		for _, coefficient := range coefficients[1:] {
 			co.Set(coefficient)
 			co.Mul(co, expMod)
-			co.Mod(co, shamir.Prime)
+			co.Mod(co, prime)
 			accum.Add(accum, co)
-			accum.Mod(accum, shamir.Prime)
+			accum.Mod(accum, prime)
 			exp.Mul(exp, base)
-			expMod.Mod(exp, shamir.Prime)
+			expMod.Mod(exp, prime)
 		}
 		shares[x-1] = Share{
 			Key:   x,
@@ -90,13 +76,15 @@ func (shamir *Shamir) Encode(secret *big.Int) (Shares, error) {
 	return shares, nil
 }
 
-// Decode a secret from Shares.
-func (shamir *Shamir) Decode(shares Shares) (*big.Int, error) {
+// Join Shares into a secret. K represents the number of Share required to
+// reconstruct the secret. Prime is used to define the finite field from which
+// the secret was selected. The reconstructed secret, or an error, is returned.
+func Join(k int64, prime *big.Int, shares Shares) (*big.Int, error) {
 	secret := big.NewInt(0)
 
 	// If we have more shares than necessary, take the first K shares.
-	if int64(len(shares)) > shamir.K {
-		shares = shares[:shamir.K]
+	if int64(len(shares)) > k {
+		shares = shares[:k]
 	}
 
 	// Setup big numbers so that we do not have to keep recreating them in each
@@ -122,16 +110,16 @@ func (shamir *Shamir) Decode(shares Shares) (*big.Int, error) {
 			nextNeg.SetInt64(0)
 			nextNeg.Sub(nextNeg, next)
 			num.Mul(num, nextNeg)
-			num.Mod(num, shamir.Prime)
+			num.Mod(num, prime)
 			nextDiff.Sub(start, next)
 			den.Mul(den, nextDiff)
-			den.Mod(den, shamir.Prime)
+			den.Mod(den, prime)
 		}
-		den.ModInverse(den, shamir.Prime)
+		den.ModInverse(den, prime)
 		value.Mul(shares[i].Value, num)
 		value.Mul(value, den)
 		secret.Add(secret, value)
-		secret.Mod(secret, shamir.Prime)
+		secret.Mod(secret, prime)
 	}
 
 	return secret, nil
