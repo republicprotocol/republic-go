@@ -15,9 +15,10 @@ import (
 
 // Peer implements the gRPC Peer service.
 type Peer struct {
-	Config      *Config
-	DHT         *dht.RoutingTable
-	Connections map[string]*grpc.ClientConn
+	KeyPair      identity.KeyPair
+	MultiAddress identity.MultiAddress
+	DHT          *dht.RoutingTable
+	Connections  map[string]*grpc.ClientConn
 }
 
 // NewPeer returns a Peer with the given Config, a new DHT, and a new set of grpc.Connections.
@@ -28,20 +29,21 @@ func NewPeer(config *Config) *Peer {
 	}
 
 	return &Peer{
-		Config:      config,
-		DHT:         rt,
-		Connections: map[string]*grpc.ClientConn{},
+		KeyPair:      config.KeyPair,
+		MultiAddress: config.MultiAddress,
+		DHT:          rt,
+		Connections:  map[string]*grpc.ClientConn{},
 	}
 }
 
 // StartListen starts the peer as a grpc server and listens for rpc calls
 func (peer *Peer) StartListening() error {
 	// listen to the tcp port
-	host, err := peer.Config.MultiAddress.ValueForProtocol(identity.IP4Code)
+	host, err := peer.MultiAddress.ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return err
 	}
-	port, err := peer.Config.MultiAddress.ValueForProtocol(identity.TCPCode)
+	port, err := peer.MultiAddress.ValueForProtocol(identity.TCPCode)
 	if err != nil {
 		return err
 	}
@@ -63,7 +65,7 @@ func (peer *Peer) Ping(ctx context.Context, multi *rpc.MultiAddress) (*rpc.Multi
 
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
-		return &rpc.MultiAddress{Multi: peer.Config.MultiAddress.String()}, err
+		return &rpc.MultiAddress{Multi: peer.MultiAddress.String()}, err
 	}
 
 	// Update the sending Peer in the routing table
@@ -71,7 +73,7 @@ func (peer *Peer) Ping(ctx context.Context, multi *rpc.MultiAddress) (*rpc.Multi
 		return nil, err
 	}
 
-	return &rpc.MultiAddress{Multi: peer.Config.MultiAddress.String()}, nil
+	return &rpc.MultiAddress{Multi: peer.MultiAddress.String()}, nil
 }
 
 // Peers is used to return the rpc.MultiAddresses to which a Peer is connected.
@@ -230,7 +232,7 @@ func (peer *Peer) PingPeer(address string) (*rpc.MultiAddress, error) {
 	client := rpc.NewPeerClient(peer.Connections[address])
 	defer peer.CloseConnection(address)
 
-	pong, err := client.Ping(context.Background(), &rpc.MultiAddress{Multi: peer.Config.MultiAddress.String()})
+	pong, err := client.Ping(context.Background(), &rpc.MultiAddress{Multi: peer.MultiAddress.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +271,7 @@ func (peer *Peer) FindPeer(target identity.Address) (*rpc.MultiAddresses, error)
 	if err != nil {
 		return nil, err
 	}
-	visited := map[identity.MultiAddress]bool{peer.Config.MultiAddress: true}
+	visited := map[identity.MultiAddress]bool{peer.MultiAddress: true}
 
 	for {
 		// Check if we know any peers
