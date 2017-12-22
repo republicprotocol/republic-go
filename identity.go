@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/jbenet/go-base58"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
 )
 
@@ -54,7 +53,7 @@ func (keyPair KeyPair) PublicAddress() Address {
 	// first two byte represent the hash function and length of the ID
 	hash[0], hash[1] = multihash.KECCAK_256, IDLength
 	hash = append(hash, id...)
-	return Address(base58.Encode(hash))
+	return Address(base58.EncodeAlphabet(hash, base58.BTCAlphabet))
 }
 
 // IDLength is the number of bytes in an ID.
@@ -88,7 +87,7 @@ func NewAddress() (Address, error) {
 	return keyPair.PublicAddress(), nil
 }
 
-// Use xor to calculate distance between two Addresses
+// Distance use a bitwise XOR to calculate distance between two Addresses.
 func (address Address) Distance(other Address) ([]byte, error) {
 
 	// Check the length of both addresses
@@ -97,11 +96,11 @@ func (address Address) Distance(other Address) ([]byte, error) {
 	}
 
 	// Decode both addresses into bytes
-	idByte := base58.Decode(string(address))
+	idByte := base58.DecodeAlphabet(string(address), base58.BTCAlphabet)
 	if len(idByte) == 0 {
 		return nil, ErrFailToDecode
 	}
-	otherByte := base58.Decode(string(other))
+	otherByte := base58.DecodeAlphabet(string(other), base58.BTCAlphabet)
 	if len(otherByte) == 0 {
 		return nil, ErrFailToDecode
 	}
@@ -143,8 +142,8 @@ func (address Address) SamePrefixLen(other Address) (int, error) {
 
 // MultiAddress returns the Republic multi address of the address.
 // So that we can join it with other multiaddress
-func (address Address) MultiAddress() (multiaddr.Multiaddr, error) {
-	return multiaddr.NewMultiaddr(fmt.Sprintf("/republic/%s", string(address)))
+func (address Address) MultiAddress() (MultiAddress, error) {
+	return NewMultiAddress(fmt.Sprintf("/republic/%s", string(address)))
 }
 
 // Closer returns true if address1 is closer to the target than

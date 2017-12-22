@@ -2,12 +2,12 @@ package identity
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 
-	multiaddr "github.com/multiformats/go-multiaddr"
-	multihash "github.com/multiformats/go-multihash"
-	"encoding/json"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multihash"
 )
 
 // Codes for extracting specific protocol values from a multiaddress.
@@ -30,6 +30,7 @@ func init() {
 	multiaddr.AddProtocol(republic)
 }
 
+// MultiAddress is an alias.
 type MultiAddress struct {
 	multiaddr.Multiaddr
 }
@@ -49,21 +50,21 @@ func (multiAddr MultiAddress) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Empty MultiAddress
+// EmptyMultiAddress is the empty address.
 var EmptyMultiAddress = MultiAddress{}
 
 // NewMultiAddress parses and validates an input string, returning a
 // MultiAddress. It returns a MultiAddress or an error.
 func NewMultiAddress(s string) (MultiAddress, error) {
 	multiAddr, err := multiaddr.NewMultiaddr(s)
-	return MultiAddress{multiAddr},err
+	return MultiAddress{multiAddr}, err
 }
 
 // NewMultiAddressBytes initializes a MultiAddress from a byte representation.
 // It returns a MultiAddress or an error.
 func NewMultiAddressBytes(b []byte) (MultiAddress, error) {
 	multiAddr, err := multiaddr.NewMultiaddrBytes(b)
-	return MultiAddress{multiAddr},err
+	return MultiAddress{multiAddr}, err
 }
 
 // ProtocolWithName returns the Protocol description with given string name.
