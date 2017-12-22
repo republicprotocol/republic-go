@@ -76,16 +76,11 @@ func Split(n int64, k int64, prime *big.Int, secret *big.Int) (Shares, error) {
 	return shares, nil
 }
 
-// Join Shares into a secret. K represents the number of Share required to
-// reconstruct the secret. Prime is used to define the finite field from which
-// the secret was selected. The reconstructed secret, or an error, is returned.
-func Join(k int64, prime *big.Int, shares Shares) (*big.Int, error) {
+// Join Shares into a secret. Prime is used to define the finite field from
+// which the secret was selected. The reconstructed secret, or an error, is
+// returned.
+func Join(prime *big.Int, shares Shares) (*big.Int, error) {
 	secret := big.NewInt(0)
-
-	// If we have more shares than necessary, take the first K shares.
-	if int64(len(shares)) > k {
-		shares = shares[:k]
-	}
 
 	// Setup big numbers so that we do not have to keep recreating them in each
 	// loop.
