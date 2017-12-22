@@ -45,7 +45,7 @@ func generatePeers() ([]*Peer, error) {
 func sendMessages(peers []*Peer) error {
 	for i := 0; i < numberOfMessages; i++ {
 		left, right := randomPeers(peers)
-		if err := sendMessage(left, right.Config.MultiAddress); err != nil {
+		if err := sendMessage(left, right.MultiAddress); err != nil {
 			return err
 		}
 	}

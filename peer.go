@@ -265,7 +265,6 @@ func (peer *Peer) AskPeers(address string) (*rpc.MultiAddresses, error) {
 // Find a certain node by its republic address through the p2p network
 // Return its multiAdress
 func (peer *Peer) FindPeer(target identity.Address) (*rpc.MultiAddresses, error) {
-	log.Println("start finding ")
 	// Find closest peers we know from the routing table
 	peers, err := peer.DHT.FindPeer(identity.Address(target))
 	if err != nil {
@@ -278,7 +277,6 @@ func (peer *Peer) FindPeer(target identity.Address) (*rpc.MultiAddresses, error)
 		if peers.Front() == nil {
 			return nil, errors.New("can't find the target from the known peers")
 		}
-		log.Println("start finding ")
 		// Check if we find the peer
 		for e := peers.Front(); e != nil; e = e.Next() {
 			rAddress, err := e.Value.(identity.MultiAddress).ValueForProtocol(identity.RepublicCode)

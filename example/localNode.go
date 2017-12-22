@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"github.com/republicprotocol/go-swarm/rpc"
 )
 
 // Declare command line arguments.
@@ -32,6 +33,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	peer := swarm.NewPeer(&swarm.Config{
+		KeyPair:      keyPair,
+		MultiAddress: multiAddress,
+		Peers:        make([]identity.MultiAddress, 0, 100),
+	})
+
 	log.Println("Republic address:", keyPair.PublicAddress())
 
 	// listen to the tcp port
@@ -40,13 +48,10 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
+	rpc.RegisterPeerServer(s,peer)
 	// Create gRPC services.
 
-	peer := swarm.NewPeer(&swarm.Config{
-		KeyPair:      keyPair,
-		MultiAddress: multiAddress,
-		Peers:        make([]identity.MultiAddress, 0, 100),
-	})
+
 
 	// Register reflection service on gRPC server.
 	reflection.Register(s)

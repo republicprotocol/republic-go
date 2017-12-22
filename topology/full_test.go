@@ -28,7 +28,7 @@ var _ = Describe("Star topologies", func() {
 				if i == j {
 					continue
 				}
-				peers[i].Config.Peers = append(peers[i].Config.Peers, peers[j].Config.MultiAddress)
+				peers[i].Peers = append(peers[i].Config.Peers, peers[j].Config.MultiAddress)
 			}
 		}
 
