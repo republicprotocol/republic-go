@@ -69,7 +69,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 				for index := range indices {
 					kShares[index] = shares[index]
 				}
-				decodedSecret, err := Join(K, prime, kShares)
+				decodedSecret, err := Join(prime, kShares)
 				Ω(err).Should(BeNil())
 				Ω(decodedSecret.Cmp(secret)).Should(Equal(0))
 			}
@@ -104,7 +104,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 				for index := range indices {
 					kShares[index] = shares[index]
 				}
-				decodedSecret, err := Join(K, prime, kShares)
+				decodedSecret, err := Join(prime, kShares)
 				Ω(err).Should(BeNil())
 				Ω(decodedSecret.Cmp(secret)).ShouldNot(Equal(0))
 			}

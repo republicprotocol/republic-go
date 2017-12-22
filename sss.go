@@ -31,8 +31,7 @@ func Split(n int64, k int64, prime *big.Int, secret *big.Int) (Shares, error) {
 
 	// Generate K polynomial coefficients, where the first coefficient is the
 	// secret.
-	max := big.NewInt(0).Set(prime)
-	max.Sub(max, big.NewInt(1))
+	max := big.NewInt(0).Sub(prime, big.NewInt(1))
 	coefficients := make([]*big.Int, k)
 	coefficients[0] = secret
 	for i := int64(1); i < k; i++ {
