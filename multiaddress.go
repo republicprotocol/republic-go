@@ -35,6 +35,9 @@ type MultiAddress struct {
 	multiaddr.Multiaddr
 }
 
+// MultiAddresses is an alias.
+type MultiAddresses []MultiAddress
+
 // MarshalJSON implements the json.Marshaler interface.
 func (multiAddr MultiAddress) MarshalJSON() ([]byte, error) {
 	return json.Marshal(multiAddr.String())
