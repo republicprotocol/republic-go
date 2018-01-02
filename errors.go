@@ -11,3 +11,13 @@ func NewErrIndexOutOfRange(i int) error {
 func (err ErrIndexOutOfRange) Error() string {
 	return string(err)
 }
+
+type ErrFullBucket string
+
+func NewErrFullBucket() error {
+	return ErrFullBucket("bucket is full")
+}
+
+func (err ErrFullBucket) Error() string {
+	return string(err)
+}

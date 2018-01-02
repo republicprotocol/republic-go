@@ -22,31 +22,48 @@ type DHT struct {
 }
 
 // NewDHT returns a new DHT with the given Address, and empty Buckets.
-func NewDHT(address identity.Address) *DHT {
-	return &DHT{
+func NewDHT(address identity.Address) DHT {
+	return DHT{
 		Address: address,
 		Buckets: [IDLengthInBits]Bucket{},
 	}
 }
 
-// Find the MultiAddress associated with the target Address. If the target
-// Address is not in the DHT, nil is returned.
+// Update the target identity.MultiAddress by adding it to its respective
+// Bucket. Returns an error if the Bucket is full, or any error that happens
+// while finding the respective Bucket.
+func (dht *DHT) Update(target identity.MultiAddress) error {
+	address, err := target.Address()
+	if err != nil {
+		return err
+	}
+	bucket, err := dht.Bucket(address)
+	if err != nil {
+		return err
+	}
+	if bucket.IsFull() {
+		return NewErrFullBucket()
+	}
+	bucket[address] = target
+	return nil
+}
+
+// Find the identity.MultiAddress associated with the target identity.Address.
+// Returns nil if the target is not in the DHT, or an error.
 func (dht *DHT) Find(target identity.Address) (*identity.MultiAddress, error) {
-	same, err := dht.Address.SamePrefixLen(target)
+	bucket, err := dht.Bucket(address)
 	if err != nil {
 		return nil, err
 	}
-	index := len(dht.Buckets) - same - 1
-	if index < 0 || index > len(dht.Buckets)-1 {
-		return nil, NewErrIndexOutOfRange(index)
-	}
-	return dht.Buckets[index].Find(target), nil
+	return bucket.Find(target), nil
 }
 
-// FindNeighborhood returns the MultiAddresses in the same Bucket as the target
-// Address. It also returns MultiAddresses in Buckets within the neighborhood
-// of the target Bucket.
+// FindNeighborhood returns the identity.MultiAddresses in the same Bucket as
+// the target identity.Address. It also returns identity.MultiAddresses in
+// Buckets within the neighborhood of the target Bucket.
 func (dht *DHT) FindNeighborhood(target identity.Address, neighborhood uint) (identity.MultiAddresses, error) {
+
+	// Find the index range of the neighborhood.
 	same, err := dht.Address.SamePrefixLen(target)
 	if err != nil {
 		return nil, err
@@ -64,10 +81,13 @@ func (dht *DHT) FindNeighborhood(target identity.Address, neighborhood uint) (id
 		end = len(dht.Buckets)
 	}
 
+	// Get the total number of identity.MultiAddresses in the neighborhood.
 	numMultis := 0
 	for i := start; i < end; i++ {
 		numMultis += len(dht.Buckets[i])
 	}
+
+	// Fill out a perfectly sized slice.
 	m := 0
 	multis := make(identity.MultiAddresses, numMultis)
 	for i := start; i < end; i++ {
@@ -111,6 +131,20 @@ func (dht *DHT) MultiAddresses() identity.MultiAddresses {
 		}
 	}
 	return peers
+}
+
+// Bucket returns the respective Bucket for the target identity.Address, or an
+// error.
+func (dht *DHT) Bucket(target identity.Address) (*Bucket, error) {
+	same, err := dht.Address.SamePrefixLen(target)
+	if err != nil {
+		return nil, err
+	}
+	index := len(dht.Buckets) - same - 1
+	if index < 0 || index > len(dht.Buckets)-1 {
+		return nil, NewErrIndexOutOfRange(index)
+	}
+	return &dht.Buckets[index], nil
 }
 
 // Bucket is a mapping of Addresses to Entries. In standard Kademlia, a list is
