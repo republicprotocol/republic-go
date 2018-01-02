@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/republicprotocol/go-identity"
-
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
 )
@@ -42,8 +40,8 @@ type MultiAddresses []MultiAddress
 
 // Address returns the Republic Address of a MultiAddress, or an error.
 func (multiAddr MultiAddress) Address() (Address, error) {
-	addr, err := multiAddr.ValueForProtocol(identity.RepublicCode)
-	return identity.Address(addr), err
+	addr, err := multiAddr.ValueForProtocol(RepublicCode)
+	return Address(addr), err
 }
 
 // MarshalJSON implements the json.Marshaler interface.
