@@ -14,6 +14,7 @@ import (
 
 // Node implements the gRPC Node service.
 type Node struct {
+	*grpc.Server
 	KeyPair      identity.KeyPair
 	MultiAddress identity.MultiAddress
 	DHT          dht.DHT
@@ -28,14 +29,15 @@ func NewNode(config *Config) (*Node, error) {
 		}
 	}
 	return &Node{
+		Server:       grpc.NewServer(),
 		KeyPair:      config.KeyPair,
 		MultiAddress: config.MultiAddress,
 		DHT:          dht,
 	}, nil
 }
 
-// StartListening starts a gRPC server.
-func (node *Node) StartListening() error {
+// Serve starts the gRPC server.
+func (node *Node) Serve() error {
 	host, err := node.MultiAddress.ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return err
@@ -48,9 +50,8 @@ func (node *Node) StartListening() error {
 	if err != nil {
 		return err
 	}
-	server := grpc.NewServer()
-	rpc.RegisterNodeServer(server, node)
-	return server.Serve(listener)
+	rpc.RegisterNodeServer(node.Server, node)
+	return node.Server.Serve(listener)
 }
 
 // Ping is used to test the connection to the Node and exchange MultiAddresses.
@@ -149,8 +150,9 @@ func (node *Node) ping(peer *rpc.MultiAddress) error {
 		if pruned {
 			return node.DHT.Update(multi)
 		}
+		return nil
 	}
-	return nil
+	return err
 }
 
 func (node *Node) peers() *rpc.MultiAddresses {
@@ -173,22 +175,22 @@ func (node *Node) pruneUnhealthyPeer(target identity.Address) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	for i := len(bucket) - 1; i >= 0; i-- {
-		client, err := NewNodeClient(bucket[i].MultiAddress)
+	for i := len(*bucket) - 1; i >= 0; i-- {
+		client, conn, err := NewNodeClient((*bucket)[i].MultiAddress)
 		if err != nil {
 			if err == context.DeadlineExceeded {
 				return true, nil
 			}
 			return false, err
 		}
-		peer, err := client.Ping(context.Background(), &rpc.MultiAddress{Multi: node.MultiAddress.String()})
+		defer conn.Close()
+		_, err = client.Ping(context.Background(), &rpc.MultiAddress{Multi: node.MultiAddress.String()})
 		if err != nil {
 			if err == context.DeadlineExceeded {
 				return true, nil
 			}
 			return false, err
 		}
-		node.ping(peer)
 	}
 	return false, nil
 }

@@ -17,7 +17,7 @@ import (
 var μ *sync.Mutex = new(sync.Mutex)
 
 // The number of nodes that should be included in each topology test.
-var numberOfNodes = 100
+var numberOfNodes = 40
 
 // The number of messages that will be sent through the topology.
 var numberOfMessages = 100
@@ -39,7 +39,7 @@ func generateNodes() ([]*Node, error) {
 		node, err := NewNode(&Config{
 			KeyPair:      keyPair,
 			MultiAddress: multiAddress,
-			Peers:        make([]identity.MultiAddress, 0, numberOfNodes-1),
+			Peers:        make(identity.MultiAddresses, 0, numberOfNodes-1),
 		})
 		if err != nil {
 			return nil, err
@@ -60,7 +60,8 @@ func sendMessages(nodes []*Node) error {
 }
 
 func sendMessage(from identity.MultiAddress, to identity.MultiAddress) error {
-	client, err := NewNodeClient(from)
+	client, conn, err := NewNodeClient(from)
+	defer conn.Close()
 	if err != nil {
 		return err
 	}
@@ -68,11 +69,11 @@ func sendMessage(from identity.MultiAddress, to identity.MultiAddress) error {
 	if err != nil {
 		return err
 	}
-	client.Send(context.Background(), &rpc.Payload{
-		To:   address.String(),
+	_, err = client.Send(context.Background(), &rpc.Payload{
+		To:   string(address),
 		Data: "message",
 	})
-	return nil
+	return err
 }
 
 func randomNodes(nodes []*Node) (*Node, *Node) {
