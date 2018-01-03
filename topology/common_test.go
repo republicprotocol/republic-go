@@ -1,20 +1,23 @@
 package topology_test
 
 import (
+	"context"
 	"fmt"
-	"github.com/republicprotocol/go-identity"
-	. "github.com/republicprotocol/go-swarm"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/republicprotocol/go-identity"
+	. "github.com/republicprotocol/go-swarm"
+	"github.com/republicprotocol/go-swarm/rpc"
 )
 
 // μ prevents multiple topology tests running in parallel. This is needed to
 // protect overlapping ports during tests.
 var μ *sync.Mutex = new(sync.Mutex)
 
-// The number of peers that should be included in each topology test.
-var numberOfPeers = 100
+// The number of nodes that should be included in each topology test.
+var numberOfNodes = 100
 
 // The number of messages that will be sent through the topology.
 var numberOfMessages = 100
@@ -22,9 +25,9 @@ var numberOfMessages = 100
 // The duration to wait for peers to start listening for RPCs.
 var startTimeDelay = time.Second
 
-func generatePeers() ([]*Peer, error) {
-	peers := make([]*Peer, numberOfPeers)
-	for i := 0; i < numberOfPeers; i++ {
+func generateNodes() ([]*Node, error) {
+	nodes := make([]*Node, numberOfNodes)
+	for i := 0; i < numberOfNodes; i++ {
 		keyPair, err := identity.NewKeyPair()
 		if err != nil {
 			return nil, err
@@ -33,35 +36,50 @@ func generatePeers() ([]*Peer, error) {
 		if err != nil {
 			return nil, err
 		}
-		peers[i] = NewPeer(&Config{
+		node, err := NewNode(&Config{
 			KeyPair:      keyPair,
 			MultiAddress: multiAddress,
-			Peers:        make([]identity.MultiAddress, 0, numberOfPeers-1),
+			Peers:        make([]identity.MultiAddress, 0, numberOfNodes-1),
 		})
+		if err != nil {
+			return nil, err
+		}
+		nodes[i] = node
 	}
-	return peers, nil
+	return nodes, nil
 }
 
-func sendMessages(peers []*Peer) error {
+func sendMessages(nodes []*Node) error {
 	for i := 0; i < numberOfMessages; i++ {
-		left, right := randomPeers(peers)
-		if err := sendMessage(left, right.MultiAddress); err != nil {
+		left, right := randomNodes(nodes)
+		if err := sendMessage(left.MultiAddress, right.MultiAddress); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func sendMessage(from *Peer, to identity.MultiAddress) error {
-	_, err := from.SendFragment(to)
-	return err
+func sendMessage(from identity.MultiAddress, to identity.MultiAddress) error {
+	client, err := NewNodeClient(from)
+	if err != nil {
+		return err
+	}
+	address, err := to.Address()
+	if err != nil {
+		return err
+	}
+	client.Send(context.Background(), &rpc.Payload{
+		To:   address.String(),
+		Data: "message",
+	})
+	return nil
 }
 
-func randomPeers(peers []*Peer) (*Peer, *Peer) {
-	left := rand.Intn(len(peers))
-	right := rand.Intn(len(peers))
+func randomNodes(nodes []*Node) (*Node, *Node) {
+	left := rand.Intn(len(nodes))
+	right := rand.Intn(len(nodes))
 	for left == right {
-		right = rand.Intn(len(peers))
+		right = rand.Intn(len(nodes))
 	}
-	return peers[left], peers[right]
+	return nodes[left], nodes[right]
 }

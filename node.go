@@ -20,16 +20,18 @@ type Node struct {
 }
 
 // NewNode returns a Node with the given Config, a new DHT, and a new set of grpc.Connections.
-func NewNode(config *Config) *Node {
+func NewNode(config *Config) (*Node, error) {
 	dht := dht.NewDHT(config.KeyPair.PublicAddress())
 	for _, peer := range config.Peers {
-		dht.Update(peer)
+		if err := dht.Update(peer); err != nil {
+			return nil, err
+		}
 	}
 	return &Node{
 		KeyPair:      config.KeyPair,
 		MultiAddress: config.MultiAddress,
 		DHT:          dht,
-	}
+	}, nil
 }
 
 // StartListening starts a gRPC server.
@@ -60,15 +62,15 @@ func (node *Node) Ping(ctx context.Context, peer *rpc.MultiAddress) (*rpc.MultiA
 	}
 
 	// Spawn a goroutine to evaluate the return value.
-	wait := make(chan *rpc.MultiAddresses)
+	wait := make(chan error)
 	go func() {
 		defer close(wait)
-		node.ping(peer)
+		wait <- node.ping(peer)
 	}()
 
 	select {
-	case <-wait:
-		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, nil
+	case ret := <-wait:
+		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, ret
 
 	// Select the timeout from the context.
 	case <-ctx.Done():
@@ -109,7 +111,7 @@ func (node *Node) Send(ctx context.Context, payload *rpc.Payload) (*rpc.Nothing,
 	}
 
 	// Spawn a goroutine to evaluate the return value.
-	wait := make(chan *rpc.MultiAddresses)
+	wait := make(chan error)
 	go func() {
 		defer close(wait)
 		wait <- node.send(payload)
@@ -122,17 +124,71 @@ func (node *Node) Send(ctx context.Context, payload *rpc.Payload) (*rpc.Nothing,
 
 	// Select the value passed by the goroutine.
 	case ret := <-wait:
+		if ret != nil {
+			return &rpc.Nothing{}, ret
+		}
 		return &rpc.Nothing{}, nil
 	}
 }
 
-func (node *Node) ping(peer *rpc.MultiAddress) {
-	node.DHT.Update(peer.Multi)
+func (node *Node) ping(peer *rpc.MultiAddress) error {
+	multi, err := identity.NewMultiAddress(peer.Multi)
+	if err != nil {
+		return err
+	}
+	err = node.DHT.Update(multi)
+	if err == dht.ErrFullBucket {
+		address, err := multi.Address()
+		if err != nil {
+			return err
+		}
+		pruned, err := node.pruneUnhealthyPeer(address)
+		if err != nil {
+			return err
+		}
+		if pruned {
+			return node.DHT.Update(multi)
+		}
+	}
+	return nil
 }
 
 func (node *Node) peers() *rpc.MultiAddresses {
-	return &rpc.MultiAddresses{}
+	multis := node.DHT.MultiAddresses()
+	ret := &rpc.MultiAddresses{
+		Multis: make([]*rpc.MultiAddress, len(multis)),
+	}
+	for i, multi := range multis {
+		ret.Multis[i] = &rpc.MultiAddress{Multi: multi.String()}
+	}
+	return ret
 }
 
-func (node *Node) send() {
+func (node *Node) send(payload *rpc.Payload) error {
+	return nil
+}
+
+func (node *Node) pruneUnhealthyPeer(target identity.Address) (bool, error) {
+	bucket, err := node.DHT.Bucket(target)
+	if err != nil {
+		return false, err
+	}
+	for i := len(bucket) - 1; i >= 0; i-- {
+		client, err := NewNodeClient(bucket[i].MultiAddress)
+		if err != nil {
+			if err == context.DeadlineExceeded {
+				return true, nil
+			}
+			return false, err
+		}
+		peer, err := client.Ping(context.Background(), &rpc.MultiAddress{Multi: node.MultiAddress.String()})
+		if err != nil {
+			if err == context.DeadlineExceeded {
+				return true, nil
+			}
+			return false, err
+		}
+		node.ping(peer)
+	}
+	return false, nil
 }

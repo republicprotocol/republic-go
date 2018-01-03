@@ -18,7 +18,7 @@ service Node {
 
 // A Payload is a message containing application-specific data.
 message Payload {
-  string id = 1;
+  string to = 1;
   string data = 2;
 }
 
