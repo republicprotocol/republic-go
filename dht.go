@@ -32,9 +32,9 @@ func NewDHT(address identity.Address) DHT {
 
 // Update an identity.MultiAddress by adding it to its respective Bucket.
 // Returns an error if the Bucket is full, or any error that happens while
-// finding the respective Bucket.
-func (dht *DHT) Update(multiAddr identity.MultiAddress) error {
-	target, err := multiAddr.Address()
+// finding the required Bucket.
+func (dht *DHT) Update(multi identity.MultiAddress) error {
+	target, err := multi.Address()
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func (dht *DHT) Update(multiAddr identity.MultiAddress) error {
 	if bucket.IsFull() {
 		return ErrFullBucket
 	}
-	*bucket = append(*bucket, Entry{multiAddr, time.Now()})
+	*bucket = append(*bucket, Entry{multi, time.Now()})
 	return nil
 }
 
@@ -57,6 +57,13 @@ func (dht *DHT) Find(target identity.Address) (*identity.MultiAddress, error) {
 		return nil, err
 	}
 	return bucket.Find(target), nil
+}
+
+// FindBucket uses the target identity.Address and returns the respective
+// Bucket. The target does not have to be in the DHT. Returns the Bucket, or an
+// error.
+func (dht *DHT) FindBucket(target identity.Address) (*Bucket, error) {
+	return dht.Bucket(target)
 }
 
 // FindNeighborhood returns the identity.MultiAddresses in the same Bucket as
