@@ -9,8 +9,9 @@ import (
 
 // Constants for use in the DHT.
 const (
-	MaxBucketSize  = 20
 	IDLengthInBits = identity.IDLength * 8
+	MaxBucketSize  = 20
+	MaxDHTSize     = IDLengthInBits * MaxBucketSize
 )
 
 // A DHT is a Distributed Hash Table. Each instance has an Address, and several
