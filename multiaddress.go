@@ -13,8 +13,8 @@ import (
 // Codes for extracting specific protocol values from a multiaddress.
 const (
 	IP4Code      = 0x0004
-	TCPCode      = 0x0006
 	IP6Code      = 0x0029
+	TCPCode      = 0x0006
 	RepublicCode = 0x0065
 )
 
