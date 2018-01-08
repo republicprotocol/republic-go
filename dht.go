@@ -9,8 +9,8 @@ import (
 
 // Constants for use in the DHT.
 const (
-	IDLengthInBits  = identity.IDLength * 8
-	MaxBucketLength = 20
+	MaxBucketSize  = 20
+	IDLengthInBits = identity.IDLength * 8
 )
 
 // A DHT is a Distributed Hash Table. Each instance has an Address, and several
@@ -157,7 +157,7 @@ func (bucket Bucket) Sort() {
 // IsFull returns true if, and only if, the number of Entries in the Bucket is
 // equal to the maximum number of Entries allowed.
 func (bucket Bucket) IsFull() bool {
-	return len(bucket) == MaxBucketLength
+	return len(bucket) == MaxBucketSize
 }
 
 // An Entry in a Bucket. It holds a MultiAddress, and a timestamp for when it
