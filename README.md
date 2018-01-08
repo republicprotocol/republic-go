@@ -50,7 +50,7 @@ Republic multi-addresses are a form of network address that can represent multip
 ```go
 keyPair, err := identity.NewKeyPair()
 multi, err := keyPair.MultiAddress()
-multi, err = idendity.NewMultiAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/80/republic/%s", multi.String())
+multi, err = identity.NewMultiAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/80/republic/%s", multi.String())
 fmt.Println(multi.String())
 fmt.Println(multi.ValueForProtocol(identity.RepublicCode))
 fmt.Println(multi.ValueForProtocol(identity.IP4Code))
