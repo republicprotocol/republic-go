@@ -9,7 +9,7 @@ import (
 
 var _ = Describe("Republic identity", func() {
 
-	Describe("Key Pair", func() {
+	Describe("Key pairs", func() {
 		Context("generating a new key pair", func() {
 			keyPair, err := identity.NewKeyPair()
 
@@ -30,7 +30,7 @@ var _ = Describe("Republic identity", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			id := keyPair.PublicID()
+			id := keyPair.ID()
 
 			It("should return 20 bytes", func() {
 				Ω(len(id)).Should(Equal(identity.IDLength))
@@ -44,7 +44,7 @@ var _ = Describe("Republic identity", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			address := keyPair.PublicAddress()
+			address := keyPair.Address()
 
 			It("should have a length of 30", func() {
 				Ω(len(address)).Should(Equal(identity.AddressLength))
@@ -63,7 +63,7 @@ var _ = Describe("Republic identity", func() {
 			})
 
 			It("should be a base58 encoding of its public ID after the first two bytes", func() {
-				Ω(decoded[2:]).Should(Equal([]byte(keyPair.PublicID())))
+				Ω(decoded[2:]).Should(Equal([]byte(keyPair.ID())))
 			})
 		})
 
@@ -71,7 +71,7 @@ var _ = Describe("Republic identity", func() {
 
 	Describe("Republic ID", func() {
 		Context("generating a new ID", func() {
-			id, err := identity.NewID()
+			id, _, err := identity.NewID()
 			It("should not error", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
@@ -83,7 +83,7 @@ var _ = Describe("Republic identity", func() {
 
 	Describe(" Republic Address", func() {
 		Context("generating a new address", func() {
-			address, err := identity.NewAddress()
+			address, _, err := identity.NewAddress()
 			It("should not error", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
@@ -143,24 +143,24 @@ var _ = Describe("Republic identity", func() {
 			address2 := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBgikU")
 
 			Specify("we should get same result even if we swap the variable", func() {
-				same1, err := address1.SamePrefixLen(address2)
+				same1, err := address1.SamePrefixLength(address2)
 				Ω(err).ShouldNot(HaveOccurred())
-				same2, err := address2.SamePrefixLen(address1)
+				same2, err := address2.SamePrefixLength(address1)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(same1).Should(Equal(same2))
 			})
 
 			Specify("same prefix of itself should be length bits", func() {
-				same1, err := address1.SamePrefixLen(address1)
+				same1, err := address1.SamePrefixLength(address1)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(same1).Should(Equal(identity.IDLength * 8))
-				same2, err := address2.SamePrefixLen(address2)
+				same2, err := address2.SamePrefixLength(address2)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(same2).Should(Equal(identity.IDLength * 8))
 			})
 
 			It("should produce the right result", func() {
-				same, err := address1.SamePrefixLen(address2)
+				same, err := address1.SamePrefixLength(address2)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(same).Should(Equal(0))
 			})
@@ -172,14 +172,14 @@ var _ = Describe("Republic identity", func() {
 			target := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBgikU")
 
 			Specify("no one should be closer to the target than the target itself", func() {
-				randomAddress, err := identity.NewAddress()
+				randomAddress, _, err := identity.NewAddress()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(identity.Closer(address1, randomAddress, address1)).Should(BeTrue())
 				Ω(identity.Closer(randomAddress, address1, randomAddress)).Should(BeTrue())
 			})
 
 			It("should get different result if we swap the two addresses", func() {
-				randomAddress, err := identity.NewAddress()
+				randomAddress, _, err := identity.NewAddress()
 				Ω(err).ShouldNot(HaveOccurred())
 				isAddress1Closer, err := identity.Closer(address1, randomAddress, target)
 				Ω(err).ShouldNot(HaveOccurred())
