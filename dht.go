@@ -1,6 +1,7 @@
 package dht
 
 import (
+	"sort"
 	"time"
 
 	"github.com/republicprotocol/go-identity"
@@ -29,29 +30,29 @@ func NewDHT(address identity.Address) DHT {
 	}
 }
 
-// Update the target identity.MultiAddress by adding it to its respective
-// Bucket. Returns an error if the Bucket is full, or any error that happens
-// while finding the respective Bucket.
-func (dht *DHT) Update(target identity.MultiAddress) error {
-	address, err := target.Address()
+// Update an identity.MultiAddress by adding it to its respective Bucket.
+// Returns an error if the Bucket is full, or any error that happens while
+// finding the respective Bucket.
+func (dht *DHT) Update(multiAddr identity.MultiAddress) error {
+	target, err := multiAddr.Address()
 	if err != nil {
 		return err
 	}
-	bucket, err := dht.Bucket(address)
+	bucket, err := dht.Bucket(target)
 	if err != nil {
 		return err
 	}
 	if bucket.IsFull() {
-		return NewErrFullBucket()
+		return ErrFullBucket
 	}
-	bucket[address] = target
+	*bucket = append(*bucket, Entry{multiAddr, time.Now()})
 	return nil
 }
 
 // Find the identity.MultiAddress associated with the target identity.Address.
 // Returns nil if the target is not in the DHT, or an error.
 func (dht *DHT) Find(target identity.Address) (*identity.MultiAddress, error) {
-	bucket, err := dht.Bucket(address)
+	bucket, err := dht.Bucket(target)
 	if err != nil {
 		return nil, err
 	}
@@ -64,13 +65,13 @@ func (dht *DHT) Find(target identity.Address) (*identity.MultiAddress, error) {
 func (dht *DHT) FindNeighborhood(target identity.Address, neighborhood uint) (identity.MultiAddresses, error) {
 
 	// Find the index range of the neighborhood.
-	same, err := dht.Address.SamePrefixLen(target)
+	same, err := dht.Address.SamePrefixLength(target)
 	if err != nil {
 		return nil, err
 	}
 	index := len(dht.Buckets) - same - 1
 	if index < 0 || index > len(dht.Buckets)-1 {
-		return nil, NewErrIndexOutOfRange(index)
+		panic("runtime error: index out of range")
 	}
 	start := index - int(neighborhood)
 	if start < 0 {
@@ -88,80 +89,69 @@ func (dht *DHT) FindNeighborhood(target identity.Address, neighborhood uint) (id
 	}
 
 	// Fill out a perfectly sized slice.
-	m := 0
+	i := 0
 	multis := make(identity.MultiAddresses, numMultis)
-	for i := start; i < end; i++ {
-		for j := range dht.Buckets[i] {
-			multis[m] = dht.Buckets[i][j].MultiAddress
-			m++
+	for _, bucket := range dht.Buckets[start:end] {
+		for _, entry := range bucket {
+			multis[i] = entry.MultiAddress
+			i++
 		}
 	}
 	return multis, nil
 }
 
-// Entries returns all Entries from all Buckets in the DHT.
-func (dht *DHT) Entries() Entries {
-	numEntries := 0
-	for _, bucket := range dht.Buckets {
-		numEntries += len(bucket)
-	}
-	i := 0
-	entries := make(Entries, numEntries)
-	for _, bucket := range dht.Buckets {
-		for j := range bucket {
-			entries[i] = bucket[j]
-			i++
-		}
-	}
-	return entries
-}
-
 // MultiAddresses returns all MultiAddresses from all Buckets in the DHT.
 func (dht *DHT) MultiAddresses() identity.MultiAddresses {
-	numPeers := 0
+	numMultis := 0
 	for _, bucket := range dht.Buckets {
-		numPeers += len(bucket)
+		numMultis += len(bucket)
 	}
 	i := 0
-	peers := make(identity.MultiAddresses, numPeers)
+	multis := make(identity.MultiAddresses, numMultis)
 	for _, bucket := range dht.Buckets {
-		for j := range bucket {
-			peers[i] = bucket[j].MultiAddress
+		for _, entry := range bucket {
+			multis[i] = entry.MultiAddress
 			i++
 		}
 	}
-	return peers
+	return multis
 }
 
 // Bucket returns the respective Bucket for the target identity.Address, or an
 // error.
 func (dht *DHT) Bucket(target identity.Address) (*Bucket, error) {
-	same, err := dht.Address.SamePrefixLen(target)
+	same, err := dht.Address.SamePrefixLength(target)
 	if err != nil {
 		return nil, err
 	}
 	index := len(dht.Buckets) - same - 1
 	if index < 0 || index > len(dht.Buckets)-1 {
-		return nil, NewErrIndexOutOfRange(index)
+		panic("runtime error: index out of range")
 	}
 	return &dht.Buckets[index], nil
 }
 
 // Bucket is a mapping of Addresses to Entries. In standard Kademlia, a list is
 // used because Buckets need to be sorted.
-type Bucket map[identity.Address]Entry
-
-// Buckets is an alias.
-type Buckets []Bucket
+type Bucket []Entry
 
 // Find a target Address in the Bucket. Returns nil if the target Address
 // cannot be found.
 func (bucket Bucket) Find(target identity.Address) *identity.MultiAddress {
-	multi, ok := bucket[target]
-	if !ok {
-		return nil
+	for _, entry := range bucket {
+		address, err := entry.MultiAddress.Address()
+		if err == nil && address == target {
+			return &entry.MultiAddress
+		}
 	}
-	return &multi.MultiAddress
+	return nil
+}
+
+// Sort the Bucket by the time at which Entries were added.
+func (bucket Bucket) Sort() {
+	sort.Slice(bucket, func(i, j int) bool {
+		return bucket[i].Time.Before(bucket[j].Time)
+	})
 }
 
 // IsFull returns true if, and only if, the number of Entries in the Bucket is
@@ -176,6 +166,3 @@ type Entry struct {
 	identity.MultiAddress
 	time.Time
 }
-
-// Entries is an alias.
-type Entries []Entry
