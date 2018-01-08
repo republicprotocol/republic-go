@@ -38,7 +38,7 @@ func (dht *DHT) Update(multi identity.MultiAddress) error {
 	if err != nil {
 		return err
 	}
-	bucket, err := dht.Bucket(target)
+	bucket, err := dht.FindBucket(target)
 	if err != nil {
 		return err
 	}
@@ -49,92 +49,20 @@ func (dht *DHT) Update(multi identity.MultiAddress) error {
 	return nil
 }
 
-// Find the identity.MultiAddress associated with the target identity.Address.
-// Returns nil if the target is not in the DHT, or an error.
-func (dht *DHT) Find(target identity.Address) (*identity.MultiAddress, error) {
-	bucket, err := dht.Bucket(target)
+// FindMultiAddress finds the identity.MultiAddress associated with the target
+// identity.Address. Returns nil if the target is not in the DHT, or an error.
+func (dht *DHT) FindMultiAddress(target identity.Address) (*identity.MultiAddress, error) {
+	bucket, err := dht.FindBucket(target)
 	if err != nil {
 		return nil, err
 	}
-	return bucket.Find(target), nil
-}
-
-// FindNeighborhood returns the identity.MultiAddresses in the same Bucket as
-// the target identity.Address. It also returns identity.MultiAddresses in
-// Buckets within the neighborhood of the target Bucket.
-func (dht *DHT) FindNeighborhood(target identity.Address, neighborhood uint) (identity.MultiAddresses, error) {
-
-	// Find the index range of the neighborhood.
-	same, err := dht.Address.SamePrefixLength(target)
-	if err != nil {
-		return nil, err
-	}
-	index := len(dht.Buckets) - same - 1
-	if index < 0 || index > len(dht.Buckets)-1 {
-		panic("runtime error: index out of range")
-	}
-	start := index - int(neighborhood)
-	if start < 0 {
-		start = 0
-	}
-	end := index + int(neighborhood)
-	if end > len(dht.Buckets) {
-		end = len(dht.Buckets)
-	}
-
-	// Get the total number of identity.MultiAddresses in the neighborhood.
-	numMultis := 0
-	for i := start; i < end; i++ {
-		numMultis += len(dht.Buckets[i])
-	}
-
-	// Fill out a perfectly sized slice.
-	i := 0
-	multis := make(identity.MultiAddresses, numMultis)
-	for _, bucket := range dht.Buckets[start:end] {
-		for _, entry := range bucket {
-			multis[i] = entry.MultiAddress
-			i++
-		}
-	}
-	return multis, nil
+	return bucket.FindMultiAddress(target), nil
 }
 
 // FindBucket uses the target identity.Address and returns the respective
 // Bucket. The target does not have to be in the DHT. Returns the Bucket, or an
 // error.
 func (dht *DHT) FindBucket(target identity.Address) (*Bucket, error) {
-	return dht.Bucket(target)
-}
-
-// FindNeighborhoodBuckets uses the target identity.Address to find Buckets
-// within a given neighborhood of the target Bucket. It does not include the
-// actual target Bucket, which can be found using FindBucket. The target does
-// not have to be in the DHT. Returns the Buckets, or an error.
-func (dht *DHT) FindNeighborhoodBuckets(target identity.Address) (*Bucket, error) {
-	return dht.Bucket(target)
-}
-
-// MultiAddresses returns all MultiAddresses from all Buckets in the DHT.
-func (dht *DHT) MultiAddresses() identity.MultiAddresses {
-	numMultis := 0
-	for _, bucket := range dht.Buckets {
-		numMultis += len(bucket)
-	}
-	i := 0
-	multis := make(identity.MultiAddresses, numMultis)
-	for _, bucket := range dht.Buckets {
-		for _, entry := range bucket {
-			multis[i] = entry.MultiAddress
-			i++
-		}
-	}
-	return multis
-}
-
-// Bucket returns the respective Bucket for the target identity.Address, or an
-// error.
-func (dht *DHT) Bucket(target identity.Address) (*Bucket, error) {
 	same, err := dht.Address.SamePrefixLength(target)
 	if err != nil {
 		return nil, err
@@ -144,6 +72,19 @@ func (dht *DHT) Bucket(target identity.Address) (*Bucket, error) {
 		panic("runtime error: index out of range")
 	}
 	return &dht.Buckets[index], nil
+}
+
+// FindNeighborhoodBuckets uses the target identity.Address to find Buckets
+// within a given neighborhood of the target Bucket. It does not include the
+// actual target Bucket, which can be found using FindBucket. The target does
+// not have to be in the DHT. Returns the Buckets, or an error.
+func (dht *DHT) FindNeighborhoodBuckets(target identity.Address, neighborhood uint) (Buckets, error) {
+	// Find the index range of the neighborhood.
+	start, end, err := dht.Neighborhood(target, neighborhood)
+	if err != nil {
+		return nil, err
+	}
+	return dht.Buckets[start:end], nil
 }
 
 // Neighborhood returns the start and end indices of a neighborhood around the
@@ -173,9 +114,10 @@ func (dht *DHT) Neighborhood(target identity.Address, neighborhood uint) (int, i
 // used because Buckets need to be sorted.
 type Bucket []Entry
 
-// Find a target Address in the Bucket. Returns nil if the target Address
+// FindMultiAddress finds the identity.MultiAddress associated with a target
+// identity.Address in the Bucket. Returns nil if the target identity.Address
 // cannot be found.
-func (bucket Bucket) Find(target identity.Address) *identity.MultiAddress {
+func (bucket Bucket) FindMultiAddress(target identity.Address) *identity.MultiAddress {
 	for _, entry := range bucket {
 		address, err := entry.MultiAddress.Address()
 		if err == nil && address == target {
@@ -196,6 +138,26 @@ func (bucket Bucket) Sort() {
 // equal to the maximum number of Entries allowed.
 func (bucket Bucket) IsFull() bool {
 	return len(bucket) == MaxBucketSize
+}
+
+// Buckets is an alias.
+type Buckets []Bucket
+
+// MultiAddresses returns all MultiAddresses from all Buckets.
+func (buckets Buckets) MultiAddresses() identity.MultiAddresses {
+	numMultis := 0
+	for _, bucket := range buckets {
+		numMultis += len(bucket)
+	}
+	i := 0
+	multis := make(identity.MultiAddresses, numMultis)
+	for _, bucket := range buckets {
+		for _, entry := range bucket {
+			multis[i] = entry.MultiAddress
+			i++
+		}
+	}
+	return multis
 }
 
 // An Entry in a Bucket. It holds a MultiAddress, and a timestamp for when it
