@@ -146,6 +146,29 @@ func (dht *DHT) Bucket(target identity.Address) (*Bucket, error) {
 	return &dht.Buckets[index], nil
 }
 
+// Neighborhood returns the start and end indices of a neighborhood around the
+// Bucket associated with the target identity.Address.
+func (dht *DHT) Neighborhood(target identity.Address, neighborhood uint) (int, int, error) {
+	// Find the index range of the neighborhood.
+	same, err := dht.Address.SamePrefixLength(target)
+	if err != nil {
+		return -1, -1, err
+	}
+	index := len(dht.Buckets) - same - 1
+	if index < 0 || index > len(dht.Buckets)-1 {
+		panic("runtime error: index out of range")
+	}
+	start := index - int(neighborhood)
+	if start < 0 {
+		start = 0
+	}
+	end := index + int(neighborhood)
+	if end > len(dht.Buckets) {
+		end = len(dht.Buckets)
+	}
+	return start, end, nil
+}
+
 // Bucket is a mapping of Addresses to Entries. In standard Kademlia, a list is
 // used because Buckets need to be sorted.
 type Bucket []Entry
