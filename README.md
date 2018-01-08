@@ -82,7 +82,7 @@ ginkgo -v
 
 ## Republic
 
-The Identity library was developed by the Republic Protocol team. For more information, see our website https://republicprotocol.com.
+The Identity library was developed by the Republic Protocol team and is available under the MIT license. For more information, see our website https://republicprotocol.com. 
 
 ## Contributors
 
