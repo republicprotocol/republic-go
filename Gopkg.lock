@@ -20,6 +20,12 @@
   version = "1.0.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/multiformats/go-multiaddr"
+  packages = ["."]
+  revision = "781e075f3dd7ccaa80da7dd542267030fdfedb20"
+
+[[projects]]
   name = "github.com/multiformats/go-multihash"
   packages = ["."]
   revision = "f85ddc806c2042548789544758350d503ad36b6d"
@@ -82,6 +88,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "33882a0d432bdaaecea1739d259c23f96c91e4f6cc59d3c8960da58dacc5bc28"
+  inputs-digest = "774feca54c7ae07cf60d52c94e881b73dce0a1bf141907a1013e3e10db2f6272"
   solver-name = "gps-cdcl"
   solver-version = 1

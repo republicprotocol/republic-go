@@ -12,21 +12,21 @@ import (
 	"github.com/multiformats/go-multihash"
 )
 
+// Errors returned by the package.
 var (
-	// Error for not successfully decoding the string in base58
-	ErrFailToDecode = fmt.Errorf("fail to decode the string")
-	// Error for wrong address length
+	ErrFailToDecode       = fmt.Errorf("fail to decode the string")
 	ErrWrongAddressLength = fmt.Errorf("wrong address length")
 )
 
-// KeyPair contains an ECDSA key pair using a SECP256K1 S256 elliptic curve.
+// KeyPair contains an ECDSA key pair created using a SECP256K1 S256 elliptic
+// curve.
 type KeyPair struct {
 	*ecdsa.PrivateKey
 	*ecdsa.PublicKey
 }
 
 // NewKeyPair generates a new ECDSA key pair using a SECP256K1 S256 elliptic
-// curve. It returns a RepublicID that uses this key pair.
+// curve. It returns a randomly generated KeyPair, or an error.
 func NewKeyPair() (KeyPair, error) {
 	key, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
 	if err != nil {
@@ -38,19 +38,25 @@ func NewKeyPair() (KeyPair, error) {
 	}, nil
 }
 
-// PublicID returns the Republic ID of this KeyPair. The ID is the first 20
-// bytes of Keccak256 hash of the public key.
-func (keyPair KeyPair) PublicID() ID {
+// NewKeyPairFromPrivateKey a new ECDSA key pair using a given private key. It
+// does not validate that this private key was generated correctly.
+func NewKeyPairFromPrivateKey(key *ecdsa.PrivateKey) (KeyPair, error) {
+	return KeyPair{
+		PrivateKey: key,
+		PublicKey:  &key.PublicKey,
+	}, nil
+}
+
+// ID returns the Republic ID of the KeyPair.
+func (keyPair KeyPair) ID() ID {
 	bytes := elliptic.Marshal(secp256k1.S256(), keyPair.PublicKey.X, keyPair.PublicKey.Y)
 	return crypto.Keccak256(bytes)[:IDLength]
 }
 
-// PublicAddress returns the Republic Address of this KeyPair. The Address is
-// the Base58 encoding of the MultiHash of the Republic ID.
-func (keyPair KeyPair) PublicAddress() Address {
-	id := keyPair.PublicID()
+// Address returns the Republic Address of the KeyPair.
+func (keyPair KeyPair) Address() Address {
+	id := keyPair.ID()
 	hash := make([]byte, 2, IDLength+2)
-	// first two byte represent the hash function and length of the ID
 	hash[0], hash[1] = multihash.KECCAK_256, IDLength
 	hash = append(hash, id...)
 	return Address(base58.EncodeAlphabet(hash, base58.BTCAlphabet))
@@ -63,39 +69,43 @@ const IDLength = 20
 // It must always be example 20 bytes.
 type ID []byte
 
-// NewID generates a new ID from a key value pair
-func NewID() (ID, error) {
+// NewID generates a new ID by generating a random KeyPair. It returns the ID,
+// and the KeyPair, or an error. It is most commonly used for testing.
+func NewID() (ID, KeyPair, error) {
 	keyPair, err := NewKeyPair()
 	if err != nil {
-		return nil, err
+		return nil, keyPair, err
 	}
-	return keyPair.PublicID(), nil
+	return keyPair.ID(), keyPair, nil
 }
 
 // AddressLength is the number of bytes in an Address.
 const AddressLength = 30
 
-// An Address is generated from an ID.
+// An Address string is generated from an ID.
 type Address string
 
-// NewAddress generates a new Address from a key value pair
-func NewAddress() (Address, error) {
+// Addresses is an alias.
+type Addresses []Address
+
+// NewAddress generates a new Address by generating a random KeyPair. It
+// returns the Address, and the KeyPair, or an error.  It is most commonly used
+// for testing.
+func NewAddress() (Address, KeyPair, error) {
 	keyPair, err := NewKeyPair()
 	if err != nil {
-		return "", err
+		return "", keyPair, err
 	}
-	return keyPair.PublicAddress(), nil
+	return keyPair.Address(), keyPair, nil
 }
 
-// Distance use a bitwise XOR to calculate distance between two Addresses.
+// Distance uses a bitwise XOR to calculate distance between two Addresses.
 func (address Address) Distance(other Address) ([]byte, error) {
-
-	// Check the length of both addresses
+	// Check the length of both Addresses.
 	if len(address) != AddressLength || len(other) != AddressLength {
 		return nil, ErrWrongAddressLength
 	}
-
-	// Decode both addresses into bytes
+	// Decode both Addresses into bytes.
 	idByte := base58.DecodeAlphabet(string(address), base58.BTCAlphabet)
 	if len(idByte) == 0 {
 		return nil, ErrFailToDecode
@@ -104,8 +114,7 @@ func (address Address) Distance(other Address) ([]byte, error) {
 	if len(otherByte) == 0 {
 		return nil, ErrFailToDecode
 	}
-
-	// Get distance by xor operation
+	// Get distance by using the XOR operation.
 	xor := make([]byte, IDLength)
 	for i := 0; i < IDLength; i++ {
 		xor[i] = idByte[i+2] ^ otherByte[i+2]
@@ -113,16 +122,15 @@ func (address Address) Distance(other Address) ([]byte, error) {
 	return xor, nil
 }
 
-// SamePrefixLen returns the number of same prefix bits with another
-// address excluding the first 2 bytes
-func (address Address) SamePrefixLen(other Address) (int, error) {
-	// Calculator the distance between two addresses
+// SamePrefixLength returns the number of prefix bits that match with those of
+// another Address, excluding the first 2 bytes.
+func (address Address) SamePrefixLength(other Address) (int, error) {
+	// Calculator the distance between two Addresses.
 	diff, err := address.Distance(other)
 	if err != nil {
 		return -1, err
 	}
-
-	// Calculate the same prefix bits
+	// Calculate the same prefix bits.
 	ret := 0
 	for i := 0; i < IDLength; i++ {
 		if diff[i] == uint8(0) {
@@ -140,30 +148,31 @@ func (address Address) SamePrefixLen(other Address) (int, error) {
 	return ret, nil
 }
 
-// MultiAddress returns the Republic multi address of the address.
-// So that we can join it with other multiaddress
+// MultiAddress returns the Republic multi-address of the Address. It can be
+// appended with other MultiAddresses.
 func (address Address) MultiAddress() (MultiAddress, error) {
 	return NewMultiAddress(fmt.Sprintf("/republic/%s", string(address)))
 }
 
-// Closer returns true if address1 is closer to the target than
-func Closer(address1, address2, target Address) (bool, error) {
-	distance1, err := address1.Distance(target)
+// Closer returns true if the left Address is closer to the target than the
+// right Address, otherwise it returns false. In the case that both Addresses
+// are equal distances from the target, it returns true.
+func Closer(left, right, target Address) (bool, error) {
+	leftDist, err := left.Distance(target)
 	if err != nil {
 		return false, err
 	}
-	distance2, err := address2.Distance(target)
+	rightDist, err := right.Distance(target)
 	if err != nil {
 		return false, err
 	}
-
 	for i := 0; i < IDLength; i++ {
-		if distance1[i] < distance2[i] {
+		if leftDist[i] < rightDist[i] {
 			return true, nil
-		} else if distance1[i] > distance2[i] {
+		} else if leftDist[i] > rightDist[i] {
 			return false, nil
 		}
 	}
-	// If the addresses are the same, return true
+	// If the Addresses are the same, return true.
 	return true, nil
 }
