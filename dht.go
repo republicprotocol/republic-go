@@ -59,13 +59,6 @@ func (dht *DHT) Find(target identity.Address) (*identity.MultiAddress, error) {
 	return bucket.Find(target), nil
 }
 
-// FindBucket uses the target identity.Address and returns the respective
-// Bucket. The target does not have to be in the DHT. Returns the Bucket, or an
-// error.
-func (dht *DHT) FindBucket(target identity.Address) (*Bucket, error) {
-	return dht.Bucket(target)
-}
-
 // FindNeighborhood returns the identity.MultiAddresses in the same Bucket as
 // the target identity.Address. It also returns identity.MultiAddresses in
 // Buckets within the neighborhood of the target Bucket.
@@ -105,6 +98,21 @@ func (dht *DHT) FindNeighborhood(target identity.Address, neighborhood uint) (id
 		}
 	}
 	return multis, nil
+}
+
+// FindBucket uses the target identity.Address and returns the respective
+// Bucket. The target does not have to be in the DHT. Returns the Bucket, or an
+// error.
+func (dht *DHT) FindBucket(target identity.Address) (*Bucket, error) {
+	return dht.Bucket(target)
+}
+
+// FindNeighborhoodBuckets uses the target identity.Address to find Buckets
+// within a given neighborhood of the target Bucket. It does not include the
+// actual target Bucket, which can be found using FindBucket. The target does
+// not have to be in the DHT. Returns the Buckets, or an error.
+func (dht *DHT) FindNeighborhoodBuckets(target identity.Address) (*Bucket, error) {
+	return dht.Bucket(target)
 }
 
 // MultiAddresses returns all MultiAddresses from all Buckets in the DHT.
