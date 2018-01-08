@@ -9,13 +9,13 @@ import (
 
 var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 
-	Context("after importing the identity package", func() {
+	Context("after importing the package", func() {
 
 		It("should expose a protocol called republic", func() {
 			Ω(ProtocolWithName("republic").Name).Should(Equal("republic"))
 		})
 
-		It("should expose the Republic Protocol with the correct constants", func() {
+		It("should expose a protocol with the correct constant values", func() {
 			Ω(ProtocolWithCode(RepublicCode).Name).Should(Equal("republic"))
 			Ω(ProtocolWithCode(RepublicCode).Code).Should(Equal(RepublicCode))
 		})
