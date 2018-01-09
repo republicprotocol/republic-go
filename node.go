@@ -183,7 +183,7 @@ func (node *Node) pruneUnhealthyPeer(target identity.Address) (bool, error) {
 	for i := len(*bucket) - 1; i >= 0; i-- {
 		client, conn, err := NewNodeClient((*bucket)[i].MultiAddress)
 		if err != nil {
-			if err == context.DeadlineExceeded {
+			if err == context.DeadlineExceeded || err == context.Canceled {
 				return true, node.DHT.Remove((*bucket)[i].MultiAddress)
 			}
 			return false, err
@@ -191,7 +191,7 @@ func (node *Node) pruneUnhealthyPeer(target identity.Address) (bool, error) {
 		defer conn.Close()
 		_, err = client.Ping(context.Background(), &rpc.MultiAddress{Multi: node.MultiAddress.String()})
 		if err != nil {
-			if err == context.DeadlineExceeded {
+			if err == context.DeadlineExceeded || err == context.Canceled {
 				return true, node.DHT.Remove((*bucket)[i].MultiAddress)
 			}
 			return false, err
