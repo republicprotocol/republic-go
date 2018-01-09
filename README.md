@@ -86,5 +86,5 @@ The Identity library was developed by the Republic Protocol team and is availabl
 
 ## Contributors
 
-* Loong loong@republicprotocol.com
-* Yunshi yunshi@republicprotocol.com
+* Loong
+* Yunshi
