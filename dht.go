@@ -53,8 +53,9 @@ func (dht *DHT) Update(multi identity.MultiAddress) error {
 				return err
 			}
 			if string(address) == string(target) {
+				// We do not update the time otherwise the sorting method does
+				// not make sense.
 				(*bucket)[i].MultiAddress = multi
-				(*bucket)[i].Time = time.Now()
 				return nil
 			}
 		}
