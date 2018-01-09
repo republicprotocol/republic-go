@@ -3,6 +3,7 @@ package swarm
 import (
 	"fmt"
 	"net"
+	"sync"
 
 	"github.com/republicprotocol/go-dht"
 	"github.com/republicprotocol/go-identity"
@@ -21,7 +22,9 @@ type Node struct {
 	*grpc.Server
 	KeyPair      identity.KeyPair
 	MultiAddress identity.MultiAddress
-	DHT          dht.DHT
+
+	μDHT *sync.Mutex
+	DHT  dht.DHT
 }
 
 // NewNode returns a Node with the given Config, a new DHT, and a new set of grpc.Connections.
@@ -36,7 +39,9 @@ func NewNode(config *Config) (*Node, error) {
 		Server:       grpc.NewServer(),
 		KeyPair:      config.KeyPair,
 		MultiAddress: config.MultiAddress,
-		DHT:          dht,
+
+		μDHT: new(sync.Mutex),
+		DHT:  dht,
 	}, nil
 }
 
@@ -137,6 +142,9 @@ func (node *Node) Send(ctx context.Context, payload *rpc.Payload) (*rpc.Nothing,
 }
 
 func (node *Node) ping(peer *rpc.MultiAddress) error {
+	node.μDHT.Lock()
+	defer node.μDHT.Unlock()
+
 	multi, err := identity.NewMultiAddress(peer.Multi)
 	if err != nil {
 		return err
