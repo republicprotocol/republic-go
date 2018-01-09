@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sort"
 	"sync"
 	"time"
 
@@ -266,7 +267,12 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 		if targetMulti != nil {
 			break
 		}
-		open.Sort()
+
+		sort.SliceStable(open, func(i, j int) bool {
+			left := open[i]
+			right := open[j]
+			return identity.Closer(left, right, target)
+		})
 	}
 
 	if targetMulti == nil {
