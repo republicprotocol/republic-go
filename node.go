@@ -137,8 +137,10 @@ func (node *Node) ping(peer *rpc.MultiAddress) error {
 	if err != nil {
 		return err
 	}
+	// Attempt to update the DHT.
 	err = node.DHT.Update(multi)
 	if err == dht.ErrFullBucket {
+		// If the DHT is full then try and prune disconnected peers.
 		address, err := multi.Address()
 		if err != nil {
 			return err
@@ -147,6 +149,7 @@ func (node *Node) ping(peer *rpc.MultiAddress) error {
 		if err != nil {
 			return err
 		}
+		// If a peer was pruned, then update the DHT again.
 		if pruned {
 			return node.DHT.Update(multi)
 		}
@@ -156,10 +159,12 @@ func (node *Node) ping(peer *rpc.MultiAddress) error {
 }
 
 func (node *Node) peers() *rpc.MultiAddresses {
+	// Get all identity.MultiAddresses in the DHT.
 	multis := node.DHT.MultiAddresses()
 	ret := &rpc.MultiAddresses{
 		Multis: make([]*rpc.MultiAddress, len(multis)),
 	}
+	// Transform them into rpc.MultiAddresses.
 	for i, multi := range multis {
 		ret.Multis[i] = &rpc.MultiAddress{Multi: multi.String()}
 	}
@@ -179,8 +184,7 @@ func (node *Node) pruneUnhealthyPeer(target identity.Address) (bool, error) {
 		client, conn, err := NewNodeClient((*bucket)[i].MultiAddress)
 		if err != nil {
 			if err == context.DeadlineExceeded {
-				// TODO: prune
-				return true, nil
+				return true, node.DHT.Remove((*bucket)[i].MultiAddress)
 			}
 			return false, err
 		}
@@ -188,8 +192,7 @@ func (node *Node) pruneUnhealthyPeer(target identity.Address) (bool, error) {
 		_, err = client.Ping(context.Background(), &rpc.MultiAddress{Multi: node.MultiAddress.String()})
 		if err != nil {
 			if err == context.DeadlineExceeded {
-				// TODO: prune
-				return true, nil
+				return true, node.DHT.Remove((*bucket)[i].MultiAddress)
 			}
 			return false, err
 		}
