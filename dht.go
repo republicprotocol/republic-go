@@ -253,6 +253,15 @@ func (bucket Bucket) Sort() {
 	})
 }
 
+// MostRecentMutliAddress returns the most recently added identity.MultiAddress
+// in the Bucket. Returns nil if there are no Entries in the Bucket.
+func (bucket Bucket) MostRecentMutliAddress() *identity.MultiAddress {
+	if len(bucket) == 0 {
+		return nil
+	}
+	return &bucket[len(bucket)-1].MultiAddress
+}
+
 // IsFull returns true if, and only if, the number of Entries in the Bucket is
 // equal to the maximum number of Entries allowed.
 func (bucket Bucket) IsFull() bool {
