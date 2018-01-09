@@ -22,7 +22,7 @@ type Node struct {
 
 // NewNode returns a Node with the given Config, a new DHT, and a new set of grpc.Connections.
 func NewNode(config *Config) (*Node, error) {
-	dht := dht.NewDHT(config.KeyPair.PublicAddress())
+	dht := dht.NewDHT(config.KeyPair.Address())
 	for _, peer := range config.Peers {
 		if err := dht.Update(peer); err != nil {
 			return nil, err
@@ -171,7 +171,7 @@ func (node *Node) send(payload *rpc.Payload) error {
 }
 
 func (node *Node) pruneUnhealthyPeer(target identity.Address) (bool, error) {
-	bucket, err := node.DHT.Bucket(target)
+	bucket, err := node.DHT.FindBucket(target)
 	if err != nil {
 		return false, err
 	}
