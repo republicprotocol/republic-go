@@ -12,7 +12,7 @@ rpc: rpc/rpc.proto
 
 test: rpc
 	go test -v
-	go test -v ./dht
+	go test -v ./topology
 
 install: rpc
 	go install
