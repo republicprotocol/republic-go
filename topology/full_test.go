@@ -34,14 +34,12 @@ var _ = Describe("Star topologies", func() {
 
 		// Connect all nodes to each other.
 		for i := 0; i < numberOfNodes; i++ {
-			fmt.Println("sender", i, "...")
 			client, conn, err := NewNodeClient(nodes[i].MultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 			for j := 0; j < numberOfNodes; j++ {
 				if i == j {
 					continue
 				}
-				fmt.Println("  ping", j)
 				_, err = client.Ping(context.Background(), &rpc.MultiAddress{Multi: nodes[j].MultiAddress.String()})
 				Ω(err).ShouldNot(HaveOccurred())
 			}
