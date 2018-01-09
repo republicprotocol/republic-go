@@ -3,13 +3,13 @@ package swarm
 import (
 	"fmt"
 	"net"
-	"sync"
 
 	"github.com/republicprotocol/go-dht"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-swarm/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 // MaxConnections determines the maximum number of client connections that the
@@ -22,9 +22,7 @@ type Node struct {
 	*grpc.Server
 	KeyPair      identity.KeyPair
 	MultiAddress identity.MultiAddress
-
-	μDHT *sync.Mutex
-	DHT  dht.DHT
+	DHT          *dht.DHT
 }
 
 // NewNode returns a Node with the given Config, a new DHT, and a new set of grpc.Connections.
@@ -39,9 +37,7 @@ func NewNode(config *Config) (*Node, error) {
 		Server:       grpc.NewServer(),
 		KeyPair:      config.KeyPair,
 		MultiAddress: config.MultiAddress,
-
-		μDHT: new(sync.Mutex),
-		DHT:  dht,
+		DHT:          dht,
 	}, nil
 }
 
@@ -60,6 +56,7 @@ func (node *Node) Serve() error {
 		return err
 	}
 	rpc.RegisterNodeServer(node.Server, node)
+	reflection.Register(node.Server)
 	return node.Server.Serve(listener)
 }
 
@@ -142,9 +139,6 @@ func (node *Node) Send(ctx context.Context, payload *rpc.Payload) (*rpc.Nothing,
 }
 
 func (node *Node) ping(peer *rpc.MultiAddress) error {
-	node.μDHT.Lock()
-	defer node.μDHT.Unlock()
-
 	multi, err := identity.NewMultiAddress(peer.Multi)
 	if err != nil {
 		return err
