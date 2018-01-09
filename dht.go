@@ -43,6 +43,23 @@ func (dht *DHT) Update(multi identity.MultiAddress) error {
 	if err != nil {
 		return err
 	}
+
+	// Check if we have known the target
+	exist:= bucket.FindMultiAddress(target)
+	// Remove the known target with old time stamp
+	if exist != nil {
+		after := false
+		for i :=0 ; i <len(*bucket)-1;i++{
+			if (*bucket)[i].MultiAddress == multi{
+				after = true
+			}
+			if after == true{
+				(*bucket)[i]= (*bucket)[i+1]
+			}
+		}
+		*bucket = (*bucket)[:(len(*bucket)-1)]
+	}
+
 	if bucket.IsFull() {
 		return ErrFullBucket
 	}
@@ -117,7 +134,7 @@ type Bucket []Entry
 // FindMultiAddress finds the identity.MultiAddress associated with a target
 // identity.Address in the Bucket. Returns nil if the target identity.Address
 // cannot be found.
-func (bucket Bucket) FindMultiAddress(target identity.Address) *identity.MultiAddress {
+func (bucket Bucket) FindMultiAddress(target identity.Address)  *identity.MultiAddress {
 	for _, entry := range bucket {
 		address, err := entry.MultiAddress.Address()
 		if err == nil && address == target {
