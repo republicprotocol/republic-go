@@ -2,6 +2,7 @@ package dht
 
 import (
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/republicprotocol/go-identity"
@@ -19,6 +20,7 @@ const (
 // uses a modified Kademlia approach to storing MultiAddresses in each Bucket
 // and favoring old connections over new connections.
 type DHT struct {
+	μ       *sync.RWMutex
 	Address identity.Address
 	Buckets [IDLengthInBits]Bucket
 }
@@ -26,6 +28,7 @@ type DHT struct {
 // NewDHT returns a new DHT with the given Address, and empty Buckets.
 func NewDHT(address identity.Address) *DHT {
 	return &DHT{
+		μ:       new(sync.RWMutex),
 		Address: address,
 		Buckets: [IDLengthInBits]Bucket{},
 	}
@@ -169,6 +172,142 @@ func (dht *DHT) Neighborhood(target identity.Address, neighborhood uint) (int, i
 
 // MultiAddresses returns all identity.MultiAddresses in all Buckets.
 func (dht *DHT) MultiAddresses() identity.MultiAddresses {
+	numMultis := 0
+	for _, bucket := range dht.Buckets {
+		numMultis += len(bucket)
+	}
+	i := 0
+	multis := make(identity.MultiAddresses, numMultis)
+	for _, bucket := range dht.Buckets {
+		for _, entry := range bucket {
+			multis[i] = entry.MultiAddress
+			i++
+		}
+	}
+	return multis
+}
+
+func (dht *DHT) update(multi identity.MultiAddress) error {
+	target, err := multi.Address()
+	if err != nil {
+		return err
+	}
+	bucket, err := dht.FindBucket(target)
+	if err != nil {
+		return err
+	}
+
+	// Remove the target if it is already in the Bucket.
+	exists := bucket.FindMultiAddress(target)
+	if exists != nil {
+		for i, entry := range *bucket {
+			address, err := entry.MultiAddress.Address()
+			if err != nil {
+				return err
+			}
+			if string(address) == string(target) {
+				// We do not update the time otherwise the sorting method does
+				// not make sense.
+				(*bucket)[i].MultiAddress = multi
+				return nil
+			}
+		}
+	}
+
+	if bucket.IsFull() {
+		return ErrFullBucket
+	}
+	*bucket = append(*bucket, Entry{multi, time.Now()})
+	return nil
+}
+
+func (dht *DHT) remove(multi identity.MultiAddress) error {
+	target, err := multi.Address()
+	if err != nil {
+		return err
+	}
+	bucket, err := dht.FindBucket(target)
+	if err != nil {
+		return err
+	}
+	removeIndex := -1
+	for i, entry := range *bucket {
+		address, err := entry.MultiAddress.Address()
+		if err != nil {
+			return err
+		}
+		if string(address) == string(target) {
+			removeIndex = i
+			break
+		}
+	}
+	if removeIndex >= 0 {
+		if removeIndex == len(*bucket)-1 {
+			*bucket = (*bucket)[:removeIndex]
+		} else {
+			*bucket = append((*bucket)[:removeIndex], (*bucket)[removeIndex+1:]...)
+		}
+	}
+	return nil
+}
+
+func (dht *DHT) findMultiAddress(target identity.Address) (*identity.MultiAddress, error) {
+	bucket, err := dht.FindBucket(target)
+	if err != nil {
+		return nil, err
+	}
+	return bucket.FindMultiAddress(target), nil
+}
+
+func (dht *DHT) findBucket(target identity.Address) (*Bucket, error) {
+	same, err := dht.Address.SamePrefixLength(target)
+	if err != nil {
+		return nil, err
+	}
+	if same == IDLengthInBits {
+		return nil, ErrDHTAddress
+	}
+	index := len(dht.Buckets) - same - 1
+	if index < 0 || index > len(dht.Buckets)-1 {
+		panic("runtime error: index out of range")
+	}
+	return &dht.Buckets[index], nil
+}
+
+func (dht *DHT) findNeighborhoodBuckets(target identity.Address, neighborhood uint) (Buckets, error) {
+	// Find the index range of the neighborhood.
+	start, end, err := dht.Neighborhood(target, neighborhood)
+	if err != nil {
+		return nil, err
+	}
+	return dht.Buckets[start:end], nil
+}
+
+func (dht *DHT) neighborhood(target identity.Address, neighborhood uint) (int, int, error) {
+	// Find the index range of the neighborhood.
+	same, err := dht.Address.SamePrefixLength(target)
+	if err != nil {
+		return -1, -1, err
+	}
+	if same == IDLengthInBits {
+		return -1, -1, ErrDHTAddress
+	}
+	index := len(dht.Buckets) - same - 1
+	if index < 0 || index > len(dht.Buckets)-1 {
+		panic("runtime error: index out of range")
+	}
+	start := index - int(neighborhood)
+	if start < 0 {
+		start = 0
+	}
+	end := index + int(neighborhood)
+	if end > len(dht.Buckets) {
+		end = len(dht.Buckets)
+	}
+	return start, end, nil
+}
+
+func (dht *DHT) multiAddresses() identity.MultiAddresses {
 	numMultis := 0
 	for _, bucket := range dht.Buckets {
 		numMultis += len(bucket)
