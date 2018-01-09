@@ -67,6 +67,39 @@ func (dht *DHT) Update(multi identity.MultiAddress) error {
 	return nil
 }
 
+// Remove an identity.MultiAddress by removing it from its respective Bucket.
+// Nothing happens if the identity.MultiAddress is not in the DHT. Returns any
+// error that happens while finding the required Bucket.
+func (dht *DHT) Remove(multi identity.MultiAddress) error {
+	target, err := multi.Address()
+	if err != nil {
+		return err
+	}
+	bucket, err := dht.FindBucket(target)
+	if err != nil {
+		return err
+	}
+	removeIndex := -1
+	for i, entry := range *bucket {
+		address, err := entry.MultiAddress.Address()
+		if err != nil {
+			return err
+		}
+		if string(address) == string(target) {
+			removeIndex = i
+			break
+		}
+	}
+	if removeIndex >= 0 {
+		if removeIndex == len(*bucket)-1 {
+			*bucket = (*bucket)[:removeIndex]
+		} else {
+			*bucket = append((*bucket)[:removeIndex], (*bucket)[removeIndex+1:]...)
+		}
+	}
+	return nil
+}
+
 // FindMultiAddress finds the identity.MultiAddress associated with the target
 // identity.Address. Returns nil if the target is not in the DHT, or an error.
 func (dht *DHT) FindMultiAddress(target identity.Address) (*identity.MultiAddress, error) {
