@@ -24,8 +24,8 @@ type DHT struct {
 }
 
 // NewDHT returns a new DHT with the given Address, and empty Buckets.
-func NewDHT(address identity.Address) DHT {
-	return DHT{
+func NewDHT(address identity.Address) *DHT {
+	return &DHT{
 		Address: address,
 		Buckets: [IDLengthInBits]Bucket{},
 	}
@@ -44,20 +44,20 @@ func (dht *DHT) Update(multi identity.MultiAddress) error {
 		return err
 	}
 
-	// Check if we have known the target
-	exist := bucket.FindMultiAddress(target)
-	// Remove the known target with old time stamp
-	if exist != nil {
-		after := false
-		for i := 0; i < len(*bucket)-1; i++ {
-			if (*bucket)[i].MultiAddress == multi {
-				after = true
+	// Remove the target if it is already in the Bucket.
+	exists := bucket.FindMultiAddress(target)
+	if exists != nil {
+		for i, entry := range *bucket {
+			address, err := entry.MultiAddress.Address()
+			if err != nil {
+				return err
 			}
-			if after == true {
-				(*bucket)[i] = (*bucket)[i+1]
+			if string(address) == string(target) {
+				(*bucket)[i].MultiAddress = multi
+				(*bucket)[i].Time = time.Now()
+				return nil
 			}
 		}
-		*bucket = (*bucket)[:(len(*bucket) - 1)]
 	}
 
 	if bucket.IsFull() {
@@ -118,8 +118,11 @@ func (dht *DHT) FindBucket(target identity.Address) (*Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
+	if same == IDLengthInBits{
+		return nil, ErrUpdateSelf
+	}
 	index := len(dht.Buckets) - same - 1
-	if index < 0 || index > len(dht.Buckets)-1 {
+	if index < 0 || index > len(dht.Buckets)-1{
 		panic("runtime error: index out of range")
 	}
 	return &dht.Buckets[index], nil
@@ -144,6 +147,9 @@ func (dht *DHT) Neighborhood(target identity.Address, neighborhood uint) (int, i
 	same, err := dht.Address.SamePrefixLength(target)
 	if err != nil {
 		return -1, -1, err
+	}
+	if same == IDLengthInBits{
+		return -1,-1, ErrUpdateSelf
 	}
 	index := len(dht.Buckets) - same - 1
 	if index < 0 || index > len(dht.Buckets)-1 {
