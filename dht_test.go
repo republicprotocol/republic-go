@@ -55,7 +55,7 @@ var _ = Describe("Distributed Hash Table", func() {
 		})
 	})
 
-	Context("Update same node ", func() {
+	Context("Update same node multi times ", func() {
 		Specify("the new time stamp should be different to the old one", func() {
 			err = dht.Update(nodeMulti)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -64,20 +64,16 @@ var _ = Describe("Distributed Hash Table", func() {
 			bucket,err := dht.FindBucket(nodeAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 			time1 := (*bucket)[0].Time
-
-			// Update the same node after 5 seconds
-			time.Sleep(5* time.Second)
-			err = dht.Update(nodeMulti)
-			Ω(err).ShouldNot(HaveOccurred())
-			time2 := (*bucket)[0].Time
-
-			// Two time stamps should be different
-			Ω(time1).ShouldNot(Equal(time2))
+			for i:=0;i <5;i++{
+				// Update the same node after 5 seconds
+				time.Sleep(3* time.Second)
+				err = dht.Update(nodeMulti)
+				Ω(err).ShouldNot(HaveOccurred())
+				time2 := (*bucket)[0].Time
+				Ω(time1).ShouldNot(Equal(time2))
+				time1 = time2
+			}
 		})
 	})
 
-	Context("", func() {
-
-
-	})
 })
