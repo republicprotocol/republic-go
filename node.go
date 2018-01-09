@@ -22,7 +22,7 @@ type Node struct {
 	*grpc.Server
 	KeyPair      identity.KeyPair
 	MultiAddress identity.MultiAddress
-	DHT          dht.DHT
+	DHT          *dht.DHT
 }
 
 // NewNode returns a Node with the given Config, a new DHT, and a new set of grpc.Connections.
