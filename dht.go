@@ -253,18 +253,18 @@ func (bucket Bucket) Sort() {
 	})
 }
 
-// NewestMutliAddress returns the most recently added identity.MultiAddress in
+// NewestMultiAddress returns the most recently added identity.MultiAddress in
 // the Bucket. Returns nil if there are no Entries in the Bucket.
-func (bucket Bucket) NewestMutliAddress() *identity.MultiAddress {
+func (bucket Bucket) NewestMultiAddress() *identity.MultiAddress {
 	if len(bucket) == 0 {
 		return nil
 	}
 	return &bucket[len(bucket)-1].MultiAddress
 }
 
-// OldestMutliAddress returns the least recently added identity.MultiAddress in
+// OldestMultiAddress returns the least recently added identity.MultiAddress in
 // the Bucket. Returns nil if there are no Entries in the Bucket.
-func (bucket Bucket) OldestMutliAddress() *identity.MultiAddress {
+func (bucket Bucket) OldestMultiAddress() *identity.MultiAddress {
 	if len(bucket) == 0 {
 		return nil
 	}
