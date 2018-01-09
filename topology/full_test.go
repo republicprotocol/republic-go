@@ -8,10 +8,11 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-swarm"
 	"github.com/republicprotocol/go-swarm/rpc"
-	"log"
 )
 
 var _ = Describe("Fully connected mesh topologies", func() {
+
+	const numberOfNodes = 75
 
 	Context("when pinging", func() {
 		It("should update their DHTs", func() {
@@ -19,7 +20,7 @@ var _ = Describe("Fully connected mesh topologies", func() {
 			defer μ.Unlock()
 
 			// Initialize all nodes.
-			nodes, err := generateNodes()
+			nodes, err := generateNodes(numberOfNodes)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Start serving from all nodes.
@@ -35,7 +36,6 @@ var _ = Describe("Fully connected mesh topologies", func() {
 			time.Sleep(startTimeDelay)
 
 			// Connect all nodes to each other concurrently.
-			numberOfErrs := 0
 			var wg sync.WaitGroup
 			wg.Add(numberOfNodes)
 			for i := 0; i < numberOfNodes; i++ {
@@ -48,17 +48,12 @@ var _ = Describe("Fully connected mesh topologies", func() {
 							continue
 						}
 						err = swarm.Ping(nodes[j].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
-						// Ω(err).ShouldNot(HaveOccurred())
-						if err != nil {
-							numberOfErrs++
-						}
+						Ω(err).ShouldNot(HaveOccurred())
 					}
 
 				}(i)
 			}
 			wg.Wait()
-
-			log.Println("numberOfErrs", numberOfErrs)
 		})
 	})
 

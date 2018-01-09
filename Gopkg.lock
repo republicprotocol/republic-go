@@ -53,7 +53,7 @@
   branch = "master"
   name = "github.com/republicprotocol/go-dht"
   packages = ["."]
-  revision = "abea061feeeb0823a3d8ed644026b86accab39de"
+  revision = "44fdc897d27152c614e38deb8562fd81e438b097"
 
 [[projects]]
   branch = "master"
@@ -83,7 +83,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "d38bf781f16e180a1b2ad82697d2f81d7b7ecfac"
+  revision = "b9cf5f96b68d9eaa53d5db5fef235718767f416a"
 
 [[projects]]
   branch = "master"
@@ -107,7 +107,7 @@
   branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "1244d3ce02e3e1c16820ada0bae506b6c479f106"
+  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
 
 [[projects]]
   branch = "master"

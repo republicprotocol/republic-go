@@ -2,6 +2,7 @@ package dht
 
 import (
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/republicprotocol/go-identity"
@@ -19,6 +20,7 @@ const (
 // uses a modified Kademlia approach to storing MultiAddresses in each Bucket
 // and favoring old connections over new connections.
 type DHT struct {
+	μ       *sync.RWMutex
 	Address identity.Address
 	Buckets [IDLengthInBits]Bucket
 }
@@ -26,6 +28,7 @@ type DHT struct {
 // NewDHT returns a new DHT with the given Address, and empty Buckets.
 func NewDHT(address identity.Address) *DHT {
 	return &DHT{
+		μ:       new(sync.RWMutex),
 		Address: address,
 		Buckets: [IDLengthInBits]Bucket{},
 	}
@@ -35,11 +38,67 @@ func NewDHT(address identity.Address) *DHT {
 // Returns an error if the Bucket is full, or any error that happens while
 // finding the required Bucket.
 func (dht *DHT) Update(multi identity.MultiAddress) error {
+	dht.μ.Lock()
+	defer dht.μ.Unlock()
+	return dht.update(multi)
+}
+
+// Remove an identity.MultiAddress by removing it from its respective Bucket.
+// Nothing happens if the identity.MultiAddress is not in the DHT. Returns any
+// error that happens while finding the required Bucket.
+func (dht *DHT) Remove(multi identity.MultiAddress) error {
+	dht.μ.Lock()
+	defer dht.μ.Unlock()
+	return dht.remove(multi)
+}
+
+// FindMultiAddress finds the identity.MultiAddress associated with the target
+// identity.Address. Returns nil if the target is not in the DHT, or an error.
+func (dht *DHT) FindMultiAddress(target identity.Address) (*identity.MultiAddress, error) {
+	dht.μ.RLock()
+	defer dht.μ.RUnlock()
+	return dht.findMultiAddress(target)
+}
+
+// FindBucket uses the target identity.Address and returns the respective
+// Bucket. The target does not have to be in the DHT. Returns the Bucket, or an
+// error.
+func (dht *DHT) FindBucket(target identity.Address) (*Bucket, error) {
+	dht.μ.RLock()
+	defer dht.μ.RUnlock()
+	return dht.findBucket(target)
+}
+
+// FindNeighborhoodBuckets uses the target identity.Address to find Buckets
+// within a given neighborhood of the target Bucket. The target does not have
+// to be in the DHT. Returns the Buckets, or an error.
+func (dht *DHT) FindNeighborhoodBuckets(target identity.Address, neighborhood uint) (Buckets, error) {
+	dht.μ.RLock()
+	defer dht.μ.RUnlock()
+	return dht.findNeighborhoodBuckets(target, neighborhood)
+}
+
+// Neighborhood returns the start and end indices of a neighborhood around the
+// Bucket associated with the target identity.Address.
+func (dht *DHT) Neighborhood(target identity.Address, neighborhood uint) (int, int, error) {
+	dht.μ.RLock()
+	defer dht.μ.RUnlock()
+	return dht.neighborhood(target, neighborhood)
+}
+
+// MultiAddresses returns all identity.MultiAddresses in all Buckets.
+func (dht *DHT) MultiAddresses() identity.MultiAddresses {
+	dht.μ.RLock()
+	defer dht.μ.RUnlock()
+	return dht.multiAddresses()
+}
+
+func (dht *DHT) update(multi identity.MultiAddress) error {
 	target, err := multi.Address()
 	if err != nil {
 		return err
 	}
-	bucket, err := dht.FindBucket(target)
+	bucket, err := dht.findBucket(target)
 	if err != nil {
 		return err
 	}
@@ -53,8 +112,9 @@ func (dht *DHT) Update(multi identity.MultiAddress) error {
 				return err
 			}
 			if string(address) == string(target) {
+				// We do not update the time otherwise the sorting method does
+				// not make sense.
 				(*bucket)[i].MultiAddress = multi
-				(*bucket)[i].Time = time.Now()
 				return nil
 			}
 		}
@@ -67,15 +127,12 @@ func (dht *DHT) Update(multi identity.MultiAddress) error {
 	return nil
 }
 
-// Remove an identity.MultiAddress by removing it from its respective Bucket.
-// Nothing happens if the identity.MultiAddress is not in the DHT. Returns any
-// error that happens while finding the required Bucket.
-func (dht *DHT) Remove(multi identity.MultiAddress) error {
+func (dht *DHT) remove(multi identity.MultiAddress) error {
 	target, err := multi.Address()
 	if err != nil {
 		return err
 	}
-	bucket, err := dht.FindBucket(target)
+	bucket, err := dht.findBucket(target)
 	if err != nil {
 		return err
 	}
@@ -100,20 +157,15 @@ func (dht *DHT) Remove(multi identity.MultiAddress) error {
 	return nil
 }
 
-// FindMultiAddress finds the identity.MultiAddress associated with the target
-// identity.Address. Returns nil if the target is not in the DHT, or an error.
-func (dht *DHT) FindMultiAddress(target identity.Address) (*identity.MultiAddress, error) {
-	bucket, err := dht.FindBucket(target)
+func (dht *DHT) findMultiAddress(target identity.Address) (*identity.MultiAddress, error) {
+	bucket, err := dht.findBucket(target)
 	if err != nil {
 		return nil, err
 	}
 	return bucket.FindMultiAddress(target), nil
 }
 
-// FindBucket uses the target identity.Address and returns the respective
-// Bucket. The target does not have to be in the DHT. Returns the Bucket, or an
-// error.
-func (dht *DHT) FindBucket(target identity.Address) (*Bucket, error) {
+func (dht *DHT) findBucket(target identity.Address) (*Bucket, error) {
 	same, err := dht.Address.SamePrefixLength(target)
 	if err != nil {
 		return nil, err
@@ -128,21 +180,16 @@ func (dht *DHT) FindBucket(target identity.Address) (*Bucket, error) {
 	return &dht.Buckets[index], nil
 }
 
-// FindNeighborhoodBuckets uses the target identity.Address to find Buckets
-// within a given neighborhood of the target Bucket. The target does not have
-// to be in the DHT. Returns the Buckets, or an error.
-func (dht *DHT) FindNeighborhoodBuckets(target identity.Address, neighborhood uint) (Buckets, error) {
+func (dht *DHT) findNeighborhoodBuckets(target identity.Address, neighborhood uint) (Buckets, error) {
 	// Find the index range of the neighborhood.
-	start, end, err := dht.Neighborhood(target, neighborhood)
+	start, end, err := dht.neighborhood(target, neighborhood)
 	if err != nil {
 		return nil, err
 	}
 	return dht.Buckets[start:end], nil
 }
 
-// Neighborhood returns the start and end indices of a neighborhood around the
-// Bucket associated with the target identity.Address.
-func (dht *DHT) Neighborhood(target identity.Address, neighborhood uint) (int, int, error) {
+func (dht *DHT) neighborhood(target identity.Address, neighborhood uint) (int, int, error) {
 	// Find the index range of the neighborhood.
 	same, err := dht.Address.SamePrefixLength(target)
 	if err != nil {
@@ -166,8 +213,7 @@ func (dht *DHT) Neighborhood(target identity.Address, neighborhood uint) (int, i
 	return start, end, nil
 }
 
-// MultiAddresses returns all identity.MultiAddresses in all Buckets.
-func (dht *DHT) MultiAddresses() identity.MultiAddresses {
+func (dht *DHT) multiAddresses() identity.MultiAddresses {
 	numMultis := 0
 	for _, bucket := range dht.Buckets {
 		numMultis += len(bucket)
@@ -205,6 +251,24 @@ func (bucket Bucket) Sort() {
 	sort.Slice(bucket, func(i, j int) bool {
 		return bucket[i].Time.Before(bucket[j].Time)
 	})
+}
+
+// NewestMultiAddress returns the most recently added identity.MultiAddress in
+// the Bucket. Returns nil if there are no Entries in the Bucket.
+func (bucket Bucket) NewestMultiAddress() *identity.MultiAddress {
+	if len(bucket) == 0 {
+		return nil
+	}
+	return &bucket[len(bucket)-1].MultiAddress
+}
+
+// OldestMultiAddress returns the least recently added identity.MultiAddress in
+// the Bucket. Returns nil if there are no Entries in the Bucket.
+func (bucket Bucket) OldestMultiAddress() *identity.MultiAddress {
+	if len(bucket) == 0 {
+		return nil
+	}
+	return &bucket[0].MultiAddress
 }
 
 // IsFull returns true if, and only if, the number of Entries in the Bucket is

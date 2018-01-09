@@ -54,7 +54,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should update time stamp for existing addresses", func() {
+		It("should not update the time stamp for existing addresses", func() {
 			err := dht.Update(randomMulti)
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -62,13 +62,12 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			t := (*bucket)[0].Time
 
-			for i := 0; i < 5; i++ {
-				time.Sleep(time.Millisecond)
-				err := dht.Update(randomMulti)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(t).ShouldNot(Equal((*bucket)[0].Time))
-				t = (*bucket)[0].Time
-			}
+			time.Sleep(time.Millisecond)
+
+			err = dht.Update(randomMulti)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(t).Should(Equal((*bucket)[0].Time))
+			t = (*bucket)[0].Time
 		})
 	})
 

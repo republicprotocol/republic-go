@@ -17,7 +17,7 @@ import (
 var μ = new(sync.Mutex)
 
 // The number of nodes that should be included in each topology test.
-var numberOfNodes = 100
+// var numberOfNodes = 30
 
 // The number of messages that will be sent through the topology.
 var numberOfMessages = 100
@@ -25,7 +25,7 @@ var numberOfMessages = 100
 // The duration to wait for peers to start listening for RPCs.
 var startTimeDelay = time.Second
 
-func generateNodes() ([]*swarm.Node, error) {
+func generateNodes(numberOfNodes int) ([]*swarm.Node, error) {
 	nodes := make([]*swarm.Node, numberOfNodes)
 	for i := 0; i < numberOfNodes; i++ {
 		keyPair, err := identity.NewKeyPair()

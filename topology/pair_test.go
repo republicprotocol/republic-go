@@ -13,6 +13,8 @@ import (
 
 var _ = Describe("Pair topologies", func() {
 
+	const numberOfNodes = 2
+
 	Context("when pinging", func() {
 		It("should update their DHTs", func() {
 			μ.Lock()

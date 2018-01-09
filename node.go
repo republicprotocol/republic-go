@@ -3,6 +3,7 @@ package swarm
 import (
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/republicprotocol/go-dht"
 	"github.com/republicprotocol/go-identity"
@@ -151,7 +152,7 @@ func (node *Node) ping(peer *rpc.MultiAddress) error {
 		if err != nil {
 			return err
 		}
-		pruned, err := node.pruneUnhealthyPeer(address)
+		pruned, err := node.pruneMostRecentPeer(address)
 		if err != nil {
 			return err
 		}
@@ -181,33 +182,37 @@ func (node *Node) send(payload *rpc.Payload) error {
 	return nil
 }
 
-func (node *Node) pruneUnhealthyPeer(target identity.Address) (bool, error) {
+func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
 	bucket, err := node.DHT.FindBucket(target)
 	if err != nil {
 		return false, err
 	}
-	// Iterate backwards through entries in the Bucket. This iterates from
-	// newest to oldest.
-	for i := len(*bucket) - 1; i >= 0; i-- {
-		// Create a client connection to the peer.
-		client, conn, err := NewNodeClient((*bucket)[i].MultiAddress)
-		if err != nil {
-			// If the connection could not be made, prune the peer.
-			if err == context.DeadlineExceeded || err == context.Canceled {
-				return true, node.DHT.Remove((*bucket)[i].MultiAddress)
-			}
-			return false, err
+	multi := bucket.OldestMultiAddress()
+	if multi == nil {
+		return false, nil
+	}
+
+	// Create a client connection to the peer.
+	client, conn, err := NewNodeClient(*multi)
+	if err != nil {
+		// If the connection could not be made, prune the peer.
+		if err == context.DeadlineExceeded || err == context.Canceled {
+			return true, node.DHT.Remove(*multi)
 		}
-		// Ping the peer.
-		_, err = client.Ping(context.Background(), &rpc.MultiAddress{Multi: node.MultiAddress.String()})
-		conn.Close()
-		if err != nil {
-			// If the ping could not be made, prune the peer.
-			if err == context.DeadlineExceeded || err == context.Canceled {
-				return true, node.DHT.Remove((*bucket)[i].MultiAddress)
-			}
-			return false, err
+		return false, err
+	}
+	defer conn.Close()
+
+	// Ping the peer.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	_, err = client.Ping(ctx, &rpc.MultiAddress{Multi: node.MultiAddress.String()}, grpc.FailFast(false))
+	if err != nil {
+		// If the ping could not be made, prune the peer.
+		if err == context.DeadlineExceeded || err == context.Canceled {
+			return true, node.DHT.Remove(*multi)
 		}
+		return false, err
 	}
 	return false, nil
 }
