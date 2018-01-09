@@ -72,4 +72,30 @@ var _ = Describe("Distributed Hash Table", func() {
 		})
 	})
 
+	Context("Remove ", func() {
+
+		BeforeEach(func() {
+			address, _, err := identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			dht = NewDHT(address)
+
+			randomAddress, _, err = identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			randomMulti, err = randomAddress.MultiAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should remove the node from the dht", func() {
+			err := dht.Update(randomMulti)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			bucket, err := dht.FindBucket(randomAddress)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(len(*bucket)).Should(Equal(1))
+
+			dht.Remove(randomMulti)
+			Ω(len(*bucket)).Should(Equal(0))
+		})
+	})
 })
