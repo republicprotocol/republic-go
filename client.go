@@ -40,7 +40,7 @@ func Ping(target identity.MultiAddress, from *rpc.MultiAddress) error {
 	// Ping.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	_, err = client.Ping(ctx, from)
+	_, err = client.Ping(ctx, from,grpc.FailFast(false))
 	if err != nil {
 		return err
 	}

@@ -206,7 +206,7 @@ func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
 	// Ping the peer.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	_, err = client.Ping(ctx, &rpc.MultiAddress{Multi: node.MultiAddress.String()})
+	_, err = client.Ping(ctx, &rpc.MultiAddress{Multi: node.MultiAddress.String()},grpc.FailFast(false))
 	if err != nil {
 		// If the ping could not be made, prune the peer.
 		if err == context.DeadlineExceeded || err == context.Canceled {

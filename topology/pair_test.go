@@ -7,13 +7,11 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
-	swarm "github.com/republicprotocol/go-swarm"
+	"github.com/republicprotocol/go-swarm"
 	"github.com/republicprotocol/go-swarm/rpc"
 )
 
 var _ = Describe("Pair topologies", func() {
-
-	const numberOfNodes = 2
 
 	Context("when pinging", func() {
 		It("should update their DHTs", func() {
@@ -55,6 +53,7 @@ var _ = Describe("Pair topologies", func() {
 			}()
 			defer left.Stop()
 			defer right.Stop()
+
 			time.Sleep(startTimeDelay)
 
 			// Ping the left Node from the right Node.

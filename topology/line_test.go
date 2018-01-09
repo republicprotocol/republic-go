@@ -12,8 +12,6 @@ import (
 
 var _ = Describe("Line topology", func() {
 
-	const numberOfNodes = 100
-
 	Context("when pinging", func() {
 		It("should update their DHTs", func() {
 			μ.Lock()
@@ -38,19 +36,18 @@ var _ = Describe("Line topology", func() {
 			// Connect all nodes to each other concurrently.
 			var wg sync.WaitGroup
 			wg.Add(numberOfNodes)
-			for i := 0; i < numberOfNodes; i++ {
+			for i := 0; i < numberOfNodes ; i++ {
 				go func(i int) {
 					defer GinkgoRecover()
 					defer wg.Done()
-
-					for j := 0; j < numberOfNodes; j++ {
-						if i == j {
-							continue
-						}
-						err = swarm.Ping(nodes[j].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
+					if i != 0{
+						err = swarm.Ping(nodes[i-1].MultiAddress,&rpc.MultiAddress{Multi:nodes[i].MultiAddress.String()})
 						Ω(err).ShouldNot(HaveOccurred())
 					}
-
+					if i != numberOfNodes - 1{
+						err = swarm.Ping(nodes[i+1].MultiAddress,&rpc.MultiAddress{Multi:nodes[i].MultiAddress.String()})
+						Ω(err).ShouldNot(HaveOccurred())
+					}
 				}(i)
 			}
 			wg.Wait()
