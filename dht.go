@@ -118,8 +118,11 @@ func (dht *DHT) FindBucket(target identity.Address) (*Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
+	if same == IDLengthInBits{
+		return nil, ErrUpdateSelf
+	}
 	index := len(dht.Buckets) - same - 1
-	if index < 0 || index > len(dht.Buckets)-1 {
+	if index < 0 || index > len(dht.Buckets)-1{
 		panic("runtime error: index out of range")
 	}
 	return &dht.Buckets[index], nil
