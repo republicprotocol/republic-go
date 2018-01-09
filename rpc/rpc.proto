@@ -10,7 +10,7 @@ service Node {
   rpc Ping (MultiAddress) returns (MultiAddress);
 
   // Get all peers connected to the Node.
-  rpc GetPeers (Nothing) returns (MultiAddresses);
+  rpc Peers (Nothing) returns (MultiAddresses);
 
   // Send a payload to a target Node.
   rpc Send (Payload) returns (Nothing);
@@ -18,7 +18,7 @@ service Node {
 
 // A Payload is a message containing application-specific data.
 message Payload {
-  string id = 1;
+  string to = 1;
   string data = 2;
 }
 
