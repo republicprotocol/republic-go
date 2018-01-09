@@ -10,6 +10,7 @@ import (
 	"github.com/republicprotocol/go-swarm/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 // MaxConnections determines the maximum number of client connections that the
@@ -56,6 +57,7 @@ func (node *Node) Serve() error {
 		return err
 	}
 	rpc.RegisterNodeServer(node.Server, node)
+	reflection.Register(node.Server)
 	return node.Server.Serve(listener)
 }
 
