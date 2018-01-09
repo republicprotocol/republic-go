@@ -12,7 +12,7 @@ import (
 
 var _ = Describe("Fully connected mesh topologies", func() {
 
-	const numberOfNodes = 75
+	const numberOfNodes = 100
 
 	Context("when pinging", func() {
 		It("should update their DHTs", func() {
