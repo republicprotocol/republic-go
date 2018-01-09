@@ -252,7 +252,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 					targetMultiMu.Unlock()
 					openMu.Lock()
 					for next := range openNext {
-						if c, ok := closed[next]; !c || !ok {
+						if isClosed, ok := closed[next]; !isClosed || !ok {
 							open = append(open, next)
 						}
 					}
@@ -290,10 +290,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	_, err = client.SendOrderFragment(ctx, orderFragment)
-	if err != nil {
-		return err
-	}
-	return false, nil
+	return err
 }
 
 func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
