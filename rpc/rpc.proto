@@ -12,14 +12,16 @@ service Node {
   // Get all peers connected to the Node.
   rpc Peers (Nothing) returns (MultiAddresses);
 
-  // Send a payload to a target Node.
-  rpc Send (Payload) returns (Nothing);
+  // Send an order fragment to some target Node.
+  rpc SendOrderFragment (OrderFragment) returns (Nothing);
 }
 
-// A Payload is a message containing application-specific data.
-message Payload {
+// An OrderFragment is a message contains the details of an order fragment.
+message OrderFragment {
   string to = 1;
-  string data = 2;
+  bytes orderID = 2;
+  bytes orderFragmentID = 3;
+  bytes orderFragment = 4;
 }
 
 // A MultiAddress is the public multiaddress of a Node in the overlay network.
