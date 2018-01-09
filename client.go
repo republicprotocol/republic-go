@@ -3,6 +3,7 @@ package swarm
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-swarm/rpc"
@@ -30,12 +31,16 @@ func NewNodeClient(target identity.MultiAddress) (rpc.NodeClient, *grpc.ClientCo
 
 // Ping the target identity.MultiAddress. Returns nil, or an error.
 func Ping(target identity.MultiAddress, from *rpc.MultiAddress) error {
+	// Create the client.
 	client, conn, err := NewNodeClient(target)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	_, err = client.Ping(context.Background(), from, grpc.FailFast(false))
+	// Ping.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	_, err = client.Ping(ctx, from, grpc.FailFast(false))
 	if err != nil {
 		return err
 	}
