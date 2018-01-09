@@ -2,12 +2,9 @@ package dht
 
 import "fmt"
 
-type ErrIndexOutOfRange string
-
-func NewErrIndexOutOfRange(i int) error {
-	return ErrIndexOutOfRange(fmt.Sprintf("index %d is out of range", i))
-}
-
-func (err ErrIndexOutOfRange) Error() string {
-	return string(err)
-}
+// ErrFullBucket is used when a peer is inserted into a Bucket that already has
+// the maximum number of Entries.
+var (
+	ErrFullBucket = fmt.Errorf("cannot add entry to a full bucket")
+	ErrDHTAddress = fmt.Errorf("cannot add entry for the DHT address")
+)
