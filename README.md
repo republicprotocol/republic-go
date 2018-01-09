@@ -58,6 +58,8 @@ By default, buckets are sorted by how recently an entry has been added, with new
 bucket.Sort()
 ```
 
+Remember to always check that the value of `err` is `nil`, we have omitted these checks in our example for simplicity.
+
 ## Tests
 
 To run the test suite, install Ginkgo.
