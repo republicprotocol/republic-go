@@ -2,7 +2,9 @@ package swarm
 
 import (
 	"fmt"
+	"log"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/republicprotocol/go-dht"
@@ -181,7 +183,111 @@ func (node *Node) peers() *rpc.MultiAddresses {
 }
 
 func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
-	return nil
+	target := identity.Address(orderFragment.To)
+	if string(target) == string(node.DHT.Address) {
+		// TODO: This Node is the intended target! Do something with the
+		//       rpc.OrderFragment.
+		log.Println("rpc.OrderFragment", orderFragment.OrderFragmentID, "received!")
+		return nil
+	}
+
+	targetMultiMu := new(sync.Mutex)
+	var targetMulti *identity.MultiAddress
+
+	openMu := new(sync.Mutex)
+	open, err := node.DHT.FindBucket(target).MultiAddresses()
+	closed := make(map[identity.MultiAddresses]bool, 0, len(open))
+
+	for len(open) > 0 {
+		var wg sync.WaitGroup
+		wg.Add(α)
+
+		for i := 0; i < α; i++ {
+			multi := open[0].MultiAddress
+			open = open[1:]
+			closed[multi] = true
+			go func() {
+				defer wg.Done()
+
+				// Create a client connection to the peer.
+				client, conn, err := NewNodeClient(multi)
+				if err != nil {
+					return
+				}
+				defer conn.Close()
+
+				// Get peers of the peer.
+				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+				defer cancel()
+				peers, err = client.Peers(ctx, &rpc.Nothing{})
+				if err != nil {
+					return
+				}
+
+				// Traverse all peers.
+				openNext := make(identity.MultiAddresses, 0, len(peers))
+				for peer := range peers {
+					multi, err := identity.NewMultiAddress(peer.Multi)
+					if err != nil {
+						continue
+					}
+					address, err := multi.Address()
+					if err != nil {
+						continue
+					}
+					if string(target) == string(address) {
+						targetMultiMu.Lock()
+						if targetMulti == nil {
+							targetMulti = multi
+						}
+						targetMultiMu.Unlock()
+						break
+					}
+					openNext = append(openNext, multi)
+				}
+
+				targetMultiMu.Lock()
+				if targetMulti == nil {
+					targetMultiMu.Unlock()
+					openMu.Lock()
+					for next := range openNext {
+						if c, ok := closed[next]; !c || !ok {
+							open = append(open, next)
+						}
+					}
+					openMu.Unlock()
+				} else {
+					targetMultiMu.Unlock()
+				}
+			}()
+		}
+
+		wg.Wait()
+		if targetMulti != nil {
+			break
+		}
+		open.Sort()
+	}
+
+	if targetMulti == nil {
+		return fmt.Errorf("cannot find target")
+	}
+
+	// Create a client connection to the peer.
+	client, conn, err := NewNodeClient(targetMulti)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	// Send the order fragment on to the peer.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	_, err = client.SendOrderFragment(ctx, orderFragment)
+	if err != nil {
+		return err
+	}
+	return false, nil
 }
 
 func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
