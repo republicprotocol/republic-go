@@ -2,13 +2,13 @@ package topology_test
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/go-swarm"
 	"github.com/republicprotocol/go-swarm/rpc"
-	"github.com/border/golang-china/pkg/fmt"
 )
 
 var _ = Describe("Star topologies", func() {
@@ -34,7 +34,7 @@ var _ = Describe("Star topologies", func() {
 
 		// Connect all nodes to each other.
 		for i := 0; i < numberOfNodes; i++ {
-			fmt.Println("sender", i,"...")
+			fmt.Println("sender", i, "...")
 			client, conn, err := NewNodeClient(nodes[i].MultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 			for j := 0; j < numberOfNodes; j++ {

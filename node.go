@@ -38,8 +38,6 @@ func NewNode(config *Config) (*Node, error) {
 		KeyPair:      config.KeyPair,
 		MultiAddress: config.MultiAddress,
 		DHT:          dht,
-		Clients:      map[string]rpc.NodeClient{},
-		Connections:  map[string]*grpc.ClientConn{},
 	}, nil
 }
 
