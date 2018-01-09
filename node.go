@@ -2,7 +2,6 @@ package swarm
 
 import (
 	"fmt"
-
 	"net"
 
 	"github.com/republicprotocol/go-dht"
