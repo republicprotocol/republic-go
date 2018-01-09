@@ -7,7 +7,7 @@ The Distributed Hash Table (DHT) library is a Go implementation of a Kademlia DH
 
 ## How it works
 
-You can create an empty DHT using the `NewDHT` function, and a Republic address. For more information about Republic addresses, see the (Identity)[https://github.com/republicprotocol/go-identity] library.
+You can create an empty DHT using the `NewDHT` function, and a Republic address. For more information about Republic addresses, see the [Identity](https://github.com/republicprotocol/go-identity) library.
 
 ```go
 address, _, err := identity.NewAddress()
