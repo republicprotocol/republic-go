@@ -180,17 +180,23 @@ func (node *Node) pruneUnhealthyPeer(target identity.Address) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	// Iterate backwards through entries in the Bucket. This iterates from
+	// newest to oldest.
 	for i := len(*bucket) - 1; i >= 0; i-- {
+		// Create a client connection to the peer.
 		client, conn, err := NewNodeClient((*bucket)[i].MultiAddress)
 		if err != nil {
+			// If the connection could not be made, prune the peer.
 			if err == context.DeadlineExceeded || err == context.Canceled {
 				return true, node.DHT.Remove((*bucket)[i].MultiAddress)
 			}
 			return false, err
 		}
 		defer conn.Close()
+		// Ping the peer.
 		_, err = client.Ping(context.Background(), &rpc.MultiAddress{Multi: node.MultiAddress.String()})
 		if err != nil {
+			// If the ping could not be made, prune the peer.
 			if err == context.DeadlineExceeded || err == context.Canceled {
 				return true, node.DHT.Remove((*bucket)[i].MultiAddress)
 			}
