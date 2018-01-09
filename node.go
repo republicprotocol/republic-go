@@ -179,6 +179,7 @@ func (node *Node) pruneUnhealthyPeer(target identity.Address) (bool, error) {
 		client, conn, err := NewNodeClient((*bucket)[i].MultiAddress)
 		if err != nil {
 			if err == context.DeadlineExceeded {
+				// TODO: prune
 				return true, nil
 			}
 			return false, err
@@ -187,6 +188,7 @@ func (node *Node) pruneUnhealthyPeer(target identity.Address) (bool, error) {
 		_, err = client.Ping(context.Background(), &rpc.MultiAddress{Multi: node.MultiAddress.String()})
 		if err != nil {
 			if err == context.DeadlineExceeded {
+				// TODO: prune
 				return true, nil
 			}
 			return false, err

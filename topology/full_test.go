@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/go-swarm"
 	"github.com/republicprotocol/go-swarm/rpc"
+	"github.com/border/golang-china/pkg/fmt"
 )
 
 var _ = Describe("Star topologies", func() {
@@ -20,23 +21,27 @@ var _ = Describe("Star topologies", func() {
 		nodes, err := generateNodes()
 		Ω(err).ShouldNot(HaveOccurred())
 
-		for _, node := range nodes {
+		for _, n := range nodes {
 			go func(node *Node) {
 				defer GinkgoRecover()
 				Ω(node.Serve()).ShouldNot(HaveOccurred())
-			}(node)
-			defer node.Stop()
+			}(n)
+			defer func(node *Node) {
+				node.Stop()
+			}(n)
 		}
 		time.Sleep(startTimeDelay)
 
 		// Connect all nodes to each other.
 		for i := 0; i < numberOfNodes; i++ {
+			fmt.Println("sender", i,"...")
 			client, conn, err := NewNodeClient(nodes[i].MultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 			for j := 0; j < numberOfNodes; j++ {
 				if i == j {
 					continue
 				}
+				fmt.Println("  ping", j)
 				_, err = client.Ping(context.Background(), &rpc.MultiAddress{Multi: nodes[j].MultiAddress.String()})
 				Ω(err).ShouldNot(HaveOccurred())
 			}
