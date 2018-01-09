@@ -13,10 +13,9 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-// MaxConnections determines the maximum number of client connections that the
-// Node is expected to keep alive at any one point. If more are required, it
-// should first shutdown an old connection before opening a new one.
-const MaxConnections = 4
+// α determines the maximum number of concurrent client connections that the
+// Node is expected to use when running a distributed Dijkstra search.
+const α = 3
 
 // Node implements the gRPC Node service.
 type Node struct {
@@ -111,8 +110,11 @@ func (node *Node) Peers(ctx context.Context, sender *rpc.Nothing) (*rpc.MultiAdd
 	}
 }
 
-// Send a Payload.
-func (node *Node) Send(ctx context.Context, payload *rpc.Payload) (*rpc.Nothing, error) {
+// SendOrderFragment is used to forward an rpc.OrderFragment through the X
+// Network to its destination Node. This forwarding is done using a distributed
+// Dijkstra search, using the XOR distance between identity.Addresses as the
+// distance heuristic.
+func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
 		return &rpc.Nothing{}, err
@@ -122,7 +124,7 @@ func (node *Node) Send(ctx context.Context, payload *rpc.Payload) (*rpc.Nothing,
 	wait := make(chan error)
 	go func() {
 		defer close(wait)
-		wait <- node.send(payload)
+		wait <- node.sendOrderFragment(orderFragment)
 	}()
 
 	select {
@@ -178,7 +180,7 @@ func (node *Node) peers() *rpc.MultiAddresses {
 	return ret
 }
 
-func (node *Node) send(payload *rpc.Payload) error {
+func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 	return nil
 }
 
