@@ -15,20 +15,20 @@ var _ = Describe("Distributed Hash Table", func() {
 	var randomAddress identity.Address
 	var randomMulti identity.MultiAddress
 
-	BeforeEach(func() {
-		address, _, err := identity.NewAddress()
-		Ω(err).ShouldNot(HaveOccurred())
-		dht = NewDHT(address)
-
-		randomAddress, _, err = identity.NewAddress()
-		Ω(err).ShouldNot(HaveOccurred())
-
-		randomMulti, err = randomAddress.MultiAddress()
-		Ω(err).ShouldNot(HaveOccurred())
-
-	})
-
 	Context("updates", func() {
+		BeforeEach(func() {
+			address, _, err := identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			dht = NewDHT(address)
+
+			randomAddress, _, err = identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			randomMulti, err = randomAddress.MultiAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+
+		})
+
 		It("should be able to find address after it is updated", func() {
 			err := dht.Update(randomMulti)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -55,8 +55,6 @@ var _ = Describe("Distributed Hash Table", func() {
 		})
 
 		It("should update time stamp for existing addresses", func() {
-			// Refresh the DHT.
-			dht = NewDHT(dht.Address)
 			err := dht.Update(randomMulti)
 			Ω(err).ShouldNot(HaveOccurred())
 
