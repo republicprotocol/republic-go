@@ -34,12 +34,12 @@ func Ping(target identity.MultiAddress, from *rpc.MultiAddress) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	_, err = client.Ping(context.Background(), from)
 	if err != nil {
-		conn.Close()
 		return err
 	}
-	return conn.Close()
+	return nil
 }
 
 // Send an rpc.Payload to the target identity.MultiAddress. Returns nil, or an

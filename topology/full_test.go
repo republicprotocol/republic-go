@@ -1,56 +1,58 @@
-package topology_test
+package topology
 
 import (
-	"context"
-	"fmt"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/go-swarm"
+	"github.com/republicprotocol/go-swarm"
 	"github.com/republicprotocol/go-swarm/rpc"
 )
 
-var _ = Describe("Star topologies", func() {
+var _ = Describe("Fully connected mesh topologies", func() {
 
-	It("should route messages in a two-sided connection", func() {
-		μ.Lock()
-		defer μ.Unlock()
+	Context("when pinging", func() {
+		It("should update their DHTs", func() {
+			μ.Lock()
+			defer μ.Unlock()
 
-		// Initialize all nodes.
-		nodes, err := generateNodes()
-		Ω(err).ShouldNot(HaveOccurred())
-
-		for _, n := range nodes {
-			go func(node *Node) {
-				defer GinkgoRecover()
-				Ω(node.Serve()).ShouldNot(HaveOccurred())
-			}(n)
-			defer func(node *Node) {
-				node.Stop()
-			}(n)
-		}
-		time.Sleep(startTimeDelay)
-
-		// Connect all nodes to each other.
-		for i := 0; i < numberOfNodes; i++ {
-			fmt.Println("sender", i, "...")
-			client, conn, err := NewNodeClient(nodes[i].MultiAddress)
+			// Initialize all nodes.
+			nodes, err := generateNodes()
 			Ω(err).ShouldNot(HaveOccurred())
-			for j := 0; j < numberOfNodes; j++ {
-				if i == j {
-					continue
-				}
-				fmt.Println("  ping", j)
-				_, err = client.Ping(context.Background(), &rpc.MultiAddress{Multi: nodes[j].MultiAddress.String()})
-				Ω(err).ShouldNot(HaveOccurred())
-			}
-			Ω(conn.Close()).ShouldNot(HaveOccurred())
-		}
 
-		// // Send messages through the topology
-		// err = sendMessages(nodes)
-		// Ω(err).ShouldNot(HaveOccurred())
+			// Start serving from all nodes.
+			for _, n := range nodes {
+				go func(node *swarm.Node) {
+					defer GinkgoRecover()
+					Ω(node.Serve()).ShouldNot(HaveOccurred())
+				}(n)
+				defer func(node *swarm.Node) {
+					node.Stop()
+				}(n)
+			}
+			time.Sleep(startTimeDelay)
+
+			// Connect all nodes to each other concurrently.
+			var wg sync.WaitGroup
+			wg.Add(numberOfNodes)
+			for i := 0; i < numberOfNodes; i++ {
+				go func(i int) {
+					defer GinkgoRecover()
+					defer wg.Done()
+
+					for j := 0; j < numberOfNodes; j++ {
+						if i == j {
+							continue
+						}
+						err = swarm.Ping(nodes[j].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
+						Ω(err).ShouldNot(HaveOccurred())
+					}
+
+				}(i)
+			}
+			wg.Wait()
+		})
 	})
 
 	// It("should route messages in a one-sided connection", func() {

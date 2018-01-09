@@ -17,7 +17,7 @@ import (
 var μ = new(sync.Mutex)
 
 // The number of nodes that should be included in each topology test.
-var numberOfNodes = 35
+var numberOfNodes = 45
 
 // The number of messages that will be sent through the topology.
 var numberOfMessages = 100

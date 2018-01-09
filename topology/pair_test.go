@@ -14,7 +14,7 @@ import (
 var _ = Describe("Pair topologies", func() {
 
 	Context("when pinging", func() {
-		It("should have updated DHTs", func() {
+		It("should update their DHTs", func() {
 			μ.Lock()
 			defer μ.Unlock()
 
@@ -67,28 +67,4 @@ var _ = Describe("Pair topologies", func() {
 			Ω(len(right.DHT.MultiAddresses())).Should(Equal(1))
 		})
 	})
-
-	// It("should route messages in a one-sided connection", func() {
-
-	// // Initialize all nodes.
-	// nodes, err := generateNodes()
-	// Ω(err).ShouldNot(HaveOccurred())
-
-	// for _, node := range nodes {
-	// 	go node.Serve()
-	// }
-	// time.Sleep(startTimeDelay)
-
-	// // Connect all nodes to each other.
-	// for i := 0; i < numberOfNodes; i++ {
-	// 	for j := i + 1; j < numberOfNodes; j++ {
-	// 		err := Ping(nodes[i].MultiAddress, &rpc.MultiAddress{Multi: nodes[j].MultiAddress.String()})
-	// 		Ω(err).ShouldNot(HaveOccurred())
-	// 	}
-	// }
-
-	// // Send messages through the topology
-	// err = sendMessages(nodes)
-	// Ω(err).ShouldNot(HaveOccurred())
-	// })
 })
