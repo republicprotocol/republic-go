@@ -148,6 +148,9 @@ func (dht *DHT) Neighborhood(target identity.Address, neighborhood uint) (int, i
 	if err != nil {
 		return -1, -1, err
 	}
+	if same == IDLengthInBits{
+		return -1,-1, ErrUpdateSelf
+	}
 	index := len(dht.Buckets) - same - 1
 	if index < 0 || index > len(dht.Buckets)-1 {
 		panic("runtime error: index out of range")
