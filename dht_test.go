@@ -12,6 +12,23 @@ var _ = Describe("Distributed Hash Table", func() {
 
 	Context("updates", func() {
 
+		It("should find the updated address", func() {
+			address, _, err := identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			dht := NewDHT(address)
+
+			address, _, err = identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			multi, err := address.MultiAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			err = dht.Update(multi)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			finded, err := dht.FindMultiAddress(address)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(finded).Should(Equal(multi))
+		})
+
 		It("should error when the bucket is full", func() {
 			address, _, err := identity.NewAddress()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -28,6 +45,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			}
 			Ω(err).Should(HaveOccurred())
 		})
+
 	})
 
 })
