@@ -76,9 +76,8 @@ func (dht *DHT) FindBucket(target identity.Address) (*Bucket, error) {
 }
 
 // FindNeighborhoodBuckets uses the target identity.Address to find Buckets
-// within a given neighborhood of the target Bucket. It does not include the
-// actual target Bucket, which can be found using FindBucket. The target does
-// not have to be in the DHT. Returns the Buckets, or an error.
+// within a given neighborhood of the target Bucket. The target does not have
+// to be in the DHT. Returns the Buckets, or an error.
 func (dht *DHT) FindNeighborhoodBuckets(target identity.Address, neighborhood uint) (Buckets, error) {
 	// Find the index range of the neighborhood.
 	start, end, err := dht.Neighborhood(target, neighborhood)
