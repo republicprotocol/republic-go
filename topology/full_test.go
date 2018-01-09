@@ -56,31 +56,4 @@ var _ = Describe("Fully connected mesh topologies", func() {
 			wg.Wait()
 		})
 	})
-
-	// It("should route messages in a one-sided connection", func() {
-
-	// // Initialize all nodes.
-	// nodes, err := generateNodes()
-	// Ω(err).ShouldNot(HaveOccurred())
-
-	// for _, node := range nodes {
-	// 	go func(node *Node) {
-	// 		defer GinkgoRecover()
-	// 		Ω(node.Serve()).ShouldNot(HaveOccurred())
-	// 	}(node)
-	// }
-	// time.Sleep(startTimeDelay)
-
-	// // Connect all nodes to each other.
-	// for i := 0; i < numberOfNodes; i++ {
-	// 	for j := i + 1; j < numberOfNodes; j++ {
-	// 		err := Ping(nodes[i].MultiAddress, &rpc.MultiAddress{Multi: nodes[j].MultiAddress.String()})
-	// 		Ω(err).ShouldNot(HaveOccurred())
-	// 	}
-	// }
-
-	// // Send messages through the topology
-	// err = sendMessages(nodes)
-	// Ω(err).ShouldNot(HaveOccurred())
-	// })
 })
