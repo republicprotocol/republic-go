@@ -72,7 +72,7 @@ var _ = Describe("Distributed Hash Table", func() {
 		})
 	})
 
-	Context("Remove ", func() {
+	Context("removing addresses", func() {
 
 		BeforeEach(func() {
 			address, _, err := identity.NewAddress()
@@ -86,7 +86,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
-		It("should remove the node from the dht", func() {
+		It("should remove the address", func() {
 			err := dht.Update(randomMulti)
 			Ω(err).ShouldNot(HaveOccurred())
 
