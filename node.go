@@ -12,6 +12,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+// MaxConnections determines the maximum number of client connections that the
+// Node is expected to keep alive at any one point. If more are required, it
+// should first shutdown an old connection before opening a new one.
+const MaxConnections = 4
+
 // Node implements the gRPC Node service.
 type Node struct {
 	*grpc.Server
@@ -33,6 +38,8 @@ func NewNode(config *Config) (*Node, error) {
 		KeyPair:      config.KeyPair,
 		MultiAddress: config.MultiAddress,
 		DHT:          dht,
+		Clients:      map[string]rpc.NodeClient{},
+		Connections:  map[string]*grpc.ClientConn{},
 	}, nil
 }
 
@@ -192,9 +199,9 @@ func (node *Node) pruneUnhealthyPeer(target identity.Address) (bool, error) {
 			}
 			return false, err
 		}
-		defer conn.Close()
 		// Ping the peer.
 		_, err = client.Ping(context.Background(), &rpc.MultiAddress{Multi: node.MultiAddress.String()})
+		conn.Close()
 		if err != nil {
 			// If the ping could not be made, prune the peer.
 			if err == context.DeadlineExceeded || err == context.Canceled {
