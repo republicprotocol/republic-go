@@ -58,19 +58,16 @@ var _ = Describe("Distributed Hash Table", func() {
 			err := dht.Update(randomMulti)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Get the first time stamp.
 			bucket, err := dht.FindBucket(randomAddress)
 			Ω(err).ShouldNot(HaveOccurred())
-			time1 := (*bucket)[0].Time
+			t := (*bucket)[0].Time
 
 			for i := 0; i < 5; i++ {
-				// Update the same node after some time.
 				time.Sleep(time.Millisecond)
-				err = dht.Update(randomMulti)
+				err := dht.Update(randomMulti)
 				Ω(err).ShouldNot(HaveOccurred())
-				time2 := (*bucket)[0].Time
-				Ω(time1).ShouldNot(Equal(time2))
-				time1 = time2
+				Ω(t).ShouldNot(Equal((*bucket)[0].Time))
+				t = (*bucket)[0].Time
 			}
 		})
 	})
