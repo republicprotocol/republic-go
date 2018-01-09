@@ -5,41 +5,41 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
 
-	. "github.com/republicprotocol/go-dht"
 	"time"
+
+	. "github.com/republicprotocol/go-dht"
 )
 
 var _ = Describe("Distributed Hash Table", func() {
 	var dht *DHT
-	var nodeAddress identity.Address
-	var nodeMulti identity.MultiAddress
-	var err error
+	var randomAddress identity.Address
+	var randomMulti identity.MultiAddress
 
 	BeforeEach(func() {
-		// Create a new address and its related multiaddress
 		address, _, err := identity.NewAddress()
 		Ω(err).ShouldNot(HaveOccurred())
 		dht = NewDHT(address)
 
-		// Create a new node with random address
-		nodeAddress, _, err = identity.NewAddress()
+		randomAddress, _, err = identity.NewAddress()
 		Ω(err).ShouldNot(HaveOccurred())
-		nodeMulti, err = nodeAddress.MultiAddress()
+
+		randomMulti, err = randomAddress.MultiAddress()
 		Ω(err).ShouldNot(HaveOccurred())
 
 	})
 
-	Context("Update nodes", func() {
-		It("should find the updated address", func() {
-			err = dht.Update(nodeMulti)
+	Context("updates", func() {
+		It("should be able to find address after it is updated", func() {
+			err := dht.Update(randomMulti)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			finded, err := dht.FindMultiAddress(nodeAddress)
+			multi, err := dht.FindMultiAddress(randomAddress)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(*finded).Should(Equal(nodeMulti))
+			Ω(*multi).Should(Equal(randomMulti))
 		})
 
 		It("should error when the bucket is full", func() {
+			var err error
 			for i := 0; i < MaxDHTSize; i++ {
 				address, _, e := identity.NewAddress()
 				Ω(e).ShouldNot(HaveOccurred())
@@ -53,21 +53,22 @@ var _ = Describe("Distributed Hash Table", func() {
 			}
 			Ω(err).Should(HaveOccurred())
 		})
-	})
 
-	Context("Update same node multi times ", func() {
-		Specify("the new time stamp should be different to the old one", func() {
-			err = dht.Update(nodeMulti)
+		It("should update time stamp for existing addresses", func() {
+			// Refresh the DHT.
+			dht = NewDHT(dht.Address)
+			err := dht.Update(randomMulti)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Get the first time stamp
-			bucket,err := dht.FindBucket(nodeAddress)
+			// Get the first time stamp.
+			bucket, err := dht.FindBucket(randomAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 			time1 := (*bucket)[0].Time
-			for i:=0;i <5;i++{
-				// Update the same node after 5 seconds
-				time.Sleep(3* time.Second)
-				err = dht.Update(nodeMulti)
+
+			for i := 0; i < 5; i++ {
+				// Update the same node after some time.
+				time.Sleep(time.Millisecond)
+				err = dht.Update(randomMulti)
 				Ω(err).ShouldNot(HaveOccurred())
 				time2 := (*bucket)[0].Time
 				Ω(time1).ShouldNot(Equal(time2))
