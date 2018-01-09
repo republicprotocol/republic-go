@@ -21,7 +21,7 @@ func NewNodeClient(target identity.MultiAddress) (rpc.NodeClient, *grpc.ClientCo
 	if err != nil {
 		return nil, nil, err
 	}
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", host, port), grpc.WithInsecure())
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", host, port), grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -35,7 +35,7 @@ func Ping(target identity.MultiAddress, from *rpc.MultiAddress) error {
 		return err
 	}
 	defer conn.Close()
-	_, err = client.Ping(context.Background(), from)
+	_, err = client.Ping(context.Background(), from, grpc.FailFast(false))
 	if err != nil {
 		return err
 	}
