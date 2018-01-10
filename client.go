@@ -1,4 +1,4 @@
-package swarm
+package x
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-swarm/rpc"
+	"github.com/republicprotocol/go-x/rpc"
 	"google.golang.org/grpc"
 )
 
@@ -40,7 +40,7 @@ func Ping(target identity.MultiAddress, from *rpc.MultiAddress) error {
 	// Ping.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	_, err = client.Ping(ctx, from)
+	_, err = client.Ping(ctx, from, grpc.FailFast(false))
 	if err != nil {
 		return err
 	}
