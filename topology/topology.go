@@ -69,7 +69,7 @@ func sendMessage(from identity.MultiAddress, to identity.MultiAddress) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Send(context.Background(), &rpc.Payload{
+	_, err = client.SendOrderFragment(context.Background(), &rpc.OrderFragment{
 		To:   string(address),
 		Data: "message",
 	})

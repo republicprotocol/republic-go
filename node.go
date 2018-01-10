@@ -196,8 +196,12 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 	var targetMulti *identity.MultiAddress
 
 	openMu := new(sync.Mutex)
-	open, err := node.DHT.FindBucket(target).MultiAddresses()
-	closed := make(map[identity.MultiAddresses]bool, 0, len(open))
+	bucket, err := node.DHT.FindBucket(target)
+	if err != nil {
+		return err
+	}
+	open := bucket.Multiaddresses()
+	closed := make(map[identity.MultiAddress]bool)
 
 	// TODO: We are only using one dht.Bucket to search the network. If this
 	//       dht.Bucket is not sufficient, we should also search the
@@ -207,46 +211,36 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 	for len(open) > 0 {
 		var wg sync.WaitGroup
 		wg.Add(α)
+		badNodes := make(chan identity.MultiAddress, α)
 
 		// Take the first α multi-addresses from the open list and expand them
 		// concurrently. This moves them from the open list to the closed list,
 		// preventing the same multi-address from being expanded more than
 		// once.
 		for i := 0; i < α; i++ {
-			multi := open[0].MultiAddress
+			multi := open[0]
 			open = open[1:]
 			closed[multi] = true
 
 			go func() {
 				defer wg.Done()
 
-				// Create a client connection to the peer.
-				client, conn, err := NewNodeClient(multi)
-				if err != nil {
-					return
-				}
-				defer conn.Close()
-
 				// Get all peers of this multi-address. This is the expansion
 				// step of the search.
-				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-				defer cancel()
-				peers, err = client.Peers(ctx, &rpc.Nothing{})
+				peers, err := Peers(multi,&rpc.MultiAddress{Multi:node.MultiAddress.String()})
 				if err != nil {
+					badNodes <- multi
 					return
 				}
 
 				// Traverse all peers and collect them into the openNext, a
 				// list of peers that we want to add the open list.
 				openNext := make(identity.MultiAddresses, 0, len(peers))
-				for peer := range peers {
-					multi, err := identity.NewMultiAddress(peer.Multi)
+				for _, peer := range peers {
+					address, err := peer.Address()
 					if err != nil {
-						continue
-					}
-					address, err := multi.Address()
-					if err != nil {
-						continue
+						badNodes <- peer
+						return
 					}
 					if string(target) == string(address) {
 						// If we have found the target, set the targetMulti and
@@ -254,7 +248,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 						// peers for the open list.
 						targetMultiMu.Lock()
 						if targetMulti == nil {
-							targetMulti = multi
+							targetMulti = &peer
 						}
 						targetMultiMu.Unlock()
 						break
@@ -262,7 +256,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 					// Otherwise, store this peer's multi-address in the
 					// openNext list. It will be added to the open list if it
 					// has not already been closed.
-					openNext = append(openNext, multi)
+					openNext = append(openNext, peer)
 				}
 
 				targetMultiMu.Lock()
@@ -272,8 +266,8 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 					openMu.Lock()
 					// Add new peers to the open list if they have not been
 					// closed.
-					for next := range openNext {
-						if isClosed, ok := closed[next]; !isClosed || !ok {
+					for _, next := range openNext {
+						if _, ok := closed[next];!ok {
 							open = append(open, next)
 						}
 					}
@@ -290,30 +284,28 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 			break
 		}
 
+		// Remove bad nodes which do not respond
+		for n := range badNodes{
+			node.DHT.Remove(n)
+		}
+
 		// Otherwise, sort the open list by distance to the target.
 		sort.SliceStable(open, func(i, j int) bool {
 			left := open[i]
 			right := open[j]
-			return identity.Closer(left, right, target)
+			closer, _ := identity.Closer(left,right,target)
+			return closer
 		})
 	}
 
 	if targetMulti == nil {
 		return fmt.Errorf("cannot find target")
 	}
-
-	// Create a client connection to the peer.
-	client, conn, err := NewNodeClient(targetMulti)
-	if err != nil {
+	err = SendOrderFragment(*targetMulti, orderFragment)
+	if err!= nil {
 		return err
 	}
-	defer conn.Close()
-
-	// Send the order fragment on to the peer.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	_, err = client.SendOrderFragment(ctx, orderFragment)
-	return err
+	return nil
 }
 
 func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
@@ -326,27 +318,11 @@ func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
 		return false, nil
 	}
 
-	// Create a client connection to the peer.
-	client, conn, err := NewNodeClient(*multi)
+
+	err = Ping(*multi,&rpc.MultiAddress{Multi:node.MultiAddress.String()})
 	if err != nil {
 		// If the connection could not be made, prune the peer.
-		if err == context.DeadlineExceeded || err == context.Canceled {
-			return true, node.DHT.Remove(*multi)
-		}
-		return false, err
+		return true, node.DHT.Remove(*multi)
 	}
-	defer conn.Close()
-
-	// Ping the peer.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	_, err = client.Ping(ctx, &rpc.MultiAddress{Multi: node.MultiAddress.String()}, grpc.FailFast(false))
-	if err != nil {
-		// If the ping could not be made, prune the peer.
-		if err == context.DeadlineExceeded || err == context.Canceled {
-			return true, node.DHT.Remove(*multi)
-		}
-		return false, err
-	}
-	return false, nil
+	return false,nil
 }
