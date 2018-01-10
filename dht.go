@@ -246,6 +246,15 @@ func (bucket Bucket) FindMultiAddress(target identity.Address) *identity.MultiAd
 	return nil
 }
 
+// MultiAddresses returns all MultiAddresses in the Bucket.
+func (bucket Bucket) MultiAddresses() identity.MultiAddresses {
+	multis := make(identity.MultiAddresses, len(bucket))
+	for i, entry := range bucket {
+		multis[i] = entry.MultiAddress
+	}
+	return multis
+}
+
 // Sort the Bucket by the time at which Entries were added.
 func (bucket Bucket) Sort() {
 	sort.Slice(bucket, func(i, j int) bool {
