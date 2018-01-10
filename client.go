@@ -48,7 +48,7 @@ func Ping(target identity.MultiAddress, from *rpc.MultiAddress) error {
 }
 
 // Peers asks for all peers connected to the node. Returns nil, or an error.
-func Peers(target identity.MultiAddress, from *rpc.MultiAddress) (identity.MultiAddresses,error) {
+func Peers(target identity.MultiAddress) (identity.MultiAddresses,error) {
 	// Create the client.
 	client, conn, err := NewNodeClient(target)
 	if err != nil {
@@ -72,24 +72,27 @@ func Peers(target identity.MultiAddress, from *rpc.MultiAddress) (identity.Multi
 }
 
 
-// Send an rpc.Payload to the target identity.MultiAddress. Returns nil, or an
+// Send an order fragment to the target identity.MultiAddress. Returns nil, or an
 // error.
-func SendOrderFragment(target identity.MultiAddress, fragment *rpc.OrderFragment) error {
-
+func SendOrderFragment(target identity.MultiAddress, fragment *rpc.OrderFragment) (*identity.MultiAddress,error) {
 	// Create the client.
 	client, conn, err := NewNodeClient(target)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer conn.Close()
 
 	// Send the order fragment.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	_, err = client.SendOrderFragment(ctx, fragment, grpc.FailFast(false))
+	response , err := client.SendOrderFragment(ctx, fragment, grpc.FailFast(false))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	multi,err := identity.NewMultiAddress(response.Multi)
+	if err != nil {
+		return nil, err
+	}
+	return &multi, nil
 }
 
