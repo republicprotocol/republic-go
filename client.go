@@ -32,12 +32,12 @@ func Dial(target identity.MultiAddress) (*grpc.ClientConn, error) {
 // RPCPing sends a Ping RPC request to the target using a new grpc.ClientConn
 // and a new rpc.NodeClient. It returns the result of the RPC call, or an
 // error.
-func (node *Node) RPCPing(target identity.MultiAddress) (identity.MultiAddress, error) {
+func (node *Node) RPCPing(target identity.MultiAddress) (*identity.MultiAddress, error) {
 
 	// Connect to the target.
 	conn, err := Dial(target)
 	if err != nil {
-		return identity.MultiAddress{}, err
+		return nil, err
 	}
 	defer conn.Close()
 	client := rpc.NewNodeClient(conn)
@@ -49,10 +49,14 @@ func (node *Node) RPCPing(target identity.MultiAddress) (identity.MultiAddress, 
 	// Call the Ping RPC on the target.
 	multi, err := client.Ping(ctx, &rpc.MultiAddress{Multi: node.MultiAddress.String()}, grpc.FailFast(false))
 	if err != nil {
-		return identity.MultiAddress{}, err
+		return nil, err
 	}
 
-	return identity.NewMultiAddressFromString(multi.Multi)
+	ret, err := identity.NewMultiAddressFromString(multi.Multi)
+	if err != nil {
+		return nil, err
+	}
+	return &ret, nil
 }
 
 // RPCPeers sends a Peers RPC request to the target using a new grpc.ClientConn
@@ -91,11 +95,11 @@ func (node *Node) RPCPeers(target identity.MultiAddress) (identity.MultiAddresse
 // RPCSendOrderFragment sends a SendOrderFragment RPC request to the target
 // using a new grpc.ClientConn and a new rpc.NodeClient. It returns the result
 // of the RPC call, or an error.
-func (node *Node) RPCSendOrderFragment(target identity.MultiAddress, fragment *rpc.OrderFragment) (identity.MultiAddress, error) {
+func (node *Node) RPCSendOrderFragment(target identity.MultiAddress, fragment *rpc.OrderFragment) (*identity.MultiAddress, error) {
 	// Connect to the target.
 	conn, err := Dial(target)
 	if err != nil {
-		return identity.MultiAddress{}, err
+		return nil, err
 	}
 	defer conn.Close()
 	client := rpc.NewNodeClient(conn)
@@ -107,8 +111,12 @@ func (node *Node) RPCSendOrderFragment(target identity.MultiAddress, fragment *r
 	// Call the SendOrderFragment RPC on the target.
 	multi, err := client.SendOrderFragment(ctx, fragment, grpc.FailFast(false))
 	if err != nil {
-		return identity.MultiAddress{}, err
+		return nil, err
 	}
 
-	return identity.NewMultiAddressFromString(multi.Multi)
+	ret, err := identity.NewMultiAddressFromString(multi.Multi)
+	if err != nil {
+		return nil, err
+	}
+	return &ret, nil
 }

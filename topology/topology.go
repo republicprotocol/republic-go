@@ -16,10 +16,10 @@ import (
 var μ = new(sync.Mutex)
 
 // The number of nodes that should be included in each topology test.
-var numberOfNodes = 50
+var numberOfNodes = 40
 
 // The number of messages that will be sent through the topology.
-var numberOfMessages = 50
+var numberOfMessages = 100
 
 // The duration to wait for peers to start listening for RPCs.
 var startTimeDelay = time.Second
@@ -37,9 +37,9 @@ func generateNodes(numberOfNodes int) ([]*x.Node, error) {
 			return nil, err
 		}
 		node, err := x.NewNode(&x.Config{
-			KeyPair:      keyPair,
-			MultiAddress: multi,
-			MultiAddresses:        make(identity.MultiAddresses, 0, numberOfNodes-1),
+			KeyPair:        keyPair,
+			MultiAddress:   multi,
+			MultiAddresses: make(identity.MultiAddresses, 0, numberOfNodes-1),
 		})
 		if err != nil {
 			return nil, err
@@ -60,15 +60,15 @@ func sendMessages(nodes []*x.Node) error {
 }
 
 func sendMessage(from, to *x.Node) error {
-	address,err := to.MultiAddress.Address()
+	address, err := to.MultiAddress.Address()
 	if err != nil {
 		return err
 	}
-	orderFragment :=  &rpc.OrderFragment{
-		To:   string(address),
-		OrderID: []byte("orderID"),
-		OrderFragmentID:[]byte("fragmentID"),
-		OrderFragment:[]byte(address),
+	orderFragment := &rpc.OrderFragment{
+		To:              string(address),
+		OrderID:         []byte("orderID"),
+		OrderFragmentID: []byte("fragmentID"),
+		OrderFragment:   []byte(address),
 	}
 	return from.ForwardOrderFragemt(orderFragment)
 
