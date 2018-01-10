@@ -172,7 +172,7 @@ func (address Address) SamePrefixLength(other Address) (int, error) {
 // MultiAddress returns the Republic multi-address of the Address. It can be
 // appended with other MultiAddresses.
 func (address Address) MultiAddress() (MultiAddress, error) {
-	return NewMultiAddress(fmt.Sprintf("/republic/%s", string(address)))
+	return NewMultiAddressFromString(fmt.Sprintf("/republic/%s", address))
 }
 
 // String returns the Address as a string.
