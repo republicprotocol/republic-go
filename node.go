@@ -24,23 +24,25 @@ const α = 3
 // Node implements the gRPC Node service.
 type Node struct {
 	*grpc.Server
-	KeyPair      identity.KeyPair
 	MultiAddress identity.MultiAddress
 	DHT          *dht.DHT
 }
 
 // NewNode returns a Node with the given Config, a new DHT, and a new set of grpc.Connections.
-func NewNode(config *Config) (*Node, error) {
-	dht := dht.NewDHT(config.KeyPair.Address())
-	for _, multi := range config.MultiAddresses {
+func NewNode(multi identity.MultiAddress, multis identity.MultiAddresses) (*Node, error) {
+	address, err := multi.Address()
+	if err != nil {
+		return nil, err
+	}
+	dht := dht.NewDHT(address)
+	for _, multi := range multis {
 		if err := dht.Update(multi); err != nil {
 			return nil, err
 		}
 	}
 	return &Node{
 		Server:       grpc.NewServer(),
-		KeyPair:      config.KeyPair,
-		MultiAddress: config.MultiAddress,
+		MultiAddress: multi,
 		DHT:          dht,
 	}, nil
 }
