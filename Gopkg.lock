@@ -50,16 +50,22 @@
   version = "v1.3.0"
 
 [[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/republicprotocol/go-dht"
   packages = ["."]
-  revision = "44fdc897d27152c614e38deb8562fd81e438b097"
+  revision = "3f5ca3ef5dec432299f97dce1ad936cd80363c55"
 
 [[projects]]
   branch = "master"
   name = "github.com/republicprotocol/go-identity"
   packages = ["."]
-  revision = "cb3f9adf62ef753f8464b43787ad8e7668b8f623"
+  revision = "f2390796f9a6ba7d95d191edfefe410e43feb9d2"
 
 [[projects]]
   name = "github.com/spaolacci/murmur3"
@@ -118,6 +124,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fe01d013642e05e4032ee921717f381872c5d17c1a909c88d012691dbe089b3f"
+  inputs-digest = "cff2e33672c700146458fec74f535c910858d3407e8aab9cd31702e9354c6406"
   solver-name = "gps-cdcl"
   solver-version = 1
