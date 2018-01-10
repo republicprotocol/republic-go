@@ -32,14 +32,14 @@ func generateNodes(numberOfNodes int) ([]*x.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		multi, err := identity.NewMultiAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 3000+i, keyPair.Address()))
+		multi, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 3000+i, keyPair.Address()))
 		if err != nil {
 			return nil, err
 		}
 		node, err := x.NewNode(&x.Config{
 			KeyPair:      keyPair,
 			MultiAddress: multi,
-			Peers:        make(identity.MultiAddresses, 0, numberOfNodes-1),
+			MultiAddresses:        make(identity.MultiAddresses, 0, numberOfNodes-1),
 		})
 		if err != nil {
 			return nil, err
