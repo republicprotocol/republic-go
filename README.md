@@ -30,3 +30,13 @@ Install the gRPC plugin.
 ```
 go get -u google.golang.org/grpc
 ```
+
+## Republic
+
+The X Network library was developed by the Republic Protocol team and is available under the MIT license. For more information, see our website https://republicprotocol.com.
+
+## Contributors
+
+* Loong
+* Yunshi
+* Susruth
