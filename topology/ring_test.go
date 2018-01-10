@@ -43,19 +43,16 @@ var _ = Describe("Line topology", func() {
 
 					if i != 0 {
 						err = x.Ping(nodes[i-1].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
-						Ω(err).ShouldNot(HaveOccurred())
 					} else {
 						err = x.Ping(nodes[numberOfNodes-1].MultiAddress, &rpc.MultiAddress{Multi: nodes[0].MultiAddress.String()})
-						Ω(err).ShouldNot(HaveOccurred())
 					}
 
 					if i != numberOfNodes-1 {
 						err = x.Ping(nodes[i+1].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
-						Ω(err).ShouldNot(HaveOccurred())
 					} else {
 						err = x.Ping(nodes[0].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
-						Ω(err).ShouldNot(HaveOccurred())
 					}
+					Ω(err).ShouldNot(HaveOccurred())
 				}(i)
 			}
 			wg.Wait()

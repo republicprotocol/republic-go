@@ -40,7 +40,6 @@ var _ = Describe("Star topology", func() {
 				go func(i int) {
 					defer GinkgoRecover()
 					defer wg.Done()
-
 					err = x.Ping(nodes[0].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
 					Ω(err).ShouldNot(HaveOccurred())
 

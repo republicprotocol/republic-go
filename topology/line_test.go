@@ -42,12 +42,11 @@ var _ = Describe("Line topology", func() {
 					defer wg.Done()
 					if i != 0 {
 						err = x.Ping(nodes[i-1].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
-						Ω(err).ShouldNot(HaveOccurred())
 					}
 					if i != numberOfNodes-1 {
 						err = x.Ping(nodes[i+1].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
-						Ω(err).ShouldNot(HaveOccurred())
 					}
+					Ω(err).ShouldNot(HaveOccurred())
 				}(i)
 			}
 			wg.Wait()
