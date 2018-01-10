@@ -31,8 +31,8 @@ type Node struct {
 // NewNode returns a Node with the given Config, a new DHT, and a new set of grpc.Connections.
 func NewNode(config *Config) (*Node, error) {
 	dht := dht.NewDHT(config.KeyPair.Address())
-	for _, peer := range config.Peers {
-		if err := dht.Update(peer); err != nil {
+	for _, multi := range config.MultiAddresses {
+		if err := dht.Update(multi); err != nil {
 			return nil, err
 		}
 	}
