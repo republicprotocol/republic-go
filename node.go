@@ -1,4 +1,4 @@
-package swarm
+package x
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/republicprotocol/go-dht"
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-swarm/rpc"
+	"github.com/republicprotocol/go-x/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -340,7 +340,7 @@ func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
 	// Ping the peer.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	_, err = client.Ping(ctx, &rpc.MultiAddress{Multi: node.MultiAddress.String()})
+	_, err = client.Ping(ctx, &rpc.MultiAddress{Multi: node.MultiAddress.String()}, grpc.FailFast(false))
 	if err != nil {
 		// If the ping could not be made, prune the peer.
 		if err == context.DeadlineExceeded || err == context.Canceled {

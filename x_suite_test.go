@@ -1,4 +1,4 @@
-package swarm_test
+package x_test
 
 import (
 	. "github.com/onsi/ginkgo"
