@@ -41,7 +41,6 @@ var _ = Describe("Star topology", func() {
 					defer wg.Done()
 					_, err = nodes[i].RPCPing(nodes[0].MultiAddress)
 					Ω(err).ShouldNot(HaveOccurred())
-
 				}(i)
 			}
 			wg.Wait()
@@ -54,7 +53,6 @@ var _ = Describe("Star topology", func() {
 					defer wg.Done()
 					_, err = nodes[0].RPCPing(nodes[i].MultiAddress)
 					Ω(err).ShouldNot(HaveOccurred())
-
 				}(i)
 			}
 			wg.Wait()
