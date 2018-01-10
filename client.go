@@ -62,7 +62,7 @@ func Peers(target identity.MultiAddress) (identity.MultiAddresses,error) {
 	peers , err := client.Peers(ctx, &rpc.Nothing{}, grpc.FailFast(false))
 	res := make([]identity.MultiAddress,len(peers.Multis))
 	for index,peer :=range peers.Multis{
-		multi,err := identity.NewMultiAddress(peer.Multi)
+		multi,err := identity.NewMultiAddressFromString(peer.Multi)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func SendOrderFragment(target identity.MultiAddress, fragment *rpc.OrderFragment
 	if err != nil {
 		return nil, err
 	}
-	multi,err := identity.NewMultiAddress(response.Multi)
+	multi,err := identity.NewMultiAddressFromString(response.Multi)
 	if err != nil {
 		return nil, err
 	}

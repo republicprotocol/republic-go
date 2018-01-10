@@ -147,7 +147,7 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 }
 
 func (node *Node) handlePing(peer *rpc.MultiAddress) error {
-	multi, err := identity.NewMultiAddress(peer.Multi)
+	multi, err := identity.NewMultiAddressFromString(peer.Multi)
 	if err != nil {
 		return err
 	}
