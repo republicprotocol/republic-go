@@ -62,6 +62,22 @@ func (keyPair KeyPair) Address() Address {
 	return Address(base58.EncodeAlphabet(hash, base58.BTCAlphabet))
 }
 
+// MarshalJSON implements the json.Marshaler interface.
+func (keyPair KeyPair) MarshalJSON() ([]byte, error) {
+	return crypto.FromECDSA(keyPair.PrivateKey), nil
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (keyPair KeyPair) UnmarshalJSON(data []byte) error {
+	privateKey, err := crypto.ToECDSA(data)
+	if err != nil {
+		return err
+	}
+	keyPair.PrivateKey = privateKey
+	keyPair.PublicKey = &privateKey.PublicKey
+	return nil
+}
+
 // IDLength is the number of bytes in an ID.
 const IDLength = 20
 
