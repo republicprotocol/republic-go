@@ -6,7 +6,6 @@ import (
 	"net"
 	"sort"
 	"sync"
-	"time"
 
 	"github.com/republicprotocol/go-dht"
 	"github.com/republicprotocol/go-identity"
@@ -227,7 +226,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 
 				// Get all peers of this multi-address. This is the expansion
 				// step of the search.
-				peers, err := Peers(multi,&rpc.MultiAddress{Multi:node.MultiAddress.String()})
+				peers, err := Peers(multi, &rpc.MultiAddress{Multi: node.MultiAddress.String()})
 				if err != nil {
 					badNodes <- multi
 					return
@@ -267,7 +266,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 					// Add new peers to the open list if they have not been
 					// closed.
 					for _, next := range openNext {
-						if _, ok := closed[next];!ok {
+						if _, ok := closed[next]; !ok {
 							open = append(open, next)
 						}
 					}
@@ -285,7 +284,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 		}
 
 		// Remove bad nodes which do not respond
-		for n := range badNodes{
+		for n := range badNodes {
 			node.DHT.Remove(n)
 		}
 
@@ -293,7 +292,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 		sort.SliceStable(open, func(i, j int) bool {
 			left := open[i]
 			right := open[j]
-			closer, _ := identity.Closer(left,right,target)
+			closer, _ := identity.Closer(left, right, target)
 			return closer
 		})
 	}
@@ -302,7 +301,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 		return fmt.Errorf("cannot find target")
 	}
 	err = SendOrderFragment(*targetMulti, orderFragment)
-	if err!= nil {
+	if err != nil {
 		return err
 	}
 	return nil
@@ -318,11 +317,10 @@ func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
 		return false, nil
 	}
 
-
-	err = Ping(*multi,&rpc.MultiAddress{Multi:node.MultiAddress.String()})
+	err = Ping(*multi, &rpc.MultiAddress{Multi: node.MultiAddress.String()})
 	if err != nil {
 		// If the connection could not be made, prune the peer.
 		return true, node.DHT.Remove(*multi)
 	}
-	return false,nil
+	return false, nil
 }
