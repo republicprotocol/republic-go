@@ -235,7 +235,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 
 				// Get all peers of this multi-address. This is the expansion
 				// step of the search.
-				peers, err := Peers(multi)
+				peers, err := node.RPCPeers(multi)
 				if err != nil {
 					badNodes <- multi
 					return
@@ -309,7 +309,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 	if targetMulti == nil {
 		return nil, fmt.Errorf("cannot find target")
 	}
-	response, err := SendOrderFragment(*targetMulti, orderFragment)
+	response, err := node.RPCSendOrderFragment(*targetMulti, orderFragment)
 	if err != nil {
 		return nil, err
 	}
@@ -326,12 +326,11 @@ func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
 	if multi == nil {
 		return false, nil
 	}
-
-	err = Ping(*multi, &rpc.MultiAddress{Multi: node.MultiAddress.String()})
+	newMulti, err := node.RPCPing(*multi)
 	if err != nil {
-		// If the connection could not be made, prune the peer.
 		return true, node.DHT.Remove(*multi)
 	}
+	node.DHT.Update(newMulti)
 	return false, nil
 }
 
@@ -361,7 +360,7 @@ func (node *Node) ForwardOrderFragemt(orderFragment *rpc.OrderFragment) error {
 		return err
 	}
 	if string(closestNode) == string(target) {
-		_, err := SendOrderFragment(open[0], orderFragment)
+		_, err := node.RPCSendOrderFragment(open[0], orderFragment)
 		return err
 	}
 
@@ -376,9 +375,9 @@ func (node *Node) ForwardOrderFragemt(orderFragment *rpc.OrderFragment) error {
 			open = open[1:]
 			go func() {
 				defer wg.Done()
-				response, _ := SendOrderFragment(multi, orderFragment)
-				if response != nil {
-					targetFound <- *response
+				response, _ := node.RPCSendOrderFragment(multi, orderFragment)
+				if response.String() != "" {
+					targetFound <- response
 				}
 			}()
 		}

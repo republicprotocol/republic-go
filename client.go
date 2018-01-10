@@ -91,7 +91,7 @@ func (node *Node) RPCPeers(target identity.MultiAddress) (identity.MultiAddresse
 // RPCSendOrderFragment sends a SendOrderFragment RPC request to the target
 // using a new grpc.ClientConn and a new rpc.NodeClient. It returns the result
 // of the RPC call, or an error.
-func RPCSendOrderFragment(target identity.MultiAddress, fragment *rpc.OrderFragment) (identity.MultiAddress, error) {
+func (node *Node) RPCSendOrderFragment(target identity.MultiAddress, fragment *rpc.OrderFragment) (identity.MultiAddress, error) {
 	// Connect to the target.
 	conn, err := Dial(target)
 	if err != nil {
