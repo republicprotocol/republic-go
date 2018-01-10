@@ -38,16 +38,16 @@ type MultiAddress struct {
 // MultiAddresses is an alias.
 type MultiAddresses []MultiAddress
 
-// NewMultiAddress parses and validates an input string. It returns a
+// NewMultiAddressFromString parses and validates an input string. It returns a
 // MultiAddress, or an error.
-func NewMultiAddress(s string) (MultiAddress, error) {
+func NewMultiAddressFromString(s string) (MultiAddress, error) {
 	multiAddr, err := multiaddr.NewMultiaddr(s)
 	return MultiAddress{multiAddr}, err
 }
 
-// NewMultiAddressBytes parses and validates an input byte slice. It returns a
-// MultiAddress, or an error.
-func NewMultiAddressBytes(b []byte) (MultiAddress, error) {
+// NewMultiAddressFromBytes parses and validates an input byte slice. It
+// returns a MultiAddress, or an error.
+func NewMultiAddressFromBytes(b []byte) (MultiAddress, error) {
 	multi, err := multiaddr.NewMultiaddrBytes(b)
 	return MultiAddress{multi}, err
 }
@@ -65,7 +65,7 @@ func (multiAddr MultiAddress) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (multiAddr MultiAddress) UnmarshalJSON(data []byte) error {
-	addr, err := NewMultiAddressBytes(data)
+	addr, err := NewMultiAddressFromBytes(data)
 	if err != nil {
 		return err
 	}

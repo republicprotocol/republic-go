@@ -95,6 +95,11 @@ func NewID() (ID, KeyPair, error) {
 	return keyPair.ID(), keyPair, nil
 }
 
+// String returns the ID as a string.
+func (id ID) String() string {
+	return string(id)
+}
+
 // AddressLength is the number of bytes in an Address.
 const AddressLength = 30
 
@@ -168,6 +173,11 @@ func (address Address) SamePrefixLength(other Address) (int, error) {
 // appended with other MultiAddresses.
 func (address Address) MultiAddress() (MultiAddress, error) {
 	return NewMultiAddress(fmt.Sprintf("/republic/%s", string(address)))
+}
+
+// String returns the Address as a string.
+func (address Address) String() string {
+	return string(address)
 }
 
 // Closer returns true if the left Address is closer to the target than the
