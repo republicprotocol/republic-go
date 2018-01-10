@@ -35,13 +35,13 @@ var _ = Describe("Star topology", func() {
 
 			// All nodes ping the center node.
 			var wg sync.WaitGroup
-			wg.Add(numberOfNodes-1)
+			wg.Add(numberOfNodes - 1)
 			for i := 1; i < numberOfNodes; i++ {
 				go func(i int) {
 					defer GinkgoRecover()
 					defer wg.Done()
 
-					err = swarm.Ping(nodes[0].MultiAddress,&rpc.MultiAddress{Multi:nodes[i].MultiAddress.String()})
+					err = swarm.Ping(nodes[0].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
 					Ω(err).ShouldNot(HaveOccurred())
 
 				}(i)
@@ -49,12 +49,12 @@ var _ = Describe("Star topology", func() {
 			wg.Wait()
 
 			// Center node pings all the other nodes
-			wg.Add(numberOfNodes-1)
-			for i:=1; i<numberOfNodes;i++{
+			wg.Add(numberOfNodes - 1)
+			for i := 1; i < numberOfNodes; i++ {
 				go func(i int) {
 					defer GinkgoRecover()
 					defer wg.Done()
-					err = swarm.Ping(nodes[i].MultiAddress,&rpc.MultiAddress{Multi:nodes[0].MultiAddress.String()})
+					err = swarm.Ping(nodes[i].MultiAddress, &rpc.MultiAddress{Multi: nodes[0].MultiAddress.String()})
 					Ω(err).ShouldNot(HaveOccurred())
 
 				}(i)

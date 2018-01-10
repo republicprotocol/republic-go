@@ -1,11 +1,11 @@
 package swarm_test
 
 import (
+	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-swarm"
 	"github.com/republicprotocol/go-identity"
-	"fmt"
+	"github.com/republicprotocol/go-swarm"
 )
 
 var _ = Describe("Client", func() {
@@ -23,9 +23,9 @@ var _ = Describe("Client", func() {
 
 	Context("Ping", func() {
 		It("should be able to ping a target node and get its multiaddress", func() {
-			target,_, err :=  identity.NewAddress()
+			target, _, err := identity.NewAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			multi,err  := target.MultiAddress()
+			multi, err := target.MultiAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 
 		})

@@ -36,16 +36,16 @@ var _ = Describe("Line topology", func() {
 			// Connect all nodes to each other concurrently.
 			var wg sync.WaitGroup
 			wg.Add(numberOfNodes)
-			for i := 0; i < numberOfNodes ; i++ {
+			for i := 0; i < numberOfNodes; i++ {
 				go func(i int) {
 					defer GinkgoRecover()
 					defer wg.Done()
-					if i != 0{
-						err = swarm.Ping(nodes[i-1].MultiAddress,&rpc.MultiAddress{Multi:nodes[i].MultiAddress.String()})
+					if i != 0 {
+						err = swarm.Ping(nodes[i-1].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
 						Ω(err).ShouldNot(HaveOccurred())
 					}
-					if i != numberOfNodes - 1{
-						err = swarm.Ping(nodes[i+1].MultiAddress,&rpc.MultiAddress{Multi:nodes[i].MultiAddress.String()})
+					if i != numberOfNodes-1 {
+						err = swarm.Ping(nodes[i+1].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
 						Ω(err).ShouldNot(HaveOccurred())
 					}
 				}(i)
