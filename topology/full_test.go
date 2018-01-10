@@ -42,7 +42,7 @@ var _ = Describe("Fully connected mesh topologies", func() {
 					if i == j {
 						continue
 					}
-					_, err := nodes[i].RPCPing(nodes[j].MultiAddress)
+					_, err = nodes[i].RPCPing(nodes[j].MultiAddress)
 					Ω(err).ShouldNot(HaveOccurred())
 				}
 
@@ -64,7 +64,7 @@ var _ = Describe("Fully connected mesh topologies", func() {
 	Context("when pinging", func() {
 		It("should update their DHTs", func() {
 			for _, node := range nodes {
-				Ω(len(node.DHT.MultiAddresses())).Should(BeNumerically(">",20))
+				Ω(len(node.DHT.MultiAddresses())).Should(BeNumerically(">", 20))
 			}
 		})
 	})
