@@ -25,14 +25,14 @@ type DHT struct {
 }
 
 // NewDHT returns a new DHT with the given Address, and empty Buckets.
-func NewDHT(address identity.Address, maxBucketSize int) *DHT {
+func NewDHT(address identity.Address, maxBucketLength int) *DHT {
 	dht := &DHT{
 		μ:       new(sync.RWMutex),
 		Address: address,
 		Buckets: [IDLengthInBits]Bucket{},
 	}
 	for i := range dht.Buckets {
-		dht.Buckets[i] = NewBucket(maxBucketSize)
+		dht.Buckets[i] = NewBucket(maxBucketLength)
 	}
 	return dht
 }
