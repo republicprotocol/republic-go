@@ -29,30 +29,6 @@ func Dial(target identity.MultiAddress) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-// Peers asks for all peers connected to the node. Returns nil, or an error.
-func Peers(target identity.MultiAddress) (identity.MultiAddresses, error) {
-	// Create the client.
-	client, conn, err := NewNodeClient(target)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	// Make grpc call
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	peers, err := client.Peers(ctx, &rpc.Nothing{}, grpc.FailFast(false))
-	res := make([]identity.MultiAddress, len(peers.Multis))
-	for index, peer := range peers.Multis {
-		multi, err := identity.NewMultiAddress(peer.Multi)
-		if err != nil {
-			return nil, err
-		}
-		res[index] = multi
-	}
-	return res, nil
-}
-
 // Send an order fragment to the target identity.MultiAddress. Returns nil, or an
 // error.
 func SendOrderFragment(target identity.MultiAddress, fragment *rpc.OrderFragment) (*identity.MultiAddress, error) {
@@ -77,14 +53,15 @@ func SendOrderFragment(target identity.MultiAddress, fragment *rpc.OrderFragment
 	return &multi, nil
 }
 
-// CallPing sends an RPC request to the target using a new grpc.ClientConn and
-// a new rpc.NodeClient. It returns the result of the RPC call, or an error.
-func (node *Node) CallPing(target identity.MultiAddress) (*rpc.MultiAddress, error) {
+// RPCPing sends an Ping RPC request to the target using a new grpc.ClientConn
+// and a new rpc.NodeClient. It returns the result of the RPC call, or an
+// error.
+func (node *Node) RPCPing(target identity.MultiAddress) (identity.MultiAddress, error) {
 
 	// Connect to the target.
 	conn, err := Dial(target)
 	if err != nil {
-		return nil, err
+		return identity.MultiAddress{}, err
 	}
 	defer conn.Close()
 	client := rpc.NewNodeClient(conn)
@@ -94,5 +71,44 @@ func (node *Node) CallPing(target identity.MultiAddress) (*rpc.MultiAddress, err
 	defer cancel()
 
 	// Call the Ping RPC on the target.
-	return client.Ping(ctx, &rpc.MultiAddress{Multi: node.MultiAddress.String()}, grpc.FailFast(false))
+	multi, err := client.Ping(ctx, &rpc.MultiAddress{Multi: node.MultiAddress.String()}, grpc.FailFast(false))
+	if err != nil {
+		return identity.MultiAddress{}, err
+	}
+
+	return identity.NewMultiAddressFromString(multi.Multi)
+}
+
+// RPCPeers sends an Peers RPC request to the target using a new
+// grpc.ClientConn and a new rpc.NodeClient. It returns the result of the RPC
+// call, or an error.
+func RPCPeers(target identity.MultiAddress) (identity.MultiAddresses, error) {
+
+	// Connect to the target.
+	conn, err := Dial(target)
+	if err != nil {
+		return identity.MultiAddresses{}, err
+	}
+	defer conn.Close()
+	client := rpc.NewNodeClient(conn)
+
+	// Create a timeout context.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// Call the Peers RPC on the target.
+	multis, err := client.Peers(ctx, &rpc.Nothing{}, grpc.FailFast(false))
+	if err != nil {
+		return identity.MultiAddresses{}, err
+	}
+
+	peers := make(identity.MultiAddresses, 0, len(multis.Multis))
+	for i, multi := range multis.Multis {
+		peer, err := identity.NewMultiAddressFromString(multi.Multi)
+		if err != nil {
+			return peers, err
+		}
+		peers = append(peers, peer)
+	}
+	return peers, nil
 }
