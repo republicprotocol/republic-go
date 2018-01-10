@@ -199,14 +199,24 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 	open, err := node.DHT.FindBucket(target).MultiAddresses()
 	closed := make(map[identity.MultiAddresses]bool, 0, len(open))
 
+	// TODO: We are only using one dht.Bucket to search the network. If this
+	//       dht.Bucket is not sufficient, we should also search the
+	//       neighborhood of the dht.Bucket. The neighborhood should expand by
+	//       a distance of one, until the entire DHT has been searched, or the
+	//       targetMulti has been found.
 	for len(open) > 0 {
 		var wg sync.WaitGroup
 		wg.Add(α)
 
+		// Take the first α multi-addresses from the open list and expand them
+		// concurrently. This moves them from the open list to the closed list,
+		// preventing the same multi-address from being expanded more than
+		// once.
 		for i := 0; i < α; i++ {
 			multi := open[0].MultiAddress
 			open = open[1:]
 			closed[multi] = true
+
 			go func() {
 				defer wg.Done()
 
@@ -217,7 +227,8 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 				}
 				defer conn.Close()
 
-				// Get peers of the peer.
+				// Get all peers of this multi-address. This is the expansion
+				// step of the search.
 				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 				defer cancel()
 				peers, err = client.Peers(ctx, &rpc.Nothing{})
@@ -225,7 +236,8 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 					return
 				}
 
-				// Traverse all peers.
+				// Traverse all peers and collect them into the openNext, a
+				// list of peers that we want to add the open list.
 				openNext := make(identity.MultiAddresses, 0, len(peers))
 				for peer := range peers {
 					multi, err := identity.NewMultiAddress(peer.Multi)
@@ -237,6 +249,9 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 						continue
 					}
 					if string(target) == string(address) {
+						// If we have found the target, set the targetMulti and
+						// exit the loop. There is no point acquiring more
+						// peers for the open list.
 						targetMultiMu.Lock()
 						if targetMulti == nil {
 							targetMulti = multi
@@ -244,13 +259,19 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 						targetMultiMu.Unlock()
 						break
 					}
+					// Otherwise, store this peer's multi-address in the
+					// openNext list. It will be added to the open list if it
+					// has not already been closed.
 					openNext = append(openNext, multi)
 				}
 
 				targetMultiMu.Lock()
 				if targetMulti == nil {
+					// We have not found the targetMulti yet.
 					targetMultiMu.Unlock()
 					openMu.Lock()
+					// Add new peers to the open list if they have not been
+					// closed.
 					for next := range openNext {
 						if isClosed, ok := closed[next]; !isClosed || !ok {
 							open = append(open, next)
@@ -262,12 +283,14 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 				}
 			}()
 		}
-
 		wg.Wait()
 		if targetMulti != nil {
+			// If we have found the targetMulti then we can exit the search
+			// loop.
 			break
 		}
 
+		// Otherwise, sort the open list by distance to the target.
 		sort.SliceStable(open, func(i, j int) bool {
 			left := open[i]
 			right := open[j]
