@@ -13,7 +13,7 @@ service Node {
   rpc Peers (Nothing) returns (MultiAddresses);
 
   // Send an order fragment to some target Node.
-  rpc SendOrderFragment (OrderFragment) returns (Nothing);
+  rpc SendOrderFragment (OrderFragment) returns (MultiAddress);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.

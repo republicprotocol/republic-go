@@ -1,7 +1,6 @@
 package topology
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -17,14 +16,15 @@ import (
 var μ = new(sync.Mutex)
 
 // The number of nodes that should be included in each topology test.
-var numberOfNodes = 100
+var numberOfNodes = 50
 
 // The number of messages that will be sent through the topology.
-var numberOfMessages = 100
+var numberOfMessages = 50
 
 // The duration to wait for peers to start listening for RPCs.
 var startTimeDelay = time.Second
 
+// generateNodes generates nodes at the beginning of each topology test.
 func generateNodes(numberOfNodes int) ([]*x.Node, error) {
 	nodes := make([]*x.Node, numberOfNodes)
 	for i := 0; i < numberOfNodes; i++ {
@@ -52,28 +52,26 @@ func generateNodes(numberOfNodes int) ([]*x.Node, error) {
 func sendMessages(nodes []*x.Node) error {
 	for i := 0; i < numberOfMessages; i++ {
 		left, right := randomNodes(nodes)
-		if err := sendMessage(left.MultiAddress, right.MultiAddress); err != nil {
+		if err := sendMessage(left, right); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func sendMessage(from identity.MultiAddress, to identity.MultiAddress) error {
-	client, conn, err := x.NewNodeClient(from)
-	defer conn.Close()
+func sendMessage(from, to *x.Node) error {
+	address,err := to.MultiAddress.Address()
 	if err != nil {
 		return err
 	}
-	address, err := to.Address()
-	if err != nil {
-		return err
-	}
-	_, err = client.SendOrderFragment(context.Background(), &rpc.OrderFragment{
+	orderFragment :=  &rpc.OrderFragment{
 		To:   string(address),
-		Data: "message",
-	})
-	return err
+		OrderID: []byte("orderID"),
+		OrderFragmentID:[]byte("fragmentID"),
+		OrderFragment:[]byte(address),
+	}
+	return from.ForwardOrderFragemt(orderFragment)
+
 }
 
 func randomNodes(nodes []*x.Node) (*x.Node, *x.Node) {
