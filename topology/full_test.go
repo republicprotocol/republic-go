@@ -74,7 +74,6 @@ var _ = Describe("Fully connected mesh topologies", func() {
 		It("should be able to send and receive order fragment", func() {
 			err = sendMessages(nodes)
 			Ω(err).ShouldNot(HaveOccurred())
-			
 		})
 	})
 })

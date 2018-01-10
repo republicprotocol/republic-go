@@ -62,6 +62,22 @@ func (keyPair KeyPair) Address() Address {
 	return Address(base58.EncodeAlphabet(hash, base58.BTCAlphabet))
 }
 
+// MarshalJSON implements the json.Marshaler interface.
+func (keyPair KeyPair) MarshalJSON() ([]byte, error) {
+	return crypto.FromECDSA(keyPair.PrivateKey), nil
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (keyPair KeyPair) UnmarshalJSON(data []byte) error {
+	privateKey, err := crypto.ToECDSA(data)
+	if err != nil {
+		return err
+	}
+	keyPair.PrivateKey = privateKey
+	keyPair.PublicKey = &privateKey.PublicKey
+	return nil
+}
+
 // IDLength is the number of bytes in an ID.
 const IDLength = 20
 
@@ -77,6 +93,11 @@ func NewID() (ID, KeyPair, error) {
 		return nil, keyPair, err
 	}
 	return keyPair.ID(), keyPair, nil
+}
+
+// String returns the ID as a string.
+func (id ID) String() string {
+	return string(id)
 }
 
 // AddressLength is the number of bytes in an Address.
@@ -151,7 +172,12 @@ func (address Address) SamePrefixLength(other Address) (int, error) {
 // MultiAddress returns the Republic multi-address of the Address. It can be
 // appended with other MultiAddresses.
 func (address Address) MultiAddress() (MultiAddress, error) {
-	return NewMultiAddress(fmt.Sprintf("/republic/%s", string(address)))
+	return NewMultiAddressFromString(fmt.Sprintf("/republic/%s", address))
+}
+
+// String returns the Address as a string.
+func (address Address) String() string {
+	return string(address)
 }
 
 // Closer returns true if the left Address is closer to the target than the

@@ -59,13 +59,13 @@
   branch = "master"
   name = "github.com/republicprotocol/go-dht"
   packages = ["."]
-  revision = "3f5ca3ef5dec432299f97dce1ad936cd80363c55"
+  revision = "032defb54d4d73af46c2604aa657516ca4a9e77a"
 
 [[projects]]
   branch = "master"
   name = "github.com/republicprotocol/go-identity"
   packages = ["."]
-  revision = "f2390796f9a6ba7d95d191edfefe410e43feb9d2"
+  revision = "2bf7485392311d46e4c3e3a696c65ad3dc43b6d7"
 
 [[projects]]
   name = "github.com/spaolacci/murmur3"
