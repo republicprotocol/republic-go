@@ -11,8 +11,6 @@ import (
 // Constants for use in the DHT.
 const (
 	IDLengthInBits = identity.IDLength * 8
-	MaxBucketSize  = 100
-	MaxDHTSize     = IDLengthInBits * MaxBucketSize
 )
 
 // A DHT is a Distributed Hash Table. Each instance has an identity.Address and
@@ -27,12 +25,16 @@ type DHT struct {
 }
 
 // NewDHT returns a new DHT with the given Address, and empty Buckets.
-func NewDHT(address identity.Address) *DHT {
-	return &DHT{
+func NewDHT(address identity.Address, maxBucketSize int) *DHT {
+	dht := &DHT{
 		μ:       new(sync.RWMutex),
 		Address: address,
 		Buckets: [IDLengthInBits]Bucket{},
 	}
+	for i := range dht.Buckets {
+		dht.Buckets[i] = NewBucket(maxBucketSize)
+	}
+	return dht
 }
 
 // Update an identity.MultiAddress by adding it to its respective Bucket.
@@ -107,7 +109,7 @@ func (dht *DHT) update(multi identity.MultiAddress) error {
 	// Remove the target if it is already in the Bucket.
 	exists := bucket.FindMultiAddress(target)
 	if exists != nil {
-		for i, entry := range *bucket {
+		for i, entry := range bucket.Entries {
 			address, err := entry.MultiAddress.Address()
 			if err != nil {
 				return err
@@ -115,7 +117,7 @@ func (dht *DHT) update(multi identity.MultiAddress) error {
 			if address == target {
 				// We do not update the time otherwise the sorting method does
 				// not make sense.
-				(*bucket)[i].MultiAddress = multi
+				bucket.Entries[i].MultiAddress = multi
 				return nil
 			}
 		}
@@ -124,7 +126,7 @@ func (dht *DHT) update(multi identity.MultiAddress) error {
 	if bucket.IsFull() {
 		return ErrFullBucket
 	}
-	*bucket = append(*bucket, Entry{multi, time.Now()})
+	bucket.Entries = append(bucket.Entries, Entry{multi, time.Now()})
 	return nil
 }
 
@@ -138,7 +140,7 @@ func (dht *DHT) remove(multi identity.MultiAddress) error {
 		return err
 	}
 	removeIndex := -1
-	for i, entry := range *bucket {
+	for i, entry := range bucket.Entries {
 		address, err := entry.MultiAddress.Address()
 		if err != nil {
 			return err
@@ -149,10 +151,10 @@ func (dht *DHT) remove(multi identity.MultiAddress) error {
 		}
 	}
 	if removeIndex >= 0 {
-		if removeIndex == len(*bucket)-1 {
-			*bucket = (*bucket)[:removeIndex]
+		if removeIndex == bucket.Length()-1 {
+			bucket.Entries = bucket.Entries[:removeIndex]
 		} else {
-			*bucket = append((*bucket)[:removeIndex], (*bucket)[removeIndex+1:]...)
+			bucket.Entries = append(bucket.Entries[:removeIndex], bucket.Entries[removeIndex+1:]...)
 		}
 	}
 	return nil
@@ -217,12 +219,12 @@ func (dht *DHT) neighborhood(target identity.Address, neighborhood uint) (int, i
 func (dht *DHT) multiAddresses() identity.MultiAddresses {
 	numMultis := 0
 	for _, bucket := range dht.Buckets {
-		numMultis += len(bucket)
+		numMultis += bucket.Length()
 	}
 	i := 0
 	multis := make(identity.MultiAddresses, numMultis)
 	for _, bucket := range dht.Buckets {
-		for _, entry := range bucket {
+		for _, entry := range bucket.Entries {
 			multis[i] = entry.MultiAddress
 			i++
 		}
@@ -232,13 +234,24 @@ func (dht *DHT) multiAddresses() identity.MultiAddresses {
 
 // Bucket is a mapping of Addresses to Entries. In standard Kademlia, a list is
 // used because Buckets need to be sorted.
-type Bucket []Entry
+type Bucket struct {
+	Entries
+	MaxLength int
+}
+
+// NewBucket returns a new Bucket with an empty set of Entries that can be, at
+// most, the given maximum length.
+func NewBucket(maxLength int) Bucket {
+	return Bucket{
+		MaxLength: maxLength,
+	}
+}
 
 // FindMultiAddress finds the identity.MultiAddress associated with a target
 // identity.Address in the Bucket. Returns nil if the target identity.Address
 // cannot be found.
 func (bucket Bucket) FindMultiAddress(target identity.Address) *identity.MultiAddress {
-	for _, entry := range bucket {
+	for _, entry := range bucket.Entries {
 		address, err := entry.MultiAddress.Address()
 		if err == nil && address == target {
 			return &entry.MultiAddress
@@ -249,8 +262,8 @@ func (bucket Bucket) FindMultiAddress(target identity.Address) *identity.MultiAd
 
 // MultiAddresses returns all MultiAddresses in the Bucket.
 func (bucket Bucket) MultiAddresses() identity.MultiAddresses {
-	multis := make(identity.MultiAddresses, len(bucket))
-	for i, entry := range bucket {
+	multis := make(identity.MultiAddresses, bucket.Length())
+	for i, entry := range bucket.Entries {
 		multis[i] = entry.MultiAddress
 	}
 	return multis
@@ -259,32 +272,44 @@ func (bucket Bucket) MultiAddresses() identity.MultiAddresses {
 // Sort the Bucket by the time at which Entries were added.
 func (bucket Bucket) Sort() {
 	sort.Slice(bucket, func(i, j int) bool {
-		return bucket[i].Time.Before(bucket[j].Time)
+		return bucket.Get(i).Time.Before(bucket.Get(j).Time)
 	})
 }
 
 // NewestMultiAddress returns the most recently added identity.MultiAddress in
 // the Bucket. Returns nil if there are no Entries in the Bucket.
 func (bucket Bucket) NewestMultiAddress() *identity.MultiAddress {
-	if len(bucket) == 0 {
+	if bucket.Length() == 0 {
 		return nil
 	}
-	return &bucket[len(bucket)-1].MultiAddress
+	multi := bucket.Get(bucket.Length() - 1).MultiAddress
+	return &multi
 }
 
 // OldestMultiAddress returns the least recently added identity.MultiAddress in
 // the Bucket. Returns nil if there are no Entries in the Bucket.
 func (bucket Bucket) OldestMultiAddress() *identity.MultiAddress {
-	if len(bucket) == 0 {
+	if len(bucket.Entries) == 0 {
 		return nil
 	}
-	return &bucket[0].MultiAddress
+	multi := bucket.Get(0).MultiAddress
+	return &multi
+}
+
+// Get the Entry at the given position in the Bucket.
+func (bucket Bucket) Get(position int) Entry {
+	return bucket.Entries[position]
+}
+
+// Length returns the number of Entries in the Bucket.
+func (bucket Bucket) Length() int {
+	return len(bucket.Entries)
 }
 
 // IsFull returns true if, and only if, the number of Entries in the Bucket is
 // equal to the maximum number of Entries allowed.
 func (bucket Bucket) IsFull() bool {
-	return len(bucket) == MaxBucketSize
+	return bucket.Length() == bucket.MaxLength
 }
 
 // Buckets is an alias.
@@ -294,12 +319,12 @@ type Buckets []Bucket
 func (buckets Buckets) MultiAddresses() identity.MultiAddresses {
 	numMultis := 0
 	for _, bucket := range buckets {
-		numMultis += len(bucket)
+		numMultis += bucket.Length()
 	}
 	i := 0
 	multis := make(identity.MultiAddresses, numMultis)
 	for _, bucket := range buckets {
-		for _, entry := range bucket {
+		for _, entry := range bucket.Entries {
 			multis[i] = entry.MultiAddress
 			i++
 		}
@@ -313,3 +338,6 @@ type Entry struct {
 	identity.MultiAddress
 	time.Time
 }
+
+// Entries is an alias.
+type Entries []Entry
