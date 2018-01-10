@@ -19,7 +19,7 @@ import (
 
 // α determines the maximum number of concurrent client connections that the
 // Node is expected to use when running a distributed Dijkstra search.
-const α = 3
+const α = 1
 
 // Node implements the gRPC Node service.
 type Node struct {
@@ -204,6 +204,12 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 		return nil, err
 	}
 	open := bucket.MultiAddresses()
+	sort.Slice(open, func(i, j int) bool {
+		left, _ := open[i].Address()
+		right, _ := open[j].Address()
+		closer, _ := identity.Closer(left, right, target)
+		return closer
+	})
 
 	closed := make(map[identity.MultiAddress]bool)
 
@@ -298,7 +304,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 		}
 
 		// Otherwise, sort the open list by distance to the target.
-		sort.SliceStable(open, func(i, j int) bool {
+		sort.Slice(open, func(i, j int) bool {
 			left, _ := open[i].Address()
 			right, _ := open[j].Address()
 			closer, _ := identity.Closer(left, right, target)
@@ -330,7 +336,7 @@ func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
 	if err != nil {
 		return true, node.DHT.Remove(*multi)
 	}
-	node.DHT.Update(newMulti)
+	node.DHT.Update(*newMulti)
 	return false, nil
 }
 
@@ -376,8 +382,8 @@ func (node *Node) ForwardOrderFragemt(orderFragment *rpc.OrderFragment) error {
 			go func() {
 				defer wg.Done()
 				response, _ := node.RPCSendOrderFragment(multi, orderFragment)
-				if response.String() != "" {
-					targetFound <- response
+				if response != nil {
+					targetFound <- *response
 				}
 			}()
 		}
