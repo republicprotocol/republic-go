@@ -343,7 +343,7 @@ func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
 // ForwardOrderFragemt forward the order fragment to the miners so that they will
 // transmit the order fragment to the target. Return nil if forward successfully,
 // or an error indicating can't find the target.
-func (node *Node) ForwardOrderFragemt(orderFragment *rpc.OrderFragment) error {
+func (node *Node) ForwardOrderFragment(orderFragment *rpc.OrderFragment) error {
 	target := identity.Address(orderFragment.To)
 	bucket, err := node.DHT.FindBucket(target)
 	if err != nil {

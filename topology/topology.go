@@ -70,7 +70,7 @@ func sendMessage(from, to *x.Node) error {
 		OrderFragmentID: []byte("fragmentID"),
 		OrderFragment:   []byte(address),
 	}
-	return from.ForwardOrderFragemt(orderFragment)
+	return from.ForwardOrderFragment(orderFragment)
 
 }
 
