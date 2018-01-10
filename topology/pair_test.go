@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-x"
-	"github.com/republicprotocol/go-x/rpc"
 )
 
 var _ = Describe("Pair topologies", func() {
@@ -57,11 +56,11 @@ var _ = Describe("Pair topologies", func() {
 			time.Sleep(startTimeDelay)
 
 			// Ping the left Node from the right Node.
-			err = x.Ping(left.MultiAddress, &rpc.MultiAddress{Multi: right.MultiAddress.String()})
+			_, err = right.RPCPing(left.MultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Ping the right Node from the left Node.
-			err = x.Ping(right.MultiAddress, &rpc.MultiAddress{Multi: left.MultiAddress.String()})
+			_, err = left.RPCPing(right.MultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(len(left.DHT.MultiAddresses())).Should(Equal(1))

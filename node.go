@@ -235,7 +235,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 
 				// Get all peers of this multi-address. This is the expansion
 				// step of the search.
-				peers, err := Peers(multi)
+				peers, err := node.RPCPeers(multi)
 				if err != nil {
 					badNodes <- multi
 					return
@@ -309,7 +309,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 	if targetMulti == nil {
 		return nil, fmt.Errorf("cannot find target")
 	}
-	response, err := SendOrderFragment(*targetMulti, orderFragment)
+	response, err := node.RPCSendOrderFragment(*targetMulti, orderFragment)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +327,7 @@ func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
 		return false, nil
 	}
 
-	err = Ping(*multi, &rpc.MultiAddress{Multi: node.MultiAddress.String()})
+	_, err = node.RPCPing(*multi)
 	if err != nil {
 		// If the connection could not be made, prune the peer.
 		return true, node.DHT.Remove(*multi)
@@ -348,22 +348,23 @@ func (node *Node) ForwardOrderFragemt(orderFragment *rpc.OrderFragment) error {
 	if len(open) == 0 {
 		return errors.New("empty dht")
 	}
-	// Sort the nodes we already know
-	sort.SliceStable(open, func(i, j int) bool {
-		left, _ := open[i].Address()
-		right, _ := open[j].Address()
-		closer, _ := identity.Closer(left, right, target)
-		return closer
-	})
-	// If we know the target,send the order fragment to the target directly
-	closestNode, err := open[0].Address()
-	if err != nil {
-		return err
-	}
-	if string(closestNode) == string(target) {
-		_, err := SendOrderFragment(open[0], orderFragment)
-		return err
-	}
+
+	//// Sort the nodes we already know
+	//sort.SliceStable(open, func(i, j int) bool {
+	//	left, _ := open[i].Address()
+	//	right, _ := open[j].Address()
+	//	closer, _ := identity.Closer(left, right, target)
+	//	return closer
+	//})
+	//// If we know the target,send the order fragment to the target directly
+	//closestNode, err := open[0].Address()
+	//if err != nil {
+	//	return err
+	//}
+	//if string(closestNode) == string(target) {
+	//	_, err := node.RPCSendOrderFragment(open[0], orderFragment)
+	//	return err
+	//}
 
 	// Otherwise forward the fragment to the closest α nodes simultaneously
 	for len(open) > 0 {
@@ -376,9 +377,9 @@ func (node *Node) ForwardOrderFragemt(orderFragment *rpc.OrderFragment) error {
 			open = open[1:]
 			go func() {
 				defer wg.Done()
-				response, _ := SendOrderFragment(multi, orderFragment)
-				if response != nil {
-					targetFound <- *response
+				response, _:= node.RPCSendOrderFragment(multi, orderFragment)
+				if response.String() != "" {
+					targetFound <- response
 				}
 			}()
 		}

@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-x"
-	"github.com/republicprotocol/go-x/rpc"
 )
 
 var _ = Describe("Star topology", func() {
@@ -40,9 +39,8 @@ var _ = Describe("Star topology", func() {
 				go func(i int) {
 					defer GinkgoRecover()
 					defer wg.Done()
-					err = x.Ping(nodes[0].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
+					_, err = nodes[i].RPCPing(nodes[0].MultiAddress)
 					Ω(err).ShouldNot(HaveOccurred())
-
 				}(i)
 			}
 			wg.Wait()
@@ -53,9 +51,8 @@ var _ = Describe("Star topology", func() {
 				go func(i int) {
 					defer GinkgoRecover()
 					defer wg.Done()
-					err = x.Ping(nodes[i].MultiAddress, &rpc.MultiAddress{Multi: nodes[0].MultiAddress.String()})
+					_, err = nodes[0].RPCPing(nodes[i].MultiAddress)
 					Ω(err).ShouldNot(HaveOccurred())
-
 				}(i)
 			}
 			wg.Wait()

@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-x"
-	"github.com/republicprotocol/go-x/rpc"
 )
 
 var _ = Describe("Line topology", func() {
@@ -41,10 +40,10 @@ var _ = Describe("Line topology", func() {
 					defer GinkgoRecover()
 					defer wg.Done()
 					if i != 0 {
-						err = x.Ping(nodes[i-1].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
+						_, err = nodes[i].RPCPing(nodes[i-1].MultiAddress)
 					}
 					if i != numberOfNodes-1 {
-						err = x.Ping(nodes[i+1].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
+						_, err = nodes[i].RPCPing(nodes[i+1].MultiAddress)
 					}
 					Ω(err).ShouldNot(HaveOccurred())
 				}(i)

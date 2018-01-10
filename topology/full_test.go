@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-x"
-	"github.com/republicprotocol/go-x/rpc"
 )
 
 var _ = Describe("Fully connected mesh topologies", func() {
@@ -43,7 +42,7 @@ var _ = Describe("Fully connected mesh topologies", func() {
 					if i == j {
 						continue
 					}
-					err = x.Ping(nodes[j].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
+					_, err := nodes[i].RPCPing(nodes[j].MultiAddress)
 					Ω(err).ShouldNot(HaveOccurred())
 				}
 
