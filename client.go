@@ -78,7 +78,7 @@ func (node *Node) RPCPeers(target identity.MultiAddress) (identity.MultiAddresse
 	}
 
 	peers := make(identity.MultiAddresses, 0, len(multis.Multis))
-	for i, multi := range multis.Multis {
+	for _, multi := range multis.Multis {
 		peer, err := identity.NewMultiAddressFromString(multi.Multi)
 		if err != nil {
 			return peers, err
