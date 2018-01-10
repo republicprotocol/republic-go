@@ -1,4 +1,4 @@
-package swarm_test
+package x_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestGoSwarm(t *testing.T) {
+func TestGoX(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Swarm Suite")
+	RunSpecs(t, "X network test Suite")
 }

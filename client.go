@@ -1,4 +1,4 @@
-package swarm
+package x
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-swarm/rpc"
+	"github.com/republicprotocol/go-x/rpc"
 	"google.golang.org/grpc"
 )
 

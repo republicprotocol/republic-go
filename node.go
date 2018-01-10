@@ -1,4 +1,4 @@
-package swarm
+package x
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/republicprotocol/go-dht"
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-swarm/rpc"
+	"github.com/republicprotocol/go-x/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"

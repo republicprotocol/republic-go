@@ -1,4 +1,4 @@
-# Swarm
+# X network
 
 The P2P networking layer for the Republic Protocol.
 

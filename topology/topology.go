@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-swarm"
-	"github.com/republicprotocol/go-swarm/rpc"
+	"github.com/republicprotocol/go-x"
+	"github.com/republicprotocol/go-x/rpc"
 )
 
 // μ prevents multiple topology tests running in parallel. This is needed to
@@ -25,8 +25,8 @@ var numberOfMessages = 100
 // The duration to wait for peers to start listening for RPCs.
 var startTimeDelay = time.Second
 
-func generateNodes(numberOfNodes int) ([]*swarm.Node, error) {
-	nodes := make([]*swarm.Node, numberOfNodes)
+func generateNodes(numberOfNodes int) ([]*x.Node, error) {
+	nodes := make([]*x.Node, numberOfNodes)
 	for i := 0; i < numberOfNodes; i++ {
 		keyPair, err := identity.NewKeyPair()
 		if err != nil {
@@ -36,7 +36,7 @@ func generateNodes(numberOfNodes int) ([]*swarm.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		node, err := swarm.NewNode(&swarm.Config{
+		node, err := x.NewNode(&x.Config{
 			KeyPair:      keyPair,
 			MultiAddress: multi,
 			Peers:        make(identity.MultiAddresses, 0, numberOfNodes-1),
@@ -49,7 +49,7 @@ func generateNodes(numberOfNodes int) ([]*swarm.Node, error) {
 	return nodes, nil
 }
 
-func sendMessages(nodes []*swarm.Node) error {
+func sendMessages(nodes []*x.Node) error {
 	for i := 0; i < numberOfMessages; i++ {
 		left, right := randomNodes(nodes)
 		if err := sendMessage(left.MultiAddress, right.MultiAddress); err != nil {
@@ -60,7 +60,7 @@ func sendMessages(nodes []*swarm.Node) error {
 }
 
 func sendMessage(from identity.MultiAddress, to identity.MultiAddress) error {
-	client, conn, err := swarm.NewNodeClient(from)
+	client, conn, err := x.NewNodeClient(from)
 	defer conn.Close()
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func sendMessage(from identity.MultiAddress, to identity.MultiAddress) error {
 	return err
 }
 
-func randomNodes(nodes []*swarm.Node) (*swarm.Node, *swarm.Node) {
+func randomNodes(nodes []*x.Node) (*x.Node, *x.Node) {
 	left := rand.Intn(len(nodes))
 	right := rand.Intn(len(nodes))
 	for left == right {

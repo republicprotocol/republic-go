@@ -1,11 +1,12 @@
-package swarm_test
+package x_test
 
 import (
 	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-swarm"
+
+	"github.com/republicprotocol/go-x"
 )
 
 var _ = Describe("Client", func() {
@@ -17,7 +18,7 @@ var _ = Describe("Client", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		multi, err := identity.NewMultiAddress(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d/republic/%s", 3000, keyPair.Address()))
 		Ω(err).ShouldNot(HaveOccurred())
-		_, _, err = swarm.NewNodeClient(multi)
+		_, _, err = x.NewNodeClient(multi)
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 
@@ -25,7 +26,7 @@ var _ = Describe("Client", func() {
 		It("should be able to ping a target node and get its multiaddress", func() {
 			target, _, err := identity.NewAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			multi, err := target.MultiAddress()
+			_, err = target.MultiAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 
 		})

@@ -6,8 +6,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-swarm"
-	"github.com/republicprotocol/go-swarm/rpc"
+	"github.com/republicprotocol/go-x"
+	"github.com/republicprotocol/go-x/rpc"
 )
 
 var _ = Describe("Fully connected mesh topologies", func() {
@@ -23,11 +23,11 @@ var _ = Describe("Fully connected mesh topologies", func() {
 
 			// Start serving from all nodes.
 			for _, n := range nodes {
-				go func(node *swarm.Node) {
+				go func(node *x.Node) {
 					defer GinkgoRecover()
 					Ω(node.Serve()).ShouldNot(HaveOccurred())
 				}(n)
-				defer func(node *swarm.Node) {
+				defer func(node *x.Node) {
 					node.Stop()
 				}(n)
 			}
@@ -45,7 +45,7 @@ var _ = Describe("Fully connected mesh topologies", func() {
 						if i == j {
 							continue
 						}
-						err = swarm.Ping(nodes[j].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
+						err = x.Ping(nodes[j].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
 						Ω(err).ShouldNot(HaveOccurred())
 					}
 

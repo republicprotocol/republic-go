@@ -7,8 +7,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-swarm"
-	"github.com/republicprotocol/go-swarm/rpc"
+	"github.com/republicprotocol/go-x"
+	"github.com/republicprotocol/go-x/rpc"
 )
 
 var _ = Describe("Pair topologies", func() {
@@ -23,7 +23,7 @@ var _ = Describe("Pair topologies", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			multiAddress, err := identity.NewMultiAddress(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d/republic/%s", 3000, keyPair.Address()))
 			Ω(err).ShouldNot(HaveOccurred())
-			left, err := swarm.NewNode(&swarm.Config{
+			left, err := x.NewNode(&x.Config{
 				KeyPair:      keyPair,
 				MultiAddress: multiAddress,
 				Peers:        make(identity.MultiAddresses, 0, numberOfNodes-1),
@@ -35,7 +35,7 @@ var _ = Describe("Pair topologies", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			multiAddress, err = identity.NewMultiAddress(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d/republic/%s", 3001, keyPair.Address()))
 			Ω(err).ShouldNot(HaveOccurred())
-			right, err := swarm.NewNode(&swarm.Config{
+			right, err := x.NewNode(&x.Config{
 				KeyPair:      keyPair,
 				MultiAddress: multiAddress,
 				Peers:        make(identity.MultiAddresses, 0, numberOfNodes-1),
@@ -57,11 +57,11 @@ var _ = Describe("Pair topologies", func() {
 			time.Sleep(startTimeDelay)
 
 			// Ping the left Node from the right Node.
-			err = swarm.Ping(left.MultiAddress, &rpc.MultiAddress{Multi: right.MultiAddress.String()})
+			err = x.Ping(left.MultiAddress, &rpc.MultiAddress{Multi: right.MultiAddress.String()})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Ping the right Node from the left Node.
-			err = swarm.Ping(right.MultiAddress, &rpc.MultiAddress{Multi: left.MultiAddress.String()})
+			err = x.Ping(right.MultiAddress, &rpc.MultiAddress{Multi: left.MultiAddress.String()})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(len(left.DHT.MultiAddresses())).Should(Equal(1))

@@ -6,8 +6,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-swarm"
-	"github.com/republicprotocol/go-swarm/rpc"
+	"github.com/republicprotocol/go-x"
+	"github.com/republicprotocol/go-x/rpc"
 )
 
 var _ = Describe("Line topology", func() {
@@ -23,11 +23,11 @@ var _ = Describe("Line topology", func() {
 
 			// Start serving from all nodes.
 			for _, n := range nodes {
-				go func(node *swarm.Node) {
+				go func(node *x.Node) {
 					defer GinkgoRecover()
 					Ω(node.Serve()).ShouldNot(HaveOccurred())
 				}(n)
-				defer func(node *swarm.Node) {
+				defer func(node *x.Node) {
 					node.Stop()
 				}(n)
 			}
@@ -42,18 +42,18 @@ var _ = Describe("Line topology", func() {
 					defer wg.Done()
 
 					if i != 0 {
-						err = swarm.Ping(nodes[i-1].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
+						err = x.Ping(nodes[i-1].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
 						Ω(err).ShouldNot(HaveOccurred())
 					} else {
-						err = swarm.Ping(nodes[numberOfNodes-1].MultiAddress, &rpc.MultiAddress{Multi: nodes[0].MultiAddress.String()})
+						err = x.Ping(nodes[numberOfNodes-1].MultiAddress, &rpc.MultiAddress{Multi: nodes[0].MultiAddress.String()})
 						Ω(err).ShouldNot(HaveOccurred())
 					}
 
 					if i != numberOfNodes-1 {
-						err = swarm.Ping(nodes[i+1].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
+						err = x.Ping(nodes[i+1].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
 						Ω(err).ShouldNot(HaveOccurred())
 					} else {
-						err = swarm.Ping(nodes[0].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
+						err = x.Ping(nodes[0].MultiAddress, &rpc.MultiAddress{Multi: nodes[i].MultiAddress.String()})
 						Ω(err).ShouldNot(HaveOccurred())
 					}
 				}(i)
