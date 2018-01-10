@@ -21,24 +21,24 @@ var _ = Describe("Pair topologies", func() {
 			// Create the left Node.
 			keyPair, err := identity.NewKeyPair()
 			Ω(err).ShouldNot(HaveOccurred())
-			multiAddress, err := identity.NewMultiAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 3000, keyPair.Address()))
+			multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 3000, keyPair.Address()))
 			Ω(err).ShouldNot(HaveOccurred())
 			left, err := x.NewNode(&x.Config{
 				KeyPair:      keyPair,
 				MultiAddress: multiAddress,
-				Peers:        make(identity.MultiAddresses, 0, numberOfNodes-1),
+				MultiAddresses:        make(identity.MultiAddresses, 0, numberOfNodes-1),
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Create the right Node.
 			keyPair, err = identity.NewKeyPair()
 			Ω(err).ShouldNot(HaveOccurred())
-			multiAddress, err = identity.NewMultiAddress(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 3001, keyPair.Address()))
+			multiAddress, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 3001, keyPair.Address()))
 			Ω(err).ShouldNot(HaveOccurred())
 			right, err := x.NewNode(&x.Config{
 				KeyPair:      keyPair,
 				MultiAddress: multiAddress,
-				Peers:        make(identity.MultiAddresses, 0, numberOfNodes-1),
+				MultiAddresses:        make(identity.MultiAddresses, 0, numberOfNodes-1),
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 

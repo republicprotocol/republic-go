@@ -13,6 +13,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+
+	"github.com/pkg/errors"
 )
 
 // α determines the maximum number of concurrent client connections that the
@@ -74,7 +76,7 @@ func (node *Node) Ping(ctx context.Context, peer *rpc.MultiAddress) (*rpc.MultiA
 	wait := make(chan error)
 	go func() {
 		defer close(wait)
-		wait <- node.ping(peer)
+		wait <- node.handlePing(peer)
 	}()
 
 	select {
@@ -99,7 +101,7 @@ func (node *Node) Peers(ctx context.Context, sender *rpc.Nothing) (*rpc.MultiAdd
 	wait := make(chan *rpc.MultiAddresses)
 	go func() {
 		defer close(wait)
-		wait <- node.peers()
+		wait <- node.handlePeers()
 	}()
 
 	select {
@@ -116,35 +118,36 @@ func (node *Node) Peers(ctx context.Context, sender *rpc.Nothing) (*rpc.MultiAdd
 // Network to its destination Node. This forwarding is done using a distributed
 // Dijkstra search, using the XOR distance between identity.Addresses as the
 // distance heuristic.
-func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
+func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.MultiAddress, error) {
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
-		return &rpc.Nothing{}, err
+		return nil, err
 	}
 
 	// Spawn a goroutine to evaluate the return value.
-	wait := make(chan error)
+	wait := make(chan *rpc.MultiAddress)
 	go func() {
 		defer close(wait)
-		wait <- node.sendOrderFragment(orderFragment)
+		multi, _ := node.handleSendOrderFragment(orderFragment)
+		wait <- multi
 	}()
 
 	select {
 	// Select the timeout from the context.
 	case <-ctx.Done():
-		return &rpc.Nothing{}, ctx.Err()
+		return nil, ctx.Err()
 
 	// Select the value passed by the goroutine.
 	case ret := <-wait:
 		if ret != nil {
-			return &rpc.Nothing{}, ret
+			return ret, nil
 		}
-		return &rpc.Nothing{}, nil
+		return nil, nil
 	}
 }
 
-func (node *Node) ping(peer *rpc.MultiAddress) error {
-	multi, err := identity.NewMultiAddress(peer.Multi)
+func (node *Node) handlePing(peer *rpc.MultiAddress) error {
+	multi, err := identity.NewMultiAddressFromString(peer.Multi)
 	if err != nil {
 		return err
 	}
@@ -169,7 +172,7 @@ func (node *Node) ping(peer *rpc.MultiAddress) error {
 	return err
 }
 
-func (node *Node) peers() *rpc.MultiAddresses {
+func (node *Node) handlePeers() *rpc.MultiAddresses {
 	// Get all identity.MultiAddresses in the DHT.
 	multis := node.DHT.MultiAddresses()
 	ret := &rpc.MultiAddresses{
@@ -182,13 +185,14 @@ func (node *Node) peers() *rpc.MultiAddresses {
 	return ret
 }
 
-func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
+func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.MultiAddress, error) {
+
 	target := identity.Address(orderFragment.To)
 	if string(target) == string(node.DHT.Address) {
 		// TODO: This Node is the intended target! Do something with the
 		//       rpc.OrderFragment.
-		log.Println("rpc.OrderFragment", orderFragment.OrderFragmentID, "received!")
-		return nil
+		log.Println("rpc.OrderFragment", string(orderFragment.OrderFragment), "received!")
+		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, nil
 	}
 
 	targetMultiMu := new(sync.Mutex)
@@ -197,9 +201,10 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 	openMu := new(sync.Mutex)
 	bucket, err := node.DHT.FindBucket(target)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	open := bucket.Multiaddresses()
+	open := bucket.MultiAddresses()
+
 	closed := make(map[identity.MultiAddress]bool)
 
 	// TODO: We are only using one dht.Bucket to search the network. If this
@@ -216,7 +221,11 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 		// concurrently. This moves them from the open list to the closed list,
 		// preventing the same multi-address from being expanded more than
 		// once.
+
 		for i := 0; i < α; i++ {
+			if len(open) == 0 {
+				break
+			}
 			multi := open[0]
 			open = open[1:]
 			closed[multi] = true
@@ -226,7 +235,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 
 				// Get all peers of this multi-address. This is the expansion
 				// step of the search.
-				peers, err := Peers(multi, &rpc.MultiAddress{Multi: node.MultiAddress.String()})
+				peers, err := Peers(multi)
 				if err != nil {
 					badNodes <- multi
 					return
@@ -290,21 +299,22 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 
 		// Otherwise, sort the open list by distance to the target.
 		sort.SliceStable(open, func(i, j int) bool {
-			left := open[i]
-			right := open[j]
+			left, _ := open[i].Address()
+			right, _ := open[j].Address()
 			closer, _ := identity.Closer(left, right, target)
 			return closer
 		})
 	}
 
 	if targetMulti == nil {
-		return fmt.Errorf("cannot find target")
+		return nil, fmt.Errorf("cannot find target")
 	}
-	err = SendOrderFragment(*targetMulti, orderFragment)
+	response, err := SendOrderFragment(*targetMulti, orderFragment)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+
+	return &rpc.MultiAddress{Multi: response.String()}, nil
 }
 
 func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
@@ -323,4 +333,62 @@ func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
 		return true, node.DHT.Remove(*multi)
 	}
 	return false, nil
+}
+
+// ForwardOrderFragemt forward the order fragment to the miners so that they will
+// transmit the order fragment to the target. Return nil if forward successfully,
+// or an error indicating can't find the target.
+func (node *Node) ForwardOrderFragemt(orderFragment *rpc.OrderFragment) error {
+	target := identity.Address(orderFragment.To)
+	bucket, err := node.DHT.FindBucket(target)
+	if err != nil {
+		return err
+	}
+	open := bucket.MultiAddresses()
+	if len(open) == 0 {
+		return errors.New("empty dht")
+	}
+	// Sort the nodes we already know
+	sort.SliceStable(open, func(i, j int) bool {
+		left, _ := open[i].Address()
+		right, _ := open[j].Address()
+		closer, _ := identity.Closer(left, right, target)
+		return closer
+	})
+	// If we know the target,send the order fragment to the target directly
+	closestNode, err := open[0].Address()
+	if err != nil {
+		return err
+	}
+	if string(closestNode) == string(target) {
+		_, err := SendOrderFragment(open[0], orderFragment)
+		return err
+	}
+
+	// Otherwise forward the fragment to the closest α nodes simultaneously
+	for len(open) > 0 {
+		var wg sync.WaitGroup
+		wg.Add(α)
+		targetFound := make(chan identity.MultiAddress, α)
+
+		for i := 0; i < α; i++ {
+			multi := open[0]
+			open = open[1:]
+			go func() {
+				defer wg.Done()
+				response, _ := SendOrderFragment(multi, orderFragment)
+				if response != nil {
+					targetFound <- *response
+				}
+			}()
+		}
+
+		wg.Wait()
+
+		if len(targetFound) >= 0 {
+			return nil
+		}
+	}
+
+	return errors.New("we can't find the target")
 }

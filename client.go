@@ -82,7 +82,7 @@ func (node *Node) RPCPing(target identity.MultiAddress) (identity.MultiAddress, 
 // RPCPeers sends an Peers RPC request to the target using a new
 // grpc.ClientConn and a new rpc.NodeClient. It returns the result of the RPC
 // call, or an error.
-func RPCPeers(target identity.MultiAddress) (identity.MultiAddresses, error) {
+func (node *Node) RPCPeers(target identity.MultiAddress) (identity.MultiAddresses, error) {
 
 	// Connect to the target.
 	conn, err := Dial(target)
