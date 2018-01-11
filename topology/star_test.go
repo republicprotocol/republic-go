@@ -70,8 +70,8 @@ var _ = Describe("Star topology", func() {
 		It("should update their DHTs", func() {
 			for index, node := range nodes {
 				if index == 0 {
-					Ω(len(node.DHT.MultiAddresses())).Should(Equal(numberOfNodes-1))
-				}else{
+					Ω(len(node.DHT.MultiAddresses())).Should(Equal(numberOfNodes - 1))
+				} else {
 					Ω(len(node.DHT.MultiAddresses())).Should(Equal(1))
 				}
 			}

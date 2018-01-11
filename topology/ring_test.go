@@ -1,7 +1,6 @@
 package topology
 
 import (
-
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -44,6 +43,7 @@ var _ = Describe("Ring topology", func() {
 				} else {
 					_, err = nodes[0].RPCPing(nodes[numberOfNodes-1].MultiAddress)
 				}
+				Ω(err).ShouldNot(HaveOccurred())
 
 				if i != numberOfNodes-1 {
 					_, err = nodes[i].RPCPing(nodes[i+1].MultiAddress)

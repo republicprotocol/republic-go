@@ -1,7 +1,6 @@
 package topology
 
 import (
-
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -41,6 +40,8 @@ var _ = Describe("Line topology", func() {
 				if i != 0 {
 					_, err = nodes[i].RPCPing(nodes[i-1].MultiAddress)
 				}
+				Ω(err).ShouldNot(HaveOccurred())
+
 				if i != numberOfNodes-1 {
 					_, err = nodes[i].RPCPing(nodes[i+1].MultiAddress)
 				}
@@ -64,9 +65,9 @@ var _ = Describe("Line topology", func() {
 	Context("when pinging", func() {
 		It("should update their DHTs", func() {
 			for index, node := range nodes {
-				if index == 0 || index == numberOfNodes-1  {
+				if index == 0 || index == numberOfNodes-1 {
 					Ω(len(node.DHT.MultiAddresses())).Should(Equal(1))
-				}else{
+				} else {
 					Ω(len(node.DHT.MultiAddresses())).Should(Equal(2))
 				}
 			}
