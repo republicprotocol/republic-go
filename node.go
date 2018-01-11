@@ -20,7 +20,7 @@ import (
 
 // α determines the maximum number of concurrent client connections that the
 // Node is expected to use when running a distributed Dijkstra search.
-const α = 1
+const α = 3
 
 // Node implements the gRPC Node service.
 type Node struct {
