@@ -134,11 +134,15 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 	}
 
 	// Spawn a goroutine to evaluate the return value.
-	wait := make(chan *rpc.MultiAddress)
+	type retType struct {
+		*rpc.MultiAddress
+		error
+	}
+	wait := make(chan retType)
 	go func() {
 		defer close(wait)
-		multi, _ := node.handleSendOrderFragment(orderFragment)
-		wait <- multi
+		multi, err := node.handleSendOrderFragment(orderFragment)
+		wait <- retType{multi, err}
 	}()
 
 	select {
@@ -148,10 +152,7 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 
 	// Select the value passed by the goroutine.
 	case ret := <-wait:
-		if ret != nil {
-			return ret, nil
-		}
-		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, nil
+		return ret.MultiAddress, ret.error
 	}
 }
 
@@ -274,7 +275,6 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 		// concurrently. This moves them from the open list to the closed list,
 		// preventing the same multi-address from being expanded more than
 		// once.
-
 		for i := 0; i < asyncRoutines; i++ {
 			if len(open) == 0 {
 				break
@@ -358,29 +358,6 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 			closer, _ := identity.Closer(left, right, target)
 			return closer
 		})
-
-		//// Try to expand the open list with neighbour buckets when exhausted
-		//if len(open) == 0 {
-		//	for len(open)== 0 && neighbour<160{
-		//		left,right, err:= node.DHT.Neighborhood(target,neighbour)
-		//		if err != nil {
-		//			return nil, err
-		//		}
-		//		// Expand the open list with the left bucket
-		//		for _, peer := range node.DHT.Buckets[left]{
-		//			if _, ok := closed[peer.MultiAddress]; !ok {
-		//				open = append(open, peer.MultiAddress)
-		//			}
-		//		}
-		//		// Expand the open list with the right bucket
-		//		for _, peer := range node.DHT.Buckets[right]{
-		//			if _, ok := closed[peer.MultiAddress]; !ok {
-		//				open = append(open, peer.MultiAddress)
-		//			}
-		//		}
-		//		neighbour ++
-		//	}
-		//}
 	}
 
 	if targetMulti == nil {
@@ -411,9 +388,9 @@ func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
 	return false, nil
 }
 
-// ForwardOrderFragemt forward the order fragment to the miners so that they will
-// transmit the order fragment to the target. Return nil if forward successfully,
-// or an error indicating can't find the target.
+// ForwardOrderFragment forwards the order fragment to the miners so that they
+// can transmit the order fragment to the target. Return nil if forward
+// successfully, or an error.
 func (node *Node) ForwardOrderFragment(orderFragment *rpc.OrderFragment) error {
 
 	target := identity.Address(orderFragment.To)
