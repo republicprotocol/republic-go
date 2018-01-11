@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestGoX(t *testing.T) {
+func TestGoXNetwork(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "X network test Suite")
+	RunSpecs(t, "X Network Suite")
 }

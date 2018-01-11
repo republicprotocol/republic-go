@@ -15,10 +15,11 @@ const (
 	MaxDHTSize     = IDLengthInBits * MaxBucketSize
 )
 
-// A DHT is a Distributed Hash Table. Each instance has an Address, and several
-// Buckets of MultiAddresses that are directly connected to that Address. It
-// uses a modified Kademlia approach to storing MultiAddresses in each Bucket
-// and favoring old connections over new connections.
+// A DHT is a Distributed Hash Table. Each instance has an identity.Address and
+// several Buckets of identity.MultiAddresses that are directly connected to
+// that identity.Address. It uses a modified Kademlia approach to storing
+// identity.MultiAddresses in each Bucket, favoring old connections over new
+// connections. It is safe to use concurrently.
 type DHT struct {
 	μ       *sync.RWMutex
 	Address identity.Address
@@ -111,7 +112,7 @@ func (dht *DHT) update(multi identity.MultiAddress) error {
 			if err != nil {
 				return err
 			}
-			if string(address) == string(target) {
+			if address == target {
 				// We do not update the time otherwise the sorting method does
 				// not make sense.
 				(*bucket)[i].MultiAddress = multi
@@ -142,7 +143,7 @@ func (dht *DHT) remove(multi identity.MultiAddress) error {
 		if err != nil {
 			return err
 		}
-		if string(address) == string(target) {
+		if address == target {
 			removeIndex = i
 			break
 		}
@@ -246,6 +247,15 @@ func (bucket Bucket) FindMultiAddress(target identity.Address) *identity.MultiAd
 	return nil
 }
 
+// MultiAddresses returns all MultiAddresses in the Bucket.
+func (bucket Bucket) MultiAddresses() identity.MultiAddresses {
+	multis := make(identity.MultiAddresses, len(bucket))
+	for i, entry := range bucket {
+		multis[i] = entry.MultiAddress
+	}
+	return multis
+}
+
 // Sort the Bucket by the time at which Entries were added.
 func (bucket Bucket) Sort() {
 	sort.Slice(bucket, func(i, j int) bool {
@@ -297,8 +307,8 @@ func (buckets Buckets) MultiAddresses() identity.MultiAddresses {
 	return multis
 }
 
-// An Entry in a Bucket. It holds a MultiAddress, and a timestamp for when it
-// was added to the Bucket.
+// An Entry in a Bucket. It holds an identity.MultiAddress, and a timestamp for
+// when it was added to the Bucket.
 type Entry struct {
 	identity.MultiAddress
 	time.Time
