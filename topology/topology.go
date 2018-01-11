@@ -16,7 +16,7 @@ import (
 var μ = new(sync.Mutex)
 
 // The number of nodes that should be included in each topology test.
-var numberOfNodes = 40
+var numberOfNodes = 100
 
 // The number of messages that will be sent through the topology.
 var numberOfMessages = 100
@@ -36,9 +36,11 @@ func generateNodes(numberOfNodes int) ([]*x.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+		delegate := NewMockDelegate()
 		node, err := x.NewNode(
 			multi,
 			make(identity.MultiAddresses, 0, numberOfNodes-1),
+			delegate,
 		)
 		if err != nil {
 			return nil, err
@@ -65,6 +67,7 @@ func sendMessage(from, to *x.Node) error {
 	}
 	orderFragment := &rpc.OrderFragment{
 		To:              string(address),
+		From:            string(from.MultiAddress.String()),
 		OrderID:         []byte("orderID"),
 		OrderFragmentID: []byte("fragmentID"),
 		OrderFragment:   []byte(address),

@@ -22,9 +22,11 @@ var _ = Describe("Pair topologies", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 3000, keyPair.Address()))
 			Ω(err).ShouldNot(HaveOccurred())
+			delegate := NewMockDelegate()
 			left, err := x.NewNode(
 				multiAddress,
 				make(identity.MultiAddresses, 0, numberOfNodes-1),
+				delegate,
 			)
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -36,6 +38,7 @@ var _ = Describe("Pair topologies", func() {
 			right, err := x.NewNode(
 				multiAddress,
 				make(identity.MultiAddresses, 0, numberOfNodes-1),
+				delegate,
 			)
 			Ω(err).ShouldNot(HaveOccurred())
 
