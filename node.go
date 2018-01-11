@@ -6,14 +6,13 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/republicprotocol/go-dht"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-x/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-
-	"github.com/pkg/errors"
 )
 
 // α determines the maximum number of concurrent client connections that the
@@ -22,42 +21,32 @@ const α = 3
 
 // Node implements the gRPC Node service.
 type Node struct {
+	Delegate
 	*grpc.Server
 	MultiAddress identity.MultiAddress
 	DHT          *dht.DHT
-	Observer     Observer
 }
 
-type Observer interface {
-	OnOrderFragmentReceived(orderFragment *rpc.OrderFragment)
+// The Delegate is used to inject dependencies into the RPC logic.
+type Delegate interface {
+	OnPingReceived(peer identity.MultiAddress)
+	OnOrderFragmentReceived()
 }
 
 // NewNode returns a Node with the given Config, a new DHT, and a new set of grpc.Connections.
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-func NewNode(config *Config) (*Node, error) {
-	dht := dht.NewDHT(config.KeyPair.Address())
-	for _, multi := range config.MultiAddresses {
-=======
-func NewNode(multi identity.MultiAddress, multis identity.MultiAddresses, observer Observer) (*Node, error) {
-=======
-func NewNode(multi identity.MultiAddress, multis identity.MultiAddresses) (*Node, error) {
->>>>>>> feature/config
+func NewNode(multi identity.MultiAddress, multis identity.MultiAddresses, delegate Delegate) (*Node, error) {
 	address, err := multi.Address()
 	if err != nil {
 		return nil, err
 	}
 	dht := dht.NewDHT(address)
 	for _, multi := range multis {
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> feature/config
 		if err := dht.Update(multi); err != nil {
 			return nil, err
 		}
 	}
 	return &Node{
+		Delegate:     delegate,
 		Server:       grpc.NewServer(),
 		MultiAddress: multi,
 		DHT:          dht,
@@ -170,6 +159,8 @@ func (node *Node) handlePing(peer *rpc.MultiAddress) error {
 	if err != nil {
 		return err
 	}
+	node.Delegate.OnPingReceived(multi)
+
 	// Attempt to update the DHT.
 	err = node.DHT.Update(multi)
 	if err == dht.ErrFullBucket {
@@ -208,7 +199,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 
 	target := identity.Address(orderFragment.To)
 	if string(target) == string(node.DHT.Address) {
-		node.Observer.OnOrderFragmentReceived(orderFragment)
+		node.Delegate.OnOrderFragmentReceived()
 		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, nil
 	}
 
