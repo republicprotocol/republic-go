@@ -156,6 +156,69 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 	}
 }
 
+// ForwardOrderFragment forwards the order fragment to the miners so that they
+// can transmit the order fragment to the target. Return nil if forward
+// successfully, or an error.
+func (node *Node) ForwardOrderFragment(orderFragment *rpc.OrderFragment) error {
+
+	target := identity.Address(orderFragment.To)
+	open := node.DHT.MultiAddresses()
+	if len(open) == 0 {
+		return errors.New("empty dht")
+	}
+
+	// Sort the nodes we already know
+	sort.SliceStable(open, func(i, j int) bool {
+		left, _ := open[i].Address()
+		right, _ := open[j].Address()
+		closer, _ := identity.Closer(left, right, target)
+		return closer
+	})
+
+	// If we know the target,send the order fragment to the target directly
+	closestNode, err := open[0].Address()
+	if err != nil {
+		return err
+	}
+	if string(closestNode) == string(target) {
+		_, err := node.RPCSendOrderFragment(open[0], orderFragment)
+		return err
+	}
+
+	// Otherwise forward the fragment to the closest α nodes simultaneously
+	for len(open) > 0 {
+		asyncRoutines := len(open)
+		if len(open) > 3 {
+			asyncRoutines = α
+		}
+
+		var wg sync.WaitGroup
+		wg.Add(asyncRoutines)
+		targetFound := int32(0)
+
+		// Forward order fragment
+		for i := 0; i < asyncRoutines; i++ {
+			multi := open[0]
+			open = open[1:]
+			go func() {
+				defer wg.Done()
+				response, _ := node.RPCSendOrderFragment(multi, orderFragment)
+				if response != nil {
+					atomic.StoreInt32(&targetFound, 1)
+				}
+			}()
+			if len(open) == 0 {
+				break
+			}
+		}
+		wg.Wait()
+		if targetFound != 0 {
+			return nil
+		}
+	}
+	return errors.New("we can't find the target")
+}
+
 func (node *Node) handlePing(peer *rpc.MultiAddress) error {
 	multi, err := identity.NewMultiAddressFromString(peer.Multi)
 	if err != nil {
@@ -386,67 +449,4 @@ func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
 	}
 	node.DHT.Update(*newMulti)
 	return false, nil
-}
-
-// ForwardOrderFragment forwards the order fragment to the miners so that they
-// can transmit the order fragment to the target. Return nil if forward
-// successfully, or an error.
-func (node *Node) ForwardOrderFragment(orderFragment *rpc.OrderFragment) error {
-
-	target := identity.Address(orderFragment.To)
-	open := node.DHT.MultiAddresses()
-	if len(open) == 0 {
-		return errors.New("empty dht")
-	}
-
-	// Sort the nodes we already know
-	sort.SliceStable(open, func(i, j int) bool {
-		left, _ := open[i].Address()
-		right, _ := open[j].Address()
-		closer, _ := identity.Closer(left, right, target)
-		return closer
-	})
-
-	// If we know the target,send the order fragment to the target directly
-	closestNode, err := open[0].Address()
-	if err != nil {
-		return err
-	}
-	if string(closestNode) == string(target) {
-		_, err := node.RPCSendOrderFragment(open[0], orderFragment)
-		return err
-	}
-
-	// Otherwise forward the fragment to the closest α nodes simultaneously
-	for len(open) > 0 {
-		asyncRoutines := len(open)
-		if len(open) > 3 {
-			asyncRoutines = α
-		}
-
-		var wg sync.WaitGroup
-		wg.Add(asyncRoutines)
-		targetFound := int32(0)
-
-		// Forward order fragment
-		for i := 0; i < asyncRoutines; i++ {
-			multi := open[0]
-			open = open[1:]
-			go func() {
-				defer wg.Done()
-				response, _ := node.RPCSendOrderFragment(multi, orderFragment)
-				if response != nil {
-					atomic.StoreInt32(&targetFound, 1)
-				}
-			}()
-			if len(open) == 0 {
-				break
-			}
-		}
-		wg.Wait()
-		if targetFound != 0 {
-			return nil
-		}
-	}
-	return errors.New("we can't find the target")
 }
