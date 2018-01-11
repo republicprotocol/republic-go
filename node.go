@@ -20,18 +20,37 @@ import (
 // Node is expected to use when running a distributed Dijkstra search.
 const α = 3
 
-// Node implements the gRPC Node service.
-type Node struct {
-	*grpc.Server
-	Delegate
-	MultiAddress identity.MultiAddress
-	DHT          *dht.DHT
+// Dial the target identity.MultiAddress using a background context.Context.
+// Returns a grpc.ClientConn, or an error. The grpc.ClientConn must be closed
+// before it exists scope.
+func Dial(target identity.MultiAddress) (*grpc.ClientConn, error) {
+	host, err := target.ValueForProtocol(identity.IP4Code)
+	if err != nil {
+		return nil, err
+	}
+	port, err := target.ValueForProtocol(identity.TCPCode)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", host, port), grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
 }
 
 // The Delegate is used to inject dependencies into the RPC logic.
 type Delegate interface {
 	OnPingReceived(peer identity.MultiAddress)
 	OnOrderFragmentReceived()
+}
+
+// Node implements the gRPC Node service.
+type Node struct {
+	*grpc.Server
+	Delegate
+	MultiAddress identity.MultiAddress
+	DHT          *dht.DHT
 }
 
 // NewNode returns a Node with the given Config, a new DHT, and a new set of grpc.Connections.
@@ -71,31 +90,6 @@ func (node *Node) Serve() error {
 	rpc.RegisterNodeServer(node.Server, node)
 	reflection.Register(node.Server)
 	return node.Server.Serve(listener)
-}
-
-// Ping is used to test the connection to the Node and exchange MultiAddresses.
-// If the Node does not respond, or it responds with an error, then the
-// connection is considered unhealthy.
-func (node *Node) Ping(ctx context.Context, peer *rpc.MultiAddress) (*rpc.MultiAddress, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
-	// Spawn a goroutine to evaluate the return value.
-	wait := make(chan error)
-	go func() {
-		defer close(wait)
-		wait <- node.handlePing(peer)
-	}()
-
-	select {
-	case ret := <-wait:
-		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, ret
-
-	// Select the timeout from the context.
-	case <-ctx.Done():
-		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, ctx.Err()
-	}
 }
 
 // Peers is used to return the rpc.MultiAddresses to which a Node is connected.
@@ -217,34 +211,6 @@ func (node *Node) ForwardOrderFragment(orderFragment *rpc.OrderFragment) error {
 		}
 	}
 	return errors.New("we can't find the target")
-}
-
-func (node *Node) handlePing(peer *rpc.MultiAddress) error {
-	multi, err := identity.NewMultiAddressFromString(peer.Multi)
-	if err != nil {
-		return err
-	}
-	node.Delegate.OnPingReceived(multi)
-
-	// Attempt to update the DHT.
-	err = node.DHT.Update(multi)
-	if err == dht.ErrFullBucket {
-		// If the DHT is full then try and prune disconnected peers.
-		address, err := multi.Address()
-		if err != nil {
-			return err
-		}
-		pruned, err := node.pruneMostRecentPeer(address)
-		if err != nil {
-			return err
-		}
-		// If a peer was pruned, then update the DHT again.
-		if pruned {
-			return node.DHT.Update(multi)
-		}
-		return nil
-	}
-	return err
 }
 
 func (node *Node) handlePeers() *rpc.MultiAddresses {
