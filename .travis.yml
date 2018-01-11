@@ -3,4 +3,9 @@ language: go
 go:
   - 1.9.x
 
-script: go test -v ./...
+before_install:
+  - go get github.com/onsi/gomega
+  - go get github.com/onsi/ginkgo/ginkgo
+
+script:
+  - ginkgo -v --cover
