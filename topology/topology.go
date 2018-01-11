@@ -36,11 +36,10 @@ func generateNodes(numberOfNodes int) ([]*x.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		node, err := x.NewNode(&x.Config{
-			KeyPair:        keyPair,
-			MultiAddress:   multi,
-			MultiAddresses: make(identity.MultiAddresses, 0, numberOfNodes-1),
-		})
+		node, err := x.NewNode(
+			multi,
+			make(identity.MultiAddresses, 0, numberOfNodes-1),
+		)
 		if err != nil {
 			return nil, err
 		}
