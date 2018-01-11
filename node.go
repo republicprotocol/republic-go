@@ -22,8 +22,8 @@ const α = 3
 
 // Node implements the gRPC Node service.
 type Node struct {
-	Delegate
 	*grpc.Server
+	Delegate
 	MultiAddress identity.MultiAddress
 	DHT          *dht.DHT
 }
@@ -47,8 +47,8 @@ func NewNode(multi identity.MultiAddress, multis identity.MultiAddresses, delega
 		}
 	}
 	return &Node{
-		Delegate:     delegate,
 		Server:       grpc.NewServer(),
+		Delegate:     delegate,
 		MultiAddress: multi,
 		DHT:          dht,
 	}, nil
