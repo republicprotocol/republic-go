@@ -6,6 +6,8 @@ go:
 before_install:
   - go get github.com/onsi/gomega
   - go get github.com/onsi/ginkgo/ginkgo
+  - go get github.com/mattn/goveralls
 
 script:
-  - ginkgo -v --cover
+  - ginkgo -v --trace --race --cover --coverprofile sss.coverpofile
+  - goveralls -coverprofile=sss.coverprofile -service=travis-ci -repotoken $COVERALLS_TOKEN
