@@ -2,7 +2,6 @@ package x
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"sort"
 	"sync"
@@ -27,12 +26,27 @@ type Node struct {
 	KeyPair      identity.KeyPair
 	MultiAddress identity.MultiAddress
 	DHT          *dht.DHT
+	Observer     Observer
+}
+
+type Observer interface {
+	OnOrderFragmentReceived(orderFragment *rpc.OrderFragment)
 }
 
 // NewNode returns a Node with the given Config, a new DHT, and a new set of grpc.Connections.
+<<<<<<< Updated upstream
 func NewNode(config *Config) (*Node, error) {
 	dht := dht.NewDHT(config.KeyPair.Address())
 	for _, multi := range config.MultiAddresses {
+=======
+func NewNode(multi identity.MultiAddress, multis identity.MultiAddresses, observer Observer) (*Node, error) {
+	address, err := multi.Address()
+	if err != nil {
+		return nil, err
+	}
+	dht := dht.NewDHT(address)
+	for _, multi := range multis {
+>>>>>>> Stashed changes
 		if err := dht.Update(multi); err != nil {
 			return nil, err
 		}
@@ -189,9 +203,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 
 	target := identity.Address(orderFragment.To)
 	if string(target) == string(node.DHT.Address) {
-		// TODO: This Node is the intended target! Do something with the
-		//       rpc.OrderFragment.
-		log.Println("rpc.OrderFragment", string(orderFragment.OrderFragment), "received!")
+		node.Observer.OnOrderFragmentReceived(orderFragment)
 		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, nil
 	}
 
