@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/pkg/errors"
+	"sync/atomic"
 )
 
 // α determines the maximum number of concurrent client connections that the
@@ -210,6 +211,18 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 		closer, _ := identity.Closer(left, right, target)
 		return closer
 	})
+	if len(open) == 0 {
+		return nil, errors.New("empty dht")
+	}
+	// If we know the target,send the order fragment to the target directly
+	closestNode, err := open[0].Address()
+	if err != nil {
+		return nil, err
+	}
+	if string(closestNode) == string(target) {
+		_, err := node.RPCSendOrderFragment(open[0], orderFragment)
+		return &rpc.MultiAddress{Multi:open[0].String()},err
+	}
 
 	closed := make(map[identity.MultiAddress]bool)
 
@@ -220,7 +233,11 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 	//       targetMulti has been found.
 	for len(open) > 0 {
 		var wg sync.WaitGroup
-		wg.Add(α)
+		if len(open) >=3 {
+			wg.Add(α)
+		}else{
+			wg.Add(len(open))
+		}
 		badNodes := make(chan identity.MultiAddress, α)
 
 		// Take the first α multi-addresses from the open list and expand them
@@ -344,15 +361,13 @@ func (node *Node) pruneMostRecentPeer(target identity.Address) (bool, error) {
 // transmit the order fragment to the target. Return nil if forward successfully,
 // or an error indicating can't find the target.
 func (node *Node) ForwardOrderFragment(orderFragment *rpc.OrderFragment) error {
+
 	target := identity.Address(orderFragment.To)
-	bucket, err := node.DHT.FindBucket(target)
-	if err != nil {
-		return err
-	}
-	open := bucket.MultiAddresses()
+	open := node.DHT.MultiAddresses()
 	if len(open) == 0 {
 		return errors.New("empty dht")
 	}
+
 	// Sort the nodes we already know
 	sort.SliceStable(open, func(i, j int) bool {
 		left, _ := open[i].Address()
@@ -360,6 +375,7 @@ func (node *Node) ForwardOrderFragment(orderFragment *rpc.OrderFragment) error {
 		closer, _ := identity.Closer(left, right, target)
 		return closer
 	})
+
 	// If we know the target,send the order fragment to the target directly
 	closestNode, err := open[0].Address()
 	if err != nil {
@@ -373,27 +389,35 @@ func (node *Node) ForwardOrderFragment(orderFragment *rpc.OrderFragment) error {
 	// Otherwise forward the fragment to the closest α nodes simultaneously
 	for len(open) > 0 {
 		var wg sync.WaitGroup
-		wg.Add(α)
-		targetFound := make(chan identity.MultiAddress, α)
+		if len(open) >= α {
+			wg.Add(α)
+		}else{
+			wg.Add(len(open))
+		}
+		targetFound := int32(0)
 
+		// Forward order fragment
 		for i := 0; i < α; i++ {
 			multi := open[0]
 			open = open[1:]
 			go func() {
 				defer wg.Done()
-				response, _ := node.RPCSendOrderFragment(multi, orderFragment)
+				response, err  := node.RPCSendOrderFragment(multi, orderFragment)
+				if err != nil {
+					log.Println(err)
+				}
 				if response != nil {
-					targetFound <- *response
+					atomic.StoreInt32(&targetFound, 1)
 				}
 			}()
+			if len(open) == 0 {
+				break
+			}
 		}
-
 		wg.Wait()
-
-		if len(targetFound) >= 0 {
+		if targetFound != 0 {
 			return nil
 		}
 	}
-
 	return errors.New("we can't find the target")
 }

@@ -11,7 +11,7 @@ import (
 // Constants for use in the DHT.
 const (
 	IDLengthInBits = identity.IDLength * 8
-	MaxBucketSize  = 20
+	MaxBucketSize  = 100
 	MaxDHTSize     = IDLengthInBits * MaxBucketSize
 )
 

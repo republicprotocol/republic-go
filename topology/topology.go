@@ -16,10 +16,10 @@ import (
 var μ = new(sync.Mutex)
 
 // The number of nodes that should be included in each topology test.
-var numberOfNodes = 40
+var numberOfNodes = 50
 
 // The number of messages that will be sent through the topology.
-var numberOfMessages = 100
+var numberOfMessages = 50
 
 // The duration to wait for peers to start listening for RPCs.
 var startTimeDelay = time.Second
