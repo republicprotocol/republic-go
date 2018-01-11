@@ -67,12 +67,25 @@ var _ = Describe("Fully connected mesh topologies", func() {
 				Ω(len(node.DHT.MultiAddresses())).Should(Equal(numberOfNodes - 1))
 			}
 		})
+		Specify("The sum of pings of all node's delegate should equal to (n-1)*n", func() {
+			sum := 0
+			for _, node := range nodes {
+				sum += node.Delegate.(*MockDelegate).PingCount
+			}
+
+			Ω(sum).Should(Equal(numberOfNodes * (numberOfNodes - 1)))
+		})
 	})
 
 	Context("Sending order fragment", func() {
 		It("should be able to send and receive order fragment", func() {
 			err = sendMessages(nodes)
 			Ω(err).ShouldNot(HaveOccurred())
+			sum := 0
+			for _, node := range nodes {
+				sum += node.Delegate.(*MockDelegate).FragmentCount
+			}
+			Ω(sum).Should(Equal(numberOfMessages))
 		})
 	})
 })

@@ -63,7 +63,6 @@ var _ = Describe("Ring topology", func() {
 				node.Stop()
 			}(n)
 		}
-
 	})
 
 	Context("when pinging", func() {
@@ -72,12 +71,20 @@ var _ = Describe("Ring topology", func() {
 				Ω(len(node.DHT.MultiAddresses())).Should(Equal(2))
 			}
 		})
+		Specify("The sum of pings of all node's delegate should equal to 2*n", func() {
+			sum := 0
+			for _, node := range nodes {
+				sum += node.Delegate.(*MockDelegate).PingCount
+			}
+			Ω(sum).Should(Equal(2 * numberOfNodes))
+		})
 	})
 
 	Context("Sending order fragment", func() {
 		It("should be able to send and receive order fragment", func() {
 			err = sendMessages(nodes)
 			Ω(err).ShouldNot(HaveOccurred())
+			// hard to tell how many orders we received
 		})
 	})
 })

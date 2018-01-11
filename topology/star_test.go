@@ -28,6 +28,7 @@ var _ = Describe("Star topology", func() {
 				Ω(node.Serve()).ShouldNot(HaveOccurred())
 			}(n)
 		}
+
 		time.Sleep(startTimeDelay)
 
 		// All nodes ping the center node
@@ -76,12 +77,25 @@ var _ = Describe("Star topology", func() {
 				}
 			}
 		})
+		Specify("The sum of pings of all node's delegate should equal to (n-1)*2", func() {
+			sum := 0
+			for _, node := range nodes {
+				sum += node.Delegate.(*MockDelegate).PingCount
+			}
+
+			Ω(sum).Should(Equal(2 * (numberOfNodes - 1)))
+		})
 	})
 
 	Context("Sending order fragment", func() {
 		It("should be able to send and receive order fragment", func() {
 			err = sendMessages(nodes)
 			Ω(err).ShouldNot(HaveOccurred())
+			sum := 0
+			for _, node := range nodes {
+				sum += node.Delegate.(*MockDelegate).FragmentCount
+			}
+			Ω(sum).Should(Equal(numberOfMessages))
 		})
 	})
 })
