@@ -9,7 +9,7 @@ before_install:
   - go get github.com/mattn/goveralls
 
 script:
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out
+  - ginkgo -v --trace --cover --coverprofile coverprofile.out topology
   
 after_success:
   - goveralls -coverprofile=coverprofile.out -service=travis-ci -repotoken $COVERALLS_TOKEN
