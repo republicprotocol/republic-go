@@ -1,5 +1,7 @@
 # Shamir Secret Sharing
 
+[![Build Status](https://travis-ci.org/republicprotocol/go-sss.svg?branch=master)](https://travis-ci.org/republicprotocol/go-sss)
+
 The Shamir Secret Sharing (SSS) library is a Go implementation of the Shamir Secret Sharing scheme. We recommend the Wikipedia page as the starting point for readers that are not familiar with secret sharing. 
 
 * [Wikipedia](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing)
