@@ -278,7 +278,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 		return nil, err
 
 	}
-	closed[self] = true
+	closed[self.String()] = true
 	multiFrom, err := identity.NewMultiAddressFromString(orderFragment.From)
 	if err != nil {
 		return nil, err
@@ -287,7 +287,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 	if err != nil {
 		return nil, err
 	}
-	closed[from] = true
+	closed[from.String()] = true
 
 	// Initialize the open list
 	openMu := new(sync.Mutex)
@@ -297,7 +297,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := closed[address]; !ok {
+		if _, ok := closed[address.String()]; !ok {
 			open = append(open, peer)
 		}
 	}
@@ -348,7 +348,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 			if err != nil {
 				return nil, err
 			}
-			closed[address] = true
+			closed[address.String()] = true
 
 			go func() {
 				defer wg.Done()
@@ -397,7 +397,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 						if err != nil {
 							return
 						}
-						if _, ok := closed[address]; !ok {
+						if _, ok := closed[address.String()]; !ok {
 							open = append(open, next)
 						}
 					}
