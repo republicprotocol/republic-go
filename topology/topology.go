@@ -16,10 +16,10 @@ import (
 var μ = new(sync.Mutex)
 
 // The number of nodes that should be included in each topology test.
-var numberOfNodes = 100
+var numberOfNodes = 20
 
 // The number of messages that will be sent through the topology.
-var numberOfMessages = 100
+var numberOfMessages = 20
 
 // The duration to wait for peers to start listening for RPCs.
 var startTimeDelay = time.Second
@@ -36,9 +36,11 @@ func generateNodes(numberOfNodes int) ([]*x.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+		delegate := x.NewXDelegate()
 		node, err := x.NewNode(
 			multi,
 			make(identity.MultiAddresses, 0, numberOfNodes-1),
+			delegate,
 		)
 		if err != nil {
 			return nil, err
