@@ -263,7 +263,7 @@ func (node *Node) handlePeers() *rpc.MultiAddresses {
 func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.MultiAddress, error) {
 
 	target := identity.Address(orderFragment.To)
-	if string(target) == string(node.DHT.Address) {
+	if target == node.DHT.Address {
 		node.Delegate.OnOrderFragmentReceived()
 		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, nil
 	}
@@ -278,7 +278,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 		return nil, err
 
 	}
-	closed[string(self)] = true
+	closed[self] = true
 	multiFrom, err := identity.NewMultiAddressFromString(orderFragment.From)
 	if err != nil {
 		return nil, err
@@ -287,7 +287,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 	if err != nil {
 		return nil, err
 	}
-	closed[string(from)] = true
+	closed[from] = true
 
 	// Initialize the open list
 	openMu := new(sync.Mutex)
@@ -297,7 +297,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := closed[string(address)]; !ok {
+		if _, ok := closed[address]; !ok {
 			open = append(open, peer)
 		}
 	}
@@ -316,7 +316,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 	if err != nil {
 		return nil, err
 	}
-	if string(closestNode) == string(target) {
+	if closestNode == target {
 		_, err := node.RPCSendOrderFragment(open[0], orderFragment)
 		return &rpc.MultiAddress{Multi: open[0].String()}, err
 	}
@@ -348,7 +348,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 			if err != nil {
 				return nil, err
 			}
-			closed[string(address)] = true
+			closed[address] = true
 
 			go func() {
 				defer wg.Done()
@@ -368,7 +368,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 					if err != nil {
 						return
 					}
-					if string(target) == string(address) {
+					if target == address {
 						// If we have found the target, set the targetMulti and
 						// exit the loop. There is no point acquiring more
 						// peers for the open list.
@@ -397,7 +397,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 						if err != nil {
 							return
 						}
-						if _, ok := closed[string(address)]; !ok {
+						if _, ok := closed[address]; !ok {
 							open = append(open, next)
 						}
 					}
