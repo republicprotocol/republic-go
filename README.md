@@ -1,5 +1,8 @@
 # Identity
 
+[![Build Status](https://travis-ci.org/republicprotocol/go-identity.svg?branch=master)](https://travis-ci.org/republicprotocol/go-identity)
+[![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-identity/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-identity?branch=master)
+
 The Identity library is an official reference implementation of identities and addresses in the Republic Protocol, written in Go. It supports the generation and use of Republic key pairs, Republic IDs, Republic addresses, and Republic multi-addresses.
 
 ## Key Pairs
