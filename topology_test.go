@@ -48,3 +48,67 @@ func generateFullyConnectedTopology(numberOfNodes int, delegate x.Delegate) ([]*
 	}
 	return nodes, topology, nil
 }
+
+func generateStarTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, map[identity.Address][]*x.Node, error) {
+	nodes, err := generateNodes(numberOfNodes, delegate)
+	if err != nil {
+		return nil, nil, err
+	}
+	topology := map[identity.Address][]*x.Node{}
+	for i, node := range nodes {
+		topology[node.DHT.Address] = []*x.Node{}
+		if i == 0 {
+			for j, peer := range nodes {
+				if i == j {
+					continue
+				}
+				topology[node.DHT.Address] = append(topology[node.DHT.Address], peer)
+			}
+		}else{
+			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[0])
+		}
+	}
+	return nodes, topology, nil
+}
+
+func generateLineTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, map[identity.Address][]*x.Node, error) {
+	nodes, err := generateNodes(numberOfNodes, delegate)
+	if err != nil {
+		return nil, nil, err
+	}
+	topology := map[identity.Address][]*x.Node{}
+	for i, node := range nodes {
+		topology[node.DHT.Address] = []*x.Node{}
+		if i == 0 {
+			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
+		}else if i == len(nodes)-1{
+			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
+		}else{
+			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
+			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
+		}
+	}
+	return nodes, topology, nil
+}
+
+func generateRingTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, map[identity.Address][]*x.Node, error) {
+	nodes, err := generateNodes(numberOfNodes, delegate)
+	if err != nil {
+		return nil, nil, err
+	}
+	topology := map[identity.Address][]*x.Node{}
+	for i, node := range nodes {
+		topology[node.DHT.Address] = []*x.Node{}
+		if i == 0 {
+			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
+			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[len(nodes)-1])
+		}else if i == len(nodes)-1{
+			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
+			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[0])
+		}else{
+			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
+			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
+		}
+	}
+	return nodes, topology, nil
+}

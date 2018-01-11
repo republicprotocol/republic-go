@@ -51,10 +51,24 @@ var _ = Describe("Ping RPC", func() {
 		wg.Wait()
 	}
 
-	run := func(numberOfNodes int) int {
+	run := func(name string,numberOfNodes int) int {
+		var nodes []*x.Node
+		var topology map[identity.Address][]*x.Node
+		var err error
+
 		delegate := newPingDelegate()
-		nodes, topology, err := generateFullyConnectedTopology(numberOfNodes, delegate)
+		switch name{
+		case "full":
+			nodes, topology, err = generateFullyConnectedTopology(numberOfNodes, delegate)
+		case "star":
+			nodes, topology, err = generateStarTopology(numberOfNodes, delegate)
+		case "line":
+			nodes, topology, err = generateLineTopology(numberOfNodes, delegate)
+		case "ring":
+			nodes, topology, err = generateRingTopology(numberOfNodes, delegate)
+		}
 		Ω(err).ShouldNot(HaveOccurred())
+
 		for _, node := range nodes {
 			go func(node *x.Node) {
 				defer GinkgoRecover()
@@ -75,9 +89,43 @@ var _ = Describe("Ping RPC", func() {
 			It("should update the DHT", func() {
 				testMu.Lock()
 				defer testMu.Unlock()
-				numberOfPings := run(numberOfNodes)
+				numberOfPings := run("full",numberOfNodes)
 				Ω(numberOfPings).Should(Equal(numberOfNodes * (numberOfNodes - 1)))
 			})
 		})
 	}
+
+	for _, numberOfNodes := range []int{10, 20, 40, 80} {
+		Context(fmt.Sprintf("in a star topology with %d nodes", numberOfNodes), func() {
+			It("should update the DHT", func() {
+				testMu.Lock()
+				defer testMu.Unlock()
+				numberOfPings := run("star",numberOfNodes)
+				Ω(numberOfPings).Should(Equal(2 * (numberOfNodes - 1)))
+			})
+		})
+	}
+
+	for _, numberOfNodes := range []int{10, 20, 40, 80} {
+		Context(fmt.Sprintf("in a line topology with %d nodes", numberOfNodes), func() {
+			It("should update the DHT", func() {
+				testMu.Lock()
+				defer testMu.Unlock()
+				numberOfPings := run("line",numberOfNodes)
+				Ω(numberOfPings).Should(Equal(2 * (numberOfNodes - 1)))
+			})
+		})
+	}
+
+	for _, numberOfNodes := range []int{10, 20, 40, 80} {
+		Context(fmt.Sprintf("in a ring topology with %d nodes", numberOfNodes), func() {
+			It("should update the DHT", func() {
+				testMu.Lock()
+				defer testMu.Unlock()
+				numberOfPings := run("ring",numberOfNodes)
+				Ω(numberOfPings).Should(Equal(2 * numberOfNodes ))
+			})
+		})
+	}
+
 })
