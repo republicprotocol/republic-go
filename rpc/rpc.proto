@@ -19,9 +19,10 @@ service Node {
 // An OrderFragment is a message contains the details of an order fragment.
 message OrderFragment {
   string to = 1;
-  bytes orderID = 2;
-  bytes orderFragmentID = 3;
-  bytes orderFragment = 4;
+  string from = 2;
+  bytes orderID = 3;
+  bytes orderFragmentID = 4;
+  bytes orderFragment = 5;
 }
 
 // A MultiAddress is the public multiaddress of a Node in the overlay network.

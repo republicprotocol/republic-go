@@ -20,53 +20,64 @@ package siphashpg
 
 import "fmt"
 import "unsafe"
+
 /* default: SipHash-2-4 */
 const (
-    Crounds  = 2
-    Drounds = 4
+	Crounds = 2
+	Drounds = 4
 )
 
 func rotl(x, b uint64) uint64 {
-	return ((x) << (b)) | ( (x) >> (64 - (b)))
+	return ((x) << (b)) | ((x) >> (64 - (b)))
 }
 
 func U8tou64le(p []byte) uint64 {
-/*
-	for k, v := range p {
-		fmt.Printf("p[%d]=0x%x\n", k, v)
-	}
-*/
-	return uint64(p[0]) | uint64(p[1]) << 8 | uint64(p[2]) << 16 | uint64(p[3]) << 24 | uint64(p[4]) << 32 | uint64(p[5]) << 40 | uint64(p[6]) << 48 | uint64(p[7]) << 56
+	/*
+		for k, v := range p {
+			fmt.Printf("p[%d]=0x%x\n", k, v)
+		}
+	*/
+	return uint64(p[0]) | uint64(p[1])<<8 | uint64(p[2])<<16 | uint64(p[3])<<24 | uint64(p[4])<<32 | uint64(p[5])<<40 | uint64(p[6])<<48 | uint64(p[7])<<56
 }
 
 func U64tou8le(v uint64) (r []byte) {
 	r = make([]byte, 8, 8)
 	r = r[:]
 	for k, _ := range r {
-		r[k] = byte(v&0xFF)
+		r[k] = byte(v & 0xFF)
 		v >>= 8
 	}
 	return
 }
 
 func siprounda(v0, v1, v2, v3 uint64) (uint64, uint64, uint64, uint64) {
-	v0 += v1; v1=rotl(v1,13); v1 ^= v0; v0=rotl(v0,32);
-	v2 += v3; v3=rotl(v3,16); v3 ^= v2;
+	v0 += v1
+	v1 = rotl(v1, 13)
+	v1 ^= v0
+	v0 = rotl(v0, 32)
+	v2 += v3
+	v3 = rotl(v3, 16)
+	v3 ^= v2
 	return v0, v1, v2, v3
 }
 
 func siproundb(v0, v1, v2, v3 uint64) (uint64, uint64, uint64, uint64) {
-	v0 += v3; v3=rotl(v3,21); v3 ^= v0;
-	v2 += v1; v1=rotl(v1,17); v1 ^= v2; v2=rotl(v2,32);
+	v0 += v3
+	v3 = rotl(v3, 21)
+	v3 ^= v0
+	v2 += v1
+	v1 = rotl(v1, 17)
+	v1 ^= v2
+	v2 = rotl(v2, 32)
 	return v0, v1, v2, v3
 }
 
 func TRACE(inlen int, v0, v1, v2, v3 uint64) {
 	return
-	fmt.Printf( "(%3d) v0 %08x %08x\n", inlen, v0 >> 32, v0&0xFFFFFFFF)
-	fmt.Printf( "(%3d) v1 %08x %08x\n", inlen, v1 >> 32, v1&0xFFFFFFFF)
-	fmt.Printf( "(%3d) v2 %08x %08x\n", inlen, v2 >> 32, v2&0xFFFFFFFF)
-	fmt.Printf( "(%3d) v3 %08x %08x\n", inlen, v3 >> 32, v3&0xFFFFFFFF)
+	fmt.Printf("(%3d) v0 %08x %08x\n", inlen, v0>>32, v0&0xFFFFFFFF)
+	fmt.Printf("(%3d) v1 %08x %08x\n", inlen, v1>>32, v1&0xFFFFFFFF)
+	fmt.Printf("(%3d) v2 %08x %08x\n", inlen, v2>>32, v2&0xFFFFFFFF)
+	fmt.Printf("(%3d) v3 %08x %08x\n", inlen, v3>>32, v3&0xFFFFFFFF)
 }
 
 // This makes a new slice of uint64 that points to the same slice passed in as []byte.
@@ -75,7 +86,7 @@ func TRACE(inlen int, v0, v1, v2, v3 uint64) {
 // Not sure what the right thing to do is for little vs big endian?
 // What are the right test vevtors for big-endian machines.
 func sliceUI64(in []byte) []uint64 {
-    return (*(*[]uint64)(unsafe.Pointer(&in)))[:len(in)/8]
+	return (*(*[]uint64)(unsafe.Pointer(&in)))[:len(in)/8]
 }
 
 // take input slice in and seeds k as well a compression and final rounds cr, dr
@@ -84,10 +95,20 @@ func Siphash(in []byte, k []byte, cr, dr int, dbl bool) (ra, rb uint64) {
 	var fast = true
 	var v0, v1, v2, v3 uint64
 	var sipround = func() {
-		v0 += v1; v1=rotl(v1,13); v1 ^= v0; v0=rotl(v0,32);
-		v2 += v3; v3=rotl(v3,16); v3 ^= v2;
-		v0 += v3; v3=rotl(v3,21); v3 ^= v0;
-		v2 += v1; v1=rotl(v1,17); v1 ^= v2; v2=rotl(v2,32);
+		v0 += v1
+		v1 = rotl(v1, 13)
+		v1 ^= v0
+		v0 = rotl(v0, 32)
+		v2 += v3
+		v3 = rotl(v3, 16)
+		v3 ^= v2
+		v0 += v3
+		v3 = rotl(v3, 21)
+		v3 ^= v0
+		v2 += v1
+		v1 = rotl(v1, 17)
+		v1 ^= v2
+		v2 = rotl(v2, 32)
 	}
 
 	if len(k) != 16 || cr <= 0 || dr <= 0 {
@@ -120,29 +141,29 @@ func Siphash(in []byte, k []byte, cr, dr int, dbl bool) (ra, rb uint64) {
 	// peel off as many 64 bit words as we have
 	if fast {
 		for ; l >= 8; in = in[8:] {
-	    	m := k64[cnt]
-	    	cnt++
-	    	l -= 8
-	    	v3 ^= m
+			m := k64[cnt]
+			cnt++
+			l -= 8
+			v3 ^= m
 
 			//TRACE(len(in), v0, v1, v2, v3)
-	    	for i := 0; i < cr; i++ {
-	    		sipround()
-	    		//v0, v1, v2, v3 = siprounda(v0, v1, v2, v3)
-	    		//v0, v1, v2, v3 = siproundb(v0, v1, v2, v3)
+			for i := 0; i < cr; i++ {
+				sipround()
+				//v0, v1, v2, v3 = siprounda(v0, v1, v2, v3)
+				//v0, v1, v2, v3 = siproundb(v0, v1, v2, v3)
 			}
 			v0 ^= m
 		}
 	} else {
 		for ; len(in) >= 8; in = in[8:] {
-	    	m := U8tou64le(in)
-	    	v3 ^= m
+			m := U8tou64le(in)
+			v3 ^= m
 
 			//TRACE(len(in), v0, v1, v2, v3)
-	    	for i := 0; i < cr; i++ {
-	    		sipround()
-	    		//v0, v1, v2, v3 = siprounda(v0, v1, v2, v3)
-	    		//v0, v1, v2, v3 = siproundb(v0, v1, v2, v3)
+			for i := 0; i < cr; i++ {
+				sipround()
+				//v0, v1, v2, v3 = siprounda(v0, v1, v2, v3)
+				//v0, v1, v2, v3 = siproundb(v0, v1, v2, v3)
 			}
 			v0 ^= m
 		}
@@ -167,18 +188,18 @@ func Siphash(in []byte, k []byte, cr, dr int, dbl bool) (ra, rb uint64) {
 		b |= uint64(in[2]) << 16
 		fallthrough
 	case 2:
-		b |= uint64(in[1]) <<  8
+		b |= uint64(in[1]) << 8
 		fallthrough
 	case 1:
 		b |= uint64(in[0])
-		break;
+		break
 	case 0:
-		break;
+		break
 	default:
 		//fmt.Printf("len(in)=%d\n", len(in))
 		panic("siphash bad length")
 	}
-	v3 ^= b;
+	v3 ^= b
 
 	//TRACE(len(in), v0, v1, v2, v3)
 	for i := 0; i < cr; i++ {
@@ -200,19 +221,19 @@ func Siphash(in []byte, k []byte, cr, dr int, dbl bool) (ra, rb uint64) {
 		//v0, v1, v2, v3 = siprounda(v0, v1, v2, v3)
 		//v0, v1, v2, v3 = siproundb(v0, v1, v2, v3)
 	}
-	b = v0 ^ v1 ^ v2  ^ v3
+	b = v0 ^ v1 ^ v2 ^ v3
 	ra = b
 
 	// if 128 bit result desired run some more rounds and get another 64 bits
 	if dbl {
-  		v1 ^= 0xdd
+		v1 ^= 0xdd
 		//TRACE(len(in), v0, v1, v2, v3)
 		for i := 0; i < dr; i++ {
 			sipround()
-    		//v0, v1, v2, v3 = siprounda(v0, v1, v2, v3)
-    		//v0, v1, v2, v3 = siproundb(v0, v1, v2, v3)
+			//v0, v1, v2, v3 = siprounda(v0, v1, v2, v3)
+			//v0, v1, v2, v3 = siproundb(v0, v1, v2, v3)
 		}
-		b = v0 ^ v1 ^ v2  ^ v3
+		b = v0 ^ v1 ^ v2 ^ v3
 		rb = b
 	}
 	return

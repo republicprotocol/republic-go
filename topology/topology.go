@@ -36,7 +36,7 @@ func generateNodes(numberOfNodes int) ([]*x.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		delegate := x.NewXDelegate()
+		delegate := NewMockDelegate()
 		node, err := x.NewNode(
 			multi,
 			make(identity.MultiAddresses, 0, numberOfNodes-1),
@@ -67,6 +67,7 @@ func sendMessage(from, to *x.Node) error {
 	}
 	orderFragment := &rpc.OrderFragment{
 		To:              string(address),
+		From:            string(from.MultiAddress.String()),
 		OrderID:         []byte("orderID"),
 		OrderFragmentID: []byte("fragmentID"),
 		OrderFragment:   []byte(address),
