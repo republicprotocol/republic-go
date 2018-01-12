@@ -5,11 +5,42 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-x/rpc"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
+
+// RPCSendOrderFragment sends a SendOrderFragment RPC request to the target
+// using a new grpc.ClientConn and a new rpc.NodeClient. It returns the result
+// of the RPC call, or an error.
+func (node *Node) RPCSendOrderFragment(target identity.MultiAddress, fragment *rpc.OrderFragment) (*identity.MultiAddress, error) {
+	// Connect to the target.
+	conn, err := Dial(target)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	client := rpc.NewNodeClient(conn)
+
+	// Create a timeout context.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// Call the SendOrderFragment RPC on the target.
+	multi, err := client.SendOrderFragment(ctx, fragment, grpc.FailFast(false))
+	if err != nil {
+		return nil, err
+	}
+
+	ret, err := identity.NewMultiAddressFromString(multi.Multi)
+	if err != nil {
+		return nil, err
+	}
+	return &ret, nil
+}
 
 // SendOrderFragment is used to forward an rpc.OrderFragment through the X
 // Network to its destination Node. This forwarding is done using a distributed
