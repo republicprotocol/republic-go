@@ -1,9 +1,11 @@
-# X network
+# X Network
 
 [![Build Status](https://travis-ci.org/republicprotocol/go-x.svg?branch=master)](https://travis-ci.org/republicprotocol/go-x)
 [![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-x/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-x?branch=master)
 
-The X Network library is an official reference implementation of identities and addresses in the Republic Protocol, written in Go.
+> This library is a work in progress.
+
+The X Network library is an official reference implementation of X Network in the Republic Protocol, written in Go. It supports connecting nodes, and sending order fragments between nodes.
 
 ## Installation
 
@@ -55,10 +57,3 @@ ginkgo -v
 ## Republic
 
 The X Network library was developed by the Republic Protocol team and is available under the MIT license. For more information, see our website https://republicprotocol.com.
-
-## Contributors
-
-* Loong
-* Yunshi
-* Susruth
-* Noah
