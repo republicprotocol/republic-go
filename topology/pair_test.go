@@ -76,7 +76,7 @@ var _ = Describe("Pair topologies", func() {
 
 	Context("Send order fragments", func() {
 		It("should be able to send order fragment from left to right", func() {
-			rightAddress,err := right.MultiAddress.Address()
+			rightAddress, err := right.MultiAddress.Address()
 			Ω(err).ShouldNot(HaveOccurred())
 			orderFragment := &rpc.OrderFragment{
 				To:              string(rightAddress),
@@ -85,7 +85,7 @@ var _ = Describe("Pair topologies", func() {
 				OrderFragmentID: []byte("fragmentID"),
 				OrderFragment:   []byte(rightAddress),
 			}
-			left.RPCSendOrderFragment(right,orderFragment)
+			left.RPCSendOrderFragment(right, orderFragment)
 		})
 	})
 })

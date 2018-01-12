@@ -51,13 +51,13 @@ var _ = Describe("Ping RPC", func() {
 		wg.Wait()
 	}
 
-	run := func(name string,numberOfNodes int) int {
+	run := func(name string, numberOfNodes int) int {
 		var nodes []*x.Node
 		var topology map[identity.Address][]*x.Node
 		var err error
 
 		delegate := newPingDelegate()
-		switch name{
+		switch name {
 		case "full":
 			nodes, topology, err = generateFullyConnectedTopology(numberOfNodes, delegate)
 		case "star":
@@ -89,7 +89,7 @@ var _ = Describe("Ping RPC", func() {
 			It("should update the DHT", func() {
 				testMu.Lock()
 				defer testMu.Unlock()
-				numberOfPings := run("full",numberOfNodes)
+				numberOfPings := run("full", numberOfNodes)
 				Ω(numberOfPings).Should(Equal(numberOfNodes * (numberOfNodes - 1)))
 			})
 		})
@@ -100,7 +100,7 @@ var _ = Describe("Ping RPC", func() {
 			It("should update the DHT", func() {
 				testMu.Lock()
 				defer testMu.Unlock()
-				numberOfPings := run("star",numberOfNodes)
+				numberOfPings := run("star", numberOfNodes)
 				Ω(numberOfPings).Should(Equal(2 * (numberOfNodes - 1)))
 			})
 		})
@@ -111,7 +111,7 @@ var _ = Describe("Ping RPC", func() {
 			It("should update the DHT", func() {
 				testMu.Lock()
 				defer testMu.Unlock()
-				numberOfPings := run("line",numberOfNodes)
+				numberOfPings := run("line", numberOfNodes)
 				Ω(numberOfPings).Should(Equal(2 * (numberOfNodes - 1)))
 			})
 		})
@@ -122,8 +122,8 @@ var _ = Describe("Ping RPC", func() {
 			It("should update the DHT", func() {
 				testMu.Lock()
 				defer testMu.Unlock()
-				numberOfPings := run("ring",numberOfNodes)
-				Ω(numberOfPings).Should(Equal(2 * numberOfNodes ))
+				numberOfPings := run("ring", numberOfNodes)
+				Ω(numberOfPings).Should(Equal(2 * numberOfNodes))
 			})
 		})
 	}

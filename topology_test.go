@@ -2,6 +2,7 @@ package x_test
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-x"
@@ -64,7 +65,7 @@ func generateStarTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, ma
 				}
 				topology[node.DHT.Address] = append(topology[node.DHT.Address], peer)
 			}
-		}else{
+		} else {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[0])
 		}
 	}
@@ -81,9 +82,9 @@ func generateLineTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, ma
 		topology[node.DHT.Address] = []*x.Node{}
 		if i == 0 {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
-		}else if i == len(nodes)-1{
+		} else if i == len(nodes)-1 {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
-		}else{
+		} else {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
 		}
@@ -102,13 +103,22 @@ func generateRingTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, ma
 		if i == 0 {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[len(nodes)-1])
-		}else if i == len(nodes)-1{
+		} else if i == len(nodes)-1 {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[0])
-		}else{
+		} else {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
 		}
 	}
 	return nodes, topology, nil
+}
+
+func randomNodes(nodes []*x.Node) (*x.Node, *x.Node) {
+	left := rand.Intn(len(nodes))
+	right := rand.Intn(len(nodes))
+	for left == right {
+		right = rand.Intn(len(nodes))
+	}
+	return nodes[left], nodes[right]
 }
