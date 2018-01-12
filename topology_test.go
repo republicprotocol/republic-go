@@ -2,6 +2,8 @@ package x_test
 
 import (
 	"fmt"
+	"math/rand"
+	"sync"
 
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-x"
@@ -111,4 +113,38 @@ func generateRingTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, ma
 		}
 	}
 	return nodes, topology, nil
+}
+
+func randomNodes(nodes []*x.Node) (*x.Node, *x.Node) {
+	left := rand.Intn(len(nodes))
+	right := rand.Intn(len(nodes))
+	for left == right {
+		right = rand.Intn(len(nodes))
+	}
+	return nodes[left], nodes[right]
+}
+
+func ping(nodes []*x.Node, topology map[identity.Address][]*x.Node) error {
+	var wg sync.WaitGroup
+	wg.Add(len(nodes))
+	var muError *sync.Mutex
+	var globalError error = nil
+
+	for _, node := range nodes {
+		go func(node *x.Node) {
+			defer wg.Done()
+			peers := topology[node.DHT.Address]
+			for _, peer := range peers {
+				_, err := node.RPCPing(peer.MultiAddress)
+				if err != nil {
+					muError.Lock()
+					defer muError.Unlock()
+					globalError = err
+				}
+			}
+		}(node)
+	}
+
+	wg.Wait()
+	return globalError
 }

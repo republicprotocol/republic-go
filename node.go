@@ -87,9 +87,6 @@ func (node *Node) Serve() error {
 	return node.Server.Serve(listener)
 }
 
-// Prune the oldest peer by pinging it to see whether or not it is still
-// connected. Returns true if the oldest peer is still connected, false
-// otherwise, or an error.
 func (node *Node) Prune(target identity.Address) (bool, error) {
 	bucket, err := node.DHT.FindBucket(target)
 	if err != nil {
