@@ -2,7 +2,6 @@ package x_test
 
 import (
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -30,26 +29,6 @@ func (delegate *pingDelegate) OnOrderFragmentReceived() {
 }
 
 var _ = Describe("Ping RPC", func() {
-
-	ping := func(nodes []*x.Node, topology map[identity.Address][]*x.Node) {
-		var wg sync.WaitGroup
-		wg.Add(len(nodes))
-
-		for _, node := range nodes {
-			go func(node *x.Node) {
-				defer GinkgoRecover()
-				defer wg.Done()
-
-				peers := topology[node.DHT.Address]
-				for _, peer := range peers {
-					_, err := node.RPCPing(peer.MultiAddress)
-					Ω(err).ShouldNot(HaveOccurred())
-				}
-			}(node)
-		}
-
-		wg.Wait()
-	}
 
 	run := func(name string, numberOfNodes int) int {
 		var nodes []*x.Node
@@ -80,7 +59,9 @@ var _ = Describe("Ping RPC", func() {
 			}(node)
 		}
 		time.Sleep(time.Second)
-		ping(nodes, topology)
+		err = ping(nodes, topology)
+		Ω(err).ShouldNot(HaveOccurred())
+
 		return int(delegate.numberOfPings)
 	}
 
