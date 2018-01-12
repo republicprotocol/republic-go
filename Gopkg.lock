@@ -50,16 +50,10 @@
   version = "v1.3.0"
 
 [[projects]]
-  name = "github.com/pkg/errors"
-  packages = ["."]
-  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
-  version = "v0.8.0"
-
-[[projects]]
-  branch = "develop"
+  branch = "master"
   name = "github.com/republicprotocol/go-dht"
   packages = ["."]
-  revision = "8084c5f24b192e374c2e15b18cf05b96ad1d2ea5"
+  revision = "736898f248ec3190fd5e725ee2140e694155288c"
 
 [[projects]]
   branch = "master"
@@ -124,6 +118,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0bef31b37356c81c6d844bdbe0397840c3092a26d100eea0a1fdd57a64f45d67"
+  inputs-digest = "fe01d013642e05e4032ee921717f381872c5d17c1a909c88d012691dbe089b3f"
   solver-name = "gps-cdcl"
   solver-version = 1

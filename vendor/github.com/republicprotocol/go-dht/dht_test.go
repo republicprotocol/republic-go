@@ -19,7 +19,7 @@ var _ = Describe("Distributed Hash Table", func() {
 		BeforeEach(func() {
 			address, _, err := identity.NewAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			dht = NewDHT(address)
+			dht = NewDHT(address, 20)
 
 			randomAddress, _, err = identity.NewAddress()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -40,7 +40,9 @@ var _ = Describe("Distributed Hash Table", func() {
 
 		It("should error when the bucket is full", func() {
 			var err error
-			for i := 0; i < MaxDHTSize; i++ {
+			// The maximum number of entries that can be held by a DHT with
+			// Bucket size 20.
+			for i := 0; i < 160*20+1; i++ {
 				address, _, e := identity.NewAddress()
 				Ω(e).ShouldNot(HaveOccurred())
 				multi, e := address.MultiAddress()
@@ -60,14 +62,14 @@ var _ = Describe("Distributed Hash Table", func() {
 
 			bucket, err := dht.FindBucket(randomAddress)
 			Ω(err).ShouldNot(HaveOccurred())
-			t := (*bucket)[0].Time
+			t := bucket.Get(0).Time
 
 			time.Sleep(time.Millisecond)
 
 			err = dht.Update(randomMulti)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(t).Should(Equal((*bucket)[0].Time))
-			t = (*bucket)[0].Time
+			Ω(t).Should(Equal(bucket.Get(0).Time))
+			t = bucket.Get(0).Time
 		})
 	})
 
@@ -76,7 +78,7 @@ var _ = Describe("Distributed Hash Table", func() {
 		BeforeEach(func() {
 			address, _, err := identity.NewAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			dht = NewDHT(address)
+			dht = NewDHT(address, 20)
 
 			randomAddress, _, err = identity.NewAddress()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -91,10 +93,10 @@ var _ = Describe("Distributed Hash Table", func() {
 
 			bucket, err := dht.FindBucket(randomAddress)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(len(*bucket)).Should(Equal(1))
+			Ω(bucket.Length()).Should(Equal(1))
 
 			dht.Remove(randomMulti)
-			Ω(len(*bucket)).Should(Equal(0))
+			Ω(bucket.Length()).Should(Equal(0))
 		})
 	})
 })
