@@ -1,5 +1,8 @@
 # Shamir Secret Sharing
 
+[![Build Status](https://travis-ci.org/republicprotocol/go-sss.svg?branch=master)](https://travis-ci.org/republicprotocol/go-sss)
+[![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-sss/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-sss?branch=master)
+
 The Shamir Secret Sharing (SSS) library is a Go implementation of the Shamir Secret Sharing scheme. We recommend the Wikipedia page as the starting point for readers that are not familiar with secret sharing. 
 
 * [Wikipedia](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing)
@@ -69,11 +72,6 @@ Now we can run the tests.
 ginkgo -v
 ```
 
-## Republic
+## License
 
 The SSS library was developed by the Republic Protocol team and is available under the MIT license. For more information, see our website https://republicprotocol.com.
-
-## Contributors
-
-* Loong
-* Noah
