@@ -1,6 +1,7 @@
 package x_test
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -49,8 +50,8 @@ var _ = Describe("Send order fragment", func() {
 				OrderFragment:   []byte(address),
 			}
 
-			from.RPCSendOrderFragment(to.MultiAddress, orderFragment)
-			//Ω(err).ShouldNot(HaveOccurred())
+			_, err = from.SendOrderFragment(context.Background(),orderFragment)
+			Ω(err).ShouldNot(HaveOccurred())
 		}
 		wg.Wait()
 	}
@@ -60,7 +61,7 @@ var _ = Describe("Send order fragment", func() {
 		var topology map[identity.Address][]*x.Node
 		var err error
 
-		delegate := newPingDelegate()
+		delegate := newSendFragmentDelegate()
 		switch name {
 		case "full":
 			nodes, topology, err = generateFullyConnectedTopology(numberOfNodes, delegate)
@@ -89,12 +90,12 @@ var _ = Describe("Send order fragment", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		send(nodes, numberOfFragment)
 
-		return int(delegate.numberOfPings)
+		return int(delegate.numberOfFragments)
 	}
 
 	for _, numberOfNodes := range []int{10, 20, 40, 80} {
 		Context(fmt.Sprintf("in a fully connected topology with %d nodes", numberOfNodes), func() {
-			It("should receive the order fragment", func() {
+			It("should send the order fragment to the right target", func() {
 				numberOfMessages := numberOfNodes
 				testMu.Lock()
 				defer testMu.Unlock()
@@ -106,7 +107,7 @@ var _ = Describe("Send order fragment", func() {
 
 	for _, numberOfNodes := range []int{10, 20, 40, 80} {
 		Context(fmt.Sprintf("in a star topology with %d nodes", numberOfNodes), func() {
-			It("should receive the order fragment", func() {
+			It("should send the order fragment to the right target", func() {
 				numberOfMessages := numberOfNodes
 				testMu.Lock()
 				defer testMu.Unlock()
@@ -118,7 +119,7 @@ var _ = Describe("Send order fragment", func() {
 
 	for _, numberOfNodes := range []int{10, 20, 40, 80} {
 		Context(fmt.Sprintf("in a line topology with %d nodes", numberOfNodes), func() {
-			It("should receive the order fragment", func() {
+			It("should send the order fragment to the right target", func() {
 				numberOfMessages := numberOfNodes
 				testMu.Lock()
 				defer testMu.Unlock()
@@ -130,7 +131,7 @@ var _ = Describe("Send order fragment", func() {
 
 	for _, numberOfNodes := range []int{10, 20, 40, 80} {
 		Context(fmt.Sprintf("in a ring topology with %d nodes", numberOfNodes), func() {
-			It("should receive the order fragment", func() {
+			It("should send the order fragment to the right target", func() {
 				numberOfMessages := numberOfNodes
 				testMu.Lock()
 				defer testMu.Unlock()
