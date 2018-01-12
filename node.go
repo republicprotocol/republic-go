@@ -49,14 +49,14 @@ type Node struct {
 }
 
 // NewNode returns a Node with the given Config, a new DHT, and a new set of grpc.Connections.
-func NewNode(multi identity.MultiAddress, multis identity.MultiAddresses, delegate Delegate) (*Node, error) {
+func NewNode(multi identity.MultiAddress, bootstrapMultis identity.MultiAddresses, delegate Delegate) (*Node, error) {
 	address, err := multi.Address()
 	if err != nil {
 		return nil, err
 	}
-	dht := dht.NewDHT(address)
-	for _, multi := range multis {
-		if err := dht.Update(multi); err != nil {
+	dht := dht.NewDHT(address, 100)
+	for _, bootstrapMulti := range bootstrapMultis {
+		if err := dht.Update(bootstrapMulti); err != nil {
 			return nil, err
 		}
 	}
