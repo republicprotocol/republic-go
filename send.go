@@ -75,8 +75,13 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 	}
 }
 
+// TODO: This function needs to be broken down into smaller functions that are
+//       more easily documented and analysed. The routing mechanism is also
+//       going to be used to send more than just order fragments.
+// TODO: Test performance and completeness with different routing mechanisms.
+//       The current implementation is slow for some topologies and is likely
+//       to become a performance bottleneck for communication rounds.
 func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.MultiAddress, error) {
-
 	target := identity.Address(orderFragment.To)
 	if target == node.DHT.Address {
 		node.Delegate.OnOrderFragmentReceived()
