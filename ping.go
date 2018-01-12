@@ -10,6 +10,36 @@ import (
 	"google.golang.org/grpc"
 )
 
+// RPCPing sends a Ping RPC request to the target using a new grpc.ClientConn
+// and a new rpc.NodeClient. It returns the result of the RPC call, or an
+// error.
+func (node *Node) RPCPing(target identity.MultiAddress) (*identity.MultiAddress, error) {
+
+	// Connect to the target.
+	conn, err := Dial(target)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	client := rpc.NewNodeClient(conn)
+
+	// Create a timeout context.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// Call the Ping RPC on the target.
+	multi, err := client.Ping(ctx, &rpc.MultiAddress{Multi: node.MultiAddress.String()}, grpc.FailFast(false))
+	if err != nil {
+		return nil, err
+	}
+
+	ret, err := identity.NewMultiAddressFromString(multi.Multi)
+	if err != nil {
+		return nil, err
+	}
+	return &ret, nil
+}
+
 // Ping is used to test the connection to the Node and exchange MultiAddresses.
 // If the Node does not respond, or it responds with an error, then the
 // connection is considered unhealthy.
@@ -61,34 +91,4 @@ func (node *Node) handlePing(peer *rpc.MultiAddress) error {
 		return nil
 	}
 	return err
-}
-
-// RPCPing sends a Ping RPC request to the target using a new grpc.ClientConn
-// and a new rpc.NodeClient. It returns the result of the RPC call, or an
-// error.
-func (node *Node) RPCPing(target identity.MultiAddress) (*identity.MultiAddress, error) {
-
-	// Connect to the target.
-	conn, err := Dial(target)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	client := rpc.NewNodeClient(conn)
-
-	// Create a timeout context.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
-	// Call the Ping RPC on the target.
-	multi, err := client.Ping(ctx, &rpc.MultiAddress{Multi: node.MultiAddress.String()}, grpc.FailFast(false))
-	if err != nil {
-		return nil, err
-	}
-
-	ret, err := identity.NewMultiAddressFromString(multi.Multi)
-	if err != nil {
-		return nil, err
-	}
-	return &ret, nil
 }
