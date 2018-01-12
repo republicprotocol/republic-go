@@ -38,20 +38,24 @@ var _ = Describe("Send order fragment", func() {
 		wg.Add(numberOfFragments)
 
 		for i := 0; i < numberOfFragments; i++ {
-			defer wg.Done()
-			from, to := randomNodes(nodes)
-			address, err := to.MultiAddress.Address()
-			Ω(err).ShouldNot(HaveOccurred())
-			orderFragment := &rpc.OrderFragment{
-				To:              string(address),
-				From:            string(from.MultiAddress.String()),
-				OrderID:         []byte("orderID"),
-				OrderFragmentID: []byte("fragmentID"),
-				OrderFragment:   []byte(address),
-			}
+			go func() {
+				defer GinkgoRecover()
+				defer wg.Done()
 
-			_, err = from.SendOrderFragment(context.Background(),orderFragment)
-			Ω(err).ShouldNot(HaveOccurred())
+				from, to := randomNodes(nodes)
+				address, err := to.MultiAddress.Address()
+				Ω(err).ShouldNot(HaveOccurred())
+				orderFragment := &rpc.OrderFragment{
+					To:              string(address),
+					From:            string(from.MultiAddress.String()),
+					OrderID:         []byte("orderID"),
+					OrderFragmentID: []byte("fragmentID"),
+					OrderFragment:   []byte(address),
+				}
+
+				_, err = from.SendOrderFragment(context.Background(), orderFragment)
+				Ω(err).ShouldNot(HaveOccurred())
+			}()
 		}
 		wg.Wait()
 	}

@@ -1,0 +1,23 @@
+mode: atomic
+github.com/republicprotocol/go-x/topology/delegate.go:14.38,19.2 1 1201
+github.com/republicprotocol/go-x/topology/delegate.go:21.78,25.2 3 31490
+github.com/republicprotocol/go-x/topology/delegate.go:27.61,31.2 3 498
+github.com/republicprotocol/go-x/topology/topology.go:28.58,30.37 2 12
+github.com/republicprotocol/go-x/topology/topology.go:50.2,50.19 1 12
+github.com/republicprotocol/go-x/topology/topology.go:30.37,32.17 2 1200
+github.com/republicprotocol/go-x/topology/topology.go:35.3,36.17 2 1200
+github.com/republicprotocol/go-x/topology/topology.go:39.3,45.17 3 1200
+github.com/republicprotocol/go-x/topology/topology.go:48.3,48.18 1 1200
+github.com/republicprotocol/go-x/topology/topology.go:32.17,34.4 1 0
+github.com/republicprotocol/go-x/topology/topology.go:36.17,38.4 1 0
+github.com/republicprotocol/go-x/topology/topology.go:45.17,47.4 1 0
+github.com/republicprotocol/go-x/topology/topology.go:53.42,54.40 1 4
+github.com/republicprotocol/go-x/topology/topology.go:60.2,60.12 1 4
+github.com/republicprotocol/go-x/topology/topology.go:54.40,56.50 2 400
+github.com/republicprotocol/go-x/topology/topology.go:56.50,58.4 1 0
+github.com/republicprotocol/go-x/topology/topology.go:63.42,65.16 2 400
+github.com/republicprotocol/go-x/topology/topology.go:68.2,75.49 2 400
+github.com/republicprotocol/go-x/topology/topology.go:65.16,67.3 1 0
+github.com/republicprotocol/go-x/topology/topology.go:79.54,82.20 3 400
+github.com/republicprotocol/go-x/topology/topology.go:85.2,85.34 1 400
+github.com/republicprotocol/go-x/topology/topology.go:82.20,84.3 1 6

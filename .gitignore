@@ -1,4 +1,4 @@
 # ignore the cover profile
-*.coverprofile
+coverprofile.out
 
 
