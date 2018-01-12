@@ -1,5 +1,8 @@
 # Distributed Hash Table
 
+[![Build Status](https://travis-ci.org/republicprotocol/go-dht.svg?branch=master)](https://travis-ci.org/republicprotocol/go-dht)
+[![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-dht/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-dht?branch=master)
+
 The Distributed Hash Table (DHT) library is a Go implementation of a Kademlia DHT structure. The library does not implement the Kademlia logic, only the underlying data structure and helper functions. We recommend the Wikipedia page as the starting point for readers that are not familiar with Distributed Hash Tables, or Kademlia.
 
 * [Distributed Hash Table](https://en.wikipedia.org/wiki/Distributed_hash_table)
@@ -10,7 +13,7 @@ The Distributed Hash Table (DHT) library is a Go implementation of a Kademlia DH
 You can create an empty DHT using the `NewDHT` function, and a Republic address. For more information about Republic addresses, see the [Identity](https://github.com/republicprotocol/go-identity) library.
 
 ```go
-maxBucketLength := 20
+maxBucketLength := 100
 address, _, err := identity.NewAddress()
 table := dht.NewDHT(address, maxBucketLength)
 ```
