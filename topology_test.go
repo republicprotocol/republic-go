@@ -64,7 +64,7 @@ func generateStarTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, ma
 				}
 				topology[node.DHT.Address] = append(topology[node.DHT.Address], peer)
 			}
-		}else{
+		} else {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[0])
 		}
 	}
@@ -81,9 +81,9 @@ func generateLineTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, ma
 		topology[node.DHT.Address] = []*x.Node{}
 		if i == 0 {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
-		}else if i == len(nodes)-1{
+		} else if i == len(nodes)-1 {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
-		}else{
+		} else {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
 		}
@@ -102,10 +102,10 @@ func generateRingTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, ma
 		if i == 0 {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[len(nodes)-1])
-		}else if i == len(nodes)-1{
+		} else if i == len(nodes)-1 {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[0])
-		}else{
+		} else {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
 		}

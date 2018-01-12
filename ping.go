@@ -50,7 +50,7 @@ func (node *Node) handlePing(peer *rpc.MultiAddress) error {
 		if err != nil {
 			return err
 		}
-		pruned, err := node.pruneMostRecentPeer(address)
+		pruned, err := node.Prune(address)
 		if err != nil {
 			return err
 		}
