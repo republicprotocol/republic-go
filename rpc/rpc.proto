@@ -2,36 +2,42 @@ syntax = "proto3";
 
 package rpc;
 
-// Peer services implement the functionality of the overlay network.
-service Peer {
+// Node services implement the core functionality of the overlay network,
+// responsible for routing messages.
+service Node {
   
   // Ping the connection and swap MultiAddresses.
   rpc Ping (MultiAddress) returns (MultiAddress);
 
-  // Get the connected Peers.
+  // Get all peers connected to the Node.
   rpc Peers (Nothing) returns (MultiAddresses);
 
-  // Send order fragment to other node
-  rpc SendOrderFragment(OrderFragment) returns (Nothing);
+  // Send an order fragment to some target Node.
+  rpc SendOrderFragment (OrderFragment) returns (MultiAddress);
 }
 
-// OrderFragment messages contain the order fragment created by a trader and
-// the routing information to distribute it to its destination.
+// An OrderFragment is a message contains the details of an order fragment.
 message OrderFragment {
-  MultiAddress to = 1;
+  string to = 1;
+  string from = 2;
+  bytes orderID = 3;
+  bytes orderFragmentID = 4;
+  bytes orderFragment = 5;
 }
 
-// MultiAddress messages contain the public multiaddress of a Node in the
-// overlay network.
+// A MultiAddress is the public multiaddress of a Node in the overlay network.
+// It provides the Republic address of the Node, as well as the network
+// address.
 message MultiAddress {
   string multi = 1;
 }
 
-// MultiAddresses messages contain the public multiaddress of multiple Nodes in
-// the overlay network.
+// MultiAddresses are public multiaddress of multiple Nodes in the overlay
+// network.
 message MultiAddresses {
   repeated MultiAddress multis = 1;
 }
 
-// Nothing messages are empty.
+// Nothing is in this message. It is used to send nothing, or signal a
+// successful response.
 message Nothing {}
