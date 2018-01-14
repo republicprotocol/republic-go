@@ -1,7 +1,7 @@
 # X Network
 
-[![Build Status](https://travis-ci.org/republicprotocol/go-x.svg?branch=master)](https://travis-ci.org/republicprotocol/go-x)
-[![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-x/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-x?branch=master)
+[![Build Status](https://travis-ci.org/republicprotocol/go-network.svg?branch=master)](https://travis-ci.org/republicprotocol/go-network)
+[![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-network/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-network?branch=master)
 
 > This library is a work in progress.
 
