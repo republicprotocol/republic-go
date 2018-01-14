@@ -1,4 +1,4 @@
-package x
+package network
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-x/rpc"
+	"github.com/republicprotocol/go-network/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )

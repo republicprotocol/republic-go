@@ -1,4 +1,4 @@
-package x_test
+package network_test
 
 import (
 	"sync"
@@ -15,5 +15,5 @@ var testMu = new(sync.Mutex)
 
 func TestGoXNetwork(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "X Network Suite")
+	RunSpecs(t, "P2P Network Suite")
 }

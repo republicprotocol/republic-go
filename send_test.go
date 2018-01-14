@@ -1,4 +1,4 @@
-package x_test
+package network_test
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-x"
-	"github.com/republicprotocol/go-x/rpc"
+	"github.com/republicprotocol/go-network"
+	"github.com/republicprotocol/go-network/rpc"
 )
 
 type sendFragmentDelegate struct {
@@ -33,7 +33,7 @@ func (delegate *sendFragmentDelegate) OnOrderFragmentReceived() {
 
 var _ = Describe("Send order fragment", func() {
 
-	send := func(nodes []*x.Node, numberOfFragments int) {
+	send := func(nodes []*network.Node, numberOfFragments int) {
 		var wg sync.WaitGroup
 		wg.Add(numberOfFragments)
 
@@ -61,8 +61,8 @@ var _ = Describe("Send order fragment", func() {
 	}
 
 	run := func(name string, numberOfNodes, numberOfFragment int) int {
-		var nodes []*x.Node
-		var topology map[identity.Address][]*x.Node
+		var nodes []*network.Node
+		var topology map[identity.Address][]*network.Node
 		var err error
 
 		delegate := newSendFragmentDelegate()
@@ -79,11 +79,11 @@ var _ = Describe("Send order fragment", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 
 		for _, node := range nodes {
-			go func(node *x.Node) {
+			go func(node *network.Node) {
 				defer GinkgoRecover()
 				Ω(node.Serve()).ShouldNot(HaveOccurred())
 			}(node)
-			defer func(node *x.Node) {
+			defer func(node *network.Node) {
 				defer GinkgoRecover()
 				node.Stop()
 			}(node)

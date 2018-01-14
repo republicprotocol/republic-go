@@ -1,4 +1,4 @@
-package x_test
+package network_test
 
 import (
 	"fmt"
@@ -6,11 +6,11 @@ import (
 	"sync"
 
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-x"
+	"github.com/republicprotocol/go-network"
 )
 
-func generateNodes(numberOfNodes int, delegate x.Delegate) ([]*x.Node, error) {
-	nodes := make([]*x.Node, numberOfNodes)
+func generateNodes(numberOfNodes int, delegate network.Delegate) ([]*network.Node, error) {
+	nodes := make([]*network.Node, numberOfNodes)
 	for i := 0; i < numberOfNodes; i++ {
 		keyPair, err := identity.NewKeyPair()
 		if err != nil {
@@ -20,7 +20,7 @@ func generateNodes(numberOfNodes int, delegate x.Delegate) ([]*x.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		node, err := x.NewNode(
+		node, err := network.NewNode(
 			multi,
 			make(identity.MultiAddresses, 0, numberOfNodes-1),
 			delegate,
@@ -33,14 +33,14 @@ func generateNodes(numberOfNodes int, delegate x.Delegate) ([]*x.Node, error) {
 	return nodes, nil
 }
 
-func generateFullyConnectedTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, map[identity.Address][]*x.Node, error) {
+func generateFullyConnectedTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
 	nodes, err := generateNodes(numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	topology := map[identity.Address][]*x.Node{}
+	topology := map[identity.Address][]*network.Node{}
 	for i, node := range nodes {
-		topology[node.DHT.Address] = []*x.Node{}
+		topology[node.DHT.Address] = []*network.Node{}
 		for j, peer := range nodes {
 			if i == j {
 				continue
@@ -51,14 +51,14 @@ func generateFullyConnectedTopology(numberOfNodes int, delegate x.Delegate) ([]*
 	return nodes, topology, nil
 }
 
-func generateStarTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, map[identity.Address][]*x.Node, error) {
+func generateStarTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
 	nodes, err := generateNodes(numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	topology := map[identity.Address][]*x.Node{}
+	topology := map[identity.Address][]*network.Node{}
 	for i, node := range nodes {
-		topology[node.DHT.Address] = []*x.Node{}
+		topology[node.DHT.Address] = []*network.Node{}
 		if i == 0 {
 			for j, peer := range nodes {
 				if i == j {
@@ -73,14 +73,14 @@ func generateStarTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, ma
 	return nodes, topology, nil
 }
 
-func generateLineTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, map[identity.Address][]*x.Node, error) {
+func generateLineTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
 	nodes, err := generateNodes(numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	topology := map[identity.Address][]*x.Node{}
+	topology := map[identity.Address][]*network.Node{}
 	for i, node := range nodes {
-		topology[node.DHT.Address] = []*x.Node{}
+		topology[node.DHT.Address] = []*network.Node{}
 		if i == 0 {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
 		} else if i == len(nodes)-1 {
@@ -93,14 +93,14 @@ func generateLineTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, ma
 	return nodes, topology, nil
 }
 
-func generateRingTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, map[identity.Address][]*x.Node, error) {
+func generateRingTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
 	nodes, err := generateNodes(numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	topology := map[identity.Address][]*x.Node{}
+	topology := map[identity.Address][]*network.Node{}
 	for i, node := range nodes {
-		topology[node.DHT.Address] = []*x.Node{}
+		topology[node.DHT.Address] = []*network.Node{}
 		if i == 0 {
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
 			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[len(nodes)-1])
@@ -115,7 +115,7 @@ func generateRingTopology(numberOfNodes int, delegate x.Delegate) ([]*x.Node, ma
 	return nodes, topology, nil
 }
 
-func randomNodes(nodes []*x.Node) (*x.Node, *x.Node) {
+func randomNodes(nodes []*network.Node) (*network.Node, *network.Node) {
 	left := rand.Intn(len(nodes))
 	right := rand.Intn(len(nodes))
 	for left == right {
@@ -124,14 +124,14 @@ func randomNodes(nodes []*x.Node) (*x.Node, *x.Node) {
 	return nodes[left], nodes[right]
 }
 
-func ping(nodes []*x.Node, topology map[identity.Address][]*x.Node) error {
+func ping(nodes []*network.Node, topology map[identity.Address][]*network.Node) error {
 	var wg sync.WaitGroup
 	wg.Add(len(nodes))
 	var muError *sync.Mutex
 	var globalError error = nil
 
 	for _, node := range nodes {
-		go func(node *x.Node) {
+		go func(node *network.Node) {
 			defer wg.Done()
 			peers := topology[node.DHT.Address]
 			for _, peer := range peers {
