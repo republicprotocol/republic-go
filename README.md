@@ -1,11 +1,11 @@
-# X Network
+# P2P Network
 
 [![Build Status](https://travis-ci.org/republicprotocol/go-network.svg?branch=master)](https://travis-ci.org/republicprotocol/go-network)
 [![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-network/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-network?branch=master)
 
 > This library is a work in progress.
 
-The X Network library is an official reference implementation of X Network in the Republic Protocol, written in Go. It supports connecting nodes, and sending order fragments between nodes.
+The P2P Network library is an official reference implementation of the P2P Network in the Republic Protocol, written in Go. It supports connecting nodes, and sending order fragments between nodes.
 
 ## Installation
 
@@ -56,4 +56,4 @@ ginkgo -v --trace --cover --coverprofile coverprofile.out
 
 ## License
 
-The X Network library was developed by the Republic Protocol team and is available under the MIT license. For more information, see our website https://republicprotocol.com.
+The P2P Network library was developed by the Republic Protocol team and is available under the MIT license. For more information, see our website https://republicprotocol.com.
