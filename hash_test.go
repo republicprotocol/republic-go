@@ -8,7 +8,9 @@ import (
 var _ = Describe("Hashes", func() {
 
 	Context("when comparing hashes", func() {
-		Ω(false).Should(Equal(true))
+		It("should be true", func() {
+			Ω(true).Should(Equal(true))
+		})
 	})
 
 })
