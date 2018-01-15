@@ -11,7 +11,9 @@ More details on the inner workings of the X Network will be made available on th
 
 ## Assigning the X Overlay
 
-Each miner is assigned to a class, and M Network, within the X Network. This assignment is based on the current Epoch hash, the miner's commitment hash, and the total number of miners in the current Epoch. All of this data must be loaded from the Ethereum smart contract for the Republic Protocol. Once it has been loaded, the `AssignXOverlay` function can be used to assign a class and M Network to each miner.
+Each miner is assigned to a class, and M Network, within the X Network. The class of a miner determines which order fragments it is authorized to receive, and the M Networks define partitioned groups of miners that work together to match orders.
+
+The assignments are based on the current Epoch hash, the miner's commitment hash, and the total number of miners in the current Epoch. All of this data must be loaded from the Ethereum smart contract for the Republic Protocol. Once it has been loaded, the `AssignXOverlay` function can be used to assign a class and M Network to each miner.
 
 ```go
 epochHash := []byte{} // Load from Ethereum.
