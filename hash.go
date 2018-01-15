@@ -8,6 +8,13 @@ type Hash []byte
 // LessThan returns true if the left hand hash is less than the right hand
 // hash, otherwise false.
 func (lhs Hash) LessThan(rhs Hash) bool {
+	for i, _ := range lhs{
+		if lhs[i]< rhs[i]{
+			return true
+		}else if lhs[i]> rhs[i]{
+			return false
+		}
+	}
 	return false
 }
 
