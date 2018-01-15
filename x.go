@@ -90,11 +90,15 @@ func RequireXHashes(miners []Miner) bool {
 // NumberOfMNetworks returns the number of M Networks that will be present in
 // the X Network, given the number of miners.
 func NumberOfMNetworks(numberOfMiners int) int {
-	return numberOfMiners/NumberOfClasses(numberOfMiners) + 1
+	return (numberOfMiners + 1) / NumberOfClasses(numberOfMiners)
 }
 
 // NumberOfClasses returns the number of classes in an M Network given the
 // number of miners. It should always be odd.
 func NumberOfClasses(numberOfMiners int) int {
-	return 2*int(math.Floor(math.Log(float64(numberOfMiners)))) + 1
+	numberOfClasses := int(math.Floor(math.Log(float64(numberOfMiners))))
+	if numberOfClasses%2 == 0 {
+		numberOfClasses++
+	}
+	return numberOfClasses
 }
