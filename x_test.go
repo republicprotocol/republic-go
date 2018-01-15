@@ -14,24 +14,48 @@ import (
 var _ = Describe("X", func() {
 
 	Context("when assigning the X overlay", func() {
+
 		var miners []x.Miner
 		var overlayMiners []x.Miner
+
 		BeforeEach(func() {
 			epoch, err := generateEpoch()
 			Ω(err).ShouldNot(HaveOccurred())
-			miners, err = generateMiners()
-			Ω(err).ShouldNot(HaveOccurred())
-			x.NmberOfMNetworks(len(miners))
-			x.AssignXOverlay(miners, epoch)
-		})
-		It("should assign X hashes", func() {
 
+			// Generate overlay miners.
+			overlayMiners, err = generateMiners()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			// Compute the X Overlay.
+			numberOfMNetworks := x.NumberOfMNetworks(len(overlayMiners))
+			x.AssignXOverlay(overlayMiners, epoch, numberOfMNetworks)
+
+			// Clone miners into a clean slice.
+			miners = make([]x.Miner, len(overlayMiners))
+			for i := range overlayMiners {
+				miners[i] = x.NewMiner(overlayMiners[i].ID, overlayMiners[i].Commitment)
+			}
+
+			// Compute the individual components of the Miners.
+			x.AssignXHash(miners, epoch)
+			x.AssignClass(miners, numberOfMNetworks)
+			x.AssignMNetwork(miners, numberOfMNetworks)
+		})
+
+		It("should assign X hashes", func() {
+			for i := range overlayMiners {
+				Ω(bytes.Equal(overlayMiners[i].X, miners[i].X)).Should(Equal(true))
+			}
 		})
 		It("should assign classes", func() {
-
+			for i := range overlayMiners {
+				Ω(overlayMiners[i].Class).Should(Equal(miners[i].Class))
+			}
 		})
 		It("should assign M networks", func() {
-
+			for i := range overlayMiners {
+				Ω(overlayMiners[i].MNetwork).Should(Equal(miners[i].MNetwork))
+			}
 		})
 	})
 
