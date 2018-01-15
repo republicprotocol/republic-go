@@ -2,6 +2,7 @@ package x_test
 
 import (
 	"bytes"
+	"sort"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	. "github.com/onsi/ginkgo"
@@ -101,6 +102,24 @@ var _ = Describe("X", func() {
 			x.AssignXHash(miners, epoch)
 			x.AssignClass(miners, numberOfMNetworks)
 		})
+		It("should sort the miners", func() {
+			numberOfMiners := 1000
+			numberOfMNetworks := x.NumberOfMNetworks(numberOfMiners)
+			epoch, err := generateEpoch()
+			Ω(err).ShouldNot(HaveOccurred())
+			miners, err := generateMiners()
+			Ω(err).ShouldNot(HaveOccurred())
+			x.AssignXHash(miners, epoch)
+			// Purposefully unsort the list.
+			m := miners[0]
+			miners[0] = miners[len(miners)-1]
+			miners[len(miners)-1] = m
+			// Calculate classes and ensure it is still sorted.
+			x.AssignClass(miners, numberOfMNetworks)
+			Ω(sort.SliceIsSorted(miners, func(i, j int) bool {
+				return miners[i].X.LessThan(miners[j].X)
+			})).Should(Equal(true))
+		})
 	})
 
 	Context("when assigning M networks", func() {
@@ -113,6 +132,24 @@ var _ = Describe("X", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			x.AssignXHash(miners, epoch)
 			x.AssignMNetwork(miners, numberOfMNetworks)
+		})
+		It("should sort the miners", func() {
+			numberOfMiners := 1000
+			numberOfMNetworks := x.NumberOfMNetworks(numberOfMiners)
+			epoch, err := generateEpoch()
+			Ω(err).ShouldNot(HaveOccurred())
+			miners, err := generateMiners()
+			Ω(err).ShouldNot(HaveOccurred())
+			x.AssignXHash(miners, epoch)
+			// Purposefully unsort the list.
+			m := miners[0]
+			miners[0] = miners[len(miners)-1]
+			miners[len(miners)-1] = m
+			// Calculate classes and ensure it is still sorted.
+			x.AssignMNetwork(miners, numberOfMNetworks)
+			Ω(sort.SliceIsSorted(miners, func(i, j int) bool {
+				return miners[i].X.LessThan(miners[j].X)
+			})).Should(Equal(true))
 		})
 	})
 })
