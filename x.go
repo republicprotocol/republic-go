@@ -1,6 +1,7 @@
 package x
 
 import (
+	"math"
 	"sort"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -34,11 +35,17 @@ func AssignXHash(miners []Miner, epoch Hash) {
 // called after the assignXHash function. If any miner in the list does not
 // have an X Hash then this function will do nothing. If the miners are not
 // sorted then this function will do nothing.
-func AssignClass(numberOfMNetworks int, miners []Miner) {
+func AssignClass(miners []Miner, numberOfMNetworks int) {
 	if !RequireXHashes(miners) {
 		return
 	}
 	assignClass(miners, numberOfMNetworks)
+}
+
+func assignClass(miners []Miner, numberOfMNetworks int) {
+	do.ForAll(miners, func(k int) {
+		miners[k].Class = k/numberOfMNetworks + 1
+	})
 }
 
 // AssignMNetwork will assigned an M Network to each miner. This function must
@@ -50,6 +57,12 @@ func AssignMNetwork(miners []Miner, numberOfMNetworks int) {
 		return
 	}
 	assignMNetwork(miners, numberOfMNetworks)
+}
+
+func assignMNetwork(miners []Miner, numberOfMNetworks int) {
+	do.ForAll(miners, func(k int) {
+		miners[k].MNetwork = k % numberOfMNetworks
+	})
 }
 
 // RequireXHashes checks that every Miner in the list has a valid X Hash. It
@@ -74,14 +87,14 @@ func RequireXHashes(miners []Miner) bool {
 	return true
 }
 
-func assignClass(miners []Miner, numberOfMNetworks int) {
-	do.ForAll(miners, func(k int) {
-		miners[k].Class = k/numberOfMNetworks + 1
-	})
+// NumberOfMNetworks returns the number of M Networks that will be present in
+// the X Network, given the number of miners.
+func NumberOfMNetworks(numberOfMiners int) int {
+	return numberOfMiners/NumberOfClasses(numberOfMiners) + 1
 }
 
-func assignMNetwork(miners []Miner, numberOfMNetworks int) {
-	do.ForAll(miners, func(k int) {
-		miners[k].MNetwork = k % numberOfMNetworks
-	})
+// NumberOfClasses returns the number of classes in an M Network given the
+// number of miners. It should always be odd.
+func NumberOfClasses(numberOfMiners int) int {
+	return 2*int(math.Floor(math.Log(float64(numberOfMiners)))) + 1
 }
