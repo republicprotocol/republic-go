@@ -6,8 +6,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/integration/_fixtures/flags_tests"
 	. "github.com/onsi/gomega"
-	"time"
 	remapped "math"
+	"time"
 )
 
 var customFlag string
