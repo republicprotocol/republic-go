@@ -8,14 +8,13 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// Sort the list of Miners. The epoch Hash, and each Miner commitment Hash, is
-// combined and hashed to produce an X Hash for each Miner. The miner are sorted by
-// comparing each their X hashes against each other. All hashing is done using
-// the Keccak256 hashing function.
-func Sort(epoch Hash, miners []Miner) []Miner {
+// assignXHash assigns an X Hash to all Miners. For each Miner, the epoch Hash
+// and the commitment Hash are combined and hashed to produce the X Hash. All
+// hashing is done using the Keccak256 hashing function. The list of miners
+// will be sorted by their X Hashes.
+func assignXHash(epoch Hash, miners []Miner) {
 
 	// Calculate workload size per CPU.
-	xs := make([]Miner, len(miners))
 	numCPUs := runtime.NumCPU()
 	numHashesPerCPU := (len(miners) / numCPUs) + 1
 
@@ -26,20 +25,34 @@ func Sort(epoch Hash, miners []Miner) []Miner {
 		go func(i int) {
 			defer wg.Done()
 			for j := i; j < i+numHashesPerCPU && j < len(miners); j++ {
-				xs[j] = Miner{
-					ID:         miners[j].ID,
-					Commitment: miners[j].Commitment,
-					X:          crypto.Keccak256([]byte(epoch), []byte(miners[j].Commitment)),
-				}
+				miners[j].X = crypto.Keccak256([]byte(epoch), []byte(miners[j].Commitment))
 			}
 		}(i)
 	}
 	wg.Wait()
 
 	// Sort the list of output hashes.
-	sort.Slice(xs, func(i, j int) bool {
-		return xs[i].X.LessThan(xs[j].X)
+	sort.Slice(miners, func(i, j int) bool {
+		return miners[i].X.LessThan(miners[j].X)
 	})
+}
 
-	return xs
+// assignClass will assign a class to each miner. This function can only be
+// called after the assignXHash function. If any miner in the list does not
+// have an X Hash then this function will do nothing. If the miners are not
+// sorted then this function will do nothing.
+func assignClass(numberOfMNetworks int, miners []Miner) {
+	// Check for X Hashes.
+
+	// Sort the list of output hashes.
+	sort.Slice(miners, func(i, j int) bool {
+		return miners[i].X.LessThan(miners[j].X)
+	})
+}
+
+// assignMNetwork will assigned an M Network to each miner. This function must
+// not be called before the assignXHash function. If any miner in the list does
+// not have an X Hash, this function will do nothing. If the miners are not
+// sorted then this function will do nothing.
+func assignMNetwork(numberOfMNetworks int, miners []Miner) {
 }
