@@ -5,9 +5,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("X", func() {
+var _ = Describe("Hashes", func() {
 
-	Context("when sorting miners", func() {
+	Context("when comparing hashes", func() {
 		Ω(false).Should(Equal(true))
 	})
 
