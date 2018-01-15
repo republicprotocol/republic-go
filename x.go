@@ -1,12 +1,10 @@
 package x
 
 import (
-	"reflect"
-	"runtime"
 	"sort"
-	"sync"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/republicprotocol/go-async"
 )
 
 // AssignXOverlay iterates throught all Miners in the list and assigns them an
@@ -23,7 +21,7 @@ func AssignXOverlay(miners []Miner, epoch Hash, numberOfMNetworks int) {
 // hashing is done using the Keccak256 hashing function. The list of miners
 // will be sorted by their X Hashes.
 func AssignXHash(miners []Miner, epoch Hash) {
-	forAll(miners, func(k int) {
+	async.ForAll(miners, func(k int) {
 		miners[k].X = crypto.Keccak256([]byte(epoch), []byte(miners[k].Commitment))
 	})
 	// Sort the list of output hashes.
@@ -77,35 +75,13 @@ func RequireXHashes(miners []Miner) bool {
 }
 
 func assignClass(miners []Miner, numberOfMNetworks int) {
-	forAll(miners, func(k int) {
+	async.ForAll(miners, func(k int) {
 		miners[k].Class = k/numberOfMNetworks + 1
 	})
 }
 
 func assignMNetwork(miners []Miner, numberOfMNetworks int) {
-	forAll(miners, func(k int) {
+	async.ForAll(miners, func(k int) {
 		miners[k].MNetwork = k % numberOfMNetworks
 	})
-}
-
-func forAll(data interface{}, f func(i int)) {
-	switch reflect.TypeOf(data).Kind() {
-	case reflect.Array, reflect.Map, reflect.Slice:
-		// Calculate workload size per CPU.
-		length := reflect.ValueOf(data).Len()
-		numCPUs := runtime.NumCPU()
-		numIterationsPerCPU := (length / numCPUs) + 1
-		// Apply the function in parallel over the data.
-		var wg sync.WaitGroup
-		wg.Add(numCPUs)
-		for offset := 0; offset < length; offset += numIterationsPerCPU {
-			go func(offset int) {
-				defer wg.Done()
-				for i := offset; i < offset+numIterationsPerCPU && i < length; i++ {
-					f(i)
-				}
-			}(offset)
-		}
-		wg.Wait()
-	}
 }
