@@ -9,11 +9,11 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// assignXHash assigns an X Hash to all Miners. For each Miner, the epoch Hash
+// AssignXHash assigns an X Hash to all Miners. For each Miner, the epoch Hash
 // and the commitment Hash are combined and hashed to produce the X Hash. All
 // hashing is done using the Keccak256 hashing function. The list of miners
 // will be sorted by their X Hashes.
-func assignXHash(epoch Hash, miners []Miner) {
+func AssignXHash(epoch Hash, miners []Miner) {
 
 	// Calculate workload size per CPU.
 	numCPUs := runtime.NumCPU()
@@ -38,12 +38,12 @@ func assignXHash(epoch Hash, miners []Miner) {
 	})
 }
 
-// assignClass will assign a class to each miner. This function can only be
+// AssignClass will assign a class to each miner. This function can only be
 // called after the assignXHash function. If any miner in the list does not
 // have an X Hash then this function will do nothing. If the miners are not
 // sorted then this function will do nothing.
-func assignClass(numberOfMNetworks int, miners []Miner) {
-	if !isXHashValid(miners) {
+func AssignClass(numberOfMNetworks int, miners []Miner) {
+	if !RequireXHashes(miners) {
 		return
 	}
 
@@ -65,12 +65,12 @@ func assignClass(numberOfMNetworks int, miners []Miner) {
 	wg.Wait()
 }
 
-// assignMNetwork will assigned an M Network to each miner. This function must
+// AssignMNetwork will assigned an M Network to each miner. This function must
 // not be called before the assignXHash function. If any miner in the list does
 // not have an X Hash, this function will do nothing. If the miners are not
 // sorted then this function will do nothing.
-func assignMNetwork(numberOfMNetworks int, miners []Miner) {
-	if !isXHashValid(miners) {
+func AssignMNetwork(numberOfMNetworks int, miners []Miner) {
+	if !RequireXHashes(miners) {
 		return
 	}
 	forAll(miners, func(k int) {
@@ -78,7 +78,10 @@ func assignMNetwork(numberOfMNetworks int, miners []Miner) {
 	})
 }
 
-func isXHashValid(miners []Miner) bool {
+// RequireXHashes checks that every Miner in the list has a valid X Hash. It
+// also guarantees that the list is sorted by these X Hashes. Returns true if
+// all Miners have a valid X Hash, otherwise false.
+func RequireXHashes(miners []Miner) bool {
 	// Require that all miners have an X Hash.
 	for _, miner := range miners {
 		if miner.X == nil {
@@ -86,9 +89,15 @@ func isXHashValid(miners []Miner) bool {
 		}
 	}
 	// Require that the miners are sorted.
-	return sort.SliceIsSorted(miners, func(i, j int) bool {
+	isSorted := sort.SliceIsSorted(miners, func(i, j int) bool {
 		return miners[i].X.LessThan(miners[j].X)
 	})
+	if !isSorted {
+		sort.Slice(miners, func(i, j int) bool {
+			return miners[i].X.LessThan(miners[j].X)
+		})
+	}
+	return true
 }
 
 func forAll(data interface{}, f func(i int)) {
