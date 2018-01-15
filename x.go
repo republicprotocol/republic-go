@@ -4,7 +4,7 @@ import (
 	"sort"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/republicprotocol/go-async"
+	"github.com/republicprotocol/go-do"
 )
 
 // AssignXOverlay iterates throught all Miners in the list and assigns them an
@@ -21,7 +21,7 @@ func AssignXOverlay(miners []Miner, epoch Hash, numberOfMNetworks int) {
 // hashing is done using the Keccak256 hashing function. The list of miners
 // will be sorted by their X Hashes.
 func AssignXHash(miners []Miner, epoch Hash) {
-	async.ForAll(miners, func(k int) {
+	do.ForAll(miners, func(k int) {
 		miners[k].X = crypto.Keccak256([]byte(epoch), []byte(miners[k].Commitment))
 	})
 	// Sort the list of output hashes.
@@ -75,13 +75,13 @@ func RequireXHashes(miners []Miner) bool {
 }
 
 func assignClass(miners []Miner, numberOfMNetworks int) {
-	async.ForAll(miners, func(k int) {
+	do.ForAll(miners, func(k int) {
 		miners[k].Class = k/numberOfMNetworks + 1
 	})
 }
 
 func assignMNetwork(miners []Miner, numberOfMNetworks int) {
-	async.ForAll(miners, func(k int) {
+	do.ForAll(miners, func(k int) {
 		miners[k].MNetwork = k % numberOfMNetworks
 	})
 }
