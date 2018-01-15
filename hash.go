@@ -8,6 +8,13 @@ type Hash []byte
 // LessThan returns true if the left hand hash is less than the right hand
 // hash, otherwise false.
 func (lhs Hash) LessThan(rhs Hash) bool {
+	for i, _ := range lhs {
+		if lhs[i] < rhs[i] {
+			return true
+		} else if lhs[i] > rhs[i] {
+			return false
+		}
+	}
 	return false
 }
 
@@ -17,5 +24,19 @@ func (lhs Hash) LessThan(rhs Hash) bool {
 type Miner struct {
 	identity.ID
 	Commitment Hash
-	X          Hash
+
+	X        Hash
+	Class    int
+	MNetwork int
+}
+
+// NewMiner returns a Miner with the given ID and commitment Hash. The miner
+// will have no X Hash, no class assignment, and no M Network assignment. These
+// values must be generated using the AssignX, AssignClass, and AssignMNetwork
+// functions respectively.
+func NewMiner(id identity.ID, commitment Hash) Miner {
+	return Miner{
+		ID:         id,
+		Commitment: commitment,
+	}
 }
