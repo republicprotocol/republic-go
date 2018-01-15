@@ -12,6 +12,28 @@ import (
 
 var _ = Describe("X", func() {
 
+	Context("when assigning the X overlay", func() {
+		var miners []x.Miner
+		var overlayMiners []x.Miner
+		BeforeEach(func() {
+			epoch, err := generateEpoch()
+			Ω(err).ShouldNot(HaveOccurred())
+			miners, err = generateMiners()
+			Ω(err).ShouldNot(HaveOccurred())
+			x.NmberOfMNetworks(len(miners))
+			x.AssignXOverlay(miners, epoch)
+		})
+		It("should assign X hashes", func() {
+
+		})
+		It("should assign classes", func() {
+
+		})
+		It("should assign M networks", func() {
+
+		})
+	})
+
 	Context("when assigning X hashes", func() {
 		It("should generate the correct X hashes", func() {
 			epoch, err := generateEpoch()
@@ -38,7 +60,7 @@ var _ = Describe("X", func() {
 		It("should always be odd", func() {
 			for n := 7; n < 1000; n++ {
 				c := x.NumberOfClasses(n)
-				Ω(c <= n).Should(Equal(true))
+				Ω(c%2 == 1).Should(Equal(true))
 			}
 		})
 	})
