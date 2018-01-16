@@ -7,6 +7,7 @@ import (
 	"github.com/republicprotocol/go-dht"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network/rpc"
+	order "github.com/republicprotocol/go-order"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -37,7 +38,7 @@ func Dial(target identity.MultiAddress) (*grpc.ClientConn, error) {
 // The Delegate is used to inject dependencies into the RPC logic.
 type Delegate interface {
 	OnPingReceived(peer identity.MultiAddress)
-	OnOrderFragmentReceived()
+	OnOrderFragmentReceived(orderFragment order.Fragment)
 }
 
 // Node implements the gRPC Node service.
