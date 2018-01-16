@@ -11,7 +11,7 @@ The P2P Network library is an official reference implementation of the P2P Netwo
 
 There are several components that need to be installed before you can run tests.
 
-## Install Proto3
+### Install Proto3
 
 Protobuf is a binary communication protocol developed by Google. The X Network uses it to perform remote procedure calls between miners. To install it, run the commands given below to install the required version of Protobuf.
 
@@ -32,7 +32,7 @@ The X Network is written in Go, so you will also need to install the Go plugin. 
 go get -u github.com/golang/protobuf/protoc-gen-go
 ```
 
-## Install gRPC
+### Install gRPC
 
 gRPC is a remote procedure calling library developed by Google, built on top of Protobuf. Make sure you have followed the instructions for installing Protobuf, and then run the command below.
 
