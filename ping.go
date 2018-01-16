@@ -1,11 +1,11 @@
-package x
+package network
 
 import (
 	"time"
 
-	dht "github.com/republicprotocol/go-dht"
-	identity "github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-x/rpc"
+	"github.com/republicprotocol/go-dht"
+	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/go-network/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )

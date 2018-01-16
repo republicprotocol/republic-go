@@ -1,4 +1,4 @@
-package x
+package network
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/republicprotocol/go-dht"
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-x/rpc"
+	"github.com/republicprotocol/go-network/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )

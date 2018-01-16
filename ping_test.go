@@ -1,4 +1,4 @@
-package x_test
+package network_test
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-x"
+	"github.com/republicprotocol/go-network"
 )
 
 type pingDelegate struct {
@@ -31,8 +31,8 @@ func (delegate *pingDelegate) OnOrderFragmentReceived() {
 var _ = Describe("Ping RPC", func() {
 
 	run := func(name string, numberOfNodes int) int {
-		var nodes []*x.Node
-		var topology map[identity.Address][]*x.Node
+		var nodes []*network.Node
+		var topology map[identity.Address][]*network.Node
 		var err error
 
 		delegate := newPingDelegate()
@@ -49,11 +49,11 @@ var _ = Describe("Ping RPC", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 
 		for _, node := range nodes {
-			go func(node *x.Node) {
+			go func(node *network.Node) {
 				defer GinkgoRecover()
 				Ω(node.Serve()).ShouldNot(HaveOccurred())
 			}(node)
-			defer func(node *x.Node) {
+			defer func(node *network.Node) {
 				defer GinkgoRecover()
 				node.Stop()
 			}(node)
