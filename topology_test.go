@@ -148,3 +148,42 @@ func ping(nodes []*network.Node, topology map[identity.Address][]*network.Node) 
 	wg.Wait()
 	return globalError
 }
+
+func peers(nodes []*network.Node, topology map[identity.Address][]*network.Node) error {
+	var wg sync.WaitGroup
+	wg.Add(len(nodes))
+	var muError *sync.Mutex
+	var globalError error = nil
+
+	for _, node := range nodes {
+		go func(node *network.Node) {
+			defer wg.Done()
+			peers := topology[node.DHT.Address]
+			connectedPeers, err := new(network.Node).RPCPeers(node.MultiAddress)
+			if err != nil {
+				muError.Lock()
+				defer muError.Unlock()
+				globalError = err
+			}
+			for _, peer := range peers {
+				connected := false
+				for _, connectedPeer := range connectedPeers {
+					if peer.MultiAddress.String() == connectedPeer.String() {
+						connected = true
+					}
+				}
+				if !connected {
+					if err != nil {
+						muError.Lock()
+						defer muError.Unlock()
+						globalError = fmt.Errorf("%s should be connected to %s", node.MultiAddress, peer.MultiAddress)
+					}
+					return
+				}
+			}
+		}(node)
+	}
+
+	wg.Wait()
+	return globalError
+}
