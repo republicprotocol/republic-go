@@ -9,4 +9,8 @@ import (
 
 var _ = Describe("Miner", func() {
 
+	It("should do a thing", func() {
+
+	})
+
 })
