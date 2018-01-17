@@ -31,6 +31,8 @@ type OrderFragment struct {
 	MinVolumeShare sss.Share
 }
 
+// NewOrderFragment returns a new OrderFragment and computes the
+// OrderFragmentID for the OrderFragment.
 func NewOrderFragment(orderIDs OrderIDs, fstCodeShare, sndCodeShare, priceShare, maxVolumeShare, minVolumeShare sss.Share) *OrderFragment {
 	orderFragment := &OrderFragment{
 		OrderIDs:       orderIDs,
@@ -127,15 +129,15 @@ func (orderFragment *OrderFragment) Bytes() []byte {
 		binary.Write(buf, binary.LittleEndian, orderID)
 	}
 	binary.Write(buf, binary.LittleEndian, orderFragment.FstCodeShare.Key)
-	binary.Write(buf, binary.LittleEndian, orderFragment.FstCodeShare.Value)
+	binary.Write(buf, binary.LittleEndian, orderFragment.FstCodeShare.Value.Bytes())
 	binary.Write(buf, binary.LittleEndian, orderFragment.SndCodeShare.Key)
-	binary.Write(buf, binary.LittleEndian, orderFragment.SndCodeShare.Value)
+	binary.Write(buf, binary.LittleEndian, orderFragment.SndCodeShare.Value.Bytes())
 	binary.Write(buf, binary.LittleEndian, orderFragment.PriceShare.Key)
-	binary.Write(buf, binary.LittleEndian, orderFragment.PriceShare.Value)
+	binary.Write(buf, binary.LittleEndian, orderFragment.PriceShare.Value.Bytes())
 	binary.Write(buf, binary.LittleEndian, orderFragment.MaxVolumeShare.Key)
-	binary.Write(buf, binary.LittleEndian, orderFragment.MaxVolumeShare.Value)
+	binary.Write(buf, binary.LittleEndian, orderFragment.MaxVolumeShare.Value.Bytes())
 	binary.Write(buf, binary.LittleEndian, orderFragment.MinVolumeShare.Key)
-	binary.Write(buf, binary.LittleEndian, orderFragment.MinVolumeShare.Value)
+	binary.Write(buf, binary.LittleEndian, orderFragment.MinVolumeShare.Value.Bytes())
 	return buf.Bytes()
 }
 
