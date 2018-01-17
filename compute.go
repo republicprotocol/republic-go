@@ -53,50 +53,65 @@ func (com *Computation) Bytes() []byte {
 	return buf.Bytes()
 }
 
-type State struct {
-	orderFragmentsMu *sync.Mutex
-	orderFragments   []*OrderFragment
+type ComputationMatrix struct {
+	orderFragments []*OrderFragment
 
-	computationsMu *sync.RWMutex
-	computations   []*Computation
-
-	computationStatesMu *sync.Mutex
-	computationStates   map[string]struct{}
+	computationsGuard  *sync.Cond
+	computationsLeft   int
+	computations       []*Computation
+	computationMarkers map[string]struct{}
 }
 
-func (state *State) AddOrderFragment(orderFragment *OrderFragment) {
-	state.orderFragmentsMu.Lock()
-	defer state.orderFragmentsMu.Unlock()
+func NewComputationMatrix() *ComputationMatrix {
+	return &ComputationMatrix{
+		orderFragments: []*OrderFragment{},
 
-	// Do nothing if the OrderFragment has been added previously.
-	for _, rhs := range state.orderFragments {
+		computationsGuard:  sync.NewCond(new(sync.Mutex)),
+		computationsLeft:   0,
+		computations:       []*Computation{},
+		computationMarkers: map[string]struct{}{},
+	}
+}
+
+func (matrix *ComputationMatrix) FillComputations(orderFragment *OrderFragment) {
+	matrix.computationsGuard.L.Lock()
+	defer matrix.computationsGuard.L.Unlock()
+
+	for _, rhs := range matrix.orderFragments {
 		if orderFragment.ID.Equals(rhs.ID) {
 			return
 		}
 	}
 
-	// Create all of the possible Computations.
-	state.computationsMu.Lock()
-	defer state.computationsMu.Unlock()
-
-	for _, rhs := range state.orderFragments {
-		state.computations = append(state.computations, NewComputation(orderFragment, rhs))
+	for _, rhs := range matrix.orderFragments {
+		matrix.computations = append(matrix.computations, NewComputation(orderFragment, rhs))
+		matrix.computationsLeft++
 	}
-	state.orderFragments = append(state.orderFragments, orderFragment)
+
+	matrix.orderFragments = append(matrix.orderFragments, orderFragment)
+	if matrix.computationsLeft > 0 {
+		matrix.computationsGuard.Signal()
+	}
 }
 
-func (state *State) CollectComputations(max int) []*Computation {
-	state.computationsMu.RLock()
-	defer state.computationsMu.RUnlock()
-	state.computationStatesMu.Lock()
-	defer state.computationStatesMu.Unlock()
+func (matrix *ComputationMatrix) WaitForComputations(max int) []*Computation {
+	matrix.computationsGuard.L.Lock()
+	defer matrix.computationsGuard.L.Unlock()
+	for matrix.computationsLeft == 0 {
+		matrix.computationsGuard.Wait()
+	}
 
-	coms := make([]*Computation, 0, max)
-	for _, com := range state.computations {
-		if _, ok := state.computationStates[string(com.ID)]; !ok {
-			state.computationStates[string(com.ID)] = struct{}{}
-			coms = append(coms, com)
+	computations := make([]*Computation, 0, max)
+	for _, com := range matrix.computations {
+		if _, ok := matrix.computationMarkers[string(com.ID)]; !ok {
+			matrix.computationMarkers[string(com.ID)] = struct{}{}
+			computations = append(computations, com)
 		}
 	}
-	return coms
+
+	matrix.computationsLeft -= len(computations)
+	if matrix.computationsLeft > 0 {
+		matrix.computationsGuard.Signal()
+	}
+	return computations
 }
