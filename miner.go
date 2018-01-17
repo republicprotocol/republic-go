@@ -80,7 +80,7 @@ func (miner Miner) Compute(com *Computation) {
 
 func (miner Miner) ReconstructAll() {
 	numberOfCPUs := runtime.NumCPU()
-	reconstructables := miner.ReconstructionMatrix.WaitForJoins(numberOfCPUs)
+	reconstructables := miner.ReconstructionMatrix.WaitForReconstructions(numberOfCPUs)
 	do.CoForAll(joins, func(i int) {
 		miner.Reconstruct(reconstructables[i])
 	})
