@@ -29,7 +29,7 @@
   branch = "master"
   name = "github.com/republicprotocol/go-sss"
   packages = ["."]
-  revision = "16f699b5434420904786ddcd586fd615efa1652b"
+  revision = "47903cbdcbb1870dce96948767830a0b9af8ccc7"
 
 [[projects]]
   branch = "master"
