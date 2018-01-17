@@ -109,7 +109,7 @@ func (orderFragment *OrderFragment) Add(rhs *OrderFragment, prime *big.Int) (*Co
 
 // Sub two OrderFragments from one another and return the resulting output
 // OrderFragment. The output OrderFragment will have its ID computed.
-func (orderFragment *OrderFragment) Sub(rhs *OrderFragment, prime *big.Int) (*OrderFragment, error) {
+func (orderFragment *OrderFragment) Sub(rhs *OrderFragment, prime *big.Int) (*ComputedOrderFragment, error) {
 	// Check that the OrderFragments have compatible sss.Shares, and that one
 	// of them is an OrderBuy and the other is an OrderSell.
 	if err := orderFragment.IsCompatible(rhs); err != nil {

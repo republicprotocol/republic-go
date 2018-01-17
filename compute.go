@@ -1,56 +1,40 @@
 package compute
 
 import (
-	"bytes"
-	"encoding/binary"
 	"math/big"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type Computation struct {
-	Buy  *OrderFragment
-	Sell *OrderFragment
+	ID                OrderFragmentID
+	BuyOrderFragment  *OrderFragment
+	SellOrderFragment *OrderFragment
 }
 
 func NewComputation(left *OrderFragment, right *OrderFragment) (*Computation, error) {
-	if left.OrderBuySell == right.OrderBuySell {
-		return nil, NewOrderComputationError(left.OrderBuySell)
+	if err := left.IsCompatible(right); err != nil {
+		return nil, err
 	}
 	com := &Computation{}
 	if left.OrderBuySell != 0 {
-		com.Buy = left
-		com.Sell = right
+		com.BuyOrderFragment = left
+		com.SellOrderFragment = right
 	} else {
-		com.Buy = right
-		com.Sell = left
+		com.BuyOrderFragment = right
+		com.SellOrderFragment = left
 	}
+	com.ID = OrderFragmentID(crypto.Keccak256(com.BuyOrderFragment.ID[:], com.SellOrderFragment.ID[:]))
 	return com, nil
 }
 
 func (com *Computation) Add(prime *big.Int) (*ComputedOrderFragment, error) {
-	computed, err := com.Buy.Add(com.Sell, prime)
-	if err != nil {
-		return nil, err
-	}
-	com.Computed = computed
-	return com.Computed, nil
+	return com.BuyOrderFragment.Add(com.SellOrderFragment, prime)
 }
 
-func (com *Computation) Sub(prime *big.Int) (*OrderFragment, error) {
-	out, err := com.Left.Sub(com.Right, prime)
-	if err != nil {
-		return nil, err
-	}
-	com.Out = out
-	return com.Out, nil
-}
-
-// Bytes returns an Order serialized into a bytes.
-func (com *Computation) Bytes() []byte {
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, com.Left.ID)
-	binary.Write(buf, binary.LittleEndian, com.Right.ID)
-	return buf.Bytes()
+func (com *Computation) Sub(prime *big.Int) (*ComputedOrderFragment, error) {
+	return com.BuyOrderFragment.Sub(com.SellOrderFragment, prime)
 }
 
 type ComputationMatrix struct {
@@ -73,7 +57,7 @@ func NewComputationMatrix() *ComputationMatrix {
 	}
 }
 
-func (matrix *ComputationMatrix) FillComputations(orderFragment *OrderFragment) {
+func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) {
 	matrix.computationsGuard.L.Lock()
 	defer matrix.computationsGuard.L.Unlock()
 
@@ -84,7 +68,11 @@ func (matrix *ComputationMatrix) FillComputations(orderFragment *OrderFragment) 
 	}
 
 	for _, rhs := range matrix.orderFragments {
-		matrix.computations = append(matrix.computations, NewComputation(orderFragment, rhs))
+		com, err := NewComputation(orderFragment, rhs)
+		if err != nil {
+			continue
+		}
+		matrix.computations = append(matrix.computations, com)
 		matrix.computationsLeft++
 	}
 
