@@ -12,6 +12,10 @@ import (
 // An OrderFragmentID is the Keccak256 hash of an OrderFragment.
 type OrderFragmentID []byte
 
+func (id OrderFragmentID) Equals(other OrderFragmentID) bool {
+	return bytes.Equal(id, other)
+}
+
 // An OrderFragment is a secret share of an Order. Is is created using Shamir
 // secret sharing where the secret is an Order encoded as a big.Int.
 type OrderFragment struct {
