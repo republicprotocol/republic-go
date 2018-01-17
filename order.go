@@ -41,6 +41,11 @@ const (
 // An OrderID is the Keccak256 hash of an Order.
 type OrderID []byte
 
+// Equals checks if two OrderIDs are equal in value.
+func (id OrderID) Equals(other OrderID) bool {
+	return bytes.Equal(id, other)
+}
+
 // An Order represents the want to perform a trade of assets. Public data in
 // the Order must be exposed for computation, but private data should not be
 // exposed to anyone other than the trader that wants to execute the Order.
