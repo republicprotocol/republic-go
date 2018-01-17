@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/go-sss"
 )
 
@@ -14,9 +15,11 @@ type OrderFragmentID []byte
 // An OrderFragment is a secret share of an Order. Is is created using Shamir
 // secret sharing where the secret is an Order encoded as a big.Int.
 type OrderFragment struct {
+	// Public data.
 	ID       OrderFragmentID
 	OrderIDs OrderIDs
 
+	// Private data.
 	LittleCodeShare sss.Share
 	BigCodeShare    sss.Share
 	PriceShare      sss.Share
@@ -58,7 +61,7 @@ func (orderFragment *OrderFragment) Add(rhs *OrderFragment, prime *big.Int) (*Or
 	outputFragment.PriceShare.Value.Mod(outputFragment.PriceShare.Value, prime)
 	outputFragment.MaxVolumeShare.Value.Mod(outputFragment.MaxVolumeShare.Value, prime)
 	outputFragment.MinVolumeShare.Value.Mod(outputFragment.MinVolumeShare.Value, prime)
-	outputFragment.ID = OrderFragmentID(outputFragment.Bytes())
+	outputFragment.ID = OrderFragmentID(crypto.Keccak256(outputFragment.Bytes()))
 	return outputFragment, nil
 }
 
