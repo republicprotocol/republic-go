@@ -10,6 +10,12 @@ import (
 	"github.com/republicprotocol/go-order-compute"
 )
 
+// TODO: Do not make this values constant.
+const (
+	N = int64(3)
+	K = int64(2)
+)
+
 type Miner struct {
 	network.Node
 	compute.ComputationMatrix
@@ -30,7 +36,7 @@ func (miner Miner) OnOrderFragmentReceived(orderFragment compute.OrderFragment) 
 }
 
 func (miner Miner) OnComputedOrderFragmentReceived(orderFragment compute.OrderFragment) {
-	miner.ComputationMatrix.FillReconstructions(&orderFragment)
+	miner.ComputeReconstruction(&orderFragment)
 }
 
 func (miner Miner) Mine(quit chan struct{}) {
@@ -73,22 +79,23 @@ func (miner Miner) ComputeAll() {
 // TODO: Send computed order fragments to the M Network instead of all peers.
 func (miner Miner) Compute(com *Computation) {
 	com.Sub()
-	miner.JoinMatrix.FillJoins(com.Out)
-	for _, multi := range miner.DHT.MultiAddresses() {
-		network.RPCSendComputedOrderFragment(multi, com.Out)
+	go func() {
+		for _, multi := range miner.DHT.MultiAddresses() {
+			network.RPCSendComputedOrderFragment(multi, com.Out)
+		}
+	}()
+	miner.ComputeReconstruction(com.Out)
+}
+
+func (miner Miner) ComputeReconstruction(orderFragment *compute.OrderFragment) {
+	reconstruction, err := miner.ReconstructionMatrix.AddOrderFragment(orderFragment, K)
+	if err != nil {
+		return
 	}
-}
-
-func (miner Miner) ReconstructAll() {
-	numberOfCPUs := runtime.NumCPU()
-	reconstructables := miner.ReconstructionMatrix.WaitForReconstructions(numberOfCPUs)
-	do.CoForAll(joins, func(i int) {
-		miner.Reconstruct(reconstructables[i])
-	})
-}
-
-func (miner Miner) Reconstruct(orderFragments []*compute.OrderFragment) {
-	match, err := compute.IsMatch(orderFragments)
+	if reconstruction == nil {
+		return
+	}
+	match, err := reconstruction.IsMatch()
 	if err != nil {
 		return
 	}
