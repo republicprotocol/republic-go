@@ -5,42 +5,35 @@ import (
 	"encoding/binary"
 	"math/big"
 	"sync"
-
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
-type ComputeID []byte
-
 type Computation struct {
-	ID   ComputeID
 	Buy  *OrderFragment
 	Sell *OrderFragment
-	Out  *OrderFragment
 }
 
 func NewComputation(left *OrderFragment, right *OrderFragment) (*Computation, error) {
-	if left.Buy == right.Buy {
-		return nil, NewOrderComputationError(left.Buy)
+	if left.OrderBuySell == right.OrderBuySell {
+		return nil, NewOrderComputationError(left.OrderBuySell)
 	}
 	com := &Computation{}
-	if left.Buy != 0 {
+	if left.OrderBuySell != 0 {
 		com.Buy = left
 		com.Sell = right
 	} else {
 		com.Buy = right
 		com.Sell = left
 	}
-	com.ID = ComputeID(crypto.Keccak256(com.Bytes()))
 	return com, nil
 }
 
-func (com *Computation) Add(prime *big.Int) (*OrderFragment, error) {
-	out, err := com.Left.Add(com.Right, prime)
+func (com *Computation) Add(prime *big.Int) (*ComputedOrderFragment, error) {
+	computed, err := com.Buy.Add(com.Sell, prime)
 	if err != nil {
 		return nil, err
 	}
-	com.Out = out
-	return com.Out, nil
+	com.Computed = computed
+	return com.Computed, nil
 }
 
 func (com *Computation) Sub(prime *big.Int) (*OrderFragment, error) {

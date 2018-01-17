@@ -165,3 +165,15 @@ func (orderFragment *OrderFragment) IsCompatible(rhs *OrderFragment) error {
 	}
 	return nil
 }
+
+type ComputedOrderFragment struct {
+	BuyOrderID          OrderID
+	BuyOrderFragmentID  OrderFragmentID
+	SellOrderID         OrderID
+	SellOrderFragmentID OrderFragmentID
+	FstCodeShare        sss.Share
+	SndCodeShare        sss.Share
+	PriceShare          sss.Share
+	MaxVolumeShare      sss.Share
+	MinVolumeShare      sss.Share
+}
