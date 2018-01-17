@@ -7,59 +7,59 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-type Computation struct {
-	ID                OrderFragmentID
+type PendingResultFragment struct {
+	ID                ResultFragmentID
 	BuyOrderFragment  *OrderFragment
 	SellOrderFragment *OrderFragment
 }
 
-func NewComputation(left *OrderFragment, right *OrderFragment) (*Computation, error) {
+func NewPendingResultFragment(left *OrderFragment, right *OrderFragment) (*PendingResultFragment, error) {
 	if err := left.IsCompatible(right); err != nil {
 		return nil, err
 	}
-	com := &Computation{}
+	resultFragment := &PendingResultFragment{}
 	if left.OrderBuySell != 0 {
-		com.BuyOrderFragment = left
-		com.SellOrderFragment = right
+		resultFragment.BuyOrderFragment = left
+		resultFragment.SellOrderFragment = right
 	} else {
-		com.BuyOrderFragment = right
-		com.SellOrderFragment = left
+		resultFragment.BuyOrderFragment = right
+		resultFragment.SellOrderFragment = left
 	}
-	com.ID = OrderFragmentID(crypto.Keccak256(com.BuyOrderFragment.ID[:], com.SellOrderFragment.ID[:]))
-	return com, nil
+	resultFragment.ID = OrderFragmentID(crypto.Keccak256(resultFragment.BuyOrderFragment.ID[:], resultFragment.SellOrderFragment.ID[:]))
+	return resultFragment, nil
 }
 
-func (com *Computation) Add(prime *big.Int) (*ComputedOrderFragment, error) {
-	return com.BuyOrderFragment.Add(com.SellOrderFragment, prime)
+func (resultFragment *PendingResultFragment) Add(prime *big.Int) (*ResultFragment, error) {
+	return resultFragment.BuyOrderFragment.Add(resultFragment.SellOrderFragment, prime)
 }
 
-func (com *Computation) Sub(prime *big.Int) (*ComputedOrderFragment, error) {
-	return com.BuyOrderFragment.Sub(com.SellOrderFragment, prime)
+func (resultFragment *PendingResultFragment) Sub(prime *big.Int) (*ResultFragment, error) {
+	return resultFragment.BuyOrderFragment.Sub(resultFragment.SellOrderFragment, prime)
 }
 
-type ComputationMatrix struct {
+type PendingResultsMatrix struct {
 	orderFragments []*OrderFragment
 
-	computationsGuard  *sync.Cond
-	computationsLeft   int
-	computations       []*Computation
-	computationMarkers map[string]struct{}
+	pendingResultFragmentsGuard   *sync.Cond
+	pendingResultFragmentsLeft    int
+	pendingResultFragments        []*PendingResultFragment
+	pendingResultFragmentsMarkers map[string]struct{}
 }
 
-func NewComputationMatrix() *ComputationMatrix {
-	return &ComputationMatrix{
+func NewPendingResultsMatrix() *PendingResultsMatrix {
+	return &PendingResultsMatrix{
 		orderFragments: []*OrderFragment{},
 
-		computationsGuard:  sync.NewCond(new(sync.Mutex)),
-		computationsLeft:   0,
-		computations:       []*Computation{},
-		computationMarkers: map[string]struct{}{},
+		pendingResultFragmentsGuard:   sync.NewCond(new(sync.Mutex)),
+		pendingResultFragmentsLeft:    0,
+		pendingResultFragments:        []*PendingResultFragment{},
+		pendingResultFragmentsMarkers: map[string]struct{}{},
 	}
 }
 
-func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) {
-	matrix.computationsGuard.L.Lock()
-	defer matrix.computationsGuard.L.Unlock()
+func (matrix *PendingResultsMatrix) AddOrderFragment(orderFragment *OrderFragment) {
+	matrix.pendingResultFragmentsGuard.L.Lock()
+	defer matrix.pendingResultFragmentsGuard.L.Unlock()
 
 	for _, rhs := range matrix.orderFragments {
 		if orderFragment.ID.Equals(rhs.ID) {
@@ -68,38 +68,38 @@ func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) 
 	}
 
 	for _, rhs := range matrix.orderFragments {
-		com, err := NewComputation(orderFragment, rhs)
+		resultFragment, err := NewPendingResultFragment(orderFragment, rhs)
 		if err != nil {
 			continue
 		}
-		matrix.computations = append(matrix.computations, com)
-		matrix.computationsLeft++
+		matrix.pendingResultFragments = append(matrix.pendingResultFragments, resultFragment)
+		matrix.pendingResultFragmentsLeft++
 	}
 
 	matrix.orderFragments = append(matrix.orderFragments, orderFragment)
-	if matrix.computationsLeft > 0 {
-		matrix.computationsGuard.Signal()
+	if matrix.pendingResultFragmentsLeft > 0 {
+		matrix.pendingResultFragmentsGuard.Signal()
 	}
 }
 
-func (matrix *ComputationMatrix) WaitForComputations(max int) []*Computation {
-	matrix.computationsGuard.L.Lock()
-	defer matrix.computationsGuard.L.Unlock()
-	for matrix.computationsLeft == 0 {
-		matrix.computationsGuard.Wait()
+func (matrix *PendingResultsMatrix) WaitForPendingResults(max int) []*PendingResultFragment {
+	matrix.pendingResultFragmentsGuard.L.Lock()
+	defer matrix.pendingResultFragmentsGuard.L.Unlock()
+	for matrix.pendingResultFragmentsLeft == 0 {
+		matrix.pendingResultFragmentsGuard.Wait()
 	}
 
-	computations := make([]*Computation, 0, max)
-	for _, com := range matrix.computations {
-		if _, ok := matrix.computationMarkers[string(com.ID)]; !ok {
-			matrix.computationMarkers[string(com.ID)] = struct{}{}
-			computations = append(computations, com)
+	pendingResultFragments := make([]*PendingResultFragment, 0, max)
+	for _, com := range matrix.pendingResultFragments {
+		if _, ok := matrix.pendingResultFragmentsMarkers[string(com.ID)]; !ok {
+			matrix.pendingResultFragmentsMarkers[string(com.ID)] = struct{}{}
+			pendingResultFragments = append(pendingResultFragments, com)
 		}
 	}
 
-	matrix.computationsLeft -= len(computations)
-	if matrix.computationsLeft > 0 {
-		matrix.computationsGuard.Signal()
+	matrix.pendingResultFragmentsLeft -= len(pendingResultFragments)
+	if matrix.pendingResultFragmentsLeft > 0 {
+		matrix.pendingResultFragmentsGuard.Signal()
 	}
-	return computations
+	return pendingResultFragments
 }
