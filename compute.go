@@ -12,19 +12,26 @@ import (
 type ComputeID []byte
 
 type Computation struct {
-	ID    ComputeID
-	Left  *OrderFragment
-	Right *OrderFragment
-	Out   *OrderFragment
+	ID   ComputeID
+	Buy  *OrderFragment
+	Sell *OrderFragment
+	Out  *OrderFragment
 }
 
-func NewComputation(left *OrderFragment, right *OrderFragment) *Computation {
-	com := &Computation{
-		Left:  left,
-		Right: right,
+func NewComputation(left *OrderFragment, right *OrderFragment) (*Computation, error) {
+	if left.Buy == right.Buy {
+		return nil, NewOrderComputationError(left.Buy)
+	}
+	com := &Computation{}
+	if left.Buy != 0 {
+		com.Buy = left
+		com.Sell = right
+	} else {
+		com.Buy = right
+		com.Sell = left
 	}
 	com.ID = ComputeID(crypto.Keccak256(com.Bytes()))
-	return com
+	return com, nil
 }
 
 func (com *Computation) Add(prime *big.Int) (*OrderFragment, error) {

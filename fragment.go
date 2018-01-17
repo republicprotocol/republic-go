@@ -20,8 +20,10 @@ func (id OrderFragmentID) Equals(other OrderFragmentID) bool {
 // secret sharing where the secret is an Order encoded as a big.Int.
 type OrderFragment struct {
 	// Public data.
-	ID       OrderFragmentID
-	OrderIDs OrderIDs
+	ID           OrderFragmentID
+	OrderID      OrderID
+	OrderType    OrderType
+	OrderBuySell OrderBuySell
 
 	// Private data.
 	FstCodeShare   sss.Share
@@ -33,9 +35,11 @@ type OrderFragment struct {
 
 // NewOrderFragment returns a new OrderFragment and computes the
 // OrderFragmentID for the OrderFragment.
-func NewOrderFragment(orderIDs OrderIDs, fstCodeShare, sndCodeShare, priceShare, maxVolumeShare, minVolumeShare sss.Share) *OrderFragment {
+func NewOrderFragment(orderID OrderID, orderType OrderType, orderBuySell OrderBuySell, fstCodeShare, sndCodeShare, priceShare, maxVolumeShare, minVolumeShare sss.Share) *OrderFragment {
 	orderFragment := &OrderFragment{
-		OrderIDs:       orderIDs,
+		OrderID:        orderID,
+		OrderType:      orderType,
+		OrderBuySell:   orderBuySell,
 		FstCodeShare:   fstCodeShare,
 		SndCodeShare:   sndCodeShare,
 		PriceShare:     priceShare,

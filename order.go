@@ -10,6 +10,17 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+// A CurrencyCode is a numerical representation of the currencies supported by
+// Orders.
+type CurrencyCode int64
+
+// The possible values for a CurrencyCode.
+const (
+	CurrencyCodeBTC = 1
+	CurrencyCodeETH = 2
+	CurrencyCodeREN = 3
+)
+
 // An OrderType is a publicly bit of information that determines the type of
 // trade that an Order is representing.
 type OrderType int64
@@ -20,15 +31,11 @@ const (
 	OrderTypeLimit = 2
 )
 
-// A CurrencyCode is a numerical representation of the currencies supported by
-// Orders.
-type CurrencyCode int64
+type OrderBuySell int64
 
-// The possible values for a CurrencyCode.
 const (
-	CurrencyCodeBTC = 1
-	CurrencyCodeETH = 2
-	CurrencyCodeREN = 3
+	OrderBuy  = 1
+	OrderSell = 0
 )
 
 // An OrderID is the Keccak256 hash of an Order.
@@ -42,9 +49,9 @@ type OrderIDs []OrderID
 // exposed to anyone other than the trader that wants to execute the Order.
 type Order struct {
 	// Public data.
-	ID   OrderID
-	Type OrderType
-	Buy  int64
+	ID      OrderID
+	Type    OrderType
+	BuySell OrderBuySell
 
 	// Private data.
 	FstCode   CurrencyCode
@@ -56,10 +63,10 @@ type Order struct {
 }
 
 // NewOrder returns a new Order and computes the OrderID for the Order.
-func NewOrder(ty OrderType, buy int64, fstCode CurrencyCode, sndCode CurrencyCode, price int64, maxVolume int64, minVolume int64, nonce int64) *Order {
+func NewOrder(ty OrderType, buySell OrderBuySell, fstCode CurrencyCode, sndCode CurrencyCode, price int64, maxVolume int64, minVolume int64, nonce int64) *Order {
 	order := &Order{
-		Type: ty,
-		Buy:  buy,
+		Type:    ty,
+		BuySell: buySell,
 
 		FstCode:   fstCode,
 		SndCode:   sndCode,
@@ -76,7 +83,7 @@ func NewOrder(ty OrderType, buy int64, fstCode CurrencyCode, sndCode CurrencyCod
 func (order *Order) Bytes() []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, order.Type)
-	binary.Write(buf, binary.LittleEndian, order.Buy)
+	binary.Write(buf, binary.LittleEndian, order.BuySell)
 	binary.Write(buf, binary.LittleEndian, order.FstCode)
 	binary.Write(buf, binary.LittleEndian, order.SndCode)
 	binary.Write(buf, binary.LittleEndian, order.Price)
@@ -109,7 +116,16 @@ func (order *Order) Split(n, k int64, prime *big.Int) ([]*OrderFragment, error) 
 	}
 	orderFragments := make([]*OrderFragment, n)
 	for i := int64(0); i < n; i++ {
-		orderFragments[i] = NewOrderFragment(OrderIDs{order.ID}, fstCodeShares[i], sndCodeShares[i], priceShares[i], maxVolumeShares[i], minVolumeShares[i])
+		orderFragments[i] = NewOrderFragment(
+			order.ID,
+			order.Type,
+			order.BuySell,
+			fstCodeShares[i],
+			sndCodeShares[i],
+			priceShares[i],
+			maxVolumeShares[i],
+			minVolumeShares[i],
+		)
 	}
 	return orderFragments, nil
 }
