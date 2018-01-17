@@ -12,17 +12,19 @@ service Node {
   // Get all peers connected to the Node.
   rpc Peers (Nothing) returns (MultiAddresses);
 
-  // Send an order fragment to some target Node.
+  // Send an OrderFragment to some target Node.
   rpc SendOrderFragment (OrderFragment) returns (MultiAddress);
+
+  // Send an OrderFragment to some target Node, where the OrderFragment is the
+  // result of a computation over other OrderFragments.
+  rpc SendComputeOrderFragment (OrderFragment) returns (MultiAddress);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
 message OrderFragment {
   string to = 1;
   string from = 2;
-  bytes orderID = 3;
-  bytes orderFragmentID = 4;
-  bytes orderFragment = 5;
+  bytes orderFragment = 3;
 }
 
 // A MultiAddress is the public multiaddress of a Node in the overlay network.
