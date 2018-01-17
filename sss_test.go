@@ -37,6 +37,10 @@ var _ = Describe("Shamir's secret sharing", func() {
 			Ω(share.Key).Should(Equal(int64(42)))
 			Ω(share.Value.Cmp(prime)).Should(Equal(0))
 		})
+		It("should error for bad bytes", func() {
+			_, err := FromBytes([]byte{})
+			Ω(err).Should(HaveOccurred())
+		})
 	})
 
 	Context("encoding", func() {
