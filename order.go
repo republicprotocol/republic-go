@@ -315,7 +315,7 @@ func (orderFragment *OrderFragment) Bytes() []byte {
 // the same share indices.
 func (orderFragment *OrderFragment) IsCompatible(rhs *OrderFragment) error {
 	if orderFragment.OrderBuySell == rhs.OrderBuySell {
-		return NewOrderComputationError(orderFragment.OrderBuySell)
+		return NewResultFragmentationError(orderFragment.OrderBuySell)
 	}
 	if orderFragment.FstCodeShare.Key != rhs.FstCodeShare.Key {
 		return NewOrderFragmentationError(orderFragment.FstCodeShare.Key, rhs.FstCodeShare.Key)

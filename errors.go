@@ -17,19 +17,19 @@ func (err OrderFragmentationError) Error() string {
 	return string(err)
 }
 
-type OrderComputationError string
+type ResultFragmentationError string
 
-// NewOrderComputationError returns a new OrderComputationError for two Orders
-// that have the same buy index.
-func NewOrderComputationError(lhs OrderBuySell) OrderComputationError {
+// NewResultFragmentationError returns a new ResultFragmentationError for two
+// OrderFragments that have the same buy-sell type.
+func NewResultFragmentationError(lhs OrderBuySell) ResultFragmentationError {
 	rhs := OrderBuy
 	if lhs == OrderBuy {
 		rhs = OrderSell
 	}
-	return OrderComputationError(fmt.Sprintf("expected buy = %v to be computed against buy = %v", lhs, rhs))
+	return ResultFragmentationError(fmt.Sprintf("expected buy/sell = %v to be computed against buy/sell = %v", lhs, rhs))
 }
 
 // Error implements the error interface.
-func (err OrderComputationError) Error() string {
+func (err ResultFragmentationError) Error() string {
 	return string(err)
 }
