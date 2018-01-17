@@ -25,7 +25,7 @@ func NewPendingResultFragment(left *OrderFragment, right *OrderFragment) (*Pendi
 		resultFragment.BuyOrderFragment = right
 		resultFragment.SellOrderFragment = left
 	}
-	resultFragment.ID = OrderFragmentID(crypto.Keccak256(resultFragment.BuyOrderFragment.ID[:], resultFragment.SellOrderFragment.ID[:]))
+	resultFragment.ID = ResultFragmentID(crypto.Keccak256(resultFragment.BuyOrderFragment.ID[:], resultFragment.SellOrderFragment.ID[:]))
 	return resultFragment, nil
 }
 
@@ -82,7 +82,7 @@ func (matrix *PendingResultsMatrix) AddOrderFragment(orderFragment *OrderFragmen
 	}
 }
 
-func (matrix *PendingResultsMatrix) WaitForPendingResults(max int) []*PendingResultFragment {
+func (matrix *PendingResultsMatrix) WaitForPendingResultFragments(max int) []*PendingResultFragment {
 	matrix.pendingResultFragmentsGuard.L.Lock()
 	defer matrix.pendingResultFragmentsGuard.L.Unlock()
 	for matrix.pendingResultFragmentsLeft == 0 {

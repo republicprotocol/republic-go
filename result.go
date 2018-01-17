@@ -41,6 +41,7 @@ func NewResult(prime *big.Int, resultFragments []*ResultFragment) (*Result, erro
 
 	// Join the sss.Shares into a Result.
 	// FIXME: This can panic if there are no ResultFragments.
+	var err error
 	result := &Result{
 		BuyOrderID:  resultFragments[0].BuyOrderID,
 		SellOrderID: resultFragments[0].SellOrderID,
@@ -62,7 +63,7 @@ func NewResult(prime *big.Int, resultFragments []*ResultFragment) (*Result, erro
 	}
 
 	// Compute the ResultID and return the Result.
-	result.ID = ResultID(crypto.Keccak256(resultFragment.BuyOrderID[:], resultFragment.SellOrderID[:]))
+	result.ID = ResultID(crypto.Keccak256(result.BuyOrderID[:], result.SellOrderID[:]))
 	return result, nil
 }
 

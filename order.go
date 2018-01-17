@@ -190,40 +190,43 @@ func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*
 
 	// Perform the addition using the buyOrderFragment as the LHS and the
 	// sellOrderFragment as the RHS.
-	computed := &ComputedOrderFragment{
-		BuyOrderID:          buyOrderFragment.OrderID,
-		BuyOrderFragmentID:  buyOrderFragment.ID,
-		SellOrderID:         sellOrderFragment.OrderID,
-		SellOrderFragmentID: sellOrderFragment.ID,
-
-		FstCodeShare: sss.Share{
-			Key:   buyOrderFragment.FstCodeShare.Key,
-			Value: big.NewInt(0).Add(buyOrderFragment.FstCodeShare.Value, sellOrderFragment.FstCodeShare.Value),
-		},
-		SndCodeShare: sss.Share{
-			Key:   buyOrderFragment.SndCodeShare.Key,
-			Value: big.NewInt(0).Add(buyOrderFragment.SndCodeShare.Value, sellOrderFragment.SndCodeShare.Value),
-		},
-		PriceShare: sss.Share{
-			Key:   buyOrderFragment.PriceShare.Key,
-			Value: big.NewInt(0).Add(buyOrderFragment.PriceShare.Value, sellOrderFragment.PriceShare.Value),
-		},
-		MaxVolumeShare: sss.Share{
-			Key:   buyOrderFragment.MaxVolumeShare.Key,
-			Value: big.NewInt(0).Add(buyOrderFragment.MaxVolumeShare.Value, sellOrderFragment.MaxVolumeShare.Value),
-		},
-		MinVolumeShare: sss.Share{
-			Key:   buyOrderFragment.MinVolumeShare.Key,
-			Value: big.NewInt(0).Add(sellOrderFragment.MinVolumeShare.Value, buyOrderFragment.MinVolumeShare.Value),
-		},
+	fstCodeShare := sss.Share{
+		Key:   buyOrderFragment.FstCodeShare.Key,
+		Value: big.NewInt(0).Add(buyOrderFragment.FstCodeShare.Value, sellOrderFragment.FstCodeShare.Value),
 	}
-	computed.FstCodeShare.Value.Mod(computed.FstCodeShare.Value, prime)
-	computed.SndCodeShare.Value.Mod(computed.SndCodeShare.Value, prime)
-	computed.PriceShare.Value.Mod(computed.PriceShare.Value, prime)
-	computed.MaxVolumeShare.Value.Mod(computed.MaxVolumeShare.Value, prime)
-	computed.MinVolumeShare.Value.Mod(computed.MinVolumeShare.Value, prime)
-	computed.ID = OrderFragmentID(crypto.Keccak256(computed.Bytes()))
-	return computed, nil
+	sndCodeShare := sss.Share{
+		Key:   buyOrderFragment.SndCodeShare.Key,
+		Value: big.NewInt(0).Add(buyOrderFragment.SndCodeShare.Value, sellOrderFragment.SndCodeShare.Value),
+	}
+	priceShare := sss.Share{
+		Key:   buyOrderFragment.PriceShare.Key,
+		Value: big.NewInt(0).Add(buyOrderFragment.PriceShare.Value, sellOrderFragment.PriceShare.Value),
+	}
+	maxVolumeShare := sss.Share{
+		Key:   buyOrderFragment.MaxVolumeShare.Key,
+		Value: big.NewInt(0).Add(buyOrderFragment.MaxVolumeShare.Value, sellOrderFragment.MaxVolumeShare.Value),
+	}
+	minVolumeShare := sss.Share{
+		Key:   buyOrderFragment.MinVolumeShare.Key,
+		Value: big.NewInt(0).Add(sellOrderFragment.MinVolumeShare.Value, buyOrderFragment.MinVolumeShare.Value),
+	}
+	fstCodeShare.Value.Mod(fstCodeShare.Value, prime)
+	sndCodeShare.Value.Mod(sndCodeShare.Value, prime)
+	priceShare.Value.Mod(priceShare.Value, prime)
+	maxVolumeShare.Value.Mod(maxVolumeShare.Value, prime)
+	minVolumeShare.Value.Mod(minVolumeShare.Value, prime)
+	resultFragment := NewResultFragment(
+		buyOrderFragment.OrderID,
+		sellOrderFragment.OrderID,
+		buyOrderFragment.ID,
+		sellOrderFragment.ID,
+		fstCodeShare,
+		sndCodeShare,
+		priceShare,
+		maxVolumeShare,
+		minVolumeShare,
+	)
+	return resultFragment, nil
 }
 
 // Sub two OrderFragments from one another and return the resulting output
@@ -247,40 +250,43 @@ func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*
 
 	// Perform the addition using the buyOrderFragment as the LHS and the
 	// sellOrderFragment as the RHS.
-	computed := &ComputedOrderFragment{
-		BuyOrderID:          buyOrderFragment.OrderID,
-		BuyOrderFragmentID:  buyOrderFragment.ID,
-		SellOrderID:         sellOrderFragment.OrderID,
-		SellOrderFragmentID: sellOrderFragment.ID,
-
-		FstCodeShare: sss.Share{
-			Key:   buyOrderFragment.FstCodeShare.Key,
-			Value: big.NewInt(0).Add(buyOrderFragment.FstCodeShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.FstCodeShare.Value)),
-		},
-		SndCodeShare: sss.Share{
-			Key:   buyOrderFragment.SndCodeShare.Key,
-			Value: big.NewInt(0).Add(buyOrderFragment.SndCodeShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.SndCodeShare.Value)),
-		},
-		PriceShare: sss.Share{
-			Key:   buyOrderFragment.PriceShare.Key,
-			Value: big.NewInt(0).Add(buyOrderFragment.PriceShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.PriceShare.Value)),
-		},
-		MaxVolumeShare: sss.Share{
-			Key:   buyOrderFragment.MaxVolumeShare.Key,
-			Value: big.NewInt(0).Add(buyOrderFragment.MaxVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.MaxVolumeShare.Value)),
-		},
-		MinVolumeShare: sss.Share{
-			Key:   buyOrderFragment.MinVolumeShare.Key,
-			Value: big.NewInt(0).Add(sellOrderFragment.MinVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, buyOrderFragment.MinVolumeShare.Value)),
-		},
+	fstCodeShare := sss.Share{
+		Key:   buyOrderFragment.FstCodeShare.Key,
+		Value: big.NewInt(0).Add(buyOrderFragment.FstCodeShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.FstCodeShare.Value)),
 	}
-	computed.FstCodeShare.Value.Mod(computed.FstCodeShare.Value, prime)
-	computed.SndCodeShare.Value.Mod(computed.SndCodeShare.Value, prime)
-	computed.PriceShare.Value.Mod(computed.PriceShare.Value, prime)
-	computed.MaxVolumeShare.Value.Mod(computed.MaxVolumeShare.Value, prime)
-	computed.MinVolumeShare.Value.Mod(computed.MinVolumeShare.Value, prime)
-	computed.ID = OrderFragmentID(crypto.Keccak256(computed.Bytes()))
-	return computed, nil
+	sndCodeShare := sss.Share{
+		Key:   buyOrderFragment.SndCodeShare.Key,
+		Value: big.NewInt(0).Add(buyOrderFragment.SndCodeShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.SndCodeShare.Value)),
+	}
+	priceShare := sss.Share{
+		Key:   buyOrderFragment.PriceShare.Key,
+		Value: big.NewInt(0).Add(buyOrderFragment.PriceShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.PriceShare.Value)),
+	}
+	maxVolumeShare := sss.Share{
+		Key:   buyOrderFragment.MaxVolumeShare.Key,
+		Value: big.NewInt(0).Add(buyOrderFragment.MaxVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.MaxVolumeShare.Value)),
+	}
+	minVolumeShare := sss.Share{
+		Key:   buyOrderFragment.MinVolumeShare.Key,
+		Value: big.NewInt(0).Add(sellOrderFragment.MinVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, buyOrderFragment.MinVolumeShare.Value)),
+	}
+	fstCodeShare.Value.Mod(fstCodeShare.Value, prime)
+	sndCodeShare.Value.Mod(sndCodeShare.Value, prime)
+	priceShare.Value.Mod(priceShare.Value, prime)
+	maxVolumeShare.Value.Mod(maxVolumeShare.Value, prime)
+	minVolumeShare.Value.Mod(minVolumeShare.Value, prime)
+	resultFragment := NewResultFragment(
+		buyOrderFragment.OrderID,
+		sellOrderFragment.OrderID,
+		buyOrderFragment.ID,
+		sellOrderFragment.ID,
+		fstCodeShare,
+		sndCodeShare,
+		priceShare,
+		maxVolumeShare,
+		minVolumeShare,
+	)
+	return resultFragment, nil
 }
 
 // Bytes returns an Order serialized into a bytes.
