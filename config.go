@@ -9,9 +9,9 @@ import (
 
 // Config information for booting a Node.
 type Config struct {
-	KeyPair        identity.KeyPair        `json:"key"`
-	MultiAddress   identity.MultiAddress   `json:"multiaddress"`
-	MultiAddresses identity.MultiAddresses `json:"multiaddresses"`
+	KeyPair         identity.KeyPair        `json:"key"`
+	Multi           identity.MultiAddress   `json:"multi"`
+	BootstrapMultis identity.MultiAddresses `json:"bootstrap_multis"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config
