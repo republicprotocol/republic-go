@@ -30,6 +30,7 @@ func (miner Miner) OnOrderFragmentReceived(orderFragment compute.OrderFragment) 
 }
 
 func (miner Miner) OnComputedOrderFragmentReceived(orderFragment compute.OrderFragment) {
+	miner.ComputationMatrix.FillReconstructions(&orderFragment)
 }
 
 func (miner Miner) Mine(quit chan struct{}) {
