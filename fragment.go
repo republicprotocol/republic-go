@@ -20,11 +20,24 @@ type OrderFragment struct {
 	OrderIDs OrderIDs
 
 	// Private data.
-	LittleCodeShare sss.Share
-	BigCodeShare    sss.Share
-	PriceShare      sss.Share
-	MaxVolumeShare  sss.Share
-	MinVolumeShare  sss.Share
+	FstCodeShare   sss.Share
+	SndCodeShare   sss.Share
+	PriceShare     sss.Share
+	MaxVolumeShare sss.Share
+	MinVolumeShare sss.Share
+}
+
+func NewOrderFragment(orderIDs OrderIDs, fstCodeShare, sndCodeShare, priceShare, maxVolumeShare, minVolumeShare sss.Share) *OrderFragment {
+	orderFragment := &OrderFragment{
+		OrderIDs:       orderIDs,
+		FstCodeShare:   fstCodeShare,
+		SndCodeShare:   sndCodeShare,
+		PriceShare:     priceShare,
+		MaxVolumeShare: maxVolumeShare,
+		MinVolumeShare: minVolumeShare,
+	}
+	orderFragment.ID = OrderFragmentID(crypto.Keccak256(orderFragment.Bytes()))
+	return orderFragment
 }
 
 // Add two OrderFragments together and return the resulting output
@@ -35,13 +48,13 @@ func (orderFragment *OrderFragment) Add(rhs *OrderFragment, prime *big.Int) (*Or
 	}
 	outputFragment := &OrderFragment{
 		OrderIDs: append(orderFragment.OrderIDs, rhs.OrderIDs...),
-		LittleCodeShare: sss.Share{
-			Key:   orderFragment.LittleCodeShare.Key,
-			Value: big.NewInt(0).Add(orderFragment.LittleCodeShare.Value, rhs.LittleCodeShare.Value),
+		FstCodeShare: sss.Share{
+			Key:   orderFragment.FstCodeShare.Key,
+			Value: big.NewInt(0).Add(orderFragment.FstCodeShare.Value, rhs.FstCodeShare.Value),
 		},
-		BigCodeShare: sss.Share{
-			Key:   orderFragment.BigCodeShare.Key,
-			Value: big.NewInt(0).Add(orderFragment.BigCodeShare.Value, rhs.BigCodeShare.Value),
+		SndCodeShare: sss.Share{
+			Key:   orderFragment.SndCodeShare.Key,
+			Value: big.NewInt(0).Add(orderFragment.SndCodeShare.Value, rhs.SndCodeShare.Value),
 		},
 		PriceShare: sss.Share{
 			Key:   orderFragment.PriceShare.Key,
@@ -56,12 +69,12 @@ func (orderFragment *OrderFragment) Add(rhs *OrderFragment, prime *big.Int) (*Or
 			Value: big.NewInt(0).Add(orderFragment.MinVolumeShare.Value, rhs.MinVolumeShare.Value),
 		},
 	}
-	outputFragment.LittleCodeShare.Value.Mod(outputFragment.LittleCodeShare.Value, prime)
-	outputFragment.BigCodeShare.Value.Mod(outputFragment.BigCodeShare.Value, prime)
+	outputFragment.FstCodeShare.Value.Mod(outputFragment.FstCodeShare.Value, prime)
+	outputFragment.SndCodeShare.Value.Mod(outputFragment.SndCodeShare.Value, prime)
 	outputFragment.PriceShare.Value.Mod(outputFragment.PriceShare.Value, prime)
 	outputFragment.MaxVolumeShare.Value.Mod(outputFragment.MaxVolumeShare.Value, prime)
 	outputFragment.MinVolumeShare.Value.Mod(outputFragment.MinVolumeShare.Value, prime)
-	outputFragment.ID = OrderFragmentID(crypto.Keccak256(outputFragment.Bytes()))
+	orderFragment.ID = OrderFragmentID(crypto.Keccak256(orderFragment.Bytes()))
 	return outputFragment, nil
 }
 
@@ -71,10 +84,10 @@ func (orderFragment *OrderFragment) Bytes() []byte {
 	for _, orderID := range orderFragment.OrderIDs {
 		binary.Write(buf, binary.LittleEndian, orderID)
 	}
-	binary.Write(buf, binary.LittleEndian, orderFragment.LittleCodeShare.Key)
-	binary.Write(buf, binary.LittleEndian, orderFragment.LittleCodeShare.Value)
-	binary.Write(buf, binary.LittleEndian, orderFragment.BigCodeShare.Key)
-	binary.Write(buf, binary.LittleEndian, orderFragment.BigCodeShare.Value)
+	binary.Write(buf, binary.LittleEndian, orderFragment.FstCodeShare.Key)
+	binary.Write(buf, binary.LittleEndian, orderFragment.FstCodeShare.Value)
+	binary.Write(buf, binary.LittleEndian, orderFragment.SndCodeShare.Key)
+	binary.Write(buf, binary.LittleEndian, orderFragment.SndCodeShare.Value)
 	binary.Write(buf, binary.LittleEndian, orderFragment.PriceShare.Key)
 	binary.Write(buf, binary.LittleEndian, orderFragment.PriceShare.Value)
 	binary.Write(buf, binary.LittleEndian, orderFragment.MaxVolumeShare.Key)
@@ -87,13 +100,13 @@ func (orderFragment *OrderFragment) Bytes() []byte {
 // IsCompatible returns an error when the two OrderFragments do not have
 // the same share indices.
 func (orderFragment *OrderFragment) IsCompatible(rhs *OrderFragment) error {
-	if orderFragment.LittleCodeShare.Key != rhs.LittleCodeShare.Key {
-		return NewOrderFragmentationError(orderFragment.LittleCodeShare.Key, rhs.LittleCodeShare.Key)
+	if orderFragment.FstCodeShare.Key != rhs.FstCodeShare.Key {
+		return NewOrderFragmentationError(orderFragment.FstCodeShare.Key, rhs.FstCodeShare.Key)
 	}
-	if orderFragment.BigCodeShare.Key != rhs.LittleCodeShare.Key {
-		return NewOrderFragmentationError(orderFragment.BigCodeShare.Key, rhs.BigCodeShare.Key)
+	if orderFragment.SndCodeShare.Key != rhs.SndCodeShare.Key {
+		return NewOrderFragmentationError(orderFragment.SndCodeShare.Key, rhs.SndCodeShare.Key)
 	}
-	if orderFragment.PriceShare.Key != rhs.LittleCodeShare.Key {
+	if orderFragment.PriceShare.Key != rhs.PriceShare.Key {
 		return NewOrderFragmentationError(orderFragment.PriceShare.Key, rhs.PriceShare.Key)
 	}
 	if orderFragment.MaxVolumeShare.Key != rhs.MaxVolumeShare.Key {
