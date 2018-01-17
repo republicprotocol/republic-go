@@ -5,14 +5,10 @@ import (
 	"sync"
 
 	"github.com/republicprotocol/go-sss"
-
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
-type ReconstructionID []byte
-
 type Reconstruction struct {
-	ID        ReconstructionID
+	ID        OrderFragmentID
 	FstCode   *big.Int
 	SndCode   *big.Int
 	Price     *big.Int
@@ -21,39 +17,48 @@ type Reconstruction struct {
 }
 
 func (reconstruction *Reconstruction) IsMatch() bool {
-	// TODO: Do something sensible here like comparing prices and max volumes and min volumes
+	if reconstruction.FstCode.Cmp(big.NewInt(0)) != 0 {
+		return false
+	}
+	if reconstruction.SndCode.Cmp(big.NewInt(0)) != 0 {
+		return false
+	}
+	if reconstruction.Price.Cmp(big.NewInt(0)) != 1 {
+		return false
+	}
+	if reconstruction.MaxVolume.Cmp(big.NewInt(0)) != 1 {
+		return false
+	}
+	if reconstruction.MinVolume.Cmp(big.NewInt(0)) != 1 {
+		return false
+	}
 	return true
 }
 
 type ReconstructionMatrix struct {
 	reconstructionsMu *sync.Mutex
-	reconstructions   map[string][]*OrderFragment
+	reconstructions   map[string][]*ComputedOrderFragment
 }
 
 func NewReconstructionMatrix() *ReconstructionMatrix {
 	return &ReconstructionMatrix{
 		reconstructionsMu: new(sync.Mutex),
-		reconstructions:   map[string][]*OrderFragment{},
+		reconstructions:   map[string][]*ComputedOrderFragment{},
 	}
 }
 
-func (matrix *ReconstructionMatrix) AddOrderFragment(orderFragment *OrderFragment, k int, prime *big.Int) (*Reconstruction, error) {
+func (matrix *ReconstructionMatrix) AddComputedOrderFragment(computed *ComputedOrderFragment, k int, prime *big.Int) (*Reconstruction, error) {
 	matrix.reconstructionsMu.Lock()
 	defer matrix.reconstructionsMu.Unlock()
 
-	orderIDs := make([][]byte, len(orderFragment.OrderIDs))
-	for i := range orderFragment.OrderIDs {
-		orderIDs[i] = orderFragment.OrderIDs[i][:]
-	}
-	reconstructionID := ReconstructionID(crypto.Keccak256(orderIDs...))
-	matrix.reconstructions[string(reconstructionID)] = append(matrix.reconstructions[string(reconstructionID)], orderFragment)
-	if len(matrix.reconstructions[string(reconstructionID)]) < k {
+	matrix.reconstructions[string(computed.ID)] = append(matrix.reconstructions[string(computed.ID)], computed)
+	if len(matrix.reconstructions[string(computed.ID)]) < k {
 		return nil, nil
 	}
 
 	var err error
 	reconstruction := &Reconstruction{
-		ID: reconstructionID,
+		ID: computed.ID,
 	}
 
 	fstCodeShares := make(sss.Shares, k)
@@ -61,8 +66,8 @@ func (matrix *ReconstructionMatrix) AddOrderFragment(orderFragment *OrderFragmen
 	priceShares := make(sss.Shares, k)
 	maxVolumeShares := make(sss.Shares, k)
 	minVolumeShares := make(sss.Shares, k)
-	for i := range matrix.reconstructions[string(reconstructionID)] {
-		orderFragment := matrix.reconstructions[string(reconstructionID)][i]
+	for i := range matrix.reconstructions[string(reconstruction.ID)] {
+		orderFragment := matrix.reconstructions[string(reconstruction.ID)][i]
 		fstCodeShares[i] = orderFragment.FstCodeShare
 		sndCodeShares[i] = orderFragment.SndCodeShare
 		priceShares[i] = orderFragment.PriceShare

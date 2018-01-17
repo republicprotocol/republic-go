@@ -53,10 +53,10 @@ func NewOrderFragment(orderID OrderID, orderType OrderType, orderBuySell OrderBu
 
 // Add two OrderFragments together and return the resulting output
 // OrderFragment. The output OrderFragment will have its ID computed.
-func (orderFragment *OrderFragment) Add(rhs *OrderFragment, prime *big.Int) (*ComputedOrderFragment, error) {
+func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*ComputedOrderFragment, error) {
 	// Check that the OrderFragments have compatible sss.Shares, and that one
 	// of them is an OrderBuy and the other is an OrderSell.
-	if err := orderFragment.IsCompatible(rhs); err != nil {
+	if err := orderFragment.IsCompatible(other); err != nil {
 		return nil, err
 	}
 
@@ -64,9 +64,9 @@ func (orderFragment *OrderFragment) Add(rhs *OrderFragment, prime *big.Int) (*Co
 	var buyOrderFragment, sellOrderFragment *OrderFragment
 	if orderFragment.OrderBuySell == OrderBuy {
 		buyOrderFragment = orderFragment
-		sellOrderFragment = rhs
+		sellOrderFragment = other
 	} else {
-		buyOrderFragment = rhs
+		buyOrderFragment = other
 		sellOrderFragment = orderFragment
 	}
 
@@ -77,6 +77,7 @@ func (orderFragment *OrderFragment) Add(rhs *OrderFragment, prime *big.Int) (*Co
 		BuyOrderFragmentID:  buyOrderFragment.ID,
 		SellOrderID:         sellOrderFragment.OrderID,
 		SellOrderFragmentID: sellOrderFragment.ID,
+
 		FstCodeShare: sss.Share{
 			Key:   buyOrderFragment.FstCodeShare.Key,
 			Value: big.NewInt(0).Add(buyOrderFragment.FstCodeShare.Value, sellOrderFragment.FstCodeShare.Value),
@@ -95,7 +96,7 @@ func (orderFragment *OrderFragment) Add(rhs *OrderFragment, prime *big.Int) (*Co
 		},
 		MinVolumeShare: sss.Share{
 			Key:   buyOrderFragment.MinVolumeShare.Key,
-			Value: big.NewInt(0).Add(buyOrderFragment.MinVolumeShare.Value, sellOrderFragment.MinVolumeShare.Value),
+			Value: big.NewInt(0).Add(sellOrderFragment.MinVolumeShare.Value, buyOrderFragment.MinVolumeShare.Value),
 		},
 	}
 	computed.FstCodeShare.Value.Mod(computed.FstCodeShare.Value, prime)
@@ -109,10 +110,10 @@ func (orderFragment *OrderFragment) Add(rhs *OrderFragment, prime *big.Int) (*Co
 
 // Sub two OrderFragments from one another and return the resulting output
 // OrderFragment. The output OrderFragment will have its ID computed.
-func (orderFragment *OrderFragment) Sub(rhs *OrderFragment, prime *big.Int) (*ComputedOrderFragment, error) {
+func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*ComputedOrderFragment, error) {
 	// Check that the OrderFragments have compatible sss.Shares, and that one
 	// of them is an OrderBuy and the other is an OrderSell.
-	if err := orderFragment.IsCompatible(rhs); err != nil {
+	if err := orderFragment.IsCompatible(other); err != nil {
 		return nil, err
 	}
 
@@ -120,9 +121,9 @@ func (orderFragment *OrderFragment) Sub(rhs *OrderFragment, prime *big.Int) (*Co
 	var buyOrderFragment, sellOrderFragment *OrderFragment
 	if orderFragment.OrderBuySell == OrderBuy {
 		buyOrderFragment = orderFragment
-		sellOrderFragment = rhs
+		sellOrderFragment = other
 	} else {
-		buyOrderFragment = rhs
+		buyOrderFragment = other
 		sellOrderFragment = orderFragment
 	}
 
@@ -133,6 +134,7 @@ func (orderFragment *OrderFragment) Sub(rhs *OrderFragment, prime *big.Int) (*Co
 		BuyOrderFragmentID:  buyOrderFragment.ID,
 		SellOrderID:         sellOrderFragment.OrderID,
 		SellOrderFragmentID: sellOrderFragment.ID,
+
 		FstCodeShare: sss.Share{
 			Key:   buyOrderFragment.FstCodeShare.Key,
 			Value: big.NewInt(0).Add(buyOrderFragment.FstCodeShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.FstCodeShare.Value)),
@@ -151,7 +153,7 @@ func (orderFragment *OrderFragment) Sub(rhs *OrderFragment, prime *big.Int) (*Co
 		},
 		MinVolumeShare: sss.Share{
 			Key:   buyOrderFragment.MinVolumeShare.Key,
-			Value: big.NewInt(0).Add(buyOrderFragment.MinVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.MinVolumeShare.Value)),
+			Value: big.NewInt(0).Add(sellOrderFragment.MinVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, buyOrderFragment.MinVolumeShare.Value)),
 		},
 	}
 	computed.FstCodeShare.Value.Mod(computed.FstCodeShare.Value, prime)
