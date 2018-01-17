@@ -9,7 +9,7 @@ import (
 
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network/rpc"
-	order "github.com/republicprotocol/go-order"
+	"github.com/republicprotocol/go-order-compute"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -86,7 +86,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 	target := identity.Address(orderFragment.To)
 	if target == node.DHT.Address {
 		// TODO: Pass actual order details.
-		node.Delegate.OnOrderFragmentReceived(order.Fragment{})
+		node.Delegate.OnOrderFragmentReceived(compute.OrderFragment{})
 		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, nil
 	}
 

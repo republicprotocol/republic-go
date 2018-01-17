@@ -39,7 +39,7 @@ func Dial(target identity.MultiAddress) (*grpc.ClientConn, error) {
 type Delegate interface {
 	OnPingReceived(peer identity.MultiAddress)
 	OnOrderFragmentReceived(orderFragment compute.OrderFragment)
-	OnComputeOrderFragmentReceived(orderFragment compute.OrderFragment)
+	OnComputedOrderFragmentReceived(orderFragment compute.OrderFragment)
 }
 
 // Node implements the gRPC Node service.

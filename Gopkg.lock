@@ -62,6 +62,18 @@
   revision = "2bf7485392311d46e4c3e3a696c65ad3dc43b6d7"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/republicprotocol/go-order-compute"
+  packages = ["."]
+  revision = "505dc9d5052ec5fbac00c84b18d2e1240458c524"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/republicprotocol/go-sss"
+  packages = ["."]
+  revision = "16f699b5434420904786ddcd586fd615efa1652b"
+
+[[projects]]
   name = "github.com/spaolacci/murmur3"
   packages = ["."]
   revision = "9f5d223c60793748f04a9d5b4b4eacddfc1f755d"
@@ -118,6 +130,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fe01d013642e05e4032ee921717f381872c5d17c1a909c88d012691dbe089b3f"
+  inputs-digest = "7cd866a5e3422bdf2c997ccb0ee223879d5baf5f45050d2414cff833b7330109"
   solver-name = "gps-cdcl"
   solver-version = 1

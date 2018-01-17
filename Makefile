@@ -11,7 +11,7 @@ rpc: rpc/rpc.proto
 	protoc -I rpc/ rpc/*.proto --go_out=plugins=grpc:rpc
 
 test: rpc
-    ginkgo -v --trace --cover --coverprofile coverprofile.out ./...
+	ginkgo -v --trace --cover --coverprofile coverprofile.out
 
 install: rpc
 	go install
