@@ -78,6 +78,44 @@ func (orderFragment *OrderFragment) Add(rhs *OrderFragment, prime *big.Int) (*Or
 	return outputFragment, nil
 }
 
+// Sub two OrderFragments from one another and return the resulting output
+// OrderFragment. The output OrderFragment will have its ID computed.
+func (orderFragment *OrderFragment) Sub(rhs *OrderFragment, prime *big.Int) (*OrderFragment, error) {
+	if err := orderFragment.IsCompatible(rhs); err != nil {
+		return nil, err
+	}
+	outputFragment := &OrderFragment{
+		OrderIDs: append(orderFragment.OrderIDs, rhs.OrderIDs...),
+		FstCodeShare: sss.Share{
+			Key:   orderFragment.FstCodeShare.Key,
+			Value: big.NewInt(0).Add(orderFragment.FstCodeShare.Value, big.NewInt(0).Set(prime).Sub(prime, rhs.FstCodeShare.Value)),
+		},
+		SndCodeShare: sss.Share{
+			Key:   orderFragment.SndCodeShare.Key,
+			Value: big.NewInt(0).Add(orderFragment.SndCodeShare.Value, big.NewInt(0).Set(prime).Sub(prime, rhs.SndCodeShare.Value)),
+		},
+		PriceShare: sss.Share{
+			Key:   orderFragment.PriceShare.Key,
+			Value: big.NewInt(0).Add(orderFragment.PriceShare.Value, big.NewInt(0).Set(prime).Sub(prime, rhs.PriceShare.Value)),
+		},
+		MaxVolumeShare: sss.Share{
+			Key:   orderFragment.MaxVolumeShare.Key,
+			Value: big.NewInt(0).Add(orderFragment.MaxVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, rhs.MaxVolumeShare.Value)),
+		},
+		MinVolumeShare: sss.Share{
+			Key:   orderFragment.MinVolumeShare.Key,
+			Value: big.NewInt(0).Add(orderFragment.MinVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, rhs.MinVolumeShare.Value)),
+		},
+	}
+	outputFragment.FstCodeShare.Value.Mod(outputFragment.FstCodeShare.Value, prime)
+	outputFragment.SndCodeShare.Value.Mod(outputFragment.SndCodeShare.Value, prime)
+	outputFragment.PriceShare.Value.Mod(outputFragment.PriceShare.Value, prime)
+	outputFragment.MaxVolumeShare.Value.Mod(outputFragment.MaxVolumeShare.Value, prime)
+	outputFragment.MinVolumeShare.Value.Mod(outputFragment.MinVolumeShare.Value, prime)
+	orderFragment.ID = OrderFragmentID(crypto.Keccak256(orderFragment.Bytes()))
+	return outputFragment, nil
+}
+
 // Bytes returns an Order serialized into a bytes.
 func (orderFragment *OrderFragment) Bytes() []byte {
 	buf := new(bytes.Buffer)
