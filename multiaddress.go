@@ -59,12 +59,12 @@ func (multiAddr MultiAddress) Address() (Address, error) {
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (multiAddr MultiAddress) MarshalJSON() ([]byte, error) {
+func (multiAddr *MultiAddress) MarshalJSON() ([]byte, error) {
 	return json.Marshal(multiAddr.String())
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (multiAddr MultiAddress) UnmarshalJSON(data []byte) error {
+func (multiAddr *MultiAddress) UnmarshalJSON(data []byte) error {
 	str := ""
 	if err := json.Unmarshal(data, str); err != nil {
 		return err
