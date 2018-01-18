@@ -57,6 +57,8 @@ func (miner *Miner) Mine(quit chan struct{}) {
 			miner.Stop()
 			return
 		default:
+			// FIXME: If this function call blocks forever then the quit signal
+			// will never be received.
 			miner.ComputeAll()
 		}
 	}
