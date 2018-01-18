@@ -47,6 +47,10 @@ type ComputationMatrix struct {
 	computations         []*Computation
 	computationsLeft     int
 	computationsMarker   map[string]struct{}
+
+	resultsMu       *sync.Mutex
+	results         map[string]*Result
+	resultFragments map[string][]*ResultFragment
 }
 
 func NewComputationMatrix() *ComputationMatrix {
@@ -58,6 +62,10 @@ func NewComputationMatrix() *ComputationMatrix {
 		computations:         []*Computation{},
 		computationsLeft:     0,
 		computationsMarker:   map[string]struct{}{},
+
+		resultsMu:       new(sync.Mutex),
+		results:         map[string]*Result{},
+		resultFragments: map[string][]*ResultFragment{},
 	}
 }
 
@@ -108,4 +116,12 @@ func (matrix *ComputationMatrix) WaitForComputations(max int) []*Computation {
 	}
 	matrix.computationsLeft -= len(computations)
 	return computations
+}
+
+func (matrix *ComputationMatrix) AddResultFragment(resultFragment *ResultFragment) (*Result, error) {
+	matrix.resultsMu.Lock()
+	defer matrix.resultsMu.Unlock()
+
+	resultID := ResultID(crypto.Keccak256(resultFragment.BuyOrderID[:], resultFragment.SellOrderID[:]))
+	matrix.resultFragments[string(resultID)] = append(matrix.resultFragments[string(resultID)], resultFragment)
 }
