@@ -118,10 +118,23 @@ func (matrix *ComputationMatrix) WaitForComputations(max int) []*Computation {
 	return computations
 }
 
-func (matrix *ComputationMatrix) AddResultFragment(resultFragment *ResultFragment) (*Result, error) {
+func (matrix *ComputationMatrix) AddResultFragment(k int, prime *big.Int, resultFragment *ResultFragment) (*Result, error) {
 	matrix.resultsMu.Lock()
 	defer matrix.resultsMu.Unlock()
 
 	resultID := ResultID(crypto.Keccak256(resultFragment.BuyOrderID[:], resultFragment.SellOrderID[:]))
 	matrix.resultFragments[string(resultID)] = append(matrix.resultFragments[string(resultID)], resultFragment)
+
+	if len(matrix.resultFragments[string(resultID)]) >= k {
+		if result, ok := matrix.results[string(resultID)]; result != nil && ok {
+			return result, nil
+		}
+		result, err := NewResult(prime, matrix.resultFragments[string(resultID)])
+		if err != nil {
+			return nil, err
+		}
+		matrix.results[string(resultID)] = result
+		return result, nil
+	}
+	return nil, nil
 }
