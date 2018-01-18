@@ -124,7 +124,7 @@ func (matrix *ComputationMatrix) WaitForComputations(max int) []*Computation {
 	return computations
 }
 
-func (matrix *ComputationMatrix) AddResultFragments(k int, prime *big.Int, resultFragments []*ResultFragment) ([]*Result, error) {
+func (matrix *ComputationMatrix) AddResultFragments(k int64, prime *big.Int, resultFragments []*ResultFragment) ([]*Result, error) {
 	matrix.resultsMu.Lock()
 	defer matrix.resultsMu.Unlock()
 
