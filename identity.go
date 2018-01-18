@@ -64,12 +64,12 @@ func (keyPair KeyPair) Address() Address {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (keyPair KeyPair) MarshalJSON() ([]byte, error) {
-	return crypto.FromECDSA(keyPair.PrivateKey), nil
+	return []byte(base58.Encode(crypto.FromECDSA(keyPair.PrivateKey))), nil
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (keyPair KeyPair) UnmarshalJSON(data []byte) error {
-	privateKey, err := crypto.ToECDSA(data)
+	privateKey, err := crypto.ToECDSA(base58.Decode(string(data)))
 	if err != nil {
 		return err
 	}
