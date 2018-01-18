@@ -3,6 +3,9 @@ package compute
 import (
 	"bytes"
 	"encoding/binary"
+	"math/big"
+
+	"github.com/republicprotocol/go-sss"
 
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -44,26 +47,26 @@ type Order struct {
 	Buy  int64
 
 	// Private data.
-	LittleCode CurrencyCode
-	BigCode    CurrencyCode
-	Price      int64
-	MaxVolume  int64
-	MinVolume  int64
-	Nonce      int64
+	FstCode   CurrencyCode
+	SndCode   CurrencyCode
+	Price     int64
+	MaxVolume int64
+	MinVolume int64
+	Nonce     int64
 }
 
 // NewOrder returns a new Order and computes the OrderID for the Order.
-func NewOrder(ty OrderType, buy int64, littleCode CurrencyCode, bigCode CurrencyCode, price int64, maxVolume int64, minVolume int64, nonce int64) *Order {
+func NewOrder(ty OrderType, buy int64, fstCode CurrencyCode, sndCode CurrencyCode, price int64, maxVolume int64, minVolume int64, nonce int64) *Order {
 	order := &Order{
 		Type: ty,
 		Buy:  buy,
 
-		LittleCode: littleCode,
-		BigCode:    bigCode,
-		Price:      price,
-		MaxVolume:  maxVolume,
-		MinVolume:  minVolume,
-		Nonce:      nonce,
+		FstCode:   fstCode,
+		SndCode:   sndCode,
+		Price:     price,
+		MaxVolume: maxVolume,
+		MinVolume: minVolume,
+		Nonce:     nonce,
 	}
 	order.ID = OrderID(crypto.Keccak256(order.Bytes()))
 	return order
@@ -74,11 +77,39 @@ func (order *Order) Bytes() []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, order.Type)
 	binary.Write(buf, binary.LittleEndian, order.Buy)
-	binary.Write(buf, binary.LittleEndian, order.LittleCode)
-	binary.Write(buf, binary.LittleEndian, order.BigCode)
+	binary.Write(buf, binary.LittleEndian, order.FstCode)
+	binary.Write(buf, binary.LittleEndian, order.SndCode)
 	binary.Write(buf, binary.LittleEndian, order.Price)
 	binary.Write(buf, binary.LittleEndian, order.MaxVolume)
 	binary.Write(buf, binary.LittleEndian, order.MinVolume)
 	binary.Write(buf, binary.LittleEndian, order.Nonce)
 	return buf.Bytes()
+}
+
+func (order *Order) Split(n, k int64, prime *big.Int) ([]*OrderFragment, error) {
+	fstCodeShares, err := sss.Split(n, k, prime, big.NewInt(int64(order.FstCode)))
+	if err != nil {
+		return nil, err
+	}
+	sndCodeShares, err := sss.Split(n, k, prime, big.NewInt(int64(order.SndCode)))
+	if err != nil {
+		return nil, err
+	}
+	priceShares, err := sss.Split(n, k, prime, big.NewInt(order.Price))
+	if err != nil {
+		return nil, err
+	}
+	maxVolumeShares, err := sss.Split(n, k, prime, big.NewInt(order.MaxVolume))
+	if err != nil {
+		return nil, err
+	}
+	minVolumeShares, err := sss.Split(n, k, prime, big.NewInt(order.MinVolume))
+	if err != nil {
+		return nil, err
+	}
+	orderFragments := make([]*OrderFragment, n)
+	for i := int64(0); i < n; i++ {
+		orderFragments[i] = NewOrderFragment(OrderIDs{order.ID}, fstCodeShares[i], sndCodeShares[i], priceShares[i], maxVolumeShares[i], minVolumeShares[i])
+	}
+	return orderFragments, nil
 }

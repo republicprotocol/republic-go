@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network"
+	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-network/rpc"
 )
 
@@ -27,7 +28,12 @@ func newSendFragmentDelegate() *sendFragmentDelegate {
 func (delegate *sendFragmentDelegate) OnPingReceived(peer identity.MultiAddress) {
 }
 
-func (delegate *sendFragmentDelegate) OnOrderFragmentReceived() {
+func (delegate *sendFragmentDelegate) OnOrderFragmentReceived(orderFragment compute.OrderFragment) {
+	atomic.AddInt32(&delegate.numberOfFragments, 1)
+}
+
+func (delegate *sendFragmentDelegate) OnComputedOrderFragmentReceived(orderFragment compute.OrderFragment) {
+	
 	atomic.AddInt32(&delegate.numberOfFragments, 1)
 }
 
@@ -48,8 +54,6 @@ var _ = Describe("Send order fragment", func() {
 				orderFragment := &rpc.OrderFragment{
 					To:              string(address),
 					From:            string(from.MultiAddress.String()),
-					OrderID:         []byte("orderID"),
-					OrderFragmentID: []byte("fragmentID"),
 					OrderFragment:   []byte(address),
 				}
 
