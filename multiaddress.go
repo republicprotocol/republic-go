@@ -65,7 +65,11 @@ func (multiAddr MultiAddress) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (multiAddr MultiAddress) UnmarshalJSON(data []byte) error {
-	addr, err := NewMultiAddressFromBytes(data)
+	str := ""
+	if err := json.Unmarshal(data, str); err != nil {
+		return err
+	}
+	addr, err := NewMultiAddressFromString(str)
 	if err != nil {
 		return err
 	}
