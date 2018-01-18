@@ -74,13 +74,13 @@ func (result *Result) IsMatch() bool {
 	if result.SndCode.Cmp(big.NewInt(0)) != 0 {
 		return false
 	}
-	if result.Price.Cmp(big.NewInt(0)) != 1 {
+	if result.Price.Cmp(big.NewInt(0)) == -1 {
 		return false
 	}
-	if result.MaxVolume.Cmp(big.NewInt(0)) != 1 {
+	if result.MaxVolume.Cmp(big.NewInt(0)) == -1 {
 		return false
 	}
-	if result.MinVolume.Cmp(big.NewInt(0)) != 1 {
+	if result.MinVolume.Cmp(big.NewInt(0)) == -1 {
 		return false
 	}
 	return true

@@ -83,6 +83,9 @@ func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) 
 		if orderFragment.OrderID.Equals(other.OrderID) {
 			continue
 		}
+		if err := orderFragment.IsCompatible(other); err != nil {
+			continue
+		}
 		computation, err := NewComputation(orderFragment, other)
 		if err != nil {
 			continue
@@ -112,29 +115,35 @@ func (matrix *ComputationMatrix) WaitForComputations(max int) []*Computation {
 		if _, ok := matrix.computationsMarker[string(computation.ID)]; !ok {
 			matrix.computationsMarker[string(computation.ID)] = struct{}{}
 			computations = append(computations, computation)
+			if len(computations) == max {
+				break
+			}
 		}
 	}
 	matrix.computationsLeft -= len(computations)
 	return computations
 }
 
-func (matrix *ComputationMatrix) AddResultFragment(k int, prime *big.Int, resultFragment *ResultFragment) (*Result, error) {
+func (matrix *ComputationMatrix) AddResultFragments(k int, prime *big.Int, resultFragments []*ResultFragment) ([]*Result, error) {
 	matrix.resultsMu.Lock()
 	defer matrix.resultsMu.Unlock()
 
-	resultID := ResultID(crypto.Keccak256(resultFragment.BuyOrderID[:], resultFragment.SellOrderID[:]))
-	matrix.resultFragments[string(resultID)] = append(matrix.resultFragments[string(resultID)], resultFragment)
+	results := make([]*Result, 0, len(resultFragments))
+	for _, resultFragment := range resultFragments {
+		resultID := ResultID(crypto.Keccak256(resultFragment.BuyOrderID[:], resultFragment.SellOrderID[:]))
+		matrix.resultFragments[string(resultID)] = append(matrix.resultFragments[string(resultID)], resultFragment)
 
-	if len(matrix.resultFragments[string(resultID)]) >= k {
-		if result, ok := matrix.results[string(resultID)]; result != nil && ok {
-			return result, nil
+		if len(matrix.resultFragments[string(resultID)]) >= k {
+			if result, ok := matrix.results[string(resultID)]; result != nil && ok {
+				results = append(results, result)
+			}
+			result, err := NewResult(prime, matrix.resultFragments[string(resultID)])
+			if err != nil {
+				return results, err
+			}
+			matrix.results[string(resultID)] = result
+			results = append(results, result)
 		}
-		result, err := NewResult(prime, matrix.resultFragments[string(resultID)])
-		if err != nil {
-			return nil, err
-		}
-		matrix.results[string(resultID)] = result
-		return result, nil
 	}
-	return nil, nil
+	return results, nil
 }

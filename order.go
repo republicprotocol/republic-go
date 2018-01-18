@@ -176,6 +176,7 @@ func NewOrderFragment(orderID OrderID, orderType OrderType, orderBuySell OrderBu
 
 // Add two OrderFragments together and return the resulting output
 // OrderFragment. The output OrderFragment will have its ID computed.
+// TODO: Review this function. Do we need it?
 func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*ResultFragment, error) {
 	// Check that the OrderFragments have compatible sss.Shares, and that one
 	// of them is an OrderBuy and the other is an OrderSell.
@@ -269,11 +270,11 @@ func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*
 	}
 	maxVolumeShare := sss.Share{
 		Key:   buyOrderFragment.MaxVolumeShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.MaxVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.MaxVolumeShare.Value)),
+		Value: big.NewInt(0).Add(buyOrderFragment.MaxVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.MinVolumeShare.Value)),
 	}
 	minVolumeShare := sss.Share{
 		Key:   buyOrderFragment.MinVolumeShare.Key,
-		Value: big.NewInt(0).Add(sellOrderFragment.MinVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, buyOrderFragment.MinVolumeShare.Value)),
+		Value: big.NewInt(0).Add(sellOrderFragment.MaxVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, buyOrderFragment.MinVolumeShare.Value)),
 	}
 	fstCodeShare.Value.Mod(fstCodeShare.Value, prime)
 	sndCodeShare.Value.Mod(sndCodeShare.Value, prime)
