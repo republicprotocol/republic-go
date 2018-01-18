@@ -53,25 +53,25 @@
   branch = "master"
   name = "github.com/republicprotocol/go-dht"
   packages = ["."]
-  revision = "736898f248ec3190fd5e725ee2140e694155288c"
+  revision = "f6beed2dc48e993fa10e87a036c57ec590253f39"
 
 [[projects]]
   branch = "master"
   name = "github.com/republicprotocol/go-identity"
   packages = ["."]
-  revision = "2bf7485392311d46e4c3e3a696c65ad3dc43b6d7"
+  revision = "68ea3b4b69ae284f989e41c313a2ba987f235801"
 
 [[projects]]
   branch = "master"
   name = "github.com/republicprotocol/go-order-compute"
   packages = ["."]
-  revision = "505dc9d5052ec5fbac00c84b18d2e1240458c524"
+  revision = "6e12159254addc36e098f7c75e4aa95f333be4b0"
 
 [[projects]]
   branch = "master"
   name = "github.com/republicprotocol/go-sss"
   packages = ["."]
-  revision = "16f699b5434420904786ddcd586fd615efa1652b"
+  revision = "47903cbdcbb1870dce96948767830a0b9af8ccc7"
 
 [[projects]]
   name = "github.com/spaolacci/murmur3"
@@ -83,19 +83,19 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["blake2b","blake2s","sha3"]
-  revision = "b3c9a1d25cfbbbab0ff4780b71c4f54e6e92a0de"
+  revision = "13931e22f9e72ea58bb73048bc752b48c6d4d4ac"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context","html","html/atom","html/charset","http2","http2/hpack","idna","internal/timeseries","lex/httplex","trace"]
-  revision = "434ec0c7fe3742c984919a691b2018a6e9694425"
+  revision = "5ccada7d0a7ba9aeb5d3aca8d3501b4c2a509fec"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "810d7000345868fc619eb81f46307107118f4ae1"
+  revision = "fff93fa7cd278d84afc205751523809c464168ab"
 
 [[projects]]
   branch = "master"

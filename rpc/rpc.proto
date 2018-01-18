@@ -24,7 +24,13 @@ service Node {
 message OrderFragment {
   string to = 1;
   string from = 2;
-  bytes orderFragment = 3;
+  bytes id = 3;
+  repeated bytes orderIDs = 4;
+  bytes fstCodeShare = 5;
+  bytes sndCodeShare = 6;
+  bytes priceShare = 7;
+  bytes maxVolumeShare = 8;
+  bytes minVolumeShare = 9;
 }
 
 // A ResultFragment message is the network representation of a
