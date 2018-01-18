@@ -20,7 +20,7 @@ It is the responsibility of the programmer to ensure that the function being use
 
 ## Process
 
-A `Process` accepts a set of process functions that are executed concurrently and all return values are written to a channel. No specific order of return values being written to the channel is guranteed. Using channels to handle return values is simpler and safer than trying to synchronize using share memory. The official Go documentation recommends the use of channels over shared memory.
+A `Process` accepts a set of process functions that are executed concurrently and all return values are written to a channel. The of order of the return values being written to the channel is the same as the order of the set of functions. Using channels to handle return values is simpler and safer than trying to synchronize using share memory. The official Go documentation recommends the use of channels over shared memory.
 
 ```go
 ret := do.Process(func() do.Option {
@@ -28,8 +28,8 @@ ret := do.Process(func() do.Option {
 }, func() do.Option {
     return do.Ok(2)
 })
-log.Println("First", <- ret)
-log.Println("Seconds", <- ret)
+log.Println("1st", <- ret)
+log.Println("2nd", <- ret)
 ```
 
 ### Begin and CoBegin
