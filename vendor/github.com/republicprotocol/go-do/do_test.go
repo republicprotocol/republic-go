@@ -79,11 +79,17 @@ var _ = Describe("Concurrency", func() {
 	})
 
 	Context("when using a process", func() {
-		It("should write the return value to a channel", func() {
-			ret := <-Process(func() Option {
-				return Ok(1 + 2)
+		It("should write the return values to a channel in the correct order", func() {
+			ret := Process(func() Option {
+				return Ok(1)
+			}, func() Option {
+				return Ok(2)
+			}, func() Option {
+				return Ok(3)
 			})
-			Ω(ret.Ok).Should(Equal(3))
+			Ω((<-ret).Ok).Should(Equal(1))
+			Ω((<-ret).Ok).Should(Equal(2))
+			Ω((<-ret).Ok).Should(Equal(3))
 		})
 
 		It("should write the error to a channel", func() {

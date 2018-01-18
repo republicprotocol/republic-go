@@ -70,19 +70,48 @@ func ForAll(data interface{}, f func(i int)) {
 	}
 }
 
+// CoForAll is the same as ForAll expect it uses one goroutine per item in the
+// data set.
+func CoForAll(data interface{}, f func(i int)) {
+	switch reflect.TypeOf(data).Kind() {
+	case reflect.Array, reflect.Slice:
+		// Apply the function in parallel over the data.
+		length := reflect.ValueOf(data).Len()
+		var wg sync.WaitGroup
+		wg.Add(length)
+		for i := 0; i < length; i++ {
+			go func(i int) {
+				defer wg.Done()
+				f(i)
+			}(i)
+		}
+		wg.Wait()
+	}
+}
+
 // Process runs each function in a goroutine and writes the return values to a
-// channel.
+// channel. The values will be written to the channel in the same order that
+// the process functions are provided.
 func Process(fs ...func() Option) chan Option {
-	ch := make(chan Option)
+	guards := make([]*sync.Mutex, len(fs))
+	for i := range fs {
+		guards[i] = new(sync.Mutex)
+		guards[i].Lock()
+	}
+	ch := make(chan Option, len(fs))
 
 	// Create a wait group for all processes.
 	var wg sync.WaitGroup
 	wg.Add(len(fs))
-	for _, f := range fs {
-		go func(f func() Option) {
+	for i, f := range fs {
+		go func(i int, f func() Option) {
 			defer wg.Done()
+			defer guards[i].Unlock()
+			if i > 0 {
+				guards[i-1].Lock()
+			}
 			ch <- f()
-		}(f)
+		}(i, f)
 	}
 
 	// Run a goroutine that will close the channel when all processes have
@@ -95,25 +124,9 @@ func Process(fs ...func() Option) chan Option {
 	return ch
 }
 
-// CoBegin runs each function on a goroutine and blocks until all functions
-// have terminated. It returns a list of the values produced by each function.
-func CoBegin(fs ...func() Option) []Option {
-	output := make([]Option, len(fs))
-	var wg sync.WaitGroup
-	wg.Add(len(fs))
-	for i, f := range fs {
-		go func(i int, f func() Option) {
-			defer wg.Done()
-			output[i] = f()
-		}(i, f)
-	}
-	wg.Wait()
-	return output
-}
-
-// Begin is similar to CoBegin except that it does not use one gorouting per
-// function. Instead it distributes the functions evenly over a number of
-// goroutines equal to the number of CPUs.
+// Begin runs each function and blocks until all functions have terminated. It
+// distributes the functions evenly over a number of goroutines equal to the
+// number of CPUs.
 func Begin(fs ...func() Option) []Option {
 	// Calculate workload size per CPU.
 	length := len(fs)
@@ -130,6 +143,21 @@ func Begin(fs ...func() Option) []Option {
 				output[i] = fs[i]()
 			}
 		}(offset)
+	}
+	wg.Wait()
+	return output
+}
+
+// CoBegin is the same as Begin expect it uses one goroutine per function.
+func CoBegin(fs ...func() Option) []Option {
+	output := make([]Option, len(fs))
+	var wg sync.WaitGroup
+	wg.Add(len(fs))
+	for i, f := range fs {
+		go func(i int, f func() Option) {
+			defer wg.Done()
+			output[i] = f()
+		}(i, f)
 	}
 	wg.Wait()
 	return output
