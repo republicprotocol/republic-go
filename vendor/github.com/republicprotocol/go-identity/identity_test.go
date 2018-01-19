@@ -65,6 +65,17 @@ var _ = Describe("", func() {
 			})
 		})
 
+		It("should encode and decode to JSON", func() {
+			keyPair, err := identity.NewKeyPair()
+			Ω(err).ShouldNot(HaveOccurred())
+			data, err := keyPair.MarshalJSON()
+			Ω(err).ShouldNot(HaveOccurred())
+			newKeyPair := &identity.KeyPair{}
+			err = newKeyPair.UnmarshalJSON(data)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(keyPair.ID().String()).Should(Equal(newKeyPair.ID().String()))
+		})
+
 	})
 
 	Describe("Republic IDs", func() {
