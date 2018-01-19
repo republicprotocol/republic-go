@@ -68,7 +68,18 @@ func (node *Node) RPCSendResultFragment(target identity.MultiAddress, fragment *
 	defer cancel()
 
 	// Call the SendOrderFragment RPC on the target.
-	multi, err := client.SendResultFragment(ctx, SerializeResultFragment(fragment), grpc.FailFast(false))
+	resultFragment := SerializeResultFragment(fragment)
+	to, err := target.Address()
+	if err != nil {
+		return nil, err
+	}
+	from, err := node.MultiAddress.Address()
+	if err != nil {
+		return nil, err
+	}
+	resultFragment.To = &rpc.Address{Address: to.String()}
+	resultFragment.From = &rpc.Address{Address: from.String()}
+	multi, err := client.SendResultFragment(ctx, resultFragment, grpc.FailFast(false))
 	if err != nil {
 		return nil, err
 	}
