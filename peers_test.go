@@ -95,4 +95,4 @@ var _ = Describe("Peers RPC", func() {
 		})
 	}
 
-// })
+})
