@@ -2,11 +2,51 @@ package network
 
 import (
 	"log"
+	"time"
 
+	identity "github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network/rpc"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-sss"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
+
+func SendOrderFragment(target identity.MultiAddress, orderFragment *compute.OrderFragment) (*identity.MultiAddress, error) {
+	// Connect to the target.
+	conn, err := Dial(target)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	client := rpc.NewNodeClient(conn)
+
+	// Create a timeout context.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// Call the SendOrderFragment RPC on the target.
+	serializedOrderFragment := SerializeOrderFragment(orderFragment)
+	to, err := target.Address()
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	serializedOrderFragment.To = &rpc.Address{Address: to.String()}
+	serializedOrderFragment.From = &rpc.Address{Address: ""}
+	multi, err := client.SendOrderFragment(ctx, serializedOrderFragment, grpc.FailFast(false))
+	if err != nil {
+		return nil, err
+	}
+
+	ret, err := identity.NewMultiAddressFromString(multi.Multi)
+	if err != nil {
+		return nil, err
+	}
+	return &ret, nil
+}
 
 func SerializeResultFragment(input *compute.ResultFragment) *rpc.ResultFragment {
 	resultFragment := &rpc.ResultFragment{

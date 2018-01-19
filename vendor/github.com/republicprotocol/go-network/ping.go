@@ -1,6 +1,7 @@
 package network
 
 import (
+	"log"
 	"time"
 
 	"github.com/republicprotocol/go-dht"
@@ -44,6 +45,8 @@ func (node *Node) RPCPing(target identity.MultiAddress) (*identity.MultiAddress,
 // If the Node does not respond, or it responds with an error, then the
 // connection is considered unhealthy.
 func (node *Node) Ping(ctx context.Context, peer *rpc.MultiAddress) (*rpc.MultiAddress, error) {
+	log.Println("received call to Ping")
+
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
