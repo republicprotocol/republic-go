@@ -77,7 +77,7 @@
   branch = "master"
   name = "github.com/republicprotocol/go-order-compute"
   packages = ["."]
-  revision = "2964d38d617573947325fc88a7bacf964762a0d8"
+  revision = "b387e22d7f6016af42fcdf7e2fb5b0e5f2ec17aa"
 
 [[projects]]
   branch = "master"

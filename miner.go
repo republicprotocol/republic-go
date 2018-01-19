@@ -54,7 +54,6 @@ func (miner *Miner) OnOrderFragmentReceived(orderFragment *compute.OrderFragment
 	log.Println("received order fragment =", base58.Encode(orderFragment.ID))
 	miner.ComputationMatrix.AddOrderFragment(orderFragment)
 	log.Println("computation matrix updated")
-	log.Println(miner.ComputationMatrix)
 }
 
 func (miner *Miner) OnResultFragmentReceived(resultFragment *compute.ResultFragment) {
@@ -122,7 +121,7 @@ func (miner Miner) addResultFragments(resultFragments []*compute.ResultFragment)
 	results, _ := miner.ComputationMatrix.AddResultFragments(K, Prime, resultFragments)
 	for _, result := range results {
 		if result.IsMatch() {
-			log.Println("match found for buy =", base58.Encode(result.BuyOrderID), ",", "sell =", base58.Encode(result.SellOrderID))
+			log.Println("match found for buy =", base58.Encode(result.BuyOrderID), ", sell =", base58.Encode(result.SellOrderID))
 		}
 	}
 }

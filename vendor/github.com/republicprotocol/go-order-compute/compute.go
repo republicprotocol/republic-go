@@ -1,7 +1,6 @@
 package compute
 
 import (
-	"log"
 	"math/big"
 	"sync"
 
@@ -74,14 +73,12 @@ func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) 
 	matrix.computationsMu.Lock()
 	defer matrix.computationsMu.Unlock()
 
-	log.Println("checking existing order fragments")
 	for _, rhs := range matrix.orderFragments {
 		if orderFragment.ID.Equals(rhs.ID) {
 			return
 		}
 	}
 
-	log.Println("generating new computations")
 	for _, other := range matrix.orderFragments {
 		if orderFragment.OrderID.Equals(other.OrderID) {
 			continue
@@ -94,10 +91,9 @@ func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) 
 			continue
 		}
 		matrix.computations = append(matrix.computations, computation)
-		matrix.computationsLeft++
+		matrix.computationsLeft++ // FIXME: There is a race condition on this variable.
 	}
 
-	log.Println(matrix.computationsLeft, "computations available")
 	matrix.orderFragments = append(matrix.orderFragments, orderFragment)
 	if matrix.computationsLeft > 0 {
 		matrix.computationsLeftCond.Signal()
@@ -139,7 +135,8 @@ func (matrix *ComputationMatrix) AddResultFragments(k int64, prime *big.Int, res
 
 		if int64(len(matrix.resultFragments[string(resultID)])) >= k {
 			if result, ok := matrix.results[string(resultID)]; result != nil && ok {
-				results = append(results, result)
+				// FIXME: At the moment we are only returning new results. Do
+				// we want to return results we have already found?
 				continue
 			}
 			result, err := NewResult(prime, matrix.resultFragments[string(resultID)])
