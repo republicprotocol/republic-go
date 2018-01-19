@@ -3,6 +3,7 @@ package network
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sort"
 	"sync"
 	"time"
@@ -96,6 +97,8 @@ func (node *Node) RPCSendResultFragment(target identity.MultiAddress, fragment *
 // Dijkstra search, using the XOR distance between identity.Addresses as the
 // distance heuristic.
 func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.MultiAddress, error) {
+	log.Println("received call to SendOrderFragment")
+
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
 		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, err
