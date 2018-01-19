@@ -105,14 +105,14 @@ func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) 
 }
 
 func (matrix *ComputationMatrix) WaitForComputations(max int) []*Computation {
-	matrix.computationsMu.Lock()
-	defer matrix.computationsMu.Unlock()
-
 	matrix.computationsLeftCond.L.Lock()
 	defer matrix.computationsLeftCond.L.Unlock()
 	for matrix.computationsLeft == 0 {
 		matrix.computationsLeftCond.Wait()
 	}
+
+	matrix.computationsMu.Lock()
+	defer matrix.computationsMu.Unlock()
 
 	computations := make([]*Computation, 0, max)
 	for _, computation := range matrix.computations {
