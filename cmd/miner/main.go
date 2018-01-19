@@ -16,6 +16,14 @@ func main() {
 		flag.Usage()
 		return
 	}
+
+	miner, err := miner.NewMiner(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	quit := make(chan struct{})
+	miner.Mine(quit)
 }
 
 func parseCommandLineFlags() error {
@@ -27,7 +35,7 @@ func parseCommandLineFlags() error {
 		return errors.New("no config file given")
 	}
 
-	conf, err := miner.LoadConfig(confFilename)
+	conf, err := miner.LoadConfig(*confFilename)
 	if err != nil {
 		return err
 	}
