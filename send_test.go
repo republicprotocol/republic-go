@@ -11,8 +11,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network"
-	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-network/rpc"
+	"github.com/republicprotocol/go-order-compute"
 )
 
 type sendFragmentDelegate struct {
@@ -28,12 +28,11 @@ func newSendFragmentDelegate() *sendFragmentDelegate {
 func (delegate *sendFragmentDelegate) OnPingReceived(peer identity.MultiAddress) {
 }
 
-func (delegate *sendFragmentDelegate) OnOrderFragmentReceived(orderFragment compute.OrderFragment) {
+func (delegate *sendFragmentDelegate) OnOrderFragmentReceived(orderFragment *compute.OrderFragment) {
 	atomic.AddInt32(&delegate.numberOfFragments, 1)
 }
 
-func (delegate *sendFragmentDelegate) OnComputedOrderFragmentReceived(orderFragment compute.OrderFragment) {
-	
+func (delegate *sendFragmentDelegate) OnResultFragmentReceived(orderFragment *compute.ResultFragment) {
 	atomic.AddInt32(&delegate.numberOfFragments, 1)
 }
 
@@ -52,9 +51,9 @@ var _ = Describe("Send order fragment", func() {
 				address, err := to.MultiAddress.Address()
 				Ω(err).ShouldNot(HaveOccurred())
 				orderFragment := &rpc.OrderFragment{
-					To:              string(address),
-					From:            string(from.MultiAddress.String()),
-					OrderFragment:   []byte(address),
+					To:   &rpc.Address{address.String()},
+					From: &rpc.Address{from.MultiAddress.String()},
+					Id:   []byte(address),
 				}
 
 				_, err = from.SendOrderFragment(context.Background(), orderFragment)
