@@ -1,6 +1,7 @@
 package network
 
 import (
+	"log"
 	"time"
 
 	identity "github.com/republicprotocol/go-identity"
@@ -46,6 +47,8 @@ func (node *Node) RPCPeers(target identity.MultiAddress) (identity.MultiAddresse
 // The rpc.MultiAddresses returned are not guaranteed to provide healthy
 // connections and should be pinged.
 func (node *Node) Peers(ctx context.Context, sender *rpc.Nothing) (*rpc.MultiAddresses, error) {
+	log.Println("received call to Peers")
+
 	if err := ctx.Err(); err != nil {
 		return &rpc.MultiAddresses{}, err
 	}

@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"log"
 	"net"
 
 	"github.com/republicprotocol/go-dht"
@@ -86,6 +87,7 @@ func (node *Node) Serve() error {
 	}
 	rpc.RegisterNodeServer(node.Server, node)
 	reflection.Register(node.Server)
+	log.Printf("Listening at %s:%s", host, port)
 	return node.Server.Serve(listener)
 }
 

@@ -71,13 +71,13 @@
   branch = "master"
   name = "github.com/republicprotocol/go-network"
   packages = [".","rpc"]
-  revision = "cf024cfcf2c26ad1b817aabe23b551e9bf2e598b"
+  revision = "e3772abde8a078f884cb38dc19bbc50c9e710cc6"
 
 [[projects]]
   branch = "master"
   name = "github.com/republicprotocol/go-order-compute"
   packages = ["."]
-  revision = "c936404c6f96fc7b9aedbd4a8daf7e11a67ce6a6"
+  revision = "c8db3266bfeed4cfd09c006b8db814afad0d3724"
 
 [[projects]]
   branch = "master"

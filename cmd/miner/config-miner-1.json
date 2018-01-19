@@ -1,1 +1,8 @@
-{"key":"DbHBZXR7Mo81LWG3friKBbYAqHQyhdFUX8S57pSMnHmf","multi":"/ip4/127.0.0.1/tcp/3001/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS","bootstrap_multis":["/ip4/127.0.0.1/tcp/3002/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE","/ip4/127.0.0.1/tcp/3000/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto"]}
+{
+  "key": "DbHBZXR7Mo81LWG3friKBbYAqHQyhdFUX8S57pSMnHmf",
+  "multi": "/ip4/127.0.0.1/tcp/3001/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
+  "bootstrap_multis": [
+    "/ip4/127.0.0.1/tcp/3000/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
+    "/ip4/127.0.0.1/tcp/3002/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE"
+  ]
+}

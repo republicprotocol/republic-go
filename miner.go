@@ -25,8 +25,10 @@ type Miner struct {
 	*compute.ComputationMatrix
 }
 
-func NewMiner(config Config) (*Miner, error) {
-	miner := &Miner{}
+func NewMiner(config *Config) (*Miner, error) {
+	miner := &Miner{
+		ComputationMatrix: compute.NewComputationMatrix(),
+	}
 	node, err := network.NewNode(config.Multi, config.BootstrapMultis, miner)
 	if err != nil {
 		return nil, err
