@@ -53,13 +53,25 @@
   branch = "master"
   name = "github.com/republicprotocol/go-dht"
   packages = ["."]
-  revision = "736898f248ec3190fd5e725ee2140e694155288c"
+  revision = "f6beed2dc48e993fa10e87a036c57ec590253f39"
 
 [[projects]]
   branch = "master"
   name = "github.com/republicprotocol/go-identity"
   packages = ["."]
-  revision = "2bf7485392311d46e4c3e3a696c65ad3dc43b6d7"
+  revision = "4540bf66c706dcb6d1a37c8177ad8d5761c4f55e"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/republicprotocol/go-order-compute"
+  packages = ["."]
+  revision = "c936404c6f96fc7b9aedbd4a8daf7e11a67ce6a6"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/republicprotocol/go-sss"
+  packages = ["."]
+  revision = "0571621e3b7c88bc995fce972bd3e82fd30d75c6"
 
 [[projects]]
   name = "github.com/spaolacci/murmur3"
@@ -71,19 +83,19 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["blake2b","blake2s","sha3"]
-  revision = "b3c9a1d25cfbbbab0ff4780b71c4f54e6e92a0de"
+  revision = "13931e22f9e72ea58bb73048bc752b48c6d4d4ac"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context","html","html/atom","html/charset","http2","http2/hpack","idna","internal/timeseries","lex/httplex","trace"]
-  revision = "434ec0c7fe3742c984919a691b2018a6e9694425"
+  revision = "5ccada7d0a7ba9aeb5d3aca8d3501b4c2a509fec"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "810d7000345868fc619eb81f46307107118f4ae1"
+  revision = "2c42eef0765b9837fbdab12011af7830f55f88f0"
 
 [[projects]]
   branch = "master"
@@ -118,6 +130,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fe01d013642e05e4032ee921717f381872c5d17c1a909c88d012691dbe089b3f"
+  inputs-digest = "bb39a2b7d14c8aed78f7e44f87025b8d6548f2557bb0937d1a8367e054e067cd"
   solver-name = "gps-cdcl"
   solver-version = 1

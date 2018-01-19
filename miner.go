@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"runtime"
 
+	"github.com/jbenet/go-base58"
+
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network"
@@ -36,12 +38,19 @@ func NewMiner(config Config) (*Miner, error) {
 func (miner *Miner) OnPingReceived(peer identity.MultiAddress) {
 }
 
-func (miner *Miner) OnOrderFragmentReceived(orderFragment compute.OrderFragment) {
-	// miner.ComputationMatrix.FillComputations(&orderFragment)
+func (miner *Miner) OnOrderFragmentReceived(orderFragment *compute.OrderFragment) {
+	log.Println("received order fragment =", base58.Encode(orderFragment.ID))
+	miner.ComputationMatrix.AddOrderFragment(orderFragment)
 }
 
-func (miner *Miner) OnComputedOrderFragmentReceived(orderFragment compute.OrderFragment) {
-	// miner.ComputeReconstruction(&orderFragment)
+func (miner *Miner) OnResultFragmentReceived(resultFragment *compute.ResultFragment) {
+	log.Println("received result fragment =", base58.Encode(resultFragment.ID))
+	results, _ := miner.ComputationMatrix.AddResultFragments(K, Prime, []*compute.ResultFragment{resultFragment})
+	for _, result := range results {
+		if result.IsMatch() {
+			log.Println("buy =", result.BuyOrderID, ",", "sell =", result.SellOrderID)
+		}
+	}
 }
 
 func (miner *Miner) Mine(quit chan struct{}) {
@@ -85,7 +94,7 @@ func (miner Miner) ComputeAll() {
 		results, _ := miner.ComputationMatrix.AddResultFragments(K, Prime, resultFragmentsOk)
 		for _, result := range results {
 			if result.IsMatch() {
-				log.Println("buy =", result.BuyOrderID, ",", "sell =", result.SellOrderID)
+				log.Println("buy =", base58.Encode(result.BuyOrderID), ",", "sell =", base58.Encode((result.SellOrderID)))
 			}
 		}
 	}()
@@ -101,7 +110,7 @@ func (miner Miner) Compute(computation *compute.Computation) (*compute.ResultFra
 	}
 	go func() {
 		for _, multi := range miner.DHT.MultiAddresses() {
-			network.RPCSendComputedOrderFragment(multi, resultFragment)
+			miner.RPCSendResultFragment(multi, resultFragment)
 		}
 	}()
 	return resultFragment, nil

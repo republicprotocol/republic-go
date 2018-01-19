@@ -133,7 +133,7 @@ func (matrix *ComputationMatrix) AddResultFragments(k int64, prime *big.Int, res
 		resultID := ResultID(crypto.Keccak256(resultFragment.BuyOrderID[:], resultFragment.SellOrderID[:]))
 		matrix.resultFragments[string(resultID)] = append(matrix.resultFragments[string(resultID)], resultFragment)
 
-		if len(matrix.resultFragments[string(resultID)]) >= k {
+		if int64(len(matrix.resultFragments[string(resultID)])) >= k {
 			if result, ok := matrix.results[string(resultID)]; result != nil && ok {
 				results = append(results, result)
 			}

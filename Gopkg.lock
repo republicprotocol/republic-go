@@ -65,13 +65,13 @@
   branch = "master"
   name = "github.com/republicprotocol/go-identity"
   packages = ["."]
-  revision = "68ea3b4b69ae284f989e41c313a2ba987f235801"
+  revision = "4540bf66c706dcb6d1a37c8177ad8d5761c4f55e"
 
 [[projects]]
   branch = "master"
   name = "github.com/republicprotocol/go-network"
   packages = [".","rpc"]
-  revision = "663760951498e006f4eaab5760cb3a6c44d738e6"
+  revision = "cf024cfcf2c26ad1b817aabe23b551e9bf2e598b"
 
 [[projects]]
   branch = "master"
@@ -83,7 +83,7 @@
   branch = "master"
   name = "github.com/republicprotocol/go-sss"
   packages = ["."]
-  revision = "47903cbdcbb1870dce96948767830a0b9af8ccc7"
+  revision = "e07696afc02a0f5fbc6de310ccb8a675ca279cf3"
 
 [[projects]]
   name = "github.com/spaolacci/murmur3"
@@ -142,6 +142,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7032298ab7ae79e6f31de796314c283bc5278d9ed708bafd00e96d6ebbcf6bc8"
+  inputs-digest = "6fdb01d55b1b7483f6f5d718e79910a0b0dae1c536dfc57c7709a44afe346ee6"
   solver-name = "gps-cdcl"
   solver-version = 1
