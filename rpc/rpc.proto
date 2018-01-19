@@ -22,22 +22,29 @@ service Node {
 
 // An OrderFragment is a message contains the details of an order fragment.
 message OrderFragment {
-  string to = 1;
-  string from = 2;
+  // Network data.
+  Address to = 1;
+  Address from = 2;
+
+  // Public data.
   bytes id = 3;
-  repeated bytes orderIDs = 4;
-  bytes fstCodeShare = 5;
-  bytes sndCodeShare = 6;
-  bytes priceShare = 7;
-  bytes maxVolumeShare = 8;
-  bytes minVolumeShare = 9;
+  bytes orderID = 4;
+  int64 orderType = 5;
+  int64 orderBuySell = 6;
+
+  // Private data.
+  bytes fstCodeShare = 7;
+  bytes sndCodeShare = 8;
+  bytes priceShare = 9;
+  bytes maxVolumeShare = 10;
+  bytes minVolumeShare = 11;
 }
 
 // A ResultFragment message is the network representation of a
 // compute.ResultFragment and the metadata needed to distribute it through the
 // network.
 message ResultFragment {
-  // Metadata.
+  // Network data.
   Address to = 1;
   Address from = 2;
 
