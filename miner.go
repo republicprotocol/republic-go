@@ -121,7 +121,7 @@ func (miner Miner) addResultFragments(resultFragments []*compute.ResultFragment)
 	results, _ := miner.ComputationMatrix.AddResultFragments(K, Prime, resultFragments)
 	for _, result := range results {
 		if result.IsMatch() {
-			log.Println("match found for buy =", base58.Encode(result.BuyOrderID), ", sell =", base58.Encode(result.SellOrderID))
+			log.Printf("match found for buy = %s, sell = %s\n", base58.Encode(result.BuyOrderID), base58.Encode(result.SellOrderID))
 		}
 	}
 }

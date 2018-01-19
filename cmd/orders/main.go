@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	base58 "github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-identity"
@@ -86,34 +87,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Println("placing good buy order", base58.Encode(buyOrder.ID))
-	if _, err := network.SendOrderFragment(multiAddress1, buyOrderFragments[0]); err != nil {
-		log.Fatal(err)
-	}
-	log.Println("  sent", base58.Encode(buyOrderFragments[0].ID))
-	if _, err := network.SendOrderFragment(multiAddress2, buyOrderFragments[1]); err != nil {
-		log.Fatal(err)
-	}
-	log.Println("  sent", base58.Encode(buyOrderFragments[1].ID))
-	if _, err := network.SendOrderFragment(multiAddress3, buyOrderFragments[2]); err != nil {
-		log.Fatal(err)
-	}
-	log.Println("  sent", base58.Encode(buyOrderFragments[2].ID))
-
-	log.Println("placing sell order", base58.Encode(sellOrder.ID))
-	if _, err := network.SendOrderFragment(multiAddress1, sellOrderFragments[0]); err != nil {
-		log.Fatal(err)
-	}
-	log.Println("  sent", base58.Encode(sellOrderFragments[0].ID))
-	if _, err := network.SendOrderFragment(multiAddress2, sellOrderFragments[1]); err != nil {
-		log.Fatal(err)
-	}
-	log.Println("  sent", base58.Encode(sellOrderFragments[1].ID))
-	if _, err := network.SendOrderFragment(multiAddress3, sellOrderFragments[2]); err != nil {
-		log.Fatal(err)
-	}
-	log.Println("  sent", base58.Encode(sellOrderFragments[2].ID))
-
 	log.Println("placing bad buy order", base58.Encode(badBuyOrder.ID))
 	if _, err := network.SendOrderFragment(multiAddress1, badBuyOrderFragments[0]); err != nil {
 		log.Fatal(err)
@@ -141,4 +114,34 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Println("  sent", base58.Encode(badSellOrderFragments[2].ID))
+
+	time.Sleep(4 * time.Second)
+
+	log.Println("placing good buy order", base58.Encode(buyOrder.ID))
+	if _, err := network.SendOrderFragment(multiAddress1, buyOrderFragments[0]); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("  sent", base58.Encode(buyOrderFragments[0].ID))
+	if _, err := network.SendOrderFragment(multiAddress2, buyOrderFragments[1]); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("  sent", base58.Encode(buyOrderFragments[1].ID))
+	if _, err := network.SendOrderFragment(multiAddress3, buyOrderFragments[2]); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("  sent", base58.Encode(buyOrderFragments[2].ID))
+
+	log.Println("placing good sell order", base58.Encode(sellOrder.ID))
+	if _, err := network.SendOrderFragment(multiAddress1, sellOrderFragments[0]); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("  sent", base58.Encode(sellOrderFragments[0].ID))
+	if _, err := network.SendOrderFragment(multiAddress2, sellOrderFragments[1]); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("  sent", base58.Encode(sellOrderFragments[1].ID))
+	if _, err := network.SendOrderFragment(multiAddress3, sellOrderFragments[2]); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("  sent", base58.Encode(sellOrderFragments[2].ID))
 }
