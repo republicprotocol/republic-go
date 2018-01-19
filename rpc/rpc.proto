@@ -17,7 +17,7 @@ service Node {
 
   // Send a ResultFragment to some target Node, where the ResultFragment is the
   // result of a computation on two OrderFragments.
-  rpc SendResultFragment (OrderFragment) returns (MultiAddress);
+  rpc SendResultFragment (ResultFragment) returns (MultiAddress);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.

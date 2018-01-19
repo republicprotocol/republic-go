@@ -17,7 +17,7 @@ import (
 // RPCSendOrderFragment sends a SendOrderFragment RPC request to the target
 // using a new grpc.ClientConn and a new rpc.NodeClient. It returns the result
 // of the RPC call, or an error.
-func (node *Node) RPCSendOrderFragment(target identity.MultiAddress, fragment *rpc.OrderFragment) (*identity.MultiAddress, error) {
+func (node *Node) RPCSendOrderFragment(target identity.MultiAddress, fragment *compute.OrderFragment) (*identity.MultiAddress, error) {
 	// Connect to the target.
 	conn, err := Dial(target)
 	if err != nil {
@@ -31,7 +31,7 @@ func (node *Node) RPCSendOrderFragment(target identity.MultiAddress, fragment *r
 	defer cancel()
 
 	// Call the SendOrderFragment RPC on the target.
-	multi, err := client.SendOrderFragment(ctx, fragment, grpc.FailFast(false))
+	multi, err := client.SendOrderFragment(ctx, SerializeOrderFragment(fragment), grpc.FailFast(false))
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (node *Node) RPCSendOrderFragment(target identity.MultiAddress, fragment *r
 	return &ret, nil
 }
 
-func (node *Node) RPCSendComputedOrderFragment(target identity.MultiAddress, fragment *rpc.OrderFragment) (*identity.MultiAddress, error) {
+func (node *Node) RPCSendResultFragment(target identity.MultiAddress, fragment *compute.ResultFragment) (*identity.MultiAddress, error) {
 	// Connect to the target.
 	conn, err := Dial(target)
 	if err != nil {
@@ -57,7 +57,7 @@ func (node *Node) RPCSendComputedOrderFragment(target identity.MultiAddress, fra
 	defer cancel()
 
 	// Call the SendOrderFragment RPC on the target.
-	multi, err := client.SendComputedOrderFragment(ctx, fragment, grpc.FailFast(false))
+	multi, err := client.SendResultFragment(ctx, SerializeResultFragment(fragment), grpc.FailFast(false))
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 	}
 }
 
-func (node *Node) SendComputedOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.MultiAddress, error) {
+func (node *Node) SendResultFragment(ctx context.Context, resultFragment *rpc.ResultFragment) (*rpc.MultiAddress, error) {
 	// Check for errors in the context.
 	if err := ctx.Err(); err != nil {
 		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, err
@@ -116,7 +116,7 @@ func (node *Node) SendComputedOrderFragment(ctx context.Context, orderFragment *
 	wait := make(chan retType)
 	go func() {
 		defer close(wait)
-		multi, err := node.handleSendComputedOrderFragment(orderFragment)
+		multi, err := node.handleSendResultFragment(resultFragment)
 		wait <- retType{multi, err}
 	}()
 
@@ -138,12 +138,14 @@ func (node *Node) SendComputedOrderFragment(ctx context.Context, orderFragment *
 //       The current implementation is slow for some topologies and is likely
 //       to become a performance bottleneck for communication rounds.
 func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.MultiAddress, error) {
-	target := identity.Address(orderFragment.To)
+	deserializedOrderFragment, err := DeserializeOrderFragment(orderFragment)
+	if err != nil {
+		return nil, err
+	}
+
+	target := identity.Address(orderFragment.To.Address)
 	if target == node.DHT.Address {
-		// TODO: Pass actual order details.
-		node.Delegate.OnOrderFragmentReceived(compute.NewOrderFragment(
-			// orderFragment.OrderFragment
-		))
+		node.Delegate.OnOrderFragmentReceived(deserializedOrderFragment)
 		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, nil
 	}
 
@@ -158,7 +160,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 
 	}
 	closed[self.String()] = true
-	multiFrom, err := identity.NewMultiAddressFromString(orderFragment.From)
+	multiFrom, err := identity.NewMultiAddressFromString(orderFragment.From.Address)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +198,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 		return nil, err
 	}
 	if closestNode == target {
-		_, err := node.RPCSendOrderFragment(open[0], orderFragment)
+		_, err := node.RPCSendOrderFragment(open[0], deserializedOrderFragment)
 		return &rpc.MultiAddress{Multi: open[0].String()}, err
 	}
 
@@ -305,7 +307,7 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 	if targetMulti == nil {
 		return nil, fmt.Errorf("cannot find target")
 	}
-	response, err := node.RPCSendOrderFragment(*targetMulti, orderFragment)
+	response, err := node.RPCSendOrderFragment(*targetMulti, deserializedOrderFragment)
 	if err != nil {
 		return nil, err
 	}
@@ -313,11 +315,15 @@ func (node *Node) handleSendOrderFragment(orderFragment *rpc.OrderFragment) (*rp
 	return &rpc.MultiAddress{Multi: response.String()}, nil
 }
 
-func (node *Node) handleSendComputedOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.MultiAddress, error) {
-	target := identity.Address(orderFragment.To)
+func (node *Node) handleSendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.MultiAddress, error) {
+	deserializedResultFragment, err := DeserializeResultFragment(resultFragment)
+	if err != nil {
+		return nil, err
+	}
+
+	target := identity.Address(resultFragment.To.Address)
 	if target == node.DHT.Address {
-		// TODO: Pass actual order details.
-		node.Delegate.OnComputedOrderFragmentReceived(compute.OrderFragment{})
+		node.Delegate.OnResultFragmentReceived(deserializedResultFragment)
 		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, nil
 	}
 
@@ -332,7 +338,7 @@ func (node *Node) handleSendComputedOrderFragment(orderFragment *rpc.OrderFragme
 
 	}
 	closed[self.String()] = true
-	multiFrom, err := identity.NewMultiAddressFromString(orderFragment.From)
+	multiFrom, err := identity.NewMultiAddressFromString(resultFragment.From.Address)
 	if err != nil {
 		return nil, err
 	}
@@ -364,13 +370,13 @@ func (node *Node) handleSendComputedOrderFragment(orderFragment *rpc.OrderFragme
 		return closer
 	})
 
-	// If we know the target,send the order fragment to the target directly
+	// If we know the target, send the order fragment to the target directly
 	closestNode, err := open[0].Address()
 	if err != nil {
 		return nil, err
 	}
 	if closestNode == target {
-		_, err := node.RPCSendOrderFragment(open[0], orderFragment)
+		_, err := node.RPCSendResultFragment(open[0], deserializedResultFragment)
 		return &rpc.MultiAddress{Multi: open[0].String()}, err
 	}
 
@@ -479,7 +485,7 @@ func (node *Node) handleSendComputedOrderFragment(orderFragment *rpc.OrderFragme
 	if targetMulti == nil {
 		return nil, fmt.Errorf("cannot find target")
 	}
-	response, err := node.RPCSendOrderFragment(*targetMulti, orderFragment)
+	response, err := node.RPCSendResultFragment(*targetMulti, deserializedResultFragment)
 	if err != nil {
 		return nil, err
 	}

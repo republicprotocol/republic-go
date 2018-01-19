@@ -38,8 +38,8 @@ func Dial(target identity.MultiAddress) (*grpc.ClientConn, error) {
 // The Delegate is used to inject dependencies into the RPC logic.
 type Delegate interface {
 	OnPingReceived(peer identity.MultiAddress)
-	OnOrderFragmentReceived(orderFragment compute.OrderFragment)
-	OnComputedOrderFragmentReceived(orderFragment compute.OrderFragment)
+	OnOrderFragmentReceived(orderFragment *compute.OrderFragment)
+	OnResultFragmentReceived(resultFragment *compute.ResultFragment)
 }
 
 // Node implements the gRPC Node service.
