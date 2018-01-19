@@ -28,7 +28,7 @@ message OrderFragment {
 
   // Public data.
   bytes id = 3;
-  bytes orderID = 4;
+  bytes orderId = 4;
   int64 orderType = 5;
   int64 orderBuySell = 6;
 
@@ -50,15 +50,17 @@ message ResultFragment {
 
   // Public data.
   bytes id = 3;
-  bytes buyOrderID = 4;
-  bytes sellOrderID = 5;
+  bytes buyOrderId = 4;
+  bytes sellOrderId = 5;
+  bytes buyOrderFragmentId = 6;
+  bytes sellOrderFragmentId = 7;
 
   // Private data.
-  bytes fstCodeShare = 6;
-  bytes sndCodeShare = 7;
-  bytes priceShare = 8;
-  bytes maxVolumeShare = 9;
-  bytes minVolumeShare = 10;
+  bytes fstCodeShare = 8;
+  bytes sndCodeShare = 9;
+  bytes priceShare = 10;
+  bytes maxVolumeShare = 11;
+  bytes minVolumeShare = 12;
 }
 
 // An Address message is the network representation of an identity.Address.

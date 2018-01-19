@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Computations", func() {
+var _ = Describe("Orders and order fragments", func() {
 	It("should fail", func() {
 		Ω(true).Should(Equal(false))
 	})

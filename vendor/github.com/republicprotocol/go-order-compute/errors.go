@@ -16,3 +16,20 @@ func NewOrderFragmentationError(i, j int64) OrderFragmentationError {
 func (err OrderFragmentationError) Error() string {
 	return string(err)
 }
+
+type ResultFragmentationError string
+
+// NewResultFragmentationError returns a new ResultFragmentationError for two
+// OrderFragments that have the same buy-sell type.
+func NewResultFragmentationError(lhs OrderBuySell) ResultFragmentationError {
+	rhs := OrderBuy
+	if lhs == OrderBuy {
+		rhs = OrderSell
+	}
+	return ResultFragmentationError(fmt.Sprintf("expected buy/sell = %v to be computed against buy/sell = %v", lhs, rhs))
+}
+
+// Error implements the error interface.
+func (err ResultFragmentationError) Error() string {
+	return string(err)
+}

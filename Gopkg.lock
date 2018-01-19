@@ -59,13 +59,13 @@
   branch = "master"
   name = "github.com/republicprotocol/go-identity"
   packages = ["."]
-  revision = "68ea3b4b69ae284f989e41c313a2ba987f235801"
+  revision = "4540bf66c706dcb6d1a37c8177ad8d5761c4f55e"
 
 [[projects]]
   branch = "master"
   name = "github.com/republicprotocol/go-order-compute"
   packages = ["."]
-  revision = "6e12159254addc36e098f7c75e4aa95f333be4b0"
+  revision = "c936404c6f96fc7b9aedbd4a8daf7e11a67ce6a6"
 
 [[projects]]
   branch = "master"
@@ -95,7 +95,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "fff93fa7cd278d84afc205751523809c464168ab"
+  revision = "2c42eef0765b9837fbdab12011af7830f55f88f0"
 
 [[projects]]
   branch = "master"
