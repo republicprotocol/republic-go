@@ -1,6 +1,7 @@
 package compute
 
 import (
+	"log"
 	"math/big"
 	"sync"
 
@@ -73,12 +74,14 @@ func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) 
 	matrix.computationsMu.Lock()
 	defer matrix.computationsMu.Unlock()
 
+	log.Println("checking existing order fragments")
 	for _, rhs := range matrix.orderFragments {
 		if orderFragment.ID.Equals(rhs.ID) {
 			return
 		}
 	}
 
+	log.Println("generating new computations")
 	for _, other := range matrix.orderFragments {
 		if orderFragment.OrderID.Equals(other.OrderID) {
 			continue
@@ -94,6 +97,7 @@ func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) 
 		matrix.computationsLeft++
 	}
 
+	log.Println(matrix.computationsLeft, "computations available")
 	matrix.orderFragments = append(matrix.orderFragments, orderFragment)
 	if matrix.computationsLeft > 0 {
 		matrix.computationsLeftCond.Signal()
