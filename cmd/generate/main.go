@@ -1,81 +1,58 @@
 package main
 
 import (
-	// "bufio"
+	"encoding/json"
+	"log"
 	"fmt"
-	"strconv"
-	"math"
-	// "io/ioutil"
-	// "os"
-
+	"io/ioutil"
 	"github.com/republicprotocol/go-identity"
-	// "github.com/republicprotocol/go-miner"
 )
 
-
-func main() {
-	err := genereteMiners(3);
-	if err != nil {
-		fmt.Println("Something unexpected happened");
-	}
+type Config struct {
+	KeyPair         *identity.KeyPair        `json:"key"`
+	Multi           *identity.MultiAddress   `json:"multi"`
+	BootstrapMultis *identity.MultiAddresses `json:"bootstrap_multis"`
 }
 
-// func generateMiners(uint count) error {
-// 	d1 := []byte("hello\ngo\n")
-// 	err := ioutil.WriteFile("/tmp/dat1", d1, 0644)
-// 	check(err)
+func main() {
+	generateMiners(3, "../miner");
+}
 
-
-// 	f, err := os.Create("/tmp/dat2")
-// 	check(err)
-
-
-// 	defer f.Close()
-
-
-// 	d2 := []byte{115, 111, 109, 101, 10}
-// 	n2, err := f.Write(d2)
-// 	check(err)
-// 	fmt.Printf("wrote %d bytes\n", n2)
-
-
-// 	n3, err := f.WriteString("writes\n")
-// 	fmt.Printf("wrote %d bytes\n", n3)
-
-
-// 	f.Sync()
-
-
-// 	w := bufio.NewWriter(f)
-// 	n4, err := w.WriteString("buffered\n")
-// 	fmt.Printf("wrote %d bytes\n", n4)
-
-
-// 	w.Flush()
-
-// }
-
-func genereteMiners() error {
-	port := 120935;
-	var MultiAddresses [3]string
-	for i := 0; i < 3; i++ {
-		keyPair, err := identity.NewKeyPair();
+func generateMiners(numberOfMiners int,  location string) {
+	port := 3000
+	var configs []Config
+	var multiAddresses identity.MultiAddresses
+	for i := 0; i < numberOfMiners; i++ {
+		address, keyPair, err := identity.NewAddress()
 		if err != nil {
-			return err;
+			log.Fatal(err)
 		}
-		address := keyPair.Address();
-		// publicKey := keyPair.PublicKey;
-		// privateKey := keyPair.PrivateKey;
-		MultiAddresses[i] = "/ip4/127.0.0.1/tcp/"+strconv.Itoa(port)+"/republic/"+string(address);
-		port ++;
+	
+		multi, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s",port,address.String()))
+		if err != nil {
+			log.Fatal(err)
+		}
+	
+		config := Config {
+			KeyPair: &keyPair,
+			Multi: &multi,
+			BootstrapMultis: &identity.MultiAddresses{},
+		}
+		configs = append(configs,config)
+		multiAddresses = append(multiAddresses,multi);
+		port++
 	}
 
-	for i := 0; i < 3; i++ {
-		minerConfig :=  {
-			"multi" : MultiAddresses[i],
-			"bootstrap_multis" : [MultiAddresses[math.Mod(i+1, 3)], MultiAddresses[math.Mod(i+2, 3)]],
+	for i := 0; i < numberOfMiners ; i++ {
+    data, err := json.Marshal(configs[i])
+    if err != nil {
+      log.Fatal(err)
+    }
+		d1 := []byte(data)
+		err = ioutil.WriteFile(fmt.Sprintf("%s/config-miner-%d.json",location, i), d1, 0644)
+		if  err != nil {
+			log.Fatal(err)
 		}
-		fmt.Print(minerConfig)
-	}
-	return nil;
+	}	
+	
 }
