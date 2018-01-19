@@ -37,6 +37,16 @@ var _ = Describe("Shamir's secret sharing", func() {
 			Ω(share.Key).Should(Equal(int64(42)))
 			Ω(share.Value.Cmp(prime)).Should(Equal(0))
 		})
+		It("should be able to serialize and deserialize small shares", func() {
+			bytes := ToBytes(Share{
+				Key:   1,
+				Value: big.NewInt(1),
+			})
+			share, err := FromBytes(bytes)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(share.Key).Should(Equal(int64(1)))
+			Ω(share.Value.Cmp(big.NewInt(1))).Should(Equal(0))
+		})
 		It("should error for bad bytes", func() {
 			_, err := FromBytes([]byte{})
 			Ω(err).Should(HaveOccurred())

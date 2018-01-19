@@ -12,17 +12,60 @@ service Node {
   // Get all peers connected to the Node.
   rpc Peers (Nothing) returns (MultiAddresses);
 
-  // Send an order fragment to some target Node.
+  // Send an OrderFragment to some target Node.
   rpc SendOrderFragment (OrderFragment) returns (MultiAddress);
+
+  // Send a ResultFragment to some target Node, where the ResultFragment is the
+  // result of a computation on two OrderFragments.
+  rpc SendResultFragment (ResultFragment) returns (MultiAddress);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
 message OrderFragment {
-  string to = 1;
-  string from = 2;
-  bytes orderID = 3;
-  bytes orderFragmentID = 4;
-  bytes orderFragment = 5;
+  // Network data.
+  Address to = 1;
+  Address from = 2;
+
+  // Public data.
+  bytes id = 3;
+  bytes orderId = 4;
+  int64 orderType = 5;
+  int64 orderBuySell = 6;
+
+  // Private data.
+  bytes fstCodeShare = 7;
+  bytes sndCodeShare = 8;
+  bytes priceShare = 9;
+  bytes maxVolumeShare = 10;
+  bytes minVolumeShare = 11;
+}
+
+// A ResultFragment message is the network representation of a
+// compute.ResultFragment and the metadata needed to distribute it through the
+// network.
+message ResultFragment {
+  // Network data.
+  Address to = 1;
+  Address from = 2;
+
+  // Public data.
+  bytes id = 3;
+  bytes buyOrderId = 4;
+  bytes sellOrderId = 5;
+  bytes buyOrderFragmentId = 6;
+  bytes sellOrderFragmentId = 7;
+
+  // Private data.
+  bytes fstCodeShare = 8;
+  bytes sndCodeShare = 9;
+  bytes priceShare = 10;
+  bytes maxVolumeShare = 11;
+  bytes minVolumeShare = 12;
+}
+
+// An Address message is the network representation of an identity.Address.
+message Address {
+  string address = 1;
 }
 
 // A MultiAddress is the public multiaddress of a Node in the overlay network.

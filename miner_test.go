@@ -7,10 +7,8 @@ import (
 	. "github.com/republicprotocol/go-miner"
 )
 
-var _ = Describe("Miner", func() {
-
-	It("should do a thing", func() {
-
+var _ = Describe("Miners", func() {
+	It("should fail", func() {
+		Ω(true).Should(Equal(false))
 	})
-
 })

@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network"
+	"github.com/republicprotocol/go-order-compute"
 )
 
 type pingDelegate struct {
@@ -25,7 +26,10 @@ func (delegate *pingDelegate) OnPingReceived(peer identity.MultiAddress) {
 	atomic.AddInt32(&delegate.numberOfPings, 1)
 }
 
-func (delegate *pingDelegate) OnOrderFragmentReceived() {
+func (delegate *pingDelegate) OnOrderFragmentReceived(orderFragment *compute.OrderFragment) {
+}
+
+func (delegate *pingDelegate) OnResultFragmentReceived(orderFragment *compute.ResultFragment) {
 }
 
 var _ = Describe("Ping RPC", func() {

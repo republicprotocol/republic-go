@@ -3,6 +3,7 @@ package network_test
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network"
 	"github.com/republicprotocol/go-network/rpc"
+	"github.com/republicprotocol/go-order-compute"
+	sss "github.com/republicprotocol/go-sss"
 )
 
 type sendFragmentDelegate struct {
@@ -27,7 +30,11 @@ func newSendFragmentDelegate() *sendFragmentDelegate {
 func (delegate *sendFragmentDelegate) OnPingReceived(peer identity.MultiAddress) {
 }
 
-func (delegate *sendFragmentDelegate) OnOrderFragmentReceived() {
+func (delegate *sendFragmentDelegate) OnOrderFragmentReceived(orderFragment *compute.OrderFragment) {
+	atomic.AddInt32(&delegate.numberOfFragments, 1)
+}
+
+func (delegate *sendFragmentDelegate) OnResultFragmentReceived(orderFragment *compute.ResultFragment) {
 	atomic.AddInt32(&delegate.numberOfFragments, 1)
 }
 
@@ -45,13 +52,7 @@ var _ = Describe("Send order fragment", func() {
 				from, to := randomNodes(nodes)
 				address, err := to.MultiAddress.Address()
 				Ω(err).ShouldNot(HaveOccurred())
-				orderFragment := &rpc.OrderFragment{
-					To:              string(address),
-					From:            string(from.MultiAddress.String()),
-					OrderID:         []byte("orderID"),
-					OrderFragmentID: []byte("fragmentID"),
-					OrderFragment:   []byte(address),
-				}
+				orderFragment := generateOrderFragment(address.String(), from.MultiAddress.String())
 
 				_, err = from.SendOrderFragment(context.Background(), orderFragment)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -146,3 +147,33 @@ var _ = Describe("Send order fragment", func() {
 	}
 
 })
+
+func generateOrderFragment(to, from string) *rpc.OrderFragment {
+	return &rpc.OrderFragment{
+		To:           &rpc.Address{Address: to},
+		From:         &rpc.Address{Address: from},
+		Id:           []byte(to),
+		OrderType:    int64(0),
+		OrderBuySell: int64(0),
+		FstCodeShare: sss.ToBytes(sss.Share{
+			Key:   int64(1),
+			Value: big.NewInt(1),
+		}),
+		SndCodeShare: sss.ToBytes(sss.Share{
+			Key:   int64(1),
+			Value: big.NewInt(1),
+		}),
+		PriceShare: sss.ToBytes(sss.Share{
+			Key:   int64(1),
+			Value: big.NewInt(1),
+		}),
+		MaxVolumeShare: sss.ToBytes(sss.Share{
+			Key:   int64(1),
+			Value: big.NewInt(1),
+		}),
+		MinVolumeShare: sss.ToBytes(sss.Share{
+			Key:   int64(1),
+			Value: big.NewInt(1),
+		}),
+	}
+}
