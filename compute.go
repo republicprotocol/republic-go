@@ -139,7 +139,8 @@ func (matrix *ComputationMatrix) AddResultFragments(k int64, prime *big.Int, res
 
 		if int64(len(matrix.resultFragments[string(resultID)])) >= k {
 			if result, ok := matrix.results[string(resultID)]; result != nil && ok {
-				results = append(results, result)
+				// FIXME: At the moment we are only returning new results. Do
+				// we want to return results we have already found?
 				continue
 			}
 			result, err := NewResult(prime, matrix.resultFragments[string(resultID)])
