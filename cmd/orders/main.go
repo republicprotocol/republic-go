@@ -1,8 +1,10 @@
 package main
 
 import (
-	"github.com/republicprotocol/go-identity"
 	"log"
+
+	base58 "github.com/jbenet/go-base58"
+	"github.com/republicprotocol/go-identity"
 
 	"github.com/republicprotocol/go-miner"
 	"github.com/republicprotocol/go-network"
@@ -53,11 +55,37 @@ func main() {
 		log.Fatal(err)
 	}
 
-	network.SendOrderFragment(multiAddress1, buyOrderFragments[0])
-	network.SendOrderFragment(multiAddress2, buyOrderFragments[1])
-	network.SendOrderFragment(multiAddress3, buyOrderFragments[2])
+	log.Println("placing buy order...")
 
-	network.SendOrderFragment(multiAddress1, sellOrderFragments[0])
-	network.SendOrderFragment(multiAddress2, sellOrderFragments[1])
-	network.SendOrderFragment(multiAddress3, sellOrderFragments[2])
+	if _, err := network.SendOrderFragment(multiAddress1, buyOrderFragments[0]); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("sent", base58.Encode(buyOrderFragments[0].ID))
+
+	if _, err := network.SendOrderFragment(multiAddress2, buyOrderFragments[1]); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("sent", base58.Encode(buyOrderFragments[1].ID))
+
+	if _, err := network.SendOrderFragment(multiAddress3, buyOrderFragments[2]); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("sent", base58.Encode(buyOrderFragments[2].ID))
+
+	log.Println("placing sell order...")
+
+	if _, err := network.SendOrderFragment(multiAddress1, sellOrderFragments[0]); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("sent", base58.Encode(sellOrderFragments[0].ID))
+
+	if _, err := network.SendOrderFragment(multiAddress2, sellOrderFragments[1]); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("sent", base58.Encode(sellOrderFragments[1].ID))
+
+	if _, err := network.SendOrderFragment(multiAddress3, sellOrderFragments[2]); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("sent", base58.Encode(sellOrderFragments[2].ID))
 }

@@ -37,12 +37,25 @@ func NewMiner(config *Config) (*Miner, error) {
 	return miner, nil
 }
 
+func (miner *Miner) EstablishConnections() error {
+	for _, multi := range miner.DHT.MultiAddresses() {
+		log.Println("pinging", multi)
+		_, err := miner.RPCPing(multi)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (miner *Miner) OnPingReceived(peer identity.MultiAddress) {
 }
 
 func (miner *Miner) OnOrderFragmentReceived(orderFragment *compute.OrderFragment) {
 	log.Println("received order fragment =", base58.Encode(orderFragment.ID))
 	miner.ComputationMatrix.AddOrderFragment(orderFragment)
+	log.Println("computation matrix updated")
+	log.Println(miner.ComputationMatrix)
 }
 
 func (miner *Miner) OnResultFragmentReceived(resultFragment *compute.ResultFragment) {
@@ -50,18 +63,12 @@ func (miner *Miner) OnResultFragmentReceived(resultFragment *compute.ResultFragm
 	results, _ := miner.ComputationMatrix.AddResultFragments(K, Prime, []*compute.ResultFragment{resultFragment})
 	for _, result := range results {
 		if result.IsMatch() {
-			log.Println("buy =", result.BuyOrderID, ",", "sell =", result.SellOrderID)
+			log.Println("match found for buy =", base58.Encode(result.BuyOrderID), ",", "sell =", base58.Encode(result.SellOrderID))
 		}
 	}
 }
 
 func (miner *Miner) Mine(quit chan struct{}) {
-	go func() {
-		if err := miner.Serve(); err != nil {
-			// TODO: Do something other than die.
-			log.Fatal(err)
-		}
-	}()
 	for {
 		select {
 		case <-quit:
@@ -76,9 +83,12 @@ func (miner *Miner) Mine(quit chan struct{}) {
 }
 
 func (miner Miner) ComputeAll() {
+	log.Println("waiting for new computations...")
 	numberOfCPUs := runtime.NumCPU()
 	computations := miner.ComputationMatrix.WaitForComputations(numberOfCPUs)
 	resultFragments := make([]*compute.ResultFragment, len(computations))
+
+	log.Println("executing new computations...")
 	do.CoForAll(computations, func(i int) {
 		resultFragment, err := miner.Compute(computations[i])
 		if err != nil {
@@ -86,6 +96,7 @@ func (miner Miner) ComputeAll() {
 		}
 		resultFragments[i] = resultFragment
 	})
+	log.Println("computations done.")
 	go func() {
 		resultFragmentsOk := make([]*compute.ResultFragment, 0, len(resultFragments))
 		for _, resultFragment := range resultFragments {

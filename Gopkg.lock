@@ -77,7 +77,7 @@
   branch = "master"
   name = "github.com/republicprotocol/go-order-compute"
   packages = ["."]
-  revision = "c8db3266bfeed4cfd09c006b8db814afad0d3724"
+  revision = "2964d38d617573947325fc88a7bacf964762a0d8"
 
 [[projects]]
   branch = "master"
@@ -142,6 +142,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6fdb01d55b1b7483f6f5d718e79910a0b0dae1c536dfc57c7709a44afe346ee6"
+  inputs-digest = "48fb0720e91395df1b4e7ea212596472c558ff05dcb5d07503c1b65590dfcc80"
   solver-name = "gps-cdcl"
   solver-version = 1

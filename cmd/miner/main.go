@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"log"
+	"time"
 
 	"github.com/republicprotocol/go-miner"
 )
@@ -21,7 +22,22 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	go func() {
+		if err := miner.Serve(); err != nil {
+			// TODO: Do something other than die.
+			log.Fatal(err)
+		}
+	}()
+	time.Sleep(time.Second)
 
+	go func() {
+		log.Println("establishing connections...")
+		if err := miner.EstablishConnections(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	log.Println("digging...")
 	quit := make(chan struct{})
 	miner.Mine(quit)
 }
@@ -43,4 +59,3 @@ func parseCommandLineFlags() error {
 
 	return nil
 }
-
