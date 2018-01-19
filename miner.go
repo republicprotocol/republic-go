@@ -51,13 +51,10 @@ func (miner *Miner) OnPingReceived(peer identity.MultiAddress) {
 }
 
 func (miner *Miner) OnOrderFragmentReceived(orderFragment *compute.OrderFragment) {
-	log.Println("received order fragment =", base58.Encode(orderFragment.ID))
 	miner.ComputationMatrix.AddOrderFragment(orderFragment)
-	log.Println("computation matrix updated")
 }
 
 func (miner *Miner) OnResultFragmentReceived(resultFragment *compute.ResultFragment) {
-	log.Println("received result fragment =", base58.Encode(resultFragment.ID))
 	miner.addResultFragments([]*compute.ResultFragment{resultFragment})
 }
 
@@ -76,12 +73,10 @@ func (miner *Miner) Mine(quit chan struct{}) {
 }
 
 func (miner Miner) ComputeAll() {
-	log.Println("waiting for new computations...")
 	numberOfCPUs := runtime.NumCPU()
 	computations := miner.ComputationMatrix.WaitForComputations(numberOfCPUs)
 	resultFragments := make([]*compute.ResultFragment, len(computations))
 
-	log.Println("executing new computations...")
 	do.CoForAll(computations, func(i int) {
 		resultFragment, err := miner.Compute(computations[i])
 		if err != nil {
@@ -89,7 +84,7 @@ func (miner Miner) ComputeAll() {
 		}
 		resultFragments[i] = resultFragment
 	})
-	log.Println("computations done.")
+
 	go func() {
 		resultFragmentsOk := make([]*compute.ResultFragment, 0, len(resultFragments))
 		for _, resultFragment := range resultFragments {
