@@ -1,7 +1,9 @@
 package sss
 
 import (
+	"bytes"
 	"crypto/rand"
+	"encoding/binary"
 	"math/big"
 )
 
@@ -117,4 +119,29 @@ func Join(prime *big.Int, shares Shares) (*big.Int, error) {
 	}
 
 	return secret, nil
+}
+
+// ToBytes encodes the Share into a slice of bytes.
+func ToBytes(share Share) []byte {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.LittleEndian, share.Key)
+	binary.Write(buf, binary.LittleEndian, share.Value.Bytes())
+	return buf.Bytes()
+}
+
+// FromBytes decodes a slice of bytes into a Share.
+func FromBytes(bs []byte) (Share, error) {
+	key := int64(0)
+	buf := bytes.NewReader(bs)
+	if err := binary.Read(buf, binary.LittleEndian, &key); err != nil {
+		return Share{}, err
+	}
+	data := make([]byte, buf.Len())
+	if err := binary.Read(buf, binary.LittleEndian, data); err != nil {
+		return Share{}, err
+	}
+	return Share{
+		Key:   key,
+		Value: big.NewInt(0).SetBytes(data),
+	}, nil
 }

@@ -1,6 +1,7 @@
 package sss_test
 
 import (
+	"fmt"
 	"math/big"
 
 	. "github.com/onsi/ginkgo"
@@ -22,6 +23,7 @@ var _ = Describe("Errors", func() {
 			_, err := Split(n, k, prime, secret)
 			Ω(err).ShouldNot(BeNil())
 			Ω(err).Should(Equal(NewNKError(n, k)))
+			Ω(err.Error()).Should(Equal(fmt.Sprintf("expected n = %v to be greater than or equal to k = %v", n, k)))
 		})
 	})
 
@@ -37,6 +39,7 @@ var _ = Describe("Errors", func() {
 			_, err := Split(n, k, prime, secret)
 			Ω(err).ShouldNot(BeNil())
 			Ω(err).Should(Equal(NewFiniteFieldError(secret)))
+			Ω(err.Error()).Should(Equal(fmt.Sprintf("expected secret = %v to be within the finite field", secret)))
 		})
 	})
 })
