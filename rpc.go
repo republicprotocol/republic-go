@@ -1,6 +1,8 @@
 package network
 
 import (
+	"log"
+
 	"github.com/republicprotocol/go-network/rpc"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-sss"
@@ -81,22 +83,27 @@ func DeserializeOrderFragment(input *rpc.OrderFragment) (*compute.OrderFragment,
 	var err error
 	orderFragment.FstCodeShare, err = sss.FromBytes(input.FstCodeShare)
 	if err != nil {
+		log.Println("FstCodeShare =", err)
 		return nil, err
 	}
 	orderFragment.SndCodeShare, err = sss.FromBytes(input.SndCodeShare)
 	if err != nil {
+		log.Println("SndCodeShare =", err)
 		return nil, err
 	}
 	orderFragment.PriceShare, err = sss.FromBytes(input.PriceShare)
 	if err != nil {
+		log.Println("PriceShare =", err)
 		return nil, err
 	}
 	orderFragment.MaxVolumeShare, err = sss.FromBytes(input.MaxVolumeShare)
 	if err != nil {
+		log.Println("MaxVolumeShare =", err)
 		return nil, err
 	}
 	orderFragment.MinVolumeShare, err = sss.FromBytes(input.MinVolumeShare)
 	if err != nil {
+		log.Println("MinVolumeShare =", err)
 		return nil, err
 	}
 	return orderFragment, nil

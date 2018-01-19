@@ -71,7 +71,7 @@
   branch = "master"
   name = "github.com/republicprotocol/go-sss"
   packages = ["."]
-  revision = "47903cbdcbb1870dce96948767830a0b9af8ccc7"
+  revision = "0571621e3b7c88bc995fce972bd3e82fd30d75c6"
 
 [[projects]]
   name = "github.com/spaolacci/murmur3"
@@ -130,6 +130,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7cd866a5e3422bdf2c997ccb0ee223879d5baf5f45050d2414cff833b7330109"
+  inputs-digest = "bb39a2b7d14c8aed78f7e44f87025b8d6548f2557bb0937d1a8367e054e067cd"
   solver-name = "gps-cdcl"
   solver-version = 1

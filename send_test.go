@@ -3,6 +3,7 @@ package network_test
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/republicprotocol/go-network"
 	"github.com/republicprotocol/go-network/rpc"
 	"github.com/republicprotocol/go-order-compute"
+	sss "github.com/republicprotocol/go-sss"
 )
 
 type sendFragmentDelegate struct {
@@ -50,11 +52,7 @@ var _ = Describe("Send order fragment", func() {
 				from, to := randomNodes(nodes)
 				address, err := to.MultiAddress.Address()
 				Ω(err).ShouldNot(HaveOccurred())
-				orderFragment := &rpc.OrderFragment{
-					To:   &rpc.Address{address.String()},
-					From: &rpc.Address{from.MultiAddress.String()},
-					Id:   []byte(address),
-				}
+				orderFragment := generateOrderFragment(address.String(), from.MultiAddress.String())
 
 				_, err = from.SendOrderFragment(context.Background(), orderFragment)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -149,3 +147,33 @@ var _ = Describe("Send order fragment", func() {
 	}
 
 })
+
+func generateOrderFragment(to, from string) *rpc.OrderFragment {
+	return &rpc.OrderFragment{
+		To:           &rpc.Address{Address: to},
+		From:         &rpc.Address{Address: from},
+		Id:           []byte(to),
+		OrderType:    int64(0),
+		OrderBuySell: int64(0),
+		FstCodeShare: sss.ToBytes(sss.Share{
+			Key:   int64(1),
+			Value: big.NewInt(1),
+		}),
+		SndCodeShare: sss.ToBytes(sss.Share{
+			Key:   int64(1),
+			Value: big.NewInt(1),
+		}),
+		PriceShare: sss.ToBytes(sss.Share{
+			Key:   int64(1),
+			Value: big.NewInt(1),
+		}),
+		MaxVolumeShare: sss.ToBytes(sss.Share{
+			Key:   int64(1),
+			Value: big.NewInt(1),
+		}),
+		MinVolumeShare: sss.ToBytes(sss.Share{
+			Key:   int64(1),
+			Value: big.NewInt(1),
+		}),
+	}
+}

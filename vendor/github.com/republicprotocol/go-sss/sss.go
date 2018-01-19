@@ -137,7 +137,7 @@ func FromBytes(bs []byte) (Share, error) {
 		return Share{}, err
 	}
 	data := make([]byte, buf.Len())
-	if _, err := buf.Read(data); err != nil {
+	if err := binary.Read(buf, binary.LittleEndian, data); err != nil {
 		return Share{}, err
 	}
 	return Share{
