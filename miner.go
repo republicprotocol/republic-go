@@ -6,7 +6,6 @@ import (
 	"runtime"
 
 	"github.com/jbenet/go-base58"
-
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network"
@@ -60,12 +59,7 @@ func (miner *Miner) OnOrderFragmentReceived(orderFragment *compute.OrderFragment
 
 func (miner *Miner) OnResultFragmentReceived(resultFragment *compute.ResultFragment) {
 	log.Println("received result fragment =", base58.Encode(resultFragment.ID))
-	results, _ := miner.ComputationMatrix.AddResultFragments(K, Prime, []*compute.ResultFragment{resultFragment})
-	for _, result := range results {
-		if result.IsMatch() {
-			log.Println("match found for buy =", base58.Encode(result.BuyOrderID), ",", "sell =", base58.Encode(result.SellOrderID))
-		}
-	}
+	miner.addResultFragments([]*compute.ResultFragment{resultFragment})
 }
 
 func (miner *Miner) Mine(quit chan struct{}) {
@@ -104,12 +98,7 @@ func (miner Miner) ComputeAll() {
 				resultFragmentsOk = append(resultFragmentsOk, resultFragment)
 			}
 		}
-		results, _ := miner.ComputationMatrix.AddResultFragments(K, Prime, resultFragmentsOk)
-		for _, result := range results {
-			if result.IsMatch() {
-				log.Println("buy =", base58.Encode(result.BuyOrderID), ",", "sell =", base58.Encode((result.SellOrderID)))
-			}
-		}
+		miner.addResultFragments(resultFragmentsOk)
 	}()
 }
 
@@ -127,4 +116,13 @@ func (miner Miner) Compute(computation *compute.Computation) (*compute.ResultFra
 		}
 	}()
 	return resultFragment, nil
+}
+
+func (miner Miner) addResultFragments(resultFragments []*compute.ResultFragment) {
+	results, _ := miner.ComputationMatrix.AddResultFragments(K, Prime, resultFragments)
+	for _, result := range results {
+		if result.IsMatch() {
+			log.Println("match found for buy =", base58.Encode(result.BuyOrderID), ",", "sell =", base58.Encode(result.SellOrderID))
+		}
+	}
 }
