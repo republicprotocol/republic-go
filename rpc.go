@@ -12,6 +12,23 @@ import (
 	"google.golang.org/grpc"
 )
 
+// PingOriginToTarget sends a ping message, containing an origin
+// identity.MultiAddress, to a target identity.MultiAddress.
+func PingOriginToTarget(origin identity.MultiAddress, target identity.MultiAddress) error {
+	conn, err := Dial(target)
+	if err != nil {
+		return nil
+	}
+	defer conn.Close()
+	client := rpc.NewNodeClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	_, err = client.Ping(ctx, &rpc.MultiAddress{Multi: origin.String()}, grpc.FailFast(false))
+	return err
+}
+
 // SendOrderFragmentToTarget where the target is identified by an
 // identity.MultiAddress.
 func SendOrderFragmentToTarget(target identity.MultiAddress, orderFragment *compute.OrderFragment) error {
