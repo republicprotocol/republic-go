@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func SendOrderFragment(target identity.MultiAddress, orderFragment *compute.OrderFragment) (*identity.MultiAddress, error) {
+func SendOrderFragmentToTarget(target identity.MultiAddress, orderFragment *compute.OrderFragment) (*identity.MultiAddress, error) {
 	// Connect to the target.
 	conn, err := Dial(target)
 	if err != nil {
@@ -48,6 +48,8 @@ func SendOrderFragment(target identity.MultiAddress, orderFragment *compute.Orde
 	return &ret, nil
 }
 
+// SerializeResultFragment converts a compute.ResultFragment into its network
+// representation.
 func SerializeResultFragment(input *compute.ResultFragment) *rpc.ResultFragment {
 	resultFragment := &rpc.ResultFragment{
 		Id:                  []byte(input.ID),
@@ -64,6 +66,9 @@ func SerializeResultFragment(input *compute.ResultFragment) *rpc.ResultFragment 
 	return resultFragment
 }
 
+// DeserializeResultFragment converts a network representation of a
+// ResultFragment into a compute.ResultFragment. An error is returned if the
+// network representation is malformed.
 func DeserializeResultFragment(input *rpc.ResultFragment) (*compute.ResultFragment, error) {
 	resultFragment := &compute.ResultFragment{
 		ID:                  compute.ResultFragmentID(input.Id),
@@ -97,6 +102,8 @@ func DeserializeResultFragment(input *rpc.ResultFragment) (*compute.ResultFragme
 	return resultFragment, nil
 }
 
+// SerializeOrderFragment converts a compute.OrderFragment into its network
+// representation.
 func SerializeOrderFragment(input *compute.OrderFragment) *rpc.OrderFragment {
 	orderFragment := &rpc.OrderFragment{
 		Id:           []byte(input.ID),
@@ -112,6 +119,9 @@ func SerializeOrderFragment(input *compute.OrderFragment) *rpc.OrderFragment {
 	return orderFragment
 }
 
+// DeserializeOrderFragment converts a network representation of a
+// OrderFragment into a compute.OrderFragment. An error is returned if the
+// network representation is malformed.
 func DeserializeOrderFragment(input *rpc.OrderFragment) (*compute.OrderFragment, error) {
 	orderFragment := &compute.OrderFragment{
 		ID:           compute.OrderFragmentID(input.Id),

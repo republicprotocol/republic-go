@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/go-dht"
+	do "github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network/rpc"
 	"golang.org/x/net/context"
@@ -51,16 +52,15 @@ func (node *Node) Ping(ctx context.Context, peer *rpc.MultiAddress) (*rpc.MultiA
 		return nil, err
 	}
 
-	// Spawn a goroutine to evaluate the return value.
-	wait := make(chan error)
-	go func() {
-		defer close(wait)
-		wait <- node.handlePing(peer)
-	}()
+	ch := do.Process(node.handlePing)
+	defer close(ch)
 
 	select {
-	case ret := <-wait:
-		return &rpc.MultiAddress{Multi: node.MultiAddress.String()}, ret
+	case multiAddressOpt := <-ch:
+		if multiAddress, ok := multiAddressOpt.Ok.(identity.MultiAddress); ok {
+			return &rpc.MultiAddress{Multi: multiAddress.String()}, multiAddressOpt.Err
+		}
+		return nil, multiAddressOpt.Err
 
 	// Select the timeout from the context.
 	case <-ctx.Done():
