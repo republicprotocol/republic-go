@@ -24,7 +24,6 @@ service Node {
 message OrderFragment {
   // Network data.
   Address to = 1;
-  Address from = 2;
 
   // Public data.
   bytes id = 3;
@@ -46,7 +45,6 @@ message OrderFragment {
 message ResultFragment {
   // Network data.
   Address to = 1;
-  Address from = 2;
 
   // Public data.
   bytes id = 3;

@@ -12,94 +12,52 @@ import (
 	"google.golang.org/grpc"
 )
 
-func SendOrderFragmentToTarget(target identity.MultiAddress, orderFragment *compute.OrderFragment) (*identity.MultiAddress, error) {
-	// Connect to the target.
+// SendOrderFragmentToTarget where the target is identified by an
+// identity.MultiAddress.
+func SendOrderFragmentToTarget(target identity.MultiAddress, orderFragment *compute.OrderFragment) error {
+	serializedOrderFragment := SerializeOrderFragment(orderFragment)
+	to, err := target.Address()
+	if err != nil {
+		return err
+	}
+	serializedOrderFragment.To = &rpc.Address{Address: to.String()}
+
 	conn, err := Dial(target)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	defer conn.Close()
 	client := rpc.NewNodeClient(conn)
 
-	// Create a timeout context.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	// Call the SendOrderFragment RPC on the target.
-	serializedOrderFragment := SerializeOrderFragment(orderFragment)
+	_, err = client.SendOrderFragment(ctx, serializedOrderFragment, grpc.FailFast(false))
+	return err
+}
+
+// SendResultFragmentToTarget where the target is identified by an
+// identity.MultiAddress.
+func SendResultFragmentToTarget(target identity.MultiAddress, resultFragment *compute.ResultFragment) error {
+	serializedResultFragment := SerializeResultFragment(resultFragment)
 	to, err := target.Address()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if err != nil {
-		return nil, err
-	}
-	serializedOrderFragment.To = &rpc.Address{Address: to.String()}
-	serializedOrderFragment.From = &rpc.Address{Address: ""}
-	multi, err := client.SendOrderFragment(ctx, serializedOrderFragment, grpc.FailFast(false))
-	if err != nil {
-		return nil, err
-	}
+	serializedResultFragment.To = &rpc.Address{Address: to.String()}
 
-	ret, err := identity.NewMultiAddressFromString(multi.Multi)
+	conn, err := Dial(target)
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	return &ret, nil
-}
+	defer conn.Close()
+	client := rpc.NewNodeClient(conn)
 
-// SerializeResultFragment converts a compute.ResultFragment into its network
-// representation.
-func SerializeResultFragment(input *compute.ResultFragment) *rpc.ResultFragment {
-	resultFragment := &rpc.ResultFragment{
-		Id:                  []byte(input.ID),
-		BuyOrderId:          []byte(input.BuyOrderID),
-		SellOrderId:         []byte(input.SellOrderID),
-		BuyOrderFragmentId:  []byte(input.BuyOrderFragmentID),
-		SellOrderFragmentId: []byte(input.SellOrderFragmentID),
-	}
-	resultFragment.FstCodeShare = sss.ToBytes(input.FstCodeShare)
-	resultFragment.SndCodeShare = sss.ToBytes(input.SndCodeShare)
-	resultFragment.PriceShare = sss.ToBytes(input.PriceShare)
-	resultFragment.MaxVolumeShare = sss.ToBytes(input.MaxVolumeShare)
-	resultFragment.MinVolumeShare = sss.ToBytes(input.MinVolumeShare)
-	return resultFragment
-}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 
-// DeserializeResultFragment converts a network representation of a
-// ResultFragment into a compute.ResultFragment. An error is returned if the
-// network representation is malformed.
-func DeserializeResultFragment(input *rpc.ResultFragment) (*compute.ResultFragment, error) {
-	resultFragment := &compute.ResultFragment{
-		ID:                  compute.ResultFragmentID(input.Id),
-		BuyOrderID:          compute.OrderID(input.BuyOrderId),
-		SellOrderID:         compute.OrderID(input.SellOrderId),
-		BuyOrderFragmentID:  compute.OrderFragmentID(input.BuyOrderFragmentId),
-		SellOrderFragmentID: compute.OrderFragmentID(input.SellOrderFragmentId),
-	}
-
-	var err error
-	resultFragment.FstCodeShare, err = sss.FromBytes(input.FstCodeShare)
-	if err != nil {
-		return nil, err
-	}
-	resultFragment.SndCodeShare, err = sss.FromBytes(input.SndCodeShare)
-	if err != nil {
-		return nil, err
-	}
-	resultFragment.PriceShare, err = sss.FromBytes(input.PriceShare)
-	if err != nil {
-		return nil, err
-	}
-	resultFragment.MaxVolumeShare, err = sss.FromBytes(input.MaxVolumeShare)
-	if err != nil {
-		return nil, err
-	}
-	resultFragment.MinVolumeShare, err = sss.FromBytes(input.MinVolumeShare)
-	if err != nil {
-		return nil, err
-	}
-	return resultFragment, nil
+	_, err = client.SendResultFragment(ctx, serializedResultFragment, grpc.FailFast(false))
+	return err
 }
 
 // SerializeOrderFragment converts a compute.OrderFragment into its network
@@ -157,4 +115,58 @@ func DeserializeOrderFragment(input *rpc.OrderFragment) (*compute.OrderFragment,
 		return nil, err
 	}
 	return orderFragment, nil
+}
+
+// SerializeResultFragment converts a compute.ResultFragment into its network
+// representation.
+func SerializeResultFragment(input *compute.ResultFragment) *rpc.ResultFragment {
+	resultFragment := &rpc.ResultFragment{
+		Id:                  []byte(input.ID),
+		BuyOrderId:          []byte(input.BuyOrderID),
+		SellOrderId:         []byte(input.SellOrderID),
+		BuyOrderFragmentId:  []byte(input.BuyOrderFragmentID),
+		SellOrderFragmentId: []byte(input.SellOrderFragmentID),
+	}
+	resultFragment.FstCodeShare = sss.ToBytes(input.FstCodeShare)
+	resultFragment.SndCodeShare = sss.ToBytes(input.SndCodeShare)
+	resultFragment.PriceShare = sss.ToBytes(input.PriceShare)
+	resultFragment.MaxVolumeShare = sss.ToBytes(input.MaxVolumeShare)
+	resultFragment.MinVolumeShare = sss.ToBytes(input.MinVolumeShare)
+	return resultFragment
+}
+
+// DeserializeResultFragment converts a network representation of a
+// ResultFragment into a compute.ResultFragment. An error is returned if the
+// network representation is malformed.
+func DeserializeResultFragment(input *rpc.ResultFragment) (*compute.ResultFragment, error) {
+	resultFragment := &compute.ResultFragment{
+		ID:                  compute.ResultFragmentID(input.Id),
+		BuyOrderID:          compute.OrderID(input.BuyOrderId),
+		SellOrderID:         compute.OrderID(input.SellOrderId),
+		BuyOrderFragmentID:  compute.OrderFragmentID(input.BuyOrderFragmentId),
+		SellOrderFragmentID: compute.OrderFragmentID(input.SellOrderFragmentId),
+	}
+
+	var err error
+	resultFragment.FstCodeShare, err = sss.FromBytes(input.FstCodeShare)
+	if err != nil {
+		return nil, err
+	}
+	resultFragment.SndCodeShare, err = sss.FromBytes(input.SndCodeShare)
+	if err != nil {
+		return nil, err
+	}
+	resultFragment.PriceShare, err = sss.FromBytes(input.PriceShare)
+	if err != nil {
+		return nil, err
+	}
+	resultFragment.MaxVolumeShare, err = sss.FromBytes(input.MaxVolumeShare)
+	if err != nil {
+		return nil, err
+	}
+	resultFragment.MinVolumeShare, err = sss.FromBytes(input.MinVolumeShare)
+	if err != nil {
+		return nil, err
+	}
+	return resultFragment, nil
 }
