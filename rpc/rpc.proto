@@ -7,7 +7,7 @@ package rpc;
 service Node {
   
   // Ping the connection and swap MultiAddresses.
-  rpc Ping (MultiAddress) returns (MultiAddress);
+  rpc Ping (MultiAddress) returns (Nothing);
 
   // Get all peers connected to the Node.
   rpc Peers (MultiAddress) returns (MultiAddresses);

@@ -1,6 +1,7 @@
 package network
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -11,6 +12,25 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
+
+// Dial the target identity.MultiAddress using a background context.Context.
+// Returns a grpc.ClientConn, or an error. The grpc.ClientConn must be closed
+// before it exists scope.
+func Dial(target identity.MultiAddress) (*grpc.ClientConn, error) {
+	host, err := target.ValueForProtocol(identity.IP4Code)
+	if err != nil {
+		return nil, err
+	}
+	port, err := target.ValueForProtocol(identity.TCPCode)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", host, port), grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
 
 // PingTarget uses a new grpc.ClientConn to make a Ping RPC to a target
 // identity.MultiAddress. It uses the from identity.MultiAddress to identify
