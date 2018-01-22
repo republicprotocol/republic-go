@@ -39,11 +39,12 @@ func NewDHT(address identity.Address, maxBucketLength int) *DHT {
 
 // Update an identity.MultiAddress by adding it to its respective Bucket.
 // Returns an error if the Bucket is full, or any error that happens while
-// finding the required Bucket.
-func (dht *DHT) Update(multi identity.MultiAddress) error {
+// finding the required Bucket. If the identity.MultiAddress is already in the
+// Bucket then it is put at the top.
+func (dht *DHT) Update(multiAddress identity.MultiAddress) error {
 	dht.μ.Lock()
 	defer dht.μ.Unlock()
-	return dht.update(multi)
+	return dht.update(multiAddress)
 }
 
 // Remove an identity.MultiAddress by removing it from its respective Bucket.
@@ -105,8 +106,8 @@ func (dht *DHT) MultiAddresses() identity.MultiAddresses {
 	return dht.multiAddresses()
 }
 
-func (dht *DHT) update(multi identity.MultiAddress) error {
-	target, err := multi.Address()
+func (dht *DHT) update(multiAddress identity.MultiAddress) error {
+	target, err := multiAddress.Address()
 	if err != nil {
 		return err
 	}
@@ -114,21 +115,25 @@ func (dht *DHT) update(multi identity.MultiAddress) error {
 	if err != nil {
 		return err
 	}
+	bucket.UpdateEntry(target)
 
 	// Remove the target if it is already in the Bucket.
-	exists := bucket.FindMultiAddress(target)
-	if exists != nil {
+	
+	prevMultiAddress := bucket.FindMultiAddress(target)
+	if prevMultiAddress != nil {
+		pivot := -1
 		for i, entry := range bucket.Entries {
 			address, err := entry.MultiAddress.Address()
 			if err != nil {
 				return err
 			}
 			if address == target {
-				// We do not update the time otherwise the sorting method does
-				// not make sense.
-				bucket.Entries[i].MultiAddress = multi
-				return nil
+				pivot = i
+				break
 			}
+		}
+		if pivot >= 0 {
+			for i := pivot + 1; i < 
 		}
 	}
 
@@ -248,7 +253,7 @@ func (dht *DHT) multiAddresses() identity.MultiAddresses {
 // Bucket is a mapping of Addresses to Entries. In standard Kademlia, a list is
 // used because Buckets need to be sorted.
 type Bucket struct {
-	Entries
+	identity.MultiAddresses
 	MaxLength int
 }
 
@@ -260,63 +265,52 @@ func NewBucket(maxLength int) Bucket {
 	}
 }
 
+// UpdateMultiAddress adds an identity.MultiAddress to the Bucket. If the
+// identity.MultiAddress is already in the Bucket then it is pushed to the end
+// of the Bucket.
+func (bucket Bucket) UpdateMultiAddress(multiAddress identity.MultiAddress) error {
+
+	// If the identity.MultiAddress is not already in the Bucket then add it to
+	// the Bucket.
+	cursor, position := bucket.FindMultiAddress(multiAddress)
+	if cursor == nil {
+		if bucket.IsFull() {
+			return ErrFullBucket
+		}
+		bucket.MultiAddresses = append(bucket.MultiAddresses, multiAddress)
+		return nil
+	}
+
+	// Otherwise, move the identity.MultiAddress to the end of the Bucket.
+	for i := position + 1; i < bucket.Length(); i++ {
+		bucket.MultiAddresses[i-1] = bucket.MultiAddresses[i]
+	}
+	bucket.MultiAddresses[bucket.Length()-1] = *cursor
+	return nil
+}
+
 // FindMultiAddress finds the identity.MultiAddress associated with a target
-// identity.Address in the Bucket. Returns nil if the target identity.Address
-// cannot be found.
-func (bucket Bucket) FindMultiAddress(target identity.Address) *identity.MultiAddress {
-	for _, entry := range bucket.Entries {
-		address, err := entry.MultiAddress.Address()
+// identity.Address in the Bucket. Returns the associated identity.MultiAddress
+// and its position in the Bucket. If the target is not in the Bucket then this
+// function returns a nil identity.MultiAddress and an invalid position.
+func (bucket Bucket) FindMultiAddress(target identity.Address) (*identity.MultiAddress, int) {
+	for i, multiAddress := range bucket.MultiAddresses {
+		address, err := multiAddress.Address()
 		if err == nil && address == target {
-			return &entry.MultiAddress
+			return &multiAddress, i
 		}
 	}
-	return nil
+	return nil, -1
 }
 
 // MultiAddresses returns all MultiAddresses in the Bucket.
 func (bucket Bucket) MultiAddresses() identity.MultiAddresses {
-	multis := make(identity.MultiAddresses, bucket.Length())
-	for i, entry := range bucket.Entries {
-		multis[i] = entry.MultiAddress
-	}
-	return multis
-}
-
-// Sort the Bucket by the time at which Entries were added.
-func (bucket Bucket) Sort() {
-	sort.Slice(bucket, func(i, j int) bool {
-		return bucket.Get(i).Time.Before(bucket.Get(j).Time)
-	})
-}
-
-// NewestMultiAddress returns the most recently added identity.MultiAddress in
-// the Bucket. Returns nil if there are no Entries in the Bucket.
-func (bucket Bucket) NewestMultiAddress() *identity.MultiAddress {
-	if bucket.Length() == 0 {
-		return nil
-	}
-	multi := bucket.Get(bucket.Length() - 1).MultiAddress
-	return &multi
-}
-
-// OldestMultiAddress returns the least recently added identity.MultiAddress in
-// the Bucket. Returns nil if there are no Entries in the Bucket.
-func (bucket Bucket) OldestMultiAddress() *identity.MultiAddress {
-	if len(bucket.Entries) == 0 {
-		return nil
-	}
-	multi := bucket.Get(0).MultiAddress
-	return &multi
-}
-
-// Get the Entry at the given position in the Bucket.
-func (bucket Bucket) Get(position int) Entry {
-	return bucket.Entries[position]
+	return bucket.MultiAddresses
 }
 
 // Length returns the number of Entries in the Bucket.
 func (bucket Bucket) Length() int {
-	return len(bucket.Entries)
+	return len(bucket.MultiAddresses)
 }
 
 // IsFull returns true if, and only if, the number of Entries in the Bucket is
@@ -330,27 +324,17 @@ type Buckets []Bucket
 
 // MultiAddresses returns all MultiAddresses from all Buckets.
 func (buckets Buckets) MultiAddresses() identity.MultiAddresses {
-	numMultis := 0
+	numberOfMultiAddresses := 0
 	for _, bucket := range buckets {
-		numMultis += bucket.Length()
+		numberOfMultiAddresses += bucket.Length()
 	}
 	i := 0
-	multis := make(identity.MultiAddresses, numMultis)
+	multiAddresses := make(identity.MultiAddresses, numberOfMultiAddresses)
 	for _, bucket := range buckets {
-		for _, entry := range bucket.Entries {
-			multis[i] = entry.MultiAddress
+		for _, multiAddress := range bucket.MultiAddresses {
+			multiAddresses[i] = multiAddress
 			i++
 		}
 	}
-	return multis
+	return multiAddresses
 }
-
-// An Entry in a Bucket. It holds an identity.MultiAddress, and a timestamp for
-// when it was added to the Bucket.
-type Entry struct {
-	identity.MultiAddress
-	time.Time
-}
-
-// Entries is an alias.
-type Entries []Entry
