@@ -12,10 +12,11 @@ import (
 	"google.golang.org/grpc"
 )
 
-// PingOriginToTarget sends a ping message, containing an origin
-// identity.MultiAddress, to a target identity.MultiAddress.
-func PingOriginToTarget(origin identity.MultiAddress, target identity.MultiAddress) error {
-	conn, err := Dial(target)
+// PingTarget uses a new grpc.ClientConn to make a Ping RPC to a target
+// identity.MultiAddress. It uses the from identity.MultiAddress to identify
+// the sender.
+func PingTarget(to identity.MultiAddress, from identity.MultiAddress) error {
+	conn, err := Dial(to)
 	if err != nil {
 		return nil
 	}
@@ -25,21 +26,42 @@ func PingOriginToTarget(origin identity.MultiAddress, target identity.MultiAddre
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	_, err = client.Ping(ctx, &rpc.MultiAddress{Multi: origin.String()}, grpc.FailFast(false))
+	_, err = client.Ping(ctx, SerializeMultiAddress(from), grpc.FailFast(false))
 	return err
 }
 
-// SendOrderFragmentToTarget where the target is identified by an
-// identity.MultiAddress.
-func SendOrderFragmentToTarget(target identity.MultiAddress, orderFragment *compute.OrderFragment) error {
-	serializedOrderFragment := SerializeOrderFragment(orderFragment)
-	to, err := target.Address()
+// GetPeersFromTarget uses a new grpc.ClientConn to make a Peers RPC to a
+// target identity.MultiAddress. It uses the from identity.MultiAddress to
+// identify the sender. It returns the identity.MultiAddress of the peers
+// connected directly to the target, or an error.
+func GetPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress) (identity.MultiAddresses, error) {
+	conn, err := Dial(to)
+	if err != nil {
+		return identity.MultiAddresses{}, nil
+	}
+	defer conn.Close()
+	client := rpc.NewNodeClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	peers, err := client.Peers(ctx, SerializeMultiAddress(from), grpc.FailFast(false))
+	if err != nil {
+		return identity.MultiAddresses{}, err
+	}
+	return DeserializeMultiAddresses(peers)
+}
+
+func SendOrderFragmentToTarget(to identity.MultiAddress, from identity.MultiAddress, orderFragment *compute.OrderFragment) error {
+	address, err := to.Address()
 	if err != nil {
 		return err
 	}
-	serializedOrderFragment.To = &rpc.Address{Address: to.String()}
+	serializedOrderFragment := SerializeOrderFragment(orderFragment)
+	serializedOrderFragment.From = SerializeMultiAddress(from)
+	serializedOrderFragment.To = &rpc.Address{Address: address.String()}
 
-	conn, err := Dial(target)
+	conn, err := Dial(to)
 	if err != nil {
 		return nil
 	}
@@ -53,17 +75,16 @@ func SendOrderFragmentToTarget(target identity.MultiAddress, orderFragment *comp
 	return err
 }
 
-// SendResultFragmentToTarget where the target is identified by an
-// identity.MultiAddress.
-func SendResultFragmentToTarget(target identity.MultiAddress, resultFragment *compute.ResultFragment) error {
-	serializedResultFragment := SerializeResultFragment(resultFragment)
-	to, err := target.Address()
+func SendResultFragmentToTarget(to identity.MultiAddress, from identity.MultiAddress, resultFragment *compute.ResultFragment) error {
+	address, err := to.Address()
 	if err != nil {
 		return err
 	}
-	serializedResultFragment.To = &rpc.Address{Address: to.String()}
+	serializedResultFragment := SerializeResultFragment(resultFragment)
+	serializedResultFragment.From = SerializeMultiAddress(from)
+	serializedResultFragment.To = &rpc.Address{Address: address.String()}
 
-	conn, err := Dial(target)
+	conn, err := Dial(to)
 	if err != nil {
 		return nil
 	}
@@ -75,6 +96,34 @@ func SendResultFragmentToTarget(target identity.MultiAddress, resultFragment *co
 
 	_, err = client.SendResultFragment(ctx, serializedResultFragment, grpc.FailFast(false))
 	return err
+}
+
+func SerializeMultiAddress(multiAddress identity.MultiAddress) *rpc.MultiAddress {
+	return &rpc.MultiAddress{Multi: multiAddress.String()}
+}
+
+func DeserializeMultiAddress(multiAddress *rpc.MultiAddress) (identity.MultiAddress, error) {
+	return identity.NewMultiAddressFromString(multiAddress.Multi)
+}
+
+func SerializeMultiAddresses(multiAddresses identity.MultiAddresses) *rpc.MultiAddresses {
+	serializedMultiAddresses := make([]*rpc.MultiAddress, len(multiAddresses))
+	for i, multiAddress := range multiAddresses {
+		serializedMultiAddresses[i] = SerializeMultiAddress(multiAddress)
+	}
+	return &rpc.MultiAddresses{Multis: serializedMultiAddresses}
+}
+
+func DeserializeMultiAddresses(multiAddresses *rpc.MultiAddresses) (identity.MultiAddresses, error) {
+	deserializedMultiAddresses := make(identity.MultiAddresses, 0, len(multiAddresses.Multis))
+	for _, multiAddress := range multiAddresses.Multis {
+		deserializedMultiAddress, err := DeserializeMultiAddress(multiAddress)
+		if err != nil {
+			return deserializedMultiAddresses, err
+		}
+		deserializedMultiAddresses = append(deserializedMultiAddresses, deserializedMultiAddress)
+	}
+	return deserializedMultiAddresses, nil
 }
 
 // SerializeOrderFragment converts a compute.OrderFragment into its network

@@ -10,20 +10,21 @@ service Node {
   rpc Ping (MultiAddress) returns (MultiAddress);
 
   // Get all peers connected to the Node.
-  rpc Peers (Nothing) returns (MultiAddresses);
+  rpc Peers (MultiAddress) returns (MultiAddresses);
 
   // Send an OrderFragment to some target Node.
-  rpc SendOrderFragment (OrderFragment) returns (MultiAddress);
+  rpc SendOrderFragment (OrderFragment) returns (Nothing);
 
   // Send a ResultFragment to some target Node, where the ResultFragment is the
   // result of a computation on two OrderFragments.
-  rpc SendResultFragment (ResultFragment) returns (MultiAddress);
+  rpc SendResultFragment (ResultFragment) returns (Nothing);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
 message OrderFragment {
   // Network data.
   Address to = 1;
+  MultiAddress from = 2;
 
   // Public data.
   bytes id = 3;
@@ -45,6 +46,7 @@ message OrderFragment {
 message ResultFragment {
   // Network data.
   Address to = 1;
+  MultiAddress from = 2;
 
   // Public data.
   bytes id = 3;

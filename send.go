@@ -6,91 +6,11 @@ import (
 	"log"
 	"sort"
 	"sync"
-	"time"
 
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network/rpc"
-	"github.com/republicprotocol/go-order-compute"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
-
-// RPCSendOrderFragment sends a SendOrderFragment RPC request to the target
-// using a new grpc.ClientConn and a new rpc.NodeClient. It returns the result
-// of the RPC call, or an error.
-func (node *Node) RPCSendOrderFragment(target identity.MultiAddress, fragment *compute.OrderFragment) (*identity.MultiAddress, error) {
-	// Connect to the target.
-	conn, err := Dial(target)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	client := rpc.NewNodeClient(conn)
-
-	// Create a timeout context.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
-	// Call the SendOrderFragment RPC on the target.
-	orderFragment := SerializeOrderFragment(fragment)
-	to, err := target.Address()
-	if err != nil {
-		return nil, err
-	}
-	from, err := node.MultiAddress.Address()
-	if err != nil {
-		return nil, err
-	}
-	orderFragment.To = &rpc.Address{Address: to.String()}
-	orderFragment.From = &rpc.Address{Address: from.String()}
-	multi, err := client.SendOrderFragment(ctx, orderFragment, grpc.FailFast(false))
-	if err != nil {
-		return nil, err
-	}
-
-	ret, err := identity.NewMultiAddressFromString(multi.Multi)
-	if err != nil {
-		return nil, err
-	}
-	return &ret, nil
-}
-
-func (node *Node) RPCSendResultFragment(target identity.MultiAddress, fragment *compute.ResultFragment) (*identity.MultiAddress, error) {
-	// Connect to the target.
-	conn, err := Dial(target)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	client := rpc.NewNodeClient(conn)
-
-	// Create a timeout context.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
-	// Call the SendOrderFragment RPC on the target.
-	resultFragment := SerializeResultFragment(fragment)
-	to, err := target.Address()
-	if err != nil {
-		return nil, err
-	}
-	from, err := node.MultiAddress.Address()
-	if err != nil {
-		return nil, err
-	}
-	resultFragment.To = &rpc.Address{Address: to.String()}
-	resultFragment.From = &rpc.Address{Address: from.String()}
-	multi, err := client.SendResultFragment(ctx, resultFragment, grpc.FailFast(false))
-	if err != nil {
-		return nil, err
-	}
-
-	ret, err := identity.NewMultiAddressFromString(multi.Multi)
-	if err != nil {
-		return nil, err
-	}
-	return &ret, nil
-}
 
 // SendOrderFragment is used to forward an rpc.OrderFragment through the X
 // Network to its destination Node. This forwarding is done using a distributed
