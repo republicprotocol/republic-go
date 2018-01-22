@@ -1,9 +1,7 @@
 package dht
 
 import (
-	"sort"
 	"sync"
-	"time"
 
 	"github.com/republicprotocol/go-identity"
 )
@@ -14,10 +12,13 @@ const (
 )
 
 // A DHT is a Distributed Hash Table. Each instance has an identity.Address and
-// several Buckets of identity.MultiAddresses that are directly connected to
-// that identity.Address. It uses a modified Kademlia approach to storing
-// identity.MultiAddresses in each Bucket, favoring old connections over new
-// connections. It is safe to use concurrently.
+// several Buckets of identity.MultiAddresses. These identity.MultiAddresses
+// represent peers that are directly connected to the DHT identity.Address. The
+// DHT uses a modified Kademlia to store identity.MultiAddresses in each Bucket
+// and favors old connections over new connections. The identity.MultiAddresses
+// stored in each Bucket can be looked up using an identity.Address allowing
+// the to serve as a lookup table for identity.Addresses to
+// identity.MultiAddresses. It is safe to use concurrently.
 type DHT struct {
 	μ       *sync.RWMutex
 	Address identity.Address
@@ -37,23 +38,23 @@ func NewDHT(address identity.Address, maxBucketLength int) *DHT {
 	return dht
 }
 
-// Update an identity.MultiAddress by adding it to its respective Bucket.
+// UpdateMultiAddress by adding it to its respective Bucket. If the
+// identity.MultiAddress is already in the Bucket then it is moved to the end
 // Returns an error if the Bucket is full, or any error that happens while
-// finding the required Bucket. If the identity.MultiAddress is already in the
-// Bucket then it is put at the top.
-func (dht *DHT) Update(multiAddress identity.MultiAddress) error {
+// finding the required Bucket.
+func (dht *DHT) UpdateMultiAddress(multiAddress identity.MultiAddress) error {
 	dht.μ.Lock()
 	defer dht.μ.Unlock()
-	return dht.update(multiAddress)
+	return dht.updateMultiAddress(multiAddress)
 }
 
-// Remove an identity.MultiAddress by removing it from its respective Bucket.
-// Nothing happens if the identity.MultiAddress is not in the DHT. Returns any
-// error that happens while finding the required Bucket.
-func (dht *DHT) Remove(multi identity.MultiAddress) error {
+// RemoveMultiAddress from its respective Bucket. Nothing happens if the
+// identity.MultiAddress is not in the DHT. Returns any error that happens
+// while finding the required Bucket.
+func (dht *DHT) RemoveMultiAddress(multiAddress identity.MultiAddress) error {
 	dht.μ.Lock()
 	defer dht.μ.Unlock()
-	return dht.remove(multi)
+	return dht.removeMultiAddress(multiAddress)
 }
 
 // FindMultiAddress finds the identity.MultiAddress associated with the target
@@ -91,6 +92,13 @@ func (dht *DHT) FindBucketNeighbors(target identity.Address, α int) (Buckets, e
 	return dht.findBucketNeighbors(target, α)
 }
 
+// MultiAddresses returns all identity.MultiAddresses in all Buckets.
+func (dht *DHT) MultiAddresses() identity.MultiAddresses {
+	dht.μ.RLock()
+	defer dht.μ.RUnlock()
+	return dht.multiAddresses()
+}
+
 // Neighborhood returns the start and end indices of a α-sized neighborhood
 // around the Bucket associated with the target identity.Address.
 func (dht *DHT) Neighborhood(target identity.Address, α int) (int, int, error) {
@@ -99,14 +107,19 @@ func (dht *DHT) Neighborhood(target identity.Address, α int) (int, int, error) 
 	return dht.neighborhood(target, α)
 }
 
-// MultiAddresses returns all identity.MultiAddresses in all Buckets.
-func (dht *DHT) MultiAddresses() identity.MultiAddresses {
-	dht.μ.RLock()
-	defer dht.μ.RUnlock()
-	return dht.multiAddresses()
+func (dht *DHT) updateMultiAddress(multiAddress identity.MultiAddress) error {
+	address, err := multiAddress.Address()
+	if err != nil {
+		return err
+	}
+	bucket, err := dht.findBucket(address)
+	if err != nil {
+		return err
+	}
+	return bucket.UpdateMultiAddress(multiAddress)
 }
 
-func (dht *DHT) update(multiAddress identity.MultiAddress) error {
+func (dht *DHT) removeMultiAddress(multiAddress identity.MultiAddress) error {
 	target, err := multiAddress.Address()
 	if err != nil {
 		return err
@@ -115,47 +128,9 @@ func (dht *DHT) update(multiAddress identity.MultiAddress) error {
 	if err != nil {
 		return err
 	}
-	bucket.UpdateEntry(target)
-
-	// Remove the target if it is already in the Bucket.
-	
-	prevMultiAddress := bucket.FindMultiAddress(target)
-	if prevMultiAddress != nil {
-		pivot := -1
-		for i, entry := range bucket.Entries {
-			address, err := entry.MultiAddress.Address()
-			if err != nil {
-				return err
-			}
-			if address == target {
-				pivot = i
-				break
-			}
-		}
-		if pivot >= 0 {
-			for i := pivot + 1; i < 
-		}
-	}
-
-	if bucket.IsFull() {
-		return ErrFullBucket
-	}
-	bucket.Entries = append(bucket.Entries, Entry{multi, time.Now()})
-	return nil
-}
-
-func (dht *DHT) remove(multi identity.MultiAddress) error {
-	target, err := multi.Address()
-	if err != nil {
-		return err
-	}
-	bucket, err := dht.findBucket(target)
-	if err != nil {
-		return err
-	}
 	removeIndex := -1
-	for i, entry := range bucket.Entries {
-		address, err := entry.MultiAddress.Address()
+	for i, multiAddress := range bucket.MultiAddresses {
+		address, err := multiAddress.Address()
 		if err != nil {
 			return err
 		}
@@ -166,9 +141,9 @@ func (dht *DHT) remove(multi identity.MultiAddress) error {
 	}
 	if removeIndex >= 0 {
 		if removeIndex == bucket.Length()-1 {
-			bucket.Entries = bucket.Entries[:removeIndex]
+			bucket.MultiAddresses = bucket.MultiAddresses[:removeIndex]
 		} else {
-			bucket.Entries = append(bucket.Entries[:removeIndex], bucket.Entries[removeIndex+1:]...)
+			bucket.MultiAddresses = append(bucket.MultiAddresses[:removeIndex], bucket.MultiAddresses[removeIndex+1:]...)
 		}
 	}
 	return nil
@@ -179,7 +154,8 @@ func (dht *DHT) findMultiAddress(target identity.Address) (*identity.MultiAddres
 	if err != nil {
 		return nil, err
 	}
-	return bucket.FindMultiAddress(target), nil
+	cursor, _ := bucket.FindMultiAddress(target)
+	return cursor, nil
 }
 
 func (dht *DHT) findMultiAddressNeighbors(target identity.Address, α int) (identity.MultiAddresses, error) {
@@ -235,19 +211,15 @@ func (dht *DHT) neighborhood(target identity.Address, α int) (int, int, error) 
 }
 
 func (dht *DHT) multiAddresses() identity.MultiAddresses {
-	numMultis := 0
+	numberOfMultiAddresses := 0
 	for _, bucket := range dht.Buckets {
-		numMultis += bucket.Length()
+		numberOfMultiAddresses += bucket.Length()
 	}
-	i := 0
-	multis := make(identity.MultiAddresses, numMultis)
+	multiAddresses := make(identity.MultiAddresses, 0, numberOfMultiAddresses)
 	for _, bucket := range dht.Buckets {
-		for _, entry := range bucket.Entries {
-			multis[i] = entry.MultiAddress
-			i++
-		}
+		multiAddresses = append(multiAddresses, bucket.MultiAddresses...)
 	}
-	return multis
+	return multiAddresses
 }
 
 // Bucket is a mapping of Addresses to Entries. In standard Kademlia, a list is
@@ -272,7 +244,11 @@ func (bucket Bucket) UpdateMultiAddress(multiAddress identity.MultiAddress) erro
 
 	// If the identity.MultiAddress is not already in the Bucket then add it to
 	// the Bucket.
-	cursor, position := bucket.FindMultiAddress(multiAddress)
+	address, err := multiAddress.Address()
+	if err != nil {
+		return err
+	}
+	cursor, position := bucket.FindMultiAddress(address)
 	if cursor == nil {
 		if bucket.IsFull() {
 			return ErrFullBucket
@@ -301,11 +277,6 @@ func (bucket Bucket) FindMultiAddress(target identity.Address) (*identity.MultiA
 		}
 	}
 	return nil, -1
-}
-
-// MultiAddresses returns all MultiAddresses in the Bucket.
-func (bucket Bucket) MultiAddresses() identity.MultiAddresses {
-	return bucket.MultiAddresses
 }
 
 // Length returns the number of Entries in the Bucket.
