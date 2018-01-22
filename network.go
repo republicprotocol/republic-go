@@ -103,12 +103,16 @@ func (node *Node) Ping(ctx context.Context, from *rpc.MultiAddress) (*rpc.Nothin
 	}
 
 	wait := do.Process(func() do.Option {
-		return do.Err(node.ping(from))
+		nothing, err := node.ping(from)
+		if err != nil {
+			return do.Err(err)
+		}
+		return do.Ok(nothing)
 	})
 
 	select {
 	case val := <-wait:
-		return &rpc.Nothing{}, val.Err
+		return val.Ok.(*rpc.Nothing), val.Err
 
 	case <-ctx.Done():
 		return &rpc.Nothing{}, ctx.Err()
@@ -148,12 +152,16 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 	}
 
 	wait := do.Process(func() do.Option {
-		return do.Err(node.sendOrderFragment(orderFragment))
+		nothing, err := node.sendOrderFragment(orderFragment)
+		if err != nil {
+			return do.Err(err)
+		}
+		return do.Ok(nothing)
 	})
 
 	select {
 	case val := <-wait:
-		return &rpc.Nothing{}, val.Err
+		return val.Ok.(*rpc.Nothing), val.Err
 
 	case <-ctx.Done():
 		return &rpc.Nothing{}, ctx.Err()
@@ -168,12 +176,16 @@ func (node *Node) SendResultFragment(ctx context.Context, resultFragment *rpc.Re
 	}
 
 	wait := do.Process(func() do.Option {
-		return do.Err(node.sendResultFragment(resultFragment))
+		nothing, err := node.sendResultFragment(resultFragment)
+		if err != nil {
+			return do.Err(err)
+		}
+		return do.Ok(nothing)
 	})
 
 	select {
 	case val := <-wait:
-		return &rpc.Nothing{}, val.Err
+		return val.Ok.(*rpc.Nothing), val.Err
 
 	case <-ctx.Done():
 		return &rpc.Nothing{}, ctx.Err()
@@ -210,55 +222,60 @@ func (node *Node) peers(from *rpc.MultiAddress) (*rpc.MultiAddresses, error) {
 	return SerializeMultiAddresses(peers), nil
 }
 
-func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
+func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
 	// Update the DHT.
 	fromMultiAddress, err := DeserializeMultiAddress(orderFragment.From)
 	if err != nil {
-		return err
+		return &rpc.Nothing{}, err
 	}
 	if err := node.updateDHT(fromMultiAddress); err != nil {
-		return err
+		return &rpc.Nothing{}, err
 	}
 
 	// Check if the rpc.OrderFragment has reached its destination.
 	if orderFragment.To.String() == node.Address.String() {
 		deserializedOrderFragment, err := DeserializeOrderFragment(orderFragment)
 		if err != nil {
-			return err
+			return &rpc.Nothing{}, err
 		}
 		node.OnOrderFragmentReceived(fromMultiAddress, deserializedOrderFragment)
-		return nil
+		return &rpc.Nothing{}, nil
 	}
 
-	peer, err := node.FindPeer(identity.Address(orderFragment.To.String()))
+	// Forward the rpc.OrderFragment to the closest peer.
+	peer, err := node.FindPeer(orderFragment.To)
 	if err != nil {
-		return nil
+		return &rpc.Nothing{}, err
 	}
-	return SendOrderFragmentToTarget(target, node.MultiAddress, orderFragment)
+	return SendOrderFragmentToTarget(peer, orderFragment)
 }
 
-func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) error {
+func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.Nothing, error) {
 	// Update the DHT.
 	fromMultiAddress, err := DeserializeMultiAddress(resultFragment.From)
 	if err != nil {
-		return err
+		return &rpc.Nothing{}, err
 	}
 	if err := node.updateDHT(fromMultiAddress); err != nil {
-		return err
+		return &rpc.Nothing{}, err
 	}
 
 	// Check if the rpc.OrderFragment has reached its destination.
 	if resultFragment.To.String() == node.Address.String() {
 		deserializedResultFragment, err := DeserializeResultFragment(resultFragment)
 		if err != nil {
-			return err
+			return &rpc.Nothing{}, err
 		}
 		node.OnResultFragmentReceived(fromMultiAddress, deserializedResultFragment)
-		return nil
+		return &rpc.Nothing{}, nil
 	}
 
-	// TODO: Find the closest target.
-	return nil
+	// Forward the rpc.OrderFragment to the closest peer.
+	peer, err := node.FindPeer(resultFragment.To)
+	if err != nil {
+		return &rpc.Nothing{}, err
+	}
+	return SendResultFragmentToTarget(peer, resultFragment)
 }
 
 func (node *Node) updateDHT(multiAddress identity.MultiAddress) error {
