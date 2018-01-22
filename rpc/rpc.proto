@@ -12,12 +12,22 @@ service Node {
   // Get all peers connected to the Node.
   rpc Peers (MultiAddress) returns (MultiAddresses);
 
+  // Find the closest MultiAddresses to a peer with the given Address. 
+  rpc FindPeer (Finder) returns (MultiAddresses);
+
   // Send an OrderFragment to some target Node.
   rpc SendOrderFragment (OrderFragment) returns (Nothing);
 
   // Send a ResultFragment to some target Node, where the ResultFragment is the
   // result of a computation on two OrderFragments.
   rpc SendResultFragment (ResultFragment) returns (Nothing);
+}
+
+// A Finder message contains the Address of a peer that is being look for and
+// the MultiAddress of the seeker.
+message Finder {
+  Address peer = 1;
+  MultiAddress from = 2;
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
