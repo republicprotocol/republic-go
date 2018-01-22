@@ -6,13 +6,12 @@ import (
 	"net"
 
 	"github.com/republicprotocol/go-dht"
-	do "github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network/rpc"
 	"github.com/republicprotocol/go-order-compute"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 // α determines the maximum number of concurrent client connections that the
@@ -29,11 +28,11 @@ type Delegate interface {
 
 // Node implements the gRPC Node service.
 type Node struct {
-	*grpc.Server
 	Delegate
+	Server       *grpc.Server
+	DHT          *dht.DHT
 	Address      identity.Address
 	MultiAddress identity.MultiAddress
-	DHT          *dht.DHT
 }
 
 // NewNode returns a Node with the given its own identity.MultiAddress, a list
@@ -51,11 +50,11 @@ func NewNode(multiAddress identity.MultiAddress, bootstrapMultis identity.MultiA
 		}
 	}
 	return &Node{
-		Server:       grpc.NewServer(),
 		Delegate:     delegate,
+		Server:       grpc.NewServer(),
+		DHT:          dht,
 		Address:      address,
 		MultiAddress: multiAddress,
-		DHT:          dht,
 	}, nil
 }
 
@@ -74,7 +73,6 @@ func (node *Node) Serve() error {
 		return err
 	}
 	rpc.RegisterNodeServer(node.Server, node)
-	reflection.Register(node.Server)
 	log.Printf("Listening at %s:%s", host, port)
 	return node.Server.Serve(listener)
 }
@@ -232,8 +230,11 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
 		return nil
 	}
 
-	// TODO: Find the closest target.
-	return nil
+	peer, err := node.FindPeer(identity.Address(orderFragment.To.String()))
+	if err != nil {
+		return nil
+	}
+	return SendOrderFragmentToTarget(target, node.MultiAddress, orderFragment)
 }
 
 func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) error {
