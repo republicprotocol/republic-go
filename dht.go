@@ -63,6 +63,15 @@ func (dht *DHT) FindMultiAddress(target identity.Address) (*identity.MultiAddres
 	return dht.findMultiAddress(target)
 }
 
+// FindMultiAddressNeighbors finds the closest identity.MultiAddresses to the
+// target identity.Address. Returns up to α identity.MultiAddresses, or an
+// error.
+func (dht *DHT) FindMultiAddressNeighbors(target identity.Address, α int) (identity.MultiAddresses, error) {
+	dht.μ.RLock()
+	defer dht.μ.RUnlock()
+	return dht.findMultiAddressNeighbors(target, α)
+}
+
 // FindBucket uses the target identity.Address and returns the respective
 // Bucket. The target does not have to be in the DHT. Returns the Bucket, or an
 // error.
@@ -72,21 +81,21 @@ func (dht *DHT) FindBucket(target identity.Address) (*Bucket, error) {
 	return dht.findBucket(target)
 }
 
-// FindNeighborhoodBuckets uses the target identity.Address to find Buckets
-// within a given neighborhood of the target Bucket. The target does not have
-// to be in the DHT. Returns the Buckets, or an error.
-func (dht *DHT) FindNeighborhoodBuckets(target identity.Address, neighborhood uint) (Buckets, error) {
+// FindBucketNeighbors uses the target identity.Address to find Buckets
+// that are close to the target Bucket. The target does not have to be in the
+// DHT. Returns up to α Bucket, or an error.
+func (dht *DHT) FindBucketNeighbors(target identity.Address, α int) (Buckets, error) {
 	dht.μ.RLock()
 	defer dht.μ.RUnlock()
-	return dht.findNeighborhoodBuckets(target, neighborhood)
+	return dht.findBucketNeighbors(target, α)
 }
 
-// Neighborhood returns the start and end indices of a neighborhood around the
-// Bucket associated with the target identity.Address.
-func (dht *DHT) Neighborhood(target identity.Address, neighborhood uint) (int, int, error) {
+// Neighborhood returns the start and end indices of a α-sized neighborhood
+// around the Bucket associated with the target identity.Address.
+func (dht *DHT) Neighborhood(target identity.Address, α int) (int, int, error) {
 	dht.μ.RLock()
 	defer dht.μ.RUnlock()
-	return dht.neighborhood(target, neighborhood)
+	return dht.neighborhood(target, α)
 }
 
 // MultiAddresses returns all identity.MultiAddresses in all Buckets.
@@ -168,6 +177,10 @@ func (dht *DHT) findMultiAddress(target identity.Address) (*identity.MultiAddres
 	return bucket.FindMultiAddress(target), nil
 }
 
+func (dht *DHT) findMultiAddressNeighbors(target identity.Address, α int) (identity.MultiAddresses, error) {
+	return identity.MultiAddresses{}, nil
+}
+
 func (dht *DHT) findBucket(target identity.Address) (*Bucket, error) {
 	same, err := dht.Address.SamePrefixLength(target)
 	if err != nil {
@@ -183,16 +196,16 @@ func (dht *DHT) findBucket(target identity.Address) (*Bucket, error) {
 	return &dht.Buckets[index], nil
 }
 
-func (dht *DHT) findNeighborhoodBuckets(target identity.Address, neighborhood uint) (Buckets, error) {
+func (dht *DHT) findBucketNeighbors(target identity.Address, α int) (Buckets, error) {
 	// Find the index range of the neighborhood.
-	start, end, err := dht.neighborhood(target, neighborhood)
+	start, end, err := dht.neighborhood(target, α)
 	if err != nil {
 		return nil, err
 	}
 	return dht.Buckets[start:end], nil
 }
 
-func (dht *DHT) neighborhood(target identity.Address, neighborhood uint) (int, int, error) {
+func (dht *DHT) neighborhood(target identity.Address, α int) (int, int, error) {
 	// Find the index range of the neighborhood.
 	same, err := dht.Address.SamePrefixLength(target)
 	if err != nil {
@@ -205,11 +218,11 @@ func (dht *DHT) neighborhood(target identity.Address, neighborhood uint) (int, i
 	if index < 0 || index > len(dht.Buckets)-1 {
 		panic("runtime error: index out of range")
 	}
-	start := index - int(neighborhood)
+	start := index - α
 	if start < 0 {
 		start = 0
 	}
-	end := index + int(neighborhood)
+	end := index + α
 	if end > len(dht.Buckets) {
 		end = len(dht.Buckets)
 	}
