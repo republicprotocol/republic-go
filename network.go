@@ -1,7 +1,6 @@
 package network
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -17,7 +16,7 @@ import (
 )
 
 // α determines the maximum number of concurrent client connections that the
-// Node is expected to use when running a distributed Dijkstra search.
+// Node is expected to use when routing messages.
 const α = 3
 
 // The Delegate is used as a callback interface to inject logic into the
@@ -32,13 +31,16 @@ type Delegate interface {
 type Node struct {
 	*grpc.Server
 	Delegate
+	Address      identity.Address
 	MultiAddress identity.MultiAddress
 	DHT          *dht.DHT
 }
 
-// NewNode returns a Node with the given Config, a new DHT, and a new set of grpc.Connections.
-func NewNode(multi identity.MultiAddress, bootstrapMultis identity.MultiAddresses, delegate Delegate) (*Node, error) {
-	address, err := multi.Address()
+// NewNode returns a Node with the given its own identity.MultiAddress, a list
+// of boostrap node identity.MultiAddresses, and a delegate that defines
+// callbacks for each RPC.
+func NewNode(multiAddress identity.MultiAddress, bootstrapMultis identity.MultiAddresses, delegate Delegate) (*Node, error) {
+	address, err := multiAddress.Address()
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +53,8 @@ func NewNode(multi identity.MultiAddress, bootstrapMultis identity.MultiAddresse
 	return &Node{
 		Server:       grpc.NewServer(),
 		Delegate:     delegate,
-		MultiAddress: multi,
+		Address:      address,
+		MultiAddress: multiAddress,
 		DHT:          dht,
 	}, nil
 }
@@ -77,7 +80,7 @@ func (node *Node) Serve() error {
 }
 
 // Prune an identity.Address from the dht.DHT. Returns a boolean indicating
-//
+// whether or not an identity.Address was pruned.
 func (node *Node) Prune(target identity.Address) (bool, error) {
 	bucket, err := node.DHT.FindBucket(target)
 	if err != nil {
@@ -93,28 +96,24 @@ func (node *Node) Prune(target identity.Address) (bool, error) {
 	return false, nil
 }
 
-// Ping is used to test the connection to the Node and exchange MultiAddresses.
-// If the Node does not respond, or it responds with an error, then the
-// connection is considered unhealthy.
+// Ping is used to test the connection to the Node and exchange
+// identity.MultiAddresses. If the Node does not respond, or it responds with
+// an error, then the connection should be considered unhealthy.
 func (node *Node) Ping(ctx context.Context, from *rpc.MultiAddress) (*rpc.Nothing, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
-	ch := do.Process(func() do.Option {
-		return node.ping(from)
+	wait := do.Process(func() do.Option {
+		return do.Err(node.ping(from))
 	})
-	defer close(ch)
 
 	select {
-	case nothing := <-ch:
-		if nothing.Err != nil {
-			return nil, nothing.Err
-		}
-		return &rpc.Nothing{}, nil
+	case val := <-wait:
+		return &rpc.Nothing{}, val.Err
 
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return &rpc.Nothing{}, ctx.Err()
 	}
 }
 
@@ -126,95 +125,158 @@ func (node *Node) Peers(ctx context.Context, from *rpc.MultiAddress) (*rpc.Multi
 		return nil, err
 	}
 
-	ch := do.Process(func() do.Option {
-		return node.peers(from)
+	wait := do.Process(func() do.Option {
+		peers, err := node.peers(from)
+		if err != nil {
+			return do.Err(err)
+		}
+		return do.Ok(peers)
 	})
-	defer close(ch)
 
 	select {
-	case multiAddressOpt := <-ch:
-		if peers, ok := multiAddressOpt.Ok.(*rpc.MultiAddresses); ok {
-			return peers, multiAddressOpt.Err
-		}
-		return nil, multiAddressOpt.Err
+	case val := <-wait:
+		return val.Ok.(*rpc.MultiAddresses), val.Err
 
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, ctx.Err()
 	}
 }
 
+// SendOrderFragment to the Node. If the rpc.OrderFragment is not destined for
+// this Node then it will be forwarded on to the correct destination.
 func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
-	ch := do.Process(func() do.Option {
-		return do.Err(errors.New("unimplemented"))
+	wait := do.Process(func() do.Option {
+		return do.Err(node.sendOrderFragment(orderFragment))
 	})
-	defer close(ch)
 
 	select {
-	case nothing := <-ch:
-		if nothing.Err != nil {
-			return nil, nothing.Err
-		}
-		return &rpc.Nothing{}, nil
+	case val := <-wait:
+		return &rpc.Nothing{}, val.Err
 
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return &rpc.Nothing{}, ctx.Err()
 	}
 }
 
+// SendResultFragment to the Node. If the rpc.ResultFragment is not destined
+// for this Node then it will be forwarded on to the correct destination.
 func (node *Node) SendResultFragment(ctx context.Context, resultFragment *rpc.ResultFragment) (*rpc.Nothing, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
-	ch := do.Process(func() do.Option {
-		return do.Err(errors.New("unimplemented"))
+	wait := do.Process(func() do.Option {
+		return do.Err(node.sendResultFragment(resultFragment))
 	})
-	defer close(ch)
 
 	select {
-	case nothing := <-ch:
-		if nothing.Err != nil {
-			return nil, nothing.Err
-		}
-		return &rpc.Nothing{}, nil
+	case val := <-wait:
+		return &rpc.Nothing{}, val.Err
 
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return &rpc.Nothing{}, ctx.Err()
 	}
 }
 
-func (node *Node) ping(from *rpc.MultiAddress) do.Option {
-	multiAddress, err := DeserializeMultiAddress(from)
-	node.Delegate.OnPingReceived(multiAddress)
+func (node *Node) ping(from *rpc.MultiAddress) error {
+	// Update the DHT.
+	fromMultiAddress, err := DeserializeMultiAddress(from)
+	if err != nil {
+		return err
+	}
+	if err := node.updateDHT(fromMultiAddress); err != nil {
+		return err
+	}
 
+	// Notify the delegate of the ping.
+	node.Delegate.OnPingReceived(fromMultiAddress)
+	return nil
+}
+
+func (node *Node) peers(from *rpc.MultiAddress) (*rpc.MultiAddresses, error) {
+	// Update the DHT.
+	fromMultiAddress, err := DeserializeMultiAddress(from)
+	if err != nil {
+		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, nil
+	}
+	if err := node.updateDHT(fromMultiAddress); err != nil {
+		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, nil
+	}
+
+	// Return all peers in the DHT.
+	peers := node.DHT.MultiAddresses()
+	return SerializeMultiAddresses(peers), nil
+}
+
+func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) error {
+	// Update the DHT.
+	fromMultiAddress, err := DeserializeMultiAddress(orderFragment.From)
+	if err != nil {
+		return err
+	}
+	if err := node.updateDHT(fromMultiAddress); err != nil {
+		return err
+	}
+
+	// Check if the rpc.OrderFragment has reached its destination.
+	if orderFragment.To.String() == node.Address.String() {
+		deserializedOrderFragment, err := DeserializeOrderFragment(orderFragment)
+		if err != nil {
+			return err
+		}
+		node.OnOrderFragmentReceived(fromMultiAddress, deserializedOrderFragment)
+		return nil
+	}
+
+	// TODO: Find the closest target.
+	return nil
+}
+
+func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) error {
+	// Update the DHT.
+	fromMultiAddress, err := DeserializeMultiAddress(resultFragment.From)
+	if err != nil {
+		return err
+	}
+	if err := node.updateDHT(fromMultiAddress); err != nil {
+		return err
+	}
+
+	// Check if the rpc.OrderFragment has reached its destination.
+	if resultFragment.To.String() == node.Address.String() {
+		deserializedResultFragment, err := DeserializeResultFragment(resultFragment)
+		if err != nil {
+			return err
+		}
+		node.OnResultFragmentReceived(fromMultiAddress, deserializedResultFragment)
+		return nil
+	}
+
+	// TODO: Find the closest target.
+	return nil
+}
+
+func (node *Node) updateDHT(multiAddress identity.MultiAddress) error {
 	if err := node.DHT.Update(multiAddress); err != nil {
 		if err == dht.ErrFullBucket {
 			address, err := multiAddress.Address()
 			if err != nil {
-				return do.Err(err)
+				return err
 			}
 			pruned, err := node.Prune(address)
 			if err != nil {
-				return do.Err(err)
+				return err
 			}
 			if pruned {
-				if err := node.DHT.Update(multiAddress); err != nil {
-					return do.Err(err)
-				}
-				return do.Ok(SerializeMultiAddress(node.MultiAddress))
+				return node.DHT.Update(multiAddress)
 			}
+			return nil
 		}
-		return do.Err(err)
+		return err
 	}
-
-	return do.Ok(SerializeMultiAddress(node.MultiAddress))
-}
-
-func (node *Node) peers(from *rpc.MultiAddress) do.Option {
-	peers := node.DHT.MultiAddresses()
-	return do.Ok(SerializeMultiAddresses(peers))
+	return nil
 }
