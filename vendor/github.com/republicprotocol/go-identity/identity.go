@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -63,13 +64,18 @@ func (keyPair KeyPair) Address() Address {
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (keyPair KeyPair) MarshalJSON() ([]byte, error) {
-	return crypto.FromECDSA(keyPair.PrivateKey), nil
+func (keyPair *KeyPair) MarshalJSON() ([]byte, error) {
+	str := base58.Encode(crypto.FromECDSA(keyPair.PrivateKey))
+	return json.Marshal(str)
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (keyPair KeyPair) UnmarshalJSON(data []byte) error {
-	privateKey, err := crypto.ToECDSA(data)
+func (keyPair *KeyPair) UnmarshalJSON(data []byte) error {
+	str := ""
+	if err := json.Unmarshal(data, &str); err != nil {
+		return err
+	}
+	privateKey, err := crypto.ToECDSA(base58.Decode(str))
 	if err != nil {
 		return err
 	}
