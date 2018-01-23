@@ -83,15 +83,6 @@ func (dht *DHT) FindBucket(target identity.Address) (*Bucket, error) {
 	return dht.findBucket(target)
 }
 
-// FindBucketNeighbors uses the target identity.Address to find Buckets
-// that are close to the target Bucket. The target does not have to be in the
-// DHT. Returns up to α Bucket, or an error.
-func (dht *DHT) FindBucketNeighbors(target identity.Address, α int) (Buckets, error) {
-	dht.μ.RLock()
-	defer dht.μ.RUnlock()
-	return dht.findBucketNeighbors(target, α)
-}
-
 // MultiAddresses returns all identity.MultiAddresses in all Buckets.
 func (dht *DHT) MultiAddresses() identity.MultiAddresses {
 	dht.μ.RLock()
@@ -154,6 +145,9 @@ func (dht *DHT) findMultiAddress(target identity.Address) (*identity.MultiAddres
 	if err != nil {
 		return nil, err
 	}
+	if bucket == nil {
+		return nil, nil
+	}
 	cursor, _ := bucket.FindMultiAddress(target)
 	return cursor, nil
 }
@@ -175,15 +169,6 @@ func (dht *DHT) findBucket(target identity.Address) (*Bucket, error) {
 		panic("runtime error: index out of range")
 	}
 	return &dht.Buckets[index], nil
-}
-
-func (dht *DHT) findBucketNeighbors(target identity.Address, α int) (Buckets, error) {
-	// Find the index range of the neighborhood.
-	start, end, err := dht.neighborhood(target, α)
-	if err != nil {
-		return nil, err
-	}
-	return dht.Buckets[start:end], nil
 }
 
 func (dht *DHT) neighborhood(target identity.Address, α int) (int, int, error) {
@@ -233,14 +218,15 @@ type Bucket struct {
 // most, the given maximum length.
 func NewBucket(maxLength int) Bucket {
 	return Bucket{
-		MaxLength: maxLength,
+		MultiAddresses: make(identity.MultiAddresses, 0, maxLength),
+		MaxLength:      maxLength,
 	}
 }
 
 // UpdateMultiAddress adds an identity.MultiAddress to the Bucket. If the
 // identity.MultiAddress is already in the Bucket then it is pushed to the end
 // of the Bucket.
-func (bucket Bucket) UpdateMultiAddress(multiAddress identity.MultiAddress) error {
+func (bucket *Bucket) UpdateMultiAddress(multiAddress identity.MultiAddress) error {
 
 	// If the identity.MultiAddress is not already in the Bucket then add it to
 	// the Bucket.
@@ -269,7 +255,7 @@ func (bucket Bucket) UpdateMultiAddress(multiAddress identity.MultiAddress) erro
 // identity.Address in the Bucket. Returns the associated identity.MultiAddress
 // and its position in the Bucket. If the target is not in the Bucket then this
 // function returns a nil identity.MultiAddress and an invalid position.
-func (bucket Bucket) FindMultiAddress(target identity.Address) (*identity.MultiAddress, int) {
+func (bucket *Bucket) FindMultiAddress(target identity.Address) (*identity.MultiAddress, int) {
 	for i, multiAddress := range bucket.MultiAddresses {
 		address, err := multiAddress.Address()
 		if err == nil && address == target {
@@ -280,13 +266,13 @@ func (bucket Bucket) FindMultiAddress(target identity.Address) (*identity.MultiA
 }
 
 // Length returns the number of Entries in the Bucket.
-func (bucket Bucket) Length() int {
+func (bucket *Bucket) Length() int {
 	return len(bucket.MultiAddresses)
 }
 
 // IsFull returns true if, and only if, the number of Entries in the Bucket is
 // equal to the maximum number of Entries allowed.
-func (bucket Bucket) IsFull() bool {
+func (bucket *Bucket) IsFull() bool {
 	return bucket.Length() == bucket.MaxLength
 }
 
