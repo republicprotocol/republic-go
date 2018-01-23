@@ -252,7 +252,38 @@ var _ = Describe("Distributed Hash Table", func() {
 
 	Context("when finding multi-addresses", func() {
 
-		It("should return multi-address neighbors", func() {
+		It("should return multi-address neighbors when there are more than α", func() {
+			dhtAddress, _, err := identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			dht := NewDHT(dhtAddress, maxBucketLength)
+
+			address, _, err := identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			for i := 0; i < 10; i++ {
+				for j := 0; j < 2; j++ {
+					address, _, err := identity.NewAddress()
+					Ω(err).ShouldNot(HaveOccurred())
+					multiAddress, err := address.MultiAddress()
+					Ω(err).ShouldNot(HaveOccurred())
+					err = dht.UpdateMultiAddress(multiAddress)
+					Ω(err).ShouldNot(HaveOccurred())
+				}
+
+				multiAddresses, err := dht.FindMultiAddressNeighbors(address, 1)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(len(multiAddresses)).Should(Equal(1))
+
+				multiAddresses = dht.MultiAddresses()
+				for _, multiAddress := range multiAddresses {
+					err := dht.RemoveMultiAddress(multiAddress)
+					Ω(err).ShouldNot(HaveOccurred())
+				}
+				Ω(len(dht.MultiAddresses())).Should(Equal(0))
+			}
+		})
+
+		It("should return multi-address neighbors when there are less than α", func() {
 			dhtAddress, _, err := identity.NewAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 			dht := NewDHT(dhtAddress, maxBucketLength)
@@ -264,22 +295,9 @@ var _ = Describe("Distributed Hash Table", func() {
 			err = dht.UpdateMultiAddress(multiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			for i := 0; i < IDLengthInBits*maxBucketLength; i++ {
-				address, _, e := identity.NewAddress()
-				Ω(e).ShouldNot(HaveOccurred())
-				multiAddress, e := address.MultiAddress()
-				Ω(e).ShouldNot(HaveOccurred())
-				e = dht.UpdateMultiAddress(multiAddress)
-				if err == nil && e != nil {
-					err = e
-					break
-				}
-			}
-			Ω(err).Should(HaveOccurred())
-
 			multiAddresses, err := dht.FindMultiAddressNeighbors(address, 3)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(len(multiAddresses)).Should(Equal(3))
+			Ω(len(multiAddresses)).Should(Equal(1))
 		})
 
 		It("should return an error when finding the DHT address", func() {

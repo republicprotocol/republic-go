@@ -1,6 +1,7 @@
 package dht
 
 import (
+	"sort"
 	"sync"
 
 	"github.com/republicprotocol/go-identity"
@@ -80,7 +81,8 @@ func (dht *DHT) FindMultiAddressNeighbors(target identity.Address, α int) (iden
 func (dht *DHT) FindBucket(target identity.Address) (*Bucket, error) {
 	dht.μ.RLock()
 	defer dht.μ.RUnlock()
-	return dht.findBucket(target)
+	bucket, _, err := dht.findBucket(target)
+	return bucket, err
 }
 
 // MultiAddresses returns all identity.MultiAddresses in all Buckets.
@@ -95,7 +97,7 @@ func (dht *DHT) updateMultiAddress(multiAddress identity.MultiAddress) error {
 	if err != nil {
 		return err
 	}
-	bucket, err := dht.findBucket(address)
+	bucket, _, err := dht.findBucket(address)
 	if err != nil {
 		return err
 	}
@@ -107,7 +109,7 @@ func (dht *DHT) removeMultiAddress(multiAddress identity.MultiAddress) error {
 	if err != nil {
 		return err
 	}
-	bucket, err := dht.findBucket(target)
+	bucket, _, err := dht.findBucket(target)
 	if err != nil {
 		return err
 	}
@@ -133,7 +135,7 @@ func (dht *DHT) removeMultiAddress(multiAddress identity.MultiAddress) error {
 }
 
 func (dht *DHT) findMultiAddress(target identity.Address) (*identity.MultiAddress, error) {
-	bucket, err := dht.findBucket(target)
+	bucket, _, err := dht.findBucket(target)
 	if err != nil {
 		return nil, err
 	}
@@ -145,22 +147,59 @@ func (dht *DHT) findMultiAddress(target identity.Address) (*identity.MultiAddres
 }
 
 func (dht *DHT) findMultiAddressNeighbors(target identity.Address, α int) (identity.MultiAddresses, error) {
-	return identity.MultiAddresses{}, nil
+	bucket, position, err := dht.findBucket(target)
+	if err != nil {
+		return identity.MultiAddresses{}, err
+	}
+	if bucket == nil {
+		return identity.MultiAddresses{}, nil
+	}
+
+	minLength := len(dht.MultiAddresses())
+	if α < minLength {
+		minLength = α
+	}
+
+	multiAddresses := make(identity.MultiAddresses, 0, minLength)
+	multiAddresses = append(multiAddresses, bucket.MultiAddresses...)
+	start := position - 1
+	end := position + 1
+	for len(multiAddresses) < minLength {
+		if start < 0 {
+			start = 0
+		}
+		if end >= len(dht.Buckets)-1 {
+			end = len(dht.Buckets) - 1
+		}
+		multiAddresses = append(multiAddresses, dht.Buckets[start].MultiAddresses...)
+		multiAddresses = append(multiAddresses, dht.Buckets[end].MultiAddresses...)
+		start--
+		end++
+	}
+
+	sort.Slice(multiAddresses, func(i, j int) bool {
+		left, _ := multiAddresses[i].Address()
+		right, _ := multiAddresses[j].Address()
+		closer, _ := identity.Closer(left, right, target)
+		return closer
+	})
+
+	return multiAddresses[:minLength], nil
 }
 
-func (dht *DHT) findBucket(target identity.Address) (*Bucket, error) {
+func (dht *DHT) findBucket(target identity.Address) (*Bucket, int, error) {
 	same, err := dht.Address.SamePrefixLength(target)
 	if err != nil {
-		return nil, err
+		return nil, -1, err
 	}
 	if same == IDLengthInBits {
-		return nil, ErrDHTAddress
+		return nil, -1, ErrDHTAddress
 	}
 	index := len(dht.Buckets) - same - 1
 	if index < 0 || index > len(dht.Buckets)-1 {
 		panic("runtime error: index out of range")
 	}
-	return &dht.Buckets[index], nil
+	return &dht.Buckets[index], index, nil
 }
 
 func (dht *DHT) multiAddresses() identity.MultiAddresses {
