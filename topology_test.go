@@ -135,7 +135,7 @@ func ping(nodes []*network.Node, topology map[identity.Address][]*network.Node) 
 			defer wg.Done()
 			peers := topology[node.DHT.Address]
 			for _, peer := range peers {
-				_, err := node.RPCPing(peer.MultiAddress)
+				_, err := network.PingTarget(network.SerializeMultiAddress(peer.MultiAddress), network.SerializeMultiAddress(node.MultiAddress))
 				if err != nil {
 					muError.Lock()
 					defer muError.Unlock()
@@ -159,7 +159,7 @@ func peers(nodes []*network.Node, topology map[identity.Address][]*network.Node)
 		go func(node *network.Node) {
 			defer wg.Done()
 			peers := topology[node.DHT.Address]
-			connectedPeers, err := new(network.Node).RPCPeers(node.MultiAddress)
+			connectedPeers, err := network.GetPeersFromTarget(network.SerializeMultiAddress(node.MultiAddress), nil)
 			if err != nil {
 				muError.Lock()
 				defer muError.Unlock()
@@ -167,7 +167,7 @@ func peers(nodes []*network.Node, topology map[identity.Address][]*network.Node)
 			}
 			for _, peer := range peers {
 				connected := false
-				for _, connectedPeer := range connectedPeers {
+				for _, connectedPeer := range connectedPeers.Multis {
 					if peer.MultiAddress.String() == connectedPeer.String() {
 						connected = true
 					}

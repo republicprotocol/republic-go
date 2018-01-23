@@ -113,7 +113,7 @@ func SendResultFragmentToTarget(to *rpc.MultiAddress, resultFragment *rpc.Result
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	return client.SendResultFragment(ctx, serializedResultFragment, grpc.FailFast(false))
+	return client.SendResultFragment(ctx, resultFragment, grpc.FailFast(false))
 }
 
 // SerializeMultiAddress converts an identity.MultiAddress into its
