@@ -42,7 +42,7 @@ func NewNode(multiAddress identity.MultiAddress, bootstrapMultis identity.MultiA
 	}
 	dht := dht.NewDHT(address, 100)
 	for _, bootstrapMulti := range bootstrapMultis {
-		if err := dht.Update(bootstrapMulti); err != nil {
+		if err := dht.UpdateMultiAddress(bootstrapMulti); err != nil {
 			return nil, err
 		}
 	}
@@ -109,7 +109,7 @@ func (node *Node) ping(from *rpc.MultiAddress) (*rpc.Nothing, error) {
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	if err := node.updateDHT(fromMultiAddress); err != nil {
+	if err := node.updatePeer(fromMultiAddress); err != nil {
 		return &rpc.Nothing{}, err
 	}
 
@@ -149,7 +149,7 @@ func (node *Node) peers(from *rpc.MultiAddress) (*rpc.MultiAddresses, error) {
 	if err != nil {
 		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, nil
 	}
-	if err := node.updateDHT(fromMultiAddress); err != nil {
+	if err := node.updatePeer(fromMultiAddress); err != nil {
 		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, nil
 	}
 
@@ -192,18 +192,48 @@ func (node *Node) findPeer(finder *rpc.Finder) (*rpc.MultiAddresses, error) {
 		if err != nil {
 			return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, err
 		}
-		if err := node.updateDHT(fromMultiAddress); err != nil {
+		if err := node.updatePeer(fromMultiAddress); err != nil {
 			return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, err
 		}
 	}
 
-	// Return all peers in the DHT.
+	// Get the target identity.Address for which this Node is searching for
+	// peers.
 	target := identity.Address(finder.Peer.Address)
-	peers, err := node.DHT.FindMultiAddressNeighbors(target, node.Options.Alpha)
+
+	// Create the closed and open data structures for performing the Kademlia
+	// search.
+	closed := map[string]struct{}{}
+	open, err := node.DHT.FindMultiAddressNeighbors(target, node.Options.Alpha)
 	if err != nil {
 		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, err
 	}
-	return SerializeMultiAddresses(peers), nil
+
+	serializedNodeMultiAddress := SerializeMultiAddress(node.MultiAddress)
+	for len(open) > 0 {
+		for i := 0; i < node.Options.Alpha && len(open) > 0; i++ {
+
+			// Test whether this peer matches the target. If so, end the search
+			// and return it immediately.
+			multiAddress := open[0]
+			address, err := multiAddress.Address()
+			if err != nil {
+				continue
+			}
+			if address == target {
+				return SerializeMultiAddresses(identity.MultiAddresses{multiAddress}), nil
+			}
+
+			// Otherwise, remove it from the open list and add it to the closed
+			// map.
+			open = open[1:]
+			closed[multiAddress.String()] = struct{}{}
+
+			FindPeerFromTarget(SerializeMultiAddress(multiAddress), serializedNodeMultiAddress, &rpc.Address{Address: target.String()})
+		}
+	}
+
+	return SerializeMultiAddresses(open), nil
 }
 
 // SendOrderFragment to the Node. If the rpc.OrderFragment is not destined for
@@ -236,7 +266,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Noth
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	if err := node.updateDHT(fromMultiAddress); err != nil {
+	if err := node.updatePeer(fromMultiAddress); err != nil {
 		return &rpc.Nothing{}, err
 	}
 
@@ -291,7 +321,7 @@ func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.N
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	if err := node.updateDHT(fromMultiAddress); err != nil {
+	if err := node.updatePeer(fromMultiAddress); err != nil {
 		return &rpc.Nothing{}, err
 	}
 
@@ -323,18 +353,18 @@ func (node *Node) Prune(target identity.Address) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	multiAddress := bucket.OldestMultiAddress()
-	if multiAddress == nil {
+	if bucket == nil || bucket.Length() == 0 {
 		return false, nil
 	}
-	if _, err := PingTarget(SerializeMultiAddress(*multiAddress), SerializeMultiAddress(node.MultiAddress)); err != nil {
-		return true, node.DHT.Remove(*multiAddress)
+	multiAddress := bucket.MultiAddresses[0]
+	if _, err := PingTarget(SerializeMultiAddress(multiAddress), SerializeMultiAddress(node.MultiAddress)); err != nil {
+		return true, node.DHT.RemoveMultiAddress(multiAddress)
 	}
-	return false, nil
+	return false, node.DHT.UpdateMultiAddress(multiAddress)
 }
 
-func (node *Node) updateDHT(multiAddress identity.MultiAddress) error {
-	if err := node.DHT.Update(multiAddress); err != nil {
+func (node *Node) updatePeer(multiAddress identity.MultiAddress) error {
+	if err := node.DHT.UpdateMultiAddress(multiAddress); err != nil {
 		if err == dht.ErrFullBucket {
 			address, err := multiAddress.Address()
 			if err != nil {
@@ -345,7 +375,7 @@ func (node *Node) updateDHT(multiAddress identity.MultiAddress) error {
 				return err
 			}
 			if pruned {
-				return node.DHT.Update(multiAddress)
+				return node.DHT.UpdateMultiAddress(multiAddress)
 			}
 			return nil
 		}

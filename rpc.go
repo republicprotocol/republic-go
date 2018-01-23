@@ -68,6 +68,22 @@ func GetPeersFromTarget(to *rpc.MultiAddress, from *rpc.MultiAddress) (*rpc.Mult
 	return client.Peers(ctx, from, grpc.FailFast(false))
 }
 
+// FindPeerFromTarget using a new grpc.ClientConn to make a FindPeer RPC to a
+// target rpc.MultiAddress.
+func FindPeerFromTarget(to *rpc.MultiAddress, from *rpc.MultiAddress, peer *rpc.Address) (*rpc.MultiAddresses, error) {
+	conn, err := Dial(to)
+	if err != nil {
+		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, nil
+	}
+	defer conn.Close()
+	client := rpc.NewNodeClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	return client.FindPeer(ctx, &rpc.Finder{Peer: peer, From: from}, grpc.FailFast(false))
+}
+
 // SendOrderFragmentToTarget using a new grpc.ClientConn to make a
 // SendOrderFragment RPC to a target rpc.MultiAddress.
 func SendOrderFragmentToTarget(to *rpc.MultiAddress, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
