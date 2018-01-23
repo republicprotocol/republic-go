@@ -90,14 +90,6 @@ func (dht *DHT) MultiAddresses() identity.MultiAddresses {
 	return dht.multiAddresses()
 }
 
-// Neighborhood returns the start and end indices of a α-sized neighborhood
-// around the Bucket associated with the target identity.Address.
-func (dht *DHT) Neighborhood(target identity.Address, α int) (int, int, error) {
-	dht.μ.RLock()
-	defer dht.μ.RUnlock()
-	return dht.neighborhood(target, α)
-}
-
 func (dht *DHT) updateMultiAddress(multiAddress identity.MultiAddress) error {
 	address, err := multiAddress.Address()
 	if err != nil {
@@ -171,40 +163,8 @@ func (dht *DHT) findBucket(target identity.Address) (*Bucket, error) {
 	return &dht.Buckets[index], nil
 }
 
-func (dht *DHT) neighborhood(target identity.Address, α int) (int, int, error) {
-	// Find the index range of the neighborhood.
-	same, err := dht.Address.SamePrefixLength(target)
-	if err != nil {
-		return -1, -1, err
-	}
-	if same == IDLengthInBits {
-		return -1, -1, ErrDHTAddress
-	}
-	index := len(dht.Buckets) - same - 1
-	if index < 0 || index > len(dht.Buckets)-1 {
-		panic("runtime error: index out of range")
-	}
-	start := index - α
-	if start < 0 {
-		start = 0
-	}
-	end := index + α
-	if end > len(dht.Buckets) {
-		end = len(dht.Buckets)
-	}
-	return start, end, nil
-}
-
 func (dht *DHT) multiAddresses() identity.MultiAddresses {
-	numberOfMultiAddresses := 0
-	for _, bucket := range dht.Buckets {
-		numberOfMultiAddresses += bucket.Length()
-	}
-	multiAddresses := make(identity.MultiAddresses, 0, numberOfMultiAddresses)
-	for _, bucket := range dht.Buckets {
-		multiAddresses = append(multiAddresses, bucket.MultiAddresses...)
-	}
-	return multiAddresses
+	return Buckets(dht.Buckets[:]).MultiAddresses()
 }
 
 // Bucket is a mapping of Addresses to Entries. In standard Kademlia, a list is
