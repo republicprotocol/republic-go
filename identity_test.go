@@ -5,6 +5,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
+	"crypto/ecdsa"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+	"crypto/rand"
 )
 
 var _ = Describe("", func() {
@@ -20,6 +23,25 @@ var _ = Describe("", func() {
 			It("should have non-nil private key and public key", func() {
 				Ω(keyPair.PrivateKey).ShouldNot(BeNil())
 				Ω(keyPair.PublicKey).ShouldNot(BeNil())
+			})
+		})
+
+		Context("generation from private key",func(){
+			var key identity.KeyPair
+			privateKey, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+
+			It("should not error", func() {
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("should generate key pair from the private key", func() {
+				key, err = identity.NewKeyPairFromPrivateKey(privateKey);
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("should have the same private and public key as the 'father' private key", func() {
+				Ω(*privateKey).Should(Equal(*(key.PrivateKey)))
+				Ω(privateKey.Public()).Should(Equal(key.PublicKey))
 			})
 		})
 
