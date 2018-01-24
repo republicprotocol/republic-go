@@ -15,4 +15,3 @@ func readUnaligned32(p unsafe.Pointer) uint32 {
 func readUnaligned64(p unsafe.Pointer) uint64 {
 	return *(*uint64)(p)
 }
-
