@@ -221,8 +221,7 @@ var _ = Describe("", func() {
 			})
 
 			It("should be able to get the address from the multi-address", func() {
-				Ω(multi.String()).Should(Equal("/republic/" + string(address)))
-				Ω(multi.ValueForProtocol(identity.RepublicCode)).Should(Equal(string(address)))
+				Ω(multi.Address()).Should(Equal("/republic/" + string(address)))
 			})
 		})
 	})
