@@ -101,7 +101,7 @@ func (dht *DHT) updateMultiAddress(multiAddress identity.MultiAddress) error {
 	if err != nil {
 		return err
 	}
-	return bucket.UpdateMultiAddress(multiAddress)
+	return bucket.UpdateMultiAddress(address, multiAddress)
 }
 
 func (dht *DHT) removeMultiAddress(multiAddress identity.MultiAddress) error {
@@ -165,19 +165,17 @@ func (dht *DHT) findMultiAddressNeighbors(target identity.Address, α int) (iden
 	start := position - 1
 	end := position + 1
 	for len(multiAddresses) < minLength {
-		if start < 0 {
-			start = 0
+		if start >= 0 {
+			multiAddresses = append(multiAddresses, dht.Buckets[start].MultiAddresses...)
 		}
-		if end >= len(dht.Buckets)-1 {
-			end = len(dht.Buckets) - 1
+		if end <= len(dht.Buckets)-1 {
+			multiAddresses = append(multiAddresses, dht.Buckets[end].MultiAddresses...)
 		}
-		multiAddresses = append(multiAddresses, dht.Buckets[start].MultiAddresses...)
-		multiAddresses = append(multiAddresses, dht.Buckets[end].MultiAddresses...)
 		start--
 		end++
 	}
 
-	sort.Slice(multiAddresses, func(i, j int) bool {
+	sort.SliceStable(multiAddresses, func(i, j int) bool {
 		left, _ := multiAddresses[i].Address()
 		right, _ := multiAddresses[j].Address()
 		closer, _ := identity.Closer(left, right, target)
@@ -225,14 +223,10 @@ func NewBucket(maxLength int) Bucket {
 // UpdateMultiAddress adds an identity.MultiAddress to the Bucket. If the
 // identity.MultiAddress is already in the Bucket then it is pushed to the end
 // of the Bucket.
-func (bucket *Bucket) UpdateMultiAddress(multiAddress identity.MultiAddress) error {
+func (bucket *Bucket) UpdateMultiAddress(address identity.Address, multiAddress identity.MultiAddress) error {
 
 	// If the identity.MultiAddress is not already in the Bucket then add it to
 	// the Bucket.
-	address, err := multiAddress.Address()
-	if err != nil {
-		return err
-	}
 	cursor, position := bucket.FindMultiAddress(address)
 	if cursor == nil {
 		if bucket.IsFull() {

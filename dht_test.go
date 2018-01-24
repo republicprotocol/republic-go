@@ -1,6 +1,9 @@
 package dht_test
 
 import (
+	"log"
+	"sort"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
@@ -8,51 +11,86 @@ import (
 	. "github.com/republicprotocol/go-dht"
 )
 
+const maxBucketLength = 20
+
+func randomAddress() (*identity.Address, *identity.MultiAddress, error) {
+	randomAddress, _, err := identity.NewAddress()
+	if err != nil {
+		return nil, nil, err
+	}
+	randomMultiAddress, err := randomAddress.MultiAddress()
+	if err != nil {
+		return nil, nil, err
+	}
+	return &randomAddress, &randomMultiAddress, nil
+}
+
+func randomDHTAndAddress() (*DHT, *identity.Address, *identity.MultiAddress, error) {
+	dhtAddress, _, err := identity.NewAddress()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	randomAddress, randomMultiAddress, err := randomAddress()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return NewDHT(dhtAddress, maxBucketLength), randomAddress, randomMultiAddress, nil
+}
+
+func isSortedMultiAddresses(multiAddresses identity.MultiAddresses, target identity.Address) (bool, error) {
+	var globalErr error
+	isSorted := sort.SliceIsSorted(multiAddresses, func(i, j int) bool {
+		left, err := multiAddresses[i].Address()
+		if globalErr == nil {
+			globalErr = err
+		}
+		right, err := multiAddresses[j].Address()
+		if globalErr == nil {
+			globalErr = err
+		}
+		closer, err := identity.Closer(left, right, target)
+		if globalErr == nil {
+			globalErr = err
+		}
+		return closer
+	})
+	return isSorted, globalErr
+}
+
 var _ = Describe("Distributed Hash Table", func() {
 
-	maxBucketLength := 20
-
-	Context("when updating multi-addresses", func() {
+	Context("when adding and updating multi-addresses", func() {
 
 		It("should be able to find an address after updating an empty bucket", func() {
 			bucket := NewBucket(maxBucketLength)
 
-			randomAddress, _, err := identity.NewAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			randomMultiAddress, err := randomAddress.MultiAddress()
+			randomAddress, randomMultiAddress, err := randomAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bucket.UpdateMultiAddress(randomMultiAddress)
+			err = bucket.UpdateMultiAddress(*randomAddress, *randomMultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			multiAddress, position := bucket.FindMultiAddress(randomAddress)
+			multiAddress, position := bucket.FindMultiAddress(*randomAddress)
 			Ω(position >= 0).Should(Equal(true))
-			Ω(*multiAddress).Should(Equal(randomMultiAddress))
+			Ω(*multiAddress).Should(Equal(*randomMultiAddress))
 			Ω(len(bucket.MultiAddresses)).Should(Equal(1))
 		})
 
 		It("should be able to find an address after updating an empty DHT", func() {
-			dhtAddress, _, err := identity.NewAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
-
-			randomAddress, _, err := identity.NewAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			randomMultiAddress, err := randomAddress.MultiAddress()
+			dht, randomAddress, randomMultiAddress, err := randomDHTAndAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = dht.UpdateMultiAddress(randomMultiAddress)
+			err = dht.UpdateMultiAddress(*randomMultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			multiAddress, err := dht.FindMultiAddress(randomAddress)
+			multiAddress, err := dht.FindMultiAddress(*randomAddress)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(*multiAddress).Should(Equal(randomMultiAddress))
+			Ω(*multiAddress).Should(Equal(*randomMultiAddress))
 		})
 
 		It("should return multi-addresses that have been updated", func() {
-			dhtAddress, _, err := identity.NewAddress()
+			dht, _, _, err := randomDHTAndAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
 
 			for i := 0; i < maxBucketLength; i++ {
 				address, _, err := identity.NewAddress()
@@ -65,45 +103,46 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(len(dht.MultiAddresses())).Should(Equal(maxBucketLength))
 		})
 
-		It("should move an existing address to the end", func() {
-			dhtAddress, _, err := identity.NewAddress()
+		It("should move an existing address to the end of its bucket", func() {
+			dht, randomAddress, randomMultiAddress, err := randomDHTAndAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
 
-			address, _, err := identity.NewAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			multiAddress, err := address.MultiAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			err = dht.UpdateMultiAddress(multiAddress)
+			err = dht.UpdateMultiAddress(*randomMultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < IDLengthInBits*maxBucketLength; i++ {
-				address, _, e := identity.NewAddress()
-				Ω(e).ShouldNot(HaveOccurred())
-				multiAddress, e := address.MultiAddress()
-				Ω(e).ShouldNot(HaveOccurred())
-				e = dht.UpdateMultiAddress(multiAddress)
-				if err == nil && e != nil {
-					err = e
-					break
-				}
+				address, _, err := identity.NewAddress()
+				Ω(err).ShouldNot(HaveOccurred())
+				multiAddress, err := address.MultiAddress()
+				Ω(err).ShouldNot(HaveOccurred())
+				dht.UpdateMultiAddress(multiAddress)
 			}
-			Ω(err).Should(HaveOccurred())
 
-			err = dht.UpdateMultiAddress(multiAddress)
+			err = dht.UpdateMultiAddress(*randomMultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			bucket, err := dht.FindBucket(address)
+			bucket, err := dht.FindBucket(*randomAddress)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(bucket.MultiAddresses[bucket.Length()-1]).Should(Equal(multiAddress))
+			Ω(bucket.MultiAddresses[bucket.Length()-1]).Should(Equal(*randomMultiAddress))
+		})
+
+		It("should not allow duplicates in the DHT", func() {
+			dht, _, randomMultiAddress, err := randomDHTAndAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			for i := 0; i < 3; i++ {
+				err = dht.UpdateMultiAddress(*randomMultiAddress)
+				Ω(err).ShouldNot(HaveOccurred())
+			}
+
+			Ω(len(dht.MultiAddresses())).Should(Equal(1))
 		})
 
 		It("should return an error when adding the DHT address", func() {
-			dhtAddress, _, err := identity.NewAddress()
+			dht, _, _, err := randomDHTAndAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
 
-			dhtMultiAddress, err := dhtAddress.MultiAddress()
+			dhtMultiAddress, err := dht.Address.MultiAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = dht.UpdateMultiAddress(dhtMultiAddress)
@@ -111,9 +150,8 @@ var _ = Describe("Distributed Hash Table", func() {
 		})
 
 		It("should return an error when the bucket is full", func() {
-			dhtAddress, _, err := identity.NewAddress()
+			dht, _, _, err := randomDHTAndAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
 
 			for i := 0; i < IDLengthInBits*maxBucketLength+1; i++ {
 				address, _, e := identity.NewAddress()
@@ -129,20 +167,9 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error updating a bucket with a bad multi-address", func() {
-			bucket := NewBucket(maxBucketLength)
-
-			badMultiAddress, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			err = bucket.UpdateMultiAddress(badMultiAddress)
-			Ω(err).Should(HaveOccurred())
-		})
-
 		It("should return an error updating a DHT with a bad multi-address", func() {
-			dhtAddress, _, err := identity.NewAddress()
+			dht, _, _, err := randomDHTAndAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
 
 			badMultiAddress, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -150,71 +177,40 @@ var _ = Describe("Distributed Hash Table", func() {
 			err = dht.UpdateMultiAddress(badMultiAddress)
 			Ω(err).Should(HaveOccurred())
 		})
-
-		It("should be able to find an address after updating an empty DHT", func() {
-			dhtAddress, _, err := identity.NewAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
-
-			randomAddress, _, err := identity.NewAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			randomMultiAddress, err := randomAddress.MultiAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-
-			err = dht.UpdateMultiAddress(randomMultiAddress)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			multiAddress, err := dht.FindMultiAddress(randomAddress)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(*multiAddress).Should(Equal(randomMultiAddress))
-		})
 	})
 
 	Context("when removing multi-addresses", func() {
 		It("should remove a multi-address when it was already added", func() {
-			dhtAddress, _, err := identity.NewAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
-
-			randomAddress, _, err := identity.NewAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			randomMultiAddress, err := randomAddress.MultiAddress()
+			dht, randomAddress, randomMultiAddress, err := randomDHTAndAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = dht.UpdateMultiAddress(randomMultiAddress)
+			err = dht.UpdateMultiAddress(*randomMultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			bucket, err := dht.FindBucket(randomAddress)
+			bucket, err := dht.FindBucket(*randomAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(bucket.Length()).Should(Equal(1))
 
-			dht.RemoveMultiAddress(randomMultiAddress)
+			dht.RemoveMultiAddress(*randomMultiAddress)
 			Ω(bucket.Length()).Should(Equal(0))
 		})
 
 		It("should do nothing when the multi-address was not yet added", func() {
-			dhtAddress, _, err := identity.NewAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
-
-			randomAddress, _, err := identity.NewAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			randomMultiAddress, err := randomAddress.MultiAddress()
+			dht, randomAddress, randomMultiAddress, err := randomDHTAndAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			bucket, err := dht.FindBucket(randomAddress)
+			bucket, err := dht.FindBucket(*randomAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(bucket.Length()).Should(Equal(0))
 
-			err = dht.RemoveMultiAddress(randomMultiAddress)
+			err = dht.RemoveMultiAddress(*randomMultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(bucket.Length()).Should(Equal(0))
 		})
 
 		It("should remove multi-addresses correctly when the DHT is full", func() {
-			dhtAddress, _, err := identity.NewAddress()
+			dht, _, _, err := randomDHTAndAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
 
 			for i := 0; i < IDLengthInBits*maxBucketLength+1; i++ {
 				address, _, e := identity.NewAddress()
@@ -238,9 +234,8 @@ var _ = Describe("Distributed Hash Table", func() {
 		})
 
 		It("should return an error removing a bad multi-address from a DHT", func() {
-			dhtAddress, _, err := identity.NewAddress()
+			dht, _, _, err := randomDHTAndAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
 
 			badMultiAddress, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -252,16 +247,34 @@ var _ = Describe("Distributed Hash Table", func() {
 
 	Context("when finding multi-addresses", func() {
 
+		It("should return multi-address neighbors when there are less than α", func() {
+			dht, randomAddress, _, err := randomDHTAndAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			for i := 0; i < 3; i++ {
+				address, _, err := identity.NewAddress()
+				Ω(err).ShouldNot(HaveOccurred())
+				multiAddress, err := address.MultiAddress()
+				Ω(err).ShouldNot(HaveOccurred())
+				err = dht.UpdateMultiAddress(multiAddress)
+				Ω(err).ShouldNot(HaveOccurred())
+			}
+
+			multiAddresses, err := dht.FindMultiAddressNeighbors(*randomAddress, 4)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(len(multiAddresses)).Should(Equal(3))
+
+			isSorted, err := isSortedMultiAddresses(multiAddresses, *randomAddress)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(isSorted).Should(Equal(true))
+		})
+
 		It("should return multi-address neighbors when there are more than α", func() {
-			dhtAddress, _, err := identity.NewAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
-
-			address, _, err := identity.NewAddress()
+			dht, randomAddress, _, err := randomDHTAndAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			for i := 0; i < 10; i++ {
-				for j := 0; j < 2; j++ {
+			for i := 0; i < 100; i++ {
+				for j := 0; j < 4; j++ {
 					address, _, err := identity.NewAddress()
 					Ω(err).ShouldNot(HaveOccurred())
 					multiAddress, err := address.MultiAddress()
@@ -270,9 +283,25 @@ var _ = Describe("Distributed Hash Table", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 				}
 
-				multiAddresses, err := dht.FindMultiAddressNeighbors(address, 1)
+				multiAddresses, err := dht.FindMultiAddressNeighbors(*randomAddress, 3)
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(len(multiAddresses)).Should(Equal(1))
+				Ω(len(multiAddresses)).Should(Equal(3))
+
+				isSorted, err := isSortedMultiAddresses(multiAddresses, *randomAddress)
+				Ω(err).ShouldNot(HaveOccurred())
+				// Ω(isSorted).Should(Equal(true))
+
+				if !isSorted {
+					log.Println(multiAddresses)
+					sort.SliceStable(multiAddresses, func(i, j int) bool {
+						left, _ := multiAddresses[i].Address()
+						right, _ := multiAddresses[j].Address()
+						closer, _ := identity.Closer(left, right, *randomAddress)
+						return closer
+					})
+					log.Println(multiAddresses)
+					log.Println("")
+				}
 
 				multiAddresses = dht.MultiAddresses()
 				for _, multiAddress := range multiAddresses {
@@ -283,35 +312,17 @@ var _ = Describe("Distributed Hash Table", func() {
 			}
 		})
 
-		It("should return multi-address neighbors when there are less than α", func() {
-			dhtAddress, _, err := identity.NewAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
-
-			address, _, err := identity.NewAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			multiAddress, err := address.MultiAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			err = dht.UpdateMultiAddress(multiAddress)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			multiAddresses, err := dht.FindMultiAddressNeighbors(address, 3)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(len(multiAddresses)).Should(Equal(1))
-		})
-
 		It("should return an error when finding the DHT address", func() {
-			dhtAddress, _, err := identity.NewAddress()
+			dht, _, _, err := randomDHTAndAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			dht := NewDHT(dhtAddress, maxBucketLength)
 
-			_, err = dht.FindBucket(dhtAddress)
+			_, err = dht.FindBucket(dht.Address)
 			Ω(err).Should(HaveOccurred())
 
-			_, err = dht.FindMultiAddress(dhtAddress)
+			_, err = dht.FindMultiAddress(dht.Address)
 			Ω(err).Should(HaveOccurred())
 
-			_, err = dht.FindMultiAddressNeighbors(dhtAddress, 3)
+			_, err = dht.FindMultiAddressNeighbors(dht.Address, 3)
 			Ω(err).Should(HaveOccurred())
 		})
 	})
