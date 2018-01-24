@@ -99,6 +99,7 @@ var _ = Describe("", func() {
 			It("should return 20 bytes", func() {
 				Ω(len(id)).Should(Equal(identity.IDLength))
 			})
+
 		})
 	})
 

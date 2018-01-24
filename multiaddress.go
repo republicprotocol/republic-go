@@ -31,7 +31,8 @@ func init() {
 
 // MultiAddress is an alias.
 type MultiAddress struct {
-	multiaddr.Multiaddr
+	address Address
+	baseMultiAddress multiaddr.Multiaddr
 }
 
 // MultiAddresses is an alias.
@@ -40,36 +41,58 @@ type MultiAddresses []MultiAddress
 // NewMultiAddressFromString parses and validates an input string. It returns a
 // MultiAddress, or an error.
 func NewMultiAddressFromString(s string) (MultiAddress, error) {
-	multiAddr, err := multiaddr.NewMultiaddr(s)
-	return MultiAddress{multiAddr}, err
+	multiAddress, err := multiaddr.NewMultiaddr(s)
+	if err != nil {
+		return MultiAddress{}, err
+	}
+
+	address, err := multiAddress.ValueForProtocol(RepublicCode)
+	if err != nil {
+		return MultiAddress{}, err
+	}
+	addressAsMultiAddress, err := multiaddr.NewMultiaddr(address)
+	if err != nil {
+		return MultiAddress{}, err
+	}
+	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
+
+	return MultiAddress{Address(address), baseMultiAddress }, err
 }
 
 // NewMultiAddressFromBytes parses and validates an input byte slice. It
 // returns a MultiAddress, or an error.
 func NewMultiAddressFromBytes(b []byte) (MultiAddress, error) {
-	multi, err := multiaddr.NewMultiaddrBytes(b)
-	return MultiAddress{multi}, err
+	multiAddress, err := multiaddr.NewMultiaddrBytes(b)
+
+	address, err := multiAddress.ValueForProtocol(RepublicCode)
+	if err != nil {
+		return MultiAddress{}, err
+	}
+	addressAsMultiAddress, err := multiaddr.NewMultiaddr(address)
+	if err != nil {
+		return MultiAddress{}, err
+	}
+	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
+
+	return MultiAddress{Address(address), baseMultiAddress }, err
 }
 
 // Address returns the Republic address of a MultiAddress, or an error.
-func (multiAddr MultiAddress) Address() (Address, error) {
-	addr, err := multiAddr.ValueForProtocol(RepublicCode)
-	return Address(addr), err
+func (multiAddress MultiAddress) Address() (Address) {
+	return multiAddress.address
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (multiAddr MultiAddress) MarshalJSON() ([]byte, error) {
-	return json.Marshal(multiAddr.String())
+func (multiAddress MultiAddress) MarshalJSON() ([]byte, error) {
+	return json.Marshal(multiAddress.baseMultiAddress.String() + "/republic/" + multiAddress.address.String())
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (multiAddr MultiAddress) UnmarshalJSON(data []byte) error {
-	addr, err := NewMultiAddressFromBytes(data)
-	if err != nil {
-		return err
-	}
-	multiAddr.Multiaddr = addr.Multiaddr
-	return nil
+func (multiAddress *MultiAddress) UnmarshalJSON(data []byte) (error) {
+	newMultiAddress, err := NewMultiAddressFromBytes(data)
+	multiAddress.baseMultiAddress = newMultiAddress.baseMultiAddress
+	multiAddress.address = newMultiAddress.address
+	return err
 }
 
 // ProtocolWithName returns the Protocol description with the given name.
