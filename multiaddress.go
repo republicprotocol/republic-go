@@ -1,7 +1,6 @@
 package identity
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -90,14 +89,14 @@ func republicStB(s string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse republic addr: %s %s", s, err)
 	}
-	size := codeToVarint(len(m))
+	size := multiaddr.CodeToVarint(len(m))
 	b := append(size, m...)
 	return b, nil
 }
 
 // republicBtS converts a Republic address, encoded as bytes, to a string.
 func republicBtS(b []byte) (string, error) {
-	size, n, err := readVarintCode(b)
+	size, n, err := multiaddr.ReadVarintCode(b)
 	if err != nil {
 		return "", err
 	}
@@ -111,21 +110,4 @@ func republicBtS(b []byte) (string, error) {
 	}
 	// This uses the default Bitcoin alphabet for Base58 encoding.
 	return m.B58String(), nil
-}
-
-// codeToVarint converts an integer to a varint encoded byte slice.
-func codeToVarint(num int) []byte {
-	buf := make([]byte, (num/7)+1)
-	n := binary.PutUvarint(buf, uint64(num))
-	return buf[:n]
-}
-
-// readVarintCode reads a varint code from the beginning of a buffer of bytes.
-// It returns the code, and the number of bytes read.
-func readVarintCode(buf []byte) (int, int, error) {
-	num, n := binary.Uvarint(buf)
-	if n < 0 {
-		return 0, 0, fmt.Errorf("varints larger than uint64 not yet supported")
-	}
-	return int(num), n, nil
 }
