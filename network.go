@@ -87,6 +87,23 @@ func (node *Node) Stop() {
 	node.Server.Stop()
 }
 
+// Prune an identity.Address from the dht.DHT. Returns a boolean indicating
+// whether or not an identity.Address was pruned.
+func (node *Node) Prune(target identity.Address) (bool, error) {
+	bucket, err := node.DHT.FindBucket(target)
+	if err != nil {
+		return false, err
+	}
+	if bucket == nil || bucket.Length() == 0 {
+		return false, nil
+	}
+	multiAddress := bucket.MultiAddresses[0]
+	if _, err := PingTarget(SerializeMultiAddress(multiAddress), SerializeMultiAddress(node.MultiAddress)); err != nil {
+		return true, node.DHT.RemoveMultiAddress(multiAddress)
+	}
+	return false, node.DHT.UpdateMultiAddress(multiAddress)
+}
+
 // Ping is used to test the connection to the Node and exchange
 // identity.MultiAddresses. If the Node does not respond, or it responds with
 // an error, then the connection should be considered unhealthy.
@@ -105,7 +122,10 @@ func (node *Node) Ping(ctx context.Context, from *rpc.MultiAddress) (*rpc.Nothin
 
 	select {
 	case val := <-wait:
-		return val.Ok.(*rpc.Nothing), val.Err
+		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
+			return nothing, val.Err
+		}
+		return nil, val.Err
 
 	case <-ctx.Done():
 		return &rpc.Nothing{}, ctx.Err()
@@ -145,7 +165,10 @@ func (node *Node) Peers(ctx context.Context, from *rpc.MultiAddress) (*rpc.Multi
 
 	select {
 	case val := <-wait:
-		return val.Ok.(*rpc.MultiAddresses), val.Err
+		if multiAddresses, ok := val.Ok.(*rpc.MultiAddresses); ok {
+			return multiAddresses, val.Err
+		}
+		return nil, val.Err
 
 	case <-ctx.Done():
 		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, ctx.Err()
@@ -187,7 +210,10 @@ func (node *Node) FindPeer(ctx context.Context, finder *rpc.Finder) (*rpc.MultiA
 
 	select {
 	case val := <-wait:
-		return val.Ok.(*rpc.MultiAddresses), val.Err
+		if multiAddresses, ok := val.Ok.(*rpc.MultiAddresses); ok {
+			return multiAddresses, val.Err
+		}
+		return nil, val.Err
 
 	case <-ctx.Done():
 		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, ctx.Err()
@@ -209,40 +235,30 @@ func (node *Node) findPeer(finder *rpc.Finder) (*rpc.MultiAddresses, error) {
 	// Get the target identity.Address for which this Node is searching for
 	// peers.
 	target := identity.Address(finder.Peer.Address)
+	targetPeers := &rpc.MultiAddresses{Multis: make([]*rpc.MultiAddress, 0, node.Options.Alpha)}
 
 	// Create the closed and open data structures for performing the Kademlia
 	// search.
-	closed := map[string]struct{}{}
-	open, err := node.DHT.FindMultiAddressNeighbors(target, node.Options.Alpha)
+	peers, err := node.DHT.FindMultiAddressNeighbors(target, node.Options.Alpha)
 	if err != nil {
-		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, err
+		return targetPeers, err
 	}
 
-	serializedNodeMultiAddress := SerializeMultiAddress(node.MultiAddress)
-	for len(open) > 0 {
-		for i := 0; i < node.Options.Alpha && len(open) > 0; i++ {
-
-			// Test whether this peer matches the target. If so, end the search
-			// and return it immediately.
-			multiAddress := open[0]
-			address, err := multiAddress.Address()
-			if err != nil {
-				continue
-			}
-			if address == target {
-				return SerializeMultiAddresses(identity.MultiAddresses{multiAddress}), nil
-			}
-
-			// Otherwise, remove it from the open list and add it to the closed
-			// map.
-			open = open[1:]
-			closed[multiAddress.String()] = struct{}{}
-
-			FindPeerFromTarget(SerializeMultiAddress(multiAddress), serializedNodeMultiAddress, &rpc.Address{Address: target.String()})
+	// Filter away peers that are further from the target than this Node.
+	for _, peer := range peers {
+		peerAddress, err := peer.Address()
+		if err != nil {
+			return targetPeers, err
+		}
+		closer, err := identity.Closer(peerAddress, node.Address, target)
+		if err != nil {
+			return targetPeers, err
+		}
+		if closer {
+			targetPeers.Multis = append(targetPeers.Multis, SerializeMultiAddress(peer))
 		}
 	}
-
-	return SerializeMultiAddresses(open), nil
+	return targetPeers, nil
 }
 
 // SendOrderFragment to the Node. If the rpc.OrderFragment is not destined for
@@ -262,7 +278,10 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 
 	select {
 	case val := <-wait:
-		return val.Ok.(*rpc.Nothing), val.Err
+		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
+			return nothing, val.Err
+		}
+		return nil, val.Err
 
 	case <-ctx.Done():
 		return &rpc.Nothing{}, ctx.Err()
@@ -284,7 +303,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Noth
 	}
 
 	// Check if the rpc.OrderFragment has reached its destination.
-	if orderFragment.To.String() == node.Address.String() {
+	if orderFragment.To.Address == node.Address.String() {
 		deserializedOrderFragment, err := DeserializeOrderFragment(orderFragment)
 		if err != nil {
 			return &rpc.Nothing{}, err
@@ -298,7 +317,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Noth
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	for _, peer := range peers.Multis[:node.Options.Alpha] {
+	for _, peer := range peers.Multis {
 		go SendOrderFragmentToTarget(peer, orderFragment)
 	}
 	return &rpc.Nothing{}, nil
@@ -321,7 +340,10 @@ func (node *Node) SendResultFragment(ctx context.Context, resultFragment *rpc.Re
 
 	select {
 	case val := <-wait:
-		return val.Ok.(*rpc.Nothing), val.Err
+		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
+			return nothing, val.Err
+		}
+		return nil, val.Err
 
 	case <-ctx.Done():
 		return &rpc.Nothing{}, ctx.Err()
@@ -357,27 +379,10 @@ func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.N
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	for _, peer := range peers.Multis[:node.Options.Alpha] {
+	for _, peer := range peers.Multis {
 		go SendResultFragmentToTarget(peer, resultFragment)
 	}
 	return &rpc.Nothing{}, nil
-}
-
-// Prune an identity.Address from the dht.DHT. Returns a boolean indicating
-// whether or not an identity.Address was pruned.
-func (node *Node) Prune(target identity.Address) (bool, error) {
-	bucket, err := node.DHT.FindBucket(target)
-	if err != nil {
-		return false, err
-	}
-	if bucket == nil || bucket.Length() == 0 {
-		return false, nil
-	}
-	multiAddress := bucket.MultiAddresses[0]
-	if _, err := PingTarget(SerializeMultiAddress(multiAddress), SerializeMultiAddress(node.MultiAddress)); err != nil {
-		return true, node.DHT.RemoveMultiAddress(multiAddress)
-	}
-	return false, node.DHT.UpdateMultiAddress(multiAddress)
 }
 
 func (node *Node) updatePeer(multiAddress identity.MultiAddress) error {
@@ -396,6 +401,7 @@ func (node *Node) updatePeer(multiAddress identity.MultiAddress) error {
 			}
 			return nil
 		}
+		log.Println(err)
 		return err
 	}
 	return nil
