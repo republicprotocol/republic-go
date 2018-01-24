@@ -31,7 +31,7 @@ func init() {
 
 // MultiAddress is an alias.
 type MultiAddress struct {
-	address Address
+	address          Address
 	baseMultiAddress multiaddr.Multiaddr
 }
 
@@ -45,18 +45,16 @@ func NewMultiAddressFromString(s string) (MultiAddress, error) {
 	if err != nil {
 		return MultiAddress{}, err
 	}
-
 	address, err := multiAddress.ValueForProtocol(RepublicCode)
 	if err != nil {
 		return MultiAddress{}, err
 	}
-	addressAsMultiAddress, err := multiaddr.NewMultiaddr(address)
+	addressAsMultiAddress, err := multiaddr.NewMultiaddr("/republic/" + address)
 	if err != nil {
 		return MultiAddress{}, err
 	}
 	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
-
-	return MultiAddress{Address(address), baseMultiAddress }, err
+	return MultiAddress{Address(address), baseMultiAddress}, err
 }
 
 // NewMultiAddressFromBytes parses and validates an input byte slice. It
@@ -68,17 +66,17 @@ func NewMultiAddressFromBytes(b []byte) (MultiAddress, error) {
 	if err != nil {
 		return MultiAddress{}, err
 	}
-	addressAsMultiAddress, err := multiaddr.NewMultiaddr(address)
+	addressAsMultiAddress, err := multiaddr.NewMultiaddr("/republic/" + address)
 	if err != nil {
 		return MultiAddress{}, err
 	}
 	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
 
-	return MultiAddress{Address(address), baseMultiAddress }, err
+	return MultiAddress{Address(address), baseMultiAddress}, err
 }
 
 // Address returns the Republic address of a MultiAddress, or an error.
-func (multiAddress MultiAddress) Address() (Address) {
+func (multiAddress MultiAddress) Address() Address {
 	return multiAddress.address
 }
 
@@ -88,7 +86,7 @@ func (multiAddress MultiAddress) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (multiAddress *MultiAddress) UnmarshalJSON(data []byte) (error) {
+func (multiAddress *MultiAddress) UnmarshalJSON(data []byte) error {
 	newMultiAddress, err := NewMultiAddressFromBytes(data)
 	multiAddress.baseMultiAddress = newMultiAddress.baseMultiAddress
 	multiAddress.address = newMultiAddress.address
