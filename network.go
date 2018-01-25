@@ -45,11 +45,11 @@ func NewNode(delegate Delegate, options Options) *Node {
 // Serve starts the gRPC server.
 func (node *Node) Serve() error {
 	rpc.RegisterNodeServer(node.Server, node)
-	host, err := node.MultiAddress.ValueForProtocol(identity.IP4Code)
+	host, err := node.MultiAddress().ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return err
 	}
-	port, err := node.MultiAddress.ValueForProtocol(identity.TCPCode)
+	port, err := node.MultiAddress().ValueForProtocol(identity.TCPCode)
 	if err != nil {
 		return err
 	}
@@ -351,9 +351,11 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Noth
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	log.Println(peers.Multis, orderFragment.To)
 	do.CoForAll(peers.Multis, func(i int) {
-		SendOrderFragmentToTarget(peers.Multis[i], orderFragment)
+		_, err := SendOrderFragmentToTarget(peers.Multis[i], orderFragment)
+		if err != nil && node.Options.Debug >= DebugLow {
+			log.Println(err)
+		}
 	})
 	return &rpc.Nothing{}, nil
 }

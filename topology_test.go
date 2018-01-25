@@ -20,14 +20,15 @@ func generateNodes(numberOfNodes int, delegate network.Delegate) ([]*network.Nod
 		if err != nil {
 			return nil, err
 		}
-		node, err := network.NewNode(
-			multi,
-			make(identity.MultiAddresses, 0, numberOfNodes-1),
+		node := network.NewNode(
 			delegate,
+			network.Options{
+				MultiAddress:    multi,
+				Debug:           network.DebugOff,
+				Alpha:           3,
+				MaxBucketLength: 100,
+			},
 		)
-		if err != nil {
-			return nil, err
-		}
 		nodes[i] = node
 	}
 	return nodes, nil
@@ -135,7 +136,7 @@ func ping(nodes []*network.Node, topology map[identity.Address][]*network.Node) 
 			defer wg.Done()
 			peers := topology[node.DHT.Address]
 			for _, peer := range peers {
-				_, err := network.PingTarget(network.SerializeMultiAddress(peer.MultiAddress), network.SerializeMultiAddress(node.MultiAddress))
+				_, err := network.PingTarget(network.SerializeMultiAddress(peer.MultiAddress()), network.SerializeMultiAddress(node.MultiAddress()))
 				if err != nil {
 					muError.Lock()
 					defer muError.Unlock()
@@ -159,7 +160,7 @@ func peers(nodes []*network.Node, topology map[identity.Address][]*network.Node)
 		go func(node *network.Node) {
 			defer wg.Done()
 			peers := topology[node.DHT.Address]
-			connectedPeers, err := network.GetPeersFromTarget(network.SerializeMultiAddress(node.MultiAddress), nil)
+			connectedPeers, err := network.GetPeersFromTarget(network.SerializeMultiAddress(node.MultiAddress()), nil)
 			if err != nil {
 				muError.Lock()
 				defer muError.Unlock()
@@ -168,7 +169,7 @@ func peers(nodes []*network.Node, topology map[identity.Address][]*network.Node)
 			for _, peer := range peers {
 				connected := false
 				for _, connectedPeer := range connectedPeers.Multis {
-					if peer.MultiAddress.String() == connectedPeer.String() {
+					if peer.MultiAddress().String() == connectedPeer.String() {
 						connected = true
 					}
 				}
@@ -176,7 +177,7 @@ func peers(nodes []*network.Node, topology map[identity.Address][]*network.Node)
 					if err != nil {
 						muError.Lock()
 						defer muError.Unlock()
-						globalError = fmt.Errorf("%s should be connected to %s", node.MultiAddress, peer.MultiAddress)
+						globalError = fmt.Errorf("%s should be connected to %s", node.MultiAddress().String(), peer.MultiAddress().String())
 					}
 					return
 				}

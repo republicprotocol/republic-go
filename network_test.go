@@ -151,11 +151,9 @@ var _ = Describe("Sending order fragments", func() {
 				defer wg.Done()
 
 				to, from := randomNodes(nodes)
-				toAddress, err := to.MultiAddress.Address()
-				Ω(err).ShouldNot(HaveOccurred())
-				orderFragment := generateOrderFragment(toAddress.String())
+				orderFragment := generateOrderFragment(to.MultiAddress().Address().String())
 
-				_, err = network.SendOrderFragmentToTarget(network.SerializeMultiAddress(from.MultiAddress), orderFragment)
+				_, err := network.SendOrderFragmentToTarget(network.SerializeMultiAddress(from.MultiAddress()), orderFragment)
 				Ω(err).ShouldNot(HaveOccurred())
 			}()
 		}
