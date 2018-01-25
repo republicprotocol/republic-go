@@ -13,7 +13,7 @@ service Node {
   rpc Peers (MultiAddress) returns (MultiAddresses);
 
   // Find the MultiAddresses of peers closer to some target Node.
-  rpc FindCloserPeers (Finder) returns (MultiAddresses);
+  rpc FindCloserPeers (Query) returns (MultiAddresses);
 
   // Send an OrderFragment to some target Node.
   rpc SendOrderFragment (OrderFragment) returns (Nothing);
@@ -23,10 +23,10 @@ service Node {
   rpc SendResultFragment (ResultFragment) returns (Nothing);
 }
 
-// A Finder message contains the Address of a peer that is being look for and
-// the MultiAddress of the seeker.
-message Finder {
-  Address peer = 1;
+// A Query message contains the Address of a Node that needs to be found and
+// the MultiAddress of the Node from which the Query originated.
+message Query {
+  Address to = 1;
   MultiAddress from = 2;
 }
 
