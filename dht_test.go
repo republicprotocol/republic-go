@@ -1,7 +1,6 @@
 package dht_test
 
 import (
-	"log"
 	"sort"
 
 	. "github.com/onsi/ginkgo"
@@ -40,14 +39,8 @@ func randomDHTAndAddress() (*DHT, *identity.Address, *identity.MultiAddress, err
 func isSortedMultiAddresses(multiAddresses identity.MultiAddresses, target identity.Address) (bool, error) {
 	var globalErr error
 	isSorted := sort.SliceIsSorted(multiAddresses, func(i, j int) bool {
-		left, err := multiAddresses[i].Address()
-		if globalErr == nil {
-			globalErr = err
-		}
-		right, err := multiAddresses[j].Address()
-		if globalErr == nil {
-			globalErr = err
-		}
+		left := multiAddresses[i].Address()
+		right := multiAddresses[j].Address()
 		closer, err := identity.Closer(left, right, target)
 		if globalErr == nil {
 			globalErr = err
@@ -67,7 +60,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			randomAddress, randomMultiAddress, err := randomAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bucket.UpdateMultiAddress(*randomAddress, *randomMultiAddress)
+			err = bucket.UpdateMultiAddress(*randomMultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			multiAddress, position := bucket.FindMultiAddress(*randomAddress)
@@ -166,17 +159,6 @@ var _ = Describe("Distributed Hash Table", func() {
 			}
 			Ω(err).Should(HaveOccurred())
 		})
-
-		It("should return an error updating a DHT with a bad multi-address", func() {
-			dht, _, _, err := randomDHTAndAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-
-			badMultiAddress, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			err = dht.UpdateMultiAddress(badMultiAddress)
-			Ω(err).Should(HaveOccurred())
-		})
 	})
 
 	Context("when removing multi-addresses", func() {
@@ -232,17 +214,6 @@ var _ = Describe("Distributed Hash Table", func() {
 			}
 			Ω(len(dht.MultiAddresses())).Should(Equal(0))
 		})
-
-		It("should return an error removing a bad multi-address from a DHT", func() {
-			dht, _, _, err := randomDHTAndAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-
-			badMultiAddress, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			err = dht.RemoveMultiAddress(badMultiAddress)
-			Ω(err).Should(HaveOccurred())
-		})
 	})
 
 	Context("when finding multi-addresses", func() {
@@ -289,19 +260,7 @@ var _ = Describe("Distributed Hash Table", func() {
 
 				isSorted, err := isSortedMultiAddresses(multiAddresses, *randomAddress)
 				Ω(err).ShouldNot(HaveOccurred())
-				// Ω(isSorted).Should(Equal(true))
-
-				if !isSorted {
-					log.Println(multiAddresses)
-					sort.SliceStable(multiAddresses, func(i, j int) bool {
-						left, _ := multiAddresses[i].Address()
-						right, _ := multiAddresses[j].Address()
-						closer, _ := identity.Closer(left, right, *randomAddress)
-						return closer
-					})
-					log.Println(multiAddresses)
-					log.Println("")
-				}
+				Ω(isSorted).Should(Equal(true))
 
 				multiAddresses = dht.MultiAddresses()
 				for _, multiAddress := range multiAddresses {
