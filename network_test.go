@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -16,34 +15,48 @@ import (
 	sss "github.com/republicprotocol/go-sss"
 )
 
-type pingDelegate struct {
-	numberOfPings int32
+type mockDelegate struct {
+	mu                      *sync.Mutex
+	numberOfPings           int
+	orderFragmentsReceived  map[string]struct{}
+	resultFragmentsReceived map[string]struct{}
 }
 
-func newPingDelegate() *pingDelegate {
-	return &pingDelegate{
-		numberOfPings: 0,
+func newMockDelegate() *mockDelegate {
+	return &mockDelegate{
+		mu:                      new(sync.Mutex),
+		numberOfPings:           0,
+		orderFragmentsReceived:  map[string]struct{}{},
+		resultFragmentsReceived: map[string]struct{}{},
 	}
 }
 
-func (delegate *pingDelegate) OnPingReceived(_ identity.MultiAddress) {
-	atomic.AddInt32(&delegate.numberOfPings, 1)
+func (delegate *mockDelegate) OnPingReceived(_ identity.MultiAddress) {
+	delegate.mu.Lock()
+	defer delegate.mu.Unlock()
+	delegate.numberOfPings++
 }
 
-func (delegate *pingDelegate) OnOrderFragmentReceived(_ identity.MultiAddress, _ *compute.OrderFragment) {
+func (delegate *mockDelegate) OnOrderFragmentReceived(_ identity.MultiAddress, orderFragment *compute.OrderFragment) {
+	delegate.mu.Lock()
+	defer delegate.mu.Unlock()
+	delegate.orderFragmentsReceived[string(orderFragment.ID)] = struct{}{}
 }
 
-func (delegate *pingDelegate) OnResultFragmentReceived(_ identity.MultiAddress, _ *compute.ResultFragment) {
+func (delegate *mockDelegate) OnResultFragmentReceived(_ identity.MultiAddress, resultFragment *compute.ResultFragment) {
+	delegate.mu.Lock()
+	defer delegate.mu.Unlock()
+	delegate.resultFragmentsReceived[string(resultFragment.ID)] = struct{}{}
 }
 
-var _ = Describe("Ping RPC", func() {
+var _ = Describe("Pinging", func() {
 
 	// run := func(name string, numberOfNodes int) int {
 	// 	var nodes []*network.Node
 	// 	var topology map[identity.Address][]*network.Node
 	// 	var err error
 
-	// 	delegate := newPingDelegate()
+	// 	delegate := newMockDelegate()
 	// 	switch name {
 	// 	case "full":
 	// 		nodes, topology, err = generateFullyConnectedTopology(numberOfNodes, delegate)
@@ -67,93 +80,80 @@ var _ = Describe("Ping RPC", func() {
 	// 		}(node)
 	// 	}
 	// 	time.Sleep(time.Second)
+
 	// 	err = ping(nodes, topology)
 	// 	Ω(err).ShouldNot(HaveOccurred())
 
-	// 	return int(delegate.numberOfPings)
+	// 	return delegate.numberOfPings
 	// }
 
 	// for _, numberOfNodes := range []int{10, 20, 40, 80} {
-	// 	Context(fmt.Sprintf("in a fully connected topology with %d nodes", numberOfNodes), func() {
-	// 		It("should update the DHT", func() {
-	// 			testMu.Lock()
-	// 			defer testMu.Unlock()
-	// 			numberOfPings := run("full", numberOfNodes)
-	// 			Ω(numberOfPings).Should(Equal(numberOfNodes * (numberOfNodes - 1)))
+	// 	func(numberOfNodes int) {
+	// 		Context(fmt.Sprintf("in a fully connected topology with %d nodes", numberOfNodes), func() {
+	// 			It("should update the DHT", func() {
+	// 				testMu.Lock()
+	// 				defer testMu.Unlock()
+	// 				numberOfPings := run("full", numberOfNodes)
+	// 				Ω(numberOfPings).Should(Equal(numberOfNodes * (numberOfNodes - 1)))
+	// 			})
 	// 		})
-	// 	})
+	// 	}(numberOfNodes)
 	// }
 
 	// for _, numberOfNodes := range []int{10, 20, 40, 80} {
-	// 	Context(fmt.Sprintf("in a star topology with %d nodes", numberOfNodes), func() {
-	// 		It("should update the DHT", func() {
-	// 			testMu.Lock()
-	// 			defer testMu.Unlock()
-	// 			numberOfPings := run("star", numberOfNodes)
-	// 			Ω(numberOfPings).Should(Equal(2 * (numberOfNodes - 1)))
+	// 	func(numberOfNodes int) {
+	// 		Context(fmt.Sprintf("in a star topology with %d nodes", numberOfNodes), func() {
+	// 			It("should update the DHT", func() {
+	// 				testMu.Lock()
+	// 				defer testMu.Unlock()
+	// 				numberOfPings := run("star", numberOfNodes)
+	// 				Ω(numberOfPings).Should(Equal(2 * (numberOfNodes - 1)))
+	// 			})
 	// 		})
-	// 	})
+	// 	}(numberOfNodes)
 	// }
 
 	// for _, numberOfNodes := range []int{10, 20, 40, 80} {
-	// 	Context(fmt.Sprintf("in a line topology with %d nodes", numberOfNodes), func() {
-	// 		It("should update the DHT", func() {
-	// 			testMu.Lock()
-	// 			defer testMu.Unlock()
-	// 			numberOfPings := run("line", numberOfNodes)
-	// 			Ω(numberOfPings).Should(Equal(2 * (numberOfNodes - 1)))
+	// 	func(numberOfNodes int) {
+	// 		Context(fmt.Sprintf("in a line topology with %d nodes", numberOfNodes), func() {
+	// 			It("should update the DHT", func() {
+	// 				testMu.Lock()
+	// 				defer testMu.Unlock()
+	// 				numberOfPings := run("line", numberOfNodes)
+	// 				Ω(numberOfPings).Should(Equal(2 * (numberOfNodes - 1)))
+	// 			})
 	// 		})
-	// 	})
+	// 	}(numberOfNodes)
 	// }
 
 	// for _, numberOfNodes := range []int{10, 20, 40, 80} {
-	// 	Context(fmt.Sprintf("in a ring topology with %d nodes", numberOfNodes), func() {
-	// 		It("should update the DHT", func() {
-	// 			testMu.Lock()
-	// 			defer testMu.Unlock()
-	// 			numberOfPings := run("ring", numberOfNodes)
-	// 			Ω(numberOfPings).Should(Equal(2 * numberOfNodes))
+	// 	func(numberOfNodes int) {
+	// 		Context(fmt.Sprintf("in a ring topology with %d nodes", numberOfNodes), func() {
+	// 			It("should update the DHT", func() {
+	// 				testMu.Lock()
+	// 				defer testMu.Unlock()
+	// 				numberOfPings := run("ring", numberOfNodes)
+	// 				Ω(numberOfPings).Should(Equal(2 * numberOfNodes))
+	// 			})
 	// 		})
-	// 	})
+	// 	}(numberOfNodes)
 	// }
-
 })
 
-type sendOrderFragmentDelegate struct {
-	numberOfOrderFragments int32
-}
-
-func newSendOrderFragmentDelegate() *sendOrderFragmentDelegate {
-	return &sendOrderFragmentDelegate{
-		numberOfOrderFragments: 0,
-	}
-}
-
-func (delegate *sendOrderFragmentDelegate) OnPingReceived(_ identity.MultiAddress) {
-}
-
-func (delegate *sendOrderFragmentDelegate) OnOrderFragmentReceived(_ identity.MultiAddress, orderFragment *compute.OrderFragment) {
-	atomic.AddInt32(&delegate.numberOfOrderFragments, 1)
-}
-
-func (delegate *sendOrderFragmentDelegate) OnResultFragmentReceived(_ identity.MultiAddress, _ *compute.ResultFragment) {
-}
-
-var _ = Describe("Send order fragment", func() {
+var _ = Describe("Sending order fragments", func() {
 
 	send := func(nodes []*network.Node, numberOfFragments int) {
 		var wg sync.WaitGroup
 		wg.Add(numberOfFragments)
-
 		for i := 0; i < numberOfFragments; i++ {
 			go func() {
 				defer GinkgoRecover()
 				defer wg.Done()
 
 				to, from := randomNodes(nodes)
-				address, err := to.MultiAddress.Address()
+				toAddress, err := to.MultiAddress.Address()
 				Ω(err).ShouldNot(HaveOccurred())
-				orderFragment := generateOrderFragment(address.String())
+				orderFragment := generateOrderFragment(toAddress.String())
 
 				_, err = network.SendOrderFragmentToTarget(network.SerializeMultiAddress(from.MultiAddress), orderFragment)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -167,7 +167,7 @@ var _ = Describe("Send order fragment", func() {
 		var topology map[identity.Address][]*network.Node
 		var err error
 
-		delegate := newSendOrderFragmentDelegate()
+		delegate := newMockDelegate()
 		switch name {
 		case "full":
 			nodes, topology, err = generateFullyConnectedTopology(numberOfNodes, delegate)
@@ -196,13 +196,13 @@ var _ = Describe("Send order fragment", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		send(nodes, numberOfFragment)
 
-		return int(delegate.numberOfOrderFragments)
+		return len(delegate.orderFragmentsReceived)
 	}
 
-	for _, numberOfNodes := range []int{10, 20, 40, 80} {
+	for _, numberOfNodes := range []int{10} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("in a fully connected topology with %d nodes", numberOfNodes), func() {
-				It("should send the order fragment to the right target", func() {
+				It("should send the order fragments to the right target", func() {
 					numberOfMessages := numberOfNodes
 					testMu.Lock()
 					defer testMu.Unlock()

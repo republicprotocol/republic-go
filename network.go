@@ -250,6 +250,9 @@ func (node *Node) findPeer(finder *rpc.Finder) (*rpc.MultiAddresses, error) {
 		if err != nil {
 			return targetPeers, err
 		}
+		if peerAddress == target {
+			return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{SerializeMultiAddress(peer)}}, nil
+		}
 		closer, err := identity.Closer(peerAddress, node.Address, target)
 		if err != nil {
 			return targetPeers, err
@@ -258,6 +261,7 @@ func (node *Node) findPeer(finder *rpc.Finder) (*rpc.MultiAddresses, error) {
 			targetPeers.Multis = append(targetPeers.Multis, SerializeMultiAddress(peer))
 		}
 	}
+
 	return targetPeers, nil
 }
 
@@ -317,9 +321,10 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Noth
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	for _, peer := range peers.Multis {
-		go SendOrderFragmentToTarget(peer, orderFragment)
-	}
+	log.Println(peers.Multis, orderFragment.To)
+	do.CoForAll(peers.Multis, func(i int) {
+		SendOrderFragmentToTarget(peers.Multis[i], orderFragment)
+	})
 	return &rpc.Nothing{}, nil
 }
 
