@@ -1,7 +1,6 @@
 package identity
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,7 +31,8 @@ func init() {
 
 // MultiAddress is an alias.
 type MultiAddress struct {
-	multiaddr.Multiaddr
+	address          Address
+	baseMultiAddress multiaddr.Multiaddr
 }
 
 // MultiAddresses is an alias.
@@ -41,39 +41,67 @@ type MultiAddresses []MultiAddress
 // NewMultiAddressFromString parses and validates an input string. It returns a
 // MultiAddress, or an error.
 func NewMultiAddressFromString(s string) (MultiAddress, error) {
-	multiAddr, err := multiaddr.NewMultiaddr(s)
-	return MultiAddress{multiAddr}, err
+	multiAddress, err := multiaddr.NewMultiaddr(s)
+	if err != nil {
+		return MultiAddress{}, err
+	}
+	address, err := multiAddress.ValueForProtocol(RepublicCode)
+	if err != nil {
+		return MultiAddress{}, err
+	}
+	addressAsMultiAddress, err := multiaddr.NewMultiaddr("/republic/" + address)
+	if err != nil {
+		return MultiAddress{}, err
+	}
+	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
+	return MultiAddress{Address(address), baseMultiAddress}, err
 }
 
 // NewMultiAddressFromBytes parses and validates an input byte slice. It
 // returns a MultiAddress, or an error.
 func NewMultiAddressFromBytes(b []byte) (MultiAddress, error) {
-	multi, err := multiaddr.NewMultiaddrBytes(b)
-	return MultiAddress{multi}, err
+	multiAddress, err := multiaddr.NewMultiaddrBytes(b)
+
+	address, err := multiAddress.ValueForProtocol(RepublicCode)
+	if err != nil {
+		return MultiAddress{}, err
+	}
+	addressAsMultiAddress, err := multiaddr.NewMultiaddr("/republic/" + address)
+	if err != nil {
+		return MultiAddress{}, err
+	}
+	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
+
+	return MultiAddress{Address(address), baseMultiAddress}, err
 }
 
 // Address returns the Republic address of a MultiAddress, or an error.
-func (multiAddr MultiAddress) Address() (Address, error) {
-	addr, err := multiAddr.ValueForProtocol(RepublicCode)
-	return Address(addr), err
+func (multiAddress MultiAddress) Address() Address {
+	return multiAddress.address
+}
+
+// String returns the MultiAddress as a plain string.
+func (multiAddress MultiAddress) String() string {
+	return fmt.Sprintf("%s/republic/%s", multiAddress.baseMultiAddress, multiAddress.address)
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (multiAddr *MultiAddress) MarshalJSON() ([]byte, error) {
-	return json.Marshal(multiAddr.String())
+func (multiAddress *MultiAddress) MarshalJSON() ([]byte, error) {
+	return json.Marshal(multiAddress.String())
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (multiAddr *MultiAddress) UnmarshalJSON(data []byte) error {
-	str := ""
-	if err := json.Unmarshal(data, &str); err != nil {
+func (multiAddress *MultiAddress) UnmarshalJSON(data []byte) error {
+	multiAddressAsString := ""
+	if err := json.Unmarshal(data, &multiAddressAsString); err != nil {
 		return err
 	}
-	addr, err := NewMultiAddressFromString(str)
+	newMultiAddress, err := NewMultiAddressFromString(multiAddressAsString)
 	if err != nil {
 		return err
 	}
-	multiAddr.Multiaddr = addr.Multiaddr
+	multiAddress.baseMultiAddress = newMultiAddress.baseMultiAddress
+	multiAddress.address = newMultiAddress.address
 	return nil
 }
 
@@ -94,14 +122,14 @@ func republicStB(s string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse republic addr: %s %s", s, err)
 	}
-	size := codeToVarint(len(m))
+	size := multiaddr.CodeToVarint(len(m))
 	b := append(size, m...)
 	return b, nil
 }
 
 // republicBtS converts a Republic address, encoded as bytes, to a string.
 func republicBtS(b []byte) (string, error) {
-	size, n, err := readVarintCode(b)
+	size, n, err := multiaddr.ReadVarintCode(b)
 	if err != nil {
 		return "", err
 	}
@@ -115,21 +143,4 @@ func republicBtS(b []byte) (string, error) {
 	}
 	// This uses the default Bitcoin alphabet for Base58 encoding.
 	return m.B58String(), nil
-}
-
-// codeToVarint converts an integer to a varint encoded byte slice.
-func codeToVarint(num int) []byte {
-	buf := make([]byte, (num/7)+1)
-	n := binary.PutUvarint(buf, uint64(num))
-	return buf[:n]
-}
-
-// readVarintCode reads a varint code from the beginning of a buffer of bytes.
-// It returns the code, and the number of bytes read.
-func readVarintCode(buf []byte) (int, int, error) {
-	num, n := binary.Uvarint(buf)
-	if n < 0 {
-		return 0, 0, fmt.Errorf("varints larger than uint64 not yet supported")
-	}
-	return int(num), n, nil
 }
