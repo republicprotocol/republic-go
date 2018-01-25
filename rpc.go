@@ -20,11 +20,11 @@ func Dial(target *rpc.MultiAddress) (*grpc.ClientConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	host, err := targetMultiAddress.Base().ValueForProtocol(identity.IP4Code)
+	host, err := targetMultiAddress.ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return nil, err
 	}
-	port, err := targetMultiAddress.Base().ValueForProtocol(identity.TCPCode)
+	port, err := targetMultiAddress.ValueForProtocol(identity.TCPCode)
 	if err != nil {
 		return nil, err
 	}

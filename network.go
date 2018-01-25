@@ -45,11 +45,11 @@ func NewNode(delegate Delegate, options Options) *Node {
 // Serve starts the gRPC server.
 func (node *Node) Serve() error {
 	rpc.RegisterNodeServer(node.Server, node)
-	host, err := node.MultiAddress.Base().ValueForProtocol(identity.IP4Code)
+	host, err := node.MultiAddress.ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return err
 	}
-	port, err := node.MultiAddress.Base().ValueForProtocol(identity.TCPCode)
+	port, err := node.MultiAddress.ValueForProtocol(identity.TCPCode)
 	if err != nil {
 		return err
 	}
@@ -310,9 +310,6 @@ func (node *Node) findCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error)
 	// Filter away peers that are further from the target than this Node.
 	for _, peer := range peers {
 		peerAddress := peer.Address()
-		if peerAddress == target {
-			return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{SerializeMultiAddress(peer)}}, nil
-		}
 		closer, err := identity.Closer(peerAddress, node.Address(), target)
 		if err != nil {
 			return targetPeers, err
