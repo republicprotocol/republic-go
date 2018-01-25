@@ -1,8 +1,8 @@
 package identity
 
 import (
-	"github.com/jbenet/go-base58"
 	"fmt"
+	"github.com/jbenet/go-base58"
 )
 
 // AddressLength is the number of bytes in an Address.

@@ -114,9 +114,9 @@ var _ = Describe("", func() {
 			badAddress := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBg")
 
 			It("should error when comparing with a bad-formatted address", func() {
-				_, err := identity.Closer(address1,badAddress,target)
+				_, err := identity.Closer(address1, badAddress, target)
 				Ω(err).Should(HaveOccurred())
-				_, err = identity.Closer(badAddress, address1,target)
+				_, err = identity.Closer(badAddress, address1, target)
 				Ω(err).Should(HaveOccurred())
 			})
 
