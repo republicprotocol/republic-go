@@ -20,5 +20,18 @@ var _ = Describe("", func() {
 			})
 
 		})
+
+		Context("converting to string", func() {
+			id, _, err := identity.NewID()
+
+			It("should not error", func() {
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("should be able to be returend as a string", func() {
+				stringID := id.String()
+				Ω(len(stringID)).Should(Equal(identity.IDLength))
+			})
+		})
 	})
 })

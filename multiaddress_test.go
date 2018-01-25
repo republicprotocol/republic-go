@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"fmt"
 )
 
 var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
@@ -19,6 +20,37 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 		It("should expose a protocol with the correct constant values", func() {
 			Ω(ProtocolWithCode(RepublicCode).Name).Should(Equal("republic"))
 			Ω(ProtocolWithCode(RepublicCode).Code).Should(Equal(RepublicCode))
+		})
+	})
+
+	Context("Creating new multiAddress", func() {
+		It("should be able to get new multiAddress from a valid string", func() {
+			addr, _, err := identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			_, err = identity.NewMultiAddressFromString("/republic/" + addr.String())
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should error when trying getting multiAddress from a bad address", func() {
+
+			_, err := identity.NewMultiAddressFromString("bad address")
+			Ω(err).Should(HaveOccurred())
+			addr, _, err := identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			_, err = identity.NewMultiAddressFromString("/republic/" + addr.String()+ "bad")
+			Ω(err).Should(HaveOccurred())
+		})
+	})
+
+	Context("retrieving values", func() {
+		It("should give the right value of specific protocol", func() {
+			ip4, tcp, republicAddress := "127.0.0.1", "80","8MGfbzAMS59Gb4cSjpm34soGNYsM2f"
+			addresses := fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s",ip4,tcp,republicAddress)
+			multiAddress, err := identity.NewMultiAddressFromString(addresses)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(multiAddress.ValueForProtocol(RepublicCode)).Should(Equal(republicAddress))
+			Ω(multiAddress.ValueForProtocol(TCPCode)).Should(Equal(tcp))
+			Ω(multiAddress.ValueForProtocol(IP4Code)).Should(Equal(ip4))
 		})
 	})
 
