@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sort"
+	"sync"
 
 	"github.com/republicprotocol/go-dht"
 	"github.com/republicprotocol/go-do"
@@ -69,6 +71,39 @@ func (node *Node) Stop() {
 		log.Printf("Stopping\n")
 	}
 	node.Server.Stop()
+}
+
+// Bootstrap the Node into the network. The Node will connect to each bootstrap
+// Node and attempt to find itself in the network. This process will ultimately
+// connect it to Nodes that are close to it in XOR space.
+func (node *Node) Bootstrap() {
+	do.CoForAll(node.Options.BootstrapMultiAddresses, func(i int) {
+		// The Node attempts to find itself in the network.
+		bootstrapMultiAddress := node.Options.BootstrapMultiAddresses[i]
+		peers, err := QueryCloserPeersFromTarget(
+			SerializeMultiAddress(bootstrapMultiAddress),
+			SerializeMultiAddress(node.MultiAddress()),
+			SerializeAddress(node.Address()),
+			true,
+		)
+		if err != nil {
+			if node.Options.Debug >= DebugLow {
+				log.Println(err)
+			}
+			return
+		}
+		// All of the peers that it gets back will be added to the DHT.
+		for _, peer := range peers.Multis {
+			multiAddress, err := DeserializeMultiAddress(peer)
+			if err != nil {
+				if node.Options.Debug >= DebugLow {
+					log.Println(err)
+				}
+				continue
+			}
+			node.DHT.UpdateMultiAddress(multiAddress)
+		}
+	})
 }
 
 // Prune an identity.Address from the dht.DHT. Returns a boolean indicating
@@ -160,21 +195,21 @@ func (node *Node) Peers(ctx context.Context, from *rpc.MultiAddress) (*rpc.Multi
 	}
 }
 
-// FindCloserPeers is used to return the closest rpc.MultiAddresses to a peer
+// QueryCloserPeers is used to return the closest rpc.MultiAddresses to a peer
 // with the given target rpc.Address. It will not return rpc.MultiAddresses
 // that are further away from the target than the Node itself. The
 // rpc.MultiAddresses returned are not guaranteed to provide healthy
 // connections and should be pinged.
-func (node *Node) FindCloserPeers(ctx context.Context, query *rpc.Query) (*rpc.MultiAddresses, error) {
+func (node *Node) QueryCloserPeers(ctx context.Context, query *rpc.Query) (*rpc.MultiAddresses, error) {
 	if node.Options.Debug >= DebugMedium {
-		log.Printf("FindCloserPeers received\n")
+		log.Printf("QueryCloserPeers received\n")
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
 	wait := do.Process(func() do.Option {
-		peers, err := node.findCloserPeers(query)
+		peers, err := node.queryCloserPeers(query)
 		if err != nil {
 			return do.Err(err)
 		}
@@ -283,7 +318,7 @@ func (node *Node) peers(from *rpc.MultiAddress) (*rpc.MultiAddresses, error) {
 	return SerializeMultiAddresses(peers), nil
 }
 
-func (node *Node) findCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error) {
+func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error) {
 	// Update the DHT.
 	if query.From != nil {
 		fromMultiAddress, err := DeserializeMultiAddress(query.From)
@@ -297,11 +332,8 @@ func (node *Node) findCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error)
 
 	// Get the target identity.Address for which this Node is searching for
 	// peers.
-	target := identity.Address(query.To.Address)
+	target := identity.Address(query.Query.Address)
 	targetPeers := &rpc.MultiAddresses{Multis: make([]*rpc.MultiAddress, 0, node.Options.Alpha)}
-
-	// Create the closed and open data structures for performing the Kademlia
-	// search.
 	peers, err := node.DHT.FindMultiAddressNeighbors(target, node.Options.Alpha)
 	if err != nil {
 		return targetPeers, err
@@ -319,7 +351,61 @@ func (node *Node) findCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error)
 		}
 	}
 
-	return targetPeers, nil
+	// If this is not a deep query, stop here.
+	if !query.Deep {
+		return targetPeers, nil
+	}
+
+	mu := new(sync.Mutex)
+	open := true
+	openList := make([]*rpc.MultiAddress, len(targetPeers.Multis))
+	closeMap := map[string]bool{}
+	do.ForAll(targetPeers.Multis, func(i int) {
+		openList[i] = targetPeers.Multis[i]
+	})
+	for open {
+		open = false
+		openNext := make([]*rpc.MultiAddress, 0, len(openList))
+		do.ForAll(openList, func(i int) {
+			peers, err := QueryCloserPeersFromTarget(openList[i], SerializeMultiAddress(node.MultiAddress()), query.Query, false)
+			if err != nil {
+				if node.Options.Debug >= DebugLow {
+					log.Println(err)
+					return
+				}
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			closeMap[openList[i].Multi] = true
+			for _, nextPeer := range peers.Multis {
+				if closeMap[nextPeer.Multi] {
+					continue
+				}
+				open = true
+				openNext = append(openNext, nextPeer)
+			}
+		})
+		targetPeers.Multis = append(targetPeers.Multis, openList...)
+		openList = openNext
+	}
+
+	sort.Slice(openList, func(i, j int) bool {
+		leftMultiAddress, _ := DeserializeMultiAddress(openList[i])
+		left := leftMultiAddress.Address()
+		rightMultiAddress, _ := DeserializeMultiAddress(openList[j])
+		right := rightMultiAddress.Address()
+		closer, _ := identity.Closer(left, right, target)
+		return closer
+	})
+
+	minLength := len(openList)
+	if minLength > node.Options.Alpha {
+		minLength = node.Options.Alpha
+	}
+
+	return &rpc.MultiAddresses{Multis: targetPeers.Multis[:minLength]}, nil
 }
 
 func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
@@ -347,7 +433,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Noth
 	}
 
 	// Forward the rpc.OrderFragment to the closest peers.
-	peers, err := node.findCloserPeers(&rpc.Query{To: orderFragment.To, From: nil})
+	peers, err := node.queryCloserPeers(&rpc.Query{From: nil, Query: orderFragment.To})
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
@@ -388,7 +474,7 @@ func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.N
 	}
 
 	// Forward the rpc.OrderFragment to the closest peers.
-	peers, err := node.findCloserPeers(&rpc.Query{To: resultFragment.To, From: nil})
+	peers, err := node.queryCloserPeers(&rpc.Query{From: nil, Query: resultFragment.To, Deep: true})
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}

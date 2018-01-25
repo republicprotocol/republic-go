@@ -67,9 +67,9 @@ func GetPeersFromTarget(to *rpc.MultiAddress, from *rpc.MultiAddress) (*rpc.Mult
 	return client.Peers(ctx, from, grpc.FailFast(false))
 }
 
-// FindCloserPeersFromTarget using a new grpc.ClientConn to make a
-// FindCloserPeers RPC to a target rpc.MultiAddress.
-func FindCloserPeersFromTarget(to *rpc.MultiAddress, from *rpc.MultiAddress, peer *rpc.Address) (*rpc.MultiAddresses, error) {
+// QueryCloserPeersFromTarget using a new grpc.ClientConn to make a
+// QueryCloserPeers RPC to a target rpc.MultiAddress.
+func QueryCloserPeersFromTarget(to *rpc.MultiAddress, from *rpc.MultiAddress, query *rpc.Address, deep bool) (*rpc.MultiAddresses, error) {
 	conn, err := Dial(to)
 	if err != nil {
 		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, nil
@@ -80,7 +80,7 @@ func FindCloserPeersFromTarget(to *rpc.MultiAddress, from *rpc.MultiAddress, pee
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	return client.FindCloserPeers(ctx, &rpc.Query{To: peer, From: from}, grpc.FailFast(false))
+	return client.QueryCloserPeers(ctx, &rpc.Query{From: from, Query: query, Deep: deep}, grpc.FailFast(false))
 }
 
 // SendOrderFragmentToTarget using a new grpc.ClientConn to make a
@@ -113,6 +113,10 @@ func SendResultFragmentToTarget(to *rpc.MultiAddress, resultFragment *rpc.Result
 	defer cancel()
 
 	return client.SendResultFragment(ctx, resultFragment, grpc.FailFast(false))
+}
+
+func SerializeAddress(address identity.Address) *rpc.Address {
+	return &rpc.Address{Address: address.String()}
 }
 
 // SerializeMultiAddress converts an identity.MultiAddress into its

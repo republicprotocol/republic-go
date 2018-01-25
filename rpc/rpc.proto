@@ -13,7 +13,7 @@ service Node {
   rpc Peers (MultiAddress) returns (MultiAddresses);
 
   // Find the MultiAddresses of peers closer to some target Node.
-  rpc FindCloserPeers (Query) returns (MultiAddresses);
+  rpc QueryCloserPeers (Query) returns (MultiAddresses);
 
   // Send an OrderFragment to some target Node.
   rpc SendOrderFragment (OrderFragment) returns (Nothing);
@@ -26,8 +26,12 @@ service Node {
 // A Query message contains the Address of a Node that needs to be found and
 // the MultiAddress of the Node from which the Query originated.
 message Query {
-  Address to = 1;
-  MultiAddress from = 2;
+  // Network data.
+  MultiAddress from = 1;
+
+  // Public data.
+  Address query = 2;
+  bool deep = 3;
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
