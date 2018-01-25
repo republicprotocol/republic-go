@@ -87,5 +87,21 @@ var _ = Describe("", func() {
 			})
 		})
 
+		Context("marshaling to JSON", func() {
+			keyPair, err := identity.NewKeyPair()
+
+			It("should not error", func() {
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("should encode and then decode to the same value", func() {
+				data, err := keyPair.MarshalJSON()
+				Ω(err).ShouldNot(HaveOccurred())
+				newKeyPair := new(identity.KeyPair)
+				err = newKeyPair.UnmarshalJSON(data)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(*newKeyPair).Should(Equal(keyPair))
+			})
+		})
 	})
 })

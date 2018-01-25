@@ -60,7 +60,7 @@ func (keyPair KeyPair) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (keyPair KeyPair) UnmarshalJSON(data []byte) error {
+func (keyPair *KeyPair) UnmarshalJSON(data []byte) error {
 	privateKey, err := crypto.ToECDSA(data)
 	if err != nil {
 		return err

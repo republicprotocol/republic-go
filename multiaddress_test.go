@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"fmt"
 )
 
 var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
@@ -22,6 +23,37 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 		})
 	})
 
+	Context("Creating new multiAddress", func() {
+		It("should be able to get new multiAddress from a valid string", func() {
+			addr, _, err := identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			_, err = identity.NewMultiAddressFromString("/republic/" + addr.String())
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should error when trying getting multiAddress from a bad address", func() {
+
+			_, err := identity.NewMultiAddressFromString("bad address")
+			Ω(err).Should(HaveOccurred())
+			addr, _, err := identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			_, err = identity.NewMultiAddressFromString("/republic/" + addr.String()+ "bad")
+			Ω(err).Should(HaveOccurred())
+		})
+	})
+
+	Context("retrieving values", func() {
+		It("should give the right value of specific protocol", func() {
+			ip4, tcp, republicAddress := "127.0.0.1", "80","8MGfbzAMS59Gb4cSjpm34soGNYsM2f"
+			addresses := fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s",ip4,tcp,republicAddress)
+			multiAddress, err := identity.NewMultiAddressFromString(addresses)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(multiAddress.ValueForProtocol(RepublicCode)).Should(Equal(republicAddress))
+			Ω(multiAddress.ValueForProtocol(TCPCode)).Should(Equal(tcp))
+			Ω(multiAddress.ValueForProtocol(IP4Code)).Should(Equal(ip4))
+		})
+	})
+
 	Context("marshaling to JSON", func() {
 		It("should encode and then decode to the same value", func() {
 			addr, _, err := identity.NewAddress()
@@ -34,6 +66,13 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 			err = newMulti.UnmarshalJSON(data)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(multi.String()).Should(Equal(newMulti.String()))
+		})
+
+		It("should error when trying to decoding wrong-formatted error", func() {
+			newMulti := &identity.MultiAddress{}
+			badData := []byte("this is not a valid Multiaddress")
+			err := newMulti.UnmarshalJSON(badData)
+			Ω(err).Should(HaveOccurred())
 		})
 	})
 })

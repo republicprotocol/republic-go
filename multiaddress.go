@@ -54,25 +54,16 @@ func NewMultiAddressFromString(s string) (MultiAddress, error) {
 		return MultiAddress{}, err
 	}
 	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
+
 	return MultiAddress{Address(address), baseMultiAddress}, err
 }
 
-// NewMultiAddressFromBytes parses and validates an input byte slice. It
-// returns a MultiAddress, or an error.
-func NewMultiAddressFromBytes(b []byte) (MultiAddress, error) {
-	multiAddress, err := multiaddr.NewMultiaddrBytes(b)
-
-	address, err := multiAddress.ValueForProtocol(RepublicCode)
-	if err != nil {
-		return MultiAddress{}, err
+// ValueForProtocol returns the value of the specific protocol in the MultiAddress
+func (multiAddress MultiAddress) ValueForProtocol(code int) (string, error) {
+	if code == RepublicCode {
+		return multiAddress.address.String(), nil
 	}
-	addressAsMultiAddress, err := multiaddr.NewMultiaddr("/republic/" + address)
-	if err != nil {
-		return MultiAddress{}, err
-	}
-	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
-
-	return MultiAddress{Address(address), baseMultiAddress}, err
+	return multiAddress.baseMultiAddress.ValueForProtocol(code)
 }
 
 // Address returns the Republic address of a MultiAddress, or an error.
