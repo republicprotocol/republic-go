@@ -383,24 +383,31 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 				if closeMap[nextPeer.Multi] {
 					continue
 				}
-				open = true
-				openNext = append(openNext, nextPeer)
+				deserializedNextPeer, err := DeserializeMultiAddress(nextPeer)
+				if err != nil {
+					continue
+				}
+				nextPeerAddress := deserializedNextPeer.Address()
+				if closer, err := identity.Closer(nextPeerAddress, node.Address(), target); closer && err != nil {
+					open = true
+					openNext = append(openNext, nextPeer)
+				}
 			}
 		})
 		targetPeers.Multis = append(targetPeers.Multis, openList...)
 		openList = openNext
 	}
 
-	sort.Slice(openList, func(i, j int) bool {
-		leftMultiAddress, _ := DeserializeMultiAddress(openList[i])
+	sort.Slice(targetPeers.Multis, func(i, j int) bool {
+		leftMultiAddress, _ := DeserializeMultiAddress(targetPeers.Multis[i])
 		left := leftMultiAddress.Address()
-		rightMultiAddress, _ := DeserializeMultiAddress(openList[j])
+		rightMultiAddress, _ := DeserializeMultiAddress(targetPeers.Multis[j])
 		right := rightMultiAddress.Address()
 		closer, _ := identity.Closer(left, right, target)
 		return closer
 	})
 
-	minLength := len(openList)
+	minLength := len(targetPeers.Multis)
 	if minLength > node.Options.Alpha {
 		minLength = node.Options.Alpha
 	}
