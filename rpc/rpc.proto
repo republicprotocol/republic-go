@@ -12,8 +12,8 @@ service Node {
   // Get all peers connected to the Node.
   rpc Peers (MultiAddress) returns (MultiAddresses);
 
-  // Find the closest MultiAddresses to a peer with the given Address. 
-  rpc FindPeer (Finder) returns (MultiAddresses);
+  // Find the MultiAddresses of peers closer to some target Node.
+  rpc FindCloserPeers (Finder) returns (MultiAddresses);
 
   // Send an OrderFragment to some target Node.
   rpc SendOrderFragment (OrderFragment) returns (Nothing);

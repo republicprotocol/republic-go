@@ -45,12 +45,11 @@ func NewNode(delegate Delegate, options Options) *Node {
 // Serve starts the gRPC server.
 func (node *Node) Serve() error {
 	rpc.RegisterNodeServer(node.Server, node)
-
-	host, err := node.MultiAddress.ValueForProtocol(identity.IP4Code)
+	host, err := node.MultiAddress.Base().ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return err
 	}
-	port, err := node.MultiAddress.ValueForProtocol(identity.TCPCode)
+	port, err := node.MultiAddress.Base().ValueForProtocol(identity.TCPCode)
 	if err != nil {
 		return err
 	}
@@ -58,15 +57,17 @@ func (node *Node) Serve() error {
 	if err != nil {
 		return err
 	}
-
 	if node.Options.Debug >= DebugLow {
-		log.Printf("Listening at %s:%s", host, port)
+		log.Printf("Listening at %s:%s\n", host, port)
 	}
 	return node.Server.Serve(listener)
 }
 
 // Stop the gRPC server.
 func (node *Node) Stop() {
+	if node.Options.Debug >= DebugLow {
+		log.Printf("Stopping\n")
+	}
 	node.Server.Stop()
 }
 
@@ -101,6 +102,9 @@ func (node *Node) MultiAddress() identity.MultiAddress {
 // identity.MultiAddresses. If the Node does not respond, or it responds with
 // an error, then the connection should be considered unhealthy.
 func (node *Node) Ping(ctx context.Context, from *rpc.MultiAddress) (*rpc.Nothing, error) {
+	if node.Options.Debug >= DebugMedium {
+		log.Printf("Ping received\n")
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -144,6 +148,9 @@ func (node *Node) ping(from *rpc.MultiAddress) (*rpc.Nothing, error) {
 // The rpc.MultiAddresses returned are not guaranteed to provide healthy
 // connections and should be pinged.
 func (node *Node) Peers(ctx context.Context, from *rpc.MultiAddress) (*rpc.MultiAddresses, error) {
+	if node.Options.Debug >= DebugMedium {
+		log.Printf("Peers received\n")
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -183,12 +190,15 @@ func (node *Node) peers(from *rpc.MultiAddress) (*rpc.MultiAddresses, error) {
 	return SerializeMultiAddresses(peers), nil
 }
 
-// FindPeer is used to return the closest rpc.MultiAddresses to a peer with the
-// given target rpc.Address. It will not return rpc.MultiAddresses that are
-// further away from the target than the Node itself. The rpc.MultiAddresses
-// returned are not guaranteed to provide healthy connections and should be
-// pinged.
-func (node *Node) FindPeer(ctx context.Context, finder *rpc.Finder) (*rpc.MultiAddresses, error) {
+// FindCloserPeers is used to return the closest rpc.MultiAddresses to a peer
+// with the given target rpc.Address. It will not return rpc.MultiAddresses
+// that are further away from the target than the Node itself. The
+// rpc.MultiAddresses returned are not guaranteed to provide healthy
+// connections and should be pinged.
+func (node *Node) FindCloserPeers(ctx context.Context, finder *rpc.Finder) (*rpc.MultiAddresses, error) {
+	if node.Options.Debug >= DebugMedium {
+		log.Printf("FindCloserPeers received\n")
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -258,6 +268,9 @@ func (node *Node) findPeer(finder *rpc.Finder) (*rpc.MultiAddresses, error) {
 // SendOrderFragment to the Node. If the rpc.OrderFragment is not destined for
 // this Node then it will be forwarded on to the correct destination.
 func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
+	if node.Options.Debug >= DebugMedium {
+		log.Printf("SendOrderFragment received\n")
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -321,6 +334,9 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Noth
 // SendResultFragment to the Node. If the rpc.ResultFragment is not destined
 // for this Node then it will be forwarded on to the correct destination.
 func (node *Node) SendResultFragment(ctx context.Context, resultFragment *rpc.ResultFragment) (*rpc.Nothing, error) {
+	if node.Options.Debug >= DebugMedium {
+		log.Printf("SendResultFragment received\n")
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
