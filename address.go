@@ -105,5 +105,5 @@ func Closer(left, right, target Address) (bool, error) {
 		}
 	}
 	// If the Addresses are the same, return true.
-	return true, nil
+	return false, nil
 }

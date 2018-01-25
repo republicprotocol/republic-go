@@ -36,10 +36,16 @@ var _ = Describe("", func() {
 		Context("calculating distances", func() {
 			address1 := identity.Address("8MK6bwP1ADVPaMQ4Gxfm85KYbEdJ6Y")
 			address2 := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBgikU")
+			badAddress := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBg")
 			zeroDistance := []byte{}
 			for i := 0; i < 20; i++ {
 				zeroDistance = append(zeroDistance, uint8(0))
 			}
+
+			It("should error when calculating distance on wrong formatted address", func() {
+				_, err := address1.Distance(badAddress)
+				Ω(err).Should(HaveOccurred())
+			})
 
 			It("should have a distance of 0 from itself", func() {
 				distance, err := address1.Distance(address1)
@@ -68,8 +74,14 @@ var _ = Describe("", func() {
 		})
 
 		Context("comparing prefix bits", func() {
-			address1 := identity.Address("8MK6bwP1ADVPaMQ4Gxfm85KYbEdJ6Y")
-			address2 := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBgikU")
+			address1 := identity.Address("8MHKbwP1ADVPaMQ4Gxfm85KYbEdJ6Y")
+			address2 := identity.Address("8MHkcs4aQ7m7mz7rY1HqEcPwHBgikU")
+			badAddress := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBg")
+
+			It("should error when comparing bits on wrong formatted address", func() {
+				_, err := address1.SamePrefixLength(badAddress)
+				Ω(err).Should(HaveOccurred())
+			})
 
 			It("should have symmetrical prefix lengths", func() {
 				same1, err := address1.SamePrefixLength(address2)
@@ -91,14 +103,22 @@ var _ = Describe("", func() {
 			It("should calculate the correct prefix length compared against a known value", func() {
 				same, err := address1.SamePrefixLength(address2)
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(same).Should(Equal(0))
+				Ω(same).Should(Equal(2))
 			})
 
 		})
 
-		Context("checking distance from a target", func() {
+		Context("comparing who is closer to the target", func() {
 			address1 := identity.Address("8MK6bwP1ADVPaMQ4Gxfm85KYbEdJ6Y")
 			target := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBgikU")
+			badAddress := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBg")
+
+			It("should error when comparing with a bad-formatted address", func() {
+				_, err := identity.Closer(address1,badAddress,target)
+				Ω(err).Should(HaveOccurred())
+				_, err = identity.Closer(badAddress, address1,target)
+				Ω(err).Should(HaveOccurred())
+			})
 
 			It("should not be possible to be closer to the target than the target", func() {
 				randomAddress, _, err := identity.NewAddress()
@@ -115,6 +135,14 @@ var _ = Describe("", func() {
 				isRandomAddressCloser, err := identity.Closer(randomAddress, address1, target)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(isAddress1Closer).Should(Equal(!isRandomAddressCloser))
+			})
+
+			It("should not return being closer when comparing with itself", func() {
+				randomAddress, _, err := identity.NewAddress()
+				Ω(err).ShouldNot(HaveOccurred())
+				isCloser, err := identity.Closer(randomAddress, randomAddress, target)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(isCloser).Should(BeFalse())
 			})
 		})
 
