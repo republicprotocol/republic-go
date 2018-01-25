@@ -365,6 +365,9 @@ func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.N
 	var err error
 	var fromMultiAddress identity.MultiAddress
 	if resultFragment.From != nil {
+		if resultFragment.From.Multi == node.MultiAddress().String() {
+			return &rpc.Nothing{}, nil
+		}
 		fromMultiAddress, err = DeserializeMultiAddress(resultFragment.From)
 		if err != nil {
 			return &rpc.Nothing{}, err
