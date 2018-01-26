@@ -131,7 +131,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(len(dht.MultiAddresses())).Should(Equal(1))
 		})
 
-		It("should return an error when adding the DHT address", func() {
+		It("should do nothing when adding the DHT address", func() {
 			dht, _, _, err := randomDHTAndAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -139,7 +139,8 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = dht.UpdateMultiAddress(dhtMultiAddress)
-			Ω(err).Should(Equal(ErrDHTAddress))
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(len(dht.MultiAddresses())).Should(Equal(0))
 		})
 
 		It("should return an error when the bucket is full", func() {
