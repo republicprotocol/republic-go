@@ -4,9 +4,8 @@ import (
 	"log"
 	"time"
 
-	base58 "github.com/jbenet/go-base58"
+	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-identity"
-
 	"github.com/republicprotocol/go-miner"
 	"github.com/republicprotocol/go-network"
 	"github.com/republicprotocol/go-order-compute"
