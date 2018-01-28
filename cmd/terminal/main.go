@@ -10,7 +10,8 @@ import (
 	"github.com/republicprotocol/go-order-compute"
 )
 
-const orders = []*compute.Order{
+var orders = []*compute.Order{
+	// Buy ETH for REN
 	compute.NewOrder(
 		compute.OrderTypeLimit,
 		compute.OrderBuy,
@@ -18,9 +19,10 @@ const orders = []*compute.Order{
 		compute.CurrencyCodeREN,
 		17200,
 		1000,
-		100,
+		1000,
 		0,
 	),
+	// Sell ETH for REN
 	compute.NewOrder(
 		compute.OrderTypeLimit,
 		compute.OrderSell,
@@ -28,27 +30,53 @@ const orders = []*compute.Order{
 		compute.CurrencyCodeREN,
 		17200,
 		1000,
-		100,
+		1000,
 		0,
 	),
+
+	// Buy BTC for ETH
 	compute.NewOrder(
 		compute.OrderTypeLimit,
 		compute.OrderBuy,
 		compute.CurrencyCodeBTC,
 		compute.CurrencyCodeETH,
-		11,
+		12,
 		2000,
-		2000,
+		200,
 		0,
 	),
+	// Sell BTC for ETH
 	compute.NewOrder(
 		compute.OrderTypeLimit,
 		compute.OrderSell,
-		compute.CurrencyCodeETH,
 		compute.CurrencyCodeBTC,
-		9,
+		compute.CurrencyCodeETH,
+		8,
 		200,
-		200,
+		100,
+		0,
+	),
+
+	// Buy BTC for REN
+	compute.NewOrder(
+		compute.OrderTypeLimit,
+		compute.OrderBuy,
+		compute.CurrencyCodeBTC,
+		compute.CurrencyCodeREN,
+		172000,
+		1000,
+		1000,
+		0,
+	),
+	// Sell REN for BTC
+	compute.NewOrder(
+		compute.OrderTypeLimit,
+		compute.OrderSell,
+		compute.CurrencyCodeREN,
+		compute.CurrencyCodeBTC,
+		172000,
+		1000,
+		1000,
 		0,
 	),
 }
@@ -73,7 +101,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("placing order %s...", base58.Encode(order.ID))
+		log.Println("placing order", base58.Encode(order.ID))
 		if _, err := network.SendOrderFragment(multiAddress1, shares[0]); err != nil {
 			log.Fatal(err)
 		}
@@ -83,6 +111,5 @@ func main() {
 		if _, err := network.SendOrderFragment(multiAddress3, shares[2]); err != nil {
 			log.Fatal(err)
 		}
-		log.Printf(" done.")
 	}
 }
