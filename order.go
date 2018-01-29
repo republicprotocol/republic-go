@@ -129,7 +129,6 @@ func (order *Order) Split(n, k int64, prime *big.Int) ([]*OrderFragment, error) 
 			priceShares[i],
 			maxVolumeShares[i],
 			minVolumeShares[i],
-			prime,
 		)
 	}
 	return orderFragments, nil
@@ -158,14 +157,11 @@ type OrderFragment struct {
 	PriceShare     sss.Share
 	MaxVolumeShare sss.Share
 	MinVolumeShare sss.Share
-
-	// Prime used for the finite field.
-	Prime *big.Int
 }
 
 // NewOrderFragment returns a new OrderFragment and computes the
 // OrderFragmentID for the OrderFragment.
-func NewOrderFragment(orderID OrderID, orderType OrderType, orderParity OrderParity, fstCodeShare, sndCodeShare, priceShare, maxVolumeShare, minVolumeShare sss.Share, prime *big.Int) *OrderFragment {
+func NewOrderFragment(orderID OrderID, orderType OrderType, orderParity OrderParity, fstCodeShare, sndCodeShare, priceShare, maxVolumeShare, minVolumeShare sss.Share) *OrderFragment {
 	orderFragment := &OrderFragment{
 		OrderID:        orderID,
 		OrderType:      orderType,
@@ -175,7 +171,6 @@ func NewOrderFragment(orderID OrderID, orderType OrderType, orderParity OrderPar
 		PriceShare:     priceShare,
 		MaxVolumeShare: maxVolumeShare,
 		MinVolumeShare: minVolumeShare,
-		Prime:          prime,
 	}
 	orderFragment.ID = OrderFragmentID(crypto.Keccak256(orderFragment.Bytes()))
 	return orderFragment
@@ -238,7 +233,6 @@ func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*
 		priceShare,
 		maxVolumeShare,
 		minVolumeShare,
-		prime,
 	)
 	return resultFragment, nil
 }
@@ -299,7 +293,6 @@ func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*
 		priceShare,
 		maxVolumeShare,
 		minVolumeShare,
-		prime,
 	)
 	return resultFragment, nil
 }
