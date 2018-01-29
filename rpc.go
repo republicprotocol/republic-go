@@ -38,7 +38,7 @@ func SerializeAddress(address identity.Address) *Address {
 // an identity.Address. An error is returned if the network representation is
 // malformed.
 func DeserializeAddress(address *Address) (identity.Address, error) {
-	return identity.NewAddressFromString(address.Address)
+	return identity.Address(address.Address),nil
 }
 
 // SerializeMultiAddress converts an identity.MultiAddress into its network
