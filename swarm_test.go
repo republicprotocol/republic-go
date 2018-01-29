@@ -93,7 +93,7 @@ var _ = Describe("Swarm node", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an timeout error if getting no response in a minute", func() {
+		It("should return an timeout error if getting no response within certain amount of time", func() {
 			err := rpc.PingTarget(rpcServer.Multi, rpcClient.Multi, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
@@ -121,7 +121,7 @@ var _ = Describe("Swarm node", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an timeout error if getting no response in a minute", func() {
+		It("should return an timeout error if getting no response within certain amount of time", func() {
 			_, err := rpc.GetPeersFromTarget(rpcServer.Multi, rpcClient.Multi, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
@@ -151,7 +151,7 @@ var _ = Describe("Swarm node", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an timeout error if getting no response in a minute", func() {
+		It("should return an timeout error if getting no response within certain amount of time", func() {
 			target := identity.Address("8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
 			_, err := rpc.QueryCloserPeersFromTarget(rpcServer.Multi, rpcClient.Multi, target, true, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
