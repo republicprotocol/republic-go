@@ -20,7 +20,6 @@ func PingTarget(to identity.MultiAddress, from identity.MultiAddress) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-
 	_, err = client.Ping(ctx, SerializeMultiAddress(from), grpc.FailFast(false))
 	return err
 }
