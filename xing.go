@@ -11,15 +11,15 @@ import (
 
 // SendOrderFragmentToTarget using a new grpc.ClientConn to make a
 // SendOrderFragment RPC to a targetMultiAddress.
-func SendOrderFragmentToTarget(to identity.MultiAddress, orderFragment compute.OrderFragment) error {
-	conn, err := Dial(to)
+func SendOrderFragmentToTarget(to identity.MultiAddress, orderFragment compute.OrderFragment,timeout time.Duration) error {
+	conn, err := Dial(to, timeout)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	client := NewXingNodeClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	_, err = client.SendOrderFragment(ctx, SerializeOrderFragment(&orderFragment), grpc.FailFast(false))
 	return err
@@ -27,15 +27,15 @@ func SendOrderFragmentToTarget(to identity.MultiAddress, orderFragment compute.O
 
 // SendResultFragmentToTarget using a new grpc.ClientConn to make a
 // SendResultFragment RPC to a targetMultiAddress.
-func SendResultFragmentToTarget(to identity.MultiAddress, resultFragment compute.ResultFragment) error {
-	conn, err := Dial(to)
+func SendResultFragmentToTarget(to identity.MultiAddress, resultFragment compute.ResultFragment, timeout time.Duration) error {
+	conn, err := Dial(to, timeout)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	client := NewXingNodeClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	_, err = client.SendResultFragment(ctx, SerializeResultFragment(&resultFragment), grpc.FailFast(false))

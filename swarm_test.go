@@ -9,6 +9,7 @@ import (
 	"github.com/republicprotocol/go-rpc"
 	"google.golang.org/grpc"
 	"net"
+	"time"
 )
 
 type mockServer struct {
@@ -35,6 +36,10 @@ var _ = Describe("Swarm node", func() {
 	var server *grpc.Server
 	var rpcServer mockServer
 	var rpcClient mockClient
+	var badMulti1 identity.MultiAddress
+	var badMulti2 identity.MultiAddress
+	var err error
+	var defaultTimeout = time.Second * 5
 
 	createServe := func() {
 		keyPair, err := identity.NewKeyPair()
@@ -60,6 +65,10 @@ var _ = Describe("Swarm node", func() {
 	BeforeEach(func() {
 		createClient()
 		createServe()
+		badMulti1, err = identity.NewMultiAddressFromString("/ip4/192.168.0.1/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
+		Ω(err).ShouldNot(HaveOccurred())
+		badMulti2, err = identity.NewMultiAddressFromString("/tcp/80/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 
 	Context("Ping target", func() {
@@ -73,8 +82,20 @@ var _ = Describe("Swarm node", func() {
 			}(server)
 			defer server.Stop()
 
-			err = rpc.PingTarget(rpcServer.Multi, rpcClient.Multi)
+			err = rpc.PingTarget(rpcServer.Multi, rpcClient.Multi, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should return an error if pinging a wrong address", func() {
+			err = rpc.PingTarget(badMulti1, rpcClient.Multi, defaultTimeout)
+			Ω(err).Should(HaveOccurred())
+			err = rpc.PingTarget(badMulti2, rpcClient.Multi, defaultTimeout)
+			Ω(err).Should(HaveOccurred())
+		})
+
+		It("should return an timeout error if getting no response in a minute", func() {
+			err := rpc.PingTarget(rpcServer.Multi, rpcClient.Multi, defaultTimeout)
+			Ω(err).Should(HaveOccurred())
 		})
 	})
 
@@ -88,9 +109,21 @@ var _ = Describe("Swarm node", func() {
 			}(server)
 			defer server.Stop()
 
-			multi, err := rpc.GetPeersFromTarget(rpcServer.Multi, rpcClient.Multi)
+			multi, err := rpc.GetPeersFromTarget(rpcServer.Multi, rpcClient.Multi, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(multi).Should(Equal(identity.MultiAddresses{}))
+		})
+
+		It("should return an error if calling a bad address", func() {
+			_, err = rpc.GetPeersFromTarget(badMulti1, rpcClient.Multi, defaultTimeout)
+			Ω(err).Should(HaveOccurred())
+			_, err = rpc.GetPeersFromTarget(badMulti2, rpcClient.Multi, defaultTimeout)
+			Ω(err).Should(HaveOccurred())
+		})
+
+		It("should return an timeout error if getting no response in a minute", func() {
+			_, err := rpc.GetPeersFromTarget(rpcServer.Multi, rpcClient.Multi, defaultTimeout)
+			Ω(err).Should(HaveOccurred())
 		})
 	})
 
@@ -105,9 +138,23 @@ var _ = Describe("Swarm node", func() {
 			defer server.Stop()
 
 			target := identity.Address("8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
-			multi, err := rpc.QueryCloserPeersFromTarget(rpcServer.Multi, rpcClient.Multi, target, true)
+			multi, err := rpc.QueryCloserPeersFromTarget(rpcServer.Multi, rpcClient.Multi, target, true, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(multi).Should(Equal(identity.MultiAddresses{}))
+		})
+
+		It("should return an error if quering a bad address", func() {
+			target := identity.Address("8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
+			_, err = rpc.QueryCloserPeersFromTarget(badMulti1, rpcClient.Multi, target, true, defaultTimeout)
+			Ω(err).Should(HaveOccurred())
+			_, err = rpc.QueryCloserPeersFromTarget(badMulti2, rpcClient.Multi, target, true, defaultTimeout)
+			Ω(err).Should(HaveOccurred())
+		})
+
+		It("should return an timeout error if getting no response in a minute", func() {
+			target := identity.Address("8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
+			_, err := rpc.QueryCloserPeersFromTarget(rpcServer.Multi, rpcClient.Multi, target, true, defaultTimeout)
+			Ω(err).Should(HaveOccurred())
 		})
 	})
 })

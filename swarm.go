@@ -10,15 +10,15 @@ import (
 
 // PingTarget using a new grpc.ClientConn to make a Ping RPC to a target
 // identity.MultiAddress.
-func PingTarget(to identity.MultiAddress, from identity.MultiAddress) error {
-	conn, err := Dial(to)
+func PingTarget(to identity.MultiAddress, from identity.MultiAddress, timeout time.Duration) error {
+	conn, err := Dial(to, timeout)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	client := NewSwarmNodeClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	_, err = client.Ping(ctx, SerializeMultiAddress(from), grpc.FailFast(false))
 	return err
@@ -26,35 +26,35 @@ func PingTarget(to identity.MultiAddress, from identity.MultiAddress) error {
 
 // GetPeersFromTarget using a new grpc.ClientConn to make a Peers RPC to a
 // target identity.MultiAddress.
-func GetPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress) (identity.MultiAddresses, error) {
-	conn, err := Dial(to)
+func GetPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress, timeout time.Duration) (identity.MultiAddresses, error) {
+	conn, err := Dial(to, timeout)
 	if err != nil {
-		return identity.MultiAddresses{}, nil
+		return identity.MultiAddresses{}, err
 	}
 	defer conn.Close()
 	client := NewSwarmNodeClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	multiAddresses, err := client.Peers(ctx, SerializeMultiAddress(from), grpc.FailFast(false))
 	if err != nil {
-		return identity.MultiAddresses{}, nil
+		return identity.MultiAddresses{}, err
 	}
 	return DeserializeMultiAddresses(multiAddresses)
 }
 
 // QueryCloserPeersFromTarget using a new grpc.ClientConn to make a
 // QueryCloserPeers RPC to a targetMultiAddress.
-func QueryCloserPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, deep bool) (identity.MultiAddresses, error) {
-	conn, err := Dial(to)
+func QueryCloserPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, deep bool, timeout time.Duration) (identity.MultiAddresses, error) {
+	conn, err := Dial(to, timeout)
 	if err != nil {
-		return identity.MultiAddresses{}, nil
+		return identity.MultiAddresses{}, err
 	}
 	defer conn.Close()
 	client := NewSwarmNodeClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	rpcQuery := &Query{
 		From:  SerializeMultiAddress(from),
