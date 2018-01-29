@@ -16,9 +16,9 @@ type CurrencyCode int64
 
 // The possible values for a CurrencyCode.
 const (
-	CurrencyCodeBTC = 1
-	CurrencyCodeETH = 2
-	CurrencyCodeREN = 3
+	CurrencyCodeBTC CurrencyCode = 1
+	CurrencyCodeETH CurrencyCode = 2
+	CurrencyCodeREN CurrencyCode = 3
 )
 
 // An OrderType is a publicly bit of information that determines the type of
@@ -27,15 +27,17 @@ type OrderType int64
 
 // The possible values for an OrderType.
 const (
-	OrderTypeIBBO  = 1
-	OrderTypeLimit = 2
+	OrderTypeIBBO  OrderType = 1
+	OrderTypeLimit OrderType = 2
 )
 
-type OrderBuySell int64
+// OrderParity determines whether an Order is a buy or a sell.
+type OrderParity int64
 
+// The possible values for OrderParity.
 const (
-	OrderBuy  = 1
-	OrderSell = 0
+	OrderParityBuy  OrderParity = 1
+	OrderParitySell OrderParity = 2
 )
 
 // An OrderID is the Keccak256 hash of an Order.
@@ -51,9 +53,9 @@ func (id OrderID) Equals(other OrderID) bool {
 // exposed to anyone other than the trader that wants to execute the Order.
 type Order struct {
 	// Public data.
-	ID      OrderID
-	Type    OrderType
-	BuySell OrderBuySell
+	ID     OrderID
+	Type   OrderType
+	Parity OrderParity
 
 	// Private data.
 	FstCode   CurrencyCode
@@ -65,10 +67,10 @@ type Order struct {
 }
 
 // NewOrder returns a new Order and computes the OrderID for the Order.
-func NewOrder(ty OrderType, buySell OrderBuySell, fstCode CurrencyCode, sndCode CurrencyCode, price int64, maxVolume int64, minVolume int64, nonce int64) *Order {
+func NewOrder(ty OrderType, parity OrderParity, fstCode CurrencyCode, sndCode CurrencyCode, price int64, maxVolume int64, minVolume int64, nonce int64) *Order {
 	order := &Order{
-		Type:    ty,
-		BuySell: buySell,
+		Type:   ty,
+		Parity: parity,
 
 		FstCode:   fstCode,
 		SndCode:   sndCode,
@@ -85,7 +87,7 @@ func NewOrder(ty OrderType, buySell OrderBuySell, fstCode CurrencyCode, sndCode 
 func (order *Order) Bytes() []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, order.Type)
-	binary.Write(buf, binary.LittleEndian, order.BuySell)
+	binary.Write(buf, binary.LittleEndian, order.Parity)
 	binary.Write(buf, binary.LittleEndian, order.FstCode)
 	binary.Write(buf, binary.LittleEndian, order.SndCode)
 	binary.Write(buf, binary.LittleEndian, order.Price)
@@ -121,12 +123,13 @@ func (order *Order) Split(n, k int64, prime *big.Int) ([]*OrderFragment, error) 
 		orderFragments[i] = NewOrderFragment(
 			order.ID,
 			order.Type,
-			order.BuySell,
+			order.Parity,
 			fstCodeShares[i],
 			sndCodeShares[i],
 			priceShares[i],
 			maxVolumeShares[i],
 			minVolumeShares[i],
+			prime,
 		)
 	}
 	return orderFragments, nil
@@ -144,10 +147,10 @@ func (id OrderFragmentID) Equals(other OrderFragmentID) bool {
 // secret sharing where the secret is an Order encoded as a big.Int.
 type OrderFragment struct {
 	// Public data.
-	ID           OrderFragmentID
-	OrderID      OrderID
-	OrderType    OrderType
-	OrderBuySell OrderBuySell
+	ID          OrderFragmentID
+	OrderID     OrderID
+	OrderType   OrderType
+	OrderParity OrderParity
 
 	// Private data.
 	FstCodeShare   sss.Share
@@ -155,20 +158,24 @@ type OrderFragment struct {
 	PriceShare     sss.Share
 	MaxVolumeShare sss.Share
 	MinVolumeShare sss.Share
+
+	// Prime used for the finite field.
+	Prime *big.Int
 }
 
 // NewOrderFragment returns a new OrderFragment and computes the
 // OrderFragmentID for the OrderFragment.
-func NewOrderFragment(orderID OrderID, orderType OrderType, orderBuySell OrderBuySell, fstCodeShare, sndCodeShare, priceShare, maxVolumeShare, minVolumeShare sss.Share) *OrderFragment {
+func NewOrderFragment(orderID OrderID, orderType OrderType, orderParity OrderParity, fstCodeShare, sndCodeShare, priceShare, maxVolumeShare, minVolumeShare sss.Share, prime *big.Int) *OrderFragment {
 	orderFragment := &OrderFragment{
 		OrderID:        orderID,
 		OrderType:      orderType,
-		OrderBuySell:   orderBuySell,
+		OrderParity:    orderParity,
 		FstCodeShare:   fstCodeShare,
 		SndCodeShare:   sndCodeShare,
 		PriceShare:     priceShare,
 		MaxVolumeShare: maxVolumeShare,
 		MinVolumeShare: minVolumeShare,
+		Prime:          prime,
 	}
 	orderFragment.ID = OrderFragmentID(crypto.Keccak256(orderFragment.Bytes()))
 	return orderFragment
@@ -186,7 +193,7 @@ func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*
 
 	// Label the OrderFragments appropriately.
 	var buyOrderFragment, sellOrderFragment *OrderFragment
-	if orderFragment.OrderBuySell == OrderBuy {
+	if orderFragment.OrderParity == OrderParityBuy {
 		buyOrderFragment = orderFragment
 		sellOrderFragment = other
 	} else {
@@ -231,6 +238,7 @@ func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*
 		priceShare,
 		maxVolumeShare,
 		minVolumeShare,
+		prime,
 	)
 	return resultFragment, nil
 }
@@ -246,7 +254,7 @@ func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*
 
 	// Label the OrderFragments appropriately.
 	var buyOrderFragment, sellOrderFragment *OrderFragment
-	if orderFragment.OrderBuySell == OrderBuy {
+	if orderFragment.OrderParity == OrderParityBuy {
 		buyOrderFragment = orderFragment
 		sellOrderFragment = other
 	} else {
@@ -258,23 +266,23 @@ func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*
 	// sellOrderFragment as the RHS.
 	fstCodeShare := sss.Share{
 		Key:   buyOrderFragment.FstCodeShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.FstCodeShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.FstCodeShare.Value)),
+		Value: big.NewInt(0).Add(buyOrderFragment.FstCodeShare.Value, big.NewInt(0).Sub(prime, sellOrderFragment.FstCodeShare.Value)),
 	}
 	sndCodeShare := sss.Share{
 		Key:   buyOrderFragment.SndCodeShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.SndCodeShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.SndCodeShare.Value)),
+		Value: big.NewInt(0).Add(buyOrderFragment.SndCodeShare.Value, big.NewInt(0).Sub(prime, sellOrderFragment.SndCodeShare.Value)),
 	}
 	priceShare := sss.Share{
 		Key:   buyOrderFragment.PriceShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.PriceShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.PriceShare.Value)),
+		Value: big.NewInt(0).Add(buyOrderFragment.PriceShare.Value, big.NewInt(0).Sub(prime, sellOrderFragment.PriceShare.Value)),
 	}
 	maxVolumeShare := sss.Share{
 		Key:   buyOrderFragment.MaxVolumeShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.MaxVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, sellOrderFragment.MinVolumeShare.Value)),
+		Value: big.NewInt(0).Add(buyOrderFragment.MaxVolumeShare.Value, big.NewInt(0).Sub(prime, sellOrderFragment.MinVolumeShare.Value)),
 	}
 	minVolumeShare := sss.Share{
 		Key:   buyOrderFragment.MinVolumeShare.Key,
-		Value: big.NewInt(0).Add(sellOrderFragment.MaxVolumeShare.Value, big.NewInt(0).Set(prime).Sub(prime, buyOrderFragment.MinVolumeShare.Value)),
+		Value: big.NewInt(0).Add(sellOrderFragment.MaxVolumeShare.Value, big.NewInt(0).Sub(prime, buyOrderFragment.MinVolumeShare.Value)),
 	}
 	fstCodeShare.Value.Mod(fstCodeShare.Value, prime)
 	sndCodeShare.Value.Mod(sndCodeShare.Value, prime)
@@ -291,6 +299,7 @@ func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*
 		priceShare,
 		maxVolumeShare,
 		minVolumeShare,
+		prime,
 	)
 	return resultFragment, nil
 }
@@ -301,7 +310,7 @@ func (orderFragment *OrderFragment) Bytes() []byte {
 
 	binary.Write(buf, binary.LittleEndian, orderFragment.OrderID)
 	binary.Write(buf, binary.LittleEndian, orderFragment.OrderType)
-	binary.Write(buf, binary.LittleEndian, orderFragment.OrderBuySell)
+	binary.Write(buf, binary.LittleEndian, orderFragment.OrderParity)
 
 	binary.Write(buf, binary.LittleEndian, orderFragment.FstCodeShare.Key)
 	binary.Write(buf, binary.LittleEndian, orderFragment.FstCodeShare.Value.Bytes())
@@ -320,8 +329,8 @@ func (orderFragment *OrderFragment) Bytes() []byte {
 // IsCompatible returns an error when the two OrderFragments do not have
 // the same share indices.
 func (orderFragment *OrderFragment) IsCompatible(rhs *OrderFragment) error {
-	if orderFragment.OrderBuySell == rhs.OrderBuySell {
-		return NewResultFragmentationError(orderFragment.OrderBuySell)
+	if orderFragment.OrderParity == rhs.OrderParity {
+		return NewResultFragmentationError(orderFragment.OrderParity)
 	}
 	if orderFragment.FstCodeShare.Key != rhs.FstCodeShare.Key {
 		return NewOrderFragmentationError(orderFragment.FstCodeShare.Key, rhs.FstCodeShare.Key)

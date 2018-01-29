@@ -67,7 +67,7 @@ func NewResult(prime *big.Int, resultFragments []*ResultFragment) (*Result, erro
 	return result, nil
 }
 
-func (result *Result) IsMatch() bool {
+func (result *Result) IsMatch(prime *big.Int) bool {
 	if result.FstCode.Cmp(big.NewInt(0)) != 0 {
 		return false
 	}

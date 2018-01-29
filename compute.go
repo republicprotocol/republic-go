@@ -20,7 +20,7 @@ func NewComputation(left *OrderFragment, right *OrderFragment) (*Computation, er
 		return nil, err
 	}
 	computation := &Computation{}
-	if left.OrderBuySell != 0 {
+	if left.OrderBuySell == OrderBuy {
 		computation.BuyOrderFragment = left
 		computation.SellOrderFragment = right
 	} else {
