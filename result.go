@@ -20,6 +20,7 @@ type Result struct {
 	Price       *big.Int
 	MaxVolume   *big.Int
 	MinVolume   *big.Int
+	Prime       *big.Int
 }
 
 func NewResult(prime *big.Int, resultFragments []*ResultFragment) (*Result, error) {
@@ -45,6 +46,7 @@ func NewResult(prime *big.Int, resultFragments []*ResultFragment) (*Result, erro
 	result := &Result{
 		BuyOrderID:  resultFragments[0].BuyOrderID,
 		SellOrderID: resultFragments[0].SellOrderID,
+		Prime:       resultFragments[0].Prime,
 	}
 	if result.FstCode, err = sss.Join(prime, fstCodeShares); err != nil {
 		return nil, err
@@ -67,20 +69,21 @@ func NewResult(prime *big.Int, resultFragments []*ResultFragment) (*Result, erro
 	return result, nil
 }
 
-func (result *Result) IsMatch(prime *big.Int) bool {
+func (result *Result) IsMatch() bool {
+	finiteZero := big.NewInt(0).Div(result.Prime, big.NewInt(2))
 	if result.FstCode.Cmp(big.NewInt(0)) != 0 {
 		return false
 	}
 	if result.SndCode.Cmp(big.NewInt(0)) != 0 {
 		return false
 	}
-	if result.Price.Cmp(big.NewInt(0)) == -1 {
+	if result.Price.Cmp(finiteZero) == -1 {
 		return false
 	}
-	if result.MaxVolume.Cmp(big.NewInt(0)) == -1 {
+	if result.MaxVolume.Cmp(finiteZero) == -1 {
 		return false
 	}
-	if result.MinVolume.Cmp(big.NewInt(0)) == -1 {
+	if result.MinVolume.Cmp(finiteZero) == -1 {
 		return false
 	}
 	return true
@@ -105,9 +108,12 @@ type ResultFragment struct {
 	PriceShare     sss.Share
 	MaxVolumeShare sss.Share
 	MinVolumeShare sss.Share
+
+	// Prime used for the finite field.
+	Prime *big.Int
 }
 
-func NewResultFragment(buyOrderID, sellOrderID OrderID, buyOrderFragmentID, sellOrderFragmentID OrderFragmentID, fstCodeShare, sndCodeShare, priceShare, maxVolumeShare, minVolumeShare sss.Share) *ResultFragment {
+func NewResultFragment(buyOrderID, sellOrderID OrderID, buyOrderFragmentID, sellOrderFragmentID OrderFragmentID, fstCodeShare, sndCodeShare, priceShare, maxVolumeShare, minVolumeShare sss.Share, prime *big.Int) *ResultFragment {
 	resultFragment := &ResultFragment{
 		BuyOrderID:          buyOrderID,
 		SellOrderID:         sellOrderID,
@@ -118,6 +124,7 @@ func NewResultFragment(buyOrderID, sellOrderID OrderID, buyOrderFragmentID, sell
 		PriceShare:          priceShare,
 		MaxVolumeShare:      maxVolumeShare,
 		MinVolumeShare:      minVolumeShare,
+		Prime:               prime,
 	}
 	resultFragment.ID = ResultFragmentID(crypto.Keccak256(resultFragment.BuyOrderFragmentID[:], resultFragment.SellOrderFragmentID[:]))
 	return resultFragment
