@@ -3,6 +3,7 @@ package compute
 import (
 	"math/big"
 	"sync"
+	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -20,7 +21,7 @@ func NewComputation(left *OrderFragment, right *OrderFragment) (*Computation, er
 		return nil, err
 	}
 	computation := &Computation{}
-	if left.OrderBuySell == OrderBuy {
+	if left.OrderParity == OrderParityBuy {
 		computation.BuyOrderFragment = left
 		computation.SellOrderFragment = right
 	} else {
@@ -45,7 +46,7 @@ type ComputationMatrix struct {
 	computationsMu       *sync.Mutex
 	computationsLeftCond *sync.Cond
 	computations         []*Computation
-	computationsLeft     int
+	computationsLeft     int64
 	computationsMarker   map[string]struct{}
 
 	resultsMu       *sync.Mutex
@@ -91,11 +92,11 @@ func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) 
 			continue
 		}
 		matrix.computations = append(matrix.computations, computation)
-		matrix.computationsLeft++ // FIXME: There is a race condition on this variable.
+		atomic.AddInt64(&matrix.computationsLeft, 1)
 	}
 
 	matrix.orderFragments = append(matrix.orderFragments, orderFragment)
-	if matrix.computationsLeft > 0 {
+	if atomic.LoadInt64(&matrix.computationsLeft) > 0 {
 		matrix.computationsLeftCond.Signal()
 	}
 }
@@ -103,7 +104,7 @@ func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) 
 func (matrix *ComputationMatrix) WaitForComputations(max int) []*Computation {
 	matrix.computationsLeftCond.L.Lock()
 	defer matrix.computationsLeftCond.L.Unlock()
-	for matrix.computationsLeft == 0 {
+	for atomic.LoadInt64(&matrix.computationsLeft) == 0 {
 		matrix.computationsLeftCond.Wait()
 	}
 
@@ -120,7 +121,7 @@ func (matrix *ComputationMatrix) WaitForComputations(max int) []*Computation {
 			}
 		}
 	}
-	matrix.computationsLeft -= len(computations)
+	atomic.AddInt64(&matrix.computationsLeft, -int64(len(computations)))
 	return computations
 }
 
