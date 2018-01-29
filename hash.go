@@ -1,6 +1,6 @@
-package x
+package xing
 
-import identity "github.com/republicprotocol/go-identity"
+import "github.com/republicprotocol/go-identity"
 
 // Hash is an alias for a slice of bytes. It represents a Keccak256 hash.
 type Hash []byte

@@ -1,11 +1,11 @@
-# X
+# Xing
 
 [![Build Status](https://travis-ci.org/republicprotocol/go-x.svg?branch=master)](https://travis-ci.org/republicprotocol/go-x)
 [![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-x/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-x?branch=master)
 
 > This library is a work in progress.
 
-The X library is an official reference implementation of the X Network overlay for the Republic Protocol, written in Go. It supports the calculation of the number of classes in the X Network, and the number of M Networks in the X Network. It also supports the assignment of classes and M Networks, based on an Epoch hash.
+The Xing library is an official reference implementation of the Xing overlay network for the Republic Protocol, written in Go. It supports the calculation of the number of classes in the Xing Network, and the number of M Networks in the Xing Network. It also supports the assignment of classes and M Networks, based on an Epoch hash.
 
 More details on the inner workings of the X Network will be made available on the Republic Protocol Wiki in the future.
 
