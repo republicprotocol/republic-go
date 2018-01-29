@@ -139,7 +139,7 @@ func (matrix *ComputationMatrix) AddResultFragments(k int64, prime *big.Int, res
 				// we want to return results we have already found?
 				continue
 			}
-			result, err := NewResult(prime, matrix.resultFragments[string(resultID)])
+			result, err := NewResult(matrix.resultFragments[string(resultID)], prime)
 			if err != nil {
 				return results, err
 			}
