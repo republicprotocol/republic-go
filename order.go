@@ -48,30 +48,36 @@ func (id OrderID) Equals(other OrderID) bool {
 	return bytes.Equal(id, other)
 }
 
+// String returns the OrderID as a string.
+func (id OrderID) String() string {
+	return string(id)
+}
+
 // An Order represents the want to perform a trade of assets. Public data in
 // the Order must be exposed for computation, but private data should not be
 // exposed to anyone other than the trader that wants to execute the Order.
 type Order struct {
-	// Public data.
+	// Public
 	ID     OrderID
 	Type   OrderType
 	Parity OrderParity
 
-	// Private data.
+	// Secure
 	FstCode   CurrencyCode
 	SndCode   CurrencyCode
 	Price     int64
 	MaxVolume int64
 	MinVolume int64
-	Nonce     int64
+
+	// Private
+	Nonce int64
 }
 
 // NewOrder returns a new Order and computes the OrderID for the Order.
 func NewOrder(ty OrderType, parity OrderParity, fstCode CurrencyCode, sndCode CurrencyCode, price int64, maxVolume int64, minVolume int64, nonce int64) *Order {
 	order := &Order{
-		Type:   ty,
-		Parity: parity,
-
+		Type:      ty,
+		Parity:    parity,
 		FstCode:   fstCode,
 		SndCode:   sndCode,
 		Price:     price,
@@ -83,20 +89,8 @@ func NewOrder(ty OrderType, parity OrderParity, fstCode CurrencyCode, sndCode Cu
 	return order
 }
 
-// Bytes returns an Order serialized into a bytes.
-func (order *Order) Bytes() []byte {
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, order.Type)
-	binary.Write(buf, binary.LittleEndian, order.Parity)
-	binary.Write(buf, binary.LittleEndian, order.FstCode)
-	binary.Write(buf, binary.LittleEndian, order.SndCode)
-	binary.Write(buf, binary.LittleEndian, order.Price)
-	binary.Write(buf, binary.LittleEndian, order.MaxVolume)
-	binary.Write(buf, binary.LittleEndian, order.MinVolume)
-	binary.Write(buf, binary.LittleEndian, order.Nonce)
-	return buf.Bytes()
-}
-
+// Split the Order into n OrderFragments, where k OrderFragments are needed to
+// reconstruct the Order. Returns a slice of all n OrderFragments, or an error.
 func (order *Order) Split(n, k int64, prime *big.Int) ([]*OrderFragment, error) {
 	fstCodeShares, err := sss.Split(n, k, prime, big.NewInt(int64(order.FstCode)))
 	if err != nil {
@@ -134,6 +128,33 @@ func (order *Order) Split(n, k int64, prime *big.Int) ([]*OrderFragment, error) 
 	return orderFragments, nil
 }
 
+// Bytes returns an Order serialized into a bytes.
+func (order *Order) Bytes() []byte {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.LittleEndian, order.Type)
+	binary.Write(buf, binary.LittleEndian, order.Parity)
+	binary.Write(buf, binary.LittleEndian, order.FstCode)
+	binary.Write(buf, binary.LittleEndian, order.SndCode)
+	binary.Write(buf, binary.LittleEndian, order.Price)
+	binary.Write(buf, binary.LittleEndian, order.MaxVolume)
+	binary.Write(buf, binary.LittleEndian, order.MinVolume)
+	binary.Write(buf, binary.LittleEndian, order.Nonce)
+	return buf.Bytes()
+}
+
+// Equals checks if two Orders are equal in value.
+func (order *Order) Equals(other *Order) bool {
+	return bytes.Equal(order.ID, other.ID) &&
+		order.Type == other.Type &&
+		order.Parity == other.Parity &&
+		order.FstCode == other.FstCode &&
+		order.SndCode == other.SndCode &&
+		order.Price == other.Price &&
+		order.MaxVolume == other.MaxVolume &&
+		order.MinVolume == other.MinVolume &&
+		order.Nonce == other.Nonce
+}
+
 // An OrderFragmentID is the Keccak256 hash of an OrderFragment.
 type OrderFragmentID []byte
 
@@ -145,13 +166,13 @@ func (id OrderFragmentID) Equals(other OrderFragmentID) bool {
 // An OrderFragment is a secret share of an Order. Is is created using Shamir
 // secret sharing where the secret is an Order encoded as a big.Int.
 type OrderFragment struct {
-	// Public data.
+	// Public
 	ID          OrderFragmentID
 	OrderID     OrderID
 	OrderType   OrderType
 	OrderParity OrderParity
 
-	// Private data.
+	// Secure
 	FstCodeShare   sss.Share
 	SndCodeShare   sss.Share
 	PriceShare     sss.Share
@@ -178,7 +199,6 @@ func NewOrderFragment(orderID OrderID, orderType OrderType, orderParity OrderPar
 
 // Add two OrderFragments together and return the resulting output
 // OrderFragment. The output OrderFragment will have its ID computed.
-// TODO: Review this function. Do we need it?
 func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*ResultFragment, error) {
 	// Check that the OrderFragments have compatible sss.Shares, and that one
 	// of them is an OrderBuy and the other is an OrderSell.
@@ -323,7 +343,7 @@ func (orderFragment *OrderFragment) Bytes() []byte {
 // the same share indices.
 func (orderFragment *OrderFragment) IsCompatible(rhs *OrderFragment) error {
 	if orderFragment.OrderParity == rhs.OrderParity {
-		return NewResultFragmentationError(orderFragment.OrderParity)
+		return NewOrderParityError(orderFragment.OrderParity)
 	}
 	if orderFragment.FstCodeShare.Key != rhs.FstCodeShare.Key {
 		return NewOrderFragmentationError(orderFragment.FstCodeShare.Key, rhs.FstCodeShare.Key)
