@@ -3,60 +3,67 @@ package rpc
 import (
 	"time"
 
-	identity "github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/go-identity"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
 // PingTarget using a new grpc.ClientConn to make a Ping RPC to a target
 // identity.MultiAddress.
-func PingTarget(to identity.MultiAddress, from identity.MultiAddress) error {
-	conn, err := Dial(to)
+func PingTarget(to identity.MultiAddress, from identity.MultiAddress, timeout time.Duration) error {
+	conn, err := Dial(to, timeout)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	client := NewNodeClient(conn)
+	client := NewSwarmNodeClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-
-	_, err := client.Ping(ctx, from, grpc.FailFast(false))
+	_, err = client.Ping(ctx, SerializeMultiAddress(from), grpc.FailFast(false))
 	return err
 }
 
 // GetPeersFromTarget using a new grpc.ClientConn to make a Peers RPC to a
 // target identity.MultiAddress.
-func GetPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress) (identity.MultiAddresses, error) {
-	conn, err := Dial(to)
+func GetPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress, timeout time.Duration) (identity.MultiAddresses, error) {
+	conn, err := Dial(to, timeout)
 	if err != nil {
-		return identity.MultiAddresses{}, nil
+		return identity.MultiAddresses{}, err
 	}
 	defer conn.Close()
-	client := NewNodeClient(conn)
+	client := NewSwarmNodeClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	multiAddresses, err := client.Peers(ctx, from, grpc.FailFast(false))
+	multiAddresses, err := client.Peers(ctx, SerializeMultiAddress(from), grpc.FailFast(false))
 	if err != nil {
-		return identity.MultiAddresses{}, nil
+		return identity.MultiAddresses{}, err
 	}
 	return DeserializeMultiAddresses(multiAddresses)
 }
 
 // QueryCloserPeersFromTarget using a new grpc.ClientConn to make a
 // QueryCloserPeers RPC to a targetMultiAddress.
-func QueryCloserPeersFromTarget(to *MultiAddress, from *MultiAddress, query *Address, deep bool) (*MultiAddresses, error) {
-	conn, err := Dial(to)
+func QueryCloserPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, deep bool, timeout time.Duration) (identity.MultiAddresses, error) {
+	conn, err := Dial(to, timeout)
 	if err != nil {
-		return &MultiAddresses{Multis: []*MultiAddress{}}, nil
+		return identity.MultiAddresses{}, err
 	}
 	defer conn.Close()
-	client := NewNodeClient(conn)
+	client := NewSwarmNodeClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-
-	return client.QueryCloserPeers(ctx, &Query{From: from, Query: query, Deep: deep}, grpc.FailFast(false))
+	rpcQuery := &Query{
+		From:  SerializeMultiAddress(from),
+		Query: SerializeAddress(query),
+		Deep:  deep,
+	}
+	multiAddresses, err := client.QueryCloserPeers(ctx, rpcQuery, grpc.FailFast(false))
+	if err != nil {
+		return identity.MultiAddresses{}, err
+	}
+	return DeserializeMultiAddresses(multiAddresses)
 }

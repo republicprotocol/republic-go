@@ -7,12 +7,14 @@ import (
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-sss"
 	"google.golang.org/grpc"
+	"time"
+	"context"
 )
 
 // Dial the target identity.MultiAddress using a background context.Context.
 // Returns a grpc.ClientConn, or an error. The grpc.ClientConn must be closed
 // before it exits scope.
-func Dial(target identity.MultiAddress) (*grpc.ClientConn, error) {
+func Dial(target identity.MultiAddress, timeout time.Duration) (*grpc.ClientConn, error) {
 	host, err := target.ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return nil, err
@@ -21,7 +23,9 @@ func Dial(target identity.MultiAddress) (*grpc.ClientConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", host, port), grpc.WithInsecure())
+	timeoutContext, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	conn, err := grpc.DialContext(timeoutContext,fmt.Sprintf("%s:%s", host, port), grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +42,7 @@ func SerializeAddress(address identity.Address) *Address {
 // an identity.Address. An error is returned if the network representation is
 // malformed.
 func DeserializeAddress(address *Address) (identity.Address, error) {
-	return identity.NewAddressFromString(address.Address)
+	return identity.Address(address.Address),nil
 }
 
 // SerializeMultiAddress converts an identity.MultiAddress into its network
