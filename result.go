@@ -9,8 +9,11 @@ import (
 	"github.com/republicprotocol/go-sss"
 )
 
+// A ResultID is the Keccak256 hash of the OrderIDs that were used to compute
+// the respective Result.
 type ResultID []byte
 
+// A Result is the publicly computed value of comparing two Orders.
 type Result struct {
 	ID          ResultID
 	BuyOrderID  OrderID
