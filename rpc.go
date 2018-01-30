@@ -3,12 +3,13 @@ package rpc
 import (
 	"fmt"
 
+	"context"
+	"time"
+
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-sss"
 	"google.golang.org/grpc"
-	"time"
-	"context"
 )
 
 // Dial the target identity.MultiAddress using a background context.Context.
@@ -25,7 +26,7 @@ func Dial(target identity.MultiAddress, timeout time.Duration) (*grpc.ClientConn
 	}
 	timeoutContext, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	conn, err := grpc.DialContext(timeoutContext,fmt.Sprintf("%s:%s", host, port), grpc.WithInsecure())
+	conn, err := grpc.DialContext(timeoutContext, fmt.Sprintf("%s:%s", host, port), grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +43,7 @@ func SerializeAddress(address identity.Address) *Address {
 // an identity.Address. An error is returned if the network representation is
 // malformed.
 func DeserializeAddress(address *Address) (identity.Address, error) {
-	return identity.Address(address.Address),nil
+	return identity.Address(address.Address), nil
 }
 
 // SerializeMultiAddress converts an identity.MultiAddress into its network
@@ -87,10 +88,10 @@ func DeserializeMultiAddresses(multiAddresses *MultiAddresses) (identity.MultiAd
 // representation.
 func SerializeOrderFragment(input *compute.OrderFragment) *OrderFragment {
 	orderFragment := &OrderFragment{
-		Id:           []byte(input.ID),
-		OrderId:      []byte(input.OrderID),
-		OrderType:    int64(input.OrderType),
-		OrderBuySell: int64(input.OrderBuySell),
+		Id:          []byte(input.ID),
+		OrderId:     []byte(input.OrderID),
+		OrderType:   int64(input.OrderType),
+		OrderParity: int64(input.OrderParity),
 	}
 	orderFragment.FstCodeShare = sss.ToBytes(input.FstCodeShare)
 	orderFragment.SndCodeShare = sss.ToBytes(input.SndCodeShare)
@@ -105,10 +106,10 @@ func SerializeOrderFragment(input *compute.OrderFragment) *OrderFragment {
 // network representation is malformed.
 func DeserializeOrderFragment(input *OrderFragment) (*compute.OrderFragment, error) {
 	orderFragment := &compute.OrderFragment{
-		ID:           compute.OrderFragmentID(input.Id),
-		OrderID:      compute.OrderID(input.OrderId),
-		OrderType:    compute.OrderType(input.OrderType),
-		OrderBuySell: compute.OrderBuySell(input.OrderBuySell),
+		ID:          compute.OrderFragmentID(input.Id),
+		OrderID:     compute.OrderID(input.OrderId),
+		OrderType:   compute.OrderType(input.OrderType),
+		OrderParity: compute.OrderParity(input.OrderParity),
 	}
 
 	var err error

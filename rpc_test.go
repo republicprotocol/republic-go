@@ -93,3 +93,4 @@ var _ = Describe("Data serializing and deserialization", func() {
 	})
 
 })
+
