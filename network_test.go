@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network"
+	"github.com/republicprotocol/go-rpc"
 )
 
 func generateNodes(numberOfNodes int, delegate network.Delegate) ([]*network.Node, error) {
@@ -136,7 +138,7 @@ func ping(nodes []*network.Node, topology map[identity.Address][]*network.Node) 
 			defer wg.Done()
 			peers := topology[node.DHT.Address]
 			for _, peer := range peers {
-				_, err := network.PingTarget(network.SerializeMultiAddress(peer.MultiAddress()), network.SerializeMultiAddress(node.MultiAddress()))
+				err := rpc.PingTarget(peer.MultiAddress(), node.MultiAddress(), time.Second)
 				if err != nil {
 					muError.Lock()
 					defer muError.Unlock()
@@ -160,7 +162,7 @@ func peers(nodes []*network.Node, topology map[identity.Address][]*network.Node)
 		go func(node *network.Node) {
 			defer wg.Done()
 			peers := topology[node.DHT.Address]
-			connectedPeers, err := network.GetPeersFromTarget(network.SerializeMultiAddress(node.MultiAddress()), nil)
+			connectedPeers, err := rpc.GetPeersFromTarget(node.MultiAddress(), identity.MultiAddress{}, time.Second)
 			if err != nil {
 				muError.Lock()
 				defer muError.Unlock()
@@ -168,7 +170,7 @@ func peers(nodes []*network.Node, topology map[identity.Address][]*network.Node)
 			}
 			for _, peer := range peers {
 				connected := false
-				for _, connectedPeer := range connectedPeers.Multis {
+				for _, connectedPeer := range connectedPeers {
 					if peer.MultiAddress().String() == connectedPeer.String() {
 						connected = true
 					}
