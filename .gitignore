@@ -1,5 +1,3 @@
-# ignore the cover profile
+Gopkg.lock
+vendor
 coverprofile.out
-*.coverprofile
-
-
