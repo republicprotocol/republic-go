@@ -80,7 +80,7 @@ message OrderFragment {
   bytes id = 3;
   bytes orderId = 4;
   int64 orderType = 5;
-  int64 orderBuySell = 6;
+  int64 orderParity = 6;
 
   // Private data.
   bytes fstCodeShare = 7;

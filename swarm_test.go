@@ -3,17 +3,18 @@ package rpc_test
 import (
 	"context"
 	"fmt"
+	"net"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-rpc"
 	"google.golang.org/grpc"
-	"net"
-	"time"
 )
 
 type mockServer struct {
-	Multi identity.MultiAddress
+	identity.MultiAddress
 }
 
 func (s *mockServer) Ping(ctx context.Context, address *rpc.MultiAddress) (*rpc.Nothing, error) {
@@ -29,51 +30,52 @@ func (s *mockServer) QueryCloserPeers(ctx context.Context, address *rpc.Query) (
 }
 
 type mockClient struct {
-	Multi identity.MultiAddress
+	identity.MultiAddress
 }
 
 var _ = Describe("Swarm node", func() {
+
+	var err error
 	var server *grpc.Server
 	var rpcServer mockServer
 	var rpcClient mockClient
-	var badMulti1 identity.MultiAddress
-	var badMulti2 identity.MultiAddress
-	var err error
-	var defaultTimeout = time.Second * 5
+	var multiAddressMissingHost identity.MultiAddress
+	var multiAddressMissingPort identity.MultiAddress
+	var defaultTimeout = time.Second
 
 	createServe := func() {
 		keyPair, err := identity.NewKeyPair()
 		Ω(err).ShouldNot(HaveOccurred())
-		multi, err := identity.NewMultiAddressFromString(
-			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 3000, keyPair.Address()))
+		multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 3000, keyPair.Address()))
 		Ω(err).ShouldNot(HaveOccurred())
-
 		server = grpc.NewServer()
-		rpcServer = mockServer{Multi: multi}
+		rpcServer = mockServer{MultiAddress: multiAddress}
 		rpc.RegisterSwarmNodeServer(server, &rpcServer)
 	}
 
 	createClient := func() {
 		keyPair, err := identity.NewKeyPair()
 		Ω(err).ShouldNot(HaveOccurred())
-		multi, err := identity.NewMultiAddressFromString(
-			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 4000, keyPair.Address()))
+		multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 4000, keyPair.Address()))
 		Ω(err).ShouldNot(HaveOccurred())
-		rpcClient = mockClient{Multi: multi}
+		rpcClient = mockClient{MultiAddress: multiAddress}
+	}
+
+	createBadMultiAddresses := func() {
+		multiAddressMissingPort, err = identity.NewMultiAddressFromString("/ip4/192.168.0.1/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
+		Ω(err).ShouldNot(HaveOccurred())
+		multiAddressMissingHost, err = identity.NewMultiAddressFromString("/tcp/80/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
+		Ω(err).ShouldNot(HaveOccurred())
 	}
 
 	BeforeEach(func() {
 		createClient()
 		createServe()
-		badMulti1, err = identity.NewMultiAddressFromString("/ip4/192.168.0.1/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
-		Ω(err).ShouldNot(HaveOccurred())
-		badMulti2, err = identity.NewMultiAddressFromString("/tcp/80/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
-		Ω(err).ShouldNot(HaveOccurred())
+		createBadMultiAddresses()
 	})
 
-	Context("Ping target", func() {
-		It("should be able to ping target through grpc", func() {
-
+	Context("Pinging a target", func() {
+		It("should return nothing", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
 			go func(server *grpc.Server) {
@@ -82,25 +84,25 @@ var _ = Describe("Swarm node", func() {
 			}(server)
 			defer server.Stop()
 
-			err = rpc.PingTarget(rpcServer.Multi, rpcClient.Multi, defaultTimeout)
+			err = rpc.PingTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
-		It("should return an error if pinging a wrong address", func() {
-			err = rpc.PingTarget(badMulti1, rpcClient.Multi, defaultTimeout)
+		It("should return an error for bad multi-addresses", func() {
+			err = rpc.PingTarget(multiAddressMissingPort, rpcClient.MultiAddress, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
-			err = rpc.PingTarget(badMulti2, rpcClient.Multi, defaultTimeout)
+			err = rpc.PingTarget(multiAddressMissingHost, rpcClient.MultiAddress, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an timeout error if getting no response within certain amount of time", func() {
-			err := rpc.PingTarget(rpcServer.Multi, rpcClient.Multi, defaultTimeout)
+		It("should return a timeout error when there is no response within the timeout duration", func() {
+			err := rpc.PingTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 	})
 
-	Context("Get peers from target", func() {
-		It("should be able to get peers through grpc", func() {
+	Context("Getting peers from a target", func() {
+		It("should return all peers", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
 			go func(server *grpc.Server) {
@@ -109,26 +111,26 @@ var _ = Describe("Swarm node", func() {
 			}(server)
 			defer server.Stop()
 
-			multi, err := rpc.GetPeersFromTarget(rpcServer.Multi, rpcClient.Multi, defaultTimeout)
+			multiAddress, err := rpc.GetPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(multi).Should(Equal(identity.MultiAddresses{}))
+			Ω(multiAddress).Should(Equal(identity.MultiAddresses{}))
 		})
 
-		It("should return an error if calling a bad address", func() {
-			_, err = rpc.GetPeersFromTarget(badMulti1, rpcClient.Multi, defaultTimeout)
+		It("should return an error for bad multi-addresses", func() {
+			_, err = rpc.GetPeersFromTarget(multiAddressMissingPort, rpcClient.MultiAddress, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
-			_, err = rpc.GetPeersFromTarget(badMulti2, rpcClient.Multi, defaultTimeout)
+			_, err = rpc.GetPeersFromTarget(multiAddressMissingHost, rpcClient.MultiAddress, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an timeout error if getting no response within certain amount of time", func() {
-			_, err := rpc.GetPeersFromTarget(rpcServer.Multi, rpcClient.Multi, defaultTimeout)
+		It("should return a timeout error when there is no response within the timeout duration", func() {
+			_, err := rpc.GetPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 	})
 
-	Context("Query close peers", func() {
-		It("should be able to query close peers through grpc", func() {
+	Context("Query closer peers", func() {
+		It("should return multi-addresses", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
 			go func(server *grpc.Server) {
@@ -138,22 +140,22 @@ var _ = Describe("Swarm node", func() {
 			defer server.Stop()
 
 			target := identity.Address("8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
-			multi, err := rpc.QueryCloserPeersFromTarget(rpcServer.Multi, rpcClient.Multi, target, true, defaultTimeout)
+			multiAddresses, err := rpc.QueryCloserPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, target, true, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(multi).Should(Equal(identity.MultiAddresses{}))
+			Ω(multiAddresses).Should(Equal(identity.MultiAddresses{}))
 		})
 
-		It("should return an error if quering a bad address", func() {
+		It("should return an error for bad multi-addresses", func() {
 			target := identity.Address("8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
-			_, err = rpc.QueryCloserPeersFromTarget(badMulti1, rpcClient.Multi, target, true, defaultTimeout)
+			_, err = rpc.QueryCloserPeersFromTarget(multiAddressMissingPort, rpcClient.MultiAddress, target, true, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
-			_, err = rpc.QueryCloserPeersFromTarget(badMulti2, rpcClient.Multi, target, true, defaultTimeout)
+			_, err = rpc.QueryCloserPeersFromTarget(multiAddressMissingHost, rpcClient.MultiAddress, target, true, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an timeout error if getting no response within certain amount of time", func() {
+		It("should return a timeout error when there is no response within the timeout duration", func() {
 			target := identity.Address("8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
-			_, err := rpc.QueryCloserPeersFromTarget(rpcServer.Multi, rpcClient.Multi, target, true, defaultTimeout)
+			_, err := rpc.QueryCloserPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, target, true, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 	})
