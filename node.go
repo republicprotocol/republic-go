@@ -221,7 +221,7 @@ func (node *Node) QueryCloserPeers(ctx context.Context, query *rpc.Query) (*rpc.
 
 func (node *Node) ping(from *rpc.MultiAddress) (*rpc.Nothing, error) {
 	// Update the DHT.
-	fromMultiAddress, err := DeserializeMultiAddress(from)
+	fromMultiAddress, err := rpc.DeserializeMultiAddress(from)
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
@@ -236,7 +236,7 @@ func (node *Node) ping(from *rpc.MultiAddress) (*rpc.Nothing, error) {
 
 func (node *Node) peers(from *rpc.MultiAddress) (*rpc.MultiAddresses, error) {
 	// Update the DHT.
-	fromMultiAddress, err := DeserializeMultiAddress(from)
+	fromMultiAddress, err := rpc.DeserializeMultiAddress(from)
 	if err != nil {
 		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, nil
 	}
@@ -246,13 +246,13 @@ func (node *Node) peers(from *rpc.MultiAddress) (*rpc.MultiAddresses, error) {
 
 	// Return all peers in the DHT.
 	peers := node.DHT.MultiAddresses()
-	return SerializeMultiAddresses(peers), nil
+	return rpc.SerializeMultiAddresses(peers), nil
 }
 
 func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error) {
 	// Update the DHT.
 	if query.From != nil {
-		fromMultiAddress, err := DeserializeMultiAddress(query.From)
+		fromMultiAddress, err := rpc.DeserializeMultiAddress(query.From)
 		if err != nil {
 			return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, err
 		}
@@ -264,7 +264,7 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 	// Get the target identity.Address for which this Node is searching for
 	// peers.
 	target := identity.Address(query.Query.Address)
-	targetPeers := &rpc.MultiAddresses{Multis: make([]*rpc.MultiAddress, 0, node.Options.Alpha)}
+	targetPeers := make(identity.MultiAddresses, 0, node.Options.Alpha)
 	peers, err := node.DHT.FindMultiAddressNeighbors(target, node.Options.Alpha)
 	if err != nil {
 		return targetPeers, err
@@ -275,10 +275,10 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 		peerAddress := peer.Address()
 		closer, err := identity.Closer(peerAddress, node.Address(), target)
 		if err != nil {
-			return targetPeers, err
+			return rpc.SerializeMultiAddresses(targetPeers), err
 		}
 		if closer {
-			targetPeers.Multis = append(targetPeers.Multis, SerializeMultiAddress(peer))
+			targetPeers = append(targetPeers, peer)
 		}
 	}
 
@@ -289,16 +289,16 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 
 	mu := new(sync.Mutex)
 	open := true
-	openList := make([]*rpc.MultiAddress, len(targetPeers.Multis))
+	openList := make(identity.MultiAddresses, len(targetPeers))
 	closeMap := map[string]bool{}
-	do.ForAll(targetPeers.Multis, func(i int) {
-		openList[i] = targetPeers.Multis[i]
+	do.ForAll(targetPeers, func(i int) {
+		openList[i] = targetPeers[i]
 	})
 	for open {
 		open = false
-		openNext := make([]*rpc.MultiAddress, 0, len(openList))
+		openNext := make(identity.MultiAddresses, 0, len(openList))
 		do.ForAll(openList, func(i int) {
-			peers, err := QueryCloserPeersFromTarget(openList[i], SerializeMultiAddress(node.MultiAddress()), query.Query, false)
+			peers, err := rpc.QueryCloserPeersFromTarget(openList[i], node.MultiAddress(), query.Query, false)
 			if err != nil {
 				if node.Options.Debug >= DebugLow {
 					log.Println(err)
@@ -309,41 +309,35 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 			mu.Lock()
 			defer mu.Unlock()
 
-			closeMap[openList[i].Multi] = true
-			for _, nextPeer := range peers.Multis {
-				if closeMap[nextPeer.Multi] {
+			closeMap[openList[i]] = true
+			for _, nextPeer := range peers {
+				if closeMap[nextPeer] {
 					continue
 				}
-				deserializedNextPeer, err := DeserializeMultiAddress(nextPeer)
-				if err != nil {
-					continue
-				}
-				nextPeerAddress := deserializedNextPeer.Address()
+				nextPeerAddress := nextPeer.Address()
 				if closer, err := identity.Closer(nextPeerAddress, node.Address(), target); closer && err != nil {
 					open = true
 					openNext = append(openNext, nextPeer)
 				}
 			}
 		})
-		targetPeers.Multis = append(targetPeers.Multis, openList...)
+		targetPeers = append(targetPeers, openList...)
 		openList = openNext
 	}
 
-	sort.Slice(targetPeers.Multis, func(i, j int) bool {
-		leftMultiAddress, _ := DeserializeMultiAddress(targetPeers.Multis[i])
-		left := leftMultiAddress.Address()
-		rightMultiAddress, _ := DeserializeMultiAddress(targetPeers.Multis[j])
-		right := rightMultiAddress.Address()
+	sort.Slice(targetPeers, func(i, j int) bool {
+		left := targetPeers[i].Address()
+		right := targetPeers[j].Address()
 		closer, _ := identity.Closer(left, right, target)
 		return closer
 	})
 
-	minLength := len(targetPeers.Multis)
+	minLength := len(targetPeers)
 	if minLength > node.Options.Alpha {
 		minLength = node.Options.Alpha
 	}
 
-	return &rpc.MultiAddresses{Multis: targetPeers.Multis[:minLength]}, nil
+	return rpc.SerializeMultiAddresses(targetPeers[:minLength]), nil
 }
 
 func (node *Node) updatePeer(multiAddress identity.MultiAddress) error {
