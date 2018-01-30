@@ -6,6 +6,7 @@ import (
 	"net"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/republicprotocol/go-dht"
 	"github.com/republicprotocol/go-do"
@@ -44,7 +45,7 @@ func NewNode(delegate Delegate, options Options) *Node {
 
 // Serve starts the gRPC server.
 func (node *Node) Serve() error {
-	rpc.RegisterNodeServer(node.Server, node)
+	rpc.RegisterSwarmNodeServer(node.Server, node)
 	host, err := node.MultiAddress().ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return err
@@ -83,6 +84,7 @@ func (node *Node) Bootstrap() {
 			node.MultiAddress(),
 			node.Address(),
 			true,
+			time.Minute,
 		)
 		if err != nil {
 			if node.Options.Debug >= DebugLow {
@@ -108,7 +110,7 @@ func (node *Node) Prune(target identity.Address) (bool, error) {
 		return false, nil
 	}
 	multiAddress := bucket.MultiAddresses[0]
-	if _, err := rpc.PingTarget(multiAddress, node.MultiAddress()); err != nil {
+	if err := rpc.PingTarget(multiAddress, node.MultiAddress(), time.Minute); err != nil {
 		return true, node.DHT.RemoveMultiAddress(multiAddress)
 	}
 	return false, node.DHT.UpdateMultiAddress(multiAddress)
@@ -267,7 +269,7 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 	targetPeers := make(identity.MultiAddresses, 0, node.Options.Alpha)
 	peers, err := node.DHT.FindMultiAddressNeighbors(target, node.Options.Alpha)
 	if err != nil {
-		return targetPeers, err
+		return rpc.SerializeMultiAddresses(targetPeers), err
 	}
 
 	// Filter away peers that are further from the target than this Node.
@@ -284,9 +286,13 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 
 	// If this is not a deep query, stop here.
 	if !query.Deep {
-		return targetPeers, nil
+		return rpc.SerializeMultiAddresses(targetPeers), nil
 	}
 
+	deserializedQuery, err := rpc.DeserializeAddress(query.Query)
+	if err != nil {
+		return rpc.SerializeMultiAddresses(targetPeers), err
+	}
 	mu := new(sync.Mutex)
 	open := true
 	openList := make(identity.MultiAddresses, len(targetPeers))
@@ -298,7 +304,7 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 		open = false
 		openNext := make(identity.MultiAddresses, 0, len(openList))
 		do.ForAll(openList, func(i int) {
-			peers, err := rpc.QueryCloserPeersFromTarget(openList[i], node.MultiAddress(), query.Query, false)
+			peers, err := rpc.QueryCloserPeersFromTarget(openList[i], node.MultiAddress(), deserializedQuery, false, time.Minute)
 			if err != nil {
 				if node.Options.Debug >= DebugLow {
 					log.Println(err)
@@ -309,9 +315,9 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 			mu.Lock()
 			defer mu.Unlock()
 
-			closeMap[openList[i]] = true
+			closeMap[openList[i].String()] = true
 			for _, nextPeer := range peers {
-				if closeMap[nextPeer] {
+				if closeMap[nextPeer.String()] {
 					continue
 				}
 				nextPeerAddress := nextPeer.Address()
