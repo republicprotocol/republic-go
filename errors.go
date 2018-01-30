@@ -17,14 +17,16 @@ func (err OrderFragmentationError) Error() string {
 	return string(err)
 }
 
+// A ResultFragmentationError occurs when two OrderFragments are combined that
+// are incompatible.
 type ResultFragmentationError string
 
 // NewResultFragmentationError returns a new ResultFragmentationError for two
 // OrderFragments that have the same buy-sell type.
-func NewResultFragmentationError(lhs OrderBuySell) ResultFragmentationError {
-	rhs := OrderBuy
-	if lhs == OrderBuy {
-		rhs = OrderSell
+func NewResultFragmentationError(lhs OrderParity) ResultFragmentationError {
+	rhs := OrderParityBuy
+	if lhs == OrderParityBuy {
+		rhs = OrderParitySell
 	}
 	return ResultFragmentationError(fmt.Sprintf("expected buy/sell = %v to be computed against buy/sell = %v", lhs, rhs))
 }
