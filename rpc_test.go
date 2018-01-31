@@ -11,7 +11,7 @@ import (
 	"github.com/republicprotocol/go-sss"
 )
 
-var _ = Describe("Data serializing and deserialization", func() {
+var _ = Describe("Data serialization and deserialization", func() {
 	var keyPair identity.KeyPair
 	var multiAddressString string
 	var err error
@@ -22,8 +22,8 @@ var _ = Describe("Data serializing and deserialization", func() {
 		multiAddressString = "/ip4/192.168.0.1/tcp/80/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB"
 	})
 
-	Context("serialize and deserialize address ", func() {
-		It("should be able to serialize an identity.address to an rpc.Address", func() {
+	Context("when using an address", func() {
+		It("should be able to serialize", func() {
 			address := keyPair.Address()
 			serializedAddress := rpc.SerializeAddress(address)
 			Ω(*serializedAddress).Should(Equal(rpc.Address{Address: address.String()}))
@@ -33,7 +33,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			Ω(newAddress).Should(Equal(address))
 		})
 
-		It("should be deserialize the rpc.Address to an identity.address", func() {
+		It("should be able to deserialize", func() {
 			address := &rpc.Address{Address: keyPair.Address().String()}
 			deserializedAddress, err := rpc.DeserializeAddress(address)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -44,8 +44,8 @@ var _ = Describe("Data serializing and deserialization", func() {
 		})
 	})
 
-	Context("serialize and deserialize multiaddress ", func() {
-		It("should be able to serialize an identity.multiaddress to an rpc.Multiaddress", func() {
+	Context("when using a multi-address", func() {
+		It("should be able to serialize", func() {
 			multiAddress, err := identity.NewMultiAddressFromString(multiAddressString)
 			Ω(err).ShouldNot(HaveOccurred())
 			serializedMulti := rpc.SerializeMultiAddress(multiAddress)
@@ -56,7 +56,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			Ω(newMultiAddress).Should(Equal(multiAddress))
 		})
 
-		It("should be deserialize the rpc.Address to an identity.address", func() {
+		It("should be able to deserialize", func() {
 			rpcMultiAddress := &rpc.MultiAddress{Multi: multiAddressString}
 			deserializedMulti, err := rpc.DeserializeMultiAddress(rpcMultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -66,8 +66,8 @@ var _ = Describe("Data serializing and deserialization", func() {
 		})
 	})
 
-	Context("serialize and deserialize multiaddresses ", func() {
-		It("should be able to serialize an identity.multiaddresses to an rpc.Multiaddresses", func() {
+	Context("when using multi-addresses", func() {
+		It("should be able to serialize and deserialize", func() {
 			multiAddress1, err := identity.NewMultiAddressFromString(multiAddressString)
 			Ω(err).ShouldNot(HaveOccurred())
 			multiAddress2, err := identity.NewMultiAddressFromString(multiAddressString)
@@ -80,7 +80,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			Ω(multiAddresses).Should(Equal(newMultiAddresses))
 		})
 
-		It("should return an error when deserialize a wrong multiaddresses", func() {
+		It("should return an error when deserializing malformed multi-addresses", func() {
 			wrongMultiaddress := "/ip4/192.168.0.1/"
 			wrongMultiaddresses := rpc.MultiAddresses{Multis: []*rpc.MultiAddress{{wrongMultiaddress}}}
 			_, err := rpc.DeserializeMultiAddresses(&wrongMultiaddresses)
@@ -88,8 +88,8 @@ var _ = Describe("Data serializing and deserialization", func() {
 		})
 	})
 
-	Context("serialize and deserialize order fragment ", func() {
-		It("should be able to serialize and deserialize between order fragment and rpc.orderFragment", func() {
+	Context("when using an order fragment", func() {
+		It("should be able to serialize and deserialize", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			orderFragment := compute.NewOrderFragment([]byte("orderID"), compute.OrderTypeIBBO, compute.OrderParityBuy,
 				sssShare, sssShare, sssShare, sssShare, sssShare)
@@ -99,7 +99,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			Ω(*orderFragment).Should(Equal(*newOrderFragment))
 		})
 
-		It("should return an error when deserializing a order fragment with wrong first code share", func() {
+		It("should return an error when deserializing an order fragment with a malformed first code share", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			wrongOrderFragment := rpc.OrderFragment{
 				To:             &rpc.Address{},
@@ -118,7 +118,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing a order fragment with wrong second code share", func() {
+		It("should return an error when deserializing an order fragment with a malformed second code share", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			wrongOrderFragment := rpc.OrderFragment{
 				To:             &rpc.Address{},
@@ -137,7 +137,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing a order fragment with wrong price share", func() {
+		It("should return an error when deserializing an order fragment with a malformed price share", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			wrongOrderFragment := rpc.OrderFragment{
 				To:             &rpc.Address{},
@@ -156,7 +156,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing a order fragment with wrong max volume share", func() {
+		It("should return an error when deserializing an order fragment with a malformed maximum volume share", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			wrongOrderFragment := rpc.OrderFragment{
 				To:             &rpc.Address{},
@@ -175,7 +175,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing a order fragment with wrong min volume share", func() {
+		It("should return an error when deserializing an order fragment with a malformed minimum volume share", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			wrongOrderFragment := rpc.OrderFragment{
 				To:             &rpc.Address{},
@@ -195,8 +195,8 @@ var _ = Describe("Data serializing and deserialization", func() {
 		})
 	})
 
-	Context("serialize and deserialize result fragment ", func() {
-		It("should be able to serialize and deserialize between result fragment and rpc.orderFragment", func() {
+	Context("when using a result fragment", func() {
+		It("should be able to serialize and deserialize", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			resultFragment := compute.NewResultFragment([]byte("butOrderID"), []byte("sellOrderID"),
 				[]byte("butOrderFragmentID"), []byte("sellOrderFragmentID"),
@@ -207,7 +207,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			Ω(*resultFragment).Should(Equal(*newResultFragment))
 		})
 
-		It("should return an error when deserializing a result fragment with wrong first code share", func() {
+		It("should return an error when deserializing a result fragment with a malformed first code share", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			wrongResultFragment := rpc.ResultFragment{
 				To:                  &rpc.Address{},
@@ -227,7 +227,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing a result fragment with wrong second code share", func() {
+		It("should return an error when deserializing a result fragment with a malformed second code share", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			wrongResultFragment := rpc.ResultFragment{
 				To:                  &rpc.Address{},
@@ -247,7 +247,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing a result fragment with wrong price share", func() {
+		It("should return an error when deserializing a result fragment with a malformed price share", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			wrongResultFragment := rpc.ResultFragment{
 				To:                  &rpc.Address{},
@@ -267,7 +267,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing a result fragment with wrong max volume share", func() {
+		It("should return an error when deserializing a result fragment with a malformed maximum volume share", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			wrongResultFragment := rpc.ResultFragment{
 				To:                  &rpc.Address{},
@@ -287,7 +287,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing a result fragment with wrong first code share", func() {
+		It("should return an error when deserializing a result fragment with a malformed minimum volume share", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			wrongResultFragment := rpc.ResultFragment{
 				To:                  &rpc.Address{},
