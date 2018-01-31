@@ -19,6 +19,7 @@ const (
 	CurrencyCodeBTC CurrencyCode = 1
 	CurrencyCodeETH CurrencyCode = 2
 	CurrencyCodeREN CurrencyCode = 3
+	CurrencyCodeDGX CurrencyCode = 3
 )
 
 // An OrderType is a publicly bit of information that determines the type of
