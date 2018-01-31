@@ -39,56 +39,44 @@ func (delegate *mockDelegate) OnQueryCloserPeersReceived(_ identity.MultiAddress
 
 // boostrapping
 var _ = FDescribe("Bootstrapping", func() {
-	var bootstrapNodes []*network.Node
-	var nodes []*network.Node
-	var bootstrapTopology map[identity.Address][]*network.Node
+
 	var err error
+	var bootstrapNodes []*network.Node
+	var bootstrapRoutingTable map[identity.Address][]*network.Node
+	var swarmNodes []*network.Node
 	var delegate *mockDelegate
 
-	setupBootstrapNodes := func(name string, numberOfNodes int) {
-		bootstrapNodes, bootstrapTopology, err := generateTopology(name, numberOfNodes, newMockDelegate())
-
-		for i, j := range bootstrapNodes {
-			By(fmt.Sprintf("%dth bootstrap node is %s", i, j.MultiAddress()))
-		}
-
+	setupBootstrapNodes := func(topology Topology, numberOfNodes int) {
+		bootstrapNodes, bootstrapRoutingTable, err = GenerateBootstrapTopology(topology, numberOfNodes, newMockDelegate())
 		Ω(err).ShouldNot(HaveOccurred())
-
+		for i, node := range bootstrapNodes {
+			By(fmt.Sprintf("%dth bootstrap node is %s", i, node.MultiAddress()))
+		}
 		for _, node := range bootstrapNodes {
 			go func(node *network.Node) {
 				defer GinkgoRecover()
 				Ω(node.Serve()).ShouldNot(HaveOccurred())
 			}(node)
 		}
-
 		time.Sleep(time.Second)
-		err = ping(bootstrapNodes, bootstrapTopology)
+		err = ping(bootstrapNodes, bootstrapRoutingTable)
 	}
 
-	startBootstrapNodes := func(numberOfNodes int) {
-		nodes, err = generateNodes(numberOfNodes, delegate, TEST_NODE_PORT)
-		for _, i := range nodes {
-			for _, j := range bootstrapNodes {
-				i.Options.BootstrapMultiAddresses = append(i.Options.BootstrapMultiAddresses, j.MultiAddress())
+	setupSwarmNodes := func(numberOfNodes int) {
+		swarmNodes, err = GenerateNodes(NodePortSwarm, numberOfNodes, newMockDelegate())
+		Ω(err).ShouldNot(HaveOccurred())
+		for _, swarmNode := range swarmNodes {
+			for _, bootstrapNode := range bootstrapNodes {
+				swarmNode.Options.BootstrapMultiAddresses = append(swarmNode.Options.BootstrapMultiAddresses, bootstrapNode.MultiAddress())
 			}
 		}
-
-		for _, node := range nodes {
+		for _, node := range swarmNodes {
 			go func(node *network.Node) {
 				defer GinkgoRecover()
 				Ω(node.Serve()).ShouldNot(HaveOccurred())
 			}(node)
 		}
-
-		for i, j := range bootstrapNodes {
-			By(fmt.Sprintf("%dth node is %s", i, j.MultiAddress()))
-		}
-		for i, node := range nodes {
-			By(fmt.Sprintf("%dth node start bootstrapping ", i))
-			err = node.Bootstrap()
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(len(node.DHT.MultiAddresses())).Should(BeNumerically(">=", 10))
-		}
+		time.Sleep(time.Second)
 	}
 
 	BeforeEach(func() {
@@ -101,7 +89,7 @@ var _ = FDescribe("Bootstrapping", func() {
 				node.Stop()
 			}(node)
 		}
-		for _, node := range nodes {
+		for _, node := range swarmNodes {
 			func(node *network.Node) {
 				node.Stop()
 			}(node)
@@ -112,15 +100,18 @@ var _ = FDescribe("Bootstrapping", func() {
 		for _, numberOfBootstrapNodes := range []int{10} { // []int{10, 20, 40, 80}
 			for _, numberOfNodes := range []int{10} { //  []int{10, 20, 40, 80}
 				for _, numberOfPings := range []int{10} { // []int{10, 20, 40, 80}
-					func(topology string, numberOfBootstrapNodes, numberOfNodes, numberOfPings int) {
-						Context(fmt.Sprintf(" Trying to send %d pings between %d swarm nodes "+
-							"after bootstrapping with %d bootsrap nodes which are connected in a %s topology.\n",
-							numberOfPings, numberOfNodes, numberOfBootstrapNodes, topology), func() {
+					func(topology Topology, numberOfBootstrapNodes, numberOfNodes, numberOfPings int) {
+						Context(fmt.Sprintf("trying to send %d pings between %d swarm nodes after bootstrapping with %d bootsrap nodes which are connected in a %s topology.\n", numberOfPings, numberOfNodes, numberOfBootstrapNodes, topology), func() {
 							It("should be able to find the target and ping it ", func() {
 								testMu.Lock()
 								defer testMu.Unlock()
 								setupBootstrapNodes(topology, numberOfBootstrapNodes)
-								startBootstrapNodes(numberOfNodes)
+								setupSwarmNodes(numberOfNodes)
+								for i, node := range swarmNodes {
+									By(fmt.Sprintf("%dth node start bootstrapping ", i))
+									Ω(node.Bootstrap()).ShouldNot(HaveOccurred())
+									Ω(len(node.DHT.MultiAddresses())).Should(BeNumerically(">=", 10))
+								}
 							})
 						})
 					}(topology, numberOfBootstrapNodes, numberOfNodes, numberOfPings)

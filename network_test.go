@@ -27,27 +27,27 @@ const (
 	NodePortSwarm                 = 4000
 )
 
-func GenerateTopology(topology Topology, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
+func GenerateBootstrapTopology(topology Topology, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
 	var err error
 	var nodes []*network.Node
 	var routingTable map[identity.Address][]*network.Node
 
 	switch topology {
 	case TopologyFull:
-		nodes, routingTable, err = GenerateFullTopology(numberOfNodes, delegate)
+		nodes, routingTable, err = GenerateFullTopology(NodePortBootstrap, numberOfNodes, delegate)
 	case TopologyStar:
-		nodes, routingTable, err = GenerateStarTopology(numberOfNodes, delegate)
+		nodes, routingTable, err = GenerateStarTopology(NodePortBootstrap, numberOfNodes, delegate)
 	case TopologyLine:
-		nodes, routingTable, err = GenerateLineTopology(numberOfNodes, delegate)
+		nodes, routingTable, err = GenerateLineTopology(NodePortBootstrap, numberOfNodes, delegate)
 	case TopologyRing:
-		nodes, routingTable, err = GenerateRingTopology(numberOfNodes, delegate)
+		nodes, routingTable, err = GenerateRingTopology(NodePortBootstrap, numberOfNodes, delegate)
 	}
 	return nodes, routingTable, err
 }
 
 func GenerateNodes(port, numberOfNodes int, delegate network.Delegate) ([]*network.Node, error) {
 	nodes := make([]*network.Node, numberOfNodes)
-	for i := 0 := range nodes {
+	for i := range nodes {
 		keyPair, err := identity.NewKeyPair()
 		if err != nil {
 			return nil, err
@@ -70,8 +70,8 @@ func GenerateNodes(port, numberOfNodes int, delegate network.Delegate) ([]*netwo
 	return nodes, nil
 }
 
-func GenerateFullTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
-	nodes, err := GenerateNodes(NodePortBootstrap, numberOfNodes, delegate)
+func GenerateFullTopology(port, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
+	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -88,68 +88,68 @@ func GenerateFullTopology(numberOfNodes int, delegate network.Delegate) ([]*netw
 	return nodes, routingTable, nil
 }
 
-func generateStarTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
-	nodes, err := generateNodes(numberOfNodes, delegate, BOOSTRAP_NODE_PORT)
+func GenerateStarTopology(port, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
+	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	topology := map[identity.Address][]*network.Node{}
+	routingTable := map[identity.Address][]*network.Node{}
 	for i, node := range nodes {
-		topology[node.DHT.Address] = []*network.Node{}
+		routingTable[node.DHT.Address] = []*network.Node{}
 		if i == 0 {
 			for j, peer := range nodes {
 				if i == j {
 					continue
 				}
-				topology[node.DHT.Address] = append(topology[node.DHT.Address], peer)
+				routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], peer)
 			}
 		} else {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[0])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[0])
 		}
 	}
-	return nodes, topology, nil
+	return nodes, routingTable, nil
 }
 
-func generateLineTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
-	nodes, err := generateNodes(numberOfNodes, delegate, BOOSTRAP_NODE_PORT)
+func GenerateLineTopology(port, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
+	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	topology := map[identity.Address][]*network.Node{}
+	routingTable := map[identity.Address][]*network.Node{}
 	for i, node := range nodes {
-		topology[node.DHT.Address] = []*network.Node{}
+		routingTable[node.DHT.Address] = []*network.Node{}
 		if i == 0 {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i+1])
 		} else if i == len(nodes)-1 {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i-1])
 		} else {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i+1])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i-1])
 		}
 	}
-	return nodes, topology, nil
+	return nodes, routingTable, nil
 }
 
-func generateRingTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
-	nodes, err := generateNodes(numberOfNodes, delegate, BOOSTRAP_NODE_PORT)
+func GenerateRingTopology(port, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
+	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	topology := map[identity.Address][]*network.Node{}
+	routingTable := map[identity.Address][]*network.Node{}
 	for i, node := range nodes {
-		topology[node.DHT.Address] = []*network.Node{}
+		routingTable[node.DHT.Address] = []*network.Node{}
 		if i == 0 {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[len(nodes)-1])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i+1])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[len(nodes)-1])
 		} else if i == len(nodes)-1 {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[0])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i-1])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[0])
 		} else {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i+1])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i-1])
 		}
 	}
-	return nodes, topology, nil
+	return nodes, routingTable, nil
 }
 
 func ping(nodes []*network.Node, topology map[identity.Address][]*network.Node) error {
