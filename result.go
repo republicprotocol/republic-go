@@ -2,7 +2,6 @@ package compute
 
 import (
 	"bytes"
-	"encoding/binary"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -135,29 +134,6 @@ func NewResultFragment(buyOrderID, sellOrderID OrderID, buyOrderFragmentID, sell
 	}
 	resultFragment.ID = ResultFragmentID(crypto.Keccak256(resultFragment.BuyOrderFragmentID[:], resultFragment.SellOrderFragmentID[:]))
 	return resultFragment
-}
-
-// Bytes returns a ResultFragment serialized into a bytes.
-func (resultFragment *ResultFragment) Bytes() []byte {
-	buf := new(bytes.Buffer)
-
-	binary.Write(buf, binary.LittleEndian, resultFragment.BuyOrderID)
-	binary.Write(buf, binary.LittleEndian, resultFragment.SellOrderID)
-	binary.Write(buf, binary.LittleEndian, resultFragment.BuyOrderFragmentID)
-	binary.Write(buf, binary.LittleEndian, resultFragment.SellOrderFragmentID)
-
-	binary.Write(buf, binary.LittleEndian, resultFragment.FstCodeShare.Key)
-	binary.Write(buf, binary.LittleEndian, resultFragment.FstCodeShare.Value.Bytes())
-	binary.Write(buf, binary.LittleEndian, resultFragment.SndCodeShare.Key)
-	binary.Write(buf, binary.LittleEndian, resultFragment.SndCodeShare.Value.Bytes())
-	binary.Write(buf, binary.LittleEndian, resultFragment.PriceShare.Key)
-	binary.Write(buf, binary.LittleEndian, resultFragment.PriceShare.Value.Bytes())
-	binary.Write(buf, binary.LittleEndian, resultFragment.MaxVolumeShare.Key)
-	binary.Write(buf, binary.LittleEndian, resultFragment.MaxVolumeShare.Value.Bytes())
-	binary.Write(buf, binary.LittleEndian, resultFragment.MinVolumeShare.Key)
-	binary.Write(buf, binary.LittleEndian, resultFragment.MinVolumeShare.Value.Bytes())
-
-	return buf.Bytes()
 }
 
 // Equals checks if two ResultFragments are equal in value.
