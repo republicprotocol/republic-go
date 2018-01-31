@@ -44,8 +44,8 @@ var _ = Describe("Computations", func() {
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
 
-		It("should not find a match for one overlap in currencies", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+		It("should not find a match when the first currencies differ", func() {
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeREN, 10, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeETH, compute.CurrencyCodeREN, 10, 1000, 100, 0).Split(n, k, prime)
@@ -56,7 +56,19 @@ var _ = Describe("Computations", func() {
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
 
-		It("should not find a match for no overlap in currencies", func() {
+		It("should not find a match when the second currencies differ", func() {
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeREN, 10, 1000, 100, 0).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(result.IsMatch(prime)).Should(Equal(false))
+		})
+
+		It("should not find a match when both currencies differ", func() {
 			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 

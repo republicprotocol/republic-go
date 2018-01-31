@@ -12,6 +12,16 @@ import (
 // the respective Result.
 type ResultID []byte
 
+// Equals checks if two ResultIDs are equal in value.
+func (id ResultID) Equals(other ResultID) bool {
+	return bytes.Equal(id, other)
+}
+
+// String returns the ResultID as a string.
+func (id ResultID) String() string {
+	return string(id)
+}
+
 // A Result is the publicly computed value of comparing two Orders.
 type Result struct {
 	ID          ResultID
