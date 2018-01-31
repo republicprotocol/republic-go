@@ -266,6 +266,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			_, err := rpc.DeserializeResultFragment(&wrongResultFragment)
 			Ω(err).Should(HaveOccurred())
 		})
+
 		It("should return an error when deserializing a result fragment with wrong max volume share", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			wrongResultFragment := rpc.ResultFragment{
@@ -285,6 +286,7 @@ var _ = Describe("Data serializing and deserialization", func() {
 			_, err := rpc.DeserializeResultFragment(&wrongResultFragment)
 			Ω(err).Should(HaveOccurred())
 		})
+
 		It("should return an error when deserializing a result fragment with wrong first code share", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			wrongResultFragment := rpc.ResultFragment{
@@ -304,7 +306,5 @@ var _ = Describe("Data serializing and deserialization", func() {
 			_, err := rpc.DeserializeResultFragment(&wrongResultFragment)
 			Ω(err).Should(HaveOccurred())
 		})
-
 	})
-
 })
