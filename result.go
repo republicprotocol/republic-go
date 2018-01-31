@@ -93,6 +93,16 @@ func (result *Result) IsMatch(prime *big.Int) bool {
 // A ResultFragmentID is the Keccak256 hash of its OrderFragmentIDs.
 type ResultFragmentID []byte
 
+// Equals checks if two ResultFragmentIDs are equal in value.
+func (id ResultFragmentID) Equals(other ResultFragmentID) bool {
+	return bytes.Equal(id, other)
+}
+
+// String returns the ResultFragmentID as a string.
+func (id ResultFragmentID) String() string {
+	return string(id)
+}
+
 // A ResultFragment is a secret share of a Result. Is is performing a
 // computation over two OrderFragments.
 type ResultFragment struct {
@@ -148,4 +158,23 @@ func (resultFragment *ResultFragment) Bytes() []byte {
 	binary.Write(buf, binary.LittleEndian, resultFragment.MinVolumeShare.Value.Bytes())
 
 	return buf.Bytes()
+}
+
+// Equals checks if two ResultFragments are equal in value.
+func (resultFragment *ResultFragment) Equals(other *ResultFragment) bool {
+	return resultFragment.ID.Equals(other.ID) &&
+		resultFragment.BuyOrderID.Equals(other.BuyOrderID) &&
+		resultFragment.SellOrderID.Equals(other.SellOrderID) &&
+		resultFragment.BuyOrderFragmentID.Equals(other.BuyOrderFragmentID) &&
+		resultFragment.SellOrderFragmentID.Equals(other.SellOrderFragmentID) &&
+		resultFragment.FstCodeShare.Key == other.FstCodeShare.Key &&
+		resultFragment.FstCodeShare.Value.Cmp(other.FstCodeShare.Value) == 0 &&
+		resultFragment.SndCodeShare.Key == other.SndCodeShare.Key &&
+		resultFragment.SndCodeShare.Value.Cmp(other.SndCodeShare.Value) == 0 &&
+		resultFragment.PriceShare.Key == other.PriceShare.Key &&
+		resultFragment.PriceShare.Value.Cmp(other.PriceShare.Value) == 0 &&
+		resultFragment.MaxVolumeShare.Key == other.MaxVolumeShare.Key &&
+		resultFragment.MaxVolumeShare.Value.Cmp(other.MaxVolumeShare.Value) == 0 &&
+		resultFragment.MinVolumeShare.Key == other.MinVolumeShare.Key &&
+		resultFragment.MinVolumeShare.Value.Cmp(other.MinVolumeShare.Value) == 0
 }

@@ -145,7 +145,7 @@ func (order *Order) Bytes() []byte {
 
 // Equals checks if two Orders are equal in value.
 func (order *Order) Equals(other *Order) bool {
-	return bytes.Equal(order.ID, other.ID) &&
+	return order.ID.Equals(other.ID) &&
 		order.Type == other.Type &&
 		order.Parity == other.Parity &&
 		order.FstCode == other.FstCode &&
