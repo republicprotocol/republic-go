@@ -11,7 +11,7 @@ import (
 
 // SendOrderFragmentToTarget using a new grpc.ClientConn to make a
 // SendOrderFragment RPC to a targetMultiAddress.
-func SendOrderFragmentToTarget(to identity.MultiAddress, orderFragment compute.OrderFragment,timeout time.Duration) error {
+func SendOrderFragmentToTarget(to identity.MultiAddress, orderFragment compute.OrderFragment, timeout time.Duration) error {
 	conn, err := Dial(to, timeout)
 	if err != nil {
 		return err
