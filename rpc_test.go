@@ -1,13 +1,14 @@
 package rpc_test
 
 import (
+	"math/big"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-sss"
-	"math/big"
 )
 
 var _ = Describe("Data serializing and deserialization", func() {

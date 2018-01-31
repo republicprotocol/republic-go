@@ -3,6 +3,10 @@ package rpc_test
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"net"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
@@ -10,9 +14,6 @@ import (
 	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-sss"
 	"google.golang.org/grpc"
-	"math/big"
-	"net"
-	"time"
 )
 
 func (s *mockServer) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
