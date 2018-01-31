@@ -46,18 +46,9 @@ var _ = FDescribe("Bootstrapping", func() {
 	var delegate *mockDelegate
 
 	setupBootstrapNodes := func(name string, numberOfNodes int) {
-		switch name {
-		case "full":
-			bootstrapNodes, bootstrapTopology, err = generateFullyConnectedTopology(numberOfNodes, delegate)
-		case "star":
-			bootstrapNodes, bootstrapTopology, err = generateStarTopology(numberOfNodes, delegate)
-		case "line":
-			bootstrapNodes, bootstrapTopology, err = generateLineTopology(numberOfNodes, delegate)
-		case "ring":
-			bootstrapNodes, bootstrapTopology, err = generateRingTopology(numberOfNodes, delegate)
-		}
+		bootstrapNodes, bootstrapTopology, err := generateTopology(name, numberOfNodes, newMockDelegate())
 
-		for i , j := range bootstrapNodes{
+		for i, j := range bootstrapNodes {
 			By(fmt.Sprintf("%dth bootstrap node is %s", i, j.MultiAddress()))
 		}
 
@@ -89,11 +80,11 @@ var _ = FDescribe("Bootstrapping", func() {
 			}(node)
 		}
 
-		for i , j := range bootstrapNodes{
+		for i, j := range bootstrapNodes {
 			By(fmt.Sprintf("%dth node is %s", i, j.MultiAddress()))
 		}
 		for i, node := range nodes {
-			By(fmt.Sprintf("%dth node start bootstrapping ", i ))
+			By(fmt.Sprintf("%dth node start bootstrapping ", i))
 			err = node.Bootstrap()
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(node.DHT.MultiAddresses())).Should(BeNumerically(">=", 10))
@@ -117,14 +108,14 @@ var _ = FDescribe("Bootstrapping", func() {
 		}
 	})
 
-	for _, topology := range []string{"full"} { // []string{"full", "star", "ring", "line"}
-		for _, numberOfBootstrapNodes := range []int{10} {  // []int{10, 20, 40, 80}
-			for _, numberOfNodes := range []int{10} {  //  []int{10, 20, 40, 80}
+	for _, topology := range []Topology{TopologyFull} { // []string{"full", "star", "ring", "line"}
+		for _, numberOfBootstrapNodes := range []int{10} { // []int{10, 20, 40, 80}
+			for _, numberOfNodes := range []int{10} { //  []int{10, 20, 40, 80}
 				for _, numberOfPings := range []int{10} { // []int{10, 20, 40, 80}
 					func(topology string, numberOfBootstrapNodes, numberOfNodes, numberOfPings int) {
-						Context(fmt.Sprintf(" Trying to send %d pings between %d swarm nodes " +
+						Context(fmt.Sprintf(" Trying to send %d pings between %d swarm nodes "+
 							"after bootstrapping with %d bootsrap nodes which are connected in a %s topology.\n",
-								numberOfPings, numberOfNodes, numberOfBootstrapNodes, topology, ), func() {
+							numberOfPings, numberOfNodes, numberOfBootstrapNodes, topology), func() {
 							It("should be able to find the target and ping it ", func() {
 								testMu.Lock()
 								defer testMu.Unlock()

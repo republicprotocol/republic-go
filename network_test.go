@@ -10,33 +10,59 @@ import (
 	"github.com/republicprotocol/go-rpc"
 )
 
-// Constants for network tests
+type Topology int64
+
 const (
-	BOOSTRAP_NODE_PORT = 2000
-	TEST_NODE_PORT = 3000
-	DEFAULT_OPTION_ALPHA = 3
-	DEFAULT_OPTION_MAX_BUCKET_LENGTH = 100
+	TopologyFull = 1
+	TopologyStar = 2
+	TopologyRing = 3
+	TopologyLine = 4
 )
 
-// generateNodes generates a certain amount of nodes with random republic address
-func generateNodes(numberOfNodes int, delegate network.Delegate, port int) ([]*network.Node, error) {
+const (
+	DefaultOptionsDebug           = network.DebugOff
+	DefaultOptionsAlpha           = 3
+	DefaultOptiosnMaxBucketLength = 20
+	NodePortBootstrap             = 3000
+	NodePortSwarm                 = 4000
+)
+
+func GenerateTopology(topology Topology, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
+	var err error
+	var nodes []*network.Node
+	var routingTable map[identity.Address][]*network.Node
+
+	switch topology {
+	case TopologyFull:
+		nodes, routingTable, err = GenerateFullTopology(numberOfNodes, delegate)
+	case TopologyStar:
+		nodes, routingTable, err = GenerateStarTopology(numberOfNodes, delegate)
+	case TopologyLine:
+		nodes, routingTable, err = GenerateLineTopology(numberOfNodes, delegate)
+	case TopologyRing:
+		nodes, routingTable, err = GenerateRingTopology(numberOfNodes, delegate)
+	}
+	return nodes, routingTable, err
+}
+
+func GenerateNodes(port, numberOfNodes int, delegate network.Delegate) ([]*network.Node, error) {
 	nodes := make([]*network.Node, numberOfNodes)
-	for i := 0; i < numberOfNodes; i++ {
+	for i := 0 := range nodes {
 		keyPair, err := identity.NewKeyPair()
 		if err != nil {
 			return nil, err
 		}
-		multi, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", port+i, keyPair.Address()))
+		multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", port+i, keyPair.Address()))
 		if err != nil {
 			return nil, err
 		}
 		node := network.NewNode(
 			delegate,
 			network.Options{
-				MultiAddress:    multi,
-				Debug:           network.DebugOff,
-				Alpha:           DEFAULT_OPTION_ALPHA,
-				MaxBucketLength: DEFAULT_OPTION_MAX_BUCKET_LENGTH,
+				MultiAddress:    multiAddress,
+				Debug:           DefaultOptionsDebug,
+				Alpha:           DefaultOptionsAlpha,
+				MaxBucketLength: DefaultOptiosnMaxBucketLength,
 			},
 		)
 		nodes[i] = node
@@ -44,24 +70,22 @@ func generateNodes(numberOfNodes int, delegate network.Delegate, port int) ([]*n
 	return nodes, nil
 }
 
-
-// generateFullyConnectedTopology generates a bunch of nodes connected in a fully connected topology
-func generateFullyConnectedTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
-	nodes, err := generateNodes(numberOfNodes, delegate, BOOSTRAP_NODE_PORT)
+func GenerateFullTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
+	nodes, err := GenerateNodes(NodePortBootstrap, numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	topology := map[identity.Address][]*network.Node{}
+	routingTable := map[identity.Address][]*network.Node{}
 	for i, node := range nodes {
-		topology[node.DHT.Address] = []*network.Node{}
+		routingTable[node.DHT.Address] = []*network.Node{}
 		for j, peer := range nodes {
 			if i == j {
 				continue
 			}
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], peer)
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], peer)
 		}
 	}
-	return nodes, topology, nil
+	return nodes, routingTable, nil
 }
 
 func generateStarTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
@@ -127,15 +151,6 @@ func generateRingTopology(numberOfNodes int, delegate network.Delegate) ([]*netw
 	}
 	return nodes, topology, nil
 }
-
-//func randomNodes(nodes []*network.Node) (*network.Node, *network.Node) {
-//	left := rand.Intn(len(nodes))
-//	right := rand.Intn(len(nodes))
-//	for left == right {
-//		right = rand.Intn(len(nodes))
-//	}
-//	return nodes[left], nodes[right]
-//}
 
 func ping(nodes []*network.Node, topology map[identity.Address][]*network.Node) error {
 	var wg sync.WaitGroup
