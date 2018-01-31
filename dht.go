@@ -46,9 +46,6 @@ func NewDHT(address identity.Address, maxBucketLength int) *DHT {
 func (dht *DHT) UpdateMultiAddress(multiAddress identity.MultiAddress) error {
 	dht.μ.Lock()
 	defer dht.μ.Unlock()
-	if dht.Address == multiAddress.Address() {
-		return nil
-	}
 	return dht.updateMultiAddress(multiAddress)
 }
 
