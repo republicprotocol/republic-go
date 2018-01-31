@@ -85,30 +85,24 @@ var _ = Describe("Computations", func() {
 	Context("when prices vary", func() {
 
 		It("should find a match when the buy price is higher", func() {
-			// Split a buy order into fragments.
 			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 12, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Split a sell order into fragments.
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Combine fragments into a result.
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
 
 		It("should not find a match when the buy price is lower", func() {
-			// Split a buy order into fragments.
 			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Split a sell order into fragments.
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 12, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Combine fragments into a result.
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(false))
@@ -118,93 +112,107 @@ var _ = Describe("Computations", func() {
 	Context("when volumes vary", func() {
 
 		It("should find a match when the maximum buy volume is higher than the maximum sell volume", func() {
-			// Split a buy order into fragments.
 			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Split a sell order into fragments.
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 100, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Combine fragments into a result.
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
 
 		It("should find a match when the maximum sell volume is higher than the maximum buy volume", func() {
-			// Split a buy order into fragments.
 			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 100, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Split a sell order into fragments.
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 100, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Combine fragments into a result.
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
 
 		It("should find a match when the minimum buy volume is higher than the minimum sell volume", func() {
-			// Split a buy order into fragments.
 			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 1000, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Split a sell order into fragments.
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Combine fragments into a result.
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
 
 		It("should find a match when the minimum sell volume is higher than the maximum buy volume", func() {
-			// Split a buy order into fragments.
 			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Split a sell order into fragments.
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 1000, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Combine fragments into a result.
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
 
 		It("should not find a match when the maximum buy volume is lower than the minimum sell volume", func() {
-			// Split a buy order into fragments.
 			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 100, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Split a sell order into fragments.
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 1000, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Combine fragments into a result.
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
 
 		It("should not find a match when the maximum sell volume is lower than the minimum buy volume", func() {
-			// Split a buy order into fragments.
 			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 1000, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Split a sell order into fragments.
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 100, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Combine fragments into a result.
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(false))
+		})
+	})
+
+	Context("when using a computation matrix", func() {
+
+		It("should generate zero computations from incompatible orders", func() {
+			for i := 1; i < 11; i++ {
+				matrix := compute.NewComputationMatrix()
+				for j := 0; j < i; j++ {
+					orderFragments, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, int64(j)).Split(n, k, prime)
+					Ω(err).ShouldNot(HaveOccurred())
+					matrix.AddOrderFragment(orderFragments[0])
+				}
+				Ω(matrix.ComputationsLeft()).Should(Equal(int64(0)))
+			}
+		})
+
+		It("should generate a square number of computations from compatible orders", func() {
+			for i := 1; i < 11; i++ {
+				matrix := compute.NewComputationMatrix()
+				for j := 0; j < i; j++ {
+					orderFragments, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, int64(j)).Split(n, k, prime)
+					Ω(err).ShouldNot(HaveOccurred())
+					matrix.AddOrderFragment(orderFragments[0])
+				}
+				for j := 0; j < i; j++ {
+					orderFragments, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, int64(j)).Split(n, k, prime)
+					Ω(err).ShouldNot(HaveOccurred())
+					matrix.AddOrderFragment(orderFragments[0])
+				}
+				Ω(matrix.ComputationsLeft()).Should(Equal(int64(i * i)))
+			}
 		})
 	})
 

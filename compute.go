@@ -150,3 +150,10 @@ func (matrix *ComputationMatrix) AddResultFragments(k int64, prime *big.Int, res
 	}
 	return results, nil
 }
+
+func (matrix *ComputationMatrix) ComputationsLeft() int64 {
+	matrix.computationsLeftCond.L.Lock()
+	defer matrix.computationsLeftCond.L.Unlock()
+
+	return matrix.computationsLeft
+}
