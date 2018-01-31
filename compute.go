@@ -125,14 +125,25 @@ func (matrix *ComputationMatrix) WaitForComputations(max int) []*Computation {
 	return computations
 }
 
-func (matrix *ComputationMatrix) AddResultFragments(k int64, prime *big.Int, resultFragments []*ResultFragment) ([]*Result, error) {
+func (matrix *ComputationMatrix) AddResultFragments(resultFragments []*ResultFragment, k int64, prime *big.Int) ([]*Result, error) {
 	matrix.resultsMu.Lock()
 	defer matrix.resultsMu.Unlock()
 
 	results := make([]*Result, 0, len(resultFragments))
 	for _, resultFragment := range resultFragments {
 		resultID := ResultID(crypto.Keccak256(resultFragment.BuyOrderID[:], resultFragment.SellOrderID[:]))
-		matrix.resultFragments[string(resultID)] = append(matrix.resultFragments[string(resultID)], resultFragment)
+
+		// Check that this result fragment has not been collected yet.
+		resultFragmentIsUnique := true
+		for _, candidate := range matrix.resultFragments[string(resultID)] {
+			if candidate.ID.Equals(resultFragment.ID) {
+				resultFragmentIsUnique = false
+				break
+			}
+		}
+		if resultFragmentIsUnique {
+			matrix.resultFragments[string(resultID)] = append(matrix.resultFragments[string(resultID)], resultFragment)
+		}
 
 		if int64(len(matrix.resultFragments[string(resultID)])) >= k {
 			if result, ok := matrix.results[string(resultID)]; result != nil && ok {

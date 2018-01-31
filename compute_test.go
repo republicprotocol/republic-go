@@ -203,6 +203,60 @@ var _ = Describe("Computations", func() {
 				Ω(matrix.ComputationsLeft()).Should(Equal(int64(0)))
 			}
 		})
+
+		It("should generate results from result fragments", func() {
+			matrix := compute.NewComputationMatrix()
+
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			resultFragments := make([]*compute.ResultFragment, n)
+			for i := range resultFragments {
+				resultFragment, err := lhs[i].Sub(rhs[i], prime)
+				Ω(err).ShouldNot(HaveOccurred())
+				resultFragments[i] = resultFragment
+			}
+
+			for i := int64(0); i < k-1; i++ {
+				results, err := matrix.AddResultFragments([]*compute.ResultFragment{resultFragments[i]}, k, prime)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(len(results)).Should(Equal(0))
+			}
+			for i := int64(0); i < k-1; i++ {
+				results, err := matrix.AddResultFragments([]*compute.ResultFragment{resultFragments[i]}, k, prime)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(len(results)).Should(Equal(0))
+			}
+			results, err := matrix.AddResultFragments([]*compute.ResultFragment{resultFragments[k]}, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(len(results)).Should(Equal(1))
+		})
+
+		It("should not generate duplicate results from result fragments", func() {
+			matrix := compute.NewComputationMatrix()
+
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			resultFragments := make([]*compute.ResultFragment, n)
+			for i := range resultFragments {
+				resultFragment, err := lhs[i].Sub(rhs[i], prime)
+				Ω(err).ShouldNot(HaveOccurred())
+				resultFragments[i] = resultFragment
+			}
+
+			results, err := matrix.AddResultFragments(resultFragments, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(len(results)).Should(Equal(1))
+
+			results, err = matrix.AddResultFragments(resultFragments, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(len(results)).Should(Equal(0))
+		})
 	})
 
 })
