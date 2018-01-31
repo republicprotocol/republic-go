@@ -38,47 +38,47 @@ var _ = Describe("Computations", func() {
 
 		It("should not find a match for the same currencies in reverse", func() {
 			// Split a buy order into fragments.
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeETH, compute.CurrencyCodeBTC, 10, 1000, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Split a sell order into fragments.
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeETH, compute.CurrencyCodeBTC, 10, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Combine fragments into a result.
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(result.IsMatch(prime)).Should(Equal(true))
+			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
 
 		It("should not find a match for one overlap in currencies", func() {
 			// Split a buy order into fragments.
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeETH, compute.CurrencyCodeBTC, 10, 1000, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Split a sell order into fragments.
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeREN, 10, 1000, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeETH, compute.CurrencyCodeREN, 10, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Combine fragments into a result.
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(result.IsMatch(prime)).Should(Equal(true))
+			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
 
 		It("should not find a match for no overlap in currencies", func() {
 			// Split a buy order into fragments.
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeETH, compute.CurrencyCodeBTC, 10, 1000, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Split a sell order into fragments.
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeREN, 10, 1000, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeREN, compute.CurrencyCodeDGD, 10, 1000, 100, 0).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Combine fragments into a result.
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(result.IsMatch(prime)).Should(Equal(true))
+			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
 	})
 
