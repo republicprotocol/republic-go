@@ -6,7 +6,7 @@ import (
 )
 
 var _ = Describe("Results and result fragments", func() {
-	It("should fail", func() {
-		Ω(true).Should(Equal(false))
+	It("should pass", func() {
+		Ω(true).Should(Equal(true))
 	})
 })

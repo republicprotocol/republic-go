@@ -78,13 +78,13 @@ func (result *Result) IsMatch(prime *big.Int) bool {
 	if result.SndCode.Cmp(big.NewInt(0)) != 0 {
 		return false
 	}
-	if result.Price.Cmp(zeroThreshold) == -1 {
+	if result.Price.Cmp(zeroThreshold) == 1 {
 		return false
 	}
-	if result.MaxVolume.Cmp(zeroThreshold) == -1 {
+	if result.MaxVolume.Cmp(zeroThreshold) == 1 {
 		return false
 	}
-	if result.MinVolume.Cmp(zeroThreshold) == -1 {
+	if result.MinVolume.Cmp(zeroThreshold) == 1 {
 		return false
 	}
 	return true
