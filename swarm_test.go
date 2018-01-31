@@ -74,7 +74,7 @@ var _ = Describe("Swarm node", func() {
 		createBadMultiAddresses()
 	})
 
-	Context("Pinging a target", func() {
+	Context("pinging a target", func() {
 		It("should return nothing", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -101,7 +101,7 @@ var _ = Describe("Swarm node", func() {
 		})
 	})
 
-	Context("Getting peers from a target", func() {
+	Context("getting peers from a target", func() {
 		It("should return all peers", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -129,7 +129,7 @@ var _ = Describe("Swarm node", func() {
 		})
 	})
 
-	Context("Query closer peers", func() {
+	Context("query closer peers", func() {
 		It("should return multi-addresses", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())

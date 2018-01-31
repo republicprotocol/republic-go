@@ -69,7 +69,7 @@ var _ = Describe("Xing Overlay Network", func() {
 		createFragments()
 	})
 
-	Context("Sending order fragment", func() {
+	Context("sending order fragments", func() {
 		It("should return nothing", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -94,7 +94,7 @@ var _ = Describe("Xing Overlay Network", func() {
 		})
 	})
 
-	Context("Sending result fragment", func() {
+	Context("sending result fragments", func() {
 		It("should return nothing", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
