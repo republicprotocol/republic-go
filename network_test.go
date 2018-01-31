@@ -11,6 +11,24 @@ import (
 	"github.com/republicprotocol/go-rpc"
 )
 
+func generateTopology(name string, numberOfNodes int, delegate network.Delegate) int {
+	var err error
+	var nodes []*network.Node
+	var topology map[identity.Address][]*network.Node
+
+	switch name {
+	case "full":
+		nodes, topology, err = generateFullyConnectedTopology(numberOfNodes, delegate)
+	case "star":
+		nodes, topology, err = generateStarTopology(numberOfNodes, delegate)
+	case "line":
+		nodes, topology, err = generateLineTopology(numberOfNodes, delegate)
+	case "ring":
+		nodes, topology, err = generateRingTopology(numberOfNodes, delegate)
+	}
+	return nodes, toplogy, err
+}
+
 func generateNodes(numberOfNodes int, delegate network.Delegate) ([]*network.Node, error) {
 	nodes := make([]*network.Node, numberOfNodes)
 	for i := 0; i < numberOfNodes; i++ {

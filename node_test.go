@@ -40,37 +40,21 @@ func (delegate *mockDelegate) OnQueryCloserPeersReceived(_ identity.MultiAddress
 var _ = Describe("Pinging", func() {
 
 	run := func(name string, numberOfNodes int) int {
-		var nodes []*network.Node
-		var topology map[identity.Address][]*network.Node
-		var err error
 
-		delegate := newMockDelegate()
-		switch name {
-		case "full":
-			nodes, topology, err = generateFullyConnectedTopology(numberOfNodes, delegate)
-		case "star":
-			nodes, topology, err = generateStarTopology(numberOfNodes, delegate)
-		case "line":
-			nodes, topology, err = generateLineTopology(numberOfNodes, delegate)
-		case "ring":
-			nodes, topology, err = generateRingTopology(numberOfNodes, delegate)
-		}
-		Ω(err).ShouldNot(HaveOccurred())
-
+		nodes, topolog, err := generateTopology(name, numberOfNodes, newMockDelegate())
 		for _, node := range nodes {
-			go func(node *network.Node) {
-				defer GinkgoRecover()
-				Ω(node.Serve()).ShouldNot(HaveOccurred())
-			}(node)
 			defer func(node *network.Node) {
 				defer GinkgoRecover()
 				node.Stop()
 			}(node)
+			go func(node *network.Node) {
+				defer GinkgoRecover()
+				Ω(node.Serve()).ShouldNot(HaveOccurred())
+			}(node)
 		}
 		time.Sleep(time.Second)
 
-		err = ping(nodes, topology)
-		Ω(err).ShouldNot(HaveOccurred())
+		Ω(ping(nodes, topology)).ShouldNot(HaveOccurred())
 
 		return delegate.numberOfPings
 	}
@@ -85,11 +69,6 @@ var _ = Describe("Pinging", func() {
 					Ω(numberOfPings).Should(Equal(numberOfNodes * (numberOfNodes - 1)))
 				})
 			})
-		}(numberOfNodes)
-	}
-
-	for _, numberOfNodes := range []int{10, 20, 40, 80} {
-		func(numberOfNodes int) {
 			Context(fmt.Sprintf("in a star topology with %d nodes", numberOfNodes), func() {
 				It("should update the DHT", func() {
 					testMu.Lock()
@@ -98,11 +77,6 @@ var _ = Describe("Pinging", func() {
 					Ω(numberOfPings).Should(Equal(2 * (numberOfNodes - 1)))
 				})
 			})
-		}(numberOfNodes)
-	}
-
-	for _, numberOfNodes := range []int{10, 20, 40, 80} {
-		func(numberOfNodes int) {
 			Context(fmt.Sprintf("in a line topology with %d nodes", numberOfNodes), func() {
 				It("should update the DHT", func() {
 					testMu.Lock()
@@ -111,11 +85,6 @@ var _ = Describe("Pinging", func() {
 					Ω(numberOfPings).Should(Equal(2 * (numberOfNodes - 1)))
 				})
 			})
-		}(numberOfNodes)
-	}
-
-	for _, numberOfNodes := range []int{10, 20, 40, 80} {
-		func(numberOfNodes int) {
 			Context(fmt.Sprintf("in a ring topology with %d nodes", numberOfNodes), func() {
 				It("should update the DHT", func() {
 					testMu.Lock()
