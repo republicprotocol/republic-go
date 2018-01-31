@@ -199,6 +199,8 @@ var _ = Describe("Computations", func() {
 					matrix.AddOrderFragment(orderFragments[0])
 				}
 				Ω(matrix.ComputationsLeft()).Should(Equal(int64(i * i)))
+				Ω(len(matrix.WaitForComputations(i * i))).Should(Equal(i * i))
+				Ω(matrix.ComputationsLeft()).Should(Equal(int64(0)))
 			}
 		})
 	})
