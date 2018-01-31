@@ -44,23 +44,6 @@ func generateNodes(numberOfNodes int, delegate network.Delegate, port int) ([]*n
 	return nodes, nil
 }
 
-//func generateBootstrapNodes(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
-//	nodes, err := generateNodes(numberOfNodes, delegate, BOOSTRAP_NODE_PORT)
-//	if err != nil {
-//		return nil, nil, err
-//	}
-//	topology := map[identity.Address][]*network.Node{}
-//	for i, node := range nodes {
-//		topology[node.DHT.Address] = []*network.Node{}
-//		for j, peer := range nodes {
-//			if i == j {
-//				continue
-//			}
-//			topology[node.DHT.Address] = append(topology[node.DHT.Address], peer)
-//		}
-//	}
-//	return nodes, topology, nil
-//}
 
 // generateFullyConnectedTopology generates a bunch of nodes connected in a fully connected topology
 func generateFullyConnectedTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {

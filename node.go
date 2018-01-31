@@ -32,7 +32,7 @@ type Node struct {
 }
 
 // NewNode returns a Node with the given its own identity.MultiAddress, a list
-// of boostrap node identity.MultiAddresses, and a delegate that defines
+// of bootstrap node identity.MultiAddresses, and a delegate that defines
 // callbacks for each RPC.
 func NewNode(delegate Delegate, options Options) *Node {
 	return &Node{
@@ -75,7 +75,9 @@ func (node *Node) Stop() {
 // Bootstrap the Node into the network. The Node will connect to each bootstrap
 // Node and attempt to find itself in the network. This process will ultimately
 // connect it to Nodes that are close to it in XOR space.
-func (node *Node) Bootstrap() {
+func (node *Node) Bootstrap() error {
+	var coforallErr error
+	coforallMu := new(sync.Mutex)
 	do.CoForAll(node.Options.BootstrapMultiAddresses, func(i int) {
 		// The Node attempts to find itself in the network.
 		bootstrapMultiAddress := node.Options.BootstrapMultiAddresses[i]
@@ -86,10 +88,14 @@ func (node *Node) Bootstrap() {
 			true,
 			time.Minute,
 		)
+
 		if err != nil {
 			if node.Options.Debug >= DebugLow {
 				log.Println(err)
 			}
+			coforallMu.Lock()
+			coforallErr = err
+			coforallMu.Unlock()
 			return
 		}
 		// All of the peers that it gets back will be added to the DHT.
@@ -97,6 +103,7 @@ func (node *Node) Bootstrap() {
 			node.DHT.UpdateMultiAddress(peer)
 		}
 	})
+	return coforallErr
 }
 
 // Prune an identity.Address from the dht.DHT. Returns a boolean indicating
@@ -268,6 +275,7 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 	target := identity.Address(query.Query.Address)
 	targetPeers := make(identity.MultiAddresses, 0, node.Options.Alpha)
 	peers, err := node.DHT.FindMultiAddressNeighbors(target, node.Options.Alpha)
+
 	if err != nil {
 		return rpc.SerializeMultiAddresses(targetPeers), err
 	}
@@ -358,7 +366,6 @@ func (node *Node) updatePeer(multiAddress identity.MultiAddress) error {
 			}
 			return nil
 		}
-		log.Println(err)
 		return err
 	}
 	return nil
