@@ -114,9 +114,9 @@ var _ = FDescribe("Bootstrapping", func() {
 									node.Bootstrap()
 									// Ω(len(node.DHT.MultiAddresses())).Should(BeNumerically(">=", 1))
 								}
-								for i, node := range bootstrapNodes {
-									log.Println("pinging", i)
-									err := rpc.PingTarget(node.MultiAddress(), swarmNodes[0].MultiAddress(), time.Second)
+								for _, node := range bootstrapNodes {
+									log.Println("pinging", node.Address())
+									err := rpc.PingTarget(node.MultiAddress(), swarmNodes[0].MultiAddress(), 30*time.Second)
 									Ω(err).ShouldNot(HaveOccurred())
 								}
 							})

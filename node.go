@@ -86,7 +86,7 @@ func (node *Node) Bootstrap() {
 		// backing off by 10 seconds per attempt.
 		bootstrapMultiAddress := node.Options.BootstrapMultiAddresses[i]
 		numberOfAttempts := 1
-		timeout := 4 * time.Second
+		timeout := 2 * time.Second
 		for numberOfAttempts <= 3 {
 			if node.Options.Debug >= DebugMedium {
 				log.Printf("%v querying %v attempt %v...\n", node.Address(), bootstrapMultiAddress.Address(), numberOfAttempts)
@@ -108,7 +108,7 @@ func (node *Node) Bootstrap() {
 				log.Println(err)
 			}
 			numberOfAttempts++
-			timeout += 4 * time.Second
+			timeout += 2 * time.Second
 		}
 
 		// Peers returned by the query will be added to the DHT.
