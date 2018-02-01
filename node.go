@@ -169,11 +169,11 @@ func (node *Node) Ping(ctx context.Context, from *rpc.MultiAddress) (*rpc.Nothin
 	}
 }
 
-// QueryCloserPeers is used to return the closest rpc.MultiAddresses to a peer
-// with the given target rpc.Address. It will not return rpc.MultiAddresses
-// that are further away from the target than the Node itself. The
-// rpc.MultiAddresses returned are not guaranteed to provide healthy
-// connections and should be pinged.
+// QueryCloserPeers is used to return rpc.MultiAddresses that are closer to the
+// given target rpc.Address. It will not return rpc.MultiAddresses that are
+// further away from the target than the Node itself. The rpc.MultiAddresses
+// returned are not guaranteed to provide healthy connections and should be
+// pinged.
 func (node *Node) QueryCloserPeers(ctx context.Context, query *rpc.Query) (*rpc.MultiAddresses, error) {
 	if node.Options.Debug >= DebugMedium {
 		log.Printf("%v is querying for closer peers...\n", node.Address())
@@ -184,6 +184,39 @@ func (node *Node) QueryCloserPeers(ctx context.Context, query *rpc.Query) (*rpc.
 
 	wait := do.Process(func() do.Option {
 		peers, err := node.queryCloserPeers(query)
+		if err != nil {
+			return do.Err(err)
+		}
+		return do.Ok(peers)
+	})
+
+	select {
+	case val := <-wait:
+		if multiAddresses, ok := val.Ok.(*rpc.MultiAddresses); ok {
+			return multiAddresses, val.Err
+		}
+		return nil, val.Err
+
+	case <-ctx.Done():
+		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, ctx.Err()
+	}
+}
+
+// QueryCloserPeersOnFrontier is used to return the closest rpc.MultiAddresses
+// that can be reached from this Node, given target rpc.Address. It will not
+// return rpc.MultiAddresses that are further away from the target than the
+// Node itself. The rpc.MultiAddresses returned are not guaranteed to provide
+// healthy connections and should be pinged.
+func (node *Node) QueryCloserPeersOnFrontier(ctx context.Context, query *rpc.Query) (*rpc.MultiAddresses, error) {
+	if node.Options.Debug >= DebugMedium {
+		log.Printf("%v is querying for closer peers on frontier...\n", node.Address())
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	wait := do.Process(func() do.Option {
+		peers, err := node.queryCloserPeersOnFrontier(query)
 		if err != nil {
 			return do.Err(err)
 		}
