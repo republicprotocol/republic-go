@@ -24,9 +24,9 @@ func PingTarget(to identity.MultiAddress, from identity.MultiAddress, timeout ti
 	return err
 }
 
-// GetPeersFromTarget using a new grpc.ClientConn to make a Peers RPC to a
-// target identity.MultiAddress.
-func GetPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress, timeout time.Duration) (identity.MultiAddresses, error) {
+// QueryCloserPeersFromTarget using a new grpc.ClientConn to make a QueryCloserPeers
+// RPC to a target identity.MultiAddress.
+func QueryCloserPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, timeout time.Duration) (identity.MultiAddresses, error) {
 	conn, err := Dial(to, timeout)
 	if err != nil {
 		return identity.MultiAddresses{}, err
@@ -37,7 +37,12 @@ func GetPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress, ti
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	multiAddresses, err := client.Peers(ctx, SerializeMultiAddress(from), grpc.FailFast(false))
+	rpcQuery := &Query{
+		From:  SerializeMultiAddress(from),
+		Query: SerializeAddress(query),
+	}
+
+	multiAddresses, err := client.QueryCloserPeers(ctx, rpcQuery, grpc.FailFast(false))
 	if err != nil {
 		return identity.MultiAddresses{}, err
 	}
@@ -46,7 +51,7 @@ func GetPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress, ti
 
 // QueryCloserPeersFromTarget using a new grpc.ClientConn to make a
 // QueryCloserPeers RPC to a targetMultiAddress.
-func QueryCloserPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, deep bool, timeout time.Duration) (identity.MultiAddresses, error) {
+func QueryCloserPeersOnFrontierFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, timeout time.Duration) (identity.MultiAddresses, error) {
 	conn, err := Dial(to, timeout)
 	if err != nil {
 		return identity.MultiAddresses{}, err
@@ -59,9 +64,8 @@ func QueryCloserPeersFromTarget(to identity.MultiAddress, from identity.MultiAdd
 	rpcQuery := &Query{
 		From:  SerializeMultiAddress(from),
 		Query: SerializeAddress(query),
-		Deep:  deep,
 	}
-	multiAddresses, err := client.QueryCloserPeers(ctx, rpcQuery, grpc.FailFast(false))
+	multiAddresses, err := client.QueryCloserPeersOnFrontier(ctx, rpcQuery, grpc.FailFast(false))
 	if err != nil {
 		return identity.MultiAddresses{}, err
 	}

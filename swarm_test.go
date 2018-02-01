@@ -21,11 +21,11 @@ func (s *mockServer) Ping(ctx context.Context, address *rpc.MultiAddress) (*rpc.
 	return &rpc.Nothing{}, nil
 }
 
-func (s *mockServer) Peers(ctx context.Context, address *rpc.MultiAddress) (*rpc.MultiAddresses, error) {
+func (s *mockServer) QueryCloserPeers(ctx context.Context, query *rpc.Query) (*rpc.MultiAddresses, error) {
 	return &rpc.MultiAddresses{}, nil
 }
 
-func (s *mockServer) QueryCloserPeers(ctx context.Context, address *rpc.Query) (*rpc.MultiAddresses, error) {
+func (s *mockServer) QueryCloserPeersOnFrontier(ctx context.Context, query *rpc.Query) (*rpc.MultiAddresses, error) {
 	return &rpc.MultiAddresses{}, nil
 }
 
@@ -101,7 +101,9 @@ var _ = Describe("Swarm node", func() {
 		})
 	})
 
-	Context("getting peers from a target", func() {
+	Context("Query close peers from a target", func() {
+		target := identity.Address("8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
+
 		It("should return all peers", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -111,25 +113,25 @@ var _ = Describe("Swarm node", func() {
 			}(server)
 			defer server.Stop()
 
-			multiAddress, err := rpc.GetPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
+			closePeers, err := rpc.QueryCloserPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, target,defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(multiAddress).Should(Equal(identity.MultiAddresses{}))
+			Ω(closePeers).Should(Equal(identity.MultiAddresses{}))
 		})
 
 		It("should return an error for bad multi-addresses", func() {
-			_, err = rpc.GetPeersFromTarget(multiAddressMissingPort, rpcClient.MultiAddress, defaultTimeout)
+			_, err = rpc.QueryCloserPeersFromTarget(multiAddressMissingPort, rpcClient.MultiAddress, target, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
-			_, err = rpc.GetPeersFromTarget(multiAddressMissingHost, rpcClient.MultiAddress, defaultTimeout)
+			_, err = rpc.QueryCloserPeersFromTarget(multiAddressMissingHost, rpcClient.MultiAddress, target, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 
 		It("should return a timeout error when there is no response within the timeout duration", func() {
-			_, err := rpc.GetPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
+			_, err := rpc.QueryCloserPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, target, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 	})
 
-	Context("query closer peers", func() {
+	Context("query closer peers on frontier ", func() {
 		It("should return multi-addresses", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -140,22 +142,22 @@ var _ = Describe("Swarm node", func() {
 			defer server.Stop()
 
 			target := identity.Address("8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
-			multiAddresses, err := rpc.QueryCloserPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, target, true, defaultTimeout)
+			multiAddresses, err := rpc.QueryCloserPeersOnFrontierFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, target, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(multiAddresses).Should(Equal(identity.MultiAddresses{}))
 		})
 
 		It("should return an error for bad multi-addresses", func() {
 			target := identity.Address("8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
-			_, err = rpc.QueryCloserPeersFromTarget(multiAddressMissingPort, rpcClient.MultiAddress, target, true, defaultTimeout)
+			_, err = rpc.QueryCloserPeersOnFrontierFromTarget(multiAddressMissingPort, rpcClient.MultiAddress, target, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
-			_, err = rpc.QueryCloserPeersFromTarget(multiAddressMissingHost, rpcClient.MultiAddress, target, true, defaultTimeout)
+			_, err = rpc.QueryCloserPeersOnFrontierFromTarget(multiAddressMissingHost, rpcClient.MultiAddress, target, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 
 		It("should return a timeout error when there is no response within the timeout duration", func() {
 			target := identity.Address("8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
-			_, err := rpc.QueryCloserPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, target, true, defaultTimeout)
+			_, err := rpc.QueryCloserPeersOnFrontierFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, target, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 	})
