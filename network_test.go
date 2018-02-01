@@ -20,7 +20,7 @@ const (
 )
 
 const (
-	DefaultOptionsDebug           = network.DebugOff
+	DefaultOptionsDebug           = network.DebugMedium
 	DefaultOptionsAlpha           = 3
 	DefaultOptiosnMaxBucketLength = 20
 	NodePortBootstrap             = 3000
