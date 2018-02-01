@@ -36,11 +36,12 @@ service SwarmNode {
   // Ping the connection and swap MultiAddresses.
   rpc Ping (MultiAddress) returns (Nothing);
 
-  // Get all peers connected to the Node.
-  rpc Peers (MultiAddress) returns (MultiAddresses);
-
   // Find the MultiAddresses of peers closer to some target Node.
   rpc QueryCloserPeers (Query) returns (MultiAddresses);
+
+  // Find the MultiAddresses of peers closer to some target Node using a
+  // frontier search.
+  rpc QueryCloserPeersOnFrontier (Query) returns (MultiAddresses);
 }
 
 // A Query message contains the Address of a Node that needs to be found and
@@ -51,7 +52,6 @@ message Query {
 
   // Public data.
   Address query = 2;
-  bool deep = 3;
 }
 
 /**
