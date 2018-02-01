@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network"
+	rpc "github.com/republicprotocol/go-rpc"
 )
 
 type mockDelegate struct {
@@ -97,7 +98,7 @@ var _ = FDescribe("Bootstrapping", func() {
 	})
 
 	for _, topology := range []Topology{TopologyFull} { // []string{"full", "star", "ring", "line"}
-		for _, numberOfBootstrapNodes := range []int{10} { // []int{10, 20, 40, 80}
+		for _, numberOfBootstrapNodes := range []int{50} { // []int{10, 20, 40, 80}
 			for _, numberOfNodes := range []int{10} { //  []int{10, 20, 40, 80}
 				for _, numberOfPings := range []int{10} { // []int{10, 20, 40, 80}
 					func(topology Topology, numberOfBootstrapNodes, numberOfNodes, numberOfPings int) {
@@ -111,6 +112,10 @@ var _ = FDescribe("Bootstrapping", func() {
 									By(fmt.Sprintf("%dth node start bootstrapping ", i))
 									node.Bootstrap()
 									// Ω(len(node.DHT.MultiAddresses())).Should(BeNumerically(">=", 1))
+								}
+								for _, node := range bootstrapNodes {
+									err := rpc.PingTarget(node.MultiAddress(), swarmNodes[0].MultiAddress(), time.Second)
+									Ω(err).ShouldNot(HaveOccurred())
 								}
 							})
 						})

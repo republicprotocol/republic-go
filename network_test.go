@@ -155,7 +155,8 @@ func GenerateRingTopology(port, numberOfNodes int, delegate network.Delegate) ([
 func ping(nodes []*network.Node, topology map[identity.Address][]*network.Node) error {
 	var wg sync.WaitGroup
 	wg.Add(len(nodes))
-	var muError *sync.Mutex
+
+	muError := new(sync.Mutex)
 	var globalError error = nil
 
 	for _, node := range nodes {
@@ -166,8 +167,8 @@ func ping(nodes []*network.Node, topology map[identity.Address][]*network.Node) 
 				err := rpc.PingTarget(peer.MultiAddress(), node.MultiAddress(), time.Second)
 				if err != nil {
 					muError.Lock()
-					defer muError.Unlock()
 					globalError = err
+					muError.Unlock()
 				}
 			}
 		}(node)
