@@ -77,43 +77,15 @@ func (node *Node) Bootstrap() {
 	if node.Options.Debug >= DebugMedium {
 		log.Printf("%v is bootstrapping...\n", node.Address())
 	}
-	do.CoForAll(node.Options.BootstrapMultiAddresses, func(i int) {
-		var err error
-		var peers identity.MultiAddresses
-
-		// The Node attempts to find itself in the network with three attempts
-		// backing off by 10 seconds per attempt.
-		bootstrapMultiAddress := node.Options.BootstrapMultiAddresses[i]
-
-		for attempt := 0; attempt < 3; attempt++ {
-			// Query the bootstrap node.
-			peers, err = rpc.QueryCloserPeersOnFrontierFromTarget(
-				bootstrapMultiAddress,
-				node.MultiAddress(),
-				node.Address(),
-				node.Options.Timeout+time.Duration(attempt)*node.Options.TimeoutStep,
-			)
-			// Errors are not returned because it is reasonable that a bootstrap
-			// Node might be unavailable at this time.
-			if err == nil {
-				break
-			}
-			if node.Options.Debug >= DebugLow {
-				log.Println(err)
-			}
+	if node.Options.Concurrent {
+		do.ForAll(node.Options.BootstrapMultiAddresses, func(i int) {
+			node.bootstrapUsingMultiAddress(node.Options.BootstrapMultiAddresses[i])
+		})
+	} else {
+		for _, bootstrapMultiAddress := range node.Options.BootstrapMultiAddresses {
+			node.bootstrapUsingMultiAddress(bootstrapMultiAddress)
 		}
-
-		// Peers returned by the query will be added to the DHT.
-		if node.Options.Debug >= DebugMedium {
-			log.Printf("%v received %v peers from %v.\n", node.Address(), len(peers), bootstrapMultiAddress.Address())
-		}
-		for _, peer := range peers {
-			if peer.Address() == node.Address() {
-				continue
-			}
-			node.DHT.UpdateMultiAddress(peer)
-		}
-	})
+	}
 	if node.Options.Debug >= DebugMedium {
 		log.Printf("%v connected to %v peers after bootstrapping.\n", node.Address(), len(node.DHT.MultiAddresses()))
 	}
@@ -348,6 +320,50 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query) (*rpc.MultiAddres
 	}
 
 	return rpc.SerializeMultiAddresses(peersCloserToTarget), node.updatePeer(query.From)
+}
+
+func (node *Node) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.MultiAddress) error {
+	var err error
+	var peers identity.MultiAddresses
+
+	// The Node attempts to find itself in the network with three attempts
+	// backing off by 10 seconds per attempt.
+	for attempt := 0; attempt < 3; attempt++ {
+		// Query the bootstrap node.
+		peers, err = rpc.QueryCloserPeersOnFrontierFromTarget(
+			bootstrapMultiAddress,
+			node.MultiAddress(),
+			node.Address(),
+			node.Options.Timeout+time.Duration(attempt)*node.Options.TimeoutStep,
+		)
+		// Errors are not returned because it is reasonable that a bootstrap
+		// Node might be unavailable at this time.
+		if err == nil {
+			break
+		}
+		if node.Options.Debug >= DebugLow {
+			log.Println(err)
+		}
+		if attempt == 2 {
+			return err
+		}
+	}
+
+	// Peers returned by the query will be added to the DHT.
+	if node.Options.Debug >= DebugMedium {
+		log.Printf("%v received %v peers from %v.\n", node.Address(), len(peers), bootstrapMultiAddress.Address())
+	}
+	for _, peer := range peers {
+		if peer.Address() == node.Address() {
+			continue
+		}
+		if err := node.DHT.UpdateMultiAddress(peer); err != nil {
+			if node.Options.Debug >= DebugLow {
+				log.Println(err)
+			}
+		}
+	}
+	return nil
 }
 
 func (node *Node) updatePeer(peer *rpc.MultiAddress) error {

@@ -2,6 +2,7 @@ package network_test
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -96,28 +97,44 @@ var _ = FDescribe("Bootstrapping", func() {
 		}
 	})
 
-	for _, topology := range []Topology{TopologyFull} { // []string{"full", "star", "ring", "line"}
-		for _, numberOfBootstrapNodes := range []int{10} { // []int{10, 20, 40, 80}
-			for _, numberOfNodes := range []int{10} { //  []int{10, 20, 40, 80}
-				for _, numberOfPings := range []int{10} { // []int{10, 20, 40, 80}
-					func(topology Topology, numberOfBootstrapNodes, numberOfNodes, numberOfPings int) {
-						Context(fmt.Sprintf("trying to send %d pings between %d swarm nodes after bootstrapping with %d bootsrap nodes which are connected in a %s topology.\n", numberOfPings, numberOfNodes, numberOfBootstrapNodes, topology), func() {
-							It("should be able to find the target and ping it ", func() {
-								testMu.Lock()
-								defer testMu.Unlock()
-								setupBootstrapNodes(topology, numberOfBootstrapNodes)
-								setupSwarmNodes(numberOfNodes)
-								for i, node := range swarmNodes {
-									By(fmt.Sprintf("%dth node start bootstrapping ", i))
-									node.Bootstrap()
-									// Ω(len(node.DHT.MultiAddresses())).Should(BeNumerically(">=", 1))
-								}
+	for _, topology := range []Topology{TopologyFull, TopologyLine, TopologyRing, TopologyStar} {
+		func(topology Topology) {
+			Context(fmt.Sprintf("when bootstrap nodes are configured in a %s topology.\n", topology), func() {
+				for _, numberOfBootstrapNodes := range []int{2, 4, 8, 16} {
+					for _, numberOfNodes := range []int{4, 16, 64, 256} {
+						func(topology Topology, numberOfBootstrapNodes, numberOfNodes int) {
+							Context(fmt.Sprintf("with %d bootstrap nodes and %d swarm nodes.\n", numberOfBootstrapNodes, numberOfNodes), func() {
+								It("should be able to successfully ping between nodes", func() {
+									// Tests should be run serially to prevent
+									// port overlaps.
+									testMu.Lock()
+									defer testMu.Unlock()
+
+									// Setup testing configuration.
+									setupBootstrapNodes(topology, numberOfBootstrapNodes)
+									setupSwarmNodes(numberOfNodes)
+
+									// Bootstrap all swarm nodes.
+									for _, node := range swarmNodes {
+										node.Bootstrap()
+									}
+
+									numberOfPings := 0
+									for i := 0; i < numberOfNodes; i++ {
+										to, from := PickRandomNodes(swarmNodes)
+										if err := Ping(to, from); err == nil {
+											numberOfPings++
+										}
+									}
+									log.Printf("%v/%v successful pings", numberOfPings, numberOfNodes)
+									Ω(numberOfPings).Should(BeNumerically(">", 2*numberOfNodes/3))
+								})
 							})
-						})
-					}(topology, numberOfBootstrapNodes, numberOfNodes, numberOfPings)
+						}(topology, numberOfBootstrapNodes, numberOfNodes)
+					}
 				}
-			}
-		}
+			})
+		}(topology)
 	}
 })
 

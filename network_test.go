@@ -2,6 +2,7 @@ package network_test
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -10,23 +11,18 @@ import (
 	"github.com/republicprotocol/go-rpc"
 )
 
-type Topology int64
+type Topology string
 
 const (
-	TopologyFull = 1
-	TopologyStar = 2
-	TopologyRing = 3
-	TopologyLine = 4
+	TopologyFull = "full"
+	TopologyLine = "line"
+	TopologyRing = "ring"
+	TopologyStar = "star"
 )
 
 const (
-	DefaultOptionsDebug           = network.DebugMedium
-	DefaultOptionsAlpha           = 3
-	DefaultOptionsMaxBucketLength = 20
-	DefaultOptionsTimeout         = 30 * time.Second
-	DefaultOptionsTimeoutStep     = 30 * time.Second
-	NodePortBootstrap             = 3000
-	NodePortSwarm                 = 4000
+	NodePortBootstrap = 3000
+	NodePortSwarm     = 4000
 )
 
 func GenerateBootstrapTopology(topology Topology, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
@@ -67,6 +63,7 @@ func GenerateNodes(port, numberOfNodes int, delegate network.Delegate) ([]*netwo
 				MaxBucketLength: DefaultOptionsMaxBucketLength,
 				Timeout:         DefaultOptionsTimeout,
 				TimeoutStep:     DefaultOptionsTimeoutStep,
+				Concurrent:      DefaultOptionsConcurrent,
 			},
 		)
 		nodes[i] = node
@@ -87,28 +84,6 @@ func GenerateFullTopology(port, numberOfNodes int, delegate network.Delegate) ([
 				continue
 			}
 			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], peer)
-		}
-	}
-	return nodes, routingTable, nil
-}
-
-func GenerateStarTopology(port, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
-	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
-	if err != nil {
-		return nil, nil, err
-	}
-	routingTable := map[identity.Address][]*network.Node{}
-	for i, node := range nodes {
-		routingTable[node.DHT.Address] = []*network.Node{}
-		if i == 0 {
-			for j, peer := range nodes {
-				if i == j {
-					continue
-				}
-				routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], peer)
-			}
-		} else {
-			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[0])
 		}
 	}
 	return nodes, routingTable, nil
@@ -154,6 +129,55 @@ func GenerateRingTopology(port, numberOfNodes int, delegate network.Delegate) ([
 		}
 	}
 	return nodes, routingTable, nil
+}
+
+func GenerateStarTopology(port, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
+	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
+	if err != nil {
+		return nil, nil, err
+	}
+	routingTable := map[identity.Address][]*network.Node{}
+	for i, node := range nodes {
+		routingTable[node.DHT.Address] = []*network.Node{}
+		if i == 0 {
+			for j, peer := range nodes {
+				if i == j {
+					continue
+				}
+				routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], peer)
+			}
+		} else {
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[0])
+		}
+	}
+	return nodes, routingTable, nil
+}
+
+func Ping(to *network.Node, from *network.Node) error {
+	multiAddresses, err := rpc.QueryCloserPeersOnFrontierFromTarget(
+		from.MultiAddress(),
+		from.MultiAddress(),
+		to.Address(),
+		DefaultOptionsTimeout,
+	)
+	if err != nil {
+		return err
+	}
+	for _, multiAddress := range multiAddresses {
+		if to.Address() == multiAddress.Address() {
+			return rpc.PingTarget(multiAddress, from.MultiAddress(), DefaultOptionsTimeout)
+		}
+	}
+	return fmt.Errorf("ping error: %v could not find %v", from.Address(), to.Address())
+}
+
+func PickRandomNodes(nodes []*network.Node) (*network.Node, *network.Node) {
+	i := rand.Intn(len(nodes))
+	j := rand.Intn(len(nodes))
+	for i == j {
+		j = rand.Intn(len(nodes))
+	}
+	return nodes[i], nodes[j]
 }
 
 func ping(nodes []*network.Node, topology map[identity.Address][]*network.Node) error {

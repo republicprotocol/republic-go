@@ -24,4 +24,5 @@ type Options struct {
 	MaxBucketLength int
 	Timeout         time.Duration
 	TimeoutStep     time.Duration
+	Concurrent      bool
 }
