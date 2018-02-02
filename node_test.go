@@ -2,7 +2,6 @@ package network_test
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network"
-	rpc "github.com/republicprotocol/go-rpc"
 )
 
 type mockDelegate struct {
@@ -113,11 +111,6 @@ var _ = FDescribe("Bootstrapping", func() {
 									By(fmt.Sprintf("%dth node start bootstrapping ", i))
 									node.Bootstrap()
 									// Ω(len(node.DHT.MultiAddresses())).Should(BeNumerically(">=", 1))
-								}
-								for _, node := range bootstrapNodes {
-									log.Println("pinging", node.Address())
-									err := rpc.PingTarget(node.MultiAddress(), swarmNodes[0].MultiAddress(), 30*time.Second)
-									Ω(err).ShouldNot(HaveOccurred())
 								}
 							})
 						})

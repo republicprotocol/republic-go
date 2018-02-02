@@ -1,6 +1,8 @@
 package network
 
 import (
+	"time"
+
 	"github.com/republicprotocol/go-identity"
 )
 
@@ -20,4 +22,6 @@ type Options struct {
 	Debug           int
 	Alpha           int
 	MaxBucketLength int
+	Timeout         time.Duration
+	TimeoutStep     time.Duration
 }

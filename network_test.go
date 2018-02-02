@@ -22,7 +22,9 @@ const (
 const (
 	DefaultOptionsDebug           = network.DebugMedium
 	DefaultOptionsAlpha           = 3
-	DefaultOptiosnMaxBucketLength = 20
+	DefaultOptionsMaxBucketLength = 20
+	DefaultOptionsTimeout         = 30 * time.Second
+	DefaultOptionsTimeoutStep     = 30 * time.Second
 	NodePortBootstrap             = 3000
 	NodePortSwarm                 = 4000
 )
@@ -62,7 +64,9 @@ func GenerateNodes(port, numberOfNodes int, delegate network.Delegate) ([]*netwo
 				MultiAddress:    multiAddress,
 				Debug:           DefaultOptionsDebug,
 				Alpha:           DefaultOptionsAlpha,
-				MaxBucketLength: DefaultOptiosnMaxBucketLength,
+				MaxBucketLength: DefaultOptionsMaxBucketLength,
+				Timeout:         DefaultOptionsTimeout,
+				TimeoutStep:     DefaultOptionsTimeoutStep,
 			},
 		)
 		nodes[i] = node
