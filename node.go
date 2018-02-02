@@ -328,7 +328,7 @@ func (node *Node) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.Mult
 
 	// The Node attempts to find itself in the network with three attempts
 	// backing off by 10 seconds per attempt.
-	for attempt := 0; attempt < 3; attempt++ {
+	for attempt := 0; attempt < node.Options.TimeoutRetries; attempt++ {
 		// Query the bootstrap node.
 		peers, err = rpc.QueryCloserPeersOnFrontierFromTarget(
 			bootstrapMultiAddress,
@@ -344,7 +344,7 @@ func (node *Node) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.Mult
 		if node.Options.Debug >= DebugLow {
 			log.Println(err)
 		}
-		if attempt == 2 {
+		if attempt == node.Options.TimeoutRetries-1 {
 			return err
 		}
 	}

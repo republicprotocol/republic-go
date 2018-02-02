@@ -63,6 +63,7 @@ func GenerateNodes(port, numberOfNodes int, delegate network.Delegate) ([]*netwo
 				MaxBucketLength: DefaultOptionsMaxBucketLength,
 				Timeout:         DefaultOptionsTimeout,
 				TimeoutStep:     DefaultOptionsTimeoutStep,
+				TimeoutRetries:  DefaultOptionsTimeoutRetries,
 				Concurrent:      DefaultOptionsConcurrent,
 			},
 		)
@@ -154,19 +155,35 @@ func GenerateStarTopology(port, numberOfNodes int, delegate network.Delegate) ([
 }
 
 func Ping(to *network.Node, from *network.Node) error {
-	multiAddresses, err := rpc.QueryCloserPeersOnFrontierFromTarget(
-		from.MultiAddress(),
-		from.MultiAddress(),
-		to.Address(),
-		DefaultOptionsTimeout,
-	)
+	var target *identity.MultiAddress
+
+	multiAddress, err := from.DHT.FindMultiAddress(to.Address())
 	if err != nil {
 		return err
 	}
-	for _, multiAddress := range multiAddresses {
-		if to.Address() == multiAddress.Address() {
-			return rpc.PingTarget(multiAddress, from.MultiAddress(), DefaultOptionsTimeout)
+	if multiAddress != nil {
+		target = multiAddress
+	}
+
+	if target == nil {
+		multiAddresses, err := rpc.QueryCloserPeersOnFrontierFromTarget(
+			from.MultiAddress(),
+			from.MultiAddress(),
+			to.Address(),
+			DefaultOptionsTimeout,
+		)
+		if err != nil {
+			return err
 		}
+		for _, multiAddress := range multiAddresses {
+			if to.Address() == multiAddress.Address() {
+				target = &multiAddress
+				break
+			}
+		}
+	}
+	if target != nil {
+		return rpc.PingTarget(*target, from.MultiAddress(), DefaultOptionsTimeout)
 	}
 	return fmt.Errorf("ping error: %v could not find %v", from.Address(), to.Address())
 }

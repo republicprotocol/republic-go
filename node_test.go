@@ -100,13 +100,13 @@ var _ = FDescribe("Bootstrapping", func() {
 	for _, topology := range []Topology{TopologyFull, TopologyLine, TopologyRing, TopologyStar} {
 		func(topology Topology) {
 			Context(fmt.Sprintf("when bootstrap nodes are configured in a %s topology.\n", topology), func() {
-				for _, numberOfBootstrapNodes := range []int{2, 4, 8, 16} {
-					for _, numberOfNodes := range []int{4, 16, 64, 256} {
+				for _, numberOfBootstrapNodes := range []int{2, 4, 8, 16, 32, 64} {
+					for _, numberOfNodes := range []int{4, 8, 16, 32, 64, 128} {
 						func(topology Topology, numberOfBootstrapNodes, numberOfNodes int) {
 							Context(fmt.Sprintf("with %d bootstrap nodes and %d swarm nodes.\n", numberOfBootstrapNodes, numberOfNodes), func() {
 								It("should be able to successfully ping between nodes", func() {
 									// Tests should be run serially to prevent
-									// port overlaps.
+									// port overlaps.STEP: 0th bootstrap node is /ip4/127.0.0.1/tcp/3000/republic/8MJtdcgaGFxrBLJ1RhwXS3SQd2DcTG
 									testMu.Lock()
 									defer testMu.Unlock()
 
