@@ -281,9 +281,6 @@ var _ = Describe("Distributed Hash Table", func() {
 
 			_, err = dht.FindMultiAddress(dht.Address)
 			Ω(err).Should(HaveOccurred())
-
-			_, err = dht.FindMultiAddressNeighbors(dht.Address, 3)
-			Ω(err).Should(HaveOccurred())
 		})
 	})
 })

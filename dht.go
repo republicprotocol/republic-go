@@ -138,43 +138,24 @@ func (dht *DHT) findMultiAddress(target identity.Address) (*identity.MultiAddres
 }
 
 func (dht *DHT) findMultiAddressNeighbors(target identity.Address, α int) (identity.MultiAddresses, error) {
-	bucket, position, err := dht.findBucket(target)
-	if err != nil || bucket == nil {
-		return identity.MultiAddresses{}, err
+	// Get all identity.MultiAddresses.
+	multiAddresses := dht.MultiAddresses()
+	if len(multiAddresses) < α {
+		α = len(multiAddresses)
 	}
 
-	minLength := len(dht.MultiAddresses())
-	if α < minLength {
-		minLength = α
-	}
-
-	multiAddresses := make(identity.MultiAddresses, 0, minLength)
-	multiAddresses = append(multiAddresses, bucket.MultiAddresses...)
-	start := position - 1
-	end := position + 1
-	for len(multiAddresses) < minLength {
-		if start >= 0 {
-			multiAddresses = append(multiAddresses, dht.Buckets[start].MultiAddresses...)
-		}
-		if end <= len(dht.Buckets)-1 {
-			multiAddresses = append(multiAddresses, dht.Buckets[end].MultiAddresses...)
-		}
-		start--
-		end++
-	}
-
-	var sortErr error
+	// Sort them by their distance to the target identity.Address.
+	var outerErr error
 	sort.SliceStable(multiAddresses, func(i, j int) bool {
 		left := multiAddresses[i].Address()
 		right := multiAddresses[j].Address()
 		closer, err := identity.Closer(left, right, target)
-		if sortErr == nil {
-			sortErr = err
+		if outerErr == nil {
+			outerErr = err
 		}
 		return closer
 	})
-
-	return multiAddresses[:minLength], sortErr
+	return multiAddresses[:α], outerErr
 }
 
 func (dht *DHT) findBucket(target identity.Address) (*Bucket, int, error) {
@@ -232,7 +213,7 @@ func (bucket *Bucket) UpdateMultiAddress(multiAddress identity.MultiAddress) err
 	for i := position + 1; i < bucket.Length(); i++ {
 		bucket.MultiAddresses[i-1] = bucket.MultiAddresses[i]
 	}
-	bucket.MultiAddresses[bucket.Length()-1] = *cursor
+	bucket.MultiAddresses[bucket.Length()-1] = multiAddress
 	return nil
 }
 
