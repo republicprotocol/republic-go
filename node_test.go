@@ -39,7 +39,7 @@ func (delegate *mockDelegate) OnQueryCloserPeersReceived(_ identity.MultiAddress
 }
 
 // boostrapping
-var _ = FDescribe("Bootstrapping", func() {
+var _ = Describe("Bootstrapping", func() {
 
 	var err error
 	var bootstrapNodes []*network.Node
