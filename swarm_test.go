@@ -25,7 +25,7 @@ func (s *mockServer) QueryCloserPeers(ctx context.Context, query *rpc.Query) (*r
 	return &rpc.MultiAddresses{}, nil
 }
 
-func (s *mockServer) QueryCloserPeersOnFrontier(ctx context.Context, query *rpc.Query) (*rpc.MultiAddresses, error) {
+func (s *mockServer) QueryCloserPeersOnFrontier(ctx context.Context, query *rpc.Query, peers rpc.SwarmNode_QueryCloserPeersOnFrontierStream) error {
 	return &rpc.MultiAddresses{}, nil
 }
 
@@ -113,7 +113,7 @@ var _ = Describe("Swarm node", func() {
 			}(server)
 			defer server.Stop()
 
-			closePeers, err := rpc.QueryCloserPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, target,defaultTimeout)
+			closePeers, err := rpc.QueryCloserPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, target, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(closePeers).Should(Equal(identity.MultiAddresses{}))
 		})

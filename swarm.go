@@ -51,7 +51,7 @@ func QueryCloserPeersFromTarget(to identity.MultiAddress, from identity.MultiAdd
 
 // QueryCloserPeersFromTarget using a new grpc.ClientConn to make a
 // QueryCloserPeers RPC to a targetMultiAddress.
-func QueryCloserPeersOnFrontierFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, timeout time.Duration) (identity.MultiAddresses, error) {
+func QueryCloserPeersOnFrontierFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, timeout time.Duration) (chan identity.MultiAddress, chan error) {
 	conn, err := Dial(to, timeout)
 	if err != nil {
 		return identity.MultiAddresses{}, err
