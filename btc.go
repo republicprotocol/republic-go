@@ -1,0 +1,110 @@
+package btc
+
+import (
+	"fmt"
+	"errors"
+	"net"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil"
+	rpc "github.com/btcsuite/btcd/rpcclient"
+)
+
+type initiateCmd struct {
+	cp2Addr *btcutil.AddressPubKeyHash
+	amount  btcutil.Amount
+}
+
+
+func Open(participantAddress string, value float64, chain string) (err error, showUsage bool) {
+	var chainParams *chaincfg.Params ;
+	if (chain == "testnet"){
+		chainParams = &chaincfg.TestNet3Params
+	} else {
+		chainParams = &chaincfg.MainNetParams
+	}
+
+	cp2Addr, err := btcutil.DecodeAddress(participantAddress, chainParams)
+	if err != nil {
+		return fmt.Errorf("failed to decode participant address: %v", err), true
+	}
+	if !cp2Addr.IsForNet(chainParams) {
+		return fmt.Errorf("participant address is not "+
+			"intended for use on %v", chainParams.Name), true
+	}
+	cp2AddrP2PKH, ok := cp2Addr.(*btcutil.AddressPubKeyHash)
+	if !ok {
+		return errors.New("participant address is not P2PKH"), true
+	}
+
+	amount, err := btcutil.NewAmount(value)
+	if err != nil {
+		return err, true
+	}
+	cmd := &initiateCmd{cp2Addr: cp2AddrP2PKH, amount: amount}
+
+
+	connect, err := normalizeAddress(*connectFlag, walletPort(chainParams))
+	if err != nil {
+		return fmt.Errorf("wallet server address: %v", err), true
+	}
+
+	connConfig := &rpc.ConnConfig{
+		Host:         connect,
+		User:         *rpcuserFlag,
+		Pass:         *rpcpassFlag,
+		DisableTLS:   true,
+		HTTPPostMode: true,
+	}
+
+	client, err := rpc.New(connConfig, nil)
+	if err != nil {
+		return fmt.Errorf("rpc connect: %v", err), false
+	}
+	defer func() {
+		client.Shutdown()
+		client.WaitForShutdown()
+	}()
+
+	err = cmd.runCommand(client)
+	return err, false
+}
+
+func Close() {
+
+}
+
+func Expire() {
+
+}
+
+func Validate() {
+
+}
+
+func RetrieveSecretKey() {
+	// TODO: Retreive key from BTC chain
+}
+
+func normalizeAddress(addr string, defaultPort string) (hostport string, err error) {
+	host, port, origErr := net.SplitHostPort(addr)
+	if origErr == nil {
+		return net.JoinHostPort(host, port), nil
+	}
+	addr = net.JoinHostPort(addr, defaultPort)
+	_, _, err = net.SplitHostPort(addr)
+	if err != nil {
+		return "", origErr
+	}
+	return addr, nil
+}
+
+func walletPort(params *chaincfg.Params) string {
+	switch params {
+	case &chaincfg.MainNetParams:
+		return "8332"
+	case &chaincfg.TestNet3Params:
+		return "18332"
+	default:
+		return ""
+	}
+}
