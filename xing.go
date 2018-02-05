@@ -55,6 +55,6 @@ func SendTradingToTarget(to identity.MultiAddress, tradingAtom struct{}, timeout
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	_, err = client.SendTradingAtom(ctx, SerializeTradingAtom(&struct{}{}), grpc.FailFast(false))
+	_, err = client.SendTradingAtom(ctx, SerializeTradingAtom(struct{}{}), grpc.FailFast(false))
 	return err
 }

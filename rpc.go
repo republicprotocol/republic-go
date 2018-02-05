@@ -189,3 +189,16 @@ func DeserializeResultFragment(input *ResultFragment) (*compute.ResultFragment, 
 	}
 	return resultFragment, nil
 }
+
+// SerializeTradingAtom converts an atomic.TradingAtom into its network
+// representation.
+func SerializeTradingAtom(tradingAtom struct{}) *TradingAtom {
+	return &TradingAtom{}
+}
+
+// DeserializeTradingAtom converts a network representation of a TradingAtom
+// into an atomic.TradingAtom. An error is returned if the network
+// representation is malformed.
+func DeserializeTradingAtom(tradingAtom *TradingAtom) (struct{}, error) {
+	return struct{}{}, nil
+}
