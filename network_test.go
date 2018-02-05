@@ -57,6 +57,8 @@ func GenerateNodes(port, numberOfNodes int, delegate network.Delegate) ([]*netwo
 		node := network.NewNode(
 			delegate,
 			network.Options{
+				Host:            "127.0.0.1",
+				Port:            fmt.Sprintf("%d", port+i),
 				MultiAddress:    multiAddress,
 				Debug:           DefaultOptionsDebug,
 				Alpha:           DefaultOptionsAlpha,

@@ -35,7 +35,7 @@ type Node struct {
 func NewNode(delegate Delegate, options Options) *Node {
 	return &Node{
 		Delegate: delegate,
-		Server:   grpc.NewServer(grpc.ConnectionTimeout(30 * time.Second)),
+		Server:   grpc.NewServer(grpc.ConnectionTimeout(options.Timeout)),
 		DHT:      dht.NewDHT(options.MultiAddress.Address(), options.MaxBucketLength),
 		Options:  options,
 	}
@@ -44,20 +44,12 @@ func NewNode(delegate Delegate, options Options) *Node {
 // Serve starts the gRPC server.
 func (node *Node) Serve() error {
 	rpc.RegisterSwarmNodeServer(node.Server, node)
-	host, err := node.MultiAddress().ValueForProtocol(identity.IP4Code)
-	if err != nil {
-		return err
-	}
-	port, err := node.MultiAddress().ValueForProtocol(identity.TCPCode)
-	if err != nil {
-		return err
-	}
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", host, port))
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", node.Options.Host, node.Options.Port))
 	if err != nil {
 		return err
 	}
 	if node.Options.Debug >= DebugLow {
-		log.Printf("Listening at %s:%s\n", host, port)
+		log.Printf("Listening at %s:%s\n", node.Options.Host, node.Options.Port)
 	}
 	return node.Server.Serve(listener)
 }

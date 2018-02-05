@@ -16,6 +16,8 @@ const (
 
 // Options that parameterize the behavior of Nodes.
 type Options struct {
+	Host                    string
+	Port                    string
 	MultiAddress            identity.MultiAddress
 	BootstrapMultiAddresses identity.MultiAddresses
 
