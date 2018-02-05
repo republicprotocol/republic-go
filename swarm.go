@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"io"
 	"time"
 
 	"github.com/republicprotocol/go-identity"
@@ -52,9 +53,15 @@ func QueryCloserPeersFromTarget(to identity.MultiAddress, from identity.MultiAdd
 // QueryCloserPeersFromTarget using a new grpc.ClientConn to make a
 // QueryCloserPeers RPC to a targetMultiAddress.
 func QueryCloserPeersOnFrontierFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, timeout time.Duration) (chan identity.MultiAddress, chan error) {
+	multiAddressChan := make (chan identity.MultiAddress)
+	errChan := make(chan error, 1)
+
 	conn, err := Dial(to, timeout)
 	if err != nil {
-		return identity.MultiAddresses{}, err
+		errChan <- err
+		close(multiAddressChan)
+		close(errChan)
+		return multiAddressChan,errChan
 	}
 	defer conn.Close()
 	client := NewSwarmNodeClient(conn)
@@ -67,7 +74,30 @@ func QueryCloserPeersOnFrontierFromTarget(to identity.MultiAddress, from identit
 	}
 	multiAddresses, err := client.QueryCloserPeersOnFrontier(ctx, rpcQuery, grpc.FailFast(false))
 	if err != nil {
-		return identity.MultiAddresses{}, err
+		errChan <- err
+		close(multiAddressChan)
+		close(errChan)
+		return multiAddressChan,errChan
 	}
-	return DeserializeMultiAddresses(multiAddresses)
+	go func(){
+		defer close(multiAddressChan)
+		defer close(errChan)
+		for {
+			multiAddress, err := multiAddresses.Recv()
+			if err == io.EOF{
+				break
+			}
+			if err!= nil {
+				errChan <- err
+				continue
+			}
+			deserializedMultiAddress, err  := DeserializeMultiAddress(multiAddress)
+			if err!= nil {
+				errChan <- err
+				continue
+			}
+			multiAddressChan <- deserializedMultiAddress
+		}
+	}()
+	return multiAddressChan, errChan
 }
