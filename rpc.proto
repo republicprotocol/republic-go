@@ -68,6 +68,9 @@ service XingNode {
   // Send a ResultFragment to some target Node, where the ResultFragment is the
   // result of a computation on two OrderFragments.
   rpc SendResultFragment (ResultFragment) returns (Nothing);
+
+  // Send a TradingAtom to some target Node.
+  rpc SendTradingAtom (TradingAtom) returns (TradingAtom);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
@@ -111,4 +114,12 @@ message ResultFragment {
   bytes priceShare = 10;
   bytes maxVolumeShare = 11;
   bytes minVolumeShare = 12;
+}
+
+// A TradingAtom message is the network representation of a atom.TradingAtom
+// and the metadata needed to distribute it through the network.
+message TradingAtom {
+  // Network data.
+  Address to = 1;
+  MultiAddress from = 2;
 }
