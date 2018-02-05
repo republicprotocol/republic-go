@@ -42,9 +42,9 @@ func SendResultFragmentToTarget(to identity.MultiAddress, resultFragment compute
 	return err
 }
 
-// SendTradingToTarget using a new grpc.ClientConn to make a
-// SendTradingToTarget RPC to a targetMultiAddress.
-func SendTradingToTarget(to identity.MultiAddress, tradingAtom struct{}, timeout time.Duration) error {
+// SendTradingAtomToTarget using a new grpc.ClientConn to make a
+// SendTradingAtomToTarget RPC to a targetMultiAddress.
+func SendTradingAtomToTarget(to identity.MultiAddress, tradingAtom struct{}, timeout time.Duration) error {
 	conn, err := Dial(to, timeout)
 	if err != nil {
 		return err

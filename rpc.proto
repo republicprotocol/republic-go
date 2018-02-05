@@ -41,7 +41,7 @@ service SwarmNode {
 
   // Find the MultiAddresses of peers closer to some target Node using a
   // frontier search.
-  rpc QueryCloserPeersOnFrontier (Query) returns (MultiAddresses);
+  rpc QueryCloserPeersOnFrontier (Query) returns (stream MultiAddresses);
 }
 
 // A Query message contains the Address of a Node that needs to be found and
