@@ -34,7 +34,7 @@ type Node struct {
 func NewNode(delegate Delegate, options Options) *Node {
 	return &Node{
 		Delegate: delegate,
-		Server:   grpc.NewServer(),
+		Server:   grpc.NewServer(grpc.ConnectionTimeout(options.Timeout)),
 		Options:  options,
 	}
 }
@@ -42,20 +42,12 @@ func NewNode(delegate Delegate, options Options) *Node {
 // Serve starts the gRPC server.
 func (node *Node) Serve() error {
 	rpc.RegisterXingNodeServer(node.Server, node)
-	host, err := node.MultiAddress().ValueForProtocol(identity.IP4Code)
-	if err != nil {
-		return err
-	}
-	port, err := node.MultiAddress().ValueForProtocol(identity.TCPCode)
-	if err != nil {
-		return err
-	}
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", host, port))
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", node.Options.Host, node.Options.Port))
 	if err != nil {
 		return err
 	}
 	if node.Options.Debug >= DebugLow {
-		log.Printf("Listening at %s:%s\n", host, port)
+		log.Printf("Listening at %s:%s\n", node.Options.Host, node.Options.Port)
 	}
 	return node.Server.Serve(listener)
 }
@@ -76,8 +68,8 @@ func (node *Node) Address() identity.Address {
 // SendOrderFragment to the Node. If the rpc.OrderFragment is not destined for
 // this Node then it will be forwarded on to the correct destination.
 func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
-	if node.Options.Debug >= DebugMedium {
-		log.Printf("SendOrderFragment received\n")
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("%v is receiving an order fragment...\n", node.Address())
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -96,7 +88,7 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
 			return nothing, val.Err
 		}
-		return nil, val.Err
+		return &rpc.Nothing{}, val.Err
 
 	case <-ctx.Done():
 		return &rpc.Nothing{}, ctx.Err()
@@ -106,8 +98,8 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 // SendResultFragment to the Node. If the rpc.ResultFragment is not destined
 // for this Node then it will be forwarded on to the correct destination.
 func (node *Node) SendResultFragment(ctx context.Context, resultFragment *rpc.ResultFragment) (*rpc.Nothing, error) {
-	if node.Options.Debug >= DebugMedium {
-		log.Printf("SendResultFragment received\n")
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("%v is receiving a result fragment...\n", node.Address())
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -142,7 +134,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Noth
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	deserializedOrderFragment, err := DeserializeOrderFragment(orderFragment)
+	deserializedOrderFragment, err := rpc.DeserializeOrderFragment(orderFragment)
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
@@ -150,7 +142,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Noth
 	// If the compute.OrderFragment needs to be forwarded.
 	if deserializedTo == node.Address() {
 		node.OnOrderFragmentForwarding(deserializedTo, deserializedFrom, deserializedOrderFragment)
-		return &rpc.Nothing{}, err
+		return &rpc.Nothing{}, nil
 	}
 
 	// Otherwise it has reached its destination.
@@ -167,7 +159,7 @@ func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.N
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	deserializedResultFragment, err := DeserializeResultragment(resultFragment)
+	deserializedResultFragment, err := rpc.DeserializeResultFragment(resultFragment)
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
@@ -175,7 +167,7 @@ func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.N
 	// If the compute.ResultFragment needs to be forwarded.
 	if deserializedTo == node.Address() {
 		node.OnResultFragmentForwarding(deserializedTo, deserializedFrom, deserializedResultFragment)
-		return &rpc.Nothing{}, err
+		return &rpc.Nothing{}, nil
 	}
 
 	// Otherwise it has reached its destination.

@@ -1,6 +1,10 @@
 package xing
 
-import identity "github.com/republicprotocol/go-identity"
+import (
+	"time"
+
+	"github.com/republicprotocol/go-identity"
+)
 
 // Constants for different options.
 const (
@@ -13,5 +17,12 @@ const (
 // Options that parameterize the behavior of Nodes.
 type Options struct {
 	Address identity.Address
-	Debug   int
+	Host    string
+	Port    string
+
+	Debug          int
+	Timeout        time.Duration
+	TimeoutStep    time.Duration
+	TimeoutRetries int
+	Concurrent     bool
 }
