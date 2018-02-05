@@ -307,4 +307,14 @@ var _ = Describe("Data serialization and deserialization", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 	})
+
+	Context("when using a trading atom", func() {
+		It("should be able to serialize and deserialize", func() {
+			tradingAtom := struct{}{}
+			rpcTradingAtom := rpc.SerializeTradingAtom(tradingAtom)
+			newTradingAtom, err := rpc.DeserializeTradingAtom(rpcTradingAtom)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(newTradingAtom).Should(Equal(tradingAtom))
+		})
+	})
 })
