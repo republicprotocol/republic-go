@@ -166,33 +166,19 @@ func Ping(to *network.Node, from *network.Node) error {
 	}
 
 	if target == nil {
-		multiAddresses, errs := rpc.QueryCloserPeersOnFrontierFromTarget(
+		multiAddresses, err := rpc.QueryCloserPeersOnFrontierFromTarget(
 			from.MultiAddress(),
 			from.MultiAddress(),
 			to.Address(),
 			DefaultOptionsTimeout,
 		)
-
-		streaming := true
-		for streaming {
-			select {
-			// Peers returned by the query will be added to the DHT.
-			case multiAddress, ok := <-multiAddresses:
-				if !ok {
-					streaming = false
-				} else if multiAddress.Address() == to.Address() {
-					target = &multiAddress
-					streaming = false
-				}
-
-			// Errors are not returned because it is reasonable that a
-			// bootstrap Node might be unavailable at this time.
-			case err, ok := <-errStream:
-				if !ok {
-					streaming = false
-				} else {
-					return err
-				}
+		if err != nil {
+			return err
+		}
+		for _, multiAddress := range multiAddresses {
+			if to.Address() == multiAddress.Address() {
+				target = &multiAddress
+				break
 			}
 		}
 	}
