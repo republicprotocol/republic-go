@@ -100,8 +100,8 @@ var _ = Describe("Bootstrapping", func() {
 	for _, topology := range []Topology{TopologyFull, TopologyLine, TopologyRing, TopologyStar} {
 		func(topology Topology) {
 			Context(fmt.Sprintf("when bootstrap nodes are configured in a %s topology.\n", topology), func() {
-				for _, numberOfBootstrapNodes := range []int{4, 8} {
-					for _, numberOfNodes := range []int{4, 8, 16, 32} {
+				for _, numberOfBootstrapNodes := range []int{2, 4, 8, 16} {
+					for _, numberOfNodes := range []int{4, 16, 64, 256} {
 						func(topology Topology, numberOfBootstrapNodes, numberOfNodes int) {
 							Context(fmt.Sprintf("with %d bootstrap nodes and %d swarm nodes.\n", numberOfBootstrapNodes, numberOfNodes), func() {
 								It("should be able to successfully ping between nodes", func() {
@@ -124,6 +124,8 @@ var _ = Describe("Bootstrapping", func() {
 										to, from := PickRandomNodes(swarmNodes)
 										if err := Ping(to, from); err == nil {
 											numberOfPings++
+										} else {
+											log.Println(err)
 										}
 									}
 									log.Printf("%v/%v successful pings", numberOfPings, numberOfNodes)

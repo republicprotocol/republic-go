@@ -3,6 +3,8 @@ package network_test
 import (
 	"fmt"
 	"math/rand"
+	"sync"
+	"time"
 
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-network"
@@ -195,4 +197,30 @@ func PickRandomNodes(nodes []*network.Node) (*network.Node, *network.Node) {
 		j = rand.Intn(len(nodes))
 	}
 	return nodes[i], nodes[j]
+}
+
+func ping(nodes []*network.Node, topology map[identity.Address][]*network.Node) error {
+	var wg sync.WaitGroup
+	wg.Add(len(nodes))
+
+	muError := new(sync.Mutex)
+	var globalError error = nil
+
+	for _, node := range nodes {
+		go func(node *network.Node) {
+			defer wg.Done()
+			peers := topology[node.DHT.Address]
+			for _, peer := range peers {
+				err := rpc.PingTarget(peer.MultiAddress(), node.MultiAddress(), time.Second)
+				if err != nil {
+					muError.Lock()
+					globalError = err
+					muError.Unlock()
+				}
+			}
+		}(node)
+	}
+
+	wg.Wait()
+	return globalError
 }

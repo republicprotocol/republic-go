@@ -182,11 +182,11 @@ func (node *Node) QueryCloserPeers(ctx context.Context, query *rpc.Query) (*rpc.
 // return rpc.MultiAddresses that are further away from the target than the
 // Node itself. The rpc.MultiAddresses returned are not guaranteed to provide
 // healthy connections and should be pinged.
-func (node *Node) QueryCloserPeersOnFrontier(ctx context.Context, query *rpc.Query, stream *rpc.SwarmNode_QueryCloserPeersOnFrontierStream) error {
+func (node *Node) QueryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmNode_QueryCloserPeersOnFrontierServer) error {
 	if node.Options.Debug >= DebugHigh {
 		log.Printf("%v is querying for closer peers on frontier...\n", node.Address())
 	}
-	if err := ctx.Err(); err != nil {
+	if err := stream.Context().Err(); err != nil {
 		return err
 	}
 
@@ -199,8 +199,8 @@ func (node *Node) QueryCloserPeersOnFrontier(ctx context.Context, query *rpc.Que
 		case val := <-wait:
 			return val.Err
 
-		case <-ctx.Done():
-			return ctx.Err()
+		case <-stream.Context().Done():
+			return stream.Context().Err()
 		}
 	}
 }
@@ -241,15 +241,19 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 	return rpc.SerializeMultiAddresses(peersCloserToTarget), node.updatePeer(query.From)
 }
 
-func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream *rpc.SwarmNode_QueryCloserPeersOnFrontierStream) error {
+func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmNode_QueryCloserPeersOnFrontierServer) error {
 
 	// Get the target identity.Address for which this Node is searching for
 	// peers.
 	target := identity.Address(query.Query.Address)
 	peers := node.DHT.MultiAddresses()
 
+	// Create the frontier and a closure map.
+	frontier := make(identity.MultiAddresses, 0, len(peers))
+	black := make(map[identity.Address]struct{})
+	white := make(map[identity.Address]struct{})
+
 	// Filter away peers that are further from the target than this Node.
-	peersCloserToTarget := make(identity.MultiAddresses, 0, len(peers))
 	for _, peer := range peers {
 		closer, err := identity.Closer(peer.Address(), node.Address(), target)
 		if err != nil {
@@ -259,14 +263,10 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream *rpc.Swarm
 			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
 				return err
 			}
-			peersCloserToTarget = append(peersCloserToTarget, peer)
+			frontier = append(frontier, peer)
 		}
 	}
 
-	// Create the frontier and a closure map.
-	frontier := append(identity.MultiAddresses{}, peersCloserToTarget...)
-	black := make(map[identity.Address]struct{})
-	white := make(map[identity.Address]struct{})
 	// Immediately close the Node that is running this query and mark all peers
 	// in the frontier as seen.
 	black[node.Address()] = struct{}{}
@@ -288,6 +288,9 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream *rpc.Swarm
 		}
 		candidates, err := rpc.QueryCloserPeersFromTarget(peer, node.MultiAddress(), target, time.Second)
 		if err != nil {
+			if node.Options.Debug >= DebugLow {
+				log.Println(err)
+			}
 			continue
 		}
 
@@ -301,7 +304,7 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream *rpc.Swarm
 			}
 			// Expand the frontier by candidates that have not already been
 			// explored, and store them in a persistent list of close peers.
-			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
+			if err := stream.Send(rpc.SerializeMultiAddress(candidate)); err != nil {
 				return err
 			}
 			frontier = append(frontier, candidate)
