@@ -2,6 +2,7 @@ package rpc_test
 
 import (
 	"math/big"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -11,6 +12,8 @@ import (
 	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-sss"
 )
+
+const defaultTimeout = time.Second
 
 type mockServer struct {
 	identity.MultiAddress
@@ -94,6 +97,7 @@ var _ = Describe("Data serialization and deserialization", func() {
 	})
 
 	Context("when using an order fragment", func() {
+
 		It("should be able to serialize and deserialize", func() {
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			orderFragment := compute.NewOrderFragment([]byte("orderID"), compute.OrderTypeIBBO, compute.OrderParityBuy,

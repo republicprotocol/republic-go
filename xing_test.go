@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"net"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -28,10 +27,10 @@ var _ = Describe("Xing Overlay Network", func() {
 	var server *grpc.Server
 	var rpcServer mockServer
 	var rpcClient mockClient
-	var defaultTimeout = time.Second
+
 	var orderFragment *compute.OrderFragment
 	var resultFragment *compute.ResultFragment
-	var badTargetAddress identity.MultiAddress
+	var badServerAddress identity.MultiAddress
 	var err error
 
 	createServe := func() {
@@ -59,7 +58,7 @@ var _ = Describe("Xing Overlay Network", func() {
 		resultFragment = compute.NewResultFragment([]byte("butOrderID"), []byte("sellOrderID"),
 			[]byte("butOrderFragmentID"), []byte("sellOrderFragmentID"),
 			sssShare, sssShare, sssShare, sssShare, sssShare)
-		badTargetAddress, err = identity.NewMultiAddressFromString("/ip4/192.168.0.1/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
+		badServerAddress, err = identity.NewMultiAddressFromString("/ip4/192.168.0.1/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
 		Ω(err).ShouldNot(HaveOccurred())
 	}
 
@@ -84,7 +83,7 @@ var _ = Describe("Xing Overlay Network", func() {
 		})
 
 		It("should return an error for bad multi-addresses", func() {
-			err = rpc.SendOrderFragmentToTarget(badTargetAddress, rpcClient.MultiAddress, orderFragment, defaultTimeout)
+			err = rpc.SendOrderFragmentToTarget(badServerAddress, rpcClient.MultiAddress, orderFragment, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 
@@ -109,7 +108,7 @@ var _ = Describe("Xing Overlay Network", func() {
 		})
 
 		It("should return an error for bad multi-addresses", func() {
-			err = rpc.SendResultFragmentToTarget(badTargetAddress, rpcClient.MultiAddress, resultFragment, defaultTimeout)
+			err = rpc.SendResultFragmentToTarget(badServerAddress, rpcClient.MultiAddress, resultFragment, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 

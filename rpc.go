@@ -89,6 +89,8 @@ func DeserializeMultiAddresses(multiAddresses *MultiAddresses) (identity.MultiAd
 // representation.
 func SerializeOrderFragment(input *compute.OrderFragment) *OrderFragment {
 	orderFragment := &OrderFragment{
+		To:          &Address{Address: ""},
+		From:        &MultiAddress{Multi: ""},
 		Id:          []byte(input.ID),
 		OrderId:     []byte(input.OrderID),
 		OrderType:   int64(input.OrderType),
@@ -141,6 +143,8 @@ func DeserializeOrderFragment(input *OrderFragment) (*compute.OrderFragment, err
 // representation.
 func SerializeResultFragment(input *compute.ResultFragment) *ResultFragment {
 	resultFragment := &ResultFragment{
+		To:                  &Address{Address: ""},
+		From:                &MultiAddress{Multi: ""},
 		Id:                  []byte(input.ID),
 		BuyOrderId:          []byte(input.BuyOrderID),
 		SellOrderId:         []byte(input.SellOrderID),
