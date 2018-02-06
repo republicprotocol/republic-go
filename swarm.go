@@ -52,16 +52,10 @@ func QueryCloserPeersFromTarget(to identity.MultiAddress, from identity.MultiAdd
 
 // QueryCloserPeersFromTarget using a new grpc.ClientConn to make a
 // QueryCloserPeers RPC to a targetMultiAddress.
-func QueryCloserPeersOnFrontierFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, timeout time.Duration) (chan identity.MultiAddress, chan error) {
-	multiAddressChan := make (chan identity.MultiAddress)
-	errChan := make(chan error, 1)
-
+func QueryCloserPeersOnFrontierFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, timeout time.Duration) (identity.MultiAddresses, error) {
 	conn, err := Dial(to, timeout)
 	if err != nil {
-		errChan <- err
-		close(multiAddressChan)
-		close(errChan)
-		return multiAddressChan,errChan
+		return identity.MultiAddresses{}, err
 	}
 	defer conn.Close()
 	client := NewSwarmNodeClient(conn)
@@ -72,32 +66,25 @@ func QueryCloserPeersOnFrontierFromTarget(to identity.MultiAddress, from identit
 		From:  SerializeMultiAddress(from),
 		Query: SerializeAddress(query),
 	}
-	multiAddresses, err := client.QueryCloserPeersOnFrontier(ctx, rpcQuery, grpc.FailFast(false))
+	stream, err := client.QueryCloserPeersOnFrontier(ctx, rpcQuery, grpc.FailFast(false))
 	if err != nil {
-		errChan <- err
-		close(multiAddressChan)
-		close(errChan)
-		return multiAddressChan,errChan
+		return identity.MultiAddresses{}, err
 	}
-	go func(){
-		defer close(multiAddressChan)
-		defer close(errChan)
-		for {
-			multiAddress, err := multiAddresses.Recv()
-			if err == io.EOF{
-				break
-			}
-			if err!= nil {
-				errChan <- err
-				continue
-			}
-			deserializedMultiAddress, err  := DeserializeMultiAddress(multiAddress)
-			if err!= nil {
-				errChan <- err
-				continue
-			}
-			multiAddressChan <- deserializedMultiAddress
+
+	multiAddresses := make(identity.MultiAddresses, 0)
+	for {
+		multiAddress, err := stream.Recv()
+		if err == io.EOF{
+			break
 		}
-	}()
-	return multiAddressChan, errChan
+		if err != nil {
+			return multiAddresses, err
+		}
+		deserializedMultiAddress, err  := DeserializeMultiAddress(multiAddress)
+		if err!= nil {
+			return multiAddresses, err
+		}
+		multiAddresses = append(multiAddresses, deserializedMultiAddress)
+	}
+	return multiAddresses, nil
 }
