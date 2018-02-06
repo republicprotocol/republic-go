@@ -129,7 +129,7 @@ var _ = Describe("Bootstrapping", func() {
 										}
 									}
 									log.Printf("%v/%v successful pings", numberOfPings, numberOfNodes)
-									Ω(numberOfPings).Should(BeNumerically(">", 2*numberOfNodes/3))
+									Ω(numberOfPings).Should(BeNumerically(">=", 2*numberOfNodes/3))
 								})
 							})
 						}(topology, numberOfBootstrapNodes, numberOfNodes)
