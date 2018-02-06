@@ -1,4 +1,4 @@
-package x_test
+package xing_test
 
 import (
 	. "github.com/onsi/ginkgo"
