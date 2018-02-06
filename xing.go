@@ -10,7 +10,7 @@ import (
 )
 
 // SendOrderFragmentToTarget using a new grpc.ClientConn to make a
-// SendOrderFragment RPC to a targetMultiAddress.
+// SendOrderFragment RPC to a target identity.MultiAddress.
 func SendOrderFragmentToTarget(to identity.MultiAddress, orderFragment compute.OrderFragment, timeout time.Duration) error {
 	conn, err := Dial(to, timeout)
 	if err != nil {
@@ -26,7 +26,7 @@ func SendOrderFragmentToTarget(to identity.MultiAddress, orderFragment compute.O
 }
 
 // SendResultFragmentToTarget using a new grpc.ClientConn to make a
-// SendResultFragment RPC to a targetMultiAddress.
+// SendResultFragment RPC to a target identity.MultiAddress.
 func SendResultFragmentToTarget(to identity.MultiAddress, resultFragment compute.ResultFragment, timeout time.Duration) error {
 	conn, err := Dial(to, timeout)
 	if err != nil {
@@ -39,22 +39,5 @@ func SendResultFragmentToTarget(to identity.MultiAddress, resultFragment compute
 	defer cancel()
 
 	_, err = client.SendResultFragment(ctx, SerializeResultFragment(&resultFragment), grpc.FailFast(false))
-	return err
-}
-
-// SendTradingAtomToTarget using a new grpc.ClientConn to make a
-// SendTradingAtomToTarget RPC to a targetMultiAddress.
-func SendTradingAtomToTarget(to identity.MultiAddress, tradingAtom struct{}, timeout time.Duration) error {
-	conn, err := Dial(to, timeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	client := NewXingNodeClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	_, err = client.SendTradingAtom(ctx, SerializeTradingAtom(struct{}{}), grpc.FailFast(false))
 	return err
 }
