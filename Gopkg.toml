@@ -31,3 +31,6 @@
 [[constraint]]
   branch = "master"
   name = "github.com/republicprotocol/go-identity"
+
+[prune]
+  go-tests = true
