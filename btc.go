@@ -14,6 +14,12 @@ type initiateCmd struct {
 	amount  btcutil.Amount
 }
 
+type redeemCmd struct {
+	contract   []byte
+	contractTx *wire.MsgTx
+	secret     []byte
+}
+
 
 func Open(participantAddress string, value float64, chain string) (err error, showUsage bool) {
 	var chainParams *chaincfg.Params ;
@@ -69,12 +75,80 @@ func Open(participantAddress string, value float64, chain string) (err error, sh
 	return err, false
 }
 
-func Close() {
+func Close(contract string, contractTx string, secret []byte, chain string) {
+	var chainParams *chaincfg.Params ;
+	if (chain == "testnet"){
+		chainParams = &chaincfg.TestNet3Params
+	} else {
+		chainParams = &chaincfg.MainNetParams
+	}
 
+	contract, err := hex.DecodeString(contract)
+		if err != nil {
+			return fmt.Errorf("failed to decode contract: %v", err), true
+		}
+
+	contractTxBytes, err := hex.DecodeString(contractTx)
+		if err != nil {
+			return fmt.Errorf("failed to decode contract transaction: %v", err), true
+		}
+
+	var contractTx wire.MsgTx
+		err = contractTx.Deserialize(bytes.NewReader(contractTxBytes))
+		if err != nil {
+			return fmt.Errorf("failed to decode contract transaction: %v", err), true
+		}
+
+	secret, err := hex.DecodeString(secret)
+		if err != nil {
+			return fmt.Errorf("failed to decode secret: %v", err), true
+		}
+
+	cmd = &redeemCmd{contract: contract, contractTx: &contractTx, secret: secret}
+
+	connect, err := normalizeAddress(*connectFlag, walletPort(chainParams))
+	if err != nil {
+		return fmt.Errorf("wallet server address: %v", err), true
+	}
+
+	connConfig := &rpc.ConnConfig{
+		Host:         connect,
+		User:         *rpcuserFlag,
+		Pass:         *rpcpassFlag,
+		DisableTLS:   true,
+		HTTPPostMode: true,
+	}
+
+	client, err := rpc.New(connConfig, nil)
+	if err != nil {
+		return fmt.Errorf("rpc connect: %v", err), false
+	}
+	defer func() {
+		client.Shutdown()
+		client.WaitForShutdown()
+	}()
+
+	err = cmd.runCommand(client)
+	return err, false
 }
 
 func Expire() {
+	contract, err := hex.DecodeString(args[1])
+		if err != nil {
+			return fmt.Errorf("failed to decode contract: %v", err), true
+		}
 
+		contractTxBytes, err := hex.DecodeString(args[2])
+		if err != nil {
+			return fmt.Errorf("failed to decode contract transaction: %v", err), true
+		}
+		var contractTx wire.MsgTx
+		err = contractTx.Deserialize(bytes.NewReader(contractTxBytes))
+		if err != nil {
+			return fmt.Errorf("failed to decode contract transaction: %v", err), true
+		}
+
+		cmd = &refundCmd{contract: contract, contractTx: &contractTx}
 }
 
 func Validate() {
@@ -82,7 +156,7 @@ func Validate() {
 }
 
 func RetrieveSecretKey() {
-	// TODO: Retreive key from BTC chain
+	
 }
 
 func normalizeAddress(addr string, defaultPort string) (hostport string, err error) {
