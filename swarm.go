@@ -50,8 +50,8 @@ func QueryCloserPeersFromTarget(to identity.MultiAddress, from identity.MultiAdd
 	return DeserializeMultiAddresses(multiAddresses)
 }
 
-// QueryCloserPeersFromTarget using a new grpc.ClientConn to make a
-// QueryCloserPeers RPC to a targetMultiAddress.
+// QueryCloserPeersOnFrontierFromTarget using a new grpc.ClientConn to make a
+// QueryCloserPeersOnFrontier RPC to a targetMultiAddress.
 func QueryCloserPeersOnFrontierFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, timeout time.Duration) (identity.MultiAddresses, error) {
 	conn, err := Dial(to, timeout)
 	if err != nil {

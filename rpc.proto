@@ -68,9 +68,6 @@ service XingNode {
   // Send a ResultFragment to some target Node, where the ResultFragment is the
   // result of a computation on two OrderFragments.
   rpc SendResultFragment (ResultFragment) returns (Nothing);
-
-  // Send a TradingAtom to some target Node.
-  rpc SendTradingAtom (TradingAtom) returns (TradingAtom);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
@@ -116,10 +113,29 @@ message ResultFragment {
   bytes minVolumeShare = 12;
 }
 
-// A TradingAtom message is the network representation of a atom.TradingAtom
-// and the metadata needed to distribute it through the network.
-message TradingAtom {
+/**
+ * Terminal definitions.
+ */
+
+// TerminalNode services implement the execution of atomic swaps.
+service TerminalNode {
+  
+  // Send an Atom to some target Node.
+  rpc SendAtom (Atom) returns (Atom);
+}
+
+// An Atom message is the network representation of a atom.Atom and the
+// metadata needed to distribute it through the network.
+message Atom {
   // Network data.
   Address to = 1;
   MultiAddress from = 2;
+
+  // Private data.
+  bytes id = 3;
+  bytes lock = 4;
+  string fst = 5;
+  string fstAddress = 6;
+  string snd = 7;
+  string sndAddress = 8;
 }

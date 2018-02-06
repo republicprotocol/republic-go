@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	atom "github.com/republicprotocol/go-atom"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-rpc"
@@ -310,11 +311,18 @@ var _ = Describe("Data serialization and deserialization", func() {
 
 	Context("when using a trading atom", func() {
 		It("should be able to serialize and deserialize", func() {
-			tradingAtom := struct{}{}
-			rpcTradingAtom := rpc.SerializeTradingAtom(tradingAtom)
-			newTradingAtom, err := rpc.DeserializeTradingAtom(rpcTradingAtom)
+			a := atom.Atom{
+				ID:         []byte{},
+				Swap:       []byte{},
+				Fst:        atom.LedgerBitcoin,
+				FstAddress: "0x",
+				Snd:        atom.LedgerEthereum,
+				SndAddress: "0x",
+			}
+			rpcAtom := rpc.SerializeAtom(a)
+			newAtom, err := rpc.DeserializeAtom(a)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(newTradingAtom).Should(Equal(tradingAtom))
+			Ω(newAtom).Should(Equal(rpcAtom))
 		})
 	})
 })

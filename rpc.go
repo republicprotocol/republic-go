@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/republicprotocol/go-atom"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-sss"
@@ -190,15 +191,27 @@ func DeserializeResultFragment(input *ResultFragment) (*compute.ResultFragment, 
 	return resultFragment, nil
 }
 
-// SerializeTradingAtom converts an atomic.TradingAtom into its network
-// representation.
-func SerializeTradingAtom(tradingAtom struct{}) *TradingAtom {
-	return &TradingAtom{}
+// SerializeAtom converts an atomic.Atom into its network representation.
+func SerializeAtom(a atom.Atom) *Atom {
+	return &Atom{
+		Id:         a.ID,
+		Lock:       a.Lock,
+		Fst:        string(a.Fst),
+		FstAddress: string(a.FstAddress),
+		Snd:        string(a.Snd),
+		SndAddress: string(a.SndAddress),
+	}
 }
 
-// DeserializeTradingAtom converts a network representation of a TradingAtom
-// into an atomic.TradingAtom. An error is returned if the network
-// representation is malformed.
-func DeserializeTradingAtom(tradingAtom *TradingAtom) (struct{}, error) {
-	return struct{}{}, nil
+// DeserializeAtom converts a network representation of an Atom into an
+// atom.Atom. An error is returned if the network representation is malformed.
+func DeserializeAtom(a *Atom) (atom.Atom, error) {
+	return atom.Atom{
+		ID:         a.Id,
+		Lock:       a.Lock,
+		Fst:        atom.Ledger(a.Fst),
+		FstAddress: atom.LedgerAddress(a.FstAddress),
+		Snd:        atom.Ledger(a.Snd),
+		SndAddress: atom.LedgerAddress(a.SndAddress),
+	}, nil
 }
