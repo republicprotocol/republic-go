@@ -20,6 +20,20 @@ type redeemCmd struct {
 	secret     []byte
 }
 
+type refundCmd struct {
+	contract   []byte
+	contractTx *wire.MsgTx
+}
+
+type extractSecretCmd struct {
+	redemptionTx *wire.MsgTx
+	secretHash   []byte
+}
+
+type auditContractCmd struct {
+	contract   []byte
+	contractTx *wire.MsgTx
+}
 
 func Open(participantAddress string, value float64, chain string) (err error, showUsage bool) {
 	var chainParams *chaincfg.Params ;
@@ -132,13 +146,20 @@ func Close(contract string, contractTx string, secret []byte, chain string) {
 	return err, false
 }
 
-func Expire() {
-	contract, err := hex.DecodeString(args[1])
+func Expire(contract string, contractTx string, chain string) {
+	var chainParams *chaincfg.Params ;
+	if (chain == "testnet"){
+		chainParams = &chaincfg.TestNet3Params
+	} else {
+		chainParams = &chaincfg.MainNetParams
+	}
+	
+	contract, err := hex.DecodeString(contract)
 		if err != nil {
 			return fmt.Errorf("failed to decode contract: %v", err), true
 		}
 
-		contractTxBytes, err := hex.DecodeString(args[2])
+		contractTxBytes, err := hex.DecodeString(contractTx)
 		if err != nil {
 			return fmt.Errorf("failed to decode contract transaction: %v", err), true
 		}
@@ -149,14 +170,131 @@ func Expire() {
 		}
 
 		cmd = &refundCmd{contract: contract, contractTx: &contractTx}
+
+		connect, err := normalizeAddress(*connectFlag, walletPort(chainParams))
+	if err != nil {
+		return fmt.Errorf("wallet server address: %v", err), true
+	}
+
+	connConfig := &rpc.ConnConfig{
+		Host:         connect,
+		User:         *rpcuserFlag,
+		Pass:         *rpcpassFlag,
+		DisableTLS:   true,
+		HTTPPostMode: true,
+	}
+
+	client, err := rpc.New(connConfig, nil)
+	if err != nil {
+		return fmt.Errorf("rpc connect: %v", err), false
+	}
+	defer func() {
+		client.Shutdown()
+		client.WaitForShutdown()
+	}()
+
+	err = cmd.runCommand(client)
+	return err, false
 }
 
-func Validate() {
+func Validate(contract string, contractTx string, chain string) {
+	var chainParams *chaincfg.Params ;
+	if (chain == "testnet"){
+		chainParams = &chaincfg.TestNet3Params
+	} else {
+		chainParams = &chaincfg.MainNetParams
+	}
 
-}
+	contract, err := hex.DecodeString(contract)
+		if err != nil {
+			return fmt.Errorf("failed to decode contract: %v", err), true
+		}
 
-func RetrieveSecretKey() {
+		contractTxBytes, err := hex.DecodeString(contractTx)
+		if err != nil {
+			return fmt.Errorf("failed to decode contract transaction: %v", err), true
+		}
+		var contractTx wire.MsgTx
+		err = contractTx.Deserialize(bytes.NewReader(contractTxBytes))
+		if err != nil {
+			return fmt.Errorf("failed to decode contract transaction: %v", err), true
+		}
+
+		cmd = &auditContractCmd{contract: contract, contractTx: &contractTx}
+		connect, err := normalizeAddress(*connectFlag, walletPort(chainParams))
+		if err != nil {
+			return fmt.Errorf("wallet server address: %v", err), true
+		}
 	
+		connConfig := &rpc.ConnConfig{
+			Host:         connect,
+			User:         *rpcuserFlag,
+			Pass:         *rpcpassFlag,
+			DisableTLS:   true,
+			HTTPPostMode: true,
+		}
+	
+		client, err := rpc.New(connConfig, nil)
+		if err != nil {
+			return fmt.Errorf("rpc connect: %v", err), false
+		}
+		defer func() {
+			client.Shutdown()
+			client.WaitForShutdown()
+		}()
+	
+		err = cmd.runCommand(client)
+		return err, false
+}
+
+func RetrieveSecretKey(redemptionTx string, secretHash []byte, chain string) {
+	var chainParams *chaincfg.Params ;
+	if (chain == "testnet"){
+		chainParams = &chaincfg.TestNet3Params
+	} else {
+		chainParams = &chaincfg.MainNetParams
+	}
+
+	redemptionTxBytes, err := hex.DecodeString(redemptionTx)
+		if err != nil {
+			return fmt.Errorf("failed to decode redemption transaction: %v", err), true
+		}
+		var redemptionTx wire.MsgTx
+		err = redemptionTx.Deserialize(bytes.NewReader(redemptionTxBytes))
+		if err != nil {
+			return fmt.Errorf("failed to decode redemption transaction: %v", err), true
+		}
+
+		if len(secretHash) != ripemd160.Size {
+			return errors.New("secret hash has wrong size"), true
+		}
+
+		cmd = &extractSecretCmd{redemptionTx: &redemptionTx, secretHash: secretHash}
+
+		connect, err := normalizeAddress(*connectFlag, walletPort(chainParams))
+		if err != nil {
+			return fmt.Errorf("wallet server address: %v", err), true
+		}
+	
+		connConfig := &rpc.ConnConfig{
+			Host:         connect,
+			User:         *rpcuserFlag,
+			Pass:         *rpcpassFlag,
+			DisableTLS:   true,
+			HTTPPostMode: true,
+		}
+	
+		client, err := rpc.New(connConfig, nil)
+		if err != nil {
+			return fmt.Errorf("rpc connect: %v", err), false
+		}
+		defer func() {
+			client.Shutdown()
+			client.WaitForShutdown()
+		}()
+	
+		err = cmd.runCommand(client)
+		return err, false
 }
 
 func normalizeAddress(addr string, defaultPort string) (hostport string, err error) {
