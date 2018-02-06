@@ -1,6 +1,8 @@
 package network
 
 import (
+	"time"
+
 	"github.com/republicprotocol/go-identity"
 )
 
@@ -14,10 +16,16 @@ const (
 
 // Options that parameterize the behavior of Nodes.
 type Options struct {
+	Host                    string
+	Port                    string
 	MultiAddress            identity.MultiAddress
 	BootstrapMultiAddresses identity.MultiAddresses
 
 	Debug           int
 	Alpha           int
 	MaxBucketLength int
+	Timeout         time.Duration
+	TimeoutStep     time.Duration
+	TimeoutRetries  int
+	Concurrent      bool
 }

@@ -11,24 +11,62 @@ import (
 	"github.com/republicprotocol/go-rpc"
 )
 
-func generateNodes(numberOfNodes int, delegate network.Delegate) ([]*network.Node, error) {
+type Topology string
+
+const (
+	TopologyFull = "full"
+	TopologyLine = "line"
+	TopologyRing = "ring"
+	TopologyStar = "star"
+)
+
+const (
+	NodePortBootstrap = 3000
+	NodePortSwarm     = 4000
+)
+
+func GenerateBootstrapTopology(topology Topology, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
+	var err error
+	var nodes []*network.Node
+	var routingTable map[identity.Address][]*network.Node
+
+	switch topology {
+	case TopologyFull:
+		nodes, routingTable, err = GenerateFullTopology(NodePortBootstrap, numberOfNodes, delegate)
+	case TopologyStar:
+		nodes, routingTable, err = GenerateStarTopology(NodePortBootstrap, numberOfNodes, delegate)
+	case TopologyLine:
+		nodes, routingTable, err = GenerateLineTopology(NodePortBootstrap, numberOfNodes, delegate)
+	case TopologyRing:
+		nodes, routingTable, err = GenerateRingTopology(NodePortBootstrap, numberOfNodes, delegate)
+	}
+	return nodes, routingTable, err
+}
+
+func GenerateNodes(port, numberOfNodes int, delegate network.Delegate) ([]*network.Node, error) {
 	nodes := make([]*network.Node, numberOfNodes)
-	for i := 0; i < numberOfNodes; i++ {
+	for i := range nodes {
 		keyPair, err := identity.NewKeyPair()
 		if err != nil {
 			return nil, err
 		}
-		multi, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 3000+i, keyPair.Address()))
+		multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", port+i, keyPair.Address()))
 		if err != nil {
 			return nil, err
 		}
 		node := network.NewNode(
 			delegate,
 			network.Options{
-				MultiAddress:    multi,
-				Debug:           network.DebugOff,
-				Alpha:           3,
-				MaxBucketLength: 100,
+				Host:            "127.0.0.1",
+				Port:            fmt.Sprintf("%d", port+i),
+				MultiAddress:    multiAddress,
+				Debug:           DefaultOptionsDebug,
+				Alpha:           DefaultOptionsAlpha,
+				MaxBucketLength: DefaultOptionsMaxBucketLength,
+				Timeout:         DefaultOptionsTimeout,
+				TimeoutStep:     DefaultOptionsTimeoutStep,
+				TimeoutRetries:  DefaultOptionsTimeoutRetries,
+				Concurrent:      DefaultOptionsConcurrent,
 			},
 		)
 		nodes[i] = node
@@ -36,101 +74,136 @@ func generateNodes(numberOfNodes int, delegate network.Delegate) ([]*network.Nod
 	return nodes, nil
 }
 
-func generateFullyConnectedTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
-	nodes, err := generateNodes(numberOfNodes, delegate)
+func GenerateFullTopology(port, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
+	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	topology := map[identity.Address][]*network.Node{}
+	routingTable := map[identity.Address][]*network.Node{}
 	for i, node := range nodes {
-		topology[node.DHT.Address] = []*network.Node{}
+		routingTable[node.DHT.Address] = []*network.Node{}
 		for j, peer := range nodes {
 			if i == j {
 				continue
 			}
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], peer)
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], peer)
 		}
 	}
-	return nodes, topology, nil
+	return nodes, routingTable, nil
 }
 
-func generateStarTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
-	nodes, err := generateNodes(numberOfNodes, delegate)
+func GenerateLineTopology(port, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
+	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	topology := map[identity.Address][]*network.Node{}
+	routingTable := map[identity.Address][]*network.Node{}
 	for i, node := range nodes {
-		topology[node.DHT.Address] = []*network.Node{}
+		routingTable[node.DHT.Address] = []*network.Node{}
+		if i == 0 {
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i+1])
+		} else if i == len(nodes)-1 {
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i-1])
+		} else {
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i+1])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i-1])
+		}
+	}
+	return nodes, routingTable, nil
+}
+
+func GenerateRingTopology(port, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
+	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
+	if err != nil {
+		return nil, nil, err
+	}
+	routingTable := map[identity.Address][]*network.Node{}
+	for i, node := range nodes {
+		routingTable[node.DHT.Address] = []*network.Node{}
+		if i == 0 {
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i+1])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[len(nodes)-1])
+		} else if i == len(nodes)-1 {
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i-1])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[0])
+		} else {
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i+1])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i-1])
+		}
+	}
+	return nodes, routingTable, nil
+}
+
+func GenerateStarTopology(port, numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
+	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
+	if err != nil {
+		return nil, nil, err
+	}
+	routingTable := map[identity.Address][]*network.Node{}
+	for i, node := range nodes {
+		routingTable[node.DHT.Address] = []*network.Node{}
 		if i == 0 {
 			for j, peer := range nodes {
 				if i == j {
 					continue
 				}
-				topology[node.DHT.Address] = append(topology[node.DHT.Address], peer)
+				routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], peer)
 			}
 		} else {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[0])
+			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[0])
 		}
 	}
-	return nodes, topology, nil
+	return nodes, routingTable, nil
 }
 
-func generateLineTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
-	nodes, err := generateNodes(numberOfNodes, delegate)
+func Ping(to *network.Node, from *network.Node) error {
+	var target *identity.MultiAddress
+
+	multiAddress, err := from.DHT.FindMultiAddress(to.Address())
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
-	topology := map[identity.Address][]*network.Node{}
-	for i, node := range nodes {
-		topology[node.DHT.Address] = []*network.Node{}
-		if i == 0 {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
-		} else if i == len(nodes)-1 {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
-		} else {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
+	if multiAddress != nil {
+		target = multiAddress
+	}
+
+	if target == nil {
+		multiAddresses, err := rpc.QueryCloserPeersOnFrontierFromTarget(
+			from.MultiAddress(),
+			from.MultiAddress(),
+			to.Address(),
+			DefaultOptionsTimeout,
+		)
+		if err != nil {
+			return err
+		}
+		for _, multiAddress := range multiAddresses {
+			if to.Address() == multiAddress.Address() {
+				target = &multiAddress
+				break
+			}
 		}
 	}
-	return nodes, topology, nil
+	if target != nil {
+		return rpc.PingTarget(*target, from.MultiAddress(), DefaultOptionsTimeout)
+	}
+	return fmt.Errorf("ping error: %v could not find %v", from.Address(), to.Address())
 }
 
-func generateRingTopology(numberOfNodes int, delegate network.Delegate) ([]*network.Node, map[identity.Address][]*network.Node, error) {
-	nodes, err := generateNodes(numberOfNodes, delegate)
-	if err != nil {
-		return nil, nil, err
+func PickRandomNodes(nodes []*network.Node) (*network.Node, *network.Node) {
+	i := rand.Intn(len(nodes))
+	j := rand.Intn(len(nodes))
+	for i == j {
+		j = rand.Intn(len(nodes))
 	}
-	topology := map[identity.Address][]*network.Node{}
-	for i, node := range nodes {
-		topology[node.DHT.Address] = []*network.Node{}
-		if i == 0 {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[len(nodes)-1])
-		} else if i == len(nodes)-1 {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[0])
-		} else {
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i+1])
-			topology[node.DHT.Address] = append(topology[node.DHT.Address], nodes[i-1])
-		}
-	}
-	return nodes, topology, nil
-}
-
-func randomNodes(nodes []*network.Node) (*network.Node, *network.Node) {
-	left := rand.Intn(len(nodes))
-	right := rand.Intn(len(nodes))
-	for left == right {
-		right = rand.Intn(len(nodes))
-	}
-	return nodes[left], nodes[right]
+	return nodes[i], nodes[j]
 }
 
 func ping(nodes []*network.Node, topology map[identity.Address][]*network.Node) error {
 	var wg sync.WaitGroup
 	wg.Add(len(nodes))
-	var muError *sync.Mutex
+
+	muError := new(sync.Mutex)
 	var globalError error = nil
 
 	for _, node := range nodes {
@@ -141,47 +214,8 @@ func ping(nodes []*network.Node, topology map[identity.Address][]*network.Node) 
 				err := rpc.PingTarget(peer.MultiAddress(), node.MultiAddress(), time.Second)
 				if err != nil {
 					muError.Lock()
-					defer muError.Unlock()
 					globalError = err
-				}
-			}
-		}(node)
-	}
-
-	wg.Wait()
-	return globalError
-}
-
-func peers(nodes []*network.Node, topology map[identity.Address][]*network.Node) error {
-	var wg sync.WaitGroup
-	wg.Add(len(nodes))
-	var muError *sync.Mutex
-	var globalError error = nil
-
-	for _, node := range nodes {
-		go func(node *network.Node) {
-			defer wg.Done()
-			peers := topology[node.DHT.Address]
-			connectedPeers, err := rpc.GetPeersFromTarget(node.MultiAddress(), identity.MultiAddress{}, time.Second)
-			if err != nil {
-				muError.Lock()
-				defer muError.Unlock()
-				globalError = err
-			}
-			for _, peer := range peers {
-				connected := false
-				for _, connectedPeer := range connectedPeers {
-					if peer.MultiAddress().String() == connectedPeer.String() {
-						connected = true
-					}
-				}
-				if !connected {
-					if err != nil {
-						muError.Lock()
-						defer muError.Unlock()
-						globalError = fmt.Errorf("%s should be connected to %s", node.MultiAddress().String(), peer.MultiAddress().String())
-					}
-					return
+					muError.Unlock()
 				}
 			}
 		}(node)

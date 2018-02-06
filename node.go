@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"sort"
-	"sync"
 	"time"
 
 	"github.com/republicprotocol/go-dht"
@@ -32,12 +30,12 @@ type Node struct {
 }
 
 // NewNode returns a Node with the given its own identity.MultiAddress, a list
-// of boostrap node identity.MultiAddresses, and a delegate that defines
+// of bootstrap node identity.MultiAddresses, and a delegate that defines
 // callbacks for each RPC.
 func NewNode(delegate Delegate, options Options) *Node {
 	return &Node{
 		Delegate: delegate,
-		Server:   grpc.NewServer(),
+		Server:   grpc.NewServer(grpc.ConnectionTimeout(options.Timeout)),
 		DHT:      dht.NewDHT(options.MultiAddress.Address(), options.MaxBucketLength),
 		Options:  options,
 	}
@@ -46,20 +44,12 @@ func NewNode(delegate Delegate, options Options) *Node {
 // Serve starts the gRPC server.
 func (node *Node) Serve() error {
 	rpc.RegisterSwarmNodeServer(node.Server, node)
-	host, err := node.MultiAddress().ValueForProtocol(identity.IP4Code)
-	if err != nil {
-		return err
-	}
-	port, err := node.MultiAddress().ValueForProtocol(identity.TCPCode)
-	if err != nil {
-		return err
-	}
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", host, port))
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", node.Options.Host, node.Options.Port))
 	if err != nil {
 		return err
 	}
 	if node.Options.Debug >= DebugLow {
-		log.Printf("Listening at %s:%s\n", host, port)
+		log.Printf("Listening at %s:%s\n", node.Options.Host, node.Options.Port)
 	}
 	return node.Server.Serve(listener)
 }
@@ -76,27 +66,24 @@ func (node *Node) Stop() {
 // Node and attempt to find itself in the network. This process will ultimately
 // connect it to Nodes that are close to it in XOR space.
 func (node *Node) Bootstrap() {
-	do.CoForAll(node.Options.BootstrapMultiAddresses, func(i int) {
-		// The Node attempts to find itself in the network.
-		bootstrapMultiAddress := node.Options.BootstrapMultiAddresses[i]
-		peers, err := rpc.QueryCloserPeersFromTarget(
-			bootstrapMultiAddress,
-			node.MultiAddress(),
-			node.Address(),
-			true,
-			time.Minute,
-		)
-		if err != nil {
-			if node.Options.Debug >= DebugLow {
-				log.Println(err)
-			}
-			return
+	if node.Options.Debug >= DebugMedium {
+		log.Printf("%v is bootstrapping...\n", node.Address())
+	}
+	if node.Options.Concurrent {
+		do.ForAll(node.Options.BootstrapMultiAddresses, func(i int) {
+			node.bootstrapUsingMultiAddress(node.Options.BootstrapMultiAddresses[i])
+		})
+	} else {
+		for _, bootstrapMultiAddress := range node.Options.BootstrapMultiAddresses {
+			node.bootstrapUsingMultiAddress(bootstrapMultiAddress)
 		}
-		// All of the peers that it gets back will be added to the DHT.
-		for _, peer := range peers {
-			node.DHT.UpdateMultiAddress(peer)
-		}
-	})
+	}
+	if node.Options.Debug >= DebugMedium {
+		log.Printf("%v connected to %v peers after bootstrapping.\n", node.Address(), len(node.DHT.MultiAddresses()))
+	}
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("%v connected to %v.\n", node.Address(), node.DHT.MultiAddresses())
+	}
 }
 
 // Prune an identity.Address from the dht.DHT. Returns a boolean indicating
@@ -130,8 +117,8 @@ func (node *Node) MultiAddress() identity.MultiAddress {
 // identity.MultiAddresses. If the Node does not respond, or it responds with
 // an error, then the connection should be considered unhealthy.
 func (node *Node) Ping(ctx context.Context, from *rpc.MultiAddress) (*rpc.Nothing, error) {
-	if node.Options.Debug >= DebugMedium {
-		log.Printf("Ping received\n")
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("%v is receiving a ping...\n", node.Address())
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -150,52 +137,21 @@ func (node *Node) Ping(ctx context.Context, from *rpc.MultiAddress) (*rpc.Nothin
 		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
 			return nothing, val.Err
 		}
-		return nil, val.Err
+		return &rpc.Nothing{}, val.Err
 
 	case <-ctx.Done():
 		return &rpc.Nothing{}, ctx.Err()
 	}
 }
 
-// Peers is used to return the rpc.MultiAddresses to which a Node is connected.
-// The rpc.MultiAddresses returned are not guaranteed to provide healthy
-// connections and should be pinged.
-func (node *Node) Peers(ctx context.Context, from *rpc.MultiAddress) (*rpc.MultiAddresses, error) {
-	if node.Options.Debug >= DebugMedium {
-		log.Printf("Peers received\n")
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
-	wait := do.Process(func() do.Option {
-		peers, err := node.peers(from)
-		if err != nil {
-			return do.Err(err)
-		}
-		return do.Ok(peers)
-	})
-
-	select {
-	case val := <-wait:
-		if multiAddresses, ok := val.Ok.(*rpc.MultiAddresses); ok {
-			return multiAddresses, val.Err
-		}
-		return nil, val.Err
-
-	case <-ctx.Done():
-		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, ctx.Err()
-	}
-}
-
-// QueryCloserPeers is used to return the closest rpc.MultiAddresses to a peer
-// with the given target rpc.Address. It will not return rpc.MultiAddresses
-// that are further away from the target than the Node itself. The
-// rpc.MultiAddresses returned are not guaranteed to provide healthy
-// connections and should be pinged.
+// QueryCloserPeers is used to return rpc.MultiAddresses that are closer to the
+// given target rpc.Address. It will not return rpc.MultiAddresses that are
+// further away from the target than the Node itself. The rpc.MultiAddresses
+// returned are not guaranteed to provide healthy connections and should be
+// pinged.
 func (node *Node) QueryCloserPeers(ctx context.Context, query *rpc.Query) (*rpc.MultiAddresses, error) {
-	if node.Options.Debug >= DebugMedium {
-		log.Printf("QueryCloserPeers received\n")
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("%v is querying for closer peers...\n", node.Address())
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -214,10 +170,38 @@ func (node *Node) QueryCloserPeers(ctx context.Context, query *rpc.Query) (*rpc.
 		if multiAddresses, ok := val.Ok.(*rpc.MultiAddresses); ok {
 			return multiAddresses, val.Err
 		}
-		return nil, val.Err
+		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, val.Err
 
 	case <-ctx.Done():
 		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, ctx.Err()
+	}
+}
+
+// QueryCloserPeersOnFrontier is used to return the closest rpc.MultiAddresses
+// that can be reached from this Node, given target rpc.Address. It will not
+// return rpc.MultiAddresses that are further away from the target than the
+// Node itself. The rpc.MultiAddresses returned are not guaranteed to provide
+// healthy connections and should be pinged.
+func (node *Node) QueryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmNode_QueryCloserPeersOnFrontierServer) error {
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("%v is querying for closer peers on frontier...\n", node.Address())
+	}
+	if err := stream.Context().Err(); err != nil {
+		return err
+	}
+
+	wait := do.Process(func() do.Option {
+		return do.Err(node.queryCloserPeersOnFrontier(query, stream))
+	})
+
+	for {
+		select {
+		case val := <-wait:
+			return val.Err
+
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		}
 	}
 }
 
@@ -227,126 +211,162 @@ func (node *Node) ping(from *rpc.MultiAddress) (*rpc.Nothing, error) {
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	if err := node.updatePeer(fromMultiAddress); err != nil {
-		return &rpc.Nothing{}, err
-	}
 
 	// Notify the delegate of the ping.
 	node.Delegate.OnPingReceived(fromMultiAddress)
-	return &rpc.Nothing{}, nil
-}
-
-func (node *Node) peers(from *rpc.MultiAddress) (*rpc.MultiAddresses, error) {
-	// Update the DHT.
-	fromMultiAddress, err := rpc.DeserializeMultiAddress(from)
-	if err != nil {
-		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, nil
-	}
-	if err := node.updatePeer(fromMultiAddress); err != nil {
-		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, nil
-	}
-
-	// Return all peers in the DHT.
-	peers := node.DHT.MultiAddresses()
-	return rpc.SerializeMultiAddresses(peers), nil
+	return &rpc.Nothing{}, node.updatePeer(from)
 }
 
 func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error) {
-	// Update the DHT.
-	if query.From != nil {
-		fromMultiAddress, err := rpc.DeserializeMultiAddress(query.From)
+	// Get the target identity.Address for which this Node is searching for
+	// peers.
+	target := identity.Address(query.Query.Address)
+	peers, err := node.DHT.FindMultiAddressNeighbors(target, node.Options.Alpha)
+	if err != nil {
+		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, err
+	}
+
+	// Filter away peers that are further from the target than this Node.
+	peersCloserToTarget := make(identity.MultiAddresses, 0, len(peers))
+	for _, peer := range peers {
+		closer, err := identity.Closer(peer.Address(), node.Address(), target)
 		if err != nil {
-			return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, err
+			return rpc.SerializeMultiAddresses(peersCloserToTarget), err
 		}
-		if err := node.updatePeer(fromMultiAddress); err != nil {
-			return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, err
+		if closer {
+			peersCloserToTarget = append(peersCloserToTarget, peer)
 		}
 	}
+
+	return rpc.SerializeMultiAddresses(peersCloserToTarget), node.updatePeer(query.From)
+}
+
+func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmNode_QueryCloserPeersOnFrontierServer) error {
 
 	// Get the target identity.Address for which this Node is searching for
 	// peers.
 	target := identity.Address(query.Query.Address)
-	targetPeers := make(identity.MultiAddresses, 0, node.Options.Alpha)
-	peers, err := node.DHT.FindMultiAddressNeighbors(target, node.Options.Alpha)
-	if err != nil {
-		return rpc.SerializeMultiAddresses(targetPeers), err
-	}
+	peers := node.DHT.MultiAddresses()
+
+	// Create the frontier and a closure map.
+	frontier := make(identity.MultiAddresses, 0, len(peers))
+	black := make(map[identity.Address]struct{})
+	white := make(map[identity.Address]struct{})
 
 	// Filter away peers that are further from the target than this Node.
 	for _, peer := range peers {
-		peerAddress := peer.Address()
-		closer, err := identity.Closer(peerAddress, node.Address(), target)
+		closer, err := identity.Closer(peer.Address(), node.Address(), target)
 		if err != nil {
-			return rpc.SerializeMultiAddresses(targetPeers), err
+			return err
 		}
 		if closer {
-			targetPeers = append(targetPeers, peer)
+			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
+				return err
+			}
+			frontier = append(frontier, peer)
 		}
 	}
 
-	// If this is not a deep query, stop here.
-	if !query.Deep {
-		return rpc.SerializeMultiAddresses(targetPeers), nil
+	// Immediately close the Node that is running this query and mark all peers
+	// in the frontier as seen.
+	black[node.Address()] = struct{}{}
+	for _, peer := range frontier {
+		white[peer.Address()] = struct{}{}
 	}
 
-	deserializedQuery, err := rpc.DeserializeAddress(query.Query)
-	if err != nil {
-		return rpc.SerializeMultiAddresses(targetPeers), err
-	}
-	mu := new(sync.Mutex)
-	open := true
-	openList := make(identity.MultiAddresses, len(targetPeers))
-	closeMap := map[string]bool{}
-	do.ForAll(targetPeers, func(i int) {
-		openList[i] = targetPeers[i]
-	})
-	for open {
-		open = false
-		openNext := make(identity.MultiAddresses, 0, len(openList))
-		do.ForAll(openList, func(i int) {
-			peers, err := rpc.QueryCloserPeersFromTarget(openList[i], node.MultiAddress(), deserializedQuery, false, time.Minute)
-			if err != nil {
-				if node.Options.Debug >= DebugLow {
-					log.Println(err)
-					return
-				}
+	// While there are still Nodes to be explored in the frontier.
+	for len(frontier) > 0 {
+		// Pop the first peer off the frontier.
+		peer := frontier[0]
+		frontier = frontier[1:]
+
+		// Close the peer and use it to find peers that are even closer to the
+		// target.
+		black[peer.Address()] = struct{}{}
+		if peer.Address() == target {
+			continue
+		}
+		candidates, err := rpc.QueryCloserPeersFromTarget(peer, node.MultiAddress(), target, time.Second)
+		if err != nil {
+			if node.Options.Debug >= DebugLow {
+				log.Println(err)
 			}
+			continue
+		}
 
-			mu.Lock()
-			defer mu.Unlock()
-
-			closeMap[openList[i].String()] = true
-			for _, nextPeer := range peers {
-				if closeMap[nextPeer.String()] {
-					continue
-				}
-				nextPeerAddress := nextPeer.Address()
-				if closer, err := identity.Closer(nextPeerAddress, node.Address(), target); closer && err != nil {
-					open = true
-					openNext = append(openNext, nextPeer)
-				}
+		// Filter any candidate that is already in the closure.
+		for _, candidate := range candidates {
+			if _, ok := black[candidate.Address()]; ok {
+				continue
 			}
-		})
-		targetPeers = append(targetPeers, openList...)
-		openList = openNext
+			if _, ok := white[candidate.Address()]; ok {
+				continue
+			}
+			// Expand the frontier by candidates that have not already been
+			// explored, and store them in a persistent list of close peers.
+			if err := stream.Send(rpc.SerializeMultiAddress(candidate)); err != nil {
+				return err
+			}
+			frontier = append(frontier, candidate)
+			white[candidate.Address()] = struct{}{}
+		}
 	}
 
-	sort.Slice(targetPeers, func(i, j int) bool {
-		left := targetPeers[i].Address()
-		right := targetPeers[j].Address()
-		closer, _ := identity.Closer(left, right, target)
-		return closer
-	})
-
-	minLength := len(targetPeers)
-	if minLength > node.Options.Alpha {
-		minLength = node.Options.Alpha
-	}
-
-	return rpc.SerializeMultiAddresses(targetPeers[:minLength]), nil
+	return node.updatePeer(query.From)
 }
 
-func (node *Node) updatePeer(multiAddress identity.MultiAddress) error {
+func (node *Node) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.MultiAddress) error {
+	var err error
+	var peers identity.MultiAddresses
+
+	// The Node attempts to find itself in the network with three attempts
+	// backing off by 10 seconds per attempt.
+	for attempt := 0; attempt < node.Options.TimeoutRetries; attempt++ {
+		// Query the bootstrap node.
+		peers, err = rpc.QueryCloserPeersOnFrontierFromTarget(
+			bootstrapMultiAddress,
+			node.MultiAddress(),
+			node.Address(),
+			node.Options.Timeout+time.Duration(attempt)*node.Options.TimeoutStep,
+		)
+		// Errors are not returned because it is reasonable that a bootstrap
+		// Node might be unavailable at this time.
+		if err == nil {
+			break
+		}
+		if node.Options.Debug >= DebugLow {
+			log.Println(err)
+		}
+		if attempt == node.Options.TimeoutRetries-1 {
+			return err
+		}
+	}
+
+	// Peers returned by the query will be added to the DHT.
+	if node.Options.Debug >= DebugMedium {
+		log.Printf("%v received %v peers from %v.\n", node.Address(), len(peers), bootstrapMultiAddress.Address())
+	}
+	for _, peer := range peers {
+		if peer.Address() == node.Address() {
+			continue
+		}
+		if err := node.DHT.UpdateMultiAddress(peer); err != nil {
+			if node.Options.Debug >= DebugLow {
+				log.Println(err)
+			}
+		}
+	}
+	return nil
+}
+
+func (node *Node) updatePeer(peer *rpc.MultiAddress) error {
+	multiAddress, err := rpc.DeserializeMultiAddress(peer)
+	if err != nil {
+		return err
+	}
+	if multiAddress.Address() == node.Address() {
+		return nil
+	}
 	if err := node.DHT.UpdateMultiAddress(multiAddress); err != nil {
 		if err == dht.ErrFullBucket {
 			pruned, err := node.Prune(multiAddress.Address())
@@ -358,7 +378,6 @@ func (node *Node) updatePeer(multiAddress identity.MultiAddress) error {
 			}
 			return nil
 		}
-		log.Println(err)
 		return err
 	}
 	return nil
