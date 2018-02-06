@@ -65,6 +65,10 @@ var _ = Describe("Terminals", func() {
 	})
 
 	Context("sending trading atoms", func() {
+		keyPair, _ := identity.NewKeyPair()
+		to := keyPair.Address()
+		from := rpcClient.MultiAddress
+
 		It("should return a valid trading atom", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -74,17 +78,17 @@ var _ = Describe("Terminals", func() {
 			}(server)
 			defer server.Stop()
 
-			err = rpc.SendAtomToTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, a, defaultTimeout)
+			err = rpc.SendAtomToTarget(rpcServer.MultiAddress, to, from, a, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should return an error for bad multi-addresses", func() {
-			err = rpc.SendAtomToTarget(badTargetAddress, rpcClient.MultiAddress, a, defaultTimeout)
+			err = rpc.SendAtomToTarget(badTargetAddress, to, from, a, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 
 		It("should return a timeout error when there is no response within the timeout duration", func() {
-			err := rpc.SendAtomToTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, a, defaultTimeout)
+			err := rpc.SendAtomToTarget(rpcServer.MultiAddress, to, from, a, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 	})

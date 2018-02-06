@@ -11,8 +11,8 @@ import (
 
 // PingTarget using a new grpc.ClientConn to make a Ping RPC to a target
 // identity.MultiAddress.
-func PingTarget(to identity.MultiAddress, from identity.MultiAddress, timeout time.Duration) error {
-	conn, err := Dial(to, timeout)
+func PingTarget(target identity.MultiAddress, from identity.MultiAddress, timeout time.Duration) error {
+	conn, err := Dial(target, timeout)
 	if err != nil {
 		return err
 	}
@@ -27,8 +27,8 @@ func PingTarget(to identity.MultiAddress, from identity.MultiAddress, timeout ti
 
 // QueryCloserPeersFromTarget using a new grpc.ClientConn to make a QueryCloserPeers
 // RPC to a target identity.MultiAddress.
-func QueryCloserPeersFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, timeout time.Duration) (identity.MultiAddresses, error) {
-	conn, err := Dial(to, timeout)
+func QueryCloserPeersFromTarget(target identity.MultiAddress, from identity.MultiAddress, query identity.Address, timeout time.Duration) (identity.MultiAddresses, error) {
+	conn, err := Dial(target, timeout)
 	if err != nil {
 		return identity.MultiAddresses{}, err
 	}
@@ -52,8 +52,8 @@ func QueryCloserPeersFromTarget(to identity.MultiAddress, from identity.MultiAdd
 
 // QueryCloserPeersOnFrontierFromTarget using a new grpc.ClientConn to make a
 // QueryCloserPeersOnFrontier RPC to a targetMultiAddress.
-func QueryCloserPeersOnFrontierFromTarget(to identity.MultiAddress, from identity.MultiAddress, query identity.Address, timeout time.Duration) (identity.MultiAddresses, error) {
-	conn, err := Dial(to, timeout)
+func QueryCloserPeersOnFrontierFromTarget(target identity.MultiAddress, from identity.MultiAddress, query identity.Address, timeout time.Duration) (identity.MultiAddresses, error) {
+	conn, err := Dial(target, timeout)
 	if err != nil {
 		return identity.MultiAddresses{}, err
 	}

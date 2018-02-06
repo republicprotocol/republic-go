@@ -13,15 +13,15 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Dial the target identity.MultiAddress using a background context.Context.
-// Returns a grpc.ClientConn, or an error. The grpc.ClientConn must be closed
-// before it exits scope.
-func Dial(target identity.MultiAddress, timeout time.Duration) (*grpc.ClientConn, error) {
-	host, err := target.ValueForProtocol(identity.IP4Code)
+// Dial the identity.MultiAddress using a background context.Context. Returns a
+// grpc.ClientConn, or an error. The grpc.ClientConn must be closed before it
+// exits scope.
+func Dial(multiAddress identity.MultiAddress, timeout time.Duration) (*grpc.ClientConn, error) {
+	host, err := multiAddress.ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return nil, err
 	}
-	port, err := target.ValueForProtocol(identity.TCPCode)
+	port, err := multiAddress.ValueForProtocol(identity.TCPCode)
 	if err != nil {
 		return nil, err
 	}

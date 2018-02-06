@@ -69,6 +69,10 @@ var _ = Describe("Xing Overlay Network", func() {
 	})
 
 	Context("sending order fragments", func() {
+		keyPair, _ := identity.NewKeyPair()
+		to := keyPair.Address()
+		from := rpcClient.MultiAddress
+
 		It("should return nothing", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -78,22 +82,26 @@ var _ = Describe("Xing Overlay Network", func() {
 			}(server)
 			defer server.Stop()
 
-			err = rpc.SendOrderFragmentToTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, orderFragment, defaultTimeout)
+			err = rpc.SendOrderFragmentToTarget(rpcServer.MultiAddress, to, from, orderFragment, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should return an error for bad multi-addresses", func() {
-			err = rpc.SendOrderFragmentToTarget(badServerAddress, rpcClient.MultiAddress, orderFragment, defaultTimeout)
+			err = rpc.SendOrderFragmentToTarget(badServerAddress, to, from, orderFragment, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 
 		It("should return a timeout error when there is no response within the timeout duration", func() {
-			err := rpc.SendOrderFragmentToTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, orderFragment, defaultTimeout)
+			err := rpc.SendOrderFragmentToTarget(rpcServer.MultiAddress, to, from, orderFragment, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 	})
 
 	Context("sending result fragments", func() {
+		keyPair, _ := identity.NewKeyPair()
+		to := keyPair.Address()
+		from := rpcClient.MultiAddress
+
 		It("should return nothing", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -103,17 +111,17 @@ var _ = Describe("Xing Overlay Network", func() {
 			}(server)
 			defer server.Stop()
 
-			err = rpc.SendResultFragmentToTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, resultFragment, defaultTimeout)
+			err = rpc.SendResultFragmentToTarget(rpcServer.MultiAddress, to, from, resultFragment, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should return an error for bad multi-addresses", func() {
-			err = rpc.SendResultFragmentToTarget(badServerAddress, rpcClient.MultiAddress, resultFragment, defaultTimeout)
+			err = rpc.SendResultFragmentToTarget(badServerAddress, to, from, resultFragment, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 
 		It("should return a timeout error when there is no response within the timeout duration", func() {
-			err := rpc.SendResultFragmentToTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, resultFragment, defaultTimeout)
+			err := rpc.SendResultFragmentToTarget(rpcServer.MultiAddress, to, from, resultFragment, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 	})
