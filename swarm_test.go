@@ -31,7 +31,7 @@ func (s *mockServer) QueryCloserPeersOnFrontier(query *rpc.Query, stream rpc.Swa
 		return err
 
 	}
-	return  stream.Send(rpc.SerializeMultiAddress(multiAddress))
+	return stream.Send(rpc.SerializeMultiAddress(multiAddress))
 }
 
 type mockClient struct {

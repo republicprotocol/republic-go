@@ -74,14 +74,14 @@ func QueryCloserPeersOnFrontierFromTarget(to identity.MultiAddress, from identit
 	multiAddresses := make(identity.MultiAddresses, 0)
 	for {
 		multiAddress, err := stream.Recv()
-		if err == io.EOF{
+		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			return multiAddresses, err
 		}
-		deserializedMultiAddress, err  := DeserializeMultiAddress(multiAddress)
-		if err!= nil {
+		deserializedMultiAddress, err := DeserializeMultiAddress(multiAddress)
+		if err != nil {
 			return multiAddresses, err
 		}
 		multiAddresses = append(multiAddresses, deserializedMultiAddress)
