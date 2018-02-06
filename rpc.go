@@ -86,8 +86,10 @@ func DeserializeMultiAddresses(multiAddresses *MultiAddresses) (identity.MultiAd
 
 // SerializeOrderFragment converts a compute.OrderFragment into its network
 // representation.
-func SerializeOrderFragment(input *compute.OrderFragment) *OrderFragment {
+func SerializeOrderFragment(from identity.MultiAddress, to identity.Address, input *compute.OrderFragment) *OrderFragment {
 	orderFragment := &OrderFragment{
+		To:          SerializeAddress(to),
+		From:        SerializeMultiAddress(from),
 		Id:          []byte(input.ID),
 		OrderId:     []byte(input.OrderID),
 		OrderType:   int64(input.OrderType),
@@ -138,7 +140,7 @@ func DeserializeOrderFragment(input *OrderFragment) (*compute.OrderFragment, err
 
 // SerializeResultFragment converts a compute.ResultFragment into its network
 // representation.
-func SerializeResultFragment(input *compute.ResultFragment) *ResultFragment {
+func SerializeResultFragment(from identity.MultiAddress, to identity.Address, input *compute.ResultFragment) *ResultFragment {
 	resultFragment := &ResultFragment{
 		Id:                  []byte(input.ID),
 		BuyOrderId:          []byte(input.BuyOrderID),

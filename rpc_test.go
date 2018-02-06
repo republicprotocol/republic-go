@@ -89,11 +89,20 @@ var _ = Describe("Data serialization and deserialization", func() {
 	})
 
 	Context("when using an order fragment", func() {
+		//var from identity.MultiAddress
+		//var to identity.Address
+
 		It("should be able to serialize and deserialize", func() {
+			from, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+			Ω(err).ShouldNot(HaveOccurred())
+			keyPair, err := identity.NewKeyPair()
+			Ω(err).ShouldNot(HaveOccurred())
+			to := keyPair.Address()
+
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			orderFragment := compute.NewOrderFragment([]byte("orderID"), compute.OrderTypeIBBO, compute.OrderParityBuy,
 				sssShare, sssShare, sssShare, sssShare, sssShare)
-			rpcOrderFragment := rpc.SerializeOrderFragment(orderFragment)
+			rpcOrderFragment := rpc.SerializeOrderFragment(from, to, orderFragment)
 			newOrderFragment, err := rpc.DeserializeOrderFragment(rpcOrderFragment)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(*orderFragment).Should(Equal(*newOrderFragment))
@@ -197,11 +206,17 @@ var _ = Describe("Data serialization and deserialization", func() {
 
 	Context("when using a result fragment", func() {
 		It("should be able to serialize and deserialize", func() {
+			from, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+			Ω(err).ShouldNot(HaveOccurred())
+			keyPair, err := identity.NewKeyPair()
+			Ω(err).ShouldNot(HaveOccurred())
+			to := keyPair.Address()
+
 			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 			resultFragment := compute.NewResultFragment([]byte("butOrderID"), []byte("sellOrderID"),
 				[]byte("butOrderFragmentID"), []byte("sellOrderFragmentID"),
 				sssShare, sssShare, sssShare, sssShare, sssShare)
-			rpcResultFragment := rpc.SerializeResultFragment(resultFragment)
+			rpcResultFragment := rpc.SerializeResultFragment(from, to, resultFragment)
 			newResultFragment, err := rpc.DeserializeResultFragment(rpcResultFragment)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(*resultFragment).Should(Equal(*newResultFragment))
