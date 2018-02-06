@@ -142,6 +142,8 @@ func DeserializeOrderFragment(input *OrderFragment) (*compute.OrderFragment, err
 // representation.
 func SerializeResultFragment(from identity.MultiAddress, to identity.Address, input *compute.ResultFragment) *ResultFragment {
 	resultFragment := &ResultFragment{
+		To:                  SerializeAddress(to),
+		From:                SerializeMultiAddress(from),
 		Id:                  []byte(input.ID),
 		BuyOrderId:          []byte(input.BuyOrderID),
 		SellOrderId:         []byte(input.SellOrderID),
