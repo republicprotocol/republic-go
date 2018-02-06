@@ -25,8 +25,13 @@ func (s *mockServer) QueryCloserPeers(ctx context.Context, query *rpc.Query) (*r
 	return &rpc.MultiAddresses{}, nil
 }
 
-func (s *mockServer) QueryCloserPeersOnFrontier(ctx context.Context, query *rpc.Query) (*rpc.MultiAddresses, error) {
-	return &rpc.MultiAddresses{}, nil
+func (s *mockServer) QueryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmNode_QueryCloserPeersOnFrontierServer) error {
+	multiAddress, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+	if err != nil {
+		return err
+
+	}
+	return  stream.Send(rpc.SerializeMultiAddress(multiAddress))
 }
 
 type mockClient struct {
@@ -113,7 +118,7 @@ var _ = Describe("Swarm node", func() {
 			}(server)
 			defer server.Stop()
 
-			closePeers, err := rpc.QueryCloserPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, target,defaultTimeout)
+			closePeers, err := rpc.QueryCloserPeersFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, target, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(closePeers).Should(Equal(identity.MultiAddresses{}))
 		})
@@ -144,7 +149,7 @@ var _ = Describe("Swarm node", func() {
 			target := identity.Address("8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
 			multiAddresses, err := rpc.QueryCloserPeersOnFrontierFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, target, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(multiAddresses).Should(Equal(identity.MultiAddresses{}))
+			Ω(len(multiAddresses)).Should(Equal(1))
 		})
 
 		It("should return an error for bad multi-addresses", func() {

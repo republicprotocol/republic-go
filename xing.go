@@ -41,3 +41,20 @@ func SendResultFragmentToTarget(to identity.MultiAddress, resultFragment compute
 	_, err = client.SendResultFragment(ctx, SerializeResultFragment(&resultFragment), grpc.FailFast(false))
 	return err
 }
+
+// SendTradingAtomToTarget using a new grpc.ClientConn to make a
+// SendTradingAtomToTarget RPC to a targetMultiAddress.
+func SendTradingAtomToTarget(to identity.MultiAddress, tradingAtom struct{}, timeout time.Duration) error {
+	conn, err := Dial(to, timeout)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := NewXingNodeClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	_, err = client.SendTradingAtom(ctx, SerializeTradingAtom(struct{}{}), grpc.FailFast(false))
+	return err
+}

@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"io"
 	"time"
 
 	"github.com/republicprotocol/go-identity"
@@ -65,9 +66,25 @@ func QueryCloserPeersOnFrontierFromTarget(to identity.MultiAddress, from identit
 		From:  SerializeMultiAddress(from),
 		Query: SerializeAddress(query),
 	}
-	multiAddresses, err := client.QueryCloserPeersOnFrontier(ctx, rpcQuery, grpc.FailFast(false))
+	stream, err := client.QueryCloserPeersOnFrontier(ctx, rpcQuery, grpc.FailFast(false))
 	if err != nil {
 		return identity.MultiAddresses{}, err
 	}
-	return DeserializeMultiAddresses(multiAddresses)
+
+	multiAddresses := make(identity.MultiAddresses, 0)
+	for {
+		multiAddress, err := stream.Recv()
+		if err == io.EOF{
+			break
+		}
+		if err != nil {
+			return multiAddresses, err
+		}
+		deserializedMultiAddress, err  := DeserializeMultiAddress(multiAddress)
+		if err!= nil {
+			return multiAddresses, err
+		}
+		multiAddresses = append(multiAddresses, deserializedMultiAddress)
+	}
+	return multiAddresses, nil
 }
