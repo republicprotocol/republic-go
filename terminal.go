@@ -11,8 +11,8 @@ import (
 
 // SendAtomToTarget using a new grpc.ClientConn to make a SendAtom RPC to a
 // target identity.MultiAddress.
-func SendAtomToTarget(to identity.MultiAddress, from identity.MultiAddress, a atom.Atom, timeout time.Duration) error {
-	conn, err := Dial(to, timeout)
+func SendAtomToTarget(target identity.MultiAddress, to identity.Address, from identity.MultiAddress, a atom.Atom, timeout time.Duration) error {
+	conn, err := Dial(target, timeout)
 	if err != nil {
 		return err
 	}
@@ -23,7 +23,7 @@ func SendAtomToTarget(to identity.MultiAddress, from identity.MultiAddress, a at
 	defer cancel()
 
 	serializedAtom := SerializeAtom(a)
-	serializedAtom.To = SerializeAddress(to.Address())
+	serializedAtom.To = SerializeAddress(to)
 	serializedAtom.From = SerializeMultiAddress(from)
 	_, err = client.SendAtom(ctx, serializedAtom, grpc.FailFast(false))
 	return err
