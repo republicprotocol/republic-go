@@ -12,6 +12,10 @@ import (
 	"github.com/republicprotocol/go-sss"
 )
 
+type mockServer struct {
+	identity.MultiAddress
+}
+
 var _ = Describe("Data serialization and deserialization", func() {
 	var keyPair identity.KeyPair
 	var multiAddressString string
@@ -313,16 +317,16 @@ var _ = Describe("Data serialization and deserialization", func() {
 		It("should be able to serialize and deserialize", func() {
 			a := atom.Atom{
 				ID:         []byte{},
-				Swap:       []byte{},
+				Lock:       []byte{},
 				Fst:        atom.LedgerBitcoin,
 				FstAddress: "0x",
 				Snd:        atom.LedgerEthereum,
 				SndAddress: "0x",
 			}
 			rpcAtom := rpc.SerializeAtom(a)
-			newAtom, err := rpc.DeserializeAtom(a)
+			newAtom, err := rpc.DeserializeAtom(rpcAtom)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(newAtom).Should(Equal(rpcAtom))
+			Ω(newAtom).Should(Equal(a))
 		})
 	})
 })

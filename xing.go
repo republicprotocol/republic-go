@@ -11,7 +11,7 @@ import (
 
 // SendOrderFragmentToTarget using a new grpc.ClientConn to make a
 // SendOrderFragment RPC to a target identity.MultiAddress.
-func SendOrderFragmentToTarget(to identity.MultiAddress, orderFragment compute.OrderFragment, timeout time.Duration) error {
+func SendOrderFragmentToTarget(to identity.MultiAddress, from identity.MultiAddress, orderFragment *compute.OrderFragment, timeout time.Duration) error {
 	conn, err := Dial(to, timeout)
 	if err != nil {
 		return err
@@ -21,13 +21,17 @@ func SendOrderFragmentToTarget(to identity.MultiAddress, orderFragment compute.O
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	_, err = client.SendOrderFragment(ctx, SerializeOrderFragment(&orderFragment), grpc.FailFast(false))
+
+	serializedOrderFragment := SerializeOrderFragment(orderFragment)
+	serializedOrderFragment.To = SerializeAddress(to.Address())
+	serializedOrderFragment.From = SerializeMultiAddress(from)
+	_, err = client.SendOrderFragment(ctx, serializedOrderFragment, grpc.FailFast(false))
 	return err
 }
 
 // SendResultFragmentToTarget using a new grpc.ClientConn to make a
 // SendResultFragment RPC to a target identity.MultiAddress.
-func SendResultFragmentToTarget(to identity.MultiAddress, resultFragment compute.ResultFragment, timeout time.Duration) error {
+func SendResultFragmentToTarget(to identity.MultiAddress, from identity.MultiAddress, resultFragment *compute.ResultFragment, timeout time.Duration) error {
 	conn, err := Dial(to, timeout)
 	if err != nil {
 		return err
@@ -38,6 +42,9 @@ func SendResultFragmentToTarget(to identity.MultiAddress, resultFragment compute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	_, err = client.SendResultFragment(ctx, SerializeResultFragment(&resultFragment), grpc.FailFast(false))
+	serializedResultFragment := SerializeResultFragment(resultFragment)
+	serializedResultFragment.To = SerializeAddress(to.Address())
+	serializedResultFragment.From = SerializeMultiAddress(from)
+	_, err = client.SendResultFragment(ctx, serializedResultFragment, grpc.FailFast(false))
 	return err
 }

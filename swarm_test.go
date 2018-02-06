@@ -13,10 +13,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-type mockServer struct {
-	identity.MultiAddress
-}
-
 func (s *mockServer) Ping(ctx context.Context, address *rpc.MultiAddress) (*rpc.Nothing, error) {
 	return &rpc.Nothing{}, nil
 }
@@ -106,7 +102,7 @@ var _ = Describe("Swarm node", func() {
 		})
 	})
 
-	Context("Query close peers from a target", func() {
+	Context("query close peers from a target", func() {
 		target := identity.Address("8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
 
 		It("should return all peers", func() {
