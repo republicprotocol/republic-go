@@ -1,1 +1,1 @@
-# go-atom-protocol
+# Atom Protocol
