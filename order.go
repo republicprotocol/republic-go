@@ -59,19 +59,19 @@ func (id OrderID) String() string {
 // exposed to anyone other than the trader that wants to execute the Order.
 type Order struct {
 	// Public
-	ID     OrderID
-	Type   OrderType
-	Parity OrderParity
+	ID     OrderID     `json:"-"`
+	Type   OrderType   `json:"type"`
+	Parity OrderParity `json:"parity"`
 
 	// Secure
-	FstCode   CurrencyCode
-	SndCode   CurrencyCode
-	Price     int64
-	MaxVolume int64
-	MinVolume int64
+	FstCode   CurrencyCode `json:"fstCode"`
+	SndCode   CurrencyCode `json:"sndCode"`
+	Price     int64        `json:"price"`
+	MaxVolume int64        `json:"maxVolume"`
+	MinVolume int64        `json:"minVolume"`
 
 	// Private
-	Nonce int64
+	Nonce int64 `json:"nonce"`
 }
 
 // NewOrder returns a new Order and computes the OrderID for the Order.
@@ -86,7 +86,7 @@ func NewOrder(ty OrderType, parity OrderParity, fstCode CurrencyCode, sndCode Cu
 		MinVolume: minVolume,
 		Nonce:     nonce,
 	}
-	order.ID = OrderID(crypto.Keccak256(order.Bytes()))
+	order.ID = order.GenerateID()
 	return order
 }
 
@@ -154,6 +154,10 @@ func (order *Order) Equals(other *Order) bool {
 		order.MaxVolume == other.MaxVolume &&
 		order.MinVolume == other.MinVolume &&
 		order.Nonce == other.Nonce
+}
+
+func (order *Order) GenerateID() OrderID {
+	return OrderID(crypto.Keccak256(order.Bytes()))
 }
 
 // An OrderFragmentID is the Keccak256 hash of an OrderFragment.
