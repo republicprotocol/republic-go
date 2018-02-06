@@ -101,7 +101,7 @@ var _ = Describe("Bootstrapping", func() {
 		func(topology Topology) {
 			Context(fmt.Sprintf("when bootstrap nodes are configured in a %s topology.\n", topology), func() {
 				for _, numberOfBootstrapNodes := range []int{2, 4, 6} {
-					for _, numberOfNodes := range []int{2, 6, 10, 14, 18} {
+					for _, numberOfNodes := range []int{4, 8, 12, 16, 20} {
 						func(topology Topology, numberOfBootstrapNodes, numberOfNodes int) {
 							Context(fmt.Sprintf("with %d bootstrap nodes and %d swarm nodes.\n", numberOfBootstrapNodes, numberOfNodes), func() {
 								It("should be able to successfully ping between nodes", func() {
