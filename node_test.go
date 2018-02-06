@@ -268,7 +268,6 @@ var _ = Describe("Bootstrapping", func() {
 // 		// Check that the nodes have the expected peers.
 // 		err = peers(nodes, topology)
 // 		Ω(err).ShouldNot(HaveOccurred())
-
 // 		return int(delegate.numberOfPings)
 // 	}
 
