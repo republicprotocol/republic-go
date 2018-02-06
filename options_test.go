@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	DefaultOptionsDebug           = network.DebugLow
+	DefaultOptionsDebug           = network.DebugOff
 	DefaultOptionsAlpha           = 3
-	DefaultOptionsMaxBucketLength = 128
+	DefaultOptionsMaxBucketLength = 10
 	DefaultOptionsTimeout         = 30 * time.Second
 	DefaultOptionsTimeoutStep     = 30 * time.Second
 	DefaultOptionsTimeoutRetries  = 1
