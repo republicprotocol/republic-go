@@ -182,31 +182,26 @@ func (node *Node) QueryCloserPeers(ctx context.Context, query *rpc.Query) (*rpc.
 // return rpc.MultiAddresses that are further away from the target than the
 // Node itself. The rpc.MultiAddresses returned are not guaranteed to provide
 // healthy connections and should be pinged.
-func (node *Node) QueryCloserPeersOnFrontier(ctx context.Context, query *rpc.Query) (*rpc.MultiAddresses, error) {
+func (node *Node) QueryCloserPeersOnFrontier(ctx context.Context, query *rpc.Query, stream *rpc.SwarmNode_QueryCloserPeersOnFrontierStream) error {
 	if node.Options.Debug >= DebugHigh {
 		log.Printf("%v is querying for closer peers on frontier...\n", node.Address())
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return err
 	}
 
 	wait := do.Process(func() do.Option {
-		peers, err := node.queryCloserPeersOnFrontier(query)
-		if err != nil {
-			return do.Err(err)
-		}
-		return do.Ok(peers)
+		return do.Err(node.queryCloserPeersOnFrontier(query, stream))
 	})
 
-	select {
-	case val := <-wait:
-		if multiAddresses, ok := val.Ok.(*rpc.MultiAddresses); ok {
-			return multiAddresses, val.Err
-		}
-		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, val.Err
+	for {
+		select {
+		case val := <-wait:
+			return val.Err
 
-	case <-ctx.Done():
-		return &rpc.MultiAddresses{Multis: []*rpc.MultiAddress{}}, ctx.Err()
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 }
 
@@ -246,7 +241,7 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 	return rpc.SerializeMultiAddresses(peersCloserToTarget), node.updatePeer(query.From)
 }
 
-func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query) (*rpc.MultiAddresses, error) {
+func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream *rpc.SwarmNode_QueryCloserPeersOnFrontierStream) error {
 
 	// Get the target identity.Address for which this Node is searching for
 	// peers.
@@ -258,9 +253,12 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query) (*rpc.MultiAddres
 	for _, peer := range peers {
 		closer, err := identity.Closer(peer.Address(), node.Address(), target)
 		if err != nil {
-			return rpc.SerializeMultiAddresses(peersCloserToTarget), err
+			return err
 		}
 		if closer {
+			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
+				return err
+			}
 			peersCloserToTarget = append(peersCloserToTarget, peer)
 		}
 	}
@@ -305,13 +303,15 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query) (*rpc.MultiAddres
 			}
 			// Expand the frontier by candidates that have not already been
 			// explored, and store them in a persistent list of close peers.
+			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
+				return err
+			}
 			frontier = append(frontier, candidate)
-			peersCloserToTarget = append(peersCloserToTarget, candidate)
 			white[candidate.Address()] = struct{}{}
 		}
 	}
 
-	return rpc.SerializeMultiAddresses(peersCloserToTarget), node.updatePeer(query.From)
+	return node.updatePeer(query.From)
 }
 
 func (node *Node) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.MultiAddress) error {
