@@ -315,55 +315,45 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query) (*rpc.MultiAddres
 }
 
 func (node *Node) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.MultiAddress) error {
-	numPeers := 0
+	var err error
+	var peers identity.MultiAddresses
 
 	// The Node attempts to find itself in the network with three attempts
 	// backing off by 10 seconds per attempt.
 	for attempt := 0; attempt < node.Options.TimeoutRetries; attempt++ {
 		// Query the bootstrap node.
-		peers, errs := rpc.QueryCloserPeersOnFrontierFromTarget(
+		peers, err = rpc.QueryCloserPeersOnFrontierFromTarget(
 			bootstrapMultiAddress,
 			node.MultiAddress(),
 			node.Address(),
 			node.Options.Timeout+time.Duration(attempt)*node.Options.TimeoutStep,
 		)
-
-		streaming := true
-		for streaming {
-			select {
-
-			// Peers returned by the query will be added to the DHT.
-			case peer, ok := <-peers:
-				if !ok {
-					streaming = false
-					break
-				}
-				if peer.Address() != node.Address() {
-					if err := node.DHT.UpdateMultiAddress(peer); err != nil {
-						if node.Options.Debug >= DebugLow {
-							log.Println(err)
-						}
-						break
-					}
-					numPeers++
-				}
-
-			// Errors are not returned because it is reasonable that a
-			// bootstrap Node might be unavailable at this time.
-			case err, ok := <-errs:
-				if !ok {
-					streaming = false
-					break
-				}
-				if node.Options.Debug >= DebugLow {
-					log.Println(err)
-				}
-			}
+		// Errors are not returned because it is reasonable that a bootstrap
+		// Node might be unavailable at this time.
+		if err == nil {
+			break
+		}
+		if node.Options.Debug >= DebugLow {
+			log.Println(err)
+		}
+		if attempt == node.Options.TimeoutRetries-1 {
+			return err
 		}
 	}
 
+	// Peers returned by the query will be added to the DHT.
 	if node.Options.Debug >= DebugMedium {
-		log.Printf("%v received %v peers from %v.\n", node.Address(), numPeers, bootstrapMultiAddress.Address())
+		log.Printf("%v received %v peers from %v.\n", node.Address(), len(peers), bootstrapMultiAddress.Address())
+	}
+	for _, peer := range peers {
+		if peer.Address() == node.Address() {
+			continue
+		}
+		if err := node.DHT.UpdateMultiAddress(peer); err != nil {
+			if node.Options.Debug >= DebugLow {
+				log.Println(err)
+			}
+		}
 	}
 	return nil
 }
