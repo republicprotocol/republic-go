@@ -286,12 +286,10 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream *rpc.Swarm
 		if peer.Address() == target {
 			continue
 		}
-		// log.Printf("[%v] querying", node.Address())
 		candidates, err := rpc.QueryCloserPeersFromTarget(peer, node.MultiAddress(), target, time.Second)
 		if err != nil {
 			continue
 		}
-		// log.Printf("[%v] querying done!", node.Address())
 
 		// Filter any candidate that is already in the closure.
 		for _, candidate := range candidates {
