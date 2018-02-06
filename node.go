@@ -321,7 +321,7 @@ func (node *Node) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.Mult
 	// backing off by 10 seconds per attempt.
 	for attempt := 0; attempt < node.Options.TimeoutRetries; attempt++ {
 		// Query the bootstrap node.
-		peerStream, errStream := rpc.QueryCloserPeersOnFrontierFromTarget(
+		peers, errs := rpc.QueryCloserPeersOnFrontierFromTarget(
 			bootstrapMultiAddress,
 			node.MultiAddress(),
 			node.Address(),
@@ -333,7 +333,7 @@ func (node *Node) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.Mult
 			select {
 
 			// Peers returned by the query will be added to the DHT.
-			case peer, ok := <-peerStream:
+			case peer, ok := <-peers:
 				if !ok {
 					streaming = false
 					break
@@ -350,7 +350,7 @@ func (node *Node) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.Mult
 
 			// Errors are not returned because it is reasonable that a
 			// bootstrap Node might be unavailable at this time.
-			case err, ok := <-errStream:
+			case err, ok := <-errs:
 				if !ok {
 					streaming = false
 					break
