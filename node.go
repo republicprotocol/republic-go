@@ -18,6 +18,7 @@ import (
 type Delegate interface {
 	OnPingReceived(from identity.MultiAddress)
 	OnQueryCloserPeersReceived(from identity.MultiAddress)
+	OnQueryCloserPeersOnFrontierReceived(from identity.MultiAddress)
 }
 
 // Node implements the gRPC Node service.
@@ -242,6 +243,12 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 		}
 	}
 
+	// Notify the delegate of the query.
+	fromMultiAddress, err := rpc.DeserializeMultiAddress(query.From)
+	if err != nil {
+		return rpc.SerializeMultiAddresses(peersCloserToTarget), err
+	}
+	node.Delegate.OnQueryCloserPeersReceived(fromMultiAddress)
 	return rpc.SerializeMultiAddresses(peersCloserToTarget), node.updatePeer(query.From)
 }
 
@@ -316,6 +323,11 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmN
 		}
 	}
 
+	fromMultiAddress, err := rpc.DeserializeMultiAddress(query.From)
+	if err != nil {
+		return err
+	}
+	node.Delegate.OnQueryCloserPeersOnFrontierReceived(fromMultiAddress)
 	return node.updatePeer(query.From)
 }
 
