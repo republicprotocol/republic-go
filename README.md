@@ -1,11 +1,11 @@
-# P2P Network
+# Swarm Network
 
-[![Build Status](https://travis-ci.org/republicprotocol/go-network.svg?branch=master)](https://travis-ci.org/republicprotocol/go-network)
-[![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-network/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-network?branch=master)
+[![Build Status](https://travis-ci.org/republicprotocol/go-swarm-network.svg?branch=master)](https://travis-ci.org/republicprotocol/go-swarm-network)
+[![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-swarm-network/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-swarm-network?branch=master)
 
 > This library is a work in progress.
 
-The P2P Network library is an official reference implementation of the P2P Network in the Republic Protocol, written in Go. It supports connecting nodes, and sending order fragments between nodes.
+The Swarm Network library is an official reference implementation of the Swarm Network in the Republic Protocol, written in Go. It is a P2P network that supports pinging nodes, searching for nodes, and bootstrapping.
 
 ## Installation
 
@@ -56,4 +56,4 @@ ginkgo -v --trace --cover --coverprofile coverprofile.out
 
 ## License
 
-The P2P Network library was developed by the Republic Protocol team and is available under the MIT license. For more information, see our website https://republicprotocol.com.
+The Swarm Network library was developed by the Republic Protocol team and is available under the MIT license. For more information, see our website https://republicprotocol.com.

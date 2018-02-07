@@ -1,4 +1,4 @@
-package network
+package swarm
 
 import (
 	"fmt"

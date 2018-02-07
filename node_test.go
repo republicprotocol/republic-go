@@ -1,4 +1,4 @@
-package network_test
+package swarm_test
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-network"
+	"github.com/republicprotocol/go-swarm-network"
 )
 
 type mockDelegate struct {
@@ -42,9 +42,9 @@ func (delegate *mockDelegate) OnQueryCloserPeersReceived(_ identity.MultiAddress
 var _ = Describe("Bootstrapping", func() {
 
 	var err error
-	var bootstrapNodes []*network.Node
-	var bootstrapRoutingTable map[identity.Address][]*network.Node
-	var swarmNodes []*network.Node
+	var bootstrapNodes []*swarm.Node
+	var bootstrapRoutingTable map[identity.Address][]*swarm.Node
+	var swarmNodes []*swarm.Node
 	var delegate *mockDelegate
 
 	setupBootstrapNodes := func(topology Topology, numberOfNodes int) {
@@ -54,7 +54,7 @@ var _ = Describe("Bootstrapping", func() {
 			By(fmt.Sprintf("%dth bootstrap node is %s", i, node.MultiAddress()))
 		}
 		for _, node := range bootstrapNodes {
-			go func(node *network.Node) {
+			go func(node *swarm.Node) {
 				defer GinkgoRecover()
 				Ω(node.Serve()).ShouldNot(HaveOccurred())
 			}(node)
@@ -72,7 +72,7 @@ var _ = Describe("Bootstrapping", func() {
 			}
 		}
 		for _, node := range swarmNodes {
-			go func(node *network.Node) {
+			go func(node *swarm.Node) {
 				defer GinkgoRecover()
 				Ω(node.Serve()).ShouldNot(HaveOccurred())
 			}(node)
@@ -86,12 +86,12 @@ var _ = Describe("Bootstrapping", func() {
 
 	AfterEach(func() {
 		for _, node := range bootstrapNodes {
-			func(node *network.Node) {
+			func(node *swarm.Node) {
 				node.Stop()
 			}(node)
 		}
 		for _, node := range swarmNodes {
-			func(node *network.Node) {
+			func(node *swarm.Node) {
 				node.Stop()
 			}(node)
 		}
