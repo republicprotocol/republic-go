@@ -188,29 +188,6 @@ var _ = Describe("Xing overlay network", func() {
 			mu.Unlock()
 		})
 
-		It("can't use an occupied ip address and port", func() {
-			delegate := newMockDelegate()
-			nodes, err := createNodes(delegate, numberOfNodes, DefaultNodePort)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort))
-			Ω(err).ShouldNot(HaveOccurred())
-
-			go func() {
-				defer GinkgoRecover()
-				Ω(nodes[0].Serve(listener)).ShouldNot(HaveOccurred())
-			}()
-			time.Sleep(1)
-
-			go func() {
-				defer GinkgoRecover()
-				Ω(nodes[1].Serve(listener)).Should(HaveOccurred())
-			}()
-			time.Sleep(1)
-
-			stopListening(nodes)
-		})
-
 		It("should print certain logs when debug option is greater or equal than DebugHigh", func() {
 			delegate := newMockDelegate()
 			nodes, err := createNodes(delegate, numberOfNodes, DefaultNodePort)
