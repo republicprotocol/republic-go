@@ -64,11 +64,20 @@ func (node *Node) Bootstrap() {
 	if node.Options.Debug >= DebugMedium {
 		log.Printf("%v is bootstrapping...\n", node.Address())
 	}
+	// Add all bootstrap Nodes to the DHT.
+	for _, bootstrapMultiAddress := range node.Options.BootstrapMultiAddresses {
+		err := node.DHT.UpdateMultiAddress(bootstrapMultiAddress)
+		if node.Options.Debug >= DebugLow {
+			log.Println(err)
+		}
+	}
 	if node.Options.Concurrent {
+		// Concurrently search all bootstrap Nodes for itself.
 		do.ForAll(node.Options.BootstrapMultiAddresses, func(i int) {
 			node.bootstrapUsingMultiAddress(node.Options.BootstrapMultiAddresses[i])
 		})
 	} else {
+		// Sequentially search all bootstrap Nodes for itself.
 		for _, bootstrapMultiAddress := range node.Options.BootstrapMultiAddresses {
 			node.bootstrapUsingMultiAddress(bootstrapMultiAddress)
 		}
