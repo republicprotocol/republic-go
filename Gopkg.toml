@@ -54,10 +54,6 @@
   name = "github.com/republicprotocol/go-rpc"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-x"
-
-[[constraint]]
   name = "google.golang.org/grpc"
   version = "1.9.2"
 

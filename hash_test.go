@@ -1,13 +1,12 @@
 package xing_test
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"math/rand"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-x"
+	"github.com/republicprotocol/go-xing"
 )
 
 var _ = Describe("Hashes", func() {
