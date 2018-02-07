@@ -186,7 +186,6 @@ var _ = Describe("nodes of Xing network", func() {
 			go func() {
 				err := nodes[1].Serve(listener)
 				Ω(err).Should(HaveOccurred())
-				By("get this ")
 			}()
 		})
 
