@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"net"
 	"sync"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 
 const (
 	DefaultNodePort = 3000
+	DefaultIPAddress = "127.0.0.1"
 	DefaultTimeOut  = 5 * time.Second
 )
 
@@ -68,8 +70,10 @@ var _ = Describe("nodes of Xing network", func() {
 	var nodes []*xing.Node
 
 	startListening := func() {
-		for _, node := range nodes {
-			go node.Serve()
+		for i , node := range nodes {
+			listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort+i))
+			Ω(err).ShouldNot(HaveOccurred())
+			go node.Serve(listener)
 		}
 	}
 
@@ -85,11 +89,11 @@ var _ = Describe("nodes of Xing network", func() {
 			for from == target {
 				target = rand.Intn(len(nodes))
 			}
-			fromMultiAddressString := "/ip4/" + nodes[from].Options.Host +
-				"/tcp/" + nodes[from].Options.Port +
+			fromMultiAddressString := "/ip4/" + DefaultIPAddress +
+				"/tcp/" + fmt.Sprintf("%d", DefaultNodePort+from) +
 				"/republic/" + nodes[from].Address().String()
-			targetMultiAddressString := "/ip4/" + nodes[target].Options.Host +
-				"/tcp/" + nodes[target].Options.Port +
+			targetMultiAddressString := "/ip4/" + DefaultIPAddress +
+				"/tcp/" + fmt.Sprintf("%d", DefaultNodePort+target) +
 				"/republic/" + nodes[target].Address().String()
 			fromMultiAddress, err := identity.NewMultiAddressFromString(fromMultiAddressString)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -114,11 +118,11 @@ var _ = Describe("nodes of Xing network", func() {
 			for from == target {
 				target = rand.Intn(len(nodes))
 			}
-			fromMultiAddressString := "/ip4/" + nodes[from].Options.Host +
-				"/tcp/" + nodes[from].Options.Port +
+			fromMultiAddressString := "/ip4/" + DefaultIPAddress +
+				"/tcp/" + fmt.Sprintf("%d", DefaultNodePort+from) +
 				"/republic/" + nodes[from].Address().String()
-			targetMultiAddressString := "/ip4/" + nodes[target].Options.Host +
-				"/tcp/" + nodes[target].Options.Port +
+			targetMultiAddressString := "/ip4/" + DefaultIPAddress +
+				"/tcp/" + fmt.Sprintf("%d", DefaultNodePort+target) +
 				"/republic/" + nodes[target].Address().String()
 			fromMultiAddress, err := identity.NewMultiAddressFromString(fromMultiAddressString)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -173,12 +177,12 @@ var _ = Describe("nodes of Xing network", func() {
 		})
 
 		It("can't use an occupied ip address and port", func() {
-			nodes[1].Options.Port = fmt.Sprintf("%d", DefaultNodePort)
-			nodes[0].Options.Port = fmt.Sprintf("%d", DefaultNodePort)
-			go nodes[0].Serve()
+			listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort))
+			Ω(err).ShouldNot(HaveOccurred())
+			go nodes[0].Serve(listener)
 			defer nodes[0].Stop()
 			go func() {
-				err := nodes[1].Serve()
+				err := nodes[1].Serve(listener)
 				Ω(err).Should(HaveOccurred())
 				By("get this ")
 			}()
@@ -199,18 +203,6 @@ var _ = Describe("nodes of Xing network", func() {
 			startListening()
 			sendOrderFragments(numberOfFragments)
 			sendResultFragments(numberOfFragments)
-		})
-
-		It("should return error when we use wrong target address", func() {
-
-		})
-
-		It("should return error when we use wrong to address", func() {
-			nodes[0].Address() = identity.Address("")
-		})
-
-		It("should return error when we use wrong from address", func() {
-
 		})
 	})
 })
@@ -239,8 +231,6 @@ func createNodes(delegate xing.Delegate, numberOfNodes, port int) []*xing.Node {
 			delegate,
 			xing.Options{
 				Address:        keyPair.Address(),
-				Host:           "127.0.0.1",
-				Port:           fmt.Sprintf("%d", port+i),
 				Debug:          DefaultOptionsDebug,
 				Timeout:        DefaultOptionsTimeout,
 				TimeoutStep:    DefaultOptionsTimeoutStep,
