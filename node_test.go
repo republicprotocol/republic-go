@@ -16,6 +16,7 @@ import (
 	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-sss"
 	"github.com/republicprotocol/go-xing"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -75,14 +76,15 @@ var _ = Describe("Xing overlay network", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			go func(node *xing.Node) {
 				defer GinkgoRecover()
-				Ω(node.Serve(listener)).ShouldNot(HaveOccurred())
+				node.Register()
+				Ω(node.Server.Serve(listener)).ShouldNot(HaveOccurred())
 			}(node)
 		}
 	}
 
 	stopListening := func(nodes []*xing.Node) {
 		for _, node := range nodes {
-			node.Stop()
+			node.Server.Stop()
 		}
 	}
 
@@ -203,11 +205,13 @@ var _ = Describe("Xing overlay network", func() {
 			nodes[1].Options.Debug = xing.DebugHigh
 			go func() {
 				defer GinkgoRecover()
-				Ω(nodes[0].Serve(listener0)).ShouldNot(HaveOccurred())
+				nodes[0].Register()
+				Ω(nodes[0].Server.Serve(listener0)).ShouldNot(HaveOccurred())
 			}()
 			go func() {
 				defer GinkgoRecover()
-				Ω(nodes[1].Serve(listener1)).ShouldNot(HaveOccurred())
+				nodes[1].Register()
+				Ω(nodes[1].Server.Serve(listener1)).ShouldNot(HaveOccurred())
 			}()
 			time.Sleep(time.Second)
 
@@ -288,6 +292,7 @@ func createNodes(delegate xing.Delegate, numberOfNodes, port int) ([]*xing.Node,
 			return nodes, err
 		}
 		node := xing.NewNode(
+			grpc.NewServer(),
 			delegate,
 			xing.Options{
 				Address:        keyPair.Address(),
