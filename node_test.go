@@ -43,7 +43,7 @@ func (delegate *mockDelegate) OnQueryCloserPeersReceived(_ identity.MultiAddress
 func (delegate *mockDelegate) OnQueryCloserPeersOnFrontierReceived(_ identity.MultiAddress) {
 	delegate.mu.Lock()
 	defer delegate.mu.Unlock()
-	delegate.numberOfQueryCloserPeers++
+	delegate.numberOfQueryCloserPeersOnFrontier++
 }
 
 // boostrapping
