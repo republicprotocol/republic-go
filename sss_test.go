@@ -53,7 +53,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 		})
 	})
 
-	Context("encoding", func() {
+	Context("splitting", func() {
 		It("should return the correct number of shares", func() {
 			// Shamir parameters.
 			n := int64(100)
@@ -68,7 +68,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 		})
 	})
 
-	Context("decoding", func() {
+	Context("joining", func() {
 		It("should return the correct secret from K shares", func() {
 			// Shamir parameters.
 			N := int64(100)
