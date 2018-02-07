@@ -3,7 +3,6 @@ package xing
 import (
 	"context"
 	"log"
-	"net"
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
@@ -30,21 +29,17 @@ type Node struct {
 
 // NewNode returns a Node that delegates the responsibility of handling RPCs to
 // a Delegate.
-func NewNode(delegate Delegate, options Options) *Node {
+func NewNode(server *grpc.Server, delegate Delegate, options Options) *Node {
 	return &Node{
 		Delegate: delegate,
-		Server:   grpc.NewServer(grpc.ConnectionTimeout(options.Timeout)),
+		Server:   server,
 		Options:  options,
 	}
 }
 
-// Serve starts the gRPC server.
-func (node *Node) Serve(listener net.Listener) error {
+// Register the gRPC service.
+func (node *Node) Register() {
 	rpc.RegisterXingNodeServer(node.Server, node)
-	if node.Options.Debug >= DebugLow {
-		log.Printf("Listening on %v\n", listener.Addr())
-	}
-	return node.Server.Serve(listener)
 }
 
 // Stop the gRPC server.
