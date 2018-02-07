@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"log"
+	"net"
 	"time"
 
 	"github.com/republicprotocol/go-miner"
@@ -22,9 +23,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	listener, err := net.Listen("tcp", config.Host+":"+config.Port)
+	if err != nil {
+		log.Fatal(err)
+	}
 	go func() {
-		if err := miner.Serve(); err != nil {
-			// TODO: Do something other than die.
+		if err := miner.Xing.Serve(listener); err != nil {
+			log.Fatal(err)
+		}
+	}()
+	go func() {
+		if err := miner.Swarm.Serve(listener); err != nil {
 			log.Fatal(err)
 		}
 	}()
@@ -32,9 +41,7 @@ func main() {
 
 	go func() {
 		log.Println("establishing connections...")
-		if err := miner.EstablishConnections(); err != nil {
-			log.Fatal(err)
-		}
+		miner.EstablishConnections()
 	}()
 
 	log.Println("digging...")
