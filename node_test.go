@@ -54,7 +54,7 @@ var _ = Describe("Bootstrapping", func() {
 		for i, node := range bootstrapNodes {
 			go func(i int, node *swarm.Node) {
 				defer GinkgoRecover()
-				listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", 3000+i))
+				listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", NodePortBootstrap+i))
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(node.Serve(listener)).ShouldNot(HaveOccurred())
 			}(i, node)
@@ -74,7 +74,7 @@ var _ = Describe("Bootstrapping", func() {
 		for i, node := range swarmNodes {
 			go func(i int, node *swarm.Node) {
 				defer GinkgoRecover()
-				listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", 4000+i))
+				listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", NodePortSwarm+i))
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(node.Serve(listener)).ShouldNot(HaveOccurred())
 			}(i, node)
