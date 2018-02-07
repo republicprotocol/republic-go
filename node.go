@@ -45,14 +45,6 @@ func (node *Node) Register() {
 	rpc.RegisterSwarmNodeServer(node.Server, node)
 }
 
-// Stop the gRPC server.
-func (node *Node) Stop() {
-	if node.Options.Debug >= DebugLow {
-		log.Printf("Stopping\n")
-	}
-	node.Server.Stop()
-}
-
 // Bootstrap the Node into the network. The Node will connect to each bootstrap
 // Node and attempt to find itself in the network. This process will ultimately
 // connect it to Nodes that are close to it in XOR space.
