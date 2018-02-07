@@ -2,7 +2,6 @@ package xing
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 
@@ -40,14 +39,10 @@ func NewNode(delegate Delegate, options Options) *Node {
 }
 
 // Serve starts the gRPC server.
-func (node *Node) Serve() error {
+func (node *Node) Serve(listener net.Listener) error {
 	rpc.RegisterXingNodeServer(node.Server, node)
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", node.Options.Host, node.Options.Port))
-	if err != nil {
-		return err
-	}
 	if node.Options.Debug >= DebugLow {
-		log.Printf("Listening at %s:%s\n", node.Options.Host, node.Options.Port)
+		log.Printf("Listening on %v\n", listener.Addr())
 	}
 	return node.Server.Serve(listener)
 }
