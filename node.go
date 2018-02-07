@@ -140,7 +140,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Noth
 	}
 
 	// If the compute.OrderFragment needs to be forwarded.
-	if deserializedTo == node.Address() {
+	if deserializedTo != node.Address() {
 		node.OnOrderFragmentForwarding(deserializedTo, deserializedFrom, deserializedOrderFragment)
 		return &rpc.Nothing{}, nil
 	}
@@ -165,7 +165,7 @@ func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.N
 	}
 
 	// If the compute.ResultFragment needs to be forwarded.
-	if deserializedTo == node.Address() {
+	if deserializedTo != node.Address() {
 		node.OnResultFragmentForwarding(deserializedTo, deserializedFrom, deserializedResultFragment)
 		return &rpc.Nothing{}, nil
 	}

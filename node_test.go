@@ -97,19 +97,10 @@ var _ = Describe("nodes of Xing network", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			err = rpc.SendOrderFragmentToTarget(targetMultiAddress, to, fromMultiAddress, orderFragment, DefaultTimeOut)
 			Ω(err).ShouldNot(HaveOccurred())
-			// test forwar fragment
-			// err = rpc.SendOrderFragmentToTarget(toMultiAddress, fromMultiAddress, orderFragment, DefaultTimeOut)
-			// Ω(err).ShouldNot(HaveOccurred())
+			err = rpc.SendOrderFragmentToTarget(targetMultiAddress, nodes[target].Address(), fromMultiAddress, orderFragment, DefaultTimeOut)
+		    Ω(err).ShouldNot(HaveOccurred())
 		}
 	}
-
-	AfterEach(func() {
-		for _, node := range nodes {
-			func(node *xing.Node) {
-				node.Stop()
-			}(node)
-		}
-	})
 
 	sendResultFragments := func(numberOfFragments int) {
 		keyPair, err := identity.NewKeyPair()
@@ -135,8 +126,18 @@ var _ = Describe("nodes of Xing network", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			err = rpc.SendResultFragmentToTarget(targetMultiAddress, to, fromMultiAddress, resultFragment, DefaultTimeOut)
 			Ω(err).ShouldNot(HaveOccurred())
+			err = rpc.SendResultFragmentToTarget(targetMultiAddress, nodes[target].Address(), fromMultiAddress, resultFragment, DefaultTimeOut)
+			Ω(err).ShouldNot(HaveOccurred())
 		}
 	}
+
+	AfterEach(func() {
+		for _, node := range nodes {
+			func(node *xing.Node) {
+				node.Stop()
+			}(node)
+		}
+	})
 
 	for numberOfNodes := range []int{4, 8, 16, 32} {
 		for numberOfFragments := range []int{4, 8, 16, 32} {
@@ -146,7 +147,8 @@ var _ = Describe("nodes of Xing network", func() {
 					nodes = createNodes(delegate, numberOfNodes, DefaultNodePort)
 					startListening()
 					sendOrderFragments(numberOfFragments)
-					Ω(delegate.numberOfReceivedOrderFragment + delegate.numberOfForwardedOrderFragment).Should(Equal(numberOfFragments))
+					Ω(delegate.numberOfReceivedOrderFragment).Should(Equal(numberOfFragments))
+					Ω(delegate.numberOfForwardedOrderFragment).Should(Equal(numberOfFragments))
 				})
 
 				It("should  either receive the result fragment or forward it to the target", func() {
@@ -154,7 +156,8 @@ var _ = Describe("nodes of Xing network", func() {
 					nodes = createNodes(delegate, numberOfNodes, DefaultNodePort)
 					startListening()
 					sendResultFragments(numberOfFragments)
-					Ω(delegate.numberOfReceivedResultFragment + delegate.numberOfForwardedResultFragment).Should(Equal(numberOfFragments))
+					Ω(delegate.numberOfReceivedResultFragment).Should(Equal(numberOfFragments))
+					Ω(delegate.numberOfForwardedResultFragment).Should(Equal(numberOfFragments))
 				})
 			})
 		}
@@ -203,7 +206,7 @@ var _ = Describe("nodes of Xing network", func() {
 		})
 
 		It("should return error when we use wrong to address", func() {
-
+			nodes[0].Address() = identity.Address("")
 		})
 
 		It("should return error when we use wrong from address", func() {
