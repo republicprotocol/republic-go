@@ -179,6 +179,7 @@ var _ = Describe("nodes of Xing network", func() {
 
 		It("can't use an occupied ip address and port", func() {
 			listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort))
+			defer listener.Close()
 			Ω(err).ShouldNot(HaveOccurred())
 			go nodes[0].Serve(listener)
 			defer nodes[0].Stop()
@@ -191,6 +192,7 @@ var _ = Describe("nodes of Xing network", func() {
 
 		It("should print certain logs when debug option is greater or equal than DebugHigh", func() {
 			listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort))
+			defer listener.Close()
 			Ω(err).ShouldNot(HaveOccurred())
 			nodes[0].Options.Debug = xing.DebugHigh
 			go nodes[0].Serve(listener)
