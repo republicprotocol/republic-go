@@ -17,8 +17,6 @@ const (
 // Options that parameterize the behavior of Nodes.
 type Options struct {
 	Address identity.Address
-	Host    string
-	Port    string
 
 	Debug          int
 	Timeout        time.Duration
