@@ -101,6 +101,5 @@ func (cmd *openCmd) runCommand(c *rpc.Client) error {
 	b.refundTx.Serialize(&refundBuf)
 	fmt.Printf("Refund transaction (%v):\n", &refundTxHash)
 	fmt.Printf("%x\n\n", refundBuf.Bytes())
-
 	return promptPublishTx(c, b.contractTx, "contract")
 }
