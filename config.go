@@ -7,11 +7,13 @@ import (
 	"github.com/republicprotocol/go-identity"
 )
 
-// Config information for booting a Node.
+// Config information for Miners
 type Config struct {
-	KeyPair         identity.KeyPair        `json:"key"`
-	Multi           identity.MultiAddress   `json:"multi"`
-	BootstrapMultis identity.MultiAddresses `json:"bootstrap_multis"`
+	Host                    string                  `json:"host"`
+	Port                    string                  `json:"port"`
+	KeyPair                 string                  `json:"key_pair"`
+	MultiAddress            identity.MultiAddress   `json:"multi_address"`
+	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config

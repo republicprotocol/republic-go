@@ -8,8 +8,10 @@ import (
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-network"
 	"github.com/republicprotocol/go-order-compute"
+	"github.com/republicprotocol/go-rpc"
+	"github.com/republicprotocol/go-swarm-network"
+	"github.com/republicprotocol/go-xing"
 )
 
 // TODO: Do not make this values constant.
@@ -20,49 +22,77 @@ var (
 )
 
 type Miner struct {
-	*network.Node
-	*compute.ComputationMatrix
+	Computer *compute.ComputationMatrix
+	Swarm    *swarm.Node
+	Xing     *xing.Node
 }
 
 func NewMiner(config *Config) (*Miner, error) {
 	miner := &Miner{
-		ComputationMatrix: compute.NewComputationMatrix(),
+		Computer: compute.NewComputationMatrix(),
 	}
-	node, err := network.NewNode(config.Multi, config.BootstrapMultis, miner)
-	if err != nil {
-		return nil, err
+
+	swarmOptions := swarm.Options{
+		MultiAddress:            config.MultiAddress,
+		BootstrapMultiAddresses: config.BootstrapMultiAddresses,
+		Debug: swarm.DebugHigh,
 	}
-	miner.Node = node
+	swarmNode := swarm.NewNode(miner, swarmOptions)
+	miner.Swarm = swarmNode
+
+	xingOptions := xing.Options{
+		Address: config.MultiAddress.Address(),
+		Debug:   xing.DebugHigh,
+	}
+	xingNode := xing.NewNode(miner, xingOptions)
+	miner.Xing = xingNode
+
 	return miner, nil
 }
 
-func (miner *Miner) EstablishConnections() error {
-	for _, multi := range miner.DHT.MultiAddresses() {
-		log.Println("pinging", multi)
-		_, err := miner.RPCPing(multi)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+// EstablishConnections to other peers in the swarm network by bootstrapping
+// against a set of bootstrap network.Nodes.
+func (miner *Miner) EstablishConnections() {
+	miner.Swarm.Bootstrap()
 }
 
+// OnPingReceived implements the network.Delegate interface. It is used by the
+// underlying network.Node whenever the Miner needs to handle a Ping RPC.
 func (miner *Miner) OnPingReceived(peer identity.MultiAddress) {
 }
 
-func (miner *Miner) OnOrderFragmentReceived(orderFragment *compute.OrderFragment) {
-	miner.ComputationMatrix.AddOrderFragment(orderFragment)
+// OnQueryCloserPeersReceived implements the network.Delegate interface. It is
+// used by the underlying network.Node whenever the Miner needs to handle a
+// QueryCloserPeers RPC.
+func (miner *Miner) OnQueryCloserPeersReceived(peer identity.MultiAddress) {
 }
 
-func (miner *Miner) OnResultFragmentReceived(resultFragment *compute.ResultFragment) {
+// OnQueryCloserPeersOnFrontierReceived implements the network.Delegate
+// interface. It is used by the underlying network.Node whenever the Miner
+// needs to handle a QueryCloserPeersOnFrontier RPC.
+func (miner *Miner) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAddress) {
+}
+
+func (miner *Miner) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
+	miner.Computer.AddOrderFragment(orderFragment)
+}
+
+func (miner *Miner) OnResultFragmentReceived(from identity.MultiAddress, resultFragment *compute.ResultFragment) {
 	miner.addResultFragments([]*compute.ResultFragment{resultFragment})
+}
+
+func (miner *Miner) OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment) {
+}
+
+func (miner *Miner) OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, resultFragment *compute.ResultFragment) {
 }
 
 func (miner *Miner) Mine(quit chan struct{}) {
 	for {
 		select {
 		case <-quit:
-			miner.Stop()
+			miner.Xing.Stop()
+			miner.Swarm.Stop()
 			return
 		default:
 			// FIXME: If this function call blocks forever then the quit signal
@@ -74,7 +104,7 @@ func (miner *Miner) Mine(quit chan struct{}) {
 
 func (miner Miner) ComputeAll() {
 	numberOfCPUs := runtime.NumCPU()
-	computations := miner.ComputationMatrix.WaitForComputations(numberOfCPUs)
+	computations := miner.Computer.WaitForComputations(numberOfCPUs)
 	resultFragments := make([]*compute.ResultFragment, len(computations))
 
 	do.CoForAll(computations, func(i int) {
@@ -105,17 +135,17 @@ func (miner Miner) Compute(computation *compute.Computation) (*compute.ResultFra
 		return nil, err
 	}
 	go func() {
-		for _, multi := range miner.DHT.MultiAddresses() {
-			miner.RPCSendResultFragment(multi, resultFragment)
+		for _, multiAddress := range miner.Swarm.DHT.MultiAddresses() {
+			rpc.SendResultFragmentToTarget(multiAddress, multiAddress.Address(), miner.Swarm.MultiAddress(), resultFragment, miner.Swarm.Options.Timeout)
 		}
 	}()
 	return resultFragment, nil
 }
 
 func (miner Miner) addResultFragments(resultFragments []*compute.ResultFragment) {
-	results, _ := miner.ComputationMatrix.AddResultFragments(K, Prime, resultFragments)
+	results, _ := miner.Computer.AddResultFragments(resultFragments, K, Prime)
 	for _, result := range results {
-		if result.IsMatch() {
+		if result.IsMatch(Prime) {
 			log.Printf("match found for buy = %s, sell = %s\n", base58.Encode(result.BuyOrderID), base58.Encode(result.SellOrderID))
 		}
 	}
