@@ -260,6 +260,27 @@ var _ = Describe("Xing overlay network", func() {
 			_, err = from.SendResultFragment(context.Background(), resultFragment)
 			Ω(err).Should(HaveOccurred())
 		})
+
+		It("should return error when we have error in context", func() {
+			delegate := newMockDelegate()
+			nodes, err := createNodes(delegate, numberOfNodes, DefaultNodePort)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			from, to := nodes[0], nodes[1]
+			orderFragment := rpc.SerializeOrderFragment(randomOrderFragment())
+			orderFragment.To = &rpc.Address{Address: to.Address().String()}
+			resultFragment := rpc.SerializeResultFragment(randomResultFragment())
+			resultFragment.To = &rpc.Address{Address: to.Address().String()}
+
+			canceledContext, cancel := context.WithCancel(context.Background())
+			cancel()
+			_, err = from.SendOrderFragment(canceledContext, orderFragment)
+			Ω(err).Should(HaveOccurred())
+			_, err = from.SendResultFragment(canceledContext, resultFragment)
+			Ω(err).Should(HaveOccurred())
+		})
+
+
 	})
 })
 
