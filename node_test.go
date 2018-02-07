@@ -69,11 +69,7 @@ func (delegate *mockDelegate) OnResultFragmentForwarding(to identity.Address, fr
 var _ = Describe("Xing overlay network", func() {
 	var mu = new(sync.Mutex)
 
-	var err error
-	var delegate *mockDelegate
-	var nodes []*xing.Node
-
-	startListening := func() {
+	startListening := func(nodes []*xing.Node) {
 		for i, node := range nodes {
 			listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort+i))
 			Ω(err).ShouldNot(HaveOccurred())
@@ -84,13 +80,13 @@ var _ = Describe("Xing overlay network", func() {
 		}
 	}
 
-	stopListening := func() {
+	stopListening := func(nodes []*xing.Node) {
 		for _, node := range nodes {
 			node.Stop()
 		}
 	}
 
-	sendOrderFragments := func(numberOfFragments int) {
+	sendOrderFragments := func(nodes []*xing.Node, numberOfFragments int) {
 		keyPair, err := identity.NewKeyPair()
 		Ω(err).ShouldNot(HaveOccurred())
 		to := keyPair.Address()
@@ -116,7 +112,7 @@ var _ = Describe("Xing overlay network", func() {
 		}
 	}
 
-	sendResultFragments := func(numberOfFragments int) {
+	sendResultFragments := func(nodes []*xing.Node, numberOfFragments int) {
 		keyPair, err := identity.NewKeyPair()
 		Ω(err).ShouldNot(HaveOccurred())
 		to := keyPair.Address()
@@ -141,35 +137,42 @@ var _ = Describe("Xing overlay network", func() {
 		}
 	}
 
-	for numberOfNodes := range []int{4, 8, 16, 32} {
-		for numberOfFragments := range []int{4, 8, 16, 32} {
-			Context("when sending order fragment", func() {
+	for _, numberOfNodes := range []int{4, 8, 16, 32} {
+		for _, numberOfFragments := range []int{4, 8, 16, 32} {
+			func(numberOfNodes, numberOfFragments int) {
+				Context("when sending order fragment", func() {
 
-				BeforeEach(func() {
-					mu.Lock()
-					delegate = newMockDelegate()
-					nodes, err = createNodes(delegate, numberOfNodes, DefaultNodePort)
-					Ω(err).ShouldNot(HaveOccurred())
-					startListening()
-				})
+					BeforeEach(func() {
+						mu.Lock()
+					})
 
-				AfterEach(func() {
-					stopListening()
-					mu.Unlock()
-				})
+					AfterEach(func() {
+						mu.Unlock()
+					})
 
-				It("should either receive the order fragment or forward it to the target", func() {
-					sendOrderFragments(numberOfFragments)
-					Ω(delegate.numberOfReceivedOrderFragment).Should(Equal(numberOfFragments))
-					Ω(delegate.numberOfForwardedOrderFragment).Should(Equal(numberOfFragments))
-				})
+					It("should either receive the order fragment or forward it to the target", func() {
+						delegate := newMockDelegate()
+						nodes, err := createNodes(delegate, numberOfNodes, DefaultNodePort)
+						Ω(err).ShouldNot(HaveOccurred())
+						startListening(nodes)
+						sendOrderFragments(nodes, numberOfFragments)
+						Ω(delegate.numberOfReceivedOrderFragment).Should(Equal(numberOfFragments))
+						Ω(delegate.numberOfForwardedOrderFragment).Should(Equal(numberOfFragments))
+						stopListening(nodes)
+					})
 
-				It("should either receive the result fragment or forward it to the target", func() {
-					sendResultFragments(numberOfFragments)
-					Ω(delegate.numberOfReceivedResultFragment).Should(Equal(numberOfFragments))
-					Ω(delegate.numberOfForwardedResultFragment).Should(Equal(numberOfFragments))
+					It("should either receive the result fragment or forward it to the target", func() {
+						delegate := newMockDelegate()
+						nodes, err := createNodes(delegate, numberOfNodes, DefaultNodePort)
+						Ω(err).ShouldNot(HaveOccurred())
+						startListening(nodes)
+						sendResultFragments(nodes, numberOfFragments)
+						Ω(delegate.numberOfReceivedResultFragment).Should(Equal(numberOfFragments))
+						Ω(delegate.numberOfForwardedResultFragment).Should(Equal(numberOfFragments))
+						stopListening(nodes)
+					})
 				})
-			})
+			}(numberOfNodes, numberOfFragments)
 		}
 	}
 
@@ -179,17 +182,17 @@ var _ = Describe("Xing overlay network", func() {
 
 		BeforeEach(func() {
 			mu.Lock()
-			delegate = newMockDelegate()
-			nodes, err = createNodes(delegate, numberOfNodes, DefaultNodePort)
-			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
-			stopListening()
 			mu.Unlock()
 		})
 
 		It("can't use an occupied ip address and port", func() {
+			delegate := newMockDelegate()
+			nodes, err := createNodes(delegate, numberOfNodes, DefaultNodePort)
+			Ω(err).ShouldNot(HaveOccurred())
+
 			listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort))
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -203,9 +206,16 @@ var _ = Describe("Xing overlay network", func() {
 				defer GinkgoRecover()
 				Ω(nodes[1].Serve(listener)).Should(HaveOccurred())
 			}()
+			time.Sleep(1)
+
+			stopListening(nodes)
 		})
 
 		It("should print certain logs when debug option is greater or equal than DebugHigh", func() {
+			delegate := newMockDelegate()
+			nodes, err := createNodes(delegate, numberOfNodes, DefaultNodePort)
+			Ω(err).ShouldNot(HaveOccurred())
+
 			listener0, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort))
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -224,11 +234,18 @@ var _ = Describe("Xing overlay network", func() {
 			}()
 			time.Sleep(time.Second)
 
-			sendOrderFragments(numberOfFragments)
-			sendResultFragments(numberOfFragments)
+			sendOrderFragments(nodes, numberOfFragments)
+			sendResultFragments(nodes, numberOfFragments)
+			time.Sleep(1)
+
+			stopListening(nodes)
 		})
 
 		It("should return error when we use wrong fragment", func() {
+			delegate := newMockDelegate()
+			nodes, err := createNodes(delegate, numberOfNodes, DefaultNodePort)
+			Ω(err).ShouldNot(HaveOccurred())
+
 			from, to := nodes[0], nodes[1]
 			fromMulti := "/ip4/" + DefaultIPAddress + "/tcp/3000/republic/" + from.Address().String()
 			orderFragment := rpc.SerializeOrderFragment(randomOrderFragment())
@@ -240,20 +257,24 @@ var _ = Describe("Xing overlay network", func() {
 			resultFragment.To = &rpc.Address{Address: to.Address().String()}
 			resultFragment.MaxVolumeShare = []byte("")
 
-			_, err := from.SendOrderFragment(context.Background(), orderFragment)
+			_, err = from.SendOrderFragment(context.Background(), orderFragment)
 			Ω(err).Should(HaveOccurred())
 			_, err = from.SendResultFragment(context.Background(), resultFragment)
 			Ω(err).Should(HaveOccurred())
 		})
 
 		It("should return error when we use wrong from address", func() {
+			delegate := newMockDelegate()
+			nodes, err := createNodes(delegate, numberOfNodes, DefaultNodePort)
+			Ω(err).ShouldNot(HaveOccurred())
+
 			from, to := nodes[0], nodes[1]
 			orderFragment := rpc.SerializeOrderFragment(randomOrderFragment())
 			orderFragment.To = &rpc.Address{Address: to.Address().String()}
 			resultFragment := rpc.SerializeResultFragment(randomResultFragment())
 			resultFragment.To = &rpc.Address{Address: to.Address().String()}
 
-			_, err := from.SendOrderFragment(context.Background(), orderFragment)
+			_, err = from.SendOrderFragment(context.Background(), orderFragment)
 			Ω(err).Should(HaveOccurred())
 			_, err = from.SendResultFragment(context.Background(), resultFragment)
 			Ω(err).Should(HaveOccurred())
