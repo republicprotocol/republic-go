@@ -1,7 +1,7 @@
 # Xing
 
-[![Build Status](https://travis-ci.org/republicprotocol/go-x.svg?branch=master)](https://travis-ci.org/republicprotocol/go-x)
-[![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-x/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-x?branch=master)
+[![Build Status](https://travis-ci.org/republicprotocol/go-xing.svg?branch=master)](https://travis-ci.org/republicprotocol/go-xing)
+[![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-xing/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-xing?branch=master)
 
 > This library is a work in progress.
 
