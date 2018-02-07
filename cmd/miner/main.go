@@ -26,21 +26,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Open a port for the gRPC servers to use.
-	listener, err := net.Listen("tcp", config.Host+":"+config.Port)
-	if err != nil {
-		log.Fatal(err)
-	}
-	time.Sleep(time.Second)
-
 	// Start both gRPC servers.
+	miner.Swarm.Register()
+	miner.Xing.Register()
 	go func() {
-		if err := miner.Swarm.Serve(listener); err != nil {
+		listener, err := net.Listen("tcp", config.Host+":"+config.Port)
+		if err != nil {
 			log.Fatal(err)
 		}
-	}()
-	go func() {
-		if err := miner.Xing.Serve(listener); err != nil {
+		if err := miner.Server.Serve(listener); err != nil {
 			log.Fatal(err)
 		}
 	}()

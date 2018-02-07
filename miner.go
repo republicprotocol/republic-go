@@ -13,6 +13,7 @@ import (
 	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-swarm-network"
 	"github.com/republicprotocol/go-xing"
+	"google.golang.org/grpc"
 )
 
 // TODO: These variables should come from the Registrar contract.
@@ -24,6 +25,7 @@ var (
 
 type Miner struct {
 	Computer *compute.ComputationMatrix
+	Server   *grpc.Server
 	Swarm    *swarm.Node
 	Xing     *xing.Node
 }
@@ -31,6 +33,7 @@ type Miner struct {
 func NewMiner(config *Config) (*Miner, error) {
 	miner := &Miner{
 		Computer: compute.NewComputationMatrix(),
+		Server:   grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
 	}
 
 	swarmOptions := swarm.Options{
@@ -44,7 +47,7 @@ func NewMiner(config *Config) (*Miner, error) {
 		TimeoutRetries:  3,
 		Concurrent:      true,
 	}
-	swarmNode := swarm.NewNode(miner, swarmOptions)
+	swarmNode := swarm.NewNode(miner.Server, miner, swarmOptions)
 	miner.Swarm = swarmNode
 
 	xingOptions := xing.Options{
@@ -55,7 +58,7 @@ func NewMiner(config *Config) (*Miner, error) {
 		TimeoutRetries: 3,
 		Concurrent:     true,
 	}
-	xingNode := xing.NewNode(miner, xingOptions)
+	xingNode := xing.NewNode(miner.Server, miner, xingOptions)
 	miner.Xing = xingNode
 
 	return miner, nil
@@ -71,8 +74,7 @@ func (miner *Miner) Mine(quit chan struct{}) {
 	for {
 		select {
 		case <-quit:
-			miner.Xing.Stop()
-			miner.Swarm.Stop()
+			miner.Server.Stop()
 			return
 		default:
 			// FIXME: If this function call blocks forever then the quit signal
