@@ -40,7 +40,7 @@ func (computation *Computation) Sub(prime *big.Int) (*ResultFragment, error) {
 	return computation.BuyOrderFragment.Sub(computation.SellOrderFragment, prime)
 }
 
-type ComputationMatrix struct {
+type Computer struct {
 	orderFragments []*OrderFragment
 
 	computationsMu       *sync.Mutex
@@ -54,8 +54,8 @@ type ComputationMatrix struct {
 	resultFragments map[string][]*ResultFragment
 }
 
-func NewComputationMatrix() *ComputationMatrix {
-	return &ComputationMatrix{
+func NewComputationMatrix() *Computer {
+	return &Computer{
 		orderFragments: []*OrderFragment{},
 
 		computationsMu:       new(sync.Mutex),
@@ -70,7 +70,7 @@ func NewComputationMatrix() *ComputationMatrix {
 	}
 }
 
-func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) {
+func (matrix *Computer) AddOrderFragment(orderFragment *OrderFragment) {
 	matrix.computationsMu.Lock()
 	defer matrix.computationsMu.Unlock()
 
@@ -101,7 +101,7 @@ func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) 
 	}
 }
 
-func (matrix *ComputationMatrix) WaitForComputations(max int) []*Computation {
+func (matrix *Computer) WaitForComputations(max int) []*Computation {
 	matrix.computationsLeftCond.L.Lock()
 	defer matrix.computationsLeftCond.L.Unlock()
 	for atomic.LoadInt64(&matrix.computationsLeft) == 0 {
@@ -125,7 +125,7 @@ func (matrix *ComputationMatrix) WaitForComputations(max int) []*Computation {
 	return computations
 }
 
-func (matrix *ComputationMatrix) AddResultFragments(resultFragments []*ResultFragment, k int64, prime *big.Int) ([]*Result, error) {
+func (matrix *Computer) AddResultFragments(resultFragments []*ResultFragment, k int64, prime *big.Int) ([]*Result, error) {
 	matrix.resultsMu.Lock()
 	defer matrix.resultsMu.Unlock()
 
@@ -162,7 +162,7 @@ func (matrix *ComputationMatrix) AddResultFragments(resultFragments []*ResultFra
 	return results, nil
 }
 
-func (matrix *ComputationMatrix) ComputationsLeft() int64 {
+func (matrix *Computer) ComputationsLeft() int64 {
 	matrix.computationsLeftCond.L.Lock()
 	defer matrix.computationsLeftCond.L.Unlock()
 
