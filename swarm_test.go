@@ -57,8 +57,6 @@ func GenerateNodes(port, numberOfNodes int, delegate swarm.Delegate) ([]*swarm.N
 		node := swarm.NewNode(
 			delegate,
 			swarm.Options{
-				Host:            "127.0.0.1",
-				Port:            fmt.Sprintf("%d", port+i),
 				MultiAddress:    multiAddress,
 				Debug:           DefaultOptionsDebug,
 				Alpha:           DefaultOptionsAlpha,

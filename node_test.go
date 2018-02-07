@@ -3,6 +3,7 @@ package swarm_test
 import (
 	"fmt"
 	"log"
+	"net"
 	"sync"
 	"time"
 
@@ -51,13 +52,12 @@ var _ = Describe("Bootstrapping", func() {
 		bootstrapNodes, bootstrapRoutingTable, err = GenerateBootstrapTopology(topology, numberOfNodes, newMockDelegate())
 		Ω(err).ShouldNot(HaveOccurred())
 		for i, node := range bootstrapNodes {
-			By(fmt.Sprintf("%dth bootstrap node is %s", i, node.MultiAddress()))
-		}
-		for _, node := range bootstrapNodes {
-			go func(node *swarm.Node) {
+			go func(i int, node *swarm.Node) {
 				defer GinkgoRecover()
-				Ω(node.Serve()).ShouldNot(HaveOccurred())
-			}(node)
+				listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", NodePortBootstrap+i))
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(node.Serve(listener)).ShouldNot(HaveOccurred())
+			}(i, node)
 		}
 		time.Sleep(time.Second)
 		err = ping(bootstrapNodes, bootstrapRoutingTable)
@@ -71,11 +71,13 @@ var _ = Describe("Bootstrapping", func() {
 				swarmNode.Options.BootstrapMultiAddresses = append(swarmNode.Options.BootstrapMultiAddresses, bootstrapNode.MultiAddress())
 			}
 		}
-		for _, node := range swarmNodes {
-			go func(node *swarm.Node) {
+		for i, node := range swarmNodes {
+			go func(i int, node *swarm.Node) {
 				defer GinkgoRecover()
-				Ω(node.Serve()).ShouldNot(HaveOccurred())
-			}(node)
+				listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", NodePortSwarm+i))
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(node.Serve(listener)).ShouldNot(HaveOccurred())
+			}(i, node)
 		}
 		time.Sleep(time.Second)
 	}
