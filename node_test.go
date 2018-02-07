@@ -76,6 +76,7 @@ var _ = Describe("Xing overlay network", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			go func(node *xing.Node) {
 				defer GinkgoRecover()
+				node.Register()
 				Ω(node.Server.Serve(listener)).ShouldNot(HaveOccurred())
 			}(node)
 		}
@@ -204,10 +205,12 @@ var _ = Describe("Xing overlay network", func() {
 			nodes[1].Options.Debug = xing.DebugHigh
 			go func() {
 				defer GinkgoRecover()
+				nodes[0].Register()
 				Ω(nodes[0].Server.Serve(listener0)).ShouldNot(HaveOccurred())
 			}()
 			go func() {
 				defer GinkgoRecover()
+				nodes[1].Register()
 				Ω(nodes[1].Server.Serve(listener1)).ShouldNot(HaveOccurred())
 			}()
 			time.Sleep(time.Second)
@@ -289,7 +292,7 @@ func createNodes(delegate xing.Delegate, numberOfNodes, port int) ([]*xing.Node,
 			return nodes, err
 		}
 		node := xing.NewNode(
-			grpc.NewServer(grpc.ConnectionTimeout(DefaultOptionsTimeout)),
+			grpc.NewServer(),
 			delegate,
 			xing.Options{
 				Address:        keyPair.Address(),
