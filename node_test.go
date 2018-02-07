@@ -191,12 +191,16 @@ var _ = Describe("nodes of Xing network", func() {
 		})
 
 		It("should print certain logs when debug option is greater or equal than DebugHigh", func() {
-			listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort))
-			defer listener.Close()
+			listener0, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort))
+			listener1, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort+1))
+
 			Ω(err).ShouldNot(HaveOccurred())
 			nodes[0].Options.Debug = xing.DebugHigh
-			go nodes[0].Serve(listener)
+			go nodes[0].Serve(listener0)
+			go nodes[1].Serve(listener1)
 			defer nodes[0].Stop()
+			defer nodes[1].Stop()
+
 			sendOrderFragments(numberOfFragments)
 			sendResultFragments(numberOfFragments)
 
