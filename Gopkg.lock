@@ -4,14 +4,38 @@
 [[projects]]
   branch = "master"
   name = "github.com/btcsuite/btcd"
-  packages = ["btcec","chaincfg","chaincfg/chainhash","wire"]
+  packages = ["btcec","btcjson","chaincfg","chaincfg/chainhash","rpcclient","txscript","wire"]
   revision = "2e60448ffcc6bf78332d1fe590260095f554dd78"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/btclog"
+  packages = ["."]
+  revision = "84c8d2346e9fc8c7b947e243b9c24e6df9fd206a"
 
 [[projects]]
   branch = "master"
   name = "github.com/btcsuite/btcutil"
   packages = [".","base58","bech32"]
   revision = "501929d3d046174c3d39f0ea54ece471aa17238c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/btcwallet"
+  packages = ["wallet/txrules"]
+  revision = "8e723ea45456fc3e6208a399c849aca54a0d959f"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/go-socks"
+  packages = ["socks"]
+  revision = "4720035b7bfd2a9bb130b1c184f8bbe41b6f0d0f"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/websocket"
+  packages = ["."]
+  revision = "31079b6807923eb23992c421b114992b95131b55"
 
 [[projects]]
   name = "github.com/ethereum/go-ethereum"
@@ -106,6 +130,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "472919c596a3b1a22b2d9cc012a38b27c442eceb1de455295a8b31cb876485df"
+  inputs-digest = "2045b60d1ecc73a3501eb84ca39904ac9f8f13b2e30f96ae26c1771fd3565401"
   solver-name = "gps-cdcl"
   solver-version = 1
