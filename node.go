@@ -2,7 +2,6 @@ package swarm
 
 import (
 	"log"
-	"net"
 	"time"
 
 	"github.com/republicprotocol/go-dht"
@@ -32,22 +31,18 @@ type Node struct {
 // NewNode returns a Node with the given its own identity.MultiAddress, a list
 // of bootstrap node identity.MultiAddresses, and a delegate that defines
 // callbacks for each RPC.
-func NewNode(delegate Delegate, options Options) *Node {
+func NewNode(server *grpc.Server, delegate Delegate, options Options) *Node {
 	return &Node{
 		Delegate: delegate,
-		Server:   grpc.NewServer(grpc.ConnectionTimeout(options.Timeout)),
+		Server:   server,
 		DHT:      dht.NewDHT(options.MultiAddress.Address(), options.MaxBucketLength),
 		Options:  options,
 	}
 }
 
-// Serve starts the gRPC server.
-func (node *Node) Serve(listener net.Listener) error {
+// Register the gRPC service.
+func (node *Node) Register() {
 	rpc.RegisterSwarmNodeServer(node.Server, node)
-	if node.Options.Debug >= DebugLow {
-		log.Printf("Listening on %v\n", listener.Addr())
-	}
-	return node.Server.Serve(listener)
 }
 
 // Stop the gRPC server.
