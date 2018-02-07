@@ -16,7 +16,7 @@ type Config struct {
 }
 
 func main() {
-	generateMiners(3, "../miner")
+	generateMiners(1, "../terminal")
 }
 
 func generateMiners(numberOfMiners int, location string) {

@@ -85,14 +85,15 @@ var orders = []*compute.Order{
 
 func main() {
 
-	traderMultiAddress, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/3000/republic/8MGg76n7RfC6tuw23PYf85VFyAbCd")
+	traderMultiAddress, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/4000/republic/8MJgvgEeiM4jRnsYM2v4Vm1sL7udGi")
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	minerMultiAddressString := []string{"8MGg76n7RfC6tuw23PYf85VFyM8Zto", "8MHarRJdvWd7SsTJE8vRVfj2jb5cWS", "8MKZ8JwCU9m9affPWHZ9rxp2azXNnE"}
 	minerMultiAddresses := make(identity.MultiAddresses, miner.N)
 	for i := range minerMultiAddresses {
-		multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto", 4000+i))
+		multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 3000+i, minerMultiAddressString[i]))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -107,7 +108,7 @@ func main() {
 		log.Println("placing order", base58.Encode(order.ID))
 
 		for i := range shares {
-			if err := rpc.SendOrderFragmentToTarget(minerMultiAddresses[i], minerMultiAddresses[i].Address(), traderMultiAddress, shares[i], time.Minute); err != nil {
+			if err := rpc.SendOrderFragmentToTarget(minerMultiAddresses[i], minerMultiAddresses[i].Address(), traderMultiAddress, shares[i], 5*time.Second); err != nil {
 				log.Fatal(err)
 			}
 		}

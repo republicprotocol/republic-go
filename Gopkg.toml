@@ -42,8 +42,4 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/republicprotocol/go-network"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/republicprotocol/go-order-compute"
