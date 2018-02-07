@@ -189,21 +189,15 @@ var _ = Describe("nodes of Xing network", func() {
 			}()
 		})
 
-		It("should print certain logs when debug option is greater or equal than DebugLow", func() {
-			nodes[0].Options.Debug = xing.DebugLow
-			startListening()
-			sendOrderFragments(numberOfFragments)
-			sendResultFragments(numberOfFragments)
-			for _, node := range nodes {
-				node.Stop()
-			}
-		})
-
 		It("should print certain logs when debug option is greater or equal than DebugHigh", func() {
+			listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort))
+			Ω(err).ShouldNot(HaveOccurred())
 			nodes[0].Options.Debug = xing.DebugHigh
-			startListening()
+			go nodes[0].Serve(listener)
+			defer nodes[0].Stop()
 			sendOrderFragments(numberOfFragments)
 			sendResultFragments(numberOfFragments)
+
 		})
 
 		It("should return error when we use wrong fragment", func() {
