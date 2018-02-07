@@ -42,14 +42,6 @@ func (node *Node) Register() {
 	rpc.RegisterXingNodeServer(node.Server, node)
 }
 
-// Stop the gRPC server.
-func (node *Node) Stop() {
-	if node.Options.Debug >= DebugLow {
-		log.Printf("Stopping\n")
-	}
-	node.Server.Stop()
-}
-
 // Address returns the identity.Address of the Node.
 func (node *Node) Address() identity.Address {
 	return node.Options.Address
