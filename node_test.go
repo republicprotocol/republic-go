@@ -14,9 +14,10 @@ import (
 )
 
 type mockDelegate struct {
-	mu                       *sync.Mutex
-	numberOfPings            int
-	numberOfQueryCloserPeers int
+	mu                                 *sync.Mutex
+	numberOfPings                      int
+	numberOfQueryCloserPeers           int
+	numberOfQueryCloserPeersOnFrontier int
 }
 
 func newMockDelegate() *mockDelegate {
@@ -37,6 +38,12 @@ func (delegate *mockDelegate) OnQueryCloserPeersReceived(_ identity.MultiAddress
 	delegate.mu.Lock()
 	defer delegate.mu.Unlock()
 	delegate.numberOfQueryCloserPeers++
+}
+
+func (delegate *mockDelegate) OnQueryCloserPeersOnFrontierReceived(_ identity.MultiAddress) {
+	delegate.mu.Lock()
+	defer delegate.mu.Unlock()
+	delegate.numberOfQueryCloserPeersOnFrontier++
 }
 
 // boostrapping

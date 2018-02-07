@@ -13,7 +13,7 @@ There are several components that need to be installed before you can run tests.
 
 ### Install Proto3
 
-Protobuf is a binary communication protocol developed by Google. The X Network uses it to perform remote procedure calls between miners. To install it, run the commands given below to install the required version of Protobuf.
+Protobuf is a binary communication protocol developed by Google. The Swarm Network uses it to perform remote procedure calls between nodes. To install it, run the commands given below to install the required version of Protobuf.
 
 ```
 curl -OL https://github.com/google/protobuf/releases/download/v3.2.0/protoc-3.2.0-linux-x86_64.zip
@@ -26,7 +26,7 @@ sudo chown $USER /usr/local/bin/protoc
 sudo chown -R $USER /usr/local/include/google
 ```
 
-The X Network is written in Go, so you will also need to install the Go plugin. If you are building an implementation in another language, you will need to install the Protobuf plugin for that language.
+The Swarm Network is written in Go, so you will also need to install the Go plugin. If you are building an implementation in another language, you will need to install the Protobuf plugin for that language.
 
 ```
 go get -u github.com/golang/protobuf/protoc-gen-go

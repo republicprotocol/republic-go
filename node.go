@@ -18,6 +18,7 @@ import (
 type Delegate interface {
 	OnPingReceived(from identity.MultiAddress)
 	OnQueryCloserPeersReceived(from identity.MultiAddress)
+	OnQueryCloserPeersOnFrontierReceived(from identity.MultiAddress)
 }
 
 // Node implements the gRPC Node service.
@@ -64,11 +65,20 @@ func (node *Node) Bootstrap() {
 	if node.Options.Debug >= DebugMedium {
 		log.Printf("%v is bootstrapping...\n", node.Address())
 	}
+	// Add all bootstrap Nodes to the DHT.
+	for _, bootstrapMultiAddress := range node.Options.BootstrapMultiAddresses {
+		err := node.DHT.UpdateMultiAddress(bootstrapMultiAddress)
+		if node.Options.Debug >= DebugLow {
+			log.Println(err)
+		}
+	}
 	if node.Options.Concurrent {
+		// Concurrently search all bootstrap Nodes for itself.
 		do.ForAll(node.Options.BootstrapMultiAddresses, func(i int) {
 			node.bootstrapUsingMultiAddress(node.Options.BootstrapMultiAddresses[i])
 		})
 	} else {
+		// Sequentially search all bootstrap Nodes for itself.
 		for _, bootstrapMultiAddress := range node.Options.BootstrapMultiAddresses {
 			node.bootstrapUsingMultiAddress(bootstrapMultiAddress)
 		}
@@ -233,6 +243,12 @@ func (node *Node) queryCloserPeers(query *rpc.Query) (*rpc.MultiAddresses, error
 		}
 	}
 
+	// Notify the delegate of the query.
+	fromMultiAddress, err := rpc.DeserializeMultiAddress(query.From)
+	if err != nil {
+		return rpc.SerializeMultiAddresses(peersCloserToTarget), err
+	}
+	node.Delegate.OnQueryCloserPeersReceived(fromMultiAddress)
 	return rpc.SerializeMultiAddresses(peersCloserToTarget), node.updatePeer(query.From)
 }
 
@@ -307,6 +323,11 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmN
 		}
 	}
 
+	fromMultiAddress, err := rpc.DeserializeMultiAddress(query.From)
+	if err != nil {
+		return err
+	}
+	node.Delegate.OnQueryCloserPeersOnFrontierReceived(fromMultiAddress)
 	return node.updatePeer(query.From)
 }
 
