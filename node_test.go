@@ -192,30 +192,25 @@ var _ = Describe("Xing overlay network", func() {
 		It("can't use an occupied ip address and port", func() {
 			listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort))
 			Ω(err).ShouldNot(HaveOccurred())
-			defer listener.Close()
 
 			go func() {
 				defer GinkgoRecover()
 				Ω(nodes[0].Serve(listener)).ShouldNot(HaveOccurred())
 			}()
-			defer nodes[0].Stop()
 			time.Sleep(1)
 
 			go func() {
 				defer GinkgoRecover()
 				Ω(nodes[1].Serve(listener)).Should(HaveOccurred())
 			}()
-			defer nodes[1].Stop()
 		})
 
 		It("should print certain logs when debug option is greater or equal than DebugHigh", func() {
 			listener0, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort))
 			Ω(err).ShouldNot(HaveOccurred())
-			defer listener0.Close()
 
 			listener1, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultNodePort+1))
 			Ω(err).ShouldNot(HaveOccurred())
-			defer listener1.Close()
 
 			nodes[0].Options.Debug = xing.DebugHigh
 			nodes[1].Options.Debug = xing.DebugHigh
