@@ -112,7 +112,7 @@ var _ = Describe("Bootstrapping", func() {
 		func(topology Topology) {
 			Context(fmt.Sprintf("when bootstrap nodes are configured in a %s topology.\n", topology), func() {
 				for _, numberOfBootstrapNodes := range []int{4, 6, 8} {
-					for _, numberOfNodes := range []int{4, 8, 12, 16, 20} {
+					for _, numberOfNodes := range []int{4} {
 						func(topology Topology, numberOfBootstrapNodes, numberOfNodes int) {
 							Context(fmt.Sprintf("with %d bootstrap nodes and %d swarm nodes.\n", numberOfBootstrapNodes, numberOfNodes), func() {
 								It("should be able to successfully ping between nodes", func() {
@@ -149,4 +149,37 @@ var _ = Describe("Bootstrapping", func() {
 			})
 		}(topology)
 	}
+
+	Context("negative tests for the swarm network", func() {
+		It("should print logs when we set the deug option to high", func() {
+			// port overlaps.STEP: 0th bootstrap node is /ip4/127.0.0.1/tcp/3000/republic/8MJtdcgaGFxrBLJ1RhwXS3SQd2DcTG
+			testMu.Lock()
+			defer testMu.Unlock()
+
+			// Setup testing configuration.
+			setupBootstrapNodes(TopologyFull, 8)
+			bootstrapNodes[0].Options.Debug = swarm.DebugHigh
+			bootstrapNodes[0].Options.Concurrent = true
+			setupSwarmNodes(16)
+			swarmNodes[0].Options.Debug = swarm.DebugHigh
+			swarmNodes[0].Options.Concurrent = true
+
+			// Bootstrap all swarm nodes.
+			for _, node := range swarmNodes {
+				node.Bootstrap()
+			}
+
+			numberOfPings := 0
+			for i := 0; i < 20; i++ {
+				to, from := PickRandomNodes(swarmNodes)
+				if err := Ping(to, from); err == nil {
+					numberOfPings++
+				} else {
+					log.Println(err)
+				}
+			}
+			log.Printf("%v/%v successful pings", numberOfPings, 20)
+			Ω(numberOfPings).Should(BeNumerically(">=", 2*20/3))
+		})
+	})
 })
