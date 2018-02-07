@@ -9,6 +9,7 @@ import (
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-swarm-network"
+	"google.golang.org/grpc"
 )
 
 type Topology string
@@ -54,7 +55,7 @@ func GenerateNodes(port, numberOfNodes int, delegate swarm.Delegate) ([]*swarm.N
 		if err != nil {
 			return nil, err
 		}
-		node := swarm.NewNode(
+		node := swarm.NewNode(grpc.NewServer(),
 			delegate,
 			swarm.Options{
 				MultiAddress:    multiAddress,
