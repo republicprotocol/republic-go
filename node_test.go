@@ -1,6 +1,7 @@
 package xing_test
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -203,6 +204,37 @@ var _ = Describe("nodes of Xing network", func() {
 			startListening()
 			sendOrderFragments(numberOfFragments)
 			sendResultFragments(numberOfFragments)
+		})
+
+		It("should return error when we use wrong fragment", func() {
+			from , to := nodes[0] , nodes[1]
+			fromMulti := "/ip4/" + DefaultIPAddress + "/tcp/3000/republic/" + from.Address().String()
+			orderFragment := rpc.SerializeOrderFragment(randomOrderFragment())
+			orderFragment.To = &rpc.Address{Address:to.Address().String()}
+			orderFragment.From = &rpc.MultiAddress{Multi:fromMulti}
+			orderFragment.MaxVolumeShare = []byte("")
+			resultFragment := rpc.SerializeResultFragment(randomResultFragment())
+			resultFragment.From = &rpc.MultiAddress{Multi:fromMulti}
+			resultFragment.To = &rpc.Address{Address:to.Address().String()}
+			resultFragment.MaxVolumeShare = []byte("")
+
+			_ ,err := from.SendOrderFragment(context.Background(), orderFragment)
+			Ω(err).Should(HaveOccurred())
+			_ ,err = from.SendResultFragment(context.Background(), resultFragment)
+			Ω(err).Should(HaveOccurred())
+		})
+
+		It("should return error when we use wrong from address", func() {
+			from, to  := nodes[0], nodes[1]
+			orderFragment := rpc.SerializeOrderFragment(randomOrderFragment())
+			orderFragment.To = &rpc.Address{Address:to.Address().String()}
+			resultFragment := rpc.SerializeResultFragment(randomResultFragment())
+			resultFragment.To = &rpc.Address{Address:to.Address().String()}
+
+			_ ,err := from.SendOrderFragment(context.Background(), orderFragment)
+			Ω(err).Should(HaveOccurred())
+			_ ,err = from.SendResultFragment(context.Background(), resultFragment)
+			Ω(err).Should(HaveOccurred())
 		})
 	})
 })
