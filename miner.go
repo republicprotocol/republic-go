@@ -4,6 +4,7 @@ import (
 	"log"
 	"math/big"
 	"runtime"
+	"time"
 
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
@@ -14,7 +15,7 @@ import (
 	"github.com/republicprotocol/go-xing"
 )
 
-// TODO: Do not make this values constant.
+// TODO: These variables should come from the Registrar contract.
 var (
 	N        = int64(3)
 	K        = int64(2)
@@ -35,14 +36,24 @@ func NewMiner(config *Config) (*Miner, error) {
 	swarmOptions := swarm.Options{
 		MultiAddress:            config.MultiAddress,
 		BootstrapMultiAddresses: config.BootstrapMultiAddresses,
-		Debug: swarm.DebugHigh,
+		Debug:           swarm.DebugHigh,
+		Alpha:           3,
+		MaxBucketLength: 20,
+		Timeout:         30 * time.Second,
+		TimeoutStep:     30 * time.Second,
+		TimeoutRetries:  3,
+		Concurrent:      true,
 	}
 	swarmNode := swarm.NewNode(miner, swarmOptions)
 	miner.Swarm = swarmNode
 
 	xingOptions := xing.Options{
-		Address: config.MultiAddress.Address(),
-		Debug:   xing.DebugHigh,
+		Address:        config.MultiAddress.Address(),
+		Debug:          xing.DebugHigh,
+		Timeout:        30 * time.Second,
+		TimeoutStep:    30 * time.Second,
+		TimeoutRetries: 3,
+		Concurrent:     true,
 	}
 	xingNode := xing.NewNode(miner, xingOptions)
 	miner.Xing = xingNode
@@ -51,40 +62,9 @@ func NewMiner(config *Config) (*Miner, error) {
 }
 
 // EstablishConnections to other peers in the swarm network by bootstrapping
-// against a set of bootstrap network.Nodes.
+// against a set of bootstrap swarm.Nodes.
 func (miner *Miner) EstablishConnections() {
 	miner.Swarm.Bootstrap()
-}
-
-// OnPingReceived implements the network.Delegate interface. It is used by the
-// underlying network.Node whenever the Miner needs to handle a Ping RPC.
-func (miner *Miner) OnPingReceived(peer identity.MultiAddress) {
-}
-
-// OnQueryCloserPeersReceived implements the network.Delegate interface. It is
-// used by the underlying network.Node whenever the Miner needs to handle a
-// QueryCloserPeers RPC.
-func (miner *Miner) OnQueryCloserPeersReceived(peer identity.MultiAddress) {
-}
-
-// OnQueryCloserPeersOnFrontierReceived implements the network.Delegate
-// interface. It is used by the underlying network.Node whenever the Miner
-// needs to handle a QueryCloserPeersOnFrontier RPC.
-func (miner *Miner) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAddress) {
-}
-
-func (miner *Miner) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
-	miner.Computer.AddOrderFragment(orderFragment)
-}
-
-func (miner *Miner) OnResultFragmentReceived(from identity.MultiAddress, resultFragment *compute.ResultFragment) {
-	miner.addResultFragments([]*compute.ResultFragment{resultFragment})
-}
-
-func (miner *Miner) OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment) {
-}
-
-func (miner *Miner) OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, resultFragment *compute.ResultFragment) {
 }
 
 func (miner *Miner) Mine(quit chan struct{}) {
@@ -149,4 +129,47 @@ func (miner Miner) addResultFragments(resultFragments []*compute.ResultFragment)
 			log.Printf("match found for buy = %s, sell = %s\n", base58.Encode(result.BuyOrderID), base58.Encode(result.SellOrderID))
 		}
 	}
+}
+
+// OnPingReceived implements the swarm.Delegate interface. It is used by the
+// underlying swarm.Node whenever the Miner has handled a Ping RPC.
+func (miner *Miner) OnPingReceived(peer identity.MultiAddress) {
+}
+
+// OnQueryCloserPeersReceived implements the swarm.Delegate interface. It is
+// used by the underlying swarm.Node whenever the Miner has handled a
+// QueryCloserPeers RPC.
+func (miner *Miner) OnQueryCloserPeersReceived(peer identity.MultiAddress) {
+}
+
+// OnQueryCloserPeersOnFrontierReceived implements the swarm.Delegate
+// interface. It is called by the underlying swarm.Node whenever the Miner
+// has handled a QueryCloserPeersOnFrontier RPC.
+func (miner *Miner) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAddress) {
+}
+
+// OnOrderFragmentReceived implements the xing.Delegate interface. It is called
+// by the underlying xing.Node whenever the Miner receives a
+// compute.OrderFragment that it must process.
+func (miner *Miner) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
+	miner.Computer.AddOrderFragment(orderFragment)
+}
+
+// OnResultFragmentReceived implements the xing.Delegate interface. It is
+// called by the underlying xing.Node whenever the Miner receives a
+// compute.ResultFragment that it must process.
+func (miner *Miner) OnResultFragmentReceived(from identity.MultiAddress, resultFragment *compute.ResultFragment) {
+	miner.addResultFragments([]*compute.ResultFragment{resultFragment})
+}
+
+// OnOrderFragmentForwarding implements the xing.Delegate interface. It is
+// called by the underlying xing.Node whenever the Miner receives a
+// compute.OrderFragment that it must forward to the correct xing.Node.
+func (miner *Miner) OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment) {
+}
+
+// OnResultFragmentForwarding implements the xing.Delegate interface. It is
+// called by the underlying xing.Node whenever the Miner receives a
+// compute.ResultFragment that it must forward to the correct xing.Node.
+func (miner *Miner) OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, resultFragment *compute.ResultFragment) {
 }
