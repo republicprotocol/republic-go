@@ -34,6 +34,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		log.Printf("Listening on %s:%s\n", config.Host, config.Port)
 		if err := miner.Server.Serve(listener); err != nil {
 			log.Fatal(err)
 		}
