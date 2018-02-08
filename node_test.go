@@ -207,7 +207,7 @@ var _ = Describe("Bootstrapping", func() {
 		})
 
 		Context("context", func() {
-			FIt("should return an error when calling with a canceled context", func() {
+			It("should return an error when calling with a canceled context", func() {
 				contextWithTimeout, cancel := context.WithTimeout(context.Background(), time.Second*5)
 				cancel()
 				_, err = node.Ping(contextWithTimeout, &rpc.MultiAddress{})
