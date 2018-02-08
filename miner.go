@@ -89,7 +89,8 @@ func (miner *Miner) Start() {
 		}
 	}()
 
-	// Bootstrap the connections in the swarm.
+	// Wait for the server to start and bootstrap the connections in the swarm.
+	time.Sleep(time.Second)
 	miner.Swarm.Bootstrap()
 
 	// Start the compute.Order processing loop.
