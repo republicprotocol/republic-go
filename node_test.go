@@ -7,14 +7,14 @@ import (
 	"sync"
 	"time"
 
+	"context"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-swarm-network"
-	"context"
-	"google.golang.org/grpc"
-	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-dht"
+	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/go-rpc"
+	"github.com/republicprotocol/go-swarm-network"
+	"google.golang.org/grpc"
 )
 
 type mockDelegate struct {
@@ -116,7 +116,7 @@ var _ = Describe("Bootstrapping", func() {
 		func(topology Topology) {
 			Context(fmt.Sprintf("when bootstrap nodes are configured in a %s topology.\n", topology), func() {
 				for _, numberOfBootstrapNodes := range []int{4, 6, 8} {
-					for _, numberOfNodes := range []int{4} {
+					for _, numberOfNodes := range []int{4, 8, 12, 16, 20} {
 						func(topology Topology, numberOfBootstrapNodes, numberOfNodes int) {
 							Context(fmt.Sprintf("with %d bootstrap nodes and %d swarm nodes.\n", numberOfBootstrapNodes, numberOfNodes), func() {
 								It("should be able to successfully ping between nodes", func() {
@@ -160,7 +160,7 @@ var _ = Describe("Bootstrapping", func() {
 		BeforeEach(func() {
 			keyPair, err := identity.NewKeyPair()
 			Ω(err).ShouldNot(HaveOccurred())
-			multiAddress,err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/"+ keyPair.Address().String())
+			multiAddress, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/" + keyPair.Address().String())
 			Ω(err).ShouldNot(HaveOccurred())
 			node = swarm.NewNode(grpc.NewServer(),
 				delegate,
@@ -208,7 +208,7 @@ var _ = Describe("Bootstrapping", func() {
 
 		Context("context", func() {
 			FIt("should return an error when calling with a canceled context", func() {
-				contextWithTimeout, cancel := context.WithTimeout(context.Background(), time.Second* 5)
+				contextWithTimeout, cancel := context.WithTimeout(context.Background(), time.Second*5)
 				cancel()
 				_, err = node.Ping(contextWithTimeout, &rpc.MultiAddress{})
 				Ω(err).Should(HaveOccurred())
@@ -233,14 +233,14 @@ var _ = Describe("Bootstrapping", func() {
 				Ω(pruned).Should(BeFalse())
 				Ω(err).ShouldNot(HaveOccurred())
 
-				for i:=0;i < dht.IDLengthInBits* node.Options.MaxBucketLength ;i++{
+				for i := 0; i < dht.IDLengthInBits*node.Options.MaxBucketLength; i++ {
 					keyPair, err = identity.NewKeyPair()
 					Ω(err).ShouldNot(HaveOccurred())
-					multi , err := identity.NewMultiAddressFromString("/ip4/192.168.0.0/tcp/80/republic/"+keyPair.Address().String())
+					multi, err := identity.NewMultiAddressFromString("/ip4/192.168.0.0/tcp/80/republic/" + keyPair.Address().String())
 					Ω(err).ShouldNot(HaveOccurred())
 					err = node.DHT.UpdateMultiAddress(multi)
-					if err == dht.ErrFullBucket{
-						pruned , err := node.Prune(keyPair.Address())
+					if err == dht.ErrFullBucket {
+						pruned, err := node.Prune(keyPair.Address())
 						Ω(pruned).Should(BeTrue())
 						Ω(err).ShouldNot(HaveOccurred())
 						break
@@ -251,15 +251,15 @@ var _ = Describe("Bootstrapping", func() {
 
 		Context("bad rpc input", func() {
 			It("should return an error with a bad ping input", func() {
-				_ , err := node.Ping(context.Background(), &rpc.MultiAddress{})
+				_, err := node.Ping(context.Background(), &rpc.MultiAddress{})
 				Ω(err).Should(HaveOccurred())
 			})
 
 			It("should return an error with a bad query input", func() {
-				_ , err := node.QueryCloserPeers(context.Background(), &rpc.Query{Query: &rpc.Address{}, From:&rpc.MultiAddress{}})
+				_, err := node.QueryCloserPeers(context.Background(), &rpc.Query{Query: &rpc.Address{}, From: &rpc.MultiAddress{}})
 				Ω(err).Should(HaveOccurred())
 
-				err = node.QueryCloserPeersOnFrontier(&rpc.Query{Query: &rpc.Address{}, From:&rpc.MultiAddress{}}, *new(rpc.SwarmNode_QueryCloserPeersOnFrontierServer))
+				err = node.QueryCloserPeersOnFrontier(&rpc.Query{Query: &rpc.Address{}, From: &rpc.MultiAddress{}}, *new(rpc.SwarmNode_QueryCloserPeersOnFrontierServer))
 				Ω(err).Should(HaveOccurred())
 			})
 		})
