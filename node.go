@@ -55,7 +55,7 @@ func (node *Node) Bootstrap() {
 	// Add all bootstrap Nodes to the DHT.
 	for _, bootstrapMultiAddress := range node.Options.BootstrapMultiAddresses {
 		err := node.DHT.UpdateMultiAddress(bootstrapMultiAddress)
-		if node.Options.Debug >= DebugLow {
+		if err != nil && node.Options.Debug >= DebugLow {
 			log.Println(err)
 		}
 	}
