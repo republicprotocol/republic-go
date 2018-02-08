@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"log"
+	"math/rand"
 	"os"
 	"time"
 
@@ -33,10 +34,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	nodeMultiAddressStrings := config["node_multi_addresses"].([]string)
-	nodeMultiAddresses := make(identity.MultiAddresses, len(nodeMultiAddressStrings))
+	nodeMultiAddresses := make(identity.MultiAddresses, len(config["node_multi_addresses"].([]interface{})))
 	for i := range nodeMultiAddresses {
-		multiAddress, err := identity.NewMultiAddressFromString(nodeMultiAddressStrings[i])
+		multiAddress, err := identity.NewMultiAddressFromString(config["node_multi_addresses"].([]interface{})[i].(string))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -47,13 +47,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("%v fragmented and distributed\n", base58.Encode(order.ID))
+	log.Printf("%v fragmented\n", base58.Encode(order.ID))
 
 	for i := range shares {
-		log.Printf("  %v sent to %v\n", base58.Encode(shares[i].ID), nodeMultiAddresses[i].Address())
 		if err := rpc.SendOrderFragmentToTarget(nodeMultiAddresses[i], nodeMultiAddresses[i].Address(), traderMultiAddress, shares[i], 5*time.Second); err != nil {
 			log.Fatal(err)
 		}
+		log.Printf("  %v distributed to %v\n", base58.Encode(shares[i].ID), nodeMultiAddresses[i].Address())
 	}
 }
 
@@ -82,5 +82,10 @@ func parseCommandLineFlags() error {
 	}
 	defer file.Close()
 	order = new(compute.Order)
-	return json.NewDecoder(file).Decode(order)
+	if err := json.NewDecoder(file).Decode(order); err != nil {
+		return err
+	}
+	order.Nonce = rand.Int63()
+	order.ID = order.GenerateID()
+	return nil
 }
