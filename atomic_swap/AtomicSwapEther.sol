@@ -44,7 +44,7 @@ contract AtomicSwapEther {
   }
 
   modifier onlyExpirableSwaps(bytes32 _swapID) {
-    if (swaps[_swapID].timestamp - now >= 1 minutes) {
+    if (swaps[_swapID].timestamp - now >= 24 hours) {
       _;
     }
   }
@@ -105,5 +105,9 @@ contract AtomicSwapEther {
   function checkSecretKey(bytes32 _swapID) public view onlyClosedSwaps(_swapID) returns (bytes secretKey) {
     Swap memory swap = swaps[_swapID];
     return swap.secretKey;
+  }
+
+  function getState(bytes32 _swapID) public view returns (States) {
+    return swapStates[_swapID];
   }
 }

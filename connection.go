@@ -9,13 +9,18 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/go-eth/atomic_swap"
 )
 
 // Connection ...
 type Connection interface {
-	Open(ethAddr common.Address, ethAmount uint64, secretHash [32]byte) (id [32]byte, err error)
+	Open(ethAddr common.Address, ethAmount uint64, secretHash [32]byte) ([32]byte, *types.Transaction, error)
+	Close(_swapID [32]byte, _secretKey []byte) (*types.Transaction, error)
+	RetrieveSecretKey(_swapID [32]byte) ([]byte, error)
+	Expire(_swapID [32]byte) (*types.Transaction, error)
+	GetState(_swapID [32]byte) (uint8, error)
 	Check(id [32]byte) (struct {
 		TimeRemaining  *big.Int
 		Value          *big.Int
@@ -40,7 +45,7 @@ func randomAuth() *bind.TransactOpts {
 
 // Simulated ...
 func Simulated(auth1 *bind.TransactOpts, auth2 *bind.TransactOpts) *backends.SimulatedBackend {
-	sim := backends.NewSimulatedBackend(core.GenesisAlloc{auth1.From: {Balance: big.NewInt(10000000000)}})
+	sim := backends.NewSimulatedBackend(core.GenesisAlloc{auth1.From: {Balance: big.NewInt(10000000000)}, auth2.From: {Balance: big.NewInt(10000000000)}})
 	return sim
 }
 
