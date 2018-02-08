@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 
+	"github.com/jbenet/go-base58"
+
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
@@ -51,7 +53,7 @@ func (node *Node) Address() identity.Address {
 // this Node then it will be forwarded on to the correct destination.
 func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v is receiving an order fragment...\n", node.Address())
+		log.Printf("%v received order fragment %v [%v]\n", node.Address(), base58.Encode(orderFragment.Id), base58.Encode(orderFragment.OrderId))
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -81,7 +83,7 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 // for this Node then it will be forwarded on to the correct destination.
 func (node *Node) SendResultFragment(ctx context.Context, resultFragment *rpc.ResultFragment) (*rpc.Nothing, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v is receiving a result fragment...\n", node.Address())
+		log.Printf("%v received result fragment %v [%v, %v]\n", node.Address(), base58.Encode(resultFragment.Id), base58.Encode(resultFragment.BuyOrderId), base58.Encode(resultFragment.SellOrderId))
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
