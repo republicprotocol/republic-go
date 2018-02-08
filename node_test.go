@@ -11,6 +11,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-swarm-network"
+	"context"
+	"google.golang.org/grpc"
+	"github.com/republicprotocol/go-rpc"
+	"github.com/republicprotocol/go-dht"
 )
 
 type mockDelegate struct {
@@ -150,36 +154,124 @@ var _ = Describe("Bootstrapping", func() {
 		}(topology)
 	}
 
-	Context("negative tests for the swarm network", func() {
-		It("should print logs when we set the deug option to high", func() {
-			// port overlaps.STEP: 0th bootstrap node is /ip4/127.0.0.1/tcp/3000/republic/8MJtdcgaGFxrBLJ1RhwXS3SQd2DcTG
-			testMu.Lock()
-			defer testMu.Unlock()
+	Context("negative tests", func() {
+		var node *swarm.Node
 
-			// Setup testing configuration.
-			setupBootstrapNodes(TopologyFull, 8)
-			bootstrapNodes[0].Options.Debug = swarm.DebugHigh
-			bootstrapNodes[0].Options.Concurrent = true
-			setupSwarmNodes(16)
-			swarmNodes[0].Options.Debug = swarm.DebugHigh
-			swarmNodes[0].Options.Concurrent = true
-
-			// Bootstrap all swarm nodes.
-			for _, node := range swarmNodes {
-				node.Bootstrap()
-			}
-
-			numberOfPings := 0
-			for i := 0; i < 20; i++ {
-				to, from := PickRandomNodes(swarmNodes)
-				if err := Ping(to, from); err == nil {
-					numberOfPings++
-				} else {
-					log.Println(err)
-				}
-			}
-			log.Printf("%v/%v successful pings", numberOfPings, 20)
-			Ω(numberOfPings).Should(BeNumerically(">=", 2*20/3))
+		BeforeEach(func() {
+			keyPair, err := identity.NewKeyPair()
+			Ω(err).ShouldNot(HaveOccurred())
+			multiAddress,err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/"+ keyPair.Address().String())
+			Ω(err).ShouldNot(HaveOccurred())
+			node = swarm.NewNode(grpc.NewServer(),
+				delegate,
+				swarm.Options{
+					MultiAddress:    multiAddress,
+					Debug:           swarm.DebugHigh,
+					Alpha:           DefaultOptionsAlpha,
+					MaxBucketLength: DefaultOptionsMaxBucketLength,
+					Timeout:         DefaultOptionsTimeout,
+					TimeoutStep:     DefaultOptionsTimeoutStep,
+					TimeoutRetries:  DefaultOptionsTimeoutRetries,
+					Concurrent:      DefaultOptionsConcurrent,
+				},
+			)
 		})
+
+		Context("debug logs", func() {
+			It("should print logs when we set the debug option to high", func() {
+				// Setup testing configuration.
+				setupBootstrapNodes(TopologyFull, 8)
+				bootstrapNodes[0].Options.Debug = swarm.DebugHigh
+				bootstrapNodes[0].Options.Concurrent = true
+				setupSwarmNodes(16)
+				swarmNodes[0].Options.Debug = swarm.DebugHigh
+				swarmNodes[0].Options.Concurrent = true
+
+				// Bootstrap all swarm nodes.
+				for _, i := range swarmNodes {
+					i.Bootstrap()
+				}
+
+				numberOfPings := 0
+				for i := 0; i < 20; i++ {
+					to, from := PickRandomNodes(swarmNodes)
+					if err := Ping(to, from); err == nil {
+						numberOfPings++
+					} else {
+						log.Println(err)
+					}
+				}
+				log.Printf("%v/%v successful pings", numberOfPings, 20)
+				Ω(numberOfPings).Should(BeNumerically(">=", 2*20/3))
+			})
+		})
+
+		Context("context", func() {
+			FIt("should return an error when calling with a canceled context", func() {
+				contextWithTimeout, cancel := context.WithTimeout(context.Background(), time.Second* 5)
+				cancel()
+				_, err = node.Ping(contextWithTimeout, &rpc.MultiAddress{})
+				Ω(err).Should(HaveOccurred())
+
+				_, err = node.QueryCloserPeers(contextWithTimeout, &rpc.Query{})
+				Ω(err).Should(HaveOccurred())
+
+			})
+		})
+
+		Context("pruning the dht", func() {
+			It("should return an error when pruning with bad dht", func() {
+				keyPair, err := identity.NewKeyPair()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				correctAddress := keyPair.Address()
+				worngFormatTarget := identity.Address("wrongAddress")
+				_, err = node.Prune(worngFormatTarget)
+				Ω(err).Should(HaveOccurred())
+
+				pruned, err := node.Prune(correctAddress)
+				Ω(pruned).Should(BeFalse())
+				Ω(err).ShouldNot(HaveOccurred())
+
+				for i:=0;i < dht.IDLengthInBits* node.Options.MaxBucketLength ;i++{
+					keyPair, err = identity.NewKeyPair()
+					Ω(err).ShouldNot(HaveOccurred())
+					multi , err := identity.NewMultiAddressFromString("/ip4/192.168.0.0/tcp/80/republic/"+keyPair.Address().String())
+					Ω(err).ShouldNot(HaveOccurred())
+					err = node.DHT.UpdateMultiAddress(multi)
+					if err == dht.ErrFullBucket{
+						pruned , err := node.Prune(keyPair.Address())
+						Ω(pruned).Should(BeTrue())
+						Ω(err).ShouldNot(HaveOccurred())
+						break
+					}
+				}
+			})
+		})
+
+		Context("bad rpc input", func() {
+			It("should return an error with a bad ping input", func() {
+				_ , err := node.Ping(context.Background(), &rpc.MultiAddress{})
+				Ω(err).Should(HaveOccurred())
+			})
+
+			It("should return an error with a bad query input", func() {
+				_ , err := node.QueryCloserPeers(context.Background(), &rpc.Query{Query: &rpc.Address{}, From:&rpc.MultiAddress{}})
+				Ω(err).Should(HaveOccurred())
+
+				err = node.QueryCloserPeersOnFrontier(&rpc.Query{Query: &rpc.Address{}, From:&rpc.MultiAddress{}}, *new(rpc.SwarmNode_QueryCloserPeersOnFrontierServer))
+				Ω(err).Should(HaveOccurred())
+			})
+		})
+
+		Context("bootstrapping", func() {
+			It("should return error with offlane bootstrap nodes", func() {
+				bootstrapNode, err := identity.NewMultiAddressFromString("/ip4/192.168.0.0/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+				Ω(err).ShouldNot(HaveOccurred())
+				node.Options.BootstrapMultiAddresses = identity.MultiAddresses{bootstrapNode}
+				node.Bootstrap()
+			})
+		})
+
 	})
 })
