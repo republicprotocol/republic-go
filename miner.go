@@ -71,13 +71,9 @@ func NewMiner(config *Config) (*Miner, error) {
 	return miner, nil
 }
 
-// EstablishConnections to other peers in the swarm network by bootstrapping
-// against a set of bootstrap swarm.Nodes.
-func (miner *Miner) EstablishConnections() {
-	miner.Swarm.Bootstrap()
-}
-
-// Start mining for compute.Orders that are matched.
+// Start mining for compute.Orders that are matched. It establishes connections
+// to other peers in the swarm network by bootstrapping against a set of
+// bootstrap swarm.Nodes.
 func (miner *Miner) Start() {
 	// Start both gRPC servers.
 	miner.Swarm.Register()
@@ -92,6 +88,9 @@ func (miner *Miner) Start() {
 			log.Fatal(err)
 		}
 	}()
+
+	// Bootstrap the connections in the swarm.
+	miner.Swarm.Bootstrap()
 
 	// Start the compute.Order processing loop.
 	loop := make(chan struct{}, 1)

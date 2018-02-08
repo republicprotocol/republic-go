@@ -23,12 +23,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	miner.Start()
 
-	// Establish connections to bootstrap swarm.Nodes.
+	// Star the miner.
 	go func() {
-		miner.EstablishConnections()
+		miner.Start()
 	}()
+	defer miner.Stop()
 }
 
 func parseCommandLineFlags() error {
