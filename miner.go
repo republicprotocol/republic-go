@@ -76,14 +76,14 @@ func NewMiner(config *Config) (*Miner, error) {
 // bootstrap swarm.Nodes.
 func (miner *Miner) Start() {
 	// Start both gRPC servers.
-	miner.Swarm.Register()
-	miner.Xing.Register()
 	go func() {
+		log.Printf("Listening on %s:%s\n", miner.Configuration.Host, miner.Configuration.Port)
+		miner.Swarm.Register()
+		miner.Xing.Register()
 		listener, err := net.Listen("tcp", miner.Configuration.Host+":"+miner.Configuration.Port)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("Listening on %s:%s\n", miner.Configuration.Host, miner.Configuration.Port)
 		if err := miner.Server.Serve(listener); err != nil {
 			log.Fatal(err)
 		}

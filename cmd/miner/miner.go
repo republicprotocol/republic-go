@@ -25,10 +25,7 @@ func main() {
 	}
 
 	// Star the miner.
-	go func() {
-		miner.Start()
-	}()
-	defer miner.Stop()
+	miner.Start()
 }
 
 func parseCommandLineFlags() error {
