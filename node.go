@@ -74,7 +74,10 @@ func (node *Node) Bootstrap() {
 		log.Printf("%v connected to %v peers after bootstrapping.\n", node.Address(), len(node.DHT.MultiAddresses()))
 	}
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v connected to %v.\n", node.Address(), node.DHT.MultiAddresses())
+		log.Printf("%v is now connected to:\n", node.Address())
+		for _, multiAddress := range node.DHT.MultiAddresses() {
+			log.Printf("  %v\n", multiAddress)
+		}
 	}
 }
 
@@ -110,7 +113,7 @@ func (node *Node) MultiAddress() identity.MultiAddress {
 // an error, then the connection should be considered unhealthy.
 func (node *Node) Ping(ctx context.Context, from *rpc.MultiAddress) (*rpc.Nothing, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v is receiving a ping...\n", node.Address())
+		log.Printf("%v was pinged by %v\n", node.Address(), from.Multi)
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -143,7 +146,7 @@ func (node *Node) Ping(ctx context.Context, from *rpc.MultiAddress) (*rpc.Nothin
 // pinged.
 func (node *Node) QueryCloserPeers(ctx context.Context, query *rpc.Query) (*rpc.MultiAddresses, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v is querying for closer peers...\n", node.Address())
+		log.Printf("%v was queried by %v\n", node.Address(), query.From.Multi)
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -176,7 +179,7 @@ func (node *Node) QueryCloserPeers(ctx context.Context, query *rpc.Query) (*rpc.
 // healthy connections and should be pinged.
 func (node *Node) QueryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmNode_QueryCloserPeersOnFrontierServer) error {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v is querying for closer peers on frontier...\n", node.Address())
+		log.Printf("%v was frontier queried by %v\n", node.Address(), query.From.Multi)
 	}
 	if err := stream.Context().Err(); err != nil {
 		return err
