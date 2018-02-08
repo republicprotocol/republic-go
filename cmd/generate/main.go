@@ -16,7 +16,7 @@ type Config struct {
 }
 
 func main() {
-	generateMiners(2, "../miner")
+	generateMiners(1, "./")
 }
 
 func generateMiners(numberOfMiners int, location string) {
@@ -51,7 +51,7 @@ func generateMiners(numberOfMiners int, location string) {
 			log.Fatal(err)
 		}
 		d1 := []byte(data)
-		err = ioutil.WriteFile(fmt.Sprintf("%s/config-miner-%d.json", location, i), d1, 0644)
+		err = ioutil.WriteFile(fmt.Sprintf("%s/config-%d.json", location, i), d1, 0644)
 		if err != nil {
 			log.Fatal(err)
 		}
