@@ -116,7 +116,7 @@ var _ = Describe("Bootstrapping", func() {
 		func(topology Topology) {
 			Context(fmt.Sprintf("when bootstrap nodes are configured in a %s topology.\n", topology), func() {
 				for _, numberOfBootstrapNodes := range []int{4, 6, 8} {
-					for _, numberOfNodes := range []int{4, 8, 12, 16, 20} {
+					for _, numberOfNodes := range []int{4, 8, 12, 16, 20} { // []int{4, 8, 12, 16, 20}
 						func(topology Topology, numberOfBootstrapNodes, numberOfNodes int) {
 							Context(fmt.Sprintf("with %d bootstrap nodes and %d swarm nodes.\n", numberOfBootstrapNodes, numberOfNodes), func() {
 								It("should be able to successfully ping between nodes", func() {
@@ -166,7 +166,7 @@ var _ = Describe("Bootstrapping", func() {
 				delegate,
 				swarm.Options{
 					MultiAddress:    multiAddress,
-					Debug:           swarm.DebugHigh,
+					Debug:           DefaultOptionsDebug,
 					Alpha:           DefaultOptionsAlpha,
 					MaxBucketLength: DefaultOptionsMaxBucketLength,
 					Timeout:         DefaultOptionsTimeout,
@@ -259,8 +259,6 @@ var _ = Describe("Bootstrapping", func() {
 				_, err := node.QueryCloserPeers(context.Background(), &rpc.Query{Query: &rpc.Address{}, From: &rpc.MultiAddress{}})
 				Ω(err).Should(HaveOccurred())
 
-				err = node.QueryCloserPeersOnFrontier(&rpc.Query{Query: &rpc.Address{}, From: &rpc.MultiAddress{}}, *new(rpc.SwarmNode_QueryCloserPeersOnFrontierServer))
-				Ω(err).Should(HaveOccurred())
 			})
 		})
 
@@ -269,6 +267,8 @@ var _ = Describe("Bootstrapping", func() {
 				bootstrapNode, err := identity.NewMultiAddressFromString("/ip4/192.168.0.0/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
 				Ω(err).ShouldNot(HaveOccurred())
 				node.Options.BootstrapMultiAddresses = identity.MultiAddresses{bootstrapNode}
+				node.Options.Debug = swarm.DebugHigh
+
 				node.Bootstrap()
 			})
 		})
