@@ -4,8 +4,6 @@ import (
 	"errors"
 	"flag"
 	"log"
-	"net"
-	"time"
 
 	"github.com/republicprotocol/go-miner"
 )
@@ -25,33 +23,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// Start both gRPC servers.
-	miner.Swarm.Register()
-	miner.Xing.Register()
-	go func() {
-		listener, err := net.Listen("tcp", config.Host+":"+config.Port)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("Listening on %s:%s\n", config.Host, config.Port)
-		if err := miner.Server.Serve(listener); err != nil {
-			log.Fatal(err)
-		}
-	}()
-	time.Sleep(time.Second)
+	miner.Start()
 
 	// Establish connections to bootstrap swarm.Nodes.
 	go func() {
 		log.Println("establishing connections...")
 		miner.EstablishConnections()
 	}()
-	time.Sleep(time.Second)
-
-	// Begin computing compute.OrderFragments.
-	log.Println("computing...")
-	quit := make(chan struct{})
-	miner.Mine(quit)
 }
 
 func parseCommandLineFlags() error {

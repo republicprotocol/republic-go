@@ -3,6 +3,7 @@ package miner
 import (
 	"log"
 	"math/big"
+	"net"
 	"runtime"
 	"time"
 
@@ -24,16 +25,22 @@ var (
 )
 
 type Miner struct {
-	Computer *compute.ComputationMatrix
-	Server   *grpc.Server
-	Swarm    *swarm.Node
-	Xing     *xing.Node
+	Computer      *compute.ComputationMatrix
+	Server        *grpc.Server
+	Swarm         *swarm.Node
+	Xing          *xing.Node
+	Configuration *Config
+	quit          chan struct{}
 }
 
+// NewMiner creates a new Miner, a new swarm.Node and xing.Node and assigns the
+// new Miner as the delegate for both. Returns the new Miner, or an error.
 func NewMiner(config *Config) (*Miner, error) {
 	miner := &Miner{
-		Computer: compute.NewComputationMatrix(),
-		Server:   grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
+		Computer:      compute.NewComputationMatrix(),
+		Server:        grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
+		Configuration: config,
+		quit:          make(chan struct{}),
 	}
 
 	swarmOptions := swarm.Options{
@@ -70,20 +77,47 @@ func (miner *Miner) EstablishConnections() {
 	miner.Swarm.Bootstrap()
 }
 
-func (miner *Miner) Mine(quit chan struct{}) {
+// Start mining for compute.Orders that are matched.
+func (miner *Miner) Start() {
+	// Start both gRPC servers.
+	miner.Swarm.Register()
+	miner.Xing.Register()
+	go func() {
+		listener, err := net.Listen("tcp", miner.Configuration.Host+":"+miner.Configuration.Port)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Listening on %s:%s\n", miner.Configuration.Host, miner.Configuration.Port)
+		if err := miner.Server.Serve(listener); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	// Start the compute.Order processing loop.
+	loop := make(chan struct{}, 1)
+	loop <- struct{}{}
 	for {
 		select {
-		case <-quit:
+		case <-miner.quit:
 			miner.Server.Stop()
 			return
-		default:
-			// FIXME: If this function call blocks forever then the quit signal
-			// will never be received.
-			miner.ComputeAll()
+		case <-loop:
+			go func() {
+				miner.ComputeAll()
+				loop <- struct{}{}
+			}()
 		}
 	}
 }
 
+// Stop mining.
+func (miner *Miner) Stop() {
+	miner.quit <- struct{}{}
+}
+
+// ComputeAll compute.Computations that can be handled by this Miner in a
+// single step. It will process one compute.Computation per CPU available and
+// broadcast the compute.ResultFragments.
 func (miner Miner) ComputeAll() {
 	numberOfCPUs := runtime.NumCPU()
 	computations := miner.Computer.WaitForComputations(numberOfCPUs)
