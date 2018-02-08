@@ -116,7 +116,7 @@ var _ = Describe("Bootstrapping", func() {
 		func(topology Topology) {
 			Context(fmt.Sprintf("when bootstrap nodes are configured in a %s topology.\n", topology), func() {
 				for _, numberOfBootstrapNodes := range []int{4, 6, 8} {
-					for _, numberOfNodes := range []int{4, 8, 12, 16, 20} { // []int{4, 8, 12, 16, 20}
+					for _, numberOfNodes := range []int{4} { // []int{4, 8, 12, 16, 20}
 						func(topology Topology, numberOfBootstrapNodes, numberOfNodes int) {
 							Context(fmt.Sprintf("with %d bootstrap nodes and %d swarm nodes.\n", numberOfBootstrapNodes, numberOfNodes), func() {
 								It("should be able to successfully ping between nodes", func() {
@@ -207,7 +207,7 @@ var _ = Describe("Bootstrapping", func() {
 		})
 
 		Context("context", func() {
-			It("should return an error when calling with a canceled context", func() {
+			It("should return an error when calling with a cancelled context", func() {
 				contextWithTimeout, cancel := context.WithTimeout(context.Background(), time.Second*5)
 				cancel()
 				_, err = node.Ping(contextWithTimeout, &rpc.MultiAddress{})
@@ -225,8 +225,8 @@ var _ = Describe("Bootstrapping", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				correctAddress := keyPair.Address()
-				worngFormatTarget := identity.Address("wrongAddress")
-				_, err = node.Prune(worngFormatTarget)
+				wrongFormatTarget := identity.Address("wrongAddress")
+				_, err = node.Prune(wrongFormatTarget)
 				Ω(err).Should(HaveOccurred())
 
 				pruned, err := node.Prune(correctAddress)
@@ -263,7 +263,7 @@ var _ = Describe("Bootstrapping", func() {
 		})
 
 		Context("bootstrapping", func() {
-			It("should return error with offlane bootstrap nodes", func() {
+			It("should print error with offline bootstrap nodes", func() {
 				bootstrapNode, err := identity.NewMultiAddressFromString("/ip4/192.168.0.0/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
 				Ω(err).ShouldNot(HaveOccurred())
 				node.Options.BootstrapMultiAddresses = identity.MultiAddresses{bootstrapNode}
