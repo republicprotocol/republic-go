@@ -27,7 +27,6 @@ func main() {
 
 	// Establish connections to bootstrap swarm.Nodes.
 	go func() {
-		log.Println("establishing connections...")
 		miner.EstablishConnections()
 	}()
 }

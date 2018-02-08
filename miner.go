@@ -162,7 +162,9 @@ func (miner Miner) addResultFragments(resultFragments []*compute.ResultFragment)
 	results, _ := miner.Computer.AddResultFragments(resultFragments, K, Prime)
 	for _, result := range results {
 		if result.IsMatch(Prime) {
-			log.Printf("match found for buy = %s, sell = %s\n", base58.Encode(result.BuyOrderID), base58.Encode(result.SellOrderID))
+			log.Printf("%v computed [%s, %s] = match!\n", miner.Swarm.Address(), base58.Encode(result.BuyOrderID), base58.Encode(result.SellOrderID))
+		} else {
+			log.Printf("%v computed [%s, %s] = mismatch!\n", miner.Swarm.Address(), base58.Encode(result.BuyOrderID), base58.Encode(result.SellOrderID))
 		}
 	}
 }
