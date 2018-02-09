@@ -8,28 +8,19 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-// The Delegate is used as a callback interface to inject logic into the
-// different RPCs.
-type Delegate interface {
+// Open opens an Atomic swap for a given match ID, with a address authorised to withdraw the amount after revealing the secret
+func (connection EtherConnection) Open(_swapID [32]byte, ethAddr common.Address, ethAmount uint64, secretHash [32]byte, amountInWei *big.Int) (*types.Transaction, error) {
+	authWithValue := connection.auth
+	authWithValue.Value = amountInWei
+	return connection.contract.Open(authWithValue, _swapID, ethAddr, secretHash)
 }
 
-// type interface interface {
-// 	//
-// }
-
-// Open opens an order
-func (connection EtherConnection) Open(ethAddr common.Address, ethAmount uint64, secretHash [32]byte) ([32]byte, *types.Transaction, error) {
-	id := [32]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-	tx, err := connection.contract.Open(connection.auth, id, ethAddr, secretHash)
-	return id, tx, err
-}
-
-// Close closes an order
+// Close closes an Atomic swap by revealing the secret. The locked value is sent to the address supplied to Open
 func (connection EtherConnection) Close(_swapID [32]byte, _secretKey []byte) (*types.Transaction, error) {
 	return connection.contract.Close(connection.auth, _swapID, _secretKey)
 }
 
-// Check ...
+// Check returns details about an open Atomic Swap
 func (connection EtherConnection) Check(id [32]byte) (struct {
 	TimeRemaining  *big.Int
 	Value          *big.Int
@@ -39,16 +30,16 @@ func (connection EtherConnection) Check(id [32]byte) (struct {
 	return connection.contract.Check(&bind.CallOpts{}, id)
 }
 
-// Expire expires an order
+// Expire expires an Atomic Swap, provided that the required time has passed
 func (connection EtherConnection) Expire(_swapID [32]byte) (*types.Transaction, error) {
 	return connection.contract.Expire(connection.auth, _swapID)
 }
 
-// Validate validates an order
+// Validate (not implemented) checks that there is a valid open Atomic Swap for a given _swapID
 func (connection EtherConnection) Validate() {
 }
 
-// RetrieveSecretKey retrieves a secret key from an order
+// RetrieveSecretKey retrieves the secret key from an Atomic Swap, after it has been revealed
 func (connection EtherConnection) RetrieveSecretKey(_swapID [32]byte) ([]byte, error) {
 	return connection.contract.CheckSecretKey(&bind.CallOpts{}, _swapID)
 }

@@ -17,10 +17,11 @@ import (
 
 // Connection ...
 type Connection interface {
-	Open(ethAddr common.Address, ethAmount uint64, secretHash [32]byte) ([32]byte, *types.Transaction, error)
+	Open(_swapID [32]byte, ethAddr common.Address, ethAmount uint64, secretHash [32]byte, amountInWei *big.Int) (*types.Transaction, error)
 	Close(_swapID [32]byte, _secretKey []byte) (*types.Transaction, error)
 	RetrieveSecretKey(_swapID [32]byte) ([]byte, error)
 	Expire(_swapID [32]byte) (*types.Transaction, error)
+	Validate()
 	// GetState(_swapID [32]byte) (uint8, error)
 	Check(id [32]byte) (struct {
 		TimeRemaining  *big.Int
