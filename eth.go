@@ -52,8 +52,3 @@ func (connection EtherConnection) Validate() {
 func (connection EtherConnection) RetrieveSecretKey(_swapID [32]byte) ([]byte, error) {
 	return connection.contract.CheckSecretKey(&bind.CallOpts{}, _swapID)
 }
-
-// GetState ...
-func (connection EtherConnection) GetState(_swapID [32]byte) (uint8, error) {
-	return connection.contract.GetState(&bind.CallOpts{}, _swapID)
-}
