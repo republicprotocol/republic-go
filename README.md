@@ -9,7 +9,15 @@
 
 This repo has a submodule so you may need to run:
 
-`git submodule update --init --recursive`
+```c# (highlights first word)
+git submodule update --init --recursive
+```
+
+## Testing
+
+```c# (highlights first word)
+ginkgo -v --trace --cover --coverprofile coverprofile.out
+```
 
 ## License
 

@@ -21,7 +21,7 @@ type Connection interface {
 	Close(_swapID [32]byte, _secretKey []byte) (*types.Transaction, error)
 	RetrieveSecretKey(_swapID [32]byte) ([]byte, error)
 	Expire(_swapID [32]byte) (*types.Transaction, error)
-	GetState(_swapID [32]byte) (uint8, error)
+	// GetState(_swapID [32]byte) (uint8, error)
 	Check(id [32]byte) (struct {
 		TimeRemaining  *big.Int
 		Value          *big.Int
