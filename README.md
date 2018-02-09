@@ -5,6 +5,12 @@
 
 > This library is a work in progress.
 
+## Cloning
+
+This repo has a submodule so you may need to run:
+
+`git submodule update --init --recursive`
+
 ## License
 
 The go-eth library was developed by the Republic Protocol team and is available under the MIT license. For more information, see our website https://republicprotocol.com.
