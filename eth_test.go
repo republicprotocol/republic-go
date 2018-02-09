@@ -3,7 +3,6 @@ package go_eth_test
 import (
 	"log"
 	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -11,6 +10,7 @@ import (
 	"crypto/sha256"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/go-eth"
 )
 
@@ -37,8 +37,10 @@ var _ = Describe("AtomicSwapEther", func() {
 
 		auth1, auth2 := loadAccounts()
 
-		client := go_eth.Simulated(auth1, auth2)
-		address := go_eth.DeployEther(client, auth1)
+		// client := go_eth.Simulated(auth1, auth2)
+		// address := go_eth.DeployEther(client, auth1)
+		client := go_eth.Ropsten()
+		address := common.HexToAddress("0x1510deefb6d61714ead883905c0649b5aa66bd92")
 
 		// Set up two connections
 		connection1 := go_eth.NewEtherConnection(client, auth1, address)
@@ -53,7 +55,7 @@ var _ = Describe("AtomicSwapEther", func() {
 		if err != nil {
 			log.Fatalf("Failed to open Atomic Swap: %v", err)
 		}
-		client.Commit()
+		// client.Commit()
 
 		// Account1 checks that hash is what it should be
 		check, err := connection1.Check(matchId)
@@ -61,7 +63,7 @@ var _ = Describe("AtomicSwapEther", func() {
 
 		// Account1 reveals secret to withdraw Ether
 		connection1.Close(matchId, secret)
-		client.Commit()
+		// client.Commit()
 
 		// Account2 retrieves secret
 		retSecret, err := connection2.RetrieveSecretKey(matchId)
@@ -82,8 +84,10 @@ var _ = Describe("AtomicSwapEther", func() {
 
 		auth1, auth2 := loadAccounts()
 
-		client := go_eth.Simulated(auth1, auth2)
-		address := go_eth.DeployEther(client, auth1)
+		// client := go_eth.Simulated(auth1, auth2)
+		// address := go_eth.DeployEther(client, auth1)
+		client := go_eth.Ropsten()
+		address := common.HexToAddress("0x1510deefb6d61714ead883905c0649b5aa66bd92")
 
 		// Set up two connections
 		connection1 := go_eth.NewEtherConnection(client, auth1, address)
@@ -98,16 +102,16 @@ var _ = Describe("AtomicSwapEther", func() {
 		if err != nil {
 			log.Fatalf("Failed to open Atomic Swap: %v", err)
 		}
-		client.Commit()
+		// client.Commit()
 
-		client.AdjustTime(48 * time.Hour)
-		client.Commit()
+		// client.AdjustTime(48 * time.Hour)
+		// client.Commit()
 
 		_, err = connection2.Expire(matchId)
 		if err != nil {
 			log.Fatalf("Failed to expire Atomic Swap: %v", err)
 		}
-		client.Commit()
+		// client.Commit()
 
 		// Account1 checks that hash is what it should be
 		check, err := connection1.Check(matchId)
@@ -115,7 +119,7 @@ var _ = Describe("AtomicSwapEther", func() {
 
 		// Account1 reveals secret to withdraw Ether
 		connection1.Close(matchId, secret)
-		client.Commit()
+		// client.Commit()
 
 		// Account2 retrieves secret
 		retSecret, err := connection2.RetrieveSecretKey(matchId)
