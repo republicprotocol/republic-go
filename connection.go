@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/republicprotocol/go-eth/atomic_swap"
+	"github.com/republicprotocol/go-eth/contracts"
 )
 
 // Connection ...
@@ -34,7 +34,7 @@ type Connection interface {
 type EtherConnection struct {
 	client   bind.ContractBackend
 	auth     *bind.TransactOpts
-	contract *atomic_swap.AtomicSwapEther
+	contract *contracts.AtomicSwapEther
 }
 
 func randomAuth() *bind.TransactOpts {
@@ -66,7 +66,7 @@ func Simulated(auth1 *bind.TransactOpts, auth2 *bind.TransactOpts) *backends.Sim
 // DeployEther ...
 func DeployEther(connection *backends.SimulatedBackend, auth *bind.TransactOpts) common.Address {
 	// Deploy a token contract on the simulated blockchain
-	address, _, _, err := atomic_swap.DeployAtomicSwapEther(auth, connection)
+	address, _, _, err := contracts.DeployAtomicSwapEther(auth, connection)
 	if err != nil {
 		log.Fatalf("Failed to deploy: %v", err)
 	}
@@ -75,8 +75,8 @@ func DeployEther(connection *backends.SimulatedBackend, auth *bind.TransactOpts)
 	return address
 }
 
-func existing(connection bind.ContractBackend, address common.Address) *atomic_swap.AtomicSwapEther {
-	contract, err := atomic_swap.NewAtomicSwapEther(address, connection)
+func existing(connection bind.ContractBackend, address common.Address) *contracts.AtomicSwapEther {
+	contract, err := contracts.NewAtomicSwapEther(address, connection)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
