@@ -21,7 +21,7 @@ go get github.com/tools/godep
 ```
 
 #### Use godep to install abigen
-(TODO: Figure out how to install all dependencies in one go)
+(TODO: Figure out how to install all dependencies in one go - `go get` doesn't)
 
 ```sh
 go get github.com/ethereum/go-ethereum
