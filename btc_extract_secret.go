@@ -1,4 +1,4 @@
-package btc
+package main
 
 type extractSecretCmd struct {
 	redemptionTx *wire.MsgTx

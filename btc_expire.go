@@ -1,5 +1,5 @@
 
-package btc
+package main
 
 type expireCmd struct {
 	contract   []byte

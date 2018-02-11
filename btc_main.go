@@ -1,5 +1,5 @@
 
-package btc
+package main
 
 import (
 	"github.com/btcsuite/btcd/txscript"

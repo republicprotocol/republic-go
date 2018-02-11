@@ -1,4 +1,4 @@
-package btc
+package main
 
 import (
 	"fmt"
