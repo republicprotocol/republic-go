@@ -14,27 +14,17 @@
 git submodule update --init --recursive
 ```
 
-#### Install godep
+#### Install go dependencies
 
 ```sh
-go get github.com/tools/godep
+go get
 ```
 
-#### Use godep to install abigen
-(TODO: Figure out how to install all dependencies in one go - `go get` doesn't)
+#### Install abigen
 
 ```sh
-go get github.com/ethereum/go-ethereum
 cd $GOPATH/src/github.com/ethereum/go-ethereum
-go get github.com/btcsuite/btcd/btcec
-go get github.com/go-stack/stack
-gi get github.com/golang/snappy
-go get github.com/rcrowley/go-metrics
-go get github.com/syndtr/goleveldb/leveldb
-go get github.com/ethereum/go-ethereum/logger
-go get gopkg.in/karalabe/cookiejar.v2/collections/prque
-godep save
-godep go install ./cmd/abigen
+go install ./cmd/abigen
 ```
 
 #### Install solc
