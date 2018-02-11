@@ -43,8 +43,8 @@ func SerializeAddress(address identity.Address) *Address {
 // DeserializeAddress converts a network representation of an Address into an
 // an identity.Address. An error is returned if the network representation is
 // malformed.
-func DeserializeAddress(address *Address) (identity.Address, error) {
-	return identity.Address(address.Address), nil
+func DeserializeAddress(address *Address) identity.Address {
+	return identity.Address(address.Address)
 }
 
 // SerializeMultiAddress converts an identity.MultiAddress into its network
@@ -242,7 +242,7 @@ func SerializeAtom(a atom.Atom) *Atom {
 
 // DeserializeAtom converts a network representation of an Atom into an
 // atom.Atom. An error is returned if the network representation is malformed.
-func DeserializeAtom(a *Atom) (atom.Atom, error) {
+func DeserializeAtom(a *Atom) atom.Atom {
 	return atom.Atom{
 		ID:         a.Id,
 		Lock:       a.Lock,
@@ -250,5 +250,5 @@ func DeserializeAtom(a *Atom) (atom.Atom, error) {
 		FstAddress: atom.LedgerAddress(a.FstAddress),
 		Snd:        atom.Ledger(a.Snd),
 		SndAddress: atom.LedgerAddress(a.SndAddress),
-	}, nil
+	}
 }

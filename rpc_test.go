@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	atom "github.com/republicprotocol/go-atom"
+	"github.com/republicprotocol/go-atom"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-rpc"
@@ -36,15 +36,13 @@ var _ = Describe("Data serialization and deserialization", func() {
 			serializedAddress := rpc.SerializeAddress(address)
 			Ω(*serializedAddress).Should(Equal(rpc.Address{Address: address.String()}))
 
-			newAddress, err := rpc.DeserializeAddress(serializedAddress)
-			Ω(err).ShouldNot(HaveOccurred())
+			newAddress := rpc.DeserializeAddress(serializedAddress)
 			Ω(newAddress).Should(Equal(address))
 		})
 
 		It("should be able to deserialize", func() {
 			address := &rpc.Address{Address: keyPair.Address().String()}
-			deserializedAddress, err := rpc.DeserializeAddress(address)
-			Ω(err).ShouldNot(HaveOccurred())
+			deserializedAddress := rpc.DeserializeAddress(address)
 			Ω(deserializedAddress).Should(Equal(keyPair.Address()))
 
 			newAddress := rpc.SerializeAddress(deserializedAddress)
@@ -328,8 +326,7 @@ var _ = Describe("Data serialization and deserialization", func() {
 				SndAddress: "0x",
 			}
 			rpcAtom := rpc.SerializeAtom(a)
-			newAtom, err := rpc.DeserializeAtom(rpcAtom)
-			Ω(err).ShouldNot(HaveOccurred())
+			newAtom := rpc.DeserializeAtom(rpcAtom)
 			Ω(newAtom).Should(Equal(a))
 		})
 	})
