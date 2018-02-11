@@ -5,17 +5,69 @@
 
 > This library is a work in progress.
 
-## Cloning
 
-This repo has a submodule so you may need to run:
+## Regenerating contract bindings
 
-```c# (highlights first word)
+#### Clone the contracts git submodule
+
+```sh
 git submodule update --init --recursive
+```
+
+#### Install godep
+
+```sh
+go get github.com/tools/godep
+```
+
+#### Use godep to install abigen
+(TODO: Figure out how to install all dependencies in one go)
+
+```sh
+go get github.com/ethereum/go-ethereum
+cd $GOPATH/src/github.com/ethereum/go-ethereum
+go get github.com/btcsuite/btcd/btcec
+go get github.com/go-stack/stack
+gi get github.com/golang/snappy
+go get github.com/rcrowley/go-metrics
+go get github.com/syndtr/goleveldb/leveldb
+go get github.com/ethereum/go-ethereum/logger
+go get gopkg.in/karalabe/cookiejar.v2/collections/prque
+godep save
+godep go install ./cmd/abigen
+```
+
+#### Install solc
+
+Ubuntu:
+
+```sh
+sudo add-apt-repository ppa:ethereum/ethereum
+sudo apt-get update
+sudo apt-get install solc
+```
+
+MacOS:
+
+```sh
+brew update
+brew upgrade
+brew tap ethereum/ethereum
+brew install solidity
+brew linkapps solidity
+```
+
+#### Generate bindings
+
+```sh
+cd contracts
+./generate.sh
+cd ../
 ```
 
 ## Testing
 
-```c# (highlights first word)
+```sh
 ginkgo -v --trace --cover --coverprofile coverprofile.out
 ```
 
