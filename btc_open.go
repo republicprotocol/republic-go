@@ -1,4 +1,4 @@
-package btc
+package main
 
 type openCmd struct {
 	cp2Addr *btcutil.AddressPubKeyHash

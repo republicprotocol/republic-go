@@ -1,4 +1,4 @@
-package btc
+package main
 
 type validateCmd struct {
 	contract   []byte
@@ -95,4 +95,3 @@ func (cmd *validateCmd) runCommand(chainParams *chaincfg.Params) error {
 
 	return nil
 }
-
