@@ -48,7 +48,7 @@ func randomAuth() *bind.TransactOpts {
 // Ropsten ...
 func Ropsten() *ethclient.Client {
 	// Create an IPC based RPC connection to a remote node and an authorized transactor
-	conn, err := ethclient.Dial("http://127.0.0.1:8545")
+	conn, err := ethclient.Dial("http://13.54.129.55:8545")
 	if err != nil {
 		log.Fatalf("Failed to connect to the Ethereum client: %v", err)
 	}
