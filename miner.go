@@ -121,8 +121,8 @@ func (miner *Miner) Stop() {
 func (miner Miner) ComputeAll() {
 	numberOfCPUs := runtime.NumCPU()
 	computations := miner.Computer.WaitForComputations(numberOfCPUs)
-	resultFragments := make([]*compute.ResultFragment, len(computations))
 
+	resultFragments := make([]*compute.ResultFragment, len(computations))
 	do.CoForAll(computations, func(i int) {
 		resultFragment, err := miner.Compute(computations[i])
 		if err != nil {
@@ -162,9 +162,8 @@ func (miner Miner) addResultFragments(resultFragments []*compute.ResultFragment)
 	results, _ := miner.Computer.AddResultFragments(resultFragments, K, Prime)
 	for _, result := range results {
 		if result.IsMatch(Prime) {
-			log.Printf("%v computed [%s, %s] = match!\n", miner.Swarm.Address(), base58.Encode(result.BuyOrderID), base58.Encode(result.SellOrderID))
-		} else {
-			log.Printf("%v computed [%s, %s] = mismatch!\n", miner.Swarm.Address(), base58.Encode(result.BuyOrderID), base58.Encode(result.SellOrderID))
+			miner.Xing.Notify(result)
+			log.Printf("%v found a match! [%s, %s]\n", miner.Swarm.Address(), base58.Encode(result.BuyOrderID), base58.Encode(result.SellOrderID))
 		}
 	}
 }

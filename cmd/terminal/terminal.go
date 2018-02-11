@@ -85,6 +85,8 @@ func parseCommandLineFlags() error {
 	if err := json.NewDecoder(file).Decode(order); err != nil {
 		return err
 	}
+
+	rand.Seed(int64(time.Now().Nanosecond()))
 	order.Nonce = rand.Int63()
 	order.ID = order.GenerateID()
 	return nil
