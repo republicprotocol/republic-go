@@ -1,7 +1,10 @@
 package rpc
 
 import (
+	"io"
 	"time"
+
+	"github.com/republicprotocol/go-do"
 
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
@@ -47,4 +50,67 @@ func SendResultFragmentToTarget(target identity.MultiAddress, to identity.Addres
 	serializedResultFragment.From = SerializeMultiAddress(from)
 	_, err = client.SendResultFragment(ctx, serializedResultFragment, grpc.FailFast(false))
 	return err
+}
+
+// NotificationsFromTarget using a new grpc.ClientConn to make a
+// NotificationsFromTarget RPC to a target identity.MultiAddress. This function
+// returns two channels. The first should be used to read compute.Results until
+// it is closed. The second should be closed by the caller when they no longer
+// want to receive compute.Results. After closing the quit channel, the caller
+// should read one last compute.Results from the first channel to guarantee
+// that no memory is leaked.
+func NotificationsFromTarget(target identity.MultiAddress, from identity.MultiAddress, traderAddress identity.Address, timeout time.Duration) (chan do.Option, chan struct{}) {
+	ret := make(chan do.Option, 1)
+	quit := make(chan struct{}, 1)
+
+	go func() {
+		defer close(ret)
+
+		conn, err := Dial(target, timeout)
+		if err != nil {
+			ret <- do.Err(err)
+			return
+		}
+		defer conn.Close()
+
+		client := NewXingNodeClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		stream, err := client.Notifications(ctx, SerializeAddress(traderAddress), grpc.FailFast(false))
+		if err != nil {
+			ret <- do.Err(err)
+			return
+		}
+
+		for {
+
+			// Check if the quit channel is closed, without blocking.
+			select {
+			case _, ok := <-quit:
+				if !ok {
+					return
+				}
+			default:
+				// Do nothing.
+			}
+
+			result, err := stream.Recv()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				ret <- do.Err(err)
+				continue
+			}
+			deserializedResult, err := DeserializeResult(result)
+			if err != nil {
+				ret <- do.Err(err)
+				continue
+			}
+			ret <- do.Ok(deserializedResult)
+		}
+	}()
+
+	return ret, quit
 }

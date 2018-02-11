@@ -139,6 +139,18 @@ func DeserializeOrderFragment(input *OrderFragment) (*compute.OrderFragment, err
 	return orderFragment, nil
 }
 
+// SerializeResult converts a compute.Result into its network representation.
+func SerializeResult(input *compute.Result) *Result {
+	panic("unimplemented")
+}
+
+// DeserializeResult converts a network representation of a Result into a
+// compute.ResultFragment. An error is returned if the network representation
+// is malformed.
+func DeserializeResult(input *Result) (*compute.Result, error) {
+	panic("unimplemented")
+}
+
 // SerializeResultFragment converts a compute.ResultFragment into its network
 // representation.
 func SerializeResultFragment(input *compute.ResultFragment) *ResultFragment {

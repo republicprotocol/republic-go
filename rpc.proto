@@ -68,6 +68,10 @@ service XingNode {
   // Send a ResultFragment to some target Node, where the ResultFragment is the
   // result of a computation on two OrderFragments.
   rpc SendResultFragment (ResultFragment) returns (Nothing);
+
+  // Get Result messages for successful order matches that have happened since
+  // this procedure was last used, as well as new ones that occur.
+  rpc Notifications (Address) returns (stream Result);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
@@ -82,7 +86,7 @@ message OrderFragment {
   int64 orderType = 5;
   int64 orderParity = 6;
 
-  // Private data.
+  // Secure data.
   bytes fstCodeShare = 7;
   bytes sndCodeShare = 8;
   bytes priceShare = 9;
@@ -105,12 +109,29 @@ message ResultFragment {
   bytes buyOrderFragmentId = 6;
   bytes sellOrderFragmentId = 7;
 
-  // Private data.
+  // Secure data.
   bytes fstCodeShare = 8;
   bytes sndCodeShare = 9;
   bytes priceShare = 10;
   bytes maxVolumeShare = 11;
   bytes minVolumeShare = 12;
+}
+
+// Result messages are sent to signal that a successful order computation has
+// happened.
+message Result {
+
+  // Public data.
+  bytes id = 1;
+	bytes buyOrderID = 2;
+  bytes sellOrderID = 3;
+  
+  // Secure data.
+	bytes fstCode = 4;
+	bytes sndCode = 5;
+	bytes price = 6;
+	bytes maxVolume = 7;
+	bytes minVolume = 8;
 }
 
 /**
@@ -131,7 +152,7 @@ message Atom {
   Address to = 1;
   MultiAddress from = 2;
 
-  // Private data.
+  // Secure data.
   bytes id = 3;
   bytes lock = 4;
   string fst = 5;
