@@ -49,6 +49,10 @@ func (node *Node) Address() identity.Address {
 	return node.Options.Address
 }
 
+// Notify ...
+func (node *Node) Notify(result *compute.Result) {
+}
+
 // SendOrderFragment to the Node. If the rpc.OrderFragment is not destined for
 // this Node then it will be forwarded on to the correct destination.
 func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
@@ -109,6 +113,27 @@ func (node *Node) SendResultFragment(ctx context.Context, resultFragment *rpc.Re
 	}
 }
 
+func (node *Node) Notifications(traderAddress *rpc.Address, stream rpc.XingNode_NotificationsServer) error {
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("%v registered a trader for notifications [%v]\n", node.Address(), traderAddress.Address)
+	}
+	if err := stream.Context().Err(); err != nil {
+		return err
+	}
+
+	wait := do.Process(func() do.Option {
+		return do.Err(node.notifications(traderAddress, stream))
+	})
+
+	select {
+	case val := <-wait:
+		return val.Err
+
+	case <-stream.Context().Done():
+		return stream.Context().Err()
+	}
+}
+
 func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
 	deserializedTo, err := rpc.DeserializeAddress(orderFragment.To)
 	if err != nil {
@@ -157,4 +182,8 @@ func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.N
 	// Otherwise it has reached its destination.
 	node.OnResultFragmentReceived(deserializedFrom, deserializedResultFragment)
 	return &rpc.Nothing{}, nil
+}
+
+func (node *Node) notifications(traderAddress *rpc.Address, stream rpc.XingNode_NotificationsServer) error {
+	return nil
 }
