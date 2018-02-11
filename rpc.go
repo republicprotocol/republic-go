@@ -1,9 +1,9 @@
 package rpc
 
 import (
-	"fmt"
-
 	"context"
+	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/republicprotocol/go-atom"
@@ -141,14 +141,35 @@ func DeserializeOrderFragment(input *OrderFragment) (*compute.OrderFragment, err
 
 // SerializeResult converts a compute.Result into its network representation.
 func SerializeResult(input *compute.Result) *Result {
-	panic("unimplemented")
+	result := &Result{
+		Id:          []byte(input.ID),
+		BuyOrderId:  []byte(input.BuyOrderID),
+		SellOrderId: []byte(input.SellOrderID),
+	}
+
+	result.FstCode = input.FstCode.Bytes()
+	result.SndCode = input.SndCode.Bytes()
+	result.Price = input.Price.Bytes()
+	result.MaxVolume = input.MaxVolume.Bytes()
+	result.MinVolume = input.MinVolume.Bytes()
+	return result
 }
 
 // DeserializeResult converts a network representation of a Result into a
 // compute.ResultFragment. An error is returned if the network representation
 // is malformed.
-func DeserializeResult(input *Result) (*compute.Result, error) {
-	panic("unimplemented")
+func DeserializeResult(input *Result) *compute.Result {
+	result := &compute.Result{
+		ID:          compute.ResultID(input.Id),
+		BuyOrderID:  []byte(input.BuyOrderId),
+		SellOrderID: []byte(input.SellOrderId),
+	}
+	result.FstCode = big.NewInt(0).SetBytes(input.FstCode)
+	result.SndCode = big.NewInt(0).SetBytes(input.SndCode)
+	result.Price = big.NewInt(0).SetBytes(input.Price)
+	result.MaxVolume = big.NewInt(0).SetBytes(input.MaxVolume)
+	result.MinVolume = big.NewInt(0).SetBytes(input.MinVolume)
+	return result
 }
 
 // SerializeResultFragment converts a compute.ResultFragment into its network

@@ -123,15 +123,15 @@ message Result {
 
   // Public data.
   bytes id = 1;
-	bytes buyOrderID = 2;
-  bytes sellOrderID = 3;
+  bytes buyOrderId = 2;
+  bytes sellOrderId = 3;
   
   // Secure data.
-	bytes fstCode = 4;
-	bytes sndCode = 5;
-	bytes price = 6;
-	bytes maxVolume = 7;
-	bytes minVolume = 8;
+  bytes fstCode = 4;
+  bytes sndCode = 5;
+  bytes price = 6;
+  bytes maxVolume = 7;
+  bytes minVolume = 8;
 }
 
 /**

@@ -23,6 +23,10 @@ func (s *mockServer) SendResultFragment(ctx context.Context, resultFragment *rpc
 	return &rpc.Nothing{}, nil
 }
 
+func (s *mockServer) Notifications(result *rpc.Address, stream rpc.XingNode_NotificationsServer) error{
+	return nil
+}
+
 var _ = Describe("Xing Overlay Network", func() {
 	var server *grpc.Server
 	var rpcServer mockServer

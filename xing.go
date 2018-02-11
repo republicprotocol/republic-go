@@ -103,11 +103,7 @@ func NotificationsFromTarget(target identity.MultiAddress, from identity.MultiAd
 				ret <- do.Err(err)
 				continue
 			}
-			deserializedResult, err := DeserializeResult(result)
-			if err != nil {
-				ret <- do.Err(err)
-				continue
-			}
+			deserializedResult := DeserializeResult(result)
 			ret <- do.Ok(deserializedResult)
 		}
 	}()
