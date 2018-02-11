@@ -1,5 +1,18 @@
 package main
 
+import (
+	"time"
+	"fmt"
+	"errors"
+	"bytes"
+	
+	"crypto/rand"
+
+	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/chaincfg"
+	rpc "github.com/btcsuite/btcd/rpcclient"
+)
+
 type openCmd struct {
 	cp2Addr *btcutil.AddressPubKeyHash
 	amount  btcutil.Amount
