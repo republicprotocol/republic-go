@@ -30,8 +30,8 @@ var _ = Describe("Data serialization and deserialization", func() {
 		multiAddressString = "/ip4/192.168.0.1/tcp/80/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB"
 	})
 
-	Context("when using an address", func() {
-		It("should be able to serialize", func() {
+	Context("identity.address", func() {
+		It("should be able to serialize identity.address", func() {
 			address := keyPair.Address()
 			serializedAddress := rpc.SerializeAddress(address)
 			Ω(*serializedAddress).Should(Equal(rpc.Address{Address: address.String()}))
@@ -40,7 +40,7 @@ var _ = Describe("Data serialization and deserialization", func() {
 			Ω(newAddress).Should(Equal(address))
 		})
 
-		It("should be able to deserialize", func() {
+		It("should be able to deserialize identity.address", func() {
 			address := &rpc.Address{Address: keyPair.Address().String()}
 			deserializedAddress := rpc.DeserializeAddress(address)
 			Ω(deserializedAddress).Should(Equal(keyPair.Address()))
@@ -50,8 +50,8 @@ var _ = Describe("Data serialization and deserialization", func() {
 		})
 	})
 
-	Context("when using a multi-address", func() {
-		It("should be able to serialize", func() {
+	Context("identity.MultiAddress", func() {
+		It("should be able to serialize identity.MultiAddress", func() {
 			multiAddress, err := identity.NewMultiAddressFromString(multiAddressString)
 			Ω(err).ShouldNot(HaveOccurred())
 			serializedMulti := rpc.SerializeMultiAddress(multiAddress)
@@ -62,7 +62,7 @@ var _ = Describe("Data serialization and deserialization", func() {
 			Ω(newMultiAddress).Should(Equal(multiAddress))
 		})
 
-		It("should be able to deserialize", func() {
+		It("should be able to deserialize identity.MultiAddress", func() {
 			rpcMultiAddress := &rpc.MultiAddress{Multi: multiAddressString}
 			deserializedMulti, err := rpc.DeserializeMultiAddress(rpcMultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -72,8 +72,8 @@ var _ = Describe("Data serialization and deserialization", func() {
 		})
 	})
 
-	Context("when using multi-addresses", func() {
-		It("should be able to serialize and deserialize", func() {
+	Context("identity.MultiAddresses", func() {
+		It("should be able to serialize and deserialize identity.MultiAddresses", func() {
 			multiAddress1, err := identity.NewMultiAddressFromString(multiAddressString)
 			Ω(err).ShouldNot(HaveOccurred())
 			multiAddress2, err := identity.NewMultiAddressFromString(multiAddressString)
@@ -86,7 +86,7 @@ var _ = Describe("Data serialization and deserialization", func() {
 			Ω(multiAddresses).Should(Equal(newMultiAddresses))
 		})
 
-		It("should return an error when deserializing malformed multi-addresses", func() {
+		It("should return an error when deserializing a malformed identity.MultiAddresses", func() {
 			wrongMultiaddress := "/ip4/192.168.0.1/"
 			wrongMultiaddresses := rpc.MultiAddresses{Multis: []*rpc.MultiAddress{{wrongMultiaddress}}}
 			_, err := rpc.DeserializeMultiAddresses(&wrongMultiaddresses)
@@ -94,10 +94,27 @@ var _ = Describe("Data serialization and deserialization", func() {
 		})
 	})
 
-	Context("when using an order fragment", func() {
+	Context("compute.OrderFragment", func() {
+		var wrongOrderFragment rpc.OrderFragment
+		sssShare := sss.Share{Key: 1, Value: &big.Int{}}
 
-		It("should be able to serialize and deserialize", func() {
-			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
+		BeforeEach(func() {
+			wrongOrderFragment = rpc.OrderFragment{
+				To:             &rpc.Address{},
+				From:           &rpc.MultiAddress{},
+				Id:             []byte("id"),
+				OrderId:        []byte("orderID"),
+				OrderType:      1,
+				OrderParity:    1,
+				FstCodeShare:   sss.ToBytes(sssShare),
+				SndCodeShare:   sss.ToBytes(sssShare),
+				PriceShare:     sss.ToBytes(sssShare),
+				MaxVolumeShare: sss.ToBytes(sssShare),
+				MinVolumeShare: sss.ToBytes(sssShare),
+			}
+		})
+
+		It("should be able to serialize and deserialize compute.OrderFragment", func() {
 			orderFragment := compute.NewOrderFragment([]byte("orderID"), compute.OrderTypeIBBO, compute.OrderParityBuy,
 				sssShare, sssShare, sssShare, sssShare, sssShare)
 			rpcOrderFragment := rpc.SerializeOrderFragment(orderFragment)
@@ -106,105 +123,59 @@ var _ = Describe("Data serialization and deserialization", func() {
 			Ω(*orderFragment).Should(Equal(*newOrderFragment))
 		})
 
-		It("should return an error when deserializing an order fragment with a malformed first code share", func() {
-			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
-			wrongOrderFragment := rpc.OrderFragment{
-				To:             &rpc.Address{},
-				From:           &rpc.MultiAddress{},
-				Id:             []byte("id"),
-				OrderId:        []byte("orderID"),
-				OrderType:      1,
-				OrderParity:    1,
-				FstCodeShare:   []byte(""),
-				SndCodeShare:   sss.ToBytes(sssShare),
-				PriceShare:     sss.ToBytes(sssShare),
-				MaxVolumeShare: sss.ToBytes(sssShare),
-				MinVolumeShare: sss.ToBytes(sssShare),
-			}
+		It("should return an error when deserializing an compute.OrderFragment with a malformed FstCodeShare", func() {
+			wrongOrderFragment.FstCodeShare = []byte("")
 			_, err := rpc.DeserializeOrderFragment(&wrongOrderFragment)
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing an order fragment with a malformed second code share", func() {
-			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
-			wrongOrderFragment := rpc.OrderFragment{
-				To:             &rpc.Address{},
-				From:           &rpc.MultiAddress{},
-				Id:             []byte("id"),
-				OrderId:        []byte("orderID"),
-				OrderType:      1,
-				OrderParity:    1,
-				FstCodeShare:   sss.ToBytes(sssShare),
-				SndCodeShare:   []byte(""),
-				PriceShare:     sss.ToBytes(sssShare),
-				MaxVolumeShare: sss.ToBytes(sssShare),
-				MinVolumeShare: sss.ToBytes(sssShare),
-			}
+		It("should return an error when deserializing an compute.OrderFragment with a malformed SndCodeShare", func() {
+			wrongOrderFragment.SndCodeShare = []byte("")
 			_, err := rpc.DeserializeOrderFragment(&wrongOrderFragment)
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing an order fragment with a malformed price share", func() {
-			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
-			wrongOrderFragment := rpc.OrderFragment{
-				To:             &rpc.Address{},
-				From:           &rpc.MultiAddress{},
-				Id:             []byte("id"),
-				OrderId:        []byte("orderID"),
-				OrderType:      1,
-				OrderParity:    1,
-				FstCodeShare:   sss.ToBytes(sssShare),
-				SndCodeShare:   sss.ToBytes(sssShare),
-				PriceShare:     []byte(""),
-				MaxVolumeShare: sss.ToBytes(sssShare),
-				MinVolumeShare: sss.ToBytes(sssShare),
-			}
+		It("should return an error when deserializing an compute.OrderFragment with a malformed PriceShare", func() {
+			wrongOrderFragment.PriceShare = []byte("")
 			_, err := rpc.DeserializeOrderFragment(&wrongOrderFragment)
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing an order fragment with a malformed maximum volume share", func() {
-			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
-			wrongOrderFragment := rpc.OrderFragment{
-				To:             &rpc.Address{},
-				From:           &rpc.MultiAddress{},
-				Id:             []byte("id"),
-				OrderId:        []byte("orderID"),
-				OrderType:      1,
-				OrderParity:    1,
-				FstCodeShare:   sss.ToBytes(sssShare),
-				SndCodeShare:   sss.ToBytes(sssShare),
-				PriceShare:     sss.ToBytes(sssShare),
-				MaxVolumeShare: []byte(""),
-				MinVolumeShare: sss.ToBytes(sssShare),
-			}
+		It("should return an error when deserializing an compute.OrderFragment with a malformed MaxVolumeShare", func() {
+			wrongOrderFragment.MaxVolumeShare = []byte("")
 			_, err := rpc.DeserializeOrderFragment(&wrongOrderFragment)
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing an order fragment with a malformed minimum volume share", func() {
-			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
-			wrongOrderFragment := rpc.OrderFragment{
-				To:             &rpc.Address{},
-				From:           &rpc.MultiAddress{},
-				Id:             []byte("id"),
-				OrderId:        []byte("orderID"),
-				OrderType:      1,
-				OrderParity:    1,
-				FstCodeShare:   sss.ToBytes(sssShare),
-				SndCodeShare:   sss.ToBytes(sssShare),
-				PriceShare:     sss.ToBytes(sssShare),
-				MaxVolumeShare: sss.ToBytes(sssShare),
-				MinVolumeShare: []byte(""),
-			}
+		It("should return an error when deserializing an compute.OrderFragment with a malformed MinVolumeShare", func() {
+			wrongOrderFragment.MinVolumeShare = []byte("")
 			_, err := rpc.DeserializeOrderFragment(&wrongOrderFragment)
 			Ω(err).Should(HaveOccurred())
 		})
 	})
 
-	Context("when using a result fragment", func() {
-		It("should be able to serialize and deserialize", func() {
-			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
+	Context("compute.ResultFragment", func() {
+		var wrongResultFragment rpc.ResultFragment
+		sssShare := sss.Share{Key: 1, Value: &big.Int{}}
+
+		BeforeEach(func() {
+			wrongResultFragment = rpc.ResultFragment{
+				To:                  &rpc.Address{},
+				From:                &rpc.MultiAddress{},
+				Id:                  []byte("id"),
+				BuyOrderId:          []byte("buyOrderID"),
+				SellOrderId:         []byte("sellOrderID"),
+				BuyOrderFragmentId:  []byte("buyOrderFragmentID"),
+				SellOrderFragmentId: []byte("sellOrderFragmentID"),
+				FstCodeShare:        sss.ToBytes(sssShare),
+				SndCodeShare:        sss.ToBytes(sssShare),
+				PriceShare:          sss.ToBytes(sssShare),
+				MaxVolumeShare:      sss.ToBytes(sssShare),
+				MinVolumeShare:      sss.ToBytes(sssShare),
+			}
+		})
+
+		It("should be able to serialize and deserialize compute.ResultFragment", func() {
 			resultFragment := compute.NewResultFragment([]byte("butOrderID"), []byte("sellOrderID"),
 				[]byte("butOrderFragmentID"), []byte("sellOrderFragmentID"),
 				sssShare, sssShare, sssShare, sssShare, sssShare)
@@ -214,109 +185,57 @@ var _ = Describe("Data serialization and deserialization", func() {
 			Ω(*resultFragment).Should(Equal(*newResultFragment))
 		})
 
-		It("should return an error when deserializing a result fragment with a malformed first code share", func() {
-			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
-			wrongResultFragment := rpc.ResultFragment{
-				To:                  &rpc.Address{},
-				From:                &rpc.MultiAddress{},
-				Id:                  []byte("id"),
-				BuyOrderId:          []byte("buyOrderID"),
-				SellOrderId:         []byte("sellOrderID"),
-				BuyOrderFragmentId:  []byte("buyOrderFragmentID"),
-				SellOrderFragmentId: []byte("sellOrderFragmentID"),
-				FstCodeShare:        []byte(""),
-				SndCodeShare:        sss.ToBytes(sssShare),
-				PriceShare:          sss.ToBytes(sssShare),
-				MaxVolumeShare:      sss.ToBytes(sssShare),
-				MinVolumeShare:      sss.ToBytes(sssShare),
-			}
+		It("should return an error when deserializing a compute.ResultFragment with a malformed FstCodeShare", func() {
+			wrongResultFragment.FstCodeShare = []byte("")
 			_, err := rpc.DeserializeResultFragment(&wrongResultFragment)
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing a result fragment with a malformed second code share", func() {
-			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
-			wrongResultFragment := rpc.ResultFragment{
-				To:                  &rpc.Address{},
-				From:                &rpc.MultiAddress{},
-				Id:                  []byte("id"),
-				BuyOrderId:          []byte("buyOrderID"),
-				SellOrderId:         []byte("sellOrderID"),
-				BuyOrderFragmentId:  []byte("buyOrderFragmentID"),
-				SellOrderFragmentId: []byte("sellOrderFragmentID"),
-				FstCodeShare:        sss.ToBytes(sssShare),
-				SndCodeShare:        []byte(""),
-				PriceShare:          sss.ToBytes(sssShare),
-				MaxVolumeShare:      sss.ToBytes(sssShare),
-				MinVolumeShare:      sss.ToBytes(sssShare),
-			}
+		It("should return an error when deserializing a compute.ResultFragment with a malformed SndCodeShare", func() {
+			wrongResultFragment.SndCodeShare = []byte("")
 			_, err := rpc.DeserializeResultFragment(&wrongResultFragment)
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing a result fragment with a malformed price share", func() {
-			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
-			wrongResultFragment := rpc.ResultFragment{
-				To:                  &rpc.Address{},
-				From:                &rpc.MultiAddress{},
-				Id:                  []byte("id"),
-				BuyOrderId:          []byte("buyOrderID"),
-				SellOrderId:         []byte("sellOrderID"),
-				BuyOrderFragmentId:  []byte("buyOrderFragmentID"),
-				SellOrderFragmentId: []byte("sellOrderFragmentID"),
-				FstCodeShare:        sss.ToBytes(sssShare),
-				SndCodeShare:        sss.ToBytes(sssShare),
-				PriceShare:          []byte(""),
-				MaxVolumeShare:      sss.ToBytes(sssShare),
-				MinVolumeShare:      sss.ToBytes(sssShare),
-			}
+		It("should return an error when deserializing a compute.ResultFragment with a malformed PriceShare", func() {
+			wrongResultFragment.PriceShare = []byte("")
 			_, err := rpc.DeserializeResultFragment(&wrongResultFragment)
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing a result fragment with a malformed maximum volume share", func() {
-			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
-			wrongResultFragment := rpc.ResultFragment{
-				To:                  &rpc.Address{},
-				From:                &rpc.MultiAddress{},
-				Id:                  []byte("id"),
-				BuyOrderId:          []byte("buyOrderID"),
-				SellOrderId:         []byte("sellOrderID"),
-				BuyOrderFragmentId:  []byte("buyOrderFragmentID"),
-				SellOrderFragmentId: []byte("sellOrderFragmentID"),
-				FstCodeShare:        sss.ToBytes(sssShare),
-				SndCodeShare:        sss.ToBytes(sssShare),
-				PriceShare:          sss.ToBytes(sssShare),
-				MaxVolumeShare:      []byte(""),
-				MinVolumeShare:      sss.ToBytes(sssShare),
-			}
+		It("should return an error when deserializing a compute.ResultFragment with a malformed MaxVolumeShare", func() {
+			wrongResultFragment.MaxVolumeShare = []byte("")
 			_, err := rpc.DeserializeResultFragment(&wrongResultFragment)
 			Ω(err).Should(HaveOccurred())
 		})
 
-		It("should return an error when deserializing a result fragment with a malformed minimum volume share", func() {
-			sssShare := sss.Share{Key: 1, Value: &big.Int{}}
-			wrongResultFragment := rpc.ResultFragment{
-				To:                  &rpc.Address{},
-				From:                &rpc.MultiAddress{},
-				Id:                  []byte("id"),
-				BuyOrderId:          []byte("buyOrderID"),
-				SellOrderId:         []byte("sellOrderID"),
-				BuyOrderFragmentId:  []byte("buyOrderFragmentID"),
-				SellOrderFragmentId: []byte("sellOrderFragmentID"),
-				FstCodeShare:        sss.ToBytes(sssShare),
-				SndCodeShare:        sss.ToBytes(sssShare),
-				PriceShare:          sss.ToBytes(sssShare),
-				MaxVolumeShare:      sss.ToBytes(sssShare),
-				MinVolumeShare:      []byte(""),
-			}
+		It("should return an error when deserializing a compute.ResultFragment with a malformed MinVolumeShare", func() {
+			wrongResultFragment.MinVolumeShare = []byte("")
 			_, err := rpc.DeserializeResultFragment(&wrongResultFragment)
 			Ω(err).Should(HaveOccurred())
 		})
 	})
 
-	Context("when using a trading atom", func() {
-		It("should be able to serialize and deserialize", func() {
+	Context("compute.Result", func() {
+		It("should be able to serialize and deserialize a compute.Result", func() {
+			result := &compute.Result{
+				ID:          []byte("resultID"),
+				BuyOrderID:  []byte("BuyOrderID"),
+				SellOrderID: []byte("SellOrderID"),
+				FstCode:     big.NewInt(0),
+				SndCode:     big.NewInt(0),
+				Price:       big.NewInt(0),
+				MaxVolume:   big.NewInt(0),
+				MinVolume:   big.NewInt(0),
+			}
+			serializedResult := rpc.SerializeResult(result)
+			newResult := rpc.DeserializeResult(serializedResult)
+			Ω(*result).Should(Equal(*newResult))
+		})
+	})
+
+	Context("atom.Atom", func() {
+		It("should be able to serialize and deserialize atom.Atom", func() {
 			a := atom.Atom{
 				ID:         []byte{},
 				Lock:       []byte{},

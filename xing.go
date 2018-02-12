@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/republicprotocol/go-do"
-
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"golang.org/x/net/context"
@@ -59,13 +58,12 @@ func SendResultFragmentToTarget(target identity.MultiAddress, to identity.Addres
 // want to receive compute.Results. After closing the quit channel, the caller
 // should read one last compute.Results from the first channel to guarantee
 // that no memory is leaked.
-func NotificationsFromTarget(target identity.MultiAddress, from identity.MultiAddress, traderAddress identity.Address, timeout time.Duration) (chan do.Option, chan struct{}) {
+func NotificationsFromTarget(target identity.MultiAddress, traderAddress identity.Address, timeout time.Duration) (chan do.Option, chan struct{}) {
 	ret := make(chan do.Option, 1)
 	quit := make(chan struct{}, 1)
 
 	go func() {
 		defer close(ret)
-
 		conn, err := Dial(target, timeout)
 		if err != nil {
 			ret <- do.Err(err)
@@ -103,8 +101,7 @@ func NotificationsFromTarget(target identity.MultiAddress, from identity.MultiAd
 				ret <- do.Err(err)
 				continue
 			}
-			deserializedResult := DeserializeResult(result)
-			ret <- do.Ok(deserializedResult)
+			ret <- do.Ok(DeserializeResult(result))
 		}
 	}()
 
