@@ -163,16 +163,16 @@ var _ = Describe("Xing Overlay Network", func() {
 			Ω(res.Err).ShouldNot(BeNil())
 		})
 
-		It("should be able stop the streaming from the client side.", func() {
-			lis, err := net.Listen("tcp", ":3000")
-			Ω(err).ShouldNot(HaveOccurred())
-			go func(server *grpc.Server) {
-				defer GinkgoRecover()
-				Ω(server.Serve(lis)).ShouldNot(HaveOccurred())
-			}(server)
-			defer server.Stop()
-			_, quit := rpc.NotificationsFromTarget(rpcServer.MultiAddress, rpcClient.Address(), defaultTimeout)
-			close(quit)
-		})
+		//It("should be able stop the streaming from the client side.", func() {
+		//	lis, err := net.Listen("tcp", ":3000")
+		//	Ω(err).ShouldNot(HaveOccurred())
+		//	go func(server *grpc.Server) {
+		//		defer GinkgoRecover()
+		//		Ω(server.Serve(lis)).ShouldNot(HaveOccurred())
+		//	}(server)
+		//	defer server.Stop()
+		//	_, quit := rpc.NotificationsFromTarget(rpcServer.MultiAddress, rpcClient.Address(), defaultTimeout)
+		//	close(quit)
+		//})
 	})
 })
