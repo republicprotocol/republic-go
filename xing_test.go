@@ -156,7 +156,7 @@ var _ = Describe("Xing Overlay Network", func() {
 			Ω(res.Ok.(*compute.Result)).Should(Equal(result))
 		})
 
-		FIt("should return an error when dialing an offline server", func() {
+		It("should return an error when dialing an offline server", func() {
 			resultChan, _ := rpc.NotificationsFromTarget(rpcServer.MultiAddress, rpcClient.Address(), defaultTimeout)
 			res := <- resultChan
 			Ω(res.Err).ShouldNot(BeNil())
