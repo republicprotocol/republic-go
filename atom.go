@@ -1,21 +1,27 @@
 package atom
 
-type Ledger string
+type Ledger int64
 
 const (
-	LedgerBitcoin         Ledger = "bitcoin"
-	LedgerBitcoinTestnet  Ledger = "bitcoin.testnet"
-	LedgerEthereum        Ledger = "ethereum"
-	LedgerEthereumRopsten Ledger = "ethereum.ropsten"
+	LedgerBitcoin  Ledger = 1
+	LedgerEthereum Ledger = 2
+
+	LedgerBitcoinTestnet  Ledger = -1
+	LedgerEthereumRopsten Ledger = -2
 )
 
-type LedgerAddress string
+type LedgerData []byte
 
 type Atom struct {
-	ID         []byte
-	Lock       []byte
-	Fst        Ledger
-	FstAddress LedgerAddress
-	Snd        Ledger
-	SndAddress LedgerAddress
+	ID     []byte
+	Ledger Ledger
+	Data   LedgerData
+}
+
+type AtomContract interface {
+	Initiate(hash, to, from []byte, value, expiry int64) (err error)
+	Read() (hash, to, from []byte, value, expiry int64, err error)
+	ReadSecret() (secret []byte, err error)
+	Redeem() error
+	Refund() error
 }
