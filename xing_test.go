@@ -25,6 +25,7 @@ var result = &compute.Result{
 	MaxVolume:   big.NewInt(0),
 	MinVolume:   big.NewInt(0),
 }
+
 func (s *mockServer) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
 	return &rpc.Nothing{}, nil
 }
@@ -33,7 +34,7 @@ func (s *mockServer) SendResultFragment(ctx context.Context, resultFragment *rpc
 	return &rpc.Nothing{}, nil
 }
 
-func (s *mockServer) Notifications(address *rpc.Address, stream rpc.XingNode_NotificationsServer) error{
+func (s *mockServer) Notifications(address *rpc.Address, stream rpc.XingNode_NotificationsServer) error {
 	stream.Send(rpc.SerializeResult(result))
 	return nil
 }
@@ -151,18 +152,18 @@ var _ = Describe("Xing Overlay Network", func() {
 			}(server)
 			defer server.Stop()
 			resultChan, _ := rpc.NotificationsFromTarget(rpcServer.MultiAddress, rpcClient.Address(), defaultTimeout)
-			res := <- resultChan
+			res := <-resultChan
 
 			Ω(res.Ok.(*compute.Result)).Should(Equal(result))
 		})
 
 		It("should return an error when dialing an offline server", func() {
 			resultChan, _ := rpc.NotificationsFromTarget(rpcServer.MultiAddress, rpcClient.Address(), defaultTimeout)
-			res := <- resultChan
+			res := <-resultChan
 			Ω(res.Err).ShouldNot(BeNil())
 		})
 
-		It("should be able stop the streaming from the client side.",func(){
+		It("should be able stop the streaming from the client side.", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
 			go func(server *grpc.Server) {
@@ -175,4 +176,3 @@ var _ = Describe("Xing Overlay Network", func() {
 		})
 	})
 })
-
