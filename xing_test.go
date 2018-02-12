@@ -39,6 +39,10 @@ func (s *mockServer) Notifications(address *rpc.Address, stream rpc.XingNode_Not
 	return nil
 }
 
+func (s *mockServer) GetResults(ctx context.Context,address *rpc.Address) (*rpc.Results, error) {
+	return nil,nil
+}
+
 var _ = Describe("Xing Overlay Network", func() {
 	var server *grpc.Server
 	var rpcServer mockServer
@@ -162,17 +166,5 @@ var _ = Describe("Xing Overlay Network", func() {
 			res := <-resultChan
 			Ω(res.Err).ShouldNot(BeNil())
 		})
-
-		//It("should be able stop the streaming from the client side.", func() {
-		//	lis, err := net.Listen("tcp", ":3000")
-		//	Ω(err).ShouldNot(HaveOccurred())
-		//	go func(server *grpc.Server) {
-		//		defer GinkgoRecover()
-		//		Ω(server.Serve(lis)).ShouldNot(HaveOccurred())
-		//	}(server)
-		//	defer server.Stop()
-		//	_, quit := rpc.NotificationsFromTarget(rpcServer.MultiAddress, rpcClient.Address(), defaultTimeout)
-		//	close(quit)
-		//})
 	})
 })

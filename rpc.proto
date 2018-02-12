@@ -72,6 +72,9 @@ service XingNode {
   // Get Result messages for successful order matches that have happened since
   // this procedure was last used, as well as new ones that occur.
   rpc Notifications (Address) returns (stream Result);
+
+  // Get all relevant results that have been computed in the current epoch.
+  rpc GetResults (Address) returns (Results);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
@@ -134,6 +137,10 @@ message Result {
   bytes minVolume = 8;
 }
 
+// Results message is a list of Result message
+message Results{
+  repeated Result result = 1;
+}
 /**
  * Terminal definitions.
  */
