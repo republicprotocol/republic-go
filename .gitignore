@@ -1,5 +1,3 @@
 Gopkg.lock
 vendor
 coverprofile.out
-
-contracts/*.go
