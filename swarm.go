@@ -86,5 +86,6 @@ func QueryCloserPeersOnFrontierFromTarget(target identity.MultiAddress, from ide
 		}
 		multiAddresses = append(multiAddresses, deserializedMultiAddress)
 	}
+
 	return multiAddresses, nil
 }
