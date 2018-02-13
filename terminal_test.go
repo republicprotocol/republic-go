@@ -49,9 +49,9 @@ var _ = Describe("Terminals", func() {
 
 	createAtom := func() {
 		a = atom.Atom{
-			Ledger: atom.Ledger(0),
-			LedgerData:   []byte{},
-			Signature:    []byte{},
+			Ledger:     atom.Ledger(0),
+			LedgerData: []byte{},
+			Signature:  []byte{},
 		}
 	}
 

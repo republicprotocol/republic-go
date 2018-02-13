@@ -1,7 +1,6 @@
 package rpc_test
 
 import (
-	"go/constant"
 	"math/big"
 	"time"
 
