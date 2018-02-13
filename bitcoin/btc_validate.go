@@ -1,42 +1,43 @@
-package main
+package bitcoin
 
-type validateCmd struct {
-	contract   []byte
-	contractTx *wire.MsgTx
+import (
+	"bytes"
+	"errors"
+	"fmt"
+
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
+)
+
+type validateResult struct {
+	contractAddress  []byte
+	amount           int64
+	recipientAddress []byte
+	refundAddress    []byte
+	secretHash       []byte
+	lockTime         int64
 }
 
-func Validate(contractString string, contractTransaction string, chain string, rpcuser string, rpcpass string) (Error error, showUsage bool) {
-	var chainParams *chaincfg.Params ;
-	if (chain == "testnet"){
+func Validate(contract, contractTxBytes []byte, chain string, rpcuser string, rpcpass string) (Error error, result validateResult) {
+	var chainParams *chaincfg.Params
+	if chain == "testnet" {
 		chainParams = &chaincfg.TestNet3Params
 	} else {
 		chainParams = &chaincfg.MainNetParams
 	}
 
-	contract, err := hex.DecodeString(contractString)
-		if err != nil {
-			return fmt.Errorf("failed to decode contract: %v", err), true
-		}
+	var contractTx wire.MsgTx
+	err := contractTx.Deserialize(bytes.NewReader(contractTxBytes))
+	if err != nil {
+		return fmt.Errorf("failed to decode contract transaction: %v", err), validateResult{}
+	}
 
-		contractTxBytes, err := hex.DecodeString(contractTransaction)
-		if err != nil {
-			return fmt.Errorf("failed to decode contract transaction: %v", err), true
-		}
-		var contractTx wire.MsgTx
-		err = contractTx.Deserialize(bytes.NewReader(contractTxBytes))
-		if err != nil {
-			return fmt.Errorf("failed to decode contract transaction: %v", err), true
-		}
-
-		cmd := &validateCmd{contract: contract, contractTx: &contractTx}
-		err = cmd.runCommand(chainParams)
-		return err, false
-}
-
-func (cmd *validateCmd) runCommand(chainParams *chaincfg.Params) error {
-	contractHash160 := btcutil.Hash160(cmd.contract)
+	contractHash160 := btcutil.Hash160(contract)
 	contractOut := -1
-	for i, out := range cmd.contractTx.TxOut {
+
+	for i, out := range contractTx.TxOut {
 		sc, addrs, _, err := txscript.ExtractPkScriptAddrs(out.PkScript, chainParams)
 		if err != nil || sc != txscript.ScriptHashTy {
 			continue
@@ -47,51 +48,38 @@ func (cmd *validateCmd) runCommand(chainParams *chaincfg.Params) error {
 		}
 	}
 	if contractOut == -1 {
-		return errors.New("transaction does not contain the contract output")
+		return errors.New("transaction does not contain the contract output"), validateResult{}
 	}
 
-	pushes, err := txscript.ExtractAtomicSwapDataPushes(cmd.contract)
+	pushes, err := txscript.ExtractAtomicSwapDataPushes(contract)
 	if err != nil {
-		return err
+		return err, validateResult{}
 	}
 	if pushes == nil {
-		return errors.New("contract is not an atomic swap script recognized by this tool")
+		return errors.New("contract is not an atomic swap script recognized by this tool"), validateResult{}
 	}
 
-	contractAddr, err := btcutil.NewAddressScriptHash(cmd.contract, chainParams)
+	contractAddr, err := btcutil.NewAddressScriptHash(contract, chainParams)
 	if err != nil {
-		return err
+		return err, validateResult{}
 	}
 	recipientAddr, err := btcutil.NewAddressPubKeyHash(pushes.RecipientHash160[:],
 		chainParams)
 	if err != nil {
-		return err
+		return err, validateResult{}
 	}
 	refundAddr, err := btcutil.NewAddressPubKeyHash(pushes.RefundHash160[:],
 		chainParams)
 	if err != nil {
-		return err
+		return err, validateResult{}
 	}
 
-	fmt.Printf("Contract address:        %v\n", contractAddr)
-	fmt.Printf("Contract value:          %v\n", btcutil.Amount(cmd.contractTx.TxOut[contractOut].Value))
-	fmt.Printf("Recipient address:       %v\n", recipientAddr)
-	fmt.Printf("Author's refund address: %v\n\n", refundAddr)
-
-	fmt.Printf("Secret hash: %x\n\n", pushes.SecretHash[:])
-
-	if pushes.LockTime >= int64(txscript.LockTimeThreshold) {
-		t := time.Unix(pushes.LockTime, 0)
-		fmt.Printf("Locktime: %v\n", t.UTC())
-		reachedAt := time.Until(t).Truncate(time.Second)
-		if reachedAt > 0 {
-			fmt.Printf("Locktime reached in %v\n", reachedAt)
-		} else {
-			fmt.Printf("Contract refund time lock has expired\n")
-		}
-	} else {
-		fmt.Printf("Locktime: block %v\n", pushes.LockTime)
+	return nil, validateResult{
+		contractAddress:  contractAddr.ScriptAddress(),
+		amount:           int64(btcutil.Amount(contractTx.TxOut[contractOut].Value)),
+		recipientAddress: recipientAddr.ScriptAddress(),
+		refundAddress:    refundAddr.ScriptAddress(),
+		secretHash:       pushes.SecretHash[:],
+		lockTime:         pushes.LockTime,
 	}
-
-	return nil
 }
