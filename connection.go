@@ -17,7 +17,7 @@ import (
 
 // Connection ...
 type Connection interface {
-	Open(_swapID [32]byte, ethAddr common.Address, ethAmount uint64, secretHash [32]byte, amountInWei *big.Int) (*types.Transaction, error)
+	Open(_swapID [32]byte, ethAddr common.Address, secretHash [32]byte, amountInWei *big.Int) (*types.Transaction, error)
 	Close(_swapID [32]byte, _secretKey []byte) (*types.Transaction, error)
 	RetrieveSecretKey(_swapID [32]byte) ([]byte, error)
 	Expire(_swapID [32]byte) (*types.Transaction, error)
@@ -38,6 +38,13 @@ type EtherConnection struct {
 	contract *contracts.AtomicSwapEther
 }
 
+// ERC20Connection ...
+type ERC20Connection struct {
+	client   bind.ContractBackend
+	auth     *bind.TransactOpts
+	contract *contracts.AtomicSwapERC20
+}
+
 func randomAuth() *bind.TransactOpts {
 	// Generate a new random account
 	key, _ := crypto.GenerateKey()
@@ -46,9 +53,9 @@ func randomAuth() *bind.TransactOpts {
 }
 
 // Ropsten ...
-func Ropsten() *ethclient.Client {
+func Ropsten(uri string) *ethclient.Client {
 	// Create an IPC based RPC connection to a remote node and an authorized transactor
-	conn, err := ethclient.Dial("http://13.54.129.55:8545")
+	conn, err := ethclient.Dial(uri)
 	if err != nil {
 		log.Fatalf("Failed to connect to the Ethereum client: %v", err)
 	}
@@ -76,8 +83,16 @@ func DeployEther(connection *backends.SimulatedBackend, auth *bind.TransactOpts)
 	return address
 }
 
-func existing(connection bind.ContractBackend, address common.Address) *contracts.AtomicSwapEther {
+func existingEth(connection bind.ContractBackend, address common.Address) *contracts.AtomicSwapEther {
 	contract, err := contracts.NewAtomicSwapEther(address, connection)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	return contract
+}
+
+func existingERC20(connection bind.ContractBackend, address common.Address) *contracts.AtomicSwapERC20 {
+	contract, err := contracts.NewAtomicSwapERC20(address, connection)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -86,9 +101,20 @@ func existing(connection bind.ContractBackend, address common.Address) *contract
 
 // NewEtherConnection ...
 func NewEtherConnection(client bind.ContractBackend, auth1 *bind.TransactOpts, address common.Address) Connection {
-	contract := existing(client, address)
+	contract := existingEth(client, address)
 
 	return EtherConnection{
+		client:   client,
+		auth:     auth1,
+		contract: contract,
+	}
+}
+
+// NewERC20Connection ...
+func NewERC20Connection(client bind.ContractBackend, auth1 *bind.TransactOpts, address common.Address) Connection {
+	contract := existingERC20(client, address)
+
+	return ERC20Connection{
 		client:   client,
 		auth:     auth1,
 		contract: contract,
