@@ -237,12 +237,8 @@ var _ = Describe("Data serialization and deserialization", func() {
 	Context("atom.Atom", func() {
 		It("should be able to serialize and deserialize atom.Atom", func() {
 			a := atom.Atom{
-				ID:         []byte{},
-				Lock:       []byte{},
-				Fst:        atom.LedgerBitcoin,
-				FstAddress: "0x",
-				Snd:        atom.LedgerEthereum,
-				SndAddress: "0x",
+				Ledger:   atom.Ledger(0),
+				Data:     []byte("data"),
 			}
 			rpcAtom := rpc.SerializeAtom(a)
 			newAtom := rpc.DeserializeAtom(rpcAtom)

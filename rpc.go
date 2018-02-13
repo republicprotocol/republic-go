@@ -231,12 +231,8 @@ func DeserializeResultFragment(input *ResultFragment) (*compute.ResultFragment, 
 // SerializeAtom converts an atomic.Atom into its network representation.
 func SerializeAtom(a atom.Atom) *Atom {
 	return &Atom{
-		Id:         a.ID,
-		Lock:       a.Lock,
-		Fst:        string(a.Fst),
-		FstAddress: string(a.FstAddress),
-		Snd:        string(a.Snd),
-		SndAddress: string(a.SndAddress),
+		Ledger:  int64(a.Ledger),
+		Data:    a.Data,
 	}
 }
 
@@ -244,11 +240,7 @@ func SerializeAtom(a atom.Atom) *Atom {
 // atom.Atom. An error is returned if the network representation is malformed.
 func DeserializeAtom(a *Atom) atom.Atom {
 	return atom.Atom{
-		ID:         a.Id,
-		Lock:       a.Lock,
-		Fst:        atom.Ledger(a.Fst),
-		FstAddress: atom.LedgerAddress(a.FstAddress),
-		Snd:        atom.Ledger(a.Snd),
-		SndAddress: atom.LedgerAddress(a.SndAddress),
+		Ledger: atom.Ledger(a.Ledger),
+		Data: a.Data,
 	}
 }

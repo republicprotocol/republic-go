@@ -161,10 +161,6 @@ message Atom {
   MultiAddress from = 2;
 
   // Secure data.
-  bytes id = 3;
-  bytes lock = 4;
-  string fst = 5;
-  string fstAddress = 6;
-  string snd = 7;
-  string sndAddress = 8;
+  int64 ledger = 3;
+  bytes data = 4;
 }
