@@ -1,22 +1,21 @@
-package main
+package bitcoin
 
 import (
-	"fmt"
-	"errors"
-	"net"
 	"bytes"
+	"errors"
+	"fmt"
+	"net"
 
 	"crypto/sha256"
 
-	"encoding/json"
 	"encoding/hex"
+	"encoding/json"
 
-	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcwallet/wallet/txrules"
 
 	"golang.org/x/crypto/ripemd160"
 
@@ -60,18 +59,15 @@ type builtContract struct {
 	contractP2SH   btcutil.Address
 	contractTxHash *chainhash.Hash
 	contractTx     *wire.MsgTx
-	contractFee    btcutil.Amount
 	refundTx       *wire.MsgTx
-	refundFee      btcutil.Amount
 }
 
 type contractArgs struct {
 	them       *btcutil.AddressPubKeyHash
-	amount     btcutil.Amount
+	amount     int64
 	locktime   int64
 	secretHash []byte
 }
-
 
 func sumOutputSerializeSizes(outputs []*wire.TxOut) (serializeSize int) {
 	for _, txOut := range outputs {
@@ -79,7 +75,6 @@ func sumOutputSerializeSizes(outputs []*wire.TxOut) (serializeSize int) {
 	}
 	return serializeSize
 }
-
 
 // inputSize returns the size of the transaction input needed to include a
 // signature script with size sigScriptSize.  It is calculated as:
@@ -124,8 +119,8 @@ func normalizeAddress(addr string, defaultPort string) (hostport string, err err
 }
 
 func buildContract(c *rpc.Client, args *contractArgs, chain string) (*builtContract, error) {
-	var chainParams *chaincfg.Params ;
-	if (chain == "testnet"){
+	var chainParams *chaincfg.Params
+	if chain == "testnet" {
 		chainParams = &chaincfg.TestNet3Params
 	} else {
 		chainParams = &chaincfg.MainNetParams
@@ -156,14 +151,9 @@ func buildContract(c *rpc.Client, args *contractArgs, chain string) (*builtContr
 		return nil, err
 	}
 
-	feePerKb, minFeePerKb, err := getFeePerKb(c)
-	if err != nil {
-		return nil, err
-	}
-
 	unsignedContract := wire.NewMsgTx(txVersion)
 	unsignedContract.AddTxOut(wire.NewTxOut(int64(args.amount), contractP2SHPkScript))
-	unsignedContract, contractFee, err := fundRawTransaction(c, unsignedContract, feePerKb)
+	unsignedContract, err = fundRawTransaction(c, unsignedContract)
 	if err != nil {
 		return nil, fmt.Errorf("fundrawtransaction: %v", err)
 	}
@@ -177,7 +167,7 @@ func buildContract(c *rpc.Client, args *contractArgs, chain string) (*builtContr
 
 	contractTxHash := contractTx.TxHash()
 
-	refundTx, refundFee, err := buildRefund(c, contract, contractTx, feePerKb, minFeePerKb, chainParams)
+	refundTx, err := buildRefund(c, contract, contractTx, chainParams)
 	if err != nil {
 		return nil, err
 	}
@@ -187,12 +177,9 @@ func buildContract(c *rpc.Client, args *contractArgs, chain string) (*builtContr
 		contractP2SH,
 		&contractTxHash,
 		contractTx,
-		contractFee,
 		refundTx,
-		refundFee,
 	}, nil
 }
-
 
 func walletPort(params *chaincfg.Params) string {
 	switch params {
@@ -262,7 +249,6 @@ func atomicSwapContract(pkhMe, pkhThem *[ripemd160.Size]byte, locktime int64, se
 	return b.Script()
 }
 
-
 func getRawChangeAddress(c *rpc.Client, chainParams *chaincfg.Params) (btcutil.Address, error) {
 	rawResp, err := c.RawRequest("getrawchangeaddress", nil)
 	if err != nil {
@@ -322,26 +308,21 @@ func getFeePerKb(c *rpc.Client) (useFee, relayFee btcutil.Amount, err error) {
 	return useFee, relayFee, err
 }
 
-func fundRawTransaction(c *rpc.Client, tx *wire.MsgTx, feePerKb btcutil.Amount) (fundedTx *wire.MsgTx, fee btcutil.Amount, err error) {
+func fundRawTransaction(c *rpc.Client, tx *wire.MsgTx) (fundedTx *wire.MsgTx, err error) {
 	var buf bytes.Buffer
 	buf.Grow(tx.SerializeSize())
 	tx.Serialize(&buf)
 	param0, err := json.Marshal(hex.EncodeToString(buf.Bytes()))
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	param1, err := json.Marshal(struct {
-		FeeRate float64 `json:"feeRate"`
-	}{
-		FeeRate: feePerKb.ToBTC(),
-	})
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	params := []json.RawMessage{param0, param1}
+	params := []json.RawMessage{param0}
 	rawResp, err := c.RawRequest("fundrawtransaction", params)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	var resp struct {
 		Hex       string  `json:"hex"`
@@ -350,22 +331,18 @@ func fundRawTransaction(c *rpc.Client, tx *wire.MsgTx, feePerKb btcutil.Amount) 
 	}
 	err = json.Unmarshal(rawResp, &resp)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	fundedTxBytes, err := hex.DecodeString(resp.Hex)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	fundedTx = &wire.MsgTx{}
 	err = fundedTx.Deserialize(bytes.NewReader(fundedTxBytes))
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	feeAmount, err := btcutil.NewAmount(resp.Fee)
-	if err != nil {
-		return nil, 0, err
-	}
-	return fundedTx, feeAmount, nil
+	return fundedTx, nil
 }
 
 func calcFeePerKb(absoluteFee btcutil.Amount, serializeSize int) float64 {
@@ -373,25 +350,24 @@ func calcFeePerKb(absoluteFee btcutil.Amount, serializeSize int) float64 {
 }
 
 func promptPublishTx(c *rpc.Client, tx *wire.MsgTx, name string) error {
-		txHash, err := c.SendRawTransaction(tx, false)
-		if err != nil {
-			return fmt.Errorf("sendrawtransaction: %v", err)
-		}
-		fmt.Printf("Published %s transaction (%v)\n", name, txHash)
-		return nil
+	txHash, err := c.SendRawTransaction(tx, false)
+	if err != nil {
+		return fmt.Errorf("sendrawtransaction: %v", err)
+	}
+	fmt.Printf("Published %s transaction (%v)\n", name, txHash)
+	return nil
 }
 
-
-func buildRefund(c *rpc.Client, contract []byte, contractTx *wire.MsgTx, feePerKb, minFeePerKb btcutil.Amount, chainParams *chaincfg.Params) (
-	refundTx *wire.MsgTx, refundFee btcutil.Amount, err error) {
+func buildRefund(c *rpc.Client, contract []byte, contractTx *wire.MsgTx, chainParams *chaincfg.Params) (
+	refundTx *wire.MsgTx, err error) {
 
 	contractP2SH, err := btcutil.NewAddressScriptHash(contract, chainParams)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	contractP2SHPkScript, err := txscript.PayToAddrScript(contractP2SH)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	contractTxHash := contractTx.TxHash()
@@ -403,16 +379,16 @@ func buildRefund(c *rpc.Client, contract []byte, contractTx *wire.MsgTx, feePerK
 		}
 	}
 	if contractOutPoint.Index == ^uint32(0) {
-		return nil, 0, errors.New("contract tx does not contain a P2SH contract payment")
+		return nil, errors.New("contract tx does not contain a P2SH contract payment")
 	}
 
 	refundAddress, err := getRawChangeAddress(c, chainParams)
 	if err != nil {
-		return nil, 0, fmt.Errorf("getrawchangeaddress: %v", err)
+		return nil, fmt.Errorf("getrawchangeaddress: %v", err)
 	}
 	refundOutScript, err := txscript.PayToAddrScript(refundAddress)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	pushes, err := txscript.ExtractAtomicSwapDataPushes(contract)
@@ -423,18 +399,12 @@ func buildRefund(c *rpc.Client, contract []byte, contractTx *wire.MsgTx, feePerK
 
 	refundAddr, err := btcutil.NewAddressPubKeyHash(pushes.RefundHash160[:], chainParams)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	refundTx = wire.NewMsgTx(txVersion)
 	refundTx.LockTime = uint32(pushes.LockTime)
 	refundTx.AddTxOut(wire.NewTxOut(0, refundOutScript)) // amount set below
-	refundSize := estimateRefundSerializeSize(contract, refundTx.TxOut)
-	refundFee = txrules.FeeForSerializeSize(feePerKb, refundSize)
-	refundTx.TxOut[0].Value = contractTx.TxOut[contractOutPoint.Index].Value - int64(refundFee)
-	if txrules.IsDustOutput(refundTx.TxOut[0], minFeePerKb) {
-		return nil, 0, fmt.Errorf("refund output value of %v is dust", btcutil.Amount(refundTx.TxOut[0].Value))
-	}
 
 	txIn := wire.NewTxIn(&contractOutPoint, nil, nil)
 	txIn.Sequence = 0
@@ -442,11 +412,11 @@ func buildRefund(c *rpc.Client, contract []byte, contractTx *wire.MsgTx, feePerK
 
 	refundSig, refundPubKey, err := createSig(refundTx, 0, contract, refundAddr, c)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	refundSigScript, err := refundP2SHContract(contract, refundSig, refundPubKey)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	refundTx.TxIn[0].SignatureScript = refundSigScript
 
@@ -463,7 +433,7 @@ func buildRefund(c *rpc.Client, contract []byte, contractTx *wire.MsgTx, feePerK
 		}
 	}
 
-	return refundTx, refundFee, nil
+	return refundTx, nil
 }
 
 func estimateRefundSerializeSize(contract []byte, txOuts []*wire.TxOut) int {
@@ -502,4 +472,17 @@ func createSig(tx *wire.MsgTx, idx int, pkScript []byte, addr btcutil.Address,
 		return nil, nil, err
 	}
 	return sig, wif.PrivKey.PubKey().SerializeCompressed(), nil
+}
+
+// redeemP2SHContract returns the signature script to redeem a contract output
+// using the redeemer's signature and the initiator's secret.  This function
+// assumes P2SH and appends the contract as the final data push.
+func redeemP2SHContract(contract, sig, pubkey, secret []byte) ([]byte, error) {
+	b := txscript.NewScriptBuilder()
+	b.AddData(sig)
+	b.AddData(pubkey)
+	b.AddData(secret)
+	b.AddInt64(1)
+	b.AddData(contract)
+	return b.Script()
 }
