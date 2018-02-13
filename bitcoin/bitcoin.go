@@ -19,7 +19,7 @@ func (contract *BTCAtomContract) ReadSecret() (secret []byte, err error) {
 	panic("unimplemented")
 }
 
-func (contract *BTCAtomContract) Redeem() error {
+func (contract *BTCAtomContract) Redeem(secret []byte) error {
 	panic("unimplemented")
 }
 
