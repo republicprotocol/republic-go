@@ -80,7 +80,7 @@ func Split(n int64, k int64, prime *big.Int, secret *big.Int) (Shares, error) {
 // Join Shares into a secret. Prime is used to define the finite field from
 // which the secret was selected. The reconstructed secret, or an error, is
 // returned.
-func Join(prime *big.Int, shares Shares) (*big.Int, error) {
+func Join(prime *big.Int, shares Shares) *big.Int {
 	secret := big.NewInt(0)
 
 	// Setup big numbers so that we do not have to keep recreating them in each
@@ -118,7 +118,7 @@ func Join(prime *big.Int, shares Shares) (*big.Int, error) {
 		secret.Mod(secret, prime)
 	}
 
-	return secret, nil
+	return secret
 }
 
 // ToBytes encodes the Share into a slice of bytes.

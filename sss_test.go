@@ -53,7 +53,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 		})
 	})
 
-	Context("encoding", func() {
+	Context("splitting", func() {
 		It("should return the correct number of shares", func() {
 			// Shamir parameters.
 			n := int64(100)
@@ -68,7 +68,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 		})
 	})
 
-	Context("decoding", func() {
+	Context("joining", func() {
 		It("should return the correct secret from K shares", func() {
 			// Shamir parameters.
 			N := int64(100)
@@ -98,8 +98,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 				for index := range indices {
 					kShares[index] = shares[index]
 				}
-				decodedSecret, err := Join(prime, kShares)
-				Ω(err).Should(BeNil())
+				decodedSecret := Join(prime, kShares)
 				Ω(decodedSecret.Cmp(secret)).Should(Equal(0))
 			}
 		})
@@ -133,8 +132,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 				for index := range indices {
 					kShares[index] = shares[index]
 				}
-				decodedSecret, err := Join(prime, kShares)
-				Ω(err).Should(BeNil())
+				decodedSecret := Join(prime, kShares)
 				Ω(decodedSecret.Cmp(secret)).ShouldNot(Equal(0))
 			}
 		})
