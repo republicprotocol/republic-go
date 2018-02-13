@@ -69,4 +69,15 @@ func (connection ERC20Connection) Validate() {
 func (connection ERC20Connection) RetrieveSecretKey(_swapID [32]byte) ([]byte, error) {
 	return connection.contract.CheckSecretKey(&bind.CallOpts{}, _swapID)
 }
+
+
+
+func existingERC20(connection bind.ContractBackend, address common.Address) *contracts.AtomicSwapERC20 {
+	contract, err := contracts.NewAtomicSwapERC20(address, connection)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	return contract
+}
+
 */
