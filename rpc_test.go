@@ -1,6 +1,7 @@
 package rpc_test
 
 import (
+	"go/constant"
 	"math/big"
 	"time"
 
@@ -237,8 +238,9 @@ var _ = Describe("Data serialization and deserialization", func() {
 	Context("atom.Atom", func() {
 		It("should be able to serialize and deserialize atom.Atom", func() {
 			a := atom.Atom{
-				Ledger:   atom.Ledger(0),
-				Data:     []byte("data"),
+				Ledger:     atom.Ledger(0),
+				LedgerData: []byte("data"),
+				Signature:  []byte("signature"),
 			}
 			rpcAtom := rpc.SerializeAtom(a)
 			newAtom := rpc.DeserializeAtom(rpcAtom)

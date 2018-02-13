@@ -163,4 +163,5 @@ message Atom {
   // Secure data.
   int64 ledger = 3;
   bytes data = 4;
+  bytes signature = 5;
 }
