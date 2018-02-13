@@ -58,7 +58,7 @@ func SendResultFragmentToTarget(target identity.MultiAddress, to identity.Addres
 // want to receive compute.Results. After closing the quit channel, the caller
 // should read one last compute.Results from the first channel to guarantee
 // that no memory is leaked.
-func NotificationsFromTarget(target identity.MultiAddress, traderAddress identity.Address, timeout time.Duration) (chan do.Option, chan struct{}) {
+func NotificationsFromTarget(target identity.MultiAddress, traderAddress identity.MultiAddress, timeout time.Duration) (chan do.Option, chan struct{}) {
 	ret := make(chan do.Option, 1)
 	quit := make(chan struct{}, 1)
 
@@ -75,7 +75,7 @@ func NotificationsFromTarget(target identity.MultiAddress, traderAddress identit
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
-		stream, err := client.Notifications(ctx, SerializeAddress(traderAddress), grpc.FailFast(false))
+		stream, err := client.Notifications(ctx, SerializeMultiAddress(traderAddress), grpc.FailFast(false))
 		if err != nil {
 			ret <- do.Err(err)
 			return
@@ -110,7 +110,7 @@ func NotificationsFromTarget(target identity.MultiAddress, traderAddress identit
 
 // GetResultsFromTarget using a new grpc.ClientConn to make a
 // GetResults RPC to a target identity.MultiAddress.
-func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.Address, timeout time.Duration) ([]*compute.Result, error) {
+func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.MultiAddress, timeout time.Duration) ([]*compute.Result, error) {
 	conn, err := Dial(target, timeout)
 	if err != nil {
 		return nil, err
@@ -121,7 +121,7 @@ func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.A
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	results, err := client.GetResults(ctx, SerializeAddress(traderAddress), grpc.FailFast(false))
+	results, err := client.GetResults(ctx, SerializeMultiAddress(traderAddress), grpc.FailFast(false))
 	ret := make([]*compute.Result, len(results.Result))
 	for i, j := range results.Result {
 		ret[i] = DeserializeResult(j)
