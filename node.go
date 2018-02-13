@@ -11,6 +11,7 @@ import (
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-rpc"
 	"google.golang.org/grpc"
+	"sync"
 )
 
 // A Delegate is used as a callback interface to inject behavior into the
@@ -27,6 +28,10 @@ type Node struct {
 	Delegate
 	Server  *grpc.Server
 	Options Options
+
+	resultMu   *sync.Mutex
+	resultRWMu *sync.RWMutex
+	Results    map[identity.Address]Notifications
 }
 
 // NewNode returns a Node that delegates the responsibility of handling RPCs to
@@ -115,7 +120,7 @@ func (node *Node) SendResultFragment(ctx context.Context, resultFragment *rpc.Re
 
 func (node *Node) Notifications(traderAddress *rpc.Address, stream rpc.XingNode_NotificationsServer) error {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v registered a trader for notifications [%v]\n", node.Address(), traderAddress.Address)
+		log.Printf("%v received a query for all results of [%v]\n", node.Address(), traderAddress.Address)
 	}
 	if err := stream.Context().Err(); err != nil {
 		return err
@@ -131,6 +136,34 @@ func (node *Node) Notifications(traderAddress *rpc.Address, stream rpc.XingNode_
 
 	case <-stream.Context().Done():
 		return stream.Context().Err()
+	}
+}
+
+func (node *Node) GetResults(ctx context.Context, traderAddress *rpc.Address) (*rpc.Results, error) {
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("%v registered a trader for notifications [%v]\n", node.Address(), traderAddress.Address)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	wait := do.Process(func() do.Option {
+		results, err := node.getResults(traderAddress)
+		if err != nil {
+			return do.Err(err)
+		}
+		return do.Ok(results)
+	})
+
+	select {
+	case val := <-wait:
+		if nothing, ok := val.Ok.(*rpc.Results); ok {
+			return nothing, val.Err
+		}
+		return nil, val.Err
+
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 }
 
@@ -184,6 +217,56 @@ func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.N
 	return &rpc.Nothing{}, nil
 }
 
+type Notifications struct {
+	resultRWMu *sync.RWMutex
+	resultMu   *sync.Mutex
+	results    []*compute.Result
+	//cond     *sync.Cond
+}
+
+func NewNotifications(result *compute.Result) Notifications {
+	return Notifications{
+		resultRWMu: new(sync.RWMutex),
+		resultMu:   new(sync.Mutex),
+		results:    []*compute.Result{result},
+		//cond : &sync.Cond{
+		//	L:new(sync.Mutex),
+		//},
+	}
+}
+
 func (node *Node) notifications(traderAddress *rpc.Address, stream rpc.XingNode_NotificationsServer) error {
+
 	return nil
+}
+
+func (node *Node) getResults(traderAddress *rpc.Address) (*rpc.Results, error) {
+	address := identity.Address(traderAddress.Address)
+	node.resultRWMu.Lock()
+	defer node.resultRWMu.Unlock()
+	notifications, ok := node.Results[address]
+	if !ok {
+		return *rpc.Results{}, nil
+	}
+	notifications.resultRWMu.Lock()
+	defer notifications.resultRWMu.Unlock()
+	ret := *rpc.Results{}
+	for _, j := range notifications.results {
+		ret = append(ret, j)
+	}
+	return ret, nil
+}
+
+func (node *Node) UpdateResult(result *compute.Result, traderAddress identity.Address)  {
+	node.resultRWMu.Lock()
+	notifications, ok := node.Results[traderAddress]
+	node.resultRWMu.Unlock()
+	if !ok {
+		node.resultMu.Lock()
+		defer node.resultMu.Unlock()
+		node.Results[traderAddress] = NewNotifications(result)
+	}
+	notifications.resultMu.Lock()
+	defer notifications.resultMu.Unlock()
+	notifications.results = append(notifications.results, result)
 }
