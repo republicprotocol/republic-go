@@ -39,8 +39,8 @@ func (s *mockServer) Notifications(address *rpc.Address, stream rpc.XingNode_Not
 	return nil
 }
 
-func (s *mockServer) GetResults(ctx context.Context,address *rpc.Address) (*rpc.Results, error) {
-	return nil,nil
+func (s *mockServer) GetResults(ctx context.Context, address *rpc.Address) (*rpc.Results, error) {
+	return &rpc.Results{Result: []*rpc.Result{}}, nil
 }
 
 var _ = Describe("Xing Overlay Network", func() {
@@ -165,6 +165,29 @@ var _ = Describe("Xing Overlay Network", func() {
 			resultChan, _ := rpc.NotificationsFromTarget(rpcServer.MultiAddress, rpcClient.Address(), defaultTimeout)
 			res := <-resultChan
 			Ω(res.Err).ShouldNot(BeNil())
+		})
+	})
+
+	Context("getting results from the target", func() {
+		from := rpcClient.Address()
+
+		It("should return nothing", func() {
+			lis, err := net.Listen("tcp", ":3000")
+			Ω(err).ShouldNot(HaveOccurred())
+			go func(server *grpc.Server) {
+				defer GinkgoRecover()
+				Ω(server.Serve(lis)).ShouldNot(HaveOccurred())
+			}(server)
+			defer server.Stop()
+
+			results, err := rpc.GetResultsFromTarget(rpcServer.MultiAddress, from, defaultTimeout)
+			Ω(results).Should(Equal([]*compute.Result{}))
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should return an error for bad multi-addresses", func() {
+			_, err := rpc.GetResultsFromTarget(badServerAddress, from, defaultTimeout)
+			Ω(err).Should(HaveOccurred())
 		})
 	})
 })
