@@ -13,7 +13,6 @@ const (
 type LedgerData []byte
 
 type Atom struct {
-	ID     []byte
 	Ledger Ledger
 	Data   LedgerData
 }
