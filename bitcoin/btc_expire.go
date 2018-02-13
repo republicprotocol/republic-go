@@ -1,39 +1,33 @@
+package bitcoin
 
-package main
+import (
+	"bytes"
+	"errors"
+	"fmt"
 
-type expireCmd struct {
-	contract   []byte
-	contractTx *wire.MsgTx
-}
+	"github.com/btcsuite/btcd/chaincfg"
+	rpc "github.com/btcsuite/btcd/rpcclient"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+)
 
-func Expire(contractString string, contractTransaction string, chain string, rpcUser string, rpcPass string) (Error error, showUsage bool) {
-	var chainParams *chaincfg.Params ;
-	if (chain == "testnet"){
+func Expire(contract, contractTxBytes []byte, chain, rpcUser, rpcPass string) (Error error) {
+	var chainParams *chaincfg.Params
+	if chain == "testnet" {
 		chainParams = &chaincfg.TestNet3Params
 	} else {
 		chainParams = &chaincfg.MainNetParams
 	}
-	
-	contract, err := hex.DecodeString(contractString)
-		if err != nil {
-			return fmt.Errorf("failed to decode contract: %v", err), true
-		}
 
-		contractTxBytes, err := hex.DecodeString(contractTransaction)
-		if err != nil {
-			return fmt.Errorf("failed to decode contract transaction: %v", err), true
-		}
-		var contractTx wire.MsgTx
-		err = contractTx.Deserialize(bytes.NewReader(contractTxBytes))
-		if err != nil {
-			return fmt.Errorf("failed to decode contract transaction: %v", err), true
-		}
-
-		cmd := &refundCmd{contract: contract, contractTx: &contractTx}
-
-		connect, err := normalizeAddress("localhost", walletPort(chainParams))
+	var contractTx wire.MsgTx
+	err := contractTx.Deserialize(bytes.NewReader(contractTxBytes))
 	if err != nil {
-		return fmt.Errorf("wallet server address: %v", err), true
+		return fmt.Errorf("failed to decode contract transaction: %v", err)
+	}
+
+	connect, err := normalizeAddress("localhost", walletPort(chainParams))
+	if err != nil {
+		return fmt.Errorf("wallet server address: %v", err)
 	}
 
 	connConfig := &rpc.ConnConfig{
@@ -46,20 +40,14 @@ func Expire(contractString string, contractTransaction string, chain string, rpc
 
 	client, err := rpc.New(connConfig, nil)
 	if err != nil {
-		return fmt.Errorf("rpc connect: %v", err), false
+		return fmt.Errorf("rpc connect: %v", err)
 	}
 	defer func() {
 		client.Shutdown()
 		client.WaitForShutdown()
 	}()
 
-	err = cmd.runCommand(client)
-	return err, false
-}
-
-
-func (cmd *refundCmd) runCommand(c *rpc.Client) error {
-	pushes, err := txscript.ExtractAtomicSwapDataPushes(cmd.contract)
+	pushes, err := txscript.ExtractAtomicSwapDataPushes(contract)
 	if err != nil {
 		return err
 	}
@@ -67,25 +55,10 @@ func (cmd *refundCmd) runCommand(c *rpc.Client) error {
 		return errors.New("contract is not an atomic swap script recognized by this tool")
 	}
 
-	feePerKb, minFeePerKb, err := getFeePerKb(c)
+	refundTx, err := buildRefund(client, contract, &contractTx, chainParams)
 	if err != nil {
 		return err
 	}
 
-	refundTx, refundFee, err := buildRefund(c, cmd.contract, cmd.contractTx, feePerKb, minFeePerKb)
-	if err != nil {
-		return err
-	}
-	refundTxHash := refundTx.TxHash()
-	var buf bytes.Buffer
-	buf.Grow(refundTx.SerializeSize())
-	refundTx.Serialize(&buf)
-
-	refundFeePerKb := calcFeePerKb(refundFee, refundTx.SerializeSize())
-
-	fmt.Printf("Refund fee: %v (%0.8f BTC/kB)\n\n", refundFee, refundFeePerKb)
-	fmt.Printf("Refund transaction (%v):\n", &refundTxHash)
-	fmt.Printf("%x\n\n", buf.Bytes())
-
-	return promptPublishTx(c, refundTx, "refund")
+	return promptPublishTx(client, refundTx, "refund")
 }
