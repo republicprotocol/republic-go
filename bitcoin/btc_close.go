@@ -1,41 +1,39 @@
-package main
+package bitcoin
 
-type closeCmd struct {
-	contract   []byte
-	contractTx *wire.MsgTx
-	secret     []byte
+import (
+	"bytes"
+	"errors"
+	"fmt"
+
+	"github.com/btcsuite/btcd/chaincfg"
+	rpc "github.com/btcsuite/btcd/rpcclient"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
+)
+
+type closeResult struct {
+	redeemTx     []byte
+	redeemTxHash [32]byte
 }
 
-func Close(contractString string, contractTransaction string, secret []byte, rpcUser string, rpcPass string,  chain string) (Error error, showUsage bool){
-	var chainParams *chaincfg.Params ;
-	if (chain == "testnet"){
+func Close(contract, contractTxBytes, secret []byte, rpcUser string, rpcPass string, chain string) (Error error, result closeResult) {
+	var chainParams *chaincfg.Params
+	if chain == "testnet" {
 		chainParams = &chaincfg.TestNet3Params
 	} else {
 		chainParams = &chaincfg.MainNetParams
 	}
 
-	contract, err := hex.DecodeString(contractString)
-		if err != nil {
-			return fmt.Errorf("failed to decode contract: %v", err), true
-		}
-
-	contractTxBytes, err := hex.DecodeString(contractTransaction)
-		if err != nil {
-			return fmt.Errorf("failed to decode contract transaction: %v", err), true
-		}
-
 	var contractTx wire.MsgTx
-		err = contractTx.Deserialize(bytes.NewReader(contractTxBytes))
-		if err != nil {
-			return fmt.Errorf("failed to decode contract transaction: %v", err), true
-		}
-
-
-	cmd := &closeCmd{contract: contract, contractTx: &contractTx, secret: secret}
+	err := contractTx.Deserialize(bytes.NewReader(contractTxBytes))
+	if err != nil {
+		return fmt.Errorf("failed to decode contract transaction: %v", err), closeResult{}
+	}
 
 	connect, err := normalizeAddress("localhost", walletPort(chainParams))
 	if err != nil {
-		return fmt.Errorf("wallet server address: %v", err), true
+		return fmt.Errorf("wallet server address: %v", err), closeResult{}
 	}
 
 	connConfig := &rpc.ConnConfig{
@@ -48,34 +46,28 @@ func Close(contractString string, contractTransaction string, secret []byte, rpc
 
 	client, err := rpc.New(connConfig, nil)
 	if err != nil {
-		return fmt.Errorf("rpc connect: %v", err), false
+		return fmt.Errorf("rpc connect: %v", err), closeResult{}
 	}
 	defer func() {
 		client.Shutdown()
 		client.WaitForShutdown()
 	}()
 
-	err = cmd.runCommand(client, chainParams)
-	return err, false
-}
-
-
-func (cmd *closeCmd) runCommand(c *rpc.Client,chainParams *chaincfg.Params) error {
-	pushes, err := txscript.ExtractAtomicSwapDataPushes(cmd.contract)
+	pushes, err := txscript.ExtractAtomicSwapDataPushes(contract)
 	if err != nil {
-		return err
+		return err, closeResult{}
 	}
 	if pushes == nil {
-		return errors.New("contract is not an atomic swap script recognized by this tool")
+		return errors.New("contract is not an atomic swap script recognized by this tool"), closeResult{}
 	}
 	recipientAddr, err := btcutil.NewAddressPubKeyHash(pushes.RecipientHash160[:],
 		chainParams)
 	if err != nil {
-		return err
+		return err, closeResult{}
 	}
-	contractHash := btcutil.Hash160(cmd.contract)
+	contractHash := btcutil.Hash160(contract)
 	contractOut := -1
-	for i, out := range cmd.contractTx.TxOut {
+	for i, out := range contractTx.TxOut {
 		sc, addrs, _, _ := txscript.ExtractPkScriptAddrs(out.PkScript, chainParams)
 		if sc == txscript.ScriptHashTy &&
 			bytes.Equal(addrs[0].(*btcutil.AddressScriptHash).Hash160()[:], contractHash) {
@@ -84,64 +76,48 @@ func (cmd *closeCmd) runCommand(c *rpc.Client,chainParams *chaincfg.Params) erro
 		}
 	}
 	if contractOut == -1 {
-		return errors.New("transaction does not contain a contract output")
+		return errors.New("transaction does not contain a contract output"), closeResult{}
 	}
 
-	addr, err := getRawChangeAddress(c, chainParams)
+	addr, err := getRawChangeAddress(client, chainParams)
 	if err != nil {
-		return fmt.Errorf("getrawchangeaddres: %v", err)
+		return fmt.Errorf("getrawchangeaddres: %v", err), closeResult{}
 	}
 	outScript, err := txscript.PayToAddrScript(addr)
 	if err != nil {
-		return err
+		return err, closeResult{}
 	}
 
-	contractTxHash := cmd.contractTx.TxHash()
+	contractTxHash := contractTx.TxHash()
 	contractOutPoint := wire.OutPoint{
 		Hash:  contractTxHash,
 		Index: uint32(contractOut),
-	}
-
-	feePerKb, minFeePerKb, err := getFeePerKb(c)
-	if err != nil {
-		return err
 	}
 
 	redeemTx := wire.NewMsgTx(txVersion)
 	redeemTx.LockTime = uint32(pushes.LockTime)
 	redeemTx.AddTxIn(wire.NewTxIn(&contractOutPoint, nil, nil))
 	redeemTx.AddTxOut(wire.NewTxOut(0, outScript)) // amount set below
-	redeemSize := estimateRedeemSerializeSize(cmd.contract, redeemTx.TxOut)
-	fee := txrules.FeeForSerializeSize(feePerKb, redeemSize)
-	redeemTx.TxOut[0].Value = cmd.contractTx.TxOut[contractOut].Value - int64(fee)
-	if txrules.IsDustOutput(redeemTx.TxOut[0], minFeePerKb) {
-		return fmt.Errorf("redeem output value of %v is dust", btcutil.Amount(redeemTx.TxOut[0].Value))
-	}
-
-	redeemSig, redeemPubKey, err := createSig(redeemTx, 0, cmd.contract, recipientAddr, c)
+	redeemSig, redeemPubKey, err := createSig(redeemTx, 0, contract, recipientAddr, client)
 	if err != nil {
-		return err
+		return err, closeResult{}
 	}
-	redeemSigScript, err := redeemP2SHContract(cmd.contract, redeemSig, redeemPubKey, cmd.secret)
+	redeemSigScript, err := redeemP2SHContract(contract, redeemSig, redeemPubKey, secret)
 	if err != nil {
-		return err
+		return err, closeResult{}
 	}
 	redeemTx.TxIn[0].SignatureScript = redeemSigScript
 
 	redeemTxHash := redeemTx.TxHash()
-	redeemFeePerKb := calcFeePerKb(fee, redeemTx.SerializeSize())
 
 	var buf bytes.Buffer
 	buf.Grow(redeemTx.SerializeSize())
 	redeemTx.Serialize(&buf)
-	fmt.Printf("Redeem fee: %v (%0.8f BTC/kB)\n\n", fee, redeemFeePerKb)
-	fmt.Printf("Redeem transaction (%v):\n", &redeemTxHash)
-	fmt.Printf("%x\n\n", buf.Bytes())
 
 	if verify {
-		e, err := txscript.NewEngine(cmd.contractTx.TxOut[contractOutPoint.Index].PkScript,
+		e, err := txscript.NewEngine(contractTx.TxOut[contractOutPoint.Index].PkScript,
 			redeemTx, 0, txscript.StandardVerifyFlags, txscript.NewSigCache(10),
-			txscript.NewTxSigHashes(redeemTx), cmd.contractTx.TxOut[contractOut].Value)
+			txscript.NewTxSigHashes(redeemTx), contractTx.TxOut[contractOut].Value)
 		if err != nil {
 			panic(err)
 		}
@@ -151,18 +127,8 @@ func (cmd *closeCmd) runCommand(c *rpc.Client,chainParams *chaincfg.Params) erro
 		}
 	}
 
-	return promptPublishTx(c, redeemTx, "redeem")
-}
-
-// redeemP2SHContract returns the signature script to redeem a contract output
-// using the redeemer's signature and the initiator's secret.  This function
-// assumes P2SH and appends the contract as the final data push.
-func redeemP2SHContract(contract, sig, pubkey, secret []byte) ([]byte, error) {
-	b := txscript.NewScriptBuilder()
-	b.AddData(sig)
-	b.AddData(pubkey)
-	b.AddData(secret)
-	b.AddInt64(1)
-	b.AddData(contract)
-	return b.Script()
+	return promptPublishTx(client, redeemTx, "redeem"), closeResult{
+		redeemTx:     buf.Bytes(),
+		redeemTxHash: redeemTxHash,
+	}
 }
