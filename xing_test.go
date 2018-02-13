@@ -15,12 +15,33 @@ import (
 	"google.golang.org/grpc"
 )
 
+var result = &compute.Result{
+	ID:          []byte("resultID"),
+	BuyOrderID:  []byte("BuyOrderID"),
+	SellOrderID: []byte("SellOrderID"),
+	FstCode:     big.NewInt(0),
+	SndCode:     big.NewInt(0),
+	Price:       big.NewInt(0),
+	MaxVolume:   big.NewInt(0),
+	MinVolume:   big.NewInt(0),
+}
+
 func (s *mockServer) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
 	return &rpc.Nothing{}, nil
 }
 
 func (s *mockServer) SendResultFragment(ctx context.Context, resultFragment *rpc.ResultFragment) (*rpc.Nothing, error) {
 	return &rpc.Nothing{}, nil
+}
+
+func (s *mockServer) Notifications(multiAddress *rpc.MultiAddress, stream rpc.XingNode_NotificationsServer) error {
+	stream.Send(rpc.SerializeResult(result))
+	return nil
+}
+
+func (s *mockServer) GetResults(multiAddress *rpc.MultiAddress,stream rpc.XingNode_GetResultsServer)  error {
+	stream.Send(rpc.SerializeResult(result))
+	return nil
 }
 
 var _ = Describe("Xing Overlay Network", func() {
@@ -123,6 +144,50 @@ var _ = Describe("Xing Overlay Network", func() {
 		It("should return a timeout error when there is no response within the timeout duration", func() {
 			err := rpc.SendResultFragmentToTarget(rpcServer.MultiAddress, to, from, resultFragment, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
+		})
+	})
+
+	Context("getting notifications from target", func() {
+		It("should be able to query notifications from the server", func() {
+			lis, err := net.Listen("tcp", ":3000")
+			Ω(err).ShouldNot(HaveOccurred())
+			go func(server *grpc.Server) {
+				defer GinkgoRecover()
+				Ω(server.Serve(lis)).ShouldNot(HaveOccurred())
+			}(server)
+			defer server.Stop()
+			resultChan, _ := rpc.NotificationsFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
+			res := <-resultChan
+
+			Ω(res.Ok.(*compute.Result)).Should(Equal(result))
+		})
+
+		It("should return an error when dialing an offline server", func() {
+			resultChan, _ := rpc.NotificationsFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
+			res := <-resultChan
+			Ω(res.Err).ShouldNot(BeNil())
+		})
+	})
+
+	Context("getting results from the target", func() {
+		It("should return nothing", func() {
+			lis, err := net.Listen("tcp", ":3000")
+			Ω(err).ShouldNot(HaveOccurred())
+			go func(server *grpc.Server) {
+				defer GinkgoRecover()
+				Ω(server.Serve(lis)).ShouldNot(HaveOccurred())
+			}(server)
+			defer server.Stop()
+
+			resultChan, _ := rpc.GetResultsFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
+			res := <- resultChan
+			Ω(res.Ok.(*compute.Result)).Should(Equal(result))
+		})
+
+		It("should return an error when dialing an offline server", func() {
+			resultChan, _ := rpc.GetResultsFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
+			res := <-resultChan
+			Ω(res.Err).ShouldNot(BeNil())
 		})
 	})
 })

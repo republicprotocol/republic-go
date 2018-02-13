@@ -71,7 +71,10 @@ service XingNode {
 
   // Get Result messages for successful order matches that have happened since
   // this procedure was last used, as well as new ones that occur.
-  rpc Notifications (Address) returns (stream Result);
+  rpc Notifications (MultiAddress) returns (stream Result);
+
+  // Get all relevant results that have been computed in the current epoch.
+  rpc GetResults (MultiAddress) returns (stream Result);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
@@ -123,15 +126,15 @@ message Result {
 
   // Public data.
   bytes id = 1;
-	bytes buyOrderID = 2;
-  bytes sellOrderID = 3;
+  bytes buyOrderId = 2;
+  bytes sellOrderId = 3;
   
   // Secure data.
-	bytes fstCode = 4;
-	bytes sndCode = 5;
-	bytes price = 6;
-	bytes maxVolume = 7;
-	bytes minVolume = 8;
+  bytes fstCode = 4;
+  bytes sndCode = 5;
+  bytes price = 6;
+  bytes maxVolume = 7;
+  bytes minVolume = 8;
 }
 
 /**
@@ -153,10 +156,7 @@ message Atom {
   MultiAddress from = 2;
 
   // Secure data.
-  bytes id = 3;
-  bytes lock = 4;
-  string fst = 5;
-  string fstAddress = 6;
-  string snd = 7;
-  string sndAddress = 8;
+  int64 ledger = 3;
+  bytes data = 4;
+  bytes signature = 5;
 }
