@@ -141,6 +141,7 @@ message Result {
 message Results{
   repeated Result result = 1;
 }
+
 /**
  * Terminal definitions.
  */
