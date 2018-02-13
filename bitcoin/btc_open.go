@@ -1,18 +1,18 @@
 package bitcoin
 
 import (
-	"fmt"
-	"errors"
 	"bytes"
+	"errors"
+	"fmt"
 
-	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	rpc "github.com/btcsuite/btcd/rpcclient"
+	"github.com/btcsuite/btcutil"
 )
 
-func Open(participantAddress string, value int64, chain string, rpcuser string, rpcpass string, hash []byte, lockTime int64) (err error, result openResult) {
-	var chainParams *chaincfg.Params ;
-	if (chain == "testnet"){
+func Open(participantAddress string, value int64, chain string, rpcuser string, rpcpass string, hash []byte, lockTime int64) (err error, result BitcoinData) {
+	var chainParams *chaincfg.Params
+	if chain == "testnet" {
 		chainParams = &chaincfg.TestNet3Params
 	} else {
 		chainParams = &chaincfg.MainNetParams
@@ -20,20 +20,20 @@ func Open(participantAddress string, value int64, chain string, rpcuser string, 
 
 	cp2Addr, err := btcutil.DecodeAddress(participantAddress, chainParams)
 	if err != nil {
-		return fmt.Errorf("failed to decode participant address: %v", err), openResult{}
+		return fmt.Errorf("failed to decode participant address: %v", err), BitcoinData{}
 	}
 	if !cp2Addr.IsForNet(chainParams) {
 		return fmt.Errorf("participant address is not "+
-			"intended for use on %v", chainParams.Name), openResult{}
+			"intended for use on %v", chainParams.Name), BitcoinData{}
 	}
 	cp2AddrP2PKH, ok := cp2Addr.(*btcutil.AddressPubKeyHash)
 	if !ok {
-		return errors.New("participant address is not P2PKH"), openResult{}
+		return errors.New("participant address is not P2PKH"), BitcoinData{}
 	}
 
 	connect, err := normalizeAddress("localhost", walletPort(chainParams))
 	if err != nil {
-		return fmt.Errorf("wallet server address: %v", err), openResult{}
+		return fmt.Errorf("wallet server address: %v", err), BitcoinData{}
 	}
 
 	connConfig := &rpc.ConnConfig{
@@ -46,7 +46,7 @@ func Open(participantAddress string, value int64, chain string, rpcuser string, 
 
 	client, err := rpc.New(connConfig, nil)
 	if err != nil {
-		return fmt.Errorf("rpc connect: %v", err), openResult{}
+		return fmt.Errorf("rpc connect: %v", err), BitcoinData{}
 	}
 	defer func() {
 		client.Shutdown()
@@ -60,7 +60,7 @@ func Open(participantAddress string, value int64, chain string, rpcuser string, 
 		secretHash: hash,
 	}, chain)
 	if err != nil {
-		return err, openResult{}
+		return err, BitcoinData{}
 	}
 
 	var contractBuf bytes.Buffer
@@ -71,16 +71,17 @@ func Open(participantAddress string, value int64, chain string, rpcuser string, 
 	refundBuf.Grow(b.refundTx.SerializeSize())
 	b.refundTx.Serialize(&refundBuf)
 
-	if err := promptPublishTx(c, b.contractTx, "contract"); err != nil {
-		return err, openResult{}
+	if err := promptPublishTx(client, b.contractTx, "contract"); err != nil {
+		return err, BitcoinData{}
 	}
 
-	return nil, openResult{
-		contract: b.contract,
-		contractHash: b.contractP2SH.EncodeAddress(),
-		contractTx: contractBuf.Bytes(),
-		contractTxHash: b.contractTxHash,
-		refundTx: refundBuf.Bytes(),
-		refundTxHash: &b.refundTx.TxHash(),
+	refundTx := *b.refundTx
+	return nil, BitcoinData{
+		contract:       b.contract,
+		contractHash:   b.contractP2SH.EncodeAddress(),
+		contractTx:     contractBuf.Bytes(),
+		contractTxHash: b.contractTxHash.CloneBytes(),
+		refundTx:       refundBuf.Bytes(),
+		refundTxHash:   refundTx.TxHash(),
 	}
 }
