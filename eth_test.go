@@ -2,16 +2,15 @@ package go_eth_test
 
 import (
 	// "context"
+
+	"crypto/rand"
+	"encoding/hex"
 	"log"
 	"math/big"
 	"strings"
-	"encoding/hex"
 
 	. "github.com/onsi/ginkgo"
 	// . "github.com/onsi/gomega"
-	// "crypto/rand"
-
-	// "crypto/sha256"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -37,12 +36,35 @@ func loadAccounts() (*bind.TransactOpts, *bind.TransactOpts) {
 	return auth1, auth2
 }
 
+func randomBytes32() [32]byte {
+	matchId := [32]byte{}
+	_, err := rand.Read(matchId[:])
+	if err != nil {
+		panic(err)
+	}
+	return matchId
+}
+
+func hexToBytes32(str string) [32]byte {
+	matchID, err := hex.DecodeString(str)
+	if err != nil {
+		panic(err)
+	}
+
+	var matchID32 [32]byte
+	for i := range matchID {
+		matchID32[i] = matchID[i]
+	}
+
+	return matchID32
+}
+
 var _ = Describe("AtomicSwapEther", func() {
 
 	// It("works with bitcoin", func() {
 
 	// 	auth1, _ := loadAccounts()
-	// 	client := go_eth.Ropsten()
+	// 	client := go_eth.Ropsten("http://13.54.129.55:8180")
 	// 	address := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
 	// 	connection1 := go_eth.NewEtherConnection(client, auth1, address)
 
@@ -57,10 +79,7 @@ var _ = Describe("AtomicSwapEther", func() {
 	// 		secretHash32[i] = secretHash[i]
 	// 	}
 
-	// 	matchId := [32]byte{}
-	// 	_, err = rand.Read(matchId[:])
-	// 	println(hex.EncodeToString(matchId[:]))
-	// 	value := big.NewInt(0).Mul(ether, big.NewInt(1))
+	// value := big.NewInt(0).Mul(ether, big.NewInt(1))
 
 	// 	// Account2 takes the hash from bitcoin and uses it to lock up Ether
 	// 	tx, err := connection1.Open(matchId, common.HexToAddress("0xaAC4B896eC41e2672D2e1E5fbDe24119f4937E59"), 0, secretHash32, value)
@@ -73,20 +92,12 @@ var _ = Describe("AtomicSwapEther", func() {
 	It("can call retrieveSecretKey", func() {
 
 		auth1, _ := loadAccounts()
-		client := go_eth.Ropsten()
+		client := go_eth.Ropsten("http://13.54.129.55:8180")
 		address := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
 		connection1 := go_eth.NewEtherConnection(client, auth1, address)
 
 		// Account1 creates a secret lock and starts the atomic swap on Bitcoin
-		matchID, err := hex.DecodeString("c2e61d599192b9aa1269ec98d9464170f9af3622bdb37e5f262edcbc9386b8e8")
-		if err != nil {
-				panic(err)
-		}
-
-		var matchID32 [32]byte
-		for i := range matchID {
-			matchID32[i] = matchID[i]
-		}
+		matchID32 := hexToBytes32("c2e61d599192b9aa1269ec98d9464170f9af3622bdb37e5f262edcbc9386b8e8")
 
 		// Account2 retrieves secret
 		retSecret, err := connection1.RetrieveSecretKey(matchID32)
@@ -104,7 +115,8 @@ var _ = Describe("AtomicSwapEther", func() {
 
 	// 	// client := go_eth.Simulated(auth1, auth2)
 	// 	// address := go_eth.DeployEther(client, auth1)
-	// 	client := go_eth.Ropsten()
+	// 	client := go_eth.Ropsten("http://13.54.129.55:8180")
+	// 	// Contract address
 	// 	address := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
 
 	// 	// Set up two connections
@@ -144,68 +156,6 @@ var _ = Describe("AtomicSwapEther", func() {
 	// 	}
 	// 	Ω(retSecret).Should(Equal(secret))
 
-	// 	// state, err := connection2.GetState(matchId)
-	// 	// if err != nil {
-	// 	// 	log.Fatalf("Failed to get Swap state: %v", err)
-	// 	// }
-
-	// 	// Ω(state).Should(Equal(uint8(2)))
-	// })
-
-	// It("can expire an order", func() {
-
-	// 	auth1, auth2 := loadAccounts()
-
-	// 	// client := go_eth.Simulated(auth1, auth2)
-	// 	// address := go_eth.DeployEther(client, auth1)
-	// 	client := go_eth.Ropsten()
-	// 	address := common.HexToAddress("0x1510deefb6d61714ead883905c0649b5aa66bd92")
-
-	// 	// Set up two connections
-	// 	connection1 := go_eth.NewEtherConnection(client, auth1, address)
-	// 	connection2 := go_eth.NewEtherConnection(client, auth2, address)
-
-	// 	// Account1 creates a secret lock and starts the atomic swap on Bitcoin
-	// 	secret := []byte("this is the secret")
-	// 	secretHash := sha256.Sum256(secret)
-
-	// 	// Account2 takes the hash from bitcoin and uses it to lock up Ether
-	// 	matchId, _, err := connection2.Open(auth2.From, 0, secretHash)
-	// 	if err != nil {
-	// 		log.Fatalf("Failed to open Atomic Swap: %v", err)
-	// 	}
-	// 	// client.Commit()
-
-	// 	// client.AdjustTime(48 * time.Hour)
-	// 	// client.Commit()
-
-	// 	_, err = connection2.Expire(matchId)
-	// 	if err != nil {
-	// 		log.Fatalf("Failed to expire Atomic Swap: %v", err)
-	// 	}
-	// 	// client.Commit()
-
-	// 	// Account1 checks that hash is what it should be
-	// 	check, err := connection1.Check(matchId)
-	// 	Ω(check.SecretLock).Should(Equal(secretHash))
-
-	// 	// Account1 reveals secret to withdraw Ether
-	// 	connection1.Close(matchId, secret)
-	// 	// client.Commit()
-
-	// 	// Account2 retrieves secret
-	// 	retSecret, err := connection2.RetrieveSecretKey(matchId)
-	// 	if err != nil {
-	// 		log.Fatalf("Failed to retrieve secret: %v", err)
-	// 	}
-	// 	// Ω(retSecret).Should(Equal(secret))
-	// 	Ω(retSecret).Should(Equal([]byte("")))
-
-	// 	// state, err := connection2.GetState(matchId)
-	// 	// if err != nil {
-	// 	// 	log.Fatalf("Failed to get Swap state: %v", err)
-	// 	// }
-	// 	// Ω(state).Should(Equal(uint8(3)))
 	// })
 
 })
