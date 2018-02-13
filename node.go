@@ -3,15 +3,14 @@ package xing
 import (
 	"context"
 	"log"
+	"sync"
 
 	"github.com/jbenet/go-base58"
-
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-rpc"
 	"google.golang.org/grpc"
-	"sync"
 )
 
 // A Delegate is used as a callback interface to inject behavior into the
@@ -29,18 +28,21 @@ type Node struct {
 	Server  *grpc.Server
 	Options Options
 
-	resultMu   *sync.Mutex
-	resultRWMu *sync.RWMutex
-	Results    map[identity.Address]Notifications
+	resultMu  *sync.RWMutex
+	Results   map[identity.Address]Notifications
+	newResult map[identity.Address]chan *compute.Result
 }
 
 // NewNode returns a Node that delegates the responsibility of handling RPCs to
 // a Delegate.
 func NewNode(server *grpc.Server, delegate Delegate, options Options) *Node {
 	return &Node{
-		Delegate: delegate,
-		Server:   server,
-		Options:  options,
+		Delegate:  delegate,
+		Server:    server,
+		Options:   options,
+		resultMu:  new(sync.RWMutex),
+		Results:   make(map[identity.Address]Notifications),
+		newResult: make(map[identity.Address]chan *compute.Result),
 	}
 }
 
@@ -236,37 +238,70 @@ func NewNotifications(result *compute.Result) Notifications {
 }
 
 func (node *Node) notifications(traderAddress *rpc.Address, stream rpc.XingNode_NotificationsServer) error {
+	address := identity.Address(traderAddress.Address)
+	node.resultMu.RLock()
+	res, ok := node.Results[address]
+	node.resultMu.RUnlock()
+	if ok {
+		for _, j := range res.results {
+			stream.Send(rpc.SerializeResult(j))
+		}
+	}
+
+	go func() {
+		for {
+			select {
+			case new, ok  := <-node.newResult[address]:
+				if !ok{
+					break
+				}
+				stream.Send(rpc.SerializeResult(new))
+			case stream.Context().Done():
+
+				break
+			}
+		}
+	}()
 
 	return nil
 }
 
 func (node *Node) getResults(traderAddress *rpc.Address) (*rpc.Results, error) {
 	address := identity.Address(traderAddress.Address)
-	node.resultRWMu.Lock()
-	defer node.resultRWMu.Unlock()
+	node.resultMu.RLock()
+	defer node.resultMu.RUnlock()
 	notifications, ok := node.Results[address]
 	if !ok {
 		return *rpc.Results{}, nil
 	}
-	notifications.resultRWMu.Lock()
-	defer notifications.resultRWMu.Unlock()
+	notifications.resultRWMu.RLock()
+	defer notifications.resultRWMu.RUnlock()
 	ret := *rpc.Results{}
+
 	for _, j := range notifications.results {
 		ret = append(ret, j)
 	}
 	return ret, nil
 }
 
-func (node *Node) UpdateResult(result *compute.Result, traderAddress identity.Address)  {
-	node.resultRWMu.Lock()
+func (node *Node) UpdateResult(result *compute.Result, traderAddress identity.Address) {
+	node.resultMu.RLock()
 	notifications, ok := node.Results[traderAddress]
-	node.resultRWMu.Unlock()
+	node.resultMu.RUnlock()
 	if !ok {
 		node.resultMu.Lock()
 		defer node.resultMu.Unlock()
 		node.Results[traderAddress] = NewNotifications(result)
+	} else {
+		notifications.resultMu.Lock()
+		defer notifications.resultMu.Unlock()
+		notifications.results = append(notifications.results, result)
 	}
-	notifications.resultMu.Lock()
-	defer notifications.resultMu.Unlock()
-	notifications.results = append(notifications.results, result)
+	go func() {
+		ch := make(chan *compute.Result)
+		node.resultMu.Lock()
+		node.newResult[traderAddress] = ch
+		node.resultMu.Unlock()
+		ch <- result
+	}()
 }
