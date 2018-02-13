@@ -293,6 +293,6 @@ func computeResultFromOrderFragments(lhs []*compute.OrderFragment, rhs []*comput
 		resultFragments[i] = resultFragment
 	}
 	// Combine them into a final result.
-	return compute.NewResult(resultFragments, prime)
+	return compute.NewResult(resultFragments, prime), nil
 
 }
