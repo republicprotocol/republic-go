@@ -13,8 +13,9 @@ const (
 type LedgerData []byte
 
 type Atom struct {
-	Ledger Ledger
-	Data   LedgerData
+	Ledger
+	LedgerData
+	Signature []byte
 }
 
 type AtomContract interface {
