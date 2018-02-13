@@ -74,7 +74,7 @@ service XingNode {
   rpc Notifications (MultiAddress) returns (stream Result);
 
   // Get all relevant results that have been computed in the current epoch.
-  rpc GetResults (MultiAddress) returns (Results);
+  rpc GetResults (MultiAddress) returns (stream Result);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
@@ -135,11 +135,6 @@ message Result {
   bytes price = 6;
   bytes maxVolume = 7;
   bytes minVolume = 8;
-}
-
-// Results message is a list of Result message
-message Results{
-  repeated Result result = 1;
 }
 
 /**
