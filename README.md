@@ -53,10 +53,8 @@ That's all there is to it. Remember, you should check the value of `err` to make
 To reconstruct the secret, we can use any `K` or more shares, and the `Join` function. In the example below, we use the first `K` shares.
 
 ```go
-secret, err := sss.Join(prime, shares[:K])
+secret := sss.Join(prime, shares[:K])
 ```
-
-Again, in production you should always check the value of `err` to make sure it is `nil`.
 
 ## Tests
 
