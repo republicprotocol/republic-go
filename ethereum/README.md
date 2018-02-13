@@ -1,10 +1,4 @@
-# go-eth
-
-[![Build Status](https://travis-ci.org/republicprotocol/go-eth.svg?branch=master)](https://travis-ci.org/republicprotocol/go-eth)
-[![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-eth/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-eth?branch=master)
-
-> This library is a work in progress.
-
+# Ethereum
 
 ## Regenerating contract bindings
 

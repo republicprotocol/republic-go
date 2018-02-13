@@ -24,8 +24,7 @@ func (contract *ERC20AtomContract) ReadSecret() (secret []byte, err error) {
 	panic("unimplemented")
 }
 
-// Redeem closes an atomic swap by revealing the secret
-func (contract *ERC20AtomContract) Redeem() error {
+func (contract *ERC20AtomContract) Redeem(secret []byte) error {
 	panic("unimplemented")
 }
 

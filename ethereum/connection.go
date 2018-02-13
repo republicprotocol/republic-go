@@ -1,4 +1,4 @@
-package go_eth
+package ethereum
 
 import (
 	"log"
@@ -9,27 +9,10 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/republicprotocol/go-eth/contracts"
+	"github.com/republicprotocol/go-atom/ethereum/contracts"
 )
-
-// Connection ...
-type Connection interface {
-	Open(_swapID [32]byte, ethAddr common.Address, secretHash [32]byte, amountInWei *big.Int) (*types.Transaction, error)
-	Close(_swapID [32]byte, _secretKey []byte) (*types.Transaction, error)
-	RetrieveSecretKey(_swapID [32]byte) ([]byte, error)
-	Expire(_swapID [32]byte) (*types.Transaction, error)
-	Validate()
-	// GetState(_swapID [32]byte) (uint8, error)
-	Check(id [32]byte) (struct {
-		TimeRemaining  *big.Int
-		Value          *big.Int
-		WithdrawTrader common.Address
-		SecretLock     [32]byte
-	}, error)
-}
 
 // EtherConnection ...
 type EtherConnection struct {
@@ -97,26 +80,4 @@ func existingERC20(connection bind.ContractBackend, address common.Address) *con
 		log.Fatalf("%v", err)
 	}
 	return contract
-}
-
-// NewEtherConnection ...
-func NewEtherConnection(client bind.ContractBackend, auth1 *bind.TransactOpts, address common.Address) Connection {
-	contract := existingEth(client, address)
-
-	return EtherConnection{
-		client:   client,
-		auth:     auth1,
-		contract: contract,
-	}
-}
-
-// NewERC20Connection ...
-func NewERC20Connection(client bind.ContractBackend, auth1 *bind.TransactOpts, address common.Address) Connection {
-	contract := existingERC20(client, address)
-
-	return ERC20Connection{
-		client:   client,
-		auth:     auth1,
-		contract: contract,
-	}
 }
