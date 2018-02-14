@@ -62,7 +62,7 @@ var _ = Describe("Ethereum", func() {
 
 		/* ====== USER 2 ====== */
 		user2Connection := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
-		value := big.NewInt(0).Div(big.NewInt(1).Mul(ether, big.NewInt(2)), big.NewInt(1))
+		value := big.NewInt(0).Mul(ether, big.NewInt(1))
 		err := user2Connection.Initiate(secretHash[:], auth1.From.Bytes(), auth2.From.Bytes(), value, time.Now().Add(48*time.Hour).Unix())
 		if err != nil {
 			log.Fatalf("Failed to open Atomic Swap: %v", err)
@@ -71,11 +71,16 @@ var _ = Describe("Ethereum", func() {
 		/* ====== USER 1 ====== */
 		user1Connection := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
 		// Checks that the hash is right
-		retrievedHash, _, _, _, _, err := user1Connection.Read()
+		retrievedHash, to, _, readValue, expiry, err := user1Connection.Read()
 		if err != nil {
 			log.Fatalf("Failed: %v", err)
 		}
 		Ω(retrievedHash).Should(Equal(secretHash[:]))
+		Ω(to).Should(Equal(auth1.From.Bytes()))
+		// Ω(from).Should(Equal(auth2.From.Bytes()))
+		Ω(value).Should(Equal(readValue))
+		Ω(expiry).Should(BeNumerically(">=", time.Now().Add(time.Hour*23).Unix()))
+
 		// Account1 reveals secret to withdraw Ether
 		err = user1Connection.Redeem(secret)
 		if err != nil {
