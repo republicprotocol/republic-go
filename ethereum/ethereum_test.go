@@ -11,9 +11,7 @@ import (
 
 	"context"
 
-	"crypto/rand"
 	"crypto/sha256"
-	"encoding/hex"
 	"log"
 	"math/big"
 	"strings"
@@ -39,29 +37,6 @@ func loadAccounts() (*bind.TransactOpts, *bind.TransactOpts) {
 	}
 
 	return auth1, auth2
-}
-
-func randomBytes32() [32]byte {
-	matchId := [32]byte{}
-	_, err := rand.Read(matchId[:])
-	if err != nil {
-		panic(err)
-	}
-	return matchId
-}
-
-func hexToBytes32(str string) [32]byte {
-	matchID, err := hex.DecodeString(str)
-	if err != nil {
-		panic(err)
-	}
-
-	var matchID32 [32]byte
-	for i := range matchID {
-		matchID32[i] = matchID[i]
-	}
-
-	return matchID32
 }
 
 var _ = Describe("Ethereum", func() {
@@ -114,7 +89,7 @@ var _ = Describe("Ethereum", func() {
 			log.Fatalf("Failed to retrieve secret: %v", err)
 		}
 		Ω(retSecret).Should(Equal(secret))
-		// User 2 can not unlock the bitcoins
+		// User 2 can now unlock the bitcoins
 
 	})
 
