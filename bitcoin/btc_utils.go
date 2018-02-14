@@ -28,32 +28,6 @@ const secretSize = 32
 
 const verify = true
 
-const (
-	// redeemAtomicSwapSigScriptSize is the worst case (largest) serialize size
-	// of a transaction input script to redeem the atomic swap contract.  This
-	// does not include final push for the contract itself.
-	//
-	//   - OP_DATA_73
-	//   - 72 bytes DER signature + 1 byte sighash
-	//   - OP_DATA_33
-	//   - 33 bytes serialized compressed pubkey
-	//   - OP_DATA_32
-	//   - 32 bytes secret
-	//   - OP_TRUE
-	redeemAtomicSwapSigScriptSize = 1 + 73 + 1 + 33 + 1 + 32 + 1
-
-	// refundAtomicSwapSigScriptSize is the worst case (largest) serialize size
-	// of a transaction input script that refunds a P2SH atomic swap output.
-	// This does not include final push for the contract itself.
-	//
-	//   - OP_DATA_73
-	//   - 72 bytes DER signature + 1 byte sighash
-	//   - OP_DATA_33
-	//   - 33 bytes serialized compressed pubkey
-	//   - OP_FALSE
-	refundAtomicSwapSigScriptSize = 1 + 73 + 1 + 33 + 1
-)
-
 type builtContract struct {
 	contract       []byte
 	contractP2SH   btcutil.Address
@@ -185,53 +159,6 @@ func sha256Hash(x []byte) []byte {
 	return h[:]
 }
 
-/*
-
-Bitcoin Script: Alice is trying to do an atomic swap with bob.
-
-OP_IF
-	OP_SHA256
-	<secret_hash>
-	OP_EQUALVERIFY
-	OP_DUP
-	OP_HASH160
-	<pubkey_hash_bob>
-OP_ELSE
-	<lock_time>
-	OP_CHECKLOCKTIMEVERIFY
-	OP_DROP
-	OP_HASH160
-	<pubKey_hash_alice>
-
-*/
-func atomicSwapContract(pkhMe, pkhThem *[ripemd160.Size]byte, locktime int64, secretHash []byte) ([]byte, error) {
-	b := txscript.NewScriptBuilder()
-
-	b.AddOp(txscript.OP_IF)
-	{
-		b.AddOp(txscript.OP_SHA256)
-		b.AddData(secretHash)
-		b.AddOp(txscript.OP_EQUALVERIFY)
-		b.AddOp(txscript.OP_DUP)
-		b.AddOp(txscript.OP_HASH160)
-		b.AddData(pkhThem[:])
-	}
-	b.AddOp(txscript.OP_ELSE)
-	{
-		b.AddInt64(locktime)
-		b.AddOp(txscript.OP_CHECKLOCKTIMEVERIFY)
-		b.AddOp(txscript.OP_DROP)
-		b.AddOp(txscript.OP_DUP)
-		b.AddOp(txscript.OP_HASH160)
-		b.AddData(pkhMe[:])
-	}
-	b.AddOp(txscript.OP_ENDIF)
-	b.AddOp(txscript.OP_EQUALVERIFY)
-	b.AddOp(txscript.OP_CHECKSIG)
-
-	return b.Script()
-}
-
 func getRawChangeAddress(c *rpc.Client, chainParams *chaincfg.Params) (btcutil.Address, error) {
 	rawResp, err := c.RawRequest("getrawchangeaddress", nil)
 	if err != nil {
@@ -251,44 +178,6 @@ func getRawChangeAddress(c *rpc.Client, chainParams *chaincfg.Params) (btcutil.A
 			addrStr, chainParams.Name)
 	}
 	return addr, nil
-}
-
-func getFeePerKb(c *rpc.Client) (useFee, relayFee btcutil.Amount, err error) {
-	info, err := c.GetInfo()
-	if err != nil {
-		return 0, 0, fmt.Errorf("getinfo: %v", err)
-	}
-	relayFee, err = btcutil.NewAmount(info.RelayFee)
-	if err != nil {
-		return 0, 0, err
-	}
-	maxFee := info.PaytxFee
-	if info.PaytxFee != 0 {
-		if info.RelayFee > maxFee {
-			maxFee = info.RelayFee
-		}
-		useFee, err = btcutil.NewAmount(maxFee)
-		return useFee, relayFee, err
-	}
-
-	params := []json.RawMessage{[]byte("6")}
-	estimateRawResp, err := c.RawRequest("estimatefee", params)
-	if err != nil {
-		return 0, 0, err
-	}
-	var estimateResp float64 = -1
-	err = json.Unmarshal(estimateRawResp, &estimateResp)
-	if err == nil && estimateResp != -1 {
-		useFee, err = btcutil.NewAmount(estimateResp)
-		if relayFee > useFee {
-			useFee = relayFee
-		}
-		return useFee, relayFee, err
-	}
-
-	fmt.Println("warning: falling back to mempool relay fee policy")
-	useFee, err = btcutil.NewAmount(info.RelayFee)
-	return useFee, relayFee, err
 }
 
 func fundRawTransaction(c *rpc.Client, tx *wire.MsgTx) (fundedTx *wire.MsgTx, err error) {
@@ -326,10 +215,6 @@ func fundRawTransaction(c *rpc.Client, tx *wire.MsgTx) (fundedTx *wire.MsgTx, er
 		return nil, err
 	}
 	return fundedTx, nil
-}
-
-func calcFeePerKb(absoluteFee btcutil.Amount, serializeSize int) float64 {
-	return float64(absoluteFee) / float64(serializeSize) / 1e5
 }
 
 func promptPublishTx(c *rpc.Client, tx *wire.MsgTx, name string) error {
@@ -433,15 +318,6 @@ func estimateRefundSerializeSize(contract []byte, txOuts []*wire.TxOut) int {
 		sumOutputSerializeSizes(txOuts)
 }
 
-func refundP2SHContract(contract, sig, pubkey []byte) ([]byte, error) {
-	b := txscript.NewScriptBuilder()
-	b.AddData(sig)
-	b.AddData(pubkey)
-	b.AddInt64(0)
-	b.AddData(contract)
-	return b.Script()
-}
-
 func createSig(tx *wire.MsgTx, idx int, pkScript []byte, addr btcutil.Address,
 	c *rpc.Client) (sig, pubkey []byte, err error) {
 
@@ -454,14 +330,4 @@ func createSig(tx *wire.MsgTx, idx int, pkScript []byte, addr btcutil.Address,
 		return nil, nil, err
 	}
 	return sig, wif.PrivKey.PubKey().SerializeCompressed(), nil
-}
-
-func redeemP2SHContract(contract, sig, pubkey, secret []byte) ([]byte, error) {
-	b := txscript.NewScriptBuilder()
-	b.AddData(sig)
-	b.AddData(pubkey)
-	b.AddData(secret)
-	b.AddInt64(1)
-	b.AddData(contract)
-	return b.Script()
 }
