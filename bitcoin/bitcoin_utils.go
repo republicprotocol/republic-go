@@ -261,7 +261,7 @@ func buildRefund(c *rpc.Client, contract []byte, contractTx *wire.MsgTx, chainPa
 
 	pushes, err := txscript.ExtractAtomicSwapDataPushes(contract)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	refundAddr, err := btcutil.NewAddressPubKeyHash(pushes.RefundHash160[:], chainParams)
@@ -292,11 +292,11 @@ func buildRefund(c *rpc.Client, contract []byte, contractTx *wire.MsgTx, chainPa
 			refundTx, 0, txscript.StandardVerifyFlags, txscript.NewSigCache(10),
 			txscript.NewTxSigHashes(refundTx), contractTx.TxOut[contractOutPoint.Index].Value)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		err = e.Execute()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 	}
 

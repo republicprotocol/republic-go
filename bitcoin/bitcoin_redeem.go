@@ -119,11 +119,11 @@ func redeem(contract, contractTxBytes, secret []byte, rpcUser string, rpcPass st
 			redeemTx, 0, txscript.StandardVerifyFlags, txscript.NewSigCache(10),
 			txscript.NewTxSigHashes(redeemTx), contractTx.TxOut[contractOut].Value)
 		if err != nil {
-			panic(err)
+			return err, redeemResult{}
 		}
 		err = e.Execute()
 		if err != nil {
-			panic(err)
+			return err, redeemResult{}
 		}
 	}
 
