@@ -1,8 +1,6 @@
 package bitcoin_test
 
 import (
-	"fmt"
-
 	"crypto/rand"
 	"crypto/sha256"
 
@@ -56,12 +54,8 @@ var _ = Describe("Bitcoin", func() {
 		readHashLock, readTo, readFrom, readValue, readExpiry, readErr := BTCAtom.Read()
 		Ω(readErr).Should(BeNil())
 		Ω(readHashLock).Should(Equal(hashLock[:]))
-		fmt.Println(readTo)
-		fmt.Println(readFrom)
-		fmt.Println(to)
-		fmt.Println(from)
-		Ω(readTo).Should(Equal(from))
-		Ω(readFrom).Should(Equal(to))
+		Ω(readTo).Should(Equal(to))
+		Ω(readFrom).Should(Equal(from))
 		Ω(readValue).Should(Equal(value))
 		Ω(readExpiry).Should(Equal(expiry))
 	})
