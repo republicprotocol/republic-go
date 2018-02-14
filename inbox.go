@@ -29,20 +29,19 @@ func (inbox *Inbox) AddNewResult(result *compute.Result) {
 	inbox.newResults = append(inbox.newResults, result)
 }
 
-func (inbox *Inbox) GetNewResult() *compute.Result {
+func (inbox *Inbox) GetAllNewResults() []*compute.Result {
 	inbox.Enter(inbox.hasNewResult)
 	defer inbox.Exit()
-	result := inbox.newResults[0]
-	if len(inbox.newResults) == 1{
-		inbox.newResults = []*compute.Result{}
-		return result
-	}
-	inbox.newResults = inbox.newResults[1:]
-	return result
+	ret := make([]*compute.Result, 0, len(inbox.newResults))
+	ret = append(ret, inbox.newResults...)
+	inbox.newResults = inbox.newResults[:0]
+	return ret
 }
 
 func (inbox *Inbox) GetAllResults() []*compute.Result{
 	inbox.EnterReadOnly(nil)
 	defer inbox.ExitReadOnly()
-	return inbox.results
+	ret := make([]*compute.Result, 0, len(inbox.results))
+	ret = append(ret, inbox.results...)
+	return ret
 }

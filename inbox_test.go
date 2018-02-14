@@ -1,7 +1,6 @@
 package xing_test
 
 import (
-	"log"
 	"math/big"
 	"math/rand"
 	"sync"
@@ -13,9 +12,7 @@ import (
 	"github.com/republicprotocol/go-xing"
 )
 
-const (
-	Number_Of_New_Result = 1000
-)
+const Number_Of_New_Result = 1000
 
 func newResult(i int) *compute.Result {
 	return &compute.Result{
@@ -40,12 +37,12 @@ var _ = Describe("Inbox", func() {
 	Context("add/retrieve result to/from the box", func() {
 		It("should be able to sequentially add and retrieve result ", func() {
 			//  Add results
-			results := make([]*compute.Result, Number_Of_New_Result)
-			for i := range results {
-				results[i] = newResult(i)
+			newResults := make([]*compute.Result, Number_Of_New_Result)
+			for i := range newResults {
+				newResults[i] = newResult(i)
 			}
-			do.CoForAll(results, func(i int) {
-				inbox.AddNewResult(results[i])
+			do.CoForAll(newResults, func(i int) {
+				inbox.AddNewResult(newResults[i])
 			})
 
 			// Get all results
@@ -56,28 +53,18 @@ var _ = Describe("Inbox", func() {
 					defer GinkgoRecover()
 
 					results := inbox.GetAllResults()
-					wg.Done()
 					Ω(len(results)).Should(Equal(1000))
-				}()
-			}
-			wg.Wait()
-
-			// Get new results
-			wg = new(sync.WaitGroup)
-			wg.Add(Number_Of_New_Result)
-			for i := 0; i < Number_Of_New_Result; i++ {
-				go func() {
-					defer GinkgoRecover()
-
-					_ = inbox.GetNewResult()
 					wg.Done()
 				}()
 			}
 			wg.Wait()
+
+			results := inbox.GetAllNewResults()
+			Ω(len(results)).Should(BeNumerically(">", 0))
 		})
 	})
 
-	FContext("simulate random functions concurrently", func() {
+	Context("simulate random functions concurrently", func() {
 		It("should handle concurrent calls properly", func() {
 			results := make([]*compute.Result, Number_Of_New_Result)
 			for i := range results {
@@ -89,24 +76,29 @@ var _ = Describe("Inbox", func() {
 
 			wg := new(sync.WaitGroup)
 			wg.Add(Number_Of_New_Result)
-			operations := []string{"add", "get" , "all"}
+
+			operations := []string{"add", "all"}
 			for i:= 0; i <Number_Of_New_Result; i ++{
-				go func() {
-					operation := operations[rand.Intn(3)]
+				go func(i int) {
+					defer GinkgoRecover()
+
+					operation := operations[rand.Intn(2)]
 					switch operation {
 					case "add":
 						result:= newResult(i)
 						inbox.AddNewResult(result)
-					case "get":
-						_ = inbox.GetNewResult()
 					case "all":
 						_ = inbox.GetAllResults()
 					}
 					wg.Done()
-				}()
+				}(i)
 			}
+			go func() {
+				defer GinkgoRecover()
+				results := inbox.GetAllNewResults()
+				Ω(len(results)).Should(BeNumerically(">", 0))
+			}()
 			wg.Wait()
-			log.Println(len(inbox.GetAllResults()))
 		})
 	})
 

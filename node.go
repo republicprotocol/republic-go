@@ -2,6 +2,7 @@ package xing
 
 import (
 	"context"
+	"io"
 	"log"
 	"sync"
 
@@ -226,8 +227,16 @@ func (node *Node) notifications(traderAddress *rpc.MultiAddress, stream rpc.Xing
 		return nil
 	}
 	for {
-		result := results.GetNewResult()
-		stream.Send(rpc.SerializeResult(result))
+		results := results.GetAllNewResults()
+		for i := range results {
+			err := stream.Send(rpc.SerializeResult(results[i]))
+			if err != nil {
+				if err == io.EOF {
+					return nil
+				}
+				return err
+			}
+		}
 	}
 
 	return nil
