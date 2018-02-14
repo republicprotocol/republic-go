@@ -31,7 +31,7 @@ var _ = Describe("Bitcoin", func() {
 		Ω(err).Should(BeNil())
 	})
 
-	It("can redeem a bitcoin atomic swap", func() {
+	It("can redeem a bitcoin atomic swap with correct secret", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
@@ -39,6 +39,17 @@ var _ = Describe("Bitcoin", func() {
 		Ω(err).Should(BeNil())
 		err = BTCAtom.Redeem(secret)
 		Ω(err).Should(BeNil())
+	})
+
+	It("can not redeem a bitcoin atomic swap with a wrong secret", func() {
+		secret := randomBytes32()
+		wrongSecret := randomBytes32()
+		hashLock := sha256.Sum256(secret)
+		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
+		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(1000000), time.Now().Unix()+10000)
+		Ω(err).Should(BeNil())
+		err = BTCAtom.Redeem(wrongSecret)
+		Ω(err).Should(Not(BeNil()))
 	})
 
 	It("can read a bitcoin atomic swap", func() {
@@ -60,7 +71,7 @@ var _ = Describe("Bitcoin", func() {
 		Ω(readExpiry).Should(Equal(expiry))
 	})
 
-	It("can read secret a bitcoin atomic swap", func() {
+	It("can read the correct secret from a bitcoin atomic swap", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
@@ -73,12 +84,23 @@ var _ = Describe("Bitcoin", func() {
 		Ω(readSecret).Should(Equal(secret[:]))
 	})
 
+	It("can not refund a bitcoin atomic swap before expiry", func() {
+		secret := randomBytes32()
+		hashLock := sha256.Sum256(secret)
+		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
+		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(1000000), time.Now().Unix()+10000)
+		Ω(err).Should(BeNil())
+		err = BTCAtom.Refund()
+		Ω(err).Should(Not(BeNil()))
+	})
+
 	It("can refund a bitcoin atomic swap", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
-		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(1000000), time.Now().Unix()+1000)
+		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(1000000), time.Now().Unix()+60)
 		Ω(err).Should(BeNil())
+		time.Sleep(time.Minute)
 		err = BTCAtom.Refund()
 		Ω(err).Should(BeNil())
 	})
