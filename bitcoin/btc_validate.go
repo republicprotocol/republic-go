@@ -77,8 +77,8 @@ func Validate(contract, contractTxBytes []byte, chain string, rpcuser string, rp
 	return nil, validateResult{
 		contractAddress:  contractAddr.ScriptAddress(),
 		amount:           int64(btcutil.Amount(contractTx.TxOut[contractOut].Value)),
-		recipientAddress: recipientAddr.ScriptAddress(),
-		refundAddress:    refundAddr.ScriptAddress(),
+		recipientAddress: []byte(recipientAddr.EncodeAddress()),
+		refundAddress:    []byte(refundAddr.EncodeAddress()),
 		secretHash:       pushes.SecretHash[:],
 		lockTime:         pushes.LockTime,
 	}
