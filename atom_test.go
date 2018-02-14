@@ -51,14 +51,13 @@ var _ = Describe("Atom", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
-		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(1000000), time.Now().Unix()+10000)
+		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(10000000), time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 
 		// Bob
 		auth1, auth2 := loadAccounts()
 		user2Connection := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
-		value := big.NewInt(0).Mul(ether, big.NewInt(1))
-		err := user2Connection.Initiate(hashLock[:], auth1.From.Bytes(), auth2.From.Bytes(), value, time.Now().Add(48*time.Hour).Unix())
+		err := user2Connection.Initiate(hashLock[:], auth1.From.Bytes(), auth2.From.Bytes(), ether, time.Now().Add(48*time.Hour).Unix())
 		Ω(err).Should(BeNil())
 
 		// Alice
