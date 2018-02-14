@@ -30,6 +30,7 @@ func bytesTo32Bytes(bytes []byte) ([32]byte, error) {
 
 // ETHAtomContract ...
 type ETHAtomContract struct {
+	context context.Context
 	client  *ethclient.Client
 	auth    *bind.TransactOpts
 	binding *contracts.AtomicSwapEther
@@ -38,7 +39,7 @@ type ETHAtomContract struct {
 }
 
 // NewETHAtomContract returns a new NewETHAtom instance
-func NewETHAtomContract(client *ethclient.Client, auth1 *bind.TransactOpts, address common.Address, data []byte) *ETHAtomContract {
+func NewETHAtomContract(context context.Context, client *ethclient.Client, auth1 *bind.TransactOpts, address common.Address, data []byte) *ETHAtomContract {
 	contract, err := contracts.NewAtomicSwapEther(address, bind.ContractBackend(client))
 	if err != nil {
 		log.Fatalf("%v", err)
@@ -56,6 +57,7 @@ func NewETHAtomContract(client *ethclient.Client, auth1 *bind.TransactOpts, addr
 	}
 
 	return &ETHAtomContract{
+		context: context,
 		client:  client,
 		auth:    auth1,
 		binding: contract,
@@ -73,7 +75,10 @@ func (contract *ETHAtomContract) Initiate(hash, to, from []byte, value *big.Int,
 	authWithValue.Value = value
 	toAddress := common.BytesToAddress(to)
 	tx, err := contract.binding.Open(authWithValue, contract.swapID, toAddress, hash32)
-	bind.WaitMined(context.Background(), bind.DeployBackend(contract.client), tx)
+	if err != nil {
+		return err
+	}
+	_, err = PatchedWaitMined(contract.context, contract.client, tx)
 	return err
 }
 
@@ -98,14 +103,20 @@ func (contract *ETHAtomContract) ReadSecret() (secret []byte, err error) {
 // Redeem closes an atomic swap by revealing the secret
 func (contract *ETHAtomContract) Redeem(secret []byte) error {
 	tx, err := contract.binding.Close(contract.auth, contract.swapID, secret)
-	bind.WaitMined(context.Background(), bind.DeployBackend(contract.client), tx)
+	if err != nil {
+		return err
+	}
+	_, err = PatchedWaitMined(contract.context, contract.client, tx)
 	return err
 }
 
 // Refund will return the funds of an atomic swap, provided the expiry period has passed
 func (contract *ETHAtomContract) Refund() error {
 	tx, err := contract.binding.Expire(contract.auth, contract.swapID)
-	bind.WaitMined(context.Background(), bind.DeployBackend(contract.client), tx)
+	if err != nil {
+		return err
+	}
+	_, err = PatchedWaitMined(contract.context, contract.client, tx)
 	return err
 }
 

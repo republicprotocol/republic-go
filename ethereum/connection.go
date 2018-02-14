@@ -1,6 +1,7 @@
 package ethereum
 
 import (
+	"context"
 	"log"
 	"math/big"
 	"time"
@@ -9,8 +10,10 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	log15 "github.com/ethereum/go-ethereum/log"
 	"github.com/republicprotocol/go-atom/ethereum/contracts"
 )
 
@@ -51,4 +54,31 @@ func DeployETH(connection *backends.SimulatedBackend, auth *bind.TransactOpts) c
 	// Don't even wait, check its presence in the local pending state
 	time.Sleep(250 * time.Millisecond) // Allow it to be processed by the local node
 	return address
+}
+
+// Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt
+// WaitMined waits for tx to be mined on the blockchain.
+// It stops waiting when the context is canceled.
+func PatchedWaitMined(ctx context.Context, b bind.DeployBackend, tx *types.Transaction) (*types.Receipt, error) {
+	queryTicker := time.NewTicker(time.Second)
+	defer queryTicker.Stop()
+
+	logger := log15.New("hash", tx.Hash())
+	for {
+		receipt, err := b.TransactionReceipt(ctx, tx.Hash())
+		if receipt != nil && receipt.Status != 0 {
+			return receipt, nil
+		}
+		if err != nil {
+			logger.Trace("Receipt retrieval failed", "err", err)
+		} else {
+			logger.Trace("Transaction not yet mined")
+		}
+		// Wait for the next round.
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-queryTicker.C:
+		}
+	}
 }
