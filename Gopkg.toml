@@ -26,7 +26,3 @@
 [[constraint]]
   name = "github.com/onsi/gomega"
   version = "1.3.0"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-identity"
