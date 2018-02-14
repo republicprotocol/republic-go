@@ -28,21 +28,21 @@ type Node struct {
 	Server  *grpc.Server
 	Options Options
 
-	resultMu  *sync.RWMutex
-	Results   map[identity.Address]Notifications
-	newResult map[identity.Address]chan *compute.Result
+	resultReceived bool
+	resultsMu      *sync.RWMutex
+	results        map[identity.Address]*Inbox
 }
 
 // NewNode returns a Node that delegates the responsibility of handling RPCs to
 // a Delegate.
 func NewNode(server *grpc.Server, delegate Delegate, options Options) *Node {
 	return &Node{
-		Delegate:  delegate,
-		Server:    server,
-		Options:   options,
-		resultMu:  new(sync.RWMutex),
-		Results:   make(map[identity.Address]Notifications),
-		newResult: make(map[identity.Address]chan *compute.Result),
+		Delegate:       delegate,
+		Server:         server,
+		Options:        options,
+		resultReceived: false,
+		resultsMu:      new(sync.RWMutex),
+		results:        make(map[identity.Address]*Inbox),
 	}
 }
 
@@ -54,10 +54,6 @@ func (node *Node) Register() {
 // Address returns the identity.Address of the Node.
 func (node *Node) Address() identity.Address {
 	return node.Options.Address
-}
-
-// Notify ...
-func (node *Node) Notify(result *compute.Result) {
 }
 
 // SendOrderFragment to the Node. If the rpc.OrderFragment is not destined for
@@ -120,9 +116,9 @@ func (node *Node) SendResultFragment(ctx context.Context, resultFragment *rpc.Re
 	}
 }
 
-func (node *Node) Notifications(traderAddress *rpc.Address, stream rpc.XingNode_NotificationsServer) error {
+func (node *Node) Notifications(traderAddress *rpc.MultiAddress, stream rpc.XingNode_NotificationsServer) error {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a query for all results of [%v]\n", node.Address(), traderAddress.Address)
+		log.Printf("%v received a query for notifications of [%v]\n", node.Address(), traderAddress.Multi)
 	}
 	if err := stream.Context().Err(); err != nil {
 		return err
@@ -141,39 +137,32 @@ func (node *Node) Notifications(traderAddress *rpc.Address, stream rpc.XingNode_
 	}
 }
 
-func (node *Node) GetResults(ctx context.Context, traderAddress *rpc.Address) (*rpc.Results, error) {
+func (node *Node) GetResults(traderAddress *rpc.MultiAddress, stream rpc.XingNode_GetResultsServer) error {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v registered a trader for notifications [%v]\n", node.Address(), traderAddress.Address)
+		log.Printf("%v received a query for all results of [%v]\n", node.Address(), traderAddress.Multi)
 	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
+
+	if err := stream.Context().Err(); err != nil {
+		return err
 	}
 
 	wait := do.Process(func() do.Option {
-		results, err := node.getResults(traderAddress)
-		if err != nil {
-			return do.Err(err)
-		}
-		return do.Ok(results)
+		return do.Err(node.getResults(traderAddress, stream))
 	})
 
-	select {
-	case val := <-wait:
-		if nothing, ok := val.Ok.(*rpc.Results); ok {
-			return nothing, val.Err
-		}
-		return nil, val.Err
+	for {
+		select {
+		case val := <-wait:
+			return val.Err
 
-	case <-ctx.Done():
-		return nil, ctx.Err()
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		}
 	}
 }
 
 func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
-	deserializedTo, err := rpc.DeserializeAddress(orderFragment.To)
-	if err != nil {
-		return &rpc.Nothing{}, err
-	}
+	deserializedTo := rpc.DeserializeAddress(orderFragment.To)
 	deserializedFrom, err := rpc.DeserializeMultiAddress(orderFragment.From)
 	if err != nil {
 		return &rpc.Nothing{}, err
@@ -195,10 +184,7 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Noth
 }
 
 func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.Nothing, error) {
-	deserializedTo, err := rpc.DeserializeAddress(resultFragment.To)
-	if err != nil {
-		return &rpc.Nothing{}, err
-	}
+	deserializedTo := rpc.DeserializeAddress(resultFragment.To)
 	deserializedFrom, err := rpc.DeserializeMultiAddress(resultFragment.From)
 	if err != nil {
 		return &rpc.Nothing{}, err
@@ -220,88 +206,65 @@ func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.N
 }
 
 type Notifications struct {
-	resultRWMu *sync.RWMutex
-	resultMu   *sync.Mutex
-	results    []*compute.Result
-	//cond     *sync.Cond
+	do.GuardedObject
+
+	results         []*compute.Result
+	resultsNotEmpty *do.Guard
 }
 
-func NewNotifications(result *compute.Result) Notifications {
-	return Notifications{
-		resultRWMu: new(sync.RWMutex),
-		resultMu:   new(sync.Mutex),
-		results:    []*compute.Result{result},
-		//cond : &sync.Cond{
-		//	L:new(sync.Mutex),
-		//},
+func (node *Node) notifications(traderAddress *rpc.MultiAddress, stream rpc.XingNode_NotificationsServer) error {
+	multiAddress, err := rpc.DeserializeMultiAddress(traderAddress)
+	if err != nil {
+		return err
 	}
-}
+	address := identity.Address(multiAddress.Address())
 
-func (node *Node) notifications(traderAddress *rpc.Address, stream rpc.XingNode_NotificationsServer) error {
-	address := identity.Address(traderAddress.Address)
-	node.resultMu.RLock()
-	res, ok := node.Results[address]
-	node.resultMu.RUnlock()
-	if ok {
-		for _, j := range res.results {
-			stream.Send(rpc.SerializeResult(j))
-		}
+	node.resultsMu.RLock()
+	results, ok := node.results[address]
+	node.resultsMu.RUnlock()
+	if !ok {
+		return nil
 	}
-
-	go func() {
-		for {
-			select {
-			case new, ok  := <-node.newResult[address]:
-				if !ok{
-					break
-				}
-				stream.Send(rpc.SerializeResult(new))
-			case stream.Context().Done():
-
-				break
-			}
-		}
-	}()
+	for {
+		result := results.GetNewResult()
+		stream.Send(rpc.SerializeResult(result))
+	}
 
 	return nil
 }
 
-func (node *Node) getResults(traderAddress *rpc.Address) (*rpc.Results, error) {
-	address := identity.Address(traderAddress.Address)
-	node.resultMu.RLock()
-	defer node.resultMu.RUnlock()
-	notifications, ok := node.Results[address]
+func (node *Node) getResults(traderAddress *rpc.MultiAddress, stream rpc.XingNode_GetResultsServer) error {
+	multiAddress, err := rpc.DeserializeMultiAddress(traderAddress)
+	if err != nil {
+		return err
+	}
+	address := identity.Address(multiAddress.Address())
+	node.resultsMu.RLock()
+	notifications, ok := node.results[address]
+	node.resultsMu.RUnlock()
 	if !ok {
-		return *rpc.Results{}, nil
+		return nil
 	}
-	notifications.resultRWMu.RLock()
-	defer notifications.resultRWMu.RUnlock()
-	ret := *rpc.Results{}
-
-	for _, j := range notifications.results {
-		ret = append(ret, j)
+	notifications.Enter(nil)
+	defer notifications.Exit()
+	for _, result := range notifications.GetAllResults() {
+		stream.Send(rpc.SerializeResult(result))
 	}
-	return ret, nil
+	return nil
 }
 
-func (node *Node) UpdateResult(result *compute.Result, traderAddress identity.Address) {
-	node.resultMu.RLock()
-	notifications, ok := node.Results[traderAddress]
-	node.resultMu.RUnlock()
+// Notify ...
+func (node *Node) Notify(traderAddress identity.Address, result *compute.Result) {
+	node.resultsMu.RLock()
+	results, ok := node.results[traderAddress]
+	node.resultsMu.RUnlock()
 	if !ok {
-		node.resultMu.Lock()
-		defer node.resultMu.Unlock()
-		node.Results[traderAddress] = NewNotifications(result)
+		node.resultsMu.Lock()
+		defer node.resultsMu.Unlock()
+		node.results[traderAddress] = NewInbox()
 	} else {
-		notifications.resultMu.Lock()
-		defer notifications.resultMu.Unlock()
-		notifications.results = append(notifications.results, result)
+		node.resultsMu.RLock()
+		defer node.resultsMu.RUnlock()
+		results.AddNewResult(result)
 	}
-	go func() {
-		ch := make(chan *compute.Result)
-		node.resultMu.Lock()
-		node.newResult[traderAddress] = ch
-		node.resultMu.Unlock()
-		ch <- result
-	}()
 }
