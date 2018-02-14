@@ -10,10 +10,11 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/go-atom/bitcoin"
-	. "github.com/republicprotocol/go-atom/ethereum"
-	// . "github.com/onsi/gomega"
+	"github.com/republicprotocol/go-atom/ethereum"
 	// . "github.com/republicprotocol/go-atom"
 )
 
@@ -46,7 +47,7 @@ func loadAccounts() (*bind.TransactOpts, *bind.TransactOpts) {
 }
 
 var _ = Describe("Atom", func() {
-	it("should work between Bitcoin and Ethereum", func() {
+	It("should work between Bitcoin and Ethereum", func() {
 		// Alice
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
@@ -56,8 +57,10 @@ var _ = Describe("Atom", func() {
 
 		// Bob
 		auth1, auth2 := loadAccounts()
+		client := ethereum.Ropsten("https://ropsten.infura.io/")
+		contractAddress := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
 		user2Connection := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
-		err := user2Connection.Initiate(hashLock[:], auth1.From.Bytes(), auth2.From.Bytes(), ether, time.Now().Add(48*time.Hour).Unix())
+		err = user2Connection.Initiate(hashLock[:], auth1.From.Bytes(), auth2.From.Bytes(), ether, time.Now().Add(48*time.Hour).Unix())
 		Ω(err).Should(BeNil())
 
 		// Alice
