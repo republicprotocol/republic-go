@@ -34,22 +34,22 @@ const (
 /*
 Bitcoin AtomicSwap Script: Alice is trying to do an atomic swap with bob.
 
-		OP_IF
-			OP_SHA256
-			<secret_hash>
-			OP_EQUALVERIFY
-			OP_DUP
-			OP_HASH160
-			<pubkey_hash_bob>
-		OP_ELSE
-			<lock_time>
-			OP_CHECKLOCKTIMEVERIFY
-			OP_DROP
-			OP_HASH160
-			<pubKey_hash_alice>
-		OP_ENDIF
-		OP_EQUALVERIFY
-		OP_CHECKSIG
+OP_IF
+	OP_SHA256
+	<secret_hash>
+	OP_EQUALVERIFY
+	OP_DUP
+	OP_HASH160
+	<pubkey_hash_bob>
+OP_ELSE
+	<lock_time>
+	OP_CHECKLOCKTIMEVERIFY
+	OP_DROP
+	OP_HASH160
+	<pubKey_hash_alice>
+OP_ENDIF
+OP_EQUALVERIFY
+OP_CHECKSIG
 
 */
 
