@@ -6,28 +6,32 @@ import (
 )
 
 const (
-	// redeemAtomicSwapSigScriptSize is the worst case (largest) serialize size
-	// of a transaction input script to redeem the atomic swap contract.  This
-	// does not include final push for the contract itself.
-	//
-	//   - OP_DATA_73
-	//   - 72 bytes DER signature + 1 byte sighash
-	//   - OP_DATA_33
-	//   - 33 bytes serialized compressed pubkey
-	//   - OP_DATA_32
-	//   - 32 bytes secret
-	//   - OP_TRUE
+
+	/*
+		Bitcoin Refund Script: Alice is trying to get refunded
+
+		OP_DATA_73  (1)
+		<Signature> (73)
+		OP_DATA_33  (1)
+		<PublicKey> (33)
+		OP_DATA_32  (1)
+		<Secret>    (32)
+		<True>     (1)
+
+	*/
+
 	redeemAtomicSwapSigScriptSize = 1 + 73 + 1 + 33 + 1 + 32 + 1
 
-	// refundAtomicSwapSigScriptSize is the worst case (largest) serialize size
-	// of a transaction input script that refunds a P2SH atomic swap output.
-	// This does not include final push for the contract itself.
-	//
-	//   - OP_DATA_73
-	//   - 72 bytes DER signature + 1 byte sighash
-	//   - OP_DATA_33
-	//   - 33 bytes serialized compressed pubkey
-	//   - OP_FALSE
+	/*
+	   Bitcoin Refund Script: Alice is trying to get refunded
+
+	   OP_DATA_73  (1)
+	   <Signature> (73)
+	   OP_DATA_33  (1)
+	   <PublicKey> (33)
+	   <False>     (1)
+
+	*/
 	refundAtomicSwapSigScriptSize = 1 + 73 + 1 + 33 + 1
 )
 
