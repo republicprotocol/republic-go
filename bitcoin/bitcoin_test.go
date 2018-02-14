@@ -3,6 +3,7 @@ package bitcoin_test
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -22,20 +23,18 @@ func randomBytes32() []byte {
 var _ = Describe("Bitcoin", func() {
 
 	It("can initiate a bitcoin atomic swap", func() {
-
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
-		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), 1000000, 1518570598)
+		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), 1000000, time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
-
 	})
 
 	It("can redeem a bitcoin atomic swap", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
-		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), 1000000, 1518570598)
+		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), 1000000, time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 		err = BTCAtom.Redeem(secret)
 		Ω(err).Should(BeNil())
@@ -48,7 +47,7 @@ var _ = Describe("Bitcoin", func() {
 		to := []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe")
 		from := []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6")
 		value := int64(1000000)
-		expiry := int64(1518570598)
+		expiry := time.Now().Unix() + 10000
 		err := BTCAtom.Initiate(hashLock[:], to, from, value, expiry)
 		Ω(err).Should(BeNil())
 		readHashLock, readTo, readFrom, readValue, readExpiry, readErr := BTCAtom.Read()
@@ -64,7 +63,7 @@ var _ = Describe("Bitcoin", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
-		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), 1000000, 1518570598)
+		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), 1000000, time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 		err = BTCAtom.Redeem(secret)
 		Ω(err).Should(BeNil())
@@ -73,4 +72,13 @@ var _ = Describe("Bitcoin", func() {
 		Ω(readSecret).Should(Equal(secret[:]))
 	})
 
+	It("can refund a bitcoin atomic swap", func() {
+		secret := randomBytes32()
+		hashLock := sha256.Sum256(secret)
+		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
+		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), 1000000, time.Now().Unix()+1000)
+		Ω(err).Should(BeNil())
+		err = BTCAtom.Refund()
+		Ω(err).Should(BeNil())
+	})
 })

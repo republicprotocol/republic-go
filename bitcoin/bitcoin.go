@@ -1,5 +1,9 @@
 package bitcoin
 
+import (
+	"math/big"
+)
+
 type BTCAtomContract struct {
 	rpcUser    string
 	rpcPass    string
@@ -27,8 +31,8 @@ func NewBTCAtomContract(rpcUser string, rpcPass string, chain string) *BTCAtomCo
 	}
 }
 
-func (contract *BTCAtomContract) Initiate(hash, to, from []byte, value, expiry int64) (err error) {
-	err, result := Open(string(to), value, contract.chain, contract.rpcUser, contract.rpcPass, hash, expiry)
+func (contract *BTCAtomContract) Initiate(hash, to, from []byte, value *big.Int, expiry int64) (err error) {
+	err, result := Open(string(to), value.Int64(), contract.chain, contract.rpcUser, contract.rpcPass, hash, expiry)
 	if err != nil {
 		return err
 	}
@@ -37,12 +41,12 @@ func (contract *BTCAtomContract) Initiate(hash, to, from []byte, value, expiry i
 	return nil
 }
 
-func (contract *BTCAtomContract) Read() (hash, to, from []byte, value, expiry int64, err error) {
+func (contract *BTCAtomContract) Read() (hash, to, from []byte, value *big.Int, expiry int64, err error) {
 	err, result := Validate(contract.ledgerData.contract, contract.ledgerData.contractTx, contract.chain, contract.rpcUser, contract.rpcPass)
 	if err != nil {
-		return []byte{}, []byte{}, []byte{}, 0, 0, err
+		return []byte{}, []byte{}, []byte{}, big.NewInt(0), 0, err
 	}
-	return result.secretHash, result.recipientAddress, result.refundAddress, result.amount, result.lockTime, nil
+	return result.secretHash, result.recipientAddress, result.refundAddress, big.NewInt(result.amount), result.lockTime, nil
 }
 
 func (contract *BTCAtomContract) Redeem(secret []byte) error {
