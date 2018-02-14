@@ -66,58 +66,17 @@ func hexToBytes32(str string) [32]byte {
 
 var _ = Describe("Ethereum", func() {
 
-	// It("works with bitcoin", func() {
+	It("can swap with an arbitrary ledger", func() {
 
-	// 	auth1, _ := loadAccounts()
-	// 	client := go_eth.Ropsten("http://13.54.129.55:8180")
-	// 	address := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
-	// 	connection1 := go_eth.NewEtherConnection(client, auth1, address)
-
-	// 	// Account1 creates a secret lock and starts the atomic swap on Bitcoin
-	// 	secretHash, err := hex.DecodeString("2c1b293ab8e578a96a6c92e85e4a6d6a19dc9aa1240df6a815fb4a8cfcd86228")
-	// 	if err != nil {
-	// 			panic(err)
-	// 	}
-
-	// 	var secretHash32 [32]byte
-	// 	for i := range secretHash {
-	// 		secretHash32[i] = secretHash[i]
-	// 	}
-
-	// value := big.NewInt(0).Mul(ether, big.NewInt(1))
-
-	// 	// Account2 takes the hash from bitcoin and uses it to lock up Ether
-	// 	tx, err := connection1.Open(matchId, common.HexToAddress("0xaAC4B896eC41e2672D2e1E5fbDe24119f4937E59"), 0, secretHash32, value)
-	// 	if err != nil {
-	// 		log.Fatalf("Failed to open Atomic Swap: %v", err)
-	// 	}
-	// 	bind.WaitMined(context.Background(), client, tx)
-	// })
-
-	// It("can call retrieveSecretKey", func() {
-
-	// 	auth1, _ := loadAccounts()
-	// 	client := go_eth.Ropsten("http://13.54.129.55:8180")
-	// 	address := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
-	// 	connection1 := go_eth.NewEtherConnection(client, auth1, address)
-
-	// 	// Account1 creates a secret lock and starts the atomic swap on Bitcoin
-	// 	matchID32 := hexToBytes32("c2e61d599192b9aa1269ec98d9464170f9af3622bdb37e5f262edcbc9386b8e8")
-
-	// 	// Account2 retrieves secret
-	// 	retSecret, err := connection1.RetrieveSecretKey(matchID32)
-	// 	if err != nil {
-	// 		log.Fatalf("Failed to retrieve secret: %v", err)
-	// 	}
-	// 	println("!!!")
-	// 	println(hex.EncodeToString(retSecret))
-	// 	// Ω(retSecret).Should(Not(Equal("secret")))
-	// })
-
-	It("can be swapped on both sides of an Atomic Swap", func() {
-
-		auth2, auth1 := loadAccounts()
-		client := ethereum.Ropsten("http://13.54.129.55:8180")
+		auth1, auth2 := loadAccounts()
+		// Connect to Infura (or use local node at 13.54.129.55:8180)
+		client := ethereum.Ropsten("https://ropsten.infura.io/")
+		// Ensure that the bigger acount is sending to the smaller account
+		bal1, _ := client.BalanceAt(context.Background(), auth1.From, nil)
+		bal2, _ := client.BalanceAt(context.Background(), auth2.From, nil)
+		if bal1.Cmp(bal2) > 0 {
+			auth1, auth2 = auth2, auth1
+		}
 		// Contract address
 		contractAddress := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
 
@@ -128,8 +87,8 @@ var _ = Describe("Ethereum", func() {
 
 		/* ====== USER 2 ====== */
 		user2Connection := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
-		value := big.NewInt(0).Div(big.NewInt(1).Mul(ether, big.NewInt(1)), big.NewInt(100))
-		err := user2Connection.Initiate(secretHash[:], auth2.From.Bytes(), auth1.From.Bytes(), value, time.Now().Add(48*time.Hour).Unix())
+		value := big.NewInt(0).Div(big.NewInt(1).Mul(ether, big.NewInt(2)), big.NewInt(1))
+		err := user2Connection.Initiate(secretHash[:], auth1.From.Bytes(), auth2.From.Bytes(), value, time.Now().Add(48*time.Hour).Unix())
 		if err != nil {
 			log.Fatalf("Failed to open Atomic Swap: %v", err)
 		}
