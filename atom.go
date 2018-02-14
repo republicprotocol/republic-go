@@ -1,6 +1,9 @@
 package atom
 
-import "math/big"
+import (
+	"math/big"
+)
+
 
 type Ledger int64
 
@@ -26,4 +29,5 @@ type AtomContract interface {
 	ReadSecret() (secret []byte, err error)
 	Redeem(secret []byte) error
 	Refund() error
+	GetData() []byte
 }
