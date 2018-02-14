@@ -27,8 +27,8 @@ var _ = Describe("Bitcoin", func() {
 	It("can initiate a bitcoin atomic swap", func() {
 
 		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
-		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), 100000000, 1518570598)
-		Ω(err).Should(Equal(nil))
+		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), 10000000, 1518570598)
+		Ω(err).Should(BeNil())
 
 	})
 
