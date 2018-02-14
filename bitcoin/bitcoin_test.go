@@ -1,22 +1,33 @@
 package bitcoin_test
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	. "github.com/republicprotocol/go-atom/bitcoin"
 )
 
+func randomBytes32() []byte {
+	randString := [32]byte{}
+	_, err := rand.Read(randString[:])
+	if err != nil {
+		panic(err)
+	}
+	return randString[:]
+}
+
 var _ = Describe("Bitcoin", func() {
 
-	// secret := []byte{}
-	hashLock := []byte{}
+	secret := randomBytes32()
+	hashLock := sha256.Sum256(secret)
 
 	It("can initiate a bitcoin atomic swap", func() {
 
 		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
-
-		err := BTCAtom.Initiate(hashLock, []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), 1000000000000000, 10000000000000)
+		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), 100000000, 1518570598)
 		Ω(err).Should(Equal(nil))
 
 	})
