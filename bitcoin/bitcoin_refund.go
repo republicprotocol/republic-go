@@ -11,7 +11,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
-func Expire(contract, contractTxBytes []byte, chain, rpcUser, rpcPass string) (Error error) {
+func refund(contract, contractTxBytes []byte, chain, rpcUser, rpcPass string) (Error error) {
 	var chainParams *chaincfg.Params
 	if chain == "testnet" {
 		chainParams = &chaincfg.TestNet3Params

@@ -32,7 +32,7 @@ func NewBTCAtomContract(rpcUser string, rpcPass string, chain string) *BTCAtomCo
 }
 
 func (contract *BTCAtomContract) Initiate(hash, to, from []byte, value *big.Int, expiry int64) (err error) {
-	err, result := Open(string(to), value.Int64(), contract.chain, contract.rpcUser, contract.rpcPass, hash, expiry)
+	err, result := initiate(string(to), value.Int64(), contract.chain, contract.rpcUser, contract.rpcPass, hash, expiry)
 	if err != nil {
 		return err
 	}
@@ -42,7 +42,7 @@ func (contract *BTCAtomContract) Initiate(hash, to, from []byte, value *big.Int,
 }
 
 func (contract *BTCAtomContract) Read() (hash, to, from []byte, value *big.Int, expiry int64, err error) {
-	err, result := Validate(contract.ledgerData.contract, contract.ledgerData.contractTx, contract.chain, contract.rpcUser, contract.rpcPass)
+	err, result := read(contract.ledgerData.contract, contract.ledgerData.contractTx, contract.chain, contract.rpcUser, contract.rpcPass)
 	if err != nil {
 		return []byte{}, []byte{}, []byte{}, big.NewInt(0), 0, err
 	}
@@ -50,7 +50,7 @@ func (contract *BTCAtomContract) Read() (hash, to, from []byte, value *big.Int, 
 }
 
 func (contract *BTCAtomContract) Redeem(secret []byte) error {
-	err, result := Close(contract.ledgerData.contract, contract.ledgerData.contractTx, secret, contract.rpcUser, contract.rpcPass, contract.chain)
+	err, result := redeem(contract.ledgerData.contract, contract.ledgerData.contractTx, secret, contract.rpcUser, contract.rpcPass, contract.chain)
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func (contract *BTCAtomContract) Redeem(secret []byte) error {
 }
 
 func (contract *BTCAtomContract) ReadSecret() (secret []byte, err error) {
-	err, result := ExtractSecret(contract.ledgerData.redeemTx, contract.secretHash, contract.rpcUser, contract.rpcPass)
+	err, result := readSecret(contract.ledgerData.redeemTx, contract.secretHash, contract.rpcUser, contract.rpcPass)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -68,5 +68,5 @@ func (contract *BTCAtomContract) ReadSecret() (secret []byte, err error) {
 }
 
 func (contract *BTCAtomContract) Refund() error {
-	return Expire(contract.ledgerData.contract, contract.ledgerData.contractTx, contract.chain, contract.rpcUser, contract.rpcPass)
+	return refund(contract.ledgerData.contract, contract.ledgerData.contractTx, contract.chain, contract.rpcUser, contract.rpcPass)
 }

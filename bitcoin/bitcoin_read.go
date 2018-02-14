@@ -11,7 +11,7 @@ import (
 	"github.com/btcsuite/btcutil"
 )
 
-type validateResult struct {
+type readResult struct {
 	contractAddress  []byte
 	amount           int64
 	recipientAddress []byte
@@ -20,7 +20,7 @@ type validateResult struct {
 	lockTime         int64
 }
 
-func Validate(contract, contractTxBytes []byte, chain string, rpcuser string, rpcpass string) (Error error, result validateResult) {
+func read(contract, contractTxBytes []byte, chain string, rpcuser string, rpcpass string) (Error error, result readResult) {
 	var chainParams *chaincfg.Params
 	if chain == "testnet" {
 		chainParams = &chaincfg.TestNet3Params
@@ -31,7 +31,7 @@ func Validate(contract, contractTxBytes []byte, chain string, rpcuser string, rp
 	var contractTx wire.MsgTx
 	err := contractTx.Deserialize(bytes.NewReader(contractTxBytes))
 	if err != nil {
-		return fmt.Errorf("failed to decode contract transaction: %v", err), validateResult{}
+		return fmt.Errorf("failed to decode contract transaction: %v", err), readResult{}
 	}
 
 	contractHash160 := btcutil.Hash160(contract)
@@ -48,33 +48,33 @@ func Validate(contract, contractTxBytes []byte, chain string, rpcuser string, rp
 		}
 	}
 	if contractOut == -1 {
-		return errors.New("transaction does not contain the contract output"), validateResult{}
+		return errors.New("transaction does not contain the contract output"), readResult{}
 	}
 
 	pushes, err := txscript.ExtractAtomicSwapDataPushes(contract)
 	if err != nil {
-		return err, validateResult{}
+		return err, readResult{}
 	}
 	if pushes == nil {
-		return errors.New("contract is not an atomic swap script recognized by this tool"), validateResult{}
+		return errors.New("contract is not an atomic swap script recognized by this tool"), readResult{}
 	}
 
 	contractAddr, err := btcutil.NewAddressScriptHash(contract, chainParams)
 	if err != nil {
-		return err, validateResult{}
+		return err, readResult{}
 	}
 	recipientAddr, err := btcutil.NewAddressPubKeyHash(pushes.RecipientHash160[:],
 		chainParams)
 	if err != nil {
-		return err, validateResult{}
+		return err, readResult{}
 	}
 	refundAddr, err := btcutil.NewAddressPubKeyHash(pushes.RefundHash160[:],
 		chainParams)
 	if err != nil {
-		return err, validateResult{}
+		return err, readResult{}
 	}
 
-	return nil, validateResult{
+	return nil, readResult{
 		contractAddress:  contractAddr.ScriptAddress(),
 		amount:           int64(btcutil.Amount(contractTx.TxOut[contractOut].Value)),
 		recipientAddress: []byte(recipientAddr.EncodeAddress()),
