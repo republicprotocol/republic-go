@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -89,7 +90,7 @@ func (contract *ETHAtomContract) Read() (hash, to, from []byte, value *big.Int, 
 		ret.WithdrawTrader.Bytes(),
 		nil,
 		ret.Value,
-		ret.TimeRemaining.Int64(),
+		time.Now().Unix() + ret.TimeRemaining.Int64(),
 		err
 }
 
