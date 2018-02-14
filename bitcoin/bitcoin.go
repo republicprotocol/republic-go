@@ -42,7 +42,7 @@ func (contract *BTCAtomContract) Read() (hash, to, from []byte, value, expiry in
 	if err != nil {
 		return []byte{}, []byte{}, []byte{}, 0, 0, err
 	}
-	return result.secretHash, result.recipientAddress, result.recipientAddress, result.amount, result.lockTime, nil
+	return result.secretHash, result.recipientAddress, result.refundAddress, result.amount, result.lockTime, nil
 }
 
 func (contract *BTCAtomContract) Redeem(secret []byte) error {
