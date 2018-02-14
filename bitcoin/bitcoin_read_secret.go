@@ -10,7 +10,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
-func ExtractSecret(redemptionTxBytes, secretHash []byte, rpcUser string, rpcPass string) (Error error, secret []byte) {
+func readSecret(redemptionTxBytes, secretHash []byte, rpcUser string, rpcPass string) (Error error, secret []byte) {
 	var redemptionTx wire.MsgTx
 	err := redemptionTx.Deserialize(bytes.NewReader(redemptionTxBytes))
 	if err != nil {
