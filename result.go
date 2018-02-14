@@ -34,7 +34,7 @@ type Result struct {
 	MinVolume   *big.Int
 }
 
-func NewResult(resultFragments []*ResultFragment, prime *big.Int) (*Result, error) {
+func NewResult(resultFragments []*ResultFragment, prime *big.Int) *Result {
 	// Collect sss.Shares across all ResultFragments.
 	// TODO: Check that all ResultFragments are compatible with each other.
 	k := len(resultFragments)
@@ -53,30 +53,19 @@ func NewResult(resultFragments []*ResultFragment, prime *big.Int) (*Result, erro
 
 	// Join the sss.Shares into a Result.
 	// FIXME: This can panic if there are no ResultFragments.
-	var err error
 	result := &Result{
 		BuyOrderID:  resultFragments[0].BuyOrderID,
 		SellOrderID: resultFragments[0].SellOrderID,
 	}
-	if result.FstCode, err = sss.Join(prime, fstCodeShares); err != nil {
-		return nil, err
-	}
-	if result.SndCode, err = sss.Join(prime, sndCodeShares); err != nil {
-		return nil, err
-	}
-	if result.Price, err = sss.Join(prime, priceShares); err != nil {
-		return nil, err
-	}
-	if result.MaxVolume, err = sss.Join(prime, maxVolumeShares); err != nil {
-		return nil, err
-	}
-	if result.MinVolume, err = sss.Join(prime, minVolumeShares); err != nil {
-		return nil, err
-	}
+	result.FstCode = sss.Join(prime, fstCodeShares)
+	result.SndCode = sss.Join(prime, sndCodeShares)
+	result.Price = sss.Join(prime, priceShares)
+	result.MaxVolume = sss.Join(prime, maxVolumeShares)
+	result.MinVolume = sss.Join(prime, minVolumeShares)
 
 	// Compute the ResultID and return the Result.
 	result.ID = ResultID(crypto.Keccak256(result.BuyOrderID[:], result.SellOrderID[:]))
-	return result, nil
+	return result
 }
 
 func (result *Result) IsMatch(prime *big.Int) bool {
@@ -98,6 +87,9 @@ func (result *Result) IsMatch(prime *big.Int) bool {
 	}
 	return true
 }
+
+// Results is an array of Result
+type Results []Result
 
 // A ResultFragmentID is the Keccak256 hash of its OrderFragmentIDs.
 type ResultFragmentID []byte

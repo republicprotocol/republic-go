@@ -151,10 +151,7 @@ func (matrix *Computer) AddResultFragments(resultFragments []*ResultFragment, k 
 				// we want to return results we have already found?
 				continue
 			}
-			result, err := NewResult(matrix.resultFragments[string(resultID)], prime)
-			if err != nil {
-				return results, err
-			}
+			result := NewResult(matrix.resultFragments[string(resultID)], prime)
 			matrix.results[string(resultID)] = result
 			results = append(results, result)
 		}
