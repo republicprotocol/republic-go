@@ -9,7 +9,7 @@ import (
 
 	// . "github.com/republicprotocol/go-atom/ethereum"
 
-	// "context"
+	"context"
 
 	"crypto/rand"
 	"crypto/sha256"
@@ -114,52 +114,48 @@ var _ = Describe("Ethereum", func() {
 	// 	// Ω(retSecret).Should(Not(Equal("secret")))
 	// })
 
-	It("should work", func() {
+	It("can be swapped on both sides of an Atomic Swap", func() {
 
-		auth1, auth2 := loadAccounts()
+		auth2, auth1 := loadAccounts()
 		client := ethereum.Ropsten("http://13.54.129.55:8180")
 		// Contract address
-		address := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
+		contractAddress := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
 
-		// Set up two connections
-		connection1 := ethereum.NewETHAtomContract(client, auth1, address, nil)
-
-		// Account1 creates a secret lock and starts the atomic swap on Bitcoin
+		/* ====== USER 1 ====== */
+		// User 1 has locked up bitcoin with the following lock:
 		secret := []byte("this is the secret")
 		secretHash := sha256.Sum256(secret)
-		value1 := big.NewInt(0).Mul(ether, big.NewInt(1))
-		err := connection1.Initiate(secretHash[:], auth1.From.Bytes(), auth2.From.Bytes(), value1, time.Now().Add(48*time.Hour).Unix())
+
+		/* ====== USER 2 ====== */
+		user2Connection := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
+		value := big.NewInt(0).Div(big.NewInt(1).Mul(ether, big.NewInt(1)), big.NewInt(100))
+		err := user2Connection.Initiate(secretHash[:], auth2.From.Bytes(), auth1.From.Bytes(), value, time.Now().Add(48*time.Hour).Unix())
 		if err != nil {
 			log.Fatalf("Failed to open Atomic Swap: %v", err)
 		}
 
-		connection2 := ethereum.NewETHAtomContract(client, auth2, address, connection1.GetData())
-		// Account2 checks that hash is what it should be
-		_, _, _, _, _, err = connection2.Read()
+		/* ====== USER 1 ====== */
+		user1Connection := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
+		// Checks that the hash is right
+		retrievedHash, _, _, _, _, err := user1Connection.Read()
 		if err != nil {
 			log.Fatalf("Failed: %v", err)
 		}
-		// Ω(hash).Should(Equal(secretHash))
-
-		// Account2 takes the hash from bitcoin and uses it to lock up Ether
-		value2 := big.NewInt(0).Mul(ether, big.NewInt(1))
-		err = connection2.Initiate(secretHash[:], auth2.From.Bytes(), auth1.From.Bytes(), value2, time.Now().Add(24*time.Hour).Unix())
-		if err != nil {
-			log.Fatalf("Failed to open Atomic Swap: %v", err)
-		}
-
+		Ω(retrievedHash).Should(Equal(secretHash[:]))
 		// Account1 reveals secret to withdraw Ether
-		err = connection1.Redeem(secret)
+		err = user1Connection.Redeem(secret)
 		if err != nil {
 			log.Fatalf("Failed to close Atomic Swap: %v", err)
 		}
 
+		/* ====== USER 2 ====== */
 		// Account2 retrieves secret
-		retSecret, err := connection2.ReadSecret()
+		retSecret, err := user2Connection.ReadSecret()
 		if err != nil {
 			log.Fatalf("Failed to retrieve secret: %v", err)
 		}
 		Ω(retSecret).Should(Equal(secret))
+		// User 2 can not unlock the bitcoins
 
 	})
 
