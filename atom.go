@@ -15,15 +15,15 @@ const (
 type LedgerData []byte
 
 type Atom struct {
-	ID     []byte
-	Ledger Ledger
-	Data   LedgerData
+	Ledger
+	LedgerData
+	Signature []byte
 }
 
 type AtomContract interface {
 	Initiate(hash, to, from []byte, value *big.Int, expiry int64) (err error)
 	Read() (hash, to, from []byte, value *big.Int, expiry int64, err error)
 	ReadSecret() (secret []byte, err error)
-	Redeem() error
+	Redeem(secret []byte) error
 	Refund() error
 }
