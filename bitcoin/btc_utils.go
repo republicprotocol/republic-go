@@ -76,29 +76,17 @@ func sumOutputSerializeSizes(outputs []*wire.TxOut) (serializeSize int) {
 	return serializeSize
 }
 
-// inputSize returns the size of the transaction input needed to include a
-// signature script with size sigScriptSize.  It is calculated as:
-//
-//   - 32 bytes previous tx
-//   - 4 bytes output index
-//   - Compact int encoding sigScriptSize
-//   - sigScriptSize bytes signature script
-//   - 4 bytes sequence
 func inputSize(sigScriptSize int) int {
 	return 32 + 4 + wire.VarIntSerializeSize(uint64(sigScriptSize)) + sigScriptSize + 4
 }
 
-// estimateRedeemSerializeSize returns a worst case serialize size estimates for
-// a transaction that redeems an atomic swap P2SH output.
 func estimateRedeemSerializeSize(contract []byte, txOuts []*wire.TxOut) int {
 	contractPush, err := txscript.NewScriptBuilder().AddData(contract).Script()
 	if err != nil {
-		// Should never be hit since this script does exceed the limits.
 		panic(err)
 	}
 	contractPushSize := len(contractPush)
 
-	// 12 additional bytes are for version, locktime and expiry.
 	return 12 + wire.VarIntSerializeSize(1) +
 		wire.VarIntSerializeSize(uint64(len(txOuts))) +
 		inputSize(redeemAtomicSwapSigScriptSize+contractPushSize) +
@@ -197,52 +185,47 @@ func sha256Hash(x []byte) []byte {
 	return h[:]
 }
 
-// atomicSwapContract returns an output script that may be redeemed by one of
-// two signature scripts:
-//
-//   <their sig> <their pubkey> <initiator secret> 1
-//
-//   <my sig> <my pubkey> 0
-//
-// The first signature script is the normal redemption path done by the other
-// party and requires the initiator's secret.  The second signature script is
-// the refund path performed by us, but the refund can only be performed after
-// locktime.
+/*
+
+Bitcoin Script: Alice is trying to do an atomic swap with bob.
+
+OP_IF
+	OP_SHA256
+	<secret_hash>
+	OP_EQUALVERIFY
+	OP_DUP
+	OP_HASH160
+	<pubkey_hash_bob>
+OP_ELSE
+	<lock_time>
+	OP_CHECKLOCKTIMEVERIFY
+	OP_DROP
+	OP_HASH160
+	<pubKey_hash_alice>
+
+*/
 func atomicSwapContract(pkhMe, pkhThem *[ripemd160.Size]byte, locktime int64, secretHash []byte) ([]byte, error) {
 	b := txscript.NewScriptBuilder()
 
-	b.AddOp(txscript.OP_IF) // Normal redeem path
+	b.AddOp(txscript.OP_IF)
 	{
-		// Require initiator's secret to be known to redeem the output.
 		b.AddOp(txscript.OP_SHA256)
 		b.AddData(secretHash)
 		b.AddOp(txscript.OP_EQUALVERIFY)
-
-		// Verify their signature is being used to redeem the output.  This
-		// would normally end with OP_EQUALVERIFY OP_CHECKSIG but this has been
-		// moved outside of the branch to save a couple bytes.
 		b.AddOp(txscript.OP_DUP)
 		b.AddOp(txscript.OP_HASH160)
 		b.AddData(pkhThem[:])
 	}
-	b.AddOp(txscript.OP_ELSE) // Refund path
+	b.AddOp(txscript.OP_ELSE)
 	{
-		// Verify locktime and drop it off the stack (which is not done by
-		// CLTV).
 		b.AddInt64(locktime)
 		b.AddOp(txscript.OP_CHECKLOCKTIMEVERIFY)
 		b.AddOp(txscript.OP_DROP)
-
-		// Verify our signature is being used to redeem the output.  This would
-		// normally end with OP_EQUALVERIFY OP_CHECKSIG but this has been moved
-		// outside of the branch to save a couple bytes.
 		b.AddOp(txscript.OP_DUP)
 		b.AddOp(txscript.OP_HASH160)
 		b.AddData(pkhMe[:])
 	}
 	b.AddOp(txscript.OP_ENDIF)
-
-	// Complete the signature check.
 	b.AddOp(txscript.OP_EQUALVERIFY)
 	b.AddOp(txscript.OP_CHECKSIG)
 
@@ -393,7 +376,6 @@ func buildRefund(c *rpc.Client, contract []byte, contractTx *wire.MsgTx, chainPa
 
 	pushes, err := txscript.ExtractAtomicSwapDataPushes(contract)
 	if err != nil {
-		// expected to only be called with good input
 		panic(err)
 	}
 
@@ -404,7 +386,7 @@ func buildRefund(c *rpc.Client, contract []byte, contractTx *wire.MsgTx, chainPa
 
 	refundTx = wire.NewMsgTx(txVersion)
 	refundTx.LockTime = uint32(pushes.LockTime)
-	refundTx.AddTxOut(wire.NewTxOut(0, refundOutScript)) // amount set below
+	refundTx.AddTxOut(wire.NewTxOut(0, refundOutScript))
 
 	txIn := wire.NewTxIn(&contractOutPoint, nil, nil)
 	txIn.Sequence = 0
@@ -474,9 +456,6 @@ func createSig(tx *wire.MsgTx, idx int, pkScript []byte, addr btcutil.Address,
 	return sig, wif.PrivKey.PubKey().SerializeCompressed(), nil
 }
 
-// redeemP2SHContract returns the signature script to redeem a contract output
-// using the redeemer's signature and the initiator's secret.  This function
-// assumes P2SH and appends the contract as the final data push.
 func redeemP2SHContract(contract, sig, pubkey, secret []byte) ([]byte, error) {
 	b := txscript.NewScriptBuilder()
 	b.AddData(sig)

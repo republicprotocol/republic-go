@@ -1,5 +1,7 @@
 package atom
 
+import "math/big"
+
 type Ledger int64
 
 const (
@@ -19,8 +21,8 @@ type Atom struct {
 }
 
 type AtomContract interface {
-	Initiate(hash, to, from []byte, value, expiry int64) (err error)
-	Read() (hash, to, from []byte, value, expiry int64, err error)
+	Initiate(hash, to, from []byte, value *big.Int, expiry int64) (err error)
+	Read() (hash, to, from []byte, value *big.Int, expiry int64, err error)
 	ReadSecret() (secret []byte, err error)
 	Redeem() error
 	Refund() error
