@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
-	"log"
 	"math/big"
 	"strings"
 	"time"
@@ -34,14 +33,10 @@ const key2 = `{"version":3,"id":"1bc823af-210a-4143-8eb4-306c19485622","address"
 
 func loadAccounts() (*bind.TransactOpts, *bind.TransactOpts) {
 	auth1, err := bind.NewTransactor(strings.NewReader(key1), "password1")
-	if err != nil {
-		log.Fatalf("Failed to create authorized transactor: %v", err)
-	}
+	Ω(err).Should(BeNil())
 
 	auth2, err := bind.NewTransactor(strings.NewReader(key2), "password2")
-	if err != nil {
-		log.Fatalf("Failed to create authorized transactor: %v", err)
-	}
+	Ω(err).Should(BeNil())
 
 	return auth1, auth2
 }

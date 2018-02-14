@@ -12,7 +12,6 @@ import (
 	"context"
 
 	"crypto/sha256"
-	"log"
 	"math/big"
 	"strings"
 
@@ -27,14 +26,10 @@ const key2 = `{"version":3,"id":"1bc823af-210a-4143-8eb4-306c19485622","address"
 
 func loadAccounts() (*bind.TransactOpts, *bind.TransactOpts) {
 	auth1, err := bind.NewTransactor(strings.NewReader(key1), "password1")
-	if err != nil {
-		log.Fatalf("Failed to create authorized transactor: %v", err)
-	}
+	Ω(err).Should(BeNil())
 
 	auth2, err := bind.NewTransactor(strings.NewReader(key2), "password2")
-	if err != nil {
-		log.Fatalf("Failed to create authorized transactor: %v", err)
-	}
+	Ω(err).Should(BeNil())
 
 	return auth1, auth2
 }
@@ -64,17 +59,13 @@ var _ = Describe("Ethereum", func() {
 		user2Connection := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
 		value := big.NewInt(0).Mul(ether, big.NewInt(1))
 		err := user2Connection.Initiate(secretHash[:], auth1.From.Bytes(), auth2.From.Bytes(), value, time.Now().Add(48*time.Hour).Unix())
-		if err != nil {
-			log.Fatalf("Failed to open Atomic Swap: %v", err)
-		}
+		Ω(err).Should(BeNil())
 
 		/* ====== USER 1 ====== */
 		user1Connection := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
 		// Checks that the hash is right
 		retrievedHash, to, _, readValue, expiry, err := user1Connection.Read()
-		if err != nil {
-			log.Fatalf("Failed: %v", err)
-		}
+		Ω(err).Should(BeNil())
 		Ω(retrievedHash).Should(Equal(secretHash[:]))
 		Ω(to).Should(Equal(auth1.From.Bytes()))
 		// Ω(from).Should(Equal(auth2.From.Bytes()))
@@ -83,16 +74,12 @@ var _ = Describe("Ethereum", func() {
 
 		// Account1 reveals secret to withdraw Ether
 		err = user1Connection.Redeem(secret)
-		if err != nil {
-			log.Fatalf("Failed to close Atomic Swap: %v", err)
-		}
+		Ω(err).Should(BeNil())
 
 		/* ====== USER 2 ====== */
 		// Account2 retrieves secret
 		retSecret, err := user2Connection.ReadSecret()
-		if err != nil {
-			log.Fatalf("Failed to retrieve secret: %v", err)
-		}
+		Ω(err).Should(BeNil())
 		Ω(retSecret).Should(Equal(secret))
 		// User 2 can now unlock the bitcoins
 
