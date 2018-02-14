@@ -1,4 +1,10 @@
-# Ethereum
+## Testing
+
+In the `ethereum` directory:
+
+```sh
+ginkgo -v --trace --cover --coverprofile coverprofile.out
+```
 
 ## Regenerating contract bindings
 
@@ -48,13 +54,3 @@ cd contracts
 ./generate.sh
 cd ../
 ```
-
-## Testing
-
-```sh
-ginkgo -v --trace --cover --coverprofile coverprofile.out
-```
-
-## License
-
-The go-eth library was developed by the Republic Protocol team and is available under the MIT license. For more information, see our website https://republicprotocol.com.
