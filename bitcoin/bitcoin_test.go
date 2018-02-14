@@ -53,7 +53,7 @@ var _ = Describe("Bitcoin", func() {
 		Ω(err).Should(BeNil())
 		readHashLock, readTo, readFrom, readValue, readExpiry, readErr := BTCAtom.Read()
 		Ω(readErr).Should(BeNil())
-		Ω(readHashLock).Should(Equal(hashLock))
+		Ω(readHashLock).Should(Equal(hashLock[:]))
 		Ω(readTo).Should(Equal(to))
 		Ω(readFrom).Should(Equal(from))
 		Ω(readValue).Should(Equal(value))
