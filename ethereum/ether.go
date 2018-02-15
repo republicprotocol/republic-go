@@ -16,7 +16,8 @@ import (
 	// "github.com/ethereum/go-ethereum/core/types"
 )
 
-func bytesTo32Bytes(bytes []byte) ([32]byte, error) {
+// BytesTo32Bytes ...
+func BytesTo32Bytes(bytes []byte) ([32]byte, error) {
 	var bytes32 [32]byte
 	if len(bytes) != 32 {
 		return bytes32, errors.New("Expected 32 bytes")
@@ -39,10 +40,10 @@ type ETHAtomContract struct {
 }
 
 // NewETHAtomContract returns a new NewETHAtom instance
-func NewETHAtomContract(context context.Context, client *ethclient.Client, auth1 *bind.TransactOpts, address common.Address, data []byte) *ETHAtomContract {
+func NewETHAtomContract(context context.Context, client *ethclient.Client, auth1 *bind.TransactOpts, address common.Address, data []byte) (*ETHAtomContract, error) {
 	contract, err := contracts.NewAtomicSwapEther(address, bind.ContractBackend(client))
 	if err != nil {
-		log.Fatalf("%v", err)
+		return nil, err
 	}
 
 	var swapID [32]byte
@@ -50,10 +51,10 @@ func NewETHAtomContract(context context.Context, client *ethclient.Client, auth1
 		swapID = [32]byte{}
 		_, err = rand.Read(swapID[:])
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 	} else {
-		swapID, err = bytesTo32Bytes(data)
+		swapID, err = BytesTo32Bytes(data)
 	}
 
 	return &ETHAtomContract{
@@ -62,12 +63,12 @@ func NewETHAtomContract(context context.Context, client *ethclient.Client, auth1
 		auth:    auth1,
 		binding: contract,
 		swapID:  swapID,
-	}
+	}, nil
 }
 
 // Initiate starts or reciprocates an atomic swap
 func (contract *ETHAtomContract) Initiate(hash, to, from []byte, value *big.Int, expiry int64) (err error) {
-	hash32, err := bytesTo32Bytes(hash)
+	hash32, err := BytesTo32Bytes(hash)
 	if err != nil {
 		log.Fatalf("Expected 32 bytes: %v", err)
 	}
