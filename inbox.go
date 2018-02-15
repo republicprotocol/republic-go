@@ -33,7 +33,8 @@ func (inbox *Inbox) AddNewResult(result *compute.Result) {
 	inbox.results = append(inbox.results, result)
 }
 
-// GetAllNewResults returns all the unread results
+// GetAllNewResults returns all the unread results and set
+// them as read.
 func (inbox *Inbox) GetAllNewResults() []*compute.Result {
 	inbox.Enter(inbox.hasNewResult)
 	defer inbox.Exit()
