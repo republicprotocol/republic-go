@@ -99,7 +99,7 @@ var _ = Describe("Bitcoin", func() {
 		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
 		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(3000000), time.Now().Unix()+60)
 		Ω(err).Should(BeNil())
-		time.Sleep(2 * time.Minute)
+		time.Sleep(20 * time.Minute)
 		err = BTCAtom.Refund()
 		Ω(err).Should(BeNil())
 	})
