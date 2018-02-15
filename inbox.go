@@ -18,7 +18,7 @@ func NewInbox() *Inbox {
 	inbox.GuardedObject = do.NewGuardedObject()
 	inbox.r = 0
 	inbox.results = make([]*compute.Result, 0)
-	inbox.hasNewResult = inbox.Guard(func() bool { return r < len(inbox.results) })
+	inbox.hasNewResult = inbox.Guard(func() bool { return inbox.r < len(inbox.results) })
 	return inbox
 }
 
@@ -31,8 +31,8 @@ func (inbox *Inbox) AddNewResult(result *compute.Result) {
 func (inbox *Inbox) GetAllNewResults() []*compute.Result {
 	inbox.Enter(inbox.hasNewResult)
 	defer inbox.Exit()
-	ret := make([]*compute.Result, 0, len(inbox.results)-r)
-	ret = append(ret, inbox.results[r:]...)
+	ret := make([]*compute.Result, 0, len(inbox.results)-inbox.r)
+	ret = append(ret, inbox.results[inbox.r:]...)
 	inbox.r = len(inbox.results)
 	return ret
 }
