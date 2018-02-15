@@ -1,4 +1,4 @@
-package xing_test
+package dark_test
 
 import (
 	"testing"

@@ -1,4 +1,4 @@
-package xing
+package dark
 
 import "github.com/republicprotocol/go-identity"
 

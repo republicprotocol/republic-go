@@ -1,12 +1,12 @@
-package xing_test
+package dark_test
 
 import (
 	"math/rand"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/go-dark-network"
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-xing"
 )
 
 var _ = Describe("Hashes", func() {
@@ -18,7 +18,7 @@ var _ = Describe("Hashes", func() {
 		})
 		It("should produce the correct result regarding two hashes", func() {
 			hash := randomHash()
-			shouldBeGreaterHash, shouldBeLessHash := xing.Hash(make([]byte, 32)), xing.Hash(make([]byte, 32))
+			shouldBeGreaterHash, shouldBeLessHash := dark.Hash(make([]byte, 32)), dark.Hash(make([]byte, 32))
 			copy(shouldBeGreaterHash, hash)
 			copy(shouldBeLessHash, hash)
 
@@ -50,7 +50,7 @@ var _ = Describe("Hashes", func() {
 			for i, _ := range commitment {
 				commitment[i] = uint8(rand.Intn(256))
 			}
-			miner := xing.NewMiner(id, commitment)
+			miner := dark.NewMiner(id, commitment)
 			Ω(miner.ID).Should(Equal(id))
 			for i, _ := range miner.Commitment {
 				Ω(miner.Commitment[i]).Should(Equal(commitment[i]))
@@ -59,11 +59,11 @@ var _ = Describe("Hashes", func() {
 	})
 })
 
-func randomHash() xing.Hash {
+func randomHash() dark.Hash {
 	hash := make([]byte, 32)
 	for i, _ := range hash {
 		hash[i] = uint8(rand.Intn(256))
 	}
-	return xing.Hash(hash)
+	return dark.Hash(hash)
 
 }

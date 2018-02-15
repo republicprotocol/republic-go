@@ -1,13 +1,13 @@
-package xing_test
+package dark_test
 
 import (
 	"time"
 
-	"github.com/republicprotocol/go-xing"
+	"github.com/republicprotocol/go-dark-network"
 )
 
 const (
-	DefaultOptionsDebug           = xing.DebugOff
+	DefaultOptionsDebug           = dark.DebugOff
 	DefaultOptionsAlpha           = 3
 	DefaultOptionsMaxBucketLength = 20
 	DefaultOptionsTimeout         = 30 * time.Second

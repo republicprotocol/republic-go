@@ -1,4 +1,4 @@
-package xing_test
+package dark_test
 
 import (
 	"context"
@@ -11,11 +11,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/go-dark-network"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-sss"
-	"github.com/republicprotocol/go-xing"
 	"google.golang.org/grpc"
 )
 
@@ -70,10 +70,10 @@ func (delegate *mockDelegate) OnResultFragmentForwarding(to identity.Address, fr
 var _ = Describe("Xing overlay network", func() {
 	var mu = new(sync.Mutex)
 
-	startListening := func(nodes []*xing.Node, listeners []net.Listener) {
+	startListening := func(nodes []*dark.Node, listeners []net.Listener) {
 		Ω(len(nodes)).Should(Equal(len(listeners)))
 		for i, node := range nodes {
-			go func(node *xing.Node, listener net.Listener) {
+			go func(node *dark.Node, listener net.Listener) {
 				defer GinkgoRecover()
 				node.Register()
 				Ω(node.Server.Serve(listener)).ShouldNot(HaveOccurred())
@@ -81,7 +81,7 @@ var _ = Describe("Xing overlay network", func() {
 		}
 	}
 
-	stopListening := func(nodes []*xing.Node, listeners []net.Listener) {
+	stopListening := func(nodes []*dark.Node, listeners []net.Listener) {
 		for _, node := range nodes {
 			node.Server.Stop()
 		}
@@ -90,7 +90,7 @@ var _ = Describe("Xing overlay network", func() {
 		}
 	}
 
-	sendOrderFragments := func(nodes []*xing.Node, numberOfFragments int) {
+	sendOrderFragments := func(nodes []*dark.Node, numberOfFragments int) {
 		keyPair, err := identity.NewKeyPair()
 		Ω(err).ShouldNot(HaveOccurred())
 		to := keyPair.Address()
@@ -116,7 +116,7 @@ var _ = Describe("Xing overlay network", func() {
 		}
 	}
 
-	sendResultFragments := func(nodes []*xing.Node, numberOfFragments int) {
+	sendResultFragments := func(nodes []*dark.Node, numberOfFragments int) {
 		keyPair, err := identity.NewKeyPair()
 		Ω(err).ShouldNot(HaveOccurred())
 		to := keyPair.Address()
@@ -146,7 +146,7 @@ var _ = Describe("Xing overlay network", func() {
 			func(numberOfNodes, numberOfFragments int) {
 				Context("when sending order fragment", func() {
 
-					var nodes []*xing.Node
+					var nodes []*dark.Node
 					var listeners []net.Listener
 					var delegate *mockDelegate
 					var err error
@@ -186,7 +186,7 @@ var _ = Describe("Xing overlay network", func() {
 	}
 
 	Context("when using a malformed configuration", func() {
-		var nodes []*xing.Node
+		var nodes []*dark.Node
 		var listeners []net.Listener
 		var delegate *mockDelegate
 		var err error
@@ -208,8 +208,8 @@ var _ = Describe("Xing overlay network", func() {
 		})
 
 		It("should print certain logs when debug option is greater or equal than DebugHigh", func() {
-			nodes[0].Options.Debug = xing.DebugHigh
-			nodes[1].Options.Debug = xing.DebugHigh
+			nodes[0].Options.Debug = dark.DebugHigh
+			nodes[1].Options.Debug = dark.DebugHigh
 
 			listeners, err = createListener(numberOfNodes)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -274,9 +274,9 @@ var _ = Describe("Xing overlay network", func() {
 	Context("notifications of computation results", func() {
 
 		var (
-			nodes                    []*xing.Node
+			nodes                    []*dark.Node
 			listeners                []net.Listener
-			server, client           *xing.Node
+			server, client           *dark.Node
 			serverMulti, clientMulti identity.MultiAddress
 			delegate                 *mockDelegate
 			err                      error
@@ -293,7 +293,7 @@ var _ = Describe("Xing overlay network", func() {
 			listeners, err = createListener(numberOfNodes)
 			Ω(err).ShouldNot(HaveOccurred())
 			server, client = nodes[0], nodes[1]
-			server.Options.Debug = xing.DebugHigh
+			server.Options.Debug = dark.DebugHigh
 			serverMulti, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", DefaultNodePort, server.Address()))
 			Ω(err).ShouldNot(HaveOccurred())
 			clientMulti, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", DefaultNodePort+1, client.Address()))
@@ -370,17 +370,17 @@ func randomResultFragment() *compute.ResultFragment {
 	return resultFragment
 }
 
-func createNodes(delegate xing.Delegate, numberOfNodes int) ([]*xing.Node, error) {
-	nodes := make([]*xing.Node, numberOfNodes)
+func createNodes(delegate dark.Delegate, numberOfNodes int) ([]*dark.Node, error) {
+	nodes := make([]*dark.Node, numberOfNodes)
 	for i, _ := range nodes {
 		keyPair, err := identity.NewKeyPair()
 		if err != nil {
 			return nodes, err
 		}
-		node := xing.NewNode(
+		node := dark.NewNode(
 			grpc.NewServer(),
 			delegate,
-			xing.Options{
+			dark.Options{
 				Address:        keyPair.Address(),
 				Debug:          DefaultOptionsDebug,
 				Timeout:        DefaultOptionsTimeout,

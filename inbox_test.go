@@ -1,4 +1,4 @@
-package xing_test
+package dark_test
 
 import (
 	"math/big"
@@ -7,9 +7,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/go-dark-network"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-order-compute"
-	"github.com/republicprotocol/go-xing"
 )
 
 const Number_Of_New_Result = 1000
@@ -28,10 +28,10 @@ func newResult(i int) *compute.Result {
 }
 
 var _ = Describe("Inbox", func() {
-	var inbox *xing.Inbox
+	var inbox *dark.Inbox
 
 	BeforeEach(func() {
-		inbox = xing.NewInbox()
+		inbox = dark.NewInbox()
 	})
 
 	Context("add/retrieve result to/from the box", func() {
