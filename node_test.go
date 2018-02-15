@@ -318,28 +318,33 @@ var _ = Describe("Xing overlay network", func() {
 			Ω(len(results)).Should(Equal(number_of_results))
 		})
 
-		It("should be able to get new results", func() {
+		FIt("should be able to get new results", func() {
 			resultsChan, quit := rpc.NotificationsFromTarget(serverMulti, clientMulti, DefaultTimeOut)
 			results := make([]*compute.Result, 0)
 
+			var wg sync.WaitGroup
+			wg.Add(1)
 			go func() {
+				defer wg.Done()
 				defer GinkgoRecover()
 
-				for {
+				q := false
+				for !q {
 					select {
 					case result := <-resultsChan:
 						results = append(results, result.Ok.(*compute.Result))
 					case <-quit:
-						break
+						q = true
 					default:
 						continue
 					}
 				}
 			}()
+
 			time.Sleep(time.Second * 2)
 			quit <- struct{}{}
-
-			//Ω(len(results)).Should(Equal(number_of_results))
+			wg.Wait()
+			Ω(len(results)).Should(Equal(number_of_results))
 		})
 	})
 })
