@@ -96,13 +96,37 @@ var _ = Describe("Ethereum", func() {
 		err := user2Connection.Initiate(secretHash[:], auth1.From.Bytes(), auth2.From.Bytes(), value, time.Now().Add(48*time.Hour).Unix())
 		Ω(err).Should(BeNil())
 
-		// ALICE checks that Bob has set up the swap correctly
+		//ALICE tries to reem with wrong password, and then right password
 		user1Connection := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
 		wrongSecret := []byte("this is NOT the secret")
 		err = user1Connection.Redeem(wrongSecret)
 		// Error should NOT be nil
 		Ω(err).Should(Not(BeNil()))
 
+		err = user1Connection.Redeem(secret)
+		Ω(err).Should(BeNil())
+	})
+
+	It("can't expire before timeout", func() {
+		client := ethereum.Ropsten("https://ropsten.infura.io/")
+		auth1, auth2 := loadAccounts(client)
+		contractAddress := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
+
+		secret := []byte("this is the secret")
+		secretHash := sha256.Sum256(secret)
+
+		// BOB reciprocates the atomic swap with the secretHash
+		user2Connection := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
+		value := big.NewInt(0).Mul(ether, big.NewInt(1))
+		err := user2Connection.Initiate(secretHash[:], auth1.From.Bytes(), auth2.From.Bytes(), value, time.Now().Add(48*time.Hour).Unix())
+		Ω(err).Should(BeNil())
+
+		// Should NOT be able to refund
+		err = user2Connection.Refund()
+		Ω(err).Should(Not(BeNil()))
+
+		// ALICE redeems by revealing secret
+		user1Connection := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
 		err = user1Connection.Redeem(secret)
 		Ω(err).Should(BeNil())
 	})
