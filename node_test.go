@@ -67,7 +67,7 @@ func (delegate *mockDelegate) OnResultFragmentForwarding(to identity.Address, fr
 	delegate.numberOfForwardedResultFragment++
 }
 
-var _ = Describe("Xing overlay network", func() {
+var _ = Describe("dark network", func() {
 	var mu = new(sync.Mutex)
 
 	startListening := func(nodes []*dark.Node, listeners []net.Listener) {
