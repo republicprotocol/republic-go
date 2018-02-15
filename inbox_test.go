@@ -38,42 +38,40 @@ var _ = Describe("Inbox", func() {
 		It("should be able to sequentially add and retrieve result ", func() {
 			//  Add results
 			newResults := make([]*compute.Result, Number_Of_New_Result)
-			for i := range newResults {
-				newResults[i] = newResult(i)
+			for index := range newResults {
+				newResults[index] = newResult(index)
 			}
 			do.CoForAll(newResults, func(i int) {
 				inbox.AddNewResult(newResults[i])
 			})
 
+			// Get all new results
+			allNewResults := inbox.GetAllNewResults()
+			Ω(len(allNewResults)).Should(Equal(Number_Of_New_Result))
+
 			// Get all results
 			wg := new(sync.WaitGroup)
 			wg.Add(Number_Of_New_Result)
+
 			for i := 0; i < Number_Of_New_Result; i++ {
 				go func() {
 					defer GinkgoRecover()
 
 					results := inbox.GetAllResults()
-					Ω(len(results)).Should(Equal(1000))
+					Ω(len(results)).Should(Equal(Number_Of_New_Result))
 					wg.Done()
 				}()
 			}
 			wg.Wait()
-
-			results := inbox.GetAllNewResults()
-			Ω(len(results)).Should(BeNumerically(">", 0))
 		})
 	})
 
 	Context("simulate random functions concurrently", func() {
 		It("should handle concurrent calls properly", func() {
 			results := make([]*compute.Result, Number_Of_New_Result)
-			for i := range results {
-				results[i] = newResult(i)
+			for index := range results {
+				results[index] = newResult(index)
 			}
-			do.CoForAll(results, func(i int) {
-				inbox.AddNewResult(results[i])
-			})
-
 			wg := new(sync.WaitGroup)
 			wg.Add(Number_Of_New_Result)
 
@@ -93,11 +91,6 @@ var _ = Describe("Inbox", func() {
 					wg.Done()
 				}(i)
 			}
-			go func() {
-				defer GinkgoRecover()
-				results := inbox.GetAllNewResults()
-				Ω(len(results)).Should(BeNumerically(">", 0))
-			}()
 			wg.Wait()
 		})
 	})

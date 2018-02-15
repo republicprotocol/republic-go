@@ -39,9 +39,10 @@ func (inbox *Inbox) GetAllNewResults() []*compute.Result {
 }
 
 func (inbox *Inbox) GetAllResults() []*compute.Result{
-	inbox.EnterReadOnly(nil)
-	defer inbox.ExitReadOnly()
+	inbox.Enter(nil)
+	defer inbox.Exit()
 	ret := make([]*compute.Result, 0, len(inbox.results))
 	ret = append(ret, inbox.results...)
+	inbox.newResults = inbox.newResults[:0]
 	return ret
 }
