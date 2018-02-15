@@ -318,7 +318,7 @@ var _ = Describe("Xing overlay network", func() {
 			Ω(len(results)).Should(Equal(number_of_results))
 		})
 
-		FIt("should be able to get new results", func() {
+		It("should be able to get new results", func() {
 			resultsChan, quit := rpc.NotificationsFromTarget(serverMulti, clientMulti, DefaultTimeOut)
 			results := make([]*compute.Result, 0)
 
