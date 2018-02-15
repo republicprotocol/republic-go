@@ -5,6 +5,9 @@ import (
 	"github.com/republicprotocol/go-order-compute"
 )
 
+// Inbox stores the results for a certain trader address
+// It keeps a record of unread results. The guardedObject
+// ensures it is safe to use concurrently
 type Inbox struct {
 	do.GuardedObject
 
@@ -13,6 +16,7 @@ type Inbox struct {
 	hasNewResult *do.Guard
 }
 
+// NewInbox creates an empty Inbox.
 func NewInbox() *Inbox {
 	inbox := new(Inbox)
 	inbox.GuardedObject = do.NewGuardedObject()
@@ -22,12 +26,14 @@ func NewInbox() *Inbox {
 	return inbox
 }
 
+// AddNewResult adds new result into the inbox
 func (inbox *Inbox) AddNewResult(result *compute.Result) {
 	inbox.Enter(nil)
 	defer inbox.Exit()
 	inbox.results = append(inbox.results, result)
 }
 
+// GetAllNewResults returns all the unread results
 func (inbox *Inbox) GetAllNewResults() []*compute.Result {
 	inbox.Enter(inbox.hasNewResult)
 	defer inbox.Exit()
@@ -37,6 +43,7 @@ func (inbox *Inbox) GetAllNewResults() []*compute.Result {
 	return ret
 }
 
+// GetAllResults returns all the results in the inbox
 func (inbox *Inbox) GetAllResults() []*compute.Result {
 	inbox.Enter(nil)
 	defer inbox.Exit()
