@@ -58,13 +58,13 @@ var _ = Describe("Ethereum", func() {
 		secretHash := sha256.Sum256(secret)
 
 		// BOB reciprocates the atomic swap with the secretHash
-		user2Connection := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
+		user2Connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
 		value := big.NewInt(0).Mul(ether, big.NewInt(1))
 		err := user2Connection.Initiate(secretHash[:], auth1.From.Bytes(), auth2.From.Bytes(), value, time.Now().Add(48*time.Hour).Unix())
 		Ω(err).Should(BeNil())
 
 		// ALICE checks that Bob has set up the swap correctly
-		user1Connection := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
+		user1Connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
 		// Checks that the hash is right
 		retrievedHash, to, _, readValue, expiry, err := user1Connection.Read()
 		Ω(err).Should(BeNil())
@@ -91,12 +91,12 @@ var _ = Describe("Ethereum", func() {
 		secretHash := sha256.Sum256(secret)
 
 		// BOB reciprocates the atomic swap with the secretHash
-		user2Connection := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
+		user2Connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
 		err := user2Connection.Initiate(secretHash[:], auth1.From.Bytes(), auth2.From.Bytes(), ether, time.Now().Add(48*time.Hour).Unix())
 		Ω(err).Should(BeNil())
 
 		//ALICE tries to reem with wrong password, and then right password
-		user1Connection := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
+		user1Connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
 		wrongSecret := []byte("this is NOT the secret")
 		err = user1Connection.Redeem(wrongSecret)
 		// Error should NOT be nil
@@ -114,7 +114,7 @@ var _ = Describe("Ethereum", func() {
 		secretHash := sha256.Sum256(secret)
 
 		// BOB reciprocates the atomic swap with the secretHash
-		user2Connection := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
+		user2Connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
 		err := user2Connection.Initiate(secretHash[:], auth1.From.Bytes(), auth2.From.Bytes(), ether, time.Now().Add(48*time.Hour).Unix())
 		Ω(err).Should(BeNil())
 
@@ -123,7 +123,7 @@ var _ = Describe("Ethereum", func() {
 		Ω(err).Should(Not(BeNil()))
 
 		// ALICE redeems by revealing secret
-		user1Connection := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
+		user1Connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
 		err = user1Connection.Redeem(secret)
 		Ω(err).Should(BeNil())
 	})
@@ -137,17 +137,14 @@ var _ = Describe("Ethereum", func() {
 
 		timeout := time.Now().Add(time.Second * 10)
 
-		println("Iniatiating!")
 		// BOB reciprocates the atomic swap with the secretHash
-		user2Connection := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
+		user2Connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
 		err := user2Connection.Initiate(secretHash[:], auth1.From.Bytes(), auth2.From.Bytes(), ether, timeout.Unix())
 		Ω(err).Should(BeNil())
 
-		println("Sleeping!")
 		time.Sleep(time.Second * 10)
-		println("Refunding!")
 		// Should be able to refund
-		user1Connection := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
+		user1Connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
 		err = user1Connection.Refund()
 		Ω(err).Should(BeNil())
 	})
@@ -158,12 +155,17 @@ var _ = Describe("Ethereum", func() {
 
 		client := ethereum.Ropsten("https://ropsten.infura.io/")
 		auth, _ := loadAccounts(client)
-		connection := ethereum.NewETHAtomContract(context.Background(), client, auth, contractAddress, hash)
+		connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth, contractAddress, hash)
 
 		// Should NOT be able to refund
 		err = connection.Refund()
 		Ω(err).Should(Not(BeNil()))
 		// err = connection.Redeem([]byte("this is the secret"))
+	})
+
+	It("test utils", func() {
+		_, err := ethereum.BytesTo32Bytes([]byte("this is not 32 bytes long"))
+		Ω(err).Should(Not(BeNil()))
 	})
 
 })
