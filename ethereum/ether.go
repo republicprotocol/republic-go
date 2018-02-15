@@ -7,8 +7,6 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/ethclient"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/go-atom/ethereum/contracts"
@@ -32,7 +30,7 @@ func BytesTo32Bytes(bytes []byte) ([32]byte, error) {
 // ETHAtomContract ...
 type ETHAtomContract struct {
 	context context.Context
-	client  *ethclient.Client
+	client  Client
 	auth    *bind.TransactOpts
 	binding *contracts.AtomicSwapEther
 	swapID  [32]byte
@@ -40,7 +38,7 @@ type ETHAtomContract struct {
 }
 
 // NewETHAtomContract returns a new NewETHAtom instance
-func NewETHAtomContract(context context.Context, client *ethclient.Client, auth1 *bind.TransactOpts, address common.Address, data []byte) (*ETHAtomContract, error) {
+func NewETHAtomContract(context context.Context, client Client, auth1 *bind.TransactOpts, address common.Address, data []byte) (*ETHAtomContract, error) {
 	contract, err := contracts.NewAtomicSwapEther(address, bind.ContractBackend(client))
 	if err != nil {
 		return nil, err
