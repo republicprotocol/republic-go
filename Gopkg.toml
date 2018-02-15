@@ -24,6 +24,7 @@
 #   go-tests = true
 #   unused-packages = true
 
+
 [[constraint]]
   name = "github.com/golang/protobuf"
   version = "1.0.0"
@@ -39,6 +40,10 @@
 [[constraint]]
   branch = "master"
   name = "github.com/republicprotocol/go-atom"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/republicprotocol/go-do"
 
 [[constraint]]
   branch = "master"

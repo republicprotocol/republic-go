@@ -39,7 +39,7 @@ func (s *mockServer) Notifications(multiAddress *rpc.MultiAddress, stream rpc.Xi
 	return nil
 }
 
-func (s *mockServer) GetResults(multiAddress *rpc.MultiAddress,stream rpc.XingNode_GetResultsServer)  error {
+func (s *mockServer) GetResults(multiAddress *rpc.MultiAddress, stream rpc.XingNode_GetResultsServer) error {
 	stream.Send(rpc.SerializeResult(result))
 	return nil
 }
@@ -179,15 +179,15 @@ var _ = Describe("Xing Overlay Network", func() {
 			}(server)
 			defer server.Stop()
 
-			resultChan, _ := rpc.GetResultsFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
-			res := <- resultChan
-			Ω(res.Ok.(*compute.Result)).Should(Equal(result))
+			results, err := rpc.GetResultsFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(len(results)).Should(BeNumerically(">", 0))
+			Ω(results[0]).Should(Equal(result))
 		})
 
 		It("should return an error when dialing an offline server", func() {
-			resultChan, _ := rpc.GetResultsFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
-			res := <-resultChan
-			Ω(res.Err).ShouldNot(BeNil())
+			_, err := rpc.GetResultsFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
+			Ω(err).Should(HaveOccurred())
 		})
 	})
 })

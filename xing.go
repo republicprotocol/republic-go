@@ -108,57 +108,34 @@ func NotificationsFromTarget(target identity.MultiAddress, traderAddress identit
 }
 
 // GetResultsFromTarget using a new grpc.ClientConn to make a
-// GetResultsFromTarget RPC to a target identity.MultiAddress. This function
-// returns two channels. The first should be used to read compute.Results until
-// it is closed. The second should be closed by the caller when they no longer
-// want to receive compute.Results. After closing the quit channel, the caller
-// should read one last compute.Results from the first channel to guarantee
-// that no memory is leaked.
-func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.MultiAddress, timeout time.Duration) (chan do.Option, chan struct{}) {
-	ret := make(chan do.Option, 1)
-	quit := make(chan struct{}, 1)
+// GetResultsFromTarget RPC to a target identity.MultiAddress.
+func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.MultiAddress, timeout time.Duration) ([]*compute.Result, error) {
+	results := make([]*compute.Result, 0)
+	conn, err := Dial(target, timeout)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
 
-	go func() {
-		defer close(ret)
-		conn, err := Dial(target, timeout)
+	client := NewXingNodeClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	stream, err := client.GetResults(ctx, SerializeMultiAddress(traderAddress), grpc.FailFast(false))
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		result, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
-			ret <- do.Err(err)
-			return
+			return nil, err
 		}
-		defer conn.Close()
+		results = append(results, DeserializeResult(result))
+	}
 
-		client := NewXingNodeClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
-
-		stream, err := client.GetResults(ctx, SerializeMultiAddress(traderAddress), grpc.FailFast(false))
-		if err != nil {
-			ret <- do.Err(err)
-			return
-		}
-
-		for {
-			// Check if the quit channel is closed, without blocking.
-			select {
-			case _, ok := <-quit:
-				if !ok {
-					return
-				}
-			default:
-				// Do nothing.
-			}
-
-			result, err := stream.Recv()
-			if err == io.EOF {
-				return
-			}
-			if err != nil {
-				ret <- do.Err(err)
-				continue
-			}
-			ret <- do.Ok(DeserializeResult(result))
-		}
-	}()
-
-	return ret, quit
+	return results, nil
 }
