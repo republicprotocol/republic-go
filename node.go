@@ -249,8 +249,6 @@ func (node *Node) notifications(traderAddress *rpc.MultiAddress, stream rpc.Xing
 			}
 		}
 	}
-
-	return nil
 }
 
 func (node *Node) getResults(traderAddress *rpc.MultiAddress, stream rpc.XingNode_GetResultsServer) error {
