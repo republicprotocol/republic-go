@@ -138,26 +138,27 @@ var _ = Describe("Ethereum", func() {
 		Ω(err).Should(BeNil())
 	})
 
-	It("can expire after timeout", func() {
-		// Load client and accounts
-		client, auth1, auth2, contractAddress := loadClient()
+	// It("can expire after timeout", func() {
+	// 	// Load client and accounts
+	// 	client, auth1, auth2, contractAddress := loadClient()
 
-		secret := []byte("this is the secret")
-		secretHash := sha256.Sum256(secret)
+	// 	secret := []byte("this is the secret")
+	// 	secretHash := sha256.Sum256(secret)
 
-		timeout := time.Now().Add(time.Second * 10)
+	// 	timeout := time.Now()
 
-		// BOB reciprocates the atomic swap with the secretHash
-		user2Connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
-		err := user2Connection.Initiate(secretHash[:], auth1.From.Bytes(), auth2.From.Bytes(), ether, timeout.Unix())
-		Ω(err).Should(BeNil())
+	// 	// BOB reciprocates the atomic swap with the secretHash
+	// 	user2Connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
+	// 	err := user2Connection.Initiate(secretHash[:], auth1.From.Bytes(), auth2.From.Bytes(), ether, timeout.Unix())
+	// 	Ω(err).Should(BeNil())
 
-		time.Sleep(time.Second * 10)
-		// Should be able to refund
-		user1Connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
-		err = user1Connection.Refund()
-		Ω(err).Should(BeNil())
-	})
+	// 	time.Sleep(time.Second * 1)
+	// 	// Should be able to refund
+	// 	user1Connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
+
+	// 	err = user1Connection.Refund()
+	// 	Ω(err).Should(BeNil())
+	// })
 
 	It("can't expire an expired order", func() {
 		hash, err := hex.DecodeString("bdcf34f235c01c96c6110b30ea4cec8b78e90304271db5cef8b1b1eb34f0f71b")
