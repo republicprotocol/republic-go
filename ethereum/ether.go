@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log"
 	"math/big"
-	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -75,7 +74,7 @@ func (contract *ETHAtomContract) Initiate(hash, to, from []byte, value *big.Int,
 	authWithValue := contract.auth
 	authWithValue.Value = value
 	toAddress := common.BytesToAddress(to)
-	tx, err := contract.binding.Open(authWithValue, contract.swapID, toAddress, hash32)
+	tx, err := contract.binding.Open(authWithValue, contract.swapID, toAddress, hash32, big.NewInt(expiry))
 	if err != nil {
 		return err
 	}
@@ -90,7 +89,7 @@ func (contract *ETHAtomContract) Read() (hash, to, from []byte, value *big.Int, 
 		ret.WithdrawTrader.Bytes(),
 		nil,
 		ret.Value,
-		time.Now().Unix() + ret.TimeRemaining.Int64(),
+		ret.Timelock.Int64(),
 		err
 }
 
