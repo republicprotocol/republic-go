@@ -1,11 +1,11 @@
 # Dark Network
 
-[![Build Status](https://travis-ci.org/republicprotocol/go-dark-network.svg?branch=master)](https://travis-ci.org/republicprotocol/go-xing)
-[![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-dark-network/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-xing?branch=master)
+[![Build Status](https://travis-ci.org/republicprotocol/go-dark-network.svg?branch=master)](https://travis-ci.org/republicprotocol/go-dark-network)
+[![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-dark-network/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-dark-network?branch=master)
 
 > This library is a work in progress.
 
-The Xing library is an official reference implementation of the Xing overlay network for the Republic Protocol, written in Go. It supports the calculation of the number of classes in the Xing Network, and the number of M Networks in the Xing Network. It also supports the assignment of classes and M Networks, based on an Epoch hash.
+The Dark library is an official reference implementation of the Dark Network for the Republic Protocol, written in Go. It supports the calculation of the number of classes in the Dark Network, and the number of M Networks in the Dark Network. It also supports the assignment of classes and M Networks, based on an Epoch hash.
 
 More details on the inner workings of the Dark Network will be made available on the Republic Protocol Wiki in the future.
 
@@ -40,4 +40,4 @@ ginkgo -v --race --trace --cover --coverprofile coverprofile.out
 
 ## License
 
-The X library was developed by the Republic Protocol team and is available under the MIT license. For more information, see our website https://republicprotocol.com.
+The Dark library was developed by the Republic Protocol team and is available under the MIT license. For more information, see our website https://republicprotocol.com.
