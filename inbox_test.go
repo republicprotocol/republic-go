@@ -76,14 +76,14 @@ var _ = Describe("Inbox", func() {
 			wg.Add(Number_Of_New_Result)
 
 			operations := []string{"add", "all"}
-			for i:= 0; i <Number_Of_New_Result; i ++{
+			for i := 0; i < Number_Of_New_Result; i++ {
 				go func(i int) {
 					defer GinkgoRecover()
 
 					operation := operations[rand.Intn(2)]
 					switch operation {
 					case "add":
-						result:= newResult(i)
+						result := newResult(i)
 						inbox.AddNewResult(result)
 					case "all":
 						_ = inbox.GetAllResults()
