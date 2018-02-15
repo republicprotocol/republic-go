@@ -313,7 +313,7 @@ var _ = Describe("Xing overlay network", func() {
 		})
 
 		It("should be able to get all results", func() {
-			results ,err := rpc.GetResultsFromTarget(serverMulti, clientMulti, DefaultTimeOut)
+			results, err := rpc.GetResultsFromTarget(serverMulti, clientMulti, DefaultTimeOut)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(results)).Should(Equal(number_of_results))
 		})
@@ -327,16 +327,16 @@ var _ = Describe("Xing overlay network", func() {
 
 				for {
 					select {
-					case result := <- resultsChan:
+					case result := <-resultsChan:
 						results = append(results, result.Ok.(*compute.Result))
-					case <- quit:
+					case <-quit:
 						break
 					default:
 						continue
 					}
 				}
 			}()
-			time.Sleep(time.Second * 2 )
+			time.Sleep(time.Second * 2)
 			quit <- struct{}{}
 
 			//Ω(len(results)).Should(Equal(number_of_results))
