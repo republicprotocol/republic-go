@@ -154,6 +154,7 @@ var _ = Describe("Ethereum", func() {
 
 	// 	time.Sleep(time.Second * 1)
 	// 	// Should be able to refund
+	// 	// auth1.GasLimit = 250000
 	// 	user1Connection, _ := ethereum.NewETHAtomContract(context.Background(), client, auth1, contractAddress, user2Connection.GetData())
 
 	// 	err = user1Connection.Refund()

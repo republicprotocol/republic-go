@@ -68,11 +68,13 @@ func DeployETH(connection bind.ContractBackend, auth *bind.TransactOpts) (*types
 // PatchedWaitMined waits for tx to be mined on the blockchain.
 // It stops waiting when the context is canceled.
 // (Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt)
+// NOTE: If something goes wrong, this will hang!
 func PatchedWaitMined(ctx context.Context, b Client, tx *types.Transaction) (*types.Receipt, error) {
 
 	sim, ok := b.(*backends.SimulatedBackend)
 	if ok {
 		sim.Commit()
+		sim.AdjustTime(10 * time.Second)
 	}
 
 	queryTicker := time.NewTicker(time.Second)
