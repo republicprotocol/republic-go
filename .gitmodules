@@ -1,0 +1,3 @@
+[submodule "contracts/eth-republic"]
+	path = contracts/eth-republic
+	url = git@github.com:republicprotocol/eth-republic.git
