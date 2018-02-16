@@ -6,9 +6,6 @@ import (
 	"errors"
 	"log"
 	"math/big"
-	"time"
-
-	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -17,7 +14,8 @@ import (
 	// "github.com/ethereum/go-ethereum/core/types"
 )
 
-func bytesTo32Bytes(bytes []byte) ([32]byte, error) {
+// BytesTo32Bytes ...
+func BytesTo32Bytes(bytes []byte) ([32]byte, error) {
 	var bytes32 [32]byte
 	if len(bytes) != 32 {
 		return bytes32, errors.New("Expected 32 bytes")
@@ -32,7 +30,7 @@ func bytesTo32Bytes(bytes []byte) ([32]byte, error) {
 // ETHAtomContract ...
 type ETHAtomContract struct {
 	context context.Context
-	client  *ethclient.Client
+	client  Client
 	auth    *bind.TransactOpts
 	binding *contracts.AtomicSwapEther
 	swapID  [32]byte
@@ -40,10 +38,10 @@ type ETHAtomContract struct {
 }
 
 // NewETHAtomContract returns a new NewETHAtom instance
-func NewETHAtomContract(context context.Context, client *ethclient.Client, auth1 *bind.TransactOpts, address common.Address, data []byte) *ETHAtomContract {
+func NewETHAtomContract(context context.Context, client Client, auth1 *bind.TransactOpts, address common.Address, data []byte) (*ETHAtomContract, error) {
 	contract, err := contracts.NewAtomicSwapEther(address, bind.ContractBackend(client))
 	if err != nil {
-		log.Fatalf("%v", err)
+		return nil, err
 	}
 
 	var swapID [32]byte
@@ -51,10 +49,10 @@ func NewETHAtomContract(context context.Context, client *ethclient.Client, auth1
 		swapID = [32]byte{}
 		_, err = rand.Read(swapID[:])
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 	} else {
-		swapID, err = bytesTo32Bytes(data)
+		swapID, err = BytesTo32Bytes(data)
 	}
 
 	return &ETHAtomContract{
@@ -63,19 +61,19 @@ func NewETHAtomContract(context context.Context, client *ethclient.Client, auth1
 		auth:    auth1,
 		binding: contract,
 		swapID:  swapID,
-	}
+	}, nil
 }
 
 // Initiate starts or reciprocates an atomic swap
 func (contract *ETHAtomContract) Initiate(hash, to, from []byte, value *big.Int, expiry int64) (err error) {
-	hash32, err := bytesTo32Bytes(hash)
+	hash32, err := BytesTo32Bytes(hash)
 	if err != nil {
 		log.Fatalf("Expected 32 bytes: %v", err)
 	}
 	authWithValue := contract.auth
 	authWithValue.Value = value
 	toAddress := common.BytesToAddress(to)
-	tx, err := contract.binding.Open(authWithValue, contract.swapID, toAddress, hash32)
+	tx, err := contract.binding.Open(authWithValue, contract.swapID, toAddress, hash32, big.NewInt(expiry))
 	if err != nil {
 		return err
 	}
@@ -90,7 +88,7 @@ func (contract *ETHAtomContract) Read() (hash, to, from []byte, value *big.Int, 
 		ret.WithdrawTrader.Bytes(),
 		nil,
 		ret.Value,
-		time.Now().Unix() + ret.TimeRemaining.Int64(),
+		ret.Timelock.Int64(),
 		err
 }
 

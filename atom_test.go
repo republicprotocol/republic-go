@@ -53,7 +53,7 @@ var _ = Describe("Atom", func() {
 		// Bob
 		auth1, auth2 := loadAccounts()
 		client := ethereum.Ropsten("https://ropsten.infura.io/")
-		contractAddress := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
+		contractAddress := common.HexToAddress("0xbd59e72598737a08a68fe192df04c773adbbfa53")
 		user2Connection := ethereum.NewETHAtomContract(context.Background(), client, auth2, contractAddress, nil)
 		err = user2Connection.Initiate(hashLock[:], auth1.From.Bytes(), auth2.From.Bytes(), ether, time.Now().Add(48*time.Hour).Unix())
 		Ω(err).Should(BeNil())

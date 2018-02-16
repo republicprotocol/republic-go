@@ -24,6 +24,7 @@ func (contract *ERC20AtomContract) ReadSecret() (secret []byte, err error) {
 	panic("unimplemented")
 }
 
+// Redeem ...
 func (contract *ERC20AtomContract) Redeem(secret []byte) error {
 	panic("unimplemented")
 }
