@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"math/big"
 	"os"
 
 	"github.com/republicprotocol/go-identity"
@@ -14,6 +15,7 @@ type Config struct {
 	KeyPair                 identity.KeyPair        `json:"key_pair"`
 	MultiAddress            identity.MultiAddress   `json:"multi_address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
+	Prime                   *big.Int                `json:"prime"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config

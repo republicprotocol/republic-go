@@ -220,5 +220,10 @@ func (node *DarkNode) BroadcastComputationBlockConsensus(computationBlock Comput
 }
 
 func (node *DarkNode) Compute(computationBlock ComputationBlock) {
-
+	resultFragments := computationBlock.Compute(node.Configuration.Prime)
+	do.ForAll(node.DarkPool, func(i int) {
+		peer := node.DarkPool[i]
+		// TODO: send result fragments
+		// peer.SendResultFragment(resultFragment)
+	})
 }
