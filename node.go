@@ -3,8 +3,11 @@ package node
 import (
 	"log"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/republicprotocol/go-do"
 
 	"github.com/republicprotocol/go-dark-network"
 	"github.com/republicprotocol/go-identity"
@@ -21,6 +24,7 @@ type DarkNode struct {
 
 	HiddenOrderBook *compute.HiddenOrderBook
 	DarkPool        MultiAddresses
+	DarkPoolLimit   int
 
 	quitServer chan struct{}
 	quitPacker chan struct{}
@@ -72,21 +76,21 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 func (node *DarkNode) Start() {
 	// Start both gRPC servers.
 	go func() {
-		log.Printf("Listening on %s:%s\n", miner.Configuration.Host, miner.Configuration.Port)
-		miner.Swarm.Register()
-		miner.Xing.Register()
-		listener, err := net.Listen("tcp", miner.Configuration.Host+":"+miner.Configuration.Port)
+		log.Printf("Listening on %s:%s\n", node.Configuration.Host, node.Configuration.Port)
+		node.Swarm.Register()
+		node.Xing.Register()
+		listener, err := net.Listen("tcp", node.Configuration.Host+":"+node.Configuration.Port)
 		if err != nil {
 			log.Fatal(err)
 		}
-		if err := miner.Server.Serve(listener); err != nil {
+		if err := node.Server.Serve(listener); err != nil {
 			log.Fatal(err)
 		}
 	}()
 
 	// Wait for the server to start and bootstrap the connections in the swarm.
 	time.Sleep(time.Second)
-	miner.Swarm.Bootstrap()
+	node.Swarm.Bootstrap()
 
 	// Wait until the signal for stopping the server is received, and then call
 	// Stop.
@@ -102,45 +106,44 @@ func (node *DarkNode) Stop() {
 
 // OnPingReceived implements the swarm.Delegate interface. It is used by the
 // underlying swarm.Node whenever the Miner has handled a Ping RPC.
-func (miner *Miner) OnPingReceived(peer identity.MultiAddress) {
+func (node *DarkNode) OnPingReceived(peer identity.MultiAddress) {
 }
 
 // OnQueryCloserPeersReceived implements the swarm.Delegate interface. It is
 // used by the underlying swarm.Node whenever the Miner has handled a
 // QueryCloserPeers RPC.
-func (miner *Miner) OnQueryCloserPeersReceived(peer identity.MultiAddress) {
+func (node *DarkNode) OnQueryCloserPeersReceived(peer identity.MultiAddress) {
 }
 
 // OnQueryCloserPeersOnFrontierReceived implements the swarm.Delegate
 // interface. It is called by the underlying swarm.Node whenever the Miner
 // has handled a QueryCloserPeersOnFrontier RPC.
-func (miner *Miner) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAddress) {
+func (node *DarkNode) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAddress) {
 }
 
 // OnOrderFragmentReceived implements the xing.Delegate interface. It is called
 // by the underlying xing.Node whenever the Miner receives a
 // compute.OrderFragment that it must process.
-func (miner *Miner) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
-	miner.HiddenOrderBook.AddOrderFragment(orderFragment)
+func (node *DarkNode) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
+	node.HiddenOrderBook.AddOrderFragment(orderFragment)
 }
 
 // OnResultFragmentReceived implements the xing.Delegate interface. It is
 // called by the underlying xing.Node whenever the Miner receives a
 // compute.ResultFragment that it must process.
-func (miner *Miner) OnResultFragmentReceived(from identity.MultiAddress, resultFragment *compute.ResultFragment) {
-	miner.addResultFragments([]*compute.ResultFragment{resultFragment})
+func (node *DarkNode) OnResultFragmentReceived(from identity.MultiAddress, resultFragment *compute.ResultFragment) {
 }
 
 // OnOrderFragmentForwarding implements the xing.Delegate interface. It is
 // called by the underlying xing.Node whenever the Miner receives a
 // compute.OrderFragment that it must forward to the correct xing.Node.
-func (miner *Miner) OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment) {
+func (node *DarkNode) OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment) {
 }
 
 // OnResultFragmentForwarding implements the xing.Delegate interface. It is
 // called by the underlying xing.Node whenever the Miner receives a
 // compute.ResultFragment that it must forward to the correct xing.Node.
-func (miner *Miner) OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, resultFragment *compute.ResultFragment) {
+func (node *DarkNode) OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, resultFragment *compute.ResultFragment) {
 }
 
 func (node *DarkNode) RunPacker() {
@@ -157,7 +160,10 @@ func (node *DarkNode) RunPacker() {
 		for atomic.LoadInt64(&running) != 0 {
 			select {
 			case computationBlock := <-computationBlockChan:
-				node.BroadcastComputationBlock(computationBlock)
+				go func() {
+					computationBlockConsensus := node.BroadcastComputationBlock(computationBlock)
+					node.BroadcastComputationBlockConsensus(computationBlockConsensus)
+				}()
 			case <-node.quitPacker:
 				atomic.StoreInt64(&running, 0)
 			}
@@ -166,7 +172,53 @@ func (node *DarkNode) RunPacker() {
 }
 
 func (node *DarkNode) BroadcastComputationBlock(computationBlock ComputationBlock) {
-	for _, multiAddress := range node.DarkPool {
-		// TODO: send computation block to each node in our dark pool.
+	// Track all of the no bids on computations.
+	nosMu := new(sync.Mutex)
+	nos := map[string]int{}
+
+	do.ForAll(node.DarkPool, func(i int) {
+		peer := node.DarkPool[i]
+		// TODO: send computation block and get response
+		// computationBlockBids := peer.SendComputationBlockProposal(computationBlock)
+		computationBlockBids := struct{}{}
+
+		func() {
+			nosMu.Lock()
+			defer nosMu.Unlock()
+			for computationID, bid := range computationBlockBids {
+				if bid == compute.ComputationBidYes {
+					continue
+				}
+				nos[computationID]++
+			}
+		}()
+	})
+
+	// Create a new slice of compute.Computations for which more than
+	// 2/3rds of the dark pool can participate.
+	computations := make([]*compute.Computation, 0, len(computationBlock.Computations))
+	for _, computation := range computationBlock.Computations {
+		if noBids[string(computation.ID)] >= node.DarkPoolLimit {
+			continue
+		}
+		computations = append(computations, computation)
 	}
+
+	computationBlockConsensus := compute.NewComputationBlock(computations)
+	return computationBlockConsensus
+}
+
+func (node *DarkNode) BroadcastComputationBlockConsensus(computationBlock ComputationBlock) {
+	go func() {
+		node.Compute(computationBlock)
+	}()
+	do.ForAll(node.DarkPool, func(i int) {
+		peer := node.DarkPool[i]
+		// TODO: send computation block and get response
+		// peer.SendComputationBlockConsensus(computationBlock)
+	})
+}
+
+func (node *DarkNode) Compute(computationBlock ComputationBlock) {
+
 }
