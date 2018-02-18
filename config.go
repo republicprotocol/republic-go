@@ -1,4 +1,4 @@
-package miner
+package node
 
 import (
 	"encoding/json"
@@ -7,11 +7,11 @@ import (
 	"github.com/republicprotocol/go-identity"
 )
 
-// Config information for Miners
+// Config information for DarkNodes
 type Config struct {
 	Host                    string                  `json:"host"`
 	Port                    string                  `json:"port"`
-	KeyPair                 string                  `json:"key_pair"`
+	KeyPair                 identity.KeyPair        `json:"key_pair"`
 	MultiAddress            identity.MultiAddress   `json:"multi_address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
 }
