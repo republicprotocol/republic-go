@@ -34,7 +34,7 @@ type DarkNode struct {
 // new DarkNode as the delegate for both. Returns the new DarkNode, or an error.
 func NewDarkNode(config *Config) (*DarkNode, error) {
 	node := &DarkNode{
-		HiddenOrderBook: compute.NewHiddenOrderBook(4),
+		HiddenOrderBook: compute.NewHiddenOrderBook(config.ComputationBlockSize),
 		Server:          grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
 		Configuration:   config,
 
@@ -146,7 +146,7 @@ func (node *DarkNode) OnOrderFragmentForwarding(to identity.Address, from identi
 func (node *DarkNode) OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, resultFragment *compute.ResultFragment) {
 }
 
-func (node *DarkNode) RunPacker() {
+func (node *DarkNode) RunComputationBlockPacker() {
 	go func() {
 		running := int64(1)
 
@@ -164,6 +164,14 @@ func (node *DarkNode) RunPacker() {
 					computationBlockConsensus := node.BroadcastComputationBlock(computationBlock)
 					node.BroadcastComputationBlockConsensus(computationBlockConsensus)
 				}()
+			case <-time.Tick(time.Second * node.Configuration.ComputationBlockInterval):
+				preemptedComputationBlock := node.HiddenOrderBook.PreemptComputationBlock()
+				if len(preemptedComputationBlock) > 0 {
+					go func() {
+						computationBlockConsensus := node.BroadcastComputationBlock(preemptedComputationBlock)
+						node.BroadcastComputationBlockConsensus(computationBlockConsensus)
+					}()
+				}
 			case <-node.quitPacker:
 				atomic.StoreInt64(&running, 0)
 			}
@@ -226,4 +234,16 @@ func (node *DarkNode) Compute(computationBlock ComputationBlock) {
 		// TODO: send result fragments
 		// peer.SendResultFragment(resultFragment)
 	})
+}
+
+func (node *DarkNode) BidOnComputationBlock(computationBlock compute.ComputationBlock) compute.ComputationBlockBid {
+	computationBlockBid := compute.ComputationBlockBid{
+		ID:   computationBlock.ID,
+		Bids: map[string]compute.ComputationBid{},
+	}
+	for _, computation := range computationBlock {
+		computationBlockBid.Bids[string(computation.ID)] = compute.ComputationBidNo
+	}
+	// FIXME:
+	return computationBlockBid
 }

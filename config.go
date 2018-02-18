@@ -15,7 +15,10 @@ type Config struct {
 	KeyPair                 identity.KeyPair        `json:"key_pair"`
 	MultiAddress            identity.MultiAddress   `json:"multi_address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
-	Prime                   *big.Int                `json:"prime"`
+
+	ComputationBlockSize     int      `json:"computation_block_size"`
+	ComputationBlockInterval int      `json:"computation_block_interval"`
+	Prime                    *big.Int `json:"prime"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config
