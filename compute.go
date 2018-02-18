@@ -40,34 +40,37 @@ func (computation *Computation) Sub(prime *big.Int) (*ResultFragment, error) {
 	return computation.BuyOrderFragment.Sub(computation.SellOrderFragment, prime)
 }
 
-type Computer struct {
+type HiddenOrderBook struct {
 	do.GuardedObject
 
 	orderFragments []*OrderFragment
+	blockSize      int
 
-	computations           []*Computation
-	computationsIsNotEmpty *do.Guard
+	pendingComputations              []*Computation
+	pendingComputationsReadyForBlock *do.Guard
 }
 
-// NewComputer returns a new Computer with no OrderFragments, or Computations.
-func NewComputer() *Computer {
-	computer := new(Computer)
-	computer.GuardedObject = do.NewGuardedObject()
-	computer.orderFragments = make([]*OrderFragment, 0)
-	computer.computations = make([]*Computation, 0)
-	computer.computationsIsNotEmpty = computer.Guard(func() bool { return len(computer.computations) > 0 })
-	return computer
+// NewHiddenOrderBook returns a new HiddenOrderBook with no OrderFragments, or
+// Computations.
+func NewHiddenOrderBook(blockSize int) *HiddenOrderBook {
+	orderBook := new(HiddenOrderBook)
+	orderBook.GuardedObject = do.NewGuardedObject()
+	orderBook.orderFragments = make([]*OrderFragment, 0)
+	orderBook.blockSize = blockSize
+	orderBook.pendingComputations = make([]*Computation, 0)
+	orderBook.pendingComputationsReadyForBlock = orderBook.Guard(func() bool { return len(orderBook.pendingComputations) >= blockSize })
+	return orderBook
 }
 
-func (computer *Computer) AddOrderFragment(orderFragment *OrderFragment) {
-	computer.Enter(nil)
-	defer computer.Exit()
-	computer.addOrderFragment(orderFragment)
+func (orderBook *HiddenOrderBook) AddOrderFragment(orderFragment *OrderFragment) {
+	orderBook.Enter(nil)
+	defer orderBook.Exit()
+	orderBook.addOrderFragment(orderFragment)
 }
 
-func (computer *Computer) addOrderFragment(orderFragment *OrderFragment) {
+func (orderBook *HiddenOrderBook) addOrderFragment(orderFragment *OrderFragment) {
 	// Check that the OrderFragment has not been added.
-	for _, rhs := range computer.orderFragments {
+	for _, rhs := range orderBook.orderFragments {
 		if orderFragment.ID.Equals(rhs.ID) {
 			return
 		}
@@ -75,7 +78,7 @@ func (computer *Computer) addOrderFragment(orderFragment *OrderFragment) {
 
 	// For all other OrderFragment in the Computer, create a new Computation
 	// that needs to be processed.
-	for _, other := range computer.orderFragments {
+	for _, other := range orderBook.orderFragments {
 		if orderFragment.OrderID.Equals(other.OrderID) {
 			continue
 		}
@@ -86,17 +89,24 @@ func (computer *Computer) addOrderFragment(orderFragment *OrderFragment) {
 		if err != nil {
 			continue
 		}
-		computer.computations = append(computer.computations, computation)
+		orderBook.pendingComputations = append(orderBook.pendingComputations, computation)
 	}
-	computer.orderFragments = append(computer.orderFragments, orderFragment)
+	orderBook.orderFragments = append(orderBook.orderFragments, orderFragment)
 }
 
-func (computer *Computer) Compute() []*Result {
-	computer.Enter(computer.computationsIsNotEmpty)
-	defer computer.Exit()
-	return computer.compute()
+func (orderBook *HiddenOrderBook) PendingComputationsForBlock() []*Computation {
+	orderBook.Enter(orderBook.pendingComputationsReadyForBlock)
+	defer orderBook.Exit()
+	return orderBook.pendingComputationsForBlock()
 }
 
-func (computer *Computer) compute() []*Result {
-	panic("unimplemented")
+func (orderBook *HiddenOrderBook) pendingComputationsForBlock() []*Computation {
+	blockSize := orderBook.blockSize
+	if blockSize > len(orderBook.pendingComputations) {
+		blockSize = len(orderBook.pendingComputations)
+	}
+	pendingComputations := make([]*Computation, 0, blockSize)
+	pendingComputations = append(pendingComputations, orderBook.pendingComputations[len(orderBook.pendingComputations)-blockSize:]...)
+	orderBook.pendingComputations = orderBook.pendingComputations[0 : len(orderBook.pendingComputations)-blockSize]
+	return pendingComputations
 }
