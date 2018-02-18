@@ -11,7 +11,9 @@ import (
 type Config struct {
 	Host                    string                  `json:"host"`
 	Port                    string                  `json:"port"`
-	KeyPair                 string                  `json:"key_pair"`
+	EthereumPrivateKey      string                  `josn:"ethereum_private_key"`
+	RepublicKeyPair         string                  `json:"republic_key_pair"`
+	RSAKeyPair              string                  `json:"rsa_key_pair"`
 	MultiAddress            identity.MultiAddress   `json:"multi_address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
 }

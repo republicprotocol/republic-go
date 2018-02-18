@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/jbenet/go-base58"
+	"github.com/republicprotocol/go-dark-network"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-swarm-network"
-	"github.com/republicprotocol/go-xing"
 	"google.golang.org/grpc"
 )
 
@@ -28,12 +28,12 @@ type Miner struct {
 	Computer      *compute.ComputationMatrix
 	Server        *grpc.Server
 	Swarm         *swarm.Node
-	Xing          *xing.Node
+	Dark          *dark.Node
 	Configuration *Config
 	quit          chan struct{}
 }
 
-// NewMiner creates a new Miner, a new swarm.Node and xing.Node and assigns the
+// NewMiner creates a new Miner, a new swarm.Node and dark.Node and assigns the
 // new Miner as the delegate for both. Returns the new Miner, or an error.
 func NewMiner(config *Config) (*Miner, error) {
 	miner := &Miner{
@@ -57,16 +57,16 @@ func NewMiner(config *Config) (*Miner, error) {
 	swarmNode := swarm.NewNode(miner.Server, miner, swarmOptions)
 	miner.Swarm = swarmNode
 
-	xingOptions := xing.Options{
+	darkOptions := dark.Options{
 		Address:        config.MultiAddress.Address(),
-		Debug:          xing.DebugHigh,
+		Debug:          dark.DebugHigh,
 		Timeout:        30 * time.Second,
 		TimeoutStep:    30 * time.Second,
 		TimeoutRetries: 3,
 		Concurrent:     true,
 	}
-	xingNode := xing.NewNode(miner.Server, miner, xingOptions)
-	miner.Xing = xingNode
+	darkNode := dark.NewNode(miner.Server, miner, darkOptions)
+	miner.Dark = darkNode
 
 	return miner, nil
 }
@@ -79,7 +79,7 @@ func (miner *Miner) Start() {
 	go func() {
 		log.Printf("Listening on %s:%s\n", miner.Configuration.Host, miner.Configuration.Port)
 		miner.Swarm.Register()
-		miner.Xing.Register()
+		miner.Dark.Register()
 		listener, err := net.Listen("tcp", miner.Configuration.Host+":"+miner.Configuration.Port)
 		if err != nil {
 			log.Fatal(err)
@@ -89,9 +89,19 @@ func (miner *Miner) Start() {
 		}
 	}()
 
+	//todo : check if the node is registered
+
+	//todo: get dark pool config from the dark node registrar contract
+	nodesInDarkPool := identity.MultiAddresses{}
+
 	// Wait for the server to start and bootstrap the connections in the swarm.
 	time.Sleep(time.Second)
 	miner.Swarm.Bootstrap()
+
+	// Ping all nodes in the same dark pool
+	miner.pingDarkPool(nodesInDarkPool)
+
+	// todo : sync hidden order book
 
 	// Start the compute.Order processing loop.
 	loop := make(chan struct{}, 1)
@@ -162,9 +172,26 @@ func (miner Miner) addResultFragments(resultFragments []*compute.ResultFragment)
 	results, _ := miner.Computer.AddResultFragments(resultFragments, K, Prime)
 	for _, result := range results {
 		if result.IsMatch(Prime) {
-			miner.Xing.Notify(result)
+			miner.Dark.Notify(result)
 			log.Printf("%v found a match! [%s, %s]\n", miner.Swarm.Address(), base58.Encode(result.BuyOrderID), base58.Encode(result.SellOrderID))
 		}
+	}
+}
+
+// Ping all nodes in the same darkpool, store them in the DHT if respond.
+func(miner *Miner) pingDarkPool(multis identity.MultiAddresses) {
+	for _, multi := range multis{
+		go func() {
+			err := rpc.PingTarget(multi,miner.Configuration.MultiAddress,time.Second * 2)// todo: timeout
+			if err == nil {
+				 err = miner.Swarm.DHT.UpdateMultiAddress(multi)
+				 if err != nil {
+				 	if miner.Swarm.Options.Debug >= swarm.DebugLow{
+						log.Printf("error: fail to update node %s, %s ",multi.Address().String(), err)
+					}
+				 }
+			}
+		}()
 	}
 }
 
@@ -185,28 +212,28 @@ func (miner *Miner) OnQueryCloserPeersReceived(peer identity.MultiAddress) {
 func (miner *Miner) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAddress) {
 }
 
-// OnOrderFragmentReceived implements the xing.Delegate interface. It is called
-// by the underlying xing.Node whenever the Miner receives a
+// OnOrderFragmentReceived implements the dark.Delegate interface. It is called
+// by the underlying dark.Node whenever the Miner receives a
 // compute.OrderFragment that it must process.
 func (miner *Miner) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
 	miner.Computer.AddOrderFragment(orderFragment)
 }
 
-// OnResultFragmentReceived implements the xing.Delegate interface. It is
-// called by the underlying xing.Node whenever the Miner receives a
+// OnResultFragmentReceived implements the dark.Delegate interface. It is
+// called by the underlying dark.Node whenever the Miner receives a
 // compute.ResultFragment that it must process.
 func (miner *Miner) OnResultFragmentReceived(from identity.MultiAddress, resultFragment *compute.ResultFragment) {
 	miner.addResultFragments([]*compute.ResultFragment{resultFragment})
 }
 
-// OnOrderFragmentForwarding implements the xing.Delegate interface. It is
-// called by the underlying xing.Node whenever the Miner receives a
-// compute.OrderFragment that it must forward to the correct xing.Node.
+// OnOrderFragmentForwarding implements the dark.Delegate interface. It is
+// called by the underlying dark.Node whenever the Miner receives a
+// compute.OrderFragment that it must forward to the correct dark.Node.
 func (miner *Miner) OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment) {
 }
 
-// OnResultFragmentForwarding implements the xing.Delegate interface. It is
-// called by the underlying xing.Node whenever the Miner receives a
-// compute.ResultFragment that it must forward to the correct xing.Node.
+// OnResultFragmentForwarding implements the dark.Delegate interface. It is
+// called by the underlying dark.Node whenever the Miner receives a
+// compute.ResultFragment that it must forward to the correct dark.Node.
 func (miner *Miner) OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, resultFragment *compute.ResultFragment) {
 }
