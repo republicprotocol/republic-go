@@ -172,7 +172,7 @@ func (miner Miner) addResultFragments(resultFragments []*compute.ResultFragment)
 	results, _ := miner.Computer.AddResultFragments(resultFragments, K, Prime)
 	for _, result := range results {
 		if result.IsMatch(Prime) {
-			miner.Dark.Notify(result)
+			// miner.Dark.Notify(result)
 			log.Printf("%v found a match! [%s, %s]\n", miner.Swarm.Address(), base58.Encode(result.BuyOrderID), base58.Encode(result.SellOrderID))
 		}
 	}
