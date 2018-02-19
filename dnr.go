@@ -18,21 +18,9 @@ type EthereumClient struct {
 	auth1   *bind.TransactOpts
 	auth2   *bind.CallOpts
 	binding *contracts.DarkNodeRegistrar
-	chainID int8
 }
 
-// type DarkNode struct {
-// 	ethereumClient     EthereumClient
-// 	owner              string
-// 	bond               big.Int
-// 	publicKey          []byte
-// 	commitment         [32]byte
-// 	registeredPosition big.Int
-// 	registeredAt       big.Int
-// 	deregisteredAt     big.Int
-// }
-
-func NewDarkNodeRegistrar(context context.Context, client *ethclient.Client, auth1 *bind.TransactOpts, auth2 *bind.CallOpts, address common.Address, data []byte, chainId int8) *EthereumClient {
+func NewDarkNodeRegistrar(context context.Context, client *ethclient.Client, auth1 *bind.TransactOpts, auth2 *bind.CallOpts, address common.Address, data []byte) *EthereumClient {
 	contract, err := contracts.NewDarkNodeRegistrar(address, bind.ContractBackend(client))
 	if err != nil {
 		log.Fatalf("%v", err)
@@ -43,7 +31,6 @@ func NewDarkNodeRegistrar(context context.Context, client *ethclient.Client, aut
 		auth1:   auth1,
 		auth2:   auth2,
 		binding: contract,
-		chainID: chainId,
 	}
 }
 
