@@ -200,6 +200,9 @@ func (node *DarkNode) BroadcastComputationBlock(computationBlock ComputationBloc
 				nos[computationID]++
 			}
 		}()
+
+		// FIXME: if a node timeouts or doesn't respond then classify that as a
+		// no for all computations.
 	})
 
 	// Create a new slice of compute.Computations for which more than
