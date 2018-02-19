@@ -2,6 +2,7 @@ package dnr
 
 import (
 	"context"
+	"errors"
 	"log"
 	"math/big"
 
@@ -61,8 +62,12 @@ func (ethereumClient *EthereumClient) Epoch() (*types.Transaction, error) {
 	return ethereumClient.binding.Epoch(ethereumClient.auth1)
 }
 
-func (ethereumClient *EthereumClient) GetCommitment(_darkNodeID [20]byte) ([32]byte, error) {
-	return ethereumClient.binding.GetCommitment(ethereumClient.auth2, _darkNodeID)
+func (ethereumClient *EthereumClient) GetCommitment(_darkNodeID []byte) ([32]byte, error) {
+	_darkNodeIDByte, err := toByte(_darkNodeID)
+	if err != nil {
+		return [32]byte{}, err
+	}
+	return ethereumClient.binding.GetCommitment(ethereumClient.auth2, _darkNodeIDByte)
 }
 
 func (ethereumClient *EthereumClient) GetOwner(_darkNodeID [20]byte) (common.Address, error) {
@@ -90,4 +95,15 @@ func (ethereumClient *EthereumClient) PendingRefunds(arg0 common.Address) (*big.
 
 func (ethereumClient *EthereumClient) Refund() (*types.Transaction, error) {
 	return ethereumClient.binding.Refund(ethereumClient.auth1)
+}
+
+func toByte(id []byte) ([20]byte, error) {
+	twentyByte := [20]byte{}
+	if len(id) != 20 {
+		return twentyByte, errors.New("Length mismatch")
+	}
+	for i := range id {
+		twentyByte[i] = id[i]
+	}
+	return twentyByte, nil
 }

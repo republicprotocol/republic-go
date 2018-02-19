@@ -37,7 +37,7 @@ var _ = Describe("Dark Node Registrar", func() {
 	keyPair, err := identity.NewKeyPair()
 	Ω(err).Should(BeNil())
 	publicKey := append(keyPair.PublicKey.X.Bytes(), keyPair.PublicKey.Y.Bytes()...)
-	darkNodeID := [20]byte(keyPair.ID())
+	darkNodeID := keyPair.ID()[:20]
 	It("Can register a dark node", func() {
 		err := UserConnection.Register(darkNodeID, publicKey)
 		Ω(err).Should(BeNil())
@@ -55,15 +55,22 @@ var _ = Describe("Dark Node Registrar", func() {
 	})
 
 	It("Can get the current epoch", func() {
-
+		epoch, err := UserConnection.CurrentEpoch()
+		Ω(err).Should(BeNil())
+		Ω(epoch.Blockhash).Should(Not(BeNil()))
+		Ω(epoch.Timestamp).Should(Not(BeNil()))
 	})
 
 	It("Can get the commitment of a dark node", func() {
-
+		commitment, err := UserConnection.GetCommitment(darkNodeID)
+		Ω(err).Should(BeNil())
+		Ω(commitment).Should(Not(BeNil()))
 	})
 
 	It("Can get the owner of a dark node", func() {
-
+		owner, err := UserConnection.GetOwner(darkNodeID)
+		Ω(err).Should(BeNil())
+		Ω(commitment).Should(BeNil())
 	})
 
 	It("Can get the public key of a dark node", func() {
