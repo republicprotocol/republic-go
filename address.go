@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/jbenet/go-base58"
-	"github.com/multiformats/go-multihash"
 )
 
 // AddressLength is the number of bytes in an Address.
