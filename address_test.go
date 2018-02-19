@@ -158,5 +158,14 @@ var _ = Describe("", func() {
 				Ω(string(multi.Address())).Should(Equal(string(address)))
 			})
 		})
+
+		Context("converting to ID", func() {
+			It("should be converted to an ID", func() {
+				address := identity.Address("8MK6bwP1ADVPaMQ4Gxfm85KYbEdJ6Y")
+				ID := address.ID()
+				newAddress := ID.Address()
+				Ω(address).Should(Equal(newAddress))
+			})
+		})
 	})
 })

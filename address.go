@@ -86,6 +86,13 @@ func (address Address) String() string {
 	return string(address)
 }
 
+// ID returns the ID of the Address
+func (address Address) ID() ID{
+	bytes := base58.DecodeAlphabet(string(address), base58.BTCAlphabet)
+	bytes = bytes[2:]
+	return ID(bytes)
+}
+
 // Closer returns true if the left Address is closer to the target than the
 // right Address, otherwise it returns false. In the case that both Addresses
 // are equal distances from the target, it returns true.
