@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jbenet/go-base58"
+	"github.com/multiformats/go-multihash"
 )
 
 // AddressLength is the number of bytes in an Address.
@@ -84,6 +85,13 @@ func (address Address) MultiAddress() (MultiAddress, error) {
 // String returns the Address as a string.
 func (address Address) String() string {
 	return string(address)
+}
+
+// ID returns the ID of the Address
+func (address Address) ID() ID{
+	bytes := base58.DecodeAlphabet(string(address), base58.BTCAlphabet)
+	bytes = bytes[2:]
+	return ID(bytes)
 }
 
 // Closer returns true if the left Address is closer to the target than the
