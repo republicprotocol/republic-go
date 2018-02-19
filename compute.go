@@ -3,9 +3,8 @@ package compute
 import (
 	"math/big"
 
-	"github.com/republicprotocol/go-do"
-
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/republicprotocol/go-do"
 )
 
 type ComputationID []byte
@@ -40,6 +39,47 @@ func (computation *Computation) Sub(prime *big.Int) (*ResultFragment, error) {
 	return computation.BuyOrderFragment.Sub(computation.SellOrderFragment, prime)
 }
 
+type ComputationBlockID []byte
+
+type ComputationBlock struct {
+	ID           ComputationBlockID
+	Computations []*Computation
+}
+
+func NewComputationBlock(computations []*Computation) ComputationBlock {
+	computationIDs := make([]byte, 0, len(computations)*32)
+	for _, computation := range computations {
+		computationIDs = append(computationIDs, []byte(computation.ID)...)
+	}
+	return ComputationBlock{
+		ID:           ComputationBlockID(crypto.Keccak256(computationIDs)),
+		Computations: computations,
+	}
+}
+
+func (block ComputationBlock) Compute(prime *big.Int) []*ResultFragment {
+	resultFragments := make([]*ResultFragment, len(block.Computations))
+	for i := range resultFragments {
+		// FIXME: We are processing computations in bulk with the expectation
+		// that some of them will fail (hopefully 2/3rds of participiants will
+		// succeed). Errors are dropped here.
+		resultFragments[i], _ = block.Computations[i].Sub(prime)
+	}
+	return resultFragments
+}
+
+type ComputationBid int64
+
+const (
+	ComputationBidYes = 1
+	ComputationBidNo  = 2
+)
+
+type ComputationBlockBid struct {
+	ID   ComputationBlockID
+	Bids map[string]ComputationBid
+}
+
 type HiddenOrderBook struct {
 	do.GuardedObject
 
@@ -60,6 +100,16 @@ func NewHiddenOrderBook(blockSize int) *HiddenOrderBook {
 	orderBook.pendingComputations = make([]*Computation, 0)
 	orderBook.pendingComputationsReadyForBlock = orderBook.Guard(func() bool { return len(orderBook.pendingComputations) >= blockSize })
 	return orderBook
+}
+
+func (orderBook *HiddenOrderBook) AddPendingComputation(computation *Computation) {
+	orderBook.Enter(nil)
+	defer orderBook.Exit()
+	orderBook.addPendingComputation(computation)
+}
+
+func (orderBook *HiddenOrderBook) addPendingComputation(computation *Computation) {
+	orderBook.pendingComputations = append(orderBook.pendingComputations, computation)
 }
 
 func (orderBook *HiddenOrderBook) AddOrderFragment(orderFragment *OrderFragment) {
@@ -94,13 +144,19 @@ func (orderBook *HiddenOrderBook) addOrderFragment(orderFragment *OrderFragment)
 	orderBook.orderFragments = append(orderBook.orderFragments, orderFragment)
 }
 
-func (orderBook *HiddenOrderBook) PendingComputationsForBlock() []*Computation {
+func (orderBook *HiddenOrderBook) WaitForComputationBlock() ComputationBlock {
 	orderBook.Enter(orderBook.pendingComputationsReadyForBlock)
 	defer orderBook.Exit()
-	return orderBook.pendingComputationsForBlock()
+	return orderBook.preemptComputationBlock()
 }
 
-func (orderBook *HiddenOrderBook) pendingComputationsForBlock() []*Computation {
+func (orderBook *HiddenOrderBook) PreemptComputationBlock() ComputationBlock {
+	orderBook.Enter(nil)
+	defer orderBook.Exit()
+	return orderBook.preemptComputationBlock()
+}
+
+func (orderBook *HiddenOrderBook) preemptComputationBlock() ComputationBlock {
 	blockSize := orderBook.blockSize
 	if blockSize > len(orderBook.pendingComputations) {
 		blockSize = len(orderBook.pendingComputations)
@@ -108,5 +164,5 @@ func (orderBook *HiddenOrderBook) pendingComputationsForBlock() []*Computation {
 	pendingComputations := make([]*Computation, 0, blockSize)
 	pendingComputations = append(pendingComputations, orderBook.pendingComputations[len(orderBook.pendingComputations)-blockSize:]...)
 	orderBook.pendingComputations = orderBook.pendingComputations[0 : len(orderBook.pendingComputations)-blockSize]
-	return pendingComputations
+	return NewComputationBlock(pendingComputations)
 }
