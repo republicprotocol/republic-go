@@ -1,10 +1,11 @@
-package miner
+package node
 
 import (
 	"encoding/json"
 	"os"
 
 	"github.com/republicprotocol/go-identity"
+	"math/big"
 )
 
 // Config information for Miners
@@ -16,6 +17,10 @@ type Config struct {
 	RSAKeyPair              string                  `json:"rsa_key_pair"`
 	MultiAddress            identity.MultiAddress   `json:"multi_address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
+
+	ComputationBlockSize     int      `json:"computation_block_size"`
+	ComputationBlockInterval int      `json:"computation_block_interval"`
+	Prime                    *big.Int `json:"prime"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config
