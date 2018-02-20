@@ -34,14 +34,26 @@ func (s *mockServer) SendResultFragment(ctx context.Context, resultFragment *rpc
 	return &rpc.Nothing{}, nil
 }
 
-func (s *mockServer) Notifications(multiAddress *rpc.MultiAddress, stream rpc.XingNode_NotificationsServer) error {
+func (s *mockServer) Notifications(multiAddress *rpc.MultiAddress, stream rpc.DarkNode_NotificationsServer) error {
 	stream.Send(rpc.SerializeResult(result))
 	return nil
 }
 
-func (s *mockServer) GetResults(multiAddress *rpc.MultiAddress, stream rpc.XingNode_GetResultsServer) error {
+func (s *mockServer) GetResults(multiAddress *rpc.MultiAddress, stream rpc.DarkNode_GetResultsServer) error {
 	stream.Send(rpc.SerializeResult(result))
 	return nil
+}
+
+func (s *mockServer) Sync(syncRequest *rpc.SyncRequest,stream rpc.DarkNode_SyncServer) error {
+	return nil
+}
+
+func (s *mockServer) ElectShard(ctx context.Context, electRequest *rpc.ElectRequest) (*rpc.Shard, error) {
+	return &rpc.Shard{}, nil
+}
+
+func (s *mockServer) ComputeShard(ctx context.Context, computeRequest *rpc.ComputeRequest) (*rpc.Nothing, error) {
+	return &rpc.Nothing{}, nil
 }
 
 var _ = Describe("Xing Overlay Network", func() {
@@ -61,7 +73,7 @@ var _ = Describe("Xing Overlay Network", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		server = grpc.NewServer()
 		rpcServer = mockServer{MultiAddress: multiAddress}
-		rpc.RegisterXingNodeServer(server, &rpcServer)
+		rpc.RegisterDarkNodeServer(server, &rpcServer)
 	}
 
 	createClient := func() {

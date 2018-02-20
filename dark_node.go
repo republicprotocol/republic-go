@@ -14,7 +14,7 @@ import (
 // This function returns two channels. The first is used to read chunks received
 // in the synchronization. The second is used by the caller to quit when he no
 // longer wants to receive dark.Chunk.
-func SyncWithTarget(target, from identity.MultiAddress, timeout time.Duration) (chan do.Option, chan struct{}) {
+func SyncWithTarget(target identity.MultiAddress, syncRequest *SyncRequest, timeout time.Duration) (chan do.Option, chan struct{}) {
 	chunks := make(chan do.Option, 1)
 	quit := make(chan struct{}, 1)
 
@@ -31,7 +31,7 @@ func SyncWithTarget(target, from identity.MultiAddress, timeout time.Duration) (
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
-		stream, err := client.Sync(ctx, SerializeMultiAddress(from), grpc.FailFast(false))
+		stream, err := client.Sync(ctx, syncRequest, grpc.FailFast(false))
 		if err != nil {
 			chunks <- do.Err(err)
 			return
@@ -61,9 +61,9 @@ func SyncWithTarget(target, from identity.MultiAddress, timeout time.Duration) (
 	return chunks, quit
 }
 
-// StartPropose using a new grpc.ClientConn to make a Propose RPC call
+// StartElectShard using a new grpc.ClientConn to make a Propose RPC call
 // to a target identity.MultiAddress.
-func StartPropose(target identity.MultiAddress, chunkRequest *ChunkRequest, timeout time.Duration) (*ChunkResponse, error) {
+func StartElectShard(target identity.MultiAddress, electRequest *ElectRequest, timeout time.Duration) (*Shard, error) {
 	conn, err := Dial(target, timeout)
 	if err != nil {
 		return nil, err
@@ -74,16 +74,16 @@ func StartPropose(target identity.MultiAddress, chunkRequest *ChunkRequest, time
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	chunkResponse, err := client.Propose(ctx, chunkRequest, grpc.FailFast(false))
+	shard, err := client.ElectShard(ctx, electRequest, grpc.FailFast(false))
 	if err != nil {
 		return nil, err
 	}
-	return chunkResponse, nil
+	return shard, nil
 }
 
-// AskToCompute using a new grpc.ClientConn to make a Compute RPC call
+// AskToComputeShard using a new grpc.ClientConn to make a Compute RPC call
 // to a target identity.MultiAddress.
-func AskToCompute(target identity.MultiAddress, chunkRequest *ChunkRequest, timeout time.Duration) error {
+func AskToComputeShard(target identity.MultiAddress, computeRequest *ComputeRequest, timeout time.Duration) error {
 	conn, err := Dial(target, timeout)
 	if err != nil {
 		return err
@@ -94,7 +94,7 @@ func AskToCompute(target identity.MultiAddress, chunkRequest *ChunkRequest, time
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	_, err = client.Compute(ctx, chunkRequest, grpc.FailFast(false))
+	_, err = client.ComputeShard(ctx, computeRequest, grpc.FailFast(false))
 	if err != nil {
 		return err
 	}

@@ -19,7 +19,7 @@ func SendOrderFragmentToTarget(target identity.MultiAddress, to identity.Address
 		return err
 	}
 	defer conn.Close()
-	client := NewXingNodeClient(conn)
+	client := NewDarkNodeClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -39,7 +39,7 @@ func SendResultFragmentToTarget(target identity.MultiAddress, to identity.Addres
 		return err
 	}
 	defer conn.Close()
-	client := NewXingNodeClient(conn)
+	client := NewDarkNodeClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -71,7 +71,7 @@ func NotificationsFromTarget(target identity.MultiAddress, traderAddress identit
 		}
 		defer conn.Close()
 
-		client := NewXingNodeClient(conn)
+		client := NewDarkNodeClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
@@ -117,7 +117,7 @@ func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.M
 	}
 	defer conn.Close()
 
-	client := NewXingNodeClient(conn)
+	client := NewDarkNodeClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
