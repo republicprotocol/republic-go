@@ -247,14 +247,13 @@ func DeserializeAtom(a *Atom) atom.Atom {
 	}
 }
 
-//// SerializeComputation converts a compute.Computation into its
-//// network representation.
-//func SerializeComputation (computation *compute.Computation) *Computation{
-//	return &Computation{
-//		Lhs:computation.BuyOrderFragment.Bytes(),
-//		Rhs:computation.SellOrderFragment.Bytes(),
-//		Leader:  ,//todo ,
-//		Status :
-//
-//	}
-//}
+// todo : add functions for serializing and deserializing computation, chunk,
+// todo : chunkRequst, chunkResponse ... when we finalize them
+// SerializeComputation converts a compute.Computation into its
+// network representation.
+func SerializeComputation (computation *compute.Computation) *Computation{
+	return &Computation{
+		Lhs:computation.BuyOrderFragment.Bytes(),
+		Rhs:computation.SellOrderFragment.Bytes(),
+	}
+}
