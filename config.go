@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/republicprotocol/go-identity"
 	"math/big"
+
+	"github.com/republicprotocol/go-identity"
 )
 
 // Config information for Miners
@@ -14,7 +15,7 @@ type Config struct {
 	Port                    string                  `json:"port"`
 	EthereumPrivateKey      string                  `json:"ethereum_private_key"`
 	RepublicKeyPair         identity.KeyPair        `json:"republic_key_pair"`
-	RSAKeyPair              identity.KeyPair        `json:"rsa_key_pair"`
+	RSAKeyPair              string                  `json:"rsa_key_pair"`
 	MultiAddress            identity.MultiAddress   `json:"multi_address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
 
