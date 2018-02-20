@@ -59,8 +59,8 @@ message Query {
  * Dark node definitions.
  */
 
-// XingNode services implement the distribution of OrderFragments and
-// ResultFragments in the Xing overlay network.
+// DarkNode services implement the distribution of OrderFragments and
+// ResultFragments in the Dark network.
 service DarkNode {
   
   // Send an OrderFragment to some target Node.
@@ -77,8 +77,13 @@ service DarkNode {
   // Get all relevant results that have been computed in the current epoch.
   rpc GetResults (MultiAddress) returns (stream Result);
 
+  // Send a sync request for getting new shard
   rpc Sync (SyncRequest) returns (stream Shard);
+  
+  // Propose a shard election request to some target node.
   rpc ElectShard (ElectRequest) returns (Shard);
+  
+  // Ask some target node to start computation on the shard.
   rpc ComputeShard (ComputeRequest) returns (Nothing);
 }
 
@@ -142,8 +147,8 @@ message Result {
   bytes minVolume = 8;
 }
 
-// A chunk is a block of computations
-message Chunk {
+// A shard is a block of computations
+message Shard {
   bytes signature = 1;
   repeated Computation computations = 2;
 }
@@ -157,15 +162,20 @@ message Computation {
   bytes status = 4;
 }
 
+//todo
+message SyncRequest{
+  bytes id = 1;
+}
+
 // todo
-message ChunkRequest{
-  Chunk chunk = 1;
+message ElectRequest{
+  Shard shard = 1;
   bytes id = 2;
 }
 
 // todo
-message ChunkResponse{
-  Chunk chunk = 1;
+message ComputeRequest{
+  Shard shard = 1;
   bytes id = 2;
 }
 

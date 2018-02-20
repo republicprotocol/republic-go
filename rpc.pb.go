@@ -16,11 +16,12 @@ It has these top-level messages:
 	OrderFragment
 	ResultFragment
 	Result
-	Atom
-	Chunk
+	Shard
 	Computation
-	ChunkRequest
-	ChunkResponse
+	SyncRequest
+	ElectRequest
+	ComputeRequest
+	Atom
 */
 package rpc
 
@@ -419,6 +420,140 @@ func (m *Result) GetMinVolume() []byte {
 	return nil
 }
 
+// A shard is a block of computations
+type Shard struct {
+	Signature    []byte         `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	Computations []*Computation `protobuf:"bytes,2,rep,name=computations" json:"computations,omitempty"`
+}
+
+func (m *Shard) Reset()                    { *m = Shard{} }
+func (m *Shard) String() string            { return proto.CompactTextString(m) }
+func (*Shard) ProtoMessage()               {}
+func (*Shard) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
+
+func (m *Shard) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *Shard) GetComputations() []*Computation {
+	if m != nil {
+		return m.Computations
+	}
+	return nil
+}
+
+// An computation is the network representation of a compute.Computation
+// and the status of the computaion result.
+type Computation struct {
+	Lhs    []byte `protobuf:"bytes,2,opt,name=lhs,proto3" json:"lhs,omitempty"`
+	Rhs    []byte `protobuf:"bytes,3,opt,name=rhs,proto3" json:"rhs,omitempty"`
+	Leader []byte `protobuf:"bytes,5,opt,name=leader,proto3" json:"leader,omitempty"`
+	Status []byte `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+}
+
+func (m *Computation) Reset()                    { *m = Computation{} }
+func (m *Computation) String() string            { return proto.CompactTextString(m) }
+func (*Computation) ProtoMessage()               {}
+func (*Computation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+
+func (m *Computation) GetLhs() []byte {
+	if m != nil {
+		return m.Lhs
+	}
+	return nil
+}
+
+func (m *Computation) GetRhs() []byte {
+	if m != nil {
+		return m.Rhs
+	}
+	return nil
+}
+
+func (m *Computation) GetLeader() []byte {
+	if m != nil {
+		return m.Leader
+	}
+	return nil
+}
+
+func (m *Computation) GetStatus() []byte {
+	if m != nil {
+		return m.Status
+	}
+	return nil
+}
+
+// todo
+type SyncRequest struct {
+	Id []byte `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+}
+
+func (m *SyncRequest) Reset()                    { *m = SyncRequest{} }
+func (m *SyncRequest) String() string            { return proto.CompactTextString(m) }
+func (*SyncRequest) ProtoMessage()               {}
+func (*SyncRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
+
+func (m *SyncRequest) GetId() []byte {
+	if m != nil {
+		return m.Id
+	}
+	return nil
+}
+
+// todo
+type ElectRequest struct {
+	Shard *Shard `protobuf:"bytes,1,opt,name=shard" json:"shard,omitempty"`
+	Id    []byte `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+}
+
+func (m *ElectRequest) Reset()                    { *m = ElectRequest{} }
+func (m *ElectRequest) String() string            { return proto.CompactTextString(m) }
+func (*ElectRequest) ProtoMessage()               {}
+func (*ElectRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
+
+func (m *ElectRequest) GetShard() *Shard {
+	if m != nil {
+		return m.Shard
+	}
+	return nil
+}
+
+func (m *ElectRequest) GetId() []byte {
+	if m != nil {
+		return m.Id
+	}
+	return nil
+}
+
+// todo
+type ComputeRequest struct {
+	Shard *Shard `protobuf:"bytes,1,opt,name=shard" json:"shard,omitempty"`
+	Id    []byte `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+}
+
+func (m *ComputeRequest) Reset()                    { *m = ComputeRequest{} }
+func (m *ComputeRequest) String() string            { return proto.CompactTextString(m) }
+func (*ComputeRequest) ProtoMessage()               {}
+func (*ComputeRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
+
+func (m *ComputeRequest) GetShard() *Shard {
+	if m != nil {
+		return m.Shard
+	}
+	return nil
+}
+
+func (m *ComputeRequest) GetId() []byte {
+	if m != nil {
+		return m.Id
+	}
+	return nil
+}
+
 // An Atom message is the network representation of a atom.Atom and the
 // metadata needed to distribute it through the network.
 type Atom struct {
@@ -434,7 +569,7 @@ type Atom struct {
 func (m *Atom) Reset()                    { *m = Atom{} }
 func (m *Atom) String() string            { return proto.CompactTextString(m) }
 func (*Atom) ProtoMessage()               {}
-func (*Atom) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
+func (*Atom) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
 
 func (m *Atom) GetTo() *Address {
 	if m != nil {
@@ -471,123 +606,6 @@ func (m *Atom) GetSignature() []byte {
 	return nil
 }
 
-// A chunk is a block of computations
-type Chunk struct {
-	Signature    []byte         `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
-	Computations []*Computation `protobuf:"bytes,2,rep,name=computations" json:"computations,omitempty"`
-}
-
-func (m *Chunk) Reset()                    { *m = Chunk{} }
-func (m *Chunk) String() string            { return proto.CompactTextString(m) }
-func (*Chunk) ProtoMessage()               {}
-func (*Chunk) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
-
-func (m *Chunk) GetSignature() []byte {
-	if m != nil {
-		return m.Signature
-	}
-	return nil
-}
-
-func (m *Chunk) GetComputations() []*Computation {
-	if m != nil {
-		return m.Computations
-	}
-	return nil
-}
-
-// An computation is the network representation of a compute.Computation
-// and the status of the computaion result.
-type Computation struct {
-	Lhs    []byte `protobuf:"bytes,2,opt,name=lhs,proto3" json:"lhs,omitempty"`
-	Rhs    []byte `protobuf:"bytes,3,opt,name=rhs,proto3" json:"rhs,omitempty"`
-	Leader []byte `protobuf:"bytes,5,opt,name=leader,proto3" json:"leader,omitempty"`
-	Status []byte `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-}
-
-func (m *Computation) Reset()                    { *m = Computation{} }
-func (m *Computation) String() string            { return proto.CompactTextString(m) }
-func (*Computation) ProtoMessage()               {}
-func (*Computation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
-
-func (m *Computation) GetLhs() []byte {
-	if m != nil {
-		return m.Lhs
-	}
-	return nil
-}
-
-func (m *Computation) GetRhs() []byte {
-	if m != nil {
-		return m.Rhs
-	}
-	return nil
-}
-
-func (m *Computation) GetLeader() []byte {
-	if m != nil {
-		return m.Leader
-	}
-	return nil
-}
-
-func (m *Computation) GetStatus() []byte {
-	if m != nil {
-		return m.Status
-	}
-	return nil
-}
-
-// todo
-type ChunkRequest struct {
-	Chunk *Chunk `protobuf:"bytes,1,opt,name=chunk" json:"chunk,omitempty"`
-	Id    []byte `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-}
-
-func (m *ChunkRequest) Reset()                    { *m = ChunkRequest{} }
-func (m *ChunkRequest) String() string            { return proto.CompactTextString(m) }
-func (*ChunkRequest) ProtoMessage()               {}
-func (*ChunkRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
-
-func (m *ChunkRequest) GetChunk() *Chunk {
-	if m != nil {
-		return m.Chunk
-	}
-	return nil
-}
-
-func (m *ChunkRequest) GetId() []byte {
-	if m != nil {
-		return m.Id
-	}
-	return nil
-}
-
-// todo
-type ChunkResponse struct {
-	Chunk *Chunk `protobuf:"bytes,1,opt,name=chunk" json:"chunk,omitempty"`
-	Id    []byte `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-}
-
-func (m *ChunkResponse) Reset()                    { *m = ChunkResponse{} }
-func (m *ChunkResponse) String() string            { return proto.CompactTextString(m) }
-func (*ChunkResponse) ProtoMessage()               {}
-func (*ChunkResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
-
-func (m *ChunkResponse) GetChunk() *Chunk {
-	if m != nil {
-		return m.Chunk
-	}
-	return nil
-}
-
-func (m *ChunkResponse) GetId() []byte {
-	if m != nil {
-		return m.Id
-	}
-	return nil
-}
-
 func init() {
 	proto.RegisterType((*Address)(nil), "rpc.Address")
 	proto.RegisterType((*MultiAddress)(nil), "rpc.MultiAddress")
@@ -597,11 +615,12 @@ func init() {
 	proto.RegisterType((*OrderFragment)(nil), "rpc.OrderFragment")
 	proto.RegisterType((*ResultFragment)(nil), "rpc.ResultFragment")
 	proto.RegisterType((*Result)(nil), "rpc.Result")
-	proto.RegisterType((*Atom)(nil), "rpc.Atom")
-	proto.RegisterType((*Chunk)(nil), "rpc.Chunk")
+	proto.RegisterType((*Shard)(nil), "rpc.Shard")
 	proto.RegisterType((*Computation)(nil), "rpc.Computation")
-	proto.RegisterType((*ChunkRequest)(nil), "rpc.ChunkRequest")
-	proto.RegisterType((*ChunkResponse)(nil), "rpc.ChunkResponse")
+	proto.RegisterType((*SyncRequest)(nil), "rpc.SyncRequest")
+	proto.RegisterType((*ElectRequest)(nil), "rpc.ElectRequest")
+	proto.RegisterType((*ComputeRequest)(nil), "rpc.ComputeRequest")
+	proto.RegisterType((*Atom)(nil), "rpc.Atom")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -778,9 +797,9 @@ var _SwarmNode_serviceDesc = grpc.ServiceDesc{
 	Metadata: "rpc.proto",
 }
 
-// Client API for XingNode service
+// Client API for DarkNode service
 
-type XingNodeClient interface {
+type DarkNodeClient interface {
 	// Send an OrderFragment to some target Node.
 	SendOrderFragment(ctx context.Context, in *OrderFragment, opts ...grpc.CallOption) (*Nothing, error)
 	// Send a ResultFragment to some target Node, where the ResultFragment is the
@@ -788,43 +807,49 @@ type XingNodeClient interface {
 	SendResultFragment(ctx context.Context, in *ResultFragment, opts ...grpc.CallOption) (*Nothing, error)
 	// Get Result messages for successful order matches that have happened since
 	// this procedure was last used, as well as new ones that occur.
-	Notifications(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (XingNode_NotificationsClient, error)
+	Notifications(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (DarkNode_NotificationsClient, error)
 	// Get all relevant results that have been computed in the current epoch.
-	GetResults(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (XingNode_GetResultsClient, error)
+	GetResults(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (DarkNode_GetResultsClient, error)
+	// Send a sync request for getting new shard
+	Sync(ctx context.Context, in *SyncRequest, opts ...grpc.CallOption) (DarkNode_SyncClient, error)
+	// Propose a shard election request to some target node.
+	ElectShard(ctx context.Context, in *ElectRequest, opts ...grpc.CallOption) (*Shard, error)
+	// Ask some target node to start computation on the shard.
+	ComputeShard(ctx context.Context, in *ComputeRequest, opts ...grpc.CallOption) (*Nothing, error)
 }
 
-type xingNodeClient struct {
+type darkNodeClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewXingNodeClient(cc *grpc.ClientConn) XingNodeClient {
-	return &xingNodeClient{cc}
+func NewDarkNodeClient(cc *grpc.ClientConn) DarkNodeClient {
+	return &darkNodeClient{cc}
 }
 
-func (c *xingNodeClient) SendOrderFragment(ctx context.Context, in *OrderFragment, opts ...grpc.CallOption) (*Nothing, error) {
+func (c *darkNodeClient) SendOrderFragment(ctx context.Context, in *OrderFragment, opts ...grpc.CallOption) (*Nothing, error) {
 	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/rpc.XingNode/SendOrderFragment", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/rpc.DarkNode/SendOrderFragment", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *xingNodeClient) SendResultFragment(ctx context.Context, in *ResultFragment, opts ...grpc.CallOption) (*Nothing, error) {
+func (c *darkNodeClient) SendResultFragment(ctx context.Context, in *ResultFragment, opts ...grpc.CallOption) (*Nothing, error) {
 	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/rpc.XingNode/SendResultFragment", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/rpc.DarkNode/SendResultFragment", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *xingNodeClient) Notifications(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (XingNode_NotificationsClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_XingNode_serviceDesc.Streams[0], c.cc, "/rpc.XingNode/Notifications", opts...)
+func (c *darkNodeClient) Notifications(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (DarkNode_NotificationsClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_DarkNode_serviceDesc.Streams[0], c.cc, "/rpc.DarkNode/Notifications", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &xingNodeNotificationsClient{stream}
+	x := &darkNodeNotificationsClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -834,16 +859,16 @@ func (c *xingNodeClient) Notifications(ctx context.Context, in *MultiAddress, op
 	return x, nil
 }
 
-type XingNode_NotificationsClient interface {
+type DarkNode_NotificationsClient interface {
 	Recv() (*Result, error)
 	grpc.ClientStream
 }
 
-type xingNodeNotificationsClient struct {
+type darkNodeNotificationsClient struct {
 	grpc.ClientStream
 }
 
-func (x *xingNodeNotificationsClient) Recv() (*Result, error) {
+func (x *darkNodeNotificationsClient) Recv() (*Result, error) {
 	m := new(Result)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -851,12 +876,12 @@ func (x *xingNodeNotificationsClient) Recv() (*Result, error) {
 	return m, nil
 }
 
-func (c *xingNodeClient) GetResults(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (XingNode_GetResultsClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_XingNode_serviceDesc.Streams[1], c.cc, "/rpc.XingNode/GetResults", opts...)
+func (c *darkNodeClient) GetResults(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (DarkNode_GetResultsClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_DarkNode_serviceDesc.Streams[1], c.cc, "/rpc.DarkNode/GetResults", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &xingNodeGetResultsClient{stream}
+	x := &darkNodeGetResultsClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -866,16 +891,16 @@ func (c *xingNodeClient) GetResults(ctx context.Context, in *MultiAddress, opts 
 	return x, nil
 }
 
-type XingNode_GetResultsClient interface {
+type DarkNode_GetResultsClient interface {
 	Recv() (*Result, error)
 	grpc.ClientStream
 }
 
-type xingNodeGetResultsClient struct {
+type darkNodeGetResultsClient struct {
 	grpc.ClientStream
 }
 
-func (x *xingNodeGetResultsClient) Recv() (*Result, error) {
+func (x *darkNodeGetResultsClient) Recv() (*Result, error) {
 	m := new(Result)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -883,9 +908,59 @@ func (x *xingNodeGetResultsClient) Recv() (*Result, error) {
 	return m, nil
 }
 
-// Server API for XingNode service
+func (c *darkNodeClient) Sync(ctx context.Context, in *SyncRequest, opts ...grpc.CallOption) (DarkNode_SyncClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_DarkNode_serviceDesc.Streams[2], c.cc, "/rpc.DarkNode/Sync", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &darkNodeSyncClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
 
-type XingNodeServer interface {
+type DarkNode_SyncClient interface {
+	Recv() (*Shard, error)
+	grpc.ClientStream
+}
+
+type darkNodeSyncClient struct {
+	grpc.ClientStream
+}
+
+func (x *darkNodeSyncClient) Recv() (*Shard, error) {
+	m := new(Shard)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *darkNodeClient) ElectShard(ctx context.Context, in *ElectRequest, opts ...grpc.CallOption) (*Shard, error) {
+	out := new(Shard)
+	err := grpc.Invoke(ctx, "/rpc.DarkNode/ElectShard", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *darkNodeClient) ComputeShard(ctx context.Context, in *ComputeRequest, opts ...grpc.CallOption) (*Nothing, error) {
+	out := new(Nothing)
+	err := grpc.Invoke(ctx, "/rpc.DarkNode/ComputeShard", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for DarkNode service
+
+type DarkNodeServer interface {
 	// Send an OrderFragment to some target Node.
 	SendOrderFragment(context.Context, *OrderFragment) (*Nothing, error)
 	// Send a ResultFragment to some target Node, where the ResultFragment is the
@@ -893,115 +968,191 @@ type XingNodeServer interface {
 	SendResultFragment(context.Context, *ResultFragment) (*Nothing, error)
 	// Get Result messages for successful order matches that have happened since
 	// this procedure was last used, as well as new ones that occur.
-	Notifications(*MultiAddress, XingNode_NotificationsServer) error
+	Notifications(*MultiAddress, DarkNode_NotificationsServer) error
 	// Get all relevant results that have been computed in the current epoch.
-	GetResults(*MultiAddress, XingNode_GetResultsServer) error
+	GetResults(*MultiAddress, DarkNode_GetResultsServer) error
+	// Send a sync request for getting new shard
+	Sync(*SyncRequest, DarkNode_SyncServer) error
+	// Propose a shard election request to some target node.
+	ElectShard(context.Context, *ElectRequest) (*Shard, error)
+	// Ask some target node to start computation on the shard.
+	ComputeShard(context.Context, *ComputeRequest) (*Nothing, error)
 }
 
-func RegisterXingNodeServer(s *grpc.Server, srv XingNodeServer) {
-	s.RegisterService(&_XingNode_serviceDesc, srv)
+func RegisterDarkNodeServer(s *grpc.Server, srv DarkNodeServer) {
+	s.RegisterService(&_DarkNode_serviceDesc, srv)
 }
 
-func _XingNode_SendOrderFragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _DarkNode_SendOrderFragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(OrderFragment)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(XingNodeServer).SendOrderFragment(ctx, in)
+		return srv.(DarkNodeServer).SendOrderFragment(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.XingNode/SendOrderFragment",
+		FullMethod: "/rpc.DarkNode/SendOrderFragment",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(XingNodeServer).SendOrderFragment(ctx, req.(*OrderFragment))
+		return srv.(DarkNodeServer).SendOrderFragment(ctx, req.(*OrderFragment))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _XingNode_SendResultFragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _DarkNode_SendResultFragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ResultFragment)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(XingNodeServer).SendResultFragment(ctx, in)
+		return srv.(DarkNodeServer).SendResultFragment(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.XingNode/SendResultFragment",
+		FullMethod: "/rpc.DarkNode/SendResultFragment",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(XingNodeServer).SendResultFragment(ctx, req.(*ResultFragment))
+		return srv.(DarkNodeServer).SendResultFragment(ctx, req.(*ResultFragment))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _XingNode_Notifications_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _DarkNode_Notifications_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(MultiAddress)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(XingNodeServer).Notifications(m, &xingNodeNotificationsServer{stream})
+	return srv.(DarkNodeServer).Notifications(m, &darkNodeNotificationsServer{stream})
 }
 
-type XingNode_NotificationsServer interface {
+type DarkNode_NotificationsServer interface {
 	Send(*Result) error
 	grpc.ServerStream
 }
 
-type xingNodeNotificationsServer struct {
+type darkNodeNotificationsServer struct {
 	grpc.ServerStream
 }
 
-func (x *xingNodeNotificationsServer) Send(m *Result) error {
+func (x *darkNodeNotificationsServer) Send(m *Result) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _XingNode_GetResults_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _DarkNode_GetResults_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(MultiAddress)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(XingNodeServer).GetResults(m, &xingNodeGetResultsServer{stream})
+	return srv.(DarkNodeServer).GetResults(m, &darkNodeGetResultsServer{stream})
 }
 
-type XingNode_GetResultsServer interface {
+type DarkNode_GetResultsServer interface {
 	Send(*Result) error
 	grpc.ServerStream
 }
 
-type xingNodeGetResultsServer struct {
+type darkNodeGetResultsServer struct {
 	grpc.ServerStream
 }
 
-func (x *xingNodeGetResultsServer) Send(m *Result) error {
+func (x *darkNodeGetResultsServer) Send(m *Result) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-var _XingNode_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "rpc.XingNode",
-	HandlerType: (*XingNodeServer)(nil),
+func _DarkNode_Sync_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SyncRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(DarkNodeServer).Sync(m, &darkNodeSyncServer{stream})
+}
+
+type DarkNode_SyncServer interface {
+	Send(*Shard) error
+	grpc.ServerStream
+}
+
+type darkNodeSyncServer struct {
+	grpc.ServerStream
+}
+
+func (x *darkNodeSyncServer) Send(m *Shard) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _DarkNode_ElectShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ElectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DarkNodeServer).ElectShard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.DarkNode/ElectShard",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DarkNodeServer).ElectShard(ctx, req.(*ElectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DarkNode_ComputeShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ComputeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DarkNodeServer).ComputeShard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.DarkNode/ComputeShard",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DarkNodeServer).ComputeShard(ctx, req.(*ComputeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _DarkNode_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "rpc.DarkNode",
+	HandlerType: (*DarkNodeServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "SendOrderFragment",
-			Handler:    _XingNode_SendOrderFragment_Handler,
+			Handler:    _DarkNode_SendOrderFragment_Handler,
 		},
 		{
 			MethodName: "SendResultFragment",
-			Handler:    _XingNode_SendResultFragment_Handler,
+			Handler:    _DarkNode_SendResultFragment_Handler,
+		},
+		{
+			MethodName: "ElectShard",
+			Handler:    _DarkNode_ElectShard_Handler,
+		},
+		{
+			MethodName: "ComputeShard",
+			Handler:    _DarkNode_ComputeShard_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Notifications",
-			Handler:       _XingNode_Notifications_Handler,
+			Handler:       _DarkNode_Notifications_Handler,
 			ServerStreams: true,
 		},
 		{
 			StreamName:    "GetResults",
-			Handler:       _XingNode_GetResults_Handler,
+			Handler:       _DarkNode_GetResults_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "Sync",
+			Handler:       _DarkNode_Sync_Handler,
 			ServerStreams: true,
 		},
 	},
@@ -1074,219 +1225,61 @@ var _TerminalNode_serviceDesc = grpc.ServiceDesc{
 	Metadata: "rpc.proto",
 }
 
-// Client API for DarkNode service
-
-type DarkNodeClient interface {
-	Sync(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (DarkNode_SyncClient, error)
-	Propose(ctx context.Context, in *ChunkRequest, opts ...grpc.CallOption) (*ChunkResponse, error)
-	Compute(ctx context.Context, in *ChunkRequest, opts ...grpc.CallOption) (*Nothing, error)
-}
-
-type darkNodeClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewDarkNodeClient(cc *grpc.ClientConn) DarkNodeClient {
-	return &darkNodeClient{cc}
-}
-
-func (c *darkNodeClient) Sync(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (DarkNode_SyncClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_DarkNode_serviceDesc.Streams[0], c.cc, "/rpc.DarkNode/Sync", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &darkNodeSyncClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type DarkNode_SyncClient interface {
-	Recv() (*Chunk, error)
-	grpc.ClientStream
-}
-
-type darkNodeSyncClient struct {
-	grpc.ClientStream
-}
-
-func (x *darkNodeSyncClient) Recv() (*Chunk, error) {
-	m := new(Chunk)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *darkNodeClient) Propose(ctx context.Context, in *ChunkRequest, opts ...grpc.CallOption) (*ChunkResponse, error) {
-	out := new(ChunkResponse)
-	err := grpc.Invoke(ctx, "/rpc.DarkNode/Propose", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *darkNodeClient) Compute(ctx context.Context, in *ChunkRequest, opts ...grpc.CallOption) (*Nothing, error) {
-	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/rpc.DarkNode/Compute", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Server API for DarkNode service
-
-type DarkNodeServer interface {
-	Sync(*MultiAddress, DarkNode_SyncServer) error
-	Propose(context.Context, *ChunkRequest) (*ChunkResponse, error)
-	Compute(context.Context, *ChunkRequest) (*Nothing, error)
-}
-
-func RegisterDarkNodeServer(s *grpc.Server, srv DarkNodeServer) {
-	s.RegisterService(&_DarkNode_serviceDesc, srv)
-}
-
-func _DarkNode_Sync_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(MultiAddress)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(DarkNodeServer).Sync(m, &darkNodeSyncServer{stream})
-}
-
-type DarkNode_SyncServer interface {
-	Send(*Chunk) error
-	grpc.ServerStream
-}
-
-type darkNodeSyncServer struct {
-	grpc.ServerStream
-}
-
-func (x *darkNodeSyncServer) Send(m *Chunk) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _DarkNode_Propose_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ChunkRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DarkNodeServer).Propose(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/rpc.DarkNode/Propose",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DarkNodeServer).Propose(ctx, req.(*ChunkRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _DarkNode_Compute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ChunkRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DarkNodeServer).Compute(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/rpc.DarkNode/Compute",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DarkNodeServer).Compute(ctx, req.(*ChunkRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-var _DarkNode_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "rpc.DarkNode",
-	HandlerType: (*DarkNodeServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Propose",
-			Handler:    _DarkNode_Propose_Handler,
-		},
-		{
-			MethodName: "Compute",
-			Handler:    _DarkNode_Compute_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "Sync",
-			Handler:       _DarkNode_Sync_Handler,
-			ServerStreams: true,
-		},
-	},
-	Metadata: "rpc.proto",
-}
-
 func init() { proto.RegisterFile("rpc.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 844 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x56, 0xdd, 0x6a, 0xdb, 0x48,
-	0x14, 0x46, 0x92, 0xff, 0x74, 0xac, 0x98, 0x64, 0xb2, 0x2c, 0xc2, 0x84, 0x60, 0xb4, 0x7f, 0xde,
-	0xbd, 0x30, 0x5e, 0x67, 0x97, 0xbd, 0x58, 0x16, 0x36, 0xb8, 0xa4, 0xe4, 0xa2, 0x89, 0x2b, 0x87,
-	0x52, 0xe8, 0x95, 0x62, 0x4d, 0x6c, 0x11, 0x49, 0xa3, 0xcc, 0x8c, 0x68, 0xfd, 0x18, 0xbd, 0xe8,
-	0x3b, 0xf4, 0x35, 0xfa, 0x20, 0x85, 0x3e, 0x45, 0xaf, 0xcb, 0xfc, 0x28, 0x96, 0x6c, 0xb7, 0x71,
-	0xa1, 0xbd, 0x9b, 0xf3, 0x9d, 0xef, 0xcc, 0xf9, 0xf9, 0xce, 0x58, 0x06, 0x9b, 0x66, 0xb3, 0x41,
-	0x46, 0x09, 0x27, 0xc8, 0xa2, 0xd9, 0xcc, 0xfb, 0x09, 0x9a, 0xa7, 0x61, 0x48, 0x31, 0x63, 0xc8,
-	0x85, 0x66, 0xa0, 0x8e, 0xae, 0xd1, 0x33, 0xfa, 0xb6, 0x5f, 0x98, 0xde, 0xcf, 0xe0, 0x3c, 0xc9,
-	0x63, 0x1e, 0x15, 0xcc, 0x1f, 0xa0, 0x9e, 0x08, 0x5b, 0xf3, 0x94, 0xe1, 0xfd, 0x0b, 0x9d, 0x32,
-	0x0b, 0x33, 0xf4, 0x3b, 0x34, 0xa4, 0x4b, 0x5c, 0x68, 0xf5, 0xdb, 0xa3, 0x83, 0x81, 0xc8, 0x5e,
-	0x26, 0xf9, 0x9a, 0xe0, 0xd9, 0xd0, 0xbc, 0x20, 0x7c, 0x11, 0xa5, 0x73, 0xcf, 0x87, 0xfa, 0xd3,
-	0x1c, 0xd3, 0x25, 0xfa, 0x05, 0x6a, 0x37, 0x94, 0x24, 0x32, 0xcb, 0xd6, 0x60, 0xe9, 0x46, 0x1e,
-	0xd4, 0xef, 0x04, 0xdf, 0x35, 0x25, 0xcf, 0x91, 0xbc, 0x82, 0xa2, 0x5c, 0xde, 0x47, 0x13, 0xf6,
-	0x2e, 0x69, 0x88, 0xe9, 0x19, 0x0d, 0xe6, 0x09, 0x4e, 0x39, 0x3a, 0x02, 0x93, 0x13, 0x7d, 0x75,
-	0x35, 0xc4, 0xe4, 0xe4, 0x3e, 0xb5, 0xf9, 0xe5, 0xd4, 0x1d, 0x30, 0xa3, 0xd0, 0xb5, 0x7a, 0x46,
-	0xdf, 0xf1, 0xcd, 0x28, 0x14, 0x23, 0x24, 0x22, 0xcb, 0x79, 0xe8, 0xd6, 0x24, 0x58, 0x98, 0xe8,
-	0x08, 0x6c, 0x79, 0xbc, 0x5a, 0x66, 0xd8, 0xad, 0xf7, 0x8c, 0xbe, 0xe5, 0xaf, 0x00, 0xd4, 0x83,
-	0xb6, 0x34, 0x26, 0x01, 0x8d, 0xf8, 0xd2, 0x6d, 0x48, 0x7f, 0x19, 0x42, 0x1e, 0x38, 0x37, 0x8c,
-	0x8f, 0x49, 0x88, 0xa7, 0x8b, 0x80, 0x62, 0xb7, 0x29, 0xaf, 0xaf, 0x60, 0x82, 0xc3, 0xd2, 0x70,
-	0xc5, 0x69, 0x29, 0x4e, 0x19, 0x43, 0xc7, 0x00, 0x19, 0x8d, 0x66, 0x9a, 0x61, 0x4b, 0x46, 0x09,
-	0x41, 0xbf, 0x42, 0x27, 0x09, 0x5e, 0x3d, 0x23, 0x71, 0x9e, 0x68, 0x0e, 0x48, 0xce, 0x1a, 0x2a,
-	0x79, 0x51, 0x5a, 0xe6, 0xb5, 0x35, 0xaf, 0x82, 0x7a, 0xef, 0x2c, 0xe8, 0xf8, 0x98, 0xe5, 0x31,
-	0xff, 0xbe, 0x93, 0x3f, 0x06, 0xb8, 0xce, 0x97, 0x97, 0x95, 0xe1, 0x97, 0x10, 0x31, 0x61, 0x86,
-	0xe3, 0xb8, 0x20, 0xd4, 0x25, 0xa1, 0x0c, 0xa1, 0x01, 0xa0, 0x82, 0x5f, 0x94, 0x7a, 0x1e, 0x4a,
-	0x29, 0x1c, 0x7f, 0x8b, 0x07, 0x0d, 0xe1, 0xf0, 0x3e, 0xbc, 0x14, 0xa0, 0x84, 0xd9, 0xe6, 0xda,
-	0xd0, 0xb0, 0xb5, 0x83, 0x86, 0xf6, 0x83, 0x1a, 0xc2, 0x0e, 0x1a, 0xb6, 0x77, 0xd4, 0xd0, 0xd9,
-	0xaa, 0xe1, 0x07, 0x03, 0x1a, 0x4a, 0x43, 0x3d, 0x76, 0xe3, 0x33, 0x63, 0x37, 0x1f, 0x1a, 0xbb,
-	0xb5, 0x39, 0x76, 0x17, 0x9a, 0x7a, 0x00, 0xc5, 0x93, 0xd1, 0xa6, 0xf0, 0xe8, 0xb6, 0xb5, 0x5c,
-	0x85, 0x29, 0x7e, 0x7f, 0x64, 0xbb, 0x5a, 0x1d, 0x65, 0x88, 0x27, 0x76, 0xdf, 0xa0, 0x96, 0x61,
-	0x05, 0x48, 0x6f, 0xd1, 0x96, 0x9e, 0xfc, 0x0a, 0xf0, 0xde, 0x18, 0x50, 0x3b, 0xe5, 0x24, 0xf9,
-	0x36, 0xcb, 0xf9, 0x23, 0x34, 0x62, 0x1c, 0xce, 0x31, 0x95, 0x0d, 0x5b, 0xbe, 0xb6, 0x10, 0x82,
-	0x5a, 0x18, 0xf0, 0x40, 0x37, 0x2a, 0xcf, 0xa2, 0x2e, 0x16, 0xcd, 0xd3, 0x80, 0xe7, 0xb4, 0xe8,
-	0x73, 0x05, 0x78, 0x2f, 0xa0, 0x3e, 0x5e, 0xe4, 0xe9, 0x6d, 0x95, 0x66, 0xac, 0xd1, 0xd0, 0x5f,
-	0xe0, 0xcc, 0x48, 0x92, 0xe5, 0x3c, 0xe0, 0x11, 0x49, 0x99, 0x6b, 0xca, 0x9f, 0xdb, 0x7d, 0x59,
-	0xdf, 0x78, 0xe5, 0xf0, 0x2b, 0x2c, 0x2f, 0x80, 0x76, 0xc9, 0x89, 0xf6, 0xc1, 0x8a, 0x17, 0x4c,
-	0x8b, 0x28, 0x8e, 0x02, 0xa1, 0x0b, 0xa6, 0x55, 0x13, 0x47, 0xd5, 0x59, 0x10, 0x62, 0xaa, 0x4b,
-	0xd5, 0x96, 0xc0, 0x19, 0x0f, 0x78, 0xce, 0x74, 0x6f, 0xda, 0xf2, 0xfe, 0x07, 0x47, 0xd6, 0xef,
-	0xe3, 0xbb, 0x1c, 0x33, 0x8e, 0x7a, 0x50, 0x9f, 0x09, 0x5b, 0x4f, 0x18, 0x54, 0x85, 0x92, 0xa1,
-	0x1c, 0x7a, 0xc3, 0xcc, 0x62, 0xc3, 0xbc, 0x53, 0xd8, 0xd3, 0x37, 0xb0, 0x8c, 0xa4, 0x0c, 0x7f,
-	0xfd, 0x15, 0xa3, 0xb7, 0x06, 0xd8, 0xd3, 0x97, 0x01, 0x4d, 0x2e, 0xc4, 0xf2, 0xfc, 0x06, 0xb5,
-	0x49, 0x94, 0xce, 0xd1, 0xa6, 0x7a, 0x5d, 0x25, 0xb8, 0xfe, 0x0e, 0xa1, 0x13, 0xd8, 0x97, 0xdf,
-	0xa1, 0x71, 0x4c, 0x18, 0xa6, 0x13, 0x8c, 0x29, 0x43, 0x2a, 0x9b, 0x84, 0xbb, 0x87, 0x1b, 0x17,
-	0x60, 0x86, 0xfe, 0x83, 0xee, 0x7a, 0xd0, 0x65, 0x7a, 0x46, 0x49, 0xca, 0x23, 0x4c, 0x2b, 0xe1,
-	0x9b, 0xf9, 0x87, 0xc6, 0xe8, 0xbd, 0x01, 0xad, 0xe7, 0x51, 0x3a, 0x97, 0x95, 0xfe, 0x0d, 0x07,
-	0x53, 0x9c, 0x86, 0xd5, 0xef, 0x16, 0x92, 0x61, 0x15, 0x6c, 0xad, 0xee, 0x7f, 0x00, 0x89, 0xb0,
-	0xb5, 0x5f, 0x5d, 0x55, 0x6d, 0x15, 0x5c, 0x0b, 0xfc, 0x13, 0xf6, 0x2e, 0x08, 0x8f, 0x6e, 0xa2,
-	0x99, 0x5a, 0x90, 0x6d, 0x23, 0x6a, 0x97, 0xae, 0x19, 0x1a, 0x68, 0x00, 0xf0, 0x18, 0x73, 0x65,
-	0xee, 0xc0, 0x1f, 0x0d, 0xc1, 0xb9, 0xc2, 0x34, 0x89, 0xd2, 0x20, 0x96, 0x2d, 0xf6, 0xa0, 0x25,
-	0x6a, 0x95, 0x4f, 0xcf, 0x56, 0xcf, 0x8d, 0x93, 0xa4, 0xbb, 0x3a, 0x8e, 0x5e, 0x1b, 0xd0, 0x7a,
-	0x14, 0xd0, 0xdb, 0x42, 0xbb, 0xe9, 0x32, 0x9d, 0x6d, 0x4b, 0x54, 0xda, 0x83, 0xa1, 0x81, 0x86,
-	0xd0, 0x9c, 0x50, 0x92, 0x11, 0x86, 0x35, 0xb7, 0xbc, 0x85, 0x5d, 0x54, 0x86, 0xf4, 0x5a, 0xfd,
-	0x01, 0x4d, 0xf5, 0x18, 0xb6, 0x46, 0x54, 0x06, 0x75, 0xdd, 0x90, 0x7f, 0xa0, 0x4e, 0x3e, 0x05,
-	0x00, 0x00, 0xff, 0xff, 0x3c, 0xff, 0x91, 0xdb, 0x4d, 0x09, 0x00, 0x00,
+	// 847 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x56, 0x51, 0x8f, 0xe3, 0x34,
+	0x10, 0x56, 0x92, 0xa6, 0x6d, 0xa6, 0xb9, 0x6a, 0xcf, 0x8b, 0x50, 0x54, 0x1d, 0xa7, 0x2a, 0xc0,
+	0x51, 0x84, 0x54, 0xf5, 0x7a, 0x20, 0x1e, 0x10, 0x12, 0xc7, 0xc2, 0xa1, 0x7b, 0x60, 0x77, 0x49,
+	0x4f, 0xbc, 0xf0, 0x94, 0x6b, 0xbc, 0x6d, 0x44, 0x12, 0xf7, 0x6c, 0x47, 0xd0, 0x1f, 0xc2, 0x7f,
+	0xe0, 0x6f, 0xf0, 0x4f, 0x78, 0xe1, 0x2f, 0xf0, 0x8c, 0x3c, 0x76, 0x5a, 0xa7, 0x2d, 0x6c, 0x85,
+	0xe0, 0xcd, 0xf3, 0xcd, 0x37, 0x63, 0xcf, 0x37, 0x63, 0x27, 0x10, 0xf0, 0xcd, 0x72, 0xba, 0xe1,
+	0x4c, 0x32, 0xe2, 0xf1, 0xcd, 0x32, 0x7e, 0x17, 0x7a, 0xcf, 0xb3, 0x8c, 0x53, 0x21, 0x48, 0x04,
+	0xbd, 0x54, 0x2f, 0x23, 0x67, 0xec, 0x4c, 0x82, 0xa4, 0x31, 0xe3, 0xf7, 0x20, 0xfc, 0xb6, 0x2e,
+	0x64, 0xde, 0x30, 0xdf, 0x02, 0xbf, 0x54, 0xb6, 0xe1, 0x69, 0x23, 0xfe, 0x0c, 0x86, 0x36, 0x8b,
+	0x0a, 0xf2, 0x21, 0x74, 0xd1, 0xa5, 0x12, 0x7a, 0x93, 0xc1, 0xfc, 0xe1, 0x54, 0xed, 0x6e, 0x93,
+	0x12, 0x43, 0x88, 0x03, 0xe8, 0x5d, 0x33, 0xb9, 0xce, 0xab, 0x55, 0x9c, 0x80, 0xff, 0x5d, 0x4d,
+	0xf9, 0x96, 0xbc, 0x0f, 0x9d, 0x3b, 0xce, 0x4a, 0xdc, 0xe5, 0x64, 0x30, 0xba, 0x49, 0x0c, 0xfe,
+	0x1b, 0xc5, 0x8f, 0x5c, 0xe4, 0x85, 0xc8, 0x6b, 0x28, 0xda, 0x15, 0xff, 0xe9, 0xc2, 0x83, 0x1b,
+	0x9e, 0x51, 0xfe, 0x82, 0xa7, 0xab, 0x92, 0x56, 0x92, 0x3c, 0x02, 0x57, 0x32, 0x93, 0xba, 0x1d,
+	0xe2, 0x4a, 0xb6, 0xdb, 0xda, 0xfd, 0xe7, 0xad, 0x87, 0xe0, 0xe6, 0x59, 0xe4, 0x8d, 0x9d, 0x49,
+	0x98, 0xb8, 0x79, 0xa6, 0x24, 0x64, 0x6a, 0x97, 0x97, 0x59, 0xd4, 0x41, 0xb0, 0x31, 0xc9, 0x23,
+	0x08, 0x70, 0xf9, 0x6a, 0xbb, 0xa1, 0x91, 0x3f, 0x76, 0x26, 0x5e, 0xb2, 0x07, 0xc8, 0x18, 0x06,
+	0x68, 0xdc, 0xa6, 0x3c, 0x97, 0xdb, 0xa8, 0x8b, 0x7e, 0x1b, 0x22, 0x31, 0x84, 0x77, 0x42, 0x5e,
+	0xb1, 0x8c, 0x2e, 0xd6, 0x29, 0xa7, 0x51, 0x0f, 0xd3, 0xb7, 0x30, 0xc5, 0x11, 0x55, 0xb6, 0xe7,
+	0xf4, 0x35, 0xc7, 0xc6, 0xc8, 0x63, 0x80, 0x0d, 0xcf, 0x97, 0x86, 0x11, 0x20, 0xc3, 0x42, 0xc8,
+	0x13, 0x18, 0x96, 0xe9, 0xcf, 0xdf, 0xb3, 0xa2, 0x2e, 0x0d, 0x07, 0x90, 0x73, 0x80, 0x22, 0x2f,
+	0xaf, 0x6c, 0xde, 0xc0, 0xf0, 0x5a, 0x68, 0xfc, 0x9b, 0x07, 0xc3, 0x84, 0x8a, 0xba, 0x90, 0xff,
+	0xaf, 0xf2, 0x8f, 0x01, 0x5e, 0xd7, 0xdb, 0x9b, 0x96, 0xf8, 0x16, 0xa2, 0x14, 0x16, 0xb4, 0x28,
+	0x1a, 0x82, 0x8f, 0x04, 0x1b, 0x22, 0x53, 0x20, 0x0d, 0xbf, 0x39, 0xea, 0xcb, 0x0c, 0x5b, 0x11,
+	0x26, 0x27, 0x3c, 0x64, 0x06, 0x97, 0xbb, 0x70, 0x2b, 0x40, 0x37, 0xe6, 0x94, 0xeb, 0xa8, 0x87,
+	0xfd, 0x33, 0x7a, 0x18, 0xdc, 0xdb, 0x43, 0x38, 0xa3, 0x87, 0x83, 0x33, 0x7b, 0x18, 0x9e, 0xec,
+	0xe1, 0xef, 0x0e, 0x74, 0x75, 0x0f, 0x8d, 0xec, 0xce, 0xdf, 0xc8, 0xee, 0xde, 0x27, 0xbb, 0x77,
+	0x2c, 0x7b, 0x04, 0x3d, 0x23, 0x40, 0x73, 0x65, 0x8c, 0xa9, 0x3c, 0xa6, 0x6c, 0xd3, 0xae, 0xc6,
+	0x54, 0xef, 0x0f, 0x96, 0x6b, 0xba, 0xa3, 0x0d, 0x75, 0xc5, 0x76, 0x05, 0x9a, 0x36, 0xec, 0x01,
+	0xf4, 0x36, 0x65, 0x19, 0xe5, 0xf7, 0x40, 0xfc, 0x03, 0xf8, 0xaa, 0x56, 0xbc, 0xa7, 0x22, 0x5f,
+	0x55, 0xa9, 0xac, 0x39, 0x35, 0x75, 0xee, 0x01, 0xf2, 0x31, 0x84, 0x4b, 0x56, 0x6e, 0x6a, 0x99,
+	0xca, 0x9c, 0x55, 0x22, 0x72, 0xf1, 0x59, 0xbb, 0xc0, 0x21, 0xbd, 0xda, 0x3b, 0x92, 0x16, 0x2b,
+	0x4e, 0x61, 0x60, 0x39, 0xc9, 0x05, 0x78, 0xc5, 0x5a, 0x18, 0xb1, 0xd4, 0x52, 0x21, 0x7c, 0x2d,
+	0x8c, 0x3a, 0x6a, 0x49, 0xde, 0x86, 0x6e, 0x41, 0xd3, 0x8c, 0x72, 0x53, 0xba, 0xb1, 0x14, 0x2e,
+	0x64, 0x2a, 0x6b, 0x61, 0xc4, 0x32, 0x56, 0xfc, 0x0e, 0x0c, 0x16, 0xdb, 0x6a, 0x99, 0xd0, 0x37,
+	0x35, 0x15, 0x47, 0x6d, 0x8a, 0xbf, 0x80, 0xf0, 0xeb, 0x82, 0x2e, 0x65, 0xe3, 0x1f, 0x83, 0x2f,
+	0x54, 0xb9, 0xe6, 0x16, 0x02, 0x16, 0x80, 0x02, 0x24, 0xda, 0x61, 0x32, 0xb8, 0xbb, 0x0c, 0x5f,
+	0xc2, 0x50, 0xd7, 0x40, 0xff, 0x7d, 0x8e, 0x5f, 0x1c, 0xe8, 0x3c, 0x97, 0xac, 0xfc, 0x6f, 0x5e,
+	0x00, 0x94, 0x28, 0x5b, 0x51, 0x8e, 0xba, 0x79, 0x89, 0xb1, 0x08, 0x81, 0x4e, 0x96, 0xca, 0xd4,
+	0x08, 0x84, 0xeb, 0x76, 0x57, 0xfd, 0x83, 0xae, 0xce, 0x7f, 0x75, 0x20, 0x58, 0xfc, 0x94, 0xf2,
+	0xf2, 0x5a, 0x0d, 0xd7, 0x07, 0xd0, 0xb9, 0xcd, 0xab, 0x15, 0x39, 0xde, 0x78, 0xa4, 0xcf, 0x6a,
+	0xbe, 0x53, 0xe4, 0x19, 0x5c, 0xe0, 0x77, 0xea, 0xaa, 0x60, 0x82, 0xf2, 0x5b, 0x4a, 0xb9, 0x20,
+	0x5a, 0x05, 0x84, 0x47, 0x97, 0x47, 0x09, 0xa8, 0x20, 0x9f, 0xc3, 0xe8, 0x30, 0xe8, 0xa6, 0x7a,
+	0xc1, 0x59, 0x25, 0x73, 0xca, 0x5b, 0xe1, 0xc7, 0xfb, 0xcf, 0x9c, 0xf9, 0x1f, 0x2e, 0xf4, 0xbf,
+	0x4a, 0xf9, 0x8f, 0x78, 0xd2, 0x4f, 0xe0, 0xe1, 0x82, 0x56, 0x59, 0xfb, 0xbb, 0x46, 0x30, 0xac,
+	0x85, 0x1d, 0x9c, 0xfb, 0x53, 0x20, 0x2a, 0xec, 0xe0, 0x55, 0xd6, 0xa7, 0x6d, 0x83, 0x07, 0x81,
+	0x4f, 0xe1, 0xc1, 0x35, 0x93, 0xf9, 0x5d, 0xbe, 0xd4, 0x83, 0x7d, 0x4a, 0xa2, 0x81, 0x95, 0x66,
+	0xe6, 0x90, 0x29, 0xc0, 0x37, 0x54, 0x6a, 0xf3, 0x1c, 0xfe, 0x13, 0xe8, 0xa8, 0x39, 0x26, 0xfa,
+	0x4a, 0x59, 0x23, 0x3d, 0xb2, 0xe6, 0x6b, 0xe6, 0x90, 0x8f, 0x00, 0x70, 0xa0, 0xf5, 0xa5, 0xd5,
+	0x79, 0xed, 0x09, 0xb7, 0xe9, 0xe4, 0x29, 0x84, 0x66, 0x76, 0xb5, 0x7d, 0x69, 0xdd, 0xd7, 0x66,
+	0x9c, 0xdb, 0xa5, 0xce, 0x67, 0x10, 0xbe, 0xa2, 0xbc, 0xcc, 0xab, 0xb4, 0x40, 0xa9, 0xc7, 0xd0,
+	0x57, 0x9a, 0xe1, 0xf4, 0x06, 0x7a, 0x62, 0x25, 0x2b, 0x47, 0xfb, 0xe5, 0xeb, 0x2e, 0xfe, 0x54,
+	0x3d, 0xfb, 0x2b, 0x00, 0x00, 0xff, 0xff, 0x76, 0x68, 0xd2, 0x39, 0x61, 0x09, 0x00, 0x00,
 }
