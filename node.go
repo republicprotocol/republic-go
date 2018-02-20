@@ -33,7 +33,7 @@ type DarkNode struct {
 // new DarkNode as the delegate for both. Returns the new DarkNode, or an error.
 func NewDarkNode(config *Config) (*DarkNode, error) {
 	node := &DarkNode{
-		HiddenOrderBook: compute.NewHiddenOrderBook(config.ComputationBlockSize),
+		HiddenOrderBook: compute.NewHiddenOrderBook(config.ComputationChunkSize),
 		Server:          grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
 		Configuration:   config,
 
@@ -145,30 +145,30 @@ func (node *DarkNode) OnOrderFragmentForwarding(to identity.Address, from identi
 func (node *DarkNode) OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, resultFragment *compute.ResultFragment) {
 }
 
-func (node *DarkNode) RunComputationBlockPacker() {
+func (node *DarkNode) RunComputationChunkPacker() {
 	go func() {
 		running := int64(1)
 
-		computationBlockChan := make(chan compute.ComputationBlock)
+		computationChunkChan := make(chan compute.ComputationChunk)
 		go func() {
 			for atomic.LoadInt64(&running) != 0 {
-				computationBlockChan <- node.HiddenOrderBook.WaitForComputationBlock()
+				computationChunkChan <- node.HiddenOrderBook.WaitForComputationChunk()
 			}
 		}()
 
 		for atomic.LoadInt64(&running) != 0 {
 			select {
-			case computationBlock := <-computationBlockChan:
+			case computationChunk := <-computationChunkChan:
 				go func() {
-					computationBlockConsensus := node.BroadcastComputationBlock(computationBlock)
-					node.BroadcastComputationBlockConsensus(computationBlockConsensus)
+					computationChunkConsensus := node.BroadcastComputationChunk(computationChunk)
+					node.BroadcastComputationChunkConsensus(computationChunkConsensus)
 				}()
-			case <-time.Tick(time.Second * node.Configuration.ComputationBlockInterval):
-				preemptedComputationBlock := node.HiddenOrderBook.PreemptComputationBlock()
-				if len(preemptedComputationBlock) > 0 {
+			case <-time.Tick(time.Second * node.Configuration.ComputationChunkInterval):
+				preemptedComputationChunk := node.HiddenOrderBook.PreemptComputationChunk()
+				if len(preemptedComputationChunk) > 0 {
 					go func() {
-						computationBlockConsensus := node.BroadcastComputationBlock(preemptedComputationBlock)
-						node.BroadcastComputationBlockConsensus(computationBlockConsensus)
+						computationChunkConsensus := node.BroadcastComputationChunk(preemptedComputationChunk)
+						node.BroadcastComputationChunkConsensus(computationChunkConsensus)
 					}()
 				}
 			case <-node.quitPacker:
@@ -178,21 +178,21 @@ func (node *DarkNode) RunComputationBlockPacker() {
 	}()
 }
 
-func (node *DarkNode) BroadcastComputationBlock(computationBlock compute.ComputationBlock) {
+func (node *DarkNode) BroadcastComputationChunk(computationChunk compute.ComputationChunk) {
 	// Track all of the no bids on computations.
 	nosMu := new(sync.Mutex)
 	nos := map[string]int{}
 
 	do.ForAll(node.DarkPool, func(i int) {
 		peer := node.DarkPool[i]
-		// TODO: send computation block and get response
-		// computationBlockBids := peer.SendComputationBlockProposal(computationBlock)
-		computationBlockBids := struct{}{}
+		// TODO: send computation chunk and get response
+		// computationChunkBids := peer.SendComputationChunkProposal(computationChunk)
+		computationChunkBids := struct{}{}
 
 		func() {
 			nosMu.Lock()
 			defer nosMu.Unlock()
-			for computationID, bid := range computationBlockBids {
+			for computationID, bid := range computationChunkBids {
 				if bid == compute.ComputationBidYes {
 					continue
 				}
@@ -206,31 +206,31 @@ func (node *DarkNode) BroadcastComputationBlock(computationBlock compute.Computa
 
 	// Create a new slice of compute.Computations for which more than
 	// 2/3rds of the dark pool can participate.
-	computations := make([]*compute.Computation, 0, len(computationBlock.Computations))
-	for _, computation := range computationBlock.Computations {
+	computations := make([]*compute.Computation, 0, len(computationChunk.Computations))
+	for _, computation := range computationChunk.Computations {
 		if noBids[string(computation.ID)] >= node.DarkPoolLimit {
 			continue
 		}
 		computations = append(computations, computation)
 	}
 
-	computationBlockConsensus := compute.NewComputationBlock(computations)
-	return computationBlockConsensus
+	computationChunkConsensus := compute.NewComputationChunk(computations)
+	return computationChunkConsensus
 }
 
-func (node *DarkNode) BroadcastComputationBlockConsensus(computationBlock compute.ComputationBlock) {
+func (node *DarkNode) BroadcastComputationChunkConsensus(computationChunk compute.ComputationChunk) {
 	go func() {
-		node.Compute(computationBlock)
+		node.Compute(computationChunk)
 	}()
 	do.ForAll(node.DarkPool, func(i int) {
 		peer := node.DarkPool[i]
-		// TODO: send computation block and get response
-		// peer.SendComputationBlockConsensus(computationBlock)
+		// TODO: send computation chunk and get response
+		// peer.SendComputationChunkConsensus(computationChunk)
 	})
 }
 
-func (node *DarkNode) Compute(computationBlock compute.ComputationBlock) {
-	resultFragments := computationBlock.Compute(node.Configuration.Prime)
+func (node *DarkNode) Compute(computationChunk compute.ComputationChunk) {
+	resultFragments := computationChunk.Compute(node.Configuration.Prime)
 	do.ForAll(node.DarkPool, func(i int) {
 		peer := node.DarkPool[i]
 		// TODO: send result fragments
@@ -238,14 +238,14 @@ func (node *DarkNode) Compute(computationBlock compute.ComputationBlock) {
 	})
 }
 
-func (node *DarkNode) BidOnComputationBlock(computationBlock compute.ComputationBlock) compute.ComputationBlockBid {
-	computationBlockBid := compute.ComputationBlockBid{
-		ID:   computationBlock.ID,
+func (node *DarkNode) BidOnComputationChunk(computationChunk compute.ComputationChunk) compute.ComputationChunkBid {
+	computationChunkBid := compute.ComputationChunkBid{
+		ID:   computationChunk.ID,
 		Bids: map[string]compute.ComputationBid{},
 	}
-	for _, computation := range computationBlock.Computations {
-		computationBlockBid.Bids[string(computation.ID)] = compute.ComputationBidNo
+	for _, computation := range computationChunk.Computations {
+		computationChunkBid.Bids[string(computation.ID)] = compute.ComputationBidNo
 	}
 	// FIXME:
-	return computationBlockBid
+	return computationChunkBid
 }

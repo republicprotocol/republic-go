@@ -18,8 +18,8 @@ type Config struct {
 	MultiAddress            identity.MultiAddress   `json:"multi_address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
 
-	ComputationBlockSize     int      `json:"computation_block_size"`
-	ComputationBlockInterval int      `json:"computation_block_interval"`
+	ComputationChunkSize     int      `json:"computation_chunk_size"`
+	ComputationChunkInterval int      `json:"computation_chunk_interval"`
 	Prime                    *big.Int `json:"prime"`
 }
 
