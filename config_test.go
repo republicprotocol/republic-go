@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Miners", func() {
+var _ = Describe("Configurations", func() {
 	It("should fail", func() {
 		Ω(true).Should(Equal(false))
 	})
