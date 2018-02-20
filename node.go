@@ -1,13 +1,19 @@
 package node
 
 import (
+	"context"
 	"log"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/republicprotocol/go-atom/ethereum"
 	"github.com/republicprotocol/go-dark-network"
+	"github.com/republicprotocol/go-dark-node-registrar"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
@@ -87,6 +93,16 @@ func (node *DarkNode) Start() {
 		}
 	}()
 
+	registered, err := isRegistered(node.Configuration.MultiAddress.ID())
+	if err != nil {
+		log.Fatal(err)
+	}
+	if !registered {
+		panic("dark node hasn't been registered")
+	}
+
+	darkPool := getDarkPoolConfig()
+
 	// Wait for the server to start and bootstrap the connections in the swarm.
 	time.Sleep(time.Second)
 	node.Swarm.Bootstrap()
@@ -149,10 +165,10 @@ func (node *DarkNode) RunComputationChunkPacker() {
 	go func() {
 		running := int64(1)
 
-		computationChunkChan := make(chan compute.ComputationChunk)
+		computationChunkChan := make(chan compute.ComputationBlock)
 		go func() {
 			for atomic.LoadInt64(&running) != 0 {
-				computationChunkChan <- node.HiddenOrderBook.WaitForComputationChunk()
+				computationChunkChan <- node.HiddenOrderBook.WaitForComputationBlock()
 			}
 		}()
 
@@ -163,9 +179,9 @@ func (node *DarkNode) RunComputationChunkPacker() {
 					computationChunkConsensus := node.BroadcastComputationChunk(computationChunk)
 					node.BroadcastComputationChunkConsensus(computationChunkConsensus)
 				}()
-			case <-time.Tick(time.Second * node.Configuration.ComputationChunkInterval):
-				preemptedComputationChunk := node.HiddenOrderBook.PreemptComputationChunk()
-				if len(preemptedComputationChunk) > 0 {
+			case <-time.Tick(time.Duration(node.Configuration.ComputationChunkInterval) * time.Second):
+				preemptedComputationChunk := node.HiddenOrderBook.PreemptComputationBlock()
+				if len(preemptedComputationChunk.Computations) > 0 {
 					go func() {
 						computationChunkConsensus := node.BroadcastComputationChunk(preemptedComputationChunk)
 						node.BroadcastComputationChunkConsensus(computationChunkConsensus)
@@ -178,7 +194,7 @@ func (node *DarkNode) RunComputationChunkPacker() {
 	}()
 }
 
-func (node *DarkNode) BroadcastComputationChunk(computationChunk compute.ComputationChunk) {
+func (node *DarkNode) BroadcastComputationChunk(computationChunk compute.ComputationBlock) {
 	// Track all of the no bids on computations.
 	nosMu := new(sync.Mutex)
 	nos := map[string]int{}
@@ -214,11 +230,11 @@ func (node *DarkNode) BroadcastComputationChunk(computationChunk compute.Computa
 		computations = append(computations, computation)
 	}
 
-	computationChunkConsensus := compute.NewComputationChunk(computations)
+	computationChunkConsensus := compute.NewComputationBlock(computations)
 	return computationChunkConsensus
 }
 
-func (node *DarkNode) BroadcastComputationChunkConsensus(computationChunk compute.ComputationChunk) {
+func (node *DarkNode) BroadcastComputationChunkConsensus(computationChunk compute.ComputationBlock) {
 	go func() {
 		node.Compute(computationChunk)
 	}()
@@ -229,7 +245,7 @@ func (node *DarkNode) BroadcastComputationChunkConsensus(computationChunk comput
 	})
 }
 
-func (node *DarkNode) Compute(computationChunk compute.ComputationChunk) {
+func (node *DarkNode) Compute(computationChunk compute.ComputationBlock) {
 	resultFragments := computationChunk.Compute(node.Configuration.Prime)
 	do.ForAll(node.DarkPool, func(i int) {
 		peer := node.DarkPool[i]
@@ -238,8 +254,8 @@ func (node *DarkNode) Compute(computationChunk compute.ComputationChunk) {
 	})
 }
 
-func (node *DarkNode) BidOnComputationChunk(computationChunk compute.ComputationChunk) compute.ComputationChunkBid {
-	computationChunkBid := compute.ComputationChunkBid{
+func (node *DarkNode) BidOnComputationChunk(computationChunk compute.ComputationBlock) compute.ComputationBlockBid {
+	computationChunkBid := compute.ComputationBlockBid{
 		ID:   computationChunk.ID,
 		Bids: map[string]compute.ComputationBid{},
 	}
@@ -249,3 +265,41 @@ func (node *DarkNode) BidOnComputationChunk(computationChunk compute.Computation
 	// FIXME:
 	return computationChunkBid
 }
+
+func isRegistered(id identity.ID) (bool, error) {
+	// todo: need to get key from the ethereum private key
+	key := `{"version":3,"id":"7844982f-abe7-4690-8c15-34f75f847c66","address":"db205ea9d35d8c01652263d58351af75cfbcbf07","Crypto":{"ciphertext":"378dce3c1279b36b071e1c7e2540ac1271581bff0bbe36b94f919cb73c491d3a","cipherparams":{"iv":"2eb92da55cc2aa62b7ffddba891f5d35"},"cipher":"aes-128-ctr","kdf":"scrypt","kdfparams":{"dklen":32,"salt":"80d3341678f83a14024ba9c3edab072e6bd2eea6aa0fbc9e0a33bae27ffa3d6d","n":8192,"r":8,"p":1},"mac":"3d07502ea6cd6b96a508138d8b8cd2e46c3966240ff276ce288059ba4235cb0d"}}`
+	auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
+	if err != nil {
+		return false, err
+	}
+	client := ethereum.Ropsten("https://ropsten.infura.io/")
+	contractAddress := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
+	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), client, auth, &bind.CallOpts{}, contractAddress, nil)
+	idInBytes := [20]byte{}
+	copy(idInBytes[:], id)
+	return userConnection.IsDarkNodeRegistered(id)
+}
+
+func getDarkPoolConfig () ([]identity.ID, error) {
+	// todo: need to get key from the ethereum private key
+	key := `{"version":3,"id":"7844982f-abe7-4690-8c15-34f75f847c66","address":"db205ea9d35d8c01652263d58351af75cfbcbf07","Crypto":{"ciphertext":"378dce3c1279b36b071e1c7e2540ac1271581bff0bbe36b94f919cb73c491d3a","cipherparams":{"iv":"2eb92da55cc2aa62b7ffddba891f5d35"},"cipher":"aes-128-ctr","kdf":"scrypt","kdfparams":{"dklen":32,"salt":"80d3341678f83a14024ba9c3edab072e6bd2eea6aa0fbc9e0a33bae27ffa3d6d","n":8192,"r":8,"p":1},"mac":"3d07502ea6cd6b96a508138d8b8cd2e46c3966240ff276ce288059ba4235cb0d"}}`
+	auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
+	if err != nil {
+		return []identity.ID{}, err
+	}
+	client := ethereum.Ropsten("https://ropsten.infura.io/")
+	contractAddress := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
+	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), client, auth, &bind.CallOpts{}, contractAddress, nil)
+	ids, err  := userConnection.GetXingOverlay()
+	if err != nil {
+		return []identity.ID{}, err
+	}
+	nodes := make (identity.ID , len(ids))
+	//for i := range ids{
+	//	node ids[i][:])
+	//
+	//}
+}
+
+
