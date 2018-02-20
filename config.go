@@ -2,22 +2,24 @@ package node
 
 import (
 	"encoding/json"
-	"math/big"
 	"os"
 
 	"github.com/republicprotocol/go-identity"
+	"math/big"
 )
 
-// Config information for DarkNodes
+// Config information for Miners
 type Config struct {
 	Host                    string                  `json:"host"`
 	Port                    string                  `json:"port"`
-	KeyPair                 identity.KeyPair        `json:"key_pair"`
+	EthereumPrivateKey      string                  `json:"ethereum_private_key"`
+	RepublicKeyPair         identity.KeyPair        `json:"republic_key_pair"`
+	RSAKeyPair              identity.KeyPair        `json:"rsa_key_pair"`
 	MultiAddress            identity.MultiAddress   `json:"multi_address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
 
-	ComputationBlockSize     int      `json:"computation_block_size"`
-	ComputationBlockInterval int      `json:"computation_block_interval"`
+	ComputationChunkSize     int      `json:"computation_chunk_size"`
+	ComputationChunkInterval int      `json:"computation_chunk_interval"`
 	Prime                    *big.Int `json:"prime"`
 }
 
