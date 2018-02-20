@@ -192,7 +192,7 @@ var _ = Describe("Computations", func() {
 
 			orderBook := compute.NewHiddenOrderBook(4)
 			blockChan := do.Process(func() do.Option {
-				return do.Ok(orderBook.WaitForComputationBlock())
+				return do.Ok(orderBook.WaitForComputationChunk())
 			})
 
 			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
@@ -205,7 +205,7 @@ var _ = Describe("Computations", func() {
 				orderBook.AddOrderFragment(rhs[0])
 			}
 
-			block := (<-blockChan).Ok.(compute.ComputationBlock)
+			block := (<-blockChan).Ok.(compute.ComputationChunk)
 			Ω(len(block.Computations)).Should(Equal(4))
 		})
 	})

@@ -7,9 +7,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/go-identity"
-
 	"github.com/republicprotocol/go-sss"
-
 	"github.com/ethereum/go-ethereum/crypto"
 )
 

@@ -39,31 +39,31 @@ func (computation *Computation) Sub(prime *big.Int) (*ResultFragment, error) {
 	return computation.BuyOrderFragment.Sub(computation.SellOrderFragment, prime)
 }
 
-type ComputationBlockID []byte
+type ComputationChunkID []byte
 
-type ComputationBlock struct {
-	ID           ComputationBlockID
+type ComputationChunk struct {
+	ID           ComputationChunkID
 	Computations []*Computation
 }
 
-func NewComputationBlock(computations []*Computation) ComputationBlock {
+func NewComputationChunk(computations []*Computation) ComputationChunk {
 	computationIDs := make([]byte, 0, len(computations)*32)
 	for _, computation := range computations {
 		computationIDs = append(computationIDs, []byte(computation.ID)...)
 	}
-	return ComputationBlock{
-		ID:           ComputationBlockID(crypto.Keccak256(computationIDs)),
+	return ComputationChunk{
+		ID:           ComputationChunkID(crypto.Keccak256(computationIDs)),
 		Computations: computations,
 	}
 }
 
-func (block ComputationBlock) Compute(prime *big.Int) []*ResultFragment {
-	resultFragments := make([]*ResultFragment, len(block.Computations))
+func (chunk ComputationChunk) Compute(prime *big.Int) []*ResultFragment {
+	resultFragments := make([]*ResultFragment, len(chunk.Computations))
 	for i := range resultFragments {
 		// FIXME: We are processing computations in bulk with the expectation
 		// that some of them will fail (hopefully 2/3rds of participiants will
 		// succeed). Errors are dropped here.
-		resultFragments[i], _ = block.Computations[i].Sub(prime)
+		resultFragments[i], _ = chunk.Computations[i].Sub(prime)
 	}
 	return resultFragments
 }
@@ -75,8 +75,8 @@ const (
 	ComputationBidNo  = 2
 )
 
-type ComputationBlockBid struct {
-	ID   ComputationBlockID
+type ComputationChunkBid struct {
+	ID   ComputationChunkID
 	Bids map[string]ComputationBid
 }
 
@@ -84,21 +84,21 @@ type HiddenOrderBook struct {
 	do.GuardedObject
 
 	orderFragments []*OrderFragment
-	blockSize      int
+	chunkSize      int
 
 	pendingComputations              []*Computation
-	pendingComputationsReadyForBlock *do.Guard
+	pendingComputationsReadyForChunk *do.Guard
 }
 
 // NewHiddenOrderBook returns a new HiddenOrderBook with no OrderFragments, or
 // Computations.
-func NewHiddenOrderBook(blockSize int) *HiddenOrderBook {
+func NewHiddenOrderBook(chunkSize int) *HiddenOrderBook {
 	orderBook := new(HiddenOrderBook)
 	orderBook.GuardedObject = do.NewGuardedObject()
 	orderBook.orderFragments = make([]*OrderFragment, 0)
-	orderBook.blockSize = blockSize
+	orderBook.chunkSize = chunkSize
 	orderBook.pendingComputations = make([]*Computation, 0)
-	orderBook.pendingComputationsReadyForBlock = orderBook.Guard(func() bool { return len(orderBook.pendingComputations) >= blockSize })
+	orderBook.pendingComputationsReadyForChunk = orderBook.Guard(func() bool { return len(orderBook.pendingComputations) >= chunkSize })
 	return orderBook
 }
 
@@ -144,25 +144,25 @@ func (orderBook *HiddenOrderBook) addOrderFragment(orderFragment *OrderFragment)
 	orderBook.orderFragments = append(orderBook.orderFragments, orderFragment)
 }
 
-func (orderBook *HiddenOrderBook) WaitForComputationBlock() ComputationBlock {
-	orderBook.Enter(orderBook.pendingComputationsReadyForBlock)
+func (orderBook *HiddenOrderBook) WaitForComputationChunk() ComputationChunk {
+	orderBook.Enter(orderBook.pendingComputationsReadyForChunk)
 	defer orderBook.Exit()
-	return orderBook.preemptComputationBlock()
+	return orderBook.preemptComputationChunk()
 }
 
-func (orderBook *HiddenOrderBook) PreemptComputationBlock() ComputationBlock {
+func (orderBook *HiddenOrderBook) PreemptComputationChunk() ComputationChunk {
 	orderBook.Enter(nil)
 	defer orderBook.Exit()
-	return orderBook.preemptComputationBlock()
+	return orderBook.preemptComputationChunk()
 }
 
-func (orderBook *HiddenOrderBook) preemptComputationBlock() ComputationBlock {
-	blockSize := orderBook.blockSize
-	if blockSize > len(orderBook.pendingComputations) {
-		blockSize = len(orderBook.pendingComputations)
+func (orderBook *HiddenOrderBook) preemptComputationChunk() ComputationChunk {
+	chunkSize := orderBook.chunkSize
+	if chunkSize > len(orderBook.pendingComputations) {
+		chunkSize = len(orderBook.pendingComputations)
 	}
-	pendingComputations := make([]*Computation, 0, blockSize)
-	pendingComputations = append(pendingComputations, orderBook.pendingComputations[len(orderBook.pendingComputations)-blockSize:]...)
-	orderBook.pendingComputations = orderBook.pendingComputations[0 : len(orderBook.pendingComputations)-blockSize]
-	return NewComputationBlock(pendingComputations)
+	pendingComputations := make([]*Computation, 0, chunkSize)
+	pendingComputations = append(pendingComputations, orderBook.pendingComputations[len(orderBook.pendingComputations)-chunkSize:]...)
+	orderBook.pendingComputations = orderBook.pendingComputations[0 : len(orderBook.pendingComputations)-chunkSize]
+	return NewComputationChunk(pendingComputations)
 }
