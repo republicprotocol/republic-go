@@ -39,31 +39,31 @@ func (computation *Computation) Sub(prime *big.Int) (*ResultFragment, error) {
 	return computation.BuyOrderFragment.Sub(computation.SellOrderFragment, prime)
 }
 
-type ComputationChunkID []byte
+type ComputationShardID []byte
 
-type ComputationChunk struct {
-	ID           ComputationChunkID
+type ComputationShard struct {
+	ID           ComputationShardID
 	Computations []*Computation
 }
 
-func NewComputationChunk(computations []*Computation) ComputationChunk {
+func NewComputationShard(computations []*Computation) ComputationShard {
 	computationIDs := make([]byte, 0, len(computations)*32)
 	for _, computation := range computations {
 		computationIDs = append(computationIDs, []byte(computation.ID)...)
 	}
-	return ComputationChunk{
-		ID:           ComputationChunkID(crypto.Keccak256(computationIDs)),
+	return ComputationShard{
+		ID:           ComputationShardID(crypto.Keccak256(computationIDs)),
 		Computations: computations,
 	}
 }
 
-func (chunk ComputationChunk) Compute(prime *big.Int) []*ResultFragment {
-	resultFragments := make([]*ResultFragment, len(chunk.Computations))
+func (shard ComputationShard) Compute(prime *big.Int) []*ResultFragment {
+	resultFragments := make([]*ResultFragment, len(shard.Computations))
 	for i := range resultFragments {
 		// FIXME: We are processing computations in bulk with the expectation
 		// that some of them will fail (hopefully 2/3rds of participiants will
 		// succeed). Errors are dropped here.
-		resultFragments[i], _ = chunk.Computations[i].Sub(prime)
+		resultFragments[i], _ = shard.Computations[i].Sub(prime)
 	}
 	return resultFragments
 }
@@ -75,8 +75,8 @@ const (
 	ComputationBidNo  = 2
 )
 
-type ComputationChunkBid struct {
-	ID   ComputationChunkID
+type ComputationShardBid struct {
+	ID   ComputationShardID
 	Bids map[string]ComputationBid
 }
 
@@ -84,21 +84,21 @@ type HiddenOrderBook struct {
 	do.GuardedObject
 
 	orderFragments []*OrderFragment
-	chunkSize      int
+	shardSize      int
 
 	pendingComputations              []*Computation
-	pendingComputationsReadyForChunk *do.Guard
+	pendingComputationsReadyForShard *do.Guard
 }
 
 // NewHiddenOrderBook returns a new HiddenOrderBook with no OrderFragments, or
 // Computations.
-func NewHiddenOrderBook(chunkSize int) *HiddenOrderBook {
+func NewHiddenOrderBook(shardSize int) *HiddenOrderBook {
 	orderBook := new(HiddenOrderBook)
 	orderBook.GuardedObject = do.NewGuardedObject()
 	orderBook.orderFragments = make([]*OrderFragment, 0)
-	orderBook.chunkSize = chunkSize
+	orderBook.shardSize = shardSize
 	orderBook.pendingComputations = make([]*Computation, 0)
-	orderBook.pendingComputationsReadyForChunk = orderBook.Guard(func() bool { return len(orderBook.pendingComputations) >= chunkSize })
+	orderBook.pendingComputationsReadyForShard = orderBook.Guard(func() bool { return len(orderBook.pendingComputations) >= shardSize })
 	return orderBook
 }
 
@@ -144,25 +144,25 @@ func (orderBook *HiddenOrderBook) addOrderFragment(orderFragment *OrderFragment)
 	orderBook.orderFragments = append(orderBook.orderFragments, orderFragment)
 }
 
-func (orderBook *HiddenOrderBook) WaitForComputationChunk() ComputationChunk {
-	orderBook.Enter(orderBook.pendingComputationsReadyForChunk)
+func (orderBook *HiddenOrderBook) WaitForComputationShard() ComputationShard {
+	orderBook.Enter(orderBook.pendingComputationsReadyForShard)
 	defer orderBook.Exit()
-	return orderBook.preemptComputationChunk()
+	return orderBook.preemptComputationShard()
 }
 
-func (orderBook *HiddenOrderBook) PreemptComputationChunk() ComputationChunk {
+func (orderBook *HiddenOrderBook) PreemptComputationShard() ComputationShard {
 	orderBook.Enter(nil)
 	defer orderBook.Exit()
-	return orderBook.preemptComputationChunk()
+	return orderBook.preemptComputationShard()
 }
 
-func (orderBook *HiddenOrderBook) preemptComputationChunk() ComputationChunk {
-	chunkSize := orderBook.chunkSize
-	if chunkSize > len(orderBook.pendingComputations) {
-		chunkSize = len(orderBook.pendingComputations)
+func (orderBook *HiddenOrderBook) preemptComputationShard() ComputationShard {
+	shardSize := orderBook.shardSize
+	if shardSize > len(orderBook.pendingComputations) {
+		shardSize = len(orderBook.pendingComputations)
 	}
-	pendingComputations := make([]*Computation, 0, chunkSize)
-	pendingComputations = append(pendingComputations, orderBook.pendingComputations[len(orderBook.pendingComputations)-chunkSize:]...)
-	orderBook.pendingComputations = orderBook.pendingComputations[0 : len(orderBook.pendingComputations)-chunkSize]
-	return NewComputationChunk(pendingComputations)
+	pendingComputations := make([]*Computation, 0, shardSize)
+	pendingComputations = append(pendingComputations, orderBook.pendingComputations[len(orderBook.pendingComputations)-shardSize:]...)
+	orderBook.pendingComputations = orderBook.pendingComputations[0 : len(orderBook.pendingComputations)-shardSize]
+	return NewComputationShard(pendingComputations)
 }
