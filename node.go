@@ -249,8 +249,7 @@ func (node *DarkNode) Compute(computationChunk compute.ComputationBlock) {
 	resultFragments := computationChunk.Compute(node.Configuration.Prime)
 	do.ForAll(node.DarkPool, func(i int) {
 		peer := node.DarkPool[i]
-		// TODO: send result fragments
-		// peer.SendResultFragment(resultFragment)
+		rpc.SendResultFragmentToTarget() // FIXME: Finish calling this RPC
 	})
 }
 
@@ -301,5 +300,4 @@ func getDarkPoolConfig () ([]identity.ID, error) {
 	//
 	//}
 }
-
 
