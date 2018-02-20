@@ -7,9 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/republicprotocol/go-do"
-
 	"github.com/republicprotocol/go-dark-network"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-swarm-network"
@@ -23,7 +22,7 @@ type DarkNode struct {
 	Configuration *Config
 
 	HiddenOrderBook *compute.HiddenOrderBook
-	DarkPool        MultiAddresses
+	DarkPool        identity.MultiAddresses
 	DarkPoolLimit   int
 
 	quitServer chan struct{}
@@ -78,7 +77,7 @@ func (node *DarkNode) Start() {
 	go func() {
 		log.Printf("Listening on %s:%s\n", node.Configuration.Host, node.Configuration.Port)
 		node.Swarm.Register()
-		node.Xing.Register()
+		node.Dark.Register()
 		listener, err := net.Listen("tcp", node.Configuration.Host+":"+node.Configuration.Port)
 		if err != nil {
 			log.Fatal(err)
@@ -179,7 +178,7 @@ func (node *DarkNode) RunComputationBlockPacker() {
 	}()
 }
 
-func (node *DarkNode) BroadcastComputationBlock(computationBlock ComputationBlock) {
+func (node *DarkNode) BroadcastComputationBlock(computationBlock compute.ComputationBlock) {
 	// Track all of the no bids on computations.
 	nosMu := new(sync.Mutex)
 	nos := map[string]int{}
@@ -219,7 +218,7 @@ func (node *DarkNode) BroadcastComputationBlock(computationBlock ComputationBloc
 	return computationBlockConsensus
 }
 
-func (node *DarkNode) BroadcastComputationBlockConsensus(computationBlock ComputationBlock) {
+func (node *DarkNode) BroadcastComputationBlockConsensus(computationBlock compute.ComputationBlock) {
 	go func() {
 		node.Compute(computationBlock)
 	}()
@@ -230,7 +229,7 @@ func (node *DarkNode) BroadcastComputationBlockConsensus(computationBlock Comput
 	})
 }
 
-func (node *DarkNode) Compute(computationBlock ComputationBlock) {
+func (node *DarkNode) Compute(computationBlock compute.ComputationBlock) {
 	resultFragments := computationBlock.Compute(node.Configuration.Prime)
 	do.ForAll(node.DarkPool, func(i int) {
 		peer := node.DarkPool[i]
@@ -244,7 +243,7 @@ func (node *DarkNode) BidOnComputationBlock(computationBlock compute.Computation
 		ID:   computationBlock.ID,
 		Bids: map[string]compute.ComputationBid{},
 	}
-	for _, computation := range computationBlock {
+	for _, computation := range computationBlock.Computations {
 		computationBlockBid.Bids[string(computation.ID)] = compute.ComputationBidNo
 	}
 	// FIXME:
