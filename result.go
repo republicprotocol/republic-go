@@ -34,9 +34,14 @@ type Result struct {
 	MinVolume   *big.Int
 }
 
-func NewResult(resultFragments []*ResultFragment, prime *big.Int) *Result {
+func NewResult(resultFragments []*ResultFragment, prime *big.Int) (*Result, error) {
+	// Check that all ResultFragments are compatible with each other.
+	err := isCompatible(resultFragments)
+	if err != nil {
+		return nil, err
+	}
+
 	// Collect sss.Shares across all ResultFragments.
-	// TODO: Check that all ResultFragments are compatible with each other.
 	k := len(resultFragments)
 	fstCodeShares := make(sss.Shares, k)
 	sndCodeShares := make(sss.Shares, k)
@@ -52,7 +57,6 @@ func NewResult(resultFragments []*ResultFragment, prime *big.Int) *Result {
 	}
 
 	// Join the sss.Shares into a Result.
-	// FIXME: This can panic if there are no ResultFragments.
 	result := &Result{
 		BuyOrderID:  resultFragments[0].BuyOrderID,
 		SellOrderID: resultFragments[0].SellOrderID,
@@ -65,7 +69,7 @@ func NewResult(resultFragments []*ResultFragment, prime *big.Int) *Result {
 
 	// Compute the ResultID and return the Result.
 	result.ID = ResultID(crypto.Keccak256(result.BuyOrderID[:], result.SellOrderID[:]))
-	return result
+	return result, nil
 }
 
 func (result *Result) IsMatch(prime *big.Int) bool {
@@ -155,4 +159,23 @@ func (resultFragment *ResultFragment) Equals(other *ResultFragment) bool {
 		resultFragment.MaxVolumeShare.Value.Cmp(other.MaxVolumeShare.Value) == 0 &&
 		resultFragment.MinVolumeShare.Key == other.MinVolumeShare.Key &&
 		resultFragment.MinVolumeShare.Value.Cmp(other.MinVolumeShare.Value) == 0
+}
+
+// IsCompatible returns an error when the two ResultFragment do not have
+// the same share indices.
+func isCompatible(resultFragments []*ResultFragment) error {
+	if len(resultFragments) == 0 {
+		return NewEmptySliceError("result fragments")
+	}
+	buyOrderID := resultFragments[0].BuyOrderID
+	sellOrderID := resultFragments[0].SellOrderID
+	for i := range resultFragments {
+		if !resultFragments[i].BuyOrderID.Equals(buyOrderID) {
+			return NewOrderFragmentationError(0, int64(i))
+		}
+		if !resultFragments[i].SellOrderID.Equals(sellOrderID) {
+			return NewOrderFragmentationError(0, int64(i))
+		}
+	}
+	return nil
 }

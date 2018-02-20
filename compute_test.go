@@ -31,6 +31,7 @@ var _ = Describe("Computations", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
+
 	})
 
 	Context("when orders use different currencies", func() {
@@ -192,7 +193,7 @@ var _ = Describe("Computations", func() {
 
 			orderBook := compute.NewHiddenOrderBook(4)
 			blockChan := do.Process(func() do.Option {
-				return do.Ok(orderBook.WaitForComputationBlock())
+				return do.Ok(orderBook.WaitForComputationShard())
 			})
 
 			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
@@ -205,11 +206,10 @@ var _ = Describe("Computations", func() {
 				orderBook.AddOrderFragment(rhs[0])
 			}
 
-			block := (<-blockChan).Ok.(compute.ComputationBlock)
+			block := (<-blockChan).Ok.(compute.ComputationShard)
 			Ω(len(block.Computations)).Should(Equal(4))
 		})
 	})
-
 })
 
 func computeResultFromOrderFragments(lhs []*compute.OrderFragment, rhs []*compute.OrderFragment, n int64, prime *big.Int) (*compute.Result, error) {
@@ -232,6 +232,6 @@ func computeResultFromOrderFragments(lhs []*compute.OrderFragment, rhs []*comput
 		resultFragments[i] = resultFragment
 	}
 	// Combine them into a final result.
-	return compute.NewResult(resultFragments, prime), nil
+	return compute.NewResult(resultFragments, prime)
 
 }

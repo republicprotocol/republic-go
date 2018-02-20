@@ -6,11 +6,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/republicprotocol/go-identity"
-
-	"github.com/republicprotocol/go-sss"
-
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/go-sss"
 )
 
 // A CurrencyCode is a numerical representation of the currencies supported by
@@ -220,7 +218,7 @@ func NewOrderFragment(orderID OrderID, orderType OrderType, orderParity OrderPar
 }
 
 // Add two OrderFragments together and return the resulting output
-// OrderFragment. The output OrderFragment will have its ID computed.
+// ResultFragment. The output ResultFragment will have its ID computed.
 func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*ResultFragment, error) {
 	// Check that the OrderFragments have compatible sss.Shares, and that one
 	// of them is an OrderBuy and the other is an OrderSell.
@@ -280,7 +278,7 @@ func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*
 }
 
 // Sub two OrderFragments from one another and return the resulting output
-// OrderFragment. The output OrderFragment will have its ID computed.
+// ResultFragment. The output ResultFragment will have its ID computed.
 func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*ResultFragment, error) {
 	// Check that the OrderFragments have compatible sss.Shares, and that one
 	// of them is an OrderBuy and the other is an OrderSell.
@@ -339,7 +337,7 @@ func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*
 	return resultFragment, nil
 }
 
-// Bytes returns an Order serialized into a bytes.
+// Bytes returns an OrderFragment serialized into a bytes.
 func (orderFragment *OrderFragment) Bytes() []byte {
 	buf := new(bytes.Buffer)
 
