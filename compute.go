@@ -2,10 +2,9 @@ package compute
 
 import (
 	"math/big"
-	"sync"
-	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/republicprotocol/go-do"
 )
 
 type ComputationID []byte
@@ -40,47 +39,96 @@ func (computation *Computation) Sub(prime *big.Int) (*ResultFragment, error) {
 	return computation.BuyOrderFragment.Sub(computation.SellOrderFragment, prime)
 }
 
-type ComputationMatrix struct {
-	orderFragments []*OrderFragment
+type ComputationBlockID []byte
 
-	computationsMu       *sync.Mutex
-	computationsLeftCond *sync.Cond
-	computations         []*Computation
-	computationsLeft     int64
-	computationsMarker   map[string]struct{}
-
-	resultsMu       *sync.Mutex
-	results         map[string]*Result
-	resultFragments map[string][]*ResultFragment
+type ComputationBlock struct {
+	ID           ComputationBlockID
+	Computations []*Computation
 }
 
-func NewComputationMatrix() *ComputationMatrix {
-	return &ComputationMatrix{
-		orderFragments: []*OrderFragment{},
-
-		computationsMu:       new(sync.Mutex),
-		computationsLeftCond: sync.NewCond(new(sync.Mutex)),
-		computations:         []*Computation{},
-		computationsLeft:     0,
-		computationsMarker:   map[string]struct{}{},
-
-		resultsMu:       new(sync.Mutex),
-		results:         map[string]*Result{},
-		resultFragments: map[string][]*ResultFragment{},
+func NewComputationBlock(computations []*Computation) ComputationBlock {
+	computationIDs := make([]byte, 0, len(computations)*32)
+	for _, computation := range computations {
+		computationIDs = append(computationIDs, []byte(computation.ID)...)
+	}
+	return ComputationBlock{
+		ID:           ComputationBlockID(crypto.Keccak256(computationIDs)),
+		Computations: computations,
 	}
 }
 
-func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) {
-	matrix.computationsMu.Lock()
-	defer matrix.computationsMu.Unlock()
+func (block ComputationBlock) Compute(prime *big.Int) []*ResultFragment {
+	resultFragments := make([]*ResultFragment, len(block.Computations))
+	for i := range resultFragments {
+		// FIXME: We are processing computations in bulk with the expectation
+		// that some of them will fail (hopefully 2/3rds of participiants will
+		// succeed). Errors are dropped here.
+		resultFragments[i], _ = block.Computations[i].Sub(prime)
+	}
+	return resultFragments
+}
 
-	for _, rhs := range matrix.orderFragments {
+type ComputationBid int64
+
+const (
+	ComputationBidYes = 1
+	ComputationBidNo  = 2
+)
+
+type ComputationBlockBid struct {
+	ID   ComputationBlockID
+	Bids map[string]ComputationBid
+}
+
+type HiddenOrderBook struct {
+	do.GuardedObject
+
+	orderFragments []*OrderFragment
+	blockSize      int
+
+	pendingComputations              []*Computation
+	pendingComputationsReadyForBlock *do.Guard
+}
+
+// NewHiddenOrderBook returns a new HiddenOrderBook with no OrderFragments, or
+// Computations.
+func NewHiddenOrderBook(blockSize int) *HiddenOrderBook {
+	orderBook := new(HiddenOrderBook)
+	orderBook.GuardedObject = do.NewGuardedObject()
+	orderBook.orderFragments = make([]*OrderFragment, 0)
+	orderBook.blockSize = blockSize
+	orderBook.pendingComputations = make([]*Computation, 0)
+	orderBook.pendingComputationsReadyForBlock = orderBook.Guard(func() bool { return len(orderBook.pendingComputations) >= blockSize })
+	return orderBook
+}
+
+func (orderBook *HiddenOrderBook) AddPendingComputation(computation *Computation) {
+	orderBook.Enter(nil)
+	defer orderBook.Exit()
+	orderBook.addPendingComputation(computation)
+}
+
+func (orderBook *HiddenOrderBook) addPendingComputation(computation *Computation) {
+	orderBook.pendingComputations = append(orderBook.pendingComputations, computation)
+}
+
+func (orderBook *HiddenOrderBook) AddOrderFragment(orderFragment *OrderFragment) {
+	orderBook.Enter(nil)
+	defer orderBook.Exit()
+	orderBook.addOrderFragment(orderFragment)
+}
+
+func (orderBook *HiddenOrderBook) addOrderFragment(orderFragment *OrderFragment) {
+	// Check that the OrderFragment has not been added.
+	for _, rhs := range orderBook.orderFragments {
 		if orderFragment.ID.Equals(rhs.ID) {
 			return
 		}
 	}
 
-	for _, other := range matrix.orderFragments {
+	// For all other OrderFragment in the Computer, create a new Computation
+	// that needs to be processed.
+	for _, other := range orderBook.orderFragments {
 		if orderFragment.OrderID.Equals(other.OrderID) {
 			continue
 		}
@@ -91,77 +139,30 @@ func (matrix *ComputationMatrix) AddOrderFragment(orderFragment *OrderFragment) 
 		if err != nil {
 			continue
 		}
-		matrix.computations = append(matrix.computations, computation)
-		atomic.AddInt64(&matrix.computationsLeft, 1)
+		orderBook.pendingComputations = append(orderBook.pendingComputations, computation)
 	}
-
-	matrix.orderFragments = append(matrix.orderFragments, orderFragment)
-	if atomic.LoadInt64(&matrix.computationsLeft) > 0 {
-		matrix.computationsLeftCond.Signal()
-	}
+	orderBook.orderFragments = append(orderBook.orderFragments, orderFragment)
 }
 
-func (matrix *ComputationMatrix) WaitForComputations(max int) []*Computation {
-	matrix.computationsLeftCond.L.Lock()
-	defer matrix.computationsLeftCond.L.Unlock()
-	for atomic.LoadInt64(&matrix.computationsLeft) == 0 {
-		matrix.computationsLeftCond.Wait()
-	}
-
-	matrix.computationsMu.Lock()
-	defer matrix.computationsMu.Unlock()
-
-	computations := make([]*Computation, 0, max)
-	for _, computation := range matrix.computations {
-		if _, ok := matrix.computationsMarker[string(computation.ID)]; !ok {
-			matrix.computationsMarker[string(computation.ID)] = struct{}{}
-			computations = append(computations, computation)
-			if len(computations) == max {
-				break
-			}
-		}
-	}
-	atomic.AddInt64(&matrix.computationsLeft, -int64(len(computations)))
-	return computations
+func (orderBook *HiddenOrderBook) WaitForComputationBlock() ComputationBlock {
+	orderBook.Enter(orderBook.pendingComputationsReadyForBlock)
+	defer orderBook.Exit()
+	return orderBook.preemptComputationBlock()
 }
 
-func (matrix *ComputationMatrix) AddResultFragments(resultFragments []*ResultFragment, k int64, prime *big.Int) ([]*Result, error) {
-	matrix.resultsMu.Lock()
-	defer matrix.resultsMu.Unlock()
-
-	results := make([]*Result, 0, len(resultFragments))
-	for _, resultFragment := range resultFragments {
-		resultID := ResultID(crypto.Keccak256(resultFragment.BuyOrderID[:], resultFragment.SellOrderID[:]))
-
-		// Check that this result fragment has not been collected yet.
-		resultFragmentIsUnique := true
-		for _, candidate := range matrix.resultFragments[string(resultID)] {
-			if candidate.ID.Equals(resultFragment.ID) {
-				resultFragmentIsUnique = false
-				break
-			}
-		}
-		if resultFragmentIsUnique {
-			matrix.resultFragments[string(resultID)] = append(matrix.resultFragments[string(resultID)], resultFragment)
-		}
-
-		if int64(len(matrix.resultFragments[string(resultID)])) >= k {
-			if result, ok := matrix.results[string(resultID)]; result != nil && ok {
-				// FIXME: At the moment we are only returning new results. Do
-				// we want to return results we have already found?
-				continue
-			}
-			result := NewResult(matrix.resultFragments[string(resultID)], prime)
-			matrix.results[string(resultID)] = result
-			results = append(results, result)
-		}
-	}
-	return results, nil
+func (orderBook *HiddenOrderBook) PreemptComputationBlock() ComputationBlock {
+	orderBook.Enter(nil)
+	defer orderBook.Exit()
+	return orderBook.preemptComputationBlock()
 }
 
-func (matrix *ComputationMatrix) ComputationsLeft() int64 {
-	matrix.computationsLeftCond.L.Lock()
-	defer matrix.computationsLeftCond.L.Unlock()
-
-	return matrix.computationsLeft
+func (orderBook *HiddenOrderBook) preemptComputationBlock() ComputationBlock {
+	blockSize := orderBook.blockSize
+	if blockSize > len(orderBook.pendingComputations) {
+		blockSize = len(orderBook.pendingComputations)
+	}
+	pendingComputations := make([]*Computation, 0, blockSize)
+	pendingComputations = append(pendingComputations, orderBook.pendingComputations[len(orderBook.pendingComputations)-blockSize:]...)
+	orderBook.pendingComputations = orderBook.pendingComputations[0 : len(orderBook.pendingComputations)-blockSize]
+	return NewComputationBlock(pendingComputations)
 }

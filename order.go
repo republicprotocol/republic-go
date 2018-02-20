@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math/big"
+	"time"
+
+	"github.com/republicprotocol/go-identity"
 
 	"github.com/republicprotocol/go-sss"
 
@@ -58,27 +61,33 @@ func (id OrderID) String() string {
 // the Order must be exposed for computation, but private data should not be
 // exposed to anyone other than the trader that wants to execute the Order.
 type Order struct {
+	// Signature
+	Owner     identity.ID `json:"owner"`
+	Signature []byte      `json:"signature"`
+
 	// Public
-	ID     OrderID     `json:"-"`
+	ID     OrderID     `json:"id"`
 	Type   OrderType   `json:"type"`
 	Parity OrderParity `json:"parity"`
+	Expiry time.Time   `json:"expiry"`
 
 	// Secure
 	FstCode   CurrencyCode `json:"fstCode"`
 	SndCode   CurrencyCode `json:"sndCode"`
-	Price     int64        `json:"price"`
-	MaxVolume int64        `json:"maxVolume"`
-	MinVolume int64        `json:"minVolume"`
+	Price     *big.Int     `json:"price"`
+	MaxVolume *big.Int     `json:"maxVolume"`
+	MinVolume *big.Int     `json:"minVolume"`
 
 	// Private
-	Nonce int64 `json:"nonce"`
+	Nonce *big.Int `json:"nonce"`
 }
 
 // NewOrder returns a new Order and computes the OrderID for the Order.
-func NewOrder(ty OrderType, parity OrderParity, fstCode CurrencyCode, sndCode CurrencyCode, price int64, maxVolume int64, minVolume int64, nonce int64) *Order {
+func NewOrder(ty OrderType, parity OrderParity, expiry time.Time, fstCode, sndCode CurrencyCode, price, maxVolume, minVolume, nonce *big.Int) *Order {
 	order := &Order{
 		Type:      ty,
 		Parity:    parity,
+		Expiry:    expiry,
 		FstCode:   fstCode,
 		SndCode:   sndCode,
 		Price:     price,
@@ -86,7 +95,7 @@ func NewOrder(ty OrderType, parity OrderParity, fstCode CurrencyCode, sndCode Cu
 		MinVolume: minVolume,
 		Nonce:     nonce,
 	}
-	order.ID = order.GenerateID()
+	order.GenerateID()
 	return order
 }
 
@@ -101,15 +110,15 @@ func (order *Order) Split(n, k int64, prime *big.Int) ([]*OrderFragment, error) 
 	if err != nil {
 		return nil, err
 	}
-	priceShares, err := sss.Split(n, k, prime, big.NewInt(order.Price))
+	priceShares, err := sss.Split(n, k, prime, order.Price)
 	if err != nil {
 		return nil, err
 	}
-	maxVolumeShares, err := sss.Split(n, k, prime, big.NewInt(order.MaxVolume))
+	maxVolumeShares, err := sss.Split(n, k, prime, order.MaxVolume)
 	if err != nil {
 		return nil, err
 	}
-	minVolumeShares, err := sss.Split(n, k, prime, big.NewInt(order.MinVolume))
+	minVolumeShares, err := sss.Split(n, k, prime, order.MinVolume)
 	if err != nil {
 		return nil, err
 	}
@@ -134,12 +143,13 @@ func (order *Order) Bytes() []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, order.Type)
 	binary.Write(buf, binary.LittleEndian, order.Parity)
+	binary.Write(buf, binary.LittleEndian, order.Expiry)
 	binary.Write(buf, binary.LittleEndian, order.FstCode)
 	binary.Write(buf, binary.LittleEndian, order.SndCode)
-	binary.Write(buf, binary.LittleEndian, order.Price)
-	binary.Write(buf, binary.LittleEndian, order.MaxVolume)
-	binary.Write(buf, binary.LittleEndian, order.MinVolume)
-	binary.Write(buf, binary.LittleEndian, order.Nonce)
+	binary.Write(buf, binary.LittleEndian, order.Price.Bytes())
+	binary.Write(buf, binary.LittleEndian, order.MaxVolume.Bytes())
+	binary.Write(buf, binary.LittleEndian, order.MinVolume.Bytes())
+	binary.Write(buf, binary.LittleEndian, order.Nonce.Bytes())
 	return buf.Bytes()
 }
 
@@ -148,16 +158,18 @@ func (order *Order) Equals(other *Order) bool {
 	return order.ID.Equals(other.ID) &&
 		order.Type == other.Type &&
 		order.Parity == other.Parity &&
+		order.Expiry.Equal(other.Expiry) &&
 		order.FstCode == other.FstCode &&
 		order.SndCode == other.SndCode &&
-		order.Price == other.Price &&
-		order.MaxVolume == other.MaxVolume &&
-		order.MinVolume == other.MinVolume &&
-		order.Nonce == other.Nonce
+		order.Price.Cmp(other.Price) == 0 &&
+		order.MaxVolume.Cmp(other.MaxVolume) == 0 &&
+		order.MinVolume.Cmp(other.MinVolume) == 0 &&
+		order.Nonce.Cmp(other.Nonce) == 0
 }
 
-func (order *Order) GenerateID() OrderID {
-	return OrderID(crypto.Keccak256(order.Bytes()))
+// GenerateID of the Order.
+func (order *Order) GenerateID() {
+	order.ID = OrderID(crypto.Keccak256(order.Bytes()))
 }
 
 // An OrderFragmentID is the Keccak256 hash of an OrderFragment.
@@ -171,11 +183,16 @@ func (id OrderFragmentID) Equals(other OrderFragmentID) bool {
 // An OrderFragment is a secret share of an Order. Is is created using Shamir
 // secret sharing where the secret is an Order encoded as a big.Int.
 type OrderFragment struct {
+	// Signature
+	Owner     identity.ID
+	Signature []byte
+
 	// Public
 	ID          OrderFragmentID
 	OrderID     OrderID
 	OrderType   OrderType
 	OrderParity OrderParity
+	OrderExpiry time.Time
 
 	// Secure
 	FstCodeShare   sss.Share

@@ -2,6 +2,9 @@ package compute_test
 
 import (
 	"math/big"
+	"time"
+
+	"github.com/republicprotocol/go-do"
 
 	"github.com/republicprotocol/go-order-compute"
 
@@ -18,10 +21,10 @@ var _ = Describe("Computations", func() {
 	Context("when orders are an exact match", func() {
 
 		It("should find a match", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
@@ -33,10 +36,10 @@ var _ = Describe("Computations", func() {
 	Context("when orders use different currencies", func() {
 
 		It("should not find a match for the same currencies in reverse", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeETH, compute.CurrencyCodeBTC, 10, 1000, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeETH, compute.CurrencyCodeBTC, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
@@ -45,10 +48,10 @@ var _ = Describe("Computations", func() {
 		})
 
 		It("should not find a match when the first currencies differ", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeREN, 10, 1000, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeREN, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeETH, compute.CurrencyCodeREN, 10, 1000, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeETH, compute.CurrencyCodeREN, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
@@ -57,10 +60,10 @@ var _ = Describe("Computations", func() {
 		})
 
 		It("should not find a match when the second currencies differ", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeREN, 10, 1000, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeREN, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
@@ -69,10 +72,10 @@ var _ = Describe("Computations", func() {
 		})
 
 		It("should not find a match when both currencies differ", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeREN, compute.CurrencyCodeDGD, 10, 1000, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeREN, compute.CurrencyCodeDGD, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
@@ -84,10 +87,10 @@ var _ = Describe("Computations", func() {
 	Context("when prices vary", func() {
 
 		It("should find a match when the buy price is higher", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 12, 1000, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(12), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
@@ -96,10 +99,10 @@ var _ = Describe("Computations", func() {
 		})
 
 		It("should not find a match when the buy price is lower", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 12, 1000, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(12), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
@@ -111,10 +114,10 @@ var _ = Describe("Computations", func() {
 	Context("when volumes vary", func() {
 
 		It("should find a match when the maximum buy volume is higher than the maximum sell volume", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 100, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(100), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
@@ -123,10 +126,10 @@ var _ = Describe("Computations", func() {
 		})
 
 		It("should find a match when the maximum sell volume is higher than the maximum buy volume", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 100, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(100), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 100, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(100), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
@@ -135,10 +138,10 @@ var _ = Describe("Computations", func() {
 		})
 
 		It("should find a match when the minimum buy volume is higher than the minimum sell volume", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 1000, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(1000), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
@@ -147,10 +150,10 @@ var _ = Describe("Computations", func() {
 		})
 
 		It("should find a match when the minimum sell volume is higher than the maximum buy volume", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 1000, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(1000), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
@@ -159,10 +162,10 @@ var _ = Describe("Computations", func() {
 		})
 
 		It("should not find a match when the maximum buy volume is lower than the minimum sell volume", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 100, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(100), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 1000, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(1000), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
@@ -171,10 +174,10 @@ var _ = Describe("Computations", func() {
 		})
 
 		It("should not find a match when the maximum sell volume is lower than the minimum buy volume", func() {
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 1000, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(1000), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 100, 100, 0).Split(n, k, prime)
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(100), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
@@ -183,91 +186,27 @@ var _ = Describe("Computations", func() {
 		})
 	})
 
-	Context("when using a computation matrix", func() {
+	Context("when using a hidden order book", func() {
 
-		It("should generate zero computations from incompatible orders", func() {
-			for i := 1; i < 11; i++ {
-				matrix := compute.NewComputationMatrix()
-				for j := 0; j < i; j++ {
-					orderFragments, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, int64(j)).Split(n, k, prime)
-					Ω(err).ShouldNot(HaveOccurred())
-					matrix.AddOrderFragment(orderFragments[0])
-				}
-				Ω(matrix.ComputationsLeft()).Should(Equal(int64(0)))
-			}
-		})
+		It("should wait for a full block of order comparisons", func() {
 
-		It("should generate a square number of computations from compatible orders", func() {
-			for i := 1; i < 11; i++ {
-				matrix := compute.NewComputationMatrix()
-				for j := 0; j < i; j++ {
-					orderFragments, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, int64(j)).Split(n, k, prime)
-					Ω(err).ShouldNot(HaveOccurred())
-					matrix.AddOrderFragment(orderFragments[0])
-				}
-				for j := 0; j < i; j++ {
-					orderFragments, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, int64(j)).Split(n, k, prime)
-					Ω(err).ShouldNot(HaveOccurred())
-					matrix.AddOrderFragment(orderFragments[0])
-				}
-				Ω(matrix.ComputationsLeft()).Should(Equal(int64(i * i)))
-				Ω(len(matrix.WaitForComputations(i * i))).Should(Equal(i * i))
-				Ω(matrix.ComputationsLeft()).Should(Equal(int64(0)))
-			}
-		})
+			orderBook := compute.NewHiddenOrderBook(4)
+			blockChan := do.Process(func() do.Option {
+				return do.Ok(orderBook.WaitForComputationBlock())
+			})
 
-		It("should generate results from result fragments", func() {
-			matrix := compute.NewComputationMatrix()
-
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			resultFragments := make([]*compute.ResultFragment, n)
-			for i := range resultFragments {
-				resultFragment, err := lhs[i].Sub(rhs[i], prime)
+			orderBook.AddOrderFragment(lhs[0])
+			for i := 0; i < 4; i++ {
+				rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 				Ω(err).ShouldNot(HaveOccurred())
-				resultFragments[i] = resultFragment
+				orderBook.AddOrderFragment(rhs[0])
 			}
 
-			for i := int64(0); i < k-1; i++ {
-				results, err := matrix.AddResultFragments([]*compute.ResultFragment{resultFragments[i]}, k, prime)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(len(results)).Should(Equal(0))
-			}
-			for i := int64(0); i < k-1; i++ {
-				results, err := matrix.AddResultFragments([]*compute.ResultFragment{resultFragments[i]}, k, prime)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(len(results)).Should(Equal(0))
-			}
-			results, err := matrix.AddResultFragments([]*compute.ResultFragment{resultFragments[k]}, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(len(results)).Should(Equal(1))
-		})
-
-		It("should not generate duplicate results from result fragments", func() {
-			matrix := compute.NewComputationMatrix()
-
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, compute.CurrencyCodeBTC, compute.CurrencyCodeETH, 10, 1000, 100, 0).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			resultFragments := make([]*compute.ResultFragment, n)
-			for i := range resultFragments {
-				resultFragment, err := lhs[i].Sub(rhs[i], prime)
-				Ω(err).ShouldNot(HaveOccurred())
-				resultFragments[i] = resultFragment
-			}
-
-			results, err := matrix.AddResultFragments(resultFragments, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(len(results)).Should(Equal(1))
-
-			results, err = matrix.AddResultFragments(resultFragments, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(len(results)).Should(Equal(0))
+			block := (<-blockChan).Ok.(compute.ComputationBlock)
+			Ω(len(block.Computations)).Should(Equal(4))
 		})
 	})
 
