@@ -35,3 +35,18 @@ func NewOrderParityError(lhs OrderParity) OrderParityError {
 func (err OrderParityError) Error() string {
 	return string(err)
 }
+
+// An EmptySliceError occurs when a slice is empty when we expect it to
+// be non-empty
+type EmptySliceError string
+
+// NewEmptySliceError returns a new EmptySliceError for two OrderFragments
+// that have the same OrderParity.
+func NewEmptySliceError(sliceName string) EmptySliceError {
+	return EmptySliceError(fmt.Sprintf("expected %s slice to be non-empty", sliceName))
+}
+
+// Error implements the error interface.
+func (err EmptySliceError) Error() string {
+	return string(err)
+}

@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/pkg/errors"
 	"github.com/republicprotocol/go-sss"
 )
 
@@ -166,16 +165,16 @@ func (resultFragment *ResultFragment) Equals(other *ResultFragment) bool {
 // the same share indices.
 func isCompatible(resultFragments []*ResultFragment) error {
 	if len(resultFragments) == 0 {
-		return errors.New("empty result fragments")
+		return NewEmptySliceError("result fragments")
 	}
 	buyOrderID := resultFragments[0].BuyOrderID
 	sellOrderID := resultFragments[0].SellOrderID
 	for i := range resultFragments {
 		if !resultFragments[i].BuyOrderID.Equals(buyOrderID) {
-			return errors.New("incompatible result fragments")
+			return NewOrderFragmentationError(0, int64(i))
 		}
 		if !resultFragments[i].SellOrderID.Equals(sellOrderID) {
-			return errors.New("incompatible result fragments")
+			return NewOrderFragmentationError(0, int64(i))
 		}
 	}
 	return nil
