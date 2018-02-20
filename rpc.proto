@@ -189,10 +189,12 @@ message Computation {
 
 // todo
 message ChunkRequest{
-  bytes id = 1;
+  Chunk chunk = 1;
+  bytes id = 2;
 }
 
 // todo
 message ChunkResponse{
-  bytes id = 1;
+  Chunk chunk = 1;
+  bytes id = 2;
 }
