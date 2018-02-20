@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// SyncWithTarget using a new grpc.ClientConn to make Sync RPC to a target.
+// SyncWithTarget using a new grpc.ClientConn to make Sync RPC to the target.
 // This function returns two channels. The first is used to read chunks received
 // in the synchronization. The second is used by the caller to quit when he no
 // longer wants to receive dark.Chunk.
@@ -61,7 +61,8 @@ func SyncWithTarget(target, from identity.MultiAddress, timeout time.Duration) (
 	return chunks, quit
 }
 
-// StartPropose
+// StartPropose using a new grpc.ClientConn to make a Propose RPC call
+// to a target identity.MultiAddress.
 func StartPropose(target identity.MultiAddress, chunkRequest *ChunkRequest, timeout time.Duration) (*ChunkResponse, error) {
 	conn, err := Dial(target, timeout)
 	if err != nil {
@@ -80,7 +81,8 @@ func StartPropose(target identity.MultiAddress, chunkRequest *ChunkRequest, time
 	return chunkResponse, nil
 }
 
-// Compute
+// AskToCompute using a new grpc.ClientConn to make a Compute RPC call
+// to a target identity.MultiAddress.
 func AskToCompute(target identity.MultiAddress, chunkRequest *ChunkRequest, timeout time.Duration) error {
 	conn, err := Dial(target, timeout)
 	if err != nil {
