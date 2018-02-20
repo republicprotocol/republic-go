@@ -160,3 +160,39 @@ message Atom {
   bytes data = 4;
   bytes signature = 5;
 }
+
+/**
+ * Dark node definitions.
+ */
+
+// DarkNode services implement the computations in the dark network
+service DarkNode {
+  rpc Sync (MultiAddress) returns (stream Chunk);
+  rpc Propose (ChunkRequest) returns (ChunkResponse);
+  rpc Compute (ChunkRequest) returns (Nothing);
+}
+
+// A chunk is a block of computations
+message Chunk {
+  bytes signature = 1;
+  repeated Computation computations = 2;
+}
+
+// An computation is the network representation of a compute.Computation
+// and the status of the computaion result.
+message Computation {
+  bytes lhs = 2;
+  bytes rhs = 3;
+  bytes leader = 5;
+  bytes status = 4;
+}
+
+// todo
+message ChunkRequest{
+  bytes id = 1;
+}
+
+// todo
+message ChunkResponse{
+  bytes id = 1;
+}
