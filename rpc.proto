@@ -54,13 +54,14 @@ message Query {
   Address query = 2;
 }
 
+
 /**
- * Xing definitions.
+ * Dark node definitions.
  */
 
 // XingNode services implement the distribution of OrderFragments and
 // ResultFragments in the Xing overlay network.
-service XingNode {
+service DarkNode {
   
   // Send an OrderFragment to some target Node.
   rpc SendOrderFragment (OrderFragment) returns (Nothing);
@@ -75,6 +76,10 @@ service XingNode {
 
   // Get all relevant results that have been computed in the current epoch.
   rpc GetResults (MultiAddress) returns (stream Result);
+
+  rpc Sync (SyncRequest) returns (stream Shard);
+  rpc ElectShard (ElectRequest) returns (Shard);
+  rpc ComputeShard (ComputeRequest) returns (Nothing);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
@@ -137,41 +142,6 @@ message Result {
   bytes minVolume = 8;
 }
 
-/**
- * Terminal definitions.
- */
-
-// TerminalNode services implement the execution of atomic swaps.
-service TerminalNode {
-  
-  // Send an Atom to some target Node.
-  rpc SendAtom (Atom) returns (Atom);
-}
-
-// An Atom message is the network representation of a atom.Atom and the
-// metadata needed to distribute it through the network.
-message Atom {
-  // Network data.
-  Address to = 1;
-  MultiAddress from = 2;
-
-  // Secure data.
-  int64 ledger = 3;
-  bytes data = 4;
-  bytes signature = 5;
-}
-
-/**
- * Dark node definitions.
- */
-
-// DarkNode services implement the computations in the dark network
-service DarkNode {
-  rpc Sync (MultiAddress) returns (stream Chunk);
-  rpc Propose (ChunkRequest) returns (ChunkResponse);
-  rpc Compute (ChunkRequest) returns (Nothing);
-}
-
 // A chunk is a block of computations
 message Chunk {
   bytes signature = 1;
@@ -197,4 +167,28 @@ message ChunkRequest{
 message ChunkResponse{
   Chunk chunk = 1;
   bytes id = 2;
+}
+
+/**
+ * Terminal definitions.
+ */
+
+// TerminalNode services implement the execution of atomic swaps.
+service TerminalNode {
+  
+  // Send an Atom to some target Node.
+  rpc SendAtom (Atom) returns (Atom);
+}
+
+// An Atom message is the network representation of a atom.Atom and the
+// metadata needed to distribute it through the network.
+message Atom {
+  // Network data.
+  Address to = 1;
+  MultiAddress from = 2;
+
+  // Secure data.
+  int64 ledger = 3;
+  bytes data = 4;
+  bytes signature = 5;
 }
