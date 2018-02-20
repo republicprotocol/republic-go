@@ -31,6 +31,7 @@ var _ = Describe("Computations", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
+
 	})
 
 	Context("when orders use different currencies", func() {
@@ -209,7 +210,6 @@ var _ = Describe("Computations", func() {
 			Ω(len(block.Computations)).Should(Equal(4))
 		})
 	})
-
 })
 
 func computeResultFromOrderFragments(lhs []*compute.OrderFragment, rhs []*compute.OrderFragment, n int64, prime *big.Int) (*compute.Result, error) {
@@ -232,6 +232,6 @@ func computeResultFromOrderFragments(lhs []*compute.OrderFragment, rhs []*comput
 		resultFragments[i] = resultFragment
 	}
 	// Combine them into a final result.
-	return compute.NewResult(resultFragments, prime), nil
+	return compute.NewResult(resultFragments, prime)
 
 }
