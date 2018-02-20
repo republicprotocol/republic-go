@@ -5,7 +5,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/republicprotocol/go-dark-network"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"google.golang.org/grpc"
@@ -56,17 +55,17 @@ func SyncWithTarget(target, from identity.MultiAddress, timeout time.Duration) (
 				chunks <- do.Err(err)
 				continue
 			}
-			chunks <- do.Ok(DeserializeChunk(chunk))
+			chunks <- do.Ok(chunk)
 		}
 	}()
 	return chunks, quit
 }
 
 // StartPropose
-func StartPropose(target identity.MultiAddress,chunkRequest dark.ChunkRequest, timeout time.Duration) (dark.ChunkResponse, error) {
+func StartPropose(target identity.MultiAddress, chunkRequest *ChunkRequest, timeout time.Duration) (*ChunkResponse, error) {
 	conn, err := Dial(target, timeout)
 	if err != nil {
-		return identity.MultiAddresses{}, err
+		return nil, err
 	}
 	defer conn.Close()
 	client := NewDarkNodeClient(conn)
@@ -74,33 +73,28 @@ func StartPropose(target identity.MultiAddress,chunkRequest dark.ChunkRequest, t
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	multiAddresses, err := client.QueryCloserPeers(ctx, rpcQuery, grpc.FailFast(false))
+	chunkResponse, err := client.Propose(ctx, chunkRequest, grpc.FailFast(false))
 	if err != nil {
-		return identity.MultiAddresses{}, err
+		return nil, err
 	}
-	return DeserializeMultiAddresses(multiAddresses)
+	return chunkResponse, nil
 }
 
-// SendBid
-func SendBid(target identity.MultiAddress, timeout time.Duration) (identity.MultiAddresses, error) {
+// Compute
+func AskToCompute(target identity.MultiAddress, chunkRequest *ChunkRequest, timeout time.Duration) error {
 	conn, err := Dial(target, timeout)
 	if err != nil {
-		return identity.MultiAddresses{}, err
+		return err
 	}
 	defer conn.Close()
-	client := NewSwarmNodeClient(conn)
+	client := NewDarkNodeClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	rpcQuery := &Query{
-		From:  SerializeMultiAddress(from),
-		Query: SerializeAddress(query),
-	}
-
-	multiAddresses, err := client.QueryCloserPeers(ctx, rpcQuery, grpc.FailFast(false))
+	_, err = client.Compute(ctx, chunkRequest, grpc.FailFast(false))
 	if err != nil {
-		return identity.MultiAddresses{}, err
+		return err
 	}
-	return DeserializeMultiAddresses(multiAddresses)
+	return nil
 }
