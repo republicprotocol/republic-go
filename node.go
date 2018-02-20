@@ -234,19 +234,6 @@ func (node *DarkNode) Compute(computationBlock ComputationBlock) {
 	resultFragments := computationBlock.Compute(node.Configuration.Prime)
 	do.ForAll(node.DarkPool, func(i int) {
 		peer := node.DarkPool[i]
-		// TODO: send result fragments
-		// peer.SendResultFragment(resultFragment)
+		rpc.SendResultFragmentToTarget() // FIXME: Finish calling this RPC
 	})
-}
-
-func (node *DarkNode) BidOnComputationBlock(computationBlock compute.ComputationBlock) compute.ComputationBlockBid {
-	computationBlockBid := compute.ComputationBlockBid{
-		ID:   computationBlock.ID,
-		Bids: map[string]compute.ComputationBid{},
-	}
-	for _, computation := range computationBlock {
-		computationBlockBid.Bids[string(computation.ID)] = compute.ComputationBidNo
-	}
-	// FIXME:
-	return computationBlockBid
 }
