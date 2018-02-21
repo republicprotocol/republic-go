@@ -252,63 +252,35 @@ func (node *DarkNode) StartShardElections() {
 // pool. Collect all responses and create a shard of deltas and residues that
 // are held by enough DarkNodes that a computation has a chance of succeeding.
 func (node *DarkNode) RunShardElection(shard compute.ComputationShard) compute.ComputationShard {
-	// Track all of the no bids on computations.
-	nosMu := new(sync.Mutex)
-	nos := map[string]int{}
+
+	deltaVotesMu := new(sync.Mutex)
+	deltaVotes := map[string]int{}
+
+	residueVotesMu := new(sync.Mutex)
+	residueVotes := map[string]int{}
 
 	do.ForAll(node.DarkPool, func(i int) {
-		peer := node.DarkPool[i]
-		// TODO: send computation shard and get response
-		// computationShardBids := peer.SendComputationShardProposal(computationShard)
-		computationShardBids := struct{}{}
-
-		func() {
-			nosMu.Lock()
-			defer nosMu.Unlock()
-			for computationID, bid := range computationShardBids {
-				if bid == compute.ComputationBidYes {
-					continue
-				}
-				nos[computationID]++
-			}
-		}()
-
-		// FIXME: if a node timeouts or doesn't respond then classify that as a
-		// no for all computations.
+		// TODO: Call the ElectShard RPC on all peers in the dark pool. Get the
+		// shard that is returned and build up a shard of deltas / residues
+		// that are held by at least 2/3rds of the dark pool.
 	})
 
-	// Create a new slice of compute.Computations for which more than
-	// 2/3rds of the dark pool can participate.
-	computations := make([]*compute.Computation, 0, len(shard.Computations))
-	for _, computation := range shard.Computations {
-		if nos[string(computation.ID)] >= node.DarkPoolLimit {
-			continue
-		}
-		computations = append(computations, computation)
-	}
-
-	shard = compute.NewComputationShard(computations)
-	return shard
+	panic("unimplemented")
 }
 
 // RunShardComputation by calling the ComputeShard RPC on all DarkNodes in the
 // dark pool.
 func (node *DarkNode) RunShardComputation(computationShard compute.ComputationShard) {
-	go func() {
-		node.Compute(computationShard)
-	}()
+	go node.Compute(computationShard)
 	do.ForAll(node.DarkPool, func(i int) {
-		peer := node.DarkPool[i]
-		// TODO: send computation chunk and get response
-		// peer.SendComputationShardConsensus(computationShard)
+		// TODO: Call the ComputeShard RPC on all peers in the dark pool.
 	})
 }
 
-func (node *DarkNode) Compute(computationShard compute.ComputationShard) {
-	resultFragments := computationShard.Compute(node.Configuration.Prime)
+func (node *DarkNode) Compute(shard compute.ComputationShard) {
+	resultFragments := shard.Compute(node.Configuration.Prime)
 	do.ForAll(node.DarkPool, func(i int) {
-		peer := node.DarkPool[i]
-		rpc.SendResultFragmentToTarget() // FIXME: Finish calling this RPC
+		// TODO: Call the FinalizeShard RPC on all peers in the dark pool.
 	})
 }
 
