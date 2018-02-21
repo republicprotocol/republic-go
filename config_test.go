@@ -8,7 +8,7 @@ import (
 
 var _ = Describe("Configurations", func() {
 	It("should be able to load config from a json file", func() {
-		config, err := miner.LoadConfig("./test_configs/test_config.json")
+		config, err := node.LoadConfig("./test_configs/test_config.json")
 		Ω(err).Should(BeNil())
 		Ω(config.RepublicKeyPair).Should(Equal("AABYvFnjgsdoPJvsnfpjxkrQvKWrbiexvYm4oehjP6G5"))
 		Ω(config.EthereumPrivateKey).Should(Equal("3a1076bf45ab87712ad64ccb3b10217737f7faacbf2872e88fdd9a537d8fe266"))
@@ -21,12 +21,12 @@ var _ = Describe("Configurations", func() {
 
 	Context("negative tests", func() {
 		It("should return an error when trying to open an non-existent file", func() {
-			_, err := miner.LoadConfig("non-existent.json")
+			_, err := node.LoadConfig("non-existent.json")
 			Ω(err).Should(HaveOccurred())
 		})
 
 		It("should return an error when loading a wrong-formatted json file", func() {
-			_, err := miner.LoadConfig("./test_configs/wrong_test_config.json")
+			_, err := node.LoadConfig("./test_configs/wrong_test_config.json")
 			Ω(err).Should(HaveOccurred())
 		})
 	})

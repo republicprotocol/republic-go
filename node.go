@@ -40,7 +40,7 @@ type DarkNode struct {
 // new DarkNode as the delegate for both. Returns the new DarkNode, or an error.
 func NewDarkNode(config *Config) (*DarkNode, error) {
 	node := &DarkNode{
-		HiddenOrderBook: compute.NewHiddenOrderBook(config.ComputationChunkSize),
+		HiddenOrderBook: compute.NewHiddenOrderBook(config.ComputationShardSize),
 		Server:          grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
 		Configuration:   config,
 
@@ -184,30 +184,30 @@ func (node *DarkNode) OnOrderFragmentForwarding(to identity.Address, from identi
 func (node *DarkNode) OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, resultFragment *compute.ResultFragment) {
 }
 
-func (node *DarkNode) RunComputationChunkPacker() {
+func (node *DarkNode) RunComputationShardPacker() {
 	go func() {
 		running := int64(1)
 
-		computationChunkChan := make(chan compute.ComputationBlock)
+		computationShardChan := make(chan compute.ComputationShard)
 		go func() {
 			for atomic.LoadInt64(&running) != 0 {
-				computationChunkChan <- node.HiddenOrderBook.WaitForComputationBlock()
+				computationShardChan <- node.HiddenOrderBook.WaitForComputationShard()
 			}
 		}()
 
 		for atomic.LoadInt64(&running) != 0 {
 			select {
-			case computationChunk := <-computationChunkChan:
+			case computationShard := <-computationShardChan:
 				go func() {
-					computationChunkConsensus := node.BroadcastComputationChunk(computationChunk)
-					node.BroadcastComputationChunkConsensus(computationChunkConsensus)
+					computationShardConsensus := node.BroadcastComputationShard(computationShard)
+					node.BroadcastComputationShardConsensus(computationShardConsensus)
 				}()
-			case <-time.Tick(time.Duration(node.Configuration.ComputationChunkInterval) * time.Second):
-				preemptedComputationChunk := node.HiddenOrderBook.PreemptComputationBlock()
-				if len(preemptedComputationChunk.Computations) > 0 {
+			case <-time.Tick(time.Duration(node.Configuration.ComputationShardInterval) * time.Second):
+				preemptedComputationShard := node.HiddenOrderBook.PreemptComputationShard()
+				if len(preemptedComputationShard.Computations) > 0 {
 					go func() {
-						computationChunkConsensus := node.BroadcastComputationChunk(preemptedComputationChunk)
-						node.BroadcastComputationChunkConsensus(computationChunkConsensus)
+						computationShardConsensus := node.BroadcastComputationShard(preemptedComputationShard)
+						node.BroadcastComputationShardConsensus(computationShardConsensus)
 					}()
 				}
 			case <-node.quitPacker:
@@ -217,7 +217,7 @@ func (node *DarkNode) RunComputationChunkPacker() {
 	}()
 }
 
-func (node *DarkNode) BroadcastComputationChunk(computationChunk compute.ComputationBlock) {
+func (node *DarkNode) BroadcastComputationShard(computationShard compute.ComputationShard) {
 	// Track all of the no bids on computations.
 	nosMu := new(sync.Mutex)
 	nos := map[string]int{}
@@ -225,13 +225,13 @@ func (node *DarkNode) BroadcastComputationChunk(computationChunk compute.Computa
 	do.ForAll(node.DarkPool, func(i int) {
 		peer := node.DarkPool[i]
 		// TODO: send computation chunk and get response
-		// computationChunkBids := peer.SendComputationChunkProposal(computationChunk)
-		computationChunkBids := struct{}{}
+		// computationShardBids := peer.SendComputationShardProposal(computationShard)
+		computationShardBids := struct{}{}
 
 		func() {
 			nosMu.Lock()
 			defer nosMu.Unlock()
-			for computationID, bid := range computationChunkBids {
+			for computationID, bid := range computationShardBids {
 				if bid == compute.ComputationBidYes {
 					continue
 				}
@@ -245,47 +245,47 @@ func (node *DarkNode) BroadcastComputationChunk(computationChunk compute.Computa
 
 	// Create a new slice of compute.Computations for which more than
 	// 2/3rds of the dark pool can participate.
-	computations := make([]*compute.Computation, 0, len(computationChunk.Computations))
-	for _, computation := range computationChunk.Computations {
+	computations := make([]*compute.Computation, 0, len(computationShard.Computations))
+	for _, computation := range computationShard.Computations {
 		if noBids[string(computation.ID)] >= node.DarkPoolLimit {
 			continue
 		}
 		computations = append(computations, computation)
 	}
 
-	computationChunkConsensus := compute.NewComputationBlock(computations)
-	return computationChunkConsensus
+	computationShardConsensus := compute.NewComputationShard(computations)
+	return computationShardConsensus
 }
 
-func (node *DarkNode) BroadcastComputationChunkConsensus(computationChunk compute.ComputationBlock) {
+func (node *DarkNode) BroadcastComputationShardConsensus(computationShard compute.ComputationShard) {
 	go func() {
-		node.Compute(computationChunk)
+		node.Compute(computationShard)
 	}()
 	do.ForAll(node.DarkPool, func(i int) {
 		peer := node.DarkPool[i]
 		// TODO: send computation chunk and get response
-		// peer.SendComputationChunkConsensus(computationChunk)
+		// peer.SendComputationShardConsensus(computationShard)
 	})
 }
 
-func (node *DarkNode) Compute(computationChunk compute.ComputationBlock) {
-	resultFragments := computationChunk.Compute(node.Configuration.Prime)
+func (node *DarkNode) Compute(computationShard compute.ComputationShard) {
+	resultFragments := computationShard.Compute(node.Configuration.Prime)
 	do.ForAll(node.DarkPool, func(i int) {
 		peer := node.DarkPool[i]
 		rpc.SendResultFragmentToTarget() // FIXME: Finish calling this RPC
 	})
 }
 
-func (node *DarkNode) BidOnComputationChunk(computationChunk compute.ComputationBlock) compute.ComputationBlockBid {
-	computationChunkBid := compute.ComputationBlockBid{
-		ID:   computationChunk.ID,
+func (node *DarkNode) BidOnComputationShard(computationShard compute.ComputationShard) compute.ComputationShardBid {
+	computationShardBid := compute.ComputationShardBid{
+		ID:   computationShard.ID,
 		Bids: map[string]compute.ComputationBid{},
 	}
-	for _, computation := range computationChunk.Computations {
-		computationChunkBid.Bids[string(computation.ID)] = compute.ComputationBidNo
+	for _, computation := range computationShard.Computations {
+		computationShardBid.Bids[string(computation.ID)] = compute.ComputationBidNo
 	}
 	// FIXME:
-	return computationChunkBid
+	return computationShardBid
 }
 
 func isRegistered(id identity.ID) (bool, error) {
@@ -300,7 +300,7 @@ func isRegistered(id identity.ID) (bool, error) {
 	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), client, auth, &bind.CallOpts{}, contractAddress, nil)
 	idInBytes := [20]byte{}
 	copy(idInBytes[:], id)
-	return userConnection.IsDarkNodeRegistered(id)
+	return userConnection.IsDarkNodeRegistered(idInBytes)
 }
 
 func getDarkPoolConfig() ([]identity.ID, error) {
