@@ -69,6 +69,7 @@ func erc20Address(client ethereum.Client, auth1, auth2 *bind.TransactOpts) commo
 		}
 		ethereum.PatchedWaitDeployed(context.Background(), client, tx)
 		tx, _ = erc20.Transfer(auth1, auth2.From, ether)
+		ethereum.PatchedWaitMined(context.Background(), client, tx)
 	} else {
 		address = common.HexToAddress("...")
 	}

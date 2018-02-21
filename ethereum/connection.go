@@ -99,8 +99,10 @@ func PatchedWaitMined(ctx context.Context, b Client, tx *types.Transaction) (*ty
 	}
 }
 
-// WaitDeployed waits for a contract deployment transaction and returns the on-chain
+// PatchedWaitDeployed waits for a contract deployment transaction and returns the on-chain
 // contract address when it is mined. It stops waiting when ctx is canceled.
+// (Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt)
+// NOTE: If something goes wrong, this will hang!
 func PatchedWaitDeployed(ctx context.Context, b Client, tx *types.Transaction) (common.Address, error) {
 	if tx.To() != nil {
 		return common.Address{}, fmt.Errorf("tx is not contract creation")

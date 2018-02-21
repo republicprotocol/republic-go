@@ -12,9 +12,9 @@ import (
 	"github.com/republicprotocol/go-atom/ethereum"
 )
 
-var _ = Describe("Ethereum", func() {
+var _ = Describe("ERC20", func() {
 
-	It("can swap with an arbitrary ledger", func() {
+	It("works", func() {
 		// Load client and accounts
 		client, auth1, auth2 := loadClient()
 		contractAddress := erc20AtomAddress(client, auth1)

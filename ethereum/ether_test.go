@@ -13,7 +13,7 @@ import (
 	"github.com/republicprotocol/go-atom/ethereum"
 )
 
-var _ = Describe("Ethereum", func() {
+var _ = Describe("Ether", func() {
 
 	It("can swap with an arbitrary ledger", func() {
 		// Load client and accounts
