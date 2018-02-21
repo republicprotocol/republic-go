@@ -31,26 +31,6 @@ func SendOrderFragmentToTarget(target identity.MultiAddress, to identity.Address
 	return err
 }
 
-// SendResultFragmentToTarget using a new grpc.ClientConn to make a
-// SendResultFragment RPC to a target identity.MultiAddress.
-func SendResultFragmentToTarget(target identity.MultiAddress, to identity.Address, from identity.MultiAddress, resultFragment *compute.ResultFragment, timeout time.Duration) error {
-	conn, err := Dial(target, timeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	client := NewDarkNodeClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	serializedResultFragment := SerializeResultFragment(resultFragment)
-	serializedResultFragment.To = SerializeAddress(to)
-	serializedResultFragment.From = SerializeMultiAddress(from)
-	_, err = client.SendResultFragment(ctx, serializedResultFragment, grpc.FailFast(false))
-	return err
-}
-
 // NotificationsFromTarget using a new grpc.ClientConn to make a
 // NotificationsFromTarget RPC to a target identity.MultiAddress. This function
 // returns two channels. The first should be used to read compute.Results until
@@ -107,3 +87,35 @@ func NotificationsFromTarget(target identity.MultiAddress, traderAddress identit
 	return ret, quit
 }
 
+// GetResultsFromTarget using a new grpc.ClientConn to make a
+// GetResultsFromTarget RPC to a target identity.MultiAddress.
+func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.MultiAddress, timeout time.Duration) ([]*compute.Result, error) {
+	results := make([]*compute.Result, 0)
+	conn, err := Dial(target, timeout)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	client := NewDarkNodeClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	stream, err := client.GetResults(ctx, SerializeMultiAddress(traderAddress), grpc.FailFast(false))
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		result, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, DeserializeResult(result))
+	}
+
+	return results, nil
+}
