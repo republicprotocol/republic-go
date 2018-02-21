@@ -107,35 +107,3 @@ func NotificationsFromTarget(target identity.MultiAddress, traderAddress identit
 	return ret, quit
 }
 
-// GetResultsFromTarget using a new grpc.ClientConn to make a
-// GetResultsFromTarget RPC to a target identity.MultiAddress.
-func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.MultiAddress, timeout time.Duration) ([]*compute.Result, error) {
-	results := make([]*compute.Result, 0)
-	conn, err := Dial(target, timeout)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	client := NewDarkNodeClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	stream, err := client.GetResults(ctx, SerializeMultiAddress(traderAddress), grpc.FailFast(false))
-	if err != nil {
-		return nil, err
-	}
-
-	for {
-		result, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		results = append(results, DeserializeResult(result))
-	}
-
-	return results, nil
-}
