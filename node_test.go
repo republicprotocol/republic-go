@@ -1,13 +1,13 @@
 package swarm_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
 	"sync"
 	"time"
 
-	"context"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-dht"
@@ -116,7 +116,7 @@ var _ = Describe("Bootstrapping", func() {
 		func(topology Topology) {
 			Context(fmt.Sprintf("when bootstrap nodes are configured in a %s topology.\n", topology), func() {
 				for _, numberOfBootstrapNodes := range []int{4, 6, 8} {
-					for _, numberOfNodes := range []int{4} { // []int{4, 8, 12, 16, 20}
+					for _, numberOfNodes := range []int{4, 8, 12, 16, 20} {
 						func(topology Topology, numberOfBootstrapNodes, numberOfNodes int) {
 							Context(fmt.Sprintf("with %d bootstrap nodes and %d swarm nodes.\n", numberOfBootstrapNodes, numberOfNodes), func() {
 								It("should be able to successfully ping between nodes", func() {
@@ -142,6 +142,17 @@ var _ = Describe("Bootstrapping", func() {
 										} else {
 											log.Println(err)
 										}
+									}
+
+									// test finding node function
+									left, right := PickRandomNodes(swarmNodes)
+									found, err := left.FindNode(right.Address().ID())
+									Ω(err).ShouldNot(HaveOccurred())
+									if found != nil {
+										Ω(*found).Should(Equal(right.MultiAddress()))
+										log.Println("found the target node by its ID ")
+									} else {
+										log.Println("fail to found the target")
 									}
 									log.Printf("%v/%v successful pings", numberOfPings, numberOfNodes)
 									Ω(numberOfPings).Should(BeNumerically(">=", 2*numberOfNodes/3))
@@ -272,6 +283,5 @@ var _ = Describe("Bootstrapping", func() {
 				node.Bootstrap()
 			})
 		})
-
 	})
 })
