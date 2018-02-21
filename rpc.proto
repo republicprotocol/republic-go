@@ -70,10 +70,6 @@ service DarkNode {
 
   // Send an OrderFragment to some target Node.
   rpc SendOrderFragment (OrderFragment) returns (Nothing);
-
-  // Send a ResultFragment to some target Node, where the ResultFragment is the
-  // result of a computation on two OrderFragments.
-  rpc SendResultFragment (ResultFragment) returns (Nothing);
   
   // Propose a shard election request to some target node.
   rpc ElectShard (ElectShardRequest) returns (Shard);
@@ -142,29 +138,6 @@ message SyncBlock {
     repeated bytes matched = 5;
     repeated bytes mismatched = 6;
   }
-}
-
-// A ResultFragment message is the network representation of a
-// compute.ResultFragment and the metadata needed to distribute it through the
-// network.
-message ResultFragment {
-  // Network data.
-  Address to = 1;
-  MultiAddress from = 2;
-
-  // Public data.
-  bytes id = 3;
-  bytes buyOrderId = 4;
-  bytes sellOrderId = 5;
-  bytes buyOrderFragmentId = 6;
-  bytes sellOrderFragmentId = 7;
-
-  // Secure data.
-  bytes fstCodeShare = 8;
-  bytes sndCodeShare = 9;
-  bytes priceShare = 10;
-  bytes maxVolumeShare = 11;
-  bytes minVolumeShare = 12;
 }
 
 // Result messages are sent to signal that a successful order computation has

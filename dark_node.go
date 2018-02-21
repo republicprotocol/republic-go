@@ -7,6 +7,7 @@ import (
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/go-order-compute"
 	"google.golang.org/grpc"
 )
 
@@ -61,9 +62,9 @@ func SyncWithTarget(target identity.MultiAddress, syncRequest *SyncRequest, time
 	return chunks, quit
 }
 
-// StartElectShard using a new grpc.ClientConn to make a Propose RPC call
+// StartElectShard uses a new grpc.ClientConn to make a ElectShard RPC call
 // to a target identity.MultiAddress.
-func StartElectShard(target identity.MultiAddress, electRequest *ElectRequest, timeout time.Duration) (*Shard, error) {
+func StartElectShard(target ,from identity.MultiAddress,shard compute.ComputationShard , timeout time.Duration) (*Shard, error) {
 	conn, err := Dial(target, timeout)
 	if err != nil {
 		return nil, err
@@ -74,16 +75,22 @@ func StartElectShard(target identity.MultiAddress, electRequest *ElectRequest, t
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	shard, err := client.ElectShard(ctx, electRequest, grpc.FailFast(false))
+	// todo : serialize shard
+	request := &ElectShardRequest{
+		From:  SerializeMultiAddress(from),
+		Shard:  SerializeShard(shard),
+	}
+
+	rsp, err := client.ElectShard(ctx,request , grpc.FailFast(false))
 	if err != nil {
 		return nil, err
 	}
-	return shard, nil
+	return rsp, nil
 }
 
 // AskToComputeShard using a new grpc.ClientConn to make a Compute RPC call
 // to a target identity.MultiAddress.
-func AskToComputeShard(target identity.MultiAddress, computeRequest *ComputeRequest, timeout time.Duration) error {
+func AskToComputeShard(target, from identity.MultiAddress, shard compute.ComputationShard, timeout time.Duration) error {
 	conn, err := Dial(target, timeout)
 	if err != nil {
 		return err
@@ -94,9 +101,43 @@ func AskToComputeShard(target identity.MultiAddress, computeRequest *ComputeRequ
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	_, err = client.ComputeShard(ctx, computeRequest, grpc.FailFast(false))
+	// todo : serialize shard
+	request := &ComputeShardRequest{
+		From:  SerializeMultiAddress(from),
+		Shard:  SerializeShard(shard),
+	}
+
+	_, err = client.ComputeShard(ctx, request, grpc.FailFast(false))
 	if err != nil {
 		return err
 	}
 	return nil
 }
+
+// FinalizeShard using a new grpc.ClientConn to make a Compute RPC call
+// to a target identity.MultiAddress.
+func FinalizeShard(target, from identity.MultiAddress, shard compute.ComputationShard, timeout time.Duration) error {
+	conn, err := Dial(target, timeout)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := NewDarkNodeClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// todo : serialize shard
+	request := &ComputeShardRequest{
+		From:  SerializeMultiAddress(from),
+		Shard:  SerializeShard(shard),
+	}
+
+	_, err = client.ComputeShard(ctx, request, grpc.FailFast(false))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+

@@ -14,13 +14,14 @@ It has these top-level messages:
 	Nothing
 	Query
 	OrderFragment
-	ResultFragment
+	OrderFragmentCommitment
+	SyncBlock
 	Result
 	Shard
-	Computation
+	FinalizeShardRequest
 	SyncRequest
-	ElectRequest
-	ComputeRequest
+	ElectShardRequest
+	ComputeShardRequest
 	Atom
 */
 package rpc
@@ -234,112 +235,180 @@ func (m *OrderFragment) GetMinVolumeShare() []byte {
 	return nil
 }
 
-// A ResultFragment message is the network representation of a
-// compute.ResultFragment and the metadata needed to distribute it through the
-// network.
-type ResultFragment struct {
-	// Network data.
-	To   *Address      `protobuf:"bytes,1,opt,name=to" json:"to,omitempty"`
-	From *MultiAddress `protobuf:"bytes,2,opt,name=from" json:"from,omitempty"`
-	// Public data.
-	Id                  []byte `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
-	BuyOrderId          []byte `protobuf:"bytes,4,opt,name=buyOrderId,proto3" json:"buyOrderId,omitempty"`
-	SellOrderId         []byte `protobuf:"bytes,5,opt,name=sellOrderId,proto3" json:"sellOrderId,omitempty"`
-	BuyOrderFragmentId  []byte `protobuf:"bytes,6,opt,name=buyOrderFragmentId,proto3" json:"buyOrderFragmentId,omitempty"`
-	SellOrderFragmentId []byte `protobuf:"bytes,7,opt,name=sellOrderFragmentId,proto3" json:"sellOrderFragmentId,omitempty"`
-	// Secure data.
-	FstCodeShare   []byte `protobuf:"bytes,8,opt,name=fstCodeShare,proto3" json:"fstCodeShare,omitempty"`
-	SndCodeShare   []byte `protobuf:"bytes,9,opt,name=sndCodeShare,proto3" json:"sndCodeShare,omitempty"`
-	PriceShare     []byte `protobuf:"bytes,10,opt,name=priceShare,proto3" json:"priceShare,omitempty"`
-	MaxVolumeShare []byte `protobuf:"bytes,11,opt,name=maxVolumeShare,proto3" json:"maxVolumeShare,omitempty"`
-	MinVolumeShare []byte `protobuf:"bytes,12,opt,name=minVolumeShare,proto3" json:"minVolumeShare,omitempty"`
+// An OrderFragmentCommitment is ...
+type OrderFragmentCommitment struct {
+	From          *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	Signature     []byte        `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
+	OrderFragment []byte        `protobuf:"bytes,3,opt,name=orderFragment,proto3" json:"orderFragment,omitempty"`
 }
 
-func (m *ResultFragment) Reset()                    { *m = ResultFragment{} }
-func (m *ResultFragment) String() string            { return proto.CompactTextString(m) }
-func (*ResultFragment) ProtoMessage()               {}
-func (*ResultFragment) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+func (m *OrderFragmentCommitment) Reset()                    { *m = OrderFragmentCommitment{} }
+func (m *OrderFragmentCommitment) String() string            { return proto.CompactTextString(m) }
+func (*OrderFragmentCommitment) ProtoMessage()               {}
+func (*OrderFragmentCommitment) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
-func (m *ResultFragment) GetTo() *Address {
-	if m != nil {
-		return m.To
-	}
-	return nil
-}
-
-func (m *ResultFragment) GetFrom() *MultiAddress {
+func (m *OrderFragmentCommitment) GetFrom() *MultiAddress {
 	if m != nil {
 		return m.From
 	}
 	return nil
 }
 
-func (m *ResultFragment) GetId() []byte {
+func (m *OrderFragmentCommitment) GetSignature() []byte {
 	if m != nil {
-		return m.Id
+		return m.Signature
 	}
 	return nil
 }
 
-func (m *ResultFragment) GetBuyOrderId() []byte {
+func (m *OrderFragmentCommitment) GetOrderFragment() []byte {
 	if m != nil {
-		return m.BuyOrderId
+		return m.OrderFragment
 	}
 	return nil
 }
 
-func (m *ResultFragment) GetSellOrderId() []byte {
+// A SyncBlock is ...
+type SyncBlock struct {
+	Signature []byte                  `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	Deltas    *SyncBlock_DeltaBlock   `protobuf:"bytes,2,opt,name=deltas" json:"deltas,omitempty"`
+	Residues  *SyncBlock_ResidueBlock `protobuf:"bytes,3,opt,name=residues" json:"residues,omitempty"`
+}
+
+func (m *SyncBlock) Reset()                    { *m = SyncBlock{} }
+func (m *SyncBlock) String() string            { return proto.CompactTextString(m) }
+func (*SyncBlock) ProtoMessage()               {}
+func (*SyncBlock) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+
+func (m *SyncBlock) GetSignature() []byte {
 	if m != nil {
-		return m.SellOrderId
+		return m.Signature
 	}
 	return nil
 }
 
-func (m *ResultFragment) GetBuyOrderFragmentId() []byte {
+func (m *SyncBlock) GetDeltas() *SyncBlock_DeltaBlock {
 	if m != nil {
-		return m.BuyOrderFragmentId
+		return m.Deltas
 	}
 	return nil
 }
 
-func (m *ResultFragment) GetSellOrderFragmentId() []byte {
+func (m *SyncBlock) GetResidues() *SyncBlock_ResidueBlock {
 	if m != nil {
-		return m.SellOrderFragmentId
+		return m.Residues
 	}
 	return nil
 }
 
-func (m *ResultFragment) GetFstCodeShare() []byte {
+type SyncBlock_DeltaBlock struct {
+	Pending    [][]byte `protobuf:"bytes,1,rep,name=pending,proto3" json:"pending,omitempty"`
+	Electing   [][]byte `protobuf:"bytes,2,rep,name=electing,proto3" json:"electing,omitempty"`
+	Computing  [][]byte `protobuf:"bytes,3,rep,name=computing,proto3" json:"computing,omitempty"`
+	Finalizing [][]byte `protobuf:"bytes,4,rep,name=finalizing,proto3" json:"finalizing,omitempty"`
+	Matched    [][]byte `protobuf:"bytes,5,rep,name=matched,proto3" json:"matched,omitempty"`
+	Mismatched [][]byte `protobuf:"bytes,6,rep,name=mismatched,proto3" json:"mismatched,omitempty"`
+}
+
+func (m *SyncBlock_DeltaBlock) Reset()                    { *m = SyncBlock_DeltaBlock{} }
+func (m *SyncBlock_DeltaBlock) String() string            { return proto.CompactTextString(m) }
+func (*SyncBlock_DeltaBlock) ProtoMessage()               {}
+func (*SyncBlock_DeltaBlock) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7, 0} }
+
+func (m *SyncBlock_DeltaBlock) GetPending() [][]byte {
 	if m != nil {
-		return m.FstCodeShare
+		return m.Pending
 	}
 	return nil
 }
 
-func (m *ResultFragment) GetSndCodeShare() []byte {
+func (m *SyncBlock_DeltaBlock) GetElecting() [][]byte {
 	if m != nil {
-		return m.SndCodeShare
+		return m.Electing
 	}
 	return nil
 }
 
-func (m *ResultFragment) GetPriceShare() []byte {
+func (m *SyncBlock_DeltaBlock) GetComputing() [][]byte {
 	if m != nil {
-		return m.PriceShare
+		return m.Computing
 	}
 	return nil
 }
 
-func (m *ResultFragment) GetMaxVolumeShare() []byte {
+func (m *SyncBlock_DeltaBlock) GetFinalizing() [][]byte {
 	if m != nil {
-		return m.MaxVolumeShare
+		return m.Finalizing
 	}
 	return nil
 }
 
-func (m *ResultFragment) GetMinVolumeShare() []byte {
+func (m *SyncBlock_DeltaBlock) GetMatched() [][]byte {
 	if m != nil {
-		return m.MinVolumeShare
+		return m.Matched
+	}
+	return nil
+}
+
+func (m *SyncBlock_DeltaBlock) GetMismatched() [][]byte {
+	if m != nil {
+		return m.Mismatched
+	}
+	return nil
+}
+
+type SyncBlock_ResidueBlock struct {
+	Pending    [][]byte `protobuf:"bytes,1,rep,name=pending,proto3" json:"pending,omitempty"`
+	Electing   [][]byte `protobuf:"bytes,2,rep,name=electing,proto3" json:"electing,omitempty"`
+	Computing  [][]byte `protobuf:"bytes,3,rep,name=computing,proto3" json:"computing,omitempty"`
+	Finalizing [][]byte `protobuf:"bytes,4,rep,name=finalizing,proto3" json:"finalizing,omitempty"`
+	Matched    [][]byte `protobuf:"bytes,5,rep,name=matched,proto3" json:"matched,omitempty"`
+	Mismatched [][]byte `protobuf:"bytes,6,rep,name=mismatched,proto3" json:"mismatched,omitempty"`
+}
+
+func (m *SyncBlock_ResidueBlock) Reset()                    { *m = SyncBlock_ResidueBlock{} }
+func (m *SyncBlock_ResidueBlock) String() string            { return proto.CompactTextString(m) }
+func (*SyncBlock_ResidueBlock) ProtoMessage()               {}
+func (*SyncBlock_ResidueBlock) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7, 1} }
+
+func (m *SyncBlock_ResidueBlock) GetPending() [][]byte {
+	if m != nil {
+		return m.Pending
+	}
+	return nil
+}
+
+func (m *SyncBlock_ResidueBlock) GetElecting() [][]byte {
+	if m != nil {
+		return m.Electing
+	}
+	return nil
+}
+
+func (m *SyncBlock_ResidueBlock) GetComputing() [][]byte {
+	if m != nil {
+		return m.Computing
+	}
+	return nil
+}
+
+func (m *SyncBlock_ResidueBlock) GetFinalizing() [][]byte {
+	if m != nil {
+		return m.Finalizing
+	}
+	return nil
+}
+
+func (m *SyncBlock_ResidueBlock) GetMatched() [][]byte {
+	if m != nil {
+		return m.Matched
+	}
+	return nil
+}
+
+func (m *SyncBlock_ResidueBlock) GetMismatched() [][]byte {
+	if m != nil {
+		return m.Mismatched
 	}
 	return nil
 }
@@ -362,7 +431,7 @@ type Result struct {
 func (m *Result) Reset()                    { *m = Result{} }
 func (m *Result) String() string            { return proto.CompactTextString(m) }
 func (*Result) ProtoMessage()               {}
-func (*Result) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+func (*Result) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
 func (m *Result) GetId() []byte {
 	if m != nil {
@@ -422,14 +491,15 @@ func (m *Result) GetMinVolume() []byte {
 
 // A shard is a block of computations
 type Shard struct {
-	Signature    []byte         `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
-	Computations []*Computation `protobuf:"bytes,2,rep,name=computations" json:"computations,omitempty"`
+	Signature []byte   `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	Deltas    [][]byte `protobuf:"bytes,2,rep,name=deltas,proto3" json:"deltas,omitempty"`
+	Residues  [][]byte `protobuf:"bytes,3,rep,name=residues,proto3" json:"residues,omitempty"`
 }
 
 func (m *Shard) Reset()                    { *m = Shard{} }
 func (m *Shard) String() string            { return proto.CompactTextString(m) }
 func (*Shard) ProtoMessage()               {}
-func (*Shard) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
+func (*Shard) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
 func (m *Shard) GetSignature() []byte {
 	if m != nil {
@@ -438,118 +508,108 @@ func (m *Shard) GetSignature() []byte {
 	return nil
 }
 
-func (m *Shard) GetComputations() []*Computation {
+func (m *Shard) GetDeltas() [][]byte {
 	if m != nil {
-		return m.Computations
+		return m.Deltas
 	}
 	return nil
 }
 
-// An computation is the network representation of a compute.Computation
-// and the status of the computaion result.
-type Computation struct {
-	Lhs    []byte `protobuf:"bytes,2,opt,name=lhs,proto3" json:"lhs,omitempty"`
-	Rhs    []byte `protobuf:"bytes,3,opt,name=rhs,proto3" json:"rhs,omitempty"`
-	Leader []byte `protobuf:"bytes,5,opt,name=leader,proto3" json:"leader,omitempty"`
-	Status []byte `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-}
-
-func (m *Computation) Reset()                    { *m = Computation{} }
-func (m *Computation) String() string            { return proto.CompactTextString(m) }
-func (*Computation) ProtoMessage()               {}
-func (*Computation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
-
-func (m *Computation) GetLhs() []byte {
+func (m *Shard) GetResidues() [][]byte {
 	if m != nil {
-		return m.Lhs
+		return m.Residues
 	}
 	return nil
 }
 
-func (m *Computation) GetRhs() []byte {
+// A FinalizeShardRequest is ...
+type FinalizeShardRequest struct {
+	From  *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	Shard *Shard        `protobuf:"bytes,2,opt,name=shard" json:"shard,omitempty"`
+}
+
+func (m *FinalizeShardRequest) Reset()                    { *m = FinalizeShardRequest{} }
+func (m *FinalizeShardRequest) String() string            { return proto.CompactTextString(m) }
+func (*FinalizeShardRequest) ProtoMessage()               {}
+func (*FinalizeShardRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
+
+func (m *FinalizeShardRequest) GetFrom() *MultiAddress {
 	if m != nil {
-		return m.Rhs
+		return m.From
 	}
 	return nil
 }
 
-func (m *Computation) GetLeader() []byte {
+func (m *FinalizeShardRequest) GetShard() *Shard {
 	if m != nil {
-		return m.Leader
+		return m.Shard
 	}
 	return nil
 }
 
-func (m *Computation) GetStatus() []byte {
-	if m != nil {
-		return m.Status
-	}
-	return nil
-}
-
-// todo
+// A SyncRequest is ...
 type SyncRequest struct {
-	Id []byte `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	From *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
 }
 
 func (m *SyncRequest) Reset()                    { *m = SyncRequest{} }
 func (m *SyncRequest) String() string            { return proto.CompactTextString(m) }
 func (*SyncRequest) ProtoMessage()               {}
-func (*SyncRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
+func (*SyncRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
-func (m *SyncRequest) GetId() []byte {
+func (m *SyncRequest) GetFrom() *MultiAddress {
 	if m != nil {
-		return m.Id
+		return m.From
 	}
 	return nil
 }
 
-// todo
-type ElectRequest struct {
-	Shard *Shard `protobuf:"bytes,1,opt,name=shard" json:"shard,omitempty"`
-	Id    []byte `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+// A ElectShardRequest is ...
+type ElectShardRequest struct {
+	From  *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	Shard *Shard        `protobuf:"bytes,2,opt,name=shard" json:"shard,omitempty"`
 }
 
-func (m *ElectRequest) Reset()                    { *m = ElectRequest{} }
-func (m *ElectRequest) String() string            { return proto.CompactTextString(m) }
-func (*ElectRequest) ProtoMessage()               {}
-func (*ElectRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
+func (m *ElectShardRequest) Reset()                    { *m = ElectShardRequest{} }
+func (m *ElectShardRequest) String() string            { return proto.CompactTextString(m) }
+func (*ElectShardRequest) ProtoMessage()               {}
+func (*ElectShardRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
 
-func (m *ElectRequest) GetShard() *Shard {
+func (m *ElectShardRequest) GetFrom() *MultiAddress {
+	if m != nil {
+		return m.From
+	}
+	return nil
+}
+
+func (m *ElectShardRequest) GetShard() *Shard {
 	if m != nil {
 		return m.Shard
 	}
 	return nil
 }
 
-func (m *ElectRequest) GetId() []byte {
+// A ComputeShardRequest is ...
+type ComputeShardRequest struct {
+	From  *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	Shard *Shard        `protobuf:"bytes,2,opt,name=shard" json:"shard,omitempty"`
+}
+
+func (m *ComputeShardRequest) Reset()                    { *m = ComputeShardRequest{} }
+func (m *ComputeShardRequest) String() string            { return proto.CompactTextString(m) }
+func (*ComputeShardRequest) ProtoMessage()               {}
+func (*ComputeShardRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
+
+func (m *ComputeShardRequest) GetFrom() *MultiAddress {
 	if m != nil {
-		return m.Id
+		return m.From
 	}
 	return nil
 }
 
-// todo
-type ComputeRequest struct {
-	Shard *Shard `protobuf:"bytes,1,opt,name=shard" json:"shard,omitempty"`
-	Id    []byte `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-}
-
-func (m *ComputeRequest) Reset()                    { *m = ComputeRequest{} }
-func (m *ComputeRequest) String() string            { return proto.CompactTextString(m) }
-func (*ComputeRequest) ProtoMessage()               {}
-func (*ComputeRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
-
-func (m *ComputeRequest) GetShard() *Shard {
+func (m *ComputeShardRequest) GetShard() *Shard {
 	if m != nil {
 		return m.Shard
-	}
-	return nil
-}
-
-func (m *ComputeRequest) GetId() []byte {
-	if m != nil {
-		return m.Id
 	}
 	return nil
 }
@@ -569,7 +629,7 @@ type Atom struct {
 func (m *Atom) Reset()                    { *m = Atom{} }
 func (m *Atom) String() string            { return proto.CompactTextString(m) }
 func (*Atom) ProtoMessage()               {}
-func (*Atom) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
+func (*Atom) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
 
 func (m *Atom) GetTo() *Address {
 	if m != nil {
@@ -613,13 +673,16 @@ func init() {
 	proto.RegisterType((*Nothing)(nil), "rpc.Nothing")
 	proto.RegisterType((*Query)(nil), "rpc.Query")
 	proto.RegisterType((*OrderFragment)(nil), "rpc.OrderFragment")
-	proto.RegisterType((*ResultFragment)(nil), "rpc.ResultFragment")
+	proto.RegisterType((*OrderFragmentCommitment)(nil), "rpc.OrderFragmentCommitment")
+	proto.RegisterType((*SyncBlock)(nil), "rpc.SyncBlock")
+	proto.RegisterType((*SyncBlock_DeltaBlock)(nil), "rpc.SyncBlock.DeltaBlock")
+	proto.RegisterType((*SyncBlock_ResidueBlock)(nil), "rpc.SyncBlock.ResidueBlock")
 	proto.RegisterType((*Result)(nil), "rpc.Result")
 	proto.RegisterType((*Shard)(nil), "rpc.Shard")
-	proto.RegisterType((*Computation)(nil), "rpc.Computation")
+	proto.RegisterType((*FinalizeShardRequest)(nil), "rpc.FinalizeShardRequest")
 	proto.RegisterType((*SyncRequest)(nil), "rpc.SyncRequest")
-	proto.RegisterType((*ElectRequest)(nil), "rpc.ElectRequest")
-	proto.RegisterType((*ComputeRequest)(nil), "rpc.ComputeRequest")
+	proto.RegisterType((*ElectShardRequest)(nil), "rpc.ElectShardRequest")
+	proto.RegisterType((*ComputeShardRequest)(nil), "rpc.ComputeShardRequest")
 	proto.RegisterType((*Atom)(nil), "rpc.Atom")
 }
 
@@ -800,22 +863,23 @@ var _SwarmNode_serviceDesc = grpc.ServiceDesc{
 // Client API for DarkNode service
 
 type DarkNodeClient interface {
+	// Send a sync request for getting new shard
+	Sync(ctx context.Context, in *SyncRequest, opts ...grpc.CallOption) (DarkNode_SyncClient, error)
+	// Send a commitment to the order fragment.
+	SendOrderFragmentCommitment(ctx context.Context, in *OrderFragmentCommitment, opts ...grpc.CallOption) (*OrderFragmentCommitment, error)
 	// Send an OrderFragment to some target Node.
 	SendOrderFragment(ctx context.Context, in *OrderFragment, opts ...grpc.CallOption) (*Nothing, error)
-	// Send a ResultFragment to some target Node, where the ResultFragment is the
-	// result of a computation on two OrderFragments.
-	SendResultFragment(ctx context.Context, in *ResultFragment, opts ...grpc.CallOption) (*Nothing, error)
+	// Propose a shard election request to some target node.
+	ElectShard(ctx context.Context, in *ElectShardRequest, opts ...grpc.CallOption) (*Shard, error)
+	// Ask some target node to start computation on the shard.
+	ComputeShard(ctx context.Context, in *ComputeShardRequest, opts ...grpc.CallOption) (*Nothing, error)
+	//
+	FinalizeShard(ctx context.Context, in *FinalizeShardRequest, opts ...grpc.CallOption) (*Nothing, error)
 	// Get Result messages for successful order matches that have happened since
 	// this procedure was last used, as well as new ones that occur.
 	Notifications(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (DarkNode_NotificationsClient, error)
 	// Get all relevant results that have been computed in the current epoch.
 	GetResults(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (DarkNode_GetResultsClient, error)
-	// Send a sync request for getting new shard
-	Sync(ctx context.Context, in *SyncRequest, opts ...grpc.CallOption) (DarkNode_SyncClient, error)
-	// Propose a shard election request to some target node.
-	ElectShard(ctx context.Context, in *ElectRequest, opts ...grpc.CallOption) (*Shard, error)
-	// Ask some target node to start computation on the shard.
-	ComputeShard(ctx context.Context, in *ComputeRequest, opts ...grpc.CallOption) (*Nothing, error)
 }
 
 type darkNodeClient struct {
@@ -824,6 +888,47 @@ type darkNodeClient struct {
 
 func NewDarkNodeClient(cc *grpc.ClientConn) DarkNodeClient {
 	return &darkNodeClient{cc}
+}
+
+func (c *darkNodeClient) Sync(ctx context.Context, in *SyncRequest, opts ...grpc.CallOption) (DarkNode_SyncClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_DarkNode_serviceDesc.Streams[0], c.cc, "/rpc.DarkNode/Sync", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &darkNodeSyncClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type DarkNode_SyncClient interface {
+	Recv() (*SyncBlock, error)
+	grpc.ClientStream
+}
+
+type darkNodeSyncClient struct {
+	grpc.ClientStream
+}
+
+func (x *darkNodeSyncClient) Recv() (*SyncBlock, error) {
+	m := new(SyncBlock)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *darkNodeClient) SendOrderFragmentCommitment(ctx context.Context, in *OrderFragmentCommitment, opts ...grpc.CallOption) (*OrderFragmentCommitment, error) {
+	out := new(OrderFragmentCommitment)
+	err := grpc.Invoke(ctx, "/rpc.DarkNode/SendOrderFragmentCommitment", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *darkNodeClient) SendOrderFragment(ctx context.Context, in *OrderFragment, opts ...grpc.CallOption) (*Nothing, error) {
@@ -835,9 +940,27 @@ func (c *darkNodeClient) SendOrderFragment(ctx context.Context, in *OrderFragmen
 	return out, nil
 }
 
-func (c *darkNodeClient) SendResultFragment(ctx context.Context, in *ResultFragment, opts ...grpc.CallOption) (*Nothing, error) {
+func (c *darkNodeClient) ElectShard(ctx context.Context, in *ElectShardRequest, opts ...grpc.CallOption) (*Shard, error) {
+	out := new(Shard)
+	err := grpc.Invoke(ctx, "/rpc.DarkNode/ElectShard", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *darkNodeClient) ComputeShard(ctx context.Context, in *ComputeShardRequest, opts ...grpc.CallOption) (*Nothing, error) {
 	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/rpc.DarkNode/SendResultFragment", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/rpc.DarkNode/ComputeShard", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *darkNodeClient) FinalizeShard(ctx context.Context, in *FinalizeShardRequest, opts ...grpc.CallOption) (*Nothing, error) {
+	out := new(Nothing)
+	err := grpc.Invoke(ctx, "/rpc.DarkNode/FinalizeShard", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -845,7 +968,7 @@ func (c *darkNodeClient) SendResultFragment(ctx context.Context, in *ResultFragm
 }
 
 func (c *darkNodeClient) Notifications(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (DarkNode_NotificationsClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_DarkNode_serviceDesc.Streams[0], c.cc, "/rpc.DarkNode/Notifications", opts...)
+	stream, err := grpc.NewClientStream(ctx, &_DarkNode_serviceDesc.Streams[1], c.cc, "/rpc.DarkNode/Notifications", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -877,7 +1000,7 @@ func (x *darkNodeNotificationsClient) Recv() (*Result, error) {
 }
 
 func (c *darkNodeClient) GetResults(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (DarkNode_GetResultsClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_DarkNode_serviceDesc.Streams[1], c.cc, "/rpc.DarkNode/GetResults", opts...)
+	stream, err := grpc.NewClientStream(ctx, &_DarkNode_serviceDesc.Streams[2], c.cc, "/rpc.DarkNode/GetResults", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -908,79 +1031,69 @@ func (x *darkNodeGetResultsClient) Recv() (*Result, error) {
 	return m, nil
 }
 
-func (c *darkNodeClient) Sync(ctx context.Context, in *SyncRequest, opts ...grpc.CallOption) (DarkNode_SyncClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_DarkNode_serviceDesc.Streams[2], c.cc, "/rpc.DarkNode/Sync", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &darkNodeSyncClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type DarkNode_SyncClient interface {
-	Recv() (*Shard, error)
-	grpc.ClientStream
-}
-
-type darkNodeSyncClient struct {
-	grpc.ClientStream
-}
-
-func (x *darkNodeSyncClient) Recv() (*Shard, error) {
-	m := new(Shard)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *darkNodeClient) ElectShard(ctx context.Context, in *ElectRequest, opts ...grpc.CallOption) (*Shard, error) {
-	out := new(Shard)
-	err := grpc.Invoke(ctx, "/rpc.DarkNode/ElectShard", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *darkNodeClient) ComputeShard(ctx context.Context, in *ComputeRequest, opts ...grpc.CallOption) (*Nothing, error) {
-	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/rpc.DarkNode/ComputeShard", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // Server API for DarkNode service
 
 type DarkNodeServer interface {
+	// Send a sync request for getting new shard
+	Sync(*SyncRequest, DarkNode_SyncServer) error
+	// Send a commitment to the order fragment.
+	SendOrderFragmentCommitment(context.Context, *OrderFragmentCommitment) (*OrderFragmentCommitment, error)
 	// Send an OrderFragment to some target Node.
 	SendOrderFragment(context.Context, *OrderFragment) (*Nothing, error)
-	// Send a ResultFragment to some target Node, where the ResultFragment is the
-	// result of a computation on two OrderFragments.
-	SendResultFragment(context.Context, *ResultFragment) (*Nothing, error)
+	// Propose a shard election request to some target node.
+	ElectShard(context.Context, *ElectShardRequest) (*Shard, error)
+	// Ask some target node to start computation on the shard.
+	ComputeShard(context.Context, *ComputeShardRequest) (*Nothing, error)
+	//
+	FinalizeShard(context.Context, *FinalizeShardRequest) (*Nothing, error)
 	// Get Result messages for successful order matches that have happened since
 	// this procedure was last used, as well as new ones that occur.
 	Notifications(*MultiAddress, DarkNode_NotificationsServer) error
 	// Get all relevant results that have been computed in the current epoch.
 	GetResults(*MultiAddress, DarkNode_GetResultsServer) error
-	// Send a sync request for getting new shard
-	Sync(*SyncRequest, DarkNode_SyncServer) error
-	// Propose a shard election request to some target node.
-	ElectShard(context.Context, *ElectRequest) (*Shard, error)
-	// Ask some target node to start computation on the shard.
-	ComputeShard(context.Context, *ComputeRequest) (*Nothing, error)
 }
 
 func RegisterDarkNodeServer(s *grpc.Server, srv DarkNodeServer) {
 	s.RegisterService(&_DarkNode_serviceDesc, srv)
+}
+
+func _DarkNode_Sync_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SyncRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(DarkNodeServer).Sync(m, &darkNodeSyncServer{stream})
+}
+
+type DarkNode_SyncServer interface {
+	Send(*SyncBlock) error
+	grpc.ServerStream
+}
+
+type darkNodeSyncServer struct {
+	grpc.ServerStream
+}
+
+func (x *darkNodeSyncServer) Send(m *SyncBlock) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _DarkNode_SendOrderFragmentCommitment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OrderFragmentCommitment)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DarkNodeServer).SendOrderFragmentCommitment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.DarkNode/SendOrderFragmentCommitment",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DarkNodeServer).SendOrderFragmentCommitment(ctx, req.(*OrderFragmentCommitment))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _DarkNode_SendOrderFragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1001,20 +1114,56 @@ func _DarkNode_SendOrderFragment_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DarkNode_SendResultFragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ResultFragment)
+func _DarkNode_ElectShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ElectShardRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DarkNodeServer).SendResultFragment(ctx, in)
+		return srv.(DarkNodeServer).ElectShard(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.DarkNode/SendResultFragment",
+		FullMethod: "/rpc.DarkNode/ElectShard",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DarkNodeServer).SendResultFragment(ctx, req.(*ResultFragment))
+		return srv.(DarkNodeServer).ElectShard(ctx, req.(*ElectShardRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DarkNode_ComputeShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ComputeShardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DarkNodeServer).ComputeShard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.DarkNode/ComputeShard",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DarkNodeServer).ComputeShard(ctx, req.(*ComputeShardRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DarkNode_FinalizeShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FinalizeShardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DarkNodeServer).FinalizeShard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.DarkNode/FinalizeShard",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DarkNodeServer).FinalizeShard(ctx, req.(*FinalizeShardRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1061,74 +1210,17 @@ func (x *darkNodeGetResultsServer) Send(m *Result) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _DarkNode_Sync_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(SyncRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(DarkNodeServer).Sync(m, &darkNodeSyncServer{stream})
-}
-
-type DarkNode_SyncServer interface {
-	Send(*Shard) error
-	grpc.ServerStream
-}
-
-type darkNodeSyncServer struct {
-	grpc.ServerStream
-}
-
-func (x *darkNodeSyncServer) Send(m *Shard) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _DarkNode_ElectShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ElectRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DarkNodeServer).ElectShard(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/rpc.DarkNode/ElectShard",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DarkNodeServer).ElectShard(ctx, req.(*ElectRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _DarkNode_ComputeShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ComputeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DarkNodeServer).ComputeShard(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/rpc.DarkNode/ComputeShard",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DarkNodeServer).ComputeShard(ctx, req.(*ComputeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 var _DarkNode_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "rpc.DarkNode",
 	HandlerType: (*DarkNodeServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SendOrderFragment",
-			Handler:    _DarkNode_SendOrderFragment_Handler,
+			MethodName: "SendOrderFragmentCommitment",
+			Handler:    _DarkNode_SendOrderFragmentCommitment_Handler,
 		},
 		{
-			MethodName: "SendResultFragment",
-			Handler:    _DarkNode_SendResultFragment_Handler,
+			MethodName: "SendOrderFragment",
+			Handler:    _DarkNode_SendOrderFragment_Handler,
 		},
 		{
 			MethodName: "ElectShard",
@@ -1138,8 +1230,17 @@ var _DarkNode_serviceDesc = grpc.ServiceDesc{
 			MethodName: "ComputeShard",
 			Handler:    _DarkNode_ComputeShard_Handler,
 		},
+		{
+			MethodName: "FinalizeShard",
+			Handler:    _DarkNode_FinalizeShard_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Sync",
+			Handler:       _DarkNode_Sync_Handler,
+			ServerStreams: true,
+		},
 		{
 			StreamName:    "Notifications",
 			Handler:       _DarkNode_Notifications_Handler,
@@ -1148,11 +1249,6 @@ var _DarkNode_serviceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "GetResults",
 			Handler:       _DarkNode_GetResults_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "Sync",
-			Handler:       _DarkNode_Sync_Handler,
 			ServerStreams: true,
 		},
 	},
@@ -1228,58 +1324,65 @@ var _TerminalNode_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("rpc.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 847 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x56, 0x51, 0x8f, 0xe3, 0x34,
-	0x10, 0x56, 0x92, 0xa6, 0x6d, 0xa6, 0xb9, 0x6a, 0xcf, 0x8b, 0x50, 0x54, 0x1d, 0xa7, 0x2a, 0xc0,
-	0x51, 0x84, 0x54, 0xf5, 0x7a, 0x20, 0x1e, 0x10, 0x12, 0xc7, 0xc2, 0xa1, 0x7b, 0x60, 0x77, 0x49,
-	0x4f, 0xbc, 0xf0, 0x94, 0x6b, 0xbc, 0x6d, 0x44, 0x12, 0xf7, 0x6c, 0x47, 0xd0, 0x1f, 0xc2, 0x7f,
-	0xe0, 0x6f, 0xf0, 0x4f, 0x78, 0xe1, 0x2f, 0xf0, 0x8c, 0x3c, 0x76, 0x5a, 0xa7, 0x2d, 0x6c, 0x85,
-	0xe0, 0xcd, 0xf3, 0xcd, 0x37, 0x63, 0xcf, 0x37, 0x63, 0x27, 0x10, 0xf0, 0xcd, 0x72, 0xba, 0xe1,
-	0x4c, 0x32, 0xe2, 0xf1, 0xcd, 0x32, 0x7e, 0x17, 0x7a, 0xcf, 0xb3, 0x8c, 0x53, 0x21, 0x48, 0x04,
-	0xbd, 0x54, 0x2f, 0x23, 0x67, 0xec, 0x4c, 0x82, 0xa4, 0x31, 0xe3, 0xf7, 0x20, 0xfc, 0xb6, 0x2e,
-	0x64, 0xde, 0x30, 0xdf, 0x02, 0xbf, 0x54, 0xb6, 0xe1, 0x69, 0x23, 0xfe, 0x0c, 0x86, 0x36, 0x8b,
-	0x0a, 0xf2, 0x21, 0x74, 0xd1, 0xa5, 0x12, 0x7a, 0x93, 0xc1, 0xfc, 0xe1, 0x54, 0xed, 0x6e, 0x93,
-	0x12, 0x43, 0x88, 0x03, 0xe8, 0x5d, 0x33, 0xb9, 0xce, 0xab, 0x55, 0x9c, 0x80, 0xff, 0x5d, 0x4d,
-	0xf9, 0x96, 0xbc, 0x0f, 0x9d, 0x3b, 0xce, 0x4a, 0xdc, 0xe5, 0x64, 0x30, 0xba, 0x49, 0x0c, 0xfe,
-	0x1b, 0xc5, 0x8f, 0x5c, 0xe4, 0x85, 0xc8, 0x6b, 0x28, 0xda, 0x15, 0xff, 0xe9, 0xc2, 0x83, 0x1b,
-	0x9e, 0x51, 0xfe, 0x82, 0xa7, 0xab, 0x92, 0x56, 0x92, 0x3c, 0x02, 0x57, 0x32, 0x93, 0xba, 0x1d,
-	0xe2, 0x4a, 0xb6, 0xdb, 0xda, 0xfd, 0xe7, 0xad, 0x87, 0xe0, 0xe6, 0x59, 0xe4, 0x8d, 0x9d, 0x49,
-	0x98, 0xb8, 0x79, 0xa6, 0x24, 0x64, 0x6a, 0x97, 0x97, 0x59, 0xd4, 0x41, 0xb0, 0x31, 0xc9, 0x23,
-	0x08, 0x70, 0xf9, 0x6a, 0xbb, 0xa1, 0x91, 0x3f, 0x76, 0x26, 0x5e, 0xb2, 0x07, 0xc8, 0x18, 0x06,
-	0x68, 0xdc, 0xa6, 0x3c, 0x97, 0xdb, 0xa8, 0x8b, 0x7e, 0x1b, 0x22, 0x31, 0x84, 0x77, 0x42, 0x5e,
-	0xb1, 0x8c, 0x2e, 0xd6, 0x29, 0xa7, 0x51, 0x0f, 0xd3, 0xb7, 0x30, 0xc5, 0x11, 0x55, 0xb6, 0xe7,
-	0xf4, 0x35, 0xc7, 0xc6, 0xc8, 0x63, 0x80, 0x0d, 0xcf, 0x97, 0x86, 0x11, 0x20, 0xc3, 0x42, 0xc8,
-	0x13, 0x18, 0x96, 0xe9, 0xcf, 0xdf, 0xb3, 0xa2, 0x2e, 0x0d, 0x07, 0x90, 0x73, 0x80, 0x22, 0x2f,
-	0xaf, 0x6c, 0xde, 0xc0, 0xf0, 0x5a, 0x68, 0xfc, 0x9b, 0x07, 0xc3, 0x84, 0x8a, 0xba, 0x90, 0xff,
-	0xaf, 0xf2, 0x8f, 0x01, 0x5e, 0xd7, 0xdb, 0x9b, 0x96, 0xf8, 0x16, 0xa2, 0x14, 0x16, 0xb4, 0x28,
-	0x1a, 0x82, 0x8f, 0x04, 0x1b, 0x22, 0x53, 0x20, 0x0d, 0xbf, 0x39, 0xea, 0xcb, 0x0c, 0x5b, 0x11,
-	0x26, 0x27, 0x3c, 0x64, 0x06, 0x97, 0xbb, 0x70, 0x2b, 0x40, 0x37, 0xe6, 0x94, 0xeb, 0xa8, 0x87,
-	0xfd, 0x33, 0x7a, 0x18, 0xdc, 0xdb, 0x43, 0x38, 0xa3, 0x87, 0x83, 0x33, 0x7b, 0x18, 0x9e, 0xec,
-	0xe1, 0xef, 0x0e, 0x74, 0x75, 0x0f, 0x8d, 0xec, 0xce, 0xdf, 0xc8, 0xee, 0xde, 0x27, 0xbb, 0x77,
-	0x2c, 0x7b, 0x04, 0x3d, 0x23, 0x40, 0x73, 0x65, 0x8c, 0xa9, 0x3c, 0xa6, 0x6c, 0xd3, 0xae, 0xc6,
-	0x54, 0xef, 0x0f, 0x96, 0x6b, 0xba, 0xa3, 0x0d, 0x75, 0xc5, 0x76, 0x05, 0x9a, 0x36, 0xec, 0x01,
-	0xf4, 0x36, 0x65, 0x19, 0xe5, 0xf7, 0x40, 0xfc, 0x03, 0xf8, 0xaa, 0x56, 0xbc, 0xa7, 0x22, 0x5f,
-	0x55, 0xa9, 0xac, 0x39, 0x35, 0x75, 0xee, 0x01, 0xf2, 0x31, 0x84, 0x4b, 0x56, 0x6e, 0x6a, 0x99,
-	0xca, 0x9c, 0x55, 0x22, 0x72, 0xf1, 0x59, 0xbb, 0xc0, 0x21, 0xbd, 0xda, 0x3b, 0x92, 0x16, 0x2b,
-	0x4e, 0x61, 0x60, 0x39, 0xc9, 0x05, 0x78, 0xc5, 0x5a, 0x18, 0xb1, 0xd4, 0x52, 0x21, 0x7c, 0x2d,
-	0x8c, 0x3a, 0x6a, 0x49, 0xde, 0x86, 0x6e, 0x41, 0xd3, 0x8c, 0x72, 0x53, 0xba, 0xb1, 0x14, 0x2e,
-	0x64, 0x2a, 0x6b, 0x61, 0xc4, 0x32, 0x56, 0xfc, 0x0e, 0x0c, 0x16, 0xdb, 0x6a, 0x99, 0xd0, 0x37,
-	0x35, 0x15, 0x47, 0x6d, 0x8a, 0xbf, 0x80, 0xf0, 0xeb, 0x82, 0x2e, 0x65, 0xe3, 0x1f, 0x83, 0x2f,
-	0x54, 0xb9, 0xe6, 0x16, 0x02, 0x16, 0x80, 0x02, 0x24, 0xda, 0x61, 0x32, 0xb8, 0xbb, 0x0c, 0x5f,
-	0xc2, 0x50, 0xd7, 0x40, 0xff, 0x7d, 0x8e, 0x5f, 0x1c, 0xe8, 0x3c, 0x97, 0xac, 0xfc, 0x6f, 0x5e,
-	0x00, 0x94, 0x28, 0x5b, 0x51, 0x8e, 0xba, 0x79, 0x89, 0xb1, 0x08, 0x81, 0x4e, 0x96, 0xca, 0xd4,
-	0x08, 0x84, 0xeb, 0x76, 0x57, 0xfd, 0x83, 0xae, 0xce, 0x7f, 0x75, 0x20, 0x58, 0xfc, 0x94, 0xf2,
-	0xf2, 0x5a, 0x0d, 0xd7, 0x07, 0xd0, 0xb9, 0xcd, 0xab, 0x15, 0x39, 0xde, 0x78, 0xa4, 0xcf, 0x6a,
-	0xbe, 0x53, 0xe4, 0x19, 0x5c, 0xe0, 0x77, 0xea, 0xaa, 0x60, 0x82, 0xf2, 0x5b, 0x4a, 0xb9, 0x20,
-	0x5a, 0x05, 0x84, 0x47, 0x97, 0x47, 0x09, 0xa8, 0x20, 0x9f, 0xc3, 0xe8, 0x30, 0xe8, 0xa6, 0x7a,
-	0xc1, 0x59, 0x25, 0x73, 0xca, 0x5b, 0xe1, 0xc7, 0xfb, 0xcf, 0x9c, 0xf9, 0x1f, 0x2e, 0xf4, 0xbf,
-	0x4a, 0xf9, 0x8f, 0x78, 0xd2, 0x4f, 0xe0, 0xe1, 0x82, 0x56, 0x59, 0xfb, 0xbb, 0x46, 0x30, 0xac,
-	0x85, 0x1d, 0x9c, 0xfb, 0x53, 0x20, 0x2a, 0xec, 0xe0, 0x55, 0xd6, 0xa7, 0x6d, 0x83, 0x07, 0x81,
-	0x4f, 0xe1, 0xc1, 0x35, 0x93, 0xf9, 0x5d, 0xbe, 0xd4, 0x83, 0x7d, 0x4a, 0xa2, 0x81, 0x95, 0x66,
-	0xe6, 0x90, 0x29, 0xc0, 0x37, 0x54, 0x6a, 0xf3, 0x1c, 0xfe, 0x13, 0xe8, 0xa8, 0x39, 0x26, 0xfa,
-	0x4a, 0x59, 0x23, 0x3d, 0xb2, 0xe6, 0x6b, 0xe6, 0x90, 0x8f, 0x00, 0x70, 0xa0, 0xf5, 0xa5, 0xd5,
-	0x79, 0xed, 0x09, 0xb7, 0xe9, 0xe4, 0x29, 0x84, 0x66, 0x76, 0xb5, 0x7d, 0x69, 0xdd, 0xd7, 0x66,
-	0x9c, 0xdb, 0xa5, 0xce, 0x67, 0x10, 0xbe, 0xa2, 0xbc, 0xcc, 0xab, 0xb4, 0x40, 0xa9, 0xc7, 0xd0,
-	0x57, 0x9a, 0xe1, 0xf4, 0x06, 0x7a, 0x62, 0x25, 0x2b, 0x47, 0xfb, 0xe5, 0xeb, 0x2e, 0xfe, 0x54,
-	0x3d, 0xfb, 0x2b, 0x00, 0x00, 0xff, 0xff, 0x76, 0x68, 0xd2, 0x39, 0x61, 0x09, 0x00, 0x00,
+	// 956 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x56, 0xdd, 0x6e, 0xdc, 0x44,
+	0x14, 0x96, 0xf7, 0x2f, 0xbb, 0x67, 0x9d, 0xa8, 0x99, 0x56, 0xc1, 0xb8, 0x51, 0xb5, 0x32, 0x05,
+	0x02, 0x17, 0xd1, 0x76, 0xcb, 0x9f, 0x84, 0xb8, 0x28, 0x29, 0x41, 0x5c, 0x90, 0x04, 0xa7, 0x42,
+	0xaa, 0x84, 0x40, 0xae, 0x67, 0xb2, 0x19, 0xd5, 0xf6, 0x6c, 0x67, 0xc6, 0x82, 0xe5, 0x9a, 0x17,
+	0xe0, 0x82, 0x77, 0xe0, 0x19, 0x10, 0xef, 0xc0, 0x2b, 0xf0, 0x14, 0x5c, 0xa3, 0x39, 0x33, 0x5e,
+	0xdb, 0xbb, 0x69, 0x09, 0x12, 0xb9, 0xe0, 0xce, 0xe7, 0x7c, 0xdf, 0x39, 0x67, 0x76, 0xe6, 0xfb,
+	0x66, 0x16, 0x46, 0x72, 0x91, 0x1e, 0x2e, 0xa4, 0xd0, 0x82, 0x74, 0xe5, 0x22, 0x8d, 0xde, 0x80,
+	0xad, 0x47, 0x94, 0x4a, 0xa6, 0x14, 0x09, 0x60, 0x2b, 0xb1, 0x9f, 0x81, 0x37, 0xf1, 0x0e, 0x46,
+	0x71, 0x15, 0x46, 0xf7, 0xc1, 0xff, 0xb2, 0xcc, 0x34, 0xaf, 0x98, 0x77, 0xa0, 0x9f, 0x9b, 0xd8,
+	0xf1, 0x6c, 0x10, 0x7d, 0x0c, 0x3b, 0x4d, 0x16, 0x53, 0xe4, 0x1d, 0x18, 0x20, 0x64, 0x1a, 0x76,
+	0x0f, 0xc6, 0xb3, 0xdd, 0x43, 0x33, 0xbd, 0x49, 0x8a, 0x1d, 0x21, 0x1a, 0xc1, 0xd6, 0x89, 0xd0,
+	0x97, 0xbc, 0x98, 0x47, 0x31, 0xf4, 0xbf, 0x2a, 0x99, 0x5c, 0x92, 0x37, 0xa1, 0x77, 0x21, 0x45,
+	0x8e, 0x53, 0xae, 0x2c, 0x46, 0x98, 0x44, 0xd0, 0x7f, 0x61, 0xf8, 0x41, 0x07, 0x79, 0x3e, 0xf2,
+	0x2a, 0x8a, 0x85, 0xa2, 0xbf, 0x3a, 0xb0, 0x7d, 0x2a, 0x29, 0x93, 0xc7, 0x32, 0x99, 0xe7, 0xac,
+	0xd0, 0x64, 0x1f, 0x3a, 0x5a, 0xb8, 0xd6, 0xed, 0x92, 0x8e, 0x16, 0xab, 0xd1, 0x9d, 0x57, 0x8f,
+	0xde, 0x81, 0x0e, 0xa7, 0x41, 0x77, 0xe2, 0x1d, 0xf8, 0x71, 0x87, 0x53, 0xb3, 0x85, 0xc2, 0x4c,
+	0xf9, 0x82, 0x06, 0x3d, 0x4c, 0x56, 0x21, 0xd9, 0x87, 0x11, 0x7e, 0x3e, 0x59, 0x2e, 0x58, 0xd0,
+	0x9f, 0x78, 0x07, 0xdd, 0xb8, 0x4e, 0x90, 0x09, 0x8c, 0x31, 0x38, 0x4b, 0x24, 0xd7, 0xcb, 0x60,
+	0x80, 0x78, 0x33, 0x45, 0x22, 0xf0, 0x2f, 0x94, 0x3e, 0x12, 0x94, 0x9d, 0x5f, 0x26, 0x92, 0x05,
+	0x5b, 0xd8, 0xbe, 0x95, 0x33, 0x1c, 0x55, 0xd0, 0x9a, 0x33, 0xb4, 0x9c, 0x66, 0x8e, 0xdc, 0x03,
+	0x58, 0x48, 0x9e, 0x3a, 0xc6, 0x08, 0x19, 0x8d, 0x0c, 0x79, 0x0b, 0x76, 0xf2, 0xe4, 0x87, 0xaf,
+	0x45, 0x56, 0xe6, 0x8e, 0x03, 0xc8, 0x59, 0xcb, 0x22, 0x8f, 0x17, 0x4d, 0xde, 0xd8, 0xf1, 0x5a,
+	0xd9, 0xe8, 0x27, 0x0f, 0x5e, 0x6b, 0x6d, 0xfc, 0x91, 0xc8, 0x73, 0xae, 0xf1, 0x08, 0xae, 0x79,
+	0xbe, 0xfb, 0x30, 0x52, 0x7c, 0x5e, 0x24, 0xba, 0x94, 0x0c, 0x0f, 0xc4, 0x8f, 0xeb, 0x04, 0xb9,
+	0x0f, 0xdb, 0xa2, 0xd9, 0xdf, 0x9d, 0x46, 0x3b, 0x19, 0xfd, 0xdc, 0x83, 0xd1, 0xf9, 0xb2, 0x48,
+	0x3f, 0xcd, 0x44, 0xfa, 0xbc, 0xdd, 0xd1, 0x5b, 0xef, 0xf8, 0x00, 0x06, 0x94, 0x65, 0x3a, 0x51,
+	0xee, 0xf4, 0x5f, 0xc7, 0x85, 0xad, 0xaa, 0x0f, 0x1f, 0x1b, 0x10, 0x3f, 0x63, 0x47, 0x24, 0x1f,
+	0xc2, 0x50, 0x32, 0xc5, 0x69, 0xc9, 0x14, 0xce, 0x1f, 0xcf, 0xee, 0xae, 0x15, 0xc5, 0x16, 0xb6,
+	0x65, 0x2b, 0x72, 0xf8, 0x9b, 0x07, 0x50, 0xf7, 0x33, 0xfa, 0x59, 0xb0, 0x82, 0xf2, 0x62, 0x8e,
+	0x8e, 0xf1, 0xe3, 0x2a, 0x24, 0x21, 0x0c, 0x59, 0xc6, 0x52, 0x6d, 0xa0, 0x0e, 0x42, 0xab, 0xd8,
+	0xfc, 0x9c, 0x54, 0xe4, 0x8b, 0x12, 0xc1, 0x2e, 0x82, 0x75, 0xc2, 0x9c, 0xf8, 0x05, 0x2f, 0x92,
+	0x8c, 0xff, 0x68, 0xe0, 0x1e, 0xc2, 0x8d, 0x8c, 0x99, 0x99, 0x27, 0x3a, 0xbd, 0x64, 0x34, 0xe8,
+	0xdb, 0x99, 0x2e, 0x34, 0x95, 0x39, 0x57, 0x15, 0x38, 0xb0, 0x95, 0x75, 0x26, 0xfc, 0xdd, 0x03,
+	0xbf, 0xf9, 0xbb, 0xfe, 0x5f, 0xcb, 0x8f, 0xfe, 0xf4, 0x60, 0x10, 0x33, 0x55, 0x66, 0xda, 0xf9,
+	0xd8, 0x5b, 0xf9, 0xf8, 0x1e, 0xc0, 0xb3, 0x72, 0x79, 0xea, 0xac, 0x6c, 0x35, 0xd7, 0xc8, 0x18,
+	0xbf, 0x2a, 0x96, 0x65, 0x15, 0xc1, 0x4a, 0xae, 0x99, 0x32, 0xcb, 0x72, 0xde, 0xac, 0x6e, 0x02,
+	0x17, 0x1a, 0xc4, 0x39, 0x12, 0xef, 0x01, 0x3f, 0xae, 0x42, 0x73, 0xad, 0xa2, 0x13, 0xd1, 0xff,
+	0x7e, 0x6c, 0x03, 0xb3, 0x3d, 0x2b, 0xef, 0x39, 0xdb, 0xd7, 0x09, 0x44, 0x2b, 0xc7, 0x39, 0xc3,
+	0xd7, 0x89, 0xe8, 0x29, 0xf4, 0x8d, 0x0d, 0xe9, 0x3f, 0x28, 0x7e, 0xaf, 0xa1, 0x78, 0xb3, 0x4b,
+	0x95, 0xac, 0xc3, 0x96, 0xac, 0xf1, 0xd4, 0xaa, 0x38, 0xfa, 0x0e, 0xee, 0x1c, 0xdb, 0x53, 0x40,
+	0xa7, 0xd3, 0x98, 0xbd, 0x28, 0x99, 0xba, 0xb6, 0xa9, 0x27, 0xd0, 0x57, 0xa6, 0xcc, 0x79, 0x0c,
+	0xac, 0x5d, 0xb0, 0x91, 0x05, 0xa2, 0xf7, 0x60, 0x6c, 0xec, 0xf3, 0xef, 0xfa, 0x46, 0xdf, 0xc0,
+	0xee, 0x67, 0x46, 0x58, 0x37, 0xb3, 0xa6, 0x6f, 0xe1, 0xf6, 0x11, 0x2a, 0xf3, 0x86, 0x7e, 0xf3,
+	0x2f, 0x1e, 0xf4, 0x1e, 0x69, 0xbc, 0xf3, 0xfe, 0x83, 0xd7, 0x69, 0x0f, 0x06, 0x19, 0xa3, 0x73,
+	0x26, 0x51, 0xa0, 0xdd, 0xd8, 0x45, 0x84, 0x40, 0x8f, 0x26, 0x3a, 0x71, 0xc2, 0xc4, 0xef, 0xb6,
+	0x40, 0xfa, 0x6b, 0x02, 0x99, 0xfd, 0xea, 0xc1, 0xe8, 0xfc, 0xfb, 0x44, 0xe6, 0x27, 0x46, 0xa7,
+	0x6f, 0x43, 0xef, 0xcc, 0x58, 0x6f, 0x73, 0x70, 0x68, 0xd7, 0xea, 0x5e, 0x72, 0xf2, 0x10, 0x6e,
+	0xe1, 0x4b, 0x7e, 0x94, 0x09, 0xc5, 0xe4, 0x19, 0x63, 0x52, 0x11, 0xfb, 0xab, 0x31, 0x1d, 0xde,
+	0xde, 0x68, 0xc0, 0x14, 0xf9, 0x04, 0xc2, 0xf5, 0xa2, 0xd3, 0xe2, 0x58, 0x8a, 0x42, 0x73, 0x26,
+	0x5b, 0xe5, 0x9b, 0xf3, 0xa7, 0xde, 0xec, 0x8f, 0x2e, 0x0c, 0x1f, 0x27, 0xf2, 0x39, 0xae, 0xf4,
+	0x5d, 0xe8, 0x19, 0x0d, 0x91, 0x5b, 0xab, 0xdb, 0xd8, 0x1d, 0x59, 0xb8, 0xd3, 0xbe, 0x9f, 0xa7,
+	0x1e, 0x79, 0x0a, 0x77, 0xcf, 0x59, 0x41, 0x5f, 0xf6, 0x58, 0xed, 0x63, 0xc1, 0x4b, 0xd0, 0xf0,
+	0x95, 0x28, 0x79, 0x1f, 0x76, 0x37, 0x5a, 0x13, 0xb2, 0x59, 0xb2, 0xb6, 0x7d, 0x53, 0x80, 0x5a,
+	0xcb, 0x64, 0x0f, 0xb1, 0x0d, 0x71, 0x87, 0x0d, 0x19, 0x91, 0x0f, 0xc0, 0x6f, 0xea, 0x93, 0x04,
+	0x88, 0x5d, 0x21, 0xd9, 0xb5, 0x49, 0x1f, 0xc1, 0x76, 0xcb, 0xcc, 0xc4, 0xbe, 0x79, 0x57, 0x19,
+	0x7c, 0xad, 0xf2, 0x01, 0x6c, 0x9f, 0x08, 0xcd, 0x2f, 0x78, 0x9a, 0x68, 0x2e, 0x0a, 0x75, 0x95,
+	0x28, 0xc6, 0x98, 0xb2, 0x57, 0xed, 0xd4, 0x23, 0x87, 0x00, 0x9f, 0x33, 0x6d, 0xc3, 0x6b, 0xf0,
+	0x67, 0x53, 0xf0, 0x9f, 0x30, 0x99, 0x9b, 0xb5, 0xe0, 0xa1, 0x4e, 0x60, 0x68, 0x76, 0x13, 0x7d,
+	0x32, 0xb2, 0xde, 0xd0, 0x22, 0x0f, 0xeb, 0xcf, 0x67, 0x03, 0xfc, 0x83, 0xfb, 0xf0, 0xef, 0x00,
+	0x00, 0x00, 0xff, 0xff, 0x99, 0xfe, 0xd1, 0xa8, 0xed, 0x0a, 0x00, 0x00,
 }
