@@ -17,6 +17,7 @@ import (
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
+	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-swarm-network"
 	"google.golang.org/grpc"
 )
@@ -101,11 +102,33 @@ func (node *DarkNode) Start() {
 		panic("dark node hasn't been registered")
 	}
 
-	darkPool := getDarkPoolConfig()
+	darkPool, err := getDarkPoolConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Wait for the server to start and bootstrap the connections in the swarm.
 	time.Sleep(time.Second)
 	node.Swarm.Bootstrap()
+
+	//  Ping all nodes in the dark pool
+	for _, id := range darkPool {
+		target, err := node.Swarm.FindNode(id)
+		if err != nil {
+			log.Fatal(err)
+		}
+		// Ignore the node if we can't find it
+		if target == nil {
+			continue
+		}
+		err = rpc.PingTarget(target, node.Swarm.MultiAddress(), 5*time.Second)
+		// Update the nodes in our DHT if they respond
+		if err != nil {
+			node.Swarm.DHT.UpdateMultiAddress(target)
+		}
+	}
+
+	// todo : sync hidden order book with them
 
 	// Wait until the signal for stopping the server is received, and then call
 	// Stop.
@@ -280,7 +303,7 @@ func isRegistered(id identity.ID) (bool, error) {
 	return userConnection.IsDarkNodeRegistered(id)
 }
 
-func getDarkPoolConfig () ([]identity.ID, error) {
+func getDarkPoolConfig() ([]identity.ID, error) {
 	// todo: need to get key from the ethereum private key
 	key := `{"version":3,"id":"7844982f-abe7-4690-8c15-34f75f847c66","address":"db205ea9d35d8c01652263d58351af75cfbcbf07","Crypto":{"ciphertext":"378dce3c1279b36b071e1c7e2540ac1271581bff0bbe36b94f919cb73c491d3a","cipherparams":{"iv":"2eb92da55cc2aa62b7ffddba891f5d35"},"cipher":"aes-128-ctr","kdf":"scrypt","kdfparams":{"dklen":32,"salt":"80d3341678f83a14024ba9c3edab072e6bd2eea6aa0fbc9e0a33bae27ffa3d6d","n":8192,"r":8,"p":1},"mac":"3d07502ea6cd6b96a508138d8b8cd2e46c3966240ff276ce288059ba4235cb0d"}}`
 	auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
@@ -290,14 +313,13 @@ func getDarkPoolConfig () ([]identity.ID, error) {
 	client := ethereum.Ropsten("https://ropsten.infura.io/")
 	contractAddress := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
 	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), client, auth, &bind.CallOpts{}, contractAddress, nil)
-	ids, err  := userConnection.GetXingOverlay()
+	ids, err := userConnection.GetXingOverlay()
 	if err != nil {
 		return []identity.ID{}, err
 	}
-	nodes := make (identity.ID , len(ids))
-	//for i := range ids{
-	//	node ids[i][:])
-	//
-	//}
+	nodes := make([]identity.ID, len(ids))
+	for i := range ids {
+		nodes[i] = identity.ID(ids[i][:])
+	}
+	return nodes, nil
 }
-
