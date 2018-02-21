@@ -13,14 +13,15 @@ import (
 
 // ERC20AtomContract ...
 type ERC20AtomContract struct {
-	context      context.Context
-	client       Client
-	auth         *bind.TransactOpts
-	binding      *contracts.AtomicSwapERC20
-	erc20        *contracts.ERC20
-	erc20Address common.Address
-	swapID       [32]byte
-	chainID      int8
+	context        context.Context
+	client         Client
+	auth           *bind.TransactOpts
+	binding        *contracts.AtomicSwapERC20
+	erc20          *contracts.ERC20
+	bindingAddress common.Address
+	erc20Address   common.Address
+	swapID         [32]byte
+	chainID        int8
 }
 
 // NewERC20AtomContract returns a new NewERC20Atom instance
@@ -47,13 +48,14 @@ func NewERC20AtomContract(context context.Context, client Client, auth1 *bind.Tr
 	}
 
 	return &ERC20AtomContract{
-		context:      context,
-		client:       client,
-		auth:         auth1,
-		binding:      contract,
-		erc20:        erc20,
-		erc20Address: erc20Address,
-		swapID:       swapID,
+		context:        context,
+		client:         client,
+		auth:           auth1,
+		binding:        contract,
+		erc20:          erc20,
+		bindingAddress: address,
+		erc20Address:   erc20Address,
+		swapID:         swapID,
 	}, nil
 }
 
@@ -65,8 +67,8 @@ func (contract *ERC20AtomContract) Initiate(hash, to, from []byte, value *big.In
 	}
 	toAddress := common.BytesToAddress(to)
 
-	// Approve ERC20 to atomic-swap contract
-	tx, err := contract.erc20.Approve(contract.auth, contract.erc20Address, value)
+	// Approve ERC20 to atomic-swap
+	tx, err := contract.erc20.Approve(contract.auth, contract.bindingAddress, value)
 	if err != nil {
 		return err
 	}
@@ -77,6 +79,7 @@ func (contract *ERC20AtomContract) Initiate(hash, to, from []byte, value *big.In
 
 	// Call atomic-swap contract
 	tx, err = contract.binding.Open(contract.auth, contract.swapID, value, contract.erc20Address, toAddress, hash32, big.NewInt(expiry))
+
 	if err != nil {
 		return err
 	}
@@ -124,52 +127,3 @@ func (contract *ERC20AtomContract) Refund() error {
 func (contract *ERC20AtomContract) GetData() []byte {
 	return contract.swapID[:]
 }
-
-/*
-
-// Open opens an Atomic swap for a given match ID, with a address authorised to withdraw the amount after revealing the secret
-func (connection ERC20Connection) Open(_swapID [32]byte, ethAddr common.Address, secretHash [32]byte, amountInWei *big.Int) (*types.Transaction, error) {
-	return connection.contract.Open(connection.auth, _swapID, amountInWei, ethAddr, ethAddr, secretHash)
-}
-
-// Close closes an Atomic swap by revealing the secret. The locked value is sent to the address supplied to Open
-func (connection ERC20Connection) Close(_swapID [32]byte, _secretKey []byte) (*types.Transaction, error) {
-	return connection.contract.Close(connection.auth, _swapID, _secretKey)
-}
-
-// Check returns details about an open Atomic Swap
-func (connection ERC20Connection) Check(id [32]byte) (struct {
-	TimeRemaining        *big.Int
-	Erc20Value           *big.Int
-	Erc20ContractAddress common.Address
-	WithdrawTrader       common.Address
-	SecretLock           [32]byte
-}, error) {
-	return connection.contract.Check(&bind.CallOpts{}, id)
-}
-
-// Expire expires an Atomic Swap, provided that the required time has passed
-func (connection ERC20Connection) Expire(_swapID [32]byte) (*types.Transaction, error) {
-	return connection.contract.Expire(connection.auth, _swapID)
-}
-
-// Validate (not implemented) checks that there is a valid open Atomic Swap for a given _swapID
-func (connection ERC20Connection) Validate() {
-}
-
-// RetrieveSecretKey retrieves the secret key from an Atomic Swap, after it has been revealed
-func (connection ERC20Connection) RetrieveSecretKey(_swapID [32]byte) ([]byte, error) {
-	return connection.contract.CheckSecretKey(&bind.CallOpts{}, _swapID)
-}
-
-
-
-func existingERC20(connection bind.ContractBackend, address common.Address) *contracts.AtomicSwapERC20 {
-	contract, err := contracts.NewAtomicSwapERC20(address, connection)
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-	return contract
-}
-
-*/
