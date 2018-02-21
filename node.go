@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/go-atom/ethereum"
 	"github.com/republicprotocol/go-dark-network"
-	"github.com/republicprotocol/go-dark-node-registrar"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
@@ -146,18 +145,21 @@ func (node *DarkNode) Stop() {
 // OnPingReceived implements the swarm.Delegate interface. It is used by the
 // underlying swarm.Node whenever the Miner has handled a Ping RPC.
 func (node *DarkNode) OnPingReceived(peer identity.MultiAddress) {
+	// TODO: Log metrics for the ping.
 }
 
 // OnQueryCloserPeersReceived implements the swarm.Delegate interface. It is
 // used by the underlying swarm.Node whenever the Miner has handled a
 // QueryCloserPeers RPC.
 func (node *DarkNode) OnQueryCloserPeersReceived(peer identity.MultiAddress) {
+	// TODO: Log metrics for the query.
 }
 
 // OnQueryCloserPeersOnFrontierReceived implements the swarm.Delegate
 // interface. It is called by the underlying swarm.Node whenever the Miner
 // has handled a QueryCloserPeersOnFrontier RPC.
 func (node *DarkNode) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAddress) {
+	// TODO: Log metrics for the deep query.
 }
 
 // OnOrderFragmentReceived implements the xing.Delegate interface. It is called
@@ -167,22 +169,40 @@ func (node *DarkNode) OnOrderFragmentReceived(from identity.MultiAddress, orderF
 	node.HiddenOrderBook.AddOrderFragment(orderFragment)
 }
 
-// OnResultFragmentReceived implements the xing.Delegate interface. It is
-// called by the underlying xing.Node whenever the Miner receives a
-// compute.ResultFragment that it must process.
-func (node *DarkNode) OnResultFragmentReceived(from identity.MultiAddress, resultFragment *compute.ResultFragment) {
+// OnElectShard is a delegate method that is called when the DarkNode has
+// received an RPC for electing a Shard. To finish the election, the DarkNode
+// should filter the Shard is received and return it. The DarkNode should
+// filter out the deltas and residues that it does not have access to.
+func (node *DarkNode) OnElectShard(from identity.MultiAddress, shard compute.ComputationShard) compute.ComputationShard {
+	// TODO: Elect the shard. Check which deltas and residues the DarkNode has
+	// and remove all others from the shard before returning it.
+	panic("unimplemented")
 }
 
-// OnOrderFragmentForwarding implements the xing.Delegate interface. It is
-// called by the underlying xing.Node whenever the Miner receives a
-// compute.OrderFragment that it must forward to the correct xing.Node.
-func (node *DarkNode) OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment) {
+// OnComputeShard is a delegate method that is called when the DarkNode has
+// received an RPC for computing a Shard. The process for computing a Shard is
+// to compute ([[a]] - [[b]]) * [[r^2]] using the ([[a]] - [[b]]) deltas and
+// the [[r^2]] residues in the Shard.
+func (node *DarkNode) OnComputeShard(from identity.MultiAddress, shard compute.ComputationShard) {
+	// TODO: Compute the shard. At this stage of the implementation, no
+	// copmutation is actually needed and the Shard can be finalized
+	// immediately.
+	panic("unimplemented")
 }
 
-// OnResultFragmentForwarding implements the xing.Delegate interface. It is
-// called by the underlying xing.Node whenever the Miner receives a
-// compute.ResultFragment that it must forward to the correct xing.Node.
-func (node *DarkNode) OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, resultFragment *compute.ResultFragment) {
+// OnFinalizeShard is a delegate method that is called when the DarkNode has
+// received an RPC for finalizing a Shard. The process for finalizing a Shard
+// is to store all computation shares from within the different Shards that are
+// finalized. Eventually, enough computation shares will be acquired and the
+// computation proper can be reconstructed.
+func (node *DarkNode) OnFinalizeShard(from identity.MultiAddress, shard compute.ComputationShard) {
+	// TODO: Store the shares in a map until we have enough to reconstruct the
+	// computation proper. After reconstruction, finalize the computation and
+	// stop all processing for it (elections, computations, finalizations).
+	panic("unimplemented")
+
+	// FIXME: After reconstruction there should be some interaction with the
+	// traders.
 }
 
 func (node *DarkNode) RunComputationShardPacker() {
