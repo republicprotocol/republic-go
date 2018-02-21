@@ -53,15 +53,14 @@ func Simulated(auth1 *bind.TransactOpts, auth2 *bind.TransactOpts) Client {
 	return sim
 }
 
-// DeployETH ...
-func DeployETH(connection bind.ContractBackend, auth *bind.TransactOpts) (*types.Transaction, common.Address) {
+// DeployERC20 ...
+func DeployERC20(context context.Context, connection Client, auth *bind.TransactOpts) (*types.Transaction, common.Address) {
 	// Deploy a token contract on the simulated blockchain
-	address, tx, _, err := contracts.DeployAtomicSwapEther(auth, connection)
+	address, tx, _, err := contracts.DeployAtomicSwapERC20(auth, connection)
 	if err != nil {
 		log.Fatalf("Failed to deploy: %v", err)
 	}
-	// Don't even wait, check its presence in the local pending state
-	time.Sleep(250 * time.Millisecond) // Allow it to be processed by the local node
+	PatchedWaitDeployed(context, connection, tx)
 	return tx, address
 }
 
