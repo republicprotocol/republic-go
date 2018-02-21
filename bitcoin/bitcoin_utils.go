@@ -259,7 +259,7 @@ func buildRefund(c *rpc.Client, contract []byte, contractTx *wire.MsgTx, chainPa
 		return nil, err
 	}
 
-	pushes, err := txscript.ExtractAtomicSwapDataPushes(contract)
+	pushes, err := txscript.ExtractAtomicSwapDataPushes(0, contract)
 	if err != nil {
 		panic(err)
 	}
