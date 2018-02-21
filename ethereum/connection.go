@@ -53,15 +53,14 @@ func Simulated(auth1 *bind.TransactOpts, auth2 *bind.TransactOpts) Client {
 	return sim
 }
 
-// DeployETH ...
-func DeployETH(connection bind.ContractBackend, auth *bind.TransactOpts) (*types.Transaction, common.Address) {
+// DeployERC20 ...
+func DeployERC20(context context.Context, connection Client, auth *bind.TransactOpts) (*types.Transaction, common.Address) {
 	// Deploy a token contract on the simulated blockchain
-	address, tx, _, err := contracts.DeployAtomicSwapEther(auth, connection)
+	address, tx, _, err := contracts.DeployAtomicSwapERC20(auth, connection)
 	if err != nil {
 		log.Fatalf("Failed to deploy: %v", err)
 	}
-	// Don't even wait, check its presence in the local pending state
-	time.Sleep(250 * time.Millisecond) // Allow it to be processed by the local node
+	PatchedWaitDeployed(context, connection, tx)
 	return tx, address
 }
 
@@ -100,8 +99,10 @@ func PatchedWaitMined(ctx context.Context, b Client, tx *types.Transaction) (*ty
 	}
 }
 
-// WaitDeployed waits for a contract deployment transaction and returns the on-chain
+// PatchedWaitDeployed waits for a contract deployment transaction and returns the on-chain
 // contract address when it is mined. It stops waiting when ctx is canceled.
+// (Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt)
+// NOTE: If something goes wrong, this will hang!
 func PatchedWaitDeployed(ctx context.Context, b Client, tx *types.Transaction) (common.Address, error) {
 	if tx.To() != nil {
 		return common.Address{}, fmt.Errorf("tx is not contract creation")
