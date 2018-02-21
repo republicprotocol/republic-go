@@ -31,10 +31,6 @@ func NewComputation(left *OrderFragment, right *OrderFragment) (*Computation, er
 	return computation, nil
 }
 
-func (computation *Computation) Add(prime *big.Int) (*ResultFragment, error) {
-	return computation.BuyOrderFragment.Add(computation.SellOrderFragment, prime)
-}
-
 func (computation *Computation) Sub(prime *big.Int) (*ResultFragment, error) {
 	return computation.BuyOrderFragment.Sub(computation.SellOrderFragment, prime)
 }
@@ -100,16 +96,6 @@ func NewHiddenOrderBook(shardSize int) *HiddenOrderBook {
 	orderBook.pendingComputations = make([]*Computation, 0)
 	orderBook.pendingComputationsReadyForShard = orderBook.Guard(func() bool { return len(orderBook.pendingComputations) >= shardSize })
 	return orderBook
-}
-
-func (orderBook *HiddenOrderBook) AddPendingComputation(computation *Computation) {
-	orderBook.Enter(nil)
-	defer orderBook.Exit()
-	orderBook.addPendingComputation(computation)
-}
-
-func (orderBook *HiddenOrderBook) addPendingComputation(computation *Computation) {
-	orderBook.pendingComputations = append(orderBook.pendingComputations, computation)
 }
 
 func (orderBook *HiddenOrderBook) AddOrderFragment(orderFragment *OrderFragment) {
