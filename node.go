@@ -128,7 +128,11 @@ func (node *DarkNode) Start() {
 		}
 	}
 
-	// todo : sync hidden order book with them
+	// TODO: Synchronize the hidden order book from other DarkNodes.
+	// node.StartSynchronization()
+
+	// Begin electing shards in the background.
+	ndoe.StartShardElections()
 
 	// Wait until the signal for stopping the server is received, and then call
 	// Stop.
@@ -186,7 +190,8 @@ func (node *DarkNode) OnElectShard(from identity.MultiAddress, shard compute.Com
 func (node *DarkNode) OnComputeShard(from identity.MultiAddress, shard compute.ComputationShard) {
 	// TODO: Compute the shard. At this stage of the implementation, no
 	// copmutation is actually needed and the Shard can be finalized
-	// immediately.
+	// immediately. Call the FinalizeShard RPC on all DarkNodes in the DarkPool
+	// to finalize the shard.
 	panic("unimplemented")
 }
 
@@ -205,30 +210,35 @@ func (node *DarkNode) OnFinalizeShard(from identity.MultiAddress, shard compute.
 	// traders.
 }
 
-func (node *DarkNode) RunComputationShardPacker() {
+// StartShardElections will continue to create Shards and run elections for
+// them with other DarkNodes.
+func (node *DarkNode) StartShardElections() {
 	go func() {
 		running := int64(1)
 
-		computationShardChan := make(chan compute.ComputationShard)
+		shardQueue := make(chan compute.ComputationShard)
 		go func() {
 			for atomic.LoadInt64(&running) != 0 {
-				computationShardChan <- node.HiddenOrderBook.WaitForComputationShard()
+				shardQueue <- node.HiddenOrderBook.WaitForComputationShard()
 			}
 		}()
 
+		timer := time.NewTicker(time.Duration(node.Configuration.ComputationShardInterval) * time.Second)
+		defer timer.Stop()
+
 		for atomic.LoadInt64(&running) != 0 {
 			select {
-			case computationShard := <-computationShardChan:
+			case shard := <-shardQueue:
 				go func() {
-					computationShardConsensus := node.BroadcastComputationShard(computationShard)
-					node.BroadcastComputationShardConsensus(computationShardConsensus)
+					shard := node.RunShardElection(shard)
+					node.RunShardComputation(shard)
 				}()
-			case <-time.Tick(time.Duration(node.Configuration.ComputationShardInterval) * time.Second):
-				preemptedComputationShard := node.HiddenOrderBook.PreemptComputationShard()
-				if len(preemptedComputationShard.Computations) > 0 {
+			case <-timer.C:
+				preemptedShard := node.HiddenOrderBook.PreemptComputationShard()
+				if len(preemptedShard.Computations) > 0 {
 					go func() {
-						computationShardConsensus := node.BroadcastComputationShard(preemptedComputationShard)
-						node.BroadcastComputationShardConsensus(computationShardConsensus)
+						shard := node.RunShardElection(preemptedShard)
+						node.RunShardComputation(shard)
 					}()
 				}
 			case <-node.quitPacker:
@@ -238,7 +248,10 @@ func (node *DarkNode) RunComputationShardPacker() {
 	}()
 }
 
-func (node *DarkNode) BroadcastComputationShard(computationShard compute.ComputationShard) {
+// RunShardElection by calling the ElectShard RPC on all DarkNodes in the dark
+// pool. Collect all responses and create a shard of deltas and residues that
+// are held by enough DarkNodes that a computation has a chance of succeeding.
+func (node *DarkNode) RunShardElection(shard compute.ComputationShard) compute.ComputationShard {
 	// Track all of the no bids on computations.
 	nosMu := new(sync.Mutex)
 	nos := map[string]int{}
@@ -266,19 +279,21 @@ func (node *DarkNode) BroadcastComputationShard(computationShard compute.Computa
 
 	// Create a new slice of compute.Computations for which more than
 	// 2/3rds of the dark pool can participate.
-	computations := make([]*compute.Computation, 0, len(computationShard.Computations))
-	for _, computation := range computationShard.Computations {
-		if noBids[string(computation.ID)] >= node.DarkPoolLimit {
+	computations := make([]*compute.Computation, 0, len(shard.Computations))
+	for _, computation := range shard.Computations {
+		if nos[string(computation.ID)] >= node.DarkPoolLimit {
 			continue
 		}
 		computations = append(computations, computation)
 	}
 
-	computationShardConsensus := compute.NewComputationShard(computations)
-	return computationShardConsensus
+	shard = compute.NewComputationShard(computations)
+	return shard
 }
 
-func (node *DarkNode) BroadcastComputationShardConsensus(computationShard compute.ComputationShard) {
+// RunShardComputation by calling the ComputeShard RPC on all DarkNodes in the
+// dark pool.
+func (node *DarkNode) RunShardComputation(computationShard compute.ComputationShard) {
 	go func() {
 		node.Compute(computationShard)
 	}()
@@ -295,18 +310,6 @@ func (node *DarkNode) Compute(computationShard compute.ComputationShard) {
 		peer := node.DarkPool[i]
 		rpc.SendResultFragmentToTarget() // FIXME: Finish calling this RPC
 	})
-}
-
-func (node *DarkNode) BidOnComputationShard(computationShard compute.ComputationShard) compute.ComputationShardBid {
-	computationShardBid := compute.ComputationShardBid{
-		ID:   computationShard.ID,
-		Bids: map[string]compute.ComputationBid{},
-	}
-	for _, computation := range computationShard.Computations {
-		computationShardBid.Bids[string(computation.ID)] = compute.ComputationBidNo
-	}
-	// FIXME:
-	return computationShardBid
 }
 
 func isRegistered(id identity.ID) (bool, error) {
