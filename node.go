@@ -266,7 +266,7 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmN
 
 	// Immediately close the Node that sends the query and Node is running
 	// the query and mark all peers in the frontier as seen.
-	from, err  := identity.NewMultiAddressFromString(query.From.Multi)
+	from, err := identity.NewMultiAddressFromString(query.From.Multi)
 	if err != nil {
 		return err
 	}
