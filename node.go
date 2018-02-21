@@ -124,6 +124,7 @@ func (node *DarkNode) Start() {
 		err = rpc.PingTarget(target, node.Swarm.MultiAddress(), 5*time.Second)
 		// Update the nodes in our DHT if they respond
 		if err != nil {
+			node.DarkPool = append(node.DarkPool, target)
 			node.Swarm.DHT.UpdateMultiAddress(target)
 		}
 	}
@@ -224,7 +225,7 @@ func (node *DarkNode) BroadcastComputationShard(computationShard compute.Computa
 
 	do.ForAll(node.DarkPool, func(i int) {
 		peer := node.DarkPool[i]
-		// TODO: send computation chunk and get response
+		// TODO: send computation shard and get response
 		// computationShardBids := peer.SendComputationShardProposal(computationShard)
 		computationShardBids := struct{}{}
 
