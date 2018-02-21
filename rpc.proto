@@ -54,7 +54,6 @@ message Query {
   Address query = 2;
 }
 
-
 /**
  * Dark node definitions.
  */
@@ -62,13 +61,28 @@ message Query {
 // DarkNode services implement the distribution of OrderFragments and
 // ResultFragments in the Dark network.
 service DarkNode {
-  
+
+  // Send a sync request for getting new shard
+  rpc Sync (SyncRequest) returns (stream SyncBlock);
+
+  // Send a commitment to the order fragment.
+  rpc SendOrderFragmentCommitment (OrderFragmentCommitment) returns (OrderFragmentCommitment);
+
   // Send an OrderFragment to some target Node.
   rpc SendOrderFragment (OrderFragment) returns (Nothing);
 
   // Send a ResultFragment to some target Node, where the ResultFragment is the
   // result of a computation on two OrderFragments.
   rpc SendResultFragment (ResultFragment) returns (Nothing);
+  
+  // Propose a shard election request to some target node.
+  rpc ElectShard (ElectShardRequest) returns (Shard);
+  
+  // Ask some target node to start computation on the shard.
+  rpc ComputeShard (ComputeShardRequest) returns (Nothing);
+
+  //
+  rpc FinalizeShard (FinalizeShardRequest) returns (Nothing);
 
   // Get Result messages for successful order matches that have happened since
   // this procedure was last used, as well as new ones that occur.
@@ -76,15 +90,6 @@ service DarkNode {
 
   // Get all relevant results that have been computed in the current epoch.
   rpc GetResults (MultiAddress) returns (stream Result);
-
-  // Send a sync request for getting new shard
-  rpc Sync (SyncRequest) returns (stream Shard);
-  
-  // Propose a shard election request to some target node.
-  rpc ElectShard (ElectRequest) returns (Shard);
-  
-  // Ask some target node to start computation on the shard.
-  rpc ComputeShard (ComputeRequest) returns (Nothing);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
@@ -105,6 +110,38 @@ message OrderFragment {
   bytes priceShare = 9;
   bytes maxVolumeShare = 10;
   bytes minVolumeShare = 11;
+}
+
+// An OrderFragmentCommitment is ...
+message OrderFragmentCommitment{
+  MultiAddress from = 1;
+  bytes signature = 2;
+  bytes orderFragment = 3;
+}
+
+// A SyncBlock is ...
+message SyncBlock {
+  bytes signature = 1;
+  DeltaBlock deltas = 2;
+  ResidueBlock residues = 3;
+
+  message DeltaBlock {
+    repeated bytes pending = 1;
+    repeated bytes electing = 2;
+    repeated bytes computing = 3;
+    repeated bytes finalizing = 4;
+    repeated bytes matched = 5;
+    repeated bytes mismatched = 6;
+  }
+
+  message ResidueBlock {
+    repeated bytes pending = 1;
+    repeated bytes electing = 2;
+    repeated bytes computing = 3;
+    repeated bytes finalizing = 4;
+    repeated bytes matched = 5;
+    repeated bytes mismatched = 6;
+  }
 }
 
 // A ResultFragment message is the network representation of a
@@ -150,33 +187,31 @@ message Result {
 // A shard is a block of computations
 message Shard {
   bytes signature = 1;
-  repeated Computation computations = 2;
+  repeated bytes deltas = 2;
+  repeated bytes residues = 3;
 }
 
-// An computation is the network representation of a compute.Computation
-// and the status of the computaion result.
-message Computation {
-  bytes lhs = 2;
-  bytes rhs = 3;
-  bytes leader = 5;
-  bytes status = 4;
+// A FinalizeShardRequest is ...
+message FinalizeShardRequest{
+  MultiAddress from = 1;
+  Shard shard = 2;
 }
 
-//todo
+// A SyncRequest is ...
 message SyncRequest{
-  bytes id = 1;
+  MultiAddress from = 1;
 }
 
-// todo
-message ElectRequest{
-  Shard shard = 1;
-  bytes id = 2;
+// A ElectShardRequest is ...
+message ElectShardRequest {
+  MultiAddress from = 1;
+  Shard shard = 2;
 }
 
-// todo
-message ComputeRequest{
-  Shard shard = 1;
-  bytes id = 2;
+// A ComputeShardRequest is ...
+message ComputeShardRequest {
+  MultiAddress from = 1;
+  Shard shard = 2;
 }
 
 /**
