@@ -170,7 +170,7 @@ func (node *Node) FinalizeShard(ctx context.Context, finaliseShardRequest *rpc.F
 // SendOrderFragmentCommitment ...
 func (node *Node) SendOrderFragmentCommitment(ctx context.Context, orderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a order commitment from %v\n", node.Address(), OrderFragmentCommitment.From.Multi)
+		log.Printf("%v received a order commitment from %v\n", node.Address(), orderFragmentCommitment.From.Multi)
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
