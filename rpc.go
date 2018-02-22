@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -172,62 +173,6 @@ func DeserializeResult(input *Result) *compute.Result {
 	return result
 }
 
-// SerializeResultFragment converts a compute.ResultFragment into its network
-// representation.
-func SerializeResultFragment(input *compute.ResultFragment) *ResultFragment {
-	resultFragment := &ResultFragment{
-		To:                  &Address{Address: ""},
-		From:                &MultiAddress{Multi: ""},
-		Id:                  []byte(input.ID),
-		BuyOrderId:          []byte(input.BuyOrderID),
-		SellOrderId:         []byte(input.SellOrderID),
-		BuyOrderFragmentId:  []byte(input.BuyOrderFragmentID),
-		SellOrderFragmentId: []byte(input.SellOrderFragmentID),
-	}
-	resultFragment.FstCodeShare = sss.ToBytes(input.FstCodeShare)
-	resultFragment.SndCodeShare = sss.ToBytes(input.SndCodeShare)
-	resultFragment.PriceShare = sss.ToBytes(input.PriceShare)
-	resultFragment.MaxVolumeShare = sss.ToBytes(input.MaxVolumeShare)
-	resultFragment.MinVolumeShare = sss.ToBytes(input.MinVolumeShare)
-	return resultFragment
-}
-
-// DeserializeResultFragment converts a network representation of a
-// ResultFragment into a compute.ResultFragment. An error is returned if the
-// network representation is malformed.
-func DeserializeResultFragment(input *ResultFragment) (*compute.ResultFragment, error) {
-	resultFragment := &compute.ResultFragment{
-		ID:                  compute.ResultFragmentID(input.Id),
-		BuyOrderID:          compute.OrderID(input.BuyOrderId),
-		SellOrderID:         compute.OrderID(input.SellOrderId),
-		BuyOrderFragmentID:  compute.OrderFragmentID(input.BuyOrderFragmentId),
-		SellOrderFragmentID: compute.OrderFragmentID(input.SellOrderFragmentId),
-	}
-
-	var err error
-	resultFragment.FstCodeShare, err = sss.FromBytes(input.FstCodeShare)
-	if err != nil {
-		return nil, err
-	}
-	resultFragment.SndCodeShare, err = sss.FromBytes(input.SndCodeShare)
-	if err != nil {
-		return nil, err
-	}
-	resultFragment.PriceShare, err = sss.FromBytes(input.PriceShare)
-	if err != nil {
-		return nil, err
-	}
-	resultFragment.MaxVolumeShare, err = sss.FromBytes(input.MaxVolumeShare)
-	if err != nil {
-		return nil, err
-	}
-	resultFragment.MinVolumeShare, err = sss.FromBytes(input.MinVolumeShare)
-	if err != nil {
-		return nil, err
-	}
-	return resultFragment, nil
-}
-
 // SerializeAtom converts an atomic.Atom into its network representation.
 func SerializeAtom(a atom.Atom) *Atom {
 	return &Atom{
@@ -247,9 +192,20 @@ func DeserializeAtom(a *Atom) atom.Atom {
 	}
 }
 
-// todo : how to serialize this
-func SerializeShard (shard compute.ComputationShard) *Shard{
+// todo: serialize the deltas and residues to bytes
+func SerializeShard (shard compute.Shard) *Shard{
 	return &Shard{
+		Signature: shard.Signature,
+		Deltas:    [][]byte{},
+		Residues:  [][]byte{},
+	}
+}
 
+// todo: deserialize deltas and residues
+func DeserializeShard (shard *Shard) *compute.Shard{
+	return &compute.Shard{
+		Signature: shard.Signature,
+		Deltas:    []compute.DeltaFragment{},
+		Residues:  []compute.ResidueFragment{},
 	}
 }

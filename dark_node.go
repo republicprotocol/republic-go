@@ -64,7 +64,7 @@ func SyncWithTarget(target identity.MultiAddress, syncRequest *SyncRequest, time
 
 // StartElectShard uses a new grpc.ClientConn to make a ElectShard RPC call
 // to a target identity.MultiAddress.
-func StartElectShard(target ,from identity.MultiAddress,shard compute.ComputationShard , timeout time.Duration) (*Shard, error) {
+func StartElectShard(target ,from identity.MultiAddress,shard compute.Shard , timeout time.Duration) (*Shard, error) {
 	conn, err := Dial(target, timeout)
 	if err != nil {
 		return nil, err
@@ -75,7 +75,6 @@ func StartElectShard(target ,from identity.MultiAddress,shard compute.Computatio
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// todo : serialize shard
 	request := &ElectShardRequest{
 		From:  SerializeMultiAddress(from),
 		Shard:  SerializeShard(shard),
@@ -90,7 +89,7 @@ func StartElectShard(target ,from identity.MultiAddress,shard compute.Computatio
 
 // AskToComputeShard using a new grpc.ClientConn to make a Compute RPC call
 // to a target identity.MultiAddress.
-func AskToComputeShard(target, from identity.MultiAddress, shard compute.ComputationShard, timeout time.Duration) error {
+func AskToComputeShard(target, from identity.MultiAddress, shard compute.Shard, timeout time.Duration) error {
 	conn, err := Dial(target, timeout)
 	if err != nil {
 		return err
@@ -101,7 +100,6 @@ func AskToComputeShard(target, from identity.MultiAddress, shard compute.Computa
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// todo : serialize shard
 	request := &ComputeShardRequest{
 		From:  SerializeMultiAddress(from),
 		Shard:  SerializeShard(shard),
@@ -116,7 +114,7 @@ func AskToComputeShard(target, from identity.MultiAddress, shard compute.Computa
 
 // FinalizeShard using a new grpc.ClientConn to make a Compute RPC call
 // to a target identity.MultiAddress.
-func FinalizeShard(target, from identity.MultiAddress, shard compute.ComputationShard, timeout time.Duration) error {
+func FinalizeShard(target, from identity.MultiAddress, shard compute.Shard, timeout time.Duration) error {
 	conn, err := Dial(target, timeout)
 	if err != nil {
 		return err
@@ -127,7 +125,6 @@ func FinalizeShard(target, from identity.MultiAddress, shard compute.Computation
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// todo : serialize shard
 	request := &ComputeShardRequest{
 		From:  SerializeMultiAddress(from),
 		Shard:  SerializeShard(shard),
