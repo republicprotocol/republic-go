@@ -31,8 +31,7 @@ type Node struct {
 	Options Options
 
 	resultReceived bool
-	resultsMu      *sync.RWMutex
-	results        map[identity.Address]*Inbox
+	results        *sync.Map
 }
 
 // NewNode returns a Node that delegates the responsibility of handling RPCs to
@@ -43,8 +42,7 @@ func NewNode(server *grpc.Server, delegate Delegate, options Options) *Node {
 		Server:         server,
 		Options:        options,
 		resultReceived: false,
-		resultsMu:      new(sync.RWMutex),
-		results:        make(map[identity.Address]*Inbox),
+		results:        new(sync.Map),
 	}
 }
 
@@ -277,19 +275,13 @@ func (node *Node) GetFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode
 
 // Notify will store new result in the node.
 func (node *Node) Notify(traderAddress identity.Address, result *compute.Final) {
-	node.resultsMu.RLock()
-	results, ok := node.results[traderAddress]
-	node.resultsMu.RUnlock()
+	results, ok := node.results.Load(traderAddress)
 	if !ok {
-		node.resultsMu.Lock()
-		defer node.resultsMu.Unlock()
 		newInbox := NewInbox()
 		newInbox.AddNewResult(result)
-		node.results[traderAddress] = newInbox
+		node.results.Store(traderAddress,newInbox)
 	} else {
-		node.resultsMu.RLock()
-		defer node.resultsMu.RUnlock()
-		results.AddNewResult(result)
+		results.(*Inbox).AddNewResult(result)
 	}
 }
 
@@ -322,14 +314,12 @@ func (node *Node) notifications(traderAddress *rpc.MultiAddress, stream rpc.Dark
 	}
 	address := identity.Address(multiAddress.Address())
 
-	node.resultsMu.RLock()
-	results, ok := node.results[address]
-	node.resultsMu.RUnlock()
+	results, ok := node.results.Load(address)
 	if !ok {
 		return nil
 	}
 	for {
-		results := results.GetAllNewResults()
+		results := results.(*Inbox).GetAllNewResults()
 		for i := range results {
 			err := stream.Send(rpc.SerializeFinal(results[i]))
 			if err != nil {
@@ -345,13 +335,11 @@ func (node *Node) getFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode
 		return err
 	}
 	address := multiAddress.Address()
-	node.resultsMu.RLock()
-	notifications, ok := node.results[address]
-	node.resultsMu.RUnlock()
+	notifications, ok := node.results.Load(address)
 	if !ok {
 		return nil
 	}
-	results := notifications.GetAllResults()
+	results := notifications.(*Inbox).GetAllResults()
 	for _, result := range results {
 		err = stream.Send(rpc.SerializeFinal(result))
 		if err != nil {
