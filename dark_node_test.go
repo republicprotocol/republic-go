@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func (s *mockServer) Sync(syncRequest *rpc.SyncRequest,stream rpc.DarkNode_SyncServer) error {
+func (s *mockServer) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncServer) error {
 	stream.Send(&rpc.SyncBlock{})
 	return nil
 }
@@ -69,7 +69,7 @@ var _ = Describe("Dark Node", func() {
 			defer server.Stop()
 
 			resultChan, _ := rpc.SyncWithTarget(rpcServer.MultiAddress, &rpc.SyncRequest{}, defaultTimeout)
-			syncBlock := <- resultChan
+			syncBlock := <-resultChan
 			Ω(syncBlock.Err).Should(BeNil())
 		})
 	})
@@ -84,8 +84,8 @@ var _ = Describe("Dark Node", func() {
 			}(server)
 			defer server.Stop()
 
-			inputShard := compute.NewShard([]*compute.DeltaFragment{}, []*compute.ResidueFragment{} )
-			shard, err := rpc.StartElectShard(rpcServer.MultiAddress,rpcClient.MultiAddress, inputShard, defaultTimeout)
+			inputShard := compute.NewShard([]*compute.DeltaFragment{}, []*compute.ResidueFragment{})
+			shard, err := rpc.StartElectShard(rpcServer.MultiAddress, rpcClient.MultiAddress, inputShard, defaultTimeout)
 			Ω(*shard).Should(Equal(rpc.Shard{}))
 			Ω(err).ShouldNot(HaveOccurred())
 		})
@@ -101,8 +101,8 @@ var _ = Describe("Dark Node", func() {
 			}(server)
 			defer server.Stop()
 
-			inputShard := compute.NewShard([]*compute.DeltaFragment{}, []*compute.ResidueFragment{} )
-			err = rpc.AskToComputeShard(rpcServer.MultiAddress,rpcClient.MultiAddress, inputShard, defaultTimeout)
+			inputShard := compute.NewShard([]*compute.DeltaFragment{}, []*compute.ResidueFragment{})
+			err = rpc.AskToComputeShard(rpcServer.MultiAddress, rpcClient.MultiAddress, inputShard, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
@@ -117,8 +117,8 @@ var _ = Describe("Dark Node", func() {
 			}(server)
 			defer server.Stop()
 
-			inputShard := compute.NewShard([]*compute.DeltaFragment{}, []*compute.ResidueFragment{} )
-			err = rpc.AskToComputeShard(rpcServer.MultiAddress,rpcClient.MultiAddress, inputShard, defaultTimeout)
+			inputShard := compute.NewShard([]*compute.DeltaFragment{}, []*compute.ResidueFragment{})
+			err = rpc.AskToComputeShard(rpcServer.MultiAddress, rpcClient.MultiAddress, inputShard, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
@@ -133,8 +133,8 @@ var _ = Describe("Dark Node", func() {
 			}(server)
 			defer server.Stop()
 
-			inputShard := compute.NewShard([]*compute.DeltaFragment{}, []*compute.ResidueFragment{} )
-			err = rpc.FinalizeShard(rpcServer.MultiAddress,rpcClient.MultiAddress, inputShard, defaultTimeout)
+			inputShard := compute.NewShard([]*compute.DeltaFragment{}, []*compute.ResidueFragment{})
+			err = rpc.FinalizeShard(rpcServer.MultiAddress, rpcClient.MultiAddress, inputShard, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})

@@ -64,7 +64,7 @@ func SyncWithTarget(target identity.MultiAddress, syncRequest *SyncRequest, time
 
 // StartElectShard uses a new grpc.ClientConn to make a ElectShard RPC call
 // to a target identity.MultiAddress.
-func StartElectShard(target ,from identity.MultiAddress,shard compute.Shard , timeout time.Duration) (*Shard, error) {
+func StartElectShard(target, from identity.MultiAddress, shard compute.Shard, timeout time.Duration) (*Shard, error) {
 	conn, err := Dial(target, timeout)
 	if err != nil {
 		return nil, err
@@ -77,10 +77,10 @@ func StartElectShard(target ,from identity.MultiAddress,shard compute.Shard , ti
 
 	request := &ElectShardRequest{
 		From:  SerializeMultiAddress(from),
-		Shard:  SerializeShard(shard),
+		Shard: SerializeShard(shard),
 	}
 
-	rsp, err := client.ElectShard(ctx,request , grpc.FailFast(false))
+	rsp, err := client.ElectShard(ctx, request, grpc.FailFast(false))
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func AskToComputeShard(target, from identity.MultiAddress, shard compute.Shard, 
 
 	request := &ComputeShardRequest{
 		From:  SerializeMultiAddress(from),
-		Shard:  SerializeShard(shard),
+		Shard: SerializeShard(shard),
 	}
 
 	_, err = client.ComputeShard(ctx, request, grpc.FailFast(false))
@@ -127,7 +127,7 @@ func FinalizeShard(target, from identity.MultiAddress, shard compute.Shard, time
 
 	request := &ComputeShardRequest{
 		From:  SerializeMultiAddress(from),
-		Shard:  SerializeShard(shard),
+		Shard: SerializeShard(shard),
 	}
 
 	_, err = client.ComputeShard(ctx, request, grpc.FailFast(false))
@@ -136,5 +136,3 @@ func FinalizeShard(target, from identity.MultiAddress, shard compute.Shard, time
 	}
 	return nil
 }
-
-

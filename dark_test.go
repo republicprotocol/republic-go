@@ -44,7 +44,6 @@ func (s *mockServer) GetFinals(multiAddress *rpc.MultiAddress, stream rpc.DarkNo
 	return nil
 }
 
-
 var _ = Describe("Dark Network", func() {
 	var server *grpc.Server
 	var rpcServer mockServer

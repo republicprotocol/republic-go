@@ -192,7 +192,7 @@ func DeserializeAtom(a *Atom) atom.Atom {
 }
 
 // todo: serialize the deltas and residues to bytes
-func SerializeShard (shard compute.Shard) *Shard{
+func SerializeShard(shard compute.Shard) *Shard {
 	return &Shard{
 		Signature: shard.Signature,
 		Deltas:    [][]byte{},
@@ -201,7 +201,7 @@ func SerializeShard (shard compute.Shard) *Shard{
 }
 
 // todo: deserialize deltas and residues
-func DeserializeShard (shard *Shard) *compute.Shard{
+func DeserializeShard(shard *Shard) *compute.Shard {
 	return &compute.Shard{
 		Signature: shard.Signature,
 		Deltas:    []*compute.DeltaFragment{},
