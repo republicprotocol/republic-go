@@ -168,7 +168,7 @@ func (node *Node) FinalizeShard(ctx context.Context, finaliseShardRequest *rpc.F
 }
 
 // SendOrderFragmentCommitment ...
-func (node *Node) SendOrderFragmentCommitment(ctx context.Context, OrderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
+func (node *Node) SendOrderFragmentCommitment(ctx context.Context, orderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
 	if node.Options.Debug >= DebugHigh {
 		log.Printf("%v received a order commitment from %v\n", node.Address(), OrderFragmentCommitment.From.Multi)
 	}
@@ -177,7 +177,7 @@ func (node *Node) SendOrderFragmentCommitment(ctx context.Context, OrderFragment
 	}
 
 	wait := do.Process(func() do.Option {
-		commitment, err := node.sendOrderFragmentCommitment(OrderFragmentCommitment)
+		commitment, err := node.sendOrderFragmentCommitment(orderFragmentCommitment)
 		if err != nil {
 			return do.Err(err)
 		}
@@ -404,6 +404,6 @@ func (node *Node) finalizeShard(finaliseShardRequest *rpc.FinalizeShardRequest) 
 	return &rpc.Nothing{}, nil
 }
 
-func (node *Node) sendOrderFragmentCommitment(OrderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
-	return nil, nil
+func (node *Node) sendOrderFragmentCommitment(orderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
+	return orderFragmentCommitment, nil
 }
