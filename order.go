@@ -220,7 +220,7 @@ func NewOrderFragment(orderID OrderID, orderType OrderType, orderParity OrderPar
 
 // Add two OrderFragments together and return the resulting output
 // ResultFragment. The output ResultFragment will have its ID computed.
-func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*ResultFragment, error) {
+func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*DeltaFragment, error) {
 	// Check that the OrderFragments have compatible sss.Shares, and that one
 	// of them is an OrderBuy and the other is an OrderSell.
 	if err := orderFragment.IsCompatible(other); err != nil {
@@ -264,7 +264,8 @@ func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*
 	priceShare.Value.Mod(priceShare.Value, prime)
 	maxVolumeShare.Value.Mod(maxVolumeShare.Value, prime)
 	minVolumeShare.Value.Mod(minVolumeShare.Value, prime)
-	resultFragment := NewResultFragment(
+	deltaFragment := &DeltaFragment{
+		nil,
 		buyOrderFragment.OrderID,
 		sellOrderFragment.OrderID,
 		buyOrderFragment.ID,
@@ -274,13 +275,14 @@ func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*
 		priceShare,
 		maxVolumeShare,
 		minVolumeShare,
-	)
-	return resultFragment, nil
+	}
+	deltaFragment.ID = DeltaFragmentID(crypto.Keccak256(deltaFragment.BuyOrderFragmentID[:], deltaFragment.SellOrderFragmentID[:]))
+	return deltaFragment, nil
 }
 
 // Sub two OrderFragments from one another and return the resulting output
 // ResultFragment. The output ResultFragment will have its ID computed.
-func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*ResultFragment, error) {
+func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*DeltaFragment, error) {
 	// Check that the OrderFragments have compatible sss.Shares, and that one
 	// of them is an OrderBuy and the other is an OrderSell.
 	if err := orderFragment.IsCompatible(other); err != nil {
@@ -324,7 +326,8 @@ func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*
 	priceShare.Value.Mod(priceShare.Value, prime)
 	maxVolumeShare.Value.Mod(maxVolumeShare.Value, prime)
 	minVolumeShare.Value.Mod(minVolumeShare.Value, prime)
-	resultFragment := NewResultFragment(
+	deltaFragment := &DeltaFragment{
+		nil,
 		buyOrderFragment.OrderID,
 		sellOrderFragment.OrderID,
 		buyOrderFragment.ID,
@@ -334,8 +337,9 @@ func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*
 		priceShare,
 		maxVolumeShare,
 		minVolumeShare,
-	)
-	return resultFragment, nil
+	}
+	deltaFragment.ID = DeltaFragmentID(crypto.Keccak256(deltaFragment.BuyOrderFragmentID[:], deltaFragment.SellOrderFragmentID[:]))
+	return deltaFragment, nil
 }
 
 // Bytes returns an OrderFragment serialized into a bytes.
@@ -390,8 +394,8 @@ type HiddenOrderBook struct {
 	orderFragments []*OrderFragment
 	shardSize      int
 
-	pendingComputations              []*Computation
-	pendingComputationsReadyForShard *do.Guard
+	pendingDeltaFragments              []*DeltaFragment
+	pendingDeltaFragmentsReadyForShard *do.Guard
 }
 
 // NewHiddenOrderBook returns a new HiddenOrderBook with no OrderFragments, or
@@ -401,18 +405,18 @@ func NewHiddenOrderBook(shardSize int) *HiddenOrderBook {
 	orderBook.GuardedObject = do.NewGuardedObject()
 	orderBook.orderFragments = make([]*OrderFragment, 0)
 	orderBook.shardSize = shardSize
-	orderBook.pendingComputations = make([]*Computation, 0)
-	orderBook.pendingComputationsReadyForShard = orderBook.Guard(func() bool { return len(orderBook.pendingComputations) >= shardSize })
+	orderBook.pendingDeltaFragments = make([]*DeltaFragment, 0)
+	orderBook.pendingDeltaFragmentsReadyForShard = orderBook.Guard(func() bool { return len(orderBook.pendingDeltaFragments) >= shardSize })
 	return orderBook
 }
 
-func (orderBook *HiddenOrderBook) AddOrderFragment(orderFragment *OrderFragment) {
+func (orderBook *HiddenOrderBook) AddOrderFragment(orderFragment *OrderFragment, prime *big.Int) {
 	orderBook.Enter(nil)
 	defer orderBook.Exit()
-	orderBook.addOrderFragment(orderFragment)
+	orderBook.addOrderFragment(orderFragment, prime)
 }
 
-func (orderBook *HiddenOrderBook) addOrderFragment(orderFragment *OrderFragment) {
+func (orderBook *HiddenOrderBook) addOrderFragment(orderFragment *OrderFragment, prime *big.Int) {
 	// Check that the OrderFragment has not been added.
 	for _, rhs := range orderBook.orderFragments {
 		if orderFragment.ID.Equals(rhs.ID) {
@@ -429,34 +433,34 @@ func (orderBook *HiddenOrderBook) addOrderFragment(orderFragment *OrderFragment)
 		if err := orderFragment.IsCompatible(other); err != nil {
 			continue
 		}
-		computation, err := NewComputation(orderFragment, other)
+		deltaFragment, err := NewDeltaFragment(orderFragment, other, prime)
 		if err != nil {
 			continue
 		}
-		orderBook.pendingComputations = append(orderBook.pendingComputations, computation)
+		orderBook.pendingDeltaFragments = append(orderBook.pendingDeltaFragments, deltaFragment)
 	}
 	orderBook.orderFragments = append(orderBook.orderFragments, orderFragment)
 }
 
-func (orderBook *HiddenOrderBook) WaitForComputationShard() ComputationShard {
-	orderBook.Enter(orderBook.pendingComputationsReadyForShard)
+func (orderBook *HiddenOrderBook) WaitForShard() Shard {
+	orderBook.Enter(orderBook.pendingDeltaFragmentsReadyForShard)
 	defer orderBook.Exit()
-	return orderBook.preemptComputationShard()
+	return orderBook.preemptShard()
 }
 
-func (orderBook *HiddenOrderBook) PreemptComputationShard() ComputationShard {
+func (orderBook *HiddenOrderBook) PreemptShard() Shard {
 	orderBook.Enter(nil)
 	defer orderBook.Exit()
-	return orderBook.preemptComputationShard()
+	return orderBook.preemptShard()
 }
 
-func (orderBook *HiddenOrderBook) preemptComputationShard() ComputationShard {
+func (orderBook *HiddenOrderBook) preemptShard() Shard {
 	shardSize := orderBook.shardSize
-	if shardSize > len(orderBook.pendingComputations) {
-		shardSize = len(orderBook.pendingComputations)
+	if shardSize > len(orderBook.pendingDeltaFragments) {
+		shardSize = len(orderBook.pendingDeltaFragments)
 	}
-	pendingComputations := make([]*Computation, 0, shardSize)
-	pendingComputations = append(pendingComputations, orderBook.pendingComputations[len(orderBook.pendingComputations)-shardSize:]...)
-	orderBook.pendingComputations = orderBook.pendingComputations[0 : len(orderBook.pendingComputations)-shardSize]
-	return NewComputationShard(pendingComputations)
+	pendingDeltaFragments := make([]*DeltaFragment, 0, shardSize)
+	pendingDeltaFragments = append(pendingDeltaFragments, orderBook.pendingDeltaFragments[len(orderBook.pendingDeltaFragments)-shardSize:]...)
+	orderBook.pendingDeltaFragments = orderBook.pendingDeltaFragments[0 : len(orderBook.pendingDeltaFragments)-shardSize]
+	return NewShard(pendingDeltaFragments, []*ResidueFragment{})
 }

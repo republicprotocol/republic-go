@@ -4,8 +4,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/republicprotocol/go-do"
-
 	"github.com/republicprotocol/go-order-compute"
 
 	. "github.com/onsi/ginkgo"
@@ -27,7 +25,7 @@ var _ = Describe("Computations", func() {
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			result, err := computeFinalFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
@@ -43,7 +41,7 @@ var _ = Describe("Computations", func() {
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeETH, compute.CurrencyCodeBTC, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			result, err := computeFinalFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
@@ -55,7 +53,7 @@ var _ = Describe("Computations", func() {
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeETH, compute.CurrencyCodeREN, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			result, err := computeFinalFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
@@ -67,7 +65,7 @@ var _ = Describe("Computations", func() {
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeREN, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			result, err := computeFinalFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
@@ -79,7 +77,7 @@ var _ = Describe("Computations", func() {
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeREN, compute.CurrencyCodeDGD, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			result, err := computeFinalFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
@@ -94,7 +92,7 @@ var _ = Describe("Computations", func() {
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			result, err := computeFinalFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
@@ -106,7 +104,7 @@ var _ = Describe("Computations", func() {
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(12), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			result, err := computeFinalFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
@@ -121,7 +119,7 @@ var _ = Describe("Computations", func() {
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(100), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			result, err := computeFinalFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
@@ -133,7 +131,7 @@ var _ = Describe("Computations", func() {
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(100), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			result, err := computeFinalFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
@@ -145,7 +143,7 @@ var _ = Describe("Computations", func() {
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			result, err := computeFinalFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
@@ -157,7 +155,7 @@ var _ = Describe("Computations", func() {
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(1000), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			result, err := computeFinalFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
@@ -169,7 +167,7 @@ var _ = Describe("Computations", func() {
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(1000), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			result, err := computeFinalFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
@@ -181,57 +179,9 @@ var _ = Describe("Computations", func() {
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(100), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result, err := computeResultFromOrderFragments(lhs, rhs, n, prime)
+			result, err := computeFinalFromOrderFragments(lhs, rhs, n, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
 	})
-
-	Context("when using a hidden order book", func() {
-
-		It("should wait for a full block of order comparisons", func() {
-
-			orderBook := compute.NewHiddenOrderBook(4)
-			blockChan := do.Process(func() do.Option {
-				return do.Ok(orderBook.WaitForComputationShard())
-			})
-
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			orderBook.AddOrderFragment(lhs[0])
-			for i := 0; i < 4; i++ {
-				rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
-				Ω(err).ShouldNot(HaveOccurred())
-				orderBook.AddOrderFragment(rhs[0])
-			}
-
-			block := (<-blockChan).Ok.(compute.ComputationShard)
-			Ω(len(block.Computations)).Should(Equal(4))
-		})
-	})
 })
-
-func computeResultFromOrderFragments(lhs []*compute.OrderFragment, rhs []*compute.OrderFragment, n int64, prime *big.Int) (*compute.Result, error) {
-	// Generate pairwise computations for each fragment class.
-	computations := make([]*compute.Computation, n)
-	for i := range computations {
-		computation, err := compute.NewComputation(lhs[i], rhs[i])
-		if err != nil {
-			return nil, err
-		}
-		computations[i] = computation
-	}
-	// Compute all result fragments.
-	resultFragments := make([]*compute.ResultFragment, n)
-	for i := range resultFragments {
-		resultFragment, err := computations[i].Sub(prime)
-		if err != nil {
-			return nil, err
-		}
-		resultFragments[i] = resultFragment
-	}
-	// Combine them into a final result.
-	return compute.NewResult(resultFragments, prime)
-
-}
