@@ -17,9 +17,11 @@ import (
 // different RPCs.
 type Delegate interface {
 	OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment)
-	OnResultFragmentReceived(from identity.MultiAddress, resultFragment *compute.DeltaFragment)
 	OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment)
-	OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, resultFragment *compute.DeltaFragment)
+	OnSync(from identity.MultiAddress) chan do.Option
+	OnElectShard(from identity.MultiAddress, shard compute.Shard) compute.Shard
+	OnComputeShard(from identity.MultiAddress, shard compute.Shard)
+	OnFinalizeShard(from identity.MultiAddress, shard compute.Shard)
 }
 
 // Node implements the gRPC Node service.
@@ -56,29 +58,142 @@ func (node *Node) Address() identity.Address {
 	return node.Options.Address
 }
 
+// Sync ...
+func (node *Node) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncServer) error {
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("%v received a query for sync from [%v]\n", node.Address(), syncRequest.From.Multi)
+	}
+	if err := stream.Context().Err(); err != nil {
+		return err
+	}
+
+	wait := do.Process(func() do.Option {
+		return do.Err(node.Sync(syncRequest, stream))
+	})
+
+	select {
+	case val := <-wait:
+		return val.Err
+
+	case <-stream.Context().Done():
+		return stream.Context().Err()
+	}
+}
+
 // ComputeShard ...
 func (node *Node) ComputeShard(ctx context.Context, computeShardRequest *rpc.ComputeShardRequest) (*rpc.Nothing, error) {
-	return nil, nil
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("%v received a query for compute shard from [%v]\n", node.Address(), computeShardRequest.From.Multi)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	wait := do.Process(func() do.Option {
+		nothing, err := node.computeShard(computeShardRequest)
+		if err != nil {
+			return do.Err(err)
+		}
+		return do.Ok(nothing)
+	})
+
+	select {
+	case val := <-wait:
+		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
+			return nothing, val.Err
+		}
+		return &rpc.Nothing{}, val.Err
+
+	case <-ctx.Done():
+		return &rpc.Nothing{}, ctx.Err()
+	}
 }
 
 // ElectShard ...
 func (node *Node) ElectShard(ctx context.Context, electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
-	return nil, nil
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("%v received a query for electing shard from [%v]\n", node.Address(), electShardRequest.From.Multi)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	wait := do.Process(func() do.Option {
+		shard, err := node.electShard(electShardRequest)
+		if err != nil {
+			return do.Err(err)
+		}
+		return do.Ok(shard)
+	})
+
+	select {
+	case val := <-wait:
+		if shard, ok := val.Ok.(*rpc.Shard); ok {
+			return shard, val.Err
+		}
+		return &rpc.Shard{}, val.Err
+
+	case <-ctx.Done():
+		return &rpc.Shard{}, ctx.Err()
+	}
 }
 
 // FinalizeShard ...
 func (node *Node) FinalizeShard(ctx context.Context, finaliseShardRequest *rpc.FinalizeShardRequest) (*rpc.Nothing, error) {
-	return nil, nil
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("%v received a query for finalizing shard from [%v]\n", node.Address(), finaliseShardRequest.From.Multi)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	wait := do.Process(func() do.Option {
+		nothing, err := node.finalizeShard(finaliseShardRequest)
+		if err != nil {
+			return do.Err(err)
+		}
+		return do.Ok(nothing)
+	})
+
+	select {
+	case val := <-wait:
+		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
+			return nothing, val.Err
+		}
+		return &rpc.Nothing{}, val.Err
+
+	case <-ctx.Done():
+		return &rpc.Nothing{}, ctx.Err()
+	}
 }
 
 // SendOrderFragmentCommitment ...
 func (node *Node) SendOrderFragmentCommitment(ctx context.Context, OrderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
-	return nil, nil
-}
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("%v received a order commitment from %v\n", node.Address(), OrderFragmentCommitment.From.Multi)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 
-// Sync ...
-func (node *Node) Sync(syncRequest *rpc.SyncRequest, syncServer rpc.DarkNode_SyncServer) error {
-	return nil
+	wait := do.Process(func() do.Option {
+		commitment, err := node.sendOrderFragmentCommitment(OrderFragmentCommitment)
+		if err != nil {
+			return do.Err(err)
+		}
+		return do.Ok(commitment)
+	})
+
+	select {
+	case val := <-wait:
+		if commitment, ok := val.Ok.(*rpc.OrderFragmentCommitment); ok {
+			return commitment, val.Err
+		}
+		return &rpc.OrderFragmentCommitment{}, val.Err
+
+	case <-ctx.Done():
+		return &rpc.OrderFragmentCommitment{}, ctx.Err()
+	}
 }
 
 // SendOrderFragment to the Node. If the rpc.OrderFragment is not destined for
@@ -134,9 +249,9 @@ func (node *Node) Notifications(traderAddress *rpc.MultiAddress, stream rpc.Dark
 	}
 }
 
-// GetResults will connect the rpc client with a channel and send all
+// GetFinals will connect the rpc client with a channel and send all
 // related results to the client via a stream
-func (node *Node) GetResults(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_GetResultsServer) error {
+func (node *Node) GetFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_GetFinalsServer) error {
 	if node.Options.Debug >= DebugHigh {
 		log.Printf("%v received a query for all results of [%v]\n", node.Address(), traderAddress.Multi)
 	}
@@ -146,7 +261,7 @@ func (node *Node) GetResults(traderAddress *rpc.MultiAddress, stream rpc.DarkNod
 	}
 
 	wait := do.Process(func() do.Option {
-		return do.Err(node.getResults(traderAddress, stream))
+		return do.Err(node.getFinals(traderAddress, stream))
 	})
 
 	for {
@@ -224,7 +339,7 @@ func (node *Node) notifications(traderAddress *rpc.MultiAddress, stream rpc.Dark
 	}
 }
 
-func (node *Node) getResults(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_GetResultsServer) error {
+func (node *Node) getFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_GetFinalsServer) error {
 	multiAddress, err := rpc.DeserializeMultiAddress(traderAddress)
 	if err != nil {
 		return err
@@ -244,4 +359,51 @@ func (node *Node) getResults(traderAddress *rpc.MultiAddress, stream rpc.DarkNod
 		}
 	}
 	return nil
+}
+
+func (node *Node) sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncServer) error {
+	from, err := identity.NewMultiAddressFromString(syncRequest.From.String())
+	if err != nil {
+		return err
+	}
+	blockChan := node.Delegate.OnSync(from)
+	for data := range blockChan {
+		//todo : need to serialize data into the network representation
+		stream.Send(data.Ok.(*rpc.SyncBlock))
+	}
+	return nil
+}
+
+func (node *Node) computeShard(computeShardRequest *rpc.ComputeShardRequest) (*rpc.Nothing, error) {
+	from, err := identity.NewMultiAddressFromString(computeShardRequest.From.String())
+	if err != nil {
+		return &rpc.Nothing{}, err
+	}
+	shard := rpc.DeserializeShard(computeShardRequest.Shard)
+	node.Delegate.OnComputeShard(from, *shard)
+	return &rpc.Nothing{}, nil
+}
+
+func (node *Node) electShard(electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
+	from, err := identity.NewMultiAddressFromString(electShardRequest.From.String())
+	if err != nil {
+		return &rpc.Shard{}, err
+	}
+	shard := rpc.DeserializeShard(electShardRequest.Shard)
+	shardReturn := node.Delegate.OnElectShard(from, *shard)
+	return rpc.SerializeShard(shardReturn), nil
+}
+
+func (node *Node) finalizeShard(finaliseShardRequest *rpc.FinalizeShardRequest) (*rpc.Nothing, error) {
+	from, err := identity.NewMultiAddressFromString(finaliseShardRequest.From.String())
+	if err != nil {
+		return &rpc.Nothing{}, err
+	}
+	shard := rpc.DeserializeShard(finaliseShardRequest.Shard)
+	node.Delegate.OnFinalizeShard(from, *shard)
+	return &rpc.Nothing{}, nil
+}
+
+func (node *Node) sendOrderFragmentCommitment(OrderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
+	return nil, nil
 }

@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-dark-network"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-rpc"
@@ -25,20 +26,16 @@ const (
 )
 
 type mockDelegate struct {
-	mu                              *sync.Mutex
-	numberOfReceivedOrderFragment   int
-	numberOfForwardedOrderFragment  int
-	numberOfReceivedResultFragment  int
-	numberOfForwardedResultFragment int
+	mu                             *sync.Mutex
+	numberOfReceivedOrderFragment  int
+	numberOfForwardedOrderFragment int
 }
 
 func newMockDelegate() *mockDelegate {
 	return &mockDelegate{
 		mu: new(sync.Mutex),
-		numberOfReceivedOrderFragment:   0,
-		numberOfForwardedOrderFragment:  0,
-		numberOfReceivedResultFragment:  0,
-		numberOfForwardedResultFragment: 0,
+		numberOfReceivedOrderFragment:  0,
+		numberOfForwardedOrderFragment: 0,
 	}
 }
 
@@ -48,22 +45,26 @@ func (delegate *mockDelegate) OnOrderFragmentReceived(from identity.MultiAddress
 	delegate.numberOfReceivedOrderFragment++
 }
 
-func (delegate *mockDelegate) OnResultFragmentReceived(from identity.MultiAddress, deltaFragment *compute.DeltaFragment) {
-	delegate.mu.Lock()
-	defer delegate.mu.Unlock()
-	delegate.numberOfReceivedResultFragment++
-}
-
 func (delegate *mockDelegate) OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment) {
 	delegate.mu.Lock()
 	defer delegate.mu.Unlock()
 	delegate.numberOfForwardedOrderFragment++
 }
 
-func (delegate *mockDelegate) OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, deltaFragment *compute.DeltaFragment) {
-	delegate.mu.Lock()
-	defer delegate.mu.Unlock()
-	delegate.numberOfForwardedResultFragment++
+func (delegate *mockDelegate) OnSync(from identity.MultiAddress) chan do.Option {
+	syncBlock := make(chan do.Option, 1)
+	return syncBlock
+}
+
+func (delegate *mockDelegate) OnElectShard(from identity.MultiAddress, shard compute.Shard) compute.Shard {
+	return compute.Shard{}
+}
+
+func (delegate *mockDelegate) OnComputeShard(from identity.MultiAddress, shard compute.Shard) {
+}
+
+func (delegate *mockDelegate) OnFinalizeShard(from identity.MultiAddress, shard compute.Shard) {
+
 }
 
 var _ = Describe("dark network", func() {
