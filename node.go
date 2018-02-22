@@ -29,20 +29,17 @@ type Node struct {
 	Delegate
 	Server  *grpc.Server
 	Options Options
-
-	resultReceived bool
-	results        *sync.Map
+	results *sync.Map
 }
 
 // NewNode returns a Node that delegates the responsibility of handling RPCs to
 // a Delegate.
 func NewNode(server *grpc.Server, delegate Delegate, options Options) *Node {
 	return &Node{
-		Delegate:       delegate,
-		Server:         server,
-		Options:        options,
-		resultReceived: false,
-		results:        new(sync.Map),
+		Delegate: delegate,
+		Server:   server,
+		Options:  options,
+		results:  new(sync.Map),
 	}
 }
 
@@ -56,10 +53,10 @@ func (node *Node) Address() identity.Address {
 	return node.Options.Address
 }
 
-// Sync ...
+// Sync returns all deltaFragments and residueFragments the node have.
 func (node *Node) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncServer) error {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a query for sync from [%v]\n", node.Address(), syncRequest.From.Multi)
+		log.Printf("[%v] received a sync query from [%v]\n", node.Address(), syncRequest.From.Multi)
 	}
 	if err := stream.Context().Err(); err != nil {
 		return err
@@ -78,10 +75,10 @@ func (node *Node) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncSer
 	}
 }
 
-// ComputeShard ...
+// ComputeShard will start compute the shards on receiving the request.
 func (node *Node) ComputeShard(ctx context.Context, computeShardRequest *rpc.ComputeShardRequest) (*rpc.Nothing, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a query for compute shard from [%v]\n", node.Address(), computeShardRequest.From.Multi)
+		log.Printf("[%v] received a compute shard query from [%v]\n", node.Address(), computeShardRequest.From.Multi)
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -107,10 +104,10 @@ func (node *Node) ComputeShard(ctx context.Context, computeShardRequest *rpc.Com
 	}
 }
 
-// ElectShard ...
+// ElectShard will returns availability of the shards listed in the request.
 func (node *Node) ElectShard(ctx context.Context, electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a query for electing shard from [%v]\n", node.Address(), electShardRequest.From.Multi)
+		log.Printf("[%v] received a elect shard query from [%v]\n", node.Address(), electShardRequest.From.Multi)
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -136,10 +133,10 @@ func (node *Node) ElectShard(ctx context.Context, electShardRequest *rpc.ElectSh
 	}
 }
 
-// FinalizeShard ...
+// FinalizeShard
 func (node *Node) FinalizeShard(ctx context.Context, finaliseShardRequest *rpc.FinalizeShardRequest) (*rpc.Nothing, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a query for finalizing shard from [%v]\n", node.Address(), finaliseShardRequest.From.Multi)
+		log.Printf("[%v] received a finalize shard request from [%v]\n", node.Address(), finaliseShardRequest.From.Multi)
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -165,7 +162,9 @@ func (node *Node) FinalizeShard(ctx context.Context, finaliseShardRequest *rpc.F
 	}
 }
 
-// SendOrderFragmentCommitment ...
+// SendOrderFragmentCommitment is sent before sending the order fragment.
+// The request contained the signature of the sender and we'll return
+// a commitment with our signature.
 func (node *Node) SendOrderFragmentCommitment(ctx context.Context, orderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
 	if node.Options.Debug >= DebugHigh {
 		log.Printf("%v received a order commitment from %v\n", node.Address(), orderFragmentCommitment.From.Multi)
@@ -198,7 +197,7 @@ func (node *Node) SendOrderFragmentCommitment(ctx context.Context, orderFragment
 // this Node then it will be forwarded on to the correct destination.
 func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received order fragment %v [%v]\n", node.Address(), base58.Encode(orderFragment.Id), base58.Encode(orderFragment.OrderId))
+		log.Printf("[%v] received order fragment %v [%v]\n", node.Address(), base58.Encode(orderFragment.Id), base58.Encode(orderFragment.OrderId))
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -228,7 +227,7 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 // unread results to the client via a stream
 func (node *Node) Notifications(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_NotificationsServer) error {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a query for notifications of [%v]\n", node.Address(), traderAddress.Multi)
+		log.Printf("[%v] received a query for notifications of [%v]\n", node.Address(), traderAddress.Multi)
 	}
 	if err := stream.Context().Err(); err != nil {
 		return err
@@ -251,7 +250,7 @@ func (node *Node) Notifications(traderAddress *rpc.MultiAddress, stream rpc.Dark
 // related results to the client via a stream
 func (node *Node) GetFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_GetFinalsServer) error {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a query for all results of [%v]\n", node.Address(), traderAddress.Multi)
+		log.Printf("[%v] received a query for all results of [%v]\n", node.Address(), traderAddress.Multi)
 	}
 
 	if err := stream.Context().Err(); err != nil {
@@ -279,7 +278,7 @@ func (node *Node) Notify(traderAddress identity.Address, result *compute.Final) 
 	if !ok {
 		newInbox := NewInbox()
 		newInbox.AddNewResult(result)
-		node.results.Store(traderAddress,newInbox)
+		node.results.Store(traderAddress, newInbox)
 	} else {
 		results.(*Inbox).AddNewResult(result)
 	}
@@ -393,5 +392,6 @@ func (node *Node) finalizeShard(finaliseShardRequest *rpc.FinalizeShardRequest) 
 }
 
 func (node *Node) sendOrderFragmentCommitment(orderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
+	// todo :
 	return orderFragmentCommitment, nil
 }
