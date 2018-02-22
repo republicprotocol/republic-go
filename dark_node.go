@@ -12,18 +12,18 @@ import (
 )
 
 // SyncWithTarget using a new grpc.ClientConn to make Sync RPC to the target.
-// This function returns two channels. The first is used to read chunks received
+// This function returns two channels. The first is used to read shards received
 // in the synchronization. The second is used by the caller to quit when he no
 // longer wants to receive dark.Chunk.
 func SyncWithTarget(target identity.MultiAddress, syncRequest *SyncRequest, timeout time.Duration) (chan do.Option, chan struct{}) {
-	chunks := make(chan do.Option, 1)
+	shards := make(chan do.Option, 1)
 	quit := make(chan struct{}, 1)
 
 	go func() {
-		defer close(chunks)
+		defer close(shards)
 		conn, err := Dial(target, timeout)
 		if err != nil {
-			chunks <- do.Err(err)
+			shards <- do.Err(err)
 			return
 		}
 		defer conn.Close()
@@ -34,7 +34,7 @@ func SyncWithTarget(target identity.MultiAddress, syncRequest *SyncRequest, time
 
 		stream, err := client.Sync(ctx, syncRequest, grpc.FailFast(false))
 		if err != nil {
-			chunks <- do.Err(err)
+			shards <- do.Err(err)
 			return
 		}
 
@@ -48,18 +48,18 @@ func SyncWithTarget(target identity.MultiAddress, syncRequest *SyncRequest, time
 
 			}
 
-			chunk, err := stream.Recv()
+			shard, err := stream.Recv()
 			if err == io.EOF {
 				return
 			}
 			if err != nil {
-				chunks <- do.Err(err)
+				shards <- do.Err(err)
 				continue
 			}
-			chunks <- do.Ok(chunk)
+			shards <- do.Ok(shard)
 		}
 	}()
-	return chunks, quit
+	return shards, quit
 }
 
 // StartElectShard uses a new grpc.ClientConn to make a ElectShard RPC call
