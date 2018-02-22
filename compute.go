@@ -4,15 +4,13 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/republicprotocol/go-do"
 )
 
-type ComputationID []byte
+type DeltaID []byte
 
-type Computation struct {
-	ID                ComputationID
-	BuyOrderFragment  *OrderFragment
-	SellOrderFragment *OrderFragment
+type Delta struct {
+	ID            ComputationID
+	DeltaFragment *DeltaFragment
 }
 
 func NewComputation(left *OrderFragment, right *OrderFragment) (*Computation, error) {
@@ -74,81 +72,4 @@ const (
 type ComputationShardBid struct {
 	ID   ComputationShardID
 	Bids map[string]ComputationBid
-}
-
-type HiddenOrderBook struct {
-	do.GuardedObject
-
-	orderFragments []*OrderFragment
-	shardSize      int
-
-	pendingComputations              []*Computation
-	pendingComputationsReadyForShard *do.Guard
-}
-
-// NewHiddenOrderBook returns a new HiddenOrderBook with no OrderFragments, or
-// Computations.
-func NewHiddenOrderBook(shardSize int) *HiddenOrderBook {
-	orderBook := new(HiddenOrderBook)
-	orderBook.GuardedObject = do.NewGuardedObject()
-	orderBook.orderFragments = make([]*OrderFragment, 0)
-	orderBook.shardSize = shardSize
-	orderBook.pendingComputations = make([]*Computation, 0)
-	orderBook.pendingComputationsReadyForShard = orderBook.Guard(func() bool { return len(orderBook.pendingComputations) >= shardSize })
-	return orderBook
-}
-
-func (orderBook *HiddenOrderBook) AddOrderFragment(orderFragment *OrderFragment) {
-	orderBook.Enter(nil)
-	defer orderBook.Exit()
-	orderBook.addOrderFragment(orderFragment)
-}
-
-func (orderBook *HiddenOrderBook) addOrderFragment(orderFragment *OrderFragment) {
-	// Check that the OrderFragment has not been added.
-	for _, rhs := range orderBook.orderFragments {
-		if orderFragment.ID.Equals(rhs.ID) {
-			return
-		}
-	}
-
-	// For all other OrderFragment in the Computer, create a new Computation
-	// that needs to be processed.
-	for _, other := range orderBook.orderFragments {
-		if orderFragment.OrderID.Equals(other.OrderID) {
-			continue
-		}
-		if err := orderFragment.IsCompatible(other); err != nil {
-			continue
-		}
-		computation, err := NewComputation(orderFragment, other)
-		if err != nil {
-			continue
-		}
-		orderBook.pendingComputations = append(orderBook.pendingComputations, computation)
-	}
-	orderBook.orderFragments = append(orderBook.orderFragments, orderFragment)
-}
-
-func (orderBook *HiddenOrderBook) WaitForComputationShard() ComputationShard {
-	orderBook.Enter(orderBook.pendingComputationsReadyForShard)
-	defer orderBook.Exit()
-	return orderBook.preemptComputationShard()
-}
-
-func (orderBook *HiddenOrderBook) PreemptComputationShard() ComputationShard {
-	orderBook.Enter(nil)
-	defer orderBook.Exit()
-	return orderBook.preemptComputationShard()
-}
-
-func (orderBook *HiddenOrderBook) preemptComputationShard() ComputationShard {
-	shardSize := orderBook.shardSize
-	if shardSize > len(orderBook.pendingComputations) {
-		shardSize = len(orderBook.pendingComputations)
-	}
-	pendingComputations := make([]*Computation, 0, shardSize)
-	pendingComputations = append(pendingComputations, orderBook.pendingComputations[len(orderBook.pendingComputations)-shardSize:]...)
-	orderBook.pendingComputations = orderBook.pendingComputations[0 : len(orderBook.pendingComputations)-shardSize]
-	return NewComputationShard(pendingComputations)
 }
