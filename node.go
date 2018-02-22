@@ -111,36 +111,6 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 	}
 }
 
-// SendResultFragment to the Node. If the rpc.ResultFragment is not destined
-// for this Node then it will be forwarded on to the correct destination.
-func (node *Node) SendResultFragment(ctx context.Context, resultFragment *rpc.ResultFragment) (*rpc.Nothing, error) {
-	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received result fragment %v [%v, %v]\n", node.Address(), base58.Encode(resultFragment.Id), base58.Encode(resultFragment.BuyOrderId), base58.Encode(resultFragment.SellOrderId))
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
-	wait := do.Process(func() do.Option {
-		nothing, err := node.sendResultFragment(resultFragment)
-		if err != nil {
-			return do.Err(err)
-		}
-		return do.Ok(nothing)
-	})
-
-	select {
-	case val := <-wait:
-		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
-			return nothing, val.Err
-		}
-		return nil, val.Err
-
-	case <-ctx.Done():
-		return &rpc.Nothing{}, ctx.Err()
-	}
-}
-
 // Notifications will connect the rpc client with a channel and send all
 // unread results to the client via a stream
 func (node *Node) Notifications(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_NotificationsServer) error {
@@ -227,28 +197,6 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Noth
 
 	// Otherwise it has reached its destination.
 	node.OnOrderFragmentReceived(deserializedFrom, deserializedOrderFragment)
-	return &rpc.Nothing{}, nil
-}
-
-func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.Nothing, error) {
-	deserializedTo := rpc.DeserializeAddress(resultFragment.To)
-	deserializedFrom, err := rpc.DeserializeMultiAddress(resultFragment.From)
-	if err != nil {
-		return &rpc.Nothing{}, err
-	}
-	deserializedResultFragment, err := rpc.DeserializeFinalFragment(resultFragment)
-	if err != nil {
-		return &rpc.Nothing{}, err
-	}
-
-	// If the compute.DeltaFragment needs to be forwarded.
-	if deserializedTo != node.Address() {
-		node.OnResultFragmentForwarding(deserializedTo, deserializedFrom, deserializedResultFragment)
-		return &rpc.Nothing{}, nil
-	}
-
-	// Otherwise it has reached its destination.
-	node.OnResultFragmentReceived(deserializedFrom, deserializedResultFragment)
 	return &rpc.Nothing{}, nil
 }
 

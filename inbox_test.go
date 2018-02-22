@@ -14,8 +14,8 @@ import (
 
 const Number_Of_New_Result = 1000
 
-func newResult(i int) *compute.Result {
-	return &compute.Result{
+func newResult(i int) *compute.Final {
+	return &compute.Final{
 		ID:          []byte{uint8(i)},
 		BuyOrderID:  []byte{},
 		SellOrderID: []byte{},
@@ -37,7 +37,7 @@ var _ = Describe("Inbox", func() {
 	Context("add/retrieve result to/from the box", func() {
 		It("should be able to sequentially add and retrieve result ", func() {
 			//  Add results
-			newResults := make([]*compute.Result, Number_Of_New_Result)
+			newResults := make([]*compute.Final, Number_Of_New_Result)
 			for index := range newResults {
 				newResults[index] = newResult(index)
 			}
@@ -68,7 +68,7 @@ var _ = Describe("Inbox", func() {
 
 	Context("simulate random functions concurrently", func() {
 		It("should handle concurrent calls properly", func() {
-			results := make([]*compute.Result, Number_Of_New_Result)
+			results := make([]*compute.Final, Number_Of_New_Result)
 			for index := range results {
 				results[index] = newResult(index)
 			}
