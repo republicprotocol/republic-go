@@ -154,71 +154,9 @@ var _ = Describe("Data serialization and deserialization", func() {
 		})
 	})
 
-	Context("compute.ResultFragment", func() {
-		var wrongResultFragment rpc.ResultFragment
-		sssShare := sss.Share{Key: 1, Value: &big.Int{}}
-
-		BeforeEach(func() {
-			wrongResultFragment = rpc.ResultFragment{
-				To:                  &rpc.Address{},
-				From:                &rpc.MultiAddress{},
-				Id:                  []byte("id"),
-				BuyOrderId:          []byte("buyOrderID"),
-				SellOrderId:         []byte("sellOrderID"),
-				BuyOrderFragmentId:  []byte("buyOrderFragmentID"),
-				SellOrderFragmentId: []byte("sellOrderFragmentID"),
-				FstCodeShare:        sss.ToBytes(sssShare),
-				SndCodeShare:        sss.ToBytes(sssShare),
-				PriceShare:          sss.ToBytes(sssShare),
-				MaxVolumeShare:      sss.ToBytes(sssShare),
-				MinVolumeShare:      sss.ToBytes(sssShare),
-			}
-		})
-
-		It("should be able to serialize and deserialize compute.ResultFragment", func() {
-			resultFragment := compute.NewResultFragment([]byte("butOrderID"), []byte("sellOrderID"),
-				[]byte("butOrderFragmentID"), []byte("sellOrderFragmentID"),
-				sssShare, sssShare, sssShare, sssShare, sssShare)
-			rpcResultFragment := rpc.SerializeResultFragment(resultFragment)
-			newResultFragment, err := rpc.DeserializeResultFragment(rpcResultFragment)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(*resultFragment).Should(Equal(*newResultFragment))
-		})
-
-		It("should return an error when deserializing a compute.ResultFragment with a malformed FstCodeShare", func() {
-			wrongResultFragment.FstCodeShare = []byte("")
-			_, err := rpc.DeserializeResultFragment(&wrongResultFragment)
-			Ω(err).Should(HaveOccurred())
-		})
-
-		It("should return an error when deserializing a compute.ResultFragment with a malformed SndCodeShare", func() {
-			wrongResultFragment.SndCodeShare = []byte("")
-			_, err := rpc.DeserializeResultFragment(&wrongResultFragment)
-			Ω(err).Should(HaveOccurred())
-		})
-
-		It("should return an error when deserializing a compute.ResultFragment with a malformed PriceShare", func() {
-			wrongResultFragment.PriceShare = []byte("")
-			_, err := rpc.DeserializeResultFragment(&wrongResultFragment)
-			Ω(err).Should(HaveOccurred())
-		})
-
-		It("should return an error when deserializing a compute.ResultFragment with a malformed MaxVolumeShare", func() {
-			wrongResultFragment.MaxVolumeShare = []byte("")
-			_, err := rpc.DeserializeResultFragment(&wrongResultFragment)
-			Ω(err).Should(HaveOccurred())
-		})
-
-		It("should return an error when deserializing a compute.ResultFragment with a malformed MinVolumeShare", func() {
-			wrongResultFragment.MinVolumeShare = []byte("")
-			_, err := rpc.DeserializeResultFragment(&wrongResultFragment)
-			Ω(err).Should(HaveOccurred())
-		})
-	})
-
 	Context("compute.Result", func() {
 		It("should be able to serialize and deserialize a compute.Result", func() {
-			result := &compute.Result{
+			result := &compute.Final{
 				ID:          []byte("resultID"),
 				BuyOrderID:  []byte("BuyOrderID"),
 				SellOrderID: []byte("SellOrderID"),
@@ -228,8 +166,8 @@ var _ = Describe("Data serialization and deserialization", func() {
 				MaxVolume:   big.NewInt(0),
 				MinVolume:   big.NewInt(0),
 			}
-			serializedResult := rpc.SerializeResult(result)
-			newResult := rpc.DeserializeResult(serializedResult)
+			serializedResult := rpc.SerializeFinal(result)
+			newResult := rpc.DeserializeFinal(serializedResult)
 			Ω(*result).Should(Equal(*newResult))
 		})
 	})

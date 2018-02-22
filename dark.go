@@ -80,7 +80,7 @@ func NotificationsFromTarget(target identity.MultiAddress, traderAddress identit
 				ret <- do.Err(err)
 				continue
 			}
-			ret <- do.Ok(DeserializeResult(result))
+			ret <- do.Ok(DeserializeFinal(result))
 		}
 	}()
 
@@ -89,8 +89,8 @@ func NotificationsFromTarget(target identity.MultiAddress, traderAddress identit
 
 // GetResultsFromTarget using a new grpc.ClientConn to make a
 // GetResultsFromTarget RPC to a target identity.MultiAddress.
-func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.MultiAddress, timeout time.Duration) ([]*compute.Result, error) {
-	results := make([]*compute.Result, 0)
+func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.MultiAddress, timeout time.Duration) ([]*compute.Final, error) {
+	results := make([]*compute.Final, 0)
 	conn, err := Dial(target, timeout)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.M
 		if err != nil {
 			return nil, err
 		}
-		results = append(results, DeserializeResult(result))
+		results = append(results, DeserializeFinal(result))
 	}
 
 	return results, nil

@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -140,8 +139,8 @@ func DeserializeOrderFragment(input *OrderFragment) (*compute.OrderFragment, err
 	return orderFragment, nil
 }
 
-// SerializeResult converts a compute.Result into its network representation.
-func SerializeResult(input *compute.Result) *Result {
+// SerializeFinal converts a compute.Final into its network representation.
+func SerializeFinal(input *compute.Final) *Result {
 	result := &Result{
 		Id:          []byte(input.ID),
 		BuyOrderId:  []byte(input.BuyOrderID),
@@ -156,12 +155,12 @@ func SerializeResult(input *compute.Result) *Result {
 	return result
 }
 
-// DeserializeResult converts a network representation of a Result into a
-// compute.ResultFragment. An error is returned if the network representation
+// DeserializeFinal converts a network representation of a Final into a
+// compute.FinalFragment. An error is returned if the network representation
 // is malformed.
-func DeserializeResult(input *Result) *compute.Result {
-	result := &compute.Result{
-		ID:          compute.ResultID(input.Id),
+func DeserializeFinal(input *Result) *compute.Final {
+	result := &compute.Final{
+		ID:          compute.FinalID(input.Id),
 		BuyOrderID:  []byte(input.BuyOrderId),
 		SellOrderID: []byte(input.SellOrderId),
 	}
@@ -205,7 +204,7 @@ func SerializeShard (shard compute.Shard) *Shard{
 func DeserializeShard (shard *Shard) *compute.Shard{
 	return &compute.Shard{
 		Signature: shard.Signature,
-		Deltas:    []compute.DeltaFragment{},
-		Residues:  []compute.ResidueFragment{},
+		Deltas:    []*compute.DeltaFragment{},
+		Residues:  []*compute.ResidueFragment{},
 	}
 }
