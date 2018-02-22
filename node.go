@@ -17,9 +17,9 @@ import (
 // different RPCs.
 type Delegate interface {
 	OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment)
-	OnResultFragmentReceived(from identity.MultiAddress, resultFragment *compute.ResultFragment)
+	OnResultFragmentReceived(from identity.MultiAddress, resultFragment *compute.DeltaFragment)
 	OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment)
-	OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, resultFragment *compute.ResultFragment)
+	OnResultFragmentForwarding(to identity.Address, from identity.MultiAddress, resultFragment *compute.DeltaFragment)
 }
 
 // Node implements the gRPC Node service.
@@ -48,12 +48,37 @@ func NewNode(server *grpc.Server, delegate Delegate, options Options) *Node {
 
 // Register the gRPC service.
 func (node *Node) Register() {
-	rpc.RegisterXingNodeServer(node.Server, node)
+	rpc.RegisterDarkNodeServer(node.Server, node)
 }
 
 // Address returns the identity.Address of the Node.
 func (node *Node) Address() identity.Address {
 	return node.Options.Address
+}
+
+// ComputeShard ...
+func (node *Node) ComputeShard(ctx context.Context, computeShardRequest *rpc.ComputeShardRequest) (*rpc.Nothing, error) {
+	return nil, nil
+}
+
+// ElectShard ...
+func (node *Node) ElectShard(ctx context.Context, electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
+	return nil, nil
+}
+
+// FinalizeShard ...
+func (node *Node) FinalizeShard(ctx context.Context, finaliseShardRequest *rpc.FinalizeShardRequest) (*rpc.Nothing, error) {
+	return nil, nil
+}
+
+// SendOrderFragmentCommitment ...
+func (node *Node) SendOrderFragmentCommitment(ctx context.Context, OrderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
+	return nil, nil
+}
+
+// Sync ...
+func (node *Node) Sync(syncRequest *rpc.SyncRequest, syncServer rpc.DarkNode_SyncServer) error {
+	return nil
 }
 
 // SendOrderFragment to the Node. If the rpc.OrderFragment is not destined for
@@ -118,7 +143,7 @@ func (node *Node) SendResultFragment(ctx context.Context, resultFragment *rpc.Re
 
 // Notifications will connect the rpc client with a channel and send all
 // unread results to the client via a stream
-func (node *Node) Notifications(traderAddress *rpc.MultiAddress, stream rpc.XingNode_NotificationsServer) error {
+func (node *Node) Notifications(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_NotificationsServer) error {
 	if node.Options.Debug >= DebugHigh {
 		log.Printf("%v received a query for notifications of [%v]\n", node.Address(), traderAddress.Multi)
 	}
@@ -141,7 +166,7 @@ func (node *Node) Notifications(traderAddress *rpc.MultiAddress, stream rpc.Xing
 
 // GetResults will connect the rpc client with a channel and send all
 // related results to the client via a stream
-func (node *Node) GetResults(traderAddress *rpc.MultiAddress, stream rpc.XingNode_GetResultsServer) error {
+func (node *Node) GetResults(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_GetResultsServer) error {
 	if node.Options.Debug >= DebugHigh {
 		log.Printf("%v received a query for all results of [%v]\n", node.Address(), traderAddress.Multi)
 	}
@@ -166,7 +191,7 @@ func (node *Node) GetResults(traderAddress *rpc.MultiAddress, stream rpc.XingNod
 }
 
 // Notify will store new result in the node.
-func (node *Node) Notify(traderAddress identity.Address, result *compute.Result) {
+func (node *Node) Notify(traderAddress identity.Address, result *compute.Final) {
 	node.resultsMu.RLock()
 	results, ok := node.results[traderAddress]
 	node.resultsMu.RUnlock()
@@ -211,12 +236,12 @@ func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.N
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	deserializedResultFragment, err := rpc.DeserializeResultFragment(resultFragment)
+	deserializedResultFragment, err := rpc.DeserializeFinalFragment(resultFragment)
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
 
-	// If the compute.ResultFragment needs to be forwarded.
+	// If the compute.DeltaFragment needs to be forwarded.
 	if deserializedTo != node.Address() {
 		node.OnResultFragmentForwarding(deserializedTo, deserializedFrom, deserializedResultFragment)
 		return &rpc.Nothing{}, nil
@@ -227,7 +252,7 @@ func (node *Node) sendResultFragment(resultFragment *rpc.ResultFragment) (*rpc.N
 	return &rpc.Nothing{}, nil
 }
 
-func (node *Node) notifications(traderAddress *rpc.MultiAddress, stream rpc.XingNode_NotificationsServer) error {
+func (node *Node) notifications(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_NotificationsServer) error {
 	multiAddress, err := rpc.DeserializeMultiAddress(traderAddress)
 	if err != nil {
 		return err
@@ -243,7 +268,7 @@ func (node *Node) notifications(traderAddress *rpc.MultiAddress, stream rpc.Xing
 	for {
 		results := results.GetAllNewResults()
 		for i := range results {
-			err := stream.Send(rpc.SerializeResult(results[i]))
+			err := stream.Send(rpc.SerializeFinal(results[i]))
 			if err != nil {
 				return err
 			}
@@ -251,7 +276,7 @@ func (node *Node) notifications(traderAddress *rpc.MultiAddress, stream rpc.Xing
 	}
 }
 
-func (node *Node) getResults(traderAddress *rpc.MultiAddress, stream rpc.XingNode_GetResultsServer) error {
+func (node *Node) getResults(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_GetResultsServer) error {
 	multiAddress, err := rpc.DeserializeMultiAddress(traderAddress)
 	if err != nil {
 		return err
@@ -265,7 +290,7 @@ func (node *Node) getResults(traderAddress *rpc.MultiAddress, stream rpc.XingNod
 	}
 	results := notifications.GetAllResults()
 	for _, result := range results {
-		err = stream.Send(rpc.SerializeResult(result))
+		err = stream.Send(rpc.SerializeFinal(result))
 		if err != nil {
 			return err
 		}
