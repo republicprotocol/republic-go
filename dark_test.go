@@ -39,28 +39,13 @@ func (s *mockServer) Notifications(multiAddress *rpc.MultiAddress, stream rpc.Da
 	return nil
 }
 
-func (s *mockServer) GetResults(multiAddress *rpc.MultiAddress, stream rpc.DarkNode_GetResultsServer) error {
+func (s *mockServer) GetFinals(multiAddress *rpc.MultiAddress, stream rpc.DarkNode_GetFinalsServer) error {
 	stream.Send(rpc.SerializeFinal(result))
 	return nil
 }
 
-func (s *mockServer) Sync(syncRequest *rpc.SyncRequest,stream rpc.DarkNode_SyncServer) error {
-	return nil
-}
 
-func (s *mockServer) ElectShard(ctx context.Context, electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
-	return &rpc.Shard{}, nil
-}
-
-func (s *mockServer) ComputeShard(ctx context.Context, computeShardRequest *rpc.ComputeShardRequest) (*rpc.Nothing, error) {
-	return &rpc.Nothing{}, nil
-}
-
-func (s *mockServer) FinalizeShard(ctx context.Context, finalizeShardRequest *rpc.FinalizeShardRequest) (*rpc.Nothing, error) {
-	return &rpc.Nothing{}, nil
-}
-
-var _ = Describe("Xing Overlay Network", func() {
+var _ = Describe("Dark Network", func() {
 	var server *grpc.Server
 	var rpcServer mockServer
 	var rpcClient mockClient

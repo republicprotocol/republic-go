@@ -101,7 +101,7 @@ func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.M
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	stream, err := client.GetResults(ctx, SerializeMultiAddress(traderAddress), grpc.FailFast(false))
+	stream, err := client.GetFinals(ctx, SerializeMultiAddress(traderAddress), grpc.FailFast(false))
 	if err != nil {
 		return nil, err
 	}

@@ -140,8 +140,8 @@ func DeserializeOrderFragment(input *OrderFragment) (*compute.OrderFragment, err
 }
 
 // SerializeFinal converts a compute.Final into its network representation.
-func SerializeFinal(input *compute.Final) *Result {
-	result := &Result{
+func SerializeFinal(input *compute.Final) *Final {
+	result := &Final{
 		Id:          []byte(input.ID),
 		BuyOrderId:  []byte(input.BuyOrderID),
 		SellOrderId: []byte(input.SellOrderID),
@@ -158,7 +158,7 @@ func SerializeFinal(input *compute.Final) *Result {
 // DeserializeFinal converts a network representation of a Final into a
 // compute.FinalFragment. An error is returned if the network representation
 // is malformed.
-func DeserializeFinal(input *Result) *compute.Final {
+func DeserializeFinal(input *Final) *compute.Final {
 	result := &compute.Final{
 		ID:          compute.FinalID(input.Id),
 		BuyOrderID:  []byte(input.BuyOrderId),

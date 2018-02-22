@@ -59,7 +59,7 @@ message Query {
  */
 
 // DarkNode services implement the distribution of OrderFragments and
-// ResultFragments in the Dark network.
+// FinalFragments in the Dark network.
 service DarkNode {
 
   // Send a sync request for getting new shard
@@ -80,12 +80,12 @@ service DarkNode {
   //
   rpc FinalizeShard (FinalizeShardRequest) returns (Nothing);
 
-  // Get Result messages for successful order matches that have happened since
+  // Get Final messages for successful order matches that have happened since
   // this procedure was last used, as well as new ones that occur.
-  rpc Notifications (MultiAddress) returns (stream Result);
+  rpc Notifications (MultiAddress) returns (stream Final);
 
   // Get all relevant results that have been computed in the current epoch.
-  rpc GetResults (MultiAddress) returns (stream Result);
+  rpc GetFinals (MultiAddress) returns (stream Final);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
@@ -140,9 +140,9 @@ message SyncBlock {
   }
 }
 
-// Result messages are sent to signal that a successful order computation has
+// Final messages are sent to signal that a successful order computation has
 // happened.
-message Result {
+message Final {
 
   // Public data.
   bytes id = 1;
