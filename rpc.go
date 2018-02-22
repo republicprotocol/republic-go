@@ -139,9 +139,9 @@ func DeserializeOrderFragment(input *OrderFragment) (*compute.OrderFragment, err
 	return orderFragment, nil
 }
 
-// SerializeResult converts a compute.Result into its network representation.
-func SerializeResult(input *compute.Result) *Result {
-	result := &Result{
+// SerializeFinal converts a compute.Final into its network representation.
+func SerializeFinal(input *compute.Final) *Final {
+	result := &Final{
 		Id:          []byte(input.ID),
 		BuyOrderId:  []byte(input.BuyOrderID),
 		SellOrderId: []byte(input.SellOrderID),
@@ -155,12 +155,12 @@ func SerializeResult(input *compute.Result) *Result {
 	return result
 }
 
-// DeserializeResult converts a network representation of a Result into a
-// compute.ResultFragment. An error is returned if the network representation
+// DeserializeFinal converts a network representation of a Final into a
+// compute.FinalFragment. An error is returned if the network representation
 // is malformed.
-func DeserializeResult(input *Result) *compute.Result {
-	result := &compute.Result{
-		ID:          compute.ResultID(input.Id),
+func DeserializeFinal(input *Final) *compute.Final {
+	result := &compute.Final{
+		ID:          compute.FinalID(input.Id),
 		BuyOrderID:  []byte(input.BuyOrderId),
 		SellOrderID: []byte(input.SellOrderId),
 	}
@@ -170,62 +170,6 @@ func DeserializeResult(input *Result) *compute.Result {
 	result.MaxVolume = big.NewInt(0).SetBytes(input.MaxVolume)
 	result.MinVolume = big.NewInt(0).SetBytes(input.MinVolume)
 	return result
-}
-
-// SerializeResultFragment converts a compute.ResultFragment into its network
-// representation.
-func SerializeResultFragment(input *compute.ResultFragment) *ResultFragment {
-	resultFragment := &ResultFragment{
-		To:                  &Address{Address: ""},
-		From:                &MultiAddress{Multi: ""},
-		Id:                  []byte(input.ID),
-		BuyOrderId:          []byte(input.BuyOrderID),
-		SellOrderId:         []byte(input.SellOrderID),
-		BuyOrderFragmentId:  []byte(input.BuyOrderFragmentID),
-		SellOrderFragmentId: []byte(input.SellOrderFragmentID),
-	}
-	resultFragment.FstCodeShare = sss.ToBytes(input.FstCodeShare)
-	resultFragment.SndCodeShare = sss.ToBytes(input.SndCodeShare)
-	resultFragment.PriceShare = sss.ToBytes(input.PriceShare)
-	resultFragment.MaxVolumeShare = sss.ToBytes(input.MaxVolumeShare)
-	resultFragment.MinVolumeShare = sss.ToBytes(input.MinVolumeShare)
-	return resultFragment
-}
-
-// DeserializeResultFragment converts a network representation of a
-// ResultFragment into a compute.ResultFragment. An error is returned if the
-// network representation is malformed.
-func DeserializeResultFragment(input *ResultFragment) (*compute.ResultFragment, error) {
-	resultFragment := &compute.ResultFragment{
-		ID:                  compute.ResultFragmentID(input.Id),
-		BuyOrderID:          compute.OrderID(input.BuyOrderId),
-		SellOrderID:         compute.OrderID(input.SellOrderId),
-		BuyOrderFragmentID:  compute.OrderFragmentID(input.BuyOrderFragmentId),
-		SellOrderFragmentID: compute.OrderFragmentID(input.SellOrderFragmentId),
-	}
-
-	var err error
-	resultFragment.FstCodeShare, err = sss.FromBytes(input.FstCodeShare)
-	if err != nil {
-		return nil, err
-	}
-	resultFragment.SndCodeShare, err = sss.FromBytes(input.SndCodeShare)
-	if err != nil {
-		return nil, err
-	}
-	resultFragment.PriceShare, err = sss.FromBytes(input.PriceShare)
-	if err != nil {
-		return nil, err
-	}
-	resultFragment.MaxVolumeShare, err = sss.FromBytes(input.MaxVolumeShare)
-	if err != nil {
-		return nil, err
-	}
-	resultFragment.MinVolumeShare, err = sss.FromBytes(input.MinVolumeShare)
-	if err != nil {
-		return nil, err
-	}
-	return resultFragment, nil
 }
 
 // SerializeAtom converts an atomic.Atom into its network representation.
@@ -244,5 +188,23 @@ func DeserializeAtom(a *Atom) atom.Atom {
 		Ledger:     atom.Ledger(a.Ledger),
 		LedgerData: a.Data,
 		Signature:  a.Signature,
+	}
+}
+
+// todo: serialize the deltas and residues to bytes
+func SerializeShard(shard compute.Shard) *Shard {
+	return &Shard{
+		Signature: shard.Signature,
+		Deltas:    [][]byte{},
+		Residues:  [][]byte{},
+	}
+}
+
+// todo: deserialize deltas and residues
+func DeserializeShard(shard *Shard) *compute.Shard {
+	return &compute.Shard{
+		Signature: shard.Signature,
+		Deltas:    []*compute.DeltaFragment{},
+		Residues:  []*compute.ResidueFragment{},
 	}
 }

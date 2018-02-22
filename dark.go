@@ -19,7 +19,7 @@ func SendOrderFragmentToTarget(target identity.MultiAddress, to identity.Address
 		return err
 	}
 	defer conn.Close()
-	client := NewXingNodeClient(conn)
+	client := NewDarkNodeClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -28,26 +28,6 @@ func SendOrderFragmentToTarget(target identity.MultiAddress, to identity.Address
 	serializedOrderFragment.To = SerializeAddress(to)
 	serializedOrderFragment.From = SerializeMultiAddress(from)
 	_, err = client.SendOrderFragment(ctx, serializedOrderFragment, grpc.FailFast(false))
-	return err
-}
-
-// SendResultFragmentToTarget using a new grpc.ClientConn to make a
-// SendResultFragment RPC to a target identity.MultiAddress.
-func SendResultFragmentToTarget(target identity.MultiAddress, to identity.Address, from identity.MultiAddress, resultFragment *compute.ResultFragment, timeout time.Duration) error {
-	conn, err := Dial(target, timeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	client := NewXingNodeClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	serializedResultFragment := SerializeResultFragment(resultFragment)
-	serializedResultFragment.To = SerializeAddress(to)
-	serializedResultFragment.From = SerializeMultiAddress(from)
-	_, err = client.SendResultFragment(ctx, serializedResultFragment, grpc.FailFast(false))
 	return err
 }
 
@@ -71,7 +51,7 @@ func NotificationsFromTarget(target identity.MultiAddress, traderAddress identit
 		}
 		defer conn.Close()
 
-		client := NewXingNodeClient(conn)
+		client := NewDarkNodeClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
@@ -100,7 +80,7 @@ func NotificationsFromTarget(target identity.MultiAddress, traderAddress identit
 				ret <- do.Err(err)
 				continue
 			}
-			ret <- do.Ok(DeserializeResult(result))
+			ret <- do.Ok(DeserializeFinal(result))
 		}
 	}()
 
@@ -109,19 +89,19 @@ func NotificationsFromTarget(target identity.MultiAddress, traderAddress identit
 
 // GetResultsFromTarget using a new grpc.ClientConn to make a
 // GetResultsFromTarget RPC to a target identity.MultiAddress.
-func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.MultiAddress, timeout time.Duration) ([]*compute.Result, error) {
-	results := make([]*compute.Result, 0)
+func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.MultiAddress, timeout time.Duration) ([]*compute.Final, error) {
+	results := make([]*compute.Final, 0)
 	conn, err := Dial(target, timeout)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	client := NewXingNodeClient(conn)
+	client := NewDarkNodeClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	stream, err := client.GetResults(ctx, SerializeMultiAddress(traderAddress), grpc.FailFast(false))
+	stream, err := client.GetFinals(ctx, SerializeMultiAddress(traderAddress), grpc.FailFast(false))
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +114,7 @@ func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.M
 		if err != nil {
 			return nil, err
 		}
-		results = append(results, DeserializeResult(result))
+		results = append(results, DeserializeFinal(result))
 	}
 
 	return results, nil

@@ -55,26 +55,37 @@ message Query {
 }
 
 /**
- * Xing definitions.
+ * Dark node definitions.
  */
 
-// XingNode services implement the distribution of OrderFragments and
-// ResultFragments in the Xing overlay network.
-service XingNode {
-  
+// DarkNode services implement the distribution of OrderFragments and
+// FinalFragments in the Dark network.
+service DarkNode {
+
+  // Send a sync request for getting new shard
+  rpc Sync (SyncRequest) returns (stream SyncBlock);
+
+  // Send a commitment to the order fragment.
+  rpc SendOrderFragmentCommitment (OrderFragmentCommitment) returns (OrderFragmentCommitment);
+
   // Send an OrderFragment to some target Node.
   rpc SendOrderFragment (OrderFragment) returns (Nothing);
+  
+  // Propose a shard election request to some target node.
+  rpc ElectShard (ElectShardRequest) returns (Shard);
+  
+  // Ask some target node to start computation on the shard.
+  rpc ComputeShard (ComputeShardRequest) returns (Nothing);
 
-  // Send a ResultFragment to some target Node, where the ResultFragment is the
-  // result of a computation on two OrderFragments.
-  rpc SendResultFragment (ResultFragment) returns (Nothing);
+  //
+  rpc FinalizeShard (FinalizeShardRequest) returns (Nothing);
 
-  // Get Result messages for successful order matches that have happened since
+  // Get Final messages for successful order matches that have happened since
   // this procedure was last used, as well as new ones that occur.
-  rpc Notifications (MultiAddress) returns (stream Result);
+  rpc Notifications (MultiAddress) returns (stream Final);
 
   // Get all relevant results that have been computed in the current epoch.
-  rpc GetResults (MultiAddress) returns (stream Result);
+  rpc GetFinals (MultiAddress) returns (stream Final);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
@@ -97,32 +108,41 @@ message OrderFragment {
   bytes minVolumeShare = 11;
 }
 
-// A ResultFragment message is the network representation of a
-// compute.ResultFragment and the metadata needed to distribute it through the
-// network.
-message ResultFragment {
-  // Network data.
-  Address to = 1;
-  MultiAddress from = 2;
-
-  // Public data.
-  bytes id = 3;
-  bytes buyOrderId = 4;
-  bytes sellOrderId = 5;
-  bytes buyOrderFragmentId = 6;
-  bytes sellOrderFragmentId = 7;
-
-  // Secure data.
-  bytes fstCodeShare = 8;
-  bytes sndCodeShare = 9;
-  bytes priceShare = 10;
-  bytes maxVolumeShare = 11;
-  bytes minVolumeShare = 12;
+// An OrderFragmentCommitment is ...
+message OrderFragmentCommitment{
+  MultiAddress from = 1;
+  bytes signature = 2;
+  bytes orderFragment = 3;
 }
 
-// Result messages are sent to signal that a successful order computation has
+// A SyncBlock is ...
+message SyncBlock {
+  bytes signature = 1;
+  DeltaBlock deltas = 2;
+  ResidueBlock residues = 3;
+
+  message DeltaBlock {
+    repeated bytes pending = 1;
+    repeated bytes electing = 2;
+    repeated bytes computing = 3;
+    repeated bytes finalizing = 4;
+    repeated bytes matched = 5;
+    repeated bytes mismatched = 6;
+  }
+
+  message ResidueBlock {
+    repeated bytes pending = 1;
+    repeated bytes electing = 2;
+    repeated bytes computing = 3;
+    repeated bytes finalizing = 4;
+    repeated bytes matched = 5;
+    repeated bytes mismatched = 6;
+  }
+}
+
+// Final messages are sent to signal that a successful order computation has
 // happened.
-message Result {
+message Final {
 
   // Public data.
   bytes id = 1;
@@ -135,6 +155,36 @@ message Result {
   bytes price = 6;
   bytes maxVolume = 7;
   bytes minVolume = 8;
+}
+
+// A shard is a block of computations
+message Shard {
+  bytes signature = 1;
+  repeated bytes deltas = 2;
+  repeated bytes residues = 3;
+}
+
+// A FinalizeShardRequest is ...
+message FinalizeShardRequest{
+  MultiAddress from = 1;
+  Shard shard = 2;
+}
+
+// A SyncRequest is ...
+message SyncRequest{
+  MultiAddress from = 1;
+}
+
+// A ElectShardRequest is ...
+message ElectShardRequest {
+  MultiAddress from = 1;
+  Shard shard = 2;
+}
+
+// A ComputeShardRequest is ...
+message ComputeShardRequest {
+  MultiAddress from = 1;
+  Shard shard = 2;
 }
 
 /**
