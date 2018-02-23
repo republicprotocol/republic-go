@@ -1,6 +1,7 @@
 package dark_test
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -53,6 +54,7 @@ func (delegate *mockDelegate) OnOrderFragmentForwarding(to identity.Address, fro
 
 func (delegate *mockDelegate) OnSync(from identity.MultiAddress) chan do.Option {
 	syncBlock := make(chan do.Option, 1)
+	syncBlock <- do.Ok(&rpc.SyncBlock{})
 	return syncBlock
 }
 
@@ -64,7 +66,6 @@ func (delegate *mockDelegate) OnComputeShard(from identity.MultiAddress, shard c
 }
 
 func (delegate *mockDelegate) OnFinalizeShard(from identity.MultiAddress, finalShard compute.FinalShard) {
-
 }
 
 var _ = Describe("dark network", func() {
@@ -116,31 +117,6 @@ var _ = Describe("dark network", func() {
 		}
 	}
 
-	// sendResultFragments := func(nodes []*dark.Node, numberOfFragments int) {
-	// 	keyPair, err := identity.NewKeyPair()
-	// 	Ω(err).ShouldNot(HaveOccurred())
-	// 	to := keyPair.Address()
-
-	// 	for i := 0; i < numberOfFragments; i++ {
-	// 		resultFragment := randomResultFragment()
-
-	// 		from, target := rand.Intn(len(nodes)), rand.Intn(len(nodes))
-	// 		for from == target {
-	// 			target = rand.Intn(len(nodes))
-	// 		}
-	// 		fromMultiAddressString := fmt.Sprintf("/ip4/%s/tcp/%d/republic/%s", DefaultIPAddress, DefaultNodePort+from, nodes[from].Address().String())
-	// 		fromMultiAddress, err := identity.NewMultiAddressFromString(fromMultiAddressString)
-	// 		Ω(err).ShouldNot(HaveOccurred())
-	// 		targetMultiAddressString := fmt.Sprintf("/ip4/%s/tcp/%d/republic/%s", DefaultIPAddress, DefaultNodePort+target, nodes[target].Address().String())
-	// 		targetMultiAddress, err := identity.NewMultiAddressFromString(targetMultiAddressString)
-
-	// 		err = rpc.SendDeltaFragmentToTarget(targetMultiAddress, to, fromMultiAddress, resultFragment, DefaultTimeOut)
-	// 		Ω(err).ShouldNot(HaveOccurred())
-	// 		err = rpc.SendResultFragmentToTarget(targetMultiAddress, nodes[target].Address(), fromMultiAddress, resultFragment, DefaultTimeOut)
-	// 		Ω(err).ShouldNot(HaveOccurred())
-	// 	}
-	// }
-
 	for _, numberOfNodes := range []int{4, 8, 16, 32} {
 		for _, numberOfFragments := range []int{4, 8, 16, 32} {
 			func(numberOfNodes, numberOfFragments int) {
@@ -174,12 +150,6 @@ var _ = Describe("dark network", func() {
 						Ω(delegate.numberOfReceivedOrderFragment).Should(Equal(numberOfFragments))
 						Ω(delegate.numberOfForwardedOrderFragment).Should(Equal(numberOfFragments))
 					})
-
-					// It("should either receive the result fragment or forward it to the target", func() {
-					// 	sendDeltaFragments(nodes, numberOfFragments)
-					// 	Ω(delegate.numberOfReceivedResultFragment).Should(Equal(numberOfFragments))
-					// 	Ω(delegate.numberOfForwardedResultFragment).Should(Equal(numberOfFragments))
-					// })
 				})
 			}(numberOfNodes, numberOfFragments)
 		}
@@ -191,7 +161,7 @@ var _ = Describe("dark network", func() {
 		var delegate *mockDelegate
 		var err error
 		var numberOfNodes = 2
-		// var numberOfFragments = 2
+		var numberOfFragments = 2
 
 		BeforeEach(func() {
 			mu.Lock()
@@ -207,68 +177,50 @@ var _ = Describe("dark network", func() {
 			mu.Unlock()
 		})
 
-		// It("should print certain logs when debug option is greater or equal than DebugHigh", func() {
-		// 	nodes[0].Options.Debug = dark.DebugHigh
-		// 	nodes[1].Options.Debug = dark.DebugHigh
+		It("should print certain logs when debug option is greater or equal than DebugHigh", func() {
+			nodes[0].Options.Debug = dark.DebugHigh
+			nodes[1].Options.Debug = dark.DebugHigh
 
-		// 	listeners, err = createListener(numberOfNodes)
-		// 	Ω(err).ShouldNot(HaveOccurred())
-		// 	startListening(nodes, listeners)
-		// 	time.Sleep(time.Second)
+			listeners, err = createListener(numberOfNodes)
+			Ω(err).ShouldNot(HaveOccurred())
+			startListening(nodes, listeners)
+			time.Sleep(time.Second)
 
-		// 	sendOrderFragments(nodes, numberOfFragments)
-		// 	sendResultFragments(nodes, numberOfFragments)
-		// })
+			sendOrderFragments(nodes, numberOfFragments)
+		})
 
-		// It("should return error when we use wrong fragment", func() {
-		// 	from, to := nodes[0], nodes[1]
-		// 	fromMulti := "/ip4/" + DefaultIPAddress + "/tcp/3000/republic/" + from.Address().String()
+		It("should return error when we use wrong fragment", func() {
+			from, to := nodes[0], nodes[1]
+			fromMulti := "/ip4/" + DefaultIPAddress + "/tcp/3000/republic/" + from.Address().String()
 
-		// 	orderFragment := rpc.SerializeOrderFragment(randomOrderFragment())
-		// 	orderFragment.To = &rpc.Address{Address: to.Address().String()}
-		// 	orderFragment.From = &rpc.MultiAddress{Multi: fromMulti}
-		// 	orderFragment.MaxVolumeShare = []byte("")
+			orderFragment := rpc.SerializeOrderFragment(randomOrderFragment())
+			orderFragment.To = &rpc.Address{Address: to.Address().String()}
+			orderFragment.From = &rpc.MultiAddress{Multi: fromMulti}
+			orderFragment.MaxVolumeShare = []byte("")
 
-		// 	resultFragment := rpc.SerializeResultFragment(randomResultFragment())
-		// 	resultFragment.From = &rpc.MultiAddress{Multi: fromMulti}
-		// 	resultFragment.To = &rpc.Address{Address: to.Address().String()}
-		// 	resultFragment.MaxVolumeShare = []byte("")
+			_, err = from.SendOrderFragment(context.Background(), orderFragment)
+			Ω(err).Should(HaveOccurred())
+		})
 
-		// 	_, err = from.SendOrderFragment(context.Background(), orderFragment)
-		// 	Ω(err).Should(HaveOccurred())
-		// 	_, err = from.SendResultFragment(context.Background(), resultFragment)
-		// 	Ω(err).Should(HaveOccurred())
-		// })
+		It("should return error when we use wrong from address", func() {
 
-		// It("should return error when we use wrong from address", func() {
+			from, to := nodes[0], nodes[1]
+			orderFragment := rpc.SerializeOrderFragment(randomOrderFragment())
+			orderFragment.To = &rpc.Address{Address: to.Address().String()}
+			_, err = from.SendOrderFragment(context.Background(), orderFragment)
+		})
 
-		// 	from, to := nodes[0], nodes[1]
-		// 	orderFragment := rpc.SerializeOrderFragment(randomOrderFragment())
-		// 	orderFragment.To = &rpc.Address{Address: to.Address().String()}
-		// 	resultFragment := rpc.SerializeResultFragment(randomResultFragment())
-		// 	resultFragment.To = &rpc.Address{Address: to.Address().String()}
+		It("should return error when we have error in context", func() {
 
-		// 	_, err = from.SendOrderFragment(context.Background(), orderFragment)
-		// 	Ω(err).Should(HaveOccurred())
-		// 	_, err = from.SendResultFragment(context.Background(), resultFragment)
-		// 	Ω(err).Should(HaveOccurred())
-		// })
+			from, to := nodes[0], nodes[1]
+			orderFragment := rpc.SerializeOrderFragment(randomOrderFragment())
+			orderFragment.To = &rpc.Address{Address: to.Address().String()}
 
-		// It("should return error when we have error in context", func() {
-
-		// 	from, to := nodes[0], nodes[1]
-		// 	orderFragment := rpc.SerializeOrderFragment(randomOrderFragment())
-		// 	orderFragment.To = &rpc.Address{Address: to.Address().String()}
-		// 	resultFragment := rpc.SerializeResultFragment(randomResultFragment())
-		// 	resultFragment.To = &rpc.Address{Address: to.Address().String()}
-
-		// 	canceledContext, cancel := context.WithCancel(context.Background())
-		// 	cancel()
-		// 	_, err = from.SendOrderFragment(canceledContext, orderFragment)
-		// 	Ω(err).Should(HaveOccurred())
-		// 	_, err = from.SendResultFragment(canceledContext, resultFragment)
-		// 	Ω(err).Should(HaveOccurred())
-		// })
+			canceledContext, cancel := context.WithCancel(context.Background())
+			cancel()
+			_, err = from.SendOrderFragment(canceledContext, orderFragment)
+			Ω(err).Should(HaveOccurred())
+		})
 	})
 
 	Context("notifications of computation results", func() {
@@ -347,6 +299,63 @@ var _ = Describe("dark network", func() {
 			Ω(len(results)).Should(Equal(number_of_results))
 		})
 	})
+
+	Context("rpc call handlers", func() {
+		var nodes []*dark.Node
+		var listeners []net.Listener
+		var delegate *mockDelegate
+		var err error
+		var numberOfNodes = 2
+		var from, to identity.MultiAddress
+
+		BeforeEach(func() {
+			mu.Lock()
+			delegate = newMockDelegate()
+			nodes, err = createNodes(delegate, numberOfNodes)
+			nodes[0].Options.Debug = dark.DebugHigh
+			nodes[1].Options.Debug = dark.DebugHigh
+			Ω(err).ShouldNot(HaveOccurred())
+			listeners, err = createListener(numberOfNodes)
+			Ω(err).ShouldNot(HaveOccurred())
+			startListening(nodes, listeners)
+			from, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", DefaultNodePort, nodes[0].Address()))
+			Ω(err).ShouldNot(HaveOccurred())
+			to, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", DefaultNodePort+1, nodes[1].Address()))
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			stopListening(nodes, listeners)
+			mu.Unlock()
+		})
+
+		It("should be able to respond to sync query", func() {
+			option, quit := rpc.SyncWithTarget(to, from, DefaultTimeOut)
+			_ = <-option
+			quit <- struct{}{}
+		})
+
+		It("should be able to respond to send order fragment commitment query", func() {
+			err := rpc.SendOrderFragmentCommitmentToTarget(to, from, DefaultTimeOut)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should be able to respond to compute shard query", func() {
+			err := rpc.AskToComputeShard(to, from, compute.Shard{}, DefaultTimeOut)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should be able to respond to elect shard query", func() {
+			shard, err := rpc.StartElectShard(to, from, compute.Shard{}, DefaultTimeOut)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(*shard).Should(Equal(rpc.Shard{}))
+		})
+
+		It("should be able to respond to finalize shard query", func() {
+			err := rpc.FinalizeShard(to, from, compute.Shard{}, DefaultTimeOut)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+	})
 })
 
 func randomOrderFragment() *compute.OrderFragment {
@@ -358,17 +367,6 @@ func randomOrderFragment() *compute.OrderFragment {
 		sssShare, sssShare, sssShare, sssShare, sssShare)
 	return orderFragment
 }
-
-// func randomResultFragment() *compute.DeltaFragment {
-// 	sssShare := sss.Share{Key: 1, Value: &big.Int{}}
-// 	resultFragment := compute.NewDeltaFragment(
-// 		[]byte("butOrderID"),
-// 		[]byte("sellOrderID"),
-// 		[]byte("butOrderFragmentID"),
-// 		[]byte("sellOrderFragmentID"),
-// 		sssShare, sssShare, sssShare, sssShare, sssShare)
-// 	return resultFragment
-// }
 
 func createNodes(delegate dark.Delegate, numberOfNodes int) ([]*dark.Node, error) {
 	nodes := make([]*dark.Node, numberOfNodes)

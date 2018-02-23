@@ -29,22 +29,17 @@ type Node struct {
 	Delegate
 	Server  *grpc.Server
 	Options Options
-
-	resultReceived bool
-	resultsMu      *sync.RWMutex
-	results        map[identity.Address]*Inbox
+	results *sync.Map
 }
 
 // NewNode returns a Node that delegates the responsibility of handling RPCs to
 // a Delegate.
 func NewNode(server *grpc.Server, delegate Delegate, options Options) *Node {
 	return &Node{
-		Delegate:       delegate,
-		Server:         server,
-		Options:        options,
-		resultReceived: false,
-		resultsMu:      new(sync.RWMutex),
-		results:        make(map[identity.Address]*Inbox),
+		Delegate: delegate,
+		Server:   server,
+		Options:  options,
+		results:  new(sync.Map),
 	}
 }
 
@@ -58,17 +53,17 @@ func (node *Node) Address() identity.Address {
 	return node.Options.Address
 }
 
-// Sync ...
+// Sync returns all deltaFragments and residueFragments the node have.
 func (node *Node) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncServer) error {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a query for sync from [%v]\n", node.Address(), syncRequest.From.Multi)
+		log.Printf("[%v] received a sync query from [%v]\n", node.Address(), syncRequest.From.Multi)
 	}
 	if err := stream.Context().Err(); err != nil {
 		return err
 	}
 
 	wait := do.Process(func() do.Option {
-		return do.Err(node.Sync(syncRequest, stream))
+		return do.Err(node.sync(syncRequest, stream))
 	})
 
 	select {
@@ -80,10 +75,10 @@ func (node *Node) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncSer
 	}
 }
 
-// ComputeShard ...
+// ComputeShard will start compute the shards on receiving the request.
 func (node *Node) ComputeShard(ctx context.Context, computeShardRequest *rpc.ComputeShardRequest) (*rpc.Nothing, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a query for compute shard from [%v]\n", node.Address(), computeShardRequest.From.Multi)
+		log.Printf("[%v] received a compute shard query from [%v]\n", node.Address(), computeShardRequest.From.Multi)
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -109,10 +104,10 @@ func (node *Node) ComputeShard(ctx context.Context, computeShardRequest *rpc.Com
 	}
 }
 
-// ElectShard ...
+// ElectShard will returns availability of the shards listed in the request.
 func (node *Node) ElectShard(ctx context.Context, electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a query for electing shard from [%v]\n", node.Address(), electShardRequest.From.Multi)
+		log.Printf("[%v] received a elect shard query from [%v]\n", node.Address(), electShardRequest.From.Multi)
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -138,10 +133,10 @@ func (node *Node) ElectShard(ctx context.Context, electShardRequest *rpc.ElectSh
 	}
 }
 
-// FinalizeShard ...
+// FinalizeShard
 func (node *Node) FinalizeShard(ctx context.Context, finaliseShardRequest *rpc.FinalizeShardRequest) (*rpc.Nothing, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a query for finalizing shard from [%v]\n", node.Address(), finaliseShardRequest.From.Multi)
+		log.Printf("[%v] received a finalize shard request from [%v]\n", node.Address(), finaliseShardRequest.From.Multi)
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -167,7 +162,9 @@ func (node *Node) FinalizeShard(ctx context.Context, finaliseShardRequest *rpc.F
 	}
 }
 
-// SendOrderFragmentCommitment ...
+// SendOrderFragmentCommitment is sent before sending the order fragment.
+// The request contained the signature of the sender and we'll return
+// a commitment with our signature.
 func (node *Node) SendOrderFragmentCommitment(ctx context.Context, orderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
 	if node.Options.Debug >= DebugHigh {
 		log.Printf("%v received a order commitment from %v\n", node.Address(), orderFragmentCommitment.From.Multi)
@@ -200,7 +197,7 @@ func (node *Node) SendOrderFragmentCommitment(ctx context.Context, orderFragment
 // this Node then it will be forwarded on to the correct destination.
 func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received order fragment %v [%v]\n", node.Address(), base58.Encode(orderFragment.Id), base58.Encode(orderFragment.OrderId))
+		log.Printf("[%v] received order fragment %v [%v]\n", node.Address(), base58.Encode(orderFragment.Id), base58.Encode(orderFragment.OrderId))
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -230,7 +227,7 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 // unread results to the client via a stream
 func (node *Node) Notifications(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_NotificationsServer) error {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a query for notifications of [%v]\n", node.Address(), traderAddress.Multi)
+		log.Printf("[%v] received a query for notifications of [%v]\n", node.Address(), traderAddress.Multi)
 	}
 	if err := stream.Context().Err(); err != nil {
 		return err
@@ -253,7 +250,7 @@ func (node *Node) Notifications(traderAddress *rpc.MultiAddress, stream rpc.Dark
 // related results to the client via a stream
 func (node *Node) GetFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_GetFinalsServer) error {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a query for all results of [%v]\n", node.Address(), traderAddress.Multi)
+		log.Printf("[%v] received a query for all results of [%v]\n", node.Address(), traderAddress.Multi)
 	}
 
 	if err := stream.Context().Err(); err != nil {
@@ -277,19 +274,13 @@ func (node *Node) GetFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode
 
 // Notify will store new result in the node.
 func (node *Node) Notify(traderAddress identity.Address, result *compute.Final) {
-	node.resultsMu.RLock()
-	results, ok := node.results[traderAddress]
-	node.resultsMu.RUnlock()
+	results, ok := node.results.Load(traderAddress)
 	if !ok {
-		node.resultsMu.Lock()
-		defer node.resultsMu.Unlock()
 		newInbox := NewInbox()
 		newInbox.AddNewResult(result)
-		node.results[traderAddress] = newInbox
+		node.results.Store(traderAddress, newInbox)
 	} else {
-		node.resultsMu.RLock()
-		defer node.resultsMu.RUnlock()
-		results.AddNewResult(result)
+		results.(*Inbox).AddNewResult(result)
 	}
 }
 
@@ -322,14 +313,12 @@ func (node *Node) notifications(traderAddress *rpc.MultiAddress, stream rpc.Dark
 	}
 	address := identity.Address(multiAddress.Address())
 
-	node.resultsMu.RLock()
-	results, ok := node.results[address]
-	node.resultsMu.RUnlock()
+	results, ok := node.results.Load(address)
 	if !ok {
 		return nil
 	}
 	for {
-		results := results.GetAllNewResults()
+		results := results.(*Inbox).GetAllNewResults()
 		for i := range results {
 			err := stream.Send(rpc.SerializeFinal(results[i]))
 			if err != nil {
@@ -345,13 +334,11 @@ func (node *Node) getFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode
 		return err
 	}
 	address := multiAddress.Address()
-	node.resultsMu.RLock()
-	notifications, ok := node.results[address]
-	node.resultsMu.RUnlock()
+	notifications, ok := node.results.Load(address)
 	if !ok {
 		return nil
 	}
-	results := notifications.GetAllResults()
+	results := notifications.(*Inbox).GetAllResults()
 	for _, result := range results {
 		err = stream.Send(rpc.SerializeFinal(result))
 		if err != nil {
@@ -362,12 +349,13 @@ func (node *Node) getFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode
 }
 
 func (node *Node) sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncServer) error {
-	from, err := identity.NewMultiAddressFromString(syncRequest.From.String())
+	from, err := rpc.DeserializeMultiAddress(syncRequest.From)
 	if err != nil {
 		return err
 	}
 	blockChan := node.Delegate.OnSync(from)
 	for data := range blockChan {
+		log.Println("inside loop")
 		//todo : need to serialize data into the network representation
 		stream.Send(data.Ok.(*rpc.SyncBlock))
 	}
@@ -375,7 +363,7 @@ func (node *Node) sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncSer
 }
 
 func (node *Node) computeShard(computeShardRequest *rpc.ComputeShardRequest) (*rpc.Nothing, error) {
-	from, err := identity.NewMultiAddressFromString(computeShardRequest.From.String())
+	from, err := rpc.DeserializeMultiAddress(computeShardRequest.From)
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
@@ -385,7 +373,7 @@ func (node *Node) computeShard(computeShardRequest *rpc.ComputeShardRequest) (*r
 }
 
 func (node *Node) electShard(electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
-	from, err := identity.NewMultiAddressFromString(electShardRequest.From.String())
+	from, err := rpc.DeserializeMultiAddress(electShardRequest.From)
 	if err != nil {
 		return &rpc.Shard{}, err
 	}
@@ -395,7 +383,7 @@ func (node *Node) electShard(electShardRequest *rpc.ElectShardRequest) (*rpc.Sha
 }
 
 func (node *Node) finalizeShard(finaliseShardRequest *rpc.FinalizeShardRequest) (*rpc.Nothing, error) {
-	from, err := identity.NewMultiAddressFromString(finaliseShardRequest.From.String())
+	from, err := rpc.DeserializeMultiAddress(finaliseShardRequest.From)
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
@@ -405,5 +393,6 @@ func (node *Node) finalizeShard(finaliseShardRequest *rpc.FinalizeShardRequest) 
 }
 
 func (node *Node) sendOrderFragmentCommitment(orderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
+	// todo :
 	return orderFragmentCommitment, nil
 }
