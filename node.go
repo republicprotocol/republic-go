@@ -251,20 +251,20 @@ func (node *DarkNode) OnComputeShard(from identity.MultiAddress, shard compute.S
 // is to store all computation shares from within the different Shards that are
 // finalized. Eventually, enough computation shares will be acquired and the
 // computation proper can be reconstructed.
-func (node *DarkNode) OnFinalizeShard(from identity.MultiAddress, shard compute.Shard) {
+func (node *DarkNode) OnFinalizeShard(from identity.MultiAddress, finalShard compute.FinalShard) {
 	// TODO: Store the shares in a map until we have enough to reconstruct the
 	// computation proper.
 
 	var toReconstruct []string
 
 	finalFragmentsMu := new(sync.Mutex)
-	do.ForAll(shard.Deltas, func(i int) {
+	do.ForAll(finalShard.Finals, func(i int) {
 		finalFragmentsMu.Lock()
 		defer finalFragmentsMu.Unlock()
-		delta := shard.Deltas[i]
+		delta := finalShard.Finals[i]
 		matchID := string(delta.BuyOrderID) + string(delta.SellOrderID)
 
-		node.FinalFragments[matchID] = append(node.FinalFragments[matchID], shard.Deltas[i])
+		node.FinalFragments[matchID] = append(node.FinalFragments[matchID], finalShard.Finals[i])
 		if len(node.FinalFragments[matchID]) > node.Configuration.ComputationShardSize {
 			toReconstruct = append(toReconstruct, matchID)
 		}
