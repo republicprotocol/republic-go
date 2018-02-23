@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"log"
+	"math/big"
 	"math/rand"
 	"os"
 	"time"
@@ -12,8 +13,8 @@ import (
 	"github.com/republicprotocol/go-order-compute"
 
 	"github.com/jbenet/go-base58"
+	"github.com/republicprotocol/go-dark-node"
 	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-miner"
 	"github.com/republicprotocol/go-rpc"
 )
 
@@ -22,7 +23,7 @@ var order *compute.Order
 
 func main() {
 
-	// Parse command line arguments and fill the miner.Config.
+	// Parse command line arguments and fill the node.Config.
 	if err := parseCommandLineFlags(); err != nil {
 		log.Println(err)
 		flag.Usage()
@@ -43,7 +44,7 @@ func main() {
 		nodeMultiAddresses[i] = multiAddress
 	}
 
-	shares, err := order.Split(miner.N, miner.K, miner.Prime)
+	shares, err := order.Split(node.N, node.K, node.Prime)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -87,7 +88,7 @@ func parseCommandLineFlags() error {
 	}
 
 	rand.Seed(int64(time.Now().Nanosecond()))
-	order.Nonce = rand.Int63()
-	order.ID = order.GenerateID()
+	order.Nonce = big.NewInt(rand.Int63())
+	order.GenerateID()
 	return nil
 }

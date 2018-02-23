@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"log"
+	"math/big"
 	"net"
 	"strings"
 	"sync"
@@ -24,6 +25,16 @@ import (
 
 const defaultTimeout = 5 * time.Second
 
+// To be retrieved from the Registrar contract
+var (
+	// N is the number of dark nodes in the network
+	N = int64(5)
+	// K is the number of fragments required to reconstruct the secret
+	K = int64(3)
+	// Prime ...
+	Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
+)
+
 // DarkNode ...
 type DarkNode struct {
 	Server        *grpc.Server
@@ -43,6 +54,9 @@ type DarkNode struct {
 // NewDarkNode creates a new DarkNode, a new swarm.Node and dark.Node and assigns the
 // new DarkNode as the delegate for both. Returns the new DarkNode, or an error.
 func NewDarkNode(config *Config) (*DarkNode, error) {
+	if config.Prime == nil {
+		config.Prime = Prime
+	}
 	node := &DarkNode{
 		HiddenOrderBook: compute.NewHiddenOrderBook(config.ComputationShardSize),
 		FinalFragments:  make(map[string][]*compute.DeltaFragment, 0),
