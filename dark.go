@@ -31,8 +31,8 @@ func SendOrderFragmentToTarget(target identity.MultiAddress, to identity.Address
 	return err
 }
 
-// SendOrderFragmentToTarget using a new grpc.ClientConn to make a
-// SendOrderFragment RPC to a target identity.MultiAddress.
+// SendOrderFragmentCommitmentToTarget using a new grpc.ClientConn to make a
+// SendOrderFragmentCommitment RPC to a target identity.MultiAddress.
 func SendOrderFragmentCommitmentToTarget(target identity.MultiAddress, from identity.MultiAddress, timeout time.Duration) error {
 	conn, err := Dial(target, timeout)
 	if err != nil {
