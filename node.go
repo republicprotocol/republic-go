@@ -251,8 +251,7 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmN
 
 	// Create the frontier and a closure map.
 	frontier := make(identity.MultiAddresses, 0, len(peers))
-	black := make(map[identity.Address]struct{})
-	white := make(map[identity.Address]struct{})
+	visited := make(map[identity.Address]struct{})
 
 	// Filter away peers that are further from the target than this Node.
 	for _, peer := range peers {
@@ -268,11 +267,16 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmN
 		}
 	}
 
-	// Immediately close the Node that is running this query and mark all peers
-	// in the frontier as seen.
-	black[node.Address()] = struct{}{}
+	// Immediately close the Node that sends the query and Node is running
+	// the query and mark all peers in the frontier as seen.
+	from, err := identity.NewMultiAddressFromString(query.From.Multi)
+	if err != nil {
+		return err
+	}
+	visited[from.Address()] = struct{}{}
+	visited[node.Address()] = struct{}{}
 	for _, peer := range frontier {
-		white[peer.Address()] = struct{}{}
+		visited[peer.Address()] = struct{}{}
 	}
 
 	// While there are still Nodes to be explored in the frontier.
@@ -283,7 +287,7 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmN
 
 		// Close the peer and use it to find peers that are even closer to the
 		// target.
-		black[peer.Address()] = struct{}{}
+		visited[peer.Address()] = struct{}{}
 		if peer.Address() == target {
 			continue
 		}
@@ -297,10 +301,7 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmN
 
 		// Filter any candidate that is already in the closure.
 		for _, candidate := range candidates {
-			if _, ok := black[candidate.Address()]; ok {
-				continue
-			}
-			if _, ok := white[candidate.Address()]; ok {
+			if _, ok := visited[candidate.Address()]; ok {
 				continue
 			}
 			// Expand the frontier by candidates that have not already been
@@ -309,7 +310,7 @@ func (node *Node) queryCloserPeersOnFrontier(query *rpc.Query, stream rpc.SwarmN
 				return err
 			}
 			frontier = append(frontier, candidate)
-			white[candidate.Address()] = struct{}{}
+			visited[candidate.Address()] = struct{}{}
 		}
 	}
 
@@ -387,4 +388,69 @@ func (node *Node) updatePeer(peer *rpc.MultiAddress) error {
 		return err
 	}
 	return nil
+}
+
+// FindNode will try to find the node multiAddress by its republic ID.
+func (node *Node) FindNode(targetID identity.ID) (*identity.MultiAddress, error) {
+	target := targetID.Address()
+	peers := node.DHT.MultiAddresses()
+
+	// Create the frontier and a closure map.
+	frontier := make(identity.MultiAddresses, 0, len(peers))
+	visited := make(map[identity.Address]struct{})
+
+	// Check if we know the target and filter away peers that are further
+	// from the target than this Node.
+	for _, peer := range peers {
+		if peer.Address() == target {
+			return &peer, nil
+		}
+		closer, err := identity.Closer(peer.Address(), node.Address(), target)
+		if err != nil {
+			return nil, err
+		}
+		if closer {
+			frontier = append(frontier, peer)
+		}
+	}
+
+	// Immediately close the Node that sends the query and Node is running
+	// the query and mark all peers in the frontier as seen.
+	visited[node.Address()] = struct{}{}
+	for _, peer := range frontier {
+		visited[peer.Address()] = struct{}{}
+	}
+
+	// While there are still Nodes to be explored in the frontier.
+	for len(frontier) > 0 {
+		// Pop the first peer off the frontier.
+		peer := frontier[0]
+		frontier = frontier[1:]
+
+		// Close the peer and use it to find peers that are even closer to the
+		// target.
+		visited[peer.Address()] = struct{}{}
+
+		candidates, err := rpc.QueryCloserPeersFromTarget(peer, node.MultiAddress(), target, time.Second)
+		if err != nil {
+			if node.Options.Debug >= DebugLow {
+				log.Println(err)
+			}
+			continue
+		}
+
+		// Filter any candidate that is already in the closure.
+		for _, candidate := range candidates {
+			if _, ok := visited[candidate.Address()]; ok {
+				continue
+			}
+			if candidate.Address() == target {
+				return &candidate, nil
+			}
+			frontier = append(frontier, candidate)
+			visited[candidate.Address()] = struct{}{}
+		}
+	}
+
+	return nil, nil
 }

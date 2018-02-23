@@ -1,6 +1,7 @@
 package swarm_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -9,8 +10,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/go-dht"
 	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-swarm-network"
+	"google.golang.org/grpc"
 )
 
 type mockDelegate struct {
@@ -139,6 +143,17 @@ var _ = Describe("Bootstrapping", func() {
 											log.Println(err)
 										}
 									}
+
+									// test finding node function
+									left, right := PickRandomNodes(swarmNodes)
+									found, err := left.FindNode(right.Address().ID())
+									Ω(err).ShouldNot(HaveOccurred())
+									if found != nil {
+										Ω(*found).Should(Equal(right.MultiAddress()))
+										log.Println("found the target node by its ID ")
+									} else {
+										log.Println("fail to found the target")
+									}
 									log.Printf("%v/%v successful pings", numberOfPings, numberOfNodes)
 									Ω(numberOfPings).Should(BeNumerically(">=", 2*numberOfNodes/3))
 								})
@@ -149,4 +164,124 @@ var _ = Describe("Bootstrapping", func() {
 			})
 		}(topology)
 	}
+
+	Context("negative tests", func() {
+		var node *swarm.Node
+
+		BeforeEach(func() {
+			keyPair, err := identity.NewKeyPair()
+			Ω(err).ShouldNot(HaveOccurred())
+			multiAddress, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/" + keyPair.Address().String())
+			Ω(err).ShouldNot(HaveOccurred())
+			node = swarm.NewNode(grpc.NewServer(),
+				delegate,
+				swarm.Options{
+					MultiAddress:    multiAddress,
+					Debug:           DefaultOptionsDebug,
+					Alpha:           DefaultOptionsAlpha,
+					MaxBucketLength: DefaultOptionsMaxBucketLength,
+					Timeout:         DefaultOptionsTimeout,
+					TimeoutStep:     DefaultOptionsTimeoutStep,
+					TimeoutRetries:  DefaultOptionsTimeoutRetries,
+					Concurrent:      DefaultOptionsConcurrent,
+				},
+			)
+		})
+
+		Context("debug logs", func() {
+			It("should print logs when we set the debug option to high", func() {
+				// Setup testing configuration.
+				setupBootstrapNodes(TopologyFull, 8)
+				bootstrapNodes[0].Options.Debug = swarm.DebugHigh
+				bootstrapNodes[0].Options.Concurrent = true
+				setupSwarmNodes(16)
+				swarmNodes[0].Options.Debug = swarm.DebugHigh
+				swarmNodes[0].Options.Concurrent = true
+
+				// Bootstrap all swarm nodes.
+				for _, i := range swarmNodes {
+					i.Bootstrap()
+				}
+
+				numberOfPings := 0
+				for i := 0; i < 20; i++ {
+					to, from := PickRandomNodes(swarmNodes)
+					if err := Ping(to, from); err == nil {
+						numberOfPings++
+					} else {
+						log.Println(err)
+					}
+				}
+				log.Printf("%v/%v successful pings", numberOfPings, 20)
+				Ω(numberOfPings).Should(BeNumerically(">=", 2*20/3))
+			})
+		})
+
+		Context("context", func() {
+			It("should return an error when calling with a cancelled context", func() {
+				contextWithTimeout, cancel := context.WithTimeout(context.Background(), time.Second*5)
+				cancel()
+				_, err = node.Ping(contextWithTimeout, &rpc.MultiAddress{})
+				Ω(err).Should(HaveOccurred())
+
+				_, err = node.QueryCloserPeers(contextWithTimeout, &rpc.Query{})
+				Ω(err).Should(HaveOccurred())
+
+			})
+		})
+
+		Context("pruning the dht", func() {
+			It("should return an error when pruning with bad dht", func() {
+				keyPair, err := identity.NewKeyPair()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				correctAddress := keyPair.Address()
+				wrongFormatTarget := identity.Address("wrongAddress")
+				_, err = node.Prune(wrongFormatTarget)
+				Ω(err).Should(HaveOccurred())
+
+				pruned, err := node.Prune(correctAddress)
+				Ω(pruned).Should(BeFalse())
+				Ω(err).ShouldNot(HaveOccurred())
+
+				for i := 0; i < dht.IDLengthInBits*node.Options.MaxBucketLength; i++ {
+					keyPair, err = identity.NewKeyPair()
+					Ω(err).ShouldNot(HaveOccurred())
+					multi, err := identity.NewMultiAddressFromString("/ip4/192.168.0.0/tcp/80/republic/" + keyPair.Address().String())
+					Ω(err).ShouldNot(HaveOccurred())
+					err = node.DHT.UpdateMultiAddress(multi)
+					if err == dht.ErrFullBucket {
+						pruned, err := node.Prune(keyPair.Address())
+						Ω(pruned).Should(BeTrue())
+						Ω(err).ShouldNot(HaveOccurred())
+						break
+					}
+				}
+			})
+		})
+
+		Context("bad rpc input", func() {
+			It("should return an error with a bad ping input", func() {
+				_, err := node.Ping(context.Background(), &rpc.MultiAddress{})
+				Ω(err).Should(HaveOccurred())
+			})
+
+			It("should return an error with a bad query input", func() {
+				_, err := node.QueryCloserPeers(context.Background(), &rpc.Query{Query: &rpc.Address{}, From: &rpc.MultiAddress{}})
+				Ω(err).Should(HaveOccurred())
+
+			})
+		})
+
+		Context("bootstrapping", func() {
+			It("should print error with offline bootstrap nodes", func() {
+				bootstrapNode, err := identity.NewMultiAddressFromString("/ip4/192.168.0.0/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+				Ω(err).ShouldNot(HaveOccurred())
+				node.Options.BootstrapMultiAddresses = identity.MultiAddresses{bootstrapNode}
+				node.Options.Debug = swarm.DebugHigh
+
+				node.Bootstrap()
+			})
+		})
+	})
 })
