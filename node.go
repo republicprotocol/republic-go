@@ -133,7 +133,7 @@ func (node *Node) ElectShard(ctx context.Context, electShardRequest *rpc.ElectSh
 	}
 }
 
-// FinalizeShard
+// FinalizeShard returns finalized shards.
 func (node *Node) FinalizeShard(ctx context.Context, finaliseShardRequest *rpc.FinalizeShardRequest) (*rpc.Nothing, error) {
 	if node.Options.Debug >= DebugHigh {
 		log.Printf("[%v] received a finalize shard request from [%v]\n", node.Address(), finaliseShardRequest.From.Multi)
