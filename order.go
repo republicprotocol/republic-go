@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math/big"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -455,43 +454,29 @@ func (orderBook *HiddenOrderBook) RemoveFinalizedOrders(idA OrderFragmentID, idB
 	orderBook.removeOrderFragment(idA)
 	orderBook.removeOrderFragment(idB)
 
-	deltaFragmentMu := new(sync.Mutex)
-	do.ForAll(deltaFragments, func(i int) {
-		deltaFragmentMu.Lock()
-		defer deltaFragmentMu.Unlock()
-
+	for i := range deltaFragments{
 		orderBook.removeDeltaFragment(deltaFragments[i])
-	})
+	}
 }
 
 func (orderBook *HiddenOrderBook) removeOrderFragment(id OrderFragmentID) {
-	orderIndex := -1
 	for index, rhs := range orderBook.orderFragments {
 		if id.Equals(rhs.ID) {
-			orderIndex = index
+			orderBook.orderFragments[index] = orderBook.orderFragments[len(orderBook.orderFragments)-1]
+			orderBook.orderFragments = orderBook.orderFragments[:len(orderBook.orderFragments)-1]
 			break
 		}
 	}
-	if orderIndex == -1 {
-		return
-	}
-
-	orderBook.orderFragments = append(orderBook.orderFragments[:orderIndex], orderBook.orderFragments[orderIndex+1:]...)
 }
 
 func (orderBook *HiddenOrderBook) removeDeltaFragment(deltaFragment *DeltaFragment) {
-	deltaIndex := -1
 	for index, rhs := range orderBook.pendingDeltaFragments {
 		if deltaFragment.ID.Equals(rhs.ID) {
-			deltaIndex = index
+			orderBook.pendingDeltaFragments[index] = orderBook.pendingDeltaFragments[len(orderBook.pendingDeltaFragments)-1]
+			orderBook.pendingDeltaFragments = orderBook.pendingDeltaFragments[:len(orderBook.pendingDeltaFragments)-1]
 			break
 		}
 	}
-	if deltaIndex == -1 {
-		return
-	}
-
-	orderBook.pendingDeltaFragments = append(orderBook.pendingDeltaFragments[:deltaIndex], orderBook.pendingDeltaFragments[deltaIndex+1:]...)
 }
 
 func (orderBook *HiddenOrderBook) WaitForShard() Shard {

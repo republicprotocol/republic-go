@@ -46,13 +46,13 @@ type Final struct {
 }
 
 func NewFinal(deltaFragments []*DeltaFragment, prime *big.Int) (*Final, error) {
-	// Check that all ResultFragments are compatible with each other.
+	// Check that all DeltaFragments are compatible with each other.
 	err := isCompatible(deltaFragments)
 	if err != nil {
 		return nil, err
 	}
 
-	// Collect sss.Shares across all ResultFragments.
+	// Collect sss.Shares across all DeltaFragments.
 	k := len(deltaFragments)
 	fstCodeShares := make(sss.Shares, k)
 	sndCodeShares := make(sss.Shares, k)
@@ -67,7 +67,7 @@ func NewFinal(deltaFragments []*DeltaFragment, prime *big.Int) (*Final, error) {
 		minVolumeShares[i] = resultFragment.MinVolumeShare
 	}
 
-	// Join the sss.Shares into a Result.
+	// Join the sss.Shares into a Final.
 	final := &Final{
 		BuyOrderID:  deltaFragments[0].BuyOrderID,
 		SellOrderID: deltaFragments[0].SellOrderID,
@@ -78,7 +78,7 @@ func NewFinal(deltaFragments []*DeltaFragment, prime *big.Int) (*Final, error) {
 	final.MaxVolume = sss.Join(prime, maxVolumeShares)
 	final.MinVolume = sss.Join(prime, minVolumeShares)
 
-	// Compute the ResultID and return the Result.
+	// Compute the FinalID and return the Final.
 	final.ID = FinalID(crypto.Keccak256(final.BuyOrderID[:], final.SellOrderID[:]))
 	return final, nil
 }
@@ -106,17 +106,17 @@ func (final *Final) IsMatch(prime *big.Int) bool {
 // A DeltaFragmentID is the Keccak256 hash of its OrderFragmentIDs.
 type DeltaFragmentID []byte
 
-// Equals checks if two ResultFragmentIDs are equal in value.
+// Equals checks if two DeltaFragmentIDs are equal in value.
 func (id DeltaFragmentID) Equals(other DeltaFragmentID) bool {
 	return bytes.Equal(id, other)
 }
 
-// String returns the ResultFragmentID as a string.
+// String returns the DeltaFragmentID as a string.
 func (id DeltaFragmentID) String() string {
 	return string(id)
 }
 
-// A DeltaFragment is a secret share of a Result. Is is performing a
+// A DeltaFragment is a secret share of a Final. Is is performing a
 // computation over two OrderFragments.
 type DeltaFragment struct {
 	// Public data.
@@ -155,7 +155,7 @@ func NewDeltaFragment(left *OrderFragment, right *OrderFragment, prime *big.Int)
 	return deltaFragment, nil
 }
 
-// Equals checks if two ResultFragments are equal in value.
+// Equals checks if two DeltaFragments are equal in value.
 func (deltaFragment *DeltaFragment) Equals(other *DeltaFragment) bool {
 	return deltaFragment.ID.Equals(other.ID) &&
 		deltaFragment.BuyOrderID.Equals(other.BuyOrderID) &&
@@ -174,7 +174,7 @@ func (deltaFragment *DeltaFragment) Equals(other *DeltaFragment) bool {
 		deltaFragment.MinVolumeShare.Value.Cmp(other.MinVolumeShare.Value) == 0
 }
 
-// IsCompatible returns an error when the two ResultFragment do not have
+// IsCompatible returns an error when the two deltaFragments do not have
 // the same share indices.
 func isCompatible(deltaFragments []*DeltaFragment) error {
 	if len(deltaFragments) == 0 {
