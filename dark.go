@@ -31,6 +31,28 @@ func SendOrderFragmentToTarget(target identity.MultiAddress, to identity.Address
 	return err
 }
 
+// SendOrderFragmentToTarget using a new grpc.ClientConn to make a
+// SendOrderFragment RPC to a target identity.MultiAddress.
+func SendOrderFragmentCommitmentToTarget(target identity.MultiAddress, from identity.MultiAddress, timeout time.Duration) error {
+	conn, err := Dial(target, timeout)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := NewDarkNodeClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	commitment := &OrderFragmentCommitment{
+		From:SerializeMultiAddress(from),
+		Signature: []byte{}, // todo :
+		OrderFragment: []byte{}, // todo :
+	}
+	_, err = client.SendOrderFragmentCommitment(ctx, commitment, grpc.FailFast(false))
+	return err
+}
+
 // NotificationsFromTarget using a new grpc.ClientConn to make a
 // NotificationsFromTarget RPC to a target identity.MultiAddress. This function
 // returns two channels. The first should be used to read compute.Results until
@@ -89,7 +111,7 @@ func NotificationsFromTarget(target identity.MultiAddress, traderAddress identit
 
 // GetResultsFromTarget using a new grpc.ClientConn to make a
 // GetResultsFromTarget RPC to a target identity.MultiAddress.
-func GetResultsFromTarget(target identity.MultiAddress, traderAddress identity.MultiAddress, timeout time.Duration) ([]*compute.Final, error) {
+func GetFinalsFromTarget(target identity.MultiAddress, traderAddress identity.MultiAddress, timeout time.Duration) ([]*compute.Final, error) {
 	results := make([]*compute.Final, 0)
 	conn, err := Dial(target, timeout)
 	if err != nil {

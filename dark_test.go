@@ -85,6 +85,22 @@ var _ = Describe("Dark Network", func() {
 		createFragments()
 	})
 
+	Context("sending order fragments commitments", func() {
+
+		It("should return nothing", func() {
+			lis, err := net.Listen("tcp", ":3000")
+			Ω(err).ShouldNot(HaveOccurred())
+			go func(server *grpc.Server) {
+				defer GinkgoRecover()
+				Ω(server.Serve(lis)).ShouldNot(HaveOccurred())
+			}(server)
+			defer server.Stop()
+
+			err = rpc.SendOrderFragmentCommitmentToTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+	})
+
 	Context("sending order fragments", func() {
 		keyPair, _ := identity.NewKeyPair()
 		to := keyPair.Address()
@@ -146,15 +162,16 @@ var _ = Describe("Dark Network", func() {
 			}(server)
 			defer server.Stop()
 
-			results, err := rpc.GetResultsFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
+			results, err := rpc.GetFinalsFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(results)).Should(BeNumerically(">", 0))
 			Ω(results[0]).Should(Equal(result))
 		})
 
 		It("should return an error when dialing an offline server", func() {
-			_, err := rpc.GetResultsFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
+			_, err := rpc.GetFinalsFromTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
 			Ω(err).Should(HaveOccurred())
 		})
 	})
+
 })
