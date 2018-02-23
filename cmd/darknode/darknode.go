@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strings"
 
 	"github.com/republicprotocol/go-dark-node"
-	"github.com/republicprotocol/go-identity"
+	identity "github.com/republicprotocol/go-identity"
 )
 
 var config *node.Config
@@ -37,12 +38,12 @@ func parseCommandLineFlags() error {
 
 	conf, err := node.LoadConfig(*confFilename)
 	if err != nil {
-		conf, err = LoadDefaultConfig();
+		conf, err = LoadDefaultConfig()
 		if err != nil {
-			return err;
+			return err
 		}
 		config = conf
-		return nil;
+		return nil
 	}
 	config = conf
 	return nil
@@ -53,10 +54,8 @@ func LoadDefaultConfig() (*node.Config, error) {
 	if err != nil {
 		return &node.Config{}, err
 	}
-	out, err := exec.Command("curl https://ipinfo.io/ip").Output()
-	if err != nil {
-		return &node.Config{}, err
-	}
+	out, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
+	out = []byte(strings.Trim(string(out), "\n "))
 	if err != nil {
 		return &node.Config{}, err
 	}

@@ -57,6 +57,12 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	if config.Prime == nil {
 		config.Prime = Prime
 	}
+	if config.ComputationShardInterval == 0 {
+		config.ComputationShardInterval = 5
+	}
+	if config.ComputationShardSize == 0 {
+		config.ComputationShardSize = 10
+	}
 	node := &DarkNode{
 		HiddenOrderBook: compute.NewHiddenOrderBook(config.ComputationShardSize),
 		FinalFragments:  make(map[string][]*compute.DeltaFragment, 0),
@@ -91,6 +97,8 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	}
 	darkNode := dark.NewNode(node.Server, node, darkOptions)
 	node.Dark = darkNode
+	node.DarkPool = config.BootstrapMultiAddresses
+	node.DarkPoolLimit = len(node.DarkPool)
 
 	return node, nil
 }
@@ -134,40 +142,40 @@ func (node *DarkNode) Start() {
 		}
 	}()
 
-	registered, err := isRegistered(node.Configuration.MultiAddress.ID())
-	if err != nil {
-		log.Fatal(err)
-	}
-	if !registered {
-		panic("dark node hasn't been registered")
-	}
+	// registered, err := isRegistered(node.Configuration.MultiAddress.ID())
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// if !registered {
+	// 	panic("dark node hasn't been registered")
+	// }
 
-	darkPool, err := getDarkPoolConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
+	// darkPool, err := getDarkPoolConfig()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	// Wait for the server to start and bootstrap the connections in the swarm.
-	time.Sleep(time.Second)
-	node.Swarm.Bootstrap()
+	// // Wait for the server to start and bootstrap the connections in the swarm.
+	// time.Sleep(time.Second)
+	// node.Swarm.Bootstrap()
 
-	//  Ping all nodes in the dark pool
-	for _, id := range darkPool {
-		target, err := node.Swarm.FindNode(id)
-		if err != nil {
-			log.Fatal(err)
-		}
-		// Ignore the node if we can't find it
-		if target == nil {
-			continue
-		}
-		err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
-		// Update the nodes in our DHT if they respond
-		if err != nil {
-			node.DarkPool = append(node.DarkPool, *target)
-			node.Swarm.DHT.UpdateMultiAddress(*target)
-		}
-	}
+	// //  Ping all nodes in the dark pool
+	// for _, id := range darkPool {
+	// 	target, err := node.Swarm.FindNode(id)
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// 	// Ignore the node if we can't find it
+	// 	if target == nil {
+	// 		continue
+	// 	}
+	// 	err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
+	// 	// Update the nodes in our DHT if they respond
+	// 	if err != nil {
+	// 		node.DarkPool = append(node.DarkPool, *target)
+	// 		node.Swarm.DHT.UpdateMultiAddress(*target)
+	// 	}
+	// }
 
 	// TODO: Synchronize the hidden order book from other DarkNodes.
 	// node.StartSynchronization()
@@ -311,7 +319,7 @@ func (node *DarkNode) StartShardElections() {
 		shardQueue := make(chan compute.Shard)
 		go func() {
 			for atomic.LoadInt64(&running) != 0 {
-				shardQueue <- node.HiddenOrderBook.WaitForComputationShard()
+				shardQueue <- node.HiddenOrderBook.WaitForShard()
 			}
 		}()
 
@@ -326,7 +334,7 @@ func (node *DarkNode) StartShardElections() {
 					node.RunShardComputation(shard)
 				}()
 			case <-timer.C:
-				preemptedShard := node.HiddenOrderBook.PreemptComputationShard()
+				preemptedShard := node.HiddenOrderBook.PreemptShard()
 				if len(preemptedShard.Deltas) > 0 {
 					go func() {
 						shard := node.RunShardElection(preemptedShard)
@@ -359,20 +367,23 @@ func (node *DarkNode) RunShardElection(shard compute.Shard) compute.Shard {
 
 		newShard, err := rpc.StartElectShard(target, node.Swarm.MultiAddress(), shard, 5*time.Second)
 		if err != nil {
-			panic(err)
+			log.Println(err)
+			return
 		}
-		do.ForAll(newShard.Deltas, func(j int) {
-			deltaVotesMu.Lock()
-			defer deltaVotesMu.Unlock()
-			deltaVotes[string(newShard.Deltas[i])]++
-		})
 
-		do.ForAll(newShard.Residues, func(j int) {
-			residueVotesMu.Lock()
-			defer residueVotesMu.Unlock()
-			residueVotes[string(newShard.Residues[i])]++
-		})
+		deltaVotesMu.Lock()
+		defer deltaVotesMu.Unlock()
 
+		residueVotesMu.Lock()
+		defer residueVotesMu.Unlock()
+
+		for j := range newShard.Deltas {
+			deltaVotes[string(newShard.Deltas[j])]++
+		}
+
+		for j := range newShard.Residues {
+			residueVotes[string(newShard.Residues[j])]++
+		}
 	})
 
 	returnedShard := compute.Shard{
