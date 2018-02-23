@@ -352,7 +352,7 @@ var _ = Describe("dark network", func() {
 		})
 
 		It("should be able to respond to finalize shard query", func() {
-			err := rpc.FinalizeShard(to, from, compute.Shard{}, DefaultTimeOut)
+			err := rpc.FinalizeShard(to, from, compute.FinalShard{}, DefaultTimeOut)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
