@@ -5,27 +5,27 @@ import (
 	"flag"
 	"log"
 
-	"github.com/republicprotocol/go-miner"
+	"github.com/republicprotocol/go-dark-node"
 )
 
-var config *miner.Config
+var config *node.Config
 
 func main() {
-	// Parse command line arguments and fill the miner.Config.
+	// Parse command line arguments and fill the node.Config.
 	if err := parseCommandLineFlags(); err != nil {
 		log.Println(err)
 		flag.Usage()
 		return
 	}
 
-	// Create a new miner.Miner.
-	miner, err := miner.NewMiner(config)
+	// Create a new node.node.
+	node, err := node.NewDarkNode(config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Star the miner.
-	miner.Start()
+	// Star the node.
+	node.Start()
 }
 
 func parseCommandLineFlags() error {
@@ -37,7 +37,7 @@ func parseCommandLineFlags() error {
 		return errors.New("no config file given")
 	}
 
-	conf, err := miner.LoadConfig(*confFilename)
+	conf, err := node.LoadConfig(*confFilename)
 	if err != nil {
 		return err
 	}
