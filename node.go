@@ -21,7 +21,7 @@ type Delegate interface {
 	OnSync(from identity.MultiAddress) chan do.Option
 	OnElectShard(from identity.MultiAddress, shard compute.Shard) compute.Shard
 	OnComputeShard(from identity.MultiAddress, shard compute.Shard)
-	OnFinalizeShard(from identity.MultiAddress, shard compute.Shard)
+	OnFinalizeShard(from identity.MultiAddress, finalShard compute.FinalShard)
 }
 
 // Node implements the gRPC Node service.
@@ -170,7 +170,7 @@ func (node *Node) FinalizeShard(ctx context.Context, finaliseShardRequest *rpc.F
 // SendOrderFragmentCommitment ...
 func (node *Node) SendOrderFragmentCommitment(ctx context.Context, orderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
 	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a order commitment from %v\n", node.Address(), OrderFragmentCommitment.From.Multi)
+		log.Printf("%v received a order commitment from %v\n", node.Address(), orderFragmentCommitment.From.Multi)
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -399,7 +399,7 @@ func (node *Node) finalizeShard(finaliseShardRequest *rpc.FinalizeShardRequest) 
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	shard := rpc.DeserializeShard(finaliseShardRequest.Shard)
+	shard := rpc.DeserializeFinalShard(finaliseShardRequest.Shard)
 	node.Delegate.OnFinalizeShard(from, *shard)
 	return &rpc.Nothing{}, nil
 }

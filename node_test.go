@@ -63,7 +63,7 @@ func (delegate *mockDelegate) OnElectShard(from identity.MultiAddress, shard com
 func (delegate *mockDelegate) OnComputeShard(from identity.MultiAddress, shard compute.Shard) {
 }
 
-func (delegate *mockDelegate) OnFinalizeShard(from identity.MultiAddress, shard compute.Shard) {
+func (delegate *mockDelegate) OnFinalizeShard(from identity.MultiAddress, finalShard compute.FinalShard) {
 
 }
 
@@ -313,7 +313,7 @@ var _ = Describe("dark network", func() {
 		})
 
 		It("should be able to get all results", func() {
-			results, err := rpc.GetResultsFromTarget(serverMulti, clientMulti, DefaultTimeOut)
+			results, err := rpc.GetFinalsFromTarget(serverMulti, clientMulti, DefaultTimeOut)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(results)).Should(Equal(number_of_results))
 		})
