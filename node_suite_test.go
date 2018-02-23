@@ -1,4 +1,4 @@
-package miner_test
+package node_test
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestGoMiner(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "GoMiner Suite")
+	RunSpecs(t, "Dark Node Suite")
 }
