@@ -230,32 +230,27 @@ func (node *DarkNode) OnElectShard(from identity.MultiAddress, shard compute.Sha
 	// TODO: Elect the shard. Check which deltas and residues the DarkNode has
 	// and remove all others from the shard before returning it.
 
-	returnedShardMu := new(sync.Mutex)
 	returnedShard := compute.Shard{
 		Signature: shard.Signature,
 	}
 
 	pendingDeltas := node.HiddenOrderBook.PendingDeltaFragments()
-	pendingDeltaMapMu := new(sync.Mutex)
 	pendingDeltaMap := map[string]bool{}
-	do.ForAll(pendingDeltas, func(i int) {
-		pendingDeltaMapMu.Lock()
-		defer pendingDeltaMapMu.Unlock()
+	for i := range pendingDeltas {
 		pendingDeltaMap[string(pendingDeltas[i].ID)] = true
-	})
-	do.ForAll(shard.Deltas, func(i int) {
-		if pendingDeltaMap[string(shard.Deltas[i].ID)] {
-			returnedShardMu.Lock()
-			defer returnedShardMu.Unlock()
-			returnedShard.Deltas = append(returnedShard.Deltas, nil)
-		}
-	})
+	}
 
-	do.ForAll(shard.Residues, func(i int) {
-		if false {
-			returnedShard.Residues = append(returnedShard.Residues, nil)
+	for i := range shard.Deltas {
+		if pendingDeltaMap[string(shard.Deltas[i].ID)] {
+			returnedShard.Deltas = append(returnedShard.Deltas, shard.Deltas[i])
 		}
-	})
+	}
+
+	for i := range shard.Residues {
+		if false {
+			returnedShard.Residues = append(returnedShard.Residues, returnedShard.Residues[i])
+		}
+	}
 
 	return returnedShard
 }
@@ -295,16 +290,14 @@ func (node *DarkNode) OnFinalizeShard(from identity.MultiAddress, finalShard com
 	do.ForAll(toReconstruct, func(i int) {
 		_, err := compute.NewFinal(node.FinalFragments[toReconstruct[i]], node.Configuration.Prime)
 		if err != nil {
-			// ...
+			panic(err)
 		}
-		// TODO: After reconstruction, finalize the computation and
+		// After reconstruction, finalize the computation and
 		// stop all processing for it (elections, computations, finalizations).
 		first := node.FinalFragments[toReconstruct[i]][0]
 		node.HiddenOrderBook.RemoveFinalizedOrders(first.BuyOrderFragmentID, first.SellOrderFragmentID, node.FinalFragments[toReconstruct[i]])
 		node.FinalFragments[toReconstruct[i]] = nil
 	})
-
-	panic("unimplemented")
 
 	// FIXME: After reconstruction there should be some interaction with the
 	// traders.
@@ -389,25 +382,21 @@ func (node *DarkNode) RunShardElection(shard compute.Shard) compute.Shard {
 	returnedShard := compute.Shard{
 		Signature: shard.Signature,
 	}
-	do.ForAll(shard.Deltas, func(i int) {
-		deltaVotesMu.Lock()
-		defer deltaVotesMu.Unlock()
+	for i := range shard.Deltas {
 		delta := shard.Deltas[i]
 		votes := deltaVotes[string(delta.ID)]
 		if votes > node.Configuration.ComputationShardSize {
 			returnedShard.Deltas = append(returnedShard.Deltas, delta)
 		}
-	})
+	}
 
-	do.ForAll(shard.Residues, func(i int) {
-		residueVotesMu.Lock()
-		defer residueVotesMu.Unlock()
+	for i := range shard.Residues {
 		residue := shard.Residues[i]
 		votes := residueVotes[string(residue.ID)]
 		if votes > node.Configuration.ComputationShardSize {
 			returnedShard.Residues = append(returnedShard.Residues, residue)
 		}
-	})
+	}
 
 	return returnedShard
 }
