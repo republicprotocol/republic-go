@@ -55,6 +55,7 @@ func (node *Node) Address() identity.Address {
 
 // Sync returns all deltaFragments and residueFragments the node have.
 func (node *Node) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncServer) error {
+	log.Println(111111)
 	if node.Options.Debug >= DebugHigh {
 		log.Printf("[%v] received a sync query from [%v]\n", node.Address(), syncRequest.From.Multi)
 	}
@@ -63,7 +64,7 @@ func (node *Node) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncSer
 	}
 
 	wait := do.Process(func() do.Option {
-		return do.Err(node.Sync(syncRequest, stream))
+		return do.Err(node.sync(syncRequest, stream))
 	})
 
 	select {
@@ -349,12 +350,13 @@ func (node *Node) getFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode
 }
 
 func (node *Node) sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncServer) error {
-	from, err := identity.NewMultiAddressFromString(syncRequest.From.String())
+	from, err := rpc.DeserializeMultiAddress(syncRequest.From)
 	if err != nil {
 		return err
 	}
 	blockChan := node.Delegate.OnSync(from)
 	for data := range blockChan {
+		log.Println("inside loop")
 		//todo : need to serialize data into the network representation
 		stream.Send(data.Ok.(*rpc.SyncBlock))
 	}
@@ -362,7 +364,7 @@ func (node *Node) sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncSer
 }
 
 func (node *Node) computeShard(computeShardRequest *rpc.ComputeShardRequest) (*rpc.Nothing, error) {
-	from, err := identity.NewMultiAddressFromString(computeShardRequest.From.String())
+	from, err := rpc.DeserializeMultiAddress(computeShardRequest.From)
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
@@ -372,7 +374,7 @@ func (node *Node) computeShard(computeShardRequest *rpc.ComputeShardRequest) (*r
 }
 
 func (node *Node) electShard(electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
-	from, err := identity.NewMultiAddressFromString(electShardRequest.From.String())
+	from, err := rpc.DeserializeMultiAddress(electShardRequest.From)
 	if err != nil {
 		return &rpc.Shard{}, err
 	}
@@ -382,7 +384,7 @@ func (node *Node) electShard(electShardRequest *rpc.ElectShardRequest) (*rpc.Sha
 }
 
 func (node *Node) finalizeShard(finaliseShardRequest *rpc.FinalizeShardRequest) (*rpc.Nothing, error) {
-	from, err := identity.NewMultiAddressFromString(finaliseShardRequest.From.String())
+	from, err := rpc.DeserializeMultiAddress(finaliseShardRequest.From)
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
