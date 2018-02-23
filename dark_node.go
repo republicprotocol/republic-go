@@ -15,9 +15,12 @@ import (
 // This function returns two channels. The first is used to read shards received
 // in the synchronization. The second is used by the caller to quit when he no
 // longer wants to receive dark.Chunk.
-func SyncWithTarget(target identity.MultiAddress, syncRequest *SyncRequest, timeout time.Duration) (chan do.Option, chan struct{}) {
+func SyncWithTarget(target, from identity.MultiAddress, timeout time.Duration) (chan do.Option, chan struct{}) {
 	shards := make(chan do.Option, 1)
 	quit := make(chan struct{}, 1)
+	syncRequest := &SyncRequest{
+		From: SerializeMultiAddress(from),
+	}
 
 	go func() {
 		defer close(shards)

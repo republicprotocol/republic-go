@@ -45,8 +45,8 @@ func SendOrderFragmentCommitmentToTarget(target identity.MultiAddress, from iden
 	defer cancel()
 
 	commitment := &OrderFragmentCommitment{
-		From:SerializeMultiAddress(from),
-		Signature: []byte{}, // todo :
+		From:          SerializeMultiAddress(from),
+		Signature:     []byte{}, // todo :
 		OrderFragment: []byte{}, // todo :
 	}
 	_, err = client.SendOrderFragmentCommitment(ctx, commitment, grpc.FailFast(false))

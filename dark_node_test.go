@@ -68,7 +68,7 @@ var _ = Describe("Dark Node", func() {
 			}(server)
 			defer server.Stop()
 
-			resultChan, _ := rpc.SyncWithTarget(rpcServer.MultiAddress, &rpc.SyncRequest{}, defaultTimeout)
+			resultChan, _ := rpc.SyncWithTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
 			syncBlock := <-resultChan
 			Ω(syncBlock.Err).Should(BeNil())
 		})
