@@ -55,7 +55,6 @@ func (node *Node) Address() identity.Address {
 
 // Sync returns all deltaFragments and residueFragments the node have.
 func (node *Node) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncServer) error {
-	log.Println(111111)
 	if node.Options.Debug >= DebugHigh {
 		log.Printf("[%v] received a sync query from [%v]\n", node.Address(), syncRequest.From.Multi)
 	}

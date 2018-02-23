@@ -3,7 +3,6 @@ package dark_test
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/big"
 	"math/rand"
 	"net"
@@ -331,9 +330,9 @@ var _ = Describe("dark network", func() {
 		})
 
 		It("should be able to respond to sync query", func() {
-			option, _ := rpc.SyncWithTarget(to, from, DefaultTimeOut)
-			res := <-option
-			log.Println(res)
+			option, quit := rpc.SyncWithTarget(to, from, DefaultTimeOut)
+			_ = <-option
+			quit <- struct{}{}
 		})
 
 		It("should be able to respond to send order fragment commitment query", func() {
