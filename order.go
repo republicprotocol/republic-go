@@ -447,14 +447,14 @@ func (orderBook *HiddenOrderBook) addOrderFragment(orderFragment *OrderFragment,
 }
 
 // RemoveFinalizedOrders removes an OrderFragment and all corresponding DeltaFragments from the order book
-func (orderBook *HiddenOrderBook) RemoveFinalizedOrders(idA OrderFragmentID, idB OrderFragmentID, deltaFragments []*DeltaFragment) {
+func (orderBook *HiddenOrderBook) RemoveFinalizedOrders(idA, idB OrderFragmentID, deltaFragments []*DeltaFragment) {
 	orderBook.Enter(nil)
 	defer orderBook.Exit()
 
 	orderBook.removeOrderFragment(idA)
 	orderBook.removeOrderFragment(idB)
 
-	for i := range deltaFragments{
+	for i := range deltaFragments {
 		orderBook.removeDeltaFragment(deltaFragments[i])
 	}
 }
