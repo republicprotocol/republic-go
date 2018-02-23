@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -410,6 +411,10 @@ func NewHiddenOrderBook(shardSize int) *HiddenOrderBook {
 	return orderBook
 }
 
+func (orderBook *HiddenOrderBook) PendingDeltaFragments() []*DeltaFragment {
+	return orderBook.pendingDeltaFragments
+}
+
 func (orderBook *HiddenOrderBook) AddOrderFragment(orderFragment *OrderFragment, prime *big.Int) {
 	orderBook.Enter(nil)
 	defer orderBook.Exit()
@@ -442,6 +447,53 @@ func (orderBook *HiddenOrderBook) addOrderFragment(orderFragment *OrderFragment,
 	orderBook.orderFragments = append(orderBook.orderFragments, orderFragment)
 }
 
+// RemoveFinalizedOrders removes an OrderFragment and all corresponding DeltaFragments from the order book
+func (orderBook *HiddenOrderBook) RemoveFinalizedOrders(idA OrderFragmentID, idB OrderFragmentID, deltaFragments []*DeltaFragment) {
+	orderBook.Enter(nil)
+	defer orderBook.Exit()
+
+	orderBook.removeOrderFragment(idA)
+	orderBook.removeOrderFragment(idB)
+
+	deltaFragmentMu := new(sync.Mutex)
+	do.ForAll(deltaFragments, func(i int) {
+		deltaFragmentMu.Lock()
+		defer deltaFragmentMu.Unlock()
+
+		orderBook.removeDeltaFragment(deltaFragments[i])
+	})
+}
+
+func (orderBook *HiddenOrderBook) removeOrderFragment(id OrderFragmentID) {
+	orderIndex := -1
+	for index, rhs := range orderBook.orderFragments {
+		if id.Equals(rhs.ID) {
+			orderIndex = index
+			break
+		}
+	}
+	if orderIndex == -1 {
+		return
+	}
+
+	orderBook.orderFragments = append(orderBook.orderFragments[:orderIndex], orderBook.orderFragments[orderIndex+1:]...)
+}
+
+func (orderBook *HiddenOrderBook) removeDeltaFragment(deltaFragment *DeltaFragment) {
+	deltaIndex := -1
+	for index, rhs := range orderBook.pendingDeltaFragments {
+		if deltaFragment.ID.Equals(rhs.ID) {
+			deltaIndex = index
+			break
+		}
+	}
+	if deltaIndex == -1 {
+		return
+	}
+
+	orderBook.pendingDeltaFragments = append(orderBook.pendingDeltaFragments[:deltaIndex], orderBook.pendingDeltaFragments[deltaIndex+1:]...)
+}
+
 func (orderBook *HiddenOrderBook) WaitForShard() Shard {
 	orderBook.Enter(orderBook.pendingDeltaFragmentsReadyForShard)
 	defer orderBook.Exit()
@@ -452,6 +504,14 @@ func (orderBook *HiddenOrderBook) PreemptShard() Shard {
 	orderBook.Enter(nil)
 	defer orderBook.Exit()
 	return orderBook.preemptShard()
+}
+
+func (orderBook *HiddenOrderBook) WaitForComputationShard() Shard {
+	panic("Not implemented")
+}
+
+func (orderBook *HiddenOrderBook) PreemptComputationShard() Shard {
+	panic("Not implemented")
 }
 
 func (orderBook *HiddenOrderBook) preemptShard() Shard {
