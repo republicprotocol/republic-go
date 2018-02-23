@@ -355,7 +355,6 @@ func (node *Node) sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncSer
 	}
 	blockChan := node.Delegate.OnSync(from)
 	for data := range blockChan {
-		log.Println("inside loop")
 		//todo : need to serialize data into the network representation
 		stream.Send(data.Ok.(*rpc.SyncBlock))
 	}
