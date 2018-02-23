@@ -491,14 +491,6 @@ func (orderBook *HiddenOrderBook) PreemptShard() Shard {
 	return orderBook.preemptShard()
 }
 
-func (orderBook *HiddenOrderBook) WaitForComputationShard() Shard {
-	panic("Not implemented")
-}
-
-func (orderBook *HiddenOrderBook) PreemptComputationShard() Shard {
-	panic("Not implemented")
-}
-
 func (orderBook *HiddenOrderBook) preemptShard() Shard {
 	shardSize := orderBook.shardSize
 	if shardSize > len(orderBook.pendingDeltaFragments) {
