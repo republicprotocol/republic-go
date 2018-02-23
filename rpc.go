@@ -208,3 +208,19 @@ func DeserializeShard(shard *Shard) *compute.Shard {
 		Residues:  []*compute.ResidueFragment{},
 	}
 }
+
+// todo: serialize the deltas and residues to bytes
+func SerializeFinalShard(shard compute.FinalShard) *FinalShard {
+	return &FinalShard{
+		Signature: shard.Signature,
+		Finals:   [][]byte{} ,
+	}
+}
+
+// todo: deserialize deltas and residues
+func DeserializeFinalShard(shard *FinalShard) *compute.FinalShard {
+	return &compute.FinalShard{
+		Signature: shard.Signature,
+		Finals: []*compute.DeltaFragment{},
+	}
+}

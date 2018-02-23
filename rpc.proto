@@ -164,10 +164,16 @@ message Shard {
   repeated bytes residues = 3;
 }
 
+// A FinalShard is a block of results after computation
+message FinalShard {
+  bytes signature = 1;
+  repeated bytes finals = 2;
+}
+
 // A FinalizeShardRequest is ...
 message FinalizeShardRequest{
   MultiAddress from = 1;
-  Shard shard = 2;
+  FinalShard shard = 2;
 }
 
 // A SyncRequest is ...

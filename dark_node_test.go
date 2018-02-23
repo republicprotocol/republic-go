@@ -133,7 +133,7 @@ var _ = Describe("Dark Node", func() {
 			}(server)
 			defer server.Stop()
 
-			inputShard := compute.NewShard([]*compute.DeltaFragment{}, []*compute.ResidueFragment{})
+			inputShard := compute.NewFinalShard()
 			err = rpc.FinalizeShard(rpcServer.MultiAddress, rpcClient.MultiAddress, inputShard, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 		})

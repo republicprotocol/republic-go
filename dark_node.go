@@ -117,7 +117,7 @@ func AskToComputeShard(target, from identity.MultiAddress, shard compute.Shard, 
 
 // FinalizeShard using a new grpc.ClientConn to make a Compute RPC call
 // to a target identity.MultiAddress.
-func FinalizeShard(target, from identity.MultiAddress, shard compute.Shard, timeout time.Duration) error {
+func FinalizeShard(target, from identity.MultiAddress, shard compute.FinalShard, timeout time.Duration) error {
 	conn, err := Dial(target, timeout)
 	if err != nil {
 		return err
@@ -130,7 +130,7 @@ func FinalizeShard(target, from identity.MultiAddress, shard compute.Shard, time
 
 	request := &FinalizeShardRequest{
 		From:  SerializeMultiAddress(from),
-		Shard: SerializeShard(shard),
+		Shard: SerializeFinalShard(shard),
 	}
 
 	_, err = client.FinalizeShard(ctx, request, grpc.FailFast(false))
