@@ -125,12 +125,12 @@ func FinalizeShard(target, from identity.MultiAddress, shard compute.Shard, time
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	request := &ComputeShardRequest{
+	request := &FinalizeShardRequest{
 		From:  SerializeMultiAddress(from),
 		Shard: SerializeShard(shard),
 	}
 
-	_, err = client.ComputeShard(ctx, request, grpc.FailFast(false))
+	_, err = client.FinalizeShard(ctx, request, grpc.FailFast(false))
 	if err != nil {
 		return err
 	}
