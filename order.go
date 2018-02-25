@@ -218,68 +218,6 @@ func NewOrderFragment(orderID OrderID, orderType OrderType, orderParity OrderPar
 	return orderFragment
 }
 
-// Add two OrderFragments together and return the resulting output
-// ResultFragment. The output ResultFragment will have its ID computed.
-func (orderFragment *OrderFragment) Add(other *OrderFragment, prime *big.Int) (*DeltaFragment, error) {
-	// Check that the OrderFragments have compatible sss.Shares, and that one
-	// of them is an OrderBuy and the other is an OrderSell.
-	if err := orderFragment.IsCompatible(other); err != nil {
-		return nil, err
-	}
-
-	// Label the OrderFragments appropriately.
-	var buyOrderFragment, sellOrderFragment *OrderFragment
-	if orderFragment.OrderParity == OrderParityBuy {
-		buyOrderFragment = orderFragment
-		sellOrderFragment = other
-	} else {
-		buyOrderFragment = other
-		sellOrderFragment = orderFragment
-	}
-
-	// Perform the addition using the buyOrderFragment as the LHS and the
-	// sellOrderFragment as the RHS.
-	fstCodeShare := sss.Share{
-		Key:   buyOrderFragment.FstCodeShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.FstCodeShare.Value, sellOrderFragment.FstCodeShare.Value),
-	}
-	sndCodeShare := sss.Share{
-		Key:   buyOrderFragment.SndCodeShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.SndCodeShare.Value, sellOrderFragment.SndCodeShare.Value),
-	}
-	priceShare := sss.Share{
-		Key:   buyOrderFragment.PriceShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.PriceShare.Value, sellOrderFragment.PriceShare.Value),
-	}
-	maxVolumeShare := sss.Share{
-		Key:   buyOrderFragment.MaxVolumeShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.MaxVolumeShare.Value, sellOrderFragment.MaxVolumeShare.Value),
-	}
-	minVolumeShare := sss.Share{
-		Key:   buyOrderFragment.MinVolumeShare.Key,
-		Value: big.NewInt(0).Add(sellOrderFragment.MinVolumeShare.Value, buyOrderFragment.MinVolumeShare.Value),
-	}
-	fstCodeShare.Value.Mod(fstCodeShare.Value, prime)
-	sndCodeShare.Value.Mod(sndCodeShare.Value, prime)
-	priceShare.Value.Mod(priceShare.Value, prime)
-	maxVolumeShare.Value.Mod(maxVolumeShare.Value, prime)
-	minVolumeShare.Value.Mod(minVolumeShare.Value, prime)
-	deltaFragment := &DeltaFragment{
-		nil,
-		buyOrderFragment.OrderID,
-		sellOrderFragment.OrderID,
-		buyOrderFragment.ID,
-		sellOrderFragment.ID,
-		fstCodeShare,
-		sndCodeShare,
-		priceShare,
-		maxVolumeShare,
-		minVolumeShare,
-	}
-	deltaFragment.ID = DeltaFragmentID(crypto.Keccak256(deltaFragment.BuyOrderFragmentID[:], deltaFragment.SellOrderFragmentID[:]))
-	return deltaFragment, nil
-}
-
 // Sub two OrderFragments from one another and return the resulting output
 // ResultFragment. The output ResultFragment will have its ID computed.
 func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*DeltaFragment, error) {

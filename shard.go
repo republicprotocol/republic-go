@@ -1,7 +1,5 @@
 package compute
 
-import "math/big"
-
 type Shard struct {
 	Signature []byte
 	Deltas    []*DeltaFragment
@@ -15,6 +13,6 @@ func NewShard(deltas []*DeltaFragment, residues []*ResidueFragment) Shard {
 	}
 }
 
-func (shard Shard) Compute(prime *big.Int) FinalShard {
-	return NewFinalShard()
+func (shard Shard) Compute() DeltaShard {
+	return NewDeltaShard()
 }

@@ -53,39 +53,6 @@ var _ = Describe("Orders and order fragments", func() {
 		})
 	})
 
-	Context("when adding order fragments", func() {
-
-		It("should not return an error for compatible order fragments", func() {
-			lhs := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0))
-			rhs := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(1))
-			Ω(lhs.Equals(rhs)).Should(Equal(false))
-
-			lhsFragments, err := lhs.Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			rhsFragments, err := rhs.Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			for i := range lhsFragments {
-				_, err := lhsFragments[i].Add(rhsFragments[i], prime)
-				Ω(err).ShouldNot(HaveOccurred())
-			}
-		})
-
-		It("should return an error for incompatible order fragments", func() {
-			lhs := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0))
-			rhs := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(1))
-			Ω(lhs.Equals(rhs)).Should(Equal(false))
-
-			lhsFragments, err := lhs.Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			rhsFragments, err := rhs.Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			for i := range lhsFragments {
-				_, err := lhsFragments[i].Add(rhsFragments[i], prime)
-				Ω(err).Should(HaveOccurred())
-			}
-		})
-	})
-
 	Context("when subtracting order fragments", func() {
 
 		It("should always subtract the sell from the buy", func() {

@@ -4,38 +4,40 @@ import (
 	"bytes"
 	"math/big"
 
+	"github.com/republicprotocol/go-do"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/go-sss"
 )
 
-type FinalShard struct {
-	Signature []byte
-	Finals    []*DeltaFragment
+type DeltaShard struct {
+	Signature      []byte
+	DeltaFragments []*DeltaFragment
 }
 
-func NewFinalShard() FinalShard {
-	return FinalShard{
-		Finals: []*DeltaFragment{},
+func NewDeltaShard() DeltaShard {
+	return DeltaShard{
+		DeltaFragments: []*DeltaFragment{},
 	}
 }
 
-// A FinalID is the Keccak256 hash of the OrderIDs that were used to compute
+// A DeltaID is the Keccak256 hash of the OrderIDs that were used to compute
 // the respective Result.
-type FinalID []byte
+type DeltaID []byte
 
 // Equals checks if two ResultIDs are equal in value.
-func (id FinalID) Equals(other FinalID) bool {
+func (id DeltaID) Equals(other DeltaID) bool {
 	return bytes.Equal(id, other)
 }
 
 // String returns the ResultID as a string.
-func (id FinalID) String() string {
+func (id DeltaID) String() string {
 	return string(id)
 }
 
-// A Final is the publicly computed value of comparing two Orders.
-type Final struct {
-	ID          FinalID
+// A Delta is the publicly computed value of comparing two Orders.
+type Delta struct {
+	ID          DeltaID
 	BuyOrderID  OrderID
 	SellOrderID OrderID
 	FstCode     *big.Int
@@ -45,8 +47,8 @@ type Final struct {
 	MinVolume   *big.Int
 }
 
-func NewFinal(deltaFragments []*DeltaFragment, prime *big.Int) (*Final, error) {
-	// Check that all DeltaFragments are compatible with each other.
+func NewDelta(deltaFragments []*DeltaFragment, prime *big.Int) (*Delta, error) {
+	// Check that all ResultFragments are compatible with each other.
 	err := isCompatible(deltaFragments)
 	if err != nil {
 		return nil, err
@@ -67,37 +69,37 @@ func NewFinal(deltaFragments []*DeltaFragment, prime *big.Int) (*Final, error) {
 		minVolumeShares[i] = resultFragment.MinVolumeShare
 	}
 
-	// Join the sss.Shares into a Final.
-	final := &Final{
+	// Join the sss.Shares into a Result.
+	delta := &Delta{
 		BuyOrderID:  deltaFragments[0].BuyOrderID,
 		SellOrderID: deltaFragments[0].SellOrderID,
 	}
-	final.FstCode = sss.Join(prime, fstCodeShares)
-	final.SndCode = sss.Join(prime, sndCodeShares)
-	final.Price = sss.Join(prime, priceShares)
-	final.MaxVolume = sss.Join(prime, maxVolumeShares)
-	final.MinVolume = sss.Join(prime, minVolumeShares)
+	delta.FstCode = sss.Join(prime, fstCodeShares)
+	delta.SndCode = sss.Join(prime, sndCodeShares)
+	delta.Price = sss.Join(prime, priceShares)
+	delta.MaxVolume = sss.Join(prime, maxVolumeShares)
+	delta.MinVolume = sss.Join(prime, minVolumeShares)
 
-	// Compute the FinalID and return the Final.
-	final.ID = FinalID(crypto.Keccak256(final.BuyOrderID[:], final.SellOrderID[:]))
-	return final, nil
+	// Compute the ResultID and return the Result.
+	delta.ID = DeltaID(crypto.Keccak256(delta.BuyOrderID[:], delta.SellOrderID[:]))
+	return delta, nil
 }
 
-func (final *Final) IsMatch(prime *big.Int) bool {
+func (delta *Delta) IsMatch(prime *big.Int) bool {
 	zeroThreshold := big.NewInt(0).Div(prime, big.NewInt(2))
-	if final.FstCode.Cmp(big.NewInt(0)) != 0 {
+	if delta.FstCode.Cmp(big.NewInt(0)) != 0 {
 		return false
 	}
-	if final.SndCode.Cmp(big.NewInt(0)) != 0 {
+	if delta.SndCode.Cmp(big.NewInt(0)) != 0 {
 		return false
 	}
-	if final.Price.Cmp(zeroThreshold) == 1 {
+	if delta.Price.Cmp(zeroThreshold) == 1 {
 		return false
 	}
-	if final.MaxVolume.Cmp(zeroThreshold) == 1 {
+	if delta.MaxVolume.Cmp(zeroThreshold) == 1 {
 		return false
 	}
-	if final.MinVolume.Cmp(zeroThreshold) == 1 {
+	if delta.MinVolume.Cmp(zeroThreshold) == 1 {
 		return false
 	}
 	return true
@@ -174,6 +176,12 @@ func (deltaFragment *DeltaFragment) Equals(other *DeltaFragment) bool {
 		deltaFragment.MinVolumeShare.Value.Cmp(other.MinVolumeShare.Value) == 0
 }
 
+// DeltaID returns the ID of the Delta to which this DeltaFragment will
+// eventually reconstruct.
+func (deltaFragment *DeltaFragment) DeltaID() DeltaID {
+	return DeltaID(crypto.Keccak256(deltaFragment.BuyOrderID[:], deltaFragment.SellOrderID[:]))
+}
+
 // IsCompatible returns an error when the two deltaFragments do not have
 // the same share indices.
 func isCompatible(deltaFragments []*DeltaFragment) error {
@@ -191,4 +199,58 @@ func isCompatible(deltaFragments []*DeltaFragment) error {
 		}
 	}
 	return nil
+}
+
+type DeltaEngine struct {
+	do.GuardedObject
+
+	deltaFragmentMap map[string][]*DeltaFragment
+	deltaMap         map[string]*Delta
+}
+
+func NewDeltaEngine() *DeltaEngine {
+	return &DeltaEngine{
+		GuardedObject:    do.NewGuardedObject(),
+		deltaFragmentMap: map[string][]*DeltaFragment{},
+		deltaMap:         map[string]*Delta{},
+	}
+}
+
+func (engine DeltaEngine) AddDeltaFragment(deltaFragment *DeltaFragment, k int64, prime *big.Int) (*Delta, error) {
+	engine.Enter(nil)
+	defer engine.Exit()
+
+	// Get the delta ID for this delta fragment.
+	deltaID := deltaFragment.DeltaID()
+
+	// If the delta for this delta fragment has already been reconstructed then
+	// return nothing, the engine must have already noted the deltas
+	// reconstruction.
+	if delta, ok := engine.deltaMap[deltaID.String()]; ok && delta != nil {
+		return nil, nil
+	}
+
+	// Check that this delta fragment has not been collected yet.
+	deltaFragmentIsUnique := true
+	for _, candidate := range engine.deltaFragmentMap[deltaID.String()] {
+		if candidate.ID.Equals(deltaFragment.ID) {
+			deltaFragmentIsUnique = false
+			break
+		}
+	}
+	if deltaFragmentIsUnique {
+		engine.deltaFragmentMap[deltaID.String()] = append(engine.deltaFragmentMap[deltaID.String()], deltaFragment)
+	}
+
+	// Check if we can reconstruct a new delta.
+	if int64(len(engine.deltaFragmentMap[deltaID.String()])) >= k {
+		delta, err := NewDelta(engine.deltaFragmentMap[deltaID.String()], prime)
+		if err != nil {
+			return nil, err
+		}
+		engine.deltaMap[deltaID.String()] = delta
+		return delta, nil
+	}
+
+	return nil, nil
 }
