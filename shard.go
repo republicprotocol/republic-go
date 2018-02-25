@@ -13,6 +13,6 @@ func NewShard(deltas []*DeltaFragment, residues []*ResidueFragment) Shard {
 	}
 }
 
-func (shard Shard) Compute() FinalShard {
-	return NewFinalShard()
+func (shard Shard) Compute() DeltaShard {
+	return NewDeltaShard()
 }
