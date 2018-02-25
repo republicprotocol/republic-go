@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"math/big"
 
+	"github.com/republicprotocol/go-do"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/go-sss"
 )
@@ -194,18 +196,25 @@ func isCompatible(deltaFragments []*DeltaFragment) error {
 }
 
 type DeltaEngine struct {
+	do.GuardedObject
+
 	deltaFragmentMap map[string][]*DeltaFragment
 	deltaMap         map[string]*Delta
 }
 
 func NewDeltaEngine() *DeltaEngine {
 	return &DeltaEngine{
+		GuardedObject:    do.NewGuardedObject(),
 		deltaFragmentMap: map[string][]*DeltaFragment{},
 		deltaMap:         map[string]*Delta{},
 	}
 }
 
-func (engine DeltaEngine) AddDeltaFragments(deltaFragment *DeltaFragment, k int64, prime *big.Int) (*Delta, error) {
+func (engine DeltaEngine) AddDeltaFragment(deltaFragment *DeltaFragment, k int64, prime *big.Int) (*Delta, error) {
+	engine.Enter(nil)
+	defer engine.Exit()
+
+	// Get the delta ID for this delta fragment.
 	deltaID := DeltaID(crypto.Keccak256(deltaFragment.BuyOrderID[:], deltaFragment.SellOrderID[:]))
 
 	// If the delta for this delta fragment has already been reconstructed then

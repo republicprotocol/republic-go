@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	compute "github.com/republicprotocol/go-order-compute"
+	"github.com/republicprotocol/go-order-compute"
 )
 
 var _ = Describe("Finals and final fragments", func() {
@@ -41,15 +41,68 @@ var _ = Describe("Finals and final fragments", func() {
 
 			engine := compute.NewDeltaEngine()
 			for i := int64(0); i < k-1; i++ {
-				delta, err := engine.AddDeltaFragments(deltaFragments[i], k, prime)
+				delta, err := engine.AddDeltaFragment(deltaFragments[i], k, prime)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(delta).Should(BeNil())
 			}
-			delta, err := engine.AddDeltaFragments(deltaFragments[k-1], k, prime)
+			delta, err := engine.AddDeltaFragment(deltaFragments[k-1], k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(delta).ShouldNot(BeNil())
 		})
 
+		It("should not return a delta after the first k delta fragments", func() {
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			deltaFragments := make([]*compute.DeltaFragment, n)
+			for i := range deltaFragments {
+				deltaFragment, err := compute.NewDeltaFragment(lhs[i], rhs[i], prime)
+				Ω(err).ShouldNot(HaveOccurred())
+				deltaFragments[i] = deltaFragment
+			}
+
+			engine := compute.NewDeltaEngine()
+			for i := int64(0); i < k-1; i++ {
+				delta, err := engine.AddDeltaFragment(deltaFragments[i], k, prime)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(delta).Should(BeNil())
+			}
+			delta, err := engine.AddDeltaFragment(deltaFragments[k-1], k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(delta).ShouldNot(BeNil())
+
+			for i := int64(0); i < n; i++ {
+				delta, err := engine.AddDeltaFragment(deltaFragments[i], k, prime)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(delta).Should(BeNil())
+			}
+		})
+
+		It("should not return a delta using k non-unique fragments", func() {
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			deltaFragments := make([]*compute.DeltaFragment, n)
+			for i := range deltaFragments {
+				deltaFragment, err := compute.NewDeltaFragment(lhs[i], rhs[i], prime)
+				Ω(err).ShouldNot(HaveOccurred())
+				deltaFragments[i] = deltaFragment
+			}
+
+			engine := compute.NewDeltaEngine()
+			for i := int64(0); i < k-1; i++ {
+				delta, err := engine.AddDeltaFragment(deltaFragments[i], k, prime)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(delta).Should(BeNil())
+			}
+			for i := int64(0); i < k-1; i++ {
+				delta, err := engine.AddDeltaFragment(deltaFragments[i], k, prime)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(delta).Should(BeNil())
+			}
+		})
 	})
 })
 
