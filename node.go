@@ -12,6 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	base58 "github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-atom/ethereum"
 	"github.com/republicprotocol/go-dark-network"
 	dnr "github.com/republicprotocol/go-dark-node-registrar"
@@ -43,7 +44,7 @@ type DarkNode struct {
 	Configuration *Config
 
 	HiddenOrderBook *compute.HiddenOrderBook
-	FinalFragments  map[string][]*compute.DeltaFragment
+	DeltaEngine     *compute.DeltaEngine
 	DarkPool        identity.MultiAddresses
 	DarkPoolLimit   int
 
@@ -65,7 +66,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	}
 	node := &DarkNode{
 		HiddenOrderBook: compute.NewHiddenOrderBook(config.ComputationShardSize),
-		FinalFragments:  make(map[string][]*compute.DeltaFragment, 0),
+		DeltaEngine:     compute.DeltaEngine(),
 		Server:          grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
 		Configuration:   config,
 
@@ -107,21 +108,6 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 func (node *DarkNode) OnSync(identity.MultiAddress) chan do.Option {
 	// TODO: ...
 	panic("uninmplemented")
-}
-
-// OnOrderFragmentForwarding ...
-func (node *DarkNode) OnOrderFragmentForwarding(address identity.Address, peer identity.MultiAddress, fragment *compute.OrderFragment) {
-	// TODO: Log metrics for the deep query.
-}
-
-// OnDeltaFragmentForwarding ...
-func (node *DarkNode) OnDeltaFragmentForwarding(address identity.Address, peer identity.MultiAddress, fragment *compute.DeltaFragment) {
-	// TODO: Log metrics for the deep query.
-}
-
-// OnDeltaFragmentReceived ...
-func (node *DarkNode) OnDeltaFragmentReceived(peer identity.MultiAddress, fragment *compute.DeltaFragment) {
-	// TODO: Log metrics for the deep query.
 }
 
 // Start mining for compute.Orders that are matched. It establishes connections
@@ -268,39 +254,23 @@ func (node *DarkNode) OnComputeShard(from identity.MultiAddress, shard compute.S
 // is to store all computation shares from within the different Shards that are
 // finalized. Eventually, enough computation shares will be acquired and the
 // computation proper can be reconstructed.
-func (node *DarkNode) OnFinalizeShard(from identity.MultiAddress, finalShard compute.FinalShard) {
-	// TODO: Store the shares in a map until we have enough to reconstruct the
-	// computation proper.
-
-	var toReconstruct []string
-
-	finalFragmentsMu := new(sync.Mutex)
-	do.ForAll(finalShard.Finals, func(i int) {
-		finalFragmentsMu.Lock()
-		defer finalFragmentsMu.Unlock()
-		delta := finalShard.Finals[i]
-		matchID := string(delta.BuyOrderID) + string(delta.SellOrderID)
-
-		node.FinalFragments[matchID] = append(node.FinalFragments[matchID], finalShard.Finals[i])
-		if len(node.FinalFragments[matchID]) > node.Configuration.ComputationShardSize {
-			toReconstruct = append(toReconstruct, matchID)
-		}
-	})
-
-	do.ForAll(toReconstruct, func(i int) {
-		_, err := compute.NewFinal(node.FinalFragments[toReconstruct[i]], node.Configuration.Prime)
+func (node *DarkNode) OnFinalizeShard(from identity.MultiAddress, deltaShard compute.DeltaShard) {
+	for i := range finalShard.DeltaFragments {
+		delta, err := node.DeltaEngine.AddDeltaFragment(finalShard.DeltaFragments[i], node.DarkPoolLimit, node.Configuration.Prime)
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
-		// After reconstruction, finalize the computation and
-		// stop all processing for it (elections, computations, finalizations).
-		first := node.FinalFragments[toReconstruct[i]][0]
-		node.HiddenOrderBook.RemoveFinalizedOrders(first.BuyOrderFragmentID, first.SellOrderFragmentID, node.FinalFragments[toReconstruct[i]])
-		node.FinalFragments[toReconstruct[i]] = nil
-	})
+		if delta != nil {
+			if !delta.IsMatch(node.Configuration.Prime) {
+				log.Printf("Mismatch [%v]\n\t(%v, %v)", base58.Encode(delta.ID), base58.Encode(delta.BuyOrderID), base58.Encode(delta.SellOrderID))
+				continue
+			}
+			log.Printf("Match [%v]\n\t(%v, %v)", base58.Encode(delta.ID), base58.Encode(delta.BuyOrderID), base58.Encode(delta.SellOrderID))
 
-	// FIXME: After reconstruction there should be some interaction with the
-	// traders.
+			// FIXME: After reconstruction there should be some interaction with the
+			// traders.
+		}
+	}
 }
 
 // StartShardElections will continue to create Shards and run elections for
@@ -353,9 +323,6 @@ func (node *DarkNode) RunShardElection(shard compute.Shard) compute.Shard {
 	residueVotes := map[string]int{}
 
 	do.ForAll(node.DarkPool, func(i int) {
-		// TODO: Call the ElectShard RPC on all peers in the dark pool. Get the
-		// shard that is returned and build up a shard of deltas / residues
-		// that are held by at least 2/3rds of the dark pool.
 		target := node.DarkPool[i]
 
 		newShard, err := rpc.StartElectShard(target, node.Swarm.MultiAddress(), shard, 5*time.Second)
@@ -415,7 +382,6 @@ func (node *DarkNode) RunShardComputation(shard compute.Shard) {
 func (node *DarkNode) Compute(shard compute.Shard) {
 	finalShard := shard.Compute(node.Configuration.Prime)
 	do.ForAll(node.DarkPool, func(i int) {
-		// TODO: Call the FinalizeShard RPC on all peers in the dark pool.
 		rpc.FinalizeShard(node.DarkPool[i], node.Swarm.MultiAddress(), finalShard, defaultTimeout)
 	})
 }
