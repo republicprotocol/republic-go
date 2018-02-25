@@ -348,6 +348,10 @@ func NewHiddenOrderBook(shardSize int) *HiddenOrderBook {
 	return orderBook
 }
 
+func (orderBook *HiddenOrderBook) PendingDeltaFragments() []*DeltaFragment {
+	return orderBook.pendingDeltaFragments
+}
+
 func (orderBook *HiddenOrderBook) AddOrderFragment(orderFragment *OrderFragment, prime *big.Int) {
 	orderBook.Enter(nil)
 	defer orderBook.Exit()
@@ -378,6 +382,39 @@ func (orderBook *HiddenOrderBook) addOrderFragment(orderFragment *OrderFragment,
 		orderBook.pendingDeltaFragments = append(orderBook.pendingDeltaFragments, deltaFragment)
 	}
 	orderBook.orderFragments = append(orderBook.orderFragments, orderFragment)
+}
+
+// RemoveFinalizedOrders removes an OrderFragment and all corresponding DeltaFragments from the order book
+func (orderBook *HiddenOrderBook) RemoveFinalizedOrders(idA, idB OrderFragmentID, deltaFragments []*DeltaFragment) {
+	orderBook.Enter(nil)
+	defer orderBook.Exit()
+
+	orderBook.removeOrderFragment(idA)
+	orderBook.removeOrderFragment(idB)
+
+	for i := range deltaFragments {
+		orderBook.removeDeltaFragment(deltaFragments[i])
+	}
+}
+
+func (orderBook *HiddenOrderBook) removeOrderFragment(id OrderFragmentID) {
+	for index, rhs := range orderBook.orderFragments {
+		if id.Equals(rhs.ID) {
+			orderBook.orderFragments[index] = orderBook.orderFragments[len(orderBook.orderFragments)-1]
+			orderBook.orderFragments = orderBook.orderFragments[:len(orderBook.orderFragments)-1]
+			break
+		}
+	}
+}
+
+func (orderBook *HiddenOrderBook) removeDeltaFragment(deltaFragment *DeltaFragment) {
+	for index, rhs := range orderBook.pendingDeltaFragments {
+		if deltaFragment.ID.Equals(rhs.ID) {
+			orderBook.pendingDeltaFragments[index] = orderBook.pendingDeltaFragments[len(orderBook.pendingDeltaFragments)-1]
+			orderBook.pendingDeltaFragments = orderBook.pendingDeltaFragments[:len(orderBook.pendingDeltaFragments)-1]
+			break
+		}
+	}
 }
 
 func (orderBook *HiddenOrderBook) WaitForShard() Shard {
