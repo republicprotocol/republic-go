@@ -198,13 +198,44 @@ type DeltaEngine struct {
 	deltaMap         map[string]*Delta
 }
 
-func NewDeltaEngine() DeltaEngine {
-	return DeltaEngine{
+func NewDeltaEngine() *DeltaEngine {
+	return &DeltaEngine{
 		deltaFragmentMap: map[string][]*DeltaFragment{},
 		deltaMap:         map[string]*Delta{},
 	}
 }
 
-func (engine DeltaEngine) AddDeltaFragments(deltaFragments []*DeltaFragment) []*Delta {
-	return []*Delta{}
+func (engine DeltaEngine) AddDeltaFragments(deltaFragment *DeltaFragment, k int64, prime *big.Int) (*Delta, error) {
+	deltaID := DeltaID(crypto.Keccak256(deltaFragment.BuyOrderID[:], deltaFragment.SellOrderID[:]))
+
+	// If the delta for this delta fragment has already been reconstructed then
+	// return nothing, the engine must have already noted the deltas
+	// reconstruction.
+	if delta, ok := engine.deltaMap[deltaID.String()]; ok && delta != nil {
+		return nil, nil
+	}
+
+	// Check that this delta fragment has not been collected yet.
+	deltaFragmentIsUnique := true
+	for _, candidate := range engine.deltaFragmentMap[deltaID.String()] {
+		if candidate.ID.Equals(deltaFragment.ID) {
+			deltaFragmentIsUnique = false
+			break
+		}
+	}
+	if deltaFragmentIsUnique {
+		engine.deltaFragmentMap[deltaID.String()] = append(engine.deltaFragmentMap[deltaID.String()], deltaFragment)
+	}
+
+	// Check if we can reconstruct a new delta.
+	if int64(len(engine.deltaFragmentMap[deltaID.String()])) >= k {
+		delta, err := NewDelta(engine.deltaFragmentMap[deltaID.String()], prime)
+		if err != nil {
+			return nil, err
+		}
+		engine.deltaMap[deltaID.String()] = delta
+		return delta, nil
+	}
+
+	return nil, nil
 }

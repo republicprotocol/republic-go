@@ -24,6 +24,33 @@ var _ = Describe("Finals and final fragments", func() {
 			Ω(final.ID.String()).Should(Equal(string(final.ID)))
 		})
 	})
+
+	Context("when using a delta engine", func() {
+
+		It("should only return a delta after receiving k delta fragments", func() {
+			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			deltaFragments := make([]*compute.DeltaFragment, n)
+			for i := range deltaFragments {
+				deltaFragment, err := compute.NewDeltaFragment(lhs[i], rhs[i], prime)
+				Ω(err).ShouldNot(HaveOccurred())
+				deltaFragments[i] = deltaFragment
+			}
+
+			engine := compute.NewDeltaEngine()
+			for i := int64(0); i < k-1; i++ {
+				delta, err := engine.AddDeltaFragments(deltaFragments[i], k, prime)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(delta).Should(BeNil())
+			}
+			delta, err := engine.AddDeltaFragments(deltaFragments[k-1], k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(delta).ShouldNot(BeNil())
+		})
+
+	})
 })
 
 func computeRandomFinal(n, k int64, prime *big.Int) (*compute.Delta, error) {
