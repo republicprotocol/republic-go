@@ -11,13 +11,13 @@ import (
 )
 
 type DeltaShard struct {
-	Signature []byte
-	Finals    []*DeltaFragment
+	Signature      []byte
+	DeltaFragments []*DeltaFragment
 }
 
 func NewDeltaShard() DeltaShard {
 	return DeltaShard{
-		Finals: []*DeltaFragment{},
+		DeltaFragments: []*DeltaFragment{},
 	}
 }
 
@@ -176,6 +176,12 @@ func (deltaFragment *DeltaFragment) Equals(other *DeltaFragment) bool {
 		deltaFragment.MinVolumeShare.Value.Cmp(other.MinVolumeShare.Value) == 0
 }
 
+// DeltaID returns the ID of the Delta to which this DeltaFragment will
+// eventually reconstruct.
+func (deltaFragment *DeltaFragment) DeltaID() DeltaID {
+	return DeltaID(crypto.Keccak256(deltaFragment.BuyOrderID[:], deltaFragment.SellOrderID[:]))
+}
+
 // IsCompatible returns an error when the two deltaFragments do not have
 // the same share indices.
 func isCompatible(deltaFragments []*DeltaFragment) error {
@@ -215,7 +221,7 @@ func (engine DeltaEngine) AddDeltaFragment(deltaFragment *DeltaFragment, k int64
 	defer engine.Exit()
 
 	// Get the delta ID for this delta fragment.
-	deltaID := DeltaID(crypto.Keccak256(deltaFragment.BuyOrderID[:], deltaFragment.SellOrderID[:]))
+	deltaID := deltaFragment.DeltaID()
 
 	// If the delta for this delta fragment has already been reconstructed then
 	// return nothing, the engine must have already noted the deltas
