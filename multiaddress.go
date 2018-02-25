@@ -77,7 +77,7 @@ func (multiAddress MultiAddress) String() string {
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (multiAddress *MultiAddress) MarshalJSON() ([]byte, error) {
+func (multiAddress MultiAddress) MarshalJSON() ([]byte, error) {
 	return json.Marshal(multiAddress.String())
 }
 
