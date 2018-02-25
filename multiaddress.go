@@ -66,9 +66,14 @@ func (multiAddress MultiAddress) ValueForProtocol(code int) (string, error) {
 	return multiAddress.baseMultiAddress.ValueForProtocol(code)
 }
 
-// Address returns the Republic address of a MultiAddress, or an error.
+// Address returns the Republic address of a MultiAddress.
 func (multiAddress MultiAddress) Address() Address {
 	return multiAddress.address
+}
+
+// ID returns the Republic ID of a MultiAddress.
+func (multiAddress MultiAddress) ID() ID {
+	return multiAddress.address.ID()
 }
 
 // String returns the MultiAddress as a plain string.

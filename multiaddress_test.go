@@ -12,7 +12,6 @@ import (
 var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 
 	Context("after importing the package", func() {
-
 		It("should expose a protocol called republic", func() {
 			Ω(ProtocolWithName("republic").Name).Should(Equal("republic"))
 		})
@@ -32,7 +31,6 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 		})
 
 		It("should error when trying getting multiAddress from a bad address", func() {
-
 			_, err := identity.NewMultiAddressFromString("bad address")
 			Ω(err).Should(HaveOccurred())
 			addr, _, err := identity.NewAddress()
@@ -73,6 +71,23 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 			badData := []byte("this is not a valid Multiaddress")
 			err := newMulti.UnmarshalJSON(badData)
 			Ω(err).Should(HaveOccurred())
+		})
+	})
+
+	Context("converting to Address or ID", func() {
+		ip4, tcp, republicAddress := "127.0.0.1", "80","8MGfbzAMS59Gb4cSjpm34soGNYsM2f"
+		addresses := fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s",ip4,tcp,republicAddress)
+
+		It("should be converted to an Address", func() {
+			multiAddress, err := identity.NewMultiAddressFromString(addresses)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(multiAddress.Address()).Should(Equal(Address(republicAddress)))
+		})
+
+		It("should be converted to an ID", func() {
+			multiAddress, err := identity.NewMultiAddressFromString(addresses)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(multiAddress.ID()).Should(Equal(multiAddress.Address().ID()))
 		})
 	})
 })

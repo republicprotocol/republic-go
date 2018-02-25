@@ -1,5 +1,10 @@
 package identity
 
+import (
+	"github.com/multiformats/go-multihash"
+	"github.com/jbenet/go-base58"
+)
+
 // IDLength is the number of bytes in an ID.
 const IDLength = 20
 
@@ -20,4 +25,12 @@ func NewID() (ID, KeyPair, error) {
 // String returns the ID as a string.
 func (id ID) String() string {
 	return string(id)
+}
+
+// Address returns the Address of the ID
+func (id ID) Address() Address{
+	hash := make([]byte, 2, IDLength+2)
+	hash[0], hash[1] = multihash.KECCAK_256, IDLength
+	hash = append(hash, id...)
+	return Address(base58.EncodeAlphabet(hash, base58.BTCAlphabet))
 }
