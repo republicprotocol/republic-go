@@ -4,14 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-dark-node"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 )
 
 var _ = Describe("Dark nodes", func() {
+	var mu = new(sync.Mutex)
 	const Boostrap_Nodes_Port = 3000
 	const Test_Nodes_Port = 4000
 
@@ -19,29 +23,25 @@ var _ = Describe("Dark nodes", func() {
 	var err error
 
 	startListening := func(nodes []*node.DarkNode) {
-		for _, node := range nodes{
-			go func() {
-				defer GinkgoRecover()
-
-				node.Start()
-			}()
-		}
+		do.ForAll(nodes, func(i int) {
+			err := nodes[i].Start()
+			Ω(err).ShouldNot(HaveOccurred())
+		})
 	}
 
 	stopListening := func(nodes []*node.DarkNode) {
-		for _, node := range nodes{
-			go func() {
-				defer GinkgoRecover()
+		do.ForAll(nodes, func(i int) {
+			defer GinkgoRecover()
 
-				node.Stop()
-			}()
-		}
+			nodes[i].Stop()
+		})
 	}
 
-	for _, numberOfBootstrapNodes := range []int{4} {
-		for _, numberOfNodes := range []int{8} {
+	for _, numberOfBootstrapNodes := range []int{2} {
+		for _, numberOfNodes := range []int{2} {
 			Context("nodes start up", func() {
 				BeforeEach(func() {
+					mu.Lock()
 					err = generateConfigs(numberOfBootstrapNodes, Boostrap_Nodes_Port , []*node.DarkNode{})
 					Ω(err).ShouldNot(HaveOccurred())
 					bootstrapNodes, err = generateNodes(numberOfBootstrapNodes)
@@ -52,12 +52,14 @@ var _ = Describe("Dark nodes", func() {
 					nodes, err = generateNodes(numberOfNodes)
 					Ω(err).ShouldNot(HaveOccurred())
 
+					time.Sleep(1 * time.Second)
 					startListening(bootstrapNodes)
 				})
 
 				AfterEach(func() {
 					stopListening(nodes)
 					stopListening(bootstrapNodes)
+					mu.Unlock()
 				})
 
 				It("should be able to run startup successfully", func() {
