@@ -66,7 +66,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	}
 	node := &DarkNode{
 		HiddenOrderBook: compute.NewHiddenOrderBook(config.ComputationShardSize),
-		DeltaEngine:     compute.DeltaEngine(),
+		DeltaEngine:     &compute.DeltaEngine{},
 		Server:          grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
 		Configuration:   config,
 
@@ -113,7 +113,7 @@ func (node *DarkNode) OnSync(identity.MultiAddress) chan do.Option {
 // Start mining for compute.Orders that are matched. It establishes connections
 // to other peers in the swarm network by bootstrapping against a set of
 // bootstrap swarm.Nodes.
-func (node *DarkNode) Start() error {
+func (node *DarkNode) Start() {
 	// Start both gRPC servers.
 	go func() {
 		log.Printf("Listening on %s:%s\n", node.Configuration.Host, node.Configuration.Port)
@@ -128,40 +128,40 @@ func (node *DarkNode) Start() error {
 		}
 	}()
 
-	 registered, err := isRegistered(node.Configuration.MultiAddress.ID())
-	 if err != nil {
-	 	log.Fatal(err)
-	 }
-	 if !registered {
-	 	panic("dark node hasn't been registered")
-	 }
+	registered, err := isRegistered(node.Configuration.MultiAddress.ID())
+	if err != nil {
+		log.Fatal(err)
+	}
+	if !registered {
+		panic("dark node hasn't been registered")
+	}
 
-	 darkPool, err := getDarkPoolConfig()
-	 if err != nil {
-	 	log.Fatal(err)
+	darkPool, err := getDarkPoolConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Wait for the server to start and bootstrap the connections in the swarm.
+	time.Sleep(time.Second)
+	node.Swarm.Bootstrap()
+
+	 //  Ping all nodes in the dark pool
+	 for _, id := range darkPool {
+	 	target, err := node.Swarm.FindNode(id)
+	 	if err != nil {
+	 		log.Fatal(err)
+	 	}
+	 	// Ignore the node if we can't find it
+	 	if target == nil {
+	 		continue
+	 	}
+	 	err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
+	 	// Update the nodes in our DHT if they respond
+	 	if err != nil {
+	 		node.DarkPool = append(node.DarkPool, *target)
+	 		node.Swarm.DHT.UpdateMultiAddress(*target)
+	 	}
 	 }
-
-	 // Wait for the server to start and bootstrap the connections in the swarm.
-	 time.Sleep(time.Second)
-	 node.Swarm.Bootstrap()
-
-	// //  Ping all nodes in the dark pool
-	// for _, id := range darkPool {
-	// 	target, err := node.Swarm.FindNode(id)
-	// 	if err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// 	// Ignore the node if we can't find it
-	// 	if target == nil {
-	// 		continue
-	// 	}
-	// 	err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
-	// 	// Update the nodes in our DHT if they respond
-	// 	if err != nil {
-	// 		node.DarkPool = append(node.DarkPool, *target)
-	// 		node.Swarm.DHT.UpdateMultiAddress(*target)
-	// 	}
-	// }
 
 	// TODO: Synchronize the hidden order book from other DarkNodes.
 	// node.StartSynchronization()
@@ -206,6 +206,9 @@ func (node *DarkNode) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAd
 // compute.OrderFragment that it must process.
 func (node *DarkNode) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
 	node.HiddenOrderBook.AddOrderFragment(orderFragment, node.Configuration.Prime)
+}
+func OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment){
+	// TODO :
 }
 
 // OnElectShard is a delegate method that is called when the DarkNode has
@@ -255,8 +258,8 @@ func (node *DarkNode) OnComputeShard(from identity.MultiAddress, shard compute.S
 // finalized. Eventually, enough computation shares will be acquired and the
 // computation proper can be reconstructed.
 func (node *DarkNode) OnFinalizeShard(from identity.MultiAddress, deltaShard compute.DeltaShard) {
-	for i := range finalShard.DeltaFragments {
-		delta, err := node.DeltaEngine.AddDeltaFragment(finalShard.DeltaFragments[i], node.DarkPoolLimit, node.Configuration.Prime)
+	for i := range deltaShard.DeltaFragments {
+		delta, err := node.DeltaEngine.AddDeltaFragment(deltaShard.DeltaFragments[i], int64(node.DarkPoolLimit), node.Configuration.Prime)
 		if err != nil {
 			log.Println(err)
 		}
@@ -381,7 +384,8 @@ func (node *DarkNode) RunShardComputation(shard compute.Shard) {
 
 // Compute ...
 func (node *DarkNode) Compute(shard compute.Shard) {
-	finalShard := shard.Compute(node.Configuration.Prime)
+	//finalShard := shard.Compute(node.Configuration.Prime)
+	finalShard := shard.Compute()
 	do.ForAll(node.DarkPool, func(i int) {
 		rpc.FinalizeShard(node.DarkPool[i], node.Swarm.MultiAddress(), finalShard, defaultTimeout)
 	})
@@ -403,8 +407,8 @@ func isRegistered(id identity.ID) (bool, error) {
 	return true, nil
 }
 
-func getDarkPoolConfig() ([]identity.ID, error){
-	return
+func getDarkPoolConfig() ([]identity.ID, error) {
+
 	// todo: need to get key from the ethereum private key
 	key := `{"version":3,"id":"7844982f-abe7-4690-8c15-34f75f847c66","address":"db205ea9d35d8c01652263d58351af75cfbcbf07","Crypto":{"ciphertext":"378dce3c1279b36b071e1c7e2540ac1271581bff0bbe36b94f919cb73c491d3a","cipherparams":{"iv":"2eb92da55cc2aa62b7ffddba891f5d35"},"cipher":"aes-128-ctr","kdf":"scrypt","kdfparams":{"dklen":32,"salt":"80d3341678f83a14024ba9c3edab072e6bd2eea6aa0fbc9e0a33bae27ffa3d6d","n":8192,"r":8,"p":1},"mac":"3d07502ea6cd6b96a508138d8b8cd2e46c3966240ff276ce288059ba4235cb0d"}}`
 	auth, err := bind.NewTransactor(strings.NewReader(key), "password1")

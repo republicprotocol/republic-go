@@ -16,13 +16,13 @@ const Configs_Path = "./test_configs/"
 
 var _ = Describe("Dark nodes", func() {
 
-	start := func(nodes []*node.DarkNode){
+	start := func(nodes []*node.DarkNode) {
 		do.ForAll(nodes, func(i int) {
 			nodes[i].Start()
 		})
 	}
 
-	stop := func(nodes []*node.DarkNode){
+	stop := func(nodes []*node.DarkNode) {
 		do.ForAll(nodes, func(i int) {
 			nodes[i].Stop()
 		})
@@ -61,12 +61,11 @@ var _ = Describe("Dark nodes", func() {
 		const Boostrap_Nodes_Port = 3000
 		const Test_Nodes_Port = 4000
 
-
 		BeforeEach(func() {
-			err := generateConfigs(10 , Boostrap_Nodes_Port)
+			err := generateConfigs(10, Boostrap_Nodes_Port)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err  = generateConfigs(10 , Test_Nodes_Port)
+			err = generateConfigs(10, Test_Nodes_Port)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -76,7 +75,7 @@ var _ = Describe("Dark nodes", func() {
 })
 
 // Generate config files in the test_configs folder
-func generateConfigs(numberOfNodes , port int) error {
+func generateConfigs(numberOfNodes, port int) error {
 	var configs []node.Config
 	for i := 0; i < numberOfNodes; i++ {
 		address, keyPair, err := identity.NewAddress()
@@ -113,15 +112,15 @@ func generateConfigs(numberOfNodes , port int) error {
 }
 
 // Generate nodes from the config files
-func generateNodes(numberOfNodes int )([]*node.DarkNode, error ) {
-	nodes := make ([]*node.DarkNode, numberOfNodes)
+func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
+	nodes := make([]*node.DarkNode, numberOfNodes)
 
-	for i:=0; i < numberOfNodes; i++{
-		config, err  := node.LoadConfig(fmt.Sprintf("./test_configs/config-%d.json", i))
+	for i := 0; i < numberOfNodes; i++ {
+		config, err := node.LoadConfig(fmt.Sprintf("./test_configs/config-%d.json", i))
 		if err != nil {
 			return nil, err
 		}
-		node,err  := node.NewDarkNode(config)
+		node, err := node.NewDarkNode(config)
 		if err != nil {
 			return nil, err
 		}
@@ -129,4 +128,3 @@ func generateNodes(numberOfNodes int )([]*node.DarkNode, error ) {
 	}
 	return nodes, nil
 }
-
