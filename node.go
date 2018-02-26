@@ -267,8 +267,9 @@ func (node *DarkNode) OnFinalizeShard(from identity.MultiAddress, deltaShard com
 			}
 			log.Printf("Match [%v]\n\t(%v, %v)", base58.Encode(delta.ID), base58.Encode(delta.BuyOrderID), base58.Encode(delta.SellOrderID))
 
-			// FIXME: After reconstruction there should be some interaction with the
-			// traders.
+			// FIXME: After reconstruction of a matched delta, it should be
+			// posted to the Ethereum consensus smart contract. Traders can use
+			// this to be notified of the match.
 		}
 	}
 }
