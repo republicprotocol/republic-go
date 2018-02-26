@@ -80,12 +80,12 @@ service DarkNode {
   //
   rpc FinalizeShard (FinalizeShardRequest) returns (Nothing);
 
-  // Get Final messages for successful order matches that have happened since
-  // this procedure was last used, as well as new ones that occur.
-  rpc Notifications (MultiAddress) returns (stream Final);
-
-  // Get all relevant results that have been computed in the current epoch.
-  rpc GetFinals (MultiAddress) returns (stream Final);
+//  // Get Final messages for successful order matches that have happened since
+//  // this procedure was last used, as well as new ones that occur.
+//  rpc Notifications (MultiAddress) returns (stream Final);
+//
+//  // Get all relevant results that have been computed in the current epoch.
+//  rpc GetFinals (MultiAddress) returns (stream Final);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
@@ -140,22 +140,22 @@ message SyncBlock {
   }
 }
 
-// Final messages are sent to signal that a successful order computation has
-// happened.
-message Final {
-
-  // Public data.
-  bytes id = 1;
-  bytes buyOrderId = 2;
-  bytes sellOrderId = 3;
-  
-  // Secure data.
-  bytes fstCode = 4;
-  bytes sndCode = 5;
-  bytes price = 6;
-  bytes maxVolume = 7;
-  bytes minVolume = 8;
-}
+//// Final messages are sent to signal that a successful order computation has
+//// happened.
+//message Final {
+//
+//  // Public data.
+//  bytes id = 1;
+//  bytes buyOrderId = 2;
+//  bytes sellOrderId = 3;
+//
+//  // Secure data.
+//  bytes fstCode = 4;
+//  bytes sndCode = 5;
+//  bytes price = 6;
+//  bytes maxVolume = 7;
+//  bytes minVolume = 8;
+//}
 
 // A shard is a block of computations
 message Shard {
@@ -164,8 +164,8 @@ message Shard {
   repeated bytes residues = 3;
 }
 
-// A FinalShard is a block of results after computation
-message FinalShard {
+// A DeltaShard is a block of results after computation
+message DeltaShard {
   bytes signature = 1;
   repeated bytes finals = 2;
 }
@@ -173,7 +173,7 @@ message FinalShard {
 // A FinalizeShardRequest is ...
 message FinalizeShardRequest{
   MultiAddress from = 1;
-  FinalShard shard = 2;
+  DeltaShard shard = 2;
 }
 
 // A SyncRequest is ...

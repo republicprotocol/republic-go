@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/republicprotocol/go-atom"
@@ -139,38 +138,38 @@ func DeserializeOrderFragment(input *OrderFragment) (*compute.OrderFragment, err
 	return orderFragment, nil
 }
 
-// SerializeFinal converts a compute.Final into its network representation.
-func SerializeFinal(input *compute.Final) *Final {
-	result := &Final{
-		Id:          []byte(input.ID),
-		BuyOrderId:  []byte(input.BuyOrderID),
-		SellOrderId: []byte(input.SellOrderID),
-	}
-
-	result.FstCode = input.FstCode.Bytes()
-	result.SndCode = input.SndCode.Bytes()
-	result.Price = input.Price.Bytes()
-	result.MaxVolume = input.MaxVolume.Bytes()
-	result.MinVolume = input.MinVolume.Bytes()
-	return result
-}
-
-// DeserializeFinal converts a network representation of a Final into a
-// compute.FinalFragment. An error is returned if the network representation
-// is malformed.
-func DeserializeFinal(input *Final) *compute.Final {
-	result := &compute.Final{
-		ID:          compute.FinalID(input.Id),
-		BuyOrderID:  []byte(input.BuyOrderId),
-		SellOrderID: []byte(input.SellOrderId),
-	}
-	result.FstCode = big.NewInt(0).SetBytes(input.FstCode)
-	result.SndCode = big.NewInt(0).SetBytes(input.SndCode)
-	result.Price = big.NewInt(0).SetBytes(input.Price)
-	result.MaxVolume = big.NewInt(0).SetBytes(input.MaxVolume)
-	result.MinVolume = big.NewInt(0).SetBytes(input.MinVolume)
-	return result
-}
+//// SerializeFinal converts a compute.Final into its network representation.
+//func SerializeFinal(input *compute.) *Final {
+//	result := &Final{
+//		Id:          []byte(input.ID),
+//		BuyOrderId:  []byte(input.BuyOrderID),
+//		SellOrderId: []byte(input.SellOrderID),
+//	}
+//
+//	result.FstCode = input.FstCode.Bytes()
+//	result.SndCode = input.SndCode.Bytes()
+//	result.Price = input.Price.Bytes()
+//	result.MaxVolume = input.MaxVolume.Bytes()
+//	result.MinVolume = input.MinVolume.Bytes()
+//	return result
+//}
+//
+//// DeserializeFinal converts a network representation of a Final into a
+//// compute.FinalFragment. An error is returned if the network representation
+//// is malformed.
+//func DeserializeFinal(input *Final) *compute.Final {
+//	result := &compute.Final{
+//		ID:          compute.FinalID(input.Id),
+//		BuyOrderID:  []byte(input.BuyOrderId),
+//		SellOrderID: []byte(input.SellOrderId),
+//	}
+//	result.FstCode = big.NewInt(0).SetBytes(input.FstCode)
+//	result.SndCode = big.NewInt(0).SetBytes(input.SndCode)
+//	result.Price = big.NewInt(0).SetBytes(input.Price)
+//	result.MaxVolume = big.NewInt(0).SetBytes(input.MaxVolume)
+//	result.MinVolume = big.NewInt(0).SetBytes(input.MinVolume)
+//	return result
+//}
 
 // SerializeAtom converts an atomic.Atom into its network representation.
 func SerializeAtom(a atom.Atom) *Atom {
@@ -210,17 +209,17 @@ func DeserializeShard(shard *Shard) *compute.Shard {
 }
 
 // todo: serialize the deltas and residues to bytes
-func SerializeFinalShard(shard compute.FinalShard) *FinalShard {
-	return &FinalShard{
+func SerializeFinalShard(shard compute.DeltaShard) *DeltaShard {
+	return &DeltaShard{
 		Signature: shard.Signature,
-		Finals:   [][]byte{} ,
+		Finals:    [][]byte{},
 	}
 }
 
 // todo: deserialize deltas and residues
-func DeserializeFinalShard(shard *FinalShard) *compute.FinalShard {
-	return &compute.FinalShard{
+func DeserializeFinalShard(shard *DeltaShard) *compute.DeltaShard {
+	return &compute.DeltaShard{
 		Signature: shard.Signature,
-		Finals: []*compute.DeltaFragment{},
+		DeltaFragments:    []*compute.DeltaFragment{},
 	}
 }

@@ -123,7 +123,7 @@ var _ = Describe("Dark Node", func() {
 		})
 	})
 
-	Context("finalize shard", func() {
+	Context("delta shard", func() {
 		It("should return no error", func() {
 			lis, err := net.Listen("tcp", ":3000")
 			Ω(err).ShouldNot(HaveOccurred())
@@ -133,10 +133,9 @@ var _ = Describe("Dark Node", func() {
 			}(server)
 			defer server.Stop()
 
-			inputShard := compute.NewFinalShard()
+			inputShard := compute.NewDeltaShard()
 			err = rpc.FinalizeShard(rpcServer.MultiAddress, rpcClient.MultiAddress, inputShard, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
-
 })
