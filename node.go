@@ -21,7 +21,7 @@ type Delegate interface {
 	OnSync(from identity.MultiAddress) chan do.Option
 	OnElectShard(from identity.MultiAddress, shard compute.Shard) compute.Shard
 	OnComputeShard(from identity.MultiAddress, shard compute.Shard)
-	OnFinalizeShard(from identity.MultiAddress, finalShard compute.FinalShard)
+	OnFinalizeShard(from identity.MultiAddress, deltaShard compute.DeltaShard)
 }
 
 // Node implements the gRPC Node service.
@@ -223,66 +223,66 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 	}
 }
 
-// Notifications will connect the rpc client with a channel and send all
-// unread results to the client via a stream
-func (node *Node) Notifications(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_NotificationsServer) error {
-	if node.Options.Debug >= DebugHigh {
-		log.Printf("[%v] received a query for notifications of [%v]\n", node.Address(), traderAddress.Multi)
-	}
-	if err := stream.Context().Err(); err != nil {
-		return err
-	}
+//// Notifications will connect the rpc client with a channel and send all
+//// unread results to the client via a stream
+//func (node *Node) Notifications(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_NotificationsServer) error {
+//	if node.Options.Debug >= DebugHigh {
+//		log.Printf("[%v] received a query for notifications of [%v]\n", node.Address(), traderAddress.Multi)
+//	}
+//	if err := stream.Context().Err(); err != nil {
+//		return err
+//	}
+//
+//	wait := do.Process(func() do.Option {
+//		return do.Err(node.notifications(traderAddress, stream))
+//	})
+//
+//	select {
+//	case val := <-wait:
+//		return val.Err
+//
+//	case <-stream.Context().Done():
+//		return stream.Context().Err()
+//	}
+//}
+//
+//// GetFinals will connect the rpc client with a channel and send all
+//// related results to the client via a stream
+//func (node *Node) GetFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_GetFinalsServer) error {
+//	if node.Options.Debug >= DebugHigh {
+//		log.Printf("[%v] received a query for all results of [%v]\n", node.Address(), traderAddress.Multi)
+//	}
+//
+//	if err := stream.Context().Err(); err != nil {
+//		return err
+//	}
+//
+//	wait := do.Process(func() do.Option {
+//		return do.Err(node.getFinals(traderAddress, stream))
+//	})
+//
+//	for {
+//		select {
+//		case val := <-wait:
+//			return val.Err
+//
+//		case <-stream.Context().Done():
+//			return stream.Context().Err()
+//		}
+//	}
+//}
 
-	wait := do.Process(func() do.Option {
-		return do.Err(node.notifications(traderAddress, stream))
-	})
-
-	select {
-	case val := <-wait:
-		return val.Err
-
-	case <-stream.Context().Done():
-		return stream.Context().Err()
-	}
-}
-
-// GetFinals will connect the rpc client with a channel and send all
-// related results to the client via a stream
-func (node *Node) GetFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_GetFinalsServer) error {
-	if node.Options.Debug >= DebugHigh {
-		log.Printf("[%v] received a query for all results of [%v]\n", node.Address(), traderAddress.Multi)
-	}
-
-	if err := stream.Context().Err(); err != nil {
-		return err
-	}
-
-	wait := do.Process(func() do.Option {
-		return do.Err(node.getFinals(traderAddress, stream))
-	})
-
-	for {
-		select {
-		case val := <-wait:
-			return val.Err
-
-		case <-stream.Context().Done():
-			return stream.Context().Err()
-		}
-	}
-}
-
-// Notify will store new result in the node.
-func (node *Node) Notify(traderAddress identity.Address, result *compute.Final) {
-	results, ok := node.results.Load(traderAddress)
-	if !ok {
-		newInbox := NewInbox()
-		newInbox.AddNewResult(result)
-		node.results.Store(traderAddress, newInbox)
-	} else {
-		results.(*Inbox).AddNewResult(result)
-	}
-}
+//// Notify will store new result in the node.
+//func (node *Node) Notify(traderAddress identity.Address, result *compute.Final) {
+//	results, ok := node.results.Load(traderAddress)
+//	if !ok {
+//		newInbox := NewInbox()
+//		newInbox.AddNewResult(result)
+//		node.results.Store(traderAddress, newInbox)
+//	} else {
+//		results.(*Inbox).AddNewResult(result)
+//	}
+//}
 
 func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
 	deserializedTo := rpc.DeserializeAddress(orderFragment.To)
@@ -306,47 +306,47 @@ func (node *Node) sendOrderFragment(orderFragment *rpc.OrderFragment) (*rpc.Noth
 	return &rpc.Nothing{}, nil
 }
 
-func (node *Node) notifications(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_NotificationsServer) error {
-	multiAddress, err := rpc.DeserializeMultiAddress(traderAddress)
-	if err != nil {
-		return err
-	}
-	address := identity.Address(multiAddress.Address())
-
-	results, ok := node.results.Load(address)
-	if !ok {
-		return nil
-	}
-	for {
-		results := results.(*Inbox).GetAllNewResults()
-		for i := range results {
-			err := stream.Send(rpc.SerializeFinal(results[i]))
-			if err != nil {
-				return err
-			}
-		}
-	}
-}
-
-func (node *Node) getFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_GetFinalsServer) error {
-	multiAddress, err := rpc.DeserializeMultiAddress(traderAddress)
-	if err != nil {
-		return err
-	}
-	address := multiAddress.Address()
-	notifications, ok := node.results.Load(address)
-	if !ok {
-		return nil
-	}
-	results := notifications.(*Inbox).GetAllResults()
-	for _, result := range results {
-		err = stream.Send(rpc.SerializeFinal(result))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
+//func (node *Node) notifications(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_NotificationsServer) error {
+//	multiAddress, err := rpc.DeserializeMultiAddress(traderAddress)
+//	if err != nil {
+//		return err
+//	}
+//	address := identity.Address(multiAddress.Address())
+//
+//	results, ok := node.results.Load(address)
+//	if !ok {
+//		return nil
+//	}
+//	for {
+//		results := results.(*Inbox).GetAllNewResults()
+//		for i := range results {
+//			err := stream.Send(rpc.SerializeFinal(results[i]))
+//			if err != nil {
+//				return err
+//			}
+//		}
+//	}
+//}
+//
+//func (node *Node) getFinals(traderAddress *rpc.MultiAddress, stream rpc.DarkNode_GetFinalsServer) error {
+//	multiAddress, err := rpc.DeserializeMultiAddress(traderAddress)
+//	if err != nil {
+//		return err
+//	}
+//	address := multiAddress.Address()
+//	notifications, ok := node.results.Load(address)
+//	if !ok {
+//		return nil
+//	}
+//	results := notifications.(*Inbox).GetAllResults()
+//	for _, result := range results {
+//		err = stream.Send(rpc.SerializeFinal(result))
+//		if err != nil {
+//			return err
+//		}
+//	}
+//	return nil
+//}
 
 func (node *Node) sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncServer) error {
 	from, err := rpc.DeserializeMultiAddress(syncRequest.From)
