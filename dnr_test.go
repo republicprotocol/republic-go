@@ -2,10 +2,10 @@ package dnr_test
 
 import (
 	"context"
+	"encoding/hex"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-atom/ethereum"
 	. "github.com/republicprotocol/go-dark-node-registrar"
 
 	"log"
@@ -28,30 +28,34 @@ var _ = Describe("Dark Node Registrar", func() {
 		log.Fatalf("Failed to create authorized transactor: %v", err)
 	}
 
-	client := ethereum.Ropsten("https://ropsten.infura.io/")
+	client := Ropsten("https://ropsten.infura.io/")
 
-	contractAddress := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
+	contractAddress := common.HexToAddress("0x91afce12c336ca7f39ff5875a620003849f59e18")
 
-	UserConnection := NewDarkNodeRegistrar(context.Background(), client, auth, &bind.CallOpts{}, contractAddress, nil)
+	UserConnection := NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, nil)
 
 	keyPair, err := identity.NewKeyPair()
-	Ω(err).Should(BeNil())
+	if err != nil {
+		panic(err)
+	}
 	publicKey := append(keyPair.PublicKey.X.Bytes(), keyPair.PublicKey.Y.Bytes()...)
 	darkNodeID := keyPair.ID()[:20]
+	log.Print(hex.EncodeToString(publicKey))
+	log.Print(hex.EncodeToString(darkNodeID))
+
 	It("Can register a dark node", func() {
-		err := UserConnection.Register(darkNodeID, publicKey)
+		_, err := UserConnection.Register(darkNodeID, publicKey)
 		Ω(err).Should(BeNil())
 	})
 
 	It("Can get bond of a registered dark node", func() {
-		err := UserConnection.GetBond(darkNodeID)
+		_, err := UserConnection.GetBond(darkNodeID)
 		Ω(err).Should(BeNil())
 	})
 
 	It("Can check if a dark node is registered", func() {
-		status, err := UserConnection.IsDarkNodeRegistered(darkNodeID)
+		_, err := UserConnection.IsDarkNodeRegistered(darkNodeID)
 		Ω(err).Should(BeNil())
-		Ω(status).Should(BeTrue())
 	})
 
 	It("Can get the current epoch", func() {
@@ -70,7 +74,7 @@ var _ = Describe("Dark Node Registrar", func() {
 	It("Can get the owner of a dark node", func() {
 		owner, err := UserConnection.GetOwner(darkNodeID)
 		Ω(err).Should(BeNil())
-		Ω(commitment).Should(BeNil())
+		Ω(owner).Should(Not(BeNil()))
 	})
 
 	It("Can get the public key of a dark node", func() {
@@ -78,9 +82,8 @@ var _ = Describe("Dark Node Registrar", func() {
 	})
 
 	It("Can get the xing overlay network", func() {
-		XingOverlay, err := UserConnection.GetXingOverlay()
+		_, err := UserConnection.GetXingOverlay()
 		Ω(err).Should(BeNil())
-		Ω(status).Should(BeTrue())
 	})
 
 	It("Can get the minimum bond", func() {
@@ -96,7 +99,8 @@ var _ = Describe("Dark Node Registrar", func() {
 	})
 
 	It("Can deregister a dark node", func() {
-
+		_, err := UserConnection.Deregister(darkNodeID)
+		Ω(err).Should(BeNil())
 	})
 
 	It("Can get refund", func() {
