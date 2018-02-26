@@ -12,15 +12,14 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	base58 "github.com/jbenet/go-base58"
-	"github.com/republicprotocol/go-atom/ethereum"
+	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-dark-network"
-	dnr "github.com/republicprotocol/go-dark-node-registrar"
+	"github.com/republicprotocol/go-dark-node-registrar"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-rpc"
-	swarm "github.com/republicprotocol/go-swarm-network"
+	"github.com/republicprotocol/go-swarm-network"
 	"google.golang.org/grpc"
 )
 
@@ -42,6 +41,7 @@ type DarkNode struct {
 	Swarm         *swarm.Node
 	Dark          *dark.Node
 	Configuration *Config
+	Registrar     *dnr.DarkNodeRegistrar
 
 	HiddenOrderBook *compute.HiddenOrderBook
 	DeltaEngine     *compute.DeltaEngine
@@ -64,11 +64,16 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	if config.ComputationShardSize == 0 {
 		config.ComputationShardSize = 10
 	}
+	registrar ,err  := ConnectToRegistrar()
+	if err != nil {
+		return nil, err
+	}
 	node := &DarkNode{
 		HiddenOrderBook: compute.NewHiddenOrderBook(config.ComputationShardSize),
 		DeltaEngine:     &compute.DeltaEngine{},
 		Server:          grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
 		Configuration:   config,
+		Registrar  :   registrar,
 
 		quitServer: make(chan struct{}),
 		quitPacker: make(chan struct{}),
@@ -105,7 +110,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 }
 
 // OnSync ...
-func (node *DarkNode) OnSync(identity.MultiAddress) chan do.Option {
+func (node *DarkNode) OnSync(from identity.MultiAddress) chan do.Option {
 	// TODO: ...
 	panic("uninmplemented")
 }
@@ -113,7 +118,7 @@ func (node *DarkNode) OnSync(identity.MultiAddress) chan do.Option {
 // Start mining for compute.Orders that are matched. It establishes connections
 // to other peers in the swarm network by bootstrapping against a set of
 // bootstrap swarm.Nodes.
-func (node *DarkNode) Start() {
+func (node *DarkNode) Start() error {
 	// Start both gRPC servers.
 	go func() {
 		log.Printf("Listening on %s:%s\n", node.Configuration.Host, node.Configuration.Port)
@@ -128,15 +133,18 @@ func (node *DarkNode) Start() {
 		}
 	}()
 
-	registered, err := isRegistered(node.Configuration.MultiAddress.ID())
+	registered, err := node.Registrar.IsDarkNodeRegistered(node.Configuration.MultiAddress.ID())
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	if !registered {
-		panic("dark node hasn't been registered")
+		// register itself
+		// node.Registrar.Register(node.Configuration.MultiAddress.ID(), node.Configuration.EthereumPrivateKey)
+
+		return nil
 	}
 
-	darkPool, err := getDarkPoolConfig()
+	darkPool ,err := node.Registrar.GetXingOverlay()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -145,23 +153,23 @@ func (node *DarkNode) Start() {
 	time.Sleep(time.Second)
 	node.Swarm.Bootstrap()
 
-	 //  Ping all nodes in the dark pool
-	 for _, id := range darkPool {
-	 	target, err := node.Swarm.FindNode(id)
-	 	if err != nil {
-	 		log.Fatal(err)
-	 	}
-	 	// Ignore the node if we can't find it
-	 	if target == nil {
-	 		continue
-	 	}
-	 	err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
-	 	// Update the nodes in our DHT if they respond
-	 	if err != nil {
-	 		node.DarkPool = append(node.DarkPool, *target)
-	 		node.Swarm.DHT.UpdateMultiAddress(*target)
-	 	}
-	 }
+	//  Ping all nodes in the dark pool
+	for _, id := range darkPool {
+		target, err := node.Swarm.FindNode(id[:])
+		if err != nil {
+			log.Println(err)
+		}
+		// Ignore the node if we can't find it
+		if target == nil {
+			continue
+		}
+		err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
+		// Update the nodes in our DHT if they respond
+		if err != nil {
+			node.DarkPool = append(node.DarkPool, *target)
+			node.Swarm.DHT.UpdateMultiAddress(*target)
+		}
+	}
 
 	// TODO: Synchronize the hidden order book from other DarkNodes.
 	// node.StartSynchronization()
@@ -173,6 +181,7 @@ func (node *DarkNode) Start() {
 	// Stop.
 	<-node.quitServer
 	node.Server.Stop()
+	return nil
 }
 
 // Stop mining.
@@ -207,7 +216,7 @@ func (node *DarkNode) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAd
 func (node *DarkNode) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
 	node.HiddenOrderBook.AddOrderFragment(orderFragment, node.Configuration.Prime)
 }
-func OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment){
+func (node *DarkNode) OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment) {
 	// TODO :
 }
 
@@ -391,40 +400,14 @@ func (node *DarkNode) Compute(shard compute.Shard) {
 	})
 }
 
-func isRegistered(id identity.ID) (bool, error) {
-	//// todo: need to get key from the ethereum private key
-	//key := `{"version":3,"id":"7844982f-abe7-4690-8c15-34f75f847c66","address":"db205ea9d35d8c01652263d58351af75cfbcbf07","Crypto":{"ciphertext":"378dce3c1279b36b071e1c7e2540ac1271581bff0bbe36b94f919cb73c491d3a","cipherparams":{"iv":"2eb92da55cc2aa62b7ffddba891f5d35"},"cipher":"aes-128-ctr","kdf":"scrypt","kdfparams":{"dklen":32,"salt":"80d3341678f83a14024ba9c3edab072e6bd2eea6aa0fbc9e0a33bae27ffa3d6d","n":8192,"r":8,"p":1},"mac":"3d07502ea6cd6b96a508138d8b8cd2e46c3966240ff276ce288059ba4235cb0d"}}`
-	//auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
-	//if err != nil {
-	//	return false, err
-	//}
-	//client := ethereum.Ropsten("https://ropsten.infura.io/")
-	//contractAddress := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
-	//userConnection := dnr.NewDarkNodeRegistrar(context.Background(), client, auth, &bind.CallOpts{}, contractAddress, nil)
-	//idInBytes := [20]byte{}
-	//copy(idInBytes[:], id)
-	//return userConnection.IsDarkNodeRegistered(idInBytes)
-	return true, nil
-}
-
-func getDarkPoolConfig() ([]identity.ID, error) {
-
-	// todo: need to get key from the ethereum private key
+func ConnectToRegistrar() (*dnr.DarkNodeRegistrar ,error ){
 	key := `{"version":3,"id":"7844982f-abe7-4690-8c15-34f75f847c66","address":"db205ea9d35d8c01652263d58351af75cfbcbf07","Crypto":{"ciphertext":"378dce3c1279b36b071e1c7e2540ac1271581bff0bbe36b94f919cb73c491d3a","cipherparams":{"iv":"2eb92da55cc2aa62b7ffddba891f5d35"},"cipher":"aes-128-ctr","kdf":"scrypt","kdfparams":{"dklen":32,"salt":"80d3341678f83a14024ba9c3edab072e6bd2eea6aa0fbc9e0a33bae27ffa3d6d","n":8192,"r":8,"p":1},"mac":"3d07502ea6cd6b96a508138d8b8cd2e46c3966240ff276ce288059ba4235cb0d"}}`
 	auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
 	if err != nil {
-		return []identity.ID{}, err
+		return nil, err
 	}
-	client := ethereum.Ropsten("https://ropsten.infura.io/")
-	contractAddress := common.HexToAddress("0x32Dad9E9Fe2A3eA2C2c643675A7d2A56814F554f")
-	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), client, auth, &bind.CallOpts{}, contractAddress, nil)
-	ids, err := userConnection.GetXingOverlay()
-	if err != nil {
-		return []identity.ID{}, err
-	}
-	nodes := make([]identity.ID, len(ids))
-	for i := range ids {
-		nodes[i] = identity.ID(ids[i][:])
-	}
-	return nodes, nil
+	client := dnr.Ropsten("https://ropsten.infura.io/")
+	contractAddress := common.HexToAddress("0x91afce12c336ca7f39ff5875a620003849f59e18")
+	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, nil)
+	return userConnection, nil
 }

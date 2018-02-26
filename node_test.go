@@ -8,75 +8,81 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-dark-node"
-	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 )
 
-const Configs_Path = "./test_configs/"
-
 var _ = Describe("Dark nodes", func() {
+	const Boostrap_Nodes_Port = 3000
+	const Test_Nodes_Port = 4000
 
-	start := func(nodes []*node.DarkNode) {
-		do.ForAll(nodes, func(i int) {
-			nodes[i].Start()
-		})
-	}
+	var bootstrapNodes, nodes []*node.DarkNode
+	var err error
 
-	stop := func(nodes []*node.DarkNode) {
-		do.ForAll(nodes, func(i int) {
-			nodes[i].Stop()
-		})
-	}
-
-	Context("startup", func() {
-
-		It("should read from the config file and create a new dark node.", func() {
-			config, err := node.LoadConfig("test_configs/test_config.json")
-			Ω(err).ShouldNot(HaveOccurred())
-			node, err := node.NewDarkNode(config)
-			Ω(err).ShouldNot(HaveOccurred())
+	startListening := func(nodes []*node.DarkNode) {
+		for _, node := range nodes{
 			go func() {
 				defer GinkgoRecover()
+
 				node.Start()
 			}()
-		})
+		}
+	}
 
-		It("should register itself on startup", func() {
+	stopListening := func(nodes []*node.DarkNode) {
+		for _, node := range nodes{
+			go func() {
+				defer GinkgoRecover()
 
-		})
-	})
+				node.Stop()
+			}()
+		}
+	}
 
-	Context("dark pool specification", func() {
+	for _, numberOfBootstrapNodes := range []int{4} {
+		for _, numberOfNodes := range []int{8} {
+			Context("nodes start up", func() {
+				BeforeEach(func() {
+					err = generateConfigs(numberOfBootstrapNodes, Boostrap_Nodes_Port , []*node.DarkNode{})
+					Ω(err).ShouldNot(HaveOccurred())
+					bootstrapNodes, err = generateNodes(numberOfBootstrapNodes)
+					Ω(err).ShouldNot(HaveOccurred())
 
-		It("should get dark pool assignments from the registrar", func() {
+					err = generateConfigs(numberOfNodes, Test_Nodes_Port, bootstrapNodes)
+					Ω(err).ShouldNot(HaveOccurred())
+					nodes, err = generateNodes(numberOfNodes)
+					Ω(err).ShouldNot(HaveOccurred())
 
-		})
+					startListening(bootstrapNodes)
+				})
 
-		It("Ping all dark nodes in the relevant dark pool", func() {
+				AfterEach(func() {
+					stopListening(nodes)
+					stopListening(bootstrapNodes)
+				})
 
-		})
-	})
+				It("should be able to run startup successfully", func() {
+					startListening(nodes)
+				})
 
-	Context("Order computation", func() {
-		const Boostrap_Nodes_Port = 3000
-		const Test_Nodes_Port = 4000
+				It("should register itself during startup", func() {
 
-		BeforeEach(func() {
-			err := generateConfigs(10, Boostrap_Nodes_Port)
-			Ω(err).ShouldNot(HaveOccurred())
+				})
 
-			err = generateConfigs(10, Test_Nodes_Port)
-			Ω(err).ShouldNot(HaveOccurred())
-		})
+				It("should receive order fragment and discover (mis)matches ", func() {
 
-		It("should receive order fragment and discover (mis)matches ", func() {
-		})
-	})
+				})
+			})
+		}
+	}
 })
 
 // Generate config files in the test_configs folder
-func generateConfigs(numberOfNodes, port int) error {
+func generateConfigs(numberOfNodes, port int, bootstrap []*node.DarkNode) error {
 	var configs []node.Config
+	bootstrapNodes := make ([]identity.MultiAddress, len(bootstrap))
+	for i, j  := range bootstrap{
+		bootstrapNodes[i] = j.Configuration.MultiAddress
+	}
 	for i := 0; i < numberOfNodes; i++ {
 		address, keyPair, err := identity.NewAddress()
 		if err != nil {
@@ -91,8 +97,9 @@ func generateConfigs(numberOfNodes, port int) error {
 			Host:                    "127.0.0.1",
 			Port:                    fmt.Sprintf("%d", port+i),
 			RepublicKeyPair:         keyPair,
+			RSAKeyPair:              keyPair,
 			MultiAddress:            multi,
-			BootstrapMultiAddresses: identity.MultiAddresses{},
+			BootstrapMultiAddresses: bootstrapNodes,
 		}
 		configs = append(configs, config)
 	}
