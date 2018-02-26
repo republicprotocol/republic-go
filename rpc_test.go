@@ -154,23 +154,23 @@ var _ = Describe("Data serialization and deserialization", func() {
 		})
 	})
 
-	Context("compute.Result", func() {
-		It("should be able to serialize and deserialize a compute.Result", func() {
-			result := &compute.Final{
-				ID:          []byte("resultID"),
-				BuyOrderID:  []byte("BuyOrderID"),
-				SellOrderID: []byte("SellOrderID"),
-				FstCode:     big.NewInt(0),
-				SndCode:     big.NewInt(0),
-				Price:       big.NewInt(0),
-				MaxVolume:   big.NewInt(0),
-				MinVolume:   big.NewInt(0),
-			}
-			serializedResult := rpc.SerializeFinal(result)
-			newResult := rpc.DeserializeFinal(serializedResult)
-			Ω(*result).Should(Equal(*newResult))
-		})
-	})
+	//Context("compute.Result", func() {
+	//	It("should be able to serialize and deserialize a compute.Result", func() {
+	//		result := &compute.Final{
+	//			ID:          []byte("resultID"),
+	//			BuyOrderID:  []byte("BuyOrderID"),
+	//			SellOrderID: []byte("SellOrderID"),
+	//			FstCode:     big.NewInt(0),
+	//			SndCode:     big.NewInt(0),
+	//			Price:       big.NewInt(0),
+	//			MaxVolume:   big.NewInt(0),
+	//			MinVolume:   big.NewInt(0),
+	//		}
+	//		serializedResult := rpc.SerializeFinal(result)
+	//		newResult := rpc.DeserializeFinal(serializedResult)
+	//		Ω(*result).Should(Equal(*newResult))
+	//	})
+	//})
 
 	Context("atom.Atom", func() {
 		It("should be able to serialize and deserialize atom.Atom", func() {
