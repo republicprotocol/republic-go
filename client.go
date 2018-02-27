@@ -6,6 +6,7 @@ import (
 	"time"
 
 	identity "github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/go-order-compute"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -64,7 +65,7 @@ func NewClient(to, from identity.MultiAddress) (Client, error) {
 	return client, nil
 }
 
-func (client Client) BroadcastDeltaFragment(deltaFragment *DeltaFragment) (*DeltaFragment, error) {
+func (client Client) BroadcastDeltaFragment(deltaFragment *compute.DeltaFragment) (*DeltaFragment, error) {
 	var resp *DeltaFragment
 	var err error
 
@@ -82,5 +83,6 @@ func (client Client) BroadcastDeltaFragment(deltaFragment *DeltaFragment) (*Delt
 		}
 		log.Println(err)
 	}
+
 	return resp, err
 }

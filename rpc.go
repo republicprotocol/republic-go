@@ -286,4 +286,3 @@ func DeserializeDeltaFragment(fragment *DeltaFragment) (*compute.DeltaFragment, 
 	}
 	return deltaFragment, nil
 }
-
