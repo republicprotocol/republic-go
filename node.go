@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-dark-network"
+	dnr "github.com/republicprotocol/go-dark-node-registrar"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
@@ -54,17 +55,16 @@ func NewLogQueue() *LogQueue {
 func (logQueue *LogQueue) Publish(val do.Option) {
 	logQueue.Enter(nil)
 	defer logQueue.Exit()
-	toUbsubscribe = make([]chan do.Option, 0)
 
 	var logQueueLength = len(logQueue.channels)
 	for i := 0; i < logQueueLength; i++ {
 		timer := time.Tick(10 * time.Second)
 		select {
-		case logQueue.channels[key] <- val:
+		case logQueue.channels[i] <- val:
 		case <-timer:
 			// TODO: deregister the channel
 			logQueue.channels[i] = logQueue.channels[logQueueLength-1]
-			logQueueLength = a[:logQueueLength-1]
+			logQueue.channels = logQueue.channels[:logQueueLength-1]
 			logQueueLength--
 			i--
 		}
@@ -73,7 +73,7 @@ func (logQueue *LogQueue) Publish(val do.Option) {
 
 // Subscribe allows a new client to listen to events from a node
 func (logQueue *LogQueue) Subscribe(channel chan do.Option) {
-	logQueue.Enter()
+	logQueue.Enter(nil)
 	defer logQueue.Exit()
 
 	logQueue.channels = append(logQueue.channels, channel)
@@ -95,7 +95,7 @@ type DarkNode struct {
 	quitServer chan struct{}
 	quitPacker chan struct{}
 
-	logQueue LogQueue
+	logQueue *LogQueue
 }
 
 // NewDarkNode creates a new DarkNode, a new swarm.Node and dark.Node and assigns the
@@ -115,11 +115,11 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		return nil, err
 	}
 	node := &DarkNode{
-		HiddenOrderBook: compute.NewHiddenOrderBook(config.ComputationShardSize),
-		DeltaEngine:     &compute.DeltaEngine{},
-		Server:          grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
-		Configuration:   config,
-		Registrar:       registrar,
+		DeltaBuilder:        compute.NewDeltaBuilder(int64(config.ComputationShardSize), config.Prime),
+		DeltaFragmentMatrix: &compute.DeltaFragmentMatrix{},
+		Server:              grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
+		Configuration:       config,
+		Registrar:           registrar,
 
 		quitServer: make(chan struct{}),
 
@@ -389,7 +389,7 @@ func (node *DarkNode) OnComputeShard(from identity.MultiAddress, shard compute.S
 // computation proper can be reconstructed.
 func (node *DarkNode) OnFinalizeShard(from identity.MultiAddress, deltaShard compute.DeltaShard) {
 	for i := range deltaShard.DeltaFragments {
-		delta, err := node.DeltaEngine.AddDeltaFragment(deltaShard.DeltaFragments[i], int64(node.DarkPoolLimit), node.Configuration.Prime)
+		delta, err := node.DeltaBuilder.InsertDeltaFragment(deltaShard.DeltaFragments[i])
 		if err != nil {
 			log.Println(err)
 		}
