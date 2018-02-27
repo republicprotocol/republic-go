@@ -1,129 +1,80 @@
 package node_test
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-dark-node"
-	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/go-rpc"
+)
+
+const (
+	Number_Of_Bootstrap_Nodes = 4
+	Number_Of_Test_NODES      = 4
 )
 
 var _ = Describe("Dark nodes", func() {
 	var mu = new(sync.Mutex)
-	const Boostrap_Nodes_Port = 3000
-	const Test_Nodes_Port = 4000
-
-	var bootstrapNodes, nodes []*node.DarkNode
+	var nodes []*node.DarkNode
 	var err error
 
-	startListening := func(nodes []*node.DarkNode) {
-		do.ForAll(nodes, func(i int) {
-			err := nodes[i].Start()
-			Ω(err).ShouldNot(HaveOccurred())
-		})
+	startListening := func(nodes []*node.DarkNode, bootstrapNodes int) {
+		// Start all the nodes listening for rpc calls
+		for _, n := range nodes {
+			go func(n *node.DarkNode) {
+				defer GinkgoRecover()
+
+				Ω(n.StartListening()).ShouldNot(HaveOccurred())
+			}(n)
+		}
+
+		time.Sleep(3 * time.Second)
+
+		// Fully connect the bootstrap nodes
+		for i := 0; i < bootstrapNodes; i++ {
+			for j := 0; j < bootstrapNodes; j++ {
+				if i == j {
+					continue
+				}
+				rpc.PingTarget(nodes[j].Configuration.MultiAddress, nodes[i].Configuration.MultiAddress, time.Second*5)
+			}
+		}
 	}
 
 	stopListening := func(nodes []*node.DarkNode) {
-		do.ForAll(nodes, func(i int) {
-			defer GinkgoRecover()
-
-			nodes[i].Stop()
-		})
-	}
-
-	for _, numberOfBootstrapNodes := range []int{2} {
-		for _, numberOfNodes := range []int{2} {
-			Context("nodes start up", func() {
-				BeforeEach(func() {
-					mu.Lock()
-					err = generateConfigs(numberOfBootstrapNodes, Boostrap_Nodes_Port , []*node.DarkNode{})
-					Ω(err).ShouldNot(HaveOccurred())
-					bootstrapNodes, err = generateNodes(numberOfBootstrapNodes)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					err = generateConfigs(numberOfNodes, Test_Nodes_Port, bootstrapNodes)
-					Ω(err).ShouldNot(HaveOccurred())
-					nodes, err = generateNodes(numberOfNodes)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					time.Sleep(1 * time.Second)
-					startListening(bootstrapNodes)
-				})
-
-				AfterEach(func() {
-					stopListening(nodes)
-					stopListening(bootstrapNodes)
-					mu.Unlock()
-				})
-
-				It("should be able to run startup successfully", func() {
-					startListening(nodes)
-				})
-
-				It("should register itself during startup", func() {
-
-				})
-
-				It("should receive order fragment and discover (mis)matches ", func() {
-
-				})
-			})
+		for _, node := range nodes {
+			node.StopListening()
 		}
 	}
+
+	Context("nodes start up", func() {
+		BeforeEach(func() {
+			mu.Lock()
+			nodes, err = generateNodes(Number_Of_Bootstrap_Nodes, Number_Of_Test_NODES)
+			Ω(err).ShouldNot(HaveOccurred())
+			startListening(nodes, Number_Of_Bootstrap_Nodes)
+		})
+
+		AfterEach(func() {
+			stopListening(nodes)
+			mu.Unlock()
+		})
+
+		It("should be able to run startup successfully", func() {
+			for _, node := range nodes{
+				Ω(node.Start()).ShouldNot(HaveOccurred())
+			}
+		})
+	})
 })
 
-// Generate config files in the test_configs folder
-func generateConfigs(numberOfNodes, port int, bootstrap []*node.DarkNode) error {
-	var configs []node.Config
-	bootstrapNodes := make ([]identity.MultiAddress, len(bootstrap))
-	for i, j  := range bootstrap{
-		bootstrapNodes[i] = j.Configuration.MultiAddress
-	}
-	for i := 0; i < numberOfNodes; i++ {
-		address, keyPair, err := identity.NewAddress()
-		if err != nil {
-			return err
-		}
-		multi, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", port+i, address.String()))
-		if err != nil {
-			return err
-		}
-
-		config := node.Config{
-			Host:                    "127.0.0.1",
-			Port:                    fmt.Sprintf("%d", port+i),
-			RepublicKeyPair:         keyPair,
-			RSAKeyPair:              keyPair,
-			MultiAddress:            multi,
-			BootstrapMultiAddresses: bootstrapNodes,
-		}
-		configs = append(configs, config)
-	}
-
-	for i := 0; i < numberOfNodes; i++ {
-		data, err := json.Marshal(configs[i])
-		if err != nil {
-			return err
-		}
-		d1 := []byte(data)
-		err = ioutil.WriteFile(fmt.Sprintf("./test_configs/config-%d.json", i), d1, 0644)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Generate nodes from the config files
-func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
+func generateNodes(numberOfBootsrapNodes, numberOfTestNodes int) ([]*node.DarkNode, error) {
+	// Generate nodes from the config files
+	numberOfNodes := numberOfBootsrapNodes + numberOfTestNodes
 	nodes := make([]*node.DarkNode, numberOfNodes)
-
 	for i := 0; i < numberOfNodes; i++ {
 		config, err := node.LoadConfig(fmt.Sprintf("./test_configs/config-%d.json", i))
 		if err != nil {
@@ -137,3 +88,6 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 	}
 	return nodes, nil
 }
+
+
+

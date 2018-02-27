@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/big"
 	"net"
@@ -76,7 +77,6 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		Registrar:       registrar,
 
 		quitServer: make(chan struct{}),
-		quitPacker: make(chan struct{}),
 	}
 
 	swarmOptions := swarm.Options{
@@ -103,65 +103,33 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	}
 	darkNode := dark.NewNode(node.Server, node, darkOptions)
 	node.Dark = darkNode
+	// todo:
 	node.DarkPool = config.BootstrapMultiAddresses
 	node.DarkPoolLimit = len(node.DarkPool)
 
 	return node, nil
 }
 
-// OnSync ...
-func (node *DarkNode) OnSync(from identity.MultiAddress) chan do.Option {
-	// TODO: ...
-	panic("uninmplemented")
-}
-
 // Start mining for compute.Orders that are matched. It establishes connections
 // to other peers in the swarm network by bootstrapping against a set of
 // bootstrap swarm.Nodes.
 func (node *DarkNode) Start() error {
-	// Start both gRPC servers.
-	go func() {
-		log.Printf("Listening on %s:%s\n", node.Configuration.Host, node.Configuration.Port)
-		node.Swarm.Register()
-		node.Dark.Register()
-		listener, err := net.Listen("tcp", node.Configuration.Host+":"+node.Configuration.Port)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := node.Server.Serve(listener); err != nil {
-			log.Fatal(err)
-		}
-	}()
-	registered, err := node.Registrar.IsDarkNodeRegistered(node.Configuration.MultiAddress.ID())
-	if err != nil {
-		return err
-	}
-	if !registered {
-		// register itself
-		publicKey := append(node.Configuration.RepublicKeyPair.PublicKey.X.Bytes(),node.Configuration.RepublicKeyPair.PublicKey.Y.Bytes()...)
 
-		_  , err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
-		log.Println(err )
-		if err != nil {
-			return err
-		}
-	}
-
-	darkPool, err := node.Registrar.GetXingOverlay()
-	log.Println(darkPool)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// TODO
+	//darkPool, err := node.Registrar.GetDarkpool()
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	darkPool := getDarkPool()
 
 	// Wait for the server to start and bootstrap the connections in the swarm.
-	time.Sleep(time.Second)
 	node.Swarm.Bootstrap()
 
 	//  Ping all nodes in the dark pool
 	for _, id := range darkPool {
 		target, err := node.Swarm.FindNode(id[:])
 		if err != nil {
-			log.Println(err)
+			return err
 		}
 		// Ignore the node if we can't find it
 		if target == nil {
@@ -169,28 +137,64 @@ func (node *DarkNode) Start() error {
 		}
 		err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
 		// Update the nodes in our DHT if they respond
-		if err != nil {
+		if err == nil {
 			node.DarkPool = append(node.DarkPool, *target)
 			node.Swarm.DHT.UpdateMultiAddress(*target)
 		}
 	}
 
 	// TODO: Synchronize the hidden order book from other DarkNodes.
-	// node.StartSynchronization()
+	//node.StartSynchronization()
 
 	// Begin electing shards in the background.
-	node.StartShardElections()
+	//node.StartShardElections()
 
-	// Wait until the signal for stopping the server is received, and then call
-	// Stop.
-	<-node.quitServer
+	return nil
+}
+
+// StartListening starts listening for rpc calls
+func (node *DarkNode) StartListening() error {
+	log.Printf("Listening on %s:%s\n", node.Configuration.Host, node.Configuration.Port)
+	node.Swarm.Register()
+	node.Dark.Register()
+	listener, err := net.Listen("tcp", node.Configuration.Host+":"+node.Configuration.Port)
+	if err != nil {
+		return err
+	}
+	return node.Server.Serve(listener)
+}
+
+// StopListening stops listening for rpc calls
+func (node *DarkNode) StopListening() {
 	node.Server.Stop()
+}
+
+func (node *DarkNode) IsRegistered()bool{
+	registered, err := node.Registrar.IsDarkNodeRegistered(node.Configuration.MultiAddress.ID())
+	log.Println("is registered ?", registered, "error:", err)
+	if err != nil {
+		return false
+	}
+	return registered
+}
+
+// Register the node on the registrar smart contract .
+func (node *DarkNode) Register() error{
+	registered := node.IsRegistered()
+	if registered{
+		return nil
+	}
+	publicKey := append(node.Configuration.RepublicKeyPair.PublicKey.X.Bytes(), node.Configuration.RepublicKeyPair.PublicKey.Y.Bytes()...)
+	tx , err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
+	log.Println(tx, err)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 // Stop mining.
 func (node *DarkNode) Stop() {
-	node.quitServer <- struct{}{}
 	node.quitPacker <- struct{}{}
 }
 
@@ -214,14 +218,22 @@ func (node *DarkNode) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAd
 	// TODO: Log metrics for the deep query.
 }
 
-// OnOrderFragmentReceived implements the xing.Delegate interface. It is called
-// by the underlying xing.Node whenever the Miner receives a
+// OnOrderFragmentReceived implements the dark.Delegate interface. It is called
+// by the underlying dark.Node whenever the Miner receives a
 // compute.OrderFragment that it must process.
 func (node *DarkNode) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
 	node.HiddenOrderBook.AddOrderFragment(orderFragment, node.Configuration.Prime)
 }
+
+// OnOrderFragmentForwarding
 func (node *DarkNode) OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment) {
 	// TODO :
+}
+
+// OnSync ...
+func (node *DarkNode) OnSync(from identity.MultiAddress) chan do.Option {
+	// TODO: ...
+	panic("uninmplemented")
 }
 
 // OnElectShard is a delegate method that is called when the DarkNode has
@@ -412,7 +424,17 @@ func ConnectToRegistrar() (*dnr.DarkNodeRegistrar, error) {
 		return nil, err
 	}
 	client := dnr.Ropsten("https://ropsten.infura.io/")
-	contractAddress := common.HexToAddress("0x91afce12c336ca7f39ff5875a620003849f59e18")
-	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, nil)
+	contractAddress := common.HexToAddress("0xF874c2b8Afaa199A81796746280Af9184cd0D75b")
+	renContract := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
+	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, renContract, nil)
 	return userConnection, nil
+}
+
+func getDarkPool()[]identity.ID{
+	ids := make ([]identity.ID, 8)
+	for i := 0; i < 8; i++ {
+		config, _ := LoadConfig(fmt.Sprintf("./test_configs/config-%d.json", i))
+		ids[i] = config.MultiAddress.ID()
+	}
+	return ids
 }

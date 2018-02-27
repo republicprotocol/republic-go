@@ -43,10 +43,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/republicprotocol/go-atom"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/republicprotocol/go-dark-network"
 
 [[constraint]]
