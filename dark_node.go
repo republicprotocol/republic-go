@@ -140,24 +140,54 @@ func FinalizeShard(target, from identity.MultiAddress, shard compute.DeltaShard,
 	return nil
 }
 
-// FinalizeShard using a new grpc.ClientConn to make a Compute RPC call
-// to a target identity.MultiAddress.
-func Logs(target, timeout time.Duration) error {
-	conn, err := Dial(target, timeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	client := NewDarkNodeClient(conn)
+// Logs ...
+// This function returns two channels. The first is used to read shards received
+// in the synchronization. The second is used by the caller to quit when he no
+// longer wants to receive dark.Chunk.
+func Logs(target identity.MultiAddress, timeout time.Duration) (chan do.Option, chan struct{}) {
+	shards := make(chan do.Option, 1)
+	quit := make(chan struct{}, 1)
+	logRequest := &LogRequest{}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	go func() {
+		defer close(shards)
+		conn, err := Dial(target, timeout)
+		if err != nil {
+			shards <- do.Err(err)
+			return
+		}
+		defer conn.Close()
 
-	request := &LogsRequest{}
+		client := NewDarkNodeClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
 
-	_, err = client.Logs(ctx, request, grpc.FailFast(false))
-	if err != nil {
-		return err
-	}
-	return nil
+		stream, err := client.Logs(ctx, logRequest, grpc.FailFast(false))
+		if err != nil {
+			shards <- do.Err(err)
+			return
+		}
+
+		for {
+			select {
+			case _, ok := <-quit:
+				if !ok {
+					return
+				}
+			default:
+
+			}
+
+			shard, err := stream.Recv()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				shards <- do.Err(err)
+				continue
+			}
+			shards <- do.Ok(shard)
+		}
+	}()
+	return shards, quit
 }
