@@ -109,6 +109,11 @@ func (node *DarkNode) OnSync(identity.MultiAddress) chan do.Option {
 	panic("uninmplemented")
 }
 
+func (node *DarkNode) OnLogs() chan do.Option {
+	// TODO: ...
+	panic("uninmplemented")
+}
+
 // OnOrderFragmentForwarding ...
 func (node *DarkNode) OnOrderFragmentForwarding(address identity.Address, peer identity.MultiAddress, fragment *compute.OrderFragment) {
 	// TODO: Log metrics for the deep query.
