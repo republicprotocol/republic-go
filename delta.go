@@ -15,9 +15,9 @@ type DeltaShard struct {
 	DeltaFragments []*DeltaFragment
 }
 
-func NewDeltaShard() DeltaShard {
+func NewDeltaShard(deltaFragments []*DeltaFragment) DeltaShard {
 	return DeltaShard{
-		DeltaFragments: []*DeltaFragment{},
+		DeltaFragments: deltaFragments,
 	}
 }
 
