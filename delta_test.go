@@ -50,7 +50,7 @@ var _ = Describe("Finals and final fragments", func() {
 			Ω(delta).ShouldNot(BeNil())
 		})
 
-		It("should return a delta after the first k delta fragments", func() {
+		It("should not return a delta after the first k delta fragments", func() {
 			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
@@ -75,7 +75,7 @@ var _ = Describe("Finals and final fragments", func() {
 			for i := int64(0); i < n; i++ {
 				delta, err := builder.InsertDeltaFragment(deltaFragments[i])
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(delta).ShouldNot(BeNil())
+				Ω(delta).Should(BeNil())
 			}
 		})
 
