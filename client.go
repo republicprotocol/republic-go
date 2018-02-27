@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	identity "github.com/republicprotocol/go-identity"
@@ -12,7 +13,9 @@ import (
 type Client struct {
 	*grpc.ClientConn
 
-	Options ClientOptions
+	DarkNode DarkNodeClient
+	Options  ClientOptions
+	From     *MultiAddress
 }
 
 type ClientOptions struct {
@@ -29,16 +32,17 @@ func DefaultClientOptions() ClientOptions {
 	}
 }
 
-func NewClient(multiAddress identity.MultiAddress) (Client, error) {
+func NewClient(to, from identity.MultiAddress) (Client, error) {
 	client := Client{
 		Options: DefaultClientOptions(),
+		From:    SerializeMultiAddress(from),
 	}
 
-	host, err := multiAddress.ValueForProtocol(identity.IP4Code)
+	host, err := to.ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return client, err
 	}
-	port, err := multiAddress.ValueForProtocol(identity.TCPCode)
+	port, err := to.ValueForProtocol(identity.TCPCode)
 	if err != nil {
 		return client, err
 	}
@@ -50,27 +54,33 @@ func NewClient(multiAddress identity.MultiAddress) (Client, error) {
 		if err == nil {
 			break
 		}
+		log.Println(err)
 	}
+	if err != nil {
+		return client, err
+	}
+	client.DarkNode = NewDarkNodeClient(client.ClientConn)
 
 	return client, nil
 }
 
 func (client Client) BroadcastDeltaFragment(deltaFragment *DeltaFragment) (*DeltaFragment, error) {
-
 	var resp *DeltaFragment
 	var err error
 
-	serializedDeltaFragment = SerializeDeltaFragment(deltaFragment)
+	serializedDeltaFragment := SerializeDeltaFragment(deltaFragment)
 	for i := 0; i < client.Options.TimeoutRetries; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), client.Options.Timeout+(client.Options.TimeoutBackoff*time.Duration(i)))
 		defer cancel()
 
-		resp, err = client.BroadcastDeltaFragment()
+		resp, err = client.DarkNode.BroadcastDeltaFragment(ctx, &BroadcastDeltaFragmentRequest{
+			From:          client.From,
+			DeltaFragment: serializedDeltaFragment,
+		}, grpc.FailFast(false))
+		if err == nil {
+			break
+		}
+		log.Println(err)
 	}
-
-	serializedOrderFragment := SerializeOrderFragment(orderFragment)
-	serializedOrderFragment.To = SerializeAddress(to)
-	serializedOrderFragment.From = SerializeMultiAddress(from)
-	_, err = client.SendOrderFragment(ctx, serializedOrderFragment, grpc.FailFast(false))
-	return nil, err
+	return resp, err
 }
