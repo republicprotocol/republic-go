@@ -58,6 +58,12 @@ func (delegate *mockDelegate) OnSync(from identity.MultiAddress) chan do.Option 
 	return syncBlock
 }
 
+func (delegate *mockDelegate) OnLogs() chan do.Option {
+	logEvent := make(chan do.Option, 1)
+	logEvent <- do.Ok(&rpc.logEvent{})
+	return logEvent
+}
+
 func (delegate *mockDelegate) OnElectShard(from identity.MultiAddress, shard compute.Shard) compute.Shard {
 	return compute.Shard{}
 }

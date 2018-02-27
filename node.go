@@ -22,6 +22,7 @@ type Delegate interface {
 	OnElectShard(from identity.MultiAddress, shard compute.Shard) compute.Shard
 	OnComputeShard(from identity.MultiAddress, shard compute.Shard)
 	OnFinalizeShard(from identity.MultiAddress, deltaShard compute.DeltaShard)
+	OnLogs()
 }
 
 // Node implements the gRPC Node service.
@@ -159,6 +160,28 @@ func (node *Node) FinalizeShard(ctx context.Context, finaliseShardRequest *rpc.F
 
 	case <-ctx.Done():
 		return &rpc.Nothing{}, ctx.Err()
+	}
+}
+
+// Logs ...
+func (node *Node) Logs(logsRequest *rpc.logsRequest, stream rpc.DarkNode_LogsServer) error {
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("[%v] received a log query", node.Address())
+	}
+	if err := stream.Context().Err(); err != nil {
+		return err
+	}
+
+	wait := do.Process(func() do.Option {
+		return do.Err(node.logs(logsRequest, stream))
+	})
+
+	select {
+	case val := <-wait:
+		return val.Err
+
+	case <-stream.Context().Done():
+		return stream.Context().Err()
 	}
 }
 
@@ -389,6 +412,15 @@ func (node *Node) finalizeShard(finaliseShardRequest *rpc.FinalizeShardRequest) 
 	shard := rpc.DeserializeFinalShard(finaliseShardRequest.Shard)
 	node.Delegate.OnFinalizeShard(from, *shard)
 	return &rpc.Nothing{}, nil
+}
+
+func (node *Node) logs(logsRequest *rpc.LogRequest, stream rpc.DarkNode_LogsServer) error {
+	logChan := node.Delegate.OnLogs()
+	for event := range logChan {
+		//todo : need to serialize data into the network representation
+		stream.Send(event.Ok.(*rpc.LogEvent))
+	}
+	return nil
 }
 
 func (node *Node) sendOrderFragmentCommitment(orderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
