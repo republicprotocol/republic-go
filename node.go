@@ -391,7 +391,7 @@ func (node *Node) computeShard(computeShardRequest *rpc.ComputeShardRequest) (*r
 	}
 	shard, err := rpc.DeserializeShard(computeShardRequest.Shard)
 	if err != nil {
-		return &rpc.Nothing{}, err
+		return nil, err
 	}
 	node.Delegate.OnComputeShard(from, *shard)
 	return &rpc.Nothing{}, nil
@@ -404,7 +404,7 @@ func (node *Node) electShard(electShardRequest *rpc.ElectShardRequest) (*rpc.Sha
 	}
 	shard, err := rpc.DeserializeShard(electShardRequest.Shard)
 	if err != nil {
-		return &rpc.Shard{}, err
+		return nil, err
 	}
 	shardReturn := node.Delegate.OnElectShard(from, *shard)
 	return rpc.SerializeShard(shardReturn), nil
