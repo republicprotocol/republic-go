@@ -160,7 +160,7 @@ message Final {
 // A shard is a block of computations
 message Shard {
   bytes signature = 1;
-  repeated bytes deltas = 2;
+  repeated DeltaFragment deltas = 2;
   repeated bytes residues = 3;
 }
 
@@ -168,6 +168,21 @@ message Shard {
 message DeltaShard {
   bytes signature = 1;
   repeated bytes finals = 2;
+}
+
+message DeltaFragment {
+  bytes signature = 1;
+  bytes id = 2;
+  bytes buyOrderId = 3;
+  bytes sellOrderId = 4;
+  bytes buyOrderFragmentId = 5;
+  bytes sellOrderFragmentId = 6;
+
+  bytes fstCodeShare = 7;
+  bytes sndCodeShare = 8;
+  bytes priceShare = 9;
+  bytes maxVolumeShare = 10;
+  bytes minVolumeShare = 11;
 }
 
 // A FinalizeShardRequest is ...
