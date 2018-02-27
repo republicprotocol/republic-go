@@ -14,11 +14,13 @@ import (
 
 // DarkNodeRegistrar is the dark node interface
 type DarkNodeRegistrar struct {
-	context context.Context
-	client  *Client
-	auth1   *bind.TransactOpts
-	auth2   *bind.CallOpts
-	binding *contracts.DarkNodeRegistrar
+	context                  context.Context
+	client                   *Client
+	auth1                    *bind.TransactOpts
+	auth2                    *bind.CallOpts
+	binding                  *contracts.DarkNodeRegistrar
+	tokenBinding             *contracts.ERC20
+	darkNodeRegistrarAddress common.Address
 }
 
 // NewDarkNodeRegistrar returns a Dark node registrar
@@ -38,6 +40,21 @@ func NewDarkNodeRegistrar(context context.Context, client *Client, auth1 *bind.T
 
 // Register registers a new dark node
 func (darkNodeRegistrar *DarkNodeRegistrar) Register(_darkNodeID []byte, _publicKey []byte) (*types.Transaction, error) {
+	value, err := darkNodeRegistrar.binding.MinimumBond(darkNodeRegistrar.auth2)
+	if err != nil {
+		return &types.Transaction{}, err
+	}
+	balance, err := darkNodeRegistrar.tokenBinding.BalanceOf(darkNodeRegistrar.auth2, darkNodeRegistrar.auth1.From)
+	if err != nil {
+		return &types.Transaction{}, err
+	}
+	if balance.Cmp(value) < 0 {
+		return &types.Transaction{}, errors.New("Not enough balance to register a node")
+	}
+	tx, err := darkNodeRegistrar.tokenBinding.Approve(darkNodeRegistrar.auth1, darkNodeRegistrar.darkNodeRegistrarAddress, value)
+	if err != nil {
+		return tx, err
+	}
 	_darkNodeIDByte, err := toByte(_darkNodeID)
 	if err != nil {
 		return &types.Transaction{}, err

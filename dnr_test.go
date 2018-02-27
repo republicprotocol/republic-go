@@ -30,9 +30,10 @@ var _ = Describe("Dark Node Registrar", func() {
 
 	client := Ropsten("https://ropsten.infura.io/")
 
-	contractAddress := common.HexToAddress("0x91afce12c336ca7f39ff5875a620003849f59e18")
+	darkNodeContractAddress := common.HexToAddress("0x91afce12c336ca7f39ff5875a620003849f59e18")
+	renContractAddress := common.HexToAddress("0x91afce12c336ca7f39ff5875a620003849f59e18")
 
-	UserConnection := NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, nil)
+	UserConnection := NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, darkNodeContractAddress, renContractAddress, nil)
 
 	keyPair, err := identity.NewKeyPair()
 	if err != nil {
