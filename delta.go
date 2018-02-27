@@ -10,17 +10,6 @@ import (
 	"github.com/republicprotocol/go-sss"
 )
 
-type DeltaShard struct {
-	Signature      []byte
-	DeltaFragments []*DeltaFragment
-}
-
-func NewDeltaShard(deltaFragments []*DeltaFragment) DeltaShard {
-	return DeltaShard{
-		DeltaFragments: deltaFragments,
-	}
-}
-
 // A DeltaID is the Keccak256 hash of the OrderIDs that were used to compute
 // the respective Result.
 type DeltaID []byte

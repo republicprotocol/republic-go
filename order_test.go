@@ -6,7 +6,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	do "github.com/republicprotocol/go-do"
 	compute "github.com/republicprotocol/go-order-compute"
 )
 
@@ -101,30 +100,6 @@ var _ = Describe("Orders and order fragments", func() {
 				_, err := lhsFragments[i].Sub(rhsFragments[i], prime)
 				Ω(err).Should(HaveOccurred())
 			}
-		})
-	})
-
-	Context("when using a hidden order book", func() {
-
-		It("should wait for a full block of order comparisons", func() {
-
-			orderBook := compute.NewHiddenOrderBook(4)
-			blockChan := do.Process(func() do.Option {
-				return do.Ok(orderBook.WaitForShard())
-			})
-
-			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			orderBook.AddOrderFragment(lhs[0], prime)
-			for i := 0; i < 4; i++ {
-				rhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
-				Ω(err).ShouldNot(HaveOccurred())
-				orderBook.AddOrderFragment(rhs[0], prime)
-			}
-
-			shard := (<-blockChan).Ok.(compute.Shard)
-			Ω(len(shard.Deltas)).Should(Equal(4))
 		})
 	})
 })
