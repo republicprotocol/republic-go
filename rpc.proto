@@ -86,6 +86,9 @@ service DarkNode {
 //
 //  // Get all relevant results that have been computed in the current epoch.
 //  rpc GetFinals (MultiAddress) returns (stream Final);
+
+  rpc BroadcastDeltaFragment (BroadcastDeltaFragmentRequest) returns (DeltaFragment);
+
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
@@ -170,21 +173,6 @@ message DeltaShard {
   repeated bytes finals = 2;
 }
 
-message DeltaFragment {
-  bytes signature = 1;
-  bytes id = 2;
-  bytes buyOrderID = 3;
-  bytes sellOrderID = 4;
-  bytes buyOrderFragmentID = 5;
-  bytes sellOrderFragmentID = 6;
-
-  bytes fstCodeShare = 7;
-  bytes sndCodeShare = 8;
-  bytes priceShare = 9;
-  bytes maxVolumeShare = 10;
-  bytes minVolumeShare = 11;
-}
-
 // A FinalizeShardRequest is ...
 message FinalizeShardRequest{
   MultiAddress from = 1;
@@ -230,4 +218,24 @@ message Atom {
   int64 ledger = 3;
   bytes data = 4;
   bytes signature = 5;
+}
+
+message BroadcastDeltaFragmentRequest {
+  MultiAddress from = 1;
+  DeltaFragment deltaFragment = 2;
+}
+
+message DeltaFragment {
+  bytes signature = 1;
+  bytes id = 2;
+  bytes buyOrderID = 3;
+  bytes sellOrderID = 4;
+  bytes buyOrderFragmentID = 5;
+  bytes sellOrderFragmentID = 6;
+
+  bytes fstCodeShare = 7;
+  bytes sndCodeShare = 8;
+  bytes priceShare = 9;
+  bytes maxVolumeShare = 10;
+  bytes minVolumeShare = 11;
 }
