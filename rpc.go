@@ -190,56 +190,6 @@ func DeserializeAtom(a *Atom) atom.Atom {
 	}
 }
 
-func SerializeShard(shard compute.Shard) *Shard {
-	serializedDeltas := make([]*DeltaFragment, len(shard.Deltas))
-	for i, j := range shard.Deltas {
-		serializedDeltas[i] = SerializeDeltaFragment(j)
-	}
-	//todo
-	//serializedResidues := make([]*ResidueFragment, len(shard.Deltas))
-	//for i ,j  := range shard.Deltas{
-	//	serializedResidues[i] = SerializeReidueFragment(j)
-	//}
-
-	return &Shard{
-		Signature: shard.Signature,
-		Deltas:    serializedDeltas,
-		Residues:  [][]byte{},
-	}
-}
-
-func DeserializeShard(shard *Shard) (*compute.Shard, error) {
-	var err error
-	deltas := make([]*compute.DeltaFragment, len(shard.Deltas))
-	for i, j := range shard.Deltas {
-		deltas[i], err = DeserializeDeltaFragment(j)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &compute.Shard{
-		Signature: shard.Signature,
-		Deltas:    deltas,
-		Residues:  nil, //todo
-	}, nil
-}
-
-// todo: serialize the deltas and residues to bytes
-func SerializeFinalShard(shard compute.DeltaShard) *DeltaShard {
-	return &DeltaShard{
-		Signature: shard.Signature,
-		Finals:    [][]byte{},
-	}
-}
-
-// todo: deserialize deltas and residues
-func DeserializeFinalShard(shard *DeltaShard) *compute.DeltaShard {
-	return &compute.DeltaShard{
-		Signature:      shard.Signature,
-		DeltaFragments: []*compute.DeltaFragment{},
-	}
-}
-
 func SerializeDeltaFragment(fragment *compute.DeltaFragment) *DeltaFragment {
 	return &DeltaFragment{
 		Id:                  fragment.ID,
