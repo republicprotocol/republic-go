@@ -1,4 +1,5 @@
 package dark_test
+
 //
 //import (
 //	"math/big"
