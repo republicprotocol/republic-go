@@ -35,6 +35,50 @@ var (
 	Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 )
 
+// LogQueue allows multiple clients to receive logs from a node
+type LogQueue struct {
+	do.GuardedObject
+
+	channels []chan do.Option
+}
+
+// NewLogQueue returns a new LogQueue
+func NewLogQueue() *LogQueue {
+	logQueue := new(LogQueue)
+	logQueue.GuardedObject = do.NewGuardedObject()
+	logQueue.channels = make([]chan do.Option, 128)
+	return logQueue
+}
+
+// Publish allows a node to push a log to each client
+func (logQueue *LogQueue) Publish(val do.Option) {
+	logQueue.Enter(nil)
+	defer logQueue.Exit()
+	toUbsubscribe = make([]chan do.Option, 0)
+
+	var logQueueLength = len(logQueue.channels)
+	for i := 0; i < logQueueLength; i++ {
+		timer := time.Tick(10 * time.Second)
+		select {
+		case logQueue.channels[key] <- val:
+		case <-timer:
+			// TODO: deregister the channel
+			logQueue.channels[i] = logQueue.channels[logQueueLength-1]
+			logQueueLength = a[:logQueueLength-1]
+			logQueueLength--
+			i--
+		}
+	}
+}
+
+// Subscribe allows a new client to listen to events from a node
+func (logQueue *LogQueue) Subscribe(channel chan do.Option) {
+	logQueue.Enter()
+	defer logQueue.Exit()
+
+	logQueue.channels = append(logQueue.channels, channel)
+}
+
 // DarkNode ...
 type DarkNode struct {
 	Server        *grpc.Server
@@ -49,6 +93,8 @@ type DarkNode struct {
 
 	quitServer chan struct{}
 	quitPacker chan struct{}
+
+	logQueue LogQueue
 }
 
 // NewDarkNode creates a new DarkNode, a new swarm.Node and dark.Node and assigns the
@@ -71,6 +117,8 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 
 		quitServer: make(chan struct{}),
 		quitPacker: make(chan struct{}),
+
+		logQueue: NewLogQueue(),
 	}
 
 	swarmOptions := swarm.Options{
@@ -109,9 +157,11 @@ func (node *DarkNode) OnSync(identity.MultiAddress) chan do.Option {
 	panic("uninmplemented")
 }
 
-func (node *DarkNode) OnLogs() chan do.Option {
-	// TODO: ...
-	panic("uninmplemented")
+// OnLogs returns a channel for receiving logs from the node
+func (node *DarkNode) OnLogs(logs chan do.Option) {
+	logChannel := make(chan do.Option, 128)
+	node.logQueue.Subscribe(logChannel)
+	return logChannel
 }
 
 // OnOrderFragmentForwarding ...
@@ -224,6 +274,7 @@ func (node *DarkNode) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAd
 // by the underlying xing.Node whenever the Miner receives a
 // compute.OrderFragment that it must process.
 func (node *DarkNode) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
+	node.logQueue.Publish(do.Ok{nil})
 	node.HiddenOrderBook.AddOrderFragment(orderFragment, node.Configuration.Prime)
 }
 
