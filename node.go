@@ -74,120 +74,24 @@ func (node *Node) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncSer
 
 // ComputeShard will start compute the shards on receiving the request.
 func (node *Node) ComputeShard(ctx context.Context, computeShardRequest *rpc.ComputeShardRequest) (*rpc.Nothing, error) {
-	if node.Options.Debug >= DebugHigh {
-		log.Printf("[%v] received a compute shard query from [%v]\n", node.Address(), computeShardRequest.From.Multi)
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
-	wait := do.Process(func() do.Option {
-		nothing, err := node.computeShard(computeShardRequest)
-		if err != nil {
-			return do.Err(err)
-		}
-		return do.Ok(nothing)
-	})
-
-	select {
-	case val := <-wait:
-		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
-			return nothing, val.Err
-		}
-		return &rpc.Nothing{}, val.Err
-
-	case <-ctx.Done():
-		return &rpc.Nothing{}, ctx.Err()
-	}
+	panic("unimplemented")
 }
 
 // ElectShard will returns availability of the shards listed in the request.
 func (node *Node) ElectShard(ctx context.Context, electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
-	if node.Options.Debug >= DebugHigh {
-		log.Printf("[%v] received a elect shard query from [%v]\n", node.Address(), electShardRequest.From.Multi)
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
-	wait := do.Process(func() do.Option {
-		shard, err := node.electShard(electShardRequest)
-		if err != nil {
-			return do.Err(err)
-		}
-		return do.Ok(shard)
-	})
-
-	select {
-	case val := <-wait:
-		if shard, ok := val.Ok.(*rpc.Shard); ok {
-			return shard, val.Err
-		}
-		return &rpc.Shard{}, val.Err
-
-	case <-ctx.Done():
-		return &rpc.Shard{}, ctx.Err()
-	}
+	panic("unimplemented")
 }
 
 // FinalizeShard returns finalized shards.
 func (node *Node) FinalizeShard(ctx context.Context, finaliseShardRequest *rpc.FinalizeShardRequest) (*rpc.Nothing, error) {
-	if node.Options.Debug >= DebugHigh {
-		log.Printf("[%v] received a finalize shard request from [%v]\n", node.Address(), finaliseShardRequest.From.Multi)
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
-	wait := do.Process(func() do.Option {
-		nothing, err := node.finalizeShard(finaliseShardRequest)
-		if err != nil {
-			return do.Err(err)
-		}
-		return do.Ok(nothing)
-	})
-
-	select {
-	case val := <-wait:
-		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
-			return nothing, val.Err
-		}
-		return &rpc.Nothing{}, val.Err
-
-	case <-ctx.Done():
-		return &rpc.Nothing{}, ctx.Err()
-	}
+	panic("unimplemented")
 }
 
 // SendOrderFragmentCommitment is sent before sending the order fragment.
 // The request contained the signature of the sender and we'll return
 // a commitment with our signature.
 func (node *Node) SendOrderFragmentCommitment(ctx context.Context, orderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
-	if node.Options.Debug >= DebugHigh {
-		log.Printf("%v received a order commitment from %v\n", node.Address(), orderFragmentCommitment.From.Multi)
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
-	wait := do.Process(func() do.Option {
-		commitment, err := node.sendOrderFragmentCommitment(orderFragmentCommitment)
-		if err != nil {
-			return do.Err(err)
-		}
-		return do.Ok(commitment)
-	})
-
-	select {
-	case val := <-wait:
-		if commitment, ok := val.Ok.(*rpc.OrderFragmentCommitment); ok {
-			return commitment, val.Err
-		}
-		return &rpc.OrderFragmentCommitment{}, val.Err
-
-	case <-ctx.Done():
-		return &rpc.OrderFragmentCommitment{}, ctx.Err()
-	}
+	panic("unimplemented")
 }
 
 // SendOrderFragment to the Node. If the rpc.OrderFragment is not destined for
@@ -398,20 +302,4 @@ func (node *Node) sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncSer
 		stream.Send(data.Ok.(*rpc.SyncBlock))
 	}
 	return nil
-}
-
-func (node *Node) computeShard(computeShardRequest *rpc.ComputeShardRequest) (*rpc.Nothing, error) {
-	panic("unimplemented")
-}
-
-func (node *Node) electShard(electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
-	panic("unimplemented")
-}
-
-func (node *Node) finalizeShard(finaliseShardRequest *rpc.FinalizeShardRequest) (*rpc.Nothing, error) {
-	panic("unimplemented")
-}
-
-func (node *Node) sendOrderFragmentCommitment(orderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
-	panic("unimplemented")
 }

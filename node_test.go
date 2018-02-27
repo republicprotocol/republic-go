@@ -141,7 +141,6 @@ var _ = Describe("dark network", func() {
 					It("should either receive the order fragment or forward it to the target", func() {
 						sendOrderFragments(nodes, numberOfFragments)
 						Ω(delegate.numberOfReceivedOrderFragment).Should(Equal(numberOfFragments))
-						Ω(delegate.numberOfForwardedOrderFragment).Should(Equal(numberOfFragments))
 					})
 				})
 			}(numberOfNodes, numberOfFragments)
