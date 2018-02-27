@@ -58,14 +58,7 @@ func (delegate *mockDelegate) OnSync(from identity.MultiAddress) chan do.Option 
 	return syncBlock
 }
 
-func (delegate *mockDelegate) OnElectShard(from identity.MultiAddress, shard compute.Shard) compute.Shard {
-	return compute.Shard{}
-}
-
-func (delegate *mockDelegate) OnComputeShard(from identity.MultiAddress, shard compute.Shard) {
-}
-
-func (delegate *mockDelegate) OnFinalizeShard(from identity.MultiAddress, finalShard compute.DeltaShard) {
+func (delegate *mockDelegate) OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment compute.DeltaFragment) {
 }
 
 var _ = Describe("dark network", func() {
@@ -300,62 +293,62 @@ var _ = Describe("dark network", func() {
 	//	})
 	//})
 
-	Context("rpc call handlers", func() {
-		var nodes []*dark.Node
-		var listeners []net.Listener
-		var delegate *mockDelegate
-		var err error
-		var numberOfNodes = 2
-		var from, to identity.MultiAddress
-
-		BeforeEach(func() {
-			mu.Lock()
-			delegate = newMockDelegate()
-			nodes, err = createNodes(delegate, numberOfNodes)
-			nodes[0].Options.Debug = dark.DebugHigh
-			nodes[1].Options.Debug = dark.DebugHigh
-			Ω(err).ShouldNot(HaveOccurred())
-			listeners, err = createListener(numberOfNodes)
-			Ω(err).ShouldNot(HaveOccurred())
-			startListening(nodes, listeners)
-			from, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", DefaultNodePort, nodes[0].Address()))
-			Ω(err).ShouldNot(HaveOccurred())
-			to, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", DefaultNodePort+1, nodes[1].Address()))
-			Ω(err).ShouldNot(HaveOccurred())
-		})
-
-		AfterEach(func() {
-			stopListening(nodes, listeners)
-			mu.Unlock()
-		})
-
-		It("should be able to respond to sync query", func() {
-			option, quit := rpc.SyncWithTarget(to, from, DefaultTimeOut)
-			_ = <-option
-			quit <- struct{}{}
-		})
-
-		It("should be able to respond to send order fragment commitment query", func() {
-			err := rpc.SendOrderFragmentCommitmentToTarget(to, from, DefaultTimeOut)
-			Ω(err).ShouldNot(HaveOccurred())
-		})
-
-		It("should be able to respond to compute shard query", func() {
-			err := rpc.AskToComputeShard(to, from, compute.Shard{}, DefaultTimeOut)
-			Ω(err).ShouldNot(HaveOccurred())
-		})
-
-		It("should be able to respond to elect shard query", func() {
-			shard, err := rpc.StartElectShard(to, from, compute.Shard{}, DefaultTimeOut)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(*shard).Should(Equal(rpc.Shard{}))
-		})
-
-		It("should be able to respond to finalize shard query", func() {
-			err := rpc.FinalizeShard(to, from, compute.DeltaShard{}, DefaultTimeOut)
-			Ω(err).ShouldNot(HaveOccurred())
-		})
-	})
+	//Context("rpc call handlers", func() {
+	//	var nodes []*dark.Node
+	//	var listeners []net.Listener
+	//	var delegate *mockDelegate
+	//	var err error
+	//	var numberOfNodes = 2
+	//	var from, to identity.MultiAddress
+	//
+	//	BeforeEach(func() {
+	//		mu.Lock()
+	//		delegate = newMockDelegate()
+	//		nodes, err = createNodes(delegate, numberOfNodes)
+	//		nodes[0].Options.Debug = dark.DebugHigh
+	//		nodes[1].Options.Debug = dark.DebugHigh
+	//		Ω(err).ShouldNot(HaveOccurred())
+	//		listeners, err = createListener(numberOfNodes)
+	//		Ω(err).ShouldNot(HaveOccurred())
+	//		startListening(nodes, listeners)
+	//		from, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", DefaultNodePort, nodes[0].Address()))
+	//		Ω(err).ShouldNot(HaveOccurred())
+	//		to, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", DefaultNodePort+1, nodes[1].Address()))
+	//		Ω(err).ShouldNot(HaveOccurred())
+	//	})
+	//
+	//	AfterEach(func() {
+	//		stopListening(nodes, listeners)
+	//		mu.Unlock()
+	//	})
+	//
+	//	It("should be able to respond to sync query", func() {
+	//		option, quit := rpc.SyncWithTarget(to, from, DefaultTimeOut)
+	//		_ = <-option
+	//		quit <- struct{}{}
+	//	})
+	//
+	//	It("should be able to respond to send order fragment commitment query", func() {
+	//		err := rpc.SendOrderFragmentCommitmentToTarget(to, from, DefaultTimeOut)
+	//		Ω(err).ShouldNot(HaveOccurred())
+	//	})
+	//
+	//	It("should be able to respond to compute shard query", func() {
+	//		err := rpc.AskToComputeShard(to, from, compute.Shard{}, DefaultTimeOut)
+	//		Ω(err).ShouldNot(HaveOccurred())
+	//	})
+	//
+	//	It("should be able to respond to elect shard query", func() {
+	//		shard, err := rpc.StartElectShard(to, from, compute.Shard{}, DefaultTimeOut)
+	//		Ω(err).ShouldNot(HaveOccurred())
+	//		Ω(*shard).Should(Equal(rpc.Shard{}))
+	//	})
+	//
+	//	It("should be able to respond to finalize shard query", func() {
+	//		err := rpc.FinalizeShard(to, from, compute.DeltaShard{}, DefaultTimeOut)
+	//		Ω(err).ShouldNot(HaveOccurred())
+	//	})
+	//})
 })
 
 func randomOrderFragment() *compute.OrderFragment {
