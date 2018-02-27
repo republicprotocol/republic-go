@@ -169,7 +169,7 @@ func (node *DarkNode) StopListening() {
 	node.Server.Stop()
 }
 
-func (node *DarkNode) IsRegistered()bool{
+func (node *DarkNode) IsRegistered() bool {
 	registered, err := node.Registrar.IsDarkNodeRegistered(node.Configuration.MultiAddress.ID())
 	log.Println("is registered ?", registered, "error:", err)
 	if err != nil {
@@ -179,18 +179,19 @@ func (node *DarkNode) IsRegistered()bool{
 }
 
 // Register the node on the registrar smart contract .
-func (node *DarkNode) Register() error{
+func (node *DarkNode) Register() error {
 	registered := node.IsRegistered()
-	if registered{
+	if registered {
 		return nil
 	}
 	publicKey := append(node.Configuration.RepublicKeyPair.PublicKey.X.Bytes(), node.Configuration.RepublicKeyPair.PublicKey.Y.Bytes()...)
-	tx , err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
+	tx, err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
 	log.Println(tx, err)
 	if err != nil {
 		return err
 	}
-	return nil
+	err = node.Registrar.WaitTillRegistration(node.Configuration.MultiAddress.ID())
+	return err
 }
 
 // Stop mining.
@@ -424,14 +425,14 @@ func ConnectToRegistrar() (*dnr.DarkNodeRegistrar, error) {
 		return nil, err
 	}
 	client := dnr.Ropsten("https://ropsten.infura.io/")
-	contractAddress := common.HexToAddress("0xF874c2b8Afaa199A81796746280Af9184cd0D75b")
+	contractAddress := common.HexToAddress("0x0B1148699C93cA9Cfa28f11BD581936f673F76ec")
 	renContract := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
 	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, renContract, nil)
 	return userConnection, nil
 }
 
-func getDarkPool()[]identity.ID{
-	ids := make ([]identity.ID, 8)
+func getDarkPool() []identity.ID {
+	ids := make([]identity.ID, 8)
 	for i := 0; i < 8; i++ {
 		config, _ := LoadConfig(fmt.Sprintf("./test_configs/config-%d.json", i))
 		ids[i] = config.MultiAddress.ID()
