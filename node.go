@@ -82,7 +82,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	swarmOptions := swarm.Options{
 		MultiAddress:            config.MultiAddress,
 		BootstrapMultiAddresses: config.BootstrapMultiAddresses,
-		Debug:           swarm.DebugHigh,
+		Debug:           swarm.DebugOff,
 		Alpha:           3,
 		MaxBucketLength: 20,
 		Timeout:         30 * time.Second,
@@ -95,7 +95,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 
 	darkOptions := dark.Options{
 		Address:        config.MultiAddress.Address(),
-		Debug:          dark.DebugHigh,
+		Debug:          dark.DebugOff,
 		Timeout:        30 * time.Second,
 		TimeoutStep:    30 * time.Second,
 		TimeoutRetries: 3,
@@ -105,7 +105,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	node.Dark = darkNode
 	// todo:
 	node.DarkPool = config.BootstrapMultiAddresses
-	node.DarkPoolLimit = len(node.DarkPool)
+	node.DarkPoolLimit = 5
 
 	return node, nil
 }
@@ -147,7 +147,10 @@ func (node *DarkNode) Start() error {
 	//node.StartSynchronization()
 
 	// Begin electing shards in the background.
-	//node.StartShardElections()
+	node.StartShardElections()
+
+	<-node.quitServer
+	node.StopListening()
 
 	return nil
 }
@@ -169,7 +172,7 @@ func (node *DarkNode) StopListening() {
 	node.Server.Stop()
 }
 
-func (node *DarkNode) IsRegistered()bool{
+func (node *DarkNode) IsRegistered() bool {
 	registered, err := node.Registrar.IsDarkNodeRegistered(node.Configuration.MultiAddress.ID())
 	log.Println("is registered ?", registered, "error:", err)
 	if err != nil {
@@ -179,13 +182,13 @@ func (node *DarkNode) IsRegistered()bool{
 }
 
 // Register the node on the registrar smart contract .
-func (node *DarkNode) Register() error{
+func (node *DarkNode) Register() error {
 	registered := node.IsRegistered()
-	if registered{
+	if registered {
 		return nil
 	}
 	publicKey := append(node.Configuration.RepublicKeyPair.PublicKey.X.Bytes(), node.Configuration.RepublicKeyPair.PublicKey.Y.Bytes()...)
-	tx , err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
+	tx, err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
 	log.Println(tx, err)
 	if err != nil {
 		return err
@@ -195,6 +198,7 @@ func (node *DarkNode) Register() error{
 
 // Stop mining.
 func (node *DarkNode) Stop() {
+	node.quitServer <- struct{}{}
 	node.quitPacker <- struct{}{}
 }
 
@@ -251,11 +255,16 @@ func (node *DarkNode) OnElectShard(from identity.MultiAddress, shard compute.Sha
 	pendingDeltas := node.HiddenOrderBook.PendingDeltaFragments()
 	pendingDeltaMap := map[string]bool{}
 	for i := range pendingDeltas {
-		pendingDeltaMap[string(pendingDeltas[i].ID)] = true
+		pendingDeltaMap[string(pendingDeltas[i].DeltaID())] = true
+	}
+
+	if len(shard.Deltas) > 0 {
+		log.Println("[", node.Swarm.Address(), "] map", pendingDeltaMap)
+		log.Println("[", node.Swarm.Address(), "] candidates", shard.Deltas[0].DeltaID())
 	}
 
 	for i := range shard.Deltas {
-		if pendingDeltaMap[string(shard.Deltas[i].ID)] {
+		if pendingDeltaMap[string(shard.Deltas[i].DeltaID())] {
 			returnedShard.Deltas = append(returnedShard.Deltas, shard.Deltas[i])
 		}
 	}
@@ -265,6 +274,8 @@ func (node *DarkNode) OnElectShard(from identity.MultiAddress, shard compute.Sha
 			returnedShard.Residues = append(returnedShard.Residues, returnedShard.Residues[i])
 		}
 	}
+
+	log.Println("electing fragment:", returnedShard.Deltas)
 
 	return returnedShard
 }
@@ -284,6 +295,8 @@ func (node *DarkNode) OnComputeShard(from identity.MultiAddress, shard compute.S
 // computation proper can be reconstructed.
 func (node *DarkNode) OnFinalizeShard(from identity.MultiAddress, deltaShard compute.DeltaShard) {
 	for i := range deltaShard.DeltaFragments {
+		log.Println("OnFinalizeShard!!!")
+
 		delta, err := node.DeltaEngine.AddDeltaFragment(deltaShard.DeltaFragments[i], int64(node.DarkPoolLimit), node.Configuration.Prime)
 		if err != nil {
 			log.Println(err)
@@ -329,6 +342,7 @@ func (node *DarkNode) StartShardElections() {
 				preemptedShard := node.HiddenOrderBook.PreemptShard()
 				if len(preemptedShard.Deltas) > 0 {
 					go func() {
+						log.Println("RunShardElect(", preemptedShard.Deltas, ")")
 						shard := node.RunShardElection(preemptedShard)
 						node.RunShardComputation(shard)
 					}()
@@ -367,7 +381,7 @@ func (node *DarkNode) RunShardElection(shard compute.Shard) compute.Shard {
 		defer residueVotesMu.Unlock()
 
 		for j := range newShard.Deltas {
-			deltaVotes[string(newShard.Deltas[j])]++
+			deltaVotes[string(newShard.Deltas[j].Id)]++
 		}
 
 		for j := range newShard.Residues {
@@ -394,25 +408,34 @@ func (node *DarkNode) RunShardElection(shard compute.Shard) compute.Shard {
 		}
 	}
 
+	log.Println("Elected: ", returnedShard.Deltas)
+
 	return returnedShard
 }
 
 // RunShardComputation by calling the ComputeShard RPC on all DarkNodes in the
 // dark pool.
 func (node *DarkNode) RunShardComputation(shard compute.Shard) {
+	log.Println("Running computation: ", shard.Deltas)
+
 	go node.Compute(shard)
 	do.ForAll(node.DarkPool, func(i int) {
-		// TODO: Call the ComputeShard RPC on all peers in the dark pool.
-		rpc.AskToComputeShard(node.DarkPool[i], node.Swarm.MultiAddress(), shard, defaultTimeout)
+		err := rpc.AskToComputeShard(node.DarkPool[i], node.Swarm.MultiAddress(), shard, defaultTimeout)
+		if err != nil {
+			log.Println("fail to call FinalizeShard")
+		}
 	})
 }
 
 // Compute ...
 func (node *DarkNode) Compute(shard compute.Shard) {
-	//finalShard := shard.Compute(node.Configuration.Prime)
-	finalShard := shard.Compute()
+	deltaShard := shard.Compute(node.Configuration.Prime)
+	log.Println("Compute: ", deltaShard.DeltaFragments)
 	do.ForAll(node.DarkPool, func(i int) {
-		rpc.FinalizeShard(node.DarkPool[i], node.Swarm.MultiAddress(), finalShard, defaultTimeout)
+		err := rpc.FinalizeShard(node.DarkPool[i], node.Swarm.MultiAddress(), deltaShard, defaultTimeout)
+		if err != nil {
+			log.Println("fail to call FinalizeShard")
+		}
 	})
 }
 
@@ -430,8 +453,8 @@ func ConnectToRegistrar() (*dnr.DarkNodeRegistrar, error) {
 	return userConnection, nil
 }
 
-func getDarkPool()[]identity.ID{
-	ids := make ([]identity.ID, 8)
+func getDarkPool() []identity.ID {
+	ids := make([]identity.ID, 8)
 	for i := 0; i < 8; i++ {
 		config, _ := LoadConfig(fmt.Sprintf("./test_configs/config-%d.json", i))
 		ids[i] = config.MultiAddress.ID()
