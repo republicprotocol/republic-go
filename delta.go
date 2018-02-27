@@ -232,10 +232,10 @@ func (builder *DeltaBuilder) insertDeltaFragment(deltaFragment *DeltaFragment) (
 	// Is the delta already built, or are we adding a delta fragment that we
 	// have already seen
 	if builder.hasDelta(deltaFragment.DeltaID()) {
-		return builder.deltas[deltaFragment.DeltaID().String()], nil
+		return nil, nil // Only return new deltas
 	}
 	if builder.hasDeltaFragment(deltaFragment.ID) {
-		return builder.deltas[deltaFragment.DeltaID().String()], nil
+		return nil, nil // Only return new deltas
 	}
 
 	// Add the delta fragment to the builder and attach it to the appropriate
