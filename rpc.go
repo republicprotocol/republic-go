@@ -219,7 +219,7 @@ func SerializeFinalShard(shard compute.DeltaShard) *DeltaShard {
 // todo: deserialize deltas and residues
 func DeserializeFinalShard(shard *DeltaShard) *compute.DeltaShard {
 	return &compute.DeltaShard{
-		Signature: shard.Signature,
-		DeltaFragments:    []*compute.DeltaFragment{},
+		Signature:      shard.Signature,
+		DeltaFragments: []*compute.DeltaFragment{},
 	}
 }

@@ -83,9 +83,11 @@ service DarkNode {
 //  // Get Final messages for successful order matches that have happened since
 //  // this procedure was last used, as well as new ones that occur.
 //  rpc Notifications (MultiAddress) returns (stream Final);
-//
+
 //  // Get all relevant results that have been computed in the current epoch.
 //  rpc GetFinals (MultiAddress) returns (stream Final);
+
+  rpc Logs (LogRequest) returns (stream LogEvent);
 }
 
 // An OrderFragment is a message contains the details of an order fragment.
@@ -191,6 +193,16 @@ message ElectShardRequest {
 message ComputeShardRequest {
   MultiAddress from = 1;
   Shard shard = 2;
+}
+
+// A LogRequest is ...
+message LogRequest{
+}
+
+// A shard is a block of computations
+message LogEvent {
+  bytes type = 1;
+  bytes message = 2;
 }
 
 /**

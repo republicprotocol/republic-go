@@ -139,3 +139,25 @@ func FinalizeShard(target, from identity.MultiAddress, shard compute.DeltaShard,
 	}
 	return nil
 }
+
+// FinalizeShard using a new grpc.ClientConn to make a Compute RPC call
+// to a target identity.MultiAddress.
+func Logs(target, timeout time.Duration) error {
+	conn, err := Dial(target, timeout)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := NewDarkNodeClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	request := &LogsRequest{}
+
+	_, err = client.Logs(ctx, request, grpc.FailFast(false))
+	if err != nil {
+		return err
+	}
+	return nil
+}
