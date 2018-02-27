@@ -171,6 +171,12 @@ var _ = Describe("Data serialization and deserialization", func() {
 	//		Ω(*result).Should(Equal(*newResult))
 	//	})
 	//})
+	Context("delta fragment",func(){
+		It("should be able to serialize and deserialize compute.DeltaFragment", func() {
+
+		})
+	})
+
 
 	Context("atom.Atom", func() {
 		It("should be able to serialize and deserialize atom.Atom", func() {
@@ -184,4 +190,5 @@ var _ = Describe("Data serialization and deserialization", func() {
 			Ω(newAtom).Should(Equal(a))
 		})
 	})
+
 })

@@ -86,7 +86,7 @@ var _ = Describe("Dark Node", func() {
 
 			inputShard := compute.NewShard([]*compute.DeltaFragment{}, []*compute.ResidueFragment{})
 			shard, err := rpc.StartElectShard(rpcServer.MultiAddress, rpcClient.MultiAddress, inputShard, defaultTimeout)
-			Ω(*shard).Should(Equal(rpc.Shard{}))
+			Ω(*shard).Should(Equal(compute.Shard{Deltas:[]*compute.DeltaFragment{}}))
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
@@ -133,7 +133,7 @@ var _ = Describe("Dark Node", func() {
 			}(server)
 			defer server.Stop()
 
-			inputShard := compute.NewDeltaShard()
+			inputShard := compute.NewDeltaShard([]*compute.DeltaFragment{})
 			err = rpc.FinalizeShard(rpcServer.MultiAddress, rpcClient.MultiAddress, inputShard, defaultTimeout)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
