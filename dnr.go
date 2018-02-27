@@ -61,6 +61,10 @@ func (darkNodeRegistrar *DarkNodeRegistrar) Register(_darkNodeID []byte, _public
 	if err != nil {
 		return tx, err
 	}
+	_, err = PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
+	if err != nil {
+		return tx, err
+	}
 	_darkNodeIDByte, err := toByte(_darkNodeID)
 	if err != nil {
 		return &types.Transaction{}, err
