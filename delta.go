@@ -201,56 +201,209 @@ func isCompatible(deltaFragments []*DeltaFragment) error {
 	return nil
 }
 
-type DeltaEngine struct {
+type DeltaBuilder struct {
 	do.GuardedObject
 
-	deltaFragmentMap map[string][]*DeltaFragment
-	deltaMap         map[string]*Delta
+	k                      int64
+	prime                  *big.Int
+	deltas                 map[string]*Delta
+	deltaFragments         map[string]*DeltaFragment
+	deltasToDeltaFragments map[string][]*DeltaFragment
 }
 
-func NewDeltaEngine() *DeltaEngine {
-	return &DeltaEngine{
-		GuardedObject:    do.NewGuardedObject(),
-		deltaFragmentMap: map[string][]*DeltaFragment{},
-		deltaMap:         map[string]*Delta{},
+func NewDeltaBuilder(k int64, prime *big.Int) *DeltaBuilder {
+	return &DeltaBuilder{
+		GuardedObject:          do.NewGuardedObject(),
+		k:                      k,
+		prime:                  prime,
+		deltas:                 map[string]*Delta{},
+		deltaFragments:         map[string]*DeltaFragment{},
+		deltasToDeltaFragments: map[string][]*DeltaFragment{},
 	}
 }
 
-func (engine DeltaEngine) AddDeltaFragment(deltaFragment *DeltaFragment, k int64, prime *big.Int) (*Delta, error) {
-	engine.Enter(nil)
-	defer engine.Exit()
+func (builder *DeltaBuilder) InsertDeltaFragment(deltaFragment *DeltaFragment) (*Delta, error) {
+	builder.Enter(nil)
+	defer builder.Exit()
+	return builder.insertDeltaFragment(deltaFragment)
+}
 
-	// Get the delta ID for this delta fragment.
-	deltaID := deltaFragment.DeltaID()
-
-	// If the delta for this delta fragment has already been reconstructed then
-	// return nothing, the engine must have already noted the deltas
-	// reconstruction.
-	if delta, ok := engine.deltaMap[deltaID.String()]; ok && delta != nil {
-		return nil, nil
+func (builder *DeltaBuilder) insertDeltaFragment(deltaFragment *DeltaFragment) (*Delta, error) {
+	// Is the delta already built, or are we adding a delta fragment that we
+	// have already seen
+	if builder.hasDelta(deltaFragment.DeltaID()) {
+		return nil, nil // Only return new deltas
+	}
+	if builder.hasDeltaFragment(deltaFragment.ID) {
+		return nil, nil // Only return new deltas
 	}
 
-	// Check that this delta fragment has not been collected yet.
-	deltaFragmentIsUnique := true
-	for _, candidate := range engine.deltaFragmentMap[deltaID.String()] {
-		if candidate.ID.Equals(deltaFragment.ID) {
-			deltaFragmentIsUnique = false
-			break
-		}
-	}
-	if deltaFragmentIsUnique {
-		engine.deltaFragmentMap[deltaID.String()] = append(engine.deltaFragmentMap[deltaID.String()], deltaFragment)
+	// Add the delta fragment to the builder and attach it to the appropriate
+	// delta
+	builder.deltaFragments[deltaFragment.ID.String()] = deltaFragment
+	if deltaFragments, ok := builder.deltasToDeltaFragments[deltaFragment.DeltaID().String()]; ok {
+		deltaFragments = append(deltaFragments, deltaFragment)
+		builder.deltasToDeltaFragments[deltaFragment.DeltaID().String()] = deltaFragments
+	} else {
+		builder.deltasToDeltaFragments[deltaFragment.DeltaID().String()] = []*DeltaFragment{deltaFragment}
 	}
 
-	// Check if we can reconstruct a new delta.
-	if int64(len(engine.deltaFragmentMap[deltaID.String()])) >= k {
-		delta, err := NewDelta(engine.deltaFragmentMap[deltaID.String()], prime)
+	// Build the delta if possible and return it
+	deltaFragments := builder.deltasToDeltaFragments[deltaFragment.DeltaID().String()]
+	if int64(len(deltaFragments)) >= builder.k {
+		delta, err := NewDelta(deltaFragments, builder.prime)
 		if err != nil {
-			return nil, err
+			return delta, err
 		}
-		engine.deltaMap[deltaID.String()] = delta
+		builder.deltas[delta.ID.String()] = delta
 		return delta, nil
 	}
 
 	return nil, nil
+}
+
+func (builder *DeltaBuilder) HasDelta(deltaID DeltaID) bool {
+	builder.EnterReadOnly(nil)
+	defer builder.Exit()
+	return builder.hasDelta(deltaID)
+}
+
+func (builder *DeltaBuilder) hasDelta(deltaID DeltaID) bool {
+	_, ok := builder.deltas[deltaID.String()]
+	return ok
+}
+
+func (builder *DeltaBuilder) HasDeltaFragment(deltaFragmentID DeltaFragmentID) bool {
+	builder.EnterReadOnly(nil)
+	defer builder.Exit()
+	return builder.hasDeltaFragment(deltaFragmentID)
+}
+
+func (builder *DeltaBuilder) hasDeltaFragment(deltaFragmentID DeltaFragmentID) bool {
+	_, ok := builder.deltaFragments[deltaFragmentID.String()]
+	return ok
+}
+
+type DeltaFragmentMatrix struct {
+	do.GuardedObject
+
+	prime                  *big.Int
+	buyOrderFragments      map[string]*OrderFragment
+	sellOrderFragments     map[string]*OrderFragment
+	buySellDeltaFragments  map[string]map[string]*DeltaFragment
+	completeOrderFragments map[string]*OrderFragment
+}
+
+func NewDeltaFragmentMatrix(prime *big.Int) *DeltaFragmentMatrix {
+	return &DeltaFragmentMatrix{
+		GuardedObject:          do.NewGuardedObject(),
+		prime:                  prime,
+		buyOrderFragments:      map[string]*OrderFragment{},
+		sellOrderFragments:     map[string]*OrderFragment{},
+		buySellDeltaFragments:  map[string]map[string]*DeltaFragment{},
+		completeOrderFragments: map[string]*OrderFragment{},
+	}
+}
+
+func (matrix *DeltaFragmentMatrix) InsertOrderFragment(orderFragment *OrderFragment) ([]*DeltaFragment, error) {
+	matrix.Enter(nil)
+	defer matrix.Exit()
+	if orderFragment.OrderParity == OrderParityBuy {
+		return matrix.insertBuyOrderFragment(orderFragment)
+	}
+	return matrix.insertSellOrderFragment(orderFragment)
+}
+
+func (matrix *DeltaFragmentMatrix) insertBuyOrderFragment(buyOrderFragment *OrderFragment) ([]*DeltaFragment, error) {
+	if _, ok := matrix.buyOrderFragments[buyOrderFragment.ID.String()]; ok {
+		return []*DeltaFragment{}, nil
+	}
+	if _, ok := matrix.completeOrderFragments[buyOrderFragment.ID.String()]; ok {
+		return []*DeltaFragment{}, nil
+	}
+
+	deltaFragments := make([]*DeltaFragment, 0, len(matrix.sellOrderFragments))
+	deltaFragmentsMap := map[string]*DeltaFragment{}
+	for i := range matrix.sellOrderFragments {
+		deltaFragment, err := buyOrderFragment.Sub(matrix.sellOrderFragments[i], matrix.prime)
+		if err != nil {
+			return deltaFragments, err
+		}
+		deltaFragments = append(deltaFragments, deltaFragment)
+		deltaFragmentsMap[matrix.sellOrderFragments[i].ID.String()] = deltaFragment
+	}
+
+	matrix.buySellDeltaFragments[buyOrderFragment.ID.String()] = deltaFragmentsMap
+	return deltaFragments, nil
+}
+
+func (matrix *DeltaFragmentMatrix) insertSellOrderFragment(sellOrderFragment *OrderFragment) ([]*DeltaFragment, error) {
+	if _, ok := matrix.sellOrderFragments[sellOrderFragment.ID.String()]; ok {
+		return []*DeltaFragment{}, nil
+	}
+	if _, ok := matrix.completeOrderFragments[sellOrderFragment.ID.String()]; ok {
+		return []*DeltaFragment{}, nil
+	}
+
+	deltaFragments := make([]*DeltaFragment, 0, len(matrix.buyOrderFragments))
+	for i := range matrix.buyOrderFragments {
+		deltaFragment, err := matrix.buyOrderFragments[i].Sub(sellOrderFragment, matrix.prime)
+		if err != nil {
+			return deltaFragments, err
+		}
+		if _, ok := matrix.buySellDeltaFragments[matrix.buyOrderFragments[i].ID.String()]; ok {
+			deltaFragments = append(deltaFragments, deltaFragment)
+			matrix.buySellDeltaFragments[matrix.buyOrderFragments[i].ID.String()][sellOrderFragment.ID.String()] = deltaFragment
+		}
+	}
+	return deltaFragments, nil
+}
+
+func (matrix *DeltaFragmentMatrix) RemoveOrderFragment(orderFragment *OrderFragment) error {
+	matrix.Enter(nil)
+	defer matrix.Exit()
+	if orderFragment.OrderParity == OrderParityBuy {
+		return matrix.removeBuyOrderFragment(orderFragment)
+	}
+	return matrix.removeSellOrderFragment(orderFragment)
+}
+
+func (matrix *DeltaFragmentMatrix) removeBuyOrderFragment(buyOrderFragment *OrderFragment) error {
+	if _, ok := matrix.buyOrderFragments[buyOrderFragment.ID.String()]; !ok {
+		return nil
+	}
+
+	delete(matrix.buyOrderFragments, buyOrderFragment.ID.String())
+	delete(matrix.buySellDeltaFragments, buyOrderFragment.ID.String())
+
+	matrix.completeOrderFragments[buyOrderFragment.ID.String()] = buyOrderFragment
+	return nil
+}
+
+func (matrix *DeltaFragmentMatrix) removeSellOrderFragment(sellOrderFragment *OrderFragment) error {
+	if _, ok := matrix.sellOrderFragments[sellOrderFragment.ID.String()]; !ok {
+		return nil
+	}
+
+	for i := range matrix.buySellDeltaFragments {
+		delete(matrix.buySellDeltaFragments[i], sellOrderFragment.ID.String())
+	}
+
+	matrix.completeOrderFragments[sellOrderFragment.ID.String()] = sellOrderFragment
+	return nil
+}
+
+func (matrix *DeltaFragmentMatrix) DeltaFragment(buyOrderFragmentID, sellOrderFragmentID OrderFragmentID) *DeltaFragment {
+	matrix.EnterReadOnly(nil)
+	defer matrix.ExitReadOnly()
+	return matrix.deltaFragment(buyOrderFragmentID, sellOrderFragmentID)
+}
+
+func (matrix *DeltaFragmentMatrix) deltaFragment(buyOrderFragmentID, sellOrderFragmentID OrderFragmentID) *DeltaFragment {
+	if deltaFragments, ok := matrix.buySellDeltaFragments[buyOrderFragmentID.String()]; ok {
+		if deltaFragment, ok := deltaFragments[sellOrderFragmentID.String()]; ok {
+			return deltaFragment
+		}
+	}
+	return nil
 }

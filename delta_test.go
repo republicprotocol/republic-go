@@ -25,7 +25,7 @@ var _ = Describe("Finals and final fragments", func() {
 		})
 	})
 
-	Context("when using a delta engine", func() {
+	Context("when using a delta builder", func() {
 
 		It("should only return a delta after receiving k delta fragments", func() {
 			lhs, err := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Now().Add(time.Hour), compute.CurrencyCodeBTC, compute.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
@@ -39,13 +39,13 @@ var _ = Describe("Finals and final fragments", func() {
 				deltaFragments[i] = deltaFragment
 			}
 
-			engine := compute.NewDeltaEngine()
+			builder := compute.NewDeltaBuilder(k, prime)
 			for i := int64(0); i < k-1; i++ {
-				delta, err := engine.AddDeltaFragment(deltaFragments[i], k, prime)
+				delta, err := builder.InsertDeltaFragment(deltaFragments[i])
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(delta).Should(BeNil())
 			}
-			delta, err := engine.AddDeltaFragment(deltaFragments[k-1], k, prime)
+			delta, err := builder.InsertDeltaFragment(deltaFragments[k-1])
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(delta).ShouldNot(BeNil())
 		})
@@ -62,18 +62,18 @@ var _ = Describe("Finals and final fragments", func() {
 				deltaFragments[i] = deltaFragment
 			}
 
-			engine := compute.NewDeltaEngine()
+			builder := compute.NewDeltaBuilder(k, prime)
 			for i := int64(0); i < k-1; i++ {
-				delta, err := engine.AddDeltaFragment(deltaFragments[i], k, prime)
+				delta, err := builder.InsertDeltaFragment(deltaFragments[i])
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(delta).Should(BeNil())
 			}
-			delta, err := engine.AddDeltaFragment(deltaFragments[k-1], k, prime)
+			delta, err := builder.InsertDeltaFragment(deltaFragments[k-1])
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(delta).ShouldNot(BeNil())
 
 			for i := int64(0); i < n; i++ {
-				delta, err := engine.AddDeltaFragment(deltaFragments[i], k, prime)
+				delta, err := builder.InsertDeltaFragment(deltaFragments[i])
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(delta).Should(BeNil())
 			}
@@ -91,14 +91,14 @@ var _ = Describe("Finals and final fragments", func() {
 				deltaFragments[i] = deltaFragment
 			}
 
-			engine := compute.NewDeltaEngine()
+			builder := compute.NewDeltaBuilder(k, prime)
 			for i := int64(0); i < k-1; i++ {
-				delta, err := engine.AddDeltaFragment(deltaFragments[i], k, prime)
+				delta, err := builder.InsertDeltaFragment(deltaFragments[i])
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(delta).Should(BeNil())
 			}
 			for i := int64(0); i < k-1; i++ {
-				delta, err := engine.AddDeltaFragment(deltaFragments[i], k, prime)
+				delta, err := builder.InsertDeltaFragment(deltaFragments[i])
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(delta).Should(BeNil())
 			}
