@@ -15,7 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-dark-network"
-	"github.com/republicprotocol/go-dark-node-registrar"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
@@ -44,10 +43,10 @@ type DarkNode struct {
 	Configuration *Config
 	Registrar     *dnr.DarkNodeRegistrar
 
-	HiddenOrderBook *compute.HiddenOrderBook
-	DeltaEngine     *compute.DeltaEngine
-	DarkPool        identity.MultiAddresses
-	DarkPoolLimit   int
+	DeltaBuilder        *compute.DeltaBuilder
+	DeltaFragmentMatrix *compute.DeltaFragmentMatrix
+	DarkPool            identity.MultiAddresses
+	DarkPoolLimit       int
 
 	quitServer chan struct{}
 	quitPacker chan struct{}
@@ -169,7 +168,7 @@ func (node *DarkNode) StopListening() {
 	node.Server.Stop()
 }
 
-func (node *DarkNode) IsRegistered()bool{
+func (node *DarkNode) IsRegistered() bool {
 	registered, err := node.Registrar.IsDarkNodeRegistered(node.Configuration.MultiAddress.ID())
 	log.Println("is registered ?", registered, "error:", err)
 	if err != nil {
@@ -179,13 +178,13 @@ func (node *DarkNode) IsRegistered()bool{
 }
 
 // Register the node on the registrar smart contract .
-func (node *DarkNode) Register() error{
+func (node *DarkNode) Register() error {
 	registered := node.IsRegistered()
-	if registered{
+	if registered {
 		return nil
 	}
 	publicKey := append(node.Configuration.RepublicKeyPair.PublicKey.X.Bytes(), node.Configuration.RepublicKeyPair.PublicKey.Y.Bytes()...)
-	tx , err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
+	tx, err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
 	log.Println(tx, err)
 	if err != nil {
 		return err
@@ -222,12 +221,41 @@ func (node *DarkNode) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAd
 // by the underlying dark.Node whenever the Miner receives a
 // compute.OrderFragment that it must process.
 func (node *DarkNode) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
-	node.HiddenOrderBook.AddOrderFragment(orderFragment, node.Configuration.Prime)
+	deltaFragments, err := node.DeltaFragmentMatrix.InsertOrderFragment(orderFragment)
+	if err != nil {
+		log.Println(err)
+	}
+	for _, multiAddress := range node.DarkPool {
+		client, err := rpc.NewClient(multiAddress, node.Swarm.MultiAddress())
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		for _, deltaFragment := range deltaFragments {
+			err := client.BroadcastDeltaFragment(deltaFragment)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+	}
 }
 
-// OnOrderFragmentForwarding
-func (node *DarkNode) OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment) {
-	// TODO :
+func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment *compute.DeltaFragment) {
+	delta, err := node.DeltaBuilder.InsertDeltaFragment(deltaFragment)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if delta == nil {
+		return
+	}
+	if delta.IsMatch() {
+		log.Printf("[%v] match found (%v, %v)\n", node.Swarm.Address(), base58.Encode(deltaFragment.BuyOrderID), base58.Encode(deltaFragment.SellOrderID))
+		// TODO: Attempt to get consensus on the match and then mark the orders
+		// handled if the consensus is won. If the consensus is not won take
+		// either the buy, or sell (or both), orders and mark them as completed
+		// (this depends on which ones conflicted).
+	}
 }
 
 // OnSync ...
@@ -430,8 +458,8 @@ func ConnectToRegistrar() (*dnr.DarkNodeRegistrar, error) {
 	return userConnection, nil
 }
 
-func getDarkPool()[]identity.ID{
-	ids := make ([]identity.ID, 8)
+func getDarkPool() []identity.ID {
+	ids := make([]identity.ID, 8)
 	for i := 0; i < 8; i++ {
 		config, _ := LoadConfig(fmt.Sprintf("./test_configs/config-%d.json", i))
 		ids[i] = config.MultiAddress.ID()
