@@ -24,17 +24,23 @@ type DarkNodeRegistrar struct {
 }
 
 // NewDarkNodeRegistrar returns a Dark node registrar
-func NewDarkNodeRegistrar(context context.Context, client *Client, auth1 *bind.TransactOpts, auth2 *bind.CallOpts, address common.Address, data []byte) *DarkNodeRegistrar {
+func NewDarkNodeRegistrar(context context.Context, client *Client, auth1 *bind.TransactOpts, auth2 *bind.CallOpts, address common.Address, renAddress common.Address, data []byte) *DarkNodeRegistrar {
 	contract, err := contracts.NewDarkNodeRegistrar(address, bind.ContractBackend(*client))
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
+	renContract, err := contracts.NewERC20(renAddress, bind.ContractBackend(*client))
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
 	return &DarkNodeRegistrar{
-		context: context,
-		client:  client,
-		auth1:   auth1,
-		auth2:   auth2,
-		binding: contract,
+		context:                  context,
+		client:                   client,
+		auth1:                    auth1,
+		auth2:                    auth2,
+		binding:                  contract,
+		tokenBinding:             renContract,
+		darkNodeRegistrarAddress: address,
 	}
 }
 
@@ -129,7 +135,7 @@ func (darkNodeRegistrar *DarkNodeRegistrar) GetPublicKey(_darkNodeID []byte) ([]
 	return darkNodeRegistrar.binding.GetPublicKey(darkNodeRegistrar.auth2, _darkNodeIDByte)
 }
 
-func (darkNodeRegistrar *DarkNodeRegistrar) GetXingOverlay() ([][20]byte, error) {
+func (darkNodeRegistrar *DarkNodeRegistrar) GetDarkpool() ([][20]byte, error) {
 	return darkNodeRegistrar.binding.GetXingOverlay(darkNodeRegistrar.auth2)
 }
 func (darkNodeRegistrar *DarkNodeRegistrar) MinimumBond() (*big.Int, error) {
