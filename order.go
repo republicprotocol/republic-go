@@ -179,6 +179,10 @@ func (id OrderFragmentID) Equals(other OrderFragmentID) bool {
 	return bytes.Equal(id, other)
 }
 
+func (id OrderFragmentID) String() string {
+	return string(id)
+}
+
 // An OrderFragment is a secret share of an Order. Is is created using Shamir
 // secret sharing where the secret is an Order encoded as a big.Int.
 type OrderFragment struct {
