@@ -349,6 +349,8 @@ func NewHiddenOrderBook(shardSize int) *HiddenOrderBook {
 }
 
 func (orderBook *HiddenOrderBook) PendingDeltaFragments() []*DeltaFragment {
+	orderBook.EnterReadOnly(nil)
+	defer orderBook.ExitReadOnly()
 	return orderBook.pendingDeltaFragments
 }
 
@@ -436,6 +438,5 @@ func (orderBook *HiddenOrderBook) preemptShard() Shard {
 	}
 	pendingDeltaFragments := make([]*DeltaFragment, 0, shardSize)
 	pendingDeltaFragments = append(pendingDeltaFragments, orderBook.pendingDeltaFragments[len(orderBook.pendingDeltaFragments)-shardSize:]...)
-	orderBook.pendingDeltaFragments = orderBook.pendingDeltaFragments[0 : len(orderBook.pendingDeltaFragments)-shardSize]
 	return NewShard(pendingDeltaFragments, []*ResidueFragment{})
 }
