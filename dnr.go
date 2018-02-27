@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -69,7 +70,15 @@ func (darkNodeRegistrar *DarkNodeRegistrar) Register(_darkNodeID []byte, _public
 	if err != nil {
 		return &types.Transaction{}, err
 	}
-	return darkNodeRegistrar.binding.Register(darkNodeRegistrar.auth1, _darkNodeIDByte, _publicKey)
+
+	txn, err := darkNodeRegistrar.binding.Register(darkNodeRegistrar.auth1, _darkNodeIDByte, _publicKey)
+	if err == nil {
+		_, err := PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, txn)
+		if err != nil {
+			return txn, err
+		}
+	}
+	return txn, err
 }
 
 // Deregister deregisters an existing dark node
@@ -139,23 +148,53 @@ func (darkNodeRegistrar *DarkNodeRegistrar) GetPublicKey(_darkNodeID []byte) ([]
 	return darkNodeRegistrar.binding.GetPublicKey(darkNodeRegistrar.auth2, _darkNodeIDByte)
 }
 
+// GetDarkpool get's the dark pool configuration
 func (darkNodeRegistrar *DarkNodeRegistrar) GetDarkpool() ([][20]byte, error) {
 	return darkNodeRegistrar.binding.GetXingOverlay(darkNodeRegistrar.auth2)
 }
+
+// MinimumBond get's the minimum viable bonda mount
 func (darkNodeRegistrar *DarkNodeRegistrar) MinimumBond() (*big.Int, error) {
 	return darkNodeRegistrar.binding.MinimumBond(darkNodeRegistrar.auth2)
 }
 
+// MinimumEpochInterval get's the minimum epoch interval
 func (darkNodeRegistrar *DarkNodeRegistrar) MinimumEpochInterval() (*big.Int, error) {
 	return darkNodeRegistrar.binding.MinimumEpochInterval(darkNodeRegistrar.auth2)
 }
 
+// PendingRefunds get's the pending refund amount of the given address
 func (darkNodeRegistrar *DarkNodeRegistrar) PendingRefunds(arg0 common.Address) (*big.Int, error) {
 	return darkNodeRegistrar.binding.PendingRefunds(darkNodeRegistrar.auth2, arg0)
 }
 
+// Refund refunds the bond of an unregistered miner
 func (darkNodeRegistrar *DarkNodeRegistrar) Refund() (*types.Transaction, error) {
 	return darkNodeRegistrar.binding.Refund(darkNodeRegistrar.auth1)
+}
+
+// WaitTillRegistration waits until the registration is successful.
+func (darkNodeRegistrar *DarkNodeRegistrar) WaitTillRegistration(_darkNodeID []byte) error {
+	isRegistered := false
+	for !isRegistered {
+		tx, err := darkNodeRegistrar.Epoch()
+		if err != nil {
+
+			return err
+		}
+		_, err = PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
+		if err != nil {
+
+			return err
+		}
+		time.Sleep(time.Minute)
+		isRegistered, err = darkNodeRegistrar.IsDarkNodeRegistered(_darkNodeID)
+		if err != nil {
+
+			return err
+		}
+	}
+	return nil
 }
 
 func toByte(id []byte) ([20]byte, error) {

@@ -30,8 +30,8 @@ var _ = Describe("Dark Node Registrar", func() {
 
 	client := Ropsten("https://ropsten.infura.io/")
 
-	darkNodeContractAddress := common.HexToAddress("0x91afce12c336ca7f39ff5875a620003849f59e18")
-	renContractAddress := common.HexToAddress("0x91afce12c336ca7f39ff5875a620003849f59e18")
+	darkNodeContractAddress := common.HexToAddress("0x0B1148699C93cA9Cfa28f11BD581936f673F76ec")
+	renContractAddress := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
 
 	UserConnection := NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, darkNodeContractAddress, renContractAddress, nil)
 
@@ -47,65 +47,73 @@ var _ = Describe("Dark Node Registrar", func() {
 	It("Can register a dark node", func() {
 		_, err := UserConnection.Register(darkNodeID, publicKey)
 		Ω(err).Should(BeNil())
-	})
-
-	It("Can get bond of a registered dark node", func() {
-		_, err := UserConnection.GetBond(darkNodeID)
+		log.Println("Waiting for epoch to end .......")
+		err = UserConnection.WaitTillRegistration(darkNodeID)
 		Ω(err).Should(BeNil())
 	})
 
-	It("Can check if a dark node is registered", func() {
-		_, err := UserConnection.IsDarkNodeRegistered(darkNodeID)
-		Ω(err).Should(BeNil())
-	})
+	// It("Can register a dark node", func() {
+	// 	_, err := UserConnection.Register(darkNodeID, publicKey)
+	// 	Ω(err).Should(BeNil())
+	// })
 
-	It("Can get the current epoch", func() {
-		epoch, err := UserConnection.CurrentEpoch()
-		Ω(err).Should(BeNil())
-		Ω(epoch.Blockhash).Should(Not(BeNil()))
-		Ω(epoch.Timestamp).Should(Not(BeNil()))
-	})
+	// It("Can get bond of a registered dark node", func() {
+	// 	_, err := UserConnection.GetBond(darkNodeID)
+	// 	Ω(err).Should(BeNil())
+	// })
 
-	It("Can get the commitment of a dark node", func() {
-		commitment, err := UserConnection.GetCommitment(darkNodeID)
-		Ω(err).Should(BeNil())
-		Ω(commitment).Should(Not(BeNil()))
-	})
+	// It("Can check if a dark node is registered", func() {
+	// 	_, err := UserConnection.IsDarkNodeRegistered(darkNodeID)
+	// 	Ω(err).Should(BeNil())
+	// })
 
-	It("Can get the owner of a dark node", func() {
-		owner, err := UserConnection.GetOwner(darkNodeID)
-		Ω(err).Should(BeNil())
-		Ω(owner).Should(Not(BeNil()))
-	})
+	// It("Can get the current epoch", func() {
+	// 	epoch, err := UserConnection.CurrentEpoch()
+	// 	Ω(err).Should(BeNil())
+	// 	Ω(epoch.Blockhash).Should(Not(BeNil()))
+	// 	Ω(epoch.Timestamp).Should(Not(BeNil()))
+	// })
 
-	It("Can get the public key of a dark node", func() {
+	// It("Can get the commitment of a dark node", func() {
+	// 	commitment, err := UserConnection.GetCommitment(darkNodeID)
+	// 	Ω(err).Should(BeNil())
+	// 	Ω(commitment).Should(Not(BeNil()))
+	// })
 
-	})
+	// It("Can get the owner of a dark node", func() {
+	// 	owner, err := UserConnection.GetOwner(darkNodeID)
+	// 	Ω(err).Should(BeNil())
+	// 	Ω(owner).Should(Not(BeNil()))
+	// })
 
-	It("Can get the xing overlay network", func() {
-		_, err := UserConnection.GetXingOverlay()
-		Ω(err).Should(BeNil())
-	})
+	// It("Can get the public key of a dark node", func() {
 
-	It("Can get the minimum bond", func() {
+	// })
 
-	})
+	// It("Can get the xing overlay network", func() {
+	// 	_, err := UserConnection.GetXingOverlay()
+	// 	Ω(err).Should(BeNil())
+	// })
 
-	It("Can get the minimum epoch interval", func() {
+	// It("Can get the minimum bond", func() {
 
-	})
+	// })
 
-	It("Can get the  pending refunds", func() {
+	// It("Can get the minimum epoch interval", func() {
 
-	})
+	// })
 
-	It("Can deregister a dark node", func() {
-		_, err := UserConnection.Deregister(darkNodeID)
-		Ω(err).Should(BeNil())
-	})
+	// It("Can get the  pending refunds", func() {
 
-	It("Can get refund", func() {
+	// })
 
-	})
+	// It("Can deregister a dark node", func() {
+	// 	_, err := UserConnection.Deregister(darkNodeID)
+	// 	Ω(err).Should(BeNil())
+	// })
+
+	// It("Can get refund", func() {
+
+	// })
 
 })
