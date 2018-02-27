@@ -60,7 +60,7 @@ func (delegate *mockDelegate) OnSync(from identity.MultiAddress) chan do.Option 
 
 func (delegate *mockDelegate) OnLogs() chan do.Option {
 	logEvent := make(chan do.Option, 1)
-	logEvent <- do.Ok(&rpc.logEvent{})
+	logEvent <- do.Ok(&rpc.LogEvent{})
 	return logEvent
 }
 

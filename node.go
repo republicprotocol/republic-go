@@ -22,7 +22,7 @@ type Delegate interface {
 	OnElectShard(from identity.MultiAddress, shard compute.Shard) compute.Shard
 	OnComputeShard(from identity.MultiAddress, shard compute.Shard)
 	OnFinalizeShard(from identity.MultiAddress, deltaShard compute.DeltaShard)
-	OnLogs()
+	OnLogs() chan do.Option
 }
 
 // Node implements the gRPC Node service.
@@ -164,7 +164,7 @@ func (node *Node) FinalizeShard(ctx context.Context, finaliseShardRequest *rpc.F
 }
 
 // Logs ...
-func (node *Node) Logs(logsRequest *rpc.logsRequest, stream rpc.DarkNode_LogsServer) error {
+func (node *Node) Logs(logRequest *rpc.LogRequest, stream rpc.DarkNode_LogsServer) error {
 	if node.Options.Debug >= DebugHigh {
 		log.Printf("[%v] received a log query", node.Address())
 	}
@@ -173,7 +173,7 @@ func (node *Node) Logs(logsRequest *rpc.logsRequest, stream rpc.DarkNode_LogsSer
 	}
 
 	wait := do.Process(func() do.Option {
-		return do.Err(node.logs(logsRequest, stream))
+		return do.Err(node.logs(logRequest, stream))
 	})
 
 	select {
@@ -389,7 +389,10 @@ func (node *Node) computeShard(computeShardRequest *rpc.ComputeShardRequest) (*r
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	shard := rpc.DeserializeShard(computeShardRequest.Shard)
+	shard, err := rpc.DeserializeShard(computeShardRequest.Shard)
+	if err != nil {
+		return &rpc.Nothing{}, err
+	}
 	node.Delegate.OnComputeShard(from, *shard)
 	return &rpc.Nothing{}, nil
 }
@@ -399,7 +402,10 @@ func (node *Node) electShard(electShardRequest *rpc.ElectShardRequest) (*rpc.Sha
 	if err != nil {
 		return &rpc.Shard{}, err
 	}
-	shard := rpc.DeserializeShard(electShardRequest.Shard)
+	shard, err := rpc.DeserializeShard(electShardRequest.Shard)
+	if err != nil {
+		return &rpc.Shard{}, err
+	}
 	shardReturn := node.Delegate.OnElectShard(from, *shard)
 	return rpc.SerializeShard(shardReturn), nil
 }
@@ -417,8 +423,10 @@ func (node *Node) finalizeShard(finaliseShardRequest *rpc.FinalizeShardRequest) 
 func (node *Node) logs(logsRequest *rpc.LogRequest, stream rpc.DarkNode_LogsServer) error {
 	logChan := node.Delegate.OnLogs()
 	for event := range logChan {
-		//todo : need to serialize data into the network representation
-		stream.Send(event.Ok.(*rpc.LogEvent))
+		// TODO: need to serialize data into the network representation
+		if err := stream.Send(event.Ok.(*rpc.LogEvent)); err != nil {
+			return err
+		}
 	}
 	return nil
 }
