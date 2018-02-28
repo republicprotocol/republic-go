@@ -31,8 +31,7 @@ func SyncWithTarget(target, from identity.MultiAddress, timeout time.Duration) (
 		defer conn.Close()
 
 		client := NewDarkNodeClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
+		ctx := context.Background()
 
 		stream, err := client.Sync(ctx, syncRequest, grpc.FailFast(false))
 		if err != nil {
@@ -43,7 +42,7 @@ func SyncWithTarget(target, from identity.MultiAddress, timeout time.Duration) (
 		for {
 			select {
 			case _, ok := <-quit:
-				if !ok {
+				if ok {
 					return
 				}
 			default:
@@ -83,8 +82,7 @@ func Logs(target identity.MultiAddress, timeout time.Duration) (chan do.Option, 
 		defer conn.Close()
 
 		client := NewDarkNodeClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
+		ctx := context.Background()
 
 		stream, err := client.Logs(ctx, logRequest, grpc.FailFast(false))
 		if err != nil {
@@ -95,7 +93,7 @@ func Logs(target identity.MultiAddress, timeout time.Duration) (chan do.Option, 
 		for {
 			select {
 			case _, ok := <-quit:
-				if !ok {
+				if ok {
 					return
 				}
 			default:
