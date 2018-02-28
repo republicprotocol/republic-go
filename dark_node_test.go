@@ -17,6 +17,11 @@ func (s *mockServer) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_Sync
 	return nil
 }
 
+func (s *mockServer) Logs(logRequest *rpc.LogRequest, stream rpc.DarkNode_LogsServer) error {
+	stream.Send(&rpc.LogEvent{Type: []byte("type"), Message: []byte("message")})
+	return nil
+}
+
 func (s *mockServer) ElectShard(ctx context.Context, electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
 	return &rpc.Shard{}, nil
 }
@@ -70,6 +75,23 @@ var _ = Describe("Dark Node", func() {
 			resultChan, _ := rpc.SyncWithTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
 			syncBlock := <-resultChan
 			Ω(syncBlock.Err).Should(BeNil())
+		})
+	})
+
+	Context("log stream", func() {
+		It("should send logs using a channel", func() {
+			lis, err := net.Listen("tcp", ":3000")
+			Ω(err).ShouldNot(HaveOccurred())
+			go func(server *grpc.Server) {
+				defer GinkgoRecover()
+				Ω(server.Serve(lis)).ShouldNot(HaveOccurred())
+			}(server)
+			defer server.Stop()
+
+			resultChan, quit := rpc.Logs(rpcServer.MultiAddress, defaultTimeout)
+			logEvent := <-resultChan
+			Ω(logEvent.Err).Should(BeNil())
+			quit <- struct{}{}
 		})
 	})
 })

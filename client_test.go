@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -81,7 +82,11 @@ var _ = Describe("Custom Client", func() {
 		})
 
 		It("should error when the server if offline", func() {
-			client, err := rpc.NewClient(to, from)
+			client, err := rpc.NewClient(to, from, rpc.ClientOptions{
+				Timeout:        5 * time.Second,
+				TimeoutBackoff: 0 * time.Second,
+				TimeoutRetries: 3,
+			})
 			Ω(err).ShouldNot(HaveOccurred())
 			_, err = client.BroadcastDeltaFragment(deltaFragment)
 			Ω(err).Should(HaveOccurred())

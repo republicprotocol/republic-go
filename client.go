@@ -33,9 +33,9 @@ func DefaultClientOptions() ClientOptions {
 	}
 }
 
-func NewClient(to, from identity.MultiAddress) (Client, error) {
+func NewClient(to, from identity.MultiAddress, options ...ClientOptions) (Client, error) {
 	client := Client{
-		Options: DefaultClientOptions(),
+		Options: buildClientOptions(options...),
 		From:    SerializeMultiAddress(from),
 	}
 
@@ -85,4 +85,14 @@ func (client Client) BroadcastDeltaFragment(deltaFragment *compute.DeltaFragment
 	}
 
 	return resp, err
+}
+
+func buildClientOptions(options ...ClientOptions) ClientOptions {
+	opts := DefaultClientOptions()
+	for _, opt := range options {
+		opts.Timeout = opt.Timeout
+		opts.TimeoutBackoff = opt.TimeoutBackoff
+		opts.TimeoutRetries = opt.TimeoutRetries
+	}
+	return opts
 }

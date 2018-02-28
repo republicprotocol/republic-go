@@ -31,8 +31,7 @@ func SyncWithTarget(target, from identity.MultiAddress, timeout time.Duration) (
 		defer conn.Close()
 
 		client := NewDarkNodeClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
+		ctx := context.Background()
 
 		stream, err := client.Sync(ctx, syncRequest, grpc.FailFast(false))
 		if err != nil {
@@ -43,7 +42,7 @@ func SyncWithTarget(target, from identity.MultiAddress, timeout time.Duration) (
 		for {
 			select {
 			case _, ok := <-quit:
-				if !ok {
+				if ok {
 					return
 				}
 			default:
@@ -62,4 +61,55 @@ func SyncWithTarget(target, from identity.MultiAddress, timeout time.Duration) (
 		}
 	}()
 	return shards, quit
+}
+
+// Logs ...
+// This function returns two channels. The first is used to read shards received
+// in the synchronization. The second is used by the caller to quit when he no
+// longer wants to receive dark.Chunk.
+func Logs(target identity.MultiAddress, timeout time.Duration) (chan do.Option, chan struct{}) {
+	logEvents := make(chan do.Option, 1)
+	quit := make(chan struct{}, 1)
+	logRequest := &LogRequest{}
+
+	go func() {
+		defer close(logEvents)
+		conn, err := Dial(target, timeout)
+		if err != nil {
+			logEvents <- do.Err(err)
+			return
+		}
+		defer conn.Close()
+
+		client := NewDarkNodeClient(conn)
+		ctx := context.Background()
+
+		stream, err := client.Logs(ctx, logRequest, grpc.FailFast(false))
+		if err != nil {
+			logEvents <- do.Err(err)
+			return
+		}
+
+		for {
+			select {
+			case _, ok := <-quit:
+				if ok {
+					return
+				}
+			default:
+
+			}
+
+			shard, err := stream.Recv()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				logEvents <- do.Err(err)
+				continue
+			}
+			logEvents <- do.Ok(shard)
+		}
+	}()
+	return logEvents, quit
 }
