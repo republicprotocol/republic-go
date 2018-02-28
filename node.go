@@ -79,6 +79,17 @@ func (logQueue *LogQueue) Subscribe(channel chan do.Option) {
 	logQueue.channels = append(logQueue.channels, channel)
 }
 
+// Unsubscribe ...
+func (logQueue *LogQueue) Unsubscribe(channel chan do.Option) {
+	logQueue.Enter(nil)
+	defer logQueue.Exit()
+	logQueue.unsubscribe(channel)
+}
+
+func (logQueue *LogQueue) unsubscribe(channel chan do.Option) {
+	// TODO: Remove from logQueue
+}
+
 // DarkNode ...
 type DarkNode struct {
 	Server        *grpc.Server
@@ -163,11 +174,14 @@ func (node *DarkNode) OnSync(identity.MultiAddress) chan do.Option {
 	panic("uninmplemented")
 }
 
-// OnLogs returns a channel for receiving logs from the node
-func (node *DarkNode) OnLogs(logs chan do.Option) {
-	logChannel := make(chan do.Option, 128)
+// SubscribeToLogs will start sending log events to logChannel
+func (node *DarkNode) SubscribeToLogs(logChannel chan do.Option) {
 	node.logQueue.Subscribe(logChannel)
-	return logChannel
+}
+
+// UnsubscribeFromLogs will stop sending log events to logChannel
+func (node *DarkNode) UnsubscribeFromLogs(logChannel chan do.Option) {
+	node.logQueue.Unsubscribe(logChannel)
 }
 
 // OnOrderFragmentForwarding ...
@@ -297,7 +311,7 @@ func (node *DarkNode) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAd
 // by the underlying dark.Node whenever the Miner receives a
 // compute.OrderFragment that it must process.
 func (node *DarkNode) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
-	node.logQueue.Publish(do.Ok{nil})
+	node.logQueue.Publish(do.Ok(nil))
 	deltaFragments, err := node.DeltaFragmentMatrix.InsertOrderFragment(orderFragment)
 	if err != nil {
 		log.Println(err)
