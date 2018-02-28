@@ -75,7 +75,9 @@ var _ = Describe("Dark nodes", func() {
 					Ω(n.Start()).ShouldNot(HaveOccurred())
 				}(n)
 			}
-			time.Sleep(5 * time.Second)
+			chanInt := make(chan int)
+			<- chanInt
+			time.Sleep(3 * time.Second)
 			orderFileNames := []string{"./test_orders/btc-eth.json", "./test_orders/eth-btc.json"}
 			for i := range orderFileNames {
 				order, err := readOrderFromFile(orderFileNames[i])

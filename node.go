@@ -62,10 +62,10 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		config.ComputationShardSize = 10
 	}
 
-	// registrar, err := ConnectToRegistrar()
-	// if err != nil {
-	// 	return nil, err
-	// }
+	registrar, err := ConnectToRegistrar()
+	if err != nil {
+		return nil, err
+	}
 
 	k := int64(5)
 	node := &DarkNode{
@@ -73,6 +73,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		DeltaFragmentMatrix: compute.NewDeltaFragmentMatrix(config.Prime),
 		Server:              grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
 		Configuration:       config,
+		Registrar:           registrar,
 
 		quitServer: make(chan struct{}),
 	}
@@ -112,35 +113,48 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 // bootstrap swarm.Nodes.
 func (node *DarkNode) Start() error {
 
-	// TODO
+	isRegistered := node.IsRegistered()
+	if !isRegistered {
+		log.Println("You are not registered")
+		//node.Register()
+		return nil
+	}
+
 	//darkPool, err := node.Registrar.GetDarkpool()
 	//if err != nil {
 	//	log.Fatal(err)
 	//}
-	darkPool := getDarkPool()
 
 	// Wait for the server to start and bootstrap the connections in the swarm.
 	node.Swarm.Bootstrap()
 
-	//  Ping all nodes in the dark pool
-	for _, id := range darkPool {
-		target, err := node.Swarm.FindNode(id[:])
-		if err != nil {
-			return err
-		}
-		// Ignore the node if we can't find it
-		if target == nil {
-			continue
-		}
-		err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
-		// Update the nodes in our DHT if they respond
-		if err == nil {
-			node.DarkPool = append(node.DarkPool, *target)
-			node.Swarm.DHT.UpdateMultiAddress(*target)
-		}
-	}
+	////  Ping all nodes in the dark pool
+	//for _, id := range darkPool {
+	//	target, err := node.Swarm.FindNode(id[:])
+	//	if err != nil {
+	//		return err
+	//	}
+	//	// Ignore the node if we can't find it
+	//	if target == nil {
+	//		continue
+	//	}
+	//	err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
+	//	// Update the nodes in our DHT if they respond
+	//	if err == nil {
+	//		node.DarkPool = append(node.DarkPool, *target)
+	//		node.Swarm.DHT.UpdateMultiAddress(*target)
+	//	}
+	//}
+
+	<- node.quitServer
 
 	return nil
+}
+
+// Stop mining.
+func (node *DarkNode) Stop() {
+	node.quitServer <- struct{}{}
+	node.quitPacker <- struct{}{}
 }
 
 // StartListening starts listening for rpc calls
@@ -183,13 +197,6 @@ func (node *DarkNode) Register() error {
 	}
 	err = node.Registrar.WaitTillRegistration(node.Configuration.MultiAddress.ID())
 	return err
-
-}
-
-// Stop mining.
-func (node *DarkNode) Stop() {
-	node.quitServer <- struct{}{}
-	node.quitPacker <- struct{}{}
 }
 
 func getDarkPool() []identity.ID {
