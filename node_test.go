@@ -89,6 +89,7 @@ var _ = Describe("Dark nodes", func() {
 					}
 				}
 			}
+			time.Sleep(1* time.Minute)
 		})
 	})
 })

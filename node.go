@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -9,12 +10,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/pkg/discovery/nodes"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/go-dark-network"
 	"github.com/republicprotocol/go-dark-node-registrar"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
+	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-swarm-network"
 	"google.golang.org/grpc"
 )
@@ -106,58 +109,22 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 // bootstrap swarm.Nodes.
 func (node *DarkNode) Start() error {
 
-	//isRegistered := node.IsRegistered()
-	//if !isRegistered {
-	//	log.Println("You are not registered")
-	//	err := node.Register()
-	//	if err != nil {
-	//		return err
-	//	}
-	//}
+	go func() {
+		node.StartListening()
+	}()
 
-	//darkPool, err := node.Registrar.GetDarkpool()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//darkPool := getDarkPool()
+	isRegistered := node.IsRegistered()
+	if !isRegistered {
+		return errors.New("You are not registered")
+		//err := node.Register()
+		//if err != nil {
+		//	return err
+		//}
+	}
+	node.PingDarkPool()
 
-	// Wait for the server to start and bootstrap the connections in the swarm.
+	// Bootstrap the connections in the swarm.
 	node.Swarm.Bootstrap()
-
-	//for _, id := range darkPool {
-	//	target, err := node.Swarm.FindNode(id[:])
-	//	if err != nil {
-	//		return err
-	//	}
-	//	// Ignore the node if we can't find it
-	//	if target == nil {
-	//		continue
-	//	}
-	//	err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
-	//	// Update the nodes in our DHT if they respond
-	//	if err == nil {
-	//		node.DarkPool = append(node.DarkPool, *target)
-	//		node.Swarm.DHT.UpdateMultiAddress(*target)
-	//	}
-	//}
-
-	////  Ping all nodes in the dark pool
-	//for _, id := range darkPool {
-	//	target, err := node.Swarm.FindNode(id[:])
-	//	if err != nil {
-	//		return err
-	//	}
-	//	// Ignore the node if we can't find it
-	//	if target == nil {
-	//		continue
-	//	}
-	//	err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
-	//	// Update the nodes in our DHT if they respond
-	//	if err == nil {
-	//		node.DarkPool = append(node.DarkPool, *target)
-	//		node.Swarm.DHT.UpdateMultiAddress(*target)
-	//	}
-	//}
 
 	<-node.quitServer
 
@@ -189,7 +156,6 @@ func (node *DarkNode) StopListening() {
 
 func (node *DarkNode) IsRegistered() bool {
 	registered, err := node.Registrar.IsDarkNodeRegistered(node.Configuration.MultiAddress.ID())
-	log.Println("is registered ?", registered, "error:", err)
 	if err != nil {
 		return false
 	}
@@ -203,13 +169,45 @@ func (node *DarkNode) Register() error {
 		return nil
 	}
 	publicKey := append(node.Configuration.RepublicKeyPair.PublicKey.X.Bytes(), node.Configuration.RepublicKeyPair.PublicKey.Y.Bytes()...)
-	tx, err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
-	log.Println(tx, err)
+	_, err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
 	if err != nil {
 		return err
 	}
 	err = node.Registrar.WaitTillRegistration(node.Configuration.MultiAddress.ID())
 	return err
+}
+
+func (node *DarkNode) Deregister() error {
+	_, err := node.Registrar.Deregister(node.Configuration.MultiAddress.ID())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (node *DarkNode) PingDarkPool () error {
+	darkPool, err := node.Registrar.GetDarkpool()
+	if err != nil {
+		return err
+	}
+
+	for _, id := range darkPool {
+		target, err := node.Swarm.FindNode(id[:])
+		if err != nil {
+			return err
+		}
+		// Ignore the node if we can't find it
+		if target == nil {
+			continue
+		}
+		err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
+		// Update the nodes in our DHT if they respond
+		if err == nil {
+			node.DarkPool = append(node.DarkPool, *target)
+			node.Swarm.DHT.UpdateMultiAddress(*target)
+		}
+	}
+	return nil
 }
 
 func getDarkPool() []identity.ID {
