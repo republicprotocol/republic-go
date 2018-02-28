@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-dark-node"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
@@ -102,10 +103,14 @@ func main() {
 		// Send order fragment to the nodes
 		for _, orders := range [][]*compute.Order{buyOrders, sellOrders} {
 			go func(orders []*compute.Order) {
-				log.Println("sending orders", len(orders))
-
 				for _, order := range orders {
 					//todo
+					if order.Parity == compute.OrderParityBuy {
+						log.Println("sending buy order :", base58.Encode(order.ID))
+					} else {
+						log.Println("sending sell order :", base58.Encode(order.ID))
+					}
+
 					shares, err := order.Split(5, 3, node.Prime)
 					if err != nil {
 						continue
