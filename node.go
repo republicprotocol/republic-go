@@ -37,7 +37,7 @@ type DarkNode struct {
 	DeltaBuilder        *compute.DeltaBuilder
 	DeltaFragmentMatrix *compute.DeltaFragmentMatrix
 	DarkPool            identity.MultiAddresses
-	DarkPoolLimit       int
+	DarkPoolLimit       int64
 
 	quitServer chan struct{}
 	quitPacker chan struct{}
@@ -61,8 +61,9 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	// 	return nil, err
 	// }
 
+	k := int64(5)
 	node := &DarkNode{
-		DeltaBuilder:        compute.NewDeltaBuilder(int64(len(config.BootstrapMultiAddresses)), config.Prime),
+		DeltaBuilder:        compute.NewDeltaBuilder(k, config.Prime),
 		DeltaFragmentMatrix: compute.NewDeltaFragmentMatrix(config.Prime),
 		Server:              grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
 		Configuration:       config,
@@ -70,12 +71,12 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		quitServer: make(chan struct{}),
 	}
 	node.DarkPool = config.BootstrapMultiAddresses
-	node.DarkPoolLimit = len(node.DarkPool)
+	node.DarkPoolLimit = k
 
 	swarmOptions := swarm.Options{
 		MultiAddress:            config.MultiAddress,
 		BootstrapMultiAddresses: config.BootstrapMultiAddresses,
-		Debug:           swarm.DebugHigh,
+		Debug:           swarm.DebugOff,
 		Alpha:           3,
 		MaxBucketLength: 20,
 		Timeout:         30 * time.Second,
@@ -88,7 +89,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 
 	darkOptions := dark.Options{
 		Address:        config.MultiAddress.Address(),
-		Debug:          dark.DebugHigh,
+		Debug:          dark.DebugOff,
 		Timeout:        30 * time.Second,
 		TimeoutStep:    30 * time.Second,
 		TimeoutRetries: 3,
@@ -180,6 +181,7 @@ func (node *DarkNode) Register() error {
 
 // Stop mining.
 func (node *DarkNode) Stop() {
+	node.quitServer <- struct{}{}
 	node.quitPacker <- struct{}{}
 }
 
