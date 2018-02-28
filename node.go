@@ -39,7 +39,7 @@ type LogQueue struct {
 func NewLogQueue() *LogQueue {
 	logQueue := new(LogQueue)
 	logQueue.GuardedObject = do.NewGuardedObject()
-	logQueue.channels = make([]chan do.Option, 128)
+	logQueue.channels = nil
 	return logQueue
 }
 
@@ -50,10 +50,11 @@ func (logQueue *LogQueue) Publish(val do.Option) {
 
 	var logQueueLength = len(logQueue.channels)
 	for i := 0; i < logQueueLength; i++ {
-		timer := time.Tick(10 * time.Second)
+		timer := time.NewTicker(10 * time.Second)
+		defer timer.Stop()
 		select {
 		case logQueue.channels[i] <- val:
-		case <-timer:
+		case <-timer.C:
 			// TODO: deregister the channel
 			logQueue.channels[i] = logQueue.channels[logQueueLength-1]
 			logQueue.channels = logQueue.channels[:logQueueLength-1]
@@ -75,11 +76,14 @@ func (logQueue *LogQueue) Subscribe(channel chan do.Option) {
 func (logQueue *LogQueue) Unsubscribe(channel chan do.Option) {
 	logQueue.Enter(nil)
 	defer logQueue.Exit()
-	logQueue.unsubscribe(channel)
-}
-
-func (logQueue *LogQueue) unsubscribe(channel chan do.Option) {
-	// TODO: Remove from logQueue
+	length := len(logQueue.channels)
+	for i := 0; i < length; i++ {
+		if logQueue.channels[i] == channel {
+			logQueue.channels[i] = logQueue.channels[length-1]
+			logQueue.channels = logQueue.channels[:length-1]
+			break
+		}
+	}
 }
 
 // DarkNode ...
@@ -160,22 +164,6 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	return node, nil
 }
 
-// OnSync ...
-func (node *DarkNode) OnSync(identity.MultiAddress) chan do.Option {
-	// TODO: ...
-	panic("uninmplemented")
-}
-
-// SubscribeToLogs will start sending log events to logChannel
-func (node *DarkNode) SubscribeToLogs(logChannel chan do.Option) {
-	node.logQueue.Subscribe(logChannel)
-}
-
-// UnsubscribeFromLogs will stop sending log events to logChannel
-func (node *DarkNode) UnsubscribeFromLogs(logChannel chan do.Option) {
-	node.logQueue.Unsubscribe(logChannel)
-}
-
 // OnOrderFragmentForwarding ...
 func (node *DarkNode) OnOrderFragmentForwarding(address identity.Address, peer identity.MultiAddress, fragment *compute.OrderFragment) {
 	// TODO: Log metrics for the deep query.
@@ -236,12 +224,24 @@ func (node *DarkNode) StartListening() error {
 	if err != nil {
 		return err
 	}
+
+	go func() {
+		for _ = range time.Tick(1 * time.Second) {
+			node.log("debug", "Alive!")
+		}
+	}()
+	node.log("debug", "Started listening")
+
 	return node.Server.Serve(listener)
 }
 
 // StopListening stops listening for rpc calls
 func (node *DarkNode) StopListening() {
 	node.Server.Stop()
+}
+
+func (node *DarkNode) log(kind, message string) {
+	node.logQueue.Publish(do.Ok(&rpc.LogEvent{Type: []byte(kind), Message: []byte(message)}))
 }
 
 func (node *DarkNode) IsRegistered() bool {

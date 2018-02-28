@@ -29,6 +29,7 @@ func main() {
 
 	// Star the node.
 	node.Start()
+	node.StartListening()
 }
 
 func parseCommandLineFlags() error {

@@ -81,3 +81,13 @@ func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, delta
 		log.Printf("[%v] mismatch found (%v, %v)\n", node.Swarm.Address(), base58.Encode(deltaFragment.BuyOrderID), base58.Encode(deltaFragment.SellOrderID))
 	}
 }
+
+// SubscribeToLogs will start sending log events to logChannel
+func (node *DarkNode) SubscribeToLogs(logChannel chan do.Option) {
+	node.logQueue.Subscribe(logChannel)
+}
+
+// UnsubscribeFromLogs will stop sending log events to logChannel
+func (node *DarkNode) UnsubscribeFromLogs(logChannel chan do.Option) {
+	node.logQueue.Unsubscribe(logChannel)
+}
