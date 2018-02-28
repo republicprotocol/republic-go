@@ -190,63 +190,13 @@ func DeserializeAtom(a *Atom) atom.Atom {
 	}
 }
 
-func SerializeShard(shard compute.Shard) *Shard {
-	serializedDelats := make([]*DeltaFragment, len(shard.Deltas))
-	for i, j := range shard.Deltas {
-		serializedDelats[i] = SerializeDeltaFragment(j)
-	}
-	//todo
-	//serializedResidues := make([]*ResidueFragment, len(shard.Deltas))
-	//for i ,j  := range shard.Deltas{
-	//	serializedResidues[i] = SerializeReidueFragment(j)
-	//}
-
-	return &Shard{
-		Signature: shard.Signature,
-		Deltas:    serializedDelats,
-		Residues:  [][]byte{},
-	}
-}
-
-func DeserializeShard(shard *Shard) (*compute.Shard, error) {
-	var err error
-	deltas := make([]*compute.DeltaFragment, len(shard.Deltas))
-	for i, j := range shard.Deltas {
-		deltas[i], err = DeserializeDeltaFragment(j)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &compute.Shard{
-		Signature: shard.Signature,
-		Deltas:    deltas,
-		Residues:  []*compute.ResidueFragment{}, //todo
-	}, nil
-}
-
-// todo: serialize the deltas and residues to bytes
-func SerializeFinalShard(shard compute.DeltaShard) *DeltaShard {
-	return &DeltaShard{
-		Signature: shard.Signature,
-		Finals:    [][]byte{},
-	}
-}
-
-// todo: deserialize deltas and residues
-func DeserializeFinalShard(shard *DeltaShard) *compute.DeltaShard {
-	return &compute.DeltaShard{
-		Signature:      shard.Signature,
-		DeltaFragments: []*compute.DeltaFragment{},
-	}
-}
-
 func SerializeDeltaFragment(fragment *compute.DeltaFragment) *DeltaFragment {
 	return &DeltaFragment{
 		Id:                  fragment.ID,
-		BuyOrderId:          fragment.BuyOrderID,
-		SellOrderId:         fragment.SellOrderID,
-		BuyOrderFragmentId:  fragment.BuyOrderFragmentID,
-		SellOrderFragmentId: fragment.SellOrderFragmentID,
+		BuyOrderID:          fragment.BuyOrderID,
+		SellOrderID:         fragment.SellOrderID,
+		BuyOrderFragmentID:  fragment.BuyOrderFragmentID,
+		SellOrderFragmentID: fragment.SellOrderFragmentID,
 		FstCodeShare:        sss.ToBytes(fragment.FstCodeShare),
 		SndCodeShare:        sss.ToBytes(fragment.SndCodeShare),
 		PriceShare:          sss.ToBytes(fragment.PriceShare),
@@ -258,10 +208,10 @@ func SerializeDeltaFragment(fragment *compute.DeltaFragment) *DeltaFragment {
 func DeserializeDeltaFragment(fragment *DeltaFragment) (*compute.DeltaFragment, error) {
 	deltaFragment := &compute.DeltaFragment{
 		ID:                  fragment.Id,
-		BuyOrderID:          fragment.BuyOrderId,
-		SellOrderID:         fragment.SellOrderId,
-		BuyOrderFragmentID:  fragment.BuyOrderFragmentId,
-		SellOrderFragmentID: fragment.SellOrderFragmentId,
+		BuyOrderID:          fragment.BuyOrderID,
+		SellOrderID:         fragment.SellOrderID,
+		BuyOrderFragmentID:  fragment.BuyOrderFragmentID,
+		SellOrderFragmentID: fragment.SellOrderFragmentID,
 	}
 	var err error
 	deltaFragment.FstCodeShare, err = sss.FromBytes(fragment.FstCodeShare)
