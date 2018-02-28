@@ -112,8 +112,10 @@ func (node *DarkNode) Start() error {
 	isRegistered := node.IsRegistered()
 	if !isRegistered {
 		log.Println("You are not registered")
-		//node.Register()
-		return nil
+		err = node.Register()
+		if err != nil {
+			return err
+		}
 	}
 
 	//darkPool, err := node.Registrar.GetDarkpool()
