@@ -59,9 +59,9 @@ var _ = Describe("Dark nodes", func() {
 	Context("nodes start up", func() {
 		BeforeEach(func() {
 			mu.Lock()
-			nodes, err = generateNodes(NumberOfBootstrap_Nodes, NumberOfTestNODES)
+			nodes, err = generateNodes(NumberOfBootstrapNodes, NumberOfTestNODES)
 			Ω(err).ShouldNot(HaveOccurred())
-			startListening(nodes, NumberOfBootstrap_Nodes)
+			startListening(nodes, NumberOfBootstrapNodes)
 		})
 
 		AfterEach(func() {

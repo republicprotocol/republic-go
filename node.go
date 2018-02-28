@@ -15,7 +15,6 @@ import (
 	"github.com/republicprotocol/go-dark-node-registrar"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
-	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-swarm-network"
 	"google.golang.org/grpc"
 )
@@ -109,40 +108,40 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 // bootstrap swarm.Nodes.
 func (node *DarkNode) Start() error {
 
-	isRegistered := node.IsRegistered()
-	if !isRegistered {
-		log.Println("You are not registered")
-		err := node.Register()
-		if err != nil {
-			return err
-		}
-	}
+	//isRegistered := node.IsRegistered()
+	//if !isRegistered {
+	//	log.Println("You are not registered")
+	//	err := node.Register()
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
 
 	//darkPool, err := node.Registrar.GetDarkpool()
 	//if err != nil {
 	//	log.Fatal(err)
 	//}
-	darkPool := getDarkPool()
+	//darkPool := getDarkPool()
 
 	// Wait for the server to start and bootstrap the connections in the swarm.
 	node.Swarm.Bootstrap()
 
-	for _, id := range darkPool {
-		target, err := node.Swarm.FindNode(id[:])
-		if err != nil {
-			return err
-		}
-		// Ignore the node if we can't find it
-		if target == nil {
-			continue
-		}
-		err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
-		// Update the nodes in our DHT if they respond
-		if err == nil {
-			node.DarkPool = append(node.DarkPool, *target)
-			node.Swarm.DHT.UpdateMultiAddress(*target)
-		}
-	}
+	//for _, id := range darkPool {
+	//	target, err := node.Swarm.FindNode(id[:])
+	//	if err != nil {
+	//		return err
+	//	}
+	//	// Ignore the node if we can't find it
+	//	if target == nil {
+	//		continue
+	//	}
+	//	err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
+	//	// Update the nodes in our DHT if they respond
+	//	if err == nil {
+	//		node.DarkPool = append(node.DarkPool, *target)
+	//		node.Swarm.DHT.UpdateMultiAddress(*target)
+	//	}
+	//}
 
 	////  Ping all nodes in the dark pool
 	//for _, id := range darkPool {
