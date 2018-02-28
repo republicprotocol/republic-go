@@ -64,7 +64,7 @@ var _ = Describe("Dark nodes", func() {
 		})
 
 		It("should be able to run startup successfully", func() {
-			for _, node := range nodes{
+			for _, node := range nodes {
 				Ω(node.Start()).ShouldNot(HaveOccurred())
 			}
 		})
@@ -88,6 +88,3 @@ func generateNodes(numberOfBootsrapNodes, numberOfTestNodes int) ([]*node.DarkNo
 	}
 	return nodes, nil
 }
-
-
-
