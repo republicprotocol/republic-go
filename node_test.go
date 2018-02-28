@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	NumberOfBootstrap_Nodes = 4
+	NumberOfBootstrapNodes = 4
 	NumberOfTestNODES       = 4
 )
 
@@ -81,7 +81,7 @@ var _ = Describe("Dark nodes", func() {
 			for i := range orderFileNames {
 				order, err := readOrderFromFile(orderFileNames[i])
 				Ω(err).ShouldNot(HaveOccurred())
-				shares, err := order.Split(NumberOfBootstrap_Nodes+NumberOfTestNODES, 5, node.Prime)
+				shares, err := order.Split(NumberOfBootstrapNodes+NumberOfTestNODES, 5, node.Prime)
 				Ω(err).ShouldNot(HaveOccurred())
 				for i := range shares {
 					if err := rpc.SendOrderFragmentToTarget(nodes[i].Configuration.MultiAddress, nodes[i].Configuration.MultiAddress.Address(), nodes[0].Configuration.MultiAddress, shares[i], 5*time.Second); err != nil {
