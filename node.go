@@ -126,7 +126,8 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 	}
 }
 
-// Logs ...
+// Logs will create a logs channel with the delegate and send any received logs
+// through the RPC stream.
 func (node *Node) Logs(logRequest *rpc.LogRequest, stream rpc.DarkNode_LogsServer) error {
 	if node.Options.Debug >= DebugHigh {
 		log.Printf("[%v] received a log query", node.Address())
