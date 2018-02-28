@@ -164,21 +164,6 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	return node, nil
 }
 
-// OnOrderFragmentForwarding ...
-func (node *DarkNode) OnOrderFragmentForwarding(address identity.Address, peer identity.MultiAddress, fragment *compute.OrderFragment) {
-	// TODO: Log metrics for the deep query.
-}
-
-// OnDeltaFragmentForwarding ...
-func (node *DarkNode) OnDeltaFragmentForwarding(address identity.Address, peer identity.MultiAddress, fragment *compute.DeltaFragment) {
-	// TODO: Log metrics for the deep query.
-}
-
-// OnDeltaFragmentReceived ...
-func (node *DarkNode) OnDeltaFragmentReceived(peer identity.MultiAddress, fragment *compute.DeltaFragment) {
-	// TODO: Log metrics for the deep query.
-}
-
 // Start mining for compute.Orders that are matched. It establishes connections
 // to other peers in the swarm network by bootstrapping against a set of
 // bootstrap swarm.Nodes.
