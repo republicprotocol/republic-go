@@ -39,7 +39,6 @@ func (node *DarkNode) OnSync(from identity.MultiAddress) chan do.Option {
 // by the underlying dark.Node whenever it receives a compute.OrderFragment
 // that it must process.
 func (node *DarkNode) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
-	log.Println(node.Swarm.Address(), " OnOrderFragmentReceived (", base58.Encode(orderFragment.ID), ")")
 	deltaFragments, err := node.DeltaFragmentMatrix.InsertOrderFragment(orderFragment)
 	if err != nil {
 		log.Println(err)
@@ -75,12 +74,12 @@ func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, delta
 		return
 	}
 	if delta.IsMatch(node.Configuration.Prime) {
-		log.Printf("[%v] match found (%v, %v)\n", node.Swarm.Address(), base58.Encode(deltaFragment.BuyOrderID), base58.Encode(deltaFragment.SellOrderID))
+		log.Printf("%v compared (%v, %v) <- MATCH\n", node.Swarm.Address(), base58.Encode(deltaFragment.BuyOrderID), base58.Encode(deltaFragment.SellOrderID))
 		// TODO: Attempt to get consensus on the match and then mark the orders
 		// handled if the consensus is won. If the consensus is not won take
 		// either the buy, or sell (or both), orders and mark them as completed
 		// (this depends on which ones conflicted).
 	} else {
-		log.Printf("[%v] mismatch found (%v, %v)\n", node.Swarm.Address(), base58.Encode(deltaFragment.BuyOrderID), base58.Encode(deltaFragment.SellOrderID))
+		log.Printf("%v compared (%v, %v)\n", node.Swarm.Address(), base58.Encode(deltaFragment.BuyOrderID), base58.Encode(deltaFragment.SellOrderID))
 	}
 }
