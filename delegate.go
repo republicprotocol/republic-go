@@ -44,6 +44,9 @@ func (node *DarkNode) OnOrderFragmentReceived(from identity.MultiAddress, orderF
 	if err != nil {
 		log.Println(err)
 	}
+	for _, deltaFragment := range deltaFragments {
+		node.DeltaBuilder.InsertDeltaFragment(deltaFragment)
+	}
 	for _, multiAddress := range node.DarkPool {
 		client, err := rpc.NewClient(multiAddress, node.Swarm.MultiAddress())
 		if err != nil {

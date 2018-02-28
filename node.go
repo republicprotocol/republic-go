@@ -62,18 +62,16 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		return nil, err
 	}
 
-	k := int64(5)
 	node := &DarkNode{
-		DeltaBuilder:        compute.NewDeltaBuilder(k, config.Prime),
-		DeltaFragmentMatrix: compute.NewDeltaFragmentMatrix(config.Prime),
-		Server:              grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
-		Configuration:       config,
-		Registrar:           registrar,
-
-		quitServer: make(chan struct{}),
+		Server:        grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
+		Configuration: config,
+		Registrar:     registrar,
+		quitServer:    make(chan struct{}),
 	}
 	node.DarkPool = config.BootstrapMultiAddresses
-	node.DarkPoolLimit = k
+	node.DarkPoolLimit = int64((len(node.DarkPool)*2 + 1) / 3)
+	node.DeltaBuilder = compute.NewDeltaBuilder(node.DarkPoolLimit, config.Prime)
+	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(config.Prime)
 
 	swarmOptions := swarm.Options{
 		MultiAddress:            config.MultiAddress,
