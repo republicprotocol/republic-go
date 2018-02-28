@@ -47,10 +47,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/republicprotocol/go-dark-node-registrar"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/republicprotocol/go-do"
 
 [[constraint]]
