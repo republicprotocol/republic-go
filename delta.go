@@ -322,6 +322,7 @@ func (matrix *DeltaFragmentMatrix) insertBuyOrderFragment(buyOrderFragment *Orde
 		deltaFragmentsMap[matrix.sellOrderFragments[i].ID.String()] = deltaFragment
 	}
 
+	matrix.buyOrderFragments[buyOrderFragment.ID.String()] = buyOrderFragment
 	matrix.buySellDeltaFragments[buyOrderFragment.ID.String()] = deltaFragmentsMap
 	return deltaFragments, nil
 }
@@ -345,6 +346,8 @@ func (matrix *DeltaFragmentMatrix) insertSellOrderFragment(sellOrderFragment *Or
 			matrix.buySellDeltaFragments[matrix.buyOrderFragments[i].ID.String()][sellOrderFragment.ID.String()] = deltaFragment
 		}
 	}
+
+	matrix.sellOrderFragments[sellOrderFragment.ID.String()] = sellOrderFragment
 	return deltaFragments, nil
 }
 
