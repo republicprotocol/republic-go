@@ -88,9 +88,10 @@ var _ = Describe("Dark Node", func() {
 			}(server)
 			defer server.Stop()
 
-			resultChan, _ := rpc.Logs(rpcServer.MultiAddress, defaultTimeout)
+			resultChan, quit := rpc.Logs(rpcServer.MultiAddress, defaultTimeout)
 			logEvent := <-resultChan
 			Ω(logEvent.Err).Should(BeNil())
+			quit <- struct{}{}
 		})
 	})
 })
