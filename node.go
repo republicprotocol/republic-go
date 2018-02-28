@@ -22,7 +22,8 @@ type Delegate interface {
 	OnElectShard(from identity.MultiAddress, shard compute.Shard) compute.Shard
 	OnComputeShard(from identity.MultiAddress, shard compute.Shard)
 	OnFinalizeShard(from identity.MultiAddress, deltaShard compute.DeltaShard)
-	OnLogs() chan do.Option
+	SubsribeToLogs(chan do.Option)
+	UnsubscribeFromLogs(chan do.Option)
 }
 
 // Node implements the gRPC Node service.
@@ -421,8 +422,10 @@ func (node *Node) finalizeShard(finaliseShardRequest *rpc.FinalizeShardRequest) 
 }
 
 func (node *Node) logs(logsRequest *rpc.LogRequest, stream rpc.DarkNode_LogsServer) error {
-	logChan := node.Delegate.OnLogs()
-	for event := range logChan {
+	logChannel := make(chan do.Option, 128)
+	node.Delegate.SubsribeToLogs(logChannel)
+	defer node.Delegate.UnsubscribeFromLogs(logChannel)
+	for event := range logChannel {
 		// TODO: need to serialize data into the network representation
 		if err := stream.Send(event.Ok.(*rpc.LogEvent)); err != nil {
 			return err
