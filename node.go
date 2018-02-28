@@ -257,14 +257,6 @@ func (node *DarkNode) StartListening() error {
 	if err != nil {
 		return err
 	}
-
-	go func() {
-		for _ = range time.Tick(1 * time.Second) {
-			node.log("debug", "Alive!")
-		}
-	}()
-	node.log("debug", "Started listening")
-
 	return node.Server.Serve(listener)
 }
 
