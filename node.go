@@ -18,7 +18,7 @@ import (
 type Delegate interface {
 	OnSync(from identity.MultiAddress) chan do.Option
 	OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment)
-	OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment compute.DeltaFragment)
+	OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment *compute.DeltaFragment)
 }
 
 // Node implements the gRPC Node service.
@@ -162,7 +162,7 @@ func (node *Node) broadcastDeltaFragment(broadcastDeltaFragmentRequest *rpc.Broa
 	if err != nil {
 		return nil, err
 	}
-	node.Delegate.OnBroadcastDeltaFragment(from, *deltaFragment)
+	node.Delegate.OnBroadcastDeltaFragment(from, deltaFragment)
 	return &rpc.DeltaFragment{}, nil
 }
 

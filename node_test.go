@@ -40,25 +40,19 @@ func newMockDelegate() *mockDelegate {
 	}
 }
 
-func (delegate *mockDelegate) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
-	delegate.mu.Lock()
-	defer delegate.mu.Unlock()
-	delegate.numberOfReceivedOrderFragment++
-}
-
-func (delegate *mockDelegate) OnOrderFragmentForwarding(to identity.Address, from identity.MultiAddress, orderFragment *compute.OrderFragment) {
-	delegate.mu.Lock()
-	defer delegate.mu.Unlock()
-	delegate.numberOfForwardedOrderFragment++
-}
-
 func (delegate *mockDelegate) OnSync(from identity.MultiAddress) chan do.Option {
 	syncBlock := make(chan do.Option, 1)
 	syncBlock <- do.Ok(&rpc.SyncBlock{})
 	return syncBlock
 }
 
-func (delegate *mockDelegate) OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment compute.DeltaFragment) {
+func (delegate *mockDelegate) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
+	delegate.mu.Lock()
+	defer delegate.mu.Unlock()
+	delegate.numberOfReceivedOrderFragment++
+}
+
+func (delegate *mockDelegate) OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment *compute.DeltaFragment) {
 }
 
 var _ = Describe("dark network", func() {
