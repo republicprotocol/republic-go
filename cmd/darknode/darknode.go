@@ -27,9 +27,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(node.Configuration.BootstrapMultiAddresses)
 
-	// Start listening...
+	// Start listening.
 	go func() {
 		if err := node.StartListening(); err != nil {
 			log.Fatal(err)
