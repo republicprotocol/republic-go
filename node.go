@@ -56,7 +56,7 @@ func (logQueue *LogQueue) Publish(val do.Option) {
 		select {
 		case logQueue.channels[i] <- val:
 		case <-timer.C:
-			// TODO: deregister the channel
+			// Deregister the channel
 			logQueue.channels[i] = logQueue.channels[logQueueLength-1]
 			logQueue.channels = logQueue.channels[:logQueueLength-1]
 			logQueueLength--
