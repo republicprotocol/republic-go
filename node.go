@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/pkg/discovery/nodes"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/go-dark-network"
@@ -185,7 +184,7 @@ func (node *DarkNode) Deregister() error {
 	return nil
 }
 
-func (node *DarkNode) PingDarkPool () error {
+func (node *DarkNode) PingDarkPool() error {
 	darkPool, err := node.Registrar.GetDarkpool()
 	if err != nil {
 		return err
@@ -200,7 +199,7 @@ func (node *DarkNode) PingDarkPool () error {
 		if target == nil {
 			continue
 		}
-		err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
+		err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), defaultTimeout)
 		// Update the nodes in our DHT if they respond
 		if err == nil {
 			node.DarkPool = append(node.DarkPool, *target)
