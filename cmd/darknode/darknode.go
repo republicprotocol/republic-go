@@ -26,6 +26,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println(node.Configuration.BootstrapMultiAddresses)
 
 	// Star the node.
 	node.Start()
