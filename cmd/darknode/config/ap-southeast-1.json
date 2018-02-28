@@ -1,12 +1,13 @@
 {
     "republic_key_pair": "DbHBZXR7Mo81LWG3friKBbYAqHQyhdFUX8S57pSMnHmf",
-    "multi_address": "/ip4/54.179.189.157/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
+    "rsa_key_pair": "DbHBZXR7Mo81LWG3friKBbYAqHQyhdFUX8S57pSMnHmf",
+    "multi_address": "/ip4/13.229.60.122/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
     "host": "0.0.0.0",
     "port": "18514",
     "bootstrap_multi_addresses": [
-        "/ip4/52.78.129.188/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
-        "/ip4/52.59.192.207/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
-        "/ip4/54.88.24.57/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
-        "/ip4/34.217.114.249/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf"
+        "/ip4/35.161.248.181/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
+        "/ip4/54.89.239.234/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
+        "/ip4/54.93.234.49/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
+        "/ip4/13.125.159.239/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE"
     ]
 }

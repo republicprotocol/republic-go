@@ -6,6 +6,7 @@ import (
 	"log"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/republicprotocol/go-dark-node"
 	identity "github.com/republicprotocol/go-identity"
@@ -27,7 +28,15 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Start listening.
+	go func() {
+		if err := node.StartListening(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
 	// Star the node.
+	time.Sleep(time.Second)
 	node.Start()
 	node.StartListening()
 }
