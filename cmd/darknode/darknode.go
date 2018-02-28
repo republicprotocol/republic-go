@@ -38,7 +38,6 @@ func main() {
 	// Star the node.
 	time.Sleep(time.Second)
 	node.Start()
-	node.StartListening()
 }
 
 func parseCommandLineFlags() error {
