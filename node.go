@@ -24,10 +24,6 @@ const defaultTimeout = 5 * time.Second
 
 // To be retrieved from the Registrar contract
 var (
-	// N is the number of dark nodes in the network
-	N = int64(5)
-	// K is the number of fragments required to reconstruct the secret
-	K = int64(3)
 	// Prime ...
 	Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 )
@@ -124,9 +120,27 @@ func (node *DarkNode) Start() error {
 	//if err != nil {
 	//	log.Fatal(err)
 	//}
+	darkPool := getDarkPool()
 
 	// Wait for the server to start and bootstrap the connections in the swarm.
 	node.Swarm.Bootstrap()
+
+	for _, id := range darkPool {
+		target, err := node.Swarm.FindNode(id[:])
+		if err != nil {
+			return err
+		}
+		// Ignore the node if we can't find it
+		if target == nil {
+			continue
+		}
+		err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
+		// Update the nodes in our DHT if they respond
+		if err == nil {
+			node.DarkPool = append(node.DarkPool, *target)
+			node.Swarm.DHT.UpdateMultiAddress(*target)
+		}
+	}
 
 	////  Ping all nodes in the dark pool
 	//for _, id := range darkPool {
@@ -146,7 +160,7 @@ func (node *DarkNode) Start() error {
 	//	}
 	//}
 
-	<- node.quitServer
+	<-node.quitServer
 
 	return nil
 }
