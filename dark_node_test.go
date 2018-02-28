@@ -17,6 +17,11 @@ func (s *mockServer) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_Sync
 	return nil
 }
 
+func (s *mockServer) Logs(logRequest *rpc.LogRequest, stream rpc.DarkNode_LogsServer) error {
+	stream.Send(&rpc.LogEvent{})
+	return nil
+}
+
 func (s *mockServer) ElectShard(ctx context.Context, electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
 	return &rpc.Shard{}, nil
 }
