@@ -329,7 +329,7 @@ func (node *Node) sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncSer
 }
 
 func (node *Node) logs(logsRequest *rpc.LogRequest, stream rpc.DarkNode_LogsServer) error {
-	logChannel := make(chan do.Option, 128)
+	logChannel := make(chan do.Option)
 	node.Delegate.SubscribeToLogs(logChannel)
 	defer node.Delegate.UnsubscribeFromLogs(logChannel)
 	for event := range logChannel {
