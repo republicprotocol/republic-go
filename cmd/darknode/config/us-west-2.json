@@ -1,7 +1,7 @@
 {
     "republic_key_pair": "6ydGZYFJP8oS9BvzhneWfcEx4eJgFSk4ezZtbbxmwKKA",
     "rsa_key_pair":"6ydGZYFJP8oS9BvzhneWfcEx4eJgFSk4ezZtbbxmwKKA",
-    "multi_address": "/ip4/34.217.114.249/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
+    "multi_address": "/ip4/35.161.248.181/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
     "host": "0.0.0.0",
     "port": "18514",
     "bootstrap_multi_addresses": [
