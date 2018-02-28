@@ -332,7 +332,10 @@ func (node *Node) sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncSer
 func (node *Node) logs(logsRequest *rpc.LogRequest, stream rpc.DarkNode_LogsServer) error {
 	logChannel := make(chan do.Option)
 	node.Delegate.SubscribeToLogs(logChannel)
-	defer node.Delegate.UnsubscribeFromLogs(logChannel)
+	defer func() {
+		node.Delegate.UnsubscribeFromLogs(logChannel)
+		close(logChannel)
+	}()
 	for event := range logChannel {
 		// TODO: need to serialize data into the network representation
 		if err := stream.Send(event.Ok.(*rpc.LogEvent)); err != nil {
