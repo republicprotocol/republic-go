@@ -19,6 +19,8 @@ type Delegate interface {
 	OnSync(from identity.MultiAddress) chan do.Option
 	OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment)
 	OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment *compute.DeltaFragment)
+	SubscribeToLogs(chan do.Option)
+	UnsubscribeFromLogs(chan do.Option)
 }
 
 // Node implements the gRPC Node service.
@@ -121,6 +123,29 @@ func (node *Node) SendOrderFragment(ctx context.Context, orderFragment *rpc.Orde
 
 	case <-ctx.Done():
 		return &rpc.Nothing{}, ctx.Err()
+	}
+}
+
+// Logs will create a logs channel with the delegate and send any received logs
+// through the RPC stream.
+func (node *Node) Logs(logRequest *rpc.LogRequest, stream rpc.DarkNode_LogsServer) error {
+	if node.Options.Debug >= DebugHigh {
+		log.Printf("[%v] received a log query", node.Address())
+	}
+	if err := stream.Context().Err(); err != nil {
+		return err
+	}
+
+	wait := do.Process(func() do.Option {
+		return do.Err(node.logs(logRequest, stream))
+	})
+
+	select {
+	case val := <-wait:
+		return val.Err
+
+	case <-stream.Context().Done():
+		return stream.Context().Err()
 	}
 }
 
@@ -300,6 +325,22 @@ func (node *Node) sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncSer
 	for data := range blockChan {
 		//todo : need to serialize data into the network representation
 		stream.Send(data.Ok.(*rpc.SyncBlock))
+	}
+	return nil
+}
+
+func (node *Node) logs(logsRequest *rpc.LogRequest, stream rpc.DarkNode_LogsServer) error {
+	logChannel := make(chan do.Option)
+	node.Delegate.SubscribeToLogs(logChannel)
+	defer func() {
+		node.Delegate.UnsubscribeFromLogs(logChannel)
+		close(logChannel)
+	}()
+	for event := range logChannel {
+		// TODO: need to serialize data into the network representation
+		if err := stream.Send(event.Ok.(*rpc.LogEvent)); err != nil {
+			return err
+		}
 	}
 	return nil
 }
