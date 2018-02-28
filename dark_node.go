@@ -145,15 +145,15 @@ func FinalizeShard(target, from identity.MultiAddress, shard compute.DeltaShard,
 // in the synchronization. The second is used by the caller to quit when he no
 // longer wants to receive dark.Chunk.
 func Logs(target identity.MultiAddress, timeout time.Duration) (chan do.Option, chan struct{}) {
-	shards := make(chan do.Option, 1)
+	logEvents := make(chan do.Option, 1)
 	quit := make(chan struct{}, 1)
 	logRequest := &LogRequest{}
 
 	go func() {
-		defer close(shards)
+		defer close(logEvents)
 		conn, err := Dial(target, timeout)
 		if err != nil {
-			shards <- do.Err(err)
+			logEvents <- do.Err(err)
 			return
 		}
 		defer conn.Close()
@@ -164,7 +164,7 @@ func Logs(target identity.MultiAddress, timeout time.Duration) (chan do.Option, 
 
 		stream, err := client.Logs(ctx, logRequest, grpc.FailFast(false))
 		if err != nil {
-			shards <- do.Err(err)
+			logEvents <- do.Err(err)
 			return
 		}
 
@@ -183,11 +183,11 @@ func Logs(target identity.MultiAddress, timeout time.Duration) (chan do.Option, 
 				return
 			}
 			if err != nil {
-				shards <- do.Err(err)
+				logEvents <- do.Err(err)
 				continue
 			}
-			shards <- do.Ok(shard)
+			logEvents <- do.Ok(shard)
 		}
 	}()
-	return shards, quit
+	return logEvents, quit
 }
