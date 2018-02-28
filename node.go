@@ -1,17 +1,22 @@
 package node
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math/big"
 	"net"
+	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/go-dark-network"
+	"github.com/republicprotocol/go-dark-node-registrar"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
-	"github.com/republicprotocol/go-rpc"
+	rpc "github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-swarm-network"
 	"google.golang.org/grpc"
 )
@@ -20,10 +25,6 @@ const defaultTimeout = 5 * time.Second
 
 // To be retrieved from the Registrar contract
 var (
-	// N is the number of dark nodes in the network
-	N = int64(5)
-	// K is the number of fragments required to reconstruct the secret
-	K = int64(3)
 	// Prime ...
 	Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 )
@@ -92,6 +93,7 @@ type DarkNode struct {
 	Swarm         *swarm.Node
 	Dark          *dark.Node
 	Configuration *Config
+	Registrar     *dnr.DarkNodeRegistrar
 
 	DeltaBuilder        *compute.DeltaBuilder
 	DeltaFragmentMatrix *compute.DeltaFragmentMatrix
@@ -117,10 +119,10 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		config.ComputationShardSize = 10
 	}
 
-	// registrar, err := ConnectToRegistrar()
-	// if err != nil {
-	// 	return nil, err
-	// }
+	registrar, err := ConnectToRegistrar()
+	if err != nil {
+		return nil, err
+	}
 
 	k := int64(5)
 	node := &DarkNode{
@@ -128,6 +130,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		DeltaFragmentMatrix: compute.NewDeltaFragmentMatrix(config.Prime),
 		Server:              grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
 		Configuration:       config,
+		Registrar:           registrar,
 
 		quitServer: make(chan struct{}),
 
@@ -184,35 +187,68 @@ func (node *DarkNode) OnDeltaFragmentReceived(peer identity.MultiAddress, fragme
 // bootstrap swarm.Nodes.
 func (node *DarkNode) Start() error {
 
-	// TODO
+	//isRegistered := node.IsRegistered()
+	//if !isRegistered {
+	//	log.Println("You are not registered")
+	//	err := node.Register()
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
+
 	//darkPool, err := node.Registrar.GetDarkpool()
 	//if err != nil {
 	//	log.Fatal(err)
 	//}
-	darkPool := getDarkPool()
+	//darkPool := getDarkPool()
 
 	// Wait for the server to start and bootstrap the connections in the swarm.
 	node.Swarm.Bootstrap()
 
-	//  Ping all nodes in the dark pool
-	for _, id := range darkPool {
-		target, err := node.Swarm.FindNode(id[:])
-		if err != nil {
-			return err
-		}
-		// Ignore the node if we can't find it
-		if target == nil {
-			continue
-		}
-		err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
-		// Update the nodes in our DHT if they respond
-		if err == nil {
-			node.DarkPool = append(node.DarkPool, *target)
-			node.Swarm.DHT.UpdateMultiAddress(*target)
-		}
-	}
+	//for _, id := range darkPool {
+	//	target, err := node.Swarm.FindNode(id[:])
+	//	if err != nil {
+	//		return err
+	//	}
+	//	// Ignore the node if we can't find it
+	//	if target == nil {
+	//		continue
+	//	}
+	//	err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
+	//	// Update the nodes in our DHT if they respond
+	//	if err == nil {
+	//		node.DarkPool = append(node.DarkPool, *target)
+	//		node.Swarm.DHT.UpdateMultiAddress(*target)
+	//	}
+	//}
+
+	////  Ping all nodes in the dark pool
+	//for _, id := range darkPool {
+	//	target, err := node.Swarm.FindNode(id[:])
+	//	if err != nil {
+	//		return err
+	//	}
+	//	// Ignore the node if we can't find it
+	//	if target == nil {
+	//		continue
+	//	}
+	//	err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), 5*time.Second)
+	//	// Update the nodes in our DHT if they respond
+	//	if err == nil {
+	//		node.DarkPool = append(node.DarkPool, *target)
+	//		node.Swarm.DHT.UpdateMultiAddress(*target)
+	//	}
+	//}
+
+	<-node.quitServer
 
 	return nil
+}
+
+// Stop mining.
+func (node *DarkNode) Stop() {
+	node.quitServer <- struct{}{}
+	node.quitPacker <- struct{}{}
 }
 
 // StartListening starts listening for rpc calls
@@ -245,49 +281,29 @@ func (node *DarkNode) log(kind, message string) {
 }
 
 func (node *DarkNode) IsRegistered() bool {
-	// registered, err := node.Registrar.IsDarkNodeRegistered(node.Configuration.MultiAddress.ID())
-	// log.Println("is registered ?", registered, "error:", err)
-	// if err != nil {
-	// 	return false
-	// }
-	// return registered
-	return true
+	registered, err := node.Registrar.IsDarkNodeRegistered(node.Configuration.MultiAddress.ID())
+	log.Println("is registered ?", registered, "error:", err)
+	if err != nil {
+		return false
+	}
+	return registered
 }
 
 // Register the node on the registrar smart contract .
 func (node *DarkNode) Register() error {
-	// registered := node.IsRegistered()
-	// if registered {
-	// 	return nil
-	// }
-	// publicKey := append(node.Configuration.RepublicKeyPair.PublicKey.X.Bytes(), node.Configuration.RepublicKeyPair.PublicKey.Y.Bytes()...)
-	// tx, err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
-	// log.Println(tx, err)
-	// if err != nil {
-	// 	return err
-	// }
-	return nil
+	registered := node.IsRegistered()
+	if registered {
+		return nil
+	}
+	publicKey := append(node.Configuration.RepublicKeyPair.PublicKey.X.Bytes(), node.Configuration.RepublicKeyPair.PublicKey.Y.Bytes()...)
+	tx, err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
+	log.Println(tx, err)
+	if err != nil {
+		return err
+	}
+	err = node.Registrar.WaitTillRegistration(node.Configuration.MultiAddress.ID())
+	return err
 }
-
-// Stop mining.
-func (node *DarkNode) Stop() {
-	node.quitServer <- struct{}{}
-	node.quitPacker <- struct{}{}
-}
-
-// func ConnectToRegistrar() (*dnr.DarkNodeRegistrar, error) {
-// 	// todo : hard code the ciphertext for now
-// 	key := `{"version":3,"id":"7844982f-abe7-4690-8c15-34f75f847c66","address":"db205ea9d35d8c01652263d58351af75cfbcbf07","Crypto":{"ciphertext":"378dce3c1279b36b071e1c7e2540ac1271581bff0bbe36b94f919cb73c491d3a","cipherparams":{"iv":"2eb92da55cc2aa62b7ffddba891f5d35"},"cipher":"aes-128-ctr","kdf":"scrypt","kdfparams":{"dklen":32,"salt":"80d3341678f83a14024ba9c3edab072e6bd2eea6aa0fbc9e0a33bae27ffa3d6d","n":8192,"r":8,"p":1},"mac":"3d07502ea6cd6b96a508138d8b8cd2e46c3966240ff276ce288059ba4235cb0d"}}`
-// 	auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	client := dnr.Ropsten("https://ropsten.infura.io/")
-// 	contractAddress := common.HexToAddress("0xF874c2b8Afaa199A81796746280Af9184cd0D75b")
-// 	renContract := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
-// 	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, renContract, nil)
-// 	return userConnection, nil
-// }
 
 func getDarkPool() []identity.ID {
 	ids := make([]identity.ID, 8)
@@ -296,4 +312,18 @@ func getDarkPool() []identity.ID {
 		ids[i] = config.MultiAddress.ID()
 	}
 	return ids
+}
+
+func ConnectToRegistrar() (*dnr.DarkNodeRegistrar, error) {
+	// todo : hard code the ciphertext for now
+	key := `{"version":3,"id":"7844982f-abe7-4690-8c15-34f75f847c66","address":"db205ea9d35d8c01652263d58351af75cfbcbf07","Crypto":{"ciphertext":"378dce3c1279b36b071e1c7e2540ac1271581bff0bbe36b94f919cb73c491d3a","cipherparams":{"iv":"2eb92da55cc2aa62b7ffddba891f5d35"},"cipher":"aes-128-ctr","kdf":"scrypt","kdfparams":{"dklen":32,"salt":"80d3341678f83a14024ba9c3edab072e6bd2eea6aa0fbc9e0a33bae27ffa3d6d","n":8192,"r":8,"p":1},"mac":"3d07502ea6cd6b96a508138d8b8cd2e46c3966240ff276ce288059ba4235cb0d"}}`
+	auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
+	if err != nil {
+		return nil, err
+	}
+	client := dnr.Ropsten("https://ropsten.infura.io/")
+	contractAddress := common.HexToAddress("0x0B1148699C93cA9Cfa28f11BD581936f673F76ec")
+	renContract := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
+	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, renContract, nil)
+	return userConnection, nil
 }

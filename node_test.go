@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	Number_Of_Bootstrap_Nodes = 4
-	Number_Of_Test_NODES      = 4
+	NumberOfBootstrapNodes = 4
+	NumberOfTestNODES       = 4
 )
 
 var _ = Describe("Dark nodes", func() {
@@ -59,9 +59,9 @@ var _ = Describe("Dark nodes", func() {
 	Context("nodes start up", func() {
 		BeforeEach(func() {
 			mu.Lock()
-			nodes, err = generateNodes(Number_Of_Bootstrap_Nodes, Number_Of_Test_NODES)
+			nodes, err = generateNodes(NumberOfBootstrapNodes, NumberOfTestNODES)
 			Ω(err).ShouldNot(HaveOccurred())
-			startListening(nodes, Number_Of_Bootstrap_Nodes)
+			startListening(nodes, NumberOfBootstrapNodes)
 		})
 
 		AfterEach(func() {
@@ -75,12 +75,13 @@ var _ = Describe("Dark nodes", func() {
 					Ω(n.Start()).ShouldNot(HaveOccurred())
 				}(n)
 			}
-			time.Sleep(5 * time.Second)
+
+			time.Sleep(3 * time.Second)
 			orderFileNames := []string{"./test_orders/btc-eth.json", "./test_orders/eth-btc.json"}
 			for i := range orderFileNames {
 				order, err := readOrderFromFile(orderFileNames[i])
 				Ω(err).ShouldNot(HaveOccurred())
-				shares, err := order.Split(Number_Of_Bootstrap_Nodes+Number_Of_Test_NODES, 5, node.Prime)
+				shares, err := order.Split(NumberOfBootstrapNodes+NumberOfTestNODES, 5, node.Prime)
 				Ω(err).ShouldNot(HaveOccurred())
 				for i := range shares {
 					if err := rpc.SendOrderFragmentToTarget(nodes[i].Configuration.MultiAddress, nodes[i].Configuration.MultiAddress.Address(), nodes[0].Configuration.MultiAddress, shares[i], 5*time.Second); err != nil {
@@ -88,10 +89,6 @@ var _ = Describe("Dark nodes", func() {
 					}
 				}
 			}
-			time.Sleep(5 * time.Second)
-
-			time.Sleep(time.Minute)
-
 		})
 	})
 })
