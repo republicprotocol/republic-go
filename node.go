@@ -135,7 +135,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	swarmOptions := swarm.Options{
 		MultiAddress:            config.MultiAddress,
 		BootstrapMultiAddresses: config.BootstrapMultiAddresses,
-		Debug:           swarm.DebugOff,
+		Debug:           swarm.DebugHigh,
 		Alpha:           3,
 		MaxBucketLength: 20,
 		Timeout:         30 * time.Second,
@@ -148,7 +148,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 
 	darkOptions := dark.Options{
 		Address:        config.MultiAddress.Address(),
-		Debug:          dark.DebugOff,
+		Debug:          dark.DebugHigh,
 		Timeout:        30 * time.Second,
 		TimeoutStep:    30 * time.Second,
 		TimeoutRetries: 3,
