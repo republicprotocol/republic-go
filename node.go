@@ -79,6 +79,9 @@ func (logQueue *LogQueue) Unsubscribe(channel chan do.Option) {
 	defer logQueue.Exit()
 	length := len(logQueue.channels)
 	for i := 0; i < length; i++ {
+		// https://golang.org/ref/spec#Comparison_operators
+		// Two channel values are equal if they were created by the same call to make
+		// or if both have value nil.
 		if logQueue.channels[i] == channel {
 			logQueue.channels[i] = logQueue.channels[length-1]
 			logQueue.channels = logQueue.channels[:length-1]
