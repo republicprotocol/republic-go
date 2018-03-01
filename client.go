@@ -17,6 +17,7 @@ type Client struct {
 	DarkNode DarkNodeClient
 	Options  ClientOptions
 	From     *MultiAddress
+	To       *MultiAddress
 }
 
 type ClientOptions struct {
@@ -37,6 +38,7 @@ func NewClient(to, from identity.MultiAddress, options ...ClientOptions) (Client
 	client := Client{
 		Options: buildClientOptions(options...),
 		From:    SerializeMultiAddress(from),
+		To:      SerializeMultiAddress(to),
 	}
 
 	host, err := to.ValueForProtocol(identity.IP4Code)
@@ -81,7 +83,8 @@ func (client Client) BroadcastDeltaFragment(deltaFragment *compute.DeltaFragment
 		if err == nil {
 			break
 		}
-		log.Println(err)
+		log.Println("braodcastDelaFragment error :", err)
+		log.Printf("from [%s] to [%s]", client.From.Multi, client.To.Multi)
 	}
 
 	return resp, err

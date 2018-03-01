@@ -2,9 +2,11 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"google.golang.org/grpc"
@@ -35,7 +37,7 @@ func SyncWithTarget(target, from identity.MultiAddress, timeout time.Duration) (
 
 		stream, err := client.Sync(ctx, syncRequest, grpc.FailFast(false))
 		if err != nil {
-			shards <- do.Err(err)
+			shards <- do.Err(errors.New(fmt.Sprintf("sync error : %s\nfrom [%s] to [%s]", err.Error(),from.String(),target.String() )))
 			return
 		}
 
