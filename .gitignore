@@ -1,3 +1,5 @@
 coverprofile.out
 Gopkg.lock
 vendor
+.out
+.pdf
