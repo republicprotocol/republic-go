@@ -83,7 +83,7 @@ func (client Client) BroadcastDeltaFragment(deltaFragment *compute.DeltaFragment
 		if err == nil {
 			break
 		}
-		log.Println("braodcastDelaFragment error :", err)
+		log.Println("braodcastDelaFragment", err)
 		log.Printf("from [%s] to [%s]", client.From.Multi, client.To.Multi)
 	}
 
