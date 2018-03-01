@@ -100,9 +100,6 @@ type DarkNode struct {
 	DarkPool            identity.MultiAddresses
 	DarkPoolLimit       int64
 
-	quitServer chan struct{}
-	quitPacker chan struct{}
-
 	logQueue *LogQueue
 }
 
@@ -128,7 +125,6 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		Server:        grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
 		Configuration: config,
 		Registrar:     registrar,
-		quitServer:    make(chan struct{}),
 		logQueue:      NewLogQueue(),
 	}
 	node.DarkPool = config.BootstrapMultiAddresses
@@ -222,15 +218,7 @@ func (node *DarkNode) Start() error {
 	//	}
 	//}
 
-	<-node.quitServer
-
 	return nil
-}
-
-// Stop mining.
-func (node *DarkNode) Stop() {
-	node.quitServer <- struct{}{}
-	node.quitPacker <- struct{}{}
 }
 
 // StartListening starts listening for rpc calls
