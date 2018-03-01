@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/go-dark-node"
+	"github.com/republicprotocol/go-do"
 	identity "github.com/republicprotocol/go-identity"
 )
 
@@ -28,16 +29,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Start listening.
-	go func() {
-		if err := node.StartListening(); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	// Star the node.
-	time.Sleep(time.Second)
-	node.Start()
+	// Start the dark node.
+	do.CoBegin(func() do.Option {
+		return do.Err(node.StartListening());
+	}, func() do.Option {
+		time.Sleep(time.Second);
+		return do.Err(node.Start());
+	})
 }
 
 func parseCommandLineFlags() error {
