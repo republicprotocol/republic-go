@@ -84,8 +84,8 @@ func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, delta
 				fmt.Sprintf(
 					`{"id": "%s", "buyID": "%s", "sellID": "%s"}`,
 					node.Configuration.MultiAddress.String(),
-					deltaFragment.BuyOrderID.String(),
-					deltaFragment.SellOrderID.String(),
+					base58.Encode(deltaFragment.BuyOrderID),
+					base58.Encode(deltaFragment.SellOrderID),
 				),
 			)
 			// TODO: Attempt to get consensus on the match and then mark the orders
