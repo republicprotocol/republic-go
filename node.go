@@ -175,7 +175,7 @@ func (node *DarkNode) Start() error {
 
 	isRegistered := node.IsRegistered()
 	if !isRegistered {
-		return errors.New("You are not registered")
+		return errors.New("you are not registered")
 		//err := node.Register()
 		//if err != nil {
 		//	return err
