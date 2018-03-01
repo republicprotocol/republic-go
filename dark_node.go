@@ -37,7 +37,7 @@ func SyncWithTarget(target, from identity.MultiAddress, timeout time.Duration) (
 
 		stream, err := client.Sync(ctx, syncRequest, grpc.FailFast(false))
 		if err != nil {
-			shards <- do.Err(errors.New(fmt.Sprintf("sync error : %s to [%s]", err.Error(), from.String(), target.String())))
+			shards <- do.Err(errors.New(fmt.Sprintf("sync %s to [%s]", err.Error(), target.String())))
 			return
 		}
 
