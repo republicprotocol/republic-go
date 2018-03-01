@@ -13,8 +13,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/go-dark-network"
 	"github.com/republicprotocol/go-dark-node-registrar"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
+	rpc "github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-swarm-network"
 	"google.golang.org/grpc"
 )
@@ -26,6 +28,67 @@ var (
 	// Prime ...
 	Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 )
+
+// LogQueue allows multiple clients to receive logs from a node
+type LogQueue struct {
+	do.GuardedObject
+
+	channels []chan do.Option
+}
+
+// NewLogQueue returns a new LogQueue
+func NewLogQueue() *LogQueue {
+	logQueue := new(LogQueue)
+	logQueue.GuardedObject = do.NewGuardedObject()
+	logQueue.channels = nil
+	return logQueue
+}
+
+// Publish allows a node to push a log to each client
+func (logQueue *LogQueue) Publish(val do.Option) {
+	logQueue.Enter(nil)
+	defer logQueue.Exit()
+
+	var logQueueLength = len(logQueue.channels)
+	for i := 0; i < logQueueLength; i++ {
+		timer := time.NewTicker(10 * time.Second)
+		defer timer.Stop()
+		select {
+		case logQueue.channels[i] <- val:
+		case <-timer.C:
+			// Deregister the channel
+			logQueue.channels[i] = logQueue.channels[logQueueLength-1]
+			logQueue.channels = logQueue.channels[:logQueueLength-1]
+			logQueueLength--
+			i--
+		}
+	}
+}
+
+// Subscribe allows a new client to listen to events from a node
+func (logQueue *LogQueue) Subscribe(channel chan do.Option) {
+	logQueue.Enter(nil)
+	defer logQueue.Exit()
+
+	logQueue.channels = append(logQueue.channels, channel)
+}
+
+// Unsubscribe ...
+func (logQueue *LogQueue) Unsubscribe(channel chan do.Option) {
+	logQueue.Enter(nil)
+	defer logQueue.Exit()
+	length := len(logQueue.channels)
+	for i := 0; i < length; i++ {
+		// https://golang.org/ref/spec#Comparison_operators
+		// Two channel values are equal if they were created by the same call to make
+		// or if both have value nil.
+		if logQueue.channels[i] == channel {
+			logQueue.channels[i] = logQueue.channels[length-1]
+			logQueue.channels = logQueue.channels[:length-1]
+			break
+		}
+	}
+}
 
 // DarkNode ...
 type DarkNode struct {
@@ -40,8 +103,7 @@ type DarkNode struct {
 	DarkPool            identity.MultiAddresses
 	DarkPoolLimit       int64
 
-	quitServer chan struct{}
-	quitPacker chan struct{}
+	logQueue *LogQueue
 }
 
 // NewDarkNode creates a new DarkNode, a new swarm.Node and dark.Node and assigns the
@@ -66,7 +128,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		Server:        grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
 		Configuration: config,
 		Registrar:     registrar,
-		quitServer:    make(chan struct{}),
+		logQueue:      NewLogQueue(),
 	}
 	node.DarkPool = config.BootstrapMultiAddresses
 	node.DarkPoolLimit = int64((len(node.DarkPool)*2 + 1) / 3)
@@ -159,15 +221,7 @@ func (node *DarkNode) Start() error {
 	//	}
 	//}
 
-	<-node.quitServer
-
 	return nil
-}
-
-// Stop mining.
-func (node *DarkNode) Stop() {
-	node.quitServer <- struct{}{}
-	node.quitPacker <- struct{}{}
 }
 
 // StartListening starts listening for rpc calls
@@ -185,6 +239,10 @@ func (node *DarkNode) StartListening() error {
 // StopListening stops listening for rpc calls
 func (node *DarkNode) StopListening() {
 	node.Server.Stop()
+}
+
+func (node *DarkNode) log(kind, message string) {
+	node.logQueue.Publish(do.Ok(&rpc.LogEvent{Type: []byte(kind), Message: []byte(message)}))
 }
 
 func (node *DarkNode) IsRegistered() bool {
