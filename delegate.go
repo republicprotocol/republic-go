@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/jbenet/go-base58"
@@ -78,6 +79,15 @@ func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, delta
 		}
 		if delta.IsMatch(node.Configuration.Prime) {
 			log.Printf("%v compared (%v, %v) <- MATCH\n", node.Swarm.Address(), base58.Encode(deltaFragment.BuyOrderID), base58.Encode(deltaFragment.SellOrderID))
+			node.log(
+				"match",
+				fmt.Sprintf(
+					`{"id": "%s", "buyID": "%s", "sellID": "%s"}`,
+					node.Configuration.MultiAddress.String(),
+					deltaFragment.BuyOrderID.String(),
+					deltaFragment.SellOrderID.String(),
+				),
+			)
 			// TODO: Attempt to get consensus on the match and then mark the orders
 			// handled if the consensus is won. If the consensus is not won take
 			// either the buy, or sell (or both), orders and mark them as completed
@@ -86,4 +96,14 @@ func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, delta
 			log.Printf("%v compared (%v, %v)\n", node.Swarm.Address(), base58.Encode(deltaFragment.BuyOrderID), base58.Encode(deltaFragment.SellOrderID))
 		}
 	}()
+}
+
+// SubscribeToLogs will start sending log events to logChannel
+func (node *DarkNode) SubscribeToLogs(logChannel chan do.Option) {
+	node.logQueue.Subscribe(logChannel)
+}
+
+// UnsubscribeFromLogs will stop sending log events to logChannel
+func (node *DarkNode) UnsubscribeFromLogs(logChannel chan do.Option) {
+	node.logQueue.Unsubscribe(logChannel)
 }
