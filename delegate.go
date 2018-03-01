@@ -82,7 +82,7 @@ func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, delta
 			node.log(
 				"match",
 				fmt.Sprintf(
-					"{id: %s, buyID: %s, sellID: %s}",
+					`{"id": "%s", "buyID": "%s", "sellID": "%s"}`,
 					node.Configuration.MultiAddress.String(),
 					deltaFragment.BuyOrderID.String(),
 					deltaFragment.SellOrderID.String(),
