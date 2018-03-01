@@ -89,7 +89,7 @@ var _ = Describe("Dark nodes", func() {
 				}
 			}
 			By("Bring the order fragments!")
-			time.Sleep(10 * time.Minute)
+			time.Sleep(5 * time.Minute)
 		})
 	})
 })

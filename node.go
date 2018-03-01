@@ -132,7 +132,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		logQueue:      NewLogQueue(),
 	}
 	node.DarkPool = config.BootstrapMultiAddresses
-	node.DarkPoolLimit = int64((len(node.DarkPool)*2 + 1) / 3)
+	node.DarkPoolLimit = 5
 	node.DeltaBuilder = compute.NewDeltaBuilder(node.DarkPoolLimit, config.Prime)
 	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(config.Prime)
 

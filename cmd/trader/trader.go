@@ -27,8 +27,8 @@ type OrderBook struct {
 
 func main() {
 	// Parse the option parameters
-	numberOfOrders := flag.Int("order", 5, "number of orders")
-	timeInterval := flag.Int("time", 15, "time interval in second")
+	numberOfOrders := flag.Int("order", 20, "number of orders")
+	timeInterval := flag.Int("time", 5, "time interval in second")
 
 	// setup output log file
 	//f, err := os.OpenFile("test_log", os.O_RDWR | os.O_CREATE , 0666)
@@ -108,8 +108,6 @@ func main() {
 				big.NewInt(int64(amount)), big.NewInt(1))
 			buyOrders[i] = order
 		}
-		log.Printf("before sending the order ")
-		log.Println("we have ",len(nodes), "nodes")
 		// Send order fragment to the nodes
 		for _, orders := range [][]*compute.Order{buyOrders, sellOrders} {
 			go func(orders []*compute.Order) {
