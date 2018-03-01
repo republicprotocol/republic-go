@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/go-sss"
+	. "github.com/republicprotocol/republic-go/shamir"
 )
 
 var _ = Describe("Errors", func() {

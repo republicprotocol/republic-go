@@ -6,48 +6,38 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/go-sss"
+	. "github.com/republicprotocol/republic-go/shamir"
 )
 
 var _ = Describe("Shamir's secret sharing", func() {
 
-	Context("configuration", func() {
-		It("should be able to represent primes larger than 1024 bits", func() {
-			// The maximum 1024 bit integer.
-			max, ok := big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137215", 10)
-			Ω(ok).Should(Equal(true))
-			max.Sub(max, big.NewInt(1))
-			// The first prime above 1024 bits.
-			prime, ok := big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
-			Ω(ok).Should(Equal(true))
-			Ω(prime.Cmp(max) > 0).Should(Equal(true))
-		})
+	It("should correctly encode integers greater than 2^1024", func() {
+		// The maximum 1024 bit integer.
+		max, ok := big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137215", 10)
+		Ω(ok).Should(Equal(true))
+		max.Sub(max, big.NewInt(1))
+		// The first prime above 1024 bits.
+		prime, ok := big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
+		Ω(ok).Should(Equal(true))
+		Ω(prime.Cmp(max) > 0).Should(Equal(true))
 	})
 
 	Context("serialization", func() {
 		It("should be able to serialize and deserialize shares", func() {
 			prime, ok := big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 			Ω(ok).Should(Equal(true))
-			bytes := ToBytes(Share{
-				Key:   42,
-				Value: big.NewInt(0).Set(prime),
-			})
-			share, err := FromBytes(bytes)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(share.Key).Should(Equal(int64(42)))
-			Ω(share.Value.Cmp(prime)).Should(Equal(0))
+			for i := int64(0); i < 1000; i++ {
+				bytes := ToBytes(Share{
+					Key:   i,
+					Value: big.NewInt(0).Set(prime),
+				})
+				share, err := FromBytes(bytes)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(share.Key).Should(Equal(i))
+				Ω(share.Value.Cmp(prime)).Should(Equal(0))
+			}
 		})
-		It("should be able to serialize and deserialize small shares", func() {
-			bytes := ToBytes(Share{
-				Key:   1,
-				Value: big.NewInt(1),
-			})
-			share, err := FromBytes(bytes)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(share.Key).Should(Equal(int64(1)))
-			Ω(share.Value.Cmp(big.NewInt(1))).Should(Equal(0))
-		})
-		It("should error for bad bytes", func() {
+		It("should return an error when deserializing an empty byte slice", func() {
 			_, err := FromBytes([]byte{})
 			Ω(err).Should(HaveOccurred())
 		})
