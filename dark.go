@@ -28,7 +28,10 @@ func SendOrderFragmentToTarget(target identity.MultiAddress, to identity.Address
 	serializedOrderFragment.To = SerializeAddress(to)
 	serializedOrderFragment.From = SerializeMultiAddress(from)
 	_, err = client.SendOrderFragment(ctx, serializedOrderFragment, grpc.FailFast(false))
-	return errors.New(fmt.Sprintf("sendOrderFragment %s to [%s]", err.Error(), target.String()))
+	if err != nil {
+		err = errors.New(fmt.Sprintf("sendOrderFragment %s to [%s]", err.Error(), target.String()))
+	}
+	return err
 }
 
 // SendOrderFragmentCommitmentToTarget using a new grpc.ClientConn to make a
@@ -50,7 +53,10 @@ func SendOrderFragmentCommitmentToTarget(target identity.MultiAddress, from iden
 		OrderFragment: []byte{}, // todo :
 	}
 	_, err = client.SendOrderFragmentCommitment(ctx, commitment, grpc.FailFast(false))
-	return errors.New(fmt.Sprintf("sendOrderFragmentCommitment %s to [%s]", err.Error(), target.String()))
+	if err != nil {
+		err = errors.New(fmt.Sprintf("sendOrderFragmentCommitment %s to [%s]", err.Error(), target.String()))
+	}
+	return err
 }
 
 //// NotificationsFromTarget using a new grpc.ClientConn to make a
