@@ -1,8 +1,10 @@
 package rpc
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"golang.org/x/net/context"
@@ -26,7 +28,7 @@ func SendOrderFragmentToTarget(target identity.MultiAddress, to identity.Address
 	serializedOrderFragment.To = SerializeAddress(to)
 	serializedOrderFragment.From = SerializeMultiAddress(from)
 	_, err = client.SendOrderFragment(ctx, serializedOrderFragment, grpc.FailFast(false))
-	return err
+	return errors.New(fmt.Sprintf("sendOrderFragment %s to [%s]", err.Error(), target.String()))
 }
 
 // SendOrderFragmentCommitmentToTarget using a new grpc.ClientConn to make a
@@ -48,7 +50,7 @@ func SendOrderFragmentCommitmentToTarget(target identity.MultiAddress, from iden
 		OrderFragment: []byte{}, // todo :
 	}
 	_, err = client.SendOrderFragmentCommitment(ctx, commitment, grpc.FailFast(false))
-	return err
+	return errors.New(fmt.Sprintf("sendOrderFragmentCommitment %s to [%s]", err.Error(), target.String()))
 }
 
 //// NotificationsFromTarget using a new grpc.ClientConn to make a
