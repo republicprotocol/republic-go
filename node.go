@@ -108,9 +108,9 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 // bootstrap swarm.Nodes.
 func (node *DarkNode) Start() error {
 
-	go func() {
-		node.StartListening()
-	}()
+	//go func() {
+	//	node.StartListening()
+	//}()
 
 	isRegistered := node.IsRegistered()
 	if !isRegistered {
@@ -120,7 +120,7 @@ func (node *DarkNode) Start() error {
 		//	return err
 		//}
 	}
-	node.PingDarkPool()
+	// node.PingDarkPool()
 
 	// Bootstrap the connections in the swarm.
 	node.Swarm.Bootstrap()
