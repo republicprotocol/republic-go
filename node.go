@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -173,14 +172,14 @@ func (node *DarkNode) Start() error {
 	//	node.StartListening()
 	//}()
 
-	isRegistered := node.IsRegistered()
-	if !isRegistered {
-		return errors.New("you are not registered")
-		//err := node.Register()
-		//if err != nil {
-		//	return err
-		//}
-	}
+	//isRegistered := node.IsRegistered()
+	//if !isRegistered {
+	//	return errors.New("you are not registered")
+	//	//err := node.Register()
+	//	//if err != nil {
+	//	//	return err
+	//	//}
+	//}
 	// node.PingDarkPool()
 
 	// Bootstrap the connections in the swarm.

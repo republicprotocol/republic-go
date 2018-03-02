@@ -57,7 +57,7 @@ func parseCommandLineFlags() error {
 }
 
 func LoadDefaultConfig() (*node.Config, error) {
-	address, keypair, err := identity.NewAddress()
+	address, keyPair, err := identity.NewAddress()
 	if err != nil {
 		return &node.Config{}, err
 	}
@@ -94,7 +94,7 @@ func LoadDefaultConfig() (*node.Config, error) {
 	return &node.Config{
 		Host:            "0.0.0.0",
 		Port:            "18514",
-		RepublicKeyPair: keypair,
+		RepublicKeyPair: keyPair,
 		MultiAddress:    multiAddress,
 		BootstrapMultiAddresses: identity.MultiAddresses{
 			bootstrap1, bootstrap2, bootstrap3, bootstrap4, bootstrap5,
