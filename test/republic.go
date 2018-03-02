@@ -36,7 +36,7 @@ func test() {
 		for err := range errChan {
 			log.Println("fail to deploy nodes --> ", err)
 		}
-		log.Fatal("--------------------------------")
+		log.Fatal("-------------------------------")
 	}
 
 	sendingOrders(nodes, 20, 5)
