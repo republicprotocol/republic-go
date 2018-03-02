@@ -4,9 +4,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
+	"time"
 
 	node "github.com/republicprotocol/go-dark-node"
+	dnr "github.com/republicprotocol/go-dark-node-registrar"
 )
 
 var config *node.Config
@@ -27,13 +30,32 @@ func main() {
 	}
 
 	registrar, err := node.ConnectToRegistrar(ethereumKeyPair)
+	minimumEpochTime, err := registrar.MinimumEpochInterval()
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-	_, err = registrar.Epoch()
+	log.Printf("Calling Epoch every %s%v seconds%s\n", green, minimumEpochTime, reset)
+
+	callEpoch(registrar)
+	ticker := time.NewTicker(time.Duration(minimumEpochTime.Int64()) * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		/*go */ callEpoch(registrar)
+	}
+}
+
+func callEpoch(registrar *dnr.DarkNodeRegistrar) {
+	fmt.Printf("Calling Epoch...")
+	_, err := registrar.Epoch()
 
 	if err != nil {
-		log.Fatalf("%sCouldn't call epoch%s\n", red, reset)
+		fmt.Printf("\r")
+		log.Printf("%sCouldn't call Epoch%s\n", red, reset)
+	} else {
+		fmt.Printf("\r")
+		log.Printf("%sEpoch called%s", green, reset)
 	}
-	log.Printf("%sEpoch called%s", green, reset)
 }
 
 func parseCommandLineFlags() error {
