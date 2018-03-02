@@ -7,7 +7,6 @@ import (
 	"log"
 	"math/big"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -120,7 +119,11 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		config.ComputationShardSize = 10
 	}
 
-	registrar, err := ConnectToRegistrar()
+	ethereumKeyPair, err := config.EthereumKeyPair()
+	if err != nil {
+		return nil, err
+	}
+	registrar, err := ConnectToRegistrar(ethereumKeyPair)
 	if err != nil {
 		return nil, err
 	}
@@ -210,8 +213,18 @@ func (node *DarkNode) log(kind, message string) {
 	node.logQueue.Publish(do.Ok(&rpc.LogEvent{Type: []byte(kind), Message: []byte(message)}))
 }
 
+// IsRegistered returns true if the dark node is registered for the current epoch
 func (node *DarkNode) IsRegistered() bool {
 	registered, err := node.Registrar.IsDarkNodeRegistered(node.Configuration.MultiAddress.ID())
+	if err != nil {
+		return false
+	}
+	return registered
+}
+
+// IsPendingRegistration returns true if the dark node will be registered in the next epoch
+func (node *DarkNode) IsPendingRegistration() bool {
+	registered, err := node.Registrar.IsDarkNodePendingRegistration(node.Configuration.MultiAddress.ID())
 	if err != nil {
 		return false
 	}
@@ -275,15 +288,12 @@ func getDarkPool() []identity.ID {
 	return ids
 }
 
-func ConnectToRegistrar() (*dnr.DarkNodeRegistrar, error) {
+// ConnectToRegistrar will connect to the registrar using the given private key to sign transactions
+func ConnectToRegistrar(keypair identity.KeyPair) (*dnr.DarkNodeRegistrar, error) {
 	// todo : hard code the ciphertext for now
-	key := `{"version":3,"id":"7844982f-abe7-4690-8c15-34f75f847c66","address":"db205ea9d35d8c01652263d58351af75cfbcbf07","Crypto":{"ciphertext":"378dce3c1279b36b071e1c7e2540ac1271581bff0bbe36b94f919cb73c491d3a","cipherparams":{"iv":"2eb92da55cc2aa62b7ffddba891f5d35"},"cipher":"aes-128-ctr","kdf":"scrypt","kdfparams":{"dklen":32,"salt":"80d3341678f83a14024ba9c3edab072e6bd2eea6aa0fbc9e0a33bae27ffa3d6d","n":8192,"r":8,"p":1},"mac":"3d07502ea6cd6b96a508138d8b8cd2e46c3966240ff276ce288059ba4235cb0d"}}`
-	auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
-	if err != nil {
-		return nil, err
-	}
+	auth := bind.NewKeyedTransactor(keypair.PrivateKey)
 	client := dnr.Ropsten("https://ropsten.infura.io/")
-	contractAddress := common.HexToAddress("0x0B1148699C93cA9Cfa28f11BD581936f673F76ec")
+	contractAddress := common.HexToAddress("0x6e48bdd8949d0c929e9b5935841f6ff18de0e613")
 	renContract := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
 	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, renContract, nil)
 	return userConnection, nil

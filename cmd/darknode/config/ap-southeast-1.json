@@ -1,6 +1,7 @@
 {
     "republic_key_pair": "DbHBZXR7Mo81LWG3friKBbYAqHQyhdFUX8S57pSMnHmf",
     "rsa_key_pair": "DbHBZXR7Mo81LWG3friKBbYAqHQyhdFUX8S57pSMnHmf",
+    "ethereum_private_key": "62710e17214c8f57fb3a1773fe476d80a4e2232722b21c19299e2053c6ded8a2",
     "multi_address": "/ip4/13.229.60.122/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
     "host": "0.0.0.0",
     "port": "18514",

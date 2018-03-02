@@ -1,6 +1,7 @@
 {
     "republic_key_pair": "3wWfyiC3An9BBhW8X1ZQauomL4gKAUgbTWNmnDpYiD6S",
     "rsa_key_pair":"3wWfyiC3An9BBhW8X1ZQauomL4gKAUgbTWNmnDpYiD6S",
+    "ethereum_private_key": "272d4697bcbd2c779257f288a9b08dc19548f5d5e3cc7d8acec484e01740169c",
     "multi_address": "/ip4/54.93.234.49/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
     "host": "0.0.0.0",
     "port": "18514",
