@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -24,17 +26,22 @@ type OrderBook struct {
 }
 
 func main() {
+	// Parse the option parameters
+	numberOfOrders := flag.Int("order", 20, "number of orders")
+	timeInterval := flag.Int("time", 5, "time interval in second")
 
-	// Nodes get nodes/darkpool details
-	multiAddress := []string{
-		"/ip4/13.125.159.239/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
-		"/ip4/13.229.60.122/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
-		"/ip4/54.93.234.49/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
-		"/ip4/54.89.239.234/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
-		"/ip4/35.161.248.181/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
-	}
-	nodes := make([]identity.MultiAddress, 5)
-	for i := 0; i < 5; i++ {
+	// setup output log file
+	//f, err := os.OpenFile("test_log", os.O_RDWR | os.O_CREATE , 0666)
+	//if err != nil {
+	//	log.Fatalf("error opening file: %v", err)
+	//}
+	//defer f.Close()
+	//log.SetOutput(f)
+
+	// Get nodes/darkpool details
+	multiAddress := getNodesDetails()
+	nodes := make([]identity.MultiAddress, len(multiAddress))
+	for i := 0; i < len(multiAddress); i++ {
 		multi, err := identity.NewMultiAddressFromString(multiAddress[i])
 		if err != nil {
 			log.Fatal(err)
@@ -49,12 +56,14 @@ func main() {
 	}
 	log.Println("Trader Address: ", config.MultiAddress.String())
 
+	// Keep sending order fragment
 	for {
 		// Get orders details from Binance
-		resp, err := http.Get("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=5")
+		resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%v", *numberOfOrders))
 		if err != nil {
 			log.Fatal("fail to get data from binance")
 		}
+
 		response, err := ioutil.ReadAll(resp.Body)
 		orderBook := new(OrderBook)
 		err = json.Unmarshal(response, orderBook)
@@ -99,7 +108,6 @@ func main() {
 				big.NewInt(int64(amount)), big.NewInt(1))
 			buyOrders[i] = order
 		}
-
 		// Send order fragment to the nodes
 		for _, orders := range [][]*compute.Order{buyOrders, sellOrders} {
 			go func(orders []*compute.Order) {
@@ -111,16 +119,40 @@ func main() {
 						log.Println("sending sell order :", base58.Encode(order.ID))
 					}
 
-					shares, err := order.Split(5, 3, node.Prime)
+					shares, err := order.Split(8, 5, node.Prime)
 					if err != nil {
 						continue
 					}
+
 					do.ForAll(shares, func(i int) {
 						rpc.SendOrderFragmentToTarget(nodes[i], nodes[i].Address(), config.MultiAddress, shares[i], 5*time.Second)
 					})
 				}
 			}(orders)
 		}
-		time.Sleep(15 * time.Second)
+		time.Sleep(time.Duration(*timeInterval) * time.Second)
+	}
+}
+
+func getNodesDetails() []string {
+	// AWS nodes
+	//return []string{
+	//	"/ip4/13.125.159.239/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
+	//	"/ip4/13.229.60.122/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
+	//	"/ip4/54.93.234.49/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
+	//	"/ip4/54.89.239.234/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
+	//	"/ip4/35.161.248.181/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
+	//}
+
+	// Local nodes
+	return []string{
+		"/ip4/127.0.0.1/tcp/4000/republic/8MGyTXr6poqfizzdp9fWcLd8UpDC5y",
+		"/ip4/127.0.0.1/tcp/4001/republic/8MJWTpvNJv2SW7meGFpa8c44zNw63f",
+		"/ip4/127.0.0.1/tcp/4002/republic/8MJKxAujyofThVCwmYfMnpCRCNwnQe",
+		"/ip4/127.0.0.1/tcp/4003/republic/8MHJYuWArPDwA8VvXzxrzPyEdwrb4s",
+		"/ip4/127.0.0.1/tcp/4004/republic/8MGonGTeJ6Kz2gUFYgKpJy4TPCH6q3",
+		"/ip4/127.0.0.1/tcp/4005/republic/8MGYgkWK26wS4U4EqHcdgRaodhR9AS",
+		"/ip4/127.0.0.1/tcp/4006/republic/8MKYtPMdocyv2DeKQkobciKsPHMTwC",
+		"/ip4/127.0.0.1/tcp/4007/republic/8MJSSou1rUmjxrvKcYTxaZms8zSvvD",
 	}
 }

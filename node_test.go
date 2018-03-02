@@ -32,7 +32,6 @@ var _ = Describe("Dark nodes", func() {
 		for _, n := range nodes {
 			go func(n *node.DarkNode) {
 				defer GinkgoRecover()
-
 				Ω(n.StartListening()).ShouldNot(HaveOccurred())
 			}(n)
 		}
@@ -89,7 +88,8 @@ var _ = Describe("Dark nodes", func() {
 					}
 				}
 			}
-			time.Sleep(1 * time.Minute)
+			By("Bring the order fragments!")
+			time.Sleep(5 * time.Minute)
 		})
 	})
 })

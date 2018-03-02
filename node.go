@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -135,7 +134,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		logQueue:      NewLogQueue(),
 	}
 	node.DarkPool = config.BootstrapMultiAddresses
-	node.DarkPoolLimit = int64((len(node.DarkPool)*2 + 1) / 3)
+	node.DarkPoolLimit = 5
 	node.DeltaBuilder = compute.NewDeltaBuilder(node.DarkPoolLimit, config.Prime)
 	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(config.Prime)
 
@@ -172,19 +171,19 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 // bootstrap swarm.Nodes.
 func (node *DarkNode) Start() error {
 
-	go func() {
-		node.StartListening()
-	}()
+	//go func() {
+	//	node.StartListening()
+	//}()
 
-	isRegistered := node.IsRegistered()
-	if !isRegistered {
-		return errors.New("You are not registered")
-		//err := node.Register()
-		//if err != nil {
-		//	return err
-		//}
-	}
-	node.PingDarkPool()
+	//isRegistered := node.IsRegistered()
+	//if !isRegistered {
+	//	return errors.New("you are not registered")
+	//	//err := node.Register()
+	//	//if err != nil {
+	//	//	return err
+	//	//}
+	//}
+	// node.PingDarkPool()
 
 	// Bootstrap the connections in the swarm.
 	node.Swarm.Bootstrap()
