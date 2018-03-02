@@ -2,11 +2,8 @@ package dnr
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"log"
 	"math/big"
-	"time"
 
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -15,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	log15 "github.com/ethereum/go-ethereum/log"
 	"github.com/republicprotocol/go-atom/ethereum/contracts"
 )
 
@@ -69,34 +65,35 @@ func DeployERC20(context context.Context, connection Client, auth *bind.Transact
 // (Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt)
 // NOTE: If something goes wrong, this will hang!
 func PatchedWaitMined(ctx context.Context, b Client, tx *types.Transaction) (*types.Receipt, error) {
+	return bind.WaitMined(ctx, b, tx)
 
-	sim, ok := b.(*backends.SimulatedBackend)
-	if ok {
-		sim.Commit()
-		sim.AdjustTime(10 * time.Second)
-	}
+	// sim, ok := b.(*backends.SimulatedBackend)
+	// if ok {
+	// 	sim.Commit()
+	// 	sim.AdjustTime(10 * time.Second)
+	// }
 
-	queryTicker := time.NewTicker(time.Second)
-	defer queryTicker.Stop()
+	// queryTicker := time.NewTicker(time.Second)
+	// defer queryTicker.Stop()
 
-	logger := log15.New("hash", tx.Hash())
-	for {
-		receipt, err := b.TransactionReceipt(ctx, tx.Hash())
-		if receipt != nil && receipt.Status != 0 {
-			return receipt, nil
-		}
-		if err != nil {
-			logger.Trace("Receipt retrieval failed", "err", err)
-		} else {
-			logger.Trace("Transaction not yet mined")
-		}
-		// Wait for the next round.
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-queryTicker.C:
-		}
-	}
+	// logger := log15.New("hash", tx.Hash())
+	// for {
+	// 	receipt, err := b.TransactionReceipt(ctx, tx.Hash())
+	// 	if receipt != nil && receipt.Status != 0 {
+	// 		return receipt, nil
+	// 	}
+	// 	if err != nil {
+	// 		logger.Trace("Receipt retrieval failed", "err", err)
+	// 	} else {
+	// 		logger.Trace("Transaction not yet mined")
+	// 	}
+	// 	// Wait for the next round.
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		return nil, ctx.Err()
+	// 	case <-queryTicker.C:
+	// 	}
+	// }
 }
 
 // PatchedWaitDeployed waits for a contract deployment transaction and returns the on-chain
@@ -104,22 +101,24 @@ func PatchedWaitMined(ctx context.Context, b Client, tx *types.Transaction) (*ty
 // (Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt)
 // NOTE: If something goes wrong, this will hang!
 func PatchedWaitDeployed(ctx context.Context, b Client, tx *types.Transaction) (common.Address, error) {
-	if tx.To() != nil {
-		return common.Address{}, fmt.Errorf("tx is not contract creation")
-	}
-	receipt, err := PatchedWaitMined(ctx, b, tx)
-	if err != nil {
-		return common.Address{}, err
-	}
-	if receipt.ContractAddress == (common.Address{}) {
-		return common.Address{}, fmt.Errorf("zero address")
-	}
-	// Check that code has indeed been deployed at the address.
-	// This matters on pre-Homestead chains: OOG in the constructor
-	// could leave an empty account behind.
-	code, err := b.CodeAt(ctx, receipt.ContractAddress, nil)
-	if err == nil && len(code) == 0 {
-		err = errors.New("no contract code after deployment")
-	}
-	return receipt.ContractAddress, err
+	return bind.WaitDeployed(ctx, b, tx)
+
+	// if tx.To() != nil {
+	// 	return common.Address{}, fmt.Errorf("tx is not contract creation")
+	// }
+	// receipt, err := PatchedWaitMined(ctx, b, tx)
+	// if err != nil {
+	// 	return common.Address{}, err
+	// }
+	// if receipt.ContractAddress == (common.Address{}) {
+	// 	return common.Address{}, fmt.Errorf("zero address")
+	// }
+	// // Check that code has indeed been deployed at the address.
+	// // This matters on pre-Homestead chains: OOG in the constructor
+	// // could leave an empty account behind.
+	// code, err := b.CodeAt(ctx, receipt.ContractAddress, nil)
+	// if err == nil && len(code) == 0 {
+	// 	err = errors.New("no contract code after deployment")
+	// }
+	// return receipt.ContractAddress, err
 }

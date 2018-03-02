@@ -130,7 +130,13 @@ func (darkNodeRegistrar *DarkNodeRegistrar) CurrentEpoch() (struct {
 
 // Epoch updates the current Epoch
 func (darkNodeRegistrar *DarkNodeRegistrar) Epoch() (*types.Transaction, error) {
-	return darkNodeRegistrar.binding.Epoch(darkNodeRegistrar.auth1)
+	tx, err := darkNodeRegistrar.binding.Epoch(darkNodeRegistrar.auth1)
+	if err != nil {
+
+		return nil, err
+	}
+	_, err = PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
+	return tx, err
 }
 
 // GetCommitment get's the signed commitment
@@ -175,14 +181,18 @@ func (darkNodeRegistrar *DarkNodeRegistrar) MinimumEpochInterval() (*big.Int, er
 	return darkNodeRegistrar.binding.MinimumEpochInterval(darkNodeRegistrar.auth2)
 }
 
-// PendingRefunds get's the pending refund amount of the given address
-func (darkNodeRegistrar *DarkNodeRegistrar) PendingRefunds(arg0 common.Address) (*big.Int, error) {
-	return darkNodeRegistrar.binding.PendingRefunds(darkNodeRegistrar.auth2, arg0)
-}
+// // PendingRefunds get's the pending refund amount of the given address
+// func (darkNodeRegistrar *DarkNodeRegistrar) PendingRefunds(arg0 common.Address) (*big.Int, error) {
+// 	return darkNodeRegistrar.binding.PendingRefunds(darkNodeRegistrar.auth2, arg0)
+// }
 
 // Refund refunds the bond of an unregistered miner
-func (darkNodeRegistrar *DarkNodeRegistrar) Refund() (*types.Transaction, error) {
-	return darkNodeRegistrar.binding.Refund(darkNodeRegistrar.auth1)
+func (darkNodeRegistrar *DarkNodeRegistrar) Refund(_darkNodeID []byte) (*types.Transaction, error) {
+	_darkNodeIDByte, err := toByte(_darkNodeID)
+	if err != nil {
+		return &types.Transaction{}, err
+	}
+	return darkNodeRegistrar.binding.Refund(darkNodeRegistrar.auth1, _darkNodeIDByte)
 }
 
 // WaitTillRegistration waits until the registration is successful.
@@ -196,7 +206,6 @@ func (darkNodeRegistrar *DarkNodeRegistrar) WaitTillRegistration(_darkNodeID []b
 		}
 		_, err = PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
 		if err != nil {
-
 			return err
 		}
 		time.Sleep(time.Minute)
