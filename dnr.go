@@ -74,9 +74,7 @@ func (darkNodeRegistrar *DarkNodeRegistrar) Register(_darkNodeID []byte, _public
 	txn, err := darkNodeRegistrar.binding.Register(darkNodeRegistrar.auth1, _darkNodeIDByte, _publicKey)
 	if err == nil {
 		_, err := PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, txn)
-		if err != nil {
-			return txn, err
-		}
+		return txn, err
 	}
 	return txn, err
 }
@@ -87,7 +85,12 @@ func (darkNodeRegistrar *DarkNodeRegistrar) Deregister(_darkNodeID []byte) (*typ
 	if err != nil {
 		return &types.Transaction{}, err
 	}
-	return darkNodeRegistrar.binding.Deregister(darkNodeRegistrar.auth1, _darkNodeIDByte)
+	tx, err := darkNodeRegistrar.binding.Deregister(darkNodeRegistrar.auth1, _darkNodeIDByte)
+	if err != nil {
+		return tx, err
+	}
+	_, err = PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
+	return tx, err
 }
 
 // GetBond get's the bond of an existing dark node
@@ -106,6 +109,15 @@ func (darkNodeRegistrar *DarkNodeRegistrar) IsDarkNodeRegistered(_darkNodeID []b
 		return false, err
 	}
 	return darkNodeRegistrar.binding.IsDarkNodeRegistered(darkNodeRegistrar.auth2, _darkNodeIDByte)
+}
+
+// IsDarkNodePendingRegistration returns true if the node will be registered in the next epoch
+func (darkNodeRegistrar *DarkNodeRegistrar) IsDarkNodePendingRegistration(_darkNodeID []byte) (bool, error) {
+	_darkNodeIDByte, err := toByte(_darkNodeID)
+	if err != nil {
+		return false, err
+	}
+	return darkNodeRegistrar.binding.IsDarkNodePendingRegistration(darkNodeRegistrar.auth2, _darkNodeIDByte)
 }
 
 // CurrentEpoch returns the current epoch
