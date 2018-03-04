@@ -27,8 +27,8 @@ type OrderBook struct {
 
 func main() {
 	// Parse the option parameters
-	numberOfOrders := flag.Int("order", 20, "number of orders")
-	timeInterval := flag.Int("time", 5, "time interval in second")
+	numberOfOrders := flag.Int("order", 10, "number of orders")
+	timeInterval := flag.Int("time", 10, "time interval in second")
 
 	// setup output log file
 	//f, err := os.OpenFile("test_log", os.O_RDWR | os.O_CREATE , 0666)
@@ -119,7 +119,7 @@ func main() {
 						log.Println("sending sell order :", base58.Encode(order.ID))
 					}
 
-					shares, err := order.Split(8, 5, node.Prime)
+					shares, err := order.Split(5, 3, node.Prime)
 					if err != nil {
 						continue
 					}
@@ -144,15 +144,25 @@ func getNodesDetails() []string {
 	//	"/ip4/35.161.248.181/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
 	//}
 
-	// Local nodes
+
+	// susruth's test nodes
 	return []string{
-		"/ip4/127.0.0.1/tcp/4000/republic/8MGyTXr6poqfizzdp9fWcLd8UpDC5y",
-		"/ip4/127.0.0.1/tcp/4001/republic/8MJWTpvNJv2SW7meGFpa8c44zNw63f",
-		"/ip4/127.0.0.1/tcp/4002/republic/8MJKxAujyofThVCwmYfMnpCRCNwnQe",
-		"/ip4/127.0.0.1/tcp/4003/republic/8MHJYuWArPDwA8VvXzxrzPyEdwrb4s",
-		"/ip4/127.0.0.1/tcp/4004/republic/8MGonGTeJ6Kz2gUFYgKpJy4TPCH6q3",
-		"/ip4/127.0.0.1/tcp/4005/republic/8MGYgkWK26wS4U4EqHcdgRaodhR9AS",
-		"/ip4/127.0.0.1/tcp/4006/republic/8MKYtPMdocyv2DeKQkobciKsPHMTwC",
-		"/ip4/127.0.0.1/tcp/4007/republic/8MJSSou1rUmjxrvKcYTxaZms8zSvvD",
+		"/ip4/52.21.44.236/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
+		"/ip4/52.41.118.171/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
+		"/ip4/52.59.176.141/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
+		"/ip4/52.77.88.84/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
+		"/ip4/52.79.194.108/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
 	}
+
+	// Local nodes
+	//return []string{
+	//	"/ip4/127.0.0.1/tcp/4000/republic/8MGyTXr6poqfizzdp9fWcLd8UpDC5y",
+	//	"/ip4/127.0.0.1/tcp/4001/republic/8MJWTpvNJv2SW7meGFpa8c44zNw63f",
+	//	"/ip4/127.0.0.1/tcp/4002/republic/8MJKxAujyofThVCwmYfMnpCRCNwnQe",
+	//	"/ip4/127.0.0.1/tcp/4003/republic/8MHJYuWArPDwA8VvXzxrzPyEdwrb4s",
+	//	"/ip4/127.0.0.1/tcp/4004/republic/8MGonGTeJ6Kz2gUFYgKpJy4TPCH6q3",
+	//	"/ip4/127.0.0.1/tcp/4005/republic/8MGYgkWK26wS4U4EqHcdgRaodhR9AS",
+	//	"/ip4/127.0.0.1/tcp/4006/republic/8MKYtPMdocyv2DeKQkobciKsPHMTwC",
+	//	"/ip4/127.0.0.1/tcp/4007/republic/8MJSSou1rUmjxrvKcYTxaZms8zSvvD",
+	//}
 }

@@ -23,15 +23,15 @@ const DefaultTimeOut = 5 * time.Second
 
 func test() {
 
-	numberOfBoostrapNodes := flag.Int("bootstrapNodes", 4, "number of bootstrap nodes")
+	numberOfBootstrapNodes := flag.Int("bootstrapNodes", 4, "number of bootstrap nodes")
 	numberOfNodes := flag.Int("nodes", 8, "number of nodes")
 
-	nodes, err := generateNodes(*numberOfBoostrapNodes, *numberOfNodes)
+	nodes, err := generateNodes(*numberOfBootstrapNodes, *numberOfNodes)
 	if err != nil {
 		log.Fatal("fail to generate nodes --> ", err)
 	}
 
-	errChan := deployNodes(nodes, *numberOfBoostrapNodes)
+	errChan := deployNodes(nodes, *numberOfBootstrapNodes)
 	if len(errChan) > 0 {
 		for err := range errChan {
 			log.Println("fail to deploy nodes --> ", err)
