@@ -19,7 +19,7 @@ import (
 
 const (
 	NumberOfBootstrapNodes = 4
-	NumberOfTestNODES       = 4
+	NumberOfTestNODES      = 4
 )
 
 var _ = Describe("Dark nodes", func() {
