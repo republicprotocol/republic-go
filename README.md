@@ -1,5 +1,8 @@
 # Dark Node
 
+[![Build Status](https://travis-ci.org/republicprotocol/go-dark-node.svg?branch=master)](https://travis-ci.org/republicprotocol/go-dark-node)
+[![Coverage Status](https://coveralls.io/repos/github/republicprotocol/go-dark-node/badge.svg?branch=master)](https://coveralls.io/github/republicprotocol/go-dark-node?branch=master)
+
 A reference implementation for Republic Dark Node, written in Go.
 
 
