@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -17,23 +18,26 @@ var config *node.Config
 
 func main() {
 	// Parse command line arguments and fill the node.Config.
-	dev, err := parseCommandLineFlags();
+	err := parseCommandLineFlags();
 	if err != nil {
 		log.Println(err)
 		flag.Usage()
 		return
 	}
 
-	if dev == true {
-
+	// Setup output log file
+	f, err := os.OpenFile("log.log", os.O_RDWR | os.O_CREATE , 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
 	}
+	defer f.Close()
+	log.SetOutput(f)
 
 	// Create a new node.node.
 	node, err := node.NewDarkNode(config)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	// Start the dark node.
 	do.CoBegin(func() do.Option {
 		return do.Err(node.StartListening());
@@ -43,24 +47,22 @@ func main() {
 	})
 }
 
-func parseCommandLineFlags() (bool, error) {
+func parseCommandLineFlags() error {
 
 	confFilename := flag.String("config", "./default-config.json", "Path to the JSON configuration file")
-	dev := flag.Bool("dev", false, "turn on develop mode")
-
 	flag.Parse()
 
 	conf, err := node.LoadConfig(*confFilename)
 	if err != nil {
 		conf, err = LoadDefaultConfig()
 		if err != nil {
-			return *dev,err
+			return err
 		}
 		config = conf
-		return *dev,nil
+		return nil
 	}
 	config = conf
-	return *dev, nil
+	return nil
 }
 
 func LoadDefaultConfig() (*node.Config, error) {
@@ -77,6 +79,7 @@ func LoadDefaultConfig() (*node.Config, error) {
 	if err != nil {
 		return &node.Config{}, err
 	}
+
 	bootstrapNodes :=[]string{
 		"/ip4/52.21.44.236/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
 		"/ip4/52.41.118.171/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
