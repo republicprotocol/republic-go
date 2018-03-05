@@ -21,6 +21,9 @@ import (
 var config map[string]interface{}
 var order *compute.Order
 
+var N = int64(5)
+var K = int64(3)
+
 func main() {
 
 	// Parse command line arguments and fill the node.Config.
@@ -44,7 +47,7 @@ func main() {
 		nodeMultiAddresses[i] = multiAddress
 	}
 
-	shares, err := order.Split(node.N, node.K, node.Prime)
+	shares, err := order.Split(N, K, node.Prime)
 	if err != nil {
 		log.Fatal(err)
 	}

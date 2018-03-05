@@ -25,7 +25,7 @@ func main() {
 	}
 
 	// Setup output log file
-	f, err := os.OpenFile("/home/ubuntu/darknode.log", os.O_RDWR|os.O_CREATE, 0666)
+	f, err := os.OpenFile("/home/ubuntu/darknode.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
@@ -38,12 +38,17 @@ func main() {
 		log.Fatal(err)
 	}
 	// Start the dark node.
-	do.CoBegin(func() do.Option {
+	options := do.CoBegin(func() do.Option {
 		return do.Err(node.StartListening())
 	}, func() do.Option {
 		time.Sleep(time.Second)
 		return do.Err(node.Start())
 	})
+	for _, option := range options {
+		if option.Err != nil {
+			log.Println(option.Err)
+		}
+	}
 }
 
 func parseCommandLineFlags() error {
