@@ -3,11 +3,12 @@ package identity_test
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/jbenet/go-base58"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 var _ = Describe("", func() {

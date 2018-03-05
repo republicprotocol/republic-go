@@ -1,24 +1,23 @@
 package identity_test
 
 import (
-	"github.com/republicprotocol/go-identity"
-	. "github.com/republicprotocol/go-identity"
+	"fmt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"fmt"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 
 	Context("after importing the package", func() {
 		It("should expose a protocol called republic", func() {
-			Ω(ProtocolWithName("republic").Name).Should(Equal("republic"))
+			Ω(identity.ProtocolWithName("republic").Name).Should(Equal("republic"))
 		})
 
 		It("should expose a protocol with the correct constant values", func() {
-			Ω(ProtocolWithCode(RepublicCode).Name).Should(Equal("republic"))
-			Ω(ProtocolWithCode(RepublicCode).Code).Should(Equal(RepublicCode))
+			Ω(identity.ProtocolWithCode(identity.RepublicCode).Name).Should(Equal("republic"))
+			Ω(identity.ProtocolWithCode(identity.RepublicCode).Code).Should(Equal(identity.RepublicCode))
 		})
 	})
 
@@ -35,20 +34,20 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 			Ω(err).Should(HaveOccurred())
 			addr, _, err := identity.NewAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			_, err = identity.NewMultiAddressFromString("/republic/" + addr.String()+ "bad")
+			_, err = identity.NewMultiAddressFromString("/republic/" + addr.String() + "bad")
 			Ω(err).Should(HaveOccurred())
 		})
 	})
 
 	Context("retrieving values", func() {
 		It("should give the right value of specific protocol", func() {
-			ip4, tcp, republicAddress := "127.0.0.1", "80","8MGfbzAMS59Gb4cSjpm34soGNYsM2f"
-			addresses := fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s",ip4,tcp,republicAddress)
+			ip4, tcp, republicAddress := "127.0.0.1", "80", "8MGfbzAMS59Gb4cSjpm34soGNYsM2f"
+			addresses := fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", ip4, tcp, republicAddress)
 			multiAddress, err := identity.NewMultiAddressFromString(addresses)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(multiAddress.ValueForProtocol(RepublicCode)).Should(Equal(republicAddress))
-			Ω(multiAddress.ValueForProtocol(TCPCode)).Should(Equal(tcp))
-			Ω(multiAddress.ValueForProtocol(IP4Code)).Should(Equal(ip4))
+			Ω(multiAddress.ValueForProtocol(identity.RepublicCode)).Should(Equal(republicAddress))
+			Ω(multiAddress.ValueForProtocol(identity.TCPCode)).Should(Equal(tcp))
+			Ω(multiAddress.ValueForProtocol(identity.IP4Code)).Should(Equal(ip4))
 		})
 	})
 
@@ -75,13 +74,13 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 	})
 
 	Context("converting to Address or ID", func() {
-		ip4, tcp, republicAddress := "127.0.0.1", "80","8MGfbzAMS59Gb4cSjpm34soGNYsM2f"
-		addresses := fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s",ip4,tcp,republicAddress)
+		ip4, tcp, republicAddress := "127.0.0.1", "80", "8MGfbzAMS59Gb4cSjpm34soGNYsM2f"
+		addresses := fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", ip4, tcp, republicAddress)
 
 		It("should be converted to an Address", func() {
 			multiAddress, err := identity.NewMultiAddressFromString(addresses)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(multiAddress.Address()).Should(Equal(Address(republicAddress)))
+			Ω(multiAddress.Address()).Should(Equal(identity.Address(republicAddress)))
 		})
 
 		It("should be converted to an ID", func() {

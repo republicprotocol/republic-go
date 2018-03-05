@@ -12,6 +12,10 @@ before_install:
 
 script:
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out
+  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out darknode
+  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out identity
+  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out network/dht
+  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out shamir
   
 after_success:
   - goveralls -coverprofile=coverprofile.out -service=travis-ci -repotoken $COVERALLS_TOKEN

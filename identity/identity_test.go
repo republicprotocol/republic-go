@@ -3,7 +3,7 @@ package identity_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 var _ = Describe("", func() {
@@ -29,8 +29,7 @@ var _ = Describe("", func() {
 			})
 
 			It("should be converted to a string", func() {
-				stringID := id.String()
-				Ω(len(stringID)).Should(Equal(identity.IDLength))
+				Ω(id.String()).Should(Equal(id.Address().String()))
 			})
 		})
 
