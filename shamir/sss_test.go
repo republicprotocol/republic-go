@@ -1,4 +1,4 @@
-package sss_test
+package shamir_test
 
 import (
 	"math/big"

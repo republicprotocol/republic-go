@@ -1,4 +1,4 @@
-package sss_test
+package shamir_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestSss(t *testing.T) {
+func TestShamir(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Shamir's Secret Sharing Suite")
 }

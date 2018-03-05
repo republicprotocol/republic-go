@@ -1,4 +1,4 @@
-package sss
+package shamir
 
 import (
 	"bytes"

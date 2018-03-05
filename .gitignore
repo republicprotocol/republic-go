@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 # Output of the go coverage tool
 *.out
 
 # Dep vendors
+=======
+coverprofile.out
+Gopkg.lock
+>>>>>>> 6725f3680969ba7e5f8d6633b4b780fcde863e50
 vendor
