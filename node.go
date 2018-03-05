@@ -16,7 +16,7 @@ import (
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
-	rpc "github.com/republicprotocol/go-rpc"
+	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-swarm-network"
 	"google.golang.org/grpc"
 )

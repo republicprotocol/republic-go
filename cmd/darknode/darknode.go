@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"runtime"
+	"runtime/pprof"
 	"strings"
 	"time"
 
@@ -15,6 +17,7 @@ import (
 )
 
 var config *node.Config
+var cpuProfile ,memProfile *string
 
 func main() {
 	// Parse command line arguments and fill the node.Config.
@@ -24,8 +27,32 @@ func main() {
 		return
 	}
 
+	if *cpuProfile != "" {
+		f, err := os.Create(*cpuProfile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
+
+	if *memProfile != "" {
+		f, err := os.Create(*memProfile)
+		if err != nil {
+			log.Fatal("could not create memory profile: ", err)
+		}
+		runtime.GC() // get up-to-date statistics
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			log.Fatal("could not write memory profile: ", err)
+		}
+		f.Close()
+	}
+
 	// Setup output log file
-	f, err := os.OpenFile("/home/ubuntu/darknode.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	f, err := os.OpenFile("darknode.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	// todo : change file path to abusolute one
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
@@ -53,7 +80,10 @@ func main() {
 
 func parseCommandLineFlags() error {
 
+	cpuProfile = flag.String("cpuprofile", "cpu.log", "write cpu profile to `file`")
+	memProfile = flag.String("memprofile", "mem.log", "write memory profile to `file`")
 	confFilename := flag.String("config", "./default-config.json", "Path to the JSON configuration file")
+
 	flag.Parse()
 
 	conf, err := node.LoadConfig(*confFilename)
