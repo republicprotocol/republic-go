@@ -17,10 +17,15 @@ var config *node.Config
 
 func main() {
 	// Parse command line arguments and fill the node.Config.
-	if err := parseCommandLineFlags(); err != nil {
+	dev, err := parseCommandLineFlags();
+	if err != nil {
 		log.Println(err)
 		flag.Usage()
 		return
+	}
+
+	if dev == true {
+
 	}
 
 	// Create a new node.node.
@@ -38,8 +43,10 @@ func main() {
 	})
 }
 
-func parseCommandLineFlags() error {
+func parseCommandLineFlags() (bool, error) {
+
 	confFilename := flag.String("config", "./default-config.json", "Path to the JSON configuration file")
+	dev := flag.Bool("dev", false, "turn on develop mode")
 
 	flag.Parse()
 
@@ -47,17 +54,17 @@ func parseCommandLineFlags() error {
 	if err != nil {
 		conf, err = LoadDefaultConfig()
 		if err != nil {
-			return err
+			return *dev,err
 		}
 		config = conf
-		return nil
+		return *dev,nil
 	}
 	config = conf
-	return nil
+	return *dev, nil
 }
 
 func LoadDefaultConfig() (*node.Config, error) {
-	address, keypair, err := identity.NewAddress()
+	address, keyPair, err := identity.NewAddress()
 	if err != nil {
 		return &node.Config{}, err
 	}
@@ -70,35 +77,28 @@ func LoadDefaultConfig() (*node.Config, error) {
 	if err != nil {
 		return &node.Config{}, err
 	}
-	bootstrap1, err := identity.NewMultiAddressFromString("/ip4/52.78.129.188/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE")
-	if err != nil {
-		return &node.Config{}, err
+	bootstrapNodes :=[]string{
+		"/ip4/52.21.44.236/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
+		"/ip4/52.41.118.171/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
+		"/ip4/52.59.176.141/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
+		"/ip4/52.77.88.84/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
+		"/ip4/52.79.194.108/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
 	}
-	bootstrap2, err := identity.NewMultiAddressFromString("/ip4/54.179.189.157/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS")
-	if err != nil {
-		return &node.Config{}, err
-	}
-	bootstrap3, err := identity.NewMultiAddressFromString("/ip4/52.59.192.207/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy")
-	if err != nil {
-		return &node.Config{}, err
-	}
-	bootstrap4, err := identity.NewMultiAddressFromString("/ip4/54.88.24.57/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto")
-	if err != nil {
-		return &node.Config{}, err
-	}
-	bootstrap5, err := identity.NewMultiAddressFromString("/ip4/34.217.114.249/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf")
-	if err != nil {
-		return &node.Config{}, err
-	}
-
-	return &node.Config{
+	config := &node.Config{
 		Host:            "0.0.0.0",
 		Port:            "18514",
-		RepublicKeyPair: keypair,
+		RepublicKeyPair: keyPair,
 		MultiAddress:    multiAddress,
-		BootstrapMultiAddresses: identity.MultiAddresses{
-			bootstrap1, bootstrap2, bootstrap3, bootstrap4, bootstrap5,
-		},
-	}, nil
+		BootstrapMultiAddresses: make([]identity.MultiAddress, len(bootstrapNodes)),
+	}
 
+	for i, bootstrapNode := range bootstrapNodes{
+		multi, err := identity.NewMultiAddressFromString(bootstrapNode)
+		if err != nil {
+			return &node.Config{}, err
+		}
+		config.BootstrapMultiAddresses[i] = multi
+	}
+
+	return config, nil
 }

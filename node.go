@@ -97,6 +97,7 @@ type DarkNode struct {
 	Dark          *dark.Node
 	Configuration *Config
 	Registrar     *dnr.DarkNodeRegistrar
+	DevMode       bool
 
 	DeltaBuilder        *compute.DeltaBuilder
 	DeltaFragmentMatrix *compute.DeltaFragmentMatrix
@@ -129,6 +130,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		Configuration: config,
 		Registrar:     registrar,
 		logQueue:      NewLogQueue(),
+		DevMode:       false,
 	}
 	node.DarkPool = config.BootstrapMultiAddresses
 	node.DarkPoolLimit = int64((len(node.DarkPool)*2 + 1) / 3)
@@ -242,7 +244,11 @@ func (node *DarkNode) StopListening() {
 }
 
 func (node *DarkNode) log(kind, message string) {
-	node.logQueue.Publish(do.Ok(&rpc.LogEvent{Type: []byte(kind), Message: []byte(message)}))
+	if node.DevMode {
+		log.Printf("{ %s : %s }" ,kind, message)
+	}else {
+		node.logQueue.Publish(do.Ok(&rpc.LogEvent{Type: []byte(kind), Message: []byte(message)}))
+	}
 }
 
 func (node *DarkNode) IsRegistered() bool {
