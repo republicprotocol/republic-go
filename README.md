@@ -5,24 +5,9 @@
 
 > This library is a work in progress.
 
-The Dark library is an official reference implementation of the Dark Network for the Republic Protocol, written in Go. It supports the calculation of the number of classes in the Dark Network, and the number of M Networks in the Dark Network. It also supports the assignment of classes and M Networks, based on an Epoch hash.
+The Dark Network library is an official reference implementation of the Dark Network for the Republic Protocol, written in Go. It provides the required gRPC interfaces for the secure multi-party computations that compare orders.
 
 More details on the inner workings of the Dark Network will be made available on the Republic Protocol Wiki in the future.
-
-## Assigning the Dark Network
-
-Each miner is assigned to a class, and M Network, within the Dark Network. The class of a miner determines which order fragments it is authorized to receive, and the M Networks define partitioned groups of miners that work together to match orders.
-
-The assignments are based on the current Epoch hash, the miner's commitment hash, and the total number of miners in the current Epoch. All of this data must be loaded from the Ethereum smart contract for the Republic Protocol. Once it has been loaded, the `AssignXOverlay` function can be used to assign a class and M Network to each miner.
-
-```go
-epochHash := []byte{} // Load from Ethereum.
-miners := []x.Miner{} // Load from Ethereum.
-numberOfMNetworks := x.NumberOfMNetworks(len(miners))
-x.AssignXOverlay(miners, epochHash, numberOfMNetworks)
-```
-
-Every time the Epoch hash is changed, the Dark Network must be reassigned.
 
 ## Tests
 
