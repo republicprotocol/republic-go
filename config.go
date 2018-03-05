@@ -1,10 +1,12 @@
 package node
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"math/big"
 	"os"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/go-identity"
 )
 
@@ -35,4 +37,17 @@ func LoadConfig(filename string) (*Config, error) {
 		return nil, err
 	}
 	return config, nil
+}
+
+// EthereumKeyPair returns the Ethereum private
+func (config Config) EthereumKeyPair() (identity.KeyPair, error) {
+	key, err := hex.DecodeString(config.EthereumPrivateKey)
+	if err != nil {
+		return identity.KeyPair{}, err
+	}
+	ecdsa, err := crypto.ToECDSA(key)
+	if err != nil {
+		return identity.KeyPair{}, err
+	}
+	return identity.NewKeyPairFromPrivateKey(ecdsa)
 }
