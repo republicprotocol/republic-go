@@ -18,11 +18,10 @@ var config *node.Config
 
 func main() {
 	// Parse command line arguments and fill the node.Config.
-	err := parseCommandLineFlags();
-	if err != nil {
-		log.Println(err)
-		flag.Usage()
-		return
+	if err := parseCommandLineFlags(); err != nil {
+			log.Println(err)
+			flag.Usage()
+			return
 	}
 
 	// Setup output log file
