@@ -25,7 +25,7 @@ func main() {
 	}
 
 	// Setup output log file
-	f, err := os.OpenFile("log.log", os.O_RDWR|os.O_CREATE, 0666)
+	f, err := os.OpenFile("/home/ubuntu/darknode.log", os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
