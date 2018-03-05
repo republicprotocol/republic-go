@@ -3,250 +3,179 @@ syntax = "proto3";
 package rpc;
 
 /**
- * Common definitions.
+ * Swarm
  */
 
-// An Address message is the network representation of an identity.Address.
+service Swarm {
+  rpc Ping (Multiaddress) returns (Multiaddress);
+  rpc Query (Address) returns (stream Multiaddress);
+  rpc QueryDeep (Address) returns (stream Multiaddress);
+}
+
 message Address {
   string address = 1;
 }
 
-// A MultiAddress is the network representation of an identity.MultiAddress.
-message MultiAddress {
-  string multi = 1;
+message Multiaddress {
+  bytes signature = 1;
+  string multiaddress = 2;
 }
 
-// MultiAddresses are the network representation of identity.MultiAddresses.
-message MultiAddresses {
-  repeated MultiAddress multis = 1;
-}
-
-// Nothing is in this message. It is used to send nothing, or signal a
-// successful response.
-message Nothing {}
-
-/**
- * Swarm defintions.
- */
-
-// SwarmNode services implement peer discovery in the decentralized Swarm
-// network.
-service SwarmNode {
-  
-  // Ping the connection and swap MultiAddresses.
-  rpc Ping (MultiAddress) returns (Nothing);
-
-  // Find the MultiAddresses of peers closer to some target Node.
-  rpc QueryCloserPeers (Query) returns (MultiAddresses);
-
-  // Find the MultiAddresses of peers closer to some target Node using a
-  // frontier search.
-  rpc QueryCloserPeersOnFrontier (Query) returns (stream MultiAddress);
-}
-
-// A Query message contains the Address of a Node that needs to be found and
-// the MultiAddress of the Node from which the Query originated.
-message Query {
-  // Network data.
-  MultiAddress from = 1;
-
-  // Public data.
-  Address query = 2;
+message Nothing {
 }
 
 /**
- * Dark node definitions.
+ * Dark Ocean
  */
 
-// DarkNode services implement the distribution of OrderFragments and
-// FinalFragments in the Dark network.
-service DarkNode {
-
-  // Send a sync request for getting new shard
+service DarkOcean {
   rpc Sync (SyncRequest) returns (stream SyncBlock);
 
-  // Send a commitment to the order fragment.
-  rpc SendOrderFragmentCommitment (OrderFragmentCommitment) returns (OrderFragmentCommitment);
+  rpc SignOrderFragment (SignOrderFragmentRequest) returns (OrderFragmentSignature);
+  rpc OpenOrder (OpenOrderRequest) returns (Nothing);
+  rpc CancelOrder (CancelOrderRequest) returns (Nothing);
 
-  // Send an OrderFragment to some target Node.
-  rpc SendOrderFragment (OrderFragment) returns (Nothing);
-  
-  // Propose a shard election request to some target node.
-  rpc ElectShard (ElectShardRequest) returns (Shard);
-  
-  // Ask some target node to start computation on the shard.
-  rpc ComputeShard (ComputeShardRequest) returns (Nothing);
-
-  //
-  rpc FinalizeShard (FinalizeShardRequest) returns (Nothing);
-
-//  // Get Final messages for successful order matches that have happened since
-//  // this procedure was last used, as well as new ones that occur.
-//  rpc Notifications (MultiAddress) returns (stream Final);
-
-//  // Get all relevant results that have been computed in the current epoch.
-//  rpc GetFinals (MultiAddress) returns (stream Final);
-
-  rpc Logs (LogRequest) returns (stream LogEvent);
+  rpc RandomFragmentShares (RandomFragmentSharesRequest) returns (RandomFragments);
+  rpc ResidueFragmentShares (ResidueFragmentSharesRequest) returns (ResidueFragments);
+  rpc ComputeResidueFragment (ComputeResidueFragmentRequest) returns (Nothing);
+  rpc BroadcastAlphaBetaFragment (BroadcastAlphaBetaFragmentRequest) returns (AlphaBetaFragment);
   rpc BroadcastDeltaFragment (BroadcastDeltaFragmentRequest) returns (DeltaFragment);
-
 }
 
-// An OrderFragment is a message contains the details of an order fragment.
-message OrderFragment {
-  // Network data.
-  Address to = 1;
-  MultiAddress from = 2;
-
-  // Public data.
-  bytes id = 3;
-  bytes orderId = 4;
-  int64 orderType = 5;
-  int64 orderParity = 6;
-
-  // Secure data.
-  bytes fstCodeShare = 7;
-  bytes sndCodeShare = 8;
-  bytes priceShare = 9;
-  bytes maxVolumeShare = 10;
-  bytes minVolumeShare = 11;
+message SyncRequest {
+  Multiaddress from = 1;
 }
 
-// An OrderFragmentCommitment is ...
-message OrderFragmentCommitment{
-  MultiAddress from = 1;
-  bytes signature = 2;
-  bytes orderFragment = 3;
+message SignOrderFragmentRequest {
+  Multiaddress from = 1;
+  OrderFragmentSignature orderFragmentSignature = 2;
 }
 
-// A SyncBlock is ...
-message SyncBlock {
-  bytes signature = 1;
-  DeltaBlock deltas = 2;
-  ResidueBlock residues = 3;
-
-  message DeltaBlock {
-    repeated bytes pending = 1;
-    repeated bytes electing = 2;
-    repeated bytes computing = 3;
-    repeated bytes finalizing = 4;
-    repeated bytes matched = 5;
-    repeated bytes mismatched = 6;
-  }
-
-  message ResidueBlock {
-    repeated bytes pending = 1;
-    repeated bytes electing = 2;
-    repeated bytes computing = 3;
-    repeated bytes finalizing = 4;
-    repeated bytes matched = 5;
-    repeated bytes mismatched = 6;
-  }
+message OpenOrderRequest {
+  Multiaddress from = 1;
+  OrderSignature orderSignature = 2;
+  OrderFragment orderFragment = 3;
 }
 
-// Final messages are sent to signal that a successful order computation has
-// happened.
-message Final {
-
-  // Public data.
-  bytes id = 1;
-  bytes buyOrderId = 2;
-  bytes sellOrderId = 3;
-
-  // Secure data.
-  bytes fstCode = 4;
-  bytes sndCode = 5;
-  bytes price = 6;
-  bytes maxVolume = 7;
-  bytes minVolume = 8;
+message CancelOrderRequest {
+  Multiaddress from = 1;
+  OrderSignature orderSignature = 2;
 }
 
-// A shard is a block of computations
-message Shard {
-  bytes signature = 1;
-  repeated DeltaFragment deltas = 2;
-  repeated bytes residues = 3;
+message RandomFragmentSharesRequest {
+  Multiaddress from = 1;
 }
 
-// A DeltaShard is a block of results after computation
-message DeltaShard {
-  bytes signature = 1;
-  repeated bytes finals = 2;
+message ResidueFragmentSharesRequest {
+  Multiaddress from = 1;
+  RandomFragments randomFragments = 2;
 }
 
-// A FinalizeShardRequest is ...
-message FinalizeShardRequest{
-  MultiAddress from = 1;
-  DeltaShard shard = 2;
+message ComputeResidueFragmentRequest {
+  Multiaddress from = 1;
+  ResidueFragments residueFragments = 2;
 }
 
-// A SyncRequest is ...
-message SyncRequest{
-  MultiAddress from = 1;
-}
-
-// A ElectShardRequest is ...
-message ElectShardRequest {
-  MultiAddress from = 1;
-  Shard shard = 2;
-}
-
-// A ComputeShardRequest is ...
-message ComputeShardRequest {
-  MultiAddress from = 1;
-  Shard shard = 2;
-}
-
-// A LogRequest is ...
-message LogRequest{
-}
-
-// A shard is a block of computations
-message LogEvent {
-  bytes type = 1;
-  bytes message = 2;
-}
-
-/**
- * Terminal definitions.
- */
-
-// TerminalNode services implement the execution of atomic swaps.
-service TerminalNode {
-  
-  // Send an Atom to some target Node.
-  rpc SendAtom (Atom) returns (Atom);
-}
-
-// An Atom message is the network representation of a atom.Atom and the
-// metadata needed to distribute it through the network.
-message Atom {
-  // Network data.
-  Address to = 1;
-  MultiAddress from = 2;
-
-  // Secure data.
-  int64 ledger = 3;
-  bytes data = 4;
-  bytes signature = 5;
+message BroadcastAlphaBetaFragmentRequest {
+  Multiaddress from = 1;
+  AlphaBetaFragment alphaBetaFragment = 2;
 }
 
 message BroadcastDeltaFragmentRequest {
-  MultiAddress from = 1;
+  Multiaddress from = 1;
   DeltaFragment deltaFragment = 2;
 }
 
-message DeltaFragment {
+message AlphaBetaFragment {
+  bytes signature = 1;
+  bytes residueId = 2;
+  OrderFragment alphaFragment = 3;
+  OrderFragment betaFragment = 4;
+}
+
+message DeltaFragment {    
   bytes signature = 1;
   bytes id = 2;
-  bytes buyOrderID = 3;
-  bytes sellOrderID = 4;
-  bytes buyOrderFragmentID = 5;
-  bytes sellOrderFragmentID = 6;
-
+  bytes buyOrderId = 3;
+  bytes sellOrderId = 4;
+  bytes buyOrderFragmentId = 5;
+  bytes sellOrderFragmentId = 6;
+  
   bytes fstCodeShare = 7;
   bytes sndCodeShare = 8;
   bytes priceShare = 9;
   bytes maxVolumeShare = 10;
   bytes minVolumeShare = 11;
+}
+
+message OrderFragment {
+  bytes signature = 1;
+  bytes id = 2;
+  bytes order = 3;
+  int64 orderType = 4;
+  int64 orderParity = 5;
+  
+  bytes fstCodeShare = 6;
+  bytes sndCodeShare = 7;
+  bytes priceShare = 8;
+  bytes maxVolumeShare = 9;
+  bytes minVolumeShare = 10;
+}
+
+message OrderFragmentSignature {
+  bytes signature = 1;
+  bytes orderFragmentId = 2;
+}
+
+message OrderSignature {
+  bytes signature = 1;
+  bytes orderId = 2;
+}
+
+message ResidueFragment {    
+  bytes signature = 1;
+  bytes aShare = 2;
+  bytes bShare = 3;
+  bytes cShare = 4;
+  bytes residueShare = 5;
+  bytes residueId = 6;
+}
+
+message ResidueFragments {
+  bytes signature = 1;
+  repeated ResidueFragment residueFragments = 2;
+}
+
+message RandomFragment {    
+  bytes signature = 1;
+  bytes share = 2;
+}
+
+message RandomFragments {
+  bytes signature = 1;
+  repeated RandomFragment randomFragments = 2;
+}
+
+message SyncBlock {
+  bytes signature = 1;
+  DeltaBlock deltaBlock = 2;
+  ResidueBlock residueBlock = 3;
+
+  message DeltaBlock {
+      repeated DeltaFragment pending = 1;
+      repeated DeltaFragment electing = 2;
+      repeated DeltaFragment computing = 3;
+      repeated DeltaFragment finalizing = 4;
+      repeated DeltaFragment matched = 5;
+      repeated DeltaFragment mismatched = 6;
+  }
+
+  message ResidueBlock {
+      repeated ResidueFragment pending = 1;
+      repeated ResidueFragment electing = 2;
+      repeated ResidueFragment computing = 3;
+      repeated ResidueFragment finalizing = 4;
+      repeated ResidueFragment matched = 5;
+      repeated ResidueFragment mismatched = 6;
+  }
 }

@@ -9,25 +9,27 @@ It is generated from these files:
 
 It has these top-level messages:
 	Address
-	MultiAddress
-	MultiAddresses
+	Multiaddress
 	Nothing
-	Query
-	OrderFragment
-	OrderFragmentCommitment
-	SyncBlock
-	Final
-	Shard
-	DeltaShard
-	FinalizeShardRequest
 	SyncRequest
-	ElectShardRequest
-	ComputeShardRequest
-	LogRequest
-	LogEvent
-	Atom
+	SignOrderFragmentRequest
+	OpenOrderRequest
+	CancelOrderRequest
+	RandomFragmentSharesRequest
+	ResidueFragmentSharesRequest
+	ComputeResidueFragmentRequest
+	BroadcastAlphaBetaFragmentRequest
 	BroadcastDeltaFragmentRequest
+	AlphaBetaFragment
 	DeltaFragment
+	OrderFragment
+	OrderFragmentSignature
+	OrderSignature
+	ResidueFragment
+	ResidueFragments
+	RandomFragment
+	RandomFragments
+	SyncBlock
 */
 package rpc
 
@@ -51,7 +53,6 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-// An Address message is the network representation of an identity.Address.
 type Address struct {
 	Address string `protobuf:"bytes,1,opt,name=address" json:"address,omitempty"`
 }
@@ -68,111 +69,405 @@ func (m *Address) GetAddress() string {
 	return ""
 }
 
-// A MultiAddress is the network representation of an identity.MultiAddress.
-type MultiAddress struct {
-	Multi string `protobuf:"bytes,1,opt,name=multi" json:"multi,omitempty"`
+type Multiaddress struct {
+	Signature    []byte `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	Multiaddress string `protobuf:"bytes,2,opt,name=multiaddress" json:"multiaddress,omitempty"`
 }
 
-func (m *MultiAddress) Reset()                    { *m = MultiAddress{} }
-func (m *MultiAddress) String() string            { return proto.CompactTextString(m) }
-func (*MultiAddress) ProtoMessage()               {}
-func (*MultiAddress) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (m *Multiaddress) Reset()                    { *m = Multiaddress{} }
+func (m *Multiaddress) String() string            { return proto.CompactTextString(m) }
+func (*Multiaddress) ProtoMessage()               {}
+func (*Multiaddress) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
-func (m *MultiAddress) GetMulti() string {
+func (m *Multiaddress) GetSignature() []byte {
 	if m != nil {
-		return m.Multi
-	}
-	return ""
-}
-
-// MultiAddresses are the network representation of identity.MultiAddresses.
-type MultiAddresses struct {
-	Multis []*MultiAddress `protobuf:"bytes,1,rep,name=multis" json:"multis,omitempty"`
-}
-
-func (m *MultiAddresses) Reset()                    { *m = MultiAddresses{} }
-func (m *MultiAddresses) String() string            { return proto.CompactTextString(m) }
-func (*MultiAddresses) ProtoMessage()               {}
-func (*MultiAddresses) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
-
-func (m *MultiAddresses) GetMultis() []*MultiAddress {
-	if m != nil {
-		return m.Multis
+		return m.Signature
 	}
 	return nil
 }
 
-// Nothing is in this message. It is used to send nothing, or signal a
-// successful response.
+func (m *Multiaddress) GetMultiaddress() string {
+	if m != nil {
+		return m.Multiaddress
+	}
+	return ""
+}
+
 type Nothing struct {
 }
 
 func (m *Nothing) Reset()                    { *m = Nothing{} }
 func (m *Nothing) String() string            { return proto.CompactTextString(m) }
 func (*Nothing) ProtoMessage()               {}
-func (*Nothing) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+func (*Nothing) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
-// A Query message contains the Address of a Node that needs to be found and
-// the MultiAddress of the Node from which the Query originated.
-type Query struct {
-	// Network data.
-	From *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
-	// Public data.
-	Query *Address `protobuf:"bytes,2,opt,name=query" json:"query,omitempty"`
+type SyncRequest struct {
+	From *Multiaddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
 }
 
-func (m *Query) Reset()                    { *m = Query{} }
-func (m *Query) String() string            { return proto.CompactTextString(m) }
-func (*Query) ProtoMessage()               {}
-func (*Query) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+func (m *SyncRequest) Reset()                    { *m = SyncRequest{} }
+func (m *SyncRequest) String() string            { return proto.CompactTextString(m) }
+func (*SyncRequest) ProtoMessage()               {}
+func (*SyncRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
-func (m *Query) GetFrom() *MultiAddress {
+func (m *SyncRequest) GetFrom() *Multiaddress {
 	if m != nil {
 		return m.From
 	}
 	return nil
 }
 
-func (m *Query) GetQuery() *Address {
+type SignOrderFragmentRequest struct {
+	From                   *Multiaddress           `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	OrderFragmentSignature *OrderFragmentSignature `protobuf:"bytes,2,opt,name=orderFragmentSignature" json:"orderFragmentSignature,omitempty"`
+}
+
+func (m *SignOrderFragmentRequest) Reset()                    { *m = SignOrderFragmentRequest{} }
+func (m *SignOrderFragmentRequest) String() string            { return proto.CompactTextString(m) }
+func (*SignOrderFragmentRequest) ProtoMessage()               {}
+func (*SignOrderFragmentRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+
+func (m *SignOrderFragmentRequest) GetFrom() *Multiaddress {
 	if m != nil {
-		return m.Query
+		return m.From
 	}
 	return nil
 }
 
-// An OrderFragment is a message contains the details of an order fragment.
+func (m *SignOrderFragmentRequest) GetOrderFragmentSignature() *OrderFragmentSignature {
+	if m != nil {
+		return m.OrderFragmentSignature
+	}
+	return nil
+}
+
+type OpenOrderRequest struct {
+	From           *Multiaddress   `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	OrderSignature *OrderSignature `protobuf:"bytes,2,opt,name=orderSignature" json:"orderSignature,omitempty"`
+	OrderFragment  *OrderFragment  `protobuf:"bytes,3,opt,name=orderFragment" json:"orderFragment,omitempty"`
+}
+
+func (m *OpenOrderRequest) Reset()                    { *m = OpenOrderRequest{} }
+func (m *OpenOrderRequest) String() string            { return proto.CompactTextString(m) }
+func (*OpenOrderRequest) ProtoMessage()               {}
+func (*OpenOrderRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+
+func (m *OpenOrderRequest) GetFrom() *Multiaddress {
+	if m != nil {
+		return m.From
+	}
+	return nil
+}
+
+func (m *OpenOrderRequest) GetOrderSignature() *OrderSignature {
+	if m != nil {
+		return m.OrderSignature
+	}
+	return nil
+}
+
+func (m *OpenOrderRequest) GetOrderFragment() *OrderFragment {
+	if m != nil {
+		return m.OrderFragment
+	}
+	return nil
+}
+
+type CancelOrderRequest struct {
+	From           *Multiaddress   `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	OrderSignature *OrderSignature `protobuf:"bytes,2,opt,name=orderSignature" json:"orderSignature,omitempty"`
+}
+
+func (m *CancelOrderRequest) Reset()                    { *m = CancelOrderRequest{} }
+func (m *CancelOrderRequest) String() string            { return proto.CompactTextString(m) }
+func (*CancelOrderRequest) ProtoMessage()               {}
+func (*CancelOrderRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+
+func (m *CancelOrderRequest) GetFrom() *Multiaddress {
+	if m != nil {
+		return m.From
+	}
+	return nil
+}
+
+func (m *CancelOrderRequest) GetOrderSignature() *OrderSignature {
+	if m != nil {
+		return m.OrderSignature
+	}
+	return nil
+}
+
+type RandomFragmentSharesRequest struct {
+	From *Multiaddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+}
+
+func (m *RandomFragmentSharesRequest) Reset()                    { *m = RandomFragmentSharesRequest{} }
+func (m *RandomFragmentSharesRequest) String() string            { return proto.CompactTextString(m) }
+func (*RandomFragmentSharesRequest) ProtoMessage()               {}
+func (*RandomFragmentSharesRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+
+func (m *RandomFragmentSharesRequest) GetFrom() *Multiaddress {
+	if m != nil {
+		return m.From
+	}
+	return nil
+}
+
+type ResidueFragmentSharesRequest struct {
+	From            *Multiaddress    `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	RandomFragments *RandomFragments `protobuf:"bytes,2,opt,name=randomFragments" json:"randomFragments,omitempty"`
+}
+
+func (m *ResidueFragmentSharesRequest) Reset()                    { *m = ResidueFragmentSharesRequest{} }
+func (m *ResidueFragmentSharesRequest) String() string            { return proto.CompactTextString(m) }
+func (*ResidueFragmentSharesRequest) ProtoMessage()               {}
+func (*ResidueFragmentSharesRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
+
+func (m *ResidueFragmentSharesRequest) GetFrom() *Multiaddress {
+	if m != nil {
+		return m.From
+	}
+	return nil
+}
+
+func (m *ResidueFragmentSharesRequest) GetRandomFragments() *RandomFragments {
+	if m != nil {
+		return m.RandomFragments
+	}
+	return nil
+}
+
+type ComputeResidueFragmentRequest struct {
+	From             *Multiaddress     `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	ResidueFragments *ResidueFragments `protobuf:"bytes,2,opt,name=residueFragments" json:"residueFragments,omitempty"`
+}
+
+func (m *ComputeResidueFragmentRequest) Reset()                    { *m = ComputeResidueFragmentRequest{} }
+func (m *ComputeResidueFragmentRequest) String() string            { return proto.CompactTextString(m) }
+func (*ComputeResidueFragmentRequest) ProtoMessage()               {}
+func (*ComputeResidueFragmentRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+
+func (m *ComputeResidueFragmentRequest) GetFrom() *Multiaddress {
+	if m != nil {
+		return m.From
+	}
+	return nil
+}
+
+func (m *ComputeResidueFragmentRequest) GetResidueFragments() *ResidueFragments {
+	if m != nil {
+		return m.ResidueFragments
+	}
+	return nil
+}
+
+type BroadcastAlphaBetaFragmentRequest struct {
+	From              *Multiaddress      `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	AlphaBetaFragment *AlphaBetaFragment `protobuf:"bytes,2,opt,name=alphaBetaFragment" json:"alphaBetaFragment,omitempty"`
+}
+
+func (m *BroadcastAlphaBetaFragmentRequest) Reset()         { *m = BroadcastAlphaBetaFragmentRequest{} }
+func (m *BroadcastAlphaBetaFragmentRequest) String() string { return proto.CompactTextString(m) }
+func (*BroadcastAlphaBetaFragmentRequest) ProtoMessage()    {}
+func (*BroadcastAlphaBetaFragmentRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor0, []int{10}
+}
+
+func (m *BroadcastAlphaBetaFragmentRequest) GetFrom() *Multiaddress {
+	if m != nil {
+		return m.From
+	}
+	return nil
+}
+
+func (m *BroadcastAlphaBetaFragmentRequest) GetAlphaBetaFragment() *AlphaBetaFragment {
+	if m != nil {
+		return m.AlphaBetaFragment
+	}
+	return nil
+}
+
+type BroadcastDeltaFragmentRequest struct {
+	From          *Multiaddress  `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	DeltaFragment *DeltaFragment `protobuf:"bytes,2,opt,name=deltaFragment" json:"deltaFragment,omitempty"`
+}
+
+func (m *BroadcastDeltaFragmentRequest) Reset()                    { *m = BroadcastDeltaFragmentRequest{} }
+func (m *BroadcastDeltaFragmentRequest) String() string            { return proto.CompactTextString(m) }
+func (*BroadcastDeltaFragmentRequest) ProtoMessage()               {}
+func (*BroadcastDeltaFragmentRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
+
+func (m *BroadcastDeltaFragmentRequest) GetFrom() *Multiaddress {
+	if m != nil {
+		return m.From
+	}
+	return nil
+}
+
+func (m *BroadcastDeltaFragmentRequest) GetDeltaFragment() *DeltaFragment {
+	if m != nil {
+		return m.DeltaFragment
+	}
+	return nil
+}
+
+type AlphaBetaFragment struct {
+	Signature     []byte         `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	ResidueId     []byte         `protobuf:"bytes,2,opt,name=residueId,proto3" json:"residueId,omitempty"`
+	AlphaFragment *OrderFragment `protobuf:"bytes,3,opt,name=alphaFragment" json:"alphaFragment,omitempty"`
+	BetaFragment  *OrderFragment `protobuf:"bytes,4,opt,name=betaFragment" json:"betaFragment,omitempty"`
+}
+
+func (m *AlphaBetaFragment) Reset()                    { *m = AlphaBetaFragment{} }
+func (m *AlphaBetaFragment) String() string            { return proto.CompactTextString(m) }
+func (*AlphaBetaFragment) ProtoMessage()               {}
+func (*AlphaBetaFragment) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
+
+func (m *AlphaBetaFragment) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *AlphaBetaFragment) GetResidueId() []byte {
+	if m != nil {
+		return m.ResidueId
+	}
+	return nil
+}
+
+func (m *AlphaBetaFragment) GetAlphaFragment() *OrderFragment {
+	if m != nil {
+		return m.AlphaFragment
+	}
+	return nil
+}
+
+func (m *AlphaBetaFragment) GetBetaFragment() *OrderFragment {
+	if m != nil {
+		return m.BetaFragment
+	}
+	return nil
+}
+
+type DeltaFragment struct {
+	Signature           []byte `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	Id                  []byte `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	BuyOrderId          []byte `protobuf:"bytes,3,opt,name=buyOrderId,proto3" json:"buyOrderId,omitempty"`
+	SellOrderId         []byte `protobuf:"bytes,4,opt,name=sellOrderId,proto3" json:"sellOrderId,omitempty"`
+	BuyOrderFragmentId  []byte `protobuf:"bytes,5,opt,name=buyOrderFragmentId,proto3" json:"buyOrderFragmentId,omitempty"`
+	SellOrderFragmentId []byte `protobuf:"bytes,6,opt,name=sellOrderFragmentId,proto3" json:"sellOrderFragmentId,omitempty"`
+	FstCodeShare        []byte `protobuf:"bytes,7,opt,name=fstCodeShare,proto3" json:"fstCodeShare,omitempty"`
+	SndCodeShare        []byte `protobuf:"bytes,8,opt,name=sndCodeShare,proto3" json:"sndCodeShare,omitempty"`
+	PriceShare          []byte `protobuf:"bytes,9,opt,name=priceShare,proto3" json:"priceShare,omitempty"`
+	MaxVolumeShare      []byte `protobuf:"bytes,10,opt,name=maxVolumeShare,proto3" json:"maxVolumeShare,omitempty"`
+	MinVolumeShare      []byte `protobuf:"bytes,11,opt,name=minVolumeShare,proto3" json:"minVolumeShare,omitempty"`
+}
+
+func (m *DeltaFragment) Reset()                    { *m = DeltaFragment{} }
+func (m *DeltaFragment) String() string            { return proto.CompactTextString(m) }
+func (*DeltaFragment) ProtoMessage()               {}
+func (*DeltaFragment) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
+
+func (m *DeltaFragment) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *DeltaFragment) GetId() []byte {
+	if m != nil {
+		return m.Id
+	}
+	return nil
+}
+
+func (m *DeltaFragment) GetBuyOrderId() []byte {
+	if m != nil {
+		return m.BuyOrderId
+	}
+	return nil
+}
+
+func (m *DeltaFragment) GetSellOrderId() []byte {
+	if m != nil {
+		return m.SellOrderId
+	}
+	return nil
+}
+
+func (m *DeltaFragment) GetBuyOrderFragmentId() []byte {
+	if m != nil {
+		return m.BuyOrderFragmentId
+	}
+	return nil
+}
+
+func (m *DeltaFragment) GetSellOrderFragmentId() []byte {
+	if m != nil {
+		return m.SellOrderFragmentId
+	}
+	return nil
+}
+
+func (m *DeltaFragment) GetFstCodeShare() []byte {
+	if m != nil {
+		return m.FstCodeShare
+	}
+	return nil
+}
+
+func (m *DeltaFragment) GetSndCodeShare() []byte {
+	if m != nil {
+		return m.SndCodeShare
+	}
+	return nil
+}
+
+func (m *DeltaFragment) GetPriceShare() []byte {
+	if m != nil {
+		return m.PriceShare
+	}
+	return nil
+}
+
+func (m *DeltaFragment) GetMaxVolumeShare() []byte {
+	if m != nil {
+		return m.MaxVolumeShare
+	}
+	return nil
+}
+
+func (m *DeltaFragment) GetMinVolumeShare() []byte {
+	if m != nil {
+		return m.MinVolumeShare
+	}
+	return nil
+}
+
 type OrderFragment struct {
-	// Network data.
-	To   *Address      `protobuf:"bytes,1,opt,name=to" json:"to,omitempty"`
-	From *MultiAddress `protobuf:"bytes,2,opt,name=from" json:"from,omitempty"`
-	// Public data.
-	Id          []byte `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
-	OrderId     []byte `protobuf:"bytes,4,opt,name=orderId,proto3" json:"orderId,omitempty"`
-	OrderType   int64  `protobuf:"varint,5,opt,name=orderType" json:"orderType,omitempty"`
-	OrderParity int64  `protobuf:"varint,6,opt,name=orderParity" json:"orderParity,omitempty"`
-	// Secure data.
-	FstCodeShare   []byte `protobuf:"bytes,7,opt,name=fstCodeShare,proto3" json:"fstCodeShare,omitempty"`
-	SndCodeShare   []byte `protobuf:"bytes,8,opt,name=sndCodeShare,proto3" json:"sndCodeShare,omitempty"`
-	PriceShare     []byte `protobuf:"bytes,9,opt,name=priceShare,proto3" json:"priceShare,omitempty"`
-	MaxVolumeShare []byte `protobuf:"bytes,10,opt,name=maxVolumeShare,proto3" json:"maxVolumeShare,omitempty"`
-	MinVolumeShare []byte `protobuf:"bytes,11,opt,name=minVolumeShare,proto3" json:"minVolumeShare,omitempty"`
+	Signature      []byte `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	Id             []byte `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	Order          []byte `protobuf:"bytes,3,opt,name=order,proto3" json:"order,omitempty"`
+	OrderType      int64  `protobuf:"varint,4,opt,name=orderType" json:"orderType,omitempty"`
+	OrderParity    int64  `protobuf:"varint,5,opt,name=orderParity" json:"orderParity,omitempty"`
+	FstCodeShare   []byte `protobuf:"bytes,6,opt,name=fstCodeShare,proto3" json:"fstCodeShare,omitempty"`
+	SndCodeShare   []byte `protobuf:"bytes,7,opt,name=sndCodeShare,proto3" json:"sndCodeShare,omitempty"`
+	PriceShare     []byte `protobuf:"bytes,8,opt,name=priceShare,proto3" json:"priceShare,omitempty"`
+	MaxVolumeShare []byte `protobuf:"bytes,9,opt,name=maxVolumeShare,proto3" json:"maxVolumeShare,omitempty"`
+	MinVolumeShare []byte `protobuf:"bytes,10,opt,name=minVolumeShare,proto3" json:"minVolumeShare,omitempty"`
 }
 
 func (m *OrderFragment) Reset()                    { *m = OrderFragment{} }
 func (m *OrderFragment) String() string            { return proto.CompactTextString(m) }
 func (*OrderFragment) ProtoMessage()               {}
-func (*OrderFragment) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+func (*OrderFragment) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
 
-func (m *OrderFragment) GetTo() *Address {
+func (m *OrderFragment) GetSignature() []byte {
 	if m != nil {
-		return m.To
-	}
-	return nil
-}
-
-func (m *OrderFragment) GetFrom() *MultiAddress {
-	if m != nil {
-		return m.From
+		return m.Signature
 	}
 	return nil
 }
@@ -184,9 +479,9 @@ func (m *OrderFragment) GetId() []byte {
 	return nil
 }
 
-func (m *OrderFragment) GetOrderId() []byte {
+func (m *OrderFragment) GetOrder() []byte {
 	if m != nil {
-		return m.OrderId
+		return m.Order
 	}
 	return nil
 }
@@ -240,50 +535,192 @@ func (m *OrderFragment) GetMinVolumeShare() []byte {
 	return nil
 }
 
-// An OrderFragmentCommitment is ...
-type OrderFragmentCommitment struct {
-	From          *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
-	Signature     []byte        `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
-	OrderFragment []byte        `protobuf:"bytes,3,opt,name=orderFragment,proto3" json:"orderFragment,omitempty"`
+type OrderFragmentSignature struct {
+	Signature       []byte `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	OrderFragmentId []byte `protobuf:"bytes,2,opt,name=orderFragmentId,proto3" json:"orderFragmentId,omitempty"`
 }
 
-func (m *OrderFragmentCommitment) Reset()                    { *m = OrderFragmentCommitment{} }
-func (m *OrderFragmentCommitment) String() string            { return proto.CompactTextString(m) }
-func (*OrderFragmentCommitment) ProtoMessage()               {}
-func (*OrderFragmentCommitment) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+func (m *OrderFragmentSignature) Reset()                    { *m = OrderFragmentSignature{} }
+func (m *OrderFragmentSignature) String() string            { return proto.CompactTextString(m) }
+func (*OrderFragmentSignature) ProtoMessage()               {}
+func (*OrderFragmentSignature) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{15} }
 
-func (m *OrderFragmentCommitment) GetFrom() *MultiAddress {
-	if m != nil {
-		return m.From
-	}
-	return nil
-}
-
-func (m *OrderFragmentCommitment) GetSignature() []byte {
+func (m *OrderFragmentSignature) GetSignature() []byte {
 	if m != nil {
 		return m.Signature
 	}
 	return nil
 }
 
-func (m *OrderFragmentCommitment) GetOrderFragment() []byte {
+func (m *OrderFragmentSignature) GetOrderFragmentId() []byte {
 	if m != nil {
-		return m.OrderFragment
+		return m.OrderFragmentId
 	}
 	return nil
 }
 
-// A SyncBlock is ...
+type OrderSignature struct {
+	Signature []byte `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	OrderId   []byte `protobuf:"bytes,2,opt,name=orderId,proto3" json:"orderId,omitempty"`
+}
+
+func (m *OrderSignature) Reset()                    { *m = OrderSignature{} }
+func (m *OrderSignature) String() string            { return proto.CompactTextString(m) }
+func (*OrderSignature) ProtoMessage()               {}
+func (*OrderSignature) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{16} }
+
+func (m *OrderSignature) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *OrderSignature) GetOrderId() []byte {
+	if m != nil {
+		return m.OrderId
+	}
+	return nil
+}
+
+type ResidueFragment struct {
+	Signature    []byte `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	AShare       []byte `protobuf:"bytes,2,opt,name=aShare,proto3" json:"aShare,omitempty"`
+	BShare       []byte `protobuf:"bytes,3,opt,name=bShare,proto3" json:"bShare,omitempty"`
+	CShare       []byte `protobuf:"bytes,4,opt,name=cShare,proto3" json:"cShare,omitempty"`
+	ResidueShare []byte `protobuf:"bytes,5,opt,name=residueShare,proto3" json:"residueShare,omitempty"`
+	ResidueId    []byte `protobuf:"bytes,6,opt,name=residueId,proto3" json:"residueId,omitempty"`
+}
+
+func (m *ResidueFragment) Reset()                    { *m = ResidueFragment{} }
+func (m *ResidueFragment) String() string            { return proto.CompactTextString(m) }
+func (*ResidueFragment) ProtoMessage()               {}
+func (*ResidueFragment) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{17} }
+
+func (m *ResidueFragment) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *ResidueFragment) GetAShare() []byte {
+	if m != nil {
+		return m.AShare
+	}
+	return nil
+}
+
+func (m *ResidueFragment) GetBShare() []byte {
+	if m != nil {
+		return m.BShare
+	}
+	return nil
+}
+
+func (m *ResidueFragment) GetCShare() []byte {
+	if m != nil {
+		return m.CShare
+	}
+	return nil
+}
+
+func (m *ResidueFragment) GetResidueShare() []byte {
+	if m != nil {
+		return m.ResidueShare
+	}
+	return nil
+}
+
+func (m *ResidueFragment) GetResidueId() []byte {
+	if m != nil {
+		return m.ResidueId
+	}
+	return nil
+}
+
+type ResidueFragments struct {
+	Signature        []byte             `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	ResidueFragments []*ResidueFragment `protobuf:"bytes,2,rep,name=residueFragments" json:"residueFragments,omitempty"`
+}
+
+func (m *ResidueFragments) Reset()                    { *m = ResidueFragments{} }
+func (m *ResidueFragments) String() string            { return proto.CompactTextString(m) }
+func (*ResidueFragments) ProtoMessage()               {}
+func (*ResidueFragments) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{18} }
+
+func (m *ResidueFragments) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *ResidueFragments) GetResidueFragments() []*ResidueFragment {
+	if m != nil {
+		return m.ResidueFragments
+	}
+	return nil
+}
+
+type RandomFragment struct {
+	Signature []byte `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	Share     []byte `protobuf:"bytes,2,opt,name=share,proto3" json:"share,omitempty"`
+}
+
+func (m *RandomFragment) Reset()                    { *m = RandomFragment{} }
+func (m *RandomFragment) String() string            { return proto.CompactTextString(m) }
+func (*RandomFragment) ProtoMessage()               {}
+func (*RandomFragment) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{19} }
+
+func (m *RandomFragment) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *RandomFragment) GetShare() []byte {
+	if m != nil {
+		return m.Share
+	}
+	return nil
+}
+
+type RandomFragments struct {
+	Signature       []byte            `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	RandomFragments []*RandomFragment `protobuf:"bytes,2,rep,name=randomFragments" json:"randomFragments,omitempty"`
+}
+
+func (m *RandomFragments) Reset()                    { *m = RandomFragments{} }
+func (m *RandomFragments) String() string            { return proto.CompactTextString(m) }
+func (*RandomFragments) ProtoMessage()               {}
+func (*RandomFragments) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{20} }
+
+func (m *RandomFragments) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *RandomFragments) GetRandomFragments() []*RandomFragment {
+	if m != nil {
+		return m.RandomFragments
+	}
+	return nil
+}
+
 type SyncBlock struct {
-	Signature []byte                  `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
-	Deltas    *SyncBlock_DeltaBlock   `protobuf:"bytes,2,opt,name=deltas" json:"deltas,omitempty"`
-	Residues  *SyncBlock_ResidueBlock `protobuf:"bytes,3,opt,name=residues" json:"residues,omitempty"`
+	Signature    []byte                  `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	DeltaBlock   *SyncBlock_DeltaBlock   `protobuf:"bytes,2,opt,name=deltaBlock" json:"deltaBlock,omitempty"`
+	ResidueBlock *SyncBlock_ResidueBlock `protobuf:"bytes,3,opt,name=residueBlock" json:"residueBlock,omitempty"`
 }
 
 func (m *SyncBlock) Reset()                    { *m = SyncBlock{} }
 func (m *SyncBlock) String() string            { return proto.CompactTextString(m) }
 func (*SyncBlock) ProtoMessage()               {}
-func (*SyncBlock) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+func (*SyncBlock) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{21} }
 
 func (m *SyncBlock) GetSignature() []byte {
 	if m != nil {
@@ -292,70 +729,70 @@ func (m *SyncBlock) GetSignature() []byte {
 	return nil
 }
 
-func (m *SyncBlock) GetDeltas() *SyncBlock_DeltaBlock {
+func (m *SyncBlock) GetDeltaBlock() *SyncBlock_DeltaBlock {
 	if m != nil {
-		return m.Deltas
+		return m.DeltaBlock
 	}
 	return nil
 }
 
-func (m *SyncBlock) GetResidues() *SyncBlock_ResidueBlock {
+func (m *SyncBlock) GetResidueBlock() *SyncBlock_ResidueBlock {
 	if m != nil {
-		return m.Residues
+		return m.ResidueBlock
 	}
 	return nil
 }
 
 type SyncBlock_DeltaBlock struct {
-	Pending    [][]byte `protobuf:"bytes,1,rep,name=pending,proto3" json:"pending,omitempty"`
-	Electing   [][]byte `protobuf:"bytes,2,rep,name=electing,proto3" json:"electing,omitempty"`
-	Computing  [][]byte `protobuf:"bytes,3,rep,name=computing,proto3" json:"computing,omitempty"`
-	Finalizing [][]byte `protobuf:"bytes,4,rep,name=finalizing,proto3" json:"finalizing,omitempty"`
-	Matched    [][]byte `protobuf:"bytes,5,rep,name=matched,proto3" json:"matched,omitempty"`
-	Mismatched [][]byte `protobuf:"bytes,6,rep,name=mismatched,proto3" json:"mismatched,omitempty"`
+	Pending    []*DeltaFragment `protobuf:"bytes,1,rep,name=pending" json:"pending,omitempty"`
+	Electing   []*DeltaFragment `protobuf:"bytes,2,rep,name=electing" json:"electing,omitempty"`
+	Computing  []*DeltaFragment `protobuf:"bytes,3,rep,name=computing" json:"computing,omitempty"`
+	Finalizing []*DeltaFragment `protobuf:"bytes,4,rep,name=finalizing" json:"finalizing,omitempty"`
+	Matched    []*DeltaFragment `protobuf:"bytes,5,rep,name=matched" json:"matched,omitempty"`
+	Mismatched []*DeltaFragment `protobuf:"bytes,6,rep,name=mismatched" json:"mismatched,omitempty"`
 }
 
 func (m *SyncBlock_DeltaBlock) Reset()                    { *m = SyncBlock_DeltaBlock{} }
 func (m *SyncBlock_DeltaBlock) String() string            { return proto.CompactTextString(m) }
 func (*SyncBlock_DeltaBlock) ProtoMessage()               {}
-func (*SyncBlock_DeltaBlock) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7, 0} }
+func (*SyncBlock_DeltaBlock) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{21, 0} }
 
-func (m *SyncBlock_DeltaBlock) GetPending() [][]byte {
+func (m *SyncBlock_DeltaBlock) GetPending() []*DeltaFragment {
 	if m != nil {
 		return m.Pending
 	}
 	return nil
 }
 
-func (m *SyncBlock_DeltaBlock) GetElecting() [][]byte {
+func (m *SyncBlock_DeltaBlock) GetElecting() []*DeltaFragment {
 	if m != nil {
 		return m.Electing
 	}
 	return nil
 }
 
-func (m *SyncBlock_DeltaBlock) GetComputing() [][]byte {
+func (m *SyncBlock_DeltaBlock) GetComputing() []*DeltaFragment {
 	if m != nil {
 		return m.Computing
 	}
 	return nil
 }
 
-func (m *SyncBlock_DeltaBlock) GetFinalizing() [][]byte {
+func (m *SyncBlock_DeltaBlock) GetFinalizing() []*DeltaFragment {
 	if m != nil {
 		return m.Finalizing
 	}
 	return nil
 }
 
-func (m *SyncBlock_DeltaBlock) GetMatched() [][]byte {
+func (m *SyncBlock_DeltaBlock) GetMatched() []*DeltaFragment {
 	if m != nil {
 		return m.Matched
 	}
 	return nil
 }
 
-func (m *SyncBlock_DeltaBlock) GetMismatched() [][]byte {
+func (m *SyncBlock_DeltaBlock) GetMismatched() []*DeltaFragment {
 	if m != nil {
 		return m.Mismatched
 	}
@@ -363,516 +800,86 @@ func (m *SyncBlock_DeltaBlock) GetMismatched() [][]byte {
 }
 
 type SyncBlock_ResidueBlock struct {
-	Pending    [][]byte `protobuf:"bytes,1,rep,name=pending,proto3" json:"pending,omitempty"`
-	Electing   [][]byte `protobuf:"bytes,2,rep,name=electing,proto3" json:"electing,omitempty"`
-	Computing  [][]byte `protobuf:"bytes,3,rep,name=computing,proto3" json:"computing,omitempty"`
-	Finalizing [][]byte `protobuf:"bytes,4,rep,name=finalizing,proto3" json:"finalizing,omitempty"`
-	Matched    [][]byte `protobuf:"bytes,5,rep,name=matched,proto3" json:"matched,omitempty"`
-	Mismatched [][]byte `protobuf:"bytes,6,rep,name=mismatched,proto3" json:"mismatched,omitempty"`
+	Pending    []*ResidueFragment `protobuf:"bytes,1,rep,name=pending" json:"pending,omitempty"`
+	Electing   []*ResidueFragment `protobuf:"bytes,2,rep,name=electing" json:"electing,omitempty"`
+	Computing  []*ResidueFragment `protobuf:"bytes,3,rep,name=computing" json:"computing,omitempty"`
+	Finalizing []*ResidueFragment `protobuf:"bytes,4,rep,name=finalizing" json:"finalizing,omitempty"`
+	Matched    []*ResidueFragment `protobuf:"bytes,5,rep,name=matched" json:"matched,omitempty"`
+	Mismatched []*ResidueFragment `protobuf:"bytes,6,rep,name=mismatched" json:"mismatched,omitempty"`
 }
 
 func (m *SyncBlock_ResidueBlock) Reset()                    { *m = SyncBlock_ResidueBlock{} }
 func (m *SyncBlock_ResidueBlock) String() string            { return proto.CompactTextString(m) }
 func (*SyncBlock_ResidueBlock) ProtoMessage()               {}
-func (*SyncBlock_ResidueBlock) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7, 1} }
+func (*SyncBlock_ResidueBlock) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{21, 1} }
 
-func (m *SyncBlock_ResidueBlock) GetPending() [][]byte {
+func (m *SyncBlock_ResidueBlock) GetPending() []*ResidueFragment {
 	if m != nil {
 		return m.Pending
 	}
 	return nil
 }
 
-func (m *SyncBlock_ResidueBlock) GetElecting() [][]byte {
+func (m *SyncBlock_ResidueBlock) GetElecting() []*ResidueFragment {
 	if m != nil {
 		return m.Electing
 	}
 	return nil
 }
 
-func (m *SyncBlock_ResidueBlock) GetComputing() [][]byte {
+func (m *SyncBlock_ResidueBlock) GetComputing() []*ResidueFragment {
 	if m != nil {
 		return m.Computing
 	}
 	return nil
 }
 
-func (m *SyncBlock_ResidueBlock) GetFinalizing() [][]byte {
+func (m *SyncBlock_ResidueBlock) GetFinalizing() []*ResidueFragment {
 	if m != nil {
 		return m.Finalizing
 	}
 	return nil
 }
 
-func (m *SyncBlock_ResidueBlock) GetMatched() [][]byte {
+func (m *SyncBlock_ResidueBlock) GetMatched() []*ResidueFragment {
 	if m != nil {
 		return m.Matched
 	}
 	return nil
 }
 
-func (m *SyncBlock_ResidueBlock) GetMismatched() [][]byte {
+func (m *SyncBlock_ResidueBlock) GetMismatched() []*ResidueFragment {
 	if m != nil {
 		return m.Mismatched
 	}
 	return nil
 }
 
-// Final messages are sent to signal that a successful order computation has
-// happened.
-type Final struct {
-	// Public data.
-	Id          []byte `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	BuyOrderId  []byte `protobuf:"bytes,2,opt,name=buyOrderId,proto3" json:"buyOrderId,omitempty"`
-	SellOrderId []byte `protobuf:"bytes,3,opt,name=sellOrderId,proto3" json:"sellOrderId,omitempty"`
-	// Secure data.
-	FstCode   []byte `protobuf:"bytes,4,opt,name=fstCode,proto3" json:"fstCode,omitempty"`
-	SndCode   []byte `protobuf:"bytes,5,opt,name=sndCode,proto3" json:"sndCode,omitempty"`
-	Price     []byte `protobuf:"bytes,6,opt,name=price,proto3" json:"price,omitempty"`
-	MaxVolume []byte `protobuf:"bytes,7,opt,name=maxVolume,proto3" json:"maxVolume,omitempty"`
-	MinVolume []byte `protobuf:"bytes,8,opt,name=minVolume,proto3" json:"minVolume,omitempty"`
-}
-
-func (m *Final) Reset()                    { *m = Final{} }
-func (m *Final) String() string            { return proto.CompactTextString(m) }
-func (*Final) ProtoMessage()               {}
-func (*Final) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
-
-func (m *Final) GetId() []byte {
-	if m != nil {
-		return m.Id
-	}
-	return nil
-}
-
-func (m *Final) GetBuyOrderId() []byte {
-	if m != nil {
-		return m.BuyOrderId
-	}
-	return nil
-}
-
-func (m *Final) GetSellOrderId() []byte {
-	if m != nil {
-		return m.SellOrderId
-	}
-	return nil
-}
-
-func (m *Final) GetFstCode() []byte {
-	if m != nil {
-		return m.FstCode
-	}
-	return nil
-}
-
-func (m *Final) GetSndCode() []byte {
-	if m != nil {
-		return m.SndCode
-	}
-	return nil
-}
-
-func (m *Final) GetPrice() []byte {
-	if m != nil {
-		return m.Price
-	}
-	return nil
-}
-
-func (m *Final) GetMaxVolume() []byte {
-	if m != nil {
-		return m.MaxVolume
-	}
-	return nil
-}
-
-func (m *Final) GetMinVolume() []byte {
-	if m != nil {
-		return m.MinVolume
-	}
-	return nil
-}
-
-// A shard is a block of computations
-type Shard struct {
-	Signature []byte           `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
-	Deltas    []*DeltaFragment `protobuf:"bytes,2,rep,name=deltas" json:"deltas,omitempty"`
-	Residues  [][]byte         `protobuf:"bytes,3,rep,name=residues,proto3" json:"residues,omitempty"`
-}
-
-func (m *Shard) Reset()                    { *m = Shard{} }
-func (m *Shard) String() string            { return proto.CompactTextString(m) }
-func (*Shard) ProtoMessage()               {}
-func (*Shard) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
-
-func (m *Shard) GetSignature() []byte {
-	if m != nil {
-		return m.Signature
-	}
-	return nil
-}
-
-func (m *Shard) GetDeltas() []*DeltaFragment {
-	if m != nil {
-		return m.Deltas
-	}
-	return nil
-}
-
-func (m *Shard) GetResidues() [][]byte {
-	if m != nil {
-		return m.Residues
-	}
-	return nil
-}
-
-// A DeltaShard is a block of results after computation
-type DeltaShard struct {
-	Signature []byte   `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
-	Finals    [][]byte `protobuf:"bytes,2,rep,name=finals,proto3" json:"finals,omitempty"`
-}
-
-func (m *DeltaShard) Reset()                    { *m = DeltaShard{} }
-func (m *DeltaShard) String() string            { return proto.CompactTextString(m) }
-func (*DeltaShard) ProtoMessage()               {}
-func (*DeltaShard) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
-
-func (m *DeltaShard) GetSignature() []byte {
-	if m != nil {
-		return m.Signature
-	}
-	return nil
-}
-
-func (m *DeltaShard) GetFinals() [][]byte {
-	if m != nil {
-		return m.Finals
-	}
-	return nil
-}
-
-// A FinalizeShardRequest is ...
-type FinalizeShardRequest struct {
-	From  *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
-	Shard *DeltaShard   `protobuf:"bytes,2,opt,name=shard" json:"shard,omitempty"`
-}
-
-func (m *FinalizeShardRequest) Reset()                    { *m = FinalizeShardRequest{} }
-func (m *FinalizeShardRequest) String() string            { return proto.CompactTextString(m) }
-func (*FinalizeShardRequest) ProtoMessage()               {}
-func (*FinalizeShardRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
-
-func (m *FinalizeShardRequest) GetFrom() *MultiAddress {
-	if m != nil {
-		return m.From
-	}
-	return nil
-}
-
-func (m *FinalizeShardRequest) GetShard() *DeltaShard {
-	if m != nil {
-		return m.Shard
-	}
-	return nil
-}
-
-// A SyncRequest is ...
-type SyncRequest struct {
-	From *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
-}
-
-func (m *SyncRequest) Reset()                    { *m = SyncRequest{} }
-func (m *SyncRequest) String() string            { return proto.CompactTextString(m) }
-func (*SyncRequest) ProtoMessage()               {}
-func (*SyncRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
-
-func (m *SyncRequest) GetFrom() *MultiAddress {
-	if m != nil {
-		return m.From
-	}
-	return nil
-}
-
-// A ElectShardRequest is ...
-type ElectShardRequest struct {
-	From  *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
-	Shard *Shard        `protobuf:"bytes,2,opt,name=shard" json:"shard,omitempty"`
-}
-
-func (m *ElectShardRequest) Reset()                    { *m = ElectShardRequest{} }
-func (m *ElectShardRequest) String() string            { return proto.CompactTextString(m) }
-func (*ElectShardRequest) ProtoMessage()               {}
-func (*ElectShardRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
-
-func (m *ElectShardRequest) GetFrom() *MultiAddress {
-	if m != nil {
-		return m.From
-	}
-	return nil
-}
-
-func (m *ElectShardRequest) GetShard() *Shard {
-	if m != nil {
-		return m.Shard
-	}
-	return nil
-}
-
-// A ComputeShardRequest is ...
-type ComputeShardRequest struct {
-	From  *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
-	Shard *Shard        `protobuf:"bytes,2,opt,name=shard" json:"shard,omitempty"`
-}
-
-func (m *ComputeShardRequest) Reset()                    { *m = ComputeShardRequest{} }
-func (m *ComputeShardRequest) String() string            { return proto.CompactTextString(m) }
-func (*ComputeShardRequest) ProtoMessage()               {}
-func (*ComputeShardRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
-
-func (m *ComputeShardRequest) GetFrom() *MultiAddress {
-	if m != nil {
-		return m.From
-	}
-	return nil
-}
-
-func (m *ComputeShardRequest) GetShard() *Shard {
-	if m != nil {
-		return m.Shard
-	}
-	return nil
-}
-
-// A LogRequest is ...
-type LogRequest struct {
-}
-
-func (m *LogRequest) Reset()                    { *m = LogRequest{} }
-func (m *LogRequest) String() string            { return proto.CompactTextString(m) }
-func (*LogRequest) ProtoMessage()               {}
-func (*LogRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{15} }
-
-// A shard is a block of computations
-type LogEvent struct {
-	Type    []byte `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Message []byte `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-}
-
-func (m *LogEvent) Reset()                    { *m = LogEvent{} }
-func (m *LogEvent) String() string            { return proto.CompactTextString(m) }
-func (*LogEvent) ProtoMessage()               {}
-func (*LogEvent) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{16} }
-
-func (m *LogEvent) GetType() []byte {
-	if m != nil {
-		return m.Type
-	}
-	return nil
-}
-
-func (m *LogEvent) GetMessage() []byte {
-	if m != nil {
-		return m.Message
-	}
-	return nil
-}
-
-// An Atom message is the network representation of a atom.Atom and the
-// metadata needed to distribute it through the network.
-type Atom struct {
-	// Network data.
-	To   *Address      `protobuf:"bytes,1,opt,name=to" json:"to,omitempty"`
-	From *MultiAddress `protobuf:"bytes,2,opt,name=from" json:"from,omitempty"`
-	// Secure data.
-	Ledger    int64  `protobuf:"varint,3,opt,name=ledger" json:"ledger,omitempty"`
-	Data      []byte `protobuf:"bytes,4,opt,name=data,proto3" json:"data,omitempty"`
-	Signature []byte `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
-}
-
-func (m *Atom) Reset()                    { *m = Atom{} }
-func (m *Atom) String() string            { return proto.CompactTextString(m) }
-func (*Atom) ProtoMessage()               {}
-func (*Atom) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{17} }
-
-func (m *Atom) GetTo() *Address {
-	if m != nil {
-		return m.To
-	}
-	return nil
-}
-
-func (m *Atom) GetFrom() *MultiAddress {
-	if m != nil {
-		return m.From
-	}
-	return nil
-}
-
-func (m *Atom) GetLedger() int64 {
-	if m != nil {
-		return m.Ledger
-	}
-	return 0
-}
-
-func (m *Atom) GetData() []byte {
-	if m != nil {
-		return m.Data
-	}
-	return nil
-}
-
-func (m *Atom) GetSignature() []byte {
-	if m != nil {
-		return m.Signature
-	}
-	return nil
-}
-
-type BroadcastDeltaFragmentRequest struct {
-	From          *MultiAddress  `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
-	DeltaFragment *DeltaFragment `protobuf:"bytes,2,opt,name=deltaFragment" json:"deltaFragment,omitempty"`
-}
-
-func (m *BroadcastDeltaFragmentRequest) Reset()                    { *m = BroadcastDeltaFragmentRequest{} }
-func (m *BroadcastDeltaFragmentRequest) String() string            { return proto.CompactTextString(m) }
-func (*BroadcastDeltaFragmentRequest) ProtoMessage()               {}
-func (*BroadcastDeltaFragmentRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{18} }
-
-func (m *BroadcastDeltaFragmentRequest) GetFrom() *MultiAddress {
-	if m != nil {
-		return m.From
-	}
-	return nil
-}
-
-func (m *BroadcastDeltaFragmentRequest) GetDeltaFragment() *DeltaFragment {
-	if m != nil {
-		return m.DeltaFragment
-	}
-	return nil
-}
-
-type DeltaFragment struct {
-	Signature           []byte `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
-	Id                  []byte `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	BuyOrderID          []byte `protobuf:"bytes,3,opt,name=buyOrderID,proto3" json:"buyOrderID,omitempty"`
-	SellOrderID         []byte `protobuf:"bytes,4,opt,name=sellOrderID,proto3" json:"sellOrderID,omitempty"`
-	BuyOrderFragmentID  []byte `protobuf:"bytes,5,opt,name=buyOrderFragmentID,proto3" json:"buyOrderFragmentID,omitempty"`
-	SellOrderFragmentID []byte `protobuf:"bytes,6,opt,name=sellOrderFragmentID,proto3" json:"sellOrderFragmentID,omitempty"`
-	FstCodeShare        []byte `protobuf:"bytes,7,opt,name=fstCodeShare,proto3" json:"fstCodeShare,omitempty"`
-	SndCodeShare        []byte `protobuf:"bytes,8,opt,name=sndCodeShare,proto3" json:"sndCodeShare,omitempty"`
-	PriceShare          []byte `protobuf:"bytes,9,opt,name=priceShare,proto3" json:"priceShare,omitempty"`
-	MaxVolumeShare      []byte `protobuf:"bytes,10,opt,name=maxVolumeShare,proto3" json:"maxVolumeShare,omitempty"`
-	MinVolumeShare      []byte `protobuf:"bytes,11,opt,name=minVolumeShare,proto3" json:"minVolumeShare,omitempty"`
-}
-
-func (m *DeltaFragment) Reset()                    { *m = DeltaFragment{} }
-func (m *DeltaFragment) String() string            { return proto.CompactTextString(m) }
-func (*DeltaFragment) ProtoMessage()               {}
-func (*DeltaFragment) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{19} }
-
-func (m *DeltaFragment) GetSignature() []byte {
-	if m != nil {
-		return m.Signature
-	}
-	return nil
-}
-
-func (m *DeltaFragment) GetId() []byte {
-	if m != nil {
-		return m.Id
-	}
-	return nil
-}
-
-func (m *DeltaFragment) GetBuyOrderID() []byte {
-	if m != nil {
-		return m.BuyOrderID
-	}
-	return nil
-}
-
-func (m *DeltaFragment) GetSellOrderID() []byte {
-	if m != nil {
-		return m.SellOrderID
-	}
-	return nil
-}
-
-func (m *DeltaFragment) GetBuyOrderFragmentID() []byte {
-	if m != nil {
-		return m.BuyOrderFragmentID
-	}
-	return nil
-}
-
-func (m *DeltaFragment) GetSellOrderFragmentID() []byte {
-	if m != nil {
-		return m.SellOrderFragmentID
-	}
-	return nil
-}
-
-func (m *DeltaFragment) GetFstCodeShare() []byte {
-	if m != nil {
-		return m.FstCodeShare
-	}
-	return nil
-}
-
-func (m *DeltaFragment) GetSndCodeShare() []byte {
-	if m != nil {
-		return m.SndCodeShare
-	}
-	return nil
-}
-
-func (m *DeltaFragment) GetPriceShare() []byte {
-	if m != nil {
-		return m.PriceShare
-	}
-	return nil
-}
-
-func (m *DeltaFragment) GetMaxVolumeShare() []byte {
-	if m != nil {
-		return m.MaxVolumeShare
-	}
-	return nil
-}
-
-func (m *DeltaFragment) GetMinVolumeShare() []byte {
-	if m != nil {
-		return m.MinVolumeShare
-	}
-	return nil
-}
-
 func init() {
 	proto.RegisterType((*Address)(nil), "rpc.Address")
-	proto.RegisterType((*MultiAddress)(nil), "rpc.MultiAddress")
-	proto.RegisterType((*MultiAddresses)(nil), "rpc.MultiAddresses")
+	proto.RegisterType((*Multiaddress)(nil), "rpc.Multiaddress")
 	proto.RegisterType((*Nothing)(nil), "rpc.Nothing")
-	proto.RegisterType((*Query)(nil), "rpc.Query")
+	proto.RegisterType((*SyncRequest)(nil), "rpc.SyncRequest")
+	proto.RegisterType((*SignOrderFragmentRequest)(nil), "rpc.SignOrderFragmentRequest")
+	proto.RegisterType((*OpenOrderRequest)(nil), "rpc.OpenOrderRequest")
+	proto.RegisterType((*CancelOrderRequest)(nil), "rpc.CancelOrderRequest")
+	proto.RegisterType((*RandomFragmentSharesRequest)(nil), "rpc.RandomFragmentSharesRequest")
+	proto.RegisterType((*ResidueFragmentSharesRequest)(nil), "rpc.ResidueFragmentSharesRequest")
+	proto.RegisterType((*ComputeResidueFragmentRequest)(nil), "rpc.ComputeResidueFragmentRequest")
+	proto.RegisterType((*BroadcastAlphaBetaFragmentRequest)(nil), "rpc.BroadcastAlphaBetaFragmentRequest")
+	proto.RegisterType((*BroadcastDeltaFragmentRequest)(nil), "rpc.BroadcastDeltaFragmentRequest")
+	proto.RegisterType((*AlphaBetaFragment)(nil), "rpc.AlphaBetaFragment")
+	proto.RegisterType((*DeltaFragment)(nil), "rpc.DeltaFragment")
 	proto.RegisterType((*OrderFragment)(nil), "rpc.OrderFragment")
-	proto.RegisterType((*OrderFragmentCommitment)(nil), "rpc.OrderFragmentCommitment")
+	proto.RegisterType((*OrderFragmentSignature)(nil), "rpc.OrderFragmentSignature")
+	proto.RegisterType((*OrderSignature)(nil), "rpc.OrderSignature")
+	proto.RegisterType((*ResidueFragment)(nil), "rpc.ResidueFragment")
+	proto.RegisterType((*ResidueFragments)(nil), "rpc.ResidueFragments")
+	proto.RegisterType((*RandomFragment)(nil), "rpc.RandomFragment")
+	proto.RegisterType((*RandomFragments)(nil), "rpc.RandomFragments")
 	proto.RegisterType((*SyncBlock)(nil), "rpc.SyncBlock")
 	proto.RegisterType((*SyncBlock_DeltaBlock)(nil), "rpc.SyncBlock.DeltaBlock")
 	proto.RegisterType((*SyncBlock_ResidueBlock)(nil), "rpc.SyncBlock.ResidueBlock")
-	proto.RegisterType((*Final)(nil), "rpc.Final")
-	proto.RegisterType((*Shard)(nil), "rpc.Shard")
-	proto.RegisterType((*DeltaShard)(nil), "rpc.DeltaShard")
-	proto.RegisterType((*FinalizeShardRequest)(nil), "rpc.FinalizeShardRequest")
-	proto.RegisterType((*SyncRequest)(nil), "rpc.SyncRequest")
-	proto.RegisterType((*ElectShardRequest)(nil), "rpc.ElectShardRequest")
-	proto.RegisterType((*ComputeShardRequest)(nil), "rpc.ComputeShardRequest")
-	proto.RegisterType((*LogRequest)(nil), "rpc.LogRequest")
-	proto.RegisterType((*LogEvent)(nil), "rpc.LogEvent")
-	proto.RegisterType((*Atom)(nil), "rpc.Atom")
-	proto.RegisterType((*BroadcastDeltaFragmentRequest)(nil), "rpc.BroadcastDeltaFragmentRequest")
-	proto.RegisterType((*DeltaFragment)(nil), "rpc.DeltaFragment")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -883,50 +890,37 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for SwarmNode service
+// Client API for Swarm service
 
-type SwarmNodeClient interface {
-	// Ping the connection and swap MultiAddresses.
-	Ping(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (*Nothing, error)
-	// Find the MultiAddresses of peers closer to some target Node.
-	QueryCloserPeers(ctx context.Context, in *Query, opts ...grpc.CallOption) (*MultiAddresses, error)
-	// Find the MultiAddresses of peers closer to some target Node using a
-	// frontier search.
-	QueryCloserPeersOnFrontier(ctx context.Context, in *Query, opts ...grpc.CallOption) (SwarmNode_QueryCloserPeersOnFrontierClient, error)
+type SwarmClient interface {
+	Ping(ctx context.Context, in *Multiaddress, opts ...grpc.CallOption) (*Multiaddress, error)
+	Query(ctx context.Context, in *Address, opts ...grpc.CallOption) (Swarm_QueryClient, error)
+	QueryDeep(ctx context.Context, in *Address, opts ...grpc.CallOption) (Swarm_QueryDeepClient, error)
 }
 
-type swarmNodeClient struct {
+type swarmClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewSwarmNodeClient(cc *grpc.ClientConn) SwarmNodeClient {
-	return &swarmNodeClient{cc}
+func NewSwarmClient(cc *grpc.ClientConn) SwarmClient {
+	return &swarmClient{cc}
 }
 
-func (c *swarmNodeClient) Ping(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (*Nothing, error) {
-	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/rpc.SwarmNode/Ping", in, out, c.cc, opts...)
+func (c *swarmClient) Ping(ctx context.Context, in *Multiaddress, opts ...grpc.CallOption) (*Multiaddress, error) {
+	out := new(Multiaddress)
+	err := grpc.Invoke(ctx, "/rpc.Swarm/Ping", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *swarmNodeClient) QueryCloserPeers(ctx context.Context, in *Query, opts ...grpc.CallOption) (*MultiAddresses, error) {
-	out := new(MultiAddresses)
-	err := grpc.Invoke(ctx, "/rpc.SwarmNode/QueryCloserPeers", in, out, c.cc, opts...)
+func (c *swarmClient) Query(ctx context.Context, in *Address, opts ...grpc.CallOption) (Swarm_QueryClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Swarm_serviceDesc.Streams[0], c.cc, "/rpc.Swarm/Query", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
-}
-
-func (c *swarmNodeClient) QueryCloserPeersOnFrontier(ctx context.Context, in *Query, opts ...grpc.CallOption) (SwarmNode_QueryCloserPeersOnFrontierClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_SwarmNode_serviceDesc.Streams[0], c.cc, "/rpc.SwarmNode/QueryCloserPeersOnFrontier", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &swarmNodeQueryCloserPeersOnFrontierClient{stream}
+	x := &swarmQueryClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -936,152 +930,29 @@ func (c *swarmNodeClient) QueryCloserPeersOnFrontier(ctx context.Context, in *Qu
 	return x, nil
 }
 
-type SwarmNode_QueryCloserPeersOnFrontierClient interface {
-	Recv() (*MultiAddress, error)
+type Swarm_QueryClient interface {
+	Recv() (*Multiaddress, error)
 	grpc.ClientStream
 }
 
-type swarmNodeQueryCloserPeersOnFrontierClient struct {
+type swarmQueryClient struct {
 	grpc.ClientStream
 }
 
-func (x *swarmNodeQueryCloserPeersOnFrontierClient) Recv() (*MultiAddress, error) {
-	m := new(MultiAddress)
+func (x *swarmQueryClient) Recv() (*Multiaddress, error) {
+	m := new(Multiaddress)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-// Server API for SwarmNode service
-
-type SwarmNodeServer interface {
-	// Ping the connection and swap MultiAddresses.
-	Ping(context.Context, *MultiAddress) (*Nothing, error)
-	// Find the MultiAddresses of peers closer to some target Node.
-	QueryCloserPeers(context.Context, *Query) (*MultiAddresses, error)
-	// Find the MultiAddresses of peers closer to some target Node using a
-	// frontier search.
-	QueryCloserPeersOnFrontier(*Query, SwarmNode_QueryCloserPeersOnFrontierServer) error
-}
-
-func RegisterSwarmNodeServer(s *grpc.Server, srv SwarmNodeServer) {
-	s.RegisterService(&_SwarmNode_serviceDesc, srv)
-}
-
-func _SwarmNode_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MultiAddress)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SwarmNodeServer).Ping(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/rpc.SwarmNode/Ping",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SwarmNodeServer).Ping(ctx, req.(*MultiAddress))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SwarmNode_QueryCloserPeers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Query)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SwarmNodeServer).QueryCloserPeers(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/rpc.SwarmNode/QueryCloserPeers",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SwarmNodeServer).QueryCloserPeers(ctx, req.(*Query))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SwarmNode_QueryCloserPeersOnFrontier_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Query)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(SwarmNodeServer).QueryCloserPeersOnFrontier(m, &swarmNodeQueryCloserPeersOnFrontierServer{stream})
-}
-
-type SwarmNode_QueryCloserPeersOnFrontierServer interface {
-	Send(*MultiAddress) error
-	grpc.ServerStream
-}
-
-type swarmNodeQueryCloserPeersOnFrontierServer struct {
-	grpc.ServerStream
-}
-
-func (x *swarmNodeQueryCloserPeersOnFrontierServer) Send(m *MultiAddress) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-var _SwarmNode_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "rpc.SwarmNode",
-	HandlerType: (*SwarmNodeServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Ping",
-			Handler:    _SwarmNode_Ping_Handler,
-		},
-		{
-			MethodName: "QueryCloserPeers",
-			Handler:    _SwarmNode_QueryCloserPeers_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "QueryCloserPeersOnFrontier",
-			Handler:       _SwarmNode_QueryCloserPeersOnFrontier_Handler,
-			ServerStreams: true,
-		},
-	},
-	Metadata: "rpc.proto",
-}
-
-// Client API for DarkNode service
-
-type DarkNodeClient interface {
-	// Send a sync request for getting new shard
-	Sync(ctx context.Context, in *SyncRequest, opts ...grpc.CallOption) (DarkNode_SyncClient, error)
-	// Send a commitment to the order fragment.
-	SendOrderFragmentCommitment(ctx context.Context, in *OrderFragmentCommitment, opts ...grpc.CallOption) (*OrderFragmentCommitment, error)
-	// Send an OrderFragment to some target Node.
-	SendOrderFragment(ctx context.Context, in *OrderFragment, opts ...grpc.CallOption) (*Nothing, error)
-	// Propose a shard election request to some target node.
-	ElectShard(ctx context.Context, in *ElectShardRequest, opts ...grpc.CallOption) (*Shard, error)
-	// Ask some target node to start computation on the shard.
-	ComputeShard(ctx context.Context, in *ComputeShardRequest, opts ...grpc.CallOption) (*Nothing, error)
-	//
-	FinalizeShard(ctx context.Context, in *FinalizeShardRequest, opts ...grpc.CallOption) (*Nothing, error)
-	Logs(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (DarkNode_LogsClient, error)
-	BroadcastDeltaFragment(ctx context.Context, in *BroadcastDeltaFragmentRequest, opts ...grpc.CallOption) (*DeltaFragment, error)
-}
-
-type darkNodeClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewDarkNodeClient(cc *grpc.ClientConn) DarkNodeClient {
-	return &darkNodeClient{cc}
-}
-
-func (c *darkNodeClient) Sync(ctx context.Context, in *SyncRequest, opts ...grpc.CallOption) (DarkNode_SyncClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_DarkNode_serviceDesc.Streams[0], c.cc, "/rpc.DarkNode/Sync", opts...)
+func (c *swarmClient) QueryDeep(ctx context.Context, in *Address, opts ...grpc.CallOption) (Swarm_QueryDeepClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Swarm_serviceDesc.Streams[1], c.cc, "/rpc.Swarm/QueryDeep", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &darkNodeSyncClient{stream}
+	x := &swarmQueryDeepClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -1091,16 +962,166 @@ func (c *darkNodeClient) Sync(ctx context.Context, in *SyncRequest, opts ...grpc
 	return x, nil
 }
 
-type DarkNode_SyncClient interface {
+type Swarm_QueryDeepClient interface {
+	Recv() (*Multiaddress, error)
+	grpc.ClientStream
+}
+
+type swarmQueryDeepClient struct {
+	grpc.ClientStream
+}
+
+func (x *swarmQueryDeepClient) Recv() (*Multiaddress, error) {
+	m := new(Multiaddress)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// Server API for Swarm service
+
+type SwarmServer interface {
+	Ping(context.Context, *Multiaddress) (*Multiaddress, error)
+	Query(*Address, Swarm_QueryServer) error
+	QueryDeep(*Address, Swarm_QueryDeepServer) error
+}
+
+func RegisterSwarmServer(s *grpc.Server, srv SwarmServer) {
+	s.RegisterService(&_Swarm_serviceDesc, srv)
+}
+
+func _Swarm_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Multiaddress)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SwarmServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.Swarm/Ping",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SwarmServer).Ping(ctx, req.(*Multiaddress))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Swarm_Query_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(Address)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(SwarmServer).Query(m, &swarmQueryServer{stream})
+}
+
+type Swarm_QueryServer interface {
+	Send(*Multiaddress) error
+	grpc.ServerStream
+}
+
+type swarmQueryServer struct {
+	grpc.ServerStream
+}
+
+func (x *swarmQueryServer) Send(m *Multiaddress) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _Swarm_QueryDeep_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(Address)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(SwarmServer).QueryDeep(m, &swarmQueryDeepServer{stream})
+}
+
+type Swarm_QueryDeepServer interface {
+	Send(*Multiaddress) error
+	grpc.ServerStream
+}
+
+type swarmQueryDeepServer struct {
+	grpc.ServerStream
+}
+
+func (x *swarmQueryDeepServer) Send(m *Multiaddress) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+var _Swarm_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "rpc.Swarm",
+	HandlerType: (*SwarmServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Ping",
+			Handler:    _Swarm_Ping_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Query",
+			Handler:       _Swarm_Query_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "QueryDeep",
+			Handler:       _Swarm_QueryDeep_Handler,
+			ServerStreams: true,
+		},
+	},
+	Metadata: "rpc.proto",
+}
+
+// Client API for DarkOcean service
+
+type DarkOceanClient interface {
+	Sync(ctx context.Context, in *SyncRequest, opts ...grpc.CallOption) (DarkOcean_SyncClient, error)
+	SignOrderFragment(ctx context.Context, in *SignOrderFragmentRequest, opts ...grpc.CallOption) (*OrderFragmentSignature, error)
+	OpenOrder(ctx context.Context, in *OpenOrderRequest, opts ...grpc.CallOption) (*Nothing, error)
+	CancelOrder(ctx context.Context, in *CancelOrderRequest, opts ...grpc.CallOption) (*Nothing, error)
+	RandomFragmentShares(ctx context.Context, in *RandomFragmentSharesRequest, opts ...grpc.CallOption) (*RandomFragments, error)
+	ResidueFragmentShares(ctx context.Context, in *ResidueFragmentSharesRequest, opts ...grpc.CallOption) (*ResidueFragments, error)
+	ComputeResidueFragment(ctx context.Context, in *ComputeResidueFragmentRequest, opts ...grpc.CallOption) (*Nothing, error)
+	BroadcastAlphaBetaFragment(ctx context.Context, in *BroadcastAlphaBetaFragmentRequest, opts ...grpc.CallOption) (*AlphaBetaFragment, error)
+	BroadcastDeltaFragment(ctx context.Context, in *BroadcastDeltaFragmentRequest, opts ...grpc.CallOption) (*DeltaFragment, error)
+}
+
+type darkOceanClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewDarkOceanClient(cc *grpc.ClientConn) DarkOceanClient {
+	return &darkOceanClient{cc}
+}
+
+func (c *darkOceanClient) Sync(ctx context.Context, in *SyncRequest, opts ...grpc.CallOption) (DarkOcean_SyncClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_DarkOcean_serviceDesc.Streams[0], c.cc, "/rpc.DarkOcean/Sync", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &darkOceanSyncClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type DarkOcean_SyncClient interface {
 	Recv() (*SyncBlock, error)
 	grpc.ClientStream
 }
 
-type darkNodeSyncClient struct {
+type darkOceanSyncClient struct {
 	grpc.ClientStream
 }
 
-func (x *darkNodeSyncClient) Recv() (*SyncBlock, error) {
+func (x *darkOceanSyncClient) Recv() (*SyncBlock, error) {
 	m := new(SyncBlock)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -1108,447 +1129,384 @@ func (x *darkNodeSyncClient) Recv() (*SyncBlock, error) {
 	return m, nil
 }
 
-func (c *darkNodeClient) SendOrderFragmentCommitment(ctx context.Context, in *OrderFragmentCommitment, opts ...grpc.CallOption) (*OrderFragmentCommitment, error) {
-	out := new(OrderFragmentCommitment)
-	err := grpc.Invoke(ctx, "/rpc.DarkNode/SendOrderFragmentCommitment", in, out, c.cc, opts...)
+func (c *darkOceanClient) SignOrderFragment(ctx context.Context, in *SignOrderFragmentRequest, opts ...grpc.CallOption) (*OrderFragmentSignature, error) {
+	out := new(OrderFragmentSignature)
+	err := grpc.Invoke(ctx, "/rpc.DarkOcean/SignOrderFragment", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *darkNodeClient) SendOrderFragment(ctx context.Context, in *OrderFragment, opts ...grpc.CallOption) (*Nothing, error) {
+func (c *darkOceanClient) OpenOrder(ctx context.Context, in *OpenOrderRequest, opts ...grpc.CallOption) (*Nothing, error) {
 	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/rpc.DarkNode/SendOrderFragment", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/rpc.DarkOcean/OpenOrder", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *darkNodeClient) ElectShard(ctx context.Context, in *ElectShardRequest, opts ...grpc.CallOption) (*Shard, error) {
-	out := new(Shard)
-	err := grpc.Invoke(ctx, "/rpc.DarkNode/ElectShard", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *darkNodeClient) ComputeShard(ctx context.Context, in *ComputeShardRequest, opts ...grpc.CallOption) (*Nothing, error) {
+func (c *darkOceanClient) CancelOrder(ctx context.Context, in *CancelOrderRequest, opts ...grpc.CallOption) (*Nothing, error) {
 	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/rpc.DarkNode/ComputeShard", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/rpc.DarkOcean/CancelOrder", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *darkNodeClient) FinalizeShard(ctx context.Context, in *FinalizeShardRequest, opts ...grpc.CallOption) (*Nothing, error) {
+func (c *darkOceanClient) RandomFragmentShares(ctx context.Context, in *RandomFragmentSharesRequest, opts ...grpc.CallOption) (*RandomFragments, error) {
+	out := new(RandomFragments)
+	err := grpc.Invoke(ctx, "/rpc.DarkOcean/RandomFragmentShares", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *darkOceanClient) ResidueFragmentShares(ctx context.Context, in *ResidueFragmentSharesRequest, opts ...grpc.CallOption) (*ResidueFragments, error) {
+	out := new(ResidueFragments)
+	err := grpc.Invoke(ctx, "/rpc.DarkOcean/ResidueFragmentShares", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *darkOceanClient) ComputeResidueFragment(ctx context.Context, in *ComputeResidueFragmentRequest, opts ...grpc.CallOption) (*Nothing, error) {
 	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/rpc.DarkNode/FinalizeShard", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/rpc.DarkOcean/ComputeResidueFragment", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *darkNodeClient) Logs(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (DarkNode_LogsClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_DarkNode_serviceDesc.Streams[1], c.cc, "/rpc.DarkNode/Logs", opts...)
+func (c *darkOceanClient) BroadcastAlphaBetaFragment(ctx context.Context, in *BroadcastAlphaBetaFragmentRequest, opts ...grpc.CallOption) (*AlphaBetaFragment, error) {
+	out := new(AlphaBetaFragment)
+	err := grpc.Invoke(ctx, "/rpc.DarkOcean/BroadcastAlphaBetaFragment", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &darkNodeLogsClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
+	return out, nil
 }
 
-type DarkNode_LogsClient interface {
-	Recv() (*LogEvent, error)
-	grpc.ClientStream
-}
-
-type darkNodeLogsClient struct {
-	grpc.ClientStream
-}
-
-func (x *darkNodeLogsClient) Recv() (*LogEvent, error) {
-	m := new(LogEvent)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *darkNodeClient) BroadcastDeltaFragment(ctx context.Context, in *BroadcastDeltaFragmentRequest, opts ...grpc.CallOption) (*DeltaFragment, error) {
+func (c *darkOceanClient) BroadcastDeltaFragment(ctx context.Context, in *BroadcastDeltaFragmentRequest, opts ...grpc.CallOption) (*DeltaFragment, error) {
 	out := new(DeltaFragment)
-	err := grpc.Invoke(ctx, "/rpc.DarkNode/BroadcastDeltaFragment", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/rpc.DarkOcean/BroadcastDeltaFragment", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for DarkNode service
+// Server API for DarkOcean service
 
-type DarkNodeServer interface {
-	// Send a sync request for getting new shard
-	Sync(*SyncRequest, DarkNode_SyncServer) error
-	// Send a commitment to the order fragment.
-	SendOrderFragmentCommitment(context.Context, *OrderFragmentCommitment) (*OrderFragmentCommitment, error)
-	// Send an OrderFragment to some target Node.
-	SendOrderFragment(context.Context, *OrderFragment) (*Nothing, error)
-	// Propose a shard election request to some target node.
-	ElectShard(context.Context, *ElectShardRequest) (*Shard, error)
-	// Ask some target node to start computation on the shard.
-	ComputeShard(context.Context, *ComputeShardRequest) (*Nothing, error)
-	//
-	FinalizeShard(context.Context, *FinalizeShardRequest) (*Nothing, error)
-	Logs(*LogRequest, DarkNode_LogsServer) error
+type DarkOceanServer interface {
+	Sync(*SyncRequest, DarkOcean_SyncServer) error
+	SignOrderFragment(context.Context, *SignOrderFragmentRequest) (*OrderFragmentSignature, error)
+	OpenOrder(context.Context, *OpenOrderRequest) (*Nothing, error)
+	CancelOrder(context.Context, *CancelOrderRequest) (*Nothing, error)
+	RandomFragmentShares(context.Context, *RandomFragmentSharesRequest) (*RandomFragments, error)
+	ResidueFragmentShares(context.Context, *ResidueFragmentSharesRequest) (*ResidueFragments, error)
+	ComputeResidueFragment(context.Context, *ComputeResidueFragmentRequest) (*Nothing, error)
+	BroadcastAlphaBetaFragment(context.Context, *BroadcastAlphaBetaFragmentRequest) (*AlphaBetaFragment, error)
 	BroadcastDeltaFragment(context.Context, *BroadcastDeltaFragmentRequest) (*DeltaFragment, error)
 }
 
-func RegisterDarkNodeServer(s *grpc.Server, srv DarkNodeServer) {
-	s.RegisterService(&_DarkNode_serviceDesc, srv)
+func RegisterDarkOceanServer(s *grpc.Server, srv DarkOceanServer) {
+	s.RegisterService(&_DarkOcean_serviceDesc, srv)
 }
 
-func _DarkNode_Sync_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _DarkOcean_Sync_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(SyncRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(DarkNodeServer).Sync(m, &darkNodeSyncServer{stream})
+	return srv.(DarkOceanServer).Sync(m, &darkOceanSyncServer{stream})
 }
 
-type DarkNode_SyncServer interface {
+type DarkOcean_SyncServer interface {
 	Send(*SyncBlock) error
 	grpc.ServerStream
 }
 
-type darkNodeSyncServer struct {
+type darkOceanSyncServer struct {
 	grpc.ServerStream
 }
 
-func (x *darkNodeSyncServer) Send(m *SyncBlock) error {
+func (x *darkOceanSyncServer) Send(m *SyncBlock) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _DarkNode_SendOrderFragmentCommitment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(OrderFragmentCommitment)
+func _DarkOcean_SignOrderFragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SignOrderFragmentRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DarkNodeServer).SendOrderFragmentCommitment(ctx, in)
+		return srv.(DarkOceanServer).SignOrderFragment(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.DarkNode/SendOrderFragmentCommitment",
+		FullMethod: "/rpc.DarkOcean/SignOrderFragment",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DarkNodeServer).SendOrderFragmentCommitment(ctx, req.(*OrderFragmentCommitment))
+		return srv.(DarkOceanServer).SignOrderFragment(ctx, req.(*SignOrderFragmentRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DarkNode_SendOrderFragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(OrderFragment)
+func _DarkOcean_OpenOrder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OpenOrderRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DarkNodeServer).SendOrderFragment(ctx, in)
+		return srv.(DarkOceanServer).OpenOrder(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.DarkNode/SendOrderFragment",
+		FullMethod: "/rpc.DarkOcean/OpenOrder",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DarkNodeServer).SendOrderFragment(ctx, req.(*OrderFragment))
+		return srv.(DarkOceanServer).OpenOrder(ctx, req.(*OpenOrderRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DarkNode_ElectShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ElectShardRequest)
+func _DarkOcean_CancelOrder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelOrderRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DarkNodeServer).ElectShard(ctx, in)
+		return srv.(DarkOceanServer).CancelOrder(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.DarkNode/ElectShard",
+		FullMethod: "/rpc.DarkOcean/CancelOrder",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DarkNodeServer).ElectShard(ctx, req.(*ElectShardRequest))
+		return srv.(DarkOceanServer).CancelOrder(ctx, req.(*CancelOrderRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DarkNode_ComputeShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ComputeShardRequest)
+func _DarkOcean_RandomFragmentShares_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RandomFragmentSharesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DarkNodeServer).ComputeShard(ctx, in)
+		return srv.(DarkOceanServer).RandomFragmentShares(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.DarkNode/ComputeShard",
+		FullMethod: "/rpc.DarkOcean/RandomFragmentShares",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DarkNodeServer).ComputeShard(ctx, req.(*ComputeShardRequest))
+		return srv.(DarkOceanServer).RandomFragmentShares(ctx, req.(*RandomFragmentSharesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DarkNode_FinalizeShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FinalizeShardRequest)
+func _DarkOcean_ResidueFragmentShares_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResidueFragmentSharesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DarkNodeServer).FinalizeShard(ctx, in)
+		return srv.(DarkOceanServer).ResidueFragmentShares(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.DarkNode/FinalizeShard",
+		FullMethod: "/rpc.DarkOcean/ResidueFragmentShares",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DarkNodeServer).FinalizeShard(ctx, req.(*FinalizeShardRequest))
+		return srv.(DarkOceanServer).ResidueFragmentShares(ctx, req.(*ResidueFragmentSharesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DarkNode_Logs_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(LogRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
+func _DarkOcean_ComputeResidueFragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ComputeResidueFragmentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
 	}
-	return srv.(DarkNodeServer).Logs(m, &darkNodeLogsServer{stream})
+	if interceptor == nil {
+		return srv.(DarkOceanServer).ComputeResidueFragment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.DarkOcean/ComputeResidueFragment",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DarkOceanServer).ComputeResidueFragment(ctx, req.(*ComputeResidueFragmentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-type DarkNode_LogsServer interface {
-	Send(*LogEvent) error
-	grpc.ServerStream
+func _DarkOcean_BroadcastAlphaBetaFragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BroadcastAlphaBetaFragmentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DarkOceanServer).BroadcastAlphaBetaFragment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.DarkOcean/BroadcastAlphaBetaFragment",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DarkOceanServer).BroadcastAlphaBetaFragment(ctx, req.(*BroadcastAlphaBetaFragmentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-type darkNodeLogsServer struct {
-	grpc.ServerStream
-}
-
-func (x *darkNodeLogsServer) Send(m *LogEvent) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _DarkNode_BroadcastDeltaFragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _DarkOcean_BroadcastDeltaFragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BroadcastDeltaFragmentRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DarkNodeServer).BroadcastDeltaFragment(ctx, in)
+		return srv.(DarkOceanServer).BroadcastDeltaFragment(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.DarkNode/BroadcastDeltaFragment",
+		FullMethod: "/rpc.DarkOcean/BroadcastDeltaFragment",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DarkNodeServer).BroadcastDeltaFragment(ctx, req.(*BroadcastDeltaFragmentRequest))
+		return srv.(DarkOceanServer).BroadcastDeltaFragment(ctx, req.(*BroadcastDeltaFragmentRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-var _DarkNode_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "rpc.DarkNode",
-	HandlerType: (*DarkNodeServer)(nil),
+var _DarkOcean_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "rpc.DarkOcean",
+	HandlerType: (*DarkOceanServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SendOrderFragmentCommitment",
-			Handler:    _DarkNode_SendOrderFragmentCommitment_Handler,
+			MethodName: "SignOrderFragment",
+			Handler:    _DarkOcean_SignOrderFragment_Handler,
 		},
 		{
-			MethodName: "SendOrderFragment",
-			Handler:    _DarkNode_SendOrderFragment_Handler,
+			MethodName: "OpenOrder",
+			Handler:    _DarkOcean_OpenOrder_Handler,
 		},
 		{
-			MethodName: "ElectShard",
-			Handler:    _DarkNode_ElectShard_Handler,
+			MethodName: "CancelOrder",
+			Handler:    _DarkOcean_CancelOrder_Handler,
 		},
 		{
-			MethodName: "ComputeShard",
-			Handler:    _DarkNode_ComputeShard_Handler,
+			MethodName: "RandomFragmentShares",
+			Handler:    _DarkOcean_RandomFragmentShares_Handler,
 		},
 		{
-			MethodName: "FinalizeShard",
-			Handler:    _DarkNode_FinalizeShard_Handler,
+			MethodName: "ResidueFragmentShares",
+			Handler:    _DarkOcean_ResidueFragmentShares_Handler,
+		},
+		{
+			MethodName: "ComputeResidueFragment",
+			Handler:    _DarkOcean_ComputeResidueFragment_Handler,
+		},
+		{
+			MethodName: "BroadcastAlphaBetaFragment",
+			Handler:    _DarkOcean_BroadcastAlphaBetaFragment_Handler,
 		},
 		{
 			MethodName: "BroadcastDeltaFragment",
-			Handler:    _DarkNode_BroadcastDeltaFragment_Handler,
+			Handler:    _DarkOcean_BroadcastDeltaFragment_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Sync",
-			Handler:       _DarkNode_Sync_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "Logs",
-			Handler:       _DarkNode_Logs_Handler,
+			Handler:       _DarkOcean_Sync_Handler,
 			ServerStreams: true,
 		},
 	},
-	Metadata: "rpc.proto",
-}
-
-// Client API for TerminalNode service
-
-type TerminalNodeClient interface {
-	// Send an Atom to some target Node.
-	SendAtom(ctx context.Context, in *Atom, opts ...grpc.CallOption) (*Atom, error)
-}
-
-type terminalNodeClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewTerminalNodeClient(cc *grpc.ClientConn) TerminalNodeClient {
-	return &terminalNodeClient{cc}
-}
-
-func (c *terminalNodeClient) SendAtom(ctx context.Context, in *Atom, opts ...grpc.CallOption) (*Atom, error) {
-	out := new(Atom)
-	err := grpc.Invoke(ctx, "/rpc.TerminalNode/SendAtom", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Server API for TerminalNode service
-
-type TerminalNodeServer interface {
-	// Send an Atom to some target Node.
-	SendAtom(context.Context, *Atom) (*Atom, error)
-}
-
-func RegisterTerminalNodeServer(s *grpc.Server, srv TerminalNodeServer) {
-	s.RegisterService(&_TerminalNode_serviceDesc, srv)
-}
-
-func _TerminalNode_SendAtom_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Atom)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TerminalNodeServer).SendAtom(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/rpc.TerminalNode/SendAtom",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TerminalNodeServer).SendAtom(ctx, req.(*Atom))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-var _TerminalNode_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "rpc.TerminalNode",
-	HandlerType: (*TerminalNodeServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "SendAtom",
-			Handler:    _TerminalNode_SendAtom_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "rpc.proto",
 }
 
 func init() { proto.RegisterFile("rpc.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 1114 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x57, 0x4f, 0x6f, 0x1b, 0x45,
-	0x14, 0xd7, 0xfa, 0x5f, 0xec, 0x97, 0x75, 0x68, 0x26, 0x55, 0x58, 0xb6, 0xa1, 0xb2, 0x86, 0x16,
-	0x4c, 0x0f, 0x91, 0x71, 0xf9, 0x13, 0x09, 0x71, 0x68, 0xe2, 0x46, 0xaa, 0x14, 0x9a, 0xb0, 0xa9,
-	0x90, 0x90, 0x10, 0xd2, 0xd6, 0x33, 0x71, 0x56, 0xdd, 0xdd, 0x71, 0x67, 0xd6, 0x80, 0x39, 0x71,
-	0xe0, 0x0b, 0x70, 0xe0, 0xc0, 0x37, 0xe0, 0x33, 0x20, 0xbe, 0x0b, 0x57, 0x3e, 0x01, 0x67, 0x34,
-	0x6f, 0x66, 0xbd, 0xbb, 0xb6, 0x9b, 0xa6, 0x08, 0x0e, 0xbd, 0xed, 0x7b, 0xef, 0xf7, 0xde, 0x8c,
-	0xe7, 0xbd, 0xdf, 0x6f, 0xc6, 0xd0, 0x91, 0xd3, 0xf1, 0xfe, 0x54, 0x8a, 0x4c, 0x90, 0xba, 0x9c,
-	0x8e, 0xe9, 0x3b, 0xb0, 0xf1, 0x80, 0x31, 0xc9, 0x95, 0x22, 0x1e, 0x6c, 0x84, 0xe6, 0xd3, 0x73,
-	0x7a, 0x4e, 0xbf, 0x13, 0xe4, 0x26, 0xbd, 0x03, 0xee, 0xe7, 0xb3, 0x38, 0x8b, 0x72, 0xe4, 0x4d,
-	0x68, 0x26, 0xda, 0xb6, 0x38, 0x63, 0xd0, 0x4f, 0x61, 0xab, 0x8c, 0xe2, 0x8a, 0xbc, 0x0f, 0x2d,
-	0x0c, 0xe9, 0x82, 0xf5, 0xfe, 0xe6, 0x70, 0x7b, 0x5f, 0xaf, 0x5e, 0x06, 0x05, 0x16, 0x40, 0x3b,
-	0xb0, 0xf1, 0x58, 0x64, 0x97, 0x51, 0x3a, 0xa1, 0x01, 0x34, 0xbf, 0x98, 0x71, 0x39, 0x27, 0x77,
-	0xa1, 0x71, 0x21, 0x45, 0x82, 0xab, 0xac, 0x4d, 0xc6, 0x30, 0xa1, 0xd0, 0x7c, 0xae, 0xf1, 0x5e,
-	0x0d, 0x71, 0x2e, 0xe2, 0x72, 0x88, 0x09, 0xd1, 0xbf, 0x6b, 0xd0, 0x3d, 0x95, 0x8c, 0xcb, 0x63,
-	0x19, 0x4e, 0x12, 0x9e, 0x66, 0x64, 0x0f, 0x6a, 0x99, 0xb0, 0xa5, 0xab, 0x29, 0xb5, 0x4c, 0x2c,
-	0x96, 0xae, 0x5d, 0xbd, 0xf4, 0x16, 0xd4, 0x22, 0xe6, 0xd5, 0x7b, 0x4e, 0xdf, 0x0d, 0x6a, 0x11,
-	0xd3, 0x47, 0x28, 0xf4, 0x2a, 0x8f, 0x98, 0xd7, 0x40, 0x67, 0x6e, 0x92, 0x3d, 0xe8, 0xe0, 0xe7,
-	0x93, 0xf9, 0x94, 0x7b, 0xcd, 0x9e, 0xd3, 0xaf, 0x07, 0x85, 0x83, 0xf4, 0x60, 0x13, 0x8d, 0xb3,
-	0x50, 0x46, 0xd9, 0xdc, 0x6b, 0x61, 0xbc, 0xec, 0x22, 0x14, 0xdc, 0x0b, 0x95, 0x1d, 0x09, 0xc6,
-	0xcf, 0x2f, 0x43, 0xc9, 0xbd, 0x0d, 0x2c, 0x5f, 0xf1, 0x69, 0x8c, 0x4a, 0x59, 0x81, 0x69, 0x1b,
-	0x4c, 0xd9, 0x47, 0x6e, 0x03, 0x4c, 0x65, 0x34, 0xb6, 0x88, 0x0e, 0x22, 0x4a, 0x1e, 0xf2, 0x2e,
-	0x6c, 0x25, 0xe1, 0xf7, 0x5f, 0x8a, 0x78, 0x96, 0x58, 0x0c, 0x20, 0x66, 0xc9, 0x8b, 0xb8, 0x28,
-	0x2d, 0xe3, 0x36, 0x2d, 0xae, 0xe2, 0xa5, 0x3f, 0x39, 0xf0, 0x66, 0xe5, 0xe0, 0x8f, 0x44, 0x92,
-	0x44, 0x19, 0xb6, 0xe0, 0x9a, 0xfd, 0xdd, 0x83, 0x8e, 0x8a, 0x26, 0x69, 0x98, 0xcd, 0x24, 0xc7,
-	0x86, 0xb8, 0x41, 0xe1, 0x20, 0x77, 0xa0, 0x2b, 0xca, 0xf5, 0x6d, 0x37, 0xaa, 0x4e, 0xfa, 0x73,
-	0x03, 0x3a, 0xe7, 0xf3, 0x74, 0x7c, 0x18, 0x8b, 0xf1, 0xb3, 0x6a, 0x45, 0x67, 0xb9, 0xe2, 0x07,
-	0xd0, 0x62, 0x3c, 0xce, 0x42, 0x65, 0xbb, 0xff, 0x16, 0x6e, 0x6c, 0x91, 0xbd, 0x3f, 0xd2, 0x41,
-	0xfc, 0x0c, 0x2c, 0x90, 0x7c, 0x02, 0x6d, 0xc9, 0x55, 0xc4, 0x66, 0x5c, 0xe1, 0xfa, 0x9b, 0xc3,
-	0x5b, 0x4b, 0x49, 0x81, 0x09, 0x9b, 0xb4, 0x05, 0xd8, 0xff, 0xdd, 0x01, 0x28, 0xea, 0xe9, 0xf9,
-	0x99, 0xf2, 0x94, 0x45, 0xe9, 0x04, 0x19, 0xe3, 0x06, 0xb9, 0x49, 0x7c, 0x68, 0xf3, 0x98, 0x8f,
-	0x33, 0x1d, 0xaa, 0x61, 0x68, 0x61, 0xeb, 0x9f, 0x33, 0x16, 0xc9, 0x74, 0x86, 0xc1, 0x3a, 0x06,
-	0x0b, 0x87, 0xee, 0xf8, 0x45, 0x94, 0x86, 0x71, 0xf4, 0x83, 0x0e, 0x37, 0x30, 0x5c, 0xf2, 0xe8,
-	0x35, 0x93, 0x30, 0x1b, 0x5f, 0x72, 0xe6, 0x35, 0xcd, 0x9a, 0xd6, 0xd4, 0x99, 0x49, 0xa4, 0xf2,
-	0x60, 0xcb, 0x64, 0x16, 0x1e, 0xff, 0x0f, 0x07, 0xdc, 0xf2, 0xef, 0x7a, 0xbd, 0xb6, 0x4f, 0xff,
-	0x74, 0xa0, 0x79, 0xac, 0x0b, 0x59, 0x1a, 0x3b, 0x0b, 0x1a, 0xdf, 0x06, 0x78, 0x3a, 0x9b, 0x9f,
-	0x5a, 0x26, 0x9b, 0x91, 0x2b, 0x79, 0x34, 0x5d, 0x15, 0x8f, 0xe3, 0x1c, 0x60, 0x26, 0xae, 0xec,
-	0xd2, 0xbb, 0xb2, 0xd4, 0xcc, 0x85, 0xc0, 0x9a, 0x3a, 0x62, 0x09, 0x89, 0x32, 0xe0, 0x06, 0xb9,
-	0xa9, 0x55, 0x15, 0x89, 0x88, 0xf4, 0x77, 0x03, 0x63, 0xe8, 0xd3, 0x59, 0x50, 0xcf, 0xb2, 0xbe,
-	0x70, 0x60, 0x34, 0x27, 0x9c, 0xe5, 0x7b, 0xe1, 0xa0, 0x09, 0x34, 0x35, 0x0b, 0xd9, 0x4b, 0x06,
-	0xfe, 0x5e, 0x69, 0xe0, 0xb5, 0x4c, 0x13, 0x9c, 0x5d, 0x1c, 0xcb, 0x9c, 0x40, 0x8b, 0x49, 0xf7,
-	0x2b, 0x93, 0x8e, 0x8d, 0xcc, 0x6d, 0x7a, 0x68, 0x67, 0xf9, 0x3a, 0x6b, 0xee, 0x42, 0x0b, 0x9b,
-	0xa8, 0xec, 0x38, 0x58, 0x8b, 0x32, 0xb8, 0x79, 0x6c, 0x9a, 0x8b, 0x02, 0xc2, 0x02, 0xfe, 0x7c,
-	0xc6, 0xd5, 0xb5, 0xb5, 0xe2, 0x2e, 0x34, 0x95, 0x4e, 0xb3, 0xd4, 0x7d, 0xa3, 0xf8, 0x25, 0xa6,
-	0x9a, 0x89, 0xd2, 0x0f, 0x61, 0x53, 0x53, 0xf3, 0xd5, 0x8a, 0xd3, 0xaf, 0x61, 0xfb, 0xa1, 0x1e,
-	0xda, 0x7f, 0xb3, 0xb1, 0x5e, 0x75, 0x63, 0x60, 0xe4, 0xa1, 0xbc, 0xa7, 0x6f, 0x60, 0xe7, 0x08,
-	0xa7, 0x9e, 0xff, 0x3f, 0xf5, 0x5d, 0x80, 0x13, 0x31, 0xb1, 0x65, 0xe9, 0x01, 0xb4, 0x4f, 0xc4,
-	0xe4, 0xe1, 0xb7, 0x5a, 0x87, 0x09, 0x34, 0x32, 0x7d, 0x2d, 0x99, 0x26, 0xe1, 0x37, 0xd2, 0x8a,
-	0x2b, 0x15, 0x4e, 0x72, 0xc9, 0xcd, 0x4d, 0xfa, 0x8b, 0x03, 0x8d, 0x07, 0x19, 0xea, 0xf2, 0x7f,
-	0x70, 0x83, 0xee, 0x42, 0x2b, 0xe6, 0x6c, 0xc2, 0x25, 0xb2, 0xa8, 0x1e, 0x58, 0x4b, 0xef, 0x89,
-	0x85, 0x59, 0x68, 0xd9, 0x83, 0xdf, 0xd5, 0x89, 0x6a, 0x2e, 0x4d, 0x14, 0xfd, 0xd1, 0x81, 0xb7,
-	0x0f, 0xa5, 0x08, 0xd9, 0x38, 0x54, 0x59, 0x75, 0x78, 0x5f, 0xed, 0x28, 0x0f, 0xa0, 0xcb, 0xca,
-	0xe9, 0xf6, 0x27, 0xac, 0x63, 0x45, 0x15, 0x48, 0x7f, 0xad, 0x43, 0xb7, 0x02, 0x78, 0x09, 0x09,
-	0x8c, 0xee, 0xd4, 0xd6, 0xea, 0xce, 0xc8, 0xca, 0x4a, 0xc9, 0x53, 0xd5, 0x9d, 0x91, 0x3d, 0x9b,
-	0xb2, 0x8b, 0xec, 0x03, 0xc9, 0xf1, 0xf9, 0x1e, 0x1e, 0x8d, 0xec, 0x59, 0xad, 0x89, 0x90, 0x01,
-	0xec, 0x2c, 0xd2, 0x4b, 0x09, 0x46, 0x81, 0xd6, 0x85, 0x5e, 0xd7, 0x87, 0xc8, 0xf0, 0x37, 0x07,
-	0x3a, 0xe7, 0xdf, 0x85, 0x32, 0x79, 0xac, 0xb5, 0xf6, 0x3d, 0x68, 0x9c, 0xe9, 0xdb, 0x63, 0x75,
-	0x08, 0x7c, 0x33, 0xca, 0xf6, 0x31, 0x4a, 0xee, 0xc3, 0x0d, 0x7c, 0x8c, 0x1e, 0xc5, 0x42, 0x71,
-	0x79, 0xc6, 0xb9, 0x54, 0xc4, 0x90, 0x0b, 0xdd, 0xfe, 0xce, 0x4a, 0x01, 0xae, 0xc8, 0x67, 0xe0,
-	0x2f, 0x27, 0x9d, 0xa6, 0xc7, 0x52, 0xa4, 0x59, 0xc4, 0x65, 0x25, 0x7d, 0x75, 0xfd, 0x81, 0x33,
-	0xfc, 0xab, 0x0e, 0xed, 0x51, 0x28, 0x9f, 0xe1, 0x4e, 0xef, 0x41, 0x43, 0x4b, 0x15, 0xb9, 0xb1,
-	0x78, 0x50, 0xd8, 0x71, 0xf6, 0xb7, 0xaa, 0x4f, 0x8c, 0x81, 0x43, 0xbe, 0x82, 0x5b, 0xe7, 0x3c,
-	0x65, 0x2f, 0x7a, 0x6f, 0xed, 0x61, 0xc2, 0x0b, 0xa2, 0xfe, 0x95, 0x51, 0xf2, 0x11, 0x6c, 0xaf,
-	0x94, 0x26, 0x64, 0x35, 0x65, 0xe9, 0xf8, 0x06, 0x00, 0x85, 0x64, 0x92, 0x5d, 0x8c, 0xad, 0x68,
-	0xa8, 0x5f, 0x52, 0x2b, 0xf2, 0x31, 0xb8, 0x65, 0x19, 0x24, 0x1e, 0xc6, 0xd6, 0x28, 0xe3, 0xd2,
-	0x4a, 0x07, 0xd0, 0xad, 0x5c, 0x1c, 0xc4, 0x3c, 0xdb, 0xd6, 0x5d, 0x26, 0x4b, 0x99, 0x7d, 0x68,
-	0x9c, 0x88, 0x89, 0x22, 0xe6, 0xb2, 0x28, 0x34, 0xd2, 0xef, 0xe6, 0x0e, 0x94, 0xc9, 0x81, 0x43,
-	0xce, 0x60, 0x77, 0xbd, 0xc2, 0x10, 0x8a, 0xd0, 0x2b, 0xe5, 0xc7, 0x5f, 0x23, 0x20, 0xc3, 0x01,
-	0xb8, 0x4f, 0xb8, 0x4c, 0xf4, 0x26, 0xb1, 0xdb, 0x3d, 0x68, 0xeb, 0x63, 0x46, 0x7d, 0xed, 0x18,
-	0x4d, 0xcd, 0x44, 0xe2, 0x17, 0x9f, 0x4f, 0x5b, 0xf8, 0xe7, 0xed, 0xfe, 0x3f, 0x01, 0x00, 0x00,
-	0xff, 0xff, 0xaa, 0x6a, 0xb3, 0xb8, 0xc9, 0x0d, 0x00, 0x00,
+	// 1178 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x58, 0x4b, 0x6f, 0xe4, 0x44,
+	0x10, 0x96, 0xe7, 0xb9, 0xae, 0x4c, 0x26, 0x49, 0x6d, 0x76, 0x18, 0x66, 0x13, 0x94, 0x6d, 0xc4,
+	0x6a, 0xb5, 0x5a, 0x8d, 0xa2, 0x10, 0xa1, 0x45, 0x88, 0x47, 0x92, 0x11, 0x22, 0x48, 0x6c, 0xb2,
+	0x0e, 0xe2, 0xc4, 0x01, 0xc7, 0xee, 0x24, 0xd6, 0xce, 0xd8, 0x83, 0xed, 0x11, 0x1b, 0x4e, 0x5c,
+	0x38, 0x70, 0x02, 0x2e, 0x48, 0x1c, 0xf8, 0x0f, 0x88, 0x1b, 0x37, 0x38, 0xf3, 0xa7, 0x50, 0x77,
+	0xfb, 0xd1, 0x6d, 0xb7, 0xe3, 0xcc, 0x22, 0x71, 0x9b, 0x2e, 0x7f, 0x5f, 0xf5, 0x57, 0xd5, 0x8f,
+	0xea, 0x1a, 0x30, 0xc3, 0xb9, 0x33, 0x9e, 0x87, 0x41, 0x1c, 0x60, 0x33, 0x9c, 0x3b, 0xe4, 0x4d,
+	0xe8, 0x1e, 0xb8, 0x6e, 0x48, 0xa3, 0x08, 0x87, 0xd0, 0xb5, 0xc5, 0xcf, 0xa1, 0xb1, 0x63, 0x3c,
+	0x32, 0xad, 0x74, 0x48, 0x4e, 0xa1, 0xf7, 0xd9, 0x62, 0x1a, 0x7b, 0xc9, 0x18, 0xb7, 0xc0, 0x8c,
+	0xbc, 0x4b, 0xdf, 0x8e, 0x17, 0x21, 0xe5, 0xd8, 0x9e, 0x95, 0x1b, 0x90, 0x40, 0x6f, 0x26, 0xa1,
+	0x87, 0x0d, 0xee, 0x4c, 0xb1, 0x11, 0x13, 0xba, 0xcf, 0x82, 0xf8, 0xca, 0xf3, 0x2f, 0xc9, 0x3e,
+	0xac, 0x9c, 0x5d, 0xfb, 0x8e, 0x45, 0xbf, 0x5e, 0xd0, 0x28, 0xc6, 0xb7, 0xa0, 0x75, 0x11, 0x06,
+	0x33, 0xee, 0x76, 0x65, 0x6f, 0x63, 0xcc, 0xf4, 0xca, 0x93, 0x5b, 0xfc, 0x33, 0xf9, 0xc5, 0x80,
+	0xe1, 0x99, 0x77, 0xe9, 0x9f, 0x84, 0x2e, 0x0d, 0x3f, 0x0e, 0xed, 0xcb, 0x19, 0xf5, 0xe3, 0xe5,
+	0x7c, 0xe0, 0x19, 0x0c, 0x02, 0x99, 0x7e, 0x96, 0xc5, 0xd4, 0xe0, 0xc4, 0xfb, 0x9c, 0x78, 0xa2,
+	0x85, 0x58, 0x15, 0x54, 0xf2, 0xbb, 0x01, 0xeb, 0x27, 0x73, 0x2a, 0x84, 0x2d, 0x29, 0xe8, 0x3d,
+	0xe8, 0x73, 0xaf, 0x45, 0x21, 0x77, 0x73, 0x21, 0xb9, 0x80, 0x02, 0x14, 0x9f, 0xc2, 0xaa, 0x22,
+	0x69, 0xd8, 0xe4, 0x5c, 0x2c, 0x07, 0x61, 0xa9, 0x40, 0xf2, 0x12, 0xf0, 0xc8, 0xf6, 0x1d, 0x3a,
+	0xfd, 0xbf, 0x35, 0x93, 0x09, 0xdc, 0xb7, 0x6c, 0xdf, 0x0d, 0x66, 0x59, 0x1e, 0xaf, 0xec, 0x90,
+	0x46, 0x4b, 0xee, 0x85, 0xef, 0x0d, 0xd8, 0xb2, 0x68, 0xe4, 0xb9, 0x0b, 0xfa, 0x5f, 0xfc, 0xe0,
+	0x07, 0xb0, 0x16, 0x2a, 0x6a, 0xa2, 0x24, 0x96, 0x4d, 0xce, 0x50, 0x95, 0x46, 0x56, 0x11, 0x4c,
+	0x7e, 0x30, 0x60, 0xfb, 0x28, 0x98, 0xcd, 0x17, 0x31, 0x2d, 0xc8, 0x59, 0x52, 0xc8, 0x01, 0xac,
+	0x87, 0xaa, 0x83, 0x54, 0xc9, 0x3d, 0xa1, 0xa4, 0xf0, 0xd1, 0x2a, 0xc1, 0xc9, 0x4f, 0x06, 0x3c,
+	0x38, 0x0c, 0x03, 0xdb, 0x75, 0xec, 0x28, 0x3e, 0x98, 0xce, 0xaf, 0xec, 0x43, 0x1a, 0xdb, 0xaf,
+	0xa8, 0x67, 0x02, 0x1b, 0x76, 0xd1, 0x45, 0x22, 0x68, 0xc0, 0x39, 0xe5, 0x09, 0xca, 0x04, 0xf2,
+	0x9d, 0x01, 0xdb, 0x99, 0xa4, 0x09, 0x9d, 0xbe, 0xb2, 0x9c, 0xa7, 0xb0, 0xea, 0xca, 0xf4, 0x44,
+	0x8a, 0xd8, 0xe9, 0xaa, 0x63, 0x15, 0x48, 0xfe, 0x36, 0x60, 0xa3, 0xa4, 0xb5, 0xe6, 0x3a, 0xdb,
+	0x02, 0x33, 0xc9, 0xee, 0xb1, 0xcb, 0x67, 0xea, 0x59, 0xb9, 0x81, 0x69, 0xe1, 0x91, 0xde, 0xe6,
+	0xd4, 0x29, 0x40, 0x7c, 0x07, 0x7a, 0xe7, 0x72, 0x3e, 0x5b, 0x95, 0x44, 0x05, 0x47, 0x7e, 0x6d,
+	0xc2, 0xaa, 0x12, 0x64, 0x8d, 0xfe, 0x3e, 0x34, 0xbc, 0x54, 0x78, 0xc3, 0x73, 0xf1, 0x0d, 0x80,
+	0xf3, 0xc5, 0x35, 0x9f, 0xe1, 0xd8, 0xe5, 0x72, 0x7b, 0x96, 0x64, 0xc1, 0x1d, 0x58, 0x89, 0xe8,
+	0x74, 0x9a, 0x02, 0x5a, 0x1c, 0x20, 0x9b, 0x70, 0x0c, 0x98, 0xe2, 0x53, 0x0d, 0xc7, 0xee, 0xb0,
+	0xcd, 0x81, 0x9a, 0x2f, 0xb8, 0x0b, 0x77, 0x33, 0xba, 0x44, 0xe8, 0x70, 0x82, 0xee, 0x13, 0x2b,
+	0x21, 0x17, 0x51, 0x7c, 0x14, 0xb8, 0x94, 0x1f, 0xe4, 0x61, 0x97, 0x43, 0x15, 0x1b, 0xc3, 0x44,
+	0xbe, 0x9b, 0x63, 0xee, 0x08, 0x8c, 0x6c, 0x63, 0xb1, 0xce, 0x43, 0xcf, 0x49, 0x10, 0xa6, 0x88,
+	0x35, 0xb7, 0xe0, 0x43, 0xe8, 0xcf, 0xec, 0x97, 0x5f, 0x04, 0xd3, 0xc5, 0x2c, 0xc1, 0x00, 0xc7,
+	0x14, 0xac, 0x1c, 0xe7, 0xf9, 0x32, 0x6e, 0x25, 0xc1, 0x29, 0x56, 0xf2, 0x4f, 0x03, 0x56, 0x95,
+	0x58, 0x96, 0x5c, 0x9b, 0x4d, 0x68, 0xf3, 0x1b, 0x32, 0x59, 0x16, 0x31, 0x60, 0x3e, 0xf8, 0x8f,
+	0xcf, 0xaf, 0xe7, 0x94, 0xaf, 0x47, 0xd3, 0xca, 0x0d, 0x6c, 0xbd, 0xf8, 0xe0, 0xd4, 0x0e, 0xbd,
+	0xf8, 0x9a, 0x2f, 0x43, 0xd3, 0x92, 0x4d, 0xa5, 0x6c, 0x76, 0x6e, 0x91, 0xcd, 0x6e, 0x6d, 0x36,
+	0xef, 0xdc, 0x22, 0x9b, 0xe6, 0x2d, 0xb3, 0x09, 0xda, 0x6c, 0x7e, 0x05, 0x03, 0x7d, 0xf1, 0xad,
+	0xc9, 0xea, 0x23, 0x58, 0x0b, 0x0a, 0x7b, 0x4d, 0xa4, 0xb8, 0x68, 0x26, 0x9f, 0x40, 0x5f, 0xad,
+	0x50, 0x35, 0x9e, 0x87, 0xd0, 0x0d, 0x92, 0x73, 0x21, 0x3c, 0xa6, 0x43, 0xf2, 0xa7, 0x01, 0x6b,
+	0x85, 0x6b, 0xb9, 0xc6, 0xd7, 0x00, 0x3a, 0xb6, 0x88, 0x5e, 0xb8, 0x4a, 0x46, 0xcc, 0x7e, 0x2e,
+	0xec, 0x62, 0x13, 0x24, 0x23, 0x66, 0x77, 0x84, 0x5d, 0x1c, 0xc9, 0x64, 0xc4, 0x56, 0x2e, 0xb9,
+	0x8e, 0xc4, 0x57, 0x71, 0x0e, 0x15, 0x9b, 0x7a, 0x87, 0x75, 0x0a, 0x77, 0x18, 0x09, 0x61, 0xbd,
+	0x58, 0x51, 0x6a, 0xb4, 0x7f, 0xa4, 0x2d, 0x50, 0xcd, 0xbc, 0x54, 0x16, 0xca, 0x5f, 0xb9, 0x3e,
+	0x4d, 0xa0, 0xaf, 0xd6, 0xd3, 0x9a, 0x19, 0x37, 0xa1, 0x1d, 0x49, 0xc9, 0x12, 0x03, 0xe2, 0xc3,
+	0x5a, 0xa1, 0x2a, 0xd7, 0xb8, 0x79, 0x5f, 0x57, 0xe2, 0x9b, 0xd9, 0x73, 0x45, 0x75, 0x56, 0xae,
+	0xf0, 0xbf, 0x75, 0xc0, 0x64, 0x8f, 0xd5, 0xc3, 0x69, 0xe0, 0xbc, 0xa8, 0x99, 0xea, 0x5d, 0x00,
+	0x5e, 0x7c, 0x38, 0x36, 0x29, 0x51, 0xaf, 0xf3, 0x59, 0x32, 0x0f, 0xa2, 0x58, 0xf1, 0x9f, 0x96,
+	0x04, 0xc6, 0x0f, 0xb3, 0x25, 0x15, 0xe4, 0xa6, 0xf4, 0x1c, 0xcd, 0xc9, 0x96, 0x04, 0xb1, 0x14,
+	0xc2, 0xe8, 0x8f, 0x06, 0x40, 0xee, 0x1b, 0x9f, 0x40, 0x77, 0x4e, 0x7d, 0xd7, 0xf3, 0x2f, 0x87,
+	0x06, 0x8f, 0x56, 0x57, 0x2a, 0x53, 0x08, 0x8e, 0xe1, 0x0e, 0x9d, 0x52, 0x27, 0x66, 0xf0, 0x46,
+	0x25, 0x3c, 0xc3, 0xe0, 0x2e, 0x98, 0x0e, 0x7f, 0xf5, 0x30, 0x42, 0xb3, 0x92, 0x90, 0x83, 0x70,
+	0x0f, 0xe0, 0xc2, 0xf3, 0xed, 0xa9, 0xf7, 0x2d, 0xa3, 0xb4, 0x2a, 0x29, 0x12, 0x8a, 0xc5, 0x30,
+	0xb3, 0x63, 0xe7, 0x8a, 0xb2, 0x4a, 0x53, 0x19, 0x43, 0x02, 0x61, 0x33, 0xcc, 0xbc, 0x28, 0x25,
+	0x74, 0xaa, 0x67, 0xc8, 0x51, 0xa3, 0xbf, 0x1a, 0xd0, 0x93, 0x73, 0x8a, 0xe3, 0x62, 0xda, 0xf4,
+	0x9b, 0x3b, 0x4b, 0xdc, 0x6e, 0x29, 0x71, 0x7a, 0x42, 0x9e, 0xba, 0xbd, 0x72, 0xea, 0xf4, 0x14,
+	0x29, 0x79, 0xfb, 0x9a, 0xe4, 0xe9, 0x49, 0x72, 0xfa, 0xc6, 0xc5, 0xf4, 0x55, 0xc4, 0x92, 0x26,
+	0x70, 0x5f, 0x93, 0xc0, 0x8a, 0x59, 0x72, 0xdc, 0xde, 0xcf, 0x06, 0xb4, 0xcf, 0xbe, 0xb1, 0xc3,
+	0x19, 0x3e, 0x81, 0xd6, 0x29, 0x9b, 0xb7, 0xfc, 0x88, 0x1b, 0x95, 0x4d, 0xf8, 0x18, 0xda, 0xcf,
+	0x17, 0x34, 0xbc, 0xc6, 0x9e, 0x78, 0x4e, 0x56, 0x22, 0x77, 0x0d, 0x1c, 0x83, 0xc9, 0xb1, 0x13,
+	0x4a, 0xe7, 0xb7, 0xc0, 0xef, 0xfd, 0xd8, 0x06, 0x73, 0x62, 0x87, 0x2f, 0x4e, 0x1c, 0x6a, 0xfb,
+	0xf8, 0x18, 0x5a, 0xec, 0x04, 0xe1, 0x7a, 0x76, 0x98, 0x92, 0xc7, 0xe7, 0xa8, 0xaf, 0x1e, 0xaf,
+	0x5d, 0x03, 0x4f, 0x60, 0xa3, 0xd4, 0x62, 0xe2, 0xb6, 0x80, 0x55, 0xb4, 0x9e, 0xa3, 0x9b, 0x7a,
+	0x46, 0x76, 0x52, 0xb2, 0xd6, 0x10, 0xc5, 0x53, 0xbe, 0xd8, 0x2a, 0x8e, 0x44, 0x44, 0x49, 0x73,
+	0x8c, 0xfb, 0xb0, 0x22, 0xb5, 0x66, 0xf8, 0x1a, 0xff, 0x58, 0x6e, 0xd6, 0x0a, 0xac, 0x67, 0xb0,
+	0xa9, 0x6b, 0xab, 0x70, 0x47, 0x73, 0xc9, 0x29, 0x9d, 0xd2, 0x48, 0xdb, 0xe9, 0xe0, 0x73, 0xb8,
+	0xa7, 0xed, 0xaf, 0xf0, 0x81, 0x6e, 0x47, 0xa8, 0x1e, 0xf5, 0x1d, 0x0b, 0x7e, 0x0a, 0x03, 0x7d,
+	0xab, 0x84, 0x44, 0xc4, 0x78, 0x53, 0x1f, 0x55, 0x08, 0xf7, 0x4b, 0x18, 0x55, 0xb7, 0x3a, 0xf8,
+	0x90, 0x63, 0x6b, 0x7b, 0xa1, 0x51, 0x45, 0x27, 0x83, 0xa7, 0x30, 0xd0, 0x77, 0x2d, 0x89, 0xd2,
+	0x1b, 0x5b, 0x9a, 0x91, 0xe6, 0xd2, 0x39, 0xef, 0xf0, 0xff, 0x5f, 0xde, 0xfe, 0x37, 0x00, 0x00,
+	0xff, 0xff, 0xd3, 0xce, 0xff, 0xf2, 0x8c, 0x11, 0x00, 0x00,
 }
