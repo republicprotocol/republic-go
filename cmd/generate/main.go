@@ -56,5 +56,4 @@ func generateMiners(numberOfMiners int, location string) {
 			log.Fatal(err)
 		}
 	}
-
 }
