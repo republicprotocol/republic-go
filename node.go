@@ -40,7 +40,7 @@ type LogQueue struct {
 func NewLogQueue() *LogQueue {
 	logQueue := new(LogQueue)
 	logQueue.GuardedObject = do.NewGuardedObject()
-	logQueue.channels = nil
+	logQueue.channels = make([]chan do.Option, 0)
 	return logQueue
 }
 
@@ -272,14 +272,14 @@ func (node *DarkNode) Register() error {
 	return err
 }
 
-func getDarkPool() []identity.ID {
-	ids := make([]identity.ID, 8)
-	for i := 0; i < 8; i++ {
-		config, _ := LoadConfig(fmt.Sprintf("./test_configs/config-%d.json", i))
-		ids[i] = config.MultiAddress.ID()
-	}
-	return ids
-}
+//func getDarkPool() []identity.ID {
+//	ids := make([]identity.ID, 8)
+//	for i := 0; i < 8; i++ {
+//		config, _ := LoadConfig(fmt.Sprintf("./test_configs/config-%d.json", i))
+//		ids[i] = config.MultiAddress.ID()
+//	}
+//	return ids
+//}
 
 // ConnectToRegistrar connects to the registrar smart contract
 // on Ethereum. It returns an ethclient.client, which we can

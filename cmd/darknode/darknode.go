@@ -17,7 +17,8 @@ import (
 )
 
 var config *node.Config
-var cpuProfile ,memProfile *string
+var cpuProfile, memProfile *string
+var dev *bool
 
 func main() {
 	// Parse command line arguments and fill the node.Config.
@@ -27,6 +28,7 @@ func main() {
 		return
 	}
 
+	// Create profiling logs for cpu and memory usage.
 	if *cpuProfile != "" {
 		f, err := os.Create(*cpuProfile)
 		if err != nil {
@@ -37,7 +39,6 @@ func main() {
 		}
 		defer pprof.StopCPUProfile()
 	}
-
 	if *memProfile != "" {
 		f, err := os.Create(*memProfile)
 		if err != nil {
@@ -49,21 +50,22 @@ func main() {
 		}
 		f.Close()
 	}
-
-	// Setup output log file
-	f, err := os.OpenFile("darknode.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	// todo : change file path to abusolute one
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
+	if *dev == true {
+		// Setup output log file
+		f, err := os.OpenFile("/home/ubuntu/darknode.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("error opening file: %v", err)
+		}
+		defer f.Close()
+		log.SetOutput(f)
 	}
-	defer f.Close()
-	log.SetOutput(f)
 
 	// Create a new node.node.
 	node, err := node.NewDarkNode(config)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	// Start the dark node.
 	options := do.CoBegin(func() do.Option {
 		return do.Err(node.StartListening())
@@ -73,7 +75,7 @@ func main() {
 	})
 	for _, option := range options {
 		if option.Err != nil {
-			log.Println(option.Err)
+			log.Fatal(option.Err)
 		}
 	}
 }
@@ -82,6 +84,7 @@ func parseCommandLineFlags() error {
 
 	cpuProfile = flag.String("cpuprofile", "cpu.log", "write cpu profile to `file`")
 	memProfile = flag.String("memprofile", "mem.log", "write memory profile to `file`")
+	dev = flag.Bool("dev", false, "enable dev mode")
 	confFilename := flag.String("config", "./default-config.json", "Path to the JSON configuration file")
 
 	flag.Parse()
@@ -114,6 +117,7 @@ func LoadDefaultConfig() (*node.Config, error) {
 		return &node.Config{}, err
 	}
 
+	// 5 bootstraps nodes set up by the team.
 	bootstrapNodes := []string{
 		"/ip4/52.21.44.236/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
 		"/ip4/52.41.118.171/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
