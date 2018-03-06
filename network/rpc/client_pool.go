@@ -42,7 +42,7 @@ func (pool *ClientPool) findOrCreateClientConnection(to identity.Multiaddress) (
 		return clientCacheEntry.Client, nil
 	}
 
-	client, err := NewClient(to, from)
+	client, err := NewClient(to, pool.from)
 	if err != nil {
 		return client, err
 	}
@@ -50,7 +50,7 @@ func (pool *ClientPool) findOrCreateClientConnection(to identity.Multiaddress) (
 	if len(pool.cache) >= pool.cacheLimit {
 		var k string
 		for multiaddress := range pool.cache {
-			if k == "" || pool.cache[multiaddress].Timestamp.After(pool.cache[multiaddress]) {
+			if k == "" || pool.cache[multiaddress].Timestamp.After(pool.cache[multiaddress].Timestamp) {
 				k = multiaddress
 			}
 		}
