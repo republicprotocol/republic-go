@@ -11,6 +11,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+// A Client is used to create and mange a gRPC connection. It provides methods
+// for all RPCs and handles all timeouts and retries.
 type Client struct {
 	Connection *grpc.ClientConn
 	To         *Multiaddress
@@ -74,6 +76,7 @@ func (client *Client) TimeoutFunc(f func(ctx context.Context) error) error {
 	return err
 }
 
+// Ping RPC.
 func (client *Client) Ping() error {
 	return client.TimeoutFunc(func(ctx context.Context) error {
 		_, err := client.Swarm.Ping(ctx, client.To, grpc.FailFast(false))
@@ -81,6 +84,7 @@ func (client *Client) Ping() error {
 	})
 }
 
+// Query RPC.
 func (client *Client) Query(query *Address) (chan *Multiaddress, error) {
 	ch := make(chan *Multiaddress)
 	err := client.TimeoutFunc(func(ctx context.Context) error {
@@ -108,6 +112,7 @@ func (client *Client) Query(query *Address) (chan *Multiaddress, error) {
 	return ch, err
 }
 
+// QueryDeep RPC.
 func (client *Client) QueryDeep(query *Address) (chan *Multiaddress, error) {
 	ch := make(chan *Multiaddress)
 	err := client.TimeoutFunc(func(ctx context.Context) error {
@@ -135,6 +140,7 @@ func (client *Client) QueryDeep(query *Address) (chan *Multiaddress, error) {
 	return ch, err
 }
 
+// Logs RPC.
 func (client *Client) Logs() (chan *LogEvent, error) {
 	ch := make(chan *LogEvent)
 	err := client.TimeoutFunc(func(ctx context.Context) error {
@@ -164,6 +170,7 @@ func (client *Client) Logs() (chan *LogEvent, error) {
 	return ch, err
 }
 
+// Sync RPC.
 func (client *Client) Sync() (chan *SyncBlock, error) {
 	ch := make(chan *SyncBlock)
 	err := client.TimeoutFunc(func(ctx context.Context) error {
@@ -193,6 +200,7 @@ func (client *Client) Sync() (chan *SyncBlock, error) {
 	return ch, err
 }
 
+// SignOrderFragment RPC.
 func (client *Client) SignOrderFragment(orderFragmentSignature *OrderFragmentSignature) (*OrderFragmentSignature, error) {
 	var val *OrderFragmentSignature
 	var err error
@@ -206,6 +214,7 @@ func (client *Client) SignOrderFragment(orderFragmentSignature *OrderFragmentSig
 	return val, err
 }
 
+// OpenOrder RPC.
 func (client *Client) OpenOrder(orderSignature *OrderSignature, orderFragment *OrderFragment) error {
 	return client.TimeoutFunc(func(ctx context.Context) error {
 		_, err := client.DarkOcean.OpenOrder(ctx, &OpenOrderRequest{
@@ -217,6 +226,7 @@ func (client *Client) OpenOrder(orderSignature *OrderSignature, orderFragment *O
 	})
 }
 
+// CancelOrder RPC.
 func (client *Client) CancelOrder(orderSignature *OrderSignature) error {
 	return client.TimeoutFunc(func(ctx context.Context) error {
 		_, err := client.DarkOcean.CancelOrder(ctx, &CancelOrderRequest{
@@ -227,6 +237,7 @@ func (client *Client) CancelOrder(orderSignature *OrderSignature) error {
 	})
 }
 
+// RandomFragmentShares RPC.
 func (client *Client) RandomFragmentShares(deltaFragment *DeltaFragment) (*RandomFragments, error) {
 	var val *RandomFragments
 	var err error
@@ -239,6 +250,7 @@ func (client *Client) RandomFragmentShares(deltaFragment *DeltaFragment) (*Rando
 	return val, err
 }
 
+// ResidueFragmentShares RPC.
 func (client *Client) ResidueFragmentShares(deltaFragment *DeltaFragment) (*ResidueFragments, error) {
 	var val *ResidueFragments
 	var err error
@@ -251,6 +263,7 @@ func (client *Client) ResidueFragmentShares(deltaFragment *DeltaFragment) (*Resi
 	return val, err
 }
 
+// ComputeResidueFragment RPC.
 func (client *Client) ComputeResidueFragment(residueFragments *ResidueFragments) error {
 	return client.TimeoutFunc(func(ctx context.Context) error {
 		_, err := client.DarkOcean.ComputeResidueFragment(ctx, &ComputeResidueFragmentRequest{
@@ -261,6 +274,7 @@ func (client *Client) ComputeResidueFragment(residueFragments *ResidueFragments)
 	})
 }
 
+// BroadcastAlphaBetaFragment RPC.
 func (client *Client) BroadcastAlphaBetaFragment(alphaBetaFragment *AlphaBetaFragment) (*AlphaBetaFragment, error) {
 	var val *AlphaBetaFragment
 	var err error
@@ -274,6 +288,7 @@ func (client *Client) BroadcastAlphaBetaFragment(alphaBetaFragment *AlphaBetaFra
 	return val, err
 }
 
+// BroadcastDeltaFragment RPC.
 func (client *Client) BroadcastDeltaFragment(deltaFragment *DeltaFragment) (*DeltaFragment, error) {
 	var val *DeltaFragment
 	var err error
