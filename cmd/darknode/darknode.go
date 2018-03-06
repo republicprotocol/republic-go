@@ -12,8 +12,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/go-dark-node"
-	"github.com/republicprotocol/go-do"
-	identity "github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/go-identity"
 )
 
 var config *node.Config
@@ -40,18 +39,6 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	if *blockProfile != ""{
-		f, err := os.Create(*memProfile)
-		if err != nil {
-			log.Fatal("could not create memory profile: ", err)
-		}
-		err = pprof.Lookup(*blockProfile).WriteTo(f,0)
-		if err != nil {
-			log.Fatal("could not write memory profile: ", err)
-		}
-		f.Close()
-	}
-
 	if *dev == true {
 		// Setup output log file
 		f, err := os.OpenFile("/home/ubuntu/darknode.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -68,16 +55,23 @@ func main() {
 		log.Fatal(err)
 	}
 
+	errChan := make(chan error , 2 )
 	// Start the dark node.
-	options := do.CoBegin(func() do.Option {
-		return do.Err(node.StartListening())
-	}, func() do.Option {
-		time.Sleep(time.Second)
-		return do.Err(node.Start())
-	})
-	for _, option := range options {
-		if option.Err != nil {
-			log.Fatal(option.Err)
+	go func() {
+		err := node.StartListening()
+		errChan <- err
+	}()
+	time.Sleep(time.Second)
+	go func(){
+		err := node.Start()
+		errChan <- err
+	}()
+
+	for len(errChan) == 0 {
+		var input string
+		fmt.Scanln(&input)
+		if input == "quit"{
+			break
 		}
 	}
 
@@ -96,8 +90,8 @@ func main() {
 
 func parseCommandLineFlags() error {
 
-	cpuProfile = flag.String("cpu", "cpu.log", "write cpu profile to `file`")
-	memProfile = flag.String("mem", "mem.log", "write memory profile to `file`")
+	cpuProfile = flag.String("cpu", "", "write cpu profile to `file`")
+	memProfile = flag.String("mem", "", "write memory profile to `file`")
 	blockProfile = flag.String ("block", "block.log", "write block profile to `file`")
 	dev = flag.Bool("dev", false, "enable dev mode")
 	confFilename := flag.String("config", "./default-config.json", "Path to the JSON configuration file")
