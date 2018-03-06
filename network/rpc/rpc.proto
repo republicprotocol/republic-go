@@ -121,7 +121,7 @@ message DeltaFragment {
 message OrderFragment {
   bytes signature = 1;
   bytes id = 2;
-  bytes order = 3;
+  bytes orderId = 3;
   int64 orderType = 4;
   int64 orderParity = 5;
   

@@ -1,4 +1,8 @@
 [[constraint]]
+  name = "github.com/ethereum/go-ethereum"
+  version = "1.7.3"
+
+[[constraint]]
   name = "github.com/golang/protobuf"
   version = "1.0.0"
 
