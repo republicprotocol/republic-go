@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
@@ -13,11 +12,12 @@ import (
 	"time"
 
 	"github.com/republicprotocol/go-dark-node"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 )
 
 var config *node.Config
-var cpuProfile, memProfile *string
+var profileTime *int
 var dev *bool
 
 func main() {
@@ -26,23 +26,6 @@ func main() {
 		log.Println(err)
 		flag.Usage()
 		return
-	}
-
-	// Start running a http server for profiling
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
-	// Create profiling logs for cpu and memory usage.
-	if *cpuProfile != "" {
-		f, err := os.Create(*cpuProfile)
-		if err != nil {
-			log.Fatal("could not create CPU profile: ", err)
-		}
-		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal("could not start CPU profile: ", err)
-		}
-		defer pprof.StopCPUProfile()
 	}
 
 	if *dev == true {
@@ -55,6 +38,33 @@ func main() {
 		log.SetOutput(f)
 	}
 
+	// Create profiling logs for cpu and memory usage.
+	if *profileTime != 0 {
+		f, err := os.Create("cpu.log")
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+
+		go func() {
+			time.Sleep(time.Duration(*profileTime) * time.Minute)
+
+			pprof.StopCPUProfile()
+
+			f, err := os.Create("mem.log")
+			if err != nil {
+				log.Fatal("could not create memory profile: ", err)
+			}
+			runtime.GC() // get up-to-date statistics
+			if err := pprof.WriteHeapProfile(f); err != nil {
+				log.Fatal("could not write memory profile: ", err)
+			}
+			f.Close()
+		}()
+	}
+
 	// Create a new node.node.
 	node, err := node.NewDarkNode(config)
 	if err != nil {
@@ -62,48 +72,22 @@ func main() {
 	}
 
 	// Start the dark node.
-	errChan := make(chan error, 2)
-	go func() {
-		err := node.StartListening()
-		errChan <- err
-	}()
-
-	time.Sleep(time.Second)
-
-	go func() {
-		err := node.Start()
-		errChan <- err
-	}()
-
-	for len(errChan) == 0 {
-		var input string
-		fmt.Scanln(&input)
-		if input == "quit" {
-			break
+	options := do.CoBegin(func() do.Option {
+		return do.Err(node.StartListening())
+	}, func() do.Option {
+		time.Sleep(time.Second)
+		return do.Err(node.Start())
+	})
+	for _, option := range options {
+		if option.Err != nil {
+			log.Println(option.Err)
 		}
-	}
-
-	//for e := range errChan {
-	//	log.Println(e)
-	//}
-
-	if *memProfile != "" {
-		f, err := os.Create(*memProfile)
-		if err != nil {
-			log.Fatal("could not create memory profile: ", err)
-		}
-		runtime.GC() // get up-to-date statistics
-		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Fatal("could not write memory profile: ", err)
-		}
-		f.Close()
 	}
 }
 
 func parseCommandLineFlags() error {
 
-	cpuProfile = flag.String("cpu", "", "write cpu profile to `file`")
-	memProfile = flag.String("mem", "", "write memory profile to `file`")
+	profileTime = flag.Int("profile",  0, "write memory profile to `file`")
 	dev = flag.Bool("dev", false, "enable dev mode")
 	confFilename := flag.String("config", "./default-config.json", "Path to the JSON configuration file")
 
