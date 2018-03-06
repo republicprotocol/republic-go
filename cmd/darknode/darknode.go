@@ -1,8 +1,6 @@
 package main
 
 import (
-	"expvar"
-	_ "expvar"
 	"flag"
 	"fmt"
 	"log"
@@ -29,6 +27,11 @@ func main() {
 		flag.Usage()
 		return
 	}
+
+	// Start running a http server for profiling
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	// Create profiling logs for cpu and memory usage.
 	if *cpuProfile != "" {
@@ -58,17 +61,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/debug/vars", metricsHandler)
-	endpoint := http.ListenAndServe("localhost:6060", mux)
-
-	errChan := make(chan error, 2)
 	// Start the dark node.
+	errChan := make(chan error, 2)
 	go func() {
 		err := node.StartListening()
 		errChan <- err
 	}()
+
 	time.Sleep(time.Second)
+
 	go func() {
 		err := node.Start()
 		errChan <- err
@@ -81,6 +82,10 @@ func main() {
 			break
 		}
 	}
+
+	//for e := range errChan {
+	//	log.Println(e)
+	//}
 
 	if *memProfile != "" {
 		f, err := os.Create(*memProfile)
@@ -157,27 +162,4 @@ func LoadDefaultConfig() (*node.Config, error) {
 	}
 
 	return config, nil
-}
-
-func metricsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
-	first := true
-	report := func(key string, value interface{}) {
-		if !first {
-			fmt.Fprintf(w, ",\n")
-		}
-		first = false
-		if str, ok := value.(string); ok {
-			fmt.Fprintf(w, "%q: %q", key, str)
-		} else {
-			fmt.Fprintf(w, "%q: %v", key, value)
-		}
-	}
-
-	fmt.Fprintf(w, "{\n")
-	expvar.Do(func(kv expvar.KeyValue) {
-		report(kv.Key, kv.Value)
-	})
-	fmt.Fprintf(w, "\n}\n")
 }
