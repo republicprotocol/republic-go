@@ -16,6 +16,14 @@ import (
 	"google.golang.org/grpc"
 )
 
+func (s *mockServer) SendOrderFragmentCommitment(ctx context.Context, orderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
+	return &rpc.OrderFragmentCommitment{}, nil
+}
+
+func (s *mockServer) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
+	return &rpc.Nothing{}, nil
+}
+
 func (s *mockServer) BroadcastDeltaFragment(ctx context.Context, broadcastDeltaFragmentRequest *rpc.BroadcastDeltaFragmentRequest) (*rpc.DeltaFragment, error) {
 	return &rpc.DeltaFragment{}, nil
 }
@@ -306,4 +314,92 @@ var _ = Describe("Dark Node", func() {
 			quit <- struct{}{}
 		})
 	})
+})
+
+var _ = Describe("Dark Network", func() {
+	var server *grpc.Server
+	var rpcServer mockServer
+	var rpcClient mockClient
+
+	var orderFragment *compute.OrderFragment
+	var badServerAddress identity.MultiAddress
+	var err error
+
+	createServe := func() {
+		keyPair, err := identity.NewKeyPair()
+		Ω(err).ShouldNot(HaveOccurred())
+		multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 3000, keyPair.Address()))
+		Ω(err).ShouldNot(HaveOccurred())
+		server = grpc.NewServer()
+		rpcServer = mockServer{MultiAddress: multiAddress}
+		rpc.RegisterDarkNodeServer(server, &rpcServer)
+	}
+
+	createClient := func() {
+		keyPair, err := identity.NewKeyPair()
+		Ω(err).ShouldNot(HaveOccurred())
+		multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 4000, keyPair.Address()))
+		Ω(err).ShouldNot(HaveOccurred())
+		rpcClient = mockClient{MultiAddress: multiAddress}
+	}
+
+	createFragments := func() {
+		sssShare := sss.Share{Key: 1, Value: &big.Int{}}
+		orderFragment = compute.NewOrderFragment([]byte("orderID"), compute.OrderTypeIBBO, compute.OrderParityBuy,
+			sssShare, sssShare, sssShare, sssShare, sssShare)
+		badServerAddress, err = identity.NewMultiAddressFromString("/ip4/192.168.0.1/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
+		Ω(err).ShouldNot(HaveOccurred())
+	}
+
+	BeforeEach(func() {
+		createClient()
+		createServe()
+		createFragments()
+	})
+
+	Context("sending order fragments commitments", func() {
+
+		It("should return nothing", func() {
+			lis, err := net.Listen("tcp", ":3000")
+			Ω(err).ShouldNot(HaveOccurred())
+			go func(server *grpc.Server) {
+				defer GinkgoRecover()
+				Ω(server.Serve(lis)).ShouldNot(HaveOccurred())
+			}(server)
+			defer server.Stop()
+
+			err = rpc.SendOrderFragmentCommitmentToTarget(rpcServer.MultiAddress, rpcClient.MultiAddress, defaultTimeout)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+	})
+
+	Context("sending order fragments", func() {
+		keyPair, _ := identity.NewKeyPair()
+		to := keyPair.Address()
+		from := rpcClient.MultiAddress
+
+		It("should return nothing", func() {
+			lis, err := net.Listen("tcp", ":3000")
+			Ω(err).ShouldNot(HaveOccurred())
+			go func(server *grpc.Server) {
+				defer GinkgoRecover()
+				Ω(server.Serve(lis)).ShouldNot(HaveOccurred())
+			}(server)
+			defer server.Stop()
+
+			err = rpc.SendOrderFragmentToTarget(rpcServer.MultiAddress, to, from, orderFragment, defaultTimeout)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should return an error for bad multi-addresses", func() {
+			err = rpc.SendOrderFragmentToTarget(badServerAddress, to, from, orderFragment, defaultTimeout)
+			Ω(err).Should(HaveOccurred())
+		})
+
+		It("should return a timeout error when there is no response within the timeout duration", func() {
+			err := rpc.SendOrderFragmentToTarget(rpcServer.MultiAddress, to, from, orderFragment, defaultTimeout)
+			Ω(err).Should(HaveOccurred())
+		})
+	})
+
 })

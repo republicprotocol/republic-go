@@ -4,7 +4,7 @@ import (
 	"github.com/jbenet/go-base58"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 var _ = Describe("", func() {
@@ -148,14 +148,14 @@ var _ = Describe("", func() {
 
 		Context("getting the multi-address", func() {
 			address := identity.Address("8MK6bwP1ADVPaMQ4Gxfm85KYbEdJ6Y")
-			multi, err := address.MultiAddress()
+			multiaddress, err := address.Multiaddress()
 
 			It("should not error", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			It("should be able to get the address from the multi-address", func() {
-				Ω(string(multi.Address())).Should(Equal(string(address)))
+				Ω(string(multiaddress.Address())).Should(Equal(string(address)))
 			})
 		})
 

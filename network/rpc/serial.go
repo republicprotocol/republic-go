@@ -22,14 +22,14 @@ func DeserializeAddress(address *Address) identity.Address {
 // SerializeMultiaddress converts an identity.Multiaddress into its network
 // representation.
 func SerializeMultiaddress(multiAddress identity.Multiaddress) *Multiaddress {
-	return &Multiaddress{Multi: multiAddress.String()}
+	return &Multiaddress{Multiaddress: multiAddress.String()}
 }
 
 // DeserializeMultiaddress converts a network representation of a Multiaddress
 // into an identity.Multiaddress. An error is returned if the network
 // representation is malformed.
 func DeserializeMultiaddress(multiAddress *Multiaddress) (identity.Multiaddress, error) {
-	return identity.NewMultiaddressFromString(multiAddress.Multi)
+	return identity.NewMultiaddressFromString(multiAddress.Multiaddress)
 }
 
 // SerializeOrderFragment converts a compute.OrderFragment into its network
@@ -37,7 +37,7 @@ func DeserializeMultiaddress(multiAddress *Multiaddress) (identity.Multiaddress,
 func SerializeOrderFragment(input *compute.OrderFragment) *OrderFragment {
 	orderFragment := &OrderFragment{
 		To:          &Address{Address: ""},
-		From:        &Multiaddress{Multi: ""},
+		From:        &Multiaddress{Multiaddress: ""},
 		Id:          []byte(input.ID),
 		OrderId:     []byte(input.OrderID),
 		OrderType:   int64(input.OrderType),

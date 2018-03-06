@@ -75,10 +75,10 @@ func (address Address) SamePrefixLength(other Address) (int, error) {
 	return ret, nil
 }
 
-// MultiAddress returns the Republic multi-address of the Address. It can be
-// appended with other MultiAddresses.
-func (address Address) MultiAddress() (MultiAddress, error) {
-	return NewMultiAddressFromString(fmt.Sprintf("/republic/%s", address))
+// Multiaddress returns the Republic multi-address of the Address. It can be
+// appended with other Multiaddresses.
+func (address Address) Multiaddress() (Multiaddress, error) {
+	return NewMultiaddressFromString(fmt.Sprintf("/republic/%s", address))
 }
 
 // String returns the Address as a string.
@@ -87,7 +87,7 @@ func (address Address) String() string {
 }
 
 // ID returns the ID of the Address
-func (address Address) ID() ID{
+func (address Address) ID() ID {
 	bytes := base58.DecodeAlphabet(string(address), base58.BTCAlphabet)
 	bytes = bytes[2:]
 	return ID(bytes)

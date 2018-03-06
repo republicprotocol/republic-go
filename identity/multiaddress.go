@@ -9,7 +9,7 @@ import (
 	"github.com/multiformats/go-multihash"
 )
 
-// Codes for extracting specific protocol values from a MultiAddress.
+// Codes for extracting specific protocol values from a Multiaddress.
 const (
 	IP4Code      = 0x0004
 	IP6Code      = 0x0029
@@ -29,75 +29,75 @@ func init() {
 	multiaddr.AddProtocol(republic)
 }
 
-// MultiAddress is an alias.
-type MultiAddress struct {
+// Multiaddress is an alias.
+type Multiaddress struct {
 	address          Address
-	baseMultiAddress multiaddr.Multiaddr
+	baseMultiaddress multiaddr.Multiaddr
 }
 
-// MultiAddresses is an alias.
-type MultiAddresses []MultiAddress
+// Multiaddresses is an alias.
+type Multiaddresses []Multiaddress
 
-// NewMultiAddressFromString parses and validates an input string. It returns a
-// MultiAddress, or an error.
-func NewMultiAddressFromString(s string) (MultiAddress, error) {
-	multiAddress, err := multiaddr.NewMultiaddr(s)
+// NewMultiaddressFromString parses and validates an input string. It returns a
+// Multiaddress, or an error.
+func NewMultiaddressFromString(s string) (Multiaddress, error) {
+	multiaddress, err := multiaddr.NewMultiaddr(s)
 	if err != nil {
-		return MultiAddress{}, err
+		return Multiaddress{}, err
 	}
-	address, err := multiAddress.ValueForProtocol(RepublicCode)
+	address, err := multiaddress.ValueForProtocol(RepublicCode)
 	if err != nil {
-		return MultiAddress{}, err
+		return Multiaddress{}, err
 	}
-	addressAsMultiAddress, err := multiaddr.NewMultiaddr("/republic/" + address)
+	addressAsMultiaddress, err := multiaddr.NewMultiaddr("/republic/" + address)
 	if err != nil {
-		return MultiAddress{}, err
+		return Multiaddress{}, err
 	}
-	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
+	baseMultiaddress := multiaddress.Decapsulate(addressAsMultiaddress)
 
-	return MultiAddress{Address(address), baseMultiAddress}, err
+	return Multiaddress{Address(address), baseMultiaddress}, err
 }
 
-// ValueForProtocol returns the value of the specific protocol in the MultiAddress
-func (multiAddress MultiAddress) ValueForProtocol(code int) (string, error) {
+// ValueForProtocol returns the value of the specific protocol in the Multiaddress
+func (multiaddress Multiaddress) ValueForProtocol(code int) (string, error) {
 	if code == RepublicCode {
-		return multiAddress.address.String(), nil
+		return multiaddress.address.String(), nil
 	}
-	return multiAddress.baseMultiAddress.ValueForProtocol(code)
+	return multiaddress.baseMultiaddress.ValueForProtocol(code)
 }
 
-// Address returns the Republic address of a MultiAddress.
-func (multiAddress MultiAddress) Address() Address {
-	return multiAddress.address
+// Address returns the Republic address of a Multiaddress.
+func (multiaddress Multiaddress) Address() Address {
+	return multiaddress.address
 }
 
-// ID returns the Republic ID of a MultiAddress.
-func (multiAddress MultiAddress) ID() ID {
-	return multiAddress.address.ID()
+// ID returns the Republic ID of a Multiaddress.
+func (multiaddress Multiaddress) ID() ID {
+	return multiaddress.address.ID()
 }
 
-// String returns the MultiAddress as a plain string.
-func (multiAddress MultiAddress) String() string {
-	return fmt.Sprintf("%s/republic/%s", multiAddress.baseMultiAddress, multiAddress.address)
+// String returns the Multiaddress as a plain string.
+func (multiaddress Multiaddress) String() string {
+	return fmt.Sprintf("%s/republic/%s", multiaddress.baseMultiaddress, multiaddress.address)
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (multiAddress MultiAddress) MarshalJSON() ([]byte, error) {
-	return json.Marshal(multiAddress.String())
+func (multiaddress Multiaddress) MarshalJSON() ([]byte, error) {
+	return json.Marshal(multiaddress.String())
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (multiAddress *MultiAddress) UnmarshalJSON(data []byte) error {
-	multiAddressAsString := ""
-	if err := json.Unmarshal(data, &multiAddressAsString); err != nil {
+func (multiaddress *Multiaddress) UnmarshalJSON(data []byte) error {
+	multiaddressAsString := ""
+	if err := json.Unmarshal(data, &multiaddressAsString); err != nil {
 		return err
 	}
-	newMultiAddress, err := NewMultiAddressFromString(multiAddressAsString)
+	newMultiaddress, err := NewMultiaddressFromString(multiaddressAsString)
 	if err != nil {
 		return err
 	}
-	multiAddress.baseMultiAddress = newMultiAddress.baseMultiAddress
-	multiAddress.address = newMultiAddress.address
+	multiaddress.baseMultiaddress = newMultiaddress.baseMultiaddress
+	multiaddress.address = newMultiaddress.address
 	return nil
 }
 
