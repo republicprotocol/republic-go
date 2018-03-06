@@ -1,9 +1,13 @@
 package main
 
 import (
+	"encoding/json"
+	_ "expvar"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
@@ -21,6 +25,11 @@ var profileTime *int
 var dev *bool
 
 func main() {
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	// Parse command line arguments and fill the node.Config.
 	if err := parseCommandLineFlags(); err != nil {
 		log.Println(err)
@@ -87,9 +96,9 @@ func main() {
 
 func parseCommandLineFlags() error {
 
-	profileTime = flag.Int("profile",  0, "write memory profile to `file`")
+	profileTime = flag.Int("profile", 0, "write memory profile to `file`")
 	dev = flag.Bool("dev", false, "enable dev mode")
-	confFilename := flag.String("config", "./default-config.json", "Path to the JSON configuration file")
+	confFilename := flag.String("config", "/home/ubuntu/default-config.json", "Path to the JSON configuration file")
 
 	flag.Parse()
 
@@ -144,6 +153,16 @@ func LoadDefaultConfig() (*node.Config, error) {
 		}
 		config.BootstrapMultiAddresses[i] = multi
 	}
+	err = writeConfigFile(config)
+	return config, err
+}
 
-	return config, nil
+func writeConfigFile(config *node.Config) error {
+	data, err := json.Marshal(config)
+	if err != nil {
+		return err
+	}
+	d1 := []byte(data)
+	err = ioutil.WriteFile("/home/ubuntu/default-config.json", d1,0644)
+	return err
 }
