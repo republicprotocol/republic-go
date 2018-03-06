@@ -13,15 +13,15 @@ import (
 // A Client is used to send RPCs to services.
 type Client struct {
 	Connection *grpc.ClientConn
-	From       *Multiaddress
 	To         *Multiaddress
+	From       *Multiaddress
 
 	Options   ClientOptions
 	Swarm     SwarmClient
 	DarkOcean DarkOceanClient
 }
 
-func NewClient(to, from identity.MultiAddress) (*Client, error) {
+func NewClient(to, from identity.Multiaddress) (*Client, error) {
 	host, err := to.ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return nil, err
@@ -33,11 +33,10 @@ func NewClient(to, from identity.MultiAddress) (*Client, error) {
 
 	client := &Client{
 		Options: DefaultClientOptions(),
-		From:    SerializeMultiaddress(from),
 		To:      SerializeMultiaddress(to),
+		From:    SerializeMultiaddress(from),
 	}
-
-	if err := client.timeout(func(ctx net.Context) error {
+	if err := client.timeout(func(ctx context.Context) error {
 		connection, err := grpc.DialContext(ctx, fmt.Sprintf("%s:%s", host, port), grpc.WithInsecure())
 		if err != nil {
 			return err
@@ -58,7 +57,7 @@ func (client *Client) BroadcastDeltaFragment(deltaFragment *compute.DeltaFragmen
 	var err error
 
 	serializedDeltaFragment := SerializeDeltaFragment(deltaFragment)
-	err = client.timeout(func(ctx net.Context) error {
+	err = client.timeout(func(ctx context.Context) error {
 		response, err = client.DarkOcean.BroadcastDeltaFragment(ctx, &BroadcastDeltaFragmentRequest{
 			From:          client.From,
 			DeltaFragment: serializedDeltaFragment,
@@ -69,23 +68,7 @@ func (client *Client) BroadcastDeltaFragment(deltaFragment *compute.DeltaFragmen
 	return response, err
 }
 
-func (client *Client) BroadcastDeltaFragment(deltaFragment *compute.DeltaFragment) (*DeltaFragment, error) {
-	var response *DeltaFragment
-	var err error
-
-	serializedDeltaFragment := SerializeDeltaFragment(deltaFragment)
-	err = client.timeout(func(ctx net.Context) error {
-		response, err = client.DarkOcean.BroadcastDeltaFragment(ctx, &BroadcastDeltaFragmentRequest{
-			From:          client.From,
-			DeltaFragment: serializedDeltaFragment,
-		}, grpc.FailFast(false))
-		return err
-	})
-
-	return response, err
-}
-
-func (client *Client) timeout(f func(ctx net.Context) error) error {
+func (client *Client) timeout(f func(ctx context.Context) error) error {
 	var err error
 	for i := 0; i < client.Options.TimeoutRetries; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), client.Options.Timeout+(client.Options.TimeoutBackoff*time.Duration(i)))
