@@ -3,6 +3,7 @@ package rpc
 import (
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
@@ -32,9 +33,9 @@ func DeserializeMultiaddress(multiAddress *Multiaddress) (identity.Multiaddress,
 	return identity.NewMultiaddressFromString(multiAddress.Multiaddress)
 }
 
-// SerializeOrderFragment converts a compute.OrderFragment into its network
+// SerializeOrderFragment converts an order.Fragment into its network
 // representation.
-func SerializeOrderFragment(input *compute.OrderFragment) *OrderFragment {
+func SerializeOrderFragment(input *order.Fragment) *OrderFragment {
 	orderFragment := &OrderFragment{
 		Id:          []byte(input.ID),
 		OrderId:     []byte(input.OrderID),
@@ -50,16 +51,15 @@ func SerializeOrderFragment(input *compute.OrderFragment) *OrderFragment {
 }
 
 // DeserializeOrderFragment converts a network representation of an
-// OrderFragment into a compute.OrderFragment. An error is returned if the
-// network representation is malformed.
-func DeserializeOrderFragment(input *OrderFragment) (*compute.OrderFragment, error) {
-	orderFragment := &compute.OrderFragment{
-		ID:          compute.OrderFragmentID(input.Id),
-		OrderID:     compute.OrderID(input.OrderId),
-		OrderType:   compute.OrderType(input.OrderType),
-		OrderParity: compute.OrderParity(input.OrderParity),
+// OrderFragment into an order.Fragment. An error is returned if the network
+// representation is malformed.
+func DeserializeOrderFragment(input *OrderFragment) (*order.Fragment, error) {
+	orderFragment := &order.Fragment{
+		ID:          order.FragmentID(input.Id),
+		OrderID:     order.ID(input.OrderId),
+		OrderType:   order.Type(input.OrderType),
+		OrderParity: order.Parity(input.OrderParity),
 	}
-
 	var err error
 	orderFragment.FstCodeShare, err = shamir.FromBytes(input.FstCodeShare)
 	if err != nil {
