@@ -2,12 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	_ "expvar"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
@@ -25,11 +23,6 @@ var profileTime *int
 var dev *bool
 
 func main() {
-
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
 	// Parse command line arguments and fill the node.Config.
 	if err := parseCommandLineFlags(); err != nil {
 		log.Println(err)
@@ -163,6 +156,6 @@ func writeConfigFile(config *node.Config) error {
 		return err
 	}
 	d1 := []byte(data)
-	err = ioutil.WriteFile("/home/ubuntu/default-config.json", d1,0644)
+	err = ioutil.WriteFile("/home/ubuntu/default-config.json", d1, 0644)
 	return err
 }
