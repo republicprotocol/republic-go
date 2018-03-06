@@ -1,9 +1,12 @@
 package main
 
 import (
+	"expvar"
+	_ "expvar"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
@@ -16,7 +19,7 @@ import (
 )
 
 var config *node.Config
-var cpuProfile, memProfile, blockProfile *string
+var cpuProfile, memProfile *string
 var dev *bool
 
 func main() {
@@ -55,14 +58,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	errChan := make(chan error , 2 )
+	mux := http.NewServeMux()
+	mux.HandleFunc("/debug/vars", metricsHandler)
+	endpoint := http.ListenAndServe("localhost:6060", mux)
+
+	errChan := make(chan error, 2)
 	// Start the dark node.
 	go func() {
 		err := node.StartListening()
 		errChan <- err
 	}()
 	time.Sleep(time.Second)
-	go func(){
+	go func() {
 		err := node.Start()
 		errChan <- err
 	}()
@@ -70,7 +77,7 @@ func main() {
 	for len(errChan) == 0 {
 		var input string
 		fmt.Scanln(&input)
-		if input == "quit"{
+		if input == "quit" {
 			break
 		}
 	}
@@ -92,7 +99,6 @@ func parseCommandLineFlags() error {
 
 	cpuProfile = flag.String("cpu", "", "write cpu profile to `file`")
 	memProfile = flag.String("mem", "", "write memory profile to `file`")
-	blockProfile = flag.String ("block", "block.log", "write block profile to `file`")
 	dev = flag.Bool("dev", false, "enable dev mode")
 	confFilename := flag.String("config", "./default-config.json", "Path to the JSON configuration file")
 
@@ -151,4 +157,27 @@ func LoadDefaultConfig() (*node.Config, error) {
 	}
 
 	return config, nil
+}
+
+func metricsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	first := true
+	report := func(key string, value interface{}) {
+		if !first {
+			fmt.Fprintf(w, ",\n")
+		}
+		first = false
+		if str, ok := value.(string); ok {
+			fmt.Fprintf(w, "%q: %q", key, str)
+		} else {
+			fmt.Fprintf(w, "%q: %v", key, value)
+		}
+	}
+
+	fmt.Fprintf(w, "{\n")
+	expvar.Do(func(kv expvar.KeyValue) {
+		report(kv.Key, kv.Value)
+	})
+	fmt.Fprintf(w, "\n}\n")
 }
