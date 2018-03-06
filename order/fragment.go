@@ -3,52 +3,47 @@ package order
 import (
 	"bytes"
 	"encoding/binary"
-	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	sss "github.com/republicprotocol/go-sss"
-	"github.com/republicprotocol/republic-go/identity"
+	"github.com/jbenet/go-base58"
+	"github.com/republicprotocol/republic-go/shamir"
 )
 
-// An FragmentID is the Keccak256 hash of an OrderFragment.
+// An FragmentID is the Keccak256 hash of a Fragment.
 type FragmentID []byte
 
-// Equals checks if two OrderFragmentIDs are equal in value.
-func (id OrderFragmentID) Equals(other OrderFragmentID) bool {
+// Equal returns an equality check between two FragmentIDs.
+func (id FragmentID) Equal(other FragmentID) bool {
 	return bytes.Equal(id, other)
 }
 
-func (id OrderFragmentID) String() string {
-	return string(id)
+// String returns a FragmentID as a Base58 encoded string.
+func (id FragmentID) String() string {
+	return base58.Encode(id)
 }
 
-// An OrderFragment is a secret share of an Order. Is is created using Shamir
-// secret sharing where the secret is an Order encoded as a big.Int.
-type OrderFragment struct {
-	// Signature
-	Owner     identity.ID
+// A Fragment is a secret share of an Order, created using Shamir's secret
+// sharing on the secure fields in an Order.
+type Fragment struct {
 	Signature []byte
+	ID        FragmentID
 
-	// Public
-	ID          OrderFragmentID
-	OrderID     OrderID
-	OrderType   OrderType
-	OrderParity OrderParity
+	OrderID     ID
+	OrderType   Type
+	OrderParity Parity
 	OrderExpiry time.Time
 
-	// Secure
-	FstCodeShare   sss.Share
-	SndCodeShare   sss.Share
-	PriceShare     sss.Share
-	MaxVolumeShare sss.Share
-	MinVolumeShare sss.Share
+	FstCodeShare   shamir.Share
+	SndCodeShare   shamir.Share
+	PriceShare     shamir.Share
+	MaxVolumeShare shamir.Share
+	MinVolumeShare shamir.Share
 }
 
-// NewOrderFragment returns a new OrderFragment and computes the
-// OrderFragmentID for the OrderFragment.
-func NewOrderFragment(orderID OrderID, orderType OrderType, orderParity OrderParity, fstCodeShare, sndCodeShare, priceShare, maxVolumeShare, minVolumeShare sss.Share) *OrderFragment {
-	orderFragment := &OrderFragment{
+// NewFragment returns a new Fragment and computes the FragmentID.
+func NewFragment(orderID ID, orderType Type, orderParity Parity, fstCodeShare, sndCodeShare, priceShare, maxVolumeShare, minVolumeShare shamir.Share) *Fragment {
+	fragment := &Fragment{
 		OrderID:        orderID,
 		OrderType:      orderType,
 		OrderParity:    orderParity,
@@ -58,114 +53,66 @@ func NewOrderFragment(orderID OrderID, orderType OrderType, orderParity OrderPar
 		MaxVolumeShare: maxVolumeShare,
 		MinVolumeShare: minVolumeShare,
 	}
-	orderFragment.ID = OrderFragmentID(crypto.Keccak256(orderFragment.Bytes()))
-	return orderFragment
+	fragment.ID = FragmentID(fragment.Hash())
+	return fragment
 }
 
-// Sub two OrderFragments from one another and return the resulting output
-// ResultFragment. The output ResultFragment will have its ID computed.
-func (orderFragment *OrderFragment) Sub(other *OrderFragment, prime *big.Int) (*DeltaFragment, error) {
-	// Check that the OrderFragments have compatible sss.Shares, and that one
-	// of them is an OrderBuy and the other is an OrderSell.
-	if err := orderFragment.IsCompatible(other); err != nil {
-		return nil, err
-	}
-
-	// Label the OrderFragments appropriately.
-	var buyOrderFragment, sellOrderFragment *OrderFragment
-	if orderFragment.OrderParity == OrderParityBuy {
-		buyOrderFragment = orderFragment
-		sellOrderFragment = other
-	} else {
-		buyOrderFragment = other
-		sellOrderFragment = orderFragment
-	}
-
-	// Perform the addition using the buyOrderFragment as the LHS and the
-	// sellOrderFragment as the RHS.
-	fstCodeShare := sss.Share{
-		Key:   buyOrderFragment.FstCodeShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.FstCodeShare.Value, big.NewInt(0).Sub(prime, sellOrderFragment.FstCodeShare.Value)),
-	}
-	sndCodeShare := sss.Share{
-		Key:   buyOrderFragment.SndCodeShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.SndCodeShare.Value, big.NewInt(0).Sub(prime, sellOrderFragment.SndCodeShare.Value)),
-	}
-	priceShare := sss.Share{
-		Key:   buyOrderFragment.PriceShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.PriceShare.Value, big.NewInt(0).Sub(prime, sellOrderFragment.PriceShare.Value)),
-	}
-	maxVolumeShare := sss.Share{
-		Key:   buyOrderFragment.MaxVolumeShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.MaxVolumeShare.Value, big.NewInt(0).Sub(prime, sellOrderFragment.MinVolumeShare.Value)),
-	}
-	minVolumeShare := sss.Share{
-		Key:   buyOrderFragment.MinVolumeShare.Key,
-		Value: big.NewInt(0).Add(sellOrderFragment.MaxVolumeShare.Value, big.NewInt(0).Sub(prime, buyOrderFragment.MinVolumeShare.Value)),
-	}
-	fstCodeShare.Value.Mod(fstCodeShare.Value, prime)
-	sndCodeShare.Value.Mod(sndCodeShare.Value, prime)
-	priceShare.Value.Mod(priceShare.Value, prime)
-	maxVolumeShare.Value.Mod(maxVolumeShare.Value, prime)
-	minVolumeShare.Value.Mod(minVolumeShare.Value, prime)
-	deltaFragment := &DeltaFragment{
-		nil,
-		buyOrderFragment.OrderID,
-		sellOrderFragment.OrderID,
-		buyOrderFragment.ID,
-		sellOrderFragment.ID,
-		fstCodeShare,
-		sndCodeShare,
-		priceShare,
-		maxVolumeShare,
-		minVolumeShare,
-	}
-	deltaFragment.ID = DeltaFragmentID(crypto.Keccak256(deltaFragment.BuyOrderFragmentID[:], deltaFragment.SellOrderFragmentID[:]))
-	return deltaFragment, nil
+// Hash returns the Keccak256 hash of a Fragment. This hash is used to create
+// the FragmentID and signature for a Fragment.
+func (fragment *Fragment) Hash() []byte {
+	return crypto.Keccak256(fragment.Bytes())
 }
 
-// Bytes returns an OrderFragment serialized into a bytes.
-func (orderFragment *OrderFragment) Bytes() []byte {
+// Bytes returns a Fragment serialized into a bytes.
+func (fragment *Fragment) Bytes() []byte {
 	buf := new(bytes.Buffer)
 
-	binary.Write(buf, binary.LittleEndian, orderFragment.OrderID)
-	binary.Write(buf, binary.LittleEndian, orderFragment.OrderType)
-	binary.Write(buf, binary.LittleEndian, orderFragment.OrderParity)
+	binary.Write(buf, binary.LittleEndian, fragment.OrderID)
+	binary.Write(buf, binary.LittleEndian, fragment.OrderType)
+	binary.Write(buf, binary.LittleEndian, fragment.OrderParity)
+	binary.Write(buf, binary.LittleEndian, fragment.OrderExpiry)
 
-	binary.Write(buf, binary.LittleEndian, orderFragment.FstCodeShare.Key)
-	binary.Write(buf, binary.LittleEndian, orderFragment.FstCodeShare.Value.Bytes())
-	binary.Write(buf, binary.LittleEndian, orderFragment.SndCodeShare.Key)
-	binary.Write(buf, binary.LittleEndian, orderFragment.SndCodeShare.Value.Bytes())
-	binary.Write(buf, binary.LittleEndian, orderFragment.PriceShare.Key)
-	binary.Write(buf, binary.LittleEndian, orderFragment.PriceShare.Value.Bytes())
-	binary.Write(buf, binary.LittleEndian, orderFragment.MaxVolumeShare.Key)
-	binary.Write(buf, binary.LittleEndian, orderFragment.MaxVolumeShare.Value.Bytes())
-	binary.Write(buf, binary.LittleEndian, orderFragment.MinVolumeShare.Key)
-	binary.Write(buf, binary.LittleEndian, orderFragment.MinVolumeShare.Value.Bytes())
+	binary.Write(buf, binary.LittleEndian, fragment.FstCodeShare.Key)
+	binary.Write(buf, binary.LittleEndian, fragment.FstCodeShare.Value.Bytes())
+	binary.Write(buf, binary.LittleEndian, fragment.SndCodeShare.Key)
+	binary.Write(buf, binary.LittleEndian, fragment.SndCodeShare.Value.Bytes())
+	binary.Write(buf, binary.LittleEndian, fragment.PriceShare.Key)
+	binary.Write(buf, binary.LittleEndian, fragment.PriceShare.Value.Bytes())
+	binary.Write(buf, binary.LittleEndian, fragment.MaxVolumeShare.Key)
+	binary.Write(buf, binary.LittleEndian, fragment.MaxVolumeShare.Value.Bytes())
+	binary.Write(buf, binary.LittleEndian, fragment.MinVolumeShare.Key)
+	binary.Write(buf, binary.LittleEndian, fragment.MinVolumeShare.Value.Bytes())
 
 	return buf.Bytes()
 }
 
-// IsCompatible returns an error when the two OrderFragments do not have
-// the same share indices.
-func (orderFragment *OrderFragment) IsCompatible(rhs *OrderFragment) error {
-	if orderFragment.OrderParity == rhs.OrderParity {
-		return NewOrderParityError(orderFragment.OrderParity)
-	}
-	if orderFragment.FstCodeShare.Key != rhs.FstCodeShare.Key {
-		return NewOrderFragmentationError(orderFragment.FstCodeShare.Key, rhs.FstCodeShare.Key)
-	}
-	if orderFragment.SndCodeShare.Key != rhs.SndCodeShare.Key {
-		return NewOrderFragmentationError(orderFragment.SndCodeShare.Key, rhs.SndCodeShare.Key)
-	}
-	if orderFragment.PriceShare.Key != rhs.PriceShare.Key {
-		return NewOrderFragmentationError(orderFragment.PriceShare.Key, rhs.PriceShare.Key)
-	}
-	if orderFragment.MaxVolumeShare.Key != rhs.MaxVolumeShare.Key {
-		return NewOrderFragmentationError(orderFragment.MaxVolumeShare.Key, rhs.MaxVolumeShare.Key)
-	}
-	if orderFragment.MinVolumeShare.Key != rhs.MinVolumeShare.Key {
-		return NewOrderFragmentationError(orderFragment.MinVolumeShare.Key, rhs.MinVolumeShare.Key)
-	}
-	return nil
+// Equal returns an equality check between two Orders.
+func (fragment *Fragment) Equal(other *Fragment) bool {
+	return fragment.ID.Equal(other.ID) &&
+		fragment.OrderID.Equal(other.OrderID) &&
+		fragment.OrderType == other.OrderType &&
+		fragment.OrderParity == other.OrderParity &&
+		fragment.OrderExpiry.Equal(other.OrderExpiry) &&
+		fragment.FstCodeShare.Value.Cmp(other.FstCodeShare.Value) == 0 &&
+		fragment.SndCodeShare.Value.Cmp(other.SndCodeShare.Value) == 0 &&
+		fragment.PriceShare.Value.Cmp(other.PriceShare.Value) == 0 &&
+		fragment.MaxVolumeShare.Value.Cmp(other.MaxVolumeShare.Value) == 0 &&
+		fragment.MinVolumeShare.Value.Cmp(other.MinVolumeShare.Value) == 0
+}
+
+// IsCompatible returns true when two Fragments are compatible for a
+// computation, otherwise it returns false. For a Fragment to be compatible
+// with another Fragment it must have a diferrent ID, it must have a different
+// order ID, it must have a different parity, it must have a different owner,
+// and all secret sharing fields must have the same secret sharing index.
+func (fragment *Fragment) IsCompatible(other *Fragment) bool {
+	// TODO: Compare signatories
+	return !fragment.ID.Equal(other.ID) &&
+		!fragment.OrderID.Equal(other.OrderID) &&
+		fragment.OrderParity != other.OrderParity &&
+		fragment.FstCodeShare.Key == other.FstCodeShare.Key &&
+		fragment.SndCodeShare.Key == other.SndCodeShare.Key &&
+		fragment.PriceShare.Key == other.PriceShare.Key &&
+		fragment.MaxVolumeShare.Key == other.MaxVolumeShare.Key &&
+		fragment.MinVolumeShare.Key == other.MinVolumeShare.Key
 }

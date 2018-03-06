@@ -8,7 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	base58 "github.com/jbenet/go-base58"
-	"github.com/republicprotocol/go-sss"
+	"github.com/republicprotocol/republic-go/shamir"
 )
 
 // A CurrencyCode is a numerical representation of the currencies supported by
@@ -45,7 +45,7 @@ const (
 // An ID is the Keccak256 hash of an Order.
 type ID []byte
 
-// Equal return an equality between two IDs.
+// Equal returns an equality check between two IDs.
 func (id ID) Equal(other ID) bool {
 	return bytes.Equal(id, other)
 }
@@ -73,7 +73,7 @@ type Order struct {
 	Nonce *big.Int `json:"nonce"`
 }
 
-// NewOrder returns a new Order and computes the ID for the Order.
+// NewOrder returns a new Order and computes the ID.
 func NewOrder(ty Type, parity Parity, expiry time.Time, fstCode, sndCode CurrencyCode, price, maxVolume, minVolume, nonce *big.Int) *Order {
 	order := &Order{
 		Type:      ty,
@@ -86,36 +86,36 @@ func NewOrder(ty Type, parity Parity, expiry time.Time, fstCode, sndCode Currenc
 		MinVolume: minVolume,
 		Nonce:     nonce,
 	}
-	order.ID = Hash()
+	order.ID = ID(order.Hash())
 	return order
 }
 
 // Split the Order into n OrderFragments, where k OrderFragments are needed to
 // reconstruct the Order. Returns a slice of all n OrderFragments, or an error.
-func (order *Order) Split(n, k int64, prime *big.Int) ([]*OrderFragment, error) {
-	fstCodeShares, err := sss.Split(n, k, prime, big.NewInt(int64(order.FstCode)))
+func (order *Order) Split(n, k int64, prime *big.Int) ([]*Fragment, error) {
+	fstCodeShares, err := shamir.Split(n, k, prime, big.NewInt(int64(order.FstCode)))
 	if err != nil {
 		return nil, err
 	}
-	sndCodeShares, err := sss.Split(n, k, prime, big.NewInt(int64(order.SndCode)))
+	sndCodeShares, err := shamir.Split(n, k, prime, big.NewInt(int64(order.SndCode)))
 	if err != nil {
 		return nil, err
 	}
-	priceShares, err := sss.Split(n, k, prime, order.Price)
+	priceShares, err := shamir.Split(n, k, prime, order.Price)
 	if err != nil {
 		return nil, err
 	}
-	maxVolumeShares, err := sss.Split(n, k, prime, order.MaxVolume)
+	maxVolumeShares, err := shamir.Split(n, k, prime, order.MaxVolume)
 	if err != nil {
 		return nil, err
 	}
-	minVolumeShares, err := sss.Split(n, k, prime, order.MinVolume)
+	minVolumeShares, err := shamir.Split(n, k, prime, order.MinVolume)
 	if err != nil {
 		return nil, err
 	}
-	orderFragments := make([]*OrderFragment, n)
-	for i := int64(0); i < n; i++ {
-		orderFragments[i] = NewOrderFragment(
+	fragments := make([]*Fragment, n)
+	for i := range fragments {
+		fragments[i] = NewFragment(
 			order.ID,
 			order.Type,
 			order.Parity,
@@ -126,7 +126,7 @@ func (order *Order) Split(n, k int64, prime *big.Int) ([]*OrderFragment, error) 
 			minVolumeShares[i],
 		)
 	}
-	return orderFragments, nil
+	return fragments, nil
 }
 
 // Hash returns the Keccak256 hash of an Order. This hash is used to create the
@@ -150,7 +150,7 @@ func (order *Order) Bytes() []byte {
 	return buf.Bytes()
 }
 
-// Equal checks if two Orders are equal in value.
+// Equal returns an equality check between two Orders.
 func (order *Order) Equal(other *Order) bool {
 	return order.ID.Equal(other.ID) &&
 		order.Type == other.Type &&
