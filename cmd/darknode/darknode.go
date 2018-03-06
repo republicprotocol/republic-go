@@ -53,7 +53,7 @@ func main() {
 
 func parseCommandLineFlags() error {
 
-	confFilename := flag.String("config", "./default-config.json", "Path to the JSON configuration file")
+	confFilename := flag.String("config", "/home/ubuntu/default-config.json", "Path to the JSON configuration file")
 	flag.Parse()
 
 	conf, err := node.LoadConfig(*confFilename)
