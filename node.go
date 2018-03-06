@@ -40,7 +40,7 @@ type LogQueue struct {
 func NewLogQueue() *LogQueue {
 	logQueue := new(LogQueue)
 	logQueue.GuardedObject = do.NewGuardedObject()
-	logQueue.channels = make([]chan do.Option, 0)
+	logQueue.channels = nil
 	return logQueue
 }
 
