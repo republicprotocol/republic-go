@@ -29,6 +29,7 @@ message Nothing {
  */
 
 service DarkOcean {
+  rpc Logs (LogRequest) returns (stream LogEvent);
   rpc Sync (SyncRequest) returns (stream SyncBlock);
 
   rpc SignOrderFragment (SignOrderFragmentRequest) returns (OrderFragmentSignature);
@@ -40,6 +41,15 @@ service DarkOcean {
   rpc ComputeResidueFragment (ComputeResidueFragmentRequest) returns (Nothing);
   rpc BroadcastAlphaBetaFragment (BroadcastAlphaBetaFragmentRequest) returns (AlphaBetaFragment);
   rpc BroadcastDeltaFragment (BroadcastDeltaFragmentRequest) returns (DeltaFragment);
+}
+
+message LogRequest {
+  Multiaddress from = 1;
+}
+
+message LogEvent {
+  bytes type = 1;
+  bytes message = 2;
 }
 
 message SyncRequest {

@@ -135,6 +135,35 @@ func (client *Client) QueryDeep(query *Address) (chan *Multiaddress, error) {
 	return ch, err
 }
 
+func (client *Client) Logs() (chan *LogEvent, error) {
+	ch := make(chan *LogEvent)
+	err := client.TimeoutFunc(func(ctx context.Context) error {
+		stream, err := client.DarkOcean.Logs(ctx, &LogRequest{
+			From: client.From,
+		}, grpc.FailFast(false))
+		if err != nil {
+			return err
+		}
+		go func() {
+			defer func() { recover() }()
+			for {
+				logEvent, err := stream.Recv()
+				if err == io.EOF {
+					close(ch)
+					return
+				}
+				if err != nil {
+					close(ch)
+					return
+				}
+				ch <- logEvent
+			}
+		}()
+		return nil
+	})
+	return ch, err
+}
+
 func (client *Client) Sync() (chan *SyncBlock, error) {
 	ch := make(chan *SyncBlock)
 	err := client.TimeoutFunc(func(ctx context.Context) error {
