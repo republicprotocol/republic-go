@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/republicprotocol/go-order-compute"
@@ -10,7 +11,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-// A Client is used to send RPCs to services.
 type Client struct {
 	Connection *grpc.ClientConn
 	To         *Multiaddress
@@ -36,7 +36,7 @@ func NewClient(to, from identity.Multiaddress) (*Client, error) {
 		To:      SerializeMultiaddress(to),
 		From:    SerializeMultiaddress(from),
 	}
-	if err := client.timeout(func(ctx context.Context) error {
+	if err := client.TimeoutFunc(func(ctx context.Context) error {
 		connection, err := grpc.DialContext(ctx, fmt.Sprintf("%s:%s", host, port), grpc.WithInsecure())
 		if err != nil {
 			return err
@@ -52,12 +52,69 @@ func NewClient(to, from identity.Multiaddress) (*Client, error) {
 	return client, nil
 }
 
+func (client *Client) Ping() error {
+	return client.TimeoutFunc(func(ctx context.Context) error {
+		_, err := client.Swarm.Ping(ctx, client.To, grpc.FailFast(false))
+		return err
+	})
+}
+
+func (client *Client) Query(query identity.Address) (identity.Multiaddresses, error) {
+	multiaddresses := make(identity.Multiaddresses, 0)
+	err := client.TimeoutFunc(func(ctx context.Context) error {
+		stream, err := client.Swarm.Query(ctx, SerializeAddress(query), grpc.FailFast(false))
+		if err != nil {
+			return err
+		}
+		for {
+			multiaddress, err := stream.Recv()
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			deserializedMultiaddress, err := DeserializeMultiaddress(multiaddress)
+			if err != nil {
+				return err
+			}
+			multiaddresses = append(multiaddresses, deserializedMultiaddress)
+		}
+	})
+	return multiaddresses, err
+}
+
+func (client *Client) QueryDeep(query identity.Address) (identity.Multiaddresses, error) {
+	multiaddresses := make(identity.Multiaddresses, 0)
+	err := client.TimeoutFunc(func(ctx context.Context) error {
+		stream, err := client.Swarm.QueryDeep(ctx, SerializeAddress(query), grpc.FailFast(false))
+		if err != nil {
+			return err
+		}
+		for {
+			multiaddress, err := stream.Recv()
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			deserializedMultiaddress, err := DeserializeMultiaddress(multiaddress)
+			if err != nil {
+				return err
+			}
+			multiaddresses = append(multiaddresses, deserializedMultiaddress)
+		}
+	})
+	return multiaddresses, err
+}
+
 func (client *Client) BroadcastDeltaFragment(deltaFragment *compute.DeltaFragment) (*DeltaFragment, error) {
 	var response *DeltaFragment
 	var err error
 
 	serializedDeltaFragment := SerializeDeltaFragment(deltaFragment)
-	err = client.timeout(func(ctx context.Context) error {
+	err = client.TimeoutFunc(func(ctx context.Context) error {
 		response, err = client.DarkOcean.BroadcastDeltaFragment(ctx, &BroadcastDeltaFragmentRequest{
 			From:          client.From,
 			DeltaFragment: serializedDeltaFragment,
@@ -68,14 +125,14 @@ func (client *Client) BroadcastDeltaFragment(deltaFragment *compute.DeltaFragmen
 	return response, err
 }
 
-func (client *Client) timeout(f func(ctx context.Context) error) error {
-	var err error
+// TimeoutFunc uses the timeout options of the Client to call a function. It
+// returns the last error that occured, or nil.
+func (client *Client) TimeoutFunc(f func(ctx context.Context) error) (err error) {
 	for i := 0; i < client.Options.TimeoutRetries; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), client.Options.Timeout+(client.Options.TimeoutBackoff*time.Duration(i)))
 		defer cancel()
 		if err = f(ctx); err == nil {
-			break
+			return
 		}
 	}
-	return err
 }

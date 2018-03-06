@@ -23,6 +23,8 @@ type ClientPool struct {
 func NewClientPool(from identity.Multiaddress, cacheLimit int) *ClientPool {
 	pool := new(ClientPool)
 	pool.GuardedObject = do.NewGuardedObject()
+	pool.from = from
+	pool.cache = map[string]ClientCacheEntry{}
 	pool.cacheLimit = cacheLimit
 	return pool
 }
