@@ -1,4 +1,4 @@
-package node
+package logger
 
 import (
 	"fmt"
@@ -156,7 +156,7 @@ func (plugin *FilePlugin) Warning(warning string) error {
 	return err
 }
 
-func (plugin *FilePlugin) Error(e error) error{
+func (plugin *FilePlugin) Error(e error) error {
 	_, err := plugin.File.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
 	if err != nil {
 		return err
@@ -206,8 +206,8 @@ func (plugin *WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		switch request.Type{
-		case  "usage":
+		switch request.Type {
+		case "usage":
 			err = plugin.Connection.WriteJSON(request) // todo
 		case "event":
 			err = plugin.Connection.WriteJSON(request) // todo
@@ -253,8 +253,8 @@ func (plugin *WebSocketPlugin) Info(info string) error {
 		Type:    "INFO",
 		Message: info,
 	})
-	if err != nil{
-		log.Print("websocket  error: ",err)
+	if err != nil {
+		log.Print("websocket  error: ", err)
 	}
 }
 
@@ -262,13 +262,13 @@ func (plugin *WebSocketPlugin) Error(err error) {
 	if plugin.Connection == nil {
 		return
 	}
-	e:= plugin.Connection.WriteJSON(Message{
+	e := plugin.Connection.WriteJSON(Message{
 		Time:    time.Now().Format("2006/01/02 15:04:05"),
 		Type:    "ERROR",
 		Message: err.Error(),
 	})
-	if e != nil{
-		log.Print("websocket  error: ",err)
+	if e != nil {
+		log.Print("websocket  error: ", err)
 	}
 }
 
@@ -282,7 +282,7 @@ func (plugin *WebSocketPlugin) Warning(warning string) {
 		Type:    "warning",
 		Message: warning,
 	})
-	if err != nil{
-		log.Print("websocket  error: ",err)
+	if err != nil {
+		log.Print("websocket  error: ", err)
 	}
 }
