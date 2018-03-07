@@ -83,6 +83,7 @@ func main() {
 // Parse the config file path and read config from it.
 func parseCommandLineFlags() error {
 	confFilename := flag.String("config", fmt.Sprintf("%sdefault-config.json", PATH), "Path to the JSON configuration file")
+
 	flag.Parse()
 
 	conf, err := node.LoadConfig(*confFilename)
