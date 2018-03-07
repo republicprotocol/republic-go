@@ -30,26 +30,18 @@ type Client interface {
 	BalanceAt(ctx context.Context, contract common.Address, blockNumber *big.Int) (*big.Int, error)
 }
 
-// Ropsten ...
-func Ropsten(uri string) Client {
-	// Create an IPC based RPC connection to a remote node and an authorized transactor
-	conn, err := ethclient.Dial(uri)
-	if err != nil {
-		log.Fatalf("Failed to connect to the Ethereum client: %v", err)
-	}
-	if err != nil {
-		log.Fatalf("Failed to create authorized transactor: %v", err)
-	}
-	return conn
+// FromURI will connect to a provided RPC uri
+func FromURI(uri string) (Client, error) {
+	return ethclient.Dial(uri)
 }
 
-// Simulated ...
+// Simulated will create a simulated client
 func Simulated(auth1 *bind.TransactOpts, auth2 *bind.TransactOpts) Client {
 	sim := backends.NewSimulatedBackend(core.GenesisAlloc{auth1.From: {Balance: big.NewInt(9000000000000000000)}, auth2.From: {Balance: big.NewInt(9000000000000000000)}})
 	return sim
 }
 
-// DeployERC20 ...
+// DeployERC20 deploys and ERC20 contract
 func DeployERC20(context context.Context, connection Client, auth *bind.TransactOpts) (*types.Transaction, common.Address) {
 	// Deploy a token contract on the simulated blockchain
 	address, tx, _, err := contracts.DeployAtomicSwapERC20(auth, connection)

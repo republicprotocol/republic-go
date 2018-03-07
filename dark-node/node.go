@@ -190,6 +190,7 @@ func (node *DarkNode) Start() error {
 	node.Swarm.Bootstrap()
 
 	oceanChanges := make(chan do.Option)
+	defer close(oceanChanges)
 	go darkocean.WatchForDarkOceanChanges(node.Registrar, oceanChanges)
 
 	for {
@@ -198,7 +199,7 @@ func (node *DarkNode) Start() error {
 			if ocean.Err != nil {
 				// Log
 			} else {
-				node.PingDarkPool(*ocean.Ok.(*darkocean.IDDarkPool))
+				node.AfterEachEpoch()
 			}
 		}
 	}
@@ -268,7 +269,7 @@ func (node *DarkNode) Deregister() error {
 }
 
 // PingDarkPool call rpc.PingTarget on each node in a dark pool
-func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (darkocean.DarkPool, darkocean.IDDarkPool) {
+func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (identity.MultiAddresses, darkocean.IDDarkPool) {
 
 	darkpool := make(identity.MultiAddresses, 0)
 	disconnectedDarkPool := make(darkocean.IDDarkPool, 0)
@@ -295,50 +296,25 @@ func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (darkocean.DarkPool
 			continue
 		}
 	}
-	return darkocean.DarkPool{Nodes: darkpool}, disconnectedDarkPool
+	return darkpool, disconnectedDarkPool
 }
 
-// RepingDarkPool will continually attempt to connect to a set of nodes
+// LongPingDarkPool will continually attempt to connect to a set of nodes
 // in a darkpool until they are all connected
 // Call in a goroutine
-func (node *DarkNode) RepingDarkPool(ids darkocean.IDDarkPool) {
+func (node *DarkNode) LongPingDarkPool(disconnected darkocean.IDDarkPool) {
 	currentBlockhash := node.EpochBlockhash
 
-	for len(ids) > 0 {
+	for len(disconnected) > 0 {
 		if node.EpochBlockhash != currentBlockhash {
 			return
 		}
-		log.Printf("Attempting to re-ping nodes!!!: %v", ids)
-		i := 0
-		for i < len(ids) {
-			id := ids[i]
-			target, err := node.Swarm.FindNode(id)
-			if err != nil || target == nil {
-				log.Printf("%v couldn't find pool peer %v: %v", node.Configuration.MultiAddress.Address(), id, err)
-				// We couldn't find this node so we move on to the next one
-				i++
-				continue
-			}
 
-			node.DarkPool.Add(*target)
+		var connected identity.MultiAddresses
+		connected, disconnected = node.PingDarkPool(disconnected)
 
-			// Remove id from disconnected ids
-			ids[i] = ids[len(ids)-1]
-			ids = ids[:len(ids)-1]
-			// Because ids is now shorter, we don't increment i
+		node.DarkPool.Add(connected...)
 
-			err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), defaultTimeout)
-			if err != nil {
-				log.Printf("%v couldn't ping pool peer %v: %v", node.Configuration.MultiAddress.Address(), target, err)
-				continue
-			}
-
-			err = node.Swarm.DHT.UpdateMultiAddress(*target)
-			if err != nil {
-				log.Printf("%v coudln't update DHT for pool peer %v: %v", node.Configuration.MultiAddress.Address(), target, err)
-				continue
-			}
-		}
 		time.Sleep(30 * time.Second)
 	}
 }
@@ -359,11 +335,11 @@ func (node *DarkNode) AfterEachEpoch() error {
 	}
 
 	connectedDarkPool, disconnectedDarkPool := node.PingDarkPool(idPool)
-	node.DarkPool = connectedDarkPool
+	node.DarkPool = darkocean.DarkPool{Nodes: connectedDarkPool}
 
 	log.Printf("%v connected to dark pool: %v", node.Configuration.MultiAddress.Address(), node.DarkPool)
 
-	go node.RepingDarkPool(disconnectedDarkPool)
+	go node.LongPingDarkPool(disconnectedDarkPool)
 
 	return nil
 }
@@ -374,7 +350,10 @@ func ConnectToRegistrar(keypair identity.KeyPair) (*dnr.DarkNodeRegistrar, error
 	auth := bind.NewKeyedTransactor(keypair.PrivateKey)
 	// Gas Price
 	auth.GasPrice = big.NewInt(6000000000)
-	client := dnr.Ropsten("https://ropsten.infura.io/")
+	client, err := dnr.FromURI("https://ropsten.infura.io/")
+	if err != nil {
+		log.Fatal(err)
+	}
 	contractAddress := common.HexToAddress("0x6e48bdd8949d0c929e9b5935841f6ff18de0e613")
 	renContract := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
 	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, renContract, nil)

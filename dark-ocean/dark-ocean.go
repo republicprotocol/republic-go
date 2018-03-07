@@ -18,10 +18,10 @@ type DarkPool struct {
 }
 
 // Add will append a multiaddress to the darkpool
-func (darkpool DarkPool) Add(target identity.MultiAddress) {
+func (darkpool DarkPool) Add(targets ...identity.MultiAddress) {
 	darkpool.Enter(nil)
 	defer darkpool.Exit()
-	darkpool.Nodes = append(darkpool.Nodes, target)
+	darkpool.Nodes = append(darkpool.Nodes, targets...)
 }
 
 // IDDarkPool is a list of node ids

@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 // Config information for Miners

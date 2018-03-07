@@ -6,9 +6,10 @@ import (
 
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-order-compute"
-	"github.com/republicprotocol/go-rpc"
+	"github.com/republicprotocol/republic-go/compute"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/network/rpc"
+	"github.com/republicprotocol/republic-go/order"
 )
 
 // OnPingReceived implements the swarm.Delegate interface. It is used by the
@@ -41,7 +42,7 @@ func (node *DarkNode) OnSync(from identity.MultiAddress) chan do.Option {
 // OnOrderFragmentReceived implements the dark.Delegate interface. It is called
 // by the underlying dark.Node whenever it receives a compute.OrderFragment
 // that it must process.
-func (node *DarkNode) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *compute.OrderFragment) {
+func (node *DarkNode) OnOrderFragmentReceived(from identity.MultiAddress, orderFragment *order.FragmentID) {
 	go func() {
 		deltaFragments, err := node.DeltaFragmentMatrix.InsertOrderFragment(orderFragment)
 		if err != nil {

@@ -13,6 +13,9 @@ import (
 // Blocking function
 func WatchForDarkOceanChanges(registrar *dnr.DarkNodeRegistrar, channel chan do.Option) {
 
+	// This function runs until the channel is closed
+	defer func() { recover() }()
+
 	var currentBlockhash [32]byte
 
 	// TODO loop until an epoch, call calculateDarkOcean()
@@ -24,10 +27,9 @@ func WatchForDarkOceanChanges(registrar *dnr.DarkNodeRegistrar, channel chan do.
 
 		if epoch.Blockhash != currentBlockhash {
 			currentBlockhash = epoch.Blockhash
-			// Call calculateDarkOcean
 			darkOceanOverlay, err := GetDarkPools(registrar)
 			if err != nil {
-				channel <- do.Err(errors.New("Coudln't retrieve dark ocean overlay"))
+				channel <- do.Err(errors.New("Couldn't retrieve dark ocean overlay"))
 			} else {
 				channel <- do.Ok(darkOceanOverlay)
 			}

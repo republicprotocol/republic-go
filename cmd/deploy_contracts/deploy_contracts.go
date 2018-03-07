@@ -33,7 +33,12 @@ func main() {
 		log.Fatalln(err)
 	}
 	auth := bind.NewKeyedTransactor(ethereumKeyPair.PrivateKey)
-	client := dnr.Ropsten("https://ropsten.infura.io/")
+
+	client, err := dnr.FromURI("https://ropsten.infura.io/")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// REPLACE REN ADDRESS HERE
 	renContract := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
 	address, tx, _, err := contracts.DeployDarkNodeRegistrar(auth, client, renContract, big.NewInt(1000), big.NewInt(60))

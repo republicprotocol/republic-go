@@ -6,7 +6,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/go-dark-node-registrar"
 
 	"log"
 	"math/big"
@@ -15,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/republic-go/contracts/dnr"
 )
 
 var ether = big.NewInt(1000000000000000000)
@@ -28,12 +28,15 @@ var _ = Describe("Dark Node Registrar", func() {
 		log.Fatalf("Failed to create authorized transactor: %v", err)
 	}
 
-	client := Ropsten("https://ropsten.infura.io/")
+	client, err := dnr.FromURI("https://ropsten.infura.io/")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	darkNodeContractAddress := common.HexToAddress("0x0B1148699C93cA9Cfa28f11BD581936f673F76ec")
 	renContractAddress := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
 
-	UserConnection := NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, darkNodeContractAddress, renContractAddress, nil)
+	UserConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, darkNodeContractAddress, renContractAddress, nil)
 
 	keyPair, err := identity.NewKeyPair()
 	if err != nil {
