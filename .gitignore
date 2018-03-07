@@ -1,5 +1,12 @@
+<<<<<<< HEAD
 # Output of the go coverage tool
 *.out
 
 # Dep vendors
 vendor
+=======
+Gopkg.lock
+vendor
+*.out
+*.pdf
+>>>>>>> 9743ddf153c278d04d75f0f526c59c1fd972c703
