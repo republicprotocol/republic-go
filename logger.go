@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 )
 
 type Logger struct {
@@ -101,9 +102,9 @@ type Plugin interface {
 	Start() error
 	Stop() error
 
-	Info(info string)
-	Warning(warning string)
-	Error(err error)
+	Info(info string) error
+	Warning(warning string) error
+	Error(err error) error
 }
 
 // A FilePlugin implements the Plugin interface by logging all events to an
@@ -122,11 +123,6 @@ func NewFilePlugin(path string) Plugin {
 func (plugin *FilePlugin) Start() error {
 	var err error
 	plugin.File, err = os.OpenFile(plugin.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	 _, err = plugin.File.WriteString(time.Now().Format("2006/01/02 15:04:05"))
-	if err != nil {
-		log.Println(123)
-		panic(err)
-	}
 	return err
 }
 
@@ -134,35 +130,43 @@ func (plugin *FilePlugin) Stop() error {
 	return plugin.File.Close()
 }
 
-func (plugin *FilePlugin) Info(info string) {
-	if plugin.File == nil {
-		log.Println("file is nil:", info)
-		return
-	}
-	log.Println("file is not nil")
+func (plugin *FilePlugin) Info(info string) error {
 	_, err := plugin.File.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
 	if err != nil {
+		return err
 	}
 	_, err = plugin.File.WriteString("INFO : ")
 	if err != nil {
-		panic(err)
+		return err
 	}
 	_, err = plugin.File.WriteString(info + "\n")
+	return err
+}
+
+func (plugin *FilePlugin) Warning(warning string) error {
+	_, err := plugin.File.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
 	if err != nil {
-		panic(err)
+		return err
 	}
+	_, err = plugin.File.WriteString("WARNING : ")
+	if err != nil {
+		return err
+	}
+	_, err = plugin.File.WriteString(warning + "\n")
+	return err
 }
 
-func (plugin *FilePlugin) Warning(warning string) {
-	plugin.File.Write([]byte(time.Now().Format("2006/01/02 15:04:05 ")))
-	plugin.File.Write([]byte("WARNING : "))
-	plugin.File.Write([]byte(warning + "\n"))
-}
-
-func (plugin *FilePlugin) Error(err error) {
-	plugin.File.Write([]byte(time.Now().Format("2006/01/02 15:04:05 ")))
-	plugin.File.Write([]byte("ERROR : "))
-	plugin.File.Write([]byte(err.Error() + "\n"))
+func (plugin *FilePlugin) Error(e error) error{
+	_, err := plugin.File.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
+	if err != nil {
+		return err
+	}
+	_, err = plugin.File.WriteString("ERROR : ")
+	if err != nil {
+		return err
+	}
+	_, err = plugin.File.WriteString(err.Error() + "\n")
+	return err
 }
 
 type WebSocketPlugin struct {
@@ -175,7 +179,7 @@ type WebSocketPlugin struct {
 }
 
 func NewWebSocketPlugin(host, port, username, password string) Plugin {
-	plugin := WebSocketPlugin{
+	plugin := &WebSocketPlugin{
 		Host:     host,
 		Port:     port,
 		Username: username,
@@ -184,7 +188,7 @@ func NewWebSocketPlugin(host, port, username, password string) Plugin {
 	return plugin
 }
 
-func (plugin WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request) {
+func (plugin *WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	upgrader := websocket.Upgrader{}
 	plugin.Connection, err = upgrader.Upgrade(w, r, nil)
@@ -216,7 +220,7 @@ func (plugin WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func (plugin WebSocketPlugin) Start() error {
+func (plugin *WebSocketPlugin) Start() error {
 	plugin.Srv = &http.Server{
 		Addr: ":8080",
 	}
@@ -229,7 +233,7 @@ func (plugin WebSocketPlugin) Start() error {
 	return nil
 }
 
-func (plugin WebSocketPlugin) Stop() error {
+func (plugin *WebSocketPlugin) Stop() error {
 	return plugin.Srv.Shutdown(nil)
 }
 
@@ -239,10 +243,9 @@ type Message struct {
 	Message string
 }
 
-func (plugin WebSocketPlugin) Info(info string) {
+func (plugin *WebSocketPlugin) Info(info string) error {
 	if plugin.Connection == nil {
-		log.Println("nil websocket infor ")
-		return
+		return errors.New("nl")
 	}
 
 	err := plugin.Connection.WriteJSON(Message{
@@ -255,7 +258,7 @@ func (plugin WebSocketPlugin) Info(info string) {
 	}
 }
 
-func (plugin WebSocketPlugin) Error(err error) {
+func (plugin *WebSocketPlugin) Error(err error) {
 	if plugin.Connection == nil {
 		return
 	}
@@ -269,7 +272,7 @@ func (plugin WebSocketPlugin) Error(err error) {
 	}
 }
 
-func (plugin WebSocketPlugin) Warning(warning string) {
+func (plugin *WebSocketPlugin) Warning(warning string) {
 	if plugin.Connection == nil {
 		return
 	}
