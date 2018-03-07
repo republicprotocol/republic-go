@@ -31,6 +31,8 @@ func (node *DarkNode) OnQueryCloserPeersOnFrontierReceived(peer identity.MultiAd
 	// TODO: Log metrics for the deep query.
 }
 
+// OnSync implements the dark.Delegate interface. It is called by the underlying
+// dark.Node whenever it receives a SyncRequest that it muct process.
 func (node *DarkNode) OnSync(from identity.MultiAddress) chan do.Option {
 	// FIXME: Synchronize.
 	panic("uninmplemented")
