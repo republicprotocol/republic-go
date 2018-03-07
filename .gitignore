@@ -3,3 +3,6 @@
 
 # Dep vendors
 vendor
+
+# Gopkg.lock
+Gopkg.lock
