@@ -171,6 +171,50 @@ func (darkNodeRegistrar *DarkNodeRegistrar) GetDarkpool() ([][20]byte, error) {
 	return darkNodeRegistrar.binding.GetXingOverlay(darkNodeRegistrar.auth2)
 }
 
+// GetDarkPools gets the full list of nodes and sorts them into pools
+func (darkNodeRegistrar *DarkNodeRegistrar) GetDarkPools() (*DarkOcean, error) {
+	allNodes, err := darkNodeRegistrar.GetDarkpool()
+	if err != nil {
+		return &DarkOcean{}, err
+	}
+
+	blockhash := /* TODO: Get from contract */ big.NewInt(1234567)
+	poolsize := /* TODO: Get from contract? */ 72
+
+	// Find the prime smaller or equal to the number of registered nodes
+	// Start at +2 because it has to greater than the maximum (x+1)
+	previousPrime := big.NewInt(int64(len(allNodes) + 2))
+	// https://golang.org/src/math/big/prime.go
+	// ProbablyPrime is 100% accurate for inputs less than 2^64.
+	for !previousPrime.ProbablyPrime(0) {
+		previousPrime = previousPrime.Sub(previousPrime, big.NewInt(1))
+	}
+
+	inverse := blockhash.ModInverse(blockhash, previousPrime)
+
+	// Integer division
+	numberOfPools := big.NewInt(0).Div(previousPrime, big.NewInt(int64(poolsize)))
+	if numberOfPools.Int64() == 0 {
+		numberOfPools = big.NewInt(1)
+	}
+
+	pools := make([]DarkPool, numberOfPools.Int64())
+
+	for x := range allNodes {
+		// Add one so that
+		xPlusOne := big.NewInt(int64(x + 1))
+		i := big.NewInt(0).Mod(big.NewInt(0).Mul(xPlusOne, inverse), previousPrime)
+
+		assignedPool := big.NewInt(0).Mod(i, numberOfPools).Int64()
+
+		pools[assignedPool] = append(pools[assignedPool], allNodes[x][:])
+	}
+
+	return &DarkOcean{
+		Pools: pools,
+	}, err
+}
+
 // MinimumBond get's the minimum viable bonda mount
 func (darkNodeRegistrar *DarkNodeRegistrar) MinimumBond() (*big.Int, error) {
 	return darkNodeRegistrar.binding.MinimumBond(darkNodeRegistrar.auth2)
