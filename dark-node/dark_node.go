@@ -9,8 +9,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/republicprotocol/go-dark-network"
 	"github.com/republicprotocol/go-dark-node-registrar"
+	dht "github.com/republicprotocol/go-dht"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
@@ -26,6 +26,10 @@ var Prime, _ = big.NewInt(0).SetString("1797693134862315907729305190789024733617
 type DarkNode struct {
 	Config
 
+	Logger     *logger.Logger
+	ClientPool *rpc.ClientPool
+	DHT        *dht.DHT
+
 	DeltaBuilder             *compute.DeltaBuilder
 	DeltaFragmentMatrix      *compute.DeltaFragmentMatrix
 	OrderFragmentWorkerQueue chan *order.Fragment
@@ -34,56 +38,36 @@ type DarkNode struct {
 	DeltaFragmentWorker      *DeltaFragmentWorker
 
 	Server     *grpc.Server
-	ClientPool *rpc.ClientPool
 	Swarm      *network.SwarmService
 	Dark       *network.DarkService
 }
 
 // NewDarkNode creates a new DarkNode, a new swarm.Node and dark.Node and assigns the
 // new DarkNode as the delegate for both. Returns the new DarkNode, or an error.
-func NewDarkNode(config *Config) (*DarkNode, error) {
+func NewDarkNode(config *Config) (*DarkNode) {
 	if config.Prime == nil {
 		config.Prime = Prime
 	}
 
-	node := new(DarkNode)
+	node := &DarkNode{Config: config}
+
+	node.Logger = logger.NewLogger()
+	node.ClientPool = rpc.NewClientPool(node.MultiAddress)
+	node.DHT = dht.NewDHT(node.MultiAddress)
+
+	node.DeltaBuilder = compute.NewDeltaBuilder()
+	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(node.Prime)
+	node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
+	node.OrderFragmentWorker = NewOrderFragmentWorker(node.OrderFragmentWorkerQueue, node.DeltaFragmentMatrix)
+	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
+	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.DeltaFragmentWorkerQueue, node.DeltaBuilder)
 
 	options := network.Options{}
-	logger := logger.NewLogger()
-	clientPool := rpc.NewClientPool(config.Identity.MultiAddress, config.Network.ClientPoolCacheLimit)
-	swarm := network.NewSwarmService(node, options, logger, clientPool, dht)
+	node.Server := grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
+	node.Swarm := network.NewSwarmService(node, options, node.Logger, node.ClientPool, node.DHT)
+	node.Dark := network.NewDarkService(node, options, node.Logger)
 
-	// node.DarkPool = config.BootstrapMultiAddresses
-	node.DarkPoolLimit = 5
-	node.DeltaBuilder = compute.NewDeltaBuilder(node.DarkPoolLimit, config.Prime)
-	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(config.Prime)
-
-	swarmOptions := swarm.Options{
-		MultiAddress:            config.MultiAddress,
-		BootstrapMultiAddresses: config.BootstrapMultiAddresses,
-		Debug:           swarm.DebugMedium,
-		Alpha:           3,
-		MaxBucketLength: 20,
-		Timeout:         30 * time.Second,
-		TimeoutStep:     30 * time.Second,
-		TimeoutRetries:  3,
-		Concurrent:      true,
-	}
-	swarmNode := swarm.NewNode(node.Server, node, swarmOptions)
-	node.Swarm = swarmNode
-
-	darkOptions := dark.Options{
-		Address:        config.MultiAddress.Address(),
-		Debug:          dark.DebugMedium,
-		Timeout:        30 * time.Second,
-		TimeoutStep:    30 * time.Second,
-		TimeoutRetries: 3,
-		Concurrent:     true,
-	}
-	darkNode := dark.NewNode(node.Server, node, darkOptions)
-	node.Dark = darkNode
-
-	return node, nil
+	return node
 }
 
 // Start mining for compute.Orders that are matched. It establishes connections

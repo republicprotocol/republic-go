@@ -12,18 +12,16 @@ import (
 
 // Config information for Miners
 type Config struct {
-	Identity struct {
-		EthereumPrivateKey string                `json:"ethereum_private_key"`
-		RepublicKeyPair    identity.KeyPair      `json:"republic_key_pair"`
-		RSAKeyPair         identity.KeyPair      `json:"rsa_key_pair"`
-		MultiAddress       identity.MultiAddress `json:"multi_address"`
-	} `json:"identity"`
-	Network struct {
-		Host                    string                  `json:"host"`
-		Port                    string                  `json:"port"`
-		BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
-		ClientPoolCacheLimit    int                     `json:"client_pool_cache_limit"`
-	} `json:"network"`
+	Host string `json:"host"`
+	Port string `json:"port"`
+
+	EthereumPrivateKey string                `json:"ethereum_private_key"`
+	RepublicKeyPair    identity.KeyPair      `json:"republic_key_pair"`
+	RSAKeyPair         identity.KeyPair      `json:"rsa_key_pair"`
+	MultiAddress       identity.MultiAddress `json:"multi_address"`
+
+	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
+
 	Prime *big.Int `json:"prime"`
 }
 
