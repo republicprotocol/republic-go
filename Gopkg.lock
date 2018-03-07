@@ -319,7 +319,7 @@
     "scrypt",
     "sha3"
   ]
-  revision = "91a49db82a88618983a78a06c1cbd4e00ab749ab"
+  revision = "85f98707c97e11569271e4d9b3d397e079c4f4d0"
 
 [[projects]]
   branch = "master"
@@ -337,7 +337,7 @@
     "trace",
     "websocket"
   ]
-  revision = "22ae77b79946ea320088417e4d50825671d82d57"
+  revision = "d25186b37f34ebdbbea8f488ef055638dfab272d"
 
 [[projects]]
   branch = "master"

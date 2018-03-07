@@ -21,6 +21,8 @@ type Config struct {
 	MultiAddress       identity.MultiAddress `json:"multi_address"`
 
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
+	Logger                  *Logger                 `json:"logger""`
+	Dev                     bool                    `json:"dev""`
 
 	Prime *big.Int `json:"prime"`
 }

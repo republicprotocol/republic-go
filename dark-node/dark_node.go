@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/big"
 	"net"
@@ -42,7 +43,7 @@ type DarkNode struct {
 	Dark       *network.DarkService
 }
 
-// NewDarkNode creates a new DarkNode, a new swarm.Node and dark.Node and assigns the
+// NewDarkNode creates a new DarkNode, a new network.Node and network.Node and assigns the
 // new DarkNode as the delegate for both. Returns the new DarkNode, or an error.
 func NewDarkNode(config *Config) (*DarkNode) {
 	if config.Prime == nil {
@@ -72,12 +73,14 @@ func NewDarkNode(config *Config) (*DarkNode) {
 
 // Start mining for compute.Orders that are matched. It establishes connections
 // to other peers in the swarm network by bootstrapping against a set of
-// bootstrap swarm.Nodes.
+// bootstrap network.Nodes.
 func (node *DarkNode) Start() error {
-
-	//go func() {
-	//	node.StartListening()
-	//}()
+	go func() {
+		for {
+			time.Sleep(20 * time.Second)
+			node.Usage()
+		}
+	}()
 
 	isRegistered := node.IsRegistered()
 	for !isRegistered {
@@ -87,7 +90,7 @@ func (node *DarkNode) Start() error {
 		isRegistered = node.IsRegistered()
 	}
 
-	// Bootstrap the connections in the swarm.
+	// Bootstrap the connections in the network.
 	node.Swarm.Bootstrap()
 
 	go node.WatchForEpoch()
@@ -95,9 +98,21 @@ func (node *DarkNode) Start() error {
 	return nil
 }
 
+func (node *DarkNode) Error(err error) {
+	node.Configuration.Logger.Error(err)
+}
+
+func (node *DarkNode) Info(info string) {
+	node.Configuration.Logger.Info(info)
+}
+
+func (node *DarkNode) Warning(warning string) {
+	node.Configuration.Logger.Warning(warning)
+}
+
 // StartListening starts listening for rpc calls
 func (node *DarkNode) StartListening() error {
-	log.Printf("%v listening on %s:%s\n", node.Configuration.MultiAddress.Address(), node.Configuration.Host, node.Configuration.Port)
+	node.Info(fmt.Sprintf("Listening on %s:%s\n", node.Configuration.Host, node.Configuration.Port))
 	node.Swarm.Register()
 	node.Dark.Register()
 	listener, err := net.Listen("tcp", node.Configuration.Host+":"+node.Configuration.Port)
@@ -288,4 +303,23 @@ func ConnectToRegistrar(keypair identity.KeyPair) (*dnr.DarkNodeRegistrar, error
 	renContract := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
 	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, renContract, nil)
 	return userConnection, nil
+}
+
+func (node *DarkNode) Usage() {
+	// memory
+	vmStat, err := mem.VirtualMemory()
+	if err != nil {
+		node.Error(err)
+	}
+	node.Info(fmt.Sprintf("%d", vmStat.Used))
+	log.Print("mem : ", vmStat.Used)
+
+	// cpu - get CPU number of cores and speed
+	cpuStat, err := cpu.Info()
+	if err != nil {
+		node.Error(err)
+	}
+	node.Info(fmt.Sprintf("%d", cpuStat[0].CacheSize))
+	log.Print("cpu : ", cpuStat[0].CacheSize)
+
 }
