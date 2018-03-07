@@ -8,9 +8,12 @@ before_install:
   - go get github.com/onsi/ginkgo/ginkgo
   - go get github.com/mattn/goveralls
   - go get github.com/golang/dep/cmd/dep
+  - go get github.com/golang/lint/golint
   - dep ensure
 
 script:
+  - go vet
+  - golint -set_exit_status
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out darknode
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out identity
