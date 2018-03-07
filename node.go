@@ -2,10 +2,10 @@ package node
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"math/big"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -99,8 +99,9 @@ type DarkNode struct {
 
 	DeltaBuilder        *compute.DeltaBuilder
 	DeltaFragmentMatrix *compute.DeltaFragmentMatrix
-	DarkPool            identity.MultiAddresses
 	DarkPoolLimit       int64
+	DarkPool            dnr.DarkPool
+	DarkOcean           *dnr.DarkOcean
 
 	logQueue *LogQueue
 }
@@ -133,7 +134,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		Registrar:     registrar,
 		logQueue:      NewLogQueue(),
 	}
-	node.DarkPool = config.BootstrapMultiAddresses
+	// node.DarkPool = config.BootstrapMultiAddresses
 	node.DarkPoolLimit = 5
 	node.DeltaBuilder = compute.NewDeltaBuilder(node.DarkPoolLimit, config.Prime)
 	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(config.Prime)
@@ -175,25 +176,47 @@ func (node *DarkNode) Start() error {
 	//	node.StartListening()
 	//}()
 
-	//isRegistered := node.IsRegistered()
-	//if !isRegistered {
-	//	return errors.New("you are not registered")
-	//	//err := node.Register()
-	//	//if err != nil {
-	//	//	return err
-	//	//}
-	//}
-	// node.PingDarkPool()
+	isRegistered := node.IsRegistered()
+	for !isRegistered {
+		timeout := 60 * time.Second
+		log.Printf("%v not registered. Sleeping for %v seconds.", node.Configuration.MultiAddress.Address(), timeout.Seconds())
+		time.Sleep(timeout)
+		isRegistered = node.IsRegistered()
+	}
 
 	// Bootstrap the connections in the swarm.
 	node.Swarm.Bootstrap()
+
+	log.Printf("%v is pinging dark pool\n", node.Configuration.MultiAddress.Address())
+
+	darkOcean, err := node.Registrar.GetDarkPools()
+	if err != nil {
+		log.Fatalf("%v couldn't get dark pools: %v", node.Configuration.MultiAddress.Address(), err)
+	}
+	node.DarkOcean = darkOcean
+
+	idPool, err := node.DarkOcean.FindDarkPool(node.Configuration.MultiAddress.ID())
+	if err != nil {
+		return err
+	}
+
+	connectedDarkPool, disconnectedDarkPool := node.PingDarkPool(idPool)
+	node.DarkPool = connectedDarkPool
+
+	log.Printf("%v connected to dark pool: %v", node.Configuration.MultiAddress.Address(), node.DarkPool)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go node.RepingDarkPool(disconnectedDarkPool, &wg)
+
+	wg.Wait()
 
 	return nil
 }
 
 // StartListening starts listening for rpc calls
 func (node *DarkNode) StartListening() error {
-	log.Printf("Listening on %s:%s\n", node.Configuration.Host, node.Configuration.Port)
+	log.Printf("%v listening on %s:%s\n", node.Configuration.MultiAddress.Address(), node.Configuration.Host, node.Configuration.Port)
 	node.Swarm.Register()
 	node.Dark.Register()
 	listener, err := net.Listen("tcp", node.Configuration.Host+":"+node.Configuration.Port)
@@ -245,6 +268,7 @@ func (node *DarkNode) Register() error {
 	return err
 }
 
+// Deregister the node on the registrar smart contract
 func (node *DarkNode) Deregister() error {
 	_, err := node.Registrar.Deregister(node.Configuration.MultiAddress.ID())
 	if err != nil {
@@ -253,44 +277,88 @@ func (node *DarkNode) Deregister() error {
 	return nil
 }
 
-func (node *DarkNode) PingDarkPool() error {
-	darkPool, err := node.Registrar.GetDarkpool()
-	if err != nil {
-		return err
-	}
+// PingDarkPool call rpc.PingTarget on each node in a dark pool
+func (node *DarkNode) PingDarkPool(ids dnr.IDDarkPool) (dnr.DarkPool, dnr.IDDarkPool) {
 
-	for _, id := range darkPool {
-		target, err := node.Swarm.FindNode(id[:])
-		if err != nil {
-			return err
-		}
-		// Ignore the node if we can't find it
-		if target == nil {
+	darkpool := make(identity.MultiAddresses, 0)
+	disconnectedDarkPool := make(dnr.IDDarkPool, 0)
+
+	for _, id := range ids {
+		target, err := node.Swarm.FindNode(id)
+		if err != nil || target == nil {
+			log.Printf("%v couldn't find pool peer %v: %v", node.Configuration.MultiAddress.Address(), id, err)
+			disconnectedDarkPool = append(disconnectedDarkPool, id)
 			continue
 		}
+
+		darkpool = append(darkpool, *target)
+
 		err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), defaultTimeout)
-		// Update the nodes in our DHT if they respond
-		if err == nil {
-			node.DarkPool = append(node.DarkPool, *target)
-			node.Swarm.DHT.UpdateMultiAddress(*target)
+		if err != nil {
+			log.Printf("%v couldn't ping pool peer %v: %v", node.Configuration.MultiAddress.Address(), target, err)
+			continue
+		}
+
+		err = node.Swarm.DHT.UpdateMultiAddress(*target)
+		if err != nil {
+			log.Printf("%v coudln't update DHT for pool peer %v: %v", node.Configuration.MultiAddress.Address(), target, err)
+			continue
 		}
 	}
-	return nil
+	return dnr.DarkPool{Nodes: darkpool}, disconnectedDarkPool
 }
 
-func getDarkPool() []identity.ID {
-	ids := make([]identity.ID, 8)
-	for i := 0; i < 8; i++ {
-		config, _ := LoadConfig(fmt.Sprintf("./test_configs/config-%d.json", i))
-		ids[i] = config.MultiAddress.ID()
+// RepingDarkPool will continually attempt to connect to a set of nodes
+// in a darkpool until they are all connected
+// Call in a goroutine
+func (node *DarkNode) RepingDarkPool(ids dnr.IDDarkPool, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for len(ids) > 0 {
+		log.Printf("Attempting to re-ping nodes!!!: %v", ids)
+		i := 0
+		for i < len(ids) {
+			id := ids[i]
+			target, err := node.Swarm.FindNode(id)
+			if err != nil || target == nil {
+				log.Printf("%v couldn't find pool peer %v: %v", node.Configuration.MultiAddress.Address(), id, err)
+				i++
+				continue
+			}
+
+			node.DarkPool.Enter(nil)
+			node.DarkPool.Nodes = append(node.DarkPool.Nodes, *target)
+			node.DarkPool.Exit()
+
+			// Remove id from disconnected ids
+			ids[i] = ids[len(ids)-1]
+			ids = ids[:len(ids)-1]
+			i--
+
+			err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), defaultTimeout)
+			if err != nil {
+				log.Printf("%v couldn't ping pool peer %v: %v", node.Configuration.MultiAddress.Address(), target, err)
+				i++
+				continue
+			}
+
+			err = node.Swarm.DHT.UpdateMultiAddress(*target)
+			if err != nil {
+				log.Printf("%v coudln't update DHT for pool peer %v: %v", node.Configuration.MultiAddress.Address(), target, err)
+				i++
+				continue
+			}
+			i++
+		}
+		time.Sleep(30 * time.Second)
 	}
-	return ids
 }
 
 // ConnectToRegistrar will connect to the registrar using the given private key to sign transactions
 func ConnectToRegistrar(keypair identity.KeyPair) (*dnr.DarkNodeRegistrar, error) {
 	// todo : hard code the ciphertext for now
 	auth := bind.NewKeyedTransactor(keypair.PrivateKey)
+	// Gas Price
+	auth.GasPrice = big.NewInt(6000000000)
 	client := dnr.Ropsten("https://ropsten.infura.io/")
 	contractAddress := common.HexToAddress("0x6e48bdd8949d0c929e9b5935841f6ff18de0e613")
 	renContract := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")

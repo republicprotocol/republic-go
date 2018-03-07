@@ -4,8 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -58,6 +56,7 @@ func parseCommandLineFlags() error {
 	return nil
 }
 
+// LoadDefaultConfig loads a default config if no config is provided
 func LoadDefaultConfig() (*node.Config, error) {
 	address, keyPair, err := identity.NewAddress()
 	if err != nil {

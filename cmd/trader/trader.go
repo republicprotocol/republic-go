@@ -19,6 +19,11 @@ import (
 	"github.com/republicprotocol/go-rpc"
 )
 
+const reset = "\x1b[0m"
+const yellow = "\x1b[33;1m"
+const green = "\x1b[32;1m"
+const red = "\x1b[31;1m"
+
 type OrderBook struct {
 	LastUpdateId int        `lastUpdateId`
 	Bids         [][]string `bids`
@@ -125,7 +130,11 @@ func main() {
 					}
 
 					do.ForAll(shares, func(i int) {
-						rpc.SendOrderFragmentToTarget(nodes[i], nodes[i].Address(), config.MultiAddress, shares[i], 5*time.Second)
+						err = rpc.SendOrderFragmentToTarget(nodes[i], nodes[i].Address(), config.MultiAddress, shares[i], 5*time.Second)
+						if err != nil {
+							log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(nodes[i].ID()), reset)
+							return
+						}
 					})
 				}
 			}(orders)
@@ -143,7 +152,6 @@ func getNodesDetails() []string {
 	//	"/ip4/54.89.239.234/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
 	//	"/ip4/35.161.248.181/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
 	//}
-
 
 	// susruth's test nodes
 	return []string{
