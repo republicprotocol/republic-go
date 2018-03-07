@@ -1,7 +1,7 @@
 package rpc
 
 import (
-	"github.com/republicprotocol/go-order-compute"
+	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
@@ -35,98 +35,100 @@ func DeserializeMultiAddress(multiAddress *MultiAddress) (identity.MultiAddress,
 
 // SerializeOrderFragment converts an order.Fragment into its network
 // representation.
-func SerializeOrderFragment(input *order.Fragment) *OrderFragment {
-	orderFragment := &OrderFragment{
-		Id:          []byte(input.ID),
-		OrderId:     []byte(input.OrderID),
-		OrderType:   int64(input.OrderType),
-		OrderParity: int64(input.OrderParity),
+func SerializeOrderFragment(orderFragment *order.Fragment) *OrderFragment {
+	val := &OrderFragment{
+		Id:          []byte(orderFragment.ID),
+		OrderId:     []byte(orderFragment.OrderID),
+		OrderType:   int64(orderFragment.OrderType),
+		OrderParity: int64(orderFragment.OrderParity),
 	}
-	orderFragment.FstCodeShare = shamir.ToBytes(input.FstCodeShare)
-	orderFragment.SndCodeShare = shamir.ToBytes(input.SndCodeShare)
-	orderFragment.PriceShare = shamir.ToBytes(input.PriceShare)
-	orderFragment.MaxVolumeShare = shamir.ToBytes(input.MaxVolumeShare)
-	orderFragment.MinVolumeShare = shamir.ToBytes(input.MinVolumeShare)
-	return orderFragment
+	val.FstCodeShare = shamir.ToBytes(orderFragment.FstCodeShare)
+	val.SndCodeShare = shamir.ToBytes(orderFragment.SndCodeShare)
+	val.PriceShare = shamir.ToBytes(orderFragment.PriceShare)
+	val.MaxVolumeShare = shamir.ToBytes(orderFragment.MaxVolumeShare)
+	val.MinVolumeShare = shamir.ToBytes(orderFragment.MinVolumeShare)
+	return val
 }
 
 // DeserializeOrderFragment converts a network representation of an
 // OrderFragment into an order.Fragment. An error is returned if the network
 // representation is malformed.
-func DeserializeOrderFragment(input *OrderFragment) (*order.Fragment, error) {
-	orderFragment := &order.Fragment{
-		ID:          order.FragmentID(input.Id),
-		OrderID:     order.ID(input.OrderId),
-		OrderType:   order.Type(input.OrderType),
-		OrderParity: order.Parity(input.OrderParity),
+func DeserializeOrderFragment(orderFragment *OrderFragment) (*order.Fragment, error) {
+	val := &order.Fragment{
+		ID:          order.FragmentID(orderFragment.Id),
+		OrderID:     order.ID(orderFragment.OrderId),
+		OrderType:   order.Type(orderFragment.OrderType),
+		OrderParity: order.Parity(orderFragment.OrderParity),
 	}
 	var err error
-	orderFragment.FstCodeShare, err = shamir.FromBytes(input.FstCodeShare)
+	val.FstCodeShare, err = shamir.FromBytes(orderFragment.FstCodeShare)
 	if err != nil {
 		return nil, err
 	}
-	orderFragment.SndCodeShare, err = shamir.FromBytes(input.SndCodeShare)
+	val.SndCodeShare, err = shamir.FromBytes(orderFragment.SndCodeShare)
 	if err != nil {
 		return nil, err
 	}
-	orderFragment.PriceShare, err = shamir.FromBytes(input.PriceShare)
+	val.PriceShare, err = shamir.FromBytes(orderFragment.PriceShare)
 	if err != nil {
 		return nil, err
 	}
-	orderFragment.MaxVolumeShare, err = shamir.FromBytes(input.MaxVolumeShare)
+	val.MaxVolumeShare, err = shamir.FromBytes(orderFragment.MaxVolumeShare)
 	if err != nil {
 		return nil, err
 	}
-	orderFragment.MinVolumeShare, err = shamir.FromBytes(input.MinVolumeShare)
+	val.MinVolumeShare, err = shamir.FromBytes(orderFragment.MinVolumeShare)
 	if err != nil {
 		return nil, err
 	}
-	return orderFragment, nil
+	return val, nil
 }
 
-func SerializeDeltaFragment(fragment *compute.DeltaFragment) *DeltaFragment {
+func SerializeDeltaFragment(deltaFragment *compute.DeltaFragment) *DeltaFragment {
 	return &DeltaFragment{
-		Id:                  fragment.ID,
-		BuyOrderID:          fragment.BuyOrderID,
-		SellOrderID:         fragment.SellOrderID,
-		BuyOrderFragmentID:  fragment.BuyOrderFragmentID,
-		SellOrderFragmentID: fragment.SellOrderFragmentID,
-		FstCodeShare:        shamir.ToBytes(fragment.FstCodeShare),
-		SndCodeShare:        shamir.ToBytes(fragment.SndCodeShare),
-		PriceShare:          shamir.ToBytes(fragment.PriceShare),
-		MaxVolumeShare:      shamir.ToBytes(fragment.MaxVolumeShare),
-		MinVolumeShare:      shamir.ToBytes(fragment.MinVolumeShare),
+		Id:                  deltaFragment.ID,
+		DeltaId:             deltaFragment.DeltaID,
+		BuyOrderId:          deltaFragment.BuyOrderID,
+		SellOrderId:         deltaFragment.SellOrderID,
+		BuyOrderFragmentId:  deltaFragment.BuyOrderFragmentID,
+		SellOrderFragmentId: deltaFragment.SellOrderFragmentID,
+		FstCodeShare:        shamir.ToBytes(deltaFragment.FstCodeShare),
+		SndCodeShare:        shamir.ToBytes(deltaFragment.SndCodeShare),
+		PriceShare:          shamir.ToBytes(deltaFragment.PriceShare),
+		MaxVolumeShare:      shamir.ToBytes(deltaFragment.MaxVolumeShare),
+		MinVolumeShare:      shamir.ToBytes(deltaFragment.MinVolumeShare),
 	}
 }
 
-func DeserializeDeltaFragment(fragment *DeltaFragment) (*compute.DeltaFragment, error) {
-	deltaFragment := &compute.DeltaFragment{
-		ID:                  fragment.Id,
-		BuyOrderID:          fragment.BuyOrderID,
-		SellOrderID:         fragment.SellOrderID,
-		BuyOrderFragmentID:  fragment.BuyOrderFragmentID,
-		SellOrderFragmentID: fragment.SellOrderFragmentID,
+func DeserializeDeltaFragment(deltaFragment *DeltaFragment) (*compute.DeltaFragment, error) {
+	val := &compute.DeltaFragment{
+		ID:                  deltaFragment.Id,
+		DeltaID:             deltaFragment.DeltaId,
+		BuyOrderID:          deltaFragment.BuyOrderId,
+		SellOrderID:         deltaFragment.SellOrderId,
+		BuyOrderFragmentID:  deltaFragment.BuyOrderFragmentId,
+		SellOrderFragmentID: deltaFragment.SellOrderFragmentId,
 	}
 	var err error
-	deltaFragment.FstCodeShare, err = shamir.FromBytes(fragment.FstCodeShare)
+	val.FstCodeShare, err = shamir.FromBytes(deltaFragment.FstCodeShare)
 	if err != nil {
 		return nil, err
 	}
-	deltaFragment.SndCodeShare, err = shamir.FromBytes(fragment.SndCodeShare)
+	val.SndCodeShare, err = shamir.FromBytes(deltaFragment.SndCodeShare)
 	if err != nil {
 		return nil, err
 	}
-	deltaFragment.PriceShare, err = shamir.FromBytes(fragment.PriceShare)
+	val.PriceShare, err = shamir.FromBytes(deltaFragment.PriceShare)
 	if err != nil {
 		return nil, err
 	}
-	deltaFragment.MaxVolumeShare, err = shamir.FromBytes(fragment.MaxVolumeShare)
+	val.MaxVolumeShare, err = shamir.FromBytes(deltaFragment.MaxVolumeShare)
 	if err != nil {
 		return nil, err
 	}
-	deltaFragment.MinVolumeShare, err = shamir.FromBytes(fragment.MinVolumeShare)
+	val.MinVolumeShare, err = shamir.FromBytes(deltaFragment.MinVolumeShare)
 	if err != nil {
 		return nil, err
 	}
-	return deltaFragment, nil
+	return val, nil
 }
