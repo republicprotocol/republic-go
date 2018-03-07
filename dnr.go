@@ -198,7 +198,7 @@ func (darkNodeRegistrar *DarkNodeRegistrar) GetDarkPools() (*DarkOcean, error) {
 		numberOfPools = big.NewInt(1)
 	}
 
-	pools := make([]DarkPool, numberOfPools.Int64())
+	pools := make([]IDDarkPool, numberOfPools.Int64())
 
 	for x := range allNodes {
 		// Add one so that
