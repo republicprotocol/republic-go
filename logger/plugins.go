@@ -1,4 +1,4 @@
-package  logger
+package logger
 
 import (
 	"errors"
@@ -16,9 +16,10 @@ type Plugin interface {
 	Start() error
 	Stop() error
 
-	Info(info string) error
-	Warning(warning string) error
-	Error(err error) error
+	Info(tag, message string) error
+	Warn(tag, message string) error
+	Error(tag, message string) error
+	Usage(cpu float32, memory, network int32) error
 }
 
 // A FilePlugin implements the Plugin interface by logging all events to an
@@ -44,61 +45,65 @@ func (plugin *FilePlugin) Stop() error {
 	return plugin.File.Close()
 }
 
-func (plugin *FilePlugin) Info(info string) error {
+func (plugin *FilePlugin) Info(tag, message string) error {
 	if plugin.File == nil {
-		return errors.New("start the file plugin to use Info")
+		return errors.New("start the file plugin first")
 	}
 	_, err := plugin.File.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
 	if err != nil {
 		return err
 	}
-	_, err = plugin.File.WriteString("INFO : ")
-	if err != nil {
-		return err
-	}
-	_, err = plugin.File.WriteString(info + "\n")
+	_, err = plugin.File.WriteString("INFO : " + tag + message + "\n")
 	return err
 }
 
-func (plugin *FilePlugin) Warning(warning string) error {
+func (plugin *FilePlugin) Warn(tag, message string) error {
 	if plugin.File == nil {
-		return errors.New("start the file plugin to use Info")
+		return errors.New("start the file plugin first")
 	}
 	_, err := plugin.File.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
 	if err != nil {
 		return err
 	}
-	_, err = plugin.File.WriteString("WARNING : ")
-	if err != nil {
-		return err
-	}
-	_, err = plugin.File.WriteString(warning + "\n")
+	_, err = plugin.File.WriteString("WARN: " + tag + message + "\n")
 	return err
 }
 
-func (plugin *FilePlugin) Error(e error) error {
+func (plugin *FilePlugin) Error(tag, message string) error {
 	if plugin.File == nil {
-		return errors.New("start the file plugin to use Info")
+		return errors.New("start the file plugin first")
 	}
 	_, err := plugin.File.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
 	if err != nil {
 		return err
 	}
-	_, err = plugin.File.WriteString("ERROR : ")
+	_, err = plugin.File.WriteString("ERROR : " + tag + message + "\n")
+	return err
+}
+
+func (plugin *FilePlugin) Usage(cpu float32, memory, network int32) error {
+	if plugin.File == nil {
+		return errors.New("start the file plugin first")
+	}
+	_, err := plugin.File.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
 	if err != nil {
 		return err
 	}
-	_, err = plugin.File.WriteString(err.Error() + "\n")
+	_, err = plugin.File.WriteString(fmt.Sprintf("USAGE : cpu=%.3f, memory=%d, network=%d \n", cpu, memory, network))
 	return err
 }
 
 type WebSocketPlugin struct {
-	Srv        *http.Server
-	Connection *websocket.Conn
-	Host       string
-	Port       string
-	Username   string
-	Password   string
+	Srv      *http.Server
+	Host     string
+	Port     string
+	Username string
+	Password string
+
+	info  chan interface{}
+	error chan Error
+	warn  chan interface{}
+	usage chan Usage
 }
 
 func NewWebSocketPlugin(host, port, username, password string) Plugin {
@@ -107,37 +112,71 @@ func NewWebSocketPlugin(host, port, username, password string) Plugin {
 		Port:     port,
 		Username: username,
 		Password: password,
+		info:     make(chan interface{}, 1),
+		error:    make(chan Error, 1),
+		warn:     make(chan interface{}, 1),
+		usage:    make(chan Usage, 1),
 	}
 	return plugin
 }
 
 func (plugin *WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request) {
-	var err error
 	upgrader := websocket.Upgrader{}
-	plugin.Connection, err = upgrader.Upgrade(w, r, nil)
+	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		plugin.Error(err)
 		return
 	}
 
-	defer plugin.Connection.Close()
+	defer c.Close()
 	for {
 		request := new(Request)
-		err := plugin.Connection.ReadJSON(request)
+		err := c.ReadJSON(request)
 		if err != nil {
-			plugin.Error(err)
 			return
 		}
 
 		switch request.Type {
 		case "usage":
-			err = plugin.Connection.WriteJSON(request) // todo
+			go func() {
+				for {
+					u := <-plugin.usage
+					err := c.WriteJSON(u)
+					if err != nil {
+						break
+					}
+				}
+			}()
 		case "event":
-			err = plugin.Connection.WriteJSON(request) // todo
+			go func() {
+				for {
+					i := <-plugin.info
+					err := c.WriteJSON(i)
+					if err != nil {
+						break
+					}
+				}
+			}()
 		}
 
+		// Broadcast errors
+		go func() {
+			e := <-plugin.error
+			err := c.WriteJSON(e)
+			if err != nil {
+				return
+			}
+		}()
+
+		// Broadcast warnings
+		go func() {
+			warning := <-plugin.warn
+			err := c.WriteJSON(warning)
+			if err != nil {
+				return
+			}
+		}()
+
 		if err != nil {
-			plugin.Error(err)
 			return
 		}
 	}
@@ -149,7 +188,7 @@ func (plugin *WebSocketPlugin) Start() error {
 	}
 	http.HandleFunc("/logs", plugin.logHandler)
 	go func() {
-		err := plugin.Info(fmt.Sprintf("WebSocket logger listening on %s:%s", plugin.Host, plugin.Port))
+		err := plugin.Info("INFO", fmt.Sprintf("WebSocket logger listening on %s:%s", plugin.Host, plugin.Port))
 		if err != nil {
 			log.Println(err)
 		}
@@ -172,39 +211,69 @@ type Message struct {
 	Message string
 }
 
-func (plugin *WebSocketPlugin) Info(info string) error {
-	if plugin.Connection == nil {
-		return errors.New("nil connection")
+func (plugin *WebSocketPlugin) Info(tag, message string) error {
+	event := Event{
+		Type: "event",
+		Time: time.Now(),
+		Data: EventData{
+			Tag:     tag,
+			Level:   "INFO",
+			Message: message,
+		},
 	}
+	if len(plugin.info) == 1 {
+		<-plugin.info
+	}
+	plugin.info <- event
 
-	err := plugin.Connection.WriteJSON(Message{
-		Time:    time.Now().Format("2006/01/02 15:04:05"),
-		Type:    "INFO",
-		Message: info,
-	})
-	return err
+	return nil
 }
 
-func (plugin *WebSocketPlugin) Error(e error) error {
-	if plugin.Connection == nil {
-		return errors.New("nil connection")
+func (plugin *WebSocketPlugin) Error(tag, message string) error {
+	err := struct {
+		Tag     string
+		Message string
+	}{
+		tag, message,
 	}
-	err := plugin.Connection.WriteJSON(Message{
-		Time:    time.Now().Format("2006/01/02 15:04:05"),
-		Type:    "ERROR",
-		Message: e.Error(),
-	})
-	return err
+	if len(plugin.error) == 1 {
+		<-plugin.error
+	}
+	plugin.info <- err
+	return nil
 }
 
-func (plugin *WebSocketPlugin) Warning(warning string) error {
-	if plugin.Connection == nil {
-		return errors.New("nil connection")
+func (plugin *WebSocketPlugin) Warn(tag, message string) error {
+	event := Event{
+		Type: "event",
+		Time: time.Now(),
+		Data: EventData{
+			Tag:     tag,
+			Level:   "INFO",
+			Message: message,
+		},
 	}
-	err := plugin.Connection.WriteJSON(Message{
-		Time:    time.Now().Format("2006/01/02 15:04:05"),
-		Type:    "warning",
-		Message: warning,
-	})
-	return err
+	if len(plugin.warn) == 1 {
+		<-plugin.warn
+	}
+	plugin.warn <- event
+
+	return nil
+}
+
+func (plugin *WebSocketPlugin) Usage(cpu float32, memory, network int32) error {
+	usage := Usage{
+		Type: "usage",
+		Time: time.Now(),
+		Data: UsageData{
+			Cpu:     cpu,
+			Memory:  memory,
+			Network: network,
+		},
+	}
+	if len(plugin.usage) == 1 {
+		<-plugin.usage
+	}
+	plugin.usage <- usage
+	return nil
 }

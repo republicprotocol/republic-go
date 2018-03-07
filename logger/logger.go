@@ -35,23 +35,30 @@ func (logger Logger) Stop() error {
 }
 
 // Error outputs the error though each plugin
-func (logger Logger) Error(err error) {
+func (logger Logger) Error(tag, message string) {
 	for _, plugin := range logger.Plugins {
-		plugin.Error(err)
+		plugin.Error(tag, message)
 	}
 }
 
 // Info outputs the info though each plugin
-func (logger Logger) Info(info string) {
+func (logger Logger) Info(tag, message string) {
 	for _, plugin := range logger.Plugins {
-		plugin.Info(info)
+		plugin.Info(tag, message)
 	}
 }
 
 // Warning outputs the warning though each plugin
-func (logger Logger) Warning(warning string) {
+func (logger Logger) Warning(tag, message string) {
 	for _, plugin := range logger.Plugins {
-		plugin.Warning(warning)
+		plugin.Warn(tag, message)
+	}
+}
+
+// Warning outputs the warning though each plugin
+func (logger Logger) Usage(cpu float32, memory, network int32) {
+	for _, plugin := range logger.Plugins {
+		plugin.Usage(cpu, memory, network)
 	}
 }
 
@@ -74,8 +81,8 @@ type Usage struct {
 
 type UsageData struct {
 	Cpu     float32 `json:"cpu"`
-	Memory  int     `json:"memory"`
-	network int     `json:"network"`
+	Memory  int32   `json:"memory"`
+	Network int32   `json:"network"`
 }
 
 type Event struct {
@@ -88,4 +95,9 @@ type EventData struct {
 	Tag     string `json:"tag"`
 	Level   string `json:"level"`
 	Message string `json:"message"`
+}
+
+type Error struct {
+	Tag     string
+	Message string
 }
