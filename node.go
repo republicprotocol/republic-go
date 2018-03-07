@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/big"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -101,7 +100,9 @@ type DarkNode struct {
 	DeltaFragmentMatrix *compute.DeltaFragmentMatrix
 	DarkPoolLimit       int64
 	DarkPool            dnr.DarkPool
-	DarkOcean           *dnr.DarkOcean
+	DarkOceanOverlay    *dnr.DarkOceanOverlay
+
+	EpochBlockhash [32]byte
 
 	logQueue *LogQueue
 }
@@ -187,29 +188,7 @@ func (node *DarkNode) Start() error {
 	// Bootstrap the connections in the swarm.
 	node.Swarm.Bootstrap()
 
-	log.Printf("%v is pinging dark pool\n", node.Configuration.MultiAddress.Address())
-
-	darkOcean, err := node.Registrar.GetDarkPools()
-	if err != nil {
-		log.Fatalf("%v couldn't get dark pools: %v", node.Configuration.MultiAddress.Address(), err)
-	}
-	node.DarkOcean = darkOcean
-
-	idPool, err := node.DarkOcean.FindDarkPool(node.Configuration.MultiAddress.ID())
-	if err != nil {
-		return err
-	}
-
-	connectedDarkPool, disconnectedDarkPool := node.PingDarkPool(idPool)
-	node.DarkPool = connectedDarkPool
-
-	log.Printf("%v connected to dark pool: %v", node.Configuration.MultiAddress.Address(), node.DarkPool)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go node.RepingDarkPool(disconnectedDarkPool, &wg)
-
-	wg.Wait()
+	go node.WatchForEpoch()
 
 	return nil
 }
@@ -311,9 +290,13 @@ func (node *DarkNode) PingDarkPool(ids dnr.IDDarkPool) (dnr.DarkPool, dnr.IDDark
 // RepingDarkPool will continually attempt to connect to a set of nodes
 // in a darkpool until they are all connected
 // Call in a goroutine
-func (node *DarkNode) RepingDarkPool(ids dnr.IDDarkPool, wg *sync.WaitGroup) {
-	defer wg.Done()
+func (node *DarkNode) RepingDarkPool(ids dnr.IDDarkPool) {
+	currentBlockhash := node.EpochBlockhash
+
 	for len(ids) > 0 {
+		if node.EpochBlockhash != currentBlockhash {
+			return
+		}
 		log.Printf("Attempting to re-ping nodes!!!: %v", ids)
 		i := 0
 		for i < len(ids) {
@@ -321,36 +304,75 @@ func (node *DarkNode) RepingDarkPool(ids dnr.IDDarkPool, wg *sync.WaitGroup) {
 			target, err := node.Swarm.FindNode(id)
 			if err != nil || target == nil {
 				log.Printf("%v couldn't find pool peer %v: %v", node.Configuration.MultiAddress.Address(), id, err)
+				// We couldn't find this node so we move on to the next one
 				i++
 				continue
 			}
 
-			node.DarkPool.Enter(nil)
-			node.DarkPool.Nodes = append(node.DarkPool.Nodes, *target)
-			node.DarkPool.Exit()
+			node.DarkPool.Add(*target)
 
 			// Remove id from disconnected ids
 			ids[i] = ids[len(ids)-1]
 			ids = ids[:len(ids)-1]
-			i--
+			// Because ids is now shorter, we don't increment i
 
 			err = rpc.PingTarget(*target, node.Swarm.MultiAddress(), defaultTimeout)
 			if err != nil {
 				log.Printf("%v couldn't ping pool peer %v: %v", node.Configuration.MultiAddress.Address(), target, err)
-				i++
 				continue
 			}
 
 			err = node.Swarm.DHT.UpdateMultiAddress(*target)
 			if err != nil {
 				log.Printf("%v coudln't update DHT for pool peer %v: %v", node.Configuration.MultiAddress.Address(), target, err)
-				i++
 				continue
 			}
-			i++
 		}
 		time.Sleep(30 * time.Second)
 	}
+}
+
+// WatchForEpoch will check if a new epoch has been triggered and then sleep for 5 minutes
+// Should be called in a goroutine
+func (node *DarkNode) WatchForEpoch() {
+	for {
+		epoch, err := node.Registrar.CurrentEpoch()
+		if err != nil {
+			log.Printf("%v errored when checking epoch: %v", node.Configuration.MultiAddress.Address(), err)
+		}
+
+		if epoch.Blockhash != node.EpochBlockhash {
+			log.Printf("%v new epoch!", node.Configuration.MultiAddress.Address())
+			node.EpochBlockhash = epoch.Blockhash
+			node.AfterEachEpoch()
+		}
+		time.Sleep(5 * 60 * time.Second)
+	}
+}
+
+// AfterEachEpoch should be run after each new epoch
+func (node *DarkNode) AfterEachEpoch() error {
+	log.Printf("%v is pinging dark pool\n", node.Configuration.MultiAddress.Address())
+
+	darkOceanOverlay, err := node.Registrar.GetDarkPools()
+	if err != nil {
+		log.Fatalf("%v couldn't get dark pools: %v", node.Configuration.MultiAddress.Address(), err)
+	}
+	node.DarkOceanOverlay = darkOceanOverlay
+
+	idPool, err := node.DarkOceanOverlay.FindDarkPool(node.Configuration.MultiAddress.ID())
+	if err != nil {
+		return err
+	}
+
+	connectedDarkPool, disconnectedDarkPool := node.PingDarkPool(idPool)
+	node.DarkPool = connectedDarkPool
+
+	log.Printf("%v connected to dark pool: %v", node.Configuration.MultiAddress.Address(), node.DarkPool)
+
+	go node.RepingDarkPool(disconnectedDarkPool)
+
+	return nil
 }
 
 // ConnectToRegistrar will connect to the registrar using the given private key to sign transactions

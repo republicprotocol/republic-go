@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"log"
+	"time"
 
 	node "github.com/republicprotocol/go-dark-node"
+	do "github.com/republicprotocol/go-do"
 )
 
 var config *node.Config
@@ -24,7 +26,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	node.Start()
+	do.CoBegin(func() do.Option {
+		return do.Err(node.StartListening())
+	}, func() do.Option {
+		time.Sleep(time.Second)
+		return do.Err(node.Start())
+	})
 }
 
 func parseCommandLineFlags() error {
