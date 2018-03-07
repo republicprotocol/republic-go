@@ -92,7 +92,6 @@ func (plugin WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request)
 
 	defer plugin.Connection.Close()
 	for {
-		// todo : handle request
 		request := new(Request)
 		err := plugin.Connection.ReadJSON(request)
 		if err != nil {
@@ -100,7 +99,17 @@ func (plugin WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		err = plugin.Connection.WriteJSON(request)
+		switch request.Type{
+		case  "usage":
+			err = plugin.Connection.WriteJSON(Usage{
+				//todo
+			})
+		case "event":
+			err = plugin.Connection.WriteJSON(Event{
+				//todo
+			})
+		}
+
 		if err != nil {
 			plugin.Error(err)
 			return
