@@ -9,13 +9,14 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/republicprotocol/go-dark-network"
-	"github.com/republicprotocol/go-dark-node-registrar"
+	dark "github.com/republicprotocol/go-dark-network"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-swarm-network"
+	dnr "github.com/republicprotocol/republic-go/contracts/dnr"
+	darkocean "github.com/republicprotocol/republic-go/dark-ocean"
 	"google.golang.org/grpc"
 )
 
@@ -99,8 +100,8 @@ type DarkNode struct {
 	DeltaBuilder        *compute.DeltaBuilder
 	DeltaFragmentMatrix *compute.DeltaFragmentMatrix
 	DarkPoolLimit       int64
-	DarkPool            dnr.DarkPool
-	DarkOceanOverlay    *dnr.DarkOceanOverlay
+	DarkPool            darkocean.DarkPool
+	DarkOceanOverlay    *darkocean.Overlay
 
 	EpochBlockhash [32]byte
 
@@ -188,9 +189,19 @@ func (node *DarkNode) Start() error {
 	// Bootstrap the connections in the swarm.
 	node.Swarm.Bootstrap()
 
-	go node.WatchForEpoch()
+	oceanChanges := make(chan do.Option)
+	go darkocean.WatchForDarkOceanChanges(node.Registrar, oceanChanges)
 
-	return nil
+	for {
+		select {
+		case ocean := <-oceanChanges:
+			if ocean.Err != nil {
+				// Log
+			} else {
+				node.PingDarkPool(*ocean.Ok.(*darkocean.IDDarkPool))
+			}
+		}
+	}
 }
 
 // StartListening starts listening for rpc calls
@@ -257,10 +268,10 @@ func (node *DarkNode) Deregister() error {
 }
 
 // PingDarkPool call rpc.PingTarget on each node in a dark pool
-func (node *DarkNode) PingDarkPool(ids dnr.IDDarkPool) (dnr.DarkPool, dnr.IDDarkPool) {
+func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (darkocean.DarkPool, darkocean.IDDarkPool) {
 
 	darkpool := make(identity.MultiAddresses, 0)
-	disconnectedDarkPool := make(dnr.IDDarkPool, 0)
+	disconnectedDarkPool := make(darkocean.IDDarkPool, 0)
 
 	for _, id := range ids {
 		target, err := node.Swarm.FindNode(id)
@@ -284,13 +295,13 @@ func (node *DarkNode) PingDarkPool(ids dnr.IDDarkPool) (dnr.DarkPool, dnr.IDDark
 			continue
 		}
 	}
-	return dnr.DarkPool{Nodes: darkpool}, disconnectedDarkPool
+	return darkocean.DarkPool{Nodes: darkpool}, disconnectedDarkPool
 }
 
 // RepingDarkPool will continually attempt to connect to a set of nodes
 // in a darkpool until they are all connected
 // Call in a goroutine
-func (node *DarkNode) RepingDarkPool(ids dnr.IDDarkPool) {
+func (node *DarkNode) RepingDarkPool(ids darkocean.IDDarkPool) {
 	currentBlockhash := node.EpochBlockhash
 
 	for len(ids) > 0 {
@@ -332,29 +343,11 @@ func (node *DarkNode) RepingDarkPool(ids dnr.IDDarkPool) {
 	}
 }
 
-// WatchForEpoch will check if a new epoch has been triggered and then sleep for 5 minutes
-// Should be called in a goroutine
-func (node *DarkNode) WatchForEpoch() {
-	for {
-		epoch, err := node.Registrar.CurrentEpoch()
-		if err != nil {
-			log.Printf("%v errored when checking epoch: %v", node.Configuration.MultiAddress.Address(), err)
-		}
-
-		if epoch.Blockhash != node.EpochBlockhash {
-			log.Printf("%v new epoch!", node.Configuration.MultiAddress.Address())
-			node.EpochBlockhash = epoch.Blockhash
-			node.AfterEachEpoch()
-		}
-		time.Sleep(5 * 60 * time.Second)
-	}
-}
-
 // AfterEachEpoch should be run after each new epoch
 func (node *DarkNode) AfterEachEpoch() error {
 	log.Printf("%v is pinging dark pool\n", node.Configuration.MultiAddress.Address())
 
-	darkOceanOverlay, err := node.Registrar.GetDarkPools()
+	darkOceanOverlay, err := darkocean.GetDarkPools(node.Registrar)
 	if err != nil {
 		log.Fatalf("%v couldn't get dark pools: %v", node.Configuration.MultiAddress.Address(), err)
 	}

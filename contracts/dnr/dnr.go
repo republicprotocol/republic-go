@@ -93,7 +93,7 @@ func (darkNodeRegistrar *DarkNodeRegistrar) Deregister(_darkNodeID []byte) (*typ
 	return tx, err
 }
 
-// GetBond get's the bond of an existing dark node
+// GetBond gets the bond of an existing dark node
 func (darkNodeRegistrar *DarkNodeRegistrar) GetBond(_darkNodeID []byte) (*big.Int, error) {
 	_darkNodeIDByte, err := toByte(_darkNodeID)
 	if err != nil {
@@ -139,7 +139,7 @@ func (darkNodeRegistrar *DarkNodeRegistrar) Epoch() (*types.Transaction, error) 
 	return tx, err
 }
 
-// GetCommitment get's the signed commitment
+// GetCommitment gets the signed commitment
 func (darkNodeRegistrar *DarkNodeRegistrar) GetCommitment(_darkNodeID []byte) ([32]byte, error) {
 	_darkNodeIDByte, err := toByte(_darkNodeID)
 	if err != nil {
@@ -148,7 +148,7 @@ func (darkNodeRegistrar *DarkNodeRegistrar) GetCommitment(_darkNodeID []byte) ([
 	return darkNodeRegistrar.binding.GetCommitment(darkNodeRegistrar.auth2, _darkNodeIDByte)
 }
 
-// GetOwner get's the owner of the given dark node
+// GetOwner gets the owner of the given dark node
 func (darkNodeRegistrar *DarkNodeRegistrar) GetOwner(_darkNodeID []byte) (common.Address, error) {
 	_darkNodeIDByte, err := toByte(_darkNodeID)
 	if err != nil {
@@ -157,7 +157,7 @@ func (darkNodeRegistrar *DarkNodeRegistrar) GetOwner(_darkNodeID []byte) (common
 	return darkNodeRegistrar.binding.GetOwner(darkNodeRegistrar.auth2, _darkNodeIDByte)
 }
 
-// GetPublicKey get's the public key of the goven dark node
+// GetPublicKey gets the public key of the goven dark node
 func (darkNodeRegistrar *DarkNodeRegistrar) GetPublicKey(_darkNodeID []byte) ([]byte, error) {
 	_darkNodeIDByte, err := toByte(_darkNodeID)
 	if err != nil {
@@ -166,66 +166,22 @@ func (darkNodeRegistrar *DarkNodeRegistrar) GetPublicKey(_darkNodeID []byte) ([]
 	return darkNodeRegistrar.binding.GetPublicKey(darkNodeRegistrar.auth2, _darkNodeIDByte)
 }
 
-// GetDarkpool get's the dark pool configuration
-func (darkNodeRegistrar *DarkNodeRegistrar) GetDarkpool() ([][20]byte, error) {
+// GetAllNodes gets all dark nodes
+func (darkNodeRegistrar *DarkNodeRegistrar) GetAllNodes() ([][20]byte, error) {
 	return darkNodeRegistrar.binding.GetXingOverlay(darkNodeRegistrar.auth2)
 }
 
-// GetDarkPools gets the full list of nodes and sorts them into pools
-func (darkNodeRegistrar *DarkNodeRegistrar) GetDarkPools() (*DarkOcean, error) {
-	allNodes, err := darkNodeRegistrar.GetDarkpool()
-	if err != nil {
-		return &DarkOcean{}, err
-	}
-
-	blockhash := /* TODO: Get from contract */ big.NewInt(1234567)
-	poolsize := /* TODO: Get from contract? */ 72
-
-	// Find the prime smaller or equal to the number of registered nodes
-	// Start at +2 because it has to greater than the maximum (x+1)
-	previousPrime := big.NewInt(int64(len(allNodes) + 2))
-	// https://golang.org/src/math/big/prime.go
-	// ProbablyPrime is 100% accurate for inputs less than 2^64.
-	for !previousPrime.ProbablyPrime(0) {
-		previousPrime = previousPrime.Sub(previousPrime, big.NewInt(1))
-	}
-
-	inverse := blockhash.ModInverse(blockhash, previousPrime)
-
-	// Integer division
-	numberOfPools := big.NewInt(0).Div(previousPrime, big.NewInt(int64(poolsize)))
-	if numberOfPools.Int64() == 0 {
-		numberOfPools = big.NewInt(1)
-	}
-
-	pools := make([]IDDarkPool, numberOfPools.Int64())
-
-	for x := range allNodes {
-		// Add one so that
-		xPlusOne := big.NewInt(int64(x + 1))
-		i := big.NewInt(0).Mod(big.NewInt(0).Mul(xPlusOne, inverse), previousPrime)
-
-		assignedPool := big.NewInt(0).Mod(i, numberOfPools).Int64()
-
-		pools[assignedPool] = append(pools[assignedPool], allNodes[x][:])
-	}
-
-	return &DarkOcean{
-		Pools: pools,
-	}, err
-}
-
-// MinimumBond get's the minimum viable bonda mount
+// MinimumBond gets the minimum viable bonda mount
 func (darkNodeRegistrar *DarkNodeRegistrar) MinimumBond() (*big.Int, error) {
 	return darkNodeRegistrar.binding.MinimumBond(darkNodeRegistrar.auth2)
 }
 
-// MinimumEpochInterval get's the minimum epoch interval
+// MinimumEpochInterval gets the minimum epoch interval
 func (darkNodeRegistrar *DarkNodeRegistrar) MinimumEpochInterval() (*big.Int, error) {
 	return darkNodeRegistrar.binding.MinimumEpochInterval(darkNodeRegistrar.auth2)
 }
 
-// // PendingRefunds get's the pending refund amount of the given address
+// // PendingRefunds gets the pending refund amount of the given address
 // func (darkNodeRegistrar *DarkNodeRegistrar) PendingRefunds(arg0 common.Address) (*big.Int, error) {
 // 	return darkNodeRegistrar.binding.PendingRefunds(darkNodeRegistrar.auth2, arg0)
 // }
