@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestGoDarkNodeRegistrar(t *testing.T) {
+func TestDarkNodeRegistrar(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "GoDarkNodeRegistrar Suite")
+	RunSpecs(t, "Dark Node Registrar Suite")
 }
