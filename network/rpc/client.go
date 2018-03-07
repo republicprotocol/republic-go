@@ -84,68 +84,13 @@ func (client *Client) Ping() error {
 	})
 }
 
-// Query RPC.
-func (client *Client) Query(query *Address) (chan *MultiAddress, error) {
+// QueryPeers RPC.
+func (client *Client) QueryPeers(target *Address) (chan *MultiAddress, error) {
 	ch := make(chan *MultiAddress)
 	err := client.TimeoutFunc(func(ctx context.Context) error {
-		stream, err := client.Swarm.Query(ctx, query, grpc.FailFast(false))
-		if err != nil {
-			return err
-		}
-		go func() {
-			defer func() { recover() }()
-			for {
-				multiAddress, err := stream.Recv()
-				if err == io.EOF {
-					close(ch)
-					return
-				}
-				if err != nil {
-					close(ch)
-					return
-				}
-				ch <- multiAddress
-			}
-		}()
-		return nil
-	})
-	return ch, err
-}
-
-// QueryDeep RPC.
-func (client *Client) QueryDeep(query *Address) (chan *MultiAddress, error) {
-	ch := make(chan *MultiAddress)
-	err := client.TimeoutFunc(func(ctx context.Context) error {
-		stream, err := client.Swarm.QueryDeep(ctx, query, grpc.FailFast(false))
-		if err != nil {
-			return err
-		}
-		go func() {
-			defer func() { recover() }()
-			for {
-				multiAddress, err := stream.Recv()
-				if err == io.EOF {
-					close(ch)
-					return
-				}
-				if err != nil {
-					close(ch)
-					return
-				}
-				ch <- multiAddress
-			}
-		}()
-		return nil
-	})
-	return ch, err
-}
-
-// Log RPC.
-func (client *Client) Log() (chan *LogEvent, error) {
-	ch := make(chan *LogEvent)
-	err := client.TimeoutFunc(func(ctx context.Context) error {
-		stream, err := client.DarkOcean.Log(ctx, &LogRequest{
-			From: client.From,
+		stream, err := client.Swarm.QueryPeers(ctx, &Query{
+			From:   client.From,
+			Target: target,
 		}, grpc.FailFast(false))
 		if err != nil {
 			return err
@@ -153,7 +98,7 @@ func (client *Client) Log() (chan *LogEvent, error) {
 		go func() {
 			defer func() { recover() }()
 			for {
-				logEvent, err := stream.Recv()
+				multiAddress, err := stream.Recv()
 				if err == io.EOF {
 					close(ch)
 					return
@@ -162,7 +107,38 @@ func (client *Client) Log() (chan *LogEvent, error) {
 					close(ch)
 					return
 				}
-				ch <- logEvent
+				ch <- multiAddress
+			}
+		}()
+		return nil
+	})
+	return ch, err
+}
+
+// QueryPeersDeep RPC.
+func (client *Client) QueryPeersDeep(target *Address) (chan *MultiAddress, error) {
+	ch := make(chan *MultiAddress)
+	err := client.TimeoutFunc(func(ctx context.Context) error {
+		stream, err := client.Swarm.QueryPeersDeep(ctx, &Query{
+			From:   client.From,
+			Target: target,
+		}, grpc.FailFast(false))
+		if err != nil {
+			return err
+		}
+		go func() {
+			defer func() { recover() }()
+			for {
+				multiAddress, err := stream.Recv()
+				if err == io.EOF {
+					close(ch)
+					return
+				}
+				if err != nil {
+					close(ch)
+					return
+				}
+				ch <- multiAddress
 			}
 		}()
 		return nil
