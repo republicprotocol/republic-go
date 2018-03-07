@@ -1,13 +1,13 @@
-package swarm_test
+package network_test
 
 import (
 	"time"
 
-	"github.com/republicprotocol/go-swarm-network"
+	. "github.com/republicprotocol/republic-go/network"
 )
 
 const (
-	DefaultOptionsDebug           = swarm.DebugOff
+	DefaultOptionsDebug           = DebugOff
 	DefaultOptionsAlpha           = 3
 	DefaultOptionsMaxBucketLength = 10
 	DefaultOptionsTimeout         = 30 * time.Second

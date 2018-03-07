@@ -1,9 +1,9 @@
-package swarm
+package network
 
 import (
 	"time"
 
-	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 // Constants for different options.

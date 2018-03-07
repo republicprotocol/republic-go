@@ -140,11 +140,11 @@ func (client *Client) QueryDeep(query *Address) (chan *MultiAddress, error) {
 	return ch, err
 }
 
-// Logs RPC.
-func (client *Client) Logs() (chan *LogEvent, error) {
+// Log RPC.
+func (client *Client) Log() (chan *LogEvent, error) {
 	ch := make(chan *LogEvent)
 	err := client.TimeoutFunc(func(ctx context.Context) error {
-		stream, err := client.DarkOcean.Logs(ctx, &LogRequest{
+		stream, err := client.DarkOcean.Log(ctx, &LogRequest{
 			From: client.From,
 		}, grpc.FailFast(false))
 		if err != nil {

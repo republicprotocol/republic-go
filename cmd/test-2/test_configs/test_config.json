@@ -1,0 +1,14 @@
+{
+  "republic_key_pair": "AABYvFnjgsdoPJvsnfpjxkrQvKWrbiexvYm4oehjP6G5",
+  "ethereum_private_key": "3a1076bf45ab87712ad64ccb3b10217737f7faacbf2872e88fdd9a537d8fe266",
+  "rsa_key_pair" : "3wWfyiC3An9BBhW8X1ZQauomL4gKAUgbTWNmnDpYiD6S",
+  "multi_address": "/ip4/127.0.0.1/tcp/4000/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
+  "host": "127.0.0.1",
+  "port": "4000",
+  "bootstrap_multi_addresses": [
+    "/ip4/127.0.0.1/tcp/3000/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
+    "/ip4/127.0.0.1/tcp/3001/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
+    "/ip4/127.0.0.1/tcp/3002/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
+    "/ip4/127.0.0.1/tcp/3003/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf"
+  ]
+}

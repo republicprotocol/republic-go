@@ -1,4 +1,4 @@
-package swarm_test
+package network_test
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-rpc"
-	"github.com/republicprotocol/go-swarm-network"
 	"github.com/republicprotocol/republic-go/network/dht"
 	"google.golang.org/grpc"
 )
@@ -30,10 +29,10 @@ const (
 	NodePortSwarm     = 4000
 )
 
-func GenerateBootstrapTopology(topology Topology, numberOfNodes int, delegate swarm.Delegate) ([]*swarm.Node, map[identity.Address][]*swarm.Node, error) {
+func GenerateBootstrapTopology(topology Topology, numberOfNodes int, delegate SwarmDelegate) ([]*Swarm, map[identity.Address][]*Swarm, error) {
 	var err error
-	var nodes []*swarm.Node
-	var routingTable map[identity.Address][]*swarm.Node
+	var nodes []*Swarm
+	var routingTable map[identity.Address][]*Swarm
 
 	switch topology {
 	case TopologyFull:
@@ -48,8 +47,8 @@ func GenerateBootstrapTopology(topology Topology, numberOfNodes int, delegate sw
 	return nodes, routingTable, err
 }
 
-func GenerateNodes(port, numberOfNodes int, delegate swarm.Delegate) ([]*swarm.Node, error) {
-	nodes := make([]*swarm.Node, numberOfNodes)
+func GenerateNodes(port, numberOfNodes int, delegate SwarmDelegate) ([]*Swarm, error) {
+	nodes := make([]*Swarm, numberOfNodes)
 	for i := range nodes {
 		keyPair, err := identity.NewKeyPair()
 		if err != nil {
@@ -59,9 +58,9 @@ func GenerateNodes(port, numberOfNodes int, delegate swarm.Delegate) ([]*swarm.N
 		if err != nil {
 			return nil, err
 		}
-		node := swarm.NewNode(grpc.NewServer(),
+		node := NewSwarm(grpc.NewServer(),
 			delegate,
-			swarm.Options{
+			Options{
 				MultiAddress:    multiAddress,
 				Debug:           DefaultOptionsDebug,
 				Alpha:           DefaultOptionsAlpha,
@@ -77,14 +76,14 @@ func GenerateNodes(port, numberOfNodes int, delegate swarm.Delegate) ([]*swarm.N
 	return nodes, nil
 }
 
-func GenerateFullTopology(port, numberOfNodes int, delegate swarm.Delegate) ([]*swarm.Node, map[identity.Address][]*swarm.Node, error) {
+func GenerateFullTopology(port, numberOfNodes int, delegate SwarmDelegate) ([]*Swarm, map[identity.Address][]*Swarm, error) {
 	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	routingTable := map[identity.Address][]*swarm.Node{}
+	routingTable := map[identity.Address][]*Swarm{}
 	for i, node := range nodes {
-		routingTable[node.DHT.Address] = []*swarm.Node{}
+		routingTable[node.DHT.Address] = []*Swarm{}
 		for j, peer := range nodes {
 			if i == j {
 				continue
@@ -95,14 +94,14 @@ func GenerateFullTopology(port, numberOfNodes int, delegate swarm.Delegate) ([]*
 	return nodes, routingTable, nil
 }
 
-func GenerateLineTopology(port, numberOfNodes int, delegate swarm.Delegate) ([]*swarm.Node, map[identity.Address][]*swarm.Node, error) {
+func GenerateLineTopology(port, numberOfNodes int, delegate SwarmDelegate) ([]*Swarm, map[identity.Address][]*Swarm, error) {
 	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	routingTable := map[identity.Address][]*swarm.Node{}
+	routingTable := map[identity.Address][]*Swarm{}
 	for i, node := range nodes {
-		routingTable[node.DHT.Address] = []*swarm.Node{}
+		routingTable[node.DHT.Address] = []*Swarm{}
 		if i == 0 {
 			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i+1])
 		} else if i == len(nodes)-1 {
@@ -115,14 +114,14 @@ func GenerateLineTopology(port, numberOfNodes int, delegate swarm.Delegate) ([]*
 	return nodes, routingTable, nil
 }
 
-func GenerateRingTopology(port, numberOfNodes int, delegate swarm.Delegate) ([]*swarm.Node, map[identity.Address][]*swarm.Node, error) {
+func GenerateRingTopology(port, numberOfNodes int, delegate SwarmDelegate) ([]*Swarm, map[identity.Address][]*Swarm, error) {
 	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	routingTable := map[identity.Address][]*swarm.Node{}
+	routingTable := map[identity.Address][]*Swarm{}
 	for i, node := range nodes {
-		routingTable[node.DHT.Address] = []*swarm.Node{}
+		routingTable[node.DHT.Address] = []*Swarm{}
 		if i == 0 {
 			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[i+1])
 			routingTable[node.DHT.Address] = append(routingTable[node.DHT.Address], nodes[len(nodes)-1])
@@ -137,14 +136,14 @@ func GenerateRingTopology(port, numberOfNodes int, delegate swarm.Delegate) ([]*
 	return nodes, routingTable, nil
 }
 
-func GenerateStarTopology(port, numberOfNodes int, delegate swarm.Delegate) ([]*swarm.Node, map[identity.Address][]*swarm.Node, error) {
+func GenerateStarTopology(port, numberOfNodes int, delegate SwarmDelegate) ([]*Swarm, map[identity.Address][]*Swarm, error) {
 	nodes, err := GenerateNodes(port, numberOfNodes, delegate)
 	if err != nil {
 		return nil, nil, err
 	}
-	routingTable := map[identity.Address][]*swarm.Node{}
+	routingTable := map[identity.Address][]*Swarm{}
 	for i, node := range nodes {
-		routingTable[node.DHT.Address] = []*swarm.Node{}
+		routingTable[node.DHT.Address] = []*Swarm{}
 		if i == 0 {
 			for j, peer := range nodes {
 				if i == j {
@@ -159,7 +158,7 @@ func GenerateStarTopology(port, numberOfNodes int, delegate swarm.Delegate) ([]*
 	return nodes, routingTable, nil
 }
 
-func Ping(to *swarm.Node, from *swarm.Node) error {
+func Ping(to *Swarm, from *Swarm) error {
 	var target *identity.MultiAddress
 
 	multiAddress, err := from.DHT.FindMultiAddress(to.Address())
@@ -193,7 +192,7 @@ func Ping(to *swarm.Node, from *swarm.Node) error {
 	return fmt.Errorf("ping error: %v could not find %v", from.Address(), to.Address())
 }
 
-func PickRandomNodes(nodes []*swarm.Node) (*swarm.Node, *swarm.Node) {
+func PickRandomNodes(nodes []*Swarm) (*Swarm, *Swarm) {
 	i := rand.Intn(len(nodes))
 	j := rand.Intn(len(nodes))
 	for i == j {
@@ -202,7 +201,7 @@ func PickRandomNodes(nodes []*swarm.Node) (*swarm.Node, *swarm.Node) {
 	return nodes[i], nodes[j]
 }
 
-func ping(nodes []*swarm.Node, topology map[identity.Address][]*swarm.Node) error {
+func ping(nodes []*Swarm, topology map[identity.Address][]*Swarm) error {
 	var wg sync.WaitGroup
 	wg.Add(len(nodes))
 
@@ -210,7 +209,7 @@ func ping(nodes []*swarm.Node, topology map[identity.Address][]*swarm.Node) erro
 	var globalError error = nil
 
 	for _, node := range nodes {
-		go func(node *swarm.Node) {
+		go func(node *Swarm) {
 			defer wg.Done()
 			peers := topology[node.DHT.Address]
 			for _, peer := range peers {
@@ -265,16 +264,16 @@ func (delegate *mockDelegate) OnQueryCloserPeersOnFrontierReceived(_ identity.Mu
 var _ = Describe("Bootstrapping", func() {
 
 	var err error
-	var bootstrapNodes []*swarm.Node
-	var bootstrapRoutingTable map[identity.Address][]*swarm.Node
-	var swarmNodes []*swarm.Node
+	var bootstrapNodes []*Swarm
+	var bootstrapRoutingTable map[identity.Address][]*Swarm
+	var swarmNodes []*Swarm
 	var delegate *mockDelegate
 
 	setupBootstrapNodes := func(topology Topology, numberOfNodes int) {
 		bootstrapNodes, bootstrapRoutingTable, err = GenerateBootstrapTopology(topology, numberOfNodes, newMockDelegate())
 		Ω(err).ShouldNot(HaveOccurred())
 		for i, node := range bootstrapNodes {
-			go func(i int, node *swarm.Node) {
+			go func(i int, node *Swarm) {
 				defer GinkgoRecover()
 				listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", NodePortBootstrap+i))
 				Ω(err).ShouldNot(HaveOccurred())
@@ -295,7 +294,7 @@ var _ = Describe("Bootstrapping", func() {
 			}
 		}
 		for i, node := range swarmNodes {
-			go func(i int, node *swarm.Node) {
+			go func(i int, node *Swarm) {
 				defer GinkgoRecover()
 				listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", NodePortSwarm+i))
 				Ω(err).ShouldNot(HaveOccurred())
@@ -312,12 +311,12 @@ var _ = Describe("Bootstrapping", func() {
 
 	AfterEach(func() {
 		for _, node := range bootstrapNodes {
-			func(node *swarm.Node) {
+			func(node *Swarm) {
 				node.Server.Stop()
 			}(node)
 		}
 		for _, node := range swarmNodes {
-			func(node *swarm.Node) {
+			func(node *Swarm) {
 				node.Server.Stop()
 			}(node)
 		}
@@ -377,16 +376,16 @@ var _ = Describe("Bootstrapping", func() {
 	}
 
 	Context("negative tests", func() {
-		var node *swarm.Node
+		var node *Swarm
 
 		BeforeEach(func() {
 			keyPair, err := identity.NewKeyPair()
 			Ω(err).ShouldNot(HaveOccurred())
 			multiAddress, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/" + keyPair.Address().String())
 			Ω(err).ShouldNot(HaveOccurred())
-			node = swarm.NewNode(grpc.NewServer(),
+			node = NewSwarm(grpc.NewServer(),
 				delegate,
-				swarm.Options{
+				Options{
 					MultiAddress:    multiAddress,
 					Debug:           DefaultOptionsDebug,
 					Alpha:           DefaultOptionsAlpha,
@@ -403,10 +402,10 @@ var _ = Describe("Bootstrapping", func() {
 			It("should print logs when we set the debug option to high", func() {
 				// Setup testing configuration.
 				setupBootstrapNodes(TopologyFull, 8)
-				bootstrapNodes[0].Options.Debug = swarm.DebugHigh
+				bootstrapNodes[0].Options.Debug = DebugHigh
 				bootstrapNodes[0].Options.Concurrent = true
 				setupSwarmNodes(16)
-				swarmNodes[0].Options.Debug = swarm.DebugHigh
+				swarmNodes[0].Options.Debug = DebugHigh
 				swarmNodes[0].Options.Concurrent = true
 
 				// Bootstrap all swarm nodes.
@@ -489,7 +488,7 @@ var _ = Describe("Bootstrapping", func() {
 				bootstrapNode, err := identity.NewMultiAddressFromString("/ip4/192.168.0.0/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
 				Ω(err).ShouldNot(HaveOccurred())
 				node.Options.BootstrapMultiAddresses = identity.MultiAddresses{bootstrapNode}
-				node.Options.Debug = swarm.DebugHigh
+				node.Options.Debug = DebugHigh
 
 				node.Bootstrap()
 			})

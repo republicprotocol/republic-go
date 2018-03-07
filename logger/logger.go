@@ -9,16 +9,19 @@ type Logger struct {
 }
 
 // NewLogger returns a new Logger that will start and stop a set of plugins.
-func NewLogger(plugins ...Plugin) Logger {
-	return Logger{
+func NewLogger(plugins ...Plugin) *Logger {
+	return &Logger{
 		Plugins: plugins,
 	}
 }
 
 // Start starts all the plugins of the logger
-func (logger Logger) Start() error {
+func (logger *Logger) Start() error {
 	for _, plugin := range logger.Plugins {
-		plugin.Start()
+		err := plugin.Start()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

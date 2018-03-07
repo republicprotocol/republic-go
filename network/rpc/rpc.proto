@@ -29,7 +29,6 @@ message Nothing {
  */
 
 service DarkOcean {
-  rpc Logs (LogRequest) returns (stream LogEvent);
   rpc Sync (SyncRequest) returns (stream SyncBlock);
 
   rpc SignOrderFragment (SignOrderFragmentRequest) returns (OrderFragmentSignature);
@@ -41,15 +40,6 @@ service DarkOcean {
   rpc ComputeResidueFragment (ComputeResidueFragmentRequest) returns (Nothing);
   rpc BroadcastAlphaBetaFragment (BroadcastAlphaBetaFragmentRequest) returns (AlphaBetaFragment);
   rpc BroadcastDeltaFragment (BroadcastDeltaFragmentRequest) returns (DeltaFragment);
-}
-
-message LogRequest {
-  MultiAddress from = 1;
-}
-
-message LogEvent {
-  bytes type = 1;
-  bytes message = 2;
 }
 
 message SyncRequest {
@@ -106,16 +96,17 @@ message AlphaBetaFragment {
 message DeltaFragment {    
   bytes signature = 1;
   bytes id = 2;
-  bytes buyOrderId = 3;
-  bytes sellOrderId = 4;
-  bytes buyOrderFragmentId = 5;
-  bytes sellOrderFragmentId = 6;
+  bytes deltaId = 3;
+  bytes buyOrderId = 4;
+  bytes sellOrderId = 5;
+  bytes buyOrderFragmentId = 6;
+  bytes sellOrderFragmentId = 7;
   
-  bytes fstCodeShare = 7;
-  bytes sndCodeShare = 8;
-  bytes priceShare = 9;
-  bytes maxVolumeShare = 10;
-  bytes minVolumeShare = 11;
+  bytes fstCodeShare = 8;
+  bytes sndCodeShare = 9;
+  bytes priceShare = 10;
+  bytes maxVolumeShare = 11;
+  bytes minVolumeShare = 12;
 }
 
 message OrderFragment {

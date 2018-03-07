@@ -1,8 +1,8 @@
 # Output of the go coverage tool
 *.out
 
+# Output of the go profiler
+*.pdf
+
 # Dep vendors
 vendor
-
-# Gopkg.lock
-Gopkg.lock

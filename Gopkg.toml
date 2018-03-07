@@ -7,6 +7,10 @@
   version = "1.0.0"
 
 [[constraint]]
+  name = "github.com/jbenet/go-base58"
+  version = "1.0.0"
+
+[[constraint]]
   name = "github.com/onsi/ginkgo"
   version = "1.4.0"
 
