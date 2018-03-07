@@ -98,7 +98,7 @@ var _ = Describe("Custom Client", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
-		It("should error with bad-formatted multiaddress", func() {
+		It("should error with bad-formatted multiAddress", func() {
 			multiWithouIP, err := identity.NewMultiAddressFromString(fmt.Sprintf("/tcp/3000/republic/%v", from.Address().String()))
 			Ω(err).ShouldNot(HaveOccurred())
 			multiWithouPort, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/republic/%v", from.Address().String()))

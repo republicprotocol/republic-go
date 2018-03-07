@@ -15,18 +15,18 @@ import (
 // for all RPCs and handles all timeouts and retries.
 type Client struct {
 	Connection *grpc.ClientConn
-	To         *Multiaddress
-	From       *Multiaddress
+	To         *MultiAddress
+	From       *MultiAddress
 
 	Options   ClientOptions
 	Swarm     SwarmClient
 	DarkOcean DarkOceanClient
 }
 
-// NewClient returns a Client that is connected to the given Multiaddress and
-// will always identify itself from the given Multiaddress. The connection will
+// NewClient returns a Client that is connected to the given MultiAddress and
+// will always identify itself from the given MultiAddress. The connection will
 // be closed when the Client is garbage collected.
-func NewClient(to, from identity.Multiaddress) (*Client, error) {
+func NewClient(to, from identity.MultiAddress) (*Client, error) {
 	host, err := to.ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return nil, err
@@ -38,8 +38,8 @@ func NewClient(to, from identity.Multiaddress) (*Client, error) {
 
 	client := &Client{
 		Options: DefaultClientOptions(),
-		To:      SerializeMultiaddress(to),
-		From:    SerializeMultiaddress(from),
+		To:      SerializeMultiAddress(to),
+		From:    SerializeMultiAddress(from),
 	}
 
 	if err := client.TimeoutFunc(func(ctx context.Context) error {
@@ -85,8 +85,8 @@ func (client *Client) Ping() error {
 }
 
 // Query RPC.
-func (client *Client) Query(query *Address) (chan *Multiaddress, error) {
-	ch := make(chan *Multiaddress)
+func (client *Client) Query(query *Address) (chan *MultiAddress, error) {
+	ch := make(chan *MultiAddress)
 	err := client.TimeoutFunc(func(ctx context.Context) error {
 		stream, err := client.Swarm.Query(ctx, query, grpc.FailFast(false))
 		if err != nil {
@@ -95,7 +95,7 @@ func (client *Client) Query(query *Address) (chan *Multiaddress, error) {
 		go func() {
 			defer func() { recover() }()
 			for {
-				multiaddress, err := stream.Recv()
+				multiAddress, err := stream.Recv()
 				if err == io.EOF {
 					close(ch)
 					return
@@ -104,7 +104,7 @@ func (client *Client) Query(query *Address) (chan *Multiaddress, error) {
 					close(ch)
 					return
 				}
-				ch <- multiaddress
+				ch <- multiAddress
 			}
 		}()
 		return nil
@@ -113,8 +113,8 @@ func (client *Client) Query(query *Address) (chan *Multiaddress, error) {
 }
 
 // QueryDeep RPC.
-func (client *Client) QueryDeep(query *Address) (chan *Multiaddress, error) {
-	ch := make(chan *Multiaddress)
+func (client *Client) QueryDeep(query *Address) (chan *MultiAddress, error) {
+	ch := make(chan *MultiAddress)
 	err := client.TimeoutFunc(func(ctx context.Context) error {
 		stream, err := client.Swarm.QueryDeep(ctx, query, grpc.FailFast(false))
 		if err != nil {
@@ -123,7 +123,7 @@ func (client *Client) QueryDeep(query *Address) (chan *Multiaddress, error) {
 		go func() {
 			defer func() { recover() }()
 			for {
-				multiaddress, err := stream.Recv()
+				multiAddress, err := stream.Recv()
 				if err == io.EOF {
 					close(ch)
 					return
@@ -132,7 +132,7 @@ func (client *Client) QueryDeep(query *Address) (chan *Multiaddress, error) {
 					close(ch)
 					return
 				}
-				ch <- multiaddress
+				ch <- multiAddress
 			}
 		}()
 		return nil

@@ -87,9 +87,9 @@ var _ = Describe("Data serialization and deserialization", func() {
 		})
 
 		It("should return an error when deserializing a malformed identity.MultiAddresses", func() {
-			wrongMultiaddress := "/ip4/192.168.0.1/"
-			wrongMultiaddresses := rpc.MultiAddresses{Multis: []*rpc.MultiAddress{{wrongMultiaddress}}}
-			_, err := rpc.DeserializeMultiAddresses(&wrongMultiaddresses)
+			wrongMultiAddress := "/ip4/192.168.0.1/"
+			wrongMultiAddresses := rpc.MultiAddresses{Multis: []*rpc.MultiAddress{{wrongMultiAddress}}}
+			_, err := rpc.DeserializeMultiAddresses(&wrongMultiAddresses)
 			Ω(err).Should(HaveOccurred())
 		})
 	})

@@ -21,15 +21,15 @@ type ClientCacheEntry struct {
 type ClientPool struct {
 	do.GuardedObject
 
-	from       identity.Multiaddress
+	from       identity.MultiAddress
 	cache      map[string]ClientCacheEntry
 	cacheLimit int
 }
 
 // NewClientPool returns a new ClientPool with the given cache limit. All
 // Clients that are created in this pool will identify themselves using the
-// given Multiaddress.
-func NewClientPool(from identity.Multiaddress, cacheLimit int) *ClientPool {
+// given MultiAddress.
+func NewClientPool(from identity.MultiAddress, cacheLimit int) *ClientPool {
 	pool := new(ClientPool)
 	pool.GuardedObject = do.NewGuardedObject()
 	pool.from = from
@@ -39,16 +39,16 @@ func NewClientPool(from identity.Multiaddress, cacheLimit int) *ClientPool {
 }
 
 // FindOrCreateClient will return a Client that is connected to the given
-// Multiaddress. It will first try to find an existing Client in the cache. If
+// MultiAddress. It will first try to find an existing Client in the cache. If
 // it cannot find one in the cache, it will create a new one and add it to the
 // cache.
-func (pool *ClientPool) FindOrCreateClient(to identity.Multiaddress) (*Client, error) {
+func (pool *ClientPool) FindOrCreateClient(to identity.MultiAddress) (*Client, error) {
 	pool.Enter(nil)
 	defer pool.Exit()
 	return pool.findOrCreateClient(to)
 }
 
-func (pool *ClientPool) findOrCreateClient(to identity.Multiaddress) (*Client, error) {
+func (pool *ClientPool) findOrCreateClient(to identity.MultiAddress) (*Client, error) {
 	clientCacheEntry, ok := pool.cache[to.String()]
 	if ok {
 		clientCacheEntry.Timestamp = time.Now()
@@ -62,9 +62,9 @@ func (pool *ClientPool) findOrCreateClient(to identity.Multiaddress) (*Client, e
 
 	if len(pool.cache) >= pool.cacheLimit {
 		var k string
-		for multiaddress := range pool.cache {
-			if k == "" || pool.cache[multiaddress].Timestamp.After(pool.cache[multiaddress].Timestamp) {
-				k = multiaddress
+		for multiAddress := range pool.cache {
+			if k == "" || pool.cache[multiAddress].Timestamp.After(pool.cache[multiAddress].Timestamp) {
+				k = multiAddress
 			}
 		}
 		delete(pool.cache, k)

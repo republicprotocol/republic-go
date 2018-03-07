@@ -7,18 +7,18 @@ package rpc;
  */
 
 service Swarm {
-  rpc Ping (Multiaddress) returns (Multiaddress);
-  rpc Query (Address) returns (stream Multiaddress);
-  rpc QueryDeep (Address) returns (stream Multiaddress);
+  rpc Ping (MultiAddress) returns (MultiAddress);
+  rpc Query (Address) returns (stream MultiAddress);
+  rpc QueryDeep (Address) returns (stream MultiAddress);
 }
 
 message Address {
   string address = 1;
 }
 
-message Multiaddress {
+message MultiAddress {
   bytes signature = 1;
-  string multiaddress = 2;
+  string multiAddress = 2;
 }
 
 message Nothing {
@@ -44,7 +44,7 @@ service DarkOcean {
 }
 
 message LogRequest {
-  Multiaddress from = 1;
+  MultiAddress from = 1;
 }
 
 message LogEvent {
@@ -53,46 +53,46 @@ message LogEvent {
 }
 
 message SyncRequest {
-  Multiaddress from = 1;
+  MultiAddress from = 1;
 }
 
 message SignOrderFragmentRequest {
-  Multiaddress from = 1;
+  MultiAddress from = 1;
   OrderFragmentSignature orderFragmentSignature = 2;
 }
 
 message OpenOrderRequest {
-  Multiaddress from = 1;
+  MultiAddress from = 1;
   OrderSignature orderSignature = 2;
   OrderFragment orderFragment = 3;
 }
 
 message CancelOrderRequest {
-  Multiaddress from = 1;
+  MultiAddress from = 1;
   OrderSignature orderSignature = 2;
 }
 
 message RandomFragmentSharesRequest {
-  Multiaddress from = 1;
+  MultiAddress from = 1;
 }
 
 message ResidueFragmentSharesRequest {
-  Multiaddress from = 1;
+  MultiAddress from = 1;
   RandomFragments randomFragments = 2;
 }
 
 message ComputeResidueFragmentRequest {
-  Multiaddress from = 1;
+  MultiAddress from = 1;
   ResidueFragments residueFragments = 2;
 }
 
 message BroadcastAlphaBetaFragmentRequest {
-  Multiaddress from = 1;
+  MultiAddress from = 1;
   AlphaBetaFragment alphaBetaFragment = 2;
 }
 
 message BroadcastDeltaFragmentRequest {
-  Multiaddress from = 1;
+  MultiAddress from = 1;
   DeltaFragment deltaFragment = 2;
 }
 

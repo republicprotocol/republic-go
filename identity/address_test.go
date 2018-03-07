@@ -148,14 +148,14 @@ var _ = Describe("", func() {
 
 		Context("getting the multi-address", func() {
 			address := identity.Address("8MK6bwP1ADVPaMQ4Gxfm85KYbEdJ6Y")
-			multiaddress, err := address.Multiaddress()
+			multiAddress, err := address.MultiAddress()
 
 			It("should not error", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			It("should be able to get the address from the multi-address", func() {
-				Ω(string(multiaddress.Address())).Should(Equal(string(address)))
+				Ω(string(multiAddress.Address())).Should(Equal(string(address)))
 			})
 		})
 

@@ -9,7 +9,7 @@ It is generated from these files:
 
 It has these top-level messages:
 	Address
-	Multiaddress
+	MultiAddress
 	Nothing
 	LogRequest
 	LogEvent
@@ -71,26 +71,26 @@ func (m *Address) GetAddress() string {
 	return ""
 }
 
-type Multiaddress struct {
+type MultiAddress struct {
 	Signature    []byte `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
-	Multiaddress string `protobuf:"bytes,2,opt,name=multiaddress" json:"multiaddress,omitempty"`
+	MultiAddress string `protobuf:"bytes,2,opt,name=multiAddress" json:"multiAddress,omitempty"`
 }
 
-func (m *Multiaddress) Reset()                    { *m = Multiaddress{} }
-func (m *Multiaddress) String() string            { return proto.CompactTextString(m) }
-func (*Multiaddress) ProtoMessage()               {}
-func (*Multiaddress) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (m *MultiAddress) Reset()                    { *m = MultiAddress{} }
+func (m *MultiAddress) String() string            { return proto.CompactTextString(m) }
+func (*MultiAddress) ProtoMessage()               {}
+func (*MultiAddress) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
-func (m *Multiaddress) GetSignature() []byte {
+func (m *MultiAddress) GetSignature() []byte {
 	if m != nil {
 		return m.Signature
 	}
 	return nil
 }
 
-func (m *Multiaddress) GetMultiaddress() string {
+func (m *MultiAddress) GetMultiAddress() string {
 	if m != nil {
-		return m.Multiaddress
+		return m.MultiAddress
 	}
 	return ""
 }
@@ -104,7 +104,7 @@ func (*Nothing) ProtoMessage()               {}
 func (*Nothing) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 type LogRequest struct {
-	From *Multiaddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	From *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
 }
 
 func (m *LogRequest) Reset()                    { *m = LogRequest{} }
@@ -112,7 +112,7 @@ func (m *LogRequest) String() string            { return proto.CompactTextString
 func (*LogRequest) ProtoMessage()               {}
 func (*LogRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
-func (m *LogRequest) GetFrom() *Multiaddress {
+func (m *LogRequest) GetFrom() *MultiAddress {
 	if m != nil {
 		return m.From
 	}
@@ -144,7 +144,7 @@ func (m *LogEvent) GetMessage() []byte {
 }
 
 type SyncRequest struct {
-	From *Multiaddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	From *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
 }
 
 func (m *SyncRequest) Reset()                    { *m = SyncRequest{} }
@@ -152,7 +152,7 @@ func (m *SyncRequest) String() string            { return proto.CompactTextStrin
 func (*SyncRequest) ProtoMessage()               {}
 func (*SyncRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
-func (m *SyncRequest) GetFrom() *Multiaddress {
+func (m *SyncRequest) GetFrom() *MultiAddress {
 	if m != nil {
 		return m.From
 	}
@@ -160,7 +160,7 @@ func (m *SyncRequest) GetFrom() *Multiaddress {
 }
 
 type SignOrderFragmentRequest struct {
-	From                   *Multiaddress           `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	From                   *MultiAddress           `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
 	OrderFragmentSignature *OrderFragmentSignature `protobuf:"bytes,2,opt,name=orderFragmentSignature" json:"orderFragmentSignature,omitempty"`
 }
 
@@ -169,7 +169,7 @@ func (m *SignOrderFragmentRequest) String() string            { return proto.Com
 func (*SignOrderFragmentRequest) ProtoMessage()               {}
 func (*SignOrderFragmentRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
-func (m *SignOrderFragmentRequest) GetFrom() *Multiaddress {
+func (m *SignOrderFragmentRequest) GetFrom() *MultiAddress {
 	if m != nil {
 		return m.From
 	}
@@ -184,7 +184,7 @@ func (m *SignOrderFragmentRequest) GetOrderFragmentSignature() *OrderFragmentSig
 }
 
 type OpenOrderRequest struct {
-	From           *Multiaddress   `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	From           *MultiAddress   `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
 	OrderSignature *OrderSignature `protobuf:"bytes,2,opt,name=orderSignature" json:"orderSignature,omitempty"`
 	OrderFragment  *OrderFragment  `protobuf:"bytes,3,opt,name=orderFragment" json:"orderFragment,omitempty"`
 }
@@ -194,7 +194,7 @@ func (m *OpenOrderRequest) String() string            { return proto.CompactText
 func (*OpenOrderRequest) ProtoMessage()               {}
 func (*OpenOrderRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
-func (m *OpenOrderRequest) GetFrom() *Multiaddress {
+func (m *OpenOrderRequest) GetFrom() *MultiAddress {
 	if m != nil {
 		return m.From
 	}
@@ -216,7 +216,7 @@ func (m *OpenOrderRequest) GetOrderFragment() *OrderFragment {
 }
 
 type CancelOrderRequest struct {
-	From           *Multiaddress   `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	From           *MultiAddress   `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
 	OrderSignature *OrderSignature `protobuf:"bytes,2,opt,name=orderSignature" json:"orderSignature,omitempty"`
 }
 
@@ -225,7 +225,7 @@ func (m *CancelOrderRequest) String() string            { return proto.CompactTe
 func (*CancelOrderRequest) ProtoMessage()               {}
 func (*CancelOrderRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
-func (m *CancelOrderRequest) GetFrom() *Multiaddress {
+func (m *CancelOrderRequest) GetFrom() *MultiAddress {
 	if m != nil {
 		return m.From
 	}
@@ -240,7 +240,7 @@ func (m *CancelOrderRequest) GetOrderSignature() *OrderSignature {
 }
 
 type RandomFragmentSharesRequest struct {
-	From *Multiaddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	From *MultiAddress `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
 }
 
 func (m *RandomFragmentSharesRequest) Reset()                    { *m = RandomFragmentSharesRequest{} }
@@ -248,7 +248,7 @@ func (m *RandomFragmentSharesRequest) String() string            { return proto.
 func (*RandomFragmentSharesRequest) ProtoMessage()               {}
 func (*RandomFragmentSharesRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
-func (m *RandomFragmentSharesRequest) GetFrom() *Multiaddress {
+func (m *RandomFragmentSharesRequest) GetFrom() *MultiAddress {
 	if m != nil {
 		return m.From
 	}
@@ -256,7 +256,7 @@ func (m *RandomFragmentSharesRequest) GetFrom() *Multiaddress {
 }
 
 type ResidueFragmentSharesRequest struct {
-	From            *Multiaddress    `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	From            *MultiAddress    `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
 	RandomFragments *RandomFragments `protobuf:"bytes,2,opt,name=randomFragments" json:"randomFragments,omitempty"`
 }
 
@@ -265,7 +265,7 @@ func (m *ResidueFragmentSharesRequest) String() string            { return proto
 func (*ResidueFragmentSharesRequest) ProtoMessage()               {}
 func (*ResidueFragmentSharesRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
-func (m *ResidueFragmentSharesRequest) GetFrom() *Multiaddress {
+func (m *ResidueFragmentSharesRequest) GetFrom() *MultiAddress {
 	if m != nil {
 		return m.From
 	}
@@ -280,7 +280,7 @@ func (m *ResidueFragmentSharesRequest) GetRandomFragments() *RandomFragments {
 }
 
 type ComputeResidueFragmentRequest struct {
-	From             *Multiaddress     `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	From             *MultiAddress     `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
 	ResidueFragments *ResidueFragments `protobuf:"bytes,2,opt,name=residueFragments" json:"residueFragments,omitempty"`
 }
 
@@ -289,7 +289,7 @@ func (m *ComputeResidueFragmentRequest) String() string            { return prot
 func (*ComputeResidueFragmentRequest) ProtoMessage()               {}
 func (*ComputeResidueFragmentRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
-func (m *ComputeResidueFragmentRequest) GetFrom() *Multiaddress {
+func (m *ComputeResidueFragmentRequest) GetFrom() *MultiAddress {
 	if m != nil {
 		return m.From
 	}
@@ -304,7 +304,7 @@ func (m *ComputeResidueFragmentRequest) GetResidueFragments() *ResidueFragments 
 }
 
 type BroadcastAlphaBetaFragmentRequest struct {
-	From              *Multiaddress      `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	From              *MultiAddress      `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
 	AlphaBetaFragment *AlphaBetaFragment `protobuf:"bytes,2,opt,name=alphaBetaFragment" json:"alphaBetaFragment,omitempty"`
 }
 
@@ -315,7 +315,7 @@ func (*BroadcastAlphaBetaFragmentRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor0, []int{12}
 }
 
-func (m *BroadcastAlphaBetaFragmentRequest) GetFrom() *Multiaddress {
+func (m *BroadcastAlphaBetaFragmentRequest) GetFrom() *MultiAddress {
 	if m != nil {
 		return m.From
 	}
@@ -330,7 +330,7 @@ func (m *BroadcastAlphaBetaFragmentRequest) GetAlphaBetaFragment() *AlphaBetaFra
 }
 
 type BroadcastDeltaFragmentRequest struct {
-	From          *Multiaddress  `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
+	From          *MultiAddress  `protobuf:"bytes,1,opt,name=from" json:"from,omitempty"`
 	DeltaFragment *DeltaFragment `protobuf:"bytes,2,opt,name=deltaFragment" json:"deltaFragment,omitempty"`
 }
 
@@ -339,7 +339,7 @@ func (m *BroadcastDeltaFragmentRequest) String() string            { return prot
 func (*BroadcastDeltaFragmentRequest) ProtoMessage()               {}
 func (*BroadcastDeltaFragmentRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
 
-func (m *BroadcastDeltaFragmentRequest) GetFrom() *Multiaddress {
+func (m *BroadcastDeltaFragmentRequest) GetFrom() *MultiAddress {
 	if m != nil {
 		return m.From
 	}
@@ -899,7 +899,7 @@ func (m *SyncBlock_ResidueBlock) GetMismatched() []*ResidueFragment {
 
 func init() {
 	proto.RegisterType((*Address)(nil), "rpc.Address")
-	proto.RegisterType((*Multiaddress)(nil), "rpc.Multiaddress")
+	proto.RegisterType((*MultiAddress)(nil), "rpc.MultiAddress")
 	proto.RegisterType((*Nothing)(nil), "rpc.Nothing")
 	proto.RegisterType((*LogRequest)(nil), "rpc.LogRequest")
 	proto.RegisterType((*LogEvent)(nil), "rpc.LogEvent")
@@ -937,7 +937,7 @@ const _ = grpc.SupportPackageIsVersion4
 // Client API for Swarm service
 
 type SwarmClient interface {
-	Ping(ctx context.Context, in *Multiaddress, opts ...grpc.CallOption) (*Multiaddress, error)
+	Ping(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (*MultiAddress, error)
 	Query(ctx context.Context, in *Address, opts ...grpc.CallOption) (Swarm_QueryClient, error)
 	QueryDeep(ctx context.Context, in *Address, opts ...grpc.CallOption) (Swarm_QueryDeepClient, error)
 }
@@ -950,8 +950,8 @@ func NewSwarmClient(cc *grpc.ClientConn) SwarmClient {
 	return &swarmClient{cc}
 }
 
-func (c *swarmClient) Ping(ctx context.Context, in *Multiaddress, opts ...grpc.CallOption) (*Multiaddress, error) {
-	out := new(Multiaddress)
+func (c *swarmClient) Ping(ctx context.Context, in *MultiAddress, opts ...grpc.CallOption) (*MultiAddress, error) {
+	out := new(MultiAddress)
 	err := grpc.Invoke(ctx, "/rpc.Swarm/Ping", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -975,7 +975,7 @@ func (c *swarmClient) Query(ctx context.Context, in *Address, opts ...grpc.CallO
 }
 
 type Swarm_QueryClient interface {
-	Recv() (*Multiaddress, error)
+	Recv() (*MultiAddress, error)
 	grpc.ClientStream
 }
 
@@ -983,8 +983,8 @@ type swarmQueryClient struct {
 	grpc.ClientStream
 }
 
-func (x *swarmQueryClient) Recv() (*Multiaddress, error) {
-	m := new(Multiaddress)
+func (x *swarmQueryClient) Recv() (*MultiAddress, error) {
+	m := new(MultiAddress)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -1007,7 +1007,7 @@ func (c *swarmClient) QueryDeep(ctx context.Context, in *Address, opts ...grpc.C
 }
 
 type Swarm_QueryDeepClient interface {
-	Recv() (*Multiaddress, error)
+	Recv() (*MultiAddress, error)
 	grpc.ClientStream
 }
 
@@ -1015,8 +1015,8 @@ type swarmQueryDeepClient struct {
 	grpc.ClientStream
 }
 
-func (x *swarmQueryDeepClient) Recv() (*Multiaddress, error) {
-	m := new(Multiaddress)
+func (x *swarmQueryDeepClient) Recv() (*MultiAddress, error) {
+	m := new(MultiAddress)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -1026,7 +1026,7 @@ func (x *swarmQueryDeepClient) Recv() (*Multiaddress, error) {
 // Server API for Swarm service
 
 type SwarmServer interface {
-	Ping(context.Context, *Multiaddress) (*Multiaddress, error)
+	Ping(context.Context, *MultiAddress) (*MultiAddress, error)
 	Query(*Address, Swarm_QueryServer) error
 	QueryDeep(*Address, Swarm_QueryDeepServer) error
 }
@@ -1036,7 +1036,7 @@ func RegisterSwarmServer(s *grpc.Server, srv SwarmServer) {
 }
 
 func _Swarm_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Multiaddress)
+	in := new(MultiAddress)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1048,7 +1048,7 @@ func _Swarm_Ping_Handler(srv interface{}, ctx context.Context, dec func(interfac
 		FullMethod: "/rpc.Swarm/Ping",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SwarmServer).Ping(ctx, req.(*Multiaddress))
+		return srv.(SwarmServer).Ping(ctx, req.(*MultiAddress))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1062,7 +1062,7 @@ func _Swarm_Query_Handler(srv interface{}, stream grpc.ServerStream) error {
 }
 
 type Swarm_QueryServer interface {
-	Send(*Multiaddress) error
+	Send(*MultiAddress) error
 	grpc.ServerStream
 }
 
@@ -1070,7 +1070,7 @@ type swarmQueryServer struct {
 	grpc.ServerStream
 }
 
-func (x *swarmQueryServer) Send(m *Multiaddress) error {
+func (x *swarmQueryServer) Send(m *MultiAddress) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -1083,7 +1083,7 @@ func _Swarm_QueryDeep_Handler(srv interface{}, stream grpc.ServerStream) error {
 }
 
 type Swarm_QueryDeepServer interface {
-	Send(*Multiaddress) error
+	Send(*MultiAddress) error
 	grpc.ServerStream
 }
 
@@ -1091,7 +1091,7 @@ type swarmQueryDeepServer struct {
 	grpc.ServerStream
 }
 
-func (x *swarmQueryDeepServer) Send(m *Multiaddress) error {
+func (x *swarmQueryDeepServer) Send(m *MultiAddress) error {
 	return x.ServerStream.SendMsg(m)
 }
 

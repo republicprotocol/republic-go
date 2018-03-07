@@ -7,7 +7,7 @@ import (
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
-// SerializeAddress converts an identity.Multiaddress into its network
+// SerializeAddress converts an identity.MultiAddress into its network
 // representation.
 func SerializeAddress(address identity.Address) *Address {
 	return &Address{Address: address.String()}
@@ -20,17 +20,17 @@ func DeserializeAddress(address *Address) identity.Address {
 	return identity.Address(address.Address)
 }
 
-// SerializeMultiaddress converts an identity.Multiaddress into its network
+// SerializeMultiAddress converts an identity.MultiAddress into its network
 // representation.
-func SerializeMultiaddress(multiAddress identity.Multiaddress) *Multiaddress {
-	return &Multiaddress{Multiaddress: multiAddress.String()}
+func SerializeMultiAddress(multiAddress identity.MultiAddress) *MultiAddress {
+	return &MultiAddress{MultiAddress: multiAddress.String()}
 }
 
-// DeserializeMultiaddress converts a network representation of a Multiaddress
-// into an identity.Multiaddress. An error is returned if the network
+// DeserializeMultiAddress converts a network representation of a MultiAddress
+// into an identity.MultiAddress. An error is returned if the network
 // representation is malformed.
-func DeserializeMultiaddress(multiAddress *Multiaddress) (identity.Multiaddress, error) {
-	return identity.NewMultiaddressFromString(multiAddress.Multiaddress)
+func DeserializeMultiAddress(multiAddress *MultiAddress) (identity.MultiAddress, error) {
+	return identity.NewMultiAddressFromString(multiAddress.MultiAddress)
 }
 
 // SerializeOrderFragment converts an order.Fragment into its network

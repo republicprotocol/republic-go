@@ -4,31 +4,32 @@ import (
 	"bytes"
 	"math/big"
 
+	base58 "github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/republic-go/order"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/go-sss"
 )
 
-// A DeltaID is the Keccak256 hash of the OrderIDs that were used to compute
-// the respective Result.
+// A DeltaID is the Keccak256 hash of the order IDs that were used to compute
+// the associated Delta.
 type DeltaID []byte
 
-// Equals checks if two ResultIDs are equal in value.
-func (id DeltaID) Equals(other DeltaID) bool {
+// Equal returns an equality check between two DeltaIDs.
+func (id DeltaID) Equal(other DeltaID) bool {
 	return bytes.Equal(id, other)
 }
 
-// String returns the ResultID as a string.
+// String returns a DeltaID as a Base58 encoded string.
 func (id DeltaID) String() string {
-	return string(id)
+	return base58.Encode(id)
 }
 
-// A Delta is the publicly computed value of comparing two Orders.
 type Delta struct {
 	ID          DeltaID
-	BuyOrderID  OrderID
-	SellOrderID OrderID
+	BuyOrderID  order.ID
+	SellOrderID order.ID
 	FstCode     *big.Int
 	SndCode     *big.Int
 	Price       *big.Int
@@ -94,30 +95,30 @@ func (delta *Delta) IsMatch(prime *big.Int) bool {
 	return true
 }
 
-// A DeltaFragmentID is the Keccak256 hash of its OrderFragmentIDs.
+// A DeltaFragmentID is the Keccak256 hash of the order IDs that were used to
+// compute the associated DeltaFragment.
 type DeltaFragmentID []byte
 
-// Equals checks if two DeltaFragmentIDs are equal in value.
-func (id DeltaFragmentID) Equals(other DeltaFragmentID) bool {
+// Equal returns an equality check between two DeltaFragmentIDs.
+func (id DeltaFragmentID) Equal(other DeltaFragmentID) bool {
 	return bytes.Equal(id, other)
 }
 
-// String returns the DeltaFragmentID as a string.
+// String returns a DeltaFragmentID as a Base58 encoded string.
 func (id DeltaFragmentID) String() string {
-	return string(id)
+	return base58.Encode(id)
 }
 
 // A DeltaFragment is a secret share of a Final. Is is performing a
 // computation over two OrderFragments.
 type DeltaFragment struct {
-	// Public data.
 	ID                  DeltaFragmentID
-	BuyOrderID          OrderID
-	SellOrderID         OrderID
-	BuyOrderFragmentID  OrderFragmentID
-	SellOrderFragmentID OrderFragmentID
+	DeltaID             DeltaID
+	BuyOrderID          order.ID
+	SellOrderID         order.ID
+	BuyOrderFragmentID  order.FragmentID
+	SellOrderFragmentID order.FragmentID
 
-	// Private data.
 	FstCodeShare   sss.Share
 	SndCodeShare   sss.Share
 	PriceShare     sss.Share
@@ -125,7 +126,7 @@ type DeltaFragment struct {
 	MinVolumeShare sss.Share
 }
 
-func NewDeltaFragment(left *OrderFragment, right *OrderFragment, prime *big.Int) (*DeltaFragment, error) {
+func NewDeltaFragment(left *order.Fragment, right *order.Fragment, prime *big.Int) (*DeltaFragment, error) {
 	if err := left.IsCompatible(right); err != nil {
 		return nil, err
 	}
@@ -137,6 +138,15 @@ func NewDeltaFragment(left *OrderFragment, right *OrderFragment, prime *big.Int)
 	} else {
 		buyOrderFragment = right
 		sellOrderFragment = left
+	}
+
+	deltaFragment := &DeltaFragment{
+		ID:                  DeltaFragmentID(crypto.Keccak256([]byte(buyOrderFragment.ID), []byte(sellOrderFragment.ID))),
+		DeltaID:             DeltaID(crypto.Keccak256([]byte(buyOrderFragment.OrderID), []byte(sellOrderFragment.OrderID))),
+		BuyOrderID:          buyOrderFragment.OrderID,
+		SellOrderID:         sellOrderFragment.OrderID,
+		BuyOrderFragmentID:  buyOrderFragment.ID,
+		SellOrderFragmentID: sellOrderFragment.ID,
 	}
 
 	deltaFragment, err := buyOrderFragment.Sub(sellOrderFragment, prime)
@@ -163,12 +173,6 @@ func (deltaFragment *DeltaFragment) Equals(other *DeltaFragment) bool {
 		deltaFragment.MaxVolumeShare.Value.Cmp(other.MaxVolumeShare.Value) == 0 &&
 		deltaFragment.MinVolumeShare.Key == other.MinVolumeShare.Key &&
 		deltaFragment.MinVolumeShare.Value.Cmp(other.MinVolumeShare.Value) == 0
-}
-
-// DeltaID returns the ID of the Delta to which this DeltaFragment will
-// eventually reconstruct.
-func (deltaFragment *DeltaFragment) DeltaID() DeltaID {
-	return DeltaID(crypto.Keccak256(deltaFragment.BuyOrderID[:], deltaFragment.SellOrderID[:]))
 }
 
 // IsCompatible returns an error when the two deltaFragments do not have
