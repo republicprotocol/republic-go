@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -62,12 +61,13 @@ func (plugin FilePlugin) Error(err error) {
 }
 
 type WebSocketPlugin struct {
-	Srv      *http.Server
-	Host     string
-	Port     string
-	Username string
-	Password string
-	Handler  func(w http.ResponseWriter, r *http.Request)
+	Srv        *http.Server
+	Connection *websocket.Conn
+	Host       string
+	Port       string
+	Username   string
+	Password   string
+	Handler    func(w http.ResponseWriter, r *http.Request)
 }
 
 func NewWebSocketPlugin(host, port, username, password string) Plugin {
@@ -81,25 +81,26 @@ func NewWebSocketPlugin(host, port, username, password string) Plugin {
 	return plugin
 }
 
-func (plugin WebSocketPlugin)logHandler(w http.ResponseWriter, r *http.Request) {
+func (plugin WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
 	upgrader := websocket.Upgrader{}
-	c, err := upgrader.Upgrade(w, r, nil)
+	plugin.Connection, err = upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		plugin.Error(err)
 		return
 	}
 
-	defer c.Close()
+	defer plugin.Connection.Close()
 	for {
 		// todo : handle request
 		request := new(Request)
-		err := c.ReadJSON(request)
+		err := plugin.Connection.ReadJSON(request)
 		if err != nil {
 			plugin.Error(err)
 			return
 		}
 
-		err = c.WriteJSON(request)
+		err = plugin.Connection.WriteJSON(request)
 		if err != nil {
 			plugin.Error(err)
 			return
@@ -109,13 +110,14 @@ func (plugin WebSocketPlugin)logHandler(w http.ResponseWriter, r *http.Request) 
 
 func (plugin WebSocketPlugin) Start() error {
 	plugin.Srv = &http.Server{
-		Addr:":8080",
+		Addr: ":8080",
 	}
 	http.HandleFunc("/logs", plugin.Handler)
 	go func() {
 		plugin.Info(fmt.Sprintf("WebSocket logger listening on %s:%s", plugin.Host, plugin.Port))
 		plugin.Srv.ListenAndServe()
 	}()
+
 	return nil
 }
 
@@ -123,14 +125,32 @@ func (plugin WebSocketPlugin) Stop() error {
 	return plugin.Srv.Shutdown(nil)
 }
 
-func (plugin WebSocketPlugin) Info(info string) {
+type Message struct {
+	Time    string
+	Type    string
+	Message string
+}
 
+func (plugin WebSocketPlugin) Info(info string) {
+	plugin.Connection.WriteJSON(Message{
+		Time:    time.Now().Format("2006/01/02 15:04:05"),
+		Type:    "INFO",
+		Message: info,
+	})
 }
 
 func (plugin WebSocketPlugin) Error(err error) {
-
+	plugin.Connection.WriteJSON(Message{
+		Time:    time.Now().Format("2006/01/02 15:04:05"),
+		Type:    "ERROR",
+		Message: err.Error(),
+	})
 }
 
 func (plugin WebSocketPlugin) Warning(warning string) {
-
+	plugin.Connection.WriteJSON(Message{
+		Time:    time.Now().Format("2006/01/02 15:04:05"),
+		Type:    "warning",
+		Message: warning,
+	})
 }
