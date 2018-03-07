@@ -19,6 +19,8 @@ type Config struct {
 	RSAKeyPair              identity.KeyPair        `json:"rsa_key_pair"`
 	MultiAddress            identity.MultiAddress   `json:"multi_address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
+	Logger                  *Logger                  `json:"logger""`
+	Dev                     bool                    `json:"dev""`
 
 	ComputationShardSize     int      `json:"computation_shard_size"`
 	ComputationShardInterval int      `json:"computation_shard_interval"`

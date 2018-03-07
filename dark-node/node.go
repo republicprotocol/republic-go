@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/big"
 	"net"
@@ -9,13 +10,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/republicprotocol/go-dark-network"
-	"github.com/republicprotocol/go-dark-node-registrar"
 	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-order-compute"
-	"github.com/republicprotocol/go-rpc"
-	"github.com/republicprotocol/go-swarm-network"
+	"github.com/republicprotocol/republic-go/compute"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 	"google.golang.org/grpc"
 )
 
@@ -91,8 +90,8 @@ func (logQueue *LogQueue) Unsubscribe(channel chan do.Option) {
 // DarkNode ...
 type DarkNode struct {
 	Server        *grpc.Server
-	Swarm         *swarm.Node
-	Dark          *dark.Node
+	Swarm         *network.SwarmService
+	Dark          *network.DarkOceanService
 	Configuration *Config
 	Registrar     *dnr.DarkNodeRegistrar
 
@@ -107,7 +106,7 @@ type DarkNode struct {
 	logQueue *LogQueue
 }
 
-// NewDarkNode creates a new DarkNode, a new swarm.Node and dark.Node and assigns the
+// NewDarkNode creates a new DarkNode, a new network.Node and network.Node and assigns the
 // new DarkNode as the delegate for both. Returns the new DarkNode, or an error.
 func NewDarkNode(config *Config) (*DarkNode, error) {
 	if config.Prime == nil {
@@ -140,10 +139,10 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	node.DeltaBuilder = compute.NewDeltaBuilder(node.DarkPoolLimit, config.Prime)
 	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(config.Prime)
 
-	swarmOptions := swarm.Options{
+	swarmOptions := network.Options{
 		MultiAddress:            config.MultiAddress,
 		BootstrapMultiAddresses: config.BootstrapMultiAddresses,
-		Debug:           swarm.DebugMedium,
+		Debug:           network.DebugMedium,
 		Alpha:           3,
 		MaxBucketLength: 20,
 		Timeout:         30 * time.Second,
@@ -151,31 +150,38 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		TimeoutRetries:  3,
 		Concurrent:      true,
 	}
-	swarmNode := swarm.NewNode(node.Server, node, swarmOptions)
+	swarmNode := network.NewNode(node.Server, node, swarmOptions)
 	node.Swarm = swarmNode
 
-	darkOptions := dark.Options{
+	darkOptions := network.Options{
 		Address:        config.MultiAddress.Address(),
-		Debug:          dark.DebugMedium,
+		Debug:          network.DebugMedium,
 		Timeout:        30 * time.Second,
 		TimeoutStep:    30 * time.Second,
 		TimeoutRetries: 3,
 		Concurrent:     true,
 	}
-	darkNode := dark.NewNode(node.Server, node, darkOptions)
+	darkNode := network.NewNode(node.Server, node, darkOptions)
 	node.Dark = darkNode
+
+	err = node.Configuration.Logger.Start()
+	if err != nil {
+		return node, err
+	}
 
 	return node, nil
 }
 
 // Start mining for compute.Orders that are matched. It establishes connections
 // to other peers in the swarm network by bootstrapping against a set of
-// bootstrap swarm.Nodes.
+// bootstrap network.Nodes.
 func (node *DarkNode) Start() error {
-
-	//go func() {
-	//	node.StartListening()
-	//}()
+	go func() {
+		for {
+			time.Sleep(20 * time.Second)
+			node.Usage()
+		}
+	}()
 
 	isRegistered := node.IsRegistered()
 	for !isRegistered {
@@ -185,7 +191,7 @@ func (node *DarkNode) Start() error {
 		isRegistered = node.IsRegistered()
 	}
 
-	// Bootstrap the connections in the swarm.
+	// Bootstrap the connections in the network.
 	node.Swarm.Bootstrap()
 
 	go node.WatchForEpoch()
@@ -193,9 +199,21 @@ func (node *DarkNode) Start() error {
 	return nil
 }
 
+func (node *DarkNode) Error(err error) {
+	node.Configuration.Logger.Error(err)
+}
+
+func (node *DarkNode) Info(info string) {
+	node.Configuration.Logger.Info(info)
+}
+
+func (node *DarkNode) Warning(warning string) {
+	node.Configuration.Logger.Warning(warning)
+}
+
 // StartListening starts listening for rpc calls
 func (node *DarkNode) StartListening() error {
-	log.Printf("%v listening on %s:%s\n", node.Configuration.MultiAddress.Address(), node.Configuration.Host, node.Configuration.Port)
+	node.Info(fmt.Sprintf("Listening on %s:%s\n", node.Configuration.Host, node.Configuration.Port))
 	node.Swarm.Register()
 	node.Dark.Register()
 	listener, err := net.Listen("tcp", node.Configuration.Host+":"+node.Configuration.Port)
@@ -386,4 +404,23 @@ func ConnectToRegistrar(keypair identity.KeyPair) (*dnr.DarkNodeRegistrar, error
 	renContract := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
 	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, renContract, nil)
 	return userConnection, nil
+}
+
+func (node *DarkNode) Usage() {
+	// memory
+	vmStat, err := mem.VirtualMemory()
+	if err != nil {
+		node.Error(err)
+	}
+	node.Info(fmt.Sprintf("%d", vmStat.Used))
+	log.Print("mem : ", vmStat.Used)
+
+	// cpu - get CPU number of cores and speed
+	cpuStat, err := cpu.Info()
+	if err != nil {
+		node.Error(err)
+	}
+	node.Info(fmt.Sprintf("%d", cpuStat[0].CacheSize))
+	log.Print("cpu : ", cpuStat[0].CacheSize)
+
 }
