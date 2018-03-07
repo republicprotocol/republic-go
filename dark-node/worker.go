@@ -1,43 +1,63 @@
 package node
 
 import (
+	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/order"
 )
 
-type OrderFragmentWorkerPool struct {
-	work    chan *order.Fragment
-	workers []OrderFragmentWorker
-}
-
-func NewOrderFragmentWorkerPool(buffer, workers int) *OrderFragmentWorkerPool {
-	w := make(chan *order.Fragment, buffer)
-	ws := make([]OrderFragmentWorker, workers)
-	for i := range ws {
-		ws[i] = NewOrderFragmentWorker(w)
-		go ws[i].Run()
-	}
-	return &OrderFragmentWorkerPool{
-		work:    w,
-		workers: ws,
-	}
-}
-
+// An OrderFragmentWorker consumes order fragments and computes all
+// combinations of delta fragments.
 type OrderFragmentWorker struct {
-	work chan *order.Fragment
+	queue               chan *order.Fragment
+	deltaFragmentMatrix *compute.DeltaFragmentMatrix
 }
 
-func NewOrderFragmentWorker(work chan *order.Fragment) OrderFragmentWorker {
-	return OrderFragmentWorker{
-		work: work,
+// NewOrderFragmentWorker returns an OrderFragmentWorker that reads work from
+// a queue and uses a DeltaFragmentMatrix to do computations.
+func NewOrderFragmentWorker(queue chan *order.Fragment, deltaFragmentMatrix *compute.DeltaFragmentMatrix) *OrderFragmentWorker {
+	return &OrderFragmentWorker{
+		queue:               queue,
+		deltaFragmentMatrix: deltaFragmentMatrix,
 	}
 }
 
-func (worker *OrderFragmentWorker) Run() {
-	for work := range worker.work {
-		worker.Process(work)
+// Run the OrderFragmentWorker and write all delta fragments to an output
+// queue.
+func (worker *OrderFragmentWorker) Run(queue chan *compute.DeltaFragment) {
+	for orderFragment := range worker.queue {
+		deltaFragments, err := worker.deltaFragmentMatrix.InsertOrderFragment(orderFragment)
+		if err != nil {
+			worker.logger.Error(logger.TagCompute, err.Error())
+		}
+		if deltaFragments != nil {
+			for _, deltaFragment := range deltaFragments {
+				queue <- deltaFragment
+			}
+		}
 	}
 }
 
-func (worker *OrderFragmentWorker) Process(orderFragment *order.Fragment) {
-	worker.
+// An DeltaFragmentWorker consumes delta fragments and reconstructs deltas.
+type DeltaFragmentWorker struct {
+	queue        chan *compute.DeltaFragment
+	deltaBuilder *compute.DeltaBuilder
+}
+
+// NewDeltaFragmentWorker returns an DeltaFragmentWorker that reads work from
+// a queue and uses a DeltaBuilder to do reconstructions.
+func NewDeltaFragmentWorker(queue chan *compute.DeltaFragment, deltaBuilder *compute.DeltaBuilder) *DeltaFragmentWorker {
+	return &DeltaFragmentWorker{
+		queue:        queue,
+		deltaBuilder: deltaBuilder,
+	}
+}
+
+// Run the DeltaFragmentWorker and write all deltas to  an output queue.
+func (worker *DeltaFragmentWorker) Run(queue chan *compute.Delta) {
+	for deltaFragment := range worker.queue {
+		delta := worker.deltaBuilder.InsertDeltaFragment(deltaFragmnet)
+		if delta != nil {
+			queue <- delta
+		}
+	}
 }
