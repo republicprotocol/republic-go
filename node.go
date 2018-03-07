@@ -2,7 +2,7 @@ package node
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"math/big"
 	"net"
 	"strings"
@@ -223,9 +223,21 @@ func (node *DarkNode) Start() error {
 	return nil
 }
 
+func (node *DarkNode) Error(err error) {
+	node.Configuration.Logger.Error(err)
+}
+
+func (node *DarkNode) Info(info string) {
+	node.Configuration.Logger.Info(info)
+}
+
+func (node *DarkNode) Debug(debug string) {
+	node.Configuration.Logger.Debug(debug)
+}
+
 // StartListening starts listening for rpc calls
 func (node *DarkNode) StartListening() error {
-	log.Printf("Listening on %s:%s\n", node.Configuration.Host, node.Configuration.Port)
+	node.Info(fmt.Sprintf("Listening on %s:%s\n", node.Configuration.Host, node.Configuration.Port))
 	node.Swarm.Register()
 	node.Dark.Register()
 	listener, err := net.Listen("tcp", node.Configuration.Host+":"+node.Configuration.Port)
@@ -248,7 +260,6 @@ func (node *DarkNode) log(kind, message string) {
 // the node has been registered or not.
 func (node *DarkNode) IsRegistered() bool {
 	registered, err := node.Registrar.IsDarkNodeRegistered(node.Configuration.MultiAddress.ID())
-	log.Println("is registered ?", registered, "error:", err)
 	if err != nil {
 		return false
 	}
@@ -262,8 +273,7 @@ func (node *DarkNode) Register() error {
 		return nil
 	}
 	publicKey := append(node.Configuration.RepublicKeyPair.PublicKey.X.Bytes(), node.Configuration.RepublicKeyPair.PublicKey.Y.Bytes()...)
-	tx, err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
-	log.Println(tx, err)
+	_, err := node.Registrar.Register(node.Configuration.MultiAddress.ID(), publicKey)
 	if err != nil {
 		return err
 	}
