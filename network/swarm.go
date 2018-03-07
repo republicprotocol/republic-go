@@ -28,16 +28,16 @@ type SwarmService struct {
 }
 
 func NewSwarmService(delegate SwarmDelegate, options Options) *SwarmService {
-	return &Swarm{
-		Delegate: delegate,
-		Options:  options,
-		DHT:      dht.NewDHT(options.MultiAddress.Address(), options.MaxBucketLength),
+	return &SwarmService{
+		SwarmDelegate: delegate,
+		Options:       options,
+		DHT:           dht.NewDHT(options.MultiAddress.Address(), options.MaxBucketLength),
 	}
 }
 
-// Register the SwarmService as a gRPC service.
+// Register the gRPC service.
 func (service *SwarmService) Register(server *grpc.Server) {
-	rpc.RegisterSwarmNodeServer(server, service)
+	rpc.RegisterSwarmServer(server, service)
 }
 
 // Bootstrap the Node into the network. The Node will connect to each bootstrap

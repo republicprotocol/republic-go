@@ -36,19 +36,19 @@ type DarkOceanService struct {
 
 func NewDarkOcean(delegate DarkOceanDelegate, options Options) *DarkOceanService {
 	return &DarkOceanService{
-		Delegate: delegate,
-		Options:  options,
+		DarkOceanDelegate: delegate,
+		Options:           options,
 	}
 }
 
 // Register the gRPC service.
-func (service *DarkOceanService) Register(*grpc.Server) {
-	rpc.RegisterDarkNodeServer(server, service)
+func (service *DarkOceanService) Register(server *grpc.Server) {
+	rpc.RegisterDarkOceanServer(server, service)
 }
 
 func (service *DarkOceanService) Log(logRequest *rpc.LogRequest, stream rpc.DarkOcean_LogServer) error {
 	wait := do.Process(func() do.Option {
-		return do.Err(node.log(logRequest, stream))
+		return do.Err(service.log(logRequest, stream))
 	})
 
 	select {
@@ -71,7 +71,7 @@ func (service *DarkOceanService) log(logRequest *rpc.LogRequest, stream rpc.Dark
 
 func (service *DarkOceanService) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkOcean_SyncServer) error {
 	wait := do.Process(func() do.Option {
-		return do.Err(node.sync(syncRequest, stream))
+		return do.Err(service.sync(syncRequest, stream))
 	})
 
 	select {
@@ -92,9 +92,9 @@ func (service *DarkOceanService) sync(syncRequest *rpc.SyncRequest, stream rpc.D
 	panic("unimplemented")
 }
 
-func (service *DarkOceanService) SignOrderFragment(signOrderFragmentRequest *rpc.SignOrderFragmentRequest) (*rpc.OrderFragmentSignature, error) {
+func (service *DarkOceanService) SignOrderFragment(ctx context.Context, signOrderFragmentRequest *rpc.SignOrderFragmentRequest) (*rpc.OrderFragmentSignature, error) {
 	wait := do.Process(func() do.Option {
-		orderFragmentSignature, err := node.signOrderFragment(signOrderFragmentRequest)
+		orderFragmentSignature, err := service.signOrderFragment(signOrderFragmentRequest)
 		if err != nil {
 			return do.Err(err)
 		}
@@ -104,16 +104,16 @@ func (service *DarkOceanService) SignOrderFragment(signOrderFragmentRequest *rpc
 	select {
 	case val := <-wait:
 		if val, ok := val.Ok.(*rpc.OrderFragmentSignature); ok {
-			return val, val.Err
+			return val, nil
 		}
-		return &rpc.OrderFragmentSignature{}, nil
-	case <-stream.Context().Done():
-		return stream.Context().Err()
+		return &rpc.OrderFragmentSignature{}, val.Err
+	case <-ctx.Done():
+		return &rpc.OrderFragmentSignature{}, ctx.Err()
 	}
 }
 
 func (service *DarkOceanService) signOrderFragment(signOrderFragmentRequest *rpc.SignOrderFragmentRequest) (*rpc.OrderFragmentSignature, error) {
-	from, err := rpc.DeserializeMultiAddress(syncRequest.From)
+	from, err := rpc.DeserializeMultiAddress(signOrderFragmentRequest.From)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (service *DarkOceanService) signOrderFragment(signOrderFragmentRequest *rpc
 
 func (service *DarkOceanService) OpenOrder(ctx context.Context, openOrderRequest *rpc.OpenOrderRequest) (*rpc.Nothing, error) {
 	wait := do.Process(func() do.Option {
-		nothing, err := node.openOrder(openOrderRequest)
+		nothing, err := service.openOrder(openOrderRequest)
 		if err != nil {
 			return do.Err(err)
 		}
@@ -132,8 +132,8 @@ func (service *DarkOceanService) OpenOrder(ctx context.Context, openOrderRequest
 
 	select {
 	case val := <-wait:
-		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
-			return nothing, val.Err
+		if val, ok := val.Ok.(*rpc.Nothing); ok {
+			return val, nil
 		}
 		return &rpc.Nothing{}, val.Err
 
@@ -151,13 +151,13 @@ func (service *DarkOceanService) openOrder(openOrderRequest *rpc.OpenOrderReques
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	node.OnOpenOrder(from, orderFragment)
+	service.OnOpenOrder(from, orderFragment)
 	return &rpc.Nothing{}, nil
 }
 
 func (service *DarkOceanService) CancelOrder(ctx context.Context, cancelOrderRequest *rpc.CancelOrderRequest) (*rpc.Nothing, error) {
 	wait := do.Process(func() do.Option {
-		nothing, err := node.cancelOrder(cancelOrderRequest)
+		nothing, err := service.cancelOrder(cancelOrderRequest)
 		if err != nil {
 			return do.Err(err)
 		}
@@ -166,8 +166,8 @@ func (service *DarkOceanService) CancelOrder(ctx context.Context, cancelOrderReq
 
 	select {
 	case val := <-wait:
-		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
-			return nothing, val.Err
+		if val, ok := val.Ok.(*rpc.Nothing); ok {
+			return val, nil
 		}
 		return &rpc.Nothing{}, val.Err
 
@@ -181,13 +181,13 @@ func (service *DarkOceanService) cancelOrder(cancelOrderRequest *rpc.CancelOrder
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	node.OnCancelOrder(from, orderFragment)
+	service.OnCancelOrder(from)
 	panic("unimplemented")
 }
 
 func (service *DarkOceanService) RandomFragmentShares(ctx context.Context, randomFragmentSharesRequest *rpc.RandomFragmentSharesRequest) (*rpc.RandomFragments, error) {
 	wait := do.Process(func() do.Option {
-		nothing, err := node.randomFragmentShares(randomFragmentSharesRequest)
+		nothing, err := service.randomFragmentShares(randomFragmentSharesRequest)
 		if err != nil {
 			return do.Err(err)
 		}
@@ -197,9 +197,9 @@ func (service *DarkOceanService) RandomFragmentShares(ctx context.Context, rando
 	select {
 	case val := <-wait:
 		if val, ok := val.Ok.(*rpc.RandomFragments); ok {
-			return val, val.Err
+			return val, nil
 		}
-		return &rpc.RandomFragments{}, nil
+		return &rpc.RandomFragments{}, val.Err
 
 	case <-ctx.Done():
 		return &rpc.RandomFragments{}, ctx.Err()
@@ -211,13 +211,13 @@ func (service *DarkOceanService) randomFragmentShares(randomFragmentSharesReques
 	if err != nil {
 		return &rpc.RandomFragments{}, err
 	}
-	node.OnRandomFragmentShares(from)
+	service.OnRandomFragmentShares(from)
 	panic("unimplemented")
 }
 
 func (service *DarkOceanService) ResidueFragmentShares(ctx context.Context, residueFragmentSharesRequest *rpc.ResidueFragmentSharesRequest) (*rpc.ResidueFragments, error) {
 	wait := do.Process(func() do.Option {
-		nothing, err := node.residueFragmentShares(residueFragmentSharesRequest)
+		nothing, err := service.residueFragmentShares(residueFragmentSharesRequest)
 		if err != nil {
 			return do.Err(err)
 		}
@@ -227,7 +227,7 @@ func (service *DarkOceanService) ResidueFragmentShares(ctx context.Context, resi
 	select {
 	case val := <-wait:
 		if val, ok := val.Ok.(*rpc.ResidueFragments); ok {
-			return val, val.Err
+			return val, nil
 		}
 		return &rpc.ResidueFragments{}, val.Err
 
@@ -241,13 +241,13 @@ func (service *DarkOceanService) residueFragmentShares(residueFragmentSharesRequ
 	if err != nil {
 		return &rpc.ResidueFragments{}, err
 	}
-	node.OnResidueFragmentShares(from)
+	service.OnResidueFragmentShares(from)
 	panic("unimplemented")
 }
 
 func (service *DarkOceanService) ComputeResidueFragment(ctx context.Context, computeResidueFragmentRequest *rpc.ComputeResidueFragmentRequest) (*rpc.Nothing, error) {
 	wait := do.Process(func() do.Option {
-		nothing, err := node.computeResidueFragment(computeResidueFragmentRequest)
+		nothing, err := service.computeResidueFragment(computeResidueFragmentRequest)
 		if err != nil {
 			return do.Err(err)
 		}
@@ -256,8 +256,8 @@ func (service *DarkOceanService) ComputeResidueFragment(ctx context.Context, com
 
 	select {
 	case val := <-wait:
-		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
-			return nothing, val.Err
+		if val, ok := val.Ok.(*rpc.Nothing); ok {
+			return val, nil
 		}
 		return &rpc.Nothing{}, val.Err
 
@@ -271,13 +271,13 @@ func (service *DarkOceanService) computeResidueFragment(computeResidueFragmentRe
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
-	node.OnComputeResidueFragment(from)
+	service.OnComputeResidueFragment(from)
 	panic("unimplemented")
 }
 
 func (service *DarkOceanService) BroadcastAlphaBetaFragment(ctx context.Context, broadcastAlphaBetaFragmentRequest *rpc.BroadcastAlphaBetaFragmentRequest) (*rpc.AlphaBetaFragment, error) {
 	wait := do.Process(func() do.Option {
-		nothing, err := node.broadcastAlphaBetaFragment(broadcastAlphaBetaFragmentRequest)
+		nothing, err := service.broadcastAlphaBetaFragment(broadcastAlphaBetaFragmentRequest)
 		if err != nil {
 			return do.Err(err)
 		}
@@ -286,13 +286,13 @@ func (service *DarkOceanService) BroadcastAlphaBetaFragment(ctx context.Context,
 
 	select {
 	case val := <-wait:
-		if nothing, ok := val.Ok.(*rpc.Nothing); ok {
-			return nothing, val.Err
+		if val, ok := val.Ok.(*rpc.AlphaBetaFragment); ok {
+			return val, nil
 		}
-		return &rpc.Nothing{}, val.Err
+		return &rpc.AlphaBetaFragment{}, val.Err
 
 	case <-ctx.Done():
-		return &rpc.Nothing{}, ctx.Err()
+		return &rpc.AlphaBetaFragment{}, ctx.Err()
 	}
 }
 
@@ -307,7 +307,7 @@ func (service *DarkOceanService) broadcastAlphaBetaFragment(broadcastAlphaBetaFr
 
 func (service *DarkOceanService) BroadcastDeltaFragment(ctx context.Context, broadcastDeltaFragmentRequest *rpc.BroadcastDeltaFragmentRequest) (*rpc.DeltaFragment, error) {
 	wait := do.Process(func() do.Option {
-		deltaFragment, err := node.broadcastDeltaFragment(broadcastDeltaFragmentRequest)
+		deltaFragment, err := service.broadcastDeltaFragment(broadcastDeltaFragmentRequest)
 		if err != nil {
 			return do.Err(err)
 		}
@@ -317,7 +317,7 @@ func (service *DarkOceanService) BroadcastDeltaFragment(ctx context.Context, bro
 	select {
 	case val := <-wait:
 		if val, ok := val.Ok.(*rpc.DeltaFragment); ok {
-			return val, val.Err
+			return val, nil
 		}
 		return &rpc.DeltaFragment{}, nil
 
@@ -335,6 +335,6 @@ func (service *DarkOceanService) broadcastDeltaFragment(broadcastDeltaFragmentRe
 	if err != nil {
 		return &rpc.DeltaFragment{}, err
 	}
-	node.OnBroadcastDeltaFragment(from, deltaFragment)
+	service.OnBroadcastDeltaFragment(from, deltaFragment)
 	panic("unimplemented")
 }
