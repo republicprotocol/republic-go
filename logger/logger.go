@@ -18,17 +18,7 @@ func NewLogger(plugins ...Plugin) Logger {
 // Start starts all the plugins of the logger
 func (logger Logger) Start() error {
 	for _, plugin := range logger.Plugins {
-		var err error
-		switch plugin.(type) {
-		case FilePlugin:
-			err = plugin.(FilePlugin).Start()
-		case WebSocketPlugin:
-			err = plugin.(WebSocketPlugin).Start()
-		}
-
-		if err != nil {
-			return err
-		}
+		plugin.Start()
 	}
 	return nil
 }
@@ -36,17 +26,7 @@ func (logger Logger) Start() error {
 // Stop stops all the plugins of the logger
 func (logger Logger) Stop() error {
 	for _, plugin := range logger.Plugins {
-		var err error
-		switch plugin.(type) {
-		case FilePlugin:
-			err = plugin.(FilePlugin).Stop()
-		case WebSocketPlugin:
-			err = plugin.(WebSocketPlugin).Stop()
-		}
-
-		if err != nil {
-			return err
-		}
+		plugin.Stop()
 	}
 	return nil
 }
@@ -61,24 +41,14 @@ func (logger Logger) Error(err error) {
 // Info outputs the info though each plugin
 func (logger Logger) Info(info string) {
 	for _, plugin := range logger.Plugins {
-		switch plugin.(type) {
-		case FilePlugin:
-			plugin.(FilePlugin).Info(info)
-		case WebSocketPlugin:
-			plugin.(WebSocketPlugin).Info(info)
-		}
+		plugin.Info(info)
 	}
 }
 
 // Warning outputs the warning though each plugin
 func (logger Logger) Warning(warning string) {
 	for _, plugin := range logger.Plugins {
-		switch plugin.(type) {
-		case FilePlugin:
-			plugin.(FilePlugin).Warning(warning)
-		case WebSocketPlugin:
-			plugin.(WebSocketPlugin).Warning(warning)
-		}
+		plugin.Warning(warning)
 	}
 }
 
