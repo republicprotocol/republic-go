@@ -2,7 +2,6 @@ package node
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -11,118 +10,54 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// const PATH = "/home/ubuntu/"
-const PATH = ""
-
-// Plugin
-type Plugin struct {
-	io.Writer
-
-	Name     string
-	Host     string
-	Port     string
-	Username string
-	Password string
-}
-
-// DefaultPlugin returns a default plugin which turns the logs
-// into the front-end UI
-func DefaultPlugin(username, password string) *Plugin {
-	// Setup output log file
-	f, err := os.OpenFile(fmt.Sprintf("%sdarknode.log", PATH), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	return &Plugin{
-		Name:     "default",
-		Username: username,
-		Password: password,
-		Writer:   f,
-	}
-}
-
-// NewPlugin creates a new plugin which can be added to the logger
-func NewPlugin(name, username, password, host, port string, writer io.Writer) *Plugin {
-	return &Plugin{
-		Name:     name,
-		Host:     host,
-		Port:     port,
-		Username: username,
-		Password: password,
-		Writer:   writer,
-	}
-}
-
 type Logger struct {
-	Plugins []*Plugin
+	Plugins []Plugin
 }
 
-// NewLogger returns a new logger
-func NewLogger(plugins ...*Plugin) Logger {
-	plugins = append([]*Plugin{DefaultPlugin("", "")}, plugins...)
-	return Logger{
+// NewLogger returns a new Logger that will start and stop a set of plugins.
+func NewLogger(plugins ...Plugin) *Logger {
+	return &Logger{
 		Plugins: plugins,
 	}
 }
 
-func (logger Logger) Start(address, port string) error {
-	http.HandleFunc("/log", logger.logHandler)
-	logger.Info(fmt.Sprintf("Websocket starts on %s:%s", address, port))
-	return http.ListenAndServe(fmt.Sprintf("%s:%s", address, port), nil)
-}
-
-func (logger Logger) logHandler(w http.ResponseWriter, r *http.Request) {
-	// Parse query parameters
-	//requestType := r.URL.Query()["type"]
-	//if len(requestType) == 1 {
-	//
-	//}
-
-	upgrader := websocket.Upgrader{}
-	c, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-	defer c.Close()
-	for {
-		// todo : handle request
-		request := new(Request)
-		err := c.ReadJSON(request)
+// Start starts all the plugins of the logger
+func (logger *Logger) Start() error {
+	for _, plugin := range logger.Plugins {
+		err := plugin.Start()
 		if err != nil {
-			logger.Error(err)
-			return
-		}
-		log.Println(request)
-		err = c.WriteJSON(request)
-		if err != nil {
-			logger.Error(err)
-			return
+			return err
 		}
 	}
+	return nil
 }
 
+// Stop stops all the plugins of the logger
+func (logger Logger) Stop() error {
+	for _, plugin := range logger.Plugins {
+		plugin.Stop()
+	}
+	return nil
+}
+
+// Error outputs the error though each plugin
 func (logger Logger) Error(err error) {
 	for _, plugin := range logger.Plugins {
-		plugin.Write([]byte(time.Now().Format("2006/01/02 15:04:05 ")))
-		plugin.Write([]byte("ERROR : "))
-		plugin.Write([]byte(err.Error() + "\n"))
+		plugin.Error(err)
 	}
 }
 
+// Info outputs the info though each plugin
 func (logger Logger) Info(info string) {
 	for _, plugin := range logger.Plugins {
-		plugin.Write([]byte(time.Now().Format("2006/01/02 15:04:05 ")))
-		plugin.Write([]byte("INFO : "))
-		plugin.Write([]byte(info + "\n"))
+		plugin.Info(info)
 	}
 }
 
-func (logger Logger) Debug(debug string) {
+// Warning outputs the warning though each plugin
+func (logger Logger) Warning(warning string) {
 	for _, plugin := range logger.Plugins {
-		plugin.Write([]byte(time.Now().Format("2006/01/02 15:04:05 ")))
-		plugin.Write([]byte("DEBUG : "))
-		plugin.Write([]byte(debug + "\n"))
+		plugin.Warning(warning)
 	}
 }
 
@@ -159,4 +94,192 @@ type EventData struct {
 	Tag     string `json:"tag"`
 	Level   string `json:"level"`
 	Message string `json:"message"`
+}
+
+// Plugin
+type Plugin interface {
+	Start() error
+	Stop() error
+
+	Info(info string)
+	Warning(warning string)
+	Error(err error)
+}
+
+// A FilePlugin implements the Plugin interface by logging all events to an
+// output file.
+type FilePlugin struct {
+	Path string
+	File *os.File
+}
+
+func NewFilePlugin(path string) Plugin {
+	return &FilePlugin{
+		Path: path,
+	}
+}
+
+func (plugin *FilePlugin) Start() error {
+	var err error
+	plugin.File, err = os.OpenFile(plugin.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	 _, err = plugin.File.WriteString(time.Now().Format("2006/01/02 15:04:05"))
+	if err != nil {
+		log.Println(123)
+		panic(err)
+	}
+	return err
+}
+
+func (plugin *FilePlugin) Stop() error {
+	return plugin.File.Close()
+}
+
+func (plugin *FilePlugin) Info(info string) {
+	if plugin.File == nil {
+		log.Println("file is nil:", info)
+		return
+	}
+	log.Println("file is not nil")
+	_, err := plugin.File.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
+	if err != nil {
+	}
+	_, err = plugin.File.WriteString("INFO : ")
+	if err != nil {
+		panic(err)
+	}
+	_, err = plugin.File.WriteString(info + "\n")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (plugin *FilePlugin) Warning(warning string) {
+	plugin.File.Write([]byte(time.Now().Format("2006/01/02 15:04:05 ")))
+	plugin.File.Write([]byte("WARNING : "))
+	plugin.File.Write([]byte(warning + "\n"))
+}
+
+func (plugin *FilePlugin) Error(err error) {
+	plugin.File.Write([]byte(time.Now().Format("2006/01/02 15:04:05 ")))
+	plugin.File.Write([]byte("ERROR : "))
+	plugin.File.Write([]byte(err.Error() + "\n"))
+}
+
+type WebSocketPlugin struct {
+	Srv        *http.Server
+	Connection *websocket.Conn
+	Host       string
+	Port       string
+	Username   string
+	Password   string
+}
+
+func NewWebSocketPlugin(host, port, username, password string) Plugin {
+	plugin := WebSocketPlugin{
+		Host:     host,
+		Port:     port,
+		Username: username,
+		Password: password,
+	}
+	return plugin
+}
+
+func (plugin WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+	upgrader := websocket.Upgrader{}
+	plugin.Connection, err = upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		plugin.Error(err)
+		return
+	}
+
+	defer plugin.Connection.Close()
+	for {
+		request := new(Request)
+		err := plugin.Connection.ReadJSON(request)
+		if err != nil {
+			plugin.Error(err)
+			return
+		}
+
+		switch request.Type{
+		case  "usage":
+			err = plugin.Connection.WriteJSON(request) // todo
+		case "event":
+			err = plugin.Connection.WriteJSON(request) // todo
+		}
+
+		if err != nil {
+			plugin.Error(err)
+			return
+		}
+	}
+}
+
+func (plugin WebSocketPlugin) Start() error {
+	plugin.Srv = &http.Server{
+		Addr: ":8080",
+	}
+	http.HandleFunc("/logs", plugin.logHandler)
+	go func() {
+		plugin.Info(fmt.Sprintf("WebSocket logger listening on %s:%s", plugin.Host, plugin.Port))
+		plugin.Srv.ListenAndServe()
+	}()
+
+	return nil
+}
+
+func (plugin WebSocketPlugin) Stop() error {
+	return plugin.Srv.Shutdown(nil)
+}
+
+type Message struct {
+	Time    string
+	Type    string
+	Message string
+}
+
+func (plugin WebSocketPlugin) Info(info string) {
+	if plugin.Connection == nil {
+		log.Println("nil websocket infor ")
+		return
+	}
+
+	err := plugin.Connection.WriteJSON(Message{
+		Time:    time.Now().Format("2006/01/02 15:04:05"),
+		Type:    "INFO",
+		Message: info,
+	})
+	if err != nil{
+		log.Print("websocket  error: ",err)
+	}
+}
+
+func (plugin WebSocketPlugin) Error(err error) {
+	if plugin.Connection == nil {
+		return
+	}
+	e:= plugin.Connection.WriteJSON(Message{
+		Time:    time.Now().Format("2006/01/02 15:04:05"),
+		Type:    "ERROR",
+		Message: err.Error(),
+	})
+	if e != nil{
+		log.Print("websocket  error: ",err)
+	}
+}
+
+func (plugin WebSocketPlugin) Warning(warning string) {
+	if plugin.Connection == nil {
+		return
+	}
+
+	err := plugin.Connection.WriteJSON(Message{
+		Time:    time.Now().Format("2006/01/02 15:04:05"),
+		Type:    "warning",
+		Message: warning,
+	})
+	if err != nil{
+		log.Print("websocket  error: ",err)
+	}
 }

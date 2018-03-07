@@ -17,13 +17,12 @@ type Config struct {
 	RSAKeyPair              identity.KeyPair        `json:"rsa_key_pair"`
 	MultiAddress            identity.MultiAddress   `json:"multi_address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
+	Logger                  *Logger                  `json:"logger""`
+	Dev                     bool                    `json:"dev""`
 
 	ComputationShardSize     int      `json:"computation_shard_size"`
 	ComputationShardInterval int      `json:"computation_shard_interval"`
 	Prime                    *big.Int `json:"prime"`
-
-	Logger Logger `json:logger`
-	Dev    bool   `json dev`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config

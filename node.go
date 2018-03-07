@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/big"
 	"net"
 	"strings"
@@ -17,6 +18,8 @@ import (
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-swarm-network"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 	"google.golang.org/grpc"
 )
 
@@ -159,6 +162,11 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	darkNode := dark.NewNode(node.Server, node, darkOptions)
 	node.Dark = darkNode
 
+	err = node.Configuration.Logger.Start()
+	if err != nil {
+		return node, err
+	}
+
 	return node, nil
 }
 
@@ -176,15 +184,22 @@ func (node *DarkNode) Start() error {
 	//	}
 	//}
 
+	go func() {
+		for {
+			time.Sleep(20 * time.Second)
+			node.Usage()
+		}
+	}()
+
+	// Wait for the server to start and bootstrap the connections in the swarm.
+	node.Swarm.Bootstrap()
+
 	//darkPool, err := node.Registrar.GetDarkpool()
 	//if err != nil {
 	//	log.Fatal(err)
 	//}
 	//darkPool := getDarkPool()
-
-	// Wait for the server to start and bootstrap the connections in the swarm.
-	node.Swarm.Bootstrap()
-
+	//
 	//for _, id := range darkPool {
 	//	target, err := node.Swarm.FindNode(id[:])
 	//	if err != nil {
@@ -231,8 +246,8 @@ func (node *DarkNode) Info(info string) {
 	node.Configuration.Logger.Info(info)
 }
 
-func (node *DarkNode) Debug(debug string) {
-	node.Configuration.Logger.Debug(debug)
+func (node *DarkNode) Warning(warning string) {
+	node.Configuration.Logger.Warning(warning)
 }
 
 // StartListening starts listening for rpc calls
@@ -305,4 +320,23 @@ func ConnectToRegistrar() (*dnr.DarkNodeRegistrar, error) {
 	renContract := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
 	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, renContract, nil)
 	return userConnection, nil
+}
+
+func (node *DarkNode) Usage(){
+	// memory
+	vmStat, err := mem.VirtualMemory()
+	if err != nil {
+		node.Error(err)
+	}
+	node.Info(fmt.Sprintf("%d",vmStat.Used))
+	log.Print("mem : ",vmStat.Used)
+
+	// cpu - get CPU number of cores and speed
+	cpuStat, err := cpu.Info()
+	if err != nil {
+		node.Error(err)
+	}
+	node.Info(fmt.Sprintf("%d",cpuStat[0].CacheSize))
+	log.Print("cpu : ",cpuStat[0].CacheSize)
+
 }
