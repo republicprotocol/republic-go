@@ -96,14 +96,14 @@ func (service *SwarmService) Address() identity.Address {
 }
 
 // MultiAddress returns the identity.MultiAddress of the Node.
-func (node *Swarm) MultiAddress() identity.MultiAddress {
+func (service *SwarmService) MultiAddress() identity.MultiAddress {
 	return service.Options.MultiAddress
 }
 
 // Ping is used to test the connection to the Node and exchange
 // identity.MultiAddresses. If the Node does not respond, or it responds with
 // an error, then the connection should be considered unhealthy.
-func (node *Swarm) Ping(ctx context.Context, from *rpc.MultiAddress) (*rpc.MultiAddress, error) {
+func (service *SwarmService) Ping(ctx context.Context, from *rpc.MultiAddress) (*rpc.MultiAddress, error) {
 	if service.Options.Debug >= DebugHigh {
 		log.Printf("%v was pinged by %v\n", service.Address(), from.Multi)
 	}
@@ -131,7 +131,7 @@ func (node *Swarm) Ping(ctx context.Context, from *rpc.MultiAddress) (*rpc.Multi
 	}
 }
 
-func (node *Swarm) ping(from *rpc.MultiAddress) (*rpc.MultiAddress, error) {
+func (service *SwarmService) ping(from *rpc.MultiAddress) (*rpc.MultiAddress, error) {
 	fromMultiAddress, err := rpc.DeserializeMultiAddress(from)
 	if err != nil {
 		return &rpc.Nothing{}, err
@@ -145,7 +145,7 @@ func (node *Swarm) ping(from *rpc.MultiAddress) (*rpc.MultiAddress, error) {
 // target than the node itself, and it will only return MultiAddresses that are
 // immediately connected to the service. The MultiAddresses returned are not
 // guaranteed to be healthy connections and should be pinged.
-func (node *Node) Query(query *rpc.Address, stream rpc.Swarm_QueryServer) error {
+func (service *SwarmService) Query(query *rpc.Address, stream rpc.Swarm_QueryServer) error {
 	if service.Options.Debug >= DebugHigh {
 		log.Printf("%v was queried by %v\n", service.Address(), query.From.Multi)
 	}
@@ -168,7 +168,7 @@ func (node *Node) Query(query *rpc.Address, stream rpc.Swarm_QueryServer) error 
 	}
 }
 
-func (node *Node) query(query *rpc.Address, stream rpc.Swarm_QueryServer) error {
+func (service *SwarmService) query(query *rpc.Address, stream rpc.Swarm_QueryServer) error {
 	deserializedQuery := rpc.DeserializeAddress(query)
 	neighbors, err := service.DHT.FindMultiAddressNeighbors(deserializedQuery, service.Options.Alpha)
 	if err != nil {
@@ -197,7 +197,7 @@ func (node *Node) query(query *rpc.Address, stream rpc.Swarm_QueryServer) error 
 // MultiAddresses that are further away from the target than the node itself.
 // The MultiAddresses returned are not guaranteed to be healthy connections
 // and should be pinged.
-func (node *Node) QueryDeep(query *rpc.Address, stream rpc.Swarm_QueryDeepServer) error {
+func (service *SwarmService) QueryDeep(query *rpc.Address, stream rpc.Swarm_QueryDeepServer) error {
 	if service.Options.Debug >= DebugHigh {
 		log.Printf("%v was frontier queried by %v\n", service.Address(), query.From.Multi)
 	}
@@ -220,7 +220,7 @@ func (node *Node) QueryDeep(query *rpc.Address, stream rpc.Swarm_QueryDeepServer
 	}
 }
 
-func (node *Node) queryDeep(query *rpc.Address, stream rpc.Swarm_QueryDeepServer) error {
+func (service *SwarmService) queryDeep(query *rpc.Address, stream rpc.Swarm_QueryDeepServer) error {
 
 	// Get the target identity.Address for which this Node is searching for
 	// peers.
@@ -300,7 +300,7 @@ func (node *Node) queryDeep(query *rpc.Address, stream rpc.Swarm_QueryDeepServer
 	return service.updatePeer(query.From)
 }
 
-func (node *Node) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.MultiAddress) error {
+func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.MultiAddress) error {
 	var err error
 	var peers identity.MultiAddresses
 
@@ -344,7 +344,7 @@ func (node *Node) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.Mult
 	return nil
 }
 
-func (node *Node) updatePeer(peer *rpc.MultiAddress) error {
+func (service *SwarmService) updatePeer(peer *rpc.MultiAddress) error {
 	multiAddress, err := rpc.DeserializeMultiAddress(peer)
 	if err != nil {
 		return err
@@ -369,7 +369,7 @@ func (node *Node) updatePeer(peer *rpc.MultiAddress) error {
 }
 
 // FindNode will try to find the node multiAddress by its republic ID.
-func (node *Node) FindNode(targetID identity.ID) (*identity.MultiAddress, error) {
+func (service *SwarmService) FindNode(targetID identity.ID) (*identity.MultiAddress, error) {
 	target := targetID.Address()
 	peers := service.DHT.MultiAddresses()
 
