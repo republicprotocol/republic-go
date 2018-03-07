@@ -12,17 +12,19 @@ import (
 
 // Config information for Miners
 type Config struct {
-	Host                    string                  `json:"host"`
-	Port                    string                  `json:"port"`
-	EthereumPrivateKey      string                  `json:"ethereum_private_key"`
-	RepublicKeyPair         identity.KeyPair        `json:"republic_key_pair"`
-	RSAKeyPair              identity.KeyPair        `json:"rsa_key_pair"`
-	MultiAddress            identity.MultiAddress   `json:"multi_address"`
-	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
-
-	ComputationShardSize     int      `json:"computation_shard_size"`
-	ComputationShardInterval int      `json:"computation_shard_interval"`
-	Prime                    *big.Int `json:"prime"`
+	Identity struct {
+		EthereumPrivateKey string                `json:"ethereum_private_key"`
+		RepublicKeyPair    identity.KeyPair      `json:"republic_key_pair"`
+		RSAKeyPair         identity.KeyPair      `json:"rsa_key_pair"`
+		MultiAddress       identity.MultiAddress `json:"multi_address"`
+	} `json:"identity"`
+	Network struct {
+		Host                    string                  `json:"host"`
+		Port                    string                  `json:"port"`
+		BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
+		ClientPoolCacheLimit    int                     `json:"client_pool_cache_limit"`
+	} `json:"network"`
+	Prime *big.Int `json:"prime"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config

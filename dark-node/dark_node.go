@@ -15,27 +15,28 @@ import (
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-rpc"
-	"github.com/republicprotocol/go-swarm-network"
+	"github.com/republicprotocol/republic-go/network"
+	"github.com/republicprotocol/republic-go/order"
 	"google.golang.org/grpc"
 )
 
-// DarkNode ...
+// Prime is the default prime number used to define the finite field.
+var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
+
 type DarkNode struct {
-	Server        *grpc.Server
-	Swarm         *swarm.Node
-	Dark          *dark.Node
-	Configuration *Config
-	Registrar     *dnr.DarkNodeRegistrar
+	Config
 
-	DeltaBuilder        *compute.DeltaBuilder
-	DeltaFragmentMatrix *compute.DeltaFragmentMatrix
-	DarkPoolLimit       int64
-	DarkPool            dnr.DarkPool
-	DarkOceanOverlay    *dnr.DarkOceanOverlay
+	DeltaBuilder             *compute.DeltaBuilder
+	DeltaFragmentMatrix      *compute.DeltaFragmentMatrix
+	OrderFragmentWorkerQueue chan *order.Fragment
+	OrderFragmentWorker      *OrderFragmentWorker
+	DeltaFragmentWorkerQueue chan *compute.DeltaFragment
+	DeltaFragmentWorker      *DeltaFragmentWorker
 
-	EpochBlockhash [32]byte
-
-	logQueue *LogQueue
+	Server     *grpc.Server
+	ClientPool *rpc.ClientPool
+	Swarm      *network.SwarmService
+	Dark       *network.DarkService
 }
 
 // NewDarkNode creates a new DarkNode, a new swarm.Node and dark.Node and assigns the
@@ -44,28 +45,14 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 	if config.Prime == nil {
 		config.Prime = Prime
 	}
-	if config.ComputationShardInterval == 0 {
-		config.ComputationShardInterval = 5
-	}
-	if config.ComputationShardSize == 0 {
-		config.ComputationShardSize = 10
-	}
 
-	ethereumKeyPair, err := config.EthereumKeyPair()
-	if err != nil {
-		return nil, err
-	}
-	registrar, err := ConnectToRegistrar(ethereumKeyPair)
-	if err != nil {
-		return nil, err
-	}
+	node := new(DarkNode)
 
-	node := &DarkNode{
-		Server:        grpc.NewServer(grpc.ConnectionTimeout(time.Minute)),
-		Configuration: config,
-		Registrar:     registrar,
-		logQueue:      NewLogQueue(),
-	}
+	options := network.Options{}
+	logger := logger.NewLogger()
+	clientPool := rpc.NewClientPool(config.Identity.MultiAddress, config.Network.ClientPoolCacheLimit)
+	swarm := network.NewSwarmService(node, options, logger, clientPool, dht)
+
 	// node.DarkPool = config.BootstrapMultiAddresses
 	node.DarkPoolLimit = 5
 	node.DeltaBuilder = compute.NewDeltaBuilder(node.DarkPoolLimit, config.Prime)
