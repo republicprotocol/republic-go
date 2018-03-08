@@ -1,7 +1,7 @@
 package network
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
@@ -52,7 +52,7 @@ func (service *SwarmService) Bootstrap() {
 	for _, bootstrapMultiAddress := range service.Options.BootstrapMultiAddresses {
 		err := service.DHT.UpdateMultiAddress(bootstrapMultiAddress)
 		if err != nil && service.Options.Debug >= DebugLow {
-			log.Println(err)
+			service.Logger.Error(logger.TagNetwork, err.Error())
 		}
 	}
 	if service.Options.Concurrent {
@@ -274,7 +274,7 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 		defer close(peers)
 
 		if service.Options.Debug >= DebugLow {
-			log.Println(err)
+			service.Logger.Error(logger.TagNetwork, err.Error())
 		}
 		if attempt == service.Options.TimeoutRetries-1 {
 			return err
@@ -283,7 +283,7 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 
 	// Peers returned by the query will be added to the DHT.
 	if service.Options.Debug >= DebugMedium {
-		log.Printf("%v received %v peers from %v.\n", service.Address(), len(peers), bootstrapMultiAddress.Address())
+		service.Logger.Info(logger.TagNetwork,fmt.Sprintf("%v received %v peers from %v.\n", service.Address(), len(peers), bootstrapMultiAddress.Address()))
 	}
 	for serializedPeer := range peers {
 		peer, err := rpc.DeserializeMultiAddress(serializedPeer)
@@ -295,7 +295,7 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 		}
 		if err := service.DHT.UpdateMultiAddress(peer); err != nil {
 			if service.Options.Debug >= DebugLow {
-				log.Println(err)
+				service.Logger.Error(logger.TagNetwork, err.Error())
 			}
 		}
 	}
@@ -370,7 +370,7 @@ func (service *SwarmService) FindNode(targetID identity.ID) (*identity.MultiAddr
 		candidates, err := service.ClientPool.QueryPeers(peer, rpc.SerializeAddress(target))
 		if err != nil {
 			if service.Options.Debug >= DebugLow {
-				log.Println(err)
+				service.Logger.Error(logger.TagNetwork, err.Error())
 			}
 			continue
 		}
