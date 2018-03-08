@@ -8,8 +8,9 @@ import (
 	"log"
 	"time"
 
-	node "github.com/republicprotocol/go-dark-node"
-	dnr "github.com/republicprotocol/go-dark-node-registrar"
+	"github.com/republicprotocol/republic-go/contracts/connection"
+	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/dark-node"
 )
 
 var config *node.Config
@@ -24,12 +25,17 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	ethereumKeyPair, err := config.EthereumKeyPair()
+	clientDetails, err := connection.FromURI("https://ropsten.infura.io/")
 	if err != nil {
-		log.Fatalln(err)
+		// TODO: Handler err
+		panic(err)
+	}
+	registrar, err := node.ConnectToRegistrar(clientDetails, *config)
+	if err != nil {
+		// TODO: Handler err
+		panic(err)
 	}
 
-	registrar, err := node.ConnectToRegistrar(ethereumKeyPair)
 	minimumEpochTime, err := registrar.MinimumEpochInterval()
 	if err != nil {
 		log.Fatalln(err)
