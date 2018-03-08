@@ -15,7 +15,7 @@ type Logger struct {
 func NewLogger(plugins ...Plugin) *Logger {
 	return &Logger{
 		GuardedObject: do.NewGuardedObject(),
-		Plugins: plugins,
+		Plugins:       plugins,
 	}
 }
 
@@ -40,21 +40,21 @@ func (logger Logger) Stop() error {
 }
 
 // Error outputs the error though each plugin
-func (logger Logger) Error(tag ,message  string ) {
+func (logger Logger) Error(tag, message string) {
 	for _, plugin := range logger.Plugins {
-		plugin.Error(tag, message )
+		plugin.Error(tag, message)
 	}
 }
 
 // Info outputs the info though each plugin
-func (logger Logger) Info(tag ,message  string ) {
+func (logger Logger) Info(tag, message string) {
 	for _, plugin := range logger.Plugins {
-		plugin.Info(tag ,message)
+		plugin.Info(tag, message)
 	}
 }
 
 // Warning outputs the warning though each plugin
-func (logger Logger) Warning(tag ,message  string ) {
+func (logger Logger) Warning(tag, message string) {
 	for _, plugin := range logger.Plugins {
 		plugin.Warn(tag, message)
 	}
@@ -63,7 +63,7 @@ func (logger Logger) Warning(tag ,message  string ) {
 // Warning outputs the warning though each plugin
 func (logger Logger) Usage(cpu float32, memory, network int32) {
 	for _, plugin := range logger.Plugins {
-		plugin.Usage(cpu, memory,network)
+		plugin.Usage(cpu, memory, network)
 	}
 }
 
@@ -86,8 +86,8 @@ type Usage struct {
 
 type UsageData struct {
 	Cpu     float32 `json:"cpu"`
-	Memory  int32     `json:"memory"`
-	network int32     `json:"network"`
+	Memory  int32   `json:"memory"`
+	network int32   `json:"network"`
 }
 
 type Event struct {
@@ -103,6 +103,6 @@ type EventData struct {
 }
 
 type Error struct {
-	Tag  string
+	Tag     string
 	Message string
 }

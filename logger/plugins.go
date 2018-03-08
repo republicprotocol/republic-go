@@ -57,7 +57,7 @@ func (plugin *FilePlugin) Info(tag, message string) error {
 	if err != nil {
 		return err
 	}
-	_, err = plugin.file.WriteString("INFO : (" + tag + ") " + message)
+	_, err = plugin.file.WriteString("INFO : (" + tag + ") " + message + "\n")
 	return err
 }
 
@@ -150,23 +150,21 @@ func (plugin *WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request
 	defer c.Close()
 
 	// Broadcast errors
-	go func() {
-		for {
-			select {
-			case u := <-plugin.usage:
-				c.WriteJSON(u)
-			case e := <-plugin.error:
-				c.WriteJSON(e)
-			case i := <-plugin.info:
-				c.WriteJSON(i)
-			case warning := <-plugin.warn:
-				c.WriteJSON(warning)
-			default:
-				continue
-			}
+	for {
+		select {
+		case u := <-plugin.usage:
+			c.WriteJSON(u)
+		case e := <-plugin.error:
+			c.WriteJSON(e)
+		case i := <-plugin.info:
+			c.WriteJSON(i)
+		case warning := <-plugin.warn:
+			c.WriteJSON(warning)
+		default:
+			continue
 		}
+	}
 
-	}()
 	//todo : how to close this
 }
 
