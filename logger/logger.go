@@ -2,6 +2,8 @@ package logger
 
 import (
 	"time"
+
+	"github.com/republicprotocol/go-do"
 )
 
 // Constant strings for tagging logs.
@@ -11,18 +13,21 @@ const (
 )
 
 type Logger struct {
+	do.GuardedObject
 	Plugins []Plugin
 }
 
 // NewLogger returns a new Logger that will start and stop a set of plugins.
 func NewLogger(plugins ...Plugin) *Logger {
 	return &Logger{
-		Plugins: plugins,
+		GuardedObject: do.NewGuardedObject(),
+		Plugins:       plugins,
 	}
 }
 
 // Start starts all the plugins of the logger
 func (logger *Logger) Start() error {
+
 	for _, plugin := range logger.Plugins {
 		err := plugin.Start()
 		if err != nil {
@@ -88,7 +93,7 @@ type Usage struct {
 type UsageData struct {
 	Cpu     float32 `json:"cpu"`
 	Memory  int32   `json:"memory"`
-	Network int32   `json:"network"`
+	network int32   `json:"network"`
 }
 
 type Event struct {
