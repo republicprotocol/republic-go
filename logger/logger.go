@@ -4,6 +4,12 @@ import (
 	"time"
 )
 
+// Constant strings for tagging logs.
+const (
+	TagNetwork = "network"
+	TagCompute = "compute"
+)
+
 type Logger struct {
 	Plugins []Plugin
 }

@@ -15,9 +15,9 @@ import (
 // A SwarmDelegate is used as a callback interface to inject behavior into the
 // Swarm service.
 type SwarmDelegate interface {
-	OnPing(from identity.MultiAddress)
-	OnQuery(from identity.MultiAddress)
-	OnQueryDeep(from identity.MultiAddress)
+	// OnPing(from identity.MultiAddress)
+	// OnQuery(from identity.MultiAddress)
+	// OnQueryDeep(from identity.MultiAddress)
 }
 
 // SwarmService implements the gRPC Swarm service.
@@ -118,11 +118,6 @@ func (service *SwarmService) Ping(ctx context.Context, from *rpc.MultiAddress) (
 }
 
 func (service *SwarmService) ping(from *rpc.MultiAddress) error {
-	fromMultiAddress, err := rpc.DeserializeMultiAddress(from)
-	if err != nil {
-		return err
-	}
-	service.SwarmDelegate.OnPing(fromMultiAddress)
 	return service.updatePeer(from)
 }
 
@@ -148,10 +143,6 @@ func (service *SwarmService) QueryPeers(query *rpc.Query, stream rpc.Swarm_Query
 }
 
 func (service *SwarmService) queryPeers(query *rpc.Query, stream rpc.Swarm_QueryPeersServer) error {
-	from, err := rpc.DeserializeMultiAddress(query.From)
-	if err != nil {
-		return err
-	}
 	target := rpc.DeserializeAddress(query.Target)
 	peers, err := service.DHT.FindMultiAddressNeighbors(target, service.Options.Alpha)
 	if err != nil {
@@ -170,9 +161,7 @@ func (service *SwarmService) queryPeers(query *rpc.Query, stream rpc.Swarm_Query
 			}
 		}
 	}
-
-	service.SwarmDelegate.OnQuery(from)
-	return nil
+	return service.updatePeer(query.From)
 }
 
 // QueryPeersDeep is used to return the closest MultiAddresses that can be
@@ -267,12 +256,6 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 			visited[candidate.Address()] = struct{}{}
 		}
 	}
-
-	fromMultiAddress, err := rpc.DeserializeMultiAddress(query.From)
-	if err != nil {
-		return err
-	}
-	service.SwarmDelegate.OnQueryDeep(fromMultiAddress)
 	return service.updatePeer(query.From)
 }
 

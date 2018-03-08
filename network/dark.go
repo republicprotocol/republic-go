@@ -15,16 +15,16 @@ import (
 // A DarkDelegate is used as a callback interface to inject behavior into the
 // DarkService service.
 type DarkDelegate interface {
-	OnSync(from identity.MultiAddress)
+	// OnSync(from identity.MultiAddress)
 
-	OnSignOrderFragment(from identity.MultiAddress)
+	// OnSignOrderFragment(from identity.MultiAddress)
 	OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment)
-	OnCancelOrder(from identity.MultiAddress)
+	// OnCancelOrder(from identity.MultiAddress)
 
-	OnRandomFragmentShares(from identity.MultiAddress)
-	OnResidueFragmentShares(from identity.MultiAddress)
-	OnComputeResidueFragment(from identity.MultiAddress)
-	OnBroadcastAlphaBetaFragment(from identity.MultiAddress)
+	// OnRandomFragmentShares(from identity.MultiAddress)
+	// OnResidueFragmentShares(from identity.MultiAddress)
+	// OnComputeResidueFragment(from identity.MultiAddress)
+	// OnBroadcastAlphaBetaFragment(from identity.MultiAddress)
 	OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment *compute.DeltaFragment)
 }
 
@@ -35,7 +35,7 @@ type DarkService struct {
 	Logger *logger.Logger
 }
 
-func NewDark(delegate DarkDelegate, options Options, logger *logger.Logger) *DarkService {
+func NewDarkService(delegate DarkDelegate, options Options, logger *logger.Logger) *DarkService {
 	return &DarkService{
 		DarkDelegate: delegate,
 		Options:      options,
@@ -63,11 +63,6 @@ func (service *DarkService) Sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_S
 }
 
 func (service *DarkService) sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_SyncServer) error {
-	from, err := rpc.DeserializeMultiAddress(syncRequest.From)
-	if err != nil {
-		return err
-	}
-	service.DarkDelegate.OnSync(from)
 	panic("unimplemented")
 }
 
@@ -92,11 +87,6 @@ func (service *DarkService) SignOrderFragment(ctx context.Context, signOrderFrag
 }
 
 func (service *DarkService) signOrderFragment(signOrderFragmentRequest *rpc.SignOrderFragmentRequest) (*rpc.OrderFragmentSignature, error) {
-	from, err := rpc.DeserializeMultiAddress(signOrderFragmentRequest.From)
-	if err != nil {
-		return nil, err
-	}
-	service.DarkDelegate.OnSignOrderFragment(from)
 	panic("unimplemented")
 }
 
@@ -156,11 +146,6 @@ func (service *DarkService) CancelOrder(ctx context.Context, cancelOrderRequest 
 }
 
 func (service *DarkService) cancelOrder(cancelOrderRequest *rpc.CancelOrderRequest) (*rpc.Nothing, error) {
-	from, err := rpc.DeserializeMultiAddress(cancelOrderRequest.From)
-	if err != nil {
-		return &rpc.Nothing{}, err
-	}
-	service.OnCancelOrder(from)
 	panic("unimplemented")
 }
 
@@ -186,11 +171,6 @@ func (service *DarkService) RandomFragmentShares(ctx context.Context, randomFrag
 }
 
 func (service *DarkService) randomFragmentShares(randomFragmentSharesRequest *rpc.RandomFragmentSharesRequest) (*rpc.RandomFragments, error) {
-	from, err := rpc.DeserializeMultiAddress(randomFragmentSharesRequest.From)
-	if err != nil {
-		return &rpc.RandomFragments{}, err
-	}
-	service.OnRandomFragmentShares(from)
 	panic("unimplemented")
 }
 
@@ -216,11 +196,6 @@ func (service *DarkService) ResidueFragmentShares(ctx context.Context, residueFr
 }
 
 func (service *DarkService) residueFragmentShares(residueFragmentSharesRequest *rpc.ResidueFragmentSharesRequest) (*rpc.ResidueFragments, error) {
-	from, err := rpc.DeserializeMultiAddress(residueFragmentSharesRequest.From)
-	if err != nil {
-		return &rpc.ResidueFragments{}, err
-	}
-	service.OnResidueFragmentShares(from)
 	panic("unimplemented")
 }
 
@@ -246,11 +221,6 @@ func (service *DarkService) ComputeResidueFragment(ctx context.Context, computeR
 }
 
 func (service *DarkService) computeResidueFragment(computeResidueFragmentRequest *rpc.ComputeResidueFragmentRequest) (*rpc.Nothing, error) {
-	from, err := rpc.DeserializeMultiAddress(computeResidueFragmentRequest.From)
-	if err != nil {
-		return &rpc.Nothing{}, err
-	}
-	service.OnComputeResidueFragment(from)
 	panic("unimplemented")
 }
 
@@ -276,11 +246,6 @@ func (service *DarkService) BroadcastAlphaBetaFragment(ctx context.Context, broa
 }
 
 func (service *DarkService) broadcastAlphaBetaFragment(broadcastAlphaBetaFragmentRequest *rpc.BroadcastAlphaBetaFragmentRequest) (*rpc.AlphaBetaFragment, error) {
-	from, err := rpc.DeserializeMultiAddress(broadcastAlphaBetaFragmentRequest.From)
-	if err != nil {
-		return &rpc.AlphaBetaFragment{}, err
-	}
-	service.OnBroadcastAlphaBetaFragment(from)
 	panic("unimplemented")
 }
 
@@ -315,5 +280,6 @@ func (service *DarkService) broadcastDeltaFragment(broadcastDeltaFragmentRequest
 		return &rpc.DeltaFragment{}, err
 	}
 	service.OnBroadcastDeltaFragment(from, deltaFragment)
-	panic("unimplemented")
+	// FIXME: Return the respective delta fragment.
+	return &rpc.DeltaFragment{}, nil
 }
