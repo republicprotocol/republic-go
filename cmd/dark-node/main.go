@@ -13,9 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/republic-go/dark-node"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 //const PATH = "/home/ubuntu/"
@@ -60,24 +59,8 @@ func main() {
 	}
 
 	// Create a new node.node.
-	node, err := node.NewDarkNode(config)
-	if err != nil {
-		node.Config.Logger.Error(err)
-	}
-
-	// Start the dark node.
-	options := do.CoBegin(func() do.Option {
-		return do.Err(node.StartListening())
-	}, func() do.Option {
-		time.Sleep(time.Second)
-		return do.Err(node.Start())
-	})
-
-	for _, option := range options {
-		if option.Err != nil {
-			node.Config.Logger.Error(err)
-		}
-	}
+	node := node.NewDarkNode(*config)
+	node.Start()
 }
 
 // Parse the config file path and read config from it.
