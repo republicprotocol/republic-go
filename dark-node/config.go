@@ -7,11 +7,15 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/network"
 )
 
 // Config information for Miners
 type Config struct {
+	network.Options `json:"network"`
+
 	Host string `json:"host"`
 	Port string `json:"port"`
 
@@ -21,7 +25,7 @@ type Config struct {
 	MultiAddress       identity.MultiAddress `json:"multi_address"`
 
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
-	Logger                  *Logger                 `json:"logger""`
+	Logger                  *logger.Logger          `json:"logger""`
 	Dev                     bool                    `json:"dev""`
 
 	Prime *big.Int `json:"prime"`

@@ -66,3 +66,13 @@ func (logQueue *LogQueue) Unsubscribe(channel chan do.Option) {
 		}
 	}
 }
+
+// SubscribeToLogs will start sending log events to logChannel
+func (node *DarkNode) SubscribeToLogs(logChannel chan do.Option) {
+	node.logQueue.Subscribe(logChannel)
+}
+
+// UnsubscribeFromLogs will stop sending log events to logChannel
+func (node *DarkNode) UnsubscribeFromLogs(logChannel chan do.Option) {
+	node.logQueue.Unsubscribe(logChannel)
+}

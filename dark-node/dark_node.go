@@ -6,17 +6,18 @@ import (
 	"log"
 	"math/big"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/republicprotocol/go-dark-node-registrar"
-	dht "github.com/republicprotocol/go-dht"
-	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-order-compute"
-	"github.com/republicprotocol/go-rpc"
+	"github.com/republicprotocol/republic-go/compute"
+	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
+	"github.com/republicprotocol/republic-go/network/dht"
+	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 	"google.golang.org/grpc"
 )
@@ -38,25 +39,29 @@ type DarkNode struct {
 	DeltaFragmentWorkerQueue chan *compute.DeltaFragment
 	DeltaFragmentWorker      *DeltaFragmentWorker
 
-	Server     *grpc.Server
-	Swarm      *network.SwarmService
-	Dark       *network.DarkService
+	Server *grpc.Server
+	Swarm  *network.SwarmService
+	Dark   *network.DarkService
 }
 
-// NewDarkNode creates a new DarkNode, a new network.Node and network.Node and assigns the
-// new DarkNode as the delegate for both. Returns the new DarkNode, or an error.
-func NewDarkNode(config *Config) (*DarkNode) {
+// NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
+// will configure all of the components that it needs to operate but will not
+// start any of them.
+func NewDarkNode(config Config) *DarkNode {
 	if config.Prime == nil {
 		config.Prime = Prime
 	}
+
+	// TODO: This should come from the DNR.
+	k := int64(5)
 
 	node := &DarkNode{Config: config}
 
 	node.Logger = logger.NewLogger()
 	node.ClientPool = rpc.NewClientPool(node.MultiAddress)
-	node.DHT = dht.NewDHT(node.MultiAddress)
+	node.DHT = dht.NewDHT(node.MultiAddress.Address(), node.MaxBucketLength)
 
-	node.DeltaBuilder = compute.NewDeltaBuilder()
+	node.DeltaBuilder = compute.NewDeltaBuilder(k, node.Prime)
 	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(node.Prime)
 	node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
 	node.OrderFragmentWorker = NewOrderFragmentWorker(node.OrderFragmentWorkerQueue, node.DeltaFragmentMatrix)
@@ -64,17 +69,16 @@ func NewDarkNode(config *Config) (*DarkNode) {
 	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.DeltaFragmentWorkerQueue, node.DeltaBuilder)
 
 	options := network.Options{}
-	node.Server := grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
-	node.Swarm := network.NewSwarmService(node, options, node.Logger, node.ClientPool, node.DHT)
-	node.Dark := network.NewDarkService(node, options, node.Logger)
+	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
+	node.Swarm = network.NewSwarmService(node, node.Options, node.Logger, node.ClientPool, node.DHT)
+	node.Dark = network.NewDarkService(node, node.Options, node.Logger)
 
 	return node
 }
 
-// Start mining for compute.Orders that are matched. It establishes connections
-// to other peers in the swarm network by bootstrapping against a set of
-// bootstrap network.Nodes.
-func (node *DarkNode) Start() error {
+// Start the DarkNode.
+func (node *DarkNode) Start() {
+	// Begin broadcasting CPU/Memory/Network usage
 	go func() {
 		for {
 			time.Sleep(20 * time.Second)
@@ -82,53 +86,73 @@ func (node *DarkNode) Start() error {
 		}
 	}()
 
-	isRegistered := node.IsRegistered()
-	for !isRegistered {
+	// Wait until the node is registered
+	for isRegistered := node.IsRegistered(); !isRegistered; isRegistered = node.IsRegistered() {
 		timeout := 60 * time.Second
-		log.Printf("%v not registered. Sleeping for %v seconds.", node.Configuration.MultiAddress.Address(), timeout.Seconds())
+		log.Printf("%v not registered. Sleeping for %v seconds.", node.MultiAddress.Address(), timeout.Seconds())
 		time.Sleep(timeout)
-		isRegistered = node.IsRegistered()
 	}
-
-	// Bootstrap the connections in the network.
-	node.Swarm.Bootstrap()
 
 	go node.WatchForEpoch()
 
-	return nil
+	// Start serving the gRPC services
+	var wg sync.WaitGroup
+	go func() {
+		defer wg.Done()
+		wg.Add(1)
+
+		node.Swarm.Register(node.Server)
+		node.Dark.Register(node.Server)
+		listener, err := net.Listen("tcp", node.Host+":"+node.Port)
+		node.Logger.Error(logger.TagNetwork, err.Error())
+		if err := node.Server.Serve(listener); err != nil {
+			node.Logger.Error(logger.TagNetwork, err.Error())
+		}
+	}()
+	time.Sleep(time.Second)
+
+	// Bootstrap into the swarm network
+	node.Swarm.Bootstrap()
+	time.Sleep(time.Second)
+
+	// Run the workers
+	go node.OrderFragmentWorker.Run(node.DeltaFragmentWorkerQueue)
+	go node.DeltaFragmentWorker.Run()
+
+	wg.Wait()
 }
 
-func (node *DarkNode) Error(err error) {
-	node.Configuration.Logger.Error(err)
-}
-
-func (node *DarkNode) Info(info string) {
-	node.Configuration.Logger.Info(info)
-}
-
-func (node *DarkNode) Warning(warning string) {
-	node.Configuration.Logger.Warning(warning)
-}
-
-// StartListening starts listening for rpc calls
-func (node *DarkNode) StartListening() error {
-	node.Info(fmt.Sprintf("Listening on %s:%s\n", node.Configuration.Host, node.Configuration.Port))
-	node.Swarm.Register()
-	node.Dark.Register()
-	listener, err := net.Listen("tcp", node.Configuration.Host+":"+node.Configuration.Port)
-	if err != nil {
-		return err
-	}
-	return node.Server.Serve(listener)
-}
-
-// StopListening stops listening for rpc calls
-func (node *DarkNode) StopListening() {
+// Stop the DarkNode.
+func (node *DarkNode) Stop() {
+	// Stop serving gRPC services
 	node.Server.Stop()
+	time.Sleep(time.Second)
+
+	// Stop the workers
+	close(node.OrderFragmentWorkerQueue)
+	close(node.DeltaFragmentWorkerQueue)
 }
 
-func (node *DarkNode) log(kind, message string) {
-	node.logQueue.Publish(do.Ok(&rpc.LogEvent{Type: []byte(kind), Message: []byte(message)}))
+// OnOpenOrder writes an order fragment that has been received to the
+// OrderFragmentWorkerQueue. This is a potentially blocking operation, however
+// this delegate method is called on a dedicated goroutine.
+func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
+	// Write to a channel that might be closed
+	func() {
+		defer func() { recover() }()
+		node.OrderFragmentWorkerQueue <- orderFragment
+	}()
+}
+
+// OnBroadcastDeltaFragment writes a delta fragment that has been received to
+// the DeltaFragmentWorkerQueue. This is a potentially blocking operation,
+// however this delegate method is called on a dedicated goroutine.
+func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment *compute.DeltaFragment) {
+	// Write to a channel that might be closed
+	func() {
+		defer func() { recover() }()
+		node.DeltaFragmentWorkerQueue <- deltaFragment
+	}()
 }
 
 // IsRegistered returns true if the dark node is registered for the current epoch

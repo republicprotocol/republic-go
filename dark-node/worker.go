@@ -2,6 +2,7 @@ package node
 
 import (
 	"github.com/republicprotocol/republic-go/compute"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -23,16 +24,22 @@ func NewOrderFragmentWorker(queue chan *order.Fragment, deltaFragmentMatrix *com
 
 // Run the OrderFragmentWorker and write all delta fragments to an output
 // queue.
-func (worker *OrderFragmentWorker) Run(queue chan *compute.DeltaFragment) {
+func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment) {
 	for orderFragment := range worker.queue {
 		deltaFragments, err := worker.deltaFragmentMatrix.InsertOrderFragment(orderFragment)
 		if err != nil {
 			worker.logger.Error(logger.TagCompute, err.Error())
 		}
 		if deltaFragments != nil {
-			for _, deltaFragment := range deltaFragments {
-				queue <- deltaFragment
-			}
+			// Write to channels that might be closed
+			func() {
+				defer func() { recover() }()
+				for _, deltaFragment := range deltaFragments {
+					for _, queue := range queues {
+						queue <- deltaFragment
+					}
+				}
+			}()
 		}
 	}
 }
@@ -53,11 +60,17 @@ func NewDeltaFragmentWorker(queue chan *compute.DeltaFragment, deltaBuilder *com
 }
 
 // Run the DeltaFragmentWorker and write all deltas to  an output queue.
-func (worker *DeltaFragmentWorker) Run(queue chan *compute.Delta) {
+func (worker *DeltaFragmentWorker) Run(queues ...chan *compute.Delta) {
 	for deltaFragment := range worker.queue {
 		delta := worker.deltaBuilder.InsertDeltaFragment(deltaFragmnet)
 		if delta != nil {
-			queue <- delta
+			// Write to channels that might be closed
+			func() {
+				defer func() { recover() }()
+				for _, queue := range queues {
+					queue <- delta
+				}
+			}()
 		}
 	}
 }
