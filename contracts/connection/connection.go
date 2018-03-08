@@ -55,8 +55,7 @@ func DeployERC20(context context.Context, connection Client, auth *bind.Transact
 
 // PatchedWaitMined waits for tx to be mined on the blockchain.
 // It stops waiting when the context is canceled.
-// (Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt)
-// NOTE: If something goes wrong, this will hang!
+// If the client is a simulated backend, it will commit the pending transactions to a block
 func PatchedWaitMined(ctx context.Context, b Client, tx *types.Transaction) (*types.Receipt, error) {
 
 	sim, ok := b.(*backends.SimulatedBackend)
@@ -66,6 +65,9 @@ func PatchedWaitMined(ctx context.Context, b Client, tx *types.Transaction) (*ty
 	}
 
 	return bind.WaitMined(ctx, b, tx)
+
+	// (Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt)
+	// NOTE: If something goes wrong, this will hang!
 
 	// queryTicker := time.NewTicker(time.Second)
 	// defer queryTicker.Stop()
@@ -92,8 +94,7 @@ func PatchedWaitMined(ctx context.Context, b Client, tx *types.Transaction) (*ty
 
 // PatchedWaitDeployed waits for a contract deployment transaction and returns the on-chain
 // contract address when it is mined. It stops waiting when ctx is canceled.
-// (Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt)
-// NOTE: If something goes wrong, this will hang!
+// If the client is a simulated backend, it will commit the pending transactions to a block
 func PatchedWaitDeployed(ctx context.Context, b Client, tx *types.Transaction) (common.Address, error) {
 
 	sim, ok := b.(*backends.SimulatedBackend)
@@ -103,6 +104,9 @@ func PatchedWaitDeployed(ctx context.Context, b Client, tx *types.Transaction) (
 	}
 
 	return bind.WaitDeployed(ctx, b, tx)
+
+	// (Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt)
+	// NOTE: If something goes wrong, this will hang!
 
 	// if tx.To() != nil {
 	// 	return common.Address{}, fmt.Errorf("tx is not contract creation")
