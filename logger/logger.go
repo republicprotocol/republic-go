@@ -39,34 +39,53 @@ func (logger *Logger) Start() error {
 
 // Stop stops all the plugins of the logger
 func (logger Logger) Stop() error {
+	var err error
 	for _, plugin := range logger.Plugins {
-		plugin.Stop()
+		if e := plugin.Stop(); e != nil {
+			err = e
+		}
 	}
-	return nil
+	return err
 }
 
-func (logger Logger) Error(tag, message string) {
+func (logger Logger) Error(tag, message string) error {
+	var err error
 	for _, plugin := range logger.Plugins {
-		plugin.Error(tag, message)
+		if e := plugin.Error(tag, message); e != nil {
+			err = e
+		}
 	}
+	return err
 }
 
-func (logger Logger) Info(tag, message string) {
+func (logger Logger) Info(tag, message string) error {
+	var err error
 	for _, plugin := range logger.Plugins {
-		plugin.Info(tag, message)
+		if e := plugin.Info(tag, message); e != nil {
+			err = e
+		}
 	}
+	return err
 }
 
-func (logger Logger) Warn(tag, message string) {
+func (logger Logger) Warn(tag, message string) error {
+	var err error
 	for _, plugin := range logger.Plugins {
-		plugin.Warn(tag, message)
+		if e := plugin.Warn(tag, message); e != nil {
+			err = e
+		}
 	}
+	return err
 }
 
-func (logger Logger) Usage(cpu float32, memory, network int32) {
+func (logger Logger) Usage(cpu float32, memory, network int32) error {
+	var err error
 	for _, plugin := range logger.Plugins {
-		plugin.Usage(cpu, memory, network)
+		if e := plugin.Usage(cpu, memory, network); e != nil {
+			err = e
+		}
 	}
+	return err
 }
 
 type Request struct {
