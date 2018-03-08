@@ -60,7 +60,7 @@ func (logger Logger) Info(tag, message string) {
 }
 
 // Warning outputs the warning though each plugin
-func (logger Logger) Warning(tag, message string) {
+func (logger Logger) Warn(tag, message string) {
 	for _, plugin := range logger.Plugins {
 		plugin.Warn(tag, message)
 	}
