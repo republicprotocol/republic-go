@@ -8,8 +8,8 @@ package rpc;
 
 service Swarm {
   rpc Ping (MultiAddress) returns (MultiAddress);
-  rpc Query (Address) returns (stream MultiAddress);
-  rpc QueryDeep (Address) returns (stream MultiAddress);
+  rpc QueryPeers (Query) returns (stream MultiAddress);
+  rpc QueryPeersDeep (Query) returns (stream MultiAddress);
 }
 
 message Address {
@@ -24,11 +24,16 @@ message MultiAddress {
 message Nothing {
 }
 
+message Query {
+  MultiAddress from = 1;
+  Address target = 2;
+}
+
 /**
- * Dark Ocean
+ * Dark
  */
 
-service DarkOcean {
+service Dark {
   rpc Sync (SyncRequest) returns (stream SyncBlock);
 
   rpc SignOrderFragment (SignOrderFragmentRequest) returns (OrderFragmentSignature);

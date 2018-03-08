@@ -247,5 +247,3 @@ func sendingOrders(nodes []*node.DarkNode, numberOfOrders, timeInterval int) err
 	}
 	return nil
 }
-
-

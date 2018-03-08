@@ -37,19 +37,12 @@ func DeployDNR(context context.Context, connection Client, auth *bind.TransactOp
 	return dnr, address
 }
 
-// SimulatedDetails contains the simulated client and the contracts deployed to it
-type SimulatedDetails struct {
-	Client     Client
-	RenAddress common.Address
-	DNRAddress common.Address
-}
-
 // Simulated will create a simulated client
-func Simulated(auths ...*bind.TransactOpts) (SimulatedDetails, error) {
+func Simulated(auths ...*bind.TransactOpts) (ClientDetails, error) {
 
 	deployerKey, err := crypto.GenerateKey()
 	if err != nil {
-		return SimulatedDetails{}, err
+		return ClientDetails{}, err
 	}
 	deployerAuth := bind.NewKeyedTransactor(deployerKey)
 
@@ -70,7 +63,7 @@ func Simulated(auths ...*bind.TransactOpts) (SimulatedDetails, error) {
 	for _, auth := range auths {
 		_, err := ren.Transfer(deployerAuth, auth.From, big.NewInt(1000000000000000000))
 		if err != nil {
-			return SimulatedDetails{}, err
+			return ClientDetails{}, err
 		}
 	}
 	sim.Commit()
@@ -79,7 +72,7 @@ func Simulated(auths ...*bind.TransactOpts) (SimulatedDetails, error) {
 		alloc[auth.From] = core.GenesisAccount{Balance: big.NewInt(9000000000000000000)}
 	}
 
-	return SimulatedDetails{
+	return ClientDetails{
 		Client:     sim,
 		RenAddress: renAddress,
 		DNRAddress: dnrAddress,

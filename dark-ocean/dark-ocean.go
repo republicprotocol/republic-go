@@ -6,8 +6,8 @@ import (
 	"math/big"
 
 	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 // DarkPool is a list of node multiaddresses

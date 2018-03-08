@@ -26,23 +26,23 @@ type DarkNodeRegistrar struct {
 }
 
 // NewDarkNodeRegistrar returns a Dark node registrar
-func NewDarkNodeRegistrar(context context.Context, client *connection.Client, auth1 *bind.TransactOpts, auth2 *bind.CallOpts, address common.Address, renAddress common.Address, data []byte) *DarkNodeRegistrar {
-	contract, err := contracts.NewDarkNodeRegistrar(address, bind.ContractBackend(*client))
+func NewDarkNodeRegistrar(context context.Context, clientDetails *connection.ClientDetails, auth1 *bind.TransactOpts, auth2 *bind.CallOpts, data []byte) *DarkNodeRegistrar {
+	contract, err := contracts.NewDarkNodeRegistrar(clientDetails.DNRAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	renContract, err := contracts.NewERC20(renAddress, bind.ContractBackend(*client))
+	renContract, err := contracts.NewERC20(clientDetails.RenAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
 	return &DarkNodeRegistrar{
 		context:                  context,
-		client:                   client,
+		client:                   &clientDetails.Client,
 		auth1:                    auth1,
 		auth2:                    auth2,
 		binding:                  contract,
 		tokenBinding:             renContract,
-		darkNodeRegistrarAddress: address,
+		darkNodeRegistrarAddress: clientDetails.DNRAddress,
 	}
 }
 

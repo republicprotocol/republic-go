@@ -28,9 +28,24 @@ type Client interface {
 	BalanceAt(ctx context.Context, contract common.Address, blockNumber *big.Int) (*big.Int, error)
 }
 
+// ClientDetails contains the simulated client and the contracts deployed to it
+type ClientDetails struct {
+	Client     Client
+	RenAddress common.Address
+	DNRAddress common.Address
+}
+
 // FromURI will connect to a provided RPC uri
-func FromURI(uri string) (Client, error) {
-	return ethclient.Dial(uri)
+func FromURI(uri string) (ClientDetails, error) {
+	client, err := ethclient.Dial(uri)
+	if err != nil {
+		return ClientDetails{}, err
+	}
+	return ClientDetails{
+		Client:     client,
+		RenAddress: common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a"),
+		DNRAddress: common.HexToAddress("0x6e48bdd8949d0c929e9b5935841f6ff18de0e613"),
+	}, nil
 }
 
 // PatchedWaitMined waits for tx to be mined on the blockchain.
