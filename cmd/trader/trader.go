@@ -47,11 +47,11 @@ func main() {
 	}
 
 	// Create a trader address
-	address ,_ ,err := identity.NewAddress()
+	address, _, err := identity.NewAddress()
 	if err != nil {
 		log.Fatal(err)
 	}
-	multi ,err  := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/80/republic/"+ address.String())
+	multi, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/80/republic/" + address.String())
 	if err != nil {
 		log.Fatal(err)
 	}

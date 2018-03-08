@@ -6,15 +6,14 @@ import (
 	"log"
 	"math/big"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	do "github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
-	darkocean "github.com/republicprotocol/republic-go/dark-ocean"
+	"github.com/republicprotocol/republic-go/dark-ocean"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
@@ -61,7 +60,7 @@ type DarkNode struct {
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
 // will configure all of the components that it needs to operate but will not
 // start any of them.
-func NewDarkNode(config Config) *DarkNode {
+func NewDarkNode(config Config) (*DarkNode, error) {
 	if config.Prime == nil {
 		config.Prime = Prime
 	}
@@ -71,7 +70,11 @@ func NewDarkNode(config Config) *DarkNode {
 
 	node := &DarkNode{Config: config}
 
-	node.Logger = logger.NewLogger()
+	node.Logger = logger.NewLogger(config.Logger.Plugins...)
+	err := node.Logger.Start()
+	if err != nil {
+		return nil, err
+	}
 	node.ClientPool = rpc.NewClientPool(node.MultiAddress)
 	node.DHT = dht.NewDHT(node.MultiAddress.Address(), node.MaxBucketLength)
 
@@ -89,17 +92,15 @@ func NewDarkNode(config Config) *DarkNode {
 
 	clientDetails, err := connection.FromURI(node.EthereumRPC)
 	if err != nil {
-		// TODO: Handler err
-		panic(err)
+		return nil, err
 	}
-	registrar, err := ConnectToRegistrar(clientDetails, config)
+	registrar, err := node.ConnectToRegistrar(clientDetails, config)
 	if err != nil {
-		// TODO: Handler err
-		panic(err)
+		//return nil ,err
 	}
 	node.Registrar = registrar
 
-	return node
+	return node, nil
 }
 
 // Start the DarkNode.
@@ -107,8 +108,8 @@ func (node *DarkNode) Start() {
 	// Begin broadcasting CPU/Memory/Network usage
 	go func() {
 		for {
-			time.Sleep(20 * time.Second)
 			node.Usage()
+			time.Sleep(20 * time.Second)
 		}
 	}()
 
@@ -120,10 +121,10 @@ func (node *DarkNode) Start() {
 	}
 
 	// Start serving the gRPC services
-	var wg sync.WaitGroup
+	//var wg sync.WaitGroup
 	go func() {
-		defer wg.Done()
-		wg.Add(1)
+		//defer wg.Done()
+		//wg.Add(1)
 
 		node.Swarm.Register(node.Server)
 		node.Dark.Register(node.Server)
@@ -315,13 +316,9 @@ func (node *DarkNode) AfterEachEpoch() error {
 }
 
 // ConnectToRegistrar will connect to the registrar using the given private key to sign transactions
-func ConnectToRegistrar(clientDetails connection.ClientDetails, config Config) (*dnr.DarkNodeRegistrar, error) {
-	keypair, err := config.EthereumKeyPair()
-	if err != nil {
-		return nil, err
-	}
+func (node DarkNode) ConnectToRegistrar(clientDetails connection.ClientDetails, config Config) (*dnr.DarkNodeRegistrar, error) {
+	auth := bind.NewKeyedTransactor(node.Config.EthereumKey.PrivateKey)
 
-	auth := bind.NewKeyedTransactor(keypair.PrivateKey)
 	// Gas Price
 	auth.GasPrice = big.NewInt(6000000000)
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -11,13 +12,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
 )
 
-const PATH = "/home/ubuntu/"
+const PATH = ""
 
 var config *node.Config
 
@@ -31,7 +33,10 @@ func main() {
 	}
 
 	// Create a new node.node.
-	node := node.NewDarkNode(*config)
+	node, err := node.NewDarkNode(*config)
+	if err != nil {
+		log.Fatal(err)
+	}
 	node.Start()
 	defer node.Stop()
 }
@@ -82,16 +87,16 @@ func LoadDefaultConfig() (*node.Config, error) {
 
 	// Create default network options
 	option := network.Options{
-		MultiAddress: multiAddress,
+		MultiAddress:            multiAddress,
 		BootstrapMultiAddresses: make([]identity.MultiAddress, len(bootstrapNodes)),
-		Debug:  network.DebugOff,
-		Alpha:   3,
-		MaxBucketLength: 20,
+		Debug:                network.DebugOff,
+		Alpha:                3,
+		MaxBucketLength:      20,
 		ClientPoolCacheLimit: 20,
-		Timeout: 30 * time.Second,
-		TimeoutBackoff:30 * time.Second,
-		TimeoutRetries: 1,
-		Concurrent: false,
+		Timeout:              30 * time.Second,
+		TimeoutBackoff:       30 * time.Second,
+		TimeoutRetries:       1,
+		Concurrent:           false,
 	}
 	for i, bootstrapNode := range bootstrapNodes {
 		multi, err := identity.NewMultiAddressFromString(bootstrapNode)
@@ -103,20 +108,22 @@ func LoadDefaultConfig() (*node.Config, error) {
 
 	// Create plugins for logger.
 	stdoutPlugin := logger.NewFilePlugin(os.Stdout)
-	logFile, err := os.Open(fmt.Sprintf("%sdarknode.log", PATH))
+	logFile, err := os.OpenFile(fmt.Sprintf("%sdarknode.log", PATH), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, err
 	}
 	filePlugin := logger.NewFilePlugin(logFile)
 	websocketPlugin := logger.NewWebSocketPlugin("0.0.0.0", "8080", "", "")
 
+	ethKey := keystore.NewKeyForDirectICAP(rand.Reader)
 	// Generate default config file
-	config := &node.Config{
-		Options  : option,
-		Host:                    "0.0.0.0",
-		Port:                    "18514",
-		RepublicKeyPair:         keyPair,
-		Logger:                  logger.NewLogger(stdoutPlugin, filePlugin, websocketPlugin),
+	config = &node.Config{
+		Options:         option,
+		Host:            "0.0.0.0",
+		Port:            "18514",
+		RepublicKeyPair: keyPair,
+		EthereumKey:     ethKey,
+		Logger:          logger.NewLogger(stdoutPlugin, filePlugin, websocketPlugin),
 		//todo : missing some of the fields
 	}
 	err = saveConfigFile(config)
