@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/big"
 	"net"
 	"time"
@@ -69,7 +68,6 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	k := int64(5)
 
 	node := &DarkNode{Config: config}
-
 	node.Logger = logger.NewLogger(config.Logger.Plugins...)
 	err := node.Logger.Start()
 	if err != nil {
@@ -116,7 +114,7 @@ func (node *DarkNode) Start() {
 	// Wait until the node is registered
 	for isRegistered := node.IsRegistered(); !isRegistered; isRegistered = node.IsRegistered() {
 		timeout := 60 * time.Second
-		log.Printf("%v not registered. Sleeping for %v seconds.", node.MultiAddress.Address(), timeout.Seconds())
+		node.Warn(logger.TagNetwork, fmt.Sprintf("%v not registered. Sleeping for %v seconds.", node.MultiAddress.Address(), timeout.Seconds()))
 		time.Sleep(timeout)
 	}
 
@@ -248,7 +246,7 @@ func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (identity.MultiAddr
 	for _, id := range ids {
 		target, err := node.Swarm.FindNode(id)
 		if err != nil || target == nil {
-			log.Printf("%v couldn't find pool peer %v: %v", node.Config.MultiAddress.Address(), id, err)
+			node.Warn(logger.TagNetwork, fmt.Sprintf("%v couldn't find pool peer %v: %v", node.Config.MultiAddress.Address(), id, err))
 			disconnectedDarkPool = append(disconnectedDarkPool, id)
 			continue
 		}
@@ -257,13 +255,13 @@ func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (identity.MultiAddr
 
 		node.ClientPool.Ping(*target)
 		if err != nil {
-			log.Printf("%v couldn't ping pool peer %v: %v", node.Config.MultiAddress.Address(), target, err)
+			node.Warn(logger.TagNetwork, fmt.Sprintf("%v couldn't ping pool peer %v: %v", node.Config.MultiAddress.Address(), target, err))
 			continue
 		}
 
 		err = node.Swarm.DHT.UpdateMultiAddress(*target)
 		if err != nil {
-			log.Printf("%v coudln't update DHT for pool peer %v: %v", node.Config.MultiAddress.Address(), target, err)
+			node.Warn(logger.TagNetwork, fmt.Sprintf("%v coudln't update DHT for pool peer %v: %v", node.Config.MultiAddress.Address(), target, err))
 			continue
 		}
 	}
@@ -292,11 +290,12 @@ func (node *DarkNode) LongPingDarkPool(disconnected darkocean.IDDarkPool) {
 
 // AfterEachEpoch should be run after each new epoch
 func (node *DarkNode) AfterEachEpoch() error {
-	log.Printf("%v is pinging dark pool\n", node.Config.MultiAddress.Address())
+	node.Info(logger.TagNetwork, fmt.Sprintf("%v is pinging dark pool\n", node.Config.MultiAddress.Address()))
 
 	darkOceanOverlay, err := darkocean.GetDarkPools(node.Registrar)
 	if err != nil {
-		log.Fatalf("%v couldn't get dark pools: %v", node.Config.MultiAddress.Address(), err)
+		node.Error(logger.TagNetwork, fmt.Sprintf("%v couldn't get dark pools: %v", node.Config.MultiAddress.Address(), err))
+		return err
 	}
 	node.DarkOceanOverlay = darkOceanOverlay
 
@@ -308,7 +307,7 @@ func (node *DarkNode) AfterEachEpoch() error {
 	connectedDarkPool, disconnectedDarkPool := node.PingDarkPool(idPool)
 	node.DarkPool = darkocean.NewDarkPool(connectedDarkPool)
 
-	log.Printf("%v connected to dark pool: %v", node.Config.MultiAddress.Address(), node.DarkPool)
+	node.Info(logger.TagNetwork, fmt.Sprintf("%v connected to dark pool: %v", node.Config.MultiAddress.Address(), node.DarkPool))
 
 	go node.LongPingDarkPool(disconnectedDarkPool)
 
@@ -331,15 +330,20 @@ func (node *DarkNode) Usage() {
 	// memory
 	vmStat, err := mem.VirtualMemory()
 	if err != nil {
-		node.Error("ERROR", err.Error())
+		node.Error(logger.TagCompute, err.Error())
 	}
-	node.Info("mem", fmt.Sprintf("%d", vmStat.Used))
-
 	// cpu - get CPU number of cores and speed
 	cpuStat, err := cpu.Info()
 	if err != nil {
-		node.Error("ERROR", err.Error())
+		node.Error(logger.TagCompute, err.Error())
 	}
-	node.Info("cpu", fmt.Sprintf("%d", cpuStat[0].CacheSize))
+	percentage, err := cpu.Percent(0, false)
+	if err != nil {
+		node.Error(logger.TagCompute, err.Error())
+	}
 
+	err = node.Logger.Usage(float32(cpuStat[0].Mhz*percentage[0]/100), int32(vmStat.Used/1024/1024), 0)
+	if err != nil {
+		node.Error(logger.TagCompute, err.Error())
+	}
 }

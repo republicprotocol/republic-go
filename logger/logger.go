@@ -8,8 +8,10 @@ import (
 
 // Constant strings for tagging logs.
 const (
-	TagNetwork = "network"
-	TagCompute = "compute"
+	TagNetwork = "net"
+	TagCompute = "cmp"
+	TagMemory  = "mem"
+	TagCPU     = "cpu"
 )
 
 type Logger struct {

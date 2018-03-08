@@ -72,7 +72,7 @@ func (plugin *FilePlugin) Warn(tag, message string) error {
 	if err != nil {
 		return err
 	}
-	_, err = plugin.file.WriteString("WARN: (" + tag + ") " + message + "\n")
+	_, err = plugin.file.WriteString("WARN : (" + tag + ") " + message + "\n")
 	return err
 }
 
@@ -102,7 +102,7 @@ func (plugin *FilePlugin) Usage(cpu float32, memory, network int32) error {
 	if err != nil {
 		return err
 	}
-	_, err = plugin.file.WriteString(fmt.Sprintf("USAGE : cpu=%.3f, memory=%d, network=%d \n", cpu, memory, network))
+	_, err = plugin.file.WriteString(fmt.Sprintf("USAGE : cpu = %.3f Mhz, memory = %d Mb, network = %d kb\n", cpu, memory, network))
 	return err
 }
 
