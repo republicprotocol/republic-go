@@ -231,13 +231,10 @@
   revision = "7fa2a81354bd90d15b313f9c01f73c8e13cfdf19"
 
 [[projects]]
-  branch = "logger"
+  branch = "master"
   name = "github.com/republicprotocol/go-dark-node"
-  packages = [
-    ".",
-    "logger"
-  ]
-  revision = "d62aada0e819f3608097fb9731c69ee3380aef4b"
+  packages = ["."]
+  revision = "41602aa115689ae2a275f1f857959636451a4914"
 
 [[projects]]
   branch = "master"

@@ -35,14 +35,6 @@ func main() {
 	numberOfOrders := flag.Int("order", 10, "number of orders")
 	timeInterval := flag.Int("time", 10, "time interval in second")
 
-	// setup output log file
-	//f, err := os.OpenFile("test_log", os.O_RDWR | os.O_CREATE , 0666)
-	//if err != nil {
-	//	log.Fatalf("error opening file: %v", err)
-	//}
-	//defer f.Close()
-	//log.SetOutput(f)
-
 	// Get nodes/darkpool details
 	multiAddress := getNodesDetails()
 	nodes := make([]identity.MultiAddress, len(multiAddress))
@@ -55,11 +47,15 @@ func main() {
 	}
 
 	// Create a trader address
-	config, err := node.LoadConfig("./config.json")
+	address ,_ ,err := identity.NewAddress()
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Trader Address: ", config.MultiAddress.String())
+	multi ,err  := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/80/republic/"+ address.String())
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Trader Address: ", address)
 
 	// Keep sending order fragment
 	for {
@@ -130,7 +126,7 @@ func main() {
 					}
 
 					do.ForAll(shares, func(i int) {
-						err = rpc.SendOrderFragmentToTarget(nodes[i], nodes[i].Address(), config.MultiAddress, shares[i], 5*time.Second)
+						err = rpc.SendOrderFragmentToTarget(nodes[i], nodes[i].Address(), multi, shares[i], 5*time.Second)
 						if err != nil {
 							log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(nodes[i].ID()), reset)
 							return
