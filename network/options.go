@@ -26,5 +26,5 @@ type Options struct {
 	Timeout              time.Duration `json:"timeout"`
 	TimeoutBackoff       time.Duration `json:"timeoutBackoff"`
 	TimeoutRetries       int           `json:"timeoutRetries"`
-	Concurrent           bool
+	Concurrent           bool          `json:"concurrent"`
 }
