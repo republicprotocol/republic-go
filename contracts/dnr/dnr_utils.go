@@ -9,8 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/republicprotocol/go-atom/ethereum"
 	"github.com/republicprotocol/go-atom/ethereum/contracts"
+	"github.com/republicprotocol/republic-go/contracts/connection"
 )
 
 var ether = big.NewInt(1000000000000000000)
@@ -20,7 +20,7 @@ const key2 = `{"version":3,"id":"1bc823af-210a-4143-8eb4-306c19485622","address"
 
 const sim = true
 
-func etherAtomAddress(client ethereum.Client, auth *bind.TransactOpts) common.Address {
+func etherAtomAddress(client connection.Client, auth *bind.TransactOpts) common.Address {
 	var address common.Address
 	if sim {
 		var err error
@@ -29,14 +29,14 @@ func etherAtomAddress(client ethereum.Client, auth *bind.TransactOpts) common.Ad
 		if err != nil {
 			log.Fatalf("Failed to deploy Ether-Atom: %v", err)
 		}
-		ethereum.PatchedWaitDeployed(context.Background(), client, tx)
+		connection.PatchedWaitDeployed(context.Background(), client, tx)
 	} else {
 		address = common.HexToAddress("0xbd59e72598737a08a68fe192df04c773adbbfa53")
 	}
 	return address
 }
 
-func erc20AtomAddress(client ethereum.Client, auth *bind.TransactOpts) common.Address {
+func erc20AtomAddress(client connection.Client, auth *bind.TransactOpts) common.Address {
 	var address common.Address
 	if sim {
 		var err error
@@ -45,14 +45,14 @@ func erc20AtomAddress(client ethereum.Client, auth *bind.TransactOpts) common.Ad
 		if err != nil {
 			log.Fatalf("Failed to deploy ERC20-Atom: %v", err)
 		}
-		ethereum.PatchedWaitDeployed(context.Background(), client, tx)
+		connection.PatchedWaitDeployed(context.Background(), client, tx)
 	} else {
 		address = common.HexToAddress("...")
 	}
 	return address
 }
 
-func erc20Address(client ethereum.Client, auth1, auth2 *bind.TransactOpts) common.Address {
+func erc20Address(client connection.Client, auth1, auth2 *bind.TransactOpts) common.Address {
 	var address common.Address
 	if sim {
 		var err error
@@ -62,9 +62,9 @@ func erc20Address(client ethereum.Client, auth1, auth2 *bind.TransactOpts) commo
 		if err != nil {
 			log.Fatalf("Failed to deploy ERC20: %v", err)
 		}
-		ethereum.PatchedWaitDeployed(context.Background(), client, tx)
+		connection.PatchedWaitDeployed(context.Background(), client, tx)
 		tx, _ = erc20.Transfer(auth1, auth2.From, ether)
-		ethereum.PatchedWaitMined(context.Background(), client, tx)
+		connection.PatchedWaitMined(context.Background(), client, tx)
 	} else {
 		address = common.HexToAddress("...")
 	}
@@ -72,7 +72,7 @@ func erc20Address(client ethereum.Client, auth1, auth2 *bind.TransactOpts) commo
 	return address
 }
 
-func loadClient() (ethereum.Client, *bind.TransactOpts, *bind.TransactOpts) {
+func loadClient() (connection.Client, *bind.TransactOpts, *bind.TransactOpts) {
 
 	auth1, err := bind.NewTransactor(strings.NewReader(key1), "password1")
 	if err != nil {
@@ -84,12 +84,15 @@ func loadClient() (ethereum.Client, *bind.TransactOpts, *bind.TransactOpts) {
 		panic(err)
 	}
 
-	var client ethereum.Client
+	var client connection.Client
 	if sim {
-		client = ethereum.Simulated(auth1, auth2)
+		client = connection.Simulated(auth1, auth2)
 	} else {
 		// Connect to Infura (or use local node at 13.54.129.55:8180)
-		client = ethereum.Ropsten("https://ropsten.infura.io/")
+		client, err = connection.FromURI("https://ropsten.infura.io/")
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return client, auth1, auth2

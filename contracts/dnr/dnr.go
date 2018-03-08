@@ -11,12 +11,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/republicprotocol/go-dark-node-registrar/contracts"
+	"github.com/republicprotocol/republic-go/contracts/connection"
 )
 
 // DarkNodeRegistrar is the dark node interface
 type DarkNodeRegistrar struct {
 	context                  context.Context
-	client                   *Client
+	client                   *connection.Client
 	auth1                    *bind.TransactOpts
 	auth2                    *bind.CallOpts
 	binding                  *contracts.DarkNodeRegistrar
@@ -25,7 +26,7 @@ type DarkNodeRegistrar struct {
 }
 
 // NewDarkNodeRegistrar returns a Dark node registrar
-func NewDarkNodeRegistrar(context context.Context, client *Client, auth1 *bind.TransactOpts, auth2 *bind.CallOpts, address common.Address, renAddress common.Address, data []byte) *DarkNodeRegistrar {
+func NewDarkNodeRegistrar(context context.Context, client *connection.Client, auth1 *bind.TransactOpts, auth2 *bind.CallOpts, address common.Address, renAddress common.Address, data []byte) *DarkNodeRegistrar {
 	contract, err := contracts.NewDarkNodeRegistrar(address, bind.ContractBackend(*client))
 	if err != nil {
 		log.Fatalf("%v", err)
@@ -62,7 +63,7 @@ func (darkNodeRegistrar *DarkNodeRegistrar) Register(_darkNodeID []byte, _public
 	if err != nil {
 		return tx, err
 	}
-	_, err = PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
+	_, err = connection.PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
 	if err != nil {
 		return tx, err
 	}
@@ -73,7 +74,7 @@ func (darkNodeRegistrar *DarkNodeRegistrar) Register(_darkNodeID []byte, _public
 
 	txn, err := darkNodeRegistrar.binding.Register(darkNodeRegistrar.auth1, _darkNodeIDByte, _publicKey)
 	if err == nil {
-		_, err := PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, txn)
+		_, err := connection.PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, txn)
 		return txn, err
 	}
 	return txn, err
@@ -89,7 +90,7 @@ func (darkNodeRegistrar *DarkNodeRegistrar) Deregister(_darkNodeID []byte) (*typ
 	if err != nil {
 		return tx, err
 	}
-	_, err = PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
+	_, err = connection.PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
 	return tx, err
 }
 
@@ -135,7 +136,7 @@ func (darkNodeRegistrar *DarkNodeRegistrar) Epoch() (*types.Transaction, error) 
 
 		return nil, err
 	}
-	_, err = PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
+	_, err = connection.PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
 	return tx, err
 }
 
@@ -204,7 +205,7 @@ func (darkNodeRegistrar *DarkNodeRegistrar) WaitTillRegistration(_darkNodeID []b
 
 			return err
 		}
-		_, err = PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
+		_, err = connection.PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
 		if err != nil {
 			return err
 		}

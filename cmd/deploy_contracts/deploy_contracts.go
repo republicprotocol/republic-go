@@ -15,6 +15,7 @@ import (
 	node "github.com/republicprotocol/go-dark-node"
 	dnr "github.com/republicprotocol/go-dark-node-registrar"
 	"github.com/republicprotocol/go-dark-node-registrar/contracts"
+	"github.com/republicprotocol/republic-go/contracts/connection"
 )
 
 var config *node.Config
@@ -34,7 +35,7 @@ func main() {
 	}
 	auth := bind.NewKeyedTransactor(ethereumKeyPair.PrivateKey)
 
-	client, err := dnr.FromURI("https://ropsten.infura.io/")
+	client, err := connection.FromURI("https://ropsten.infura.io/")
 	if err != nil {
 		log.Fatal(err)
 	}

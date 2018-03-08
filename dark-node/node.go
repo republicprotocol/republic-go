@@ -15,6 +15,7 @@ import (
 	"github.com/republicprotocol/go-order-compute"
 	"github.com/republicprotocol/go-rpc"
 	"github.com/republicprotocol/go-swarm-network"
+	"github.com/republicprotocol/republic-go/contracts/connection"
 	dnr "github.com/republicprotocol/republic-go/contracts/dnr"
 	darkocean "github.com/republicprotocol/republic-go/dark-ocean"
 	"google.golang.org/grpc"
@@ -350,7 +351,7 @@ func ConnectToRegistrar(keypair identity.KeyPair) (*dnr.DarkNodeRegistrar, error
 	auth := bind.NewKeyedTransactor(keypair.PrivateKey)
 	// Gas Price
 	auth.GasPrice = big.NewInt(6000000000)
-	client, err := dnr.FromURI("https://ropsten.infura.io/")
+	client, err := connection.FromURI("https://ropsten.infura.io/")
 	if err != nil {
 		log.Fatal(err)
 	}

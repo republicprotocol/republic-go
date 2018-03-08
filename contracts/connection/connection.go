@@ -1,9 +1,10 @@
-package dnr
+package connection
 
 import (
 	"context"
 	"log"
 	"math/big"
+	"time"
 
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -57,13 +58,14 @@ func DeployERC20(context context.Context, connection Client, auth *bind.Transact
 // (Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt)
 // NOTE: If something goes wrong, this will hang!
 func PatchedWaitMined(ctx context.Context, b Client, tx *types.Transaction) (*types.Receipt, error) {
-	return bind.WaitMined(ctx, b, tx)
 
-	// sim, ok := b.(*backends.SimulatedBackend)
-	// if ok {
-	// 	sim.Commit()
-	// 	sim.AdjustTime(10 * time.Second)
-	// }
+	sim, ok := b.(*backends.SimulatedBackend)
+	if ok {
+		sim.Commit()
+		sim.AdjustTime(10 * time.Second)
+	}
+
+	return bind.WaitMined(ctx, b, tx)
 
 	// queryTicker := time.NewTicker(time.Second)
 	// defer queryTicker.Stop()
@@ -93,6 +95,13 @@ func PatchedWaitMined(ctx context.Context, b Client, tx *types.Transaction) (*ty
 // (Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt)
 // NOTE: If something goes wrong, this will hang!
 func PatchedWaitDeployed(ctx context.Context, b Client, tx *types.Transaction) (common.Address, error) {
+
+	sim, ok := b.(*backends.SimulatedBackend)
+	if ok {
+		sim.Commit()
+		sim.AdjustTime(10 * time.Second)
+	}
+
 	return bind.WaitDeployed(ctx, b, tx)
 
 	// if tx.To() != nil {
