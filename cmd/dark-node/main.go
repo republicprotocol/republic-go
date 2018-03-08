@@ -15,6 +15,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 )
 
 //const PATH = "/home/ubuntu/"
@@ -106,8 +107,14 @@ func LoadDefaultConfig() (*node.Config, error) {
 		"/ip4/52.77.88.84/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
 		"/ip4/52.79.194.108/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
 	}
-	filePlugin := node.NewFilePlugin("darknode.log")
-	websocketPlugin := node.NewWebSocketPlugin(fmt.Sprintf("%s", out), "8080", "", "")
+
+	logFile, err := os.Open("darknode.log")
+	if err != nil {
+		return nil, err
+	}
+	stdoutPlugin := logger.NewFilePlugin(os.Stdout)
+	filePlugin := logger.NewFilePlugin(logFile)
+	websocketPlugin := logger.NewWebSocketPlugin(fmt.Sprintf("%s", out), "8080", "", "")
 
 	config := &node.Config{
 		Host:                    "0.0.0.0",
@@ -115,7 +122,7 @@ func LoadDefaultConfig() (*node.Config, error) {
 		RepublicKeyPair:         keyPair,
 		MultiAddress:            multiAddress,
 		BootstrapMultiAddresses: make([]identity.MultiAddress, len(bootstrapNodes)),
-		Logger:                  node.NewLogger(filePlugin, websocketPlugin),
+		Logger:                  logger.NewLogger(stdoutPlugin, filePlugin, websocketPlugin),
 		Dev:                     false,
 	}
 	for i, bootstrapNode := range bootstrapNodes {

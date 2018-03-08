@@ -128,7 +128,9 @@ func (node *DarkNode) Start() {
 		node.Swarm.Register(node.Server)
 		node.Dark.Register(node.Server)
 		listener, err := net.Listen("tcp", node.Host+":"+node.Port)
-		node.Logger.Error(logger.TagNetwork, err.Error())
+		if err != nil {
+			node.Logger.Error(logger.TagNetwork, err.Error())
+		}
 		if err := node.Server.Serve(listener); err != nil {
 			node.Logger.Error(logger.TagNetwork, err.Error())
 		}

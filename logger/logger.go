@@ -45,28 +45,24 @@ func (logger Logger) Stop() error {
 	return nil
 }
 
-// Error outputs the error though each plugin
 func (logger Logger) Error(tag, message string) {
 	for _, plugin := range logger.Plugins {
 		plugin.Error(tag, message)
 	}
 }
 
-// Info outputs the info though each plugin
 func (logger Logger) Info(tag, message string) {
 	for _, plugin := range logger.Plugins {
 		plugin.Info(tag, message)
 	}
 }
 
-// Warning outputs the warning though each plugin
 func (logger Logger) Warn(tag, message string) {
 	for _, plugin := range logger.Plugins {
 		plugin.Warn(tag, message)
 	}
 }
 
-// Warning outputs the warning though each plugin
 func (logger Logger) Usage(cpu float32, memory, network int32) {
 	for _, plugin := range logger.Plugins {
 		plugin.Usage(cpu, memory, network)

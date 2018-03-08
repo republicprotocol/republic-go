@@ -85,6 +85,6 @@ func (node *DarkNode) Info(tag, message string) {
 	node.Config.Logger.Info(tag, message)
 }
 
-func (node *DarkNode) Warning(tag, message string) {
-	node.Config.Logger.Warning(tag, message)
+func (node *DarkNode) Warn(tag, message string) {
+	node.Config.Logger.Warn(tag, message)
 }
