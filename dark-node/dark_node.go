@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/big"
 	"net"
@@ -20,6 +21,8 @@ import (
 	"github.com/republicprotocol/republic-go/network/dht"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 	"google.golang.org/grpc"
 )
 
@@ -149,7 +152,7 @@ func (node *DarkNode) Start() {
 		}
 	}
 
-	wg.Wait()
+	// wg.Wait()
 }
 
 // Stop the DarkNode.
@@ -335,21 +338,20 @@ func ConnectToRegistrar(config Config) (*dnr.DarkNodeRegistrar, error) {
 	return userConnection, nil
 }
 
+// Usage logs memory and cpu usage
 func (node *DarkNode) Usage() {
 	// memory
-	// vmStat, err := mem.VirtualMemory()
-	// if err != nil {
-	// 	node.Error(err)
-	// }
-	// node.Info(fmt.Sprintf("%d", vmStat.Used))
-	// log.Print("mem : ", vmStat.Used)
+	vmStat, err := mem.VirtualMemory()
+	if err != nil {
+		node.Error("ERROR", err.Error())
+	}
+	node.Info("mem", fmt.Sprintf("%d", vmStat.Used))
 
-	// // cpu - get CPU number of cores and speed
-	// cpuStat, err := cpu.Info()
-	// if err != nil {
-	// 	node.Error(err)
-	// }
-	// node.Info(fmt.Sprintf("%d", cpuStat[0].CacheSize))
-	// log.Print("cpu : ", cpuStat[0].CacheSize)
+	// cpu - get CPU number of cores and speed
+	cpuStat, err := cpu.Info()
+	if err != nil {
+		node.Error("ERROR", err.Error())
+	}
+	node.Info("cpu", fmt.Sprintf("%d", cpuStat[0].CacheSize))
 
 }

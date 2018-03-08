@@ -76,3 +76,15 @@ func (node *DarkNode) SubscribeToLogs(logChannel chan do.Option) {
 func (node *DarkNode) UnsubscribeFromLogs(logChannel chan do.Option) {
 	node.logQueue.Unsubscribe(logChannel)
 }
+
+func (node *DarkNode) Error(tag, message string) {
+	node.Config.Logger.Error(tag, message)
+}
+
+func (node *DarkNode) Info(tag, message string) {
+	node.Config.Logger.Info(tag, message)
+}
+
+func (node *DarkNode) Warning(tag, message string) {
+	node.Config.Logger.Warning(tag, message)
+}

@@ -25,8 +25,8 @@ type Config struct {
 	MultiAddress       identity.MultiAddress `json:"multi_address"`
 
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
-	Logger                  *logger.Logger          `json:"logger""`
-	Dev                     bool                    `json:"dev""`
+	Logger                  *logger.Logger          `json:"logger"`
+	Dev                     bool                    `json:"dev"`
 
 	EthereumRPC string `json:"ethereum_rpc"`
 
