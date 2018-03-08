@@ -26,7 +26,7 @@ type DarkNodeRegistrar struct {
 }
 
 // NewDarkNodeRegistrar returns a Dark node registrar
-func NewDarkNodeRegistrar(context context.Context, clientDetails *connection.ClientDetails, auth1 *bind.TransactOpts, auth2 *bind.CallOpts, data []byte) *DarkNodeRegistrar {
+func NewDarkNodeRegistrar(context context.Context, clientDetails *connection.ClientDetails, auth1 *bind.TransactOpts, auth2 *bind.CallOpts) *DarkNodeRegistrar {
 	contract, err := contracts.NewDarkNodeRegistrar(clientDetails.DNRAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
 		log.Fatalf("%v", err)

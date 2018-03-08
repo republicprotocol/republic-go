@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/republicprotocol/go-dark-node"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/go-identity"
+	"github.com/republicprotocol/republic-go/dark-node"
 )
 
 //const PATH = "/home/ubuntu/"
@@ -62,7 +62,7 @@ func main() {
 	// Create a new node.node.
 	node, err := node.NewDarkNode(config)
 	if err != nil {
-		node.Configuration.Logger.Error(err)
+		node.Config.Logger.Error(err)
 	}
 
 	// Start the dark node.
@@ -75,7 +75,7 @@ func main() {
 
 	for _, option := range options {
 		if option.Err != nil {
-			node.Configuration.Logger.Error(err)
+			node.Config.Logger.Error(err)
 		}
 	}
 }

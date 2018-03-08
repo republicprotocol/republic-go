@@ -37,6 +37,9 @@ type ClientDetails struct {
 
 // FromURI will connect to a provided RPC uri
 func FromURI(uri string) (ClientDetails, error) {
+	if uri == "" {
+		uri = "https://ropsten.infura.io/"
+	}
 	client, err := ethclient.Dial(uri)
 	if err != nil {
 		return ClientDetails{}, err

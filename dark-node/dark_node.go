@@ -87,8 +87,14 @@ func NewDarkNode(config Config) *DarkNode {
 	node.Swarm = network.NewSwarmService(node, node.Options, node.Logger, node.ClientPool, node.DHT)
 	node.Dark = network.NewDarkService(node, node.Options, node.Logger)
 
-	registrar, err := ConnectToRegistrar(config)
+	clientDetails, err := connection.FromURI(node.EthereumRPC)
 	if err != nil {
+		// TODO: Handler err
+		panic(err)
+	}
+	registrar, err := ConnectToRegistrar(clientDetails, config)
+	if err != nil {
+		// TODO: Handler err
 		panic(err)
 	}
 	node.Registrar = registrar
@@ -246,12 +252,7 @@ func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (identity.MultiAddr
 
 		darkpool = append(darkpool, *target)
 
-		client, err := node.ClientPool.FindOrCreateClient(*target)
-		if err != nil {
-			log.Printf("%v couldn't get client for multiaddress %v: %v", node.Config.MultiAddress.Address(), target, err)
-			continue
-		}
-		err = client.Ping()
+		node.ClientPool.Ping(*target)
 		if err != nil {
 			log.Printf("%v couldn't ping pool peer %v: %v", node.Config.MultiAddress.Address(), target, err)
 			continue
@@ -312,7 +313,7 @@ func (node *DarkNode) AfterEachEpoch() error {
 }
 
 // ConnectToRegistrar will connect to the registrar using the given private key to sign transactions
-func ConnectToRegistrar(config Config) (*dnr.DarkNodeRegistrar, error) {
+func ConnectToRegistrar(clientDetails connection.ClientDetails, config Config) (*dnr.DarkNodeRegistrar, error) {
 	keypair, err := config.EthereumKeyPair()
 	if err != nil {
 		return nil, err
@@ -322,19 +323,7 @@ func ConnectToRegistrar(config Config) (*dnr.DarkNodeRegistrar, error) {
 	// Gas Price
 	auth.GasPrice = big.NewInt(6000000000)
 
-	rpcURI := config.EthereumRPC
-	var clientDetails connection.ClientDetails
-
-	switch rpcURI {
-	case "simulated":
-		clientDetails, err = connection.Simulated(auth)
-	case "":
-		rpcURI = "https://ropsten.infura.io/"
-		fallthrough
-	default:
-		clientDetails, err = connection.FromURI(rpcURI)
-	}
-	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{}, nil)
+	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{})
 	return userConnection, nil
 }
 
