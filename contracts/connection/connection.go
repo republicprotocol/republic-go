@@ -2,7 +2,6 @@ package connection
 
 import (
 	"context"
-	"log"
 	"math/big"
 	"time"
 
@@ -10,10 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/republicprotocol/go-atom/ethereum/contracts"
 )
 
 // Client combines the interfaces for bind.ContractBackend and bind.DeployBackend
@@ -34,23 +31,6 @@ type Client interface {
 // FromURI will connect to a provided RPC uri
 func FromURI(uri string) (Client, error) {
 	return ethclient.Dial(uri)
-}
-
-// Simulated will create a simulated client
-func Simulated(auth1 *bind.TransactOpts, auth2 *bind.TransactOpts) Client {
-	sim := backends.NewSimulatedBackend(core.GenesisAlloc{auth1.From: {Balance: big.NewInt(9000000000000000000)}, auth2.From: {Balance: big.NewInt(9000000000000000000)}})
-	return sim
-}
-
-// DeployERC20 deploys and ERC20 contract
-func DeployERC20(context context.Context, connection Client, auth *bind.TransactOpts) (*types.Transaction, common.Address) {
-	// Deploy a token contract on the simulated blockchain
-	address, tx, _, err := contracts.DeployAtomicSwapERC20(auth, connection)
-	if err != nil {
-		log.Fatalf("Failed to deploy: %v", err)
-	}
-	PatchedWaitDeployed(context, connection, tx)
-	return tx, address
 }
 
 // PatchedWaitMined waits for tx to be mined on the blockchain.

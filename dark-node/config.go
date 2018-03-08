@@ -23,6 +23,8 @@ type Config struct {
 	ComputationShardSize     int      `json:"computation_shard_size"`
 	ComputationShardInterval int      `json:"computation_shard_interval"`
 	Prime                    *big.Int `json:"prime"`
+
+	EthereumRPC string `json:"ethereum_rpc"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config

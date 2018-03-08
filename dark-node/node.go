@@ -122,11 +122,7 @@ func NewDarkNode(config *Config) (*DarkNode, error) {
 		config.ComputationShardSize = 10
 	}
 
-	ethereumKeyPair, err := config.EthereumKeyPair()
-	if err != nil {
-		return nil, err
-	}
-	registrar, err := ConnectToRegistrar(ethereumKeyPair)
+	registrar, err := ConnectToRegistrar(config)
 	if err != nil {
 		return nil, err
 	}
@@ -346,17 +342,33 @@ func (node *DarkNode) AfterEachEpoch() error {
 }
 
 // ConnectToRegistrar will connect to the registrar using the given private key to sign transactions
-func ConnectToRegistrar(keypair identity.KeyPair) (*dnr.DarkNodeRegistrar, error) {
-	// todo : hard code the ciphertext for now
+func ConnectToRegistrar(config *Config) (*dnr.DarkNodeRegistrar, error) {
+	keypair, err := config.EthereumKeyPair()
+	if err != nil {
+		return nil, err
+	}
+
 	auth := bind.NewKeyedTransactor(keypair.PrivateKey)
 	// Gas Price
 	auth.GasPrice = big.NewInt(6000000000)
-	client, err := connection.FromURI("https://ropsten.infura.io/")
-	if err != nil {
-		log.Fatal(err)
+
+	rpcURI := config.EthereumRPC
+
+	switch rpcURI {
+	case "simulated":
+		client := connection.Simulated(auth)
+	case "":
+		rpcURI = "https://ropsten.infura.io/"
+		fallthrough
+	default:
+		client, err := connection.FromURI(rpcURI)
+		if err != nil {
+			log.Fatal(err)
+		}
+		contractAddress := common.HexToAddress("0x6e48bdd8949d0c929e9b5935841f6ff18de0e613")
+		renContract := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
+		break
 	}
-	contractAddress := common.HexToAddress("0x6e48bdd8949d0c929e9b5935841f6ff18de0e613")
-	renContract := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
 	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, contractAddress, renContract, nil)
 	return userConnection, nil
 }

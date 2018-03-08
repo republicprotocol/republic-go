@@ -86,7 +86,11 @@ func loadClient() (connection.Client, *bind.TransactOpts, *bind.TransactOpts) {
 
 	var client connection.Client
 	if sim {
-		client = connection.Simulated(auth1, auth2)
+		simDetails, err := connection.Simulated(auth1, auth2)
+		if err != nil {
+			panic(err)
+		}
+		client = simDetails.Client
 	} else {
 		// Connect to Infura (or use local node at 13.54.129.55:8180)
 		client, err = connection.FromURI("https://ropsten.infura.io/")
