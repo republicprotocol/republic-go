@@ -50,7 +50,7 @@ type DarkNode struct {
 	Registrar *dnr.DarkNodeRegistrar
 
 	DarkPoolLimit    int64
-	DarkPool         darkocean.DarkPool
+	DarkPool         *darkocean.DarkPool
 	DarkOceanOverlay *darkocean.Overlay
 
 	EpochBlockhash [32]byte
@@ -303,7 +303,7 @@ func (node *DarkNode) AfterEachEpoch() error {
 	}
 
 	connectedDarkPool, disconnectedDarkPool := node.PingDarkPool(idPool)
-	node.DarkPool = darkocean.DarkPool{Nodes: connectedDarkPool}
+	node.DarkPool = darkocean.NewDarkPool(connectedDarkPool)
 
 	log.Printf("%v connected to dark pool: %v", node.Config.MultiAddress.Address(), node.DarkPool)
 
