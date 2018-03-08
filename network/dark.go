@@ -45,10 +45,10 @@ func NewDark(delegate DarkDelegate, options Options, logger *logger.Logger) *Dar
 
 // Register the gRPC service.
 func (service *DarkService) Register(server *grpc.Server) {
-	rpc.RegisterDarkOceanServer(server, service)
+	rpc.RegisterDarkServer(server, service)
 }
 
-func (service *DarkService) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkOcean_SyncServer) error {
+func (service *DarkService) Sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_SyncServer) error {
 	wait := do.Process(func() do.Option {
 		return do.Err(service.sync(syncRequest, stream))
 	})
@@ -62,7 +62,7 @@ func (service *DarkService) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkOc
 	}
 }
 
-func (service *DarkService) sync(syncRequest *rpc.SyncRequest, stream rpc.DarkOcean_SyncServer) error {
+func (service *DarkService) sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_SyncServer) error {
 	from, err := rpc.DeserializeMultiAddress(syncRequest.From)
 	if err != nil {
 		return err
