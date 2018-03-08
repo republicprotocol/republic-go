@@ -156,7 +156,7 @@
   branch = "master"
   name = "github.com/multiformats/go-multihash"
   packages = ["."]
-  revision = "468a1b73e980e5aff011d308623e43e28c582b16"
+  revision = "27fa400c586666336a86e50accf9e8a1c9585ad3"
 
 [[projects]]
   name = "github.com/onsi/ginkgo"
@@ -231,10 +231,13 @@
   revision = "7fa2a81354bd90d15b313f9c01f73c8e13cfdf19"
 
 [[projects]]
-  branch = "master"
+  branch = "logger"
   name = "github.com/republicprotocol/go-dark-node"
-  packages = ["."]
-  revision = "41602aa115689ae2a275f1f857959636451a4914"
+  packages = [
+    ".",
+    "logger"
+  ]
+  revision = "d62aada0e819f3608097fb9731c69ee3380aef4b"
 
 [[projects]]
   branch = "master"
@@ -362,7 +365,7 @@
     "trace",
     "websocket"
   ]
-  revision = "d25186b37f34ebdbbea8f488ef055638dfab272d"
+  revision = "07e8617a6db2368fa55d4616f371ee1b1403c817"
 
 [[projects]]
   branch = "master"
@@ -371,7 +374,7 @@
     "unix",
     "windows"
   ]
-  revision = "dd2ff4accc098aceecb86b36eaa7829b2a17b1c9"
+  revision = "349b81fb5c64ec1734eb6ee148df25459ea48517"
 
 [[projects]]
   name = "golang.org/x/text"

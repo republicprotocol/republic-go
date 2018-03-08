@@ -1,9 +1,0 @@
-{
-    "fstCode": 1,
-    "sndCode": 2,
-    "maxVolume": 1000,
-    "minVolume": 100,
-    "parity": 2,
-    "price": 10,
-    "type": 1
-}
