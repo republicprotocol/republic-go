@@ -2,6 +2,7 @@ package connection
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/big"
 
@@ -14,9 +15,9 @@ import (
 )
 
 // DeployREN deploys an ERC20 contract
-func DeployREN(context context.Context, connection Client, auth *bind.TransactOpts) (*bindings.ERC20, common.Address) {
+func DeployREN(context context.Context, connection Client, auth *bind.TransactOpts) (*bindings.TestERC20, common.Address) {
 	// Deploy a token contract on the simulated blockchain
-	address, tx, ren, err := bindings.DeployERC20(auth, connection)
+	address, tx, ren, err := bindings.DeployTestERC20(auth, connection)
 	if err != nil {
 		log.Fatalf("Failed to deploy: %v", err)
 	}
@@ -57,6 +58,15 @@ func Simulated(auths ...*bind.TransactOpts) (ClientDetails, error) {
 
 	// Deploy contracts
 	ren, renAddress := DeployREN(context.Background(), sim, deployerAuth)
+	sim.Commit()
+	fmt.Println(renAddress.Hex())
+
+	t, err := ren.TotalSupply(&bind.CallOpts{})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(t)
+
 	_, dnrAddress := DeployDNR(context.Background(), sim, deployerAuth, renAddress)
 
 	// Transfer Ren to each participant

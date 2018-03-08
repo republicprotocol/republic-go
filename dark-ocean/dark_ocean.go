@@ -13,15 +13,22 @@ import (
 // DarkPool is a list of node multiaddresses
 type DarkPool struct {
 	do.GuardedObject
+	nodes identity.MultiAddresses
+}
 
-	Nodes identity.MultiAddresses
+// NewDarkPool creates a new DarkPool
+func NewDarkPool(nodes identity.MultiAddresses) *DarkPool {
+	darkPool := new(DarkPool)
+	darkPool.GuardedObject = do.NewGuardedObject()
+	darkPool.nodes = nodes
+	return darkPool
 }
 
 // Add will append a multiaddress to the darkpool
 func (darkpool DarkPool) Add(targets ...identity.MultiAddress) {
 	darkpool.Enter(nil)
 	defer darkpool.Exit()
-	darkpool.Nodes = append(darkpool.Nodes, targets...)
+	darkpool.nodes = append(darkpool.nodes, targets...)
 }
 
 // IDDarkPool is a list of node ids
