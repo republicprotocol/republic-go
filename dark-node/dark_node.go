@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"net"
@@ -40,6 +41,7 @@ type DarkNode struct {
 	OrderFragmentWorker      *OrderFragmentWorker
 	DeltaFragmentWorkerQueue chan *compute.DeltaFragment
 	DeltaFragmentWorker      *DeltaFragmentWorker
+	DeltaQueue               chan *compute.Delta
 
 	Server *grpc.Server
 	Swarm  *network.SwarmService
@@ -82,6 +84,7 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	node.OrderFragmentWorker = NewOrderFragmentWorker(node.OrderFragmentWorkerQueue, node.DeltaFragmentMatrix)
 	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
 	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.DeltaFragmentWorkerQueue, node.DeltaBuilder)
+	node.DeltaQueue = make(chan *compute.Delta, 100 )
 
 	// options := network.Options{}
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
@@ -115,6 +118,11 @@ func (node *DarkNode) Start() {
 	for isRegistered := node.IsRegistered(); !isRegistered; isRegistered = node.IsRegistered() {
 		timeout := 60 * time.Second
 		node.Warn(logger.TagNetwork, fmt.Sprintf("%v not registered. Sleeping for %v seconds.", node.MultiAddress.Address(), timeout.Seconds()))
+
+		// Send the info needed for registration as well
+		node.Info(logger.TagRegister, fmt.Sprintf( "{ \"id\": \"%s\", \"public_key\": \"%s\"}",
+			hex.EncodeToString(node.MultiAddress.ID()),
+			hex.EncodeToString(append(node.Config.RepublicKeyPair.PublicKey.X.Bytes() , node.Config.RepublicKeyPair.PublicKey.Y.Bytes()... ))))
 		time.Sleep(timeout)
 	}
 
@@ -142,7 +150,20 @@ func (node *DarkNode) Start() {
 
 	// Run the workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentWorkerQueue)
-	go node.DeltaFragmentWorker.Run()
+	go node.DeltaFragmentWorker.Run(node.DeltaQueue)
+	go func() {
+		for {
+			delta := <- node.DeltaQueue
+			isMatch := delta.IsMatch(node.Config.Prime)
+			if isMatch {
+				node.Info(logger.TagCompute, fmt.Sprintf("Match found between [%s] and [%s]",
+					delta.BuyOrderID.String(),delta.SellOrderID.String()))
+			} else {
+				node.Info(logger.TagCompute, fmt.Sprintf("  No-match  between [%s] and [%s]",
+					delta.BuyOrderID.String(),delta.SellOrderID.String()))
+			}
+		}
+	}()
 
 	oceanChanges := make(chan do.Option)
 	defer close(oceanChanges)
@@ -330,20 +351,20 @@ func (node *DarkNode) Usage() {
 	// memory
 	vmStat, err := mem.VirtualMemory()
 	if err != nil {
-		node.Error(logger.TagCompute, err.Error())
+		node.Error(logger.TagUsage, err.Error())
 	}
 	// cpu - get CPU number of cores and speed
 	cpuStat, err := cpu.Info()
 	if err != nil {
-		node.Error(logger.TagCompute, err.Error())
+		node.Error(logger.TagUsage, err.Error())
 	}
 	percentage, err := cpu.Percent(0, false)
 	if err != nil {
-		node.Error(logger.TagCompute, err.Error())
+		node.Error(logger.TagUsage, err.Error())
 	}
 
 	err = node.Logger.Usage(float32(cpuStat[0].Mhz*percentage[0]/100), int32(vmStat.Used/1024/1024), 0)
 	if err != nil {
-		node.Error(logger.TagCompute, err.Error())
+		node.Error(logger.TagUsage, err.Error())
 	}
 }

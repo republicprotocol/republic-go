@@ -10,8 +10,8 @@ import (
 const (
 	TagNetwork = "net"
 	TagCompute = "cmp"
-	TagMemory  = "mem"
-	TagCPU     = "cpu"
+	TagRegister = "reg"
+	TagUsage = "usg"
 )
 
 type Logger struct {

@@ -102,7 +102,7 @@ func (plugin *FilePlugin) Usage(cpu float32, memory, network int32) error {
 	if err != nil {
 		return err
 	}
-	_, err = plugin.file.WriteString(fmt.Sprintf("USAGE : cpu = %.3f Mhz, memory = %d Mb, network = %d kb\n", cpu, memory, network))
+	_, err = plugin.file.WriteString(fmt.Sprintf("INFO : (usg) cpu = %.3f Mhz, memory = %d Mb, network = %d kb\n", cpu, memory, network))
 	return err
 }
 
@@ -116,7 +116,7 @@ type WebSocketPlugin struct {
 	Password string
 
 	info  chan interface{}
-	error chan Error
+	error chan Message
 	warn  chan interface{}
 	usage chan Usage
 }
@@ -129,7 +129,7 @@ func NewWebSocketPlugin(host, port, username, password string) Plugin {
 		Username:      username,
 		Password:      password,
 		info:          make(chan interface{}, 1),
-		error:         make(chan Error, 1),
+		error:         make(chan Message, 1),
 		warn:          make(chan interface{}, 1),
 		usage:         make(chan Usage, 1),
 	}
@@ -166,6 +166,20 @@ func (plugin *WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	//todo : how to close this
+}
+
+func (plugin *WebSocketPlugin) registerHandler(w http.ResponseWriter, r *http.Request) {
+	upgrader := websocket.Upgrader{
+		CheckOrigin:     func(r *http.Request) bool { return true },
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+	c, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+
+	defer c.Close()
 }
 
 func (plugin *WebSocketPlugin) Start() error {
@@ -219,16 +233,13 @@ func (plugin *WebSocketPlugin) Error(tag, message string) error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
 
-	err := struct {
-		Tag     string
-		Message string
-	}{
-		tag, message,
+	msg := Message{
+		time.Now().Format("2006/01/02 15:04:05 "), tag, message,
 	}
 	if len(plugin.error) == 1 {
 		<-plugin.error
 	}
-	plugin.error <- err
+	plugin.error <- msg
 	return nil
 }
 
@@ -241,7 +252,7 @@ func (plugin *WebSocketPlugin) Warn(tag, message string) error {
 		Time: time.Now(),
 		Data: EventData{
 			Tag:     tag,
-			Level:   "INFO",
+			Level:   "WARN",
 			Message: message,
 		},
 	}
