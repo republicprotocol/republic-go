@@ -86,11 +86,37 @@ var _ = Describe("Dark nodes", func() {
 			mu.Unlock()
 		})
 
-		It("WatchForDarkOceanChanges should calculate the new Dark Ocean on each Epoch", func() {
+		It("WatchForDarkOceanChanges sends a new DarkOceanOverlay on a channel whenever the epoch changes", func() {
 			channel := make(chan do.Option, 1)
 			go darkocean.WatchForDarkOceanChanges(mockDnr, channel)
 			mockDnr.Epoch()
 			Eventually(channel).Should(Receive())
+		})
+
+		It("Registration checking returns the correct result", func() {
+			id0 := nodes[0].MultiAddress.ID()
+			pub := append(nodes[0].Config.RepublicKeyPair.PublicKey.X.Bytes(), nodes[0].Config.RepublicKeyPair.PublicKey.Y.Bytes()...)
+			mockDnr.Deregister(id0)
+
+			// Before epoch, should still be registered
+			Ω(nodes[0].IsRegistered()).Should(Equal(true))
+			Ω(nodes[0].IsPendingRegistration()).Should(Equal(false))
+
+			mockDnr.Epoch()
+
+			// After epoch, should be deregistered
+			Ω(nodes[0].IsRegistered()).Should(Equal(false))
+
+			mockDnr.Register(id0, pub)
+
+			// Before epoch, should still be deregistered
+			Ω(nodes[0].IsRegistered()).Should(Equal(false))
+			Ω(nodes[0].IsPendingRegistration()).Should(Equal(true))
+
+			mockDnr.Epoch()
+
+			// After epoch, should be deregistered
+			Ω(nodes[0].IsRegistered()).Should(Equal(true))
 		})
 	})
 })
