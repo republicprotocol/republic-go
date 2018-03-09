@@ -198,7 +198,7 @@ func (node *DarkNode) ServeUI()  {
 	fs := http.FileServer(http.Dir("darknode-ui"))
 	http.Handle("/ui", fs)
 	node.Info(logger.TagNetwork, "Serving the Dark Node UI")
-	err :=http.ListenAndServe("0.0.0.0:80", nil)
+	err :=http.ListenAndServe("0.0.0.0:3000", nil)
 	if err != nil {
 		node.Error(logger.TagNetwork, err.Error())
 	}
