@@ -3,6 +3,7 @@ package node_test
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync"
@@ -15,7 +16,9 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/crypto"
 
+	do "github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
+	darkocean "github.com/republicprotocol/republic-go/dark-ocean"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -30,107 +33,29 @@ import (
 	"google.golang.org/grpc"
 )
 
-type MockDNR struct {
-	registered   [][]byte
-	toRegister   [][]byte
-	toDeregister [][]byte
-	epoch        dnr.Epoch
-}
-
-func (mockDnr MockDNR) Register(_darkNodeID []byte, _publicKey []byte) (*types.Transaction, error) {
-	mockDnr.toRegister = append(mockDnr.toRegister, _darkNodeID)
-	return nil, nil
-}
-func (mockDnr MockDNR) Deregister(_darkNodeID []byte) (*types.Transaction, error) {
-	mockDnr.toRegister = append(mockDnr.toRegister, _darkNodeID)
-	return nil, nil
-}
-func (mockDnr MockDNR) GetBond(_darkNodeID []byte) (*big.Int, error) {
-	return big.NewInt(1000), nil
-}
-func (mockDnr MockDNR) IsDarkNodeRegistered(_darkNodeID []byte) (bool, error) {
-	for _, id := range mockDnr.toRegister {
-		if string(_darkNodeID) == string(id) {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-func (mockDnr MockDNR) IsDarkNodePendingRegistration(_darkNodeID []byte) (bool, error) {
-	for _, id := range mockDnr.toRegister {
-		if string(_darkNodeID) == string(id) {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-func (mockDnr MockDNR) CurrentEpoch() (dnr.Epoch, error) {
-	return mockDnr.epoch, nil
-}
-func (mockDnr MockDNR) Epoch() (*types.Transaction, error) {
-
-	var b32 [32]byte
-
-	_, err := rand.Read(b32[:])
-	if err != nil {
-		return nil, err
-	}
-
-	mockDnr.epoch = dnr.Epoch{
-		Blockhash: b32,
-		Timestamp: big.NewInt(time.Now().Unix()),
-	}
-
-	return nil, nil
-}
-func (mockDnr MockDNR) GetCommitment(_darkNodeID []byte) ([32]byte, error) {
-	var nil32 [32]byte
-	return nil32, nil
-}
-func (mockDnr MockDNR) GetOwner(_darkNodeID []byte) (common.Address, error) {
-	var nil20 [20]byte
-	return nil20, nil
-}
-func (mockDnr MockDNR) GetPublicKey(_darkNodeID []byte) ([]byte, error) {
-	return nil, nil
-}
-func (mockDnr MockDNR) GetAllNodes() ([][]byte, error) {
-	return mockDnr.registered, nil
-}
-func (mockDnr MockDNR) MinimumBond() (*big.Int, error) {
-	return big.NewInt(1000), nil
-}
-func (mockDnr MockDNR) MinimumEpochInterval() (*big.Int, error) {
-	return big.NewInt(0), nil
-}
-func (mockDnr MockDNR) Refund(_darkNodeID []byte) (*types.Transaction, error) {
-	return nil, nil
-}
-func (mockDnr MockDNR) WaitTillRegistration(_darkNodeID []byte) error {
-	_, err := mockDnr.Epoch()
-	return err
-}
-
-const NumberOfTestNODES = 4
-
 var _ = Describe("Dark nodes", func() {
-	mockDnr := MockDNR{}
+	mockDnr := &MockDNR{
+		registered:   make([][]byte, 0),
+		toRegister:   make([][]byte, 0),
+		toDeregister: make([][]byte, 0),
+	}
 	mockDnr.Epoch()
 
 	var mu = new(sync.Mutex)
 	var nodes []*darknode.DarkNode
 	var configs []*darknode.Config
 	var ethAddresses []*bind.TransactOpts
-	// var err error
 
 	startListening := func(nodes []*darknode.DarkNode, bootstrapNodes int) {
 		// Fully connect the bootstrap nodes
-		for i := 0; i < bootstrapNodes; i++ {
-			for j := 0; j < bootstrapNodes; j++ {
+		for i, iNode := range nodes {
+			go iNode.Start()
+			for j, jNode := range nodes {
 				if i == j {
 					continue
 				}
-				nodes[j].ClientPool.Ping(nodes[i].MultiAddress)
+				// log.Printf("%v pinging %v\n", iNode.MultiAddress.Address(), jNode.MultiAddress.Address())
+				jNode.ClientPool.Ping(iNode.MultiAddress)
 			}
 		}
 	}
@@ -145,13 +70,15 @@ var _ = Describe("Dark nodes", func() {
 
 			for i := 0; i < NumberOfTestNODES; i++ {
 				configs[i] = MockConfig()
+				mockDnr.Register(
+					configs[i].MultiAddress.ID(),
+					append(configs[i].RepublicKeyPair.PublicKey.X.Bytes(), configs[i].RepublicKeyPair.PublicKey.Y.Bytes()...),
+				)
 				ethAddresses[i] = bind.NewKeyedTransactor(configs[i].EthereumKey.PrivateKey)
-			}
-
-			for i := 0; i < NumberOfTestNODES; i++ {
 				nodes[i] = NewTestDarkNode(mockDnr, *configs[i])
 			}
-			// nodes, err = generateNodes(NumberOfBootstrapNodes, NumberOfTestNODES)
+
+			mockDnr.Epoch()
 			startListening(nodes, NumberOfTestNODES)
 		})
 
@@ -159,15 +86,148 @@ var _ = Describe("Dark nodes", func() {
 			mu.Unlock()
 		})
 
-		It("should be able to run startup successfully", func() {
-
-			all, err := mockDnr.GetAllNodes()
-			Ω(err).Should(HaveOccurred())
-			fmt.Printf("%v", all)
-
+		It("WatchForDarkOceanChanges should calculate the new Dark Ocean on each Epoch", func() {
+			channel := make(chan do.Option, 1)
+			go darkocean.WatchForDarkOceanChanges(mockDnr, channel)
+			mockDnr.Epoch()
+			Eventually(channel).Should(Receive())
 		})
 	})
 })
+
+/*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ */
+
+type MockDNR struct {
+	registered   [][]byte
+	toRegister   [][]byte
+	toDeregister [][]byte
+	epoch        dnr.Epoch
+}
+
+func (mockDnr *MockDNR) Register(_darkNodeID []byte, _publicKey []byte) (*types.Transaction, error) {
+	isRegistered, _ := mockDnr.IsDarkNodeRegistered(_darkNodeID)
+	isPending, _ := mockDnr.IsDarkNodePendingRegistration(_darkNodeID)
+	if isRegistered || isPending {
+		return nil, errors.New("Must not be registered to register")
+	}
+	mockDnr.toRegister = append(mockDnr.toRegister, _darkNodeID)
+	return nil, nil
+}
+func (mockDnr *MockDNR) Deregister(_darkNodeID []byte) (*types.Transaction, error) {
+	for i, id := range mockDnr.toRegister {
+		if string(_darkNodeID) == string(id) {
+			mockDnr.toDeregister[i] = mockDnr.toDeregister[len(mockDnr.toDeregister)-1]
+			mockDnr.toDeregister = mockDnr.toDeregister[:len(mockDnr.toDeregister)-1]
+			return nil, nil
+		}
+	}
+	if isRegistered, _ := mockDnr.IsDarkNodeRegistered(_darkNodeID); !isRegistered {
+		return nil, errors.New("Must be registered to deregister")
+	}
+	mockDnr.toDeregister = append(mockDnr.toRegister, _darkNodeID)
+	return nil, nil
+}
+func (mockDnr *MockDNR) GetBond(_darkNodeID []byte) (*big.Int, error) {
+	return big.NewInt(1000), nil
+}
+func (mockDnr *MockDNR) IsDarkNodeRegistered(_darkNodeID []byte) (bool, error) {
+	for _, id := range mockDnr.registered {
+		if string(_darkNodeID) == string(id) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+func (mockDnr *MockDNR) IsDarkNodePendingRegistration(_darkNodeID []byte) (bool, error) {
+	for _, id := range mockDnr.toRegister {
+		if string(_darkNodeID) == string(id) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+func (mockDnr *MockDNR) CurrentEpoch() (dnr.Epoch, error) {
+	return mockDnr.epoch, nil
+}
+func (mockDnr *MockDNR) Epoch() (*types.Transaction, error) {
+	var b32 [32]byte
+
+	_, err := rand.Read(b32[:])
+	if err != nil {
+		return nil, err
+	}
+
+	mockDnr.epoch = dnr.Epoch{
+		Blockhash: b32,
+		Timestamp: big.NewInt(time.Now().Unix()),
+	}
+
+	// Remove toRegister nodes
+	for _, deregNode := range mockDnr.toDeregister {
+		for i, node := range mockDnr.registered {
+			if string(node) == string(deregNode) {
+				mockDnr.registered[i] = mockDnr.registered[len(mockDnr.registered)-1]
+				mockDnr.registered = mockDnr.registered[:len(mockDnr.registered)-1]
+				break
+			}
+		}
+	}
+
+	mockDnr.registered = append(mockDnr.registered, mockDnr.toRegister...)
+
+	mockDnr.toDeregister = make([][]byte, 0)
+	mockDnr.toRegister = make([][]byte, 0)
+
+	return nil, nil
+}
+func (mockDnr *MockDNR) GetCommitment(_darkNodeID []byte) ([32]byte, error) {
+	var nil32 [32]byte
+	return nil32, nil
+}
+func (mockDnr *MockDNR) GetOwner(_darkNodeID []byte) (common.Address, error) {
+	var nil20 [20]byte
+	return nil20, nil
+}
+func (mockDnr *MockDNR) GetPublicKey(_darkNodeID []byte) ([]byte, error) {
+	return nil, nil
+}
+func (mockDnr *MockDNR) GetAllNodes() ([][]byte, error) {
+	return mockDnr.registered, nil
+}
+func (mockDnr *MockDNR) MinimumBond() (*big.Int, error) {
+	return big.NewInt(1000), nil
+}
+func (mockDnr *MockDNR) MinimumEpochInterval() (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+func (mockDnr *MockDNR) Refund(_darkNodeID []byte) (*types.Transaction, error) {
+	return nil, nil
+}
+func (mockDnr *MockDNR) WaitTillRegistration(_darkNodeID []byte) error {
+	_, err := mockDnr.Epoch()
+	return err
+}
+
+const NumberOfTestNODES = 4
+
+var i = 0
 
 func MockConfig() *darknode.Config {
 	keypair, err := identity.NewKeyPair()
@@ -182,10 +242,10 @@ func MockConfig() *darknode.Config {
 		PrivateKey: ethereumPair,
 	}
 
-	port := "18514"
-	host := "0.0.0.0"
+	port := fmt.Sprintf("1851%v", i)
+	i++
+	host := "127.0.0.1"
 
-	println(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", host, port, keypair.Address()))
 	multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", host, port, keypair.Address()))
 	if err != nil {
 		panic(err)

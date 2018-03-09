@@ -78,13 +78,19 @@ func (node *DarkNode) UnsubscribeFromLogs(logChannel chan do.Option) {
 }
 
 func (node *DarkNode) Error(tag, message string) {
-	node.Config.Logger.Error(tag, message)
+	if node.Config.Logger != nil {
+		node.Config.Logger.Error(tag, message)
+	}
 }
 
 func (node *DarkNode) Info(tag, message string) {
-	node.Config.Logger.Info(tag, message)
+	if node.Config.Logger != nil {
+		node.Config.Logger.Info(tag, message)
+	}
 }
 
 func (node *DarkNode) Warn(tag, message string) {
-	node.Config.Logger.Warn(tag, message)
+	if node.Config.Logger != nil {
+		node.Config.Logger.Warn(tag, message)
+	}
 }
