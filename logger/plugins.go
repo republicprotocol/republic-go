@@ -159,26 +159,30 @@ func (plugin *WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request
 	defer c.Close()
 
 	go func() {
-		request := &struct {
-			Name string `json: "name"`
-		}{}
-		err := c.ReadJSON(request)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		if request.Name == TagRegister {
-			if plugin.registration != "" {
-				registration := new(Registration)
-				err = json.Unmarshal([]byte(plugin.registration), registration)
-				if err != nil {
-					log.Println(err)
-					return
+		for {
+			request := &struct {
+				Name string `json: "name"`
+			}{}
+			err := c.ReadJSON(request)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			if request.Name == TagRegister {
+				if plugin.registration != "" {
+					registration := new(Registration)
+					err = json.Unmarshal([]byte(plugin.registration), registration)
+					if err != nil {
+						log.Println(err)
+						return
+					}
+					err := c.WriteJSON(registration)
+					if err != nil {
+						return
+					}
 				}
-				c.WriteJSON(registration)
 			}
 		}
-
 	}()
 
 	// Broadcast errors
