@@ -1,0 +1,172 @@
+2018/03/09 14:18:36 INFO : (usg) cpu = 383.193 Mhz, memory = 6817 Mb, network = 0 kb
+2018/03/09 14:18:37 WARN : (net) 8MJgtXWXuAdaLeQ3nXDwzeNXAGXQ6f not registered. Sleeping for 60 seconds.
+2018/03/09 14:18:37 INFO : (reg) {"node_id":"0xbd63054ee0c7d067b07cbff84129a7ca8a98e5c4","public_key":"0x07ec96c79b8515745cc4dc89af79a9351836ac54ce38b79f9230d40744cff78d7897d42d800d740e6f16693663b81a9bc7edc9c7d1878d104cd0922adba8c31e","address":"0x00Ce22c5FeD5Cb2C4A728220cFa5081D72402b86","republic_id":"8MJgtXWXuAdaLeQ3nXDwzeNXAGXQ6f"}
+2018/03/09 15:04:02 INFO : (usg) cpu = 450.794 Mhz, memory = 6810 Mb, network = 0 kb
+2018/03/09 15:04:04 WARN : (net) 8MJSpYfP4E83RHpxW56svqobHCvvQf not registered. Sleeping for 60 seconds.
+2018/03/09 15:04:04 INFO : (reg) {"node_id":"0xabf9d78fde26ad4017a084745b071f8e810ceb48","public_key":"0xb5c25a01544e32348086ce205528d7c77d134fcac0a385d7a9053d837fa846a8ea9710ce5305fa58af233525bdb5f5bb4d3db6ea17d76e1b3dc7cd1356a7dd37","address":"0x001A0bB73138b1b6f46258B1c36D3B21C30310B6","republic_id":"8MJSpYfP4E83RHpxW56svqobHCvvQf"}
+2018/03/09 15:30:58 INFO : (usg) cpu = 235.955 Mhz, memory = 6601 Mb, network = 0 kb
+2018/03/09 15:30:59 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:30:59 INFO : (reg) {"node_id":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","public_key":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republic_id":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:31:18 INFO : (usg) cpu = 583.063 Mhz, memory = 6726 Mb, network = 0 kb
+2018/03/09 15:31:38 INFO : (usg) cpu = 1074.260 Mhz, memory = 6415 Mb, network = 0 kb
+2018/03/09 15:31:58 INFO : (usg) cpu = 1476.393 Mhz, memory = 6392 Mb, network = 0 kb
+2018/03/09 15:32:00 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:32:00 INFO : (reg) {"node_id":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","public_key":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republic_id":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:32:18 INFO : (usg) cpu = 1290.555 Mhz, memory = 6389 Mb, network = 0 kb
+2018/03/09 15:32:38 INFO : (usg) cpu = 1408.891 Mhz, memory = 6468 Mb, network = 0 kb
+2018/03/09 15:32:58 INFO : (usg) cpu = 1733.383 Mhz, memory = 6620 Mb, network = 0 kb
+2018/03/09 15:33:00 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:33:00 INFO : (reg) {"node_id":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","public_key":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republic_id":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:33:18 INFO : (usg) cpu = 2040.704 Mhz, memory = 6537 Mb, network = 0 kb
+2018/03/09 15:33:38 INFO : (usg) cpu = 1999.201 Mhz, memory = 6777 Mb, network = 0 kb
+2018/03/09 15:33:58 INFO : (usg) cpu = 2231.910 Mhz, memory = 6757 Mb, network = 0 kb
+2018/03/09 15:34:00 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:34:00 INFO : (reg) {"node_id":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","public_key":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republic_id":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:34:18 INFO : (usg) cpu = 2204.669 Mhz, memory = 6433 Mb, network = 0 kb
+2018/03/09 15:34:38 INFO : (usg) cpu = 2095.205 Mhz, memory = 6546 Mb, network = 0 kb
+2018/03/09 15:34:58 INFO : (usg) cpu = 2251.929 Mhz, memory = 6524 Mb, network = 0 kb
+2018/03/09 15:35:00 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:35:00 INFO : (reg) {"node_id":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","public_key":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republic_id":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:35:18 INFO : (usg) cpu = 2249.045 Mhz, memory = 6567 Mb, network = 0 kb
+2018/03/09 15:35:38 INFO : (usg) cpu = 2093.891 Mhz, memory = 6572 Mb, network = 0 kb
+2018/03/09 15:35:58 INFO : (usg) cpu = 2202.822 Mhz, memory = 6619 Mb, network = 0 kb
+2018/03/09 15:36:01 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:36:01 INFO : (reg) {"node_id":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","public_key":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republic_id":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:36:18 INFO : (usg) cpu = 2063.053 Mhz, memory = 6775 Mb, network = 0 kb
+2018/03/09 15:36:38 INFO : (usg) cpu = 2346.733 Mhz, memory = 6438 Mb, network = 0 kb
+2018/03/09 15:36:58 INFO : (usg) cpu = 2066.350 Mhz, memory = 6538 Mb, network = 0 kb
+2018/03/09 15:37:01 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:37:01 INFO : (reg) {"node_id":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","public_key":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republic_id":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:37:18 INFO : (usg) cpu = 2082.318 Mhz, memory = 6451 Mb, network = 0 kb
+2018/03/09 15:37:38 INFO : (usg) cpu = 2215.984 Mhz, memory = 6570 Mb, network = 0 kb
+2018/03/09 15:37:58 INFO : (usg) cpu = 2074.429 Mhz, memory = 6595 Mb, network = 0 kb
+2018/03/09 15:38:01 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:38:01 INFO : (reg) {"node_id":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","public_key":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republic_id":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:38:18 INFO : (usg) cpu = 1932.526 Mhz, memory = 6568 Mb, network = 0 kb
+2018/03/09 15:38:38 INFO : (usg) cpu = 2064.545 Mhz, memory = 6616 Mb, network = 0 kb
+2018/03/09 15:48:23 INFO : (usg) cpu = 1866.667 Mhz, memory = 6600 Mb, network = 0 kb
+2018/03/09 15:48:24 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:48:24 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:48:43 INFO : (usg) cpu = 601.424 Mhz, memory = 6618 Mb, network = 0 kb
+2018/03/09 15:49:03 INFO : (usg) cpu = 711.877 Mhz, memory = 6726 Mb, network = 0 kb
+2018/03/09 15:49:23 INFO : (usg) cpu = 887.035 Mhz, memory = 6772 Mb, network = 0 kb
+2018/03/09 15:49:25 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:49:25 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:49:43 INFO : (usg) cpu = 1549.682 Mhz, memory = 6469 Mb, network = 0 kb
+2018/03/09 15:50:03 INFO : (usg) cpu = 1574.906 Mhz, memory = 6398 Mb, network = 0 kb
+2018/03/09 15:50:23 INFO : (usg) cpu = 1409.790 Mhz, memory = 6584 Mb, network = 0 kb
+2018/03/09 15:50:25 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:50:25 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:50:43 INFO : (usg) cpu = 1819.780 Mhz, memory = 6715 Mb, network = 0 kb
+2018/03/09 15:51:03 INFO : (usg) cpu = 1934.016 Mhz, memory = 6665 Mb, network = 0 kb
+2018/03/09 15:51:23 INFO : (usg) cpu = 1925.515 Mhz, memory = 6522 Mb, network = 0 kb
+2018/03/09 15:51:25 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:51:25 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:51:43 INFO : (usg) cpu = 1795.280 Mhz, memory = 6739 Mb, network = 0 kb
+2018/03/09 15:52:03 INFO : (usg) cpu = 2132.170 Mhz, memory = 6848 Mb, network = 0 kb
+2018/03/09 15:52:23 INFO : (usg) cpu = 1903.655 Mhz, memory = 6265 Mb, network = 0 kb
+2018/03/09 15:54:45 INFO : (usg) cpu = 1920.000 Mhz, memory = 6259 Mb, network = 0 kb
+2018/03/09 15:54:47 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:54:47 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:55:05 INFO : (usg) cpu = 1268.173 Mhz, memory = 6394 Mb, network = 0 kb
+2018/03/09 15:55:25 INFO : (usg) cpu = 2050.817 Mhz, memory = 6464 Mb, network = 0 kb
+2018/03/09 15:58:03 INFO : (usg) cpu = 2400.000 Mhz, memory = 6251 Mb, network = 0 kb
+2018/03/09 15:58:04 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:58:04 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 15:59:57 INFO : (usg) cpu = 2100.000 Mhz, memory = 6452 Mb, network = 0 kb
+2018/03/09 15:59:58 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 15:59:58 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:00:17 INFO : (usg) cpu = 703.185 Mhz, memory = 6611 Mb, network = 0 kb
+2018/03/09 16:00:37 INFO : (usg) cpu = 843.284 Mhz, memory = 6687 Mb, network = 0 kb
+2018/03/09 16:00:57 INFO : (usg) cpu = 1411.113 Mhz, memory = 6389 Mb, network = 0 kb
+2018/03/09 16:00:59 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:00:59 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:01:17 INFO : (usg) cpu = 1743.013 Mhz, memory = 6299 Mb, network = 0 kb
+2018/03/09 16:01:37 INFO : (usg) cpu = 1783.816 Mhz, memory = 6313 Mb, network = 0 kb
+2018/03/09 16:01:57 INFO : (usg) cpu = 1650.150 Mhz, memory = 6329 Mb, network = 0 kb
+2018/03/09 16:01:59 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:01:59 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:02:17 INFO : (usg) cpu = 1933.899 Mhz, memory = 6537 Mb, network = 0 kb
+2018/03/09 16:02:37 INFO : (usg) cpu = 1833.883 Mhz, memory = 6596 Mb, network = 0 kb
+2018/03/09 16:02:57 INFO : (usg) cpu = 1940.833 Mhz, memory = 6619 Mb, network = 0 kb
+2018/03/09 16:02:59 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:02:59 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:03:17 INFO : (usg) cpu = 2268.366 Mhz, memory = 6440 Mb, network = 0 kb
+2018/03/09 16:03:51 INFO : (usg) cpu = 1500.000 Mhz, memory = 6252 Mb, network = 0 kb
+2018/03/09 16:03:53 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:03:53 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:04:11 INFO : (usg) cpu = 208.396 Mhz, memory = 6427 Mb, network = 0 kb
+2018/03/09 16:04:31 INFO : (usg) cpu = 990.034 Mhz, memory = 6491 Mb, network = 0 kb
+2018/03/09 16:04:52 INFO : (usg) cpu = 875.344 Mhz, memory = 6716 Mb, network = 0 kb
+2018/03/09 16:04:53 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:04:53 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:05:12 INFO : (usg) cpu = 812.086 Mhz, memory = 6851 Mb, network = 0 kb
+2018/03/09 16:05:32 INFO : (usg) cpu = 1277.482 Mhz, memory = 6282 Mb, network = 0 kb
+2018/03/09 16:05:52 INFO : (usg) cpu = 807.093 Mhz, memory = 6435 Mb, network = 0 kb
+2018/03/09 16:05:54 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:05:54 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:06:12 INFO : (usg) cpu = 980.919 Mhz, memory = 6616 Mb, network = 0 kb
+2018/03/09 16:06:32 INFO : (usg) cpu = 1449.170 Mhz, memory = 6431 Mb, network = 0 kb
+2018/03/09 16:06:52 INFO : (usg) cpu = 1741.641 Mhz, memory = 6586 Mb, network = 0 kb
+2018/03/09 16:06:54 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:06:54 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:07:12 INFO : (usg) cpu = 1828.514 Mhz, memory = 6421 Mb, network = 0 kb
+2018/03/09 16:07:32 INFO : (usg) cpu = 2154.876 Mhz, memory = 6695 Mb, network = 0 kb
+2018/03/09 16:07:52 INFO : (usg) cpu = 2058.641 Mhz, memory = 6249 Mb, network = 0 kb
+2018/03/09 16:07:54 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:07:54 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:08:12 INFO : (usg) cpu = 1912.696 Mhz, memory = 6431 Mb, network = 0 kb
+2018/03/09 16:08:32 INFO : (usg) cpu = 1907.231 Mhz, memory = 6453 Mb, network = 0 kb
+2018/03/09 16:08:52 INFO : (usg) cpu = 1692.304 Mhz, memory = 6454 Mb, network = 0 kb
+2018/03/09 16:08:54 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:08:54 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:09:12 INFO : (usg) cpu = 2016.084 Mhz, memory = 6575 Mb, network = 0 kb
+2018/03/09 16:09:32 INFO : (usg) cpu = 1798.726 Mhz, memory = 6576 Mb, network = 0 kb
+2018/03/09 16:09:52 INFO : (usg) cpu = 1950.075 Mhz, memory = 6218 Mb, network = 0 kb
+2018/03/09 16:09:55 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:09:55 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:10:32 INFO : (usg) cpu = 2100.000 Mhz, memory = 6321 Mb, network = 0 kb
+2018/03/09 16:10:33 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:10:33 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:10:52 INFO : (usg) cpu = 732.076 Mhz, memory = 6396 Mb, network = 0 kb
+2018/03/09 16:11:12 INFO : (usg) cpu = 976.734 Mhz, memory = 6223 Mb, network = 0 kb
+2018/03/09 16:11:32 INFO : (usg) cpu = 730.761 Mhz, memory = 6363 Mb, network = 0 kb
+2018/03/09 16:11:33 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:11:33 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:12:08 INFO : (usg) cpu = 2240.000 Mhz, memory = 6368 Mb, network = 0 kb
+2018/03/09 16:12:10 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:12:10 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:12:28 INFO : (usg) cpu = 1291.177 Mhz, memory = 6551 Mb, network = 0 kb
+2018/03/09 16:12:49 INFO : (usg) cpu = 1728.671 Mhz, memory = 6705 Mb, network = 0 kb
+2018/03/09 16:13:09 INFO : (usg) cpu = 1918.922 Mhz, memory = 6779 Mb, network = 0 kb
+2018/03/09 16:13:10 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:13:10 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:13:29 INFO : (usg) cpu = 2255.862 Mhz, memory = 6347 Mb, network = 0 kb
+2018/03/09 16:13:49 INFO : (usg) cpu = 2276.585 Mhz, memory = 6725 Mb, network = 0 kb
+2018/03/09 16:14:09 INFO : (usg) cpu = 2163.148 Mhz, memory = 6521 Mb, network = 0 kb
+2018/03/09 16:14:10 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:14:10 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:14:29 INFO : (usg) cpu = 2198.327 Mhz, memory = 6589 Mb, network = 0 kb
+2018/03/09 16:14:49 INFO : (usg) cpu = 2278.250 Mhz, memory = 6613 Mb, network = 0 kb
+2018/03/09 16:15:09 INFO : (usg) cpu = 2101.387 Mhz, memory = 6656 Mb, network = 0 kb
+2018/03/09 16:15:11 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:15:11 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:15:29 INFO : (usg) cpu = 1612.584 Mhz, memory = 6657 Mb, network = 0 kb
+2018/03/09 16:16:32 INFO : (usg) cpu = 1500.000 Mhz, memory = 6280 Mb, network = 0 kb
+2018/03/09 16:16:33 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:16:33 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:16:52 INFO : (usg) cpu = 656.807 Mhz, memory = 6436 Mb, network = 0 kb
+2018/03/09 16:17:12 INFO : (usg) cpu = 778.136 Mhz, memory = 6385 Mb, network = 0 kb
+2018/03/09 16:17:32 INFO : (usg) cpu = 812.782 Mhz, memory = 6288 Mb, network = 0 kb
+2018/03/09 16:17:33 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:17:33 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:17:52 INFO : (usg) cpu = 1022.577 Mhz, memory = 6377 Mb, network = 0 kb
+2018/03/09 16:18:12 INFO : (usg) cpu = 1086.385 Mhz, memory = 6447 Mb, network = 0 kb
+2018/03/09 16:18:32 INFO : (usg) cpu = 1071.461 Mhz, memory = 6382 Mb, network = 0 kb
+2018/03/09 16:18:34 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:18:34 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
+2018/03/09 16:18:52 INFO : (usg) cpu = 1815.204 Mhz, memory = 6448 Mb, network = 0 kb
+2018/03/09 16:19:12 INFO : (usg) cpu = 1846.292 Mhz, memory = 6428 Mb, network = 0 kb
+2018/03/09 16:19:32 INFO : (usg) cpu = 2225.318 Mhz, memory = 6382 Mb, network = 0 kb
+2018/03/09 16:19:34 WARN : (net) 8MJfvpVzBHaNN7GAFiueyKBhNC3U6d not registered. Sleeping for 60 seconds.
+2018/03/09 16:19:34 INFO : (reg) {"nodeID":"0xbc32ba86fc06d6216e8c41c7b23e3228e145b732","publicKey":"0x055632047b1404a9475642b338fef05d476a4b3a873f50fe05cbbf9027d7df730f4eee2e9341acf1c6affb0befdc058806080109ed293041fd4898086e39d4f4","address":"0x00eC91996A7FDF4334F0C61aebc23b736bD7A81F","republicID":"8MJfvpVzBHaNN7GAFiueyKBhNC3U6d"}
