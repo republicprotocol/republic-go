@@ -1,15 +1,21 @@
 package node_test
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/republicprotocol/republic-go/contracts/connection"
+
+	"github.com/republicprotocol/republic-go/contracts/dnr"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -24,9 +30,93 @@ import (
 	"google.golang.org/grpc"
 )
 
+type MockDNR struct {
+	registered   [][]byte
+	toRegister   [][]byte
+	toDeregister [][]byte
+	epoch        dnr.Epoch
+}
+
+func (mockDnr MockDNR) Register(_darkNodeID []byte, _publicKey []byte) (*types.Transaction, error) {
+	mockDnr.toRegister = append(mockDnr.toRegister, _darkNodeID)
+	return nil, nil
+}
+func (mockDnr MockDNR) Deregister(_darkNodeID []byte) (*types.Transaction, error) {
+	mockDnr.toRegister = append(mockDnr.toRegister, _darkNodeID)
+	return nil, nil
+}
+func (mockDnr MockDNR) GetBond(_darkNodeID []byte) (*big.Int, error) {
+	return big.NewInt(1000), nil
+}
+func (mockDnr MockDNR) IsDarkNodeRegistered(_darkNodeID []byte) (bool, error) {
+	for _, id := range mockDnr.toRegister {
+		if string(_darkNodeID) == string(id) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+func (mockDnr MockDNR) IsDarkNodePendingRegistration(_darkNodeID []byte) (bool, error) {
+	for _, id := range mockDnr.toRegister {
+		if string(_darkNodeID) == string(id) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+func (mockDnr MockDNR) CurrentEpoch() (dnr.Epoch, error) {
+	return mockDnr.epoch, nil
+}
+func (mockDnr MockDNR) Epoch() (*types.Transaction, error) {
+
+	var b32 [32]byte
+
+	_, err := rand.Read(b32[:])
+	if err != nil {
+		return nil, err
+	}
+
+	mockDnr.epoch = dnr.Epoch{
+		Blockhash: b32,
+		Timestamp: big.NewInt(time.Now().Unix()),
+	}
+
+	return nil, nil
+}
+func (mockDnr MockDNR) GetCommitment(_darkNodeID []byte) ([32]byte, error) {
+	var nil32 [32]byte
+	return nil32, nil
+}
+func (mockDnr MockDNR) GetOwner(_darkNodeID []byte) (common.Address, error) {
+	var nil20 [20]byte
+	return nil20, nil
+}
+func (mockDnr MockDNR) GetPublicKey(_darkNodeID []byte) ([]byte, error) {
+	return nil, nil
+}
+func (mockDnr MockDNR) GetAllNodes() ([][]byte, error) {
+	return mockDnr.registered, nil
+}
+func (mockDnr MockDNR) MinimumBond() (*big.Int, error) {
+	return big.NewInt(1000), nil
+}
+func (mockDnr MockDNR) MinimumEpochInterval() (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+func (mockDnr MockDNR) Refund(_darkNodeID []byte) (*types.Transaction, error) {
+	return nil, nil
+}
+func (mockDnr MockDNR) WaitTillRegistration(_darkNodeID []byte) error {
+	_, err := mockDnr.Epoch()
+	return err
+}
+
 const NumberOfTestNODES = 4
 
 var _ = Describe("Dark nodes", func() {
+	mockDnr := MockDNR{}
+	mockDnr.Epoch()
+
 	var mu = new(sync.Mutex)
 	var nodes []*darknode.DarkNode
 	var configs []*darknode.Config
@@ -55,16 +145,11 @@ var _ = Describe("Dark nodes", func() {
 
 			for i := 0; i < NumberOfTestNODES; i++ {
 				configs[i] = MockConfig()
-				keypair, err := configs[i].EthereumKeyPair()
-				Ω(err).ShouldNot(HaveOccurred())
-				ethAddresses[i] = bind.NewKeyedTransactor(keypair.PrivateKey)
+				ethAddresses[i] = bind.NewKeyedTransactor(configs[i].EthereumKey.PrivateKey)
 			}
 
-			clientDetails, err := connection.Simulated(ethAddresses...)
-			Ω(err).ShouldNot(HaveOccurred())
-
 			for i := 0; i < NumberOfTestNODES; i++ {
-				nodes[i] = NewTestDarkNode(clientDetails, *configs[i])
+				nodes[i] = NewTestDarkNode(mockDnr, *configs[i])
 			}
 			// nodes, err = generateNodes(NumberOfBootstrapNodes, NumberOfTestNODES)
 			startListening(nodes, NumberOfTestNODES)
@@ -75,6 +160,11 @@ var _ = Describe("Dark nodes", func() {
 		})
 
 		It("should be able to run startup successfully", func() {
+
+			all, err := mockDnr.GetAllNodes()
+			Ω(err).Should(HaveOccurred())
+			fmt.Printf("%v", all)
+
 		})
 	})
 })
@@ -85,11 +175,12 @@ func MockConfig() *darknode.Config {
 		panic(err)
 	}
 
+	// Long process to get this into the right format!
 	ethereumPair, err := crypto.GenerateKey()
-	if err != nil {
-		panic(err)
+	ethereumKey := &keystore.Key{
+		Address:    crypto.PubkeyToAddress(ethereumPair.PublicKey),
+		PrivateKey: ethereumPair,
 	}
-	ethereumKey := hex.EncodeToString(ethereumPair.D.Bytes())
 
 	port := "18514"
 	host := "0.0.0.0"
@@ -101,19 +192,21 @@ func MockConfig() *darknode.Config {
 	}
 
 	return &darknode.Config{
-		RepublicKeyPair:    keypair,
-		RSAKeyPair:         keypair,
-		EthereumPrivateKey: ethereumKey,
-		Port:               port,
-		Host:               host,
-		MultiAddress:       multiAddress,
+		Options: network.Options{
+			MultiAddress: multiAddress,
+		},
+		RepublicKeyPair: keypair,
+		RSAKeyPair:      keypair,
+		EthereumKey:     ethereumKey,
+		Port:            port,
+		Host:            host,
 	}
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
 // will configure all of the components that it needs to operate but will not
 // start any of them.
-func NewTestDarkNode(clientDetails connection.ClientDetails, config darknode.Config) *darknode.DarkNode {
+func NewTestDarkNode(registrar dnr.DarkNodeRegistrarInterface, config darknode.Config) *darknode.DarkNode {
 	if config.Prime == nil {
 		config.Prime = darknode.Prime
 	}
@@ -139,12 +232,23 @@ func NewTestDarkNode(clientDetails connection.ClientDetails, config darknode.Con
 	node.Swarm = network.NewSwarmService(node, node.Options, node.Logger, node.ClientPool, node.DHT)
 	node.Dark = network.NewDarkService(node, node.Options, node.Logger)
 
-	registrar, err := darknode.ConnectToRegistrar(clientDetails, config)
-	if err != nil {
-		// TODO: Handler err
-		panic(err)
-	}
 	node.Registrar = registrar
 
 	return node
+}
+
+func EthereumKeyPair(hexKey string) (*bind.TransactOpts, error) {
+	key, err := hex.DecodeString(hexKey)
+	if err != nil {
+		return nil, err
+	}
+	ecdsa, err := crypto.ToECDSA(key)
+	if err != nil {
+		return nil, err
+	}
+	keypair, err := identity.NewKeyPairFromPrivateKey(ecdsa)
+	if err != nil {
+		return nil, err
+	}
+	return bind.NewKeyedTransactor(keypair.PrivateKey), nil
 }

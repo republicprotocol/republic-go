@@ -46,7 +46,7 @@ type DarkNode struct {
 	Swarm  *network.SwarmService
 	Dark   *network.DarkService
 
-	Registrar *dnr.DarkNodeRegistrar
+	Registrar dnr.DarkNodeRegistrarInterface
 
 	DarkPoolLimit    int64
 	DarkPool         *darkocean.DarkPool
@@ -316,7 +316,7 @@ func (node *DarkNode) AfterEachEpoch() error {
 }
 
 // ConnectToRegistrar will connect to the registrar using the given private key to sign transactions
-func (node DarkNode) ConnectToRegistrar(clientDetails connection.ClientDetails, config Config) (*dnr.DarkNodeRegistrar, error) {
+func (node DarkNode) ConnectToRegistrar(clientDetails connection.ClientDetails, config Config) (dnr.DarkNodeRegistrarInterface, error) {
 	auth := bind.NewKeyedTransactor(node.Config.EthereumKey.PrivateKey)
 
 	// Gas Price

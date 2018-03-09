@@ -14,6 +14,31 @@ import (
 	"github.com/republicprotocol/republic-go/contracts/connection"
 )
 
+// DarkNodeRegistrarInterface is the interface defining the Dark Node Registrar
+type DarkNodeRegistrarInterface interface {
+	Register(_darkNodeID []byte, _publicKey []byte) (*types.Transaction, error)
+	Deregister(_darkNodeID []byte) (*types.Transaction, error)
+	GetBond(_darkNodeID []byte) (*big.Int, error)
+	IsDarkNodeRegistered(_darkNodeID []byte) (bool, error)
+	IsDarkNodePendingRegistration(_darkNodeID []byte) (bool, error)
+	CurrentEpoch() (Epoch, error)
+	Epoch() (*types.Transaction, error)
+	GetCommitment(_darkNodeID []byte) ([32]byte, error)
+	GetOwner(_darkNodeID []byte) (common.Address, error)
+	GetPublicKey(_darkNodeID []byte) ([]byte, error)
+	GetAllNodes() ([][]byte, error)
+	MinimumBond() (*big.Int, error)
+	MinimumEpochInterval() (*big.Int, error)
+	Refund(_darkNodeID []byte) (*types.Transaction, error)
+	WaitTillRegistration(_darkNodeID []byte) error
+}
+
+// Epoch contains a blockhash and a timestamp
+type Epoch struct {
+	Blockhash [32]byte
+	Timestamp *big.Int
+}
+
 // DarkNodeRegistrar is the dark node interface
 type DarkNodeRegistrar struct {
 	context                  context.Context
@@ -122,10 +147,7 @@ func (darkNodeRegistrar *DarkNodeRegistrar) IsDarkNodePendingRegistration(_darkN
 }
 
 // CurrentEpoch returns the current epoch
-func (darkNodeRegistrar *DarkNodeRegistrar) CurrentEpoch() (struct {
-	Blockhash [32]byte
-	Timestamp *big.Int
-}, error) {
+func (darkNodeRegistrar *DarkNodeRegistrar) CurrentEpoch() (Epoch, error) {
 	return darkNodeRegistrar.binding.CurrentEpoch(darkNodeRegistrar.auth2)
 }
 
@@ -168,8 +190,16 @@ func (darkNodeRegistrar *DarkNodeRegistrar) GetPublicKey(_darkNodeID []byte) ([]
 }
 
 // GetAllNodes gets all dark nodes
-func (darkNodeRegistrar *DarkNodeRegistrar) GetAllNodes() ([][20]byte, error) {
-	return darkNodeRegistrar.binding.GetXingOverlay(darkNodeRegistrar.auth2)
+func (darkNodeRegistrar *DarkNodeRegistrar) GetAllNodes() ([][]byte, error) {
+	ret, err := darkNodeRegistrar.binding.GetXingOverlay(darkNodeRegistrar.auth2)
+	if err != nil {
+		return nil, err
+	}
+	arr := make([][]byte, len(ret))
+	for i, b20 := range ret {
+		arr[i] = b20[:]
+	}
+	return arr, nil
 }
 
 // MinimumBond gets the minimum viable bonda mount

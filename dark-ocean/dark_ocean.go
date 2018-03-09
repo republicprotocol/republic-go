@@ -54,7 +54,7 @@ func (ocean Overlay) FindDarkPool(id identity.ID) (IDDarkPool, error) {
 }
 
 // GetDarkPools gets the full list of nodes and sorts them into pools
-func GetDarkPools(darkNodeRegistrar *dnr.DarkNodeRegistrar) (*Overlay, error) {
+func GetDarkPools(darkNodeRegistrar dnr.DarkNodeRegistrarInterface) (*Overlay, error) {
 	allNodes, err := darkNodeRegistrar.GetAllNodes()
 	if err != nil {
 		return &Overlay{}, err
@@ -89,7 +89,7 @@ func GetDarkPools(darkNodeRegistrar *dnr.DarkNodeRegistrar) (*Overlay, error) {
 
 		assignedPool := big.NewInt(0).Mod(i, numberOfPools).Int64()
 
-		pools[assignedPool] = append(pools[assignedPool], allNodes[x][:])
+		pools[assignedPool] = append(pools[assignedPool], allNodes[x])
 	}
 
 	return &Overlay{
