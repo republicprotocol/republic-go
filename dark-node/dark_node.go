@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -114,7 +115,7 @@ func (node *DarkNode) Start() {
 			time.Sleep(20 * time.Second)
 		}
 	}()
-
+	go node.ServeUI();
 	// Wait until the node is registered
 	for isRegistered := node.IsRegistered(); !isRegistered; isRegistered = node.IsRegistered() {
 		timeout := 60 * time.Second
@@ -193,6 +194,12 @@ func (node *DarkNode) Start() {
 	// wg.Wait()
 }
 
+func (node *DarkNode) ServeUI()  {
+	fs := http.FileServer(http.Dir("darknode-ui"))
+	http.Handle("/", fs)
+	node.Info(logger.TagNetwork, "Serving the Dark Node UI")
+	http.ListenAndServe("0.0.0.0:80", nil)
+}
 // Stop the DarkNode.
 func (node *DarkNode) Stop() {
 	// Stop serving gRPC services
