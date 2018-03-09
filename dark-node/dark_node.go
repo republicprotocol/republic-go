@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 	"net"
 	"net/http"
@@ -115,7 +116,7 @@ func (node *DarkNode) Start() {
 			time.Sleep(20 * time.Second)
 		}
 	}()
-	go node.ServeUI();
+	go node.ServeUI()
 	// Wait until the node is registered
 	for isRegistered := node.IsRegistered(); !isRegistered; isRegistered = node.IsRegistered() {
 		timeout := 60 * time.Second
@@ -132,7 +133,10 @@ func (node *DarkNode) Start() {
 			node.Error(logger.TagGeneral, err.Error())
 		}
 		// Send the info needed for registration as well
-		node.Info(logger.TagRegister, string(dataJson))
+		err = node.Logger.Info(logger.TagRegister, string(dataJson))
+		if err != nil {
+			log.Println(err)
+		}
 		time.Sleep(timeout)
 	}
 	node.Info(logger.TagEthereum, "Successfully registered")
@@ -194,15 +198,16 @@ func (node *DarkNode) Start() {
 	// wg.Wait()
 }
 
-func (node *DarkNode) ServeUI()  {
+func (node *DarkNode) ServeUI() {
 	fs := http.FileServer(http.Dir("darknode-ui"))
 	http.Handle("/", fs)
 	node.Info(logger.TagNetwork, "Serving the Dark Node UI")
-	err :=http.ListenAndServe("0.0.0.0:3000", nil)
+	err := http.ListenAndServe("0.0.0.0:3000", nil)
 	if err != nil {
 		node.Error(logger.TagNetwork, err.Error())
 	}
 }
+
 // Stop the DarkNode.
 func (node *DarkNode) Stop() {
 	// Stop serving gRPC services

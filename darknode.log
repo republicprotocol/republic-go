@@ -261,3 +261,32 @@
 2018/03/09 16:53:40 INFO : (usg) cpu = 0.000 Mhz, memory = 6241 Mb, network = 0 kb
 2018/03/09 16:53:41 INFO : (eth) Successfully registered
 2018/03/09 16:54:00 INFO : (usg) cpu = 381.350 Mhz, memory = 6350 Mb, network = 0 kb
+2018/03/09 17:13:04 INFO : (net) Serving the Dark Node UI
+2018/03/09 17:13:04 INFO : (usg) cpu = 2250.000 Mhz, memory = 6185 Mb, network = 0 kb
+2018/03/09 17:13:06 INFO : (eth) Successfully registered
+2018/03/09 17:13:24 INFO : (usg) cpu = 1370.909 Mhz, memory = 6254 Mb, network = 0 kb
+2018/03/09 17:13:44 INFO : (usg) cpu = 1725.787 Mhz, memory = 6309 Mb, network = 0 kb
+2018/03/09 17:14:17 INFO : (net) Serving the Dark Node UI
+2018/03/09 17:14:17 INFO : (usg) cpu = 1350.000 Mhz, memory = 6174 Mb, network = 0 kb
+2018/03/09 17:14:19 INFO : (eth) Successfully registered
+2018/03/09 17:14:37 INFO : (usg) cpu = 848.196 Mhz, memory = 6051 Mb, network = 0 kb
+2018/03/09 17:14:57 INFO : (usg) cpu = 830.172 Mhz, memory = 6103 Mb, network = 0 kb
+2018/03/09 17:15:17 INFO : (usg) cpu = 777.452 Mhz, memory = 6067 Mb, network = 0 kb
+2018/03/09 17:15:37 INFO : (usg) cpu = 758.901 Mhz, memory = 6115 Mb, network = 0 kb
+2018/03/09 17:15:57 INFO : (usg) cpu = 734.341 Mhz, memory = 6146 Mb, network = 0 kb
+2018/03/09 17:16:17 INFO : (usg) cpu = 748.445 Mhz, memory = 6162 Mb, network = 0 kb
+2018/03/09 17:16:37 INFO : (usg) cpu = 760.587 Mhz, memory = 6167 Mb, network = 0 kb
+2018/03/09 17:16:57 INFO : (usg) cpu = 742.095 Mhz, memory = 6193 Mb, network = 0 kb
+2018/03/09 17:17:17 INFO : (usg) cpu = 789.018 Mhz, memory = 6025 Mb, network = 0 kb
+2018/03/09 17:17:37 INFO : (usg) cpu = 774.994 Mhz, memory = 6056 Mb, network = 0 kb
+2018/03/09 17:17:57 INFO : (usg) cpu = 1053.165 Mhz, memory = 6119 Mb, network = 0 kb
+2018/03/09 17:18:17 INFO : (usg) cpu = 1076.089 Mhz, memory = 6124 Mb, network = 0 kb
+2018/03/09 17:18:37 INFO : (usg) cpu = 848.176 Mhz, memory = 6094 Mb, network = 0 kb
+2018/03/09 17:18:57 INFO : (usg) cpu = 1097.602 Mhz, memory = 6125 Mb, network = 0 kb
+2018/03/09 17:19:17 INFO : (usg) cpu = 1026.580 Mhz, memory = 6110 Mb, network = 0 kb
+2018/03/09 17:19:37 INFO : (usg) cpu = 1215.590 Mhz, memory = 6106 Mb, network = 0 kb
+2018/03/09 17:19:57 INFO : (usg) cpu = 755.676 Mhz, memory = 6104 Mb, network = 0 kb
+2018/03/09 17:20:17 INFO : (usg) cpu = 770.224 Mhz, memory = 6108 Mb, network = 0 kb
+2018/03/09 17:20:37 INFO : (usg) cpu = 774.897 Mhz, memory = 6110 Mb, network = 0 kb
+2018/03/09 17:20:57 INFO : (usg) cpu = 769.598 Mhz, memory = 6117 Mb, network = 0 kb
+2018/03/09 17:21:17 INFO : (usg) cpu = 742.374 Mhz, memory = 6123 Mb, network = 0 kb
