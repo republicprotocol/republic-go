@@ -228,3 +228,36 @@
 2018/03/09 16:40:31 INFO : (usg) cpu = 900.000 Mhz, memory = 6357 Mb, network = 0 kb
 2018/03/09 16:40:51 INFO : (usg) cpu = 898.538 Mhz, memory = 6576 Mb, network = 0 kb
 2018/03/09 16:41:11 INFO : (usg) cpu = 731.451 Mhz, memory = 6607 Mb, network = 0 kb
+2018/03/09 16:43:45 INFO : (net) Serving the Dark Node UI
+2018/03/09 16:43:45 ERROR : (net) listen tcp 0.0.0.0:80: bind: permission denied
+2018/03/09 16:43:45 INFO : (usg) cpu = 2057.143 Mhz, memory = 6144 Mb, network = 0 kb
+2018/03/09 16:43:47 INFO : (eth) Successfully registered
+2018/03/09 16:44:05 INFO : (usg) cpu = 620.834 Mhz, memory = 6056 Mb, network = 0 kb
+2018/03/09 16:44:26 INFO : (usg) cpu = 905.994 Mhz, memory = 6131 Mb, network = 0 kb
+2018/03/09 16:44:46 INFO : (usg) cpu = 1695.141 Mhz, memory = 6126 Mb, network = 0 kb
+2018/03/09 16:45:06 INFO : (usg) cpu = 1552.959 Mhz, memory = 6065 Mb, network = 0 kb
+2018/03/09 16:45:26 INFO : (usg) cpu = 1543.071 Mhz, memory = 6076 Mb, network = 0 kb
+2018/03/09 16:46:04 INFO : (net) Serving the Dark Node UI
+2018/03/09 16:46:04 ERROR : (net) listen tcp 0.0.0.0:80: bind: permission denied
+2018/03/09 16:46:04 INFO : (usg) cpu = 1920.000 Mhz, memory = 6118 Mb, network = 0 kb
+2018/03/09 16:46:05 INFO : (eth) Successfully registered
+2018/03/09 16:46:24 INFO : (usg) cpu = 756.838 Mhz, memory = 6309 Mb, network = 0 kb
+2018/03/09 16:46:44 INFO : (usg) cpu = 839.385 Mhz, memory = 6507 Mb, network = 0 kb
+2018/03/09 16:47:04 INFO : (usg) cpu = 710.167 Mhz, memory = 6455 Mb, network = 0 kb
+2018/03/09 16:47:24 INFO : (usg) cpu = 679.505 Mhz, memory = 6455 Mb, network = 0 kb
+2018/03/09 16:47:59 INFO : (net) Serving the Dark Node UI
+2018/03/09 16:47:59 INFO : (usg) cpu = 2100.000 Mhz, memory = 6143 Mb, network = 0 kb
+2018/03/09 16:48:00 INFO : (eth) Successfully registered
+2018/03/09 16:48:19 INFO : (usg) cpu = 143.856 Mhz, memory = 6239 Mb, network = 0 kb
+2018/03/09 16:48:39 INFO : (usg) cpu = 110.345 Mhz, memory = 6216 Mb, network = 0 kb
+2018/03/09 16:48:59 INFO : (usg) cpu = 243.717 Mhz, memory = 6341 Mb, network = 0 kb
+2018/03/09 16:49:21 INFO : (net) Serving the Dark Node UI
+2018/03/09 16:49:21 INFO : (usg) cpu = 1866.667 Mhz, memory = 6156 Mb, network = 0 kb
+2018/03/09 16:49:22 INFO : (eth) Successfully registered
+2018/03/09 16:49:41 INFO : (usg) cpu = 465.251 Mhz, memory = 6290 Mb, network = 0 kb
+2018/03/09 16:50:01 INFO : (usg) cpu = 241.319 Mhz, memory = 6483 Mb, network = 0 kb
+2018/03/09 16:50:21 INFO : (usg) cpu = 274.560 Mhz, memory = 6555 Mb, network = 0 kb
+2018/03/09 16:53:40 INFO : (net) Serving the Dark Node UI
+2018/03/09 16:53:40 INFO : (usg) cpu = 0.000 Mhz, memory = 6241 Mb, network = 0 kb
+2018/03/09 16:53:41 INFO : (eth) Successfully registered
+2018/03/09 16:54:00 INFO : (usg) cpu = 381.350 Mhz, memory = 6350 Mb, network = 0 kb
