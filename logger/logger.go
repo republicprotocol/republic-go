@@ -13,6 +13,7 @@ const (
 	TagRegister = "reg"
 	TagUsage    = "usg"
 	TagGeneral  = "gen"
+	TagEthereum = "eth"
 )
 
 type Logger struct {
@@ -132,8 +133,8 @@ type Error struct {
 }
 
 type Registration struct {
-	NodeID     string `json:"node_id"`
-	PublicKey  string `json:"public_key""`
+	NodeID     string `json:"nodeID"`
+	PublicKey  string `json:"publicKey""`
 	Address    string `json:"address"`
-	RepublicID string `json:"republic_id"`
+	RepublicID string `json:"republicID"`
 }

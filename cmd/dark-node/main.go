@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -19,7 +18,8 @@ import (
 	"github.com/republicprotocol/republic-go/network"
 )
 
-const PATH = "/home/ubuntu"
+//const PATH = "/home/ubuntu/"
+const PATH = ""
 
 var config *node.Config
 
@@ -49,6 +49,7 @@ func parseCommandLineFlags() error {
 
 	conf, err := node.LoadConfig(*confFilename)
 	if err != nil {
+		log.Fatal("error :", err)
 		conf, err = LoadDefaultConfig()
 		if err != nil {
 			return err
@@ -57,6 +58,12 @@ func parseCommandLineFlags() error {
 		return nil
 	}
 	config = conf
+	// Create plugins for logger.
+	stdoutPlugin := logger.NewFilePlugin("stout")
+	filePlugin := logger.NewFilePlugin(PATH)
+	websocketPlugin := logger.NewWebSocketPlugin("0.0.0.0", "8080", "", "")
+	config.Logger = logger.NewLogger(stdoutPlugin,filePlugin, websocketPlugin)
+
 	return nil
 }
 
@@ -107,12 +114,8 @@ func LoadDefaultConfig() (*node.Config, error) {
 	}
 
 	// Create plugins for logger.
-	stdoutPlugin := logger.NewFilePlugin(os.Stdout)
-	logFile, err := os.OpenFile(fmt.Sprintf("%sdarknode.log", PATH), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
-	}
-	filePlugin := logger.NewFilePlugin(logFile)
+	stdoutPlugin := logger.NewFilePlugin("stout")
+	filePlugin := logger.NewFilePlugin(PATH)
 	websocketPlugin := logger.NewWebSocketPlugin("0.0.0.0", "8080", "", "")
 
 	ethKey := keystore.NewKeyForDirectICAP(rand.Reader)
@@ -122,11 +125,12 @@ func LoadDefaultConfig() (*node.Config, error) {
 		Host:            "0.0.0.0",
 		Port:            "18514",
 		RepublicKeyPair: keyPair,
+		RSAKeyPair:      keyPair,
 		EthereumKey:     ethKey,
 		Logger:          logger.NewLogger(stdoutPlugin, filePlugin, websocketPlugin),
 		//todo : missing some of the fields
 	}
-	err = saveConfigFile(config)
+	//err = saveConfigFile(config)
 	return config, err
 }
 

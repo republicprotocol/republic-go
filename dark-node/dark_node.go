@@ -134,6 +134,7 @@ func (node *DarkNode) Start() {
 		node.Info(logger.TagRegister, string(dataJson))
 		time.Sleep(timeout)
 	}
+	node.Info(logger.TagEthereum, "Successfully registered")
 
 	// Start serving the gRPC services
 	//var wg sync.WaitGroup
