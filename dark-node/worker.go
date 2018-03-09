@@ -23,7 +23,7 @@ func NewOrderFragmentWorker(queue chan *order.Fragment, deltaFragmentMatrix *com
 
 // Run the OrderFragmentWorker and write all delta fragments to an output
 // queue.
-func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment)  error {
+func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment) error {
 	for orderFragment := range worker.queue {
 		deltaFragments, err := worker.deltaFragmentMatrix.InsertOrderFragment(orderFragment)
 		if err != nil {

@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"net"
@@ -84,7 +85,7 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	node.OrderFragmentWorker = NewOrderFragmentWorker(node.OrderFragmentWorkerQueue, node.DeltaFragmentMatrix)
 	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
 	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.DeltaFragmentWorkerQueue, node.DeltaBuilder)
-	node.DeltaQueue = make(chan *compute.Delta, 100 )
+	node.DeltaQueue = make(chan *compute.Delta, 100)
 
 	// options := network.Options{}
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
@@ -119,10 +120,18 @@ func (node *DarkNode) Start() {
 		timeout := 60 * time.Second
 		node.Warn(logger.TagNetwork, fmt.Sprintf("%v not registered. Sleeping for %v seconds.", node.MultiAddress.Address(), timeout.Seconds()))
 
+		data := logger.Registration{
+			NodeID:     "0x" + hex.EncodeToString(node.MultiAddress.ID()),
+			PublicKey:  "0x" + hex.EncodeToString(append(node.Config.RepublicKeyPair.PublicKey.X.Bytes(), node.Config.RepublicKeyPair.PublicKey.Y.Bytes()...)),
+			Address:    node.Config.EthereumKey.Address.String(),
+			RepublicID: node.MultiAddress.ID().String(),
+		}
+		dataJson, err := json.Marshal(data)
+		if err != nil {
+			node.Error(logger.TagGeneral, err.Error())
+		}
 		// Send the info needed for registration as well
-		node.Info(logger.TagRegister, fmt.Sprintf( "{ \"id\": \"%s\", \"public_key\": \"%s\"}",
-			hex.EncodeToString(node.MultiAddress.ID()),
-			hex.EncodeToString(append(node.Config.RepublicKeyPair.PublicKey.X.Bytes() , node.Config.RepublicKeyPair.PublicKey.Y.Bytes()... ))))
+		node.Info(logger.TagRegister, string(dataJson))
 		time.Sleep(timeout)
 	}
 
@@ -153,14 +162,14 @@ func (node *DarkNode) Start() {
 	go node.DeltaFragmentWorker.Run(node.DeltaQueue)
 	go func() {
 		for {
-			delta := <- node.DeltaQueue
+			delta := <-node.DeltaQueue
 			isMatch := delta.IsMatch(node.Config.Prime)
 			if isMatch {
 				node.Info(logger.TagCompute, fmt.Sprintf("Match found between [%s] and [%s]",
-					delta.BuyOrderID.String(),delta.SellOrderID.String()))
+					delta.BuyOrderID.String(), delta.SellOrderID.String()))
 			} else {
 				node.Info(logger.TagCompute, fmt.Sprintf("  No-match  between [%s] and [%s]",
-					delta.BuyOrderID.String(),delta.SellOrderID.String()))
+					delta.BuyOrderID.String(), delta.SellOrderID.String()))
 			}
 		}
 	}()

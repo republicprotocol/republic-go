@@ -283,7 +283,7 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 
 	// Peers returned by the query will be added to the DHT.
 	if service.Options.Debug >= DebugMedium {
-		service.Logger.Info(logger.TagNetwork,fmt.Sprintf("%v received %v peers from %v.\n", service.Address(), len(peers), bootstrapMultiAddress.Address()))
+		service.Logger.Info(logger.TagNetwork, fmt.Sprintf("%v received %v peers from %v.\n", service.Address(), len(peers), bootstrapMultiAddress.Address()))
 	}
 	for serializedPeer := range peers {
 		peer, err := rpc.DeserializeMultiAddress(serializedPeer)

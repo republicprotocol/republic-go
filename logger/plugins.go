@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -109,11 +110,12 @@ func (plugin *FilePlugin) Usage(cpu float32, memory, network int32) error {
 type WebSocketPlugin struct {
 	do.GuardedObject
 
-	Srv      *http.Server
-	Host     string
-	Port     string
-	Username string
-	Password string
+	Srv          *http.Server
+	Host         string
+	Port         string
+	Username     string
+	Password     string
+	registration string
 
 	info  chan interface{}
 	error chan Message
@@ -149,6 +151,29 @@ func (plugin *WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request
 
 	defer c.Close()
 
+	go func() {
+		request := &struct {
+			Name string `json: "name"`
+		}{}
+		err := c.ReadJSON(request)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		if request.Name == TagRegister {
+			if plugin.registration != "" {
+				registration := new(Registration)
+				err = json.Unmarshal([]byte(plugin.registration), registration)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				c.WriteJSON(registration)
+			}
+		}
+
+	}()
+
 	// Broadcast errors
 	for {
 		select {
@@ -161,25 +186,11 @@ func (plugin *WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request
 		case warning := <-plugin.warn:
 			c.WriteJSON(warning)
 		default:
-			continue
+			break
 		}
 	}
 
 	//todo : how to close this
-}
-
-func (plugin *WebSocketPlugin) registerHandler(w http.ResponseWriter, r *http.Request) {
-	upgrader := websocket.Upgrader{
-		CheckOrigin:     func(r *http.Request) bool { return true },
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
-	c, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return
-	}
-
-	defer c.Close()
 }
 
 func (plugin *WebSocketPlugin) Start() error {
@@ -220,6 +231,10 @@ func (plugin *WebSocketPlugin) Info(tag, message string) error {
 			Level:   "INFO",
 			Message: message,
 		},
+	}
+	if tag == TagRegister {
+		plugin.registration = message
+		return nil
 	}
 	if len(plugin.info) == 1 {
 		<-plugin.info

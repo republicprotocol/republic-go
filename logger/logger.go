@@ -8,10 +8,11 @@ import (
 
 // Constant strings for tagging logs.
 const (
-	TagNetwork = "net"
-	TagCompute = "cmp"
+	TagNetwork  = "net"
+	TagCompute  = "cmp"
 	TagRegister = "reg"
-	TagUsage = "usg"
+	TagUsage    = "usg"
+	TagGeneral  = "gen"
 )
 
 type Logger struct {
@@ -128,4 +129,11 @@ type EventData struct {
 type Error struct {
 	Tag     string
 	Message string
+}
+
+type Registration struct {
+	NodeID     string `json:"node_id"`
+	PublicKey  string `json:"public_key""`
+	Address    string `json:"address"`
+	RepublicID string `json:"republic_id"`
 }

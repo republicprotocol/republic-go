@@ -19,7 +19,7 @@ import (
 	"github.com/republicprotocol/republic-go/network"
 )
 
-const PATH = ""
+const PATH = "/home/ubuntu"
 
 var config *node.Config
 
