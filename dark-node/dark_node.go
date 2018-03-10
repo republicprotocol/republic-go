@@ -98,7 +98,7 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	node.GossipWorkerQueue = make(chan *compute.Delta, 100)
 	node.GossipWorker = NewGossipWorker(node.GossipWorkerQueue)
 	node.FinalizeWorkerQueue = make(chan *compute.Delta, 100)
-	node.FinalizeWorker = NewFinalizeWorker(node.FinalizeWorkerQueue)
+	node.FinalizeWorker = NewFinalizeWorker(node.FinalizeWorkerQueue,5)
 	node.ConsensusWorkerQueue = make(chan *compute.Delta, 100)
 	node.ConsensusWorker = NewConsensusWorker(node.Logger, node.ConsensusWorkerQueue, node.DeltaFragmentMatrix)
 
