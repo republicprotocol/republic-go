@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/big"
 	"net"
 	"net/http"
@@ -170,7 +171,7 @@ func (node *DarkNode) Start() {
 	time.Sleep(time.Second)
 
 	// Bootstrap into the swarm network
-	node.Swarm.Bootstrap()
+	go node.Swarm.Bootstrap()
 	time.Sleep(time.Second)
 
 	// Run the workers

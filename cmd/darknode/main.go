@@ -59,10 +59,10 @@ func parseCommandLineFlags() error {
 	}
 	config = conf
 	// Create plugins for logger.
-	stdoutPlugin := logger.NewFilePlugin("stout")
-	filePlugin := logger.NewFilePlugin(PATH)
-	websocketPlugin := logger.NewWebSocketPlugin("0.0.0.0", "8080", "", "")
-	config.Logger = logger.NewLogger(stdoutPlugin, filePlugin, websocketPlugin)
+	//stdoutPlugin := logger.NewFilePlugin("stdout")
+	//filePlugin := logger.NewFilePlugin(PATH)
+	//websocketPlugin := logger.NewWebSocketPlugin("0.0.0.0", "8080", "", "")
+	//config.Logger = logger.NewLogger(stdoutPlugin, filePlugin, websocketPlugin)
 
 	return nil
 }
