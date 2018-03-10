@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/compute"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -80,36 +82,72 @@ func (worker *DeltaFragmentWorker) Run(queues ...chan *compute.Delta) {
 }
 
 type GossipWorker struct {
-	firstTimers map[string]*time.Timer
-	bestMatch   map[string]order.ID
-	queue       chan *compute.Delta
+	expiryTime map[string]time.Time
+	bestMatch  map[string]*compute.Delta
+	queue      chan *compute.Delta
+	clientPool *rpc.ClientPool
+	gossipers  identity.MultiAddresses
 }
 
-func NewGossipWorker(queue chan *compute.Delta) *GossipWorker {
+func NewGossipWorker(clientPool *rpc.ClientPool, gossipers identity.MultiAddresses, queue chan *compute.Delta) *GossipWorker {
 	return &GossipWorker{
-		firstTimers: make(map[string]*time.Timer),
-		bestMatch:   make(map[string]order.ID),
-		queue:       queue,
+		expiryTime: make(map[string]time.Time),
+		bestMatch:  make(map[string]*compute.Delta),
+		queue:      queue,
+		clientPool: clientPool,
+		gossipers:  gossipers,
 	}
 }
 
 // Starts timers for each new id
 func (worker *GossipWorker) Run(queues ...chan *compute.Delta) {
-	select {
-	case new := <-worker.queue:
-		// Set up timers
-		if worker.firstTimers[string(new.BuyOrderID)] == nil {
-			worker.firstTimers[string(new.BuyOrderID)] = time.NewTimer(1 * time.Second)
-		}
-		if worker.firstTimers[string(new.SellOrderID)] == nil {
-			worker.firstTimers[string(new.SellOrderID)] = time.NewTimer(1 * time.Second)
-		}
+	timer := time.NewTimer(5 * time.Second)
+	defer timer.Stop()
+	for {
+		select {
+		case newDelta := <-worker.queue:
+			// Set up timers
+			if worker.expiryTime[string(newDelta.BuyOrderID)] == (time.Time{}) {
+				worker.expiryTime[string(newDelta.BuyOrderID)] = time.Now().Add(10 * time.Second)
+			}
+			if worker.expiryTime[string(newDelta.SellOrderID)] == (time.Time{}) {
+				worker.expiryTime[string(newDelta.SellOrderID)] = time.Now().Add(10 * time.Second)
+			}
 
-		// TODO: Gossip to others
-		// rpc...
-		// rpc.NewGossipClient()
+			previousBuyBest := worker.bestMatch[string(newDelta.BuyOrderID)]
+			previousSellBest := worker.bestMatch[string(newDelta.SellOrderID)]
+			newBuyBest := /* TODO: calculate better match */ previousBuyBest
+			newSellBest := /* TODO: calculate better match */ previousSellBest
+			worker.bestMatch[string(newDelta.BuyOrderID)] = newBuyBest
+			worker.bestMatch[string(newDelta.SellOrderID)] = newSellBest
 
-		worker.bestMatch = /* calculate new best match */ worker.bestMatch
+			if string(newBuyBest.ID) != string(previousBuyBest.ID) ||
+				string(newSellBest.ID) != string(previousSellBest.ID) {
+
+				// Gossip to others.
+				for _, multi := range worker.gossipers {
+					worker.clientPool.Gossip(multi, &rpc.Rumor{
+						BuyOrderId:  newDelta.BuyOrderID,
+						SellOrderId: newDelta.SellOrderID,
+					})
+				}
+			}
+		case now := <-timer.C:
+			for k, v := range worker.expiryTime {
+				if v.Unix() < now.Unix() { // TODO: How to better compare time
+					// Safe to do in loop
+					// https://golang.org/doc/effective_go.html#for
+
+					for _, queue := range queues {
+						queue <- worker.bestMatch[k]
+					}
+
+					// TODO: If we receive a new delta for k, it's timer will start again
+					delete(worker.expiryTime, k)
+					delete(worker.bestMatch, k)
+				}
+			}
+		}
 	}
 }
 
