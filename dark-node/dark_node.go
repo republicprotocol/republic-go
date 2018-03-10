@@ -192,10 +192,10 @@ func (node *DarkNode) Start() {
 		select {
 		case ocean := <-oceanChanges:
 			if ocean.Err != nil {
-				// Log
-			} else {
-				node.AfterEachEpoch()
+				node.Logger.Error(logger.TagEthereum, ocean.Err.Error())
+				continue
 			}
+			node.AfterEachEpoch()
 		}
 	}
 
