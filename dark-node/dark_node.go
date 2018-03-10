@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/crypto"
 	do "github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/connection"
@@ -44,6 +45,8 @@ type DarkNode struct {
 	DeltaFragmentWorker      *DeltaFragmentWorker
 	GossipWorkerQueue        chan *compute.Delta
 	GossipWorker             *GossipWorker
+	FinalizeWorkerQueue      chan *compute.Delta
+	FinalizeWorker           *FinalizeWorker
 
 	Server *grpc.Server
 	Swarm  *network.SwarmService
@@ -84,6 +87,10 @@ func NewDarkNode(config Config) *DarkNode {
 	node.OrderFragmentWorker = NewOrderFragmentWorker(node.OrderFragmentWorkerQueue, node.DeltaFragmentMatrix)
 	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
 	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.DeltaFragmentWorkerQueue, node.DeltaBuilder)
+	node.GossipWorkerQueue = make(chan *compute.Delta, 100)
+	node.GossipWorker = NewGossipWorker(node.GossipWorkerQueue)
+	node.FinalizeWorkerQueue = make(chan *compute.Delta, 100)
+	node.FinalizeWorker = NewFinalizeWorker(node.FinalizeWorkerQueue, node.DeltaFragmentMatrix)
 
 	// options := network.Options{}
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
@@ -147,7 +154,8 @@ func (node *DarkNode) Start() {
 	// Run the workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue)
-	go node.GossipWorker.Run()
+	go node.GossipWorker.Run(node.FinalizeWorkerQueue)
+	go node.FinalizeWorker.Run()
 
 	oceanChanges := make(chan do.Option)
 	defer close(oceanChanges)
@@ -200,10 +208,24 @@ func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, delta
 	}()
 }
 
-func (node *DarkNode) OnGossip(buyOrderId *order.ID, sellOrderId *order.ID) {
+func (node *DarkNode) OnGossip(buyOrderID order.ID, sellOrderID order.ID) {
+	// Write to a channel that might be closed
+	func() {
+		defer func() { recover() }()
+		node.GossipWorkerQueue <- &compute.Delta{
+			ID:          compute.DeltaID(crypto.Keccak256([]byte(buyOrderID), []byte(sellOrderID))),
+			BuyOrderID:  buyOrderID,
+			SellOrderID: sellOrderID,
+		}
+	}()
 }
 
 func (node *DarkNode) OnFinalize(buyOrderId *order.ID, sellOrderId *order.ID) {
+	// Write to a channel that might be closed
+	func() {
+		defer func() { recover() }()
+		panic("unimplemented")
+	}()
 }
 
 // IsRegistered returns true if the dark node is registered for the current epoch
