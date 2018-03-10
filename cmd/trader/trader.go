@@ -12,12 +12,12 @@ import (
 	"time"
 
 	"github.com/jbenet/go-base58"
-	"github.com/republicprotocol/go-dark-node"
 	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-order-compute"
-	"github.com/republicprotocol/go-rpc"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/network/rpc"
 )
+var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 
 const reset = "\x1b[0m"
 const yellow = "\x1b[33;1m"
@@ -25,26 +25,29 @@ const green = "\x1b[32;1m"
 const red = "\x1b[31;1m"
 
 type OrderBook struct {
-	LastUpdateId int        `lastUpdateId`
-	Bids         [][]string `bids`
-	Asks         [][]string `asks`
+	LastUpdateId int        `json:"lastUpdateId"`
+	Bids         [][]string `json:"bids"`
+	Asks         [][]string `json:"asks"`
 }
 
 func main() {
 	// Parse the option parameters
 	numberOfOrders := flag.Int("order", 10, "number of orders")
-	timeInterval := flag.Int("time", 10, "time interval in second")
+	timeInterval := flag.Int("time", 15, "time interval in second")
 
-	// Get nodes/darkpool details
-	multiAddress := getNodesDetails()
-	nodes := make([]identity.MultiAddress, len(multiAddress))
-	for i := 0; i < len(multiAddress); i++ {
-		multi, err := identity.NewMultiAddressFromString(multiAddress[i])
+	// Get nodes/darkPool details
+	multiAddresses := getNodesDetails()
+	nodes := make([]identity.MultiAddress, len(multiAddresses))
+	for i := 0; i < len(multiAddresses); i++ {
+		multi, err := identity.NewMultiAddressFromString(multiAddresses[i])
 		if err != nil {
 			log.Fatal(err)
 		}
 		nodes[i] = multi
+		log.Println(base58.Encode(nodes[i].ID()))
 	}
+
+
 
 	// Create a trader address
 	address, _, err := identity.NewAddress()
@@ -70,7 +73,7 @@ func main() {
 		err = json.Unmarshal(response, orderBook)
 
 		// Generate order from the Binance data
-		sellOrders := make([]*compute.Order, len(orderBook.Asks))
+		sellOrders := make([]*order.Order, len(orderBook.Asks))
 		for i, j := range orderBook.Asks {
 			price, err := strconv.ParseFloat(j[0], 10)
 			price = price * 1000000000000
@@ -83,13 +86,13 @@ func main() {
 			if err != nil {
 				log.Fatal("fail to parse the amount into a big int")
 			}
-			order := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParitySell, time.Time{},
-				compute.CurrencyCodeETH, compute.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
+			order := order.NewOrder(order.TypeLimit, order.ParitySell, time.Time{},
+				order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
 				big.NewInt(int64(amount)), big.NewInt(1))
 			sellOrders[i] = order
 		}
 
-		buyOrders := make([]*compute.Order, len(orderBook.Bids))
+		buyOrders := make([]*order.Order, len(orderBook.Bids))
 		//test cast for match
 		for i, j := range orderBook.Asks { //change asks/bids
 			price, err := strconv.ParseFloat(j[0], 10)
@@ -104,30 +107,36 @@ func main() {
 				log.Fatal("fail to parse the amount into a big int")
 			}
 
-			order := compute.NewOrder(compute.OrderTypeLimit, compute.OrderParityBuy, time.Time{},
-				compute.CurrencyCodeETH, compute.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
+			order := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Time{},
+				order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
 				big.NewInt(int64(amount)), big.NewInt(1))
 			buyOrders[i] = order
 		}
+
 		// Send order fragment to the nodes
-		for _, orders := range [][]*compute.Order{buyOrders, sellOrders} {
-			go func(orders []*compute.Order) {
-				for _, order := range orders {
+		for _, orders := range [][]*order.Order{buyOrders, sellOrders} {
+			go func(orders []*order.Order) {
+				for _, ord := range orders {
 					//todo
-					if order.Parity == compute.OrderParityBuy {
-						log.Println("sending buy order :", base58.Encode(order.ID))
+					if ord.Parity == order.ParityBuy {
+						log.Println("sending buy order :", base58.Encode(ord.ID))
 					} else {
-						log.Println("sending sell order :", base58.Encode(order.ID))
+						log.Println("sending sell order :", base58.Encode(ord.ID))
 					}
 
-					shares, err := order.Split(1, 1, node.Prime)
+					shares, err := ord.Split(int64(len(nodes)), int64(len(nodes)*2/3), Prime)
 					if err != nil {
 						continue
 					}
 
 					do.ForAll(shares, func(i int) {
-						err = rpc.SendOrderFragmentToTarget(nodes[i], nodes[i].Address(), multi, shares[i], 5*time.Second)
+						client, err  := rpc.NewClient(nodes[i],multi)
 						if err != nil {
+							log.Fatal(err)
+						}
+						err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[i]))
+						if err != nil {
+							log.Println(err)
 							log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(nodes[i].ID()), reset)
 							return
 						}
@@ -151,12 +160,11 @@ func getNodesDetails() []string {
 
 	// susruth's test nodes
 	return []string{
-		//"/ip4/52.21.44.236/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
-		//"/ip4/52.41.118.171/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
-		//"/ip4/52.59.176.141/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
-		//"/ip4/52.77.88.84/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
-		//"/ip4/52.79.194.108/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
-		"/ip4/0.0.0.0/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
+		"/ip4/52.21.44.236/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
+		"/ip4/52.41.118.171/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
+		"/ip4/52.59.176.141/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
+		"/ip4/52.77.88.84/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
+		"/ip4/52.79.194.108/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
 	}
 
 	// Local nodes

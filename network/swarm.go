@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
@@ -55,6 +56,8 @@ func (service *SwarmService) Bootstrap() {
 			service.Logger.Error(logger.TagNetwork, err.Error())
 		}
 	}
+	log.Println("finish adding nodes")
+
 	if service.Options.Concurrent {
 		// Concurrently search all bootstrap Nodes for itself.
 		do.ForAll(service.Options.BootstrapMultiAddresses, func(i int) {
@@ -156,6 +159,7 @@ func (service *SwarmService) queryPeers(query *rpc.Query, stream rpc.Swarm_Query
 			return err
 		}
 		if closer {
+			log.Println("SENDING: ", peer.String())
 			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
 				return err
 			}
@@ -240,6 +244,8 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 		defer close(candidates)
 
 		for serializedCandidate := range candidates {
+			log.Println(serializedCandidate.MultiAddress)
+
 			candidate, err := rpc.DeserializeMultiAddress(serializedCandidate)
 			if err != nil {
 				return err
@@ -263,29 +269,22 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 	var err error
 	var peers chan *rpc.MultiAddress
 
-	// The Node attempts to find itself in the network with three attempts
-	// backing off by 10 seconds per attempt.
-	for attempt := 0; attempt < service.Options.TimeoutRetries; attempt++ {
+
 		// Query the bootstrap service.
 		peers, err = service.ClientPool.QueryPeersDeep(bootstrapMultiAddress, rpc.SerializeAddress(service.Address()))
-		if err == nil {
-			break
+		if err != nil {
+			return err
 		}
-		defer close(peers)
 
 		if service.Options.Debug >= DebugLow {
 			service.Logger.Error(logger.TagNetwork, err.Error())
 		}
-		if attempt == service.Options.TimeoutRetries-1 {
-			return err
-		}
-	}
-
 	// Peers returned by the query will be added to the DHT.
 	if service.Options.Debug >= DebugMedium {
 		service.Logger.Info(logger.TagNetwork, fmt.Sprintf("%v received %v peers from %v.\n", service.Address(), len(peers), bootstrapMultiAddress.Address()))
 	}
 	for serializedPeer := range peers {
+		log.Println(serializedPeer.MultiAddress)
 		peer, err := rpc.DeserializeMultiAddress(serializedPeer)
 		if err != nil {
 			continue

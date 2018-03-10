@@ -18,8 +18,8 @@ import (
 	"github.com/republicprotocol/republic-go/network"
 )
 
-const PATH = "/home/ubuntu/"
-//const PATH = ""
+//const PATH = "/home/ubuntu/"
+const PATH = ""
 
 var config *node.Config
 
@@ -96,7 +96,7 @@ func LoadDefaultConfig() (*node.Config, error) {
 	option := network.Options{
 		MultiAddress:            multiAddress,
 		BootstrapMultiAddresses: make([]identity.MultiAddress, len(bootstrapNodes)),
-		Debug:                network.DebugOff,
+		Debug:                network.DebugHigh,
 		Alpha:                3,
 		MaxBucketLength:      20,
 		ClientPoolCacheLimit: 20,

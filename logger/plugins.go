@@ -59,7 +59,7 @@ func (plugin *FilePlugin) Info(tag, message string) error {
 	defer plugin.Exit()
 
 	if plugin.file == nil {
-		return errors.New("start the file plugin first")
+		return fmt.Errorf("%s is nil", plugin.Path)
 	}
 	_, err := plugin.file.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
 	if err != nil {
