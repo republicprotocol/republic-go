@@ -2,10 +2,7 @@ package node
 
 import (
 	"context"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 	"net"
 	"net/http"
