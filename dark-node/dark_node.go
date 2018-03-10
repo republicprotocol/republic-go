@@ -40,18 +40,20 @@ type DarkNode struct {
 	ClientPool *rpc.ClientPool
 	DHT        *dht.DHT
 
-	DeltaBuilder             *compute.DeltaBuilder
-	DeltaFragmentMatrix      *compute.DeltaFragmentMatrix
-	OrderFragmentWorkerQueue chan *order.Fragment
-	OrderFragmentWorker      *OrderFragmentWorker
-	DeltaFragmentWorkerQueue chan *compute.DeltaFragment
-	DeltaFragmentWorker      *DeltaFragmentWorker
-	GossipWorkerQueue        chan *compute.Delta
-	GossipWorker             *GossipWorker
-	FinalizeWorkerQueue      chan *compute.Delta
-	FinalizeWorker           *FinalizeWorker
-	ConsensusWorkerQueue     chan *compute.Delta
-	ConsensusWorker          *ConsensusWorker
+	DeltaBuilder                      *compute.DeltaBuilder
+	DeltaFragmentMatrix               *compute.DeltaFragmentMatrix
+	OrderFragmentWorkerQueue          chan *order.Fragment
+	OrderFragmentWorker               *OrderFragmentWorker
+	DeltaFragmentBroadcastWorkerQueue chan *compute.DeltaFragment
+	DeltaFragmentBroadcastWorker      *DeltaFragmentBroadcastWorker
+	DeltaFragmentWorkerQueue          chan *compute.DeltaFragment
+	DeltaFragmentWorker               *DeltaFragmentWorker
+	GossipWorkerQueue                 chan *compute.Delta
+	GossipWorker                      *GossipWorker
+	FinalizeWorkerQueue               chan *compute.Delta
+	FinalizeWorker                    *FinalizeWorker
+	ConsensusWorkerQueue              chan *compute.Delta
+	ConsensusWorker                   *ConsensusWorker
 
 	Server *grpc.Server
 	Swarm  *network.SwarmService
@@ -94,6 +96,8 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(node.Prime)
 	node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
 	node.OrderFragmentWorker = NewOrderFragmentWorker(node.OrderFragmentWorkerQueue, node.DeltaFragmentMatrix)
+	node.DeltaFragmentBroadcastWorkerQueue = make(chan *compute.DeltaFragment, 100)
+	node.DeltaFragmentBroadcastWorker = NewDeltaFragmentBroadcastWorker(node.Logger, node.DeltaFragmentBroadcastWorkerQueue, node.ClientPool)
 	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
 	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.DeltaFragmentWorkerQueue, node.DeltaBuilder)
 	node.GossipWorkerQueue = make(chan *compute.Delta, 100)

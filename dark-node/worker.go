@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/compute"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -46,6 +49,34 @@ func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment) er
 		}
 	}
 	return nil
+}
+
+type DeltaFragmentBroadcastWorker struct {
+	queue      chan *compute.DeltaFragment
+	clientPool *rpc.ClientPool
+	darkPool   identity.MultiAddresses
+	logger     *logger.Logger
+}
+
+func NewDeltaFragmentBroadcastWorker(logger *logger.Logger, queue chan *compute.DeltaFragment, clientPool *rpc.ClientPool, darkPool identity.MultiAddresses) *DeltaFragmentBroadcastWorker {
+	return &DeltaFragmentBroadcastWorker{
+		logger:     logger,
+		queue:      queue,
+		clientPool: clientPool,
+		darkPool:   darkPool,
+	}
+}
+
+func (worker *DeltaFragmentBroadcastWorker) Run(queues ...chan *compute.Delta) {
+	for deltaFragment := range worker.queue {
+		serializedDeltaFragment := rpc.SerializeDeltaFragment(deltaFragment)
+		do.CoForAll(worker.darkPool, func(i int) {
+			_, err := worker.clientPool.BroadcastDeltaFragment(worker.darkPool[i], serializedDeltaFragment)
+			if err != nil {
+				worker.logger.Error(logger.TagNetwork, err.Error())
+			}
+		})
+	}
 }
 
 // An DeltaFragmentWorker consumes delta fragments and reconstructs deltas.
