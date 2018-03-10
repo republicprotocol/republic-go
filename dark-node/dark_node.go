@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/big"
 	"net"
 	"net/http"
@@ -82,7 +81,7 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	node := &DarkNode{Config: config}
 
 	node.Logger = logger.NewLogger(logger.NewFilePlugin("stdout"), logger.NewFilePlugin("/home/ubuntu/darknode.log"))
-	log.Println(node.Logger.Start())
+	node.Logger.Start()
 
 	node.ClientPool = rpc.NewClientPool(node.MultiAddress)
 	node.DHT = dht.NewDHT(node.MultiAddress.Address(), node.MaxBucketLength)
@@ -154,16 +153,11 @@ func (node *DarkNode) Start() {
 	//	}
 	//	time.Sleep(timeout)
 	//}
-	node.Info(logger.TagEthereum, "Successfully registered")
+	node.Logger.Info(logger.TagEthereum, "Successfully registered")
 
 	// Start serving the gRPC services
-	//var wg sync.WaitGroup
 	go func() {
-		//defer wg.Done()
-		//wg.Add(1)
-
-		log.Println(fmt.Sprintf("Listening on %s:%s", node.Host, node.Port))
-		log.Println(node.Logger.Info(logger.TagNetwork, fmt.Sprintf("Listening on %s:%s", node.Host, node.Port)))
+		node.Logger.Info(logger.TagNetwork, fmt.Sprintf("Listening on %s:%s", node.Host, node.Port))
 		node.Swarm.Register(node.Server)
 		node.Dark.Register(node.Server)
 		node.Gossip.Register(node.Server)
@@ -203,8 +197,6 @@ func (node *DarkNode) Start() {
 			node.AfterEachEpoch()
 		}
 	}
-
-	// wg.Wait()
 }
 
 func (node *DarkNode) ServeUI() {
@@ -421,8 +413,5 @@ func (node *DarkNode) Usage() {
 		node.Error(logger.TagUsage, err.Error())
 	}
 
-	err = node.Logger.Usage(float32(cpuStat[0].Mhz*percentage[0]/100), int32(vmStat.Used/1024/1024), 0)
-	if err != nil {
-		node.Error(logger.TagUsage, err.Error())
-	}
+	node.Logger.Usage(float32(cpuStat[0].Mhz*percentage[0]/100), int32(vmStat.Used/1024/1024), 0)
 }
