@@ -2,6 +2,8 @@ package node
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
@@ -82,6 +84,10 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	node := &DarkNode{Config: config}
 
 	node.Logger = logger.NewLogger(logger.NewFilePlugin("stdout"), logger.NewFilePlugin("/home/ubuntu/darknode.log"))
+	err := node.Logger.Start()
+	if err != nil {
+		log.Println(err)
+	}
 	node.ClientPool = rpc.NewClientPool(node.MultiAddress)
 	node.DHT = dht.NewDHT(node.MultiAddress.Address(), node.MaxBucketLength)
 
@@ -121,6 +127,8 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 
 // Start the DarkNode.
 func (node *DarkNode) Start() {
+	log.Println("start")
+	log.Println(node)
 	// Begin broadcasting CPU/Memory/Network usage
 	go func() {
 		for {
@@ -129,28 +137,28 @@ func (node *DarkNode) Start() {
 		}
 	}()
 	go node.ServeUI()
-	// Wait until the node is registered
-	//for isRegistered := node.IsRegistered(); !isRegistered; isRegistered = node.IsRegistered() {
-	//	timeout := 60 * time.Second
-	//	node.Warn(logger.TagNetwork, fmt.Sprintf("%v not registered. Sleeping for %v seconds.", node.MultiAddress.Address(), timeout.Seconds()))
-	//
-	//	data := logger.Registration{
-	//		NodeID:     "0x" + hex.EncodeToString(node.MultiAddress.ID()),
-	//		PublicKey:  "0x" + hex.EncodeToString(append(node.Config.RepublicKeyPair.PublicKey.X.Bytes(), node.Config.RepublicKeyPair.PublicKey.Y.Bytes()...)),
-	//		Address:    node.Config.EthereumKey.Address.String(),
-	//		RepublicID: node.MultiAddress.ID().String(),
-	//	}
-	//	dataJson, err := json.Marshal(data)
-	//	if err != nil {
-	//		node.Error(logger.TagGeneral, err.Error())
-	//	}
-	//	// Send the info needed for registration as well
-	//	err = node.Logger.Info(logger.TagRegister, string(dataJson))
-	//	if err != nil {
-	//		log.Println(err)
-	//	}
-	//	time.Sleep(timeout)
-	//}
+	//Wait until the node is registered
+	for isRegistered := node.IsRegistered(); !isRegistered; isRegistered = node.IsRegistered() {
+		timeout := 60 * time.Second
+		node.Warn(logger.TagNetwork, fmt.Sprintf("%v not registered. Sleeping for %v seconds.", node.MultiAddress.Address(), timeout.Seconds()))
+
+		data := logger.Registration{
+			NodeID:     "0x" + hex.EncodeToString(node.MultiAddress.ID()),
+			PublicKey:  "0x" + hex.EncodeToString(append(node.Config.RepublicKeyPair.PublicKey.X.Bytes(), node.Config.RepublicKeyPair.PublicKey.Y.Bytes()...)),
+			Address:    node.Config.EthereumKey.Address.String(),
+			RepublicID: node.MultiAddress.ID().String(),
+		}
+		dataJson, err := json.Marshal(data)
+		if err != nil {
+			node.Error(logger.TagGeneral, err.Error())
+		}
+		// Send the info needed for registration as well
+		err = node.Logger.Info(logger.TagRegister, string(dataJson))
+		if err != nil {
+			log.Println(err)
+		}
+		time.Sleep(timeout)
+	}
 	node.Info(logger.TagEthereum, "Successfully registered")
 
 	// Start serving the gRPC services
@@ -190,16 +198,16 @@ func (node *DarkNode) Start() {
 	defer close(oceanChanges)
 	go darkocean.WatchForDarkOceanChanges(node.Registrar, oceanChanges)
 
-	for {
-		select {
-		case ocean := <-oceanChanges:
-			if ocean.Err != nil {
-				node.Logger.Error(logger.TagEthereum, ocean.Err.Error())
-				continue
-			}
-			node.AfterEachEpoch()
-		}
-	}
+	//for {
+	//	select {
+	//	case ocean := <-oceanChanges:
+	//		if ocean.Err != nil {
+	//			node.Logger.Error(logger.TagEthereum, ocean.Err.Error())
+	//			continue
+	//		}
+	//		node.AfterEachEpoch()
+	//	}
+	//}
 
 	// wg.Wait()
 }

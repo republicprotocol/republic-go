@@ -31,12 +31,12 @@ func main() {
 		flag.Usage()
 		return
 	}
-
 	// Create a new node.node.
 	node, err := node.NewDarkNode(*config)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	node.Start()
 	defer node.Stop()
 }

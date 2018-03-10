@@ -45,7 +45,7 @@ func (plugin *FilePlugin) Start() error {
 	if plugin.Path == "stout" {
 		plugin.file = os.Stdout
 	} else {
-		plugin.file, err = os.OpenFile(fmt.Sprintf("%sdarknode.log", plugin.Path), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		plugin.file, err = os.OpenFile(fmt.Sprintf("%s", plugin.Path), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	}
 	return err
 }
