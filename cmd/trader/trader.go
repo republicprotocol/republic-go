@@ -47,8 +47,6 @@ func main() {
 		log.Println(base58.Encode(nodes[i].ID()))
 	}
 
-
-
 	// Create a trader address
 	address, _, err := identity.NewAddress()
 	if err != nil {
