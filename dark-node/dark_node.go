@@ -10,7 +10,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
@@ -122,7 +121,6 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 
 // Start the DarkNode.
 func (node *DarkNode) Start() {
-
 	// Begin broadcasting CPU/Memory/Network usage
 	go func() {
 		for {
@@ -183,20 +181,20 @@ func (node *DarkNode) Start() {
 	go node.FinalizeWorker.Run(node.ConsensusWorkerQueue)
 	go node.ConsensusWorker.Run()
 
-	oceanChanges := make(chan do.Option)
-	defer close(oceanChanges)
-	go darkocean.WatchForDarkOceanChanges(node.Registrar, oceanChanges)
+	// oceanChanges := make(chan do.Option)
+	// defer close(oceanChanges)
+	// go darkocean.WatchForDarkOceanChanges(node.Registrar, oceanChanges)
 
-	for {
-		select {
-		case ocean := <-oceanChanges:
-			if ocean.Err != nil {
-				node.Logger.Error(logger.TagEthereum, ocean.Err.Error())
-				continue
-			}
-			node.AfterEachEpoch()
-		}
-	}
+	// for {
+	// 	select {
+	// 	case ocean := <-oceanChanges:
+	// 		if ocean.Err != nil {
+	// 			node.Logger.Error(logger.TagEthereum, ocean.Err.Error())
+	// 			continue
+	// 		}
+	// 		node.AfterEachEpoch()
+	// 	}
+	// }
 }
 
 func (node *DarkNode) ServeUI() {
