@@ -47,11 +47,11 @@ func main() {
 	}
 
 	// Create a trader address
-	address ,_ ,err := identity.NewAddress()
+	address, _, err := identity.NewAddress()
 	if err != nil {
 		log.Fatal(err)
 	}
-	multi ,err  := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/80/republic/"+ address.String())
+	multi, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/80/republic/" + address.String())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func main() {
 						log.Println("sending sell order :", base58.Encode(order.ID))
 					}
 
-					shares, err := order.Split(5, 3, node.Prime)
+					shares, err := order.Split(1, 1, node.Prime)
 					if err != nil {
 						continue
 					}
@@ -151,11 +151,12 @@ func getNodesDetails() []string {
 
 	// susruth's test nodes
 	return []string{
-		"/ip4/52.21.44.236/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
-		"/ip4/52.41.118.171/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
-		"/ip4/52.59.176.141/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
-		"/ip4/52.77.88.84/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
-		"/ip4/52.79.194.108/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
+		//"/ip4/52.21.44.236/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
+		//"/ip4/52.41.118.171/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
+		//"/ip4/52.59.176.141/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
+		//"/ip4/52.77.88.84/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
+		//"/ip4/52.79.194.108/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
+		"/ip4/0.0.0.0/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
 	}
 
 	// Local nodes

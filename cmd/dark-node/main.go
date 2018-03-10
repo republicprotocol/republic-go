@@ -1,21 +1,21 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"os/exec"
-	"runtime"
-	"runtime/pprof"
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/network"
 )
 
 //const PATH = "/home/ubuntu/"
@@ -32,39 +32,13 @@ func main() {
 		return
 	}
 
-	// Create profiling logs for cpu and memory usage.
-	if config.Dev {
-		f, err := os.Create(fmt.Sprintf("%scpu.log", PATH))
-		if err != nil {
-			log.Fatal("could not create CPU profile: ", err)
-		}
-		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal("could not start CPU profile: ", err)
-		}
-
-		go func() {
-			time.Sleep(time.Hour)
-
-			pprof.StopCPUProfile()
-
-			f, err := os.Create(fmt.Sprintf("%smem.log", PATH))
-			if err != nil {
-				log.Fatal("could not create memory profile: ", err)
-			}
-			runtime.GC() // get up-to-date statistics
-			if err := pprof.WriteHeapProfile(f); err != nil {
-				log.Fatal("could not write memory profile: ", err)
-			}
-			f.Close()
-		}()
-	}
-
 	// Create a new node.node.
 	node, err := node.NewDarkNode(*config)
 	if err != nil {
 		log.Fatal(err)
 	}
 	node.Start()
+	defer node.Stop()
 }
 
 // Parse the config file path and read config from it.
@@ -75,6 +49,7 @@ func parseCommandLineFlags() error {
 
 	conf, err := node.LoadConfig(*confFilename)
 	if err != nil {
+		log.Fatal("error :", err)
 		conf, err = LoadDefaultConfig()
 		if err != nil {
 			return err
@@ -83,6 +58,12 @@ func parseCommandLineFlags() error {
 		return nil
 	}
 	config = conf
+	// Create plugins for logger.
+	stdoutPlugin := logger.NewFilePlugin("stout")
+	filePlugin := logger.NewFilePlugin(PATH)
+	websocketPlugin := logger.NewWebSocketPlugin("0.0.0.0", "8080", "", "")
+	config.Logger = logger.NewLogger(stdoutPlugin, filePlugin, websocketPlugin)
+
 	return nil
 }
 
@@ -111,31 +92,45 @@ func LoadDefaultConfig() (*node.Config, error) {
 		"/ip4/52.79.194.108/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
 	}
 
-	logFile, err := os.Open("darknode.log")
-	if err != nil {
-		return nil, err
-	}
-	stdoutPlugin := logger.NewFilePlugin(os.Stdout)
-	filePlugin := logger.NewFilePlugin(logFile)
-	websocketPlugin := logger.NewWebSocketPlugin(fmt.Sprintf("%s", out), "8080", "", "")
-
-	config := &node.Config{
-		Host:                    "0.0.0.0",
-		Port:                    "18514",
-		RepublicKeyPair:         keyPair,
+	// Create default network options
+	option := network.Options{
 		MultiAddress:            multiAddress,
 		BootstrapMultiAddresses: make([]identity.MultiAddress, len(bootstrapNodes)),
-		Logger:                  logger.NewLogger(stdoutPlugin, filePlugin, websocketPlugin),
-		Dev:                     false,
+		Debug:                network.DebugOff,
+		Alpha:                3,
+		MaxBucketLength:      20,
+		ClientPoolCacheLimit: 20,
+		Timeout:              30 * time.Second,
+		TimeoutBackoff:       30 * time.Second,
+		TimeoutRetries:       1,
+		Concurrent:           false,
 	}
 	for i, bootstrapNode := range bootstrapNodes {
 		multi, err := identity.NewMultiAddressFromString(bootstrapNode)
 		if err != nil {
 			return &node.Config{}, err
 		}
-		config.BootstrapMultiAddresses[i] = multi
+		option.BootstrapMultiAddresses[i] = multi
 	}
-	err = saveConfigFile(config)
+
+	// Create plugins for logger.
+	stdoutPlugin := logger.NewFilePlugin("stout")
+	filePlugin := logger.NewFilePlugin(PATH)
+	websocketPlugin := logger.NewWebSocketPlugin("0.0.0.0", "8080", "", "")
+
+	ethKey := keystore.NewKeyForDirectICAP(rand.Reader)
+	// Generate default config file
+	config = &node.Config{
+		Options:         option,
+		Host:            "0.0.0.0",
+		Port:            "18514",
+		RepublicKeyPair: keyPair,
+		RSAKeyPair:      keyPair,
+		EthereumKey:     ethKey,
+		Logger:          logger.NewLogger(stdoutPlugin, filePlugin, websocketPlugin),
+		//todo : missing some of the fields
+	}
+	//err = saveConfigFile(config)
 	return config, err
 }
 
