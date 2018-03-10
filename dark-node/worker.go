@@ -23,11 +23,11 @@ func NewOrderFragmentWorker(queue chan *order.Fragment, deltaFragmentMatrix *com
 
 // Run the OrderFragmentWorker and write all delta fragments to an output
 // queue.
-func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment) {
+func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment) error {
 	for orderFragment := range worker.queue {
 		deltaFragments, err := worker.deltaFragmentMatrix.InsertOrderFragment(orderFragment)
 		if err != nil {
-			// worker.logger.Error(logger.TagCompute, err.Error())
+			return err
 		}
 		if deltaFragments != nil {
 			// Write to channels that might be closed
@@ -41,6 +41,7 @@ func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment) {
 			}()
 		}
 	}
+	return nil
 }
 
 // An DeltaFragmentWorker consumes delta fragments and reconstructs deltas.

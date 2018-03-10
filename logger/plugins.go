@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -29,21 +30,28 @@ type FilePlugin struct {
 	do.GuardedObject
 
 	file *os.File
+	Path string `json:"path"`
 }
 
-func NewFilePlugin(file *os.File) Plugin {
+func NewFilePlugin(path string) Plugin {
 	return &FilePlugin{
 		GuardedObject: do.NewGuardedObject(),
-		file:          file,
+		Path:          path,
 	}
 }
 
 func (plugin *FilePlugin) Start() error {
-	return nil
+	var err error
+	if plugin.Path == "stout" {
+		plugin.file = os.Stdout
+	} else {
+		plugin.file, err = os.OpenFile(fmt.Sprintf("%sdarknode.log", plugin.Path), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	}
+	return err
 }
 
 func (plugin *FilePlugin) Stop() error {
-	return nil
+	return plugin.file.Close()
 }
 
 func (plugin *FilePlugin) Info(tag, message string) error {
@@ -72,7 +80,7 @@ func (plugin *FilePlugin) Warn(tag, message string) error {
 	if err != nil {
 		return err
 	}
-	_, err = plugin.file.WriteString("WARN: (" + tag + ") " + message + "\n")
+	_, err = plugin.file.WriteString("WARN : (" + tag + ") " + message + "\n")
 	return err
 }
 
@@ -102,21 +110,22 @@ func (plugin *FilePlugin) Usage(cpu float32, memory, network int32) error {
 	if err != nil {
 		return err
 	}
-	_, err = plugin.file.WriteString(fmt.Sprintf("USAGE : cpu=%.3f, memory=%d, network=%d \n", cpu, memory, network))
+	_, err = plugin.file.WriteString(fmt.Sprintf("INFO : (usg) cpu = %.3f Mhz, memory = %d Mb, network = %d kb\n", cpu, memory, network))
 	return err
 }
 
 type WebSocketPlugin struct {
 	do.GuardedObject
 
-	Srv      *http.Server
-	Host     string
-	Port     string
-	Username string
-	Password string
+	Srv          *http.Server
+	Host         string `json:"host"`
+	Port         string `json:"port"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	registration string `json:"registration"`
 
 	info  chan interface{}
-	error chan Error
+	error chan Message
 	warn  chan interface{}
 	usage chan Usage
 }
@@ -129,7 +138,7 @@ func NewWebSocketPlugin(host, port, username, password string) Plugin {
 		Username:      username,
 		Password:      password,
 		info:          make(chan interface{}, 1),
-		error:         make(chan Error, 1),
+		error:         make(chan Message, 1),
 		warn:          make(chan interface{}, 1),
 		usage:         make(chan Usage, 1),
 	}
@@ -149,6 +158,33 @@ func (plugin *WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request
 
 	defer c.Close()
 
+	go func() {
+		for {
+			request := &struct {
+				Name string `json: "name"`
+			}{}
+			err := c.ReadJSON(request)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			if request.Name == TagRegister {
+				if plugin.registration != "" {
+					registration := new(Registration)
+					err = json.Unmarshal([]byte(plugin.registration), registration)
+					if err != nil {
+						log.Println(err)
+						return
+					}
+					err := c.WriteJSON(registration)
+					if err != nil {
+						return
+					}
+				}
+			}
+		}
+	}()
+
 	// Broadcast errors
 	for {
 		select {
@@ -161,7 +197,7 @@ func (plugin *WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request
 		case warning := <-plugin.warn:
 			c.WriteJSON(warning)
 		default:
-			continue
+			break
 		}
 	}
 
@@ -207,6 +243,10 @@ func (plugin *WebSocketPlugin) Info(tag, message string) error {
 			Message: message,
 		},
 	}
+	if tag == TagRegister {
+		plugin.registration = message
+		return nil
+	}
 	if len(plugin.info) == 1 {
 		<-plugin.info
 	}
@@ -219,16 +259,13 @@ func (plugin *WebSocketPlugin) Error(tag, message string) error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
 
-	err := struct {
-		Tag     string
-		Message string
-	}{
-		tag, message,
+	msg := Message{
+		time.Now().Format("2006/01/02 15:04:05 "), tag, message,
 	}
 	if len(plugin.error) == 1 {
 		<-plugin.error
 	}
-	plugin.error <- err
+	plugin.error <- msg
 	return nil
 }
 
@@ -241,7 +278,7 @@ func (plugin *WebSocketPlugin) Warn(tag, message string) error {
 		Time: time.Now(),
 		Data: EventData{
 			Tag:     tag,
-			Level:   "INFO",
+			Level:   "WARN",
 			Message: message,
 		},
 	}

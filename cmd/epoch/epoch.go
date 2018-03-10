@@ -3,11 +3,14 @@ package main
 // DeployDarkNodeRegistrar
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark-node"
@@ -30,11 +33,13 @@ func main() {
 		// TODO: Handler err
 		panic(err)
 	}
-	registrar, err := node.ConnectToRegistrar(clientDetails, *config)
-	if err != nil {
-		// TODO: Handler err
-		panic(err)
-	}
+
+	auth := bind.NewKeyedTransactor(config.EthereumKey.PrivateKey)
+
+	// Gas Price
+	auth.GasPrice = big.NewInt(6000000000)
+
+	registrar := dnr.NewDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{})
 
 	minimumEpochTime, err := registrar.MinimumEpochInterval()
 	if err != nil {
@@ -65,7 +70,7 @@ func callEpoch(registrar *dnr.DarkNodeRegistrar) {
 }
 
 func parseCommandLineFlags() error {
-	confFilename := flag.String("config", "../darknode/config/ap-northeast-2.json", "Path to the JSON configuration file")
+	confFilename := flag.String("config", "../dark-node/config/ap-northeast-2.json", "Path to the JSON configuration file")
 
 	flag.Parse()
 
