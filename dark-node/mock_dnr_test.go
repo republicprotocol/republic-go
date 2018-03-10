@@ -2,28 +2,25 @@ package node_test
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/crypto"
-
-	do "github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/republic-go/contracts/dnr"
-	darkocean "github.com/republicprotocol/republic-go/dark-ocean"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/compute"
-	darknode "github.com/republicprotocol/republic-go/dark-node"
+	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/dark-node"
+	"github.com/republicprotocol/republic-go/dark-ocean"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
@@ -32,6 +29,8 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 	"google.golang.org/grpc"
 )
+
+const NumberOfTestNODES = 4
 
 var _ = Describe("Dark nodes", func() {
 	mockDnr := &MockDNR{
@@ -42,11 +41,11 @@ var _ = Describe("Dark nodes", func() {
 	mockDnr.Epoch()
 
 	var mu = new(sync.Mutex)
-	var nodes []*darknode.DarkNode
-	var configs []*darknode.Config
+	var nodes []*node.DarkNode
+	var configs []*node.Config
 	var ethAddresses []*bind.TransactOpts
 
-	startListening := func(nodes []*darknode.DarkNode, bootstrapNodes int) {
+	startListening := func(nodes []*node.DarkNode) {
 		// Fully connect the bootstrap nodes
 		for i, iNode := range nodes {
 			go iNode.Start()
@@ -64,9 +63,9 @@ var _ = Describe("Dark nodes", func() {
 		BeforeEach(func() {
 			mu.Lock()
 
-			configs = make([]*darknode.Config, NumberOfTestNODES)
+			configs = make([]*node.Config, NumberOfTestNODES)
 			ethAddresses = make([]*bind.TransactOpts, NumberOfTestNODES)
-			nodes = make([]*darknode.DarkNode, NumberOfTestNODES)
+			nodes = make([]*node.DarkNode, NumberOfTestNODES)
 
 			for i := 0; i < NumberOfTestNODES; i++ {
 				configs[i] = MockConfig()
@@ -79,7 +78,7 @@ var _ = Describe("Dark nodes", func() {
 			}
 
 			mockDnr.Epoch()
-			startListening(nodes, NumberOfTestNODES)
+			startListening(nodes)
 		})
 
 		AfterEach(func() {
@@ -136,7 +135,7 @@ var _ = Describe("Dark nodes", func() {
 
 
 
-
+ * Mock DarkNodeRegistar implementation
 
  */
 
@@ -251,11 +250,9 @@ func (mockDnr *MockDNR) WaitTillRegistration(_darkNodeID []byte) error {
 	return err
 }
 
-const NumberOfTestNODES = 4
-
 var i = 0
 
-func MockConfig() *darknode.Config {
+func MockConfig() *node.Config {
 	keypair, err := identity.NewKeyPair()
 	if err != nil {
 		panic(err)
@@ -277,7 +274,7 @@ func MockConfig() *darknode.Config {
 		panic(err)
 	}
 
-	return &darknode.Config{
+	return &node.Config{
 		Options: network.Options{
 			MultiAddress: multiAddress,
 		},
@@ -292,49 +289,33 @@ func MockConfig() *darknode.Config {
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
 // will configure all of the components that it needs to operate but will not
 // start any of them.
-func NewTestDarkNode(registrar dnr.DarkNodeRegistrarInterface, config darknode.Config) *darknode.DarkNode {
+func NewTestDarkNode(registrar dnr.DarkNodeRegistrarInterface, config node.Config) *node.DarkNode {
 	if config.Prime == nil {
-		config.Prime = darknode.Prime
+		config.Prime = node.Prime
 	}
 
 	// TODO: This should come from the DNR.
 	k := int64(5)
 
-	node := &darknode.DarkNode{Config: config}
+	newNode := &node.DarkNode{Config: config}
 
-	node.Logger = logger.NewLogger()
-	node.ClientPool = rpc.NewClientPool(node.MultiAddress)
-	node.DHT = dht.NewDHT(node.MultiAddress.Address(), node.MaxBucketLength)
+	newNode.Logger = logger.NewLogger()
+	newNode.ClientPool = rpc.NewClientPool(newNode.MultiAddress)
+	newNode.DHT = dht.NewDHT(newNode.MultiAddress.Address(), newNode.MaxBucketLength)
 
-	node.DeltaBuilder = compute.NewDeltaBuilder(k, node.Prime)
-	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(node.Prime)
-	node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
-	node.OrderFragmentWorker = darknode.NewOrderFragmentWorker(node.OrderFragmentWorkerQueue, node.DeltaFragmentMatrix)
-	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
-	node.DeltaFragmentWorker = darknode.NewDeltaFragmentWorker(node.DeltaFragmentWorkerQueue, node.DeltaBuilder)
+	newNode.DeltaBuilder = compute.NewDeltaBuilder(k, newNode.Prime)
+	newNode.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(newNode.Prime)
+	newNode.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
+	newNode.OrderFragmentWorker = node.NewOrderFragmentWorker(newNode.OrderFragmentWorkerQueue, newNode.DeltaFragmentMatrix)
+	newNode.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
+	newNode.DeltaFragmentWorker = node.NewDeltaFragmentWorker(newNode.DeltaFragmentWorkerQueue, newNode.DeltaBuilder)
 
 	// options := network.Options{}
-	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
-	node.Swarm = network.NewSwarmService(node, node.Options, node.Logger, node.ClientPool, node.DHT)
-	node.Dark = network.NewDarkService(node, node.Options, node.Logger)
+	newNode.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
+	newNode.Swarm = network.NewSwarmService(newNode, newNode.Options, newNode.Logger, newNode.ClientPool, newNode.DHT)
+	newNode.Dark = network.NewDarkService(newNode, newNode.Options, newNode.Logger)
 
-	node.Registrar = registrar
+	newNode.Registrar = registrar
 
-	return node
-}
-
-func EthereumKeyPair(hexKey string) (*bind.TransactOpts, error) {
-	key, err := hex.DecodeString(hexKey)
-	if err != nil {
-		return nil, err
-	}
-	ecdsa, err := crypto.ToECDSA(key)
-	if err != nil {
-		return nil, err
-	}
-	keypair, err := identity.NewKeyPairFromPrivateKey(ecdsa)
-	if err != nil {
-		return nil, err
-	}
-	return bind.NewKeyedTransactor(keypair.PrivateKey), nil
+	return newNode
 }
