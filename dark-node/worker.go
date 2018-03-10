@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
@@ -48,6 +49,34 @@ func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment) er
 		}
 	}
 	return nil
+}
+
+type DeltaFragmentBroadcastWorker struct {
+	queue      chan *compute.DeltaFragment
+	clientPool *rpc.ClientPool
+	darkPool   identity.MultiAddresses
+	logger     *logger.Logger
+}
+
+func NewDeltaFragmentBroadcastWorker(logger *logger.Logger, queue chan *compute.DeltaFragment, clientPool *rpc.ClientPool, darkPool identity.MultiAddresses) *DeltaFragmentBroadcastWorker {
+	return &DeltaFragmentBroadcastWorker{
+		logger:     logger,
+		queue:      queue,
+		clientPool: clientPool,
+		darkPool:   darkPool,
+	}
+}
+
+func (worker *DeltaFragmentBroadcastWorker) Run() {
+	for deltaFragment := range worker.queue {
+		serializedDeltaFragment := rpc.SerializeDeltaFragment(deltaFragment)
+		do.CoForAll(worker.darkPool, func(i int) {
+			_, err := worker.clientPool.BroadcastDeltaFragment(worker.darkPool[i], serializedDeltaFragment)
+			if err != nil {
+				worker.logger.Error(logger.TagNetwork, err.Error())
+			}
+		})
+	}
 }
 
 // An DeltaFragmentWorker consumes delta fragments and reconstructs deltas.
@@ -151,14 +180,46 @@ func (worker *GossipWorker) Run(queues ...chan *compute.Delta) {
 	}
 }
 
-type FinalizeWorker struct {
+type Data struct {
+	Delta *compute.Delta
+	Vote  int
+	Sent  bool
 }
 
-func NewFinalizeWorker(queue chan *compute.Delta) *FinalizeWorker {
-	return &FinalizeWorker{}
+type FinalizeWorker struct {
+	queue    chan *compute.Delta
+	deltas   map[string]*Data
+	poolSize int
+}
+
+func NewFinalizeWorker(queue chan *compute.Delta, poolSize int) *FinalizeWorker {
+	return &FinalizeWorker{
+		queue:    queue,
+		deltas:   map[string]*Data{},
+		poolSize: poolSize,
+	}
 }
 
 func (worker *FinalizeWorker) Run(queues ...chan *compute.Delta) {
+	for delta := range worker.queue {
+		d, ok := worker.deltas[string(delta.ID)]
+		if !ok {
+			worker.deltas[string(delta.ID)] = &Data{
+				Delta: delta,
+				Vote:  1,
+				Sent:  false,
+			}
+		} else {
+			d.Vote += 1
+		}
+
+		if d.Vote > worker.poolSize/2 && !d.Sent {
+			for _, queue := range queues {
+				queue <- worker.deltas[string(delta.ID)].Delta
+			}
+			d.Sent = true
+		}
+	}
 }
 
 type ConsensusWorker struct {
