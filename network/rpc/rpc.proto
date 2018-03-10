@@ -185,3 +185,28 @@ message SyncBlock {
       repeated ResidueFragment mismatched = 6;
   }
 }
+
+/**
+ * Gossip
+ */
+
+service Gossip {
+  rpc Gossip (GossipRequest) returns (Rumor);
+  rpc Finalize (FinalizeRequest) returns (Rumor);
+}
+
+message GossipRequest {
+  MultiAddress from = 1;
+  Rumor rumor = 2;
+}
+
+message FinalizeRequest {
+  MultiAddress from = 1;
+  Rumor rumor = 2;
+}
+
+message Rumor {
+  bytes signature = 1;
+  bytes buyOrderId = 2;
+  bytes sellOrderId = 3;
+}

@@ -73,3 +73,23 @@ func (worker *DeltaFragmentWorker) Run(queues ...chan *compute.Delta) {
 		}
 	}
 }
+
+type GossipWorker struct {
+}
+
+func NewGossipWorker(queue chan *compute.Delta) *GossipWorker {
+	return &GossipWorker{}
+}
+
+func (worker *GossipWorker) Run(queues ...chan *compute.Delta) {
+}
+
+type FinalizeWorker struct {
+}
+
+func NewFinalizeWorker(queue chan *compute.Delta, deltaFragmentMatrix *compute.DeltaFragmentMatrix) *FinalizeWorker {
+	return &FinalizeWorker{}
+}
+
+func (worker *FinalizeWorker) Run() {
+}

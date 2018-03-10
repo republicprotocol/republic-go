@@ -42,10 +42,13 @@ type DarkNode struct {
 	OrderFragmentWorker      *OrderFragmentWorker
 	DeltaFragmentWorkerQueue chan *compute.DeltaFragment
 	DeltaFragmentWorker      *DeltaFragmentWorker
+	GossipWorkerQueue        chan *compute.Delta
+	GossipWorker             *GossipWorker
 
 	Server *grpc.Server
 	Swarm  *network.SwarmService
 	Dark   *network.DarkService
+	Gossip *network.GossipService
 
 	Registrar *dnr.DarkNodeRegistrar
 
@@ -143,7 +146,8 @@ func (node *DarkNode) Start() {
 
 	// Run the workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentWorkerQueue)
-	go node.DeltaFragmentWorker.Run()
+	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue)
+	go node.GossipWorker.Run()
 
 	oceanChanges := make(chan do.Option)
 	defer close(oceanChanges)
@@ -194,6 +198,12 @@ func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, delta
 		defer func() { recover() }()
 		node.DeltaFragmentWorkerQueue <- deltaFragment
 	}()
+}
+
+func (node *DarkNode) OnGossip(buyOrderId *order.ID, sellOrderId *order.ID) {
+}
+
+func (node *DarkNode) OnFinalize(buyOrderId *order.ID, sellOrderId *order.ID) {
 }
 
 // IsRegistered returns true if the dark node is registered for the current epoch
