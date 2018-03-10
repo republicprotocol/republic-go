@@ -145,8 +145,8 @@ func (worker *GossipWorker) Run(queues ...chan *compute.Delta) {
 
 			previousBuyBest := worker.bestMatch[string(newDelta.BuyOrderID)]
 			previousSellBest := worker.bestMatch[string(newDelta.SellOrderID)]
-			newBuyBest := /* TODO: calculate better match */ previousBuyBest
-			newSellBest := /* TODO: calculate better match */ previousSellBest
+			newBuyBest := bestFitDelta(newDelta, previousBuyBest)
+			newSellBest := bestFitDelta(newDelta, previousSellBest)
 			worker.bestMatch[string(newDelta.BuyOrderID)] = newBuyBest
 			worker.bestMatch[string(newDelta.SellOrderID)] = newSellBest
 
@@ -178,6 +178,13 @@ func (worker *GossipWorker) Run(queues ...chan *compute.Delta) {
 			}
 		}
 	}
+}
+
+func bestFitDelta(left, right *compute.Delta) *compute.Delta {
+	if left.ID.LessThan(right.ID) {
+		return left
+	}
+	return right
 }
 
 type Data struct {
