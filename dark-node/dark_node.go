@@ -195,6 +195,8 @@ func (node *DarkNode) Start() {
 	// 		node.AfterEachEpoch()
 	// 	}
 	// }
+	q := make(chan struct{})
+	<-q
 }
 
 func (node *DarkNode) ServeUI() {
