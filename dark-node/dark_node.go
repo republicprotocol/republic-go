@@ -6,16 +6,17 @@ import (
 	"log"
 	"math/big"
 	"net"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
-	do "github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
-	darkocean "github.com/republicprotocol/republic-go/dark-ocean"
+	"github.com/republicprotocol/republic-go/dark-ocean"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
@@ -69,7 +70,7 @@ type DarkNode struct {
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
 // will configure all of the components that it needs to operate but will not
 // start any of them.
-func NewDarkNode(config Config) *DarkNode {
+func NewDarkNode(config Config) (*DarkNode, error) {
 	if config.Prime == nil {
 		config.Prime = Prime
 	}
@@ -79,7 +80,11 @@ func NewDarkNode(config Config) *DarkNode {
 
 	node := &DarkNode{Config: config}
 
-	node.Logger = logger.NewLogger()
+	darkNodeLog, err := os.Open("/home/ubuntu/darknode.log")
+	if err != nil {
+		return nil, err
+	}
+	node.Logger = logger.NewLogger(logger.NewFilePlugin(os.Stdout), logger.NewFilePlugin(darkNodeLog))
 	node.ClientPool = rpc.NewClientPool(node.MultiAddress)
 	node.DHT = dht.NewDHT(node.MultiAddress.Address(), node.MaxBucketLength)
 
@@ -103,17 +108,15 @@ func NewDarkNode(config Config) *DarkNode {
 
 	clientDetails, err := connection.FromURI(node.EthereumRPC)
 	if err != nil {
-		// TODO: Handler err
-		panic(err)
+		return nil, err
 	}
 	registrar, err := ConnectToRegistrar(clientDetails, config)
 	if err != nil {
-		// TODO: Handler err
-		panic(err)
+		return nil, err
 	}
 	node.Registrar = registrar
 
-	return node
+	return node, nil
 }
 
 // Start the DarkNode.

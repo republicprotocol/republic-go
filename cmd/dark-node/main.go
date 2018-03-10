@@ -60,7 +60,10 @@ func main() {
 	}
 
 	// Create a new node.node.
-	node := node.NewDarkNode(*config)
+	node, err := node.NewDarkNode(*config)
+	if err != nil {
+		log.Fatal(err)
+	}
 	node.Start()
 }
 
