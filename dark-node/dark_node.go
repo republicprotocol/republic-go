@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/big"
 	"net"
 	"net/http"
