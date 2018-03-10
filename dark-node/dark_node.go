@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/big"
 	"net"
 	"net/http"
@@ -158,6 +159,8 @@ func (node *DarkNode) Start() {
 		//defer wg.Done()
 		//wg.Add(1)
 
+		log.Println(fmt.Sprintf("Listening on %s:%s", node.Host, node.Port))
+		node.Logger.Info(logger.TagNetwork, fmt.Sprintf("Listening on %s:%s", node.Host, node.Port))
 		node.Swarm.Register(node.Server)
 		node.Dark.Register(node.Server)
 		node.Gossip.Register(node.Server)
