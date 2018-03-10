@@ -93,9 +93,9 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
 	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.DeltaFragmentWorkerQueue, node.DeltaBuilder)
 	node.GossipWorkerQueue = make(chan *compute.Delta, 100)
-	node.GossipWorker = NewGossipWorker(node.GossipWorkerQueue)
+	node.GossipWorker = NewGossipWorker(node.ClientPool, node.BootstrapMultiAddresses, node.GossipWorkerQueue)
 	node.FinalizeWorkerQueue = make(chan *compute.Delta, 100)
-	node.FinalizeWorker = NewFinalizeWorker(node.FinalizeWorkerQueue,5)
+	node.FinalizeWorker = NewFinalizeWorker(node.FinalizeWorkerQueue, 5)
 	node.ConsensusWorkerQueue = make(chan *compute.Delta, 100)
 	node.ConsensusWorker = NewConsensusWorker(node.Logger, node.ConsensusWorkerQueue, node.DeltaFragmentMatrix)
 
@@ -103,6 +103,7 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
 	node.Swarm = network.NewSwarmService(node, node.Options, node.Logger, node.ClientPool, node.DHT)
 	node.Dark = network.NewDarkService(node, node.Options, node.Logger)
+	node.Gossip = network.NewGossipService(node)
 
 	clientDetails, err := connection.FromURI(node.EthereumRPC)
 	if err != nil {
@@ -159,6 +160,7 @@ func (node *DarkNode) Start() {
 
 		node.Swarm.Register(node.Server)
 		node.Dark.Register(node.Server)
+		node.Gossip.Register(node.Server)
 		listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 		if err != nil {
 			node.Logger.Error(logger.TagNetwork, err.Error())
