@@ -1,0 +1,14 @@
+{
+    "republic_key_pair": "DpAapTPj2zUyCfcGgSNnpQRYJZSZyNWCxU9zs3musA64",
+    "rsa_key_pair":"DpAapTPj2zUyCfcGgSNnpQRYJZSZyNWCxU9zs3musA64",
+    "ethereum_private_key": "3e38eea1a5ab2b2b66006c76c2d6730708847661977b5b25a00d3ee6bb1adfe3",
+    "multi_address": "/ip4/52.21.44.236/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
+    "host": "0.0.0.0",
+    "port": "18514",
+    "bootstrap_multi_addresses": [
+        "/ip4/52.41.118.171/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
+        "/ip4/52.59.176.141/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
+        "/ip4/52.77.88.84/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
+        "/ip4/52.79.194.108/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE"
+    ]
+}

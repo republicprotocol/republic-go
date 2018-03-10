@@ -15,12 +15,12 @@ script:
   - go vet
   - golint -set_exit_status
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out darknode
+  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out dark-node
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out identity
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out network/dark-ocean
+  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out logger
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out network/dht
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out network/rpc
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out network/swarm
+  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out network
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out orders
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out shamir
   - sed -i '/rpc.pb.go/d' network/rpc/coverprofile.out
