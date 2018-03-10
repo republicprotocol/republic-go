@@ -1,6 +1,8 @@
 package node
 
 import (
+	"time"
+
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/order"
 )
@@ -75,13 +77,37 @@ func (worker *DeltaFragmentWorker) Run(queues ...chan *compute.Delta) {
 }
 
 type GossipWorker struct {
+	firstTimers map[string]*time.Timer
+	bestMatch   map[string]order.ID
+	queue       chan *compute.Delta
 }
 
 func NewGossipWorker(queue chan *compute.Delta) *GossipWorker {
-	return &GossipWorker{}
+	return &GossipWorker{
+		firstTimers: make(map[string]*time.Timer),
+		bestMatch:   make(map[string]order.ID),
+		queue:       queue,
+	}
 }
 
+// Starts timers for each new id
 func (worker *GossipWorker) Run(queues ...chan *compute.Delta) {
+	select {
+	case new := <-worker.queue:
+		// Set up timers
+		if worker.firstTimers[string(new.BuyOrderID)] == nil {
+			worker.firstTimers[string(new.BuyOrderID)] = time.NewTimer(1 * time.Second)
+		}
+		if worker.firstTimers[string(new.SellOrderID)] == nil {
+			worker.firstTimers[string(new.SellOrderID)] = time.NewTimer(1 * time.Second)
+		}
+
+		// TODO: Gossip to others
+		// rpc...
+		// rpc.NewGossipClient()
+
+		worker.bestMatch = /* calculate new best match */ worker.bestMatch
+	}
 }
 
 type FinalizeWorker struct {
