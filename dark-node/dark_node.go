@@ -47,6 +47,8 @@ type DarkNode struct {
 	GossipWorker             *GossipWorker
 	FinalizeWorkerQueue      chan *compute.Delta
 	FinalizeWorker           *FinalizeWorker
+	ConsensusWorkerQueue     chan *compute.Delta
+	ConsensusWorker          *ConsensusWorker
 
 	Server *grpc.Server
 	Swarm  *network.SwarmService
@@ -90,7 +92,9 @@ func NewDarkNode(config Config) *DarkNode {
 	node.GossipWorkerQueue = make(chan *compute.Delta, 100)
 	node.GossipWorker = NewGossipWorker(node.GossipWorkerQueue)
 	node.FinalizeWorkerQueue = make(chan *compute.Delta, 100)
-	node.FinalizeWorker = NewFinalizeWorker(node.FinalizeWorkerQueue, node.DeltaFragmentMatrix)
+	node.FinalizeWorker = NewFinalizeWorker(node.FinalizeWorkerQueue)
+	node.ConsensusWorkerQueue = make(chan *compute.Delta, 100)
+	node.ConsensusWorker = NewConsensusWorker(node.ConsensusWorkerQueue, node.DeltaFragmentMatrix)
 
 	// options := network.Options{}
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
@@ -155,7 +159,8 @@ func (node *DarkNode) Start() {
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue)
 	go node.GossipWorker.Run(node.FinalizeWorkerQueue)
-	go node.FinalizeWorker.Run()
+	go node.FinalizeWorker.Run(node.ConsensusWorkerQueue)
+	go node.ConsensusWorker.Run()
 
 	oceanChanges := make(chan do.Option)
 	defer close(oceanChanges)

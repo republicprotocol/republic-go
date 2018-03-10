@@ -87,9 +87,19 @@ func (worker *GossipWorker) Run(queues ...chan *compute.Delta) {
 type FinalizeWorker struct {
 }
 
-func NewFinalizeWorker(queue chan *compute.Delta, deltaFragmentMatrix *compute.DeltaFragmentMatrix) *FinalizeWorker {
+func NewFinalizeWorker(queue chan *compute.Delta) *FinalizeWorker {
 	return &FinalizeWorker{}
 }
 
-func (worker *FinalizeWorker) Run() {
+func (worker *FinalizeWorker) Run(queues ...chan *compute.Delta) {
+}
+
+type ConsensusWorker struct {
+}
+
+func NewConsensusWorker(queue chan *compute.Delta, deltaFragmentMatrix *compute.DeltaFragmentMatrix) *ConsensusWorker {
+	return &ConsensusWorker{}
+}
+
+func (worker *ConsensusWorker) Run() {
 }
