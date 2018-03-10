@@ -82,6 +82,8 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	node := &DarkNode{Config: config}
 
 	node.Logger = logger.NewLogger(logger.NewFilePlugin("stdout"), logger.NewFilePlugin("/home/ubuntu/darknode.log"))
+	log.Println(node.Logger.Start())
+
 	node.ClientPool = rpc.NewClientPool(node.MultiAddress)
 	node.DHT = dht.NewDHT(node.MultiAddress.Address(), node.MaxBucketLength)
 
@@ -121,6 +123,7 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 
 // Start the DarkNode.
 func (node *DarkNode) Start() {
+
 	// Begin broadcasting CPU/Memory/Network usage
 	go func() {
 		for {
@@ -160,7 +163,7 @@ func (node *DarkNode) Start() {
 		//wg.Add(1)
 
 		log.Println(fmt.Sprintf("Listening on %s:%s", node.Host, node.Port))
-		node.Logger.Info(logger.TagNetwork, fmt.Sprintf("Listening on %s:%s", node.Host, node.Port))
+		log.Println(node.Logger.Info(logger.TagNetwork, fmt.Sprintf("Listening on %s:%s", node.Host, node.Port)))
 		node.Swarm.Register(node.Server)
 		node.Dark.Register(node.Server)
 		node.Gossip.Register(node.Server)

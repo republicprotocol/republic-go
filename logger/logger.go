@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"log"
 	"time"
 
 	"github.com/republicprotocol/go-do"
@@ -31,66 +32,53 @@ func NewLogger(plugins ...Plugin) *Logger {
 }
 
 // Start starts all the plugins of the logger
-func (logger *Logger) Start() error {
-
+func (logger *Logger) Start() {
 	for _, plugin := range logger.Plugins {
-		err := plugin.Start()
-		if err != nil {
-			return err
+		if err := plugin.Start(); err != nil {
+			log.Println(err)
 		}
 	}
-	return nil
 }
 
 // Stop stops all the plugins of the logger
-func (logger Logger) Stop() error {
-	var err error
+func (logger Logger) Stop() {
 	for _, plugin := range logger.Plugins {
-		if e := plugin.Stop(); e != nil {
-			err = e
+		if err := plugin.Stop(); err != nil {
+			log.Println(err)
 		}
 	}
-	return err
 }
 
-func (logger Logger) Error(tag, message string) error {
-	var err error
+func (logger Logger) Error(tag, message string) {
 	for _, plugin := range logger.Plugins {
-		if e := plugin.Error(tag, message); e != nil {
-			err = e
+		if err := plugin.Error(tag, message); err != nil {
+			log.Println(err)
 		}
 	}
-	return err
 }
 
-func (logger Logger) Info(tag, message string) error {
-	var err error
+func (logger Logger) Info(tag, message string) {
 	for _, plugin := range logger.Plugins {
-		if e := plugin.Info(tag, message); e != nil {
-			err = e
+		if err := plugin.Info(tag, message); err != nil {
+			log.Println(err)
 		}
 	}
-	return err
 }
 
-func (logger Logger) Warn(tag, message string) error {
-	var err error
+func (logger Logger) Warn(tag, message string) {
 	for _, plugin := range logger.Plugins {
-		if e := plugin.Warn(tag, message); e != nil {
-			err = e
+		if err := plugin.Warn(tag, message); err != nil {
+			log.Println(err)
 		}
 	}
-	return err
 }
 
-func (logger Logger) Usage(cpu float32, memory, network int32) error {
-	var err error
+func (logger Logger) Usage(cpu float32, memory, network int32) {
 	for _, plugin := range logger.Plugins {
-		if e := plugin.Usage(cpu, memory, network); e != nil {
-			err = e
+		if err := plugin.Usage(cpu, memory, network); err != nil {
+			log.Println(err)
 		}
 	}
-	return err
 }
 
 type Request struct {
