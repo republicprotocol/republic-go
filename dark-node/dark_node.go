@@ -94,7 +94,7 @@ func NewDarkNode(config Config) *DarkNode {
 	node.FinalizeWorkerQueue = make(chan *compute.Delta, 100)
 	node.FinalizeWorker = NewFinalizeWorker(node.FinalizeWorkerQueue)
 	node.ConsensusWorkerQueue = make(chan *compute.Delta, 100)
-	node.ConsensusWorker = NewConsensusWorker(node.ConsensusWorkerQueue, node.DeltaFragmentMatrix)
+	node.ConsensusWorker = NewConsensusWorker(node.Logger, node.ConsensusWorkerQueue, node.DeltaFragmentMatrix)
 
 	// options := network.Options{}
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
@@ -225,11 +225,15 @@ func (node *DarkNode) OnGossip(buyOrderID order.ID, sellOrderID order.ID) {
 	}()
 }
 
-func (node *DarkNode) OnFinalize(buyOrderId *order.ID, sellOrderId *order.ID) {
+func (node *DarkNode) OnFinalize(buyOrderID order.ID, sellOrderID order.ID) {
 	// Write to a channel that might be closed
 	func() {
 		defer func() { recover() }()
-		panic("unimplemented")
+		node.FinalizeWorkerQueue <- &compute.Delta{
+			ID:          compute.DeltaID(crypto.Keccak256([]byte(buyOrderID), []byte(sellOrderID))),
+			BuyOrderID:  buyOrderID,
+			SellOrderID: sellOrderID,
+		}
 	}()
 }
 

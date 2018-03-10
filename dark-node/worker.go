@@ -1,7 +1,10 @@
 package node
 
 import (
+	"fmt"
+
 	"github.com/republicprotocol/republic-go/compute"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -95,11 +98,21 @@ func (worker *FinalizeWorker) Run(queues ...chan *compute.Delta) {
 }
 
 type ConsensusWorker struct {
+	logger              *logger.Logger
+	queue               chan *compute.Delta
+	deltaFragmentMatrix *compute.DeltaFragmentMatrix
 }
 
-func NewConsensusWorker(queue chan *compute.Delta, deltaFragmentMatrix *compute.DeltaFragmentMatrix) *ConsensusWorker {
-	return &ConsensusWorker{}
+func NewConsensusWorker(logger *logger.Logger, queue chan *compute.Delta, deltaFragmentMatrix *compute.DeltaFragmentMatrix) *ConsensusWorker {
+	return &ConsensusWorker{
+		logger:              logger,
+		queue:               queue,
+		deltaFragmentMatrix: deltaFragmentMatrix,
+	}
 }
 
 func (worker *ConsensusWorker) Run() {
+	for delta := range worker.queue {
+		worker.logger.Info(logger.TagConsensus, fmt.Sprintf("(%s, %s)", delta.BuyOrderID.String(), delta.SellOrderID.String()))
+	}
 }
