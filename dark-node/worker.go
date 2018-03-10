@@ -67,7 +67,7 @@ func NewDeltaFragmentBroadcastWorker(logger *logger.Logger, queue chan *compute.
 	}
 }
 
-func (worker *DeltaFragmentBroadcastWorker) Run(queues ...chan *compute.Delta) {
+func (worker *DeltaFragmentBroadcastWorker) Run() {
 	for deltaFragment := range worker.queue {
 		serializedDeltaFragment := rpc.SerializeDeltaFragment(deltaFragment)
 		do.CoForAll(worker.darkPool, func(i int) {

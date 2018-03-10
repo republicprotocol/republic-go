@@ -9,7 +9,6 @@ import (
 	"math/big"
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -84,11 +83,7 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 
 	node := &DarkNode{Config: config}
 
-	darkNodeLog, err := os.Open("/home/ubuntu/darknode.log")
-	if err != nil {
-		return nil, err
-	}
-	node.Logger = logger.NewLogger(logger.NewFilePlugin(os.Stdout), logger.NewFilePlugin(darkNodeLog))
+	node.Logger = logger.NewLogger(logger.NewFilePlugin("stdout"), logger.NewFilePlugin("/home/ubuntu/darknode.log"))
 	node.ClientPool = rpc.NewClientPool(node.MultiAddress)
 	node.DHT = dht.NewDHT(node.MultiAddress.Address(), node.MaxBucketLength)
 
@@ -97,7 +92,7 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
 	node.OrderFragmentWorker = NewOrderFragmentWorker(node.OrderFragmentWorkerQueue, node.DeltaFragmentMatrix)
 	node.DeltaFragmentBroadcastWorkerQueue = make(chan *compute.DeltaFragment, 100)
-	node.DeltaFragmentBroadcastWorker = NewDeltaFragmentBroadcastWorker(node.Logger, node.DeltaFragmentBroadcastWorkerQueue, node.ClientPool)
+	node.DeltaFragmentBroadcastWorker = NewDeltaFragmentBroadcastWorker(node.Logger, node.DeltaFragmentBroadcastWorkerQueue, node.ClientPool, node.BootstrapMultiAddresses)
 	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
 	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.DeltaFragmentWorkerQueue, node.DeltaBuilder)
 	node.GossipWorkerQueue = make(chan *compute.Delta, 100)
@@ -182,7 +177,8 @@ func (node *DarkNode) Start() {
 	time.Sleep(time.Second)
 
 	// Run the workers
-	go node.OrderFragmentWorker.Run(node.DeltaFragmentWorkerQueue)
+	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
+	go node.DeltaFragmentBroadcastWorker.Run()
 	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue)
 	go node.GossipWorker.Run(node.FinalizeWorkerQueue)
 	go node.FinalizeWorker.Run(node.ConsensusWorkerQueue)
