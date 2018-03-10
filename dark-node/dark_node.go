@@ -2,8 +2,6 @@ package node
 
 import (
 	"context"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
@@ -127,8 +125,7 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 
 // Start the DarkNode.
 func (node *DarkNode) Start() {
-	log.Println("start")
-	log.Println(node)
+
 	// Begin broadcasting CPU/Memory/Network usage
 	go func() {
 		for {

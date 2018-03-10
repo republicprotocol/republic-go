@@ -42,7 +42,7 @@ func NewFilePlugin(path string) Plugin {
 
 func (plugin *FilePlugin) Start() error {
 	var err error
-	if plugin.Path == "stout" {
+	if plugin.Path == "stdout" {
 		plugin.file = os.Stdout
 	} else {
 		plugin.file, err = os.OpenFile(fmt.Sprintf("%s", plugin.Path), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
