@@ -2,19 +2,23 @@ package node
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
 	"net"
-	"sync"
+	"net/http"
+	"os"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	do "github.com/republicprotocol/go-do"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
-	darkocean "github.com/republicprotocol/republic-go/dark-ocean"
+	"github.com/republicprotocol/republic-go/dark-ocean"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
@@ -44,13 +48,17 @@ type DarkNode struct {
 	DeltaFragmentWorker      *DeltaFragmentWorker
 	GossipWorkerQueue        chan *compute.Delta
 	GossipWorker             *GossipWorker
+	FinalizeWorkerQueue      chan *compute.Delta
+	FinalizeWorker           *FinalizeWorker
+	ConsensusWorkerQueue     chan *compute.Delta
+	ConsensusWorker          *ConsensusWorker
 
 	Server *grpc.Server
 	Swarm  *network.SwarmService
 	Dark   *network.DarkService
 	Gossip *network.GossipService
 
-	Registrar *dnr.DarkNodeRegistrar
+	Registrar dnr.DarkNodeRegistrarInterface
 
 	DarkPoolLimit    int64
 	DarkPool         *darkocean.DarkPool
@@ -64,7 +72,7 @@ type DarkNode struct {
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
 // will configure all of the components that it needs to operate but will not
 // start any of them.
-func NewDarkNode(config Config) *DarkNode {
+func NewDarkNode(config Config) (*DarkNode, error) {
 	if config.Prime == nil {
 		config.Prime = Prime
 	}
@@ -74,7 +82,11 @@ func NewDarkNode(config Config) *DarkNode {
 
 	node := &DarkNode{Config: config}
 
-	node.Logger = logger.NewLogger()
+	darkNodeLog, err := os.Open("/home/ubuntu/darknode.log")
+	if err != nil {
+		return nil, err
+	}
+	node.Logger = logger.NewLogger(logger.NewFilePlugin(os.Stdout), logger.NewFilePlugin(darkNodeLog))
 	node.ClientPool = rpc.NewClientPool(node.MultiAddress)
 	node.DHT = dht.NewDHT(node.MultiAddress.Address(), node.MaxBucketLength)
 
@@ -84,6 +96,12 @@ func NewDarkNode(config Config) *DarkNode {
 	node.OrderFragmentWorker = NewOrderFragmentWorker(node.OrderFragmentWorkerQueue, node.DeltaFragmentMatrix)
 	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
 	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.DeltaFragmentWorkerQueue, node.DeltaBuilder)
+	node.GossipWorkerQueue = make(chan *compute.Delta, 100)
+	node.GossipWorker = NewGossipWorker(node.GossipWorkerQueue)
+	node.FinalizeWorkerQueue = make(chan *compute.Delta, 100)
+	node.FinalizeWorker = NewFinalizeWorker(node.FinalizeWorkerQueue)
+	node.ConsensusWorkerQueue = make(chan *compute.Delta, 100)
+	node.ConsensusWorker = NewConsensusWorker(node.Logger, node.ConsensusWorkerQueue, node.DeltaFragmentMatrix)
 
 	// options := network.Options{}
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
@@ -92,17 +110,15 @@ func NewDarkNode(config Config) *DarkNode {
 
 	clientDetails, err := connection.FromURI(node.EthereumRPC)
 	if err != nil {
-		// TODO: Handler err
-		panic(err)
+		return nil, err
 	}
-	registrar, err := ConnectToRegistrar(clientDetails, config)
+	registrar, err := node.ConnectToRegistrar(clientDetails, config)
 	if err != nil {
-		// TODO: Handler err
-		panic(err)
+		return nil, err
 	}
 	node.Registrar = registrar
 
-	return node
+	return node, nil
 }
 
 // Start the DarkNode.
@@ -110,23 +126,40 @@ func (node *DarkNode) Start() {
 	// Begin broadcasting CPU/Memory/Network usage
 	go func() {
 		for {
-			time.Sleep(20 * time.Second)
 			node.Usage()
+			time.Sleep(20 * time.Second)
 		}
 	}()
-
+	go node.ServeUI()
 	// Wait until the node is registered
 	for isRegistered := node.IsRegistered(); !isRegistered; isRegistered = node.IsRegistered() {
 		timeout := 60 * time.Second
-		log.Printf("%v not registered. Sleeping for %v seconds.", node.MultiAddress.Address(), timeout.Seconds())
+		node.Warn(logger.TagNetwork, fmt.Sprintf("%v not registered. Sleeping for %v seconds.", node.MultiAddress.Address(), timeout.Seconds()))
+
+		data := logger.Registration{
+			NodeID:     "0x" + hex.EncodeToString(node.MultiAddress.ID()),
+			PublicKey:  "0x" + hex.EncodeToString(append(node.Config.RepublicKeyPair.PublicKey.X.Bytes(), node.Config.RepublicKeyPair.PublicKey.Y.Bytes()...)),
+			Address:    node.Config.EthereumKey.Address.String(),
+			RepublicID: node.MultiAddress.ID().String(),
+		}
+		dataJson, err := json.Marshal(data)
+		if err != nil {
+			node.Error(logger.TagGeneral, err.Error())
+		}
+		// Send the info needed for registration as well
+		err = node.Logger.Info(logger.TagRegister, string(dataJson))
+		if err != nil {
+			log.Println(err)
+		}
 		time.Sleep(timeout)
 	}
+	node.Info(logger.TagEthereum, "Successfully registered")
 
 	// Start serving the gRPC services
-	var wg sync.WaitGroup
+	//var wg sync.WaitGroup
 	go func() {
-		defer wg.Done()
-		wg.Add(1)
+		//defer wg.Done()
+		//wg.Add(1)
 
 		node.Swarm.Register(node.Server)
 		node.Dark.Register(node.Server)
@@ -147,7 +180,9 @@ func (node *DarkNode) Start() {
 	// Run the workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue)
-	go node.GossipWorker.Run()
+	go node.GossipWorker.Run(node.FinalizeWorkerQueue)
+	go node.FinalizeWorker.Run(node.ConsensusWorkerQueue)
+	go node.ConsensusWorker.Run()
 
 	oceanChanges := make(chan do.Option)
 	defer close(oceanChanges)
@@ -165,6 +200,16 @@ func (node *DarkNode) Start() {
 	}
 
 	// wg.Wait()
+}
+
+func (node *DarkNode) ServeUI() {
+	fs := http.FileServer(http.Dir("darknode-ui"))
+	http.Handle("/", fs)
+	node.Info(logger.TagNetwork, "Serving the Dark Node UI")
+	err := http.ListenAndServe("0.0.0.0:3000", nil)
+	if err != nil {
+		node.Error(logger.TagNetwork, err.Error())
+	}
 }
 
 // Stop the DarkNode.
@@ -200,10 +245,28 @@ func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, delta
 	}()
 }
 
-func (node *DarkNode) OnGossip(buyOrderId *order.ID, sellOrderId *order.ID) {
+func (node *DarkNode) OnGossip(buyOrderID order.ID, sellOrderID order.ID) {
+	// Write to a channel that might be closed
+	func() {
+		defer func() { recover() }()
+		node.GossipWorkerQueue <- &compute.Delta{
+			ID:          compute.DeltaID(crypto.Keccak256([]byte(buyOrderID), []byte(sellOrderID))),
+			BuyOrderID:  buyOrderID,
+			SellOrderID: sellOrderID,
+		}
+	}()
 }
 
-func (node *DarkNode) OnFinalize(buyOrderId *order.ID, sellOrderId *order.ID) {
+func (node *DarkNode) OnFinalize(buyOrderID order.ID, sellOrderID order.ID) {
+	// Write to a channel that might be closed
+	func() {
+		defer func() { recover() }()
+		node.FinalizeWorkerQueue <- &compute.Delta{
+			ID:          compute.DeltaID(crypto.Keccak256([]byte(buyOrderID), []byte(sellOrderID))),
+			BuyOrderID:  buyOrderID,
+			SellOrderID: sellOrderID,
+		}
+	}()
 }
 
 // IsRegistered returns true if the dark node is registered for the current epoch
@@ -257,7 +320,7 @@ func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (identity.MultiAddr
 	for _, id := range ids {
 		target, err := node.Swarm.FindNode(id)
 		if err != nil || target == nil {
-			log.Printf("%v couldn't find pool peer %v: %v", node.Config.MultiAddress.Address(), id, err)
+			node.Warn(logger.TagNetwork, fmt.Sprintf("%v couldn't find pool peer %v: %v", node.Config.MultiAddress.Address(), id, err))
 			disconnectedDarkPool = append(disconnectedDarkPool, id)
 			continue
 		}
@@ -266,13 +329,13 @@ func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (identity.MultiAddr
 
 		node.ClientPool.Ping(*target)
 		if err != nil {
-			log.Printf("%v couldn't ping pool peer %v: %v", node.Config.MultiAddress.Address(), target, err)
+			node.Warn(logger.TagNetwork, fmt.Sprintf("%v couldn't ping pool peer %v: %v", node.Config.MultiAddress.Address(), target, err))
 			continue
 		}
 
 		err = node.Swarm.DHT.UpdateMultiAddress(*target)
 		if err != nil {
-			log.Printf("%v coudln't update DHT for pool peer %v: %v", node.Config.MultiAddress.Address(), target, err)
+			node.Warn(logger.TagNetwork, fmt.Sprintf("%v coudln't update DHT for pool peer %v: %v", node.Config.MultiAddress.Address(), target, err))
 			continue
 		}
 	}
@@ -301,11 +364,12 @@ func (node *DarkNode) LongPingDarkPool(disconnected darkocean.IDDarkPool) {
 
 // AfterEachEpoch should be run after each new epoch
 func (node *DarkNode) AfterEachEpoch() error {
-	log.Printf("%v is pinging dark pool\n", node.Config.MultiAddress.Address())
+	node.Info(logger.TagNetwork, fmt.Sprintf("%v is pinging dark pool\n", node.Config.MultiAddress.Address()))
 
 	darkOceanOverlay, err := darkocean.GetDarkPools(node.Registrar)
 	if err != nil {
-		log.Fatalf("%v couldn't get dark pools: %v", node.Config.MultiAddress.Address(), err)
+		node.Error(logger.TagNetwork, fmt.Sprintf("%v couldn't get dark pools: %v", node.Config.MultiAddress.Address(), err))
+		return err
 	}
 	node.DarkOceanOverlay = darkOceanOverlay
 
@@ -317,7 +381,7 @@ func (node *DarkNode) AfterEachEpoch() error {
 	connectedDarkPool, disconnectedDarkPool := node.PingDarkPool(idPool)
 	node.DarkPool = darkocean.NewDarkPool(connectedDarkPool)
 
-	log.Printf("%v connected to dark pool: %v", node.Config.MultiAddress.Address(), node.DarkPool)
+	node.Info(logger.TagNetwork, fmt.Sprintf("%v connected to dark pool: %v", node.Config.MultiAddress.Address(), node.DarkPool))
 
 	go node.LongPingDarkPool(disconnectedDarkPool)
 
@@ -325,13 +389,9 @@ func (node *DarkNode) AfterEachEpoch() error {
 }
 
 // ConnectToRegistrar will connect to the registrar using the given private key to sign transactions
-func ConnectToRegistrar(clientDetails connection.ClientDetails, config Config) (*dnr.DarkNodeRegistrar, error) {
-	keypair, err := config.EthereumKeyPair()
-	if err != nil {
-		return nil, err
-	}
+func (node DarkNode) ConnectToRegistrar(clientDetails connection.ClientDetails, config Config) (dnr.DarkNodeRegistrarInterface, error) {
+	auth := bind.NewKeyedTransactor(node.Config.EthereumKey.PrivateKey)
 
-	auth := bind.NewKeyedTransactor(keypair.PrivateKey)
 	// Gas Price
 	auth.GasPrice = big.NewInt(6000000000)
 
@@ -344,15 +404,20 @@ func (node *DarkNode) Usage() {
 	// memory
 	vmStat, err := mem.VirtualMemory()
 	if err != nil {
-		node.Error("ERROR", err.Error())
+		node.Error(logger.TagUsage, err.Error())
 	}
-	node.Info("mem", fmt.Sprintf("%d", vmStat.Used))
-
 	// cpu - get CPU number of cores and speed
 	cpuStat, err := cpu.Info()
 	if err != nil {
-		node.Error("ERROR", err.Error())
+		node.Error(logger.TagUsage, err.Error())
 	}
-	node.Info("cpu", fmt.Sprintf("%d", cpuStat[0].CacheSize))
+	percentage, err := cpu.Percent(0, false)
+	if err != nil {
+		node.Error(logger.TagUsage, err.Error())
+	}
 
+	err = node.Logger.Usage(float32(cpuStat[0].Mhz*percentage[0]/100), int32(vmStat.Used/1024/1024), 0)
+	if err != nil {
+		node.Error(logger.TagUsage, err.Error())
+	}
 }

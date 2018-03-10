@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
@@ -19,14 +20,12 @@ type Config struct {
 	Host string `json:"host"`
 	Port string `json:"port"`
 
-	EthereumPrivateKey string                `json:"ethereum_private_key"`
-	RepublicKeyPair    identity.KeyPair      `json:"republic_key_pair"`
-	RSAKeyPair         identity.KeyPair      `json:"rsa_key_pair"`
-	MultiAddress       identity.MultiAddress `json:"multi_address"`
+	EthereumKey     *keystore.Key    `json:"ethereum_key"`
+	RepublicKeyPair identity.KeyPair `json:"republic_key_pair"`
+	RSAKeyPair      identity.KeyPair `json:"rsa_key_pair"`
 
-	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrap_multi_addresses"`
-	Logger                  *logger.Logger          `json:"logger"`
-	Dev                     bool                    `json:"dev"`
+	Logger *logger.Logger `json:"logger"`
+	Dev    bool           `json:"dev"`
 
 	EthereumRPC string `json:"ethereum_rpc"`
 
@@ -49,7 +48,7 @@ func LoadConfig(filename string) (*Config, error) {
 
 // EthereumKeyPair returns the Ethereum private
 func (config Config) EthereumKeyPair() (identity.KeyPair, error) {
-	key, err := hex.DecodeString(config.EthereumPrivateKey)
+	key, err := hex.DecodeString(config.EthereumKey.Address.String())
 	if err != nil {
 		return identity.KeyPair{}, err
 	}

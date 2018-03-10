@@ -1,9 +1,11 @@
 package node
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/republicprotocol/republic-go/compute"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -25,11 +27,11 @@ func NewOrderFragmentWorker(queue chan *order.Fragment, deltaFragmentMatrix *com
 
 // Run the OrderFragmentWorker and write all delta fragments to an output
 // queue.
-func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment) {
+func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment) error {
 	for orderFragment := range worker.queue {
 		deltaFragments, err := worker.deltaFragmentMatrix.InsertOrderFragment(orderFragment)
 		if err != nil {
-			// worker.logger.Error(logger.TagCompute, err.Error())
+			return err
 		}
 		if deltaFragments != nil {
 			// Write to channels that might be closed
@@ -43,6 +45,7 @@ func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment) {
 			}()
 		}
 	}
+	return nil
 }
 
 // An DeltaFragmentWorker consumes delta fragments and reconstructs deltas.
@@ -113,9 +116,29 @@ func (worker *GossipWorker) Run(queues ...chan *compute.Delta) {
 type FinalizeWorker struct {
 }
 
-func NewFinalizeWorker(queue chan *compute.Delta, deltaFragmentMatrix *compute.DeltaFragmentMatrix) *FinalizeWorker {
+func NewFinalizeWorker(queue chan *compute.Delta) *FinalizeWorker {
 	return &FinalizeWorker{}
 }
 
-func (worker *FinalizeWorker) Run() {
+func (worker *FinalizeWorker) Run(queues ...chan *compute.Delta) {
+}
+
+type ConsensusWorker struct {
+	logger              *logger.Logger
+	queue               chan *compute.Delta
+	deltaFragmentMatrix *compute.DeltaFragmentMatrix
+}
+
+func NewConsensusWorker(logger *logger.Logger, queue chan *compute.Delta, deltaFragmentMatrix *compute.DeltaFragmentMatrix) *ConsensusWorker {
+	return &ConsensusWorker{
+		logger:              logger,
+		queue:               queue,
+		deltaFragmentMatrix: deltaFragmentMatrix,
+	}
+}
+
+func (worker *ConsensusWorker) Run() {
+	for delta := range worker.queue {
+		worker.logger.Info(logger.TagConsensus, fmt.Sprintf("(%s, %s)", delta.BuyOrderID.String(), delta.SellOrderID.String()))
+	}
 }
