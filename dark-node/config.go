@@ -13,7 +13,7 @@ import (
 	"github.com/republicprotocol/republic-go/network"
 )
 
-// Config information for Miners
+// Config contains all configuration details for running a DarkNode.
 type Config struct {
 	network.Options `json:"network"`
 

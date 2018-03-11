@@ -5,99 +5,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/republicprotocol/go-do"
 )
-
-// Plugin
-type Plugin interface {
-	Start() error
-	Stop() error
-
-	Info(tag, message string) error
-	Warn(tag, message string) error
-	Error(tag, message string) error
-	Usage(cpu float32, memory, network int32) error
-}
-
-// A FilePlugin implements the Plugin interface by logging all events to an
-// output file.
-type FilePlugin struct {
-	do.GuardedObject
-
-	file *os.File
-}
-
-// NewFilePlugin uses the give File to create a new FilePlugin. The file must
-// be appendable and must be closed by the caller once the FilePlugin is no
-// longer needed.
-func NewFilePlugin(file *os.File) Plugin {
-	return &FilePlugin{
-		GuardedObject: do.NewGuardedObject(),
-		file:          file,
-	}
-}
-
-// Start implements the Plugin interface. It does nothing.
-func (plugin *FilePlugin) Start() error {
-	return nil
-}
-
-// Stop implements the Plugin interface. It does nothing.
-func (plugin *FilePlugin) Stop() error {
-	return nil
-}
-
-// Info implements the Plugin interface.
-func (plugin *FilePlugin) Info(tag, message string) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return fmt.Errorf("cannot write logs to a nil file")
-	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [info] (%s) %s\n", time.Now().Format("2018/02/03 10:00:00"), tag, message))
-	return err
-}
-
-// Warn implements the Plugin interface.
-func (plugin *FilePlugin) Warn(tag, message string) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return fmt.Errorf("cannot write logs to a nil file")
-	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [warn] (%s) %s\n", time.Now().Format("2018/02/03 10:00:00"), tag, message))
-	return err
-}
-
-// Error implements the Plugin interface.
-func (plugin *FilePlugin) Error(tag, message string) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return fmt.Errorf("cannot write logs to a nil file")
-	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [error] (%s) %s\n", time.Now().Format("2018/02/03 10:00:00"), tag, message))
-	return err
-}
-
-// Usage implements the Plugin interface.
-func (plugin *FilePlugin) Usage(cpu float32, memory, network int32) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return fmt.Errorf("cannot write logs to a nil file")
-	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [info] ("+TagUsage+") cpu = %.3f MHz; memory = %d MB; network = %d KB\n", time.Now().Format("2018/02/03 10:00:00"), cpu, memory, network))
-	return err
-}
 
 type WebSocketPlugin struct {
 	do.GuardedObject

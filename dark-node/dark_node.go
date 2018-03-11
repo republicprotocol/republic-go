@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -77,7 +78,7 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 
 	node := &DarkNode{Config: config, TestDeltaNotifications: make(chan *compute.Delta, 100)}
 
-	node.Logger = logger.NewLogger(logger.NewFilePlugin("stdout"), logger.NewFilePlugin("/home/ubuntu/darknode.log"))
+	node.Logger = logger.NewLogger(logger.NewFilePlugin(os.Stdout))
 	node.Logger.Start()
 
 	node.ClientPool = rpc.NewClientPool(node.MultiAddress)
