@@ -1,130 +1,255 @@
 package node_test
 
-// import (
-// 	"encoding/json"
-// 	"fmt"
-// 	"log"
-// 	"math/big"
-// 	"math/rand"
-// 	"os"
-// 	"sync"
-// 	"time"
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"math/big"
+	"math/rand"
+	"net/http"
+	"strconv"
+	"sync"
+	"time"
 
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// 	"github.com/republicprotocol/go-order-compute"
-// 	"github.com/republicprotocol/go-rpc"
-// 	"github.com/republicprotocol/republic-go/dark-node"
-// )
+	"github.com/jbenet/go-base58"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/republic-go/dark-node"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/network/rpc"
+	"github.com/republicprotocol/republic-go/order"
+)
 
-// const (
-// 	NumberOfBootstrapNodes = 4
-// 	NumberOfTestNODES      = 4
-// )
+const (
+	NumberOfBootstrapNodes = 5
+)
 
-// var _ = Describe("Dark nodes", func() {
-// 	var mu = new(sync.Mutex)
-// 	var nodes []*node.DarkNode
-// 	var err error
+var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
+var trader, _ = identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
 
-// 	startListening := func(nodes []*node.DarkNode, bootstrapNodes int) {
-// 		// Start all the nodes listening for rpc calls
-// 		for _, n := range nodes {
-// 			go func(n *node.DarkNode) {
-// 				defer GinkgoRecover()
-// 				Ω(n.StartListening()).ShouldNot(HaveOccurred())
-// 			}(n)
-// 		}
+type OrderBook struct {
+	LastUpdateId int        `json:"lastUpdateId"`
+	Bids         [][]string `json:"bids"`
+	Asks         [][]string `json:"asks"`
+}
 
-// 		time.Sleep(3 * time.Second)
+var _ = Describe("Dark nodes", func() {
+	var mu = new(sync.Mutex)
+	var bootstrapNodes, testNodes []*node.DarkNode
 
-// 		// Fully connect the bootstrap nodes
-// 		for i := 0; i < bootstrapNodes; i++ {
-// 			for j := 0; j < bootstrapNodes; j++ {
-// 				if i == j {
-// 					continue
-// 				}
-// 				rpc.PingTarget(nodes[j].Configuration.MultiAddress, nodes[i].Configuration.MultiAddress, time.Second*5)
-// 			}
-// 		}
-// 	}
+	for _, numberOfTestNodes := range []int{15, 43, 67} {
+		for _, connectivity := range []int{100, 80, 60, 40} {
+			Context("integration test", func() {
+				BeforeEach(func() {
+					mu.Lock()
 
-// 	stopListening := func(nodes []*node.DarkNode) {
-// 		for _, node := range nodes {
-// 			node.StopListening()
-// 		}
-// 	}
+					bootstrapNodes, err := generateBootstrapNodes(NumberOfBootstrapNodes)
+					Ω(err).ShouldNot(HaveOccurred())
+					testNodes, err := generateNodes(numberOfTestNodes)
+					Ω(err).ShouldNot(HaveOccurred())
 
-// 	Context("nodes start up", func() {
-// 		BeforeEach(func() {
-// 			mu.Lock()
-// 			nodes, err = generateNodes(NumberOfBootstrapNodes, NumberOfTestNODES)
-// 			Ω(err).ShouldNot(HaveOccurred())
-// 			startListening(nodes, NumberOfBootstrapNodes)
-// 		})
+					go func() {
+						defer GinkgoRecover()
 
-// 		AfterEach(func() {
-// 			stopListening(nodes)
-// 			mu.Unlock()
-// 		})
+						startNodes(bootstrapNodes, testNodes)
+					}()
+					time.Sleep(3 * time.Second)
 
-// 		It("should be able to run startup successfully", func() {
-// 			for _, n := range nodes {
-// 				go func(n *node.DarkNode) {
-// 					Ω(n.Start()).ShouldNot(HaveOccurred())
-// 				}(n)
-// 			}
+					err = connectNodes(bootstrapNodes, testNodes, connectivity)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
 
-// 			time.Sleep(3 * time.Second)
-// 			orderFileNames := []string{"./test_orders/btc-eth.json", "./test_orders/eth-btc.json"}
-// 			for i := range orderFileNames {
-// 				order, err := readOrderFromFile(orderFileNames[i])
-// 				Ω(err).ShouldNot(HaveOccurred())
-// 				shares, err := order.Split(NumberOfBootstrapNodes+NumberOfTestNODES, 5, node.Prime)
-// 				Ω(err).ShouldNot(HaveOccurred())
-// 				for i := range shares {
-// 					if err := rpc.SendOrderFragmentToTarget(nodes[i].Configuration.MultiAddress, nodes[i].Configuration.MultiAddress.Address(), nodes[0].Configuration.MultiAddress, shares[i], 5*time.Second); err != nil {
-// 						log.Fatal(err)
-// 					}
-// 				}
-// 			}
-// 			By("Bring the order fragments!")
-// 			time.Sleep(5 * time.Minute)
-// 		})
-// 	})
-// })
+				AfterEach(func() {
+					stopNodes(bootstrapNodes, testNodes)
+				})
 
-// func generateNodes(numberOfBootsrapNodes, numberOfTestNodes int) ([]*node.DarkNode, error) {
-// 	// Generate nodes from the config files
-// 	numberOfNodes := numberOfBootsrapNodes + numberOfTestNodes
-// 	nodes := make([]*node.DarkNode, numberOfNodes)
-// 	for i := 0; i < numberOfNodes; i++ {
-// 		config, err := node.LoadConfig(fmt.Sprintf("./test_configs/config-%d.json", i))
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		node, err := node.NewDarkNode(config)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		nodes[i] = node
-// 	}
-// 	return nodes, nil
-// }
+				It("should reach consensus on an order match", func() {
 
-// func readOrderFromFile(orderFile string) (*compute.Order, error) {
-// 	file, err := os.Open(orderFile)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer file.Close()
-// 	order := new(compute.Order)
-// 	if err := json.NewDecoder(file).Decode(order); err != nil {
-// 		return nil, err
-// 	}
+				})
 
-// 	rand.Seed(int64(time.Now().Nanosecond()))
-// 	order.Nonce = big.NewInt(rand.Int63())
-// 	order.GenerateID()
-// 	return order, nil
-// }
+			})
+		}
+	}
+})
+
+func generateBootstrapNodes(numberOfBootstrapNodes int) ([]*node.DarkNode, error) {
+	// Generate nodes from the config files
+	nodes := make([]*node.DarkNode, numberOfBootstrapNodes)
+	for i := 0; i < numberOfBootstrapNodes; i++ {
+		config, err := node.LoadConfig(fmt.Sprintf("./test_configs/bootstrap-%d.json", i))
+		if err != nil {
+			return nil, err
+		}
+		node, err := node.NewDarkNode(*config)
+		if err != nil {
+			return nil, err
+		}
+		nodes[i] = node
+	}
+	return nodes, nil
+}
+
+func generateNodes(numberOfTestNodes int) ([]*node.DarkNode, error) {
+	// Generate nodes from the config files
+	nodes := make([]*node.DarkNode, numberOfTestNodes)
+	for i := 0; i < numberOfTestNodes; i++ {
+		config, err := node.LoadConfig(fmt.Sprintf("./test_configs/config-%d.json", i))
+		if err != nil {
+			return nil, err
+		}
+		node, err := node.NewDarkNode(*config)
+		if err != nil {
+			return nil, err
+		}
+		nodes[i] = node
+	}
+	return nodes, nil
+}
+
+func startNodes(bootstrapNodes, testNodes []*node.DarkNode) {
+	for i := range bootstrapNodes {
+		go func(i int) {
+			bootstrapNodes[i].Start()
+		}(i)
+	}
+
+	for i := range testNodes {
+		go func(i int) {
+			testNodes[i].Start()
+		}(i)
+	}
+}
+
+func stopNodes(bootstrapNodes, testNodes []*node.DarkNode) {
+	for i := range bootstrapNodes {
+		bootstrapNodes[i].Stop()
+	}
+	for i := range testNodes {
+		testNodes[i].Stop()
+	}
+}
+
+func connectNodes(bootstrapNodes, testNodes []*node.DarkNode, connectivity int) error {
+	// Connect bootstrap nodes in a fully-connected terminology
+	for i, bootstrapNode := range bootstrapNodes {
+		for j, other := range bootstrapNodes {
+			if i == j {
+				continue
+			}
+
+			client, err := bootstrapNode.ClientPool.FindOrCreateClient(other.MultiAddress)
+			if err != nil {
+				return err
+			}
+			err = client.Ping()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Generate connectivity map
+	connectivityMap := map[string]map[string]bool{}
+	for i, testNode := range testNodes {
+		for j := i + 1; j < len(testNodes); j++ {
+			other := testNodes[j]
+			isConnected := rand.Intn(100) < 100
+			connectivityMap[testNode.MultiAddress.String()][other.MultiAddress.String()] = isConnected
+			connectivityMap[other.MultiAddress.String()][testNode.MultiAddress.String()] = isConnected
+		}
+	}
+
+	// Connect test nodes depending on the connectivity
+	for i, testNode := range testNodes {
+		for j, other := range testNodes {
+			if i == j {
+				continue
+			}
+			if !connectivityMap[testNode.MultiAddress.String()][other.MultiAddress.String()] {
+				continue
+			}
+			client, err := testNode.ClientPool.FindOrCreateClient(other.MultiAddress)
+			if err != nil {
+				return err
+			}
+			err = client.Ping()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func sendOrders(bootstrapNodes, testNodes []*node.DarkNode, numberOfOrders int) {
+	resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%v", numberOfOrders))
+	if err != nil {
+		log.Fatal("fail to get data from binance")
+	}
+
+	response, err := ioutil.ReadAll(resp.Body)
+	orderBook := new(OrderBook)
+	err = json.Unmarshal(response, orderBook)
+
+	// Generate order from the Binance data
+	buyOrders := make([]*order.Order, len(orderBook.Bids))
+	sellOrders := make([]*order.Order, len(orderBook.Asks))
+
+	for i, j := range orderBook.Asks {
+		price, err := strconv.ParseFloat(j[0], 10)
+		price = price * 1000000000000
+		if err != nil {
+			log.Fatal("fail to parse the price into a big int")
+		}
+
+		amount, err := strconv.ParseFloat(j[1], 10)
+		amount = amount * 1000000000000
+		if err != nil {
+			log.Fatal("fail to parse the amount into a big int")
+		}
+		sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Time{},
+			order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
+			big.NewInt(int64(amount)), big.NewInt(1))
+		sellOrders[i] = sellOrder
+
+		buyOrder := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Time{},
+			order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
+			big.NewInt(int64(amount)), big.NewInt(1))
+		buyOrders[i] = buyOrder
+	}
+
+	// Send order fragment to the nodes
+	totalNodes := len(bootstrapNodes) + len(testNodes)
+	for _, orders := range [][]*order.Order{buyOrders, sellOrders} {
+		go func(orders []*order.Order) {
+			for _, ord := range orders {
+
+				if ord.Parity == order.ParityBuy {
+					log.Println("sending buy order :", base58.Encode(ord.ID))
+				} else {
+					log.Println("sending sell order :", base58.Encode(ord.ID))
+				}
+
+				shares, err := ord.Split(int64(totalNodes), int64(totalNodes*2/3), Prime)
+				if err != nil {
+					log.Println("failt to split the order :", base58.Encode(ord.ID))
+					continue
+				}
+
+				do.ForAll(shares, func(i int) {
+					client, err := rpc.NewClient(testNodes[i].MultiAddress, trader)
+					if err != nil {
+						log.Fatal(err)
+					}
+					err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[i]))
+					if err != nil {
+						log.Printf("Coudln't send order fragment to %s\n", testNodes[i].MultiAddress.Address())
+						return
+					}
+				})
+			}
+		}(orders)
+	}
+}
