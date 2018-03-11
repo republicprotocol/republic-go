@@ -21,7 +21,8 @@ type FilePlugin struct {
 // is set to stdout, or stderr, the respective output stream will be used
 // instead of opening a File.
 type FilePluginOptions struct {
-	Path string `json:"path"`
+	Plugin string `json:"plugin"`
+	Path   string `json:"path"`
 }
 
 // NewFilePlugin uses the give File to create a new FilePlugin. The file must
@@ -97,6 +98,9 @@ func (plugin *FilePlugin) UnmarshalJSON(data []byte) error {
 	filePluginOptions := FilePluginOptions{}
 	if err := json.Unmarshal(data, &filePluginOptions); err != nil {
 		return err
+	}
+	if filePluginOptions.Plugin != "file" {
+		return fmt.Errorf(`cannot unmarshal plugin of type "%s" into plugin of type "file"`, filePluginOptions.Plugin)
 	}
 
 	var err error
