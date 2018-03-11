@@ -1,0 +1,5 @@
+# Output of the go coverage tool
+*.out
+
+# Dep vendors
+vendor
