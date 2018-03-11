@@ -86,17 +86,17 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	node.DeltaBuilder = compute.NewDeltaBuilder(k, node.Prime)
 	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(node.Prime)
 	node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
-	node.OrderFragmentWorker = NewOrderFragmentWorker(node.OrderFragmentWorkerQueue, node.DeltaFragmentMatrix)
+	node.OrderFragmentWorker = NewOrderFragmentWorker(node.Logger, node.DeltaFragmentMatrix, node.OrderFragmentWorkerQueue)
 	node.DeltaFragmentBroadcastWorkerQueue = make(chan *compute.DeltaFragment, 100)
-	node.DeltaFragmentBroadcastWorker = NewDeltaFragmentBroadcastWorker(node.Logger, node.DeltaFragmentBroadcastWorkerQueue, node.ClientPool, node.BootstrapMultiAddresses)
+	node.DeltaFragmentBroadcastWorker = NewDeltaFragmentBroadcastWorker(node.Logger, node.ClientPool, node.DarkPool, node.DeltaFragmentBroadcastWorkerQueue)
 	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
-	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.DeltaFragmentWorkerQueue, node.DeltaBuilder)
+	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.Logger, node.DeltaBuilder, node.DeltaFragmentWorkerQueue)
 	node.GossipWorkerQueue = make(chan *compute.Delta, 100)
-	node.GossipWorker = NewGossipWorker(node.ClientPool, node.BootstrapMultiAddresses, node.GossipWorkerQueue)
+	node.GossipWorker = NewGossipWorker(node.Logger, node.ClientPool, node.BootstrapMultiAddresses, node.GossipWorkerQueue)
 	node.FinalizeWorkerQueue = make(chan *compute.Delta, 100)
-	node.FinalizeWorker = NewFinalizeWorker(node.FinalizeWorkerQueue, 5)
+	node.FinalizeWorker = NewFinalizeWorker(node.Logger, k, node.FinalizeWorkerQueue)
 	node.ConsensusWorkerQueue = make(chan *compute.Delta, 100)
-	node.ConsensusWorker = NewConsensusWorker(node.Logger, node.ConsensusWorkerQueue, node.DeltaFragmentMatrix)
+	node.ConsensusWorker = NewConsensusWorker(node.Logger, node.DeltaFragmentMatrix, node.ConsensusWorkerQueue)
 
 	// options := network.Options{}
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
@@ -307,10 +307,10 @@ func (node *DarkNode) Deregister() error {
 }
 
 // PingDarkPool call rpc.PingTarget on each node in a dark pool
-func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (identity.MultiAddresses, darkocean.IDDarkPool) {
+func (node *DarkNode) PingDarkPool(ids darkocean.DarkPoolID) (identity.MultiAddresses, darkocean.DarkPoolID) {
 
 	darkpool := make(identity.MultiAddresses, 0)
-	disconnectedDarkPool := make(darkocean.IDDarkPool, 0)
+	disconnectedDarkPool := make(darkocean.DarkPoolID, 0)
 
 	for _, id := range ids {
 		target, err := node.Swarm.FindNode(id)
@@ -340,7 +340,7 @@ func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (identity.MultiAddr
 // LongPingDarkPool will continually attempt to connect to a set of nodes
 // in a darkpool until they are all connected
 // Call in a goroutine
-func (node *DarkNode) LongPingDarkPool(disconnected darkocean.IDDarkPool) {
+func (node *DarkNode) LongPingDarkPool(disconnected darkocean.DarkPoolID) {
 	currentBlockhash := node.EpochBlockhash
 
 	for len(disconnected) > 0 {
@@ -368,12 +368,12 @@ func (node *DarkNode) AfterEachEpoch() error {
 	}
 	node.DarkOceanOverlay = darkOceanOverlay
 
-	idPool, err := node.DarkOceanOverlay.FindDarkPool(node.Config.MultiAddress.ID())
-	if err != nil {
-		return err
+	poolID := node.DarkOceanOverlay.FindDarkPool(node.Config.MultiAddress.ID())
+	if poolID == nil {
+		return fmt.Errorf("cannot find %s in the dark ocean", node.MultiAddress.Address())
 	}
 
-	connectedDarkPool, disconnectedDarkPool := node.PingDarkPool(idPool)
+	connectedDarkPool, disconnectedDarkPool := node.PingDarkPool(poolID)
 	node.DarkPool = darkocean.NewDarkPool(connectedDarkPool)
 
 	node.Logger.Info(logger.TagNetwork, fmt.Sprintf("%v connected to dark pool: %v", node.Config.MultiAddress.Address(), node.DarkPool))

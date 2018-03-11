@@ -2,7 +2,6 @@ package darkocean
 
 import (
 	"bytes"
-	"errors"
 	"math/big"
 
 	"github.com/republicprotocol/go-do"
@@ -13,44 +12,58 @@ import (
 // DarkPool is a list of node multiaddresses
 type DarkPool struct {
 	do.GuardedObject
+	id    DarkPoolID
 	nodes identity.MultiAddresses
 }
 
-// NewDarkPool creates a new DarkPool
+// NewDarkPool returns a new DarkPool that has no Multiaddresses.
 func NewDarkPool(nodes identity.MultiAddresses) *DarkPool {
 	darkPool := new(DarkPool)
 	darkPool.GuardedObject = do.NewGuardedObject()
+	darkPool.id = DarkPoolID([]identity.ID{})
 	darkPool.nodes = nodes
 	return darkPool
 }
 
-// Add will append a multiaddress to the darkpool
-func (darkpool DarkPool) Add(targets ...identity.MultiAddress) {
-	darkpool.Enter(nil)
-	defer darkpool.Exit()
-	darkpool.nodes = append(darkpool.nodes, targets...)
+// Add a Multiaddress to the DarkPool.
+func (darkPool *DarkPool) Add(targets ...identity.MultiAddress) {
+	darkPool.Enter(nil)
+	defer darkPool.Exit()
+	for _, target := range targets {
+		darkPool.id = append(darkPool.id, target.ID())
+	}
+	darkPool.nodes = append(darkPool.nodes, targets...)
 }
 
-// IDDarkPool is a list of node ids
-type IDDarkPool []identity.ID
+// CoForAll runs the given function on each node in the DarkPool. The function
+// must not modify the node. All iterations are run in a dedicated goroutine.
+func (darkPool *DarkPool) CoForAll(f func(node identity.MultiAddress)) {
+	darkPool.EnterReadOnly(nil)
+	defer darkPool.ExitReadOnly()
+	do.CoForAll(darkPool.nodes, func(i int) {
+		f(darkPool.nodes[i])
+	})
+}
+
+// DarkPoolID is a list of node ids
+type DarkPoolID []identity.ID
 
 // Overlay contains a list of dark pools
 type Overlay struct {
-	Pools []IDDarkPool
+	Pools []DarkPoolID
 }
 
-// FindDarkPool returns the pool containing a prticular ID
-func (ocean Overlay) FindDarkPool(id identity.ID) (IDDarkPool, error) {
-
+// FindDarkPool returns the DarkPoolID of the DarkPool for the given node ID.
+// It returns nil if no such DarkPool can be found.
+func (ocean Overlay) FindDarkPool(id identity.ID) DarkPoolID {
 	for _, pool := range ocean.Pools {
 		for _, node := range pool {
 			if bytes.Compare(node, id) == 0 {
-				return pool, nil
+				return pool
 			}
 		}
 	}
-
-	return nil, errors.New("Node is not a part of a pool")
+	return nil
 }
 
 // GetDarkPools gets the full list of nodes and sorts them into pools
@@ -80,7 +93,7 @@ func GetDarkPools(darkNodeRegistrar dnr.DarkNodeRegistrarInterface) (*Overlay, e
 		numberOfPools = big.NewInt(1)
 	}
 
-	pools := make([]IDDarkPool, numberOfPools.Int64())
+	pools := make([]DarkPoolID, numberOfPools.Int64())
 
 	for x := range allNodes {
 		// Add one so that

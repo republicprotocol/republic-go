@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/republic-go/dark-ocean"
+
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
@@ -15,16 +16,18 @@ import (
 // An OrderFragmentWorker consumes order fragments and computes all
 // combinations of delta fragments.
 type OrderFragmentWorker struct {
-	queue               chan *order.Fragment
+	logger              *logger.Logger
 	deltaFragmentMatrix *compute.DeltaFragmentMatrix
+	queue               chan *order.Fragment
 }
 
 // NewOrderFragmentWorker returns an OrderFragmentWorker that reads work from
 // a queue and uses a DeltaFragmentMatrix to do computations.
-func NewOrderFragmentWorker(queue chan *order.Fragment, deltaFragmentMatrix *compute.DeltaFragmentMatrix) *OrderFragmentWorker {
+func NewOrderFragmentWorker(logger *logger.Logger, deltaFragmentMatrix *compute.DeltaFragmentMatrix, queue chan *order.Fragment) *OrderFragmentWorker {
 	return &OrderFragmentWorker{
-		queue:               queue,
+		logger:              logger,
 		deltaFragmentMatrix: deltaFragmentMatrix,
+		queue:               queue,
 	}
 }
 
@@ -52,26 +55,26 @@ func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment) er
 }
 
 type DeltaFragmentBroadcastWorker struct {
-	queue      chan *compute.DeltaFragment
-	clientPool *rpc.ClientPool
-	darkPool   identity.MultiAddresses
 	logger     *logger.Logger
+	clientPool *rpc.ClientPool
+	darkPool   *darkocean.DarkPool
+	queue      chan *compute.DeltaFragment
 }
 
-func NewDeltaFragmentBroadcastWorker(logger *logger.Logger, queue chan *compute.DeltaFragment, clientPool *rpc.ClientPool, darkPool identity.MultiAddresses) *DeltaFragmentBroadcastWorker {
+func NewDeltaFragmentBroadcastWorker(logger *logger.Logger, clientPool *rpc.ClientPool, darkPool *darkocean.DarkPool, queue chan *compute.DeltaFragment) *DeltaFragmentBroadcastWorker {
 	return &DeltaFragmentBroadcastWorker{
 		logger:     logger,
-		queue:      queue,
 		clientPool: clientPool,
 		darkPool:   darkPool,
+		queue:      queue,
 	}
 }
 
 func (worker *DeltaFragmentBroadcastWorker) Run() {
 	for deltaFragment := range worker.queue {
 		serializedDeltaFragment := rpc.SerializeDeltaFragment(deltaFragment)
-		do.CoForAll(worker.darkPool, func(i int) {
-			_, err := worker.clientPool.BroadcastDeltaFragment(worker.darkPool[i], serializedDeltaFragment)
+		worker.darkPool.CoForAll(func(node identity.MultiAddress) {
+			_, err := worker.clientPool.BroadcastDeltaFragment(node, serializedDeltaFragment)
 			if err != nil {
 				worker.logger.Error(logger.TagNetwork, err.Error())
 			}
@@ -81,16 +84,18 @@ func (worker *DeltaFragmentBroadcastWorker) Run() {
 
 // An DeltaFragmentWorker consumes delta fragments and reconstructs deltas.
 type DeltaFragmentWorker struct {
-	queue        chan *compute.DeltaFragment
+	logger       *logger.Logger
 	deltaBuilder *compute.DeltaBuilder
+	queue        chan *compute.DeltaFragment
 }
 
 // NewDeltaFragmentWorker returns an DeltaFragmentWorker that reads work from
 // a queue and uses a DeltaBuilder to do reconstructions.
-func NewDeltaFragmentWorker(queue chan *compute.DeltaFragment, deltaBuilder *compute.DeltaBuilder) *DeltaFragmentWorker {
+func NewDeltaFragmentWorker(logger *logger.Logger, deltaBuilder *compute.DeltaBuilder, queue chan *compute.DeltaFragment) *DeltaFragmentWorker {
 	return &DeltaFragmentWorker{
-		queue:        queue,
+		logger:       logger,
 		deltaBuilder: deltaBuilder,
+		queue:        queue,
 	}
 }
 
@@ -111,20 +116,24 @@ func (worker *DeltaFragmentWorker) Run(queues ...chan *compute.Delta) {
 }
 
 type GossipWorker struct {
-	expiryTime map[string]time.Time
-	bestMatch  map[string]*compute.Delta
-	queue      chan *compute.Delta
+	logger     *logger.Logger
 	clientPool *rpc.ClientPool
 	gossipers  identity.MultiAddresses
+	queue      chan *compute.Delta
+
+	expiryTime map[string]time.Time
+	bestMatch  map[string]*compute.Delta
 }
 
-func NewGossipWorker(clientPool *rpc.ClientPool, gossipers identity.MultiAddresses, queue chan *compute.Delta) *GossipWorker {
+func NewGossipWorker(logger *logger.Logger, clientPool *rpc.ClientPool, gossipers identity.MultiAddresses, queue chan *compute.Delta) *GossipWorker {
 	return &GossipWorker{
-		expiryTime: make(map[string]time.Time),
-		bestMatch:  make(map[string]*compute.Delta),
-		queue:      queue,
+		logger:     logger,
 		clientPool: clientPool,
 		gossipers:  gossipers,
+		queue:      queue,
+
+		expiryTime: make(map[string]time.Time),
+		bestMatch:  make(map[string]*compute.Delta),
 	}
 }
 
@@ -189,21 +198,25 @@ func bestFitDelta(left, right *compute.Delta) *compute.Delta {
 
 type Data struct {
 	Delta *compute.Delta
-	Vote  int
+	Vote  int64
 	Sent  bool
 }
 
 type FinalizeWorker struct {
+	logger   *logger.Logger
 	queue    chan *compute.Delta
-	deltas   map[string]*Data
-	poolSize int
+	poolSize int64
+
+	deltas map[string]*Data
 }
 
-func NewFinalizeWorker(queue chan *compute.Delta, poolSize int) *FinalizeWorker {
+func NewFinalizeWorker(logger *logger.Logger, poolSize int64, queue chan *compute.Delta) *FinalizeWorker {
 	return &FinalizeWorker{
-		queue:    queue,
-		deltas:   map[string]*Data{},
+		logger:   logger,
 		poolSize: poolSize,
+		queue:    queue,
+
+		deltas: map[string]*Data{},
 	}
 }
 
@@ -231,15 +244,15 @@ func (worker *FinalizeWorker) Run(queues ...chan *compute.Delta) {
 
 type ConsensusWorker struct {
 	logger              *logger.Logger
-	queue               chan *compute.Delta
 	deltaFragmentMatrix *compute.DeltaFragmentMatrix
+	queue               chan *compute.Delta
 }
 
-func NewConsensusWorker(logger *logger.Logger, queue chan *compute.Delta, deltaFragmentMatrix *compute.DeltaFragmentMatrix) *ConsensusWorker {
+func NewConsensusWorker(logger *logger.Logger, deltaFragmentMatrix *compute.DeltaFragmentMatrix, queue chan *compute.Delta) *ConsensusWorker {
 	return &ConsensusWorker{
 		logger:              logger,
-		queue:               queue,
 		deltaFragmentMatrix: deltaFragmentMatrix,
+		queue:               queue,
 	}
 }
 
