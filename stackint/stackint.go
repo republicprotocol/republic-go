@@ -2,20 +2,26 @@ package stackint
 
 // go build -a -gcflags='-m -m' stackint.go
 
-// INT1024WORDS is 1024 / 64
-const INT1024WORDS = 16
+// WORDSIZE is 64 for Word
+const WORDSIZE = 64
 
-// MAXUINT64 represents the largest uint64 value
-const MAXUINT64 = 1<<64 - 1
+// Word is the internal type
+type Word uint64
+
+// WORDMAX represents the largest word value
+const WORDMAX = 1<<64 - 1
+
+// INT1024WORDS is 1024 / 64
+const INT1024WORDS = 1024 / WORDSIZE
 
 // Int1024 provides a 1024 bit number optimised to never use the heap
 type Int1024 struct {
-	words [INT1024WORDS]uint64
+	words [INT1024WORDS]Word
 }
 
 // Zero returns a new Int1024 representing 0
 func Zero() Int1024 {
-	var words [INT1024WORDS]uint64
+	var words [INT1024WORDS]Word
 	for i := 0; i < INT1024WORDS; i++ {
 		words[i] = 0
 	}
@@ -24,10 +30,10 @@ func Zero() Int1024 {
 	}
 }
 
-// Int1024FromUint64 returns a new Int1024 from a uint64
+// Int1024FromUint64 returns a new Int1024 from a Word
 func Int1024FromUint64(n uint64) Int1024 {
 	z := Zero()
-	z.words[INT1024WORDS-1] = n
+	z.words[INT1024WORDS-1] = Word(n)
 	return z
 }
 
@@ -38,7 +44,7 @@ func Int1024FromString(x string) Int1024 {
 
 // Clone returns a new Int1024 representing the same value as x
 func (x *Int1024) Clone() Int1024 {
-	var words [16]uint64
+	var words [16]Word
 	for i := 0; i < INT1024WORDS; i++ {
 		words[i] = x.words[i]
 	}
@@ -67,15 +73,26 @@ func (x *Int1024) LessThan(y *Int1024) bool {
 	return false
 }
 
+// ShiftLeft shifts to the left x by one
+func (x *Int1024) shiftLeftByOne() Int1024 {
+	z := Zero()
+	bit := Word(0)
+	for i := INT1024WORDS - 1; i >= 0; i-- {
+		z.words[i] = (x.words[i] << 1) | bit
+		bit = (x.words[i] >> (WORDSIZE - 1)) & 1
+	}
+	return z
+}
+
 // Add returns x+y
 func (x *Int1024) Add(y *Int1024) Int1024 {
 	z := Zero()
 
-	var overflow uint64
+	var overflow Word
 	overflow = 0
 	for i := INT1024WORDS - 1; i >= 0; i-- {
 		z.words[i] = x.words[i] + y.words[i] + overflow
-		if x.words[i] > MAXUINT64-y.words[i]-overflow {
+		if x.words[i] > WORDMAX-y.words[i]-overflow {
 			overflow = 1
 		} else {
 			overflow = 0
@@ -89,11 +106,30 @@ func (x *Int1024) Add(y *Int1024) Int1024 {
 	return z
 }
 
+// Add returns x+y
+func (x *Int1024) overwritingAdd(y *Int1024) {
+	var overflow Word
+	overflow = 0
+	for i := INT1024WORDS - 1; i >= 0; i-- {
+		previousOverflow := overflow
+		if x.words[i] > WORDMAX-y.words[i]-previousOverflow {
+			overflow = 1
+		} else {
+			overflow = 0
+		}
+		x.words[i] = x.words[i] + y.words[i] + previousOverflow
+	}
+
+	if overflow == 1 {
+		// WARNING: Overflow occured
+	}
+}
+
 // Sub returns x-y
 func (x *Int1024) Sub(y *Int1024) Int1024 {
 	z := Zero()
 
-	var overflow uint64
+	var overflow Word
 	overflow = 0
 	for i := INT1024WORDS - 1; i >= 0; i-- {
 		z.words[i] = x.words[i] - y.words[i] - overflow
@@ -113,7 +149,23 @@ func (x *Int1024) Sub(y *Int1024) Int1024 {
 
 // Mul returns x*y
 func (x *Int1024) Mul(y *Int1024) Int1024 {
-	panic("Not implemented!")
+	// Naïve inplementation!
+	// TODO: Rewrite using more efficient algorithm
+	z := Zero()
+	shifted := *x
+
+	for i := INT1024WORDS - 1; i >= 0; i-- {
+		word := y.words[i]
+		for j := uint(0); j < WORDSIZE; j++ {
+			bit := (word >> j) & 1
+			if bit == 1 {
+				z.overwritingAdd(&shifted)
+			}
+			shifted = shifted.shiftLeftByOne()
+		}
+	}
+
+	return z
 }
 
 // Div returns the quotient of x/y. If y is 0, a run-time panic occurs.
@@ -132,7 +184,7 @@ func (x *Int1024) ModInverse(n *Int1024) Int1024 {
 	panic("Not implemented!")
 }
 
-// Words returns the internal [16]uint64 that stores the value of x
-func (x *Int1024) Words() [INT1024WORDS]uint64 {
+// Words returns the internal [16]Word that stores the value of x
+func (x *Int1024) Words() [INT1024WORDS]Word {
 	return x.words
 }
