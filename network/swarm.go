@@ -273,12 +273,10 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 		return err
 	}
 	// Peers returned by the query will be added to the DHT.
-	if service.Options.Debug >= DebugMedium {
-		service.Logger.Info(logger.TagNetwork, fmt.Sprintf("received %v peers from %v", len(peers), bootstrapMultiAddress.Address()))
-	}
 	for serializedPeer := range peers {
 		peer, err := rpc.DeserializeMultiAddress(serializedPeer)
 		if err != nil {
+			service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
 			continue
 		}
 		if peer.Address() == service.Address() {
@@ -286,9 +284,12 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 		}
 		if err := service.DHT.UpdateMultiAddress(peer); err != nil {
 			if service.Options.Debug >= DebugLow {
-				service.Logger.Error(logger.TagNetwork, err.Error())
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot update DHT: %s", err.Error()))
 			}
 		}
+	}
+	if service.Options.Debug >= DebugMedium {
+		service.Logger.Info(logger.TagNetwork, fmt.Sprintf("received %v peers from %v", len(service.DHT.MultiAddresses()), bootstrapMultiAddress.Address()))
 	}
 	return nil
 }
