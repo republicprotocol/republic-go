@@ -60,14 +60,14 @@ type DarkNode struct {
 	DarkPoolLimit    int64
 	DarkPool         *darkocean.DarkPool
 	DarkOceanOverlay *darkocean.Overlay
-	Registrar        dnr.DarkNodeRegistrarInterface
+	Registrar        dnr.DarkNodeRegistrar
 	EpochBlockhash   [32]byte
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
 // will configure all of the components that it needs to operate but will not
 // start any of them.
-func NewDarkNode(config Config) (*DarkNode, error) {
+func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkNode, error) {
 	if config.Prime == nil {
 		config.Prime = Prime
 	}
