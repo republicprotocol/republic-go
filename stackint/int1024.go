@@ -22,20 +22,6 @@ type Int1024 struct {
 	words [INT1024WORDS]Word
 }
 
-// Zero returns a new Int1024 representing 0
-func zero() Int1024 {
-	var words [INT1024WORDS]Word
-	for i := 0; i < INT1024WORDS; i++ {
-		words[i] = 0
-	}
-	return Int1024{
-		words: words,
-	}
-}
-
-// Zero is the Int1024 that represents 0
-var Zero = zero()
-
 // Int1024FromUint64 returns a new Int1024 from a Word
 func Int1024FromUint64(n uint64) Int1024 {
 	z := zero()
@@ -63,3 +49,45 @@ func (x *Int1024) Clone() Int1024 {
 func (x *Int1024) Words() [INT1024WORDS]Word {
 	return x.words
 }
+
+/* CONSTANTS */
+
+// zero returns a new Int1024 representing 0
+func zero() Int1024 {
+	var words [INT1024WORDS]Word
+	for i := 0; i < INT1024WORDS; i++ {
+		words[i] = 0
+	}
+	return Int1024{
+		words: words,
+	}
+}
+
+// ZERO is the Int1024 that represents 0
+var ZERO = zero()
+
+// maxInt returns a new Int1024 representing 2**1024 - 1
+func maxInt() Int1024 {
+	var words [INT1024WORDS]Word
+	for i := 0; i < INT1024WORDS; i++ {
+		words[i] = WORDMAX
+	}
+	return Int1024{
+		words: words,
+	}
+}
+
+// MAXINT1024 is the Int1024 that represents 2**1024 - 1
+var MAXINT1024 = maxInt()
+
+// maxInt returns a new Int1024 representing 2**1024 - 1
+func twoPow1023() Int1024 {
+	var words [INT1024WORDS]Word
+	words[0] = 1 << 63
+	return Int1024{
+		words: words,
+	}
+}
+
+// TWOPOW1023 is the Int1024 that represents 2**1023
+var TWOPOW1023 = twoPow1023()

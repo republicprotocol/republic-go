@@ -75,7 +75,7 @@ func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 	current := Int1024FromUint64(1)
 	answer := zero()
 
-	if denom.Equals(&Zero) {
+	if denom.Equals(&ZERO) {
 		panic("division by zero")
 	}
 
@@ -96,7 +96,7 @@ func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 		current.overwritingShiftRightByOne()
 	}
 
-	for !current.Equals(&Zero) {
+	for !current.Equals(&ZERO) {
 		if !dividend.LessThan(&denom) {
 			dividend = dividend.Sub(&denom)
 			answer = answer.OR(&current)

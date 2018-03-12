@@ -12,7 +12,7 @@ func (x *Int1024) Equals(y *Int1024) bool {
 
 // IsZero returns true of x == 0
 func (x *Int1024) IsZero() bool {
-	return x.Equals(&Zero)
+	return x.Equals(&ZERO)
 }
 
 // LessThan returns x<y
