@@ -192,6 +192,9 @@ func (node *DarkNode) Stop() {
 // WatchDarkOcean for changes. When a change happens, find the dark pool for
 // this DarkNode and reconnect to all of the nodes in the pool.
 func (node *DarkNode) WatchDarkOcean() {
+	if err := node.DarkOcean.Update(); err != nil {
+		node.Logger.Error(logger.TagEthereum, fmt.Sprintf("cannot update dark ocean: %s", err.Error()))
+	}
 	changes := make(chan struct{})
 	go func() {
 		defer close(changes)
@@ -212,6 +215,9 @@ func (node *DarkNode) WatchDarkOcean() {
 func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 	// Terminate if the dark pool is no longer relevant
 	if node.DarkPool != darkPool {
+		return
+	}
+	if darkPool == nil {
 		return
 	}
 

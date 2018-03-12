@@ -117,6 +117,32 @@ func (client *Client) QueryPeers(target *Address) (chan *MultiAddress, error) {
 	return ch, err
 }
 
+// QueryPeersBlocking calls the QueryPeers RPC and blocks until the RPC is
+// finished.
+func (client *Client) QueryPeersBlocking(target *Address) ([]*MultiAddress, error) {
+	multiAddresses := make([]*MultiAddress, 0)
+	err := client.TimeoutFunc(func(ctx context.Context) error {
+		stream, err := client.SwarmClient.QueryPeers(ctx, &Query{
+			From:   client.From,
+			Target: target,
+		}, grpc.FailFast(false))
+		if err != nil {
+			return err
+		}
+		for {
+			multiAddress, err := stream.Recv()
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			multiAddresses = append(multiAddresses, multiAddress)
+		}
+	})
+	return multiAddresses, err
+}
+
 // QueryPeersDeep RPC.
 func (client *Client) QueryPeersDeep(target *Address) (chan *MultiAddress, error) {
 	ch := make(chan *MultiAddress)
@@ -146,6 +172,32 @@ func (client *Client) QueryPeersDeep(target *Address) (chan *MultiAddress, error
 		return nil
 	})
 	return ch, err
+}
+
+// QueryPeersDeepBlocking calls the QueryPeersDeep RPC and blocks until the RPC
+// is finished.
+func (client *Client) QueryPeersDeepBlocking(target *Address) ([]*MultiAddress, error) {
+	multiAddresses := make([]*MultiAddress, 0)
+	err := client.TimeoutFunc(func(ctx context.Context) error {
+		stream, err := client.SwarmClient.QueryPeersDeep(ctx, &Query{
+			From:   client.From,
+			Target: target,
+		}, grpc.FailFast(false))
+		if err != nil {
+			return err
+		}
+		for {
+			multiAddress, err := stream.Recv()
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			multiAddresses = append(multiAddresses, multiAddress)
+		}
+	})
+	return multiAddresses, err
 }
 
 // Sync RPC.
