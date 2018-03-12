@@ -16,6 +16,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/network/rpc"
@@ -64,6 +65,7 @@ var _ = Describe("Dark nodes", func() {
 
 				AfterEach(func() {
 					stopNodes(bootstrapNodes, testNodes)
+					mu.Unlock()
 				})
 
 				It("should reach consensus on an order match", func() {
@@ -82,7 +84,7 @@ func generateBootstrapNodes(numberOfBootstrapNodes int) ([]*node.DarkNode, error
 		if err != nil {
 			return nil, err
 		}
-		node, err := node.NewDarkNode(*config)
+		node, err := node.NewDarkNode(*config, &dnr.EthereumDarkNodeRegistrar{})
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +101,7 @@ func generateNodes(numberOfTestNodes int) ([]*node.DarkNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		node, err := node.NewDarkNode(*config)
+		node, err := node.NewDarkNode(*config, &dnr.EthereumDarkNodeRegistrar{})
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +141,7 @@ func connectNodes(bootstrapNodes, testNodes []*node.DarkNode, connectivity int) 
 				continue
 			}
 
-			client, err := bootstrapNode.ClientPool.FindOrCreateClient(other.MultiAddress)
+			client, err := bootstrapNode.ClientPool.FindOrCreateClient(other.NetworkOptions.MultiAddress)
 			if err != nil {
 				return err
 			}
@@ -155,9 +157,9 @@ func connectNodes(bootstrapNodes, testNodes []*node.DarkNode, connectivity int) 
 	for i, testNode := range testNodes {
 		for j := i + 1; j < len(testNodes); j++ {
 			other := testNodes[j]
-			isConnected := rand.Intn(100) < 100
-			connectivityMap[testNode.MultiAddress.String()][other.MultiAddress.String()] = isConnected
-			connectivityMap[other.MultiAddress.String()][testNode.MultiAddress.String()] = isConnected
+			isConnected := rand.Intn(100) < connectivity
+			connectivityMap[testNode.NetworkOptions.MultiAddress.String()][other.NetworkOptions.MultiAddress.String()] = isConnected
+			connectivityMap[other.NetworkOptions.MultiAddress.String()][testNode.NetworkOptions.MultiAddress.String()] = isConnected
 		}
 	}
 
@@ -167,10 +169,10 @@ func connectNodes(bootstrapNodes, testNodes []*node.DarkNode, connectivity int) 
 			if i == j {
 				continue
 			}
-			if !connectivityMap[testNode.MultiAddress.String()][other.MultiAddress.String()] {
+			if !connectivityMap[testNode.NetworkOptions.MultiAddress.String()][other.NetworkOptions.MultiAddress.String()] {
 				continue
 			}
-			client, err := testNode.ClientPool.FindOrCreateClient(other.MultiAddress)
+			client, err := testNode.ClientPool.FindOrCreateClient(other.NetworkOptions.MultiAddress)
 			if err != nil {
 				return err
 			}
@@ -239,13 +241,13 @@ func sendOrders(bootstrapNodes, testNodes []*node.DarkNode, numberOfOrders int) 
 				}
 
 				do.ForAll(shares, func(i int) {
-					client, err := rpc.NewClient(testNodes[i].MultiAddress, trader)
+					client, err := rpc.NewClient(testNodes[i].NetworkOptions.MultiAddress, trader)
 					if err != nil {
 						log.Fatal(err)
 					}
 					err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[i]))
 					if err != nil {
-						log.Printf("Coudln't send order fragment to %s\n", testNodes[i].MultiAddress.Address())
+						log.Printf("Coudln't send order fragment to %s\n", testNodes[i].NetworkOptions.MultiAddress.Address())
 						return
 					}
 				})
