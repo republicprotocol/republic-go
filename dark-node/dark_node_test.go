@@ -41,23 +41,28 @@ var _ = Describe("Dark nodes", func() {
 
 	var mu = new(sync.Mutex)
 
-	for _, numberOfNodes := range []int{18, 36, 72} {
+	for _, numberOfNodes := range []int{ /*18, 36, 72*/ } {
 		func(numberOfNodes int) {
-			Context("when bootstrapping", func() {
+			Context(fmt.Sprintf("when bootstrapping %d nodes", numberOfNodes), func() {
 
 				var err error
 				var nodes []*node.DarkNode
 
-				It("should reach a fault tolerant level of connectivity", func() {
+				BeforeEach(func() {
 					mu.Lock()
-					defer mu.Unlock()
 
+					By("generate nodes")
 					nodes, err = generateNodes(numberOfNodes)
 					Ω(err).ShouldNot(HaveOccurred())
 
+					By("start node services")
 					startNodeServices(nodes)
-					bootstrapNodes(nodes)
+				})
 
+				It("should reach a fault tolerant level of connectivity", func() {
+
+					By("bootstrap nodes")
+					bootstrapNodes(nodes)
 					n := 0
 					for i := range nodes {
 						numberOfPeers := len(nodes[i].DHT.MultiAddresses())
@@ -66,9 +71,55 @@ var _ = Describe("Dark nodes", func() {
 						}
 					}
 					Ω(n).Should(BeNumerically(">", numberOfNodes*2/3))
-
-					stopNodes(nodes)
 				})
+
+				AfterEach(func() {
+					By("stop node services")
+					stopNodes(nodes)
+					mu.Unlock()
+				})
+			})
+		}(numberOfNodes)
+	}
+
+	for _, numberOfNodes := range []int{18, 36 /*, 72*/} {
+		func(numberOfNodes int) {
+			Context(fmt.Sprintf("when connecting %d nodes", numberOfNodes), func() {
+				for _, connectivity := range []int{20, 40 /*, 60, 80, 100*/} {
+					func(connectivity int) {
+						Context(fmt.Sprintf("with %d%% connectivity", connectivity), func() {
+
+							var err error
+							var nodes []*node.DarkNode
+
+							BeforeEach(func() {
+								mu.Lock()
+
+								By("generate nodes")
+								nodes, err = generateNodes(numberOfNodes)
+								Ω(err).ShouldNot(HaveOccurred())
+
+								By("start node service")
+								startNodeServices(nodes)
+
+								By("bootstrap nodes")
+								bootstrapNodes(nodes)
+							})
+
+							It("should succeed for the super majority", func() {
+
+								By("ping connections")
+								numberOfPings, numberOfErrors := connectNodes(nodes, connectivity)
+								Ω(numberOfErrors).Should(BeNumerically("<", numberOfPings/3))
+							})
+
+							AfterEach(func() {
+								stopNodes(nodes)
+								mu.Unlock()
+							})
+						})
+					}(connectivity)
+				}
 			})
 		}(numberOfNodes)
 	}
@@ -125,39 +176,32 @@ func stopNodes(nodes []*node.DarkNode) {
 	}
 }
 
-func connectNodes(nodes []*node.DarkNode, connectivity int) error {
-	for i, from := range nodes {
+func connectNodes(nodes []*node.DarkNode, connectivity int) (int, int) {
+	numberOfPings := 0
+	numberOfErrors := 0
+	do.CoForAll(nodes, func(i int) {
+		// Select nodes randomly
+		from := nodes[i]
+		isSelected := rand.Intn(100) < connectivity
+		if !isSelected {
+			return
+		}
 		for j, to := range nodes {
 			if i == j {
 				continue
 			}
-			// Connect bootstrap nodes in a fully connected topology
-			if i < NumberOfBootstrapNodes {
-				if j < NumberOfBootstrapNodes {
-					client, err := from.ClientPool.FindOrCreateClient(to.NetworkOptions.MultiAddress)
-					if err != nil {
-						return err
-					}
-					if err := client.Ping(); err != nil {
-						return err
-					}
-				}
-				continue
-			}
-			// Connect standard nodes randomly
+			// Connect nodes randomly
 			isConnected := rand.Intn(100) < connectivity
 			if isConnected {
-				client, err := from.ClientPool.FindOrCreateClient(to.NetworkOptions.MultiAddress)
-				if err != nil {
-					return err
-				}
-				if err := client.Ping(); err != nil {
-					return err
+				numberOfPings++
+				if err := from.ClientPool.Ping(to.NetworkOptions.MultiAddress); err != nil {
+					log.Printf("error pinging: %v", err)
+					numberOfErrors++
 				}
 			}
 		}
-	}
-	return nil
+	})
+	return numberOfPings, numberOfErrors
 }
 
 func sendOrders(nodes []*node.DarkNode) error {
