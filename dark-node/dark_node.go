@@ -178,9 +178,13 @@ func (node *DarkNode) Stop() {
 	node.Server.Stop()
 	time.Sleep(time.Second)
 
-	// Stop the workers
+	// Stop background workers by closing their job queues
 	close(node.OrderFragmentWorkerQueue)
+	close(node.DeltaFragmentBroadcastWorkerQueue)
 	close(node.DeltaFragmentWorkerQueue)
+	close(node.GossipWorkerQueue)
+	close(node.FinalizeWorkerQueue)
+	close(node.ConsensusWorkerQueue)
 }
 
 // WatchDarkOcean for changes. When a change happens, find the dark pool for
