@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/compute"
@@ -72,6 +73,7 @@ func NewDeltaFragmentBroadcastWorker(logger *logger.Logger, clientPool *rpc.Clie
 func (worker *DeltaFragmentBroadcastWorker) Run() {
 	for deltaFragment := range worker.queue {
 		serializedDeltaFragment := rpc.SerializeDeltaFragment(deltaFragment)
+		log.Println(worker.darkPool)
 		worker.darkPool.CoForAll(func(node *dark.Node) {
 			multiAddress := node.MultiAddress()
 			if multiAddress == nil {

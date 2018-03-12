@@ -71,9 +71,31 @@ func (client *Client) TimeoutFunc(f func(ctx context.Context) error) error {
 	for i := 0; i < client.Options.TimeoutRetries; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), client.Options.Timeout+(client.Options.TimeoutBackoff*time.Duration(i)))
 		defer cancel()
-		if err = f(ctx); err == nil {
-			return err
+		if err = f(ctx); err != nil {
+			continue
 		}
+		return nil
+	}
+	return err
+}
+
+// StreamTimeoutFunc uses the timeout options of the Client to call a function.
+// It returns the last error that occured, or nil. If the RPC is successful it
+// will not cancel the context.
+func (client *Client) StreamTimeoutFunc(f func(ctx context.Context) error) error {
+	var err error
+	for i := 0; i < client.Options.TimeoutRetries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), client.Options.Timeout+(client.Options.TimeoutBackoff*time.Duration(i)))
+		defer func() {
+			if err := recover(); err != nil {
+				cancel()
+			}
+		}()
+		if err = f(ctx); err != nil {
+			cancel()
+			continue
+		}
+		return nil
 	}
 	return err
 }
@@ -90,37 +112,7 @@ func (client *Client) Ping() error {
 func (client *Client) QueryPeers(target *Address) (chan *MultiAddress, error) {
 
 	ch := make(chan *MultiAddress)
-	stream, err := client.SwarmClient.QueryPeers(context.Background(), &Query{
-		From:   client.From,
-		Target: target,
-	}, grpc.FailFast(false))
-	if err != nil {
-		return ch, err
-	}
-
-	go func() {
-		defer func() { recover() }()
-		for {
-			multiAddress, err := stream.Recv()
-			if err == io.EOF {
-				close(ch)
-				return
-			}
-			if err != nil {
-				close(ch)
-				return
-			}
-			ch <- multiAddress
-		}
-	}()
-	return ch, err
-}
-
-// QueryPeersBlocking calls the QueryPeers RPC and blocks until the RPC is
-// finished.
-func (client *Client) QueryPeersBlocking(target *Address) ([]*MultiAddress, error) {
-	multiAddresses := make([]*MultiAddress, 0)
-	err := client.TimeoutFunc(func(ctx context.Context) error {
+	err := client.StreamTimeoutFunc(func(ctx context.Context) error {
 		stream, err := client.SwarmClient.QueryPeers(ctx, &Query{
 			From:   client.From,
 			Target: target,
@@ -128,54 +120,26 @@ func (client *Client) QueryPeersBlocking(target *Address) ([]*MultiAddress, erro
 		if err != nil {
 			return err
 		}
-		for {
-			multiAddress, err := stream.Recv()
-			if err == io.EOF {
-				return nil
+		go func() {
+			defer func() { recover() }()
+			for {
+				multiAddress, err := stream.Recv()
+				if err != nil {
+					close(ch)
+					return
+				}
+				ch <- multiAddress
 			}
-			if err != nil {
-				return err
-			}
-			multiAddresses = append(multiAddresses, multiAddress)
-		}
+		}()
+		return nil
 	})
-	return multiAddresses, err
+	return ch, err
 }
 
 // QueryPeersDeep RPC.
 func (client *Client) QueryPeersDeep(target *Address) (chan *MultiAddress, error) {
 	ch := make(chan *MultiAddress)
-	stream, err := client.SwarmClient.QueryPeersDeep(context.Background(), &Query{
-		From:   client.From,
-		Target: target,
-	}, grpc.FailFast(false))
-	if err != nil {
-		return nil, err
-	}
-
-	go func() {
-		defer func() { recover() }()
-		for {
-			multiAddress, err := stream.Recv()
-			if err == io.EOF {
-				close(ch)
-				return
-			}
-			if err != nil {
-				close(ch)
-				return
-			}
-			ch <- multiAddress
-		}
-	}()
-	return ch, err
-}
-
-// QueryPeersDeepBlocking calls the QueryPeersDeep RPC and blocks until the RPC
-// is finished.
-func (client *Client) QueryPeersDeepBlocking(target *Address) ([]*MultiAddress, error) {
-	multiAddresses := make([]*MultiAddress, 0)
-	err := client.TimeoutFunc(func(ctx context.Context) error {
+	err := client.StreamTimeoutFunc(func(ctx context.Context) error {
 		stream, err := client.SwarmClient.QueryPeersDeep(ctx, &Query{
 			From:   client.From,
 			Target: target,
@@ -183,18 +147,20 @@ func (client *Client) QueryPeersDeepBlocking(target *Address) ([]*MultiAddress, 
 		if err != nil {
 			return err
 		}
-		for {
-			multiAddress, err := stream.Recv()
-			if err == io.EOF {
-				return nil
+		go func() {
+			defer func() { recover() }()
+			for {
+				multiAddress, err := stream.Recv()
+				if err != nil {
+					close(ch)
+					return
+				}
+				ch <- multiAddress
 			}
-			if err != nil {
-				return err
-			}
-			multiAddresses = append(multiAddresses, multiAddress)
-		}
+		}()
+		return nil
 	})
-	return multiAddresses, err
+	return ch, err
 }
 
 // Sync RPC.

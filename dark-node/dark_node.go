@@ -1,6 +1,7 @@
 package node
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"net"
@@ -70,7 +71,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	}
 
 	// TODO: This should come from the DNR.
-	k := int64(5) // 14)
+	k := int64(3) // 14)
 
 	var err error
 	node := &DarkNode{
@@ -123,26 +124,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	return node, nil
 }
 
-// Start the DarkNode.
-func (node *DarkNode) Start() {
-	// FIXME: This causes an index out of bounds panic.
-	// // Broadcast CPU/Memory/Network usage
-	// go func() {
-	// 	for {
-	// 		node.Usage()
-	// 		time.Sleep(20 * time.Second)
-	// 	}
-	// }()
-
-	// Start gRPC services and UI
-	go node.StartServices()
-	//go node.StartUI()
-	time.Sleep(time.Second)
-
-	// Bootstrap into the swarm network
-	node.Swarm.Bootstrap()
-	time.Sleep(time.Second)
-
+func (node *DarkNode) StartBackgroundWorkers() {
 	// Start background workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentBroadcastWorker.Run()
@@ -176,6 +158,10 @@ func (node *DarkNode) StartUI() {
 	}
 }
 
+func (node *DarkNode) Bootstrap() {
+	node.Swarm.Bootstrap()
+}
+
 // Stop the DarkNode.
 func (node *DarkNode) Stop() {
 	// Stop serving gRPC services
@@ -207,16 +193,16 @@ func (node *DarkNode) WatchDarkOcean() {
 	go func() {
 		defer close(changes)
 		for {
+			// Wait for a change to the ocean
+			<-changes
+			node.Logger.Info(logger.TagEthereum, "dark ocean change detected")
+
 			// Find the dark pool for this node and connect to all of the dark
 			// nodes in the pool
 			node.DarkPool.RemoveAll()
-			node.Logger.Info(logger.TagEthereum, "updating dark ocean...")
 			darkPool := node.DarkOcean.FindPool(node.RepublicKeyPair.ID())
-			node.Logger.Info(logger.TagEthereum, "connecting to dark ocean...")
 			node.ConnectToDarkPool(darkPool)
-			node.Logger.Info(logger.TagEthereum, "dark ocean updated")
-			// Wait for a change to the ocean
-			<-changes
+
 		}
 	}()
 	node.DarkOcean.Watch(5*time.Minute, changes)
@@ -231,6 +217,9 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 	}
 
 	darkPool.ForAll(func(n *dark.Node) {
+		if bytes.Equal(node.Config.RepublicKeyPair.ID(), n.ID) {
+			return
+		}
 		multiAddress := n.MultiAddress()
 		if multiAddress != nil {
 			return
@@ -241,7 +230,7 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 			node.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot find dark node %v: %s", n.ID.Address(), err.Error()))
 			return
 		} else if multiAddress == nil {
-			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("cannot find dark node %v", n.ID.Address()))
+			// node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("cannot find dark node: %v", n.ID.Address()))
 			return
 		}
 
@@ -258,6 +247,8 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("cannot update DHT with dark node %v: %s", n.ID.Address(), err.Error()))
 			return
 		}
+
+		node.Logger.Info(logger.TagNetwork, fmt.Sprintf("found dark node: %v", n.ID.Address()))
 
 		// Update the MultiAddress in the node
 		n.SetMultiAddress(*multiAddress)
