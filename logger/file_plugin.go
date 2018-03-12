@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -24,24 +23,43 @@ type FilePluginOptions struct {
 	Path string `json:"path"`
 }
 
-// NewFilePlugin uses the give File to create a new FilePlugin. The file must
-// be appendable and must be closed by the caller once the FilePlugin is no
-// longer needed.
-func NewFilePlugin(file *os.File) Plugin {
-	return &FilePlugin{
-		GuardedObject: do.NewGuardedObject(),
-		file:          file,
+// NewFilePlugin uses the give File to create a new FilePlugin. The file will
+// be opened as appendable and will be closed when the plugin is stopped.
+func NewFilePlugin(filePluginOptions FilePluginOptions) (Plugin, error) {
+	var err error
+	plugin := new(FilePlugin)
+	plugin.GuardedObject = do.NewGuardedObject()
+	switch filePluginOptions.Path {
+	case "stdout":
+		plugin.file = os.Stdout
+	case "stderr":
+		plugin.file = os.Stderr
+	default:
+		plugin.file, err = os.OpenFile(filePluginOptions.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	}
+	return plugin, err
 }
 
 // Start implements the Plugin interface. It does nothing.
 func (plugin *FilePlugin) Start() error {
+	plugin.Enter(nil)
+	defer plugin.Exit()
+
 	return nil
 }
 
 // Stop implements the Plugin interface. It does nothing.
 func (plugin *FilePlugin) Stop() error {
-	return nil
+	plugin.Enter(nil)
+	defer plugin.Exit()
+
+	if plugin.file == os.Stdout {
+		return nil
+	}
+	if plugin.file == os.Stderr {
+		return nil
+	}
+	return plugin.file.Close()
 }
 
 // Info implements the Plugin interface.
@@ -90,26 +108,4 @@ func (plugin *FilePlugin) Usage(cpu float32, memory, network int32) error {
 	}
 	_, err := plugin.file.WriteString(fmt.Sprintf("%s [info] ("+TagUsage+") cpu = %.3f MHz; memory = %d MB; network = %d KB\n", time.Now().Format("2018/02/03 10:00:00"), cpu, memory, network))
 	return err
-}
-
-// UnmarshalJSON implements the json.Unmarshaler interface.
-func (plugin *FilePlugin) UnmarshalJSON(data []byte) error {
-	filePluginOptions := FilePluginOptions{}
-	if err := json.Unmarshal(data, &filePluginOptions); err != nil {
-		return err
-	}
-
-	var err error
-	switch filePluginOptions.Path {
-	case "stdout":
-		plugin.file = os.Stdout
-	case "stderr":
-		plugin.file = os.Stderr
-	default:
-		plugin.file, err = os.OpenFile(filePluginOptions.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }

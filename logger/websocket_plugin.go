@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,111 +13,107 @@ import (
 type WebSocketPlugin struct {
 	do.GuardedObject
 
-	Srv          *http.Server
-	Host         string `json:"host"`
-	Port         string `json:"port"`
-	Username     string `json:"username"`
-	Password     string `json:"password"`
-	registration string `json:"registration"`
+	server   *http.Server
+	host     string
+	port     string
+	username string
+	password string
 
 	info  chan interface{}
-	error chan Message
+	err   chan Message
 	warn  chan interface{}
 	usage chan Usage
 }
 
-func NewWebSocketPlugin(host, port, username, password string) Plugin {
+type WebSocketPluginOptions struct {
+	Host     string `json:"host"`
+	Port     string `json:"port"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func NewWebSocketPlugin(webSocketPluginOptions WebSocketPluginOptions) Plugin {
 	plugin := &WebSocketPlugin{
 		GuardedObject: do.NewGuardedObject(),
-		Host:          host,
-		Port:          port,
-		Username:      username,
-		Password:      password,
+		host:          webSocketPluginOptions.Host,
+		port:          webSocketPluginOptions.Port,
+		username:      webSocketPluginOptions.Username,
+		password:      webSocketPluginOptions.Password,
 		info:          make(chan interface{}, 1),
-		error:         make(chan Message, 1),
+		err:           make(chan Message, 1),
 		warn:          make(chan interface{}, 1),
 		usage:         make(chan Usage, 1),
 	}
 	return plugin
 }
 
-func (plugin *WebSocketPlugin) logHandler(w http.ResponseWriter, r *http.Request) {
+func (plugin *WebSocketPlugin) handler(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{
 		CheckOrigin:     func(r *http.Request) bool { return true },
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
-	c, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
 
-	defer c.Close()
+	// The deadlines and intervals for messaging over the socket.
+	writeDeadline := 30 * time.Second // We must write notifications within 10 seconds
+	pingInterval := 30 * time.Second  // We must ping every 30 seconds
+	pongInterval := 60 * time.Second  // We expect a pong every 60 seconds
 
-	go func() {
-		for {
-			request := &struct {
-				Name string `json: "name"`
-			}{}
-			err := c.ReadJSON(request)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			if request.Name == TagRegister {
-				if plugin.registration != "" {
-					registration := new(Registration)
-					err = json.Unmarshal([]byte(plugin.registration), registration)
-					if err != nil {
-						log.Println(err)
-						return
-					}
-					err := c.WriteJSON(registration)
-					if err != nil {
-						return
-					}
-				}
-			}
-		}
+	// Start the pinger.
+	ping := time.NewTicker(pingInterval)
+	defer func() {
+		ping.Stop()
+		conn.Close()
 	}()
 
-	// Broadcast errors
-	for {
-		select {
-		case u := <-plugin.usage:
-			c.WriteJSON(u)
-		case e := <-plugin.error:
-			c.WriteJSON(e)
-		case i := <-plugin.info:
-			c.WriteJSON(i)
-		case warning := <-plugin.warn:
-			c.WriteJSON(warning)
-		default:
-			break
-		}
-	}
+	// Start the ponger.
+	conn.SetReadDeadline(time.Now().Add(pongInterval))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(pongInterval))
+		return nil
+	})
 
-	//todo : how to close this
+	// Broadcast messages to the WebSocket
+	for {
+		var val interface{}
+		select {
+		case val = <-plugin.usage:
+		case val = <-plugin.err:
+		case val = <-plugin.info:
+		case val = <-plugin.warn:
+		case <-ping.C:
+			conn.SetWriteDeadline(time.Now().Add(writeDeadline))
+			if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+				return
+			}
+		}
+		conn.SetWriteDeadline(time.Now().Add(writeDeadline))
+		conn.WriteJSON(val)
+	}
 }
 
+// Start implements the Plugin interface. It starts a WebSocket server.
 func (plugin *WebSocketPlugin) Start() error {
-	plugin.Srv = &http.Server{
-		Addr: plugin.Host + ":" + plugin.Port,
+	plugin.server = &http.Server{
+		Addr: fmt.Sprintf("%s:%s", plugin.host, plugin.password),
 	}
-	http.HandleFunc("/logs", plugin.logHandler)
+	http.HandleFunc("/logs", plugin.handler)
 	go func() {
-		log.Println(fmt.Sprintf("WebSocket logger listening on %s:%s", plugin.Host, plugin.Port))
-		err := plugin.Srv.ListenAndServe()
-		if err != nil {
+		log.Println(fmt.Sprintf("WebSocket logger listening on %s:%s", plugin.host, plugin.port))
+		if err := plugin.server.ListenAndServe(); err != nil {
 			log.Println(err)
 		}
 	}()
-
 	return nil
 }
 
+// Stop implements the Plugin interface. It stops the WebSocket server.
 func (plugin *WebSocketPlugin) Stop() error {
-	return plugin.Srv.Shutdown(nil)
+	return plugin.server.Shutdown(nil)
 }
 
 type Message struct {
@@ -140,10 +135,6 @@ func (plugin *WebSocketPlugin) Info(tag, message string) error {
 			Message: message,
 		},
 	}
-	if tag == TagRegister {
-		plugin.registration = message
-		return nil
-	}
 	if len(plugin.info) == 1 {
 		<-plugin.info
 	}
@@ -159,10 +150,10 @@ func (plugin *WebSocketPlugin) Error(tag, message string) error {
 	msg := Message{
 		time.Now().Format("2006/01/02 15:04:05 "), tag, message,
 	}
-	if len(plugin.error) == 1 {
-		<-plugin.error
+	if len(plugin.err) == 1 {
+		<-plugin.err
 	}
-	plugin.error <- msg
+	plugin.err <- msg
 	return nil
 }
 
@@ -195,9 +186,9 @@ func (plugin *WebSocketPlugin) Usage(cpu float32, memory, network int32) error {
 		Type: "usage",
 		Time: time.Now(),
 		Data: UsageData{
-			Cpu:     cpu,
+			CPU:     cpu,
 			Memory:  memory,
-			network: network,
+			Network: network,
 		},
 	}
 	if len(plugin.usage) == 1 {
