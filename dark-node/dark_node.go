@@ -128,15 +128,16 @@ func (node *DarkNode) Start() {
 		}
 	}()
 
+	// Start gRPC services and UI
 	go node.StartServices()
-	time.Sleep(time.Second)
-
 	go node.StartUI()
 	time.Sleep(time.Second)
 
+	// Bootstrap into the swarm network
 	go node.Swarm.Bootstrap()
 	time.Sleep(time.Second)
 
+	// Start background workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentBroadcastWorker.Run()
 	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue, node.TestDeltaNotifications)
