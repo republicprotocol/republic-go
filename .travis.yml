@@ -14,7 +14,7 @@ before_install:
 script:
   - go vet
   - golint -set_exit_status
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out
-  
+  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out stackint
+
 after_success:
   - goveralls -coverprofile=coverprofile.out -service=travis-ci -repotoken $COVERALLS_TOKEN

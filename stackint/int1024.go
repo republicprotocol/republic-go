@@ -33,6 +33,8 @@ func Zero() Int1024 {
 	}
 }
 
+var zero = Zero()
+
 // Int1024FromUint64 returns a new Int1024 from a Word
 func Int1024FromUint64(n uint64) Int1024 {
 	z := Zero()
@@ -76,7 +78,17 @@ func (x *Int1024) LessThan(y *Int1024) bool {
 	return false
 }
 
-// ShiftLeft shifts to the left x by one
+// LessThanOrEqual returns x<=y
+func (x *Int1024) LessThanOrEqual(y *Int1024) bool {
+	for i := 0; i < INT1024WORDS; i++ {
+		if x.words[i] > y.words[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// shiftLeftByOne shifts to the left x by one
 func (x *Int1024) shiftLeftByOne() Int1024 {
 	z := Zero()
 	overflow := Word(0)
@@ -92,6 +104,43 @@ func (x *Int1024) shiftLeftByOne() Int1024 {
 		// WARNING: Overflow occured (not important for Shift)
 	}
 
+	return z
+}
+
+// shiftRightByOne shifts to the right x by one
+func (x *Int1024) shiftRightByOne() Int1024 {
+	z := Zero()
+	overflow := Word(0)
+	for i := 0; i < INT1024WORDS; i++ {
+		// Shift word to the right
+		// If previous word overflowed, add 1
+		z.words[i] = (x.words[i] >> 1) | overflow
+		// Calculate if word overflows
+		overflow = (x.words[i] >> (WORDSIZE - 1)) & (1 << (WORDSIZE - 1))
+	}
+
+	if overflow == 1 {
+		// WARNING: Overflow occured (not important for Shift)
+	}
+
+	return z
+}
+
+// Or returns x|y
+func (x *Int1024) Or(y *Int1024) Int1024 {
+	z := Zero()
+	for i := 0; i < INT1024WORDS; i++ {
+		z.words[i] = x.words[i] | y.words[i]
+	}
+	return z
+}
+
+// Not returns ~x
+func (x *Int1024) Not() Int1024 {
+	z := Zero()
+	for i := 0; i < INT1024WORDS; i++ {
+		z.words[i] = ^x.words[i]
+	}
 	return z
 }
 
@@ -182,14 +231,57 @@ func (x *Int1024) Mul(y *Int1024) Int1024 {
 	return z
 }
 
+// DivMod returns (x/y, x%y). If y is 0, a run-time panic occurs.
+func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
+	dividend := x.Clone()
+	denom := y.Clone()
+	current := Int1024FromUint64(1)
+	answer := Zero()
+
+	if denom.Equals(&zero) {
+		// TODO: Panic division by zero
+		return zero, zero
+	}
+
+	limit := answer.Not()
+	limit = limit.shiftRightByOne()
+	overflowed := false
+	for denom.LessThanOrEqual(&dividend) {
+		if !denom.LessThan(&limit) {
+			overflowed = true
+			break
+		}
+		denom = denom.shiftLeftByOne()
+		current = current.shiftLeftByOne()
+	}
+
+	if !overflowed {
+		denom = denom.shiftRightByOne()
+		current = current.shiftRightByOne()
+	}
+
+	for !current.Equals(&zero) {
+		if !dividend.LessThan(&denom) {
+			dividend = dividend.Sub(&denom)
+			answer = answer.Or(&current)
+		}
+		current = current.shiftRightByOne()
+		denom = denom.shiftRightByOne()
+	}
+
+	return answer, dividend
+}
+
 // Div returns the quotient of x/y. If y is 0, a run-time panic occurs.
 func (x *Int1024) Div(y *Int1024) Int1024 {
-	panic("Not implemented!")
+	div, _ := x.DivMod(y)
+	return div
 }
 
 // Mod returns the modulus x%y. If y is 0, a run-time panic occurs.
 func (x *Int1024) Mod(y *Int1024) Int1024 {
-	panic("Not implemented!")
+	_, mod := x.DivMod(y)
+	return mod
 }
 
 // ModInverse returns the multiplicative inverse of x in the ring ℤ/nℤ.
