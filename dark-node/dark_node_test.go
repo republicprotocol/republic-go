@@ -2,7 +2,6 @@ package node_test
 
 import (
 	"encoding/json"
-	"expvar"
 	"fmt"
 	"io/ioutil"
 	"log"

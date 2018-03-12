@@ -365,7 +365,6 @@ func (service *SwarmService) FindNode(targetID identity.ID) (*identity.MultiAddr
 			}
 			continue
 		}
-		defer close(candidates)
 
 		// Filter any candidate that is already in the closure.
 		for deserializedCandidate := range candidates {
