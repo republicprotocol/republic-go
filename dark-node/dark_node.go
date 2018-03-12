@@ -124,17 +124,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	return node, nil
 }
 
-// Start the DarkNode.
-func (node *DarkNode) Start() {
-	// FIXME: This causes an index out of bounds panic.
-	// // Broadcast CPU/Memory/Network usage
-	// go func() {
-	// 	for {
-	// 		node.Usage()
-	// 		time.Sleep(20 * time.Second)
-	// 	}
-	// }()
-
+func (node *DarkNode) StartBackgroundWorkers() {
 	// Start background workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentBroadcastWorker.Run()
@@ -142,16 +132,6 @@ func (node *DarkNode) Start() {
 	go node.GossipWorker.Run(node.FinalizeWorkerQueue)
 	go node.FinalizeWorker.Run(node.ConsensusWorkerQueue)
 	go node.ConsensusWorker.Run()
-
-	// Start gRPC services and UI
-	go node.StartServices()
-	time.Sleep(5 * time.Second)
-
-	//go node.StartUI()
-	time.Sleep(time.Second)
-
-	// Bootstrap into the swarm network
-	node.Swarm.Bootstrap()
 }
 
 func (node *DarkNode) StartServices() {
@@ -176,6 +156,10 @@ func (node *DarkNode) StartUI() {
 	if err != nil {
 		node.Logger.Error(logger.TagNetwork, err.Error())
 	}
+}
+
+func (node *DarkNode) Bootstrap() {
+	node.Swarm.Bootstrap()
 }
 
 // Stop the DarkNode.

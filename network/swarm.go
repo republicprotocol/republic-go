@@ -2,7 +2,6 @@ package network
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
@@ -49,9 +48,6 @@ func (service *SwarmService) Register(server *grpc.Server) {
 // Node and attempt to find itself in the network. This process will ultimately
 // connect it to Nodes that are close to it in XOR space.
 func (service *SwarmService) Bootstrap() {
-	if service.Options.Debug >= DebugMedium {
-		service.Logger.Info(logger.TagNetwork, fmt.Sprintf("boostrapping against %v nodes", len(service.Options.BootstrapMultiAddresses)))
-	}
 	// Add all bootstrap Nodes to the DHT.
 	for _, bootstrapMultiAddress := range service.Options.BootstrapMultiAddresses {
 		err := service.DHT.UpdateMultiAddress(bootstrapMultiAddress)
@@ -73,14 +69,10 @@ func (service *SwarmService) Bootstrap() {
 			if err := service.bootstrapUsingMultiAddress(bootstrapMultiAddress); err != nil {
 				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("bootstrap error: %s", err.Error()))
 			}
-			if service.Address() == "8MJxpBsezEGKPZBbhFE26HwDFxMtFu" {
-				log.Println("8MJxpBsezEGKPZBbhFE26HwDFxMtFu handled all peers from", bootstrapMultiAddress.Address())
-			}
 		}
 	}
 	if service.Options.Debug >= DebugMedium {
-		service.Logger.Info(logger.TagNetwork, fmt.Sprintf("%v connected to %v peers", service.Address(), len(service.DHT.MultiAddresses())))
-		// service.Logger.Info(logger.TagNetwork, fmt.Sprintf("%v finished bootstrapping", service.Address()))
+		service.Logger.Info(logger.TagNetwork, fmt.Sprintf("boostrap connected to %v peers", len(service.DHT.MultiAddresses())))
 	}
 }
 
@@ -147,8 +139,6 @@ func (service *SwarmService) QueryPeers(query *rpc.Query, stream rpc.Swarm_Query
 		return do.Err(service.queryPeers(query, stream))
 	})
 
-	return nil
-
 	select {
 	case val := <-wait:
 		return val.Err
@@ -160,24 +150,21 @@ func (service *SwarmService) QueryPeers(query *rpc.Query, stream rpc.Swarm_Query
 
 func (service *SwarmService) queryPeers(query *rpc.Query, stream rpc.Swarm_QueryPeersServer) error {
 	target := rpc.DeserializeAddress(query.Target)
-	_, err := service.DHT.FindMultiAddressNeighbors(target, service.Options.Alpha)
-	if err != nil {
-		return err
-	}
+	peers := service.DHT.MultiAddresses()
 
 	// Filter away peers that are further from the target than this service.
-	// for _, peer := range peers {
-	// 	closer, err := identity.Closer(peer.Address(), service.Address(), target)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	if closer {
-	// 		if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
-	// 			service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot send query result: %s", err.Error()))
-	// 			return err
-	// 		}
-	// 	}
-	// }
+	for _, peer := range peers {
+		closer, err := identity.Closer(peer.Address(), service.Address(), target)
+		if err != nil {
+			return err
+		}
+		if closer {
+			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot send query result: %s", err.Error()))
+				return err
+			}
+		}
+	}
 	return service.updatePeer(query.From)
 }
 
@@ -188,11 +175,8 @@ func (service *SwarmService) queryPeers(query *rpc.Query, stream rpc.Swarm_Query
 // and should be pinged.
 func (service *SwarmService) QueryPeersDeep(query *rpc.Query, stream rpc.Swarm_QueryPeersDeepServer) error {
 	wait := do.Process(func() do.Option {
-		// return do.Err(service.queryPeersDeep(query, stream))
-		return do.Err(service.queryPeers(query, stream))
+		return do.Err(service.queryPeersDeep(query, stream))
 	})
-
-	return nil
 
 	select {
 	case val := <-wait:
@@ -209,10 +193,7 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 		return err
 	}
 	target := rpc.DeserializeAddress(query.Target)
-	peers, err := service.DHT.FindMultiAddressNeighbors(target, service.Options.Alpha)
-	if err != nil {
-		return err
-	}
+	peers := service.DHT.MultiAddresses()
 
 	// Create the frontier and a closure map.
 	frontier := make(identity.MultiAddresses, 0, len(peers))
@@ -288,20 +269,12 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 	var peers chan *rpc.MultiAddress
 
 	// Query the bootstrap service.
-	// if service.Address() == "8MJxpBsezEGKPZBbhFE26HwDFxMtFu" {
-	// 	log.Println("8MJxpBsezEGKPZBbhFE26HwDFxMtFu connecting to", bootstrapMultiAddress.Address()+"...")
-	// }
-
 	peers, err = service.ClientPool.QueryPeersDeep(bootstrapMultiAddress, rpc.SerializeAddress(service.Address()))
 	if err != nil {
 		if service.Options.Debug >= DebugLow {
 			service.Logger.Error(logger.TagNetwork, err.Error())
 		}
 		return err
-	}
-
-	if service.Address() == "8MJxpBsezEGKPZBbhFE26HwDFxMtFu" {
-		log.Println("8MJxpBsezEGKPZBbhFE26HwDFxMtFu connected to", bootstrapMultiAddress.Address())
 	}
 
 	// Peers returned by the query will be added to the DHT.
@@ -318,9 +291,6 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 			if service.Options.Debug >= DebugLow {
 				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot update DHT: %s", err.Error()))
 			}
-		}
-		if service.Address() == "8MJxpBsezEGKPZBbhFE26HwDFxMtFu" {
-			log.Println("8MJxpBsezEGKPZBbhFE26HwDFxMtFu handled", peer.Address())
 		}
 	}
 
