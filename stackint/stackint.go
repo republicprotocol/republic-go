@@ -2,6 +2,9 @@ package stackint
 
 // go build -a -gcflags='-m -m' stackint.go
 
+// SIZE is the number of bits stored by Int1024
+const SIZE = 1024
+
 // WORDSIZE is 64 for Word
 const WORDSIZE = 64
 
@@ -9,10 +12,10 @@ const WORDSIZE = 64
 type Word uint64
 
 // WORDMAX represents the largest word value
-const WORDMAX = 1<<64 - 1
+const WORDMAX = 1<<WORDSIZE - 1
 
 // INT1024WORDS is 1024 / 64
-const INT1024WORDS = 1024 / WORDSIZE
+const INT1024WORDS = SIZE / WORDSIZE
 
 // Int1024 provides a 1024 bit number optimised to never use the heap
 type Int1024 struct {
@@ -76,11 +79,19 @@ func (x *Int1024) LessThan(y *Int1024) bool {
 // ShiftLeft shifts to the left x by one
 func (x *Int1024) shiftLeftByOne() Int1024 {
 	z := Zero()
-	bit := Word(0)
+	overflow := Word(0)
 	for i := INT1024WORDS - 1; i >= 0; i-- {
-		z.words[i] = (x.words[i] << 1) | bit
-		bit = (x.words[i] >> (WORDSIZE - 1)) & 1
+		// Shift word to the right
+		// If previous word overflowed, add 1
+		z.words[i] = (x.words[i] << 1) | overflow
+		// Calculate if word overflows
+		overflow = (x.words[i] >> (WORDSIZE - 1)) & 1
 	}
+
+	if overflow == 1 {
+		// WARNING: Overflow occured (not important for Shift)
+	}
+
 	return z
 }
 
@@ -88,6 +99,8 @@ func (x *Int1024) shiftLeftByOne() Int1024 {
 func (x *Int1024) Add(y *Int1024) Int1024 {
 	z := Zero()
 
+	// Loop through each of the 16 pair of words and add them
+	// Storing the overflow if necessary
 	var overflow Word
 	overflow = 0
 	for i := INT1024WORDS - 1; i >= 0; i-- {
@@ -106,7 +119,7 @@ func (x *Int1024) Add(y *Int1024) Int1024 {
 	return z
 }
 
-// Add returns x+y
+// overwritingAdd sets x to x+y (used for multiplication)
 func (x *Int1024) overwritingAdd(y *Int1024) {
 	var overflow Word
 	overflow = 0
@@ -150,6 +163,7 @@ func (x *Int1024) Sub(y *Int1024) Int1024 {
 // Mul returns x*y
 func (x *Int1024) Mul(y *Int1024) Int1024 {
 	// Naïve inplementation!
+	// Uses up to 16384 uint64 additions (worst case)
 	// TODO: Rewrite using more efficient algorithm
 	z := Zero()
 	shifted := *x
