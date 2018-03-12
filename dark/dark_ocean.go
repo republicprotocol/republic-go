@@ -58,14 +58,14 @@ func (ocean *Ocean) update() error {
 	blockhash := big.NewInt(1234567)
 	poolsize := 72
 
-	nodes, err := ocean.darkNodeRegistrar.GetAllNodes()
+	nodeIDs, err := ocean.darkNodeRegistrar.GetAllNodes()
 	if err != nil {
 		return err
 	}
 
 	// Find the prime smaller or equal to the number of registered nodes
 	// Start at +2 because it has to greater than the maximum (x+1)
-	previousPrime := big.NewInt(int64(len(nodes) + 2))
+	previousPrime := big.NewInt(int64(len(nodeIDs) + 2))
 
 	// ProbablyPrime is 100% accurate for inputs less than 2^64.
 	// https://golang.org/src/math/big/prime.go
@@ -82,15 +82,12 @@ func (ocean *Ocean) update() error {
 
 	// Calcualte the pool assignment for each node
 	inverse := blockhash.ModInverse(blockhash, previousPrime)
-	for x := range nodes {
-		xPlusOne := big.NewInt(int64(x + 1))
-		i := big.NewInt(0).Mod(big.NewInt(0).Mul(xPlusOne, inverse), previousPrime)
+	for n := range nodeIDs {
+		nPlusOne := big.NewInt(int64(n + 1))
+		i := big.NewInt(0).Mod(big.NewInt(0).Mul(nPlusOne, inverse), previousPrime)
 
 		pool := big.NewInt(0).Mod(i, numberOfPools).Int64()
-		pools[pool].Append(Node{
-			ID:           nodes[x],
-			MultiAddress: nil,
-		})
+		pools[pool].Append(NewNode(nodeIDs[n]))
 	}
 
 	ocean.pools = pools

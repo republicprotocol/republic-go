@@ -2,6 +2,7 @@ package dark
 
 import (
 	"bytes"
+	"sync"
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
@@ -9,7 +10,28 @@ import (
 
 type Node struct {
 	identity.ID
-	*identity.MultiAddress
+	mu           *sync.RWMutex
+	multiAddress *identity.MultiAddress
+}
+
+func NewNode(id identity.ID) Node {
+	return Node{
+		ID:           id,
+		mu:           new(sync.RWMutex),
+		multiAddress: nil,
+	}
+}
+
+func (node *Node) SetMultiAddress(multiAddress identity.MultiAddress) {
+	node.mu.Lock()
+	defer node.mu.Unlock()
+	node.multiAddress = &multiAddress
+}
+
+func (node *Node) MultiAddress() *identity.MultiAddress {
+	node.mu.RLock()
+	defer node.mu.RUnlock()
+	return node.multiAddress
 }
 
 type Nodes []Node
@@ -49,7 +71,22 @@ func (pool *Pool) Has(nodeID identity.ID) *Node {
 	return nil
 }
 
-// CoForAll loop over all nodes. The applied function must not modify the Pool.
+// Size returns the number of Nodes in the Pool.
+func (pool *Pool) Size() int {
+	pool.EnterReadOnly(nil)
+	defer pool.ExitReadOnly()
+	return len(pool.nodes)
+}
+
+// RemoveAll Nodes from the Pool.
+func (pool *Pool) RemoveAll() {
+	pool.Enter(nil)
+	defer pool.Exit()
+	pool.nodes = pool.nodes[:0]
+}
+
+// CoForAll loop over all Nodes. The applied function must not modify the Pool
+// but it can modify the Node.
 func (pool *Pool) CoForAll(f func(node *Node)) {
 	pool.EnterReadOnly(nil)
 	defer pool.ExitReadOnly()
@@ -58,11 +95,22 @@ func (pool *Pool) CoForAll(f func(node *Node)) {
 	})
 }
 
-// ForAll loop over all nodes. The applied function must not modify the Pool.
+// ForAll loop over all Nodes. The applied function must not modify the Pool
+// but it can modify the Node.
 func (pool *Pool) ForAll(f func(node *Node)) {
 	pool.EnterReadOnly(nil)
 	defer pool.ExitReadOnly()
 	do.ForAll(pool.nodes, func(i int) {
 		f(&pool.nodes[i])
 	})
+}
+
+// For loop over all Nodes. The applied function must not modify the Pool
+// but it can modify the Node.
+func (pool *Pool) For(f func(node *Node)) {
+	pool.EnterReadOnly(nil)
+	defer pool.ExitReadOnly()
+	for i := range pool.nodes {
+		f(&pool.nodes[i])
+	}
 }
