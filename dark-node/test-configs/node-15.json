@@ -1,1 +1,42 @@
-{"network":{"multiAddress":"/ip4/127.0.0.1/tcp/4014/republic/8MJ1n1DXbmFMCiqwNzH2t5nkJUVBFH","bootstrapMultiAddresses":["/ip4/127.0.0.1/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu","/ip4/127.0.0.1/tcp/3001/republic/8MGB2cj2HbQFepRVs43Ghct5yCRS9C","/ip4/127.0.0.1/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR","/ip4/127.0.0.1/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT","/ip4/127.0.0.1/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss"],"debug":3,"alpha":3,"maxBucketLength":20,"clientPoolCacheLimit":20,"timeout":30000000000,"timeoutBackoff":30000000000,"timeoutRetries":1,"concurrent":false},"logger":{"plugins":[{"file":{"path":"stdout"}},{"file":{"path":""}}]},"host":"127.0.0.1","port":"4014","ethereum_key":{"address":"00678b5df17369dd90d3eaf0af6e0290ff7e34ad","privatekey":"d928e8ed5368fec0b69cc89a364de03e3e63ef98f33047f42998aca4260ebe6c","id":"d6c61fbb-e939-4ffe-a38a-65ef3585ee36","version":3},"republic_key_pair":"BAZjmMTpi4zwUCcmyfiivvfdiYDeCs6UjYmbsP6bCn9E","rsa_key_pair":"BAZjmMTpi4zwUCcmyfiivvfdiYDeCs6UjYmbsP6bCn9E","dev":true,"ethereum_rpc":"","prime":null}
+{
+    "network": {
+        "multiAddress": "/ip4/127.0.0.1/tcp/4014/republic/8MJ1n1DXbmFMCiqwNzH2t5nkJUVBFH",
+        "bootstrapMultiAddresses": [
+            "/ip4/127.0.0.1/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu",
+            "/ip4/127.0.0.1/tcp/3001/republic/8MGB2cj2HbQFepRVs43Ghct5yCRS9C",
+            "/ip4/127.0.0.1/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR",
+            "/ip4/127.0.0.1/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT",
+            "/ip4/127.0.0.1/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss"
+        ],
+        "debug": 3,
+        "alpha": 3,
+        "maxBucketLength": 20,
+        "clientPoolCacheLimit": 20,
+        "timeout": 30000000000,
+        "timeoutBackoff": 30000000000,
+        "timeoutRetries": 1,
+        "concurrent": false
+    },
+    "logger": {
+        "plugins": [
+            {
+                "file": {
+                    "path": "stdout"
+                }
+            }
+        ]
+    },
+    "host": "127.0.0.1",
+    "port": "4014",
+    "ethereum_key": {
+        "address": "00678b5df17369dd90d3eaf0af6e0290ff7e34ad",
+        "privatekey": "d928e8ed5368fec0b69cc89a364de03e3e63ef98f33047f42998aca4260ebe6c",
+        "id": "d6c61fbb-e939-4ffe-a38a-65ef3585ee36",
+        "version": 3
+    },
+    "republic_key_pair": "BAZjmMTpi4zwUCcmyfiivvfdiYDeCs6UjYmbsP6bCn9E",
+    "rsa_key_pair": "BAZjmMTpi4zwUCcmyfiivvfdiYDeCs6UjYmbsP6bCn9E",
+    "dev": true,
+    "ethereum_rpc": "",
+    "prime": null
+}

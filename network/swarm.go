@@ -264,17 +264,17 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 	var err error
 	var peers chan *rpc.MultiAddress
 
-		// Query the bootstrap service.
-		peers, err = service.ClientPool.QueryPeersDeep(bootstrapMultiAddress, rpc.SerializeAddress(service.Address()))
-		if err != nil {
-			if service.Options.Debug >= DebugLow {
-				service.Logger.Error(logger.TagNetwork, err.Error())
-			}
-			return err
+	// Query the bootstrap service.
+	peers, err = service.ClientPool.QueryPeersDeep(bootstrapMultiAddress, rpc.SerializeAddress(service.Address()))
+	if err != nil {
+		if service.Options.Debug >= DebugLow {
+			service.Logger.Error(logger.TagNetwork, err.Error())
 		}
+		return err
+	}
 	// Peers returned by the query will be added to the DHT.
 	if service.Options.Debug >= DebugMedium {
-		service.Logger.Info(logger.TagNetwork, fmt.Sprintf("%v received %v peers from %v.\n", service.Address(), len(peers), bootstrapMultiAddress.Address()))
+		service.Logger.Info(logger.TagNetwork, fmt.Sprintf("received %v peers from %v", len(peers), bootstrapMultiAddress.Address()))
 	}
 	for serializedPeer := range peers {
 		peer, err := rpc.DeserializeMultiAddress(serializedPeer)

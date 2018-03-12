@@ -84,6 +84,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 		return nil, err
 	}
 	node.Logger.Start()
+	log.Println(config.LoggerOptions.Plugins)
 
 	// Load the dark ocean and the dark pool for this node
 	node.DarkPool = dark.NewPool()
@@ -228,10 +229,10 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 		}
 		// Find the dark node
 		multiAddress, err := node.Swarm.FindNode(n.ID)
-		if err != nil  {
+		if err != nil {
 			node.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot find dark node %v: %s", n.ID.Address(), err.Error()))
 			return
-		} else if multiAddress == nil{
+		} else if multiAddress == nil {
 			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("cannot find dark node %v", n.ID.Address()))
 			return
 		}

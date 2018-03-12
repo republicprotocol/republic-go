@@ -1,1 +1,41 @@
-{"network":{"multiAddress":"/ip4/127.0.0.1/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR","bootstrapMultiAddresses":["/ip4/127.0.0.1/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu","/ip4/127.0.0.1/tcp/3001/republic/8MGB2cj2HbQFepRVs43Ghct5yCRS9C","/ip4/127.0.0.1/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT","/ip4/127.0.0.1/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss"],"debug":3,"alpha":3,"maxBucketLength":20,"clientPoolCacheLimit":20,"timeout":30000000000,"timeoutBackoff":30000000000,"timeoutRetries":1,"concurrent":false},"logger":{"plugins":[{"file":{"path":"stdout"}},{"file":{"path":""}}]},"host":"127.0.0.1","port":"3002","ethereum_key":{"address":"0045b42a1673198da6cadceb6e06a3fbba5f8e6a","privatekey":"d5e06c6f4a5a4e5727d5c1f528b00d818ed5ee44600888ea358d30ddb0d55093","id":"d2e84f5a-be50-4879-aaba-8c0010b2d47c","version":3},"republic_key_pair":"7pKjb3vjzd85KYLghxvuJST8EDsQwttV7zt996NjZNrQ","rsa_key_pair":"7pKjb3vjzd85KYLghxvuJST8EDsQwttV7zt996NjZNrQ","dev":true,"ethereum_rpc":"","prime":null}
+{
+    "network": {
+        "multiAddress": "/ip4/127.0.0.1/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR",
+        "bootstrapMultiAddresses": [
+            "/ip4/127.0.0.1/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu",
+            "/ip4/127.0.0.1/tcp/3001/republic/8MGB2cj2HbQFepRVs43Ghct5yCRS9C",
+            "/ip4/127.0.0.1/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT",
+            "/ip4/127.0.0.1/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss"
+        ],
+        "debug": 3,
+        "alpha": 3,
+        "maxBucketLength": 20,
+        "clientPoolCacheLimit": 20,
+        "timeout": 30000000000,
+        "timeoutBackoff": 30000000000,
+        "timeoutRetries": 1,
+        "concurrent": false
+    },
+    "logger": {
+        "plugins": [
+            {
+                "file": {
+                    "path": "stdout"
+                }
+            }
+        ]
+    },
+    "host": "127.0.0.1",
+    "port": "3002",
+    "ethereum_key": {
+        "address": "0045b42a1673198da6cadceb6e06a3fbba5f8e6a",
+        "privatekey": "d5e06c6f4a5a4e5727d5c1f528b00d818ed5ee44600888ea358d30ddb0d55093",
+        "id": "d2e84f5a-be50-4879-aaba-8c0010b2d47c",
+        "version": 3
+    },
+    "republic_key_pair": "7pKjb3vjzd85KYLghxvuJST8EDsQwttV7zt996NjZNrQ",
+    "rsa_key_pair": "7pKjb3vjzd85KYLghxvuJST8EDsQwttV7zt996NjZNrQ",
+    "dev": true,
+    "ethereum_rpc": "",
+    "prime": null
+}

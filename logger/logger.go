@@ -39,14 +39,14 @@ type Plugin interface {
 
 // PluginOptions are used to Unmarshal plugins from JSON.
 type PluginOptions struct {
-	File      *FilePluginOptions      `json:"file,omitempty"`
-	WebSocket *WebSocketPluginOptions `json:"websocket,omitempty"`
+	File      *FilePluginOptions      `json:"file"`
+	WebSocket *WebSocketPluginOptions `json:"websocket"`
 }
 
 // NewLogger returns a new Logger that will start and stop a set of plugins.
 func NewLogger(options Options) (*Logger, error) {
 	plugins := make([]Plugin, 0, len(options.Plugins))
-	for i := range plugins {
+	for i := range options.Plugins {
 		if options.Plugins[i].File != nil {
 			plugin, err := NewFilePlugin(*options.Plugins[i].File)
 			if err != nil {
