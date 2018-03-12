@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"log"
 	"math/big"
 	"net"
 	"net/http"
@@ -153,6 +154,7 @@ func (node *DarkNode) StartServices() {
 	node.Swarm.Register(node.Server)
 	node.Dark.Register(node.Server)
 	node.Gossip.Register(node.Server)
+	log.Println(node.Host, node.Port)
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
 		node.Logger.Error(logger.TagNetwork, err.Error())

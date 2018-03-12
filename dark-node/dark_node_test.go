@@ -166,6 +166,12 @@ func connectNodes(bootstrapNodes, testNodes []*node.DarkNode, connectivity int) 
 		for j := i + 1; j < len(testNodes); j++ {
 			other := testNodes[j]
 			isConnected := rand.Intn(100) < connectivity
+			if _, ok := connectivityMap[testNode.NetworkOptions.MultiAddress.String()]; !ok {
+				connectivityMap[testNode.NetworkOptions.MultiAddress.String()] = map[string]bool{}
+			}
+			if _, ok := connectivityMap[other.NetworkOptions.MultiAddress.String()]; !ok {
+				connectivityMap[other.NetworkOptions.MultiAddress.String()] = map[string]bool{}
+			}
 			connectivityMap[testNode.NetworkOptions.MultiAddress.String()][other.NetworkOptions.MultiAddress.String()] = isConnected
 			connectivityMap[other.NetworkOptions.MultiAddress.String()][testNode.NetworkOptions.MultiAddress.String()] = isConnected
 		}
