@@ -110,6 +110,12 @@ func (worker *DeltaFragmentWorker) Run(queues ...chan *compute.Delta) {
 			// Write to channels that might be closed
 			func() {
 				defer func() { recover() }()
+				// FIXME: Stop doing this shit.
+				if delta.IsMatch(Prime) {
+					worker.logger.Info(logger.TagCompute, fmt.Sprintf("(%s, %s) matched", delta.BuyOrderID.String(), delta.SellOrderID.String()))
+				} else {
+					worker.logger.Info(logger.TagCompute, fmt.Sprintf("(%s, %s) do not match", delta.BuyOrderID.String(), delta.SellOrderID.String()))
+				}
 				for _, queue := range queues {
 					queue <- delta
 				}
@@ -142,54 +148,54 @@ func NewGossipWorker(logger *logger.Logger, clientPool *rpc.ClientPool, gossiper
 
 // Starts timers for each new id
 func (worker *GossipWorker) Run(queues ...chan *compute.Delta) {
-	timer := time.NewTimer(5 * time.Second)
-	defer timer.Stop()
-	for {
-		select {
-		case newDelta := <-worker.queue:
-			// Set up timers
-			if worker.expiryTime[string(newDelta.BuyOrderID)] == (time.Time{}) {
-				worker.expiryTime[string(newDelta.BuyOrderID)] = time.Now().Add(10 * time.Second)
-			}
-			if worker.expiryTime[string(newDelta.SellOrderID)] == (time.Time{}) {
-				worker.expiryTime[string(newDelta.SellOrderID)] = time.Now().Add(10 * time.Second)
-			}
+	// timer := time.NewTimer(5 * time.Second)
+	// defer timer.Stop()
+	// for {
+	// 	select {
+	// 	case newDelta := <-worker.queue:
+	// 		// Set up timers
+	// 		if worker.expiryTime[string(newDelta.BuyOrderID)] == (time.Time{}) {
+	// 			worker.expiryTime[string(newDelta.BuyOrderID)] = time.Now().Add(10 * time.Second)
+	// 		}
+	// 		if worker.expiryTime[string(newDelta.SellOrderID)] == (time.Time{}) {
+	// 			worker.expiryTime[string(newDelta.SellOrderID)] = time.Now().Add(10 * time.Second)
+	// 		}
 
-			previousBuyBest := worker.bestMatch[string(newDelta.BuyOrderID)]
-			previousSellBest := worker.bestMatch[string(newDelta.SellOrderID)]
-			newBuyBest := bestFitDelta(newDelta, previousBuyBest)
-			newSellBest := bestFitDelta(newDelta, previousSellBest)
-			worker.bestMatch[string(newDelta.BuyOrderID)] = newBuyBest
-			worker.bestMatch[string(newDelta.SellOrderID)] = newSellBest
+	// 		previousBuyBest := worker.bestMatch[string(newDelta.BuyOrderID)]
+	// 		previousSellBest := worker.bestMatch[string(newDelta.SellOrderID)]
+	// 		newBuyBest := bestFitDelta(newDelta, previousBuyBest)
+	// 		newSellBest := bestFitDelta(newDelta, previousSellBest)
+	// 		worker.bestMatch[string(newDelta.BuyOrderID)] = newBuyBest
+	// 		worker.bestMatch[string(newDelta.SellOrderID)] = newSellBest
 
-			if string(newBuyBest.ID) != string(previousBuyBest.ID) ||
-				string(newSellBest.ID) != string(previousSellBest.ID) {
+	// 		if string(newBuyBest.ID) != string(previousBuyBest.ID) ||
+	// 			string(newSellBest.ID) != string(previousSellBest.ID) {
 
-				// Gossip to others.
-				for _, multi := range worker.gossipers {
-					worker.clientPool.Gossip(multi, &rpc.Rumor{
-						BuyOrderId:  newDelta.BuyOrderID,
-						SellOrderId: newDelta.SellOrderID,
-					})
-				}
-			}
-		case now := <-timer.C:
-			for k, v := range worker.expiryTime {
-				if v.Unix() < now.Unix() { // TODO: How to better compare time
-					// Safe to do in loop
-					// https://golang.org/doc/effective_go.html#for
+	// 			// Gossip to others.
+	// 			for _, multi := range worker.gossipers {
+	// 				worker.clientPool.Gossip(multi, &rpc.Rumor{
+	// 					BuyOrderId:  newDelta.BuyOrderID,
+	// 					SellOrderId: newDelta.SellOrderID,
+	// 				})
+	// 			}
+	// 		}
+	// 	case now := <-timer.C:
+	// 		for k, v := range worker.expiryTime {
+	// 			if v.Unix() < now.Unix() { // TODO: How to better compare time
+	// 				// Safe to do in loop
+	// 				// https://golang.org/doc/effective_go.html#for
 
-					for _, queue := range queues {
-						queue <- worker.bestMatch[k]
-					}
+	// 				for _, queue := range queues {
+	// 					queue <- worker.bestMatch[k]
+	// 				}
 
-					// TODO: If we receive a new delta for k, it's timer will start again
-					delete(worker.expiryTime, k)
-					delete(worker.bestMatch, k)
-				}
-			}
-		}
-	}
+	// 				// TODO: If we receive a new delta for k, it's timer will start again
+	// 				delete(worker.expiryTime, k)
+	// 				delete(worker.bestMatch, k)
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 func bestFitDelta(left, right *compute.Delta) *compute.Delta {

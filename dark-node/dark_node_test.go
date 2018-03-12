@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jbenet/go-base58"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-do"
@@ -39,39 +38,42 @@ type OrderBook struct {
 }
 
 var _ = Describe("Dark nodes", func() {
+	var err error
 	var mu = new(sync.Mutex)
 	var bootstrapNodes, testNodes []*node.DarkNode
 
-	for _, numberOfTestNodes := range []int{15, 43, 67} {
-		for _, connectivity := range []int{100, 80, 60, 40} {
-			Context("integration test", func() {
-				BeforeEach(func() {
-					mu.Lock()
+	for _, numberOfTestNodes := range []int{4} {
+		for _, connectivity := range []int{100} {
+			func(numberOfTestNodes, connectivity int) {
+				Context("integration test", func() {
+					BeforeEach(func() {
+						mu.Lock()
 
-					bootstrapNodes, err := generateBootstrapNodes(NumberOfBootstrapNodes)
-					Ω(err).ShouldNot(HaveOccurred())
-					testNodes, err := generateNodes(numberOfTestNodes)
-					Ω(err).ShouldNot(HaveOccurred())
-					go func() {
-						defer GinkgoRecover()
+						bootstrapNodes, err = generateBootstrapNodes(NumberOfBootstrapNodes)
+						Ω(err).ShouldNot(HaveOccurred())
+						testNodes, err = generateNodes(numberOfTestNodes)
+						Ω(err).ShouldNot(HaveOccurred())
+						go func() {
+							defer GinkgoRecover()
 
-						startNodes(bootstrapNodes, testNodes)
-					}()
-					time.Sleep(3 * time.Second)
+							startNodes(bootstrapNodes, testNodes)
+						}()
+						time.Sleep(20 * time.Second)
 
-					err = connectNodes(bootstrapNodes, testNodes, connectivity)
-					Ω(err).ShouldNot(HaveOccurred())
+						err = connectNodes(bootstrapNodes, testNodes, connectivity)
+						Ω(err).ShouldNot(HaveOccurred())
+					})
+
+					AfterEach(func() {
+						stopNodes(bootstrapNodes, testNodes)
+						mu.Unlock()
+					})
+
+					It("should reach consensus on an order match", func() {
+						sendOrders(bootstrapNodes, testNodes, NumberOfOrders)
+					})
 				})
-
-				AfterEach(func() {
-					stopNodes(bootstrapNodes, testNodes)
-					mu.Unlock()
-				})
-
-				It("should reach consensus on an order match", func() {
-					sendOrders(bootstrapNodes, testNodes, NumberOfOrders)
-				})
-			})
+			}(numberOfTestNodes, connectivity)
 		}
 	}
 })
@@ -124,7 +126,7 @@ func startNodes(bootstrapNodes, testNodes []*node.DarkNode) {
 			bootstrapNodes[i].Start()
 		}(i)
 	}
-	time. Sleep( 5 * time.Second)
+	time.Sleep(5 * time.Second)
 	for i := range testNodes {
 		go func(i int) {
 			testNodes[i].Start()
@@ -237,31 +239,32 @@ func sendOrders(bootstrapNodes, testNodes []*node.DarkNode, numberOfOrders int) 
 	}
 
 	// Send order fragment to the nodes
-	totalNodes := len(bootstrapNodes) + len(testNodes)
+	nodes := append(bootstrapNodes, testNodes...)
+	totalNodes := len(nodes)
 	for _, orders := range [][]*order.Order{buyOrders, sellOrders} {
 		go func(orders []*order.Order) {
 			for _, ord := range orders {
 
 				if ord.Parity == order.ParityBuy {
-					log.Println("sending buy order :", base58.Encode(ord.ID))
+					log.Println("sending buy order", ord.ID)
 				} else {
-					log.Println("sending sell order :", base58.Encode(ord.ID))
+					log.Println("sending sell order", ord.ID)
 				}
 
-				shares, err := ord.Split(int64(totalNodes), int64(totalNodes*2/3), Prime)
+				shares, err := ord.Split(int64(totalNodes), int64((totalNodes*2)/3), Prime)
 				if err != nil {
-					log.Println("failt to split the order :", base58.Encode(ord.ID))
+					log.Println("cannot split the order", ord.ID)
 					continue
 				}
 
 				do.ForAll(shares, func(i int) {
-					client, err := rpc.NewClient(testNodes[i].NetworkOptions.MultiAddress, trader)
+					client, err := rpc.NewClient(nodes[i].NetworkOptions.MultiAddress, trader)
 					if err != nil {
 						log.Fatal(err)
 					}
 					err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[i]))
 					if err != nil {
-						log.Printf("Coudln't send order fragment to %s\n", testNodes[i].NetworkOptions.MultiAddress.Address())
+						log.Printf("Coudln't send order fragment to %s\n", nodes[i].NetworkOptions.MultiAddress.Address())
 						return
 					}
 				})

@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"runtime"
 	"sync/atomic"
 	"time"
 
@@ -125,13 +126,14 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 
 // Start the DarkNode.
 func (node *DarkNode) Start() {
-	// Broadcast CPU/Memory/Network usage
-	go func() {
-		for {
-			node.Usage()
-			time.Sleep(20 * time.Second)
-		}
-	}()
+	// FIXME: This causes an index out of bounds panic.
+	// // Broadcast CPU/Memory/Network usage
+	// go func() {
+	// 	for {
+	// 		node.Usage()
+	// 		time.Sleep(20 * time.Second)
+	// 	}
+	// }()
 
 	// Start gRPC services and UI
 	go node.StartServices()
@@ -191,6 +193,12 @@ func (node *DarkNode) Stop() {
 	close(node.GossipWorkerQueue)
 	close(node.FinalizeWorkerQueue)
 	close(node.ConsensusWorkerQueue)
+
+	// Stop the logger
+	node.Logger.Stop()
+
+	// Force the GC to run
+	runtime.GC()
 }
 
 // WatchDarkOcean for changes. When a change happens, find the dark pool for
@@ -205,22 +213,23 @@ func (node *DarkNode) WatchDarkOcean() {
 		for {
 			// Find the dark pool for this node and connect to all of the dark
 			// nodes in the pool
-			node.DarkPool = node.DarkOcean.FindPool(node.RepublicKeyPair.ID())
-			node.ConnectToDarkPool(node.DarkPool)
+			node.DarkPool.RemoveAll()
+			node.Logger.Info(logger.TagEthereum, "updating dark ocean...")
+			darkPool := node.DarkOcean.FindPool(node.RepublicKeyPair.ID())
+			node.Logger.Info(logger.TagEthereum, "connecting to dark ocean...")
+			node.ConnectToDarkPool(darkPool)
+			node.Logger.Info(logger.TagEthereum, "dark ocean updated")
 			// Wait for a change to the ocean
 			<-changes
 		}
 	}()
-	node.DarkOcean.Watch(5*time.Minute, changes)
+	// node.DarkOcean.Watch(5*time.Minute, changes)
 }
 
 // ConnectToDarkPool and return the connected nodes and disconnected nodes
 // separately.
 func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 	// Terminate if the dark pool is no longer relevant
-	if node.DarkPool != darkPool {
-		return
-	}
 	if darkPool == nil {
 		return
 	}
@@ -256,6 +265,7 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 
 		// Update the MultiAddress in the node
 		n.SetMultiAddress(*multiAddress)
+		node.DarkPool.Append(*n)
 	})
 
 	// In the background, continue to attempt connections to the disconnected
