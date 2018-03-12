@@ -16,7 +16,7 @@ type MockDarkNodeRegistrar struct {
 	nodeIDs   map[string]bool
 }
 
-func NewMockDarkNodeRegistrar(nodeIDs [][]byte) (DarkNodeRegistrar, error) {
+func NewMockDarkNodeRegistrar(nodeIDs [][]byte) DarkNodeRegistrar {
 	darkNodeRegistrar := new(MockDarkNodeRegistrar)
 	darkNodeRegistrar.hash = [32]byte{1}
 	darkNodeRegistrar.timestamp = big.NewInt(1)
@@ -24,7 +24,7 @@ func NewMockDarkNodeRegistrar(nodeIDs [][]byte) (DarkNodeRegistrar, error) {
 	for _, nodeID := range nodeIDs {
 		darkNodeRegistrar.nodeIDs[string(nodeID)] = true
 	}
-	return darkNodeRegistrar, nil
+	return darkNodeRegistrar
 }
 
 func (darkNodeRegistrar *MockDarkNodeRegistrar) Register(nodeID []byte, publicKey []byte) (*types.Transaction, error) {
