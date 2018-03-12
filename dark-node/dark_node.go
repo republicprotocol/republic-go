@@ -71,7 +71,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	}
 
 	// TODO: This should come from the DNR.
-	k := int64(4) // 14)
+	k := int64(3) // 14)
 
 	var err error
 	node := &DarkNode{

@@ -42,7 +42,7 @@ var _ = Describe("Dark nodes", func() {
 	var mu = new(sync.Mutex)
 	var nodes []*node.DarkNode
 
-	for _, numberOfNodes := range []int{8 /*, 16, 32, 64, 128*/} {
+	for _, numberOfNodes := range []int{5 /*, 16, 32, 64, 128*/} {
 		for _, connectivity := range []int{100 /*, 80, 40*/} {
 			func(numberOfNodes, connectivity int) {
 				Context("integration test", func() {
