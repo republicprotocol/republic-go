@@ -23,6 +23,15 @@ type Logger struct {
 	Plugins []Plugin
 }
 
+type Plugin interface {
+	Start() error
+	Stop() error
+	Info(tag, message string) error
+	Warn(tag, message string) error
+	Error(tag, message string) error
+	Usage(cpu float32, memory, network int32) error
+}
+
 // NewLogger returns a new Logger that will start and stop a set of plugins.
 func NewLogger(plugins ...Plugin) *Logger {
 	return &Logger{
@@ -49,7 +58,7 @@ func (logger Logger) Stop() {
 	}
 }
 
-func (logger Logger) Error(tag, message string) {
+func (logger *Logger) Error(tag, message string) {
 	for _, plugin := range logger.Plugins {
 		if err := plugin.Error(tag, message); err != nil {
 			log.Println(err)
@@ -57,7 +66,7 @@ func (logger Logger) Error(tag, message string) {
 	}
 }
 
-func (logger Logger) Info(tag, message string) {
+func (logger *Logger) Info(tag, message string) {
 	for _, plugin := range logger.Plugins {
 		if err := plugin.Info(tag, message); err != nil {
 			log.Println(err)
@@ -65,7 +74,7 @@ func (logger Logger) Info(tag, message string) {
 	}
 }
 
-func (logger Logger) Warn(tag, message string) {
+func (logger *Logger) Warn(tag, message string) {
 	for _, plugin := range logger.Plugins {
 		if err := plugin.Warn(tag, message); err != nil {
 			log.Println(err)
@@ -73,7 +82,7 @@ func (logger Logger) Warn(tag, message string) {
 	}
 }
 
-func (logger Logger) Usage(cpu float32, memory, network int32) {
+func (logger *Logger) Usage(cpu float32, memory, network int32) {
 	for _, plugin := range logger.Plugins {
 		if err := plugin.Usage(cpu, memory, network); err != nil {
 			log.Println(err)

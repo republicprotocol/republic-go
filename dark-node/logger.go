@@ -1,96 +1,90 @@
 package node
 
-import (
-	"time"
+// // LogQueue allows multiple clients to receive logs from a node
+// type LogQueue struct {
+// 	do.GuardedObject
 
-	"github.com/republicprotocol/go-do"
-)
+// 	channels []chan do.Option
+// }
 
-// LogQueue allows multiple clients to receive logs from a node
-type LogQueue struct {
-	do.GuardedObject
+// // NewLogQueue returns a new LogQueue
+// func NewLogQueue() *LogQueue {
+// 	logQueue := new(LogQueue)
+// 	logQueue.GuardedObject = do.NewGuardedObject()
+// 	logQueue.channels = nil
+// 	return logQueue
+// }
 
-	channels []chan do.Option
-}
+// // Publish allows a node to push a log to each client
+// func (logQueue *LogQueue) Publish(val do.Option) {
+// 	logQueue.Enter(nil)
+// 	defer logQueue.Exit()
 
-// NewLogQueue returns a new LogQueue
-func NewLogQueue() *LogQueue {
-	logQueue := new(LogQueue)
-	logQueue.GuardedObject = do.NewGuardedObject()
-	logQueue.channels = nil
-	return logQueue
-}
+// 	var logQueueLength = len(logQueue.channels)
+// 	for i := 0; i < logQueueLength; i++ {
+// 		timer := time.NewTicker(10 * time.Second)
+// 		defer timer.Stop()
+// 		select {
+// 		case logQueue.channels[i] <- val:
+// 		case <-timer.C:
+// 			// Deregister the channel
+// 			logQueue.channels[i] = logQueue.channels[logQueueLength-1]
+// 			logQueue.channels = logQueue.channels[:logQueueLength-1]
+// 			logQueueLength--
+// 			i--
+// 		}
+// 	}
+// }
 
-// Publish allows a node to push a log to each client
-func (logQueue *LogQueue) Publish(val do.Option) {
-	logQueue.Enter(nil)
-	defer logQueue.Exit()
+// // Subscribe allows a new client to listen to events from a node
+// func (logQueue *LogQueue) Subscribe(channel chan do.Option) {
+// 	logQueue.Enter(nil)
+// 	defer logQueue.Exit()
 
-	var logQueueLength = len(logQueue.channels)
-	for i := 0; i < logQueueLength; i++ {
-		timer := time.NewTicker(10 * time.Second)
-		defer timer.Stop()
-		select {
-		case logQueue.channels[i] <- val:
-		case <-timer.C:
-			// Deregister the channel
-			logQueue.channels[i] = logQueue.channels[logQueueLength-1]
-			logQueue.channels = logQueue.channels[:logQueueLength-1]
-			logQueueLength--
-			i--
-		}
-	}
-}
+// 	logQueue.channels = append(logQueue.channels, channel)
+// }
 
-// Subscribe allows a new client to listen to events from a node
-func (logQueue *LogQueue) Subscribe(channel chan do.Option) {
-	logQueue.Enter(nil)
-	defer logQueue.Exit()
+// // Unsubscribe ...
+// func (logQueue *LogQueue) Unsubscribe(channel chan do.Option) {
+// 	logQueue.Enter(nil)
+// 	defer logQueue.Exit()
+// 	length := len(logQueue.channels)
+// 	for i := 0; i < length; i++ {
+// 		// https://golang.org/ref/spec#Comparison_operators
+// 		// Two channel values are equal if they were created by the same call to make
+// 		// or if both have value nil.
+// 		if logQueue.channels[i] == channel {
+// 			logQueue.channels[i] = logQueue.channels[length-1]
+// 			logQueue.channels = logQueue.channels[:length-1]
+// 			break
+// 		}
+// 	}
+// }
 
-	logQueue.channels = append(logQueue.channels, channel)
-}
+// // SubscribeToLogs will start sending log events to logChannel
+// func (node *DarkNode) SubscribeToLogs(logChannel chan do.Option) {
+// 	node.logQueue.Subscribe(logChannel)
+// }
 
-// Unsubscribe ...
-func (logQueue *LogQueue) Unsubscribe(channel chan do.Option) {
-	logQueue.Enter(nil)
-	defer logQueue.Exit()
-	length := len(logQueue.channels)
-	for i := 0; i < length; i++ {
-		// https://golang.org/ref/spec#Comparison_operators
-		// Two channel values are equal if they were created by the same call to make
-		// or if both have value nil.
-		if logQueue.channels[i] == channel {
-			logQueue.channels[i] = logQueue.channels[length-1]
-			logQueue.channels = logQueue.channels[:length-1]
-			break
-		}
-	}
-}
+// // UnsubscribeFromLogs will stop sending log events to logChannel
+// func (node *DarkNode) UnsubscribeFromLogs(logChannel chan do.Option) {
+// 	node.logQueue.Unsubscribe(logChannel)
+// }
 
-// SubscribeToLogs will start sending log events to logChannel
-func (node *DarkNode) SubscribeToLogs(logChannel chan do.Option) {
-	node.logQueue.Subscribe(logChannel)
-}
+// func (node *DarkNode) Error(tag, message string) {
+// 	if node.Config.Logger != nil {
+// 		node.Config.Logger.Error(tag, message)
+// 	}
+// }
 
-// UnsubscribeFromLogs will stop sending log events to logChannel
-func (node *DarkNode) UnsubscribeFromLogs(logChannel chan do.Option) {
-	node.logQueue.Unsubscribe(logChannel)
-}
+// func (node *DarkNode) Info(tag, message string) {
+// 	if node.Config.Logger != nil {
+// 		node.Config.Logger.Info(tag, message)
+// 	}
+// }
 
-func (node *DarkNode) Error(tag, message string) {
-	if node.Config.Logger != nil {
-		node.Config.Logger.Error(tag, message)
-	}
-}
-
-func (node *DarkNode) Info(tag, message string) {
-	if node.Config.Logger != nil {
-		node.Config.Logger.Info(tag, message)
-	}
-}
-
-func (node *DarkNode) Warn(tag, message string) {
-	if node.Config.Logger != nil {
-		node.Config.Logger.Warn(tag, message)
-	}
-}
+// func (node *DarkNode) Warn(tag, message string) {
+// 	if node.Config.Logger != nil {
+// 		node.Config.Logger.Warn(tag, message)
+// 	}
+// }

@@ -2,117 +2,14 @@ package logger
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/republicprotocol/go-do"
 )
-
-// Plugin
-type Plugin interface {
-	Start() error
-	Stop() error
-
-	Info(tag, message string) error
-	Warn(tag, message string) error
-	Error(tag, message string) error
-	Usage(cpu float32, memory, network int32) error
-}
-
-// A FilePlugin implements the Plugin interface by logging all events to an
-// output file.
-type FilePlugin struct {
-	do.GuardedObject
-
-	file *os.File
-	Path string `json:"path"`
-}
-
-func NewFilePlugin(path string) Plugin {
-	return &FilePlugin{
-		GuardedObject: do.NewGuardedObject(),
-		Path:          path,
-	}
-}
-
-func (plugin *FilePlugin) Start() error {
-	var err error
-	if plugin.Path == "stdout" {
-		plugin.file = os.Stdout
-	} else {
-		plugin.file, err = os.OpenFile(fmt.Sprintf("%s", plugin.Path), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	}
-	return err
-}
-
-func (plugin *FilePlugin) Stop() error {
-	return plugin.file.Close()
-}
-
-func (plugin *FilePlugin) Info(tag, message string) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return fmt.Errorf("%s is nil", plugin.Path)
-	}
-	_, err := plugin.file.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
-	if err != nil {
-		return err
-	}
-	_, err = plugin.file.WriteString("INFO : (" + tag + ") " + message + "\n")
-	return err
-}
-
-func (plugin *FilePlugin) Warn(tag, message string) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return errors.New("start the file plugin first")
-	}
-	_, err := plugin.file.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
-	if err != nil {
-		return err
-	}
-	_, err = plugin.file.WriteString("WARN : (" + tag + ") " + message + "\n")
-	return err
-}
-
-func (plugin *FilePlugin) Error(tag, message string) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return errors.New("start the file plugin first")
-	}
-	_, err := plugin.file.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
-	if err != nil {
-		return err
-	}
-	_, err = plugin.file.WriteString("ERROR : (" + tag + ") " + message + "\n")
-	return err
-}
-
-func (plugin *FilePlugin) Usage(cpu float32, memory, network int32) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return errors.New("start the file plugin first")
-	}
-	_, err := plugin.file.WriteString(time.Now().Format("2006/01/02 15:04:05 "))
-	if err != nil {
-		return err
-	}
-	_, err = plugin.file.WriteString(fmt.Sprintf("INFO : (usg) cpu = %.3f Mhz, memory = %d Mb, network = %d kb\n", cpu, memory, network))
-	return err
-}
 
 type WebSocketPlugin struct {
 	do.GuardedObject

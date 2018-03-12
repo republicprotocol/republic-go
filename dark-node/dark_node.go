@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -31,6 +32,8 @@ var Prime, _ = big.NewInt(0).SetString("1797693134862315907729305190789024733617
 type DarkNode struct {
 	Config
 
+	TestDeltaNotifications chan *compute.Delta
+
 	Logger     *logger.Logger
 	ClientPool *rpc.ClientPool
 	DHT        *dht.DHT
@@ -55,15 +58,11 @@ type DarkNode struct {
 	Dark   *network.DarkService
 	Gossip *network.GossipService
 
-	Registrar dnr.DarkNodeRegistrarInterface
-
 	DarkPoolLimit    int64
 	DarkPool         *darkocean.DarkPool
 	DarkOceanOverlay *darkocean.Overlay
-
-	EpochBlockhash [32]byte
-
-	logQueue *LogQueue
+	Registrar        dnr.DarkNodeRegistrarInterface
+	EpochBlockhash   [32]byte
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
@@ -77,9 +76,9 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	// TODO: This should come from the DNR.
 	k := int64(5)
 
-	node := &DarkNode{Config: config}
+	node := &DarkNode{Config: config, TestDeltaNotifications: make(chan *compute.Delta, 100)}
 
-	node.Logger = logger.NewLogger(logger.NewFilePlugin("stdout"), logger.NewFilePlugin("/home/ubuntu/darknode.log"))
+	node.Logger = logger.NewLogger(logger.NewFilePlugin(os.Stdout))
 	node.Logger.Start()
 
 	node.ClientPool = rpc.NewClientPool(node.MultiAddress)
@@ -88,17 +87,17 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	node.DeltaBuilder = compute.NewDeltaBuilder(k, node.Prime)
 	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(node.Prime)
 	node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
-	node.OrderFragmentWorker = NewOrderFragmentWorker(node.OrderFragmentWorkerQueue, node.DeltaFragmentMatrix)
+	node.OrderFragmentWorker = NewOrderFragmentWorker(node.Logger, node.DeltaFragmentMatrix, node.OrderFragmentWorkerQueue)
 	node.DeltaFragmentBroadcastWorkerQueue = make(chan *compute.DeltaFragment, 100)
-	node.DeltaFragmentBroadcastWorker = NewDeltaFragmentBroadcastWorker(node.Logger, node.DeltaFragmentBroadcastWorkerQueue, node.ClientPool, node.BootstrapMultiAddresses)
+	node.DeltaFragmentBroadcastWorker = NewDeltaFragmentBroadcastWorker(node.Logger, node.ClientPool, node.DarkPool, node.DeltaFragmentBroadcastWorkerQueue)
 	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
-	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.DeltaFragmentWorkerQueue, node.DeltaBuilder)
+	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.Logger, node.DeltaBuilder, node.DeltaFragmentWorkerQueue)
 	node.GossipWorkerQueue = make(chan *compute.Delta, 100)
-	node.GossipWorker = NewGossipWorker(node.ClientPool, node.BootstrapMultiAddresses, node.GossipWorkerQueue)
+	node.GossipWorker = NewGossipWorker(node.Logger, node.ClientPool, node.BootstrapMultiAddresses, node.GossipWorkerQueue)
 	node.FinalizeWorkerQueue = make(chan *compute.Delta, 100)
-	node.FinalizeWorker = NewFinalizeWorker(node.FinalizeWorkerQueue, 5)
+	node.FinalizeWorker = NewFinalizeWorker(node.Logger, k, node.FinalizeWorkerQueue)
 	node.ConsensusWorkerQueue = make(chan *compute.Delta, 100)
-	node.ConsensusWorker = NewConsensusWorker(node.Logger, node.ConsensusWorkerQueue, node.DeltaFragmentMatrix)
+	node.ConsensusWorker = NewConsensusWorker(node.Logger, node.DeltaFragmentMatrix, node.ConsensusWorkerQueue)
 
 	// options := network.Options{}
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
@@ -176,7 +175,7 @@ func (node *DarkNode) Start() {
 	// Run the workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentBroadcastWorker.Run()
-	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue)
+	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue, node.TestDeltaNotifications)
 	go node.GossipWorker.Run(node.FinalizeWorkerQueue)
 	go node.FinalizeWorker.Run(node.ConsensusWorkerQueue)
 	go node.ConsensusWorker.Run()
@@ -202,10 +201,10 @@ func (node *DarkNode) Start() {
 func (node *DarkNode) ServeUI() {
 	fs := http.FileServer(http.Dir("darknode-ui"))
 	http.Handle("/", fs)
-	node.Info(logger.TagNetwork, "Serving the Dark Node UI")
+	node.Logger.Info(logger.TagNetwork, "Serving the Dark Node UI")
 	err := http.ListenAndServe("0.0.0.0:3000", nil)
 	if err != nil {
-		node.Error(logger.TagNetwork, err.Error())
+		node.Logger.Error(logger.TagNetwork, err.Error())
 	}
 }
 
@@ -309,15 +308,15 @@ func (node *DarkNode) Deregister() error {
 }
 
 // PingDarkPool call rpc.PingTarget on each node in a dark pool
-func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (identity.MultiAddresses, darkocean.IDDarkPool) {
+func (node *DarkNode) PingDarkPool(ids darkocean.DarkPoolID) (identity.MultiAddresses, darkocean.DarkPoolID) {
 
 	darkpool := make(identity.MultiAddresses, 0)
-	disconnectedDarkPool := make(darkocean.IDDarkPool, 0)
+	disconnectedDarkPool := make(darkocean.DarkPoolID, 0)
 
 	for _, id := range ids {
 		target, err := node.Swarm.FindNode(id)
 		if err != nil || target == nil {
-			node.Warn(logger.TagNetwork, fmt.Sprintf("%v couldn't find pool peer %v: %v", node.Config.MultiAddress.Address(), id, err))
+			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("%v couldn't find pool peer %v: %v", node.Config.MultiAddress.Address(), id, err))
 			disconnectedDarkPool = append(disconnectedDarkPool, id)
 			continue
 		}
@@ -326,13 +325,13 @@ func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (identity.MultiAddr
 
 		node.ClientPool.Ping(*target)
 		if err != nil {
-			node.Warn(logger.TagNetwork, fmt.Sprintf("%v couldn't ping pool peer %v: %v", node.Config.MultiAddress.Address(), target, err))
+			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("%v couldn't ping pool peer %v: %v", node.Config.MultiAddress.Address(), target, err))
 			continue
 		}
 
 		err = node.Swarm.DHT.UpdateMultiAddress(*target)
 		if err != nil {
-			node.Warn(logger.TagNetwork, fmt.Sprintf("%v coudln't update DHT for pool peer %v: %v", node.Config.MultiAddress.Address(), target, err))
+			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("%v coudln't update DHT for pool peer %v: %v", node.Config.MultiAddress.Address(), target, err))
 			continue
 		}
 	}
@@ -342,7 +341,7 @@ func (node *DarkNode) PingDarkPool(ids darkocean.IDDarkPool) (identity.MultiAddr
 // LongPingDarkPool will continually attempt to connect to a set of nodes
 // in a darkpool until they are all connected
 // Call in a goroutine
-func (node *DarkNode) LongPingDarkPool(disconnected darkocean.IDDarkPool) {
+func (node *DarkNode) LongPingDarkPool(disconnected darkocean.DarkPoolID) {
 	currentBlockhash := node.EpochBlockhash
 
 	for len(disconnected) > 0 {
@@ -361,24 +360,24 @@ func (node *DarkNode) LongPingDarkPool(disconnected darkocean.IDDarkPool) {
 
 // AfterEachEpoch should be run after each new epoch
 func (node *DarkNode) AfterEachEpoch() error {
-	node.Info(logger.TagNetwork, fmt.Sprintf("%v is pinging dark pool\n", node.Config.MultiAddress.Address()))
+	node.Logger.Info(logger.TagNetwork, fmt.Sprintf("%v is pinging dark pool\n", node.Config.MultiAddress.Address()))
 
 	darkOceanOverlay, err := darkocean.GetDarkPools(node.Registrar)
 	if err != nil {
-		node.Error(logger.TagNetwork, fmt.Sprintf("%v couldn't get dark pools: %v", node.Config.MultiAddress.Address(), err))
+		node.Logger.Error(logger.TagNetwork, fmt.Sprintf("%v couldn't get dark pools: %v", node.Config.MultiAddress.Address(), err))
 		return err
 	}
 	node.DarkOceanOverlay = darkOceanOverlay
 
-	idPool, err := node.DarkOceanOverlay.FindDarkPool(node.Config.MultiAddress.ID())
-	if err != nil {
-		return err
+	poolID := node.DarkOceanOverlay.FindDarkPool(node.Config.MultiAddress.ID())
+	if poolID == nil {
+		return fmt.Errorf("cannot find %s in the dark ocean", node.MultiAddress.Address())
 	}
 
-	connectedDarkPool, disconnectedDarkPool := node.PingDarkPool(idPool)
+	connectedDarkPool, disconnectedDarkPool := node.PingDarkPool(poolID)
 	node.DarkPool = darkocean.NewDarkPool(connectedDarkPool)
 
-	node.Info(logger.TagNetwork, fmt.Sprintf("%v connected to dark pool: %v", node.Config.MultiAddress.Address(), node.DarkPool))
+	node.Logger.Info(logger.TagNetwork, fmt.Sprintf("%v connected to dark pool: %v", node.Config.MultiAddress.Address(), node.DarkPool))
 
 	go node.LongPingDarkPool(disconnectedDarkPool)
 
@@ -401,16 +400,16 @@ func (node *DarkNode) Usage() {
 	// memory
 	vmStat, err := mem.VirtualMemory()
 	if err != nil {
-		node.Error(logger.TagUsage, err.Error())
+		node.Logger.Error(logger.TagUsage, err.Error())
 	}
 	// cpu - get CPU number of cores and speed
 	cpuStat, err := cpu.Info()
 	if err != nil {
-		node.Error(logger.TagUsage, err.Error())
+		node.Logger.Error(logger.TagUsage, err.Error())
 	}
 	percentage, err := cpu.Percent(0, false)
 	if err != nil {
-		node.Error(logger.TagUsage, err.Error())
+		node.Logger.Error(logger.TagUsage, err.Error())
 	}
 
 	node.Logger.Usage(float32(cpuStat[0].Mhz*percentage[0]/100), int32(vmStat.Used/1024/1024), 0)
