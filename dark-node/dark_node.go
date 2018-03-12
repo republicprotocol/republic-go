@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -61,14 +60,14 @@ type DarkNode struct {
 	DarkPoolLimit    int64
 	DarkPool         *darkocean.DarkPool
 	DarkOceanOverlay *darkocean.Overlay
-	Registrar        dnr.DarkNodeRegistrarInterface
+	Registrar        dnr.DarkNodeRegistrar
 	EpochBlockhash   [32]byte
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
 // will configure all of the components that it needs to operate but will not
 // start any of them.
-func NewDarkNode(config Config) (*DarkNode, error) {
+func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkNode, error) {
 	if config.Prime == nil {
 		config.Prime = Prime
 	}
@@ -78,11 +77,15 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 
 	node := &DarkNode{Config: config, TestDeltaNotifications: make(chan *compute.Delta, 100)}
 
-	node.Logger = logger.NewLogger(logger.NewFilePlugin(os.Stdout))
+	logger, err := logger.NewLogger(config.LoggerOptions)
+	if err != nil {
+		return nil, err
+	}
+	node.Logger = logger
 	node.Logger.Start()
 
-	node.ClientPool = rpc.NewClientPool(node.MultiAddress)
-	node.DHT = dht.NewDHT(node.MultiAddress.Address(), node.MaxBucketLength)
+	node.ClientPool = rpc.NewClientPool(node.NetworkOptions.MultiAddress)
+	node.DHT = dht.NewDHT(node.NetworkOptions.MultiAddress.Address(), node.NetworkOptions.MaxBucketLength)
 
 	node.DeltaBuilder = compute.NewDeltaBuilder(k, node.Prime)
 	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(node.Prime)
@@ -93,7 +96,7 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
 	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.Logger, node.DeltaBuilder, node.DeltaFragmentWorkerQueue)
 	node.GossipWorkerQueue = make(chan *compute.Delta, 100)
-	node.GossipWorker = NewGossipWorker(node.Logger, node.ClientPool, node.BootstrapMultiAddresses, node.GossipWorkerQueue)
+	node.GossipWorker = NewGossipWorker(node.Logger, node.ClientPool, node.NetworkOptions.BootstrapMultiAddresses, node.GossipWorkerQueue)
 	node.FinalizeWorkerQueue = make(chan *compute.Delta, 100)
 	node.FinalizeWorker = NewFinalizeWorker(node.Logger, k, node.FinalizeWorkerQueue)
 	node.ConsensusWorkerQueue = make(chan *compute.Delta, 100)
@@ -101,8 +104,8 @@ func NewDarkNode(config Config) (*DarkNode, error) {
 
 	// options := network.Options{}
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
-	node.Swarm = network.NewSwarmService(node, node.Options, node.Logger, node.ClientPool, node.DHT)
-	node.Dark = network.NewDarkService(node, node.Options, node.Logger)
+	node.Swarm = network.NewSwarmService(node, node.NetworkOptions, node.Logger, node.ClientPool, node.DHT)
+	node.Dark = network.NewDarkService(node, node.NetworkOptions, node.Logger)
 	node.Gossip = network.NewGossipService(node)
 
 	clientDetails, err := connection.FromURI(node.EthereumRPC)
@@ -267,7 +270,7 @@ func (node *DarkNode) OnFinalize(buyOrderID order.ID, sellOrderID order.ID) {
 
 // IsRegistered returns true if the dark node is registered for the current epoch
 func (node *DarkNode) IsRegistered() bool {
-	registered, err := node.Registrar.IsDarkNodeRegistered(node.Config.MultiAddress.ID())
+	registered, err := node.Registrar.IsDarkNodeRegistered(node.NetworkOptions.MultiAddress.ID())
 	if err != nil {
 		return false
 	}
@@ -276,7 +279,7 @@ func (node *DarkNode) IsRegistered() bool {
 
 // IsPendingRegistration returns true if the dark node will be registered in the next epoch
 func (node *DarkNode) IsPendingRegistration() bool {
-	registered, err := node.Registrar.IsDarkNodePendingRegistration(node.Config.MultiAddress.ID())
+	registered, err := node.Registrar.IsDarkNodePendingRegistration(node.NetworkOptions.MultiAddress.ID())
 	if err != nil {
 		return false
 	}
@@ -290,17 +293,17 @@ func (node *DarkNode) Register() error {
 		return nil
 	}
 	publicKey := append(node.Config.RepublicKeyPair.PublicKey.X.Bytes(), node.Config.RepublicKeyPair.PublicKey.Y.Bytes()...)
-	_, err := node.Registrar.Register(node.Config.MultiAddress.ID(), publicKey)
+	_, err := node.Registrar.Register(node.NetworkOptions.MultiAddress.ID(), publicKey)
 	if err != nil {
 		return err
 	}
-	err = node.Registrar.WaitTillRegistration(node.Config.MultiAddress.ID())
+	err = node.Registrar.WaitTillRegistration(node.NetworkOptions.MultiAddress.ID())
 	return err
 }
 
 // Deregister the node on the registrar smart contract
 func (node *DarkNode) Deregister() error {
-	_, err := node.Registrar.Deregister(node.Config.MultiAddress.ID())
+	_, err := node.Registrar.Deregister(node.NetworkOptions.MultiAddress.ID())
 	if err != nil {
 		return err
 	}
@@ -316,7 +319,7 @@ func (node *DarkNode) PingDarkPool(ids darkocean.DarkPoolID) (identity.MultiAddr
 	for _, id := range ids {
 		target, err := node.Swarm.FindNode(id)
 		if err != nil || target == nil {
-			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("%v couldn't find pool peer %v: %v", node.Config.MultiAddress.Address(), id, err))
+			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("%v couldn't find pool peer %v: %v", node.NetworkOptions.MultiAddress.Address(), id, err))
 			disconnectedDarkPool = append(disconnectedDarkPool, id)
 			continue
 		}
@@ -325,13 +328,13 @@ func (node *DarkNode) PingDarkPool(ids darkocean.DarkPoolID) (identity.MultiAddr
 
 		node.ClientPool.Ping(*target)
 		if err != nil {
-			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("%v couldn't ping pool peer %v: %v", node.Config.MultiAddress.Address(), target, err))
+			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("%v couldn't ping pool peer %v: %v", node.NetworkOptions.MultiAddress.Address(), target, err))
 			continue
 		}
 
 		err = node.Swarm.DHT.UpdateMultiAddress(*target)
 		if err != nil {
-			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("%v coudln't update DHT for pool peer %v: %v", node.Config.MultiAddress.Address(), target, err))
+			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("%v coudln't update DHT for pool peer %v: %v", node.NetworkOptions.MultiAddress.Address(), target, err))
 			continue
 		}
 	}
@@ -360,24 +363,24 @@ func (node *DarkNode) LongPingDarkPool(disconnected darkocean.DarkPoolID) {
 
 // AfterEachEpoch should be run after each new epoch
 func (node *DarkNode) AfterEachEpoch() error {
-	node.Logger.Info(logger.TagNetwork, fmt.Sprintf("%v is pinging dark pool\n", node.Config.MultiAddress.Address()))
+	node.Logger.Info(logger.TagNetwork, fmt.Sprintf("%v is pinging dark pool\n", node.NetworkOptions.MultiAddress.Address()))
 
 	darkOceanOverlay, err := darkocean.GetDarkPools(node.Registrar)
 	if err != nil {
-		node.Logger.Error(logger.TagNetwork, fmt.Sprintf("%v couldn't get dark pools: %v", node.Config.MultiAddress.Address(), err))
+		node.Logger.Error(logger.TagNetwork, fmt.Sprintf("%v couldn't get dark pools: %v", node.NetworkOptions.MultiAddress.Address(), err))
 		return err
 	}
 	node.DarkOceanOverlay = darkOceanOverlay
 
-	poolID := node.DarkOceanOverlay.FindDarkPool(node.Config.MultiAddress.ID())
+	poolID := node.DarkOceanOverlay.FindDarkPool(node.NetworkOptions.MultiAddress.ID())
 	if poolID == nil {
-		return fmt.Errorf("cannot find %s in the dark ocean", node.MultiAddress.Address())
+		return fmt.Errorf("cannot find %s in the dark ocean", node.NetworkOptions.MultiAddress.Address())
 	}
 
 	connectedDarkPool, disconnectedDarkPool := node.PingDarkPool(poolID)
 	node.DarkPool = darkocean.NewDarkPool(connectedDarkPool)
 
-	node.Logger.Info(logger.TagNetwork, fmt.Sprintf("%v connected to dark pool: %v", node.Config.MultiAddress.Address(), node.DarkPool))
+	node.Logger.Info(logger.TagNetwork, fmt.Sprintf("%v connected to dark pool: %v", node.NetworkOptions.MultiAddress.Address(), node.DarkPool))
 
 	go node.LongPingDarkPool(disconnectedDarkPool)
 

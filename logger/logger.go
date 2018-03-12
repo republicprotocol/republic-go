@@ -23,6 +23,11 @@ type Logger struct {
 	Plugins []Plugin
 }
 
+// Options are used to Unmarshal a Logger from JSON.
+type Options struct {
+	Plugins []PluginOptions `json:"plugins"`
+}
+
 type Plugin interface {
 	Start() error
 	Stop() error
@@ -32,12 +37,32 @@ type Plugin interface {
 	Usage(cpu float32, memory, network int32) error
 }
 
+// PluginOptions are used to Unmarshal plugins from JSON.
+type PluginOptions struct {
+	File      *FilePluginOptions      `json:"file,omitempty"`
+	WebSocket *WebSocketPluginOptions `json:"websocket,omitempty"`
+}
+
 // NewLogger returns a new Logger that will start and stop a set of plugins.
-func NewLogger(plugins ...Plugin) *Logger {
+func NewLogger(options Options) (*Logger, error) {
+	plugins := make([]Plugin, 0, len(options.Plugins))
+	for i := range plugins {
+		if options.Plugins[i].File != nil {
+			plugin, err := NewFilePlugin(*options.Plugins[i].File)
+			if err != nil {
+				return nil, err
+			}
+			plugins = append(plugins, plugin)
+		}
+		if options.Plugins[i].WebSocket != nil {
+			plugin := NewWebSocketPlugin(*options.Plugins[i].WebSocket)
+			plugins = append(plugins, plugin)
+		}
+	}
 	return &Logger{
 		GuardedObject: do.NewGuardedObject(),
 		Plugins:       plugins,
-	}
+	}, nil
 }
 
 // Start starts all the plugins of the logger
@@ -90,17 +115,6 @@ func (logger *Logger) Usage(cpu float32, memory, network int32) {
 	}
 }
 
-type Request struct {
-	Type string      `json:"type"`
-	Data RequestData `json:"data"`
-}
-
-type RequestData struct {
-	Start    time.Time `json:"start"`
-	End      time.Time `json:"end"`
-	Interval int       `json:"interval"`
-}
-
 type Usage struct {
 	Type string    `json:"type"`
 	Time time.Time `json:"timestamp"`
@@ -108,9 +122,9 @@ type Usage struct {
 }
 
 type UsageData struct {
-	Cpu     float32 `json:"cpu"`
+	CPU     float32 `json:"cpu"`
 	Memory  int32   `json:"memory"`
-	network int32   `json:"network"`
+	Network int32   `json:"network"`
 }
 
 type Event struct {

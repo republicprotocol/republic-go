@@ -15,7 +15,8 @@ import (
 
 // Config contains all configuration details for running a DarkNode.
 type Config struct {
-	network.Options `json:"network"`
+	NetworkOptions network.Options `json:"network"`
+	LoggerOptions  logger.Options  `json:"logger"`
 
 	Host string `json:"host"`
 	Port string `json:"port"`
@@ -24,8 +25,7 @@ type Config struct {
 	RepublicKeyPair identity.KeyPair `json:"republic_key_pair"`
 	RSAKeyPair      identity.KeyPair `json:"rsa_key_pair"`
 
-	Logger *logger.Logger `json:"logger"`
-	Dev    bool           `json:"dev"`
+	Dev bool `json:"dev"`
 
 	EthereumRPC string `json:"ethereum_rpc"`
 
