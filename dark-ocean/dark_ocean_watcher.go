@@ -11,7 +11,7 @@ import (
 // WatchForDarkOceanChanges returns a channel through which it will send an update every epoch
 // Will check if a new epoch has been triggered and then sleep for 5 minutes
 // Blocking function
-func WatchForDarkOceanChanges(registrar dnr.DarkNodeRegistrarInterface, channel chan do.Option) {
+func WatchForDarkOceanChanges(registrar dnr.DarkNodeRegistrar, channel chan do.Option) {
 
 	// This function runs until the channel is closed
 	defer func() { recover() }()
