@@ -1,6 +1,7 @@
 package node
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"net"
@@ -70,7 +71,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	}
 
 	// TODO: This should come from the DNR.
-	k := int64(5) // 14)
+	k := int64(4) // 14)
 
 	var err error
 	node := &DarkNode{
@@ -232,6 +233,9 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 	}
 
 	darkPool.ForAll(func(n *dark.Node) {
+		if bytes.Equal(node.Config.RepublicKeyPair.ID(), n.ID) {
+			return
+		}
 		multiAddress := n.MultiAddress()
 		if multiAddress != nil {
 			return
@@ -242,7 +246,7 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 			node.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot find dark node %v: %s", n.ID.Address(), err.Error()))
 			return
 		} else if multiAddress == nil {
-			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("cannot find dark node %v", n.ID.Address()))
+			// node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("cannot find dark node: %v", n.ID.Address()))
 			return
 		}
 
@@ -259,6 +263,8 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("cannot update DHT with dark node %v: %s", n.ID.Address(), err.Error()))
 			return
 		}
+
+		node.Logger.Info(logger.TagNetwork, fmt.Sprintf("found dark node: %v", n.ID.Address()))
 
 		// Update the MultiAddress in the node
 		n.SetMultiAddress(*multiAddress)
