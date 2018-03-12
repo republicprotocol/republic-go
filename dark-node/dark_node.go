@@ -93,7 +93,11 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	}
 
 	// Create all networking components and services
-	node.ClientPool = rpc.NewClientPool(node.NetworkOptions.MultiAddress)
+	node.ClientPool = rpc.NewClientPool(node.NetworkOptions.MultiAddress).
+		WithTimeout(node.NetworkOptions.Timeout).
+		WithTimeoutBackoff(node.NetworkOptions.TimeoutBackoff).
+		WithTimeoutRetries(node.NetworkOptions.TimeoutRetries).
+		WithCacheLimit(node.NetworkOptions.ClientPoolCacheLimit)
 	node.DHT = dht.NewDHT(node.NetworkOptions.MultiAddress.Address(), node.NetworkOptions.MaxBucketLength)
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
 	node.Swarm = network.NewSwarmService(node, node.NetworkOptions, node.Logger, node.ClientPool, node.DHT)

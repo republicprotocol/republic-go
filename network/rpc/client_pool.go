@@ -59,6 +59,10 @@ func (pool *ClientPool) findOrCreateClient(to identity.MultiAddress) (*Client, e
 	if err != nil {
 		return client, err
 	}
+	client = client.
+		WithTimeout(pool.options.Timeout).
+		WithTimeoutBackoff(pool.options.TimeoutBackoff).
+		WithTimeoutRetries(pool.options.TimeoutRetries)
 
 	if len(pool.cache) >= pool.options.CacheLimit {
 		var k string

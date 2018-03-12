@@ -206,6 +206,7 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 		}
 		if closer {
 			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot send deep query result: %s", err.Error()))
 				return err
 			}
 			frontier = append(frontier, peer)
@@ -235,7 +236,7 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 
 		candidates, err := service.ClientPool.QueryPeers(peer, query.Target)
 		if err != nil {
-			service.Logger.Error("connection", err.Error())
+			service.Logger.Error(logger.TagNetwork, err.Error())
 			continue
 		}
 
@@ -243,6 +244,7 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 
 			candidate, err := rpc.DeserializeMultiAddress(serializedCandidate)
 			if err != nil {
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
 				return err
 			}
 			if _, ok := visited[candidate.Address()]; ok {
@@ -251,6 +253,7 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 			// Expand the frontier by candidates that have not already been
 			// explored, and store them in a persistent list of close peers.
 			if err := stream.Send(serializedCandidate); err != nil {
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot send query result: %s", err.Error()))
 				return err
 			}
 			frontier = append(frontier, candidate)
