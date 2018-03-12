@@ -79,6 +79,9 @@ func (ocean *Ocean) update() error {
 		numberOfPools = big.NewInt(1)
 	}
 	pools := make(Pools, numberOfPools.Int64())
+	for i := range pools {
+		pools[i] = NewPool()
+	}
 
 	// Calcualte the pool assignment for each node
 	inverse := blockhash.ModInverse(blockhash, previousPrime)
