@@ -130,7 +130,7 @@ func (node *DarkNode) Start() {
 
 	// Start gRPC services and UI
 	go node.StartServices()
-	go node.StartUI()
+	//go node.StartUI()
 	time.Sleep(time.Second)
 
 	// Bootstrap into the swarm network

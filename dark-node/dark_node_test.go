@@ -30,6 +30,7 @@ const (
 
 var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 var trader, _ = identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+var mockRegistrar = dnr.NewMockDarkNodeRegistrar([][]byte{})
 
 type OrderBook struct {
 	LastUpdateId int        `json:"lastUpdateId"`
@@ -83,11 +84,15 @@ func generateBootstrapNodes(numberOfBootstrapNodes int) ([]*node.DarkNode, error
 		if err != nil {
 			return nil, err
 		}
-		node, err := node.NewDarkNode(*config, &dnr.EthereumDarkNodeRegistrar{})
+		node, err := node.NewDarkNode(*config, mockRegistrar)
 		if err != nil {
 			return nil, err
 		}
 		nodes[i] = node
+	}
+	// Register all nodes to the registrar
+	for _, node := range nodes {
+		mockRegistrar.Register(node.Config.RepublicKeyPair.ID(), []byte{})
 	}
 	return nodes, nil
 }
@@ -100,11 +105,15 @@ func generateNodes(numberOfTestNodes int) ([]*node.DarkNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		node, err := node.NewDarkNode(*config, &dnr.EthereumDarkNodeRegistrar{})
+		node, err := node.NewDarkNode(*config, mockRegistrar)
 		if err != nil {
 			return nil, err
 		}
 		nodes[i] = node
+	}
+	// Register all nodes to the registrar
+	for _, node := range nodes {
+		mockRegistrar.Register(node.Config.RepublicKeyPair.ID(), []byte{})
 	}
 	return nodes, nil
 }
