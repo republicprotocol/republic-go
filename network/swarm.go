@@ -2,7 +2,6 @@ package network
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
@@ -158,7 +157,6 @@ func (service *SwarmService) queryPeers(query *rpc.Query, stream rpc.Swarm_Query
 			return err
 		}
 		if closer {
-			log.Println("SENDING: ", peer.String())
 			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
 				return err
 			}
@@ -240,10 +238,8 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 			service.Logger.Error("connection", err.Error())
 			continue
 		}
-		defer close(candidates)
 
 		for serializedCandidate := range candidates {
-			log.Println(serializedCandidate.MultiAddress)
 
 			candidate, err := rpc.DeserializeMultiAddress(serializedCandidate)
 			if err != nil {
@@ -276,13 +272,11 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 			}
 			return err
 		}
-
 	// Peers returned by the query will be added to the DHT.
 	if service.Options.Debug >= DebugMedium {
 		service.Logger.Info(logger.TagNetwork, fmt.Sprintf("%v received %v peers from %v.\n", service.Address(), len(peers), bootstrapMultiAddress.Address()))
 	}
 	for serializedPeer := range peers {
-		log.Println(serializedPeer.MultiAddress)
 		peer, err := rpc.DeserializeMultiAddress(serializedPeer)
 		if err != nil {
 			continue

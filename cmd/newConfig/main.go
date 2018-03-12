@@ -55,7 +55,7 @@ func generateSingleNode(i int) error {
 		Timeout:              30 * time.Second,
 		TimeoutBackoff:       30 * time.Second,
 		TimeoutRetries:       1,
-		Concurrent:           true,
+		Concurrent:           false,
 	}
 	ethKey := keystore.NewKeyForDirectICAP(rand.Reader)
 	for i := range bootstrapNode{
