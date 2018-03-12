@@ -7,7 +7,7 @@ import (
 	. "github.com/republicprotocol/republic-go/stackint"
 )
 
-var zero = Zero()
+var zero = Zero
 var one = Int1024FromUint64(1)
 var two = Int1024FromUint64(2)
 var three = Int1024FromUint64(3)
@@ -15,7 +15,7 @@ var six = Int1024FromUint64(6)
 var seven = Int1024FromUint64(7)
 var eleven = Int1024FromUint64(11)
 var oneWord = Int1024FromUint64(WORDMAX)
-var max = zero.Not()
+var max = zero.NOT()
 
 var _ = Describe("Int1024", func() {
 	Context("when adding numbers", func() {
