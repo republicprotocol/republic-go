@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/republicprotocol/republic-go/dark-ocean"
-
 	"github.com/republicprotocol/republic-go/compute"
+	"github.com/republicprotocol/republic-go/dark"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network/rpc"
@@ -57,11 +56,11 @@ func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment) er
 type DeltaFragmentBroadcastWorker struct {
 	logger     *logger.Logger
 	clientPool *rpc.ClientPool
-	darkPool   *darkocean.DarkPool
+	darkPool   *dark.Pool
 	queue      chan *compute.DeltaFragment
 }
 
-func NewDeltaFragmentBroadcastWorker(logger *logger.Logger, clientPool *rpc.ClientPool, darkPool *darkocean.DarkPool, queue chan *compute.DeltaFragment) *DeltaFragmentBroadcastWorker {
+func NewDeltaFragmentBroadcastWorker(logger *logger.Logger, clientPool *rpc.ClientPool, darkPool *dark.Pool, queue chan *compute.DeltaFragment) *DeltaFragmentBroadcastWorker {
 	return &DeltaFragmentBroadcastWorker{
 		logger:     logger,
 		clientPool: clientPool,
@@ -73,8 +72,12 @@ func NewDeltaFragmentBroadcastWorker(logger *logger.Logger, clientPool *rpc.Clie
 func (worker *DeltaFragmentBroadcastWorker) Run() {
 	for deltaFragment := range worker.queue {
 		serializedDeltaFragment := rpc.SerializeDeltaFragment(deltaFragment)
-		worker.darkPool.CoForAll(func(node identity.MultiAddress) {
-			_, err := worker.clientPool.BroadcastDeltaFragment(node, serializedDeltaFragment)
+		worker.darkPool.CoForAll(func(node *dark.Node) {
+			multiAddress := node.MultiAddress()
+			if multiAddress == nil {
+				return
+			}
+			_, err := worker.clientPool.BroadcastDeltaFragment(*multiAddress, serializedDeltaFragment)
 			if err != nil {
 				worker.logger.Error(logger.TagNetwork, err.Error())
 			}
