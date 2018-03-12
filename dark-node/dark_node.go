@@ -2,7 +2,6 @@ package node
 
 import (
 	"fmt"
-	"log"
 	"math/big"
 	"net"
 	"net/http"
@@ -135,15 +134,6 @@ func (node *DarkNode) Start() {
 	// 	}
 	// }()
 
-	// Start gRPC services and UI
-	go node.StartServices()
-	//go node.StartUI()
-	time.Sleep(time.Second)
-
-	// Bootstrap into the swarm network
-	node.Swarm.Bootstrap()
-	time.Sleep(time.Second)
-
 	// Start background workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentBroadcastWorker.Run()
@@ -151,6 +141,16 @@ func (node *DarkNode) Start() {
 	go node.GossipWorker.Run(node.FinalizeWorkerQueue)
 	go node.FinalizeWorker.Run(node.ConsensusWorkerQueue)
 	go node.ConsensusWorker.Run()
+
+	// Start gRPC services and UI
+	go node.StartServices()
+	time.Sleep(5 * time.Second)
+
+	//go node.StartUI()
+	time.Sleep(time.Second)
+
+	// Bootstrap into the swarm network
+	node.Swarm.Bootstrap()
 }
 
 func (node *DarkNode) StartServices() {
@@ -158,7 +158,6 @@ func (node *DarkNode) StartServices() {
 	node.Swarm.Register(node.Server)
 	node.Dark.Register(node.Server)
 	node.Gossip.Register(node.Server)
-	log.Println(node.Host, node.Port)
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
 		node.Logger.Error(logger.TagNetwork, err.Error())

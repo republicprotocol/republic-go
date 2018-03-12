@@ -40,181 +40,129 @@ type OrderBook struct {
 var _ = Describe("Dark nodes", func() {
 	var err error
 	var mu = new(sync.Mutex)
-	var bootstrapNodes, testNodes []*node.DarkNode
+	var nodes []*node.DarkNode
 
-	for _, numberOfTestNodes := range []int{4} {
-		for _, connectivity := range []int{100} {
-			func(numberOfTestNodes, connectivity int) {
+	for _, numberOfNodes := range []int{8 /*, 16, 32, 64, 128*/} {
+		for _, connectivity := range []int{100 /*, 80, 40*/} {
+			func(numberOfNodes, connectivity int) {
 				Context("integration test", func() {
 					BeforeEach(func() {
 						mu.Lock()
 
-						bootstrapNodes, err = generateBootstrapNodes(NumberOfBootstrapNodes)
+						nodes, err = generateNodes(numberOfNodes)
 						Ω(err).ShouldNot(HaveOccurred())
-						testNodes, err = generateNodes(numberOfTestNodes)
-						Ω(err).ShouldNot(HaveOccurred())
-						startNodes(bootstrapNodes, testNodes)
-						time.Sleep(time.Duration(numberOfTestNodes) * time.Second)
-						err = connectNodes(bootstrapNodes, testNodes, connectivity)
-						Ω(err).ShouldNot(HaveOccurred())
-						time.Sleep(time.Duration(numberOfTestNodes) * time.Second)
 
-						go func() {
-							defer GinkgoRecover()
-							watchNodes(bootstrapNodes, testNodes)
-						}()
-						time.Sleep(2 * time.Duration(numberOfTestNodes) * time.Second)
+						startNodes(nodes)
+
+						err = connectNodes(nodes, connectivity)
+						Ω(err).ShouldNot(HaveOccurred())
+
+						watchNodes(nodes)
 					})
 
 					AfterEach(func() {
-						stopNodes(bootstrapNodes, testNodes)
+						stopNodes(nodes)
 						mu.Unlock()
 					})
 
 					It("should reach consensus on an order match", func() {
-						sendOrders(bootstrapNodes, testNodes, NumberOfOrders)
+						sendOrders(nodes)
 					})
 				})
-			}(numberOfTestNodes, connectivity)
+			}(numberOfNodes, connectivity)
 		}
 	}
 })
 
-func generateBootstrapNodes(numberOfBootstrapNodes int) ([]*node.DarkNode, error) {
+func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 	// Generate nodes from the config files
-	nodes := make([]*node.DarkNode, numberOfBootstrapNodes)
-	for i := 0; i < numberOfBootstrapNodes; i++ {
-		config, err := node.LoadConfig(fmt.Sprintf("./test-configs/bootstrap-%d.json", i+1))
+	nodes := make([]*node.DarkNode, numberOfNodes)
+	for i := 0; i < numberOfNodes; i++ {
+		var err error
+		var config *node.Config
+		if i < NumberOfBootstrapNodes {
+			config, err = node.LoadConfig(fmt.Sprintf("./test-configs/bootstrap-%d.json", i+1))
+		} else {
+			config, err = node.LoadConfig(fmt.Sprintf("./test-configs/node-%d.json", i+1))
+		}
 		if err != nil {
 			return nil, err
 		}
+
+		config.NetworkOptions.Timeout = 1 * time.Second
+		config.NetworkOptions.TimeoutBackoff = 0 * time.Second
+		config.NetworkOptions.TimeoutRetries = 1
 		node, err := node.NewDarkNode(*config, mockRegistrar)
 		if err != nil {
 			return nil, err
 		}
-		nodes[i] = node
-	}
-	// Register all nodes to the registrar
-	for _, node := range nodes {
 		mockRegistrar.Register(node.Config.RepublicKeyPair.ID(), []byte{})
+		nodes[i] = node
 	}
 	return nodes, nil
 }
 
-func generateNodes(numberOfTestNodes int) ([]*node.DarkNode, error) {
-	// Generate nodes from the config files
-	nodes := make([]*node.DarkNode, numberOfTestNodes)
-	for i := 0; i < numberOfTestNodes; i++ {
-		config, err := node.LoadConfig(fmt.Sprintf("./test-configs/node-%d.json", i+1))
-		if err != nil {
-			return nil, err
-		}
-		node, err := node.NewDarkNode(*config, mockRegistrar)
-		if err != nil {
-			return nil, err
-		}
-		nodes[i] = node
-	}
-	// Register all nodes to the registrar
-	for _, node := range nodes {
-		mockRegistrar.Register(node.Config.RepublicKeyPair.ID(), []byte{})
-	}
-	return nodes, nil
-}
-
-func startNodes(bootstrapNodes, testNodes []*node.DarkNode) {
-	do.CoForAll(bootstrapNodes, func(i int) {
-		bootstrapNodes[i].Start()
-	})
-	do.CoForAll(testNodes, func(i int) {
-		testNodes[i].Start()
+func startNodes(nodes []*node.DarkNode) {
+	do.CoForAll(nodes, func(i int) {
+		log.Println(nodes[i].Swarm.Address())
+		nodes[i].Start()
 	})
 }
 
-func watchNodes(bootstrapNodes, testNodes []*node.DarkNode) {
-	for i := range bootstrapNodes {
+func watchNodes(nodes []*node.DarkNode) {
+	for i := range nodes {
 		go func(i int) {
-			bootstrapNodes[i].WatchDarkOcean()
-		}(i)
-	}
-	for i := range testNodes {
-		go func(i int) {
-			testNodes[i].WatchDarkOcean()
+			nodes[i].WatchDarkOcean()
 		}(i)
 	}
 }
 
-func stopNodes(bootstrapNodes, testNodes []*node.DarkNode) {
-	for i := range bootstrapNodes {
-		bootstrapNodes[i].Stop()
-	}
-	for i := range testNodes {
-		testNodes[i].Stop()
+func stopNodes(nodes []*node.DarkNode) {
+	for i := range nodes {
+		nodes[i].Stop()
 	}
 }
 
-func connectNodes(bootstrapNodes, testNodes []*node.DarkNode, connectivity int) error {
-	// Connect bootstrap nodes in a fully-connected terminology
-	for i, bootstrapNode := range bootstrapNodes {
-		for j, other := range bootstrapNodes {
+func connectNodes(nodes []*node.DarkNode, connectivity int) error {
+	for i, from := range nodes {
+		for j, to := range nodes {
 			if i == j {
 				continue
 			}
-
-			client, err := bootstrapNode.ClientPool.FindOrCreateClient(other.NetworkOptions.MultiAddress)
-			if err != nil {
-				return err
+			// Connect bootstrap nodes in a fully connected topology
+			if i < NumberOfBootstrapNodes {
+				if j < NumberOfBootstrapNodes {
+					client, err := from.ClientPool.FindOrCreateClient(to.NetworkOptions.MultiAddress)
+					if err != nil {
+						return err
+					}
+					if err := client.Ping(); err != nil {
+						return err
+					}
+				}
+				continue
 			}
-			err = client.Ping()
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	// Generate connectivity map
-	connectivityMap := map[string]map[string]bool{}
-	for i, testNode := range testNodes {
-		for j := i + 1; j < len(testNodes); j++ {
-			other := testNodes[j]
+			// Connect standard nodes randomly
 			isConnected := rand.Intn(100) < connectivity
-			if _, ok := connectivityMap[testNode.NetworkOptions.MultiAddress.String()]; !ok {
-				connectivityMap[testNode.NetworkOptions.MultiAddress.String()] = map[string]bool{}
-			}
-			if _, ok := connectivityMap[other.NetworkOptions.MultiAddress.String()]; !ok {
-				connectivityMap[other.NetworkOptions.MultiAddress.String()] = map[string]bool{}
-			}
-			connectivityMap[testNode.NetworkOptions.MultiAddress.String()][other.NetworkOptions.MultiAddress.String()] = isConnected
-			connectivityMap[other.NetworkOptions.MultiAddress.String()][testNode.NetworkOptions.MultiAddress.String()] = isConnected
-		}
-	}
-
-	// Connect test nodes depending on the connectivity
-	for i, testNode := range testNodes {
-		for j, other := range testNodes {
-			if i == j {
-				continue
-			}
-			if !connectivityMap[testNode.NetworkOptions.MultiAddress.String()][other.NetworkOptions.MultiAddress.String()] {
-				continue
-			}
-			client, err := testNode.ClientPool.FindOrCreateClient(other.NetworkOptions.MultiAddress)
-			if err != nil {
-				return err
-			}
-			err = client.Ping()
-			if err != nil {
-				return err
+			if isConnected {
+				client, err := from.ClientPool.FindOrCreateClient(to.NetworkOptions.MultiAddress)
+				if err != nil {
+					return err
+				}
+				if err := client.Ping(); err != nil {
+					return err
+				}
 			}
 		}
 	}
 	return nil
 }
 
-func sendOrders(bootstrapNodes, testNodes []*node.DarkNode, numberOfOrders int) {
-	resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%v", numberOfOrders))
+func sendOrders(nodes []*node.DarkNode) error {
+	// Get order data from Binance
+	resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%v", NumberOfOrders))
 	if err != nil {
-		log.Fatal("fail to get data from binance")
+		return err
 	}
 
 	response, err := ioutil.ReadAll(resp.Body)
@@ -249,7 +197,6 @@ func sendOrders(bootstrapNodes, testNodes []*node.DarkNode, numberOfOrders int) 
 	}
 
 	// Send order fragment to the nodes
-	nodes := append(bootstrapNodes, testNodes...)
 	totalNodes := len(nodes)
 	for _, orders := range [][]*order.Order{buyOrders, sellOrders} {
 		go func(orders []*order.Order) {
@@ -281,4 +228,6 @@ func sendOrders(bootstrapNodes, testNodes []*node.DarkNode, numberOfOrders int) 
 			}
 		}(orders)
 	}
+
+	return nil
 }
