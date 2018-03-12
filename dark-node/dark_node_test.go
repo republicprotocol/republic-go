@@ -40,7 +40,15 @@ type OrderBook struct {
 var _ = Describe("Dark nodes", func() {
 
 	var mu = new(sync.Mutex)
+	BeforeEach(func() {
+		mu.Lock()
+	})
 
+	AfterEach(func() {
+		mu.Unlock()
+	})
+
+	// Bootstrapping
 	for _, numberOfNodes := range []int{ /*18, 36, 72*/ } {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when bootstrapping %d nodes", numberOfNodes), func() {
@@ -49,8 +57,6 @@ var _ = Describe("Dark nodes", func() {
 				var nodes []*node.DarkNode
 
 				BeforeEach(func() {
-					mu.Lock()
-
 					By("generate nodes")
 					nodes, err = generateNodes(numberOfNodes)
 					Ω(err).ShouldNot(HaveOccurred())
@@ -60,7 +66,6 @@ var _ = Describe("Dark nodes", func() {
 				})
 
 				It("should reach a fault tolerant level of connectivity", func() {
-
 					By("bootstrap nodes")
 					bootstrapNodes(nodes)
 					n := 0
@@ -76,12 +81,12 @@ var _ = Describe("Dark nodes", func() {
 				AfterEach(func() {
 					By("stop node services")
 					stopNodes(nodes)
-					mu.Unlock()
 				})
 			})
 		}(numberOfNodes)
 	}
 
+	// Connectivity
 	for _, numberOfNodes := range []int{18, 36 /*, 72*/} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when connecting %d nodes", numberOfNodes), func() {
@@ -93,8 +98,6 @@ var _ = Describe("Dark nodes", func() {
 							var nodes []*node.DarkNode
 
 							BeforeEach(func() {
-								mu.Lock()
-
 								By("generate nodes")
 								nodes, err = generateNodes(numberOfNodes)
 								Ω(err).ShouldNot(HaveOccurred())
@@ -107,7 +110,6 @@ var _ = Describe("Dark nodes", func() {
 							})
 
 							It("should succeed for the super majority", func() {
-
 								By("ping connections")
 								numberOfPings, numberOfErrors := connectNodes(nodes, connectivity)
 								Ω(numberOfErrors).Should(BeNumerically("<", numberOfPings/3))
@@ -115,7 +117,45 @@ var _ = Describe("Dark nodes", func() {
 
 							AfterEach(func() {
 								stopNodes(nodes)
-								mu.Unlock()
+							})
+						})
+					}(connectivity)
+				}
+			})
+		}(numberOfNodes)
+	}
+
+	// Order matching
+	for _, numberOfNodes := range []int{18, 36 /*, 72*/} {
+		func(numberOfNodes int) {
+			Context(fmt.Sprintf("when connecting %d nodes", numberOfNodes), func() {
+				for _, connectivity := range []int{20, 40 /*, 60, 80, 100*/} {
+					func(connectivity int) {
+						Context(fmt.Sprintf("with %d%% connectivity", connectivity), func() {
+
+							var err error
+							var nodes []*node.DarkNode
+
+							BeforeEach(func() {
+								By("generate nodes")
+								nodes, err = generateNodes(numberOfNodes)
+								Ω(err).ShouldNot(HaveOccurred())
+
+								By("start node service")
+								startNodeServices(nodes)
+
+								By("bootstrap nodes")
+								bootstrapNodes(nodes)
+							})
+
+							It("should succeed for the super majority", func() {
+								By("ping connections")
+								numberOfPings, numberOfErrors := connectNodes(nodes, connectivity)
+								Ω(numberOfErrors).Should(BeNumerically("<", numberOfPings/3))
+							})
+
+							AfterEach(func() {
+								stopNodes(nodes)
 							})
 						})
 					}(connectivity)
