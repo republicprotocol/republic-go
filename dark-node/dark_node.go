@@ -119,7 +119,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 		return nil, err
 	}
 	node.Registrar = registrar
-
+	node.Registrar = darkNodeRegistrar
 	return node, nil
 }
 
@@ -286,20 +286,6 @@ func (node *DarkNode) IsPendingRegistration() bool {
 	return registered
 }
 
-// Register the node on the registrar smart contract .
-func (node *DarkNode) Register() error {
-	registered := node.IsRegistered()
-	if registered {
-		return nil
-	}
-	publicKey := append(node.Config.RepublicKeyPair.PublicKey.X.Bytes(), node.Config.RepublicKeyPair.PublicKey.Y.Bytes()...)
-	_, err := node.Registrar.Register(node.NetworkOptions.MultiAddress.ID(), publicKey)
-	if err != nil {
-		return err
-	}
-	err = node.Registrar.WaitTillRegistration(node.NetworkOptions.MultiAddress.ID())
-	return err
-}
 
 // Deregister the node on the registrar smart contract
 func (node *DarkNode) Deregister() error {
@@ -388,13 +374,13 @@ func (node *DarkNode) AfterEachEpoch() error {
 }
 
 // ConnectToRegistrar will connect to the registrar using the given private key to sign transactions
-func (node DarkNode) ConnectToRegistrar(clientDetails connection.ClientDetails, config Config) (dnr.DarkNodeRegistrarInterface, error) {
+func (node DarkNode) ConnectToRegistrar(clientDetails connection.ClientDetails, config Config) (dnr.DarkNodeRegistrar, error) {
 	auth := bind.NewKeyedTransactor(node.Config.EthereumKey.PrivateKey)
 
 	// Gas Price
 	auth.GasPrice = big.NewInt(6000000000)
 
-	userConnection := dnr.NewDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{})
+	userConnection := dnr.NewEthereumDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{})
 	return userConnection, nil
 }
 

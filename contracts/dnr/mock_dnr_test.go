@@ -1,4 +1,4 @@
-package node_test
+package dnr_test
 
 import (
 	"crypto/rand"
