@@ -57,6 +57,16 @@ func (x *Int1024) Equals(y *Int1024) bool {
 	return true
 }
 
+// LessThan returns x<y
+func (x *Int1024) LessThan(y *Int1024) bool {
+	for i := 0; i < INT1024WORDS; i++ {
+		if x.words[i] < y.words[i] {
+			return true
+		}
+	}
+	return false
+}
+
 // Add returns x+y
 func (x *Int1024) Add(y *Int1024) Int1024 {
 	z := Zero()
@@ -72,12 +82,33 @@ func (x *Int1024) Add(y *Int1024) Int1024 {
 		}
 	}
 
+	if overflow == 1 {
+		// WARNING: Overflow occured
+	}
+
 	return z
 }
 
 // Sub returns x-y
 func (x *Int1024) Sub(y *Int1024) Int1024 {
-	panic("Not implemented!")
+	z := Zero()
+
+	var overflow uint64
+	overflow = 0
+	for i := INT1024WORDS - 1; i >= 0; i-- {
+		z.words[i] = x.words[i] - y.words[i] - overflow
+		if x.words[i] < y.words[i]+overflow {
+			overflow = 1
+		} else {
+			overflow = 0
+		}
+	}
+
+	if overflow == 1 {
+		// WARNING: Overflow occured
+	}
+
+	return z
 }
 
 // Mul returns x*y

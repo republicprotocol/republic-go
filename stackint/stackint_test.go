@@ -7,19 +7,38 @@ import (
 	. "github.com/republicprotocol/republic-go/stackint"
 )
 
+var zero = Zero()
 var one = Int1024FromUint64(1)
 var two = Int1024FromUint64(2)
 var three = Int1024FromUint64(3)
+var oneWord = Int1024FromUint64(MAXUINT64)
 
 var _ = Describe("Stackint", func() {
 	Context("when adding two numbers", func() {
 		It("should return the right result for 1024 bit numbers", func() {
-			oneplustwo := one.Add(&two)
-			Ω(oneplustwo.Equals(&three)).Should(BeTrue())
+			onePlusTwo := one.Add(&two)
+			Ω(onePlusTwo.Equals(&three)).Should(BeTrue())
 
-			oneword := Int1024FromUint64(MAXUINT64)
-			onewordplusone := oneword.Add(&one)
-			Ω(onewordplusone.Words()[14]).Should(Equal(uint64(1)))
+			oneWordPlusOne := oneWord.Add(&one)
+			Ω(oneWordPlusOne.Words()[14]).Should(Equal(uint64(1)))
+		})
+	})
+
+	Context("when subtracting two numbers", func() {
+		It("should return the right result for 1024 bit numbers", func() {
+			threeMinusTwo := three.Sub(&two)
+			Ω(threeMinusTwo.Equals(&one)).Should(BeTrue())
+
+			oneWordPlusOne := oneWord.Add(&one)
+			alsoOneWord := oneWordPlusOne.Sub(&one)
+			Ω(alsoOneWord.Equals(&oneWord)).Should(BeTrue())
+		})
+
+		It("should overflow", func() {
+			overflow := zero.Sub(&one)
+			for i := 0; i < INT1024WORDS; i++ {
+				Ω(overflow.Words()[i]).Should(Equal(uint64(MAXUINT64)))
+			}
 		})
 	})
 })
