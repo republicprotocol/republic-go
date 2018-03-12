@@ -56,7 +56,6 @@ func (service *SwarmService) Bootstrap() {
 			service.Logger.Error(logger.TagNetwork, err.Error())
 		}
 	}
-	log.Println("finish adding nodes")
 
 	if service.Options.Concurrent {
 		// Concurrently search all bootstrap Nodes for itself.
@@ -268,7 +267,6 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.MultiAddress) error {
 	var err error
 	var peers chan *rpc.MultiAddress
-
 
 		// Query the bootstrap service.
 		peers, err = service.ClientPool.QueryPeersDeep(bootstrapMultiAddress, rpc.SerializeAddress(service.Address()))

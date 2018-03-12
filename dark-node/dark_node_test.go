@@ -51,7 +51,6 @@ var _ = Describe("Dark nodes", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 					testNodes, err := generateNodes(numberOfTestNodes)
 					Ω(err).ShouldNot(HaveOccurred())
-
 					go func() {
 						defer GinkgoRecover()
 
@@ -80,7 +79,7 @@ func generateBootstrapNodes(numberOfBootstrapNodes int) ([]*node.DarkNode, error
 	// Generate nodes from the config files
 	nodes := make([]*node.DarkNode, numberOfBootstrapNodes)
 	for i := 0; i < numberOfBootstrapNodes; i++ {
-		config, err := node.LoadConfig(fmt.Sprintf("./test_configs/bootstrap-%d.json", i))
+		config, err := node.LoadConfig(fmt.Sprintf("./test-configs/bootstrap-%d.json", i+1))
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +96,7 @@ func generateNodes(numberOfTestNodes int) ([]*node.DarkNode, error) {
 	// Generate nodes from the config files
 	nodes := make([]*node.DarkNode, numberOfTestNodes)
 	for i := 0; i < numberOfTestNodes; i++ {
-		config, err := node.LoadConfig(fmt.Sprintf("./test_configs/config-%d.json", i))
+		config, err := node.LoadConfig(fmt.Sprintf("./test-configs/node-%d.json", i+1))
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +115,7 @@ func startNodes(bootstrapNodes, testNodes []*node.DarkNode) {
 			bootstrapNodes[i].Start()
 		}(i)
 	}
-
+	time. Sleep( 5 * time.Second)
 	for i := range testNodes {
 		go func(i int) {
 			testNodes[i].Start()
