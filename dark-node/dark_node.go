@@ -128,15 +128,16 @@ func (node *DarkNode) Start() {
 		}
 	}()
 
+	// Start gRPC services and UI
 	go node.StartServices()
-	time.Sleep(time.Second)
-
 	go node.StartUI()
 	time.Sleep(time.Second)
 
+	// Bootstrap into the swarm network
 	go node.Swarm.Bootstrap()
 	time.Sleep(time.Second)
 
+	// Start background workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentBroadcastWorker.Run()
 	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue, node.TestDeltaNotifications)
@@ -177,9 +178,13 @@ func (node *DarkNode) Stop() {
 	node.Server.Stop()
 	time.Sleep(time.Second)
 
-	// Stop the workers
+	// Stop background workers by closing their job queues
 	close(node.OrderFragmentWorkerQueue)
+	close(node.DeltaFragmentBroadcastWorkerQueue)
 	close(node.DeltaFragmentWorkerQueue)
+	close(node.GossipWorkerQueue)
+	close(node.FinalizeWorkerQueue)
+	close(node.ConsensusWorkerQueue)
 }
 
 // WatchDarkOcean for changes. When a change happens, find the dark pool for
