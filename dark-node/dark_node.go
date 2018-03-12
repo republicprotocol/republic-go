@@ -84,7 +84,6 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 		return nil, err
 	}
 	node.Logger.Start()
-	log.Println(config.LoggerOptions.Plugins)
 
 	// Load the dark ocean and the dark pool for this node
 	node.DarkPool = dark.NewPool()
