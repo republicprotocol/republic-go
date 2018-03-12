@@ -2,7 +2,6 @@ package node
 
 import (
 	"fmt"
-	"log"
 	"math/big"
 	"net"
 	"net/http"
