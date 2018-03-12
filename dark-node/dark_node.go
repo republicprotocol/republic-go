@@ -209,16 +209,16 @@ func (node *DarkNode) WatchDarkOcean() {
 	go func() {
 		defer close(changes)
 		for {
+			// Wait for a change to the ocean
+			<-changes
+			node.Logger.Info(logger.TagEthereum, "dark ocean change detected")
+
 			// Find the dark pool for this node and connect to all of the dark
 			// nodes in the pool
 			node.DarkPool.RemoveAll()
-			node.Logger.Info(logger.TagEthereum, "updating dark ocean...")
 			darkPool := node.DarkOcean.FindPool(node.RepublicKeyPair.ID())
-			node.Logger.Info(logger.TagEthereum, "connecting to dark ocean...")
 			node.ConnectToDarkPool(darkPool)
-			node.Logger.Info(logger.TagEthereum, "dark ocean updated")
-			// Wait for a change to the ocean
-			<-changes
+
 		}
 	}()
 	node.DarkOcean.Watch(5*time.Minute, changes)

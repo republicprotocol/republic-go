@@ -49,6 +49,9 @@ func (service *SwarmService) Register(server *grpc.Server) {
 // Node and attempt to find itself in the network. This process will ultimately
 // connect it to Nodes that are close to it in XOR space.
 func (service *SwarmService) Bootstrap() {
+	if service.Options.Debug >= DebugMedium {
+		service.Logger.Info(logger.TagNetwork, fmt.Sprintf("boostrapping against %v nodes", len(service.Options.BootstrapMultiAddresses)))
+	}
 	// Add all bootstrap Nodes to the DHT.
 	for _, bootstrapMultiAddress := range service.Options.BootstrapMultiAddresses {
 		err := service.DHT.UpdateMultiAddress(bootstrapMultiAddress)
@@ -56,7 +59,6 @@ func (service *SwarmService) Bootstrap() {
 			service.Logger.Error(logger.TagNetwork, err.Error())
 		}
 	}
-
 	if service.Options.Concurrent {
 		// Concurrently search all bootstrap Nodes for itself.
 		do.ForAll(service.Options.BootstrapMultiAddresses, func(i int) {
