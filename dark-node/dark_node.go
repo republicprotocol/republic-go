@@ -13,7 +13,6 @@ import (
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
-	"github.com/republicprotocol/republic-go/dark-ocean"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
@@ -57,11 +56,10 @@ type DarkNode struct {
 	Dark   *network.DarkService
 	Gossip *network.GossipService
 
-	DarkPoolLimit    int64
-	DarkPool         *darkocean.DarkPool
-	DarkOceanOverlay *darkocean.Overlay
-	Registrar        dnr.DarkNodeRegistrar
-	EpochBlockhash   [32]byte
+	DarkNodeRegistrar dnr.DarkNodeRegistrar
+	DarkPool          *darkocean.DarkPool
+	DarkOceanOverlay  *darkocean.Overlay
+	EpochBlockhash    [32]byte
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
@@ -75,7 +73,11 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	// TODO: This should come from the DNR.
 	k := int64(5)
 
-	node := &DarkNode{Config: config, TestDeltaNotifications: make(chan *compute.Delta, 100)}
+	node := &DarkNode{
+		Config:                 config,
+		TestDeltaNotifications: make(chan *compute.Delta, 100),
+		DarkNodeRegistrar:      darkNodeRegistrar,
+	}
 
 	logger, err := logger.NewLogger(config.LoggerOptions)
 	if err != nil {
@@ -187,22 +189,20 @@ func (node *DarkNode) Start() {
 	// defer close(oceanChanges)
 	// go darkocean.WatchForDarkOceanChanges(node.Registrar, oceanChanges)
 
-	// for {
-	// 	select {
-	// 	case ocean := <-oceanChanges:
-	// 		if ocean.Err != nil {
-	// 			node.Logger.Error(logger.TagEthereum, ocean.Err.Error())
-	// 			continue
-	// 		}
-	// 		node.AfterEachEpoch()
-	// 	}
-	// }
-	q := make(chan struct{})
-	<-q
+	for {
+		select {
+		case ocean := <-oceanChanges:
+			if ocean.Err != nil {
+				node.Logger.Error(logger.TagEthereum, ocean.Err.Error())
+				continue
+			}
+			node.AfterEachEpoch()
+		}
+	}
 }
 
 func (node *DarkNode) ServeUI() {
-	fs := http.FileServer(http.Dir("darknode-ui"))
+	fs := http.FileServer(http.Dir("dark-node-ui"))
 	http.Handle("/", fs)
 	node.Logger.Info(logger.TagNetwork, "Serving the Dark Node UI")
 	err := http.ListenAndServe("0.0.0.0:3000", nil)

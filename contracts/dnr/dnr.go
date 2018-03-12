@@ -18,18 +18,21 @@ import (
 type DarkNodeRegistrar interface {
 	Register(_darkNodeID []byte, _publicKey []byte) (*types.Transaction, error)
 	Deregister(_darkNodeID []byte) (*types.Transaction, error)
-	GetBond(_darkNodeID []byte) (*big.Int, error)
-	IsDarkNodeRegistered(_darkNodeID []byte) (bool, error)
-	IsDarkNodePendingRegistration(_darkNodeID []byte) (bool, error)
-	CurrentEpoch() (Epoch, error)
+	Refund(_darkNodeID []byte) (*types.Transaction, error)
 	Epoch() (*types.Transaction, error)
+
+	CurrentEpoch() (Epoch, error)
+	GetBond(_darkNodeID []byte) (*big.Int, error)
 	GetCommitment(_darkNodeID []byte) ([32]byte, error)
 	GetOwner(_darkNodeID []byte) (common.Address, error)
 	GetPublicKey(_darkNodeID []byte) ([]byte, error)
 	GetAllNodes() ([][]byte, error)
+
 	MinimumBond() (*big.Int, error)
 	MinimumEpochInterval() (*big.Int, error)
-	Refund(_darkNodeID []byte) (*types.Transaction, error)
+
+	IsDarkNodeRegistered(_darkNodeID []byte) (bool, error)
+	IsDarkNodePendingRegistration(_darkNodeID []byte) (bool, error)
 	WaitUntilRegistration(_darkNodeID []byte) error
 }
 

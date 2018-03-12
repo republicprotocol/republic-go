@@ -14,15 +14,13 @@ type Node struct {
 
 type Nodes []Node
 
-type PoolID []identity.ID
-
-type Pools []*Pool
-
 // A Pool is a list of nodes, identified by their Multiaddresses.
 type Pool struct {
 	do.GuardedObject
 	nodes Nodes
 }
+
+type Pools []*Pool
 
 // NewPool returns a new empty Pool.
 func NewPool() *Pool {
