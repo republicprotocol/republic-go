@@ -53,15 +53,17 @@ var _ = Describe("Dark nodes", func() {
 						Ω(err).ShouldNot(HaveOccurred())
 						testNodes, err = generateNodes(numberOfTestNodes)
 						Ω(err).ShouldNot(HaveOccurred())
-						go func() {
-							defer GinkgoRecover()
-
-							startNodes(bootstrapNodes, testNodes)
-						}()
-						time.Sleep(20 * time.Second)
-
+						startNodes(bootstrapNodes, testNodes)
+						time.Sleep(time.Duration(numberOfTestNodes) * time.Second)
 						err = connectNodes(bootstrapNodes, testNodes, connectivity)
 						Ω(err).ShouldNot(HaveOccurred())
+						time.Sleep(time.Duration(numberOfTestNodes) * time.Second)
+
+						go func() {
+							defer GinkgoRecover()
+							watchNodes(bootstrapNodes, testNodes)
+						}()
+						time.Sleep(2 * time.Duration(numberOfTestNodes) * time.Second)
 					})
 
 					AfterEach(func() {
@@ -121,15 +123,23 @@ func generateNodes(numberOfTestNodes int) ([]*node.DarkNode, error) {
 }
 
 func startNodes(bootstrapNodes, testNodes []*node.DarkNode) {
+	do.CoForAll(bootstrapNodes, func(i int) {
+		bootstrapNodes[i].Start()
+	})
+	do.CoForAll(testNodes, func(i int) {
+		testNodes[i].Start()
+	})
+}
+
+func watchNodes(bootstrapNodes, testNodes []*node.DarkNode) {
 	for i := range bootstrapNodes {
 		go func(i int) {
-			bootstrapNodes[i].Start()
+			bootstrapNodes[i].WatchDarkOcean()
 		}(i)
 	}
-	time.Sleep(5 * time.Second)
 	for i := range testNodes {
 		go func(i int) {
-			testNodes[i].Start()
+			testNodes[i].WatchDarkOcean()
 		}(i)
 	}
 }
@@ -251,7 +261,7 @@ func sendOrders(bootstrapNodes, testNodes []*node.DarkNode, numberOfOrders int) 
 					log.Println("sending sell order", ord.ID)
 				}
 
-				shares, err := ord.Split(int64(totalNodes), int64((totalNodes*2)/3), Prime)
+				shares, err := ord.Split(int64(totalNodes), int64((totalNodes+1)*2/3), Prime)
 				if err != nil {
 					log.Println("cannot split the order", ord.ID)
 					continue

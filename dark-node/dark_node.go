@@ -71,7 +71,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	}
 
 	// TODO: This should come from the DNR.
-	k := int64(5)
+	k := int64(5) // 14)
 
 	var err error
 	node := &DarkNode{
@@ -141,7 +141,7 @@ func (node *DarkNode) Start() {
 	time.Sleep(time.Second)
 
 	// Bootstrap into the swarm network
-	go node.Swarm.Bootstrap()
+	node.Swarm.Bootstrap()
 	time.Sleep(time.Second)
 
 	// Start background workers
@@ -151,8 +151,6 @@ func (node *DarkNode) Start() {
 	go node.GossipWorker.Run(node.FinalizeWorkerQueue)
 	go node.FinalizeWorker.Run(node.ConsensusWorkerQueue)
 	go node.ConsensusWorker.Run()
-
-	node.WatchDarkOcean()
 }
 
 func (node *DarkNode) StartServices() {
@@ -223,7 +221,7 @@ func (node *DarkNode) WatchDarkOcean() {
 			<-changes
 		}
 	}()
-	// node.DarkOcean.Watch(5*time.Minute, changes)
+	node.DarkOcean.Watch(5*time.Minute, changes)
 }
 
 // ConnectToDarkPool and return the connected nodes and disconnected nodes
