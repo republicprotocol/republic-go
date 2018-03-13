@@ -249,7 +249,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) WaitUntilRegistration(_darkN
 func toByte(id []byte) ([20]byte, error) {
 	twentyByte := [20]byte{}
 	if len(id) != 20 {
-		return twentyByte, errors.New("Length mismatch")
+		return twentyByte, errors.New("length mismatch")
 	}
 	for i := range id {
 		twentyByte[i] = id[i]
