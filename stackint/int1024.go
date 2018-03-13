@@ -46,7 +46,10 @@ func FromString(number string) Int1024 {
 	blockSize := 19
 
 	// Number of blocks
-	count := (length / blockSize) + 1
+	count := (length / blockSize)
+	if length%blockSize != 0 {
+		count++
+	}
 
 	// TODO: Replace with 10.Pow(blockSize)
 	shift := FromUint64(10000000000000000000)

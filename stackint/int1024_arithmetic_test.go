@@ -15,6 +15,18 @@ var _ = Describe("Int1024 arithmetic", func() {
 
 			oneWordPlusOne := oneWord.Add(&one)
 			Ω(oneWordPlusOne.Words()[14]).Should(Equal(Word(1)))
+
+			first := FromString("340282366920938463417257747247494332417")
+			second := FromString("340282366920938463454151235394913435648")
+			expected := FromString("680564733841876926871408982642407768065")
+			actual := first.Add(&second)
+			Ω(actual.Equals(&expected)).Should(BeTrue())
+
+			first = FromString("6893488147419103231")
+			second = FromString("30000000000000000000")
+			expected = FromString("36893488147419103231")
+			actual = first.Add(&second)
+			Ω(actual.Equals(&expected)).Should(BeTrue())
 		})
 
 		It("should overflow", func() {
