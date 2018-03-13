@@ -3,7 +3,6 @@ package node
 import (
 	"encoding/hex"
 	"encoding/json"
-	"math/big"
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -21,15 +20,11 @@ type Config struct {
 	Host string `json:"host"`
 	Port string `json:"port"`
 
-	EthereumKey     *keystore.Key    `json:"ethereum_key"`
-	RepublicKeyPair identity.KeyPair `json:"republic_key_pair"`
-	RSAKeyPair      identity.KeyPair `json:"rsa_key_pair"`
-
-	Dev bool `json:"dev"`
+	EthereumKey     *keystore.Key     `json:"ethereum_key"`
+	RepublicKeyPair *identity.KeyPair `json:"republic_key_pair"`
+	RSAKeyPair      *identity.KeyPair `json:"rsa_key_pair"`
 
 	EthereumRPC string `json:"ethereum_rpc"`
-
-	Prime *big.Int `json:"prime"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config
