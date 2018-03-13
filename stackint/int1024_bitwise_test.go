@@ -31,6 +31,9 @@ var _ = Describe("Int1024 bitwise operations", func() {
 
 			zeroShiftROne := zero.ShiftRight(1)
 			Ω(zeroShiftROne.Equals(&zero)).Should(BeTrue())
+
+			elevenShiftRTwo := eleven.ShiftRight(2)
+			Ω(elevenShiftRTwo.Equals(&two)).Should(BeTrue())
 		})
 
 		It("should overflow without wrapping", func() {

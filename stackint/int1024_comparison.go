@@ -54,3 +54,8 @@ func (x *Int1024) GreaterThanOrEqual(y *Int1024) bool {
 	}
 	return true
 }
+
+// IsEven returns (x%2)==0
+func (x *Int1024) IsEven() bool {
+	return (x.words[INT1024WORDS-1] & 1) == 0
+}

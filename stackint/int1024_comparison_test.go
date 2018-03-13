@@ -84,4 +84,14 @@ var _ = Describe("Int1024 bitwise operations", func() {
 			Ω(max.GreaterThanOrEqual(&zero)).Should(BeTrue())
 		})
 	})
+
+	Context("is even", func() {
+		It("should return the right result for 1024 bit numbers", func() {
+			Ω(zero.IsEven()).Should(BeTrue())
+			Ω(one.IsEven()).Should(BeFalse())
+			Ω(two.IsEven()).Should(BeTrue())
+			Ω(three.IsEven()).Should(BeFalse())
+			Ω(max.IsEven()).Should(BeFalse())
+		})
+	})
 })
