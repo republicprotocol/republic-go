@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -70,7 +71,17 @@ func (plugin *FilePlugin) Info(tag, message string) error {
 	if plugin.file == nil {
 		return fmt.Errorf("cannot write logs to a nil file")
 	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [info] (%s) %s\n", time.Now().Format("2006/01/02 15:04:05 "), tag, message))
+	log := map[string]interface{}{
+		"type":      "info",
+		"tag":       tag,
+		"timestamp": time.Now(),
+		"message":   message,
+	}
+	data, err := json.Marshal(log)
+	if err != nil {
+		return err
+	}
+	_, err = plugin.file.WriteString(string(data))
 	return err
 }
 

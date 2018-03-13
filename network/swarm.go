@@ -29,6 +29,7 @@ type SwarmService struct {
 	DHT        *dht.DHT
 }
 
+// NewSwarmService returns a SwarmService.
 func NewSwarmService(delegate SwarmDelegate, options Options, logger *logger.Logger, clientPool *rpc.ClientPool, dht *dht.DHT) *SwarmService {
 	return &SwarmService{
 		SwarmDelegate: delegate,

@@ -8,6 +8,7 @@ import (
 	"log"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -18,6 +19,9 @@ import (
 )
 
 func main() {
+	// Wait for a small period of time for external configuration
+	time.Sleep(time.Minute)
+
 	// Load configuration path from the command line
 	configFilename := flag.String("config", "/home/.darknode/config.json", "Path to the JSON configuration file")
 	flag.Parse()
