@@ -1,255 +1,152 @@
 package logger
 
 import (
-	"fmt"
-
-	"io"
-
 	"log"
-
-	"net/http"
-
-	"os"
-
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/republicprotocol/go-do"
 )
 
-// Plugin
+// Constant strings for tagging logs.
+const (
+	TagNetwork   = "net"
+	TagCompute   = "cmp"
+	TagRegister  = "reg"
+	TagUsage     = "usg"
+	TagGeneral   = "gen"
+	TagEthereum  = "eth"
+	TagConsensus = "con"
+)
+
+type Logger struct {
+	do.GuardedObject
+	Plugins []Plugin
+}
+
+// Options are used to Unmarshal a Logger from JSON.
+type Options struct {
+	Plugins []PluginOptions `json:"plugins"`
+}
+
 type Plugin interface {
 	Start() error
 	Stop() error
-
-	Info(string)
-	Warning(string)
-	Error(string)
+	Info(tag, message string) error
+	Warn(tag, message string) error
+	Error(tag, message string) error
+	Usage(cpu float32, memory, network int32) error
 }
 
-// A FilePlugin implements the Plugin interface by logging all events to an
-// output file.
-type FilePlugin struct {
-	Path string
-	File *os.File
-}
-
-func NewFilePlugin(path string) (Plugin, error) {
-	return &Plugin {
-		Path: path
-	}
-}
-
-func (plugin *FilePlugin) Start() error {
-	plugin.File, err := os.OpenFile(plugin.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (plugin *FilePlugin) Stop() error {
-	return plugin.File.Close()
-}
-
-type WebSocketPlugin struct {
-	Host string
-	Port string
-	Username string
-	Password string
-	Handler func(w http.ResponseWriter, r *http.Request)
-}
-
-func NewWebSocketPlugin(host, port, username, password string) (Plugin) {
-	return &WebSocketPlugin {
-		Host: host,
-		Port: port,
-		Username: username,
-		Password: password,
-		Handler: func(w http.ResponseWriter, r *http.Request) {
-
-		}
-	}
-}
-
-func (plugin *WebSocketPlugin) Start() error {
-	http.HandleFunc("/logs", plugin.Handler)
-	go func() {
-		plugin.Info(fmt.Sprintf("WebSocket logger listening on %s:%s", address, port))
-		http.ListenAndServe(fmt.Sprintf("%s:%s", plugin.Host, plugin.Port), nil)
-	}()
-	return nil
-}
-
-func (plugin *WebSocketPlugin) Stop() error {
-	return nil
-}
-
-type Logger struct {
-	Plugins []*Plugin
+// PluginOptions are used to Unmarshal plugins from JSON.
+type PluginOptions struct {
+	File      *FilePluginOptions      `json:"file"`
+	WebSocket *WebSocketPluginOptions `json:"websocket"`
 }
 
 // NewLogger returns a new Logger that will start and stop a set of plugins.
-func NewLogger(plugins ...*Plugin) Logger {
-	return Logger{
-		Plugins: plugins,
+func NewLogger(options Options) (*Logger, error) {
+	plugins := make([]Plugin, 0, len(options.Plugins))
+	for i := range options.Plugins {
+		if options.Plugins[i].File != nil {
+			plugin, err := NewFilePlugin(*options.Plugins[i].File)
+			if err != nil {
+				return nil, err
+			}
+			plugins = append(plugins, plugin)
+		}
+		if options.Plugins[i].WebSocket != nil {
+			plugin := NewWebSocketPlugin(*options.Plugins[i].WebSocket)
+			plugins = append(plugins, plugin)
+		}
 	}
+	return &Logger{
+		GuardedObject: do.NewGuardedObject(),
+		Plugins:       plugins,
+	}, nil
 }
 
-func (logger Logger) Start() error {
+// Start starts all the plugins of the logger
+func (logger *Logger) Start() {
 	for _, plugin := range logger.Plugins {
 		if err := plugin.Start(); err != nil {
-			return err
+			log.Println(err)
 		}
 	}
-	return nil
 }
 
-func (logger Logger) Stop() error {
-	panic("unimplemented")
-}
-
-func (logger Logger) logHandler(w http.ResponseWriter, r *http.Request) {
-
-	// Parse query parameters
-
-	//requestType := r.URL.Query()["type"]
-
-	//if len(requestType) == 1 {
-
-	//
-
-	//}
-
-	upgrader := websocket.Upgrader{}
-
-	c, err := upgrader.Upgrade(w, r, nil)
-
-	if err != nil {
-
-		logger.Error(err)
-
-		return
-
-	}
-
-	defer c.Close()
-
-	for {
-
-		// todo : handle request
-
-		request := new(Request)
-
-		err := c.ReadJSON(request)
-
-		if err != nil {
-
-			logger.Error(err)
-
-			return
-
+// Stop stops all the plugins of the logger
+func (logger Logger) Stop() {
+	for _, plugin := range logger.Plugins {
+		if err := plugin.Stop(); err != nil {
+			log.Println(err)
 		}
+	}
+}
 
-		log.Println(request)
-
-		err = c.WriteJSON(request)
-
-		if err != nil {
-
-			logger.Error(err)
-
-			return
-
+func (logger *Logger) Error(tag, message string) {
+	for _, plugin := range logger.Plugins {
+		if err := plugin.Error(tag, message); err != nil {
+			log.Println(err)
 		}
-
 	}
-
 }
 
-func (logger Logger) Error(err error) {
-
+func (logger *Logger) Info(tag, message string) {
 	for _, plugin := range logger.Plugins {
-
-		plugin.Write([]byte(time.Now().Format("2006/01/02 15:04:05 ")))
-
-		plugin.Write([]byte("ERROR : "))
-
-		plugin.Write([]byte(err.Error() + "\n"))
-
+		if err := plugin.Info(tag, message); err != nil {
+			log.Println(err)
+		}
 	}
-
 }
 
-func (logger Logger) Info(info string) {
-
+func (logger *Logger) Warn(tag, message string) {
 	for _, plugin := range logger.Plugins {
-
-		plugin.Write([]byte(time.Now().Format("2006/01/02 15:04:05 ")))
-
-		plugin.Write([]byte("INFO : "))
-
-		plugin.Write([]byte(info + "\n"))
-
+		if err := plugin.Warn(tag, message); err != nil {
+			log.Println(err)
+		}
 	}
-
 }
 
-func (logger Logger) Debug(debug string) {
-
+func (logger *Logger) Usage(cpu float32, memory, network int32) {
 	for _, plugin := range logger.Plugins {
-
-		plugin.Write([]byte(time.Now().Format("2006/01/02 15:04:05 ")))
-
-		plugin.Write([]byte("DEBUG : "))
-
-		plugin.Write([]byte(debug + "\n"))
-
+		if err := plugin.Usage(cpu, memory, network); err != nil {
+			log.Println(err)
+		}
 	}
-
-}
-
-type Request struct {
-	Type string `json:"type"`
-
-	Data RequestData `json:"data"`
-}
-
-type RequestData struct {
-	Start time.Time `json:"start"`
-
-	End time.Time `json:"end"`
-
-	Interval int `json:"interval"`
 }
 
 type Usage struct {
-	Type string `json:"type"`
-
+	Type string    `json:"type"`
 	Time time.Time `json:"timestamp"`
-
 	Data UsageData `json:"data"`
 }
 
 type UsageData struct {
-	Cpu float32 `json:"cpu"`
-
-	Memory int `json:"memory"`
-
-	network int `json:"network"`
+	CPU     float32 `json:"cpu"`
+	Memory  int32   `json:"memory"`
+	Network int32   `json:"network"`
 }
 
 type Event struct {
-	Type string `json:"type"`
-
+	Type string    `json:"type"`
 	Time time.Time `json:"timestamp"`
-
 	Data EventData `json:"data"`
 }
 
 type EventData struct {
-	Tag string `json:"tag"`
-
-	Level string `json:"level"`
-
+	Tag     string `json:"tag"`
+	Level   string `json:"level"`
 	Message string `json:"message"`
+}
+
+type Error struct {
+	Tag     string
+	Message string
+}
+
+type Registration struct {
+	NodeID     string `json:"nodeID"`
+	PublicKey  string `json:"publicKey""`
+	Address    string `json:"address"`
+	RepublicID string `json:"republicID"`
 }

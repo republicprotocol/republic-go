@@ -16,14 +16,15 @@ const (
 
 // Options that parameterize the behavior of Nodes.
 type Options struct {
-	MultiAddress            identity.MultiAddress
-	BootstrapMultiAddresses identity.MultiAddresses
+	MultiAddress            identity.MultiAddress   `json:"multiAddress"`
+	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
 
-	Debug           int
-	Alpha           int
-	MaxBucketLength int
-	Timeout         time.Duration
-	TimeoutStep     time.Duration
-	TimeoutRetries  int
-	Concurrent      bool
+	Debug                int           `json:"debug"`
+	Alpha                int           `json:"alpha"`
+	MaxBucketLength      int           `json:"maxBucketLength"`
+	ClientPoolCacheLimit int           `json:"clientPoolCacheLimit"`
+	Timeout              time.Duration `json:"timeout"`
+	TimeoutBackoff       time.Duration `json:"timeoutBackoff"`
+	TimeoutRetries       int           `json:"timeoutRetries"`
+	Concurrent           bool          `json:"concurrent"`
 }

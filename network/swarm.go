@@ -1,11 +1,11 @@
 package network
 
 import (
-	"log"
-	"time"
+	"fmt"
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network/dht"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"golang.org/x/net/context"
@@ -15,23 +15,27 @@ import (
 // A SwarmDelegate is used as a callback interface to inject behavior into the
 // Swarm service.
 type SwarmDelegate interface {
-	OnPing(from identity.MultiAddress)
-	OnQuery(from identity.MultiAddress)
-	OnQueryDeep(from identity.MultiAddress)
+	// OnPing(from identity.MultiAddress)
+	// OnQuery(from identity.MultiAddress)
+	// OnQueryDeep(from identity.MultiAddress)
 }
 
 // SwarmService implements the gRPC Swarm service.
 type SwarmService struct {
 	SwarmDelegate
 	Options
-	DHT *dht.DHT
+	Logger     *logger.Logger
+	ClientPool *rpc.ClientPool
+	DHT        *dht.DHT
 }
 
-func NewSwarmService(delegate SwarmDelegate, options Options) *SwarmService {
+func NewSwarmService(delegate SwarmDelegate, options Options, logger *logger.Logger, clientPool *rpc.ClientPool, dht *dht.DHT) *SwarmService {
 	return &SwarmService{
 		SwarmDelegate: delegate,
 		Options:       options,
-		DHT:           dht.NewDHT(options.MultiAddress.Address(), options.MaxBucketLength),
+		Logger:        logger,
+		ClientPool:    clientPool,
+		DHT:           dht,
 	}
 }
 
@@ -48,28 +52,27 @@ func (service *SwarmService) Bootstrap() {
 	for _, bootstrapMultiAddress := range service.Options.BootstrapMultiAddresses {
 		err := service.DHT.UpdateMultiAddress(bootstrapMultiAddress)
 		if err != nil && service.Options.Debug >= DebugLow {
-			log.Println(err)
+			service.Logger.Error(logger.TagNetwork, err.Error())
 		}
 	}
 	if service.Options.Concurrent {
 		// Concurrently search all bootstrap Nodes for itself.
 		do.ForAll(service.Options.BootstrapMultiAddresses, func(i int) {
-			service.bootstrapUsingMultiAddress(service.Options.BootstrapMultiAddresses[i])
+			bootstrapMultiAddress := service.Options.BootstrapMultiAddresses[i]
+			if err := service.bootstrapUsingMultiAddress(bootstrapMultiAddress); err != nil {
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("bootstrap error: %s", err.Error()))
+			}
 		})
 	} else {
 		// Sequentially search all bootstrap Nodes for itself.
 		for _, bootstrapMultiAddress := range service.Options.BootstrapMultiAddresses {
-			service.bootstrapUsingMultiAddress(bootstrapMultiAddress)
+			if err := service.bootstrapUsingMultiAddress(bootstrapMultiAddress); err != nil {
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("bootstrap error: %s", err.Error()))
+			}
 		}
 	}
 	if service.Options.Debug >= DebugMedium {
-		log.Printf("%v connected to %v peers after bootstrapping.\n", service.Address(), len(service.DHT.MultiAddresses()))
-	}
-	if service.Options.Debug >= DebugHigh {
-		log.Printf("%v is now connected to:\n", service.Address())
-		for _, multiAddress := range service.DHT.MultiAddresses() {
-			log.Printf("  %v\n", multiAddress)
-		}
+		service.Logger.Info(logger.TagNetwork, fmt.Sprintf("boostrap connected to %v peers", len(service.DHT.MultiAddresses())))
 	}
 }
 
@@ -84,7 +87,12 @@ func (service *SwarmService) Prune(target identity.Address) (bool, error) {
 		return false, nil
 	}
 	multiAddress := bucket.MultiAddresses[0]
-	if err := rpc.PingTarget(multiAddress, service.MultiAddress(), time.Minute); err != nil {
+
+	client, err := service.ClientPool.FindOrCreateClient(multiAddress)
+	if err != nil {
+		return true, service.DHT.RemoveMultiAddress(multiAddress)
+	}
+	if err := client.Ping(); err != nil {
 		return true, service.DHT.RemoveMultiAddress(multiAddress)
 	}
 	return false, service.DHT.UpdateMultiAddress(multiAddress)
@@ -104,26 +112,12 @@ func (service *SwarmService) MultiAddress() identity.MultiAddress {
 // identity.MultiAddresses. If the Node does not respond, or it responds with
 // an error, then the connection should be considered unhealthy.
 func (service *SwarmService) Ping(ctx context.Context, from *rpc.MultiAddress) (*rpc.MultiAddress, error) {
-	if service.Options.Debug >= DebugHigh {
-		log.Printf("%v was pinged by %v\n", service.Address(), from.Multi)
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
 	wait := do.Process(func() do.Option {
-		nothing, err := service.ping(from)
-		if err != nil {
-			return do.Err(err)
-		}
-		return do.Ok(nothing)
+		return do.Err(service.ping(from))
 	})
 
 	select {
 	case val := <-wait:
-		if multiAddress, ok := val.Ok.(*rpc.MultiAddress); ok {
-			return multiAddress, val.Err
-		}
 		return rpc.SerializeMultiAddress(service.MultiAddress()), val.Err
 
 	case <-ctx.Done():
@@ -131,100 +125,74 @@ func (service *SwarmService) Ping(ctx context.Context, from *rpc.MultiAddress) (
 	}
 }
 
-func (service *SwarmService) ping(from *rpc.MultiAddress) (*rpc.MultiAddress, error) {
-	fromMultiAddress, err := rpc.DeserializeMultiAddress(from)
-	if err != nil {
-		return &rpc.Nothing{}, err
-	}
-	service.Delegate.OnPingReceived(fromMultiAddress)
-	return rpc.SerializeMultiAddress(service.MultiAddress()), service.updatePeer(from)
+func (service *SwarmService) ping(from *rpc.MultiAddress) error {
+	return service.updatePeer(from)
 }
 
-// Query is used to return MultiAddresses that are closer to the given target
-// Address. It will not return MultiAddresses that are further away from the
-// target than the node itself, and it will only return MultiAddresses that are
-// immediately connected to the service. The MultiAddresses returned are not
-// guaranteed to be healthy connections and should be pinged.
-func (service *SwarmService) Query(query *rpc.Address, stream rpc.Swarm_QueryServer) error {
-	if service.Options.Debug >= DebugHigh {
-		log.Printf("%v was queried by %v\n", service.Address(), query.From.Multi)
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
+// QueryPeers is used to return MultiAddresses that are closer to the given
+// target Address. It will not return MultiAddresses that are further away from
+// the target than the node itself, and it will only return MultiAddresses that
+// are immediately connected to the service. The MultiAddresses returned are
+// not guaranteed to be healthy connections and should be pinged.
+func (service *SwarmService) QueryPeers(query *rpc.Query, stream rpc.Swarm_QueryPeersServer) error {
 	wait := do.Process(func() do.Option {
-		return do.Err(service.query(query, stream))
+		return do.Err(service.queryPeers(query, stream))
 	})
 
-	for {
-		select {
-		case val := <-wait:
-			return val.Err
+	select {
+	case val := <-wait:
+		return val.Err
 
-		case <-stream.Context().Done():
-			return stream.Context().Err()
-		}
+	case <-stream.Context().Done():
+		return stream.Context().Err()
 	}
 }
 
-func (service *SwarmService) query(query *rpc.Address, stream rpc.Swarm_QueryServer) error {
-	deserializedQuery := rpc.DeserializeAddress(query)
-	neighbors, err := service.DHT.FindMultiAddressNeighbors(deserializedQuery, service.Options.Alpha)
-	if err != nil {
-		return err
-	}
+func (service *SwarmService) queryPeers(query *rpc.Query, stream rpc.Swarm_QueryPeersServer) error {
+	target := rpc.DeserializeAddress(query.Target)
+	peers := service.DHT.MultiAddresses()
 
 	// Filter away peers that are further from the target than this service.
-	for _, neighbor := range neighbors {
-		closer, err := identity.Closer(neighbor.Address(), service.Address(), deserializedQuery)
+	for _, peer := range peers {
+		closer, err := identity.Closer(peer.Address(), service.Address(), target)
 		if err != nil {
 			return err
 		}
 		if closer {
-			if err := stream.Send(rpc.SerializeMultiAddress(neighbor)); err != nil {
+			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot send query result: %s", err.Error()))
 				return err
 			}
 		}
 	}
-
-	service.Delegate.OnQuery(fromMultiAddress)
-	return nil
+	return service.updatePeer(query.From)
 }
 
-// QueryDeep is used to return the closest MultiAddresses that can be reached
-// from this node, relative to a target Address. It will not return
+// QueryPeersDeep is used to return the closest MultiAddresses that can be
+// reached from this node, relative to a target Address. It will not return
 // MultiAddresses that are further away from the target than the node itself.
 // The MultiAddresses returned are not guaranteed to be healthy connections
 // and should be pinged.
-func (service *SwarmService) QueryDeep(query *rpc.Address, stream rpc.Swarm_QueryDeepServer) error {
-	if service.Options.Debug >= DebugHigh {
-		log.Printf("%v was frontier queried by %v\n", service.Address(), query.From.Multi)
-	}
-	if err := stream.Context().Err(); err != nil {
-		return err
-	}
-
+func (service *SwarmService) QueryPeersDeep(query *rpc.Query, stream rpc.Swarm_QueryPeersDeepServer) error {
 	wait := do.Process(func() do.Option {
-		return do.Err(service.queryDeep(query, stream))
+		return do.Err(service.queryPeersDeep(query, stream))
 	})
 
-	for {
-		select {
-		case val := <-wait:
-			return val.Err
+	select {
+	case val := <-wait:
+		return val.Err
 
-		case <-stream.Context().Done():
-			return stream.Context().Err()
-		}
+	case <-stream.Context().Done():
+		return stream.Context().Err()
 	}
 }
 
-func (service *SwarmService) queryDeep(query *rpc.Address, stream rpc.Swarm_QueryDeepServer) error {
-
-	// Get the target identity.Address for which this Node is searching for
-	// peers.
-	target := identity.Address(query.Query.Address)
+func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_QueryPeersDeepServer) error {
+	from, err := rpc.DeserializeMultiAddress(query.From)
+	if err != nil {
+		return err
+	}
+	target := rpc.DeserializeAddress(query.Target)
 	peers := service.DHT.MultiAddresses()
 
 	// Create the frontier and a closure map.
@@ -239,6 +207,7 @@ func (service *SwarmService) queryDeep(query *rpc.Address, stream rpc.Swarm_Quer
 		}
 		if closer {
 			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot send deep query result: %s", err.Error()))
 				return err
 			}
 			frontier = append(frontier, peer)
@@ -247,10 +216,6 @@ func (service *SwarmService) queryDeep(query *rpc.Address, stream rpc.Swarm_Quer
 
 	// Immediately close the Node that sends the query and Node is running
 	// the query and mark all peers in the frontier as seen.
-	from, err := identity.NewMultiAddressFromString(query.From.Multi)
-	if err != nil {
-		return err
-	}
 	visited[from.Address()] = struct{}{}
 	visited[service.Address()] = struct{}{}
 	for _, peer := range frontier {
@@ -269,97 +234,85 @@ func (service *SwarmService) queryDeep(query *rpc.Address, stream rpc.Swarm_Quer
 		if peer.Address() == target {
 			continue
 		}
-		candidates, err := rpc.Query(peer, service.MultiAddress(), target, time.Second)
+
+		candidates, err := service.ClientPool.QueryPeers(peer, query.Target)
 		if err != nil {
-			if service.Options.Debug >= DebugLow {
-				log.Println(err)
-			}
+			service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot deepen query: %s", err.Error()))
 			continue
 		}
 
-		// Filter any candidate that is already in the closure.
-		for _, candidate := range candidates {
+		for serializedCandidate := range candidates {
+
+			candidate, err := rpc.DeserializeMultiAddress(serializedCandidate)
+			if err != nil {
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
+				return err
+			}
 			if _, ok := visited[candidate.Address()]; ok {
 				continue
 			}
 			// Expand the frontier by candidates that have not already been
 			// explored, and store them in a persistent list of close peers.
-			if err := stream.Send(rpc.SerializeMultiAddress(candidate)); err != nil {
+			if err := stream.Send(serializedCandidate); err != nil {
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot send query result: %s", err.Error()))
 				return err
 			}
 			frontier = append(frontier, candidate)
 			visited[candidate.Address()] = struct{}{}
 		}
 	}
-
-	fromMultiAddress, err := rpc.DeserializeMultiAddress(query.From)
-	if err != nil {
-		return err
-	}
-	service.Delegate.OnQueryCloserPeersOnFrontierReceived(fromMultiAddress)
 	return service.updatePeer(query.From)
 }
 
 func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.MultiAddress) error {
 	var err error
-	var peers identity.MultiAddresses
+	var peers chan *rpc.MultiAddress
 
-	// The Node attempts to find itself in the network with three attempts
-	// backing off by 10 seconds per attempt.
-	for attempt := 0; attempt < service.Options.TimeoutRetries; attempt++ {
-		// Query the bootstrap service.
-		peers, err = rpc.QueryCloserPeersOnFrontierFromTarget(
-			bootstrapMultiAddress,
-			service.MultiAddress(),
-			service.Address(),
-			service.Options.Timeout+time.Duration(attempt)*service.Options.TimeoutStep,
-		)
-		// Errors are not returned because it is reasonable that a bootstrap
-		// Node might be unavailable at this time.
-		if err == nil {
-			break
-		}
+	// Query the bootstrap service.
+	peers, err = service.ClientPool.QueryPeersDeep(bootstrapMultiAddress, rpc.SerializeAddress(service.Address()))
+	if err != nil {
 		if service.Options.Debug >= DebugLow {
-			log.Println(err)
+			service.Logger.Error(logger.TagNetwork, err.Error())
 		}
-		if attempt == service.Options.TimeoutRetries-1 {
-			return err
-		}
+		return err
 	}
 
 	// Peers returned by the query will be added to the DHT.
-	if service.Options.Debug >= DebugMedium {
-		log.Printf("%v received %v peers from %v.\n", service.Address(), len(peers), bootstrapMultiAddress.Address())
-	}
-	for _, peer := range peers {
+	for serializedPeer := range peers {
+		peer, err := rpc.DeserializeMultiAddress(serializedPeer)
+		if err != nil {
+			service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
+			continue
+		}
 		if peer.Address() == service.Address() {
 			continue
 		}
 		if err := service.DHT.UpdateMultiAddress(peer); err != nil {
 			if service.Options.Debug >= DebugLow {
-				log.Println(err)
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot update DHT: %s", err.Error()))
 			}
 		}
 	}
+
 	return nil
 }
 
 func (service *SwarmService) updatePeer(peer *rpc.MultiAddress) error {
-	multiAddress, err := rpc.DeserializeMultiAddress(peer)
+	peerMultiAddress, err := rpc.DeserializeMultiAddress(peer)
 	if err != nil {
 		return err
 	}
-	if multiAddress.Address() == service.Address() {
+	if service.Address() == peerMultiAddress.Address() {
 		return nil
 	}
-	if err := service.DHT.UpdateMultiAddress(multiAddress); err != nil {
+	if err := service.DHT.UpdateMultiAddress(peerMultiAddress); err != nil {
 		if err == dht.ErrFullBucket {
-			pruned, err := service.Prune(multiAddress.Address())
+			pruned, err := service.Prune(peerMultiAddress.Address())
 			if err != nil {
 				return err
 			}
 			if pruned {
-				return service.DHT.UpdateMultiAddress(multiAddress)
+				return service.DHT.UpdateMultiAddress(peerMultiAddress)
 			}
 			return nil
 		}
@@ -371,64 +324,36 @@ func (service *SwarmService) updatePeer(peer *rpc.MultiAddress) error {
 // FindNode will try to find the node multiAddress by its republic ID.
 func (service *SwarmService) FindNode(targetID identity.ID) (*identity.MultiAddress, error) {
 	target := targetID.Address()
-	peers := service.DHT.MultiAddresses()
+	targetMultiAddress, err := service.DHT.FindMultiAddress(target)
+	if err != nil {
+		return nil, err
+	}
+	if targetMultiAddress != nil {
+		return targetMultiAddress, nil
+	}
 
-	// Create the frontier and a closure map.
-	frontier := make(identity.MultiAddresses, 0, len(peers))
-	visited := make(map[identity.Address]struct{})
+	peers, err := service.DHT.FindMultiAddressNeighbors(target, service.Options.Alpha)
+	if err != nil {
+		return nil, err
+	}
 
-	// Check if we know the target and filter away peers that are further
-	// from the target than this Node.
+	serializedTarget := rpc.SerializeAddress(target)
 	for _, peer := range peers {
-		if peer.Address() == target {
-			return &peer, nil
-		}
-		closer, err := identity.Closer(peer.Address(), service.Address(), target)
+		candidates, err := service.ClientPool.QueryPeersDeep(peer, serializedTarget)
 		if err != nil {
-			return nil, err
-		}
-		if closer {
-			frontier = append(frontier, peer)
-		}
-	}
-
-	// Immediately close the Node that sends the query and Node is running
-	// the query and mark all peers in the frontier as seen.
-	visited[service.Address()] = struct{}{}
-	for _, peer := range frontier {
-		visited[peer.Address()] = struct{}{}
-	}
-
-	// While there are still Nodes to be explored in the frontier.
-	for len(frontier) > 0 {
-		// Pop the first peer off the frontier.
-		peer := frontier[0]
-		frontier = frontier[1:]
-
-		// Close the peer and use it to find peers that are even closer to the
-		// target.
-		visited[peer.Address()] = struct{}{}
-
-		candidates, err := rpc.QueryCloserPeersFromTarget(peer, service.MultiAddress(), target, time.Second)
-		if err != nil {
-			if service.Options.Debug >= DebugLow {
-				log.Println(err)
-			}
+			service.Logger.Error(logger.TagNetwork, fmt.Sprintf("error finding node: %s", err.Error()))
 			continue
 		}
-
-		// Filter any candidate that is already in the closure.
-		for _, candidate := range candidates {
-			if _, ok := visited[candidate.Address()]; ok {
+		for candidate := range candidates {
+			deserializedCandidate, err := rpc.DeserializeMultiAddress(candidate)
+			if err != nil {
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
 				continue
 			}
-			if candidate.Address() == target {
-				return &candidate, nil
+			if target == deserializedCandidate.Address() {
+				return &deserializedCandidate, nil
 			}
-			frontier = append(frontier, candidate)
-			visited[candidate.Address()] = struct{}{}
 		}
 	}
-
 	return nil, nil
 }
