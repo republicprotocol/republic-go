@@ -60,14 +60,14 @@ func (service *SwarmService) Bootstrap() {
 		do.ForAll(service.Options.BootstrapMultiAddresses, func(i int) {
 			bootstrapMultiAddress := service.Options.BootstrapMultiAddresses[i]
 			if err := service.bootstrapUsingMultiAddress(bootstrapMultiAddress); err != nil {
-				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("bootstrap error: %s", err.Error()))
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("error bootstrapping with %s: %s", bootstrapMultiAddress.Address(), err.Error()))
 			}
 		})
 	} else {
 		// Sequentially search all bootstrap Nodes for itself.
 		for _, bootstrapMultiAddress := range service.Options.BootstrapMultiAddresses {
 			if err := service.bootstrapUsingMultiAddress(bootstrapMultiAddress); err != nil {
-				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("bootstrap error: %s", err.Error()))
+				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("error bootstrapping with %s: %s", bootstrapMultiAddress.Address(), err.Error()))
 			}
 		}
 	}
@@ -278,6 +278,7 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 	}
 
 	// Peers returned by the query will be added to the DHT.
+	numberOfPeers := 0
 	for serializedPeer := range peers {
 		peer, err := rpc.DeserializeMultiAddress(serializedPeer)
 		if err != nil {
@@ -287,6 +288,7 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 		if peer.Address() == service.Address() {
 			continue
 		}
+		numberOfPeers++
 		if err := service.DHT.UpdateMultiAddress(peer); err != nil {
 			if service.Options.Debug >= DebugLow {
 				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot update DHT: %s", err.Error()))
@@ -294,6 +296,7 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 		}
 	}
 
+	service.Logger.Error(logger.TagNetwork, fmt.Sprintf("bootstrapping with %s returned %d peers", bootstrapMultiAddress.Address(), numberOfPeers))
 	return nil
 }
 
