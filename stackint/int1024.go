@@ -35,14 +35,14 @@ func FromUint64(n uint64) Int1024 {
 	return z
 }
 
-// Int1024FromString returns a new Int1024 from a string
+// FromString returns a new Int1024 from a string
 func FromString(number string) Int1024 {
 	self := zero()
 
 	// Length of string
 	length := len(number)
 
-	// Break up into blocks of size 19
+	// Break up into blocks of size 19 (log10(2 ** 64))
 	blockSize := 19
 
 	// Number of blocks
@@ -52,7 +52,9 @@ func FromString(number string) Int1024 {
 	}
 
 	// TODO: Replace with 10.Pow(blockSize)
-	shift := FromUint64(10000000000000000000)
+	shift := FromUint64(10)
+	blockSizeInt := FromUint64(uint64(blockSize))
+	shift = shift.Exp(&blockSizeInt)
 	shiftAcc := ONE
 
 	// Loop through each block. Multiply block by (10**19)**i and add to number.
