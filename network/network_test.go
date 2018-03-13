@@ -5,11 +5,13 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
 	"github.com/republicprotocol/republic-go/network/dht"
 	"github.com/republicprotocol/republic-go/network/rpc"
+	"github.com/republicprotocol/republic-go/order"
 	"google.golang.org/grpc"
 )
 
@@ -17,8 +19,17 @@ const (
 	NumberOfBootstrapNodes = 5
 )
 
-type mockDelegate struct {
+// MockDelegate for testing purpose
+type MockDelegate struct {
 
+}
+
+func (mockDelegate *MockDelegate) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment){
+	return
+}
+
+func (mockDelegate  *MockDelegate) OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment *compute.DeltaFragment){
+	return
 }
 
 func generateSwarmServices(numberOfSwarms int) ([]*network.SwarmService, []*grpc.Server, error) {
@@ -67,7 +78,7 @@ func generateSwarmServices(numberOfSwarms int) ([]*network.SwarmService, []*grpc
 		}
 		l.Start()
 
-		swarms[i] = network.NewSwarmService(mockDelegate{}, options,
+		swarms[i] = network.NewSwarmService(MockDelegate{}, options,
 			&logger.Logger{}, rpc.NewClientPool(options.MultiAddress),
 			dht.NewDHT(options.MultiAddress.Address(), options.MaxBucketLength))
 
@@ -158,8 +169,7 @@ func generateDarkServices(numberOfDarkService int) ([]*network.DarkService, []*g
 			return nil, nil, err
 		}
 		l.Start()
-		//
-
+		nodes[i] = network.NewDarkService(&MockDelegate{}, options, &logger.Logger{})
 
 	}
 	for i := 0; i < len(nodes); i++ {

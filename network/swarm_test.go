@@ -15,13 +15,13 @@ import (
 	"google.golang.org/grpc"
 )
 
-var _ = Describe("Swarm nodes", func() {
+var _ = Describe("Swarm service", func() {
 	var err error
 	var mu = new(sync.Mutex)
 	var swarms []*network.SwarmService
 	var servers []*grpc.Server
 
-	for _, numberOfSwarms := range []int{5 /*, 16, 32, 64, 128*/} {
+	for _, numberOfSwarms := range []int{8 ,16 /* , 32, 64, 128*/} {
 		for _, connectivity := range []int{100 /*, 80, 40*/} {
 			func(numberOfNodes, connectivity int) {
 				Context("when bootstrapping", func() {
@@ -51,7 +51,7 @@ var _ = Describe("Swarm nodes", func() {
 						})
 
 						for _, swarm := range swarms {
-							Ω(len(swarm.DHT.MultiAddresses())).Should(BeNumerically(">=", len(swarms)*2/3))
+							Ω(len(swarm.DHT.MultiAddresses())).Should(BeNumerically(">=", len(swarms)*1/2))
 						}
 					})
 
@@ -65,7 +65,7 @@ var _ = Describe("Swarm nodes", func() {
 						})
 
 						for _, swarm := range swarms {
-							Ω(len(swarm.DHT.MultiAddresses())).Should(BeNumerically(">=", len(swarms)*2/3))
+							Ω(len(swarm.DHT.MultiAddresses())).Should(BeNumerically(">=", len(swarms)*1/2))
 						}
 					})
 				})

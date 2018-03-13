@@ -63,7 +63,8 @@ func (service *DarkService) Sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_S
 }
 
 func (service *DarkService) sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_SyncServer) error {
-	panic("unimplemented")
+	// todo : unimplemented
+	return nil
 }
 
 func (service *DarkService) SignOrderFragment(ctx context.Context, signOrderFragmentRequest *rpc.SignOrderFragmentRequest) (*rpc.OrderFragmentSignature, error) {
