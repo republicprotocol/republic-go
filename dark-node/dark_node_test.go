@@ -127,7 +127,7 @@ var _ = Describe("Dark nodes", func() {
 	}
 
 	// Order matching
-	for _, numberOfNodes := range []int{ /*18,*/ 36 /*, 72*/} {
+	for _, numberOfNodes := range []int{18 /*, 36 /*, 72*/} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
 
@@ -245,7 +245,7 @@ func watchDarkOcean(nodes []*node.DarkNode) {
 			nodes[i].WatchDarkOcean()
 		}(i)
 	}
-	time.Sleep(time.Duration(len(nodes)) * 10 * time.Second)
+	time.Sleep(time.Duration(len(nodes)) * time.Second)
 }
 
 func stopNodes(nodes []*node.DarkNode) {
