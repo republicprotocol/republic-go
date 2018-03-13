@@ -3,16 +3,13 @@ package dnr_test
 import (
 	"context"
 	"encoding/hex"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"log"
 	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
@@ -34,10 +31,10 @@ var _ = Describe("Dark Node Registrar", func() {
 		log.Fatal(err)
 	}
 
-	darkNodeContractAddress := common.HexToAddress("0x0B1148699C93cA9Cfa28f11BD581936f673F76ec")
-	renContractAddress := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
-
-	UserConnection := dnr.NewEthereumDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, darkNodeContractAddress, renContractAddress, nil)
+	UserConnection, err := dnr.NewEthereumDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	keyPair, err := identity.NewKeyPair()
 	if err != nil {
@@ -52,7 +49,7 @@ var _ = Describe("Dark Node Registrar", func() {
 		_, err := UserConnection.Register(darkNodeID, publicKey)
 		Ω(err).Should(BeNil())
 		log.Println("Waiting for epoch to end .......")
-		err = UserConnection.WaitTillRegistration(darkNodeID)
+		err = UserConnection.WaitUntilRegistration(darkNodeID)
 		Ω(err).Should(BeNil())
 	})
 

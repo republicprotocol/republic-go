@@ -3,7 +3,6 @@ package dnr
 import (
 	"context"
 	"errors"
-	"log"
 	"math/big"
 	"time"
 
@@ -54,14 +53,14 @@ type EthereumDarkNodeRegistrar struct {
 }
 
 // NewEthereumDarkNodeRegistrar returns a Dark node registrar
-func NewEthereumDarkNodeRegistrar(context context.Context, clientDetails *connection.ClientDetails, auth1 *bind.TransactOpts, auth2 *bind.CallOpts) DarkNodeRegistrar {
+func NewEthereumDarkNodeRegistrar(context context.Context, clientDetails *connection.ClientDetails, auth1 *bind.TransactOpts, auth2 *bind.CallOpts) (DarkNodeRegistrar ,error) {
 	contract, err := contracts.NewDarkNodeRegistrar(clientDetails.DNRAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
-		log.Fatalf("%v", err)
+		return nil, err
 	}
 	renContract, err := contracts.NewERC20(clientDetails.RenAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
-		log.Fatalf("%v", err)
+		return nil, err
 	}
 	return &EthereumDarkNodeRegistrar{
 		context:                  context,
@@ -71,7 +70,7 @@ func NewEthereumDarkNodeRegistrar(context context.Context, clientDetails *connec
 		binding:                  contract,
 		tokenBinding:             renContract,
 		darkNodeRegistrarAddress: clientDetails.DNRAddress,
-	}
+	} , nil
 }
 
 // Register registers a new dark node
@@ -250,7 +249,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) WaitUntilRegistration(_darkN
 func toByte(id []byte) ([20]byte, error) {
 	twentyByte := [20]byte{}
 	if len(id) != 20 {
-		return twentyByte, errors.New("Length mismatch")
+		return twentyByte, errors.New("length mismatch")
 	}
 	for i := range id {
 		twentyByte[i] = id[i]
