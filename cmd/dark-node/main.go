@@ -25,7 +25,7 @@ func main() {
 	}
 
 	// Create a dark node registrar.
-	darkNodeRegistrar, err := CreateDarkNodeRegistrar(config.EthereumKey)
+	darkNodeRegistrar, err := CreateDarkNodeRegistrar(config.EthereumKey, config.EthereumRPC)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -86,9 +86,9 @@ func LoadConfig(filename string) (*node.Config, error) {
 	return config, err
 }
 
-func CreateDarkNodeRegistrar(key *keystore.Key) (dnr.DarkNodeRegistrar, error) {
+func CreateDarkNodeRegistrar(key *keystore.Key, rpcURL string) (dnr.DarkNodeRegistrar, error) {
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
-	client, err := connection.FromURI("https://ropsten.infura.io/")
+	client, err := connection.FromURI(rpcURL)
 	if err != nil {
 		return nil, err
 	}
