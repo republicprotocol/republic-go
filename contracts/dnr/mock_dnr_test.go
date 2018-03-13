@@ -72,7 +72,7 @@ var _ = Describe("Dark nodes", func() {
 					append(configs[i].RepublicKeyPair.PublicKey.X.Bytes(), configs[i].RepublicKeyPair.PublicKey.Y.Bytes()...),
 				)
 				ethAddresses[i] = bind.NewKeyedTransactor(configs[i].EthereumKey.PrivateKey)
-				nodes[i], err  = node.NewDarkNode(*configs[i],MockDarkNodeRegistrar)
+				nodes[i], err = node.NewDarkNode(*configs[i], MockDarkNodeRegistrar)
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 

@@ -174,7 +174,8 @@ func (service *DarkService) RandomFragmentShares(ctx context.Context, randomFrag
 }
 
 func (service *DarkService) randomFragmentShares(randomFragmentSharesRequest *rpc.RandomFragmentSharesRequest) (*rpc.RandomFragments, error) {
-	panic("unimplemented")
+	// todo : unimplemented
+	return &rpc.RandomFragments{}, nil
 }
 
 func (service *DarkService) ResidueFragmentShares(ctx context.Context, residueFragmentSharesRequest *rpc.ResidueFragmentSharesRequest) (*rpc.ResidueFragments, error) {
@@ -199,7 +200,8 @@ func (service *DarkService) ResidueFragmentShares(ctx context.Context, residueFr
 }
 
 func (service *DarkService) residueFragmentShares(residueFragmentSharesRequest *rpc.ResidueFragmentSharesRequest) (*rpc.ResidueFragments, error) {
-	panic("unimplemented")
+	// todo : unimplemented
+	return &rpc.ResidueFragments{}, nil
 }
 
 func (service *DarkService) ComputeResidueFragment(ctx context.Context, computeResidueFragmentRequest *rpc.ComputeResidueFragmentRequest) (*rpc.Nothing, error) {
@@ -224,7 +226,8 @@ func (service *DarkService) ComputeResidueFragment(ctx context.Context, computeR
 }
 
 func (service *DarkService) computeResidueFragment(computeResidueFragmentRequest *rpc.ComputeResidueFragmentRequest) (*rpc.Nothing, error) {
-	panic("unimplemented")
+	// todo : unimplemented
+	return &rpc.Nothing{}, nil
 }
 
 func (service *DarkService) BroadcastAlphaBetaFragment(ctx context.Context, broadcastAlphaBetaFragmentRequest *rpc.BroadcastAlphaBetaFragmentRequest) (*rpc.AlphaBetaFragment, error) {
@@ -249,7 +252,8 @@ func (service *DarkService) BroadcastAlphaBetaFragment(ctx context.Context, broa
 }
 
 func (service *DarkService) broadcastAlphaBetaFragment(broadcastAlphaBetaFragmentRequest *rpc.BroadcastAlphaBetaFragmentRequest) (*rpc.AlphaBetaFragment, error) {
-	panic("unimplemented")
+	// todo : unimplemented
+	return &rpc.AlphaBetaFragment{}, nil
 }
 
 func (service *DarkService) BroadcastDeltaFragment(ctx context.Context, broadcastDeltaFragmentRequest *rpc.BroadcastDeltaFragmentRequest) (*rpc.DeltaFragment, error) {

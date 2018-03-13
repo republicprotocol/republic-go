@@ -21,14 +21,13 @@ const (
 
 // MockDelegate for testing purpose
 type MockDelegate struct {
-
 }
 
-func (mockDelegate *MockDelegate) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment){
+func (mockDelegate *MockDelegate) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
 	return
 }
 
-func (mockDelegate  *MockDelegate) OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment *compute.DeltaFragment){
+func (mockDelegate *MockDelegate) OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment *compute.DeltaFragment) {
 	return
 }
 

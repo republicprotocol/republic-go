@@ -14,9 +14,10 @@ import (
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/network/rpc"
+	"github.com/republicprotocol/republic-go/order"
 )
+
 var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 
 const reset = "\x1b[0m"
@@ -128,7 +129,7 @@ func main() {
 					}
 
 					do.ForAll(shares, func(i int) {
-						client, err  := rpc.NewClient(nodes[i],multi)
+						client, err := rpc.NewClient(nodes[i], multi)
 						if err != nil {
 							log.Fatal(err)
 						}

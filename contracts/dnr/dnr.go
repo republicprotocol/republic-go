@@ -53,7 +53,7 @@ type EthereumDarkNodeRegistrar struct {
 }
 
 // NewEthereumDarkNodeRegistrar returns a Dark node registrar
-func NewEthereumDarkNodeRegistrar(context context.Context, clientDetails *connection.ClientDetails, auth1 *bind.TransactOpts, auth2 *bind.CallOpts) (DarkNodeRegistrar ,error) {
+func NewEthereumDarkNodeRegistrar(context context.Context, clientDetails *connection.ClientDetails, auth1 *bind.TransactOpts, auth2 *bind.CallOpts) (DarkNodeRegistrar, error) {
 	contract, err := contracts.NewDarkNodeRegistrar(clientDetails.DNRAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func NewEthereumDarkNodeRegistrar(context context.Context, clientDetails *connec
 		binding:                  contract,
 		tokenBinding:             renContract,
 		darkNodeRegistrarAddress: clientDetails.DNRAddress,
-	} , nil
+	}, nil
 }
 
 // Register registers a new dark node

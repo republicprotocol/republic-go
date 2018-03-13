@@ -21,7 +21,7 @@ var _ = Describe("Swarm service", func() {
 	var swarms []*network.SwarmService
 	var servers []*grpc.Server
 
-	for _, numberOfSwarms := range []int{8 ,16 /* , 32, 64, 128*/} {
+	for _, numberOfSwarms := range []int{8, 16 /* , 32, 64, 128*/} {
 		for _, connectivity := range []int{100 /*, 80, 40*/} {
 			func(numberOfNodes, connectivity int) {
 				Context("when bootstrapping", func() {
