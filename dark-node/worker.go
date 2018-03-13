@@ -1,6 +1,7 @@
 package node
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
@@ -199,7 +200,7 @@ func (worker *GossipWorker) Run(queues ...chan *compute.Delta) {
 }
 
 func bestFitDelta(left, right *compute.Delta) *compute.Delta {
-	if left.ID.LessThan(right.ID) {
+	if bytes.Compare([]byte(left.ID), []byte(right.ID)) < 0 {
 		return left
 	}
 	return right

@@ -6,7 +6,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	base58 "github.com/jbenet/go-base58"
-	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 )
@@ -23,17 +22,6 @@ func (id DeltaID) Equal(other DeltaID) bool {
 // String returns a DeltaID as a Base58 encoded string.
 func (id DeltaID) String() string {
 	return base58.Encode(id)
-}
-
-func (id DeltaID) LessThan(other DeltaID) bool {
-	for i := 0; i < identity.IDLength; i++ {
-		if id[i] < other[i] {
-			return true
-		} else if id[i] > other[i] {
-			return false
-		}
-	}
-	return false
 }
 
 type Delta struct {
