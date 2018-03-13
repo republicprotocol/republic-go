@@ -16,11 +16,11 @@ import (
 )
 
 var bootstrapNode = []string{
-	"/ip4/127.0.0.1/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu",
-	"/ip4/127.0.0.1/tcp/3001/republic/8MGB2cj2HbQFepRVs43Ghct5yCRS9C",
-	"/ip4/127.0.0.1/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR",
-	"/ip4/127.0.0.1/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT",
-	"/ip4/127.0.0.1/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss",
+	"/ip4/0.0.0.0/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu",
+	"/ip4/0.0.0.0/tcp/3001/republic/8MGB2cj2HbQFepRVs43Ghct5yCRS9C",
+	"/ip4/0.0.0.0/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR",
+	"/ip4/0.0.0.0/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT",
+	"/ip4/0.0.0.0/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss",
 }
 
 func main() {
@@ -38,15 +38,15 @@ func generateSingleNode(i int) error {
 	if err != nil {
 		return err
 	}
-	multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 4000+i, address))
+	multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d/republic/%s", 4000+i, address))
 	if err != nil {
 		return err
 	}
 
 	// Create default network options
 	option := network.Options{
-		MultiAddress: multiAddress,
-		BootstrapMultiAddresses:make([]identity.MultiAddress, len(bootstrapNode)),
+		MultiAddress:            multiAddress,
+		BootstrapMultiAddresses: make([]identity.MultiAddress, len(bootstrapNode)),
 
 		Debug:                network.DebugHigh,
 		Alpha:                3,
@@ -54,12 +54,12 @@ func generateSingleNode(i int) error {
 		ClientPoolCacheLimit: 20,
 		Timeout:              30 * time.Second,
 		TimeoutBackoff:       30 * time.Second,
-		TimeoutRetries:       1,
+		TimeoutRetries:       3,
 		Concurrent:           false,
 	}
 	ethKey := keystore.NewKeyForDirectICAP(rand.Reader)
-	for i := range bootstrapNode{
-		multi , err := identity.NewMultiAddressFromString(bootstrapNode[i])
+	for i := range bootstrapNode {
+		multi, err := identity.NewMultiAddressFromString(bootstrapNode[i])
 		if err != nil {
 			return err
 		}
@@ -71,14 +71,12 @@ func generateSingleNode(i int) error {
 		LoggerOptions: logger.Options{
 			Plugins: []logger.PluginOptions{
 				logger.PluginOptions{
-					File: &logger.FilePluginOptions{Path: "stdout"}},
-				logger.PluginOptions{
-					File: &logger.FilePluginOptions{Path: ""}},
+					File: &logger.FilePluginOptions{Path: "stdout"},
+				},
 			},
 		},
-
-		Host:            "127.0.0.1",
-		Port:            fmt.Sprintf("%d",4000 + i),
+		Host:            "0.0.0.0",
+		Port:            fmt.Sprintf("%d", 4000+i),
 		RepublicKeyPair: keyPair,
 		RSAKeyPair:      keyPair,
 		EthereumKey:     ethKey,

@@ -194,9 +194,9 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 		var err error
 		var config *node.Config
 		if i < NumberOfBootstrapNodes {
-			config, err = node.LoadConfig(fmt.Sprintf("./test-configs/bootstrap-%d.json", i+1))
+			config, err = node.LoadConfig(fmt.Sprintf("../test/config/bootstrap-node-%d.json", i+1))
 		} else {
-			config, err = node.LoadConfig(fmt.Sprintf("./test-configs/node-%d.json", i-NumberOfBootstrapNodes+1))
+			config, err = node.LoadConfig(fmt.Sprintf("../test/config/node-%d.json", i-NumberOfBootstrapNodes+1))
 		}
 		if err != nil {
 			return nil, err
@@ -245,7 +245,7 @@ func watchDarkOcean(nodes []*node.DarkNode) {
 			nodes[i].WatchDarkOcean()
 		}(i)
 	}
-	time.Sleep(time.Duration(len(nodes)) * time.Second)
+	time.Sleep(time.Duration(len(nodes)) * 10 * time.Second)
 }
 
 func stopNodes(nodes []*node.DarkNode) {

@@ -1,0 +1,41 @@
+{
+    "network": {
+        "multiAddress": "/ip4/0.0.0.0/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT",
+        "bootstrapMultiAddresses": [
+            "/ip4/0.0.0.0/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu",
+            "/ip4/0.0.0.0/tcp/3001/republic/8MGB2cj2HbQFepRVs43Ghct5yCRS9C",
+            "/ip4/0.0.0.0/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR",
+            "/ip4/0.0.0.0/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss"
+        ],
+        "debug": 3,
+        "alpha": 3,
+        "maxBucketLength": 20,
+        "clientPoolCacheLimit": 20,
+        "timeout": 30000000000,
+        "timeoutBackoff": 30000000000,
+        "timeoutRetries": 3,
+        "concurrent": false
+    },
+    "logger": {
+        "plugins": [
+            {
+                "file": {
+                    "path": "stdout"
+                }
+            }
+        ]
+    },
+    "host": "0.0.0.0",
+    "port": "3003",
+    "ethereum_key": {
+        "address": "00db74730ce6f59768d0ad6f633cb878f2aa4aa1",
+        "privatekey": "68217ec61912ddcf93e894252e84f796a5d1e9ed2c254ce48c34df602e2e548a",
+        "id": "80299654-0b77-47cf-9149-62eb5cd01da5",
+        "version": 3
+    },
+    "republic_key_pair": "r7FabSZrnR7fa2ZmETAnoFR4UPmqVS4e9ddZU3wrmy8",
+    "rsa_key_pair": "r7FabSZrnR7fa2ZmETAnoFR4UPmqVS4e9ddZU3wrmy8",
+    "dev": true,
+    "ethereum_rpc": "",
+    "prime": null
+}
