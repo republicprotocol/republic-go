@@ -70,7 +70,7 @@ func (builder *DeltaBuilder) insertDeltaFragment(deltaFragment *DeltaFragment) *
 
 func (builder *DeltaBuilder) HasDelta(deltaID DeltaID) bool {
 	builder.EnterReadOnly(nil)
-	defer builder.Exit()
+	defer builder.ExitReadOnly()
 	return builder.hasDelta(deltaID)
 }
 
@@ -81,13 +81,23 @@ func (builder *DeltaBuilder) hasDelta(deltaID DeltaID) bool {
 
 func (builder *DeltaBuilder) HasDeltaFragment(deltaFragmentID DeltaFragmentID) bool {
 	builder.EnterReadOnly(nil)
-	defer builder.Exit()
+	defer builder.ExitReadOnly()
 	return builder.hasDeltaFragment(deltaFragmentID)
 }
 
 func (builder *DeltaBuilder) hasDeltaFragment(deltaFragmentID DeltaFragmentID) bool {
 	_, ok := builder.deltaFragments[string(deltaFragmentID)]
 	return ok
+}
+
+func (builder *DeltaBuilder) SetK(k int64) {
+	builder.Enter(nil)
+	defer builder.Exit()
+	builder.setK(k)
+}
+
+func (builder *DeltaBuilder) setK(k int64) {
+	builder.k = k
 }
 
 type DeltaFragmentMatrix struct {

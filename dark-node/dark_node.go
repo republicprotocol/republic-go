@@ -70,9 +70,6 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 		config.Prime = Prime
 	}
 
-	// TODO: This should come from the DNR.
-	k := int64(3) // 14)
-
 	var err error
 	node := &DarkNode{
 		Config:                 config,
@@ -91,6 +88,14 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	node.DarkOcean, err = dark.NewOcean(node.Logger, darkNodeRegistrar)
 	if err != nil {
 		return nil, err
+	}
+	// This is an initialization value and should be changed when the dark ocean changes
+	k := int64(1)
+	if err := node.DarkOcean.Update(); err == nil {
+		darkPool := node.DarkOcean.FindPool(node.RepublicKeyPair.ID())
+		if darkPool != nil {
+			k = int64((darkPool.Size() * 2 / 3) + 1)
+		}
 	}
 
 	// Create all networking components and services
@@ -201,8 +206,11 @@ func (node *DarkNode) WatchDarkOcean() {
 			// nodes in the pool
 			node.DarkPool.RemoveAll()
 			darkPool := node.DarkOcean.FindPool(node.RepublicKeyPair.ID())
+			if darkPool != nil {
+				k := int64((darkPool.Size() * 2 / 3) + 1)
+				node.DeltaBuilder.SetK(k)
+			}
 			node.ConnectToDarkPool(darkPool)
-
 		}
 	}()
 	node.DarkOcean.Watch(5*time.Minute, changes)

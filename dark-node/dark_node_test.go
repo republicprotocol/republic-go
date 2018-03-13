@@ -41,8 +41,15 @@ type OrderBook struct {
 var _ = Describe("Dark nodes", func() {
 
 	var mu = new(sync.Mutex)
+	BeforeEach(func() {
+		mu.Lock()
+	})
 
+	AfterEach(func() {
+		mu.Unlock()
+	})
 
+	// Bootstrapping
 	for _, numberOfNodes := range []int{ /*18, 36, 72*/ } {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when bootstrapping %d nodes", numberOfNodes), func() {
@@ -51,8 +58,6 @@ var _ = Describe("Dark nodes", func() {
 				var nodes []*node.DarkNode
 
 				BeforeEach(func() {
-					mu.Lock()
-
 					By("generate nodes")
 					nodes, err = generateNodes(numberOfNodes)
 					Ω(err).ShouldNot(HaveOccurred())
@@ -62,7 +67,6 @@ var _ = Describe("Dark nodes", func() {
 				})
 
 				It("should reach a fault tolerant level of connectivity", func() {
-
 					By("bootstrap nodes")
 					bootstrapNodes(nodes)
 					n := 0
@@ -78,16 +82,16 @@ var _ = Describe("Dark nodes", func() {
 				AfterEach(func() {
 					By("stop node services")
 					stopNodes(nodes)
-					mu.Unlock()
 				})
 			})
 		}(numberOfNodes)
 	}
 
-	for _, numberOfNodes := range []int{18, 36 /*, 72*/} {
+	// Connectivity
+	for _, numberOfNodes := range []int{ /*18, 36, 72*/ } {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when connecting %d nodes", numberOfNodes), func() {
-				for _, connectivity := range []int{20, 40 /*, 60, 80, 100*/} {
+				for _, connectivity := range []int{20, 40, 60, 80, 100} {
 					func(connectivity int) {
 						Context(fmt.Sprintf("with %d%% connectivity", connectivity), func() {
 
@@ -95,8 +99,6 @@ var _ = Describe("Dark nodes", func() {
 							var nodes []*node.DarkNode
 
 							BeforeEach(func() {
-								mu.Lock()
-
 								By("generate nodes")
 								nodes, err = generateNodes(numberOfNodes)
 								Ω(err).ShouldNot(HaveOccurred())
@@ -109,19 +111,53 @@ var _ = Describe("Dark nodes", func() {
 							})
 
 							It("should succeed for the super majority", func() {
-
-								By("ping connections")
+								By("sending orders")
 								numberOfPings, numberOfErrors := connectNodes(nodes, connectivity)
 								Ω(numberOfErrors).Should(BeNumerically("<", numberOfPings/3))
 							})
 
 							AfterEach(func() {
 								stopNodes(nodes)
-								mu.Unlock()
 							})
 						})
 					}(connectivity)
 				}
+			})
+		}(numberOfNodes)
+	}
+
+	// Order matching
+	for _, numberOfNodes := range []int{18 /*, 36/*, 72*/} {
+		func(numberOfNodes int) {
+			Context(fmt.Sprintf("when connecting %d nodes", numberOfNodes), func() {
+
+				var err error
+				var nodes []*node.DarkNode
+
+				BeforeEach(func() {
+					By("generate nodes")
+					nodes, err = generateNodes(numberOfNodes)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					By("start node service")
+					startNodeServices(nodes)
+
+					By("start node background workers")
+					startNodeBackgroundWorkers(nodes)
+
+					By("bootstrap nodes")
+					bootstrapNodes(nodes)
+				})
+
+				It("should succeed for the super majority", func() {
+					By("ping connections")
+					err := sendOrders(nodes)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				AfterEach(func() {
+					stopNodes(nodes)
+				})
 			})
 		}(numberOfNodes)
 	}
@@ -154,6 +190,13 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 func startNodeServices(nodes []*node.DarkNode) {
 	for i := range nodes {
 		go nodes[i].StartServices()
+	}
+	time.Sleep(time.Millisecond * time.Duration(len(nodes)))
+}
+
+func startNodeBackgroundWorkers(nodes []*node.DarkNode) {
+	for i := range nodes {
+		nodes[i].StartBackgroundWorkers()
 	}
 	time.Sleep(time.Millisecond * time.Duration(len(nodes)))
 }
@@ -206,7 +249,6 @@ func connectNodes(nodes []*node.DarkNode, connectivity int) (int, int) {
 	return numberOfPings, numberOfErrors
 }
 
-
 func sendOrders(nodes []*node.DarkNode) error {
 	// Get order data from Binance
 	resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%v", NumberOfOrders))
@@ -237,12 +279,12 @@ func sendOrders(nodes []*node.DarkNode) error {
 		if err != nil {
 			return errors.New("fail to parse the amount into a big int")
 		}
-		sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Time{},
+		sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour),
 			order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
 			big.NewInt(int64(amount)), big.NewInt(1))
 		sellOrders[i] = sellOrder
 
-		buyOrder := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Time{},
+		buyOrder := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour),
 			order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
 			big.NewInt(int64(amount)), big.NewInt(1))
 		buyOrders[i] = buyOrder
@@ -254,11 +296,11 @@ func sendOrders(nodes []*node.DarkNode) error {
 	for i := range buyOrders {
 		buyOrder, sellOrder := buyOrders[i], sellOrders[i]
 		log.Printf("Sending matched order. [BUY] %s <---> [SELL] %s", buyOrder.ID, sellOrder.ID)
-		buyShares, err := buyOrder.Split(int64(totalNodes), int64((totalNodes+1)*2/3), Prime)
+		buyShares, err := buyOrder.Split(int64(totalNodes), int64(totalNodes*2/3+1), Prime)
 		if err != nil {
 			return err
 		}
-		sellShares, err := sellOrder.Split(int64(totalNodes), int64((totalNodes+1)*2/3), Prime)
+		sellShares, err := sellOrder.Split(int64(totalNodes), int64(totalNodes*2/3+1), Prime)
 		if err != nil {
 			return err
 		}
@@ -272,7 +314,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 		})
 
 		do.CoForAll(sellShares, func(j int) {
-			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(buyShares[j]))
+			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(sellShares[j]))
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)
