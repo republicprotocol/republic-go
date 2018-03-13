@@ -18,9 +18,9 @@ type Config struct {
 	Host string `json:"host"`
 	Port string `json:"port"`
 
-	PrivateKey         *identity.KeyPair `json:"privateKey"`
-	EthereumPrivateKey *keystore.Key     `json:"ethereumPrivateKey"`
-	EthereumRPC        string            `json:"ethereumRPC"`
+	KeyPair     identity.KeyPair `json:"keyPair"`
+	EthereumKey keystore.Key     `json:"ethereumKey"`
+	EthereumRPC string           `json:"ethereumRPC"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config

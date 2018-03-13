@@ -30,6 +30,9 @@ var Prime, _ = big.NewInt(0).SetString("1797693134862315907729305190789024733617
 
 type DarkNode struct {
 	Config
+	identity.KeyPair
+	identity.ID
+	identity.Address
 
 	DeltaNotifications chan *compute.Delta
 
@@ -70,6 +73,9 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	var err error
 	node := &DarkNode{
 		Config:             config,
+		KeyPair:            config.KeyPair,
+		ID:                 config.KeyPair.ID(),
+		Address:            config.KeyPair.Address(),
 		DeltaNotifications: make(chan *compute.Delta, 100),
 	}
 
@@ -87,7 +93,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 		return nil, err
 	}
 	node.DarkPool = dark.NewPool()
-	if darkPool := node.DarkOcean.FindPool(node.Config.RepublicKeyPair.ID()); darkPool != nil {
+	if darkPool := node.DarkOcean.FindPool(node.ID); darkPool != nil {
 		node.DarkPool = darkPool
 	}
 	k := int64(node.DarkPool.Size()*2/3 + 1)
@@ -185,7 +191,7 @@ func (node *DarkNode) Stop() {
 // this DarkNode and reconnect to all of the nodes in the pool.
 func (node *DarkNode) WatchDarkOcean() {
 	// Block until the node is registered
-	node.DarkNodeRegistrar.WaitUntilRegistration(node.Config.RepublicKeyPair.ID())
+	node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
 
 	changes := make(chan struct{})
 	go func() {
@@ -198,7 +204,7 @@ func (node *DarkNode) WatchDarkOcean() {
 			// Find the dark pool for this node and connect to all of the dark
 			// nodes in the pool
 			node.DarkPool.RemoveAll()
-			darkPool := node.DarkOcean.FindPool(node.RepublicKeyPair.ID())
+			darkPool := node.DarkOcean.FindPool(node.ID)
 			if darkPool != nil {
 				k := int64((darkPool.Size() * 2 / 3) + 1)
 				node.DeltaBuilder.SetK(k)
@@ -220,7 +226,7 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 	}
 
 	darkPool.ForAll(func(n *dark.Node) {
-		if bytes.Equal(node.Config.RepublicKeyPair.ID(), n.ID) {
+		if bytes.Equal(node.ID, n.ID) {
 			return
 		}
 		multiAddress := n.MultiAddress()
