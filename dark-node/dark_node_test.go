@@ -25,7 +25,7 @@ import (
 
 const (
 	NumberOfBootstrapNodes = 5
-	NumberOfOrders         = 5
+	NumberOfOrders         = 20
 )
 
 var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
@@ -111,7 +111,7 @@ var _ = Describe("Dark nodes", func() {
 							})
 
 							It("should succeed for the super majority", func() {
-								By("sending orders")
+								By("ping connections")
 								numberOfPings, numberOfErrors := connectNodes(nodes, connectivity)
 								Ω(numberOfErrors).Should(BeNumerically("<", numberOfPings/3))
 							})
@@ -127,9 +127,9 @@ var _ = Describe("Dark nodes", func() {
 	}
 
 	// Order matching
-	for _, numberOfNodes := range []int{18 /*, 36/*, 72*/} {
+	for _, numberOfNodes := range []int{ /*18,*/ 36 /*, 72*/} {
 		func(numberOfNodes int) {
-			Context(fmt.Sprintf("when connecting %d nodes", numberOfNodes), func() {
+			Context(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
 
 				var err error
 				var nodes []*node.DarkNode
@@ -153,9 +153,30 @@ var _ = Describe("Dark nodes", func() {
 				})
 
 				It("should succeed for the super majority", func() {
-					By("ping connections")
+					By("verify configuration")
+					for _, node := range nodes {
+						// A node does not include itself in its pool and so
+						// we account for this by including an extra +1
+						k := node.DarkPool.Size()*2/3 + 2
+						Ω(k).Should(Equal(len(nodes)*2/3 + 1))
+					}
+
+					By("send orders")
 					err := sendOrders(nodes)
 					Ω(err).ShouldNot(HaveOccurred())
+
+					By("verify order matches")
+					for _, node := range nodes {
+						n := 0
+						for i := 0; i < NumberOfOrders; i++ {
+							select {
+							case <-node.DeltaNotifications:
+								n++
+							default:
+							}
+						}
+						Ω(n).Should(Equal(NumberOfOrders))
+					}
 				})
 
 				AfterEach(func() {
@@ -200,14 +221,14 @@ func startNodeServices(nodes []*node.DarkNode) {
 			nodes[i].StartServices()
 		}(i)
 	}
-	time.Sleep(time.Millisecond * time.Duration(len(nodes)))
+	time.Sleep(time.Millisecond * time.Duration(10*len(nodes)))
 }
 
 func startNodeBackgroundWorkers(nodes []*node.DarkNode) {
 	for i := range nodes {
 		nodes[i].StartBackgroundWorkers()
 	}
-	time.Sleep(time.Millisecond * time.Duration(len(nodes)))
+	time.Sleep(time.Millisecond * time.Duration(10*len(nodes)))
 }
 
 func bootstrapNodes(nodes []*node.DarkNode) {
@@ -217,12 +238,14 @@ func bootstrapNodes(nodes []*node.DarkNode) {
 }
 
 func watchDarkOcean(nodes []*node.DarkNode) {
+	mockRegistrar.Epoch()
 	for i := range nodes {
 		go func(i int) {
 			defer GinkgoRecover()
 			nodes[i].WatchDarkOcean()
 		}(i)
 	}
+	time.Sleep(time.Duration(len(nodes)) * time.Second)
 }
 
 func stopNodes(nodes []*node.DarkNode) {
@@ -331,5 +354,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 			}
 		})
 	}
+
+	time.Sleep(time.Duration(len(nodes)+NumberOfOrders) * time.Second)
 	return nil
 }

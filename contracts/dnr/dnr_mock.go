@@ -154,8 +154,17 @@ func (mockDnr *MockDarkNodeRegistrar) Refund(_darkNodeID []byte) (*types.Transac
 }
 
 func (mockDnr *MockDarkNodeRegistrar) WaitUntilRegistration(_darkNodeID []byte) error {
-	_, err := mockDnr.Epoch()
-	return err
+	for {
+		isRegistered, err := mockDnr.IsDarkNodeRegistered(_darkNodeID)
+		if err != nil {
+			return err
+		}
+		if isRegistered {
+			break
+		}
+		time.Sleep(time.Minute)
+	}
+	return nil
 }
 
 // type MockDarkNodeRegistrar struct {

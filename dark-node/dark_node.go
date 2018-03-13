@@ -31,7 +31,7 @@ var Prime, _ = big.NewInt(0).SetString("1797693134862315907729305190789024733617
 type DarkNode struct {
 	Config
 
-	TestDeltaNotifications chan *compute.Delta
+	DeltaNotifications chan *compute.Delta
 
 	Logger     *logger.Logger
 	ClientPool *rpc.ClientPool
@@ -73,8 +73,8 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 
 	var err error
 	node := &DarkNode{
-		Config:                 config,
-		TestDeltaNotifications: make(chan *compute.Delta, 100),
+		Config:             config,
+		DeltaNotifications: make(chan *compute.Delta, 100),
 	}
 
 	// Create the logger and start all plugins
@@ -131,7 +131,7 @@ func (node *DarkNode) StartBackgroundWorkers() {
 	// Start background workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentBroadcastWorker.Run()
-	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue, node.TestDeltaNotifications)
+	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue, node.DeltaNotifications)
 	go node.GossipWorker.Run(node.FinalizeWorkerQueue)
 	go node.FinalizeWorker.Run(node.ConsensusWorkerQueue)
 	go node.ConsensusWorker.Run()
@@ -189,10 +189,9 @@ func (node *DarkNode) Stop() {
 // WatchDarkOcean for changes. When a change happens, find the dark pool for
 // this DarkNode and reconnect to all of the nodes in the pool.
 func (node *DarkNode) WatchDarkOcean() {
+	// Block until the node is registered
 	node.DarkNodeRegistrar.WaitUntilRegistration(node.Config.RepublicKeyPair.ID())
-	if err := node.DarkOcean.Update(); err != nil {
-		node.Logger.Error(logger.TagEthereum, fmt.Sprintf("cannot update dark ocean: %s", err.Error()))
-	}
+
 	changes := make(chan struct{})
 	go func() {
 		defer close(changes)
@@ -212,7 +211,9 @@ func (node *DarkNode) WatchDarkOcean() {
 			node.ConnectToDarkPool(darkPool)
 		}
 	}()
-	node.DarkOcean.Watch(5*time.Minute, changes)
+
+	// Check for changes every minute
+	node.DarkOcean.Watch(time.Minute, changes)
 }
 
 // ConnectToDarkPool and return the connected nodes and disconnected nodes
