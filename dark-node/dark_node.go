@@ -31,7 +31,7 @@ var Prime, _ = big.NewInt(0).SetString("1797693134862315907729305190789024733617
 type DarkNode struct {
 	Config
 
-	TestDeltaNotifications chan *compute.Delta
+	DeltaNotifications chan *compute.Delta
 
 	Logger     *logger.Logger
 	ClientPool *rpc.ClientPool
@@ -57,9 +57,10 @@ type DarkNode struct {
 	Dark   *network.DarkService
 	Gossip *network.GossipService
 
-	DarkOcean      *dark.Ocean
-	DarkPool       *dark.Pool
-	EpochBlockhash [32]byte
+	DarkNodeRegistrar dnr.DarkNodeRegistrar
+	DarkOcean         *dark.Ocean
+	DarkPool          *dark.Pool
+	EpochBlockhash    [32]byte
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
@@ -72,8 +73,8 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 
 	var err error
 	node := &DarkNode{
-		Config:                 config,
-		TestDeltaNotifications: make(chan *compute.Delta, 100),
+		Config:             config,
+		DeltaNotifications: make(chan *compute.Delta, 100),
 	}
 
 	// Create the logger and start all plugins
@@ -84,19 +85,16 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	node.Logger.Start()
 
 	// Load the dark ocean and the dark pool for this node
-	node.DarkPool = dark.NewPool()
+	node.DarkNodeRegistrar = darkNodeRegistrar
 	node.DarkOcean, err = dark.NewOcean(node.Logger, darkNodeRegistrar)
 	if err != nil {
 		return nil, err
 	}
-	// This is an initialization value and should be changed when the dark ocean changes
-	k := int64(1)
-	if err := node.DarkOcean.Update(); err == nil {
-		darkPool := node.DarkOcean.FindPool(node.RepublicKeyPair.ID())
-		if darkPool != nil {
-			k = int64((darkPool.Size() * 2 / 3) + 1)
-		}
+	node.DarkPool = dark.NewPool()
+	if darkPool := node.DarkOcean.FindPool(node.Config.RepublicKeyPair.ID()); darkPool != nil {
+		node.DarkPool = darkPool
 	}
+	k := int64(node.DarkPool.Size()*2/3 + 1)
 
 	// Create all networking components and services
 	node.ClientPool = rpc.NewClientPool(node.NetworkOptions.MultiAddress).
@@ -133,7 +131,7 @@ func (node *DarkNode) StartBackgroundWorkers() {
 	// Start background workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentBroadcastWorker.Run()
-	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue, node.TestDeltaNotifications)
+	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue, node.DeltaNotifications)
 	go node.GossipWorker.Run(node.FinalizeWorkerQueue)
 	go node.FinalizeWorker.Run(node.ConsensusWorkerQueue)
 	go node.ConsensusWorker.Run()
@@ -191,9 +189,9 @@ func (node *DarkNode) Stop() {
 // WatchDarkOcean for changes. When a change happens, find the dark pool for
 // this DarkNode and reconnect to all of the nodes in the pool.
 func (node *DarkNode) WatchDarkOcean() {
-	if err := node.DarkOcean.Update(); err != nil {
-		node.Logger.Error(logger.TagEthereum, fmt.Sprintf("cannot update dark ocean: %s", err.Error()))
-	}
+	// Block until the node is registered
+	node.DarkNodeRegistrar.WaitUntilRegistration(node.Config.RepublicKeyPair.ID())
+
 	changes := make(chan struct{})
 	go func() {
 		defer close(changes)
@@ -213,7 +211,9 @@ func (node *DarkNode) WatchDarkOcean() {
 			node.ConnectToDarkPool(darkPool)
 		}
 	}()
-	node.DarkOcean.Watch(5*time.Minute, changes)
+
+	// Check for changes every minute
+	node.DarkOcean.Watch(time.Minute, changes)
 }
 
 // ConnectToDarkPool and return the connected nodes and disconnected nodes
@@ -255,8 +255,6 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("cannot update DHT with dark node %v: %s", n.ID.Address(), err.Error()))
 			return
 		}
-
-		node.Logger.Info(logger.TagNetwork, fmt.Sprintf("found dark node: %v", n.ID.Address()))
 
 		// Update the MultiAddress in the node
 		n.SetMultiAddress(*multiAddress)

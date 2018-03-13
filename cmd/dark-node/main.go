@@ -19,7 +19,6 @@ import (
 )
 
 const PATH = "/home/ubuntu/"
-//const PATH = ""
 
 var config *node.Config
 

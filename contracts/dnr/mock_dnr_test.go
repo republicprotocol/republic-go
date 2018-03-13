@@ -1,10 +1,7 @@
 package dnr_test
 
 import (
-	"crypto/rand"
-	"errors"
 	"fmt"
-	"math/big"
 	"sync"
 	"time"
 
@@ -13,14 +10,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark-node"
-	"github.com/republicprotocol/republic-go/dark-ocean"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
@@ -33,12 +27,12 @@ import (
 const NumberOfTestNODES = 4
 
 var _ = Describe("Dark nodes", func() {
-	mockDnr := &MockDNR{
+	MockDarkNodeRegistrar := &MockDarkNodeRegistrar{
 		registered:   make([][]byte, 0),
 		toRegister:   make([][]byte, 0),
 		toDeregister: make([][]byte, 0),
 	}
-	mockDnr.Epoch()
+	MockDarkNodeRegistrar.Epoch()
 
 	var mu = new(sync.Mutex)
 	var nodes []*node.DarkNode
@@ -69,15 +63,15 @@ var _ = Describe("Dark nodes", func() {
 
 			for i := 0; i < NumberOfTestNODES; i++ {
 				configs[i] = MockConfig()
-				mockDnr.Register(
+				MockDarkNodeRegistrar.Register(
 					configs[i].MultiAddress.ID(),
 					append(configs[i].RepublicKeyPair.PublicKey.X.Bytes(), configs[i].RepublicKeyPair.PublicKey.Y.Bytes()...),
 				)
 				ethAddresses[i] = bind.NewKeyedTransactor(configs[i].EthereumKey.PrivateKey)
-				nodes[i] = NewTestDarkNode(mockDnr, *configs[i])
+				nodes[i] = NewTestDarkNode(MockDarkNodeRegistrar, *configs[i])
 			}
 
-			mockDnr.Epoch()
+			MockDarkNodeRegistrar.Epoch()
 			startListening(nodes)
 		})
 
@@ -87,168 +81,38 @@ var _ = Describe("Dark nodes", func() {
 
 		It("WatchForDarkOceanChanges sends a new DarkOceanOverlay on a channel whenever the epoch changes", func() {
 			channel := make(chan do.Option, 1)
-			go darkocean.WatchForDarkOceanChanges(mockDnr, channel)
-			mockDnr.Epoch()
+			go darkocean.WatchForDarkOceanChanges(MockDarkNodeRegistrar, channel)
+			MockDarkNodeRegistrar.Epoch()
 			Eventually(channel).Should(Receive())
 		})
 
 		It("Registration checking returns the correct result", func() {
 			id0 := nodes[0].MultiAddress.ID()
 			pub := append(nodes[0].Config.RepublicKeyPair.PublicKey.X.Bytes(), nodes[0].Config.RepublicKeyPair.PublicKey.Y.Bytes()...)
-			mockDnr.Deregister(id0)
+			MockDarkNodeRegistrar.Deregister(id0)
 
 			// Before epoch, should still be registered
 			Ω(nodes[0].IsRegistered()).Should(Equal(true))
 			Ω(nodes[0].IsPendingRegistration()).Should(Equal(false))
 
-			mockDnr.Epoch()
+			MockDarkNodeRegistrar.Epoch()
 
 			// After epoch, should be deregistered
 			Ω(nodes[0].IsRegistered()).Should(Equal(false))
 
-			mockDnr.Register(id0, pub)
+			MockDarkNodeRegistrar.Register(id0, pub)
 
 			// Before epoch, should still be deregistered
 			Ω(nodes[0].IsRegistered()).Should(Equal(false))
 			Ω(nodes[0].IsPendingRegistration()).Should(Equal(true))
 
-			mockDnr.Epoch()
+			MockDarkNodeRegistrar.Epoch()
 
 			// After epoch, should be deregistered
 			Ω(nodes[0].IsRegistered()).Should(Equal(true))
 		})
 	})
 })
-
-/*
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- * Mock DarkNodeRegistar implementation
-
- */
-
-type MockDNR struct {
-	registered   [][]byte
-	toRegister   [][]byte
-	toDeregister [][]byte
-	epoch        dnr.Epoch
-}
-
-func (mockDnr *MockDNR) Register(_darkNodeID []byte, _publicKey []byte) (*types.Transaction, error) {
-	isRegistered, _ := mockDnr.IsDarkNodeRegistered(_darkNodeID)
-	isPending, _ := mockDnr.IsDarkNodePendingRegistration(_darkNodeID)
-	if isRegistered || isPending {
-		return nil, errors.New("Must not be registered to register")
-	}
-	mockDnr.toRegister = append(mockDnr.toRegister, _darkNodeID)
-	return nil, nil
-}
-func (mockDnr *MockDNR) Deregister(_darkNodeID []byte) (*types.Transaction, error) {
-	for i, id := range mockDnr.toRegister {
-		if string(_darkNodeID) == string(id) {
-			mockDnr.toDeregister[i] = mockDnr.toDeregister[len(mockDnr.toDeregister)-1]
-			mockDnr.toDeregister = mockDnr.toDeregister[:len(mockDnr.toDeregister)-1]
-			return nil, nil
-		}
-	}
-	if isRegistered, _ := mockDnr.IsDarkNodeRegistered(_darkNodeID); !isRegistered {
-		return nil, errors.New("Must be registered to deregister")
-	}
-	mockDnr.toDeregister = append(mockDnr.toRegister, _darkNodeID)
-	return nil, nil
-}
-func (mockDnr *MockDNR) GetBond(_darkNodeID []byte) (*big.Int, error) {
-	return big.NewInt(1000), nil
-}
-func (mockDnr *MockDNR) IsDarkNodeRegistered(_darkNodeID []byte) (bool, error) {
-	for _, id := range mockDnr.registered {
-		if string(_darkNodeID) == string(id) {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-func (mockDnr *MockDNR) IsDarkNodePendingRegistration(_darkNodeID []byte) (bool, error) {
-	for _, id := range mockDnr.toRegister {
-		if string(_darkNodeID) == string(id) {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-func (mockDnr *MockDNR) CurrentEpoch() (dnr.Epoch, error) {
-	return mockDnr.epoch, nil
-}
-func (mockDnr *MockDNR) Epoch() (*types.Transaction, error) {
-	var b32 [32]byte
-
-	_, err := rand.Read(b32[:])
-	if err != nil {
-		return nil, err
-	}
-
-	mockDnr.epoch = dnr.Epoch{
-		Blockhash: b32,
-		Timestamp: big.NewInt(time.Now().Unix()),
-	}
-
-	// Remove toRegister nodes
-	for _, deregNode := range mockDnr.toDeregister {
-		for i, node := range mockDnr.registered {
-			if string(node) == string(deregNode) {
-				mockDnr.registered[i] = mockDnr.registered[len(mockDnr.registered)-1]
-				mockDnr.registered = mockDnr.registered[:len(mockDnr.registered)-1]
-				break
-			}
-		}
-	}
-
-	mockDnr.registered = append(mockDnr.registered, mockDnr.toRegister...)
-
-	mockDnr.toDeregister = make([][]byte, 0)
-	mockDnr.toRegister = make([][]byte, 0)
-
-	return nil, nil
-}
-func (mockDnr *MockDNR) GetCommitment(_darkNodeID []byte) ([32]byte, error) {
-	var nil32 [32]byte
-	return nil32, nil
-}
-func (mockDnr *MockDNR) GetOwner(_darkNodeID []byte) (common.Address, error) {
-	var nil20 [20]byte
-	return nil20, nil
-}
-func (mockDnr *MockDNR) GetPublicKey(_darkNodeID []byte) ([]byte, error) {
-	return nil, nil
-}
-func (mockDnr *MockDNR) GetAllNodes() ([][]byte, error) {
-	return mockDnr.registered, nil
-}
-func (mockDnr *MockDNR) MinimumBond() (*big.Int, error) {
-	return big.NewInt(1000), nil
-}
-func (mockDnr *MockDNR) MinimumEpochInterval() (*big.Int, error) {
-	return big.NewInt(0), nil
-}
-func (mockDnr *MockDNR) Refund(_darkNodeID []byte) (*types.Transaction, error) {
-	return nil, nil
-}
-func (mockDnr *MockDNR) WaitTillRegistration(_darkNodeID []byte) error {
-	_, err := mockDnr.Epoch()
-	return err
-}
 
 var i = 0
 
@@ -275,7 +139,7 @@ func MockConfig() *node.Config {
 	}
 
 	return &node.Config{
-		Options: network.Options{
+		NetworkOptions: network.Options{
 			MultiAddress: multiAddress,
 		},
 		RepublicKeyPair: keypair,
@@ -289,7 +153,7 @@ func MockConfig() *node.Config {
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
 // will configure all of the components that it needs to operate but will not
 // start any of them.
-func NewTestDarkNode(registrar dnr.DarkNodeRegistrarInterface, config node.Config) *node.DarkNode {
+func NewTestDarkNode(registrar dnr.DarkNodeRegistrar, config node.Config) *node.DarkNode {
 	if config.Prime == nil {
 		config.Prime = node.Prime
 	}
@@ -312,8 +176,8 @@ func NewTestDarkNode(registrar dnr.DarkNodeRegistrarInterface, config node.Confi
 
 	// options := network.Options{}
 	newNode.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
-	newNode.Swarm = network.NewSwarmService(newNode, newNode.Options, newNode.Logger, newNode.ClientPool, newNode.DHT)
-	newNode.Dark = network.NewDarkService(newNode, newNode.Options, newNode.Logger)
+	newNode.Swarm = network.NewSwarmService(newNode, newNode.NetworkOptions, newNode.Logger, newNode.ClientPool, newNode.DHT)
+	newNode.Dark = network.NewDarkService(newNode, newNode.NetworkOptions, newNode.Logger)
 
 	newNode.Registrar = registrar
 
