@@ -36,8 +36,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	node.Start()
-	defer node.Stop()
+	go node.StartServices()
+	node.StartBackgroundWorkers()
+	node.Bootstrap()
+	node.WatchDarkOcean()
 }
 
 // LoadConfig returns a default Config object for the Falcon testnet.
