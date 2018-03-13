@@ -11,16 +11,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
-	"github.com/republicprotocol/republic-go/network/dht"
-	"github.com/republicprotocol/republic-go/network/rpc"
-	"github.com/republicprotocol/republic-go/order"
-	"google.golang.org/grpc"
 )
 
 const NumberOfTestNODES = 4
@@ -78,7 +72,8 @@ var _ = Describe("Dark nodes", func() {
 					append(configs[i].RepublicKeyPair.PublicKey.X.Bytes(), configs[i].RepublicKeyPair.PublicKey.Y.Bytes()...),
 				)
 				ethAddresses[i] = bind.NewKeyedTransactor(configs[i].EthereumKey.PrivateKey)
-				nodes[i] = NewTestDarkNode(MockDarkNodeRegistrar, *configs[i])
+				nodes[i], err  = node.NewDarkNode(*configs[i],MockDarkNodeRegistrar)
+				Ω(err).ShouldNot(HaveOccurred())
 			}
 
 			MockDarkNodeRegistrar.Epoch()
@@ -152,48 +147,10 @@ func MockConfig() *node.Config {
 		NetworkOptions: network.Options{
 			MultiAddress: multiAddress,
 		},
-		RepublicKeyPair: keypair,
-		RSAKeyPair:      keypair,
+		RepublicKeyPair: &keypair,
+		RSAKeyPair:      &keypair,
 		EthereumKey:     ethereumKey,
 		Port:            port,
 		Host:            host,
 	}
-}
-
-// NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
-// will configure all of the components that it needs to operate but will not
-// start any of them.
-func NewTestDarkNode(registrar dnr.DarkNodeRegistrar, config node.Config) *node.DarkNode {
-	if config.Prime == nil {
-		config.Prime = node.Prime
-	}
-
-	// TODO: This should come from the DNR.
-	k := int64(5)
-
-	newNode := &node.DarkNode{Config: config}
-
-	newNode.Logger, _ = logger.NewLogger(logger.Options{
-		Plugins: []logger.PluginOptions{
-			{File: &logger.FilePluginOptions{Path: "stdout"}},
-		},
-	})
-	newNode.ClientPool = rpc.NewClientPool(newNode.NetworkOptions.MultiAddress)
-	newNode.DHT = dht.NewDHT(newNode.NetworkOptions.MultiAddress.Address(), newNode.NetworkOptions.MaxBucketLength)
-
-	newNode.DeltaBuilder = compute.NewDeltaBuilder(k, newNode.Prime)
-	newNode.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(newNode.Prime)
-	newNode.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
-	newNode.OrderFragmentWorker = node.NewOrderFragmentWorker(newNode.Logger, newNode.DeltaFragmentMatrix, newNode.OrderFragmentWorkerQueue)
-	newNode.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
-	newNode.DeltaFragmentWorker = node.NewDeltaFragmentWorker(newNode.Logger, newNode.DeltaBuilder, newNode.DeltaFragmentWorkerQueue)
-
-	// options := network.Options{}
-	newNode.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
-	newNode.Swarm = network.NewSwarmService(newNode, newNode.NetworkOptions, newNode.Logger, newNode.ClientPool, newNode.DHT)
-	newNode.Dark = network.NewDarkService(newNode, newNode.NetworkOptions, newNode.Logger)
-
-	newNode.DarkNodeRegistrar = registrar
-
-	return newNode
 }
