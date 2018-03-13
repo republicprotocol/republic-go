@@ -5,12 +5,11 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/crypto"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
@@ -27,29 +26,36 @@ import (
 const NumberOfTestNODES = 4
 
 var _ = Describe("Dark nodes", func() {
-	MockDarkNodeRegistrar := &MockDarkNodeRegistrar{
-		registered:   make([][]byte, 0),
-		toRegister:   make([][]byte, 0),
-		toDeregister: make([][]byte, 0),
-	}
-	MockDarkNodeRegistrar.Epoch()
 
 	var mu = new(sync.Mutex)
+	var err error
 	var nodes []*node.DarkNode
 	var configs []*node.Config
 	var ethAddresses []*bind.TransactOpts
+	var MockDarkNodeRegistrar dnr.DarkNodeRegistrar
 
 	startListening := func(nodes []*node.DarkNode) {
 		// Fully connect the bootstrap nodes
+		for _, n := range nodes {
+			go func(n *node.DarkNode) {
+				n.StartServices()
+			}(n)
+		}
+		time.Sleep(1 * time.Second)
 		for i, iNode := range nodes {
-			go iNode.Start()
 			for j, jNode := range nodes {
 				if i == j {
 					continue
 				}
 				// log.Printf("%v pinging %v\n", iNode.MultiAddress.Address(), jNode.MultiAddress.Address())
-				jNode.ClientPool.Ping(iNode.MultiAddress)
+				jNode.ClientPool.Ping(iNode.NetworkOptions.MultiAddress)
 			}
+		}
+	}
+
+	stopListening := func(nodes []*node.DarkNode) {
+		for _, n := range nodes {
+			n.Stop()
 		}
 	}
 
@@ -57,14 +63,18 @@ var _ = Describe("Dark nodes", func() {
 		BeforeEach(func() {
 			mu.Lock()
 
+			MockDarkNodeRegistrar, err = dnr.NewMockDarkNodeRegistrar()
+			MockDarkNodeRegistrar.Epoch()
+
 			configs = make([]*node.Config, NumberOfTestNODES)
 			ethAddresses = make([]*bind.TransactOpts, NumberOfTestNODES)
 			nodes = make([]*node.DarkNode, NumberOfTestNODES)
 
 			for i := 0; i < NumberOfTestNODES; i++ {
+
 				configs[i] = MockConfig()
 				MockDarkNodeRegistrar.Register(
-					configs[i].MultiAddress.ID(),
+					configs[i].NetworkOptions.MultiAddress.ID(),
 					append(configs[i].RepublicKeyPair.PublicKey.X.Bytes(), configs[i].RepublicKeyPair.PublicKey.Y.Bytes()...),
 				)
 				ethAddresses[i] = bind.NewKeyedTransactor(configs[i].EthereumKey.PrivateKey)
@@ -76,40 +86,40 @@ var _ = Describe("Dark nodes", func() {
 		})
 
 		AfterEach(func() {
+			stopListening(nodes)
 			mu.Unlock()
 		})
 
 		It("WatchForDarkOceanChanges sends a new DarkOceanOverlay on a channel whenever the epoch changes", func() {
 			channel := make(chan do.Option, 1)
-			go darkocean.WatchForDarkOceanChanges(MockDarkNodeRegistrar, channel)
 			MockDarkNodeRegistrar.Epoch()
 			Eventually(channel).Should(Receive())
 		})
 
 		It("Registration checking returns the correct result", func() {
-			id0 := nodes[0].MultiAddress.ID()
+			id0 := nodes[0].NetworkOptions.MultiAddress.ID()
 			pub := append(nodes[0].Config.RepublicKeyPair.PublicKey.X.Bytes(), nodes[0].Config.RepublicKeyPair.PublicKey.Y.Bytes()...)
 			MockDarkNodeRegistrar.Deregister(id0)
 
 			// Before epoch, should still be registered
-			Ω(nodes[0].IsRegistered()).Should(Equal(true))
-			Ω(nodes[0].IsPendingRegistration()).Should(Equal(false))
+			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodeRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(true))
+			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodePendingRegistration(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
 
 			MockDarkNodeRegistrar.Epoch()
 
 			// After epoch, should be deregistered
-			Ω(nodes[0].IsRegistered()).Should(Equal(false))
+			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodeRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
 
 			MockDarkNodeRegistrar.Register(id0, pub)
 
 			// Before epoch, should still be deregistered
-			Ω(nodes[0].IsRegistered()).Should(Equal(false))
-			Ω(nodes[0].IsPendingRegistration()).Should(Equal(true))
+			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodeRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
+			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodePendingRegistration(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(true))
 
 			MockDarkNodeRegistrar.Epoch()
 
 			// After epoch, should be deregistered
-			Ω(nodes[0].IsRegistered()).Should(Equal(true))
+			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodeRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(true))
 		})
 	})
 })
@@ -163,23 +173,27 @@ func NewTestDarkNode(registrar dnr.DarkNodeRegistrar, config node.Config) *node.
 
 	newNode := &node.DarkNode{Config: config}
 
-	newNode.Logger = logger.NewLogger()
-	newNode.ClientPool = rpc.NewClientPool(newNode.MultiAddress)
-	newNode.DHT = dht.NewDHT(newNode.MultiAddress.Address(), newNode.MaxBucketLength)
+	newNode.Logger, _ = logger.NewLogger(logger.Options{
+		Plugins: []logger.PluginOptions{
+			{File: &logger.FilePluginOptions{Path: "stdout"}},
+		},
+	})
+	newNode.ClientPool = rpc.NewClientPool(newNode.NetworkOptions.MultiAddress)
+	newNode.DHT = dht.NewDHT(newNode.NetworkOptions.MultiAddress.Address(), newNode.NetworkOptions.MaxBucketLength)
 
 	newNode.DeltaBuilder = compute.NewDeltaBuilder(k, newNode.Prime)
 	newNode.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(newNode.Prime)
 	newNode.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
-	newNode.OrderFragmentWorker = node.NewOrderFragmentWorker(newNode.OrderFragmentWorkerQueue, newNode.DeltaFragmentMatrix)
+	newNode.OrderFragmentWorker = node.NewOrderFragmentWorker(newNode.Logger, newNode.DeltaFragmentMatrix, newNode.OrderFragmentWorkerQueue)
 	newNode.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
-	newNode.DeltaFragmentWorker = node.NewDeltaFragmentWorker(newNode.DeltaFragmentWorkerQueue, newNode.DeltaBuilder)
+	newNode.DeltaFragmentWorker = node.NewDeltaFragmentWorker(newNode.Logger, newNode.DeltaBuilder, newNode.DeltaFragmentWorkerQueue)
 
 	// options := network.Options{}
 	newNode.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
 	newNode.Swarm = network.NewSwarmService(newNode, newNode.NetworkOptions, newNode.Logger, newNode.ClientPool, newNode.DHT)
 	newNode.Dark = network.NewDarkService(newNode, newNode.NetworkOptions, newNode.Logger)
 
-	newNode.Registrar = registrar
+	newNode.DarkNodeRegistrar = registrar
 
 	return newNode
 }
