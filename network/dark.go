@@ -88,7 +88,8 @@ func (service *DarkService) SignOrderFragment(ctx context.Context, signOrderFrag
 }
 
 func (service *DarkService) signOrderFragment(signOrderFragmentRequest *rpc.SignOrderFragmentRequest) (*rpc.OrderFragmentSignature, error) {
-	panic("unimplemented")
+	// todo : unimplemented
+	return &rpc.OrderFragmentSignature{}, nil
 }
 
 func (service *DarkService) OpenOrder(ctx context.Context, openOrderRequest *rpc.OpenOrderRequest) (*rpc.Nothing, error) {
@@ -147,7 +148,8 @@ func (service *DarkService) CancelOrder(ctx context.Context, cancelOrderRequest 
 }
 
 func (service *DarkService) cancelOrder(cancelOrderRequest *rpc.CancelOrderRequest) (*rpc.Nothing, error) {
-	panic("unimplemented")
+	// todo : unimplemented
+	return &rpc.Nothing{}, nil
 }
 
 func (service *DarkService) RandomFragmentShares(ctx context.Context, randomFragmentSharesRequest *rpc.RandomFragmentSharesRequest) (*rpc.RandomFragments, error) {
