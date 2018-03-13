@@ -114,9 +114,9 @@ func (worker *DeltaFragmentWorker) Run(queues ...chan *compute.Delta) {
 				defer func() { recover() }()
 				// FIXME: Stop doing this shit.
 				if delta.IsMatch(Prime) {
-					worker.logger.Info(logger.TagCompute, fmt.Sprintf("(%s, %s) matched", delta.BuyOrderID.String(), delta.SellOrderID.String()))
+					worker.logger.Info(logger.TagCompute, fmt.Sprintf("(%s, %s) ✓", delta.BuyOrderID.String(), delta.SellOrderID.String()))
 				} else {
-					worker.logger.Info(logger.TagCompute, fmt.Sprintf("(%s, %s) do not match", delta.BuyOrderID.String(), delta.SellOrderID.String()))
+					worker.logger.Info(logger.TagCompute, fmt.Sprintf("(%s, %s)", delta.BuyOrderID.String(), delta.SellOrderID.String()))
 				}
 				for _, queue := range queues {
 					queue <- delta
