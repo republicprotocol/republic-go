@@ -37,7 +37,7 @@ var _ = Describe("Dark Node Registrar", func() {
 	darkNodeContractAddress := common.HexToAddress("0x0B1148699C93cA9Cfa28f11BD581936f673F76ec")
 	renContractAddress := common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a")
 
-	UserConnection := dnr.NewDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, darkNodeContractAddress, renContractAddress, nil)
+	UserConnection := dnr.NewEthereumDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{}, darkNodeContractAddress, renContractAddress, nil)
 
 	keyPair, err := identity.NewKeyPair()
 	if err != nil {

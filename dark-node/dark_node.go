@@ -57,9 +57,10 @@ type DarkNode struct {
 	Dark   *network.DarkService
 	Gossip *network.GossipService
 
-	DarkOcean      *dark.Ocean
-	DarkPool       *dark.Pool
-	EpochBlockhash [32]byte
+	DarkNodeRegistrar dnr.DarkNodeRegistrar
+	DarkOcean         *dark.Ocean
+	DarkPool          *dark.Pool
+	EpochBlockhash    [32]byte
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
@@ -84,19 +85,16 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	node.Logger.Start()
 
 	// Load the dark ocean and the dark pool for this node
-	node.DarkPool = dark.NewPool()
+	node.DarkNodeRegistrar = darkNodeRegistrar
 	node.DarkOcean, err = dark.NewOcean(node.Logger, darkNodeRegistrar)
 	if err != nil {
 		return nil, err
 	}
-	// This is an initialization value and should be changed when the dark ocean changes
-	k := int64(1)
-	if err := node.DarkOcean.Update(); err == nil {
-		darkPool := node.DarkOcean.FindPool(node.RepublicKeyPair.ID())
-		if darkPool != nil {
-			k = int64((darkPool.Size() * 2 / 3) + 1)
-		}
+	node.DarkPool = dark.NewPool()
+	if darkPool := node.DarkOcean.FindPool(node.Config.RepublicKeyPair.ID()); darkPool != nil {
+		node.DarkPool = darkPool
 	}
+	k := int64(node.DarkPool.Size()*2/3 + 1)
 
 	// Create all networking components and services
 	node.ClientPool = rpc.NewClientPool(node.NetworkOptions.MultiAddress).
@@ -191,6 +189,7 @@ func (node *DarkNode) Stop() {
 // WatchDarkOcean for changes. When a change happens, find the dark pool for
 // this DarkNode and reconnect to all of the nodes in the pool.
 func (node *DarkNode) WatchDarkOcean() {
+	node.DarkNodeRegistrar.WaitUntilRegistration(node.Config.RepublicKeyPair.ID())
 	if err := node.DarkOcean.Update(); err != nil {
 		node.Logger.Error(logger.TagEthereum, fmt.Sprintf("cannot update dark ocean: %s", err.Error()))
 	}
@@ -255,8 +254,6 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("cannot update DHT with dark node %v: %s", n.ID.Address(), err.Error()))
 			return
 		}
-
-		node.Logger.Info(logger.TagNetwork, fmt.Sprintf("found dark node: %v", n.ID.Address()))
 
 		// Update the MultiAddress in the node
 		n.SetMultiAddress(*multiAddress)
