@@ -67,10 +67,6 @@ type DarkNode struct {
 // will configure all of the components that it needs to operate but will not
 // start any of them.
 func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkNode, error) {
-	if config.Prime == nil {
-		config.Prime = Prime
-	}
-
 	var err error
 	node := &DarkNode{
 		Config:             config,
@@ -109,8 +105,8 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	node.Gossip = network.NewGossipService(node)
 
 	// Create all background workers that will do all of the actual work
-	node.DeltaBuilder = compute.NewDeltaBuilder(k, node.Prime)
-	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(node.Prime)
+	node.DeltaBuilder = compute.NewDeltaBuilder(k, Prime)
+	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(Prime)
 	node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
 	node.OrderFragmentWorker = NewOrderFragmentWorker(node.Logger, node.DeltaFragmentMatrix, node.OrderFragmentWorkerQueue)
 	node.DeltaFragmentBroadcastWorkerQueue = make(chan *compute.DeltaFragment, 100)
@@ -155,8 +151,7 @@ func (node *DarkNode) StartUI() {
 	fs := http.FileServer(http.Dir("dark-node-ui"))
 	http.Handle("/", fs)
 	node.Logger.Info(logger.TagNetwork, "Serving the Dark Node UI")
-	err := http.ListenAndServe("0.0.0.0:3000", nil)
-	if err != nil {
+	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
 		node.Logger.Error(logger.TagNetwork, err.Error())
 	}
 }
