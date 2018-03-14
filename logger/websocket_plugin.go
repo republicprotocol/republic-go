@@ -101,7 +101,9 @@ func (plugin *WebSocketPlugin) Start() error {
 	plugin.server = &http.Server{
 		Addr: fmt.Sprintf("%s:%s", plugin.host, plugin.port),
 	}
-	http.HandleFunc("/logs", plugin.handler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/logs", plugin.handler)
+	plugin.server.Handler = mux
 	go func() {
 		log.Println(fmt.Sprintf("WebSocket logger listening on %s:%s", plugin.host, plugin.port))
 		if err := plugin.server.ListenAndServe(); err != nil {
