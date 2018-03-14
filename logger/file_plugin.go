@@ -81,7 +81,7 @@ func (plugin *FilePlugin) Info(tag, message string) error {
 	if err != nil {
 		return err
 	}
-	_, err = plugin.file.WriteString(string(data))
+	_, err = plugin.file.Write(data)
 	return err
 }
 
@@ -93,7 +93,17 @@ func (plugin *FilePlugin) Warn(tag, message string) error {
 	if plugin.file == nil {
 		return fmt.Errorf("cannot write logs to a nil file")
 	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [warn] (%s) %s\n", time.Now().Format("2006/01/02 15:04:05 "), tag, message))
+	log := map[string]interface{}{
+		"type":      "warn",
+		"tag":       tag,
+		"timestamp": time.Now(),
+		"message":   message,
+	}
+	data, err := json.Marshal(log)
+	if err != nil {
+		return err
+	}
+	_, err = plugin.file.Write(data)
 	return err
 }
 
@@ -105,7 +115,17 @@ func (plugin *FilePlugin) Error(tag, message string) error {
 	if plugin.file == nil {
 		return fmt.Errorf("cannot write logs to a nil file")
 	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [error] (%s) %s\n", time.Now().Format("2006/01/02 15:04:05 "), tag, message))
+	log := map[string]interface{}{
+		"type":      "error",
+		"tag":       tag,
+		"timestamp": time.Now(),
+		"message":   message,
+	}
+	data, err := json.Marshal(log)
+	if err != nil {
+		return err
+	}
+	_, err = plugin.file.Write(data)
 	return err
 }
 
@@ -117,6 +137,18 @@ func (plugin *FilePlugin) Usage(cpu float32, memory, network int32) error {
 	if plugin.file == nil {
 		return fmt.Errorf("cannot write logs to a nil file")
 	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [info] ("+TagUsage+") cpu = %.3f MHz; memory = %d MB; network = %d KB\n", time.Now().Format("2006/01/02 15:04:05 "), cpu, memory, network))
+	log := map[string]interface{}{
+		"type":      "info",
+		"tag":       "usage",
+		"timestamp": time.Now(),
+		"cpu":       cpu,
+		"memory":    memory,
+		"network":   network,
+	}
+	data, err := json.Marshal(log)
+	if err != nil {
+		return err
+	}
+	_, err = plugin.file.Write(data)
 	return err
 }
