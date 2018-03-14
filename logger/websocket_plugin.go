@@ -99,7 +99,7 @@ func (plugin *WebSocketPlugin) handler(w http.ResponseWriter, r *http.Request) {
 // Start implements the Plugin interface. It starts a WebSocket server.
 func (plugin *WebSocketPlugin) Start() error {
 	plugin.server = &http.Server{
-		Addr: fmt.Sprintf("%s:%s", plugin.host, plugin.password),
+		Addr: fmt.Sprintf("%s:%s", plugin.host, plugin.port),
 	}
 	http.HandleFunc("/logs", plugin.handler)
 	go func() {
