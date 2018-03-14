@@ -16,6 +16,7 @@ var _ = Describe("Int1024 arithmetic", func() {
 	// ADDITION
 	Context("when adding numbers", func() {
 		It("should return the right result for 1024 bit numbers", func() {
+
 			RunAllCases(addFn, []TestCase{
 				TestCase{inputsStr: []string{"1", "2"}, expectedStr: "3"},
 				TestCase{inputsInt: []Int1024{one, two}, expectedInt: &three},

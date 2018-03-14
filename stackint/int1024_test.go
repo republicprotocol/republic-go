@@ -95,6 +95,9 @@ var _ = Describe("Int1024", func() {
 				actual = FromLittleEndianBytes(num.ToLittleEndianBytes())
 				Ω(actual.String()).Should(Equal(num.String()))
 			}
+
+			// actual := FromBytes([]byte{01})
+			// Ω(actual.String()).Should(Equal("1"))
 		})
 	})
 })

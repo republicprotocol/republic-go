@@ -127,6 +127,9 @@ func FromBytes(bytes128 []byte) Int1024 {
 	x := zero()
 
 	numWords := len(bytes128) / 8
+	if len(bytes128)%8 != 0 {
+		numWords++
+	}
 
 	for i := 0; i < numWords; i++ {
 		k := (numWords - 1) - i
