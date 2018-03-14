@@ -1,6 +1,7 @@
 package stackint
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strconv"
 	"strings"
@@ -79,6 +80,94 @@ func FromString(number string) Int1024 {
 	return self
 }
 
+func (x *Int1024) String() string {
+	blockSize := 19
+	blockSize1024 := FromUint64(uint64(blockSize))
+	base := FromUint64(10)
+	base = base.Exp(&blockSize1024)
+	q := *x
+	var r Int1024
+	ret := ""
+
+	for !q.IsZero() {
+		q, r = q.DivMod(&base)
+		chars := strconv.FormatUint(uint64(r.words[INT1024WORDS-1]), 10)
+		zeroes := strings.Repeat("0", blockSize-len(chars))
+		ret = zeroes + chars + ret
+	}
+
+	ret = strings.TrimLeft(ret, "0")
+
+	if ret == "" {
+		return "0"
+	}
+
+	return ret
+}
+
+// ToBytes returns an array of 128 bytes (Big Endian)
+func (x *Int1024) ToBytes() []byte {
+
+	bytes128 := make([]byte, 128)
+	b8 := make([]byte, 8)
+
+	for i := range x.words {
+		binary.BigEndian.PutUint64(b8, uint64(x.words[i]))
+		for j := 0; j < 8; j++ {
+			bytes128[i*8+j] = b8[j]
+		}
+	}
+
+	return bytes128
+}
+
+// FromBytes deserializes an array of 128 bytes to an Int1024 (Big Endian)
+func FromBytes(bytes128 []byte) Int1024 {
+
+	x := zero()
+
+	numWords := len(bytes128) / 8
+
+	for i := 0; i < numWords; i++ {
+		k := (numWords - 1) - i
+		b8 := bytes128[k*8 : (k+1)*8]
+		x.words[INT1024WORDS-1-i] = Word(binary.BigEndian.Uint64(b8))
+	}
+
+	return x
+}
+
+// ToLittleEndianBytes returns an array of 128 bytes (Little Endian)
+func (x *Int1024) ToLittleEndianBytes() []byte {
+
+	bytes128 := make([]byte, 128)
+	b8 := make([]byte, 8)
+
+	for i := range x.words {
+		binary.LittleEndian.PutUint64(b8, uint64(x.words[INT1024WORDS-1-i]))
+		for j := 0; j < 8; j++ {
+			bytes128[i*8+j] = b8[j]
+		}
+	}
+
+	return bytes128
+}
+
+// FromLittleEndianBytes deserializes an array of 128 bytes to an Int1024 (LittleBig Endian)
+func FromLittleEndianBytes(bytes128 []byte) Int1024 {
+
+	x := zero()
+
+	numWords := len(bytes128) / 8
+
+	for i := 0; i < numWords; i++ {
+		b8 := bytes128[i*8 : (i+1)*8]
+		x.words[INT1024WORDS-1-i] = Word(binary.LittleEndian.Uint64(b8))
+	}
+
+	return x
+}
+
 // Clone returns a new Int1024 representing the same value as x
 func (x *Int1024) Clone() Int1024 {
 	var words [INT1024WORDS]Word
@@ -113,9 +202,9 @@ func (x *Int1024) ToBinary() string {
 // zero returns a new Int1024 representing 0
 func zero() Int1024 {
 	var words [INT1024WORDS]Word
-	for i := 0; i < INT1024WORDS; i++ {
-		words[i] = 0
-	}
+	// for i := 0; i < INT1024WORDS; i++ {
+	// 	words[i] = 0
+	// }
 	return Int1024{
 		words: words,
 	}

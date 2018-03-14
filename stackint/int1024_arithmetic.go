@@ -79,10 +79,7 @@ func (x *Int1024) Mul(y *Int1024) Int1024 {
 			if bit == 1 {
 				z = z.Add(&shifted)
 			}
-			// fmt.Println()
-			// fmt.Println(shifted.ToBinary())
 			shifted.overwritingShiftLeftByOne()
-			// fmt.Println(shifted.ToBinary())
 		}
 	}
 
@@ -105,7 +102,7 @@ func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 		panic("division by zero")
 	}
 
-	limit := answer.NOT()
+	limit := MAXINT1024.Clone()
 	limit.overwritingShiftRightByOne()
 	overflowed := false
 	for denom.LessThanOrEqual(&dividend) {

@@ -7,64 +7,54 @@ import (
 	. "github.com/republicprotocol/republic-go/stackint"
 )
 
+var addFn = func(inputs ...Int1024) Int1024 { return inputs[0].Add(&inputs[1]) }
+var subFn = func(inputs ...Int1024) Int1024 { return inputs[0].Sub(&inputs[1]) }
+var mulFn = func(inputs ...Int1024) Int1024 { return inputs[0].Mul(&inputs[1]) }
+
 var _ = Describe("Int1024 arithmetic", func() {
+
+	// ADDITION
 	Context("when adding numbers", func() {
 		It("should return the right result for 1024 bit numbers", func() {
-			onePlusTwo := one.Add(&two)
-			Ω(onePlusTwo.Equals(&three)).Should(BeTrue())
+			RunAllCases(addFn, []TestCase{
+				TestCase{inputsStr: []string{"1", "2"}, expectedStr: "3"},
+				TestCase{inputsInt: []Int1024{one, two}, expectedInt: &three},
+				TestCase{inputsInt: []Int1024{oneWord, one}, expectedStr: "18446744073709551616"},
+				TestCase{inputsStr: []string{"340282366920938463417257747247494332417", "340282366920938463454151235394913435648"}, expectedStr: "680564733841876926871408982642407768065"},
+				TestCase{inputsStr: []string{"6893488147419103231", "30000000000000000000"}, expectedStr: "36893488147419103231"},
 
-			oneWordPlusOne := oneWord.Add(&one)
-			Ω(oneWordPlusOne.Words()[14]).Should(Equal(Word(1)))
-
-			first := FromString("340282366920938463417257747247494332417")
-			second := FromString("340282366920938463454151235394913435648")
-			expected := FromString("680564733841876926871408982642407768065")
-			actual := first.Add(&second)
-			Ω(actual.Equals(&expected)).Should(BeTrue())
-
-			first = FromString("6893488147419103231")
-			second = FromString("30000000000000000000")
-			expected = FromString("36893488147419103231")
-			actual = first.Add(&second)
-			Ω(actual.Equals(&expected)).Should(BeTrue())
-		})
-
-		It("should overflow", func() {
-			overflow := max.Add(&one)
-			Ω(overflow.Equals(&zero)).Should(BeTrue())
+				// Overflow:
+				TestCase{inputsInt: []Int1024{max, one}, expectedInt: &zero},
+			})
 		})
 	})
 
+	// SUBTRACTION
 	Context("when subtracting numbers", func() {
 		It("should return the right result for 1024 bit numbers", func() {
-			threeMinusTwo := three.Sub(&two)
-			Ω(threeMinusTwo.Equals(&one)).Should(BeTrue())
+			RunAllCases(subFn, []TestCase{
+				TestCase{inputsStr: []string{"3", "2"}, expectedStr: "1"},
+				TestCase{inputsInt: []Int1024{three, two}, expectedInt: &one},
+				TestCase{inputsStr: []string{"18446744073709551616", "1"}, expectedStr: "18446744073709551615"},
+				TestCase{inputsStr: []string{"18446744073709551616", "9223372036854775808"}, expectedStr: "9223372036854775808"},
+				TestCase{inputsInt: []Int1024{max, max}, expectedStr: "0"},
+				TestCase{inputsStr: []string{"18446744073709551616", "1"}, expectedInt: &oneWord},
 
-			oneWordPlusOne := oneWord.Add(&one)
-			alsoOneWord := oneWordPlusOne.Sub(&one)
-			Ω(alsoOneWord.Equals(&oneWord)).Should(BeTrue())
-		})
-
-		It("should overflow", func() {
-			overflow := zero.Sub(&one)
-			Ω(overflow.Equals(&max)).Should(BeTrue())
+				// Overflow:
+				TestCase{inputsInt: []Int1024{zero, one}, expectedInt: &max},
+			})
 		})
 	})
 
 	Context("when multiplying numbers", func() {
 		It("should return the right result for 1024 bit numbers", func() {
-			twoTimesThree := two.Mul(&three)
-			Ω(twoTimesThree.Equals(&six)).Should(BeTrue())
-
-			oneWordSquared := oneWord.Mul(&oneWord)
-			Ω(oneWordSquared.Words()[INT1024WORDS-1]).Should(Equal(Word(1)))
-			Ω(oneWordSquared.Words()[INT1024WORDS-2]).Should(Equal(Word(WORDMAX - 1)))
-
-			sqrt := FromString("13407807929942597099574024998205846127479365820592393377723561443721764030073546976801874298166903427690031858186486050853753882811946569946433649006084095")
-			sqrtMulSqrt := sqrt.Mul(&sqrt)
-			diff := FromString("26815615859885194199148049996411692254958731641184786755447122887443528060147093953603748596333806855380063716372972101707507765623893139892867298012168190")
-			expected := max.Sub(&diff)
-			Ω(sqrtMulSqrt.Equals(&expected)).Should(BeTrue())
+			RunAllCases(mulFn, []TestCase{
+				TestCase{inputsStr: []string{"2", "3"}, expectedStr: "6"},
+				TestCase{inputsInt: []Int1024{two, three}, expectedInt: &six},
+				TestCase{inputsStr: []string{"18446744073709551615", "18446744073709551615"}, expectedStr: "340282366920938463426481119284349108225"},
+				TestCase{inputsStr: []string{"18446744073709551616", "18446744073709551616"}, expectedStr: "340282366920938463463374607431768211456"},
+				TestCase{inputsStr: []string{"13407807929942597099574024998205846127479365820592393377723561443721764030073546976801874298166903427690031858186486050853753882811946569946433649006084095", "13407807929942597099574024998205846127479365820592393377723561443721764030073546976801874298166903427690031858186486050853753882811946569946433649006084095"}, expectedStr: "179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474097562152033539671286128252223189553839160721441767298250321715263238814402734379959506792230903356495130620869925267845538430714092411695463462326211969025"},
+			})
 		})
 	})
 
@@ -171,3 +161,37 @@ var _ = Describe("Int1024 arithmetic", func() {
 		})
 	})
 })
+
+type BinaryFn func(inputs ...Int1024) Int1024
+
+func RunCase(fn BinaryFn, test TestCase) {
+
+	if len(test.inputsInt) == 0 {
+		test.inputsInt = make([]Int1024, len(test.inputsStr))
+		for i, input := range test.inputsStr {
+			test.inputsInt[i] = FromString(input)
+		}
+	}
+
+	if test.expectedStr == "" {
+		test.expectedStr = test.expectedInt.String()
+	}
+
+	actual := fn(test.inputsInt...)
+	actualStr := actual.String()
+
+	Ω(actualStr).Should(Equal(test.expectedStr))
+}
+
+func RunAllCases(fn BinaryFn, testcases []TestCase) {
+	for _, testcase := range testcases {
+		RunCase(fn, testcase)
+	}
+}
+
+type TestCase struct {
+	inputsStr   []string
+	inputsInt   []Int1024
+	expectedStr string
+	expectedInt *Int1024
+}
