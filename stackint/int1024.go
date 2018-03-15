@@ -36,15 +36,43 @@ func FromUint64(n uint64) Int1024 {
 	return z
 }
 
+// ToUint64 converts an Int1024 to a uint64 if it is small enough
+func (x *Int1024) ToUint64() uint64 {
+	// Check that all other words are zero
+	for i := 0; i < INT1024WORDS-2; i++ {
+		if x.words[i] != 0 {
+			panic("Int1024 is too large to be converted to uint64")
+		}
+	}
+	return uint64(x.words[INT1024WORDS-1])
+}
+
 // FromString returns a new Int1024 from a string
 func FromString(number string) Int1024 {
 	self := zero()
+
+	// Base to convert from
+	base := 10
+
+	if len(number) > 2 {
+		if number[0:2] == "0x" {
+			number = number[2:]
+			base = 16
+		} else if number[0:2] == "0b" {
+			number = number[2:]
+			base = 2
+		}
+	}
 
 	// Length of string
 	length := len(number)
 
 	// Break up into blocks of size 19 (log10(2 ** 64))
-	blockSize := 19
+	blockSize := 1
+	limit := uint64(1<<63-1) / uint64(base)
+	for basePower := uint64(1); basePower < limit; basePower *= uint64(base) {
+		blockSize++
+	}
 
 	// Number of blocks
 	count := (length / blockSize)
@@ -53,7 +81,7 @@ func FromString(number string) Int1024 {
 	}
 
 	// TODO: Replace with 10.Pow(blockSize)
-	shift := FromUint64(10)
+	shift := FromUint64(uint64(base))
 	blockSizeInt := FromUint64(uint64(blockSize))
 	shift = shift.Exp(&blockSizeInt)
 	shiftAcc := ONE
@@ -65,7 +93,7 @@ func FromString(number string) Int1024 {
 		if start < 0 {
 			start = 0
 		}
-		word, err := strconv.ParseUint(number[start:end], 10, 64)
+		word, err := strconv.ParseUint(number[start:end], base, 64)
 		if err != nil {
 			panic(err)
 		}
