@@ -31,8 +31,8 @@ type Client interface {
 type Chain string; 
 
 const (
-	ChainMainnet : Chain = "mainnet"
-	ChainRopsten : Chain = "ropsten"
+	ChainMainnet Chain = "mainnet"
+	ChainRopsten Chain = "ropsten"
 )
 
 // ClientDetails contains the simulated client and the contracts deployed to it
