@@ -28,6 +28,19 @@ func (x *Int1024) Cmp(y *Int1024) int {
 	return 0
 }
 
+// LessThan returns x<y
+func (x *Int1024) LessThan(y *Int1024) bool {
+	for i := 0; i < INT1024WORDS; i++ {
+		if x.words[i] < y.words[i] {
+			return true
+		}
+		if x.words[i] > y.words[i] {
+			return false
+		}
+	}
+	return false
+}
+
 // GreaterThan returns x>y
 func (x *Int1024) GreaterThan(y *Int1024) bool {
 	for i := 0; i < INT1024WORDS; i++ {
