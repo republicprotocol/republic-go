@@ -39,13 +39,18 @@ func (x *Int1024) overwritingAdd(y *Int1024) {
 
 // Sub returns x-y
 func (x *Int1024) Sub(y *Int1024) Int1024 {
+
+	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
+	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
+	// expected := big.NewInt(0).Sub(xB, yB)
+
 	z := zero()
 
 	var overflow Word
 	overflow = 0
 	for i := INT1024WORDS - 1; i >= 0; i-- {
 		z.words[i] = x.words[i] - y.words[i] - overflow
-		if x.words[i] < y.words[i]+overflow {
+		if x.words[i] < y.words[i]+overflow || y.words[i] == WORDMAX && overflow == 1 {
 			overflow = 1
 		} else {
 			overflow = 0
@@ -55,6 +60,11 @@ func (x *Int1024) Sub(y *Int1024) Int1024 {
 	if overflow == 1 {
 		// WARNING: Overflow occured
 	}
+
+	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
+	// 	panic(fmt.Sprintf("Subtraction failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
+	// }
 
 	return z
 }
