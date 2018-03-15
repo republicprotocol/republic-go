@@ -73,7 +73,7 @@ var _ = Describe("Int1024", func() {
 				TC("1234i", Panic()),
 			}
 			for _, tc := range cases {
-				Ω(func() Int1024 { return FromString(tc[0].(string)) }).Should(Panic())
+				Ω(func() { FromString(tc[0].(string)) }).Should(Panic())
 			}
 		})
 	})
@@ -133,9 +133,6 @@ var _ = Describe("Int1024", func() {
 				actual = FromLittleEndianBytes(num.ToLittleEndianBytes())
 				Ω(actual.String()).Should(Equal(num.String()))
 			}
-
-			// actual := FromBytes([]byte{01})
-			// Ω(actual.String()).Should(Equal("1"))
 		})
 	})
 })
