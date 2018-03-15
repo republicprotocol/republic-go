@@ -159,9 +159,18 @@ func FromBytes(bytes128 []byte) Int1024 {
 		numWords++
 	}
 
+	// mod := 8 - len(bytes128)%8
+
 	for i := 0; i < numWords; i++ {
-		k := (numWords - 1) - i
-		b8 := bytes128[k*8 : (k+1)*8]
+		b8 := make([]byte, 8)
+		start := len(bytes128) - i*8
+		end := start - 8
+		if end < 0 {
+			end = 0
+		}
+		for j := 0; j < start-end; j++ {
+			b8[7-j] = bytes128[start-j-1]
+		}
 		x.words[INT1024WORDS-1-i] = Word(binary.BigEndian.Uint64(b8))
 	}
 
