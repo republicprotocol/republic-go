@@ -5,7 +5,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	. "github.com/republicprotocol/republic-go/stackint"
-	"github.com/republicprotocol/republic-go/stackint/matchers"
 )
 
 var zero = ZERO
@@ -23,10 +22,6 @@ var twoPow1023 = TWOPOW1023
 var max = MAXINT1024
 
 func TC(in ...interface{}) []interface{} {
-	return in
-}
-
-func TCs(in ...[]interface{}) [][]interface{} {
 	return in
 }
 
@@ -62,12 +57,23 @@ var _ = Describe("Int1024", func() {
 				TC("0x00", zero),
 				TC("0x00", zero),
 				TC("0xFF", FromUint64(255)),
+				TC("0xff", FromUint64(255)),
 				TC("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137215", max),
+			}
+			for _, tc := range cases {
+				Ω(FromString(tc[0].(string))).Should(Equal(tc[1]))
+			}
+
+		})
+
+		It("should return the right result for 1024 bit numbers", func() {
+			cases := [][]interface{}{
+				TC("ff", Panic()),
 				TC("NOT A STRING", Panic()),
 				TC("1234i", Panic()),
 			}
 			for _, tc := range cases {
-				Ω(func() Int1024 { return FromString(tc[0].(string)) }).Should(matchers.EqualOrPanic(tc[1]))
+				Ω(func() Int1024 { return FromString(tc[0].(string)) }).Should(Panic())
 			}
 		})
 	})
