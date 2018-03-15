@@ -28,6 +28,11 @@ type Client interface {
 	BalanceAt(ctx context.Context, contract common.Address, blockNumber *big.Int) (*big.Int, error)
 }
 
+const (
+	mainnet = "mainnet"
+	ropsten = "ropsten"
+)
+
 // ClientDetails contains the simulated client and the contracts deployed to it
 type ClientDetails struct {
 	Client     Client
@@ -36,19 +41,30 @@ type ClientDetails struct {
 }
 
 // FromURI will connect to a provided RPC uri
-func FromURI(uri string) (ClientDetails, error) {
-	if uri == "" {
+func FromURI(uri string, chain string) (ClientDetails, error) {
+	if uri == "" && chain == ropsten {
 		uri = "https://ropsten.infura.io/"
+	} else if uri == "" && chain == mainnet {
+		uri = "https://mainnet.infura.io/"
+	} else {
+		panic("please provide a valid uri/chain")
 	}
+
 	client, err := ethclient.Dial(uri)
 	if err != nil {
 		return ClientDetails{}, err
 	}
-	return ClientDetails{
-		Client:     client,
-		RenAddress: common.HexToAddress("0xe518555710bbf765cadf0aad26d41407031677de"),
-		DNRAddress: common.HexToAddress("0x2F93899d2F9155E69764e22e17E0162f53Ce545B"),
-	}, nil
+
+	if chain == mainnet {
+		panic("unimplemented")
+	} else {
+		return ClientDetails{
+			Client:     client,
+			RenAddress: common.HexToAddress("0xe518555710bbf765cadf0aad26d41407031677de"),
+			DNRAddress: common.HexToAddress("0x2F93899d2F9155E69764e22e17E0162f53Ce545B"),
+		}, nil
+	}
+
 }
 
 // PatchedWaitMined waits for tx to be mined on the blockchain.

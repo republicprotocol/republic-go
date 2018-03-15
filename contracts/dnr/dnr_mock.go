@@ -40,47 +40,47 @@ func NewMockDarkNodeRegistrar() (DarkNodeRegistrar, error) {
 	return mockDnr, nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) Register(_darkNodeID []byte, _publicKey []byte, _bond *big.Int) (*types.Transaction, error) {
-	isRegistered, _ := mockDnr.IsDarkNodeRegistered(_darkNodeID)
-	isPending, _ := mockDnr.IsDarkNodePendingRegistration(_darkNodeID)
+func (mockDnr *MockDarkNodeRegistrar) Register(darkNodeID []byte, publicKey []byte, bond *big.Int) (*types.Transaction, error) {
+	isRegistered, _ := mockDnr.IsDarkNodeRegistered(darkNodeID)
+	isPending, _ := mockDnr.IsDarkNodePendingRegistration(darkNodeID)
 	if isRegistered || isPending {
 		return nil, errors.New("Must not be registered to register")
 	}
-	mockDnr.toRegister = append(mockDnr.toRegister, _darkNodeID)
+	mockDnr.toRegister = append(mockDnr.toRegister, darkNodeID)
 	return nil, nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) Deregister(_darkNodeID []byte) (*types.Transaction, error) {
+func (mockDnr *MockDarkNodeRegistrar) Deregister(darkNodeID []byte) (*types.Transaction, error) {
 	for i, id := range mockDnr.toRegister {
-		if string(_darkNodeID) == string(id) {
+		if string(darkNodeID) == string(id) {
 			mockDnr.toDeregister[i] = mockDnr.toDeregister[len(mockDnr.toDeregister)-1]
 			mockDnr.toDeregister = mockDnr.toDeregister[:len(mockDnr.toDeregister)-1]
 			return nil, nil
 		}
 	}
-	if isRegistered, _ := mockDnr.IsDarkNodeRegistered(_darkNodeID); !isRegistered {
+	if isRegistered, _ := mockDnr.IsDarkNodeRegistered(darkNodeID); !isRegistered {
 		return nil, errors.New("Must be registered to deregister")
 	}
-	mockDnr.toDeregister = append(mockDnr.toRegister, _darkNodeID)
+	mockDnr.toDeregister = append(mockDnr.toRegister, darkNodeID)
 	return nil, nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) GetBond(_darkNodeID []byte) (*big.Int, error) {
+func (mockDnr *MockDarkNodeRegistrar) GetBond(darkNodeID []byte) (*big.Int, error) {
 	return big.NewInt(86000), nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) IsDarkNodeRegistered(_darkNodeID []byte) (bool, error) {
+func (mockDnr *MockDarkNodeRegistrar) IsDarkNodeRegistered(darkNodeID []byte) (bool, error) {
 	for _, id := range mockDnr.registered {
-		if string(_darkNodeID) == string(id) {
+		if string(darkNodeID) == string(id) {
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) IsDarkNodePendingRegistration(_darkNodeID []byte) (bool, error) {
+func (mockDnr *MockDarkNodeRegistrar) IsDarkNodePendingRegistration(darkNodeID []byte) (bool, error) {
 	for _, id := range mockDnr.toRegister {
-		if string(_darkNodeID) == string(id) {
+		if string(darkNodeID) == string(id) {
 			return true, nil
 		}
 	}
@@ -123,17 +123,17 @@ func (mockDnr *MockDarkNodeRegistrar) Epoch() (*types.Transaction, error) {
 	return nil, nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) GetCommitment(_darkNodeID []byte) ([32]byte, error) {
+func (mockDnr *MockDarkNodeRegistrar) GetCommitment(darkNodeID []byte) ([32]byte, error) {
 	var nil32 [32]byte
 	return nil32, nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) GetOwner(_darkNodeID []byte) (common.Address, error) {
+func (mockDnr *MockDarkNodeRegistrar) GetOwner(darkNodeID []byte) (common.Address, error) {
 	var nil20 [20]byte
 	return nil20, nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) GetPublicKey(_darkNodeID []byte) ([]byte, error) {
+func (mockDnr *MockDarkNodeRegistrar) GetPublicKey(darkNodeID []byte) ([]byte, error) {
 	return nil, nil
 }
 
@@ -149,13 +149,13 @@ func (mockDnr *MockDarkNodeRegistrar) MinimumEpochInterval() (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) Refund(_darkNodeID []byte) (*types.Transaction, error) {
+func (mockDnr *MockDarkNodeRegistrar) Refund(darkNodeID []byte) (*types.Transaction, error) {
 	return nil, nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) WaitUntilRegistration(_darkNodeID []byte) error {
+func (mockDnr *MockDarkNodeRegistrar) WaitUntilRegistration(darkNodeID []byte) error {
 	for {
-		isRegistered, err := mockDnr.IsDarkNodeRegistered(_darkNodeID)
+		isRegistered, err := mockDnr.IsDarkNodeRegistered(darkNodeID)
 		if err != nil {
 			return err
 		}
