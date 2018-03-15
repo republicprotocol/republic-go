@@ -28,9 +28,11 @@ type Client interface {
 	BalanceAt(ctx context.Context, contract common.Address, blockNumber *big.Int) (*big.Int, error)
 }
 
+type Chain string; 
+
 const (
-	mainnet = "mainnet"
-	ropsten = "ropsten"
+	ChainMainnet : Chain = "mainnet"
+	ChainRopsten : Chain = "ropsten"
 )
 
 // ClientDetails contains the simulated client and the contracts deployed to it
@@ -41,13 +43,11 @@ type ClientDetails struct {
 }
 
 // FromURI will connect to a provided RPC uri
-func FromURI(uri string, chain string) (ClientDetails, error) {
-	if uri == "" && chain == ropsten {
-		uri = "https://ropsten.infura.io/"
-	} else if uri == "" && chain == mainnet {
+func FromURI(uri string, chain Chain) (ClientDetails, error) {
+	if uri == "" && chain == ChainMainnet {
 		uri = "https://mainnet.infura.io/"
 	} else {
-		panic("please provide a valid uri/chain")
+		uri = "https://ropsten.infura.io/"
 	}
 
 	client, err := ethclient.Dial(uri)
@@ -55,7 +55,7 @@ func FromURI(uri string, chain string) (ClientDetails, error) {
 		return ClientDetails{}, err
 	}
 
-	if chain == mainnet {
+	if chain == ChainMainnet {
 		panic("unimplemented")
 	} else {
 		return ClientDetails{
