@@ -124,13 +124,11 @@ func (mockDnr *MockDarkNodeRegistrar) Epoch() (*types.Transaction, error) {
 }
 
 func (mockDnr *MockDarkNodeRegistrar) GetCommitment(darkNodeID []byte) ([32]byte, error) {
-	var nil32 [32]byte
-	return nil32, nil
+	return [32]byte{}, nil
 }
 
 func (mockDnr *MockDarkNodeRegistrar) GetOwner(darkNodeID []byte) (common.Address, error) {
-	var nil20 [20]byte
-	return nil20, nil
+	return [20]byte{}, nil
 }
 
 func (mockDnr *MockDarkNodeRegistrar) GetPublicKey(darkNodeID []byte) ([]byte, error) {
