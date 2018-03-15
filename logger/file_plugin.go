@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -62,50 +63,69 @@ func (plugin *FilePlugin) Stop() error {
 	return plugin.file.Close()
 }
 
-// Info implements the Plugin interface.
-func (plugin *FilePlugin) Info(tag, message string) error {
+// Log implements the Plugin interface.
+func (plugin *FilePlugin) Log(log Log) error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
 
 	if plugin.file == nil {
 		return fmt.Errorf("cannot write logs to a nil file")
 	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [info] (%s) %s\n", time.Now().Format("2006/01/02 15:04:05 "), tag, message))
-	return err
+	return json.NewEncoder(file).Encode(log)
 }
 
 // Warn implements the Plugin interface.
-func (plugin *FilePlugin) Warn(tag, message string) error {
+func (plugin *FilePlugin) Warn(message string) error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
 
 	if plugin.file == nil {
 		return fmt.Errorf("cannot write logs to a nil file")
 	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [warn] (%s) %s\n", time.Now().Format("2006/01/02 15:04:05 "), tag, message))
-	return err
+	return json.NewEncoder(file).Encode(Log{
+		Timestamp: time.Now(),
+		Type:      Warn,
+		EventType: Generic,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
 }
 
 // Error implements the Plugin interface.
-func (plugin *FilePlugin) Error(tag, message string) error {
+func (plugin *FilePlugin) Error(message string) error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
 
 	if plugin.file == nil {
 		return fmt.Errorf("cannot write logs to a nil file")
 	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [error] (%s) %s\n", time.Now().Format("2006/01/02 15:04:05 "), tag, message))
-	return err
+	return json.NewEncoder(file).Encode(Log{
+		Timestamp: time.Now(),
+		Type:      Info,
+		EventType: Generic,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
 }
 
 // Usage implements the Plugin interface.
-func (plugin *FilePlugin) Usage(cpu float32, memory, network int32) error {
+func (plugin *FilePlugin) Usage(cpu, memory float64, network int64) error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
 
 	if plugin.file == nil {
 		return fmt.Errorf("cannot write logs to a nil file")
 	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [info] ("+TagUsage+") cpu = %.3f MHz; memory = %d MB; network = %d KB\n", time.Now().Format("2006/01/02 15:04:05 "), cpu, memory, network))
-	return err
+	return json.NewEncoder(file).Encode(Log{
+		Timestamp: time.Now(),
+		Type:      Info,
+		EventType: Usage,
+		Event: UsageEvent{
+			CPU:     cpu,
+			Memory:  memory,
+			Network: network,
+		},
+	})
 }

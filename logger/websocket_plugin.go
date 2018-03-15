@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,10 +20,7 @@ type WebSocketPlugin struct {
 	username string
 	password string
 
-	info  chan interface{}
-	err   chan Message
-	warn  chan interface{}
-	usage chan Usage
+	logs chan Log
 }
 
 type WebSocketPluginOptions struct {
@@ -39,10 +37,7 @@ func NewWebSocketPlugin(webSocketPluginOptions WebSocketPluginOptions) Plugin {
 		port:          webSocketPluginOptions.Port,
 		username:      webSocketPluginOptions.Username,
 		password:      webSocketPluginOptions.Password,
-		info:          make(chan interface{}, 1),
-		err:           make(chan Message, 1),
-		warn:          make(chan interface{}, 1),
-		usage:         make(chan Usage, 1),
+		logs:          make(chan Log, 100),
 	}
 	return plugin
 }
@@ -58,33 +53,30 @@ func (plugin *WebSocketPlugin) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The deadlines and intervals for messaging over the socket.
-	writeDeadline := 30 * time.Second // We must write notifications within 10 seconds
+	// The deadlines and intervals for messaging over the socket
+	writeDeadline := 10 * time.Second // We must write notifications within 10 seconds
 	pingInterval := 30 * time.Second  // We must ping every 30 seconds
 	pongInterval := 60 * time.Second  // We expect a pong every 60 seconds
 
-	// Start the pinger.
+	// Start the pinger
 	ping := time.NewTicker(pingInterval)
 	defer func() {
 		ping.Stop()
 		conn.Close()
 	}()
 
-	// Start the ponger.
+	// Start the ponger
 	conn.SetReadDeadline(time.Now().Add(pongInterval))
 	conn.SetPongHandler(func(string) error {
 		conn.SetReadDeadline(time.Now().Add(pongInterval))
 		return nil
 	})
 
-	// Broadcast messages to the WebSocket
+	// Broadcast logs to the WebSocket
 	for {
-		var val interface{}
+		var val Log
 		select {
-		case val = <-plugin.usage:
-		case val = <-plugin.err:
-		case val = <-plugin.info:
-		case val = <-plugin.warn:
+		case val = <-plugin.logs:
 		case <-ping.C:
 			conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 			if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
@@ -118,84 +110,12 @@ func (plugin *WebSocketPlugin) Stop() error {
 	return plugin.server.Shutdown(nil)
 }
 
-type Message struct {
-	Time    string
-	Type    string
-	Message string
-}
-
-func (plugin *WebSocketPlugin) Info(tag, message string) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	event := Event{
-		Type: "event",
-		Time: time.Now(),
-		Data: EventData{
-			Tag:     tag,
-			Level:   "INFO",
-			Message: message,
-		},
+// Log implements the Plugin interface.
+func (plugin *WebSocketPlugin) Log(log Log) error {
+	select {
+	case plugin.logs <- log:
+	default:
+		return errors.New("cannot write to websocket: log queue is full")
 	}
-	if len(plugin.info) == 1 {
-		<-plugin.info
-	}
-	plugin.info <- event
-
-	return nil
-}
-
-func (plugin *WebSocketPlugin) Error(tag, message string) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	msg := Message{
-		time.Now().Format("2006/01/02 15:04:05 "), tag, message,
-	}
-	if len(plugin.err) == 1 {
-		<-plugin.err
-	}
-	plugin.err <- msg
-	return nil
-}
-
-func (plugin *WebSocketPlugin) Warn(tag, message string) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	event := Event{
-		Type: "event",
-		Time: time.Now(),
-		Data: EventData{
-			Tag:     tag,
-			Level:   "WARN",
-			Message: message,
-		},
-	}
-	if len(plugin.warn) == 1 {
-		<-plugin.warn
-	}
-	plugin.warn <- event
-
-	return nil
-}
-
-func (plugin *WebSocketPlugin) Usage(cpu float32, memory, network int32) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	usage := Usage{
-		Type: "usage",
-		Time: time.Now(),
-		Data: UsageData{
-			CPU:     cpu,
-			Memory:  memory,
-			Network: network,
-		},
-	}
-	if len(plugin.usage) == 1 {
-		<-plugin.usage
-	}
-	plugin.usage <- usage
 	return nil
 }
