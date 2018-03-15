@@ -23,7 +23,7 @@ func main() {
 	time.Sleep(time.Minute)
 
 	// Load configuration path from the command line
-	configFilename := flag.String("config", "/home/.darknode/config.json", "Path to the JSON configuration file")
+	configFilename := flag.String("config", "config.json", "Path to the JSON configuration file")
 	flag.Parse()
 
 	// Load the default configuration
@@ -96,7 +96,7 @@ func LoadConfig(filename string) (*node.Config, error) {
 
 func CreateDarkNodeRegistrar(key *keystore.Key) (dnr.DarkNodeRegistrar, error) {
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
-	client, err := connection.FromURI("https://ropsten.infura.io/")
+	client, err := connection.FromURI("https://ropsten.infura.io/",connection.ChainRopsten)
 	if err != nil {
 		return nil, err
 	}
