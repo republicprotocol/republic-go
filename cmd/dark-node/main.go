@@ -23,7 +23,7 @@ func main() {
 	time.Sleep(time.Minute)
 
 	// Load configuration path from the command line
-	configFilename := flag.String("config", "config.json", "Path to the JSON configuration file")
+	configFilename := flag.String("config", "/home/.darknode/config.json", "Path to the JSON configuration file")
 	flag.Parse()
 
 	// Load the default configuration
