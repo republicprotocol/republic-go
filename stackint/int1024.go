@@ -31,7 +31,7 @@ type Int1024 struct {
 
 // FromUint64 returns a new Int1024 from a Word
 func FromUint64(n uint64) Int1024 {
-	z := zero()
+	z := Zero()
 	z.words[INT1024WORDS-1] = Word(n)
 	return z
 }
@@ -49,7 +49,7 @@ func (x *Int1024) ToUint64() uint64 {
 
 // FromString returns a new Int1024 from a string
 func FromString(number string) Int1024 {
-	self := zero()
+	self := Zero()
 
 	// Base to convert from
 	base := 10
@@ -66,6 +66,10 @@ func FromString(number string) Int1024 {
 
 	// Length of string
 	length := len(number)
+
+	if length == 0 {
+		panic("invalid number")
+	}
 
 	// Break up into blocks of size 19 (log10(2 ** 64))
 	blockSize := 1
@@ -84,7 +88,7 @@ func FromString(number string) Int1024 {
 	shift := FromUint64(uint64(base))
 	blockSizeInt := FromUint64(uint64(blockSize))
 	shift = shift.Exp(&blockSizeInt)
-	shiftAcc := ONE
+	shiftAcc := One()
 
 	// Loop through each block. Multiply block by (10**19)**i and add to number.
 	for i := 0; i < count; i++ {
@@ -152,7 +156,7 @@ func (x *Int1024) ToBytes() []byte {
 // FromBytes deserializes an array of 128 bytes to an Int1024 (Big Endian)
 func FromBytes(bytes128 []byte) Int1024 {
 
-	x := zero()
+	x := Zero()
 
 	numWords := len(bytes128) / 8
 	if len(bytes128)%8 != 0 {
@@ -196,7 +200,7 @@ func (x *Int1024) ToLittleEndianBytes() []byte {
 // FromLittleEndianBytes deserializes an array of 128 bytes to an Int1024 (LittleBig Endian)
 func FromLittleEndianBytes(bytes128 []byte) Int1024 {
 
-	x := zero()
+	x := Zero()
 
 	numWords := len(bytes128) / 8
 
@@ -219,28 +223,34 @@ func (x *Int1024) Clone() Int1024 {
 	}
 }
 
-// Words returns the internal [16]Word that stores the value of x
+// Words returns a clone of the [16]Word used by x as its internal representation
 func (x *Int1024) Words() [INT1024WORDS]Word {
-	return x.words
+	var words [INT1024WORDS]Word
+	for i := 0; i < INT1024WORDS; i++ {
+		words[i] = x.words[i]
+	}
+	return words
 }
 
 // ToBinary returns the binary representation of x as a string
 func (x *Int1024) ToBinary() string {
 	str := ""
-	for i := 0; i < INT1024WORDS; i++ {
-		str = fmt.Sprintf(str+"%064b", x.words[i])
+	started := false
+	for i := 0; i < INT1024WORDS-1; i++ {
+		if x.words[0] == 0 && !started {
+			continue
+		}
+		started = true
+		str = str + fmt.Sprintf("%064b", x.words[i])
 	}
-	stripped := strings.TrimLeft(str, "0")
-	if stripped == "" {
-		return "0"
-	}
-	return stripped
+	str = str + fmt.Sprintf("%b", x.words[INT1024WORDS-1])
+	return str
 }
 
 /* CONSTANTS */
 
-// zero returns a new Int1024 representing 0
-func zero() Int1024 {
+// Zero returns a new Int1024 representing 0
+func Zero() Int1024 {
 	var words [INT1024WORDS]Word
 	// for i := 0; i < INT1024WORDS; i++ {
 	// 	words[i] = 0
@@ -250,14 +260,16 @@ func zero() Int1024 {
 	}
 }
 
-// ZERO is the Int1024 that represents 0
-var ZERO = zero()
+// One is the Int1024 that represents 1
+var One = func() Int1024 { return FromUint64(1) }
 
-// ONE is the Int1024 that represents 1
-var ONE = FromUint64(1)
+// Two is the Int1024 that represents 2
+var Two = func() Int1024 { return FromUint64(2) }
 
-// TWO is the Int1024 that represents 2
-var TWO = FromUint64(2)
+// Do not call overwriting functions on these!
+var zero = Zero()
+var one = One()
+var two = Two()
 
 // maxInt returns a new Int1024 representing 2**1024 - 1
 func maxInt() Int1024 {
@@ -271,7 +283,7 @@ func maxInt() Int1024 {
 }
 
 // MAXINT1024 is the Int1024 that represents 2**1024 - 1
-var MAXINT1024 = maxInt()
+var MAXINT1024 = func() Int1024 { return maxInt() }
 
 // maxInt returns a new Int1024 representing 2**1024 - 1
 func twoPow1023() Int1024 {
@@ -283,4 +295,4 @@ func twoPow1023() Int1024 {
 }
 
 // TWOPOW1023 is the Int1024 that represents 2**1023
-var TWOPOW1023 = twoPow1023()
+var TWOPOW1023 = func() Int1024 { return twoPow1023() }

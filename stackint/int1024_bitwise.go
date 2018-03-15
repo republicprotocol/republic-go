@@ -4,13 +4,13 @@ package stackint
 func (x *Int1024) ShiftLeft(n int) Int1024 {
 	z := x.Clone()
 	for i := 0; i < n; i++ {
-		z.overwritingShiftLeftByOne()
+		z.ShiftLeftInPlace()
 	}
 	return z
 }
 
-// shiftLeftByOne shifts to the left x by one
-func (x *Int1024) overwritingShiftLeftByOne() {
+// ShiftLeftInPlace shifts to the left x by one
+func (x *Int1024) ShiftLeftInPlace() {
 	overflow := Word(0)
 	for i := INT1024WORDS - 1; i >= 0; i-- {
 		// Calculate if word overflows into next word
@@ -30,13 +30,13 @@ func (x *Int1024) overwritingShiftLeftByOne() {
 func (x *Int1024) ShiftRight(n int) Int1024 {
 	z := x.Clone()
 	for i := 0; i < n; i++ {
-		z.overwritingShiftRightByOne()
+		z.ShiftRightInPlace()
 	}
 	return z
 }
 
-// shiftRightByOne shifts to the right x by one
-func (x *Int1024) overwritingShiftRightByOne() {
+// ShiftRightInPlace shifts to the right x by one
+func (x *Int1024) ShiftRightInPlace() {
 	overflow := Word(0)
 	for i := 0; i < INT1024WORDS; i++ {
 		// Calculate if word overflows into next word
@@ -54,7 +54,7 @@ func (x *Int1024) overwritingShiftRightByOne() {
 
 // AND returns x&y
 func (x *Int1024) AND(y *Int1024) Int1024 {
-	z := zero()
+	z := Zero()
 	for i := 0; i < INT1024WORDS; i++ {
 		z.words[i] = x.words[i] & y.words[i]
 	}
@@ -63,7 +63,7 @@ func (x *Int1024) AND(y *Int1024) Int1024 {
 
 // OR returns x|y
 func (x *Int1024) OR(y *Int1024) Int1024 {
-	z := zero()
+	z := Zero()
 	for i := 0; i < INT1024WORDS; i++ {
 		z.words[i] = x.words[i] | y.words[i]
 	}
@@ -72,7 +72,7 @@ func (x *Int1024) OR(y *Int1024) Int1024 {
 
 // XOR returns x&y
 func (x *Int1024) XOR(y *Int1024) Int1024 {
-	z := zero()
+	z := Zero()
 	for i := 0; i < INT1024WORDS; i++ {
 		z.words[i] = x.words[i] ^ y.words[i]
 	}
@@ -81,9 +81,28 @@ func (x *Int1024) XOR(y *Int1024) Int1024 {
 
 // NOT returns ~x
 func (x *Int1024) NOT() Int1024 {
-	z := zero()
+	z := Zero()
 	for i := 0; i < INT1024WORDS; i++ {
 		z.words[i] = ^x.words[i]
 	}
 	return z
+}
+
+// BitLength returns the number bits required to represent x (equivalent to len(x.ToBinary()))
+func (x *Int1024) BitLength() int {
+	for i := 0; i < INT1024WORDS; i++ {
+		if x.words[i] > 0 {
+			word := x.words[i]
+			wordBits := 0
+			for word > 0 {
+				word /= 2
+				wordBits++
+			}
+			if wordBits == 0 {
+				wordBits = 1
+			}
+			return (INT1024WORDS-1-i)*64 + wordBits
+		}
+	}
+	return 1
 }

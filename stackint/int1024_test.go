@@ -7,7 +7,7 @@ import (
 	. "github.com/republicprotocol/republic-go/stackint"
 )
 
-var zero = ZERO
+var zero = Zero()
 var one = FromUint64(1)
 var two = FromUint64(2)
 var three = FromUint64(3)
@@ -18,8 +18,8 @@ var seven = FromUint64(7)
 var eleven = FromUint64(11)
 var twelve = FromUint64(12)
 var oneWord = FromUint64(WORDMAX)
-var twoPow1023 = TWOPOW1023
-var max = MAXINT1024
+var twoPow1023 = TWOPOW1023()
+var max = MAXINT1024()
 
 func TC(in ...interface{}) []interface{} {
 	return in
@@ -27,7 +27,7 @@ func TC(in ...interface{}) []interface{} {
 
 var _ = Describe("Int1024", func() {
 
-	Context("when converting from uint64s", func() {
+	Context("when converting from and to uint64s", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 			cases := []uint64{
 				0,
@@ -46,6 +46,10 @@ var _ = Describe("Int1024", func() {
 				Ω(fromInt.ToUint64()).Should(Equal(n))
 			}
 		})
+
+		It("should panic when converting a number bigger than MAX to uint64", func() {
+			Ω(func() { max.ToUint64() }).Should(Panic())
+		})
 	})
 
 	Context("when converting from string", func() {
@@ -58,6 +62,10 @@ var _ = Describe("Int1024", func() {
 				TC("0x00", zero),
 				TC("0xFF", FromUint64(255)),
 				TC("0xff", FromUint64(255)),
+				TC("0b0", zero),
+				TC("0b00", zero),
+				TC("0b01", one),
+				TC("0b1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111", max),
 				TC("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137215", max),
 			}
 			for _, tc := range cases {
@@ -68,9 +76,13 @@ var _ = Describe("Int1024", func() {
 
 		It("should return the right result for 1024 bit numbers", func() {
 			cases := [][]interface{}{
-				TC("ff", Panic()),
-				TC("NOT A STRING", Panic()),
-				TC("1234i", Panic()),
+				TC("ff"),
+				TC("NOT A STRING"),
+				TC("1234i"),
+				TC("0bA"),
+				TC("0x"),
+				TC("0b"),
+				TC(""),
 			}
 			for _, tc := range cases {
 				Ω(func() { FromString(tc[0].(string)) }).Should(Panic())
@@ -124,6 +136,19 @@ var _ = Describe("Int1024", func() {
 	})
 
 	Context("when serializing to bytes", func() {
+		It("should return the right result for 1024 bit numbers", func() {
+			array := []Int1024{zero, one, two, three, four, five, six, seven, eleven, twelve, oneWord, max}
+			for _, num := range array {
+				actual := FromBytes(num.ToBytes())
+				Ω(actual.String()).Should(Equal(num.String()))
+
+				actual = FromLittleEndianBytes(num.ToLittleEndianBytes())
+				Ω(actual.String()).Should(Equal(num.String()))
+			}
+		})
+	})
+
+	Context("when retrieving words", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 			array := []Int1024{zero, one, two, three, four, five, six, seven, eleven, twelve, oneWord, max}
 			for _, num := range array {

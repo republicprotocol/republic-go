@@ -12,7 +12,17 @@ func (x *Int1024) Equals(y *Int1024) bool {
 
 // IsZero returns true of x == 0
 func (x *Int1024) IsZero() bool {
-	return x.Equals(&ZERO)
+	return x.EqualsUint64(0)
+}
+
+// EqualsUint64 returns true of x represents the uint64 n
+func (x *Int1024) EqualsUint64(n uint64) bool {
+	for i := 0; i < INT1024WORDS-1; i++ {
+		if x.words[i] != 0 {
+			return false
+		}
+	}
+	return x.words[INT1024WORDS-1] == Word(n)
 }
 
 // Cmp returns -1 if x<y, 0 if x=y, 1 if x>y
