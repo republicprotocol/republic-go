@@ -6,12 +6,15 @@ import (
 
 // Random returns a new
 func Random(rand io.Reader, max *Int1024) (n Int1024, err error) {
-	n = max.Sub(&ONE)
+	if max.IsZero() {
+		return Zero(), nil
+	}
+	n = max.Sub(&one)
 	// bitLen is the maximum bit length needed to encode a value < max.
-	bitLen := len(n.ToBinary())
+	bitLen := n.BitLength()
 	if bitLen == 0 {
 		// the only valid result is 0
-		return ZERO, nil
+		return Zero(), nil
 	}
 	// k is the maximum byte length needed to encode a value < max.
 	k := (bitLen + 7) / 8
@@ -26,7 +29,7 @@ func Random(rand io.Reader, max *Int1024) (n Int1024, err error) {
 	for {
 		_, err = io.ReadFull(rand, bytes)
 		if err != nil {
-			return ZERO, err
+			return Zero(), err
 		}
 
 		// Clear bits in the first byte to increase the probability

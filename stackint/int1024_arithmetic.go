@@ -8,7 +8,7 @@ func (x *Int1024) Add(y *Int1024) Int1024 {
 	// expected := big.NewInt(0).Add(xB, yB)
 
 	z := x.Clone()
-	z.overwritingAdd(y)
+	z.Inc(y)
 
 	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
 	// if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
@@ -18,8 +18,8 @@ func (x *Int1024) Add(y *Int1024) Int1024 {
 	return z
 }
 
-// overwritingAdd sets x to x+y (used for multiplication)
-func (x *Int1024) overwritingAdd(y *Int1024) {
+// Inc sets x to x+y (used for multiplication)
+func (x *Int1024) Inc(y *Int1024) {
 	var overflow Word
 	overflow = 0
 	for i := INT1024WORDS - 1; i >= 0; i-- {
@@ -40,33 +40,27 @@ func (x *Int1024) overwritingAdd(y *Int1024) {
 // Sub returns x-y
 func (x *Int1024) Sub(y *Int1024) Int1024 {
 
-	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	// expected := big.NewInt(0).Sub(xB, yB)
+	z := x.Clone()
+	z.Dec(y)
 
-	z := zero()
+	return z
+}
 
-	var overflow Word
-	overflow = 0
+// Dec sets x to x-y
+func (x *Int1024) Dec(y *Int1024) {
+	overflow := Word(0)
 	for i := INT1024WORDS - 1; i >= 0; i-- {
-		z.words[i] = x.words[i] - y.words[i] - overflow
+		newOverflow := Word(0)
 		if x.words[i] < y.words[i]+overflow || y.words[i] == WORDMAX && overflow == 1 {
-			overflow = 1
-		} else {
-			overflow = 0
+			newOverflow = 1
 		}
+		x.words[i] = x.words[i] - y.words[i] - overflow
+		overflow = newOverflow
 	}
 
 	if overflow == 1 {
 		// WARNING: Overflow occured
 	}
-
-	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
-	// 	panic(fmt.Sprintf("Subtraction failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
-	// }
-
-	return z
 }
 
 // Mul returns x*y
@@ -79,7 +73,7 @@ func (x *Int1024) Mul(y *Int1024) Int1024 {
 	// Naïve inplementation!
 	// Uses up to 16384 uint64 additions (worst case)
 	// TODO: Rewrite using more efficient algorithm
-	z := zero()
+	z := Zero()
 	shifted := x.Clone()
 
 	for i := INT1024WORDS - 1; i >= 0; i-- {
@@ -87,9 +81,9 @@ func (x *Int1024) Mul(y *Int1024) Int1024 {
 		for j := uint(0); j < WORDSIZE; j++ {
 			bit := (word >> j) & 1
 			if bit == 1 {
-				z = z.Add(&shifted)
+				z.Inc(&shifted)
 			}
-			shifted.overwritingShiftLeftByOne()
+			shifted.ShiftLeftInPlace()
 		}
 	}
 
@@ -106,36 +100,36 @@ func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 	dividend := x.Clone()
 	denom := y.Clone()
 	current := FromUint64(1)
-	answer := zero()
+	answer := Zero()
 
-	if denom.Equals(&ZERO) {
+	if denom.IsZero() {
 		panic("division by zero")
 	}
 
-	limit := MAXINT1024.Clone()
-	limit.overwritingShiftRightByOne()
+	limit := MAXINT1024()
+	limit.ShiftRightInPlace()
 	overflowed := false
 	for denom.LessThanOrEqual(&dividend) {
 		if !denom.LessThan(&limit) {
 			overflowed = true
 			break
 		}
-		denom.overwritingShiftLeftByOne()
-		current.overwritingShiftLeftByOne()
+		denom.ShiftLeftInPlace()
+		current.ShiftLeftInPlace()
 	}
 
 	if !overflowed {
-		denom.overwritingShiftRightByOne()
-		current.overwritingShiftRightByOne()
+		denom.ShiftRightInPlace()
+		current.ShiftRightInPlace()
 	}
 
-	for !current.Equals(&ZERO) {
+	for !current.IsZero() {
 		if !dividend.LessThan(&denom) {
 			dividend = dividend.Sub(&denom)
 			answer = answer.OR(&current)
 		}
-		current.overwritingShiftRightByOne()
-		denom.overwritingShiftRightByOne()
+		current.ShiftRightInPlace()
+		denom.ShiftRightInPlace()
 	}
 
 	return answer, dividend
@@ -153,11 +147,29 @@ func (x *Int1024) Mod(y *Int1024) Int1024 {
 	return mod
 }
 
-// // ModInverse returns the multiplicative inverse of x in the ring ℤ/nℤ.
-// // If x and n are not relatively prime, the result in undefined.
-// func (x *Int1024) ModInverse(n *Int1024) Int1024 {
-// 	panic("Not implemented!")
-// }
+// SubModulo returns (x - y) % n
+func (x *Int1024) SubModulo(y, n *Int1024) Int1024 {
+	switch x.Cmp(y) {
+	case 1:
+		// x - y
+		sub := x.Sub(y)
+		return sub.Mod(n)
+	case 0:
+		if n.IsZero() {
+			panic("division by zero")
+		}
+		return Zero()
+	case -1:
+		sub := y.Sub(x)
+		mod := sub.Mod(n)
+		if mod.IsZero() {
+			return mod
+		}
+		return n.Sub(&mod)
+	default:
+		panic("unexpected cmp result")
+	}
+}
 
 // ModInverse sets z to the multiplicative inverse of g in the ring ℤ/nℤ
 // and returns z. If g and n are not relatively prime, the result is undefined.
@@ -170,7 +182,7 @@ func (x *Int1024) ModInverse(n *Int1024) Int1024 {
 	/* Step X1. Initialise */
 	u1 := FromUint64(1)
 	u3 := u.Clone()
-	v1 := zero()
+	v1 := Zero()
 	v3 := v.Clone()
 	/* Remember odd/even iterations */
 	iter := 1
@@ -179,14 +191,14 @@ func (x *Int1024) ModInverse(n *Int1024) Int1024 {
 		/* Step X3. Divide and "Subtract" */
 		q, t3 := u3.DivMod(&v3)
 		tmp := q.Mul(&v1)
-		t1 := u1.Add(&tmp)
+		u1.Inc(&tmp)
 		/* Swap */
-		u1, v1, u3, v3 = v1, t1, v3, t3
+		u1, v1, u3, v3 = v1, u1, v3, t3
 		iter = -iter
 	}
 
 	/* Make sure u3 = gcd(u,v) == 1 */
-	if !u3.Equals(&ONE) {
+	if !u3.EqualsUint64(1) {
 		// return zero() /* Error: No inverse exists */
 		panic("not relatively prime")
 	}
@@ -202,17 +214,17 @@ func (x *Int1024) ModInverse(n *Int1024) Int1024 {
 // Exp returns x**y
 func (x *Int1024) Exp(y *Int1024) Int1024 {
 	if y.IsZero() {
-		return ONE
-	} else if y.Equals(&ONE) {
+		return One()
+	} else if y.EqualsUint64(1) {
 		return *x
 	} else if y.IsEven() {
 		square := x.Mul(x)
-		half := y.Div(&TWO)
+		half := y.Div(&two)
 		return square.Exp(&half)
 	}
 	square := x.Mul(x)
-	ySubOne := y.Sub(&ONE)
-	half := ySubOne.Div(&TWO)
+	ySubOne := y.Sub(&one)
+	half := ySubOne.Div(&two)
 	power := square.Exp(&half)
 	return x.Mul(&power)
 }

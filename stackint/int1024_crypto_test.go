@@ -14,18 +14,11 @@ var _ = Describe("Int1024 crypto utilities", func() {
 			Ω(FromBytes([]byte{01})).Should(Equal(FromUint64(1)))
 			Ω(FromBytes([]byte{0xFF, 0xFF})).Should(Equal(FromUint64(65535)))
 
-			for i := 0; i < 10000; i++ {
-				max := FromUint64(2)
+			for i := 1; i < 100; i++ {
+				max := FromUint64(uint64(i))
 				r, err := Random(rand.Reader, &max)
 				Ω(err).Should(BeNil())
-				Ω(r.LessThan(&max) && r.GreaterThanOrEqual(&ZERO)).Should(BeTrue())
-			}
-
-			for i := 0; i < 10000; i++ {
-				max := FromUint64(10)
-				r, err := Random(rand.Reader, &max)
-				Ω(err).Should(BeNil())
-				Ω(r.LessThan(&max) && r.GreaterThanOrEqual(&ZERO)).Should(BeTrue())
+				Ω(r.LessThan(&max) && r.GreaterThanOrEqual(&zero)).Should(BeTrue())
 			}
 		})
 	})
