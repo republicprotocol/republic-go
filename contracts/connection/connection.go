@@ -46,8 +46,8 @@ func FromURI(uri string) (ClientDetails, error) {
 	}
 	return ClientDetails{
 		Client:     client,
-		RenAddress: common.HexToAddress("0x889debfe1478971bcff387f652559ae1e0b6d34a"),
-		DNRAddress: common.HexToAddress("0x0B1148699C93cA9Cfa28f11BD581936f673F76ec"),
+		RenAddress: common.HexToAddress("0xe518555710bbf765cadf0aad26d41407031677de"),
+		DNRAddress: common.HexToAddress("0x2F93899d2F9155E69764e22e17E0162f53Ce545B"),
 	}, nil
 }
 

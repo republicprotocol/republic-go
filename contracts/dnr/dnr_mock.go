@@ -40,7 +40,7 @@ func NewMockDarkNodeRegistrar() (DarkNodeRegistrar, error) {
 	return mockDnr, nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) Register(_darkNodeID []byte, _publicKey []byte) (*types.Transaction, error) {
+func (mockDnr *MockDarkNodeRegistrar) Register(_darkNodeID []byte, _publicKey []byte, _bond *big.Int) (*types.Transaction, error) {
 	isRegistered, _ := mockDnr.IsDarkNodeRegistered(_darkNodeID)
 	isPending, _ := mockDnr.IsDarkNodePendingRegistration(_darkNodeID)
 	if isRegistered || isPending {

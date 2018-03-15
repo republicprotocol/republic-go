@@ -9,13 +9,13 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/republicprotocol/go-dark-node-registrar/contracts"
+	"github.com/republicprotocol/republic-go/contracts/bindings"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 )
 
 // DarkNodeRegistrar is the interface defining the Dark Node Registrar
 type DarkNodeRegistrar interface {
-	Register(_darkNodeID []byte, _publicKey []byte) (*types.Transaction, error)
+	Register(_darkNodeID []byte, _publicKey []byte, _bond *big.Int) (*types.Transaction, error)
 	Deregister(_darkNodeID []byte) (*types.Transaction, error)
 	Refund(_darkNodeID []byte) (*types.Transaction, error)
 	Epoch() (*types.Transaction, error)
@@ -47,18 +47,18 @@ type EthereumDarkNodeRegistrar struct {
 	client                   *connection.Client
 	auth1                    *bind.TransactOpts
 	auth2                    *bind.CallOpts
-	binding                  *contracts.DarkNodeRegistrar
-	tokenBinding             *contracts.ERC20
+	binding                  *bindings.DarkNodeRegistrar
+	tokenBinding             *bindings.ERC20
 	darkNodeRegistrarAddress common.Address
 }
 
 // NewEthereumDarkNodeRegistrar returns a Dark node registrar
-func NewEthereumDarkNodeRegistrar(context context.Context, clientDetails *connection.ClientDetails, auth1 *bind.TransactOpts, auth2 *bind.CallOpts) (DarkNodeRegistrar ,error) {
-	contract, err := contracts.NewDarkNodeRegistrar(clientDetails.DNRAddress, bind.ContractBackend(clientDetails.Client))
+func NewEthereumDarkNodeRegistrar(context context.Context, clientDetails *connection.ClientDetails, auth1 *bind.TransactOpts, auth2 *bind.CallOpts) (DarkNodeRegistrar, error) {
+	contract, err := bindings.NewDarkNodeRegistrar(clientDetails.DNRAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
 		return nil, err
 	}
-	renContract, err := contracts.NewERC20(clientDetails.RenAddress, bind.ContractBackend(clientDetails.Client))
+	renContract, err := bindings.NewERC20(clientDetails.RenAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
 		return nil, err
 	}
@@ -70,11 +70,11 @@ func NewEthereumDarkNodeRegistrar(context context.Context, clientDetails *connec
 		binding:                  contract,
 		tokenBinding:             renContract,
 		darkNodeRegistrarAddress: clientDetails.DNRAddress,
-	} , nil
+	}, nil
 }
 
 // Register registers a new dark node
-func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Register(_darkNodeID []byte, _publicKey []byte) (*types.Transaction, error) {
+func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Register(_darkNodeID []byte, _publicKey []byte, _bond *big.Int) (*types.Transaction, error) {
 	value, err := darkNodeRegistrar.binding.MinimumBond(darkNodeRegistrar.auth2)
 	if err != nil {
 		return &types.Transaction{}, err
@@ -99,7 +99,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Register(_darkNodeID []byte,
 		return &types.Transaction{}, err
 	}
 
-	txn, err := darkNodeRegistrar.binding.Register(darkNodeRegistrar.auth1, _darkNodeIDByte, _publicKey)
+	txn, err := darkNodeRegistrar.binding.Register(darkNodeRegistrar.auth1, _darkNodeIDByte, _publicKey, _bond)
 	if err == nil {
 		_, err := connection.PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, txn)
 		return txn, err
