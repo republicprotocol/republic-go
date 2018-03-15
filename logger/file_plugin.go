@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/republicprotocol/go-do"
 )
@@ -45,7 +44,6 @@ func NewFilePlugin(filePluginOptions FilePluginOptions) (Plugin, error) {
 func (plugin *FilePlugin) Start() error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
-
 	return nil
 }
 
@@ -53,7 +51,6 @@ func (plugin *FilePlugin) Start() error {
 func (plugin *FilePlugin) Stop() error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
-
 	if plugin.file == os.Stdout {
 		return nil
 	}
@@ -64,68 +61,15 @@ func (plugin *FilePlugin) Stop() error {
 }
 
 // Log implements the Plugin interface.
-func (plugin *FilePlugin) Log(log Log) error {
+func (plugin *FilePlugin) Log(l Log) error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
-
 	if plugin.file == nil {
-		return fmt.Errorf("cannot write logs to a nil file")
+		return fmt.Errorf("cannot write log to file plugin: nil file")
 	}
-	return json.NewEncoder(file).Encode(log)
-}
-
-// Warn implements the Plugin interface.
-func (plugin *FilePlugin) Warn(message string) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return fmt.Errorf("cannot write logs to a nil file")
+	if plugin.file == os.Stdout || plugin.file == os.Stderr {
+		_, err := plugin.file.WriteString(fmt.Sprintf("%s [%s] (%s) %s\n", l.Timestamp.Format("2006/01/02 15:04:05 "), l.Type, l.EventType, l.Event.String()))
+		return err
 	}
-	return json.NewEncoder(file).Encode(Log{
-		Timestamp: time.Now(),
-		Type:      Warn,
-		EventType: Generic,
-		Event: GenericEvent{
-			Message: message,
-		},
-	})
-}
-
-// Error implements the Plugin interface.
-func (plugin *FilePlugin) Error(message string) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return fmt.Errorf("cannot write logs to a nil file")
-	}
-	return json.NewEncoder(file).Encode(Log{
-		Timestamp: time.Now(),
-		Type:      Info,
-		EventType: Generic,
-		Event: GenericEvent{
-			Message: message,
-		},
-	})
-}
-
-// Usage implements the Plugin interface.
-func (plugin *FilePlugin) Usage(cpu, memory float64, network int64) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return fmt.Errorf("cannot write logs to a nil file")
-	}
-	return json.NewEncoder(file).Encode(Log{
-		Timestamp: time.Now(),
-		Type:      Info,
-		EventType: Usage,
-		Event: UsageEvent{
-			CPU:     cpu,
-			Memory:  memory,
-			Network: network,
-		},
-	})
+	return json.NewEncoder(plugin.file).Encode(l)
 }

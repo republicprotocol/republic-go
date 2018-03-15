@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -70,9 +71,9 @@ func (logger Logger) Stop() {
 }
 
 // Log an Event.
-func (logger *Logger) Log(log Log) {
+func (logger *Logger) Log(l Log) {
 	for _, plugin := range logger.Plugins {
-		if err := plugin.Log(log); err != nil {
+		if err := plugin.Log(l); err != nil {
 			log.Println(err)
 		}
 	}
@@ -155,14 +156,22 @@ const (
 
 // A Log is logged by the Logger using all available Plugins.
 type Log struct {
-	Timestamp time.Time   `json:"timestamp"`
-	Type      Type        `json:"type"`
-	EventType EventType   `json:"eventType"`
-	Event     interface{} `json:"event"`
+	Timestamp time.Time `json:"timestamp"`
+	Type      Type      `json:"type"`
+	EventType EventType `json:"eventType"`
+	Event     Event     `json:"event"`
+}
+
+type Event interface {
+	String() string
 }
 
 type GenericEvent struct {
 	Message string `json:"message"`
+}
+
+func (event GenericEvent) String() string {
+	return event.Message
 }
 
 type UsageEvent struct {
@@ -171,13 +180,25 @@ type UsageEvent struct {
 	Network int64   `json:"network"`
 }
 
+func (event UsageEvent) String() string {
+	return fmt.Sprintf("cpu = %v; memory = %v; network = %v", event.CPU, event.Memory, event.Network)
+}
+
 type OrderMatchEvent struct {
 	ID     string `json:"id"`
 	BuyID  string `json:"sellId"`
 	SellID string `json:"buyId"`
 }
 
+func (event OrderMatchEvent) String() string {
+	return fmt.Sprintf("order match = (%v, %v)", event.BuyID, event.SellID)
+}
+
 type OrderReceivedEvent struct {
 	ID         string `json:"id"`
 	FragmentID string `json:"fragmentId"`
+}
+
+func (event OrderReceivedEvent) String() string {
+	return fmt.Sprintf("order recevied = (%v)", event.ID)
 }

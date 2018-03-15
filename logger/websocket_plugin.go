@@ -111,11 +111,11 @@ func (plugin *WebSocketPlugin) Stop() error {
 }
 
 // Log implements the Plugin interface.
-func (plugin *WebSocketPlugin) Log(log Log) error {
+func (plugin *WebSocketPlugin) Log(l Log) error {
 	select {
-	case plugin.logs <- log:
+	case plugin.logs <- l:
 	default:
-		return errors.New("cannot write to websocket: log queue is full")
+		return errors.New("cannot write log to websocket plugin: log queue is full")
 	}
 	return nil
 }
