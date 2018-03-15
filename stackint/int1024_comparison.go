@@ -15,17 +15,17 @@ func (x *Int1024) IsZero() bool {
 	return x.Equals(&ZERO)
 }
 
-// LessThan returns x<y
-func (x *Int1024) LessThan(y *Int1024) bool {
+// Cmp returns -1 if x<y, 0 if x=y, 1 if x>y
+func (x *Int1024) Cmp(y *Int1024) int {
 	for i := 0; i < INT1024WORDS; i++ {
 		if x.words[i] < y.words[i] {
-			return true
+			return -1
 		}
 		if x.words[i] > y.words[i] {
-			return false
+			return +1
 		}
 	}
-	return false
+	return 0
 }
 
 // GreaterThan returns x>y
