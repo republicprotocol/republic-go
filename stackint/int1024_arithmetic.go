@@ -155,9 +155,21 @@ func (x *Int1024) Div(y *Int1024) Int1024 {
 	return div
 }
 
-// Mod returns the modulus x%y. If y is 0, a run-time panic occurs.
-func (x *Int1024) Mod(y *Int1024) Int1024 {
-	_, mod := x.DivMod(y)
+// Mod returns the modulus x%n. If n is 0, a run-time panic occurs.
+func (x *Int1024) Mod(n *Int1024) Int1024 {
+	// // Switch not needed. Is it a performance improvement?
+	// switch x.Cmp(n) {
+	// case -1:
+	// 	return x.Clone()
+	// case 0:
+	// 	return Zero()
+	// case 1:
+	// 	_, mod := x.DivMod(n)
+	// 	return mod
+	// default:
+	// 	panic("unexpected cmp result (expecting -1, 0 or 1)")
+	// }
+	_, mod := x.DivMod(n)
 	return mod
 }
 
@@ -181,7 +193,7 @@ func (x *Int1024) SubModulo(y, n *Int1024) Int1024 {
 		}
 		return n.Sub(&mod)
 	default:
-		panic("unexpected cmp result")
+		panic("unexpected cmp result (expecting -1, 0 or 1)")
 	}
 }
 
@@ -217,6 +229,28 @@ func (x *Int1024) AddModulo(y, n *Int1024) Int1024 {
 		return Y.Sub(&diff)
 	}
 	return X.Add(&Y)
+}
+
+// MulModulo returns (x*y) % n
+func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
+
+	// Not optimized
+
+	z := Zero()
+	shifted := x.Mod(n)
+
+	for i := INT1024WORDS - 1; i >= 0; i-- {
+		word := y.words[i]
+		for j := uint(0); j < WORDSIZE; j++ {
+			bit := (word >> j) & 1
+			if bit == 1 {
+				z = z.AddModulo(&shifted, n)
+			}
+			shifted = shifted.AddModulo(&shifted, n)
+		}
+	}
+
+	return z
 }
 
 // ModInverse sets z to the multiplicative inverse of g in the ring ℤ/nℤ
