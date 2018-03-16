@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -93,7 +95,16 @@ func LoadConfig(filename string) (*node.Config, error) {
 		config.NetworkOptions.MultiAddress = multiAddress
 	}
 
-	return config, err
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	if err := json.NewEncoder(file).Encode(config); err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }
 
 func CreateDarkNodeRegistrar(ethereumKey keystore.Key, ethereumRPC string) (dnr.DarkNodeRegistrar, error) {
