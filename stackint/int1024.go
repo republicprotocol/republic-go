@@ -236,14 +236,21 @@ func (x *Int1024) Words() [INT1024WORDS]Word {
 func (x *Int1024) ToBinary() string {
 	str := ""
 	started := false
-	for i := 0; i < INT1024WORDS-1; i++ {
-		if x.words[0] == 0 && !started {
+	for i := 0; i < INT1024WORDS; i++ {
+		if x.words[i] == 0 && !started {
 			continue
 		}
-		started = true
-		str = str + fmt.Sprintf("%064b", x.words[i])
+		if !started {
+			started = true
+			// First time around don't print leading zeros
+			str = str + fmt.Sprintf("%b", x.words[i])
+		} else {
+			str = str + fmt.Sprintf("%064b", x.words[i])
+		}
 	}
-	str = str + fmt.Sprintf("%b", x.words[INT1024WORDS-1])
+	if str == "" {
+		return "0"
+	}
 	return str
 }
 
