@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"encoding/hex"
+	"encoding/json"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
@@ -20,6 +22,7 @@ import (
 	"github.com/republicprotocol/republic-go/network/dht"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"google.golang.org/grpc"
@@ -144,6 +147,7 @@ func (node *DarkNode) StartServices() {
 	node.Swarm.Register(node.Server)
 	node.Dark.Register(node.Server)
 	node.Gossip.Register(node.Server)
+	go node.startAPI()
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
 		node.Logger.Error(err.Error())
@@ -160,6 +164,40 @@ func (node *DarkNode) StartUI() {
 	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
 		node.Logger.Error(err.Error())
 	}
+}
+
+func (node *DarkNode) startAPI() {
+	server := &http.Server{
+		Addr: fmt.Sprintf("%s:4000", node.Host ),
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/me", node.meHandler)
+	c := cors.Default().Handler(mux)
+	server.Handler = c
+	if err := server.ListenAndServe(); err != nil {
+		node.Logger.Error(err.Error())
+	}
+}
+
+type Registration struct {
+	NodeID     string `json:"nodeID"`
+	PublicKey  string `json:"publicKey"`
+	Address    string `json:"address"`
+	RepublicID string `json:"republicID"`
+}
+
+func (node *DarkNode) meHandler(w http.ResponseWriter, r *http.Request) {
+	data := Registration{
+		NodeID:     "0x" + hex.EncodeToString(node.NetworkOptions.MultiAddress.ID()),
+		PublicKey:  "0x" + hex.EncodeToString(append(node.Config.KeyPair.PublicKey.X.Bytes(), node.Config.KeyPair.PublicKey.Y.Bytes()...)),
+		Address:    node.Config.EthereumKey.Address.String(),
+		RepublicID: node.NetworkOptions.MultiAddress.ID().String(),
+	}
+	dataJson, err := json.Marshal(data)
+	if err != nil {
+		node.Logger.Error("fail to parse the registration details")
+	}
+	w.Write(dataJson)
 }
 
 func (node *DarkNode) Bootstrap() {
