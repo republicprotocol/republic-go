@@ -75,25 +75,14 @@ func NewEthereumDarkNodeRegistrar(context context.Context, clientDetails *connec
 
 // Register registers a new dark node
 func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Register(darkNodeID []byte, publicKey []byte, bond *big.Int) (*types.Transaction, error) {
-	value, err := darkNodeRegistrar.binding.MinimumBond(darkNodeRegistrar.auth2)
+	allowance, err := darkNodeRegistrar.tokenBinding.Allowance(darkNodeRegistrar.auth2, darkNodeRegistrar.auth1.From, darkNodeRegistrar.darkNodeRegistrarAddress)
 	if err != nil {
 		return &types.Transaction{}, err
 	}
-	balance, err := darkNodeRegistrar.tokenBinding.BalanceOf(darkNodeRegistrar.auth2, darkNodeRegistrar.auth1.From)
-	if err != nil {
-		return &types.Transaction{}, err
+	if allowance.Cmp(bond) < 0 {
+		return &types.Transaction{}, errors.New("Not enough allowance to register a node")
 	}
-	if balance.Cmp(value) < 0 {
-		return &types.Transaction{}, errors.New("Not enough balance to register a node")
-	}
-	tx, err := darkNodeRegistrar.tokenBinding.Approve(darkNodeRegistrar.auth1, darkNodeRegistrar.darkNodeRegistrarAddress, value)
-	if err != nil {
-		return tx, err
-	}
-	_, err = connection.PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
-	if err != nil {
-		return tx, err
-	}
+
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
 		return &types.Transaction{}, err

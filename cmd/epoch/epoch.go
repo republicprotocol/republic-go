@@ -4,10 +4,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -22,6 +25,11 @@ const reset = "\x1b[0m"
 const green = "\x1b[32;1m"
 const red = "\x1b[31;1m"
 
+type Secret struct {
+	PrivateKey string `json:"privateKey"`
+	Password   string `json:"password"`
+}
+
 func main() {
 	err := parseCommandLineFlags()
 	if err != nil {
@@ -34,7 +42,19 @@ func main() {
 		panic(err)
 	}
 
-	auth := bind.NewKeyedTransactor(config.EthereumKey.PrivateKey)
+	raw, err := ioutil.ReadFile("../secrets/secrets.json")
+	if err != nil {
+		panic(err)
+	}
+
+	var s Secret
+	json.Unmarshal(raw, &s)
+
+	key := s.PrivateKey
+	auth, err := bind.NewTransactor(strings.NewReader(key), s.Password)
+	if err != nil {
+		panic(err)
+	}
 
 	// Gas Price
 	auth.GasPrice = big.NewInt(6000000000)
