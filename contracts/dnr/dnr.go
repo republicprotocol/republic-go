@@ -216,19 +216,13 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Refund(darkNodeID []byte) (*
 func (darkNodeRegistrar *EthereumDarkNodeRegistrar) WaitUntilRegistration(darkNodeID []byte) error {
 	isRegistered := false
 	for !isRegistered {
-		tx, err := darkNodeRegistrar.Epoch()
-		if err != nil {
-			return err
-		}
-		_, err = connection.PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
-		if err != nil {
-			return err
-		}
-		time.Sleep(time.Minute)
+		var err error
 		isRegistered, err = darkNodeRegistrar.IsDarkNodeRegistered(darkNodeID)
 		if err != nil {
 			return err
 		}
+		time.Sleep(time.Minute)
+
 	}
 	return nil
 }

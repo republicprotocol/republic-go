@@ -243,6 +243,9 @@ func (node *DarkNode) WatchDarkOcean() {
 	err := node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
 	for err != nil {
 		node.Logger.Error(fmt.Sprintf("cannot determine registration status: %s", err.Error()))
+
+		// Wait for 5 seconds and try again
+		time.Sleep(5 * time.Second)
 		err = node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
 	}
 
