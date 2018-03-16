@@ -77,6 +77,9 @@ func generateSingleNode(i int, dir string) error {
 				logger.PluginOptions{
 					File: &logger.FilePluginOptions{Path: "stdout"},
 				},
+				logger.PluginOptions{
+					WebSocket:&logger.WebSocketPluginOptions{Host:"0.0.0.0", Port:"18515"},
+				},
 			},
 		},
 		Host:        "0.0.0.0",
