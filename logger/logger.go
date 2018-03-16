@@ -130,6 +130,18 @@ func (logger *Logger) Usage(cpu, memory float64, network uint64) {
 	})
 }
 
+// Network logs a NetworkEvent.
+func (logger *Logger) Network(ty Type, message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: Network,
+		Event: NetworkEvent{
+			Message: message,
+		},
+	})
+}
+
 // Type defines the different types of Log messages that can be sent.
 type Type string
 
@@ -201,4 +213,12 @@ type OrderReceivedEvent struct {
 
 func (event OrderReceivedEvent) String() string {
 	return fmt.Sprintf("order recevied = (%v)", event.ID)
+}
+
+type NetworkEvent struct {
+	Message string `json:"message"`
+}
+
+func (event NetworkEvent) String() string {
+	return event.Message
 }

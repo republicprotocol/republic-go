@@ -154,6 +154,8 @@ func (node *DarkNode) StartBackgroundWorkers() {
 }
 
 func (node *DarkNode) StartServices() {
+	node.Logger.Network(logger.Info, fmt.Sprintf("gRPC services listening on %s:%s", node.Host, node.Port))
+
 	node.Swarm.Register(node.Server)
 	node.Dark.Register(node.Server)
 	node.Gossip.Register(node.Server)
@@ -167,26 +169,26 @@ func (node *DarkNode) StartServices() {
 }
 
 func (node *DarkNode) StartUI() {
-	fs := http.FileServer(http.Dir("dark-node-ui"))
-	http.Handle("/", fs)
-	node.Logger.Info("Serving the Dark Node UI")
+	node.Logger.Network(logger.Info, fmt.Sprintf("UI listening on %s:%s", node.Host, "3000"))
+
+	http.Handle("/", http.FileServer(http.Dir("dark-node-ui")))
 	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
 		node.Logger.Error(err.Error())
 	}
 }
 
 func (node *DarkNode) StartAPI() {
+	node.Logger.Network(logger.Info, fmt.Sprintf("API listening on %s:%s", node.Host, "4000"))
+
 	server := &http.Server{
 		Addr: fmt.Sprintf("%s:4000", node.Host),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/me", node.meHandler)
-	c := cors.Default().Handler(mux)
-	server.Handler = c
+	server.Handler = cors.Default().Handler(mux)
 	if err := server.ListenAndServe(); err != nil {
 		node.Logger.Error(err.Error())
 	}
-
 	defer server.Close()
 }
 

@@ -96,10 +96,20 @@ func (plugin *WebSocketPlugin) Start() error {
 	mux.HandleFunc("/logs", plugin.handler)
 	plugin.server.Handler = mux
 	go func() {
-		log.Println(fmt.Sprintf("WebSocket logger listening on %s:%s", plugin.host, plugin.port))
 		if err := plugin.server.ListenAndServe(); err != nil {
 			log.Println(err)
 		}
+	}()
+	time.Sleep(time.Second)
+	go func() {
+		plugin.Log(Log{
+			Timestamp: time.Now(),
+			Type:      Info,
+			EventType: Network,
+			Event: NetworkEvent{
+				Message: fmt.Sprintf("Websocket logger listening on %s:%s", plugin.host, plugin.port),
+			},
+		})
 	}()
 	return nil
 }
