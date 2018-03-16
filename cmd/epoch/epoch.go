@@ -28,7 +28,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	clientDetails, err := connection.FromURI("https://ropsten.infura.io/")
+	clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
 	if err != nil {
 		// TODO: Handler err
 		panic(err)
@@ -39,7 +39,7 @@ func main() {
 	// Gas Price
 	auth.GasPrice = big.NewInt(6000000000)
 
-	registrar := dnr.NewDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{})
+	registrar, err := dnr.NewEthereumDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{})
 
 	minimumEpochTime, err := registrar.MinimumEpochInterval()
 	if err != nil {
@@ -56,7 +56,7 @@ func main() {
 	}
 }
 
-func callEpoch(registrar *dnr.DarkNodeRegistrar) {
+func callEpoch(registrar dnr.DarkNodeRegistrar) {
 	fmt.Printf("Calling Epoch...")
 	_, err := registrar.Epoch()
 
