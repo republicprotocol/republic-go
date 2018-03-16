@@ -25,7 +25,7 @@ import (
 
 const (
 	NumberOfBootstrapNodes = 5
-	NumberOfOrders         = 10
+	NumberOfOrders         = 50
 )
 
 var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
@@ -130,7 +130,7 @@ var _ = Describe("Dark nodes", func() {
 	// Order matching
 	for _, numberOfNodes := range []int{15} {
 		func(numberOfNodes int) {
-			Context(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
+			FContext(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
 
 				var err error
 				var nodes []*node.DarkNode
@@ -267,7 +267,7 @@ func watchDarkOcean(nodes []*node.DarkNode) {
 			nodes[i].WatchDarkOcean()
 		}(i)
 	}
-	time.Sleep(time.Duration(len(nodes)) * 10 * time.Second)
+	time.Sleep(time.Duration(len(nodes)) * 2 * time.Second)
 }
 
 func stopNodes(nodes []*node.DarkNode) {
