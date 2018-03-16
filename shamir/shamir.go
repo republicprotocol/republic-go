@@ -43,6 +43,9 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 		return nil, NewFiniteFieldError(secret)
 	}
 
+	ShouldEqual(secretBig, *secret)
+	ShouldEqual(primeBig, *prime)
+
 	// Generate K polynomial coefficients, where the first coefficient is the
 	// secret.
 	one := stackint.One()
@@ -64,6 +67,7 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 		coefficientBig := big.NewInt(0).SetBytes(coefficient.ToBytes())
 		coefficientsBig[i] = coefficientBig
 		// fmt.Println(coefficientBig)
+
 	}
 
 	// Setup big numbers so that we do not have to keep recreating them in each
@@ -80,7 +84,7 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 
 		accum := (*coefficients[0]).Clone()
 		base := stackint.FromUint64(uint64(x))
-		exp := base
+		exp := base.Clone()
 		expMod := exp.Mod(prime)
 
 		accumBig.Set(coefficientsBig[0])
@@ -94,10 +98,13 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 		ShouldEqual(expModBig, expMod)
 
 		// Evaluate the polyomial at x.
-		for i := range coefficients[1:] {
-			coefficient := coefficients[i]
+		for j := range coefficients[1:] {
+			fmt.Println(accum.String())
+			ShouldEqual(accumBig, accum)
+			fmt.Println("...")
+			coefficient := coefficients[j].Clone()
 			co := coefficient.Mul(&expMod)
-			coBig.Set(coefficientsBig[i])
+			coBig.Set(coefficientsBig[j])
 			coBig.Mul(coBig, expModBig)
 
 			ShouldEqual(coBig, co)
@@ -106,13 +113,10 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 			coBig.Mod(coBig, primeBig)
 
 			ShouldEqual(coBig, co)
-
-			accum.Inc(&co)
-			accumBig.Add(accumBig, coBig)
-
 			ShouldEqual(accumBig, accum)
 
-			accum = accum.Mod(prime)
+			accum = accum.AddModulo(&co, prime)
+			accumBig.Add(accumBig, coBig)
 			accumBig.Mod(accumBig, primeBig)
 
 			ShouldEqual(accumBig, accum)
@@ -121,7 +125,11 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 			expBig.Mul(expBig, baseBig)
 			expMod = exp.Mod(prime)
 			expModBig.Mod(expBig, primeBig)
+
+			ShouldEqual(accumBig, accum)
+			fmt.Println(accum.String())
 		}
+		fmt.Println(";;;")
 		ShouldEqual(accumBig, accum)
 		shares[x-1] = Share{
 			Key:      x,
