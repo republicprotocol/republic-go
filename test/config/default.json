@@ -33,5 +33,5 @@
     },
     "host": "0.0.0.0",
     "port": "18514",
-    "ethereum_rpc": "https://ropsten.infura.io"
+    "ethereumRPC": "https://ropsten.infura.io"
 }

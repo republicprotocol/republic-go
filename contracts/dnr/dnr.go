@@ -218,7 +218,6 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) WaitUntilRegistration(darkNo
 	for !isRegistered {
 		tx, err := darkNodeRegistrar.Epoch()
 		if err != nil {
-
 			return err
 		}
 		_, err = connection.PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
@@ -228,7 +227,6 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) WaitUntilRegistration(darkNo
 		time.Sleep(time.Minute)
 		isRegistered, err = darkNodeRegistrar.IsDarkNodeRegistered(darkNodeID)
 		if err != nil {
-
 			return err
 		}
 	}

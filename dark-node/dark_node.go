@@ -164,24 +164,6 @@ func (node *DarkNode) StartServices() {
 	if err := node.Server.Serve(listener); err != nil {
 		node.Logger.Error(err.Error())
 	}
-
-	// jointHandler := func(grpcServer *grpc.Server, httpServer http.Handler) http.Handler {
-	// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// 		grpcServer.ServeHTTP(w, r)
-	// contentType := r.Header.Get("Content-Type")
-	// if r.ProtoMajor == 2 && strings.Contains(contentType, "application/grpc") {
-	// 	grpcServer.ServeHTTP(w, r)
-	// } else {
-	// 	httpServer.ServeHTTP(w, r)
-	// }
-	// 	})
-	// }
-	// jointServer := jointHandler(node.Server, http.HandlerFunc(node.meHandler))
-
-	// node.Logger.Info(fmt.Sprintf("Listening on %s:%s", node.Host, node.Port))
-	// if err := http.ListenAndServe(fmt.Sprintf("%s:%s", node.Host, node.Port), jointHandler); err != nil {
-	// 	node.Logger.Error(err.Error())
-	// }
 }
 
 func (node *DarkNode) StartUI() {
@@ -258,7 +240,11 @@ func (node *DarkNode) Stop() {
 // this DarkNode and reconnect to all of the nodes in the pool.
 func (node *DarkNode) WatchDarkOcean() {
 	// Block until the node is registered
-	node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
+	err := node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
+	for err != nil {
+		node.Logger.Error(fmt.Sprintf("cannot determine registration status: %s", err.Error()))
+		err = node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
+	}
 
 	changes := make(chan struct{})
 	go func() {
