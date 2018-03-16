@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -21,9 +20,6 @@ import (
 )
 
 func main() {
-	// Wait for a small period of time for external configuration
-	time.Sleep(time.Minute)
-
 	// Load configuration path from the command line
 	configFilename := flag.String("config", "/home/.darknode/config.json", "Path to the JSON configuration file")
 	flag.Parse()
@@ -56,6 +52,7 @@ func main() {
 
 // LoadConfig returns a default Config object for the Falcon testnet.
 func LoadConfig(filename string) (*node.Config, error) {
+	var writeBack bool
 
 	// Load configuration file
 	config, err := node.LoadConfig(filename)
@@ -65,10 +62,12 @@ func LoadConfig(filename string) (*node.Config, error) {
 
 	// Generate our ethereum keypair
 	if config.EthereumKey.PrivateKey == nil {
+		writeBack = true
 		config.EthereumKey = *keystore.NewKeyForDirectICAP(rand.Reader)
 	}
 
 	if config.KeyPair.PrivateKey == nil {
+		writeBack = true
 		// Get an address and keypair
 		address, keyPair, err := identity.NewAddress()
 		if err != nil {
@@ -95,13 +94,15 @@ func LoadConfig(filename string) (*node.Config, error) {
 		config.NetworkOptions.MultiAddress = multiAddress
 	}
 
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	if err := json.NewEncoder(file).Encode(config); err != nil {
-		return nil, err
+	if writeBack {
+		file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
+		if err != nil {
+			return nil, err
+		}
+		defer file.Close()
+		if err := json.NewEncoder(file).Encode(config); err != nil {
+			return nil, err
+		}
 	}
 
 	return config, nil
