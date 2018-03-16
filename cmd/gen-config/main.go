@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -24,16 +25,19 @@ var bootstrapNode = []string{
 }
 
 func main() {
-	for i := 0; i < 67; i++ {
-		err := generateSingleNode(i)
+	n := flag.Int("n", 67, "Number of node configurations to generate")
+	out := flag.String("out", "./", "Output directory")
+	flag.Parse()
+
+	for i := 0; i < *n; i++ {
+		err := generateSingleNode(i, *out)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
-	log.Println("finsih")
 }
 
-func generateSingleNode(i int) error {
+func generateSingleNode(i int, dir string) error {
 	address, keyPair, err := identity.NewAddress()
 	if err != nil {
 		return err
@@ -44,7 +48,7 @@ func generateSingleNode(i int) error {
 	}
 
 	// Create default network options
-	option := network.Options{
+	options := network.Options{
 		MultiAddress:            multiAddress,
 		BootstrapMultiAddresses: make([]identity.MultiAddress, len(bootstrapNode)),
 
@@ -63,11 +67,11 @@ func generateSingleNode(i int) error {
 		if err != nil {
 			return err
 		}
-		option.BootstrapMultiAddresses[i] = multi
+		options.BootstrapMultiAddresses[i] = multi
 	}
 
 	config := &node.Config{
-		NetworkOptions: option,
+		NetworkOptions: options,
 		LoggerOptions: logger.Options{
 			Plugins: []logger.PluginOptions{
 				logger.PluginOptions{
@@ -75,12 +79,11 @@ func generateSingleNode(i int) error {
 				},
 			},
 		},
-		Host:            "0.0.0.0",
-		Port:            fmt.Sprintf("%d", 4000+i),
-		RepublicKeyPair: keyPair,
-		RSAKeyPair:      keyPair,
-		EthereumKey:     ethKey,
-		Dev:             true,
+		Host:        "0.0.0.0",
+		Port:        fmt.Sprintf("%d", 4000+i),
+		KeyPair:     keyPair,
+		EthereumKey: *ethKey,
+		EthereumRPC: "https://ropsten.infura.io",
 	}
 
 	data, err := json.Marshal(config)
@@ -88,6 +91,6 @@ func generateSingleNode(i int) error {
 		return err
 	}
 	d1 := []byte(data)
-	err = ioutil.WriteFile(fmt.Sprintf("./node-%d.json", i+1), d1, 0644)
+	err = ioutil.WriteFile(fmt.Sprintf("%s/node-%d.json", dir, i+1), d1, 0644)
 	return err
 }

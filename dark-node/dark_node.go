@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"encoding/hex"
+	"encoding/json"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
@@ -20,6 +22,7 @@ import (
 	"github.com/republicprotocol/republic-go/network/dht"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"google.golang.org/grpc"
@@ -30,6 +33,9 @@ var Prime, _ = big.NewInt(0).SetString("1797693134862315907729305190789024733617
 
 type DarkNode struct {
 	Config
+	identity.KeyPair
+	identity.ID
+	identity.Address
 
 	DeltaNotifications chan *compute.Delta
 
@@ -70,6 +76,9 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	var err error
 	node := &DarkNode{
 		Config:             config,
+		KeyPair:            config.KeyPair,
+		ID:                 config.KeyPair.ID(),
+		Address:            config.KeyPair.Address(),
 		DeltaNotifications: make(chan *compute.Delta, 100),
 	}
 
@@ -87,7 +96,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 		return nil, err
 	}
 	node.DarkPool = dark.NewPool()
-	if darkPool := node.DarkOcean.FindPool(node.Config.RepublicKeyPair.ID()); darkPool != nil {
+	if darkPool := node.DarkOcean.FindPool(node.ID); darkPool != nil {
 		node.DarkPool = darkPool
 	}
 	k := int64(node.DarkPool.Size()*2/3 + 1)
@@ -138,6 +147,7 @@ func (node *DarkNode) StartServices() {
 	node.Swarm.Register(node.Server)
 	node.Dark.Register(node.Server)
 	node.Gossip.Register(node.Server)
+	//go node.startAPI()
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
 		node.Logger.Error(err.Error())
@@ -154,6 +164,42 @@ func (node *DarkNode) StartUI() {
 	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
 		node.Logger.Error(err.Error())
 	}
+}
+
+func (node *DarkNode) startAPI() {
+	server := &http.Server{
+		Addr: fmt.Sprintf("%s:4000", node.Host ),
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/me", node.meHandler)
+	c := cors.Default().Handler(mux)
+	server.Handler = c
+	if err := server.ListenAndServe(); err != nil {
+		node.Logger.Error(err.Error())
+	}
+
+	defer server.Close()
+}
+
+type Registration struct {
+	NodeID     string `json:"nodeID"`
+	PublicKey  string `json:"publicKey"`
+	Address    string `json:"address"`
+	RepublicID string `json:"republicID"`
+}
+
+func (node *DarkNode) meHandler(w http.ResponseWriter, r *http.Request) {
+	data := Registration{
+		NodeID:     "0x" + hex.EncodeToString(node.NetworkOptions.MultiAddress.ID()),
+		PublicKey:  "0x" + hex.EncodeToString(append(node.Config.KeyPair.PublicKey.X.Bytes(), node.Config.KeyPair.PublicKey.Y.Bytes()...)),
+		Address:    node.Config.EthereumKey.Address.String(),
+		RepublicID: node.NetworkOptions.MultiAddress.ID().String(),
+	}
+	dataJson, err := json.Marshal(data)
+	if err != nil {
+		node.Logger.Error("fail to parse the registration details")
+	}
+	w.Write(dataJson)
 }
 
 func (node *DarkNode) Bootstrap() {
@@ -185,7 +231,7 @@ func (node *DarkNode) Stop() {
 // this DarkNode and reconnect to all of the nodes in the pool.
 func (node *DarkNode) WatchDarkOcean() {
 	// Block until the node is registered
-	node.DarkNodeRegistrar.WaitUntilRegistration(node.Config.RepublicKeyPair.ID())
+	node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
 
 	changes := make(chan struct{})
 	go func() {
@@ -198,7 +244,7 @@ func (node *DarkNode) WatchDarkOcean() {
 			// Find the dark pool for this node and connect to all of the dark
 			// nodes in the pool
 			node.DarkPool.RemoveAll()
-			darkPool := node.DarkOcean.FindPool(node.RepublicKeyPair.ID())
+			darkPool := node.DarkOcean.FindPool(node.ID)
 			if darkPool != nil {
 				k := int64((darkPool.Size() * 2 / 3) + 1)
 				node.DeltaBuilder.SetK(k)
@@ -220,7 +266,7 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 	}
 
 	darkPool.ForAll(func(n *dark.Node) {
-		if bytes.Equal(node.Config.RepublicKeyPair.ID(), n.ID) {
+		if bytes.Equal(node.ID, n.ID) {
 			return
 		}
 		multiAddress := n.MultiAddress()

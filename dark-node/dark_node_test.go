@@ -25,7 +25,7 @@ import (
 
 const (
 	NumberOfBootstrapNodes = 5
-	NumberOfOrders         = 20
+	NumberOfOrders         = 50
 )
 
 var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
@@ -41,6 +41,7 @@ type OrderBook struct {
 var _ = Describe("Dark nodes", func() {
 
 	var mu = new(sync.Mutex)
+
 	BeforeEach(func() {
 		mu.Lock()
 	})
@@ -50,7 +51,7 @@ var _ = Describe("Dark nodes", func() {
 	})
 
 	// Bootstrapping
-	for _, numberOfNodes := range []int{ /*18, 36, 72*/ } {
+	for _, numberOfNodes := range []int{15} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when bootstrapping %d nodes", numberOfNodes), func() {
 
@@ -88,7 +89,7 @@ var _ = Describe("Dark nodes", func() {
 	}
 
 	// Connectivity
-	for _, numberOfNodes := range []int{ /*18, 36, 72*/ } {
+	for _, numberOfNodes := range []int{15} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when connecting %d nodes", numberOfNodes), func() {
 				for _, connectivity := range []int{20, 40, 60, 80, 100} {
@@ -127,9 +128,9 @@ var _ = Describe("Dark nodes", func() {
 	}
 
 	// Order matching
-	for _, numberOfNodes := range []int{18 /*, 36 /*, 72*/} {
+	for _, numberOfNodes := range []int{15} {
 		func(numberOfNodes int) {
-			Context(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
+			FContext(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
 
 				var err error
 				var nodes []*node.DarkNode
@@ -137,6 +138,8 @@ var _ = Describe("Dark nodes", func() {
 				BeforeEach(func() {
 					By("generate nodes")
 					nodes, err = generateNodes(numberOfNodes)
+					Ω(err).ShouldNot(HaveOccurred())
+					err = registerNodes(nodes, mockRegistrar)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					By("start node service")
@@ -180,6 +183,8 @@ var _ = Describe("Dark nodes", func() {
 				})
 
 				AfterEach(func() {
+					err := deregisterNodes(nodes, mockRegistrar)
+					Ω(err).ShouldNot(HaveOccurred())
 					stopNodes(nodes)
 				})
 			})
@@ -201,10 +206,6 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		_, err = mockRegistrar.Register(config.RepublicKeyPair.ID(), []byte{}, big.NewInt(100))
-		if err != nil {
-			return nil, err
-		}
 		node, err := node.NewDarkNode(*config, mockRegistrar)
 		if err != nil {
 			return nil, err
@@ -212,6 +213,27 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 		nodes[i] = node
 	}
 	return nodes, nil
+}
+
+func registerNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
+	for _, node := range nodes {
+		_, err := mockRegistrar.Register(node.ID, []byte{}, big.NewInt(100))
+		if err != nil {
+			return err
+		}
+	}
+	_, err := mockRegistrar.Epoch()
+	return err
+}
+
+func deregisterNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
+	for _, node := range nodes {
+		_, err := mockRegistrar.Deregister(node.ID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func startNodeServices(nodes []*node.DarkNode) {
@@ -245,7 +267,7 @@ func watchDarkOcean(nodes []*node.DarkNode) {
 			nodes[i].WatchDarkOcean()
 		}(i)
 	}
-	time.Sleep(time.Duration(len(nodes)) * time.Second)
+	time.Sleep(time.Duration(len(nodes)) * 2 * time.Second)
 }
 
 func stopNodes(nodes []*node.DarkNode) {
@@ -284,7 +306,7 @@ func connectNodes(nodes []*node.DarkNode, connectivity int) (int, int) {
 
 func sendOrders(nodes []*node.DarkNode) error {
 	// Get order data from Binance
-	resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%v", NumberOfOrders))
+	resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%d", NumberOfOrders))
 	if err != nil {
 		return err
 	}
