@@ -40,10 +40,24 @@ func (x *Int1024) Inc(y *Int1024) {
 // Sub returns x-y
 func (x *Int1024) Sub(y *Int1024) Int1024 {
 
-	z := x.Clone()
-	z.Dec(y)
+	var words [INT1024WORDS]Word
 
-	return z
+	overflow := Word(0)
+	for i := INT1024WORDS - 1; i >= 0; i-- {
+		words[i] = x.words[i] - y.words[i] - overflow
+		if x.words[i] < y.words[i]+overflow || y.words[i] == WORDMAX && overflow == 1 {
+			overflow = 1
+		} else {
+			overflow = 0
+		}
+	}
+
+	// if overflow == 1 {
+	// 	// WARNING: Overflow occured
+	// }
+	return Int1024{
+		words: words,
+	}
 }
 
 // Dec sets x to x-y
@@ -169,6 +183,40 @@ func (x *Int1024) SubModulo(y, n *Int1024) Int1024 {
 	default:
 		panic("unexpected cmp result")
 	}
+}
+
+// AddModulo returns (x + y) % n (x+y can be larger than 2^1024)
+func (x *Int1024) AddModulo(y, n *Int1024) Int1024 {
+	if !x.IsBitSet(1023) && !y.IsBitSet(1023) {
+		tmp := x.Add(y)
+		return tmp.Mod(n)
+	}
+
+	X := *x
+	if x.GreaterThanOrEqual(n) {
+		X = x.Mod(n)
+	}
+	Y := *y
+	if y.GreaterThanOrEqual(n) {
+		Y = y.Mod(n)
+	}
+
+	// Check again
+	if !X.IsBitSet(1023) && !Y.IsBitSet(1023) {
+		tmp := X.Add(&Y)
+		return tmp.Mod(n)
+	}
+
+	if n.IsZero() {
+		// Can be placed at the top but then might be checked again in Mod()
+		panic("division by zero")
+	}
+
+	diff := n.Sub(&X)
+	if diff.LessThanOrEqual(&Y) {
+		return Y.Sub(&diff)
+	}
+	return X.Add(&Y)
 }
 
 // ModInverse sets z to the multiplicative inverse of g in the ring ℤ/nℤ
