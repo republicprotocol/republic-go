@@ -147,7 +147,7 @@ func (node *DarkNode) StartServices() {
 	node.Swarm.Register(node.Server)
 	node.Dark.Register(node.Server)
 	node.Gossip.Register(node.Server)
-	go node.startAPI()
+	//go node.startAPI()
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
 		node.Logger.Error(err.Error())
@@ -177,6 +177,8 @@ func (node *DarkNode) startAPI() {
 	if err := server.ListenAndServe(); err != nil {
 		node.Logger.Error(err.Error())
 	}
+
+	defer server.Close()
 }
 
 type Registration struct {
