@@ -6,3 +6,15 @@
 
 # Dep vendors
 vendor
+
+# Secrets
+cmd/secrets
+
+# DS_Store
+.DS_Store
+.idea
+
+# Binaries
+cmd/register/register
+cmd/deregister/deregister
+cmd/epoch/epoch
