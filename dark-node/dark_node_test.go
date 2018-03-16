@@ -139,6 +139,8 @@ var _ = Describe("Dark nodes", func() {
 					By("generate nodes")
 					nodes, err = generateNodes(numberOfNodes)
 					Ω(err).ShouldNot(HaveOccurred())
+					err = registerNodes(nodes, mockRegistrar)
+					Ω(err).ShouldNot(HaveOccurred())
 
 					By("start node service")
 					startNodeServices(nodes)
@@ -202,10 +204,6 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		_, err = mockRegistrar.Register(config.RepublicKeyPair.ID(), []byte{}, big.NewInt(100))
-		if err != nil {
-			return nil, err
-		}
 		node, err := node.NewDarkNode(*config, mockRegistrar)
 		if err != nil {
 			return nil, err
@@ -213,6 +211,26 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 		nodes[i] = node
 	}
 	return nodes, nil
+}
+
+func registerNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
+	for _, node := range nodes {
+		_, err := mockRegistrar.Register(node.ID, []byte{}, big.NewInt(100))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func deregisterNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
+	for _, node := range nodes {
+		_, err := mockRegistrar.Deregister(node.ID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func startNodeServices(nodes []*node.DarkNode) {
