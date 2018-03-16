@@ -277,8 +277,8 @@ func (x *Int1024) addModulo(y, n *Int1024) Int1024 {
 	return X.Add(&Y)
 }
 
-// MulModulo returns (x*y) % n
-func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
+// MulModuloSlow returns (x*y) % n but it takes its time
+func (x *Int1024) MulModuloSlow(y, n *Int1024) Int1024 {
 
 	// Not optimized
 
@@ -302,6 +302,95 @@ func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
 
 	return z
 }
+
+// MulModulo returns (x*y) % n
+func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
+
+	// https://stackoverflow.com/questions/12168348/ways-to-do-modulo-multiplication-with-primitive-types
+
+	b := *y
+	a := x.Clone()
+	m := n
+	z := Zero()
+	res := z
+	// uint64_t temp_b;
+
+	/* Only needed if b may be >= m */
+	if b.GreaterThanOrEqual(m) {
+		halfMax := maxInt()
+		halfMax.ShiftRightInPlace()
+
+		// Replace with shift right
+		// two := FromUint64(2)
+		// halfMax := max.Div(&two)
+		if m.GreaterThan(&halfMax) {
+			b = b.Sub(m)
+			// b -= m;
+		} else {
+			b = b.Mod(m)
+			// b %= m;
+		}
+	}
+
+	for !a.IsZero() {
+		if a.IsBitSet(0) {
+			/* Add b to res, modulo m, without overflow */
+			tmpM := m.Sub(&res)
+			if b.GreaterThanOrEqual(&tmpM) { /* Equiv to if (res + b >= m), without overflow */
+				res.Dec(m)
+				// res -= m
+			}
+			res.Inc(&b)
+			// res += b;
+		}
+		a.ShiftRightInPlace()
+		// a >>= 1;
+
+		/* Double b, modulo m */
+		tmpB := b
+		tmpM := m.Sub(&b)
+		if b.GreaterThanOrEqual(&tmpM) { /* Equiv to if (2 * b >= m), without overflow */
+			// temp_b -= m
+			tmpB = b.Sub(m)
+		}
+		// b += temp_b
+		b = b.Add(&tmpB)
+	}
+	return res
+}
+
+/*
+
+uint64_t mulmod(uint64_t a, uint64_t b, uint64_t m) {
+    uint64_t res = 0;
+    uint64_t temp_b;
+
+    /* Only needed if b may be >= m
+    if (b >= m) {
+        if (m > UINT64_MAX / 2u)
+            b -= m;
+        else
+            b %= m;
+    }
+
+    while (a != 0) {
+        if (a & 1) {
+            /* Add b to res, modulo m, without overflow
+            if (b >= m - res) /* Equiv to if (res + b >= m), without overflow
+                res -= m;
+            res += b;
+        }
+        a >>= 1;
+
+        /* Double b, modulo m
+        temp_b = b;
+        if (b >= m - b)       /* Equiv to if (2 * b >= m), without overflow
+            temp_b -= m;
+        b += temp_b;
+    }
+    return res;
+}
+*/
 
 // ModInverse sets z to the multiplicative inverse of g in the ring ℤ/nℤ
 // and returns z. If g and n are not relatively prime, the result is undefined.
