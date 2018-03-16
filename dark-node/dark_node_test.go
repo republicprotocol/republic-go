@@ -25,7 +25,7 @@ import (
 
 const (
 	NumberOfBootstrapNodes = 5
-	NumberOfOrders         = 20
+	NumberOfOrders         = 100
 )
 
 var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
@@ -41,6 +41,7 @@ type OrderBook struct {
 var _ = Describe("Dark nodes", func() {
 
 	var mu = new(sync.Mutex)
+
 	BeforeEach(func() {
 		mu.Lock()
 	})
@@ -50,7 +51,7 @@ var _ = Describe("Dark nodes", func() {
 	})
 
 	// Bootstrapping
-	for _, numberOfNodes := range []int{ /*18, 36, 72*/ } {
+	for _, numberOfNodes := range []int{15} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when bootstrapping %d nodes", numberOfNodes), func() {
 
@@ -88,7 +89,7 @@ var _ = Describe("Dark nodes", func() {
 	}
 
 	// Connectivity
-	for _, numberOfNodes := range []int{ /*18, 36, 72*/ } {
+	for _, numberOfNodes := range []int{15} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when connecting %d nodes", numberOfNodes), func() {
 				for _, connectivity := range []int{20, 40, 60, 80, 100} {
@@ -127,7 +128,7 @@ var _ = Describe("Dark nodes", func() {
 	}
 
 	// Order matching
-	for _, numberOfNodes := range []int{18 /*, 36 /*, 72*/} {
+	for _, numberOfNodes := range []int{15} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
 
