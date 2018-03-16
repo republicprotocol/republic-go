@@ -60,11 +60,11 @@ func LoadConfig(filename string) (*node.Config, error) {
 	}
 
 	// Generate our ethereum keypair
-	if config.EthereumKey == nil {
-		config.EthereumKey = keystore.NewKeyForDirectICAP(rand.Reader)
+	if config.EthereumKey.PrivateKey == nil {
+		config.EthereumKey = *keystore.NewKeyForDirectICAP(rand.Reader)
 	}
 
-	if config.RepublicKeyPair == nil {
+	if config.KeyPair.PrivateKey == nil {
 		// Get an address and keypair
 		address, keyPair, err := identity.NewAddress()
 		if err != nil {
@@ -87,16 +87,16 @@ func LoadConfig(filename string) (*node.Config, error) {
 			return nil, err
 		}
 
-		config.RepublicKeyPair = &keyPair
+		config.KeyPair = keyPair
 		config.NetworkOptions.MultiAddress = multiAddress
 	}
 
 	return config, err
 }
 
-func CreateDarkNodeRegistrar(key *keystore.Key, rpcURL string) (dnr.DarkNodeRegistrar, error) {
-	auth := bind.NewKeyedTransactor(key.PrivateKey)
-	client, err := connection.FromURI("https://ropsten.infura.io/", connection.ChainRopsten)
+func CreateDarkNodeRegistrar(ethereumKey keystore.Key, ethereumRPC string) (dnr.DarkNodeRegistrar, error) {
+	auth := bind.NewKeyedTransactor(ethereumKey.PrivateKey)
+	client, err := connection.FromURI(ethereumRPC, connection.ChainRopsten)
 	if err != nil {
 		return nil, err
 	}
