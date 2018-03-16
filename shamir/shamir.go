@@ -43,8 +43,8 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 		return nil, NewFiniteFieldError(secret)
 	}
 
-	ShouldEqual(secretBig, *secret)
-	ShouldEqual(primeBig, *prime)
+	// ShouldEqual(secretBig, *secret)
+	// ShouldEqual(primeBig, *prime)
 
 	// Generate K polynomial coefficients, where the first coefficient is the
 	// secret.
@@ -92,45 +92,37 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 		expBig.Set(baseBig)
 		expModBig.Mod(expBig, primeBig)
 
-		ShouldEqual(accumBig, accum)
-		ShouldEqual(baseBig, base)
-		ShouldEqual(expBig, exp)
-		ShouldEqual(expModBig, expMod)
+		// ShouldEqual(accumBig, accum)
+		// ShouldEqual(baseBig, base)
+		// ShouldEqual(expBig, exp)
+		// ShouldEqual(expModBig, expMod)
 
 		// Evaluate the polyomial at x.
 		for j := range coefficients[1:] {
-			fmt.Println(accum.String())
-			ShouldEqual(accumBig, accum)
-			fmt.Println("...")
+			// ShouldEqual(accumBig, accum)
 			coefficient := coefficients[j].Clone()
-			co := coefficient.Mul(&expMod)
+
+			co := coefficient.MulModulo(&expMod, prime)
 			coBig.Set(coefficientsBig[j])
 			coBig.Mul(coBig, expModBig)
-
-			ShouldEqual(coBig, co)
-
-			co = co.Mod(prime)
 			coBig.Mod(coBig, primeBig)
 
-			ShouldEqual(coBig, co)
-			ShouldEqual(accumBig, accum)
+			// ShouldEqual(coBig, co)
 
 			accum = accum.AddModulo(&co, prime)
 			accumBig.Add(accumBig, coBig)
 			accumBig.Mod(accumBig, primeBig)
 
-			ShouldEqual(accumBig, accum)
+			// ShouldEqual(accumBig, accum)
 
 			exp = exp.Mul(&base)
 			expBig.Mul(expBig, baseBig)
 			expMod = exp.Mod(prime)
 			expModBig.Mod(expBig, primeBig)
 
-			ShouldEqual(accumBig, accum)
-			fmt.Println(accum.String())
+			// ShouldEqual(accumBig, accum)
 		}
-		fmt.Println(";;;")
-		ShouldEqual(accumBig, accum)
+		// ShouldEqual(accumBig, accum)
 		shares[x-1] = Share{
 			Key:      x,
 			Value:    accum,
@@ -182,17 +174,32 @@ func Join(prime *stackint.Int1024, primeBig *big.Int, shares Shares) (*stackint.
 			nextNegBig.Sub(nextNegBig, nextBig)
 			numBig.Mul(numBig, nextNegBig)
 			numBig.Mod(numBig, primeBig)
-			nextGen := num.Mul(&next)
-			nextGen = nextGen.Mod(prime)
+
+			nextGen := num.MulModulo(&next, prime)
 			num = prime.Sub(&nextGen)
 
 			// denominator = (denominator * (startposition - nextposition)) % prime;
 			nextDiffBig.Sub(startBig, nextBig)
 			denBig.Mul(denBig, nextDiffBig)
 			denBig.Mod(denBig, primeBig)
+
+			oldDen := den
 			nextDiff := start.SubModulo(&next, prime)
-			den = den.Mul(&nextDiff)
-			den = den.Mod(prime)
+			den = den.MulModulo(&nextDiff, prime)
+
+			if denBig.String() != den.String() {
+				fmt.Println("!!!")
+				fmt.Printf("start: %s\n", start.String())
+				fmt.Printf("next: %s\n", next.String())
+				fmt.Printf("prime: %s\n", prime.String())
+				fmt.Printf("nextDiff: %s\n", nextDiff.String())
+				fmt.Printf("oldDen: %s\n", oldDen.String())
+				fmt.Printf("den: %s\n", den.String())
+				fmt.Printf("denBig: %s\n", denBig.String())
+				fmt.Println("!!!")
+			}
+
+			ShouldEqual(denBig, den)
 		}
 
 		// valueBig = shares[formula][1]
@@ -204,10 +211,9 @@ func Join(prime *stackint.Int1024, primeBig *big.Int, shares Shares) (*stackint.
 		secretBig.Mod(secretBig, primeBig)
 
 		den = den.ModInverse(prime)
-		value := shares[i].Value.Mul(&num)
-		value = value.Mul(&den)
-		secret.Inc(&value)
-		secret = secret.Mod(prime)
+		value := shares[i].Value.MulModulo(&num, prime)
+		value = value.MulModulo(&den, prime)
+		secret = secret.AddModulo(&value, prime)
 	}
 
 	return &secret, secretBig
