@@ -23,6 +23,7 @@ import (
 	"github.com/republicprotocol/republic-go/network/dht"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	ionet "github.com/shirou/gopsutil/net"
@@ -181,7 +182,7 @@ func (node *DarkNode) StartUI() {
 	}
 
 	node.Logger.Network(logger.Info, fmt.Sprintf("UI listening on %s:%s", node.Host, "3000"))
-	http.Handle("/config", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	http.Handle("/config", cors.Default().Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"nodeID":     "0x" + hex.EncodeToString(node.ID),
@@ -200,7 +201,7 @@ func (node *DarkNode) StartUI() {
 				"darkNodeRegistrar": "0xf178237e7d1131b7924435aa8d02B8Ab4d308AFf",
 			},
 		})
-	}))
+	})))
 	http.Handle("/", http.FileServer(http.Dir("/home/.darknode/ui")))
 	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
 		node.Logger.Error(err.Error())
