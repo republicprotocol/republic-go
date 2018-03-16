@@ -26,8 +26,8 @@ type Plugin interface {
 
 // PluginOptions are used to Unmarshal plugins from JSON.
 type PluginOptions struct {
-	File      *FilePluginOptions      `json:"file"`
-	WebSocket *WebSocketPluginOptions `json:"websocket"`
+	File      *FilePluginOptions      `json:"file,omitempty"`
+	WebSocket *WebSocketPluginOptions `json:"websocket,omitempty"`
 }
 
 // NewLogger returns a new Logger that will start and stop a set of plugins.
