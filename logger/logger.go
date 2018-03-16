@@ -1,21 +1,11 @@
 package logger
 
 import (
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/republicprotocol/go-do"
-)
-
-// Constant strings for tagging logs.
-const (
-	TagNetwork   = "net"
-	TagCompute   = "cmp"
-	TagRegister  = "reg"
-	TagUsage     = "usg"
-	TagGeneral   = "gen"
-	TagEthereum  = "eth"
-	TagConsensus = "con"
 )
 
 type Logger struct {
@@ -31,10 +21,7 @@ type Options struct {
 type Plugin interface {
 	Start() error
 	Stop() error
-	Info(tag, message string) error
-	Warn(tag, message string) error
-	Error(tag, message string) error
-	Usage(cpu float32, memory, network int32) error
+	Log(log Log) error
 }
 
 // PluginOptions are used to Unmarshal plugins from JSON.
@@ -83,70 +70,135 @@ func (logger Logger) Stop() {
 	}
 }
 
-func (logger *Logger) Error(tag, message string) {
+// Log an Event.
+func (logger *Logger) Log(l Log) {
 	for _, plugin := range logger.Plugins {
-		if err := plugin.Error(tag, message); err != nil {
+		if err := plugin.Log(l); err != nil {
 			log.Println(err)
 		}
 	}
 }
 
-func (logger *Logger) Info(tag, message string) {
-	for _, plugin := range logger.Plugins {
-		if err := plugin.Info(tag, message); err != nil {
-			log.Println(err)
-		}
-	}
+// Info logs an info Log using a GenericEvent.
+func (logger *Logger) Info(message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      Info,
+		EventType: Generic,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
 }
 
-func (logger *Logger) Warn(tag, message string) {
-	for _, plugin := range logger.Plugins {
-		if err := plugin.Warn(tag, message); err != nil {
-			log.Println(err)
-		}
-	}
+// Warn logs a warn Log using a GenericEvent.
+func (logger *Logger) Warn(message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      Warn,
+		EventType: Generic,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
 }
 
-func (logger *Logger) Usage(cpu float32, memory, network int32) {
-	for _, plugin := range logger.Plugins {
-		if err := plugin.Usage(cpu, memory, network); err != nil {
-			log.Println(err)
-		}
-	}
+// Error logs an error Log using a GenericEvent.
+
+func (logger *Logger) Error(message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      Error,
+		EventType: Generic,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
 }
 
-type Usage struct {
-	Type string    `json:"type"`
-	Time time.Time `json:"timestamp"`
-	Data UsageData `json:"data"`
+// Usage logs an info Log using a UsageEvent.
+func (logger *Logger) Usage(cpu, memory float64, network int64) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      Info,
+		EventType: Usage,
+		Event: UsageEvent{
+			CPU:     cpu,
+			Memory:  memory,
+			Network: network,
+		},
+	})
 }
 
-type UsageData struct {
-	CPU     float32 `json:"cpu"`
-	Memory  int32   `json:"memory"`
-	Network int32   `json:"network"`
+// Type defines the different types of Log messages that can be sent.
+type Type string
+
+// Values for the LogType.
+const (
+	Info  = Type("info")
+	Warn  = Type("warn")
+	Error = Type("error")
+)
+
+// EventType defines the different types of Event messages that can be sent in a
+// Log.
+type EventType string
+
+// Values for the EventType.
+const (
+	Generic       = EventType("generic")
+	Network       = EventType("network")
+	Usage         = EventType("usage")
+	Ethereum      = EventType("ethereum")
+	OrderMatch    = EventType("orderMatch")
+	OrderReceived = EventType("orderReceived")
+)
+
+// A Log is logged by the Logger using all available Plugins.
+type Log struct {
+	Timestamp time.Time `json:"timestamp"`
+	Type      Type      `json:"type"`
+	EventType EventType `json:"eventType"`
+	Event     Event     `json:"event"`
 }
 
-type Event struct {
-	Type string    `json:"type"`
-	Time time.Time `json:"timestamp"`
-	Data EventData `json:"data"`
+type Event interface {
+	String() string
 }
 
-type EventData struct {
-	Tag     string `json:"tag"`
-	Level   string `json:"level"`
+type GenericEvent struct {
 	Message string `json:"message"`
 }
 
-type Error struct {
-	Tag     string
-	Message string
+func (event GenericEvent) String() string {
+	return event.Message
 }
 
-type Registration struct {
-	NodeID     string `json:"nodeID"`
-	PublicKey  string `json:"publicKey""`
-	Address    string `json:"address"`
-	RepublicID string `json:"republicID"`
+type UsageEvent struct {
+	CPU     float64 `json:"cpu"`
+	Memory  float64 `json:"memory"`
+	Network int64   `json:"network"`
+}
+
+func (event UsageEvent) String() string {
+	return fmt.Sprintf("cpu = %v; memory = %v; network = %v", event.CPU, event.Memory, event.Network)
+}
+
+type OrderMatchEvent struct {
+	ID     string `json:"id"`
+	BuyID  string `json:"sellId"`
+	SellID string `json:"buyId"`
+}
+
+func (event OrderMatchEvent) String() string {
+	return fmt.Sprintf("order match = (%v, %v)", event.BuyID, event.SellID)
+}
+
+type OrderReceivedEvent struct {
+	ID         string `json:"id"`
+	FragmentID string `json:"fragmentId"`
+}
+
+func (event OrderReceivedEvent) String() string {
+	return fmt.Sprintf("order recevied = (%v)", event.ID)
 }
