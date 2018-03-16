@@ -183,6 +183,8 @@ var _ = Describe("Dark nodes", func() {
 				})
 
 				AfterEach(func() {
+					err := deregisterNodes(nodes, mockRegistrar)
+					Ω(err).ShouldNot(HaveOccurred())
 					stopNodes(nodes)
 				})
 			})
@@ -303,7 +305,7 @@ func connectNodes(nodes []*node.DarkNode, connectivity int) (int, int) {
 
 func sendOrders(nodes []*node.DarkNode) error {
 	// Get order data from Binance
-	resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%v", NumberOfOrders))
+	resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%d", NumberOfOrders))
 	if err != nil {
 		return err
 	}

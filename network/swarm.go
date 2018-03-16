@@ -285,7 +285,7 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 		}
 	}
 
-	service.Logger.Error(fmt.Sprintf("bootstrapping with %s returned %d peers", bootstrapMultiAddress.Address(), numberOfPeers))
+	service.Logger.Info(fmt.Sprintf("bootstrapping with %s returned %d peers", bootstrapMultiAddress.Address(), numberOfPeers))
 	return nil
 }
 
