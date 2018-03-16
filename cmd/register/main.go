@@ -11,11 +11,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 
-	base58 "github.com/jbenet/go-base58"
+	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
-	node "github.com/republicprotocol/republic-go/dark-node"
+	"github.com/republicprotocol/republic-go/dark-node"
 )
 
 const reset = "\x1b[0m"
@@ -30,7 +30,8 @@ type Secret struct {
 
 func main() {
 
-	configFiles := os.Args[1:]
+	secretFile := os.Args[1]
+	configFiles := os.Args[2:]
 	configs := make([]*node.Config, len(configFiles))
 
 	for file := range configFiles {
@@ -42,11 +43,11 @@ func main() {
 		configs[file] = config
 	}
 
-	RegisterAll(configs)
+	RegisterAll(secretFile, configs)
 }
 
 // RegisterAll takes a slice of republic private keys and registers them
-func RegisterAll(configs []*node.Config) {
+func RegisterAll(secretFile string, configs []*node.Config) {
 
 	/*
 		0x3ccB53DBB5f801C28856b3396B01941ecD21Ac1d
@@ -56,9 +57,9 @@ func RegisterAll(configs []*node.Config) {
 	*/
 
 	do.ForAll(configs, func(i int) {
-		keypair := configs[i].RepublicKeyPair
+		keypair := configs[i].KeyPair
 		var decimalMultiplier = big.NewInt(1000000000000000000)
-		var bondTokenCount = big.NewInt(100)
+		var bondTokenCount = big.NewInt(0)
 		var bond = decimalMultiplier.Mul(decimalMultiplier, bondTokenCount)
 		clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
 		if err != nil {
@@ -66,7 +67,7 @@ func RegisterAll(configs []*node.Config) {
 			panic(err)
 		}
 
-		raw, err := ioutil.ReadFile("../secrets/secrets.json")
+		raw, err := ioutil.ReadFile(secretFile)
 		if err != nil {
 			panic(err)
 		}
