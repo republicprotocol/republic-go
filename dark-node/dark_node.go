@@ -23,7 +23,6 @@ import (
 	"github.com/republicprotocol/republic-go/network/dht"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	ionet "github.com/shirou/gopsutil/net"
@@ -169,48 +168,42 @@ func (node *DarkNode) StartServices() {
 }
 
 func (node *DarkNode) StartUI() {
-	node.Logger.Network(logger.Info, fmt.Sprintf("UI listening on %s:%s", node.Host, "3000"))
 
+	host, err := node.NetworkOptions.MultiAddress.ValueForProtocol(identity.IP4Code)
+	if err != nil {
+		node.Logger.Network(logger.Error, "UI host unknown: "+err.Error())
+		return
+	}
+	port, err := node.NetworkOptions.MultiAddress.ValueForProtocol(identity.TCPCode)
+	if err != nil {
+		node.Logger.Network(logger.Error, "UI port unknown: "+err.Error())
+		return
+	}
+
+	node.Logger.Network(logger.Info, fmt.Sprintf("UI listening on %s:%s", node.Host, "3000"))
+	http.Handle("/me", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"nodeID":     "0x" + hex.EncodeToString(node.ID),
+			"publicKey":  "0x" + hex.EncodeToString(append(node.KeyPair.PublicKey.X.Bytes(), node.KeyPair.PublicKey.Y.Bytes()...)),
+			"address":    node.EthereumKey.Address.String(),
+			"republicID": node.ID.String(),
+			"ui": map[string]interface{}{
+				"host": host,
+				"port": port,
+			},
+			"websocket": map[string]interface{}{
+				"host": host,
+				"port": "18515",
+			},
+			"contracts": map[string]interface{}{
+				"darkNodeRegistrar": "0xf178237e7d1131b7924435aa8d02B8Ab4d308AFf",
+			},
+		})
+	}))
 	http.Handle("/", http.FileServer(http.Dir("/home/.darknode/ui")))
 	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
 		node.Logger.Error(err.Error())
 	}
-}
-
-func (node *DarkNode) StartAPI() {
-	node.Logger.Network(logger.Info, fmt.Sprintf("API listening on %s:%s", node.Host, "4000"))
-
-	server := &http.Server{
-		Addr: fmt.Sprintf("%s:4000", node.Host),
-	}
-	mux := http.NewServeMux()
-	mux.HandleFunc("/me", node.meHandler)
-	server.Handler = cors.Default().Handler(mux)
-	if err := server.ListenAndServe(); err != nil {
-		node.Logger.Error(err.Error())
-	}
-	defer server.Close()
-}
-
-type Registration struct {
-	NodeID     string `json:"nodeID"`
-	PublicKey  string `json:"publicKey"`
-	Address    string `json:"address"`
-	RepublicID string `json:"republicID"`
-}
-
-func (node *DarkNode) meHandler(w http.ResponseWriter, r *http.Request) {
-	data := Registration{
-		NodeID:     "0x" + hex.EncodeToString(node.NetworkOptions.MultiAddress.ID()),
-		PublicKey:  "0x" + hex.EncodeToString(append(node.Config.KeyPair.PublicKey.X.Bytes(), node.Config.KeyPair.PublicKey.Y.Bytes()...)),
-		Address:    node.Config.EthereumKey.Address.String(),
-		RepublicID: node.NetworkOptions.MultiAddress.ID().String(),
-	}
-	dataJson, err := json.Marshal(data)
-	if err != nil {
-		node.Logger.Error("fail to parse the registration details")
-	}
-	w.Write(dataJson)
 }
 
 func (node *DarkNode) Bootstrap() {
