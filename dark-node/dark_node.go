@@ -26,7 +26,7 @@ import (
 	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
-	psnet "github.com/shirou/gopsutil/net"
+	ionet "github.com/shirou/gopsutil/net"
 	"google.golang.org/grpc"
 )
 
@@ -41,9 +41,10 @@ type DarkNode struct {
 
 	DeltaNotifications chan *compute.Delta
 
-	Logger     *logger.Logger
-	ClientPool *rpc.ClientPool
-	DHT        *dht.DHT
+	LoggerLastNetworkUsage uint64
+	Logger                 *logger.Logger
+	ClientPool             *rpc.ClientPool
+	DHT                    *dht.DHT
 
 	DeltaBuilder                      *compute.DeltaBuilder
 	DeltaFragmentMatrix               *compute.DeltaFragmentMatrix
@@ -374,8 +375,6 @@ func (node *DarkNode) OnFinalize(buyOrderID order.ID, sellOrderID order.ID) {
 	}()
 }
 
-var lastNetworkUsage uint64
-
 // Usage logs memory and cpu usage
 func (node *DarkNode) Usage() {
 
@@ -400,7 +399,7 @@ func (node *DarkNode) Usage() {
 	}
 	memoryPercentage := stat.UsedPercent
 
-	ios, err := psnet.IOCounters(false)
+	ios, err := ionet.IOCounters(false)
 	if err != nil {
 		node.Logger.Error(err.Error())
 	}
@@ -411,10 +410,10 @@ func (node *DarkNode) Usage() {
 		networkUsage += ios[0].BytesSent
 		networkUsage += ios[0].BytesRecv
 	}
-	if lastNetworkUsage == 0 {
-		lastNetworkUsage = networkUsage
+	if node.LoggerLastNetworkUsage == 0 {
+		node.LoggerLastNetworkUsage = networkUsage
 	}
 
-	node.Logger.Usage(cpuPercentage, memoryPercentage, networkUsage-lastNetworkUsage)
-	lastNetworkUsage = networkUsage
+	node.Logger.Usage(cpuPercentage, memoryPercentage, networkUsage-node.LoggerLastNetworkUsage)
+	node.LoggerLastNetworkUsage = networkUsage
 }
