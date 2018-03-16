@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -118,10 +117,16 @@ func (plugin *WebSocketPlugin) Stop() error {
 
 // Log implements the Plugin interface.
 func (plugin *WebSocketPlugin) Log(l Log) error {
-	select {
-	case plugin.logs <- l:
-	default:
-		return errors.New("cannot write log to websocket plugin: log queue is full")
+	written := false
+	for !written {
+		select {
+		case plugin.logs <- l:
+			// Write was successful
+			written = true
+		default:
+			// Logging queue was full, drop the oldest message and loop
+			<-plugin.logs
+		}
 	}
 	return nil
 }
