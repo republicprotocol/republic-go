@@ -3,7 +3,9 @@ package logger
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -20,7 +22,8 @@ type WebSocketPlugin struct {
 	username string
 	password string
 
-	logs chan Log
+	logsMu *sync.Mutex
+	logs   map[int64]chan Log
 }
 
 type WebSocketPluginOptions struct {
@@ -38,7 +41,8 @@ func NewWebSocketPlugin(logger *Logger, webSocketPluginOptions WebSocketPluginOp
 		port:          webSocketPluginOptions.Port,
 		username:      webSocketPluginOptions.Username,
 		password:      webSocketPluginOptions.Password,
-		logs:          make(chan Log, 100),
+		logsMu:        new(sync.Mutex),
+		logs:          make(map[int64]chan Log),
 	}
 	return plugin
 }
@@ -78,10 +82,17 @@ func (plugin *WebSocketPlugin) handler(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
+	// Register this channel
+	id := rand.Int63()
+	logs := make(chan Log, 100)
+	plugin.logsMu.Lock()
+	plugin.logs[id] = logs
+	plugin.logsMu.Unlock()
+
 	// Broadcast logs to the WebSocket
 	for {
 		select {
-		case val := <-plugin.logs:
+		case val := <-logs:
 			conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 			conn.WriteJSON(val)
 		case <-ping.C:
@@ -117,15 +128,20 @@ func (plugin *WebSocketPlugin) Stop() error {
 
 // Log implements the Plugin interface.
 func (plugin *WebSocketPlugin) Log(l Log) error {
-	written := false
-	for !written {
+	plugin.logsMu.Lock()
+	defer plugin.logsMu.Unlock()
+	for _, logs := range plugin.logs {
 		select {
-		case plugin.logs <- l:
+		case logs <- l:
 			// Write was successful
-			written = true
 		default:
 			// Logging queue was full, drop the oldest message and loop
-			<-plugin.logs
+			<-logs
+			// Try again, but still use select just in case
+			select {
+			case logs <- l:
+			default:
+			}
 		}
 	}
 	return nil
