@@ -171,7 +171,7 @@ func (node *DarkNode) StartServices() {
 func (node *DarkNode) StartUI() {
 	node.Logger.Network(logger.Info, fmt.Sprintf("UI listening on %s:%s", node.Host, "3000"))
 
-	http.Handle("/", http.FileServer(http.Dir("dark-node-ui")))
+	http.Handle("/", http.FileServer(http.Dir("/home/.darknode/ui")))
 	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
 		node.Logger.Error(err.Error())
 	}
