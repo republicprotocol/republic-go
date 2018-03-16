@@ -1,24 +1,19 @@
 package stackint
 
-import (
-	"fmt"
-	"math/big"
-)
-
 // Add returns x+y
 func (x *Int1024) Add(y *Int1024) Int1024 {
 
-	xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	expected := big.NewInt(0).Add(xB, yB)
+	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
+	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
+	// expected := big.NewInt(0).Add(xB, yB)
 
 	z := x.Clone()
 	z.Inc(y)
 
-	actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
-		panic(fmt.Sprintf("Addition failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
-	}
+	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
+	// 	panic(fmt.Sprintf("Addition failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
+	// }
 
 	return z
 }
@@ -191,16 +186,16 @@ func (x *Int1024) Mod(n *Int1024) Int1024 {
 	// 	panic("unexpected cmp result (expecting -1, 0 or 1)")
 	// }
 
-	xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	yB, _ := big.NewInt(0).SetString(n.ToBinary(), 2)
-	expected := big.NewInt(0).Mod(xB, yB)
+	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
+	// yB, _ := big.NewInt(0).SetString(n.ToBinary(), 2)
+	// expected := big.NewInt(0).Mod(xB, yB)
 
 	_, z := x.DivMod(n)
 
-	actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
-		panic(fmt.Sprintf("Modulo failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), n.ToBinary(), expected, actual))
-	}
+	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
+	// 	panic(fmt.Sprintf("Modulo failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), n.ToBinary(), expected, actual))
+	// }
 
 	return z
 }
@@ -231,17 +226,17 @@ func (x *Int1024) SubModulo(y, n *Int1024) Int1024 {
 
 // AddModulo returns (x + y) % n (x+y can be larger than 2^1024)
 func (x *Int1024) AddModulo(y, n *Int1024) Int1024 {
-	xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	nB, _ := big.NewInt(0).SetString(n.ToBinary(), 2)
-	expected := big.NewInt(0).Mod(big.NewInt(0).Add(xB, yB), nB)
+	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
+	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
+	// nB, _ := big.NewInt(0).SetString(n.ToBinary(), 2)
+	// expected := big.NewInt(0).Mod(big.NewInt(0).Add(xB, yB), nB)
 
 	z := x.addModulo(y, n)
 
-	actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
-		panic(fmt.Sprintf("AddModulo failed! for %s + %s mod %s.\n\nExpected %s\n\nGot %s", x.String(), y.String(), n.String(), expected, actual))
-	}
+	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
+	// 	panic(fmt.Sprintf("AddModulo failed! for %s + %s mod %s.\n\nExpected %s\n\nGot %s", x.String(), y.String(), n.String(), expected, actual))
+	// }
 
 	return z
 }
@@ -286,6 +281,10 @@ func (x *Int1024) addModulo(y, n *Int1024) Int1024 {
 func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
 
 	// Not optimized
+
+	// TODO!!!
+	// Implement Shrage's Method
+	// https://github.com/wdavidw/node-gsl/blob/master/deps/gsl-1.14/rng/schrage.c
 
 	z := Zero()
 	shifted := x.Mod(n)
