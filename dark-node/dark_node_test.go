@@ -222,7 +222,8 @@ func registerNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
 			return err
 		}
 	}
-	return nil
+	_, err := mockRegistrar.Epoch()
+	return err
 }
 
 func deregisterNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
@@ -266,7 +267,7 @@ func watchDarkOcean(nodes []*node.DarkNode) {
 			nodes[i].WatchDarkOcean()
 		}(i)
 	}
-	time.Sleep(time.Duration(len(nodes)) * time.Second)
+	time.Sleep(time.Duration(len(nodes)) * 10 * time.Second)
 }
 
 func stopNodes(nodes []*node.DarkNode) {
