@@ -140,7 +140,7 @@ func (node *DarkNode) StartBackgroundWorkers() {
 	go func() {
 		for {
 			time.Sleep(10 * time.Second)
-			node.Usage()
+			node.Usage(10)
 		}
 	}()
 
@@ -154,11 +154,9 @@ func (node *DarkNode) StartBackgroundWorkers() {
 }
 
 func (node *DarkNode) StartServices() {
-	node.Logger.Info(fmt.Sprintf("Listening on %s:%s", node.Host, node.Port))
 	node.Swarm.Register(node.Server)
 	node.Dark.Register(node.Server)
 	node.Gossip.Register(node.Server)
-	//go node.startAPI()
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
 		node.Logger.Error(err.Error())
@@ -166,6 +164,24 @@ func (node *DarkNode) StartServices() {
 	if err := node.Server.Serve(listener); err != nil {
 		node.Logger.Error(err.Error())
 	}
+
+	// jointHandler := func(grpcServer *grpc.Server, httpServer http.Handler) http.Handler {
+	// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// 		grpcServer.ServeHTTP(w, r)
+	// contentType := r.Header.Get("Content-Type")
+	// if r.ProtoMajor == 2 && strings.Contains(contentType, "application/grpc") {
+	// 	grpcServer.ServeHTTP(w, r)
+	// } else {
+	// 	httpServer.ServeHTTP(w, r)
+	// }
+	// 	})
+	// }
+	// jointServer := jointHandler(node.Server, http.HandlerFunc(node.meHandler))
+
+	// node.Logger.Info(fmt.Sprintf("Listening on %s:%s", node.Host, node.Port))
+	// if err := http.ListenAndServe(fmt.Sprintf("%s:%s", node.Host, node.Port), jointHandler); err != nil {
+	// 	node.Logger.Error(err.Error())
+	// }
 }
 
 func (node *DarkNode) StartUI() {
@@ -177,7 +193,7 @@ func (node *DarkNode) StartUI() {
 	}
 }
 
-func (node *DarkNode) startAPI() {
+func (node *DarkNode) StartAPI() {
 	server := &http.Server{
 		Addr: fmt.Sprintf("%s:4000", node.Host),
 	}
@@ -376,7 +392,7 @@ func (node *DarkNode) OnFinalize(buyOrderID order.ID, sellOrderID order.ID) {
 }
 
 // Usage logs memory and cpu usage
-func (node *DarkNode) Usage() {
+func (node *DarkNode) Usage(seconds uint64) {
 
 	// Get CPU usage
 	_, err := cpu.Info()
@@ -414,6 +430,6 @@ func (node *DarkNode) Usage() {
 		node.LoggerLastNetworkUsage = networkUsage
 	}
 
-	node.Logger.Usage(cpuPercentage, memoryPercentage, networkUsage-node.LoggerLastNetworkUsage)
+	node.Logger.Usage(cpuPercentage, memoryPercentage, (networkUsage-node.LoggerLastNetworkUsage)/seconds)
 	node.LoggerLastNetworkUsage = networkUsage
 }

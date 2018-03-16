@@ -45,6 +45,8 @@ func main() {
 	}
 
 	go node.StartServices()
+	go node.StartAPI()
+	go node.StartUI()
 	node.StartBackgroundWorkers()
 	node.Bootstrap()
 	node.WatchDarkOcean()
