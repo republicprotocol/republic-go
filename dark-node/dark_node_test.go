@@ -201,7 +201,7 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		_, err = mockRegistrar.Register(config.RepublicKeyPair.ID(), []byte{})
+		_, err = mockRegistrar.Register(config.RepublicKeyPair.ID(), []byte{}, big.NewInt(100))
 		if err != nil {
 			return nil, err
 		}
