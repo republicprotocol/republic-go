@@ -80,7 +80,7 @@ func (worker *DeltaFragmentBroadcastWorker) Run() {
 			}
 			_, err := worker.clientPool.BroadcastDeltaFragment(*multiAddress, serializedDeltaFragment)
 			if err != nil {
-				worker.logger.Error(logger.TagNetwork, err.Error())
+				worker.logger.Error(err.Error())
 			}
 		})
 	}
@@ -113,9 +113,9 @@ func (worker *DeltaFragmentWorker) Run(queues ...chan *compute.Delta) {
 				defer func() { recover() }()
 				// FIXME: Stop doing this shit.
 				if delta.IsMatch(Prime) {
-					worker.logger.Info(logger.TagCompute, fmt.Sprintf("(%s, %s) ✓", delta.BuyOrderID.String(), delta.SellOrderID.String()))
+					worker.logger.Info(fmt.Sprintf("(%s, %s) ✓", delta.BuyOrderID.String(), delta.SellOrderID.String()))
 				} else {
-					worker.logger.Info(logger.TagCompute, fmt.Sprintf("(%s, %s)", delta.BuyOrderID.String(), delta.SellOrderID.String()))
+					worker.logger.Info(fmt.Sprintf("(%s, %s)", delta.BuyOrderID.String(), delta.SellOrderID.String()))
 				}
 				for _, queue := range queues {
 					queue <- delta
@@ -268,6 +268,6 @@ func NewConsensusWorker(logger *logger.Logger, deltaFragmentMatrix *compute.Delt
 
 func (worker *ConsensusWorker) Run() {
 	for delta := range worker.queue {
-		worker.logger.Info(logger.TagConsensus, fmt.Sprintf("(%s, %s)", delta.BuyOrderID.String(), delta.SellOrderID.String()))
+		worker.logger.Info(fmt.Sprintf("(%s, %s)", delta.BuyOrderID.String(), delta.SellOrderID.String()))
 	}
 }
