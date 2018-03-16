@@ -1,9 +1,9 @@
 package logger
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/republicprotocol/go-do"
 )
@@ -44,7 +44,6 @@ func NewFilePlugin(filePluginOptions FilePluginOptions) (Plugin, error) {
 func (plugin *FilePlugin) Start() error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
-
 	return nil
 }
 
@@ -52,7 +51,6 @@ func (plugin *FilePlugin) Start() error {
 func (plugin *FilePlugin) Stop() error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
-
 	if plugin.file == os.Stdout {
 		return nil
 	}
@@ -62,50 +60,16 @@ func (plugin *FilePlugin) Stop() error {
 	return plugin.file.Close()
 }
 
-// Info implements the Plugin interface.
-func (plugin *FilePlugin) Info(tag, message string) error {
+// Log implements the Plugin interface.
+func (plugin *FilePlugin) Log(l Log) error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
-
 	if plugin.file == nil {
-		return fmt.Errorf("cannot write logs to a nil file")
+		return fmt.Errorf("cannot write log to file plugin: nil file")
 	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [info] (%s) %s\n", time.Now().Format("2006/01/02 15:04:05 "), tag, message))
-	return err
-}
-
-// Warn implements the Plugin interface.
-func (plugin *FilePlugin) Warn(tag, message string) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return fmt.Errorf("cannot write logs to a nil file")
+	if plugin.file == os.Stdout || plugin.file == os.Stderr {
+		_, err := plugin.file.WriteString(fmt.Sprintf("%s [%s] (%s) %s\n", l.Timestamp.Format("2006/01/02 15:04:05"), l.Type, l.EventType, l.Event.String()))
+		return err
 	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [warn] (%s) %s\n", time.Now().Format("2006/01/02 15:04:05 "), tag, message))
-	return err
-}
-
-// Error implements the Plugin interface.
-func (plugin *FilePlugin) Error(tag, message string) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return fmt.Errorf("cannot write logs to a nil file")
-	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [error] (%s) %s\n", time.Now().Format("2006/01/02 15:04:05 "), tag, message))
-	return err
-}
-
-// Usage implements the Plugin interface.
-func (plugin *FilePlugin) Usage(cpu float32, memory, network int32) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-
-	if plugin.file == nil {
-		return fmt.Errorf("cannot write logs to a nil file")
-	}
-	_, err := plugin.file.WriteString(fmt.Sprintf("%s [info] ("+TagUsage+") cpu = %.3f MHz; memory = %d MB; network = %d KB\n", time.Now().Format("2006/01/02 15:04:05 "), cpu, memory, network))
-	return err
+	return json.NewEncoder(plugin.file).Encode(l)
 }

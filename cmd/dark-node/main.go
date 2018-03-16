@@ -96,7 +96,7 @@ func LoadConfig(filename string) (*node.Config, error) {
 
 func CreateDarkNodeRegistrar(key *keystore.Key) (dnr.DarkNodeRegistrar, error) {
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
-	client, err := connection.FromURI("https://ropsten.infura.io/")
+	client, err := connection.FromURI("https://ropsten.infura.io/",connection.ChainRopsten)
 	if err != nil {
 		return nil, err
 	}

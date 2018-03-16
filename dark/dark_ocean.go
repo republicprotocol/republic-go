@@ -108,13 +108,13 @@ func (ocean *Ocean) Watch(period time.Duration, changes chan struct{}) {
 	for {
 		epoch, err := ocean.darkNodeRegistrar.CurrentEpoch()
 		if err != nil {
-			ocean.logger.Error(logger.TagEthereum, fmt.Sprintf("cannot update epoch: %s", err.Error()))
+			ocean.logger.Error(fmt.Sprintf("cannot update epoch: %s", err.Error()))
 			return
 		}
 		if !bytes.Equal(currentBlockhash[:], epoch.Blockhash[:]) {
 			currentBlockhash = epoch.Blockhash
 			if err := ocean.Update(); err != nil {
-				ocean.logger.Error(logger.TagEthereum, fmt.Sprintf("cannot update dark ocean: %s", err.Error()))
+				ocean.logger.Error(fmt.Sprintf("cannot update dark ocean: %s", err.Error()))
 				return
 			}
 			changes <- struct{}{}
