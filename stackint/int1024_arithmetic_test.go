@@ -1,6 +1,8 @@
 package stackint_test
 
 import (
+	"math/big"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -13,6 +15,7 @@ var mulFn = func(inputs ...Int1024) Int1024 { return inputs[0].Mul(&inputs[1]) }
 var divFn = func(inputs ...Int1024) Int1024 { return inputs[0].Div(&inputs[1]) }
 var modFn = func(inputs ...Int1024) Int1024 { return inputs[0].Mod(&inputs[1]) }
 var submodFn = func(inputs ...Int1024) Int1024 { return inputs[0].SubModulo(&inputs[1], &inputs[2]) }
+var addmodFn = func(inputs ...Int1024) Int1024 { return inputs[0].AddModulo(&inputs[1], &inputs[2]) }
 
 var _ = Describe("Int1024 arithmetic", func() {
 
@@ -20,14 +23,26 @@ var _ = Describe("Int1024 arithmetic", func() {
 	Context("when adding numbers", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 
-			// for i := 0; i < 10000; i++ {
-			// 	str := "89884656743115795386465259539451236680898848947115328636715040578866337902750481566354238661203768010560056939935696678829394884407208311246423715319737062188883946712432742638151109800623047059726541476042502884419075341171231440736956555270413618581675255342293149119973622969239858152417678164812112068607"
-			// 	// max := FromString(str)
-			// 	// max.Add(&max)
-			// 	// max := big.NewInt(0)
-			// 	// max.SetString(str, 0)
-			// 	// max.Add(max, max)
-			// }
+			str := "179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474097562152033539671286128252223189553839160721441767298250321715263238814402734379959506792230903356495130620869925267845538430714092411695463462326211969025"
+			maxInt := FromString(str)
+			maxBig := big.NewInt(0)
+			tmpInt := Zero()
+			tmp := big.NewInt(0)
+			maxBig.SetString(str, 0)
+
+			tmpInt = tmpInt.Add(&maxInt)
+			tmpInt = tmpInt.Sub(&maxInt)
+
+			tmp = tmp.Add(tmp, maxBig)
+			tmp = tmp.Sub(tmp, maxBig)
+
+			for i := 0; i < 10; i++ {
+				tmpInt = tmpInt.Add(&maxInt)
+				tmpInt = tmpInt.Sub(&maxInt)
+
+				tmp = tmp.Add(tmp, maxBig)
+				tmp = tmp.Sub(tmp, maxBig)
+			}
 
 			RunAllCases(addFn, []TestCase{
 				TestCase{inputsStr: []string{"1", "2"}, expectedStr: "3"},
@@ -130,6 +145,24 @@ var _ = Describe("Int1024 arithmetic", func() {
 
 		It("panic when taking the modulus by zero", func() {
 			Ω(func() { one.SubModulo(&one, &zero) }).Should(Panic())
+		})
+	})
+
+	Context("when adding with modulo", func() {
+		It("should return the right result for 1024 bit numbers", func() {
+			RunAllCases(addmodFn, []TestCase{
+				TestCase{inputsStr: []string{"3", "2", "3"}, expectedStr: "2"},
+				TestCase{inputsStr: []string{"2", "3", "3"}, expectedStr: "2"},
+				TestCase{inputsStr: []string{"8", "1", "3"}, expectedStr: "0"},
+				TestCase{inputsStr: []string{"7", "1", "3"}, expectedStr: "2"},
+				TestCase{inputsStr: []string{"101", "102", "100"}, expectedStr: "3"},
+				TestCase{inputsStr: []string{"179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137215", "1", "179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111"}, expectedStr: "105"},
+				TestCase{inputsStr: []string{"1", "2", "179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474097562152033539671286128252223189553839160721441767298250321715263238814402734379959506792230903356495130620869925267845538430714092411695463462326211969025"}, expectedStr: "3"},
+			})
+		})
+
+		It("panic when taking the modulus by zero", func() {
+			Ω(func() { one.AddModulo(&one, &zero) }).Should(Panic())
 		})
 	})
 

@@ -89,4 +89,29 @@ var _ = Describe("Int1024 bitwise operations", func() {
 			Ω(sevenXOREleven.Equals(&twelve)).Should(BeTrue())
 		})
 	})
+
+	Context("when checking bits", func() {
+		It("should return the right result for 1024 bit numbers", func() {
+			cases := [][]interface{}{
+				TC("0b1", 0, true),
+				TC("0b1", -1, false),
+				TC("0b0", 0, false),
+				TC("0b10", 1, true),
+				TC("0b10", 0, false),
+				TC("0b10000000", 7, true),
+				TC("0b10000000", 8, false),
+				TC("0b10000000", 6, false),
+			}
+
+			for _, tc := range cases {
+				tmp := FromString(tc[0].(string))
+				Ω(tmp.IsBitSet(tc[1].(int))).Should(Equal(tc[2].(bool)))
+			}
+
+			for i := 0; i < SIZE; i++ {
+				Ω(max.IsBitSet(i)).Should(BeTrue())
+				Ω(zero.IsBitSet(i)).Should(BeFalse())
+			}
+		})
+	})
 })

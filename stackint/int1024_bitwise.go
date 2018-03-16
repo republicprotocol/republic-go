@@ -52,6 +52,15 @@ func (x *Int1024) ShiftRightInPlace() {
 	}
 }
 
+func (x *Int1024) IsBitSet(n int) bool {
+	if n > 1023 || n < 0 {
+		return false
+	}
+	word := n / WORDSIZE
+	bit := uint(n % WORDSIZE)
+	return x.words[INT1024WORDS-1-word]&(1<<bit) != 0
+}
+
 // AND returns x&y
 func (x *Int1024) AND(y *Int1024) Int1024 {
 	z := Zero()
