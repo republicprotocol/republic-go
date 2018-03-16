@@ -287,6 +287,10 @@ func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
 
 	// Not optimized
 
+	// TODO!!!
+	// Implement Shrage's Method
+	// https://github.com/wdavidw/node-gsl/blob/master/deps/gsl-1.14/rng/schrage.c
+
 	z := Zero()
 	shifted := x.Mod(n)
 
