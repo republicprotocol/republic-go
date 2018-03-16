@@ -21,6 +21,14 @@ type Share struct {
 // Shares are a slice of Share structs.
 type Shares []Share
 
+func ShouldEqual(bg *big.Int, si stackint.Int1024) {
+	if bg.String() != si.String() {
+		fmt.Println(bg.String())
+		fmt.Println(si.String())
+		panic("!!!")
+	}
+}
+
 // Split a secret into Shares. N represents the number of Shares that the
 // secret will be split into, and K represents the number of Share required to
 // reconstruct the secret. Prime is used to define the finite field from which
@@ -39,9 +47,10 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 	// secret.
 	one := stackint.One()
 	max := prime.Sub(&one)
-	maxBig := big.NewInt(0).Sub(primeBig, big.NewInt(1))
 	coefficients := make([]*stackint.Int1024, k)
 	coefficients[0] = secret
+
+	// maxBig := big.NewInt(0).Sub(primeBig, big.NewInt(1))
 	coefficientsBig := make([]*big.Int, k)
 	coefficientsBig[0] = secretBig
 
@@ -51,11 +60,10 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 			return nil, err
 		}
 		coefficients[i] = &coefficient
-		coefficientBig, err := rand.Int(rand.Reader, maxBig)
-		if err != nil {
-			return nil, err
-		}
+
+		coefficientBig := big.NewInt(0).SetBytes(coefficient.ToBytes())
 		coefficientsBig[i] = coefficientBig
+		// fmt.Println(coefficientBig)
 	}
 
 	// Setup big numbers so that we do not have to keep recreating them in each
@@ -69,39 +77,56 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 	// Create N shares.
 	shares := make(Shares, n)
 	for x := int64(1); x <= n; x++ {
+
 		accum := (*coefficients[0]).Clone()
-		accumBig.Set(coefficientsBig[0])
 		base := stackint.FromUint64(uint64(x))
-		baseBig.SetInt64(x)
 		exp := base
-		expBig.Set(baseBig)
 		expMod := exp.Mod(prime)
+
+		accumBig.Set(coefficientsBig[0])
+		baseBig.SetInt64(x)
+		expBig.Set(baseBig)
 		expModBig.Mod(expBig, primeBig)
+
+		ShouldEqual(accumBig, accum)
+		ShouldEqual(baseBig, base)
+		ShouldEqual(expBig, exp)
+		ShouldEqual(expModBig, expMod)
+
 		// Evaluate the polyomial at x.
-		for _, coefficient := range coefficients[1:] {
+		for i := range coefficients[1:] {
+			coefficient := coefficients[i]
 			co := coefficient.Mul(&expMod)
+			coBig.Set(coefficientsBig[i])
 			coBig.Mul(coBig, expModBig)
+
+			ShouldEqual(coBig, co)
+
 			co = co.Mod(prime)
 			coBig.Mod(coBig, primeBig)
+
+			ShouldEqual(coBig, co)
+
 			accum.Inc(&co)
 			accumBig.Add(accumBig, coBig)
+
+			ShouldEqual(accumBig, accum)
+
 			accum = accum.Mod(prime)
 			accumBig.Mod(accumBig, primeBig)
+
+			ShouldEqual(accumBig, accum)
+
 			exp = exp.Mul(&base)
 			expBig.Mul(expBig, baseBig)
 			expMod = exp.Mod(prime)
 			expModBig.Mod(expBig, primeBig)
 		}
-		expBig, _ := big.NewInt(0).SetString(accum.String(), 0)
-		if expBig.Cmp(accumBig) != 0 {
-			fmt.Println(accum.String())
-			fmt.Println(accumBig.String())
-			// panic("!!!")
-		}
+		ShouldEqual(accumBig, accum)
 		shares[x-1] = Share{
 			Key:      x,
 			Value:    accum,
-			ValueBig: accumBig,
+			ValueBig: big.NewInt(0).Set(accumBig),
 		}
 	}
 	return shares, nil
