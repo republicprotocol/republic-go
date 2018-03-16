@@ -134,25 +134,25 @@ func (node *DarkNode) StartBackgroundWorkers() {
 }
 
 func (node *DarkNode) StartServices() {
-	node.Logger.Info(logger.TagNetwork, fmt.Sprintf("Listening on %s:%s", node.Host, node.Port))
+	node.Logger.Info(fmt.Sprintf("Listening on %s:%s", node.Host, node.Port))
 	node.Swarm.Register(node.Server)
 	node.Dark.Register(node.Server)
 	node.Gossip.Register(node.Server)
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
-		node.Logger.Error(logger.TagNetwork, err.Error())
+		node.Logger.Error(err.Error())
 	}
 	if err := node.Server.Serve(listener); err != nil {
-		node.Logger.Error(logger.TagNetwork, err.Error())
+		node.Logger.Error(err.Error())
 	}
 }
 
 func (node *DarkNode) StartUI() {
 	fs := http.FileServer(http.Dir("dark-node-ui"))
 	http.Handle("/", fs)
-	node.Logger.Info(logger.TagNetwork, "Serving the Dark Node UI")
+	node.Logger.Info("Serving the Dark Node UI")
 	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
-		node.Logger.Error(logger.TagNetwork, err.Error())
+		node.Logger.Error(err.Error())
 	}
 }
 
@@ -193,7 +193,7 @@ func (node *DarkNode) WatchDarkOcean() {
 		for {
 			// Wait for a change to the ocean
 			<-changes
-			node.Logger.Info(logger.TagEthereum, "dark ocean change detected")
+			node.Logger.Info("dark ocean change detected")
 
 			// Find the dark pool for this node and connect to all of the dark
 			// nodes in the pool
@@ -230,24 +230,24 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 		// Find the dark node
 		multiAddress, err := node.Swarm.FindNode(n.ID)
 		if err != nil {
-			node.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot find dark node %v: %s", n.ID.Address(), err.Error()))
+			node.Logger.Error(fmt.Sprintf("cannot find dark node %v: %s", n.ID.Address(), err.Error()))
 			return
 		} else if multiAddress == nil {
-			// node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("cannot find dark node: %v", n.ID.Address()))
+			node.Logger.Warn(fmt.Sprintf("cannot find dark node %v: %s", n.ID.Address(), err.Error()))
 			return
 		}
 
 		// Ping the dark node to test the connection
 		node.ClientPool.Ping(*multiAddress)
 		if err != nil {
-			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("cannot ping to dark node %v: %s", n.ID.Address(), err.Error()))
+			node.Logger.Warn(fmt.Sprintf("cannot ping to dark node %v: %s", n.ID.Address(), err.Error()))
 			return
 		}
 
 		// Update the DHT
 		err = node.Swarm.DHT.UpdateMultiAddress(*multiAddress)
 		if err != nil {
-			node.Logger.Warn(logger.TagNetwork, fmt.Sprintf("cannot update DHT with dark node %v: %s", n.ID.Address(), err.Error()))
+			node.Logger.Warn(fmt.Sprintf("cannot update DHT with dark node %v: %s", n.ID.Address(), err.Error()))
 			return
 		}
 
@@ -321,19 +321,20 @@ func (node *DarkNode) OnFinalize(buyOrderID order.ID, sellOrderID order.ID) {
 // Usage logs memory and cpu usage
 func (node *DarkNode) Usage() {
 	// memory
-	vmStat, err := mem.VirtualMemory()
+	_, err := mem.VirtualMemory()
 	if err != nil {
-		node.Logger.Error(logger.TagUsage, err.Error())
+		node.Logger.Error(err.Error())
 	}
 	// cpu - get CPU number of cores and speed
-	cpuStat, err := cpu.Info()
+	_, err = cpu.Info()
 	if err != nil {
-		node.Logger.Error(logger.TagUsage, err.Error())
+		node.Logger.Error(err.Error())
 	}
 	percentage, err := cpu.Percent(0, false)
 	if err != nil {
-		node.Logger.Error(logger.TagUsage, err.Error())
+		node.Logger.Error(err.Error())
 	}
 
-	node.Logger.Usage(float32(cpuStat[0].Mhz*percentage[0]/100), int32(vmStat.Used/1024/1024), 0)
+	// FIXME: Give back real memory usage
+	node.Logger.Usage(percentage[0], 0.0, 0)
 }

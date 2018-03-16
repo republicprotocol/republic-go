@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"flag"
 	"fmt"
 	"log"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -17,9 +19,15 @@ import (
 )
 
 func main() {
+	// Wait for a small period of time for external configuration
+	time.Sleep(time.Minute)
+
+	// Load configuration path from the command line
+	configFilename := flag.String("config", "/home/.darknode/config.json", "Path to the JSON configuration file")
+	flag.Parse()
 
 	// Load the default configuration
-	config, err := LoadConfig("/home/.darknode/config.json")
+	config, err := LoadConfig(*configFilename)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -88,7 +96,7 @@ func LoadConfig(filename string) (*node.Config, error) {
 
 func CreateDarkNodeRegistrar(key *keystore.Key) (dnr.DarkNodeRegistrar, error) {
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
-	client, err := connection.FromURI("https://ropsten.infura.io/")
+	client, err := connection.FromURI("https://ropsten.infura.io/",connection.ChainRopsten)
 	if err != nil {
 		return nil, err
 	}
