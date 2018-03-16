@@ -1,5 +1,6 @@
 {
     "network": {
+        "multiAddress": "/ip4/203.214.100.199/tcp/18514/republic/8MKchRgKnjkz467GNcBF84H5nAv1kC",
         "bootstrapMultiAddresses": [
             "/ip4/52.21.44.236/tcp/18514/republic/8MGzXN7M1ucxvtumVjQ7Ybb7xQ8TUw",
             "/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",
@@ -26,12 +27,21 @@
             {
                 "websocket": {
                     "host": "0.0.0.0",
-                    "port": "18515"
+                    "port": "18515",
+                    "username": "",
+                    "password": ""
                 }
             }
         ]
     },
     "host": "0.0.0.0",
     "port": "18514",
+    "keyPair": "2QYqJvvScmcXe7Hji4d9fXTWtXNyKR4NReecDUoLZ33p",
+    "ethereumKey": {
+        "address": "0035312ddd9b6d0b5e0d90a002963012eb83a6b3",
+        "privatekey": "300c0758ea6ff9a8a8a6084be2921d79f0cf31b98169b74d39a0517a03b4d4b5",
+        "id": "c5483ed5-6e5f-43a4-b998-9a4b8b5bdd57",
+        "version": 3
+    },
     "ethereumRPC": "https://ropsten.infura.io"
 }

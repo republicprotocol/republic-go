@@ -32,24 +32,24 @@ type PluginOptions struct {
 
 // NewLogger returns a new Logger that will start and stop a set of plugins.
 func NewLogger(options Options) (*Logger, error) {
-	plugins := make([]Plugin, 0, len(options.Plugins))
+	logger := &Logger{
+		GuardedObject: do.NewGuardedObject(),
+		Plugins:       make([]Plugin, 0, len(options.Plugins)),
+	}
 	for i := range options.Plugins {
 		if options.Plugins[i].File != nil {
 			plugin, err := NewFilePlugin(*options.Plugins[i].File)
 			if err != nil {
 				return nil, err
 			}
-			plugins = append(plugins, plugin)
+			logger.Plugins = append(logger.Plugins, plugin)
 		}
 		if options.Plugins[i].WebSocket != nil {
-			plugin := NewWebSocketPlugin(*options.Plugins[i].WebSocket)
-			plugins = append(plugins, plugin)
+			plugin := NewWebSocketPlugin(logger, *options.Plugins[i].WebSocket)
+			logger.Plugins = append(logger.Plugins, plugin)
 		}
 	}
-	return &Logger{
-		GuardedObject: do.NewGuardedObject(),
-		Plugins:       plugins,
-	}, nil
+	return logger, nil
 }
 
 // Start starts all the plugins of the logger

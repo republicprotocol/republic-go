@@ -14,6 +14,7 @@ import (
 type WebSocketPlugin struct {
 	do.GuardedObject
 
+	logger   *Logger
 	server   *http.Server
 	host     string
 	port     string
@@ -30,9 +31,10 @@ type WebSocketPluginOptions struct {
 	Password string `json:"password"`
 }
 
-func NewWebSocketPlugin(webSocketPluginOptions WebSocketPluginOptions) Plugin {
+func NewWebSocketPlugin(logger *Logger, webSocketPluginOptions WebSocketPluginOptions) Plugin {
 	plugin := &WebSocketPlugin{
 		GuardedObject: do.NewGuardedObject(),
+		logger:        logger,
 		host:          webSocketPluginOptions.Host,
 		port:          webSocketPluginOptions.Port,
 		username:      webSocketPluginOptions.Username,
@@ -43,6 +45,11 @@ func NewWebSocketPlugin(webSocketPluginOptions WebSocketPluginOptions) Plugin {
 }
 
 func (plugin *WebSocketPlugin) handler(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		go plugin.logger.Network(Info, "WebSocket logger connection released")
+	}()
+	go plugin.logger.Network(Info, "WebSocket logger connection acquired")
+
 	upgrader := websocket.Upgrader{
 		CheckOrigin:     func(r *http.Request) bool { return true },
 		ReadBufferSize:  1024,
@@ -100,17 +107,7 @@ func (plugin *WebSocketPlugin) Start() error {
 			log.Println(err)
 		}
 	}()
-	time.Sleep(time.Second)
-	go func() {
-		plugin.Log(Log{
-			Timestamp: time.Now(),
-			Type:      Info,
-			EventType: Network,
-			Event: NetworkEvent{
-				Message: fmt.Sprintf("Websocket logger listening on %s:%s", plugin.host, plugin.port),
-			},
-		})
-	}()
+	go plugin.logger.Network(Info, fmt.Sprintf("WebSocket logger listening on %s:%s", plugin.host, plugin.port))
 	return nil
 }
 
