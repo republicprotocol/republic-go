@@ -74,17 +74,16 @@ func (plugin *WebSocketPlugin) handler(w http.ResponseWriter, r *http.Request) {
 
 	// Broadcast logs to the WebSocket
 	for {
-		var val Log
 		select {
-		case val = <-plugin.logs:
+		case val := <-plugin.logs:
+			conn.SetWriteDeadline(time.Now().Add(writeDeadline))
+			conn.WriteJSON(val)
 		case <-ping.C:
 			conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 			if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 				return
 			}
 		}
-		conn.SetWriteDeadline(time.Now().Add(writeDeadline))
-		conn.WriteJSON(val)
 	}
 }
 
