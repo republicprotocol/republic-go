@@ -117,7 +117,7 @@ func (logger *Logger) Error(message string) {
 }
 
 // Usage logs an info Log using a UsageEvent.
-func (logger *Logger) Usage(cpu, memory float64, network int64) {
+func (logger *Logger) Usage(cpu, memory float64, network uint64) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
 		Type:      Info,
@@ -177,7 +177,7 @@ func (event GenericEvent) String() string {
 type UsageEvent struct {
 	CPU     float64 `json:"cpu"`
 	Memory  float64 `json:"memory"`
-	Network int64   `json:"network"`
+	Network uint64  `json:"network"`
 }
 
 func (event UsageEvent) String() string {

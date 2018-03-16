@@ -12,6 +12,7 @@ import (
 
 	"encoding/hex"
 	"encoding/json"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
@@ -25,6 +26,7 @@ import (
 	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
+	psnet "github.com/shirou/gopsutil/net"
 	"google.golang.org/grpc"
 )
 
@@ -133,6 +135,14 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 }
 
 func (node *DarkNode) StartBackgroundWorkers() {
+	// Usage logger
+	go func() {
+		for {
+			time.Sleep(10 * time.Second)
+			node.Usage()
+		}
+	}()
+
 	// Start background workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentBroadcastWorker.Run()
@@ -168,7 +178,7 @@ func (node *DarkNode) StartUI() {
 
 func (node *DarkNode) startAPI() {
 	server := &http.Server{
-		Addr: fmt.Sprintf("%s:4000", node.Host ),
+		Addr: fmt.Sprintf("%s:4000", node.Host),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/me", node.meHandler)
@@ -364,23 +374,47 @@ func (node *DarkNode) OnFinalize(buyOrderID order.ID, sellOrderID order.ID) {
 	}()
 }
 
+var lastNetworkUsage uint64
+
 // Usage logs memory and cpu usage
 func (node *DarkNode) Usage() {
-	// memory
-	_, err := mem.VirtualMemory()
+
+	// Get CPU usage
+	_, err := cpu.Info()
 	if err != nil {
 		node.Logger.Error(err.Error())
 	}
-	// cpu - get CPU number of cores and speed
-	_, err = cpu.Info()
+	var cpuPercentage float64
+	cpuPercentages, err := cpu.Percent(0, false)
 	if err != nil {
 		node.Logger.Error(err.Error())
 	}
-	percentage, err := cpu.Percent(0, false)
+	if len(cpuPercentages) > 0 {
+		cpuPercentage = cpuPercentages[0]
+	}
+
+	// Get memory usage
+	stat, err := mem.VirtualMemory()
+	if err != nil {
+		node.Logger.Error(err.Error())
+	}
+	memoryPercentage := stat.UsedPercent
+
+	ios, err := psnet.IOCounters(false)
 	if err != nil {
 		node.Logger.Error(err.Error())
 	}
 
-	// FIXME: Give back real memory usage
-	node.Logger.Usage(percentage[0], 0.0, 0)
+	// Get network usage
+	var networkUsage uint64
+	if len(ios) > 0 {
+		networkUsage += ios[0].BytesSent
+		networkUsage += ios[0].BytesRecv
+	}
+	if lastNetworkUsage == 0 {
+		lastNetworkUsage = networkUsage
+	}
+
+	node.Logger.Usage(cpuPercentage, memoryPercentage, networkUsage-lastNetworkUsage)
+	lastNetworkUsage = networkUsage
 }
