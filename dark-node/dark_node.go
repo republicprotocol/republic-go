@@ -181,7 +181,7 @@ func (node *DarkNode) StartUI() {
 	}
 
 	node.Logger.Network(logger.Info, fmt.Sprintf("UI listening on %s:%s", node.Host, "3000"))
-	http.Handle("/me", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	http.Handle("/config", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"nodeID":     "0x" + hex.EncodeToString(node.ID),
 			"publicKey":  "0x" + hex.EncodeToString(append(node.KeyPair.PublicKey.X.Bytes(), node.KeyPair.PublicKey.Y.Bytes()...)),
