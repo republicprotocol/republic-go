@@ -2,6 +2,7 @@ package dnr_test
 
 import (
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
@@ -70,9 +71,10 @@ var _ = Describe("Dark nodes", func() {
 				MockDarkNodeRegistrar.Register(
 					configs[i].NetworkOptions.MultiAddress.ID(),
 					append(configs[i].RepublicKeyPair.PublicKey.X.Bytes(), configs[i].RepublicKeyPair.PublicKey.Y.Bytes()...),
+					big.NewInt(100),
 				)
 				ethAddresses[i] = bind.NewKeyedTransactor(configs[i].EthereumKey.PrivateKey)
-				nodes[i], err  = node.NewDarkNode(*configs[i],MockDarkNodeRegistrar)
+				nodes[i], err = node.NewDarkNode(*configs[i], MockDarkNodeRegistrar)
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 
@@ -105,7 +107,7 @@ var _ = Describe("Dark nodes", func() {
 			// After epoch, should be deregistered
 			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodeRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
 
-			MockDarkNodeRegistrar.Register(id0, pub)
+			MockDarkNodeRegistrar.Register(id0, pub, big.NewInt(100))
 
 			// Before epoch, should still be deregistered
 			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodeRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
