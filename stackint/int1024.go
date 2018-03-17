@@ -273,10 +273,18 @@ var One = func() Int1024 { return FromUint64(1) }
 // Two is the Int1024 that represents 2
 var Two = func() Int1024 { return FromUint64(2) }
 
+// HalfMax represents max / 2
+var HalfMax = func() Int1024 {
+	max := MAXINT1024()
+	max.ShiftRightInPlace()
+	return max
+}
+
 // Do not call overwriting functions on these!
 var zero = Zero()
 var one = One()
 var two = Two()
+var halfMax = HalfMax()
 
 // maxInt returns a new Int1024 representing 2**1024 - 1
 func maxInt() Int1024 {
@@ -292,7 +300,7 @@ func maxInt() Int1024 {
 // MAXINT1024 is the Int1024 that represents 2**1024 - 1
 var MAXINT1024 = func() Int1024 { return maxInt() }
 
-// maxInt returns a new Int1024 representing 2**1024 - 1
+// maxInt returns a new Int1024 representing 2**1023
 func twoPow1023() Int1024 {
 	var words [INT1024WORDS]Word
 	words[0] = 1 << 63
