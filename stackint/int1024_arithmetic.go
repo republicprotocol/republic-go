@@ -305,10 +305,9 @@ func (x *Int1024) MulModuloSlow(y, n *Int1024) Int1024 {
 
 // MulModulo returns (x*y) % n
 func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
-
 	// https://stackoverflow.com/questions/12168348/ways-to-do-modulo-multiplication-with-primitive-types
 
-	b := *y
+	b := y.Clone()
 	a := x.Clone()
 	m := n
 	z := Zero()
@@ -337,10 +336,13 @@ func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
 	for !a.IsZero() {
 		if !a.IsEven() {
 			/* Add b to res, modulo m, without overflow */
-			tmpM := m.Sub(&res)
-			if b.GreaterThanOrEqual(&tmpM) { /* Equiv to if (res + b >= m), without overflow */
+			m.Dec(&res)
+			if b.GreaterThanOrEqual(m) { /* Equiv to if (res + b >= m), without overflow */
+				m.Inc(&res)
 				res.Dec(m)
 				// res -= m
+			} else {
+				m.Inc(&res)
 			}
 			res.Inc(&b)
 			// res += b;
@@ -349,17 +351,108 @@ func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
 		// a >>= 1;
 
 		/* Double b, modulo m */
-		tmpB := b
-		tmpM := m.Sub(&b)
-		if b.GreaterThanOrEqual(&tmpM) { /* Equiv to if (2 * b >= m), without overflow */
+		m.Dec(&b)
+		if b.GreaterThanOrEqual(m) { /* Equiv to if (2 * b >= m), without overflow */
+			m.Inc(&b)
 			// temp_b -= m
-			tmpB = b.Sub(m)
+			// tmpB := b.Sub(m)
+			b.Inc(&b)
+			b.Dec(m)
+			// b.Inc(&tmpB)
+		} else {
+			m.Inc(&b)
+			b.Inc(&b)
 		}
 		// b += temp_b
-		b = b.Add(&tmpB)
 	}
 	return res
 }
+
+// // MulModulo returns (x*y) % n
+// func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
+
+// 	// https://www.thecodingforums.com/threads/extending-schrage-multiplication.558220/
+
+// 	/**
+
+// 		} else {
+
+// 		} // end if
+// 		return result;
+// 	} // end schrageFast()
+
+// 	*/
+
+// 	b := y.Clone()
+// 	a := x.Clone()
+// 	m := n
+// 	z := Zero()
+
+// 	// 	if (a < 2) { return (a * b) % m; }
+// 	if a.LessThan(&two) {
+// 		tmp := a.Mul(&b)
+// 		return tmp.Mod(m)
+// 	}
+
+// 	// int result;
+// 	result := z
+// 	// Check for b >= m-1
+// 	mLess := m.Sub(&one)
+
+// 	switch b.Cmp(&mLess) {
+// 	// Check for b >= m-1
+// 	// if (b > m - 1) {
+// 	case +1:
+// 		// result = schrageFast(a, b % m, m);
+// 		tmp := b.Mod(m)
+// 		result = a.MulModulo(&tmp, m)
+// 	// } else if (b == m - 1) {
+// 	case 0:
+// 		// result = (m - a) % m;
+// 		result = m.SubModulo(&a, m)
+// 	case -1:
+// 		/*
+
+// 			} else {
+// 				// Schrage method
+// 				result = a * (b % quot) - rem * (b / quot);
+// 				if (result < 0) { result += m; }
+// 			} // end if
+// 		*/
+
+// 		// Check for rem >= quot
+// 		// int quot = m / a;
+// 		// int rem = m % a;
+// 		quot, rem := m.DivMod(&a)
+// 		// if (rem >= quot) {
+// 		if rem.GreaterThanOrEqual(&quot) {
+// 			// result = schrageFast(a/2, b, m);
+// 			tmpA := a.ShiftRight(1)
+// 			fmt.Println(a.String())
+// 			fmt.Println("Recursive...")
+// 			result = tmpA.MulModulo(&b, m)
+// 			// result = addMod(result, result, m);
+// 			result = result.AddModulo(&result, m)
+// 			// if (a % 2 == 1) { result = addMod(result, b, m); }
+// 			if a.IsBitSet(0) {
+// 				result = result.AddModulo(&b, m)
+// 				// result = addMod(result, b, m)
+// 			}
+// 		} else {
+// 			// Schrage method
+// 			// result = a * (b % quot) - rem * (b / quot);
+// 			quot2, rem2 := b.DivMod(&quot)
+// 			result = a.Mul(&rem2)
+// 			tmp3 := rem.Mul(&quot2)
+// 			result = result.Sub(&tmp3)
+// 			// 	if (result < 0) { result += m; }
+// 			if tmp3.GreaterThan(&result) {
+// 				result = result.Add(m)
+// 			}
+// 		} // end if
+// 	}
+// 	return result
+// }
 
 /*
 
