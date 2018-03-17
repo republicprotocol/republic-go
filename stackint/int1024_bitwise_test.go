@@ -33,16 +33,18 @@ var _ = Describe("Int1024 bitwise operations", func() {
 			oneShiftLOne := one.ShiftLeft(1)
 			Ω(oneShiftLOne.Equals(&two)).Should(BeTrue())
 
-			oneShiftL1023 := one.ShiftLeft(1023)
-			Ω(oneShiftL1023.Equals(&twoPow1023)).Should(BeTrue())
+			shiftHalf := one.ShiftLeft(SIZE - 1)
+			expected := HalfMax()
+			expected = expected.Add(&one)
+			Ω(shiftHalf.Equals(&expected)).Should(BeTrue())
 
 			zeroShiftLOne := zero.ShiftLeft(1)
 			Ω(zeroShiftLOne.Equals(&zero)).Should(BeTrue())
 		})
 
 		It("should overflow without wrapping", func() {
-			two1023ShiftLOne := twoPow1023.ShiftLeft(1)
-			Ω(two1023ShiftLOne.Equals(&zero)).Should(BeTrue())
+			overflow := one.ShiftLeft(SIZE)
+			Ω(overflow.Equals(&zero)).Should(BeTrue())
 		})
 	})
 

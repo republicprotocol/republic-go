@@ -10,7 +10,7 @@ import (
 // go build -a -gcflags='-m -m' int1024.go int1024_arithmetic.go int1024_bitwise.go int1024_comparison.go int1024_internal.go
 
 // SIZE is the number of bits stored by Int1024
-const SIZE = 1024
+const SIZE = 2048
 
 // WORDSIZE is 64 for Word
 const WORDSIZE = 64
@@ -20,6 +20,9 @@ type Word uint64
 
 // WORDMAX represents the largest word value
 const WORDMAX = 1<<WORDSIZE - 1
+
+// BYTECOUNT represents the number of bytes that can be stores
+const BYTECOUNT = SIZE / 8
 
 // INT1024WORDS is 1024 / 64 = 16
 const INT1024WORDS = SIZE / WORDSIZE
@@ -137,43 +140,43 @@ func (x *Int1024) String() string {
 	return ret
 }
 
-// ToBytes returns an array of 128 bytes (Big Endian)
+// ToBytes returns an array of BYTECOUNT (128) bytes (Big Endian)
 func (x *Int1024) ToBytes() []byte {
 
-	bytes128 := make([]byte, 128)
+	bytesAll := make([]byte, BYTECOUNT)
 	b8 := make([]byte, 8)
 
 	for i := range x.words {
 		binary.BigEndian.PutUint64(b8, uint64(x.words[i]))
 		for j := 0; j < 8; j++ {
-			bytes128[i*8+j] = b8[j]
+			bytesAll[i*8+j] = b8[j]
 		}
 	}
 
-	return bytes128
+	return bytesAll
 }
 
-// FromBytes deserializes an array of 128 bytes to an Int1024 (Big Endian)
-func FromBytes(bytes128 []byte) Int1024 {
+// FromBytes deserializes an array of BYTECOUNT (128) bytes to an Int1024 (Big Endian)
+func FromBytes(bytesAll []byte) Int1024 {
 
 	x := Zero()
 
-	numWords := len(bytes128) / 8
-	if len(bytes128)%8 != 0 {
+	numWords := len(bytesAll) / 8
+	if len(bytesAll)%8 != 0 {
 		numWords++
 	}
 
-	// mod := 8 - len(bytes128)%8
+	// mod := 8 - len(bytesAll)%8
 
 	for i := 0; i < numWords; i++ {
 		b8 := make([]byte, 8)
-		start := len(bytes128) - i*8
+		start := len(bytesAll) - i*8
 		end := start - 8
 		if end < 0 {
 			end = 0
 		}
 		for j := 0; j < start-end; j++ {
-			b8[7-j] = bytes128[start-j-1]
+			b8[7-j] = bytesAll[start-j-1]
 		}
 		x.words[INT1024WORDS-1-i] = Word(binary.BigEndian.Uint64(b8))
 	}
@@ -181,31 +184,31 @@ func FromBytes(bytes128 []byte) Int1024 {
 	return x
 }
 
-// ToLittleEndianBytes returns an array of 128 bytes (Little Endian)
+// ToLittleEndianBytes returns an array of BYTECOUNT (128) bytes (Little Endian)
 func (x *Int1024) ToLittleEndianBytes() []byte {
 
-	bytes128 := make([]byte, 128)
+	bytesAll := make([]byte, BYTECOUNT)
 	b8 := make([]byte, 8)
 
 	for i := range x.words {
 		binary.LittleEndian.PutUint64(b8, uint64(x.words[INT1024WORDS-1-i]))
 		for j := 0; j < 8; j++ {
-			bytes128[i*8+j] = b8[j]
+			bytesAll[i*8+j] = b8[j]
 		}
 	}
 
-	return bytes128
+	return bytesAll
 }
 
 // FromLittleEndianBytes deserializes an array of 128 bytes to an Int1024 (LittleBig Endian)
-func FromLittleEndianBytes(bytes128 []byte) Int1024 {
+func FromLittleEndianBytes(bytesAll []byte) Int1024 {
 
 	x := Zero()
 
-	numWords := len(bytes128) / 8
+	numWords := len(bytesAll) / 8
 
 	for i := 0; i < numWords; i++ {
-		b8 := bytes128[i*8 : (i+1)*8]
+		b8 := bytesAll[i*8 : (i+1)*8]
 		x.words[INT1024WORDS-1-i] = Word(binary.LittleEndian.Uint64(b8))
 	}
 
@@ -299,15 +302,3 @@ func maxInt() Int1024 {
 
 // MAXINT1024 is the Int1024 that represents 2**1024 - 1
 var MAXINT1024 = func() Int1024 { return maxInt() }
-
-// maxInt returns a new Int1024 representing 2**1023
-func twoPow1023() Int1024 {
-	var words [INT1024WORDS]Word
-	words[0] = 1 << 63
-	return Int1024{
-		words: words,
-	}
-}
-
-// TWOPOW1023 is the Int1024 that represents 2**1023
-var TWOPOW1023 = func() Int1024 { return twoPow1023() }
