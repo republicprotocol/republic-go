@@ -317,13 +317,15 @@ func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
 
 	/* Only needed if b may be >= m */
 	if b.GreaterThanOrEqual(m) {
-		halfMax := maxInt()
-		halfMax.ShiftRightInPlace()
+		// halfMax := maxInt()
+		// halfMax.ShiftRightInPlace()
 
 		// Replace with shift right
 		// two := FromUint64(2)
 		// halfMax := max.Div(&two)
-		if m.GreaterThan(&halfMax) {
+
+		// if m.GreaterThan(&halfMax) {
+		if m.IsBitSet(1023) {
 			b = b.Sub(m)
 			// b -= m;
 		} else {
@@ -333,7 +335,7 @@ func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
 	}
 
 	for !a.IsZero() {
-		if a.IsBitSet(0) {
+		if !a.IsEven() {
 			/* Add b to res, modulo m, without overflow */
 			tmpM := m.Sub(&res)
 			if b.GreaterThanOrEqual(&tmpM) { /* Equiv to if (res + b >= m), without overflow */
