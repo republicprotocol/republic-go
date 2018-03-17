@@ -1,6 +1,8 @@
 package shamir_test
 
 import (
+	"fmt"
+	"math/big"
 	"math/rand"
 
 	. "github.com/onsi/ginkgo"
@@ -53,12 +55,12 @@ var _ = Describe("Shamir's secret sharing", func() {
 			// Shamir parameters.
 			n := int64(100)
 			k := int64(50)
-			// primeBig, ok := big.NewInt(0).SetString(primeStr, 10)
-			// Ω(ok).Should(Equal(true))
+			primeBig, ok := big.NewInt(0).SetString(primeStr, 10)
+			Ω(ok).Should(Equal(true))
 			secret := stackint.FromUint64(1234)
-			// secretBig := big.NewInt(1234)
+			secretBig := big.NewInt(1234)
 			// Split the secret.
-			shares, err := Split(n, k, &prime, &secret /*, primeBig, secretBig*/)
+			shares, err := Split(n, k, &prime, &secret, primeBig, secretBig)
 			Ω(err).Should(BeNil())
 			Ω(int64(len(shares))).Should(Equal(n))
 		})
@@ -69,16 +71,16 @@ var _ = Describe("Shamir's secret sharing", func() {
 			// Shamir parameters.
 			N := int64(100)
 			K := int64(50)
-			// primeBig, ok := big.NewInt(0).SetString(primeStr, 10)
-			// Ω(ok).Should(Equal(true))
+			primeBig, ok := big.NewInt(0).SetString(primeStr, 10)
+			Ω(ok).Should(Equal(true))
 			secret := stackint.FromUint64(1234)
-			// secretBig := big.NewInt(1234)
+			secretBig := big.NewInt(1234)
 			// Split the secret.
-			shares, err := Split(N, K, &prime, &secret /*, primeBig, secretBig*/)
+			shares, err := Split(N, K, &prime, &secret, primeBig, secretBig)
 			Ω(err).Should(BeNil())
 			Ω(int64(len(shares))).Should(Equal(N))
 			// For all K greater than, or equal to, 50 attempt to decode the secret.
-			for k := int64(50); k < 101; k++ {
+			for k := int64(50); k < 60; k++ {
 				// Pick K unique indices in the range [0, k).
 				indices := map[int]struct{}{}
 				for i := 0; i < int(k); i++ {
@@ -96,8 +98,8 @@ var _ = Describe("Shamir's secret sharing", func() {
 					kShares[index] = shares[index]
 				}
 				decodedSecret /*, decodedSecretBig*/ := Join(&prime /*primeBig,*/, kShares)
-				// fmt.Println("!!!")
-				// fmt.Println(decodedSecret.String())
+				fmt.Println("!!!")
+				fmt.Println(decodedSecret.String())
 				// fmt.Println(decodedSecretBig.String())
 				Ω(decodedSecret.Cmp(&secret)).Should(Equal(0))
 			}
