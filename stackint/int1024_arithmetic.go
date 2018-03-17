@@ -11,7 +11,7 @@ func (x *Int1024) Add(y *Int1024) Int1024 {
 	z.Inc(y)
 
 	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
 	// 	panic(fmt.Sprintf("Addition failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
 	// }
 
@@ -69,7 +69,7 @@ func (x *Int1024) Sub(y *Int1024) Int1024 {
 	z.Dec(y)
 
 	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
 	// 	panic(fmt.Sprintf("Subtraction failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
 	// }
 
@@ -118,7 +118,7 @@ func (x *Int1024) Mul(y *Int1024) Int1024 {
 	}
 
 	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
 	// 	panic(fmt.Sprintf("Multiplication failed for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
 	// }
 
@@ -174,30 +174,30 @@ func (x *Int1024) Div(y *Int1024) Int1024 {
 // Mod returns the modulus x%n. If n is 0, a run-time panic occurs.
 func (x *Int1024) Mod(n *Int1024) Int1024 {
 	// // Switch not needed. Is it a performance improvement?
-	// switch x.Cmp(n) {
-	// case -1:
-	// 	return x.Clone()
-	// case 0:
-	// 	return Zero()
-	// case 1:
-	// 	_, mod := x.DivMod(n)
-	// 	return mod
-	// default:
-	// 	panic("unexpected cmp result (expecting -1, 0 or 1)")
-	// }
+	switch x.Cmp(n) {
+	case -1:
+		return x.Clone()
+	case 0:
+		return Zero()
+	case 1:
+		_, mod := x.DivMod(n)
+		return mod
+	default:
+		panic("unexpected cmp result (expecting -1, 0 or 1)")
+	}
 
 	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
 	// yB, _ := big.NewInt(0).SetString(n.ToBinary(), 2)
 	// expected := big.NewInt(0).Mod(xB, yB)
 
-	_, z := x.DivMod(n)
+	// _, z := x.DivMod(n)
 
 	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
 	// 	panic(fmt.Sprintf("Modulo failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), n.ToBinary(), expected, actual))
 	// }
 
-	return z
+	// return z
 }
 
 // SubModulo returns (x - y) % n
@@ -224,7 +224,7 @@ func (x *Int1024) SubModulo(y, n *Int1024) Int1024 {
 	}
 }
 
-// AddModulo returns (x + y) % n (x+y can be larger than 2^1024)
+// AddModulo returns (x + y) % n (x+y can be larger than 2^SIZE)
 func (x *Int1024) AddModulo(y, n *Int1024) Int1024 {
 	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
 	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
@@ -234,7 +234,7 @@ func (x *Int1024) AddModulo(y, n *Int1024) Int1024 {
 	z := x.addModulo(y, n)
 
 	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= 1024 {
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
 	// 	panic(fmt.Sprintf("AddModulo failed! for %s + %s mod %s.\n\nExpected %s\n\nGot %s", x.String(), y.String(), n.String(), expected, actual))
 	// }
 
@@ -243,7 +243,7 @@ func (x *Int1024) AddModulo(y, n *Int1024) Int1024 {
 
 func (x *Int1024) addModulo(y, n *Int1024) Int1024 {
 
-	if !x.IsBitSet(1023) && !y.IsBitSet(1023) {
+	if !x.IsBitSet(SIZE-1) && !y.IsBitSet(SIZE-1) {
 		tmp := x.Add(y)
 		return tmp.Mod(n)
 	}
@@ -258,7 +258,7 @@ func (x *Int1024) addModulo(y, n *Int1024) Int1024 {
 	}
 
 	// Check again
-	if !X.IsBitSet(1023) && !Y.IsBitSet(1023) {
+	if !X.IsBitSet(SIZE-1) && !Y.IsBitSet(SIZE-1) {
 		tmp := X.Add(&Y)
 		return tmp.Mod(n)
 	}
@@ -305,61 +305,157 @@ func (x *Int1024) MulModuloSlow(y, n *Int1024) Int1024 {
 
 // MulModulo returns (x*y) % n
 func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
-
 	// https://stackoverflow.com/questions/12168348/ways-to-do-modulo-multiplication-with-primitive-types
 
-	b := *y
-	a := x.Clone()
-	m := n
-	z := Zero()
-	res := z
-	// uint64_t temp_b;
+	mul := x.Mul(y)
+	return mul.Mod(n)
 
-	/* Only needed if b may be >= m */
-	if b.GreaterThanOrEqual(m) {
-		// halfMax := maxInt()
-		// halfMax.ShiftRightInPlace()
+	// b := y.Clone()
+	// a := x.Clone()
+	// m := n
+	// z := Zero()
+	// res := z
+	// // uint64_t temp_b;
 
-		// Replace with shift right
-		// two := FromUint64(2)
-		// halfMax := max.Div(&two)
+	// /* Only needed if b may be >= m */
+	// if b.GreaterThanOrEqual(m) {
+	// 	// halfMax := maxInt()
+	// 	// halfMax.ShiftRightInPlace()
 
-		// if m.GreaterThan(&halfMax) {
-		if m.IsBitSet(1023) {
-			b = b.Sub(m)
-			// b -= m;
-		} else {
-			b = b.Mod(m)
-			// b %= m;
-		}
-	}
+	// 	// Replace with shift right
+	// 	// two := FromUint64(2)
+	// 	// halfMax := max.Div(&two)
 
-	for !a.IsZero() {
-		if !a.IsEven() {
-			/* Add b to res, modulo m, without overflow */
-			tmpM := m.Sub(&res)
-			if b.GreaterThanOrEqual(&tmpM) { /* Equiv to if (res + b >= m), without overflow */
-				res.Dec(m)
-				// res -= m
-			}
-			res.Inc(&b)
-			// res += b;
-		}
-		a.ShiftRightInPlace()
-		// a >>= 1;
+	// 	// if m.GreaterThan(&halfMax) {
+	// 	if m.IsBitSet(SIZE - 1) {
+	// 		b = b.Sub(m)
+	// 		// b -= m;
+	// 	} else {
+	// 		b = b.Mod(m)
+	// 		// b %= m;
+	// 	}
+	// }
 
-		/* Double b, modulo m */
-		tmpB := b
-		tmpM := m.Sub(&b)
-		if b.GreaterThanOrEqual(&tmpM) { /* Equiv to if (2 * b >= m), without overflow */
-			// temp_b -= m
-			tmpB = b.Sub(m)
-		}
-		// b += temp_b
-		b = b.Add(&tmpB)
-	}
-	return res
+	// for !a.IsZero() {
+	// 	if !a.IsEven() {
+	// 		/* Add b to res, modulo m, without overflow */
+	// 		m.Dec(&res)
+	// 		if b.GreaterThanOrEqual(m) { /* Equiv to if (res + b >= m), without overflow */
+	// 			m.Inc(&res)
+	// 			res.Dec(m)
+	// 			// res -= m
+	// 		} else {
+	// 			m.Inc(&res)
+	// 		}
+	// 		res.Inc(&b)
+	// 		// res += b;
+	// 	}
+	// 	a.ShiftRightInPlace()
+	// 	// a >>= 1;
+
+	// 	/* Double b, modulo m */
+	// 	m.Dec(&b)
+	// 	if b.GreaterThanOrEqual(m) { /* Equiv to if (2 * b >= m), without overflow */
+	// 		m.Inc(&b)
+	// 		// temp_b -= m
+	// 		// tmpB := b.Sub(m)
+	// 		b.Inc(&b)
+	// 		b.Dec(m)
+	// 		// b.Inc(&tmpB)
+	// 	} else {
+	// 		m.Inc(&b)
+	// 		b.Inc(&b)
+	// 	}
+	// 	// b += temp_b
+	// }
+	// return res
 }
+
+// // MulModulo returns (x*y) % n
+// func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
+
+// 	// https://www.thecodingforums.com/threads/extending-schrage-multiplication.558220/
+
+// 	/**
+
+// 		} else {
+
+// 		} // end if
+// 		return result;
+// 	} // end schrageFast()
+
+// 	*/
+
+// 	b := y.Clone()
+// 	a := x.Clone()
+// 	m := n
+// 	z := Zero()
+
+// 	// 	if (a < 2) { return (a * b) % m; }
+// 	if a.LessThan(&two) {
+// 		tmp := a.Mul(&b)
+// 		return tmp.Mod(m)
+// 	}
+
+// 	// int result;
+// 	result := z
+// 	// Check for b >= m-1
+// 	mLess := m.Sub(&one)
+
+// 	switch b.Cmp(&mLess) {
+// 	// Check for b >= m-1
+// 	// if (b > m - 1) {
+// 	case +1:
+// 		// result = schrageFast(a, b % m, m);
+// 		tmp := b.Mod(m)
+// 		result = a.MulModulo(&tmp, m)
+// 	// } else if (b == m - 1) {
+// 	case 0:
+// 		// result = (m - a) % m;
+// 		result = m.SubModulo(&a, m)
+// 	case -1:
+// 		/*
+
+// 			} else {
+// 				// Schrage method
+// 				result = a * (b % quot) - rem * (b / quot);
+// 				if (result < 0) { result += m; }
+// 			} // end if
+// 		*/
+
+// 		// Check for rem >= quot
+// 		// int quot = m / a;
+// 		// int rem = m % a;
+// 		quot, rem := m.DivMod(&a)
+// 		// if (rem >= quot) {
+// 		if rem.GreaterThanOrEqual(&quot) {
+// 			// result = schrageFast(a/2, b, m);
+// 			tmpA := a.ShiftRight(1)
+// 			fmt.Println(a.String())
+// 			fmt.Println("Recursive...")
+// 			result = tmpA.MulModulo(&b, m)
+// 			// result = addMod(result, result, m);
+// 			result = result.AddModulo(&result, m)
+// 			// if (a % 2 == 1) { result = addMod(result, b, m); }
+// 			if a.IsBitSet(0) {
+// 				result = result.AddModulo(&b, m)
+// 				// result = addMod(result, b, m)
+// 			}
+// 		} else {
+// 			// Schrage method
+// 			// result = a * (b % quot) - rem * (b / quot);
+// 			quot2, rem2 := b.DivMod(&quot)
+// 			result = a.Mul(&rem2)
+// 			tmp3 := rem.Mul(&quot2)
+// 			result = result.Sub(&tmp3)
+// 			// 	if (result < 0) { result += m; }
+// 			if tmp3.GreaterThan(&result) {
+// 				result = result.Add(m)
+// 			}
+// 		} // end if
+// 	}
+// 	return result
+// }
 
 /*
 

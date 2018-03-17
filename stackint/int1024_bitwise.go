@@ -53,7 +53,7 @@ func (x *Int1024) ShiftRightInPlace() {
 }
 
 func (x *Int1024) IsBitSet(n int) bool {
-	if n > 1023 || n < 0 {
+	if n > (SIZE-1) || n < 0 {
 		return false
 	}
 	word := n / WORDSIZE
