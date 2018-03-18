@@ -187,8 +187,8 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) GetAllNodes() ([][]byte, err
 		return nil, err
 	}
 	arr := make([][]byte, len(ret))
-	for i, b20 := range ret {
-		arr[i] = b20[:]
+	for i := range ret {
+		arr[i] = ret[i][:]
 	}
 	return arr, nil
 }
