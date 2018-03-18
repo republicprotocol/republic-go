@@ -142,6 +142,19 @@ func (logger *Logger) Network(ty Type, message string) {
 	})
 }
 
+// OrderReceived logs an OrderReceivedEvent.
+func (logger *Logger) OrderReceived(ty Type, id, fragmentID string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: OrderReceived,
+		Event: OrderReceivedEvent{
+			ID:         id,
+			FragmentID: fragmentID,
+		},
+	})
+}
+
 // Type defines the different types of Log messages that can be sent.
 type Type string
 
