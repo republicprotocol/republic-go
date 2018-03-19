@@ -91,7 +91,7 @@ func LoadConfig(filename string) (*node.Config, error) {
 	config.NetworkOptions.MultiAddress = multiAddress
 
 	// Write changes back to the config file
-	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
+	file, err := os.Create(filename)
 	if err != nil {
 		return nil, err
 	}
