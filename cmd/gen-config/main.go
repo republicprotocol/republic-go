@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/rand"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -17,41 +16,29 @@ import (
 )
 
 var bootstrapNode = []string{
-	"/ip4/0.0.0.0/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu",
-	"/ip4/0.0.0.0/tcp/3001/republic/8MGB2cj2HbQFepRVs43Ghct5yCRS9C",
-	"/ip4/0.0.0.0/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR",
-	"/ip4/0.0.0.0/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT",
-	"/ip4/0.0.0.0/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss",
+	"/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",
+	"/ip4/52.21.44.236/tcp/18514/republic/8MGzXN7M1ucxvtumVjQ7Ybb7xQ8TUw",
+	"/ip4/52.41.118.171/tcp/18514/republic/8MHmrykz65HimBPYaVgm8bTSpRUoXA",
+	"/ip4/52.59.176.141/tcp/18514/republic/8MKFT9CDQQru1hYqnaojXqCQU2Mmuk",
+	"/ip4/52.77.88.84/tcp/18514/republic/8MGb8k337pp2GSh6yG8iv2GK6FbNHN",
 }
 
 func main() {
-	n := flag.Int("n", 67, "Number of node configurations to generate")
-	out := flag.String("out", "./", "Output directory")
-	flag.Parse()
-
-	for i := 0; i < *n; i++ {
-		err := generateSingleNode(i, *out)
-		if err != nil {
-			log.Fatal(err)
-		}
+	err := generateSingleNode(".")
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
-func generateSingleNode(i int, dir string) error {
-	address, keyPair, err := identity.NewAddress()
-	if err != nil {
-		return err
-	}
-	multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d/republic/%s", 4000+i, address))
+func generateSingleNode(dir string) error {
+	_, keyPair, err := identity.NewAddress()
 	if err != nil {
 		return err
 	}
 
 	// Create default network options
 	options := network.Options{
-		MultiAddress:            multiAddress,
 		BootstrapMultiAddresses: make([]identity.MultiAddress, len(bootstrapNode)),
-
 		Debug:                network.DebugHigh,
 		Alpha:                3,
 		MaxBucketLength:      20,
@@ -78,12 +65,12 @@ func generateSingleNode(i int, dir string) error {
 					File: &logger.FilePluginOptions{Path: "stdout"},
 				},
 				logger.PluginOptions{
-					WebSocket:&logger.WebSocketPluginOptions{Host:"0.0.0.0", Port:"18515"},
+					WebSocket: &logger.WebSocketPluginOptions{Host: "0.0.0.0", Port: "18515"},
 				},
 			},
 		},
 		Host:        "0.0.0.0",
-		Port:        fmt.Sprintf("%d", 4000+i),
+		Port:        fmt.Sprintf("%d", 18514),
 		KeyPair:     keyPair,
 		EthereumKey: *ethKey,
 		EthereumRPC: "https://ropsten.infura.io",
@@ -94,6 +81,6 @@ func generateSingleNode(i int, dir string) error {
 		return err
 	}
 	d1 := []byte(data)
-	err = ioutil.WriteFile(fmt.Sprintf("%s/node-%d.json", dir, i+1), d1, 0644)
+	err = ioutil.WriteFile(fmt.Sprintf("%s/config.json", dir), d1, 0644)
 	return err
 }
