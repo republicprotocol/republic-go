@@ -243,7 +243,7 @@ type OrderMatchEvent struct {
 }
 
 func (event OrderMatchEvent) String() string {
-	return fmt.Sprintf("buy = %v; sell = %v", event.BuyID, event.SellID)
+	return fmt.Sprintf("buy = %s; sell = %s", event.BuyID, event.SellID)
 }
 
 type OrderReceivedEvent struct {
@@ -252,7 +252,7 @@ type OrderReceivedEvent struct {
 }
 
 func (event OrderReceivedEvent) String() string {
-	return fmt.Sprintf("%v", event.ID)
+	return event.ID
 }
 
 type NetworkEvent struct {
