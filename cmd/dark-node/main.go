@@ -51,7 +51,6 @@ func main() {
 
 // LoadConfig returns a default Config object for the Falcon testnet.
 func LoadConfig(filename string) (*node.Config, error) {
-	var writeBack bool
 
 	// Load configuration file
 	config, err := node.LoadConfig(filename)
@@ -61,47 +60,44 @@ func LoadConfig(filename string) (*node.Config, error) {
 
 	// Generate our ethereum keypair
 	if config.EthereumKey.PrivateKey == nil {
-		writeBack = true
 		config.EthereumKey = *keystore.NewKeyForDirectICAP(rand.Reader)
 	}
 
 	if config.KeyPair.PrivateKey == nil {
-		writeBack = true
-		// Get an address and keypair
-		address, keyPair, err := identity.NewAddress()
-		if err != nil {
-			return nil, err
-		}
 
-		// Get our IP address
-		out, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
-		out = []byte(strings.Trim(string(out), "\n "))
+		// Get a random keypair
+		keyPair, err := identity.NewKeyPair()
 		if err != nil {
 			return nil, err
 		}
-		if err != nil {
-			return nil, err
-		}
-
-		// Generate our multiaddress
-		multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", string(out), config.Port, address.String()))
-		if err != nil {
-			return nil, err
-		}
-
 		config.KeyPair = keyPair
-		config.NetworkOptions.MultiAddress = multiAddress
 	}
 
-	if writeBack {
-		file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
-		if err != nil {
-			return nil, err
-		}
-		defer file.Close()
-		if err := json.NewEncoder(file).Encode(config); err != nil {
-			return nil, err
-		}
+	// Get our IP address
+	out, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
+	out = []byte(strings.Trim(string(out), "\n "))
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate our multiaddress
+	multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", string(out), config.Port, config.KeyPair.Address().String()))
+	if err != nil {
+		return nil, err
+	}
+	config.NetworkOptions.MultiAddress = multiAddress
+
+	// Write changes back to the config file
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	if err := json.NewEncoder(file).Encode(config); err != nil {
+		return nil, err
 	}
 
 	return config, nil
