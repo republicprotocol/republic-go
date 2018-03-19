@@ -3,14 +3,12 @@ package stackint
 import (
 	"encoding/binary"
 	"fmt"
-	"strconv"
-	"strings"
 )
 
 // go build -a -gcflags='-m -m' int1024.go int1024_arithmetic.go int1024_bitwise.go int1024_comparison.go int1024_internal.go
 
 // SIZE is the number of bits stored by Int1024
-const SIZE = 1024
+const SIZE = 2048
 
 // WORDSIZE is 64 for Word
 const WORDSIZE = 64
@@ -29,116 +27,118 @@ const INT1024WORDS = SIZE / WORDSIZE
 
 // Int1024 provides a 1024 bit number optimised to never use the heap
 type Int1024 struct {
-	words [INT1024WORDS]uint64
+	words  [INT1024WORDS]uint64
+	length uint16
 }
 
 // FromUint64 returns a new Int1024 from a Word
 func FromUint64(n uint64) Int1024 {
-	z := Zero()
-	z.words[INT1024WORDS-1] = n
-	return z
+	return Int1024{
+		words:  [INT1024WORDS]uint64{n},
+		length: 1,
+	}
 }
 
 // ToUint64 converts an Int1024 to a uint64 if it is small enough
 func (x *Int1024) ToUint64() uint64 {
 	// Check that all other words are zero
-	for i := 0; i < INT1024WORDS-2; i++ {
+	for i := 1; i < len(x.words); i++ {
 		if x.words[i] != 0 {
 			panic("Int1024 is too large to be converted to uint64")
 		}
 	}
-	return uint64(x.words[INT1024WORDS-1])
+	return uint64(x.words[0])
 }
 
-// FromString returns a new Int1024 from a string
-func FromString(number string) Int1024 {
-	self := Zero()
+// // FromString returns a new Int1024 from a string
+// func FromString(number string) Int1024 {
+// 	self := Zero()
 
-	// Base to convert from
-	base := 10
+// 	// Base to convert from
+// 	base := 10
 
-	if len(number) > 2 {
-		if number[0:2] == "0x" {
-			number = number[2:]
-			base = 16
-		} else if number[0:2] == "0b" {
-			number = number[2:]
-			base = 2
-		}
-	}
+// 	if len(number) > 2 {
+// 		if number[0:2] == "0x" {
+// 			number = number[2:]
+// 			base = 16
+// 		} else if number[0:2] == "0b" {
+// 			number = number[2:]
+// 			base = 2
+// 		}
+// 	}
 
-	// Length of string
-	length := len(number)
+// 	// Length of string
+// 	length := len(number)
 
-	if length == 0 {
-		panic("invalid number")
-	}
+// 	if length == 0 {
+// 		panic("invalid number")
+// 	}
 
-	// Break up into blocks of size 19 (log10(2 ** 64))
-	blockSize := 1
-	limit := uint64(1<<63-1) / uint64(base)
-	for basePower := uint64(1); basePower < limit; basePower *= uint64(base) {
-		blockSize++
-	}
+// 	// Break up into blocks of size 19 (log10(2 ** 64))
+// 	blockSize := 1
+// 	limit := uint64(1<<63-1) / uint64(base)
+// 	for basePower := uint64(1); basePower < limit; basePower *= uint64(base) {
+// 		blockSize++
+// 	}
 
-	// Number of blocks
-	count := (length / blockSize)
-	if length%blockSize != 0 {
-		count++
-	}
+// 	// Number of blocks
+// 	count := (length / blockSize)
+// 	if length%blockSize != 0 {
+// 		count++
+// 	}
 
-	// TODO: Replace with 10.Pow(blockSize)
-	shift := FromUint64(uint64(base))
-	blockSizeInt := FromUint64(uint64(blockSize))
-	shift = shift.Exp(&blockSizeInt)
-	shiftAcc := One()
+// 	// TODO: Replace with 10.Pow(blockSize)
+// 	shift := FromUint64(uint64(base))
+// 	blockSizeInt := FromUint64(uint64(blockSize))
+// 	shift = shift.Exp(&blockSizeInt)
+// 	shiftAcc := One()
 
-	// Loop through each block. Multiply block by (10**19)**i and add to number.
-	for i := 0; i < count; i++ {
-		end := length - i*blockSize
-		start := length - (i+1)*blockSize
-		if start < 0 {
-			start = 0
-		}
-		word, err := strconv.ParseUint(number[start:end], base, 64)
-		if err != nil {
-			panic(err)
-		}
+// 	// Loop through each block. Multiply block by (10**19)**i and add to number.
+// 	for i := 0; i < count; i++ {
+// 		end := length - i*blockSize
+// 		start := length - (i+1)*blockSize
+// 		if start < 0 {
+// 			start = 0
+// 		}
+// 		word, err := strconv.ParseUint(number[start:end], base, 64)
+// 		if err != nil {
+// 			panic(err)
+// 		}
 
-		wordI := FromUint64(word)
-		wordI = wordI.Mul(&shiftAcc)
-		self = self.Add(&wordI)
+// 		wordI := FromUint64(word)
+// 		wordI = wordI.Mul(&shiftAcc)
+// 		self = self.Add(&wordI)
 
-		shiftAcc = shiftAcc.Mul(&shift)
-	}
+// 		shiftAcc = shiftAcc.Mul(&shift)
+// 	}
 
-	return self
-}
+// 	return self
+// }
 
-func (x *Int1024) String() string {
-	blockSize := 19
-	blockSize1024 := FromUint64(uint64(blockSize))
-	base := FromUint64(10)
-	base = base.Exp(&blockSize1024)
-	q := *x
-	var r Int1024
-	ret := ""
+// func (x *Int1024) String() string {
+// 	blockSize := 19
+// 	blockSize1024 := FromUint64(uint64(blockSize))
+// 	base := FromUint64(10)
+// 	base = base.Exp(&blockSize1024)
+// 	q := *x
+// 	var r Int1024
+// 	ret := ""
 
-	for !q.IsZero() {
-		q, r = q.DivMod(&base)
-		chars := strconv.FormatUint(uint64(r.words[INT1024WORDS-1]), 10)
-		zeroes := strings.Repeat("0", blockSize-len(chars))
-		ret = zeroes + chars + ret
-	}
+// 	for !q.IsZero() {
+// 		q, r = q.DivMod(&base)
+// 		chars := strconv.FormatUint(uint64(r.words[0]), 10)
+// 		zeroes := strings.Repeat("0", blockSize-len(chars))
+// 		ret = zeroes + chars + ret
+// 	}
 
-	ret = strings.TrimLeft(ret, "0")
+// 	ret = strings.TrimLeft(ret, "0")
 
-	if ret == "" {
-		return "0"
-	}
+// 	if ret == "" {
+// 		return "0"
+// 	}
 
-	return ret
-}
+// 	return ret
+// }
 
 // ToBytes returns an array of BYTECOUNT (128) bytes (Big Endian)
 func (x *Int1024) ToBytes() []byte {
@@ -147,7 +147,7 @@ func (x *Int1024) ToBytes() []byte {
 	b8 := make([]byte, 8)
 
 	for i := range x.words {
-		binary.BigEndian.PutUint64(b8, uint64(x.words[i]))
+		binary.BigEndian.PutUint64(b8, uint64(x.words[len(x.words)-i]))
 		for j := 0; j < 8; j++ {
 			bytesAll[i*8+j] = b8[j]
 		}
@@ -178,8 +178,10 @@ func FromBytes(bytesAll []byte) Int1024 {
 		for j := 0; j < start-end; j++ {
 			b8[7-j] = bytesAll[start-j-1]
 		}
-		x.words[INT1024WORDS-1-i] = binary.BigEndian.Uint64(b8)
+		x.words[i] = binary.BigEndian.Uint64(b8)
 	}
+
+	x.length = max(1, uint16(numWords))
 
 	return x
 }
@@ -191,7 +193,7 @@ func (x *Int1024) ToLittleEndianBytes() []byte {
 	b8 := make([]byte, 8)
 
 	for i := range x.words {
-		binary.LittleEndian.PutUint64(b8, uint64(x.words[INT1024WORDS-1-i]))
+		binary.LittleEndian.PutUint64(b8, uint64(x.words[i]))
 		for j := 0; j < 8; j++ {
 			bytesAll[i*8+j] = b8[j]
 		}
@@ -209,8 +211,10 @@ func FromLittleEndianBytes(bytesAll []byte) Int1024 {
 
 	for i := 0; i < numWords; i++ {
 		b8 := bytesAll[i*8 : (i+1)*8]
-		x.words[INT1024WORDS-1-i] = binary.LittleEndian.Uint64(b8)
+		x.words[i] = binary.LittleEndian.Uint64(b8)
 	}
+
+	x.length = max(1, uint16(numWords))
 
 	return x
 }
@@ -218,18 +222,22 @@ func FromLittleEndianBytes(bytesAll []byte) Int1024 {
 // Clone returns a new Int1024 representing the same value as x
 func (x *Int1024) Clone() Int1024 {
 	var words [INT1024WORDS]uint64
-	for i := 0; i < INT1024WORDS; i++ {
+	// words := make([]uint64, len(x.words))
+	for i := 0; i < len(words); i++ {
 		words[i] = x.words[i]
 	}
 	return Int1024{
-		words: words,
+		words:  words,
+		length: x.length,
 	}
 }
 
 // Words returns a clone of the [16]Word used by x as its internal representation
 func (x *Int1024) Words() [INT1024WORDS]uint64 {
 	var words [INT1024WORDS]uint64
-	for i := 0; i < INT1024WORDS; i++ {
+	// words := make([]uint64, len(x.words))
+	var i uint16
+	for i = 0; i < x.length; i++ {
 		words[i] = x.words[i]
 	}
 	return words
@@ -238,19 +246,13 @@ func (x *Int1024) Words() [INT1024WORDS]uint64 {
 // ToBinary returns the binary representation of x as a string
 func (x *Int1024) ToBinary() string {
 	str := ""
-	started := false
-	for i := 0; i < INT1024WORDS; i++ {
-		if x.words[i] == 0 && !started {
-			continue
-		}
-		if !started {
-			started = true
-			// First time around don't print leading zeros
-			str = str + fmt.Sprintf("%b", x.words[i])
-		} else {
-			str = str + fmt.Sprintf("%064b", x.words[i])
-		}
+	fmt.Println(x.words)
+	fmt.Println(len(x.words))
+	var i uint16
+	for i = 0; i < x.length-1; i++ {
+		str = fmt.Sprintf("%064b", x.words[i]) + str
 	}
+	str = fmt.Sprintf("%b", x.words[x.length-1]) + str
 	if str == "" {
 		return "0"
 	}
@@ -262,11 +264,14 @@ func (x *Int1024) ToBinary() string {
 // Zero returns a new Int1024 representing 0
 func Zero() Int1024 {
 	var words [INT1024WORDS]uint64
-	// for i := 0; i < INT1024WORDS; i++ {
-	// 	words[i] = 0
-	// }
+	// words := make([]uint64, INT1024WORDS)
+	// Not needed?
+	for i := 0; i < len(words); i++ {
+		words[i] = 0
+	}
 	return Int1024{
-		words: words,
+		words:  words,
+		length: 1,
 	}
 }
 
@@ -286,19 +291,36 @@ var HalfMax = func() Int1024 {
 // Do not call overwriting functions on these!
 var zero = Zero()
 var one = One()
-var two = Two()
-var halfMax = HalfMax()
+
+// var two = Two()
+// var halfMax = HalfMax()
 
 // maxInt returns a new Int1024 representing 2**1024 - 1
 func maxInt() Int1024 {
 	var words [INT1024WORDS]uint64
-	for i := 0; i < INT1024WORDS; i++ {
+	// words := make([]uint64, INT1024WORDS)
+	for i := 0; i < len(words); i++ {
 		words[i] = WORDMAX
 	}
 	return Int1024{
-		words: words,
+		words:  words,
+		length: INT1024WORDS,
 	}
 }
 
 // MAXINT1024 is the Int1024 that represents 2**1024 - 1
 var MAXINT1024 = func() Int1024 { return maxInt() }
+
+func max(a, b uint16) uint16 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b uint16) uint16 {
+	if a < b {
+		return a
+	}
+	return b
+}
