@@ -5,6 +5,8 @@ import (
 	// . "github.com/onsi/ginkgo"
 	// . "github.com/onsi/gomega"
 
+	"math/big"
+
 	. "github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -21,16 +23,29 @@ var twelve = FromUint64(12)
 var oneWord = FromUint64(WORDMAX)
 var max = MAXINT1024()
 
-// func MaxStr() string {
-// 	one := big.NewInt(1)
-// 	max := big.NewInt(2)
-// 	pow := big.NewInt(SIZE)
-// 	max = max.Exp(max, pow, nil)
-// 	max = max.Sub(max, one)
-// 	return max.String()
-// }
+func MaxStr() string {
+	one := big.NewInt(1)
+	max := big.NewInt(2)
+	pow := big.NewInt(SIZE)
+	max = max.Exp(max, pow, nil)
+	max = max.Sub(max, one)
+	return max.String()
+}
 
-// var maxStr = MaxStr()
+var maxStr = MaxStr()
+
+func MaxSquaredStr() string {
+	one := big.NewInt(1)
+	lim := big.NewInt(2)
+	pow := big.NewInt(SIZE)
+	lim = lim.Exp(lim, pow, nil)
+	max := big.NewInt(0).Sub(lim, one)
+	sqr := max.Mul(max, max)
+	mod := sqr.Mod(sqr, lim)
+	return mod.String()
+}
+
+var maxSquaredStr = MaxSquaredStr()
 
 // func TC(in ...interface{}) []interface{} {
 // 	return in

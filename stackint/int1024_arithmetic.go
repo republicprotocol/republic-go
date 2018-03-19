@@ -1,10 +1,5 @@
 package stackint
 
-import (
-	"fmt"
-	"math/big"
-)
-
 // Add returns x+y
 func (x *Int1024) Add(y *Int1024) Int1024 {
 
@@ -110,6 +105,10 @@ func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 	// TODO: Rewrite using more efficient algorithm
 	z := Zero()
 
+	if x.LessThan(y) {
+		x, y = y, x
+	}
+
 	shifted := x.Clone()
 
 	firstword := 0
@@ -139,6 +138,26 @@ func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 	return z
 }
 
+// Mul returns x*y
+func (x *Int1024) Mul(y *Int1024) Int1024 {
+	// fmt.Println("")
+	// fmt.Println(x.ToBinary())
+	// fmt.Println(y.ToBinary())
+
+	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
+	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
+	// expected := big.NewInt(0).Mul(xB, yB)
+
+	z := x.karatsuba(y)
+
+	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
+	// 	panic(fmt.Sprintf("Multiplication failed for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
+	// }
+
+	return z
+}
+
 const karatsubaThreshold = 40
 
 func karatsubaLen(n int) int {
@@ -150,26 +169,6 @@ func karatsubaLen(n int) int {
 	return n << i
 }
 
-// Mul returns x*y
-func (x *Int1024) Mul(y *Int1024) Int1024 {
-	fmt.Println("")
-	fmt.Println(x.ToBinary())
-	fmt.Println(y.ToBinary())
-
-	xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	expected := big.NewInt(0).Mul(xB, yB)
-
-	z := x.BasicMul(y)
-
-	actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-		panic(fmt.Sprintf("Multiplication failed for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
-	}
-
-	return z
-}
-
 func (x *Int1024) split(n uint) (Int1024, Int1024) {
 	b := x.ShiftRight(n)
 	a := Zero()
@@ -179,22 +178,13 @@ func (x *Int1024) split(n uint) (Int1024, Int1024) {
 	}
 	mod := uint(n % WORDSIZE)
 	if mod != 0 {
-		a.words[INT1024WORDS-1-i] = x.words[INT1024WORDS-1-i] & (1<<uint(n) - 1)
+		a.words[INT1024WORDS-1-i] = x.words[INT1024WORDS-1-i] & (1<<uint(mod) - 1)
 	}
 	return a, b
 }
 
 // Mul returns x*y
 func (x *Int1024) karatsuba(y *Int1024) Int1024 {
-
-	// Naïve inplementation!
-	// Uses up to 16384 uint64 additions (worst case)
-	// TODO: Rewrite using more efficient algorithm
-
-	/*
-	   Base case: if x or y is less than 10
-	   then return x*y
-	*/
 
 	lenX := x.BitLength()
 	lenY := y.BitLength()
@@ -216,17 +206,23 @@ func (x *Int1024) karatsuba(y *Int1024) Int1024 {
 
 	ac := a.Mul(&c)
 	bd := b.Mul(&d)
-	aPlusB := a.Add(&b)
-	cPlusD := c.Add(&d)
+	aPlusB := a
+	aPlusB.Inc(&b)
+	cPlusD := c
+	cPlusD.Inc(&d)
 	abcd := aPlusB.Mul(&cPlusD)
 	abcd.Dec(&ac)
 	abcd.Dec(&bd)
 
 	res := ac
-	tmpAbcd := abcd.ShiftLeft(n)
-	res = res.Add(&tmpAbcd)
-	bdTmp := bd.ShiftLeft(2 * n)
-	res = res.Add(&bdTmp)
+	abcd.ShiftLeftInPlace(n)
+	res.Inc(&abcd)
+	bd.ShiftLeftInPlace(2 * n)
+	res.Inc(&bd)
+
+	// log += fmt.Sprintf("%s", res.ToBinary())
+
+	// fmt.Println(log)
 
 	return res
 }
