@@ -10,13 +10,13 @@ import (
 // go build -a -gcflags='-m -m' int1024.go int1024_arithmetic.go int1024_bitwise.go int1024_comparison.go int1024_internal.go
 
 // SIZE is the number of bits stored by Int1024
-const SIZE = 2048
+const SIZE = 1024
 
 // WORDSIZE is 64 for Word
 const WORDSIZE = 64
 
 // Word is the internal type
-type Word uint64
+// type Word uint64
 
 // WORDMAX represents the largest word value
 const WORDMAX = 1<<WORDSIZE - 1
@@ -29,13 +29,13 @@ const INT1024WORDS = SIZE / WORDSIZE
 
 // Int1024 provides a 1024 bit number optimised to never use the heap
 type Int1024 struct {
-	words [INT1024WORDS]Word
+	words [INT1024WORDS]uint64
 }
 
 // FromUint64 returns a new Int1024 from a Word
 func FromUint64(n uint64) Int1024 {
 	z := Zero()
-	z.words[INT1024WORDS-1] = Word(n)
+	z.words[INT1024WORDS-1] = n
 	return z
 }
 
@@ -178,7 +178,7 @@ func FromBytes(bytesAll []byte) Int1024 {
 		for j := 0; j < start-end; j++ {
 			b8[7-j] = bytesAll[start-j-1]
 		}
-		x.words[INT1024WORDS-1-i] = Word(binary.BigEndian.Uint64(b8))
+		x.words[INT1024WORDS-1-i] = binary.BigEndian.Uint64(b8)
 	}
 
 	return x
@@ -209,7 +209,7 @@ func FromLittleEndianBytes(bytesAll []byte) Int1024 {
 
 	for i := 0; i < numWords; i++ {
 		b8 := bytesAll[i*8 : (i+1)*8]
-		x.words[INT1024WORDS-1-i] = Word(binary.LittleEndian.Uint64(b8))
+		x.words[INT1024WORDS-1-i] = binary.LittleEndian.Uint64(b8)
 	}
 
 	return x
@@ -217,7 +217,7 @@ func FromLittleEndianBytes(bytesAll []byte) Int1024 {
 
 // Clone returns a new Int1024 representing the same value as x
 func (x *Int1024) Clone() Int1024 {
-	var words [INT1024WORDS]Word
+	var words [INT1024WORDS]uint64
 	for i := 0; i < INT1024WORDS; i++ {
 		words[i] = x.words[i]
 	}
@@ -227,8 +227,8 @@ func (x *Int1024) Clone() Int1024 {
 }
 
 // Words returns a clone of the [16]Word used by x as its internal representation
-func (x *Int1024) Words() [INT1024WORDS]Word {
-	var words [INT1024WORDS]Word
+func (x *Int1024) Words() [INT1024WORDS]uint64 {
+	var words [INT1024WORDS]uint64
 	for i := 0; i < INT1024WORDS; i++ {
 		words[i] = x.words[i]
 	}
@@ -261,7 +261,7 @@ func (x *Int1024) ToBinary() string {
 
 // Zero returns a new Int1024 representing 0
 func Zero() Int1024 {
-	var words [INT1024WORDS]Word
+	var words [INT1024WORDS]uint64
 	// for i := 0; i < INT1024WORDS; i++ {
 	// 	words[i] = 0
 	// }
@@ -279,7 +279,7 @@ var Two = func() Int1024 { return FromUint64(2) }
 // HalfMax represents max / 2
 var HalfMax = func() Int1024 {
 	max := MAXINT1024()
-	max.ShiftRightInPlace()
+	max.ShiftRightInPlace(1)
 	return max
 }
 
@@ -291,7 +291,7 @@ var halfMax = HalfMax()
 
 // maxInt returns a new Int1024 representing 2**1024 - 1
 func maxInt() Int1024 {
-	var words [INT1024WORDS]Word
+	var words [INT1024WORDS]uint64
 	for i := 0; i < INT1024WORDS; i++ {
 		words[i] = WORDMAX
 	}
