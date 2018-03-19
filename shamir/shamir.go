@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"math/big"
 
 	"github.com/republicprotocol/republic-go/stackint"
@@ -22,11 +21,11 @@ type Share struct {
 type Shares []Share
 
 func ShouldEqual(bg *big.Int, si stackint.Int1024) {
-	if bg.String() != si.String() {
-		fmt.Println(bg.String())
-		fmt.Println(si.String())
-		panic("!!!")
-	}
+	// if bg.String() != si.String() {
+	// 	fmt.Println(bg.String())
+	// 	fmt.Println(si.String())
+	// 	panic("!!!")
+	// }
 }
 
 // Split a secret into Shares. N represents the number of Shares that the
@@ -54,8 +53,8 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 	coefficients[0] = secret
 
 	// maxBig := big.NewInt(0).Sub(primeBig, big.NewInt(1))
-	coefficientsBig := make([]*big.Int, k)
-	coefficientsBig[0] = secretBig
+	// coefficientsBig := make([]*big.Int, k)
+	// coefficientsBig[0] = secretBig
 
 	for i := int64(1); i < k; i++ {
 		coefficient, err := stackint.Random(rand.Reader, &max)
@@ -64,19 +63,19 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 		}
 		coefficients[i] = &coefficient
 
-		coefficientBig := big.NewInt(0).SetBytes(coefficient.ToBytes())
-		coefficientsBig[i] = coefficientBig
+		// coefficientBig := big.NewInt(0).SetBytes(coefficient.ToBytes())
+		// coefficientsBig[i] = coefficientBig
 		// fmt.Println(coefficientBig)
 
 	}
 
 	// Setup big numbers so that we do not have to keep recreating them in each
 	// loop.
-	accumBig := big.NewInt(0)
-	coBig := big.NewInt(0)
-	baseBig := big.NewInt(0)
-	expBig := big.NewInt(0)
-	expModBig := big.NewInt(0)
+	// accumBig := big.NewInt(0)
+	// coBig := big.NewInt(0)
+	// baseBig := big.NewInt(0)
+	// expBig := big.NewInt(0)
+	// expModBig := big.NewInt(0)
 
 	// Create N shares.
 	shares := make(Shares, n)
@@ -90,15 +89,15 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 		exp := base.Clone()
 		expMod := exp.Mod(prime)
 
-		accumBig.Set(coefficientsBig[0])
-		baseBig.SetInt64(x)
-		expBig.Set(baseBig)
-		expModBig.Mod(expBig, primeBig)
+		// accumBig.Set(coefficientsBig[0])
+		// baseBig.SetInt64(x)
+		// expBig.Set(baseBig)
+		// expModBig.Mod(expBig, primeBig)
 
-		ShouldEqual(accumBig, accum)
-		ShouldEqual(baseBig, base)
-		ShouldEqual(expBig, exp)
-		ShouldEqual(expModBig, expMod)
+		// ShouldEqual(accumBig, accum)
+		// ShouldEqual(baseBig, base)
+		// ShouldEqual(expBig, exp)
+		// ShouldEqual(expModBig, expMod)
 
 		// Evaluate the polyomial at x.
 		for j := range coefficients[1:] {
@@ -107,28 +106,28 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 			// co := (coefficients * expoMod) % prime
 			coefficient := coefficients[j].Clone()
 			co := coefficient.MulModulo(&expMod, prime)
-			coBig.Set(coefficientsBig[j])
-			coBig.Mul(coBig, expModBig)
-			coBig.Mod(coBig, primeBig)
+			// coBig.Set(coefficientsBig[j])
+			// coBig.Mul(coBig, expModBig)
+			// coBig.Mod(coBig, primeBig)
 
-			ShouldEqual(coBig, co)
+			// ShouldEqual(coBig, co)
 
 			// accum = (accum + co) % prime
 			accum = accum.AddModulo(&co, prime)
-			accumBig.Add(accumBig, coBig)
-			accumBig.Mod(accumBig, primeBig)
+			// accumBig.Add(accumBig, coBig)
+			// accumBig.Mod(accumBig, primeBig)
 
-			ShouldEqual(accumBig, accum)
+			// ShouldEqual(accumBig, accum)
 
 			// expMod = (expMod * base ) % prime
 			exp = exp.Mul(&base)
-			expBig.Mul(expBig, baseBig)
+			// expBig.Mul(expBig, baseBig)
 			expMod = exp.Mod(prime)
-			expModBig.Mod(expBig, primeBig)
+			// expModBig.Mod(expBig, primeBig)
 
-			ShouldEqual(accumBig, accum)
+			// ShouldEqual(accumBig, accum)
 		}
-		ShouldEqual(accumBig, accum)
+		// ShouldEqual(accumBig, accum)
 		shares[x-1] = Share{
 			Key:   x,
 			Value: accum,
