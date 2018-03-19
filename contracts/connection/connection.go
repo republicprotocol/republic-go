@@ -28,7 +28,7 @@ type Client interface {
 	BalanceAt(ctx context.Context, contract common.Address, blockNumber *big.Int) (*big.Int, error)
 }
 
-type Chain string; 
+type Chain string
 
 const (
 	ChainMainnet Chain = "mainnet"
@@ -61,7 +61,7 @@ func FromURI(uri string, chain Chain) (ClientDetails, error) {
 		return ClientDetails{
 			Client:     client,
 			RenAddress: common.HexToAddress("0xe518555710bbf765cadf0aad26d41407031677de"),
-			DNRAddress: common.HexToAddress("0x2F93899d2F9155E69764e22e17E0162f53Ce545B"),
+			DNRAddress: common.HexToAddress("0xf178237e7d1131b7924435aa8d02B8Ab4d308AFf"),
 		}, nil
 	}
 

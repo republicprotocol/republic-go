@@ -10,6 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"encoding/hex"
+	"encoding/json"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
@@ -20,8 +23,10 @@ import (
 	"github.com/republicprotocol/republic-go/network/dht"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
+	ionet "github.com/shirou/gopsutil/net"
 	"google.golang.org/grpc"
 )
 
@@ -36,9 +41,10 @@ type DarkNode struct {
 
 	DeltaNotifications chan *compute.Delta
 
-	Logger     *logger.Logger
-	ClientPool *rpc.ClientPool
-	DHT        *dht.DHT
+	LoggerLastNetworkUsage uint64
+	Logger                 *logger.Logger
+	ClientPool             *rpc.ClientPool
+	DHT                    *dht.DHT
 
 	DeltaBuilder                      *compute.DeltaBuilder
 	DeltaFragmentMatrix               *compute.DeltaFragmentMatrix
@@ -130,6 +136,14 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 }
 
 func (node *DarkNode) StartBackgroundWorkers() {
+	// Usage logger
+	go func() {
+		for {
+			time.Sleep(10 * time.Second)
+			node.Usage(10)
+		}
+	}()
+
 	// Start background workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentBroadcastWorker.Run()
@@ -140,7 +154,8 @@ func (node *DarkNode) StartBackgroundWorkers() {
 }
 
 func (node *DarkNode) StartServices() {
-	node.Logger.Info(fmt.Sprintf("Listening on %s:%s", node.Host, node.Port))
+	node.Logger.Network(logger.Info, fmt.Sprintf("gRPC services listening on %s:%s", node.Host, node.Port))
+
 	node.Swarm.Register(node.Server)
 	node.Dark.Register(node.Server)
 	node.Gossip.Register(node.Server)
@@ -154,9 +169,40 @@ func (node *DarkNode) StartServices() {
 }
 
 func (node *DarkNode) StartUI() {
-	fs := http.FileServer(http.Dir("dark-node-ui"))
-	http.Handle("/", fs)
-	node.Logger.Info("Serving the Dark Node UI")
+
+	host, err := node.NetworkOptions.MultiAddress.ValueForProtocol(identity.IP4Code)
+	if err != nil {
+		node.Logger.Network(logger.Error, "UI host unknown: "+err.Error())
+		return
+	}
+	port, err := node.NetworkOptions.MultiAddress.ValueForProtocol(identity.TCPCode)
+	if err != nil {
+		node.Logger.Network(logger.Error, "UI port unknown: "+err.Error())
+		return
+	}
+
+	node.Logger.Network(logger.Info, fmt.Sprintf("UI listening on %s:%s", node.Host, "3000"))
+	http.Handle("/config", cors.Default().Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"nodeID":     "0x" + hex.EncodeToString(node.ID),
+			"publicKey":  "0x" + hex.EncodeToString(append(node.KeyPair.PublicKey.X.Bytes(), node.KeyPair.PublicKey.Y.Bytes()...)),
+			"address":    node.EthereumKey.Address.String(),
+			"republicID": node.ID.String(),
+			"ui": map[string]interface{}{
+				"host": host,
+				"port": port,
+			},
+			"websocket": map[string]interface{}{
+				"host": host,
+				"port": "18515",
+			},
+			"contracts": map[string]interface{}{
+				"darkNodeRegistrar": "0xf178237e7d1131b7924435aa8d02B8Ab4d308AFf",
+			},
+		})
+	})))
+	http.Handle("/", http.FileServer(http.Dir("/home/.darknode/ui")))
 	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
 		node.Logger.Error(err.Error())
 	}
@@ -191,7 +237,14 @@ func (node *DarkNode) Stop() {
 // this DarkNode and reconnect to all of the nodes in the pool.
 func (node *DarkNode) WatchDarkOcean() {
 	// Block until the node is registered
-	node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
+	err := node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
+	for err != nil {
+		node.Logger.Error(fmt.Sprintf("cannot determine registration status: %s", err.Error()))
+
+		// Wait for 5 seconds and try again
+		time.Sleep(5 * time.Second)
+		err = node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
+	}
 
 	changes := make(chan struct{})
 	go func() {
@@ -285,6 +338,7 @@ func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 	// Write to a channel that might be closed
 	func() {
 		defer func() { recover() }()
+		node.Logger.OrderReceived(logger.Info, orderFragment.OrderID.String(), orderFragment.ID.String())
 		node.OrderFragmentWorkerQueue <- orderFragment
 	}()
 }
@@ -325,22 +379,44 @@ func (node *DarkNode) OnFinalize(buyOrderID order.ID, sellOrderID order.ID) {
 }
 
 // Usage logs memory and cpu usage
-func (node *DarkNode) Usage() {
-	// memory
-	_, err := mem.VirtualMemory()
+func (node *DarkNode) Usage(seconds uint64) {
+
+	// Get CPU usage
+	_, err := cpu.Info()
 	if err != nil {
 		node.Logger.Error(err.Error())
 	}
-	// cpu - get CPU number of cores and speed
-	_, err = cpu.Info()
+	var cpuPercentage float64
+	cpuPercentages, err := cpu.Percent(0, false)
 	if err != nil {
 		node.Logger.Error(err.Error())
 	}
-	percentage, err := cpu.Percent(0, false)
+	if len(cpuPercentages) > 0 {
+		cpuPercentage = cpuPercentages[0]
+	}
+
+	// Get memory usage
+	stat, err := mem.VirtualMemory()
+	if err != nil {
+		node.Logger.Error(err.Error())
+	}
+	memoryPercentage := stat.UsedPercent
+
+	ios, err := ionet.IOCounters(false)
 	if err != nil {
 		node.Logger.Error(err.Error())
 	}
 
-	// FIXME: Give back real memory usage
-	node.Logger.Usage(percentage[0], 0.0, 0)
+	// Get network usage
+	var networkUsage uint64
+	if len(ios) > 0 {
+		networkUsage += ios[0].BytesSent
+		networkUsage += ios[0].BytesRecv
+	}
+	if node.LoggerLastNetworkUsage == 0 {
+		node.LoggerLastNetworkUsage = networkUsage
+	}
+
+	node.Logger.Usage(cpuPercentage, memoryPercentage, (networkUsage-node.LoggerLastNetworkUsage)/seconds)
+	node.LoggerLastNetworkUsage = networkUsage
 }

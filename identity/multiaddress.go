@@ -78,11 +78,14 @@ func (multiAddress MultiAddress) ID() ID {
 
 // String returns the MultiAddress as a plain string.
 func (multiAddress MultiAddress) String() string {
-	return fmt.Sprintf("%s/republic/%s", multiAddress.baseMultiAddress, multiAddress.address)
+	return fmt.Sprintf("%s/republic/%s", multiAddress.baseMultiAddress.String(), multiAddress.address.String())
 }
 
 // MarshalJSON implements the json.Marshaler interface.
 func (multiAddress MultiAddress) MarshalJSON() ([]byte, error) {
+	if multiAddress.address.String() == "" {
+		return json.Marshal("")
+	}
 	return json.Marshal(multiAddress.String())
 }
 
@@ -91,6 +94,9 @@ func (multiAddress *MultiAddress) UnmarshalJSON(data []byte) error {
 	multiAddressAsString := ""
 	if err := json.Unmarshal(data, &multiAddressAsString); err != nil {
 		return err
+	}
+	if multiAddressAsString == "" {
+		return nil
 	}
 	newMultiAddress, err := NewMultiAddressFromString(multiAddressAsString)
 	if err != nil {

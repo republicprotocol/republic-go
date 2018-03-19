@@ -1,16 +1,26 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"io/ioutil"
 	"log"
 	"os"
+	"strings"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 
 	base58 "github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
-
-	"github.com/republicprotocol/go-dark-node"
+	"github.com/republicprotocol/republic-go/contracts/connection"
+	"github.com/republicprotocol/republic-go/contracts/dnr"
+	node "github.com/republicprotocol/republic-go/dark-node"
 )
 
-var config *node.Config
+type Secret struct {
+	PrivateKey string `json:"privateKey"`
+	Password   string `json:"password"`
+}
 
 func main() {
 
@@ -40,13 +50,27 @@ func DeregisterAll(configs []*node.Config) {
 
 		keypair := configs[i].RepublicKeyPair
 
-		ethereumKeyPair, err := configs[i].EthereumKeyPair()
+		clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
 		if err != nil {
-			log.Printf("[%v] %sCouldn't load Ethereum key pair%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
-			return
+			// TODO: Handler err
+			panic(err)
 		}
 
-		registrar, err := node.ConnectToRegistrar(ethereumKeyPair)
+		raw, err := ioutil.ReadFile("../secrets/secrets.json")
+		if err != nil {
+			panic(err)
+		}
+
+		var s Secret
+		json.Unmarshal(raw, &s)
+
+		key := s.PrivateKey
+		auth, err := bind.NewTransactor(strings.NewReader(key), s.Password)
+		if err != nil {
+			panic(err)
+		}
+
+		registrar, err := dnr.NewEthereumDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{})
 		if err != nil {
 			log.Printf("[%v] %sCouldn't connect to registrar%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
 			return
