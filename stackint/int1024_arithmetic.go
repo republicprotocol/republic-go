@@ -1,5 +1,10 @@
 package stackint
 
+import (
+	"fmt"
+	"math/big"
+)
+
 // Add returns x+y
 func (x *Int1024) Add(y *Int1024) Int1024 {
 
@@ -21,7 +26,7 @@ func (x *Int1024) Add(y *Int1024) Int1024 {
 // Inc sets x to x+y (used for multiplication)
 func (x *Int1024) Inc(y *Int1024) {
 
-	var overflow Word
+	var overflow uint64
 	overflow = 0
 	for i := INT1024WORDS - 1; i >= 0; i-- {
 		previousOverflow := overflow
@@ -78,9 +83,9 @@ func (x *Int1024) Sub(y *Int1024) Int1024 {
 
 // Dec sets x to x-y
 func (x *Int1024) Dec(y *Int1024) {
-	overflow := Word(0)
+	overflow := uint64(0)
 	for i := INT1024WORDS - 1; i >= 0; i-- {
-		newOverflow := Word(0)
+		newOverflow := uint64(0)
 		if x.words[i] < y.words[i]+overflow || y.words[i] == WORDMAX && overflow == 1 {
 			newOverflow = 1
 		}
@@ -93,8 +98,8 @@ func (x *Int1024) Dec(y *Int1024) {
 	}
 }
 
-// Mul returns x*y
-func (x *Int1024) Mul(y *Int1024) Int1024 {
+// BasicMul returns x*y using the shift and add method
+func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 
 	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
 	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
@@ -104,16 +109,25 @@ func (x *Int1024) Mul(y *Int1024) Int1024 {
 	// Uses up to 16384 uint64 additions (worst case)
 	// TODO: Rewrite using more efficient algorithm
 	z := Zero()
+
 	shifted := x.Clone()
 
-	for i := INT1024WORDS - 1; i >= 0; i-- {
+	firstword := 0
+	for i := 0; i < INT1024WORDS; i++ {
+		if y.words[i] != 0 {
+			firstword = i
+			break
+		}
+	}
+
+	for i := INT1024WORDS - 1; i >= firstword; i-- {
 		word := y.words[i]
 		for j := uint(0); j < WORDSIZE; j++ {
 			bit := (word >> j) & 1
 			if bit == 1 {
 				z.Inc(&shifted)
 			}
-			shifted.ShiftLeftInPlace()
+			shifted.ShiftLeftInPlace(1)
 		}
 	}
 
@@ -123,6 +137,98 @@ func (x *Int1024) Mul(y *Int1024) Int1024 {
 	// }
 
 	return z
+}
+
+const karatsubaThreshold = 40
+
+func karatsubaLen(n int) int {
+	i := uint(0)
+	for n > karatsubaThreshold {
+		n >>= 1
+		i++
+	}
+	return n << i
+}
+
+// Mul returns x*y
+func (x *Int1024) Mul(y *Int1024) Int1024 {
+	fmt.Println("")
+	fmt.Println(x.ToBinary())
+	fmt.Println(y.ToBinary())
+
+	xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
+	yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
+	expected := big.NewInt(0).Mul(xB, yB)
+
+	z := x.BasicMul(y)
+
+	actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
+	if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
+		panic(fmt.Sprintf("Multiplication failed for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
+	}
+
+	return z
+}
+
+func (x *Int1024) split(n uint) (Int1024, Int1024) {
+	b := x.ShiftRight(n)
+	a := Zero()
+	var i uint
+	for i = 0; i < n/WORDSIZE; i++ {
+		a.words[INT1024WORDS-1-i] = x.words[INT1024WORDS-1-i]
+	}
+	mod := uint(n % WORDSIZE)
+	if mod != 0 {
+		a.words[INT1024WORDS-1-i] = x.words[INT1024WORDS-1-i] & (1<<uint(n) - 1)
+	}
+	return a, b
+}
+
+// Mul returns x*y
+func (x *Int1024) karatsuba(y *Int1024) Int1024 {
+
+	// Naïve inplementation!
+	// Uses up to 16384 uint64 additions (worst case)
+	// TODO: Rewrite using more efficient algorithm
+
+	/*
+	   Base case: if x or y is less than 10
+	   then return x*y
+	*/
+
+	lenX := x.BitLength()
+	lenY := y.BitLength()
+	if lenX < karatsubaThreshold || lenY < karatsubaThreshold {
+		return x.BasicMul(y)
+	}
+
+	var n uint
+	if lenX > lenY {
+		n = uint(lenX)
+	} else {
+		n = uint(lenY)
+	}
+
+	n = (n + 1) / 2
+
+	a, b := x.split(n)
+	c, d := y.split(n)
+
+	ac := a.Mul(&c)
+	bd := b.Mul(&d)
+	aPlusB := a.Add(&b)
+	cPlusD := c.Add(&d)
+	abcd := aPlusB.Mul(&cPlusD)
+	abcd.Dec(&ac)
+	abcd.Dec(&bd)
+
+	res := ac
+	tmpAbcd := abcd.ShiftLeft(n)
+	res = res.Add(&tmpAbcd)
+	bdTmp := bd.ShiftLeft(2 * n)
+	res = res.Add(&bdTmp)
+
+	return res
 }
 
 // DivMod returns (x/y, x%y). If y is 0, a run-time panic occurs.
@@ -137,20 +243,20 @@ func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 	}
 
 	limit := MAXINT1024()
-	limit.ShiftRightInPlace()
+	limit.ShiftRightInPlace(1)
 	overflowed := false
 	for denom.LessThanOrEqual(&dividend) {
 		if !denom.LessThan(&limit) {
 			overflowed = true
 			break
 		}
-		denom.ShiftLeftInPlace()
-		current.ShiftLeftInPlace()
+		denom.ShiftLeftInPlace(1)
+		current.ShiftLeftInPlace(1)
 	}
 
 	if !overflowed {
-		denom.ShiftRightInPlace()
-		current.ShiftRightInPlace()
+		denom.ShiftRightInPlace(1)
+		current.ShiftRightInPlace(1)
 	}
 
 	for !current.IsZero() {
@@ -158,8 +264,8 @@ func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 			dividend = dividend.Sub(&denom)
 			answer = answer.OR(&current)
 		}
-		current.ShiftRightInPlace()
-		denom.ShiftRightInPlace()
+		current.ShiftRightInPlace(1)
+		denom.ShiftRightInPlace(1)
 	}
 
 	return answer, dividend

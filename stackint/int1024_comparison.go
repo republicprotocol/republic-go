@@ -22,7 +22,7 @@ func (x *Int1024) EqualsUint64(n uint64) bool {
 			return false
 		}
 	}
-	return x.words[INT1024WORDS-1] == Word(n)
+	return x.words[INT1024WORDS-1] == n
 }
 
 // Cmp returns -1 if x<y, 0 if x=y, 1 if x>y

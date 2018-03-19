@@ -1,17 +1,50 @@
 package stackint
 
 // ShiftLeft returns x<<n
-func (x *Int1024) ShiftLeft(n int) Int1024 {
+func (x *Int1024) ShiftLeft(n uint) Int1024 {
 	z := x.Clone()
-	for i := 0; i < n; i++ {
-		z.ShiftLeftInPlace()
-	}
+	z.ShiftLeftInPlace(n)
 	return z
 }
 
 // ShiftLeftInPlace shifts to the left x by one
-func (x *Int1024) ShiftLeftInPlace() {
-	overflow := Word(0)
+func (x *Int1024) ShiftLeftInPlace(n uint) {
+
+	// // If n > 64, first, shift entire words
+	// div := n / WORDSIZE
+	// if div > 0 {
+	// 	var i uint
+	// 	for i = 0; i < INT1024WORDS-div; i++ {
+	// 		x.words[i] = x.words[i+div]
+	// 	}
+	// 	for i := INT1024WORDS - div; i < INT1024WORDS; i++ {
+	// 		x.words[i] = 0
+	// 	}
+	// 	n = n - div*WORDSIZE
+	// }
+
+	var i uint
+	for i = 0; i < n; i++ {
+		x.shiftleftone()
+	}
+}
+
+// func (x *Int1024) shiftleft(n uint) {
+// 	var overflow uint64
+// 	var shift uint64 = (1<<n - 1)
+// 	// fmt.Println(shift)
+// 	for i := INT1024WORDS - 1; i >= 0; i-- {
+// 		// Calculate if word overflows into next word
+// 		newOverflow := (x.words[i] >> (WORDSIZE - n)) & shift
+// 		// Shift word to the right
+// 		// If previous word overflowed, add 1
+// 		x.words[i] = (x.words[i] << n) | overflow
+// 		overflow = newOverflow
+// 	}
+// }
+
+func (x *Int1024) shiftleftone() {
+	var overflow uint64
 	for i := INT1024WORDS - 1; i >= 0; i-- {
 		// Calculate if word overflows into next word
 		newOverflow := (x.words[i] >> (WORDSIZE - 1)) & 1
@@ -20,24 +53,38 @@ func (x *Int1024) ShiftLeftInPlace() {
 		x.words[i] = (x.words[i] << 1) | overflow
 		overflow = newOverflow
 	}
-
-	if overflow == 1 {
-		// WARNING: Overflow occured (not important for Shift)
-	}
 }
 
 // ShiftRight returns x>>n
-func (x *Int1024) ShiftRight(n int) Int1024 {
+func (x *Int1024) ShiftRight(n uint) Int1024 {
 	z := x.Clone()
-	for i := 0; i < n; i++ {
-		z.ShiftRightInPlace()
-	}
+	z.ShiftRightInPlace(n)
 	return z
 }
 
 // ShiftRightInPlace shifts to the right x by one
-func (x *Int1024) ShiftRightInPlace() {
-	overflow := Word(0)
+func (x *Int1024) ShiftRightInPlace(n uint) {
+	// If n > 64, first, shift entire words
+	// div := n / WORDSIZE
+	// if div > 0 {
+	// 	var i uint
+	// 	for i = INT1024WORDS - 1; i >= div; i-- {
+	// 		x.words[i] = x.words[i-div]
+	// 	}
+	// 	for i = 0; i < div; i++ {
+	// 		x.words[i] = 0
+	// 	}
+	// 	n = n - div*WORDSIZE
+	// }
+
+	var i uint
+	for i = 0; i < n; i++ {
+		x.shiftrightone()
+	}
+}
+
+func (x *Int1024) shiftrightone() {
+	overflow := uint64(0)
 	for i := 0; i < INT1024WORDS; i++ {
 		// Calculate if word overflows into next word
 		newOverflow := (x.words[i] & 1) << (WORDSIZE - 1)
