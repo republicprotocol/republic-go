@@ -246,8 +246,8 @@ func (x *Int1024) Words() [INT1024WORDS]uint64 {
 // ToBinary returns the binary representation of x as a string
 func (x *Int1024) ToBinary() string {
 	str := ""
-	fmt.Println(x.words)
-	fmt.Println(len(x.words))
+	// fmt.Println(x.words)
+	fmt.Println(x.length)
 	var i uint16
 	for i = 0; i < x.length-1; i++ {
 		str = fmt.Sprintf("%064b", x.words[i]) + str
