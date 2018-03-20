@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"os"
 	"runtime"
 	"sync/atomic"
 	"time"
@@ -188,7 +189,9 @@ func (node *DarkNode) StartUI() {
 			},
 		})
 	})))
-	http.Handle("/", http.FileServer(http.Dir("/home/.darknode/ui")))
+
+	home := os.Getenv("HOME")
+	http.Handle("/", http.FileServer(http.Dir(home+"/.darknode/ui")))
 	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
 		node.Logger.Error(err.Error())
 	}
