@@ -292,7 +292,7 @@ func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 	}
 
 	for !current.IsZero() {
-		if !dividend.LessThan(&denom) {
+		if dividend.GreaterThanOrEqual(&denom) {
 			dividend.Dec(&denom)
 			answer.ORInPlace(&current)
 		}
@@ -328,11 +328,49 @@ func (x *Int1024) Mod(n *Int1024) Int1024 {
 	case 0:
 		return Zero()
 	case 1:
-		_, mod := x.DivMod(n)
+		mod := x.mod(n)
 		return mod
 	default:
 		panic("unexpected cmp result (expecting -1, 0 or 1)")
 	}
+}
+
+func (x *Int1024) mod(y *Int1024) Int1024 {
+
+	dividend := x.Clone()
+	denom := y.Clone()
+	current := 1
+
+	if denom.IsZero() {
+		panic("division by zero")
+	}
+
+	limit := MAXINT1024()
+	limit.ShiftRightInPlace(1)
+	overflowed := false
+	for denom.LessThanOrEqual(&dividend) {
+		if !denom.LessThan(&limit) {
+			overflowed = true
+			break
+		}
+		denom.ShiftLeftInPlace(1)
+		current++
+	}
+
+	if !overflowed {
+		denom.ShiftRightInPlace(1)
+		current--
+	}
+
+	for current != 0 {
+		if dividend.GreaterThanOrEqual(&denom) {
+			dividend.Dec(&denom)
+		}
+		current--
+		denom.ShiftRightInPlace(1)
+	}
+
+	return dividend
 }
 
 // SubModulo returns (x - y) % n
@@ -426,7 +464,9 @@ func (x *Int1024) addModulo(y, n *Int1024) Int1024 {
 
 // // MulModuloSlow returns (x*y) % n
 func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
-	return x.schrage(y, n)
+	z := x.Mul(y)
+	return z.Mod(n)
+	// return x.peasant(y, n)
 }
 
 // // MulModuloSlow returns (x*y) % n but it takes its time
