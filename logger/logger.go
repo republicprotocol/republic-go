@@ -267,10 +267,10 @@ type OrderReceivedEvent struct {
 
 func (event OrderReceivedEvent) String() string {
 	if event.BuyID != nil {
-		return *event.BuyID
+		return "buy = " + *event.BuyID
 	}
 	if event.SellID != nil {
-		return *event.SellID
+		return "sell = " + *event.SellID
 	}
 	return ""
 }
