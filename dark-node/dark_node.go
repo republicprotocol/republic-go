@@ -325,7 +325,11 @@ func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 	// Write to a channel that might be closed
 	func() {
 		defer func() { recover() }()
-		node.Logger.OrderReceived(logger.Info, orderFragment.OrderID.String(), orderFragment.ID.String())
+		if orderFragment.OrderParity == order.ParityBuy {
+			node.Logger.BuyOrderReceived(logger.Info, orderFragment.OrderID.String(), orderFragment.ID.String())
+		} else {
+			node.Logger.SellOrderReceived(logger.Info, orderFragment.OrderID.String(), orderFragment.ID.String())
+		}
 		node.OrderFragmentWorkerQueue <- orderFragment
 	}()
 }
