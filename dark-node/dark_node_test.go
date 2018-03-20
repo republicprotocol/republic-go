@@ -329,16 +329,17 @@ func sendOrders(nodes []*node.DarkNode) error {
 
 	for i, j := range orderBook.Asks {
 		price, err := strconv.ParseFloat(j[0].(string), 10)
-		price = price * 1000000000000
 		if err != nil {
 			return errors.New("fail to parse the price into a big int")
 		}
+		price = price * 1000000000000
+
 
 		amount, err := strconv.ParseFloat(j[1].(string), 10)
-		amount = amount * 1000000000000
 		if err != nil {
 			return errors.New("fail to parse the amount into a big int")
 		}
+		amount = amount * 1000000000000
 		sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour),
 			order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
 			big.NewInt(int64(amount)), big.NewInt(1))
