@@ -330,14 +330,14 @@ func sendOrders(nodes []*node.DarkNode) error {
 	for i, j := range orderBook.Asks {
 		price, err := strconv.ParseFloat(j[0].(string), 10)
 		if err != nil {
-			return errors.New("fail to parse the price into a big int")
+			return errors.New("fail to parse the price into a float")
 		}
 		price = price * 1000000000000
 
 
 		amount, err := strconv.ParseFloat(j[1].(string), 10)
 		if err != nil {
-			return errors.New("fail to parse the amount into a big int")
+			return errors.New("fail to parse the amount into a float")
 		}
 		amount = amount * 1000000000000
 		sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour),
