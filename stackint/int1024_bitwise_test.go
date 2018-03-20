@@ -31,38 +31,38 @@ var _ = Describe("Int1024 bitwise operations", func() {
 	Context("when left-shifting a number", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 			oneShiftLOne := one.ShiftLeft(1)
-			Ω(oneShiftLOne.Equals(&two)).Should(BeTrue())
+			Ω(oneShiftLOne).Should(Equal(two))
 
 			shiftHalf := one.ShiftLeft(SIZE - 1)
 			expected := HalfMax()
 			expected = expected.Add(&one)
-			Ω(shiftHalf.Equals(&expected)).Should(BeTrue())
+			Ω(shiftHalf).Should(Equal(expected))
 
 			zeroShiftLOne := zero.ShiftLeft(1)
-			Ω(zeroShiftLOne.Equals(&zero)).Should(BeTrue())
+			Ω(zeroShiftLOne).Should(Equal(zero))
 		})
 
 		It("should overflow without wrapping", func() {
 			overflow := one.ShiftLeft(SIZE)
-			Ω(overflow.Equals(&zero)).Should(BeTrue())
+			Ω(overflow).Should(Equal(zero))
 		})
 	})
 
 	Context("when right-shifting a number", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 			twoShiftROne := two.ShiftRight(1)
-			Ω(twoShiftROne.Equals(&one)).Should(BeTrue())
+			Ω(twoShiftROne).Should(Equal(one))
 
 			zeroShiftROne := zero.ShiftRight(1)
-			Ω(zeroShiftROne.Equals(&zero)).Should(BeTrue())
+			Ω(zeroShiftROne).Should(Equal(zero))
 
 			elevenShiftRTwo := eleven.ShiftRight(2)
-			Ω(elevenShiftRTwo.Equals(&two)).Should(BeTrue())
+			Ω(elevenShiftRTwo).Should(Equal(two))
 		})
 
 		It("should overflow without wrapping", func() {
 			oneShiftROne := one.ShiftRight(1)
-			Ω(oneShiftROne.Equals(&zero)).Should(BeTrue())
+			Ω(oneShiftROne).Should(Equal(zero))
 		})
 	})
 
@@ -75,10 +75,10 @@ var _ = Describe("Int1024 bitwise operations", func() {
 			})
 
 			maxANDMax := max.AND(&max)
-			Ω(maxANDMax.Equals(&max)).Should(BeTrue())
+			Ω(maxANDMax).Should(Equal(max))
 
 			sevenANDEleven := seven.AND(&eleven)
-			Ω(sevenANDEleven.Equals(&three)).Should(BeTrue())
+			Ω(sevenANDEleven).Should(Equal(three))
 		})
 	})
 
@@ -112,7 +112,7 @@ var _ = Describe("Int1024 bitwise operations", func() {
 	// 		}
 
 	// 		for i := 0; i < SIZE; i++ {
-	// 			Ω(max.IsBitSet(i)).Should(BeTrue())
+	// 			Ω(max.IsBitSet(i))
 	// 			Ω(zero.IsBitSet(i)).Should(BeFalse())
 	// 		}
 	// 	})

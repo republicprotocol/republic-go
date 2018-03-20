@@ -13,14 +13,19 @@ func (x *Int1024) ShiftLeftInPlace(n uint) {
 	// If n > 64, first, shift entire words
 	div := n / WORDSIZE
 	if div > 0 {
-		x.length = min(INT1024WORDS, x.length+uint16(div))
+		words := min(INT1024WORDS, x.length+uint16(div))
+		var firstPositive uint16
 		var i uint
-		for i = uint(x.length) - 1; i >= div; i-- {
+		for i = uint(words) - 1; i >= div; i-- {
 			x.words[i] = x.words[i-div]
+			if x.words[i] != 0 {
+				firstPositive = uint16(i)
+			}
 		}
 		for i = 0; i < div; i++ {
 			x.words[i] = 0
 		}
+		x.length = firstPositive + 1
 		n = n - div*WORDSIZE
 	}
 
@@ -38,6 +43,7 @@ func (x *Int1024) shiftleft(n uint) {
 	var overflow uint64
 	var shift uint64 = (1<<n - 1)
 	// fmt.Println(shift)
+	var firstPositive uint16
 	var i uint16
 	for i = 0; i < x.length; i++ {
 		// Calculate if word overflows into next word
@@ -45,16 +51,22 @@ func (x *Int1024) shiftleft(n uint) {
 		// Shift word to the right
 		// If previous word overflowed, add 1
 		x.words[i] = (x.words[i] << n) | overflow
+		if x.words[i] != 0 {
+			firstPositive = i
+		}
 		overflow = newOverflow
 	}
 	if overflow != 0 && x.length < INT1024WORDS {
 		x.length++
 		x.words[x.length-1] = overflow
+	} else {
+		x.length = firstPositive + 1
 	}
 }
 
 func (x *Int1024) shiftleftone() {
 	var overflow uint64
+	var firstPositive uint16
 	var i uint16
 	for i = 0; i < x.length; i++ {
 		// Calculate if word overflows into next word
@@ -62,11 +74,16 @@ func (x *Int1024) shiftleftone() {
 		// Shift word to the right
 		// If previous word overflowed, add 1
 		x.words[i] = (x.words[i] << 1) | overflow
+		if x.words[i] != 0 {
+			firstPositive = i
+		}
 		overflow = newOverflow
 	}
 	if overflow != 0 && x.length < INT1024WORDS {
 		x.length++
 		x.words[x.length-1] = overflow
+	} else {
+		x.length = firstPositive + 1
 	}
 }
 
@@ -79,11 +96,16 @@ func (x *Int1024) ShiftRight(n uint) Int1024 {
 
 // ShiftRightInPlace shifts to the right x by one
 func (x *Int1024) ShiftRightInPlace(n uint) {
+
 	// If n > 64, first, shift entire words
 	div := n / WORDSIZE
 	if div > 0 {
 		previous := x.length
-		x.length = max(0, x.length-uint16(div))
+		if uint16(div) > x.length {
+			x.length = 0
+		} else {
+			x.length = x.length - uint16(div)
+		}
 		var i uint16
 		for i = 0; i < x.length; i++ {
 			x.words[i] = x.words[i+uint16(div)]

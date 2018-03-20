@@ -1,6 +1,9 @@
 package stackint_test
 
 import (
+	"math/big"
+	"strings"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/stackint"
@@ -20,29 +23,29 @@ var twelve = FromUint64(12)
 var oneWord = FromUint64(WORDMAX)
 var max = MAXINT1024()
 
-// func MaxStr() string {
-// 	one := big.NewInt(1)
-// 	max := big.NewInt(2)
-// 	pow := big.NewInt(SIZE)
-// 	max = max.Exp(max, pow, nil)
-// 	max = max.Sub(max, one)
-// 	return max.String()
-// }
+func MaxStr() string {
+	one := big.NewInt(1)
+	max := big.NewInt(2)
+	pow := big.NewInt(SIZE)
+	max = max.Exp(max, pow, nil)
+	max = max.Sub(max, one)
+	return max.String()
+}
 
-// var maxStr = MaxStr()
+var maxStr = MaxStr()
 
-// func MaxSquaredStr() string {
-// 	one := big.NewInt(1)
-// 	lim := big.NewInt(2)
-// 	pow := big.NewInt(SIZE)
-// 	lim = lim.Exp(lim, pow, nil)
-// 	max := big.NewInt(0).Sub(lim, one)
-// 	sqr := max.Mul(max, max)
-// 	mod := sqr.Mod(sqr, lim)
-// 	return mod.String()
-// }
+func MaxSquaredStr() string {
+	one := big.NewInt(1)
+	lim := big.NewInt(2)
+	pow := big.NewInt(SIZE)
+	lim = lim.Exp(lim, pow, nil)
+	max := big.NewInt(0).Sub(lim, one)
+	sqr := max.Mul(max, max)
+	mod := sqr.Mod(sqr, lim)
+	return mod.String()
+}
 
-// var maxSquaredStr = MaxSquaredStr()
+var maxSquaredStr = MaxSquaredStr()
 
 func TC(in ...interface{}) []interface{} {
 	return in
@@ -114,61 +117,60 @@ var _ = Describe("Int1024", func() {
 	// 	})
 	// })
 
-	// Context("when converting to binary string", func() {
-	// 	It("should return the right result for 1024 bit numbers", func() {
-	// 		actual := max.ToBinary()
-	// 		expected := strings.Repeat("1", SIZE)
-	// 		Ω(actual).Should(Equal(expected))
+	Context("when converting to binary string", func() {
+		It("should return the right result for 1024 bit numbers", func() {
+			actual := max.ToBinary()
+			expected := strings.Repeat("1", SIZE)
+			Ω(actual).Should(Equal(expected))
 
-	// 		actual = zero.ToBinary()
-	// 		expected = "0"
-	// 		Ω(actual).Should(Equal(expected))
+			actual = zero.ToBinary()
+			expected = "0"
+			Ω(actual).Should(Equal(expected))
 
-	// 		actual = one.ToBinary()
-	// 		expected = "1"
-	// 		Ω(actual).Should(Equal(expected))
+			actual = one.ToBinary()
+			expected = "1"
+			Ω(actual).Should(Equal(expected))
 
-	// 		actual = two.ToBinary()
-	// 		expected = "10"
-	// 		Ω(actual).Should(Equal(expected))
-	// 	})
-	// })
+			actual = two.ToBinary()
+			expected = "10"
+			Ω(actual).Should(Equal(expected))
+		})
+	})
 
-	// Context("when converting to binary string", func() {
-	// 	It("should return the right result for 1024 bit numbers", func() {
-	// 		actual := max.String()
-	// 		expected := maxStr
-	// 		Ω(actual).Should(Equal(expected))
+	Context("when converting to string", func() {
+		It("should return the right result for 1024 bit numbers", func() {
+			// actual := max.String()
+			// expected := maxStr
+			// Ω(actual).Should(Equal(expected))
 
-	// 		actual = zero.String()
-	// 		expected = "0"
-	// 		Ω(actual).Should(Equal(expected))
+			// actual = zero.String()
+			// expected = "0"
+			// Ω(actual).Should(Equal(expected))
 
-	// 		actual = one.String()
-	// 		expected = "1"
-	// 		Ω(actual).Should(Equal(expected))
+			// actual = one.String()
+			// expected = "1"
+			// Ω(actual).Should(Equal(expected))
 
-	// 		actual = two.String()
-	// 		expected = "2"
-	// 		Ω(actual).Should(Equal(expected))
+			// actual = two.String()
+			// expected = "2"
+			// Ω(actual).Should(Equal(expected))
 
-	// 		tmp := FromUint64(111)
-	// 		actual = tmp.String()
-	// 		expected = "111"
-	// 		Ω(actual).Should(Equal(expected))
-
-	// 	})
-	// })
+			// tmp := FromUint64(111)
+			// actual = tmp.String()
+			// expected = "111"
+			// Ω(actual).Should(Equal(expected))
+		})
+	})
 
 	// Context("when serializing to bytes", func() {
 	// 	It("should return the right result for 1024 bit numbers", func() {
 	// 		array := []Int1024{zero, one, two, three, four, five, six, seven, eleven, twelve, oneWord, max}
 	// 		for _, num := range array {
 	// 			actual := FromBytes(num.ToBytes())
-	// 			Ω(actual.String()).Should(Equal(num.String()))
+	// 			Ω(actual).Should(Equal(num))
 
 	// 			actual = FromLittleEndianBytes(num.ToLittleEndianBytes())
-	// 			Ω(actual.String()).Should(Equal(num.String()))
+	// 			Ω(actual).Should(Equal(num))
 	// 		}
 	// 	})
 	// })
@@ -178,10 +180,10 @@ var _ = Describe("Int1024", func() {
 	// 		array := []Int1024{zero, one, two, three, four, five, six, seven, eleven, twelve, oneWord, max}
 	// 		for _, num := range array {
 	// 			actual := FromBytes(num.ToBytes())
-	// 			Ω(actual.String()).Should(Equal(num.String()))
+	// 			Ω(actual).Should(Equal(num))
 
 	// 			actual = FromLittleEndianBytes(num.ToLittleEndianBytes())
-	// 			Ω(actual.String()).Should(Equal(num.String()))
+	// 			Ω(actual).Should(Equal(num))
 	// 		}
 	// 	})
 	// })

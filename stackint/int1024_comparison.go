@@ -2,11 +2,12 @@ package stackint
 
 // Equals returns true of x and y represent the same Int1024
 func (x *Int1024) Equals(y *Int1024) bool {
-	if len(x.words) != len(y.words) {
+	if x.length != y.length {
 		return false
 	}
 
-	for i := 0; i < len(x.words); i++ {
+	var i uint16
+	for i = 0; i < x.length; i++ {
 		if x.words[i] != y.words[i] {
 			return false
 		}
@@ -31,15 +32,14 @@ func (x *Int1024) EqualsUint64(n uint64) bool {
 
 // Cmp returns -1 if x<y, 0 if x=y, 1 if x>y
 func (x *Int1024) Cmp(y *Int1024) int {
-	lenX := len(x.words)
-	lenY := len(y.words)
 
-	if lenX < lenY {
+	if x.length < y.length {
 		return -1
-	} else if lenX > lenY {
+	} else if x.length > y.length {
 		return 1
 	} else {
-		for i := 0; i < lenX; i++ {
+		var i uint16
+		for i = 0; i < x.length; i++ {
 			if x.words[i] < y.words[i] {
 				return -1
 			}
