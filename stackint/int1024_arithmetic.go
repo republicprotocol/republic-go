@@ -348,13 +348,21 @@ func (x *Int1024) mod(y *Int1024) Int1024 {
 	limit := MAXINT1024()
 	limit.ShiftRightInPlace(1)
 	overflowed := false
-	for denom.LessThanOrEqual(&dividend) {
-		if !denom.LessThan(&limit) {
+
+	shift := dividend.BitLength() - denom.BitLength()
+	if shift < 0 {
+		shift = 0
+	}
+	denom.ShiftLeftInPlace(uint(shift))
+	current += shift
+
+	if denom.LessThanOrEqual(&dividend) {
+		if denom.GreaterThanOrEqual(&limit) {
 			overflowed = true
-			break
+		} else {
+			denom.ShiftLeftInPlace(1)
+			current++
 		}
-		denom.ShiftLeftInPlace(1)
-		current++
 	}
 
 	if !overflowed {
