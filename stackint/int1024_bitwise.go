@@ -10,16 +10,24 @@ func (x *Int1024) ShiftLeft(n uint) Int1024 {
 // ShiftLeftInPlace shifts to the left x by one
 func (x *Int1024) ShiftLeftInPlace(n uint) {
 
+	// expected := big.NewInt(0).Lsh(x.ToBigInt(), n)
+
 	// If n > 64, first, shift entire words
 	div := n / WORDSIZE
 	if div > 0 {
+		words := min(INT1024WORDS, x.length+uint16(div))
+		var firstPositive uint16
 		var i uint
-		for i = 0; i < INT1024WORDS-div; i++ {
-			x.words[i] = x.words[i+div]
+		for i = uint(words) - 1; i >= div; i-- {
+			x.words[i] = x.words[i-div]
+			if x.words[i] != 0 && firstPositive == 0 {
+				firstPositive = uint16(i)
+			}
 		}
-		for i := INT1024WORDS - div; i < INT1024WORDS; i++ {
+		for i = 0; i < div; i++ {
 			x.words[i] = 0
 		}
+		x.length = firstPositive + 1
 		n = n - div*WORDSIZE
 	}
 
@@ -28,32 +36,63 @@ func (x *Int1024) ShiftLeftInPlace(n uint) {
 	} else {
 		x.shiftleft(n)
 	}
+
+	// actual := x.ToBigInt()
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
+	// 	panic(fmt.Sprintf("Shiftleft failed!\nFor %v << %v\n.\n\nExp: %b\n\nGot: %b", x, n, expected, actual))
+	// }
+
 }
 
 func (x *Int1024) shiftleft(n uint) {
+	if n >= SIZE {
+		panic("shifting by more than a word")
+	}
 	var overflow uint64
 	var shift uint64 = (1<<n - 1)
 	// fmt.Println(shift)
-	for i := INT1024WORDS - 1; i >= 0; i-- {
+	var firstPositive uint16
+	var i uint16
+	for i = 0; i < x.length; i++ {
 		// Calculate if word overflows into next word
 		newOverflow := (x.words[i] >> (WORDSIZE - n)) & shift
 		// Shift word to the right
 		// If previous word overflowed, add 1
 		x.words[i] = (x.words[i] << n) | overflow
+		if x.words[i] != 0 {
+			firstPositive = i
+		}
 		overflow = newOverflow
+	}
+	if overflow != 0 && x.length < INT1024WORDS {
+		x.length++
+		x.words[x.length-1] = overflow
+	} else {
+		x.length = firstPositive + 1
 	}
 }
 
 func (x *Int1024) shiftleftone() {
 	var overflow uint64
-	for i := INT1024WORDS - 1; i >= 0; i-- {
+	var firstPositive uint16
+	var i uint16
+	for i = 0; i < x.length; i++ {
 		// Calculate if word overflows into next word
 		newOverflow := (x.words[i] >> (WORDSIZE - 1)) & 1
 		// Shift word to the right
 		// If previous word overflowed, add 1
 		x.words[i] = (x.words[i] << 1) | overflow
+		if x.words[i] != 0 {
+			firstPositive = i
+		}
 		overflow = newOverflow
 	}
+	if overflow != 0 && x.length < INT1024WORDS {
+		firstPositive = i
+		x.words[i] = overflow
+	}
+	x.length = firstPositive + 1
+
 }
 
 // ShiftRight returns x>>n
@@ -65,15 +104,28 @@ func (x *Int1024) ShiftRight(n uint) Int1024 {
 
 // ShiftRightInPlace shifts to the right x by one
 func (x *Int1024) ShiftRightInPlace(n uint) {
+
+	// expected := big.NewInt(0).Rsh(x.ToBigInt(), n)
+
 	// If n > 64, first, shift entire words
 	div := n / WORDSIZE
 	if div > 0 {
-		var i uint
-		for i = INT1024WORDS - 1; i >= div; i-- {
-			x.words[i] = x.words[i-div]
+		previous := x.length
+		// uint overflows
+		if uint16(div) > x.length {
+			x.length = 0
+		} else {
+			x.length = x.length - uint16(div)
 		}
-		for i = 0; i < div; i++ {
+		var i uint16
+		for i = 0; i < x.length; i++ {
+			x.words[i] = x.words[i+uint16(div)]
+		}
+		for i = x.length; i < previous; i++ {
 			x.words[i] = 0
+		}
+		if x.length == 0 {
+			x.length = 1
 		}
 		n = n - div*WORDSIZE
 	}
@@ -83,12 +135,21 @@ func (x *Int1024) ShiftRightInPlace(n uint) {
 	} else {
 		x.shiftright(n)
 	}
+
+	// actual := x.ToBigInt()
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
+	// 	panic(fmt.Sprintf("Shiftleft failed!\nFor %v << %v\n.\n\nExp: %b\n\nGot: %b", x, n, expected, actual))
+	// }
+
 }
 
 func (x *Int1024) shiftright(n uint) {
+	if n >= SIZE {
+		panic("shifting by more than a word")
+	}
 	var overflow uint64
 	var shift uint64 = (1<<n - 1)
-	for i := 0; i < INT1024WORDS; i++ {
+	for i := int16(x.length - 1); i >= 0; i-- {
 		// Calculate if word overflows into next word
 		newOverflow := (x.words[i] & shift) << (WORDSIZE - n)
 		// Shift word to the right
@@ -96,11 +157,14 @@ func (x *Int1024) shiftright(n uint) {
 		x.words[i] = (x.words[i] >> n) | overflow
 		overflow = newOverflow
 	}
+	if x.words[x.length-1] == 0 && x.length > 1 {
+		x.length--
+	}
 }
 
 func (x *Int1024) shiftrightone() {
 	overflow := uint64(0)
-	for i := 0; i < INT1024WORDS; i++ {
+	for i := int16(x.length - 1); i >= 0; i-- {
 		// Calculate if word overflows into next word
 		newOverflow := (x.words[i] & 1) << (WORDSIZE - 1)
 		// Shift word to the right
@@ -108,6 +172,10 @@ func (x *Int1024) shiftrightone() {
 		x.words[i] = (x.words[i] >> 1) | overflow
 		overflow = newOverflow
 	}
+	if x.words[x.length-1] == 0 && x.length > 1 {
+		x.length--
+	}
+
 }
 
 func (x *Int1024) IsBitSet(n int) bool {
@@ -115,41 +183,107 @@ func (x *Int1024) IsBitSet(n int) bool {
 		return false
 	}
 	word := n / WORDSIZE
+	if uint16(word) >= x.length {
+		return false
+	}
 	bit := uint(n % WORDSIZE)
-	return x.words[INT1024WORDS-1-word]&(1<<bit) != 0
+	return x.words[word]&(1<<bit) != 0
 }
 
 // AND returns x&y
 func (x *Int1024) AND(y *Int1024) Int1024 {
-	z := Zero()
-	for i := 0; i < INT1024WORDS; i++ {
-		z.words[i] = x.words[i] & y.words[i]
+	min := x.length
+	yLen := y.length
+	if yLen < min {
+		min = yLen
 	}
+
+	z := Zero()
+	var firstPositive uint16
+	var i uint16
+	for i = 0; i < min; i++ {
+		z.words[i] = x.words[i] & y.words[i]
+		if z.words[i] != 0 {
+			firstPositive = i
+		}
+	}
+	z.length = firstPositive + 1
 	return z
 }
 
 // OR returns x|y
 func (x *Int1024) OR(y *Int1024) Int1024 {
-	z := Zero()
-	for i := 0; i < INT1024WORDS; i++ {
-		z.words[i] = x.words[i] | y.words[i]
-	}
+	z := x.Clone()
+	z.ORInPlace(y)
 	return z
+}
+
+// ORInPlace sets x to x|y
+func (x *Int1024) ORInPlace(y *Int1024) {
+
+	min := x.length
+	max := y.length
+	maxi := y
+	if max < min {
+		min, max = max, min
+		maxi = x
+	}
+
+	var i uint16
+	var firstPositive uint16
+	for i = 0; i < min; i++ {
+		x.words[i] = x.words[i] | y.words[i]
+		if x.words[i] != 0 {
+			firstPositive = i
+		}
+	}
+	for i = min; i < max; i++ {
+		x.words[i] = maxi.words[i]
+		if x.words[i] != 0 {
+			firstPositive = i
+		}
+	}
+
+	x.length = firstPositive + 1
 }
 
 // XOR returns x&y
 func (x *Int1024) XOR(y *Int1024) Int1024 {
-	z := Zero()
-	for i := 0; i < INT1024WORDS; i++ {
-		z.words[i] = x.words[i] ^ y.words[i]
+	min := x.length
+	max := y.length
+	maxi := y
+	if max < min {
+		min, max = max, min
+		maxi = x
 	}
-	return z
+
+	var words [INT1024WORDS]uint64
+	var i uint16
+	var firstPositive uint16
+	for i = 0; i < min; i++ {
+		words[i] = x.words[i] ^ y.words[i]
+		if words[i] != 0 {
+			firstPositive = i
+		}
+	}
+	for i = min; i < max; i++ {
+		words[i] = maxi.words[i]
+		if words[i] != 0 {
+			firstPositive = i
+		}
+	}
+	length := firstPositive + 1
+	return Int1024{
+		words:  words,
+		length: length,
+	}
 }
 
 // NOT returns ~x
 func (x *Int1024) NOT() Int1024 {
 	z := Zero()
-	for i := 0; i < INT1024WORDS; i++ {
+	var i uint16
+	for i = 0; i < x.length; i++ {
 		z.words[i] = ^x.words[i]
 	}
 	return z
@@ -157,19 +291,14 @@ func (x *Int1024) NOT() Int1024 {
 
 // BitLength returns the number bits required to represent x (equivalent to len(x.ToBinary()))
 func (x *Int1024) BitLength() int {
-	for i := 0; i < INT1024WORDS; i++ {
-		if x.words[i] > 0 {
-			word := x.words[i]
-			wordBits := 0
-			for word > 0 {
-				word /= 2
-				wordBits++
-			}
-			if wordBits == 0 {
-				wordBits = 1
-			}
-			return (INT1024WORDS-1-i)*64 + wordBits
-		}
+	word := x.words[x.length-1]
+	wordBits := 0
+	for word > 0 {
+		word /= 2
+		wordBits++
 	}
-	return 1
+	if wordBits == 0 {
+		wordBits = 1
+	}
+	return (int(x.length-1))*64 + wordBits
 }

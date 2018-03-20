@@ -3,17 +3,8 @@ package stackint
 // Add returns x+y
 func (x *Int1024) Add(y *Int1024) Int1024 {
 
-	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	// expected := big.NewInt(0).Add(xB, yB)
-
 	z := x.Clone()
 	z.Inc(y)
-
-	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("Addition failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
-	// }
 
 	return z
 }
@@ -21,105 +12,146 @@ func (x *Int1024) Add(y *Int1024) Int1024 {
 // Inc sets x to x+y (used for multiplication)
 func (x *Int1024) Inc(y *Int1024) {
 
+	// a, b := x, y
+
+	var a, b *Int1024
+	// var aLen, bLen int
+	if x.length > y.length {
+		a, b = x, y
+		// aLen, bLen = xLen, yLen
+	} else {
+		a, b = y, x
+		// aLen, bLen = yLen, xLen
+	}
+
+	var firstPositive uint16
 	var overflow uint64
 	overflow = 0
-	for i := INT1024WORDS - 1; i >= 0; i-- {
+	var i uint16
+	for i = 0; i < b.length; i++ {
 		previousOverflow := overflow
-		if x.words[i] > WORDMAX-y.words[i] || x.words[i] > WORDMAX-y.words[i]-previousOverflow || y.words[i] > WORDMAX-previousOverflow {
+		if a.words[i] > WORDMAX-b.words[i] || a.words[i] > WORDMAX-b.words[i]-previousOverflow || b.words[i] > WORDMAX-previousOverflow {
 			overflow = 1
 		} else {
 			overflow = 0
 		}
-		x.words[i] = x.words[i] + y.words[i] + previousOverflow
+		x.words[i] = a.words[i] + b.words[i] + previousOverflow
+		if x.words[i] != 0 {
+			firstPositive = i
+		}
+	}
+	for i = b.length; i < a.length; i++ {
+		previousOverflow := overflow
+		if a.words[i] > WORDMAX || a.words[i] > WORDMAX-previousOverflow {
+			overflow = 1
+		} else {
+			overflow = 0
+		}
+		x.words[i] = a.words[i] + previousOverflow
+		if x.words[i] != 0 {
+			firstPositive = i
+		}
 	}
 
-	if overflow == 1 {
+	x.length = a.length
+
+	if overflow == 1 && x.length < INT1024WORDS {
+		x.length++
+		x.words[x.length-1] = 1
+		firstPositive = x.length - 1
 		// WARNING: Overflow occured
 	}
+
+	x.length = firstPositive + 1
 }
 
 // Sub returns x-y
 func (x *Int1024) Sub(y *Int1024) Int1024 {
 
-	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	// expected := big.NewInt(0).Sub(xB, yB)
-
-	// var words [INT1024WORDS]Word
-
-	// overflow := Word(0)
-	// for i := INT1024WORDS - 1; i >= 0; i-- {
-	// 	words[i] = x.words[i] - y.words[i] - overflow
-	// 	if x.words[i] < y.words[i]+overflow || y.words[i] == WORDMAX && overflow == 1 {
-	// 		overflow = 1
-	// 	} else {
-	// 		overflow = 0
-	// 	}
-	// }
-
-	// // if overflow == 1 {
-	// // 	// WARNING: Overflow occured
-	// // }
-
-	// z := Int1024{
-	// 	words: words,
-	// }
-
 	z := x.Clone()
 	z.Dec(y)
-
-	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("Subtraction failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
-	// }
 
 	return z
 }
 
 // Dec sets x to x-y
 func (x *Int1024) Dec(y *Int1024) {
-	overflow := uint64(0)
-	for i := INT1024WORDS - 1; i >= 0; i-- {
-		newOverflow := uint64(0)
-		if x.words[i] < y.words[i]+overflow || y.words[i] == WORDMAX && overflow == 1 {
-			newOverflow = 1
+	var overflow uint64
+	var i uint16
+	var firstPositive uint16
+	if x.length >= y.length {
+		for i = 0; i < y.length; i++ {
+			newOverflow := uint64(0)
+			if x.words[i] < y.words[i]+overflow || y.words[i] == WORDMAX && overflow == 1 {
+				newOverflow = 1
+			}
+			x.words[i] = x.words[i] - y.words[i] - overflow
+			overflow = newOverflow
+			if x.words[i] != 0 {
+				firstPositive = i
+			}
 		}
-		x.words[i] = x.words[i] - y.words[i] - overflow
-		overflow = newOverflow
+		for i = y.length; i < x.length; i++ {
+			newOverflow := uint64(0)
+			if x.words[i] < overflow {
+				newOverflow = 1
+			}
+			x.words[i] = x.words[i] - overflow
+			overflow = newOverflow
+			if x.words[i] != 0 {
+				firstPositive = i
+			}
+		}
+	} else {
+		for i = 0; i < x.length; i++ {
+			newOverflow := uint64(0)
+			if x.words[i] < y.words[i]+overflow || y.words[i] == WORDMAX && overflow == 1 {
+				newOverflow = 1
+			}
+			x.words[i] = x.words[i] - y.words[i] - overflow
+			overflow = newOverflow
+			if x.words[i] != 0 {
+				firstPositive = i
+			}
+		}
+		for i = x.length; i < y.length; i++ {
+			newOverflow := uint64(0)
+			if 0 < y.words[i]+overflow || y.words[i] == WORDMAX && overflow == 1 {
+				newOverflow = 1
+			}
+			x.words[i] = 0 - y.words[i] - overflow
+			overflow = newOverflow
+			if x.words[i] != 0 {
+				firstPositive = i
+			}
+		}
 	}
 
-	if overflow == 1 {
-		// WARNING: Overflow occured
+	if overflow > 0 {
+		for ; i < INT1024WORDS; i++ {
+			x.words[i] = (1 << 64) - 1
+		}
+		firstPositive = INT1024WORDS - 1
 	}
+	x.length = firstPositive + 1
 }
 
 // BasicMul returns x*y using the shift and add method
 func (x *Int1024) BasicMul(y *Int1024) Int1024 {
-
-	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	// expected := big.NewInt(0).Mul(xB, yB)
 
 	// Naïve inplementation!
 	// Uses up to 16384 uint64 additions (worst case)
 	// TODO: Rewrite using more efficient algorithm
 	z := Zero()
 
-	if x.LessThan(y) {
+	if x.length < y.length {
 		x, y = y, x
 	}
 
 	shifted := x.Clone()
 
-	firstword := 0
-	for i := 0; i < INT1024WORDS; i++ {
-		if y.words[i] != 0 {
-			firstword = i
-			break
-		}
-	}
-
-	for i := INT1024WORDS - 1; i >= firstword; i-- {
+	var i uint16
+	for i = 0; i < y.length; i++ {
 		word := y.words[i]
 		for j := uint(0); j < WORDSIZE; j++ {
 			bit := (word >> j) & 1
@@ -130,30 +162,13 @@ func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 		}
 	}
 
-	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("Multiplication failed for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
-	// }
-
 	return z
 }
 
 // Mul returns x*y
 func (x *Int1024) Mul(y *Int1024) Int1024 {
-	// fmt.Println("")
-	// fmt.Println(x.ToBinary())
-	// fmt.Println(y.ToBinary())
 
-	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	// expected := big.NewInt(0).Mul(xB, yB)
-
-	z := x.karatsuba(y)
-
-	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("Multiplication failed for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
-	// }
+	z := x.BasicMul(y)
 
 	return z
 }
@@ -172,14 +187,23 @@ func karatsubaLen(n int) int {
 func (x *Int1024) split(n uint) (Int1024, Int1024) {
 	b := x.ShiftRight(n)
 	a := Zero()
-	var i uint
-	for i = 0; i < n/WORDSIZE; i++ {
-		a.words[INT1024WORDS-1-i] = x.words[INT1024WORDS-1-i]
+	var i uint16
+	len := min(uint16(n), x.length*WORDSIZE)
+	var firstPositive uint16
+	for i = 0; i < len/WORDSIZE; i++ {
+		a.words[i] = x.words[i]
+		if a.words[i] != 0 {
+			firstPositive = i
+		}
 	}
-	mod := uint(n % WORDSIZE)
+	mod := len % WORDSIZE
 	if mod != 0 {
-		a.words[INT1024WORDS-1-i] = x.words[INT1024WORDS-1-i] & (1<<uint(mod) - 1)
+		a.words[i] = x.words[i] & (1<<mod - 1)
+		if a.words[i] != 0 {
+			firstPositive = i
+		}
 	}
+	a.length = firstPositive + 1
 	return a, b
 }
 
@@ -220,15 +244,12 @@ func (x *Int1024) karatsuba(y *Int1024) Int1024 {
 	bd.ShiftLeftInPlace(2 * n)
 	res.Inc(&bd)
 
-	// log += fmt.Sprintf("%s", res.ToBinary())
-
-	// fmt.Println(log)
-
 	return res
 }
 
 // DivMod returns (x/y, x%y). If y is 0, a run-time panic occurs.
 func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
+
 	dividend := x.Clone()
 	denom := y.Clone()
 	current := FromUint64(1)
@@ -257,8 +278,8 @@ func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 
 	for !current.IsZero() {
 		if !dividend.LessThan(&denom) {
-			dividend = dividend.Sub(&denom)
-			answer = answer.OR(&current)
+			dividend.Dec(&denom)
+			answer.ORInPlace(&current)
 		}
 		current.ShiftRightInPlace(1)
 		denom.ShiftRightInPlace(1)
@@ -287,19 +308,6 @@ func (x *Int1024) Mod(n *Int1024) Int1024 {
 	default:
 		panic("unexpected cmp result (expecting -1, 0 or 1)")
 	}
-
-	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	// yB, _ := big.NewInt(0).SetString(n.ToBinary(), 2)
-	// expected := big.NewInt(0).Mod(xB, yB)
-
-	// _, z := x.DivMod(n)
-
-	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("Modulo failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), n.ToBinary(), expected, actual))
-	// }
-
-	// return z
 }
 
 // SubModulo returns (x - y) % n
@@ -328,17 +336,8 @@ func (x *Int1024) SubModulo(y, n *Int1024) Int1024 {
 
 // AddModulo returns (x + y) % n (x+y can be larger than 2^SIZE)
 func (x *Int1024) AddModulo(y, n *Int1024) Int1024 {
-	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	// nB, _ := big.NewInt(0).SetString(n.ToBinary(), 2)
-	// expected := big.NewInt(0).Mod(big.NewInt(0).Add(xB, yB), nB)
 
 	z := x.addModulo(y, n)
-
-	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("AddModulo failed! for %s + %s mod %s.\n\nExpected %s\n\nGot %s", x.String(), y.String(), n.String(), expected, actual))
-	// }
 
 	return z
 }
@@ -379,31 +378,31 @@ func (x *Int1024) addModulo(y, n *Int1024) Int1024 {
 	return X.Add(&Y)
 }
 
-// MulModuloSlow returns (x*y) % n but it takes its time
-func (x *Int1024) MulModuloSlow(y, n *Int1024) Int1024 {
+// // MulModuloSlow returns (x*y) % n but it takes its time
+// func (x *Int1024) MulModuloSlow(y, n *Int1024) Int1024 {
 
-	// Not optimized
+// 	// Not optimized
 
-	// TODO!!!
-	// Implement Shrage's Method
-	// https://github.com/wdavidw/node-gsl/blob/master/deps/gsl-1.14/rng/schrage.c
+// 	// TODO!!!
+// 	// Implement Shrage's Method
+// 	// https://github.com/wdavidw/node-gsl/blob/master/deps/gsl-1.14/rng/schrage.c
 
-	z := Zero()
-	shifted := x.Mod(n)
+// 	z := Zero()
+// 	shifted := x.Mod(n)
 
-	for i := INT1024WORDS - 1; i >= 0; i-- {
-		word := y.words[i]
-		for j := uint(0); j < WORDSIZE; j++ {
-			bit := (word >> j) & 1
-			if bit == 1 {
-				z = z.AddModulo(&shifted, n)
-			}
-			shifted = shifted.AddModulo(&shifted, n)
-		}
-	}
+// 	for i := INT1024WORDS - 1; i >= 0; i-- {
+// 		word := y.words[i]
+// 		for j := uint(0); j < WORDSIZE; j++ {
+// 			bit := (word >> j) & 1
+// 			if bit == 1 {
+// 				z = z.AddModulo(&shifted, n)
+// 			}
+// 			shifted = shifted.AddModulo(&shifted, n)
+// 		}
+// 	}
 
-	return z
-}
+// 	return z
+// }
 
 // MulModulo returns (x*y) % n
 func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
@@ -637,7 +636,7 @@ func (x *Int1024) Exp(y *Int1024) Int1024 {
 	if y.IsZero() {
 		return One()
 	} else if y.EqualsUint64(1) {
-		return *x
+		return *(x)
 	} else if y.IsEven() {
 		square := x.Mul(x)
 		half := y.Div(&two)
