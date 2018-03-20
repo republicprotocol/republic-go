@@ -130,14 +130,16 @@ func (logger *Logger) Usage(cpu, memory float64, network uint64) {
 	})
 }
 
-// Network logs a NetworkEvent.
-func (logger *Logger) Network(ty Type, message string) {
+// OrderMatch logs an OrderMatchEvent.
+func (logger *Logger) OrderMatch(ty Type, id, buyID, sellID string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
 		Type:      ty,
-		EventType: Network,
-		Event: NetworkEvent{
-			Message: message,
+		EventType: OrderMatch,
+		Event: OrderMatchEvent{
+			ID:     id,
+			BuyID:  buyID,
+			SellID: sellID,
 		},
 	})
 }
@@ -151,6 +153,30 @@ func (logger *Logger) OrderReceived(ty Type, id, fragmentID string) {
 		Event: OrderReceivedEvent{
 			ID:         id,
 			FragmentID: fragmentID,
+		},
+	})
+}
+
+// Network logs a NetworkEvent.
+func (logger *Logger) Network(ty Type, message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: Network,
+		Event: NetworkEvent{
+			Message: message,
+		},
+	})
+}
+
+// Compute logs a ComputeEvent.
+func (logger *Logger) Compute(ty Type, message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: Compute,
+		Event: ComputeEvent{
+			Message: message,
 		},
 	})
 }
@@ -172,11 +198,12 @@ type EventType string
 // Values for the EventType.
 const (
 	Generic       = EventType("generic")
-	Network       = EventType("network")
 	Usage         = EventType("usage")
 	Ethereum      = EventType("ethereum")
 	OrderMatch    = EventType("orderMatch")
 	OrderReceived = EventType("orderReceived")
+	Network       = EventType("network")
+	Compute       = EventType("compute")
 )
 
 // A Log is logged by the Logger using all available Plugins.
@@ -211,12 +238,12 @@ func (event UsageEvent) String() string {
 
 type OrderMatchEvent struct {
 	ID     string `json:"id"`
-	BuyID  string `json:"sellId"`
-	SellID string `json:"buyId"`
+	BuyID  string `json:"buyId"`
+	SellID string `json:"sellId"`
 }
 
 func (event OrderMatchEvent) String() string {
-	return fmt.Sprintf("order match = (%v, %v)", event.BuyID, event.SellID)
+	return fmt.Sprintf("buy = %s; sell = %s", event.BuyID, event.SellID)
 }
 
 type OrderReceivedEvent struct {
@@ -225,7 +252,7 @@ type OrderReceivedEvent struct {
 }
 
 func (event OrderReceivedEvent) String() string {
-	return fmt.Sprintf("order recevied = (%v)", event.ID)
+	return event.ID
 }
 
 type NetworkEvent struct {
@@ -233,5 +260,13 @@ type NetworkEvent struct {
 }
 
 func (event NetworkEvent) String() string {
+	return event.Message
+}
+
+type ComputeEvent struct {
+	Message string `json:"message"`
+}
+
+func (event ComputeEvent) String() string {
 	return event.Message
 }

@@ -13,7 +13,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark"
@@ -54,17 +53,12 @@ type DarkNode struct {
 	DeltaFragmentBroadcastWorker      *DeltaFragmentBroadcastWorker
 	DeltaFragmentWorkerQueue          chan *compute.DeltaFragment
 	DeltaFragmentWorker               *DeltaFragmentWorker
-	GossipWorkerQueue                 chan *compute.Delta
-	GossipWorker                      *GossipWorker
-	FinalizeWorkerQueue               chan *compute.Delta
-	FinalizeWorker                    *FinalizeWorker
-	ConsensusWorkerQueue              chan *compute.Delta
-	ConsensusWorker                   *ConsensusWorker
+	DeltaQueue                        chan *compute.Delta
+	DeltaMatchWorker                  *DeltaMatchWorker
 
 	Server *grpc.Server
 	Swarm  *network.SwarmService
 	Dark   *network.DarkService
-	Gossip *network.GossipService
 
 	DarkNodeRegistrar dnr.DarkNodeRegistrar
 	DarkOcean         *dark.Ocean
@@ -114,7 +108,6 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
 	node.Swarm = network.NewSwarmService(node, node.NetworkOptions, node.Logger, node.ClientPool, node.DHT)
 	node.Dark = network.NewDarkService(node, node.NetworkOptions, node.Logger)
-	node.Gossip = network.NewGossipService(node)
 
 	// Create all background workers that will do all of the actual work
 	node.DeltaBuilder = compute.NewDeltaBuilder(k, Prime)
@@ -125,12 +118,8 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	node.DeltaFragmentBroadcastWorker = NewDeltaFragmentBroadcastWorker(node.Logger, node.ClientPool, node.DarkPool, node.DeltaFragmentBroadcastWorkerQueue)
 	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
 	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.Logger, node.DeltaBuilder, node.DeltaFragmentWorkerQueue)
-	node.GossipWorkerQueue = make(chan *compute.Delta, 100)
-	node.GossipWorker = NewGossipWorker(node.Logger, node.ClientPool, node.NetworkOptions.BootstrapMultiAddresses, node.GossipWorkerQueue)
-	node.FinalizeWorkerQueue = make(chan *compute.Delta, 100)
-	node.FinalizeWorker = NewFinalizeWorker(node.Logger, k, node.FinalizeWorkerQueue)
-	node.ConsensusWorkerQueue = make(chan *compute.Delta, 100)
-	node.ConsensusWorker = NewConsensusWorker(node.Logger, node.DeltaFragmentMatrix, node.ConsensusWorkerQueue)
+	node.DeltaQueue = make(chan *compute.Delta, 100)
+	node.DeltaMatchWorker = NewDeltaMatchWorker(node.Logger, node.DeltaFragmentMatrix, node.DeltaQueue)
 
 	return node, nil
 }
@@ -147,10 +136,8 @@ func (node *DarkNode) StartBackgroundWorkers() {
 	// Start background workers
 	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
 	go node.DeltaFragmentBroadcastWorker.Run()
-	go node.DeltaFragmentWorker.Run(node.GossipWorkerQueue, node.DeltaNotifications)
-	go node.GossipWorker.Run(node.FinalizeWorkerQueue)
-	go node.FinalizeWorker.Run(node.ConsensusWorkerQueue)
-	go node.ConsensusWorker.Run()
+	go node.DeltaFragmentWorker.Run(node.DeltaQueue)
+	go node.DeltaMatchWorker.Run(node.DeltaNotifications)
 }
 
 func (node *DarkNode) StartServices() {
@@ -158,7 +145,6 @@ func (node *DarkNode) StartServices() {
 
 	node.Swarm.Register(node.Server)
 	node.Dark.Register(node.Server)
-	node.Gossip.Register(node.Server)
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
 		node.Logger.Error(err.Error())
@@ -222,9 +208,8 @@ func (node *DarkNode) Stop() {
 	close(node.OrderFragmentWorkerQueue)
 	close(node.DeltaFragmentBroadcastWorkerQueue)
 	close(node.DeltaFragmentWorkerQueue)
-	close(node.GossipWorkerQueue)
-	close(node.FinalizeWorkerQueue)
-	close(node.ConsensusWorkerQueue)
+	close(node.DeltaQueue)
+	close(node.DeltaNotifications)
 
 	// Stop the logger
 	node.Logger.Stop()
@@ -351,30 +336,6 @@ func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, delta
 	func() {
 		defer func() { recover() }()
 		node.DeltaFragmentWorkerQueue <- deltaFragment
-	}()
-}
-
-func (node *DarkNode) OnGossip(buyOrderID order.ID, sellOrderID order.ID) {
-	// Write to a channel that might be closed
-	func() {
-		defer func() { recover() }()
-		node.GossipWorkerQueue <- &compute.Delta{
-			ID:          compute.DeltaID(crypto.Keccak256([]byte(buyOrderID), []byte(sellOrderID))),
-			BuyOrderID:  buyOrderID,
-			SellOrderID: sellOrderID,
-		}
-	}()
-}
-
-func (node *DarkNode) OnFinalize(buyOrderID order.ID, sellOrderID order.ID) {
-	// Write to a channel that might be closed
-	func() {
-		defer func() { recover() }()
-		node.FinalizeWorkerQueue <- &compute.Delta{
-			ID:          compute.DeltaID(crypto.Keccak256([]byte(buyOrderID), []byte(sellOrderID))),
-			BuyOrderID:  buyOrderID,
-			SellOrderID: sellOrderID,
-		}
 	}()
 }
 
