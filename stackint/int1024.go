@@ -11,7 +11,7 @@ import (
 // go build -a -gcflags='-m -m' int1024.go int1024_arithmetic.go int1024_bitwise.go int1024_comparison.go int1024_internal.go
 
 // SIZE is the number of bits stored by Int1024
-const SIZE = 2048
+const SIZE = 1024
 
 // WORDSIZE is 64 for Word
 const WORDSIZE = 64
