@@ -278,8 +278,8 @@ func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 
 	for !current.IsZero() {
 		if !dividend.LessThan(&denom) {
-			dividend = dividend.Sub(&denom)
-			answer = answer.OR(&current)
+			dividend.Dec(&denom)
+			answer.ORInPlace(&current)
 		}
 		current.ShiftRightInPlace(1)
 		denom.ShiftRightInPlace(1)

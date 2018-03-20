@@ -213,39 +213,38 @@ func (x *Int1024) AND(y *Int1024) Int1024 {
 
 // OR returns x|y
 func (x *Int1024) OR(y *Int1024) Int1024 {
+	z := x.Clone()
+	z.ORInPlace(y)
+	return z
+}
 
-	// fmt.Println(x)
-	// fmt.Println(y)
+// ORInPlace sets x to x|y
+func (x *Int1024) ORInPlace(y *Int1024) {
 
 	min := x.length
 	max := y.length
-	// maxi := y
+	maxi := y
 	if max < min {
 		min, max = max, min
-		// maxi = x
+		maxi = x
 	}
 
-	z := Zero()
 	var i uint16
 	var firstPositive uint16
-	for i = 0; i < INT1024WORDS; i++ {
-		z.words[i] = x.words[i] | y.words[i]
-		if z.words[i] != 0 {
+	for i = 0; i < min; i++ {
+		x.words[i] = x.words[i] | y.words[i]
+		if x.words[i] != 0 {
 			firstPositive = i
 		}
 	}
-	// for i = min; i < max; i++ {
-	// 	z.words[i] = maxi.words[i]
-	// 	if z.words[i] != 0 {
-	// 		firstPositive = i
-	// 	}
-	// }
+	for i = min; i < max; i++ {
+		x.words[i] = maxi.words[i]
+		if x.words[i] != 0 {
+			firstPositive = i
+		}
+	}
 
-	z.length = firstPositive + 1
-
-	// fmt.Println(z)
-
-	return z
+	x.length = firstPositive + 1
 }
 
 // XOR returns x&y
