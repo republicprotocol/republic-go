@@ -114,18 +114,27 @@ message DeltaFragment {
   bytes minVolumeShare = 12;
 }
 
+message Order {
+  bytes signature = 1;
+  bytes id = 2;
+  int64 type = 3;
+  int64 parity = 4;
+  int64 expiry = 5;
+}
+
 message OrderFragment {
   bytes signature = 1;
   bytes id = 2;
   bytes orderId = 3;
   int64 orderType = 4;
   int64 orderParity = 5;
+  int64 orderExpiry = 6;
   
-  bytes fstCodeShare = 6;
-  bytes sndCodeShare = 7;
-  bytes priceShare = 8;
-  bytes maxVolumeShare = 9;
-  bytes minVolumeShare = 10;
+  bytes fstCodeShare = 7;
+  bytes sndCodeShare = 8;
+  bytes priceShare = 9;
+  bytes maxVolumeShare = 10;
+  bytes minVolumeShare = 11;
 }
 
 message OrderFragmentSignature {
@@ -164,49 +173,12 @@ message RandomFragments {
 
 message SyncBlock {
   bytes signature = 1;
-  DeltaBlock deltaBlock = 2;
-  ResidueBlock residueBlock = 3;
+  OrderBlock orders = 2;
 
-  message DeltaBlock {
-      repeated DeltaFragment pending = 1;
-      repeated DeltaFragment electing = 2;
-      repeated DeltaFragment computing = 3;
-      repeated DeltaFragment finalizing = 4;
-      repeated DeltaFragment matched = 5;
-      repeated DeltaFragment mismatched = 6;
+  message OrderBlock {
+    repeated Order open = 1;
+    repeated Order pending = 2;
+    repeated Order closed = 3;
+    repeated Order executed = 4;
   }
-
-  message ResidueBlock {
-      repeated ResidueFragment pending = 1;
-      repeated ResidueFragment electing = 2;
-      repeated ResidueFragment computing = 3;
-      repeated ResidueFragment finalizing = 4;
-      repeated ResidueFragment matched = 5;
-      repeated ResidueFragment mismatched = 6;
-  }
-}
-
-/**
- * Gossip
- */
-
-service Gossip {
-  rpc Gossip (GossipRequest) returns (Rumor);
-  rpc Finalize (FinalizeRequest) returns (Rumor);
-}
-
-message GossipRequest {
-  MultiAddress from = 1;
-  Rumor rumor = 2;
-}
-
-message FinalizeRequest {
-  MultiAddress from = 1;
-  Rumor rumor = 2;
-}
-
-message Rumor {
-  bytes signature = 1;
-  bytes buyOrderId = 2;
-  bytes sellOrderId = 3;
 }

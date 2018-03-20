@@ -15,7 +15,7 @@ import (
 // A DarkDelegate is used as a callback interface to inject behavior into the
 // DarkService service.
 type DarkDelegate interface {
-	// OnSync(from identity.MultiAddress)
+	OnSync(from identity.MultiAddress, blocks chan *rpc.SyncBlock)
 
 	// OnSignOrderFragment(from identity.MultiAddress)
 	OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment)
