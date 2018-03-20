@@ -21,6 +21,7 @@ var seven = FromUint64(7)
 var eleven = FromUint64(11)
 var twelve = FromUint64(12)
 var oneWord = FromUint64(WORDMAX)
+var two64 = oneWord.Add(&one)
 var max = MAXINT1024()
 
 func MaxStr() string {

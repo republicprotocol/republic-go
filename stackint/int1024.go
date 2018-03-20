@@ -3,6 +3,7 @@ package stackint
 import (
 	"encoding/binary"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 )
@@ -143,24 +144,24 @@ func (x *Int1024) ToString() string {
 	return ret
 }
 
-// // ToBytes returns an array of BYTECOUNT (128) bytes (Big Endian)
-// func (x *Int1024) ToBytes() []byte {
+// ToBytes returns an array of BYTECOUNT (128) bytes (Big Endian)
+func (x *Int1024) ToBytes() []byte {
 
-// 	bytesAll := make([]byte, BYTECOUNT)
-// 	b8 := make([]byte, 8)
+	bytesAll := make([]byte, BYTECOUNT)
+	b8 := make([]byte, 8)
 
-// 	var i uint16
-// 	for i = 0; i < x.length; i++ {
-// 		word := x.words[i]
-// 		binary.BigEndian.PutUint64(b8, word)
-// 		var j uint16
-// 		for j = 0; j < 8; j++ {
-// 			bytesAll[i*8+j] = b8[j]
-// 		}
-// 	}
+	var i uint16
+	for i = 0; i < x.length; i++ {
+		word := x.words[i]
+		binary.BigEndian.PutUint64(b8, word)
+		var j uint16
+		for j = 0; j < 8; j++ {
+			bytesAll[(INT1024WORDS-1-i)*8+j] = b8[j]
+		}
+	}
 
-// 	return bytesAll
-// }
+	return bytesAll
+}
 
 // FromBytes deserializes an array of BYTECOUNT (128) bytes to an Int1024 (Big Endian)
 func FromBytes(bytesAll []byte) Int1024 {
@@ -170,6 +171,10 @@ func FromBytes(bytesAll []byte) Int1024 {
 	numWords := len(bytesAll) / 8
 	if len(bytesAll)%8 != 0 {
 		numWords++
+	}
+
+	if numWords > INT1024WORDS {
+		numWords = INT1024WORDS
 	}
 
 	// mod := 8 - len(bytesAll)%8
@@ -254,16 +259,27 @@ func (x *Int1024) Words() [INT1024WORDS]uint64 {
 
 // ToBinary returns the binary representation of x as a string
 func (x *Int1024) ToBinary() string {
-	str := ""
-	var i uint16
-	for i = 0; i < x.length-1; i++ {
-		str = fmt.Sprintf("%064b", x.words[i]) + str
+
+	str := fmt.Sprintf("%b", x.words[x.length-1])
+	var i int16
+	for i = int16(x.length) - 2; i >= 0; i-- {
+		str = str + fmt.Sprintf("%064b", x.words[i])
 	}
-	str = fmt.Sprintf("%b", x.words[x.length-1]) + str
 	if str == "" {
 		return "0"
 	}
+
 	return str
+}
+
+// ToBigInt converts x to a big.Int
+func (x *Int1024) ToBigInt() *big.Int {
+	return big.NewInt(0).SetBytes(x.ToBytes())
+}
+
+// FromBigInt converts a big.Int to an Int1024
+func FromBigInt(bg *big.Int) Int1024 {
+	return FromBytes(bg.Bytes())
 }
 
 /* CONSTANTS */
@@ -331,3 +347,20 @@ func min(a, b uint16) uint16 {
 	}
 	return b
 }
+
+// func (x *Int1024) Verify() {
+// 	var i uint16
+// 	for i = x.length; i < INT1024WORDS; i++ {
+// 		if x.words[i] != 0 {
+// 			fmt.Println(x)
+// 			panic("Length too small")
+// 		}
+// 	}
+// 	if x.words[x.length-1] == 0 && x.length != 1 {
+// 		fmt.Println(x)
+// 		panic("Length too big")
+// 	}
+// 	if x.length == 0 {
+// 		panic("length is zero!")
+// 	}
+// }

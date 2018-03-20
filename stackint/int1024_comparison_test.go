@@ -40,6 +40,9 @@ var _ = Describe("Int1024 bitwise operations", func() {
 
 			Ω(zero.LessThan(&max)).Should(BeTrue())
 			Ω(max.LessThan(&zero)).Should(BeFalse())
+
+			Ω(zero.LessThan(&two64)).Should(BeTrue())
+			Ω(two64.LessThan(&zero)).Should(BeFalse())
 		})
 	})
 
@@ -54,6 +57,9 @@ var _ = Describe("Int1024 bitwise operations", func() {
 
 			Ω(zero.LessThanOrEqual(&max)).Should(BeTrue())
 			Ω(max.LessThanOrEqual(&zero)).Should(BeFalse())
+
+			Ω(zero.LessThanOrEqual(&two64)).Should(BeTrue())
+			Ω(two64.LessThanOrEqual(&zero)).Should(BeFalse())
 		})
 	})
 

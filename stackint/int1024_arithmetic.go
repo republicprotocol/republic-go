@@ -3,17 +3,8 @@ package stackint
 // Add returns x+y
 func (x *Int1024) Add(y *Int1024) Int1024 {
 
-	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	// expected := big.NewInt(0).Add(xB, yB)
-
 	z := x.Clone()
 	z.Inc(y)
-
-	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("Addition failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
-	// }
 
 	return z
 }
@@ -77,17 +68,8 @@ func (x *Int1024) Inc(y *Int1024) {
 // Sub returns x-y
 func (x *Int1024) Sub(y *Int1024) Int1024 {
 
-	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	// expected := big.NewInt(0).Sub(xB, yB)
-
 	z := x.Clone()
 	z.Dec(y)
-
-	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("Subtraction failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
-	// }
 
 	return z
 }
@@ -157,10 +139,6 @@ func (x *Int1024) Dec(y *Int1024) {
 // BasicMul returns x*y using the shift and add method
 func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 
-	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	// expected := big.NewInt(0).Mul(xB, yB)
-
 	// Naïve inplementation!
 	// Uses up to 16384 uint64 additions (worst case)
 	// TODO: Rewrite using more efficient algorithm
@@ -184,27 +162,13 @@ func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 		}
 	}
 
-	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("Multiplication failed for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
-	// }
-
 	return z
 }
 
 // Mul returns x*y
 func (x *Int1024) Mul(y *Int1024) Int1024 {
 
-	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	// expected := big.NewInt(0).Mul(xB, yB)
-
 	z := x.BasicMul(y)
-
-	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("Multiplication failed for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), y.ToBinary(), expected, actual))
-	// }
 
 	return z
 }
@@ -223,16 +187,23 @@ func karatsubaLen(n int) int {
 func (x *Int1024) split(n uint) (Int1024, Int1024) {
 	b := x.ShiftRight(n)
 	a := Zero()
-	var i uint
-	for i = 0; i < n/WORDSIZE; i++ {
+	var i uint16
+	len := min(uint16(n), x.length*WORDSIZE)
+	var firstPositive uint16
+	for i = 0; i < len/WORDSIZE; i++ {
 		a.words[i] = x.words[i]
+		if a.words[i] != 0 {
+			firstPositive = i
+		}
 	}
-	a.length = uint16(n / WORDSIZE)
-	mod := uint(n % WORDSIZE)
+	mod := len % WORDSIZE
 	if mod != 0 {
-		a.words[i] = x.words[i] & (1<<uint(mod) - 1)
-		a.length++
+		a.words[i] = x.words[i] & (1<<mod - 1)
+		if a.words[i] != 0 {
+			firstPositive = i
+		}
 	}
+	a.length = firstPositive + 1
 	return a, b
 }
 
@@ -273,15 +244,12 @@ func (x *Int1024) karatsuba(y *Int1024) Int1024 {
 	bd.ShiftLeftInPlace(2 * n)
 	res.Inc(&bd)
 
-	// log += fmt.Sprintf("%s", res.ToBinary())
-
-	// fmt.Println(log)
-
 	return res
 }
 
 // DivMod returns (x/y, x%y). If y is 0, a run-time panic occurs.
 func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
+
 	dividend := x.Clone()
 	denom := y.Clone()
 	current := FromUint64(1)
@@ -340,19 +308,6 @@ func (x *Int1024) Mod(n *Int1024) Int1024 {
 	default:
 		panic("unexpected cmp result (expecting -1, 0 or 1)")
 	}
-
-	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	// yB, _ := big.NewInt(0).SetString(n.ToBinary(), 2)
-	// expected := big.NewInt(0).Mod(xB, yB)
-
-	// _, z := x.DivMod(n)
-
-	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("Modulo failed! for %s and %s.\n\nExpected %b\n\nGot %b", x.ToBinary(), n.ToBinary(), expected, actual))
-	// }
-
-	// return z
 }
 
 // SubModulo returns (x - y) % n
@@ -381,17 +336,8 @@ func (x *Int1024) SubModulo(y, n *Int1024) Int1024 {
 
 // AddModulo returns (x + y) % n (x+y can be larger than 2^SIZE)
 func (x *Int1024) AddModulo(y, n *Int1024) Int1024 {
-	// xB, _ := big.NewInt(0).SetString(x.ToBinary(), 2)
-	// yB, _ := big.NewInt(0).SetString(y.ToBinary(), 2)
-	// nB, _ := big.NewInt(0).SetString(n.ToBinary(), 2)
-	// expected := big.NewInt(0).Mod(big.NewInt(0).Add(xB, yB), nB)
 
 	z := x.addModulo(y, n)
-
-	// actual, _ := big.NewInt(0).SetString(z.ToBinary(), 2)
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("AddModulo failed! for %s + %s mod %s.\n\nExpected %s\n\nGot %s", x.String(), y.String(), n.String(), expected, actual))
-	// }
 
 	return z
 }
