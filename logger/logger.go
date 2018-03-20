@@ -144,14 +144,27 @@ func (logger *Logger) OrderMatch(ty Type, id, buyID, sellID string) {
 	})
 }
 
-// OrderReceived logs an OrderReceivedEvent.
-func (logger *Logger) OrderReceived(ty Type, id, fragmentID string) {
+// BuyOrderReceived logs an OrderReceivedEvent.
+func (logger *Logger) BuyOrderReceived(ty Type, id, fragmentID string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
 		Type:      ty,
 		EventType: OrderReceived,
 		Event: OrderReceivedEvent{
-			ID:         id,
+			BuyID:      &id,
+			FragmentID: fragmentID,
+		},
+	})
+}
+
+// SellOrderReceived logs an OrderReceivedEvent.
+func (logger *Logger) SellOrderReceived(ty Type, id, fragmentID string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: OrderReceived,
+		Event: OrderReceivedEvent{
+			SellID:     &id,
 			FragmentID: fragmentID,
 		},
 	})
@@ -247,12 +260,19 @@ func (event OrderMatchEvent) String() string {
 }
 
 type OrderReceivedEvent struct {
-	ID         string `json:"id"`
-	FragmentID string `json:"fragmentId"`
+	BuyID      *string `json:"buyId,omitempty"`
+	SellID     *string `json:"sellId,omitempty"`
+	FragmentID string  `json:"fragmentId"`
 }
 
 func (event OrderReceivedEvent) String() string {
-	return event.ID
+	if event.BuyID != nil {
+		return *event.BuyID
+	}
+	if event.SellID != nil {
+		return *event.SellID
+	}
+	return ""
 }
 
 type NetworkEvent struct {
