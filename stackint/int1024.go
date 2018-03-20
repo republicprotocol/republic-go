@@ -119,7 +119,7 @@ func FromString(number string) Int1024 {
 	return self
 }
 
-func (x *Int1024) ToString() string {
+func (x *Int1024) String() string {
 	blockSize := 19
 	blockSize1024 := FromUint64(uint64(blockSize))
 	base := FromUint64(10)
