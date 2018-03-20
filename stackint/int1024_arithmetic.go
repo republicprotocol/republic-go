@@ -12,6 +12,8 @@ func (x *Int1024) Add(y *Int1024) Int1024 {
 // Inc sets x to x+y (used for multiplication)
 func (x *Int1024) Inc(y *Int1024) {
 
+	// expected := big.NewInt(0).Add(x.ToBigInt(), y.ToBigInt())
+
 	// a, b := x, y
 
 	var a, b *Int1024
@@ -63,6 +65,10 @@ func (x *Int1024) Inc(y *Int1024) {
 	}
 
 	x.length = firstPositive + 1
+
+	// if expected.Cmp(x.ToBigInt()) != 0 && expected.BitLen() <= SIZE {
+	// 	panic("Addition failed")
+	// }
 }
 
 // Sub returns x-y
@@ -76,6 +82,9 @@ func (x *Int1024) Sub(y *Int1024) Int1024 {
 
 // Dec sets x to x-y
 func (x *Int1024) Dec(y *Int1024) {
+
+	// expected := big.NewInt(0).Sub(x.ToBigInt(), y.ToBigInt())
+
 	var overflow uint64
 	var i uint16
 	var firstPositive uint16
@@ -134,6 +143,10 @@ func (x *Int1024) Dec(y *Int1024) {
 		firstPositive = INT1024WORDS - 1
 	}
 	x.length = firstPositive + 1
+
+	// if expected.Cmp(x.ToBigInt()) != 0 && expected.Cmp(big.NewInt(0)) >= 0 {
+	// 	panic("Subtraction failed")
+	// }
 }
 
 // BasicMul returns x*y using the shift and add method
@@ -250,6 +263,8 @@ func (x *Int1024) karatsuba(y *Int1024) Int1024 {
 // DivMod returns (x/y, x%y). If y is 0, a run-time panic occurs.
 func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 
+	// expected1, expected2 := big.NewInt(0).DivMod(x.ToBigInt(), y.ToBigInt(), big.NewInt(1))
+
 	dividend := x.Clone()
 	denom := y.Clone()
 	current := FromUint64(1)
@@ -285,6 +300,16 @@ func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 		denom.ShiftRightInPlace(1)
 	}
 
+	// actual1 := answer.ToBigInt()
+	// if expected1.Cmp(actual1) != 0 {
+	// 	panic(fmt.Sprintf("AddModulo failed!\nFor (%v / %v)\n.\n\nExp: %b\n\nGot: %b", x, y, expected1, actual1))
+	// }
+
+	// actual2 := dividend.ToBigInt()
+	// if expected2.Cmp(actual2) != 0 {
+	// 	panic(fmt.Sprintf("AddModulo failed!\nFor (%v mod %v)\n.\n\nExp: %b\n\nGot: %b", x, y, expected2, actual2))
+	// }
+
 	return answer, dividend
 }
 
@@ -312,6 +337,20 @@ func (x *Int1024) Mod(n *Int1024) Int1024 {
 
 // SubModulo returns (x - y) % n
 func (x *Int1024) SubModulo(y, n *Int1024) Int1024 {
+	// expected := big.NewInt(0).Sub(x.ToBigInt(), y.ToBigInt())
+	// expected = expected.Mod(expected, n.ToBigInt())
+
+	z := x.subModulo(y, n)
+
+	// actual := z.ToBigInt()
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
+	// 	panic(fmt.Sprintf("SubModulo failed!\nFor (%v + %v) mod %v\n.\n\nExp: %b\n\nGot: %b", x, y, z, expected, actual))
+	// }
+
+	return z
+}
+
+func (x *Int1024) subModulo(y, n *Int1024) Int1024 {
 	switch x.Cmp(y) {
 	case 1:
 		// x - y
@@ -337,8 +376,15 @@ func (x *Int1024) SubModulo(y, n *Int1024) Int1024 {
 // AddModulo returns (x + y) % n (x+y can be larger than 2^SIZE)
 func (x *Int1024) AddModulo(y, n *Int1024) Int1024 {
 
+	// expected := big.NewInt(0).Add(x.ToBigInt(), y.ToBigInt())
+	// expected = expected.Mod(expected, n.ToBigInt())
+
 	z := x.addModulo(y, n)
 
+	// actual := z.ToBigInt()
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
+	// 	panic(fmt.Sprintf("AddModulo failed!\nFor (%v + %v) mod %v\n.\n\nExp: %b\n\nGot: %b", x, y, z, expected, actual))
+	// }
 	return z
 }
 
@@ -378,8 +424,16 @@ func (x *Int1024) addModulo(y, n *Int1024) Int1024 {
 	return X.Add(&Y)
 }
 
+// // MulModuloSlow returns (x*y) % n
+func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
+	return x.schrage(y, n)
+}
+
 // // MulModuloSlow returns (x*y) % n but it takes its time
-// func (x *Int1024) MulModuloSlow(y, n *Int1024) Int1024 {
+// func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
+
+// 	expected := big.NewInt(0).Mul(x.ToBigInt(), y.ToBigInt())
+// 	expected = expected.Mod(expected, n.ToBigInt())
 
 // 	// Not optimized
 
@@ -388,9 +442,15 @@ func (x *Int1024) addModulo(y, n *Int1024) Int1024 {
 // 	// https://github.com/wdavidw/node-gsl/blob/master/deps/gsl-1.14/rng/schrage.c
 
 // 	z := Zero()
-// 	shifted := x.Mod(n)
 
-// 	for i := INT1024WORDS - 1; i >= 0; i-- {
+// 	if x.length < y.length {
+// 		x, y = y, x
+// 	}
+
+// 	shifted := x.Clone()
+
+// 	var i uint16
+// 	for i = 0; i < y.length; i++ {
 // 		word := y.words[i]
 // 		for j := uint(0); j < WORDSIZE; j++ {
 // 			bit := (word >> j) & 1
@@ -401,162 +461,176 @@ func (x *Int1024) addModulo(y, n *Int1024) Int1024 {
 // 		}
 // 	}
 
+// 	actual := z.ToBigInt()
+// 	if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
+// 		panic(fmt.Sprintf("SubModulo failed!\nFor (%v + %v) mod %v\n.\n\nExp: %b\n\nGot: %b", x, y, n, expected, actual))
+// 	}
+
 // 	return z
 // }
 
-// MulModulo returns (x*y) % n
-func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
+// peasant calculates (x*y) % n
+func (x *Int1024) peasant(y, n *Int1024) Int1024 {
 	// https://stackoverflow.com/questions/12168348/ways-to-do-modulo-multiplication-with-primitive-types
 
-	mul := x.Mul(y)
-	return mul.Mod(n)
+	// mul := x.Mul(y)
+	// return mul.Mod(n)
 
-	// b := y.Clone()
-	// a := x.Clone()
-	// m := n
-	// z := Zero()
-	// res := z
-	// // uint64_t temp_b;
+	b := y.Clone()
+	a := x.Clone()
+	m := n
+	z := Zero()
+	res := z
+	// uint64_t temp_b;
 
-	// /* Only needed if b may be >= m */
-	// if b.GreaterThanOrEqual(m) {
-	// 	// halfMax := maxInt()
-	// 	// halfMax.ShiftRightInPlace()
+	/* Only needed if b may be >= m */
+	if b.GreaterThanOrEqual(m) {
+		// halfMax := maxInt()
+		// halfMax.ShiftRightInPlace()
 
-	// 	// Replace with shift right
-	// 	// two := FromUint64(2)
-	// 	// halfMax := max.Div(&two)
+		// Replace with shift right
+		// two := FromUint64(2)
+		// halfMax := max.Div(&two)
 
-	// 	// if m.GreaterThan(&halfMax) {
-	// 	if m.IsBitSet(SIZE - 1) {
-	// 		b = b.Sub(m)
-	// 		// b -= m;
-	// 	} else {
-	// 		b = b.Mod(m)
-	// 		// b %= m;
-	// 	}
-	// }
+		// if m.GreaterThan(&halfMax) {
+		if m.IsBitSet(SIZE - 1) {
+			b = b.Sub(m)
+			// b -= m;
+		} else {
+			b = b.Mod(m)
+			// b %= m;
+		}
+	}
 
-	// for !a.IsZero() {
-	// 	if !a.IsEven() {
-	// 		/* Add b to res, modulo m, without overflow */
-	// 		m.Dec(&res)
-	// 		if b.GreaterThanOrEqual(m) { /* Equiv to if (res + b >= m), without overflow */
-	// 			m.Inc(&res)
-	// 			res.Dec(m)
-	// 			// res -= m
-	// 		} else {
-	// 			m.Inc(&res)
-	// 		}
-	// 		res.Inc(&b)
-	// 		// res += b;
-	// 	}
-	// 	a.ShiftRightInPlace()
-	// 	// a >>= 1;
+	for !a.IsZero() {
+		if !a.IsEven() {
+			/* Add b to res, modulo m, without overflow */
+			m.Dec(&res)
+			if b.GreaterThanOrEqual(m) { /* Equiv to if (res + b >= m), without overflow */
+				m.Inc(&res)
+				res.Dec(m)
+				// res -= m
+			} else {
+				m.Inc(&res)
+			}
+			res.Inc(&b)
+			// res += b;
+		}
+		a.ShiftRightInPlace(1)
+		// a >>= 1;
 
-	// 	/* Double b, modulo m */
-	// 	m.Dec(&b)
-	// 	if b.GreaterThanOrEqual(m) { /* Equiv to if (2 * b >= m), without overflow */
-	// 		m.Inc(&b)
-	// 		// temp_b -= m
-	// 		// tmpB := b.Sub(m)
-	// 		b.Inc(&b)
-	// 		b.Dec(m)
-	// 		// b.Inc(&tmpB)
-	// 	} else {
-	// 		m.Inc(&b)
-	// 		b.Inc(&b)
-	// 	}
-	// 	// b += temp_b
-	// }
-	// return res
+		/* Double b, modulo m */
+		m.Dec(&b)
+		if b.GreaterThanOrEqual(m) { /* Equiv to if (2 * b >= m), without overflow */
+			m.Inc(&b)
+			// temp_b -= m
+			// tmpB := b.Sub(m)
+			b.Inc(&b)
+			b.Dec(m)
+			// b.Inc(&tmpB)
+		} else {
+			m.Inc(&b)
+			b.Inc(&b)
+		}
+		// b += temp_b
+	}
+	return res
 }
 
-// // MulModulo returns (x*y) % n
-// func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
+// shrage calculates (x*y) % n
+func (x *Int1024) schrage(y, n *Int1024) Int1024 {
 
-// 	// https://www.thecodingforums.com/threads/extending-schrage-multiplication.558220/
+	// expected := big.NewInt(0).Mul(x.ToBigInt(), y.ToBigInt())
+	// expected = expected.Mod(expected, n.ToBigInt())
 
-// 	/**
+	// https://www.thecodingforums.com/threads/extending-schrage-multiplication.558220/
 
-// 		} else {
+	/**
 
-// 		} // end if
-// 		return result;
-// 	} // end schrageFast()
+		} else {
 
-// 	*/
+		} // end if
+		return result;
+	} // end schrageFast()
 
-// 	b := y.Clone()
-// 	a := x.Clone()
-// 	m := n
-// 	z := Zero()
+	*/
 
-// 	// 	if (a < 2) { return (a * b) % m; }
-// 	if a.LessThan(&two) {
-// 		tmp := a.Mul(&b)
-// 		return tmp.Mod(m)
-// 	}
+	b := y.Clone()
+	a := x.Clone()
+	m := n
+	z := Zero()
 
-// 	// int result;
-// 	result := z
-// 	// Check for b >= m-1
-// 	mLess := m.Sub(&one)
+	// 	if (a < 2) { return (a * b) % m; }
+	if a.LessThan(&two) {
+		tmp := a.Mul(&b)
+		return tmp.Mod(m)
+	}
 
-// 	switch b.Cmp(&mLess) {
-// 	// Check for b >= m-1
-// 	// if (b > m - 1) {
-// 	case +1:
-// 		// result = schrageFast(a, b % m, m);
-// 		tmp := b.Mod(m)
-// 		result = a.MulModulo(&tmp, m)
-// 	// } else if (b == m - 1) {
-// 	case 0:
-// 		// result = (m - a) % m;
-// 		result = m.SubModulo(&a, m)
-// 	case -1:
-// 		/*
+	// int result;
+	result := z
+	// Check for b >= m-1
+	mLess := m.Sub(&one)
 
-// 			} else {
-// 				// Schrage method
-// 				result = a * (b % quot) - rem * (b / quot);
-// 				if (result < 0) { result += m; }
-// 			} // end if
-// 		*/
+	switch b.Cmp(&mLess) {
+	// Check for b >= m-1
+	// if (b > m - 1) {
+	case +1:
+		// result = schrageFast(a, b % m, m);
+		tmp := b.Mod(m)
+		result = a.MulModulo(&tmp, m)
+	// } else if (b == m - 1) {
+	case 0:
+		// result = (m - a) % m;
+		result = m.SubModulo(&a, m)
+	case -1:
+		/*
 
-// 		// Check for rem >= quot
-// 		// int quot = m / a;
-// 		// int rem = m % a;
-// 		quot, rem := m.DivMod(&a)
-// 		// if (rem >= quot) {
-// 		if rem.GreaterThanOrEqual(&quot) {
-// 			// result = schrageFast(a/2, b, m);
-// 			tmpA := a.ShiftRight(1)
-// 			fmt.Println(a.String())
-// 			fmt.Println("Recursive...")
-// 			result = tmpA.MulModulo(&b, m)
-// 			// result = addMod(result, result, m);
-// 			result = result.AddModulo(&result, m)
-// 			// if (a % 2 == 1) { result = addMod(result, b, m); }
-// 			if a.IsBitSet(0) {
-// 				result = result.AddModulo(&b, m)
-// 				// result = addMod(result, b, m)
-// 			}
-// 		} else {
-// 			// Schrage method
-// 			// result = a * (b % quot) - rem * (b / quot);
-// 			quot2, rem2 := b.DivMod(&quot)
-// 			result = a.Mul(&rem2)
-// 			tmp3 := rem.Mul(&quot2)
-// 			result = result.Sub(&tmp3)
-// 			// 	if (result < 0) { result += m; }
-// 			if tmp3.GreaterThan(&result) {
-// 				result = result.Add(m)
-// 			}
-// 		} // end if
-// 	}
-// 	return result
-// }
+			} else {
+				// Schrage method
+				result = a * (b % quot) - rem * (b / quot);
+				if (result < 0) { result += m; }
+			} // end if
+		*/
+
+		// Check for rem >= quot
+		// int quot = m / a;
+		// int rem = m % a;
+		quot, rem := m.DivMod(&a)
+		// if (rem >= quot) {
+		if rem.GreaterThanOrEqual(&quot) {
+			// result = schrageFast(a/2, b, m);
+			tmpA := a.ShiftRight(1)
+			// fmt.Println(a.String())
+			// fmt.Println("Recursive...")
+			result = tmpA.MulModulo(&b, m)
+			// result = addMod(result, result, m);
+			result = result.AddModulo(&result, m)
+			// if (a % 2 == 1) { result = addMod(result, b, m); }
+			if a.IsBitSet(0) {
+				result = result.AddModulo(&b, m)
+				// result = addMod(result, b, m)
+			}
+		} else {
+			// Schrage method
+			// result = a * (b % quot) - rem * (b / quot);
+			quot2, rem2 := b.DivMod(&quot)
+			result = a.Mul(&rem2)
+			tmp3 := rem.Mul(&quot2)
+			result = result.Sub(&tmp3)
+			// 	if (result < 0) { result += m; }
+			if tmp3.GreaterThan(&result) {
+				result = result.Add(m)
+			}
+		} // end if
+	}
+
+	// actual := result.ToBigInt()
+	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
+	// 	panic(fmt.Sprintf("MulModulo failed!\nFor (%v + %v) mod %v\n.\n\nExp: %b\n\nGot: %b", x, y, n, expected, actual))
+	// }
+
+	return result
+}
 
 /*
 
