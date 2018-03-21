@@ -184,7 +184,7 @@ func (node *DarkNode) StartUI() {
 				"port": "18515",
 			},
 			"contracts": map[string]interface{}{
-				"darkNodeRegistrar": "0xf178237e7d1131b7924435aa8d02B8Ab4d308AFf",
+				"darkNodeRegistrar": "0x9c06bb4e18e1aa352f99968b2984069c59ea2969",
 			},
 		})
 	})))
