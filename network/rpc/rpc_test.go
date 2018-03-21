@@ -6,11 +6,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-atom"
-	"github.com/republicprotocol/go-identity"
-	"github.com/republicprotocol/go-order-compute"
-	"github.com/republicprotocol/go-rpc"
-	"github.com/republicprotocol/go-sss"
+	"github.com/republicprotocol/republic-go/compute"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/network/rpc"
+	"github.com/republicprotocol/republic-go/shamir"
 )
 
 const defaultTimeout = time.Second
@@ -21,13 +20,13 @@ type mockServer struct {
 
 var _ = Describe("Data serialization and deserialization", func() {
 	var keyPair identity.KeyPair
-	var multiAddressString string
+	var multiAddreshamirtring string
 	var err error
 
 	BeforeEach(func() {
 		keyPair, err = identity.NewKeyPair()
 		Ω(err).ShouldNot(HaveOccurred())
-		multiAddressString = "/ip4/192.168.0.1/tcp/80/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB"
+		multiAddreshamirtring = "/ip4/192.168.0.1/tcp/80/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB"
 	})
 
 	Context("identity.address", func() {
@@ -52,7 +51,7 @@ var _ = Describe("Data serialization and deserialization", func() {
 
 	Context("identity.MultiAddress", func() {
 		It("should be able to serialize identity.MultiAddress", func() {
-			multiAddress, err := identity.NewMultiAddressFromString(multiAddressString)
+			multiAddress, err := identity.NewMultiAddressFromString(multiAddreshamirtring)
 			Ω(err).ShouldNot(HaveOccurred())
 			serializedMulti := rpc.SerializeMultiAddress(multiAddress)
 			Ω(*serializedMulti).Should(Equal(rpc.MultiAddress{Multi: multiAddress.String()}))
@@ -63,7 +62,7 @@ var _ = Describe("Data serialization and deserialization", func() {
 		})
 
 		It("should be able to deserialize identity.MultiAddress", func() {
-			rpcMultiAddress := &rpc.MultiAddress{Multi: multiAddressString}
+			rpcMultiAddress := &rpc.MultiAddress{Multi: multiAddreshamirtring}
 			deserializedMulti, err := rpc.DeserializeMultiAddress(rpcMultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -74,9 +73,9 @@ var _ = Describe("Data serialization and deserialization", func() {
 
 	Context("identity.MultiAddresses", func() {
 		It("should be able to serialize and deserialize identity.MultiAddresses", func() {
-			multiAddress1, err := identity.NewMultiAddressFromString(multiAddressString)
+			multiAddress1, err := identity.NewMultiAddressFromString(multiAddreshamirtring)
 			Ω(err).ShouldNot(HaveOccurred())
-			multiAddress2, err := identity.NewMultiAddressFromString(multiAddressString)
+			multiAddress2, err := identity.NewMultiAddressFromString(multiAddreshamirtring)
 			Ω(err).ShouldNot(HaveOccurred())
 			multiAddresses := identity.MultiAddresses{multiAddress1, multiAddress2}
 
@@ -96,7 +95,7 @@ var _ = Describe("Data serialization and deserialization", func() {
 
 	Context("compute.OrderFragment", func() {
 		var wrongOrderFragment rpc.OrderFragment
-		sssShare := sss.Share{Key: 1, Value: &big.Int{}}
+		shamirShare := shamir.Share{Key: 1, Value: &big.Int{}}
 
 		BeforeEach(func() {
 			wrongOrderFragment = rpc.OrderFragment{
@@ -106,17 +105,17 @@ var _ = Describe("Data serialization and deserialization", func() {
 				OrderId:        []byte("orderID"),
 				OrderType:      1,
 				OrderParity:    1,
-				FstCodeShare:   sss.ToBytes(sssShare),
-				SndCodeShare:   sss.ToBytes(sssShare),
-				PriceShare:     sss.ToBytes(sssShare),
-				MaxVolumeShare: sss.ToBytes(sssShare),
-				MinVolumeShare: sss.ToBytes(sssShare),
+				FstCodeShare:   shamir.ToBytes(shamirShare),
+				SndCodeShare:   shamir.ToBytes(shamirShare),
+				PriceShare:     shamir.ToBytes(shamirShare),
+				MaxVolumeShare: shamir.ToBytes(shamirShare),
+				MinVolumeShare: shamir.ToBytes(shamirShare),
 			}
 		})
 
 		It("should be able to serialize and deserialize compute.OrderFragment", func() {
 			orderFragment := compute.NewOrderFragment([]byte("orderID"), compute.OrderTypeIBBO, compute.OrderParityBuy,
-				sssShare, sssShare, sssShare, sssShare, sssShare)
+				shamirShare, shamirShare, shamirShare, shamirShare, shamirShare)
 			rpcOrderFragment := rpc.SerializeOrderFragment(orderFragment)
 			newOrderFragment, err := rpc.DeserializeOrderFragment(rpcOrderFragment)
 			Ω(err).ShouldNot(HaveOccurred())

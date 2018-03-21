@@ -9,10 +9,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-order-compute"
-	sss "github.com/republicprotocol/go-sss"
+	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/network/rpc"
+	"github.com/republicprotocol/republic-go/shamir"
 	"google.golang.org/grpc"
 )
 
@@ -53,18 +53,18 @@ func (s *mockServer) FinalizeShard(ctx context.Context, finalizeShardRequest *rp
 var _ = Describe("Custom Client", func() {
 	Context("Broadcast delta fragments ", func() {
 		var from, to identity.MultiAddress
-		var sssShare = sss.Share{Key: 1, Value: &big.Int{}}
+		var shamirShare = shamir.Share{Key: 1, Value: &big.Int{}}
 		deltaFragment := &compute.DeltaFragment{
 			ID:                  []byte("byte"),
 			BuyOrderID:          []byte("byte"),
 			SellOrderID:         []byte("byte"),
 			BuyOrderFragmentID:  []byte("byte"),
 			SellOrderFragmentID: []byte("byte"),
-			FstCodeShare:        sssShare,
-			SndCodeShare:        sssShare,
-			PriceShare:          sssShare,
-			MaxVolumeShare:      sssShare,
-			MinVolumeShare:      sssShare,
+			FstCodeShare:        shamirShare,
+			SndCodeShare:        shamirShare,
+			PriceShare:          shamirShare,
+			MaxVolumeShare:      shamirShare,
+			MinVolumeShare:      shamirShare,
 		}
 
 		BeforeEach(func() {
@@ -344,9 +344,9 @@ var _ = Describe("Dark Network", func() {
 	}
 
 	createFragments := func() {
-		sssShare := sss.Share{Key: 1, Value: &big.Int{}}
+		shamirShare := shamir.Share{Key: 1, Value: &big.Int{}}
 		orderFragment = compute.NewOrderFragment([]byte("orderID"), compute.OrderTypeIBBO, compute.OrderParityBuy,
-			sssShare, sssShare, sssShare, sssShare, sssShare)
+			shamirShare, shamirShare, shamirShare, shamirShare, shamirShare)
 		badServerAddress, err = identity.NewMultiAddressFromString("/ip4/192.168.0.1/republic/8MHzQ7ZQDvvT8Nqo3HLQQDZvfcHJYB")
 		Ω(err).ShouldNot(HaveOccurred())
 	}
