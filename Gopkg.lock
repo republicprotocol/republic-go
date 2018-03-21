@@ -11,7 +11,7 @@
   branch = "master"
   name = "github.com/aristanetworks/goarista"
   packages = ["monotime"]
-  revision = "94ff7b94cb7ddd528740cfc9c062037c2bc73b2d"
+  revision = "731587b8d73c3a00e6c57f1debbb36e0fe575a35"
 
 [[projects]]
   branch = "master"
@@ -156,7 +156,7 @@
   branch = "master"
   name = "github.com/multiformats/go-multihash"
   packages = ["."]
-  revision = "27fa400c586666336a86e50accf9e8a1c9585ad3"
+  revision = "265e72146e710ff649c6982e3699d01d4e9a18bb"
 
 [[projects]]
   name = "github.com/onsi/ginkgo"
@@ -231,10 +231,13 @@
   revision = "7fa2a81354bd90d15b313f9c01f73c8e13cfdf19"
 
 [[projects]]
-  branch = "master"
+  branch = "logger"
   name = "github.com/republicprotocol/go-dark-node"
-  packages = ["."]
-  revision = "41602aa115689ae2a275f1f857959636451a4914"
+  packages = [
+    ".",
+    "logger"
+  ]
+  revision = "388ca8d41839dac0bf9dd2071b33e57885159584"
 
 [[projects]]
   branch = "master"
@@ -243,7 +246,7 @@
     ".",
     "contracts"
   ]
-  revision = "e45a991b43aeab31f7f31c7da39be885bc2f7480"
+  revision = "41a8a481664ee55aa8202814c6a7c3599f8a44ee"
 
 [[projects]]
   branch = "master"
@@ -291,7 +294,7 @@
   branch = "master"
   name = "github.com/rjeczalik/notify"
   packages = ["."]
-  revision = "c31e5f2cb22b3e4ef3f882f413847669bf2652b9"
+  revision = "d152f3ce359a5464dc41e84a8919fc67e55bbbf0"
 
 [[projects]]
   name = "github.com/rs/cors"
@@ -304,10 +307,11 @@
   packages = [
     "cpu",
     "internal/common",
-    "mem"
+    "mem",
+    "net"
   ]
-  revision = "c432be29ccce470088d07eea25b3ea7e68a8afbb"
-  version = "v2.18.01"
+  revision = "5776ff9c7c5d063d574ef53d740f75c68b448e53"
+  version = "v2.18.02"
 
 [[projects]]
   name = "github.com/spaolacci/murmur3"
@@ -344,7 +348,7 @@
     "scrypt",
     "sha3"
   ]
-  revision = "85f98707c97e11569271e4d9b3d397e079c4f4d0"
+  revision = "c3a3ad6d03f7a915c0f7e194b7152974bb73d287"
 
 [[projects]]
   branch = "master"
@@ -362,7 +366,7 @@
     "trace",
     "websocket"
   ]
-  revision = "07e8617a6db2368fa55d4616f371ee1b1403c817"
+  revision = "6078986fec03a1dcc236c34816c71b0e05018fda"
 
 [[projects]]
   branch = "master"
@@ -371,7 +375,7 @@
     "unix",
     "windows"
   ]
-  revision = "349b81fb5c64ec1734eb6ee148df25459ea48517"
+  revision = "7ceb54c8418b8f9cdf0177b511d5cbb06e9fae39"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -413,13 +417,13 @@
     "go/ast/astutil",
     "imports"
   ]
-  revision = "059bec968c61383b574810040ba9410712de36c5"
+  revision = "2226533658007779ffd629b495a088530c84dc50"
 
 [[projects]]
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "df60624c1e9b9d2973e889c7a1cff73155da81c4"
+  revision = "f8c8703595236ae70fdf8789ecb656ea0bcdcf46"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -478,6 +482,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b9e9b0f55a607f620433cc7ac5083d2b026c57b51525d554c82753044e38fe85"
+  inputs-digest = "02ec252c6e889c15ccba9539de29994e043e9761f83ed4b76a95d2d25d901b10"
   solver-name = "gps-cdcl"
   solver-version = 1
