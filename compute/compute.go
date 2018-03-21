@@ -44,7 +44,6 @@ func (builder *DeltaBuilder) PendingOrders() []*order.Order {
 		orders = append(orders, sellOrder)
 		sellOrder.Parity = order.ParitySell
 	}
-
 	return orders
 }
 
