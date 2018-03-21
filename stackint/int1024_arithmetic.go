@@ -152,28 +152,50 @@ func (x *Int1024) Dec(y *Int1024) {
 // BasicMul returns x*y using the shift and add method
 func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 
+	words := make([]uint64, x.length+y.length)
+	for i, d := range y.words {
+		if d != 0 {
+			l := int(x.length)
+			words[l+i] = addMulVVW_g(words[i:i+l], x.words[:x.length], d)
+		}
+	}
+
+	z := Zero()
+	var highest uint16
+	min := INT1024WORDS
+	if len(words) < min {
+		min = len(words)
+	}
+	for i := 0; i < min; i++ {
+		z.words[i] = words[i]
+		if z.words[i] != 0 {
+			highest = uint16(i)
+		}
+	}
+	z.length = highest + 1
+
 	// Naïve inplementation!
 	// Uses up to 16384 uint64 additions (worst case)
 	// TODO: Rewrite using more efficient algorithm
-	z := Zero()
+	// z := Zero()
 
-	if x.length < y.length {
-		x, y = y, x
-	}
+	// if x.length < y.length {
+	// 	x, y = y, x
+	// }
 
-	shifted := x.Clone()
+	// shifted := x.Clone()
 
-	var i uint16
-	for i = 0; i < y.length; i++ {
-		word := y.words[i]
-		for j := uint(0); j < WORDSIZE; j++ {
-			bit := (word >> j) & 1
-			if bit == 1 {
-				z.Inc(&shifted)
-			}
-			shifted.ShiftLeftInPlace(1)
-		}
-	}
+	// var i uint16
+	// for i = 0; i < y.length; i++ {
+	// 	word := y.words[i]
+	// 	for j := uint(0); j < WORDSIZE; j++ {
+	// 		bit := (word >> j) & 1
+	// 		if bit == 1 {
+	// 			z.Inc(&shifted)
+	// 		}
+	// 		shifted.ShiftLeftInPlace(1)
+	// 	}
+	// }
 
 	return z
 }
