@@ -102,18 +102,18 @@ func (a *MontInt) MontMul(b *MontInt) MontInt {
 	product.ShiftRightInPlace(mont.shift)
 	temp2.ShiftRightInPlace(mont.shift)
 
-	reduced := product.Add(&temp2)
+	product.Inc(&temp2)
 
 	if reducedRight {
-		reduced.Inc(&one)
+		product.Inc(&one)
 	}
 
-	if reduced.GreaterThan(&mont.m) {
-		reduced.Dec(&mont.m)
+	if product.GreaterThan(&mont.m) {
+		product.Dec(&mont.m)
 	}
 
 	return MontInt{
-		reduced, mont,
+		product, mont,
 	}
 }
 
@@ -165,6 +165,12 @@ func (x *Int1024) Overflows(y *Int1024) bool {
 	return overflow == 1
 }
 
+func (x *MontInt) MontClone() MontInt {
+	return MontInt{
+		x.Int1024.Clone(), x.mont,
+	}
+}
+
 func (x *MontInt) MontAdd(y *MontInt) MontInt {
 	i := x.Int1024.AddModulo(&y.Int1024, &x.mont.m)
 	return MontInt{
@@ -182,4 +188,9 @@ func (x *MontInt) MontSub(y *MontInt) MontInt {
 func (m *Montgomery) One() MontInt {
 	one := One()
 	return m.ToMont(&one)
+}
+
+func (m *Montgomery) FromUint64(x uint64) MontInt {
+	tmp := FromUint64(x)
+	return m.ToMont(&tmp)
 }
