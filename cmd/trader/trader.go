@@ -72,11 +72,10 @@ func main() {
 		orderBook := new(OrderBook)
 		err = json.Unmarshal(response, orderBook)
 		if err != nil {
-			log.Fatal()
+			log.Fatal(err)
 		}
 
 		// Generate order from the Binance data
-
 		buyOrders := make([]*order.Order, len(orderBook.Asks))
 		sellOrders := make([]*order.Order, len(orderBook.Asks))
 
@@ -110,10 +109,10 @@ func main() {
 			buyOrder, sellOrder := buyOrders[i], sellOrders[i]
 			log.Printf("Sending matched order. [BUY] %s <---> [SELL] %s", buyOrder.ID, sellOrder.ID)
 
-			buyShares, err := buyOrder.Split(int64(totalNodes), int64(totalNodes*2/3), Prime)
+			buyShares, err := buyOrder.Split(int64(totalNodes), int64(totalNodes*2/3+1 ), Prime)
 			if err != nil {
 			}
-			sellShares, err := sellOrder.Split(int64(totalNodes), int64(totalNodes*2/3), Prime)
+			sellShares, err := sellOrder.Split(int64(totalNodes), int64(totalNodes*2/3 +1), Prime)
 			if err != nil {
 				log.Println(err)
 				continue
@@ -122,7 +121,7 @@ func main() {
 			do.CoForAll(buyShares, func(j int) {
 				err := pool.OpenOrder(nodes[j], &rpc.OrderSignature{}, rpc.SerializeOrderFragment(buyShares[j]))
 				if err != nil {
-					log.Printf("Coudln't send order fragment to %s\n", nodes[j].ID())
+					log.Printf("Coudln't send order fragment to %s\n %s", nodes[j].ID(), err )
 				}
 			})
 			log.Println("finish sending buy order",  buyOrder.ID)
@@ -130,7 +129,7 @@ func main() {
 			do.CoForAll(sellShares, func(j int) {
 				err := pool.OpenOrder(nodes[j], &rpc.OrderSignature{}, rpc.SerializeOrderFragment(sellShares[j]))
 				if err != nil {
-					log.Printf("Coudln't send order fragment to %s\n", nodes[j].ID())
+					log.Printf("Coudln't send order fragment to %s\n %s", nodes[j].ID() ,err)
 				}
 			})
 
