@@ -334,7 +334,6 @@ func sendOrders(nodes []*node.DarkNode) error {
 		}
 		price = price * 1000000000000
 
-
 		amount, err := strconv.ParseFloat(j[1].(string), 10)
 		if err != nil {
 			return errors.New("fail to parse the amount into a float")

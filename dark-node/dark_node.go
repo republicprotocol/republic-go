@@ -2,6 +2,8 @@ package node
 
 import (
 	"bytes"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"net"
@@ -9,9 +11,6 @@ import (
 	"runtime"
 	"sync/atomic"
 	"time"
-
-	"encoding/hex"
-	"encoding/json"
 
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
@@ -316,6 +315,26 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 			node.ConnectToDarkPool(darkPool)
 		}
 	}()
+}
+
+// OnSync returns
+func (node *DarkNode) OnSync(from identity.MultiAddress, blocks chan *rpc.SyncBlock) {
+	syncBlocks := new(rpc.SyncBlock)
+
+	// Collect all open orders
+	buyOrders := node.DeltaFragmentMatrix.BuyOrders()
+	sellOrders := node.DeltaFragmentMatrix.SellOrders()
+	orders := append(buyOrders, sellOrders...)
+	for i := range orders {
+		syncBlocks.Orders.Open = append(syncBlocks.Orders.Open, rpc.SerializeOrder(orders[i]))
+	}
+
+	// Collect all pending orders
+
+	// Collect all closed orders
+
+	// Collect all excuted orders
+
 }
 
 // OnOpenOrder writes an order fragment that has been received to the

@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"time"
+
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
@@ -131,4 +133,26 @@ func DeserializeDeltaFragment(deltaFragment *DeltaFragment) (*compute.DeltaFragm
 		return nil, err
 	}
 	return val, nil
+}
+
+func SerializeOrder(ord *order.Order) *Order {
+	orderRpc := new(Order)
+	orderRpc.Id = ord.ID
+	orderRpc.Signature = ord.Signature
+	orderRpc.Type = int64(ord.Type)
+	orderRpc.Parity = int64(ord.Parity)
+	orderRpc.Expiry = ord.Expiry.Unix()
+
+	return orderRpc
+}
+
+func DeserializeOrder(orderRpc *Order) *order.Order {
+	ord := new(order.Order)
+	ord.ID = orderRpc.Id
+	ord.Signature = orderRpc.Signature
+	ord.Type = orderRpc.Type
+	ord.Parity = order.Parity(orderRpc.Parity)
+	ord.Expiry = time.Unix(orderRpc.Expiry, 0)
+
+	return ord
 }

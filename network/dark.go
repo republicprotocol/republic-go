@@ -63,7 +63,18 @@ func (service *DarkService) Sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_S
 }
 
 func (service *DarkService) sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_SyncServer) error {
-	panic("unimplemented")
+	blocks := make(chan *rpc.SyncBlock, 5)
+
+	from, err := identity.NewMultiAddressFromString(syncRequest.From.MultiAddress)
+	if err != nil {
+		return err
+	}
+	service.DarkDelegate.OnSync(from, blocks)
+	for block := range blocks {
+		stream.Send(block)
+	}
+
+	return nil
 }
 
 func (service *DarkService) SignOrderFragment(ctx context.Context, signOrderFragmentRequest *rpc.SignOrderFragmentRequest) (*rpc.OrderFragmentSignature, error) {
