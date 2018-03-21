@@ -36,10 +36,13 @@ func (builder *DeltaBuilder) PendingOrders() []*order.Order {
 	for _, delta := range builder.deltas {
 		buyOrder := new(order.Order)
 		buyOrder.ID = delta.BuyOrderID
+		buyOrder.Parity = order.ParityBuy
 		orders = append(orders, buyOrder)
+
 		sellOrder := new(order.Order)
 		sellOrder.ID = delta.SellOrderID
 		orders = append(orders, sellOrder)
+		sellOrder.Parity = order.ParitySell
 	}
 
 	return orders

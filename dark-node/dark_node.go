@@ -330,10 +330,16 @@ func (node *DarkNode) OnSync(from identity.MultiAddress, blocks chan *rpc.SyncBl
 	}
 
 	// Collect all pending orders
+	pendingOrders := node.DeltaBuilder.PendingOrders()
+	for i := range pendingOrders{
+		syncBlocks.Orders.Pending = append(syncBlocks.Orders.Pending, rpc.SerializeOrder(pendingOrders[i]))
+	}
 
 	// Collect all closed orders
+	syncBlocks.Orders.Closed = []*rpc.Order{}
 
 	// Collect all excuted orders
+	syncBlocks.Orders.Executed = []*rpc.Order{}
 
 	blocks <- syncBlocks
 }
