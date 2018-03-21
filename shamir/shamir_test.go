@@ -1,7 +1,6 @@
 package shamir_test
 
 import (
-	"fmt"
 	"math/big"
 	"math/rand"
 
@@ -80,7 +79,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 			Ω(err).Should(BeNil())
 			Ω(int64(len(shares))).Should(Equal(N))
 			// For all K greater than, or equal to, 50 attempt to decode the secret.
-			for k := int64(50); k < 60; k++ {
+			for k := int64(50); k < 100; k++ {
 				// Pick K unique indices in the range [0, k).
 				indices := map[int]struct{}{}
 				for i := 0; i < int(k); i++ {
@@ -98,8 +97,8 @@ var _ = Describe("Shamir's secret sharing", func() {
 					kShares[index] = shares[index]
 				}
 				decodedSecret /*, decodedSecretBig*/ := Join(&prime /*primeBig,*/, kShares)
-				fmt.Println("!!!")
-				fmt.Println(decodedSecret.String())
+				// fmt.Println("!!!")
+				// fmt.Println(decodedSecret.String())
 				// fmt.Println(decodedSecretBig.String())
 				Ω(decodedSecret.Cmp(&secret)).Should(Equal(0))
 			}
