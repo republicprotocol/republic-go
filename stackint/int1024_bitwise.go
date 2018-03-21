@@ -291,14 +291,14 @@ func (x *Int1024) NOT() Int1024 {
 
 // BitLength returns the number bits required to represent x (equivalent to len(x.ToBinary()))
 func (x *Int1024) BitLength() int {
+	if x.length == 1 && x.words[0] == 0 {
+		return 1
+	}
 	word := x.words[x.length-1]
 	wordBits := 0
 	for word > 0 {
-		word /= 2
+		word = word >> uint(1)
 		wordBits++
-	}
-	if wordBits == 0 {
-		wordBits = 1
 	}
 	return (int(x.length-1))*64 + wordBits
 }
