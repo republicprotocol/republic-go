@@ -166,15 +166,17 @@ func (x *Int1024) Overflows(y *Int1024) bool {
 }
 
 func (x *MontInt) MontAdd(y *MontInt) MontInt {
-	z := MontInt{
-		x.Int1024.Clone(), x.mont,
+	i := x.Int1024.AddModulo(&y.Int1024, &x.mont.m)
+	return MontInt{
+		i, x.mont,
 	}
-	z.MontAddInPlace(y)
-	return z
 }
 
-func (x *MontInt) MontAddInPlace(y *MontInt) {
-	x.Int1024.Inc(&y.Int1024)
+func (x *MontInt) MontSub(y *MontInt) MontInt {
+	i := x.Int1024.SubModulo(&y.Int1024, &x.mont.m)
+	return MontInt{
+		i, x.mont,
+	}
 }
 
 func (m *Montgomery) One() MontInt {

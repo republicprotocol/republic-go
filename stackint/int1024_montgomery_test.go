@@ -79,4 +79,19 @@ var _ = Describe("Int1024 montgomery", func() {
 			Ω(act).Should(Equal(expected))
 		})
 	})
+
+	Context("when subtracting numbers", func() {
+		It("should return the right result for 1024 bit numbers", func() {
+			left := FromString("0")
+			leftM := PrimeM.ToMont(&left)
+			oneM := PrimeM.ToMont(&one)
+			expected := left.SubModulo(&one, &prime)
+			// fmt.Println(leftM.String())
+			actM := leftM.MontSub(&oneM)
+			// fmt.Println(actM.String())
+			act := actM.ToInt1024()
+
+			Ω(act).Should(Equal(expected))
+		})
+	})
 })
