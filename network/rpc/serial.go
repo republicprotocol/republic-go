@@ -150,7 +150,7 @@ func DeserializeOrder(orderRpc *Order) *order.Order {
 	ord := new(order.Order)
 	ord.ID = orderRpc.Id
 	ord.Signature = orderRpc.Signature
-	ord.Type = orderRpc.Type
+	ord.Type = order.Type(orderRpc.Type)
 	ord.Parity = order.Parity(orderRpc.Parity)
 	ord.Expiry = time.Unix(orderRpc.Expiry, 0)
 
