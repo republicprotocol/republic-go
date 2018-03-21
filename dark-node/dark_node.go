@@ -335,6 +335,7 @@ func (node *DarkNode) OnSync(from identity.MultiAddress, blocks chan *rpc.SyncBl
 
 	// Collect all excuted orders
 
+	blocks <- syncBlocks
 }
 
 // OnOpenOrder writes an order fragment that has been received to the
