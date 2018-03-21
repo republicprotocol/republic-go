@@ -302,3 +302,30 @@ func (x *Int1024) BitLength() int {
 	}
 	return (int(x.length-1))*64 + wordBits
 }
+
+func (x *Int1024) Mask(n uint) Int1024 {
+	z := x.Clone()
+	z.MaskInPlace(n)
+	return z
+}
+
+func (x *Int1024) MaskInPlace(n uint) {
+	nn := uint16(n / WORDSIZE)
+	if n%WORDSIZE != 0 {
+		panic("not implemented")
+	} else {
+		if x.length > nn {
+			for i := nn; i < x.length; i++ {
+				x.words[i] = 0
+			}
+			firstPositive := uint16(0)
+			for i := nn - 1; i > 0; i-- {
+				if x.words[i] != 0 {
+					firstPositive = uint16(i)
+					break
+				}
+			}
+			x.length = firstPositive + 1
+		}
+	}
+}
