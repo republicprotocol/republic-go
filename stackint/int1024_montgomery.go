@@ -68,6 +68,9 @@ func PrimeReduction() *Montgomery {
 	}
 }
 
+// var PrimeM Montgomery
+// var OneC MontInt
+
 var PrimeM = PrimeReduction()
 var OneC = PrimeM.One()
 
