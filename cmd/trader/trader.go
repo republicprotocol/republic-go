@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/network/rpc"
@@ -27,14 +26,14 @@ const red = "\x1b[31;1m"
 
 type OrderBook struct {
 	LastUpdateId int        `json:"lastUpdateId"`
-	Bids         [][]string `json:"bids"`
-	Asks         [][]string `json:"asks"`
+	Bids         [][]interface{} `json:"bids"`
+	Asks         [][]interface{} `json:"asks"`
 }
 
 func main() {
 	// Parse the option parameters
-	numberOfOrders := flag.Int("order", 10, "number of orders")
-	timeInterval := flag.Int("time", 15, "time interval in second")
+	numberOfOrders := flag.Int("order", 5, "number of orders")
+	timeInterval := flag.Int("time", 30, "time interval in second")
 
 	// Get nodes/darkPool details
 	multiAddresses := getNodesDetails()
@@ -45,7 +44,6 @@ func main() {
 			log.Fatal(err)
 		}
 		nodes[i] = multi
-		log.Println(base58.Encode(nodes[i].ID()))
 	}
 
 	// Create a trader address
@@ -68,80 +66,76 @@ func main() {
 		}
 
 		response, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
 		orderBook := new(OrderBook)
 		err = json.Unmarshal(response, orderBook)
-
-		// Generate order from the Binance data
-		sellOrders := make([]*order.Order, len(orderBook.Asks))
-		for i, j := range orderBook.Asks {
-			price, err := strconv.ParseFloat(j[0], 10)
-			price = price * 1000000000000
-			if err != nil {
-				log.Fatal("fail to parse the price into a big int")
-			}
-
-			amount, err := strconv.ParseFloat(j[1], 10)
-			amount = amount * 1000000000000
-			if err != nil {
-				log.Fatal("fail to parse the amount into a big int")
-			}
-			order := order.NewOrder(order.TypeLimit, order.ParitySell, time.Time{},
-				order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
-				big.NewInt(int64(amount)), big.NewInt(1))
-			sellOrders[i] = order
+		if err != nil {
+			log.Fatal()
 		}
 
-		buyOrders := make([]*order.Order, len(orderBook.Bids))
-		//test cast for match
-		for i, j := range orderBook.Asks { //change asks/bids
-			price, err := strconv.ParseFloat(j[0], 10)
+		// Generate order from the Binance data
+
+		buyOrders := make([]*order.Order, len(orderBook.Asks))
+		sellOrders := make([]*order.Order, len(orderBook.Asks))
+
+		for i, j := range orderBook.Asks {
+			price, err := strconv.ParseFloat(j[0].(string), 10)
 			price = price * 1000000000000
 			if err != nil {
-				log.Fatal("fail to parse the price into a big int")
+				log.Fatal(err)
 			}
 
-			amount, err := strconv.ParseFloat(j[1], 10)
+			amount, err := strconv.ParseFloat(j[1].(string), 10)
 			amount = amount * 1000000000000
 			if err != nil {
-				log.Fatal("fail to parse the amount into a big int")
+				log.Fatal(err)
 			}
-
-			order := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Time{},
+			sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour),
 				order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
 				big.NewInt(int64(amount)), big.NewInt(1))
-			buyOrders[i] = order
+			sellOrders[i] = sellOrder
+
+			buyOrder := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour),
+				order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
+				big.NewInt(int64(amount)), big.NewInt(1))
+			buyOrders[i] = buyOrder
 		}
 
 		// Send order fragment to the nodes
-		for _, orders := range [][]*order.Order{buyOrders, sellOrders} {
-			go func(orders []*order.Order) {
-				for _, ord := range orders {
-					//todo
-					if ord.Parity == order.ParityBuy {
-						log.Println("sending buy order :", base58.Encode(ord.ID))
-					} else {
-						log.Println("sending sell order :", base58.Encode(ord.ID))
-					}
+		totalNodes := len(multiAddresses)
+		pool := rpc.NewClientPool(multi)
+		for i := range buyOrders {
+			buyOrder, sellOrder := buyOrders[i], sellOrders[i]
+			log.Printf("Sending matched order. [BUY] %s <---> [SELL] %s", buyOrder.ID, sellOrder.ID)
 
-					shares, err := ord.Split(int64(len(nodes)), int64(len(nodes)*2/3), Prime)
-					if err != nil {
-						continue
-					}
+			buyShares, err := buyOrder.Split(int64(totalNodes), int64(totalNodes*2/3), Prime)
+			if err != nil {
+			}
+			sellShares, err := sellOrder.Split(int64(totalNodes), int64(totalNodes*2/3), Prime)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
 
-					do.ForAll(shares, func(i int) {
-						client, err := rpc.NewClient(nodes[i], multi)
-						if err != nil {
-							log.Fatal(err)
-						}
-						err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[i]))
-						if err != nil {
-							log.Println(err)
-							log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(nodes[i].ID()), reset)
-							return
-						}
-					})
+			do.CoForAll(buyShares, func(j int) {
+				err := pool.OpenOrder(nodes[j], &rpc.OrderSignature{}, rpc.SerializeOrderFragment(buyShares[j]))
+				if err != nil {
+					log.Printf("Coudln't send order fragment to %s\n", nodes[j].ID())
 				}
-			}(orders)
+			})
+			log.Println("finish sending buy order",  buyOrder.ID)
+
+			do.CoForAll(sellShares, func(j int) {
+				err := pool.OpenOrder(nodes[j], &rpc.OrderSignature{}, rpc.SerializeOrderFragment(sellShares[j]))
+				if err != nil {
+					log.Printf("Coudln't send order fragment to %s\n", nodes[j].ID())
+				}
+			})
+
+			log.Println("finish sending sell order",  sellOrder.ID)
+
 		}
 		time.Sleep(time.Duration(*timeInterval) * time.Second)
 	}
@@ -157,13 +151,14 @@ func getNodesDetails() []string {
 	//	"/ip4/35.161.248.181/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
 	//}
 
-	// susruth's test nodes
+	// bootstrap nodes
 	return []string{
-		"/ip4/52.21.44.236/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
-		"/ip4/52.41.118.171/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
-		"/ip4/52.59.176.141/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
-		"/ip4/52.77.88.84/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
-		"/ip4/52.79.194.108/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
+		"/ip4/52.77.88.84/tcp/18514/republic/8MGzXN7M1ucxvtumVjQ7Ybb7xQ8TUw",
+		//"/ip4/52.59.176.141/tcp/18514/republic/8MHmrykz65HimBPYaVgm8bTSpRUoXA",
+		//"/ip4/52.21.44.236/tcp/18514/republic/8MKFT9CDQQru1hYqnaojXqCQU2Mmuk",
+		//"/ip4/52.41.118.171/tcp/18514/republic/8MGb8k337pp2GSh6yG8iv2GK6FbNHN",
+		"/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",
+		"/ip4/13.250.34.9/tcp/18514/republic/8MH9hcbekxW8yUo9ADBhA213PnZ4do",
 	}
 
 	// Local nodes
