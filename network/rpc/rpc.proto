@@ -173,12 +173,12 @@ message RandomFragments {
 
 message SyncBlock {
   bytes signature = 1;
-  OrderBlock orders = 2;
+  int64 timestamp = 2;
 
-  message OrderBlock {
-    repeated Order open = 1;
-    repeated Order pending = 2;
-    repeated Order closed = 3;
-    repeated Order executed = 4;
+  oneof OrderBlock {
+    Order open = 3;
+    Order pending = 4;
+    Order closed = 5;
+    Order executed = 6;
   }
 }
