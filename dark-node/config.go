@@ -1,12 +1,10 @@
 package node
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
@@ -17,14 +15,13 @@ type Config struct {
 	NetworkOptions network.Options `json:"network"`
 	LoggerOptions  logger.Options  `json:"logger"`
 
+	Path string `json:"path"`
 	Host string `json:"host"`
 	Port string `json:"port"`
 
-	EthereumKey     *keystore.Key     `json:"ethereum_key"`
-	RepublicKeyPair *identity.KeyPair `json:"republic_key_pair"`
-	RSAKeyPair      *identity.KeyPair `json:"rsa_key_pair"`
-
-	EthereumRPC string `json:"ethereum_rpc"`
+	KeyPair     identity.KeyPair `json:"keyPair"`
+	EthereumKey keystore.Key     `json:"ethereumKey"`
+	EthereumRPC string           `json:"ethereumRPC"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config
@@ -40,17 +37,4 @@ func LoadConfig(filename string) (*Config, error) {
 		return nil, err
 	}
 	return config, nil
-}
-
-// EthereumKeyPair returns the Ethereum private
-func (config Config) EthereumKeyPair() (identity.KeyPair, error) {
-	key, err := hex.DecodeString(config.EthereumKey.Address.String())
-	if err != nil {
-		return identity.KeyPair{}, err
-	}
-	ecdsa, err := crypto.ToECDSA(key)
-	if err != nil {
-		return identity.KeyPair{}, err
-	}
-	return identity.NewKeyPairFromPrivateKey(ecdsa)
 }

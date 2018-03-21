@@ -26,30 +26,30 @@ type Plugin interface {
 
 // PluginOptions are used to Unmarshal plugins from JSON.
 type PluginOptions struct {
-	File      *FilePluginOptions      `json:"file"`
-	WebSocket *WebSocketPluginOptions `json:"websocket"`
+	File      *FilePluginOptions      `json:"file,omitempty"`
+	WebSocket *WebSocketPluginOptions `json:"websocket,omitempty"`
 }
 
 // NewLogger returns a new Logger that will start and stop a set of plugins.
 func NewLogger(options Options) (*Logger, error) {
-	plugins := make([]Plugin, 0, len(options.Plugins))
+	logger := &Logger{
+		GuardedObject: do.NewGuardedObject(),
+		Plugins:       make([]Plugin, 0, len(options.Plugins)),
+	}
 	for i := range options.Plugins {
 		if options.Plugins[i].File != nil {
 			plugin, err := NewFilePlugin(*options.Plugins[i].File)
 			if err != nil {
 				return nil, err
 			}
-			plugins = append(plugins, plugin)
+			logger.Plugins = append(logger.Plugins, plugin)
 		}
 		if options.Plugins[i].WebSocket != nil {
-			plugin := NewWebSocketPlugin(*options.Plugins[i].WebSocket)
-			plugins = append(plugins, plugin)
+			plugin := NewWebSocketPlugin(logger, *options.Plugins[i].WebSocket)
+			logger.Plugins = append(logger.Plugins, plugin)
 		}
 	}
-	return &Logger{
-		GuardedObject: do.NewGuardedObject(),
-		Plugins:       plugins,
-	}, nil
+	return logger, nil
 }
 
 // Start starts all the plugins of the logger
@@ -117,7 +117,7 @@ func (logger *Logger) Error(message string) {
 }
 
 // Usage logs an info Log using a UsageEvent.
-func (logger *Logger) Usage(cpu, memory float64, network int64) {
+func (logger *Logger) Usage(cpu, memory float64, network uint64) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
 		Type:      Info,
@@ -126,6 +126,70 @@ func (logger *Logger) Usage(cpu, memory float64, network int64) {
 			CPU:     cpu,
 			Memory:  memory,
 			Network: network,
+		},
+	})
+}
+
+// OrderMatch logs an OrderMatchEvent.
+func (logger *Logger) OrderMatch(ty Type, id, buyID, sellID string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: OrderMatch,
+		Event: OrderMatchEvent{
+			ID:     id,
+			BuyID:  buyID,
+			SellID: sellID,
+		},
+	})
+}
+
+// BuyOrderReceived logs an OrderReceivedEvent.
+func (logger *Logger) BuyOrderReceived(ty Type, id, fragmentID string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: OrderReceived,
+		Event: OrderReceivedEvent{
+			BuyID:      &id,
+			FragmentID: fragmentID,
+		},
+	})
+}
+
+// SellOrderReceived logs an OrderReceivedEvent.
+func (logger *Logger) SellOrderReceived(ty Type, id, fragmentID string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: OrderReceived,
+		Event: OrderReceivedEvent{
+			SellID:     &id,
+			FragmentID: fragmentID,
+		},
+	})
+}
+
+// Network logs a NetworkEvent.
+func (logger *Logger) Network(ty Type, message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: Network,
+		Event: NetworkEvent{
+			Message: message,
+		},
+	})
+}
+
+// Compute logs a ComputeEvent.
+func (logger *Logger) Compute(ty Type, message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: Compute,
+		Event: ComputeEvent{
+			Message: message,
 		},
 	})
 }
@@ -147,11 +211,12 @@ type EventType string
 // Values for the EventType.
 const (
 	Generic       = EventType("generic")
-	Network       = EventType("network")
 	Usage         = EventType("usage")
 	Ethereum      = EventType("ethereum")
 	OrderMatch    = EventType("orderMatch")
 	OrderReceived = EventType("orderReceived")
+	Network       = EventType("network")
+	Compute       = EventType("compute")
 )
 
 // A Log is logged by the Logger using all available Plugins.
@@ -177,7 +242,7 @@ func (event GenericEvent) String() string {
 type UsageEvent struct {
 	CPU     float64 `json:"cpu"`
 	Memory  float64 `json:"memory"`
-	Network int64   `json:"network"`
+	Network uint64  `json:"network"`
 }
 
 func (event UsageEvent) String() string {
@@ -186,19 +251,42 @@ func (event UsageEvent) String() string {
 
 type OrderMatchEvent struct {
 	ID     string `json:"id"`
-	BuyID  string `json:"sellId"`
-	SellID string `json:"buyId"`
+	BuyID  string `json:"buyId"`
+	SellID string `json:"sellId"`
 }
 
 func (event OrderMatchEvent) String() string {
-	return fmt.Sprintf("order match = (%v, %v)", event.BuyID, event.SellID)
+	return fmt.Sprintf("buy = %s; sell = %s", event.BuyID, event.SellID)
 }
 
 type OrderReceivedEvent struct {
-	ID         string `json:"id"`
-	FragmentID string `json:"fragmentId"`
+	BuyID      *string `json:"buyId,omitempty"`
+	SellID     *string `json:"sellId,omitempty"`
+	FragmentID string  `json:"fragmentId"`
 }
 
 func (event OrderReceivedEvent) String() string {
-	return fmt.Sprintf("order recevied = (%v)", event.ID)
+	if event.BuyID != nil {
+		return "buy = " + *event.BuyID
+	}
+	if event.SellID != nil {
+		return "sell = " + *event.SellID
+	}
+	return ""
+}
+
+type NetworkEvent struct {
+	Message string `json:"message"`
+}
+
+func (event NetworkEvent) String() string {
+	return event.Message
+}
+
+type ComputeEvent struct {
+	Message string `json:"message"`
+}
+
+func (event ComputeEvent) String() string {
+	return event.Message
 }
