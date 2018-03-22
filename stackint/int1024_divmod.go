@@ -41,7 +41,7 @@ func greaterThan(x1, x2, y1, y2 uint64) bool {
 	return x1 > y1 || x1 == y1 && x2 > y2
 }
 
-func (x *Int1024) divLarge(y *Int1024) (qq, r Int1024) {
+func (x *Int1024) divLarge(y *Int1024) (Int1024, Int1024) {
 
 	v := y.words
 	uIn := x.words
