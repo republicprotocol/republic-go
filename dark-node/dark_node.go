@@ -54,7 +54,7 @@ type DarkNode struct {
 	DeltaFragmentWorker               *DeltaFragmentWorker
 	DeltaQueue                        chan *compute.Delta
 	DeltaMatchWorker                  *DeltaMatchWorker
-	SyncBlocks                        chan *SyncBlock
+	SyncBlocks                        chan *rpc.SyncBlock
 
 	Server *grpc.Server
 	Swarm  *network.SwarmService
@@ -321,29 +321,33 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 
 // OnSync returns
 func (node *DarkNode) OnSync(from identity.MultiAddress, blocks chan *rpc.SyncBlock) {
-	syncBlocks := new(rpc.SyncBlock)
-
-	// Collect all open orders
+	// Sending all open orders
 	buyOrders := node.DeltaFragmentMatrix.BuyOrders()
 	sellOrders := node.DeltaFragmentMatrix.SellOrders()
 	orders := append(buyOrders, sellOrders...)
 	for i := range orders {
-		syncBlocks.Orders.Open = append(syncBlocks.Orders.Open, rpc.SerializeOrder(orders[i]))
+		syncBlock := new(rpc.SyncBlock)
+		syncBlock.Timestamp = time.Now().Unix()
+		syncBlock.OrderBlock = &rpc.SyncBlock_Open{
+			Open: rpc.SerializeOrder(orders[i]),
+		}
+		blocks <- syncBlock
 	}
 
-	// Collect all pending orders
-	pendingOrders := node.DeltaBuilder.PendingOrders()
-	for i := range pendingOrders {
-		syncBlocks.Orders.Pending = append(syncBlocks.Orders.Pending, rpc.SerializeOrder(pendingOrders[i]))
+	// Sending all unconfirmed orders
+	unconfirmedOrders := node.DeltaBuilder.Unconfirmed()
+	for i := range unconfirmedOrders {
+		syncBlock := new(rpc.SyncBlock)
+		syncBlock.Timestamp = time.Now().Unix()
+		syncBlock.OrderBlock = &rpc.SyncBlock_Unconfirmed{
+			Unconfirmed: rpc.SerializeOrder(unconfirmedOrders[i]),
+		}
+		blocks <- syncBlock
 	}
 
 	// Collect all closed orders
-	syncBlocks.Orders.Closed = []*rpc.Order{}
 
 	// Collect all executed orders
-	syncBlocks.Orders.Executed = []*rpc.Order{}
-
-	blocks <- syncBlocks
 }
 
 // OnOpenOrder writes an order fragment that has been received to the

@@ -28,7 +28,7 @@ func NewDeltaBuilder(k int64, prime *big.Int) *DeltaBuilder {
 	}
 }
 
-func (builder *DeltaBuilder) PendingOrders() []*order.Order {
+func (builder *DeltaBuilder) Unconfirmed() []*order.Order {
 	builder.EnterReadOnly(nil)
 	defer builder.Exit()
 

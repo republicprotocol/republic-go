@@ -63,7 +63,7 @@ func (service *DarkService) Sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_S
 }
 
 func (service *DarkService) sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_SyncServer) error {
-	blocks := make(chan *rpc.SyncBlock, 5)
+	blocks := make(chan *rpc.SyncBlock)
 
 	from, err := identity.NewMultiAddressFromString(syncRequest.From.MultiAddress)
 	if err != nil {

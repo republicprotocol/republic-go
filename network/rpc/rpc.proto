@@ -177,8 +177,8 @@ message SyncBlock {
 
   oneof OrderBlock {
     Order open = 3;
-    Order pending = 4;
-    Order closed = 5;
-    Order executed = 6;
+    Order unconfirmed = 4;
+    Order confirmed = 5;
+    Order settled = 6;
   }
 }
