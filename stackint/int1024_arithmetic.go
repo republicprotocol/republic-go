@@ -279,7 +279,7 @@ func (x *Int1024) karatsuba(y *Int1024) Int1024 {
 }
 
 // DivMod returns (x/y, x%y). If y is 0, a run-time panic occurs.
-func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
+func (x *Int1024) divmodLarge(y *Int1024) (Int1024, Int1024) {
 
 	// expected1, expected2 := big.NewInt(0).DivMod(x.ToBigInt(), y.ToBigInt(), big.NewInt(1))
 
