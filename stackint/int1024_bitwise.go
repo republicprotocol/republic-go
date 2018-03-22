@@ -1,5 +1,9 @@
 package stackint
 
+import (
+	"math/bits"
+)
+
 // ShiftLeft returns x<<n
 func (x *Int1024) ShiftLeft(n uint) Int1024 {
 	z := x.Clone()
@@ -291,16 +295,10 @@ func (x *Int1024) NOT() Int1024 {
 
 // BitLength returns the number bits required to represent x (equivalent to len(x.ToBinary()))
 func (x *Int1024) BitLength() int {
-	word := x.words[x.length-1]
-	wordBits := 0
-	for word > 0 {
-		word /= 2
-		wordBits++
+	if x.length == 1 && x.words[0] == 0 {
+		return 1
 	}
-	if wordBits == 0 {
-		wordBits = 1
-	}
-	return (int(x.length-1))*64 + wordBits
+	return (int(x.length-1))*64 + bits.Len64(x.words[x.length-1])
 }
 
 func (x *Int1024) Mask(n uint) Int1024 {

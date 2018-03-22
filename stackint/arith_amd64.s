@@ -9,7 +9,7 @@
 // This file provides fast assembly versions for the elementary
 // arithmetic operations on vectors implemented in arith.go.
 
-// func mulWW(x, y Word) (z1, z0 Word)
+// func mulWW(x, y uint64) (z1, z0 uint64)
 TEXT ·mulWW(SB),NOSPLIT,$0
 	MOVQ x+0(FP), AX
 	MULQ y+8(FP)
@@ -18,7 +18,7 @@ TEXT ·mulWW(SB),NOSPLIT,$0
 	RET
 
 
-// func divWW(x1, x0, y Word) (q, r Word)
+// func divWW(x1, x0, y uint64) (q, r uint64)
 TEXT ·divWW(SB),NOSPLIT,$0
 	MOVQ x1+0(FP), DX
 	MOVQ x0+8(FP), AX
@@ -31,7 +31,7 @@ TEXT ·divWW(SB),NOSPLIT,$0
 // It is restored with ADDQ Rx, Rx: if Rx was -1 the carry is set, otherwise it is cleared.
 // This is faster than using rotate instructions.
 
-// func addVV(z, x, y []Word) (c Word)
+// func addVV(z, x, y []uint64) (c uint64)
 TEXT ·addVV(SB),NOSPLIT,$0
 	MOVQ z_len+8(FP), DI
 	MOVQ x+24(FP), R8
@@ -85,7 +85,7 @@ E1:	NEGQ CX
 	RET
 
 
-// func subVV(z, x, y []Word) (c Word)
+// func subVV(z, x, y []uint64) (c uint64)
 // (same as addVV except for SBBQ instead of ADCQ and label names)
 TEXT ·subVV(SB),NOSPLIT,$0
 	MOVQ z_len+8(FP), DI
@@ -140,7 +140,7 @@ E2:	NEGQ CX
 	RET
 
 
-// func addVW(z, x []Word, y Word) (c Word)
+// func addVW(z, x []uint64, y uint64) (c uint64)
 TEXT ·addVW(SB),NOSPLIT,$0
 	MOVQ z_len+8(FP), DI
 	MOVQ x+24(FP), R8
@@ -191,7 +191,7 @@ E3:	MOVQ CX, c+56(FP)	// return c
 	RET
 
 
-// func subVW(z, x []Word, y Word) (c Word)
+// func subVW(z, x []uint64, y uint64) (c uint64)
 // (same as addVW except for SUBQ/SBBQ instead of ADDQ/ADCQ and label names)
 TEXT ·subVW(SB),NOSPLIT,$0
 	MOVQ z_len+8(FP), DI
@@ -244,7 +244,7 @@ E4:	MOVQ CX, c+56(FP)	// return c
 	RET
 
 
-// func shlVU(z, x []Word, s uint) (c Word)
+// func shlVU(z, x []uint64, s uint) (c uint64)
 TEXT ·shlVU(SB),NOSPLIT,$0
 	MOVQ z_len+8(FP), BX	// i = z
 	SUBQ $1, BX		// i--
@@ -279,7 +279,7 @@ X8b:	MOVQ $0, c+56(FP)
 	RET
 
 
-// func shrVU(z, x []Word, s uint) (c Word)
+// func shrVU(z, x []uint64, s uint) (c uint64)
 TEXT ·shrVU(SB),NOSPLIT,$0
 	MOVQ z_len+8(FP), R11
 	SUBQ $1, R11		// n--
@@ -316,7 +316,7 @@ X9b:	MOVQ $0, c+56(FP)
 	RET
 
 
-// func mulAddVWW(z, x []Word, y, r Word) (c Word)
+// func mulAddVWW(z, x []uint64, y, r uint64) (c uint64)
 TEXT ·mulAddVWW(SB),NOSPLIT,$0
 	MOVQ z+0(FP), R10
 	MOVQ x+24(FP), R8
@@ -376,7 +376,7 @@ E5:	CMPQ BX, R11		// i < n
 	RET
 
 
-// func addMulVVW(z, x []Word, y Word) (c Word)
+// func addMulVVW(z, x []uint64, y uint64) (c uint64)
 TEXT ·addMulVVW(SB),NOSPLIT,$0
 	MOVQ z+0(FP), R10
 	MOVQ x+24(FP), R8
@@ -430,7 +430,7 @@ E6:	CMPQ BX, R11		// i < n
 	RET
 
 
-// func divWVW(z []Word, xn Word, x []Word, y Word) (r Word)
+// func divWVW(z []uint64, xn uint64, x []uint64, y uint64) (r uint64)
 TEXT ·divWVW(SB),NOSPLIT,$0
 	MOVQ z+0(FP), R10
 	MOVQ xn+24(FP), DX	// r = xn

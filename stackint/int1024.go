@@ -42,6 +42,16 @@ func FromUint64(n uint64) Int1024 {
 	}
 }
 
+// SetUint64 sets x's value to n
+func (x *Int1024) SetUint64(n uint64) {
+	var i uint16
+	for i = 1; i < x.length; i++ {
+		x.words[i] = 0
+	}
+	x.words[0] = n
+	x.length = 1
+}
+
 // ToUint64 converts an Int1024 to a uint64 if it is small enough
 func (x *Int1024) ToUint64() uint64 {
 	// Check that all other words are zero

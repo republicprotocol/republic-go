@@ -149,66 +149,62 @@ func (x *Int1024) Dec(y *Int1024) {
 	// }
 }
 
+func tmp(zz, xx []uint64, yy uint64) uint64 {
+	ll := len(zz)
+	var c uint64
+	for i := 0; i < ll; i++ {
+		z1, z0 := mulAddWWW_g(xx[i], yy, zz[i])
+		c, zz[i] = addWW_g(z0, c, 0)
+		c += z1
+	}
+	return c
+}
+
 // BasicMul returns x*y using the shift and add method
 func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 
-	words := make([]uint64, x.length+y.length)
-	for i, d := range y.words {
-		if d != 0 {
-			l := int(x.length)
-			words[l+i] = addMulVVW_g(words[i:i+l], x.words[:x.length], d)
-		}
-	}
-
-	z := Zero()
+	// words := make([]uint64, x.length+y.length)
+	var words [INT1024WORDS]uint64
+	var i uint16
+	var j uint16
 	var highest uint16
-	min := INT1024WORDS
-	if len(words) < min {
-		min = len(words)
-	}
-	for i := 0; i < min; i++ {
-		z.words[i] = words[i]
-		if z.words[i] != 0 {
-			highest = uint16(i)
+	l := uint16(x.length)
+	for i = 0; i < y.length; i++ {
+		d := y.words[i]
+		if d != 0 {
+			var c uint64
+			for j = i; j < i+l; j++ {
+				var z0, z1 uint64
+				z1, zz0 := mulWW(x.words[j-i], d)
+				if z0 = zz0 + words[j]; z0 < zz0 {
+					z1++
+				}
+				c, words[j] = addWW_g(z0, c, 0)
+				if words[j] != 0 {
+					highest = max(highest, j)
+				}
+				c += z1
+			}
+			words[l+i] = c
+			if words[l+i] != 0 {
+				highest = max(highest, l+i)
+			}
 		}
 	}
-	z.length = highest + 1
-
-	// Naïve inplementation!
-	// Uses up to 16384 uint64 additions (worst case)
-	// TODO: Rewrite using more efficient algorithm
-	// z := Zero()
-
-	// if x.length < y.length {
-	// 	x, y = y, x
-	// }
-
-	// shifted := x.Clone()
-
-	// var i uint16
-	// for i = 0; i < y.length; i++ {
-	// 	word := y.words[i]
-	// 	for j := uint(0); j < WORDSIZE; j++ {
-	// 		bit := (word >> j) & 1
-	// 		if bit == 1 {
-	// 			z.Inc(&shifted)
-	// 		}
-	// 		shifted.ShiftLeftInPlace(1)
-	// 	}
-	// }
-
-	return z
+	return Int1024{
+		words, highest + 1,
+	}
 }
 
 // Mul returns x*y
 func (x *Int1024) Mul(y *Int1024) Int1024 {
 
-	z := x.BasicMul(y)
+	z := x.karatsuba(y)
 
 	return z
 }
 
-const karatsubaThreshold = 40
+const karatsubaThreshold = 1024
 
 func karatsubaLen(n int) int {
 	i := uint(0)
@@ -283,7 +279,7 @@ func (x *Int1024) karatsuba(y *Int1024) Int1024 {
 }
 
 // DivMod returns (x/y, x%y). If y is 0, a run-time panic occurs.
-func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
+func (x *Int1024) divmodLarge(y *Int1024) (Int1024, Int1024) {
 
 	// expected1, expected2 := big.NewInt(0).DivMod(x.ToBigInt(), y.ToBigInt(), big.NewInt(1))
 

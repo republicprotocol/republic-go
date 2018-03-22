@@ -2,17 +2,12 @@ package stackint
 
 // IsZero returns true of x == 0
 func (x *Int1024) IsZero() bool {
-	return x.EqualsUint64(0)
+	return x.length == 1 && x.words[0] == 0
 }
 
 // EqualsUint64 returns true of x represents the uint64 n
 func (x *Int1024) EqualsUint64(n uint64) bool {
-	for i := 1; i < INT1024WORDS; i++ {
-		if x.words[i] != 0 {
-			return false
-		}
-	}
-	return x.words[0] == n
+	return x.length == 1 && x.words[0] == n
 }
 
 // Cmp returns -1 if x<y, 0 if x=y, 1 if x>y
