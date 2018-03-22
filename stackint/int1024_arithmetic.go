@@ -149,25 +149,47 @@ func (x *Int1024) Dec(y *Int1024) {
 	// }
 }
 
-func tmp(zz, xx []uint64, yy uint64) uint64 {
-	ll := len(zz)
-	var c uint64
-	for i := 0; i < ll; i++ {
-		z1, z0 := mulAddWWW_g(xx[i], yy, zz[i])
-		c, zz[i] = addWW_g(z0, c, 0)
-		c += z1
+func (x *Int1024) BasicMulBig(y *Int1024) Int1024 {
+
+	var words [INT1024WORDS * 2]uint64
+	var i uint16
+	var j uint16
+	l := uint16(x.length)
+	for i = 0; i < y.length; i++ {
+		d := y.words[i]
+		if d != 0 {
+			var c uint64
+			for j = i; j < i+l; j++ {
+				var z0, z1 uint64
+				z1, zz0 := mulWW(x.words[j-i], d)
+				if z0 = zz0 + words[j]; z0 < zz0 {
+					z1++
+				}
+				c, words[j] = addWW_g(z0, c, 0)
+				c += z1
+			}
+			words[l+i] = c
+		}
 	}
-	return c
+	var words2 [INT1024WORDS]uint64
+	var highest uint16
+	for i = 0; i < INT1024WORDS; i++ {
+		words2[i] = words[i]
+		if words2[i] > 0 {
+			highest = i
+		}
+	}
+	return Int1024{
+		words2, highest + 1,
+	}
 }
 
 // BasicMul returns x*y using the shift and add method
 func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 
-	// words := make([]uint64, x.length+y.length)
 	var words [INT1024WORDS]uint64
 	var i uint16
 	var j uint16
-	var highest uint16
 	l := uint16(x.length)
 	for i = 0; i < y.length; i++ {
 		d := y.words[i]
@@ -181,14 +203,19 @@ func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 				}
 				c, words[j] = addWW_g(z0, c, 0)
 				if words[j] != 0 {
-					highest = max(highest, j)
 				}
 				c += z1
 			}
 			words[l+i] = c
 			if words[l+i] != 0 {
-				highest = max(highest, l+i)
 			}
+		}
+	}
+	var highest uint16
+	for i := x.length + y.length - 1; i > 0; i-- {
+		if words[i] > 0 {
+			highest = i
+			break
 		}
 	}
 	return Int1024{
@@ -199,9 +226,10 @@ func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 // Mul returns x*y
 func (x *Int1024) Mul(y *Int1024) Int1024 {
 
-	z := x.karatsuba(y)
-
-	return z
+	if x.length+y.length <= INT1024WORDS {
+		return x.BasicMul(y)
+	}
+	return x.BasicMulBig(y)
 }
 
 const karatsubaThreshold = 1024
@@ -241,11 +269,12 @@ func (x *Int1024) split(n uint) (Int1024, Int1024) {
 // Mul returns x*y
 func (x *Int1024) karatsuba(y *Int1024) Int1024 {
 
-	lenX := x.BitLength()
-	lenY := y.BitLength()
-	if lenX < karatsubaThreshold || lenY < karatsubaThreshold {
+	if x.length+y.length <= INT1024WORDS {
 		return x.BasicMul(y)
 	}
+
+	lenX := x.BitLength()
+	lenY := y.BitLength()
 
 	var n uint
 	if lenX > lenY {
@@ -278,59 +307,6 @@ func (x *Int1024) karatsuba(y *Int1024) Int1024 {
 	return res
 }
 
-// DivMod returns (x/y, x%y). If y is 0, a run-time panic occurs.
-func (x *Int1024) divmodLarge(y *Int1024) (Int1024, Int1024) {
-
-	// expected1, expected2 := big.NewInt(0).DivMod(x.ToBigInt(), y.ToBigInt(), big.NewInt(1))
-
-	dividend := x.Clone()
-	denom := y.Clone()
-	current := FromUint64(1)
-	answer := Zero()
-
-	if denom.IsZero() {
-		panic("division by zero")
-	}
-
-	limit := MAXINT1024()
-	limit.ShiftRightInPlace(1)
-	overflowed := false
-	for denom.LessThanOrEqual(&dividend) {
-		if !denom.LessThan(&limit) {
-			overflowed = true
-			break
-		}
-		denom.ShiftLeftInPlace(1)
-		current.ShiftLeftInPlace(1)
-	}
-
-	if !overflowed {
-		denom.ShiftRightInPlace(1)
-		current.ShiftRightInPlace(1)
-	}
-
-	for !current.IsZero() {
-		if dividend.GreaterThanOrEqual(&denom) {
-			dividend.Dec(&denom)
-			answer.ORInPlace(&current)
-		}
-		current.ShiftRightInPlace(1)
-		denom.ShiftRightInPlace(1)
-	}
-
-	// actual1 := answer.ToBigInt()
-	// if expected1.Cmp(actual1) != 0 {
-	// 	panic(fmt.Sprintf("AddModulo failed!\nFor (%v / %v)\n.\n\nExp: %b\n\nGot: %b", x, y, expected1, actual1))
-	// }
-
-	// actual2 := dividend.ToBigInt()
-	// if expected2.Cmp(actual2) != 0 {
-	// 	panic(fmt.Sprintf("AddModulo failed!\nFor (%v mod %v)\n.\n\nExp: %b\n\nGot: %b", x, y, expected2, actual2))
-	// }
-
-	return answer, dividend
-}
-
 // Div returns the quotient of x/y. If y is 0, a run-time panic occurs.
 func (x *Int1024) Div(y *Int1024) Int1024 {
 	div, _ := x.DivMod(y)
@@ -346,57 +322,11 @@ func (x *Int1024) Mod(n *Int1024) Int1024 {
 	case 0:
 		return Zero()
 	case 1:
-		mod := x.mod(n)
+		_, mod := x.DivMod(n)
 		return mod
 	default:
 		panic("unexpected cmp result (expecting -1, 0 or 1)")
 	}
-}
-
-func (x *Int1024) mod(y *Int1024) Int1024 {
-
-	dividend := x.Clone()
-	denom := y.Clone()
-	current := 1
-
-	if denom.IsZero() {
-		panic("division by zero")
-	}
-
-	limit := MAXINT1024()
-	limit.ShiftRightInPlace(1)
-	overflowed := false
-
-	shift := dividend.BitLength() - denom.BitLength()
-	if shift < 0 {
-		shift = 0
-	}
-	denom.ShiftLeftInPlace(uint(shift))
-	current += shift
-
-	if denom.LessThanOrEqual(&dividend) {
-		if denom.GreaterThanOrEqual(&limit) {
-			overflowed = true
-		} else {
-			denom.ShiftLeftInPlace(1)
-			current++
-		}
-	}
-
-	if !overflowed {
-		denom.ShiftRightInPlace(1)
-		current--
-	}
-
-	for current != 0 {
-		if dividend.GreaterThanOrEqual(&denom) {
-			dividend.Dec(&denom)
-		}
-		current--
-		denom.ShiftRightInPlace(1)
-	}
-
-	return dividend
 }
 
 // SubModulo returns (x - y) % n
@@ -735,15 +665,14 @@ uint64_t mulmod(uint64_t a, uint64_t b, uint64_t m) {
 // and returns z. If g and n are not relatively prime, the result is undefined.
 // Code adapted from https://www.di-mgt.com.au/euclidean.html
 func (x *Int1024) ModInverse(n *Int1024) Int1024 {
-	u := x.Clone()
 	v := n.Clone()
 	// unsigned int inv, u1, u3, v1, v3, t1, t3, q;
 	// int iter;
 	/* Step X1. Initialise */
 	u1 := FromUint64(1)
-	u3 := u.Clone()
+	u3 := *x
 	v1 := Zero()
-	v3 := v.Clone()
+	v3 := v
 	/* Remember odd/even iterations */
 	iter := 1
 	/* Step X2. Loop while v3 != 0 */
@@ -766,7 +695,9 @@ func (x *Int1024) ModInverse(n *Int1024) Int1024 {
 
 	inv := u1
 	if iter < 0 {
-		inv = v.Sub(&inv)
+		v.Dec(&inv)
+		return v
+		// inv = v.Sub(&inv)
 	}
 	return inv
 }
