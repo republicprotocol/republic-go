@@ -43,8 +43,8 @@ func greaterThan(x1, x2, y1, y2 uint64) bool {
 
 func (x *Int1024) divLarge(y *Int1024) (qq, r Int1024) {
 
-	v := y.words[:]
-	uIn := x.words[:]
+	v := y.words
+	uIn := x.words
 
 	// z is nil
 	// u is nil
@@ -61,16 +61,17 @@ func (x *Int1024) divLarge(y *Int1024) (qq, r Int1024) {
 	var highestQ uint16
 
 	var qhatv [INT1024WORDS + 1]uint64
-	u := make([]uint64, int(x.length)+1)
+	var u [INT1024WORDS + 1]uint64
 	// D1.
 	shift := nlz(v[n-1])
 	if shift > 0 {
 		// do not modify v, it may be used by another goroutine simultaneously
-		v1 := make([]uint64, n)
-		shlVU(v1, v[:], shift)
+
+		var v1 [INT1024WORDS]uint64
+		shlVU_g(v1[:], v[:], shift)
 		v = v1
 	}
-	u[int(x.length)] = shlVU(u[:x.length], uIn, shift)
+	u[int(x.length)] = shlVU_g(u[:x.length], uIn[:], shift)
 	// D2.
 	vn1 := v[n-1]
 	for jj := int(m); jj >= 0; jj-- {
@@ -97,10 +98,23 @@ func (x *Int1024) divLarge(y *Int1024) (qq, r Int1024) {
 			}
 		}
 		// D4.
-		qhatv[n] = mulAddVWW(qhatv[:n], v, qhat, 0)
-		c := subVV(u[j:j+n+1], u[j:], qhatv[:n+1])
+
+		// Inlined
+		// qhatv[n] = mulAddVWW(qhatv[0:n], v[:], qhat, 0)
+		c := uint64(0)
+		var i uint16
+		for i = 0; i < n; i++ {
+			c, qhatv[i] = mulAddWWW_g(v[i], qhat, c)
+		}
+		qhatv[n] = c
+
+		// Inlined
+		c = subVV_g(u[j:j+n+1], u[j:], qhatv[:])
+
 		if c != 0 {
-			c := addVV(u[j:j+n], u[j:], v)
+			// Inlined
+			c := addVV_g(u[j:j+n], u[j:], v[:])
+
 			u[j+n] += c
 			qhat--
 		}
@@ -109,7 +123,7 @@ func (x *Int1024) divLarge(y *Int1024) (qq, r Int1024) {
 			highestQ = j
 		}
 	}
-	shrVU(u, u, shift)
+	shrVU_g(u[:x.length+1], u[:uint(x.length)+1], shift)
 
 	var rWords [INT1024WORDS]uint64
 
