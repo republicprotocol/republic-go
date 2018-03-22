@@ -16,7 +16,6 @@ import (
 // DarkService service.
 type DarkDelegate interface {
 	OnSync(from identity.MultiAddress, blocks chan *rpc.SyncBlock)
-
 	// OnSignOrderFragment(from identity.MultiAddress)
 	OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment)
 	// OnCancelOrder(from identity.MultiAddress)
@@ -69,11 +68,11 @@ func (service *DarkService) sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_S
 	if err != nil {
 		return err
 	}
-	service.DarkDelegate.OnSync(from, blocks)
+	go service.DarkDelegate.OnSync(from, blocks)
 	for block := range blocks {
 		stream.Send(block)
 	}
-
+	stream.Context().Deadline()
 	return nil
 }
 

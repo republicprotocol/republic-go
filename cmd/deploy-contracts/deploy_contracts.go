@@ -12,10 +12,10 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	base58 "github.com/jbenet/go-base58"
-	node "github.com/republicprotocol/republic-go/dark-node"
-	dnr "github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/contracts"
 	"github.com/republicprotocol/republic-go/contracts/connection"
+	dnr "github.com/republicprotocol/republic-go/contracts/dnr"
+	node "github.com/republicprotocol/republic-go/dark-node"
 )
 
 var config *node.Config

@@ -54,7 +54,6 @@ type DarkNode struct {
 	DeltaFragmentWorker               *DeltaFragmentWorker
 	DeltaQueue                        chan *compute.Delta
 	DeltaMatchWorker                  *DeltaMatchWorker
-	SyncBlocks                        chan *rpc.SyncBlock
 
 	Server *grpc.Server
 	Swarm  *network.SwarmService
@@ -331,11 +330,12 @@ func (node *DarkNode) OnSync(from identity.MultiAddress, blocks chan *rpc.SyncBl
 		syncBlock.OrderBlock = &rpc.SyncBlock_Open{
 			Open: rpc.SerializeOrder(orders[i]),
 		}
+
 		blocks <- syncBlock
 	}
 
 	// Sending all unconfirmed orders
-	unconfirmedOrders := node.DeltaBuilder.Unconfirmed()
+	unconfirmedOrders := node.DeltaBuilder.UnconfirmedOrders()
 	for i := range unconfirmedOrders {
 		syncBlock := new(rpc.SyncBlock)
 		syncBlock.Timestamp = time.Now().Unix()
@@ -363,6 +363,7 @@ func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 			node.Logger.SellOrderReceived(logger.Info, orderFragment.OrderID.String(), orderFragment.ID.String())
 		}
 		node.OrderFragmentWorkerQueue <- orderFragment
+
 	}()
 }
 
