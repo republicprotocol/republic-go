@@ -43,8 +43,8 @@ func greaterThan(x1, x2, y1, y2 uint64) bool {
 
 func (x *Int1024) divLarge(y *Int1024) (qq, r Int1024) {
 
-	v := y.words[:]
-	uIn := x.words[:]
+	v := y.words
+	uIn := x.words
 
 	// z is nil
 	// u is nil
@@ -61,16 +61,28 @@ func (x *Int1024) divLarge(y *Int1024) (qq, r Int1024) {
 	var highestQ uint16
 
 	var qhatv [INT1024WORDS + 1]uint64
-	u := make([]uint64, int(x.length)+1)
+	var u [INT1024WORDS + 1]uint64
 	// D1.
 	shift := nlz(v[n-1])
 	if shift > 0 {
 		// do not modify v, it may be used by another goroutine simultaneously
-		v1 := make([]uint64, n)
-		shlVU(v1, v[:], shift)
+
+		var v1 [INT1024WORDS]uint64
+		shlVU_g(v1[:], v[:], shift)
 		v = v1
+		// if n := INT1024WORDS; n > 0 {
+		// 	ŝ := _W - shift
+		// 	w1 := v[n-1]
+		// 	for i := n - 1; i > 0; i-- {
+		// 		w := w1
+		// 		w1 = u[i-1]
+		// 		v1[i] = w<<shift | w1>>ŝ
+		// 	}
+		// 	v1[0] = w1 << shift
+		// }
+		// v = v1
 	}
-	u[int(x.length)] = shlVU(u[:x.length], uIn, shift)
+	u[int(x.length)] = shlVU_g(u[:x.length], uIn[:], shift)
 	// D2.
 	vn1 := v[n-1]
 	for jj := int(m); jj >= 0; jj-- {
@@ -97,10 +109,40 @@ func (x *Int1024) divLarge(y *Int1024) (qq, r Int1024) {
 			}
 		}
 		// D4.
-		qhatv[n] = mulAddVWW(qhatv[:n], v, qhat, 0)
-		c := subVV(u[j:j+n+1], u[j:], qhatv[:n+1])
+
+		// Inlined
+		c := uint64(0)
+		var i uint16
+		for i = 0; i < n; i++ {
+			c, qhatv[i] = mulAddWWW_g(v[i], qhat, c)
+		}
+		qhatv[n] = c
+
+		// Inlined
+		// c = subVV_g2(u[j:j+n+1], u[j:], qhatv[:])
+		c = 0
+		for i := j; i < j+n+1; i++ {
+			xi := u[i]
+			yi := qhatv[i-j]
+			zi := xi - yi - c
+			u[i] = zi
+			// see "Hacker's Delight", section 2-12 (overflow detection)
+			c = (yi&^xi | (yi|^xi)&zi) >> (_W - 1)
+		}
+
 		if c != 0 {
-			c := addVV(u[j:j+n], u[j:], v)
+			// Inlined
+			// c := addVV_g(u[j:j+n], u[j:], v)
+			c = 0
+			for i = j; i < n+j; i++ {
+				xi := u[i]
+				yi := v[i-j]
+				zi := xi + yi + c
+				u[i] = zi
+				// see "Hacker's Delight", section 2-12 (overflow detection)
+				c = (xi&yi | (xi|yi)&^zi) >> (_W - 1)
+			}
+
 			u[j+n] += c
 			qhat--
 		}
@@ -109,7 +151,18 @@ func (x *Int1024) divLarge(y *Int1024) (qq, r Int1024) {
 			highestQ = j
 		}
 	}
-	shrVU(u, u, shift)
+	// shrVU_g(u[:x.length+1], u[:uint(x.length)+1], shift)
+	if n := x.length + 1; n > 0 {
+		ŝ := _W - shift
+		w1 := u[0]
+		var i uint16
+		for i = 0; i < n-1; i++ {
+			w := w1
+			w1 = u[i+1]
+			u[i] = w>>shift | w1<<ŝ
+		}
+		u[n-1] = w1 >> shift
+	}
 
 	var rWords [INT1024WORDS]uint64
 
