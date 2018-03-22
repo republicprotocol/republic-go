@@ -68,7 +68,7 @@ func mulWW_g(x, y uint64) (z1, z0 uint64) {
 
 // z1<<_W + z0 = x*y + c
 func mulAddWWW_g(x, y, c uint64) (z1, z0 uint64) {
-	z1, zz0 := mulWW_g(x, y)
+	z1, zz0 := mulWW(x, y)
 	if z0 = zz0 + c; z0 < zz0 {
 		z1++
 	}
@@ -253,7 +253,7 @@ func addMulVVW_g(z, x []uint64, y uint64) (c uint64) {
 func divWVW_g(z []uint64, xn uint64, x []uint64, y uint64) (r uint64) {
 	r = xn
 	for i := len(z) - 1; i >= 0; i-- {
-		z[i], r = divWW_g(r, x[i], y)
+		z[i], r = divWW(r, x[i], y)
 	}
 	return
 }
