@@ -358,19 +358,19 @@ func min(a, b uint16) uint16 {
 	return b
 }
 
-// func (x *Int1024) Verify() {
-// 	var i uint16
-// 	for i = x.length; i < INT1024WORDS; i++ {
-// 		if x.words[i] != 0 {
-// 			fmt.Println(x)
-// 			panic("Length too small")
-// 		}
-// 	}
-// 	if x.words[x.length-1] == 0 && x.length != 1 {
-// 		fmt.Println(x)
-// 		panic("Length too big")
-// 	}
-// 	if x.length == 0 {
-// 		panic("length is zero!")
-// 	}
-// }
+func (x *Int1024) Verify() {
+	var i uint16
+	for i = x.length; i < INT1024WORDS; i++ {
+		if x.words[i] != 0 {
+			fmt.Println(x)
+			panic("Length too small")
+		}
+	}
+	if x.words[x.length-1] == 0 && x.length != 1 {
+		fmt.Println(x)
+		panic("Length too big")
+	}
+	if x.length == 0 {
+		panic("length is zero!")
+	}
+}

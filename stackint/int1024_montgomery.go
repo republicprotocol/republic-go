@@ -9,14 +9,16 @@ package stackint
  */
 
 type Montgomery struct {
-	m      Int1024
-	shift  uint
-	mask   Int1024
-	r      Int1024
-	r2     Int1024
-	rInv   Int1024
-	factor Int1024
-	mInv   Int1024
+	m            Int1024
+	M            MontInt
+	shift        uint
+	mask         Int1024
+	r            Int1024
+	r2           Int1024
+	rInv         Int1024
+	factor       Int1024
+	mInv         Int1024
+	uint64Lookup map[uint64]MontInt
 }
 
 func (mont *Montgomery) ToMont(x *Int1024) MontInt {
@@ -56,16 +58,27 @@ func PrimeReduction() *Montgomery {
 	minv = minv.Mod(&r)
 	minv = r.Sub(&minv)
 
-	return &Montgomery{
-		m:      m,
-		shift:  shift,
-		mask:   mask,
-		r:      r,
-		r2:     r2,
-		rInv:   rinv,
-		mInv:   minv,
-		factor: factor,
+	mont := &Montgomery{
+		m:            m,
+		shift:        shift,
+		mask:         mask,
+		r:            r,
+		r2:           r2,
+		rInv:         rinv,
+		mInv:         minv,
+		factor:       factor,
+		uint64Lookup: make(map[uint64]MontInt),
 	}
+
+	mont.M = mont.ToMont(&m)
+
+	// var i uint64
+	// for i = 0; i < 1000; i++ {
+	// 	x := FromUint64(i)
+	// 	mont.uint64Lookup[i] = mont.ToMont(&x)
+	// }
+
+	return mont
 }
 
 // var PrimeM Montgomery
@@ -98,17 +111,22 @@ func (a *MontInt) MontMul(b *MontInt) MontInt {
 
 	temp2 := temp.Mul(&mont.m)
 
-	productRight := product.Mask(mont.shift)
-	temp2Right := temp2.Mask(mont.shift)
-	reducedRight := productRight.Overflows(&temp2Right)
+	if mont.shift >= SIZE/2 {
+		productRight := product.Mask(mont.shift)
+		temp2Right := temp2.Mask(mont.shift)
+		productRight.Inc(&temp2Right)
+		reducedRight := productRight.words[mont.shift/WORDSIZE] > 0
 
-	product.ShiftRightInPlace(mont.shift)
-	temp2.ShiftRightInPlace(mont.shift)
+		product.ShiftRightInPlace(mont.shift)
+		temp2.ShiftRightInPlace(mont.shift)
 
-	product.Inc(&temp2)
+		product.Inc(&temp2)
 
-	if reducedRight {
-		product.Inc(&one)
+		if reducedRight {
+			product.Inc(&one)
+		}
+	} else {
+		product.Inc(&temp2)
 	}
 
 	if product.GreaterThan(&mont.m) {
@@ -122,8 +140,7 @@ func (a *MontInt) MontMul(b *MontInt) MontInt {
 
 func (a *MontInt) MontInv() MontInt {
 	res := a.ModInverse(&a.mont.m)
-	res = res.Mul(&a.mont.r2)
-	res = res.Mod(&a.mont.m)
+	res = res.MulModulo(&a.mont.r2, &a.mont.m)
 	return MontInt{
 		res, a.mont,
 	}
@@ -153,19 +170,23 @@ func (x *Int1024) Overflows(y *Int1024) bool {
 		}
 		x.words[i] = a.words[i] + b.words[i] + previousOverflow
 	}
-	for i = b.length; i < a.length; i++ {
-		previousOverflow := overflow
-		if a.words[i] > WORDMAX || a.words[i] > WORDMAX-previousOverflow {
-			overflow = 1
-		} else {
-			overflow = 0
+	if overflow > 0 {
+		for i = b.length; i < a.length; i++ {
+			previousOverflow := overflow
+			if a.words[i] > WORDMAX || a.words[i] > WORDMAX-previousOverflow {
+				overflow = 1
+			} else {
+				overflow = 0
+			}
+			x.words[i] = a.words[i] + previousOverflow
 		}
-		x.words[i] = a.words[i] + previousOverflow
 	}
 
 	x.length = a.length
 
-	return overflow == 1
+	ret := (overflow == 1) && a.length == (INT1024WORDS/2)
+	return ret
+
 }
 
 func (x *MontInt) MontClone() MontInt {
@@ -194,6 +215,11 @@ func (m *Montgomery) One() MontInt {
 }
 
 func (m *Montgomery) FromUint64(x uint64) MontInt {
+	if val, ok := m.uint64Lookup[x]; ok {
+		return val.MontClone()
+	}
 	tmp := FromUint64(x)
-	return m.ToMont(&tmp)
+	ret := m.ToMont(&tmp)
+	m.uint64Lookup[x] = ret
+	return ret
 }
