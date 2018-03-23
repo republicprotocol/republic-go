@@ -58,70 +58,29 @@ func (x *Int1024) Sub(y *Int1024) Int1024 {
 // Dec sets x to x-y
 func (x *Int1024) Dec(y *Int1024) {
 
-	// expected := big.NewInt(0).Sub(x.ToBigInt(), y.ToBigInt())
+	if y.IsZero() {
+		return
+	}
 
-	var overflow uint64
-	var i uint16
-	var firstPositive uint16
-	if x.length >= y.length {
-		for i = 0; i < y.length; i++ {
-			newOverflow := uint64(0)
-			if x.words[i] < y.words[i]+overflow || y.words[i] == WORDMAX && overflow == 1 {
-				newOverflow = 1
-			}
-			x.words[i] = x.words[i] - y.words[i] - overflow
-			overflow = newOverflow
-			if x.words[i] != 0 {
-				firstPositive = i
-			}
+	m := x.length
+	n := y.length
+
+	c := subVV_g(x.words[0:n], x.words[:], y.words[:])
+	if m > n {
+		c = subVW_g(x.words[n:], x.words[n:], c)
+		if c != 0 {
+			panic("!!!")
 		}
-		for i = y.length; i < x.length; i++ {
-			newOverflow := uint64(0)
-			if x.words[i] < overflow {
-				newOverflow = 1
-			}
-			x.words[i] = x.words[i] - overflow
-			overflow = newOverflow
-			if x.words[i] != 0 {
-				firstPositive = i
-			}
+	}
+
+	if c != 0 {
+		for i := n; i < INT1024WORDS; i++ {
+			x.words[i] = WORDMAX
 		}
+		x.length = INT1024WORDS
 	} else {
-		for i = 0; i < x.length; i++ {
-			newOverflow := uint64(0)
-			if x.words[i] < y.words[i]+overflow || y.words[i] == WORDMAX && overflow == 1 {
-				newOverflow = 1
-			}
-			x.words[i] = x.words[i] - y.words[i] - overflow
-			overflow = newOverflow
-			if x.words[i] != 0 {
-				firstPositive = i
-			}
-		}
-		for i = x.length; i < y.length; i++ {
-			newOverflow := uint64(0)
-			if 0 < y.words[i]+overflow || y.words[i] == WORDMAX && overflow == 1 {
-				newOverflow = 1
-			}
-			x.words[i] = 0 - y.words[i] - overflow
-			overflow = newOverflow
-			if x.words[i] != 0 {
-				firstPositive = i
-			}
-		}
+		x.setLength()
 	}
-
-	if overflow > 0 {
-		for ; i < INT1024WORDS; i++ {
-			x.words[i] = (1 << 64) - 1
-		}
-		firstPositive = INT1024WORDS - 1
-	}
-	x.length = firstPositive + 1
-
-	// if expected.Cmp(x.ToBigInt()) != 0 && expected.Cmp(big.NewInt(0)) >= 0 {
-	// 	panic("Subtraction failed")
-	// }
 }
 
 func (x *Int1024) BasicMulBig(y *Int1024) [INT1024WORDS * 2]uint64 {
@@ -189,7 +148,6 @@ func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 	}
 }
 
-// ...
 func mulAddWW(x *Int1024, y uint64) Int1024 {
 
 	m := x.length
