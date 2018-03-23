@@ -1,22 +1,26 @@
 package stackint
 
 func (x *Int1024) divW(y uint64) uint64 {
-	m := len(x.words)
 	switch {
 	case y == 0:
 		panic("division by zero")
 	case y == 1:
 		return 0
-	case m == 0:
+	case x.IsZero():
 		x.SetUint64(0)
 		return 0
 	}
 	// m > 0
 	// r := divWVW_g(x.words[:], 0, x.words[:], y)
 	r := uint64(0)
-	for i := len(x.words) - 1; i >= 0; i-- {
-		x.words[i], r = divWW(r, x.words[i], y)
+	var first uint16
+	for i := int(x.length - 1); i >= 0; i-- {
+		x.words[i], r = divWW_g(r, x.words[i], y)
+		if first == 0 && x.words[i] != 0 {
+			first = uint16(i)
+		}
 	}
+	x.length = first + 1
 	return r
 }
 
@@ -33,7 +37,8 @@ func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 		r := FromUint64(rr)
 		return q, r
 	}
-	return x.divLarge(y)
+	q, r := x.divLarge(y)
+	return q, r
 }
 
 // greaterThan reports whether (x1<<_W + x2) > (y1<<_W + y2)

@@ -71,6 +71,9 @@ var _ = Describe("Int1024", func() {
 			for _, n := range cases {
 				fromInt := FromUint64(n)
 				Ω(fromInt.ToUint64()).Should(Equal(n))
+				tmp := Zero()
+				tmp.SetUint64(n)
+				Ω(tmp).Should(Equal(fromInt))
 			}
 		})
 
@@ -79,44 +82,44 @@ var _ = Describe("Int1024", func() {
 		})
 	})
 
-	// Context("when converting from string", func() {
-	// 	It("should return the right result for 1024 bit numbers", func() {
+	Context("when converting from string", func() {
+		It("should return the right result for 1024 bit numbers", func() {
 
-	// 		cases := [][]interface{}{
-	// 			TC("0", zero),
-	// 			TC("1", one),
-	// 			TC("0x0", zero),
-	// 			TC("0x00", zero),
-	// 			TC("0x00", zero),
-	// 			TC("0xFF", FromUint64(255)),
-	// 			TC("0xff", FromUint64(255)),
-	// 			TC("0b0", zero),
-	// 			TC("0b00", zero),
-	// 			TC("0b01", one),
-	// 			TC("0b"+strings.Repeat("1", SIZE), max),
-	// 			TC(maxStr, max),
-	// 		}
-	// 		for _, tc := range cases {
-	// 			Ω(FromString(tc[0].(string))).Should(Equal(tc[1]))
-	// 		}
+			cases := [][]interface{}{
+				TC("0", zero),
+				TC("1", one),
+				TC("0x0", zero),
+				TC("0x00", zero),
+				TC("0x00", zero),
+				TC("0xFF", FromUint64(255)),
+				TC("0xff", FromUint64(255)),
+				TC("0b0", zero),
+				TC("0b00", zero),
+				TC("0b01", one),
+				TC("0b"+strings.Repeat("1", SIZE), max),
+				TC(maxStr, max),
+			}
+			for _, tc := range cases {
+				Ω(FromString(tc[0].(string))).Should(Equal(tc[1]))
+			}
 
-	// 	})
+		})
 
-	// 	It("should return the right result for 1024 bit numbers", func() {
-	// 		cases := [][]interface{}{
-	// 			TC("ff"),
-	// 			TC("NOT A STRING"),
-	// 			TC("1234i"),
-	// 			TC("0bA"),
-	// 			TC("0x"),
-	// 			TC("0b"),
-	// 			TC(""),
-	// 		}
-	// 		for _, tc := range cases {
-	// 			Ω(func() { FromString(tc[0].(string)) }).Should(Panic())
-	// 		}
-	// 	})
-	// })
+		It("should return the right result for 1024 bit numbers", func() {
+			cases := [][]interface{}{
+				TC("ff"),
+				TC("NOT A STRING"),
+				TC("1234i"),
+				TC("0bA"),
+				TC("0x"),
+				TC("0b"),
+				TC(""),
+			}
+			for _, tc := range cases {
+				Ω(func() { FromString(tc[0].(string)) }).Should(Panic())
+			}
+		})
+	})
 
 	Context("when converting to binary string", func() {
 		It("should return the right result for 1024 bit numbers", func() {
@@ -140,52 +143,39 @@ var _ = Describe("Int1024", func() {
 
 	Context("when converting to string", func() {
 		It("should return the right result for 1024 bit numbers", func() {
-			// actual := max.String()
-			// expected := maxStr
-			// Ω(actual).Should(Equal(expected))
+			actual := max.String()
+			expected := maxStr
+			Ω(actual).Should(Equal(expected))
 
-			// actual = zero.String()
-			// expected = "0"
-			// Ω(actual).Should(Equal(expected))
+			actual = zero.String()
+			expected = "0"
+			Ω(actual).Should(Equal(expected))
 
-			// actual = one.String()
-			// expected = "1"
-			// Ω(actual).Should(Equal(expected))
+			actual = one.String()
+			expected = "1"
+			Ω(actual).Should(Equal(expected))
 
-			// actual = two.String()
-			// expected = "2"
-			// Ω(actual).Should(Equal(expected))
+			actual = two.String()
+			expected = "2"
+			Ω(actual).Should(Equal(expected))
 
-			// tmp := FromUint64(111)
-			// actual = tmp.String()
-			// expected = "111"
-			// Ω(actual).Should(Equal(expected))
+			tmp := FromUint64(111)
+			actual = tmp.String()
+			expected = "111"
+			Ω(actual).Should(Equal(expected))
 		})
 	})
 
-	// Context("when serializing to bytes", func() {
-	// 	It("should return the right result for 1024 bit numbers", func() {
-	// 		array := []Int1024{zero, one, two, three, four, five, six, seven, eleven, twelve, oneWord, max}
-	// 		for _, num := range array {
-	// 			actual := FromBytes(num.ToBytes())
-	// 			Ω(actual).Should(Equal(num))
+	Context("when serializing to bytes", func() {
+		It("should return the right result for 1024 bit numbers", func() {
+			array := []Int1024{zero, one, two, three, four, five, six, seven, eleven, twelve, oneWord, max}
+			for _, num := range array {
+				actual := FromBytes(num.ToBytes())
+				Ω(actual).Should(Equal(num))
 
-	// 			actual = FromLittleEndianBytes(num.ToLittleEndianBytes())
-	// 			Ω(actual).Should(Equal(num))
-	// 		}
-	// 	})
-	// })
-
-	// Context("when retrieving words", func() {
-	// 	It("should return the right result for 1024 bit numbers", func() {
-	// 		array := []Int1024{zero, one, two, three, four, five, six, seven, eleven, twelve, oneWord, max}
-	// 		for _, num := range array {
-	// 			actual := FromBytes(num.ToBytes())
-	// 			Ω(actual).Should(Equal(num))
-
-	// 			actual = FromLittleEndianBytes(num.ToLittleEndianBytes())
-	// 			Ω(actual).Should(Equal(num))
-	// 		}
-	// 	})
-	// })
+				actual = FromLittleEndianBytes(num.ToLittleEndianBytes())
+				Ω(actual).Should(Equal(num))
+			}
+		})
+	})
 })
