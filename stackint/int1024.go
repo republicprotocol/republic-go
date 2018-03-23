@@ -157,20 +157,25 @@ func (x *Int1024) String() string {
 // ToBytes returns an array of BYTECOUNT (128) bytes (Big Endian)
 func (x *Int1024) ToBytes() []byte {
 
-	bytesAll := make([]byte, BYTECOUNT)
-	b8 := make([]byte, 8)
+	bitlen := x.BitLength()
+	i := uint16(bitlen / 8)
+	if bitlen%8 > 0 {
+		i++
+	}
+	buf := make([]byte, i)
 
-	var i uint16
-	for i = 0; i < x.length; i++ {
-		word := x.words[i]
-		binary.BigEndian.PutUint64(b8, word)
-		var j uint16
-		for j = 0; j < 8; j++ {
-			bytesAll[(INT1024WORDS-1-i)*8+j] = b8[j]
+	var k uint16
+	for k = 0; k < x.length; k++ {
+		d := x.words[k]
+		for j := 0; j < _S && d > 0; j++ {
+			if d > 0 {
+				buf[i-1] = byte(d)
+			}
+			d >>= 8
+			i--
 		}
 	}
-
-	return bytesAll
+	return buf
 }
 
 // FromBytes deserializes an array of BYTECOUNT (128) bytes to an Int1024 (Big Endian)
@@ -184,7 +189,7 @@ func FromBytes(bytesAll []byte) Int1024 {
 	}
 
 	if numWords > INT1024WORDS {
-		numWords = INT1024WORDS
+		panic("bytes array too long")
 	}
 
 	// mod := 8 - len(bytesAll)%8
@@ -211,38 +216,60 @@ func FromBytes(bytesAll []byte) Int1024 {
 	return x
 }
 
-// // ToLittleEndianBytes returns an array of BYTECOUNT (128) bytes (Little Endian)
-// func (x *Int1024) ToLittleEndianBytes() []byte {
+// ToLittleEndianBytes returns an array of BYTECOUNT (128) bytes (Little Endian)
+func (x *Int1024) ToLittleEndianBytes() []byte {
 
-// 	bytesAll := make([]byte, BYTECOUNT)
-// 	b8 := make([]byte, 8)
+	bitlen := x.BitLength()
+	i := uint16(bitlen / 8)
+	if bitlen%8 > 0 {
+		i++
+	}
+	buf := make([]byte, i)
 
-// 	for i := range x.words {
-// 		binary.LittleEndian.PutUint64(b8, uint64(x.words[i]))
-// 		for j := 0; j < 8; j++ {
-// 			bytesAll[i*8+j] = b8[j]
-// 		}
-// 	}
+	var index uint16
+	var k uint16
+	for k = 0; k < x.length; k++ {
+		d := x.words[k]
+		for j := 0; j < _S && d > 0; j++ {
+			if d > 0 {
+				buf[index] = byte(d)
+			}
+			d >>= 8
+			index++
+		}
+	}
+	return buf
+}
 
-// 	return bytesAll
-// }
+// FromLittleEndianBytes deserializes an array of 128 bytes to an Int1024 (LittleBig Endian)
+func FromLittleEndianBytes(bytesAll []byte) Int1024 {
 
-// // FromLittleEndianBytes deserializes an array of 128 bytes to an Int1024 (LittleBig Endian)
-// func FromLittleEndianBytes(bytesAll []byte) Int1024 {
+	x := Zero()
 
-// 	x := Zero()
+	len := len(bytesAll)
+	numWords := len / 8
+	if len%8 != 0 {
+		numWords++
+	}
 
-// 	numWords := len(bytesAll) / 8
+	if numWords > INT1024WORDS {
+		panic("bytes array too long")
+	}
 
-// 	for i := 0; i < numWords; i++ {
-// 		b8 := bytesAll[i*8 : (i+1)*8]
-// 		x.words[i] = binary.LittleEndian.Uint64(b8)
-// 	}
+	for i := 0; i < numWords; i++ {
+		b8 := make([]byte, 8)
+		last := (i + 1) * 8
+		if last > len {
+			last = len
+		}
+		copy(b8, bytesAll[i*8:last])
+		x.words[i] = binary.LittleEndian.Uint64(b8)
+	}
 
-// 	x.length = max(1, uint16(numWords))
+	x.length = max(1, uint16(numWords))
 
-// 	return x
-// }
+	return x
+}
 
 // Clone returns a new Int1024 representing the same value as x
 func (x *Int1024) Clone() Int1024 {
@@ -368,20 +395,3 @@ func (x *Int1024) setLength() {
 	}
 	x.length = firstPositive + 1
 }
-
-// func (x *Int1024) Verify() {
-// 	var i uint16
-// 	for i = x.length; i < INT1024WORDS; i++ {
-// 		if x.words[i] != 0 {
-// 			fmt.Println(x)
-// 			panic("Length too small")
-// 		}
-// 	}
-// 	if x.words[x.length-1] == 0 && x.length != 1 {
-// 		fmt.Println(x)
-// 		panic("Length too big")
-// 	}
-// 	if x.length == 0 {
-// 		panic("length is zero!")
-// 	}
-// }

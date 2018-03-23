@@ -1,5 +1,11 @@
 package stackint
 
+/**
+ * DoubleInt is used to calculate MulModulo efficiently without overflowing
+ *
+ *
+ */
+
 type DoubleInt struct {
 	words  [INT1024WORDS * 2]uint64
 	length uint16
