@@ -1,67 +1,55 @@
 package stackint
 
-func (x *Int1024) divW(y uint64) uint64 {
-	m := len(x.words)
-	switch {
-	case y == 0:
-		panic("division by zero")
-	case y == 1:
-		return 0
-	case m == 0:
-		x.SetUint64(0)
-		return 0
-	}
-	// m > 0
-	// r := divWVW_g(x.words[:], 0, x.words[:], y)
-	r := uint64(0)
-	for i := len(x.words) - 1; i >= 0; i-- {
-		x.words[i], r = divWW(r, x.words[i], y)
-	}
-	return r
+type DoubleInt struct {
+	words  [INT1024WORDS * 2]uint64
+	length uint16
 }
 
-func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
-	if len(y.words) == 0 {
-		panic("division by zero")
+func (x *Int1024) MulModuloBig(y, n *Int1024) Int1024 {
+
+	words := x.BasicMulBig(y)
+	var highest uint16
+	var i uint16
+	for i = x.length + y.length - 1; i > 0; i-- {
+		if words[i] > 0 {
+			highest = i
+			break
+		}
 	}
-	if x.Cmp(y) < 0 {
-		return Zero(), x.Clone()
+
+	xyDouble := DoubleInt{
+		words, highest + 1,
 	}
-	if y.length == 1 {
-		q := x.Clone()
-		rr := q.divW(y.words[0])
-		r := FromUint64(rr)
-		return q, r
+
+	if (highest + 1) <= INT1024WORDS {
+		var words2 [INT1024WORDS]uint64
+		copy(words2[:], words[:INT1024WORDS])
+		xy := Int1024{
+			words2, highest + 1,
+		}
+		return xy.Mod(n)
 	}
-	return x.divLarge(y)
+	_, r := xyDouble.divDouble(n)
+	var words2 [INT1024WORDS]uint64
+	copy(words2[:], r.words[:INT1024WORDS])
+	return Int1024{
+		words2, r.length,
+	}
 }
 
-// greaterThan reports whether (x1<<_W + x2) > (y1<<_W + y2)
-func greaterThan(x1, x2, y1, y2 uint64) bool {
-	return x1 > y1 || x1 == y1 && x2 > y2
-}
-
-func (x *Int1024) divLarge(y *Int1024) (Int1024, Int1024) {
+func (x *DoubleInt) divDouble(y *Int1024) (DoubleInt, DoubleInt) {
 
 	v := y.words
 	uIn := x.words
 
-	// z is nil
-	// u is nil
-	// uIn is x
-	// v is y
-
 	n := y.length
 	m := x.length - n
-	// determine if z can be reused
-	// TODO(gri) should find a better solution - this if statement
-	//           is very costly (see e.g. time pidigits -s -n 10000)
 
-	var q [INT1024WORDS]uint64
+	var q [INT1024WORDS * 2]uint64
 	var highestQ uint16
 
-	var qhatv [INT1024WORDS + 1]uint64
-	var u [INT1024WORDS + 1]uint64
+	var qhatv [(INT1024WORDS * 2) + 1]uint64
+	var u [(INT1024WORDS * 2) + 1]uint64
 	// D1.
 	shift := nlz(v[n-1])
 	if shift > 0 {
@@ -125,14 +113,16 @@ func (x *Int1024) divLarge(y *Int1024) (Int1024, Int1024) {
 	}
 	shrVU_g(u[:x.length+1], u[:uint(x.length)+1], shift)
 
-	var rWords [INT1024WORDS]uint64
-	copy(rWords[:], u[:INT1024WORDS])
+	var rWords [INT1024WORDS * 2]uint64
+
+	copy(rWords[:], u[:INT1024WORDS*2])
+
 	var highestR uint16
-	for i := 0; i < int(min(INT1024WORDS, uint16(len(u)))); i++ {
+	for i := 0; i < int(min(INT1024WORDS*2, uint16(len(u)))); i++ {
 		if rWords[i] != 0 {
 			highestR = uint16(i)
 		}
 	}
 
-	return Int1024{q, highestQ + 1}, Int1024{rWords, highestR + 1}
+	return DoubleInt{q, highestQ + 1}, DoubleInt{rWords, highestR + 1}
 }
