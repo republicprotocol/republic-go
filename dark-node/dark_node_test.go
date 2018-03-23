@@ -25,7 +25,7 @@ import (
 
 const (
 	NumberOfBootstrapNodes = 5
-	NumberOfOrders         = 20
+	NumberOfOrders         = 100
 )
 
 var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
@@ -33,14 +33,15 @@ var trader, _ = identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republ
 var mockRegistrar, _ = dnr.NewMockDarkNodeRegistrar()
 
 type OrderBook struct {
-	LastUpdateId int        `json:"lastUpdateId"`
-	Bids         [][]string `json:"bids"`
-	Asks         [][]string `json:"asks"`
+	LastUpdateId int             `json:"lastUpdateId"`
+	Bids         [][]interface{} `json:"bids"`
+	Asks         [][]interface{} `json:"asks"`
 }
 
 var _ = Describe("Dark nodes", func() {
 
 	var mu = new(sync.Mutex)
+
 	BeforeEach(func() {
 		mu.Lock()
 	})
@@ -50,7 +51,7 @@ var _ = Describe("Dark nodes", func() {
 	})
 
 	// Bootstrapping
-	for _, numberOfNodes := range []int{ /*18, 36, 72*/ } {
+	for _, numberOfNodes := range []int{15} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when bootstrapping %d nodes", numberOfNodes), func() {
 
@@ -88,7 +89,7 @@ var _ = Describe("Dark nodes", func() {
 	}
 
 	// Connectivity
-	for _, numberOfNodes := range []int{ /*18, 36, 72*/ } {
+	for _, numberOfNodes := range []int{15} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when connecting %d nodes", numberOfNodes), func() {
 				for _, connectivity := range []int{20, 40, 60, 80, 100} {
@@ -127,9 +128,9 @@ var _ = Describe("Dark nodes", func() {
 	}
 
 	// Order matching
-	for _, numberOfNodes := range []int{18 /*, 36 /*, 72*/} {
+	for _, numberOfNodes := range []int{15} {
 		func(numberOfNodes int) {
-			Context(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
+			FContext(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
 
 				var err error
 				var nodes []*node.DarkNode
@@ -137,6 +138,8 @@ var _ = Describe("Dark nodes", func() {
 				BeforeEach(func() {
 					By("generate nodes")
 					nodes, err = generateNodes(numberOfNodes)
+					Ω(err).ShouldNot(HaveOccurred())
+					err = registerNodes(nodes, mockRegistrar)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					By("start node service")
@@ -166,13 +169,15 @@ var _ = Describe("Dark nodes", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 
 					By("verify order matches")
+					timer := time.NewTimer(time.Minute * time.Duration(len(nodes)))
 					for _, node := range nodes {
 						n := 0
 						for i := 0; i < NumberOfOrders; i++ {
 							select {
 							case <-node.DeltaNotifications:
 								n++
-							default:
+							case <-timer.C:
+								i = NumberOfOrders
 							}
 						}
 						Ω(n).Should(Equal(NumberOfOrders))
@@ -180,6 +185,8 @@ var _ = Describe("Dark nodes", func() {
 				})
 
 				AfterEach(func() {
+					err := deregisterNodes(nodes, mockRegistrar)
+					Ω(err).ShouldNot(HaveOccurred())
 					stopNodes(nodes)
 				})
 			})
@@ -201,10 +208,6 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		_, err = mockRegistrar.Register(config.RepublicKeyPair.ID(), []byte{}, big.NewInt(100))
-		if err != nil {
-			return nil, err
-		}
 		node, err := node.NewDarkNode(*config, mockRegistrar)
 		if err != nil {
 			return nil, err
@@ -212,6 +215,27 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 		nodes[i] = node
 	}
 	return nodes, nil
+}
+
+func registerNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
+	for _, node := range nodes {
+		_, err := mockRegistrar.Register(node.ID, []byte{}, big.NewInt(100))
+		if err != nil {
+			return err
+		}
+	}
+	_, err := mockRegistrar.Epoch()
+	return err
+}
+
+func deregisterNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
+	for _, node := range nodes {
+		_, err := mockRegistrar.Deregister(node.ID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func startNodeServices(nodes []*node.DarkNode) {
@@ -245,7 +269,7 @@ func watchDarkOcean(nodes []*node.DarkNode) {
 			nodes[i].WatchDarkOcean()
 		}(i)
 	}
-	time.Sleep(time.Duration(len(nodes)) * time.Second)
+	time.Sleep(time.Duration(len(nodes)) * 2 * time.Second)
 }
 
 func stopNodes(nodes []*node.DarkNode) {
@@ -284,7 +308,7 @@ func connectNodes(nodes []*node.DarkNode, connectivity int) (int, int) {
 
 func sendOrders(nodes []*node.DarkNode) error {
 	// Get order data from Binance
-	resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%v", NumberOfOrders))
+	resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%d", NumberOfOrders))
 	if err != nil {
 		return err
 	}
@@ -294,24 +318,28 @@ func sendOrders(nodes []*node.DarkNode) error {
 		return err
 	}
 	orderBook := new(OrderBook)
-	json.Unmarshal(response, orderBook)
+	if err := json.Unmarshal(response, orderBook); err != nil {
+		log.Println(response)
+		return err
+	}
 
 	// Generate order from the Binance data
 	buyOrders := make([]*order.Order, len(orderBook.Asks))
 	sellOrders := make([]*order.Order, len(orderBook.Asks))
 
 	for i, j := range orderBook.Asks {
-		price, err := strconv.ParseFloat(j[0], 10)
+		price, err := strconv.ParseFloat(j[0].(string), 10)
+		if err != nil {
+			return errors.New("fail to parse the price into a float")
+		}
 		price = price * 1000000000000
-		if err != nil {
-			return errors.New("fail to parse the price into a big int")
-		}
 
-		amount, err := strconv.ParseFloat(j[1], 10)
-		amount = amount * 1000000000000
+
+		amount, err := strconv.ParseFloat(j[1].(string), 10)
 		if err != nil {
-			return errors.New("fail to parse the amount into a big int")
+			return errors.New("fail to parse the amount into a float")
 		}
+		amount = amount * 1000000000000
 		sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour),
 			order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
 			big.NewInt(int64(amount)), big.NewInt(1))
@@ -325,7 +353,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 
 	// Send order fragment to the nodes
 	totalNodes := len(nodes)
-	pool := rpc.NewClientPool(trader)
+	pool := rpc.NewClientPool(trader).WithTimeout(10 * time.Second).WithTimeoutBackoff(5 * time.Second)
 	for i := range buyOrders {
 		buyOrder, sellOrder := buyOrders[i], sellOrders[i]
 		log.Printf("Sending matched order. [BUY] %s <---> [SELL] %s", buyOrder.ID, sellOrder.ID)
@@ -355,6 +383,6 @@ func sendOrders(nodes []*node.DarkNode) error {
 		})
 	}
 
-	time.Sleep(time.Duration(len(nodes)+NumberOfOrders) * time.Second)
+	time.Sleep(time.Second)
 	return nil
 }

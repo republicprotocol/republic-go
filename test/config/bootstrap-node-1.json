@@ -27,15 +27,12 @@
     },
     "host": "0.0.0.0",
     "port": "3000",
-    "ethereum_key": {
+    "keyPair": "4iwmeJLKS5Fojd1dapDzovofvULMHRizueHtHAcvhs6Q",
+    "ethereumKey": {
         "address": "00ae1136172e92544deeb2d7308dd6b847ffc777",
         "privatekey": "2868380c0c42ab54687bc1694d329c33ff4f6ee5fb1dcfd1d5ed6886b14babe6",
         "id": "52ee83d6-285b-49be-8c8b-57e5bb0a3bbc",
         "version": 3
     },
-    "republic_key_pair": "4iwmeJLKS5Fojd1dapDzovofvULMHRizueHtHAcvhs6Q",
-    "rsa_key_pair": "4iwmeJLKS5Fojd1dapDzovofvULMHRizueHtHAcvhs6Q",
-    "dev": true,
-    "ethereum_rpc": "",
-    "prime": null
+    "ethereumRPC": "https://ropsten.infura.io"
 }

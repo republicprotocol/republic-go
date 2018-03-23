@@ -1,10 +1,11 @@
 package logger
 
 import (
-	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -14,13 +15,15 @@ import (
 type WebSocketPlugin struct {
 	do.GuardedObject
 
+	logger   *Logger
 	server   *http.Server
 	host     string
 	port     string
 	username string
 	password string
 
-	logs chan Log
+	logsMu *sync.Mutex
+	logs   map[int64]chan Log
 }
 
 type WebSocketPluginOptions struct {
@@ -30,19 +33,26 @@ type WebSocketPluginOptions struct {
 	Password string `json:"password"`
 }
 
-func NewWebSocketPlugin(webSocketPluginOptions WebSocketPluginOptions) Plugin {
+func NewWebSocketPlugin(logger *Logger, webSocketPluginOptions WebSocketPluginOptions) Plugin {
 	plugin := &WebSocketPlugin{
 		GuardedObject: do.NewGuardedObject(),
+		logger:        logger,
 		host:          webSocketPluginOptions.Host,
 		port:          webSocketPluginOptions.Port,
 		username:      webSocketPluginOptions.Username,
 		password:      webSocketPluginOptions.Password,
-		logs:          make(chan Log, 100),
+		logsMu:        new(sync.Mutex),
+		logs:          make(map[int64]chan Log),
 	}
 	return plugin
 }
 
 func (plugin *WebSocketPlugin) handler(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		go plugin.logger.Network(Info, "WebSocket logger connection released")
+	}()
+	go plugin.logger.Network(Info, "WebSocket logger connection acquired")
+
 	upgrader := websocket.Upgrader{
 		CheckOrigin:     func(r *http.Request) bool { return true },
 		ReadBufferSize:  1024,
@@ -72,19 +82,25 @@ func (plugin *WebSocketPlugin) handler(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
+	// Register this channel
+	id := rand.Int63()
+	logs := make(chan Log, 100)
+	plugin.logsMu.Lock()
+	plugin.logs[id] = logs
+	plugin.logsMu.Unlock()
+
 	// Broadcast logs to the WebSocket
 	for {
-		var val Log
 		select {
-		case val = <-plugin.logs:
+		case val := <-logs:
+			conn.SetWriteDeadline(time.Now().Add(writeDeadline))
+			conn.WriteJSON(val)
 		case <-ping.C:
 			conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 			if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 				return
 			}
 		}
-		conn.SetWriteDeadline(time.Now().Add(writeDeadline))
-		conn.WriteJSON(val)
 	}
 }
 
@@ -97,11 +113,11 @@ func (plugin *WebSocketPlugin) Start() error {
 	mux.HandleFunc("/logs", plugin.handler)
 	plugin.server.Handler = mux
 	go func() {
-		log.Println(fmt.Sprintf("WebSocket logger listening on %s:%s", plugin.host, plugin.port))
 		if err := plugin.server.ListenAndServe(); err != nil {
 			log.Println(err)
 		}
 	}()
+	go plugin.logger.Network(Info, fmt.Sprintf("WebSocket logger listening on %s:%s", plugin.host, plugin.port))
 	return nil
 }
 
@@ -112,10 +128,21 @@ func (plugin *WebSocketPlugin) Stop() error {
 
 // Log implements the Plugin interface.
 func (plugin *WebSocketPlugin) Log(l Log) error {
-	select {
-	case plugin.logs <- l:
-	default:
-		return errors.New("cannot write log to websocket plugin: log queue is full")
+	plugin.logsMu.Lock()
+	defer plugin.logsMu.Unlock()
+	for _, logs := range plugin.logs {
+		select {
+		case logs <- l:
+			// Write was successful
+		default:
+			// Logging queue was full, drop the oldest message and loop
+			<-logs
+			// Try again, but still use select just in case
+			select {
+			case logs <- l:
+			default:
+			}
+		}
 	}
 	return nil
 }
