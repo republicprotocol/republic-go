@@ -189,8 +189,34 @@ func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 	}
 }
 
+// ...
+func mulAddWW(x *Int1024, y uint64) Int1024 {
+
+	m := x.length
+	z := Zero()
+	nxt := mulAddVWW_g(z.words[0:m], x.words[0:m], y, 0)
+	z.length = m
+	if m < INT1024WORDS && nxt > 0 {
+		z.words[m] = nxt
+		z.length++
+	}
+
+	return z
+}
+
 // Mul returns x*y
 func (x *Int1024) Mul(y *Int1024) Int1024 {
+
+	m := x.length
+	n := y.length
+	switch {
+	case m < n:
+		x, y = y, x
+	case x.IsZero() || y.IsZero():
+		return Zero()
+	case n == 1:
+		return mulAddWW(x, y.words[0])
+	}
 
 	if x.length+y.length <= INT1024WORDS {
 		return x.BasicMul(y)
