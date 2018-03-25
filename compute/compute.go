@@ -202,16 +202,10 @@ func (matrix *DeltaFragmentMatrix) OpenOrders() chan *rpc.Order{
 		}
 
 		for fragment := range matrix.newFragment {
-			if _, ok := matrix.buyOrderFragments[string(fragment.OrderID)]; fragment.OrderParity == order.ParityBuy && !ok{
-				ord := new(rpc.Order)
-				ord.Id = fragment.OrderID
-				ord.Parity = int64(fragment.OrderParity)
-				ord.Expiry = fragment.OrderExpiry.Unix()
+			_, existBuy:= matrix.buyOrderFragments[string(fragment.OrderID)]
+			_, existSell := matrix.sellOrderFragments[string(fragment.OrderID)]
 
-				openOrders <- ord
-			}
-
-			if _, ok := matrix.sellOrderFragments[string(fragment.OrderID)]; fragment.OrderParity == order.ParitySell && !ok{
+			if (fragment.OrderParity == order.ParityBuy && !existBuy) || (fragment.OrderParity == order.ParitySell && !existSell){
 				ord := new(rpc.Order)
 				ord.Id = fragment.OrderID
 				ord.Parity = int64(fragment.OrderParity)
