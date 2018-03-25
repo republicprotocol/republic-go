@@ -319,35 +319,41 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 }
 
 // OnSync returns
-func (node *DarkNode) OnSync(from identity.MultiAddress, blocks chan *rpc.SyncBlock) {
-	// Sending all open orders
-	buyOrders := node.DeltaFragmentMatrix.BuyOrders()
-	sellOrders := node.DeltaFragmentMatrix.SellOrders()
-	orders := append(buyOrders, sellOrders...)
-	for i := range orders {
-		syncBlock := new(rpc.SyncBlock)
-		syncBlock.Timestamp = time.Now().Unix()
-		syncBlock.OrderBlock = &rpc.SyncBlock_Open{
-			Open: rpc.SerializeOrder(orders[i]),
-		}
+func (node *DarkNode) OnSync(from identity.MultiAddress) chan *rpc.SyncBlock {
+	blocks := make(chan *rpc.SyncBlock, 100)
 
-		blocks <- syncBlock
-	}
+	// Sending all open orders
+	go func() {
+		openOrders := node.DeltaFragmentMatrix.OpenOrders()
+		for ord := range openOrders {
+			syncBlock := new(rpc.SyncBlock)
+			syncBlock.Timestamp = time.Now().Unix()
+			syncBlock.OrderBlock = &rpc.SyncBlock_Open{
+				Open: ord,
+			}
+
+			blocks <- syncBlock
+		}
+	}()
 
 	// Sending all unconfirmed orders
-	unconfirmedOrders := node.DeltaBuilder.UnconfirmedOrders()
-	for i := range unconfirmedOrders {
-		syncBlock := new(rpc.SyncBlock)
-		syncBlock.Timestamp = time.Now().Unix()
-		syncBlock.OrderBlock = &rpc.SyncBlock_Unconfirmed{
-			Unconfirmed: rpc.SerializeOrder(unconfirmedOrders[i]),
+	go func() {
+		unconfirmedOrders := node.DeltaBuilder.UnconfirmedOrders()
+		for ord := range unconfirmedOrders {
+			syncBlock := new(rpc.SyncBlock)
+			syncBlock.Timestamp = time.Now().Unix()
+			syncBlock.OrderBlock = &rpc.SyncBlock_Unconfirmed{
+				Unconfirmed: ord,
+			}
+			blocks <- syncBlock
 		}
-		blocks <- syncBlock
-	}
+	}()
 
-	// Collect all closed orders
+	// Collect all confirmed orders
 
-	// Collect all executed orders
+	// Collect all settled orders
+
+	return blocks
 }
 
 // OnOpenOrder writes an order fragment that has been received to the

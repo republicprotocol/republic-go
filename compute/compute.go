@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -15,6 +16,7 @@ type DeltaBuilder struct {
 	deltas                 map[string]*Delta
 	deltaFragments         map[string]*DeltaFragment
 	deltasToDeltaFragments map[string][]*DeltaFragment
+	newDeltaFragment       chan *DeltaFragment
 }
 
 func NewDeltaBuilder(k int64, prime *big.Int) *DeltaBuilder {
@@ -25,31 +27,66 @@ func NewDeltaBuilder(k int64, prime *big.Int) *DeltaBuilder {
 		deltas:                 map[string]*Delta{},
 		deltaFragments:         map[string]*DeltaFragment{},
 		deltasToDeltaFragments: map[string][]*DeltaFragment{},
+		newDeltaFragment:       make(chan *DeltaFragment, 100),
 	}
 }
 
-func (builder *DeltaBuilder) UnconfirmedOrders() []*order.Order {
-	builder.EnterReadOnly(nil)
-	defer builder.Exit()
+func (builder *DeltaBuilder) UnconfirmedOrders() chan *rpc.Order {
+	orders := make(chan *rpc.Order, 100)
+	sentOrders := map[string]bool{}
+	go func() {
+		builder.EnterReadOnly(nil)
+		builder.Exit()
 
-	orders := make([]*order.Order, 0)
-	for _, delta := range builder.deltas {
-		buyOrder := new(order.Order)
-		buyOrder.ID = delta.BuyOrderID
-		buyOrder.Parity = order.ParityBuy
-		orders = append(orders, buyOrder)
+		for _, delta := range builder.deltas {
+			buyOrder := new(rpc.Order)
+			buyOrder.Id = delta.BuyOrderID
+			buyOrder.Parity = int64(order.ParityBuy)
+			if _, ok := sentOrders[string(delta.BuyOrderID)]; !ok {
+				orders <- buyOrder
+				sentOrders[string(delta.BuyOrderID)] = true
+			}
 
-		sellOrder := new(order.Order)
-		sellOrder.ID = delta.SellOrderID
-		orders = append(orders, sellOrder)
-		sellOrder.Parity = order.ParitySell
-	}
+			sellOrder := new(rpc.Order)
+			sellOrder.Id = delta.SellOrderID
+			sellOrder.Parity = int64(order.ParitySell)
+			if _, ok := sentOrders[string(delta.SellOrderID)]; !ok {
+				orders <- sellOrder
+				sentOrders[string(delta.SellOrderID)] = true
+			}
+		}
+
+		for delta := range builder.newDeltaFragment {
+			buyOrder := new(rpc.Order)
+			buyOrder.Id = delta.BuyOrderID
+			buyOrder.Parity = int64(order.ParityBuy)
+			if _, ok := sentOrders[string(delta.BuyOrderID)]; !ok {
+				orders <- buyOrder
+				sentOrders[string(delta.BuyOrderID)] = true
+			}
+
+			sellOrder := new(rpc.Order)
+			sellOrder.Id = delta.SellOrderID
+			sellOrder.Parity = int64(order.ParitySell)
+			if _, ok := sentOrders[string(delta.SellOrderID)]; !ok {
+				orders <- sellOrder
+				sentOrders[string(delta.SellOrderID)] = true
+			}
+		}
+	}()
+
 	return orders
 }
 
 func (builder *DeltaBuilder) InsertDeltaFragment(deltaFragment *DeltaFragment) *Delta {
+	if len(builder.newDeltaFragment) == 100{
+		<- builder.newDeltaFragment
+	}
+	builder.newDeltaFragment<- deltaFragment
+
 	builder.Enter(nil)
 	defer builder.Exit()
+
 	return builder.insertDeltaFragment(deltaFragment)
 }
 
@@ -126,6 +163,7 @@ type DeltaFragmentMatrix struct {
 	buyOrderFragments     map[string]*order.Fragment
 	sellOrderFragments    map[string]*order.Fragment
 	buySellDeltaFragments map[string]map[string]*DeltaFragment
+	newFragment           chan *order.Fragment
 }
 
 func NewDeltaFragmentMatrix(prime *big.Int) *DeltaFragmentMatrix {
@@ -135,8 +173,58 @@ func NewDeltaFragmentMatrix(prime *big.Int) *DeltaFragmentMatrix {
 		buyOrderFragments:     map[string]*order.Fragment{},
 		sellOrderFragments:    map[string]*order.Fragment{},
 		buySellDeltaFragments: map[string]map[string]*DeltaFragment{},
+		newFragment:           make(chan *order.Fragment, 100),
 	}
 }
+
+func (matrix *DeltaFragmentMatrix) OpenOrders() chan *rpc.Order{
+	matrix.EnterReadOnly(nil)
+	defer matrix.Exit()
+
+	openOrders := make (chan *rpc.Order, 100)
+	go func() {
+		for orderId, orderFragment  := range matrix.buyOrderFragments{
+			buyOrder := new(rpc.Order)
+			buyOrder.Id = []byte(orderId)
+			buyOrder.Parity = int64(order.ParityBuy)
+			buyOrder.Expiry = orderFragment.OrderExpiry.Unix()
+
+			openOrders <- buyOrder
+		}
+
+		for orderId, orderFragment  := range matrix.sellOrderFragments{
+			sellOrder := new(rpc.Order)
+			sellOrder.Id = []byte(orderId)
+			sellOrder.Parity = int64(order.ParitySell)
+			sellOrder.Expiry = orderFragment.OrderExpiry.Unix()
+
+			openOrders <- sellOrder
+		}
+
+		for fragment := range matrix.newFragment {
+			if _, ok := matrix.buyOrderFragments[string(fragment.OrderID)]; fragment.OrderParity == order.ParityBuy && !ok{
+				ord := new(rpc.Order)
+				ord.Id = fragment.OrderID
+				ord.Parity = int64(fragment.OrderParity)
+				ord.Expiry = fragment.OrderExpiry.Unix()
+
+				openOrders <- ord
+			}
+
+			if _, ok := matrix.sellOrderFragments[string(fragment.OrderID)]; fragment.OrderParity == order.ParitySell && !ok{
+				ord := new(rpc.Order)
+				ord.Id = fragment.OrderID
+				ord.Parity = int64(fragment.OrderParity)
+				ord.Expiry = fragment.OrderExpiry.Unix()
+
+				openOrders <- ord
+			}
+		}
+	}()
+
+	return openOrders
+}
+
 
 func (matrix *DeltaFragmentMatrix) BuyOrders() []*order.Order {
 	matrix.EnterReadOnly(nil)

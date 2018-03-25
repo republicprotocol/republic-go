@@ -8,13 +8,13 @@ import (
 
 type OrderBook struct {
 	bookMu *sync.RWMutex
-	Book map[string]*order.Order
+	Book   map[string]*order.Order
 }
 
 func NewOrderBook() *OrderBook {
 	return &OrderBook{
 		bookMu: new(sync.RWMutex),
-		Book: map[string]*order.Order{},
+		Book:   map[string]*order.Order{},
 	}
 }
 
@@ -42,4 +42,3 @@ func (orderBook OrderBook) Delete(id order.ID) {
 
 	delete(orderBook.Book, string(id))
 }
-
