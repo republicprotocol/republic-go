@@ -6,8 +6,8 @@ import (
 )
 
 type Delegate interface {
-	OnOrderReleased(order order.ID)
-	OnOrderExecuted(buyOrder order.ID, sellOrder order.ID)
+	OnOrderOpened(order order.ID)
+	OnOrderConfirmed(buyOrder order.ID, sellOrder order.ID)
 }
 
 type Tuple struct {
