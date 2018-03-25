@@ -78,10 +78,10 @@ func (builder *DeltaBuilder) UnconfirmedOrders() chan *order.Order {
 }
 
 func (builder *DeltaBuilder) InsertDeltaFragment(deltaFragment *DeltaFragment) *Delta {
-	if len(builder.newDeltaFragment) == 100{
-		<- builder.newDeltaFragment
+	if len(builder.newDeltaFragment) == 100 {
+		<-builder.newDeltaFragment
 	}
-	builder.newDeltaFragment<- deltaFragment
+	builder.newDeltaFragment <- deltaFragment
 
 	builder.Enter(nil)
 	defer builder.Exit()
@@ -176,13 +176,13 @@ func NewDeltaFragmentMatrix(prime *big.Int) *DeltaFragmentMatrix {
 	}
 }
 
-func (matrix *DeltaFragmentMatrix) OpenOrders() chan *order.Order{
+func (matrix *DeltaFragmentMatrix) OpenOrders() chan *order.Order {
 	matrix.EnterReadOnly(nil)
 	defer matrix.Exit()
 
-	openOrders := make (chan *order.Order, 100)
+	openOrders := make(chan *order.Order, 100)
 	go func() {
-		for orderId, orderFragment  := range matrix.buyOrderFragments{
+		for orderId, orderFragment := range matrix.buyOrderFragments {
 			buyOrder := new(order.Order)
 			buyOrder.ID = []byte(orderId)
 			buyOrder.Parity = order.ParityBuy
@@ -191,7 +191,7 @@ func (matrix *DeltaFragmentMatrix) OpenOrders() chan *order.Order{
 			openOrders <- buyOrder
 		}
 
-		for orderId, orderFragment  := range matrix.sellOrderFragments{
+		for orderId, orderFragment := range matrix.sellOrderFragments {
 			sellOrder := new(order.Order)
 			sellOrder.ID = []byte(orderId)
 			sellOrder.Parity = order.ParitySell
@@ -201,14 +201,14 @@ func (matrix *DeltaFragmentMatrix) OpenOrders() chan *order.Order{
 		}
 
 		for fragment := range matrix.newFragment {
-			_, existBuy:= matrix.buyOrderFragments[string(fragment.OrderID)]
+			_, existBuy := matrix.buyOrderFragments[string(fragment.OrderID)]
 			_, existSell := matrix.sellOrderFragments[string(fragment.OrderID)]
 
-			if (fragment.OrderParity == order.ParityBuy && !existBuy) || (fragment.OrderParity == order.ParitySell && !existSell){
+			if (fragment.OrderParity == order.ParityBuy && !existBuy) || (fragment.OrderParity == order.ParitySell && !existSell) {
 				ord := new(order.Order)
 				ord.ID = fragment.OrderID
 				ord.Parity = fragment.OrderParity
-				ord.Expiry = fragment.OrderExpiry.Unix()
+				ord.Expiry = fragment.OrderExpiry
 
 				openOrders <- ord
 			}
@@ -217,7 +217,6 @@ func (matrix *DeltaFragmentMatrix) OpenOrders() chan *order.Order{
 
 	return openOrders
 }
-
 
 func (matrix *DeltaFragmentMatrix) BuyOrders() []*order.Order {
 	matrix.EnterReadOnly(nil)
