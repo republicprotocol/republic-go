@@ -4,7 +4,6 @@ import (
 	"math/big"
 
 	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -31,25 +30,25 @@ func NewDeltaBuilder(k int64, prime *big.Int) *DeltaBuilder {
 	}
 }
 
-func (builder *DeltaBuilder) UnconfirmedOrders() chan *rpc.Order {
-	orders := make(chan *rpc.Order, 100)
+func (builder *DeltaBuilder) UnconfirmedOrders() chan *order.Order {
+	orders := make(chan *order.Order, 100)
 	sentOrders := map[string]bool{}
 	go func() {
 		builder.EnterReadOnly(nil)
 		builder.Exit()
 
 		for _, delta := range builder.deltas {
-			buyOrder := new(rpc.Order)
-			buyOrder.Id = delta.BuyOrderID
-			buyOrder.Parity = int64(order.ParityBuy)
+			buyOrder := new(order.Order)
+			buyOrder.ID = delta.BuyOrderID
+			buyOrder.Parity = order.ParityBuy
 			if _, ok := sentOrders[string(delta.BuyOrderID)]; !ok {
 				orders <- buyOrder
 				sentOrders[string(delta.BuyOrderID)] = true
 			}
 
-			sellOrder := new(rpc.Order)
-			sellOrder.Id = delta.SellOrderID
-			sellOrder.Parity = int64(order.ParitySell)
+			sellOrder := new(order.Order)
+			sellOrder.ID = delta.SellOrderID
+			sellOrder.Parity = order.ParitySell
 			if _, ok := sentOrders[string(delta.SellOrderID)]; !ok {
 				orders <- sellOrder
 				sentOrders[string(delta.SellOrderID)] = true
@@ -57,17 +56,17 @@ func (builder *DeltaBuilder) UnconfirmedOrders() chan *rpc.Order {
 		}
 
 		for delta := range builder.newDeltaFragment {
-			buyOrder := new(rpc.Order)
-			buyOrder.Id = delta.BuyOrderID
-			buyOrder.Parity = int64(order.ParityBuy)
+			buyOrder := new(order.Order)
+			buyOrder.ID = delta.BuyOrderID
+			buyOrder.Parity = order.ParityBuy
 			if _, ok := sentOrders[string(delta.BuyOrderID)]; !ok {
 				orders <- buyOrder
 				sentOrders[string(delta.BuyOrderID)] = true
 			}
 
-			sellOrder := new(rpc.Order)
-			sellOrder.Id = delta.SellOrderID
-			sellOrder.Parity = int64(order.ParitySell)
+			sellOrder := new(order.Order)
+			sellOrder.ID = delta.SellOrderID
+			sellOrder.Parity = order.ParitySell
 			if _, ok := sentOrders[string(delta.SellOrderID)]; !ok {
 				orders <- sellOrder
 				sentOrders[string(delta.SellOrderID)] = true
@@ -177,26 +176,26 @@ func NewDeltaFragmentMatrix(prime *big.Int) *DeltaFragmentMatrix {
 	}
 }
 
-func (matrix *DeltaFragmentMatrix) OpenOrders() chan *rpc.Order{
+func (matrix *DeltaFragmentMatrix) OpenOrders() chan *order.Order{
 	matrix.EnterReadOnly(nil)
 	defer matrix.Exit()
 
-	openOrders := make (chan *rpc.Order, 100)
+	openOrders := make (chan *order.Order, 100)
 	go func() {
 		for orderId, orderFragment  := range matrix.buyOrderFragments{
-			buyOrder := new(rpc.Order)
-			buyOrder.Id = []byte(orderId)
-			buyOrder.Parity = int64(order.ParityBuy)
-			buyOrder.Expiry = orderFragment.OrderExpiry.Unix()
+			buyOrder := new(order.Order)
+			buyOrder.ID = []byte(orderId)
+			buyOrder.Parity = order.ParityBuy
+			buyOrder.Expiry = orderFragment.OrderExpiry
 
 			openOrders <- buyOrder
 		}
 
 		for orderId, orderFragment  := range matrix.sellOrderFragments{
-			sellOrder := new(rpc.Order)
-			sellOrder.Id = []byte(orderId)
-			sellOrder.Parity = int64(order.ParitySell)
-			sellOrder.Expiry = orderFragment.OrderExpiry.Unix()
+			sellOrder := new(order.Order)
+			sellOrder.ID = []byte(orderId)
+			sellOrder.Parity = order.ParitySell
+			sellOrder.Expiry = orderFragment.OrderExpiry
 
 			openOrders <- sellOrder
 		}
@@ -206,9 +205,9 @@ func (matrix *DeltaFragmentMatrix) OpenOrders() chan *rpc.Order{
 			_, existSell := matrix.sellOrderFragments[string(fragment.OrderID)]
 
 			if (fragment.OrderParity == order.ParityBuy && !existBuy) || (fragment.OrderParity == order.ParitySell && !existSell){
-				ord := new(rpc.Order)
-				ord.Id = fragment.OrderID
-				ord.Parity = int64(fragment.OrderParity)
+				ord := new(order.Order)
+				ord.ID = fragment.OrderID
+				ord.Parity = fragment.OrderParity
 				ord.Expiry = fragment.OrderExpiry.Unix()
 
 				openOrders <- ord

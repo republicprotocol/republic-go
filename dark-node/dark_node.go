@@ -329,7 +329,7 @@ func (node *DarkNode) OnSync(from identity.MultiAddress) chan *rpc.SyncBlock {
 			syncBlock := new(rpc.SyncBlock)
 			syncBlock.Timestamp = time.Now().Unix()
 			syncBlock.OrderBlock = &rpc.SyncBlock_Open{
-				Open: ord,
+				Open: rpc.SerializeOrder(ord),
 			}
 
 			blocks <- syncBlock
@@ -343,7 +343,7 @@ func (node *DarkNode) OnSync(from identity.MultiAddress) chan *rpc.SyncBlock {
 			syncBlock := new(rpc.SyncBlock)
 			syncBlock.Timestamp = time.Now().Unix()
 			syncBlock.OrderBlock = &rpc.SyncBlock_Unconfirmed{
-				Unconfirmed: ord,
+				Unconfirmed: rpc.SerializeOrder(ord),
 			}
 			blocks <- syncBlock
 		}
