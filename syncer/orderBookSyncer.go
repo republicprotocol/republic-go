@@ -1,8 +1,10 @@
-package Syncer
+package syncer
 
 import (
 	"sync"
+	"time"
 
+	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -15,7 +17,7 @@ type OrderBookSyncer interface {
 }
 
 type OrderBookCache struct {
-	mu *sync.Mutex
+	mu *sync.RWMutex
 
 	orders map[string]*order.Order
 	status map[string]order.Status
@@ -23,7 +25,7 @@ type OrderBookCache struct {
 
 func NewOrderBookCache() *OrderBookCache {
 	return &OrderBookCache{
-		mu:     new(sync.Mutex),
+		mu:     new(sync.RWMutex),
 		orders: map[string]*order.Order{},
 		status: map[string]order.Status{},
 	}
@@ -80,6 +82,22 @@ func (orderBookCache *OrderBookCache) Settle(ord *order.Order) {
 	}
 }
 
+func (orderBookCache *OrderBookCache) Orders() []*rpc.SyncBlock {
+	orderBookCache.mu.RLock()
+	defer orderBookCache.mu.RUnlock()
+
+	blocks := make ([]*rpc.SyncBlock, 0)
+	for _ , ord := range orderBookCache.orders {
+		status, ok := orderBookCache.status[string(ord.ID)]
+		if ok {
+			block := orderToSyncBlock(ord , status)
+			blocks = append(blocks, block)
+		}
+	}
+
+	return blocks
+}
+
 // todo : finish this
 type OrderBookDB struct {
 	mu *sync.Mutex
@@ -127,18 +145,18 @@ type OrderBookStreamer struct {
 	mu *sync.Mutex
 
 	maxConnections int
-	subscribers    map[string]chan OrderStatusEvent
+	subscribers    map[string]chan *rpc.SyncBlock
 }
 
 func NewOrderBookStreamer(maxConnection int) *OrderBookStreamer {
 	return &OrderBookStreamer{
 		mu:             new(sync.Mutex),
 		maxConnections: maxConnection,
-		subscribers:    map[string]chan OrderStatusEvent{},
+		subscribers:    map[string]chan *rpc.SyncBlock{},
 	}
 }
 
-func (orderBookStreamer *OrderBookStreamer) Subscribe(id string, listener chan OrderStatusEvent) {
+func (orderBookStreamer *OrderBookStreamer) Subscribe(id string, listener chan *rpc.SyncBlock) {
 	orderBookStreamer.mu.Lock()
 	defer orderBookStreamer.mu.Unlock()
 
@@ -162,7 +180,7 @@ func (orderBookStreamer *OrderBookStreamer) Open(ord *order.Order) {
 
 	for _, subscriber := range orderBookStreamer.subscribers {
 		// todo : what if block here
-		subscriber <- NewOrderStatusEvent(ord.ID, order.Open)
+		subscriber <- orderToSyncBlock(ord, order.Open)
 	}
 }
 
@@ -171,7 +189,7 @@ func (orderBookStreamer *OrderBookStreamer) Match(ord *order.Order) {
 	defer orderBookStreamer.mu.Unlock()
 
 	for _, subscriber := range orderBookStreamer.subscribers {
-		subscriber <- NewOrderStatusEvent(ord.ID, order.Unconfirmed)
+		subscriber <- orderToSyncBlock(ord, order.Unconfirmed)
 	}
 }
 
@@ -180,7 +198,7 @@ func (orderBookStreamer *OrderBookStreamer) Confirm(ord *order.Order) {
 	defer orderBookStreamer.mu.Unlock()
 
 	for _, subscriber := range orderBookStreamer.subscribers {
-		subscriber <- NewOrderStatusEvent(ord.ID, order.Confirmed)
+		subscriber <- orderToSyncBlock(ord, order.Confirmed)
 	}
 }
 
@@ -189,7 +207,7 @@ func (orderBookStreamer *OrderBookStreamer) Release(ord *order.Order) {
 	defer orderBookStreamer.mu.Unlock()
 
 	for _, subscriber := range orderBookStreamer.subscribers {
-		subscriber <- NewOrderStatusEvent(ord.ID, order.Open)
+		subscriber <- orderToSyncBlock(ord, order.Open)
 	}
 }
 
@@ -198,6 +216,34 @@ func (orderBookStreamer *OrderBookStreamer) Settle(ord *order.Order) {
 	defer orderBookStreamer.mu.Unlock()
 
 	for _, subscriber := range orderBookStreamer.subscribers {
-		subscriber <- NewOrderStatusEvent(ord.ID, order.Settled)
+		subscriber <- orderToSyncBlock(ord, order.Settled)
 	}
+}
+
+func orderToSyncBlock(ord *order.Order, status order.Status) *rpc.SyncBlock{
+	block := new(rpc.SyncBlock)
+	block.Timestamp = time.Now().Unix()
+	block.Signature = []byte{} // todo : will be finished later
+	switch status{
+	case order.Open:
+		block.OrderBlock = &rpc.SyncBlock_Open{
+			Open: rpc.SerializeOrder(ord),
+		}
+	case order.Unconfirmed:
+		block.OrderBlock = &rpc.SyncBlock_Unconfirmed{
+			Unconfirmed: rpc.SerializeOrder(ord),
+		}
+	case order.Confirmed:
+		block.OrderBlock = &rpc.SyncBlock_Confirmed{
+			Confirmed: rpc.SerializeOrder(ord),
+		}
+	case order.Settled:
+		block.OrderBlock = &rpc.SyncBlock_Settled{
+			Settled: rpc.SerializeOrder(ord),
+		}
+	default:
+		return nil
+	}
+
+	return block
 }

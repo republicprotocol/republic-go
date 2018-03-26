@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/republicprotocol/republic-go/Syncer"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark"
@@ -43,6 +44,7 @@ type DarkNode struct {
 	Logger                 *logger.Logger
 	ClientPool             *rpc.ClientPool
 	DHT                    *dht.DHT
+	OrderBook              *syncer.OrderBook
 
 	DeltaBuilder                      *compute.DeltaBuilder
 	DeltaFragmentMatrix               *compute.DeltaFragmentMatrix
@@ -104,6 +106,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 		WithTimeoutRetries(node.NetworkOptions.TimeoutRetries).
 		WithCacheLimit(node.NetworkOptions.ClientPoolCacheLimit)
 	node.DHT = dht.NewDHT(node.NetworkOptions.MultiAddress.Address(), node.NetworkOptions.MaxBucketLength)
+	node.OrderBook = syncer.NewOrderBook(config.maxConnections) // todo : add this field in the config  struct
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
 	node.Swarm = network.NewSwarmService(node, node.NetworkOptions, node.Logger, node.ClientPool, node.DHT)
 	node.Dark = network.NewDarkService(node, node.NetworkOptions, node.Logger)
@@ -320,40 +323,42 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 
 // OnSync returns
 func (node *DarkNode) OnSync(from identity.MultiAddress) chan *rpc.SyncBlock {
-	blocks := make(chan *rpc.SyncBlock, 100)
+		blocks := make(chan *rpc.SyncBlock, 100)
 
-	// Sending all open orders
-	go func() {
-		openOrders := node.DeltaFragmentMatrix.OpenOrders()
-		for ord := range openOrders {
-			syncBlock := new(rpc.SyncBlock)
-			syncBlock.Timestamp = time.Now().Unix()
-			syncBlock.OrderBlock = &rpc.SyncBlock_Open{
-				Open: rpc.SerializeOrder(ord),
+		node.OrderBook.Subscribe(from.String(), blocks)
+
+		// Sending all open orders
+		go func() {
+			openOrders := node.DeltaFragmentMatrix.OpenOrders()
+			for ord := range openOrders {
+				syncBlock := new(rpc.SyncBlock)
+				syncBlock.Timestamp = time.Now().Unix()
+				syncBlock.OrderBlock = &rpc.SyncBlock_Open{
+					Open: rpc.SerializeOrder(ord),
+				}
+
+				blocks <- syncBlock
 			}
+		}()
 
-			blocks <- syncBlock
-		}
-	}()
-
-	// Sending all unconfirmed orders
-	go func() {
-		unconfirmedOrders := node.DeltaBuilder.UnconfirmedOrders()
-		for ord := range unconfirmedOrders {
-			syncBlock := new(rpc.SyncBlock)
-			syncBlock.Timestamp = time.Now().Unix()
-			syncBlock.OrderBlock = &rpc.SyncBlock_Unconfirmed{
-				Unconfirmed: rpc.SerializeOrder(ord),
+		// Sending all unconfirmed orders
+		go func() {
+			unconfirmedOrders := node.DeltaBuilder.UnconfirmedOrders()
+			for ord := range unconfirmedOrders {
+				syncBlock := new(rpc.SyncBlock)
+				syncBlock.Timestamp = time.Now().Unix()
+				syncBlock.OrderBlock = &rpc.SyncBlock_Unconfirmed{
+					Unconfirmed: rpc.SerializeOrder(ord),
+				}
+				blocks <- syncBlock
 			}
-			blocks <- syncBlock
-		}
-	}()
+		}()
 
-	// Collect all confirmed orders
+		// Collect all confirmed orders
 
-	// Collect all settled orders
+		// Collect all settled orders
 
-	return blocks
+		return blocks
 }
 
 // OnOpenOrder writes an order fragment that has been received to the

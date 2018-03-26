@@ -1,6 +1,9 @@
-package Syncer
+package syncer
 
-import "github.com/republicprotocol/republic-go/order"
+import (
+	"github.com/republicprotocol/republic-go/network/rpc"
+	"github.com/republicprotocol/republic-go/order"
+)
 
 type OrderBook struct {
 	orderBookCache *OrderBookCache
@@ -16,8 +19,14 @@ func NewOrderBook(maxConnections int) *OrderBook {
 	}
 }
 
-func (orderBook OrderBook) Subscribe(id string , listener chan OrderStatusEvent){
-	orderBook.orderBookStreamer.Subscribe(id, listener)
+func (orderBook OrderBook) Subscribe(id string , listener chan *rpc.SyncBlock){
+	blocks := orderBook.orderBookCache.Orders()
+	go func() {
+		for _, block := range blocks{
+			listener <- block
+		}
+	}()
+	orderBook.orderBookStreamer.Subscribe(id,  listener)
 }
 
 func (orderBook OrderBook) Unsubscribe(id string){
