@@ -170,7 +170,7 @@ var _ = Describe("Int1024", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 			array := []Int1024{zero, one, two, three, four, five, six, seven, eleven, twelve, oneWord, max}
 			for _, num := range array {
-				actual := FromBytes(num.ToBytes())
+				actual := FromBytes(num.Bytes())
 				Ω(actual).Should(Equal(num))
 
 				actual = FromLittleEndianBytes(num.ToLittleEndianBytes())

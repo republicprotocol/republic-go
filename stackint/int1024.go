@@ -154,8 +154,8 @@ func (x *Int1024) String() string {
 	return ret
 }
 
-// ToBytes returns an array of BYTECOUNT (128) bytes (Big Endian)
-func (x *Int1024) ToBytes() []byte {
+// Bytes returns an array of BYTECOUNT (128) bytes (Big Endian)
+func (x *Int1024) Bytes() []byte {
 
 	bitlen := x.BitLength()
 	i := uint16(bitlen / 8)
@@ -216,8 +216,8 @@ func FromBytes(bytesAll []byte) Int1024 {
 	return x
 }
 
-// ToLittleEndianBytes returns an array of BYTECOUNT (128) bytes (Little Endian)
-func (x *Int1024) ToLittleEndianBytes() []byte {
+// LittleEndianBytes returns an array of BYTECOUNT (128) bytes (Little Endian)
+func (x *Int1024) LittleEndianBytes() []byte {
 
 	bitlen := x.BitLength()
 	i := uint16(bitlen / 8)
@@ -311,7 +311,7 @@ func (x *Int1024) ToBinary() string {
 
 // ToBigInt converts x to a big.Int
 func (x *Int1024) ToBigInt() *big.Int {
-	return big.NewInt(0).SetBytes(x.ToBytes())
+	return big.NewInt(0).SetBytes(x.Bytes())
 }
 
 // FromBigInt converts a big.Int to an Int1024
