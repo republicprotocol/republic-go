@@ -28,7 +28,7 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024) (Shares, error) {
 	if n < k {
 		return nil, NewNKError(n, k)
 	}
-	if prime.LessThanOrEqual(secret) {
+	if prime.Cmp(secret) <= 0 {
 		return nil, NewFiniteFieldError(secret)
 	}
 
