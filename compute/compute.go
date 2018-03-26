@@ -218,6 +218,11 @@ func (matrix *DeltaFragmentMatrix) OpenOrders() chan *order.Order {
 }
 
 func (matrix *DeltaFragmentMatrix) InsertOrderFragment(orderFragment *order.Fragment) ([]*DeltaFragment, error) {
+	if len(matrix.newFragment) == 100 {
+		<-matrix.newFragment
+	}
+	matrix.newFragment <- orderFragment
+
 	matrix.Enter(nil)
 	defer matrix.Exit()
 	if orderFragment.OrderParity == order.ParityBuy {
