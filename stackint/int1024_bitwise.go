@@ -2,6 +2,8 @@ package stackint
 
 import (
 	"math/bits"
+
+	"github.com/republicprotocol/republic-go/stackint/asm"
 )
 
 // ShiftLeft returns x<<n
@@ -52,8 +54,8 @@ func (x *Int1024) shiftleft(n uint) {
 	if n >= SIZE {
 		panic("shifting by more than a word")
 	}
-	var overflow uint64
-	var shift uint64 = (1<<n - 1)
+	var overflow asm.Word
+	var shift asm.Word = (1<<n - 1)
 	// fmt.Println(shift)
 	var firstPositive uint16
 	var i uint16
@@ -77,7 +79,7 @@ func (x *Int1024) shiftleft(n uint) {
 }
 
 func (x *Int1024) shiftleftone() {
-	var overflow uint64
+	var overflow asm.Word
 	var firstPositive uint16
 	var i uint16
 	for i = 0; i < x.length; i++ {
@@ -151,8 +153,8 @@ func (x *Int1024) shiftright(n uint) {
 	if n >= SIZE {
 		panic("shifting by more than a word")
 	}
-	var overflow uint64
-	var shift uint64 = (1<<n - 1)
+	var overflow asm.Word
+	var shift asm.Word = (1<<n - 1)
 	for i := int16(x.length - 1); i >= 0; i-- {
 		// Calculate if word overflows into next word
 		newOverflow := (x.words[i] & shift) << (WORDSIZE - n)
@@ -167,7 +169,7 @@ func (x *Int1024) shiftright(n uint) {
 }
 
 func (x *Int1024) shiftrightone() {
-	overflow := uint64(0)
+	overflow := asm.Word(0)
 	for i := int16(x.length - 1); i >= 0; i-- {
 		// Calculate if word overflows into next word
 		newOverflow := (x.words[i] & 1) << (WORDSIZE - 1)
@@ -261,7 +263,7 @@ func (x *Int1024) XOR(y *Int1024) Int1024 {
 		maxi = x
 	}
 
-	var words [INT1024WORDS]uint64
+	var words [INT1024WORDS]asm.Word
 	var i uint16
 	var firstPositive uint16
 	for i = 0; i < min; i++ {
@@ -298,7 +300,7 @@ func (x *Int1024) BitLength() int {
 	if x.length == 1 && x.words[0] == 0 {
 		return 1
 	}
-	return (int(x.length-1))*64 + bits.Len64(x.words[x.length-1])
+	return (int(x.length-1))*64 + bits.Len64(uint64(x.words[x.length-1]))
 }
 
 func (x *Int1024) Mask(n uint) Int1024 {

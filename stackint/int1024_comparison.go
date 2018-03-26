@@ -1,12 +1,14 @@
 package stackint
 
+import "github.com/republicprotocol/republic-go/stackint/asm"
+
 // IsZero returns true of x == 0
 func (x *Int1024) IsZero() bool {
 	return x.length == 1 && x.words[0] == 0
 }
 
-// EqualsUint64 returns true of x represents the uint64 n
-func (x *Int1024) EqualsUint64(n uint64) bool {
+// EqualsWord returns true of x represents the Word n
+func (x *Int1024) EqualsWord(n asm.Word) bool {
 	return x.length == 1 && x.words[0] == n
 }
 

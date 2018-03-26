@@ -15,11 +15,11 @@ import (
 // SIZE is the number of bits stored by Int1024
 const SIZE = 1024
 
-// WORDSIZE is 64 for Word
+// WORDSIZE is 64 for asm.Word
 const WORDSIZE = 64
 
-// Word is the internal type
-// type Word uint64
+// asm.Word is the internal type
+// type asm.Word uint64
 
 // WORDMAX represents the largest word value
 const WORDMAX = 1<<WORDSIZE - 1
@@ -32,38 +32,38 @@ const INT1024WORDS = SIZE / WORDSIZE
 
 // Int1024 provides a 1024 bit number optimised to never use the heap
 type Int1024 struct {
-	words  [INT1024WORDS]uint64
+	words  [INT1024WORDS]asm.Word
 	length uint16
 }
 
-// FromUint64 returns a new Int1024 from a Word
-func FromUint64(n uint64) Int1024 {
+// FromUint returns a new Int1024 from a asm.Word
+func FromUint(n uint) Int1024 {
 	return Int1024{
-		words:  [INT1024WORDS]uint64{n},
+		words:  [INT1024WORDS]asm.Word{asm.Word(n)},
 		length: 1,
 	}
 }
 
-// SetUint64 sets x's value to n
-func (x *Int1024) SetUint64(n uint64) {
+// SetUint sets x's value to n
+func (x *Int1024) SetUint(n uint) {
 	var i uint16
 	for i = 1; i < x.length; i++ {
 		x.words[i] = 0
 	}
-	x.words[0] = n
+	x.words[0] = asm.Word(n)
 	x.length = 1
 }
 
-// ToUint64 converts an Int1024 to a uint64 if it is small enough
-func (x *Int1024) ToUint64() uint64 {
+// ToUint converts an Int1024 to a asm.Word if it is small enough
+func (x *Int1024) ToUint() uint {
 	// Check that all other words are zero
 	var i uint16
 	for i = 1; i < x.length; i++ {
 		if x.words[i] != 0 {
-			panic("Int1024 is too large to be converted to uint64")
+			panic("Int1024 is too large to be converted to asm.Word")
 		}
 	}
-	return uint64(x.words[0])
+	return uint(x.words[0])
 }
 
 // FromString returns a new Int1024 from a string
@@ -92,8 +92,8 @@ func FromString(number string) Int1024 {
 
 	// Break up into blocks of size 19 (log10(2 ** 64))
 	blockSize := 1
-	limit := uint64(1<<63-1) / uint64(base)
-	for basePower := uint64(1); basePower < limit; basePower *= uint64(base) {
+	limit := asm.Word(1<<63-1) / asm.Word(base)
+	for basePower := asm.Word(1); basePower < limit; basePower *= asm.Word(base) {
 		blockSize++
 	}
 
@@ -104,8 +104,8 @@ func FromString(number string) Int1024 {
 	}
 
 	// TODO: Replace with 10.Pow(blockSize)
-	shift := FromUint64(uint64(base))
-	blockSizeInt := FromUint64(uint64(blockSize))
+	shift := FromUint(uint(base))
+	blockSizeInt := FromUint(uint(blockSize))
 	shift = shift.Exp(&blockSizeInt)
 	shiftAcc := One()
 
@@ -121,7 +121,7 @@ func FromString(number string) Int1024 {
 			panic(err)
 		}
 
-		wordI := FromUint64(word)
+		wordI := FromUint(uint(word))
 		wordI = wordI.Mul(&shiftAcc)
 		self = self.Add(&wordI)
 
@@ -133,8 +133,8 @@ func FromString(number string) Int1024 {
 
 func (x *Int1024) String() string {
 	blockSize := 19
-	blockSize1024 := FromUint64(uint64(blockSize))
-	base := FromUint64(10)
+	blockSize1024 := FromUint(uint(blockSize))
+	base := FromUint(10)
 	base = base.Exp(&blockSize1024)
 	q := *x
 	var r Int1024
@@ -207,7 +207,7 @@ func FromBytes(bytesAll []byte) Int1024 {
 		for j := 0; j < start-end; j++ {
 			b8[7-j] = bytesAll[start-j-1]
 		}
-		x.words[i] = binary.BigEndian.Uint64(b8)
+		x.words[i] = asm.Word(binary.BigEndian.Uint64(b8))
 		if x.words[i] != 0 {
 			firstPositive = uint16(i)
 		}
@@ -265,7 +265,7 @@ func FromLittleEndianBytes(bytesAll []byte) Int1024 {
 			last = len
 		}
 		copy(b8, bytesAll[i*8:last])
-		x.words[i] = binary.LittleEndian.Uint64(b8)
+		x.words[i] = asm.Word(binary.LittleEndian.Uint64(b8))
 	}
 
 	x.length = max(1, uint16(numWords))
@@ -275,7 +275,7 @@ func FromLittleEndianBytes(bytesAll []byte) Int1024 {
 
 // Clone returns a new Int1024 representing the same value as x
 func (x *Int1024) Clone() Int1024 {
-	var words [INT1024WORDS]uint64
+	var words [INT1024WORDS]asm.Word
 	var i uint16
 	for i = 0; i < x.length; i++ {
 		words[i] = x.words[i]
@@ -286,12 +286,12 @@ func (x *Int1024) Clone() Int1024 {
 	}
 }
 
-// Words returns a clone of the [16]Word used by x as its internal representation
-func (x *Int1024) Words() [INT1024WORDS]uint64 {
-	var words [INT1024WORDS]uint64
+// Words returns a clone of the [16]asm.Word used by x as its internal representation
+func (x *Int1024) Words() [INT1024WORDS]uint {
+	var words [INT1024WORDS]uint
 	var i uint16
 	for i = 0; i < x.length; i++ {
-		words[i] = x.words[i]
+		words[i] = uint(x.words[i])
 	}
 	return words
 }
@@ -325,8 +325,8 @@ func FromBigInt(bg *big.Int) Int1024 {
 
 // Zero returns a new Int1024 representing 0
 func Zero() Int1024 {
-	var words [INT1024WORDS]uint64
-	// words := make([]uint64, INT1024WORDS)
+	var words [INT1024WORDS]asm.Word
+	// words := make([]asm.Word, INT1024WORDS)
 	// Not needed?
 	for i := 0; i < len(words); i++ {
 		words[i] = 0
@@ -338,10 +338,10 @@ func Zero() Int1024 {
 }
 
 // One is the Int1024 that represents 1
-var One = func() Int1024 { return FromUint64(1) }
+var One = func() Int1024 { return FromUint(1) }
 
 // Two is the Int1024 that represents 2
-var Two = func() Int1024 { return FromUint64(2) }
+var Two = func() Int1024 { return FromUint(2) }
 
 // HalfMax represents max / 2
 var HalfMax = func() Int1024 {
@@ -359,8 +359,8 @@ var halfMax = HalfMax()
 
 // maxInt returns a new Int1024 representing 2**1024 - 1
 func maxInt() Int1024 {
-	var words [INT1024WORDS]uint64
-	// words := make([]uint64, INT1024WORDS)
+	var words [INT1024WORDS]asm.Word
+	// words := make([]asm.Word, INT1024WORDS)
 	for i := 0; i < len(words); i++ {
 		words[i] = WORDMAX
 	}

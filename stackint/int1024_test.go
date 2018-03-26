@@ -10,17 +10,17 @@ import (
 )
 
 var zero = Zero()
-var one = FromUint64(1)
-var two = FromUint64(2)
+var one = FromUint(1)
+var two = FromUint(2)
 
-var three = FromUint64(3)
-var four = FromUint64(4)
-var five = FromUint64(5)
-var six = FromUint64(6)
-var seven = FromUint64(7)
-var eleven = FromUint64(11)
-var twelve = FromUint64(12)
-var oneWord = FromUint64(WORDMAX)
+var three = FromUint(3)
+var four = FromUint(4)
+var five = FromUint(5)
+var six = FromUint(6)
+var seven = FromUint(7)
+var eleven = FromUint(11)
+var twelve = FromUint(12)
+var oneWord = FromUint(WORDMAX)
 var two64 = oneWord.Add(&one)
 var max = MAXINT1024()
 
@@ -54,9 +54,9 @@ func TC(in ...interface{}) []interface{} {
 
 var _ = Describe("Int1024", func() {
 
-	Context("when converting from and to uint64s", func() {
+	Context("when converting from and to Words", func() {
 		It("should return the right result for 1024 bit numbers", func() {
-			cases := []uint64{
+			cases := []uint{
 				0,
 				1,
 				4294967295,
@@ -69,16 +69,16 @@ var _ = Describe("Int1024", func() {
 			}
 
 			for _, n := range cases {
-				fromInt := FromUint64(n)
-				Ω(fromInt.ToUint64()).Should(Equal(n))
+				fromInt := FromUint(uint(n))
+				Ω(fromInt.ToUint()).Should(Equal(n))
 				tmp := Zero()
-				tmp.SetUint64(n)
+				tmp.SetUint(n)
 				Ω(tmp).Should(Equal(fromInt))
 			}
 		})
 
-		It("should panic when converting a number bigger than MAX to uint64", func() {
-			Ω(func() { max.ToUint64() }).Should(Panic())
+		It("should panic when converting a number bigger than MAX to Word", func() {
+			Ω(func() { max.ToUint() }).Should(Panic())
 		})
 	})
 
@@ -91,8 +91,8 @@ var _ = Describe("Int1024", func() {
 				TC("0x0", zero),
 				TC("0x00", zero),
 				TC("0x00", zero),
-				TC("0xFF", FromUint64(255)),
-				TC("0xff", FromUint64(255)),
+				TC("0xFF", FromUint(255)),
+				TC("0xff", FromUint(255)),
 				TC("0b0", zero),
 				TC("0b00", zero),
 				TC("0b01", one),
@@ -159,7 +159,7 @@ var _ = Describe("Int1024", func() {
 			expected = "2"
 			Ω(actual).Should(Equal(expected))
 
-			tmp := FromUint64(111)
+			tmp := FromUint(111)
 			actual = tmp.String()
 			expected = "111"
 			Ω(actual).Should(Equal(expected))

@@ -9,7 +9,7 @@ import "github.com/republicprotocol/republic-go/stackint/asm"
  */
 
 type DoubleInt struct {
-	words  [INT1024WORDS * 2]uint64
+	words  [INT1024WORDS * 2]asm.Word
 	length uint16
 }
 
@@ -30,7 +30,7 @@ func (x *Int1024) MulModuloBig(y, n *Int1024) Int1024 {
 	}
 
 	if (highest + 1) <= INT1024WORDS {
-		var words2 [INT1024WORDS]uint64
+		var words2 [INT1024WORDS]asm.Word
 		copy(words2[:], words[:INT1024WORDS])
 		xy := Int1024{
 			words2, highest + 1,
@@ -38,7 +38,7 @@ func (x *Int1024) MulModuloBig(y, n *Int1024) Int1024 {
 		return xy.Mod(n)
 	}
 	_, r := xyDouble.divDouble(n)
-	var words2 [INT1024WORDS]uint64
+	var words2 [INT1024WORDS]asm.Word
 	copy(words2[:], r.words[:INT1024WORDS])
 	return Int1024{
 		words2, r.length,
@@ -53,17 +53,17 @@ func (x *DoubleInt) divDouble(y *Int1024) (DoubleInt, DoubleInt) {
 	n := y.length
 	m := x.length - n
 
-	var q [INT1024WORDS * 2]uint64
+	var q [INT1024WORDS * 2]asm.Word
 	var highestQ uint16
 
-	var qhatv [(INT1024WORDS * 2) + 1]uint64
-	var u [(INT1024WORDS * 2) + 1]uint64
+	var qhatv [(INT1024WORDS * 2) + 1]asm.Word
+	var u [(INT1024WORDS * 2) + 1]asm.Word
 	// D1.
 	shift := asm.Nlz(v[n-1])
 	if shift > 0 {
 		// do not modify v, it may be used by another goroutine simultaneously
 
-		var v1 [INT1024WORDS]uint64
+		var v1 [INT1024WORDS]asm.Word
 		asm.ShlVU(v1[:], v[:], shift)
 		v = v1
 	}
@@ -73,9 +73,9 @@ func (x *DoubleInt) divDouble(y *Int1024) (DoubleInt, DoubleInt) {
 	for jj := int(m); jj >= 0; jj-- {
 		j := uint16(jj)
 		// D3.
-		qhat := uint64(asm.M)
+		qhat := asm.Word(asm.M)
 		if ujn := u[j+n]; ujn != vn1 {
-			var rhat uint64
+			var rhat asm.Word
 			qhat, rhat = asm.DivWW(ujn, u[j+n-1], vn1)
 			// x1 | x2 = q̂v_{n-2}
 			vn2 := v[n-2]
@@ -97,7 +97,7 @@ func (x *DoubleInt) divDouble(y *Int1024) (DoubleInt, DoubleInt) {
 
 		// Inlined
 		// qhatv[n] = mulAddVWW(qhatv[0:n], v[:], qhat, 0)
-		c := uint64(0)
+		c := asm.Word(0)
 		var i uint16
 		for i = 0; i < n; i++ {
 			c, qhatv[i] = asm.MulAddWWW(v[i], qhat, c)
@@ -121,7 +121,7 @@ func (x *DoubleInt) divDouble(y *Int1024) (DoubleInt, DoubleInt) {
 	}
 	asm.ShrVU(u[:x.length+1], u[:uint(x.length)+1], shift)
 
-	var rWords [INT1024WORDS * 2]uint64
+	var rWords [INT1024WORDS * 2]asm.Word
 
 	copy(rWords[:], u[:INT1024WORDS*2])
 
