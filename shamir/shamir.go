@@ -139,8 +139,12 @@ func FromBytes(bs []byte) (Share, error) {
 	if err := binary.Read(buf, binary.LittleEndian, data); err != nil {
 		return Share{}, err
 	}
+	int1024, err := stackint.FromBytes(data)
+	if err != nil {
+		return Share{}, err
+	}
 	return Share{
 		Key:   key,
-		Value: stackint.FromBytes(data),
+		Value: int1024,
 	}, nil
 }

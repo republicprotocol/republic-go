@@ -79,7 +79,10 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Register(darkNodeID []byte, 
 	if err != nil {
 		return &types.Transaction{}, err
 	}
-	allowance := stackint.FromBigInt(allowanceBig)
+	allowance, err := stackint.FromBigInt(allowanceBig)
+	if err != nil {
+		return &types.Transaction{}, err
+	}
 	if allowance.Cmp(bond) < 0 {
 		return &types.Transaction{}, errors.New("Not enough allowance to register a node")
 	}
@@ -121,7 +124,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) GetBond(darkNodeID []byte) (
 	if err != nil {
 		return stackint.Int1024{}, err
 	}
-	return stackint.FromBigInt(bond), nil
+	return stackint.FromBigInt(bond)
 }
 
 // IsDarkNodeRegistered check's whether a dark node is registered or not
@@ -148,7 +151,10 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) CurrentEpoch() (Epoch, error
 	if err != nil {
 		return Epoch{}, err
 	}
-	timestamp := stackint.FromBigInt(epoch.Timestamp)
+	timestamp, err := stackint.FromBigInt(epoch.Timestamp)
+	if err != nil {
+		return Epoch{}, err
+	}
 	return Epoch{
 		epoch.Blockhash, &timestamp,
 	}, nil
@@ -211,7 +217,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) MinimumBond() (stackint.Int1
 	if err != nil {
 		return stackint.Int1024{}, err
 	}
-	return stackint.FromBigInt(bond), nil
+	return stackint.FromBigInt(bond)
 }
 
 // MinimumEpochInterval gets the minimum epoch interval
@@ -220,7 +226,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) MinimumEpochInterval() (stac
 	if err != nil {
 		return stackint.Int1024{}, err
 	}
-	return stackint.FromBigInt(interval), nil
+	return stackint.FromBigInt(interval)
 }
 
 // Refund refunds the bond of an unregistered miner

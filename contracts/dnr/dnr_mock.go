@@ -34,7 +34,7 @@ func NewMockDarkNodeRegistrar() (DarkNodeRegistrar, error) {
 	if err != nil {
 		return nil, err
 	}
-	now := stackint.FromUint(uint64(time.Now().Unix()))
+	now := stackint.FromUint(uint(time.Now().Unix()))
 	mockDnr.epoch = Epoch{
 		Blockhash: b32,
 		Timestamp: &now,
@@ -101,7 +101,7 @@ func (mockDnr *MockDarkNodeRegistrar) Epoch() (*types.Transaction, error) {
 		return nil, err
 	}
 
-	now := stackint.FromUint(uint64(time.Now().Unix()))
+	now := stackint.FromUint(uint(time.Now().Unix()))
 	mockDnr.epoch = Epoch{
 		Blockhash: b32,
 		Timestamp: &now,

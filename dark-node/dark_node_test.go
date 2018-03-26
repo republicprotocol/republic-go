@@ -28,7 +28,7 @@ const (
 	NumberOfOrders         = 100
 )
 
-var primeVal = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+var primeVal, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 var Prime = &primeVal
 var trader, _ = identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
 var mockRegistrar, _ = dnr.NewMockDarkNodeRegistrar()
@@ -40,7 +40,7 @@ type OrderBook struct {
 }
 
 // HeapInt creates a stackint on the heap - temporary convenience method
-func heapInt(n uint64) *stackint.Int1024 {
+func heapInt(n uint) *stackint.Int1024 {
 	tmp := stackint.FromUint(n)
 	return &tmp
 }
@@ -347,13 +347,13 @@ func sendOrders(nodes []*node.DarkNode) error {
 		}
 		amount = amount * 1000000000000
 		sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour),
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint64(price)), heapInt(uint64(amount)),
-			heapInt(uint64(amount)), heapInt(1))
+			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint(price)), heapInt(uint(amount)),
+			heapInt(uint(amount)), heapInt(1))
 		sellOrders[i] = sellOrder
 
 		buyOrder := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour),
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint64(price)), heapInt(uint64(amount)),
-			heapInt(uint64(amount)), heapInt(1))
+			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint(price)), heapInt(uint(amount)),
+			heapInt(uint(amount)), heapInt(1))
 		buyOrders[i] = buyOrder
 	}
 

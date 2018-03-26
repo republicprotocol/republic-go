@@ -16,16 +16,19 @@ var _ = Describe("Shamir's secret sharing", func() {
 	It("should correctly encode integers (less than 2^1024)", func() {
 		// The maximum 1024 bit integer.
 
-		max := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137215")
+		max, err := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137215")
+		Ω(err).Should(BeNil())
 		// The first prime above 1024 bits.
-		prime := stackint.FromString(primeStr)
+		prime, err := stackint.FromString(primeStr)
+		Ω(err).Should(BeNil())
 		Ω(prime.Cmp(&max) < 0).Should(Equal(true))
 	})
 
 	Context("serialization", func() {
 		It("should be able to serialize and deserialize shares", func() {
 
-			prime := stackint.FromString(primeStr)
+			prime, err := stackint.FromString(primeStr)
+			Ω(err).Should(BeNil())
 			for i := int64(0); i < 1000; i++ {
 				bytes := ToBytes(Share{
 					Key:   i,
@@ -49,7 +52,8 @@ var _ = Describe("Shamir's secret sharing", func() {
 			n := int64(100)
 			k := int64(50)
 			secret := stackint.FromUint(1234)
-			prime := stackint.FromString(primeStr)
+			prime, err := stackint.FromString(primeStr)
+			Ω(err).Should(BeNil())
 			// Split the secret.
 			shares, err := Split(n, k, &prime, &secret)
 			Ω(err).Should(BeNil())
@@ -63,7 +67,8 @@ var _ = Describe("Shamir's secret sharing", func() {
 			N := int64(100)
 			K := int64(50)
 			secret := stackint.FromUint(1234)
-			prime := stackint.FromString(primeStr)
+			prime, err := stackint.FromString(primeStr)
+			Ω(err).Should(BeNil())
 			// Split the secret.
 			shares, err := Split(N, K, &prime, &secret)
 			Ω(err).Should(BeNil())
@@ -96,7 +101,8 @@ var _ = Describe("Shamir's secret sharing", func() {
 			N := int64(100)
 			K := int64(50)
 			secret := stackint.FromUint(1234)
-			prime := stackint.FromString(primeStr)
+			prime, err := stackint.FromString(primeStr)
+			Ω(err).Should(BeNil())
 			// Split the secret.
 			shares, err := Split(N, K, &prime, &secret)
 			Ω(err).Should(BeNil())
