@@ -5,10 +5,18 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+type OrderBookSyncer interface {
+	Open(ord *order.Order)
+	Match(ord *order.Order)
+	Confirm(ord *order.Order)
+	Release(ord *order.Order)
+	Settle(ord *order.Order)
+}
+
 type OrderBook struct {
-	orderBookCache *OrderBookCache
-	orderBookDB *OrderBookDB
-	orderBookStreamer *OrderBookStreamer
+	orderBookCache OrderBookCache
+	orderBookDB OrderBookDB
+	orderBookStreamer OrderBookStreamer
 }
 
 func NewOrderBook(maxConnections int) *OrderBook {
@@ -19,14 +27,18 @@ func NewOrderBook(maxConnections int) *OrderBook {
 	}
 }
 
-func (orderBook OrderBook) Subscribe(id string , listener chan *rpc.SyncBlock){
+func (orderBook OrderBook) Subscribe(id string, listener chan *rpc.SyncBlock) error {
+	err := orderBook.orderBookStreamer.Subscribe(id, listener)
+	if err != nil {
+		return err
+	}
 	blocks := orderBook.orderBookCache.Orders()
 	go func() {
-		for _, block := range blocks{
+		for _, block := range blocks {
 			listener <- block
 		}
 	}()
-	orderBook.orderBookStreamer.Subscribe(id,  listener)
+	return nil
 }
 
 func (orderBook OrderBook) Unsubscribe(id string){

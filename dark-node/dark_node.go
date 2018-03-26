@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/republicprotocol/republic-go/Syncer"
+	"github.com/republicprotocol/republic-go/syncer"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark"
@@ -325,38 +325,10 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 func (node *DarkNode) OnSync(from identity.MultiAddress) chan *rpc.SyncBlock {
 		blocks := make(chan *rpc.SyncBlock, 100)
 
-		node.OrderBook.Subscribe(from.String(), blocks)
-
-		// Sending all open orders
-		go func() {
-			openOrders := node.DeltaFragmentMatrix.OpenOrders()
-			for ord := range openOrders {
-				syncBlock := new(rpc.SyncBlock)
-				syncBlock.Timestamp = time.Now().Unix()
-				syncBlock.OrderBlock = &rpc.SyncBlock_Open{
-					Open: rpc.SerializeOrder(ord),
-				}
-
-				blocks <- syncBlock
-			}
-		}()
-
-		// Sending all unconfirmed orders
-		go func() {
-			unconfirmedOrders := node.DeltaBuilder.UnconfirmedOrders()
-			for ord := range unconfirmedOrders {
-				syncBlock := new(rpc.SyncBlock)
-				syncBlock.Timestamp = time.Now().Unix()
-				syncBlock.OrderBlock = &rpc.SyncBlock_Unconfirmed{
-					Unconfirmed: rpc.SerializeOrder(ord),
-				}
-				blocks <- syncBlock
-			}
-		}()
-
-		// Collect all confirmed orders
-
-		// Collect all settled orders
+		err := node.OrderBook.Subscribe(from.String(), blocks)
+		if err != nil {
+			close(blocks)
+		}
 
 		return blocks
 }
