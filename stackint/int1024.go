@@ -4,12 +4,17 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"math/big"
+	"math/big" // Used for converting to/from big.Ints
 	"strconv"
 	"strings"
 )
 
-// go build -a -gcflags='-m -m' int1024.go int1024_arithmetic.go int1024_bitwise.go int1024_comparison.go int1024_internal.go
+// Stackint is a big number library offering 1024-bit numbers
+// whose operators do not not allocate any heap memory
+
+// For debugging to check for heap allocations:
+// go build -a -gcflags='-m -m'
+// grep with: `2>&1 | grep -E "(leaking|escapes)"`
 
 // SIZE is the number of bits stored by Int1024
 const SIZE = 1024
@@ -372,6 +377,7 @@ func maxInt() Int1024 {
 // MAXINT1024 is the Int1024 that represents 2**1024 - 1
 var MAXINT1024 = func() Int1024 { return maxInt() }
 
+// max returns max(a,b) for uint16s
 func max(a, b uint16) uint16 {
 	if a > b {
 		return a
@@ -379,6 +385,7 @@ func max(a, b uint16) uint16 {
 	return b
 }
 
+// min retrusn min(a,b) for uint16s
 func min(a, b uint16) uint16 {
 	if a < b {
 		return a
@@ -386,6 +393,7 @@ func min(a, b uint16) uint16 {
 	return b
 }
 
+// setLength recalculates x's length
 func (x *Int1024) setLength() {
 	var firstPositive uint16
 	for i := INT1024WORDS - 1; i > 0; i-- {
