@@ -217,17 +217,32 @@ func (x *Int1024) Mod(n *Int1024) Int1024 {
 // SubModulo returns (x - y) % n
 func (x *Int1024) SubModulo(y, n *Int1024) Int1024 {
 
+	// exp := big.NewInt(0).Sub(x.ToBigInt(), y.ToBigInt())
+	// exp = exp.Mod(exp, n.ToBigInt())
+
+	z := x.subModulo(y, n)
+
+	// actual := z.ToBigInt()
+	// if exp.Cmp(actual) != 0 {
+	// 	panic("Panic in SubModulo")
+	// }
+
+	return z
+}
+
+func (x *Int1024) subModulo(y, n *Int1024) Int1024 {
+
 	switch x.Cmp(y) {
-	case 1:
+	case 1: // x > y
 		// x - y
 		sub := x.Sub(y)
 		return sub.Mod(n)
-	case 0:
+	case 0: // x == y
 		if n.IsZero() {
 			panic("division by zero")
 		}
 		return Zero()
-	case -1:
+	case -1: // x < y
 		sub := y.Sub(x)
 		mod := sub.Mod(n)
 		if mod.IsZero() {

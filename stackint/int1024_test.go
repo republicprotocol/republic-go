@@ -173,9 +173,14 @@ var _ = Describe("Int1024", func() {
 				actual := FromBytes(num.Bytes())
 				Ω(actual).Should(Equal(num))
 
-				actual = FromLittleEndianBytes(num.ToLittleEndianBytes())
+				actual = FromLittleEndianBytes(num.LittleEndianBytes())
 				Ω(actual).Should(Equal(num))
 			}
+
+			str := "156110199609722120002645975834934187153674084697980344259599400078744195864483123168001725978362465713804593874868304438459220080111195600585730100927755271978903140799951022170241026510196255297991522400685742295892348482226518075857613157769551309646160118720740138838217231149054483993553648924213524999209"
+			stackint := FromString(str)
+			bigint, _ := big.NewInt(0).SetString(str, 10)
+			Ω(stackint.ToBigInt().Cmp(bigint)).Should(Equal(0))
 		})
 	})
 })

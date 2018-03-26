@@ -163,11 +163,10 @@ func (x *Int1024) Bytes() []byte {
 		i++
 	}
 	buf := make([]byte, i)
-
 	var k uint16
 	for k = 0; k < x.length; k++ {
 		d := x.words[k]
-		for j := 0; j < _S && d > 0; j++ {
+		for j := 0; j < _S; j++ {
 			if d > 0 {
 				buf[i-1] = byte(d)
 			}
@@ -175,6 +174,7 @@ func (x *Int1024) Bytes() []byte {
 			i--
 		}
 	}
+
 	return buf
 }
 
