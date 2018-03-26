@@ -1,21 +1,25 @@
 package stackint
 
-func (x *Int1024) divW(y uint64) uint64 {
+import (
+	"github.com/republicprotocol/republic-go/stackint/asm"
+)
+
+func (x *Int1024) divW(y asm.Word) asm.Word {
 	switch {
 	case y == 0:
 		panic("division by zero")
 	case y == 1:
 		return 0
 	case x.IsZero():
-		x.SetUint64(0)
+		x.SetUint(0)
 		return 0
 	}
 	// m > 0
 	// r := divWVW_g(x.words[:], 0, x.words[:], y)
-	r := uint64(0)
+	r := asm.Word(0)
 	var first uint16
 	for i := int(x.length - 1); i >= 0; i-- {
-		x.words[i], r = divWW_g(r, x.words[i], y)
+		x.words[i], r = asm.DivWW(r, x.words[i], y)
 		if first == 0 && x.words[i] != 0 {
 			first = uint16(i)
 		}
@@ -34,7 +38,7 @@ func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 	if y.length == 1 {
 		q := x.Clone()
 		rr := q.divW(y.words[0])
-		r := FromUint64(rr)
+		r := FromUint(uint(rr))
 		return q, r
 	}
 	q, r := x.divLarge(y)
@@ -42,7 +46,7 @@ func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 }
 
 // greaterThan reports whether (x1<<_W + x2) > (y1<<_W + y2)
-func greaterThan(x1, x2, y1, y2 uint64) bool {
+func greaterThan(x1, x2, y1, y2 asm.Word) bool {
 	return x1 > y1 || x1 == y1 && x2 > y2
 }
 
@@ -62,33 +66,33 @@ func (x *Int1024) divLarge(y *Int1024) (Int1024, Int1024) {
 	// TODO(gri) should find a better solution - this if statement
 	//           is very costly (see e.g. time pidigits -s -n 10000)
 
-	var q [INT1024WORDS]uint64
+	var q [INT1024WORDS]asm.Word
 	var highestQ uint16
 
-	var qhatv [INT1024WORDS + 1]uint64
-	var u [INT1024WORDS + 1]uint64
+	var qhatv [INT1024WORDS + 1]asm.Word
+	var u [INT1024WORDS + 1]asm.Word
 	// D1.
-	shift := nlz(v[n-1])
+	shift := asm.Nlz(v[n-1])
 	if shift > 0 {
 		// do not modify v, it may be used by another goroutine simultaneously
 
-		var v1 [INT1024WORDS]uint64
-		shlVU_g(v1[:], v[:], shift)
+		var v1 [INT1024WORDS]asm.Word
+		asm.ShlVU(v1[:], v[:], shift)
 		v = v1
 	}
-	u[int(x.length)] = shlVU_g(u[:x.length], uIn[:], shift)
+	u[int(x.length)] = asm.ShlVU(u[:x.length], uIn[:], shift)
 	// D2.
 	vn1 := v[n-1]
 	for jj := int(m); jj >= 0; jj-- {
 		j := uint16(jj)
 		// D3.
-		qhat := uint64(_M)
+		qhat := asm.Word(asm.M)
 		if ujn := u[j+n]; ujn != vn1 {
-			var rhat uint64
-			qhat, rhat = divWW(ujn, u[j+n-1], vn1)
+			var rhat asm.Word
+			qhat, rhat = asm.DivWW(ujn, u[j+n-1], vn1)
 			// x1 | x2 = q̂v_{n-2}
 			vn2 := v[n-2]
-			x1, x2 := mulWW(qhat, vn2)
+			x1, x2 := asm.MulWW(qhat, vn2)
 			// test if q̂v_{n-2} > br̂ + u_{j+n-2}
 			ujn2 := u[j+n-2]
 			for greaterThan(x1, x2, rhat, ujn2) {
@@ -99,26 +103,26 @@ func (x *Int1024) divLarge(y *Int1024) (Int1024, Int1024) {
 				if rhat < prevRhat {
 					break
 				}
-				x1, x2 = mulWW(qhat, vn2)
+				x1, x2 = asm.MulWW(qhat, vn2)
 			}
 		}
 		// D4.
 
 		// Inlined
 		// qhatv[n] = mulAddVWW(qhatv[0:n], v[:], qhat, 0)
-		c := uint64(0)
+		c := asm.Word(0)
 		var i uint16
 		for i = 0; i < n; i++ {
-			c, qhatv[i] = mulAddWWW_g(v[i], qhat, c)
+			c, qhatv[i] = asm.MulAddWWW(v[i], qhat, c)
 		}
 		qhatv[n] = c
 
 		// Inlined
-		c = subVV_g(u[j:j+n+1], u[j:], qhatv[:])
+		c = asm.SubVV(u[j:j+n+1], u[j:], qhatv[:])
 
 		if c != 0 {
 			// Inlined
-			c := addVV_g(u[j:j+n], u[j:], v[:])
+			c := asm.AddVV(u[j:j+n], u[j:], v[:])
 
 			u[j+n] += c
 			qhat--
@@ -128,9 +132,9 @@ func (x *Int1024) divLarge(y *Int1024) (Int1024, Int1024) {
 			highestQ = j
 		}
 	}
-	shrVU_g(u[:x.length+1], u[:uint(x.length)+1], shift)
+	asm.ShrVU(u[:x.length+1], u[:uint(x.length)+1], shift)
 
-	var rWords [INT1024WORDS]uint64
+	var rWords [INT1024WORDS]asm.Word
 	copy(rWords[:], u[:INT1024WORDS])
 	var highestR uint16
 	for i := 0; i < int(min(INT1024WORDS, uint16(len(u)))); i++ {

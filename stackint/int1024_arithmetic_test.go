@@ -26,27 +26,6 @@ var _ = Describe("Int1024 arithmetic", func() {
 	Context("when adding numbers", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 
-			// 			// str := "179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474097562152033539671286128252223189553839160721441767298250321715263238814402734379959506792230903356495130620869925267845538430714092411695463462326211969025"
-			// 			// maxInt := FromString(str)
-			// 			// maxBig := big.NewInt(0)
-			// 			// tmpInt := Zero()
-			// 			// tmp := big.NewInt(0)
-			// 			// maxBig.SetString(str, 0)
-
-			// 			// tmpInt = tmpInt.Add(&maxInt)
-			// 			// tmpInt = tmpInt.Sub(&maxInt)
-
-			// 			// tmp = tmp.Add(tmp, maxBig)
-			// 			// tmp = tmp.Sub(tmp, maxBig)
-
-			// 			// for i := 0; i < 10; i++ {
-			// 			// 	tmpInt = tmpInt.Add(&maxInt)
-			// 			// 	tmpInt = tmpInt.Sub(&maxInt)
-
-			// 			// 	tmp = tmp.Add(tmp, maxBig)
-			// 			// 	tmp = tmp.Sub(tmp, maxBig)
-			// 			// }
-
 			RunAllCases(addFn, []TestCase{
 				TestCase{inputsStr: []string{"1", "2"}, expectedStr: "3"},
 				TestCase{inputsInt: []Int1024{one, two}, expectedInt: &three},
@@ -219,10 +198,10 @@ var _ = Describe("Int1024 arithmetic", func() {
 			twoInvEleven := two.ModInverse(&eleven)
 			Ω(twoInvEleven.Equals(&six)).Should(BeTrue())
 
-			n := FromUint64(1234567)
-			m := FromUint64(458948883992)
+			n := FromUint(1234567)
+			m := FromUint(458948883992)
 			result := n.ModInverse(&m)
-			expected := FromUint64(14332777583)
+			expected := FromUint(14332777583)
 			Ω(result.Equals(&expected)).Should(BeTrue())
 
 			// fmt.Println(one.ModInverse(&one)) // Actual: 1, Expected?
@@ -244,10 +223,10 @@ var _ = Describe("Int1024 arithmetic", func() {
 			Ω(zeroExpOne.Equals(&zero)).Should(BeTrue())
 
 			threeExpThree := three.Exp(&three)
-			expected := FromUint64(27)
+			expected := FromUint(27)
 			Ω(threeExpThree.Equals(&expected)).Should(BeTrue())
 
-			oneLess := FromUint64(4294967296)
+			oneLess := FromUint(4294967296)
 			lessExpTwo := oneLess.Exp(&two)
 			expected = oneWord.Add(&one)
 			Ω(lessExpTwo.Equals(&expected)).Should(BeTrue())

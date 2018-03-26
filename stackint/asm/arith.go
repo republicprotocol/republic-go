@@ -6,11 +6,13 @@
 // arithmetic operations on word vectors. Needed for platforms without
 // assembly implementations of these routines.
 
-package stackint
+package asm
 
 import "math/bits"
 
-// A uint64 represents a single digit of a multi-precision unsigned integer.
+type Word uint
+
+// A Word represents a single digit of a multi-precision unsigned integer.
 
 const (
 	_S = _W / 8 // word size in bytes
@@ -30,7 +32,7 @@ const (
 // These operations are used by the vector operations below.
 
 // z1<<_W + z0 = x+y+c, with c == 0 or 1
-func addWW_g(x, y, c uint64) (z1, z0 uint64) {
+func addWW_g(x, y, c Word) (z1, z0 Word) {
 	yc := y + c
 	z0 = x + yc
 	if z0 < x || yc < y {
@@ -40,7 +42,7 @@ func addWW_g(x, y, c uint64) (z1, z0 uint64) {
 }
 
 // z1<<_W + z0 = x-y-c, with c == 0 or 1
-func subWW_g(x, y, c uint64) (z1, z0 uint64) {
+func subWW_g(x, y, c Word) (z1, z0 Word) {
 	yc := y + c
 	z0 = x - yc
 	if z0 > x || yc < y {
@@ -51,7 +53,7 @@ func subWW_g(x, y, c uint64) (z1, z0 uint64) {
 
 // z1<<_W + z0 = x*y
 // Adapted from Warren, Hacker's Delight, p. 132.
-func mulWW_g(x, y uint64) (z1, z0 uint64) {
+func mulWW_g(x, y Word) (z1, z0 Word) {
 	x0 := x & _M2
 	x1 := x >> _W2
 	y0 := y & _M2
@@ -67,7 +69,7 @@ func mulWW_g(x, y uint64) (z1, z0 uint64) {
 }
 
 // z1<<_W + z0 = x*y + c
-func mulAddWWW_g(x, y, c uint64) (z1, z0 uint64) {
+func mulAddWWW_g(x, y, c Word) (z1, z0 Word) {
 	z1, zz0 := mulWW(x, y)
 	if z0 = zz0 + c; z0 < zz0 {
 		z1++
@@ -77,13 +79,13 @@ func mulAddWWW_g(x, y, c uint64) (z1, z0 uint64) {
 
 // nlz returns the number of leading zeros in x.
 // Wraps bits.LeadingZeros call for convenience.
-func nlz(x uint64) uint {
+func nlz(x Word) uint {
 	return uint(bits.LeadingZeros(uint(x)))
 }
 
 // q = (u1<<_W + u0 - r)/y
 // Adapted from Warren, Hacker's Delight, p. 152.
-func divWW_g(u1, u0, v uint64) (q, r uint64) {
+func divWW_g(u1, u0, v Word) (q, r Word) {
 	if u1 >= v {
 		return 1<<_W - 1, 1<<_W - 1
 	}
@@ -128,7 +130,7 @@ func divWW_g(u1, u0, v uint64) (q, r uint64) {
 const use_addWW_g = false
 
 // The resulting carry c is either 0 or 1.
-func addVV_g(z, x, y []uint64) (c uint64) {
+func addVV_g(z, x, y []Word) (c Word) {
 	if use_addWW_g {
 		for i := range z {
 			c, z[i] = addWW_g(x[i], y[i], c)
@@ -147,7 +149,7 @@ func addVV_g(z, x, y []uint64) (c uint64) {
 }
 
 // The resulting carry c is either 0 or 1.
-func subVV_g(z, x, y []uint64) (c uint64) {
+func subVV_g(z, x, y []Word) (c Word) {
 	if use_addWW_g {
 		for i := range z {
 			c, z[i] = subWW_g(x[i], y[i], c)
@@ -166,7 +168,7 @@ func subVV_g(z, x, y []uint64) (c uint64) {
 }
 
 // The resulting carry c is either 0 or 1.
-func addVW_g(z, x []uint64, y uint64) (c uint64) {
+func addVW_g(z, x []Word, y Word) (c Word) {
 	if use_addWW_g {
 		c = y
 		for i := range z {
@@ -184,7 +186,7 @@ func addVW_g(z, x []uint64, y uint64) (c uint64) {
 	return
 }
 
-func subVW_g(z, x []uint64, y uint64) (c uint64) {
+func subVW_g(z, x []Word, y Word) (c Word) {
 	if use_addWW_g {
 		c = y
 		for i := range z {
@@ -202,7 +204,7 @@ func subVW_g(z, x []uint64, y uint64) (c uint64) {
 	return
 }
 
-func shlVU_g(z, x []uint64, s uint) (c uint64) {
+func shlVU_g(z, x []Word, s uint) (c Word) {
 	if n := len(z); n > 0 {
 		ŝ := _W - s
 		w1 := x[n-1]
@@ -217,7 +219,7 @@ func shlVU_g(z, x []uint64, s uint) (c uint64) {
 	return
 }
 
-func shrVU_g(z, x []uint64, s uint) (c uint64) {
+func shrVU_g(z, x []Word, s uint) (c Word) {
 	if n := len(z); n > 0 {
 		ŝ := _W - s
 		w1 := x[0]
@@ -232,7 +234,7 @@ func shrVU_g(z, x []uint64, s uint) (c uint64) {
 	return
 }
 
-func mulAddVWW_g(z, x []uint64, y, r uint64) (c uint64) {
+func mulAddVWW_g(z, x []Word, y, r Word) (c Word) {
 	c = r
 	for i := range z {
 		c, z[i] = mulAddWWW_g(x[i], y, c)
@@ -241,7 +243,7 @@ func mulAddVWW_g(z, x []uint64, y, r uint64) (c uint64) {
 }
 
 // TODO(gri) Remove use of addWW_g here and then we can remove addWW_g and subWW_g.
-func addMulVVW_g(z, x []uint64, y uint64) (c uint64) {
+func addMulVVW_g(z, x []Word, y Word) (c Word) {
 	for i := range z {
 		z1, z0 := mulAddWWW_g(x[i], y, z[i])
 		c, z[i] = addWW_g(z0, c, 0)
@@ -250,7 +252,7 @@ func addMulVVW_g(z, x []uint64, y uint64) (c uint64) {
 	return
 }
 
-func divWVW_g(z []uint64, xn uint64, x []uint64, y uint64) (r uint64) {
+func divWVW_g(z []Word, xn Word, x []Word, y Word) (r Word) {
 	r = xn
 	for i := len(z) - 1; i >= 0; i-- {
 		z[i], r = divWW(r, x[i], y)

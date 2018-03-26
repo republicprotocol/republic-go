@@ -32,7 +32,7 @@ MONTGOMERY
 // 	rInv         Int1024
 // 	factor       Int1024
 // 	mInv         Int1024
-// 	uint64Lookup map[uint64]MontInt
+// 	WordLookup map[Word]MontInt
 // }
 
 // func (mont *Montgomery) ToMont(x *Int1024) MontInt {
@@ -53,7 +53,7 @@ MONTGOMERY
 // 	// r2 := r.MulModulo(&r, &m)
 
 // 	// r^2 overflows 2048, so calculate manually
-// 	r2 := FromUint64(11025)
+// 	r2 := FromUint(11025)
 // 	rinv := r.ModInverse(&m)
 // 	mask := r.Sub(&one)
 
@@ -81,15 +81,15 @@ MONTGOMERY
 // 		rInv:         rinv,
 // 		mInv:         minv,
 // 		factor:       factor,
-// 		uint64Lookup: make(map[uint64]MontInt),
+// 		WordLookup: make(map[Word]MontInt),
 // 	}
 
 // 	mont.M = mont.ToMont(&m)
 
-// 	// var i uint64
+// 	// var i Word
 // 	// for i = 0; i < 1000; i++ {
-// 	// 	x := FromUint64(i)
-// 	// 	mont.uint64Lookup[i] = mont.ToMont(&x)
+// 	// 	x := FromUint(i)
+// 	// 	mont.WordLookup[i] = mont.ToMont(&x)
 // 	// }
 
 // 	return mont
@@ -172,7 +172,7 @@ MONTGOMERY
 // 		// aLen, bLen = yLen, xLen
 // 	}
 
-// 	var overflow uint64
+// 	var overflow Word
 // 	overflow = 0
 // 	var i uint16
 // 	for i = 0; i < b.length; i++ {
@@ -228,13 +228,13 @@ MONTGOMERY
 // 	return m.ToMont(&one)
 // }
 
-// func (m *Montgomery) FromUint64(x uint64) MontInt {
-// 	if val, ok := m.uint64Lookup[x]; ok {
+// func (m *Montgomery) FromUint(x Word) MontInt {
+// 	if val, ok := m.WordLookup[x]; ok {
 // 		return val.MontClone()
 // 	}
-// 	tmp := FromUint64(x)
+// 	tmp := FromUint(x)
 // 	ret := m.ToMont(&tmp)
-// 	m.uint64Lookup[x] = ret
+// 	m.WordLookup[x] = ret
 // 	return ret
 // }
 
@@ -393,7 +393,7 @@ Russian Peasant's multiplication and Schrage's multiplication
 // 	m := n
 // 	z := Zero()
 // 	res := z
-// 	// uint64_t temp_b;
+// 	// Word_t temp_b;
 
 // 	/* Only needed if b may be >= m */
 // 	if b.GreaterThanOrEqual(m) {
@@ -401,7 +401,7 @@ Russian Peasant's multiplication and Schrage's multiplication
 // 		// halfMax.ShiftRightInPlace()
 
 // 		// Replace with shift right
-// 		// two := FromUint64(2)
+// 		// two := FromUint(2)
 // 		// halfMax := max.Div(&two)
 
 // 		// if m.GreaterThan(&halfMax) {
@@ -546,13 +546,13 @@ Russian Peasant's multiplication and Schrage's multiplication
 
 /*
 
-uint64_t mulmod(uint64_t a, uint64_t b, uint64_t m) {
-    uint64_t res = 0;
-    uint64_t temp_b;
+Word_t mulmod(Word_t a, Word_t b, Word_t m) {
+    Word_t res = 0;
+    Word_t temp_b;
 
     /* Only needed if b may be >= m
     if (b >= m) {
-        if (m > UINT64_MAX / 2u)
+        if (m > Word_MAX / 2u)
             b -= m;
         else
             b %= m;
