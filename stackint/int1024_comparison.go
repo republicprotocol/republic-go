@@ -12,14 +12,6 @@ func (x *Int1024) EqualsWord(n Word) bool {
 
 // Cmp returns -1 if x<y, 0 if x=y, 1 if x>y
 func (x *Int1024) Cmp(y *Int1024) int {
-	// expected := x.ToBigInt().Cmp(y.ToBigInt())
-	actual := x.cmp(y)
-	// if expected != actual {
-	// 	panic("Cmp failed!")
-	// }
-	return actual
-}
-func (x *Int1024) cmp(y *Int1024) int {
 
 	if x.length < y.length {
 		return -1

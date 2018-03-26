@@ -68,9 +68,6 @@ func (x *Int1024) Dec(y *Int1024) {
 	c := subVV_g(x.words[0:n], x.words[:], y.words[:])
 	if m > n {
 		c = subVW_g(x.words[n:], x.words[n:], c)
-		if c != 0 {
-			panic("!!!")
-		}
 	}
 
 	if c != 0 {
@@ -217,21 +214,6 @@ func (x *Int1024) Mod(n *Int1024) Int1024 {
 // SubModulo returns (x - y) % n
 func (x *Int1024) SubModulo(y, n *Int1024) Int1024 {
 
-	// exp := big.NewInt(0).Sub(x.ToBigInt(), y.ToBigInt())
-	// exp = exp.Mod(exp, n.ToBigInt())
-
-	z := x.subModulo(y, n)
-
-	// actual := z.ToBigInt()
-	// if exp.Cmp(actual) != 0 {
-	// 	panic("Panic in SubModulo")
-	// }
-
-	return z
-}
-
-func (x *Int1024) subModulo(y, n *Int1024) Int1024 {
-
 	switch x.Cmp(y) {
 	case 1: // x > y
 		// x - y
@@ -300,8 +282,8 @@ func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
 	return z.Mod(n)
 }
 
-// ModInverse sets z to the multiplicative inverse of g in the ring ℤ/nℤ
-// and returns z. If g and n are not relatively prime, the result is undefined.
+// ModInverse returns z such that (x*z) == 1 (mod n)
+// The function panics if g and n are not relatively prime.
 // Code adapted from https://www.di-mgt.com.au/euclidean.html
 func (x *Int1024) ModInverse(n *Int1024) Int1024 {
 	/* Step X1. Initialise */

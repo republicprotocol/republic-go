@@ -14,8 +14,6 @@ func (x *Int1024) ShiftLeft(n uint) Int1024 {
 // ShiftLeftInPlace shifts to the left x by one
 func (x *Int1024) ShiftLeftInPlace(n uint) {
 
-	// expected := big.NewInt(0).Lsh(x.ToBigInt(), n)
-
 	// If n > 64, first, shift entire words
 	div := n / WORDSIZE
 	if div > 0 {
@@ -41,11 +39,6 @@ func (x *Int1024) ShiftLeftInPlace(n uint) {
 		x.shiftleft(n)
 	}
 
-	// actual := x.ToBigInt()
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("Shiftleft failed!\nFor %v << %v\n.\n\nExp: %b\n\nGot: %b", x, n, expected, actual))
-	// }
-
 }
 
 func (x *Int1024) shiftleft(n uint) {
@@ -54,7 +47,6 @@ func (x *Int1024) shiftleft(n uint) {
 	}
 	var overflow Word
 	var shift Word = (1<<n - 1)
-	// fmt.Println(shift)
 	var firstPositive uint16
 	var i uint16
 	for i = 0; i < x.length; i++ {
@@ -109,8 +101,6 @@ func (x *Int1024) ShiftRight(n uint) Int1024 {
 // ShiftRightInPlace shifts to the right x by one
 func (x *Int1024) ShiftRightInPlace(n uint) {
 
-	// expected := big.NewInt(0).Rsh(x.ToBigInt(), n)
-
 	// If n > 64, first, shift entire words
 	div := n / WORDSIZE
 	if div > 0 {
@@ -139,11 +129,6 @@ func (x *Int1024) ShiftRightInPlace(n uint) {
 	} else {
 		x.shiftright(n)
 	}
-
-	// actual := x.ToBigInt()
-	// if expected.Cmp(actual) != 0 && expected.BitLen() <= SIZE {
-	// 	panic(fmt.Sprintf("Shiftleft failed!\nFor %v << %v\n.\n\nExp: %b\n\nGot: %b", x, n, expected, actual))
-	// }
 
 }
 
@@ -299,31 +284,4 @@ func (x *Int1024) BitLength() int {
 		return 1
 	}
 	return (int(x.length-1))*64 + bits.Len64(uint64(x.words[x.length-1]))
-}
-
-func (x *Int1024) Mask(n uint) Int1024 {
-	z := x.Clone()
-	z.MaskInPlace(n)
-	return z
-}
-
-func (x *Int1024) MaskInPlace(n uint) {
-	nn := uint16(n / WORDSIZE)
-	if n%WORDSIZE != 0 {
-		panic("not implemented")
-	} else {
-		if x.length > nn {
-			for i := nn; i < x.length; i++ {
-				x.words[i] = 0
-			}
-			firstPositive := uint16(0)
-			for i := nn - 1; i > 0; i-- {
-				if x.words[i] != 0 {
-					firstPositive = uint16(i)
-					break
-				}
-			}
-			x.length = firstPositive + 1
-		}
-	}
 }

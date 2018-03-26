@@ -107,7 +107,8 @@ var _ = Describe("Int1024 bitwise operations", func() {
 			}
 
 			for _, tc := range cases {
-				tmp := FromString(tc[0].(string))
+				tmp, err := FromString(tc[0].(string))
+				Ω(err).Should(BeNil())
 				Ω(tmp.IsBitSet(tc[1].(int))).Should(Equal(tc[2].(bool)))
 			}
 

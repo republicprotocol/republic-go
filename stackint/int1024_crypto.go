@@ -3,11 +3,11 @@ package stackint
 import "io"
 
 // Random returns a new
-func Random(rand io.Reader, max *Int1024) (n Int1024, err error) {
+func Random(rand io.Reader, max *Int1024) (Int1024, error) {
 	if max.IsZero() {
 		return Zero(), nil
 	}
-	n = max.Sub(&one)
+	n := max.Sub(&one)
 	// bitLen is the maximum bit length needed to encode a value < max.
 	bitLen := n.BitLength()
 	if bitLen == 0 {
@@ -25,18 +25,21 @@ func Random(rand io.Reader, max *Int1024) (n Int1024, err error) {
 	bytes := make([]byte, k)
 
 	for {
-		_, err = io.ReadFull(rand, bytes)
+		_, err := io.ReadFull(rand, bytes)
 		if err != nil {
-			return Zero(), err
+			return Int1024{}, err
 		}
 
 		// Clear bits in the first byte to increase the probability
 		// that the candidate is < max.
 		bytes[0] &= uint8(int(1<<b) - 1)
 
-		n = FromBytes(bytes)
+		n, err = FromBytes(bytes)
+		if err != nil {
+			return Int1024{}, err
+		}
 		if n.LessThan(max) {
-			return
+			return n, nil
 		}
 	}
 }

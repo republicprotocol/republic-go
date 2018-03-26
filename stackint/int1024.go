@@ -2,6 +2,7 @@ package stackint
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -53,19 +54,19 @@ func (x *Int1024) SetUint(n uint) {
 }
 
 // ToUint converts an Int1024 to a Word if it is small enough
-func (x *Int1024) ToUint() uint {
+func (x *Int1024) ToUint() (uint, error) {
 	// Check that all other words are zero
 	var i uint16
 	for i = 1; i < x.length; i++ {
 		if x.words[i] != 0 {
-			panic("Int1024 is too large to be converted to Word")
+			return 0, errors.New("too big for uint")
 		}
 	}
-	return uint(x.words[0])
+	return uint(x.words[0]), nil
 }
 
 // FromString returns a new Int1024 from a string
-func FromString(number string) Int1024 {
+func FromString(number string) (Int1024, error) {
 	self := Zero()
 
 	// Base to convert from
@@ -85,7 +86,7 @@ func FromString(number string) Int1024 {
 	length := len(number)
 
 	if length == 0 {
-		panic("invalid number")
+		return Int1024{}, errors.New("string must not be empty")
 	}
 
 	// Break up into blocks of size 19 (log10(2 ** 64))
@@ -116,7 +117,7 @@ func FromString(number string) Int1024 {
 		}
 		word, err := strconv.ParseUint(number[start:end], base, 64)
 		if err != nil {
-			panic(err)
+			return Int1024{}, err
 		}
 
 		wordI := FromUint(uint(word))
@@ -126,7 +127,7 @@ func FromString(number string) Int1024 {
 		shiftAcc = shiftAcc.Mul(&shift)
 	}
 
-	return self
+	return self, nil
 }
 
 func (x *Int1024) String() string {
@@ -179,7 +180,7 @@ func (x *Int1024) Bytes() []byte {
 }
 
 // FromBytes deserializes an array of BYTECOUNT (128) bytes to an Int1024 (Big Endian)
-func FromBytes(bytesAll []byte) Int1024 {
+func FromBytes(bytesAll []byte) (Int1024, error) {
 
 	x := Zero()
 
@@ -189,7 +190,7 @@ func FromBytes(bytesAll []byte) Int1024 {
 	}
 
 	if numWords > INT1024WORDS {
-		panic("bytes array too long")
+		return Int1024{}, errors.New("bytes array too long")
 	}
 
 	// mod := 8 - len(bytesAll)%8
@@ -213,7 +214,7 @@ func FromBytes(bytesAll []byte) Int1024 {
 
 	x.length = firstPositive + 1
 
-	return x
+	return x, nil
 }
 
 // LittleEndianBytes returns an array of BYTECOUNT (128) bytes (Little Endian)
@@ -242,7 +243,7 @@ func (x *Int1024) LittleEndianBytes() []byte {
 }
 
 // FromLittleEndianBytes deserializes an array of 128 bytes to an Int1024 (LittleBig Endian)
-func FromLittleEndianBytes(bytesAll []byte) Int1024 {
+func FromLittleEndianBytes(bytesAll []byte) (Int1024, error) {
 
 	x := Zero()
 
@@ -253,7 +254,7 @@ func FromLittleEndianBytes(bytesAll []byte) Int1024 {
 	}
 
 	if numWords > INT1024WORDS {
-		panic("bytes array too long")
+		return Int1024{}, errors.New("bytes array too long")
 	}
 
 	for i := 0; i < numWords; i++ {
@@ -268,7 +269,7 @@ func FromLittleEndianBytes(bytesAll []byte) Int1024 {
 
 	x.length = max(1, uint16(numWords))
 
-	return x
+	return x, nil
 }
 
 // Clone returns a new Int1024 representing the same value as x
@@ -315,7 +316,7 @@ func (x *Int1024) ToBigInt() *big.Int {
 }
 
 // FromBigInt converts a big.Int to an Int1024
-func FromBigInt(bg *big.Int) Int1024 {
+func FromBigInt(bg *big.Int) (Int1024, error) {
 	return FromBytes(bg.Bytes())
 }
 
