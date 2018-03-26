@@ -185,6 +185,7 @@ func (node *DarkNode) StartUI() {
 				"port": "18515",
 			},
 			"contracts": map[string]interface{}{
+				"republicToken":     "0x65d54eda5f032f2275caa557e50c029cfbccbb54",
 				"darkNodeRegistrar": "0x9c06bb4e18e1aa352f99968b2984069c59ea2969",
 			},
 		})
