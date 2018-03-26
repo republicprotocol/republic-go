@@ -1,16 +1,18 @@
 package stackint
 
 /**
- * DoubleInt is used to calculate MulModulo efficiently without overflowing
+ * DoubleInt is used to calculate MulModulo without overflowing
  *
  *
  */
 
+// DoubleInt is used when an operation will overflow an Int1024
 type DoubleInt struct {
 	words  [INT1024WORDS * 2]Word
 	length uint16
 }
 
+// MulModuloBig will return (x*y)%y, even if (x*y) > Int1024Max
 func (x *Int1024) MulModuloBig(y, n *Int1024) Int1024 {
 
 	words := x.BasicMulBig(y)
@@ -43,6 +45,7 @@ func (x *Int1024) MulModuloBig(y, n *Int1024) Int1024 {
 	}
 }
 
+// divDouble returns (x/y, x%y) for when x is a DoubleInt
 func (x *DoubleInt) divDouble(y *Int1024) (DoubleInt, DoubleInt) {
 
 	v := y.words

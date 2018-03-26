@@ -41,6 +41,7 @@ func (x *Int1024) ShiftLeftInPlace(n uint) {
 
 }
 
+// shiftleft sets x to x<<n for n < size(word)
 func (x *Int1024) shiftleft(n uint) {
 	if n >= SIZE {
 		panic("shifting by more than a word")
@@ -68,6 +69,7 @@ func (x *Int1024) shiftleft(n uint) {
 	}
 }
 
+// shiftleftone sets x to x<<1
 func (x *Int1024) shiftleftone() {
 	var overflow Word
 	var firstPositive uint16
@@ -132,6 +134,7 @@ func (x *Int1024) ShiftRightInPlace(n uint) {
 
 }
 
+// shiftright sets x to x>>n for n < size(word)
 func (x *Int1024) shiftright(n uint) {
 	if n >= SIZE {
 		panic("shifting by more than a word")
@@ -151,6 +154,7 @@ func (x *Int1024) shiftright(n uint) {
 	}
 }
 
+// shiftrightone sets x to x>>1
 func (x *Int1024) shiftrightone() {
 	overflow := Word(0)
 	for i := int16(x.length - 1); i >= 0; i-- {
@@ -167,6 +171,7 @@ func (x *Int1024) shiftrightone() {
 
 }
 
+// IsBitSet returns true if the nth bit (0th bit is least significant)
 func (x *Int1024) IsBitSet(n int) bool {
 	if n > (SIZE-1) || n < 0 {
 		return false

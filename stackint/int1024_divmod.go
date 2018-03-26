@@ -1,5 +1,6 @@
 package stackint
 
+// divW sets x to x divided by the single-word y and returns x%y
 func (x *Int1024) divW(y Word) Word {
 	switch {
 	case y == 0:
@@ -24,6 +25,7 @@ func (x *Int1024) divW(y Word) Word {
 	return r
 }
 
+// DivMod returns (x/y, x%y)
 func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
 	if len(y.words) == 0 {
 		panic("division by zero")
@@ -46,6 +48,7 @@ func greaterThan(x1, x2, y1, y2 Word) bool {
 	return x1 > y1 || x1 == y1 && x2 > y2
 }
 
+// divLarge returns (x/y, x%y)
 func (x *Int1024) divLarge(y *Int1024) (Int1024, Int1024) {
 
 	v := y.words

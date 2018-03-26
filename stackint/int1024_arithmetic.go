@@ -23,6 +23,7 @@ func (x *Int1024) Inc(y *Int1024) {
 		return
 	}
 
+	// Set a to be the larger number (only count words, not bits)
 	a, b := x, y
 	if x.length < y.length {
 		a, b = y, x
@@ -80,6 +81,7 @@ func (x *Int1024) Dec(y *Int1024) {
 	}
 }
 
+// BasicMulBig returns x*y using the shift and add method. Used when len(x)+len(y) > len(max)
 func (x *Int1024) BasicMulBig(y *Int1024) [INT1024WORDS * 2]Word {
 
 	var words [INT1024WORDS * 2]Word
@@ -145,6 +147,7 @@ func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 	}
 }
 
+// mulAddWW returns x+y for a single-word y
 func mulAddWW(x *Int1024, y Word) Int1024 {
 
 	m := x.length
