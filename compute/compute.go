@@ -217,36 +217,6 @@ func (matrix *DeltaFragmentMatrix) OpenOrders() chan *order.Order {
 	return openOrders
 }
 
-func (matrix *DeltaFragmentMatrix) BuyOrders() []*order.Order {
-	matrix.EnterReadOnly(nil)
-	defer matrix.Exit()
-
-	res := make([]*order.Order, len(matrix.buyOrderFragments))
-	index := 0
-	for _, fragment := range matrix.buyOrderFragments {
-		buyOrder := new(order.Order)
-		buyOrder.ID = fragment.OrderID
-		res[index] = buyOrder
-		index++
-	}
-	return res
-}
-
-func (matrix *DeltaFragmentMatrix) SellOrders() []*order.Order {
-	matrix.EnterReadOnly(nil)
-	defer matrix.Exit()
-
-	res := make([]*order.Order, len(matrix.sellOrderFragments))
-	index := 0
-	for _, fragment := range matrix.sellOrderFragments {
-		sellOrder := new(order.Order)
-		sellOrder.ID = fragment.OrderID
-		res[index] = sellOrder
-		index++
-	}
-	return res
-}
-
 func (matrix *DeltaFragmentMatrix) InsertOrderFragment(orderFragment *order.Fragment) ([]*DeltaFragment, error) {
 	matrix.Enter(nil)
 	defer matrix.Exit()
