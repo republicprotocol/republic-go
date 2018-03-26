@@ -55,6 +55,17 @@ func (id ID) String() string {
 	return base58.Encode(id)
 }
 
+// The Status shows what status the order is in.
+type Status uint8
+
+// Status values.
+const (
+	Open = Status(iota)
+	Unconfirmed
+	Confirmed
+	Settled
+)
+
 // An Order represents the want to perform a trade of assets.
 type Order struct {
 	Signature []byte `json:"signature"`

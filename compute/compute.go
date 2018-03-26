@@ -179,6 +179,7 @@ func NewDeltaFragmentMatrix(prime *big.Int) *DeltaFragmentMatrix {
 func (matrix *DeltaFragmentMatrix) OpenOrders() chan *order.Order {
 	openOrders := make(chan *order.Order, 100)
 	go func() {
+
 		matrix.EnterReadOnly(nil)
 		for orderId, orderFragment := range matrix.buyOrderFragments {
 			buyOrder := new(order.Order)
@@ -197,7 +198,7 @@ func (matrix *DeltaFragmentMatrix) OpenOrders() chan *order.Order {
 
 			openOrders <- sellOrder
 		}
-		matrix.Exit()
+		matrix.ExitReadOnly()
 
 		for fragment := range matrix.newFragment {
 			_, existBuy := matrix.buyOrderFragments[string(fragment.OrderID)]
@@ -218,10 +219,14 @@ func (matrix *DeltaFragmentMatrix) OpenOrders() chan *order.Order {
 }
 
 func (matrix *DeltaFragmentMatrix) InsertOrderFragment(orderFragment *order.Fragment) ([]*DeltaFragment, error) {
-	if len(matrix.newFragment) == 100 {
-		<-matrix.newFragment
+	select {
+	case matrix.newFragment <- orderFragment:
+		break
+	default:
+		go func() {
+			matrix.newFragment <- orderFragment
+		}()
 	}
-	matrix.newFragment <- orderFragment
 
 	matrix.Enter(nil)
 	defer matrix.Exit()
