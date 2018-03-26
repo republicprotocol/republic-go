@@ -1,5 +1,9 @@
 package stackint
 
+import (
+	"github.com/republicprotocol/republic-go/stackint/asm"
+)
+
 // Add returns x+y
 func (x *Int1024) Add(y *Int1024) Int1024 {
 
@@ -31,9 +35,9 @@ func (x *Int1024) Inc(y *Int1024) {
 	m := a.length
 	n := b.length
 
-	c := addVV_g(x.words[0:n], a.words[:], b.words[:])
+	c := asm.AddVV(x.words[0:n], a.words[:], b.words[:])
 	if m > n {
-		c = addVW_g(x.words[n:m], a.words[n:], c)
+		c = asm.AddVW(x.words[n:m], a.words[n:], c)
 	}
 	x.length = m
 	if c > 0 {
@@ -65,9 +69,9 @@ func (x *Int1024) Dec(y *Int1024) {
 	m := x.length
 	n := y.length
 
-	c := subVV_g(x.words[0:n], x.words[:], y.words[:])
+	c := asm.SubVV(x.words[0:n], x.words[:], y.words[:])
 	if m > n {
-		c = subVW_g(x.words[n:], x.words[n:], c)
+		c = asm.SubVW(x.words[n:], x.words[n:], c)
 		if c != 0 {
 			panic("!!!")
 		}
@@ -95,11 +99,11 @@ func (x *Int1024) BasicMulBig(y *Int1024) [INT1024WORDS * 2]uint64 {
 			var c uint64
 			for j = i; j < i+l; j++ {
 				var z0, z1 uint64
-				z1, zz0 := mulWW(x.words[j-i], d)
+				z1, zz0 := asm.MulWW(x.words[j-i], d)
 				if z0 = zz0 + words[j]; z0 < zz0 {
 					z1++
 				}
-				c, words[j] = addWW_g(z0, c, 0)
+				c, words[j] = asm.AddWW(z0, c, 0)
 				c += z1
 			}
 			words[l+i] = c
@@ -122,11 +126,11 @@ func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 			var c uint64
 			for j = i; j < i+l; j++ {
 				var z0, z1 uint64
-				z1, zz0 := mulWW(x.words[j-i], d)
+				z1, zz0 := asm.MulWW(x.words[j-i], d)
 				if z0 = zz0 + words[j]; z0 < zz0 {
 					z1++
 				}
-				c, words[j] = addWW_g(z0, c, 0)
+				c, words[j] = asm.AddWW(z0, c, 0)
 				if words[j] != 0 {
 				}
 				c += z1
@@ -152,7 +156,7 @@ func mulAddWW(x *Int1024, y uint64) Int1024 {
 
 	m := x.length
 	z := Zero()
-	nxt := mulAddVWW_g(z.words[0:m], x.words[0:m], y, 0)
+	nxt := asm.MulAddVWW(z.words[0:m], x.words[0:m], y, 0)
 	z.length = m
 	if m < INT1024WORDS && nxt > 0 {
 		z.words[m] = nxt

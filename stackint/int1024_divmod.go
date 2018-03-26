@@ -1,5 +1,9 @@
 package stackint
 
+import (
+	"github.com/republicprotocol/republic-go/stackint/asm"
+)
+
 func (x *Int1024) divW(y uint64) uint64 {
 	switch {
 	case y == 0:
@@ -15,7 +19,7 @@ func (x *Int1024) divW(y uint64) uint64 {
 	r := uint64(0)
 	var first uint16
 	for i := int(x.length - 1); i >= 0; i-- {
-		x.words[i], r = divWW_g(r, x.words[i], y)
+		x.words[i], r = asm.DivWW(r, x.words[i], y)
 		if first == 0 && x.words[i] != 0 {
 			first = uint16(i)
 		}
@@ -68,27 +72,27 @@ func (x *Int1024) divLarge(y *Int1024) (Int1024, Int1024) {
 	var qhatv [INT1024WORDS + 1]uint64
 	var u [INT1024WORDS + 1]uint64
 	// D1.
-	shift := nlz(v[n-1])
+	shift := asm.Nlz(v[n-1])
 	if shift > 0 {
 		// do not modify v, it may be used by another goroutine simultaneously
 
 		var v1 [INT1024WORDS]uint64
-		shlVU_g(v1[:], v[:], shift)
+		asm.ShlVU(v1[:], v[:], shift)
 		v = v1
 	}
-	u[int(x.length)] = shlVU_g(u[:x.length], uIn[:], shift)
+	u[int(x.length)] = asm.ShlVU(u[:x.length], uIn[:], shift)
 	// D2.
 	vn1 := v[n-1]
 	for jj := int(m); jj >= 0; jj-- {
 		j := uint16(jj)
 		// D3.
-		qhat := uint64(_M)
+		qhat := uint64(asm.M)
 		if ujn := u[j+n]; ujn != vn1 {
 			var rhat uint64
-			qhat, rhat = divWW(ujn, u[j+n-1], vn1)
+			qhat, rhat = asm.DivWW(ujn, u[j+n-1], vn1)
 			// x1 | x2 = q̂v_{n-2}
 			vn2 := v[n-2]
-			x1, x2 := mulWW(qhat, vn2)
+			x1, x2 := asm.MulWW(qhat, vn2)
 			// test if q̂v_{n-2} > br̂ + u_{j+n-2}
 			ujn2 := u[j+n-2]
 			for greaterThan(x1, x2, rhat, ujn2) {
@@ -99,7 +103,7 @@ func (x *Int1024) divLarge(y *Int1024) (Int1024, Int1024) {
 				if rhat < prevRhat {
 					break
 				}
-				x1, x2 = mulWW(qhat, vn2)
+				x1, x2 = asm.MulWW(qhat, vn2)
 			}
 		}
 		// D4.
@@ -109,16 +113,16 @@ func (x *Int1024) divLarge(y *Int1024) (Int1024, Int1024) {
 		c := uint64(0)
 		var i uint16
 		for i = 0; i < n; i++ {
-			c, qhatv[i] = mulAddWWW_g(v[i], qhat, c)
+			c, qhatv[i] = asm.MulAddWWW(v[i], qhat, c)
 		}
 		qhatv[n] = c
 
 		// Inlined
-		c = subVV_g(u[j:j+n+1], u[j:], qhatv[:])
+		c = asm.SubVV(u[j:j+n+1], u[j:], qhatv[:])
 
 		if c != 0 {
 			// Inlined
-			c := addVV_g(u[j:j+n], u[j:], v[:])
+			c := asm.AddVV(u[j:j+n], u[j:], v[:])
 
 			u[j+n] += c
 			qhat--
@@ -128,7 +132,7 @@ func (x *Int1024) divLarge(y *Int1024) (Int1024, Int1024) {
 			highestQ = j
 		}
 	}
-	shrVU_g(u[:x.length+1], u[:uint(x.length)+1], shift)
+	asm.ShrVU(u[:x.length+1], u[:uint(x.length)+1], shift)
 
 	var rWords [INT1024WORDS]uint64
 	copy(rWords[:], u[:INT1024WORDS])

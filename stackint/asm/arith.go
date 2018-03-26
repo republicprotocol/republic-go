@@ -6,7 +6,7 @@
 // arithmetic operations on word vectors. Needed for platforms without
 // assembly implementations of these routines.
 
-package stackint
+package asm
 
 import "math/bits"
 

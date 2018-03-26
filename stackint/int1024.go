@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+
+	"github.com/republicprotocol/republic-go/stackint/asm"
 )
 
 // go build -a -gcflags='-m -m' int1024.go int1024_arithmetic.go int1024_bitwise.go int1024_comparison.go int1024_internal.go
@@ -166,7 +168,7 @@ func (x *Int1024) Bytes() []byte {
 	var k uint16
 	for k = 0; k < x.length; k++ {
 		d := x.words[k]
-		for j := 0; j < _S; j++ {
+		for j := 0; j < asm.S; j++ {
 			if d > 0 {
 				buf[i-1] = byte(d)
 			}
@@ -230,7 +232,7 @@ func (x *Int1024) LittleEndianBytes() []byte {
 	var k uint16
 	for k = 0; k < x.length; k++ {
 		d := x.words[k]
-		for j := 0; j < _S && d > 0; j++ {
+		for j := 0; j < asm.S && d > 0; j++ {
 			if d > 0 {
 				buf[index] = byte(d)
 			}
