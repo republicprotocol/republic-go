@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -17,15 +20,18 @@ import (
 )
 
 func main() {
+	// Load configuration path from the command line
+	configFilename := flag.String("config", "/home/ubuntu/.darknode/config.json", "Path to the JSON configuration file")
+	flag.Parse()
 
 	// Load the default configuration
-	config, err := LoadConfig("/home/.darknode/config.json")
+	config, err := LoadConfig(*configFilename)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Create a dark node registrar.
-	darkNodeRegistrar, err := CreateDarkNodeRegistrar(config.EthereumKey)
+	darkNodeRegistrar, err := CreateDarkNodeRegistrar(config.EthereumKey, config.EthereumRPC)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,6 +43,7 @@ func main() {
 	}
 
 	go node.StartServices()
+	go node.StartUI()
 	node.StartBackgroundWorkers()
 	node.Bootstrap()
 	node.WatchDarkOcean()
@@ -52,43 +59,53 @@ func LoadConfig(filename string) (*node.Config, error) {
 	}
 
 	// Generate our ethereum keypair
-	if config.EthereumKey == nil {
-		config.EthereumKey = keystore.NewKeyForDirectICAP(rand.Reader)
+	if config.EthereumKey.PrivateKey == nil {
+		config.EthereumKey = *keystore.NewKeyForDirectICAP(rand.Reader)
 	}
 
-	if config.RepublicKeyPair == nil {
-		// Get an address and keypair
-		address, keyPair, err := identity.NewAddress()
-		if err != nil {
-			return nil, err
-		}
+	if config.KeyPair.PrivateKey == nil {
 
-		// Get our IP address
-		out, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
-		out = []byte(strings.Trim(string(out), "\n "))
+		// Get a random keypair
+		keyPair, err := identity.NewKeyPair()
 		if err != nil {
 			return nil, err
 		}
-		if err != nil {
-			return nil, err
-		}
-
-		// Generate our multiaddress
-		multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", string(out), config.Port, address.String()))
-		if err != nil {
-			return nil, err
-		}
-
-		config.RepublicKeyPair = &keyPair
-		config.NetworkOptions.MultiAddress = multiAddress
+		config.KeyPair = keyPair
 	}
 
-	return config, err
+	// Get our IP address
+	out, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
+	out = []byte(strings.Trim(string(out), "\n "))
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate our multiaddress
+	multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", string(out), config.Port, config.KeyPair.Address().String()))
+	if err != nil {
+		return nil, err
+	}
+	config.NetworkOptions.MultiAddress = multiAddress
+
+	// Write changes back to the config file
+	file, err := os.Create(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	if err := json.NewEncoder(file).Encode(config); err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }
 
-func CreateDarkNodeRegistrar(key *keystore.Key) (dnr.DarkNodeRegistrar, error) {
-	auth := bind.NewKeyedTransactor(key.PrivateKey)
-	client, err := connection.FromURI("https://ropsten.infura.io/")
+func CreateDarkNodeRegistrar(ethereumKey keystore.Key, ethereumRPC string) (dnr.DarkNodeRegistrar, error) {
+	auth := bind.NewKeyedTransactor(ethereumKey.PrivateKey)
+	client, err := connection.FromURI(ethereumRPC, connection.ChainRopsten)
 	if err != nil {
 		return nil, err
 	}

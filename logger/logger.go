@@ -1,21 +1,11 @@
 package logger
 
 import (
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/republicprotocol/go-do"
-)
-
-// Constant strings for tagging logs.
-const (
-	TagNetwork   = "net"
-	TagCompute   = "cmp"
-	TagRegister  = "reg"
-	TagUsage     = "usg"
-	TagGeneral   = "gen"
-	TagEthereum  = "eth"
-	TagConsensus = "con"
 )
 
 type Logger struct {
@@ -31,38 +21,35 @@ type Options struct {
 type Plugin interface {
 	Start() error
 	Stop() error
-	Info(tag, message string) error
-	Warn(tag, message string) error
-	Error(tag, message string) error
-	Usage(cpu float32, memory, network int32) error
+	Log(log Log) error
 }
 
 // PluginOptions are used to Unmarshal plugins from JSON.
 type PluginOptions struct {
-	File      *FilePluginOptions      `json:"file"`
-	WebSocket *WebSocketPluginOptions `json:"websocket"`
+	File      *FilePluginOptions      `json:"file,omitempty"`
+	WebSocket *WebSocketPluginOptions `json:"websocket,omitempty"`
 }
 
 // NewLogger returns a new Logger that will start and stop a set of plugins.
 func NewLogger(options Options) (*Logger, error) {
-	plugins := make([]Plugin, 0, len(options.Plugins))
+	logger := &Logger{
+		GuardedObject: do.NewGuardedObject(),
+		Plugins:       make([]Plugin, 0, len(options.Plugins)),
+	}
 	for i := range options.Plugins {
 		if options.Plugins[i].File != nil {
 			plugin, err := NewFilePlugin(*options.Plugins[i].File)
 			if err != nil {
 				return nil, err
 			}
-			plugins = append(plugins, plugin)
+			logger.Plugins = append(logger.Plugins, plugin)
 		}
 		if options.Plugins[i].WebSocket != nil {
-			plugin := NewWebSocketPlugin(*options.Plugins[i].WebSocket)
-			plugins = append(plugins, plugin)
+			plugin := NewWebSocketPlugin(logger, *options.Plugins[i].WebSocket)
+			logger.Plugins = append(logger.Plugins, plugin)
 		}
 	}
-	return &Logger{
-		GuardedObject: do.NewGuardedObject(),
-		Plugins:       plugins,
-	}, nil
+	return logger, nil
 }
 
 // Start starts all the plugins of the logger
@@ -83,70 +70,223 @@ func (logger Logger) Stop() {
 	}
 }
 
-func (logger *Logger) Error(tag, message string) {
+// Log an Event.
+func (logger *Logger) Log(l Log) {
 	for _, plugin := range logger.Plugins {
-		if err := plugin.Error(tag, message); err != nil {
+		if err := plugin.Log(l); err != nil {
 			log.Println(err)
 		}
 	}
 }
 
-func (logger *Logger) Info(tag, message string) {
-	for _, plugin := range logger.Plugins {
-		if err := plugin.Info(tag, message); err != nil {
-			log.Println(err)
-		}
-	}
+// Info logs an info Log using a GenericEvent.
+func (logger *Logger) Info(message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      Info,
+		EventType: Generic,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
 }
 
-func (logger *Logger) Warn(tag, message string) {
-	for _, plugin := range logger.Plugins {
-		if err := plugin.Warn(tag, message); err != nil {
-			log.Println(err)
-		}
-	}
+// Warn logs a warn Log using a GenericEvent.
+func (logger *Logger) Warn(message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      Warn,
+		EventType: Generic,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
 }
 
-func (logger *Logger) Usage(cpu float32, memory, network int32) {
-	for _, plugin := range logger.Plugins {
-		if err := plugin.Usage(cpu, memory, network); err != nil {
-			log.Println(err)
-		}
-	}
+// Error logs an error Log using a GenericEvent.
+
+func (logger *Logger) Error(message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      Error,
+		EventType: Generic,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
 }
 
-type Usage struct {
-	Type string    `json:"type"`
-	Time time.Time `json:"timestamp"`
-	Data UsageData `json:"data"`
+// Usage logs an info Log using a UsageEvent.
+func (logger *Logger) Usage(cpu, memory float64, network uint64) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      Info,
+		EventType: Usage,
+		Event: UsageEvent{
+			CPU:     cpu,
+			Memory:  memory,
+			Network: network,
+		},
+	})
 }
 
-type UsageData struct {
-	CPU     float32 `json:"cpu"`
-	Memory  int32   `json:"memory"`
-	Network int32   `json:"network"`
+// OrderMatch logs an OrderMatchEvent.
+func (logger *Logger) OrderMatch(ty Type, id, buyID, sellID string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: OrderMatch,
+		Event: OrderMatchEvent{
+			ID:     id,
+			BuyID:  buyID,
+			SellID: sellID,
+		},
+	})
 }
 
-type Event struct {
-	Type string    `json:"type"`
-	Time time.Time `json:"timestamp"`
-	Data EventData `json:"data"`
+// BuyOrderReceived logs an OrderReceivedEvent.
+func (logger *Logger) BuyOrderReceived(ty Type, id, fragmentID string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: OrderReceived,
+		Event: OrderReceivedEvent{
+			BuyID:      &id,
+			FragmentID: fragmentID,
+		},
+	})
 }
 
-type EventData struct {
-	Tag     string `json:"tag"`
-	Level   string `json:"level"`
+// SellOrderReceived logs an OrderReceivedEvent.
+func (logger *Logger) SellOrderReceived(ty Type, id, fragmentID string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: OrderReceived,
+		Event: OrderReceivedEvent{
+			SellID:     &id,
+			FragmentID: fragmentID,
+		},
+	})
+}
+
+// Network logs a NetworkEvent.
+func (logger *Logger) Network(ty Type, message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: Network,
+		Event: NetworkEvent{
+			Message: message,
+		},
+	})
+}
+
+// Compute logs a ComputeEvent.
+func (logger *Logger) Compute(ty Type, message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: Compute,
+		Event: ComputeEvent{
+			Message: message,
+		},
+	})
+}
+
+// Type defines the different types of Log messages that can be sent.
+type Type string
+
+// Values for the LogType.
+const (
+	Info  = Type("info")
+	Warn  = Type("warn")
+	Error = Type("error")
+)
+
+// EventType defines the different types of Event messages that can be sent in a
+// Log.
+type EventType string
+
+// Values for the EventType.
+const (
+	Generic       = EventType("generic")
+	Usage         = EventType("usage")
+	Ethereum      = EventType("ethereum")
+	OrderMatch    = EventType("orderMatch")
+	OrderReceived = EventType("orderReceived")
+	Network       = EventType("network")
+	Compute       = EventType("compute")
+)
+
+// A Log is logged by the Logger using all available Plugins.
+type Log struct {
+	Timestamp time.Time `json:"timestamp"`
+	Type      Type      `json:"type"`
+	EventType EventType `json:"eventType"`
+	Event     Event     `json:"event"`
+}
+
+type Event interface {
+	String() string
+}
+
+type GenericEvent struct {
 	Message string `json:"message"`
 }
 
-type Error struct {
-	Tag     string
-	Message string
+func (event GenericEvent) String() string {
+	return event.Message
 }
 
-type Registration struct {
-	NodeID     string `json:"nodeID"`
-	PublicKey  string `json:"publicKey""`
-	Address    string `json:"address"`
-	RepublicID string `json:"republicID"`
+type UsageEvent struct {
+	CPU     float64 `json:"cpu"`
+	Memory  float64 `json:"memory"`
+	Network uint64  `json:"network"`
+}
+
+func (event UsageEvent) String() string {
+	return fmt.Sprintf("cpu = %v; memory = %v; network = %v", event.CPU, event.Memory, event.Network)
+}
+
+type OrderMatchEvent struct {
+	ID     string `json:"id"`
+	BuyID  string `json:"buyId"`
+	SellID string `json:"sellId"`
+}
+
+func (event OrderMatchEvent) String() string {
+	return fmt.Sprintf("buy = %s; sell = %s", event.BuyID, event.SellID)
+}
+
+type OrderReceivedEvent struct {
+	BuyID      *string `json:"buyId,omitempty"`
+	SellID     *string `json:"sellId,omitempty"`
+	FragmentID string  `json:"fragmentId"`
+}
+
+func (event OrderReceivedEvent) String() string {
+	if event.BuyID != nil {
+		return "buy = " + *event.BuyID
+	}
+	if event.SellID != nil {
+		return "sell = " + *event.SellID
+	}
+	return ""
+}
+
+type NetworkEvent struct {
+	Message string `json:"message"`
+}
+
+func (event NetworkEvent) String() string {
+	return event.Message
+}
+
+type ComputeEvent struct {
+	Message string `json:"message"`
+}
+
+func (event ComputeEvent) String() string {
+	return event.Message
 }

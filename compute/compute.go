@@ -131,10 +131,10 @@ func (matrix *DeltaFragmentMatrix) InsertOrderFragment(orderFragment *order.Frag
 }
 
 func (matrix *DeltaFragmentMatrix) insertBuyOrderFragment(buyOrderFragment *order.Fragment) ([]*DeltaFragment, error) {
-	if _, ok := matrix.buyOrderFragments[string(buyOrderFragment.ID)]; ok {
+	if _, ok := matrix.buyOrderFragments[string(buyOrderFragment.OrderID)]; ok {
 		return []*DeltaFragment{}, nil
 	}
-	if _, ok := matrix.completeOrderFragments[string(buyOrderFragment.ID)]; ok {
+	if _, ok := matrix.completeOrderFragments[string(buyOrderFragment.OrderID)]; ok {
 		return []*DeltaFragment{}, nil
 	}
 
@@ -146,19 +146,19 @@ func (matrix *DeltaFragmentMatrix) insertBuyOrderFragment(buyOrderFragment *orde
 			continue
 		}
 		deltaFragments = append(deltaFragments, deltaFragment)
-		deltaFragmentsMap[string(matrix.sellOrderFragments[i].ID)] = deltaFragment
+		deltaFragmentsMap[string(matrix.sellOrderFragments[i].OrderID)] = deltaFragment
 	}
 
-	matrix.buyOrderFragments[string(buyOrderFragment.ID)] = buyOrderFragment
-	matrix.buySellDeltaFragments[string(buyOrderFragment.ID)] = deltaFragmentsMap
+	matrix.buyOrderFragments[string(buyOrderFragment.OrderID)] = buyOrderFragment
+	matrix.buySellDeltaFragments[string(buyOrderFragment.OrderID)] = deltaFragmentsMap
 	return deltaFragments, nil
 }
 
 func (matrix *DeltaFragmentMatrix) insertSellOrderFragment(sellOrderFragment *order.Fragment) ([]*DeltaFragment, error) {
-	if _, ok := matrix.sellOrderFragments[string(sellOrderFragment.ID)]; ok {
+	if _, ok := matrix.sellOrderFragments[string(sellOrderFragment.OrderID)]; ok {
 		return []*DeltaFragment{}, nil
 	}
-	if _, ok := matrix.completeOrderFragments[string(sellOrderFragment.ID)]; ok {
+	if _, ok := matrix.completeOrderFragments[string(sellOrderFragment.OrderID)]; ok {
 		return []*DeltaFragment{}, nil
 	}
 
@@ -168,61 +168,46 @@ func (matrix *DeltaFragmentMatrix) insertSellOrderFragment(sellOrderFragment *or
 		if deltaFragment == nil {
 			continue
 		}
-		if _, ok := matrix.buySellDeltaFragments[string(matrix.buyOrderFragments[i].ID)]; ok {
+		if _, ok := matrix.buySellDeltaFragments[string(matrix.buyOrderFragments[i].OrderID)]; ok {
 			deltaFragments = append(deltaFragments, deltaFragment)
-			matrix.buySellDeltaFragments[string(matrix.buyOrderFragments[i].ID)][string(sellOrderFragment.ID)] = deltaFragment
+			matrix.buySellDeltaFragments[string(matrix.buyOrderFragments[i].OrderID)][string(sellOrderFragment.OrderID)] = deltaFragment
 		}
 	}
 
-	matrix.sellOrderFragments[string(sellOrderFragment.ID)] = sellOrderFragment
+	matrix.sellOrderFragments[string(sellOrderFragment.OrderID)] = sellOrderFragment
 	return deltaFragments, nil
 }
 
-func (matrix *DeltaFragmentMatrix) RemoveOrderFragment(orderFragmentID order.FragmentID) error {
+func (matrix *DeltaFragmentMatrix) RemoveOrderFragment(orderID order.ID) error {
 	matrix.Enter(nil)
 	defer matrix.Exit()
-	if err := matrix.removeBuyOrderFragment(orderFragmentID); err != nil {
+	if err := matrix.removeBuyOrderFragment(orderID); err != nil {
 		return err
 	}
-	return matrix.removeSellOrderFragment(orderFragmentID)
+	return matrix.removeSellOrderFragment(orderID)
 }
 
-func (matrix *DeltaFragmentMatrix) removeBuyOrderFragment(buyOrderFragmentID order.FragmentID) error {
-	if _, ok := matrix.buyOrderFragments[string(buyOrderFragmentID)]; !ok {
+func (matrix *DeltaFragmentMatrix) removeBuyOrderFragment(buyOrderID order.ID) error {
+	if _, ok := matrix.buyOrderFragments[string(buyOrderID)]; !ok {
 		return nil
 	}
 
-	delete(matrix.buyOrderFragments, string(buyOrderFragmentID))
-	delete(matrix.buySellDeltaFragments, string(buyOrderFragmentID))
+	delete(matrix.buyOrderFragments, string(buyOrderID))
+	delete(matrix.buySellDeltaFragments, string(buyOrderID))
 
-	matrix.completeOrderFragments[string(buyOrderFragmentID)] = true
+	matrix.completeOrderFragments[string(buyOrderID)] = true
 	return nil
 }
 
-func (matrix *DeltaFragmentMatrix) removeSellOrderFragment(sellOrderFragmentID order.FragmentID) error {
-	if _, ok := matrix.sellOrderFragments[string(sellOrderFragmentID)]; !ok {
+func (matrix *DeltaFragmentMatrix) removeSellOrderFragment(sellOrderID order.ID) error {
+	if _, ok := matrix.sellOrderFragments[string(sellOrderID)]; !ok {
 		return nil
 	}
 
 	for i := range matrix.buySellDeltaFragments {
-		delete(matrix.buySellDeltaFragments[i], string(sellOrderFragmentID))
+		delete(matrix.buySellDeltaFragments[i], string(sellOrderID))
 	}
 
-	matrix.completeOrderFragments[string(sellOrderFragmentID)] = true
-	return nil
-}
-
-func (matrix *DeltaFragmentMatrix) DeltaFragment(buyOrderFragmentID, sellOrderFragmentID order.FragmentID) *DeltaFragment {
-	matrix.EnterReadOnly(nil)
-	defer matrix.ExitReadOnly()
-	return matrix.deltaFragment(buyOrderFragmentID, sellOrderFragmentID)
-}
-
-func (matrix *DeltaFragmentMatrix) deltaFragment(buyOrderFragmentID, sellOrderFragmentID order.FragmentID) *DeltaFragment {
-	if deltaFragments, ok := matrix.buySellDeltaFragments[string(buyOrderFragmentID)]; ok {
-		if deltaFragment, ok := deltaFragments[string(sellOrderFragmentID)]; ok {
-			return deltaFragment
-		}
-	}
+	matrix.completeOrderFragments[string(sellOrderID)] = true
 	return nil
 }

@@ -29,6 +29,7 @@ type SwarmService struct {
 	DHT        *dht.DHT
 }
 
+// NewSwarmService returns a SwarmService.
 func NewSwarmService(delegate SwarmDelegate, options Options, logger *logger.Logger, clientPool *rpc.ClientPool, dht *dht.DHT) *SwarmService {
 	return &SwarmService{
 		SwarmDelegate: delegate,
@@ -50,9 +51,8 @@ func (service *SwarmService) Register(server *grpc.Server) {
 func (service *SwarmService) Bootstrap() {
 	// Add all bootstrap Nodes to the DHT.
 	for _, bootstrapMultiAddress := range service.Options.BootstrapMultiAddresses {
-		err := service.DHT.UpdateMultiAddress(bootstrapMultiAddress)
-		if err != nil && service.Options.Debug >= DebugLow {
-			service.Logger.Error(logger.TagNetwork, err.Error())
+		if err := service.DHT.UpdateMultiAddress(bootstrapMultiAddress); err != nil {
+			service.Logger.Error(err.Error())
 		}
 	}
 	if service.Options.Concurrent {
@@ -60,20 +60,18 @@ func (service *SwarmService) Bootstrap() {
 		do.ForAll(service.Options.BootstrapMultiAddresses, func(i int) {
 			bootstrapMultiAddress := service.Options.BootstrapMultiAddresses[i]
 			if err := service.bootstrapUsingMultiAddress(bootstrapMultiAddress); err != nil {
-				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("bootstrap error: %s", err.Error()))
+				service.Logger.Error(fmt.Sprintf("error bootstrapping with %s: %s", bootstrapMultiAddress.Address(), err.Error()))
 			}
 		})
 	} else {
 		// Sequentially search all bootstrap Nodes for itself.
 		for _, bootstrapMultiAddress := range service.Options.BootstrapMultiAddresses {
 			if err := service.bootstrapUsingMultiAddress(bootstrapMultiAddress); err != nil {
-				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("bootstrap error: %s", err.Error()))
+				service.Logger.Error(fmt.Sprintf("error bootstrapping with %s: %s", bootstrapMultiAddress.Address(), err.Error()))
 			}
 		}
 	}
-	if service.Options.Debug >= DebugMedium {
-		service.Logger.Info(logger.TagNetwork, fmt.Sprintf("boostrap connected to %v peers", len(service.DHT.MultiAddresses())))
-	}
+	service.Logger.Info(fmt.Sprintf("boostrap connected to %v peers", len(service.DHT.MultiAddresses())))
 }
 
 // Prune an identity.Address from the dht.DHT. Returns a boolean indicating
@@ -160,7 +158,6 @@ func (service *SwarmService) queryPeers(query *rpc.Query, stream rpc.Swarm_Query
 		}
 		if closer {
 			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
-				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot send query result: %s", err.Error()))
 				return err
 			}
 		}
@@ -207,7 +204,6 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 		}
 		if closer {
 			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
-				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot send deep query result: %s", err.Error()))
 				return err
 			}
 			frontier = append(frontier, peer)
@@ -237,7 +233,7 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 
 		candidates, err := service.ClientPool.QueryPeers(peer, query.Target)
 		if err != nil {
-			service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot deepen query: %s", err.Error()))
+			service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
 			continue
 		}
 
@@ -245,7 +241,6 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 
 			candidate, err := rpc.DeserializeMultiAddress(serializedCandidate)
 			if err != nil {
-				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
 				return err
 			}
 			if _, ok := visited[candidate.Address()]; ok {
@@ -254,7 +249,6 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 			// Expand the frontier by candidates that have not already been
 			// explored, and store them in a persistent list of close peers.
 			if err := stream.Send(serializedCandidate); err != nil {
-				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot send query result: %s", err.Error()))
 				return err
 			}
 			frontier = append(frontier, candidate)
@@ -271,29 +265,27 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 	// Query the bootstrap service.
 	peers, err = service.ClientPool.QueryPeersDeep(bootstrapMultiAddress, rpc.SerializeAddress(service.Address()))
 	if err != nil {
-		if service.Options.Debug >= DebugLow {
-			service.Logger.Error(logger.TagNetwork, err.Error())
-		}
 		return err
 	}
 
 	// Peers returned by the query will be added to the DHT.
+	numberOfPeers := 0
 	for serializedPeer := range peers {
 		peer, err := rpc.DeserializeMultiAddress(serializedPeer)
 		if err != nil {
-			service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
+			service.Logger.Error(fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
 			continue
 		}
 		if peer.Address() == service.Address() {
 			continue
 		}
+		numberOfPeers++
 		if err := service.DHT.UpdateMultiAddress(peer); err != nil {
-			if service.Options.Debug >= DebugLow {
-				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot update DHT: %s", err.Error()))
-			}
+			service.Logger.Error(fmt.Sprintf("cannot update DHT: %s", err.Error()))
 		}
 	}
 
+	service.Logger.Info(fmt.Sprintf("bootstrapping with %s returned %d peers", bootstrapMultiAddress.Address(), numberOfPeers))
 	return nil
 }
 
@@ -341,13 +333,13 @@ func (service *SwarmService) FindNode(targetID identity.ID) (*identity.MultiAddr
 	for _, peer := range peers {
 		candidates, err := service.ClientPool.QueryPeersDeep(peer, serializedTarget)
 		if err != nil {
-			service.Logger.Error(logger.TagNetwork, fmt.Sprintf("error finding node: %s", err.Error()))
+			service.Logger.Error(fmt.Sprintf("error finding node: %s", err.Error()))
 			continue
 		}
 		for candidate := range candidates {
 			deserializedCandidate, err := rpc.DeserializeMultiAddress(candidate)
 			if err != nil {
-				service.Logger.Error(logger.TagNetwork, fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
+				service.Logger.Error(fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
 				continue
 			}
 			if target == deserializedCandidate.Address() {
