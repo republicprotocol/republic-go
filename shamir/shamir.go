@@ -124,7 +124,7 @@ func Join(prime *stackint.Int1024, shares Shares) *stackint.Int1024 {
 func ToBytes(share Share) []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, share.Key)
-	binary.Write(buf, binary.LittleEndian, share.Value.ToBytes())
+	binary.Write(buf, binary.LittleEndian, share.Value.Bytes())
 	return buf.Bytes()
 }
 
