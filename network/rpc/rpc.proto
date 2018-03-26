@@ -182,3 +182,34 @@ message SyncBlock {
     Order settled = 6;
   }
 }
+
+/**
+ * Tau sMPC protocol
+ */
+
+service Tau {
+  rpc Connect (stream TauMessage) returns (stream TauMessage);
+}
+
+message TauMessage {
+  GenerateRandomShares generateRandomShares = 1;
+  GenerateXiShares generateXiShares = 2;
+  GenerateXiFragment generateXiFragment = 3;
+  BroadcastRhoSigmaFragment broadcastRhoSigmaFragment = 4;
+  BroadcastDeltaFragment broadcastDeltaFragment = 5;
+}
+
+message GenerateRandomShares {
+}
+
+message GenerateXiShares {
+}
+
+message GenerateXiFragment {
+}
+
+message BroadcastRhoSigmaFragment {
+}
+
+message BroadcastDeltaFragment {
+}

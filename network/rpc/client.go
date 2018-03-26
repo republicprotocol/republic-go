@@ -294,30 +294,3 @@ func (client *Client) BroadcastDeltaFragment(deltaFragment *DeltaFragment) (*Del
 	return val, err
 }
 
-//// Gossip RPC.
-//func (client *Client) Gossip(rumor *Rumor) (*Rumor, error) {
-//	var val *Rumor
-//	var err error
-//	err = client.TimeoutFunc(func(ctx context.Context) error {
-//		val, err = client.GossipClient.Gossip(ctx, &GossipRequest{
-//			From:  client.From,
-//			Rumor: rumor,
-//		}, grpc.FailFast(false))
-//		return err
-//	})
-//	return val, err
-//}
-//
-//// Finalize RPC.
-//func (client *Client) Finalize(rumor *Rumor) (*Rumor, error) {
-//	var val *Rumor
-//	var err error
-//	err = client.TimeoutFunc(func(ctx context.Context) error {
-//		val, err = client.GossipClient.Finalize(ctx, &FinalizeRequest{
-//			From:  client.From,
-//			Rumor: rumor,
-//		}, grpc.FailFast(false))
-//		return err
-//	})
-//	return val, err
-//}
