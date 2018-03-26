@@ -24,7 +24,3 @@ type MessageQueue interface {
 	// This method should block if the MessageQueue is empty.
 	Recv() (Message, bool)
 }
-
-// MessageQueueLimit defines the number of messages that can be buffered in
-// the connection queue.
-const MessageQueueLimit = 100

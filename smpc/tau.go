@@ -4,22 +4,27 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/network/rpc"
 )
 
-// Tau implements the Tau gRPC service. Tau creates MessageQueues for each gRPC
-// stream, and runs them on a Dispatcher. The closure of a gRPC stream, by the
-// client or by the server, will prompt Tau to shutdown the MessageQueue.
+// Tau implements the Tau gRPC service. Tau creates TauMessageQueues for each
+// gRPC stream, and runs them on a Multiplexer. The closure of a gRPC stream,
+// by the client or by the server, will prompt Tau to shutdown the
+// TauMessageQueue.
 type Tau struct {
-	dispatcher *dispatch.Dispatcher
+	multiplexer       *dispatch.Multiplexer
+	messageQueueLimit int
 }
 
-// NewTau returns a new Tau service that will run MessageQueues on the given
-// Dispatcher.
-func NewTau(dispatcher *Dispatcher) Tau {
+// NewTau returns a new Tau service that will run TauMessageQueues on the given
+// Dispatcher. The message queue limit is used used to buffer the size of the
+// TauMessageQueues that are created by the Tau.
+func NewTau(multiplexer *dispatch.Multiplexer, messageQueueLimit int) Tau {
 	return Tau{
-		dispatcher: dispatcher,
+		multiplexer:       multiplexer,
+		messageQueueLimit: messageQueueLimit,
 	}
 }
 
@@ -51,14 +56,14 @@ func (τ *Tau) connect(stream rpc.TauService_ConnectServer, quit chan struct{}) 
 
 	// Create a MessageQueue that owns this gRPC stream and run it on the
 	// Dispatcher
-	messageQueue := NewTauMessageQueue(stream)
+	messageQueue := NewTauMessageQueue(stream, τ.messageQueueLimit)
 
 	// Shutdown the MessageQueue
 	go func() {
 		<-quit
-		τ.dispatcher.ShutdownMessageQueue(multiAddress)
+		τ.multiplexer.ShutdownMessageQueue(multiAddress.Address().String())
 	}()
-	return τ.dispatcher.RunMessageQueue(multiAddress, messageQueue)
+	return τ.multiplexer.RunMessageQueue(multiAddress.Address().String(), messageQueue)
 }
 
 // TauMessageQueue workers own a gRPC stream to a client. All Message
@@ -76,11 +81,11 @@ type TauMessageQueue struct {
 // NewTauMessageQueue returns a MessageQueue interface. It accepts a gRPC
 // stream, that will be owned by the MessageQueue and should not be used by any
 // other component
-func NewTauMessageQueue(stream rpc.TauService_ConnectServer) MessageQueue {
+func NewTauMessageQueue(stream rpc.TauService_ConnectServer, messageQueueLimit int) dispatch.MessageQueue {
 	return &TauMessageQueue{
 		stream: stream,
-		write:  make(chan *rpc.TauMessage, MessageQueueLimit),
-		read:   make(chan *rpc.TauMessage, MessageQueueLimit),
+		write:  make(chan *rpc.TauMessage, messageQueueLimit),
+		read:   make(chan *rpc.TauMessage, messageQueueLimit),
 		quit:   make(chan struct{}),
 	}
 }
@@ -117,7 +122,7 @@ func (queue *TauMessageQueue) Shutdown() error {
 
 // Send a message to the TauMessageQueue. The Message must be a pointer to
 // a gRPC TauMessage, otherwise an error is returned.
-func (queue *TauMessageQueue) Send(message Message) error {
+func (queue *TauMessageQueue) Send(message dispatch.Message) error {
 	var err error
 	defer func() {
 		if r := recover(); r != nil {
@@ -137,7 +142,7 @@ func (queue *TauMessageQueue) Send(message Message) error {
 
 // Recv a message from the TauMessageQueue. All Messages returned will be a
 // pointer to a gRPC TauMessage.
-func (queue *TauMessageQueue) Recv() (Message, bool) {
+func (queue *TauMessageQueue) Recv() (dispatch.Message, bool) {
 	message, ok := <-queue.read
 	return message, ok
 }
