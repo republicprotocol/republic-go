@@ -55,6 +55,5 @@ func (τ *Tau) connect(stream rpc.TauService_ConnectServer, quit chan struct{}) 
 		<-quit
 		τ.dispatcher.ShutdownMessageQueue(multiAddress)
 	}()
-
 	return τ.dispatcher.RunMessageQueue(multiAddress, &messageQueue)
 }

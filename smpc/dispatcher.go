@@ -12,40 +12,20 @@ import (
 // channel, allowing a dynamic number of workers to select messages from a
 // dyanmic number of MessageQueues.
 type Dispatcher struct {
-	messageQueuesMu   *sync.RWMutex
-	messageQueues     map[string]*MessageQueue
-	messageQueuesQuit map[string]chan struct{}
+	messageQueuesMu *sync.RWMutex
+	messageQueues   map[string]*MessageQueue
 
-	messages                 chan *rpc.TauMessage
-	messageQueuesMultiplexer chan *MessageQueue
+	messages chan *rpc.TauMessage
 }
 
 // NewDispatcher returns a Dispatcher that uses a buffer hint to estimate the
 // number of MessageQueues that it will be handling.
 func NewDispatcher(bufferHint int) Dispatcher {
 	return Dispatcher{
-		messageQueuesMu:   new(sync.RWMutex),
-		messageQueues:     make(map[string]*MessageQueue),
-		messageQueuesQuit: make(map[string]chan struct{}),
+		messageQueuesMu: new(sync.RWMutex),
+		messageQueues:   make(map[string]*MessageQueue),
 
-		messages:                 make(chan *rpc.TauMessage, bufferHint*MessageQueueLimit),
-		messageQueuesMultiplexer: make(chan *MessageQueue, bufferHint),
-	}
-}
-
-// Run the Dispatcher by multiplexing all MessageQueues into a unified channel
-// that can be used by workers.
-func (dispatcher *Dispatcher) Run() {
-	for messageQueue := range dispatcher.messageQueuesMultiplexer {
-		go func(messageQueue *MessageQueue) {
-			for {
-				message, ok := messageQueue.Recv()
-				if !ok {
-					break
-				}
-				dispatcher.messages <- message
-			}
-		}(messageQueue)
+		messages: make(chan *rpc.TauMessage, bufferHint*MessageQueueLimit),
 	}
 }
 
@@ -54,48 +34,54 @@ func (dispatcher *Dispatcher) Run() {
 // the Dispatcher is shutdown.
 func (dispatcher *Dispatcher) RunMessageQueue(multiAddress identity.MultiAddress, messageQueue *MessageQueue) error {
 	address := multiAddress.Address().String()
-	quit := make(chan struct{})
-	dispatcher.messageQueuesMultiplexer <- messageQueue
 
 	// Store the MessageQueue until it has finished running
 	dispatcher.messageQueuesMu.Lock()
 	dispatcher.messageQueues[address] = messageQueue
-	dispatcher.messageQueuesQuit[address] = quit
 	dispatcher.messageQueuesMu.Unlock()
+
+	// Multiplex messages from this MessageQueue to the unified Dispatcher
+	// channel
+	go func() {
+		defer func() { recover() }() // Recover from writing to a potential closed channel
+		for {
+			message, ok := messageQueue.Recv()
+			if !ok {
+				break
+			}
+			dispatcher.messages <- message
+		}
+	}()
 
 	// Run the MessageQueue until an error is encountered, or the MessageQueue
 	// receives a signal to shutdown gracefully, and then return any error
-	err := messageQueue.Run(quit)
+	err := messageQueue.Run()
 
 	// Remove the MessageQueue now that it has finished running
 	dispatcher.messageQueuesMu.Lock()
 	delete(dispatcher.messageQueues, address)
-	delete(dispatcher.messageQueuesQuit, address)
 	dispatcher.messageQueuesMu.Unlock()
 
 	return err
 }
 
 // Shutdown gracefully by sending a quit command to all of the MessageQueues
-// running in the Dispatcher.
+// running in the Dispatcher. This method must only be called exactly once,
+// when the Dispatcher is no longer needed.
 func (dispatcher *Dispatcher) Shutdown() {
-	dispatcher.messageQueuesMu.RLock()
-	defer dispatcher.messageQueuesMu.RUnlock()
 
 	// Stop letting workers receive message, and stop accepting new
 	// MessageQueues
 	close(dispatcher.messages)
-	close(dispatcher.messageQueuesMultiplexer)
 
 	dispatcher.messageQueuesMu.Lock()
 	defer dispatcher.messageQueuesMu.Unlock()
 
-	// While the mutex is locked, close all quit channels and let the
-	// MessageQueues gracefully shutdown on their own
-	for _, quit := range dispatcher.messageQueuesQuit {
-		close(quit)
+	// While the mutex is locked, gracefully shutdown all MessageQueues
+	for _, messageQueue := range dispatcher.messageQueues {
+		messageQueue.Shutdown()
 	}
-	dispatcher.messageQueuesQuit = map[string]chan struct{}{}
+	dispatcher.messageQueues = map[string]*MessageQueue{}
 }
 
 // ShutdownMessageQueue by giving its associated multi-address. If the
@@ -106,11 +92,10 @@ func (dispatcher *Dispatcher) ShutdownMessageQueue(multiAddress identity.MultiAd
 	dispatcher.messageQueuesMu.Lock()
 	defer dispatcher.messageQueuesMu.Unlock()
 
-	// While the mutex is locked, close the associated quite channel and let
-	// MessageQueue gracefully shutdown on its own
-	if quit, ok := dispatcher.messageQueuesQuit[address]; ok {
-		close(quit)
-		delete(dispatcher.messageQueuesQuit, address)
+	// While the mutex is locked, gracefully shutdown the MessageQueue
+	if messageQueue, ok := dispatcher.messageQueues[address]; ok {
+		messageQueue.Shutdown()
+		delete(dispatcher.messageQueues, address)
 	}
 }
 

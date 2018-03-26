@@ -18,6 +18,7 @@ type MessageQueue struct {
 	stream rpc.TauService_ConnectServer
 	write  chan *rpc.TauMessage
 	read   chan *rpc.TauMessage
+	quit   chan struct{}
 }
 
 // NewMessageQueue returns a MessageQueue worker that owns a gRPC stream and
@@ -27,7 +28,26 @@ func NewMessageQueue(stream rpc.TauService_ConnectServer) MessageQueue {
 		stream: stream,
 		write:  make(chan *rpc.TauMessage, MessageQueueLimit),
 		read:   make(chan *rpc.TauMessage, MessageQueueLimit),
+		quit:   make(chan struct{}),
 	}
+}
+
+// Run the MessageQueue and return the first error that happens.
+func (messages *MessageQueue) Run() error {
+	ch := make(chan error, 2)
+	go func() { ch <- messages.writeAll() }()
+	go func() { ch <- messages.readAll() }()
+	for i := 0; i < 2; i++ {
+		if err := <-ch; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Shutdown the MessageQueue.
+func (messages *MessageQueue) Shutdown() {
+	close(messages.quit)
 }
 
 // Send a message to the MessageQueue. If the queue is full, then this
@@ -54,33 +74,20 @@ func (messages *MessageQueue) TrySend(message *rpc.TauMessage) {
 
 // TryRecv a message from the MessageQueue. If the queue is empty, then this
 // function will return nil immediately.
-func (messages *MessageQueue) TryRecv() *rpc.TauMessage {
+func (messages *MessageQueue) TryRecv() (*rpc.TauMessage, bool) {
 	select {
-	case message := <-messages.read:
-		return message
+	case message, ok := <-messages.read:
+		return message, ok
 	default:
-		return nil
+		return nil, true
 	}
-}
-
-// Run the MessageQueue and return the first error that happens.
-func (messages *MessageQueue) Run(quit chan struct{}) error {
-	ch := make(chan error, 2)
-	go func() { ch <- messages.writeAll(quit) }()
-	go func() { ch <- messages.readAll(quit) }()
-	for i := 0; i < 2; i++ {
-		if err := <-ch; err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // writeAll messages from the messaging queue to the stream.
-func (messages *MessageQueue) writeAll(quit chan struct{}) error {
+func (messages *MessageQueue) writeAll() error {
 	for {
 		select {
-		case <-quit:
+		case <-messages.quit:
 			return nil
 		case message := <-messages.write:
 			if err := messages.stream.Send(message); err != nil {
@@ -93,7 +100,8 @@ func (messages *MessageQueue) writeAll(quit chan struct{}) error {
 // readAll messages from the stream and write them to the output queue. If the
 // output queue is full, the MessageQueue will stop reading messages until the
 // output is read from.
-func (messages *MessageQueue) readAll(quit chan struct{}) error {
+func (messages *MessageQueue) readAll() error {
+	defer close(messages.read)
 	for {
 		message, err := messages.stream.Recv()
 		if err != nil {
@@ -104,7 +112,7 @@ func (messages *MessageQueue) readAll(quit chan struct{}) error {
 		}
 		if message != nil {
 			select {
-			case <-quit:
+			case <-messages.quit:
 				return nil
 			case messages.read <- message:
 			}
