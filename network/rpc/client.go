@@ -21,7 +21,6 @@ type Client struct {
 	Options ClientOptions
 	SwarmClient
 	DarkClient
-	GossipClient
 }
 
 // NewClient returns a Client that is connected to the given MultiAddress and
@@ -59,7 +58,6 @@ func NewClient(to, from identity.MultiAddress) (*Client, error) {
 
 	client.SwarmClient = NewSwarmClient(client.Connection)
 	client.DarkClient = NewDarkClient(client.Connection)
-	client.GossipClient = NewGossipClient(client.Connection)
 
 	return client, nil
 }
@@ -290,34 +288,6 @@ func (client *Client) BroadcastDeltaFragment(deltaFragment *DeltaFragment) (*Del
 		val, err = client.DarkClient.BroadcastDeltaFragment(ctx, &BroadcastDeltaFragmentRequest{
 			From:          client.From,
 			DeltaFragment: deltaFragment,
-		}, grpc.FailFast(false))
-		return err
-	})
-	return val, err
-}
-
-// Gossip RPC.
-func (client *Client) Gossip(rumor *Rumor) (*Rumor, error) {
-	var val *Rumor
-	var err error
-	err = client.TimeoutFunc(func(ctx context.Context) error {
-		val, err = client.GossipClient.Gossip(ctx, &GossipRequest{
-			From:  client.From,
-			Rumor: rumor,
-		}, grpc.FailFast(false))
-		return err
-	})
-	return val, err
-}
-
-// Finalize RPC.
-func (client *Client) Finalize(rumor *Rumor) (*Rumor, error) {
-	var val *Rumor
-	var err error
-	err = client.TimeoutFunc(func(ctx context.Context) error {
-		val, err = client.GossipClient.Finalize(ctx, &FinalizeRequest{
-			From:  client.From,
-			Rumor: rumor,
 		}, grpc.FailFast(false))
 		return err
 	})

@@ -187,26 +187,32 @@ message SyncBlock {
 }
 
 /**
- * Gossip
+ * Tau sMPC protocol
  */
 
-service Gossip {
-  rpc Gossip (GossipRequest) returns (Rumor);
-  rpc Finalize (FinalizeRequest) returns (Rumor);
+service Tau {
+  rpc Connect (stream TauMessage) returns (stream TauMessage);
 }
 
-message GossipRequest {
-  MultiAddress from = 1;
-  Rumor rumor = 2;
+message TauMessage {
+  GenerateRandomShares generateRandomShares = 1;
+  GenerateXiShares generateXiShares = 2;
+  GenerateXiFragment generateXiFragment = 3;
+  BroadcastRhoSigmaFragment broadcastRhoSigmaFragment = 4;
+  BroadcastDeltaFragment broadcastDeltaFragment = 5;
 }
 
-message FinalizeRequest {
-  MultiAddress from = 1;
-  Rumor rumor = 2;
+message GenerateRandomShares {
 }
 
-message Rumor {
-  bytes signature = 1;
-  bytes buyOrderId = 2;
-  bytes sellOrderId = 3;
+message GenerateXiShares {
+}
+
+message GenerateXiFragment {
+}
+
+message BroadcastRhoSigmaFragment {
+}
+
+message BroadcastDeltaFragment {
 }
