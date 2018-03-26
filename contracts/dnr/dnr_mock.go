@@ -3,8 +3,9 @@ package dnr
 import (
 	"crypto/rand"
 	"errors"
-	"math/big"
 	"time"
+
+	"github.com/republicprotocol/republic-go/stackint"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -33,14 +34,15 @@ func NewMockDarkNodeRegistrar() (DarkNodeRegistrar, error) {
 	if err != nil {
 		return nil, err
 	}
+	now := stackint.FromUint64(uint64(time.Now().Unix()))
 	mockDnr.epoch = Epoch{
 		Blockhash: b32,
-		Timestamp: big.NewInt(time.Now().Unix()),
+		Timestamp: &now,
 	}
 	return mockDnr, nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) Register(darkNodeID []byte, publicKey []byte, bond *big.Int) (*types.Transaction, error) {
+func (mockDnr *MockDarkNodeRegistrar) Register(darkNodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
 	isRegistered, _ := mockDnr.IsDarkNodeRegistered(darkNodeID)
 	isPending, _ := mockDnr.IsDarkNodePendingRegistration(darkNodeID)
 	if isRegistered || isPending {
@@ -65,8 +67,8 @@ func (mockDnr *MockDarkNodeRegistrar) Deregister(darkNodeID []byte) (*types.Tran
 	return nil, nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) GetBond(darkNodeID []byte) (*big.Int, error) {
-	return big.NewInt(86000), nil
+func (mockDnr *MockDarkNodeRegistrar) GetBond(darkNodeID []byte) (stackint.Int1024, error) {
+	return stackint.FromUint64(86000), nil
 }
 
 func (mockDnr *MockDarkNodeRegistrar) IsDarkNodeRegistered(darkNodeID []byte) (bool, error) {
@@ -99,9 +101,10 @@ func (mockDnr *MockDarkNodeRegistrar) Epoch() (*types.Transaction, error) {
 		return nil, err
 	}
 
+	now := stackint.FromUint64(uint64(time.Now().Unix()))
 	mockDnr.epoch = Epoch{
 		Blockhash: b32,
-		Timestamp: big.NewInt(time.Now().Unix()),
+		Timestamp: &now,
 	}
 
 	// Remove toRegister nodes
@@ -139,12 +142,12 @@ func (mockDnr *MockDarkNodeRegistrar) GetAllNodes() ([][]byte, error) {
 	return mockDnr.registered, nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) MinimumBond() (*big.Int, error) {
-	return big.NewInt(86000), nil
+func (mockDnr *MockDarkNodeRegistrar) MinimumBond() (stackint.Int1024, error) {
+	return stackint.FromUint64(86000), nil
 }
 
-func (mockDnr *MockDarkNodeRegistrar) MinimumEpochInterval() (*big.Int, error) {
-	return big.NewInt(0), nil
+func (mockDnr *MockDarkNodeRegistrar) MinimumEpochInterval() (stackint.Int1024, error) {
+	return stackint.FromUint64(0), nil
 }
 
 func (mockDnr *MockDarkNodeRegistrar) Refund(darkNodeID []byte) (*types.Transaction, error) {
@@ -169,7 +172,7 @@ func (mockDnr *MockDarkNodeRegistrar) WaitUntilRegistration(darkNodeID []byte) e
 // 	do.GuardedObject
 
 // 	hash      [32]byte
-// 	timestamp *big.Int
+// 	timestamp *stackint.Int1024
 // 	nodeIDs   map[string]bool
 // }
 
@@ -199,7 +202,7 @@ func (mockDnr *MockDarkNodeRegistrar) WaitUntilRegistration(darkNodeID []byte) e
 // 	return nil, nil
 // }
 
-// func (darkNodeRegistrar *MockDarkNodeRegistrar) GetBond(nodeID []byte) (*big.Int, error) {
+// func (darkNodeRegistrar *MockDarkNodeRegistrar) GetBond(nodeID []byte) (*stackint.Int1024, error) {
 // 	darkNodeRegistrar.EnterReadOnly(nil)
 // 	defer darkNodeRegistrar.ExitReadOnly()
 // 	if _, ok := darkNodeRegistrar.nodeIDs[string(nodeID)]; ok {
@@ -266,13 +269,13 @@ func (mockDnr *MockDarkNodeRegistrar) WaitUntilRegistration(darkNodeID []byte) e
 // 	return allNodes, nil
 // }
 
-// func (darkNodeRegistrar *MockDarkNodeRegistrar) MinimumBond() (*big.Int, error) {
+// func (darkNodeRegistrar *MockDarkNodeRegistrar) MinimumBond() (*stackint.Int1024, error) {
 // 	darkNodeRegistrar.EnterReadOnly(nil)
 // 	defer darkNodeRegistrar.ExitReadOnly()
 // 	return big.NewInt(86000), nil
 // }
 
-// func (darkNodeRegistrar *MockDarkNodeRegistrar) MinimumEpochInterval() (*big.Int, error) {
+// func (darkNodeRegistrar *MockDarkNodeRegistrar) MinimumEpochInterval() (*stackint.Int1024, error) {
 // 	darkNodeRegistrar.EnterReadOnly(nil)
 // 	defer darkNodeRegistrar.ExitReadOnly()
 // 	return big.NewInt(1), nil
