@@ -1,11 +1,10 @@
-package smpc
+package dispatch
 
 import (
 	"fmt"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/network/rpc"
 )
 
 // A Dispatcher runs MessageQueues. It aggregates all messages into a unified
@@ -13,9 +12,9 @@ import (
 // dyanmic number of MessageQueues.
 type Dispatcher struct {
 	messageQueuesMu *sync.RWMutex
-	messageQueues   map[string]*MessageQueue
+	messageQueues   map[string]MessageQueue
 
-	messages chan *rpc.TauMessage
+	messages chan Message
 }
 
 // NewDispatcher returns a Dispatcher that uses a buffer hint to estimate the
@@ -23,21 +22,22 @@ type Dispatcher struct {
 func NewDispatcher(bufferHint int) Dispatcher {
 	return Dispatcher{
 		messageQueuesMu: new(sync.RWMutex),
-		messageQueues:   make(map[string]*MessageQueue),
+		messageQueues:   make(map[string]MessageQueue),
 
-		messages: make(chan *rpc.TauMessage, bufferHint*MessageQueueLimit),
+		messages: make(chan Message, bufferHint*MessageQueueLimit),
 	}
 }
 
 // RunMessageQueue in the Dispatcher. The MessageQueue will run until it
 // encounters an error writing to, or reading from, the gRPC stream, or until
 // the Dispatcher is shutdown.
-func (dispatcher *Dispatcher) RunMessageQueue(multiAddress identity.MultiAddress, messageQueue *MessageQueue) error {
-	address := multiAddress.Address().String()
+func (dispatcher *Dispatcher) RunMessageQueue(id string, messageQueue MessageQueue) error {
 
 	// Store the MessageQueue until it has finished running
 	dispatcher.messageQueuesMu.Lock()
-	dispatcher.messageQueues[address] = messageQueue
+	if _, ok := dispatcher.messageQueues[id]; !ok {
+		dispatcher.messageQueues[id] = messageQueue
+	}
 	dispatcher.messageQueuesMu.Unlock()
 
 	// Multiplex messages from this MessageQueue to the unified Dispatcher
@@ -59,7 +59,7 @@ func (dispatcher *Dispatcher) RunMessageQueue(multiAddress identity.MultiAddress
 
 	// Remove the MessageQueue now that it has finished running
 	dispatcher.messageQueuesMu.Lock()
-	delete(dispatcher.messageQueues, address)
+	delete(dispatcher.messageQueues, id)
 	dispatcher.messageQueuesMu.Unlock()
 
 	return err
@@ -79,34 +79,35 @@ func (dispatcher *Dispatcher) Shutdown() {
 
 	// While the mutex is locked, gracefully shutdown all MessageQueues
 	for _, messageQueue := range dispatcher.messageQueues {
-		messageQueue.Shutdown()
+		// Ignore errors returned during shutdown
+		_ = messageQueue.Shutdown()
 	}
-	dispatcher.messageQueues = map[string]*MessageQueue{}
+	dispatcher.messageQueues = map[string]MessageQueue{}
 }
 
 // ShutdownMessageQueue by giving its associated multi-address. If the
 // MessageQueue is running on this Dispatcher, it will be gracefully shutdown.
-func (dispatcher *Dispatcher) ShutdownMessageQueue(multiAddress identity.MultiAddress) {
-	address := multiAddress.Address().String()
-
+func (dispatcher *Dispatcher) ShutdownMessageQueue(id string) {
 	dispatcher.messageQueuesMu.Lock()
 	defer dispatcher.messageQueuesMu.Unlock()
 
 	// While the mutex is locked, gracefully shutdown the MessageQueue
-	if messageQueue, ok := dispatcher.messageQueues[address]; ok {
-		messageQueue.Shutdown()
-		delete(dispatcher.messageQueues, address)
+	if messageQueue, ok := dispatcher.messageQueues[id]; ok {
+
+		// Ignore errors returned during shutdown
+		_ = messageQueue.Shutdown()
+		delete(dispatcher.messageQueues, id)
 	}
 }
 
-// Send a message to a multi-address by finding an available MessageQueue. If
+// Send a Message to a multi-address by finding an available MessageQueue. If
 // no MessageQueue is available, then an error is returned. If the MessageQueue
 // is full, then this function will block.
-func (dispatcher *Dispatcher) Send(multiAddress identity.MultiAddress, message *rpc.TauMessage) error {
+func (dispatcher *Dispatcher) Send(multiAddress identity.MultiAddress, message Message) error {
 	address := multiAddress.Address().String()
 
 	// Find the MessageQueue associated with the multi-address and forward the
-	// message to it
+	// Message to it
 	dispatcher.messageQueuesMu.RLock()
 	messageQueue := dispatcher.messageQueues[address]
 	dispatcher.messageQueuesMu.RUnlock()
@@ -114,13 +115,12 @@ func (dispatcher *Dispatcher) Send(multiAddress identity.MultiAddress, message *
 		return fmt.Errorf("cannot send message to %s: no message queue available", address)
 	}
 
-	messageQueue.Send(message)
-	return nil
+	return messageQueue.Send(message)
 }
 
-// Recv a message from the Dispatcher. This function blocks until at least one
-// MessageQueue has a message.
-func (dispatcher *Dispatcher) Recv() (*rpc.TauMessage, bool) {
+// Recv a Message from the Dispatcher. This function blocks until at least one
+// MessageQueue has a Message.
+func (dispatcher *Dispatcher) Recv() (Message, bool) {
 	message, ok := <-dispatcher.messages
 	return message, ok
 }
