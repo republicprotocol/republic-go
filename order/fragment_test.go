@@ -17,14 +17,14 @@ var _ = Describe("Order fragments", func() {
 	primeVal := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 	prime := &primeVal
 
-	price := stackint.FromUint64(10)
-	minVolume := stackint.FromUint64(100)
-	maxVolume := stackint.FromUint64(1000)
+	price := stackint.FromUint(10)
+	minVolume := stackint.FromUint(100)
+	maxVolume := stackint.FromUint(1000)
 
 	Context("when representing IDs as strings", func() {
 
 		It("should return the same string for the same order fragments", func() {
-			nonce := stackint.FromUint64(0)
+			nonce := stackint.FromUint(0)
 
 			fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -34,7 +34,7 @@ var _ = Describe("Order fragments", func() {
 		})
 
 		It("should return different strings for the different order fragments", func() {
-			nonce := stackint.FromUint64(0)
+			nonce := stackint.FromUint(0)
 
 			fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -49,7 +49,7 @@ var _ = Describe("Order fragments", func() {
 	Context("when testing for equality", func() {
 
 		It("should return true for order fragments IDs that are equal", func() {
-			nonce := stackint.FromUint64(0)
+			nonce := stackint.FromUint(0)
 
 			fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -59,7 +59,7 @@ var _ = Describe("Order fragments", func() {
 		})
 
 		It("should return false for order fragments IDs that are not equal", func() {
-			nonce := stackint.FromUint64(0)
+			nonce := stackint.FromUint(0)
 
 			fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -71,7 +71,7 @@ var _ = Describe("Order fragments", func() {
 		})
 
 		It("should return true for orders fragments that are equal", func() {
-			nonce := stackint.FromUint64(0)
+			nonce := stackint.FromUint(0)
 
 			fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -81,7 +81,7 @@ var _ = Describe("Order fragments", func() {
 		})
 
 		It("should return false for orders fragments that are not equal", func() {
-			nonce := stackint.FromUint64(0)
+			nonce := stackint.FromUint(0)
 
 			fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -95,12 +95,12 @@ var _ = Describe("Order fragments", func() {
 	Context("when testing for compatibility", func() {
 
 		It("should return true for pairwise order fragments from orders with different parity", func() {
-			nonce := stackint.FromUint64(0)
+			nonce := stackint.FromUint(0)
 
 			lhs, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			nonce = stackint.FromUint64(1)
+			nonce = stackint.FromUint(1)
 			rhs, err := NewOrder(TypeLimit, ParitySell, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			for i := int64(0); i < n; i++ {
@@ -109,12 +109,12 @@ var _ = Describe("Order fragments", func() {
 		})
 
 		It("should return false for pairwise order fragments from orders with equal parity", func() {
-			nonce := stackint.FromUint64(0)
+			nonce := stackint.FromUint(0)
 
 			lhs, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			nonce = stackint.FromUint64(1)
+			nonce = stackint.FromUint(1)
 			rhs, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			for i := int64(0); i < n; i++ {
@@ -123,12 +123,12 @@ var _ = Describe("Order fragments", func() {
 		})
 
 		It("should return false for non-pairwise order fragments from orders with different parity", func() {
-			nonce := stackint.FromUint64(0)
+			nonce := stackint.FromUint(0)
 
 			lhs, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			nonce = stackint.FromUint64(0)
+			nonce = stackint.FromUint(0)
 			rhs, err := NewOrder(TypeLimit, ParitySell, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			for i := int64(0); i < n; i++ {
@@ -139,12 +139,12 @@ var _ = Describe("Order fragments", func() {
 		})
 
 		It("should return false for non-pairwise order fragments from orders with equal parity", func() {
-			nonce := stackint.FromUint64(0)
+			nonce := stackint.FromUint(0)
 
 			lhs, err := NewOrder(TypeLimit, ParitySell, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			nonce = stackint.FromUint64(1)
+			nonce = stackint.FromUint(1)
 			rhs, err := NewOrder(TypeLimit, ParitySell, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			for i := int64(0); i < n; i++ {

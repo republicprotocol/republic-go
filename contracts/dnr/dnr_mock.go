@@ -34,7 +34,7 @@ func NewMockDarkNodeRegistrar() (DarkNodeRegistrar, error) {
 	if err != nil {
 		return nil, err
 	}
-	now := stackint.FromUint64(uint64(time.Now().Unix()))
+	now := stackint.FromUint(uint64(time.Now().Unix()))
 	mockDnr.epoch = Epoch{
 		Blockhash: b32,
 		Timestamp: &now,
@@ -68,7 +68,7 @@ func (mockDnr *MockDarkNodeRegistrar) Deregister(darkNodeID []byte) (*types.Tran
 }
 
 func (mockDnr *MockDarkNodeRegistrar) GetBond(darkNodeID []byte) (stackint.Int1024, error) {
-	return stackint.FromUint64(86000), nil
+	return stackint.FromUint(86000), nil
 }
 
 func (mockDnr *MockDarkNodeRegistrar) IsDarkNodeRegistered(darkNodeID []byte) (bool, error) {
@@ -101,7 +101,7 @@ func (mockDnr *MockDarkNodeRegistrar) Epoch() (*types.Transaction, error) {
 		return nil, err
 	}
 
-	now := stackint.FromUint64(uint64(time.Now().Unix()))
+	now := stackint.FromUint(uint64(time.Now().Unix()))
 	mockDnr.epoch = Epoch{
 		Blockhash: b32,
 		Timestamp: &now,
@@ -143,11 +143,11 @@ func (mockDnr *MockDarkNodeRegistrar) GetAllNodes() ([][]byte, error) {
 }
 
 func (mockDnr *MockDarkNodeRegistrar) MinimumBond() (stackint.Int1024, error) {
-	return stackint.FromUint64(86000), nil
+	return stackint.FromUint(86000), nil
 }
 
 func (mockDnr *MockDarkNodeRegistrar) MinimumEpochInterval() (stackint.Int1024, error) {
-	return stackint.FromUint64(0), nil
+	return stackint.FromUint(0), nil
 }
 
 func (mockDnr *MockDarkNodeRegistrar) Refund(darkNodeID []byte) (*types.Transaction, error) {

@@ -41,7 +41,7 @@ type OrderBook struct {
 
 // HeapInt creates a stackint on the heap - temporary convenience method
 func heapInt(n uint64) *stackint.Int1024 {
-	tmp := stackint.FromUint64(n)
+	tmp := stackint.FromUint(n)
 	return &tmp
 }
 

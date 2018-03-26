@@ -93,12 +93,12 @@ func NewOrder(ty Type, parity Parity, expiry time.Time, fstCode, sndCode Currenc
 // Split the Order into n OrderFragments, where k OrderFragments are needed to
 // reconstruct the Order. Returns a slice of all n OrderFragments, or an error.
 func (order *Order) Split(n, k int64, prime *stackint.Int1024) ([]*Fragment, error) {
-	fstCode := stackint.FromUint64(uint64(order.FstCode))
+	fstCode := stackint.FromUint(uint64(order.FstCode))
 	fstCodeShares, err := shamir.Split(n, k, prime, &fstCode)
 	if err != nil {
 		return nil, err
 	}
-	sndCode := stackint.FromUint64(uint64(order.SndCode))
+	sndCode := stackint.FromUint(uint64(order.SndCode))
 	sndCodeShares, err := shamir.Split(n, k, prime, &sndCode)
 	if err != nil {
 		return nil, err

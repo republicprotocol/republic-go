@@ -13,7 +13,7 @@ import (
 
 // HeapInt creates a stackint on the heap - temporary convenience method
 func heapInt(n uint64) *stackint.Int1024 {
-	tmp := stackint.FromUint64(n)
+	tmp := stackint.FromUint(n)
 	return &tmp
 }
 
@@ -264,7 +264,7 @@ var _ = Describe("Delta and delta fragments", func() {
 })
 
 func computeRandomDelta(n, k int64, prime *stackint.Int1024) (*Delta, error) {
-	max := stackint.FromUint64(2 << 32)
+	max := stackint.FromUint(2 << 32)
 	randomPrice, err := stackint.Random(rand.Reader, &max)
 	if err != nil {
 		return nil, err

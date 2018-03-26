@@ -48,7 +48,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 			// Shamir parameters.
 			n := int64(100)
 			k := int64(50)
-			secret := stackint.FromUint64(1234)
+			secret := stackint.FromUint(1234)
 			prime := stackint.FromString(primeStr)
 			// Split the secret.
 			shares, err := Split(n, k, &prime, &secret)
@@ -62,7 +62,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 			// Shamir parameters.
 			N := int64(100)
 			K := int64(50)
-			secret := stackint.FromUint64(1234)
+			secret := stackint.FromUint(1234)
 			prime := stackint.FromString(primeStr)
 			// Split the secret.
 			shares, err := Split(N, K, &prime, &secret)
@@ -95,7 +95,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 			// Shamir parameters.
 			N := int64(100)
 			K := int64(50)
-			secret := stackint.FromUint64(1234)
+			secret := stackint.FromUint(1234)
 			prime := stackint.FromString(primeStr)
 			// Split the secret.
 			shares, err := Split(N, K, &prime, &secret)

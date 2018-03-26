@@ -54,7 +54,7 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024) (Shares, error) {
 		// accum := coefficients[0]
 		accum := (*coefficients[0]).Clone()
 		// base := x
-		base := stackint.FromUint64(uint64(x))
+		base := stackint.FromUint(uint(x))
 		// expMod := base % prime
 		exp := base.Clone()
 		expMod := exp.Mod(prime)
@@ -97,10 +97,10 @@ func Join(prime *stackint.Int1024, shares Shares) *stackint.Int1024 {
 				continue
 			}
 			// startposition = shares[formula][0];
-			start := stackint.FromUint64(uint64(shares[i].Key))
+			start := stackint.FromUint(uint(shares[i].Key))
 
 			// nextposition = shares[count][0];
-			next := stackint.FromUint64(uint64(shares[j].Key))
+			next := stackint.FromUint(uint(shares[j].Key))
 
 			// numerator = (numerator * -nextposition) % prime;
 			nextGen := num.MulModulo(&next, prime)

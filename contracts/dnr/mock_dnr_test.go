@@ -67,7 +67,7 @@ var _ = Describe("Dark nodes", func() {
 
 			for i := 0; i < NumberOfTestNODES; i++ {
 
-				bond := stackint.FromUint64(100)
+				bond := stackint.FromUint(100)
 				configs[i] = MockConfig()
 				MockDarkNodeRegistrar.Register(
 					configs[i].NetworkOptions.MultiAddress.ID(),
@@ -102,7 +102,7 @@ var _ = Describe("Dark nodes", func() {
 			// After epoch, should be deregistered
 			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodeRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
 
-			bond := stackint.FromUint64(100)
+			bond := stackint.FromUint(100)
 			MockDarkNodeRegistrar.Register(id0, pub, &bond)
 
 			// Before epoch, should still be deregistered
