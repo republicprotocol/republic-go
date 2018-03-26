@@ -4,7 +4,7 @@
 
 // +build !math_big_pure_go
 
-package asm
+package stackint
 
 // implemented in arith_$GOARCH.s
 func mulWW(x, y Word) (z1, z0 Word)

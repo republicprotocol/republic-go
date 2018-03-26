@@ -6,13 +6,12 @@
 // arithmetic operations on word vectors. Needed for platforms without
 // assembly implementations of these routines.
 
-package asm
+package stackint
 
 import "math/bits"
 
-type Word uint
-
 // A Word represents a single digit of a multi-precision unsigned integer.
+type Word uint
 
 const (
 	_S = _W / 8 // word size in bytes
