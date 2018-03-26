@@ -1,6 +1,9 @@
 package smpc
 
-import "github.com/republicprotocol/republic-go/network/rpc"
+import (
+	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/network/rpc"
+)
 
 // A Worker receives messages from a Dispatcher until the Dispatcher is
 // shutdown. It is primarily responsible for decoding the message and
@@ -11,17 +14,23 @@ type Worker struct{}
 // the Dispatcher, delegate work to the appropriate component, wait for the
 // component to complete, and then read the next message from the Dispatcher.
 // This function blocks until the Dispatcher is shutdown.
-func (worker *Worker) Run(dispatcher *Dispatcher) {
+func (worker *Worker) Run(multiplexer *dispatch.Multiplexer) {
 	for {
-		message, ok := dispatcher.Recv()
+		message, ok := multiplexer.Recv()
 		if !ok {
 			break
 		}
-		processMessage(message)
+		switch message := message.(type) {
+		case *rpc.TauMessage:
+			processTauMessage(message)
+		default:
+			// Ignore message that we do not recognize
+			break
+		}
 	}
 }
 
-func processMessage(message *rpc.TauMessage) {
+func processTauMessage(message *rpc.TauMessage) {
 	if message.GenerateRandomShares != nil {
 		processGenerateRandomShares(message.GenerateRandomShares)
 	}

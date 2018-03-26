@@ -3,35 +3,32 @@ package dispatch
 import (
 	"fmt"
 	"sync"
-
-	"github.com/republicprotocol/republic-go/identity"
 )
 
-// A Dispatcher runs MessageQueues. It aggregates all messages into a unified
+// A Multiplexer runs MessageQueues. It aggregates all messages into a unified
 // channel, allowing a dynamic number of workers to select messages from a
 // dyanmic number of MessageQueues.
-type Dispatcher struct {
+type Multiplexer struct {
 	messageQueuesMu *sync.RWMutex
 	messageQueues   map[string]MessageQueue
 
 	messages chan Message
 }
 
-// NewDispatcher returns a Dispatcher that uses a buffer hint to estimate the
-// number of MessageQueues that it will be handling.
-func NewDispatcher(bufferHint int) Dispatcher {
-	return Dispatcher{
+// NewMultiplexer returns a Multiplexer that uses a queue limit to buffer the
+// unified output channel.
+func NewMultiplexer(queueLimit int) Multiplexer {
+	return Multiplexer{
 		messageQueuesMu: new(sync.RWMutex),
 		messageQueues:   make(map[string]MessageQueue),
 
-		messages: make(chan Message, bufferHint*MessageQueueLimit),
+		messages: make(chan Message, queueLimit),
 	}
 }
 
-// RunMessageQueue in the Dispatcher. The MessageQueue will run until it
-// encounters an error writing to, or reading from, the gRPC stream, or until
-// the Dispatcher is shutdown.
-func (dispatcher *Dispatcher) RunMessageQueue(id string, messageQueue MessageQueue) error {
+// RunMessageQueue in the Multiplexer. The MessageQueue will run until it
+// encounters an error, or until the Multiplexer is shutdown.
+func (dispatcher *Multiplexer) RunMessageQueue(id string, messageQueue MessageQueue) error {
 
 	// Store the MessageQueue until it has finished running
 	dispatcher.messageQueuesMu.Lock()
@@ -40,10 +37,12 @@ func (dispatcher *Dispatcher) RunMessageQueue(id string, messageQueue MessageQue
 	}
 	dispatcher.messageQueuesMu.Unlock()
 
-	// Multiplex messages from this MessageQueue to the unified Dispatcher
+	// Multiplex messages from this MessageQueue to the unified Multiplexer
 	// channel
 	go func() {
-		defer func() { recover() }() // Recover from writing to a potential closed channel
+		// Recover from writing to a potential closed channel
+		defer func() { recover() }()
+
 		for {
 			message, ok := messageQueue.Recv()
 			if !ok {
@@ -66,9 +65,9 @@ func (dispatcher *Dispatcher) RunMessageQueue(id string, messageQueue MessageQue
 }
 
 // Shutdown gracefully by sending a quit command to all of the MessageQueues
-// running in the Dispatcher. This method must only be called exactly once,
-// when the Dispatcher is no longer needed.
-func (dispatcher *Dispatcher) Shutdown() {
+// running in the Multiplexer. This method must only be called exactly once,
+// when the Multiplexer is no longer needed.
+func (dispatcher *Multiplexer) Shutdown() {
 
 	// Stop letting workers receive message, and stop accepting new
 	// MessageQueues
@@ -85,9 +84,9 @@ func (dispatcher *Dispatcher) Shutdown() {
 	dispatcher.messageQueues = map[string]MessageQueue{}
 }
 
-// ShutdownMessageQueue by giving its associated multi-address. If the
-// MessageQueue is running on this Dispatcher, it will be gracefully shutdown.
-func (dispatcher *Dispatcher) ShutdownMessageQueue(id string) {
+// ShutdownMessageQueue by giving its associated ID. If the MessageQueue is
+// running on this Multiplexer, it will be gracefully shutdown.
+func (dispatcher *Multiplexer) ShutdownMessageQueue(id string) {
 	dispatcher.messageQueuesMu.Lock()
 	defer dispatcher.messageQueuesMu.Unlock()
 
@@ -100,27 +99,26 @@ func (dispatcher *Dispatcher) ShutdownMessageQueue(id string) {
 	}
 }
 
-// Send a Message to a multi-address by finding an available MessageQueue. If
-// no MessageQueue is available, then an error is returned. If the MessageQueue
-// is full, then this function will block.
-func (dispatcher *Dispatcher) Send(multiAddress identity.MultiAddress, message Message) error {
-	address := multiAddress.Address().String()
+// Send a Message to a MessageQueue by giving its associated ID. If no
+// MessageQueue is available, then an error is returned. If the MessageQueue is
+// full, then this function will block.
+func (dispatcher *Multiplexer) Send(id string, message Message) error {
 
-	// Find the MessageQueue associated with the multi-address and forward the
-	// Message to it
+	// Find the MessageQueue associated with the ID and forward the Message to
+	// it
 	dispatcher.messageQueuesMu.RLock()
-	messageQueue := dispatcher.messageQueues[address]
+	messageQueue := dispatcher.messageQueues[id]
 	dispatcher.messageQueuesMu.RUnlock()
 	if messageQueue == nil {
-		return fmt.Errorf("cannot send message to %s: no message queue available", address)
+		return fmt.Errorf("cannot send message to %s: no message queue available", id)
 	}
 
 	return messageQueue.Send(message)
 }
 
-// Recv a Message from the Dispatcher. This function blocks until at least one
+// Recv a Message from the Multiplexer. This function blocks until at least one
 // MessageQueue has a Message.
-func (dispatcher *Dispatcher) Recv() (Message, bool) {
+func (dispatcher *Multiplexer) Recv() (Message, bool) {
 	message, ok := <-dispatcher.messages
 	return message, ok
 }
