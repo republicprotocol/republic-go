@@ -4,7 +4,7 @@
 
 // +build s390x,!math_big_pure_go
 
-package asm
+package stackint
 
 import (
 	"testing"
