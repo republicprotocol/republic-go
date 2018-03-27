@@ -1,9 +1,10 @@
 package syncer
 
 import (
+	"sync"
+
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
-	"sync"
 )
 
 type Broadcaster interface {
@@ -25,13 +26,13 @@ func NewOrderBook(maxConnections int) *OrderBook {
 	}
 }
 
-func (orderBook OrderBook) Subscribe(id string) error {
+func (orderBook OrderBook) Subscribe(id string, stream rpc.Dark_SyncServer) error {
 	var globalErr error
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 
 	go func() {
-		if err := orderBook.orderBookStreamer.Subscribe(id); err != nil {
+		if err := orderBook.orderBookStreamer.Subscribe(id, stream); err != nil {
 			globalErr = err
 		}
 

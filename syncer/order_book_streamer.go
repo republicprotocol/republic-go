@@ -1,11 +1,12 @@
 package syncer
 
 import (
+	"fmt"
+	"time"
+
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
-	"time"
-	"fmt"
-	"github.com/republicprotocol/republic-go/dispatch"
 )
 
 type OrderBookSyncer interface {
@@ -24,20 +25,20 @@ type OrderBookStreamer struct {
 
 func NewOrderBookStreamer(maxConnection int) OrderBookStreamer {
 	return OrderBookStreamer{
-		Splitter : dispatch.NewSplitter(),
+		Splitter:       dispatch.NewSplitter(),
 		maxConnections: maxConnection,
 	}
 }
 
-func (orderBookStreamer *OrderBookStreamer) Subscribe(id string) error {
+func (orderBookStreamer *OrderBookStreamer) Subscribe(id string, stream rpc.Dark_SyncServer) error {
 
 	if orderBookStreamer.Splitter.CurrentConnections() >= orderBookStreamer.maxConnections {
 		return fmt.Errorf("cannot subscribe %s: connection limit reached", id)
 	}
 
-	messageQueue := newMessageQueue()
+	messageQueue := NewSyncMessageQueue(stream)
 
-	return orderBookStreamer.Splitter.RunMessageQueue(id , messageQueue)
+	return orderBookStreamer.Splitter.RunMessageQueue(id, messageQueue)
 }
 
 func (orderBookStreamer *OrderBookStreamer) Unsubscribe(id string) {
@@ -64,11 +65,11 @@ func (orderBookStreamer *OrderBookStreamer) Settle(ord *order.Order) {
 	orderBookStreamer.Splitter.Send(orderToSyncBlock(ord, order.Settled))
 }
 
-func orderToSyncBlock(ord *order.Order, status order.Status) *rpc.SyncBlock{
+func orderToSyncBlock(ord *order.Order, status order.Status) *rpc.SyncBlock {
 	block := new(rpc.SyncBlock)
 	block.Timestamp = time.Now().Unix()
 	block.Signature = []byte{} // todo : will be finished later
-	switch status{
+	switch status {
 	case order.Open:
 		block.OrderBlock = &rpc.SyncBlock_Open{
 			Open: rpc.SerializeOrder(ord),

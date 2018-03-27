@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"sync"
+
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
