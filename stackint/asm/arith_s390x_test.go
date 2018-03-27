@@ -26,43 +26,43 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// +build !math_big_pure_go,mips !math_big_pure_go,mipsle
+// +build s390x,!math_big_pure_go
 
-#include "textflag.h"
+package asm
 
-// This file provides fast assembly versions for the elementary
-// arithmetic operations on vectors implemented in arith.go.
+import (
+	"testing"
+)
 
-TEXT ·mulWW(SB),NOSPLIT,$0
-	JMP	·mulWW_g(SB)
+// Tests whether the non vector routines are working, even when the tests are run on a
+// vector-capable machine
 
-TEXT ·divWW(SB),NOSPLIT,$0
-	JMP	·divWW_g(SB)
+func TestFunVVnovec(t *testing.T) {
+	if hasVX == true {
+		for _, a := range sumVV {
+			arg := a
+			testFunVV(t, "AddVV_novec", AddVV_novec, arg)
 
-TEXT ·addVV(SB),NOSPLIT,$0
-	JMP	·addVV_g(SB)
+			arg = argVV{a.z, a.y, a.x, a.c}
+			testFunVV(t, "AddVV_novec symmetric", AddVV_novec, arg)
 
-TEXT ·subVV(SB),NOSPLIT,$0
-	JMP	·subVV_g(SB)
+			arg = argVV{a.x, a.z, a.y, a.c}
+			testFunVV(t, "SubVV_novec", SubVV_novec, arg)
 
-TEXT ·addVW(SB),NOSPLIT,$0
-	JMP	·addVW_g(SB)
+			arg = argVV{a.y, a.z, a.x, a.c}
+			testFunVV(t, "SubVV_novec symmetric", SubVV_novec, arg)
+		}
+	}
+}
 
-TEXT ·subVW(SB),NOSPLIT,$0
-	JMP	·subVW_g(SB)
+func TestFunVWnovec(t *testing.T) {
+	if hasVX == true {
+		for _, a := range sumVW {
+			arg := a
+			testFunVW(t, "AddVW_novec", AddVW_novec, arg)
 
-TEXT ·shlVU(SB),NOSPLIT,$0
-	JMP	·shlVU_g(SB)
-
-TEXT ·shrVU(SB),NOSPLIT,$0
-	JMP	·shrVU_g(SB)
-
-TEXT ·mulAddVWW(SB),NOSPLIT,$0
-	JMP	·mulAddVWW_g(SB)
-
-TEXT ·addMulVVW(SB),NOSPLIT,$0
-	JMP	·addMulVVW_g(SB)
-
-TEXT ·divWVW(SB),NOSPLIT,$0
-	JMP	·divWVW_g(SB)
-
+			arg = argVW{a.x, a.z, a.y, a.c}
+			testFunVW(t, "SubVW_novec", SubVW_novec, arg)
+		}
+	}
+}

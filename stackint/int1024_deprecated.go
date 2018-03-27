@@ -556,7 +556,7 @@ Word_t mulmod(Word_t a, Word_t b, Word_t m) {
 
     /* Only needed if b may be >= m
     if (b >= m) {
-        if (m > Word_MAX / 2u)
+        if (m > WordMAX / 2u)
             b -= m;
         else
             b %= m;

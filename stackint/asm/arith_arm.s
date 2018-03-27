@@ -33,8 +33,8 @@
 // This file provides fast assembly versions for the elementary
 // arithmetic operations on vectors implemented in arith.go.
 
-// func addVV(z, x, y []Word) (c Word)
-TEXT ·addVV(SB),NOSPLIT,$0
+// func AddVV(z, x, y []Word) (c Word)
+TEXT ·AddVV(SB),NOSPLIT,$0
 	ADD.S	$0, R0		// clear carry flag
 	MOVW	z+0(FP), R1
 	MOVW	z_len+4(FP), R4
@@ -57,9 +57,9 @@ E1:
 	RET
 
 
-// func subVV(z, x, y []Word) (c Word)
-// (same as addVV except for SBC instead of ADC and label names)
-TEXT ·subVV(SB),NOSPLIT,$0
+// func SubVV(z, x, y []Word) (c Word)
+// (same as AddVV except for SBC instead of ADC and label names)
+TEXT ·SubVV(SB),NOSPLIT,$0
 	SUB.S	$0, R0		// clear borrow flag
 	MOVW	z+0(FP), R1
 	MOVW	z_len+4(FP), R4
@@ -82,8 +82,8 @@ E2:
 	RET
 
 
-// func addVW(z, x []Word, y Word) (c Word)
-TEXT ·addVW(SB),NOSPLIT,$0
+// func AddVW(z, x []Word, y Word) (c Word)
+TEXT ·AddVW(SB),NOSPLIT,$0
 	MOVW	z+0(FP), R1
 	MOVW	z_len+4(FP), R4
 	MOVW	x+12(FP), R2
@@ -112,8 +112,8 @@ E3:
 	RET
 
 
-// func subVW(z, x []Word, y Word) (c Word)
-TEXT ·subVW(SB),NOSPLIT,$0
+// func SubVW(z, x []Word, y Word) (c Word)
+TEXT ·SubVW(SB),NOSPLIT,$0
 	MOVW	z+0(FP), R1
 	MOVW	z_len+4(FP), R4
 	MOVW	x+12(FP), R2
@@ -142,8 +142,8 @@ E4:
 	RET
 
 
-// func shlVU(z, x []Word, s uint) (c Word)
-TEXT ·shlVU(SB),NOSPLIT,$0
+// func ShlVU(z, x []Word, s uint) (c Word)
+TEXT ·ShlVU(SB),NOSPLIT,$0
 	MOVW	z_len+4(FP), R5
 	TEQ	$0, R5
 	BEQ	X7
@@ -190,8 +190,8 @@ X7:
 	RET
 
 
-// func shrVU(z, x []Word, s uint) (c Word)
-TEXT ·shrVU(SB),NOSPLIT,$0
+// func ShrVU(z, x []Word, s uint) (c Word)
+TEXT ·ShrVU(SB),NOSPLIT,$0
 	MOVW	z_len+4(FP), R5
 	TEQ	$0, R5
 	BEQ	X6
@@ -239,8 +239,8 @@ X6:
 	RET
 
 
-// func mulAddVWW(z, x []Word, y, r Word) (c Word)
-TEXT ·mulAddVWW(SB),NOSPLIT,$0
+// func MulAddVWW(z, x []Word, y, r Word) (c Word)
+TEXT ·MulAddVWW(SB),NOSPLIT,$0
 	MOVW	$0, R0
 	MOVW	z+0(FP), R1
 	MOVW	z_len+4(FP), R5
@@ -266,8 +266,8 @@ E8:
 	RET
 
 
-// func addMulVVW(z, x []Word, y Word) (c Word)
-TEXT ·addMulVVW(SB),NOSPLIT,$0
+// func AddMulVVW(z, x []Word, y Word) (c Word)
+TEXT ·AddMulVVW(SB),NOSPLIT,$0
 	MOVW	$0, R0
 	MOVW	z+0(FP), R1
 	MOVW	z_len+4(FP), R5
@@ -296,20 +296,20 @@ E9:
 	RET
 
 
-// func divWVW(z* Word, xn Word, x []Word, y Word) (r Word)
-TEXT ·divWVW(SB),NOSPLIT,$0
+// func DivWVW(z* Word, xn Word, x []Word, y Word) (r Word)
+TEXT ·DivWVW(SB),NOSPLIT,$0
 	// ARM has no multiword division, so use portable code.
-	B ·divWVW_g(SB)
+	B ·DivWVW_g(SB)
 
 
-// func divWW(x1, x0, y Word) (q, r Word)
-TEXT ·divWW(SB),NOSPLIT,$0
+// func DivWW(x1, x0, y Word) (q, r Word)
+TEXT ·DivWW(SB),NOSPLIT,$0
 	// ARM has no multiword division, so use portable code.
-	B ·divWW_g(SB)
+	B ·DivWW_g(SB)
 
 
-// func mulWW(x, y Word) (z1, z0 Word)
-TEXT ·mulWW(SB),NOSPLIT,$0
+// func MulWW(x, y Word) (z1, z0 Word)
+TEXT ·MulWW(SB),NOSPLIT,$0
 	MOVW	x+0(FP), R1
 	MOVW	y+4(FP), R2
 	MULLU	R1, R2, (R4, R3)

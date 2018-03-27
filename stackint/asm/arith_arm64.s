@@ -36,8 +36,8 @@
 // TODO: Consider re-implementing using Advanced SIMD
 // once the assembler supports those instructions.
 
-// func mulWW(x, y Word) (z1, z0 Word)
-TEXT ·mulWW(SB),NOSPLIT,$0
+// func MulWW(x, y Word) (z1, z0 Word)
+TEXT ·MulWW(SB),NOSPLIT,$0
 	MOVD	x+0(FP), R0
 	MOVD	y+8(FP), R1
 	MUL	R0, R1, R2
@@ -47,13 +47,13 @@ TEXT ·mulWW(SB),NOSPLIT,$0
 	RET
 
 
-// func divWW(x1, x0, y Word) (q, r Word)
-TEXT ·divWW(SB),NOSPLIT,$0
-	B	·divWW_g(SB) // ARM64 has no multiword division
+// func DivWW(x1, x0, y Word) (q, r Word)
+TEXT ·DivWW(SB),NOSPLIT,$0
+	B	·DivWW_g(SB) // ARM64 has no multiword division
 
 
-// func addVV(z, x, y []Word) (c Word)
-TEXT ·addVV(SB),NOSPLIT,$0
+// func AddVV(z, x, y []Word) (c Word)
+TEXT ·AddVV(SB),NOSPLIT,$0
 	MOVD	z+0(FP), R3
 	MOVD	z_len+8(FP), R0
 	MOVD	x+24(FP), R1
@@ -73,8 +73,8 @@ done:
 	RET
 
 
-// func subVV(z, x, y []Word) (c Word)
-TEXT ·subVV(SB),NOSPLIT,$0
+// func SubVV(z, x, y []Word) (c Word)
+TEXT ·SubVV(SB),NOSPLIT,$0
 	MOVD	z+0(FP), R3
 	MOVD	z_len+8(FP), R0
 	MOVD	x+24(FP), R1
@@ -94,8 +94,8 @@ done:
 	RET
 
 
-// func addVW(z, x []Word, y Word) (c Word)
-TEXT ·addVW(SB),NOSPLIT,$0
+// func AddVW(z, x []Word, y Word) (c Word)
+TEXT ·AddVW(SB),NOSPLIT,$0
 	MOVD	z+0(FP), R3
 	MOVD	z_len+8(FP), R0
 	MOVD	x+24(FP), R1
@@ -121,8 +121,8 @@ return_y: // z is empty; copy y to c
 	RET
 
 
-// func subVW(z, x []Word, y Word) (c Word)
-TEXT ·subVW(SB),NOSPLIT,$0
+// func SubVW(z, x []Word, y Word) (c Word)
+TEXT ·SubVW(SB),NOSPLIT,$0
 	MOVD	z+0(FP), R3
 	MOVD	z_len+8(FP), R0
 	MOVD	x+24(FP), R1
@@ -148,18 +148,18 @@ rety: // z is empty; copy y to c
 	RET
 
 
-// func shlVU(z, x []Word, s uint) (c Word)
-TEXT ·shlVU(SB),NOSPLIT,$0
-	B ·shlVU_g(SB)
+// func ShlVU(z, x []Word, s uint) (c Word)
+TEXT ·ShlVU(SB),NOSPLIT,$0
+	B ·ShlVU_g(SB)
 
 
-// func shrVU(z, x []Word, s uint) (c Word)
-TEXT ·shrVU(SB),NOSPLIT,$0
-	B ·shrVU_g(SB)
+// func ShrVU(z, x []Word, s uint) (c Word)
+TEXT ·ShrVU(SB),NOSPLIT,$0
+	B ·ShrVU_g(SB)
 
 
-// func mulAddVWW(z, x []Word, y, r Word) (c Word)
-TEXT ·mulAddVWW(SB),NOSPLIT,$0
+// func MulAddVWW(z, x []Word, y, r Word) (c Word)
+TEXT ·MulAddVWW(SB),NOSPLIT,$0
 	MOVD	z+0(FP), R1
 	MOVD	z_len+8(FP), R0
 	MOVD	x+24(FP), R2
@@ -181,12 +181,12 @@ done:
 	RET
 
 
-// func addMulVVW(z, x []Word, y Word) (c Word)
-TEXT ·addMulVVW(SB),NOSPLIT,$0
-	B ·addMulVVW_g(SB)
+// func AddMulVVW(z, x []Word, y Word) (c Word)
+TEXT ·AddMulVVW(SB),NOSPLIT,$0
+	B ·AddMulVVW_g(SB)
 
 
-// func divWVW(z []Word, xn Word, x []Word, y Word) (r Word)
-TEXT ·divWVW(SB),NOSPLIT,$0
-	B ·divWVW_g(SB)
+// func DivWVW(z []Word, xn Word, x []Word, y Word) (r Word)
+TEXT ·DivWVW(SB),NOSPLIT,$0
+	B ·DivWVW_g(SB)
 

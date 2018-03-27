@@ -53,7 +53,7 @@ novector:
         MOVB    $0, ret+0(FP) // no vx
         RET
 
-TEXT ·mulWW(SB),NOSPLIT,$0
+TEXT ·MulWW(SB),NOSPLIT,$0
 	MOVD	x+0(FP), R3
 	MOVD	y+8(FP), R4
 	MULHDU	R3, R4
@@ -61,8 +61,8 @@ TEXT ·mulWW(SB),NOSPLIT,$0
 	MOVD	R11, z0+24(FP)
 	RET
 
-// func divWW(x1, x0, y Word) (q, r Word)
-TEXT ·divWW(SB),NOSPLIT,$0
+// func DivWW(x1, x0, y Word) (q, r Word)
+TEXT ·DivWW(SB),NOSPLIT,$0
 	MOVD	x1+0(FP), R10
 	MOVD	x0+8(FP), R11
 	MOVD	y+16(FP), R5
@@ -72,32 +72,32 @@ TEXT ·divWW(SB),NOSPLIT,$0
 	RET
 
 // DI = R3, CX = R4, SI = r10, r8 = r8, r9=r9, r10 = r2 , r11 = r5, r12 = r6, r13 = r7, r14 = r1 (R0 set to 0) + use R11
-// func addVV(z, x, y []Word) (c Word)
+// func AddVV(z, x, y []Word) (c Word)
 
 
-TEXT ·addVV(SB),NOSPLIT,$0
+TEXT ·AddVV(SB),NOSPLIT,$0
 	MOVD	addvectorfacility+0x00(SB),R1
 	BR	(R1)
 	
-TEXT ·addVV_check(SB),NOSPLIT, $0
+TEXT ·AddVV_check(SB),NOSPLIT, $0
 	MOVB	·hasVX(SB), R1
 	CMPBEQ	R1, $1, vectorimpl      // vectorfacility = 1, vector supported
 	MOVD	$addvectorfacility+0x00(SB), R1
-	MOVD	$·addVV_novec(SB), R2
+	MOVD	$·AddVV_novec(SB), R2
 	MOVD	R2, 0(R1)
-	//MOVD	$·addVV_novec(SB), 0(R1)
-	BR	·addVV_novec(SB)
+	//MOVD	$·AddVV_novec(SB), 0(R1)
+	BR	·AddVV_novec(SB)
 vectorimpl:
 	MOVD	$addvectorfacility+0x00(SB), R1
-	MOVD	$·addVV_vec(SB), R2
+	MOVD	$·AddVV_vec(SB), R2
 	MOVD	R2, 0(R1)
-	//MOVD	$·addVV_vec(SB), 0(R1)
-	BR	·addVV_vec(SB)
+	//MOVD	$·AddVV_vec(SB), 0(R1)
+	BR	·AddVV_vec(SB)
 
 GLOBL addvectorfacility+0x00(SB), NOPTR, $8
-DATA addvectorfacility+0x00(SB)/8, $·addVV_check(SB)
+DATA addvectorfacility+0x00(SB)/8, $·AddVV_check(SB)
 
-TEXT ·addVV_vec(SB),NOSPLIT,$0
+TEXT ·AddVV_vec(SB),NOSPLIT,$0
 	MOVD	z_len+8(FP), R3
 	MOVD	x+24(FP), R8
 	MOVD	y+48(FP), R9
@@ -248,7 +248,7 @@ E1:	NEG	R4, R4
 	MOVD	R4, c+72(FP)	// return c
 	RET
 
-TEXT ·addVV_novec(SB),NOSPLIT,$0
+TEXT ·AddVV_novec(SB),NOSPLIT,$0
 novec:
 	MOVD	z_len+8(FP), R3
 	MOVD	x+24(FP), R8
@@ -312,32 +312,32 @@ E1n:	NEG	R4, R4
 	RET
 
 
-TEXT ·subVV(SB),NOSPLIT,$0
+TEXT ·SubVV(SB),NOSPLIT,$0
 	MOVD	subvectorfacility+0x00(SB),R1
 	BR	(R1)
 	
-TEXT ·subVV_check(SB),NOSPLIT,$0
+TEXT ·SubVV_check(SB),NOSPLIT,$0
 	MOVB	·hasVX(SB), R1
 	CMPBEQ	R1, $1, vectorimpl      // vectorfacility = 1, vector supported
 	MOVD	$subvectorfacility+0x00(SB), R1
-	MOVD	$·subVV_novec(SB), R2
+	MOVD	$·SubVV_novec(SB), R2
 	MOVD	R2, 0(R1)
-	//MOVD	$·subVV_novec(SB), 0(R1)
-	BR	·subVV_novec(SB)
+	//MOVD	$·SubVV_novec(SB), 0(R1)
+	BR	·SubVV_novec(SB)
 vectorimpl:
 	MOVD	$subvectorfacility+0x00(SB), R1
-	MOVD    $·subVV_vec(SB), R2
+	MOVD    $·SubVV_vec(SB), R2
         MOVD    R2, 0(R1)
-	//MOVD	$·subVV_vec(SB), 0(R1)
-	BR	·subVV_vec(SB)
+	//MOVD	$·SubVV_vec(SB), 0(R1)
+	BR	·SubVV_vec(SB)
 
 GLOBL subvectorfacility+0x00(SB), NOPTR, $8
-DATA subvectorfacility+0x00(SB)/8, $·subVV_check(SB)
+DATA subvectorfacility+0x00(SB)/8, $·SubVV_check(SB)
 
 // DI = R3, CX = R4, SI = r10, r8 = r8, r9=r9, r10 = r2 , r11 = r5, r12 = r6, r13 = r7, r14 = r1 (R0 set to 0) + use R11
-// func subVV(z, x, y []Word) (c Word)
-// (same as addVV except for SUBC/SUBE instead of ADDC/ADDE and label names)
-TEXT ·subVV_vec(SB),NOSPLIT,$0
+// func SubVV(z, x, y []Word) (c Word)
+// (same as AddVV except for SUBC/SUBE instead of ADDC/ADDE and label names)
+TEXT ·SubVV_vec(SB),NOSPLIT,$0
 	MOVD	z_len+8(FP), R3
 	MOVD	x+24(FP), R8
 	MOVD	y+48(FP), R9
@@ -488,9 +488,9 @@ E1:	NEG	R4, R4
 
 
 // DI = R3, CX = R4, SI = r10, r8 = r8, r9=r9, r10 = r2 , r11 = r5, r12 = r6, r13 = r7, r14 = r1 (R0 set to 0) + use R11
-// func subVV(z, x, y []Word) (c Word)
-// (same as addVV except for SUBC/SUBE instead of ADDC/ADDE and label names)
-TEXT ·subVV_novec(SB),NOSPLIT,$0
+// func SubVV(z, x, y []Word) (c Word)
+// (same as AddVV except for SUBC/SUBE instead of ADDC/ADDE and label names)
+TEXT ·SubVV_novec(SB),NOSPLIT,$0
 	MOVD z_len+8(FP), R3
 	MOVD x+24(FP), R8
 	MOVD y+48(FP), R9
@@ -553,31 +553,31 @@ E1:	NEG  R4, R4
 	MOVD R4, c+72(FP)	// return c
 	RET
 
-TEXT ·addVW(SB),NOSPLIT,$0
+TEXT ·AddVW(SB),NOSPLIT,$0
 	MOVD	addwvectorfacility+0x00(SB),R1
 	BR	(R1)
 	
-TEXT ·addVW_check(SB),NOSPLIT,$0
+TEXT ·AddVW_check(SB),NOSPLIT,$0
 	MOVB	·hasVX(SB), R1
 	CMPBEQ	R1, $1, vectorimpl      // vectorfacility = 1, vector supported
 	MOVD	$addwvectorfacility+0x00(SB), R1
-	MOVD    $·addVW_novec(SB), R2
+	MOVD    $·AddVW_novec(SB), R2
         MOVD    R2, 0(R1)
-	//MOVD	$·addVW_novec(SB), 0(R1)
-	BR	·addVW_novec(SB)
+	//MOVD	$·AddVW_novec(SB), 0(R1)
+	BR	·AddVW_novec(SB)
 vectorimpl:
 	MOVD	$addwvectorfacility+0x00(SB), R1
-	MOVD    $·addVW_vec(SB), R2
+	MOVD    $·AddVW_vec(SB), R2
         MOVD    R2, 0(R1)
-	//MOVD	$·addVW_vec(SB), 0(R1)
-	BR	·addVW_vec(SB)
+	//MOVD	$·AddVW_vec(SB), 0(R1)
+	BR	·AddVW_vec(SB)
 
 GLOBL addwvectorfacility+0x00(SB), NOPTR, $8
-DATA addwvectorfacility+0x00(SB)/8, $·addVW_check(SB)
+DATA addwvectorfacility+0x00(SB)/8, $·AddVW_check(SB)
 
 
-// func addVW_vec(z, x []Word, y Word) (c Word)
-TEXT ·addVW_vec(SB),NOSPLIT,$0
+// func AddVW_vec(z, x []Word, y Word) (c Word)
+TEXT ·AddVW_vec(SB),NOSPLIT,$0
 	MOVD	z_len+8(FP), R3
 	MOVD	x+24(FP), R8
 	MOVD	y+48(FP), R4	// c = y
@@ -709,7 +709,7 @@ E10:	MOVD	R4, c+56(FP)	// return c
 	RET
 
 
-TEXT ·addVW_novec(SB),NOSPLIT,$0
+TEXT ·AddVW_novec(SB),NOSPLIT,$0
 //DI = R3, CX = R4, SI = r10, r8 = r8, r10 = r2 , r11 = r5, r12 = r6, r13 = r7, r14 = r1 (R0 set to 0)
 	MOVD z_len+8(FP), R3
 	MOVD x+24(FP), R8
@@ -763,30 +763,30 @@ E4:	MOVD R4, c+56(FP)	// return c
 
 	RET
 
-TEXT ·subVW(SB),NOSPLIT,$0
+TEXT ·SubVW(SB),NOSPLIT,$0
 	MOVD	subwvectorfacility+0x00(SB),R1
 	BR	(R1)
 	
-TEXT ·subVW_check(SB),NOSPLIT,$0
+TEXT ·SubVW_check(SB),NOSPLIT,$0
 	MOVB	·hasVX(SB), R1
 	CMPBEQ	R1, $1, vectorimpl      // vectorfacility = 1, vector supported
 	MOVD	$subwvectorfacility+0x00(SB), R1
-	MOVD    $·subVW_novec(SB), R2
+	MOVD    $·SubVW_novec(SB), R2
         MOVD    R2, 0(R1)
-	//MOVD	$·subVW_novec(SB), 0(R1)
-	BR	·subVW_novec(SB)
+	//MOVD	$·SubVW_novec(SB), 0(R1)
+	BR	·SubVW_novec(SB)
 vectorimpl:
 	MOVD	$subwvectorfacility+0x00(SB), R1
-	MOVD    $·subVW_vec(SB), R2
+	MOVD    $·SubVW_vec(SB), R2
         MOVD    R2, 0(R1)
-	//MOVD	$·subVW_vec(SB), 0(R1)
-	BR	·subVW_vec(SB)
+	//MOVD	$·SubVW_vec(SB), 0(R1)
+	BR	·SubVW_vec(SB)
 
 GLOBL subwvectorfacility+0x00(SB), NOPTR, $8
-DATA subwvectorfacility+0x00(SB)/8, $·subVW_check(SB)
+DATA subwvectorfacility+0x00(SB)/8, $·SubVW_check(SB)
 
-// func subVW(z, x []Word, y Word) (c Word)
-TEXT ·subVW_vec(SB),NOSPLIT,$0
+// func SubVW(z, x []Word, y Word) (c Word)
+TEXT ·SubVW_vec(SB),NOSPLIT,$0
 	MOVD	z_len+8(FP), R3
 	MOVD	x+24(FP), R8
 	MOVD	y+48(FP), R4	// c = y
@@ -920,9 +920,9 @@ E11:	MOVD	R4, c+56(FP)	// return c
 	RET
 
 //DI = R3, CX = R4, SI = r10, r8 = r8, r10 = r2 , r11 = r5, r12 = r6, r13 = r7, r14 = r1 (R0 set to 0)
-// func subVW(z, x []Word, y Word) (c Word)
-// (same as addVW except for SUBC/SUBE instead of ADDC/ADDE and label names)
-TEXT ·subVW_novec(SB),NOSPLIT,$0
+// func SubVW(z, x []Word, y Word) (c Word)
+// (same as AddVW except for SUBC/SUBE instead of ADDC/ADDE and label names)
+TEXT ·SubVW_novec(SB),NOSPLIT,$0
 	MOVD z_len+8(FP), R3
 	MOVD x+24(FP), R8
 	MOVD y+48(FP), R4	// c = y
@@ -973,8 +973,8 @@ E4:	MOVD R4, c+56(FP)	// return c
 
 	RET
 
-// func shlVU(z, x []Word, s uint) (c Word)
-TEXT ·shlVU(SB),NOSPLIT,$0
+// func ShlVU(z, x []Word, s uint) (c Word)
+TEXT ·ShlVU(SB),NOSPLIT,$0
 	MOVD	z_len+8(FP), R5
 	MOVD	$0, R0
 	SUB	$1, R5             // n--
@@ -1061,8 +1061,8 @@ E864:	CMPBGT	R5, R0, L864       // i < n-1
 
 
 // CX = R4, r8 = r8, r10 = r2 , r11 = r5, DX = r3, AX = r10 , BX = R1 , 64-count = r7 (R0 set to 0) temp = R6
-// func shrVU(z, x []Word, s uint) (c Word)
-TEXT ·shrVU(SB),NOSPLIT,$0
+// func ShrVU(z, x []Word, s uint) (c Word)
+TEXT ·ShrVU(SB),NOSPLIT,$0
 	MOVD	z_len+8(FP), R5
 	MOVD	$0, R0
 	SUB	$1, R5             // n--
@@ -1151,8 +1151,8 @@ E964:	CMPBLT	R1, R5, L964	// i < n-1
 	RET
 
 // CX = R4, r8 = r8, r9=r9, r10 = r2 , r11 = r5, DX = r3, AX = r6 , BX = R1 , (R0 set to 0) + use R11 + use R7 for i
-// func mulAddVWW(z, x []Word, y, r Word) (c Word)
-TEXT ·mulAddVWW(SB),NOSPLIT,$0
+// func MulAddVWW(z, x []Word, y, r Word) (c Word)
+TEXT ·MulAddVWW(SB),NOSPLIT,$0
 	MOVD	z+0(FP), R2
 	MOVD	x+24(FP), R8
 	MOVD	y+48(FP), R9
@@ -1177,9 +1177,9 @@ E5:	CMPBLT	R7, R5, L5	// i < n
 	MOVD	R4, c+64(FP)
 	RET
 
-// func addMulVVW(z, x []Word, y Word) (c Word)
+// func AddMulVVW(z, x []Word, y Word) (c Word)
 // CX = R4, r8 = r8, r9=r9, r10 = r2 , r11 = r5, AX = r11, DX = R6, r12=r12, BX = R1 , (R0 set to 0) + use R11 + use R7 for i
-TEXT ·addMulVVW(SB),NOSPLIT,$0
+TEXT ·AddMulVVW(SB),NOSPLIT,$0
 	MOVD	z+0(FP), R2
 	MOVD	x+24(FP), R8
 	MOVD	y+48(FP), R9
@@ -1239,9 +1239,9 @@ E6:	CMPBLT	R7, R5, L6	// i < n
 	MOVD	R4, c+56(FP)
 	RET
 
-// func divWVW(z []Word, xn Word, x []Word, y Word) (r Word)
+// func DivWVW(z []Word, xn Word, x []Word, y Word) (r Word)
 // CX = R4, r8 = r8, r9=r9, r10 = r2 , r11 = r5, AX = r11, DX = R6, r12=r12, BX = R1(*8) , (R0 set to 0) + use R11 + use R7 for i
-TEXT ·divWVW(SB),NOSPLIT,$0
+TEXT ·DivWVW(SB),NOSPLIT,$0
 	MOVD	z+0(FP), R2
 	MOVD	xn+24(FP), R10	// r = xn
 	MOVD	x+32(FP), R8
