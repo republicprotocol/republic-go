@@ -72,7 +72,7 @@ func (orderBookCache *OrderBookCache) Settle(ord *order.Order) {
 	}
 }
 
-func (orderBookCache *OrderBookCache) Orders() []*rpc.SyncBlock {
+func (orderBookCache *OrderBookCache) Blocks() []*rpc.SyncBlock {
 	orderBookCache.mu.RLock()
 	defer orderBookCache.mu.RUnlock()
 

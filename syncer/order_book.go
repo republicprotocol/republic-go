@@ -3,6 +3,7 @@ package syncer
 import (
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"sync"
 )
 
 type Broadcaster interface {
@@ -24,19 +25,27 @@ func NewOrderBook(maxConnections int) *OrderBook {
 	}
 }
 
-func (orderBook OrderBook) Subscribe(id string, listener chan *rpc.SyncBlock) error {
-	// todo : implement this
-	//err := orderBook.orderBookStreamer.Subscribe(id, listener)
-	//if err != nil {
-	//	return err
-	//}
-	//blocks := orderBook.orderBookCache.Orders()
-	//go func() {
-	//	for _, block := range blocks {
-	//		listener <- block
-	//	}
-	//}()
-	return nil
+func (orderBook OrderBook) Subscribe(id string) error {
+	var globalErr error
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+
+	go func() {
+		if err := orderBook.orderBookStreamer.Subscribe(id); err != nil {
+			globalErr = err
+		}
+
+		wg.Done()
+	}()
+
+	blocks := orderBook.orderBookCache.Blocks()
+	for _, block := range blocks {
+		orderBook.orderBookStreamer.Send(block)
+	}
+
+	wg.Wait()
+
+	return globalErr
 }
 
 func (orderBook OrderBook) Unsubscribe(id string){

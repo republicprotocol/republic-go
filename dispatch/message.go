@@ -14,7 +14,7 @@ type MessageQueue interface {
 	// Shutdown the MessageQueue gracefully.
 	Shutdown() error
 
-	// Send a Message to the MessageQueue. The implementation shooruld throw a
+	// Send a Message to the MessageQueue. The implementation should throw a
 	// type error if it receives a concrete type that it does not recognize.
 	// This method should block if the MessageQueue is full.
 	Send(Message) error

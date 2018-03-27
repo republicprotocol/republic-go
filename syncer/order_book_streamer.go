@@ -5,7 +5,7 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 	"time"
 	"fmt"
-	"sync"
+	"github.com/republicprotocol/republic-go/dispatch"
 )
 
 type OrderBookSyncer interface {
@@ -17,85 +17,51 @@ type OrderBookSyncer interface {
 }
 
 type OrderBookStreamer struct {
-	subscribersMu *sync.Mutex
-	subscribers    map[string]chan *rpc.SyncBlock
+	dispatch.Splitter
 
 	maxConnections int
 }
 
 func NewOrderBookStreamer(maxConnection int) OrderBookStreamer {
 	return OrderBookStreamer{
-		subscribersMu:             new(sync.Mutex),
-		subscribers:    map[string]chan *rpc.SyncBlock{},
-
+		Splitter : dispatch.NewSplitter(),
 		maxConnections: maxConnection,
 	}
 }
 
-func (orderBookStreamer *OrderBookStreamer) Subscribe(id string, listener chan *rpc.SyncBlock) error {
-	orderBookStreamer.subscribersMu.Lock()
-	defer orderBookStreamer.subscribersMu.Unlock()
+func (orderBookStreamer *OrderBookStreamer) Subscribe(id string) error {
 
-	if len(orderBookStreamer.subscribers) >= orderBookStreamer.maxConnections {
+	if orderBookStreamer.Splitter.CurrentConnections() >= orderBookStreamer.maxConnections {
 		return fmt.Errorf("cannot subscribe %s: connection limit reached", id)
 	}
-	orderBookStreamer.subscribers[id] = listener
 
-	return nil
+	messageQueue := newMessageQueue()
+
+	return orderBookStreamer.Splitter.RunMessageQueue(id , messageQueue)
 }
 
 func (orderBookStreamer *OrderBookStreamer) Unsubscribe(id string) {
-	orderBookStreamer.subscribersMu.Lock()
-	defer orderBookStreamer.subscribersMu.Unlock()
-
-	delete(orderBookStreamer.subscribers, id)
+	orderBookStreamer.Splitter.ShutdownMessageQueue(id)
 }
 
 func (orderBookStreamer *OrderBookStreamer) Open(ord *order.Order) {
-	orderBookStreamer.subscribersMu.Lock()
-	defer orderBookStreamer.subscribersMu.Unlock()
-
-	for _, subscriber := range orderBookStreamer.subscribers {
-		// Allow back-pressure to cause blocking (this is meant to be mitigated
-		// by dropping dead clients, or reducing the maximum connections)
-		subscriber <- orderToSyncBlock(ord, order.Open)
-	}
+	orderBookStreamer.Splitter.Send(orderToSyncBlock(ord, order.Open))
 }
 
 func (orderBookStreamer *OrderBookStreamer) Match(ord *order.Order) {
-	orderBookStreamer.subscribersMu.Lock()
-	defer orderBookStreamer.subscribersMu.Unlock()
-
-	for _, subscriber := range orderBookStreamer.subscribers {
-		subscriber <- orderToSyncBlock(ord, order.Unconfirmed)
-	}
+	orderBookStreamer.Splitter.Send(orderToSyncBlock(ord, order.Unconfirmed))
 }
 
 func (orderBookStreamer *OrderBookStreamer) Confirm(ord *order.Order) {
-	orderBookStreamer.subscribersMu.Lock()
-	defer orderBookStreamer.subscribersMu.Unlock()
-
-	for _, subscriber := range orderBookStreamer.subscribers {
-		subscriber <- orderToSyncBlock(ord, order.Confirmed)
-	}
+	orderBookStreamer.Splitter.Send(orderToSyncBlock(ord, order.Confirmed))
 }
 
 func (orderBookStreamer *OrderBookStreamer) Release(ord *order.Order) {
-	orderBookStreamer.subscribersMu.Lock()
-	defer orderBookStreamer.subscribersMu.Unlock()
-
-	for _, subscriber := range orderBookStreamer.subscribers {
-		subscriber <- orderToSyncBlock(ord, order.Open)
-	}
+	orderBookStreamer.Splitter.Send(orderToSyncBlock(ord, order.Open))
 }
 
 func (orderBookStreamer *OrderBookStreamer) Settle(ord *order.Order) {
-	orderBookStreamer.subscribersMu.Lock()
-	defer orderBookStreamer.subscribersMu.Unlock()
-
-	for _, subscriber := range orderBookStreamer.subscribers {
-		subscriber <- orderToSyncBlock(ord, order.Settled)
-	}
+	orderBookStreamer.Splitter.Send(orderToSyncBlock(ord, order.Settled))
 }
 
 func orderToSyncBlock(ord *order.Order, status order.Status) *rpc.SyncBlock{

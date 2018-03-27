@@ -77,3 +77,10 @@ func (splitter *Splitter) Recv(id string) (Message, bool) {
 	}
 	return splitter.output[id].Recv()
 }
+
+func (splitter *Splitter) CurrentConnections () int {
+	splitter.outputMu.RLock()
+	defer splitter.outputMu.RUnlock()
+
+	return len(splitter.output)
+}
