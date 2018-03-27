@@ -2,7 +2,7 @@ package smpc
 
 import (
 	"fmt"
-	"math/rand"
+	"sync/atomic"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
@@ -20,15 +20,19 @@ type WorkerTask struct {
 	Deltas         Deltas
 }
 
+// Workers is a slice of Worker components.
+type Workers []Worker
+
 // A Worker receives messages from a Dispatcher until the Dispatcher is
 // shutdown. It is primarily responsible for decoding the message and
 // delegating work to the appropriate component.
 type Worker struct {
-	logger *logger.Logger
+	logger  *logger.Logger
+	running int32
 
-	peers identity.MultiAddresses
+	multiplexer   *dispatch.Multiplexer
+	messageQueues dispatch.MessageQueues
 
-	multiplexer         *dispatch.Multiplexer
 	deltaFragmentMatrix *DeltaFragmentMatrix
 	deltaBuilder        *DeltaBuilder
 	deltaHandler        DeltaHandler
@@ -39,13 +43,14 @@ type Worker struct {
 // send it back through the Multiplexer for scheduling to another worker. This
 // prevents new WorkerTasks from jumping the queue, providing a sense of
 // fairness in prioritization.
-func NewWorker(logger *logger.Logger, peers identity.MultiAddresses, multiplexer *dispatch.Multiplexer, deltaFragmentMatrix *DeltaFragmentMatrix, deltaBuilder *DeltaBuilder, deltaHandler DeltaHandler) Worker {
+func NewWorker(logger *logger.Logger, peers identity.MultiAddresses, multiplexer *dispatch.Multiplexer, messageQueues dispatch.MessageQueues, deltaFragmentMatrix *DeltaFragmentMatrix, deltaBuilder *DeltaBuilder, deltaHandler DeltaHandler) Worker {
 	return Worker{
-		logger: logger,
+		logger:  logger,
+		running: 1,
 
-		peers: peers,
+		multiplexer:   multiplexer,
+		messageQueues: messageQueues,
 
-		multiplexer:         multiplexer,
 		deltaFragmentMatrix: deltaFragmentMatrix,
 		deltaBuilder:        deltaBuilder,
 		deltaHandler:        deltaHandler,
@@ -57,7 +62,7 @@ func NewWorker(logger *logger.Logger, peers identity.MultiAddresses, multiplexer
 // component to complete, and then read the next message from the Multiplexer.
 // This function blocks until the Multiplexer is shutdown.
 func (worker *Worker) Run() {
-	for {
+	for atomic.LoadInt32(&worker.running) > 0 {
 		message, ok := worker.multiplexer.Recv()
 		if !ok {
 			break
@@ -81,6 +86,11 @@ func (worker *Worker) Run() {
 			break
 		}
 	}
+}
+
+// Shutdown the Worker gracefully.
+func (worker *Worker) Shutdown() {
+	atomic.StoreInt32(&worker.running, 0)
 }
 
 func (worker *Worker) processOrderFragment(orderFragment *rpc.OrderFragment) {
@@ -143,10 +153,8 @@ func (worker *Worker) processDeltaFragments(deltaFragments DeltaFragments) {
 
 	// Send a new WorkerTask to a random subset of MessageQueues in the
 	// Multiplexer
-	n := len(worker.peers)
-	base := rand.Intn(n)
-	for i := base; i < base+12; i++ {
-		worker.multiplexer.SendToMessageQueue(worker.peers[i%n].Address().String(), WorkerTask{
+	for _, messageQueue := range worker.messageQueues {
+		messageQueue.Send(WorkerTask{
 			TauMessage: &rpc.TauMessage{
 				DeltaFragments: &rpc.DeltaFragments{
 					DeltaFragments: newDeltaFragmentsSerialized,
