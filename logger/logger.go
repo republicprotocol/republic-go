@@ -211,6 +211,7 @@ type EventType string
 // Values for the EventType.
 const (
 	Generic       = EventType("generic")
+	Epoch         = EventType("epoch")
 	Usage         = EventType("usage")
 	Ethereum      = EventType("ethereum")
 	OrderMatch    = EventType("orderMatch")
@@ -237,6 +238,14 @@ type GenericEvent struct {
 
 func (event GenericEvent) String() string {
 	return event.Message
+}
+
+type EpochEvent struct {
+	Hash []byte `json:"hash"`
+}
+
+func (event EpochEvent) String() string {
+	return base58.Encode(event.Hash)
 }
 
 type UsageEvent struct {
