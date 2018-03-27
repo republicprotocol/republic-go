@@ -42,14 +42,6 @@
   version = "1.0.0"
 
 [[constraint]]
-  name = "github.com/multiformats/go-multiaddr"
-  version = "0.1.2"
-
-[[constraint]]
-  name = "github.com/multiformats/go-multihash"
-  version = "0.1.0"
-
-[[constraint]]
   name = "github.com/onsi/ginkgo"
   version = "1.4.0"
 
@@ -60,10 +52,6 @@
 [[constraint]]
   name = "github.com/pkg/errors"
   version = "0.8.0"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-dark-node-registrar"
 
 [[constraint]]
   branch = "master"
