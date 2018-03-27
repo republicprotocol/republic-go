@@ -12,7 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/republicprotocol/republic-go/syncer"
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark"
@@ -22,6 +21,7 @@ import (
 	"github.com/republicprotocol/republic-go/network/dht"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/syncer"
 	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
@@ -323,14 +323,14 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 
 // OnSync returns
 func (node *DarkNode) OnSync(from identity.MultiAddress) chan *rpc.SyncBlock {
-		blocks := make(chan *rpc.SyncBlock, 100)
+	blocks := make(chan *rpc.SyncBlock, 100)
 
-		err := node.OrderBook.Subscribe(from.String(), blocks)
-		if err != nil {
-			close(blocks)
-		}
+	err := node.OrderBook.Subscribe(from.String(), blocks)
+	if err != nil {
+		close(blocks)
+	}
 
-		return blocks
+	return blocks
 }
 
 // OnOpenOrder writes an order fragment that has been received to the

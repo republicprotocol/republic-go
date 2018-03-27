@@ -185,4 +185,3 @@ func (pool *ClientPool) BroadcastDeltaFragment(to identity.MultiAddress, deltaFr
 	}
 	return client.BroadcastDeltaFragment(deltaFragment)
 }
-
