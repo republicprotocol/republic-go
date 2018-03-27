@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	base58 "github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 )
 
