@@ -12,7 +12,7 @@ before_install:
   - dep ensure
 
 script:
-  - go vet
+  - go vet ./...
   - golint -set_exit_status
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out dark-node

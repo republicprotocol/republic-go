@@ -6,12 +6,12 @@ import (
 	"log"
 	"strings"
 
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/stackint"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 )

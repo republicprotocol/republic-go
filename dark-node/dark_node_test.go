@@ -34,7 +34,7 @@ var trader, _ = identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republ
 var mockRegistrar, _ = dnr.NewMockDarkNodeRegistrar()
 
 type OrderBook struct {
-	LastUpdateId int             `json:"lastUpdateId"`
+	LastUpdateID int             `json:"lastUpdateId"`
 	Bids         [][]interface{} `json:"bids"`
 	Asks         [][]interface{} `json:"asks"`
 }

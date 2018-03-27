@@ -10,7 +10,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
 	"google.golang.org/grpc"
 )
@@ -91,7 +90,7 @@ func startSwarmServices(servers []*grpc.Server, swarms []*network.SwarmService) 
 		listener, err := net.Listen("tcp", host+":"+port)
 
 		if err != nil {
-			nd.Logger.Error(logger.TagNetwork, err.Error())
+			nd.Logger.Error(err.Error())
 		}
 		go func() {
 			if err := server.Serve(listener); err != nil {

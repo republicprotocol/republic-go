@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"math/big"
 	"os"
 	"strings"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark-node"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 const reset = "\x1b[0m"
@@ -58,9 +58,9 @@ func RegisterAll(secretFile string, configs []*node.Config) {
 
 	do.ForAll(configs, func(i int) {
 		keypair := configs[i].KeyPair
-		var decimalMultiplier = big.NewInt(1000000000000000000)
-		var bondTokenCount = big.NewInt(0)
-		var bond = decimalMultiplier.Mul(decimalMultiplier, bondTokenCount)
+		var decimalMultiplier = stackint.FromUint(1000000000000000000)
+		var bondTokenCount = stackint.Zero()
+		var bond = decimalMultiplier.Mul(&bondTokenCount)
 		clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
 		if err != nil {
 			// TODO: Handler err
@@ -91,7 +91,7 @@ func RegisterAll(secretFile string, configs []*node.Config) {
 		}
 
 		if !isRegistered && !isPendingRegistration {
-			_, err = registrar.Register(keypair.ID(), append(keypair.PublicKey.X.Bytes(), keypair.PublicKey.Y.Bytes()...), bond)
+			_, err = registrar.Register(keypair.ID(), append(keypair.PublicKey.X.Bytes(), keypair.PublicKey.Y.Bytes()...), &bond)
 			if err != nil {
 				log.Printf("[%v] %sCouldn't register node%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
 			} else {

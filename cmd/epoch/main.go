@@ -46,7 +46,11 @@ func main() {
 	log.Printf("Calling Epoch every %s%v seconds%s\n", green, minimumEpochTime, reset)
 
 	callEpoch(registrar)
-	ticker := time.NewTicker(time.Duration(minimumEpochTime.Int64()) * time.Second)
+	uInt, err := minimumEpochTime.ToUint()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	ticker := time.NewTicker(time.Duration(uInt) * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
 		/*go */ callEpoch(registrar)

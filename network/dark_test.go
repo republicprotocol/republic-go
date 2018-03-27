@@ -2,15 +2,15 @@ package network_test
 
 import (
 	"log"
-	"math/big"
 	"net"
 	"sync"
 	"time"
 
+	"github.com/republicprotocol/republic-go/stackint"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
@@ -20,7 +20,7 @@ import (
 var (
 	n        = int64(8)
 	k        = int64(6)
-	prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
+	prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 )
 
 var _ = Describe("Dark service", func() {
@@ -116,7 +116,7 @@ func startDarkServices(servers []*grpc.Server, darks []*network.DarkService) err
 		listener, err := net.Listen("tcp", host+":"+port)
 
 		if err != nil {
-			nd.Logger.Error(logger.TagNetwork, err.Error())
+			nd.Logger.Error(err.Error())
 		}
 		go func() {
 			if err := server.Serve(listener); err != nil {
@@ -138,7 +138,11 @@ func stopDarkServices(servers []*grpc.Server, darks []*network.DarkService) {
 }
 
 func generateOrderFragment() (*rpc.OrderFragment, error) {
-	fragments, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(0)).Split(n, k, prime)
+	price := stackint.FromUint(10)
+	maxVolume := stackint.FromUint(1000)
+	minVolume := stackint.FromUint(100)
+	nonce := stackint.Zero()
+	fragments, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, &prime)
 	if err != nil {
 		return nil, err
 	}
