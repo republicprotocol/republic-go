@@ -15,7 +15,7 @@ import (
 // multiple tasks, that need to be completed.
 type WorkerTask struct {
 	OrderFragment  *rpc.OrderFragment
-	TauMessage     *rpc.TauMessage
+	SmpcMessage    *rpc.SmpcMessage
 	DeltaFragments DeltaFragments
 	Deltas         Deltas
 }
@@ -72,8 +72,8 @@ func (worker *Worker) Run() {
 			if message.OrderFragment != nil {
 				worker.processOrderFragment(message.OrderFragment)
 			}
-			if message.TauMessage != nil {
-				worker.processTauMessage(message.TauMessage)
+			if message.SmpcMessage != nil {
+				worker.processSmpcMessage(message.SmpcMessage)
 			}
 			if message.DeltaFragments != nil {
 				worker.processDeltaFragments(message.DeltaFragments)
@@ -115,7 +115,7 @@ func (worker *Worker) processOrderFragment(orderFragment *rpc.OrderFragment) {
 	}
 }
 
-func (worker *Worker) processTauMessage(message *rpc.TauMessage) {
+func (worker *Worker) processSmpcMessage(message *rpc.SmpcMessage) {
 	if message.GenerateRandomShares != nil {
 		worker.processGenerateRandomShares(message.GenerateRandomShares)
 	}
@@ -151,11 +151,10 @@ func (worker *Worker) processDeltaFragments(deltaFragments DeltaFragments) {
 		Deltas: newDeltas,
 	})
 
-	// Send a new WorkerTask to a random subset of MessageQueues in the
-	// Multiplexer
+	// Send a new WorkerTask to all MessageQueues available to this Worker
 	for _, messageQueue := range worker.messageQueues {
 		messageQueue.Send(WorkerTask{
-			TauMessage: &rpc.TauMessage{
+			SmpcMessage: &rpc.SmpcMessage{
 				DeltaFragments: &rpc.DeltaFragments{
 					DeltaFragments: newDeltaFragmentsSerialized,
 				},
