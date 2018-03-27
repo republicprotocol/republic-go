@@ -124,7 +124,7 @@ var _ = Describe("Dark nodes", func() {
 								if numberOfPings > 0 {
 									Ω(numberOfErrors).Should(Equal(0))
 								} else {
-									Ω(numberOfErrors).Should(BeNumerically("<=", numberOfPings/3))
+									Ω(numberOfErrors).Should(BeNumerically("<", numberOfPings/3))
 								}
 							})
 
