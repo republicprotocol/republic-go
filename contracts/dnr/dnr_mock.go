@@ -45,6 +45,8 @@ func NewMockDarkNodeRegistrar() (DarkNodeRegistrar, error) {
 
 // Register a new dark node
 func (mockDnr *MockDarkNodeRegistrar) Register(darkNodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
+	mockDnr.Enter(nil)
+	defer mockDnr.Exit()
 	isRegistered, _ := mockDnr.IsDarkNodeRegistered(darkNodeID)
 	isPending, _ := mockDnr.IsDarkNodePendingRegistration(darkNodeID)
 	if isRegistered || isPending {
@@ -56,6 +58,8 @@ func (mockDnr *MockDarkNodeRegistrar) Register(darkNodeID []byte, publicKey []by
 
 // Deregister an existing dark node
 func (mockDnr *MockDarkNodeRegistrar) Deregister(darkNodeID []byte) (*types.Transaction, error) {
+	mockDnr.Enter(nil)
+	defer mockDnr.Exit()
 	for i, id := range mockDnr.toRegister {
 		if string(darkNodeID) == string(id) {
 			mockDnr.toDeregister[i] = mockDnr.toDeregister[len(mockDnr.toDeregister)-1]
@@ -72,11 +76,15 @@ func (mockDnr *MockDarkNodeRegistrar) Deregister(darkNodeID []byte) (*types.Tran
 
 // GetBond retrieves the bond of an existing dark node
 func (mockDnr *MockDarkNodeRegistrar) GetBond(darkNodeID []byte) (stackint.Int1024, error) {
+	mockDnr.EnterReadOnly(nil)
+	defer mockDnr.ExitReadOnly()
 	return stackint.FromUint(86000), nil
 }
 
 // IsDarkNodeRegistered returns true if the node is registered
 func (mockDnr *MockDarkNodeRegistrar) IsDarkNodeRegistered(darkNodeID []byte) (bool, error) {
+	mockDnr.EnterReadOnly(nil)
+	defer mockDnr.ExitReadOnly()
 	for _, id := range mockDnr.registered {
 		if string(darkNodeID) == string(id) {
 			return true, nil
@@ -87,6 +95,8 @@ func (mockDnr *MockDarkNodeRegistrar) IsDarkNodeRegistered(darkNodeID []byte) (b
 
 // IsDarkNodePendingRegistration returns true if the node will become registered at the next epoch
 func (mockDnr *MockDarkNodeRegistrar) IsDarkNodePendingRegistration(darkNodeID []byte) (bool, error) {
+	mockDnr.EnterReadOnly(nil)
+	defer mockDnr.ExitReadOnly()
 	for _, id := range mockDnr.toRegister {
 		if string(darkNodeID) == string(id) {
 			return true, nil
@@ -97,11 +107,17 @@ func (mockDnr *MockDarkNodeRegistrar) IsDarkNodePendingRegistration(darkNodeID [
 
 // CurrentEpoch returns the current epoch
 func (mockDnr *MockDarkNodeRegistrar) CurrentEpoch() (Epoch, error) {
+	mockDnr.EnterReadOnly(nil)
+	defer mockDnr.ExitReadOnly()
 	return mockDnr.epoch, nil
 }
 
 // Epoch updates the current Epoch if the Minimum Epoch Interval has passed since the previous Epoch
 func (mockDnr *MockDarkNodeRegistrar) Epoch() (*types.Transaction, error) {
+
+	mockDnr.Enter(nil)
+	defer mockDnr.Exit()
+
 	var b32 [32]byte
 
 	_, err := rand.Read(b32[:])
@@ -136,41 +152,57 @@ func (mockDnr *MockDarkNodeRegistrar) Epoch() (*types.Transaction, error) {
 
 // GetCommitment gets the signed commitment (not implemented)
 func (mockDnr *MockDarkNodeRegistrar) GetCommitment(darkNodeID []byte) ([32]byte, error) {
+	mockDnr.EnterReadOnly(nil)
+	defer mockDnr.ExitReadOnly()
 	return [32]byte{}, nil
 }
 
 // GetOwner gets the owner of the given dark node (not implemented)
 func (mockDnr *MockDarkNodeRegistrar) GetOwner(darkNodeID []byte) (common.Address, error) {
+	mockDnr.EnterReadOnly(nil)
+	defer mockDnr.ExitReadOnly()
 	return [20]byte{}, nil
 }
 
 // GetPublicKey gets the public key of the goven dark node (not implemented)
 func (mockDnr *MockDarkNodeRegistrar) GetPublicKey(darkNodeID []byte) ([]byte, error) {
+	mockDnr.EnterReadOnly(nil)
+	defer mockDnr.ExitReadOnly()
 	return nil, nil
 }
 
 // GetAllNodes gets all dark nodes
 func (mockDnr *MockDarkNodeRegistrar) GetAllNodes() ([][]byte, error) {
+	mockDnr.EnterReadOnly(nil)
+	defer mockDnr.ExitReadOnly()
 	return mockDnr.registered, nil
 }
 
 // MinimumBond gets the minimum viable bond amount (hard-coded to 86000)
 func (mockDnr *MockDarkNodeRegistrar) MinimumBond() (stackint.Int1024, error) {
+	mockDnr.EnterReadOnly(nil)
+	defer mockDnr.ExitReadOnly()
 	return stackint.FromUint(86000), nil
 }
 
 // MinimumEpochInterval gets the minimum epoch interval (hard-coded to 0)
 func (mockDnr *MockDarkNodeRegistrar) MinimumEpochInterval() (stackint.Int1024, error) {
+	mockDnr.EnterReadOnly(nil)
+	defer mockDnr.ExitReadOnly()
 	return stackint.FromUint(0), nil
 }
 
 // Refund refunds the bond of an unregistered miner (not implemented)
 func (mockDnr *MockDarkNodeRegistrar) Refund(darkNodeID []byte) (*types.Transaction, error) {
+	mockDnr.EnterReadOnly(nil)
+	defer mockDnr.ExitReadOnly()
 	return nil, nil
 }
 
 // WaitUntilRegistration waits until the registration is successful
 func (mockDnr *MockDarkNodeRegistrar) WaitUntilRegistration(darkNodeID []byte) error {
+	mockDnr.EnterReadOnly(nil)
+	defer mockDnr.ExitReadOnly()
 	for {
 		isRegistered, err := mockDnr.IsDarkNodeRegistered(darkNodeID)
 		if err != nil {

@@ -45,6 +45,12 @@ var _ = Describe("Swarm service", func() {
 					})
 
 					It("should be able to find most of the nodes in the network after bootstrapping ", func() {
+						// Bootstrap twice
+
+						do.CoForAll(swarms, func(i int) {
+							swarms[i].Bootstrap()
+						})
+
 						do.CoForAll(swarms, func(i int) {
 							swarms[i].Bootstrap()
 						})
@@ -58,6 +64,12 @@ var _ = Describe("Swarm service", func() {
 						for _, swarm := range swarms {
 							swarm.Concurrent = true
 						}
+
+						// Bootstrap twice
+
+						do.CoForAll(swarms, func(i int) {
+							swarms[i].Bootstrap()
+						})
 
 						do.CoForAll(swarms, func(i int) {
 							swarms[i].Bootstrap()
