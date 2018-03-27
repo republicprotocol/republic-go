@@ -10,8 +10,7 @@ import (
 	"github.com/republicprotocol/republic-go/orderbook"
 )
 
-const NumberOfTestOrders = 100;
-
+const NumberOfTestOrders = 100
 
 var _ = Describe("order book cache", func() {
 	Context("order status change event ", func() {
@@ -127,3 +126,4 @@ func newOrder(id order.ID) *order.Order {
 		Nonce:     big.NewInt(100),
 	}
 }
+
