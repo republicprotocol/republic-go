@@ -25,7 +25,7 @@ import (
 
 const (
 	NumberOfBootstrapNodes = 5
-	NumberOfOrders         = 100
+	NumberOfOrders         = 10
 )
 
 var primeVal, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
@@ -58,7 +58,7 @@ var _ = Describe("Dark nodes", func() {
 	})
 
 	// Bootstrapping
-	for _, numberOfNodes := range []int{15} {
+	for _, numberOfNodes := range []int{5} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when bootstrapping %d nodes", numberOfNodes), func() {
 
@@ -96,7 +96,7 @@ var _ = Describe("Dark nodes", func() {
 	}
 
 	// Connectivity
-	for _, numberOfNodes := range []int{15} {
+	for _, numberOfNodes := range []int{5} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when connecting %d nodes", numberOfNodes), func() {
 				for _, connectivity := range []int{20, 40, 60, 80, 100} {
@@ -121,7 +121,7 @@ var _ = Describe("Dark nodes", func() {
 							It("should succeed for the super majority", func() {
 								By("ping connections")
 								numberOfPings, numberOfErrors := connectNodes(nodes, connectivity)
-								Ω(numberOfErrors).Should(BeNumerically("<", numberOfPings/3))
+								Ω(numberOfErrors).Should(BeNumerically("<=", numberOfPings/3))
 							})
 
 							AfterEach(func() {
@@ -135,9 +135,9 @@ var _ = Describe("Dark nodes", func() {
 	}
 
 	// Order matching
-	for _, numberOfNodes := range []int{15} {
+	for _, numberOfNodes := range []int{5} {
 		func(numberOfNodes int) {
-			FContext(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
+			Context(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
 
 				var err error
 				var nodes []*node.DarkNode

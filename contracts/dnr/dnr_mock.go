@@ -47,8 +47,8 @@ func NewMockDarkNodeRegistrar() (DarkNodeRegistrar, error) {
 func (mockDnr *MockDarkNodeRegistrar) Register(darkNodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
 	mockDnr.Enter(nil)
 	defer mockDnr.Exit()
-	isRegistered, _ := mockDnr.IsDarkNodeRegistered(darkNodeID)
-	isPending, _ := mockDnr.IsDarkNodePendingRegistration(darkNodeID)
+	isRegistered, _ := mockDnr.isDarkNodeRegistered(darkNodeID)
+	isPending, _ := mockDnr.isDarkNodePendingRegistration(darkNodeID)
 	if isRegistered || isPending {
 		return nil, errors.New("Must not be registered to register")
 	}
@@ -67,7 +67,7 @@ func (mockDnr *MockDarkNodeRegistrar) Deregister(darkNodeID []byte) (*types.Tran
 			return nil, nil
 		}
 	}
-	if isRegistered, _ := mockDnr.IsDarkNodeRegistered(darkNodeID); !isRegistered {
+	if isRegistered, _ := mockDnr.isDarkNodeRegistered(darkNodeID); !isRegistered {
 		return nil, errors.New("Must be registered to deregister")
 	}
 	mockDnr.toDeregister = append(mockDnr.toRegister, darkNodeID)
@@ -85,6 +85,10 @@ func (mockDnr *MockDarkNodeRegistrar) GetBond(darkNodeID []byte) (stackint.Int10
 func (mockDnr *MockDarkNodeRegistrar) IsDarkNodeRegistered(darkNodeID []byte) (bool, error) {
 	mockDnr.EnterReadOnly(nil)
 	defer mockDnr.ExitReadOnly()
+	return mockDnr.isDarkNodeRegistered(darkNodeID)
+}
+
+func (mockDnr *MockDarkNodeRegistrar) isDarkNodeRegistered(darkNodeID []byte) (bool, error) {
 	for _, id := range mockDnr.registered {
 		if string(darkNodeID) == string(id) {
 			return true, nil
@@ -97,6 +101,10 @@ func (mockDnr *MockDarkNodeRegistrar) IsDarkNodeRegistered(darkNodeID []byte) (b
 func (mockDnr *MockDarkNodeRegistrar) IsDarkNodePendingRegistration(darkNodeID []byte) (bool, error) {
 	mockDnr.EnterReadOnly(nil)
 	defer mockDnr.ExitReadOnly()
+	return mockDnr.isDarkNodePendingRegistration(darkNodeID)
+}
+
+func (mockDnr *MockDarkNodeRegistrar) isDarkNodePendingRegistration(darkNodeID []byte) (bool, error) {
 	for _, id := range mockDnr.toRegister {
 		if string(darkNodeID) == string(id) {
 			return true, nil
@@ -204,7 +212,7 @@ func (mockDnr *MockDarkNodeRegistrar) WaitUntilRegistration(darkNodeID []byte) e
 	mockDnr.EnterReadOnly(nil)
 	defer mockDnr.ExitReadOnly()
 	for {
-		isRegistered, err := mockDnr.IsDarkNodeRegistered(darkNodeID)
+		isRegistered, err := mockDnr.isDarkNodeRegistered(darkNodeID)
 		if err != nil {
 			return err
 		}
