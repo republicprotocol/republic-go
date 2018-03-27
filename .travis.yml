@@ -13,7 +13,7 @@ before_install:
 
 script:
   - go vet ./...
-  - golint -set_exit_status `go list ./... | grep -v /vendor/`
+  - golint -set_exit_status `go list ./... | grep -Ev "(stackint/asm|vendor)"`
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out dark-node
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out identity
