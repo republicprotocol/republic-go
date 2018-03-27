@@ -39,8 +39,8 @@ func (orderBookCache *OrderBookCache) Open(ord *order.Order) {
 	orderBookCache.mu.Lock()
 	defer orderBookCache.mu.Unlock()
 
-	orderBookCache.orders[string(ord.ID)] = ord
 	if _, ok := orderBookCache.status[string(ord.ID)]; !ok {
+		orderBookCache.orders[string(ord.ID)] = ord
 		orderBookCache.status[string(ord.ID)] = order.Open
 	}
 }
@@ -51,8 +51,8 @@ func (orderBookCache *OrderBookCache) Match(ord *order.Order) {
 	orderBookCache.mu.Lock()
 	defer orderBookCache.mu.Unlock()
 
-	orderBookCache.orders[string(ord.ID)] = ord
-	if status := orderBookCache.status[string(ord.ID)]; status == order.Open {
+	if status, ok := orderBookCache.status[string(ord.ID)]; ok && status == order.Open {
+		orderBookCache.orders[string(ord.ID)] = ord
 		orderBookCache.status[string(ord.ID)] = order.Unconfirmed
 	}
 }
@@ -63,8 +63,8 @@ func (orderBookCache *OrderBookCache) Confirm(ord *order.Order) {
 	orderBookCache.mu.Lock()
 	defer orderBookCache.mu.Unlock()
 
-	orderBookCache.orders[string(ord.ID)] = ord
 	if status, ok := orderBookCache.status[string(ord.ID)]; ok && status == order.Unconfirmed {
+		orderBookCache.orders[string(ord.ID)] = ord
 		orderBookCache.status[string(ord.ID)] = order.Confirmed
 	}
 }
@@ -87,8 +87,8 @@ func (orderBookCache *OrderBookCache) Settle(ord *order.Order) {
 	orderBookCache.mu.Lock()
 	defer orderBookCache.mu.Unlock()
 
-	orderBookCache.orders[string(ord.ID)] = ord
-	if status := orderBookCache.status[string(ord.ID)]; status == order.Confirmed {
+	if status, ok := orderBookCache.status[string(ord.ID)]; ok && status == order.Confirmed {
+		orderBookCache.orders[string(ord.ID)] = ord
 		orderBookCache.status[string(ord.ID)] = order.Settled
 	}
 }

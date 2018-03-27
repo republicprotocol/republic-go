@@ -38,7 +38,44 @@ var _ = Describe("order book cache", func() {
 	})
 
 	Context("Negative tests", func() {
-		It("should not accepted orders that ")
+		var cache orderbook.OrderBookCache
+
+		BeforeEach(func() {
+			cache = orderbook.NewOrderBookCache()
+			Ω(len(cache.Blocks())).Should(Equal(0))
+		})
+
+		It("should not accepted orders that are told matched directly", func() {
+			for i := 0; i < NumberOfTestOrders; i++ {
+				ord := newOrder(order.ID([]byte{uint8(i)}))
+				cache.Match(ord)
+			}
+			Ω(len(cache.Blocks())).Should(Equal(0))
+		})
+
+		It("should not accepted orders that are confirmed directly", func() {
+			for i := 0; i < NumberOfTestOrders; i++ {
+				ord := newOrder(order.ID([]byte{uint8(i)}))
+				cache.Confirm(ord)
+			}
+			Ω(len(cache.Blocks())).Should(Equal(0))
+		})
+
+		It("should not accepted orders that are released directly", func() {
+			for i := 0; i < NumberOfTestOrders; i++ {
+				ord := newOrder(order.ID([]byte{uint8(i)}))
+				cache.Release(ord)
+			}
+			Ω(len(cache.Blocks())).Should(Equal(0))
+		})
+
+		It("should not accepted orders that are settled directly", func() {
+			for i := 0; i < NumberOfTestOrders; i++ {
+				ord := newOrder(order.ID([]byte{uint8(i)}))
+				cache.Settle(ord)
+			}
+			Ω(len(cache.Blocks())).Should(Equal(0))
+		})
 
 	})
 })
