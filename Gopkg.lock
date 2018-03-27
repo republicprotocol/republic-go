@@ -123,16 +123,16 @@
   version = "1.0.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/multiformats/go-multiaddr"
   packages = ["."]
-  revision = "123a717755e0559ec8fda308019cd24e0a37bb07"
+  revision = "b90678896b52c3e5a4c8176805c6facc3fe3eb82"
+  version = "0.1.2"
 
 [[projects]]
-  branch = "master"
   name = "github.com/multiformats/go-multihash"
   packages = ["."]
-  revision = "27fa400c586666336a86e50accf9e8a1c9585ad3"
+  revision = "bdcf2980a789f55c97d548fdfa727f8fb19684ba"
+  version = "0.1.0"
 
 [[projects]]
   name = "github.com/onsi/ginkgo"
@@ -189,24 +189,6 @@
   packages = ["."]
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
   version = "v0.8.0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-atom"
-  packages = [
-    "ethereum",
-    "ethereum/contracts"
-  ]
-  revision = "0f89c029f9473483f9988af45eacfbf76fa6d9c7"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-dark-node-registrar"
-  packages = [
-    ".",
-    "contracts"
-  ]
-  revision = "41a8a481664ee55aa8202814c6a7c3599f8a44ee"
 
 [[projects]]
   branch = "master"
@@ -398,6 +380,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ed06c52ffaf5d52eb9d0651c16708becb2bdc698d79e16d5413029aa03882cac"
+  inputs-digest = "593205c625053ab4188848610d4a3fd2438982165a523acf18af90c094459437"
   solver-name = "gps-cdcl"
   solver-version = 1
