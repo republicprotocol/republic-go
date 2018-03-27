@@ -3,7 +3,7 @@ package compute
 import (
 	"math/big"
 
-	do "github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/order"
 )
 
