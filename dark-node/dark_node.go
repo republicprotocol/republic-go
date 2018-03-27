@@ -44,7 +44,7 @@ type DarkNode struct {
 	Logger                 *logger.Logger
 	ClientPool             *rpc.ClientPool
 	DHT                    *dht.DHT
-	OrderBook              *syncer.OrderBook
+	OrderBook              *orderbook.OrderBook
 
 	DeltaBuilder                      *compute.DeltaBuilder
 	DeltaFragmentMatrix               *compute.DeltaFragmentMatrix
@@ -106,7 +106,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 		WithTimeoutRetries(node.NetworkOptions.TimeoutRetries).
 		WithCacheLimit(node.NetworkOptions.ClientPoolCacheLimit)
 	node.DHT = dht.NewDHT(node.NetworkOptions.MultiAddress.Address(), node.NetworkOptions.MaxBucketLength)
-	node.OrderBook = syncer.NewOrderBook(config.maxConnections) // todo : add this field in the config  struct
+	node.OrderBook = orderbook.NewOrderBook(config.maxConnections) // todo : add this field in the config  struct
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
 	node.Swarm = network.NewSwarmService(node, node.NetworkOptions, node.Logger, node.ClientPool, node.DHT)
 	node.Dark = network.NewDarkService(node, node.NetworkOptions, node.Logger)

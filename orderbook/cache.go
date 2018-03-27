@@ -1,4 +1,4 @@
-package syncer
+package orderbook
 
 import (
 	"sync"
@@ -43,7 +43,6 @@ func (orderBookCache *OrderBookCache) Open(ord *order.Order) {
 	if _, ok := orderBookCache.status[string(ord.ID)]; !ok {
 		orderBookCache.status[string(ord.ID)] = order.Open
 	}
-	// todo : do we need to something here ?
 }
 
 // Match will change the order status to 'unconfirmed' if the order
@@ -65,7 +64,7 @@ func (orderBookCache *OrderBookCache) Confirm(ord *order.Order) {
 	defer orderBookCache.mu.Unlock()
 
 	orderBookCache.orders[string(ord.ID)] = ord
-	if status := orderBookCache.status[string(ord.ID)]; status == order.Unconfirmed {
+	if status, ok := orderBookCache.status[string(ord.ID)]; ok && status == order.Unconfirmed {
 		orderBookCache.status[string(ord.ID)] = order.Confirmed
 	}
 }
@@ -76,8 +75,8 @@ func (orderBookCache *OrderBookCache) Release(ord *order.Order) {
 	orderBookCache.mu.Lock()
 	defer orderBookCache.mu.Unlock()
 
-	orderBookCache.orders[string(ord.ID)] = ord
-	if status := orderBookCache.status[string(ord.ID)]; status == order.Unconfirmed {
+	if status, ok := orderBookCache.status[string(ord.ID)]; ok && status == order.Unconfirmed {
+		orderBookCache.orders[string(ord.ID)] = ord
 		orderBookCache.status[string(ord.ID)] = order.Open
 	}
 }

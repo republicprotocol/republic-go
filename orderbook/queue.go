@@ -1,4 +1,4 @@
-package syncer
+package orderbook
 
 import (
 	"fmt"
@@ -11,9 +11,6 @@ const (
 	// SyncMessageQueueLimit defines the number of messages that can be
 	// buffered in the message queue.
 	SyncMessageQueueLimit = 100
-
-	// QuitChannelSize is the size of the quit channel in SyncMessageQueue
-	QuitChannelSize = 1
 )
 
 // A SyncMessageQueue is a implementation of the dispatch.MessageQueue
@@ -22,7 +19,7 @@ const (
 type SyncMessageQueue struct {
 	stream rpc.Dark_SyncServer
 	write  chan *rpc.SyncBlock
-	quit   chan bool
+	quit   chan struct{}
 }
 
 // NewSyncMessageQueue returns a SyncMessageQueue that owns a gRPC stream.
@@ -30,7 +27,7 @@ func NewSyncMessageQueue(stream rpc.Dark_SyncServer) SyncMessageQueue {
 	return SyncMessageQueue{
 		stream: stream,
 		write:  make(chan *rpc.SyncBlock, SyncMessageQueueLimit),
-		quit:   make(chan bool, QuitChannelSize),
+		quit:   make(chan struct{}),
 	}
 }
 
@@ -41,7 +38,7 @@ func (syncMessageQueue SyncMessageQueue) Run() error {
 
 // Shutdown the SyncMessageQueue.
 func (syncMessageQueue SyncMessageQueue) Shutdown() error {
-	syncMessageQueue.quit <- true
+	close(syncMessageQueue.quit)
 	return nil
 }
 
@@ -60,7 +57,7 @@ func (syncMessageQueue SyncMessageQueue) Send(message dispatch.Message) error {
 func (syncMessageQueue SyncMessageQueue) Recv() (dispatch.Message, bool) {
 	// since it's a server-side stream, so we will not receive any message
 	// from the client
-	return struct{}{}, false
+	panic("read from a sync message queue")
 }
 
 // Write all messages from the SyncMessageQueue to the stream.

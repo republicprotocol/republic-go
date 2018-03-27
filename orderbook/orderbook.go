@@ -1,8 +1,6 @@
-package syncer
+package orderbook
 
 import (
-	"sync"
-
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
@@ -34,26 +32,13 @@ func NewOrderBook(maxConnections int) *OrderBook {
 // Subscribe will subscribe to the OrderBook, listening for updates. It
 // requires an id which is the republic address and a gPRC stream.
 func (orderBook OrderBook) Subscribe(id string, stream rpc.Dark_SyncServer) error {
-	var globalErr error
-	wg := new(sync.WaitGroup)
-	wg.Add(1)
-
 	go func() {
-		if err := orderBook.orderBookStreamer.Subscribe(id, stream); err != nil {
-			globalErr = err
+		blocks := orderBook.orderBookCache.Blocks()
+		for _, block := range blocks {
+			orderBook.orderBookStreamer.Send(block)
 		}
-
-		wg.Done()
 	}()
-
-	blocks := orderBook.orderBookCache.Blocks()
-	for _, block := range blocks {
-		orderBook.orderBookStreamer.Send(block)
-	}
-
-	wg.Wait()
-
-	return globalErr
+	return orderBook.orderBookStreamer.Subscribe(id, stream)
 }
 
 // Unsubscribe will stop listening for updates.

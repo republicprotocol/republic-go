@@ -1,4 +1,4 @@
-package syncer
+package orderbook
 
 import "github.com/republicprotocol/republic-go/order"
 
