@@ -7,6 +7,8 @@ import (
 	"math/big" // Used for converting to/from big.Ints
 	"strconv"
 	"strings"
+
+	"github.com/republicprotocol/republic-go/stackint/asm"
 )
 
 // Stackint is a big number library offering 1024-bit numbers
@@ -36,14 +38,14 @@ const INT1024WORDS = SIZE / WORDSIZE
 
 // Int1024 provides a 1024 bit number optimised to never use the heap
 type Int1024 struct {
-	words  [INT1024WORDS]Word
+	words  [INT1024WORDS]asm.Word
 	length uint16
 }
 
 // FromUint returns a new Int1024 from a Word
 func FromUint(n uint) Int1024 {
 	return Int1024{
-		words:  [INT1024WORDS]Word{Word(n)},
+		words:  [INT1024WORDS]asm.Word{asm.Word(n)},
 		length: 1,
 	}
 }
@@ -54,7 +56,7 @@ func (x *Int1024) SetUint(n uint) {
 	for i = 1; i < x.length; i++ {
 		x.words[i] = 0
 	}
-	x.words[0] = Word(n)
+	x.words[0] = asm.Word(n)
 	x.length = 1
 }
 
@@ -96,8 +98,8 @@ func FromString(number string) (Int1024, error) {
 
 	// Break up into blocks of size 19 (log10(2 ** 64))
 	blockSize := 1
-	limit := Word(1<<63-1) / Word(base)
-	for basePower := Word(1); basePower < limit; basePower *= Word(base) {
+	limit := asm.Word(1<<63-1) / asm.Word(base)
+	for basePower := asm.Word(1); basePower < limit; basePower *= asm.Word(base) {
 		blockSize++
 	}
 
@@ -172,7 +174,7 @@ func (x *Int1024) Bytes() []byte {
 	var k uint16
 	for k = 0; k < x.length; k++ {
 		d := x.words[k]
-		for j := 0; j < _S; j++ {
+		for j := 0; j < asm.S; j++ {
 			if d > 0 {
 				buf[i-1] = byte(d)
 			}
@@ -211,7 +213,7 @@ func FromBytes(bytesAll []byte) (Int1024, error) {
 		for j := 0; j < start-end; j++ {
 			b8[7-j] = bytesAll[start-j-1]
 		}
-		x.words[i] = Word(binary.BigEndian.Uint64(b8))
+		x.words[i] = asm.Word(binary.BigEndian.Uint64(b8))
 		if x.words[i] != 0 {
 			firstPositive = uint16(i)
 		}
@@ -236,7 +238,7 @@ func (x *Int1024) LittleEndianBytes() []byte {
 	var k uint16
 	for k = 0; k < x.length; k++ {
 		d := x.words[k]
-		for j := 0; j < _S && d > 0; j++ {
+		for j := 0; j < asm.S && d > 0; j++ {
 			if d > 0 {
 				buf[index] = byte(d)
 			}
@@ -269,7 +271,7 @@ func FromLittleEndianBytes(bytesAll []byte) (Int1024, error) {
 			last = len
 		}
 		copy(b8, bytesAll[i*8:last])
-		x.words[i] = Word(binary.LittleEndian.Uint64(b8))
+		x.words[i] = asm.Word(binary.LittleEndian.Uint64(b8))
 	}
 
 	x.length = max(1, uint16(numWords))
@@ -279,7 +281,7 @@ func FromLittleEndianBytes(bytesAll []byte) (Int1024, error) {
 
 // Clone returns a new Int1024 representing the same value as x
 func (x *Int1024) Clone() Int1024 {
-	var words [INT1024WORDS]Word
+	var words [INT1024WORDS]asm.Word
 	var i uint16
 	for i = 0; i < x.length; i++ {
 		words[i] = x.words[i]
@@ -329,7 +331,7 @@ func FromBigInt(bg *big.Int) (Int1024, error) {
 
 // Zero returns a new Int1024 representing 0
 func Zero() Int1024 {
-	var words [INT1024WORDS]Word
+	var words [INT1024WORDS]asm.Word
 	// words := make([]Word, INT1024WORDS)
 	// Not needed?
 	for i := 0; i < len(words); i++ {
@@ -363,7 +365,7 @@ var halfMax = HalfMax()
 
 // maxInt returns a new Int1024 representing 2**1024 - 1
 func maxInt() Int1024 {
-	var words [INT1024WORDS]Word
+	var words [INT1024WORDS]asm.Word
 	// words := make([]Word, INT1024WORDS)
 	for i := 0; i < len(words); i++ {
 		words[i] = WORDMAX

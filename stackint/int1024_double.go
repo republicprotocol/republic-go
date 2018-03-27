@@ -1,5 +1,7 @@
 package stackint
 
+import "github.com/republicprotocol/republic-go/stackint/asm"
+
 /**
  * DoubleInt is used to calculate MulModulo without overflowing
  *
@@ -8,7 +10,7 @@ package stackint
 
 // DoubleInt is used when an operation will overflow an Int1024
 type DoubleInt struct {
-	words  [INT1024WORDS * 2]Word
+	words  [INT1024WORDS * 2]asm.Word
 	length uint16
 }
 
@@ -30,7 +32,7 @@ func (x *Int1024) MulModuloBig(y, n *Int1024) Int1024 {
 	}
 
 	if (highest + 1) <= INT1024WORDS {
-		var words2 [INT1024WORDS]Word
+		var words2 [INT1024WORDS]asm.Word
 		copy(words2[:], words[:INT1024WORDS])
 		xy := Int1024{
 			words2, highest + 1,
@@ -38,7 +40,7 @@ func (x *Int1024) MulModuloBig(y, n *Int1024) Int1024 {
 		return xy.Mod(n)
 	}
 	_, r := xyDouble.divDouble(n)
-	var words2 [INT1024WORDS]Word
+	var words2 [INT1024WORDS]asm.Word
 	copy(words2[:], r.words[:INT1024WORDS])
 	return Int1024{
 		words2, r.length,
@@ -54,33 +56,33 @@ func (x *DoubleInt) divDouble(y *Int1024) (DoubleInt, DoubleInt) {
 	n := y.length
 	m := x.length - n
 
-	var q [INT1024WORDS * 2]Word
+	var q [INT1024WORDS * 2]asm.Word
 	var highestQ uint16
 
-	var qhatv [(INT1024WORDS * 2) + 1]Word
-	var u [(INT1024WORDS * 2) + 1]Word
+	var qhatv [(INT1024WORDS * 2) + 1]asm.Word
+	var u [(INT1024WORDS * 2) + 1]asm.Word
 	// D1.
-	shift := nlz(v[n-1])
+	shift := asm.Nlz(v[n-1])
 	if shift > 0 {
 		// do not modify v, it may be used by another goroutine simultaneously
 
-		var v1 [INT1024WORDS]Word
-		shlVU_g(v1[:], v[:], shift)
+		var v1 [INT1024WORDS]asm.Word
+		asm.ShlVU_g(v1[:], v[:], shift)
 		v = v1
 	}
-	u[int(x.length)] = shlVU_g(u[:x.length], uIn[:], shift)
+	u[int(x.length)] = asm.ShlVU_g(u[:x.length], uIn[:], shift)
 	// D2.
 	vn1 := v[n-1]
 	for jj := int(m); jj >= 0; jj-- {
 		j := uint16(jj)
 		// D3.
-		qhat := Word(_M)
+		qhat := asm.Word(asm.M)
 		if ujn := u[j+n]; ujn != vn1 {
-			var rhat Word
-			qhat, rhat = divWW_g(ujn, u[j+n-1], vn1)
+			var rhat asm.Word
+			qhat, rhat = asm.DivWW_g(ujn, u[j+n-1], vn1)
 			// x1 | x2 = q̂v_{n-2}
 			vn2 := v[n-2]
-			x1, x2 := mulWW(qhat, vn2)
+			x1, x2 := asm.MulWW(qhat, vn2)
 			// test if q̂v_{n-2} > br̂ + u_{j+n-2}
 			ujn2 := u[j+n-2]
 			for greaterThan(x1, x2, rhat, ujn2) {
@@ -91,26 +93,26 @@ func (x *DoubleInt) divDouble(y *Int1024) (DoubleInt, DoubleInt) {
 				if rhat < prevRhat {
 					break
 				}
-				x1, x2 = mulWW(qhat, vn2)
+				x1, x2 = asm.MulWW(qhat, vn2)
 			}
 		}
 		// D4.
 
 		// Inlined
-		// qhatv[n] = mulAddVWW(qhatv[0:n], v[:], qhat, 0)
-		c := Word(0)
+		// qhatv[n] = MulAddVWW(qhatv[0:n], v[:], qhat, 0)
+		c := asm.Word(0)
 		var i uint16
 		for i = 0; i < n; i++ {
-			c, qhatv[i] = mulAddWWW_g(v[i], qhat, c)
+			c, qhatv[i] = asm.MulAddWWW_g(v[i], qhat, c)
 		}
 		qhatv[n] = c
 
 		// Inlined
-		c = subVV_g(u[j:j+n+1], u[j:], qhatv[:])
+		c = asm.SubVV_g(u[j:j+n+1], u[j:], qhatv[:])
 
 		if c != 0 {
 			// Inlined
-			c := addVV_g(u[j:j+n], u[j:], v[:])
+			c := asm.AddVV_g(u[j:j+n], u[j:], v[:])
 
 			u[j+n] += c
 			qhat--
@@ -120,9 +122,9 @@ func (x *DoubleInt) divDouble(y *Int1024) (DoubleInt, DoubleInt) {
 			highestQ = j
 		}
 	}
-	shrVU_g(u[:x.length+1], u[:uint(x.length)+1], shift)
+	asm.ShrVU_g(u[:x.length+1], u[:uint(x.length)+1], shift)
 
-	var rWords [INT1024WORDS * 2]Word
+	var rWords [INT1024WORDS * 2]asm.Word
 
 	copy(rWords[:], u[:INT1024WORDS*2])
 

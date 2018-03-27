@@ -33,8 +33,8 @@
 // This file provides fast assembly versions for the elementary
 // arithmetic operations on vectors implemented in arith.go.
 
-// func mulWW(x, y Word) (z1, z0 Word)
-TEXT ·mulWW(SB), NOSPLIT, $0
+// func MulWW(x, y Word) (z1, z0 Word)
+TEXT ·MulWW(SB), NOSPLIT, $0
 	MOVD   x+0(FP), R4
 	MOVD   y+8(FP), R5
 	MULHDU R4, R5, R6
@@ -43,9 +43,9 @@ TEXT ·mulWW(SB), NOSPLIT, $0
 	MOVD   R7, z0+24(FP)
 	RET
 
-// func addVV(z, y, y []Word) (c Word)
+// func AddVV(z, y, y []Word) (c Word)
 // z[i] = x[i] + y[i] for all i, carrying
-TEXT ·addVV(SB), NOSPLIT, $0
+TEXT ·AddVV(SB), NOSPLIT, $0
 	MOVD  z_len+8(FP), R7
 	MOVD  x+24(FP), R8
 	MOVD  y+48(FP), R9
@@ -73,9 +73,9 @@ done:
 	MOVD  R4, c+72(FP)
 	RET
 
-// func subVV(z, x, y []Word) (c Word)
+// func SubVV(z, x, y []Word) (c Word)
 // z[i] = x[i] - y[i] for all i, carrying
-TEXT ·subVV(SB), NOSPLIT, $0
+TEXT ·SubVV(SB), NOSPLIT, $0
 	MOVD z_len+8(FP), R7
 	MOVD x+24(FP), R8
 	MOVD y+48(FP), R9
@@ -108,20 +108,20 @@ sublend:
 	MOVD  R4, c+72(FP)
 	RET
 
-TEXT ·addVW(SB), NOSPLIT, $0
-	BR ·addVW_g(SB)
+TEXT ·AddVW(SB), NOSPLIT, $0
+	BR ·AddVW_g(SB)
 
-TEXT ·subVW(SB), NOSPLIT, $0
-	BR ·subVW_g(SB)
+TEXT ·SubVW(SB), NOSPLIT, $0
+	BR ·SubVW_g(SB)
 
-TEXT ·shlVU(SB), NOSPLIT, $0
-	BR ·shlVU_g(SB)
+TEXT ·ShlVU(SB), NOSPLIT, $0
+	BR ·ShlVU_g(SB)
 
-TEXT ·shrVU(SB), NOSPLIT, $0
-	BR ·shrVU_g(SB)
+TEXT ·ShrVU(SB), NOSPLIT, $0
+	BR ·ShrVU_g(SB)
 
-// func mulAddVWW(z, x []Word, y, r Word) (c Word)
-TEXT ·mulAddVWW(SB), NOSPLIT, $0
+// func MulAddVWW(z, x []Word, y, r Word) (c Word)
+TEXT ·MulAddVWW(SB), NOSPLIT, $0
 	MOVD z+0(FP), R10	// R10 = z[]
 	MOVD x+24(FP), R8	// R8 = x[]
 	MOVD y+48(FP), R9	// R9 = y
@@ -148,8 +148,8 @@ done:
 	MOVD R4, c+64(FP)
 	RET
 
-// func addMulVVW(z, x []Word, y Word) (c Word)
-TEXT ·addMulVVW(SB), NOSPLIT, $0
+// func AddMulVVW(z, x []Word, y Word) (c Word)
+TEXT ·AddMulVVW(SB), NOSPLIT, $0
 	MOVD z+0(FP), R10	// R10 = z[]
 	MOVD x+24(FP), R8	// R8 = x[]
 	MOVD y+48(FP), R9	// R9 = y
@@ -178,8 +178,8 @@ done:
 	MOVD R4, c+56(FP)
 	RET
 
-// func divWW(x1, x0, y Word) (q, r Word)
-TEXT ·divWW(SB), NOSPLIT, $0
+// func DivWW(x1, x0, y Word) (q, r Word)
+TEXT ·DivWW(SB), NOSPLIT, $0
 	MOVD x1+0(FP), R4
 	MOVD x0+8(FP), R5
 	MOVD y+16(FP), R6
@@ -217,6 +217,6 @@ divbigger:
 	MOVD R7, r+32(FP)
 	RET
 
-TEXT ·divWVW(SB), NOSPLIT, $0
-	BR ·divWVW_g(SB)
+TEXT ·DivWVW(SB), NOSPLIT, $0
+	BR ·DivWVW_g(SB)
 

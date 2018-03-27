@@ -28,38 +28,17 @@
 
 // +build !math_big_pure_go
 
-#include "textflag.h"
+package asm
 
-TEXT ·mulWW(SB),NOSPLIT,$0
-	JMP ·mulWW_g(SB)
-
-TEXT ·divWW(SB),NOSPLIT,$0
-	JMP ·divWW_g(SB)
-
-TEXT ·addVV(SB),NOSPLIT,$0
-	JMP ·addVV_g(SB)
-
-TEXT ·subVV(SB),NOSPLIT,$0
-	JMP ·subVV_g(SB)
-
-TEXT ·addVW(SB),NOSPLIT,$0
-	JMP ·addVW_g(SB)
-
-TEXT ·subVW(SB),NOSPLIT,$0
-	JMP ·subVW_g(SB)
-
-TEXT ·shlVU(SB),NOSPLIT,$0
-	JMP ·shlVU_g(SB)
-
-TEXT ·shrVU(SB),NOSPLIT,$0
-	JMP ·shrVU_g(SB)
-
-TEXT ·mulAddVWW(SB),NOSPLIT,$0
-	JMP ·mulAddVWW_g(SB)
-
-TEXT ·addMulVVW(SB),NOSPLIT,$0
-	JMP ·addMulVVW_g(SB)
-
-TEXT ·divWVW(SB),NOSPLIT,$0
-	JMP ·divWVW_g(SB)
-
+// implemented in arith_$GOARCH.s
+func MulWW(x, y Word) (z1, z0 Word)
+func DivWW(x1, x0, y Word) (q, r Word)
+func AddVV(z, x, y []Word) (c Word)
+func SubVV(z, x, y []Word) (c Word)
+func AddVW(z, x []Word, y Word) (c Word)
+func SubVW(z, x []Word, y Word) (c Word)
+func ShlVU(z, x []Word, s uint) (c Word)
+func ShrVU(z, x []Word, s uint) (c Word)
+func MulAddVWW(z, x []Word, y, r Word) (c Word)
+func AddMulVVW(z, x []Word, y Word) (c Word)
+func DivWVW(z []Word, xn Word, x []Word, y Word) (r Word)
