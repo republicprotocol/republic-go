@@ -121,7 +121,11 @@ var _ = Describe("Dark nodes", func() {
 							It("should succeed for the super majority", func() {
 								By("ping connections")
 								numberOfPings, numberOfErrors := connectNodes(nodes, connectivity)
-								Ω(numberOfErrors).Should(BeNumerically("<=", numberOfPings/3))
+								if numberOfPings > 0 {
+									Ω(numberOfErrors).Should(Equal(0))
+								} else {
+									Ω(numberOfErrors).Should(BeNumerically("<=", numberOfPings/3))
+								}
 							})
 
 							AfterEach(func() {
