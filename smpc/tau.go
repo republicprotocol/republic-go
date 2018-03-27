@@ -30,13 +30,13 @@ func NewTau(multiplexer *dispatch.Multiplexer, messageQueueLimit int) Tau {
 
 // Connect to the Tau service and begin streaming requests and responses for
 // the Tau sMPC protocol.
-func (τ *Tau) Connect(stream rpc.TauService_ConnectServer) error {
+func (tau *Tau) Connect(stream rpc.Tau_ConnectServer) error {
 
 	// Use a background MessageQueue to handle the connection until an error
 	// is returned by the MessageQueue
 	ch := make(chan error, 1)
 	quit := make(chan struct{}, 1)
-	go func() { ch <- τ.connect(stream, quit) }()
+	go func() { ch <- tau.connect(stream, quit) }()
 	defer close(quit)
 
 	// Select between the context finishing and the background worker
@@ -48,7 +48,7 @@ func (τ *Tau) Connect(stream rpc.TauService_ConnectServer) error {
 	}
 }
 
-func (τ *Tau) connect(stream rpc.TauService_ConnectServer, quit chan struct{}) error {
+func (tau *Tau) connect(stream rpc.Tau_ConnectServer, quit chan struct{}) error {
 	multiAddress, err := identity.NewMultiAddressFromString("unimplemented")
 	if err != nil {
 		return err
@@ -56,14 +56,14 @@ func (τ *Tau) connect(stream rpc.TauService_ConnectServer, quit chan struct{}) 
 
 	// Create a MessageQueue that owns this gRPC stream and run it on the
 	// Dispatcher
-	messageQueue := NewTauMessageQueue(stream, τ.messageQueueLimit)
+	messageQueue := NewTauMessageQueue(stream, tau.messageQueueLimit)
 
 	// Shutdown the MessageQueue
 	go func() {
 		<-quit
-		τ.multiplexer.ShutdownMessageQueue(multiAddress.Address().String())
+		tau.multiplexer.ShutdownMessageQueue(multiAddress.Address().String())
 	}()
-	return τ.multiplexer.RunMessageQueue(multiAddress.Address().String(), messageQueue)
+	return tau.multiplexer.RunMessageQueue(multiAddress.Address().String(), messageQueue)
 }
 
 // TauMessageQueue workers own a gRPC stream to a client. All Message
@@ -72,7 +72,7 @@ func (τ *Tau) connect(stream rpc.TauService_ConnectServer, quit chan struct{}) 
 // StreaMessageQueue are abstracted away to prevent incorrectly reading from
 // the write channel, and writing to the read channel.
 type TauMessageQueue struct {
-	stream rpc.TauService_ConnectServer
+	stream rpc.Tau_ConnectServer
 	write  chan *rpc.TauMessage
 	read   chan *rpc.TauMessage
 	quit   chan struct{}
@@ -81,7 +81,7 @@ type TauMessageQueue struct {
 // NewTauMessageQueue returns a MessageQueue interface. It accepts a gRPC
 // stream, that will be owned by the MessageQueue and should not be used by any
 // other component
-func NewTauMessageQueue(stream rpc.TauService_ConnectServer, messageQueueLimit int) dispatch.MessageQueue {
+func NewTauMessageQueue(stream rpc.Tau_ConnectServer, messageQueueLimit int) dispatch.MessageQueue {
 	return &TauMessageQueue{
 		stream: stream,
 		write:  make(chan *rpc.TauMessage, messageQueueLimit),
@@ -120,8 +120,8 @@ func (queue *TauMessageQueue) Shutdown() error {
 	return err
 }
 
-// Send a message to the TauMessageQueue. The Message must be a pointer to
-// a gRPC TauMessage, otherwise an error is returned.
+// Send a message to the TauMessageQueue. The Message must be a WorkerTask that
+// wraps a gRPC TauMessage, otherwise an error is returned.
 func (queue *TauMessageQueue) Send(message dispatch.Message) error {
 	var err error
 	defer func() {
@@ -131,8 +131,10 @@ func (queue *TauMessageQueue) Send(message dispatch.Message) error {
 	}()
 
 	switch message := message.(type) {
-	case *rpc.TauMessage:
-		queue.write <- message
+	case WorkerTask:
+		if message.TauMessage != nil {
+			queue.write <- message.TauMessage
+		}
 	default:
 		return fmt.Errorf("cannot send message: unrecognized type %T", message)
 	}
@@ -140,11 +142,11 @@ func (queue *TauMessageQueue) Send(message dispatch.Message) error {
 	return err
 }
 
-// Recv a message from the TauMessageQueue. All Messages returned will be a
-// pointer to a gRPC TauMessage.
+// Recv a message from the TauMessageQueue. All Messages returned will be
+// WorkerTasks that wrap a gRPC TauMessage.
 func (queue *TauMessageQueue) Recv() (dispatch.Message, bool) {
 	message, ok := <-queue.read
-	return message, ok
+	return WorkerTask{TauMessage: message}, ok
 }
 
 // writeAll messages from the messaging queue to the stream.
