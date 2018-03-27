@@ -34,6 +34,38 @@ var _ = Describe("order book cache", func() {
 				cache.Match(ord)
 			}
 			Ω(len(cache.Blocks())).Should(Equal(100))
+
+			for i := 0; i < NumberOfTestOrders; i++ {
+				ord := newOrder(order.ID([]byte{uint8(i)}))
+				cache.Release(ord)
+			}
+			Ω(len(cache.Blocks())).Should(Equal(100))
+		})
+
+		It("should be able to store data and its status", func() {
+			for i := 0; i < NumberOfTestOrders; i++ {
+				ord := newOrder(order.ID([]byte{uint8(i)}))
+				cache.Open(ord)
+			}
+			Ω(len(cache.Blocks())).Should(Equal(100))
+
+			for i := 0; i < NumberOfTestOrders; i++ {
+				ord := newOrder(order.ID([]byte{uint8(i)}))
+				cache.Match(ord)
+			}
+			Ω(len(cache.Blocks())).Should(Equal(100))
+
+			for i := 0; i < NumberOfTestOrders; i++ {
+				ord := newOrder(order.ID([]byte{uint8(i)}))
+				cache.Confirm(ord)
+			}
+			Ω(len(cache.Blocks())).Should(Equal(100))
+
+			for i := 0; i < NumberOfTestOrders; i++ {
+				ord := newOrder(order.ID([]byte{uint8(i)}))
+				cache.Settle(ord)
+			}
+			Ω(len(cache.Blocks())).Should(Equal(100))
 		})
 	})
 
