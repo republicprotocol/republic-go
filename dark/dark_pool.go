@@ -8,12 +8,14 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 )
 
+// A Node represents a dark node in a dark ocean pool
 type Node struct {
 	identity.ID
 	mu           *sync.RWMutex
 	multiAddress *identity.MultiAddress
 }
 
+// NewNode returns a new Node representing the dark pool with the given ID
 func NewNode(id identity.ID) Node {
 	return Node{
 		ID:           id,
@@ -22,18 +24,21 @@ func NewNode(id identity.ID) Node {
 	}
 }
 
+// SetMultiAddress sets the multiaddress of the Node
 func (node *Node) SetMultiAddress(multiAddress identity.MultiAddress) {
 	node.mu.Lock()
 	defer node.mu.Unlock()
 	node.multiAddress = &multiAddress
 }
 
+// MultiAddress returns the multiaddress of the Node
 func (node *Node) MultiAddress() *identity.MultiAddress {
 	node.mu.RLock()
 	defer node.mu.RUnlock()
 	return node.multiAddress
 }
 
+// Nodes stores a list of Node structs
 type Nodes []Node
 
 // A Pool is a list of nodes, identified by their Multiaddresses.
@@ -42,6 +47,7 @@ type Pool struct {
 	nodes Nodes
 }
 
+// Pools stores a list of Pool structs
 type Pools []*Pool
 
 // NewPool returns a new empty Pool.

@@ -103,6 +103,7 @@ func LoadConfig(filename string) (*node.Config, error) {
 	return config, nil
 }
 
+// CreateDarkNodeRegistrar returns a Dark Node Registrar binding over the provided rpc url
 func CreateDarkNodeRegistrar(ethereumKey keystore.Key, ethereumRPC string) (dnr.DarkNodeRegistrar, error) {
 	auth := bind.NewKeyedTransactor(ethereumKey.PrivateKey)
 	client, err := connection.FromURI(ethereumRPC, connection.ChainRopsten)

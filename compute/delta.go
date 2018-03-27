@@ -24,6 +24,8 @@ func (id DeltaID) String() string {
 	return base58.Encode(id)
 }
 
+// A Delta (reconstructed from Delta Fragments) contains the data required
+// to know if two orders can be matched
 type Delta struct {
 	ID          DeltaID
 	BuyOrderID  order.ID
@@ -35,6 +37,7 @@ type Delta struct {
 	MinVolume   *stackint.Int1024
 }
 
+// NewDelta reconstructs a delta from a series of fragments
 func NewDelta(deltaFragments []*DeltaFragment, prime *stackint.Int1024) *Delta {
 	// Check that all ResultFragments are compatible with each other.
 	if !IsCompatible(deltaFragments) {
@@ -72,6 +75,7 @@ func NewDelta(deltaFragments []*DeltaFragment, prime *stackint.Int1024) *Delta {
 	return delta
 }
 
+// IsMatch returns true if the Delta's two orders can fulfill one another
 func (delta *Delta) IsMatch(prime *stackint.Int1024) bool {
 
 	two := stackint.Two()
@@ -126,6 +130,10 @@ type DeltaFragment struct {
 	MinVolumeShare shamir.Share
 }
 
+// NewDeltaFragment combines two order fragments, taking:
+// 1) the difference of the buy code, sell code and price
+// 2) the buy's max volume minus the sell's min volume
+// 3) the buy's min volume minus the sell's max volume
 func NewDeltaFragment(left *order.Fragment, right *order.Fragment, prime *stackint.Int1024) *DeltaFragment {
 	if !left.IsCompatible(right) {
 		return nil

@@ -47,6 +47,7 @@ func (ocean *Ocean) FindPool(id identity.ID) *Pool {
 	return nil
 }
 
+// Update updates the dark ocean from the registrar contract
 func (ocean *Ocean) Update() error {
 	ocean.Enter(nil)
 	defer ocean.Exit()

@@ -23,6 +23,7 @@ type MockDarkNodeRegistrar struct {
 	epoch        Epoch
 }
 
+// NewMockDarkNodeRegistrar returns a new MockDarkNodeRegistrar
 func NewMockDarkNodeRegistrar() (DarkNodeRegistrar, error) {
 	mockDnr := new(MockDarkNodeRegistrar)
 	mockDnr.GuardedObject = do.NewGuardedObject()
@@ -42,6 +43,7 @@ func NewMockDarkNodeRegistrar() (DarkNodeRegistrar, error) {
 	return mockDnr, nil
 }
 
+// Register a new dark node
 func (mockDnr *MockDarkNodeRegistrar) Register(darkNodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
 	isRegistered, _ := mockDnr.IsDarkNodeRegistered(darkNodeID)
 	isPending, _ := mockDnr.IsDarkNodePendingRegistration(darkNodeID)
@@ -52,6 +54,7 @@ func (mockDnr *MockDarkNodeRegistrar) Register(darkNodeID []byte, publicKey []by
 	return nil, nil
 }
 
+// Deregister an existing dark node
 func (mockDnr *MockDarkNodeRegistrar) Deregister(darkNodeID []byte) (*types.Transaction, error) {
 	for i, id := range mockDnr.toRegister {
 		if string(darkNodeID) == string(id) {
@@ -67,10 +70,12 @@ func (mockDnr *MockDarkNodeRegistrar) Deregister(darkNodeID []byte) (*types.Tran
 	return nil, nil
 }
 
+// GetBond retrieves the bond of an existing dark node
 func (mockDnr *MockDarkNodeRegistrar) GetBond(darkNodeID []byte) (stackint.Int1024, error) {
 	return stackint.FromUint(86000), nil
 }
 
+// IsDarkNodeRegistered returns true if the node is registered
 func (mockDnr *MockDarkNodeRegistrar) IsDarkNodeRegistered(darkNodeID []byte) (bool, error) {
 	for _, id := range mockDnr.registered {
 		if string(darkNodeID) == string(id) {
@@ -80,6 +85,7 @@ func (mockDnr *MockDarkNodeRegistrar) IsDarkNodeRegistered(darkNodeID []byte) (b
 	return false, nil
 }
 
+// IsDarkNodePendingRegistration returns true if the node will become registered at the next epoch
 func (mockDnr *MockDarkNodeRegistrar) IsDarkNodePendingRegistration(darkNodeID []byte) (bool, error) {
 	for _, id := range mockDnr.toRegister {
 		if string(darkNodeID) == string(id) {
@@ -89,10 +95,12 @@ func (mockDnr *MockDarkNodeRegistrar) IsDarkNodePendingRegistration(darkNodeID [
 	return false, nil
 }
 
+// CurrentEpoch returns the current epoch
 func (mockDnr *MockDarkNodeRegistrar) CurrentEpoch() (Epoch, error) {
 	return mockDnr.epoch, nil
 }
 
+// Epoch updates the current Epoch if the Minimum Epoch Interval has passed since the previous Epoch
 func (mockDnr *MockDarkNodeRegistrar) Epoch() (*types.Transaction, error) {
 	var b32 [32]byte
 
@@ -126,34 +134,42 @@ func (mockDnr *MockDarkNodeRegistrar) Epoch() (*types.Transaction, error) {
 	return nil, nil
 }
 
+// GetCommitment gets the signed commitment (not implemented)
 func (mockDnr *MockDarkNodeRegistrar) GetCommitment(darkNodeID []byte) ([32]byte, error) {
 	return [32]byte{}, nil
 }
 
+// GetOwner gets the owner of the given dark node (not implemented)
 func (mockDnr *MockDarkNodeRegistrar) GetOwner(darkNodeID []byte) (common.Address, error) {
 	return [20]byte{}, nil
 }
 
+// GetPublicKey gets the public key of the goven dark node (not implemented)
 func (mockDnr *MockDarkNodeRegistrar) GetPublicKey(darkNodeID []byte) ([]byte, error) {
 	return nil, nil
 }
 
+// GetAllNodes gets all dark nodes
 func (mockDnr *MockDarkNodeRegistrar) GetAllNodes() ([][]byte, error) {
 	return mockDnr.registered, nil
 }
 
+// MinimumBond gets the minimum viable bond amount (hard-coded to 86000)
 func (mockDnr *MockDarkNodeRegistrar) MinimumBond() (stackint.Int1024, error) {
 	return stackint.FromUint(86000), nil
 }
 
+// MinimumEpochInterval gets the minimum epoch interval (hard-coded to 0)
 func (mockDnr *MockDarkNodeRegistrar) MinimumEpochInterval() (stackint.Int1024, error) {
 	return stackint.FromUint(0), nil
 }
 
+// Refund refunds the bond of an unregistered miner (not implemented)
 func (mockDnr *MockDarkNodeRegistrar) Refund(darkNodeID []byte) (*types.Transaction, error) {
 	return nil, nil
 }
 
+// WaitUntilRegistration waits until the registration is successful
 func (mockDnr *MockDarkNodeRegistrar) WaitUntilRegistration(darkNodeID []byte) error {
 	for {
 		isRegistered, err := mockDnr.IsDarkNodeRegistered(darkNodeID)

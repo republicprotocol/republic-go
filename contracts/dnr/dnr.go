@@ -73,7 +73,7 @@ func NewEthereumDarkNodeRegistrar(context context.Context, clientDetails *connec
 	}, nil
 }
 
-// Register registers a new dark node
+// Register a new dark node
 func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Register(darkNodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
 	allowanceBig, err := darkNodeRegistrar.tokenBinding.Allowance(darkNodeRegistrar.auth2, darkNodeRegistrar.auth1.From, darkNodeRegistrar.darkNodeRegistrarAddress)
 	if err != nil {
@@ -100,7 +100,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Register(darkNodeID []byte, 
 	return txn, err
 }
 
-// Deregister deregisters an existing dark node
+// Deregister an existing dark node
 func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Deregister(darkNodeID []byte) (*types.Transaction, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
@@ -114,7 +114,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Deregister(darkNodeID []byte
 	return tx, err
 }
 
-// GetBond gets the bond of an existing dark node
+// GetBond retrieves the bond of an existing dark node
 func (darkNodeRegistrar *EthereumDarkNodeRegistrar) GetBond(darkNodeID []byte) (stackint.Int1024, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
@@ -127,7 +127,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) GetBond(darkNodeID []byte) (
 	return stackint.FromBigInt(bond)
 }
 
-// IsDarkNodeRegistered check's whether a dark node is registered or not
+// IsDarkNodeRegistered returns true if the node is registered
 func (darkNodeRegistrar *EthereumDarkNodeRegistrar) IsDarkNodeRegistered(darkNodeID []byte) (bool, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
@@ -136,7 +136,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) IsDarkNodeRegistered(darkNod
 	return darkNodeRegistrar.binding.IsDarkNodeRegistered(darkNodeRegistrar.auth2, darkNodeIDByte)
 }
 
-// IsDarkNodePendingRegistration returns true if the node will be registered in the next epoch
+// IsDarkNodePendingRegistration returns true if the node will become registered at the next epoch
 func (darkNodeRegistrar *EthereumDarkNodeRegistrar) IsDarkNodePendingRegistration(darkNodeID []byte) (bool, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
@@ -160,7 +160,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) CurrentEpoch() (Epoch, error
 	}, nil
 }
 
-// Epoch updates the current Epoch
+// Epoch updates the current Epoch if the Minimum Epoch Interval has passed since the previous Epoch
 func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Epoch() (*types.Transaction, error) {
 	tx, err := darkNodeRegistrar.binding.Epoch(darkNodeRegistrar.auth1)
 	if err != nil {
@@ -211,7 +211,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) GetAllNodes() ([][]byte, err
 	return arr, nil
 }
 
-// MinimumBond gets the minimum viable bonda mount
+// MinimumBond gets the minimum viable bond amount
 func (darkNodeRegistrar *EthereumDarkNodeRegistrar) MinimumBond() (stackint.Int1024, error) {
 	bond, err := darkNodeRegistrar.binding.MinimumBond(darkNodeRegistrar.auth2)
 	if err != nil {
@@ -238,7 +238,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Refund(darkNodeID []byte) (*
 	return darkNodeRegistrar.binding.Refund(darkNodeRegistrar.auth1, darkNodeIDByte)
 }
 
-// WaitUntilRegistration waits until the registration is successful.
+// WaitUntilRegistration waits until the registration is successful
 func (darkNodeRegistrar *EthereumDarkNodeRegistrar) WaitUntilRegistration(darkNodeID []byte) error {
 	isRegistered := false
 	for !isRegistered {

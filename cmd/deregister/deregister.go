@@ -17,6 +17,8 @@ import (
 	node "github.com/republicprotocol/republic-go/dark-node"
 )
 
+// The Secret private key to use for ethereum transactions
+// If it is encrypted, a password must be provided
 type Secret struct {
 	PrivateKey string `json:"privateKey"`
 	Password   string `json:"password"`

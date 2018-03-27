@@ -31,8 +31,9 @@ import (
 
 // Prime is the default prime number used to define the finite field.
 var primeVal, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-var Prime = &primeVal
+var prime = &primeVal
 
+// The DarkNode internal state
 type DarkNode struct {
 	Config
 	identity.KeyPair
@@ -111,8 +112,8 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	node.Dark = network.NewDarkService(node, node.NetworkOptions, node.Logger)
 
 	// Create all background workers that will do all of the actual work
-	node.DeltaBuilder = compute.NewDeltaBuilder(k, Prime)
-	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(Prime)
+	node.DeltaBuilder = compute.NewDeltaBuilder(k, prime)
+	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(prime)
 	node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
 	node.OrderFragmentWorker = NewOrderFragmentWorker(node.Logger, node.DeltaFragmentMatrix, node.OrderFragmentWorkerQueue)
 	node.DeltaFragmentBroadcastWorkerQueue = make(chan *compute.DeltaFragment, 100)
@@ -125,6 +126,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	return node, nil
 }
 
+// StartBackgroundWorkers starts the usage logger and order/delta workers
 func (node *DarkNode) StartBackgroundWorkers() {
 	// Usage logger
 	go func() {
@@ -141,6 +143,7 @@ func (node *DarkNode) StartBackgroundWorkers() {
 	go node.DeltaMatchWorker.Run(node.DeltaNotifications)
 }
 
+// StartServices starts the gRPC listeners
 func (node *DarkNode) StartServices() {
 	node.Logger.Network(logger.Info, fmt.Sprintf("gRPC services listening on %s:%s", node.Host, node.Port))
 
@@ -155,6 +158,7 @@ func (node *DarkNode) StartServices() {
 	}
 }
 
+// StartUI starts serving the Dark Node UI
 func (node *DarkNode) StartUI() {
 
 	host, err := node.NetworkOptions.MultiAddress.ValueForProtocol(identity.IP4Code)
@@ -198,6 +202,7 @@ func (node *DarkNode) StartUI() {
 	}
 }
 
+// Bootstrap bootstraps the node into the network (see SwarmService.Bootstrap)
 func (node *DarkNode) Bootstrap() {
 	node.Swarm.Bootstrap()
 }

@@ -28,10 +28,13 @@ type Client interface {
 	BalanceAt(ctx context.Context, contract common.Address, blockNumber *big.Int) (*big.Int, error)
 }
 
+// Chain is used to represent an Ethereum chain
 type Chain string
 
 const (
+	// ChainMainnet represents the Ethereum mainnet
 	ChainMainnet Chain = "mainnet"
+	// ChainRopsten represents the Ethereum Ropsten testnet
 	ChainRopsten Chain = "ropsten"
 )
 
