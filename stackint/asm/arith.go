@@ -30,7 +30,7 @@
 // arithmetic operations on word vectors. Needed for platforms without
 // assembly implementations of these routines.
 
-package stackint
+package asm
 
 import "math/bits"
 
@@ -38,15 +38,15 @@ import "math/bits"
 type Word uint
 
 const (
-	_S = _W / 8 // word size in bytes
+	S = _W / 8 // word size in bytes
 
 	_W = bits.UintSize // word size in bits
 	_B = 1 << _W       // digit base
-	_M = _B - 1        // digit mask
+	M  = _B - 1        // digit mask
 
 	_W2 = _W / 2   // half word size in bits
 	_B2 = 1 << _W2 // half digit base
-	_M2 = _B2 - 1  // half digit mask
+	M2  = _B2 - 1  // half digit mask
 )
 
 // ----------------------------------------------------------------------------
@@ -55,7 +55,7 @@ const (
 // These operations are used by the vector operations below.
 
 // z1<<_W + z0 = x+y+c, with c == 0 or 1
-func addWW_g(x, y, c Word) (z1, z0 Word) {
+func AddWW_g(x, y, c Word) (z1, z0 Word) {
 	yc := y + c
 	z0 = x + yc
 	if z0 < x || yc < y {
@@ -76,14 +76,14 @@ func subWW_g(x, y, c Word) (z1, z0 Word) {
 
 // z1<<_W + z0 = x*y
 // Adapted from Warren, Hacker's Delight, p. 132.
-func mulWW_g(x, y Word) (z1, z0 Word) {
-	x0 := x & _M2
+func MulWW_g(x, y Word) (z1, z0 Word) {
+	x0 := x & M2
 	x1 := x >> _W2
-	y0 := y & _M2
+	y0 := y & M2
 	y1 := y >> _W2
 	w0 := x0 * y0
 	t := x1*y0 + w0>>_W2
-	w1 := t & _M2
+	w1 := t & M2
 	w2 := t >> _W2
 	w1 += x0 * y1
 	z1 = x1*y1 + w2 + w1>>_W2
@@ -92,36 +92,36 @@ func mulWW_g(x, y Word) (z1, z0 Word) {
 }
 
 // z1<<_W + z0 = x*y + c
-func mulAddWWW_g(x, y, c Word) (z1, z0 Word) {
-	z1, zz0 := mulWW(x, y)
+func MulAddWWW_g(x, y, c Word) (z1, z0 Word) {
+	z1, zz0 := MulWW(x, y)
 	if z0 = zz0 + c; z0 < zz0 {
 		z1++
 	}
 	return
 }
 
-// nlz returns the number of leading zeros in x.
+// Nlz returns the number of leading zeros in x.
 // Wraps bits.LeadingZeros call for convenience.
-func nlz(x Word) uint {
+func Nlz(x Word) uint {
 	return uint(bits.LeadingZeros(uint(x)))
 }
 
 // q = (u1<<_W + u0 - r)/y
 // Adapted from Warren, Hacker's Delight, p. 152.
-func divWW_g(u1, u0, v Word) (q, r Word) {
+func DivWW_g(u1, u0, v Word) (q, r Word) {
 	if u1 >= v {
 		return 1<<_W - 1, 1<<_W - 1
 	}
 
-	s := nlz(v)
+	s := Nlz(v)
 	v <<= s
 
 	vn1 := v >> _W2
-	vn0 := v & _M2
+	vn0 := v & M2
 	un32 := u1<<s | u0>>(_W-s)
 	un10 := u0 << s
 	un1 := un10 >> _W2
-	un0 := un10 & _M2
+	un0 := un10 & M2
 	q1 := un32 / vn1
 	rhat := un32 - q1*vn1
 
@@ -149,14 +149,14 @@ func divWW_g(u1, u0, v Word) (q, r Word) {
 }
 
 // Keep for performance debugging.
-// Using addWW_g is likely slower.
-const use_addWW_g = false
+// Using AddWW_g is likely slower.
+const use_AddWW_g = false
 
 // The resulting carry c is either 0 or 1.
-func addVV_g(z, x, y []Word) (c Word) {
-	if use_addWW_g {
+func AddVV_g(z, x, y []Word) (c Word) {
+	if use_AddWW_g {
 		for i := range z {
-			c, z[i] = addWW_g(x[i], y[i], c)
+			c, z[i] = AddWW_g(x[i], y[i], c)
 		}
 		return
 	}
@@ -172,8 +172,8 @@ func addVV_g(z, x, y []Word) (c Word) {
 }
 
 // The resulting carry c is either 0 or 1.
-func subVV_g(z, x, y []Word) (c Word) {
-	if use_addWW_g {
+func SubVV_g(z, x, y []Word) (c Word) {
+	if use_AddWW_g {
 		for i := range z {
 			c, z[i] = subWW_g(x[i], y[i], c)
 		}
@@ -191,11 +191,11 @@ func subVV_g(z, x, y []Word) (c Word) {
 }
 
 // The resulting carry c is either 0 or 1.
-func addVW_g(z, x []Word, y Word) (c Word) {
-	if use_addWW_g {
+func AddVW_g(z, x []Word, y Word) (c Word) {
+	if use_AddWW_g {
 		c = y
 		for i := range z {
-			c, z[i] = addWW_g(x[i], c, 0)
+			c, z[i] = AddWW_g(x[i], c, 0)
 		}
 		return
 	}
@@ -209,8 +209,8 @@ func addVW_g(z, x []Word, y Word) (c Word) {
 	return
 }
 
-func subVW_g(z, x []Word, y Word) (c Word) {
-	if use_addWW_g {
+func SubVW_g(z, x []Word, y Word) (c Word) {
+	if use_AddWW_g {
 		c = y
 		for i := range z {
 			c, z[i] = subWW_g(x[i], c, 0)
@@ -227,7 +227,7 @@ func subVW_g(z, x []Word, y Word) (c Word) {
 	return
 }
 
-func shlVU_g(z, x []Word, s uint) (c Word) {
+func ShlVU_g(z, x []Word, s uint) (c Word) {
 	if n := len(z); n > 0 {
 		ŝ := _W - s
 		w1 := x[n-1]
@@ -242,7 +242,7 @@ func shlVU_g(z, x []Word, s uint) (c Word) {
 	return
 }
 
-func shrVU_g(z, x []Word, s uint) (c Word) {
+func ShrVU_g(z, x []Word, s uint) (c Word) {
 	if n := len(z); n > 0 {
 		ŝ := _W - s
 		w1 := x[0]
@@ -257,28 +257,28 @@ func shrVU_g(z, x []Word, s uint) (c Word) {
 	return
 }
 
-func mulAddVWW_g(z, x []Word, y, r Word) (c Word) {
+func MulAddVWW_g(z, x []Word, y, r Word) (c Word) {
 	c = r
 	for i := range z {
-		c, z[i] = mulAddWWW_g(x[i], y, c)
+		c, z[i] = MulAddWWW_g(x[i], y, c)
 	}
 	return
 }
 
-// TODO(gri) Remove use of addWW_g here and then we can remove addWW_g and subWW_g.
-func addMulVVW_g(z, x []Word, y Word) (c Word) {
+// TODO(gri) Remove use of AddWW_g here and then we can remove AddWW_g and subWW_g.
+func AddMulVVW_g(z, x []Word, y Word) (c Word) {
 	for i := range z {
-		z1, z0 := mulAddWWW_g(x[i], y, z[i])
-		c, z[i] = addWW_g(z0, c, 0)
+		z1, z0 := MulAddWWW_g(x[i], y, z[i])
+		c, z[i] = AddWW_g(z0, c, 0)
 		c += z1
 	}
 	return
 }
 
-func divWVW_g(z []Word, xn Word, x []Word, y Word) (r Word) {
+func DivWVW_g(z []Word, xn Word, x []Word, y Word) (r Word) {
 	r = xn
 	for i := len(z) - 1; i >= 0; i-- {
-		z[i], r = divWW(r, x[i], y)
+		z[i], r = DivWW(r, x[i], y)
 	}
 	return
 }

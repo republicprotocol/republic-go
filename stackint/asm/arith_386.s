@@ -33,8 +33,8 @@
 // This file provides fast assembly versions for the elementary
 // arithmetic operations on vectors implemented in arith.go.
 
-// func mulWW(x, y Word) (z1, z0 Word)
-TEXT ·mulWW(SB),NOSPLIT,$0
+// func MulWW(x, y Word) (z1, z0 Word)
+TEXT ·MulWW(SB),NOSPLIT,$0
 	MOVL x+0(FP), AX
 	MULL y+4(FP)
 	MOVL DX, z1+8(FP)
@@ -42,8 +42,8 @@ TEXT ·mulWW(SB),NOSPLIT,$0
 	RET
 
 
-// func divWW(x1, x0, y Word) (q, r Word)
-TEXT ·divWW(SB),NOSPLIT,$0
+// func DivWW(x1, x0, y Word) (q, r Word)
+TEXT ·DivWW(SB),NOSPLIT,$0
 	MOVL x1+0(FP), DX
 	MOVL x0+4(FP), AX
 	DIVL y+8(FP)
@@ -52,8 +52,8 @@ TEXT ·divWW(SB),NOSPLIT,$0
 	RET
 
 
-// func addVV(z, x, y []Word) (c Word)
-TEXT ·addVV(SB),NOSPLIT,$0
+// func AddVV(z, x, y []Word) (c Word)
+TEXT ·AddVV(SB),NOSPLIT,$0
 	MOVL z+0(FP), DI
 	MOVL x+12(FP), SI
 	MOVL y+24(FP), CX
@@ -77,9 +77,9 @@ E1:	CMPL BX, BP		// i < n
 	RET
 
 
-// func subVV(z, x, y []Word) (c Word)
-// (same as addVV except for SBBL instead of ADCL and label names)
-TEXT ·subVV(SB),NOSPLIT,$0
+// func SubVV(z, x, y []Word) (c Word)
+// (same as AddVV except for SBBL instead of ADCL and label names)
+TEXT ·SubVV(SB),NOSPLIT,$0
 	MOVL z+0(FP), DI
 	MOVL x+12(FP), SI
 	MOVL y+24(FP), CX
@@ -103,8 +103,8 @@ E2:	CMPL BX, BP		// i < n
 	RET
 
 
-// func addVW(z, x []Word, y Word) (c Word)
-TEXT ·addVW(SB),NOSPLIT,$0
+// func AddVW(z, x []Word, y Word) (c Word)
+TEXT ·AddVW(SB),NOSPLIT,$0
 	MOVL z+0(FP), DI
 	MOVL x+12(FP), SI
 	MOVL y+24(FP), AX	// c = y
@@ -125,8 +125,8 @@ E3:	CMPL BX, BP		// i < n
 	RET
 
 
-// func subVW(z, x []Word, y Word) (c Word)
-TEXT ·subVW(SB),NOSPLIT,$0
+// func SubVW(z, x []Word, y Word) (c Word)
+TEXT ·SubVW(SB),NOSPLIT,$0
 	MOVL z+0(FP), DI
 	MOVL x+12(FP), SI
 	MOVL y+24(FP), AX	// c = y
@@ -148,8 +148,8 @@ E4:	CMPL BX, BP		// i < n
 	RET
 
 
-// func shlVU(z, x []Word, s uint) (c Word)
-TEXT ·shlVU(SB),NOSPLIT,$0
+// func ShlVU(z, x []Word, s uint) (c Word)
+TEXT ·ShlVU(SB),NOSPLIT,$0
 	MOVL z_len+4(FP), BX	// i = z
 	SUBL $1, BX		// i--
 	JL X8b			// i < 0	(n <= 0)
@@ -183,8 +183,8 @@ X8b:	MOVL $0, c+28(FP)
 	RET
 
 
-// func shrVU(z, x []Word, s uint) (c Word)
-TEXT ·shrVU(SB),NOSPLIT,$0
+// func ShrVU(z, x []Word, s uint) (c Word)
+TEXT ·ShrVU(SB),NOSPLIT,$0
 	MOVL z_len+4(FP), BP
 	SUBL $1, BP		// n--
 	JL X9b			// n < 0	(n <= 0)
@@ -220,8 +220,8 @@ X9b:	MOVL $0, c+28(FP)
 	RET
 
 
-// func mulAddVWW(z, x []Word, y, r Word) (c Word)
-TEXT ·mulAddVWW(SB),NOSPLIT,$0
+// func MulAddVWW(z, x []Word, y, r Word) (c Word)
+TEXT ·MulAddVWW(SB),NOSPLIT,$0
 	MOVL z+0(FP), DI
 	MOVL x+12(FP), SI
 	MOVL y+24(FP), BP
@@ -247,8 +247,8 @@ E5:	CMPL BX, $0		// i < 0
 	RET
 
 
-// func addMulVVW(z, x []Word, y Word) (c Word)
-TEXT ·addMulVVW(SB),NOSPLIT,$0
+// func AddMulVVW(z, x []Word, y Word) (c Word)
+TEXT ·AddMulVVW(SB),NOSPLIT,$0
 	MOVL z+0(FP), DI
 	MOVL x+12(FP), SI
 	MOVL y+24(FP), BP
@@ -275,8 +275,8 @@ E6:	CMPL BX, $0		// i < 0
 	RET
 
 
-// func divWVW(z* Word, xn Word, x []Word, y Word) (r Word)
-TEXT ·divWVW(SB),NOSPLIT,$0
+// func DivWVW(z* Word, xn Word, x []Word, y Word) (r Word)
+TEXT ·DivWVW(SB),NOSPLIT,$0
 	MOVL z+0(FP), DI
 	MOVL xn+12(FP), DX	// r = xn
 	MOVL x+16(FP), SI

@@ -26,43 +26,40 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// +build s390x,!math_big_pure_go
+// +build !math_big_pure_go
 
-package stackint
+#include "textflag.h"
 
-import (
-	"testing"
-)
+TEXT ·MulWW(SB),NOSPLIT,$0
+	JMP ·MulWW_g(SB)
 
-// Tests whether the non vector routines are working, even when the tests are run on a
-// vector-capable machine
+TEXT ·DivWW(SB),NOSPLIT,$0
+	JMP ·DivWW_g(SB)
 
-func TestFunVVnovec(t *testing.T) {
-	if hasVX == true {
-		for _, a := range sumVV {
-			arg := a
-			testFunVV(t, "addVV_novec", addVV_novec, arg)
+TEXT ·AddVV(SB),NOSPLIT,$0
+	JMP ·AddVV_g(SB)
 
-			arg = argVV{a.z, a.y, a.x, a.c}
-			testFunVV(t, "addVV_novec symmetric", addVV_novec, arg)
+TEXT ·SubVV(SB),NOSPLIT,$0
+	JMP ·SubVV_g(SB)
 
-			arg = argVV{a.x, a.z, a.y, a.c}
-			testFunVV(t, "subVV_novec", subVV_novec, arg)
+TEXT ·AddVW(SB),NOSPLIT,$0
+	JMP ·AddVW_g(SB)
 
-			arg = argVV{a.y, a.z, a.x, a.c}
-			testFunVV(t, "subVV_novec symmetric", subVV_novec, arg)
-		}
-	}
-}
+TEXT ·SubVW(SB),NOSPLIT,$0
+	JMP ·SubVW_g(SB)
 
-func TestFunVWnovec(t *testing.T) {
-	if hasVX == true {
-		for _, a := range sumVW {
-			arg := a
-			testFunVW(t, "addVW_novec", addVW_novec, arg)
+TEXT ·ShlVU(SB),NOSPLIT,$0
+	JMP ·ShlVU_g(SB)
 
-			arg = argVW{a.x, a.z, a.y, a.c}
-			testFunVW(t, "subVW_novec", subVW_novec, arg)
-		}
-	}
-}
+TEXT ·ShrVU(SB),NOSPLIT,$0
+	JMP ·ShrVU_g(SB)
+
+TEXT ·MulAddVWW(SB),NOSPLIT,$0
+	JMP ·MulAddVWW_g(SB)
+
+TEXT ·AddMulVVW(SB),NOSPLIT,$0
+	JMP ·AddMulVVW_g(SB)
+
+TEXT ·DivWVW(SB),NOSPLIT,$0
+	JMP ·DivWVW_g(SB)
+

@@ -26,19 +26,43 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// +build !math_big_pure_go
+// +build !math_big_pure_go,mips64 !math_big_pure_go,mips64le
 
-package stackint
+#include "textflag.h"
 
-// implemented in arith_$GOARCH.s
-func mulWW(x, y Word) (z1, z0 Word)
-func divWW(x1, x0, y Word) (q, r Word)
-func addVV(z, x, y []Word) (c Word)
-func subVV(z, x, y []Word) (c Word)
-func addVW(z, x []Word, y Word) (c Word)
-func subVW(z, x []Word, y Word) (c Word)
-func shlVU(z, x []Word, s uint) (c Word)
-func shrVU(z, x []Word, s uint) (c Word)
-func mulAddVWW(z, x []Word, y, r Word) (c Word)
-func addMulVVW(z, x []Word, y Word) (c Word)
-func divWVW(z []Word, xn Word, x []Word, y Word) (r Word)
+// This file provides fast assembly versions for the elementary
+// arithmetic operations on vectors implemented in arith.go.
+
+TEXT ·MulWW(SB),NOSPLIT,$0
+	JMP ·MulWW_g(SB)
+
+TEXT ·DivWW(SB),NOSPLIT,$0
+	JMP ·DivWW_g(SB)
+
+TEXT ·AddVV(SB),NOSPLIT,$0
+	JMP ·AddVV_g(SB)
+
+TEXT ·SubVV(SB),NOSPLIT,$0
+	JMP ·SubVV_g(SB)
+
+TEXT ·AddVW(SB),NOSPLIT,$0
+	JMP ·AddVW_g(SB)
+
+TEXT ·SubVW(SB),NOSPLIT,$0
+	JMP ·SubVW_g(SB)
+
+TEXT ·ShlVU(SB),NOSPLIT,$0
+	JMP ·ShlVU_g(SB)
+
+TEXT ·ShrVU(SB),NOSPLIT,$0
+	JMP ·ShrVU_g(SB)
+
+TEXT ·MulAddVWW(SB),NOSPLIT,$0
+	JMP ·MulAddVWW_g(SB)
+
+TEXT ·AddMulVVW(SB),NOSPLIT,$0
+	JMP ·AddMulVVW_g(SB)
+
+TEXT ·DivWVW(SB),NOSPLIT,$0
+	JMP ·DivWVW_g(SB)
+

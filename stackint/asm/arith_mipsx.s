@@ -26,43 +26,43 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// +build !math_big_pure_go,mips64 !math_big_pure_go,mips64le
+// +build !math_big_pure_go,mips !math_big_pure_go,mipsle
 
 #include "textflag.h"
 
 // This file provides fast assembly versions for the elementary
 // arithmetic operations on vectors implemented in arith.go.
 
-TEXT ·mulWW(SB),NOSPLIT,$0
-	JMP ·mulWW_g(SB)
+TEXT ·MulWW(SB),NOSPLIT,$0
+	JMP	·MulWW_g(SB)
 
-TEXT ·divWW(SB),NOSPLIT,$0
-	JMP ·divWW_g(SB)
+TEXT ·DivWW(SB),NOSPLIT,$0
+	JMP	·DivWW_g(SB)
 
-TEXT ·addVV(SB),NOSPLIT,$0
-	JMP ·addVV_g(SB)
+TEXT ·AddVV(SB),NOSPLIT,$0
+	JMP	·AddVV_g(SB)
 
-TEXT ·subVV(SB),NOSPLIT,$0
-	JMP ·subVV_g(SB)
+TEXT ·SubVV(SB),NOSPLIT,$0
+	JMP	·SubVV_g(SB)
 
-TEXT ·addVW(SB),NOSPLIT,$0
-	JMP ·addVW_g(SB)
+TEXT ·AddVW(SB),NOSPLIT,$0
+	JMP	·AddVW_g(SB)
 
-TEXT ·subVW(SB),NOSPLIT,$0
-	JMP ·subVW_g(SB)
+TEXT ·SubVW(SB),NOSPLIT,$0
+	JMP	·SubVW_g(SB)
 
-TEXT ·shlVU(SB),NOSPLIT,$0
-	JMP ·shlVU_g(SB)
+TEXT ·ShlVU(SB),NOSPLIT,$0
+	JMP	·ShlVU_g(SB)
 
-TEXT ·shrVU(SB),NOSPLIT,$0
-	JMP ·shrVU_g(SB)
+TEXT ·ShrVU(SB),NOSPLIT,$0
+	JMP	·ShrVU_g(SB)
 
-TEXT ·mulAddVWW(SB),NOSPLIT,$0
-	JMP ·mulAddVWW_g(SB)
+TEXT ·MulAddVWW(SB),NOSPLIT,$0
+	JMP	·MulAddVWW_g(SB)
 
-TEXT ·addMulVVW(SB),NOSPLIT,$0
-	JMP ·addMulVVW_g(SB)
+TEXT ·AddMulVVW(SB),NOSPLIT,$0
+	JMP	·AddMulVVW_g(SB)
 
-TEXT ·divWVW(SB),NOSPLIT,$0
-	JMP ·divWVW_g(SB)
+TEXT ·DivWVW(SB),NOSPLIT,$0
+	JMP	·DivWVW_g(SB)
 
