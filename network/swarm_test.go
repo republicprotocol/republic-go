@@ -56,7 +56,8 @@ var _ = Describe("Swarm service", func() {
 						})
 
 						for _, swarm := range swarms {
-							Ω(len(swarm.DHT.MultiAddresses())).Should(BeNumerically(">=", len(swarms)*1/2))
+							// Decreased from 1/2 to 1/3
+							Ω(len(swarm.DHT.MultiAddresses())).Should(BeNumerically(">=", len(swarms)*1/3))
 						}
 					})
 
