@@ -123,16 +123,16 @@
   version = "1.0.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/multiformats/go-multiaddr"
   packages = ["."]
-  revision = "b90678896b52c3e5a4c8176805c6facc3fe3eb82"
-  version = "0.1.2"
+  revision = "123a717755e0559ec8fda308019cd24e0a37bb07"
 
 [[projects]]
+  branch = "master"
   name = "github.com/multiformats/go-multihash"
   packages = ["."]
-  revision = "bdcf2980a789f55c97d548fdfa727f8fb19684ba"
-  version = "0.1.0"
+  revision = "27fa400c586666336a86e50accf9e8a1c9585ad3"
 
 [[projects]]
   name = "github.com/onsi/ginkgo"
