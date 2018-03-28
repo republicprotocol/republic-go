@@ -1,7 +1,10 @@
 package rpc
 
 import (
+	"time"
+
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/smpc"
 )
@@ -92,4 +95,30 @@ func UnmarshalDeltaFragments(deltaFragments *DeltaFragments) (smpc.DeltaFragment
 		val = append(val, deltaFragment)
 	}
 	return val, nil
+}
+
+// MarshalOrder into an RPC protobuf object
+func MarshalOrder(ord *order.Order) *Order{
+	rpcOrder := new(Order)
+	rpcOrder.Id = &OrderId{
+		OrderId:ord.ID,
+		Signature: ord.Signature,
+	}
+	rpcOrder.Type = int64(ord.Type)
+	rpcOrder.Parity = int64(ord.Parity)
+	rpcOrder.Expiry = ord.Expiry.Unix()
+
+	return rpcOrder
+}
+
+// UnmarshalOrder from an RPC protobuf object.
+func UnmarshalOrder (rpcOrder *Order) order.Order{
+	ord := order.Order{}
+	ord.ID = rpcOrder.Id.OrderId
+	ord.Signature = rpcOrder.Id.Signature
+	ord.Type = order.Type(rpcOrder.Type)
+	ord.Parity = order.Parity(rpcOrder.Parity)
+	ord.Expiry = time.Unix(rpcOrder.Expiry, 0)
+
+	return ord
 }

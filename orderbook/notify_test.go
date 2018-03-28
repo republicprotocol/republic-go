@@ -45,7 +45,7 @@ var _ = Describe("orderBookStreamer", func() {
 	})
 
 	Context("handle order status change", func() {
-		var streamer orderbook.OrderBookStreamer
+		var streamer orderbook.OrderBookNotifier
 
 		BeforeEach(func() {
 			streamer = orderbook.NewOrderBookStreamer(MaxConnections)

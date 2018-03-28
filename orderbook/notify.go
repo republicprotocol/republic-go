@@ -10,18 +10,18 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
-// An OrderBookStreamer will send all the new orders received to the stream.
+// An OrderBookNotifier will send all the new orders received to the stream.
 // It only allow certain amount of connections to it.
-type OrderBookStreamer struct {
+type OrderBookNotifier struct {
 	dispatch.Splitter
 
 	maxConnections int
 }
 
-// NewOrderBookStreamer creates a new OrderBookStreamer by the given limit
+// NewOrderBookStreamer creates a new OrderBookNotifier by the given limit
 // of connections
-func NewOrderBookStreamer(maxConnection int) OrderBookStreamer {
-	return OrderBookStreamer{
+func NewOrderBookStreamer(maxConnection int) OrderBookNotifier {
+	return OrderBookNotifier{
 		Splitter:       dispatch.NewSplitter(),
 		maxConnections: maxConnection,
 	}
@@ -29,7 +29,7 @@ func NewOrderBookStreamer(maxConnection int) OrderBookStreamer {
 
 // Subscribe will add the provided stream as a listener listening for updates.
 // It returns an error if max connections have been reached.
-func (orderBookStreamer *OrderBookStreamer) Subscribe(id string, stream rpc.Dark_SyncServer) error {
+func (orderBookStreamer *OrderBookNotifier) Subscribe(id string, stream rpc.Dark_SyncServer) error {
 	if orderBookStreamer.Splitter.CurrentConnections() >= orderBookStreamer.maxConnections {
 		return fmt.Errorf("cannot subscribe %s: connection limit reached", id)
 	}
@@ -45,37 +45,37 @@ func (orderBookStreamer *OrderBookStreamer) Subscribe(id string, stream rpc.Dark
 }
 
 // Unsubscribe will stop listening for updates.
-func (orderBookStreamer *OrderBookStreamer) Unsubscribe(id string) {
+func (orderBookStreamer *OrderBookNotifier) Unsubscribe(id string) {
 	orderBookStreamer.Splitter.ShutdownMessageQueue(id)
 }
 
 // Open notifies its subscribers that status of an order has been changed
 // to 'open'
-func (orderBookStreamer *OrderBookStreamer) Open(ord *order.Order) {
+func (orderBookStreamer *OrderBookNotifier) Open(ord *order.Order) {
 	orderBookStreamer.Splitter.Send(orderToSyncBlock(ord, order.Open))
 }
 
 // Match notifies its subscribers that status of an order has been changed
 // to 'unconfirmed'
-func (orderBookStreamer *OrderBookStreamer) Match(ord *order.Order) {
+func (orderBookStreamer *OrderBookNotifier) Match(ord *order.Order) {
 	orderBookStreamer.Splitter.Send(orderToSyncBlock(ord, order.Unconfirmed))
 }
 
 // Confirm notifies its subscribers that status of an order has been changed
 // to 'confirmed'
-func (orderBookStreamer *OrderBookStreamer) Confirm(ord *order.Order) {
+func (orderBookStreamer *OrderBookNotifier) Confirm(ord *order.Order) {
 	orderBookStreamer.Splitter.Send(orderToSyncBlock(ord, order.Confirmed))
 }
 
 // Release notifies its subscribers that status of an order has been changed
 // to 'open'
-func (orderBookStreamer *OrderBookStreamer) Release(ord *order.Order) {
+func (orderBookStreamer *OrderBookNotifier) Release(ord *order.Order) {
 	orderBookStreamer.Splitter.Send(orderToSyncBlock(ord, order.Open))
 }
 
 // Settle notifies its subscribers that status of an order has been changed
 // to 'settled'
-func (orderBookStreamer *OrderBookStreamer) Settle(ord *order.Order) {
+func (orderBookStreamer *OrderBookNotifier) Settle(ord *order.Order) {
 	orderBookStreamer.Splitter.Send(orderToSyncBlock(ord, order.Settled))
 }
 

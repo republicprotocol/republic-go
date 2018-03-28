@@ -63,6 +63,15 @@ message SyncRequest {
 }
 
 message SyncBlock {
+  bytes signature = 1;
+  int64 timestamp = 2;
+
+  oneof OrderBlock {
+    Order open = 3;
+    Order unconfirmed = 4;
+    Order confirmed = 5;
+    Order settled = 6;
+  }
 }
 
 message SignOrderFragmentRequest {
@@ -91,11 +100,18 @@ service Swarm {
 }
 
 /**
- * Orderbook
+ * Synchronization
  */
 
-service Orderbook {
+service Syncer {
   rpc Sync (SyncRequest) returns (stream SyncBlock);
+}
+
+/**
+ * Relay orders
+ */
+
+service Relay {
   rpc SignOrderFragment (OrderFragmentId) returns (OrderFragmentId);
   rpc OpenOrder (OpenOrderRequest) returns (Nothing);
   rpc CancelOrder (CancelOrderRequest) returns (Nothing);

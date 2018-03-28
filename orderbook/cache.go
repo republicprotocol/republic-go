@@ -7,14 +7,6 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
-type OrderBookSyncer interface {
-	Open(ord *order.Order)
-	Match(ord *order.Order)
-	Confirm(ord *order.Order)
-	Release(ord *order.Order)
-	Settle(ord *order.Order)
-}
-
 // An OrderBookCache is responsible for store the orders and their
 // status in the cache.
 type OrderBookCache struct {

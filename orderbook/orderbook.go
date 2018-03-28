@@ -1,9 +1,18 @@
 package orderbook
 
 import (
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
+
+type OrderBookSyncer interface {
+	Open(ord *order.Order)
+	Match(ord *order.Order)
+	Confirm(ord *order.Order)
+	Release(ord *order.Order)
+	Settle(ord *order.Order)
+}
 
 // The broadcaster is the subject in the observer design pattern
 type Broadcaster interface {
@@ -17,7 +26,7 @@ type Broadcaster interface {
 type OrderBook struct {
 	orderBookCache    OrderBookCache
 	orderBookDB       OrderBookDB
-	orderBookStreamer OrderBookStreamer
+	orderBookStreamer OrderBookNotifier
 }
 
 // NewOrderBook creates a new OrderBook with the given connection limits.
@@ -29,23 +38,13 @@ func NewOrderBook(maxConnections int) *OrderBook {
 	}
 }
 
-// Subscribe will subscribe to the OrderBook, listening for updates. It
-// requires an id which is the republic address and a gPRC stream.
-func (orderBook OrderBook) Subscribe(id string, stream rpc.Dark_SyncServer) error {
-	err := orderBook.orderBookStreamer.Subscribe(id, stream)
-	if err != nil {
-		return err
-	}
+// Sync will stream the order history to the message queue provided.
+func (orderBook OrderBook) Sync(queue dispatch.MessageQueue) error {
 	blocks := orderBook.orderBookCache.Blocks()
 	for _, block := range blocks {
 		orderBook.orderBookStreamer.Send(block)
 	}
 	return nil
-}
-
-// Unsubscribe will stop listening for updates.
-func (orderBook OrderBook) Unsubscribe(id string) {
-	orderBook.orderBookStreamer.Unsubscribe(id)
 }
 
 // Open is called when we first receive the order fragment.
@@ -82,3 +81,4 @@ func (orderBook OrderBook) Settle(ord *order.Order) {
 	orderBook.orderBookDB.Settle(ord)
 	orderBook.orderBookStreamer.Settle(ord)
 }
+
