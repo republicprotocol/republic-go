@@ -21,6 +21,7 @@ type Client struct {
 	Options ClientOptions
 	SwarmClient
 	DarkClient
+	SmpcClient
 }
 
 // NewClient returns a Client that is connected to the given MultiAddress and

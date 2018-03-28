@@ -168,19 +168,20 @@ message SyncBlock {
 }
 
 /**
- * Tau sMPC protocol
+ * sMPC protocol
  */
 
-service Tau {
-  rpc Connect (stream TauMessage) returns (stream TauMessage);
+service Smpc {
+  rpc Connect (stream SmpcMessage) returns (stream SmpcMessage);
 }
 
-message TauMessage {
-  GenerateRandomShares generateRandomShares = 1;
-  GenerateXiShares generateXiShares = 2;
-  GenerateXiFragments generateXiFragments = 3;
-  RhoSigmaFragments rhoSigmaFragments = 4;
-  DeltaFragments deltaFragments = 5;
+message SmpcMessage {
+  MultiAddress multiAddress = 1;
+  GenerateRandomShares generateRandomShares = 2;
+  GenerateXiShares generateXiShares = 3;
+  GenerateXiFragments generateXiFragments = 4;
+  RhoSigmaFragments rhoSigmaFragments = 5;
+  DeltaFragments deltaFragments = 6;
 }
 
 message GenerateRandomShares {

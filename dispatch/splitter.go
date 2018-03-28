@@ -1,6 +1,7 @@
 package dispatch
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -24,8 +25,9 @@ func (splitter *Splitter) RunMessageQueue(id string, messageQueue MessageQueue) 
 	splitter.outputMu.Lock()
 	if _, ok := splitter.output[id]; !ok {
 		splitter.output[id] = messageQueue
+	} else {
 		splitter.outputMu.Unlock()
-		return nil
+		return fmt.Errorf("cannot run message queue %s: message queue is already running", id)
 	}
 	splitter.outputMu.Unlock()
 

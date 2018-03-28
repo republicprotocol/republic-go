@@ -2,11 +2,13 @@ package smpc
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
@@ -50,8 +52,7 @@ func (matrix *DeltaFragmentMatrix) ComputeBuyOrder(buyOrderFragment *order.Fragm
 	defer matrix.deltaFragmentsMu.Unlock()
 	defer matrix.sellOrderFragmentsMu.RUnlock()
 
-	i := 0
-	deltaFragments := make(DeltaFragments, len(matrix.sellOrderFragments))
+	deltaFragments := make(DeltaFragments, 0, len(matrix.sellOrderFragments))
 	for _, sellOrderFragment := range matrix.sellOrderFragments {
 		if !buyOrderFragment.IsCompatible(sellOrderFragment) {
 			continue
@@ -61,8 +62,8 @@ func (matrix *DeltaFragmentMatrix) ComputeBuyOrder(buyOrderFragment *order.Fragm
 		}
 		deltaFragment := NewDeltaFragment(buyOrderFragment, sellOrderFragment, matrix.prime)
 		matrix.deltaFragments[string(buyOrderFragment.OrderID)][string(sellOrderFragment.OrderID)] = deltaFragment
-		deltaFragments[i] = deltaFragment
-		i++
+		deltaFragments = append(deltaFragments, deltaFragment)
+
 	}
 	return deltaFragments
 }
@@ -77,8 +78,7 @@ func (matrix *DeltaFragmentMatrix) ComputeSellOrder(sellOrderFragment *order.Fra
 	defer matrix.deltaFragmentsMu.Unlock()
 	defer matrix.buyOrderFragmentsMu.RUnlock()
 
-	i := 0
-	deltaFragments := make(DeltaFragments, len(matrix.buyOrderFragments))
+	deltaFragments := make(DeltaFragments, 0, len(matrix.buyOrderFragments))
 	for _, buyOrderFragment := range matrix.buyOrderFragments {
 		if !buyOrderFragment.IsCompatible(sellOrderFragment) {
 			continue
@@ -88,8 +88,7 @@ func (matrix *DeltaFragmentMatrix) ComputeSellOrder(sellOrderFragment *order.Fra
 		}
 		deltaFragment := NewDeltaFragment(buyOrderFragment, sellOrderFragment, matrix.prime)
 		matrix.deltaFragments[string(buyOrderFragment.OrderID)][string(sellOrderFragment.OrderID)] = deltaFragment
-		deltaFragments[i] = deltaFragment
-		i++
+		deltaFragments = append(deltaFragments, deltaFragment)
 	}
 	return deltaFragments
 }
@@ -126,8 +125,8 @@ type DeltaBuilder struct {
 	deltasToDeltaFragments map[string]DeltaFragments
 }
 
-func NewDeltaBuilder(k int64, prime *big.Int) *DeltaBuilder {
-	return &DeltaBuilder{
+func NewDeltaBuilder(k int64, prime *big.Int) DeltaBuilder {
+	return DeltaBuilder{
 		k:     k,
 		prime: prime,
 
@@ -459,4 +458,67 @@ func (deltaFragment *DeltaFragment) Unmarshal(data *rpc.DeltaFragment) error {
 		return err
 	}
 	return nil
+}
+
+// DeltaQueues is a slice of DeltaQueue components.
+type DeltaQueues []DeltaQueue
+
+// A DeltaQueue owns a channel of Delta components.
+type DeltaQueue struct {
+	chMu   *sync.RWMutex
+	chOpen bool
+	ch     chan Delta
+}
+
+// NewDeltaQueue returns a MessageQueue interface that channels Delta
+//components.
+func NewDeltaQueue(messageQueueLimit int) DeltaQueue {
+	return DeltaQueue{
+		chMu:   new(sync.RWMutex),
+		chOpen: true,
+		ch:     make(chan Delta, messageQueueLimit),
+	}
+}
+
+// Run the DeltaQueue. The DeltaQueue is an abstraction over a channel of Delta
+// components and does not need to be run. This method does nothing.
+func (queue *DeltaQueue) Run() error {
+	return nil
+}
+
+// Shutdown the DeltaQueue. If it has already been Shutdown, an error will be
+// returned.
+func (queue *DeltaQueue) Shutdown() error {
+	queue.chMu.Lock()
+	defer queue.chMu.Unlock()
+
+	queue.chOpen = false
+	close(queue.ch)
+	return nil
+}
+
+// Send a message to the DeltaQueue. The Message must be a Delta component,
+// otherwise an error is returned.
+func (queue *DeltaQueue) Send(message dispatch.Message) error {
+	queue.chMu.RLock()
+	defer queue.chMu.RUnlock()
+
+	if !queue.chOpen {
+		return nil
+	}
+
+	switch message := message.(type) {
+	case Delta:
+		queue.ch <- message
+	default:
+		return fmt.Errorf("cannot send message: unrecognized type %T", message)
+	}
+	return nil
+}
+
+// Recv a message from the DeltaQueue. All Messages returned will be Delta
+// components.
+func (queue *DeltaQueue) Recv() (dispatch.Message, bool) {
+	message, ok := <-queue.ch
+	return message, ok
 }

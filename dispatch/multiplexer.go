@@ -1,6 +1,7 @@
 package dispatch
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -11,8 +12,9 @@ type Multiplexer struct {
 	messageQueuesMu *sync.RWMutex
 	messageQueues   map[string]MessageQueue
 
-	messagesMu *sync.RWMutex
-	messages   chan Message
+	messagesMu   *sync.RWMutex
+	messagesOpen bool
+	messages     chan Message
 }
 
 // NewMultiplexer returns a Multiplexer that uses a queue limit to buffer the
@@ -22,8 +24,9 @@ func NewMultiplexer(queueLimit int) Multiplexer {
 		messageQueuesMu: new(sync.RWMutex),
 		messageQueues:   make(map[string]MessageQueue),
 
-		messagesMu: new(sync.RWMutex),
-		messages:   make(chan Message, queueLimit),
+		messagesMu:   new(sync.RWMutex),
+		messagesOpen: true,
+		messages:     make(chan Message, queueLimit),
 	}
 }
 
@@ -38,8 +41,9 @@ func (multiplexer *Multiplexer) RunMessageQueue(id string, messageQueue MessageQ
 	multiplexer.messageQueuesMu.Lock()
 	if _, ok := multiplexer.messageQueues[id]; !ok {
 		multiplexer.messageQueues[id] = messageQueue
+	} else {
 		multiplexer.messageQueuesMu.Unlock()
-		return nil
+		return fmt.Errorf("cannot run message queue %s: message queue is already running", id)
 	}
 	multiplexer.messageQueuesMu.Unlock()
 
@@ -73,8 +77,6 @@ func (multiplexer *Multiplexer) RunMessageQueue(id string, messageQueue MessageQ
 
 // Shutdown gracefully by shutting down all MessageQueues running in the
 // Multiplexer.
-// FIXME: This method should be idempotent and not panic when called multiple
-// times.
 func (multiplexer *Multiplexer) Shutdown() {
 
 	// Stop letting workers receive message, and stop accepting new
@@ -82,13 +84,17 @@ func (multiplexer *Multiplexer) Shutdown() {
 	func() {
 		multiplexer.messagesMu.Lock()
 		defer multiplexer.messagesMu.Unlock()
+
+		// While the mutex is locked, close the channel and prevent further
+		// writes
+		multiplexer.messagesOpen = false
 		close(multiplexer.messages)
 	}()
 
+	// While the mutex is locked, gracefully shutdown all MessageQueues
 	multiplexer.messageQueuesMu.Lock()
 	defer multiplexer.messageQueuesMu.Unlock()
 
-	// While the mutex is locked, gracefully shutdown all MessageQueues
 	for _, messageQueue := range multiplexer.messageQueues {
 		// Ignore errors returned during shutdown
 		_ = messageQueue.Shutdown()
@@ -102,7 +108,9 @@ func (multiplexer *Multiplexer) Shutdown() {
 func (multiplexer *Multiplexer) Send(message Message) {
 	multiplexer.messagesMu.RLock()
 	defer multiplexer.messagesMu.RUnlock()
-	multiplexer.messages <- message
+	if multiplexer.messagesOpen {
+		multiplexer.messages <- message
+	}
 }
 
 // Recv a Message from the Multiplexer. This function blocks until at least one
