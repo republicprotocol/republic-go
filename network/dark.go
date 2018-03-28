@@ -15,7 +15,7 @@ import (
 // A DarkDelegate is used as a callback interface to inject behavior into the
 // DarkService service.
 type DarkDelegate interface {
-	OnSync(from identity.MultiAddress) chan *rpc.SyncBlock
+	OnSync(from identity.MultiAddress, stream rpc.Dark_SyncServer)
 	// OnSignOrderFragment(from identity.MultiAddress)
 	OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment)
 	// OnCancelOrder(from identity.MultiAddress)
@@ -66,11 +66,8 @@ func (service *DarkService) sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_S
 	if err != nil {
 		return err
 	}
-	blocks := service.DarkDelegate.OnSync(from)
+	service.DarkDelegate.OnSync(from, stream)
 
-	for block := range blocks {
-		stream.Send(block)
-	}
 	return nil
 }
 

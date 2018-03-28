@@ -30,7 +30,6 @@ func NewMultiplexer(queueLimit int) Multiplexer {
 	}
 }
 
-
 // RunMessageQueue in the Multiplexer. All Messages written to the MessageQueue
 // will be aggregated into the unified channel. The MessageQueue will run until
 // it encounters an error, or until the Multiplexer is shutdown. A MessageQueue
@@ -74,7 +73,6 @@ func (multiplexer *Multiplexer) RunMessageQueue(id string, messageQueue MessageQ
 	return err
 }
 
-
 // Shutdown gracefully by shutting down all MessageQueues running in the
 // Multiplexer.
 func (multiplexer *Multiplexer) Shutdown() {
@@ -101,7 +99,6 @@ func (multiplexer *Multiplexer) Shutdown() {
 	}
 	multiplexer.messageQueues = map[string]MessageQueue{}
 }
-
 
 // Send a Message directly to the Multiplexer unified channel. If the channel
 // is full, then this function will block.

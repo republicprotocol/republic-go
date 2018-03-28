@@ -37,7 +37,7 @@ func (orderBookStreamer *OrderBookStreamer) Subscribe(id string, stream rpc.Dark
 	messageQueue := NewSyncMessageQueue(stream)
 	go func() {
 		err := orderBookStreamer.Splitter.RunMessageQueue(id, messageQueue)
-		if err!= nil {
+		if err != nil {
 			log.Println("can't run message queue", err)
 		}
 	}()

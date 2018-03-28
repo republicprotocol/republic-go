@@ -18,22 +18,22 @@ var _ = Describe("orderBookStreamer", func() {
 			streamer := orderbook.NewOrderBookStreamer(MaxConnections)
 			for i := 0; i < MaxConnections; i++ {
 
-					client := NewMockStream()
-					err := streamer.Subscribe(fmt.Sprintf("client%d", i), client)
-					Ω(err).ShouldNot(HaveOccurred())
+				client := NewMockStream()
+				err := streamer.Subscribe(fmt.Sprintf("client%d", i), client)
+				Ω(err).ShouldNot(HaveOccurred())
 
 			}
-			time.Sleep(1* time.Second)
+			time.Sleep(1 * time.Second)
 			Ω(streamer.CurrentConnections()).Should(Equal(MaxConnections))
 
 			for i := 0; i < MaxConnections; i++ {
 
-					client := NewMockStream()
-					err := streamer.Subscribe(fmt.Sprintf("client%d", i+MaxConnections), client)
-					Ω(err).Should(HaveOccurred())
+				client := NewMockStream()
+				err := streamer.Subscribe(fmt.Sprintf("client%d", i+MaxConnections), client)
+				Ω(err).Should(HaveOccurred())
 
 			}
-			time.Sleep(1* time.Second)
+			time.Sleep(1 * time.Second)
 			Ω(streamer.CurrentConnections()).Should(Equal(MaxConnections))
 
 			for i := 0; i < MaxConnections; i++ {
@@ -59,8 +59,8 @@ var _ = Describe("orderBookStreamer", func() {
 
 		It("should send message of open orders", func() {
 			By("You should be able to see the orders in the console.")
-			for i:=0;i <10;i ++{
-				ord := newOrder(order.ID(fmt.Sprintf("%d", i )))
+			for i := 0; i < 10; i++ {
+				ord := newOrder(order.ID(fmt.Sprintf("%d", i)))
 				streamer.Open(ord)
 			}
 			time.Sleep(2 * time.Second)
@@ -68,8 +68,8 @@ var _ = Describe("orderBookStreamer", func() {
 
 		It("should send message of match orders", func() {
 			By("You should be able to see the orders in the console.")
-			for i:=0;i <10;i ++{
-				ord := newOrder(order.ID(fmt.Sprintf("%d", i )))
+			for i := 0; i < 10; i++ {
+				ord := newOrder(order.ID(fmt.Sprintf("%d", i)))
 				streamer.Match(ord)
 			}
 			time.Sleep(2 * time.Second)
@@ -77,8 +77,8 @@ var _ = Describe("orderBookStreamer", func() {
 
 		It("should send message of confirming orders", func() {
 			By("You should be able to see the orders in the console.")
-			for i:=0;i <10;i ++{
-				ord := newOrder(order.ID(fmt.Sprintf("%d", i )))
+			for i := 0; i < 10; i++ {
+				ord := newOrder(order.ID(fmt.Sprintf("%d", i)))
 				streamer.Confirm(ord)
 			}
 			time.Sleep(2 * time.Second)
@@ -86,8 +86,8 @@ var _ = Describe("orderBookStreamer", func() {
 
 		It("should send message of releasing orders", func() {
 			By("You should be able to see the orders in the console.")
-			for i:=0;i <10;i ++{
-				ord := newOrder(order.ID(fmt.Sprintf("%d", i )))
+			for i := 0; i < 10; i++ {
+				ord := newOrder(order.ID(fmt.Sprintf("%d", i)))
 				streamer.Release(ord)
 			}
 			time.Sleep(2 * time.Second)
@@ -95,8 +95,8 @@ var _ = Describe("orderBookStreamer", func() {
 
 		It("should send message of settling orders", func() {
 			By("You should be able to see the orders in the console.")
-			for i:=0;i <10;i ++{
-				ord := newOrder(order.ID(fmt.Sprintf("%d", i )))
+			for i := 0; i < 10; i++ {
+				ord := newOrder(order.ID(fmt.Sprintf("%d", i)))
 				streamer.Settle(ord)
 			}
 			time.Sleep(2 * time.Second)

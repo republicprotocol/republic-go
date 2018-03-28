@@ -67,3 +67,22 @@ func (splitter *Splitter) Send(message Message) error {
 	}
 	return nil
 }
+
+func (splitter *Splitter) ShutdownMessageQueue(id string) {
+	splitter.outputMu.Lock()
+	defer splitter.outputMu.Unlock()
+
+	// While the mutex is locked, gracefully shutdown the MessageQueue
+	if messageQueue, ok := splitter.output[id]; ok {
+		// Ignore errors returned during shutdown
+		_ = messageQueue.Shutdown()
+		delete(splitter.output, id)
+	}
+}
+
+func (splitter *Splitter) CurrentConnections() int {
+	splitter.outputMu.RLock()
+	defer splitter.outputMu.RUnlock()
+
+	return len(splitter.output)
+}

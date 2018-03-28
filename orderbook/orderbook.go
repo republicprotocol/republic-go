@@ -32,13 +32,15 @@ func NewOrderBook(maxConnections int) *OrderBook {
 // Subscribe will subscribe to the OrderBook, listening for updates. It
 // requires an id which is the republic address and a gPRC stream.
 func (orderBook OrderBook) Subscribe(id string, stream rpc.Dark_SyncServer) error {
-	go func() {
-		blocks := orderBook.orderBookCache.Blocks()
-		for _, block := range blocks {
-			orderBook.orderBookStreamer.Send(block)
-		}
-	}()
-	return orderBook.orderBookStreamer.Subscribe(id, stream)
+	err := orderBook.orderBookStreamer.Subscribe(id, stream)
+	if err != nil {
+		return err
+	}
+	blocks := orderBook.orderBookCache.Blocks()
+	for _, block := range blocks {
+		orderBook.orderBookStreamer.Send(block)
+	}
+	return nil
 }
 
 // Unsubscribe will stop listening for updates.

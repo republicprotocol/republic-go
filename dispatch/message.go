@@ -13,7 +13,6 @@ type MessageQueues []MessageQueue
 // The MessageQueue interface defines a set of expected functionality for a
 // queue to be integrated with the Dispatcher.
 type MessageQueue interface {
-
 	// Run the MessageQueue, processing all messages that are sent and
 	// received. Run must only be called once.
 	Run() error

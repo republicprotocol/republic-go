@@ -119,7 +119,11 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 		WithTimeoutRetries(node.NetworkOptions.TimeoutRetries).
 		WithCacheLimit(node.NetworkOptions.ClientPoolCacheLimit)
 	node.DHT = dht.NewDHT(node.NetworkOptions.MultiAddress.Address(), node.NetworkOptions.MaxBucketLength)
-	node.OrderBook = orderbook.NewOrderBook(config.maxConnections) // todo : add this field in the config  struct
+
+	// todo : add this field in the config  struct
+	//node.OrderBook = orderbook.NewOrderBook(config.maxConnections)
+	node.OrderBook = orderbook.NewOrderBook(3)
+
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
 	node.Swarm = network.NewSwarmService(node, node.NetworkOptions, node.Logger, node.ClientPool, node.DHT)
 	node.Dark = network.NewDarkService(node, node.NetworkOptions, node.Logger)
@@ -357,15 +361,8 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 }
 
 // OnSync returns
-func (node *DarkNode) OnSync(from identity.MultiAddress) chan *rpc.SyncBlock {
-	blocks := make(chan *rpc.SyncBlock, 100)
-
-	err := node.OrderBook.Subscribe(from.String(), blocks)
-	if err != nil {
-		close(blocks)
-	}
-
-	return blocks
+func (node *DarkNode) OnSync(from identity.MultiAddress, stream rpc.Dark_SyncServer) {
+	node.OrderBook.Subscribe(from.String(), stream)
 }
 
 // OnOpenOrder writes an order fragment that has been received to the
@@ -381,7 +378,7 @@ func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 			node.Logger.SellOrderReceived(logger.Info, orderFragment.OrderID.String(), orderFragment.ID.String())
 		}
 		// node.OrderFragmentWorkerQueue <- orderFragment
-		node.SmpcMultiplexer.Send(smpc.WorkerTask{
+		node.SmpcMultiplexer.Send(smpc.Message{
 			OrderFragment: orderFragment,
 		})
 	}()

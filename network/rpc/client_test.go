@@ -401,5 +401,4 @@ var _ = Describe("Dark Network", func() {
 			Ω(err).Should(HaveOccurred())
 		})
 	})
-
 })
