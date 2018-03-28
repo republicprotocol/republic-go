@@ -9,7 +9,6 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/smpc"
 	"google.golang.org/grpc"
 )
 
@@ -20,7 +19,7 @@ type SyncerService struct {
 	messageQueueLimit int
 }
 
-// Register the SmpcService with a gRPC server.
+// Register the SyncerService with a gRPC server.
 func (service *SyncerService) Register(server *grpc.Server) {
 	RegisterSyncerServer(server, service)
 }
