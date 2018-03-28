@@ -2,6 +2,7 @@ package orderbook
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -34,7 +35,13 @@ func (orderBookStreamer *OrderBookStreamer) Subscribe(id string, stream rpc.Dark
 	}
 
 	messageQueue := NewSyncMessageQueue(stream)
-	return orderBookStreamer.Splitter.RunMessageQueue(id, messageQueue)
+	go func() {
+		err := orderBookStreamer.Splitter.RunMessageQueue(id, messageQueue)
+		if err!= nil {
+			log.Println("can't run message queue", err)
+		}
+	}()
+	return nil
 }
 
 // Unsubscribe will stop listening for updates.

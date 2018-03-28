@@ -17,21 +17,21 @@ var _ = Describe("orderBookStreamer", func() {
 		It("should be able to subscribe and unsubscribe ", func() {
 			streamer := orderbook.NewOrderBookStreamer(MaxConnections)
 			for i := 0; i < MaxConnections; i++ {
-				go func(i int ) {
+
 					client := NewMockStream()
 					err := streamer.Subscribe(fmt.Sprintf("client%d", i), client)
 					Ω(err).ShouldNot(HaveOccurred())
-				}(i)
+
 			}
 			time.Sleep(1* time.Second)
 			Ω(streamer.CurrentConnections()).Should(Equal(MaxConnections))
 
 			for i := 0; i < MaxConnections; i++ {
-				go func(i int) {
+
 					client := NewMockStream()
 					err := streamer.Subscribe(fmt.Sprintf("client%d", i+MaxConnections), client)
 					Ω(err).Should(HaveOccurred())
-				}(i)
+
 			}
 			time.Sleep(1* time.Second)
 			Ω(streamer.CurrentConnections()).Should(Equal(MaxConnections))
@@ -50,11 +50,9 @@ var _ = Describe("orderBookStreamer", func() {
 		BeforeEach(func() {
 			streamer = orderbook.NewOrderBookStreamer(MaxConnections)
 			for i := 0; i < MaxConnections; i++ {
-				go func(i int ) {
-					client := NewMockStream()
-					err := streamer.Subscribe(fmt.Sprintf("client%d", i), client)
-					Ω(err).ShouldNot(HaveOccurred())
-				}(i)
+				client := NewMockStream()
+				err := streamer.Subscribe(fmt.Sprintf("client%d", i), client)
+				Ω(err).ShouldNot(HaveOccurred())
 			}
 			time.Sleep(1 * time.Second)
 		})
