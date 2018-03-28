@@ -3,6 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"os/exec"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
 
 	"github.com/republicprotocol/republic-go/contracts/connection"
 )
@@ -11,6 +17,7 @@ var debug = false
 
 const reset = "\x1b[0m"
 const green = "\x1b[32;1m"
+const yellow = "\x1b[33;1m"
 
 func main() {
 	parseCommandLineFlags()
@@ -21,7 +28,15 @@ func main() {
 	}
 	fmt.Printf("%s\n", log)
 
-	connection.StartTestnet(debug)
+	var wg sync.WaitGroup
+	cmd := connection.StartTestnet(debug, &wg)
+	go killAtExit(cmd)
+
+	time.Sleep(5 * time.Second)
+
+	connection.DeployContractsToGanache("http://localhost:8545")
+
+	cmd.Wait()
 }
 
 func parseCommandLineFlags() error {
@@ -32,4 +47,15 @@ func parseCommandLineFlags() error {
 	debug = *debugPtr
 
 	return nil
+}
+
+func killAtExit(cmd *exec.Cmd) {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		fmt.Printf("%sShutting down Ganache...%s\n", yellow, reset)
+		cmd.Process.Kill()
+		os.Exit(0)
+	}()
 }
