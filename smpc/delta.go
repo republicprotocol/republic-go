@@ -90,6 +90,7 @@ func (matrix *DeltaFragmentMatrix) ComputeSellOrder(sellOrderFragment *order.Fra
 		matrix.deltaFragments[string(buyOrderFragment.OrderID)][string(sellOrderFragment.OrderID)] = deltaFragment
 		deltaFragments = append(deltaFragments, deltaFragment)
 	}
+
 	return deltaFragments
 }
 
@@ -286,28 +287,6 @@ func (id DeltaFragmentID) String() string {
 }
 
 type DeltaFragments []DeltaFragment
-
-func (deltaFragments DeltaFragments) Marshal() *rpc.DeltaFragments {
-	data := make([]*rpc.DeltaFragment, len(deltaFragments))
-	for i := range data {
-		data[i] = deltaFragments[i].Marshal()
-	}
-	return &rpc.DeltaFragments{
-		DeltaFragments: data,
-	}
-}
-
-func (deltaFragments *DeltaFragments) Unmarshal(data *rpc.DeltaFragments) error {
-	*deltaFragments = make([]DeltaFragment, 0, len(data.DeltaFragments))
-	for i := range data.DeltaFragments {
-		deltaFragment := DeltaFragment{}
-		if err := deltaFragment.Unmarshal(data.DeltaFragments[i]); err != nil {
-			return err
-		}
-		*deltaFragments = append(*deltaFragments, deltaFragment)
-	}
-	return nil
-}
 
 // A DeltaFragment is a secret share of a Final. Is is performing a
 // computation over two OrderFragments.

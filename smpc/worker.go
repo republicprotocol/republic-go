@@ -95,7 +95,7 @@ func (worker *Worker) processOrderFragment(orderFragment *order.Fragment) {
 	// Send a new Message directly to the Multiplexer so that the new
 	// DeltaFragments can be processed
 	if deltaFragments != nil && len(deltaFragments) > 0 {
-		worker.multiplexer.Send(Message{DeltaFragments: deltaFragments})
+		go worker.multiplexer.Send(Message{DeltaFragments: deltaFragments})
 	}
 }
 
@@ -110,9 +110,11 @@ func (worker *Worker) processDeltaFragments(deltaFragments DeltaFragments) {
 	// Send a new Message directly to the Multiplexer so that the new
 	// Deltas can be processed
 	if newDeltas != nil && len(newDeltas) > 0 {
-		worker.multiplexer.Send(Message{
-			Deltas: newDeltas,
-		})
+		go func() {
+			worker.multiplexer.Send(Message{
+				Deltas: newDeltas,
+			})
+		}()
 	}
 
 	if newDeltaFragments != nil && len(newDeltaFragments) > 0 {
@@ -120,18 +122,22 @@ func (worker *Worker) processDeltaFragments(deltaFragments DeltaFragments) {
 		worker.messageQueuesMu.RLock()
 		defer worker.messageQueuesMu.RUnlock()
 
-		for _, queue := range worker.messageQueues {
-			queue.Send(Message{
-				DeltaFragments: newDeltaFragments,
-			})
-		}
+		go func() {
+			for _, queue := range worker.messageQueues {
+				queue.Send(Message{
+					DeltaFragments: newDeltaFragments,
+				})
+			}
+		}()
 	}
 }
 
 func (worker *Worker) processDeltas(deltas Deltas) {
-	for _, delta := range deltas {
-		if err := worker.deltaQueue.Send(delta); err != nil {
-			worker.logger.Compute(logger.Error, fmt.Sprintf("cannot send delta notification: %s", err.Error()))
+	go func() {
+		for _, delta := range deltas {
+			if err := worker.deltaQueue.Send(delta); err != nil {
+				worker.logger.Compute(logger.Error, fmt.Sprintf("cannot send delta notification: %s", err.Error()))
+			}
 		}
-	}
+	}()
 }
