@@ -98,22 +98,6 @@ message AlphaBetaFragment {
   OrderFragment betaFragment = 4;
 }
 
-message DeltaFragment {    
-  bytes signature = 1;
-  bytes id = 2;
-  bytes deltaId = 3;
-  bytes buyOrderId = 4;
-  bytes sellOrderId = 5;
-  bytes buyOrderFragmentId = 6;
-  bytes sellOrderFragmentId = 7;
-  
-  bytes fstCodeShare = 8;
-  bytes sndCodeShare = 9;
-  bytes priceShare = 10;
-  bytes maxVolumeShare = 11;
-  bytes minVolumeShare = 12;
-}
-
 message Order {
   bytes signature = 1;
   bytes id = 2;
@@ -194,9 +178,9 @@ service Tau {
 message TauMessage {
   GenerateRandomShares generateRandomShares = 1;
   GenerateXiShares generateXiShares = 2;
-  GenerateXiFragment generateXiFragment = 3;
-  BroadcastRhoSigmaFragment broadcastRhoSigmaFragment = 4;
-  BroadcastDeltaFragment broadcastDeltaFragment = 5;
+  GenerateXiFragments generateXiFragments = 3;
+  RhoSigmaFragments rhoSigmaFragments = 4;
+  DeltaFragments deltaFragments = 5;
 }
 
 message GenerateRandomShares {
@@ -205,11 +189,29 @@ message GenerateRandomShares {
 message GenerateXiShares {
 }
 
-message GenerateXiFragment {
+message GenerateXiFragments {
 }
 
-message BroadcastRhoSigmaFragment {
+message RhoSigmaFragments {
 }
 
-message BroadcastDeltaFragment {
+message DeltaFragments {
+  bytes signature = 1;
+  repeated DeltaFragment deltaFragments = 2;
+}
+
+message DeltaFragment {
+  bytes signature = 1;
+  bytes id = 2;
+  bytes deltaId = 3;
+  bytes buyOrderId = 4;
+  bytes sellOrderId = 5;
+  bytes buyOrderFragmentId = 6;
+  bytes sellOrderFragmentId = 7;
+  
+  bytes fstCodeShare = 8;
+  bytes sndCodeShare = 9;
+  bytes priceShare = 10;
+  bytes maxVolumeShare = 11;
+  bytes minVolumeShare = 12;
 }

@@ -1,7 +1,6 @@
 package dispatch
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -12,7 +11,8 @@ type Multiplexer struct {
 	messageQueuesMu *sync.RWMutex
 	messageQueues   map[string]MessageQueue
 
-	messages chan Message
+	messagesMu *sync.RWMutex
+	messages   chan Message
 }
 
 // NewMultiplexer returns a Multiplexer that uses a queue limit to buffer the
@@ -22,18 +22,24 @@ func NewMultiplexer(queueLimit int) Multiplexer {
 		messageQueuesMu: new(sync.RWMutex),
 		messageQueues:   make(map[string]MessageQueue),
 
-		messages: make(chan Message, queueLimit),
+		messagesMu: new(sync.RWMutex),
+		messages:   make(chan Message, queueLimit),
 	}
 }
 
-// RunMessageQueue in the Multiplexer. The MessageQueue will run until it
-// encounters an error, or until the Multiplexer is shutdown.
+
+// RunMessageQueue in the Multiplexer. All Messages written to the MessageQueue
+// will be aggregated into the unified channel. The MessageQueue will run until
+// it encounters an error, or until the Multiplexer is shutdown. A MessageQueue
+// run using a Multiplexer must not be run anywhere else.
 func (multiplexer *Multiplexer) RunMessageQueue(id string, messageQueue MessageQueue) error {
 
 	// Store the MessageQueue until it has finished running
 	multiplexer.messageQueuesMu.Lock()
 	if _, ok := multiplexer.messageQueues[id]; !ok {
 		multiplexer.messageQueues[id] = messageQueue
+		multiplexer.messageQueuesMu.Unlock()
+		return nil
 	}
 	multiplexer.messageQueuesMu.Unlock()
 
@@ -64,14 +70,20 @@ func (multiplexer *Multiplexer) RunMessageQueue(id string, messageQueue MessageQ
 	return err
 }
 
-// Shutdown gracefully by sending a quit command to all of the MessageQueues
-// running in the Multiplexer. This method must only be called exactly once,
-// when the Multiplexer is no longer needed.
+
+// Shutdown gracefully by shutting down all MessageQueues running in the
+// Multiplexer.
+// FIXME: This method should be idempotent and not panic when called multiple
+// times.
 func (multiplexer *Multiplexer) Shutdown() {
 
 	// Stop letting workers receive message, and stop accepting new
 	// MessageQueues
-	close(multiplexer.messages)
+	func() {
+		multiplexer.messagesMu.Lock()
+		defer multiplexer.messagesMu.Unlock()
+		close(multiplexer.messages)
+	}()
 
 	multiplexer.messageQueuesMu.Lock()
 	defer multiplexer.messageQueuesMu.Unlock()
@@ -84,36 +96,13 @@ func (multiplexer *Multiplexer) Shutdown() {
 	multiplexer.messageQueues = map[string]MessageQueue{}
 }
 
-// ShutdownMessageQueue by giving its associated ID. If the MessageQueue is
-// running on this Multiplexer, it will be gracefully shutdown.
-func (multiplexer *Multiplexer) ShutdownMessageQueue(id string) {
-	multiplexer.messageQueuesMu.Lock()
-	defer multiplexer.messageQueuesMu.Unlock()
 
-	// While the mutex is locked, gracefully shutdown the MessageQueue
-	if messageQueue, ok := multiplexer.messageQueues[id]; ok {
-
-		// Ignore errors returned during shutdown
-		_ = messageQueue.Shutdown()
-		delete(multiplexer.messageQueues, id)
-	}
-}
-
-// Send a Message to a MessageQueue by giving its associated ID. If no
-// MessageQueue is available, then an error is returned. If the MessageQueue is
-// full, then this function will block.
-func (multiplexer *Multiplexer) Send(id string, message Message) error {
-
-	// Find the MessageQueue associated with the ID and forward the Message to
-	// it
-	multiplexer.messageQueuesMu.RLock()
-	messageQueue := multiplexer.messageQueues[id]
-	multiplexer.messageQueuesMu.RUnlock()
-	if messageQueue == nil {
-		return fmt.Errorf("cannot send message to %s: no message queue available", id)
-	}
-
-	return messageQueue.Send(message)
+// Send a Message directly to the Multiplexer unified channel. If the channel
+// is full, then this function will block.
+func (multiplexer *Multiplexer) Send(message Message) {
+	multiplexer.messagesMu.RLock()
+	defer multiplexer.messagesMu.RUnlock()
+	multiplexer.messages <- message
 }
 
 // Recv a Message from the Multiplexer. This function blocks until at least one
