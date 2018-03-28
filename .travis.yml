@@ -4,6 +4,7 @@ go:
   - 1.9.x
 
 before_install:
+  - npm install -g ganache-cli
   - go get github.com/onsi/gomega
   - go get github.com/onsi/ginkgo/ginkgo
   - go get github.com/mattn/goveralls
@@ -14,6 +15,7 @@ before_install:
 script:
   - go vet ./...
   - golint -set_exit_status `go list ./... | grep -Ev "(stackint/asm|vendor)"`
+  - go run cmd/testnetwork/main.go
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out stackint
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out identity
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out shamir

@@ -44,7 +44,7 @@ type Epoch struct {
 // EthereumDarkNodeRegistrar is the dark node interface
 type EthereumDarkNodeRegistrar struct {
 	context                  context.Context
-	client                   *connection.Client
+	client                   *connection.ClientDetails
 	auth1                    *bind.TransactOpts
 	auth2                    *bind.CallOpts
 	binding                  *bindings.DarkNodeRegistrar
@@ -64,7 +64,7 @@ func NewEthereumDarkNodeRegistrar(context context.Context, clientDetails *connec
 	}
 	return &EthereumDarkNodeRegistrar{
 		context:                  context,
-		client:                   &clientDetails.Client,
+		client:                   clientDetails,
 		auth1:                    auth1,
 		auth2:                    auth2,
 		binding:                  contract,
@@ -94,7 +94,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Register(darkNodeID []byte, 
 
 	txn, err := darkNodeRegistrar.binding.Register(darkNodeRegistrar.auth1, darkNodeIDByte, publicKey, bond.ToBigInt())
 	if err == nil {
-		_, err := connection.PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, txn)
+		_, err := darkNodeRegistrar.client.PatchedWaitMined(darkNodeRegistrar.context, txn)
 		return txn, err
 	}
 	return txn, err
@@ -110,7 +110,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Deregister(darkNodeID []byte
 	if err != nil {
 		return tx, err
 	}
-	_, err = connection.PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
+	_, err = darkNodeRegistrar.client.PatchedWaitMined(darkNodeRegistrar.context, tx)
 	return tx, err
 }
 
@@ -167,7 +167,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Epoch() (*types.Transaction,
 
 		return nil, err
 	}
-	_, err = connection.PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, tx)
+	_, err = darkNodeRegistrar.client.PatchedWaitMined(darkNodeRegistrar.context, tx)
 	return tx, err
 }
 

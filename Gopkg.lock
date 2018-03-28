@@ -216,76 +216,9 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/republicprotocol/go-atom"
-  packages = [
-    ".",
-    "ethereum",
-    "ethereum/contracts"
-  ]
-  revision = "0f89c029f9473483f9988af45eacfbf76fa6d9c7"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-dark-network"
-  packages = ["."]
-  revision = "7fa2a81354bd90d15b313f9c01f73c8e13cfdf19"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-dark-node"
-  packages = ["."]
-  revision = "41602aa115689ae2a275f1f857959636451a4914"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-dark-node-registrar"
-  packages = [
-    ".",
-    "contracts"
-  ]
-  revision = "e45a991b43aeab31f7f31c7da39be885bc2f7480"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-dht"
-  packages = ["."]
-  revision = "1b6ca141638bf5d069216a41870f32b4931270a1"
-
-[[projects]]
-  branch = "master"
   name = "github.com/republicprotocol/go-do"
   packages = ["."]
   revision = "0dccf0d7d287e828155a3ea16f7b968fa9662020"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-identity"
-  packages = ["."]
-  revision = "c0ee5d01eece4eab67cd4e16179098407a1f32ae"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-order-compute"
-  packages = ["."]
-  revision = "760d70f804f6f7ed67a19b775ef494e010e5d4a0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-rpc"
-  packages = ["."]
-  revision = "6725f3680969ba7e5f8d6633b4b780fcde863e50"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-sss"
-  packages = ["."]
-  revision = "fa5c903575e365fcc8807c2ac1f314ee27a4f8af"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-swarm-network"
-  packages = ["."]
-  revision = "589575d4b5997c2cf782ce7f3328562d520dcc64"
 
 [[projects]]
   branch = "master"
@@ -479,6 +412,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "02ec252c6e889c15ccba9539de29994e043e9761f83ed4b76a95d2d25d901b10"
+  inputs-digest = "59f8c5e3a69c1601d628068c7bb469cca286c732b623c90f51f7e411ef5960c5"
   solver-name = "gps-cdcl"
   solver-version = 1
