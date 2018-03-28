@@ -29,13 +29,11 @@ func NewOrderBookStreamer(maxConnection int) OrderBookStreamer {
 // Subscribe will add the provided stream as a listener listening for updates.
 // It returns an error if max connections have been reached.
 func (orderBookStreamer *OrderBookStreamer) Subscribe(id string, stream rpc.Dark_SyncServer) error {
-
 	if orderBookStreamer.Splitter.CurrentConnections() >= orderBookStreamer.maxConnections {
 		return fmt.Errorf("cannot subscribe %s: connection limit reached", id)
 	}
 
 	messageQueue := NewSyncMessageQueue(stream)
-
 	return orderBookStreamer.Splitter.RunMessageQueue(id, messageQueue)
 }
 

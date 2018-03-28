@@ -34,6 +34,7 @@ var _ = Describe("sync message queue", func() {
 		var queue orderbook.SyncMessageQueue
 
 		BeforeEach(func() {
+			defer GinkgoRecover()
 			mockStream = NewMockStream()
 			queue = orderbook.NewSyncMessageQueue(mockStream)
 
@@ -42,18 +43,18 @@ var _ = Describe("sync message queue", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			}()
 
-			time.Sleep(1 *time.Second)
+			time.Sleep(1 * time.Second)
 		})
 
 		AfterEach(func() {
 			Ω(queue.Shutdown()).ShouldNot(HaveOccurred())
-			time.Sleep(1 *time.Second)
+			time.Sleep(1 * time.Second)
 		})
 
 		It("should be able to receive messages from the queue", func() {
 			By("You should see the received order message in console")
-			for i:=0 ;i <NumberOfMessages;i ++{
-				ord := newOrder([]byte(fmt.Sprintf("%d",i)))
+			for i := 0; i < NumberOfMessages; i++ {
+				ord := newOrder([]byte(fmt.Sprintf("%d", i)))
 				block := newSyncBlock(ord)
 				err := queue.Send(block)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -62,7 +63,7 @@ var _ = Describe("sync message queue", func() {
 
 		It("should not be able to receive wrong type message", func() {
 			By("You should not see message in console")
-			for i:=0 ;i <NumberOfMessages;i ++{
+			for i := 0; i < NumberOfMessages; i++ {
 				err := queue.Send(fmt.Sprintf("message %d", i))
 				Ω(err).Should(HaveOccurred())
 			}
@@ -73,16 +74,16 @@ var _ = Describe("sync message queue", func() {
 		It("should panic when you try to receive message from the queue", func() {
 			mockStream := NewMockStream()
 			queue := orderbook.NewSyncMessageQueue(mockStream)
-			Ω(func() {queue.Recv()}).Should(Panic())
+			Ω(func() { queue.Recv() }).Should(Panic())
 		})
 	})
 })
 
-func newSyncBlock(ord *order.Order) *rpc.SyncBlock{
+func newSyncBlock(ord *order.Order) *rpc.SyncBlock {
 	return &rpc.SyncBlock{
 		Signature: []byte{},
 		Timestamp: time.Now().Unix(),
-		OrderBlock:	&rpc.SyncBlock_Open	{
+		OrderBlock: &rpc.SyncBlock_Open{
 			Open: rpc.SerializeOrder(ord),
 		},
 	}

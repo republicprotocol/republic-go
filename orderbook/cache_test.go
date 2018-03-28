@@ -126,4 +126,3 @@ func newOrder(id order.ID) *order.Order {
 		Nonce:     big.NewInt(100),
 	}
 }
-
