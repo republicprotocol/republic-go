@@ -6,14 +6,17 @@ import (
 )
 
 type Splitter struct {
+	maxConnections int
+
 	outputMu *sync.RWMutex
 	output   map[string]MessageQueue
 }
 
-func NewSplitter() Splitter {
+func NewSplitter(maxConnections int) Splitter {
 	return Splitter{
-		outputMu: new(sync.RWMutex),
-		output:   map[string]MessageQueue{},
+		maxConnections: maxConnections,
+		outputMu:       new(sync.RWMutex),
+		output:         map[string]MessageQueue{},
 	}
 }
 
@@ -22,6 +25,14 @@ func NewSplitter() Splitter {
 // encounters an error, or until the Splitter is shutdown. A MessageQueue run
 // using a Splitter must not be run anywhere else.
 func (splitter *Splitter) RunMessageQueue(id string, messageQueue MessageQueue) error {
+	// Check number of connections
+	splitter.outputMu.RLock()
+	if len(splitter.output) >= splitter.maxConnections {
+		return fmt.Errorf("cannot run message queue %s: max connections reached", id)
+	}
+	splitter.outputMu.RUnlock()
+
+	// Register the message queue as a output queue
 	splitter.outputMu.Lock()
 	if _, ok := splitter.output[id]; !ok {
 		splitter.output[id] = messageQueue
@@ -31,8 +42,10 @@ func (splitter *Splitter) RunMessageQueue(id string, messageQueue MessageQueue) 
 	}
 	splitter.outputMu.Unlock()
 
+	// Start streaming message to the message queue
 	err := messageQueue.Run()
 
+	// Remove the message queue when finished
 	splitter.outputMu.Lock()
 	delete(splitter.output, id)
 	splitter.outputMu.Unlock()
@@ -40,7 +53,7 @@ func (splitter *Splitter) RunMessageQueue(id string, messageQueue MessageQueue) 
 	return err
 }
 
-// Shutdown gracefully by shuttding down all MessageQueues running in the
+// Shutdown gracefully by shutting down all MessageQueues running in the
 // Splitter.
 func (splitter *Splitter) Shutdown() {
 	splitter.outputMu.Lock()
@@ -78,11 +91,4 @@ func (splitter *Splitter) ShutdownMessageQueue(id string) {
 		_ = messageQueue.Shutdown()
 		delete(splitter.output, id)
 	}
-}
-
-func (splitter *Splitter) CurrentConnections() int {
-	splitter.outputMu.RLock()
-	defer splitter.outputMu.RUnlock()
-
-	return len(splitter.output)
 }
