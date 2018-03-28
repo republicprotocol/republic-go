@@ -19,6 +19,7 @@ func UnmarshalMultiAddress(multiAddress *MultiAddress) (identity.MultiAddress, e
 	return identity.NewMultiAddressFromString(multiAddress.MultiAddress)
 }
 
+// MarshalDeltaFragment into an RPC protobuf object.
 func MarshalDeltaFragment(deltaFragment *smpc.DeltaFragment) *DeltaFragment {
 	return &DeltaFragment{
 		Id:                  deltaFragment.ID,
@@ -35,6 +36,7 @@ func MarshalDeltaFragment(deltaFragment *smpc.DeltaFragment) *DeltaFragment {
 	}
 }
 
+// UnmarshalDeltaFragment from an RPC protobuf object.
 func UnmarshalDeltaFragment(deltaFragment *DeltaFragment) (smpc.DeltaFragment, error) {
 	val := smpc.DeltaFragment{
 		ID:                  deltaFragment.Id,
@@ -68,6 +70,7 @@ func UnmarshalDeltaFragment(deltaFragment *DeltaFragment) (smpc.DeltaFragment, e
 	return val, nil
 }
 
+// MarshalDeltaFragments into an RPC protobuf object.
 func MarshalDeltaFragments(deltaFragments smpc.DeltaFragments) *DeltaFragments {
 	val := make([]*DeltaFragment, len(deltaFragments))
 	for i := range deltaFragments {
@@ -78,6 +81,7 @@ func MarshalDeltaFragments(deltaFragments smpc.DeltaFragments) *DeltaFragments {
 	}
 }
 
+// UnmarshalDeltaFragments from an RPC protobuf object.
 func UnmarshalDeltaFragments(deltaFragments *DeltaFragments) (smpc.DeltaFragments, error) {
 	val := make(smpc.DeltaFragments, 0, len(deltaFragments.DeltaFragments))
 	for i := range deltaFragments.DeltaFragments {
