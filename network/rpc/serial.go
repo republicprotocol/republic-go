@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
@@ -78,55 +77,6 @@ func DeserializeOrderFragment(orderFragment *OrderFragment) (*order.Fragment, er
 		return nil, err
 	}
 	val.MinVolumeShare, err = shamir.FromBytes(orderFragment.MinVolumeShare)
-	if err != nil {
-		return nil, err
-	}
-	return val, nil
-}
-
-func SerializeDeltaFragment(deltaFragment *compute.DeltaFragment) *DeltaFragment {
-	return &DeltaFragment{
-		Id:                  deltaFragment.ID,
-		DeltaId:             deltaFragment.DeltaID,
-		BuyOrderId:          deltaFragment.BuyOrderID,
-		SellOrderId:         deltaFragment.SellOrderID,
-		BuyOrderFragmentId:  deltaFragment.BuyOrderFragmentID,
-		SellOrderFragmentId: deltaFragment.SellOrderFragmentID,
-		FstCodeShare:        shamir.ToBytes(deltaFragment.FstCodeShare),
-		SndCodeShare:        shamir.ToBytes(deltaFragment.SndCodeShare),
-		PriceShare:          shamir.ToBytes(deltaFragment.PriceShare),
-		MaxVolumeShare:      shamir.ToBytes(deltaFragment.MaxVolumeShare),
-		MinVolumeShare:      shamir.ToBytes(deltaFragment.MinVolumeShare),
-	}
-}
-
-func DeserializeDeltaFragment(deltaFragment *DeltaFragment) (*compute.DeltaFragment, error) {
-	val := &compute.DeltaFragment{
-		ID:                  deltaFragment.Id,
-		DeltaID:             deltaFragment.DeltaId,
-		BuyOrderID:          deltaFragment.BuyOrderId,
-		SellOrderID:         deltaFragment.SellOrderId,
-		BuyOrderFragmentID:  deltaFragment.BuyOrderFragmentId,
-		SellOrderFragmentID: deltaFragment.SellOrderFragmentId,
-	}
-	var err error
-	val.FstCodeShare, err = shamir.FromBytes(deltaFragment.FstCodeShare)
-	if err != nil {
-		return nil, err
-	}
-	val.SndCodeShare, err = shamir.FromBytes(deltaFragment.SndCodeShare)
-	if err != nil {
-		return nil, err
-	}
-	val.PriceShare, err = shamir.FromBytes(deltaFragment.PriceShare)
-	if err != nil {
-		return nil, err
-	}
-	val.MaxVolumeShare, err = shamir.FromBytes(deltaFragment.MaxVolumeShare)
-	if err != nil {
-		return nil, err
-	}
-	val.MinVolumeShare, err = shamir.FromBytes(deltaFragment.MinVolumeShare)
 	if err != nil {
 		return nil, err
 	}

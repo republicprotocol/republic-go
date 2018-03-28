@@ -1,0 +1,165 @@
+syntax = "proto3";
+
+package rpc;
+
+/**
+ * Nothing
+ */
+
+message Nothing {
+}
+
+/**
+ * Addressing and address lookup
+ */
+
+message Address {
+  string address = 1;
+}
+
+message MultiAddress {
+  bytes signature = 1;
+  string multiAddress = 2;
+}
+
+message Query {
+  MultiAddress from = 1;
+  Address target = 2;
+}
+
+/**
+ * Orders and synchronizing orders
+ */
+
+message Order {
+  OrderId id = 1;
+  int64 type = 2;
+  int64 parity = 3;
+  int64 expiry = 4;
+}
+
+message OrderId {
+  bytes signature = 1;
+  bytes orderId = 2;
+}
+
+message OrderFragment {
+  OrderFragmentId id = 1;
+  Order order = 2;
+  bytes fstCodeShare = 3;
+  bytes sndCodeShare = 4;
+  bytes priceShare = 5;
+  bytes maxVolumeShare = 6;
+  bytes minVolumeShare = 7;
+}
+
+message OrderFragmentId {
+  bytes signature = 1;
+  bytes orderFragmentId = 2;
+}
+
+message SyncRequest {
+  MultiAddress from = 1;
+}
+
+message SyncBlock {
+}
+
+message SignOrderFragmentRequest {
+  MultiAddress from = 1;
+  OrderFragmentId orderFragmentId = 2;
+}
+
+message OpenOrderRequest {
+  MultiAddress from = 1;
+  OrderFragment orderFragment = 2;
+}
+
+message CancelOrderRequest {
+  MultiAddress from = 1;
+  OrderFragmentId orderFragmentId = 2;
+}
+
+/**
+ * Swarm
+ */
+
+service Swarm {
+  rpc Ping (MultiAddress) returns (MultiAddress);
+  rpc QueryPeers (Query) returns (stream MultiAddress);
+  rpc QueryPeersDeep (Query) returns (stream MultiAddress);
+}
+
+/**
+ * Orderbook
+ */
+
+service Orderbook {
+  rpc Sync (SyncRequest) returns (stream SyncBlock);
+  rpc SignOrderFragment (OrderFragmentId) returns (OrderFragmentId);
+  rpc OpenOrder (OpenOrderRequest) returns (Nothing);
+  rpc CancelOrder (CancelOrderRequest) returns (Nothing);
+}
+
+/**
+ * Secure multipart computation
+ */
+
+message SmpcMessage {
+  MultiAddress multiAddress = 1;
+  GenerateRandomShares generateRandomShares = 2;
+  GenerateXiShares generateXiShares = 3;
+  GenerateXiFragments generateXiFragments = 4;
+  RhoSigmaFragments rhoSigmaFragments = 5;
+  DeltaFragments deltaFragments = 6;
+}
+
+message GenerateRandomShares {
+}
+
+message GenerateXiShares {
+}
+
+message GenerateXiFragments {
+}
+
+message RhoSigmaFragments {
+}
+
+message DeltaFragments {
+  bytes signature = 1;
+  repeated DeltaFragment deltaFragments = 2;
+}
+
+message Delta {
+  bytes signature = 1;
+  bytes id = 2;
+  bytes buyOrderId = 3;
+  bytes sellOrderId = 4;
+
+  bytes fstCode = 5;
+  bytes sndCode = 6;
+  bytes price = 7;
+  bytes maxVolumeShare = 8;
+  bytes minVolumeShare = 9;
+}
+
+message DeltaFragment {
+  bytes signature = 1;
+  bytes id = 2;
+  bytes deltaId = 3;
+  bytes buyOrderId = 4;
+  bytes sellOrderId = 5;
+  bytes buyOrderFragmentId = 6;
+  bytes sellOrderFragmentId = 7;
+  
+  bytes fstCodeShare = 8;
+  bytes sndCodeShare = 9;
+  bytes priceShare = 10;
+  bytes maxVolumeShare = 11;
+  bytes minVolumeShare = 12;
+}
+
+service Smpc {
+  rpc Compute (stream SmpcMessage) returns (stream SmpcMessage);
+}

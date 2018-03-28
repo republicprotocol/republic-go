@@ -2,23 +2,13 @@ package smpc
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 
 	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
-
-// A WorkerTask is recevied by workers to handle. It represents a task, or
-// multiple tasks, that need to be completed.
-type WorkerTask struct {
-	OrderFragment  *rpc.OrderFragment
-	SmpcMessage    *rpc.SmpcMessage
-	DeltaFragments DeltaFragments
-	Deltas         Deltas
-}
 
 // Workers is a slice of Worker components.
 type Workers []Worker
@@ -27,33 +17,35 @@ type Workers []Worker
 // shutdown. It is primarily responsible for decoding the message and
 // delegating work to the appropriate component.
 type Worker struct {
-	logger  *logger.Logger
 	running int32
+	logger  *logger.Logger
 
-	multiplexer   *dispatch.Multiplexer
-	messageQueues dispatch.MessageQueues
+	messageQueuesMu *sync.RWMutex
+	messageQueues   dispatch.MessageQueues
 
+	multiplexer         *dispatch.Multiplexer
 	deltaFragmentMatrix *DeltaFragmentMatrix
 	deltaBuilder        *DeltaBuilder
-	deltaHandler        DeltaHandler
+	deltaQueue          *DeltaQueue
 }
 
 // NewWorker returns a new Worker that can handle all types of WorkerTasks. It
-// will process WorkTasks serially, and if a new WorkerTask is required it will
+// will process WorkTasks serially, and if a new Message is required it will
 // send it back through the Multiplexer for scheduling to another worker. This
 // prevents new WorkerTasks from jumping the queue, providing a sense of
 // fairness in prioritization.
-func NewWorker(logger *logger.Logger, peers identity.MultiAddresses, multiplexer *dispatch.Multiplexer, messageQueues dispatch.MessageQueues, deltaFragmentMatrix *DeltaFragmentMatrix, deltaBuilder *DeltaBuilder, deltaHandler DeltaHandler) Worker {
+func NewWorker(logger *logger.Logger, messageQueues dispatch.MessageQueues, multiplexer *dispatch.Multiplexer, deltaFragmentMatrix *DeltaFragmentMatrix, deltaBuilder *DeltaBuilder, deltaQueue *DeltaQueue) Worker {
 	return Worker{
-		logger:  logger,
 		running: 1,
+		logger:  logger,
 
-		multiplexer:   multiplexer,
-		messageQueues: messageQueues,
+		messageQueuesMu: new(sync.RWMutex),
+		messageQueues:   messageQueues,
 
+		multiplexer:         multiplexer,
 		deltaFragmentMatrix: deltaFragmentMatrix,
 		deltaBuilder:        deltaBuilder,
-		deltaHandler:        deltaHandler,
+		deltaQueue:          deltaQueue,
 	}
 }
 
@@ -68,12 +60,9 @@ func (worker *Worker) Run() {
 			break
 		}
 		switch message := message.(type) {
-		case WorkerTask:
+		case Message:
 			if message.OrderFragment != nil {
 				worker.processOrderFragment(message.OrderFragment)
-			}
-			if message.SmpcMessage != nil {
-				worker.processSmpcMessage(message.SmpcMessage)
 			}
 			if message.DeltaFragments != nil {
 				worker.processDeltaFragments(message.DeltaFragments)
@@ -93,92 +82,56 @@ func (worker *Worker) Shutdown() {
 	atomic.StoreInt32(&worker.running, 0)
 }
 
-func (worker *Worker) processOrderFragment(orderFragment *rpc.OrderFragment) {
-	fragment, err := rpc.DeserializeOrderFragment(orderFragment)
-	if err != nil {
-		worker.logger.Compute(logger.Error, fmt.Sprintf("cannot deserialize order: %s", err.Error()))
-		return
-	}
+func (worker *Worker) processOrderFragment(orderFragment *order.Fragment) {
 
 	// Compute all new DeltaFragments
 	deltaFragments := DeltaFragments{}
-	if fragment.OrderParity == order.ParityBuy {
-		deltaFragments = worker.deltaFragmentMatrix.ComputeBuyOrder(fragment)
+	if orderFragment.OrderParity == order.ParityBuy {
+		deltaFragments = worker.deltaFragmentMatrix.ComputeBuyOrder(orderFragment)
 	} else {
-		deltaFragments = worker.deltaFragmentMatrix.ComputeSellOrder(fragment)
+		deltaFragments = worker.deltaFragmentMatrix.ComputeSellOrder(orderFragment)
 	}
 
-	// Send a new WorkerTask directly to the Multiplexer so that the new
+	// Send a new Message directly to the Multiplexer so that the new
 	// DeltaFragments can be processed
-	if deltaFragments != nil {
-		worker.multiplexer.Send(WorkerTask{DeltaFragments: deltaFragments})
-	}
-}
-
-func (worker *Worker) processSmpcMessage(message *rpc.SmpcMessage) {
-	if message.GenerateRandomShares != nil {
-		worker.processGenerateRandomShares(message.GenerateRandomShares)
-	}
-	if message.GenerateXiShares != nil {
-		worker.processGenerateXiShares(message.GenerateXiShares)
-	}
-	if message.GenerateXiFragments != nil {
-		worker.processGenerateXiFragment(message.GenerateXiFragments)
-	}
-	if message.RhoSigmaFragments != nil {
-		worker.processBroadcastRhoSigmaFragment(message.RhoSigmaFragments)
-	}
-	if message.DeltaFragments != nil {
-		deltaFragments := DeltaFragments{}
-		if err := deltaFragments.Unmarshal(message.DeltaFragments); err != nil {
-
-		}
-		worker.processDeltaFragments(deltaFragments)
+	if deltaFragments != nil && len(deltaFragments) > 0 {
+		worker.multiplexer.Send(Message{DeltaFragments: deltaFragments})
 	}
 }
 
 func (worker *Worker) processDeltaFragments(deltaFragments DeltaFragments) {
-	// Build new Deltas from the DeltaFragments
-	newDeltas, newDeltaFragments := worker.deltaBuilder.ComputeDelta(deltaFragments)
-	newDeltaFragmentsSerialized := make([]*rpc.DeltaFragment, len(newDeltaFragments))
-	for i := range newDeltaFragmentsSerialized {
-		newDeltaFragmentsSerialized[i] = newDeltaFragments[i].Marshal()
+	if deltaFragments == nil || len(deltaFragments) == 0 {
+		return
 	}
 
-	// Send a new WorkerTask directly to the Multiplexer so that the new
-	// Deltas can be processed
-	worker.multiplexer.Send(WorkerTask{
-		Deltas: newDeltas,
-	})
+	// Build new Deltas from the DeltaFragments
+	newDeltas, newDeltaFragments := worker.deltaBuilder.ComputeDelta(deltaFragments)
 
-	// Send a new WorkerTask to all MessageQueues available to this Worker
-	for _, messageQueue := range worker.messageQueues {
-		messageQueue.Send(WorkerTask{
-			SmpcMessage: &rpc.SmpcMessage{
-				DeltaFragments: &rpc.DeltaFragments{
-					DeltaFragments: newDeltaFragmentsSerialized,
-				},
-			},
+	// Send a new Message directly to the Multiplexer so that the new
+	// Deltas can be processed
+	if newDeltas != nil && len(newDeltas) > 0 {
+		worker.multiplexer.Send(Message{
+			Deltas: newDeltas,
 		})
+	}
+
+	if newDeltaFragments != nil && len(newDeltaFragments) > 0 {
+		// Send a new Message to all MessageQueues available to this Worker
+		worker.messageQueuesMu.RLock()
+		defer worker.messageQueuesMu.RUnlock()
+
+		for _, queue := range worker.messageQueues {
+			queue.Send(Message{
+				DeltaFragments: newDeltaFragments,
+			})
+		}
 	}
 }
 
 func (worker *Worker) processDeltas(deltas Deltas) {
-	worker.deltaHandler(deltas)
-}
-
-func (worker *Worker) processGenerateRandomShares(request *rpc.GenerateRandomShares) {
-	panic("unimplemented")
-}
-
-func (worker *Worker) processGenerateXiShares(request *rpc.GenerateXiShares) {
-	panic("unimplemented")
-}
-
-func (worker *Worker) processGenerateXiFragment(request *rpc.GenerateXiFragments) {
-	panic("unimplemented")
-}
-
-func (worker *Worker) processBroadcastRhoSigmaFragment(request *rpc.RhoSigmaFragments) {
-	panic("unimplemented")
+	for _, delta := range deltas {
+		if err := worker.deltaQueue.Send(delta); err != nil {
+			worker.logger.Compute(logger.Error, fmt.Sprintf("cannot send delta notification: %s", err.Error()))
+		}
+	}
 }

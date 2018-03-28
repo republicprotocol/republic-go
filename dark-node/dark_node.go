@@ -16,12 +16,14 @@ import (
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
 	"github.com/republicprotocol/republic-go/network/dht"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
@@ -64,6 +66,17 @@ type DarkNode struct {
 	DarkOcean         *dark.Ocean
 	DarkPool          *dark.Pool
 	EpochBlockhash    [32]byte
+
+	// Secure multiparty computations
+
+	SmpcStreamQueues        smpc.StreamQueues
+	SmpcDeltaFragmentMatrix smpc.DeltaFragmentMatrix
+	SmpcDeltaBuilder        smpc.DeltaBuilder
+	SmpcDeltas              smpc.DeltaQueue
+
+	SmpcMultiplexer dispatch.Multiplexer
+	SmpcWorkers     smpc.Workers
+	SmpcService     smpc.Service
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
@@ -121,6 +134,26 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	node.DeltaQueue = make(chan *compute.Delta, 100)
 	node.DeltaMatchWorker = NewDeltaMatchWorker(node.Logger, node.DeltaFragmentMatrix, node.DeltaQueue)
 
+	// Secure multiparty computations
+
+	node.SmpcStreamQueues = smpc.StreamQueues{}
+	node.SmpcDeltaFragmentMatrix = smpc.NewDeltaFragmentMatrix(Prime)
+	node.SmpcDeltaBuilder = smpc.NewDeltaBuilder(k, Prime)
+	node.SmpcDeltas = smpc.NewDeltaQueue(100)
+
+	node.SmpcMultiplexer = dispatch.NewMultiplexer(100)
+	node.SmpcWorkers = smpc.Workers{
+		smpc.NewWorker(
+			node.Logger,
+			node.SmpcStreamQueues,
+			&node.SmpcMultiplexer,
+			&node.SmpcDeltaFragmentMatrix,
+			&node.SmpcDeltaBuilder,
+			&node.SmpcDeltas,
+		),
+	}
+	node.SmpcService = smpc.NewService(&node.NetworkOptions.MultiAddress, &node.SmpcMultiplexer, 100)
+
 	return node, nil
 }
 
@@ -145,6 +178,7 @@ func (node *DarkNode) StartServices() {
 
 	node.Swarm.Register(node.Server)
 	node.Dark.Register(node.Server)
+	node.SmpcService.Register(node.Server)
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
 		node.Logger.Error(err.Error())
@@ -301,6 +335,7 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 		// Update the MultiAddress in the node
 		n.SetMultiAddress(*multiAddress)
 		node.DarkPool.Append(*n)
+
 	})
 
 	// In the background, continue to attempt connections to the disconnected
@@ -331,7 +366,10 @@ func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 		} else {
 			node.Logger.SellOrderReceived(logger.Info, orderFragment.OrderID.String(), orderFragment.ID.String())
 		}
-		node.OrderFragmentWorkerQueue <- orderFragment
+		// node.OrderFragmentWorkerQueue <- orderFragment
+		node.SmpcMultiplexer.Send(smpc.WorkerTask{
+			OrderFragment: orderFragment,
+		})
 	}()
 }
 
