@@ -1,11 +1,10 @@
-package client
+package rpc
 
 import (
 	"time"
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/rpc"
 )
 
 // A ClientCacheEntry is pointer to a Client that is stored in a cache. It is
@@ -89,7 +88,7 @@ func (pool *ClientPool) Ping(to identity.MultiAddress) error {
 }
 
 // QueryPeers RPC.
-func (pool *ClientPool) QueryPeers(to identity.MultiAddress, target *rpc.Address) (chan *rpc.MultiAddress, error) {
+func (pool *ClientPool) QueryPeers(to identity.MultiAddress, target *Address) (chan *MultiAddress, error) {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		return nil, err
@@ -98,7 +97,7 @@ func (pool *ClientPool) QueryPeers(to identity.MultiAddress, target *rpc.Address
 }
 
 // QueryPeersDeep RPC.
-func (pool *ClientPool) QueryPeersDeep(to identity.MultiAddress, target *rpc.Address) (chan *rpc.MultiAddress, error) {
+func (pool *ClientPool) QueryPeersDeep(to identity.MultiAddress, target *Address) (chan *MultiAddress, error) {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		return nil, err
@@ -107,7 +106,7 @@ func (pool *ClientPool) QueryPeersDeep(to identity.MultiAddress, target *rpc.Add
 }
 
 // Sync RPC.
-func (pool *ClientPool) Sync(to identity.MultiAddress) (chan *rpc.SyncBlock, error) {
+func (pool *ClientPool) Sync(to identity.MultiAddress) (chan *SyncBlock, error) {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		return nil, err
@@ -116,7 +115,7 @@ func (pool *ClientPool) Sync(to identity.MultiAddress) (chan *rpc.SyncBlock, err
 }
 
 // SignOrderFragment RPC.
-func (pool *ClientPool) SignOrderFragment(to identity.MultiAddress, orderFragmentId *rpc.OrderFragmentId) (*rpc.OrderFragmentId, error) {
+func (pool *ClientPool) SignOrderFragment(to identity.MultiAddress, orderFragmentId *OrderFragmentId) (*OrderFragmentId, error) {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		return nil, err
@@ -125,7 +124,7 @@ func (pool *ClientPool) SignOrderFragment(to identity.MultiAddress, orderFragmen
 }
 
 // OpenOrder RPC.
-func (pool *ClientPool) OpenOrder(to identity.MultiAddress, openOrderRequest *rpc.OpenOrderRequest) error {
+func (pool *ClientPool) OpenOrder(to identity.MultiAddress, openOrderRequest *OpenOrderRequest) error {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		return err
@@ -134,7 +133,7 @@ func (pool *ClientPool) OpenOrder(to identity.MultiAddress, openOrderRequest *rp
 }
 
 // CancelOrder RPC.
-func (pool *ClientPool) CancelOrder(to identity.MultiAddress, cancelOrderRequest *rpc.CancelOrderRequest) error {
+func (pool *ClientPool) CancelOrder(to identity.MultiAddress, cancelOrderRequest *CancelOrderRequest) error {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		return err

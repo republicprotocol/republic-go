@@ -9,7 +9,6 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network/dht"
-	"github.com/republicprotocol/republic-go/rpc/client"
 	"google.golang.org/grpc"
 )
 
@@ -40,12 +39,12 @@ type Options struct {
 type SwarmService struct {
 	Options
 	Logger     *logger.Logger
-	ClientPool *client.ClientPool
+	ClientPool *ClientPool
 	DHT        *dht.DHT
 }
 
 // NewSwarmService returns a SwarmService.
-func NewSwarmService(options Options, logger *logger.Logger, clientPool *client.ClientPool, dht *dht.DHT) *SwarmService {
+func NewSwarmService(options Options, logger *logger.Logger, clientPool *ClientPool, dht *dht.DHT) *SwarmService {
 	return &SwarmService{
 		Options:       options,
 		Logger:        logger,

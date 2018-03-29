@@ -1,4 +1,4 @@
-package client_test
+package rpc_test
 
 //import (
 //	"context"

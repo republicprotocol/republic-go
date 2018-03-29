@@ -13,22 +13,22 @@ import (
 )
 
 type SyncerService struct {
-	multiAddress      *identity.MultiAddress
+	multiAddress      identity.MultiAddress
 	orderBook         *orderbook.OrderBook
 	messageQueueLimit int
+}
+
+func NewSyncerService(multiAddress identity.MultiAddress, orderbook *orderbook.OrderBook, messageQueueLimit int) *SyncerService {
+	return &SyncerService{
+		multiAddress:      multiAddress,
+		orderBook:         orderbook,
+		messageQueueLimit: messageQueueLimit,
+	}
 }
 
 // Register the SyncerService with a gRPC server.
 func (service *SyncerService) Register(server *grpc.Server) {
 	RegisterSyncerServer(server, service)
-}
-
-func NewSyncerServer(multiAddress *identity.MultiAddress, orderbook *orderbook.OrderBook, messageQueueLimit int) SyncerService {
-	return SyncerService{
-		multiAddress:      multiAddress,
-		orderBook:         orderbook,
-		messageQueueLimit: messageQueueLimit,
-	}
 }
 
 func (service *SyncerService) Sync(req *SyncRequest, stream Syncer_SyncServer) error {

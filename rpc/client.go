@@ -1,4 +1,4 @@
-package client
+package rpc
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/rpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -16,14 +15,14 @@ import (
 // for all RPCs and handles all timeouts and retries.
 type Client struct {
 	Connection *grpc.ClientConn
-	To         *rpc.MultiAddress
-	From       *rpc.MultiAddress
+	To         *MultiAddress
+	From       *MultiAddress
 
 	Options ClientOptions
-	rpc.SwarmClient
-	rpc.SmpcClient
-	rpc.RelayClient
-	rpc.SyncerClient
+	SwarmClient
+	SmpcClient
+	RelayClient
+	SyncerClient
 }
 
 // NewClient returns a Client that is connected to the given MultiAddress and
@@ -41,8 +40,8 @@ func NewClient(to, from identity.MultiAddress) (*Client, error) {
 
 	client := &Client{
 		Options: DefaultClientOptions(),
-		To:      rpc.MarshalMultiAddress(&to),
-		From:    rpc.MarshalMultiAddress(&from),
+		To:      MarshalMultiAddress(&to),
+		From:    MarshalMultiAddress(&from),
 	}
 
 	if err := client.TimeoutFunc(func(ctx context.Context) error {
@@ -59,10 +58,10 @@ func NewClient(to, from identity.MultiAddress) (*Client, error) {
 		return client, err
 	}
 
-	client.SwarmClient = rpc.NewSwarmClient(client.Connection)
-	client.RelayClient = rpc.NewRelayClient(client.Connection)
-	client.SmpcClient = rpc.NewSmpcClient(client.Connection)
-	client.SyncerClient = rpc.NewSyncerClient(client.Connection)
+	client.SwarmClient = NewSwarmClient(client.Connection)
+	client.RelayClient = NewRelayClient(client.Connection)
+	client.SmpcClient = NewSmpcClient(client.Connection)
+	client.SyncerClient = NewSyncerClient(client.Connection)
 
 	return client, nil
 }
@@ -103,7 +102,7 @@ func (client *Client) StreamTimeoutFunc(f func(ctx context.Context) error) error
 	return err
 }
 
-// Ping RPC.
+// Ping 
 func (client *Client) Ping() error {
 	return client.TimeoutFunc(func(ctx context.Context) error {
 		_, err := client.SwarmClient.Ping(ctx, client.To, grpc.FailFast(false))
@@ -111,12 +110,12 @@ func (client *Client) Ping() error {
 	})
 }
 
-// QueryPeers RPC.
-func (client *Client) QueryPeers(target *rpc.Address) (chan *rpc.MultiAddress, error) {
+// QueryPeers 
+func (client *Client) QueryPeers(target *Address) (chan *MultiAddress, error) {
 
-	ch := make(chan *rpc.MultiAddress)
+	ch := make(chan *MultiAddress)
 	err := client.StreamTimeoutFunc(func(ctx context.Context) error {
-		stream, err := client.SwarmClient.QueryPeers(ctx, &rpc.Query{
+		stream, err := client.SwarmClient.QueryPeers(ctx, &Query{
 			From:   client.From,
 			Target: target,
 		}, grpc.FailFast(false))
@@ -139,11 +138,11 @@ func (client *Client) QueryPeers(target *rpc.Address) (chan *rpc.MultiAddress, e
 	return ch, err
 }
 
-// QueryPeersDeep RPC.
-func (client *Client) QueryPeersDeep(target *rpc.Address) (chan *rpc.MultiAddress, error) {
-	ch := make(chan *rpc.MultiAddress)
+// QueryPeersDeep 
+func (client *Client) QueryPeersDeep(target *Address) (chan *MultiAddress, error) {
+	ch := make(chan *MultiAddress)
 	err := client.StreamTimeoutFunc(func(ctx context.Context) error {
-		stream, err := client.SwarmClient.QueryPeersDeep(ctx, &rpc.Query{
+		stream, err := client.SwarmClient.QueryPeersDeep(ctx, &Query{
 			From:   client.From,
 			Target: target,
 		}, grpc.FailFast(false))
@@ -166,11 +165,11 @@ func (client *Client) QueryPeersDeep(target *rpc.Address) (chan *rpc.MultiAddres
 	return ch, err
 }
 
-// Sync RPC.
-func (client *Client) Sync() (chan *rpc.SyncBlock, error) {
-	ch := make(chan *rpc.SyncBlock)
+// Sync 
+func (client *Client) Sync() (chan *SyncBlock, error) {
+	ch := make(chan *SyncBlock)
 	err := client.TimeoutFunc(func(ctx context.Context) error {
-		stream, err := client.SyncerClient.Sync(ctx, &rpc.SyncRequest{
+		stream, err := client.SyncerClient.Sync(ctx, &SyncRequest{
 			From: client.From,
 		}, grpc.FailFast(false))
 		if err != nil {
@@ -196,12 +195,12 @@ func (client *Client) Sync() (chan *rpc.SyncBlock, error) {
 	return ch, err
 }
 
-// SignOrderFragment RPC.
-func (client *Client) SignOrderFragment(orderFragmentSignature *rpc.OrderFragmentId) (*rpc.OrderFragmentId, error) {
-	var val *rpc.OrderFragmentId
+// SignOrderFragment 
+func (client *Client) SignOrderFragment(orderFragmentSignature *OrderFragmentId) (*OrderFragmentId, error) {
+	var val *OrderFragmentId
 	var err error
 	err = client.TimeoutFunc(func(ctx context.Context) error {
-		val, err = client.RelayClient.SignOrderFragment(ctx, &rpc.OrderFragmentId{
+		val, err = client.RelayClient.SignOrderFragment(ctx, &OrderFragmentId{
 			Signature: orderFragmentSignature.Signature,
 			OrderFragmentId: orderFragmentSignature.OrderFragmentId,
 		}, grpc.FailFast(false))
@@ -210,10 +209,10 @@ func (client *Client) SignOrderFragment(orderFragmentSignature *rpc.OrderFragmen
 	return val, err
 }
 
-// OpenOrder RPC.
-func (client *Client) OpenOrder(openOrderRequest *rpc.OpenOrderRequest) error {
+// OpenOrder 
+func (client *Client) OpenOrder(openOrderRequest *OpenOrderRequest) error {
 	return client.TimeoutFunc(func(ctx context.Context) error {
-		_, err := client.RelayClient.OpenOrder(ctx, &rpc.OpenOrderRequest{
+		_, err := client.RelayClient.OpenOrder(ctx, &OpenOrderRequest{
 			From:           client.From,
 			OrderFragment:  openOrderRequest.OrderFragment,
 		}, grpc.FailFast(false))
@@ -221,10 +220,10 @@ func (client *Client) OpenOrder(openOrderRequest *rpc.OpenOrderRequest) error {
 	})
 }
 
-// CancelOrder RPC.
-func (client *Client) CancelOrder(cancelOrderRequest *rpc.CancelOrderRequest) error {
+// CancelOrder 
+func (client *Client) CancelOrder(cancelOrderRequest *CancelOrderRequest) error {
 	return client.TimeoutFunc(func(ctx context.Context) error {
-		_, err := client.RelayClient.CancelOrder(ctx, &rpc.CancelOrderRequest{
+		_, err := client.RelayClient.CancelOrder(ctx, &CancelOrderRequest{
 			From:           client.From,
 			OrderFragmentId: cancelOrderRequest.OrderFragmentId,
 		}, grpc.FailFast(false))
@@ -232,20 +231,20 @@ func (client *Client) CancelOrder(cancelOrderRequest *rpc.CancelOrderRequest) er
 	})
 }
 
-//// RandomFragmentShares RPC.
+//// RandomFragmentShares 
 //func (client *Client) RandomFragmentShares() (*RandomFragments, error) {
 //	var val *RandomFragments
 //	var err error
 //	err = client.TimeoutFunc(func(ctx context.Context) error {
 //		val, err = client.DarkClient.RandomFragmentShares(ctx, &RandomFragmentSharesRequest{
 //			From: client.From,
-//		}, grpc.FailFast(false))
+//		}, gFailFast(false))
 //		return err
 //	})
 //	return val, err
 //}
 
-//// ResidueFragmentShares RPC.
+//// ResidueFragmentShares 
 //func (client *Client) ResidueFragmentShares(randomFragments *RandomFragments) (*ResidueFragments, error) {
 //	var val *ResidueFragments
 //	var err error
@@ -253,24 +252,24 @@ func (client *Client) CancelOrder(cancelOrderRequest *rpc.CancelOrderRequest) er
 //		val, err = client.DarkClient.ResidueFragmentShares(ctx, &ResidueFragmentSharesRequest{
 //			From:            client.From,
 //			RandomFragments: randomFragments,
-//		}, grpc.FailFast(false))
+//		}, gFailFast(false))
 //		return err
 //	})
 //	return val, err
 //}
 
-//// ComputeResidueFragment RPC.
+//// ComputeResidueFragment 
 //func (client *Client) ComputeResidueFragment(residueFragments *ResidueFragments) error {
 //	return client.TimeoutFunc(func(ctx context.Context) error {
 //		_, err := client.DarkClient.ComputeResidueFragment(ctx, &ComputeResidueFragmentRequest{
 //			From:             client.From,
 //			ResidueFragments: residueFragments,
-//		}, grpc.FailFast(false))
+//		}, gFailFast(false))
 //		return err
 //	})
 //}
 
-//// BroadcastAlphaBetaFragment RPC.
+//// BroadcastAlphaBetaFragment 
 //func (client *Client) BroadcastAlphaBetaFragment(alphaBetaFragment *AlphaBetaFragment) (*AlphaBetaFragment, error) {
 //	var val *AlphaBetaFragment
 //	var err error
@@ -278,13 +277,13 @@ func (client *Client) CancelOrder(cancelOrderRequest *rpc.CancelOrderRequest) er
 //		val, err = client.DarkClient.BroadcastAlphaBetaFragment(ctx, &BroadcastAlphaBetaFragmentRequest{
 //			From:              client.From,
 //			AlphaBetaFragment: alphaBetaFragment,
-//		}, grpc.FailFast(false))
+//		}, gFailFast(false))
 //		return err
 //	})
 //	return val, err
 //}
 
-//// BroadcastDeltaFragment RPC.
+//// BroadcastDeltaFragment 
 //func (client *Client) BroadcastDeltaFragment(deltaFragment *DeltaFragment) (*DeltaFragment, error) {
 //	var val *DeltaFragment
 //	var err error
@@ -292,7 +291,7 @@ func (client *Client) CancelOrder(cancelOrderRequest *rpc.CancelOrderRequest) er
 //		val, err = client.DarkClient.BroadcastDeltaFragment(ctx, &BroadcastDeltaFragmentRequest{
 //			From:          client.From,
 //			DeltaFragment: deltaFragment,
-//		}, grpc.FailFast(false))
+//		}, gFailFast(false))
 //		return err
 //	})
 //	return val, err
