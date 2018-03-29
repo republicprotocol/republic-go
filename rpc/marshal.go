@@ -9,6 +9,19 @@ import (
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
+// MarshalAddress into an RPC protobuf object.
+func MarshalAddress(address identity.Address) *Address {
+	return &Address{
+		Address: address.String(),
+	}
+}
+
+// MarshalAddress into an RPC protobuf object.
+func UnmarshalAddress(address *Address) identity.Address {
+	return identity.Address(address.Address)
+}
+
+
 // MarshalMultiAddress into an RPC protobuf object.
 func MarshalMultiAddress(multiAddress *identity.MultiAddress) *MultiAddress {
 	return &MultiAddress{
