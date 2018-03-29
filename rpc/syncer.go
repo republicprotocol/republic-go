@@ -51,7 +51,7 @@ func (service *SyncerService) Sync(req *SyncRequest, stream Syncer_SyncServer) e
 }
 
 func (service *SyncerService) sync(req *SyncRequest, stream Syncer_SyncServer, quit chan struct{}) error {
-	// Verify the sync request 
+	// Verify the sync request
 	multiAddress, err := UnmarshalMultiAddress(req.From)
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func (queue SyncerServerStreamQueue) Run() error {
 
 func (queue SyncerServerStreamQueue) Shutdown() error {
 	var err error
-	
+
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic caught on shutdown: %v", r)
@@ -113,13 +113,13 @@ func (queue SyncerServerStreamQueue) Send(message dispatch.Message) error {
 			err = fmt.Errorf("panic caught on send: %v", r)
 		}
 	}()
-	
+
 	block, ok := message.(*SyncBlock)
 	if !ok {
 		return fmt.Errorf("wrong message type, has %T expect *rpc.SyncBlock", message)
 	}
 	queue.write <- block
-	
+
 	return err
 }
 
@@ -190,7 +190,7 @@ func (queue SyncerClientStreamQueue) Recv() (dispatch.Message, bool) {
 	var status order.Status
 	var ord order.Order
 	orderType := message.GetOrderBlock()
-	switch orderType.(type){
+	switch orderType.(type) {
 	case *SyncBlock_Open:
 		ord = UnmarshalOrder(message.OrderBlock.(*SyncBlock_Open).Open)
 		status = order.Open

@@ -98,10 +98,10 @@ func UnmarshalDeltaFragments(deltaFragments *DeltaFragments) (smpc.DeltaFragment
 }
 
 // MarshalOrder into an RPC protobuf object
-func MarshalOrder(ord *order.Order) *Order{
+func MarshalOrder(ord *order.Order) *Order {
 	rpcOrder := new(Order)
 	rpcOrder.Id = &OrderId{
-		OrderId:ord.ID,
+		OrderId:   ord.ID,
 		Signature: ord.Signature,
 	}
 	rpcOrder.Type = int64(ord.Type)
@@ -112,7 +112,7 @@ func MarshalOrder(ord *order.Order) *Order{
 }
 
 // UnmarshalOrder from an RPC protobuf object.
-func UnmarshalOrder (rpcOrder *Order) order.Order{
+func UnmarshalOrder(rpcOrder *Order) order.Order {
 	ord := order.Order{}
 	ord.ID = rpcOrder.Id.OrderId
 	ord.Signature = rpcOrder.Id.Signature

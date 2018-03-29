@@ -101,5 +101,3 @@ func (orderBookCache *OrderBookCache) Blocks() []Message {
 
 	return blocks
 }
-
-

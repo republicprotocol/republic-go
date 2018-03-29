@@ -162,7 +162,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 		),
 	}
 	node.SmpcService = newrpc.NewSmpcService(&node.NetworkOptions.MultiAddress, &node.SmpcMultiplexer, 100)
-	node.SyncService = newrpc.NewSyncerServer(&node.NetworkOptions.MultiAddress, node.OrderBook,3)
+	node.SyncService = newrpc.NewSyncerServer(&node.NetworkOptions.MultiAddress, node.OrderBook, 3)
 
 	return node, nil
 }
@@ -390,10 +390,10 @@ func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 		// Notify the orderbook about the new order
 		ord := order.Order{
 			Signature: orderFragment.Signature,
-			ID:orderFragment.OrderID,
-			Type: orderFragment.OrderType,
-			Parity: orderFragment.OrderParity,
-			Expiry: orderFragment.OrderExpiry,
+			ID:        orderFragment.OrderID,
+			Type:      orderFragment.OrderType,
+			Parity:    orderFragment.OrderParity,
+			Expiry:    orderFragment.OrderExpiry,
 		}
 		node.OrderBook.Open(ord)
 	}()

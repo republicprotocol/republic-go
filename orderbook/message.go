@@ -12,7 +12,7 @@ type Message struct {
 }
 
 // NewMessage returns a new orderbook message.
-func NewMessage(ord order.Order, status order.Status,err error) Message {
+func NewMessage(ord order.Order, status order.Status, err error) Message {
 	return Message{
 		Ord:    ord,
 		Status: status,
