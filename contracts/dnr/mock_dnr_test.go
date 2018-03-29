@@ -2,16 +2,16 @@ package dnr_test
 
 import (
 	"fmt"
-	"math/big"
 	"sync"
 	"time"
+
+	"github.com/republicprotocol/republic-go/stackint"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/crypto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
@@ -67,11 +67,12 @@ var _ = Describe("Dark nodes", func() {
 
 			for i := 0; i < NumberOfTestNODES; i++ {
 
+				bond := stackint.FromUint(100)
 				configs[i] = MockConfig()
 				MockDarkNodeRegistrar.Register(
 					configs[i].NetworkOptions.MultiAddress.ID(),
-					append(configs[i].RepublicKeyPair.PublicKey.X.Bytes(), configs[i].RepublicKeyPair.PublicKey.Y.Bytes()...),
-					big.NewInt(100),
+					append(configs[i].KeyPair.PublicKey.X.Bytes(), configs[i].KeyPair.PublicKey.Y.Bytes()...),
+					&bond,
 				)
 				ethAddresses[i] = bind.NewKeyedTransactor(configs[i].EthereumKey.PrivateKey)
 				nodes[i], err = node.NewDarkNode(*configs[i], MockDarkNodeRegistrar)
@@ -87,15 +88,9 @@ var _ = Describe("Dark nodes", func() {
 			mu.Unlock()
 		})
 
-		It("WatchForDarkOceanChanges sends a new DarkOceanOverlay on a channel whenever the epoch changes", func() {
-			channel := make(chan do.Option, 1)
-			MockDarkNodeRegistrar.Epoch()
-			Eventually(channel).Should(Receive())
-		})
-
 		It("Registration checking returns the correct result", func() {
 			id0 := nodes[0].NetworkOptions.MultiAddress.ID()
-			pub := append(nodes[0].Config.RepublicKeyPair.PublicKey.X.Bytes(), nodes[0].Config.RepublicKeyPair.PublicKey.Y.Bytes()...)
+			pub := append(nodes[0].Config.KeyPair.PublicKey.X.Bytes(), nodes[0].Config.KeyPair.PublicKey.Y.Bytes()...)
 			MockDarkNodeRegistrar.Deregister(id0)
 
 			// Before epoch, should still be registered
@@ -107,7 +102,8 @@ var _ = Describe("Dark nodes", func() {
 			// After epoch, should be deregistered
 			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodeRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
 
-			MockDarkNodeRegistrar.Register(id0, pub, big.NewInt(100))
+			bond := stackint.FromUint(100)
+			MockDarkNodeRegistrar.Register(id0, pub, &bond)
 
 			// Before epoch, should still be deregistered
 			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodeRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
@@ -149,10 +145,9 @@ func MockConfig() *node.Config {
 		NetworkOptions: network.Options{
 			MultiAddress: multiAddress,
 		},
-		RepublicKeyPair: &keypair,
-		RSAKeyPair:      &keypair,
-		EthereumKey:     ethereumKey,
-		Port:            port,
-		Host:            host,
+		KeyPair:     keypair,
+		EthereumKey: *ethereumKey,
+		Port:        port,
+		Host:        host,
 	}
 }

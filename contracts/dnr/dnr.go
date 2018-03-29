@@ -3,7 +3,6 @@ package dnr
 import (
 	"context"
 	"errors"
-	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -11,24 +10,25 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/republicprotocol/republic-go/contracts/bindings"
 	"github.com/republicprotocol/republic-go/contracts/connection"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 // DarkNodeRegistrar is the interface defining the Dark Node Registrar
 type DarkNodeRegistrar interface {
-	Register(darkNodeID []byte, publicKey []byte, bond *big.Int) (*types.Transaction, error)
+	Register(darkNodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error)
 	Deregister(darkNodeID []byte) (*types.Transaction, error)
 	Refund(darkNodeID []byte) (*types.Transaction, error)
 	Epoch() (*types.Transaction, error)
 
 	CurrentEpoch() (Epoch, error)
-	GetBond(darkNodeID []byte) (*big.Int, error)
+	GetBond(darkNodeID []byte) (stackint.Int1024, error)
 	GetCommitment(darkNodeID []byte) ([32]byte, error)
 	GetOwner(darkNodeID []byte) (common.Address, error)
 	GetPublicKey(darkNodeID []byte) ([]byte, error)
 	GetAllNodes() ([][]byte, error)
 
-	MinimumBond() (*big.Int, error)
-	MinimumEpochInterval() (*big.Int, error)
+	MinimumBond() (stackint.Int1024, error)
+	MinimumEpochInterval() (stackint.Int1024, error)
 
 	IsDarkNodeRegistered(darkNodeID []byte) (bool, error)
 	IsDarkNodePendingRegistration(darkNodeID []byte) (bool, error)
@@ -38,7 +38,7 @@ type DarkNodeRegistrar interface {
 // Epoch contains a blockhash and a timestamp
 type Epoch struct {
 	Blockhash [32]byte
-	Timestamp *big.Int
+	Timestamp *stackint.Int1024
 }
 
 // EthereumDarkNodeRegistrar is the dark node interface
@@ -74,8 +74,12 @@ func NewEthereumDarkNodeRegistrar(context context.Context, clientDetails *connec
 }
 
 // Register registers a new dark node
-func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Register(darkNodeID []byte, publicKey []byte, bond *big.Int) (*types.Transaction, error) {
-	allowance, err := darkNodeRegistrar.tokenBinding.Allowance(darkNodeRegistrar.auth2, darkNodeRegistrar.auth1.From, darkNodeRegistrar.darkNodeRegistrarAddress)
+func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Register(darkNodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
+	allowanceBig, err := darkNodeRegistrar.tokenBinding.Allowance(darkNodeRegistrar.auth2, darkNodeRegistrar.auth1.From, darkNodeRegistrar.darkNodeRegistrarAddress)
+	if err != nil {
+		return &types.Transaction{}, err
+	}
+	allowance, err := stackint.FromBigInt(allowanceBig)
 	if err != nil {
 		return &types.Transaction{}, err
 	}
@@ -88,7 +92,7 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Register(darkNodeID []byte, 
 		return &types.Transaction{}, err
 	}
 
-	txn, err := darkNodeRegistrar.binding.Register(darkNodeRegistrar.auth1, darkNodeIDByte, publicKey, bond)
+	txn, err := darkNodeRegistrar.binding.Register(darkNodeRegistrar.auth1, darkNodeIDByte, publicKey, bond.ToBigInt())
 	if err == nil {
 		_, err := connection.PatchedWaitMined(darkNodeRegistrar.context, *darkNodeRegistrar.client, txn)
 		return txn, err
@@ -111,12 +115,16 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) Deregister(darkNodeID []byte
 }
 
 // GetBond gets the bond of an existing dark node
-func (darkNodeRegistrar *EthereumDarkNodeRegistrar) GetBond(darkNodeID []byte) (*big.Int, error) {
+func (darkNodeRegistrar *EthereumDarkNodeRegistrar) GetBond(darkNodeID []byte) (stackint.Int1024, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
-		return &big.Int{}, err
+		return stackint.Int1024{}, err
 	}
-	return darkNodeRegistrar.binding.GetBond(darkNodeRegistrar.auth2, darkNodeIDByte)
+	bond, err := darkNodeRegistrar.binding.GetBond(darkNodeRegistrar.auth2, darkNodeIDByte)
+	if err != nil {
+		return stackint.Int1024{}, err
+	}
+	return stackint.FromBigInt(bond)
 }
 
 // IsDarkNodeRegistered check's whether a dark node is registered or not
@@ -139,7 +147,17 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) IsDarkNodePendingRegistratio
 
 // CurrentEpoch returns the current epoch
 func (darkNodeRegistrar *EthereumDarkNodeRegistrar) CurrentEpoch() (Epoch, error) {
-	return darkNodeRegistrar.binding.CurrentEpoch(darkNodeRegistrar.auth2)
+	epoch, err := darkNodeRegistrar.binding.CurrentEpoch(darkNodeRegistrar.auth2)
+	if err != nil {
+		return Epoch{}, err
+	}
+	timestamp, err := stackint.FromBigInt(epoch.Timestamp)
+	if err != nil {
+		return Epoch{}, err
+	}
+	return Epoch{
+		epoch.Blockhash, &timestamp,
+	}, nil
 }
 
 // Epoch updates the current Epoch
@@ -194,13 +212,21 @@ func (darkNodeRegistrar *EthereumDarkNodeRegistrar) GetAllNodes() ([][]byte, err
 }
 
 // MinimumBond gets the minimum viable bonda mount
-func (darkNodeRegistrar *EthereumDarkNodeRegistrar) MinimumBond() (*big.Int, error) {
-	return darkNodeRegistrar.binding.MinimumBond(darkNodeRegistrar.auth2)
+func (darkNodeRegistrar *EthereumDarkNodeRegistrar) MinimumBond() (stackint.Int1024, error) {
+	bond, err := darkNodeRegistrar.binding.MinimumBond(darkNodeRegistrar.auth2)
+	if err != nil {
+		return stackint.Int1024{}, err
+	}
+	return stackint.FromBigInt(bond)
 }
 
 // MinimumEpochInterval gets the minimum epoch interval
-func (darkNodeRegistrar *EthereumDarkNodeRegistrar) MinimumEpochInterval() (*big.Int, error) {
-	return darkNodeRegistrar.binding.MinimumEpochInterval(darkNodeRegistrar.auth2)
+func (darkNodeRegistrar *EthereumDarkNodeRegistrar) MinimumEpochInterval() (stackint.Int1024, error) {
+	interval, err := darkNodeRegistrar.binding.MinimumEpochInterval(darkNodeRegistrar.auth2)
+	if err != nil {
+		return stackint.Int1024{}, err
+	}
+	return stackint.FromBigInt(interval)
 }
 
 // Refund refunds the bond of an unregistered miner
