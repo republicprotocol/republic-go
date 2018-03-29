@@ -53,7 +53,7 @@ var _ = Describe("Dark nodes", func() {
 	// Bootstrapping
 	for _, numberOfNodes := range []int{15} {
 		func(numberOfNodes int) {
-			Context(fmt.Sprintf("when bootstrapping %d nodes", numberOfNodes), func() {
+			FContext(fmt.Sprintf("when bootstrapping %d nodes", numberOfNodes), func() {
 
 				var err error
 				var nodes []*node.DarkNode

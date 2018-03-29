@@ -8,7 +8,7 @@ import (
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republgic-go/orderbook"
 	"google.golang.org/grpc"
 )
 

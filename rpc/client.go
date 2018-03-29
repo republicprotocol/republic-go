@@ -14,15 +14,15 @@ import (
 // A Client is used to create and mange a gRPC connection. It provides methods
 // for all RPCs and handles all timeouts and retries.
 type Client struct {
+	SmpcClient
+	SwarmClient
+	RelayClient
+	SyncerClient
+
 	Connection *grpc.ClientConn
 	To         *MultiAddress
 	From       *MultiAddress
-
-	Options ClientOptions
-	SwarmClient
-	SmpcClient
-	RelayClient
-	SyncerClient
+	Options    ClientOptions
 }
 
 // NewClient returns a Client that is connected to the given MultiAddress and
@@ -58,16 +58,16 @@ func NewClient(to, from identity.MultiAddress) (*Client, error) {
 		return client, err
 	}
 
+	client.SmpcClient = NewSmpcClient(client.Connection)
 	client.SwarmClient = NewSwarmClient(client.Connection)
 	client.RelayClient = NewRelayClient(client.Connection)
-	client.SmpcClient = NewSmpcClient(client.Connection)
 	client.SyncerClient = NewSyncerClient(client.Connection)
 
 	return client, nil
 }
 
 // TimeoutFunc uses the timeout options of the Client to call a function. It
-// returns the last error that occured, or nil.
+// returns the last error that occurred, or nil.
 func (client *Client) TimeoutFunc(f func(ctx context.Context) error) error {
 	var err error
 	for i := 0; i < client.Options.TimeoutRetries; i++ {
@@ -82,7 +82,7 @@ func (client *Client) TimeoutFunc(f func(ctx context.Context) error) error {
 }
 
 // StreamTimeoutFunc uses the timeout options of the Client to call a function.
-// It returns the last error that occured, or nil. If the RPC is successful it
+// It returns the last error that occurred, or nil. If the RPC is successful it
 // will not cancel the context.
 func (client *Client) StreamTimeoutFunc(f func(ctx context.Context) error) error {
 	var err error
@@ -102,7 +102,7 @@ func (client *Client) StreamTimeoutFunc(f func(ctx context.Context) error) error
 	return err
 }
 
-// Ping 
+// Ping RPC.
 func (client *Client) Ping() error {
 	return client.TimeoutFunc(func(ctx context.Context) error {
 		_, err := client.SwarmClient.Ping(ctx, client.To, grpc.FailFast(false))
@@ -110,7 +110,7 @@ func (client *Client) Ping() error {
 	})
 }
 
-// QueryPeers 
+// QueryPeers RPC.
 func (client *Client) QueryPeers(target *Address) (chan *MultiAddress, error) {
 
 	ch := make(chan *MultiAddress)
@@ -138,7 +138,7 @@ func (client *Client) QueryPeers(target *Address) (chan *MultiAddress, error) {
 	return ch, err
 }
 
-// QueryPeersDeep 
+// QueryPeersDeep RPC.
 func (client *Client) QueryPeersDeep(target *Address) (chan *MultiAddress, error) {
 	ch := make(chan *MultiAddress)
 	err := client.StreamTimeoutFunc(func(ctx context.Context) error {
@@ -165,7 +165,7 @@ func (client *Client) QueryPeersDeep(target *Address) (chan *MultiAddress, error
 	return ch, err
 }
 
-// Sync 
+// Sync RPC.
 func (client *Client) Sync() (chan *SyncBlock, error) {
 	ch := make(chan *SyncBlock)
 	err := client.TimeoutFunc(func(ctx context.Context) error {
@@ -195,13 +195,13 @@ func (client *Client) Sync() (chan *SyncBlock, error) {
 	return ch, err
 }
 
-// SignOrderFragment 
+// SignOrderFragment RPC.
 func (client *Client) SignOrderFragment(orderFragmentSignature *OrderFragmentId) (*OrderFragmentId, error) {
 	var val *OrderFragmentId
 	var err error
 	err = client.TimeoutFunc(func(ctx context.Context) error {
 		val, err = client.RelayClient.SignOrderFragment(ctx, &OrderFragmentId{
-			Signature: orderFragmentSignature.Signature,
+			Signature:       orderFragmentSignature.Signature,
 			OrderFragmentId: orderFragmentSignature.OrderFragmentId,
 		}, grpc.FailFast(false))
 		return err
@@ -209,29 +209,29 @@ func (client *Client) SignOrderFragment(orderFragmentSignature *OrderFragmentId)
 	return val, err
 }
 
-// OpenOrder 
+// OpenOrder RPC.
 func (client *Client) OpenOrder(openOrderRequest *OpenOrderRequest) error {
 	return client.TimeoutFunc(func(ctx context.Context) error {
 		_, err := client.RelayClient.OpenOrder(ctx, &OpenOrderRequest{
-			From:           client.From,
-			OrderFragment:  openOrderRequest.OrderFragment,
+			From:          client.From,
+			OrderFragment: openOrderRequest.OrderFragment,
 		}, grpc.FailFast(false))
 		return err
 	})
 }
 
-// CancelOrder 
+// CancelOrder RPC.
 func (client *Client) CancelOrder(cancelOrderRequest *CancelOrderRequest) error {
 	return client.TimeoutFunc(func(ctx context.Context) error {
 		_, err := client.RelayClient.CancelOrder(ctx, &CancelOrderRequest{
-			From:           client.From,
+			From:            client.From,
 			OrderFragmentId: cancelOrderRequest.OrderFragmentId,
 		}, grpc.FailFast(false))
 		return err
 	})
 }
 
-//// RandomFragmentShares 
+//// RandomFragmentShares
 //func (client *Client) RandomFragmentShares() (*RandomFragments, error) {
 //	var val *RandomFragments
 //	var err error
@@ -244,7 +244,7 @@ func (client *Client) CancelOrder(cancelOrderRequest *CancelOrderRequest) error 
 //	return val, err
 //}
 
-//// ResidueFragmentShares 
+//// ResidueFragmentShares
 //func (client *Client) ResidueFragmentShares(randomFragments *RandomFragments) (*ResidueFragments, error) {
 //	var val *ResidueFragments
 //	var err error
@@ -258,7 +258,7 @@ func (client *Client) CancelOrder(cancelOrderRequest *CancelOrderRequest) error 
 //	return val, err
 //}
 
-//// ComputeResidueFragment 
+//// ComputeResidueFragment
 //func (client *Client) ComputeResidueFragment(residueFragments *ResidueFragments) error {
 //	return client.TimeoutFunc(func(ctx context.Context) error {
 //		_, err := client.DarkClient.ComputeResidueFragment(ctx, &ComputeResidueFragmentRequest{
@@ -269,7 +269,7 @@ func (client *Client) CancelOrder(cancelOrderRequest *CancelOrderRequest) error 
 //	})
 //}
 
-//// BroadcastAlphaBetaFragment 
+//// BroadcastAlphaBetaFragment
 //func (client *Client) BroadcastAlphaBetaFragment(alphaBetaFragment *AlphaBetaFragment) (*AlphaBetaFragment, error) {
 //	var val *AlphaBetaFragment
 //	var err error
@@ -283,7 +283,7 @@ func (client *Client) CancelOrder(cancelOrderRequest *CancelOrderRequest) error 
 //	return val, err
 //}
 
-//// BroadcastDeltaFragment 
+//// BroadcastDeltaFragment
 //func (client *Client) BroadcastDeltaFragment(deltaFragment *DeltaFragment) (*DeltaFragment, error) {
 //	var val *DeltaFragment
 //	var err error

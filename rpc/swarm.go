@@ -252,9 +252,9 @@ func (service *SwarmService) queryPeersDeep(query *Query, stream Swarm_QueryPeer
 			continue
 		}
 
-		for serializedCandidate := range candidates {
+		for marshaledCandidate := range candidates {
 
-			candidate, err :=  UnmarshalMultiAddress(serializedCandidate)
+			candidate, err :=  UnmarshalMultiAddress(marshaledCandidate)
 			if err != nil {
 				return err
 			}
@@ -263,7 +263,7 @@ func (service *SwarmService) queryPeersDeep(query *Query, stream Swarm_QueryPeer
 			}
 			// Expand the frontier by candidates that have not already been
 			// explored, and store them in a persistent list of close peers.
-			if err := stream.Send(serializedCandidate); err != nil {
+			if err := stream.Send(marshaledCandidate); err != nil {
 				return err
 			}
 			frontier = append(frontier, candidate)
@@ -285,8 +285,8 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 
 	// Peers returned by the query will be added to the DHT.
 	numberOfPeers := 0
-	for serializedPeer := range peers {
-		peer, err := UnmarshalMultiAddress(serializedPeer)
+	for marshaledPeer := range peers {
+		peer, err := UnmarshalMultiAddress(marshaledPeer)
 		if err != nil {
 			service.Logger.Error(fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
 			continue
@@ -344,21 +344,21 @@ func (service *SwarmService) FindNode(targetID identity.ID) (*identity.MultiAddr
 		return nil, err
 	}
 
-	serializedTarget := MarshalAddress(target)
+	marshaledTarget := MarshalAddress(target)
 	for _, peer := range peers {
-		candidates, err := service.ClientPool.QueryPeersDeep(peer, serializedTarget)
+		candidates, err := service.ClientPool.QueryPeersDeep(peer, marshaledTarget)
 		if err != nil {
 			service.Logger.Error(fmt.Sprintf("error finding node: %s", err.Error()))
 			continue
 		}
 		for candidate := range candidates {
-			deserializedCandidate, err := UnmarshalMultiAddress(candidate)
+			unmarshalCandidate, err := UnmarshalMultiAddress(candidate)
 			if err != nil {
 				service.Logger.Error(fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
 				continue
 			}
-			if target == deserializedCandidate.Address() {
-				return &deserializedCandidate, nil
+			if target == unmarshalCandidate.Address() {
+				return &unmarshalCandidate, nil
 			}
 		}
 	}

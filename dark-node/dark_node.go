@@ -18,12 +18,10 @@ import (
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/network"
 	"github.com/republicprotocol/republic-go/network/dht"
-	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
-	newrpc "github.com/republicprotocol/republic-go/rpc"
+	"github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
@@ -60,8 +58,8 @@ type DarkNode struct {
 	DeltaMatchWorker                  *DeltaMatchWorker
 
 	Server *grpc.Server
-	Swarm  *network.SwarmService
-	Dark   *network.DarkService
+	Swarm  *rpc.SwarmService
+	Syncer   *rpc.SyncerService
 
 	DarkNodeRegistrar dnr.DarkNodeRegistrar
 	DarkOcean         *dark.Ocean
@@ -77,10 +75,9 @@ type DarkNode struct {
 
 	SmpcMultiplexer dispatch.Multiplexer
 	SmpcWorkers     smpc.Workers
-	SmpcService     newrpc.SmpcService
+	SmpcService     rpc.SmpcService
 
 	OrderBook   *orderbook.OrderBook
-	SyncService newrpc.SyncerService
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
@@ -113,7 +110,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	if darkPool := node.DarkOcean.FindPool(node.ID); darkPool != nil {
 		node.DarkPool = darkPool
 	}
-	k := int64(node.DarkPool.Size()*2/3 + 1)
+	// k := int64(node.DarkPool.Size()*2/3 + 1)
 
 	// Create all networking components and services
 	node.ClientPool = rpc.NewClientPool(node.NetworkOptions.MultiAddress).
@@ -128,41 +125,22 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	node.OrderBook = orderbook.NewOrderBook(3)
 
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
-	node.Swarm = network.NewSwarmService(node, node.NetworkOptions, node.Logger, node.ClientPool, node.DHT)
-	node.Dark = network.NewDarkService(node, node.NetworkOptions, node.Logger)
+	node.Swarm = rpc.NewSwarmService( node.NetworkOptions, node.Logger, node.ClientPool, node.DHT)
+	node.Syncer = rpc.NewSyncerService(node.NetworkOptions.MultiAddress, node.OrderBook, 3)
 
-	// Create all background workers that will do all of the actual work
-	node.DeltaBuilder = compute.NewDeltaBuilder(k, Prime)
-	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(Prime)
-	node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
-	node.OrderFragmentWorker = NewOrderFragmentWorker(node.Logger, node.DeltaFragmentMatrix, node.OrderFragmentWorkerQueue)
-	node.DeltaFragmentBroadcastWorkerQueue = make(chan *compute.DeltaFragment, 100)
-	node.DeltaFragmentBroadcastWorker = NewDeltaFragmentBroadcastWorker(node.Logger, node.ClientPool, node.DarkPool, node.DeltaFragmentBroadcastWorkerQueue)
-	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
-	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.Logger, node.DeltaBuilder, node.DeltaFragmentWorkerQueue)
-	node.DeltaQueue = make(chan *compute.Delta, 100)
-	node.DeltaMatchWorker = NewDeltaMatchWorker(node.Logger, node.DeltaFragmentMatrix, node.DeltaQueue)
+	//// Create all background workers that will do all of the actual work
+	//node.DeltaBuilder = compute.NewDeltaBuilder(k, Prime)
+	//node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(Prime)
+	//node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
+	//node.OrderFragmentWorker = NewOrderFragmentWorker(node.Logger, node.DeltaFragmentMatrix, node.OrderFragmentWorkerQueue)
+	//node.DeltaFragmentBroadcastWorkerQueue = make(chan *compute.DeltaFragment, 100)
+	//node.DeltaFragmentBroadcastWorker = NewDeltaFragmentBroadcastWorker(node.Logger, node.ClientPool, node.DarkPool, node.DeltaFragmentBroadcastWorkerQueue)
+	//node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
+	//node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.Logger, node.DeltaBuilder, node.DeltaFragmentWorkerQueue)
+	//node.DeltaQueue = make(chan *compute.Delta, 100)
+	//node.DeltaMatchWorker = NewDeltaMatchWorker(node.Logger, node.DeltaFragmentMatrix, node.DeltaQueue)
 
-	// Secure multiparty computations
-
-	node.SmpcStreamQueues = smpc.StreamQueues{}
-	node.SmpcDeltaFragmentMatrix = smpc.NewDeltaFragmentMatrix(Prime)
-	node.SmpcDeltaBuilder = smpc.NewDeltaBuilder(k, Prime)
-	node.SmpcDeltas = smpc.NewDeltaQueue(100)
-
-	node.SmpcMultiplexer = dispatch.NewMultiplexer(100)
-	node.SmpcWorkers = smpc.Workers{
-		smpc.NewWorker(
-			node.Logger,
-			node.SmpcStreamQueues,
-			&node.SmpcMultiplexer,
-			&node.SmpcDeltaFragmentMatrix,
-			&node.SmpcDeltaBuilder,
-			&node.SmpcDeltas,
-		),
-	}
-	node.SmpcService = newrpc.NewSmpcService(&node.NetworkOptions.MultiAddress, &node.SmpcMultiplexer, 100)
-	node.SyncService = newrpc.NewSyncerServer(&node.NetworkOptions.MultiAddress, node.OrderBook, 3)
+	node.SmpcService = rpc.NewSmpcService(&node.NetworkOptions.MultiAddress, &node.SmpcMultiplexer, 100)
 
 	return node, nil
 }
@@ -177,19 +155,18 @@ func (node *DarkNode) StartBackgroundWorkers() {
 	}()
 
 	// Start background workers
-	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
-	go node.DeltaFragmentBroadcastWorker.Run()
-	go node.DeltaFragmentWorker.Run(node.DeltaQueue)
-	go node.DeltaMatchWorker.Run(node.DeltaNotifications)
+	//go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
+	//go node.DeltaFragmentBroadcastWorker.Run()
+	//go node.DeltaFragmentWorker.Run(node.DeltaQueue)
+	//go node.DeltaMatchWorker.Run(node.DeltaNotifications)
 }
 
 func (node *DarkNode) StartServices() {
 	node.Logger.Network(logger.Info, fmt.Sprintf("gRPC services listening on %s:%s", node.Host, node.Port))
 
 	node.Swarm.Register(node.Server)
-	node.Dark.Register(node.Server)
+	node.Syncer.Register(node.Server)
 	node.SmpcService.Register(node.Server)
-	node.SyncService.Register(node.Server)
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
 		node.Logger.Error(err.Error())
@@ -363,11 +340,6 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 			node.ConnectToDarkPool(darkPool)
 		}
 	}()
-}
-
-// OnSync returns
-func (node *DarkNode) OnSync(from identity.MultiAddress, stream rpc.Dark_SyncServer) {
-	//node.OrderBook.Subscribe(from.String(), stream)
 }
 
 // OnOpenOrder writes an order fragment that has been received to the

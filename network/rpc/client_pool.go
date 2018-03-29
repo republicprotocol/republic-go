@@ -45,6 +45,7 @@ func NewClientPool(from identity.MultiAddress) *ClientPool {
 func (pool *ClientPool) FindOrCreateClient(to identity.MultiAddress) (*Client, error) {
 	pool.Enter(nil)
 	defer pool.Exit()
+
 	return pool.findOrCreateClient(to)
 }
 
