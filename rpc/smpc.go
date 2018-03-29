@@ -94,7 +94,7 @@ func (service *SmpcService) connect(stream Smpc_ComputeServer, quit chan struct{
 		<-quit
 		messageQueue.Shutdown()
 	}()
-	return service.multiplexer.RunMessageQueue(multiAddress.Address().String(), &messageQueue)
+	return service.multiplexer.RunMessageQueue(multiAddress.Address().String(), messageQueue)
 }
 
 // SmpcStreamQueue workers own a gRPC stream. All Message writing to, and
@@ -111,8 +111,8 @@ type SmpcStreamQueue struct {
 // NewSmpcClientStreamQueue returns a MessageQueue interface that is connected
 // to an Smpc server. It accepts a gRPC stream, that will be owned by the
 // MessageQueue.
-func NewSmpcClientStreamQueue(stream Smpc_ComputeClient, messageQueueLimit int) SmpcStreamQueue {
-	return SmpcStreamQueue{
+func NewSmpcClientStreamQueue(stream Smpc_ComputeClient, messageQueueLimit int) *SmpcStreamQueue {
+	return &SmpcStreamQueue{
 		stream: stream,
 		write:  make(chan *SmpcMessage, messageQueueLimit),
 		read:   make(chan *SmpcMessage, messageQueueLimit),
@@ -123,8 +123,8 @@ func NewSmpcClientStreamQueue(stream Smpc_ComputeClient, messageQueueLimit int) 
 // NewSmpcServerStreamQueue returns a MessageQueue interface that is connected
 // to an Smpc client. It accepts a gRPC stream, that will be owned by the
 // MessageQueue.
-func NewSmpcServerStreamQueue(stream Smpc_ComputeServer, messageQueueLimit int) SmpcStreamQueue {
-	return SmpcStreamQueue{
+func NewSmpcServerStreamQueue(stream Smpc_ComputeServer, messageQueueLimit int) *SmpcStreamQueue {
+	return &SmpcStreamQueue{
 		stream: stream,
 		write:  make(chan *SmpcMessage, messageQueueLimit),
 		read:   make(chan *SmpcMessage, messageQueueLimit),
@@ -184,6 +184,7 @@ func (queue *SmpcStreamQueue) Send(message dispatch.Message) error {
 			val.DeltaFragments = MarshalDeltaFragments(message.DeltaFragments)
 		}
 		// TODO: support other message formats
+
 		queue.write <- val
 	default:
 		return fmt.Errorf("cannot send message: unrecognized type %T", message)
