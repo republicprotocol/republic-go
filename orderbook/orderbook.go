@@ -60,7 +60,7 @@ func (orderBook OrderBook) Unsubscribe(id string){
 func (orderBook OrderBook) Open(ord order.Order) error{
 	orderBook.orderBookCache.Open(ord)
 	orderBook.orderBookDB.Open(ord)
-	message := NewMessage(nil, ord, order.Open)
+	message := NewMessage(ord, order.Open,nil)
 	return orderBook.splitter.Send(message)
 }
 
@@ -68,7 +68,7 @@ func (orderBook OrderBook) Open(ord order.Order) error{
 func (orderBook OrderBook) Match(ord order.Order) error{
 	orderBook.orderBookCache.Match(ord)
 	orderBook.orderBookDB.Match(ord)
-	message := NewMessage(nil, ord, order.Unconfirmed)
+	message := NewMessage(ord, order.Unconfirmed,nil)
 	return orderBook.splitter.Send(message)
 }
 
@@ -76,7 +76,7 @@ func (orderBook OrderBook) Match(ord order.Order) error{
 func (orderBook OrderBook) Confirm(ord order.Order) error{
 	orderBook.orderBookCache.Confirm(ord)
 	orderBook.orderBookDB.Confirm(ord)
-	message := NewMessage(nil, ord, order.Confirmed)
+	message := NewMessage(ord, order.Confirmed,nil )
 	return orderBook.splitter.Send(message)
 }
 
@@ -84,7 +84,7 @@ func (orderBook OrderBook) Confirm(ord order.Order) error{
 func (orderBook OrderBook) Release(ord order.Order) error{
 	orderBook.orderBookCache.Release(ord)
 	orderBook.orderBookDB.Release(ord)
-	message := NewMessage(nil, ord, order.Open)
+	message := NewMessage( ord, order.Open,nil)
 	return orderBook.splitter.Send(message)
 }
 
@@ -92,6 +92,6 @@ func (orderBook OrderBook) Release(ord order.Order) error{
 func (orderBook OrderBook) Settle(ord order.Order)error {
 	orderBook.orderBookCache.Settle(ord)
 	orderBook.orderBookDB.Settle(ord)
-	message := NewMessage(nil, ord, order.Settled)
+	message := NewMessage( ord, order.Settled,nil)
 	return orderBook.splitter.Send(message)
 }

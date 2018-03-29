@@ -23,6 +23,7 @@ import (
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
+	newrpc "github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
@@ -46,7 +47,6 @@ type DarkNode struct {
 	Logger                 *logger.Logger
 	ClientPool             *rpc.ClientPool
 	DHT                    *dht.DHT
-	OrderBook              *orderbook.OrderBook
 
 	DeltaBuilder                      *compute.DeltaBuilder
 	DeltaFragmentMatrix               *compute.DeltaFragmentMatrix
@@ -70,14 +70,17 @@ type DarkNode struct {
 
 	// Secure multiparty computations
 
-	SmpcStreamQueues        smpc.StreamQueues
+	//SmpcStreamQueues        smpc.StreamQueues
 	SmpcDeltaFragmentMatrix smpc.DeltaFragmentMatrix
 	SmpcDeltaBuilder        smpc.DeltaBuilder
 	SmpcDeltas              smpc.DeltaQueue
 
 	SmpcMultiplexer dispatch.Multiplexer
 	SmpcWorkers     smpc.Workers
-	SmpcService     smpc.Service
+	SmpcService     newrpc.SmpcService
+
+	OrderBook   *orderbook.OrderBook
+	SyncService newrpc.SyncerService
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
@@ -158,7 +161,8 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 			&node.SmpcDeltas,
 		),
 	}
-	node.SmpcService = smpc.NewService(&node.NetworkOptions.MultiAddress, &node.SmpcMultiplexer, 100)
+	node.SmpcService = newrpc.NewSmpcService(&node.NetworkOptions.MultiAddress, &node.SmpcMultiplexer, 100)
+	node.SyncService = newrpc.NewSyncerServer(&node.NetworkOptions.MultiAddress, node.OrderBook,3)
 
 	return node, nil
 }
@@ -185,6 +189,7 @@ func (node *DarkNode) StartServices() {
 	node.Swarm.Register(node.Server)
 	node.Dark.Register(node.Server)
 	node.SmpcService.Register(node.Server)
+	node.SyncService.Register(node.Server)
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
 		node.Logger.Error(err.Error())
@@ -362,7 +367,7 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 
 // OnSync returns
 func (node *DarkNode) OnSync(from identity.MultiAddress, stream rpc.Dark_SyncServer) {
-	node.OrderBook.Subscribe(from.String(), stream)
+	//node.OrderBook.Subscribe(from.String(), stream)
 }
 
 // OnOpenOrder writes an order fragment that has been received to the
@@ -381,6 +386,16 @@ func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 		node.SmpcMultiplexer.Send(smpc.Message{
 			OrderFragment: orderFragment,
 		})
+
+		// Notify the orderbook about the new order
+		ord := order.Order{
+			Signature: orderFragment.Signature,
+			ID:orderFragment.OrderID,
+			Type: orderFragment.OrderType,
+			Parity: orderFragment.OrderParity,
+			Expiry: orderFragment.OrderExpiry,
+		}
+		node.OrderBook.Open(ord)
 	}()
 }
 
