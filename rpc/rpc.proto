@@ -10,8 +10,14 @@ message Nothing {
 }
 
 /**
- * Addressing and address lookup
+ * Swarm
  */
+
+service Swarm {
+  rpc Ping (MultiAddress) returns (MultiAddress);
+  rpc QueryPeers (Query) returns (stream MultiAddress);
+  rpc QueryPeersDeep (Query) returns (stream MultiAddress);
+}
 
 message Address {
   string address = 1;
@@ -28,8 +34,12 @@ message Query {
 }
 
 /**
- * Orders and synchronizing orders
+ * Order synchronization
  */
+
+service Syncer {
+  rpc Sync (SyncRequest) returns (stream SyncBlock);
+}
 
 message Order {
   OrderId id = 1;
@@ -74,6 +84,16 @@ message SyncBlock {
   }
 }
 
+/**
+ * Relay orders
+ */
+
+service Relay {
+  rpc SignOrderFragment (OrderFragmentId) returns (OrderFragmentId);
+  rpc OpenOrder (OpenOrderRequest) returns (Nothing);
+  rpc CancelOrder (CancelOrderRequest) returns (Nothing);
+}
+
 message SignOrderFragmentRequest {
   MultiAddress from = 1;
   OrderFragmentId orderFragmentId = 2;
@@ -90,36 +110,12 @@ message CancelOrderRequest {
 }
 
 /**
- * Swarm
- */
-
-service Swarm {
-  rpc Ping (MultiAddress) returns (MultiAddress);
-  rpc QueryPeers (Query) returns (stream MultiAddress);
-  rpc QueryPeersDeep (Query) returns (stream MultiAddress);
-}
-
-/**
- * Synchronization
- */
-
-service Syncer {
-  rpc Sync (SyncRequest) returns (stream SyncBlock);
-}
-
-/**
- * Relay orders
- */
-
-service Relay {
-  rpc SignOrderFragment (OrderFragmentId) returns (OrderFragmentId);
-  rpc OpenOrder (OpenOrderRequest) returns (Nothing);
-  rpc CancelOrder (CancelOrderRequest) returns (Nothing);
-}
-
-/**
  * Secure multipart computation
  */
+
+service Smpc {
+  rpc Compute (stream SmpcMessage) returns (stream SmpcMessage);
+}
 
 message SmpcMessage {
   MultiAddress multiAddress = 1;
@@ -176,6 +172,3 @@ message DeltaFragment {
   bytes minVolumeShare = 12;
 }
 
-service Smpc {
-  rpc Compute (stream SmpcMessage) returns (stream SmpcMessage);
-}
