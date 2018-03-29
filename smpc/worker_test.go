@@ -66,15 +66,12 @@ var _ = Describe("Smpc workers", func() {
 
 			By("sending order fragments")
 			go func() {
-				// defer GinkgoRecover()
+				defer GinkgoRecover()
 
 				for i := 0; i < numOrders; i++ {
 					// go func(i int) {
 					buyOrderFragments, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, stackint.FromUint(10), stackint.FromUint(1000), stackint.FromUint(100), stackint.FromUint(uint(i))).Split(int64(n), int64(k), &prime)
-
-					log.Println(prime.String())
-					log.Println(err)
-					//Ω(err).ShouldNot(HaveOccurred())
+					Ω(err).ShouldNot(HaveOccurred())
 
 					for j := range multiplexers {
 						multiplexers[j].Send(Message{
