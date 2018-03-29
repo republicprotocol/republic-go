@@ -190,7 +190,10 @@ func (node *DarkNode) StartUI() {
 	})))
 
 	path := node.Config.Path
-	http.Handle("*", http.FileServer(http.Dir(path+"/ui")))
+  http.Handle("/settings", http.StripPrefix("/settings", http.FileServer(http.Dir(path + "/ui"))))
+	http.Handle("/log", http.StripPrefix("/log", http.FileServer(http.Dir(path + "/ui"))))
+	http.Handle("/", http.FileServer(http.Dir(path + "/ui")))
+
 	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
 		node.Logger.Error(err.Error())
 	}
