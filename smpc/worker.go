@@ -2,7 +2,6 @@ package smpc
 
 import (
 	"fmt"
-	"sync"
 	"sync/atomic"
 
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -20,8 +19,7 @@ type Worker struct {
 	running int32
 	logger  *logger.Logger
 
-	peerQueuesMu *sync.RWMutex
-	peerQueues   dispatch.MessageQueues
+	peerQueues dispatch.MessageQueues
 
 	multiplexer         *dispatch.Multiplexer
 	deltaFragmentMatrix *DeltaFragmentMatrix
@@ -39,8 +37,7 @@ func NewWorker(logger *logger.Logger, peerQueues dispatch.MessageQueues, multipl
 		running: 1,
 		logger:  logger,
 
-		peerQueuesMu: new(sync.RWMutex),
-		peerQueues:   peerQueues,
+		peerQueues: peerQueues,
 
 		multiplexer:         multiplexer,
 		deltaFragmentMatrix: deltaFragmentMatrix,
@@ -122,14 +119,13 @@ func (worker *Worker) processDeltaFragments(deltaFragments DeltaFragments) {
 
 	if newDeltaFragments != nil && len(newDeltaFragments) > 0 {
 		// Send a new Message to all MessageQueues available to this Worker
-		worker.peerQueuesMu.RLock()
-		defer worker.peerQueuesMu.RUnlock()
-
-		for _, queue := range worker.peerQueues {
-			queue.Send(Message{
-				DeltaFragments: newDeltaFragments,
-			})
-		}
+		go func() {
+			for _, queue := range worker.peerQueues {
+				queue.Send(Message{
+					DeltaFragments: newDeltaFragments,
+				})
+			}
+		}()
 	}
 }
 
@@ -138,9 +134,11 @@ func (worker *Worker) processDeltas(deltas Deltas) {
 	// To ensure that the Worker remains lively, the DeltaQueue must be drained
 	// regularly — usually by the creator of the Worker, in a different
 	// Goroutine
-	for _, delta := range deltas {
-		if err := worker.deltaQueue.Send(delta); err != nil {
-			worker.logger.Compute(logger.Error, fmt.Sprintf("cannot send delta notification: %s", err.Error()))
+	go func() {
+		for _, delta := range deltas {
+			if err := worker.deltaQueue.Send(delta); err != nil {
+				worker.logger.Compute(logger.Error, fmt.Sprintf("cannot send delta notification: %s", err.Error()))
+			}
 		}
-	}
+	}()
 }

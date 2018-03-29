@@ -3,9 +3,8 @@ package smpc
 import (
 	"bytes"
 	"fmt"
+	"runtime/debug"
 	"sync"
-
-	"github.com/republicprotocol/republic-go/stackint"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
@@ -13,6 +12,7 @@ import (
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 type DeltaFragmentMatrix struct {
@@ -44,6 +44,10 @@ func NewDeltaFragmentMatrix(prime stackint.Int1024) DeltaFragmentMatrix {
 }
 
 func (matrix *DeltaFragmentMatrix) ComputeBuyOrder(buyOrderFragment *order.Fragment) DeltaFragments {
+	// Disable the GC during computationally heavy sections
+	debug.SetGCPercent(-1)
+	defer debug.SetGCPercent(100)
+
 	matrix.buyOrderFragmentsMu.Lock()
 	matrix.buyOrderFragments[string(buyOrderFragment.OrderID)] = buyOrderFragment
 	matrix.buyOrderFragmentsMu.Unlock()
