@@ -20,8 +20,8 @@ type Worker struct {
 	running int32
 	logger  *logger.Logger
 
-	messageQueuesMu *sync.RWMutex
-	messageQueues   dispatch.MessageQueues
+	peerQueuesMu *sync.RWMutex
+	peerQueues   dispatch.MessageQueues
 
 	multiplexer         *dispatch.Multiplexer
 	deltaFragmentMatrix *DeltaFragmentMatrix
@@ -34,13 +34,13 @@ type Worker struct {
 // send it back through the Multiplexer for scheduling to another worker. This
 // prevents new WorkerTasks from jumping the queue, providing a sense of
 // fairness in prioritization.
-func NewWorker(logger *logger.Logger, messageQueues dispatch.MessageQueues, multiplexer *dispatch.Multiplexer, deltaFragmentMatrix *DeltaFragmentMatrix, deltaBuilder *DeltaBuilder, deltaQueue *DeltaQueue) Worker {
+func NewWorker(logger *logger.Logger, peerQueues dispatch.MessageQueues, multiplexer *dispatch.Multiplexer, deltaFragmentMatrix *DeltaFragmentMatrix, deltaBuilder *DeltaBuilder, deltaQueue *DeltaQueue) Worker {
 	return Worker{
 		running: 1,
 		logger:  logger,
 
-		messageQueuesMu: new(sync.RWMutex),
-		messageQueues:   messageQueues,
+		peerQueuesMu: new(sync.RWMutex),
+		peerQueues:   peerQueues,
 
 		multiplexer:         multiplexer,
 		deltaFragmentMatrix: deltaFragmentMatrix,
@@ -95,7 +95,12 @@ func (worker *Worker) processOrderFragment(orderFragment *order.Fragment) {
 	// Send a new Message directly to the Multiplexer so that the new
 	// DeltaFragments can be processed
 	if deltaFragments != nil && len(deltaFragments) > 0 {
-		go worker.multiplexer.Send(Message{DeltaFragments: deltaFragments})
+
+		// Use a Goroutine when sending messages to the Worker multiplexer to
+		// prevent deadlocking
+		go worker.multiplexer.Send(Message{
+			DeltaFragments: deltaFragments,
+		})
 	}
 }
 
@@ -110,34 +115,32 @@ func (worker *Worker) processDeltaFragments(deltaFragments DeltaFragments) {
 	// Send a new Message directly to the Multiplexer so that the new
 	// Deltas can be processed
 	if newDeltas != nil && len(newDeltas) > 0 {
-		go func() {
-			worker.multiplexer.Send(Message{
-				Deltas: newDeltas,
-			})
-		}()
+		go worker.multiplexer.Send(Message{
+			Deltas: newDeltas,
+		})
 	}
 
 	if newDeltaFragments != nil && len(newDeltaFragments) > 0 {
 		// Send a new Message to all MessageQueues available to this Worker
-		worker.messageQueuesMu.RLock()
-		defer worker.messageQueuesMu.RUnlock()
+		worker.peerQueuesMu.RLock()
+		defer worker.peerQueuesMu.RUnlock()
 
-		go func() {
-			for _, queue := range worker.messageQueues {
-				queue.Send(Message{
-					DeltaFragments: newDeltaFragments,
-				})
-			}
-		}()
+		for _, queue := range worker.peerQueues {
+			queue.Send(Message{
+				DeltaFragments: newDeltaFragments,
+			})
+		}
 	}
 }
 
 func (worker *Worker) processDeltas(deltas Deltas) {
-	go func() {
-		for _, delta := range deltas {
-			if err := worker.deltaQueue.Send(delta); err != nil {
-				worker.logger.Compute(logger.Error, fmt.Sprintf("cannot send delta notification: %s", err.Error()))
-			}
+
+	// To ensure that the Worker remains lively, the DeltaQueue must be drained
+	// regularly — usually by the creator of the Worker, in a different
+	// Goroutine
+	for _, delta := range deltas {
+		if err := worker.deltaQueue.Send(delta); err != nil {
+			worker.logger.Compute(logger.Error, fmt.Sprintf("cannot send delta notification: %s", err.Error()))
 		}
-	}()
+	}
 }

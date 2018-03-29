@@ -1,7 +1,10 @@
 package dispatch
 
 import (
+	"errors"
 	"sync"
+
+	do "github.com/republicprotocol/go-do"
 )
 
 // The Message interface is type-only interface.
@@ -39,16 +42,22 @@ type ChannelQueue struct {
 	chMu   *sync.RWMutex
 	chOpen bool
 	ch     chan Message
+
+	writeInBackground bool
 }
 
 // NewChannelQueue returns a MessageQueue interface that is backed by a Go
-// channel. The underlying channel is buffered with a size equal to the
-// message queue limit.
-func NewChannelQueue(messageQueueLimit int) ChannelQueue {
-	return ChannelQueue{
+// channel. The underlying channel is buffered with a size equal to the message
+// queue limit.The queue can be configured to perform all writes in the
+// background, preventing writes from block in the caller. If used incorrectly
+// this can cause a large number of Goroutines to be spawned.
+func NewChannelQueue(messageQueueLimit int, writeInBackground bool) *ChannelQueue {
+	return &ChannelQueue{
 		chMu:   new(sync.RWMutex),
 		chOpen: true,
 		ch:     make(chan Message, messageQueueLimit),
+
+		writeInBackground: writeInBackground,
 	}
 }
 
@@ -69,8 +78,7 @@ func (queue *ChannelQueue) Shutdown() error {
 	return nil
 }
 
-// Send a message to the ChannelQueue. The Message must be a Delta component,
-// otherwise an error is returned.
+// Send a message to the ChannelQueue.
 func (queue *ChannelQueue) Send(message Message) error {
 	queue.chMu.RLock()
 	defer queue.chMu.RUnlock()
@@ -79,13 +87,85 @@ func (queue *ChannelQueue) Send(message Message) error {
 		return nil
 	}
 
-	queue.ch <- message
+	if queue.writeInBackground {
+		select {
+		case queue.ch <- message:
+		default:
+			go func() { queue.ch <- message }()
+		}
+	} else {
+		queue.ch <- message
+	}
 	return nil
 }
 
-// Recv a message from the ChannelQueue. All Messages returned will be Delta
-// components.
+// Recv a message from the ChannelQueue.
 func (queue *ChannelQueue) Recv() (Message, bool) {
 	message, ok := <-queue.ch
 	return message, ok
+}
+
+// The UnboundedQueue component is a MessageQueue backed by a Go slice that is
+// grown as necessary. Writing to an UnboundedQueue will never block, because
+// the queue can never be filled.
+type UnboundedQueue struct {
+	do.GuardedObject
+
+	open          bool
+	items         []Message
+	itemsNotEmpty *do.Guard
+}
+
+// NewUnboundedQueue returns a MessageQueue interface that is backed by a Go
+// slice. The underlying slice is initially allocated using the buffer hint.
+func NewUnboundedQueue(bufferHint int) *UnboundedQueue {
+	queue := new(UnboundedQueue)
+	queue.GuardedObject = do.NewGuardedObject()
+	queue.open = true
+	queue.items = make([]Message, bufferHint)
+	queue.itemsNotEmpty = queue.Guard(func() bool { return len(queue.items) > 0 })
+	return queue
+}
+
+// Run the ChannelQueue. The ChannelQueue is an abstraction over a channel of Delta
+// components and does not need to be run. This method does nothing.
+func (queue *UnboundedQueue) Run() error {
+	return nil
+}
+
+// Shutdown the UnboundedQueue. If it has already been Shutdown, an error will
+// be returned.
+func (queue *UnboundedQueue) Shutdown() error {
+	queue.Enter(nil)
+	defer queue.Exit()
+
+	if !queue.open {
+		return errors.New("cannot shutdown: already shutdown")
+	}
+	queue.open = false
+	queue.items = []Message{}
+	return nil
+}
+
+// Send a message to the UnboundedQueue.
+func (queue *UnboundedQueue) Send(message Message) error {
+	queue.Enter(nil)
+	defer queue.Exit()
+
+	queue.items = append(queue.items, message)
+	return nil
+}
+
+// Recv a message from the UnboundedQueue.
+func (queue *UnboundedQueue) Recv() (Message, bool) {
+	queue.Enter(queue.itemsNotEmpty)
+	defer queue.Exit()
+
+	if !queue.open {
+		return nil, false
+	}
+
+	item := queue.items[0]
+	queue.items = queue.items[1:]
+	return item, true
 }

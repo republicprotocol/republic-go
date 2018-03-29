@@ -21,9 +21,9 @@ var _ = Describe("Smpc workers", func() {
 
 		It("it should produce all matching deltas correctly", func() {
 
-			numOrders := 100
-			n := 15
-			k := 10
+			numOrders := 1
+			n := 72
+			k := 48
 			prime, ok := big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 			Ω(ok).Should(BeTrue())
 
@@ -32,8 +32,7 @@ var _ = Describe("Smpc workers", func() {
 			deltaQueue := NewDeltaQueue(100)
 			messageQueues := make(dispatch.MessageQueues, n)
 			for i := 0; i < n; i++ {
-				messageQueue := dispatch.NewChannelQueue(100)
-				messageQueues[i] = &messageQueue
+				messageQueues[i] = dispatch.NewUnboundedQueue(100)
 			}
 			multiplexers := make([]dispatch.Multiplexer, n)
 			for i := 0; i < n; i++ {
@@ -42,7 +41,7 @@ var _ = Describe("Smpc workers", func() {
 			workers := make(Workers, n)
 			for i := 0; i < n; i++ {
 				go func(i int) {
-					// defer GinkgoRecover()
+					defer GinkgoRecover()
 
 					deltaFragmentMatrix := smpc.NewDeltaFragmentMatrix(prime)
 					deltaBuilder := smpc.NewDeltaBuilder(int64(k), prime)
@@ -52,14 +51,14 @@ var _ = Describe("Smpc workers", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 
 					// Create a Worker that is connected to all other parties
-					workerMessageQueues := make(dispatch.MessageQueues, 0, n-1)
+					workerPeerQueues := make(dispatch.MessageQueues, 0, n-1)
 					for j := 0; j < n; j++ {
 						if i == j {
 							continue
 						}
-						workerMessageQueues = append(workerMessageQueues, messageQueues[j])
+						workerPeerQueues = append(workerPeerQueues, messageQueues[j])
 					}
-					workers[i] = NewWorker(nil, workerMessageQueues, &multiplexers[i], &deltaFragmentMatrix, &deltaBuilder, &deltaQueue)
+					workers[i] = NewWorker(nil, workerPeerQueues, &multiplexers[i], &deltaFragmentMatrix, &deltaBuilder, &deltaQueue)
 					workers[i].Run()
 				}(i)
 			}
@@ -75,6 +74,7 @@ var _ = Describe("Smpc workers", func() {
 							OrderFragment: buyOrderFragments[j],
 						})
 					}
+					// log.Println("SENT BUY ORDER", i)
 					// }(i)
 					// go func(i int) {
 					sellOrderFragments, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(int64(i))).Split(int64(n), int64(k), prime)
@@ -84,6 +84,7 @@ var _ = Describe("Smpc workers", func() {
 							OrderFragment: sellOrderFragments[j],
 						})
 					}
+					// log.Println("SENT SELL ORDER", i)
 					// }(i)
 				}
 			}()
@@ -93,8 +94,8 @@ var _ = Describe("Smpc workers", func() {
 				delta, ok := deltaQueue.Recv()
 				Ω(ok).Should(BeTrue())
 
-				if i%1500 == 0 {
-					log.Println("found", i)
+				if (i+1)%(n*numOrders) == 0 {
+					log.Println("found", i+1)
 				}
 
 				switch delta := delta.(type) {

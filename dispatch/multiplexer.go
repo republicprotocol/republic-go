@@ -57,7 +57,11 @@ func (multiplexer *Multiplexer) RunMessageQueue(id string, messageQueue MessageQ
 			if !ok {
 				break
 			}
-			multiplexer.messages <- message
+			multiplexer.messagesMu.RLock()
+			if multiplexer.messagesOpen {
+				multiplexer.messages <- message
+			}
+			multiplexer.messagesMu.RUnlock()
 		}
 	}()
 
