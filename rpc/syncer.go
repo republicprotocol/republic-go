@@ -14,7 +14,6 @@ import (
 
 type SyncerService struct {
 	multiAddress      *identity.MultiAddress
-	splitter          *dispatch.Splitter
 	orderBook         *orderbook.OrderBook
 	messageQueueLimit int
 }
@@ -24,10 +23,9 @@ func (service *SyncerService) Register(server *grpc.Server) {
 	RegisterSyncerServer(server, service)
 }
 
-func NewSyncerServer(multiAddress *identity.MultiAddress, splitter *dispatch.Splitter, orderbook *orderbook.OrderBook, messageQueueLimit int) SyncerService {
+func NewSyncerServer(multiAddress *identity.MultiAddress, orderbook *orderbook.OrderBook, messageQueueLimit int) SyncerService {
 	return SyncerService{
 		multiAddress:      multiAddress,
-		splitter:          splitter,
 		orderBook:         orderbook,
 		messageQueueLimit: messageQueueLimit,
 	}
@@ -69,12 +67,12 @@ func (service *SyncerService) sync(req *SyncRequest, stream Syncer_SyncServer, q
 		messageQueue.Shutdown()
 	}()
 	go func() {
-		err := service.orderBook.Sync(messageQueue)
+		err := service.orderBook.SyncHistory(messageQueue)
 		if err != nil {
 			log.Println(err)
 		}
 	}()
-	return service.splitter.RunMessageQueue(multiAddress.Address().String(), &messageQueue)
+	return service.orderBook.Subscribe(multiAddress.Address().String(), &messageQueue)
 }
 
 type SyncerServerStreamQueue struct {
@@ -207,7 +205,7 @@ func (queue SyncerClientStreamQueue) Recv() (dispatch.Message, bool) {
 		status = order.Settled
 	}
 
-	return orderbook.NewMessage(nil, ord, status ), true
+	return orderbook.NewMessage(ord, status, nil), true
 }
 
 func (queue SyncerClientStreamQueue) readAll() error {

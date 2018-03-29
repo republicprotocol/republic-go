@@ -4,17 +4,18 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+// Message define status of the order. Along with error happens.
 type Message struct {
-	Err error
-
 	Ord    order.Order
 	Status order.Status
+	Err    error
 }
 
-func NewMessage(err error, ord order.Order, status order.Status) Message {
+// NewMessage returns a new orderbook message.
+func NewMessage(ord order.Order, status order.Status,err error) Message {
 	return Message{
-		Err:    err,
 		Ord:    ord,
 		Status: status,
+		Err:    err,
 	}
 }

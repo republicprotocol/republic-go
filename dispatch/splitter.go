@@ -81,6 +81,7 @@ func (splitter *Splitter) Send(message Message) error {
 	return nil
 }
 
+// ShutdownMessageQueue will shut down a specific queue by its id.
 func (splitter *Splitter) ShutdownMessageQueue(id string) {
 	splitter.outputMu.Lock()
 	defer splitter.outputMu.Unlock()
@@ -90,5 +91,17 @@ func (splitter *Splitter) ShutdownMessageQueue(id string) {
 		// Ignore errors returned during shutdown
 		_ = messageQueue.Shutdown()
 		delete(splitter.output, id)
+	}
+}
+
+// SendByID will send the message to specific queue by its id.
+func (splitter *Splitter) SendByID(id string, message Message) error {
+	splitter.outputMu.RLock()
+	defer splitter.outputMu.RUnlock()
+
+	if queue, ok := splitter.output[id]; !ok {
+		return fmt.Errorf("cannot send meesage, %s doesn't exist", id)
+	} else {
+		return queue.Send(message)
 	}
 }

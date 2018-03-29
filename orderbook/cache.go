@@ -3,7 +3,6 @@ package orderbook
 import (
 	"sync"
 
-	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -12,7 +11,7 @@ import (
 type OrderBookCache struct {
 	mu *sync.RWMutex
 
-	orders map[string]*order.Order
+	orders map[string]order.Order
 	status map[string]order.Status
 }
 
@@ -20,14 +19,14 @@ type OrderBookCache struct {
 func NewOrderBookCache() OrderBookCache {
 	return OrderBookCache{
 		mu:     new(sync.RWMutex),
-		orders: map[string]*order.Order{},
+		orders: map[string]order.Order{},
 		status: map[string]order.Status{},
 	}
 }
 
 // Open is called when we first receive the order fragment.
 // It will create the order record and make its status 'open'.
-func (orderBookCache *OrderBookCache) Open(ord *order.Order) {
+func (orderBookCache *OrderBookCache) Open(ord order.Order) {
 	orderBookCache.mu.Lock()
 	defer orderBookCache.mu.Unlock()
 
@@ -39,7 +38,7 @@ func (orderBookCache *OrderBookCache) Open(ord *order.Order) {
 
 // Match will change the order status to 'unconfirmed' if the order
 // is valid and it's status is 'open'.
-func (orderBookCache *OrderBookCache) Match(ord *order.Order) {
+func (orderBookCache *OrderBookCache) Match(ord order.Order) {
 	orderBookCache.mu.Lock()
 	defer orderBookCache.mu.Unlock()
 
@@ -51,7 +50,7 @@ func (orderBookCache *OrderBookCache) Match(ord *order.Order) {
 
 // Confirm will change the order status to 'confirmed' if the order
 // is valid and it's status is 'unconfirmed'.
-func (orderBookCache *OrderBookCache) Confirm(ord *order.Order) {
+func (orderBookCache *OrderBookCache) Confirm(ord order.Order) {
 	orderBookCache.mu.Lock()
 	defer orderBookCache.mu.Unlock()
 
@@ -63,7 +62,7 @@ func (orderBookCache *OrderBookCache) Confirm(ord *order.Order) {
 
 // Release will change the order status to 'open' if the order
 // is valid and it's status is 'unconfirmed'.
-func (orderBookCache *OrderBookCache) Release(ord *order.Order) {
+func (orderBookCache *OrderBookCache) Release(ord order.Order) {
 	orderBookCache.mu.Lock()
 	defer orderBookCache.mu.Unlock()
 
@@ -75,7 +74,7 @@ func (orderBookCache *OrderBookCache) Release(ord *order.Order) {
 
 // Settle will change the order status to 'settled' if the order
 // is valid and it's status is 'confirmed'.
-func (orderBookCache *OrderBookCache) Settle(ord *order.Order) {
+func (orderBookCache *OrderBookCache) Settle(ord order.Order) {
 	orderBookCache.mu.Lock()
 	defer orderBookCache.mu.Unlock()
 
@@ -86,19 +85,21 @@ func (orderBookCache *OrderBookCache) Settle(ord *order.Order) {
 }
 
 // Blocks will gather all the orders records and returns them in
-// the format of a rpc.SyncBlock
-func (orderBookCache *OrderBookCache) Blocks() []*rpc.SyncBlock {
+// the format of orderbook.Message
+func (orderBookCache *OrderBookCache) Blocks() []Message {
 	orderBookCache.mu.RLock()
 	defer orderBookCache.mu.RUnlock()
 
-	blocks := make([]*rpc.SyncBlock, 0)
+	blocks := make([]Message, 0)
 	for _, ord := range orderBookCache.orders {
 		status, ok := orderBookCache.status[string(ord.ID)]
 		if ok {
-			block := orderToSyncBlock(ord, status)
+			block := NewMessage(ord, status, nil)
 			blocks = append(blocks, block)
 		}
 	}
 
 	return blocks
 }
+
+

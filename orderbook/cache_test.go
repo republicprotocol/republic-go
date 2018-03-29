@@ -111,8 +111,8 @@ var _ = Describe("order book cache", func() {
 	})
 })
 
-func newOrder(id order.ID) *order.Order {
-	return &order.Order{
+func newOrder(id order.ID) order.Order {
+	return order.Order{
 		Signature: []byte{},
 		ID:        id,
 		Type:      order.TypeLimit,
