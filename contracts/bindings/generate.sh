@@ -1,5 +1,5 @@
 # Registrar
-abigen --sol ./eth-republic/contracts/DarkNodeRegistrar.sol -pkg bindings --out dnr.go
+abigen --sol ./republic-sol/contracts/DarkNodeRegistry.sol -pkg bindings --out dnr.go
 
 # Atomic Swap
 # abigen --sol ./eth-atomic-swap/contracts/AtomicSwapEther.sol -pkg bindings --out AtomicSwapEth.go

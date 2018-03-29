@@ -89,6 +89,7 @@ func (b *ClientDetails) PatchedWaitMined(ctx context.Context, tx *types.Transact
 
 	switch b.Chain {
 	case ChainGanache:
+		time.Sleep(100 * time.Millisecond)
 		return nil, nil
 	case ChainSimulated:
 		sim, ok := b.Client.(*backends.SimulatedBackend)
@@ -135,6 +136,7 @@ func (b *ClientDetails) PatchedWaitDeployed(ctx context.Context, tx *types.Trans
 
 	switch b.Chain {
 	case ChainGanache:
+		time.Sleep(100 * time.Millisecond)
 		return common.Address{}, nil
 	case ChainSimulated:
 		sim, ok := b.Client.(*backends.SimulatedBackend)

@@ -32,7 +32,7 @@ func main() {
 	cmd := connection.StartTestnet(debug, &wg)
 	go killAtExit(cmd)
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	connection.DeployContractsToGanache("http://localhost:8545")
 

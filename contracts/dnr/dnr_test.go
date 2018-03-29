@@ -1,19 +1,14 @@
 package dnr_test
 
 import (
-	"context"
 	"encoding/hex"
 	"log"
-	"strings"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/stackint"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/contracts/connection"
-	"github.com/republicprotocol/republic-go/contracts/dnr"
+	// . "github.com/onsi/gomega"
 )
 
 var ether = stackint.FromUint(1000000000000000000)
@@ -26,20 +21,20 @@ const key = `{"version":3,"id":"7844982f-abe7-4690-8c15-34f75f847c66","address":
 
 var _ = Describe("Dark Node Registrar", func() {
 
-	auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
-	if err != nil {
-		log.Fatalf("Failed to create authorized transactor: %v", err)
-	}
+	// auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
+	// if err != nil {
+	// 	log.Fatalf("Failed to create authorized transactor: %v", err)
+	// }
 
-	client, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
-	if err != nil {
-		log.Fatal(err)
-	}
+	// client, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	UserConnection, err := dnr.NewEthereumDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{})
-	if err != nil {
-		log.Fatal(err)
-	}
+	// UserConnection, err := dnr.NewDarkNodeRegistry(context.Background(), &client, auth, &bind.CallOpts{})
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	keyPair, err := identity.NewKeyPair()
 	if err != nil {
@@ -50,13 +45,13 @@ var _ = Describe("Dark Node Registrar", func() {
 	log.Print(hex.EncodeToString(publicKey))
 	log.Print(hex.EncodeToString(darkNodeID))
 
-	It("Can register a dark node", func() {
-		_, err := UserConnection.Register(darkNodeID, publicKey, &bond)
-		Ω(err).Should(BeNil())
-		log.Println("Waiting for epoch to end .......")
-		err = UserConnection.WaitUntilRegistration(darkNodeID)
-		Ω(err).Should(BeNil())
-	})
+	// It("Can register a dark node", func() {
+	// 	_, err := UserConnection.Register(darkNodeID, publicKey, &bond)
+	// 	Ω(err).Should(BeNil())
+	// 	log.Println("Waiting for epoch to end .......")
+	// 	err = UserConnection.WaitUntilRegistration(darkNodeID)
+	// 	Ω(err).Should(BeNil())
+	// })
 
 	// It("Can register a dark node", func() {
 	// 	_, err := UserConnection.Register(darkNodeID, publicKey)
@@ -69,7 +64,7 @@ var _ = Describe("Dark Node Registrar", func() {
 	// })
 
 	// It("Can check if a dark node is registered", func() {
-	// 	_, err := UserConnection.IsDarkNodeRegistered(darkNodeID)
+	// 	_, err := UserConnection.IsRegistered(darkNodeID)
 	// 	Ω(err).Should(BeNil())
 	// })
 

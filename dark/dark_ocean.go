@@ -17,19 +17,19 @@ import (
 type Ocean struct {
 	do.GuardedObject
 
-	logger            *logger.Logger
-	pools             Pools
-	darkNodeRegistrar dnr.DarkNodeRegistrar
+	logger           *logger.Logger
+	pools            Pools
+	darkNodeRegistry dnr.DarkNodeRegistry
 }
 
-// NewOcean uses a DarkNodeRegistrar to read all registered nodes and sort them
+// NewOcean uses a DarkNodeRegistry to read all registered nodes and sort them
 // into Pools.
-func NewOcean(logger *logger.Logger, darkNodeRegistrar dnr.DarkNodeRegistrar) (*Ocean, error) {
+func NewOcean(logger *logger.Logger, darkNodeRegistry dnr.DarkNodeRegistry) (*Ocean, error) {
 	ocean := &Ocean{
-		GuardedObject:     do.NewGuardedObject(),
-		logger:            logger,
-		pools:             Pools{},
-		darkNodeRegistrar: darkNodeRegistrar,
+		GuardedObject:    do.NewGuardedObject(),
+		logger:           logger,
+		pools:            Pools{},
+		darkNodeRegistry: darkNodeRegistry,
 	}
 	return ocean, ocean.update()
 }
@@ -59,7 +59,7 @@ func (ocean *Ocean) update() error {
 	blockhash := big.NewInt(1234567)
 	poolsize := 72
 
-	nodeIDs, err := ocean.darkNodeRegistrar.GetAllNodes()
+	nodeIDs, err := ocean.darkNodeRegistry.GetAllNodes()
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func (ocean *Ocean) Watch(period time.Duration, changes chan struct{}) {
 
 	var currentBlockhash [32]byte
 	for {
-		epoch, err := ocean.darkNodeRegistrar.CurrentEpoch()
+		epoch, err := ocean.darkNodeRegistry.CurrentEpoch()
 		if err != nil {
 			ocean.logger.Error(fmt.Sprintf("cannot update epoch: %s", err.Error()))
 			return

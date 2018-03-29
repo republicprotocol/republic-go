@@ -62,7 +62,7 @@ type DarkNode struct {
 	Swarm  *network.SwarmService
 	Dark   *network.DarkService
 
-	DarkNodeRegistrar dnr.DarkNodeRegistrar
+	DarkNodeRegistry dnr.DarkNodeRegistry
 	DarkOcean         *dark.Ocean
 	DarkPool          *dark.Pool
 	EpochBlockhash    [32]byte
@@ -71,7 +71,7 @@ type DarkNode struct {
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
 // will configure all of the components that it needs to operate but will not
 // start any of them.
-func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkNode, error) {
+func NewDarkNode(config Config, darkNodeRegistry dnr.DarkNodeRegistry) (*DarkNode, error) {
 	var err error
 	node := &DarkNode{
 		Config:             config,
@@ -89,8 +89,8 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	node.Logger.Start()
 
 	// Load the dark ocean and the dark pool for this node
-	node.DarkNodeRegistrar = darkNodeRegistrar
-	node.DarkOcean, err = dark.NewOcean(node.Logger, darkNodeRegistrar)
+	node.DarkNodeRegistry = darkNodeRegistry
+	node.DarkOcean, err = dark.NewOcean(node.Logger, darkNodeRegistry)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +190,7 @@ func (node *DarkNode) StartUI() {
 			},
 			"contracts": map[string]interface{}{
 				"republicToken":     "0x65d54eda5f032f2275caa557e50c029cfbccbb54",
-				"darkNodeRegistrar": "0x9c06bb4e18e1aa352f99968b2984069c59ea2969",
+				"darkNodeRegistry": "0x9c06bb4e18e1aa352f99968b2984069c59ea2969",
 			},
 		})
 	})))
@@ -231,13 +231,13 @@ func (node *DarkNode) Stop() {
 // this DarkNode and reconnect to all of the nodes in the pool.
 func (node *DarkNode) WatchDarkOcean() {
 	// Block until the node is registered
-	err := node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
+	err := node.DarkNodeRegistry.WaitUntilRegistration(node.ID)
 	for err != nil {
 		node.Logger.Error(fmt.Sprintf("cannot determine registration status: %s", err.Error()))
 
 		// Wait for 5 seconds and try again
 		time.Sleep(5 * time.Second)
-		err = node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
+		err = node.DarkNodeRegistry.WaitUntilRegistration(node.ID)
 	}
 
 	changes := make(chan struct{})

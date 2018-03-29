@@ -74,25 +74,25 @@ func RegisterAll(secretFile string, configs []*node.Config) {
 			panic(err)
 		}
 
-		registrar, err := dnr.NewEthereumDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{})
+		registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, auth, &bind.CallOpts{})
 		if err != nil {
 			log.Printf("[%v] %sCouldn't connect to registrar%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
 			return
 		}
 
-		isRegistered, err := registrar.IsDarkNodeRegistered(keypair.ID())
+		isRegistered, err := registrar.IsRegistered(keypair.ID())
 		if err != nil {
 			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
 			return
 		}
 
-		isPendingRegistration, err := registrar.IsDarkNodePendingRegistration(keypair.ID())
-		if err != nil {
-			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
-			return
-		}
+		// isPendingRegistration, err := registrar.IsDarkNodePendingRegistration(keypair.ID())
+		// if err != nil {
+		// 	log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
+		// 	return
+		// }
 
-		if !isRegistered && !isPendingRegistration {
+		if !isRegistered { // && !isPendingRegistration {
 			_, err = registrar.Register(keypair.ID(), append(keypair.PublicKey.X.Bytes(), keypair.PublicKey.Y.Bytes()...), &bond)
 			if err != nil {
 				log.Printf("[%v] %sCouldn't register node%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
@@ -101,9 +101,9 @@ func RegisterAll(secretFile string, configs []*node.Config) {
 			}
 		} else if isRegistered {
 			log.Printf("[%v] %sNode already registered%s\n", base58.Encode(keypair.ID()), yellow, reset)
-		} else if isPendingRegistration {
-			log.Printf("[%v] %sNode will already be registered next epoch%s\n", base58.Encode(keypair.ID()), yellow, reset)
-		}
+		} // else if isPendingRegistration {
+		// 	log.Printf("[%v] %sNode will already be registered next epoch%s\n", base58.Encode(keypair.ID()), yellow, reset)
+		// }
 	})
 
 }

@@ -22,6 +22,9 @@ import (
 // Fixed so that the tests can easily request eth and ren
 var genesisPrivateKey, genesisTransactor = genesisKey()
 
+// GenesisAuth is used to create a connection to contracts not specifci to a particular node
+var GenesisAuth = genesisTransactor
+
 var details, _ = ConnectToTestnet()
 
 // Because the genesis key is fixed, these should be as well
@@ -53,7 +56,7 @@ func StartTestnet(debug bool, wg *sync.WaitGroup) *exec.Cmd {
 	return cmd
 }
 
-// DeployContractsToTestnet deploys REN and DNR contracts using the genesis private key
+// DeployContractsToGanache deploys REN and DNR contracts using the genesis private key
 func DeployContractsToGanache(uri string) error {
 	client, err := ethclient.Dial(uri)
 	if err != nil {
@@ -79,7 +82,8 @@ func startGanache(privateKey *ecdsa.PrivateKey, debug bool) *exec.Cmd {
 	return cmd
 }
 
-func distributeEth(conn ClientDetails, addresses ...ecdsa.PublicKey) error {
+// DistributeEth transfers testnet ETH to each of the addresses
+func DistributeEth(conn ClientDetails, addresses ...common.Address) error {
 
 	if conn.Chain != ChainGanache {
 		return errors.New("must be using ganache to distribute eth")
@@ -96,9 +100,8 @@ func distributeEth(conn ClientDetails, addresses ...ecdsa.PublicKey) error {
 	}
 
 	for _, address := range addresses {
-		to := crypto.PubkeyToAddress(address)
 
-		bound := bind.NewBoundContract(to, abi.ABI{}, nil, conn.Client, nil)
+		bound := bind.NewBoundContract(address, abi.ABI{}, nil, conn.Client, nil)
 
 		tx, err := bound.Transfer(transactor)
 		if err != nil {
@@ -110,20 +113,22 @@ func distributeEth(conn ClientDetails, addresses ...ecdsa.PublicKey) error {
 	return nil
 }
 
-func distributeRen(conn ClientDetails, addresses ...ecdsa.PublicKey) error {
+// DistributeRen transfers testnet REN to each of the addresses
+func DistributeRen(conn ClientDetails, addresses ...common.Address) error {
 
 	if conn.Chain != ChainGanache {
 		return errors.New("must be using ganache to distribute ren")
 	}
 
-	renContract, err := bindings.NewERC20(conn.RenAddress, bind.ContractBackend(conn.Client))
+	renContract, err := bindings.NewRepublicToken(conn.RenAddress, bind.ContractBackend(conn.Client))
 	if err != nil {
 		return err
 	}
 
 	// Transfer Ren to each participant
 	for _, address := range addresses {
-		_, err := renContract.Transfer(genesisTransactor, crypto.PubkeyToAddress(address), big.NewInt(1000000000000000000))
+		_, err := renContract.Transfer(genesisTransactor, address, big.NewInt(0).Mul(big.NewInt(100), big.NewInt(1000000000000000000)))
+
 		if err != nil {
 			return err
 		}
@@ -144,9 +149,9 @@ func genesisKey() (*ecdsa.PrivateKey, *bind.TransactOpts) {
 }
 
 // deployREN deploys an ERC20 contract
-func deployREN(context context.Context, conn ClientDetails, auth *bind.TransactOpts) (*bindings.TestERC20, common.Address, error) {
+func deployREN(context context.Context, conn ClientDetails, auth *bind.TransactOpts) (*bindings.RepublicToken, common.Address, error) {
 	// Deploy a token contract on the simulated blockchain
-	address, tx, ren, err := bindings.DeployTestERC20(auth, conn.Client)
+	address, tx, ren, err := bindings.DeployRepublicToken(auth, conn.Client)
 	if err != nil {
 		return nil, common.Address{}, fmt.Errorf("Failed to deploy REN: %v", err)
 	}
@@ -155,13 +160,14 @@ func deployREN(context context.Context, conn ClientDetails, auth *bind.TransactO
 }
 
 // deployDNR deploys a Dark Node Registrar
-func deployDNR(context context.Context, conn ClientDetails, auth *bind.TransactOpts, renAddress common.Address) (*bindings.DarkNodeRegistrar, common.Address, error) {
+func deployDNR(context context.Context, conn ClientDetails, auth *bind.TransactOpts, renAddress common.Address) (*bindings.DarkNodeRegistry, common.Address, error) {
 	// Deploy a token contract on the simulated blockchain
 	// 10 aiREN
 	minimumBond := big.NewInt(10)
 	// One minute
-	minimumEpochInterval := big.NewInt(60)
-	address, tx, dnr, err := bindings.DeployDarkNodeRegistrar(auth, conn.Client, renAddress, minimumBond, minimumEpochInterval)
+	minimumEpochInterval := big.NewInt(1)
+	minimumPoolSize := big.NewInt(5)
+	address, tx, dnr, err := bindings.DeployDarkNodeRegistry(auth, conn.Client, renAddress, minimumBond, minimumPoolSize, minimumEpochInterval)
 	if err != nil {
 		return nil, common.Address{}, fmt.Errorf("Failed to deploy DNR: %v", err)
 	}

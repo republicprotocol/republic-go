@@ -1,6 +1,6 @@
 package main
 
-// DeployDarkNodeRegistrar
+// DeployDarkNodeRegistry
 
 import (
 	"context"
@@ -36,7 +36,7 @@ func main() {
 	// Gas Price
 	auth.GasPrice = big.NewInt(6000000000)
 
-	registrar, err := dnr.NewEthereumDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{})
+	registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, auth, &bind.CallOpts{})
 
 	minimumEpochTime, err := registrar.MinimumEpochInterval()
 	if err != nil {
@@ -57,7 +57,7 @@ func main() {
 	}
 }
 
-func callEpoch(registrar dnr.DarkNodeRegistrar) {
+func callEpoch(registrar dnr.DarkNodeRegistry) {
 	fmt.Printf("Calling Epoch...")
 	_, err := registrar.Epoch()
 

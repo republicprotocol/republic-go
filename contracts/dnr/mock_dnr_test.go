@@ -23,11 +23,10 @@ const NumberOfTestNODES = 4
 var _ = Describe("Dark nodes", func() {
 
 	var mu = new(sync.Mutex)
-	var err error
 	var nodes []*node.DarkNode
 	var configs []*node.Config
 	var ethAddresses []*bind.TransactOpts
-	var MockDarkNodeRegistrar dnr.DarkNodeRegistrar
+	var DNR dnr.DarkNodeRegistry
 
 	startListening := func(nodes []*node.DarkNode) {
 		// Fully connect the bootstrap nodes
@@ -58,8 +57,11 @@ var _ = Describe("Dark nodes", func() {
 		BeforeEach(func() {
 			mu.Lock()
 
-			MockDarkNodeRegistrar, err = dnr.NewMockDarkNodeRegistrar()
-			MockDarkNodeRegistrar.Epoch()
+			var err error
+			DNR, err = dnr.TestnetDNR(nil)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			DNR.WaitForEpoch()
 
 			configs = make([]*node.Config, NumberOfTestNODES)
 			ethAddresses = make([]*bind.TransactOpts, NumberOfTestNODES)
@@ -67,19 +69,40 @@ var _ = Describe("Dark nodes", func() {
 
 			for i := 0; i < NumberOfTestNODES; i++ {
 
-				bond := stackint.FromUint(100)
+				bond := stackint.FromUint(10)
+				// mul := stackint.FromUint(20)
+				// bond = bond.Exp(&mul)
 				configs[i] = MockConfig()
-				MockDarkNodeRegistrar.Register(
+				auth := bind.NewKeyedTransactor(configs[i].EthereumKey.PrivateKey)
+
+				dnr, err := dnr.TestnetDNR(auth)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = dnr.ApproveRen(&bond)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				dnr.SetGasLimit(300000)
+				_, err = dnr.Register(
 					configs[i].NetworkOptions.MultiAddress.ID(),
 					append(configs[i].KeyPair.PublicKey.X.Bytes(), configs[i].KeyPair.PublicKey.Y.Bytes()...),
 					&bond,
 				)
+				Ω(err).ShouldNot(HaveOccurred())
+				dnr.SetGasLimit(0)
+
 				ethAddresses[i] = bind.NewKeyedTransactor(configs[i].EthereumKey.PrivateKey)
-				nodes[i], err = node.NewDarkNode(*configs[i], MockDarkNodeRegistrar)
+				nodes[i], err = node.NewDarkNode(*configs[i], dnr)
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 
-			MockDarkNodeRegistrar.Epoch()
+			// Ω(nodes[0].DarkNodeRegistry.IsRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
+			// Ω(nodes[0].DarkNodeRegistry.IsDarkNodePendingRegistration(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(true))
+
+			DNR.WaitForEpoch()
+
+			Ω(nodes[0].DarkNodeRegistry.IsRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(true))
+			// Ω(nodes[0].DarkNodeRegistry.IsDarkNodePendingRegistration(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
+
 			startListening(nodes)
 		})
 
@@ -89,30 +112,78 @@ var _ = Describe("Dark nodes", func() {
 		})
 
 		It("Registration checking returns the correct result", func() {
-			id0 := nodes[0].NetworkOptions.MultiAddress.ID()
-			pub := append(nodes[0].Config.KeyPair.PublicKey.X.Bytes(), nodes[0].Config.KeyPair.PublicKey.Y.Bytes()...)
-			MockDarkNodeRegistrar.Deregister(id0)
+			// pub := append(nodes[0].Config.KeyPair.PublicKey.X.Bytes(), nodes[0].Config.KeyPair.PublicKey.Y.Bytes()...)
+
+			dnr := nodes[0].DarkNodeRegistry
+			_, err := dnr.Deregister(nodes[0].NetworkOptions.MultiAddress.ID())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			// Before epoch, should still be registered
-			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodeRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(true))
-			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodePendingRegistration(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
+			Ω(dnr.IsRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(BeTrue())
+			// Ω(nodes[0].DarkNodeRegistry.IsDarkNodePendingRegistration(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
 
-			MockDarkNodeRegistrar.Epoch()
+			DNR.WaitForEpoch()
 
 			// After epoch, should be deregistered
-			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodeRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
+			Ω(dnr.IsRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(BeFalse())
+			isDeregistered, err := dnr.IsDeregistered(nodes[0].NetworkOptions.MultiAddress.ID())
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(isDeregistered).Should(BeTrue())
 
-			bond := stackint.FromUint(100)
-			MockDarkNodeRegistrar.Register(id0, pub, &bond)
+			dnr.SetGasLimit(300000)
+			_, err = dnr.Refund(nodes[0].NetworkOptions.MultiAddress.ID())
+			Ω(err).ShouldNot(HaveOccurred())
+			dnr.SetGasLimit(0)
+
+			bond := stackint.FromUint(10)
+			err = dnr.ApproveRen(&bond)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			dnr.SetGasLimit(300000)
+			_, err = dnr.Register(
+				nodes[0].NetworkOptions.MultiAddress.ID(),
+				append(nodes[0].KeyPair.PublicKey.X.Bytes(), nodes[0].KeyPair.PublicKey.Y.Bytes()...),
+				&bond,
+			)
+			Ω(err).ShouldNot(HaveOccurred())
+			dnr.SetGasLimit(0)
 
 			// Before epoch, should still be deregistered
-			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodeRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
-			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodePendingRegistration(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(true))
+			Ω(nodes[0].DarkNodeRegistry.IsRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(BeFalse())
+			// Ω(nodes[0].DarkNodeRegistry.IsDarkNodePendingRegistration(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(true))
 
-			MockDarkNodeRegistrar.Epoch()
+			DNR.WaitForEpoch()
 
 			// After epoch, should be deregistered
-			Ω(nodes[0].DarkNodeRegistrar.IsDarkNodeRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(true))
+			Ω(nodes[0].DarkNodeRegistry.IsRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(BeTrue())
+		})
+
+		It("can deregister all nodes", func() {
+			for _, node := range nodes {
+				dnr := node.DarkNodeRegistry
+
+				_, err := dnr.Deregister(node.NetworkOptions.MultiAddress.ID())
+				Ω(err).ShouldNot(HaveOccurred())
+
+				// Before epoch, should still be registered
+				Ω(dnr.IsRegistered(node.NetworkOptions.MultiAddress.ID())).Should(BeTrue())
+				// Ω(node.DarkNodeRegistry.IsDarkNodePendingRegistration(node.NetworkOptions.MultiAddress.ID())).Should(Equal(false))
+
+				DNR.WaitForEpoch()
+
+				// After epoch, should be deregistered
+				Ω(dnr.IsRegistered(node.NetworkOptions.MultiAddress.ID())).Should(BeFalse())
+				isDeregistered, err := dnr.IsDeregistered(node.NetworkOptions.MultiAddress.ID())
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(isDeregistered).Should(BeTrue())
+
+				dnr.SetGasLimit(300000)
+				_, err = dnr.Refund(node.NetworkOptions.MultiAddress.ID())
+				Ω(err).ShouldNot(HaveOccurred())
+				dnr.SetGasLimit(0)
+
+				DNR.WaitForEpoch()
+			}
 		})
 	})
 })

@@ -17,7 +17,7 @@ var _ = Describe("Dark Oceans", func() {
 			if err != nil {
 				panic(err)
 			}
-			dnr, err := dnr.NewMockDarkNodeRegistrar()
+			dnr, err := dnr.TestnetDNR(nil)
 
 			ocean, err := dark.NewOcean(log, dnr)
 			if err != nil {
@@ -28,7 +28,7 @@ var _ = Describe("Dark Oceans", func() {
 			go ocean.Watch(time.Second, channel)
 			Eventually(channel).Should(Receive())
 
-			dnr.Epoch()
+			dnr.WaitForEpoch()
 
 			Ω(nil).Should(BeNil())
 		})
