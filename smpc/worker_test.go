@@ -32,7 +32,7 @@ var _ = Describe("Smpc workers", func() {
 			deltaQueue := NewDeltaQueue(100)
 			messageQueues := make(dispatch.MessageQueues, n)
 			for i := 0; i < n; i++ {
-				messageQueues[i] = dispatch.NewUnboundedQueue(100)
+				messageQueues[i] = dispatch.NewChannelQueue(100, false)
 			}
 			multiplexers := make([]dispatch.Multiplexer, n)
 			for i := 0; i < n; i++ {

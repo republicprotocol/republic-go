@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
+	"runtime/debug"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -43,6 +44,10 @@ func NewDeltaFragmentMatrix(prime *big.Int) DeltaFragmentMatrix {
 }
 
 func (matrix *DeltaFragmentMatrix) ComputeBuyOrder(buyOrderFragment *order.Fragment) DeltaFragments {
+	// Disable the GC during computationally heavy sections
+	debug.SetGCPercent(-1)
+	defer debug.SetGCPercent(100)
+
 	matrix.buyOrderFragmentsMu.Lock()
 	matrix.buyOrderFragments[string(buyOrderFragment.OrderID)] = buyOrderFragment
 	matrix.buyOrderFragmentsMu.Unlock()
