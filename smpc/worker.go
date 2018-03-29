@@ -64,8 +64,8 @@ func (worker *Worker) Run() {
 			if message.DeltaFragments != nil {
 				worker.processDeltaFragments(message.DeltaFragments)
 			}
-			if message.Deltas != nil {
-				worker.processDeltas(message.Deltas)
+			if message.Delta != nil {
+				worker.processDelta(message.Delta)
 			}
 		default:
 			// Ignore message that we do not recognize
@@ -107,38 +107,50 @@ func (worker *Worker) processDeltaFragments(deltaFragments DeltaFragments) {
 	}
 
 	// Build new Deltas from the DeltaFragments
-	newDeltas, newDeltaFragments := worker.deltaBuilder.ComputeDelta(deltaFragments)
+	numDeltaFragments := len(deltaFragments)
+	for i := 0; i < numDeltaFragments; i++ {
+		delta, new := worker.deltaBuilder.ComputeDelta(deltaFragments[i])
 
-	// Send a new Message directly to the Multiplexer so that the new
-	// Deltas can be processed
-	if newDeltas != nil && len(newDeltas) > 0 {
-		go worker.multiplexer.Send(Message{
-			Deltas: newDeltas,
-		})
+		// Send a new Message directly to the Multiplexer so that the new
+		// Deltas can be processed
+		if delta != nil {
+			go worker.multiplexer.Send(Message{
+				Delta: delta,
+			})
+		}
+
+		// Forget about DeltaFragments we have seen before
+		if !new {
+			if len(deltaFragments) == 1 {
+				deltaFragments = DeltaFragments{}
+				break
+			}
+			deltaFragments[len(deltaFragments)-1] = deltaFragments[i]
+			deltaFragments = deltaFragments[:len(deltaFragments)-1]
+			i--
+		}
 	}
 
-	if newDeltaFragments != nil && len(newDeltaFragments) > 0 {
+	if len(deltaFragments) > 0 {
 		// Send a new Message to all MessageQueues available to this Worker
 		go func() {
 			for _, queue := range worker.peerQueues {
 				queue.Send(Message{
-					DeltaFragments: newDeltaFragments,
+					DeltaFragments: deltaFragments,
 				})
 			}
 		}()
 	}
 }
 
-func (worker *Worker) processDeltas(deltas Deltas) {
+func (worker *Worker) processDelta(delta *Delta) {
 
 	// To ensure that the Worker remains lively, the DeltaQueue must be drained
 	// regularly — usually by the creator of the Worker, in a different
 	// Goroutine
 	go func() {
-		for _, delta := range deltas {
-			if err := worker.deltaQueue.Send(delta); err != nil {
-				worker.logger.Compute(logger.Error, fmt.Sprintf("cannot send delta notification: %s", err.Error()))
-			}
+		if err := worker.deltaQueue.Send(*delta); err != nil {
+			worker.logger.Compute(logger.Error, fmt.Sprintf("cannot send delta notification: %s", err.Error()))
 		}
 	}()
 }

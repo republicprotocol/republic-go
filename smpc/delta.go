@@ -138,46 +138,39 @@ func NewDeltaBuilder(k int64, prime stackint.Int1024) DeltaBuilder {
 	}
 }
 
-func (builder *DeltaBuilder) ComputeDelta(deltaFragments DeltaFragments) (Deltas, DeltaFragments) {
-	newDeltas := make(Deltas, 0, len(deltaFragments))
-	newDeltaFragments := make(DeltaFragments, 0, len(deltaFragments))
-
+func (builder *DeltaBuilder) ComputeDelta(deltaFragment DeltaFragment) (*Delta, bool) {
 	builder.deltasMu.Lock()
 	defer builder.deltasMu.Unlock()
 
-	for _, deltaFragment := range deltaFragments {
-		// Store the DeltaFragment if it has not been seen before
-		if builder.hasDeltaFragment(deltaFragment.ID) {
-			continue
-		}
-		builder.deltaFragments[string(deltaFragment.ID)] = deltaFragment
-		newDeltaFragments = append(newDeltaFragments, deltaFragment)
+	// Store the DeltaFragment if it has not been seen before
+	if builder.hasDeltaFragment(deltaFragment.ID) {
+		return nil, false
+	}
+	builder.deltaFragments[string(deltaFragment.ID)] = deltaFragment
 
-		// Associate the DeltaFragment with its respective Delta if the Delta
-		// has not been built yet
-		if builder.hasDelta(deltaFragment.DeltaID) {
-			continue
-		}
-		if _, ok := builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)]; ok {
-			builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)] =
-				append(builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)], deltaFragment)
-		} else {
-			builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)] = DeltaFragments{deltaFragment}
-		}
-
-		// Build the Delta
-		deltaFragments := builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)]
-		if int64(len(deltaFragments)) >= builder.k {
-			if !IsCompatible(deltaFragments) {
-				continue
-			}
-			delta := NewDelta(deltaFragments, builder.prime)
-			builder.deltas[string(delta.ID)] = delta
-			newDeltas = append(newDeltas, delta)
-		}
+	// Associate the DeltaFragment with its respective Delta if the Delta
+	// has not been built yet
+	if builder.hasDelta(deltaFragment.DeltaID) {
+		return nil, true
+	}
+	if _, ok := builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)]; ok {
+		builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)] =
+			append(builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)], deltaFragment)
+	} else {
+		builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)] = DeltaFragments{deltaFragment}
 	}
 
-	return newDeltas, newDeltaFragments
+	// Build the Delta
+	deltaFragments := builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)]
+	if int64(len(deltaFragments)) >= builder.k {
+		if !IsCompatible(deltaFragments) {
+			return nil, true
+		}
+		delta := NewDelta(deltaFragments, builder.prime)
+		builder.deltas[string(delta.ID)] = delta
+		return &delta, true
+	}
+	return nil, true
 }
 
 func (builder *DeltaBuilder) hasDelta(deltaID DeltaID) bool {
