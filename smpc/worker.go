@@ -16,6 +16,7 @@ type Workers []Worker
 // shutdown. It is primarily responsible for decoding the message and
 // delegating work to the appropriate component.
 type Worker struct {
+	debug   bool
 	running int32
 	logger  *logger.Logger
 
@@ -32,8 +33,9 @@ type Worker struct {
 // send it back through the Multiplexer for scheduling to another worker. This
 // prevents new WorkerTasks from jumping the queue, providing a sense of
 // fairness in prioritization.
-func NewWorker(logger *logger.Logger, peerQueues dispatch.MessageQueues, multiplexer *dispatch.Multiplexer, deltaFragmentMatrix *DeltaFragmentMatrix, deltaBuilder *DeltaBuilder, deltaQueue *DeltaQueue) Worker {
+func NewWorker(debug bool, logger *logger.Logger, peerQueues dispatch.MessageQueues, multiplexer *dispatch.Multiplexer, deltaFragmentMatrix *DeltaFragmentMatrix, deltaBuilder *DeltaBuilder, deltaQueue *DeltaQueue) Worker {
 	return Worker{
+		debug:   debug,
 		running: 1,
 		logger:  logger,
 
@@ -51,12 +53,20 @@ func NewWorker(logger *logger.Logger, peerQueues dispatch.MessageQueues, multipl
 // component to complete, and then read the next message from the Multiplexer.
 // This function blocks until the Multiplexer is shutdown.
 func (worker *Worker) Run() {
-	log.Println("Run")
+	if worker.debug {
+		log.Printf("%p starting", worker)
+		defer log.Printf("%p shutting down", worker)
+	}
+
 	for atomic.LoadInt32(&worker.running) > 0 {
+		if worker.debug {
+			log.Printf("%p is recving", worker)
+		}
 		message, ok := worker.multiplexer.Recv()
 		if !ok {
 			break
 		}
+		log.Printf("%p recvd", worker)
 		switch message := message.(type) {
 		case Message:
 			if message.Error != nil {
@@ -70,7 +80,7 @@ func (worker *Worker) Run() {
 			}
 		default:
 			// Ignore message that we do not recognize
-			break
+			log.Fatalf("unrecognized message type %T", message)
 		}
 	}
 }
@@ -101,6 +111,7 @@ func (worker *Worker) processDeltaFragments(deltaFragments DeltaFragments) {
 type Broadcasters []Broadcaster
 
 type Broadcaster struct {
+	debug   bool
 	running int32
 	logger  *logger.Logger
 
@@ -111,8 +122,9 @@ type Broadcaster struct {
 	deltaQueue          *DeltaQueue
 }
 
-func NewBroadcaster(logger *logger.Logger, peerQueues dispatch.MessageQueues, deltaFragmentMatrix *DeltaFragmentMatrix, deltaBuilder *DeltaBuilder, deltaQueue *DeltaQueue) Broadcaster {
+func NewBroadcaster(debug bool, logger *logger.Logger, peerQueues dispatch.MessageQueues, deltaFragmentMatrix *DeltaFragmentMatrix, deltaBuilder *DeltaBuilder, deltaQueue *DeltaQueue) Broadcaster {
 	return Broadcaster{
+		debug:   debug,
 		running: 1,
 		logger:  logger,
 
@@ -125,23 +137,63 @@ func NewBroadcaster(logger *logger.Logger, peerQueues dispatch.MessageQueues, de
 }
 
 func (broadcaster *Broadcaster) Run() {
+	if broadcaster.debug {
+		log.Printf("%p starting", broadcaster)
+		defer log.Printf("%p shutting down", broadcaster)
+	}
+
 	go func() {
 		for atomic.LoadInt32(&broadcaster.running) != 0 {
 			deltaFragments := [128]DeltaFragment{}
+			if broadcaster.debug {
+				log.Printf("%p is waiting for delta fragments", broadcaster)
+			}
 			n := broadcaster.deltaFragmentMatrix.WaitForDeltaFragments(deltaFragments[:])
+
+			if broadcaster.debug {
+				log.Printf("%p got delta fragments", broadcaster)
+			}
+
+			if broadcaster.debug {
+				log.Printf("%p is broadcasting delta fragments", broadcaster)
+			}
 			for _, queue := range broadcaster.peerQueues {
-				queue.Send(Message{
+				if err := queue.Send(Message{
 					DeltaFragments: deltaFragments[:n],
-				})
+				}); err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			if broadcaster.debug {
+				log.Printf("%p broadcast delta fragments", broadcaster)
 			}
 		}
 	}()
 
 	deltas := [128]Delta{}
 	for atomic.LoadInt32(&broadcaster.running) != 0 {
+
+		if broadcaster.debug {
+			log.Printf("%p is waiting for deltas", broadcaster)
+		}
 		n := broadcaster.deltaBuilder.WaitForDeltas(deltas[:])
+
+		if broadcaster.debug {
+			log.Printf("%p got deltas", broadcaster)
+		}
+
+		if broadcaster.debug {
+			log.Printf("%p is broadcasting deltas", broadcaster)
+		}
 		for i := 0; i < n; i++ {
-			broadcaster.deltaQueue.Send(deltas[i])
+			if err := broadcaster.deltaQueue.Send(deltas[i]); err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		if broadcaster.debug {
+			log.Printf("%p broadcast deltas", broadcaster)
 		}
 	}
 }

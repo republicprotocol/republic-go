@@ -42,22 +42,16 @@ type ChannelQueue struct {
 	chMu   *sync.RWMutex
 	chOpen bool
 	ch     chan Message
-
-	writeInBackground bool
 }
 
 // NewChannelQueue returns a MessageQueue interface that is backed by a Go
 // channel. The underlying channel is buffered with a size equal to the message
-// queue limit.The queue can be configured to perform all writes in the
-// background, preventing writes from block in the caller. If used incorrectly
-// this can cause a large number of Goroutines to be spawned.
-func NewChannelQueue(messageQueueLimit int, writeInBackground bool) *ChannelQueue {
+// queue limit.
+func NewChannelQueue(messageQueueLimit int) *ChannelQueue {
 	return &ChannelQueue{
 		chMu:   new(sync.RWMutex),
 		chOpen: true,
 		ch:     make(chan Message, messageQueueLimit),
-
-		writeInBackground: writeInBackground,
 	}
 }
 
@@ -73,8 +67,12 @@ func (queue *ChannelQueue) Shutdown() error {
 	queue.chMu.Lock()
 	defer queue.chMu.Unlock()
 
+	if !queue.chOpen {
+		return errors.New("cannot shutdown channel queue: already shutdown")
+	}
 	queue.chOpen = false
 	close(queue.ch)
+
 	return nil
 }
 
@@ -86,16 +84,8 @@ func (queue *ChannelQueue) Send(message Message) error {
 	if !queue.chOpen {
 		return nil
 	}
+	queue.ch <- message
 
-	if queue.writeInBackground {
-		select {
-		case queue.ch <- message:
-		default:
-			go func() { queue.ch <- message }()
-		}
-	} else {
-		queue.ch <- message
-	}
 	return nil
 }
 
@@ -140,7 +130,7 @@ func (queue *UnboundedQueue) Shutdown() error {
 	defer queue.Exit()
 
 	if !queue.open {
-		return errors.New("cannot shutdown: already shutdown")
+		return errors.New("cannot shutdown unbounded queue: already shutdown")
 	}
 	queue.open = false
 	queue.items = []Message{}

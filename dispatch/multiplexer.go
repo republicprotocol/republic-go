@@ -1,6 +1,7 @@
 package dispatch
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 )
@@ -50,18 +51,21 @@ func (multiplexer *Multiplexer) RunMessageQueue(id string, messageQueue MessageQ
 	// channel
 	go func() {
 		// Recover from writing to a potential closed channel
-		defer func() { recover() }()
-
 		for {
 			message, ok := messageQueue.Recv()
 			if !ok {
 				break
 			}
+			open := false
 			multiplexer.messagesMu.RLock()
 			if multiplexer.messagesOpen {
+				open = true
 				multiplexer.messages <- message
 			}
 			multiplexer.messagesMu.RUnlock()
+			if !open {
+				break
+			}
 		}
 	}()
 
@@ -79,19 +83,27 @@ func (multiplexer *Multiplexer) RunMessageQueue(id string, messageQueue MessageQ
 
 // Shutdown gracefully by shuttding down all MessageQueues running in the
 // Multiplexer.
-func (multiplexer *Multiplexer) Shutdown() {
+func (multiplexer *Multiplexer) Shutdown() error {
 
 	// Stop letting workers receive message, and stop accepting new
 	// MessageQueues
-	func() {
+	err := func() error {
 		multiplexer.messagesMu.Lock()
 		defer multiplexer.messagesMu.Unlock()
 
 		// While the mutex is locked, close the channel and prevent further
 		// writes
+		if !multiplexer.messagesOpen {
+			return errors.New("cannot shutdown multiplexer: already shutdown")
+		}
 		multiplexer.messagesOpen = false
 		close(multiplexer.messages)
+
+		return nil
 	}()
+	if err != nil {
+		return err
+	}
 
 	// While the mutex is locked, gracefully shutdown all MessageQueues
 	multiplexer.messageQueuesMu.Lock()
@@ -99,9 +111,13 @@ func (multiplexer *Multiplexer) Shutdown() {
 
 	for _, messageQueue := range multiplexer.messageQueues {
 		// Ignore errors returned during shutdown
-		_ = messageQueue.Shutdown()
+		e := messageQueue.Shutdown()
+		if e != nil {
+			err = e
+		}
 	}
 	multiplexer.messageQueues = map[string]MessageQueue{}
+	return err
 }
 
 // Send a Message directly to the Multiplexer unified channel. If the channel

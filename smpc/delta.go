@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/republicprotocol/republic-go/stackint"
-
-	"github.com/republicprotocol/go-do"
-
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
@@ -122,8 +119,13 @@ func (matrix *DeltaFragmentMatrix) WaitForDeltaFragments(deltaFragments DeltaFra
 type DeltaBuilder struct {
 	do.GuardedObject
 
-	k     int64
-	prime stackint.Int1024
+	k                    int64
+	prime                stackint.Int1024
+	fstCodeSharesCache   shamir.Shares
+	sndCodeSharesCache   shamir.Shares
+	priceSharesCache     shamir.Shares
+	minVolumeSharesCache shamir.Shares
+	maxVolumeSharesCache shamir.Shares
 
 	deltas                 map[string]Delta
 	deltaFragments         map[string]DeltaFragment
@@ -136,8 +138,15 @@ type DeltaBuilder struct {
 func NewDeltaBuilder(k int64, prime stackint.Int1024) *DeltaBuilder {
 	builder := new(DeltaBuilder)
 	builder.GuardedObject = do.NewGuardedObject()
+
 	builder.k = k
 	builder.prime = prime
+	builder.fstCodeSharesCache = make(shamir.Shares, k)
+	builder.sndCodeSharesCache = make(shamir.Shares, k)
+	builder.priceSharesCache = make(shamir.Shares, k)
+	builder.minVolumeSharesCache = make(shamir.Shares, k)
+	builder.maxVolumeSharesCache = make(shamir.Shares, k)
+
 	builder.deltas = map[string]Delta{}
 	builder.deltaFragments = map[string]DeltaFragment{}
 	builder.deltasToDeltaFragments = map[string]DeltaFragments{}
@@ -162,7 +171,7 @@ func (builder *DeltaBuilder) ComputeDelta(deltaFragments DeltaFragments) {
 		// Associate the DeltaFragment with its respective Delta if the Delta
 		// has not been built yet
 		if builder.hasDelta(deltaFragment.DeltaID) {
-			return nil, true
+			return
 		}
 		if _, ok := builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)]; ok {
 			builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)] =
@@ -177,13 +186,27 @@ func (builder *DeltaBuilder) ComputeDelta(deltaFragments DeltaFragments) {
 			if !IsCompatible(deltaFragments) {
 				continue
 			}
-			delta := NewDelta(deltaFragments, builder.prime)
+
+			for i := int64(0); i < builder.k; i++ {
+				builder.fstCodeSharesCache[i] = deltaFragments[i].FstCodeShare
+				builder.sndCodeSharesCache[i] = deltaFragments[i].SndCodeShare
+				builder.priceSharesCache[i] = deltaFragments[i].PriceShare
+				builder.maxVolumeSharesCache[i] = deltaFragments[i].MaxVolumeShare
+				builder.minVolumeSharesCache[i] = deltaFragments[i].MinVolumeShare
+			}
+
+			delta := NewDeltaFromShares(
+				deltaFragments[0].BuyOrderID,
+				deltaFragments[0].SellOrderID,
+				builder.fstCodeSharesCache,
+				builder.sndCodeSharesCache,
+				builder.priceSharesCache,
+				builder.minVolumeSharesCache,
+				builder.maxVolumeSharesCache,
+				builder.k, builder.prime)
 			builder.deltas[string(delta.ID)] = delta
 			builder.deltasQueue = append(builder.deltasQueue, delta)
 		}
-		delta := NewDelta(deltaFragments, builder.prime)
-		builder.deltas[string(delta.ID)] = delta
-		return &delta, true
 	}
 }
 
@@ -214,8 +237,6 @@ func (builder *DeltaBuilder) hasDeltaFragment(deltaFragmentID DeltaFragmentID) b
 	_, ok := builder.deltaFragments[string(deltaFragmentID)]
 	return ok
 }
-
-type DeltaHandler func(deltas Deltas)
 
 // A DeltaID is the Keccak256 hash of the order IDs that were used to compute
 // the associated Delta.
@@ -265,6 +286,23 @@ func NewDelta(deltaFragments DeltaFragments, prime stackint.Int1024) Delta {
 	delta := Delta{
 		BuyOrderID:  deltaFragments[0].BuyOrderID,
 		SellOrderID: deltaFragments[0].SellOrderID,
+	}
+	delta.FstCode = shamir.Join(&prime, fstCodeShares)
+	delta.SndCode = shamir.Join(&prime, sndCodeShares)
+	delta.Price = shamir.Join(&prime, priceShares)
+	delta.MaxVolume = shamir.Join(&prime, maxVolumeShares)
+	delta.MinVolume = shamir.Join(&prime, minVolumeShares)
+
+	// Compute the ResultID and return the Result.
+	delta.ID = DeltaID(crypto.Keccak256(delta.BuyOrderID[:], delta.SellOrderID[:]))
+	return delta
+}
+
+func NewDeltaFromShares(buyOrderID, sellOrderID order.ID, fstCodeShares, sndCodeShares, priceShares, maxVolumeShares, minVolumeShares shamir.Shares, k int64, prime stackint.Int1024) Delta {
+	// Join the Shares into a Result.
+	delta := Delta{
+		BuyOrderID:  buyOrderID,
+		SellOrderID: sellOrderID,
 	}
 	delta.FstCode = shamir.Join(&prime, fstCodeShares)
 	delta.SndCode = shamir.Join(&prime, sndCodeShares)
