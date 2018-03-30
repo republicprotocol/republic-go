@@ -364,3 +364,4 @@ func (service *SwarmService) FindNode(targetID identity.ID) (*identity.MultiAddr
 	}
 	return nil, nil
 }
+

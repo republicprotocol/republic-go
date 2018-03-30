@@ -9,20 +9,20 @@ import (
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
-// MarshalAddress into an RPC protobuf object.
+// MarshalAddress into a RPC protobuf object.
 func MarshalAddress(address identity.Address) *Address {
 	return &Address{
 		Address: address.String(),
 	}
 }
 
-// MarshalAddress into an RPC protobuf object.
+// UnmarshalAddress into a RPC protobuf object.
 func UnmarshalAddress(address *Address) identity.Address {
 	return identity.Address(address.Address)
 }
 
 
-// MarshalMultiAddress into an RPC protobuf object.
+// MarshalMultiAddress into a RPC protobuf object.
 func MarshalMultiAddress(multiAddress *identity.MultiAddress) *MultiAddress {
 	return &MultiAddress{
 		Signature:    []byte{},
@@ -30,12 +30,12 @@ func MarshalMultiAddress(multiAddress *identity.MultiAddress) *MultiAddress {
 	}
 }
 
-// UnmarshalMultiAddress from an RPC protobuf object.
+// UnmarshalMultiAddress from a RPC protobuf object.
 func UnmarshalMultiAddress(multiAddress *MultiAddress) (identity.MultiAddress, error) {
 	return identity.NewMultiAddressFromString(multiAddress.MultiAddress)
 }
 
-// MarshalDeltaFragment into an RPC protobuf object.
+// MarshalDeltaFragment into a RPC protobuf object.
 func MarshalDeltaFragment(deltaFragment *smpc.DeltaFragment) *DeltaFragment {
 	return &DeltaFragment{
 		Id:                  deltaFragment.ID,
@@ -52,7 +52,7 @@ func MarshalDeltaFragment(deltaFragment *smpc.DeltaFragment) *DeltaFragment {
 	}
 }
 
-// UnmarshalDeltaFragment from an RPC protobuf object.
+// UnmarshalDeltaFragment from a RPC protobuf object.
 func UnmarshalDeltaFragment(deltaFragment *DeltaFragment) (smpc.DeltaFragment, error) {
 	val := smpc.DeltaFragment{
 		ID:                  deltaFragment.Id,
