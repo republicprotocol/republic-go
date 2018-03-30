@@ -13,7 +13,7 @@ type OrderBookSyncer interface {
 	Settle(ord order.Order) error
 }
 
-// The broadcaster is the subject in the observer design pattern
+// Broadcaster is the subject in the observer design pattern
 type Broadcaster interface {
 	Subscribe(id string, queue dispatch.MessageQueue) error
 	Unsubscribe(id string)
@@ -37,7 +37,7 @@ func NewOrderBook(maxConnections int) *OrderBook {
 	}
 }
 
-// Sync will stream the order history to the message queue provided.
+// SyncHistory will stream the order history to the message queue provided.
 func (orderBook OrderBook) SyncHistory(queue dispatch.MessageQueue) error {
 	blocks := orderBook.orderBookCache.Blocks()
 	for _, block := range blocks {
@@ -88,7 +88,7 @@ func (orderBook OrderBook) Release(ord order.Order) error {
 	return orderBook.splitter.Send(message)
 }
 
-// Release is called when the order is settled.
+// Settle is called when the order is settled.
 func (orderBook OrderBook) Settle(ord order.Order) error {
 	orderBook.orderBookCache.Settle(ord)
 	orderBook.orderBookDB.Settle(ord)
