@@ -66,7 +66,9 @@ func (worker *Worker) Run() {
 		if !ok {
 			break
 		}
-		log.Printf("%p recvd", worker)
+		if worker.debug {
+			log.Printf("%p recvd", worker)
+		}
 		switch message := message.(type) {
 		case Message:
 			if message.Error != nil {
@@ -149,7 +151,6 @@ func (broadcaster *Broadcaster) Run() {
 				log.Printf("%p is waiting for delta fragments", broadcaster)
 			}
 			n := broadcaster.deltaFragmentMatrix.WaitForDeltaFragments(deltaFragments[:])
-
 			if broadcaster.debug {
 				log.Printf("%p got delta fragments", broadcaster)
 			}
