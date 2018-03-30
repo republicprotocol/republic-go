@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"runtime"
 	"time"
 
 	"github.com/republicprotocol/republic-go/order"
@@ -20,8 +21,10 @@ var _ = Describe("Smpc workers", func() {
 	Context("when receiving order fragment tasks", func() {
 
 		It("it should produce all matching deltas correctly", func() {
+			runtime.GOMAXPROCS(runtime.NumCPU())
 
-			numOrders := 1
+			queueLimit := 1
+			numOrders := 100
 			n := 72
 			k := 48
 			prime, ok := big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
@@ -29,19 +32,20 @@ var _ = Describe("Smpc workers", func() {
 
 			By("configuring a secure multiparty computation")
 
-			deltaQueue := NewDeltaQueue(100)
+			deltaQueue := NewDeltaQueue(queueLimit)
 			messageQueues := make(dispatch.MessageQueues, n)
 			for i := 0; i < n; i++ {
-				messageQueues[i] = dispatch.NewChannelQueue(100, false)
+				messageQueues[i] = dispatch.NewChannelQueue(queueLimit, false)
 			}
 			multiplexers := make([]dispatch.Multiplexer, n)
 			for i := 0; i < n; i++ {
-				multiplexers[i] = dispatch.NewMultiplexer(100)
+				multiplexers[i] = dispatch.NewMultiplexer(queueLimit)
 			}
 			workers := make(Workers, n)
+			broadcasters := make(Broadcasters, n)
 			for i := 0; i < n; i++ {
 				go func(i int) {
-					defer GinkgoRecover()
+					// defer GinkgoRecover()
 
 					deltaFragmentMatrix := smpc.NewDeltaFragmentMatrix(prime)
 					deltaBuilder := smpc.NewDeltaBuilder(int64(k), prime)
@@ -58,7 +62,11 @@ var _ = Describe("Smpc workers", func() {
 						}
 						workerPeerQueues = append(workerPeerQueues, messageQueues[j])
 					}
-					workers[i] = NewWorker(nil, workerPeerQueues, &multiplexers[i], &deltaFragmentMatrix, &deltaBuilder, &deltaQueue)
+
+					broadcasters[i] = NewBroadcaster(nil, workerPeerQueues, deltaFragmentMatrix, deltaBuilder, &deltaQueue)
+					workers[i] = NewWorker(nil, workerPeerQueues, &multiplexers[i], deltaFragmentMatrix, deltaBuilder, &deltaQueue)
+
+					go broadcasters[i].Run()
 					workers[i].Run()
 				}(i)
 			}
@@ -66,26 +74,24 @@ var _ = Describe("Smpc workers", func() {
 			By("sending order fragments")
 			go func() {
 				for i := 0; i < numOrders; i++ {
-					// go func(i int) {
-					buyOrderFragments, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(int64(i))).Split(int64(n), int64(k), prime)
-					Ω(err).ShouldNot(HaveOccurred())
-					for j := range multiplexers {
-						multiplexers[j].Send(Message{
-							OrderFragment: buyOrderFragments[j],
-						})
-					}
-					// log.Println("SENT BUY ORDER", i)
-					// }(i)
-					// go func(i int) {
-					sellOrderFragments, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(int64(i))).Split(int64(n), int64(k), prime)
-					Ω(err).ShouldNot(HaveOccurred())
-					for j := range multiplexers {
-						multiplexers[j].Send(Message{
-							OrderFragment: sellOrderFragments[j],
-						})
-					}
-					// log.Println("SENT SELL ORDER", i)
-					// }(i)
+					go func(i int) {
+						buyOrderFragments, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(int64(i))).Split(int64(n), int64(k), prime)
+						Ω(err).ShouldNot(HaveOccurred())
+						for j := range multiplexers {
+							multiplexers[j].Send(Message{
+								OrderFragment: buyOrderFragments[j],
+							})
+						}
+					}(i)
+					go func(i int) {
+						sellOrderFragments, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(int64(i))).Split(int64(n), int64(k), prime)
+						Ω(err).ShouldNot(HaveOccurred())
+						for j := range multiplexers {
+							multiplexers[j].Send(Message{
+								OrderFragment: sellOrderFragments[j],
+							})
+						}
+					}(i)
 				}
 			}()
 
@@ -95,7 +101,7 @@ var _ = Describe("Smpc workers", func() {
 				Ω(ok).Should(BeTrue())
 
 				if (i+1)%(n*numOrders) == 0 {
-					log.Println("found", i+1)
+					log.Println("found", i+1, "using", runtime.NumGoroutine())
 				}
 
 				switch delta := delta.(type) {

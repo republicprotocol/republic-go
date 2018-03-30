@@ -8,5 +8,4 @@ type Message struct {
 
 	OrderFragment  *order.Fragment
 	DeltaFragments DeltaFragments
-	Deltas         Deltas
 }

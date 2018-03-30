@@ -4,60 +4,50 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
-	"runtime/debug"
 	"sync"
+
+	"github.com/republicprotocol/go-do"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
 type DeltaFragmentMatrix struct {
+	do.GuardedObject
+
 	prime *big.Int
 
-	buyOrderFragmentsMu *sync.RWMutex
-	buyOrderFragments   map[string]*order.Fragment
+	buyOrderFragments  map[string]*order.Fragment
+	sellOrderFragments map[string]*order.Fragment
+	deltaFragments     map[string]map[string]DeltaFragment
 
-	sellOrderFragmentsMu *sync.RWMutex
-	sellOrderFragments   map[string]*order.Fragment
-
-	deltaFragmentsMu *sync.Mutex
-	deltaFragments   map[string]map[string]DeltaFragment
+	deltaFragmentsQueue         DeltaFragments
+	deltaFragmentsQueueNotEmpty *do.Guard
 }
 
-func NewDeltaFragmentMatrix(prime *big.Int) DeltaFragmentMatrix {
-	return DeltaFragmentMatrix{
-		prime: prime,
-
-		buyOrderFragmentsMu: new(sync.RWMutex),
-		buyOrderFragments:   map[string]*order.Fragment{},
-
-		sellOrderFragmentsMu: new(sync.RWMutex),
-		sellOrderFragments:   map[string]*order.Fragment{},
-
-		deltaFragmentsMu: new(sync.Mutex),
-		deltaFragments:   map[string]map[string]DeltaFragment{},
-	}
+func NewDeltaFragmentMatrix(prime *big.Int) *DeltaFragmentMatrix {
+	deltaFragmentMatrix := new(DeltaFragmentMatrix)
+	deltaFragmentMatrix.GuardedObject = do.NewGuardedObject()
+	deltaFragmentMatrix.prime = prime
+	deltaFragmentMatrix.buyOrderFragments = map[string]*order.Fragment{}
+	deltaFragmentMatrix.sellOrderFragments = map[string]*order.Fragment{}
+	deltaFragmentMatrix.deltaFragments = map[string]map[string]DeltaFragment{}
+	deltaFragmentMatrix.deltaFragmentsQueue = DeltaFragments{}
+	deltaFragmentMatrix.deltaFragmentsQueueNotEmpty = deltaFragmentMatrix.Guard(func() bool {
+		return len(deltaFragmentMatrix.deltaFragmentsQueue) > 0
+	})
+	return deltaFragmentMatrix
 }
 
-func (matrix *DeltaFragmentMatrix) ComputeBuyOrder(buyOrderFragment *order.Fragment) DeltaFragments {
-	// Disable the GC during computationally heavy sections
-	debug.SetGCPercent(-1)
-	defer debug.SetGCPercent(100)
+func (matrix *DeltaFragmentMatrix) ComputeBuyOrder(buyOrderFragment *order.Fragment) {
+	matrix.Enter(nil)
+	defer matrix.Exit()
 
-	matrix.buyOrderFragmentsMu.Lock()
 	matrix.buyOrderFragments[string(buyOrderFragment.OrderID)] = buyOrderFragment
-	matrix.buyOrderFragmentsMu.Unlock()
 
-	matrix.deltaFragmentsMu.Lock()
-	matrix.sellOrderFragmentsMu.RLock()
-	defer matrix.deltaFragmentsMu.Unlock()
-	defer matrix.sellOrderFragmentsMu.RUnlock()
-
-	deltaFragments := make(DeltaFragments, 0, len(matrix.sellOrderFragments))
 	for _, sellOrderFragment := range matrix.sellOrderFragments {
 		if !buyOrderFragment.IsCompatible(sellOrderFragment) {
 			continue
@@ -67,23 +57,16 @@ func (matrix *DeltaFragmentMatrix) ComputeBuyOrder(buyOrderFragment *order.Fragm
 		}
 		deltaFragment := NewDeltaFragment(buyOrderFragment, sellOrderFragment, matrix.prime)
 		matrix.deltaFragments[string(buyOrderFragment.OrderID)][string(sellOrderFragment.OrderID)] = deltaFragment
-		deltaFragments = append(deltaFragments, deltaFragment)
-
+		matrix.deltaFragmentsQueue = append(matrix.deltaFragmentsQueue, deltaFragment)
 	}
-	return deltaFragments
 }
 
-func (matrix *DeltaFragmentMatrix) ComputeSellOrder(sellOrderFragment *order.Fragment) DeltaFragments {
-	matrix.sellOrderFragmentsMu.Lock()
+func (matrix *DeltaFragmentMatrix) ComputeSellOrder(sellOrderFragment *order.Fragment) {
+	matrix.Enter(nil)
+	defer matrix.Exit()
+
 	matrix.sellOrderFragments[string(sellOrderFragment.OrderID)] = sellOrderFragment
-	matrix.sellOrderFragmentsMu.Unlock()
 
-	matrix.deltaFragmentsMu.Lock()
-	matrix.buyOrderFragmentsMu.RLock()
-	defer matrix.deltaFragmentsMu.Unlock()
-	defer matrix.buyOrderFragmentsMu.RUnlock()
-
-	deltaFragments := make(DeltaFragments, 0, len(matrix.buyOrderFragments))
 	for _, buyOrderFragment := range matrix.buyOrderFragments {
 		if !buyOrderFragment.IsCompatible(sellOrderFragment) {
 			continue
@@ -93,27 +76,22 @@ func (matrix *DeltaFragmentMatrix) ComputeSellOrder(sellOrderFragment *order.Fra
 		}
 		deltaFragment := NewDeltaFragment(buyOrderFragment, sellOrderFragment, matrix.prime)
 		matrix.deltaFragments[string(buyOrderFragment.OrderID)][string(sellOrderFragment.OrderID)] = deltaFragment
-		deltaFragments = append(deltaFragments, deltaFragment)
+		matrix.deltaFragmentsQueue = append(matrix.deltaFragmentsQueue, deltaFragment)
 	}
 
-	return deltaFragments
 }
 
 func (matrix *DeltaFragmentMatrix) RemoveBuyOrder(id order.ID) {
-	matrix.deltaFragmentsMu.Lock()
-	matrix.buyOrderFragmentsMu.Lock()
-	defer matrix.deltaFragmentsMu.Unlock()
-	defer matrix.buyOrderFragmentsMu.Unlock()
+	matrix.Enter(nil)
+	defer matrix.Exit()
 
 	delete(matrix.deltaFragments, string(id))
 	delete(matrix.buyOrderFragments, string(id))
 }
 
 func (matrix *DeltaFragmentMatrix) RemoveSellOrder(id order.ID) {
-	matrix.deltaFragmentsMu.Lock()
-	matrix.sellOrderFragmentsMu.Lock()
-	defer matrix.deltaFragmentsMu.Unlock()
-	defer matrix.sellOrderFragmentsMu.Unlock()
+	matrix.Enter(nil)
+	defer matrix.Exit()
 
 	delete(matrix.sellOrderFragments, string(id))
 	for buyOrderID := range matrix.deltaFragments {
@@ -121,34 +99,56 @@ func (matrix *DeltaFragmentMatrix) RemoveSellOrder(id order.ID) {
 	}
 }
 
+func (matrix *DeltaFragmentMatrix) WaitForDeltaFragments(deltaFragments DeltaFragments) int {
+	matrix.Enter(matrix.deltaFragmentsQueueNotEmpty)
+	defer matrix.Exit()
+
+	n := 0
+	for i := 0; i < len(deltaFragments) && i < len(matrix.deltaFragmentsQueue); i++ {
+		deltaFragments[i] = matrix.deltaFragmentsQueue[i]
+		n++
+	}
+
+	if n >= len(matrix.deltaFragmentsQueue) {
+		matrix.deltaFragmentsQueue = matrix.deltaFragmentsQueue[0:0]
+	} else {
+		matrix.deltaFragmentsQueue = matrix.deltaFragmentsQueue[n:]
+	}
+	return n
+}
+
 type DeltaBuilder struct {
+	do.GuardedObject
+
 	k     int64
 	prime *big.Int
 
-	deltasMu               *sync.Mutex
 	deltas                 map[string]Delta
 	deltaFragments         map[string]DeltaFragment
 	deltasToDeltaFragments map[string]DeltaFragments
+
+	deltasQueue         Deltas
+	deltasQueueNotEmpty *do.Guard
 }
 
-func NewDeltaBuilder(k int64, prime *big.Int) DeltaBuilder {
-	return DeltaBuilder{
-		k:     k,
-		prime: prime,
-
-		deltasMu:               new(sync.Mutex),
-		deltas:                 map[string]Delta{},
-		deltaFragments:         map[string]DeltaFragment{},
-		deltasToDeltaFragments: map[string]DeltaFragments{},
-	}
+func NewDeltaBuilder(k int64, prime *big.Int) *DeltaBuilder {
+	builder := new(DeltaBuilder)
+	builder.GuardedObject = do.NewGuardedObject()
+	builder.k = k
+	builder.prime = prime
+	builder.deltas = map[string]Delta{}
+	builder.deltaFragments = map[string]DeltaFragment{}
+	builder.deltasToDeltaFragments = map[string]DeltaFragments{}
+	builder.deltasQueue = Deltas{}
+	builder.deltasQueueNotEmpty = builder.Guard(func() bool {
+		return len(builder.deltasQueue) > 0
+	})
+	return builder
 }
 
-func (builder *DeltaBuilder) ComputeDelta(deltaFragments DeltaFragments) (Deltas, DeltaFragments) {
-	newDeltas := make(Deltas, 0, len(deltaFragments))
-	newDeltaFragments := make(DeltaFragments, 0, len(deltaFragments))
-
-	builder.deltasMu.Lock()
-	defer builder.deltasMu.Unlock()
+func (builder *DeltaBuilder) ComputeDelta(deltaFragments DeltaFragments) {
+	builder.Enter(nil)
+	defer builder.Exit()
 
 	for _, deltaFragment := range deltaFragments {
 		// Store the DeltaFragment if it has not been seen before
@@ -156,7 +156,6 @@ func (builder *DeltaBuilder) ComputeDelta(deltaFragments DeltaFragments) (Deltas
 			continue
 		}
 		builder.deltaFragments[string(deltaFragment.ID)] = deltaFragment
-		newDeltaFragments = append(newDeltaFragments, deltaFragment)
 
 		// Associate the DeltaFragment with its respective Delta if the Delta
 		// has not been built yet
@@ -178,11 +177,27 @@ func (builder *DeltaBuilder) ComputeDelta(deltaFragments DeltaFragments) (Deltas
 			}
 			delta := NewDelta(deltaFragments, builder.prime)
 			builder.deltas[string(delta.ID)] = delta
-			newDeltas = append(newDeltas, delta)
+			builder.deltasQueue = append(builder.deltasQueue, delta)
 		}
 	}
+}
 
-	return newDeltas, newDeltaFragments
+func (builder *DeltaBuilder) WaitForDeltas(deltas Deltas) int {
+	builder.Enter(builder.deltasQueueNotEmpty)
+	defer builder.Exit()
+
+	n := 0
+	for i := 0; i < len(deltas) && i < len(builder.deltasQueue); i++ {
+		deltas[i] = builder.deltasQueue[i]
+		n++
+	}
+
+	if n >= len(builder.deltasQueue) {
+		builder.deltasQueue = builder.deltasQueue[0:0]
+	} else {
+		builder.deltasQueue = builder.deltasQueue[n:]
+	}
+	return n
 }
 
 func (builder *DeltaBuilder) hasDelta(deltaID DeltaID) bool {
@@ -394,54 +409,6 @@ func IsCompatible(deltaFragments DeltaFragments) bool {
 		}
 	}
 	return true
-}
-
-func (deltaFragment *DeltaFragment) Marshal() *rpc.DeltaFragment {
-	return &rpc.DeltaFragment{
-		Id:                  deltaFragment.ID,
-		DeltaId:             deltaFragment.DeltaID,
-		BuyOrderId:          deltaFragment.BuyOrderID,
-		SellOrderId:         deltaFragment.SellOrderID,
-		BuyOrderFragmentId:  deltaFragment.BuyOrderFragmentID,
-		SellOrderFragmentId: deltaFragment.SellOrderFragmentID,
-		FstCodeShare:        shamir.ToBytes(deltaFragment.FstCodeShare),
-		SndCodeShare:        shamir.ToBytes(deltaFragment.SndCodeShare),
-		PriceShare:          shamir.ToBytes(deltaFragment.PriceShare),
-		MaxVolumeShare:      shamir.ToBytes(deltaFragment.MaxVolumeShare),
-		MinVolumeShare:      shamir.ToBytes(deltaFragment.MinVolumeShare),
-	}
-}
-
-func (deltaFragment *DeltaFragment) Unmarshal(data *rpc.DeltaFragment) error {
-	deltaFragment.ID = data.Id
-	deltaFragment.DeltaID = data.DeltaId
-	deltaFragment.BuyOrderID = data.BuyOrderId
-	deltaFragment.SellOrderID = data.SellOrderId
-	deltaFragment.BuyOrderFragmentID = data.BuyOrderFragmentId
-	deltaFragment.SellOrderFragmentID = data.SellOrderFragmentId
-
-	var err error
-	deltaFragment.FstCodeShare, err = shamir.FromBytes(data.FstCodeShare)
-	if err != nil {
-		return err
-	}
-	deltaFragment.SndCodeShare, err = shamir.FromBytes(data.SndCodeShare)
-	if err != nil {
-		return err
-	}
-	deltaFragment.PriceShare, err = shamir.FromBytes(data.PriceShare)
-	if err != nil {
-		return err
-	}
-	deltaFragment.MaxVolumeShare, err = shamir.FromBytes(data.MaxVolumeShare)
-	if err != nil {
-		return err
-	}
-	deltaFragment.MinVolumeShare, err = shamir.FromBytes(data.MinVolumeShare)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // DeltaQueues is a slice of DeltaQueue components.

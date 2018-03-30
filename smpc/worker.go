@@ -1,7 +1,7 @@
 package smpc
 
 import (
-	"fmt"
+	"log"
 	"sync/atomic"
 
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -51,6 +51,7 @@ func NewWorker(logger *logger.Logger, peerQueues dispatch.MessageQueues, multipl
 // component to complete, and then read the next message from the Multiplexer.
 // This function blocks until the Multiplexer is shutdown.
 func (worker *Worker) Run() {
+	log.Println("Run")
 	for atomic.LoadInt32(&worker.running) > 0 {
 		message, ok := worker.multiplexer.Recv()
 		if !ok {
@@ -58,14 +59,14 @@ func (worker *Worker) Run() {
 		}
 		switch message := message.(type) {
 		case Message:
+			if message.Error != nil {
+				log.Println(message.Error)
+			}
 			if message.OrderFragment != nil {
 				worker.processOrderFragment(message.OrderFragment)
 			}
 			if message.DeltaFragments != nil {
 				worker.processDeltaFragments(message.DeltaFragments)
-			}
-			if message.Deltas != nil {
-				worker.processDeltas(message.Deltas)
 			}
 		default:
 			// Ignore message that we do not recognize
@@ -80,24 +81,11 @@ func (worker *Worker) Shutdown() {
 }
 
 func (worker *Worker) processOrderFragment(orderFragment *order.Fragment) {
-
 	// Compute all new DeltaFragments
-	deltaFragments := DeltaFragments{}
 	if orderFragment.OrderParity == order.ParityBuy {
-		deltaFragments = worker.deltaFragmentMatrix.ComputeBuyOrder(orderFragment)
+		worker.deltaFragmentMatrix.ComputeBuyOrder(orderFragment)
 	} else {
-		deltaFragments = worker.deltaFragmentMatrix.ComputeSellOrder(orderFragment)
-	}
-
-	// Send a new Message directly to the Multiplexer so that the new
-	// DeltaFragments can be processed
-	if deltaFragments != nil && len(deltaFragments) > 0 {
-
-		// Use a Goroutine when sending messages to the Worker multiplexer to
-		// prevent deadlocking
-		go worker.multiplexer.Send(Message{
-			DeltaFragments: deltaFragments,
-		})
+		worker.deltaFragmentMatrix.ComputeSellOrder(orderFragment)
 	}
 }
 
@@ -107,38 +95,57 @@ func (worker *Worker) processDeltaFragments(deltaFragments DeltaFragments) {
 	}
 
 	// Build new Deltas from the DeltaFragments
-	newDeltas, newDeltaFragments := worker.deltaBuilder.ComputeDelta(deltaFragments)
+	worker.deltaBuilder.ComputeDelta(deltaFragments)
+}
 
-	// Send a new Message directly to the Multiplexer so that the new
-	// Deltas can be processed
-	if newDeltas != nil && len(newDeltas) > 0 {
-		go worker.multiplexer.Send(Message{
-			Deltas: newDeltas,
-		})
-	}
+type Broadcasters []Broadcaster
 
-	if newDeltaFragments != nil && len(newDeltaFragments) > 0 {
-		// Send a new Message to all MessageQueues available to this Worker
-		go func() {
-			for _, queue := range worker.peerQueues {
-				queue.Send(Message{
-					DeltaFragments: newDeltaFragments,
-				})
-			}
-		}()
+type Broadcaster struct {
+	running int32
+	logger  *logger.Logger
+
+	peerQueues dispatch.MessageQueues
+
+	deltaFragmentMatrix *DeltaFragmentMatrix
+	deltaBuilder        *DeltaBuilder
+	deltaQueue          *DeltaQueue
+}
+
+func NewBroadcaster(logger *logger.Logger, peerQueues dispatch.MessageQueues, deltaFragmentMatrix *DeltaFragmentMatrix, deltaBuilder *DeltaBuilder, deltaQueue *DeltaQueue) Broadcaster {
+	return Broadcaster{
+		running: 1,
+		logger:  logger,
+
+		peerQueues: peerQueues,
+
+		deltaFragmentMatrix: deltaFragmentMatrix,
+		deltaBuilder:        deltaBuilder,
+		deltaQueue:          deltaQueue,
 	}
 }
 
-func (worker *Worker) processDeltas(deltas Deltas) {
-
-	// To ensure that the Worker remains lively, the DeltaQueue must be drained
-	// regularly — usually by the creator of the Worker, in a different
-	// Goroutine
+func (broadcaster *Broadcaster) Run() {
 	go func() {
-		for _, delta := range deltas {
-			if err := worker.deltaQueue.Send(delta); err != nil {
-				worker.logger.Compute(logger.Error, fmt.Sprintf("cannot send delta notification: %s", err.Error()))
+		for atomic.LoadInt32(&broadcaster.running) != 0 {
+			deltaFragments := [128]DeltaFragment{}
+			n := broadcaster.deltaFragmentMatrix.WaitForDeltaFragments(deltaFragments[:])
+			for _, queue := range broadcaster.peerQueues {
+				queue.Send(Message{
+					DeltaFragments: deltaFragments[:n],
+				})
 			}
 		}
 	}()
+
+	deltas := [128]Delta{}
+	for atomic.LoadInt32(&broadcaster.running) != 0 {
+		n := broadcaster.deltaBuilder.WaitForDeltas(deltas[:])
+		for i := 0; i < n; i++ {
+			broadcaster.deltaQueue.Send(deltas[i])
+		}
+	}
+}
+
+func (broadcaster *Broadcaster) Shutdown() {
+	atomic.StoreInt32(&broadcaster.running, 0)
 }
