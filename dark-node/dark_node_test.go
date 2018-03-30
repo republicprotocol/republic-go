@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/big"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -21,6 +20,7 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 const (
@@ -28,7 +28,8 @@ const (
 	NumberOfOrders         = 100
 )
 
-var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
+var primeVal, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+var Prime = &primeVal
 var trader, _ = identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
 var mockRegistrar, _ = dnr.NewMockDarkNodeRegistrar()
 
@@ -36,6 +37,12 @@ type OrderBook struct {
 	LastUpdateId int             `json:"lastUpdateId"`
 	Bids         [][]interface{} `json:"bids"`
 	Asks         [][]interface{} `json:"asks"`
+}
+
+// HeapInt creates a stackint on the heap - temporary convenience method
+func heapInt(n uint) *stackint.Int1024 {
+	tmp := stackint.FromUint(n)
+	return &tmp
 }
 
 var _ = Describe("Dark nodes", func() {
@@ -219,7 +226,7 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 
 func registerNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
 	for _, node := range nodes {
-		_, err := mockRegistrar.Register(node.ID, []byte{}, big.NewInt(100))
+		_, err := mockRegistrar.Register(node.ID, []byte{}, heapInt(100))
 		if err != nil {
 			return err
 		}
@@ -334,20 +341,19 @@ func sendOrders(nodes []*node.DarkNode) error {
 		}
 		price = price * 1000000000000
 
-
 		amount, err := strconv.ParseFloat(j[1].(string), 10)
 		if err != nil {
 			return errors.New("fail to parse the amount into a float")
 		}
 		amount = amount * 1000000000000
 		sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour),
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
-			big.NewInt(int64(amount)), big.NewInt(1))
+			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint(price)), heapInt(uint(amount)),
+			heapInt(uint(amount)), heapInt(1))
 		sellOrders[i] = sellOrder
 
 		buyOrder := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour),
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
-			big.NewInt(int64(amount)), big.NewInt(1))
+			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint(price)), heapInt(uint(amount)),
+			heapInt(uint(amount)), heapInt(1))
 		buyOrders[i] = buyOrder
 	}
 

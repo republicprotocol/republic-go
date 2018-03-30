@@ -35,7 +35,7 @@ func main() {
 	}
 	auth := bind.NewKeyedTransactor(ethereumKeyPair.PrivateKey)
 
-	client, err := connection.FromURI("https://ropsten.infura.io/")
+	client, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
 	if err != nil {
 		log.Fatal(err)
 	}

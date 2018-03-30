@@ -3,9 +3,10 @@ package smpc_test
 import (
 	"fmt"
 	"log"
-	"math/big"
 	"runtime"
 	"time"
+
+	"github.com/republicprotocol/republic-go/stackint"
 
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/smpc"
@@ -27,8 +28,8 @@ var _ = Describe("Smpc workers", func() {
 			numOrders := 1
 			n := 72
 			k := 48
-			prime, ok := big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
-			Ω(ok).Should(BeTrue())
+			prime, err := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+			Ω(err).ShouldNot(HaveOccurred())
 
 			By("configuring a secure multiparty computation")
 
@@ -73,10 +74,13 @@ var _ = Describe("Smpc workers", func() {
 
 			By("sending order fragments")
 			go func() {
+				defer GinkgoRecover()
+
 				for i := 0; i < numOrders; i++ {
 					go func(i int) {
-						buyOrderFragments, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(int64(i))).Split(int64(n), int64(k), prime)
+						buyOrderFragments, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, stackint.FromUint(10), stackint.FromUint(1000), stackint.FromUint(100), stackint.FromUint(uint(i))).Split(int64(n), int64(k), &prime)
 						Ω(err).ShouldNot(HaveOccurred())
+
 						for j := range multiplexers {
 							multiplexers[j].Send(Message{
 								OrderFragment: buyOrderFragments[j],
@@ -84,7 +88,7 @@ var _ = Describe("Smpc workers", func() {
 						}
 					}(i)
 					go func(i int) {
-						sellOrderFragments, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, big.NewInt(10), big.NewInt(1000), big.NewInt(100), big.NewInt(int64(i))).Split(int64(n), int64(k), prime)
+						sellOrderFragments, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, stackint.FromUint(10), stackint.FromUint(1000), stackint.FromUint(100), stackint.FromUint(uint(i))).Split(int64(n), int64(k), &prime)
 						Ω(err).ShouldNot(HaveOccurred())
 						for j := range multiplexers {
 							multiplexers[j].Send(Message{

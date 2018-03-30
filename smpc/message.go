@@ -7,5 +7,6 @@ type Message struct {
 	Error error
 
 	OrderFragment  *order.Fragment
+	Delta          *Delta
 	DeltaFragments DeltaFragments
 }
