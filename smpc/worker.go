@@ -3,6 +3,7 @@ package smpc
 import (
 	"log"
 	"sync/atomic"
+	"time"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/logger"
@@ -146,11 +147,15 @@ func (broadcaster *Broadcaster) Run() {
 
 	go func() {
 		for atomic.LoadInt32(&broadcaster.running) != 0 {
+			time.Sleep(5 * time.Second)
 			deltaFragments := [128]DeltaFragment{}
 			if broadcaster.debug {
 				log.Printf("%p is waiting for delta fragments", broadcaster)
 			}
 			n := broadcaster.deltaFragmentMatrix.WaitForDeltaFragments(deltaFragments[:])
+			if n == 0 {
+				continue
+			}
 			if broadcaster.debug {
 				log.Printf("%p got delta fragments", broadcaster)
 			}
@@ -174,12 +179,14 @@ func (broadcaster *Broadcaster) Run() {
 
 	deltas := [128]Delta{}
 	for atomic.LoadInt32(&broadcaster.running) != 0 {
-
+		time.Sleep(5 * time.Second)
 		if broadcaster.debug {
 			log.Printf("%p is waiting for deltas", broadcaster)
 		}
 		n := broadcaster.deltaBuilder.WaitForDeltas(deltas[:])
-
+		if n == 0 {
+			continue
+		}
 		if broadcaster.debug {
 			log.Printf("%p got deltas", broadcaster)
 		}
@@ -188,11 +195,13 @@ func (broadcaster *Broadcaster) Run() {
 			log.Printf("%p is broadcasting deltas", broadcaster)
 		}
 		for i := 0; i < n; i++ {
+			if broadcaster.debug {
+				log.Printf("%p broadcast delta %d", broadcaster, i)
+			}
 			if err := broadcaster.deltaQueue.Send(deltas[i]); err != nil {
 				log.Fatal(err)
 			}
 		}
-
 		if broadcaster.debug {
 			log.Printf("%p broadcast deltas", broadcaster)
 		}

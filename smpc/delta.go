@@ -99,7 +99,7 @@ func (matrix *DeltaFragmentMatrix) RemoveSellOrder(id order.ID) {
 }
 
 func (matrix *DeltaFragmentMatrix) WaitForDeltaFragments(deltaFragments DeltaFragments) int {
-	matrix.Enter(matrix.deltaFragmentsQueueNotEmpty)
+	matrix.Enter(nil)
 	defer matrix.Exit()
 
 	n := 0
@@ -211,7 +211,7 @@ func (builder *DeltaBuilder) ComputeDelta(deltaFragments DeltaFragments) {
 }
 
 func (builder *DeltaBuilder) WaitForDeltas(deltas Deltas) int {
-	builder.Enter(builder.deltasQueueNotEmpty)
+	builder.Enter(nil)
 	defer builder.Exit()
 
 	n := 0
