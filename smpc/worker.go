@@ -7,6 +7,10 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+// OrderFragmentReceiver receives order Fragments from an input channel and
+// uses a DeltaFragmentMatrix to compute new DeltaFragments with them.
+// Cancelling the context will shutdown the DeltaFragmentReader.It returns an
+// error, or nil.
 func OrderFragmentReceiver(ctx context.Context, orderFragments chan order.Fragment, matrix *DeltaFragmentMatrix) error {
 	for {
 		select {
@@ -22,6 +26,9 @@ func OrderFragmentReceiver(ctx context.Context, orderFragments chan order.Fragme
 	}
 }
 
+// DeltaFragmentReceiver receives DeltaFragments from an input cahnnel and uses
+// a DeltaBuilder to build new Deltas with them. Cancelling the context will
+// shutdown the DeltaFragmentReader. It returns an error, or nil.
 func DeltaFragmentReceiver(ctx context.Context, deltaFragments chan DeltaFragment, builder *DeltaBuilder) error {
 	for {
 		select {
@@ -33,15 +40,19 @@ func DeltaFragmentReceiver(ctx context.Context, deltaFragments chan DeltaFragmen
 	}
 }
 
-func DeltaFragmentWaiter(ctx context.Context, matrix *DeltaFragmentMatrix, builder *DeltaBuilder) (chan DeltaFragment, chan error) {
-	deltaFragments := make(chan DeltaFragment, 1)
-	errors := make(chan error, 1)
+// DeltaFragmentBroadcaster reads DeltaFragments from the DeltaFragmentMatrix
+// and writes them to an output channel. It can be used for broadcasting
+// DeltaFragments locally, and remotely. Cancelling the context will shutdown
+// the DeltaFragmentReader. Errors are written to an error channel
+func DeltaFragmentBroadcaster(ctx context.Context, matrix *DeltaFragmentMatrix, bufferLimit int) (chan DeltaFragment, chan error) {
+	deltaFragments := make(chan DeltaFragment, bufferLimit)
+	errors := make(chan error, bufferLimit)
 
 	go func() {
 		defer close(deltaFragments)
 		defer close(errors)
 
-		buffer := [128]DeltaFragment{}
+		buffer := make(DeltaFragments, bufferLimit)
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 
@@ -51,11 +62,8 @@ func DeltaFragmentWaiter(ctx context.Context, matrix *DeltaFragmentMatrix, build
 				errors <- ctx.Err()
 				return
 			case <-ticker.C:
-				if n := matrix.WaitForDeltaFragments(buffer[:]); n > 0 {
-					builder.ComputeDelta(buffer[:n])
-					for i := 0; i < n; i++ {
-						deltaFragments <- buffer[i]
-					}
+				for i, n := 0, matrix.WaitForDeltaFragments(buffer[:]); i < n; i++ {
+					deltaFragments <- buffer[i]
 				}
 			}
 		}
@@ -64,15 +72,18 @@ func DeltaFragmentWaiter(ctx context.Context, matrix *DeltaFragmentMatrix, build
 	return deltaFragments, errors
 }
 
-func DeltaBroadcaster(ctx context.Context, builder *DeltaBuilder) (chan Delta, chan error) {
-	deltas := make(chan Delta, 1)
-	errors := make(chan error, 1)
+// DeltaBroadcaster reads Deltas from the DeltaBuilder and writes them to an
+// output channel. Cancelling the context will shutdown the DeltaBroadcaster.
+// Errors are written to an error channel
+func DeltaBroadcaster(ctx context.Context, builder *DeltaBuilder, bufferLimit int) (chan Delta, chan error) {
+	deltas := make(chan Delta, bufferLimit)
+	errors := make(chan error, bufferLimit)
 
 	go func() {
 		defer close(deltas)
 		defer close(errors)
 
-		buffer := [128]Delta{}
+		buffer := make(Deltas, bufferLimit)
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 
@@ -82,8 +93,7 @@ func DeltaBroadcaster(ctx context.Context, builder *DeltaBuilder) (chan Delta, c
 				errors <- ctx.Err()
 				return
 			case <-ticker.C:
-				n := builder.WaitForDeltas(buffer[:])
-				for i := 0; i < n; i++ {
+				for i, n := 0, builder.WaitForDeltas(buffer[:]); i < n; i++ {
 					deltas <- buffer[i]
 				}
 			}
@@ -91,8 +101,4 @@ func DeltaBroadcaster(ctx context.Context, builder *DeltaBuilder) (chan Delta, c
 	}()
 
 	return deltas, errors
-}
-
-func DeltaReconstructer(ctx context.Context, chan DeltaFragment) (chan Delta, chan error) {
-	
 }

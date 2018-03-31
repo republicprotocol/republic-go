@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -15,9 +16,9 @@ import (
 
 func TestWorker(t *testing.T) {
 
-	numOrders := 100
-	n := 48
-	k := 32
+	numOrders := 10
+	n := 24
+	k := 16
 	prime, err := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 	if err != nil {
 		t.Fatal(err)
@@ -36,52 +37,78 @@ func TestWorker(t *testing.T) {
 		deltaFragmentReceivers[i] = make(chan DeltaFragment, 2*n)
 	}
 
+	var nodesWg sync.WaitGroup
 	results := make(chan Delta, n*numOrders*numOrders)
 	for i := 0; i < n; i++ {
+		nodesWg.Add(1)
 		go func(i int) {
+			defer nodesWg.Done()
+
+			log.Printf("[%d] booting", i)
+
+			var nodeWg sync.WaitGroup
 			deltaFragmentMatrix := smpc.NewDeltaFragmentMatrix(prime)
 			deltaBuilder := smpc.NewDeltaBuilder(int64(k), prime)
 
+			nodeWg.Add(1)
 			go func() {
-				if err := OrderFragmentReceiver(contexts[i], orderFragmentReceivers[i], deltaFragmentMatrix); err != nil {
+				defer nodeWg.Done()
+
+				if err := OrderFragmentReceiver(contexts[i], orderFragmentReceivers[i], deltaFragmentMatrix); err != nil && err != context.Canceled {
 					t.Fatal(err)
 				}
 			}()
+
+			nodeWg.Add(1)
 			go func() {
-				if err := DeltaFragmentReceiver(contexts[i], deltaFragmentReceivers[i], deltaBuilder); err != nil {
+				defer nodeWg.Done()
+
+				if err := DeltaFragmentReceiver(contexts[i], deltaFragmentReceivers[i], deltaBuilder); err != nil && err != context.Canceled {
 					t.Fatal(err)
 				}
 			}()
+
+			nodeWg.Add(1)
 			go func() {
-				deltaFragments, errors := DeltaFragmentWaiter(contexts[i], deltaFragmentMatrix, deltaBuilder)
+				defer nodeWg.Done()
+
+				deltaFragments, errors := DeltaFragmentBroadcaster(contexts[i], deltaFragmentMatrix, 2*n)
 				for {
 					select {
 					case deltaFragment := <-deltaFragments:
 						for j := 0; j < n; j++ {
-							if i == j {
-								continue
-							}
 							deltaFragmentReceivers[j] <- deltaFragment
 						}
-					case <-errors:
-						log.Printf("[%d] delta fragment waiter shutting down", i)
+					case err := <-errors:
+						if err != nil && err != context.Canceled {
+							t.Fatal(err)
+						}
 						return
 					}
 				}
 			}()
+
+			nodeWg.Add(1)
 			go func() {
-				deltas, errors := DeltaBroadcaster(contexts[i], deltaBuilder)
+				defer nodeWg.Done()
+
+				deltas, errors := DeltaBroadcaster(contexts[i], deltaBuilder, 2*n)
 				for {
 					select {
 					case delta := <-deltas:
-						log.Printf("[%d] %s", i, delta.ID.String())
+						log.Printf("[%d] buy = %s, sell = %s", i, delta.BuyOrderID.String(), delta.SellOrderID.String())
 						results <- delta
-					case <-errors:
-						log.Printf("[%d] delta waiter shutting down", i)
+					case err := <-errors:
+						if err != nil && err != context.Canceled {
+							t.Fatal(err)
+						}
 						return
 					}
 				}
 			}()
+
+			nodeWg.Wait()
+			log.Printf("[%d] shutting down", i)
 		}(i)
 	}
 
@@ -126,4 +153,5 @@ func TestWorker(t *testing.T) {
 	for i := range cancelFuncs {
 		cancelFuncs[i]()
 	}
+	nodesWg.Wait()
 }
