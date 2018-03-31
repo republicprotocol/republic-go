@@ -147,7 +147,7 @@ func (broadcaster *Broadcaster) Run() {
 
 	go func() {
 		for atomic.LoadInt32(&broadcaster.running) != 0 {
-			time.Sleep(5 * time.Second)
+			time.Sleep(2 * time.Second)
 			deltaFragments := [128]DeltaFragment{}
 			if broadcaster.debug {
 				log.Printf("%p is waiting for delta fragments", broadcaster)
@@ -179,7 +179,7 @@ func (broadcaster *Broadcaster) Run() {
 
 	deltas := [128]Delta{}
 	for atomic.LoadInt32(&broadcaster.running) != 0 {
-		time.Sleep(5 * time.Second)
+		time.Sleep(2 * time.Second)
 		if broadcaster.debug {
 			log.Printf("%p is waiting for deltas", broadcaster)
 		}
