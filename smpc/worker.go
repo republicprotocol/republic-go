@@ -10,13 +10,13 @@ import (
 func OrderFragmentReceiver(ctx context.Context, orderFragments chan order.Fragment, matrix *DeltaFragmentMatrix) error {
 	for {
 		select {
-		case <-ctx.Done:
+		case <-ctx.Done():
 			return ctx.Err()
 		case orderFragment := <-orderFragments:
 			if orderFragment.OrderParity == order.ParityBuy {
-				matrix.ComputeBuyOrder(orderFragment)
+				matrix.ComputeBuyOrder(&orderFragment)
 			} else {
-				matrix.ComputeSellOrder(orderFragment)
+				matrix.ComputeSellOrder(&orderFragment)
 			}
 		}
 	}
@@ -25,7 +25,7 @@ func OrderFragmentReceiver(ctx context.Context, orderFragments chan order.Fragme
 func DeltaFragmentReceiver(ctx context.Context, deltaFragments chan DeltaFragment, builder *DeltaBuilder) error {
 	for {
 		select {
-		case <-ctx.Done:
+		case <-ctx.Done():
 			return ctx.Err()
 		case deltaFragment := <-deltaFragments:
 			builder.ComputeDelta(DeltaFragments{deltaFragment})
@@ -33,24 +33,38 @@ func DeltaFragmentReceiver(ctx context.Context, deltaFragments chan DeltaFragmen
 	}
 }
 
-func Builder(ctx context.Context, matrix *DeltaFragmentMatrix, builder *DeltaBuilder) error {
-	buffer := [128]DeltaFragment{}
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
+func DeltaFragmentWaiter(ctx context.Context, matrix *DeltaFragmentMatrix, builder *DeltaBuilder) (chan DeltaFragment, chan error) {
+	deltaFragments := make(chan DeltaFragment, 1)
+	errors := make(chan error, 1)
 
-	for {
-		select {
-		case <-ctx.Done:
-			return ctx.Err()
-		case <-ticker.C:
-			if n := matrix.WaitForDeltaFragments(buffer[:]); n > 0 {
-				builder.ComputeDelta(buffer[:n])
+	go func() {
+		defer close(deltaFragments)
+		defer close(errors)
+
+		buffer := [128]DeltaFragment{}
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				errors <- ctx.Err()
+				return
+			case <-ticker.C:
+				if n := matrix.WaitForDeltaFragments(buffer[:]); n > 0 {
+					builder.ComputeDelta(buffer[:n])
+					for i := 0; i < n; i++ {
+						deltaFragments <- buffer[i]
+					}
+				}
 			}
 		}
-	}
+	}()
+
+	return deltaFragments, errors
 }
 
-func Broadcaster(ctx context.Context, builder *DeltaBuilder) (chan Delta, chan error) {
+func DeltaBroadcaster(ctx context.Context, builder *DeltaBuilder) (chan Delta, chan error) {
 	deltas := make(chan Delta, 1)
 	errors := make(chan error, 1)
 
@@ -64,7 +78,7 @@ func Broadcaster(ctx context.Context, builder *DeltaBuilder) (chan Delta, chan e
 
 		for {
 			select {
-			case <-ctx.Done:
+			case <-ctx.Done():
 				errors <- ctx.Err()
 				return
 			case <-ticker.C:
@@ -77,4 +91,8 @@ func Broadcaster(ctx context.Context, builder *DeltaBuilder) (chan Delta, chan e
 	}()
 
 	return deltas, errors
+}
+
+func DeltaReconstructer(ctx context.Context, chan DeltaFragment) (chan Delta, chan error) {
+	
 }

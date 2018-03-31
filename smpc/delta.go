@@ -7,7 +7,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
-	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
@@ -15,35 +14,29 @@ import (
 )
 
 type DeltaFragmentMatrix struct {
-	do.GuardedObject
-
 	prime stackint.Int1024
 
-	buyOrderFragments  map[string]*order.Fragment
-	sellOrderFragments map[string]*order.Fragment
-	deltaFragments     map[string]map[string]DeltaFragment
-
-	deltaFragmentsQueue         DeltaFragments
-	deltaFragmentsQueueNotEmpty *do.Guard
+	mu                  *sync.Mutex
+	buyOrderFragments   map[string]*order.Fragment
+	sellOrderFragments  map[string]*order.Fragment
+	deltaFragments      map[string]map[string]DeltaFragment
+	deltaFragmentsQueue DeltaFragments
 }
 
 func NewDeltaFragmentMatrix(prime stackint.Int1024) *DeltaFragmentMatrix {
 	deltaFragmentMatrix := new(DeltaFragmentMatrix)
-	deltaFragmentMatrix.GuardedObject = do.NewGuardedObject()
 	deltaFragmentMatrix.prime = prime
+	deltaFragmentMatrix.mu = new(sync.Mutex)
 	deltaFragmentMatrix.buyOrderFragments = map[string]*order.Fragment{}
 	deltaFragmentMatrix.sellOrderFragments = map[string]*order.Fragment{}
 	deltaFragmentMatrix.deltaFragments = map[string]map[string]DeltaFragment{}
 	deltaFragmentMatrix.deltaFragmentsQueue = DeltaFragments{}
-	deltaFragmentMatrix.deltaFragmentsQueueNotEmpty = deltaFragmentMatrix.Guard(func() bool {
-		return len(deltaFragmentMatrix.deltaFragmentsQueue) > 0
-	})
 	return deltaFragmentMatrix
 }
 
 func (matrix *DeltaFragmentMatrix) ComputeBuyOrder(buyOrderFragment *order.Fragment) {
-	matrix.Enter(nil)
-	defer matrix.Exit()
+	matrix.mu.Lock()
+	defer matrix.mu.Unlock()
 
 	matrix.buyOrderFragments[string(buyOrderFragment.OrderID)] = buyOrderFragment
 
@@ -61,8 +54,8 @@ func (matrix *DeltaFragmentMatrix) ComputeBuyOrder(buyOrderFragment *order.Fragm
 }
 
 func (matrix *DeltaFragmentMatrix) ComputeSellOrder(sellOrderFragment *order.Fragment) {
-	matrix.Enter(nil)
-	defer matrix.Exit()
+	matrix.mu.Lock()
+	defer matrix.mu.Unlock()
 
 	matrix.sellOrderFragments[string(sellOrderFragment.OrderID)] = sellOrderFragment
 
@@ -81,16 +74,16 @@ func (matrix *DeltaFragmentMatrix) ComputeSellOrder(sellOrderFragment *order.Fra
 }
 
 func (matrix *DeltaFragmentMatrix) RemoveBuyOrder(id order.ID) {
-	matrix.Enter(nil)
-	defer matrix.Exit()
+	matrix.mu.Lock()
+	defer matrix.mu.Unlock()
 
 	delete(matrix.deltaFragments, string(id))
 	delete(matrix.buyOrderFragments, string(id))
 }
 
 func (matrix *DeltaFragmentMatrix) RemoveSellOrder(id order.ID) {
-	matrix.Enter(nil)
-	defer matrix.Exit()
+	matrix.mu.Lock()
+	defer matrix.mu.Unlock()
 
 	delete(matrix.sellOrderFragments, string(id))
 	for buyOrderID := range matrix.deltaFragments {
@@ -99,8 +92,8 @@ func (matrix *DeltaFragmentMatrix) RemoveSellOrder(id order.ID) {
 }
 
 func (matrix *DeltaFragmentMatrix) WaitForDeltaFragments(deltaFragments DeltaFragments) int {
-	matrix.Enter(nil)
-	defer matrix.Exit()
+	matrix.mu.Lock()
+	defer matrix.mu.Unlock()
 
 	n := 0
 	for i := 0; i < len(deltaFragments) && i < len(matrix.deltaFragmentsQueue); i++ {
@@ -117,8 +110,6 @@ func (matrix *DeltaFragmentMatrix) WaitForDeltaFragments(deltaFragments DeltaFra
 }
 
 type DeltaBuilder struct {
-	do.GuardedObject
-
 	k                    int64
 	prime                stackint.Int1024
 	fstCodeSharesCache   shamir.Shares
@@ -127,17 +118,15 @@ type DeltaBuilder struct {
 	minVolumeSharesCache shamir.Shares
 	maxVolumeSharesCache shamir.Shares
 
+	mu                     *sync.Mutex
 	deltas                 map[string]Delta
 	deltaFragments         map[string]DeltaFragment
 	deltasToDeltaFragments map[string]DeltaFragments
-
-	deltasQueue         Deltas
-	deltasQueueNotEmpty *do.Guard
+	deltasQueue            Deltas
 }
 
 func NewDeltaBuilder(k int64, prime stackint.Int1024) *DeltaBuilder {
 	builder := new(DeltaBuilder)
-	builder.GuardedObject = do.NewGuardedObject()
 
 	builder.k = k
 	builder.prime = prime
@@ -147,19 +136,17 @@ func NewDeltaBuilder(k int64, prime stackint.Int1024) *DeltaBuilder {
 	builder.minVolumeSharesCache = make(shamir.Shares, k)
 	builder.maxVolumeSharesCache = make(shamir.Shares, k)
 
+	builder.mu = new(sync.Mutex)
 	builder.deltas = map[string]Delta{}
 	builder.deltaFragments = map[string]DeltaFragment{}
 	builder.deltasToDeltaFragments = map[string]DeltaFragments{}
 	builder.deltasQueue = Deltas{}
-	builder.deltasQueueNotEmpty = builder.Guard(func() bool {
-		return len(builder.deltasQueue) > 0
-	})
 	return builder
 }
 
 func (builder *DeltaBuilder) ComputeDelta(deltaFragments DeltaFragments) {
-	builder.Enter(nil)
-	defer builder.Exit()
+	builder.mu.Lock()
+	defer builder.mu.Unlock()
 
 	for _, deltaFragment := range deltaFragments {
 		// Store the DeltaFragment if it has not been seen before
@@ -211,8 +198,8 @@ func (builder *DeltaBuilder) ComputeDelta(deltaFragments DeltaFragments) {
 }
 
 func (builder *DeltaBuilder) WaitForDeltas(deltas Deltas) int {
-	builder.Enter(nil)
-	defer builder.Exit()
+	builder.mu.Lock()
+	defer builder.mu.Unlock()
 
 	n := 0
 	for i := 0; i < len(deltas) && i < len(builder.deltasQueue); i++ {
