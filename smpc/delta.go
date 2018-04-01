@@ -2,12 +2,10 @@ package smpc
 
 import (
 	"bytes"
-	"fmt"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
-	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stackint"
@@ -252,39 +250,6 @@ type Delta struct {
 	MinVolume   stackint.Int1024
 }
 
-func NewDelta(deltaFragments DeltaFragments, prime stackint.Int1024) Delta {
-
-	// Collect Shares across all DeltaFragments.
-	k := len(deltaFragments)
-	fstCodeShares := make(shamir.Shares, k)
-	sndCodeShares := make(shamir.Shares, k)
-	priceShares := make(shamir.Shares, k)
-	maxVolumeShares := make(shamir.Shares, k)
-	minVolumeShares := make(shamir.Shares, k)
-	for i, deltaFragment := range deltaFragments {
-		fstCodeShares[i] = deltaFragment.FstCodeShare
-		sndCodeShares[i] = deltaFragment.SndCodeShare
-		priceShares[i] = deltaFragment.PriceShare
-		maxVolumeShares[i] = deltaFragment.MaxVolumeShare
-		minVolumeShares[i] = deltaFragment.MinVolumeShare
-	}
-
-	// Join the Shares into a Result.
-	delta := Delta{
-		BuyOrderID:  deltaFragments[0].BuyOrderID,
-		SellOrderID: deltaFragments[0].SellOrderID,
-	}
-	delta.FstCode = shamir.Join(&prime, fstCodeShares)
-	delta.SndCode = shamir.Join(&prime, sndCodeShares)
-	delta.Price = shamir.Join(&prime, priceShares)
-	delta.MaxVolume = shamir.Join(&prime, maxVolumeShares)
-	delta.MinVolume = shamir.Join(&prime, minVolumeShares)
-
-	// Compute the ResultID and return the Result.
-	delta.ID = DeltaID(crypto.Keccak256(delta.BuyOrderID[:], delta.SellOrderID[:]))
-	return delta
-}
-
 func NewDeltaFromShares(buyOrderID, sellOrderID order.ID, fstCodeShares, sndCodeShares, priceShares, maxVolumeShares, minVolumeShares shamir.Shares, k int64, prime stackint.Int1024) Delta {
 	// Join the Shares into a Result.
 	delta := Delta{
@@ -436,67 +401,4 @@ func IsCompatible(deltaFragments DeltaFragments) bool {
 		}
 	}
 	return true
-}
-
-// DeltaQueues is a slice of DeltaQueue components.
-type DeltaQueues []DeltaQueue
-
-// A DeltaQueue owns a channel of Delta components.
-type DeltaQueue struct {
-	chMu   *sync.RWMutex
-	chOpen bool
-	ch     chan Delta
-}
-
-// NewDeltaQueue returns a MessageQueue interface that channels Delta
-//components.
-func NewDeltaQueue(messageQueueLimit int) DeltaQueue {
-	return DeltaQueue{
-		chMu:   new(sync.RWMutex),
-		chOpen: true,
-		ch:     make(chan Delta, messageQueueLimit),
-	}
-}
-
-// Run the DeltaQueue. The DeltaQueue is an abstraction over a channel of Delta
-// components and does not need to be run. This method does nothing.
-func (queue *DeltaQueue) Run() error {
-	return nil
-}
-
-// Shutdown the DeltaQueue. If it has already been Shutdown, an error will be
-// returned.
-func (queue *DeltaQueue) Shutdown() error {
-	queue.chMu.Lock()
-	defer queue.chMu.Unlock()
-
-	queue.chOpen = false
-	close(queue.ch)
-	return nil
-}
-
-// Send a message to the DeltaQueue. The Message must be a Delta component,
-// otherwise an error is returned.
-func (queue *DeltaQueue) Send(message dispatch.Message) error {
-	queue.chMu.RLock()
-	defer queue.chMu.RUnlock()
-
-	if !queue.chOpen {
-		return nil
-	}
-
-	switch message := message.(type) {
-	case Delta:
-		queue.ch <- message
-	default:
-		return fmt.Errorf("cannot send message: unrecognized type %T", message)
-	}
-	return nil
-}
-
-// Recv a message from the DeltaQueue. All Messages returned will be Delta
-// components.
-func (queue *DeltaQueue) Recv() (dispatch.Message, bool) {
-	message, ok := <-queue.ch
-	return message, ok
 }

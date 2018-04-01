@@ -5,28 +5,67 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 // OrderFragmentReceiver receives order Fragments from an input channel and
 // uses a DeltaFragmentMatrix to compute new DeltaFragments with them.
 // Cancelling the context will shutdown the DeltaFragmentReader.It returns an
 // error, or nil.
-func OrderFragmentReceiver(ctx context.Context, orderFragments chan order.Fragment, matrix *DeltaFragmentMatrix) error {
+func OrderFragmentReceiver(ctx context.Context, orderFragments chan order.Fragment, computationMatrix *ComputationMatrix) error {
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case orderFragment := <-orderFragments:
+		case orderFragment, ok := <-orderFragments:
+			if !ok {
+				return nil
+			}
 			if orderFragment.OrderParity == order.ParityBuy {
-				matrix.ComputeBuyOrder(&orderFragment)
+				computationMatrix.InsertBuyOrder(orderFragment)
 			} else {
-				matrix.ComputeSellOrder(&orderFragment)
+				computationMatrix.InsertSellOrder(orderFragment)
 			}
 		}
 	}
 }
 
-// DeltaFragmentReceiver receives DeltaFragments from an input cahnnel and uses
+func DeltaFragmentComputer(ctx context.Context, computationMatrix *ComputationMatrix, bufferLimit int, prime stackint.Int1024) (chan DeltaFragment, chan error) {
+	deltaFragments := make(chan DeltaFragment, bufferLimit)
+	errors := make(chan error, bufferLimit)
+
+	go func() {
+		defer close(deltaFragments)
+		defer close(errors)
+
+		buffer := make([]Computation, bufferLimit)
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				errors <- ctx.Err()
+				return
+			case <-ticker.C:
+
+				for i, n := 0, computationMatrix.Computations(buffer[:]); i < n; i++ {
+					deltaFragment := NewDeltaFragment(buffer[i].BuyOrderFragment, buffer[i].SellOrderFragment, prime)
+					select {
+					case <-ctx.Done():
+						errors <- ctx.Err()
+						return
+					case deltaFragments <- deltaFragment:
+					}
+				}
+			}
+		}
+	}()
+
+	return deltaFragments, errors
+}
+
+// DeltaFragmentReceiver receives DeltaFragments from an input channel and uses
 // a DeltaBuilder to build new Deltas with them. Cancelling the context will
 // shutdown the DeltaFragmentReader. It returns an error, or nil.
 func DeltaFragmentReceiver(ctx context.Context, deltaFragments chan DeltaFragment, builder *DeltaBuilder) error {
@@ -34,8 +73,30 @@ func DeltaFragmentReceiver(ctx context.Context, deltaFragments chan DeltaFragmen
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case deltaFragment := <-deltaFragments:
+		case deltaFragment, ok := <-deltaFragments:
+			if !ok {
+				return nil
+			}
 			builder.ComputeDelta(DeltaFragments{deltaFragment})
+		}
+	}
+}
+
+// DeltaFragmentGarbageCollector receives Deltas from an input channel and
+// removes the associated order Fragments from the DeltaFragmentMatrix. This
+// improves performance by removing computations on orders that have already
+// been matched.
+func DeltaFragmentGarbageCollector(ctx context.Context, deltas chan Delta, computationMatrix *ComputationMatrix) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case delta, ok := <-deltas:
+			if !ok {
+				return nil
+			}
+			computationMatrix.RemoveOrder(delta.BuyOrderID)
+			computationMatrix.RemoveOrder(delta.SellOrderID)
 		}
 	}
 }
@@ -62,8 +123,14 @@ func DeltaFragmentBroadcaster(ctx context.Context, matrix *DeltaFragmentMatrix, 
 				errors <- ctx.Err()
 				return
 			case <-ticker.C:
+
 				for i, n := 0, matrix.WaitForDeltaFragments(buffer[:]); i < n; i++ {
-					deltaFragments <- buffer[i]
+					select {
+					case <-ctx.Done():
+						errors <- ctx.Err()
+						return
+					case deltaFragments <- buffer[i]:
+					}
 				}
 			}
 		}
@@ -93,8 +160,14 @@ func DeltaBroadcaster(ctx context.Context, builder *DeltaBuilder, bufferLimit in
 				errors <- ctx.Err()
 				return
 			case <-ticker.C:
+
 				for i, n := 0, builder.WaitForDeltas(buffer[:]); i < n; i++ {
-					deltas <- buffer[i]
+					select {
+					case <-ctx.Done():
+						errors <- ctx.Err()
+						return
+					case deltas <- buffer[i]:
+					}
 				}
 			}
 		}
