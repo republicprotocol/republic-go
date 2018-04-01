@@ -82,6 +82,7 @@ func (matrix *ComputationMatrix) Computations(computations []Computation) int {
 	} else {
 		matrix.computations = matrix.computations[:m-i]
 	}
+
 	return i
 }
 
@@ -95,7 +96,7 @@ func (matrix *ComputationMatrix) RemoveOrder(orderID order.ID) {
 	n := len(matrix.computations)
 	d := 0
 	for i := 0; i < n; i++ {
-		if matrix.computations[i].BuyOrderFragment.OrderID.Equal(orderID) {
+		if matrix.computations[i].BuyOrderFragment.OrderID.Equal(orderID) || matrix.computations[i].SellOrderFragment.OrderID.Equal(orderID) {
 			matrix.computations[i] = matrix.computations[n-d-1]
 			d++
 		}

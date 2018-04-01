@@ -48,8 +48,10 @@ func DeltaFragmentComputer(ctx context.Context, computationMatrix *ComputationMa
 				errors <- ctx.Err()
 				return
 			case <-ticker.C:
-
 				for i, n := 0, computationMatrix.Computations(buffer[:]); i < n; i++ {
+					// FIXME: NewDeltaFragment blocks, depending on what the
+					// shares look like. This is probably to do with our custom
+					// stackint library.
 					deltaFragment := NewDeltaFragment(buffer[i].BuyOrderFragment, buffer[i].SellOrderFragment, prime)
 					select {
 					case <-ctx.Done():
@@ -99,44 +101,6 @@ func DeltaFragmentGarbageCollector(ctx context.Context, deltas chan Delta, compu
 			computationMatrix.RemoveOrder(delta.SellOrderID)
 		}
 	}
-}
-
-// DeltaFragmentBroadcaster reads DeltaFragments from the DeltaFragmentMatrix
-// and writes them to an output channel. It can be used for broadcasting
-// DeltaFragments locally, and remotely. Cancelling the context will shutdown
-// the DeltaFragmentReader. Errors are written to an error channel
-func DeltaFragmentBroadcaster(ctx context.Context, matrix *DeltaFragmentMatrix, bufferLimit int) (chan DeltaFragment, chan error) {
-	deltaFragments := make(chan DeltaFragment, bufferLimit)
-	errors := make(chan error, bufferLimit)
-
-	go func() {
-		defer close(deltaFragments)
-		defer close(errors)
-
-		buffer := make(DeltaFragments, bufferLimit)
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				errors <- ctx.Err()
-				return
-			case <-ticker.C:
-
-				for i, n := 0, matrix.WaitForDeltaFragments(buffer[:]); i < n; i++ {
-					select {
-					case <-ctx.Done():
-						errors <- ctx.Err()
-						return
-					case deltaFragments <- buffer[i]:
-					}
-				}
-			}
-		}
-	}()
-
-	return deltaFragments, errors
 }
 
 // DeltaBroadcaster reads Deltas from the DeltaBuilder and writes them to an

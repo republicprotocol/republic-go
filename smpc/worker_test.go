@@ -15,8 +15,10 @@ import (
 )
 
 func TestWorker(t *testing.T) {
+	runtime.SetBlockProfileRate(1)
+	runtime.SetMutexProfileFraction(1)
 
-	numOrders := 100
+	numOrders := 10
 	n := 72
 	k := 48
 	prime, err := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
@@ -35,10 +37,10 @@ func TestWorker(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		contexts[i], cancelFuncs[i] = context.WithCancel(context.Background())
-		orderFragmentReceivers[i] = make(chan order.Fragment, 1)
-		deltaFragmentReceivers[i] = make(chan DeltaFragment, 1)
-		deltaGarbageCollectors[i] = make(chan Delta, numOrders)
-		deltaReceivers[i] = make(chan Delta, numOrders)
+		orderFragmentReceivers[i] = make(chan order.Fragment, numOrders)
+		deltaFragmentReceivers[i] = make(chan DeltaFragment, n)
+		deltaGarbageCollectors[i] = make(chan Delta, n)
+		deltaReceivers[i] = make(chan Delta, n)
 	}
 
 	var nodesWg sync.WaitGroup
@@ -66,7 +68,7 @@ func TestWorker(t *testing.T) {
 			go func() {
 				defer nodeWg.Done()
 
-				if err := DeltaFragmentReceiver(contexts[i], deltaFragmentReceivers[i], deltaBuilder); err != nil && err != context.Canceled {
+				if err := DeltaFragmentReceiver(contexts[i], deltaFragmentReceivers[i], &deltaBuilder); err != nil && err != context.Canceled {
 					t.Fatal(err)
 				}
 			}()
@@ -83,8 +85,13 @@ func TestWorker(t *testing.T) {
 			nodeWg.Add(1)
 			go func() {
 				defer nodeWg.Done()
+				defer func() {
+					if i == 0 {
+						log.Println("shutdown delta fragment computer")
+					}
+				}()
 
-				deltaFragments, errors := DeltaFragmentComputer(contexts[i], &computationMatrix, numOrders, prime)
+				deltaFragments, errors := DeltaFragmentComputer(contexts[i], &computationMatrix, 10000, prime)
 				for {
 					select {
 					case deltaFragment := <-deltaFragments:
@@ -106,7 +113,7 @@ func TestWorker(t *testing.T) {
 				defer close(deltaReceivers[i])
 				defer close(deltaGarbageCollectors[i])
 
-				deltas, errors := DeltaBroadcaster(contexts[i], deltaBuilder, 1)
+				deltas, errors := DeltaBroadcaster(contexts[i], &deltaBuilder, 1)
 				for {
 					select {
 					case delta, ok := <-deltas:
@@ -154,47 +161,49 @@ func TestWorker(t *testing.T) {
 			}
 		}(i)
 	}
+
+	// Wait for all order fragments to be sent and then close all order
+	// fragment receivers
 	go func() {
 		orderFragmentWg.Wait()
-		for _, ch := range orderFragmentReceivers {
-			close(ch)
+		for _, orderFragmentReceiver := range orderFragmentReceivers {
+			close(orderFragmentReceiver)
 		}
 		log.Println("closed order fragment receivers")
 	}()
 
-	log.Println("waiting for deltas")
-	go func() {
-		for {
-			time.Sleep(10 * time.Second)
-			log.Printf("[main] %d active goroutines", runtime.NumGoroutine())
-		}
-	}()
-
+	// Merge all delta receivers into a single channel
 	deltas := make(chan Delta, n*numOrders*numOrders)
-	for i, ch := range deltaReceivers {
-		go func(i int, ch chan Delta) {
-			for delta := range ch {
+	for _, deltaReceiver := range deltaReceivers {
+		go func(deltaReceiver chan Delta) {
+			for delta := range deltaReceiver {
 				if !delta.IsMatch(prime) {
 					t.Fatalf("[%s] unexpected result", delta.ID.String())
 				}
-				log.Printf("[%d] buy = %s, sell = %s", i, delta.BuyOrderID.String(), delta.SellOrderID.String())
 				deltas <- delta
 			}
-		}(i, ch)
+		}(deltaReceiver)
 	}
 
-	timeout := time.NewTimer(5 * time.Minute)
+	log.Println("waiting for deltas")
 	done := make(chan struct{})
+	timeout := time.NewTimer(10 * time.Second)
 	go func() {
+		defer close(done)
+
 		ordersMatched := map[string]struct{}{}
 		for len(ordersMatched) < numOrders {
 			delta := <-deltas
-			ordersMatched[string(delta.BuyOrderID)] = struct{}{}
-			ordersMatched[string(delta.SellOrderID)] = struct{}{}
+			if _, ok := ordersMatched[string(delta.BuyOrderID)]; !ok {
+				ordersMatched[string(delta.BuyOrderID)] = struct{}{}
+				log.Printf("buy order matched = %s", delta.BuyOrderID.String())
+			}
+			if _, ok := ordersMatched[string(delta.SellOrderID)]; !ok {
+				ordersMatched[string(delta.SellOrderID)] = struct{}{}
+				log.Printf("sell order matched = %s", delta.SellOrderID.String())
+			}
 		}
-		close(done)
 	}()
-
 	select {
 	case <-timeout.C:
 	case <-done:
@@ -204,5 +213,15 @@ func TestWorker(t *testing.T) {
 	for i := range cancelFuncs {
 		cancelFuncs[i]()
 	}
-	nodesWg.Wait()
+
+	shutdownDone := make(chan struct{})
+	shutdownTimeout := time.NewTimer(time.Minute)
+	go func() {
+		defer close(shutdownDone)
+		nodesWg.Wait()
+	}()
+	select {
+	case <-shutdownTimeout.C:
+	case <-shutdownDone:
+	}
 }

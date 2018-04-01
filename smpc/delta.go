@@ -11,102 +11,6 @@ import (
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
-type DeltaFragmentMatrix struct {
-	prime stackint.Int1024
-
-	mu                  *sync.Mutex
-	buyOrderFragments   map[string]*order.Fragment
-	sellOrderFragments  map[string]*order.Fragment
-	deltaFragments      map[string]map[string]DeltaFragment
-	deltaFragmentsQueue DeltaFragments
-}
-
-func NewDeltaFragmentMatrix(prime stackint.Int1024) *DeltaFragmentMatrix {
-	deltaFragmentMatrix := new(DeltaFragmentMatrix)
-	deltaFragmentMatrix.prime = prime
-	deltaFragmentMatrix.mu = new(sync.Mutex)
-	deltaFragmentMatrix.buyOrderFragments = map[string]*order.Fragment{}
-	deltaFragmentMatrix.sellOrderFragments = map[string]*order.Fragment{}
-	deltaFragmentMatrix.deltaFragments = map[string]map[string]DeltaFragment{}
-	deltaFragmentMatrix.deltaFragmentsQueue = DeltaFragments{}
-	return deltaFragmentMatrix
-}
-
-func (matrix *DeltaFragmentMatrix) ComputeBuyOrder(buyOrderFragment *order.Fragment) {
-	matrix.mu.Lock()
-	defer matrix.mu.Unlock()
-
-	matrix.buyOrderFragments[string(buyOrderFragment.OrderID)] = buyOrderFragment
-
-	for _, sellOrderFragment := range matrix.sellOrderFragments {
-		if !buyOrderFragment.IsCompatible(sellOrderFragment) {
-			continue
-		}
-		if _, ok := matrix.deltaFragments[string(buyOrderFragment.OrderID)]; !ok {
-			matrix.deltaFragments[string(buyOrderFragment.OrderID)] = map[string]DeltaFragment{}
-		}
-		deltaFragment := NewDeltaFragment(buyOrderFragment, sellOrderFragment, matrix.prime)
-		matrix.deltaFragments[string(buyOrderFragment.OrderID)][string(sellOrderFragment.OrderID)] = deltaFragment
-		matrix.deltaFragmentsQueue = append(matrix.deltaFragmentsQueue, deltaFragment)
-	}
-}
-
-func (matrix *DeltaFragmentMatrix) ComputeSellOrder(sellOrderFragment *order.Fragment) {
-	matrix.mu.Lock()
-	defer matrix.mu.Unlock()
-
-	matrix.sellOrderFragments[string(sellOrderFragment.OrderID)] = sellOrderFragment
-
-	for _, buyOrderFragment := range matrix.buyOrderFragments {
-		if !buyOrderFragment.IsCompatible(sellOrderFragment) {
-			continue
-		}
-		if _, ok := matrix.deltaFragments[string(buyOrderFragment.OrderID)]; !ok {
-			matrix.deltaFragments[string(buyOrderFragment.OrderID)] = map[string]DeltaFragment{}
-		}
-		deltaFragment := NewDeltaFragment(buyOrderFragment, sellOrderFragment, matrix.prime)
-		matrix.deltaFragments[string(buyOrderFragment.OrderID)][string(sellOrderFragment.OrderID)] = deltaFragment
-		matrix.deltaFragmentsQueue = append(matrix.deltaFragmentsQueue, deltaFragment)
-	}
-
-}
-
-func (matrix *DeltaFragmentMatrix) RemoveBuyOrder(id order.ID) {
-	matrix.mu.Lock()
-	defer matrix.mu.Unlock()
-
-	delete(matrix.deltaFragments, string(id))
-	delete(matrix.buyOrderFragments, string(id))
-}
-
-func (matrix *DeltaFragmentMatrix) RemoveSellOrder(id order.ID) {
-	matrix.mu.Lock()
-	defer matrix.mu.Unlock()
-
-	delete(matrix.sellOrderFragments, string(id))
-	for buyOrderID := range matrix.deltaFragments {
-		delete(matrix.deltaFragments[buyOrderID], string(id))
-	}
-}
-
-func (matrix *DeltaFragmentMatrix) WaitForDeltaFragments(deltaFragments DeltaFragments) int {
-	matrix.mu.Lock()
-	defer matrix.mu.Unlock()
-
-	n := 0
-	for i := 0; i < len(deltaFragments) && i < len(matrix.deltaFragmentsQueue); i++ {
-		deltaFragments[i] = matrix.deltaFragmentsQueue[i]
-		n++
-	}
-
-	if n >= len(matrix.deltaFragmentsQueue) {
-		matrix.deltaFragmentsQueue = matrix.deltaFragmentsQueue[0:0]
-	} else {
-		matrix.deltaFragmentsQueue = matrix.deltaFragmentsQueue[n:]
-	}
-	return n
-}
-
 type DeltaBuilder struct {
 	k                    int64
 	prime                stackint.Int1024
@@ -123,23 +27,21 @@ type DeltaBuilder struct {
 	deltasQueue            Deltas
 }
 
-func NewDeltaBuilder(k int64, prime stackint.Int1024) *DeltaBuilder {
-	builder := new(DeltaBuilder)
-
-	builder.k = k
-	builder.prime = prime
-	builder.fstCodeSharesCache = make(shamir.Shares, k)
-	builder.sndCodeSharesCache = make(shamir.Shares, k)
-	builder.priceSharesCache = make(shamir.Shares, k)
-	builder.minVolumeSharesCache = make(shamir.Shares, k)
-	builder.maxVolumeSharesCache = make(shamir.Shares, k)
-
-	builder.mu = new(sync.Mutex)
-	builder.deltas = map[string]Delta{}
-	builder.deltaFragments = map[string]DeltaFragment{}
-	builder.deltasToDeltaFragments = map[string]DeltaFragments{}
-	builder.deltasQueue = Deltas{}
-	return builder
+func NewDeltaBuilder(k int64, prime stackint.Int1024) DeltaBuilder {
+	return DeltaBuilder{
+		k:                      k,
+		prime:                  prime,
+		fstCodeSharesCache:     make(shamir.Shares, k),
+		sndCodeSharesCache:     make(shamir.Shares, k),
+		priceSharesCache:       make(shamir.Shares, k),
+		minVolumeSharesCache:   make(shamir.Shares, k),
+		maxVolumeSharesCache:   make(shamir.Shares, k),
+		mu:                     new(sync.Mutex),
+		deltas:                 map[string]Delta{},
+		deltaFragments:         map[string]DeltaFragment{},
+		deltasToDeltaFragments: map[string]DeltaFragments{},
+		deltasQueue:            Deltas{},
+	}
 }
 
 func (builder *DeltaBuilder) ComputeDelta(deltaFragments DeltaFragments) {
@@ -322,9 +224,8 @@ type DeltaFragment struct {
 	MinVolumeShare shamir.Share
 }
 
-func NewDeltaFragment(left *order.Fragment, right *order.Fragment, prime stackint.Int1024) DeltaFragment {
-	var buyOrderFragment *order.Fragment
-	var sellOrderFragment *order.Fragment
+func NewDeltaFragment(left, right *order.Fragment, prime stackint.Int1024) DeltaFragment {
+	var buyOrderFragment, sellOrderFragment *order.Fragment
 	if left.OrderParity == order.ParityBuy {
 		buyOrderFragment = left
 		sellOrderFragment = right
