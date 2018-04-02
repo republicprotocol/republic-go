@@ -52,7 +52,7 @@ func DeltaFragmentComputer(ctx context.Context, computationMatrix *ComputationMa
 					// FIXME: NewDeltaFragment blocks, depending on what the
 					// shares look like. This is probably to do with our custom
 					// stackint library.
-					deltaFragment := NewDeltaFragment(buffer[i].BuyOrderFragment, buffer[i].SellOrderFragment, prime)
+					deltaFragment := DeltaFragment{} // NewDeltaFragment(buffer[i].BuyOrderFragment, buffer[i].SellOrderFragment, prime)
 					select {
 					case <-ctx.Done():
 						errors <- ctx.Err()
@@ -125,7 +125,7 @@ func DeltaBroadcaster(ctx context.Context, builder *DeltaBuilder, bufferLimit in
 				return
 			case <-ticker.C:
 
-				for i, n := 0, builder.WaitForDeltas(buffer[:]); i < n; i++ {
+				for i, n := 0, builder.Deltas(buffer[:]); i < n; i++ {
 					select {
 					case <-ctx.Done():
 						errors <- ctx.Err()

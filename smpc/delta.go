@@ -97,7 +97,7 @@ func (builder *DeltaBuilder) ComputeDelta(deltaFragments DeltaFragments) {
 	}
 }
 
-func (builder *DeltaBuilder) WaitForDeltas(deltas Deltas) int {
+func (builder *DeltaBuilder) Deltas(deltas Deltas) int {
 	builder.mu.Lock()
 	defer builder.mu.Unlock()
 
