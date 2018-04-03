@@ -19,8 +19,8 @@ import (
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/rpc"
 )
 
 const (
@@ -221,7 +221,7 @@ var _ = Describe("Dark nodes", func() {
 					By("synchronization")
 					syncBlocks, err := nodes[0].ClientPool.Sync(nodes[1].NetworkOptions.MultiAddress)
 					Ω(err).ShouldNot(HaveOccurred())
-					for block := range syncBlocks{
+					for block := range syncBlocks {
 						log.Println(block)
 					}
 					time.Sleep(1 * time.Minute)
@@ -410,12 +410,12 @@ func sendOrders(nodes []*node.DarkNode) error {
 		do.CoForAll(buyShares, func(j int) {
 			orderRequet := &rpc.OpenOrderRequest{
 				From: &rpc.MultiAddress{
-					Signature:  []byte{},
+					Signature:    []byte{},
 					MultiAddress: nodes[0].NetworkOptions.MultiAddress.String(),
 				},
 				OrderFragment: rpc.MarshalOrderFragment(buyShares[j]),
 			}
-			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress,orderRequet)
+			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, orderRequet)
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)
@@ -425,7 +425,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 		do.CoForAll(sellShares, func(j int) {
 			orderRequet := &rpc.OpenOrderRequest{
 				From: &rpc.MultiAddress{
-					Signature:  []byte{},
+					Signature:    []byte{},
 					MultiAddress: nodes[0].NetworkOptions.MultiAddress.String(),
 				},
 				OrderFragment: rpc.MarshalOrderFragment(sellShares[j]),

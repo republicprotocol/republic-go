@@ -38,24 +38,24 @@ func UnmarshalMultiAddress(multiAddress *MultiAddress) (identity.MultiAddress, e
 // representation.
 func MarshalOrderFragment(orderFragment *order.Fragment) *OrderFragment {
 	val := &OrderFragment{
-		Id:          &OrderFragmentId{
-			Signature: 	orderFragment.Signature,
+		Id: &OrderFragmentId{
+			Signature:       orderFragment.Signature,
 			OrderFragmentId: orderFragment.ID,
 		},
-		Order:     &Order{
-			Id:       &OrderId{
+		Order: &Order{
+			Id: &OrderId{
 				Signature: orderFragment.Signature,
-				OrderId:  orderFragment.OrderID,
+				OrderId:   orderFragment.OrderID,
 			},
-			Type:  int64(orderFragment.OrderType),
+			Type:   int64(orderFragment.OrderType),
 			Parity: int64(orderFragment.OrderParity),
 			Expiry: orderFragment.OrderExpiry.Unix(),
 		},
-		FstCodeShare:    shamir.ToBytes(orderFragment.FstCodeShare),
-		SndCodeShare:    shamir.ToBytes(orderFragment.SndCodeShare),
-		PriceShare:      shamir.ToBytes(orderFragment.PriceShare),
-		MaxVolumeShare:  shamir.ToBytes(orderFragment.MaxVolumeShare),
-		MinVolumeShare:  shamir.ToBytes(orderFragment.MinVolumeShare),
+		FstCodeShare:   shamir.ToBytes(orderFragment.FstCodeShare),
+		SndCodeShare:   shamir.ToBytes(orderFragment.SndCodeShare),
+		PriceShare:     shamir.ToBytes(orderFragment.PriceShare),
+		MaxVolumeShare: shamir.ToBytes(orderFragment.MaxVolumeShare),
+		MinVolumeShare: shamir.ToBytes(orderFragment.MinVolumeShare),
 	}
 
 	return val
@@ -68,8 +68,8 @@ func UnmarshalOrderFragment(orderFragment *OrderFragment) (*order.Fragment, erro
 	var err error
 
 	val := &order.Fragment{
-		Signature:    orderFragment.Id.Signature,
-		ID : orderFragment.Id.OrderFragmentId,
+		Signature: orderFragment.Id.Signature,
+		ID:        orderFragment.Id.OrderFragmentId,
 
 		OrderID:     order.ID(orderFragment.Order.Id.OrderId),
 		OrderType:   order.Type(orderFragment.Order.Type),

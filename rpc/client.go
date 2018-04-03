@@ -184,7 +184,7 @@ func (client *Client) Sync() (chan *SyncBlock, error) {
 			for {
 				syncBlock, err := stream.Recv()
 				if err != nil {
-					log.Println("err receiving from the stream", err )
+					log.Println("err receiving from the stream", err)
 					close(ch)
 					return
 				}
@@ -231,69 +231,3 @@ func (client *Client) CancelOrder(cancelOrderRequest *CancelOrderRequest) error 
 		return err
 	})
 }
-
-//// RandomFragmentShares
-//func (client *Client) RandomFragmentShares() (*RandomFragments, error) {
-//	var val *RandomFragments
-//	var err error
-//	err = client.TimeoutFunc(func(ctx context.Context) error {
-//		val, err = client.DarkClient.RandomFragmentShares(ctx, &RandomFragmentSharesRequest{
-//			From: client.From,
-//		}, gFailFast(false))
-//		return err
-//	})
-//	return val, err
-//}
-
-//// ResidueFragmentShares
-//func (client *Client) ResidueFragmentShares(randomFragments *RandomFragments) (*ResidueFragments, error) {
-//	var val *ResidueFragments
-//	var err error
-//	err = client.TimeoutFunc(func(ctx context.Context) error {
-//		val, err = client.DarkClient.ResidueFragmentShares(ctx, &ResidueFragmentSharesRequest{
-//			From:            client.From,
-//			RandomFragments: randomFragments,
-//		}, gFailFast(false))
-//		return err
-//	})
-//	return val, err
-//}
-
-//// ComputeResidueFragment
-//func (client *Client) ComputeResidueFragment(residueFragments *ResidueFragments) error {
-//	return client.TimeoutFunc(func(ctx context.Context) error {
-//		_, err := client.DarkClient.ComputeResidueFragment(ctx, &ComputeResidueFragmentRequest{
-//			From:             client.From,
-//			ResidueFragments: residueFragments,
-//		}, gFailFast(false))
-//		return err
-//	})
-//}
-
-//// BroadcastAlphaBetaFragment
-//func (client *Client) BroadcastAlphaBetaFragment(alphaBetaFragment *AlphaBetaFragment) (*AlphaBetaFragment, error) {
-//	var val *AlphaBetaFragment
-//	var err error
-//	err = client.TimeoutFunc(func(ctx context.Context) error {
-//		val, err = client.DarkClient.BroadcastAlphaBetaFragment(ctx, &BroadcastAlphaBetaFragmentRequest{
-//			From:              client.From,
-//			AlphaBetaFragment: alphaBetaFragment,
-//		}, gFailFast(false))
-//		return err
-//	})
-//	return val, err
-//}
-
-//// BroadcastDeltaFragment
-//func (client *Client) BroadcastDeltaFragment(deltaFragment *DeltaFragment) (*DeltaFragment, error) {
-//	var val *DeltaFragment
-//	var err error
-//	err = client.TimeoutFunc(func(ctx context.Context) error {
-//		val, err = client.DarkClient.BroadcastDeltaFragment(ctx, &BroadcastDeltaFragmentRequest{
-//			From:          client.From,
-//			DeltaFragment: deltaFragment,
-//		}, gFailFast(false))
-//		return err
-//	})
-//	return val, err
-//}

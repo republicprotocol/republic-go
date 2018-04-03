@@ -5,7 +5,6 @@ import (
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"google.golang.org/grpc"
 )
@@ -15,18 +14,15 @@ type RelayDelegate interface {
 }
 
 type RelayService struct {
-	MultiAddress      identity.MultiAddress
-	Logger            *logger.Logger
-	Delegate          RelayDelegate
-	MessageQueueLimit int
+	Options
+
+	Delegate RelayDelegate
 }
 
-func NewRelayService(multiAddress identity.MultiAddress, logger *logger.Logger, delegate RelayDelegate, messageQueueLimit int) *RelayService {
+func NewRelayService(options Options, delegate RelayDelegate) *RelayService {
 	return &RelayService{
-		MultiAddress:      multiAddress,
-		Logger:            logger,
-		Delegate:          delegate,
-		MessageQueueLimit: messageQueueLimit,
+		Options:  options,
+		Delegate: delegate,
 	}
 }
 
@@ -49,7 +45,7 @@ func (service *RelayService) OpenOrder(ctx context.Context, req *OpenOrderReques
 }
 
 func (service *RelayService) openOrder(req *OpenOrderRequest) error {
-	multi , err := identity.NewMultiAddressFromString(req.From.MultiAddress)
+	multi, err := identity.NewMultiAddressFromString(req.From.MultiAddress)
 	if err != nil {
 		return err
 	}

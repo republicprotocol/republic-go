@@ -3,51 +3,55 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network/dht"
 	"google.golang.org/grpc"
 )
 
-// Constants for different options.
-const (
-	DebugOff    = 0
-	DebugLow    = 1
-	DebugMedium = 2
-	DebugHigh   = 3
-)
-
-// Options that parameterize the behavior of Nodes.
-type Options struct {
-	MultiAddress            identity.MultiAddress   `json:"multiAddress"`
+// SwarmOptions defines the options for swarm service.
+type SwarmOptions struct {
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
-
-	Debug                int           `json:"debug"`
-	Alpha                int           `json:"alpha"`
-	MaxBucketLength      int           `json:"maxBucketLength"`
-	ClientPoolCacheLimit int           `json:"clientPoolCacheLimit"`
-	Timeout              time.Duration `json:"timeout"`
-	TimeoutBackoff       time.Duration `json:"timeoutBackoff"`
-	TimeoutRetries       int           `json:"timeoutRetries"`
-	Concurrent           bool          `json:"concurrent"`
+	Debug                   DebugLevel              `json:"debug"`
+	Alpha                   int                     `json:"alpha"`
+	MaxBucketLength         int                     `json:"maxBucketLength"`
+	Concurrent              bool                    `json:"concurrent"`
 }
+
+// NewSwarmOptions creates a new SwarmOptions.
+func NewSwarmOptions(bootstrapMultiAddresses identity.MultiAddresses, debug, alpha, maxBucketLength int, concurrent bool) SwarmOptions {
+	return SwarmOptions{
+		BootstrapMultiAddresses: bootstrapMultiAddresses,
+		Debug:           DebugLevel(debug),
+		Alpha:           alpha,
+		MaxBucketLength: maxBucketLength,
+		Concurrent:      concurrent,
+	}
+}
+
+// DebugLevel defines the debug level.
+type DebugLevel int
+
+// Constants for different debug options.
+const (
+	DebugOff = int(iota)
+	DebugLow
+	DebugMedium
+	DebugHigh
+)
 
 // SwarmService implements the gRPC Swarm service.
 type SwarmService struct {
 	Options
-	Logger     *logger.Logger
 	ClientPool *ClientPool
 	DHT        *dht.DHT
 }
 
 // NewSwarmService returns a SwarmService.
-func NewSwarmService(options Options, logger *logger.Logger, clientPool *ClientPool, dht *dht.DHT) *SwarmService {
+func NewSwarmService(options Options, clientPool *ClientPool, dht *dht.DHT) *SwarmService {
 	return &SwarmService{
 		Options:    options,
-		Logger:     logger,
 		ClientPool: clientPool,
 		DHT:        dht,
 	}
@@ -63,7 +67,7 @@ func (service *SwarmService) Register(server *grpc.Server) {
 // connect it to Nodes that are close to it in XOR space.
 func (service *SwarmService) Bootstrap() {
 	// Add all bootstrap Nodes to the DHT.
-	for _, bootstrapMultiAddress := range service.Options.BootstrapMultiAddresses {
+	for _, bootstrapMultiAddress := range service.Options.SwarmOptions.BootstrapMultiAddresses {
 		if err := service.DHT.UpdateMultiAddress(bootstrapMultiAddress); err != nil {
 			service.Logger.Error(err.Error())
 		}
@@ -71,14 +75,14 @@ func (service *SwarmService) Bootstrap() {
 	if service.Options.Concurrent {
 		// Concurrently search all bootstrap Nodes for itself.
 		do.ForAll(service.Options.BootstrapMultiAddresses, func(i int) {
-			bootstrapMultiAddress := service.Options.BootstrapMultiAddresses[i]
+			bootstrapMultiAddress := service.Options.SwarmOptions.BootstrapMultiAddresses[i]
 			if err := service.bootstrapUsingMultiAddress(bootstrapMultiAddress); err != nil {
 				service.Logger.Error(fmt.Sprintf("error bootstrapping with %s: %s", bootstrapMultiAddress.Address(), err.Error()))
 			}
 		})
 	} else {
 		// Sequentially search all bootstrap Nodes for itself.
-		for _, bootstrapMultiAddress := range service.Options.BootstrapMultiAddresses {
+		for _, bootstrapMultiAddress := range service.Options.SwarmOptions.BootstrapMultiAddresses {
 			if err := service.bootstrapUsingMultiAddress(bootstrapMultiAddress); err != nil {
 				service.Logger.Error(fmt.Sprintf("error bootstrapping with %s: %s", bootstrapMultiAddress.Address(), err.Error()))
 			}
@@ -111,6 +115,7 @@ func (service *SwarmService) Prune(target identity.Address) (bool, error) {
 
 // Address returns the identity.Address of the Node.
 func (service *SwarmService) Address() identity.Address {
+	return service.Options.MultiAddress.Address()
 	return service.Options.MultiAddress.Address()
 }
 

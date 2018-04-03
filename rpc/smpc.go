@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/smpc"
 	"google.golang.org/grpc"
 )
@@ -15,19 +14,18 @@ import (
 // closure of a gRPC stream, by the client or by the server, will prompt
 // SmpcService to shutdown the respective MessageQueue.
 type SmpcService struct {
-	multiAddress      *identity.MultiAddress
-	multiplexer       *dispatch.Multiplexer
-	messageQueueLimit int
+	Options
+
+	multiplexer *dispatch.Multiplexer
 }
 
 // NewSmpcService returns a new SmpcService that will run MessageQueues on the
 // given Dispatcher. The message queue limit is used used to buffer the size of
 // the MessageQueues that are created by the SmpcService.
-func NewSmpcService(multiAddress *identity.MultiAddress, multiplexer *dispatch.Multiplexer, messageQueueLimit int) SmpcService {
+func NewSmpcService(options Options, multiplexer *dispatch.Multiplexer) SmpcService {
 	return SmpcService{
-		multiAddress:      multiAddress,
-		multiplexer:       multiplexer,
-		messageQueueLimit: messageQueueLimit,
+		Options:     options,
+		multiplexer: multiplexer,
 	}
 }
 
@@ -63,7 +61,7 @@ func (service *SmpcService) connect(stream Smpc_ComputeServer, quit chan struct{
 	go func() {
 		defer close(ch)
 		ch <- stream.Send(&SmpcMessage{
-			MultiAddress: MarshalMultiAddress(service.multiAddress),
+			MultiAddress: MarshalMultiAddress(&service.MultiAddress),
 		})
 	}()
 
@@ -87,7 +85,7 @@ func (service *SmpcService) connect(stream Smpc_ComputeServer, quit chan struct{
 
 	// Create a MessageQueue that owns this gRPC stream and run it on the
 	// Dispatcher
-	messageQueue := NewSmpcServerStreamQueue(stream, service.messageQueueLimit)
+	messageQueue := NewSmpcServerStreamQueue(stream, service.Options.MessageQueueLimit)
 
 	// Shutdown the MessageQueue when the quit signal is received
 	go func() {

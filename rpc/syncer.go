@@ -6,23 +6,28 @@ import (
 	"log"
 
 	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"google.golang.org/grpc"
 )
 
-type SyncerService struct {
-	MultiAddress      identity.MultiAddress
-	OrderBook         *orderbook.OrderBook
-	MessageQueueLimit int
+// SyncerOptions defines the option specifically for syncer service
+type SyncerOptions struct {
 }
 
-func NewSyncerService(multiAddress identity.MultiAddress, orderbook *orderbook.OrderBook, messageQueueLimit int) *SyncerService {
+// SyncerService implements the syncer gRPC service. It creates
+// MessageQueues for each gRPC stream.
+type SyncerService struct {
+	Options
+
+	OrderBook *orderbook.OrderBook
+}
+
+// NewSyncerService creates a SyncerService with the given options.
+func NewSyncerService(options Options, orderbook *orderbook.OrderBook) *SyncerService {
 	return &SyncerService{
-		MultiAddress:      multiAddress,
-		OrderBook:         orderbook,
-		MessageQueueLimit: messageQueueLimit,
+		Options:   options,
+		OrderBook: orderbook,
 	}
 }
 
@@ -58,22 +63,23 @@ func (service *SyncerService) sync(req *SyncRequest, stream Syncer_SyncServer, q
 		return err
 	}
 
-	// Create a MessageQueue that owns this gRPC stream and run it on the
-	// Splitter
+	// Create a MessageQueue that owns this gRPC stream
 	messageQueue := NewSyncerServerStreamQueue(stream, service.MessageQueueLimit)
-	log.Println(messageQueue)
 
 	// Shutdown the MessageQueue when the quit signal is received
 	go func() {
 		<-quit
 		messageQueue.Shutdown()
 	}()
+	// Sync historical orders to the messageQueue
 	go func() {
 		err := service.OrderBook.SyncHistory(messageQueue)
 		if err != nil {
 			log.Println(err)
 		}
 	}()
+
+	// Subscribe to the orderbook to receive order updates.
 	return service.OrderBook.Subscribe(multiAddress.Address().String(), messageQueue)
 }
 
