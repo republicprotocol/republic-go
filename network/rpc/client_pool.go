@@ -185,21 +185,3 @@ func (pool *ClientPool) BroadcastDeltaFragment(to identity.MultiAddress, deltaFr
 	}
 	return client.BroadcastDeltaFragment(deltaFragment)
 }
-
-// Gossip RPC.
-func (pool *ClientPool) Gossip(to identity.MultiAddress, rumor *Rumor) (*Rumor, error) {
-	client, err := pool.FindOrCreateClient(to)
-	if err != nil {
-		return nil, err
-	}
-	return client.Gossip(rumor)
-}
-
-// Finalize RPC.
-func (pool *ClientPool) Finalize(to identity.MultiAddress, rumor *Rumor) (*Rumor, error) {
-	client, err := pool.FindOrCreateClient(to)
-	if err != nil {
-		return nil, err
-	}
-	return client.Finalize(rumor)
-}

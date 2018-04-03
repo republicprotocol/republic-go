@@ -98,22 +98,6 @@ message AlphaBetaFragment {
   OrderFragment betaFragment = 4;
 }
 
-message DeltaFragment {    
-  bytes signature = 1;
-  bytes id = 2;
-  bytes deltaId = 3;
-  bytes buyOrderId = 4;
-  bytes sellOrderId = 5;
-  bytes buyOrderFragmentId = 6;
-  bytes sellOrderFragmentId = 7;
-  
-  bytes fstCodeShare = 8;
-  bytes sndCodeShare = 9;
-  bytes priceShare = 10;
-  bytes maxVolumeShare = 11;
-  bytes minVolumeShare = 12;
-}
-
 message OrderFragment {
   bytes signature = 1;
   bytes id = 2;
@@ -187,26 +171,51 @@ message SyncBlock {
 }
 
 /**
- * Gossip
+ * sMPC protocol
  */
 
-service Gossip {
-  rpc Gossip (GossipRequest) returns (Rumor);
-  rpc Finalize (FinalizeRequest) returns (Rumor);
+service Smpc {
+  rpc Connect (stream SmpcMessage) returns (stream SmpcMessage);
 }
 
-message GossipRequest {
-  MultiAddress from = 1;
-  Rumor rumor = 2;
+message SmpcMessage {
+  MultiAddress multiAddress = 1;
+  GenerateRandomShares generateRandomShares = 2;
+  GenerateXiShares generateXiShares = 3;
+  GenerateXiFragments generateXiFragments = 4;
+  RhoSigmaFragments rhoSigmaFragments = 5;
+  DeltaFragments deltaFragments = 6;
 }
 
-message FinalizeRequest {
-  MultiAddress from = 1;
-  Rumor rumor = 2;
+message GenerateRandomShares {
 }
 
-message Rumor {
+message GenerateXiShares {
+}
+
+message GenerateXiFragments {
+}
+
+message RhoSigmaFragments {
+}
+
+message DeltaFragments {
   bytes signature = 1;
-  bytes buyOrderId = 2;
-  bytes sellOrderId = 3;
+  repeated DeltaFragment deltaFragments = 2;
+}
+
+message DeltaFragment {
+  bytes signature = 1;
+  bytes id = 2;
+  bytes deltaId = 3;
+  bytes buyOrderId = 4;
+  bytes sellOrderId = 5;
+  bytes buyOrderFragmentId = 6;
+  bytes sellOrderFragmentId = 7;
+  
+  bytes fstCodeShare = 8;
+  bytes sndCodeShare = 9;
+  bytes priceShare = 10;
+  bytes maxVolumeShare = 11;
+  bytes minVolumeShare = 12;
 }

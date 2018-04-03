@@ -15,6 +15,7 @@ type Config struct {
 	NetworkOptions network.Options `json:"network"`
 	LoggerOptions  logger.Options  `json:"logger"`
 
+	Path string `json:"path"`
 	Host string `json:"host"`
 	Port string `json:"port"`
 

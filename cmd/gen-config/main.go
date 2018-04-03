@@ -62,7 +62,7 @@ func generateSingleNode(dir string) error {
 		LoggerOptions: logger.Options{
 			Plugins: []logger.PluginOptions{
 				logger.PluginOptions{
-					File: &logger.FilePluginOptions{Path: "stdout"},
+					File: &logger.FilePluginOptions{Path: "/home/ubuntu/.darknode/darknode.out"},
 				},
 				logger.PluginOptions{
 					WebSocket: &logger.WebSocketPluginOptions{Host: "0.0.0.0", Port: "18515"},
@@ -71,6 +71,7 @@ func generateSingleNode(dir string) error {
 		},
 		Host:        "0.0.0.0",
 		Port:        fmt.Sprintf("%d", 18514),
+		Path:        "/home/ubuntu/.darknode",
 		KeyPair:     keyPair,
 		EthereumKey: *ethKey,
 		EthereumRPC: "https://ropsten.infura.io",

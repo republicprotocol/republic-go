@@ -3,6 +3,7 @@
 
 # Output of the go profiler
 *.pdf
+*.test
 
 # Dep vendors
 vendor
