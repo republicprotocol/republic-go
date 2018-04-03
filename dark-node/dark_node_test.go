@@ -319,17 +319,25 @@ func bootstrapNodes(nodes []*node.DarkNode) {
 	do.CoForAll(nodes, func(i int) {
 		nodes[i].Bootstrap()
 	})
+	do.CoForAll(nodes, func(i int) {
+		nodes[i].Bootstrap()
+	})
 }
 
 func watchDarkOcean(nodes []*node.DarkNode) {
-	epochDNR.WaitForEpoch()
 	for i := range nodes {
 		go func(i int) {
 			defer GinkgoRecover()
 			nodes[i].WatchDarkOcean()
 		}(i)
 	}
-	time.Sleep(time.Duration(len(nodes)) * 2 * time.Second)
+
+	_, err := epochDNR.WaitForEpoch()
+	if err != nil {
+		panic(err)
+	}
+
+	time.Sleep(time.Minute)
 }
 
 func stopNodes(nodes []*node.DarkNode) {

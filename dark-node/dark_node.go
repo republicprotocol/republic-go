@@ -63,9 +63,9 @@ type DarkNode struct {
 	Dark   *network.DarkService
 
 	DarkNodeRegistry dnr.DarkNodeRegistry
-	DarkOcean         *dark.Ocean
-	DarkPool          *dark.Pool
-	EpochBlockhash    [32]byte
+	DarkOcean        *dark.Ocean
+	DarkPool         *dark.Pool
+	EpochBlockhash   [32]byte
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
@@ -189,7 +189,7 @@ func (node *DarkNode) StartUI() {
 				"port": "18515",
 			},
 			"contracts": map[string]interface{}{
-				"republicToken":     "0x65d54eda5f032f2275caa557e50c029cfbccbb54",
+				"republicToken":    "0x65d54eda5f032f2275caa557e50c029cfbccbb54",
 				"darkNodeRegistry": "0x9c06bb4e18e1aa352f99968b2984069c59ea2969",
 			},
 		})

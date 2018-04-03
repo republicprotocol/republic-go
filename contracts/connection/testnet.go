@@ -166,7 +166,7 @@ func deployDNR(context context.Context, conn ClientDetails, auth *bind.TransactO
 	minimumBond := big.NewInt(10)
 	// One minute
 	minimumEpochInterval := big.NewInt(1)
-	minimumPoolSize := big.NewInt(5)
+	minimumPoolSize := big.NewInt(74)
 	address, tx, dnr, err := bindings.DeployDarkNodeRegistry(auth, conn.Client, renAddress, minimumBond, minimumPoolSize, minimumEpochInterval)
 	if err != nil {
 		return nil, common.Address{}, fmt.Errorf("Failed to deploy DNR: %v", err)

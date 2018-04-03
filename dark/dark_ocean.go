@@ -63,6 +63,7 @@ func (ocean *Ocean) update() error {
 	if err != nil {
 		return err
 	}
+	fmt.Println(nodeIDs)
 
 	// Find the prime smaller or equal to the number of registered nodes
 	// Start at +2 because it has to greater than the maximum (x+1)
@@ -120,6 +121,7 @@ func (ocean *Ocean) Watch(period time.Duration, changes chan struct{}) {
 			}
 			changes <- struct{}{}
 		}
+		// TODO: Retrieve sleep time from epoch.Timestamp and minimumEpochInterval
 		time.Sleep(period)
 	}
 }
