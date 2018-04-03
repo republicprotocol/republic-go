@@ -1,86 +1,117 @@
 package hyper
 
 import (
-	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/republic-go/order"
+	"context"
 )
 
-type Delegate interface {
-	OnOrderOpened(order order.ID)
-	OnOrderConfirmed(buyOrder order.ID, sellOrder order.ID)
+type Block struct {
 }
 
-type Tuple struct {
-	lhs order.ID
-	rhs order.ID
+type Proposal struct {
 }
 
-type ConflictSet struct {
-	id     uint64
-	open   bool
-	tuples []Tuple
+type Prepare struct {
 }
 
-type Drive struct {
-	do.GuardedObject
-
-	conflictSetsNextID        uint64
-	conflictSets              map[uint64]*ConflictSet
-	tupleToConflictSetMapping map[string]*ConflictSet
+type Commit struct {
 }
 
-func (hyperdrive *Drive) AddTuple(tuple Tuple) {
-	hyperdrive.Enter(nil)
-	defer hyperdrive.Exit()
-	hyperdrive.addTuple(tuple)
+type Fault struct {
 }
 
-func (hyperdrive *Drive) addTuple(tuple Tuple) {
-	lhsConflictSet := hyperdrive.tupleToConflictSetMapping[string(tuple.lhs)]
-	rhsConflictSet := hyperdrive.tupleToConflictSetMapping[string(tuple.rhs)]
-	if lhsConflictSet != nil && rhsConflictSet != nil {
-		if !(lhsConflictSet.open && rhsConflictSet.open) {
-			return
+func ProcessProposal(ctx context.Context, proposalChIn chan Proposal) (chan Prepare, chan Fault, chan error) {
+	prepareCh := make(chan Prepare)
+	faultCh := make(chan Fault)
+	errCh := make(chan error)
+
+	go func() {
+		defer close(prepareCh)
+		defer close(faultCh)
+		defer close(errCh)
+
+		for {
+			select {
+			case <-ctx.Done():
+				errCh <- ctx.Err()
+				return
+			case _ = <-proposalChIn:
+				// TODO: process the proposal
+			}
 		}
-		lhsConflictSet.tuples = append(lhsConflictSet.tuples, tuple)
-		hyperdrive.mergeConflictSets(lhsConflictSet, rhsConflictSet)
-		return
-	}
-	if lhsConflictSet != nil {
-		if !lhsConflictSet.open {
-			return
-		}
-		lhsConflictSet.tuples = append(lhsConflictSet.tuples, tuple)
-		return
-	}
-	if rhsConflictSet != nil {
-		if !rhsConflictSet.open {
-			return
-		}
-		rhsConflictSet.tuples = append(rhsConflictSet.tuples, tuple)
-		return
-	}
-	hyperdrive.createConflictSet(tuple)
+	}()
+
+	return prepareCh, faultCh, errCh
 }
 
-func (hyperdrive *Drive) mergeConflictSets(lhsConflictSet, rhsConflictSet *ConflictSet) {
-	if lhsConflictSet == nil || rhsConflictSet == nil {
-		return
-	}
-	for _, tuple := range rhsConflictSet.tuples {
-		hyperdrive.tupleToConflictSetMapping[string(tuple.lhs)] = lhsConflictSet
-		hyperdrive.tupleToConflictSetMapping[string(tuple.rhs)] = lhsConflictSet
-	}
-	delete(hyperdrive.conflictSets, rhsConflictSet.id)
+func ProcessPreparation(ctx context.Context, prepareChIn chan Prepare) (chan Prepare, chan Commit, chan Fault, chan error) {
+	prepareCh := make(chan Prepare)
+	commitCh := make(chan Commit)
+	faultCh := make(chan Fault)
+	errCh := make(chan error)
+
+	go func() {
+		defer close(prepareCh)
+		defer close(commitCh)
+		defer close(faultCh)
+		defer close(errCh)
+
+		for {
+			select {
+			case <-ctx.Done():
+				errCh <- ctx.Err()
+				return
+			case _ = <-prepareChIn:
+				// TODO: process the prepare
+			}
+		}
+	}()
+
+	return prepareCh, commitCh, faultCh, errCh
 }
 
-func (hyperdrive *Drive) createConflictSet(tuple Tuple) {
-	conflictSet := &ConflictSet{
-		id:     hyperdrive.conflictSetsNextID,
-		tuples: []Tuple{tuple},
-	}
-	hyperdrive.tupleToConflictSetMapping[string(tuple.lhs)] = conflictSet
-	hyperdrive.tupleToConflictSetMapping[string(tuple.rhs)] = conflictSet
-	hyperdrive.conflictSets[hyperdrive.conflictSetsNextID] = conflictSet
-	hyperdrive.conflictSetsNextID++
+func ProcessCommit(ctx context.Context, commitChIn chan Commit) (chan Commit, chan Block, chan Fault, chan error) {
+	commitCh := make(chan Commit)
+	blockCh := make(chan Block)
+	faultCh := make(chan Fault)
+	errCh := make(chan error)
+
+	go func() {
+		defer close(commitCh)
+		defer close(faultCh)
+		defer close(errCh)
+
+		for {
+			select {
+			case <-ctx.Done():
+				errCh <- ctx.Err()
+				return
+			case _ = <-commitChIn:
+				// TODO: process the commit
+			}
+		}
+	}()
+
+	return commitCh, blockCh, faultCh, errCh
+}
+
+func ProcessFault(ctx context.Context, faultChIn chan Commit) (chan Fault, chan error) {
+	faultCh := make(chan Fault)
+	errCh := make(chan error)
+
+	go func() {
+		defer close(faultCh)
+		defer close(errCh)
+
+		for {
+			select {
+			case <-ctx.Done():
+				errCh <- ctx.Err()
+				return
+			case _ = <-faultChIn:
+				// TODO: process the commit
+			}
+		}
+	}()
+
+	return faultCh, errCh
 }
