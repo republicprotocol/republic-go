@@ -44,6 +44,7 @@ func (service *SyncerService) Sync(req *SyncRequest, stream Syncer_SyncServer) e
 	// Select between the context finishing and the background worker
 	select {
 	case <-stream.Context().Done():
+		log.Println("err is ", stream.Context().Err())
 		return stream.Context().Err()
 	case err := <-ch:
 		return err
@@ -60,6 +61,7 @@ func (service *SyncerService) sync(req *SyncRequest, stream Syncer_SyncServer, q
 	// Create a MessageQueue that owns this gRPC stream and run it on the
 	// Splitter
 	messageQueue := NewSyncerServerStreamQueue(stream, service.MessageQueueLimit)
+	log.Println(messageQueue)
 
 	// Shutdown the MessageQueue when the quit signal is received
 	go func() {
@@ -72,7 +74,7 @@ func (service *SyncerService) sync(req *SyncRequest, stream Syncer_SyncServer, q
 			log.Println(err)
 		}
 	}()
-	return service.OrderBook.Subscribe(multiAddress.Address().String(), &messageQueue)
+	return service.OrderBook.Subscribe(multiAddress.Address().String(), messageQueue)
 }
 
 type SyncerServerStreamQueue struct {

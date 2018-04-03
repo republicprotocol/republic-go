@@ -33,7 +33,6 @@ type Options struct {
 	TimeoutBackoff       time.Duration `json:"timeoutBackoff"`
 	TimeoutRetries       int           `json:"timeoutRetries"`
 	Concurrent           bool          `json:"concurrent"`
-	MaxSyncConnections   int           `json:"maxSyncConnections"`
 }
 
 // SwarmService implements the gRPC Swarm service.

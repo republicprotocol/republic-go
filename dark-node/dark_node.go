@@ -15,14 +15,12 @@ import (
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark"
-	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network/dht"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/rpc"
-	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
@@ -45,39 +43,28 @@ type DarkNode struct {
 	Logger                 *logger.Logger
 	ClientPool             *rpc.ClientPool
 	DHT                    *dht.DHT
+	OrderBook              *orderbook.OrderBook
 
-	DeltaBuilder                      *compute.DeltaBuilder
-	DeltaFragmentMatrix               *compute.DeltaFragmentMatrix
-	OrderFragmentWorkerQueue          chan *order.Fragment
-	OrderFragmentWorker               *OrderFragmentWorker
-	DeltaFragmentBroadcastWorkerQueue chan *compute.DeltaFragment
-	DeltaFragmentBroadcastWorker      *DeltaFragmentBroadcastWorker
-	DeltaFragmentWorkerQueue          chan *compute.DeltaFragment
-	DeltaFragmentWorker               *DeltaFragmentWorker
-	DeltaQueue                        chan *compute.Delta
-	DeltaMatchWorker                  *DeltaMatchWorker
+	//DeltaBuilder                      *compute.DeltaBuilder
+	//DeltaFragmentMatrix               *compute.DeltaFragmentMatrix
+	//OrderFragmentWorkerQueue          chan *order.Fragment
+	//OrderFragmentWorker               *OrderFragmentWorker
+	//DeltaFragmentBroadcastWorkerQueue chan *compute.DeltaFragment
+	//DeltaFragmentBroadcastWorker      *DeltaFragmentBroadcastWorker
+	//DeltaFragmentWorkerQueue          chan *compute.DeltaFragment
+	//DeltaFragmentWorker               *DeltaFragmentWorker
+	//DeltaQueue                        chan *compute.Delta
+	//DeltaMatchWorker                  *DeltaMatchWorker
 
 	Server *grpc.Server
 	Swarm  *rpc.SwarmService
 	Syncer *rpc.SyncerService
+	Relay  *rpc.RelayService
 
 	DarkNodeRegistrar dnr.DarkNodeRegistrar
 	DarkOcean         *dark.Ocean
 	DarkPool          *dark.Pool
 	EpochBlockhash    [32]byte
-
-	// Secure multiparty computations
-
-	//SmpcStreamQueues        smpc.StreamQueues
-	SmpcDeltaFragmentMatrix smpc.DeltaFragmentMatrix
-	SmpcDeltaBuilder        smpc.DeltaBuilder
-	SmpcDeltas              smpc.DeltaQueue
-
-	SmpcMultiplexer dispatch.Multiplexer
-	SmpcWorkers     smpc.Workers
-	SmpcService     rpc.SmpcService
-
-	OrderBook *orderbook.OrderBook
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
@@ -110,7 +97,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	if darkPool := node.DarkOcean.FindPool(node.ID); darkPool != nil {
 		node.DarkPool = darkPool
 	}
-	// k := int64(node.DarkPool.Size()*2/3 + 1)
+	//k := int64(node.DarkPool.Size()*2/3 + 1)
 
 	// Create all networking components and services
 	node.ClientPool = rpc.NewClientPool(node.NetworkOptions.MultiAddress).
@@ -120,15 +107,14 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 		WithCacheLimit(node.NetworkOptions.ClientPoolCacheLimit)
 	node.DHT = dht.NewDHT(node.NetworkOptions.MultiAddress.Address(), node.NetworkOptions.MaxBucketLength)
 
-	// todo : add this field in the config  struct
-	//node.OrderBook = orderbook.NewOrderBook(config.maxConnections)
-	node.OrderBook = orderbook.NewOrderBook(3)
-
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
 	node.Swarm = rpc.NewSwarmService(node.NetworkOptions, node.Logger, node.ClientPool, node.DHT)
 	node.Syncer = rpc.NewSyncerService(node.NetworkOptions.MultiAddress, node.OrderBook, 3)
+	node.Relay = rpc.NewRelayService(node.NetworkOptions.MultiAddress, node.Logger, node, 3)
 
-	//// Create all background workers that will do all of the actual work
+	node.OrderBook = orderbook.NewOrderBook(config.NetworkOptions.MaxSyncConnections)
+
+	// Create all background workers that will do all of the actual work
 	//node.DeltaBuilder = compute.NewDeltaBuilder(k, Prime)
 	//node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(Prime)
 	//node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
@@ -139,8 +125,6 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	//node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.Logger, node.DeltaBuilder, node.DeltaFragmentWorkerQueue)
 	//node.DeltaQueue = make(chan *compute.Delta, 100)
 	//node.DeltaMatchWorker = NewDeltaMatchWorker(node.Logger, node.DeltaFragmentMatrix, node.DeltaQueue)
-
-	node.SmpcService = rpc.NewSmpcService(&node.NetworkOptions.MultiAddress, &node.SmpcMultiplexer, 100)
 
 	return node, nil
 }
@@ -166,7 +150,6 @@ func (node *DarkNode) StartServices() {
 
 	node.Swarm.Register(node.Server)
 	node.Syncer.Register(node.Server)
-	node.SmpcService.Register(node.Server)
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
 		node.Logger.Error(err.Error())
@@ -232,11 +215,11 @@ func (node *DarkNode) Stop() {
 	time.Sleep(time.Second)
 
 	// Stop background workers by closing their job queues
-	close(node.OrderFragmentWorkerQueue)
-	close(node.DeltaFragmentBroadcastWorkerQueue)
-	close(node.DeltaFragmentWorkerQueue)
-	close(node.DeltaQueue)
-	close(node.DeltaNotifications)
+	//close(node.OrderFragmentWorkerQueue)
+	//close(node.DeltaFragmentBroadcastWorkerQueue)
+	//close(node.DeltaFragmentWorkerQueue)
+	//close(node.DeltaQueue)
+	//close(node.DeltaNotifications)
 
 	// Stop the logger
 	node.Logger.Stop()
@@ -248,38 +231,39 @@ func (node *DarkNode) Stop() {
 // WatchDarkOcean for changes. When a change happens, find the dark pool for
 // this DarkNode and reconnect to all of the nodes in the pool.
 func (node *DarkNode) WatchDarkOcean() {
-	// Block until the node is registered
-	err := node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
-	for err != nil {
-		node.Logger.Error(fmt.Sprintf("cannot determine registration status: %s", err.Error()))
-
-		// Wait for 5 seconds and try again
-		time.Sleep(5 * time.Second)
-		err = node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
-	}
-
-	changes := make(chan struct{})
-	go func() {
-		defer close(changes)
-		for {
-			// Wait for a change to the ocean
-			<-changes
-			node.Logger.Info("dark ocean change detected")
-
-			// Find the dark pool for this node and connect to all of the dark
-			// nodes in the pool
-			node.DarkPool.RemoveAll()
-			darkPool := node.DarkOcean.FindPool(node.ID)
-			if darkPool != nil {
-				k := int64((darkPool.Size() * 2 / 3) + 1)
-				node.DeltaBuilder.SetK(k)
-			}
-			node.ConnectToDarkPool(darkPool)
-		}
-	}()
-
-	// Check for changes every minute
-	node.DarkOcean.Watch(time.Minute, changes)
+	//// Block until the node is registered
+	//err := node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
+	//for err != nil {
+	//	node.Logger.Error(fmt.Sprintf("cannot determine registration status: %s", err.Error()))
+	//
+	//	// Wait for 5 seconds and try again
+	//	time.Sleep(5 * time.Second)
+	//	err = node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
+	//}
+	//
+	//changes := make(chan struct{})
+	//go func() {
+	//	defer close(changes)
+	//	for {
+	//		// Wait for a change to the ocean
+	//		<-changes
+	//		node.Logger.Info("dark ocean change detected")
+	//
+	//		// Find the dark pool for this node and connect to all of the dark
+	//		// nodes in the pool
+	//		node.DarkPool.RemoveAll()
+	//		darkPool := node.DarkOcean.FindPool(node.ID)
+	//		if darkPool != nil {
+	//			k := int64((darkPool.Size() * 2 / 3) + 1)
+	//			node.DeltaBuilder.SetK(k)
+	//		}
+	//		node.ConnectToDarkPool(darkPool)
+	//	}
+	//}()
+	//
+	//// Check for changes every minute
+	//node.DarkOcean.Watch(time.Minute, changes)
+	time.Sleep(1 * time.Minute)
 }
 
 // ConnectToDarkPool and return the connected nodes and disconnected nodes
@@ -356,10 +340,6 @@ func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 		} else {
 			node.Logger.SellOrderReceived(logger.Info, orderFragment.OrderID.String(), orderFragment.ID.String())
 		}
-		// node.OrderFragmentWorkerQueue <- orderFragment
-		node.SmpcMultiplexer.Send(smpc.Message{
-			OrderFragment: orderFragment,
-		})
 
 		// Notify the orderbook about the new order
 		ord := order.Order{
@@ -378,10 +358,10 @@ func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 // however this delegate method is called on a dedicated goroutine.
 func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment *compute.DeltaFragment) {
 	// Write to a channel that might be closed
-	func() {
-		defer func() { recover() }()
-		node.DeltaFragmentWorkerQueue <- deltaFragment
-	}()
+	//func() {
+	//	defer func() { recover() }()
+	//	node.DeltaFragmentWorkerQueue <- deltaFragment
+	//}()
 }
 
 // Usage logs memory and cpu usage

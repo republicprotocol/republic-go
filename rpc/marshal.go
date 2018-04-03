@@ -34,6 +34,73 @@ func UnmarshalMultiAddress(multiAddress *MultiAddress) (identity.MultiAddress, e
 	return identity.NewMultiAddressFromString(multiAddress.MultiAddress)
 }
 
+// MarshalOrderFragment converts an order.Fragment into its network
+// representation.
+func MarshalOrderFragment(orderFragment *order.Fragment) *OrderFragment {
+	val := &OrderFragment{
+		Id:          &OrderFragmentId{
+			Signature: 	orderFragment.Signature,
+			OrderFragmentId: orderFragment.ID,
+		},
+		Order:     &Order{
+			Id:       &OrderId{
+				Signature: orderFragment.Signature,
+				OrderId:  orderFragment.OrderID,
+			},
+			Type:  int64(orderFragment.OrderType),
+			Parity: int64(orderFragment.OrderParity),
+			Expiry: orderFragment.OrderExpiry.Unix(),
+		},
+		FstCodeShare:    shamir.ToBytes(orderFragment.FstCodeShare),
+		SndCodeShare:    shamir.ToBytes(orderFragment.SndCodeShare),
+		PriceShare:      shamir.ToBytes(orderFragment.PriceShare),
+		MaxVolumeShare:  shamir.ToBytes(orderFragment.MaxVolumeShare),
+		MinVolumeShare:  shamir.ToBytes(orderFragment.MinVolumeShare),
+	}
+
+	return val
+}
+
+// UnmarshalOrderFragment converts a network representation of an
+// OrderFragment into an order.Fragment. An error is returned if the network
+// representation is malformed.
+func UnmarshalOrderFragment(orderFragment *OrderFragment) (*order.Fragment, error) {
+	var err error
+
+	val := &order.Fragment{
+		Signature:    orderFragment.Id.Signature,
+		ID : orderFragment.Id.OrderFragmentId,
+
+		OrderID:     order.ID(orderFragment.Order.Id.OrderId),
+		OrderType:   order.Type(orderFragment.Order.Type),
+		OrderParity: order.Parity(orderFragment.Order.Parity),
+		OrderExpiry: time.Unix(orderFragment.Order.Expiry, 0),
+	}
+
+	val.FstCodeShare, err = shamir.FromBytes(orderFragment.FstCodeShare)
+	if err != nil {
+		return nil, err
+	}
+	val.SndCodeShare, err = shamir.FromBytes(orderFragment.SndCodeShare)
+	if err != nil {
+		return nil, err
+	}
+	val.PriceShare, err = shamir.FromBytes(orderFragment.PriceShare)
+	if err != nil {
+		return nil, err
+	}
+	val.MaxVolumeShare, err = shamir.FromBytes(orderFragment.MaxVolumeShare)
+	if err != nil {
+		return nil, err
+	}
+	val.MinVolumeShare, err = shamir.FromBytes(orderFragment.MinVolumeShare)
+	if err != nil {
+		return nil, err
+	}
+
+	return val, nil
+}
+
 // MarshalDeltaFragment into a RPC protobuf object.
 func MarshalDeltaFragment(deltaFragment *smpc.DeltaFragment) *DeltaFragment {
 	return &DeltaFragment{

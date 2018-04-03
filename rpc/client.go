@@ -2,7 +2,7 @@ package rpc
 
 import (
 	"fmt"
-	"io"
+	"log"
 	"runtime"
 	"time"
 
@@ -176,14 +176,15 @@ func (client *Client) Sync() (chan *SyncBlock, error) {
 			return err
 		}
 		go func() {
-			defer func() { recover() }()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Println("Recovered in f", r)
+				}
+			}()
 			for {
 				syncBlock, err := stream.Recv()
-				if err == io.EOF {
-					close(ch)
-					return
-				}
 				if err != nil {
+					log.Println("err receiving from the stream", err )
 					close(ch)
 					return
 				}

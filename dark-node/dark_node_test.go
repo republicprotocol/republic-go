@@ -19,13 +19,13 @@ import (
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/network/rpc"
+	"github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
 
 const (
 	NumberOfBootstrapNodes = 5
-	NumberOfOrders         = 100
+	NumberOfOrders         = 10
 )
 
 var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
@@ -130,7 +130,7 @@ var _ = Describe("Dark nodes", func() {
 	// Order matching
 	for _, numberOfNodes := range []int{15} {
 		func(numberOfNodes int) {
-			FContext(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
+			Context(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
 
 				var err error
 				var nodes []*node.DarkNode
@@ -187,6 +187,48 @@ var _ = Describe("Dark nodes", func() {
 				AfterEach(func() {
 					err := deregisterNodes(nodes, mockRegistrar)
 					Ω(err).ShouldNot(HaveOccurred())
+					stopNodes(nodes)
+				})
+			})
+		}(numberOfNodes)
+	}
+
+	// Synchronization
+	for _, numberOfNodes := range []int{15} {
+		func(numberOfNodes int) {
+			FContext(fmt.Sprintf("synchronizing with %d nodes", numberOfNodes), func() {
+
+				var err error
+				var nodes []*node.DarkNode
+
+				BeforeEach(func() {
+					By("generate nodes")
+					nodes, err = generateNodes(numberOfNodes)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					By("start node services")
+					startNodeServices(nodes)
+				})
+
+				It("should reach a fault tolerant level of connectivity", func() {
+					By("bootstrap nodes")
+					bootstrapNodes(nodes)
+
+					By("send orders")
+					err := sendOrders(nodes)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					By("synchronization")
+					syncBlocks, err := nodes[0].ClientPool.Sync(nodes[1].NetworkOptions.MultiAddress)
+					Ω(err).ShouldNot(HaveOccurred())
+					for block := range syncBlocks{
+						log.Println(block)
+					}
+					time.Sleep(1 * time.Minute)
+				})
+
+				AfterEach(func() {
+					By("stop node services")
 					stopNodes(nodes)
 				})
 			})
@@ -366,7 +408,14 @@ func sendOrders(nodes []*node.DarkNode) error {
 		}
 
 		do.CoForAll(buyShares, func(j int) {
-			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(buyShares[j]))
+			orderRequet := &rpc.OpenOrderRequest{
+				From: &rpc.MultiAddress{
+					Signature:  []byte{},
+					MultiAddress: nodes[0].NetworkOptions.MultiAddress.String(),
+				},
+				OrderFragment: rpc.MarshalOrderFragment(buyShares[j]),
+			}
+			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress,orderRequet)
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)
@@ -374,7 +423,14 @@ func sendOrders(nodes []*node.DarkNode) error {
 		})
 
 		do.CoForAll(sellShares, func(j int) {
-			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(sellShares[j]))
+			orderRequet := &rpc.OpenOrderRequest{
+				From: &rpc.MultiAddress{
+					Signature:  []byte{},
+					MultiAddress: nodes[0].NetworkOptions.MultiAddress.String(),
+				},
+				OrderFragment: rpc.MarshalOrderFragment(sellShares[j]),
+			}
+			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, orderRequet)
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)
