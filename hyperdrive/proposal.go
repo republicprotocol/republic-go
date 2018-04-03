@@ -35,7 +35,7 @@ func ProcessProposal(ctx context.Context, proposalChIn chan Proposal, signer Sig
 				valid := validateProposal(proposal, sharedBlocks)
 				if valid {
 					prepareCh <- Prepare{
-						proposal.Signature,
+						signProposal(proposal),
 						proposal.Block,
 						proposal.Rank,
 						proposal.Height,
@@ -59,4 +59,8 @@ func validateProposal(p Proposal, sb SharedBlocks) bool {
 	// TODO: validate rank, make sure that the current rank and the rank of the proposer is same
 	// TODO: validate height, make sure that the height is correct
 	return valid
+}
+
+func signProposal(p Proposal) Signature {
+	return Signature{}
 }

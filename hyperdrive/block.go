@@ -9,6 +9,8 @@ type Block struct {
 	signature Signature
 }
 
+type BlockHash [32]byte
+
 func ConsumeBlock(ctx context.Context, blockChIn chan Block, sharedBlocks *SharedBlocks) chan error {
 	errCh := make(chan error)
 	go func() {
@@ -43,4 +45,8 @@ func validateBlock(b Block, sb SharedBlocks) bool {
 
 func validateSignature() bool {
 	return true
+}
+
+func getBlockHash(b Block) BlockHash {
+	return BlockHash{}
 }
