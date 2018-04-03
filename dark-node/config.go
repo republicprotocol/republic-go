@@ -12,8 +12,8 @@ import (
 
 // Config contains all configuration details for running a DarkNode.
 type Config struct {
-	NetworkOptions rpc.Options `json:"network"`
-	LoggerOptions  logger.Options  `json:"logger"`
+	NetworkOptions rpc.Options    `json:"network"`
+	LoggerOptions  logger.Options `json:"logger"`
 
 	Path string `json:"path"`
 	Host string `json:"host"`
