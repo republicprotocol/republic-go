@@ -59,7 +59,7 @@ type DarkNode struct {
 
 	Server *grpc.Server
 	Swarm  *rpc.SwarmService
-	Syncer   *rpc.SyncerService
+	Syncer *rpc.SyncerService
 
 	DarkNodeRegistrar dnr.DarkNodeRegistrar
 	DarkOcean         *dark.Ocean
@@ -77,7 +77,7 @@ type DarkNode struct {
 	SmpcWorkers     smpc.Workers
 	SmpcService     rpc.SmpcService
 
-	OrderBook   *orderbook.OrderBook
+	OrderBook *orderbook.OrderBook
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
@@ -125,7 +125,7 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	node.OrderBook = orderbook.NewOrderBook(3)
 
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
-	node.Swarm = rpc.NewSwarmService( node.NetworkOptions, node.Logger, node.ClientPool, node.DHT)
+	node.Swarm = rpc.NewSwarmService(node.NetworkOptions, node.Logger, node.ClientPool, node.DHT)
 	node.Syncer = rpc.NewSyncerService(node.NetworkOptions.MultiAddress, node.OrderBook, 3)
 
 	//// Create all background workers that will do all of the actual work
@@ -212,9 +212,9 @@ func (node *DarkNode) StartUI() {
 	})))
 
 	path := node.Config.Path
-  http.Handle("/settings", http.StripPrefix("/settings", http.FileServer(http.Dir(path + "/ui"))))
-	http.Handle("/log", http.StripPrefix("/log", http.FileServer(http.Dir(path + "/ui"))))
-	http.Handle("/", http.FileServer(http.Dir(path + "/ui")))
+	http.Handle("/settings", http.StripPrefix("/settings", http.FileServer(http.Dir(path+"/ui"))))
+	http.Handle("/log", http.StripPrefix("/log", http.FileServer(http.Dir(path+"/ui"))))
+	http.Handle("/", http.FileServer(http.Dir(path+"/ui")))
 
 	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
 		node.Logger.Error(err.Error())

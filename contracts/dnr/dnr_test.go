@@ -30,7 +30,7 @@ var _ = Describe("Dark Node Registrar", func() {
 		log.Fatalf("Failed to create authorized transactor: %v", err)
 	}
 
-	client, err := connection.FromURI("https://ropsten.infura.io/",connection.ChainRopsten)
+	client, err := connection.FromURI("https://ropsten.infura.io/", connection.ChainRopsten)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -47,10 +47,10 @@ type SwarmService struct {
 // NewSwarmService returns a SwarmService.
 func NewSwarmService(options Options, logger *logger.Logger, clientPool *ClientPool, dht *dht.DHT) *SwarmService {
 	return &SwarmService{
-		Options:       options,
-		Logger:        logger,
-		ClientPool:    clientPool,
-		DHT:           dht,
+		Options:    options,
+		Logger:     logger,
+		ClientPool: clientPool,
+		DHT:        dht,
 	}
 }
 
@@ -163,7 +163,7 @@ func (service *SwarmService) QueryPeers(query *Query, stream Swarm_QueryPeersSer
 }
 
 func (service *SwarmService) queryPeers(query *Query, stream Swarm_QueryPeersServer) error {
-	target:= UnmarshalAddress(query.Target)
+	target := UnmarshalAddress(query.Target)
 	peers := service.DHT.MultiAddresses()
 
 	// Filter away peers that are further from the target than this service.
@@ -255,7 +255,7 @@ func (service *SwarmService) queryPeersDeep(query *Query, stream Swarm_QueryPeer
 
 		for marshaledCandidate := range candidates {
 
-			candidate, err :=  UnmarshalMultiAddress(marshaledCandidate)
+			candidate, err := UnmarshalMultiAddress(marshaledCandidate)
 			if err != nil {
 				return err
 			}
@@ -365,4 +365,3 @@ func (service *SwarmService) FindNode(targetID identity.ID) (*identity.MultiAddr
 	}
 	return nil, nil
 }
-

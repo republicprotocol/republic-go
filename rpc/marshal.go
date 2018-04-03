@@ -21,7 +21,6 @@ func UnmarshalAddress(address *Address) identity.Address {
 	return identity.Address(address.Address)
 }
 
-
 // MarshalMultiAddress into a RPC protobuf object.
 func MarshalMultiAddress(multiAddress *identity.MultiAddress) *MultiAddress {
 	return &MultiAddress{
