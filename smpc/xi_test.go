@@ -12,8 +12,8 @@ import (
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
-var _ = FDescribe("ξ-fragment producers", func() {
-	FContext("when producing ξ-fragments", func() {
+var _ = Describe("ξ-fragment producers", func() {
+	Context("when producing ξ-fragments", func() {
 
 		It("should shutdown when the context is canceled", func() {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -37,7 +37,7 @@ var _ = FDescribe("ξ-fragment producers", func() {
 			wg.Wait()
 		})
 
-		It("should produce fragment generators", func() {
+		It("should produce generators", func() {
 
 			ctx, cancel := context.WithCancel(context.Background())
 			n, k := int64(31), int64(16)
@@ -77,15 +77,19 @@ var _ = FDescribe("ξ-fragment producers", func() {
 			wg.Wait()
 		})
 
-		It("should produce additive fragments", func() {
+		It("should produce verified additive shares", func() {
+			var wg sync.WaitGroup
 
 			ctx, cancel := context.WithCancel(context.Background())
 			n, k := int64(31), int64(16)
 
 			// Produce XiFragmentGenerators
 			xiFragmentGeneratorCh, errCh := smpc.ProduceXiFragmentGenerators(ctx, n, k)
+			wg.Add(1)
 			go func() {
 				defer GinkgoRecover()
+				defer wg.Done()
+
 				for err := range errCh {
 					Ω(err).Should(Equal(context.Canceled))
 				}
@@ -97,13 +101,16 @@ var _ = FDescribe("ξ-fragment producers", func() {
 				xiFragmentGeneratorChs[i] = make(chan smpc.XiFragmentGenerator)
 			}
 			// Split all XiFragmentGenerators to all process channels
+			wg.Add(1)
 			go func() {
 				defer GinkgoRecover()
+				defer wg.Done()
 				defer func() {
 					for i := range xiFragmentGeneratorChs {
 						close(xiFragmentGeneratorChs[i])
 					}
 				}()
+
 				for xiFragmentGenerator := range xiFragmentGeneratorCh {
 					for i := range xiFragmentGeneratorChs {
 						xiFragmentGeneratorChs[i] <- xiFragmentGenerator
@@ -117,8 +124,12 @@ var _ = FDescribe("ξ-fragment producers", func() {
 			for i := int64(0); i < n; i++ {
 				xiFragmentAdditiveSharesCh, errCh := smpc.ProcessXiFragmentGenerators(ctx, xiFragmentGeneratorChs[i])
 				xiFragmentAdditiveSharesChs[i] = xiFragmentAdditiveSharesCh
+
+				wg.Add(1)
 				go func(i int64) {
 					defer GinkgoRecover()
+					defer wg.Done()
+
 					for err := range errCh {
 						Ω(err).Should(Equal(context.Canceled))
 					}
@@ -151,7 +162,9 @@ var _ = FDescribe("ξ-fragment producers", func() {
 			randomNumberCmp := shamir.Join(&smpc.Prime, randomNumberShares)
 
 			Ω(randomNumber.Cmp(&randomNumberCmp)).Should(Equal(0))
+
 			cancel()
+			wg.Wait()
 		})
 
 	})

@@ -2,6 +2,7 @@ package smpc
 
 import (
 	"context"
+	"log"
 	"sync"
 	"time"
 
@@ -10,28 +11,37 @@ import (
 
 // ProcessOrderFragments by reading order fragments from an input channel, and
 // writing OrderFragmentComputations to an output channel.
-func ProcessOrderFragments(ctx context.Context, orderFragmentChIn <-chan order.Fragment) (<-chan OrderFragmentComputation, <-chan error) {
+func ProcessOrderFragments(ctx context.Context, orderFragmentChIn <-chan order.Fragment, bufferLimit int) (<-chan OrderFragmentComputation, <-chan error) {
+	// orderFragmentCh := make(chan order.Fragment)
+	errCh := make(chan error)
+
 	orderFragmentTable := NewOrderFragmentTable()
 	consumerErrCh := consumeOrderFragments(ctx, orderFragmentChIn, &orderFragmentTable)
-	orderFragmentComputationCh, producerErrCh := produceOrderFragmentComputations(ctx, &orderFragmentTable)
 
-	errCh := make(chan error)
+	producerErrCtx, producerCtxCancel := context.WithCancel(context.Background())
+	orderFragmentComputationCh, producerErrCh := produceOrderFragmentComputations(producerErrCtx, &orderFragmentTable, bufferLimit)
+
 	go func() {
+		defer producerCtxCancel()
 		defer close(errCh)
-
 		for {
-			var err error
-			var ok bool
 			select {
-			case err, ok = <-consumerErrCh:
-			case err, ok = <-producerErrCh:
-			}
-			if !ok {
-				return
-			}
-			errCh <- err
-			if err == context.Canceled {
-				return
+			case err, ok := <-consumerErrCh:
+				if !ok {
+					continue
+				}
+				if err == context.Canceled {
+					continue
+				}
+				errCh <- err
+			case err, ok := <-producerErrCh:
+				if !ok {
+					return
+				}
+				errCh <- err
+				if err == context.Canceled {
+					return
+				}
 			}
 		}
 	}()
@@ -46,7 +56,6 @@ func consumeOrderFragments(ctx context.Context, orderFagmentChIn <-chan order.Fr
 
 	go func() {
 		defer close(errCh)
-
 		for {
 			select {
 			case <-ctx.Done():
@@ -71,24 +80,26 @@ func consumeOrderFragments(ctx context.Context, orderFagmentChIn <-chan order.Fr
 // produceOrderFragmentComputations by periodically reading
 // OrderFragmentComputations from an OrderFragmentTable and writing them to an
 // output channel
-func produceOrderFragmentComputations(ctx context.Context, orderFragmentTable *OrderFragmentTable) (<-chan OrderFragmentComputation, <-chan error) {
-	orderFragmentComputationCh := make(chan OrderFragmentComputation)
+func produceOrderFragmentComputations(ctx context.Context, orderFragmentTable *OrderFragmentTable, bufferLimit int) (<-chan OrderFragmentComputation, <-chan error) {
+	orderFragmentComputationCh := make(chan OrderFragmentComputation, bufferLimit)
 	errCh := make(chan error)
 
 	go func() {
 		defer close(orderFragmentComputationCh)
 		defer close(errCh)
 
-		buffer := make([]OrderFragmentComputation, 128)
+		buffer := make([]OrderFragmentComputation, bufferLimit)
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-ctx.Done():
+				log.Println("shutdown")
 				errCh <- ctx.Err()
 				return
 			case <-ticker.C:
+				log.Println("tick")
 				for i, n := 0, orderFragmentTable.Computations(buffer[:]); i < n; i++ {
 					select {
 					case <-ctx.Done():
