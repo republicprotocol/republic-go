@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"math/big"
 	"os"
 	"strings"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark-node"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 const reset = "\x1b[0m"
@@ -23,6 +23,8 @@ const red = "\x1b[31;1m"
 
 const key = `{"version":3,"id":"7844982f-abe7-4690-8c15-34f75f847c66","address":"db205ea9d35d8c01652263d58351af75cfbcbf07","Crypto":{"ciphertext":"378dce3c1279b36b071e1c7e2540ac1271581bff0bbe36b94f919cb73c491d3a","cipherparams":{"iv":"2eb92da55cc2aa62b7ffddba891f5d35"},"cipher":"aes-128-ctr","kdf":"scrypt","kdfparams":{"dklen":32,"salt":"80d3341678f83a14024ba9c3edab072e6bd2eea6aa0fbc9e0a33bae27ffa3d6d","n":8192,"r":8,"p":1},"mac":"3d07502ea6cd6b96a508138d8b8cd2e46c3966240ff276ce288059ba4235cb0d"}}`
 
+// The Secret private key to use for ethereum transactions
+// If it is encrypted, a password must be provided
 type Secret struct {
 	PrivateKey string `json:"privateKey"`
 	Password   string `json:"password"`
@@ -58,9 +60,9 @@ func RegisterAll(secretFile string, configs []*node.Config) {
 
 	do.ForAll(configs, func(i int) {
 		keypair := configs[i].KeyPair
-		var decimalMultiplier = big.NewInt(1000000000000000000)
-		var bondTokenCount = big.NewInt(0)
-		var bond = decimalMultiplier.Mul(decimalMultiplier, bondTokenCount)
+		var decimalMultiplier = stackint.FromUint(1000000000000000000)
+		var bondTokenCount = stackint.Zero()
+		var bond = decimalMultiplier.Mul(&bondTokenCount)
 		clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
 		if err != nil {
 			// TODO: Handler err
@@ -72,26 +74,26 @@ func RegisterAll(secretFile string, configs []*node.Config) {
 			panic(err)
 		}
 
-		registrar, err := dnr.NewEthereumDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{})
+		registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, auth, &bind.CallOpts{})
 		if err != nil {
 			log.Printf("[%v] %sCouldn't connect to registrar%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
 			return
 		}
 
-		isRegistered, err := registrar.IsDarkNodeRegistered(keypair.ID())
+		isRegistered, err := registrar.IsRegistered(keypair.ID())
 		if err != nil {
 			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
 			return
 		}
 
-		isPendingRegistration, err := registrar.IsDarkNodePendingRegistration(keypair.ID())
-		if err != nil {
-			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
-			return
-		}
+		// isPendingRegistration, err := registrar.IsDarkNodePendingRegistration(keypair.ID())
+		// if err != nil {
+		// 	log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
+		// 	return
+		// }
 
-		if !isRegistered && !isPendingRegistration {
-			_, err = registrar.Register(keypair.ID(), append(keypair.PublicKey.X.Bytes(), keypair.PublicKey.Y.Bytes()...), bond)
+		if !isRegistered { // && !isPendingRegistration {
+			_, err = registrar.Register(keypair.ID(), append(keypair.PublicKey.X.Bytes(), keypair.PublicKey.Y.Bytes()...), &bond)
 			if err != nil {
 				log.Printf("[%v] %sCouldn't register node%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
 			} else {
@@ -99,9 +101,9 @@ func RegisterAll(secretFile string, configs []*node.Config) {
 			}
 		} else if isRegistered {
 			log.Printf("[%v] %sNode already registered%s\n", base58.Encode(keypair.ID()), yellow, reset)
-		} else if isPendingRegistration {
-			log.Printf("[%v] %sNode will already be registered next epoch%s\n", base58.Encode(keypair.ID()), yellow, reset)
-		}
+		} // else if isPendingRegistration {
+		// 	log.Printf("[%v] %sNode will already be registered next epoch%s\n", base58.Encode(keypair.ID()), yellow, reset)
+		// }
 	})
 
 }

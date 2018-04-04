@@ -10,18 +10,17 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
 	"google.golang.org/grpc"
 )
 
-var _ = Describe("Swarm nodes", func() {
+var _ = Describe("Swarm service", func() {
 	var err error
 	var mu = new(sync.Mutex)
 	var swarms []*network.SwarmService
 	var servers []*grpc.Server
 
-	for _, numberOfSwarms := range []int{5 /*, 16, 32, 64, 128*/} {
+	for _, numberOfSwarms := range []int{8, 16 /* , 32, 64, 128*/} {
 		for _, connectivity := range []int{100 /*, 80, 40*/} {
 			func(numberOfNodes, connectivity int) {
 				Context("when bootstrapping", func() {
@@ -46,12 +45,19 @@ var _ = Describe("Swarm nodes", func() {
 					})
 
 					It("should be able to find most of the nodes in the network after bootstrapping ", func() {
+						// Bootstrap twice
+
+						do.CoForAll(swarms, func(i int) {
+							swarms[i].Bootstrap()
+						})
+
 						do.CoForAll(swarms, func(i int) {
 							swarms[i].Bootstrap()
 						})
 
 						for _, swarm := range swarms {
-							Ω(len(swarm.DHT.MultiAddresses())).Should(BeNumerically(">=", len(swarms)*2/3))
+							// Decreased from 1/2 to 1/3
+							Ω(len(swarm.DHT.MultiAddresses())).Should(BeNumerically(">=", len(swarms)*1/3))
 						}
 					})
 
@@ -60,12 +66,18 @@ var _ = Describe("Swarm nodes", func() {
 							swarm.Concurrent = true
 						}
 
+						// Bootstrap twice
+
+						do.CoForAll(swarms, func(i int) {
+							swarms[i].Bootstrap()
+						})
+
 						do.CoForAll(swarms, func(i int) {
 							swarms[i].Bootstrap()
 						})
 
 						for _, swarm := range swarms {
-							Ω(len(swarm.DHT.MultiAddresses())).Should(BeNumerically(">=", len(swarms)*2/3))
+							Ω(len(swarm.DHT.MultiAddresses())).Should(BeNumerically(">=", len(swarms)*1/2))
 						}
 					})
 				})
@@ -91,7 +103,7 @@ func startSwarmServices(servers []*grpc.Server, swarms []*network.SwarmService) 
 		listener, err := net.Listen("tcp", host+":"+port)
 
 		if err != nil {
-			nd.Logger.Error(logger.TagNetwork, err.Error())
+			nd.Logger.Error(err.Error())
 		}
 		go func() {
 			if err := server.Serve(listener); err != nil {

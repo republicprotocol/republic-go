@@ -6,26 +6,29 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/big"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/republicprotocol/republic-go/stackint"
+
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/network/rpc"
+	"github.com/republicprotocol/republic-go/order"
 )
-var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
+
+var prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 
 const reset = "\x1b[0m"
 const yellow = "\x1b[33;1m"
 const green = "\x1b[32;1m"
 const red = "\x1b[31;1m"
 
+// OrderBook is the data returned from binance
 type OrderBook struct {
-	LastUpdateId int        `json:"lastUpdateId"`
+	LastUpdateID int        `json:"lastUpdateId"`
 	Bids         [][]string `json:"bids"`
 	Asks         [][]string `json:"asks"`
 }
@@ -73,41 +76,42 @@ func main() {
 		// Generate order from the Binance data
 		sellOrders := make([]*order.Order, len(orderBook.Asks))
 		for i, j := range orderBook.Asks {
-			price, err := strconv.ParseFloat(j[0], 10)
-			price = price * 1000000000000
+			priceInt, err := strconv.ParseFloat(j[0], 10)
+			price := stackint.FromUint(uint(priceInt * 1000000000000))
 			if err != nil {
 				log.Fatal("fail to parse the price into a big int")
 			}
 
-			amount, err := strconv.ParseFloat(j[1], 10)
-			amount = amount * 1000000000000
+			amountInt, err := strconv.ParseFloat(j[1], 10)
+			amount := stackint.FromUint(uint(amountInt * 1000000000000))
 			if err != nil {
 				log.Fatal("fail to parse the amount into a big int")
 			}
+			nonce := stackint.One()
 			order := order.NewOrder(order.TypeLimit, order.ParitySell, time.Time{},
-				order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
-				big.NewInt(int64(amount)), big.NewInt(1))
+				order.CurrencyCodeETH, order.CurrencyCodeBTC, &price, &amount,
+				&amount, &nonce)
 			sellOrders[i] = order
 		}
 
 		buyOrders := make([]*order.Order, len(orderBook.Bids))
 		//test cast for match
 		for i, j := range orderBook.Asks { //change asks/bids
-			price, err := strconv.ParseFloat(j[0], 10)
-			price = price * 1000000000000
+			priceInt, err := strconv.ParseFloat(j[0], 10)
+			price := stackint.FromUint(uint(priceInt * 1000000000000))
 			if err != nil {
 				log.Fatal("fail to parse the price into a big int")
 			}
 
-			amount, err := strconv.ParseFloat(j[1], 10)
-			amount = amount * 1000000000000
+			amountInt, err := strconv.ParseFloat(j[1], 10)
+			amount := stackint.FromUint(uint(amountInt * 1000000000000))
 			if err != nil {
 				log.Fatal("fail to parse the amount into a big int")
 			}
-
+			nonce := stackint.One()
 			order := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Time{},
-				order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
-				big.NewInt(int64(amount)), big.NewInt(1))
+				order.CurrencyCodeETH, order.CurrencyCodeBTC, &price, &amount,
+				&amount, &nonce)
 			buyOrders[i] = order
 		}
 
@@ -122,13 +126,13 @@ func main() {
 						log.Println("sending sell order :", base58.Encode(ord.ID))
 					}
 
-					shares, err := ord.Split(int64(len(nodes)), int64(len(nodes)*2/3), Prime)
+					shares, err := ord.Split(int64(len(nodes)), int64(len(nodes)*2/3), &prime)
 					if err != nil {
 						continue
 					}
 
 					do.ForAll(shares, func(i int) {
-						client, err  := rpc.NewClient(nodes[i],multi)
+						client, err := rpc.NewClient(nodes[i], multi)
 						if err != nil {
 							log.Fatal(err)
 						}

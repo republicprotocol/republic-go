@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/big"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -21,24 +21,41 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 const (
 	NumberOfBootstrapNodes = 5
-	NumberOfOrders         = 100
+	NumberOfOrders         = 10
 )
 
-var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
+var primeVal, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+var Prime = &primeVal
 var trader, _ = identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
-var mockRegistrar, _ = dnr.NewMockDarkNodeRegistrar()
+var epochDNR dnr.DarkNodeRegistry
+
+var dnrOuterLock = new(sync.Mutex)
+var dnrInnerLock = new(sync.Mutex)
 
 type OrderBook struct {
-	LastUpdateId int             `json:"lastUpdateId"`
+	LastUpdateID int             `json:"lastUpdateId"`
 	Bids         [][]interface{} `json:"bids"`
 	Asks         [][]interface{} `json:"asks"`
 }
 
+// HeapInt creates a stackint on the heap - temporary convenience method
+func heapInt(n uint) *stackint.Int1024 {
+	tmp := stackint.FromUint(n)
+	return &tmp
+}
+
 var _ = Describe("Dark nodes", func() {
+
+	var err error
+	epochDNR, err = dnr.TestnetDNR(nil)
+	if err != nil {
+		panic(err)
+	}
 
 	var mu = new(sync.Mutex)
 
@@ -51,7 +68,7 @@ var _ = Describe("Dark nodes", func() {
 	})
 
 	// Bootstrapping
-	for _, numberOfNodes := range []int{15} {
+	for _, numberOfNodes := range []int{5} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when bootstrapping %d nodes", numberOfNodes), func() {
 
@@ -89,7 +106,7 @@ var _ = Describe("Dark nodes", func() {
 	}
 
 	// Connectivity
-	for _, numberOfNodes := range []int{15} {
+	for _, numberOfNodes := range []int{5} {
 		func(numberOfNodes int) {
 			Context(fmt.Sprintf("when connecting %d nodes", numberOfNodes), func() {
 				for _, connectivity := range []int{20, 40, 60, 80, 100} {
@@ -114,7 +131,11 @@ var _ = Describe("Dark nodes", func() {
 							It("should succeed for the super majority", func() {
 								By("ping connections")
 								numberOfPings, numberOfErrors := connectNodes(nodes, connectivity)
-								Ω(numberOfErrors).Should(BeNumerically("<", numberOfPings/3))
+								if (numberOfPings / 3) == 0 {
+									Ω(numberOfErrors).Should(Equal(0))
+								} else {
+									Ω(numberOfErrors).Should(BeNumerically("<", numberOfPings/3))
+								}
 							})
 
 							AfterEach(func() {
@@ -128,9 +149,9 @@ var _ = Describe("Dark nodes", func() {
 	}
 
 	// Order matching
-	for _, numberOfNodes := range []int{15} {
+	for _, numberOfNodes := range []int{5} {
 		func(numberOfNodes int) {
-			FContext(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
+			Context(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
 
 				var err error
 				var nodes []*node.DarkNode
@@ -139,7 +160,7 @@ var _ = Describe("Dark nodes", func() {
 					By("generate nodes")
 					nodes, err = generateNodes(numberOfNodes)
 					Ω(err).ShouldNot(HaveOccurred())
-					err = registerNodes(nodes, mockRegistrar)
+					err = registerNodes(nodes)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					By("start node service")
@@ -185,7 +206,7 @@ var _ = Describe("Dark nodes", func() {
 				})
 
 				AfterEach(func() {
-					err := deregisterNodes(nodes, mockRegistrar)
+					err := deregisterNodes(nodes)
 					Ω(err).ShouldNot(HaveOccurred())
 					stopNodes(nodes)
 				})
@@ -208,7 +229,12 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		node, err := node.NewDarkNode(*config, mockRegistrar)
+		auth := bind.NewKeyedTransactor(config.EthereumKey.PrivateKey)
+		dnr, err := dnr.TestnetDNR(auth)
+		if err != nil {
+			return nil, err
+		}
+		node, err := node.NewDarkNode(*config, dnr)
 		if err != nil {
 			return nil, err
 		}
@@ -217,25 +243,61 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 	return nodes, nil
 }
 
-func registerNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
+func registerNodes(nodes []*node.DarkNode) error {
+	dnrOuterLock.Lock()
+	dnrInnerLock.Lock()
+	defer dnrInnerLock.Unlock()
 	for _, node := range nodes {
-		_, err := mockRegistrar.Register(node.ID, []byte{}, big.NewInt(100))
+		isRegistered, err := node.DarkNodeRegistry.IsRegistered(nodes[0].NetworkOptions.MultiAddress.ID())
+		if isRegistered {
+			return errors.New("already registered")
+		}
+
+		bond := stackint.FromUint(10)
+		err = node.DarkNodeRegistry.ApproveRen(&bond)
+		if err != nil {
+			return err
+		}
+
+		node.DarkNodeRegistry.SetGasLimit(300000)
+		_, err = node.DarkNodeRegistry.Register(node.ID, []byte{}, &bond)
+		node.DarkNodeRegistry.SetGasLimit(0)
 		if err != nil {
 			return err
 		}
 	}
-	_, err := mockRegistrar.Epoch()
+	_, err := epochDNR.WaitForEpoch()
 	return err
 }
 
-func deregisterNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
+func deregisterNodes(nodes []*node.DarkNode) error {
+	defer dnrOuterLock.Unlock()
+	dnrInnerLock.Lock()
+	defer dnrInnerLock.Unlock()
 	for _, node := range nodes {
-		_, err := mockRegistrar.Deregister(node.ID)
+		node.DarkNodeRegistry.SetGasLimit(300000)
+		_, err := node.DarkNodeRegistry.Deregister(node.ID)
+		node.DarkNodeRegistry.SetGasLimit(0)
 		if err != nil {
-			return err
+			panic(err)
 		}
 	}
-	return nil
+	epochDNR.SetGasLimit(300000)
+	_, err := epochDNR.WaitForEpoch()
+	epochDNR.SetGasLimit(0)
+	if err != nil {
+		panic(err)
+	}
+	for _, node := range nodes {
+		node.DarkNodeRegistry.SetGasLimit(300000)
+		_, err := node.DarkNodeRegistry.Refund(node.ID)
+		node.DarkNodeRegistry.SetGasLimit(0)
+		if err != nil {
+			panic(err)
+		}
+	}
+	_, err = epochDNR.WaitForEpoch()
+	return err
 }
 
 func startNodeServices(nodes []*node.DarkNode) {
@@ -259,17 +321,26 @@ func bootstrapNodes(nodes []*node.DarkNode) {
 	do.CoForAll(nodes, func(i int) {
 		nodes[i].Bootstrap()
 	})
+	do.CoForAll(nodes, func(i int) {
+		nodes[i].Bootstrap()
+	})
 }
 
 func watchDarkOcean(nodes []*node.DarkNode) {
-	mockRegistrar.Epoch()
 	for i := range nodes {
 		go func(i int) {
 			defer GinkgoRecover()
 			nodes[i].WatchDarkOcean()
 		}(i)
 	}
-	time.Sleep(time.Duration(len(nodes)) * 2 * time.Second)
+
+	_, err := epochDNR.WaitForEpoch()
+	if err != nil {
+		panic(err)
+	}
+
+	// time.Sleep(time.Minute)
+	time.Sleep(2 * time.Second)
 }
 
 func stopNodes(nodes []*node.DarkNode) {
@@ -334,20 +405,19 @@ func sendOrders(nodes []*node.DarkNode) error {
 		}
 		price = price * 1000000000000
 
-
 		amount, err := strconv.ParseFloat(j[1].(string), 10)
 		if err != nil {
 			return errors.New("fail to parse the amount into a float")
 		}
 		amount = amount * 1000000000000
 		sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour),
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
-			big.NewInt(int64(amount)), big.NewInt(1))
+			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint(price)), heapInt(uint(amount)),
+			heapInt(uint(amount)), heapInt(1))
 		sellOrders[i] = sellOrder
 
 		buyOrder := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour),
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
-			big.NewInt(int64(amount)), big.NewInt(1))
+			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint(price)), heapInt(uint(amount)),
+			heapInt(uint(amount)), heapInt(1))
 		buyOrders[i] = buyOrder
 	}
 

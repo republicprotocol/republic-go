@@ -2,12 +2,12 @@ package compute
 
 import (
 	"bytes"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	base58 "github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 // A DeltaID is the Keccak256 hash of the order IDs that were used to compute
@@ -24,18 +24,21 @@ func (id DeltaID) String() string {
 	return base58.Encode(id)
 }
 
+// A Delta (reconstructed from Delta Fragments) contains the data required
+// to know if two orders can be matched
 type Delta struct {
 	ID          DeltaID
 	BuyOrderID  order.ID
 	SellOrderID order.ID
-	FstCode     *big.Int
-	SndCode     *big.Int
-	Price       *big.Int
-	MaxVolume   *big.Int
-	MinVolume   *big.Int
+	FstCode     *stackint.Int1024
+	SndCode     *stackint.Int1024
+	Price       *stackint.Int1024
+	MaxVolume   *stackint.Int1024
+	MinVolume   *stackint.Int1024
 }
 
-func NewDelta(deltaFragments []*DeltaFragment, prime *big.Int) *Delta {
+// NewDelta reconstructs a delta from a series of fragments
+func NewDelta(deltaFragments []*DeltaFragment, prime *stackint.Int1024) *Delta {
 	// Check that all ResultFragments are compatible with each other.
 	if !IsCompatible(deltaFragments) {
 		return nil
@@ -72,21 +75,25 @@ func NewDelta(deltaFragments []*DeltaFragment, prime *big.Int) *Delta {
 	return delta
 }
 
-func (delta *Delta) IsMatch(prime *big.Int) bool {
-	zeroThreshold := big.NewInt(0).Div(prime, big.NewInt(2))
-	if delta.FstCode.Cmp(big.NewInt(0)) != 0 {
+// IsMatch returns true if the Delta's two orders can fulfill one another
+func (delta *Delta) IsMatch(prime *stackint.Int1024) bool {
+
+	two := stackint.Two()
+	zeroThreshold := prime.Div(&two)
+
+	if !delta.FstCode.IsZero() {
 		return false
 	}
-	if delta.SndCode.Cmp(big.NewInt(0)) != 0 {
+	if !delta.SndCode.IsZero() {
 		return false
 	}
-	if delta.Price.Cmp(zeroThreshold) == 1 {
+	if delta.Price.Cmp(&zeroThreshold) == 1 {
 		return false
 	}
-	if delta.MaxVolume.Cmp(zeroThreshold) == 1 {
+	if delta.MaxVolume.Cmp(&zeroThreshold) == 1 {
 		return false
 	}
-	if delta.MinVolume.Cmp(zeroThreshold) == 1 {
+	if delta.MinVolume.Cmp(&zeroThreshold) == 1 {
 		return false
 	}
 	return true
@@ -123,7 +130,11 @@ type DeltaFragment struct {
 	MinVolumeShare shamir.Share
 }
 
-func NewDeltaFragment(left *order.Fragment, right *order.Fragment, prime *big.Int) *DeltaFragment {
+// NewDeltaFragment combines two order fragments, taking:
+// 1) the difference of the buy code, sell code and price
+// 2) the buy's max volume minus the sell's min volume
+// 3) the buy's min volume minus the sell's max volume
+func NewDeltaFragment(left *order.Fragment, right *order.Fragment, prime *stackint.Int1024) *DeltaFragment {
 	if !left.IsCompatible(right) {
 		return nil
 	}
@@ -140,29 +151,28 @@ func NewDeltaFragment(left *order.Fragment, right *order.Fragment, prime *big.In
 
 	fstCodeShare := shamir.Share{
 		Key:   buyOrderFragment.FstCodeShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.FstCodeShare.Value, big.NewInt(0).Sub(prime, sellOrderFragment.FstCodeShare.Value)),
+		Value: buyOrderFragment.FstCodeShare.Value.SubModulo(&sellOrderFragment.FstCodeShare.Value, prime),
 	}
+
 	sndCodeShare := shamir.Share{
 		Key:   buyOrderFragment.SndCodeShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.SndCodeShare.Value, big.NewInt(0).Sub(prime, sellOrderFragment.SndCodeShare.Value)),
+		Value: buyOrderFragment.SndCodeShare.Value.SubModulo(&sellOrderFragment.SndCodeShare.Value, prime),
 	}
+
 	priceShare := shamir.Share{
 		Key:   buyOrderFragment.PriceShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.PriceShare.Value, big.NewInt(0).Sub(prime, sellOrderFragment.PriceShare.Value)),
+		Value: buyOrderFragment.PriceShare.Value.SubModulo(&sellOrderFragment.PriceShare.Value, prime),
 	}
+
 	maxVolumeShare := shamir.Share{
 		Key:   buyOrderFragment.MaxVolumeShare.Key,
-		Value: big.NewInt(0).Add(buyOrderFragment.MaxVolumeShare.Value, big.NewInt(0).Sub(prime, sellOrderFragment.MinVolumeShare.Value)),
+		Value: buyOrderFragment.MaxVolumeShare.Value.SubModulo(&sellOrderFragment.MinVolumeShare.Value, prime),
 	}
+
 	minVolumeShare := shamir.Share{
 		Key:   buyOrderFragment.MinVolumeShare.Key,
-		Value: big.NewInt(0).Add(sellOrderFragment.MaxVolumeShare.Value, big.NewInt(0).Sub(prime, buyOrderFragment.MinVolumeShare.Value)),
+		Value: sellOrderFragment.MaxVolumeShare.Value.SubModulo(&buyOrderFragment.MinVolumeShare.Value, prime),
 	}
-	fstCodeShare.Value.Mod(fstCodeShare.Value, prime)
-	sndCodeShare.Value.Mod(sndCodeShare.Value, prime)
-	priceShare.Value.Mod(priceShare.Value, prime)
-	maxVolumeShare.Value.Mod(maxVolumeShare.Value, prime)
-	minVolumeShare.Value.Mod(minVolumeShare.Value, prime)
 
 	return &DeltaFragment{
 		ID:                  DeltaFragmentID(crypto.Keccak256([]byte(buyOrderFragment.ID), []byte(sellOrderFragment.ID))),
@@ -188,15 +198,15 @@ func (deltaFragment *DeltaFragment) Equals(other *DeltaFragment) bool {
 		deltaFragment.BuyOrderFragmentID.Equal(other.BuyOrderFragmentID) &&
 		deltaFragment.SellOrderFragmentID.Equal(other.SellOrderFragmentID) &&
 		deltaFragment.FstCodeShare.Key == other.FstCodeShare.Key &&
-		deltaFragment.FstCodeShare.Value.Cmp(other.FstCodeShare.Value) == 0 &&
+		deltaFragment.FstCodeShare.Value.Cmp(&other.FstCodeShare.Value) == 0 &&
 		deltaFragment.SndCodeShare.Key == other.SndCodeShare.Key &&
-		deltaFragment.SndCodeShare.Value.Cmp(other.SndCodeShare.Value) == 0 &&
+		deltaFragment.SndCodeShare.Value.Cmp(&other.SndCodeShare.Value) == 0 &&
 		deltaFragment.PriceShare.Key == other.PriceShare.Key &&
-		deltaFragment.PriceShare.Value.Cmp(other.PriceShare.Value) == 0 &&
+		deltaFragment.PriceShare.Value.Cmp(&other.PriceShare.Value) == 0 &&
 		deltaFragment.MaxVolumeShare.Key == other.MaxVolumeShare.Key &&
-		deltaFragment.MaxVolumeShare.Value.Cmp(other.MaxVolumeShare.Value) == 0 &&
+		deltaFragment.MaxVolumeShare.Value.Cmp(&other.MaxVolumeShare.Value) == 0 &&
 		deltaFragment.MinVolumeShare.Key == other.MinVolumeShare.Key &&
-		deltaFragment.MinVolumeShare.Value.Cmp(other.MinVolumeShare.Value) == 0
+		deltaFragment.MinVolumeShare.Value.Cmp(&other.MinVolumeShare.Value) == 0
 }
 
 // IsCompatible returns true if all DeltaFragments are fragments of the same

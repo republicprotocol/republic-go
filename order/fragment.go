@@ -93,11 +93,11 @@ func (fragment *Fragment) Equal(other *Fragment) bool {
 		fragment.OrderType == other.OrderType &&
 		fragment.OrderParity == other.OrderParity &&
 		fragment.OrderExpiry.Equal(other.OrderExpiry) &&
-		fragment.FstCodeShare.Value.Cmp(other.FstCodeShare.Value) == 0 &&
-		fragment.SndCodeShare.Value.Cmp(other.SndCodeShare.Value) == 0 &&
-		fragment.PriceShare.Value.Cmp(other.PriceShare.Value) == 0 &&
-		fragment.MaxVolumeShare.Value.Cmp(other.MaxVolumeShare.Value) == 0 &&
-		fragment.MinVolumeShare.Value.Cmp(other.MinVolumeShare.Value) == 0
+		fragment.FstCodeShare.Value.Cmp(&other.FstCodeShare.Value) == 0 &&
+		fragment.SndCodeShare.Value.Cmp(&other.SndCodeShare.Value) == 0 &&
+		fragment.PriceShare.Value.Cmp(&other.PriceShare.Value) == 0 &&
+		fragment.MaxVolumeShare.Value.Cmp(&other.MaxVolumeShare.Value) == 0 &&
+		fragment.MinVolumeShare.Value.Cmp(&other.MinVolumeShare.Value) == 0
 }
 
 // IsCompatible returns true when two Fragments are compatible for a

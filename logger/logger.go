@@ -9,6 +9,7 @@ import (
 	"github.com/republicprotocol/go-do"
 )
 
+// Logger handles distributing logs to plugins registered with it
 type Logger struct {
 	do.GuardedObject
 	Plugins []Plugin
@@ -19,6 +20,7 @@ type Options struct {
 	Plugins []PluginOptions `json:"plugins"`
 }
 
+// The Plugin interface describes a worker that consumes logs
 type Plugin interface {
 	Start() error
 	Stop() error
@@ -229,10 +231,12 @@ type Log struct {
 	Event     Event     `json:"event"`
 }
 
+// The Event interface describes a log event
 type Event interface {
 	String() string
 }
 
+// A GenericEvent logs a string
 type GenericEvent struct {
 	Message string `json:"message"`
 }
@@ -241,6 +245,7 @@ func (event GenericEvent) String() string {
 	return event.Message
 }
 
+// An EpochEvent logs that an epoch transition has been observed
 type EpochEvent struct {
 	Hash []byte `json:"hash"`
 }
@@ -249,6 +254,7 @@ func (event EpochEvent) String() string {
 	return base58.Encode(event.Hash)
 }
 
+// UsageEvent logs CPU, Memory and Network usage
 type UsageEvent struct {
 	CPU     float64 `json:"cpu"`
 	Memory  float64 `json:"memory"`
@@ -259,6 +265,7 @@ func (event UsageEvent) String() string {
 	return fmt.Sprintf("cpu = %v; memory = %v; network = %v", event.CPU, event.Memory, event.Network)
 }
 
+// OrderMatchEvent logs two matched orders
 type OrderMatchEvent struct {
 	ID     string `json:"id"`
 	BuyID  string `json:"buyId"`
@@ -269,6 +276,7 @@ func (event OrderMatchEvent) String() string {
 	return fmt.Sprintf("buy = %s; sell = %s", event.BuyID, event.SellID)
 }
 
+// OrderReceivedEvent logs a newly received buy or sell fragment
 type OrderReceivedEvent struct {
 	BuyID      *string `json:"buyId,omitempty"`
 	SellID     *string `json:"sellId,omitempty"`
@@ -285,6 +293,7 @@ func (event OrderReceivedEvent) String() string {
 	return ""
 }
 
+// NetworkEvent logs a generic network-related message
 type NetworkEvent struct {
 	Message string `json:"message"`
 }
@@ -293,6 +302,7 @@ func (event NetworkEvent) String() string {
 	return event.Message
 }
 
+// ComputeEvent logs a generic compute-related message
 type ComputeEvent struct {
 	Message string `json:"message"`
 }

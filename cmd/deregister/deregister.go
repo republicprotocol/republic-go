@@ -17,6 +17,8 @@ import (
 	node "github.com/republicprotocol/republic-go/dark-node"
 )
 
+// The Secret private key to use for ethereum transactions
+// If it is encrypted, a password must be provided
 type Secret struct {
 	PrivateKey string `json:"privateKey"`
 	Password   string `json:"password"`
@@ -70,25 +72,25 @@ func DeregisterAll(configs []*node.Config) {
 			panic(err)
 		}
 
-		registrar, err := dnr.NewEthereumDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{})
+		registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, auth, &bind.CallOpts{})
 		if err != nil {
 			log.Printf("[%v] %sCouldn't connect to registrar%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
 			return
 		}
 
-		isRegistered, err := registrar.IsDarkNodeRegistered(keypair.ID())
+		isRegistered, err := registrar.IsRegistered(keypair.ID())
 		if err != nil {
 			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
 			return
 		}
 
-		isPendingRegistration, err := registrar.IsDarkNodePendingRegistration(keypair.ID())
-		if err != nil {
-			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
-			return
-		}
+		// isPendingRegistration, err := registrar.IsDarkNodePendingRegistration(keypair.ID())
+		// if err != nil {
+		// 	log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", base58.Encode(keypair.ID()), red, reset, err)
+		// 	return
+		// }
 
-		if isRegistered || isPendingRegistration {
+		if isRegistered { // || isPendingRegistration {
 			_, err = registrar.Deregister(keypair.ID())
 			if err != nil {
 				log.Printf("[%v] %sCouldn't deregister node%s: %v\n", base58.Encode(keypair.ID()), yellow, reset, err)

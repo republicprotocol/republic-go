@@ -84,6 +84,8 @@ func DeserializeOrderFragment(orderFragment *OrderFragment) (*order.Fragment, er
 	return val, nil
 }
 
+// SerializeDeltaFragment converts a compute.DeltaFragment into its network
+// representation.
 func SerializeDeltaFragment(deltaFragment *compute.DeltaFragment) *DeltaFragment {
 	return &DeltaFragment{
 		Id:                  deltaFragment.ID,
@@ -100,6 +102,9 @@ func SerializeDeltaFragment(deltaFragment *compute.DeltaFragment) *DeltaFragment
 	}
 }
 
+// DeserializeDeltaFragment converts a network representation of a
+// DeltaFragment into an compute.DeltaFragment. An error is returned if the network
+// representation is malformed.
 func DeserializeDeltaFragment(deltaFragment *DeltaFragment) (*compute.DeltaFragment, error) {
 	val := &compute.DeltaFragment{
 		ID:                  deltaFragment.Id,

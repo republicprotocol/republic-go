@@ -51,6 +51,7 @@ func (worker *OrderFragmentWorker) Run(queues ...chan *compute.DeltaFragment) er
 	return nil
 }
 
+// A DeltaFragmentBroadcastWorker consumes delta fragments and broadcasts them
 type DeltaFragmentBroadcastWorker struct {
 	logger     *logger.Logger
 	clientPool *rpc.ClientPool
@@ -58,6 +59,8 @@ type DeltaFragmentBroadcastWorker struct {
 	queue      chan *compute.DeltaFragment
 }
 
+// NewDeltaFragmentBroadcastWorker returns an DeltaFragmentBroadcastWorker that reads  fragments from
+// a queue and forwards them to all nodes in the dark pool
 func NewDeltaFragmentBroadcastWorker(logger *logger.Logger, clientPool *rpc.ClientPool, darkPool *dark.Pool, queue chan *compute.DeltaFragment) *DeltaFragmentBroadcastWorker {
 	return &DeltaFragmentBroadcastWorker{
 		logger:     logger,
@@ -67,6 +70,7 @@ func NewDeltaFragmentBroadcastWorker(logger *logger.Logger, clientPool *rpc.Clie
 	}
 }
 
+// Run the DeltaFragmentBroadcastWorker and forward all fragments to nodes in the dark pool
 func (worker *DeltaFragmentBroadcastWorker) Run() {
 	for deltaFragment := range worker.queue {
 		serializedDeltaFragment := rpc.SerializeDeltaFragment(deltaFragment)
@@ -83,7 +87,7 @@ func (worker *DeltaFragmentBroadcastWorker) Run() {
 	}
 }
 
-// An DeltaFragmentWorker consumes delta fragments and reconstructs deltas.
+// A DeltaFragmentWorker consumes delta fragments and reconstructs deltas.
 type DeltaFragmentWorker struct {
 	logger       *logger.Logger
 	deltaBuilder *compute.DeltaBuilder
@@ -116,12 +120,16 @@ func (worker *DeltaFragmentWorker) Run(queues ...chan *compute.Delta) {
 	}
 }
 
+// A DeltaMatchWorker consumes reconstructed deltas and calculates whether or not
+// the two orders can be matched
 type DeltaMatchWorker struct {
 	logger              *logger.Logger
 	deltaFragmentMatrix *compute.DeltaFragmentMatrix
 	queue               chan *compute.Delta
 }
 
+// NewDeltaMatchWorker returns a new DeltaMatchWorker consumes deltas from the queue
+// and removes the fragments from the DeltaFragmentMatrix if the two orders match
 func NewDeltaMatchWorker(logger *logger.Logger, deltaFragmentMatrix *compute.DeltaFragmentMatrix, queue chan *compute.Delta) *DeltaMatchWorker {
 	return &DeltaMatchWorker{
 		logger:              logger,
@@ -130,9 +138,12 @@ func NewDeltaMatchWorker(logger *logger.Logger, deltaFragmentMatrix *compute.Del
 	}
 }
 
+// Run the DeltaMatchWorker. When two orders match:
+// 1) Remove the fragments for each order from the OrderFragmentMatrix and
+// 2) Write the match to the output queues
 func (worker *DeltaMatchWorker) Run(queues ...chan *compute.Delta) {
 	for delta := range worker.queue {
-		if delta.IsMatch(Prime) {
+		if delta.IsMatch(prime) {
 			if err := worker.deltaFragmentMatrix.RemoveOrderFragment(delta.BuyOrderID); err != nil {
 				worker.logger.Compute(logger.Error, fmt.Sprintf("cannot remove buy order fragment: %s", err.Error()))
 			}

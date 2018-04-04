@@ -12,6 +12,8 @@ import (
 	"github.com/republicprotocol/go-do"
 )
 
+// A WebSocketPlugin implements the Plugin interface by logging all events to a
+// WebSocket connection.
 type WebSocketPlugin struct {
 	do.GuardedObject
 
@@ -26,6 +28,7 @@ type WebSocketPlugin struct {
 	logs   map[int64]chan Log
 }
 
+// WebSocketPluginOptions contain the details required to set up the WebSocketConnection
 type WebSocketPluginOptions struct {
 	Host     string `json:"host"`
 	Port     string `json:"port"`
@@ -33,6 +36,8 @@ type WebSocketPluginOptions struct {
 	Password string `json:"password"`
 }
 
+// NewWebSocketPlugin creates a new WebSocketPlugin with the provide websocket options
+// and a logger to which it will log network-related log events
 func NewWebSocketPlugin(logger *Logger, webSocketPluginOptions WebSocketPluginOptions) Plugin {
 	plugin := &WebSocketPlugin{
 		GuardedObject: do.NewGuardedObject(),
