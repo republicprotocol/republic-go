@@ -1,7 +1,5 @@
 package main
 
-// DeployDarkNodeRegistrar
-
 import (
 	"context"
 	"flag"
@@ -12,10 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	base58 "github.com/jbenet/go-base58"
-	node "github.com/republicprotocol/go-dark-node"
-	dnr "github.com/republicprotocol/go-dark-node-registrar"
-	"github.com/republicprotocol/go-dark-node-registrar/contracts"
 	"github.com/republicprotocol/republic-go/contracts/connection"
+	"github.com/republicprotocol/republic-go/dark-node"
 )
 
 var config *node.Config
