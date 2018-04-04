@@ -19,3 +19,4 @@ func NewMessage(ord order.Order, status order.Status, err error) Message {
 		Err:    err,
 	}
 }
+

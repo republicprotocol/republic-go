@@ -1,6 +1,5 @@
 package node
 
-//
 //import (
 //	"fmt"
 //

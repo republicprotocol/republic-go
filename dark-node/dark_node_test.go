@@ -218,13 +218,21 @@ var _ = Describe("Dark nodes", func() {
 					err := sendOrders(nodes)
 					Ω(err).ShouldNot(HaveOccurred())
 
+					go func() {
+						defer GinkgoRecover()
+
+						time.Sleep(10 * time.Second)
+						err := sendOrders(nodes)
+						Ω(err).ShouldNot(HaveOccurred())
+					}()
+
 					By("synchronization")
 					syncBlocks, err := nodes[0].ClientPool.Sync(nodes[1].NetworkOptions.MultiAddress)
 					Ω(err).ShouldNot(HaveOccurred())
 					for block := range syncBlocks {
-						log.Println(block)
+						log.Println(block.OrderBlock)
 					}
-					time.Sleep(1 * time.Minute)
+
 				})
 
 				AfterEach(func() {

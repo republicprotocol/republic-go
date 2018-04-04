@@ -1,6 +1,8 @@
 package orderbook
 
 import (
+	"sync"
+
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 )
@@ -45,21 +47,24 @@ func (orderBook OrderBook) SyncHistory(queue dispatch.MessageQueue) error {
 // Subscribe will start listening to the orderbook for updates.
 func (orderBook OrderBook) Subscribe(id string, queue dispatch.MessageQueue) error {
 	var err error
-	//wg := new(sync.WaitGroup)
-	//
-	//wg.Add(1)
-	//go func() {
-	//	defer wg.Done()
-	//
-	//	err = orderBook.splitter.RunMessageQueue(id, queue)
-	//}()
+	wg := new(sync.WaitGroup)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		err = orderBook.splitter.RunMessageQueue(id, queue)
+	}()
 
 	blocks := orderBook.orderBookCache.Blocks()
 	for _, block := range blocks {
-		queue.Send(block)
+		err := queue.Send(block)
+		if err != nil {
+			return err
+		}
 	}
 
-	//wg.Wait()
+	wg.Wait()
 	return err
 }
 

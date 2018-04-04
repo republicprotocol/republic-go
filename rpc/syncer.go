@@ -3,7 +3,7 @@ package rpc
 import (
 	"fmt"
 	"io"
-	"log"
+	"time"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/logger"
@@ -118,13 +118,11 @@ func (queue SyncerServerStreamQueue) Send(message dispatch.Message) error {
 		}
 	}()
 
-	block, ok := message.(*SyncBlock)
+	msg, ok := message.(orderbook.Message)
 	if !ok {
 		return fmt.Errorf("wrong message type, has %T expect *rpc.SyncBlock", message)
 	}
-	log.Println("length of the write queue", len(queue.write))
-	queue.write <- block
-	log.Println("stuck here")
+	queue.write <- ToBlock(msg)
 	return err
 }
 
@@ -239,4 +237,34 @@ func (queue SyncerClientStreamQueue) readAll() error {
 		}
 	}
 	// todo : why does it not complain about returning nothing ?
+}
+
+func ToBlock(message orderbook.Message) *SyncBlock{
+	syncBlock := &SyncBlock{
+		Signature: message.Ord.Signature,
+		Timestamp: time.Now().Unix(),
+	}
+	switch message.Status  {
+	case order.Open:
+		syncBlock.OrderBlock = &SyncBlock_Open{
+			Open: MarshalOrder(&message.Ord),
+		}
+	case order.Canceled:
+		syncBlock.OrderBlock = &SyncBlock_Canceled{
+			Canceled: MarshalOrder(&message.Ord),
+		}
+	case order.Unconfirmed:
+		syncBlock.OrderBlock = &SyncBlock_Unconfirmed{
+			Unconfirmed: MarshalOrder(&message.Ord),
+		}
+	case order.Confirmed:
+		syncBlock.OrderBlock = &SyncBlock_Confirmed{
+			Confirmed:MarshalOrder(&message.Ord),
+		}
+	case order.Settled:
+		syncBlock.OrderBlock = &SyncBlock_Settled{
+			Settled: MarshalOrder(&message.Ord),
+		}
+	}
+	return syncBlock
 }
