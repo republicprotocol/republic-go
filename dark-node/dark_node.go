@@ -160,7 +160,6 @@ func (node *DarkNode) StartServices() {
 
 // StartUI starts serving the Dark Node UI
 func (node *DarkNode) StartUI() {
-
 	host, err := node.NetworkOptions.MultiAddress.ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		node.Logger.Network(logger.Error, "UI host unknown: "+err.Error())
@@ -196,7 +195,10 @@ func (node *DarkNode) StartUI() {
 	})))
 
 	path := node.Config.Path
+	http.Handle("/settings", http.StripPrefix("/settings", http.FileServer(http.Dir(path+"/ui"))))
+	http.Handle("/log", http.StripPrefix("/log", http.FileServer(http.Dir(path+"/ui"))))
 	http.Handle("/", http.FileServer(http.Dir(path+"/ui")))
+
 	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
 		node.Logger.Error(err.Error())
 	}
@@ -231,6 +233,7 @@ func (node *DarkNode) Stop() {
 // this DarkNode and reconnect to all of the nodes in the pool.
 func (node *DarkNode) WatchDarkOcean() {
 	// Block until the node is registered
+
 	err := node.DarkNodeRegistry.WaitUntilRegistration(node.ID)
 	for err != nil {
 		node.Logger.Error(fmt.Sprintf("cannot determine registration status: %s", err.Error()))
@@ -261,7 +264,7 @@ func (node *DarkNode) WatchDarkOcean() {
 	}()
 
 	// Check for changes every minute
-	node.DarkOcean.Watch(time.Minute, changes)
+	node.DarkOcean.Watch(changes)
 }
 
 // ConnectToDarkPool and return the connected nodes and disconnected nodes

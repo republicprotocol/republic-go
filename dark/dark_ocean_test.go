@@ -1,8 +1,6 @@
 package dark_test
 
 import (
-	"time"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
@@ -25,7 +23,7 @@ var _ = Describe("Dark Oceans", func() {
 			}
 
 			channel := make(chan struct{}, 1)
-			go ocean.Watch(time.Second, channel)
+			go ocean.Watch(channel)
 			Eventually(channel).Should(Receive())
 
 			dnr.WaitForEpoch()

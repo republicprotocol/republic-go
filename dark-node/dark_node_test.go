@@ -151,7 +151,7 @@ var _ = Describe("Dark nodes", func() {
 	// Order matching
 	for _, numberOfNodes := range []int{5} {
 		func(numberOfNodes int) {
-			FContext(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
+			Context(fmt.Sprintf("when sending orders to %d nodes", numberOfNodes), func() {
 
 				var err error
 				var nodes []*node.DarkNode
@@ -244,10 +244,7 @@ func registerNodes(nodes []*node.DarkNode) error {
 	dnrOuterLock.Lock()
 	dnrInnerLock.Lock()
 	defer dnrInnerLock.Unlock()
-	fmt.Println("Registering all!!!")
-	defer fmt.Println("Done registering!!!")
 	for _, node := range nodes {
-		fmt.Println("!!!!!!!!!!!!!")
 		isRegistered, err := node.DarkNodeRegistry.IsRegistered(nodes[0].NetworkOptions.MultiAddress.ID())
 		if isRegistered {
 			return errors.New("already registered")
@@ -274,24 +271,26 @@ func deregisterNodes(nodes []*node.DarkNode) error {
 	defer dnrOuterLock.Unlock()
 	dnrInnerLock.Lock()
 	defer dnrInnerLock.Unlock()
-	fmt.Println("Deregistering all!!!")
-	defer fmt.Println("Done deregistering!")
 	for _, node := range nodes {
+		node.DarkNodeRegistry.SetGasLimit(300000)
 		_, err := node.DarkNodeRegistry.Deregister(node.ID)
+		node.DarkNodeRegistry.SetGasLimit(0)
 		if err != nil {
-			return err
+			panic(err)
 		}
 	}
+	epochDNR.SetGasLimit(300000)
 	_, err := epochDNR.WaitForEpoch()
+	epochDNR.SetGasLimit(0)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	for _, node := range nodes {
 		node.DarkNodeRegistry.SetGasLimit(300000)
 		_, err := node.DarkNodeRegistry.Refund(node.ID)
 		node.DarkNodeRegistry.SetGasLimit(0)
 		if err != nil {
-			return err
+			panic(err)
 		}
 	}
 	_, err = epochDNR.WaitForEpoch()
@@ -337,7 +336,8 @@ func watchDarkOcean(nodes []*node.DarkNode) {
 		panic(err)
 	}
 
-	time.Sleep(time.Minute)
+	// time.Sleep(time.Minute)
+	time.Sleep(2 * time.Second)
 }
 
 func stopNodes(nodes []*node.DarkNode) {

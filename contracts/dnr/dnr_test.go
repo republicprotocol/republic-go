@@ -9,6 +9,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	// . "github.com/onsi/gomega"
+	// "github.com/republicprotocol/republic-go/identity"
 )
 
 var ether = stackint.FromUint(1000000000000000000)

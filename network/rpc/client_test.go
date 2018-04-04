@@ -1,7 +1,24 @@
 package rpc_test
 
-// . "github.com/onsi/ginkgo"
-// . "github.com/onsi/gomega"
+// import (
+// 	"context"
+// 	"fmt"
+// 	"math/big"
+// 	"net"
+// 	"time"
+
+// 	. "github.com/onsi/ginkgo"
+// 	. "github.com/onsi/gomega"
+// 	"github.com/republicprotocol/republic-go/compute"
+// 	"github.com/republicprotocol/republic-go/identity"
+// 	"github.com/republicprotocol/republic-go/network/rpc"
+// 	"github.com/republicprotocol/republic-go/shamir"
+// 	"google.golang.org/grpc"
+// )
+
+// func (s *mockServer) SendOrderFragmentCommitment(ctx context.Context, orderFragmentCommitment *rpc.OrderFragmentCommitment) (*rpc.OrderFragmentCommitment, error) {
+// 	return &rpc.OrderFragmentCommitment{}, nil
+// }
 
 // func (s *mockServer) SendOrderFragment(ctx context.Context, orderFragment *rpc.OrderFragment) (*rpc.Nothing, error) {
 // 	return &rpc.Nothing{}, nil
@@ -11,33 +28,32 @@ package rpc_test
 // 	return &rpc.DeltaFragment{}, nil
 // }
 
-// // func (s *mockServer) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncServer) error {
-// // 	stream.Send(&rpc.SyncBlock{})
-// // 	return nil
-// // }
+// func (s *mockServer) Sync(syncRequest *rpc.SyncRequest, stream rpc.DarkNode_SyncServer) error {
+// 	stream.Send(&rpc.SyncBlock{})
+// 	return nil
+// }
 
-// // func (s *mockServer) Logs(logRequest *rpc.LogRequest, stream rpc.DarkNode_LogsServer) error {
-// // 	stream.Send(&rpc.LogEvent{Type: []byte("type"), Message: []byte("message")})
-// // 	return nil
-// // }
+// func (s *mockServer) Logs(logRequest *rpc.LogRequest, stream rpc.DarkNode_LogsServer) error {
+// 	stream.Send(&rpc.LogEvent{Type: []byte("type"), Message: []byte("message")})
+// 	return nil
+// }
 
-// // func (s *mockServer) ElectShard(ctx context.Context, electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
-// // 	return &rpc.Shard{}, nil
-// // }
+// func (s *mockServer) ElectShard(ctx context.Context, electShardRequest *rpc.ElectShardRequest) (*rpc.Shard, error) {
+// 	return &rpc.Shard{}, nil
+// }
 
-// // func (s *mockServer) ComputeShard(ctx context.Context, computeShardRequest *rpc.ComputeShardRequest) (*rpc.Nothing, error) {
-// // 	return &rpc.Nothing{}, nil
-// // }
+// func (s *mockServer) ComputeShard(ctx context.Context, computeShardRequest *rpc.ComputeShardRequest) (*rpc.Nothing, error) {
+// 	return &rpc.Nothing{}, nil
+// }
 
-// // func (s *mockServer) FinalizeShard(ctx context.Context, finalizeShardRequest *rpc.FinalizeShardRequest) (*rpc.Nothing, error) {
-// // 	return &rpc.Nothing{}, nil
-// // }
+// func (s *mockServer) FinalizeShard(ctx context.Context, finalizeShardRequest *rpc.FinalizeShardRequest) (*rpc.Nothing, error) {
+// 	return &rpc.Nothing{}, nil
+// }
 
 // var _ = Describe("Custom Client", func() {
 // 	Context("Broadcast delta fragments ", func() {
 // 		var from, to identity.MultiAddress
-// 		value := stackint.Zero()
-// 		var shamirShare = shamir.Share{Key: 1, Value: value}
+// 		var shamirShare = shamir.Share{Key: 1, Value: &big.Int{}}
 // 		deltaFragment := &compute.DeltaFragment{
 // 			ID:                  []byte("byte"),
 // 			BuyOrderID:          []byte("byte"),
@@ -66,7 +82,7 @@ package rpc_test
 // 		It("should not error", func() {
 // 			server := grpc.NewServer()
 // 			rpcServer := mockServer{MultiAddress: to}
-// 			// rpc.RegisterDarkNodeServer(server, &rpcServer)
+// 			rpc.RegisterDarkNodeServer(server, &rpcServer)
 // 			lis, err := net.Listen("tcp", ":4000")
 // 			Ω(err).ShouldNot(HaveOccurred())
 // 			go func(server *grpc.Server) {
@@ -78,8 +94,7 @@ package rpc_test
 // 			client, err := rpc.NewClient(to, from)
 // 			Ω(err).ShouldNot(HaveOccurred())
 
-// 			serializedDeltaFragment := rpc.SerializeDeltaFragment(deltaFragment)
-// 			_, err = client.BroadcastDeltaFragment(serializedDeltaFragment)
+// 			_, err = client.BroadcastDeltaFragment(deltaFragment)
 // 			Ω(err).ShouldNot(HaveOccurred())
 // 		})
 
@@ -97,14 +112,13 @@ package rpc_test
 // 		})
 
 // 		It("should error when the server if offline", func() {
-// 			client, err := rpc.NewClient(to, from) /* rpc.ClientOptions{
+// 			client, err := rpc.NewClient(to, from, rpc.ClientOptions{
 // 				Timeout:        5 * time.Second,
 // 				TimeoutBackoff: 0 * time.Second,
 // 				TimeoutRetries: 3,
-// 			})*/
+// 			})
 // 			Ω(err).ShouldNot(HaveOccurred())
-// 			serializedDeltaFragment := rpc.SerializeDeltaFragment(deltaFragment)
-// 			_, err = client.BroadcastDeltaFragment(serializedDeltaFragment)
+// 			_, err = client.BroadcastDeltaFragment(deltaFragment)
 // 			Ω(err).Should(HaveOccurred())
 // 		})
 // 	})
@@ -127,7 +141,7 @@ package rpc_test
 // 		Ω(err).ShouldNot(HaveOccurred())
 // 		server = grpc.NewServer()
 // 		rpcServer = mockServer{MultiAddress: multiAddress}
-// 		rpc.RegisterDarkServer(server, &rpcServer)
+// 		rpc.RegisterSwarmNodeServer(server, &rpcServer)
 // 	}
 
 // 	createClient := func() {

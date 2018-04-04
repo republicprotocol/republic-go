@@ -1,9 +1,10 @@
 package node_test
 
+import node "github.com/republicprotocol/republic-go/dark-node"
+
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	node "github.com/republicprotocol/republic-go/dark-node"
 )
 
 var _ = Describe("Configurations", func() {

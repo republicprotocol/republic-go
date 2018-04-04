@@ -229,6 +229,7 @@ func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() (*types.Transaction, er
 		if err != nil {
 			return nil, err
 		}
+		time.Sleep(time.Millisecond * 10)
 	}
 	return tx, nil
 }
@@ -305,7 +306,7 @@ func (darkNodeRegistry *DarkNodeRegistry) WaitUntilRegistration(darkNodeID []byt
 		if err != nil {
 			return err
 		}
-		time.Sleep(time.Minute)
+		darkNodeRegistry.WaitForEpoch()
 
 	}
 	return nil

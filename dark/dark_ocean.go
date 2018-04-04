@@ -63,7 +63,6 @@ func (ocean *Ocean) update() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(nodeIDs)
 
 	// Find the prime smaller or equal to the number of registered nodes
 	// Start at +2 because it has to greater than the maximum (x+1)
@@ -102,11 +101,22 @@ func (ocean *Ocean) update() error {
 // Watch for changes to the Ocean. This function is a blocking function that
 // sleeps and wakes once per period to check for a change in epoch. It accepts
 // a channel that is pinged whenever the Ocean changes.
-func (ocean *Ocean) Watch(period time.Duration, changes chan struct{}) {
+func (ocean *Ocean) Watch(changes chan struct{}) {
 	// Recover from writing to a closed channel
 	defer func() { recover() }()
 
+	minInterval, err := ocean.darkNodeRegistry.MinimumEpochInterval()
+	if err != nil {
+		ocean.logger.Error(fmt.Sprintf("cannot retrieve minimum epoch interval: %s", err.Error()))
+		return
+	}
+
 	var currentBlockhash [32]byte
+	if err := ocean.Update(); err != nil {
+		ocean.logger.Error(fmt.Sprintf("cannot update dark ocean: %s", err.Error()))
+		return
+	}
+	changes <- struct{}{}
 	for {
 		epoch, err := ocean.darkNodeRegistry.CurrentEpoch()
 		if err != nil {
@@ -122,6 +132,26 @@ func (ocean *Ocean) Watch(period time.Duration, changes chan struct{}) {
 			changes <- struct{}{}
 		}
 		// TODO: Retrieve sleep time from epoch.Timestamp and minimumEpochInterval
-		time.Sleep(period)
+		nextTime := epoch.Timestamp.Add(&minInterval)
+		unix, err := nextTime.ToUint()
+		if err != nil {
+			// Either minInterval is really big, or unix epoch time has overflowed uint64s.
+			ocean.logger.Error(fmt.Sprintf("epoch timestamp has overflowed: %s", err.Error()))
+			return
+		}
+
+		toWait := time.Second * time.Duration(time.Now().Unix()-int64(unix))
+
+		// Wait at least one second
+		if toWait < 1*time.Second {
+			toWait = 1 * time.Second
+		}
+
+		// Try again within a minute
+		if toWait > time.Minute {
+			toWait = time.Minute
+		}
+
+		time.Sleep(toWait)
 	}
 }
