@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/big"
 	"net/http"
@@ -26,13 +25,11 @@ import (
 
 var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 
-const key = `{"version":3,"id":"7844982f-abe7-4690-8c15-34f75f847c66","address":"db205ea9d35d8c01652263d58351af75cfbcbf07","Crypto":{"ciphertext":"378dce3c1279b36b071e1c7e2540ac1271581bff0bbe36b94f919cb73c491d3a","cipherparams":{"iv":"2eb92da55cc2aa62b7ffddba891f5d35"},"cipher":"aes-128-ctr","kdf":"scrypt","kdfparams":{"dklen":32,"salt":"80d3341678f83a14024ba9c3edab072e6bd2eea6aa0fbc9e0a33bae27ffa3d6d","n":8192,"r":8,"p":1},"mac":"3d07502ea6cd6b96a508138d8b8cd2e46c3966240ff276ce288059ba4235cb0d"}}`
-
 const reset = "\x1b[0m"
 const red = "\x1b[31;1m"
 
 type OrderBook struct {
-	LastUpdateId int        `json:"lastUpdateId"`
+	LastUpdateId int             `json:"lastUpdateId"`
 	Bids         [][]interface{} `json:"bids"`
 	Asks         [][]interface{} `json:"asks"`
 }
@@ -92,14 +89,10 @@ func main() {
 			if err != nil {
 				log.Fatal("fail to get data from binance")
 			}
-
-			response, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				log.Fatal(err)
-			}
+			defer resp.Body.Close()
 
 			orderBook := new(OrderBook)
-			if err := json.Unmarshal(response, orderBook); err != nil {
+			if err := json.NewDecoder(resp.Body).Decode(orderBook); err != nil {
 				log.Fatal(err)
 			}
 
@@ -111,14 +104,13 @@ func main() {
 					log.Fatal("fail to parse the price into a big int")
 				}
 				price = price * 1000000000000
-				
 
 				amount, err := strconv.ParseFloat(j[1].(string), 10)
 				if err != nil {
 					log.Fatal("fail to parse the amount into a big int")
 				}
 				amount = amount * 1000000000000
-				
+
 				order := order.NewOrder(order.TypeLimit, order.ParitySell, time.Time{},
 					order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
 					big.NewInt(int64(amount)), big.NewInt(1))
@@ -133,13 +125,12 @@ func main() {
 					log.Fatal("fail to parse the price into a big int")
 				}
 				price = price * 1000000000000
-				
+
 				amount, err := strconv.ParseFloat(j[1].(string), 10)
 				if err != nil {
 					log.Fatal("fail to parse the amount into a big int")
 				}
 				amount = amount * 1000000000000
-				
 
 				order := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Time{},
 					order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
@@ -235,7 +226,7 @@ func getMultiAddress(address identity.Address, traderMultiAddress identity.Multi
 		if err != nil {
 			return traderMultiAddress, err
 		}
-		
+
 		for candidate := range candidates {
 			deserializedCandidate, err := rpc.DeserializeMultiAddress(candidate)
 			if err != nil {
@@ -251,7 +242,7 @@ func getMultiAddress(address identity.Address, traderMultiAddress identity.Multi
 }
 
 // Get Dark Node Registry
-func getDarkNodeRegistrar () (dnr.DarkNodeRegistrar, error) {
+func getDarkNodeRegistrar() (dnr.DarkNodeRegistrar, error) {
 
 	clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
 	if err != nil {
@@ -292,7 +283,7 @@ func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares [
 			log.Println(err)
 			log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(n.ID), reset)
 			return
-		}	
+		}
 		j++
 	})
 }

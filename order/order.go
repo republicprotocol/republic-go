@@ -3,11 +3,13 @@ package order
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"math/big"
+	"os"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	base58 "github.com/jbenet/go-base58"
+	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
@@ -88,6 +90,19 @@ func NewOrder(ty Type, parity Parity, expiry time.Time, fstCode, sndCode Currenc
 	}
 	order.ID = ID(order.Hash())
 	return order
+}
+
+// NewOrderFromJSONFile returns an order that is unmarshaled from a JSON file.
+func NewOrderFromJSONFile(fileName string) (Order, error) {
+	order := Order{}
+	file, err := os.Open(fileName)
+	if err != nil {
+		return order, err
+	}
+	if err := json.NewDecoder(file).Decode(&order); err != nil {
+		return order, err
+	}
+	return order, nil
 }
 
 // Split the Order into n OrderFragments, where k OrderFragments are needed to
