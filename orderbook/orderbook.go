@@ -39,16 +39,28 @@ func NewOrderBook(maxConnections int) *OrderBook {
 
 // SyncHistory will stream the order history to the message queue provided.
 func (orderBook OrderBook) SyncHistory(queue dispatch.MessageQueue) error {
-	blocks := orderBook.orderBookCache.Blocks()
-	for _, block := range blocks {
-		orderBook.splitter.Send(block)
-	}
 	return nil
 }
 
 // Subscribe will start listening to the orderbook for updates.
 func (orderBook OrderBook) Subscribe(id string, queue dispatch.MessageQueue) error {
-	return orderBook.splitter.RunMessageQueue(id, queue)
+	var err error
+	//wg := new(sync.WaitGroup)
+	//
+	//wg.Add(1)
+	//go func() {
+	//	defer wg.Done()
+	//
+	//	err = orderBook.splitter.RunMessageQueue(id, queue)
+	//}()
+
+	blocks := orderBook.orderBookCache.Blocks()
+	for _, block := range blocks {
+		queue.Send(block)
+	}
+
+	//wg.Wait()
+	return err
 }
 
 // Unsubscribe will stop listening to the orderbook for updates

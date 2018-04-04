@@ -415,7 +415,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 				},
 				OrderFragment: rpc.MarshalOrderFragment(buyShares[j]),
 			}
-			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, orderRequet)
+			err := pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, orderRequet)
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)
@@ -430,7 +430,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 				},
 				OrderFragment: rpc.MarshalOrderFragment(sellShares[j]),
 			}
-			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, orderRequet)
+			err := pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, orderRequet)
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)

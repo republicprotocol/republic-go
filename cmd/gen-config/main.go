@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	DefaultMaxConnections       = 3
 	DefaultDebugLevel           = 3
 	DefaultAlpha                = 3
 	DefaultMaxBucketLength      = 20
@@ -23,10 +24,11 @@ const (
 	DefaultTimeout              = 30
 	DefaultTimeBackoff          = 30
 	DefaultTimeoutRetries       = 3
-	DefaultConcurrent           = false
-	DefaultMaxConnections       = 3
 	DefaultMessageQueueLimit    = 100
+	DefaultConcurrent           = false
 )
+
+var numberOfNodes = 15
 
 var bootstrapNodes = []string{
 	"/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",
@@ -50,7 +52,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = generateLocalDarkNodeConfigs(15)
+	err = generateLocalDarkNodeConfigs(numberOfNodes)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -88,6 +90,7 @@ func generateLocalBootstrapNodeConfigs() error {
 		config := generateConfig(multiAddress, keyPair, *ethKey, 3000+i, swarmOptions, syncerOptions)
 		writeConfigToFile(fmt.Sprintf("./bootstrap-node-%d.json", i), config)
 	}
+
 	return nil
 }
 
@@ -165,7 +168,7 @@ func writeConfigToFile(filePath string, config *node.Config) {
 		log.Fatal("failt to marshal config", err)
 	}
 	d1 := []byte(data)
-	err = ioutil.WriteFile(filePath, d1, 0644)
+	err = ioutil.WriteFile(filePath, d1, 0666)
 	if err != nil {
 		log.Fatal("fail to write config to file ", err)
 	}

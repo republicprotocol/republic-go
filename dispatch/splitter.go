@@ -5,8 +5,8 @@ import (
 	"sync"
 )
 
-// A Splitter runs MessageQueues. It reads messages from a unified channel
-// and splits them into dynamic number of MessagesQueues
+// A Splitter runs MessageQueues. It broadcasts messages to dynamic number
+// of MessagesQueues
 type Splitter struct {
 	maxConnections int
 
@@ -74,8 +74,6 @@ func (splitter *Splitter) Shutdown() {
 func (splitter *Splitter) Send(message Message) error {
 	splitter.outputMu.RLock()
 	defer splitter.outputMu.RUnlock()
-
-
 	for _, messageQueue := range splitter.output {
 		if err := messageQueue.Send(message); err != nil {
 			return err

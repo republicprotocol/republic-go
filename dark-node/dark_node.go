@@ -109,9 +109,9 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	node.OrderBook = orderbook.NewOrderBook(config.NetworkOptions.SyncerOptions.MaxConnections)
 
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
-	node.Swarm = rpc.NewSwarmService(node.NetworkOptions,  node.ClientPool, node.DHT, node.Logger,)
-	node.Syncer = rpc.NewSyncerService(node.NetworkOptions, node.Logger,  node.OrderBook)
-	node.Relay = rpc.NewRelayService(node.NetworkOptions,  node, node.Logger,)
+	node.Swarm = rpc.NewSwarmService(node.NetworkOptions, node.ClientPool, node.DHT, node.Logger)
+	node.Syncer = rpc.NewSyncerService(node.NetworkOptions, node.Logger, node.OrderBook)
+	node.Relay = rpc.NewRelayService(node.NetworkOptions, node, node.Logger)
 
 	// Create all background workers that will do all of the actual work
 	//node.DeltaBuilder = compute.NewDeltaBuilder(k, Prime)
@@ -149,6 +149,8 @@ func (node *DarkNode) StartServices() {
 
 	node.Swarm.Register(node.Server)
 	node.Syncer.Register(node.Server)
+	node.Relay.Register(node.Server)
+
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
 		node.Logger.Error(err.Error())

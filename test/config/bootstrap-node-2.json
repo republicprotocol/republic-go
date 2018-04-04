@@ -4,7 +4,7 @@
         "timeout": 30000000000,
         "timeoutBackoff": 30000000000,
         "timeoutRetries": 3,
-        "messsageQueueLimit" : 100,
+        "messageQueueLimit" : 100,
         "swarm": {
             "bootstrapMultiAddresses": [
                 "/ip4/0.0.0.0/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu",

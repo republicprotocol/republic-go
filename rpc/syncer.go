@@ -3,6 +3,7 @@ package rpc
 import (
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/logger"
@@ -11,9 +12,9 @@ import (
 	"google.golang.org/grpc"
 )
 
-// SyncerOptions defines the option specifically for syncer service
+// SyncerOptions defines the options specifically for syncer service
 type SyncerOptions struct {
-	MaxConnections int  `json:"maxConnections"`
+	MaxConnections int `json:"maxConnections"`
 }
 
 // SyncerService implements the syncer gRPC service. It creates
@@ -73,15 +74,8 @@ func (service *SyncerService) sync(req *SyncRequest, stream Syncer_SyncServer, q
 		<-quit
 		messageQueue.Shutdown()
 	}()
-	// Sync historical orders to the messageQueue
-	go func() {
-		err := service.OrderBook.SyncHistory(messageQueue)
-		if err != nil {
-			service.Logger.Error(err.Error())
-		}
-	}()
 
-	// Subscribe to the orderbook to receive order updates.
+	// Subscribe to the orderbook to received updates
 	return service.OrderBook.Subscribe(multiAddress.Address().String(), messageQueue)
 }
 
@@ -128,8 +122,9 @@ func (queue SyncerServerStreamQueue) Send(message dispatch.Message) error {
 	if !ok {
 		return fmt.Errorf("wrong message type, has %T expect *rpc.SyncBlock", message)
 	}
+	log.Println("length of the write queue", len(queue.write))
 	queue.write <- block
-
+	log.Println("stuck here")
 	return err
 }
 

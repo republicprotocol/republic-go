@@ -89,7 +89,6 @@ func (orderBookCache *OrderBookCache) Settle(ord order.Order) {
 func (orderBookCache *OrderBookCache) Blocks() []Message {
 	orderBookCache.mu.RLock()
 	defer orderBookCache.mu.RUnlock()
-
 	blocks := make([]Message, 0)
 	for _, ord := range orderBookCache.orders {
 		status, ok := orderBookCache.status[string(ord.ID)]

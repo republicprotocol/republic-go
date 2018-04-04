@@ -112,7 +112,6 @@ func (client *Client) Ping() error {
 
 // QueryPeers RPC.
 func (client *Client) QueryPeers(target *Address) (chan *MultiAddress, error) {
-
 	ch := make(chan *MultiAddress)
 	err := client.StreamTimeoutFunc(func(ctx context.Context) error {
 		stream, err := client.SwarmClient.QueryPeers(ctx, &Query{
@@ -168,7 +167,7 @@ func (client *Client) QueryPeersDeep(target *Address) (chan *MultiAddress, error
 // Sync RPC.
 func (client *Client) Sync() (chan *SyncBlock, error) {
 	ch := make(chan *SyncBlock)
-	err := client.TimeoutFunc(func(ctx context.Context) error {
+	err := client.StreamTimeoutFunc(func(ctx context.Context) error {
 		stream, err := client.SyncerClient.Sync(ctx, &SyncRequest{
 			From: client.From,
 		}, grpc.FailFast(false))
