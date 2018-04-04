@@ -33,8 +33,8 @@ const red = "\x1b[31;1m"
 
 type OrderBook struct {
 	LastUpdateId int        `json:"lastUpdateId"`
-	Bids         [][]string `json:"bids"`
-	Asks         [][]string `json:"asks"`
+	Bids         [][]interface{} `json:"bids"`
+	Asks         [][]interface{} `json:"asks"`
 }
 
 func main() {
@@ -52,11 +52,14 @@ func main() {
 				},
 			},
 		}})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Create a test trader address
 	address, _, err := identity.NewAddress()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	multi, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/80/republic/" + address.String())
 	if err != nil {
@@ -72,6 +75,9 @@ func main() {
 
 	// Get the Dark Ocean
 	ocean, err := dark.NewOcean(logs, 5, registrar)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Get the Dark Pools
 	pools := ocean.GetPools()
@@ -88,23 +94,31 @@ func main() {
 			}
 
 			response, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			orderBook := new(OrderBook)
-			err = json.Unmarshal(response, orderBook)
+			if err := json.Unmarshal(response, orderBook); err != nil {
+				log.Fatal(err)
+			}
 
 			// Generate order from the Binance data
 			sellOrders := make([]*order.Order, len(orderBook.Asks))
 			for i, j := range orderBook.Asks {
-				price, err := strconv.ParseFloat(j[0], 10)
-				price = price * 1000000000000
+				price, err := strconv.ParseFloat(j[0].(string), 10)
 				if err != nil {
 					log.Fatal("fail to parse the price into a big int")
 				}
+				price = price * 1000000000000
+				
 
-				amount, err := strconv.ParseFloat(j[1], 10)
-				amount = amount * 1000000000000
+				amount, err := strconv.ParseFloat(j[1].(string), 10)
 				if err != nil {
 					log.Fatal("fail to parse the amount into a big int")
 				}
+				amount = amount * 1000000000000
+				
 				order := order.NewOrder(order.TypeLimit, order.ParitySell, time.Time{},
 					order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
 					big.NewInt(int64(amount)), big.NewInt(1))
@@ -114,17 +128,18 @@ func main() {
 			buyOrders := make([]*order.Order, len(orderBook.Bids))
 			//test cast for match
 			for i, j := range orderBook.Asks { //change asks/bids
-				price, err := strconv.ParseFloat(j[0], 10)
-				price = price * 1000000000000
+				price, err := strconv.ParseFloat(j[0].(string), 10)
 				if err != nil {
 					log.Fatal("fail to parse the price into a big int")
 				}
-
-				amount, err := strconv.ParseFloat(j[1], 10)
-				amount = amount * 1000000000000
+				price = price * 1000000000000
+				
+				amount, err := strconv.ParseFloat(j[1].(string), 10)
 				if err != nil {
 					log.Fatal("fail to parse the amount into a big int")
 				}
+				amount = amount * 1000000000000
+				
 
 				order := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Time{},
 					order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
@@ -149,31 +164,11 @@ func main() {
 							// Split order into (Number of nodes in each pool) * 2/3 fragments
 							shares, err := ord.Split(int64(pools[i].Size()), int64(pools[i].Size()*2/3), Prime)
 							if err != nil {
+								log.Println(err)
 								continue
 							}
 
-							// Send the shares across all nodes within the Dark Pool
-							j := 0
-							pools[i].ForAll(func(n *dark.Node) {
-
-								// Get multiaddress
-								multiaddress, err := getMultiAddress(n.ID.Address(), multi)
-
-								// Create a client
-								client, err := rpc.NewClient(multiaddress, multi)
-								if err != nil {
-									log.Fatal(err)
-								}
-
-								// Send fragment to node
-								err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[j]))
-								if err != nil {
-									log.Println(err)
-									log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(n.ID), reset)
-									return
-								}	
-								j++
-							})
+							sendSharesToDarkPool(pools[i], multi, shares)
 						}
 					}
 				}(orders)
@@ -192,6 +187,9 @@ func cancelOrder(pools dark.Pools, traderAddress identity.MultiAddress) {
 
 			// Get multiaddress
 			multiaddress, err := getMultiAddress(n.ID.Address(), traderAddress)
+			if err != nil {
+				log.Fatal(err)
+			}
 
 			// Create a client
 			client, err := rpc.NewClient(multiaddress, traderAddress)
@@ -225,12 +223,12 @@ func getMultiAddress(address identity.Address, traderMultiAddress identity.Multi
 
 		bootStrapMultiAddress, err := identity.NewMultiAddressFromString(peer)
 		if err != nil {
-			log.Fatal(err)
+			return traderMultiAddress, err
 		}
 
 		client, err := rpc.NewClient(bootStrapMultiAddress, traderMultiAddress)
 		if err != nil {
-			log.Fatal(err)
+			return traderMultiAddress, err
 		}
 
 		candidates, err := client.QueryPeersDeep(serializedTarget)
@@ -257,16 +255,44 @@ func getDarkNodeRegistrar () (dnr.DarkNodeRegistrar, error) {
 
 	clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// Gas Price
 	auth.GasPrice = big.NewInt(6000000000)
 
 	return dnr.NewEthereumDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{})
+}
+
+// Send the shares across all nodes within the Dark Pool
+func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares []*order.Fragment) {
+	j := 0
+	pool.ForAll(func(n *dark.Node) {
+
+		// Get multiaddress
+		multiaddress, err := getMultiAddress(n.ID.Address(), multi)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Create a client
+		client, err := rpc.NewClient(multiaddress, multi)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Send fragment to node
+		err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[j]))
+		if err != nil {
+			log.Println(err)
+			log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(n.ID), reset)
+			return
+		}	
+		j++
+	})
 }
