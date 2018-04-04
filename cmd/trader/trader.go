@@ -8,10 +8,10 @@ import (
 	"io/ioutil"
 	"log"
 	"math/big"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
-	"net/http"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/jbenet/go-base58"
