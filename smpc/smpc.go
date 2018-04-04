@@ -1,105 +1,16 @@
 package smpc
 
 import (
-	"sync"
+	"log"
 
-	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
-type Computation struct {
-	BuyOrderFragment  *order.Fragment
-	SellOrderFragment *order.Fragment
-}
-
-type ComputationMatrix struct {
-	mu                 *sync.Mutex
-	buyOrderFragments  map[string]order.Fragment
-	sellOrderFragments map[string]order.Fragment
-	computations       []Computation
-}
-
-func NewComputationMatrix() ComputationMatrix {
-	return ComputationMatrix{
-		mu:                 new(sync.Mutex),
-		buyOrderFragments:  map[string]order.Fragment{},
-		sellOrderFragments: map[string]order.Fragment{},
-		computations:       []Computation{},
+// Prime used to define the finite field for all computations.
+var Prime = func() stackint.Int1024 {
+	prime, err := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+	if err != nil {
+		log.Fatal(err)
 	}
-}
-
-func (matrix *ComputationMatrix) InsertBuyOrder(buyOrderFragment order.Fragment) {
-	matrix.mu.Lock()
-	defer matrix.mu.Unlock()
-
-	buyOrderID := string(buyOrderFragment.OrderID)
-	if _, ok := matrix.buyOrderFragments[buyOrderID]; ok {
-		return
-	}
-	matrix.buyOrderFragments[buyOrderID] = buyOrderFragment
-
-	for _, sellOrderFragment := range matrix.sellOrderFragments {
-		matrix.computations = append(matrix.computations, Computation{
-			BuyOrderFragment:  &buyOrderFragment,
-			SellOrderFragment: &sellOrderFragment,
-		})
-	}
-}
-
-func (matrix *ComputationMatrix) InsertSellOrder(sellOrderFragment order.Fragment) {
-	matrix.mu.Lock()
-	defer matrix.mu.Unlock()
-
-	sellOrderID := string(sellOrderFragment.OrderID)
-	if _, ok := matrix.sellOrderFragments[sellOrderID]; ok {
-		return
-	}
-	matrix.sellOrderFragments[sellOrderID] = sellOrderFragment
-
-	for _, buyOrderFragment := range matrix.buyOrderFragments {
-		matrix.computations = append(matrix.computations, Computation{
-			BuyOrderFragment:  &buyOrderFragment,
-			SellOrderFragment: &sellOrderFragment,
-		})
-	}
-}
-
-func (matrix *ComputationMatrix) Computations(computations []Computation) int {
-	matrix.mu.Lock()
-	defer matrix.mu.Unlock()
-
-	m := len(matrix.computations)
-	n := len(computations)
-	if m == 0 || n == 0 {
-		return 0
-	}
-
-	i := 0
-	for ; i < m && i < n; i++ {
-		computations[i] = matrix.computations[m-i-1]
-	}
-	if i >= m {
-		matrix.computations = matrix.computations[0:0]
-	} else {
-		matrix.computations = matrix.computations[:m-i]
-	}
-
-	return i
-}
-
-func (matrix *ComputationMatrix) RemoveOrder(orderID order.ID) {
-	matrix.mu.Lock()
-	defer matrix.mu.Unlock()
-
-	delete(matrix.buyOrderFragments, string(orderID))
-	delete(matrix.sellOrderFragments, string(orderID))
-
-	n := len(matrix.computations)
-	d := 0
-	for i := 0; i < n; i++ {
-		if matrix.computations[i].BuyOrderFragment.OrderID.Equal(orderID) || matrix.computations[i].SellOrderFragment.OrderID.Equal(orderID) {
-			matrix.computations[i] = matrix.computations[n-d-1]
-			d++
-		}
-	}
-	matrix.computations = matrix.computations[:n-d]
-}
+	return prime
+}()
