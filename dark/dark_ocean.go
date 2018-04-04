@@ -1,9 +1,9 @@
 package dark
 
 import (
+	"sort"
 	"bytes"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/republicprotocol/go-do"
@@ -11,6 +11,7 @@ import (
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // Ocean of Pools.
@@ -18,16 +19,18 @@ type Ocean struct {
 	do.GuardedObject
 
 	logger            *logger.Logger
+	poolSize 		  int
 	pools             Pools
 	darkNodeRegistrar dnr.DarkNodeRegistrar
 }
 
 // NewOcean uses a DarkNodeRegistrar to read all registered nodes and sort them
 // into Pools.
-func NewOcean(logger *logger.Logger, darkNodeRegistrar dnr.DarkNodeRegistrar) (*Ocean, error) {
+func NewOcean(logger *logger.Logger, poolSize int, darkNodeRegistrar dnr.DarkNodeRegistrar) (*Ocean, error) {
 	ocean := &Ocean{
 		GuardedObject:     do.NewGuardedObject(),
 		logger:            logger,
+		poolSize: 		   poolSize,
 		pools:             Pools{},
 		darkNodeRegistrar: darkNodeRegistrar,
 	}
@@ -54,45 +57,37 @@ func (ocean *Ocean) Update() error {
 }
 
 func (ocean *Ocean) update() error {
-	// TODO: Get these details from the smart contract.
-	blockhash := big.NewInt(1234567)
-	poolsize := 72
+	epoch, err := ocean.darkNodeRegistrar.CurrentEpoch();
+	if err != nil {
+		return err
+	}
 
 	nodeIDs, err := ocean.darkNodeRegistrar.GetAllNodes()
 	if err != nil {
 		return err
 	}
 
-	// Find the prime smaller or equal to the number of registered nodes
-	// Start at +2 because it has to greater than the maximum (x+1)
-	previousPrime := big.NewInt(int64(len(nodeIDs) + 2))
-
-	// ProbablyPrime is 100% accurate for inputs less than 2^64.
-	// https://golang.org/src/math/big/prime.go
-	for !previousPrime.ProbablyPrime(0) {
-		previousPrime = previousPrime.Sub(previousPrime, big.NewInt(1))
+	nodePositionHashesToIDs := map[string][]byte{}
+	nodePositionHashes := make([][]byte, len(nodeIDs))
+	for i := range nodeIDs {
+		nodePositionHashes[i] = crypto.Keccak256(epoch.Blockhash[:], nodeIDs[i])
+		nodePositionHashesToIDs[string(nodePositionHashes[i])] = nodeIDs[i]
 	}
 
-	// Integer division
-	numberOfPools := big.NewInt(0).Div(previousPrime, big.NewInt(int64(poolsize)))
-	if numberOfPools.Int64() == 0 {
-		numberOfPools = big.NewInt(1)
-	}
-	pools := make(Pools, numberOfPools.Int64())
+	sort.Slice(nodePositionHashes, func(i, j int) bool {
+		return bytes.Compare(nodePositionHashes[i], nodePositionHashes[j]) < 0
+	})
+
+	numberOfPools := len(nodeIDs) / ocean.poolSize
+
+	pools := make(Pools, numberOfPools)
 	for i := range pools {
 		pools[i] = NewPool()
 	}
-
-	// Calcualte the pool assignment for each node
-	inverse := blockhash.ModInverse(blockhash, previousPrime)
-	for n := range nodeIDs {
-		nPlusOne := big.NewInt(int64(n + 1))
-		i := big.NewInt(0).Mod(big.NewInt(0).Mul(nPlusOne, inverse), previousPrime)
-
-		pool := big.NewInt(0).Mod(i, numberOfPools).Int64()
-		pools[pool].Append(NewNode(nodeIDs[n]))
+	for i := range nodePositionHashes {
+		id := identity.ID(nodePositionHashesToIDs[string(nodePositionHashes[i])])
+		pools[i % numberOfPools].Append(NewNode(id))
 	}
-
 	ocean.pools = pools
 	return nil
 }
@@ -121,4 +116,8 @@ func (ocean *Ocean) Watch(period time.Duration, changes chan struct{}) {
 		}
 		time.Sleep(period)
 	}
+}
+
+func (ocean *Ocean) GetPools ()(Pools){
+	return ocean.pools
 }
