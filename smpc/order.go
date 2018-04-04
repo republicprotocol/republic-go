@@ -10,7 +10,7 @@ import (
 
 // ProcessOrderFragments by reading order fragments from an input channel, and
 // writing OrderFragmentComputations to an output channel.
-func ProcessOrderFragments(ctx context.Context, orderFragmentChIn chan order.Fragment) (chan OrderFragmentComputation, chan error) {
+func ProcessOrderFragments(ctx context.Context, orderFragmentChIn <-chan order.Fragment) (<-chan OrderFragmentComputation, <-chan error) {
 	orderFragmentTable := NewOrderFragmentTable()
 	consumerErrCh := consumeOrderFragments(ctx, orderFragmentChIn, &orderFragmentTable)
 	orderFragmentComputationCh, producerErrCh := produceOrderFragmentComputations(ctx, &orderFragmentTable)
@@ -41,7 +41,7 @@ func ProcessOrderFragments(ctx context.Context, orderFragmentChIn chan order.Fra
 
 // consumeOrderFragments from an input channel and store
 // OrderFragmentComputations in an OrderFragmentTable.
-func consumeOrderFragments(ctx context.Context, orderFagmentChIn chan order.Fragment, orderFragmentTable *OrderFragmentTable) chan error {
+func consumeOrderFragments(ctx context.Context, orderFagmentChIn <-chan order.Fragment, orderFragmentTable *OrderFragmentTable) <-chan error {
 	errCh := make(chan error)
 
 	go func() {
@@ -71,7 +71,7 @@ func consumeOrderFragments(ctx context.Context, orderFagmentChIn chan order.Frag
 // produceOrderFragmentComputations by periodically reading
 // OrderFragmentComputations from an OrderFragmentTable and writing them to an
 // output channel
-func produceOrderFragmentComputations(ctx context.Context, orderFragmentTable *OrderFragmentTable) (chan OrderFragmentComputation, chan error) {
+func produceOrderFragmentComputations(ctx context.Context, orderFragmentTable *OrderFragmentTable) (<-chan OrderFragmentComputation, <-chan error) {
 	orderFragmentComputationCh := make(chan OrderFragmentComputation)
 	errCh := make(chan error)
 
@@ -116,8 +116,10 @@ type OrderFragmentComputation struct {
 // safe for concurrent use.
 type OrderFragmentTable struct {
 	mu                        *sync.Mutex
-	buyOrderFragments         map[string]order.Fragment
-	sellOrderFragments        map[string]order.Fragment
+	buyOrderFragments         []order.Fragment
+	sellOrderFragments        []order.Fragment
+	buyOrderFragmentStatus    map[string]bool
+	sellOrderFragmentStatus   map[string]bool
 	orderFragmentComputations []OrderFragmentComputation
 }
 
@@ -125,8 +127,10 @@ type OrderFragmentTable struct {
 func NewOrderFragmentTable() OrderFragmentTable {
 	return OrderFragmentTable{
 		mu:                        new(sync.Mutex),
-		buyOrderFragments:         map[string]order.Fragment{},
-		sellOrderFragments:        map[string]order.Fragment{},
+		buyOrderFragments:         []order.Fragment{},
+		sellOrderFragments:        []order.Fragment{},
+		buyOrderFragmentStatus:    map[string]bool{},
+		sellOrderFragmentStatus:   map[string]bool{},
 		orderFragmentComputations: []OrderFragmentComputation{},
 	}
 }
@@ -139,15 +143,19 @@ func (table *OrderFragmentTable) InsertBuyOrder(buyOrderFragment order.Fragment)
 	defer table.mu.Unlock()
 
 	buyOrderID := string(buyOrderFragment.OrderID)
-	if _, ok := table.buyOrderFragments[buyOrderID]; ok {
+	if _, ok := table.buyOrderFragmentStatus[buyOrderID]; ok {
 		return
 	}
-	table.buyOrderFragments[buyOrderID] = buyOrderFragment
+	table.buyOrderFragmentStatus[buyOrderID] = false
+	table.buyOrderFragments = append(table.buyOrderFragments, buyOrderFragment)
 
-	for _, sellOrderFragment := range table.sellOrderFragments {
+	for i := range table.sellOrderFragments {
+		if table.sellOrderFragmentStatus[string(table.sellOrderFragments[i].OrderID)] {
+			continue
+		}
 		table.orderFragmentComputations = append(table.orderFragmentComputations, OrderFragmentComputation{
-			BuyOrderFragment:  &buyOrderFragment,
-			SellOrderFragment: &sellOrderFragment,
+			BuyOrderFragment:  &table.buyOrderFragments[len(table.buyOrderFragments)-1],
+			SellOrderFragment: &table.sellOrderFragments[i],
 		})
 	}
 }
@@ -160,15 +168,19 @@ func (table *OrderFragmentTable) InsertSellOrder(sellOrderFragment order.Fragmen
 	defer table.mu.Unlock()
 
 	sellOrderID := string(sellOrderFragment.OrderID)
-	if _, ok := table.sellOrderFragments[sellOrderID]; ok {
+	if _, ok := table.sellOrderFragmentStatus[sellOrderID]; ok {
 		return
 	}
-	table.sellOrderFragments[sellOrderID] = sellOrderFragment
+	table.sellOrderFragmentStatus[sellOrderID] = false
+	table.sellOrderFragments = append(table.sellOrderFragments, sellOrderFragment)
 
-	for _, buyOrderFragment := range table.buyOrderFragments {
+	for i := range table.buyOrderFragments {
+		if table.buyOrderFragmentStatus[string(table.buyOrderFragments[i].OrderID)] {
+			continue
+		}
 		table.orderFragmentComputations = append(table.orderFragmentComputations, OrderFragmentComputation{
-			BuyOrderFragment:  &buyOrderFragment,
-			SellOrderFragment: &sellOrderFragment,
+			BuyOrderFragment:  &table.buyOrderFragments[i],
+			SellOrderFragment: &table.sellOrderFragments[len(table.sellOrderFragments)-1],
 		})
 	}
 }
@@ -204,7 +216,7 @@ func (table *OrderFragmentTable) RemoveBuyOrder(orderID order.ID) {
 	table.mu.Lock()
 	defer table.mu.Unlock()
 
-	delete(table.buyOrderFragments, string(orderID))
+	table.buyOrderFragmentStatus[string(orderID)] = true
 
 	n := len(table.orderFragmentComputations)
 	d := 0
@@ -223,7 +235,7 @@ func (table *OrderFragmentTable) RemoveSellOrder(orderID order.ID) {
 	table.mu.Lock()
 	defer table.mu.Unlock()
 
-	delete(table.sellOrderFragments, string(orderID))
+	table.sellOrderFragmentStatus[string(orderID)] = true
 
 	n := len(table.orderFragmentComputations)
 	d := 0
