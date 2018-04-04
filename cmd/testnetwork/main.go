@@ -14,6 +14,7 @@ import (
 )
 
 var debug = false
+var sleep = 5
 
 const reset = "\x1b[0m"
 const green = "\x1b[32;1m"
@@ -32,7 +33,7 @@ func main() {
 	cmd := connection.StartTestnet(debug, &wg)
 	go killAtExit(cmd)
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(time.Duration(sleep) * time.Second)
 
 	err := connection.DeployContractsToGanache("http://localhost:8545")
 	if err != nil {
@@ -44,10 +45,12 @@ func main() {
 
 func parseCommandLineFlags() error {
 	debugPtr := flag.Bool("debug", false, "Print output to stdout")
+	sleepPtr := flag.Int("sleep", 5, "Time to wait for ganache to start-up")
 
 	flag.Parse()
 
 	debug = *debugPtr
+	sleep = *sleepPtr
 
 	return nil
 }

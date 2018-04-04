@@ -3,6 +3,10 @@ language: go
 go:
   - 1.9.x
 
+cache:
+  directories:
+    - vendor
+
 before_install:
   - npm install -g ganache-cli
   - go get github.com/onsi/gomega
@@ -15,7 +19,7 @@ before_install:
 script:
   - go vet ./...
   - golint -set_exit_status `go list ./... | grep -Ev "(stackint/asm|vendor)"`
-  - go run cmd/testnetwork/main.go -debug &
+  - go run cmd/testnetwork/main.go -sleep 5 &
   - sleep 5
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out stackint
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out identity
