@@ -106,13 +106,12 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 		WithTimeoutRetries(node.NetworkOptions.TimeoutRetries).
 		WithCacheLimit(node.NetworkOptions.ClientPoolCacheLimit)
 	node.DHT = dht.NewDHT(node.NetworkOptions.MultiAddress.Address(), node.NetworkOptions.MaxBucketLength)
+	node.OrderBook = orderbook.NewOrderBook(config.NetworkOptions.SyncerOptions.MaxConnections)
 
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
-	node.Swarm = rpc.NewSwarmService(node.NetworkOptions, node.Logger, node.ClientPool, node.DHT)
-	node.Syncer = rpc.NewSyncerService(node.NetworkOptions.MultiAddress, node.OrderBook, 3)
-	node.Relay = rpc.NewRelayService(node.NetworkOptions.MultiAddress, node.Logger, node, 3)
-
-	node.OrderBook = orderbook.NewOrderBook(config.NetworkOptions.MaxSyncConnections)
+	node.Swarm = rpc.NewSwarmService(node.NetworkOptions,  node.ClientPool, node.DHT, node.Logger,)
+	node.Syncer = rpc.NewSyncerService(node.NetworkOptions, node.Logger,  node.OrderBook)
+	node.Relay = rpc.NewRelayService(node.NetworkOptions,  node, node.Logger,)
 
 	// Create all background workers that will do all of the actual work
 	//node.DeltaBuilder = compute.NewDeltaBuilder(k, Prime)

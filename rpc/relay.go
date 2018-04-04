@@ -5,6 +5,7 @@ import (
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"google.golang.org/grpc"
 )
@@ -17,12 +18,14 @@ type RelayService struct {
 	Options
 
 	Delegate RelayDelegate
+	Logger   *logger.Logger
 }
 
-func NewRelayService(options Options, delegate RelayDelegate) *RelayService {
+func NewRelayService(options Options, delegate RelayDelegate, logger *logger.Logger) *RelayService {
 	return &RelayService{
 		Options:  options,
 		Delegate: delegate,
+		Logger:   logger,
 	}
 }
 

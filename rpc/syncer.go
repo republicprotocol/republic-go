@@ -3,9 +3,9 @@ package rpc
 import (
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"google.golang.org/grpc"
@@ -13,6 +13,7 @@ import (
 
 // SyncerOptions defines the option specifically for syncer service
 type SyncerOptions struct {
+	MaxConnections int  `json:"maxConnections"`
 }
 
 // SyncerService implements the syncer gRPC service. It creates
@@ -20,13 +21,15 @@ type SyncerOptions struct {
 type SyncerService struct {
 	Options
 
+	Logger    *logger.Logger
 	OrderBook *orderbook.OrderBook
 }
 
 // NewSyncerService creates a SyncerService with the given options.
-func NewSyncerService(options Options, orderbook *orderbook.OrderBook) *SyncerService {
+func NewSyncerService(options Options, logger *logger.Logger, orderbook *orderbook.OrderBook) *SyncerService {
 	return &SyncerService{
 		Options:   options,
+		Logger:    logger,
 		OrderBook: orderbook,
 	}
 }
@@ -49,7 +52,6 @@ func (service *SyncerService) Sync(req *SyncRequest, stream Syncer_SyncServer) e
 	// Select between the context finishing and the background worker
 	select {
 	case <-stream.Context().Done():
-		log.Println("err is ", stream.Context().Err())
 		return stream.Context().Err()
 	case err := <-ch:
 		return err
@@ -75,7 +77,7 @@ func (service *SyncerService) sync(req *SyncRequest, stream Syncer_SyncServer, q
 	go func() {
 		err := service.OrderBook.SyncHistory(messageQueue)
 		if err != nil {
-			log.Println(err)
+			service.Logger.Error(err.Error())
 		}
 	}()
 

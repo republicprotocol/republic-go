@@ -6,6 +6,7 @@ import (
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network/dht"
 	"google.golang.org/grpc"
 )
@@ -16,6 +17,7 @@ type SwarmOptions struct {
 	Debug                   DebugLevel              `json:"debug"`
 	Alpha                   int                     `json:"alpha"`
 	MaxBucketLength         int                     `json:"maxBucketLength"`
+	ClientPoolCacheLimit    int                     `json:"clientPoolCacheLimit"`
 	Concurrent              bool                    `json:"concurrent"`
 }
 
@@ -44,16 +46,19 @@ const (
 // SwarmService implements the gRPC Swarm service.
 type SwarmService struct {
 	Options
+
 	ClientPool *ClientPool
 	DHT        *dht.DHT
+	Logger     *logger.Logger
 }
 
 // NewSwarmService returns a SwarmService.
-func NewSwarmService(options Options, clientPool *ClientPool, dht *dht.DHT) *SwarmService {
+func NewSwarmService(options Options, clientPool *ClientPool, dht *dht.DHT, logger *logger.Logger) *SwarmService {
 	return &SwarmService{
 		Options:    options,
 		ClientPool: clientPool,
 		DHT:        dht,
+		Logger:     logger,
 	}
 }
 

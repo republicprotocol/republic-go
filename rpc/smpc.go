@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/smpc"
 	"google.golang.org/grpc"
 )
@@ -16,15 +17,17 @@ import (
 type SmpcService struct {
 	Options
 
+	logger      *logger.Logger
 	multiplexer *dispatch.Multiplexer
 }
 
 // NewSmpcService returns a new SmpcService that will run MessageQueues on the
 // given Dispatcher. The message queue limit is used used to buffer the size of
 // the MessageQueues that are created by the SmpcService.
-func NewSmpcService(options Options, multiplexer *dispatch.Multiplexer) SmpcService {
+func NewSmpcService(options Options, logger *logger.Logger, multiplexer *dispatch.Multiplexer) SmpcService {
 	return SmpcService{
 		Options:     options,
+		logger:      logger,
 		multiplexer: multiplexer,
 	}
 }
