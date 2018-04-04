@@ -3,6 +3,7 @@ package hyper
 import "context"
 
 type Commit struct {
+	rank Rank
 }
 
 func ProcessCommit(ctx context.Context, commitChIn chan Commit) (chan Commit, chan Block, chan Fault, chan error) {

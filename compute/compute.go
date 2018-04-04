@@ -3,7 +3,7 @@ package compute
 import (
 	"github.com/republicprotocol/republic-go/stackint"
 
-	do "github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/order"
 )
 

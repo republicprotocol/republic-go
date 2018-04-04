@@ -13,7 +13,7 @@ type Prepare struct {
 
 type Prepares map[BlockHash]uint8
 
-func ProcessPreparation(ctx context.Context, prepareChIn chan Prepare, sharedBlocks SharedBlocks) (chan Prepare, chan Commit, chan Fault, chan error) {
+func ProcessPreparation(ctx context.Context, prepareChIn chan Prepare, signer Signer, sharedBlocks SharedBlocks) (chan Prepare, chan Commit, chan Fault, chan error) {
 	prepareCh := make(chan Prepare)
 	commitCh := make(chan Commit)
 	faultCh := make(chan Fault)
@@ -55,6 +55,10 @@ func validatePrepare(prepare Prepare, sharedBlocks SharedBlocks) bool {
 	return valid
 }
 
-func signPrepare(prepare Prepare) Signature {
-	return Signature{}
+func signPrepare(prepare Prepare, signer Signer) (Prepare, err) {
+	
+}
+
+func signCommit(prepare Prepare, signer Signer) (Commit, err) {
+
 }

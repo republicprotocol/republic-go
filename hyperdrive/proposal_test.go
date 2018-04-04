@@ -7,9 +7,32 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/hyperdrive"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
+type TestSigner struct {
+	identity.ID
+	identity.KeyPair
+}
+
+func (t *TestSigner) Sign(b []byte) (Signature, error) {
+	return t.ID.String
+}
+
+func NewTestSigner() (TestSigner, error) {
+	id, kp, err := identity.NewID()
+	if err != nil {
+		return TestSigner{}, err
+	}
+	return TestSigner{
+		id,
+		kp,
+	}
+}
+
 var _ = Describe("Processors", func() {
+
+	signer, err := 
 
 	Context("when processing proposals", func() {
 

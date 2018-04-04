@@ -1,6 +1,10 @@
 package hyper
 
-import "context"
+import (
+	"bytes"
+	"context"
+	"encoding/binary"
+)
 
 type Signer interface {
 	Sign([]byte) (Signature, error)
@@ -34,11 +38,16 @@ func ProcessProposal(ctx context.Context, proposalChIn chan Proposal, signer Sig
 				}
 				valid := validateProposal(proposal, sharedBlocks)
 				if valid {
-					prepareCh <- Prepare{
-						signProposal(proposal),
-						proposal.Block,
-						proposal.Rank,
-						proposal.Height,
+					signedProposal, err := signProposal(proposal, signer)
+					if err != nil {
+						errCh <- err
+					} else {
+						prepareCh <- Prepare{
+							signedProposal.Signature,
+							signedProposal.Block,
+							signedProposal.Rank,
+							signedProposal.Height,
+						}
 					}
 				} else {
 					faultCh <- Fault{
@@ -55,12 +64,37 @@ func ProcessProposal(ctx context.Context, proposalChIn chan Proposal, signer Sig
 
 func validateProposal(p Proposal, sb SharedBlocks) bool {
 	valid := validateBlock(p.Block, sb)
-	// TODO: check whether the signer inside block, and signer in the proposal are same
 	// TODO: validate rank, make sure that the current rank and the rank of the proposer is same
 	// TODO: validate height, make sure that the height is correct
 	return valid
 }
 
-func signProposal(p Proposal) Signature {
-	return Signature{}
+func signProposal(p Proposal, signer Signer) (Proposal, error) {
+	b, err := signBlock(p.Block, signer)
+	if err != nil {
+		return Proposal{}, err
+	}
+	p.Block = b
+	var proposalBuf bytes.Buffer
+	binary.Write(&proposalBuf, binary.BigEndian, p)
+	sig, err := signer.Sign(proposalBuf.Bytes())
+	return Proposal{
+		sig,
+		p.Block,
+		p.Rank,
+		p.Height,
+	}, nil
+}
+
+func signBlock(b Block, signer Signer) (Block, error) {
+	var blockBuf bytes.Buffer
+	binary.Write(&blockBuf, binary.BigEndian, b)
+	sig, err := signer.Sign(blockBuf.Bytes())
+	if err != nil {
+		return Block{}, err
+	}
+	return Block{
+		b.tuples,
+		sig,
+	}, nil
 }

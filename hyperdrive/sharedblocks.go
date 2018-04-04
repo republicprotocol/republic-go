@@ -1,20 +1,26 @@
 package hyper
 
-import "sync"
+import (
+	"bytes"
+	"sync"
+)
 
-type Entry string
+type Element struct {
+	ID [32]byte
+}
 
-type Entrys []Entry
+type Elements []Element
 
 type Tuples []Tuple
 
 type Tuple struct {
-	entrys Entrys
+	ID [32]byte
+	Elements
 }
 
 type SharedBlocks struct {
 	mu      *sync.RWMutex
-	history map[Entry]Entry
+	history map[[32]byte][32]byte
 }
 
 func NewSharedBlocks() SharedBlocks {
@@ -27,15 +33,9 @@ func (blocks *SharedBlocks) AddBlock(block Block) {
 }
 
 func (blocks *SharedBlocks) ValidateTuple(tuple Tuple) bool {
-	for i := 0; i < len(tuple.entrys); i++ {
-		if i < len(tuple.entrys)-1 {
-			if !(blocks.history[tuple.entrys[i]] == blocks.history[tuple.entrys[i+1]]) {
-				return false
-			}
-		} else {
-			if !(blocks.history[tuple.entrys[i]] == blocks.history[tuple.entrys[0]]) {
-				return false
-			}
+	for _, element := range tuple.Elements {
+		if tupleID, ok := blocks.history[element.ID]; ok && bytes.Compare(tuple.ID[:], tupleID[:]) != 0 {
+			return false
 		}
 	}
 	return true
