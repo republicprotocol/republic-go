@@ -37,6 +37,9 @@ func main() {
 	auth.GasPrice = big.NewInt(6000000000)
 
 	registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, auth, &bind.CallOpts{})
+	if err != nil {
+		panic(err)
+	}
 
 	minimumEpochTime, err := registrar.MinimumEpochInterval()
 	if err != nil {

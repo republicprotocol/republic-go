@@ -231,6 +231,9 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 		}
 		auth := bind.NewKeyedTransactor(config.EthereumKey.PrivateKey)
 		dnr, err := dnr.TestnetDNR(auth)
+		if err != nil {
+			return nil, err
+		}
 		node, err := node.NewDarkNode(*config, dnr)
 		if err != nil {
 			return nil, err

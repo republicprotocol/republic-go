@@ -16,6 +16,9 @@ var _ = Describe("Dark Oceans", func() {
 				panic(err)
 			}
 			dnr, err := dnr.TestnetDNR(nil)
+			if err != nil {
+				panic(err)
+			}
 
 			ocean, err := dark.NewOcean(log, dnr)
 			if err != nil {
