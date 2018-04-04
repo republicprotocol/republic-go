@@ -32,7 +32,7 @@ func main() {
 	cmd := connection.StartTestnet(debug, &wg)
 	go killAtExit(cmd)
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	err := connection.DeployContractsToGanache("http://localhost:8545")
 	if err != nil {
