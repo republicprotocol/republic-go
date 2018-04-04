@@ -1,7 +1,7 @@
 package compute
 
 import (
-	"math/big"
+	"github.com/republicprotocol/republic-go/stackint"
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/order"
@@ -11,13 +11,13 @@ type DeltaBuilder struct {
 	do.GuardedObject
 
 	k                      int64
-	prime                  *big.Int
+	prime                  *stackint.Int1024
 	deltas                 map[string]*Delta
 	deltaFragments         map[string]*DeltaFragment
 	deltasToDeltaFragments map[string][]*DeltaFragment
 }
 
-func NewDeltaBuilder(k int64, prime *big.Int) *DeltaBuilder {
+func NewDeltaBuilder(k int64, prime *stackint.Int1024) *DeltaBuilder {
 	return &DeltaBuilder{
 		GuardedObject:          do.NewGuardedObject(),
 		k:                      k,
@@ -103,14 +103,14 @@ func (builder *DeltaBuilder) setK(k int64) {
 type DeltaFragmentMatrix struct {
 	do.GuardedObject
 
-	prime                  *big.Int
+	prime                  *stackint.Int1024
 	buyOrderFragments      map[string]*order.Fragment
 	sellOrderFragments     map[string]*order.Fragment
 	buySellDeltaFragments  map[string]map[string]*DeltaFragment
 	completeOrderFragments map[string]bool
 }
 
-func NewDeltaFragmentMatrix(prime *big.Int) *DeltaFragmentMatrix {
+func NewDeltaFragmentMatrix(prime *stackint.Int1024) *DeltaFragmentMatrix {
 	return &DeltaFragmentMatrix{
 		GuardedObject:          do.NewGuardedObject(),
 		prime:                  prime,

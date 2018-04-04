@@ -23,6 +23,7 @@ script:
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out network
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out orders
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out shamir
+  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out stackint
   - sed -i '/rpc.pb.go/d' network/rpc/coverprofile.out
   
 after_success:
