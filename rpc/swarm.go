@@ -22,13 +22,14 @@ type SwarmOptions struct {
 }
 
 // NewSwarmOptions creates a new SwarmOptions.
-func NewSwarmOptions(bootstrapMultiAddresses identity.MultiAddresses, debug, alpha, maxBucketLength int, concurrent bool) SwarmOptions {
+func NewSwarmOptions(bootstrapMultiAddresses identity.MultiAddresses, debug, alpha, maxBucketLength, clientPoolCacheLimit int, concurrent bool) SwarmOptions {
 	return SwarmOptions{
 		BootstrapMultiAddresses: bootstrapMultiAddresses,
-		Debug:           DebugLevel(debug),
-		Alpha:           alpha,
-		MaxBucketLength: maxBucketLength,
-		Concurrent:      concurrent,
+		Debug:                DebugLevel(debug),
+		Alpha:                alpha,
+		MaxBucketLength:      maxBucketLength,
+		ClientPoolCacheLimit: clientPoolCacheLimit,
+		Concurrent:           concurrent,
 	}
 }
 
