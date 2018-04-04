@@ -1,9 +1,9 @@
 package dark
 
 import (
-	"sort"
 	"bytes"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/republicprotocol/go-do"
@@ -19,7 +19,7 @@ type Ocean struct {
 	do.GuardedObject
 
 	logger            *logger.Logger
-	poolSize 		  int
+	poolSize          int
 	pools             Pools
 	darkNodeRegistrar dnr.DarkNodeRegistrar
 }
@@ -30,7 +30,7 @@ func NewOcean(logger *logger.Logger, poolSize int, darkNodeRegistrar dnr.DarkNod
 	ocean := &Ocean{
 		GuardedObject:     do.NewGuardedObject(),
 		logger:            logger,
-		poolSize: 		   poolSize,
+		poolSize:          poolSize,
 		pools:             Pools{},
 		darkNodeRegistrar: darkNodeRegistrar,
 	}
