@@ -19,8 +19,8 @@ before_install:
 script:
   - go vet ./...
   - golint -set_exit_status `go list ./... | grep -Ev "(stackint/asm|vendor)"`
-  - go run cmd/testnetwork/main.go -sleep 5 &
-  - sleep 5
+  - go run cmd/testnetwork/main.go -sleep 10 &
+  - sleep 10
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out stackint
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out identity
   - ginkgo -v --trace --race --cover --coverprofile coverprofile.out shamir
