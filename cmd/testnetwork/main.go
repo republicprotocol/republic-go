@@ -34,7 +34,10 @@ func main() {
 
 	time.Sleep(3 * time.Second)
 
-	connection.DeployContractsToGanache("http://localhost:8545")
+	err := connection.DeployContractsToGanache("http://localhost:8545")
+	if err != nil {
+		panic(err)
+	}
 
 	cmd.Wait()
 }

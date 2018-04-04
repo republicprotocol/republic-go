@@ -29,7 +29,7 @@ var details, _ = ConnectToTestnet()
 
 // Because the genesis key is fixed, these should be as well
 var renAddress = common.HexToAddress("0x8DE2a0D285cd6fDB47ABAe34024a6EED79ef0E92")
-var dnrAddress = common.HexToAddress("0xbf195e17802736ff4e19275b961bb1C2D45f2C8d")
+var dnrAddress = common.HexToAddress("0xdF195E17802736Ff4E19275b961bb1c2D45f2c8D")
 
 // ConnectToTestnet connects to the rpc client at the local port 8545
 func ConnectToTestnet() (ClientDetails, error) {
@@ -200,8 +200,11 @@ func deployContracts(client *ethclient.Client, transactor *bind.TransactOpts) (C
 		return ClientDetails{}, err
 	}
 
-	if _renAddress != renAddress || _dnrAddress != dnrAddress {
-		return ClientDetails{}, errors.New("ganache contract addresses have changed")
+	if _renAddress != renAddress {
+		return ClientDetails{}, fmt.Errorf("ganache REN contract address has changed. Expected: %s, got: %s", renAddress.Hex(), _renAddress.Hex())
+	}
+	if _dnrAddress != dnrAddress {
+		return ClientDetails{}, fmt.Errorf("ganache DNR contract address has changed. Expected: %s, got: %s", dnrAddress.Hex(), _dnrAddress.Hex())
 	}
 
 	conn.DNRAddress = _dnrAddress
