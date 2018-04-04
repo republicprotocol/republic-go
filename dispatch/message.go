@@ -63,8 +63,10 @@ func (queue *ChannelQueue) Shutdown() error {
 	queue.chMu.Lock()
 	defer queue.chMu.Unlock()
 
-	queue.chOpen = false
-	close(queue.ch)
+	if queue.chOpen {
+		queue.chOpen = false
+		close(queue.ch)
+	}
 	return nil
 }
 

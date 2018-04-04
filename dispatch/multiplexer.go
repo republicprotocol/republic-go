@@ -85,8 +85,10 @@ func (multiplexer *Multiplexer) Shutdown() {
 
 		// While the mutex is locked, close the channel and prevent further
 		// writes
-		multiplexer.messagesOpen = false
-		close(multiplexer.messages)
+		if multiplexer.messagesOpen {
+			multiplexer.messagesOpen = false
+			close(multiplexer.messages)
+		}
 	}()
 
 	// While the mutex is locked, gracefully shutdown all MessageQueues
@@ -102,12 +104,14 @@ func (multiplexer *Multiplexer) Shutdown() {
 
 // Send a Message directly to the Multiplexer unified channel. If the channel
 // is full, then this function will block.
-func (multiplexer *Multiplexer) Send(message Message) {
+func (multiplexer *Multiplexer) Send(message Message) bool {
 	multiplexer.messagesMu.RLock()
 	defer multiplexer.messagesMu.RUnlock()
 	if multiplexer.messagesOpen {
 		multiplexer.messages <- message
+		return true
 	}
+	return false
 }
 
 // Recv a Message from the Multiplexer. This function blocks until at least one

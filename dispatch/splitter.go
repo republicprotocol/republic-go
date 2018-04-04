@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+// A Splitter runs MessageQueues. It reads messages from a unified channel
+// and splits them into dynamic number of MessagesQueues
 type Splitter struct {
 	maxConnections int
 
@@ -12,6 +14,7 @@ type Splitter struct {
 	output   map[string]MessageQueue
 }
 
+// NewSplitter creates a new splitter with the giving max connections limit.
 func NewSplitter(maxConnections int) Splitter {
 	return Splitter{
 		maxConnections: maxConnections,
@@ -26,14 +29,13 @@ func NewSplitter(maxConnections int) Splitter {
 // using a Splitter must not be run anywhere else.
 func (splitter *Splitter) RunMessageQueue(id string, messageQueue MessageQueue) error {
 	// Check number of connections
-	splitter.outputMu.RLock()
+	splitter.outputMu.Lock()
 	if len(splitter.output) >= splitter.maxConnections {
+		splitter.outputMu.Unlock()
 		return fmt.Errorf("cannot run message queue %s: max connections reached", id)
 	}
-	splitter.outputMu.RUnlock()
 
 	// Register the message queue as a output queue
-	splitter.outputMu.Lock()
 	if _, ok := splitter.output[id]; !ok {
 		splitter.output[id] = messageQueue
 	} else {
@@ -72,6 +74,7 @@ func (splitter *Splitter) Shutdown() {
 func (splitter *Splitter) Send(message Message) error {
 	splitter.outputMu.RLock()
 	defer splitter.outputMu.RUnlock()
+
 
 	for _, messageQueue := range splitter.output {
 		if err := messageQueue.Send(message); err != nil {
