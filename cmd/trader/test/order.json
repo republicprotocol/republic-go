@@ -1,0 +1,15 @@
+[
+    {
+        "signature": null,
+        "id": "dP4IUmcVdfwqSU9V2ihGKLLUIJ9eDUM9Ctcw008+5P0=",
+        "type": 2,
+        "parity": 1,
+        "expiry": "2019-04-05T10:56:40.967104775+11:00",
+        "fstCode": 1,
+        "sndCode": 2,
+        "price": 10,
+        "maxVolume": 100,
+        "minVolume": 100,
+        "nonce": 1
+    }
+]
