@@ -1,8 +1,9 @@
 # Output of the go coverage tool
 *.out
 
-# Output of the go profiler
+# Output of the go profiler and test
 *.pdf
+*.test
 
 # Dep vendors
 vendor

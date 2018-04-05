@@ -79,9 +79,6 @@ func LoadConfig(filename string) (*node.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err != nil {
-		return nil, err
-	}
 
 	// Generate our multiaddress
 	multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", string(out), config.Port, config.KeyPair.Address().String()))
