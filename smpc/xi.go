@@ -5,9 +5,8 @@ import (
 	"crypto/rand"
 	"time"
 
-	"github.com/republicprotocol/republic-go/stackint"
-
 	"github.com/republicprotocol/republic-go/shamir"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 func ProduceXiFragmentGenerators(ctx context.Context, n, k int64) (<-chan XiFragmentGenerator, <-chan error) {
@@ -165,58 +164,62 @@ func ProcessXiFragmentMultiplicativeShares(ctx context.Context, xiFragmentMultip
 				t := xiFragmentMultiplicativeShares.N
 
 				// Reconstruct share of AB
-				ABHj := stackint.Zero()
+				Hj := stackint.Zero()
 				for i := range xiFragmentMultiplicativeShares.AB {
-					isNegative := false
-					λi := λ[t][i]
-					if λi < 0 {
-						isNegative = true
-						λi = -λi
-					}
-					bigλi := stackint.FromUint(uint(λi))
-					innerProduct := bigλi.MulModulo(&xiFragmentMultiplicativeShares.AB[i].Value, &Prime)
+					isNegative := λ[t][i] < 0
+					λi := stackint.Zero()
 					if isNegative {
-						ABHj = ABHj.SubModulo(&innerProduct, &Prime)
+						λi = stackint.FromUint(uint(-λ[t][i]))
 					} else {
-						ABHj = ABHj.AddModulo(&innerProduct, &Prime)
+						λi = stackint.FromUint(uint(λ[t][i]))
 					}
+					λᵢhᵢj := λi.MulModulo(&xiFragmentMultiplicativeShares.AB[i].Value, &Prime)
+					if isNegative {
+						Hj = Hj.SubModulo(&λᵢhᵢj, &Prime)
+					} else {
+						Hj = Hj.AddModulo(&λᵢhᵢj, &Prime)
+					}
+				}
+				AB := shamir.Share{
+					// FIXME: Do not assume the existence of an element.
+					// We should probably look at a better way of knowing
+					// which key a node is associated with.
+					Key:   xiFragmentMultiplicativeShares.AB[0].Key,
+					Value: Hj,
 				}
 
 				// Reconstruct share of RSquared
-				RSquaredHj := stackint.Zero()
+				Hj = stackint.Zero()
 				for i := range xiFragmentMultiplicativeShares.RSquared {
-					isNegative := false
-					λi := λ[t][i]
-					if λi < 0 {
-						isNegative = true
-						λi = -λi
-					}
-					bigλi := stackint.FromUint(uint(λi))
-					innerProduct := bigλi.MulModulo(&xiFragmentMultiplicativeShares.RSquared[i].Value, &Prime)
+					isNegative := λ[t][i] < 0
+					λi := stackint.Zero()
 					if isNegative {
-						RSquaredHj = RSquaredHj.SubModulo(&innerProduct, &Prime)
+						λi = stackint.FromUint(uint(-λ[t][i]))
 					} else {
-						RSquaredHj = RSquaredHj.AddModulo(&innerProduct, &Prime)
+						λi = stackint.FromUint(uint(λ[t][i]))
 					}
+					λᵢhᵢj := λi.MulModulo(&xiFragmentMultiplicativeShares.RSquared[i].Value, &Prime)
+					if isNegative {
+						Hj = Hj.SubModulo(&λᵢhᵢj, &Prime)
+					} else {
+						Hj = Hj.AddModulo(&λᵢhᵢj, &Prime)
+					}
+				}
+				RSquared := shamir.Share{
+					// FIXME: Do not assume the existence of an element.
+					// We should probably look at a better way of knowing
+					// which key a node is associated with.
+					Key:   xiFragmentMultiplicativeShares.RSquared[0].Key,
+					Value: Hj,
 				}
 
 				// Output the XiFragment
 				xiFragment := XiFragment{
-					ID: xiFragmentMultiplicativeShares.ID,
-					N:  xiFragmentMultiplicativeShares.N,
-					K:  xiFragmentMultiplicativeShares.K,
-					AB: shamir.Share{
-						// FIXME: Do not assume the existence of an element.
-						// We should probably look at a better way of knowing
-						// which key a node is associated with.
-						Key:   xiFragmentMultiplicativeShares.AB[0].Key,
-						Value: ABHj,
-					},
-					RSquared: shamir.Share{
-						// FIXME: Same as above.
-						Key:   xiFragmentMultiplicativeShares.RSquared[0].Key,
-						Value: RSquaredHj,
-					},
+					ID:       xiFragmentMultiplicativeShares.ID,
+					N:        xiFragmentMultiplicativeShares.N,
+					K:        xiFragmentMultiplicativeShares.K,
+					AB:       AB,
+					RSquared: RSquared,
 				}
 				select {
 				case <-ctx.Done():
