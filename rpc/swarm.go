@@ -122,7 +122,6 @@ func (service *SwarmService) Prune(target identity.Address) (bool, error) {
 // Address returns the identity.Address of the Node.
 func (service *SwarmService) Address() identity.Address {
 	return service.Options.MultiAddress.Address()
-	return service.Options.MultiAddress.Address()
 }
 
 // MultiAddress returns the identity.MultiAddress of the Node.
