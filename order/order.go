@@ -61,8 +61,8 @@ type Status uint8
 // Status values.
 const (
 	Open = Status(iota)
-	Canceled
 	Unconfirmed
+	Canceled
 	Confirmed
 	Settled
 )

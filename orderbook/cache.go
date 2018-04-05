@@ -70,7 +70,16 @@ func (orderBookCache *OrderBookCache) storeOrderMessage(message Message) {
 	orderBookCache.mu.Lock()
 	defer orderBookCache.mu.Unlock()
 
+	// Store the order message if we haven't seen the order before.
 	if _, ok := orderBookCache.orders[string(message.Ord.ID)]; !ok {
 		orderBookCache.orders[string(message.Ord.ID)] = message
+		return
 	}
+
+	// Merge order by the priority of the order status
+	if message.Status < orderBookCache.orders[string(message.Ord.ID)].Status{
+		orderBookCache.orders[string(message.Ord.ID)] = message
+		return
+	}
+
 }
