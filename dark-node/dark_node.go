@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"runtime"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -64,6 +65,8 @@ type DarkNode struct {
 	DarkNodeRegistrar dnr.DarkNodeRegistrar
 	DarkOcean         *dark.Ocean
 	DarkPool          *dark.Pool
+
+	EpochHashMu       *sync.RWMutex
 	EpochBlockhash    [32]byte
 }
 
@@ -98,6 +101,16 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 		node.DarkPool = darkPool
 	}
 	//k := int64(node.DarkPool.Size()*2/3 + 1)
+
+	// Initialize the epoch hash
+	node.EpochHashMu =  new(sync.RWMutex)
+	node.EpochHashMu.Lock()
+	hash , err := node.DarkNodeRegistrar.CurrentEpoch()
+	if err != nil {
+		return nil, err
+	}
+	node.EpochBlockhash = hash.Blockhash
+	node.EpochHashMu.Unlock()
 
 	// Create all networking components and services
 	node.ClientPool = rpc.NewClientPool(node.NetworkOptions.MultiAddress).
@@ -350,7 +363,11 @@ func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 			Parity:    orderFragment.OrderParity,
 			Expiry:    orderFragment.OrderExpiry,
 		}
-		node.OrderBook.Open(ord)
+		node.EpochHashMu.RLock()
+		orderMessage := orderbook.NewMessage(ord, order.Open, node.EpochBlockhash)
+		node.EpochHashMu.RUnlock()
+
+		node.OrderBook.Open(orderMessage)
 	}()
 }
 

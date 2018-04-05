@@ -207,8 +207,9 @@ func (queue SyncerClientStreamQueue) Recv() (dispatch.Message, bool) {
 		ord = UnmarshalOrder(message.OrderBlock.(*SyncBlock_Settled).Settled)
 		status = order.Settled
 	}
-
-	return orderbook.NewMessage(ord, status, nil), true
+	var epochHash [32]byte
+	copy(epochHash[:], message.EpochHash)
+	return orderbook.NewMessage(ord, status, epochHash), true
 }
 
 func (queue SyncerClientStreamQueue) readAll() error {
@@ -243,6 +244,7 @@ func ToBlock(message orderbook.Message) *SyncBlock{
 	syncBlock := &SyncBlock{
 		Signature: message.Ord.Signature,
 		Timestamp: time.Now().Unix(),
+		EpochHash: message.EpochHash[:],
 	}
 	switch message.Status  {
 	case order.Open:

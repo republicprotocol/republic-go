@@ -6,17 +6,22 @@ import (
 
 // Message define status of the order. Along with error happens.
 type Message struct {
-	Ord    order.Order
-	Status order.Status
-	Err    error
+	EpochHash [32]byte
+	Ord       order.Order
+	Status    order.Status
 }
 
 // NewMessage returns a new orderbook message.
-func NewMessage(ord order.Order, status order.Status, err error) Message {
+func NewMessage(ord order.Order, status order.Status, hash [32]byte) Message {
+	//var epochHash [32]byte
+	//if len(hash) != 32 {
+	//	log.Println("wrong epoch hash length")
+	//	return Message{}
+	//}
+	//copy(epochHash[:], hash)
 	return Message{
-		Ord:    ord,
-		Status: status,
-		Err:    err,
+		EpochHash: hash,
+		Ord:       ord,
+		Status:    status,
 	}
 }
-

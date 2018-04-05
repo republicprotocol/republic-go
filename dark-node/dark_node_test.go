@@ -230,7 +230,7 @@ var _ = Describe("Dark nodes", func() {
 					syncBlocks, err := nodes[0].ClientPool.Sync(nodes[1].NetworkOptions.MultiAddress)
 					Ω(err).ShouldNot(HaveOccurred())
 					for block := range syncBlocks {
-						log.Println(block.OrderBlock)
+						log.Println(block.OrderBlock, block.EpochHash)
 					}
 
 				})

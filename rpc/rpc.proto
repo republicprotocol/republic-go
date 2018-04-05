@@ -75,13 +75,14 @@ message SyncRequest {
 message SyncBlock {
   bytes signature = 1;
   int64 timestamp = 2;
+  bytes epochHash = 3;
 
   oneof OrderBlock {
-    Order open = 3;
-    Order canceled = 4;
-    Order unconfirmed = 5;
-    Order confirmed = 6;
-    Order settled = 7;
+    Order open = 4;
+    Order canceled = 5;
+    Order unconfirmed = 6;
+    Order confirmed = 7;
+    Order settled = 8;
   }
 }
 
