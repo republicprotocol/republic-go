@@ -19,6 +19,3 @@ cmd/secrets
 cmd/register/register
 cmd/deregister/deregister
 cmd/epoch/epoch
-
-# Config files
-*.json
