@@ -2,15 +2,20 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"math/big"
 	"net/http"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/jbenet/go-base58"
@@ -35,6 +40,21 @@ type OrderBook struct {
 }
 
 func main() {
+	if len(os.Args) < 2 {
+		log.Fatal("expected command")
+	}
+	command := os.Args[1]
+	switch command {
+	case "open":
+		open()
+	case "cancel":
+		cancel()
+	case "binance":
+		binance()
+	default:
+		log.Fatal("unrecognized command")
+	}
+
 	// Parse the option parameters
 	numberOfOrders := flag.Int("order", 10, "number of orders")
 	timeInterval := flag.Int("time", 15, "time interval in second")
@@ -53,12 +73,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Create a test trader address
-	address, _, err := identity.NewAddress()
+	// Get our IP address
+	ipInfoOut, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("cannot get ip address: %v", err)
 	}
-	multi, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/80/republic/" + address.String())
+	ipAddress := strings.Trim(string(ipInfoOut), "\n ")
+
+	key := keystore.NewKeyForDirectICAP(rand.Reader)
+	id, err := identity.NewKeyPairFromPrivateKey(key.PrivateKey)
+	id.Address()
+
+	multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/80/republic/%s", ipAddress, id.Address().String()))
 	if err != nil {
 		panic(err)
 	}
