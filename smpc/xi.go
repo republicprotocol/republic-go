@@ -90,6 +90,9 @@ func ProcessXiFragmentAdditiveShares(ctx context.Context, xiFragmentAdditiveShar
 	errCh := make(chan error)
 
 	go func() {
+		defer close(xiFragmentMultiplicativeSharesCh)
+		defer close(errCh)
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -141,10 +144,14 @@ func ProcessXiFragmentAdditiveShares(ctx context.Context, xiFragmentAdditiveShar
 	return xiFragmentMultiplicativeSharesCh, errCh
 }
 
-func ConsumeXiFragmentMultiplicativeShares(ctx context.Context, xiFragmentMultiplicativeSharesChIn <-chan XiFragmentMultiplicativeShares) <-chan error {
+func ProcessXiFragmentMultiplicativeShares(ctx context.Context, xiFragmentMultiplicativeSharesChIn <-chan XiFragmentMultiplicativeShares) (<-chan XiFragment, <-chan error) {
+	xiFragmentCh := make(chan XiFragment)
 	errCh := make(chan error)
 
 	go func() {
+		defer close(xiFragmentCh)
+		defer close(errCh)
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -167,7 +174,7 @@ func ConsumeXiFragmentMultiplicativeShares(ctx context.Context, xiFragmentMultip
 						λi = -λi
 					}
 					bigλi := stackint.FromUint(uint(λi))
-					innerProduct := bigλi.Mul(&xiFragmentMultiplicativeShares.AB[i].Value)
+					innerProduct := bigλi.MulModulo(&xiFragmentMultiplicativeShares.AB[i].Value, &Prime)
 					if isNegative {
 						ABHj = ABHj.SubModulo(&innerProduct, &Prime)
 					} else {
@@ -185,7 +192,7 @@ func ConsumeXiFragmentMultiplicativeShares(ctx context.Context, xiFragmentMultip
 						λi = -λi
 					}
 					bigλi := stackint.FromUint(uint(λi))
-					innerProduct := bigλi.Mul(&xiFragmentMultiplicativeShares.RSquared[i].Value)
+					innerProduct := bigλi.MulModulo(&xiFragmentMultiplicativeShares.RSquared[i].Value, &Prime)
 					if isNegative {
 						RSquaredHj = RSquaredHj.SubModulo(&innerProduct, &Prime)
 					} else {
@@ -193,12 +200,35 @@ func ConsumeXiFragmentMultiplicativeShares(ctx context.Context, xiFragmentMultip
 					}
 				}
 
-				// TODO: Do something with the share
+				// Output the XiFragment
+				xiFragment := XiFragment{
+					ID: xiFragmentMultiplicativeShares.ID,
+					N:  xiFragmentMultiplicativeShares.N,
+					K:  xiFragmentMultiplicativeShares.K,
+					AB: shamir.Share{
+						// FIXME: Do not assume the existence of an element.
+						// We should probably look at a better way of knowing
+						// which key a node is associated with.
+						Key:   xiFragmentMultiplicativeShares.AB[0].Key,
+						Value: ABHj,
+					},
+					RSquared: shamir.Share{
+						// FIXME: Same as above.
+						Key:   xiFragmentMultiplicativeShares.RSquared[0].Key,
+						Value: RSquaredHj,
+					},
+				}
+				select {
+				case <-ctx.Done():
+					errCh <- ctx.Err()
+					return
+				case xiFragmentCh <- xiFragment:
+				}
 			}
 		}
 	}()
 
-	return errCh
+	return xiFragmentCh, errCh
 }
 
 type XiFragmentGenerator struct {
@@ -231,6 +261,14 @@ type XiFragmentMultiplicativeShares struct {
 	K        int64
 	AB       shamir.Shares
 	RSquared shamir.Shares
+}
+
+type XiFragment struct {
+	ID       stackint.Int1024
+	N        int64
+	K        int64
+	AB       shamir.Share
+	RSquared shamir.Share
 }
 
 func RandomXiFragmentAdditiveShares(xiFragmentGenerator *XiFragmentGenerator, prime *stackint.Int1024) (XiFragmentAdditiveShares, error) {
