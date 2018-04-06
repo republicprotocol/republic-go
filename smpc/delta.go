@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 )
@@ -287,28 +286,6 @@ func (id DeltaFragmentID) String() string {
 
 type DeltaFragments []DeltaFragment
 
-func (deltaFragments DeltaFragments) Marshal() *rpc.DeltaFragments {
-	data := make([]*rpc.DeltaFragment, len(deltaFragments))
-	for i := range data {
-		data[i] = deltaFragments[i].Marshal()
-	}
-	return &rpc.DeltaFragments{
-		DeltaFragments: data,
-	}
-}
-
-func (deltaFragments *DeltaFragments) Unmarshal(data *rpc.DeltaFragments) error {
-	*deltaFragments = make([]DeltaFragment, 0, len(data.DeltaFragments))
-	for i := range data.DeltaFragments {
-		deltaFragment := DeltaFragment{}
-		if err := deltaFragment.Unmarshal(data.DeltaFragments[i]); err != nil {
-			return err
-		}
-		*deltaFragments = append(*deltaFragments, deltaFragment)
-	}
-	return nil
-}
-
 // A DeltaFragment is a secret share of a Final. Is is performing a
 // computation over two OrderFragments.
 type DeltaFragment struct {
@@ -410,54 +387,6 @@ func IsCompatible(deltaFragments DeltaFragments) bool {
 		}
 	}
 	return true
-}
-
-func (deltaFragment *DeltaFragment) Marshal() *rpc.DeltaFragment {
-	return &rpc.DeltaFragment{
-		Id:                  deltaFragment.ID,
-		DeltaId:             deltaFragment.DeltaID,
-		BuyOrderId:          deltaFragment.BuyOrderID,
-		SellOrderId:         deltaFragment.SellOrderID,
-		BuyOrderFragmentId:  deltaFragment.BuyOrderFragmentID,
-		SellOrderFragmentId: deltaFragment.SellOrderFragmentID,
-		FstCodeShare:        shamir.ToBytes(deltaFragment.FstCodeShare),
-		SndCodeShare:        shamir.ToBytes(deltaFragment.SndCodeShare),
-		PriceShare:          shamir.ToBytes(deltaFragment.PriceShare),
-		MaxVolumeShare:      shamir.ToBytes(deltaFragment.MaxVolumeShare),
-		MinVolumeShare:      shamir.ToBytes(deltaFragment.MinVolumeShare),
-	}
-}
-
-func (deltaFragment *DeltaFragment) Unmarshal(data *rpc.DeltaFragment) error {
-	deltaFragment.ID = data.Id
-	deltaFragment.DeltaID = data.DeltaId
-	deltaFragment.BuyOrderID = data.BuyOrderId
-	deltaFragment.SellOrderID = data.SellOrderId
-	deltaFragment.BuyOrderFragmentID = data.BuyOrderFragmentId
-	deltaFragment.SellOrderFragmentID = data.SellOrderFragmentId
-
-	var err error
-	deltaFragment.FstCodeShare, err = shamir.FromBytes(data.FstCodeShare)
-	if err != nil {
-		return err
-	}
-	deltaFragment.SndCodeShare, err = shamir.FromBytes(data.SndCodeShare)
-	if err != nil {
-		return err
-	}
-	deltaFragment.PriceShare, err = shamir.FromBytes(data.PriceShare)
-	if err != nil {
-		return err
-	}
-	deltaFragment.MaxVolumeShare, err = shamir.FromBytes(data.MaxVolumeShare)
-	if err != nil {
-		return err
-	}
-	deltaFragment.MinVolumeShare, err = shamir.FromBytes(data.MinVolumeShare)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // DeltaQueues is a slice of DeltaQueue components.

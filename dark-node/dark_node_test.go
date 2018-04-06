@@ -228,7 +228,7 @@ var _ = Describe("Dark nodes", func() {
 					//}()
 
 					By("synchronization")
-					ctx , cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 					defer cancel()
 					syncBlocks, e := nodes[0].ClientPool.Sync(ctx, nodes[1].NetworkOptions.MultiAddress)
 					for err := range e {
@@ -351,7 +351,7 @@ func connectNodes(nodes []*node.DarkNode, connectivity int) (int, int) {
 			isConnected := rand.Intn(100) < connectivity
 			if isConnected {
 				numberOfPings++
-				ctx , cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 				if err := from.ClientPool.Ping(ctx, to.NetworkOptions.MultiAddress); err != nil {
 					log.Printf("error pinging: %v", err)
@@ -430,7 +430,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 				},
 				OrderFragment: rpc.MarshalOrderFragment(buyShares[j]),
 			}
-			ctx , cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			err := pool.OpenOrder(ctx, nodes[j].NetworkOptions.MultiAddress, orderRequet)
 			if err != nil {
@@ -447,7 +447,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 				},
 				OrderFragment: rpc.MarshalOrderFragment(sellShares[j]),
 			}
-			ctx , cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			err := pool.OpenOrder(ctx, nodes[j].NetworkOptions.MultiAddress, orderRequet)
 			if err != nil {

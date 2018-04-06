@@ -58,7 +58,7 @@ func (orderBookCache *OrderBookCache) Blocks() []Message {
 
 	blocks := make([]Message, len(orderBookCache.orders))
 	i := 0
-	for _, ord := range orderBookCache.orders{
+	for _, ord := range orderBookCache.orders {
 		blocks[i] = ord
 		i++
 	}
@@ -77,7 +77,7 @@ func (orderBookCache *OrderBookCache) storeOrderMessage(message Message) {
 	}
 
 	// Merge order by the priority of the order status
-	if message.Status < orderBookCache.orders[string(message.Ord.ID)].Status{
+	if message.Status < orderBookCache.orders[string(message.Ord.ID)].Status {
 		orderBookCache.orders[string(message.Ord.ID)] = message
 		return
 	}

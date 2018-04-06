@@ -12,19 +12,18 @@ type OrderBookDB struct {
 // NewOrderBookDB creates a new OrderBookDB and store the db file
 // in the given path. It use the default
 func NewOrderBookDB(path string) (OrderBookDB, error) {
-	db ,err  := leveldb.OpenFile(path , nil)
+	db, err := leveldb.OpenFile(path, nil)
 	if err != nil {
 		return OrderBookDB{}, err
 	}
 	return OrderBookDB{
-		DB : db,
+		DB: db,
 	}, nil
 }
 
-func (orderBookDB OrderBookDB) Close(){
+func (orderBookDB OrderBookDB) Close() {
 	orderBookDB.Close()
 }
-
 
 func (orderBookDB OrderBookDB) Open(message Message) {
 	// TODO: Implement key/value file store

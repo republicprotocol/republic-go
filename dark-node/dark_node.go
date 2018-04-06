@@ -67,8 +67,8 @@ type DarkNode struct {
 	DarkOcean         *dark.Ocean
 	DarkPool          *dark.Pool
 
-	EpochHashMu       *sync.RWMutex
-	EpochBlockhash    [32]byte
+	EpochHashMu    *sync.RWMutex
+	EpochBlockhash [32]byte
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
@@ -104,9 +104,9 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	//k := int64(node.DarkPool.Size()*2/3 + 1)
 
 	// Initialize the epoch hash
-	node.EpochHashMu =  new(sync.RWMutex)
+	node.EpochHashMu = new(sync.RWMutex)
 	node.EpochHashMu.Lock()
-	hash , err := node.DarkNodeRegistrar.CurrentEpoch()
+	hash, err := node.DarkNodeRegistrar.CurrentEpoch()
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +308,7 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 		}
 
 		// Ping the dark node to test the connection
-		ctx , cancel := context.WithTimeout(context.Background(), node.NetworkOptions.Timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), node.NetworkOptions.Timeout)
 		defer cancel()
 
 		node.ClientPool.Ping(ctx, *multiAddress)
