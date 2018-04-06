@@ -2,7 +2,6 @@ package smpc
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
@@ -10,199 +9,210 @@ import (
 )
 
 // ProcessOrderFragments by reading order fragments from an input channel, and
-// writing OrderFragmentComputations to an output channel.
-func ProcessOrderFragments(ctx context.Context, orderFragmentChIn <-chan order.Fragment, bufferLimit int) (<-chan OrderFragmentComputation, <-chan error) {
-	// orderFragmentCh := make(chan order.Fragment)
+// writing OrderTuples to an output channel.
+func ProcessOrderFragments(ctx context.Context, orderFragmentChIn <-chan order.Fragment, bufferLimit int) (<-chan OrderTuple, <-chan error) {
+	orderTupleCh := make(chan OrderTuple, bufferLimit)
 	errCh := make(chan error)
 
-	orderFragmentTable := NewOrderFragmentTable()
-	consumerErrCh := consumeOrderFragments(ctx, orderFragmentChIn, &orderFragmentTable)
-
-	producerErrCtx, producerCtxCancel := context.WithCancel(context.Background())
-	orderFragmentComputationCh, producerErrCh := produceOrderFragmentComputations(producerErrCtx, &orderFragmentTable, bufferLimit)
-
+	sharedOrderTable := NewSharedOrderTable()
 	go func() {
-		defer producerCtxCancel()
+		defer close(orderTupleCh)
 		defer close(errCh)
-		for {
-			select {
-			case err, ok := <-consumerErrCh:
-				if !ok {
-					continue
-				}
-				if err == context.Canceled {
-					continue
-				}
-				errCh <- err
-			case err, ok := <-producerErrCh:
-				if !ok {
-					return
-				}
-				errCh <- err
-				if err == context.Canceled {
-					return
-				}
-			}
-		}
-	}()
 
-	return orderFragmentComputationCh, errCh
-}
+		buffer := make([]OrderTuple, bufferLimit)
+		tick := time.NewTicker(time.Millisecond)
+		defer tick.Stop()
 
-// consumeOrderFragments from an input channel and store
-// OrderFragmentComputations in an OrderFragmentTable.
-func consumeOrderFragments(ctx context.Context, orderFagmentChIn <-chan order.Fragment, orderFragmentTable *OrderFragmentTable) <-chan error {
-	errCh := make(chan error)
-
-	go func() {
-		defer close(errCh)
 		for {
 			select {
 			case <-ctx.Done():
 				errCh <- ctx.Err()
 				return
-			case orderFragment, ok := <-orderFagmentChIn:
-				if !ok {
-					return
-				}
-				if orderFragment.OrderParity == order.ParityBuy {
-					orderFragmentTable.InsertBuyOrder(orderFragment)
-				} else {
-					orderFragmentTable.InsertSellOrder(orderFragment)
-				}
-			}
-		}
-	}()
-
-	return errCh
-}
-
-// produceOrderFragmentComputations by periodically reading
-// OrderFragmentComputations from an OrderFragmentTable and writing them to an
-// output channel
-func produceOrderFragmentComputations(ctx context.Context, orderFragmentTable *OrderFragmentTable, bufferLimit int) (<-chan OrderFragmentComputation, <-chan error) {
-	orderFragmentComputationCh := make(chan OrderFragmentComputation, bufferLimit)
-	errCh := make(chan error)
-
-	go func() {
-		defer close(orderFragmentComputationCh)
-		defer close(errCh)
-
-		buffer := make([]OrderFragmentComputation, bufferLimit)
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				log.Println("shutdown")
-				errCh <- ctx.Err()
-				return
-			case <-ticker.C:
-				log.Println("tick")
-				for i, n := 0, orderFragmentTable.Computations(buffer[:]); i < n; i++ {
+			case <-tick.C:
+				for i, n := 0, sharedOrderTable.OrderTuples(buffer[:]); i < n; i++ {
 					select {
 					case <-ctx.Done():
 						errCh <- ctx.Err()
 						return
-					case orderFragmentComputationCh <- buffer[i]:
+					case orderTupleCh <- buffer[i]:
 					}
 				}
 			}
 		}
 	}()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case orderFragment, ok := <-orderFragmentChIn:
+				if !ok {
+					return
+				}
+				if orderFragment.OrderParity == order.ParityBuy {
+					sharedOrderTable.InsertBuyOrder(orderFragment)
+				} else {
+					sharedOrderTable.InsertSellOrder(orderFragment)
+				}
+			}
+		}
+	}()
 
-	return orderFragmentComputationCh, errCh
+	return orderTupleCh, errCh
 }
 
-// OrderFragmentComputation involving a buy order fragemnt, and a sell order
-// fragment.
-type OrderFragmentComputation struct {
+// OrderTuple involving a buy order, and a sell order. Orders are stores as
+// pointers to fragments. The pointers must not be used to modify the
+// underlying fragment.
+type OrderTuple struct {
 	BuyOrderFragment  *order.Fragment
 	SellOrderFragment *order.Fragment
 }
 
-// An OrderFragmentTable stores order fragments and generates pairwise
-// OrderFragmentComputations that should be considered for computation. It is
-// safe for concurrent use.
-type OrderFragmentTable struct {
-	mu                        *sync.Mutex
-	buyOrderFragments         []order.Fragment
-	sellOrderFragments        []order.Fragment
-	buyOrderFragmentStatus    map[string]bool
-	sellOrderFragmentStatus   map[string]bool
-	orderFragmentComputations []OrderFragmentComputation
+// OrderState of an order in the SharedOrderTable determines whether or not it
+// is active.
+type OrderState int
+
+const (
+	// OrderStateOn allows an order to be considered in the construction of
+	// OrderTuples.
+	OrderStateOn = 1
+
+	// OrderStateOff disallows an order to be considered in the construction of
+	// OrderTuples.
+	OrderStateOff = 2
+)
+
+// An SharedOrderTable stores order fragments and generates OrderTuples that
+// will be used to perform order matching computations. It is safe for
+// concurrent use.
+type SharedOrderTable struct {
+	mu *sync.Mutex
+
+	// State maps store a fragment as either being seen, or as not being seen.
+	buyOrderStates  map[string]OrderState
+	sellOrderStates map[string]OrderState
+
+	buyOrderFragments  []order.Fragment
+	sellOrderFragments []order.Fragment
+	orderTuples        []OrderTuple
 }
 
-// NewOrderFragmentTable returns an empty OrderFragmentTable.
-func NewOrderFragmentTable() OrderFragmentTable {
-	return OrderFragmentTable{
-		mu:                        new(sync.Mutex),
-		buyOrderFragments:         []order.Fragment{},
-		sellOrderFragments:        []order.Fragment{},
-		buyOrderFragmentStatus:    map[string]bool{},
-		sellOrderFragmentStatus:   map[string]bool{},
-		orderFragmentComputations: []OrderFragmentComputation{},
+// NewSharedOrderTable returns an empty SharedOrderTable.
+func NewSharedOrderTable() SharedOrderTable {
+	return SharedOrderTable{
+		mu:                 new(sync.Mutex),
+		buyOrderStates:     map[string]OrderState{},
+		sellOrderStates:    map[string]OrderState{},
+		buyOrderFragments:  []order.Fragment{},
+		sellOrderFragments: []order.Fragment{},
+		orderTuples:        []OrderTuple{},
 	}
 }
 
-// InsertBuyOrder into the OrderFragmentTable. This will generate a list of
-// OrderFragmentComputations between the inserted buy order fragment and all
-// sell order fragments currently stored in the OrderFragmentTable.
-func (table *OrderFragmentTable) InsertBuyOrder(buyOrderFragment order.Fragment) {
+// InsertBuyOrder into the SharedOrderTable. This will generate a list of
+// OrderTuples between the inserted buy order fragment and all sell order
+// fragments currently stored in the SharedOrderTable.
+func (table *SharedOrderTable) InsertBuyOrder(buyOrderFragment order.Fragment) {
 	table.mu.Lock()
 	defer table.mu.Unlock()
 
 	buyOrderID := string(buyOrderFragment.OrderID)
-	if _, ok := table.buyOrderFragmentStatus[buyOrderID]; ok {
+	if _, ok := table.buyOrderStates[buyOrderID]; ok {
 		return
 	}
-	table.buyOrderFragmentStatus[buyOrderID] = false
+	table.buyOrderStates[buyOrderID] = OrderStateOn
 	table.buyOrderFragments = append(table.buyOrderFragments, buyOrderFragment)
 
 	for i := range table.sellOrderFragments {
-		if table.sellOrderFragmentStatus[string(table.sellOrderFragments[i].OrderID)] {
+		if table.sellOrderStates[string(table.sellOrderFragments[i].OrderID)] != OrderStateOn {
 			continue
 		}
-		table.orderFragmentComputations = append(table.orderFragmentComputations, OrderFragmentComputation{
+		table.orderTuples = append(table.orderTuples, OrderTuple{
 			BuyOrderFragment:  &table.buyOrderFragments[len(table.buyOrderFragments)-1],
 			SellOrderFragment: &table.sellOrderFragments[i],
 		})
 	}
 }
 
-// InsertSellOrder into the OrderFragmentTable. This will generate a list of
-// OrderFragmentComputations between the inserted sell order fragment and all
-// buy order fragments currently stored in the OrderFragmentTable.
-func (table *OrderFragmentTable) InsertSellOrder(sellOrderFragment order.Fragment) {
+// InsertSellOrder into the SharedOrderTable. This will generate a list of
+// OrderTuples between the inserted sell order fragment and all buy order
+// fragments currently stored in the SharedOrderTable.
+func (table *SharedOrderTable) InsertSellOrder(sellOrderFragment order.Fragment) {
 	table.mu.Lock()
 	defer table.mu.Unlock()
 
 	sellOrderID := string(sellOrderFragment.OrderID)
-	if _, ok := table.sellOrderFragmentStatus[sellOrderID]; ok {
+	if _, ok := table.sellOrderStates[sellOrderID]; ok {
 		return
 	}
-	table.sellOrderFragmentStatus[sellOrderID] = false
+	table.sellOrderStates[sellOrderID] = OrderStateOn
 	table.sellOrderFragments = append(table.sellOrderFragments, sellOrderFragment)
 
 	for i := range table.buyOrderFragments {
-		if table.buyOrderFragmentStatus[string(table.buyOrderFragments[i].OrderID)] {
+		if table.buyOrderStates[string(table.buyOrderFragments[i].OrderID)] != OrderStateOn {
 			continue
 		}
-		table.orderFragmentComputations = append(table.orderFragmentComputations, OrderFragmentComputation{
+		table.orderTuples = append(table.orderTuples, OrderTuple{
 			BuyOrderFragment:  &table.buyOrderFragments[i],
 			SellOrderFragment: &table.sellOrderFragments[len(table.sellOrderFragments)-1],
 		})
 	}
 }
 
-// Computations writes a list of OrderFragmentComputations to the buffer and
-// returns the number of OrderFragmentComputations written.
-func (table *OrderFragmentTable) Computations(buffer []OrderFragmentComputation) int {
+// SetBuyOrderState for an order in the SharedOrderTable. Setting the state to
+// OrderStateOff will remove all OrderTuples involving the order.
+func (table *SharedOrderTable) SetBuyOrderState(orderID order.ID, state OrderState) {
 	table.mu.Lock()
 	defer table.mu.Unlock()
 
-	m := len(table.orderFragmentComputations)
+	table.buyOrderStates[string(orderID)] = state
+
+	// If the order has been turned off, then remove it from the existing set
+	// of OrderTuples.
+	if state != OrderStateOn {
+		n := len(table.orderTuples)
+		d := 0
+		for i := 0; i < n; i++ {
+			if table.orderTuples[i].BuyOrderFragment.OrderID.Equal(orderID) {
+				table.orderTuples[i] = table.orderTuples[n-d-1]
+				d++
+			}
+		}
+		table.orderTuples = table.orderTuples[:n-d]
+	}
+}
+
+// SetSellOrder for an order in the SharedOrderTable. Setting the state to
+// OrderStateOff will remove all OrderTuples involving the order.
+func (table *SharedOrderTable) SetSellOrder(orderID order.ID, state OrderState) {
+	table.mu.Lock()
+	defer table.mu.Unlock()
+
+	table.sellOrderStates[string(orderID)] = state
+
+	// If the order has been turned off, then remove it from the existing set
+	// of OrderTuples.
+	if state != OrderStateOn {
+		n := len(table.orderTuples)
+		d := 0
+		for i := 0; i < n; i++ {
+			if table.orderTuples[i].SellOrderFragment.OrderID.Equal(orderID) {
+				table.orderTuples[i] = table.orderTuples[n-d-1]
+				d++
+			}
+		}
+		table.orderTuples = table.orderTuples[:n-d]
+	}
+}
+
+// OrderTuples writes a list of OrderTuples to the buffer and returns the
+// number of OrderTuples written.
+func (table *SharedOrderTable) OrderTuples(buffer []OrderTuple) int {
+	table.mu.Lock()
+	defer table.mu.Unlock()
+
+	m := len(table.orderTuples)
 	n := len(buffer)
 	if m == 0 || n == 0 {
 		return 0
@@ -210,51 +220,13 @@ func (table *OrderFragmentTable) Computations(buffer []OrderFragmentComputation)
 
 	i := 0
 	for ; i < m && i < n; i++ {
-		buffer[i] = table.orderFragmentComputations[m-i-1]
+		buffer[i] = table.orderTuples[m-i-1]
 	}
 	if i >= m {
-		table.orderFragmentComputations = table.orderFragmentComputations[0:0]
+		table.orderTuples = table.orderTuples[0:0]
 	} else {
-		table.orderFragmentComputations = table.orderFragmentComputations[:m-i]
+		table.orderTuples = table.orderTuples[:m-i]
 	}
 
 	return i
-}
-
-// RemoveBuyOrder from the OrderFragmentTable. All OrderFragmentComputations
-// that involve this order will also be removed.
-func (table *OrderFragmentTable) RemoveBuyOrder(orderID order.ID) {
-	table.mu.Lock()
-	defer table.mu.Unlock()
-
-	table.buyOrderFragmentStatus[string(orderID)] = true
-
-	n := len(table.orderFragmentComputations)
-	d := 0
-	for i := 0; i < n; i++ {
-		if table.orderFragmentComputations[i].BuyOrderFragment.OrderID.Equal(orderID) {
-			table.orderFragmentComputations[i] = table.orderFragmentComputations[n-d-1]
-			d++
-		}
-	}
-	table.orderFragmentComputations = table.orderFragmentComputations[:n-d]
-}
-
-// RemoveSellOrder from the OrderFragmentTable. All OrderFragmentComputations
-// that involve this order will also be removed.
-func (table *OrderFragmentTable) RemoveSellOrder(orderID order.ID) {
-	table.mu.Lock()
-	defer table.mu.Unlock()
-
-	table.sellOrderFragmentStatus[string(orderID)] = true
-
-	n := len(table.orderFragmentComputations)
-	d := 0
-	for i := 0; i < n; i++ {
-		if table.orderFragmentComputations[i].SellOrderFragment.OrderID.Equal(orderID) {
-			table.orderFragmentComputations[i] = table.orderFragmentComputations[n-d-1]
-			d++
-		}
-	}
-	table.orderFragmentComputations = table.orderFragmentComputations[:n-d]
 }
