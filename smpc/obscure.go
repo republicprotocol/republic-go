@@ -363,6 +363,7 @@ type ObscureMulSharesIndexed struct {
 	AB, RSq shamir.Shares
 }
 
+// GenerateRandomShares in a finite field defined by the given prime.
 func GenerateRandomShares(n, k int64, prime *stackint.Int1024) (shamir.Shares, error) {
 	r, err := stackint.Random(rand.Reader, prime)
 	if err != nil {
@@ -375,6 +376,8 @@ func GenerateRandomShares(n, k int64, prime *stackint.Int1024) (shamir.Shares, e
 	return rs, nil
 }
 
+// SummateShares in a finite field defined by the given prime. All indices be
+// the same.
 func SummateShares(shares shamir.Shares, prime *stackint.Int1024) shamir.Share {
 	if len(shares) == 0 {
 		return shamir.Share{
