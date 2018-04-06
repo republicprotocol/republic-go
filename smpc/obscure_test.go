@@ -13,50 +13,26 @@ import (
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
-var _ = Describe("ξ-fragments", func() {
-	Context("when producing ξ-fragments", func() {
+var _ = Describe("Obscure residue fragments", func() {
+	Context("when producing obscure residue fragments", func() {
 
-		It("should shutdown when the context is canceled", func() {
+		It("should produce obscure random number generators", func() {
 			var wg sync.WaitGroup
 			ctx, cancel := context.WithCancel(context.Background())
 			n, k := int64(31), int64(16)
 
 			// Start the producer in the background
-			_, errCh := smpc.ProduceXiFragmentGenerators(ctx, n, k)
+			obscureRngCh, errCh := smpc.ProduceObscureRngs(ctx, n, k)
 
 			wg.Add(1)
 			go func() {
 				defer GinkgoRecover()
 				defer wg.Done()
 
-				// Drain all errors and expect a cancelation
-				for err := range errCh {
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(Equal(context.Canceled))
-				}
-			}()
-
-			cancel()
-			wg.Wait()
-		})
-
-		It("should produce generators", func() {
-			var wg sync.WaitGroup
-			ctx, cancel := context.WithCancel(context.Background())
-			n, k := int64(31), int64(16)
-
-			// Start the producer in the background
-			xiFragmentGeneratorCh, errCh := smpc.ProduceXiFragmentGenerators(ctx, n, k)
-
-			wg.Add(1)
-			go func() {
-				defer GinkgoRecover()
-				defer wg.Done()
-
-				// Wait for a XiFragmentGenerator to be produced
-				for xiFragmentGenerator := range xiFragmentGeneratorCh {
-					Ω(xiFragmentGenerator.N).Should(Equal(n))
-					Ω(xiFragmentGenerator.K).Should(Equal(k))
+				// Wait for a ObscureRng to be produced
+				for obscureRng := range obscureRngCh {
+					Ω(obscureRng.N).Should(Equal(n))
+					Ω(obscureRng.K).Should(Equal(k))
 					cancel()
 				}
 			}()
@@ -74,42 +50,43 @@ var _ = Describe("ξ-fragments", func() {
 			wg.Wait()
 		})
 
-		It("should produce verified additive shares", func() {
+		It("should produce verifiable obscure random numbers", func() {
 			var wg sync.WaitGroup
 			ctx, cancel := context.WithCancel(context.Background())
 			n, k := int64(31), int64(16)
 
-			// Create a set of process channels for receiving XiFragmentGenerators
-			xiFragmentGeneratorChs := make([]chan smpc.XiFragmentGenerator, n)
+			// Create a set of process channels for receiving ObscureRngs
+			obscureRngChs := make([]chan smpc.ObscureRng, n)
 			for i := int64(0); i < n; i++ {
-				xiFragmentGeneratorChs[i] = make(chan smpc.XiFragmentGenerator)
+				obscureRngChs[i] = make(chan smpc.ObscureRng)
 			}
-			// Send a XiFragmentGenerator to all process channels
+			// Send a ObscureRng to all process channels
 			wg.Add(1)
 			go func() {
 				defer GinkgoRecover()
 				defer wg.Done()
 				defer func() {
-					for i := range xiFragmentGeneratorChs {
-						close(xiFragmentGeneratorChs[i])
+					for i := range obscureRngChs {
+						close(obscureRngChs[i])
 					}
 				}()
 
-				for i := range xiFragmentGeneratorChs {
-					xiFragmentGeneratorChs[i] <- smpc.XiFragmentGenerator{
-						ID: stackint.One(),
+				one := stackint.One()
+				for i := range obscureRngChs {
+					obscureRngChs[i] <- smpc.ObscureRng{
 						N:  n,
 						K:  k,
+						ID: one.Bytes(),
 					}
 				}
 			}()
 
-			// Create N processes that will consume XiFragmentGenerators and
-			// produce XiAdditiveFragmentShares
-			xiFragmentAdditiveSharesChs := make([]<-chan smpc.XiFragmentAdditiveShares, n)
+			// Create N processes that will consume ObscureRngs and
+			// produce ObscureRngSharesIndexed
+			obscureRngSharesChs := make([]<-chan smpc.ObscureRngShares, n)
 			for i := int64(0); i < n; i++ {
-				xiFragmentAdditiveSharesCh, errCh := smpc.ProcessXiFragmentGenerators(ctx, xiFragmentGeneratorChs[i])
-				xiFragmentAdditiveSharesChs[i] = xiFragmentAdditiveSharesCh
+				obscureRngShares, errCh := smpc.ProcessObscureRngs(ctx, obscureRngChs[i])
+				obscureRngSharesChs[i] = obscureRngShares
 
 				wg.Add(1)
 				go func(i int64) {
@@ -123,16 +100,16 @@ var _ = Describe("ξ-fragments", func() {
 			}
 
 			// Read one XiFragmentAdditiveShare from each process
-			xiFragmentAdditiveSharesCollection := make([]smpc.XiFragmentAdditiveShares, n)
+			obscureRngShares := make([]smpc.ObscureRngShares, n)
 			for i := int64(0); i < n; i++ {
-				xiFragmentAdditiveSharesCollection[i] = <-xiFragmentAdditiveSharesChs[i]
+				obscureRngShares[i] = <-obscureRngSharesChs[i]
 			}
 
 			// Reconstruct the expected random number
 			randomNumber := stackint.Zero()
 			for i := int64(0); i < n; i++ {
-				r := shamir.Join(&smpc.Prime, xiFragmentAdditiveSharesCollection[i].A)
-				randomNumber = randomNumber.AddModulo(&r, &smpc.Prime)
+				a := shamir.Join(&smpc.Prime, obscureRngShares[i].A)
+				randomNumber = randomNumber.AddModulo(&a, &smpc.Prime)
 			}
 
 			// Reconstruct the random number from the additive shares
@@ -140,7 +117,7 @@ var _ = Describe("ξ-fragments", func() {
 			for j := int64(0); j < k; j++ {
 				rs := make(shamir.Shares, n)
 				for i := int64(0); i < n; i++ {
-					rs[i] = xiFragmentAdditiveSharesCollection[i].A[j]
+					rs[i] = obscureRngShares[i].A[j]
 				}
 				randomNumberShares[j] = smpc.SummateShares(rs, &smpc.Prime)
 				Ω(randomNumberShares[j].Key).Should(Equal(j + 1))
@@ -153,16 +130,16 @@ var _ = Describe("ξ-fragments", func() {
 			wg.Wait()
 		})
 
-		It("should produce verified multiplicative shares", func() {
+		It("should produce verifiable obscure multiplication shares", func() {
 			var wg sync.WaitGroup
 
 			ctx, cancel := context.WithCancel(context.Background())
 			n, k := int64(31), int64(16)
 
-			// Create a set of process channels for receiving XiFragmentAdditiveShares
-			xiFragmentAdditiveSharesChs := make([]chan smpc.XiFragmentAdditiveShares, n)
+			// Create a set of process channels for receiving ObscureRngSharesIndexed
+			obscureRngSharesChs := make([]chan smpc.ObscureRngSharesIndexed, n)
 			for i := int64(0); i < n; i++ {
-				xiFragmentAdditiveSharesChs[i] = make(chan smpc.XiFragmentAdditiveShares)
+				obscureRngSharesChs[i] = make(chan smpc.ObscureRngSharesIndexed)
 			}
 
 			// Generate the additive shares and store the original values for
@@ -213,41 +190,42 @@ var _ = Describe("ξ-fragments", func() {
 				rSqs[j] = r.Value.MulModulo(&r.Value, &smpc.Prime)
 			}
 
-			// Send a XiFragmentAdditiveShares to all process channels
+			// Send a ObscureRngSharesIndexed to all process channels
 			wg.Add(1)
 			go func() {
 				defer GinkgoRecover()
 				defer wg.Done()
 				defer func() {
-					for i := range xiFragmentAdditiveSharesChs {
-						close(xiFragmentAdditiveSharesChs[i])
+					for i := range obscureRngSharesChs {
+						close(obscureRngSharesChs[i])
 					}
 				}()
 
-				for j := range xiFragmentAdditiveSharesChs {
-					xiFragmentAdditiveShares := smpc.XiFragmentAdditiveShares{
-						ID: stackint.One(),
+				one := stackint.One()
+				for j := range obscureRngSharesChs {
+					obscureRngSharesIndexed := smpc.ObscureRngSharesIndexed{
 						N:  n,
 						K:  k,
+						ID: one.Bytes(),
 						A:  make(shamir.Shares, n),
 						B:  make(shamir.Shares, n),
 						R:  make(shamir.Shares, n),
 					}
 					for i := int64(0); i < n; i++ {
-						xiFragmentAdditiveShares.A[i] = aShares[i][j]
-						xiFragmentAdditiveShares.B[i] = bShares[i][j]
-						xiFragmentAdditiveShares.R[i] = rShares[i][j]
+						obscureRngSharesIndexed.A[i] = aShares[i][j]
+						obscureRngSharesIndexed.B[i] = bShares[i][j]
+						obscureRngSharesIndexed.R[i] = rShares[i][j]
 					}
-					xiFragmentAdditiveSharesChs[j] <- xiFragmentAdditiveShares
+					obscureRngSharesChs[j] <- obscureRngSharesIndexed
 				}
 			}()
 
-			// Create N processes that will consume XiFragmentAdditiveShares
-			// and produce XiFragmentMultiplicativeShares
-			xiFragmentMultiplicativeSharesChs := make([]<-chan smpc.XiFragmentMultiplicativeShares, n)
+			// Create N processes that will consume ObscureRngSharesIndexed
+			// and produce ObscureMulShares
+			obscureMulSharesChs := make([]<-chan smpc.ObscureMulShares, n)
 			for i := int64(0); i < n; i++ {
-				xiFragmentMultiplicativeSharesCh, errCh := smpc.ProcessXiFragmentAdditiveShares(ctx, xiFragmentAdditiveSharesChs[i])
-				xiFragmentMultiplicativeSharesChs[i] = xiFragmentMultiplicativeSharesCh
+				obscureMulSharesCh, errCh := smpc.ProcessObscureRngSharesIndexed(ctx, obscureRngSharesChs[i])
+				obscureMulSharesChs[i] = obscureMulSharesCh
 
 				wg.Add(1)
 				go func(i int64) {
@@ -262,10 +240,10 @@ var _ = Describe("ξ-fragments", func() {
 
 			// Read one XiFragmentMultiplicativeShare from each process
 			for i := int64(0); i < n; i++ {
-				xiFragmentMultiplicativeShares := <-xiFragmentMultiplicativeSharesChs[i]
-				ab := shamir.Join(&smpc.Prime, xiFragmentMultiplicativeShares.AB)
+				obscureMulShares := <-obscureMulSharesChs[i]
+				ab := shamir.Join(&smpc.Prime, obscureMulShares.AB)
 				Ω(ab.Cmp(&abs[i])).Should(Equal(0))
-				rSq := shamir.Join(&smpc.Prime, xiFragmentMultiplicativeShares.RSquared)
+				rSq := shamir.Join(&smpc.Prime, obscureMulShares.RSq)
 				Ω(rSq.Cmp(&rSqs[i])).Should(Equal(0))
 			}
 
@@ -273,24 +251,24 @@ var _ = Describe("ξ-fragments", func() {
 			wg.Wait()
 		})
 
-		It("should consume multiplicative shares and produce a verified share", func() {
+		It("should produce verifiable obscure residue fragments", func() {
 			var wg sync.WaitGroup
 
 			ctx, cancel := context.WithCancel(context.Background())
 			n, k := int64(31), int64(16)
 
-			// Create a set of process channels for receiving XiFragmentMultiplicativeShares
-			xiFragmentMultiplicativeSharesChs := make([]chan smpc.XiFragmentMultiplicativeShares, n)
+			// Create a set of process channels for receiving ObscureMulSharesIndexed
+			obscureMulSharesIndexedChs := make([]chan smpc.ObscureMulSharesIndexed, n)
 			for i := int64(0); i < n; i++ {
-				xiFragmentMultiplicativeSharesChs[i] = make(chan smpc.XiFragmentMultiplicativeShares)
+				obscureMulSharesIndexedChs[i] = make(chan smpc.ObscureMulSharesIndexed)
 			}
 
 			// Create N processes that will consume
-			// XiFragmentMultiplicativeShares and produce XiFragments.
-			xiFragmentsChs := make([]<-chan smpc.XiFragment, n)
+			// ObscureMulSharesIndexed and produce XiFragments.
+			obscureResidueFragmentChs := make([]<-chan smpc.ObscureResidueFragment, n)
 			for i := int64(0); i < n; i++ {
-				xiFragmentsCh, errCh := smpc.ProcessXiFragmentMultiplicativeShares(ctx, xiFragmentMultiplicativeSharesChs[i])
-				xiFragmentsChs[i] = xiFragmentsCh
+				obscureResidueFragmentCh, errCh := smpc.ProcessObscureMulSharesIndexed(ctx, obscureMulSharesIndexedChs[i])
+				obscureResidueFragmentChs[i] = obscureResidueFragmentCh
 
 				wg.Add(1)
 				go func(i int64) {
@@ -338,7 +316,7 @@ var _ = Describe("ξ-fragments", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 
-			// Send a XiFragmentMultiplicativeShares to each process
+			// Send a ObscureMulSharesIndexed to each process
 			for j := int64(0); j < n; j++ {
 				ab := make(shamir.Shares, n)
 				for i := int64(0); i < n; i++ {
@@ -350,31 +328,33 @@ var _ = Describe("ξ-fragments", func() {
 					rSq[i] = rSqShares[i][j]
 					Ω(rSq[i].Key).Should(Equal(j + 1))
 				}
-				xiFragmentMultiplicativeSharesChs[j] <- smpc.XiFragmentMultiplicativeShares{
-					ID:       stackint.One(),
-					N:        n,
-					K:        k,
-					AB:       ab,
-					RSquared: rSq,
+
+				one := stackint.One()
+				obscureMulSharesIndexedChs[j] <- smpc.ObscureMulSharesIndexed{
+					N:   n,
+					K:   k,
+					ID:  one.Bytes(),
+					AB:  ab,
+					RSq: rSq,
 				}
 			}
-			for i := range xiFragmentMultiplicativeSharesChs {
-				close(xiFragmentMultiplicativeSharesChs[i])
+			for i := range obscureMulSharesIndexedChs {
+				close(obscureMulSharesIndexedChs[i])
 			}
 
-			// Reconstruct the values AB, and  R² from XiFragments
-			xiABShares := make(shamir.Shares, n)
-			xiRSqShares := make(shamir.Shares, n)
-			for i := range xiFragmentsChs {
-				xiFragment := <-xiFragmentsChs[i]
-				xiABShares[i] = xiFragment.AB
-				xiRSqShares[i] = xiFragment.RSquared
+			// Reconstruct the values AB, and  R² from ObscureResidueFragments
+			obscureABShares := make(shamir.Shares, n)
+			obscureRSqShares := make(shamir.Shares, n)
+			for i := range obscureResidueFragmentChs {
+				obscureResidueFragment := <-obscureResidueFragmentChs[i]
+				obscureABShares[i] = obscureResidueFragment.AB
+				obscureRSqShares[i] = obscureResidueFragment.RSq
 			}
-			xiAB := shamir.Join(&smpc.Prime, xiABShares)
-			xiRq := shamir.Join(&smpc.Prime, xiRSqShares)
+			obscureAB := shamir.Join(&smpc.Prime, obscureABShares)
+			obscureRq := shamir.Join(&smpc.Prime, obscureRSqShares)
 
-			Ω(ab.Cmp(&xiAB)).Should(Equal(0))
-			Ω(rSq.Cmp(&xiRq)).Should(Equal(0))
+			Ω(ab.Cmp(&obscureAB)).Should(Equal(0))
+			Ω(rSq.Cmp(&obscureRq)).Should(Equal(0))
 
 			cancel()
 			wg.Wait()

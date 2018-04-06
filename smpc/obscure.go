@@ -88,10 +88,10 @@ func ProcessObscureRngs(ctx context.Context, obscureRngChIn <-chan ObscureRng) (
 	return obscureRngSharesCh, errCh
 }
 
-// ProcesssObscureRngSharesIndexed by reading from an input channel, summating
+// ProcessObscureRngSharesIndexed by reading from an input channel, summating
 // the indexed shares, and multiplying them, and producing ObscureMulShares by
 // writing to an output channel.
-func ProcesssObscureRngSharesIndexed(ctx context.Context, obscureRngSharesIndexedChIn <-chan ObscureRngSharesIndexed) (<-chan ObscureMulShares, <-chan error) {
+func ProcessObscureRngSharesIndexed(ctx context.Context, obscureRngSharesIndexedChIn <-chan ObscureRngSharesIndexed) (<-chan ObscureMulShares, <-chan error) {
 	obscureMulSharesCh := make(chan ObscureMulShares)
 	errCh := make(chan error)
 
@@ -150,10 +150,10 @@ func ProcesssObscureRngSharesIndexed(ctx context.Context, obscureRngSharesIndexe
 	return obscureMulSharesCh, errCh
 }
 
-// ProcesssObscureMulSharesIndexed by reading from an input channel, using the
+// ProcessObscureMulSharesIndexed by reading from an input channel, using the
 // indexed shares to produce a share of each multiplication, and finally
 // producing an ObscureResidueFragment by writing to an output channel.
-func ProcesssObscureMulSharesIndexed(ctx context.Context, obscureMulSharesIndexedChIn <-chan ObscureMulSharesIndexed) (<-chan ObscureResidueFragment, <-chan error) {
+func ProcessObscureMulSharesIndexed(ctx context.Context, obscureMulSharesIndexedChIn <-chan ObscureMulSharesIndexed) (<-chan ObscureResidueFragment, <-chan error) {
 	obscureResidueFragmentCh := make(chan ObscureResidueFragment)
 	errCh := make(chan error)
 
