@@ -25,22 +25,22 @@ func (orderBookDB OrderBookDB) Close() {
 	orderBookDB.Close()
 }
 
-func (orderBookDB OrderBookDB) Open(message Message) {
+func (orderBookDB OrderBookDB) Open(message *Message) {
 	// TODO: Implement key/value file store
 }
 
-func (orderBookDB OrderBookDB) Match(message Message) {
+func (orderBookDB OrderBookDB) Match(message *Message) {
 	// TODO: Implement key/value file store
 }
 
-func (orderBookDB OrderBookDB) Confirm(message Message) {
+func (orderBookDB OrderBookDB) Confirm(message *Message) {
 	// TODO: Implement key/value file store
 }
 
-func (orderBookDB OrderBookDB) Release(message Message) {
+func (orderBookDB OrderBookDB) Release(message *Message) {
 	// TODO: Implement key/value file store
 }
 
-func (orderBookDB OrderBookDB) Settle(message Message) {
+func (orderBookDB OrderBookDB) Settle(message *Message) {
 	// TODO: Implement key/value file store
 }

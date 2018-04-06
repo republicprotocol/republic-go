@@ -118,9 +118,9 @@ func (queue SyncerServerStreamQueue) Send(message dispatch.Message) error {
 		}
 	}()
 
-	msg, ok := message.(orderbook.Message)
+	msg, ok := message.(*orderbook.Message)
 	if !ok {
-		return fmt.Errorf("wrong message type, has %T expect *rpc.SyncBlock", message)
+		return fmt.Errorf("wrong message type, has %T expect *orderbook.Message", message)
 	}
 	queue.write <- ToBlock(msg)
 	return err
@@ -240,7 +240,7 @@ func (queue SyncerClientStreamQueue) readAll() error {
 	// todo : why does it not complain about returning nothing ?
 }
 
-func ToBlock(message orderbook.Message) *SyncBlock {
+func ToBlock(message *orderbook.Message) *SyncBlock {
 	syncBlock := &SyncBlock{
 		Signature: message.Ord.Signature,
 		Timestamp: time.Now().Unix(),

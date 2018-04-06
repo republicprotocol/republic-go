@@ -68,35 +68,35 @@ func (orderBook OrderBook) Unsubscribe(id string) {
 }
 
 // Open is called when we first receive the order fragment.
-func (orderBook OrderBook) Open(message Message) error {
+func (orderBook OrderBook) Open(message *Message) error {
 	orderBook.orderBookCache.Open(message)
 	orderBook.orderBookDB.Open(message)
 	return orderBook.splitter.Send(message)
 }
 
 // Match is called when we discover a match for the order.
-func (orderBook OrderBook) Match(message Message) error {
+func (orderBook OrderBook) Match(message *Message) error {
 	orderBook.orderBookCache.Match(message)
 	orderBook.orderBookDB.Match(message)
 	return orderBook.splitter.Send(message)
 }
 
 // Confirm is called when the order has been confirmed by the hyperdrive.
-func (orderBook OrderBook) Confirm(message Message) error {
+func (orderBook OrderBook) Confirm(message *Message) error {
 	orderBook.orderBookCache.Confirm(message)
 	orderBook.orderBookDB.Confirm(message)
 	return orderBook.splitter.Send(message)
 }
 
 // Release is called when the order has been denied by the hyperdrive.
-func (orderBook OrderBook) Release(message Message) error {
+func (orderBook OrderBook) Release(message *Message) error {
 	orderBook.orderBookCache.Release(message)
 	orderBook.orderBookDB.Release(message)
 	return orderBook.splitter.Send(message)
 }
 
 // Settle is called when the order is settled.
-func (orderBook OrderBook) Settle(message Message) error {
+func (orderBook OrderBook) Settle(message *Message) error {
 	orderBook.orderBookCache.Settle(message)
 	orderBook.orderBookDB.Settle(message)
 	return orderBook.splitter.Send(message)

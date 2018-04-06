@@ -28,7 +28,7 @@ const (
 	DefaultConcurrent           = false
 )
 
-var numberOfNodes = 15
+var numberOfNodes = 33
 
 var bootstrapNodes = []string{
 	"/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",

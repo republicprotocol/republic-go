@@ -195,7 +195,7 @@ var _ = Describe("Dark nodes", func() {
 	}
 
 	// Synchronization
-	for _, numberOfNodes := range []int{15} {
+	for _, numberOfNodes := range []int{32} {
 		func(numberOfNodes int) {
 			FContext(fmt.Sprintf("synchronizing with %d nodes", numberOfNodes), func() {
 
@@ -212,8 +212,10 @@ var _ = Describe("Dark nodes", func() {
 				})
 
 				It("should reach a fault tolerant level of connectivity", func() {
+					start := time.Now()
 					By("bootstrap nodes")
 					bootstrapNodes(nodes)
+					log.Println("bootstrapping takes" , time.Since(start) )
 
 					By("send orders")
 					err := sendOrders(nodes)
@@ -223,6 +225,7 @@ var _ = Describe("Dark nodes", func() {
 						defer GinkgoRecover()
 						for i := 0; i < 5; i++ {
 							time.Sleep(10 * time.Second)
+							log.Println("sending a new patch of orders")
 							err := sendOrders(nodes)
 							Ω(err).ShouldNot(HaveOccurred())
 						}
@@ -246,6 +249,7 @@ var _ = Describe("Dark nodes", func() {
 								continuing = false
 								break
 							}
+							// Handle received blocks
 							var ord order.Order
 							switch block.OrderBlock.(type) {
 							case *rpc.SyncBlock_Open:
@@ -261,6 +265,7 @@ var _ = Describe("Dark nodes", func() {
 							default:
 								log.Printf("unknown order status, %t", block.OrderBlock)
 							}
+
 							if ord.Parity == order.ParityBuy {
 								log.Println("buy  order received from synchronization, orderID : ", ord.ID.String())
 							} else {

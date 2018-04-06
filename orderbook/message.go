@@ -12,14 +12,14 @@ type Message struct {
 }
 
 // NewMessage returns a new orderbook message.
-func NewMessage(ord order.Order, status order.Status, hash [32]byte) Message {
+func NewMessage(ord order.Order, status order.Status, hash [32]byte) *Message {
 	//var epochHash [32]byte
 	//if len(hash) != 32 {
 	//	log.Println("wrong epoch hash length")
 	//	return Message{}
 	//}
 	//copy(epochHash[:], hash)
-	return Message{
+	return &Message{
 		EpochHash: hash,
 		Ord:       ord,
 		Status:    status,
