@@ -48,7 +48,8 @@ var _ = Describe("Order fragment processor", func() {
 			orderFragmentCh := make(chan order.Fragment)
 			orderTuplesCh, errCh := smpc.ProcessOrderFragments(ctx, orderFragmentCh, numOrderTuples)
 
-			// Consume OrderTuples and errors
+			// Consume OrderTuples and cancel the process once all OrderTuples
+			// have been consumed
 			wg.Add(1)
 			go func() {
 				defer GinkgoRecover()
@@ -63,6 +64,8 @@ var _ = Describe("Order fragment processor", func() {
 				}
 				cancel()
 			}()
+
+			// Consume all errors
 			wg.Add(1)
 			go func() {
 				defer GinkgoRecover()
@@ -73,24 +76,31 @@ var _ = Describe("Order fragment processor", func() {
 				}
 			}()
 
-			// Produce order fragments
-			wg.Add(1)
-			go func() {
-				defer GinkgoRecover()
-				defer wg.Done()
-				defer close(orderFragmentCh)
+			// Produce order fragments for the process
+			var orderWg sync.WaitGroup
+			orderWg.Add(numBuyOrders + numSellOrders)
+			for i := 0; i < numBuyOrders; i++ {
+				go func(i int) {
+					defer GinkgoRecover()
+					defer orderWg.Done()
 
-				zeroShare := shamir.Share{Key: 0, Value: stackint.Zero()}
-				for i := 0; i < numBuyOrders; i++ {
+					zeroShare := shamir.Share{Key: 0, Value: stackint.Zero()}
 					buy := order.NewFragment(order.ID([]byte{0, byte(i)}), order.TypeLimit, order.ParityBuy, zeroShare, zeroShare, zeroShare, zeroShare, zeroShare)
 					orderFragmentCh <- *buy
+				}(i)
+			}
+			for i := 0; i < numSellOrders; i++ {
+				go func(i int) {
+					defer GinkgoRecover()
+					defer orderWg.Done()
 
-				}
-				for i := 0; i < numSellOrders; i++ {
+					zeroShare := shamir.Share{Key: 0, Value: stackint.Zero()}
 					sell := order.NewFragment(order.ID([]byte{byte(i), 0}), order.TypeLimit, order.ParitySell, zeroShare, zeroShare, zeroShare, zeroShare, zeroShare)
 					orderFragmentCh <- *sell
-				}
-			}()
+				}(i)
+			}
+			orderWg.Wait()
+			close(orderFragmentCh)
 
 			wg.Wait()
 		})
