@@ -212,10 +212,8 @@ var _ = Describe("Dark nodes", func() {
 				})
 
 				It("should reach a fault tolerant level of connectivity", func() {
-					start := time.Now()
 					By("bootstrap nodes")
 					bootstrapNodes(nodes)
-					log.Println("bootstrapping takes" , time.Since(start) )
 
 					By("send orders")
 					err := sendOrders(nodes)
