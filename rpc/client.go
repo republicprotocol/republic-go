@@ -87,8 +87,8 @@ func (client *Client) QueryPeers(ctx context.Context, target *Address) (<-chan *
 
 		for {
 			multiAddress, err := stream.Recv()
-			if err != nil{
-				if err != io.EOF{
+			if err != nil {
+				if err != io.EOF {
 					errCh <- err
 				}
 				return
@@ -125,8 +125,8 @@ func (client *Client) QueryPeersDeep(ctx context.Context, target *Address) (<-ch
 
 		for {
 			multiAddress, err := stream.Recv()
-			if err != nil{
-				if err != io.EOF{
+			if err != nil {
+				if err != io.EOF {
 					errCh <- err
 				}
 				return
@@ -161,8 +161,8 @@ func (client *Client) Sync(ctx context.Context) (<-chan *SyncBlock, <-chan error
 
 		for {
 			syncBlock, err := stream.Recv()
-			if err != nil{
-				if err != io.EOF{
+			if err != nil {
+				if err != io.EOF {
 					errCh <- err
 				}
 				return

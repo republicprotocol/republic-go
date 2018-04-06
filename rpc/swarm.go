@@ -114,7 +114,7 @@ func (service *SwarmService) Prune(target identity.Address) (bool, error) {
 		return true, service.DHT.RemoveMultiAddress(multiAddress)
 	}
 
-	ctx , cancel := context.WithTimeout(context.Background(), service.Options.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), service.Options.Timeout)
 	defer cancel()
 
 	if err := client.Ping(ctx); err != nil {
@@ -248,7 +248,7 @@ func (service *SwarmService) queryPeersDeep(query *Query, stream Swarm_QueryPeer
 	}
 
 	// While there are still Nodes to be explored in the frontier.
-	for len(frontier) > 0  {
+	for len(frontier) > 0 {
 		// Pop the first peer off the frontier.
 		peer := frontier[0]
 		frontier = frontier[1:]
@@ -260,25 +260,25 @@ func (service *SwarmService) queryPeersDeep(query *Query, stream Swarm_QueryPeer
 			continue
 		}
 
-		ctx , cancel := context.WithTimeout(context.Background(), service.Timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), service.Timeout)
 		defer cancel()
 
 		candidates, errs := service.ClientPool.QueryPeers(ctx, peer, query.Target)
-		next := true
-		for next {
+		continuing := true
+		for continuing {
 			select {
-			case err , ok := <- errs:
+			case err, ok := <-errs:
 				if !ok {
 					if err != nil {
 						service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
 					}
-					next = false
-				}else {
+				} else {
 					service.Logger.Error(fmt.Sprintf("cannot deep query: %s", err.Error()))
 				}
-			case marshaledCandidate, ok  := <- candidates:
+				continuing = false
+			case marshaledCandidate, ok := <-candidates:
 				if !ok {
-					next = false
+					continuing = false
 					break
 				}
 
@@ -304,28 +304,29 @@ func (service *SwarmService) queryPeersDeep(query *Query, stream Swarm_QueryPeer
 }
 
 func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.MultiAddress) error {
-	ctx , cancel := context.WithTimeout(context.Background(), service.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), service.Timeout)
 	defer cancel()
 
 	// Query the bootstrap service.
 	peers, errs := service.ClientPool.QueryPeersDeep(ctx, bootstrapMultiAddress, MarshalAddress(service.Address()))
 
-	next := true
+	continuing := true
 	numberOfPeers := 0
-	for next {
+	for continuing {
 		select {
 		case err, ok := <-errs:
 			if !ok {
 				if err != nil {
 					service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
 				}
-				next = false
 			} else {
 				service.Logger.Error(fmt.Sprintf("cannot deep query: %s", err.Error()))
 			}
+			continuing = false
+
 		case marshaledPeer, ok := <-peers:
 			if !ok {
-				next = false
+				continuing = false
 				break
 			}
 
@@ -390,7 +391,7 @@ func (service *SwarmService) FindNode(targetID identity.ID) (*identity.MultiAddr
 
 	marshaledTarget := MarshalAddress(target)
 	for _, peer := range peers {
-		ctx , cancel := context.WithTimeout(context.Background(), service.Timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), service.Timeout)
 		defer cancel()
 
 		candidates, errs := service.ClientPool.QueryPeersDeep(ctx, peer, marshaledTarget)

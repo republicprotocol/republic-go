@@ -240,13 +240,13 @@ func (queue SyncerClientStreamQueue) readAll() error {
 	// todo : why does it not complain about returning nothing ?
 }
 
-func ToBlock(message orderbook.Message) *SyncBlock{
+func ToBlock(message orderbook.Message) *SyncBlock {
 	syncBlock := &SyncBlock{
 		Signature: message.Ord.Signature,
 		Timestamp: time.Now().Unix(),
 		EpochHash: message.EpochHash[:],
 	}
-	switch message.Status  {
+	switch message.Status {
 	case order.Open:
 		syncBlock.OrderBlock = &SyncBlock_Open{
 			Open: MarshalOrder(&message.Ord),
@@ -261,7 +261,7 @@ func ToBlock(message orderbook.Message) *SyncBlock{
 		}
 	case order.Confirmed:
 		syncBlock.OrderBlock = &SyncBlock_Confirmed{
-			Confirmed:MarshalOrder(&message.Ord),
+			Confirmed: MarshalOrder(&message.Ord),
 		}
 	case order.Settled:
 		syncBlock.OrderBlock = &SyncBlock_Settled{

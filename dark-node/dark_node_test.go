@@ -26,7 +26,7 @@ import (
 
 const (
 	NumberOfBootstrapNodes = 5
-	NumberOfOrders         = 10
+	NumberOfOrders         = 5
 )
 
 var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
@@ -219,25 +219,60 @@ var _ = Describe("Dark nodes", func() {
 					err := sendOrders(nodes)
 					Ω(err).ShouldNot(HaveOccurred())
 
-					//go func() {
-					//	defer GinkgoRecover()
-					//
-					//	time.Sleep(10 * time.Second)
-					//	err := sendOrders(nodes)
-					//	Ω(err).ShouldNot(HaveOccurred())
-					//}()
+					go func() {
+						defer GinkgoRecover()
+						for i := 0; i < 5; i++ {
+							time.Sleep(10 * time.Second)
+							err := sendOrders(nodes)
+							Ω(err).ShouldNot(HaveOccurred())
+						}
+					}()
 
 					By("synchronization")
-					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 					defer cancel()
-					syncBlocks, e := nodes[0].ClientPool.Sync(ctx, nodes[1].NetworkOptions.MultiAddress)
-					for err := range e {
-						log.Println(err)
-					}
-					for block := range syncBlocks {
-						log.Println(block.OrderBlock, block.EpochHash)
-					}
 
+					syncBlocks, errs := nodes[0].ClientPool.Sync(ctx, nodes[1].NetworkOptions.MultiAddress)
+					continuing := true
+					for continuing {
+						select {
+						case err, ok := <-errs:
+							if !ok {
+								if err != nil {
+									log.Println("cannot sync (err channel closed)", err)
+								}
+							} else {
+								log.Println("cannot sync (err channel open)", err)
+							}
+							continuing = false
+						case block, ok := <-syncBlocks:
+							if !ok {
+								continuing = false
+								break
+							}
+							var ord order.Order
+							switch block.OrderBlock.(type) {
+							case *rpc.SyncBlock_Open:
+								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Open).Open)
+							case *rpc.SyncBlock_Confirmed:
+								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Confirmed).Confirmed)
+							case *rpc.SyncBlock_Unconfirmed:
+								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Unconfirmed).Unconfirmed)
+							case *rpc.SyncBlock_Canceled:
+								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Canceled).Canceled)
+							case *rpc.SyncBlock_Settled:
+								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Settled).Settled)
+							default:
+								log.Printf("unknown order status, %t", block.OrderBlock)
+							}
+							if ord.Parity == order.ParityBuy {
+								log.Println("buy  order received from synchronization, orderID : ", ord.ID.String())
+							} else {
+								log.Println("sell order received from synchronization, orderID : ", ord.ID.String())
+							}
+
+						}
+					}
 				})
 
 				AfterEach(func() {

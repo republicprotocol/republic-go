@@ -73,7 +73,7 @@ type ClientOptions struct {
 // is first created.
 func DefaultClientOptions() ClientOptions {
 	return ClientOptions{
-		Timeout:        30 * time.Second,
+		Timeout: 30 * time.Second,
 	}
 }
 

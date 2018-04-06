@@ -80,7 +80,7 @@ func (pool *ClientPool) findOrCreateClient(to identity.MultiAddress) (*Client, e
 }
 
 // Ping RPC.
-func (pool *ClientPool) Ping(ctx context.Context,  to identity.MultiAddress) error {
+func (pool *ClientPool) Ping(ctx context.Context, to identity.MultiAddress) error {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		return err
