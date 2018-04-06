@@ -212,8 +212,10 @@ var _ = Describe("Dark nodes", func() {
 				})
 
 				It("should reach a fault tolerant level of connectivity", func() {
+					start := time.Now()
 					By("bootstrap nodes")
 					bootstrapNodes(nodes)
+					log.Println("bootstrapping takes ", time.Since(start))
 
 					By("send orders")
 					err := sendOrders(nodes)
@@ -239,7 +241,7 @@ var _ = Describe("Dark nodes", func() {
 						select {
 						case err := <-errs:
 							if err != nil {
-								log.Println("cannot sync (err channel closed)", err)
+								log.Println("cannot sync", err)
 							}
 							continuing = false
 						case block, ok := <-syncBlocks:
@@ -307,8 +309,8 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 }
 
 func registerNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
-	for _, node := range nodes {
-		_, err := mockRegistrar.Register(node.ID, []byte{}, big.NewInt(100))
+	for _, n := range nodes {
+		_, err := mockRegistrar.Register(n.ID, []byte{}, big.NewInt(100))
 		if err != nil {
 			return err
 		}
@@ -318,8 +320,8 @@ func registerNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
 }
 
 func deregisterNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
-	for _, node := range nodes {
-		_, err := mockRegistrar.Deregister(node.ID)
+	for _, n := range nodes {
+		_, err := mockRegistrar.Deregister(n.ID)
 		if err != nil {
 			return err
 		}
@@ -457,7 +459,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 		}
 
 		do.CoForAll(buyShares, func(j int) {
-			orderRequet := &rpc.OpenOrderRequest{
+			orderRequest := &rpc.OpenOrderRequest{
 				From: &rpc.MultiAddress{
 					Signature:    []byte{},
 					MultiAddress: nodes[0].NetworkOptions.MultiAddress.String(),
@@ -466,7 +468,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			err := pool.OpenOrder(ctx, nodes[j].NetworkOptions.MultiAddress, orderRequet)
+			err := pool.OpenOrder(ctx, nodes[j].NetworkOptions.MultiAddress, orderRequest)
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)
@@ -474,7 +476,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 		})
 
 		do.CoForAll(sellShares, func(j int) {
-			orderRequet := &rpc.OpenOrderRequest{
+			orderRequest := &rpc.OpenOrderRequest{
 				From: &rpc.MultiAddress{
 					Signature:    []byte{},
 					MultiAddress: nodes[0].NetworkOptions.MultiAddress.String(),
@@ -483,7 +485,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			err := pool.OpenOrder(ctx, nodes[j].NetworkOptions.MultiAddress, orderRequet)
+			err := pool.OpenOrder(ctx, nodes[j].NetworkOptions.MultiAddress, orderRequest)
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)
