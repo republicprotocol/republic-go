@@ -267,13 +267,9 @@ func (service *SwarmService) queryPeersDeep(query *Query, stream Swarm_QueryPeer
 		continuing := true
 		for continuing {
 			select {
-			case err, ok := <-errs:
-				if !ok {
-					if err != nil {
-						service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
-					}
-				} else {
-					service.Logger.Error(fmt.Sprintf("cannot deep query: %s", err.Error()))
+			case err := <-errs:
+				if err != nil {
+					service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
 				}
 				continuing = false
 			case marshaledCandidate, ok := <-candidates:
@@ -314,16 +310,11 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 	numberOfPeers := 0
 	for continuing {
 		select {
-		case err, ok := <-errs:
-			if !ok {
-				if err != nil {
-					service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
-				}
-			} else {
-				service.Logger.Error(fmt.Sprintf("cannot deep query: %s", err.Error()))
+		case err := <-errs:
+			if err != nil {
+				service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
 			}
 			continuing = false
-
 		case marshaledPeer, ok := <-peers:
 			if !ok {
 				continuing = false

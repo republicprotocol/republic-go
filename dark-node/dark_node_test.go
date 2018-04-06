@@ -236,13 +236,9 @@ var _ = Describe("Dark nodes", func() {
 					continuing := true
 					for continuing {
 						select {
-						case err, ok := <-errs:
-							if !ok {
-								if err != nil {
-									log.Println("cannot sync (err channel closed)", err)
-								}
-							} else {
-								log.Println("cannot sync (err channel open)", err)
+						case err := <-errs:
+							if err != nil {
+								log.Println("cannot sync (err channel closed)", err)
 							}
 							continuing = false
 						case block, ok := <-syncBlocks:
