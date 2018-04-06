@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"fmt"
+	"io"
 	"runtime"
 	"sync"
 
@@ -12,7 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// A Client is used to create and mange a gRPC connection. It provides methods
+// A Client is used to create and manage a gRPC connection. It provides methods
 // for all RPCs and handles all timeouts and retries.
 type Client struct {
 	SmpcClient
@@ -86,10 +87,13 @@ func (client *Client) QueryPeers(ctx context.Context, target *Address) (<-chan *
 
 		for {
 			multiAddress, err := stream.Recv()
-			if err != nil {
-				errCh <- err
+			if err != nil{
+				if err != io.EOF{
+					errCh <- err
+				}
 				return
 			}
+
 			select {
 			case <-ctx.Done():
 				errCh <- ctx.Err()
@@ -121,8 +125,10 @@ func (client *Client) QueryPeersDeep(ctx context.Context, target *Address) (<-ch
 
 		for {
 			multiAddress, err := stream.Recv()
-			if err != nil {
-				errCh <- err
+			if err != nil{
+				if err != io.EOF{
+					errCh <- err
+				}
 				return
 			}
 			select {
@@ -155,8 +161,10 @@ func (client *Client) Sync(ctx context.Context) (<-chan *SyncBlock, <-chan error
 
 		for {
 			syncBlock, err := stream.Recv()
-			if err != nil {
-				errCh <- err
+			if err != nil{
+				if err != io.EOF{
+					errCh <- err
+				}
 				return
 			}
 			select {
@@ -235,6 +243,7 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *SmpcMessa
 			case <-ctx.Done():
 				return
 			case message, ok := <-messageChIn:
+				// what if we just want to listen for messages and response
 				if !ok {
 					return
 				}

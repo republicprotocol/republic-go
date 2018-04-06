@@ -113,7 +113,11 @@ func (service *SwarmService) Prune(target identity.Address) (bool, error) {
 	if err != nil {
 		return true, service.DHT.RemoveMultiAddress(multiAddress)
 	}
-	if err := client.Ping(); err != nil {
+
+	ctx , cancel := context.WithTimeout(context.Background(), service.Options.Timeout)
+	defer cancel()
+
+	if err := client.Ping(ctx); err != nil {
 		return true, service.DHT.RemoveMultiAddress(multiAddress)
 	}
 	return false, service.DHT.UpdateMultiAddress(multiAddress)
@@ -244,7 +248,7 @@ func (service *SwarmService) queryPeersDeep(query *Query, stream Swarm_QueryPeer
 	}
 
 	// While there are still Nodes to be explored in the frontier.
-	for len(frontier) > 0 {
+	for len(frontier) > 0  {
 		// Pop the first peer off the frontier.
 		peer := frontier[0]
 		frontier = frontier[1:]
@@ -256,57 +260,87 @@ func (service *SwarmService) queryPeersDeep(query *Query, stream Swarm_QueryPeer
 			continue
 		}
 
-		candidates, err := service.ClientPool.QueryPeers(peer, query.Target)
-		if err != nil {
-			service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
-			continue
-		}
+		ctx , cancel := context.WithTimeout(context.Background(), service.Timeout)
+		defer cancel()
 
-		for marshaledCandidate := range candidates {
+		candidates, errs := service.ClientPool.QueryPeers(ctx, peer, query.Target)
+		next := true
+		for next {
+			select {
+			case err , ok := <- errs:
+				if !ok {
+					if err != nil {
+						service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
+					}
+					next = false
+				}else {
+					service.Logger.Error(fmt.Sprintf("cannot deep query: %s", err.Error()))
+				}
+			case marshaledCandidate, ok  := <- candidates:
+				if !ok {
+					next = false
+					break
+				}
 
-			candidate, err := UnmarshalMultiAddress(marshaledCandidate)
-			if err != nil {
-				return err
+				candidate, err := UnmarshalMultiAddress(marshaledCandidate)
+				if err != nil {
+					return err
+				}
+				if _, ok := visited[candidate.Address()]; ok {
+					continue
+				}
+				// Expand the frontier by candidates that have not already been
+				// explored, and store them in a persistent list of close peers.
+				if err := stream.Send(marshaledCandidate); err != nil {
+					return err
+				}
+				frontier = append(frontier, candidate)
+				visited[candidate.Address()] = struct{}{}
 			}
-			if _, ok := visited[candidate.Address()]; ok {
-				continue
-			}
-			// Expand the frontier by candidates that have not already been
-			// explored, and store them in a persistent list of close peers.
-			if err := stream.Send(marshaledCandidate); err != nil {
-				return err
-			}
-			frontier = append(frontier, candidate)
-			visited[candidate.Address()] = struct{}{}
+
 		}
 	}
 	return service.updatePeer(query.From)
 }
 
 func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress identity.MultiAddress) error {
-	var err error
-	var peers chan *MultiAddress
+	ctx , cancel := context.WithTimeout(context.Background(), service.Timeout)
+	defer cancel()
 
 	// Query the bootstrap service.
-	peers, err = service.ClientPool.QueryPeersDeep(bootstrapMultiAddress, MarshalAddress(service.Address()))
-	if err != nil {
-		return err
-	}
+	peers, errs := service.ClientPool.QueryPeersDeep(ctx, bootstrapMultiAddress, MarshalAddress(service.Address()))
 
-	// Peers returned by the query will be added to the DHT.
+	next := true
 	numberOfPeers := 0
-	for marshaledPeer := range peers {
-		peer, err := UnmarshalMultiAddress(marshaledPeer)
-		if err != nil {
-			service.Logger.Error(fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
-			continue
-		}
-		if peer.Address() == service.Address() {
-			continue
-		}
-		numberOfPeers++
-		if err := service.DHT.UpdateMultiAddress(peer); err != nil {
-			service.Logger.Error(fmt.Sprintf("cannot update DHT: %s", err.Error()))
+	for next {
+		select {
+		case err, ok := <-errs:
+			if !ok {
+				if err != nil {
+					service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
+				}
+				next = false
+			} else {
+				service.Logger.Error(fmt.Sprintf("cannot deep query: %s", err.Error()))
+			}
+		case marshaledPeer, ok := <-peers:
+			if !ok {
+				next = false
+				break
+			}
+
+			peer, err := UnmarshalMultiAddress(marshaledPeer)
+			if err != nil {
+				service.Logger.Error(fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
+				continue
+			}
+			if peer.Address() == service.Address() {
+				continue
+			}
+			numberOfPeers++
+			if err := service.DHT.UpdateMultiAddress(peer); err != nil {
+				service.Logger.Error(fmt.Sprintf("cannot update DHT: %s", err.Error()))
+			}
 		}
 	}
 
@@ -356,8 +390,11 @@ func (service *SwarmService) FindNode(targetID identity.ID) (*identity.MultiAddr
 
 	marshaledTarget := MarshalAddress(target)
 	for _, peer := range peers {
-		candidates, err := service.ClientPool.QueryPeersDeep(peer, marshaledTarget)
-		if err != nil {
+		ctx , cancel := context.WithTimeout(context.Background(), service.Timeout)
+		defer cancel()
+
+		candidates, errs := service.ClientPool.QueryPeersDeep(ctx, peer, marshaledTarget)
+		for err := range errs {
 			service.Logger.Error(fmt.Sprintf("error finding node: %s", err.Error()))
 			continue
 		}

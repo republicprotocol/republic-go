@@ -74,8 +74,6 @@ type ClientOptions struct {
 func DefaultClientOptions() ClientOptions {
 	return ClientOptions{
 		Timeout:        30 * time.Second,
-		TimeoutBackoff: 0 * time.Second,
-		TimeoutRetries: 3,
 	}
 }
 

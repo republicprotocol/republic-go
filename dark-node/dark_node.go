@@ -2,6 +2,7 @@ package node
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -307,7 +308,10 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 		}
 
 		// Ping the dark node to test the connection
-		node.ClientPool.Ping(*multiAddress)
+		ctx , cancel := context.WithTimeout(context.Background(), node.NetworkOptions.Timeout)
+		defer cancel()
+
+		node.ClientPool.Ping(ctx, *multiAddress)
 		if err != nil {
 			node.Logger.Warn(fmt.Sprintf("cannot ping to dark node %v: %s", n.ID.Address(), err.Error()))
 			return

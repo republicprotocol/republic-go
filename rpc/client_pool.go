@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"time"
 
 	"github.com/republicprotocol/go-do"
@@ -9,7 +10,7 @@ import (
 
 // A ClientCacheEntry is pointer to a Client that is stored in a cache. It is
 // coupled with the timestamp at which the Client was last accessed from the
-// cach.
+// cache.
 type ClientCacheEntry struct {
 	*Client
 	Timestamp time.Time
@@ -55,7 +56,7 @@ func (pool *ClientPool) findOrCreateClient(to identity.MultiAddress) (*Client, e
 		return clientCacheEntry.Client, nil
 	}
 
-	client, err := NewClient(to, pool.from)
+	client, err := NewClient(context.Background(), to, pool.from)
 	if err != nil {
 		return client, err
 	}
@@ -79,64 +80,77 @@ func (pool *ClientPool) findOrCreateClient(to identity.MultiAddress) (*Client, e
 }
 
 // Ping RPC.
-func (pool *ClientPool) Ping(to identity.MultiAddress) error {
+func (pool *ClientPool) Ping(ctx context.Context,  to identity.MultiAddress) error {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		return err
 	}
-	return client.Ping()
+
+	return client.Ping(ctx)
 }
 
 // QueryPeers RPC.
-func (pool *ClientPool) QueryPeers(to identity.MultiAddress, target *Address) (chan *MultiAddress, error) {
+func (pool *ClientPool) QueryPeers(ctx context.Context, to identity.MultiAddress, target *Address) (<-chan *MultiAddress, <-chan error) {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
-		return nil, err
+		errCh := make(chan error, 1)
+		errCh <- err
+		return nil, errCh
 	}
-	return client.QueryPeers(target)
+
+	return client.QueryPeers(ctx, target)
 }
 
 // QueryPeersDeep RPC.
-func (pool *ClientPool) QueryPeersDeep(to identity.MultiAddress, target *Address) (chan *MultiAddress, error) {
+func (pool *ClientPool) QueryPeersDeep(ctx context.Context, to identity.MultiAddress, target *Address) (<-chan *MultiAddress, <-chan error) {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
-		return nil, err
+		errCh := make(chan error, 1)
+		errCh <- err
+		return nil, errCh
 	}
-	return client.QueryPeersDeep(target)
+
+	return client.QueryPeersDeep(ctx, target)
 }
 
 // Sync RPC.
-func (pool *ClientPool) Sync(to identity.MultiAddress) (chan *SyncBlock, error) {
+func (pool *ClientPool) Sync(ctx context.Context, to identity.MultiAddress) (<-chan *SyncBlock, <-chan error) {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
-		return nil, err
+		errCh := make(chan error, 1)
+		errCh <- err
+		return nil, errCh
 	}
-	return client.Sync()
+
+	return client.Sync(ctx)
 }
 
 // SignOrderFragment RPC.
-func (pool *ClientPool) SignOrderFragment(to identity.MultiAddress, orderFragmentId *OrderFragmentId) (*OrderFragmentId, error) {
+func (pool *ClientPool) SignOrderFragment(ctx context.Context, to identity.MultiAddress, orderFragmentId *OrderFragmentId) (*OrderFragmentId, error) {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		return nil, err
 	}
-	return client.SignOrderFragment(orderFragmentId)
+
+	return client.SignOrderFragment(ctx, orderFragmentId)
 }
 
 // OpenOrder RPC.
-func (pool *ClientPool) OpenOrder(to identity.MultiAddress, openOrderRequest *OpenOrderRequest) error {
+func (pool *ClientPool) OpenOrder(ctx context.Context, to identity.MultiAddress, openOrderRequest *OpenOrderRequest) error {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		return err
 	}
-	return client.OpenOrder(openOrderRequest)
+
+	return client.OpenOrder(ctx, openOrderRequest)
 }
 
 // CancelOrder RPC.
-func (pool *ClientPool) CancelOrder(to identity.MultiAddress, cancelOrderRequest *CancelOrderRequest) error {
+func (pool *ClientPool) CancelOrder(ctx context.Context, to identity.MultiAddress, cancelOrderRequest *CancelOrderRequest) error {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		return err
 	}
-	return client.CancelOrder(cancelOrderRequest)
+
+	return client.CancelOrder(ctx, cancelOrderRequest)
 }

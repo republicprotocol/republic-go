@@ -33,7 +33,7 @@ type OrderBook struct {
 func NewOrderBook(maxConnections int) *OrderBook {
 	return &OrderBook{
 		orderBookCache: NewOrderBookCache(),
-		orderBookDB:    NewOrderBookDB(),
+		orderBookDB:    OrderBookDB{},
 		splitter:       dispatch.NewSplitter(maxConnections),
 	}
 }
