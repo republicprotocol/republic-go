@@ -1,1 +1,46 @@
-{"network":{"swarm":{"bootstrapMultiAddresses":["/ip4/0.0.0.0/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu","/ip4/0.0.0.0/tcp/3001/republic/8MGB2cj2HbQFepRVs43Ghct5yCRS9C","/ip4/0.0.0.0/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR","/ip4/0.0.0.0/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT","/ip4/0.0.0.0/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss"],"debug":3,"alpha":3,"maxBucketLength":20,"clientPoolCacheLimit":20,"concurrent":false},"syncer":{"maxConnections":3},"multiAddress":"/ip4/0.0.0.0/tcp/4031/republic/8MGcVoTK6b6dz41seCNomGLitNgs17","timeout":30000000000,"timeoutBackoff":30000000000,"timeoutRetries":3,"messageQueueLimit":100},"logger":{"plugins":[{"file":{"path":"stdout"}}]},"path":"","host":"0.0.0.0","port":"4031","keyPair":"CLL9YkCvpLHcVtGGbutdj5j23Vh6KCc3kheLUGmyUBgL","ethereumKey":{"address":"00dc1707fec61c48296183b5928b421a226b9ca8","privatekey":"5c6fdf19c733fe5a4c259ace24e7b46873fa2a3ee44023b67f3217d2ebc23e26","id":"b2a2a010-57c1-4719-9097-fbdf414d9800","version":3},"ethereumRPC":"https://ropsten.infura.io"}
+{
+  "network": {
+    "swarm": {
+      "bootstrapMultiAddresses": [
+        "/ip4/0.0.0.0/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu",
+        "/ip4/0.0.0.0/tcp/3001/republic/8MGB2cj2HbQFepRVs43Ghct5yCRS9C",
+        "/ip4/0.0.0.0/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR",
+        "/ip4/0.0.0.0/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT",
+        "/ip4/0.0.0.0/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss"
+      ],
+      "debug": 3,
+      "alpha": 3,
+      "maxBucketLength": 20,
+      "clientPoolCacheLimit": 50,
+      "concurrent": false
+    },
+    "syncer": {
+      "maxConnections": 3
+    },
+    "multiAddress": "/ip4/0.0.0.0/tcp/4031/republic/8MGcVoTK6b6dz41seCNomGLitNgs17",
+    "timeout": 30000000000,
+    "timeoutBackoff": 30000000000,
+    "timeoutRetries": 3,
+    "messageQueueLimit": 100
+  },
+  "logger": {
+    "plugins": [
+      {
+        "file": {
+          "path": "stdout"
+        }
+      }
+    ]
+  },
+  "path": "",
+  "host": "0.0.0.0",
+  "port": "4031",
+  "keyPair": "CLL9YkCvpLHcVtGGbutdj5j23Vh6KCc3kheLUGmyUBgL",
+  "ethereumKey": {
+    "address": "00dc1707fec61c48296183b5928b421a226b9ca8",
+    "privatekey": "5c6fdf19c733fe5a4c259ace24e7b46873fa2a3ee44023b67f3217d2ebc23e26",
+    "id": "b2a2a010-57c1-4719-9097-fbdf414d9800",
+    "version": 3
+  },
+  "ethereumRPC": "https://ropsten.infura.io"
+}

@@ -243,7 +243,6 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *SmpcMessa
 			case <-ctx.Done():
 				return
 			case message, ok := <-messageChIn:
-				// what if we just want to listen for messages and response
 				if !ok {
 					return
 				}

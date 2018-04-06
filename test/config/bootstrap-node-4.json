@@ -15,7 +15,7 @@
             "debug": 3,
             "alpha": 3,
             "maxBucketLength": 20,
-            "clientPoolCacheLimit": 20,
+            "clientPoolCacheLimit": 50,
             "concurrent": false
         },
         "syncer" : {

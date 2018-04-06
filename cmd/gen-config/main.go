@@ -20,7 +20,7 @@ const (
 	DefaultDebugLevel           = 3
 	DefaultAlpha                = 3
 	DefaultMaxBucketLength      = 20
-	DefaultClientPoolCacheLimit = 20
+	DefaultClientPoolCacheLimit = 50
 	DefaultTimeout              = 30
 	DefaultTimeBackoff          = 30
 	DefaultTimeoutRetries       = 3
