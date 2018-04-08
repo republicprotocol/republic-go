@@ -1,8 +1,8 @@
 package hyper
 
-import "context"
-
-const THRESHOLD uint8 = 72
+import (
+	"context"
+)
 
 type Prepare struct {
 	Signature
@@ -13,15 +13,15 @@ type Prepare struct {
 
 type Prepares map[BlockHash]uint8
 
-func ProcessPreparation(ctx context.Context, prepareChIn chan Prepare, signer Signer, sharedBlocks SharedBlocks) (chan Prepare, chan Commit, chan Fault, chan error) {
-	prepareCh := make(chan Prepare)
+func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer Signer, validator Validator, threshold uint8) (<-chan Commit, <-chan Fault, <-chan error) {
 	commitCh := make(chan Commit)
 	faultCh := make(chan Fault)
 	errCh := make(chan error)
 	prepares := make(Prepares)
 
+	// prepareChIn = FilterPrepare(prepareChIn, func(*Prepare) bool { return false })
+
 	go func() {
-		defer close(prepareCh)
 		defer close(commitCh)
 		defer close(faultCh)
 		defer close(errCh)
@@ -31,34 +31,34 @@ func ProcessPreparation(ctx context.Context, prepareChIn chan Prepare, signer Si
 			case <-ctx.Done():
 				errCh <- ctx.Err()
 				return
-			case prepare := <-prepareChIn:
+			case prepare, ok := <-prepareChIn:
+				if !ok {
+					return
+				}
 				b := getBlockHash(prepare.Block)
-				if prepares[b] >= THRESHOLD {
-					commitCh <- Commit{}
+				if prepares[b] >= threshold-1 {
+					commitCh <- Commit{
+						Rank:               prepare.Rank,
+						Height:             prepare.Height,
+						Block:              prepare.Block,
+						ThresholdSignature: ThresholdSignature("Threshold_BLS"),
+						Signature:          signer.Sign(),
+					}
+					prepares[b] = 0
 				} else {
-					if validatePrepare(prepare, sharedBlocks) {
-						prepareCh <- Prepare{}
+					if validator.Prepare(prepare) {
 						prepares[b]++
 					} else {
-						faultCh <- Fault{}
+						faultCh <- Fault{
+							Rank:      prepare.Rank,
+							Height:    prepare.Height,
+							Signature: signer.Sign(),
+						}
 					}
 				}
 			}
 		}
 	}()
 
-	return prepareCh, commitCh, faultCh, errCh
-}
-
-func validatePrepare(prepare Prepare, sharedBlocks SharedBlocks) bool {
-	valid := validateBlock(prepare.Block, sharedBlocks)
-	return valid
-}
-
-func signPrepare(prepare Prepare, signer Signer) (Prepare, err) {
-	
-}
-
-func signCommit(prepare Prepare, signer Signer) (Commit, err) {
-
+	return commitCh, faultCh, errCh
 }
