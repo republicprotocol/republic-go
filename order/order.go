@@ -99,10 +99,38 @@ func NewOrderFromJSONFile(fileName string) (Order, error) {
 	if err != nil {
 		return order, err
 	}
+	defer file.Close()
 	if err := json.NewDecoder(file).Decode(&order); err != nil {
 		return order, err
 	}
 	return order, nil
+}
+
+// NewOrdersFromJSONFile returns an array of orders that is unmarshaled from a JSON file.
+func NewOrdersFromJSONFile(fileName string) ([]Order, error) {
+	orders := []Order{}
+	file, err := os.Open(fileName)
+	if err != nil {
+		return orders, err
+	}
+	defer file.Close()
+	if err := json.NewDecoder(file).Decode(&orders); err != nil {
+		return orders, err
+	}
+	return orders, nil
+}
+
+// WriteOrdersToJSONFile writes an array of orders into a JSON file.
+func WriteOrdersToJSONFile(fileName string, orders []*Order) error {
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	if err := json.NewEncoder(file).Encode(&orders); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Split the Order into n OrderFragments, where k OrderFragments are needed to
