@@ -1,19 +1,27 @@
 package hyper
 
-import "context"
+import (
+	"context"
+)
 
+type ThresholdSignature Signature
 type Commit struct {
-	rank Rank
+	Rank
+	Height
+	Block
+	ThresholdSignature
+	Signature
 }
 
-func ProcessCommit(ctx context.Context, commitChIn chan Commit) (chan Commit, chan Block, chan Fault, chan error) {
-	commitCh := make(chan Commit)
+type Commits map[BlockHash]uint8
+
+func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, signer Signer, validator Validator, threshold uint8) (chan Block, chan Fault, chan error) {
 	blockCh := make(chan Block)
 	faultCh := make(chan Fault)
 	errCh := make(chan error)
+	commits := make(Commits)
 
 	go func() {
-		defer close(commitCh)
 		defer close(faultCh)
 		defer close(errCh)
 
@@ -22,11 +30,29 @@ func ProcessCommit(ctx context.Context, commitChIn chan Commit) (chan Commit, ch
 			case <-ctx.Done():
 				errCh <- ctx.Err()
 				return
-			case _ = <-commitChIn:
-				// TODO: process the commit
+			case commit, ok := <-commitChIn:
+				if !ok {
+					return
+				}
+				b := getBlockHash(commit.Block)
+				if commits[b] >= threshold-1 {
+					blockCh <- commit.Block
+					validator.UpdateHeight()
+					commits[b] = 0
+				} else {
+					if validator.Commit(commit) {
+						commits[b]++
+					} else {
+						faultCh <- Fault{
+							Rank:      commit.Rank,
+							Height:    commit.Height,
+							Signature: signer.Sign(),
+						}
+					}
+				}
 			}
 		}
 	}()
 
-	return commitCh, blockCh, faultCh, errCh
+	return blockCh, faultCh, errCh
 }
