@@ -15,6 +15,7 @@ func HandleSocketRequests() {
 	http.HandleFunc("/orders", socketHandler)
 }
 
+// Establishes a socket connection.
 func socketHandler(w http.ResponseWriter, r *http.Request) {
 	conn, err := websocket.Upgrade(w, r, w.Header(), 1024, 1024)
 	if err != nil {
@@ -23,6 +24,8 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 	go streamOrders(r, conn)
 }
 
+// Checks to see if status of specified order has changed.
+// To-do: Check using real data. Add support for multiple statuses/orders.
 func streamOrders(r *http.Request, conn *websocket.Conn) {
 	traderID := strings.Replace(r.FormValue("trader"), "\"", "", -1)
 	orderID := strings.Replace(r.FormValue("order"), "\"", "", -1)
@@ -33,7 +36,7 @@ func streamOrders(r *http.Request, conn *websocket.Conn) {
 	log.Println("Client subscribed")
 	for {
 		if err := conn.WriteMessage(websocket.TextMessage, []byte("Here is a status update")); err != nil {
-			log.Println(err)
+			log.Println(err.Error())
 			break
 		}
 		time.Sleep(time.Second)

@@ -17,6 +17,7 @@ func HandleHTTPRequests() {
 func requestHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
+		// To-do: Add authentication + get status from ID.
 		slices := strings.Split(r.URL.Path, "/")
 		id := slices[len(slices) - 1]
 		w.Header().Set("Content-Type", "application/json")
