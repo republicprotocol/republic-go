@@ -2,35 +2,39 @@ package relay
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/republicprotocol/republic-go/order"
 )
 
-// handleHTTPRequests will handle POST, DELETE and GET requests
-func handleHTTPRequests(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.Error(w, "404 not found.", http.StatusNotFound)
-		return
-	}
+func HandleHTTPRequests() {
+	http.HandleFunc("/", requestHandler)
+}
 
+// Handles POST, DELETE and GET requests.
+func requestHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		// TODO: Handle GET requests here
+		slices := strings.Split(r.URL.Path, "/")
+		id := slices[len(slices) - 1]
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{} {
+			"id": id,
+			"status": "..",
+		})
 	case "POST":
 		ord := order.Order{}
 		err := json.NewDecoder(r.Body).Decode(&ord)
 		if err != nil {
-			fmt.Fprintf("cannot decode json: %v", err)
+			log.Println(err.Error())
 			return
 		}
-
 		SendOrderToDarkOcean(ord)
 	case "DELETE":
 		// Handle cancel requests here
-
 	default:
-		fmt.Fprintf(w, "Only GET, POST and DELETE methods are supported.")
+		log.Println(w, "Invalid request")
 	}
 }
