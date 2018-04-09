@@ -69,7 +69,7 @@ func FromURI(uri string, chain Chain) (ClientDetails, error) {
 		return ClientDetails{
 			Client:     client,
 			RenAddress: common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54"),
-			DNRAddress: common.HexToAddress("0x081F6bD00fCE0Ba8Bd8D5aef6B7505fA76Bd878F"),
+			DNRAddress: common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3"),
 			Chain:      chain,
 		}, nil
 	}

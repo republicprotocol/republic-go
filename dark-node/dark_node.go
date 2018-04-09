@@ -189,7 +189,7 @@ func (node *DarkNode) StartUI() {
 			},
 			"contracts": map[string]interface{}{
 				"republicToken":    "0x65d54eda5f032f2275caa557e50c029cfbccbb54",
-				"darkNodeRegistry": "0x081F6bD00fCE0Ba8Bd8D5aef6B7505fA76Bd878F",
+				"darkNodeRegistry": "0x69eb8d26157b9e12f959ea9f189A5D75991b59e3",
 			},
 		})
 	})))
