@@ -10,8 +10,27 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/gorilla/mux"
+	"github.com/jbenet/go-base58"
+	"github.com/republicprotocol/republic-go/contracts/connection"
+	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/dark"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
+
+func NewRouter() *mux.Router {
+	r := mux.NewRouter().StrictSlash(true)
+	r.Methods("POST").Path("/orders").HandlerFunc(handlePostOrders)
+	r.Methods("GET").Path("/orders").HandlerFunc(handleGetOrders)
+	r.Methods("GET").Path("/orders/{orderID}").HandlerFunc(handleGetOrder)
+	r.Methods("DELETE").Path("/orders/{orderID}").HandlerFunc(handleDeleteOrder)
+	return r
+}
 
 // Relay consists of configuration values (?)
 type Relay struct {
@@ -168,7 +187,6 @@ func getLogger() (*logger.Logger, error) {
 			},
 		}})
 }
-
 
 // Send the shares across all nodes within the Dark Pool
 func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares []*order.Fragment) {

@@ -26,9 +26,6 @@ import (
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
-func HandleHTTPRequests() {
-	http.HandleFunc("/", requestHandler)
-}
 var prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 
 const reset = "\x1b[0m"
@@ -42,22 +39,52 @@ type HTTPDelete struct {
 
 // Fragments will store a list of Fragments with their order details
 type Fragments struct {
-	// TODO: Confirm this . . 
-	DarkPool        order.ID            `json:"darkPool"`
+	// TODO: Confirm this . .
+	DarkPool order.ID `json:"darkPool"`
 
-	Fragment        []*order.Fragment   `json:"fragments"`
+	Fragment []*order.Fragment `json:"fragments"`
 }
 
 // OrderFragments will store a list of Fragment Sets with their order details
 type OrderFragments struct {
-	Signature       []byte              `json:"signature"`
-	ID              order.ID            `json:"id"`
+	Signature []byte   `json:"signature"`
+	ID        order.ID `json:"id"`
 
-	Type            order.Type          `json:"type"`
-	Parity          order.Parity        `json:"parity"`
-	Expiry          time.Time           `json:"expiry"`
+	Type   order.Type   `json:"type"`
+	Parity order.Parity `json:"parity"`
+	Expiry time.Time    `json:"expiry"`
 
-	FragmentSet     []Fragments         `json:"fragmentSet"`
+	FragmentSet []Fragments `json:"fragmentSet"`
+}
+
+func handlePostOrders(w http.ResponseWriter, r *http.Request) error {
+	return nil
+}
+
+func handleGetOrders(w http.ResponseWriter, r *http.Request) error {
+	return nil
+}
+
+func handleGetOrder(w http.ResponseWriter, r *http.Request) error {
+	return nil
+}
+
+func handleDeleteOrder(w http.ResponseWriter, r *http.Request) error {
+	return nil
+}
+
+func handleError(f func(w http.ResponseWriter, r *http.Request) error) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if r := recover(); r != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(fmt.Sprintf("%v", r)))
+			}
+		}()
+		if err := f(w, r); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	})
 }
 
 // Handles POST, DELETE and GET requests.
@@ -66,14 +93,14 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		// To-do: Add authentication + get status from ID.
 		slices := strings.Split(r.URL.Path, "/")
-		id := slices[len(slices) - 1]
+		id := slices[len(slices)-1]
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{} {
-			"id": id,
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":     id,
 			"status": "..",
 		})
 	case "POST":
-		// TODO: Get this checked . . 
+		// TODO: Get this checked . .
 		postOrder := order.Order{}
 		if err := json.NewDecoder(r.Body).Decode(&postOrder); err != nil {
 			postOrder := OrderFragments{}
@@ -119,10 +146,10 @@ func SendOrderFragmentsToDarkOcean(fragments []*order.Fragment) {
 	}
 
 	// TODO: (Check) Validate that there are enough fragments for each node in the pool (number of fragments should be atleast 2/3 * size of pool)
-	// TODO: Integrate Dark Pool ID here ? 
+	// TODO: Integrate Dark Pool ID here ?
 	valid := false
 	for i := range pools {
-		if len(fragments) >= 2/3 * pools[i].Size() {
+		if len(fragments) >= 2/3*pools[i].Size() {
 			valid = true
 			sendSharesToDarkPool(pools[i], *traderMultiAddress, fragments)
 		}
@@ -260,7 +287,7 @@ func getDarkPools(key *keystore.Key) (dark.Pools, error) {
 }
 
 func sendOrder(openOrder order.Order, pools dark.Pools, traderMultiAddress identity.MultiAddress) {
-	// Buy or sell 
+	// Buy or sell
 	if openOrder.Parity == order.ParityBuy {
 		log.Println("sending buy order : ", base58.Encode(openOrder.ID))
 	} else {
@@ -295,7 +322,6 @@ func getLogger() (*logger.Logger, error) {
 			},
 		}})
 }
-
 
 // Send the shares across all nodes within the Dark Pool
 func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares []*order.Fragment) {
