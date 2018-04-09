@@ -3,7 +3,6 @@ package dnr
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -44,6 +43,7 @@ type Epoch struct {
 
 // DarkNodeRegistry is the dark node interface
 type DarkNodeRegistry struct {
+	Chain                   connection.Chain
 	context                 context.Context
 	client                  *connection.ClientDetails
 	auth1                   *bind.TransactOpts
@@ -64,6 +64,7 @@ func NewDarkNodeRegistry(context context.Context, clientDetails *connection.Clie
 		return DarkNodeRegistry{}, err
 	}
 	return DarkNodeRegistry{
+		Chain:                   clientDetails.Chain,
 		context:                 context,
 		client:                  clientDetails,
 		auth1:                   auth1,
@@ -203,7 +204,7 @@ func (darkNodeRegistry *DarkNodeRegistry) CurrentEpoch() (Epoch, error) {
 
 // Epoch updates the current Epoch if the Minimum Epoch Interval has passed since the previous Epoch
 func (darkNodeRegistry *DarkNodeRegistry) Epoch() (*types.Transaction, error) {
-	fmt.Println("Epoch called!")
+	// fmt.Println("Epoch called!")
 	tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.auth1)
 	if err != nil {
 		return nil, err
@@ -212,7 +213,7 @@ func (darkNodeRegistry *DarkNodeRegistry) Epoch() (*types.Transaction, error) {
 	return tx, err
 }
 
-// WaitForEpoch guarantees that an Epoch as passed
+// WaitForEpoch guarantees that an Epoch as passed (and calls Epoch if connected to Ganache)
 func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() (*types.Transaction, error) {
 	currentEpoch, err := darkNodeRegistry.CurrentEpoch()
 	if err != nil {
@@ -221,9 +222,11 @@ func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() (*types.Transaction, er
 	nextEpoch := currentEpoch
 	var tx *types.Transaction
 	for currentEpoch.Blockhash == nextEpoch.Blockhash {
-		tx, err = darkNodeRegistry.binding.Epoch(darkNodeRegistry.auth1)
-		if err != nil {
-			return nil, err
+		if darkNodeRegistry.Chain == connection.ChainGanache {
+			tx, err = darkNodeRegistry.binding.Epoch(darkNodeRegistry.auth1)
+			if err != nil {
+				return nil, err
+			}
 		}
 		nextEpoch, err = darkNodeRegistry.CurrentEpoch()
 		if err != nil {
