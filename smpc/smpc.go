@@ -1,6 +1,9 @@
 package smpc
 
 import (
+	"context"
+
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -12,3 +15,52 @@ var Prime = func() stackint.Int1024 {
 	}
 	return prime
 }()
+
+type Engine struct {
+	n, k             int64
+	sharedOrderTable SharedOrderTable
+}
+
+func NewEngine(n, k int64) Engine {
+	return Engine{
+		sharedOrderTable: NewSharedOrderTable(),
+	}
+}
+
+func (engine *Engine) Compute(
+	ctx context.Context,
+	obscureRngChIn <-chan ObscureRng,
+	obscureRngSharesChIn <-chan ObscureRngShares,
+	obscureRngSharesIndexedChIn <-chan ObscureRngSharesIndexed,
+	obscureMulSharesChIn <-chan ObscureMulShares,
+	obscureMulSharesIndexedChIn <-chan ObscureMulSharesIndexed,
+) (
+	<-chan ObscureRng,
+	<-chan ObscureRngShares,
+	<-chan ObscureRngSharesIndexed,
+	<-chan ObscureMulShares,
+	<-chan ObscureMulSharesIndexed,
+	<-chan error,
+) {
+	errChs := make(chan (<-chan error), 6)
+
+	obscureRngCh, errCh := ProduceObscureRngs(ctx, engine.n, engine.k)
+	errChs <- errCh
+
+	obscureRngSharesCh, errCh := ProcessObscureRngs(ctx, obscureRngChIn)
+	errChs <- errCh
+
+	obscureRngSharesIndexedCh, errCh := ProcessObscureRngShares(ctx, obscureRngSharesChIn)
+	errChs <- errCh
+
+	obscureMulShares, errCh := ProcessObscureRngSharesIndexed(ctx, obscureRngSharesIndexedChIn)
+	errChs <- errCh
+
+	obscureMulSharesIndexedCh, errCh := ProcessObscureMulShares(ctx, obscureMulSharesChIn)
+	errChs <- errCh
+
+	obscureResidueFragmentCh, errCh := ProcessObscureMulSharesIndexed(ctx, obscureMulSharesIndexedChIn)
+	errChs <- errCh
+
+	return obscureRngCh, obscureRngSharesCh, obscureRngSharesIndexedCh, obscureMulShares, obscureMulSharesIndexedCh, dispatch.MergeErrors(errChs)
+}

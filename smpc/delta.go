@@ -2,6 +2,7 @@ package smpc
 
 import (
 	"bytes"
+	"context"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -10,6 +11,30 @@ import (
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stackint"
 )
+
+func ProduceRhoSigmaFragments(ctx context.Context) (<-chan RhoSigmaFragment, <-chan error) {
+	rhoSigmaFragmentCh := make(chan RhoSigmaFragment)
+	errCh := make(chan error)
+
+	go func() {
+		defer close(rhoSigmaFragmentCh)
+		defer close(errCh)
+
+		for {
+			select {
+			case <-ctx.Done():
+				errCh <- ctx.Err()
+				return
+
+			}
+		}
+	}()
+
+	return rhoSigmaFragmentCh, errCh
+}
+
+type RhoSigmaFragment struct {
+}
 
 type DeltaBuilder struct {
 	k                    int64

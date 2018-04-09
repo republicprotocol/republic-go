@@ -10,11 +10,10 @@ import (
 
 // ProcessOrderFragments by reading order fragments from an input channel, and
 // writing OrderTuples to an output channel.
-func ProcessOrderFragments(ctx context.Context, orderFragmentChIn <-chan order.Fragment, bufferLimit int) (<-chan OrderTuple, <-chan error) {
+func ProcessOrderFragments(ctx context.Context, orderFragmentChIn <-chan order.Fragment, sharedOrderTable *SharedOrderTable, bufferLimit int) (<-chan OrderTuple, <-chan error) {
 	orderTupleCh := make(chan OrderTuple, bufferLimit)
 	errCh := make(chan error)
 
-	sharedOrderTable := NewSharedOrderTable()
 	go func() {
 		defer close(orderTupleCh)
 		defer close(errCh)
@@ -183,9 +182,9 @@ func (table *SharedOrderTable) SetBuyOrderState(orderID order.ID, state OrderSta
 	}
 }
 
-// SetSellOrder for an order in the SharedOrderTable. Setting the state to
+// SetSellOrderState for an order in the SharedOrderTable. Setting the state to
 // OrderStateOff will remove all OrderTuples involving the order.
-func (table *SharedOrderTable) SetSellOrder(orderID order.ID, state OrderState) {
+func (table *SharedOrderTable) SetSellOrderState(orderID order.ID, state OrderState) {
 	table.mu.Lock()
 	defer table.mu.Unlock()
 
