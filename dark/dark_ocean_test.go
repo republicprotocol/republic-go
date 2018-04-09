@@ -33,8 +33,8 @@ var _ = Describe("Dark Oceans", func() {
 			channel := make(chan struct{}, 1)
 			go ocean.Watch(channel)
 			Eventually(channel).Should(Receive())
-			Eventually(channel).Should(Receive())
 
+			Eventually(channel).Should(Receive())
 			dnr.WaitForEpoch()
 
 			Ω(nil).Should(BeNil())
@@ -72,6 +72,7 @@ var _ = Describe("Dark Oceans", func() {
 
 			channel := make(chan struct{}, 1)
 			go ocean.Watch(channel)
+			Eventually(channel).Should(Receive())
 
 			// Would have to wait for an epoch, will slow test down too much
 			// Eventually(channel).Should(Receive())
