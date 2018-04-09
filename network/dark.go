@@ -35,6 +35,7 @@ type DarkService struct {
 	Logger *logger.Logger
 }
 
+// NewDarkService returns a new DarkService with the provided delegate, options and logger
 func NewDarkService(delegate DarkDelegate, options Options, logger *logger.Logger) *DarkService {
 	return &DarkService{
 		DarkDelegate: delegate,
@@ -48,6 +49,7 @@ func (service *DarkService) Register(server *grpc.Server) {
 	rpc.RegisterDarkServer(server, service)
 }
 
+// Sync handles an rpc.SyncRequest
 func (service *DarkService) Sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_SyncServer) error {
 	wait := do.Process(func() do.Option {
 		return do.Err(service.sync(syncRequest, stream))
@@ -63,9 +65,11 @@ func (service *DarkService) Sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_S
 }
 
 func (service *DarkService) sync(syncRequest *rpc.SyncRequest, stream rpc.Dark_SyncServer) error {
-	panic("unimplemented")
+	// todo : unimplemented
+	return nil
 }
 
+// SignOrderFragment handles an rpc.SignOrderFragmentRequest
 func (service *DarkService) SignOrderFragment(ctx context.Context, signOrderFragmentRequest *rpc.SignOrderFragmentRequest) (*rpc.OrderFragmentSignature, error) {
 	wait := do.Process(func() do.Option {
 		orderFragmentSignature, err := service.signOrderFragment(signOrderFragmentRequest)
@@ -87,9 +91,11 @@ func (service *DarkService) SignOrderFragment(ctx context.Context, signOrderFrag
 }
 
 func (service *DarkService) signOrderFragment(signOrderFragmentRequest *rpc.SignOrderFragmentRequest) (*rpc.OrderFragmentSignature, error) {
-	panic("unimplemented")
+	// todo : unimplemented
+	return &rpc.OrderFragmentSignature{}, nil
 }
 
+// OpenOrder handles an rpc.OpenOrderRequest
 func (service *DarkService) OpenOrder(ctx context.Context, openOrderRequest *rpc.OpenOrderRequest) (*rpc.Nothing, error) {
 	wait := do.Process(func() do.Option {
 		nothing, err := service.openOrder(openOrderRequest)
@@ -124,6 +130,7 @@ func (service *DarkService) openOrder(openOrderRequest *rpc.OpenOrderRequest) (*
 	return &rpc.Nothing{}, nil
 }
 
+// CancelOrder handles an rpc.CancelOrderRequest
 func (service *DarkService) CancelOrder(ctx context.Context, cancelOrderRequest *rpc.CancelOrderRequest) (*rpc.Nothing, error) {
 	wait := do.Process(func() do.Option {
 		nothing, err := service.cancelOrder(cancelOrderRequest)
@@ -146,9 +153,11 @@ func (service *DarkService) CancelOrder(ctx context.Context, cancelOrderRequest 
 }
 
 func (service *DarkService) cancelOrder(cancelOrderRequest *rpc.CancelOrderRequest) (*rpc.Nothing, error) {
-	panic("unimplemented")
+	// todo : unimplemented
+	return &rpc.Nothing{}, nil
 }
 
+// RandomFragmentShares handles an rpc.RandomFragmentSharesRequest
 func (service *DarkService) RandomFragmentShares(ctx context.Context, randomFragmentSharesRequest *rpc.RandomFragmentSharesRequest) (*rpc.RandomFragments, error) {
 	wait := do.Process(func() do.Option {
 		nothing, err := service.randomFragmentShares(randomFragmentSharesRequest)
@@ -171,9 +180,11 @@ func (service *DarkService) RandomFragmentShares(ctx context.Context, randomFrag
 }
 
 func (service *DarkService) randomFragmentShares(randomFragmentSharesRequest *rpc.RandomFragmentSharesRequest) (*rpc.RandomFragments, error) {
-	panic("unimplemented")
+	// todo : unimplemented
+	return &rpc.RandomFragments{}, nil
 }
 
+// ResidueFragmentShares handles an rpc.ResidueFragmentSharesRequest
 func (service *DarkService) ResidueFragmentShares(ctx context.Context, residueFragmentSharesRequest *rpc.ResidueFragmentSharesRequest) (*rpc.ResidueFragments, error) {
 	wait := do.Process(func() do.Option {
 		nothing, err := service.residueFragmentShares(residueFragmentSharesRequest)
@@ -196,9 +207,11 @@ func (service *DarkService) ResidueFragmentShares(ctx context.Context, residueFr
 }
 
 func (service *DarkService) residueFragmentShares(residueFragmentSharesRequest *rpc.ResidueFragmentSharesRequest) (*rpc.ResidueFragments, error) {
-	panic("unimplemented")
+	// todo : unimplemented
+	return &rpc.ResidueFragments{}, nil
 }
 
+// ComputeResidueFragment handles  an rpc.ComputeResidueFragmentRequest
 func (service *DarkService) ComputeResidueFragment(ctx context.Context, computeResidueFragmentRequest *rpc.ComputeResidueFragmentRequest) (*rpc.Nothing, error) {
 	wait := do.Process(func() do.Option {
 		nothing, err := service.computeResidueFragment(computeResidueFragmentRequest)
@@ -221,9 +234,11 @@ func (service *DarkService) ComputeResidueFragment(ctx context.Context, computeR
 }
 
 func (service *DarkService) computeResidueFragment(computeResidueFragmentRequest *rpc.ComputeResidueFragmentRequest) (*rpc.Nothing, error) {
-	panic("unimplemented")
+	// todo : unimplemented
+	return &rpc.Nothing{}, nil
 }
 
+// BroadcastAlphaBetaFragment handles an rpc.BroadcastAlphaBetaFragmentRequest
 func (service *DarkService) BroadcastAlphaBetaFragment(ctx context.Context, broadcastAlphaBetaFragmentRequest *rpc.BroadcastAlphaBetaFragmentRequest) (*rpc.AlphaBetaFragment, error) {
 	wait := do.Process(func() do.Option {
 		nothing, err := service.broadcastAlphaBetaFragment(broadcastAlphaBetaFragmentRequest)
@@ -246,9 +261,11 @@ func (service *DarkService) BroadcastAlphaBetaFragment(ctx context.Context, broa
 }
 
 func (service *DarkService) broadcastAlphaBetaFragment(broadcastAlphaBetaFragmentRequest *rpc.BroadcastAlphaBetaFragmentRequest) (*rpc.AlphaBetaFragment, error) {
-	panic("unimplemented")
+	// todo : unimplemented
+	return &rpc.AlphaBetaFragment{}, nil
 }
 
+// BroadcastDeltaFragment handles an rpc.BroadcastDeltaFragmentRequest
 func (service *DarkService) BroadcastDeltaFragment(ctx context.Context, broadcastDeltaFragmentRequest *rpc.BroadcastDeltaFragmentRequest) (*rpc.DeltaFragment, error) {
 	wait := do.Process(func() do.Option {
 		deltaFragment, err := service.broadcastDeltaFragment(broadcastDeltaFragmentRequest)

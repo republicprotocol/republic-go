@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/shamir"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 // A CurrencyCode is a numerical representation of the currencies supported by
@@ -66,17 +67,17 @@ type Order struct {
 	Parity Parity    `json:"parity"`
 	Expiry time.Time `json:"expiry"`
 
-	FstCode   CurrencyCode `json:"fstCode"`
-	SndCode   CurrencyCode `json:"sndCode"`
-	Price     *big.Int     `json:"price"`
-	MaxVolume *big.Int     `json:"maxVolume"`
-	MinVolume *big.Int     `json:"minVolume"`
+	FstCode   CurrencyCode      `json:"fstCode"`
+	SndCode   CurrencyCode      `json:"sndCode"`
+	Price     *stackint.Int1024 `json:"price"`
+	MaxVolume *stackint.Int1024 `json:"maxVolume"`
+	MinVolume *stackint.Int1024 `json:"minVolume"`
 
-	Nonce *big.Int `json:"nonce"`
+	Nonce *stackint.Int1024 `json:"nonce"`
 }
 
 // NewOrder returns a new Order and computes the ID.
-func NewOrder(ty Type, parity Parity, expiry time.Time, fstCode, sndCode CurrencyCode, price, maxVolume, minVolume, nonce *big.Int) *Order {
+func NewOrder(ty Type, parity Parity, expiry time.Time, fstCode, sndCode CurrencyCode, price, maxVolume, minVolume, nonce *stackint.Int1024) *Order {
 	order := &Order{
 		Type:      ty,
 		Parity:    parity,
@@ -135,12 +136,14 @@ func WriteOrdersToJSONFile(fileName string, orders []*Order) error {
 
 // Split the Order into n OrderFragments, where k OrderFragments are needed to
 // reconstruct the Order. Returns a slice of all n OrderFragments, or an error.
-func (order *Order) Split(n, k int64, prime *big.Int) ([]*Fragment, error) {
-	fstCodeShares, err := shamir.Split(n, k, prime, big.NewInt(int64(order.FstCode)))
+func (order *Order) Split(n, k int64, prime *stackint.Int1024) ([]*Fragment, error) {
+	fstCode := stackint.FromUint(uint(order.FstCode))
+	fstCodeShares, err := shamir.Split(n, k, prime, &fstCode)
 	if err != nil {
 		return nil, err
 	}
-	sndCodeShares, err := shamir.Split(n, k, prime, big.NewInt(int64(order.SndCode)))
+	sndCode := stackint.FromUint(uint(order.SndCode))
+	sndCodeShares, err := shamir.Split(n, k, prime, &sndCode)
 	if err != nil {
 		return nil, err
 	}

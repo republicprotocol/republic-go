@@ -5,22 +5,26 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+// The Delegate is a callback interface for the Hyperdrive
 type Delegate interface {
 	OnOrderReleased(order order.ID)
 	OnOrderExecuted(buyOrder order.ID, sellOrder order.ID)
 }
 
+// A Tuple represents two orders that are compatible with one another
 type Tuple struct {
 	lhs order.ID
 	rhs order.ID
 }
 
+// A ConflictSet contains a set of order matches that are in a direct or transitive conflict.
 type ConflictSet struct {
 	id     uint64
 	open   bool
 	tuples []Tuple
 }
 
+// Drive contains a series of conflict sets and a mapping from tuples to their corresponding conflict sets
 type Drive struct {
 	do.GuardedObject
 
@@ -29,6 +33,10 @@ type Drive struct {
 	tupleToConflictSetMapping map[string]*ConflictSet
 }
 
+// AddTuple inserts a tuple into the Hyperdrive.
+// If no conflict set is found, a new one is created.
+// If one conflict set is found, the tuple is added to it.
+// If two conflict sets are found, they are merged and the tuple added to the combined set.
 func (hyperdrive *Drive) AddTuple(tuple Tuple) {
 	hyperdrive.Enter(nil)
 	defer hyperdrive.Exit()

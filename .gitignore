@@ -3,6 +3,7 @@
 
 # Output of the go profiler and test
 *.pdf
+cpu.prof
 *.test
 
 # Dep vendors

@@ -31,13 +31,13 @@ func main() {
 	}
 
 	// Create a dark node registrar.
-	darkNodeRegistrar, err := CreateDarkNodeRegistrar(config.EthereumKey, config.EthereumRPC)
+	darkNodeRegistry, err := CreateDarkNodeRegistry(config.EthereumKey, config.EthereumRPC)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Create a new node.node.
-	node, err := node.NewDarkNode(*config, darkNodeRegistrar)
+	node, err := node.NewDarkNode(*config, darkNodeRegistry)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -100,11 +100,12 @@ func LoadConfig(filename string) (*node.Config, error) {
 	return config, nil
 }
 
-func CreateDarkNodeRegistrar(ethereumKey keystore.Key, ethereumRPC string) (dnr.DarkNodeRegistrar, error) {
+// CreateDarkNodeRegistry returns a Dark Node Registrar binding over the provided rpc url
+func CreateDarkNodeRegistry(ethereumKey keystore.Key, ethereumRPC string) (dnr.DarkNodeRegistry, error) {
 	auth := bind.NewKeyedTransactor(ethereumKey.PrivateKey)
 	client, err := connection.FromURI(ethereumRPC, connection.ChainRopsten)
 	if err != nil {
-		return nil, err
+		return dnr.DarkNodeRegistry{}, err
 	}
-	return dnr.NewEthereumDarkNodeRegistrar(context.Background(), &client, auth, &bind.CallOpts{})
+	return dnr.NewDarkNodeRegistry(context.Background(), &client, auth, &bind.CallOpts{})
 }

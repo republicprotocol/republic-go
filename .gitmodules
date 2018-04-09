@@ -1,7 +1,7 @@
 
-[submodule "contracts/bindings/eth-republic"]
-	path = contracts/bindings/eth-republic
-	url = https://github.com/republicprotocol/eth-republic.git
 [submodule "contracts/bindings/eth-atomic-swap"]
 	path = contracts/bindings/eth-atomic-swap
 	url = https://github.com/republicprotocol/eth-atomic-swap.git
+[submodule "contracts/bindings/republic-sol"]
+	path = contracts/bindings/republic-sol
+	url = https://github.com/republicprotocol/republic-sol.git

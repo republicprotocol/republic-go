@@ -1,23 +1,26 @@
 package compute
 
 import (
-	"math/big"
+	"github.com/republicprotocol/republic-go/stackint"
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/order"
 )
 
+// A DeltaBuilder collects delta fragments and attempts to reconstruct deltas
 type DeltaBuilder struct {
 	do.GuardedObject
 
 	k                      int64
-	prime                  *big.Int
+	prime                  *stackint.Int1024
 	deltas                 map[string]*Delta
 	deltaFragments         map[string]*DeltaFragment
 	deltasToDeltaFragments map[string][]*DeltaFragment
 }
 
-func NewDeltaBuilder(k int64, prime *big.Int) *DeltaBuilder {
+// NewDeltaBuilder returns a new DeltaBuilder which reconstructs deltas when it
+// receives k fragments
+func NewDeltaBuilder(k int64, prime *stackint.Int1024) *DeltaBuilder {
 	return &DeltaBuilder{
 		GuardedObject:          do.NewGuardedObject(),
 		k:                      k,
@@ -28,6 +31,9 @@ func NewDeltaBuilder(k int64, prime *big.Int) *DeltaBuilder {
 	}
 }
 
+// InsertDeltaFragment inserts a delta fragment
+// If the builder has exactly k-1 other fragments with the same ID,
+// it will reconstruct the delta and return in
 func (builder *DeltaBuilder) InsertDeltaFragment(deltaFragment *DeltaFragment) *Delta {
 	builder.Enter(nil)
 	defer builder.Exit()
@@ -68,6 +74,7 @@ func (builder *DeltaBuilder) insertDeltaFragment(deltaFragment *DeltaFragment) *
 	return nil
 }
 
+// HasDelta returns true if the builder has reconstructed the delta previously
 func (builder *DeltaBuilder) HasDelta(deltaID DeltaID) bool {
 	builder.EnterReadOnly(nil)
 	defer builder.ExitReadOnly()
@@ -79,6 +86,7 @@ func (builder *DeltaBuilder) hasDelta(deltaID DeltaID) bool {
 	return ok
 }
 
+// HasDeltaFragment returns true if the fragment has already been added to the builder
 func (builder *DeltaBuilder) HasDeltaFragment(deltaFragmentID DeltaFragmentID) bool {
 	builder.EnterReadOnly(nil)
 	defer builder.ExitReadOnly()
@@ -90,6 +98,7 @@ func (builder *DeltaBuilder) hasDeltaFragment(deltaFragmentID DeltaFragmentID) b
 	return ok
 }
 
+// SetK updates the required number of fragments to reconstruct a delta
 func (builder *DeltaBuilder) SetK(k int64) {
 	builder.Enter(nil)
 	defer builder.Exit()
@@ -100,17 +109,19 @@ func (builder *DeltaBuilder) setK(k int64) {
 	builder.k = k
 }
 
+// DeltaFragmentMatrix maps order IDs to its corresponding fragments
 type DeltaFragmentMatrix struct {
 	do.GuardedObject
 
-	prime                  *big.Int
+	prime                  *stackint.Int1024
 	buyOrderFragments      map[string]*order.Fragment
 	sellOrderFragments     map[string]*order.Fragment
 	buySellDeltaFragments  map[string]map[string]*DeltaFragment
 	completeOrderFragments map[string]bool
 }
 
-func NewDeltaFragmentMatrix(prime *big.Int) *DeltaFragmentMatrix {
+// NewDeltaFragmentMatrix returns a new DeltaFragmentMatrix
+func NewDeltaFragmentMatrix(prime *stackint.Int1024) *DeltaFragmentMatrix {
 	return &DeltaFragmentMatrix{
 		GuardedObject:          do.NewGuardedObject(),
 		prime:                  prime,
@@ -121,6 +132,7 @@ func NewDeltaFragmentMatrix(prime *big.Int) *DeltaFragmentMatrix {
 	}
 }
 
+// InsertOrderFragment inserts buy and sell order fragments into the Fragment Matrix
 func (matrix *DeltaFragmentMatrix) InsertOrderFragment(orderFragment *order.Fragment) ([]*DeltaFragment, error) {
 	matrix.Enter(nil)
 	defer matrix.Exit()
@@ -178,6 +190,8 @@ func (matrix *DeltaFragmentMatrix) insertSellOrderFragment(sellOrderFragment *or
 	return deltaFragments, nil
 }
 
+// RemoveOrderFragment removes buy and sell fragments from the matrix
+// and records them as being complete
 func (matrix *DeltaFragmentMatrix) RemoveOrderFragment(orderID order.ID) error {
 	matrix.Enter(nil)
 	defer matrix.Exit()

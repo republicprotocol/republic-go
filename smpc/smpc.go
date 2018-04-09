@@ -1,4 +1,4 @@
 package smpc
 
-type Participants struct {
-}
+// type Participants struct {
+// }

@@ -2,7 +2,8 @@ package shamir
 
 import (
 	"fmt"
-	"math/big"
+
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 // An NKError is used when the number of shares needed to reconstruct a secret
@@ -26,7 +27,7 @@ func (err NKError) Error() string {
 type FiniteFieldError string
 
 // NewFiniteFieldError returns a new FiniteFieldError.
-func NewFiniteFieldError(secret *big.Int) FiniteFieldError {
+func NewFiniteFieldError(secret *stackint.Int1024) FiniteFieldError {
 	return FiniteFieldError(fmt.Sprintf("expected secret = %v to be within the finite field", secret))
 }
 

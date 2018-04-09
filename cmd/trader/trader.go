@@ -26,17 +26,25 @@ import (
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
-var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
+var prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 
 const reset = "\x1b[0m"
 const red = "\x1b[31;1m"
 
+// OrderBook is the data returned from binance
 type OrderBook struct {
 	LastUpdateId int             `json:"lastUpdateId"`
 	Bids         [][]interface{} `json:"bids"`
 	Asks         [][]interface{} `json:"asks"`
+}
+
+// heapInt creates a stackint on the heap - temporary convenience method
+func heapInt(n uint) *stackint.Int1024 {
+	tmp := stackint.FromUint(n)
+	return &tmp
 }
 
 func main() {
@@ -156,8 +164,8 @@ func binanceOrder(binanceOrderFile, binanceKeyFile, binancePassphrase string, bi
 		}
 
 		order := order.NewOrder(order.TypeLimit, order.ParitySell, time.Time{},
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
-			big.NewInt(int64(amount)), big.NewInt(1))
+			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint(price)), heapInt(uint(amount)),
+			heapInt(uint(amount)), heapInt(1))
 		sellOrders[i] = order
 	}
 
@@ -170,8 +178,8 @@ func binanceOrder(binanceOrderFile, binanceKeyFile, binancePassphrase string, bi
 		}
 
 		order := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Time{},
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, big.NewInt(int64(price)), big.NewInt(int64(amount)),
-			big.NewInt(int64(amount)), big.NewInt(1))
+			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint(price)), heapInt(uint(amount)),
+			heapInt(uint(amount)), heapInt(1))
 		buyOrders[i] = order
 	}
 
@@ -204,7 +212,7 @@ func sendOrders(orders []order.Order, pools dark.Pools, traderMultiAddress ident
 			go func(darkPool *dark.Pool) {
 				defer wg.Done()
 				// Split order into (number of nodes in each pool) * 2/3 fragments
-				shares, err := ord.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), Prime)
+				shares, err := ord.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
 				if err != nil {
 					log.Println("cannot split orders: ", err)
 					return
@@ -387,7 +395,7 @@ func getDarkPools(key *keystore.Key) (dark.Pools, error) {
 	}
 
 	// Get Dark Node Registry
-	clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
+	clientDetails, err := connection.FromURI("https://ropsten.infura.io/", connection.ChainRopsten)
 	if err != nil {
 		return nil, fmt.Errorf("cannot fetch dark node registry: %v", err)
 	}
@@ -400,8 +408,12 @@ func getDarkPools(key *keystore.Key) (dark.Pools, error) {
 	// Gas Price
 	auth.GasPrice = big.NewInt(6000000000)
 
-	registrar, err := dnr.NewEthereumDarkNodeRegistrar(context.Background(), &clientDetails, auth, &bind.CallOpts{})
+	registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, auth, &bind.CallOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("cannot fetch dark node registry: %v", err)
+	}
 
+	// print(registrar.client)
 	// Get the Dark Ocean
 	ocean, err := dark.NewOcean(logs, 5, registrar)
 	if err != nil {

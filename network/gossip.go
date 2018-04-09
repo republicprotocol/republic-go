@@ -8,15 +8,19 @@ import (
 	"google.golang.org/grpc"
 )
 
+// A GossipDelegate is used as a callback interface to inject behavior into the
+// Gossip service.
 type GossipDelegate interface {
 	OnGossip(order.ID, order.ID)
 	OnFinalize(order.ID, order.ID)
 }
 
+// GossipService implements the gRPC Gossip service.
 type GossipService struct {
 	GossipDelegate
 }
 
+// NewGossipService returns a new GossipService
 func NewGossipService(delegate GossipDelegate) *GossipService {
 	return &GossipService{
 		GossipDelegate: delegate,
@@ -28,6 +32,7 @@ func (service *GossipService) Register(server *grpc.Server) {
 	rpc.RegisterGossipServer(server, service)
 }
 
+// Gossip handles an rpc.GossipRequest
 func (service *GossipService) Gossip(ctx context.Context, gossipRequest *rpc.GossipRequest) (*rpc.Rumor, error) {
 	wait := do.Process(func() do.Option {
 		rumor, err := service.gossip(gossipRequest)
@@ -54,6 +59,7 @@ func (service *GossipService) gossip(gossipRequest *rpc.GossipRequest) (*rpc.Rum
 	return nil, nil
 }
 
+// Finalize handles an rpc.FinalizeRequest
 func (service *GossipService) Finalize(ctx context.Context, finalizeRequest *rpc.FinalizeRequest) (*rpc.Rumor, error) {
 	wait := do.Process(func() do.Option {
 		rumor, err := service.finalize(finalizeRequest)
