@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"math/big"
@@ -23,115 +22,51 @@ const green = "\x1b[32;1m"
 const red = "\x1b[31;1m"
 
 func main() {
-
-	testrpcPtr := flag.Bool("testrpc", false, "Connect to local testrpc")
-	flag.Parse()
-	testrpc := *testrpcPtr
-
-	var clientDetails connection.ClientDetails
-	var err error
-	var auth *bind.TransactOpts
-	if testrpc {
-		clientDetails, err = connection.ConnectToTestnet()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		auth = connection.GenesisAuth
-	} else {
-		clientDetails, err = connection.FromURI("https://ropsten.infura.io/", "ropsten")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		auth, err = bind.NewTransactor(strings.NewReader(key), "password1")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Gas Price
-		auth.GasPrice = big.NewInt(6000000000)
+	clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
+	if err != nil {
+		// TODO: Handler err
+		panic(err)
 	}
+
+	auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
+	if err != nil {
+		panic(err)
+	}
+
+	// Gas Price
+	auth.GasPrice = big.NewInt(6000000000)
 
 	registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, auth, &bind.CallOpts{})
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	minimumEpochTime, err := registrar.MinimumEpochInterval()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 
-	log.Printf("Calling Epoch every %s%v seconds%s\n", green, minimumEpochTime.String(), reset)
+	log.Printf("Calling Epoch every %s%v seconds%s\n", green, minimumEpochTime, reset)
 
-	if testrpc {
-		loopEpoch(clientDetails, registrar)
-	} else {
-		callEpoch(clientDetails, registrar)
-		uInt, err := minimumEpochTime.ToUint()
-		if err != nil {
-			log.Fatal(err)
-		}
-		ticker := time.NewTicker(time.Duration(uInt) * time.Second)
-		defer ticker.Stop()
-		for range ticker.C {
-			/* go */ callEpoch(clientDetails, registrar)
-		}
-	}
-}
-
-func loopEpoch(clientDetails connection.ClientDetails, registrar dnr.DarkNodeRegistry) {
-
-	// Recover from writing to a closed channel
-	defer func() { recover() }()
-
-	minInterval, err := registrar.MinimumEpochInterval()
+	callEpoch(registrar)
+	uInt, err := minimumEpochTime.ToUint()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
-
-	for {
-		epoch, err := registrar.CurrentEpoch()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		nextTime := epoch.Timestamp.Add(&minInterval)
-		unix, err := nextTime.ToUint()
-		if err != nil {
-			// Either minInterval is really big, or unix epoch time has overflowed uint64s.
-			log.Fatal(err)
-		}
-
-		toWait := time.Second * time.Duration(int64(unix)-time.Now().Unix())
-
-		// Wait at least one second
-		if toWait < 1*time.Second {
-			toWait = 1 * time.Second
-		}
-
-		// Try again within a minute
-		if toWait > time.Minute {
-			toWait = time.Minute
-		}
-
-		log.Printf("Sleeping for %s%v%s", toWait, green, reset)
-
-		time.Sleep(toWait)
-
-		// Call epoch now (blocking)
-		callEpoch(clientDetails, registrar)
+	ticker := time.NewTicker(time.Duration(uInt) * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		/*go */ callEpoch(registrar)
 	}
 }
 
-func callEpoch(clientDetails connection.ClientDetails, registrar dnr.DarkNodeRegistry) {
+func callEpoch(registrar dnr.DarkNodeRegistry) {
 	fmt.Printf("Calling Epoch...")
 	_, err := registrar.Epoch()
 
 	if err != nil {
 		fmt.Printf("\r")
-		log.Printf("%sCouldn't call Epoch%s: %v\n", red, reset, err)
+		log.Printf("%sCouldn't call Epoch%s\n", red, reset)
 	} else {
 		fmt.Printf("\r")
 		log.Printf("%sEpoch called%s", green, reset)
