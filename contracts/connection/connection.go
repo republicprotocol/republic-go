@@ -69,11 +69,10 @@ func FromURI(uri string, chain Chain) (ClientDetails, error) {
 		return ClientDetails{
 			Client:     client,
 			RenAddress: common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54"),
-			DNRAddress: common.HexToAddress("0x9c06bb4e18e1aa352f99968b2984069c59ea2969"),
+			DNRAddress: common.HexToAddress("0x081F6bD00fCE0Ba8Bd8D5aef6B7505fA76Bd878F"),
 			Chain:      chain,
 		}, nil
 	}
-
 }
 
 // PatchedWaitMined waits for tx to be mined on the blockchain.
