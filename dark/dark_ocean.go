@@ -21,12 +21,12 @@ type Ocean struct {
 	logger            *logger.Logger
 	poolSize          int
 	pools             Pools
-	darkNodeRegistrar dnr.DarkNodeRegistrar
+	darkNodeRegistrar dnr.DarkNodeRegistry
 }
 
 // NewOcean uses a DarkNodeRegistry to read all registered nodes and sort them
 // into Pools.
-func NewOcean(logger *logger.Logger, poolSize int, darkNodeRegistrar dnr.DarkNodeRegistrar) (*Ocean, error) {
+func NewOcean(logger *logger.Logger, poolSize int, darkNodeRegistrar dnr.DarkNodeRegistry) (*Ocean, error) {
 	ocean := &Ocean{
 		GuardedObject:     do.NewGuardedObject(),
 		logger:            logger,
@@ -60,12 +60,12 @@ func (ocean *Ocean) Update() error {
 func (ocean *Ocean) update() error {
 	epoch, err := ocean.darkNodeRegistrar.CurrentEpoch();
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get current epoch :%v", err)
 	}
 
-	nodeIDs, err := ocean.darkNodeRegistry.GetAllNodes()
+	nodeIDs, err := ocean.darkNodeRegistrar.GetAllNodes()
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get all nodes: %v", err)
 	}
 
 	nodePositionHashesToIDs := map[string][]byte{}
@@ -100,7 +100,7 @@ func (ocean *Ocean) Watch(changes chan struct{}) {
 	// Recover from writing to a closed channel
 	defer func() { recover() }()
 
-	minInterval, err := ocean.darkNodeRegistry.MinimumEpochInterval()
+	minInterval, err := ocean.darkNodeRegistrar.MinimumEpochInterval()
 	if err != nil {
 		ocean.logger.Error(fmt.Sprintf("cannot retrieve minimum epoch interval: %s", err.Error()))
 		return
@@ -113,7 +113,7 @@ func (ocean *Ocean) Watch(changes chan struct{}) {
 	}
 	changes <- struct{}{}
 	for {
-		epoch, err := ocean.darkNodeRegistry.CurrentEpoch()
+		epoch, err := ocean.darkNodeRegistrar.CurrentEpoch()
 		if err != nil {
 			ocean.logger.Error(fmt.Sprintf("cannot update epoch: %s", err.Error()))
 			return

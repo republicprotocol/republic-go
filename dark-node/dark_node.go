@@ -90,7 +90,7 @@ func NewDarkNode(config Config, darkNodeRegistry dnr.DarkNodeRegistry) (*DarkNod
 
 	// Load the dark ocean and the dark pool for this node
 	node.DarkNodeRegistry = darkNodeRegistry
-	node.DarkOcean, err = dark.NewOcean(node.Logger, darkNodeRegistry)
+	node.DarkOcean, err = dark.NewOcean(node.Logger, 5, darkNodeRegistry)
 	if err != nil {
 		return nil, err
 	}
