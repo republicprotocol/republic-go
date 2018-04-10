@@ -27,7 +27,7 @@ func (id FragmentID) String() string {
 // A Fragment is a secret share of an Order, created using Shamir's secret
 // sharing on the secure fields in an Order.
 type Fragment struct {
-	Signature []byte
+	Signature identity.Signature
 	ID        FragmentID
 
 	OrderID     ID

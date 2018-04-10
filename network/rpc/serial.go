@@ -37,6 +37,7 @@ func DeserializeMultiAddress(multiAddress *MultiAddress) (identity.MultiAddress,
 // representation.
 func SerializeOrderFragment(orderFragment *order.Fragment) *OrderFragment {
 	val := &OrderFragment{
+		Signature:   []byte(orderFragment.Signature),
 		Id:          []byte(orderFragment.ID),
 		OrderId:     []byte(orderFragment.OrderID),
 		OrderType:   int64(orderFragment.OrderType),
@@ -55,6 +56,7 @@ func SerializeOrderFragment(orderFragment *order.Fragment) *OrderFragment {
 // representation is malformed.
 func DeserializeOrderFragment(orderFragment *OrderFragment) (*order.Fragment, error) {
 	val := &order.Fragment{
+		Signature:   []byte(orderFragment.Signature),
 		ID:          order.FragmentID(orderFragment.Id),
 		OrderID:     order.ID(orderFragment.OrderId),
 		OrderType:   order.Type(orderFragment.OrderType),

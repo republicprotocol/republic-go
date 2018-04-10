@@ -29,18 +29,20 @@ var _ = Describe("Dark service", func() {
 	var darks []*network.DarkService
 	var servers []*grpc.Server
 	var numberOfNodes = 2
+	var keypairs []*identity.KeyPair
 	var pool *rpc.ClientPool
 
 	Context("rpc function calls", func() {
 		BeforeEach(func() {
 			mu.Lock()
 
-			darks, servers, err = generateDarkServices(numberOfNodes)
+			darks, servers, keypairs, err = generateDarkServices(numberOfNodes)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = startDarkServices(servers, darks)
 			Ω(err).ShouldNot(HaveOccurred())
 
+			// keypair = darks[0]
 			pool = rpc.NewClientPool(darks[0].MultiAddress)
 
 			time.Sleep(1 * time.Second)
@@ -57,9 +59,12 @@ var _ = Describe("Dark service", func() {
 		})
 
 		It("should be able to handle OpenOrder rpc", func() {
+			// Sign order fragment
 			fragment, err := generateOrderFragment()
 			Ω(err).ShouldNot(HaveOccurred())
-			err = pool.OpenOrder(darks[1].MultiAddress, &rpc.OrderSignature{}, fragment)
+			err = fragment.Sign(*keypairs[0])
+			Ω(err).ShouldNot(HaveOccurred())
+			err = pool.OpenOrder(darks[1].MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(fragment))
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -137,7 +142,7 @@ func stopDarkServices(servers []*grpc.Server, darks []*network.DarkService) {
 	}
 }
 
-func generateOrderFragment() (*rpc.OrderFragment, error) {
+func generateOrderFragment() (*order.Fragment, error) {
 	price := stackint.FromUint(10)
 	maxVolume := stackint.FromUint(1000)
 	minVolume := stackint.FromUint(100)
@@ -146,5 +151,5 @@ func generateOrderFragment() (*rpc.OrderFragment, error) {
 	if err != nil {
 		return nil, err
 	}
-	return rpc.SerializeOrderFragment(fragments[0]), nil
+	return fragments[0], nil
 }

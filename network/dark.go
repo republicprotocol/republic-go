@@ -126,6 +126,11 @@ func (service *DarkService) openOrder(openOrderRequest *rpc.OpenOrderRequest) (*
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
+	// Verify fragment signature
+	err = orderFragment.VerifySignature(from.ID())
+	if err != nil {
+		return &rpc.Nothing{}, err
+	}
 	service.OnOpenOrder(from, orderFragment)
 	return &rpc.Nothing{}, nil
 }

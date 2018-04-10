@@ -59,8 +59,8 @@ func (id ID) String() string {
 
 // An Order represents the want to perform a trade of assets.
 type Order struct {
-	Signature []byte `json:"signature"`
-	ID        ID     `json:"id"`
+	Signature identity.Signature `json:"signature"`
+	ID        ID                 `json:"id"`
 
 	Type   Type      `json:"type"`
 	Parity Parity    `json:"parity"`

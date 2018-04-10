@@ -51,10 +51,11 @@ func main() {
 	}
 
 	// Create a trader address
-	address, _, err := identity.NewAddress()
+	keypair, err := identity.NewKeyPair()
 	if err != nil {
 		log.Fatal(err)
 	}
+	address := keypair.Address()
 	multi, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/80/republic/" + address.String())
 	if err != nil {
 		log.Fatal(err)
@@ -126,17 +127,23 @@ func main() {
 						log.Println("sending sell order :", base58.Encode(ord.ID))
 					}
 
-					shares, err := ord.Split(int64(len(nodes)), int64(len(nodes)*2/3), &prime)
+					fragments, err := ord.Split(int64(len(nodes)), int64(len(nodes)*2/3), &prime)
 					if err != nil {
 						continue
 					}
 
-					do.ForAll(shares, func(i int) {
+					do.ForAll(fragments, func(i int) {
 						client, err := rpc.NewClient(nodes[i], multi)
 						if err != nil {
 							log.Fatal(err)
 						}
-						err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[i]))
+
+						// Sign order fragment
+						err = fragments[i].Sign(keypair)
+						if err != nil {
+							log.Fatal(err)
+						}
+						err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(fragments[i]))
 						if err != nil {
 							log.Println(err)
 							log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(nodes[i].ID()), reset)
