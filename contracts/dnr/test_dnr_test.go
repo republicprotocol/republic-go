@@ -2,6 +2,7 @@ package dnr_test
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -193,7 +194,7 @@ var i = 0
 func MockConfig() *node.Config {
 	keypair, err := identity.NewKeyPair()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// Long process to get this into the right format!
@@ -209,7 +210,7 @@ func MockConfig() *node.Config {
 
 	multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", host, port, keypair.Address()))
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	return &node.Config{

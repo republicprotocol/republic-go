@@ -17,18 +17,13 @@ var _ = Describe("Dark Oceans", func() {
 	Context("testrpc", func() {
 		It("should send a message to the channel", func() {
 			log, err := logger.NewLogger(logger.Options{})
-			if err != nil {
-				panic(err)
-			}
+			Ω(err).ShouldNot(HaveOccurred())
+
 			dnr, err := dnr.TestnetDNR(nil)
-			if err != nil {
-				panic(err)
-			}
+			Ω(err).ShouldNot(HaveOccurred())
 
 			ocean, err := dark.NewOcean(log, dnr)
-			if err != nil {
-				panic(err)
-			}
+			Ω(err).ShouldNot(HaveOccurred())
 
 			channel := make(chan struct{}, 1)
 			go ocean.Watch(channel)
@@ -46,29 +41,19 @@ var _ = Describe("Dark Oceans", func() {
 
 		It("should send a message to the channel", func() {
 			mockLogger, err := logger.NewLogger(logger.Options{})
-			if err != nil {
-				panic(err)
-			}
+			Ω(err).ShouldNot(HaveOccurred())
 
 			auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
-			if err != nil {
-				panic(err)
-			}
+			Ω(err).ShouldNot(HaveOccurred())
 
 			client, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
-			if err != nil {
-				panic(err)
-			}
+			Ω(err).ShouldNot(HaveOccurred())
 
 			dnr, err := dnr.NewDarkNodeRegistry(context.Background(), &client, auth, &bind.CallOpts{})
-			if err != nil {
-				panic(err)
-			}
+			Ω(err).ShouldNot(HaveOccurred())
 
 			ocean, err := dark.NewOcean(mockLogger, dnr)
-			if err != nil {
-				panic(err)
-			}
+			Ω(err).ShouldNot(HaveOccurred())
 
 			channel := make(chan struct{}, 1)
 			go ocean.Watch(channel)

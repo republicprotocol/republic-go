@@ -37,7 +37,7 @@ func main() {
 
 	err := connection.DeployContractsToGanache("http://localhost:8545")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	cmd.Wait()
