@@ -24,6 +24,7 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer S
 	prepareCh := make(chan Prepare)
 	faultCh := make(chan Fault)
 	errCh := make(chan error)
+	counter := uint64(0)
 
 	go func() {
 		defer close(prepareCh)
@@ -36,6 +37,7 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer S
 				errCh <- ctx.Err()
 				return
 			case proposal, ok := <-proposalChIn:
+				counter++
 				if !ok {
 					return
 				}
@@ -46,12 +48,7 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer S
 						proposal.Rank,
 						proposal.Height,
 					}
-					select {
-					case <-ctx.Done():
-						errCh <- ctx.Err()
-						return
-					case prepareCh <- prepare:
-					}
+					prepareCh <- prepare
 				} else {
 					fault := Fault{
 						proposal.Rank,
