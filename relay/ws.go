@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -9,22 +10,54 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{}
+type Message struct {
+	OrderID string `json:"orderID"`
+	Status  string `json:"status"`
+}
 
-// Checks to see if status of specified order has changed.
-// To-do: Check using real data. Add support for multiple statuses/orders.
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+func GetOrdersHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("cannot open websocket connection: %v", err), http.StatusBadRequest)
+		}
+		streamOrders(r, conn)
+	})
+}
+
+// Notifies client if status of specified order has changed.
 func streamOrders(r *http.Request, conn *websocket.Conn) {
-	traderID := strings.Replace(r.FormValue("trader"), "\"", "", -1)
-	orderID := strings.Replace(r.FormValue("order"), "\"", "", -1)
-	status := strings.Replace(r.FormValue("status"), "\"", "", -1)
-	if traderID == "" || orderID == "" || status == "" {
+	traderID := r.FormValue("trader")
+	orderID := r.FormValue("order")
+	statuses := strings.Split(r.FormValue("status"), ",")
+	if (traderID == "" || orderID == "") {
 		return
 	}
 	log.Println("Client subscribed")
+	m := Message{}
+	orders := make(map[string]string)
 	for {
-		if err := conn.WriteMessage(websocket.TextMessage, []byte("Here is a status update")); err != nil {
-			log.Println(err.Error())
-			break
+		// status := getOrderStatus(orderID)
+		status := "confirmed"
+
+		if (status != orders[orderID]) {
+			for _, item := range statuses {
+				// If the user specified the current status, notify them.
+				if item == status {
+					orders[orderID] = status
+					m.OrderID = orderID
+					m.Status = status
+					if err := conn.WriteJSON(m); err != nil {
+						fmt.Sprintf("cannot write json: %v", err)
+						break
+					}
+				}
+			}
 		}
 		time.Sleep(time.Second)
 	}

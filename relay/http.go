@@ -1,11 +1,12 @@
 package relay
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/gorilla/mux"
 	"github.com/republicprotocol/republic-go/dark"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
@@ -62,19 +63,18 @@ func PostOrdersHandler(multiAddress identity.MultiAddress, darkPools dark.Pools)
 	})
 }
 
-func GetOrdersHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := websocket.Upgrade(w, r, w.Header(), 1024, 1024)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("cannot open websocket connection: %v", err), http.StatusBadRequest)
-		}
-		streamOrders(r, conn)
-	})
-}
-
 func HandleGetOrder() http.Handler {
+	// To-do: Add authentication.
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
+		vars := mux.Vars(r)
+		id := vars["orderID"]
+		// status := getOrderStatus(id)
+		status := "confirmed"
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":     id,
+			"status": status,
+		})
 	})
 }
 
