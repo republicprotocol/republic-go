@@ -58,7 +58,7 @@ var _ = Describe("Dark nodes", func() {
 	var err error
 	epochDNR, err = dnr.TestnetDNR(nil)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	var mu = new(sync.Mutex)
@@ -283,21 +283,21 @@ func deregisterNodes(nodes []*node.DarkNode) error {
 		_, err := node.DarkNodeRegistry.Deregister(node.ID)
 		node.DarkNodeRegistry.SetGasLimit(0)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}
 	epochDNR.SetGasLimit(300000)
 	_, err := epochDNR.WaitForEpoch()
 	epochDNR.SetGasLimit(0)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	for _, node := range nodes {
 		node.DarkNodeRegistry.SetGasLimit(300000)
 		_, err := node.DarkNodeRegistry.Refund(node.ID)
 		node.DarkNodeRegistry.SetGasLimit(0)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}
 	_, err = epochDNR.WaitForEpoch()

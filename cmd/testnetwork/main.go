@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -23,11 +24,11 @@ const yellow = "\x1b[33;1m"
 func main() {
 	parseCommandLineFlags()
 
-	log := fmt.Sprintf("Started Ganache server on port %s8545%s.", green, reset)
+	out := fmt.Sprintf("Started Ganache server on port %s8545%s.", green, reset)
 	if !debug {
-		log = fmt.Sprintf("%s Run with `-debug` to show output.", log)
+		out = fmt.Sprintf("%s Run with `-debug` to show output.", out)
 	}
-	fmt.Printf("%s\n", log)
+	fmt.Printf("%s\n", out)
 
 	var wg sync.WaitGroup
 	cmd := connection.StartTestnet(debug, &wg)
@@ -37,7 +38,7 @@ func main() {
 
 	err := connection.DeployContractsToGanache("http://localhost:8545")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	cmd.Wait()

@@ -189,7 +189,7 @@ func (node *DarkNode) StartUI() {
 			},
 			"contracts": map[string]interface{}{
 				"republicToken":    "0x65d54eda5f032f2275caa557e50c029cfbccbb54",
-				"darkNodeRegistry": "0x9c06bb4e18e1aa352f99968b2984069c59ea2969",
+				"darkNodeRegistry": "0x69eb8d26157b9e12f959ea9f189A5D75991b59e3",
 			},
 		})
 	})))
@@ -289,7 +289,7 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 			node.Logger.Error(fmt.Sprintf("cannot find dark node %v: %s", n.ID.Address(), err.Error()))
 			return
 		} else if multiAddress == nil {
-			node.Logger.Warn(fmt.Sprintf("cannot find dark node %v: %s", n.ID.Address(), err.Error()))
+			node.Logger.Warn(fmt.Sprintf("cannot find dark node %v", n.ID.Address()))
 			return
 		}
 

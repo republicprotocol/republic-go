@@ -1,14 +1,17 @@
 package dnr_test
 
 import (
-	"encoding/hex"
+	"context"
 	"log"
+	"strings"
 
-	"github.com/republicprotocol/republic-go/identity"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/contracts/connection"
+	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/stackint"
 
 	. "github.com/onsi/ginkgo"
-	// . "github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 	// "github.com/republicprotocol/republic-go/identity"
 )
 
@@ -22,29 +25,43 @@ const key = `{"version":3,"id":"7844982f-abe7-4690-8c15-34f75f847c66","address":
 
 var _ = Describe("Dark Node Registrar", func() {
 
-	// auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
-	// if err != nil {
-	// 	log.Fatalf("Failed to create authorized transactor: %v", err)
-	// }
+	// SETUP
 
-	// client, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// UserConnection, err := dnr.NewDarkNodeRegistry(context.Background(), &client, auth, &bind.CallOpts{})
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	keyPair, err := identity.NewKeyPair()
+	auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to create authorized transactor: %v", err)
 	}
-	publicKey := append(keyPair.PublicKey.X.Bytes(), keyPair.PublicKey.Y.Bytes()...)
-	darkNodeID := keyPair.ID()[:20]
-	log.Print(hex.EncodeToString(publicKey))
-	log.Print(hex.EncodeToString(darkNodeID))
+
+	client, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	UserConnection, err := dnr.NewDarkNodeRegistry(context.Background(), &client, auth, &bind.CallOpts{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// keyPair, err := identity.NewKeyPair()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// publicKey := append(keyPair.PublicKey.X.Bytes(), keyPair.PublicKey.Y.Bytes()...)
+	// darkNodeID := keyPair.ID()[:20]
+	// log.Print(hex.EncodeToString(publicKey))
+	// log.Print(hex.EncodeToString(darkNodeID))
+
+	// READ-ONLY TESTS
+	Context("read-only tests", func() {
+		It("Can get the current epoch", func() {
+			epoch, err := UserConnection.CurrentEpoch()
+			Ω(err).Should(BeNil())
+			Ω(epoch.Blockhash).Should(Not(BeNil()))
+			Ω(epoch.Timestamp).Should(Not(BeNil()))
+		})
+	})
+
+	// WRITE TESTS (use gas)
 
 	// It("Can register a dark node", func() {
 	// 	_, err := UserConnection.Register(darkNodeID, publicKey, &bond)
@@ -67,13 +84,6 @@ var _ = Describe("Dark Node Registrar", func() {
 	// It("Can check if a dark node is registered", func() {
 	// 	_, err := UserConnection.IsRegistered(darkNodeID)
 	// 	Ω(err).Should(BeNil())
-	// })
-
-	// It("Can get the current epoch", func() {
-	// 	epoch, err := UserConnection.CurrentEpoch()
-	// 	Ω(err).Should(BeNil())
-	// 	Ω(epoch.Blockhash).Should(Not(BeNil()))
-	// 	Ω(epoch.Timestamp).Should(Not(BeNil()))
 	// })
 
 	// It("Can get the commitment of a dark node", func() {
