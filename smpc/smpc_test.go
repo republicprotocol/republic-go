@@ -14,7 +14,7 @@ import (
 var _ = Describe("Smpc Computer", func() {
 	Context("when performing secure multiparty computations", func() {
 
-		It("should produce obscure residue fragments", func() {
+		FIt("should produce obscure residue fragments", func() {
 			var wg sync.WaitGroup
 			ctx, cancel := context.WithCancel(context.Background())
 			n, k := int64(31), int64(16)
@@ -24,11 +24,11 @@ var _ = Describe("Smpc Computer", func() {
 			for i := int64(0); i < n; i++ {
 				computers[i] = smpc.NewComputer([32]byte{byte(i)}, n, k)
 				obscureComputeChsIn[i] = smpc.ObscureComputeInput{
-					Rng:              make(chan smpc.ObscureRng),
-					RngShares:        make(chan smpc.ObscureRngShares),
-					RngSharesIndexed: make(chan smpc.ObscureRngSharesIndexed),
-					MulShares:        make(chan smpc.ObscureMulShares),
-					MulSharesIndexed: make(chan smpc.ObscureMulSharesIndexed),
+					Rng:              make(chan smpc.ObscureRng, n),
+					RngShares:        make(chan smpc.ObscureRngShares, n),
+					RngSharesIndexed: make(chan smpc.ObscureRngSharesIndexed, n),
+					MulShares:        make(chan smpc.ObscureMulShares, n),
+					MulSharesIndexed: make(chan smpc.ObscureMulSharesIndexed, n),
 				}
 			}
 
@@ -61,11 +61,14 @@ var _ = Describe("Smpc Computer", func() {
 					defer wg.Done()
 
 					for v := range obscureComputeChsOut[i].RngShares {
-						for j := int64(0); j < n; j++ {
-							select {
-							case <-ctx.Done():
-							case obscureComputeChsIn[j].RngShares <- v:
-							}
+						// NOTE: In a production deployment a lookup table to
+						// associate owners with a sending channel would be
+						// used. Here, the test suite acts as this lookup table
+						// directly by creating computers with simple IDs.
+						owner := computers[i].SharedObscureResidueTable().ObscureResidueOwner(v.ObscureResidueID)
+						select {
+						case <-ctx.Done():
+						case obscureComputeChsIn[owner[i]].RngShares <- v:
 						}
 					}
 				}(i)
@@ -89,11 +92,14 @@ var _ = Describe("Smpc Computer", func() {
 					defer wg.Done()
 
 					for v := range obscureComputeChsOut[i].MulShares {
-						for j := int64(0); j < n; j++ {
-							select {
-							case <-ctx.Done():
-							case obscureComputeChsIn[j].MulShares <- v:
-							}
+						// NOTE: In a production deployment a lookup table to
+						// associate owners with a sending channel would be
+						// used. Here, the test suite acts as this lookup table
+						// directly by creating computers with simple IDs.
+						owner := computers[i].SharedObscureResidueTable().ObscureResidueOwner(v.ObscureResidueID)
+						select {
+						case <-ctx.Done():
+						case obscureComputeChsIn[owner[i]].MulShares <- v:
 						}
 					}
 				}(i)

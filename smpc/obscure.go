@@ -13,9 +13,9 @@ import (
 // ProduceObscureRngs by periodically writing to an output channel. The
 // ownership of the random ObscureResidueID is stored in a
 // SharedObscureResidueTable.
-func ProduceObscureRngs(ctx context.Context, n, k int64, sharedObscureResidueTable *SharedObscureResidueTable) (<-chan ObscureRng, <-chan error) {
-	obscureRngCh := make(chan ObscureRng)
-	errCh := make(chan error)
+func ProduceObscureRngs(ctx context.Context, n, k int64, sharedObscureResidueTable *SharedObscureResidueTable, bufferLimit int) (<-chan ObscureRng, <-chan error) {
+	obscureRngCh := make(chan ObscureRng, bufferLimit)
+	errCh := make(chan error, bufferLimit)
 
 	go func() {
 		defer close(obscureRngCh)
@@ -64,9 +64,9 @@ func ProduceObscureRngs(ctx context.Context, n, k int64, sharedObscureResidueTab
 // secret shares for a set of random numbers, and writing ObscureRngShares to
 // an output channel. The ownership of the random ObscureResidueID is stored in
 // a SharedObscureResidueTable.
-func ProcessObscureRngs(ctx context.Context, obscureRngChIn <-chan ObscureRng, sharedObscureResidueTable *SharedObscureResidueTable) (<-chan ObscureRngShares, <-chan error) {
-	obscureRngSharesCh := make(chan ObscureRngShares)
-	errCh := make(chan error)
+func ProcessObscureRngs(ctx context.Context, obscureRngChIn <-chan ObscureRng, sharedObscureResidueTable *SharedObscureResidueTable, bufferLimit int) (<-chan ObscureRngShares, <-chan error) {
+	obscureRngSharesCh := make(chan ObscureRngShares, bufferLimit)
+	errCh := make(chan error, bufferLimit)
 
 	go func() {
 		defer close(obscureRngSharesCh)
@@ -106,9 +106,9 @@ func ProcessObscureRngs(ctx context.Context, obscureRngChIn <-chan ObscureRng, s
 // ProcessObscureRngShares by reading from an input channel, grouping
 // ObscureRngShares by their IDs and their secret share indices. The resulting
 // ObscureRngSharesIndexed are written to an output channel.
-func ProcessObscureRngShares(ctx context.Context, obscureRngSharesChIn <-chan ObscureRngShares) (<-chan ObscureRngSharesIndexed, <-chan error) {
-	obscureRngSharesIndexedCh := make(chan ObscureRngSharesIndexed)
-	errCh := make(chan error)
+func ProcessObscureRngShares(ctx context.Context, obscureRngSharesChIn <-chan ObscureRngShares, bufferLimit int) (<-chan ObscureRngSharesIndexed, <-chan error) {
+	obscureRngSharesIndexedCh := make(chan ObscureRngSharesIndexed, bufferLimit)
+	errCh := make(chan error, bufferLimit)
 
 	go func() {
 		defer close(obscureRngSharesIndexedCh)
@@ -170,9 +170,9 @@ func ProcessObscureRngShares(ctx context.Context, obscureRngSharesChIn <-chan Ob
 // ProcessObscureRngSharesIndexed by reading from an input channel, summating
 // the indexed shares, and multiplying them, and producing ObscureMulShares by
 // writing to an output channel.
-func ProcessObscureRngSharesIndexed(ctx context.Context, obscureRngSharesIndexedChIn <-chan ObscureRngSharesIndexed) (<-chan ObscureMulShares, <-chan error) {
-	obscureMulSharesCh := make(chan ObscureMulShares)
-	errCh := make(chan error)
+func ProcessObscureRngSharesIndexed(ctx context.Context, obscureRngSharesIndexedChIn <-chan ObscureRngSharesIndexed, bufferLimit int) (<-chan ObscureMulShares, <-chan error) {
+	obscureMulSharesCh := make(chan ObscureMulShares, bufferLimit)
+	errCh := make(chan error, bufferLimit)
 
 	go func() {
 		defer close(obscureMulSharesCh)
@@ -234,9 +234,9 @@ func ProcessObscureRngSharesIndexed(ctx context.Context, obscureRngSharesIndexed
 // ProcessObscureMulShares by reading from an input channel, grouping
 // ObscureMulShares by their IDs and their secret share indices. The resulting
 // ObscureMulSharesIndexed are written to an output channel.
-func ProcessObscureMulShares(ctx context.Context, obscureMulSharesChIn <-chan ObscureMulShares) (<-chan ObscureMulSharesIndexed, <-chan error) {
-	obscureMulSharesIndexedCh := make(chan ObscureMulSharesIndexed)
-	errCh := make(chan error)
+func ProcessObscureMulShares(ctx context.Context, obscureMulSharesChIn <-chan ObscureMulShares, bufferLimit int) (<-chan ObscureMulSharesIndexed, <-chan error) {
+	obscureMulSharesIndexedCh := make(chan ObscureMulSharesIndexed, bufferLimit)
+	errCh := make(chan error, bufferLimit)
 
 	go func() {
 		defer close(obscureMulSharesIndexedCh)
@@ -297,9 +297,9 @@ func ProcessObscureMulShares(ctx context.Context, obscureMulSharesChIn <-chan Ob
 // ProcessObscureMulSharesIndexed by reading from an input channel, using the
 // indexed shares to produce a share of each multiplication, and finally
 // producing an ObscureResidueFragment by writing to an output channel.
-func ProcessObscureMulSharesIndexed(ctx context.Context, obscureMulSharesIndexedChIn <-chan ObscureMulSharesIndexed) (<-chan ObscureResidueFragment, <-chan error) {
-	obscureResidueFragmentCh := make(chan ObscureResidueFragment)
-	errCh := make(chan error)
+func ProcessObscureMulSharesIndexed(ctx context.Context, obscureMulSharesIndexedChIn <-chan ObscureMulSharesIndexed, bufferLimit int) (<-chan ObscureResidueFragment, <-chan error) {
+	obscureResidueFragmentCh := make(chan ObscureResidueFragment, bufferLimit)
+	errCh := make(chan error, bufferLimit)
 
 	go func() {
 		defer close(obscureResidueFragmentCh)

@@ -23,7 +23,7 @@ var _ = Describe("Obscure residue fragments", func() {
 
 			// Start the producer in the background
 			sharedOrderResidueTable := smpc.NewSharedObscureResidueTable([32]byte{})
-			obscureRngCh, errCh := smpc.ProduceObscureRngs(ctx, n, k, &sharedOrderResidueTable)
+			obscureRngCh, errCh := smpc.ProduceObscureRngs(ctx, n, k, &sharedOrderResidueTable, int(n))
 
 			wg.Add(1)
 			go func() {
@@ -88,7 +88,7 @@ var _ = Describe("Obscure residue fragments", func() {
 			sharedOrderResidueTable := smpc.NewSharedObscureResidueTable([32]byte{})
 			obscureRngSharesChs := make([]<-chan smpc.ObscureRngShares, n)
 			for i := int64(0); i < n; i++ {
-				obscureRngShares, errCh := smpc.ProcessObscureRngs(ctx, obscureRngChs[i], &sharedOrderResidueTable)
+				obscureRngShares, errCh := smpc.ProcessObscureRngs(ctx, obscureRngChs[i], &sharedOrderResidueTable, int(n))
 				obscureRngSharesChs[i] = obscureRngShares
 
 				wg.Add(1)
@@ -226,7 +226,7 @@ var _ = Describe("Obscure residue fragments", func() {
 			// and produce ObscureMulShares
 			obscureMulSharesChs := make([]<-chan smpc.ObscureMulShares, n)
 			for i := int64(0); i < n; i++ {
-				obscureMulSharesCh, errCh := smpc.ProcessObscureRngSharesIndexed(ctx, obscureRngSharesChs[i])
+				obscureMulSharesCh, errCh := smpc.ProcessObscureRngSharesIndexed(ctx, obscureRngSharesChs[i], int(n))
 				obscureMulSharesChs[i] = obscureMulSharesCh
 
 				wg.Add(1)
@@ -269,7 +269,7 @@ var _ = Describe("Obscure residue fragments", func() {
 			// ObscureMulSharesIndexed and produce XiFragments.
 			obscureResidueFragmentChs := make([]<-chan smpc.ObscureResidueFragment, n)
 			for i := int64(0); i < n; i++ {
-				obscureResidueFragmentCh, errCh := smpc.ProcessObscureMulSharesIndexed(ctx, obscureMulSharesIndexedChs[i])
+				obscureResidueFragmentCh, errCh := smpc.ProcessObscureMulSharesIndexed(ctx, obscureMulSharesIndexedChs[i], int(n))
 				obscureResidueFragmentChs[i] = obscureResidueFragmentCh
 
 				wg.Add(1)

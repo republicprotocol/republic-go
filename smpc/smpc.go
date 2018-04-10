@@ -81,32 +81,32 @@ func (computer *Computer) ComputeObscure(
 
 	// ProduceObscureRngs to initiate the creation of an obscure residue that
 	// will be owned by this Computer
-	obscureRngCh, errCh := ProduceObscureRngs(ctx, computer.n, computer.k, &computer.sharedObscureResidueTable)
+	obscureRngCh, errCh := ProduceObscureRngs(ctx, computer.n, computer.k, &computer.sharedObscureResidueTable, int(computer.n))
 	errChs[0] = errCh
 
 	// ProcessObscureRngs that were initiated by other Computers and broadcast
 	// to this Computer
-	obscureRngSharesCh, errCh := ProcessObscureRngs(ctx, obscureComputeChs.Rng, &computer.sharedObscureResidueTable)
+	obscureRngSharesCh, errCh := ProcessObscureRngs(ctx, obscureComputeChs.Rng, &computer.sharedObscureResidueTable, int(computer.n))
 	errChs[1] = errCh
 
 	// ProcessObscureRngShares broadcast to this Computer in response to an
 	// ObscureRng that was produced by this Computer
-	obscureRngSharesIndexedCh, errCh := ProcessObscureRngShares(ctx, obscureComputeChs.RngShares)
+	obscureRngSharesIndexedCh, errCh := ProcessObscureRngShares(ctx, obscureComputeChs.RngShares, int(computer.n))
 	errChs[2] = errCh
 
 	// ProcessObscureRngSharesIndexed broadcast to this Computer by another
 	// Computer that is progressing through the creation of its obscure residue
-	obscureMulShares, errCh := ProcessObscureRngSharesIndexed(ctx, obscureComputeChs.RngSharesIndexed)
+	obscureMulShares, errCh := ProcessObscureRngSharesIndexed(ctx, obscureComputeChs.RngSharesIndexed, int(computer.n))
 	errChs[3] = errCh
 
 	// ProcessObscureMulShares broadcast to this Computer in response to
 	// ObscureRngSharesIndexed that were produced by this Computer
-	obscureMulSharesIndexedCh, errCh := ProcessObscureMulShares(ctx, obscureComputeChs.MulShares)
+	obscureMulSharesIndexedCh, errCh := ProcessObscureMulShares(ctx, obscureComputeChs.MulShares, int(computer.n))
 	errChs[4] = errCh
 
 	// ProcessObscureMulSharesIndexed broadcast to this Computer by another
 	// Computer that is progressing through the creation of its obscure residue
-	obscureResidueFragmentCh, errCh := ProcessObscureMulSharesIndexed(ctx, obscureComputeChs.MulSharesIndexed)
+	obscureResidueFragmentCh, errCh := ProcessObscureMulSharesIndexed(ctx, obscureComputeChs.MulSharesIndexed, int(computer.n))
 	errChs[5] = errCh
 
 	// Consume all ObscureResidueFragments and store them in the
