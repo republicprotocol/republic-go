@@ -11,14 +11,13 @@ type Prepare struct {
 	Height
 }
 
-type Prepares map[BlockHash]uint8
-
 func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer Signer, validator Validator, threshold uint8) (<-chan Commit, <-chan Fault, <-chan error) {
 	commitCh := make(chan Commit)
 	faultCh := make(chan Fault)
 	errCh := make(chan error)
-	prepares := make(Prepares)
-
+	prepares := map[[32]byte]uint8{}
+	commited := map[[32]byte]bool{}
+	counter := uint64(0)
 	// prepareChIn = FilterPrepare(prepareChIn, func(*Prepare) bool { return false })
 
 	go func() {
@@ -35,8 +34,12 @@ func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer 
 				if !ok {
 					return
 				}
-				b := getBlockHash(prepare.Block)
-				if prepares[b] >= threshold-1 {
+				counter++
+				h := PrepareHash(prepare)
+				if commited[h] {
+					continue
+				}
+				if prepares[h] >= threshold-1 {
 					commitCh <- Commit{
 						Rank:               prepare.Rank,
 						Height:             prepare.Height,
@@ -44,10 +47,10 @@ func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer 
 						ThresholdSignature: ThresholdSignature("Threshold_BLS"),
 						Signature:          signer.Sign(),
 					}
-					prepares[b] = 0
+					commited[h] = true
 				} else {
 					if validator.Prepare(prepare) {
-						prepares[b]++
+						prepares[h]++
 					} else {
 						faultCh <- Fault{
 							Rank:      prepare.Rank,
