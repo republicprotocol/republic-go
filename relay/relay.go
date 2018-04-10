@@ -1,158 +1,93 @@
 package relay
 
 import (
-	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"math/big"
-	"os/exec"
-	"strings"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/gorilla/mux"
 	"github.com/jbenet/go-base58"
-	"github.com/republicprotocol/republic-go/contracts/connection"
-	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
 
+// Relay consists of configuration values (?)
+type Relay struct {
+	multiAddress *identity.MultiAddress
+	darkPools    *dark.Pools
+}
+
+// NewRouter prepares Relay to handle HTTP requests
 func NewRouter() *mux.Router {
+	relay := Relay{}
 	r := mux.NewRouter().StrictSlash(true)
-	r.Methods("POST").Path("/orders").HandlerFunc(RecoveryHandler(PostOrdersHandler(nil, nil)))
-	r.Methods("GET").Path("/orders").HandlerFunc(RecoveryHandler(GetOrdersHandler()))
-	r.Methods("GET").Path("/orders/{orderID}").HandlerFunc(RecoveryHandler(handleGetOrder))
-	r.Methods("DELETE").Path("/orders/{orderID}").HandlerFunc(RecoveryHandler(handleDeleteOrder))
+	r.Methods("POST").Path("/orders").Handler(RecoveryHandler(PostOrdersHandler(*relay.multiAddress, *relay.darkPools)))
+	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(GetOrdersHandler()))
+	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(HandleGetOrder()))
+	r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(HandleDeleteOrder()))
 	return r
 }
 
-// Relay consists of configuration values (?)
-type Relay struct {
-	keyFile    string
-	passPhrase string
-}
-
 // SendOrderToDarkOcean will fragment and send orders to the dark ocean
-func SendOrderToDarkOcean(order order.Order) {
+func SendOrderToDarkOcean(order order.Order, traderMultiAddress *identity.MultiAddress, pools dark.Pools) {
 	fmt.Println(order.Type)
-
-	// Get trader address and dark pools
-	// TODO: Change to keyFile and passPhrase
-	traderMultiAddress, pools, err := getTraderAddressAndDarkPools("../cmd/trader/test/keystore.json", "divya")
-	if err != nil {
-		log.Fatalf("cannot get trader multi address and dark pools: %v", err)
-	}
 
 	sendOrder(order, pools, *traderMultiAddress)
 }
 
 // SendOrderFragmentsToDarkOcean will send order fragments to the dark ocean
-func SendOrderFragmentsToDarkOcean(order order.Order) {
-
+func SendOrderFragmentsToDarkOcean(fragments []*order.Fragment, traderMultiAddress *identity.MultiAddress, pools dark.Pools) {
+	// TODO: (Check) Validate that there are enough fragments for each node in the pool (number of fragments should be atleast 2/3 * size of pool)
+	// TODO: Integrate Dark Pool ID here ?
+	valid := false
+	for i := range pools {
+		if len(fragments) >= 2/3*pools[i].Size() {
+			valid = true
+			sendSharesToDarkPool(pools[i], *traderMultiAddress, fragments)
+		}
+	}
+	if !valid {
+		fmt.Errorf("cannot send fragments to pools")
+	}
 }
 
 // CancelOrder will cancel orders that aren't confirmed or settled in the dark ocean
-func CancelOrder(order order.ID) {
+func CancelOrder(order order.ID, traderMultiAddress *identity.MultiAddress, pools dark.Pools) {
 	fmt.Println(order.String())
-}
 
-func getTraderAddressAndDarkPools(openKeyFile, openPassphrase string) (*identity.MultiAddress, dark.Pools, error) {
-	// Get key and traderMultiAddress
-	key, traderMultiAddress, err := getKeyAndAddress(openKeyFile, openPassphrase)
-	if err != nil {
-		return nil, nil, err
+	// For every Dark Pool
+	for i := range pools {
+
+		// Cancel orders for all nodes in the pool
+		pools[i].ForAll(func(n *dark.Node) {
+
+			// Get multiaddress
+			multiaddress, err := getMultiAddress(n.ID.Address(), *traderMultiAddress)
+			if err != nil {
+				log.Fatalf("cannot read multi-address: %v", err)
+			}
+
+			// Create a client
+			client, err := rpc.NewClient(multiaddress, *traderMultiAddress)
+			if err != nil {
+				log.Fatalf("cannot connect to client: %v", err)
+			}
+
+			// Close order
+			err = client.CancelOrder(&rpc.OrderSignature{})
+			if err != nil {
+				log.Println(err)
+				log.Printf("%sCoudln't cancel order to %v%s\n", red, base58.Encode(n.ID), reset)
+				return
+			}
+		})
 	}
-
-	// Get dark pools
-	pools, err := getDarkPools(key)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return traderMultiAddress, pools, nil
-
-}
-
-// Returns key and multi address
-func getKeyAndAddress(filename, passphrase string) (*keystore.Key, *identity.MultiAddress, error) {
-
-	// Get our IP address
-	ipInfoOut, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
-	if err != nil {
-		return nil, nil, err
-	}
-	ipAddress := strings.Trim(string(ipInfoOut), "\n ")
-
-	// Read data from keystore file and generate the key
-	encryptedKey, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot read keystore file: %v", err)
-	}
-
-	key, err := keystore.DecryptKey(encryptedKey, passphrase)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot decrypt key with provided passphrase: %v", err)
-	}
-
-	id, err := identity.NewKeyPairFromPrivateKey(key.PrivateKey)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot generate id from key %v", err)
-	}
-
-	traderMultiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/80/republic/%s", ipAddress, id.Address().String()))
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot obtain trader multi address %v", err)
-	}
-	log.Println("Trader Address: ", id.Address().String())
-
-	return key, &traderMultiAddress, nil
-}
-
-func getDarkPools(key *keystore.Key) (dark.Pools, error) {
-	// Logger
-	logs, err := getLogger()
-	if err != nil {
-		return nil, fmt.Errorf("cannot get logger: %v", err)
-	}
-
-	// Get Dark Node Registry
-	clientDetails, err := connection.FromURI("https://ropsten.infura.io/", connection.ChainRopsten)
-	if err != nil {
-		return nil, fmt.Errorf("cannot fetch dark node registry: %v", err)
-	}
-
-	auth := bind.NewKeyedTransactor(key.PrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("cannot fetch dark node registry: %v", err)
-	}
-
-	// Gas Price
-	auth.GasPrice = big.NewInt(6000000000)
-
-	registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, auth, &bind.CallOpts{})
-	if err != nil {
-		return nil, fmt.Errorf("cannot fetch dark node registry: %v", err)
-	}
-
-	// print(registrar.client)
-	// Get the Dark Ocean
-	ocean, err := dark.NewOcean(logs, 5, registrar)
-	if err != nil {
-		return nil, fmt.Errorf("cannot read dark ocean: %v", err)
-	}
-
-	// return the dark pools
-	return ocean.GetPools(), nil
 }
 
 func sendOrder(openOrder order.Order, pools dark.Pools, traderMultiAddress identity.MultiAddress) {
-	// Buy or sell ?
+	// Buy or sell
 	if openOrder.Parity == order.ParityBuy {
 		log.Println("sending buy order : ", base58.Encode(openOrder.ID))
 	} else {
@@ -177,21 +112,13 @@ func sendOrder(openOrder order.Order, pools dark.Pools, traderMultiAddress ident
 	wg.Wait()
 }
 
-func getLogger() (*logger.Logger, error) {
-	return logger.NewLogger(logger.Options{
-		Plugins: []logger.PluginOptions{
-			logger.PluginOptions{
-				File: &logger.FilePluginOptions{
-					Path: "stdout",
-				},
-			},
-		}})
-}
-
 // Send the shares across all nodes within the Dark Pool
 func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares []*order.Fragment) {
-	j := 0
-	pool.ForAll(func(n *dark.Node) {
+
+
+
+	i := 1
+	pool.For(func(n *dark.Node) {
 
 		// Get multiaddress
 		multiaddress, err := getMultiAddress(n.ID.Address(), multi)
@@ -206,13 +133,14 @@ func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares [
 		}
 
 		// Send fragment to node
-		err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[j]))
+		err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[i]))
 		if err != nil {
 			log.Println(err)
 			log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(n.ID), reset)
 			return
 		}
-		j++
+
+		i++
 	})
 }
 
