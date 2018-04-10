@@ -179,7 +179,10 @@ func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() (*types.Transaction, er
 	var tx *types.Transaction
 	for currentEpoch.Blockhash == nextEpoch.Blockhash {
 		if darkNodeRegistry.Chain == connection.ChainGanache {
+			darkNodeRegistry.SetGasLimit(300000)
 			tx, err = darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
+			darkNodeRegistry.client.PatchedWaitMined(darkNodeRegistry.context, tx)
+			darkNodeRegistry.SetGasLimit(0)
 			if err != nil {
 				return nil, err
 			}

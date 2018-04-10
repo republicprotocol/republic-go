@@ -289,7 +289,7 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 			node.Logger.Error(fmt.Sprintf("cannot find dark node %v: %s", n.ID.Address(), err.Error()))
 			return
 		} else if multiAddress == nil {
-			node.Logger.Warn(fmt.Sprintf("cannot find dark node %v: %s", n.ID.Address(), err.Error()))
+			node.Logger.Warn(fmt.Sprintf("cannot find dark node %v", n.ID.Address()))
 			return
 		}
 
