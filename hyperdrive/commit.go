@@ -13,14 +13,13 @@ type Commit struct {
 	Signature
 }
 
-type Commits map[BlockHash]uint8
-
-func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, signer Signer, validator Validator, threshold uint8) (chan Block, chan Fault, chan error) {
+func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, signer Signer, validator Validator, blocks *SharedBlocks, threshold uint8) (chan Commit, chan Block, chan Fault, chan error) {
 	blockCh := make(chan Block)
+	commitCh := make(chan Commit)
 	faultCh := make(chan Fault)
 	errCh := make(chan error)
-	commits := make(Commits)
-
+	commits := map[[32]byte]uint8{}
+	certified := map[[32]byte]bool{}
 	go func() {
 		defer close(faultCh)
 		defer close(errCh)
@@ -34,14 +33,24 @@ func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, signer Signer,
 				if !ok {
 					return
 				}
-				b := getBlockHash(commit.Block)
-				if commits[b] >= threshold-1 {
+				h := CommitHash(commit)
+				if certified[h] {
+					continue
+				}
+				if commits[h] >= threshold-1 {
+					certified[h] = true
 					blockCh <- commit.Block
-					validator.UpdateHeight()
-					commits[b] = 0
+					blocks.IncrementHeight()
 				} else {
 					if validator.Commit(commit) {
-						commits[b]++
+						commits[h]++
+						commitCh <- Commit{
+							Rank:               commit.Rank,
+							Height:             commit.Height,
+							Block:              commit.Block,
+							ThresholdSignature: commit.ThresholdSignature,
+							Signature:          signer.Sign(),
+						}
 					} else {
 						faultCh <- Fault{
 							Rank:      commit.Rank,
@@ -53,6 +62,5 @@ func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, signer Signer,
 			}
 		}
 	}()
-
-	return blockCh, faultCh, errCh
+	return commitCh, blockCh, faultCh, errCh
 }

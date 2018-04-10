@@ -23,7 +23,7 @@ var _ = Describe("Commits", func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			commitChIn := make(chan Commit)
 
-			_, _, errCh := ProcessCommit(ctx, commitChIn, signer, validator, threshold)
+			_, _, _, errCh := ProcessCommit(ctx, commitChIn, signer, validator, &blocks, threshold)
 
 			var wg sync.WaitGroup
 			wg.Add(1)
@@ -43,7 +43,7 @@ var _ = Describe("Commits", func() {
 		It("should return commit after processing a threshold number of prepares", func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			commitChIn := make(chan Commit)
-			blockCh, _, errCh := ProcessCommit(ctx, commitChIn, signer, validator, threshold)
+			_, blockCh, _, errCh := ProcessCommit(ctx, commitChIn, signer, validator, &blocks, threshold)
 
 			var wg sync.WaitGroup
 			wg.Add(1)
