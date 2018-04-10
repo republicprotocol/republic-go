@@ -10,8 +10,9 @@ import (
 )
 
 // A Signable struct is able to be signed by a KeyPair
+// Hash must return a 32-byte []byte array
 type Signable interface {
-	SerializeForSigning() []byte
+	Hash() []byte
 }
 
 // The Signature type represents the signature of the hash of Signable data
@@ -21,15 +22,17 @@ type Signature = []byte
 var ErrInvalidSignature = fmt.Errorf("failed to verify signature")
 
 // Sign hashes and signs the Signable data
+// If the Hash() function defined does not correctly hash the struct,
+// it may allow for chosen plaintext attacks on the keypair's private key
 func (keyPair *KeyPair) Sign(data Signable) (Signature, error) {
-	hash := crypto.Keccak256(data.SerializeForSigning())
+	hash := data.Hash()
 
 	return crypto.Sign(hash, keyPair.PrivateKey)
 }
 
 // RecoverSigner calculates the signing public key given signable data and its signature
 func RecoverSigner(data Signable, signature Signature) (ID, error) {
-	hash := crypto.Keccak256(data.SerializeForSigning())
+	hash := data.Hash()
 
 	// Returns 65-byte uncompress pubkey (0x04 | X | Y)
 	pubkey, err := crypto.Ecrecover(hash, signature)
