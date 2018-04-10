@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
@@ -61,6 +62,41 @@ func NewFragment(orderID ID, orderType Type, orderParity Parity, fstCodeShare, s
 // the FragmentID and signature for a Fragment.
 func (fragment *Fragment) Hash() []byte {
 	return crypto.Keccak256(fragment.Bytes())
+}
+
+// Sign signs the fragment using the provided keypair, and assigns it the the fragments's
+// Signature field.
+func (fragment *Fragment) Sign(keyPair identity.KeyPair) error {
+	var err error
+	fragment.Signature, err = keyPair.Sign(fragment)
+	return err
+}
+
+// SignFragments maps over an array of fragments, calling Sign on each one
+func SignFragments(keyPair identity.KeyPair, fragments []*Fragment) error {
+	for _, fragment := range fragments {
+		if err := fragment.Sign(keyPair); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// VerifySignature verifies that the Signature field has been signed by the provided
+// ID's private key, returning an error if the signature is invalid
+func (fragment *Fragment) VerifySignature(ID identity.ID) error {
+	return identity.VerifySignature(fragment, fragment.Signature, ID)
+}
+
+// VerifyFragmentSignatures maps over an array of fragments,
+// calling VerifySignature on each one
+func VerifyFragmentSignatures(ID identity.ID, fragments []*Fragment) error {
+	for _, fragment := range fragments {
+		if err := fragment.VerifySignature(ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Bytes returns a Fragment serialized into a bytes.

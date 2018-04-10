@@ -104,7 +104,7 @@ var _ = Describe("Orders", func() {
 		})
 	})
 
-	Context("when signing orders", func() {
+	Context("when being signed", func() {
 
 		keyPair, err := identity.NewKeyPair()
 		if err != nil {
@@ -133,7 +133,7 @@ var _ = Describe("Orders", func() {
 			Ω(err).Should(Equal(identity.ErrInvalidSignature))
 		})
 
-		It("should error for invalid signature", func() {
+		It("should error for invalid data", func() {
 
 			nonce2 := stackint.One()
 			order2 := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce2)
@@ -146,6 +146,5 @@ var _ = Describe("Orders", func() {
 			err = order2.VerifySignature(keyPair.ID())
 			Ω(err).Should(Equal(identity.ErrInvalidSignature))
 		})
-
 	})
 })
