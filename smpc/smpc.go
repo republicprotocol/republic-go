@@ -16,51 +16,123 @@ var Prime = func() stackint.Int1024 {
 	return prime
 }()
 
-type Engine struct {
-	n, k             int64
-	sharedOrderTable SharedOrderTable
+// ComputerID uniquely identifies the Computer.
+type ComputerID [32]byte
+
+// ObscureComputeInput accepted by obscure computations. It stores a set of
+// read-write channels.
+type ObscureComputeInput struct {
+	Rng              chan ObscureRng
+	RngShares        chan ObscureRngShares
+	RngSharesIndexed chan ObscureRngSharesIndexed
+	MulShares        chan ObscureMulShares
+	MulSharesIndexed chan ObscureMulSharesIndexed
 }
 
-func NewEngine(n, k int64) Engine {
-	return Engine{
-		sharedOrderTable: NewSharedOrderTable(),
+// ObscureComputeOutput returned by obscure computations. It stores a set of
+// read-only channels.
+type ObscureComputeOutput struct {
+	Rng              <-chan ObscureRng
+	RngShares        <-chan ObscureRngShares
+	RngSharesIndexed <-chan ObscureRngSharesIndexed
+	MulShares        <-chan ObscureMulShares
+	MulSharesIndexed <-chan ObscureMulSharesIndexed
+}
+
+// Computer of sMPC messages.
+type Computer struct {
+	ComputerID
+
+	n, k                      int64
+	sharedOrderTable          SharedOrderTable
+	sharedObscureResidueTable SharedObscureResidueTable
+}
+
+// NewComputer returns a new Computer with the given ComputerID and N-K
+// threshold.
+func NewComputer(computerID ComputerID, n, k int64) Computer {
+	return Computer{
+		ComputerID:                computerID,
+		sharedOrderTable:          NewSharedOrderTable(),
+		sharedObscureResidueTable: NewSharedObscureResidueTable(computerID),
 	}
 }
 
-func (engine *Engine) Compute(
+// ComputeObscure residues that will be used during order matching to obscure
+// Deltas.
+func (computer *Computer) ComputeObscure(
 	ctx context.Context,
-	obscureRngChIn <-chan ObscureRng,
-	obscureRngSharesChIn <-chan ObscureRngShares,
-	obscureRngSharesIndexedChIn <-chan ObscureRngSharesIndexed,
-	obscureMulSharesChIn <-chan ObscureMulShares,
-	obscureMulSharesIndexedChIn <-chan ObscureMulSharesIndexed,
+	obscureComputeChs ObscureComputeInput,
 ) (
-	<-chan ObscureRng,
-	<-chan ObscureRngShares,
-	<-chan ObscureRngSharesIndexed,
-	<-chan ObscureMulShares,
-	<-chan ObscureMulSharesIndexed,
+	ObscureComputeOutput,
 	<-chan error,
 ) {
-	errChs := make(chan (<-chan error), 6)
+	errChs := make([]<-chan error, 6)
 
-	obscureRngCh, errCh := ProduceObscureRngs(ctx, engine.n, engine.k)
-	errChs <- errCh
+	// ProduceObscureRngs to initiate the creation of an obscure residue that
+	// will be owned by this Computer
+	obscureRngCh, errCh := ProduceObscureRngs(ctx, computer.n, computer.k, &computer.sharedObscureResidueTable)
+	errChs[0] = errCh
 
-	obscureRngSharesCh, errCh := ProcessObscureRngs(ctx, obscureRngChIn)
-	errChs <- errCh
+	// ProcessObscureRngs that were initiated by other Computers and broadcast
+	// to this Computer
+	obscureRngSharesCh, errCh := ProcessObscureRngs(ctx, obscureComputeChs.Rng, &computer.sharedObscureResidueTable)
+	errChs[1] = errCh
 
-	obscureRngSharesIndexedCh, errCh := ProcessObscureRngShares(ctx, obscureRngSharesChIn)
-	errChs <- errCh
+	// ProcessObscureRngShares broadcast to this Computer in response to an
+	// ObscureRng that was produced by this Computer
+	obscureRngSharesIndexedCh, errCh := ProcessObscureRngShares(ctx, obscureComputeChs.RngShares)
+	errChs[2] = errCh
 
-	obscureMulShares, errCh := ProcessObscureRngSharesIndexed(ctx, obscureRngSharesIndexedChIn)
-	errChs <- errCh
+	// ProcessObscureRngSharesIndexed broadcast to this Computer by another
+	// Computer that is progressing through the creation of its obscure residue
+	obscureMulShares, errCh := ProcessObscureRngSharesIndexed(ctx, obscureComputeChs.RngSharesIndexed)
+	errChs[3] = errCh
 
-	obscureMulSharesIndexedCh, errCh := ProcessObscureMulShares(ctx, obscureMulSharesChIn)
-	errChs <- errCh
+	// ProcessObscureMulShares broadcast to this Computer in response to
+	// ObscureRngSharesIndexed that were produced by this Computer
+	obscureMulSharesIndexedCh, errCh := ProcessObscureMulShares(ctx, obscureComputeChs.MulShares)
+	errChs[4] = errCh
 
-	obscureResidueFragmentCh, errCh := ProcessObscureMulSharesIndexed(ctx, obscureMulSharesIndexedChIn)
-	errChs <- errCh
+	// ProcessObscureMulSharesIndexed broadcast to this Computer by another
+	// Computer that is progressing through the creation of its obscure residue
+	obscureResidueFragmentCh, errCh := ProcessObscureMulSharesIndexed(ctx, obscureComputeChs.MulSharesIndexed)
+	errChs[5] = errCh
 
-	return obscureRngCh, obscureRngSharesCh, obscureRngSharesIndexedCh, obscureMulShares, obscureMulSharesIndexedCh, dispatch.MergeErrors(errChs)
+	// Consume all ObscureResidueFragments and store them in the
+	// SharedObscureResidueTable, assuming that the owner has already been
+	// stored
+	go func() {
+		for obscureResidueFragment := range obscureResidueFragmentCh {
+			computer.sharedObscureResidueTable.InsertObscureResidue(obscureResidueFragment)
+		}
+	}()
+
+	allowErrCanceled := true
+	errCh = dispatch.FilterErrors(dispatch.MergeErrors(errChs...), func(err error) bool {
+		if err == context.Canceled && allowErrCanceled {
+			allowErrCanceled = false
+			return true
+		}
+		return false
+	})
+
+	return ObscureComputeOutput{
+		obscureRngCh,
+		obscureRngSharesCh,
+		obscureRngSharesIndexedCh,
+		obscureMulShares,
+		obscureMulSharesIndexedCh,
+	}, errCh
+}
+
+func (computer *Computer) ComputeOrderMatches() {
+}
+
+func (computer *Computer) SharedOrderTable() *SharedOrderTable {
+	return &computer.sharedOrderTable
+}
+
+func (computer *Computer) SharedObscureResidueTable() *SharedObscureResidueTable {
+	return &computer.sharedObscureResidueTable
 }

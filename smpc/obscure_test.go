@@ -22,7 +22,8 @@ var _ = Describe("Obscure residue fragments", func() {
 			n, k := int64(31), int64(16)
 
 			// Start the producer in the background
-			obscureRngCh, errCh := smpc.ProduceObscureRngs(ctx, n, k)
+			sharedOrderResidueTable := smpc.NewSharedObscureResidueTable([32]byte{})
+			obscureRngCh, errCh := smpc.ProduceObscureRngs(ctx, n, k, &sharedOrderResidueTable)
 
 			wg.Add(1)
 			go func() {
@@ -71,21 +72,23 @@ var _ = Describe("Obscure residue fragments", func() {
 					}
 				}()
 
-				one := stackint.One()
 				for i := range obscureRngChs {
 					obscureRngChs[i] <- smpc.ObscureRng{
-						N:  n,
-						K:  k,
-						ID: one.Bytes(),
+						ObscureResidueID: [32]byte{1},
+						Owner:            [32]byte{1},
+						Signature:        [32]byte{},
+						N:                n,
+						K:                k,
 					}
 				}
 			}()
 
 			// Create N processes that will consume ObscureRngs and
 			// produce ObscureRngSharesIndexed
+			sharedOrderResidueTable := smpc.NewSharedObscureResidueTable([32]byte{})
 			obscureRngSharesChs := make([]<-chan smpc.ObscureRngShares, n)
 			for i := int64(0); i < n; i++ {
-				obscureRngShares, errCh := smpc.ProcessObscureRngs(ctx, obscureRngChs[i])
+				obscureRngShares, errCh := smpc.ProcessObscureRngs(ctx, obscureRngChs[i], &sharedOrderResidueTable)
 				obscureRngSharesChs[i] = obscureRngShares
 
 				wg.Add(1)
@@ -201,15 +204,14 @@ var _ = Describe("Obscure residue fragments", func() {
 					}
 				}()
 
-				one := stackint.One()
 				for j := range obscureRngSharesChs {
 					obscureRngSharesIndexed := smpc.ObscureRngSharesIndexed{
-						N:  n,
-						K:  k,
-						ID: one.Bytes(),
-						A:  make(shamir.Shares, n),
-						B:  make(shamir.Shares, n),
-						R:  make(shamir.Shares, n),
+						ObscureResidueID: [32]byte{1},
+						N:                n,
+						K:                k,
+						A:                make(shamir.Shares, n),
+						B:                make(shamir.Shares, n),
+						R:                make(shamir.Shares, n),
 					}
 					for i := int64(0); i < n; i++ {
 						obscureRngSharesIndexed.A[i] = aShares[i][j]
@@ -329,13 +331,12 @@ var _ = Describe("Obscure residue fragments", func() {
 					Ω(rSq[i].Key).Should(Equal(j + 1))
 				}
 
-				one := stackint.One()
 				obscureMulSharesIndexedChs[j] <- smpc.ObscureMulSharesIndexed{
-					N:   n,
-					K:   k,
-					ID:  one.Bytes(),
-					AB:  ab,
-					RSq: rSq,
+					ObscureResidueID: [32]byte{1},
+					N:                n,
+					K:                k,
+					AB:               ab,
+					RSq:              rSq,
 				}
 			}
 			for i := range obscureMulSharesIndexedChs {

@@ -96,6 +96,7 @@ func (multiplexer *Multiplexer) Shutdown() error {
 			multiplexer.messagesOpen = false
 			close(multiplexer.messages)
 		}
+		return nil
 	}()
 	if err != nil {
 		return err

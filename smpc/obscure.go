@@ -3,14 +3,17 @@ package smpc
 import (
 	"context"
 	"crypto/rand"
+	"sync"
 	"time"
 
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
-// ProduceObscureRngs by periodically writing to an output channel.
-func ProduceObscureRngs(ctx context.Context, n, k int64) (<-chan ObscureRng, <-chan error) {
+// ProduceObscureRngs by periodically writing to an output channel. The
+// ownership of the random ObscureResidueID is stored in a
+// SharedObscureResidueTable.
+func ProduceObscureRngs(ctx context.Context, n, k int64, sharedObscureResidueTable *SharedObscureResidueTable) (<-chan ObscureRng, <-chan error) {
 	obscureRngCh := make(chan ObscureRng)
 	errCh := make(chan error)
 
@@ -22,16 +25,23 @@ func ProduceObscureRngs(ctx context.Context, n, k int64) (<-chan ObscureRng, <-c
 		defer ticker.Stop()
 
 		for {
-			random, err := stackint.Random(rand.Reader, &Prime)
+			obscureResidueID := [32]byte{}
+			_, err := rand.Read(obscureResidueID[:32])
 			if err != nil {
 				errCh <- err
 				continue
 			}
+
+			// TODO: Produce a verifiable signature
 			obscureRng := ObscureRng{
-				N:  n,
-				K:  k,
-				ID: random.Bytes(),
+				ObscureResidueID: obscureResidueID,
+				Owner:            sharedObscureResidueTable.ID(),
+				Signature:        [32]byte{},
+				N:                n,
+				K:                k,
 			}
+			sharedObscureResidueTable.InsertObscureResidueOwner(obscureRng.ObscureResidueID, obscureRng.Owner)
+
 			select {
 			case <-ctx.Done():
 				errCh <- ctx.Err()
@@ -52,8 +62,9 @@ func ProduceObscureRngs(ctx context.Context, n, k int64) (<-chan ObscureRng, <-c
 
 // ProcessObscureRngs by reading from an input channel, generating Shamir
 // secret shares for a set of random numbers, and writing ObscureRngShares to
-// an output channel.
-func ProcessObscureRngs(ctx context.Context, obscureRngChIn <-chan ObscureRng) (<-chan ObscureRngShares, <-chan error) {
+// an output channel. The ownership of the random ObscureResidueID is stored in
+// a SharedObscureResidueTable.
+func ProcessObscureRngs(ctx context.Context, obscureRngChIn <-chan ObscureRng, sharedObscureResidueTable *SharedObscureResidueTable) (<-chan ObscureRngShares, <-chan error) {
 	obscureRngSharesCh := make(chan ObscureRngShares)
 	errCh := make(chan error)
 
@@ -70,11 +81,15 @@ func ProcessObscureRngs(ctx context.Context, obscureRngChIn <-chan ObscureRng) (
 				if !ok {
 					return
 				}
+
+				// TODO: Verify the signature
+				sharedObscureResidueTable.InsertObscureResidueOwner(obscureRng.ObscureResidueID, obscureRng.Owner)
 				obscureRngShares, err := NewObscureRngShares(&obscureRng, &Prime)
 				if err != nil {
 					errCh <- err
 					continue
 				}
+
 				select {
 				case <-ctx.Done():
 					errCh <- ctx.Err()
@@ -86,6 +101,23 @@ func ProcessObscureRngs(ctx context.Context, obscureRngChIn <-chan ObscureRng) (
 	}()
 
 	return obscureRngSharesCh, errCh
+}
+
+// ProcessObscureRngShares by reading from an input channel, grouping
+// ObscureRngShares by their IDs and their secret share indices. The resulting
+// ObscureRngSharesIndexed are written to an output channel.
+func ProcessObscureRngShares(ctx context.Context, obscureRngSharesChIn <-chan ObscureRngShares) (<-chan ObscureRngSharesIndexed, <-chan error) {
+	obscureRngSharesIndexedCh := make(chan ObscureRngSharesIndexed)
+	errCh := make(chan error)
+
+	go func() {
+		defer close(obscureRngSharesIndexedCh)
+		defer close(errCh)
+
+		panic("unimplemented")
+	}()
+
+	return obscureRngSharesIndexedCh, errCh
 }
 
 // ProcessObscureRngSharesIndexed by reading from an input channel, summating
@@ -133,9 +165,9 @@ func ProcessObscureRngSharesIndexed(ctx context.Context, obscureRngSharesIndexed
 				}
 
 				obscureMulShares := ObscureMulShares{
-					ID:  obscureRngSharesIndexed.ID,
-					AB:  abShares,
-					RSq: rSqShares,
+					ObscureResidueID: obscureRngSharesIndexed.ObscureResidueID,
+					AB:               abShares,
+					RSq:              rSqShares,
 				}
 				select {
 				case <-ctx.Done():
@@ -148,6 +180,23 @@ func ProcessObscureRngSharesIndexed(ctx context.Context, obscureRngSharesIndexed
 	}()
 
 	return obscureMulSharesCh, errCh
+}
+
+// ProcessObscureMulShares by reading from an input channel, grouping
+// ObscureMulShares by their IDs and their secret share indices. The resulting
+// ObscureMulSharesIndexed are written to an output channel.
+func ProcessObscureMulShares(ctx context.Context, obscureMulSharesChIn <-chan ObscureMulShares) (<-chan ObscureMulSharesIndexed, <-chan error) {
+	obscureMulSharesIndexedCh := make(chan ObscureMulSharesIndexed)
+	errCh := make(chan error)
+
+	go func() {
+		defer close(obscureMulSharesIndexedCh)
+		defer close(errCh)
+
+		panic("unimplemented")
+	}()
+
+	return obscureMulSharesIndexedCh, errCh
 }
 
 // ProcessObscureMulSharesIndexed by reading from an input channel, using the
@@ -225,11 +274,11 @@ func ProcessObscureMulSharesIndexed(ctx context.Context, obscureMulSharesIndexed
 
 				// Output the ObscureResidueFragment
 				obscureResidueFragment := ObscureResidueFragment{
-					N:   obscureMulSharesIndexed.N,
-					K:   obscureMulSharesIndexed.K,
-					ID:  obscureMulSharesIndexed.ID,
-					AB:  AB,
-					RSq: RSq,
+					ObscureResidueID: obscureMulSharesIndexed.ObscureResidueID,
+					N:                obscureMulSharesIndexed.N,
+					K:                obscureMulSharesIndexed.K,
+					AB:               AB,
+					RSq:              RSq,
 				}
 				select {
 				case <-ctx.Done():
@@ -244,17 +293,65 @@ func ProcessObscureMulSharesIndexed(ctx context.Context, obscureMulSharesIndexed
 	return obscureResidueFragmentCh, errCh
 }
 
+// A SharedObscureResidueTable stores ObscureResidueFragments and keeps track
+// of the owners. Only the owner of an obscure residue can elect to use that
+// residue in a computation.
+type SharedObscureResidueTable struct {
+	id [32]byte
+
+	mu                      *sync.RWMutex
+	obscureResidueFragments map[ObscureResidueID]ObscureResidueFragment
+	obscureResidueOwners    map[ObscureResidueID][32]byte
+}
+
+func NewSharedObscureResidueTable(id [32]byte) SharedObscureResidueTable {
+	return SharedObscureResidueTable{
+		id: id,
+
+		mu: new(sync.RWMutex),
+		obscureResidueFragments: map[ObscureResidueID]ObscureResidueFragment{},
+		obscureResidueOwners:    map[ObscureResidueID][32]byte{},
+	}
+}
+
+func (table *SharedObscureResidueTable) InsertObscureResidue(obscureResidueFragment ObscureResidueFragment) {
+	table.mu.Lock()
+	defer table.mu.Unlock()
+
+	table.obscureResidueFragments[obscureResidueFragment.ObscureResidueID] = obscureResidueFragment
+}
+
+func (table *SharedObscureResidueTable) InsertObscureResidueOwner(obscureResidueID ObscureResidueID, owner [32]byte) {
+	table.mu.Lock()
+	defer table.mu.Unlock()
+
+	table.obscureResidueOwners[obscureResidueID] = owner
+}
+
+func (table *SharedObscureResidueTable) ObscureResidueOwner(obscureResidueID ObscureResidueID) [32]byte {
+	table.mu.RLock()
+	defer table.mu.RUnlock()
+
+	return table.obscureResidueOwners[obscureResidueID]
+}
+
+func (table *SharedObscureResidueTable) ID() [32]byte {
+	return table.id
+}
+
+// ObscureResidueID identifies an ObscureResidue and links all components that
+// where generated in the process of generating the ObscureResidue.
+type ObscureResidueID [32]byte
+
 // An ObscureResidueFragment is used to multiply a finite field element by a
 // random quadratic residue. Iff the result is a quadratic residue, then the
 // finite field element is also a quadratic residue.
 type ObscureResidueFragment struct {
+	ObscureResidueID
+
 	// Used to parameterize the number of shares generated, and the number of
 	// shares needed for reconstruction
 	N, K int64
-
-	// A unique identifier that links this ObscureResidueFragment to the
-	// ObscureRng request that was used to generate it
-	ID []byte
 
 	// Beaver triple shares used for fast multiplication
 	A, B, AB shamir.Share
@@ -267,24 +364,26 @@ type ObscureResidueFragment struct {
 // generation. This process results in all parties having shares of a random
 // number without any party knowing the random number.
 type ObscureRng struct {
+	ObscureResidueID
+
+	// Used to verify the sender of the ObscureRng
+	Owner     [32]byte
+	Signature [32]byte
+
 	// Used to parameterize the number of shares generated, and the number of
 	// shares needed for reconstruction
 	N, K int64
-
-	// A random unique identifier for this round of ObscureRng
-	ID []byte
 }
 
 // ObscureRngShares are Shamir secret shares of a random number. All parties
 // generate one of these during a round of ObscureRng, with one share for each
 // party.
 type ObscureRngShares struct {
+	ObscureResidueID
+
 	// Used to parameterize the number of shares generated, and the number of
 	// shares needed for reconstruction
 	N, K int64
-
-	// The round of ObscureRng that these ObscureRngShares are genereted from
-	ID []byte
 
 	// Shamir secret shares for three random numbers
 	A, B, R shamir.Shares
@@ -294,19 +393,19 @@ type ObscureRngShares struct {
 func NewObscureRngShares(obscureRng *ObscureRng, prime *stackint.Int1024) (ObscureRngShares, error) {
 	var err error
 	obscureRngShares := ObscureRngShares{
-		N:  obscureRng.N,
-		K:  obscureRng.K,
-		ID: obscureRng.ID,
+		ObscureResidueID: obscureRng.ObscureResidueID,
+		N:                obscureRng.N,
+		K:                obscureRng.K,
 	}
-	obscureRngShares.A, err = GenerateRandomShares(obscureRng.N, obscureRng.K, prime)
+	obscureRngShares.A, err = RandomShares(obscureRng.N, obscureRng.K, prime)
 	if err != nil {
 		return obscureRngShares, err
 	}
-	obscureRngShares.B, err = GenerateRandomShares(obscureRng.N, obscureRng.K, prime)
+	obscureRngShares.B, err = RandomShares(obscureRng.N, obscureRng.K, prime)
 	if err != nil {
 		return obscureRngShares, err
 	}
-	obscureRngShares.R, err = GenerateRandomShares(obscureRng.N, obscureRng.K, prime)
+	obscureRngShares.R, err = RandomShares(obscureRng.N, obscureRng.K, prime)
 	if err != nil {
 		return obscureRngShares, err
 	}
@@ -318,13 +417,11 @@ func NewObscureRngShares(obscureRng *ObscureRng, prime *stackint.Int1024) (Obscu
 // ObscureRngSharesIndexed is a share with a specific index, taken from
 // ObscureRngShares.
 type ObscureRngSharesIndexed struct {
+	ObscureResidueID
+
 	// Used to parameterize the number of shares generated, and the number of
 	// shares needed for reconstruction
 	N, K int64
-
-	// The round of ObscureRng that these ObscureRngSharesIndexed are genereted
-	// from
-	ID []byte
 
 	// Shamir secret shares, all with the same index, from different
 	// ObscureRngShares
@@ -335,12 +432,11 @@ type ObscureRngSharesIndexed struct {
 // Shamir secret shares. All parties generate one of these, for their
 // respective shares, during a round of multiplication.
 type ObscureMulShares struct {
+	ObscureResidueID
+
 	// Used to parameterize the number of shares generated, and the number of
 	// shares needed for reconstruction
 	N, K int64
-
-	// The round of ObscureRng that these ObscureMulShares are genereted from
-	ID []byte
 
 	// Shamir secret shares for the multiplication of shares summed from an
 	// ObscureRngSharesIndexed
@@ -350,21 +446,19 @@ type ObscureMulShares struct {
 // ObscureMulSharesIndexed are the same as ObscureRngSharesIndexed, but from
 // ObscureMulShares.
 type ObscureMulSharesIndexed struct {
+	ObscureResidueID
+
 	// Used to parameterize the number of shares generated, and the number of
 	// shares needed for reconstruction
 	N, K int64
-
-	// The round of ObscureRng that these ObscureMulSharesIndexed are genereted
-	// from
-	ID []byte
 
 	// Shamir secret shares, all with the same index, from different
 	// ObscureMulShares
 	AB, RSq shamir.Shares
 }
 
-// GenerateRandomShares in a finite field defined by the given prime.
-func GenerateRandomShares(n, k int64, prime *stackint.Int1024) (shamir.Shares, error) {
+// RandomShares in a finite field defined by the given prime.
+func RandomShares(n, k int64, prime *stackint.Int1024) (shamir.Shares, error) {
 	r, err := stackint.Random(rand.Reader, prime)
 	if err != nil {
 		return nil, err

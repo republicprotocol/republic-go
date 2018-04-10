@@ -21,7 +21,8 @@ var _ = Describe("Order fragment processor", func() {
 			ctx, cancel := context.WithCancel(context.Background())
 
 			orderFragmentCh := make(chan order.Fragment)
-			_, errCh := smpc.ProcessOrderFragments(ctx, orderFragmentCh, 0)
+			sharedOrderTable := smpc.NewSharedOrderTable()
+			_, errCh := smpc.ProcessOrderFragments(ctx, orderFragmentCh, &sharedOrderTable, 0)
 
 			wg.Add(1)
 			go func() {
@@ -46,7 +47,8 @@ var _ = Describe("Order fragment processor", func() {
 			numOrderTuples := numBuyOrders * numSellOrders
 
 			orderFragmentCh := make(chan order.Fragment)
-			orderTuplesCh, errCh := smpc.ProcessOrderFragments(ctx, orderFragmentCh, numOrderTuples)
+			sharedOrderTable := smpc.NewSharedOrderTable()
+			orderTuplesCh, errCh := smpc.ProcessOrderFragments(ctx, orderFragmentCh, &sharedOrderTable, numOrderTuples)
 
 			// Consume OrderTuples and cancel the process once all OrderTuples
 			// have been consumed

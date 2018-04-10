@@ -82,7 +82,7 @@ const (
 	OrderStateOff = 2
 )
 
-// An SharedOrderTable stores order fragments and generates OrderTuples that
+// A SharedOrderTable stores order fragments and generates OrderTuples that
 // will be used to perform order matching computations. It is safe for
 // concurrent use.
 type SharedOrderTable struct {
