@@ -1,9 +1,11 @@
 package compute
 
 import (
+	"math/big"
+
 	"github.com/republicprotocol/republic-go/stackint"
 
-	do "github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -15,6 +17,7 @@ type DeltaBuilder struct {
 	deltas                 map[string]*Delta
 	deltaFragments         map[string]*DeltaFragment
 	deltasToDeltaFragments map[string][]*DeltaFragment
+	newDeltaFragment       chan *DeltaFragment
 }
 
 func NewDeltaBuilder(k int64, prime *stackint.Int1024) *DeltaBuilder {
@@ -25,12 +28,66 @@ func NewDeltaBuilder(k int64, prime *stackint.Int1024) *DeltaBuilder {
 		deltas:                 map[string]*Delta{},
 		deltaFragments:         map[string]*DeltaFragment{},
 		deltasToDeltaFragments: map[string][]*DeltaFragment{},
+		newDeltaFragment:       make(chan *DeltaFragment, 100),
 	}
 }
 
+func (builder *DeltaBuilder) UnconfirmedOrders() chan *order.Order {
+	orders := make(chan *order.Order, 100)
+	sentOrders := map[string]bool{}
+	go func() {
+		builder.EnterReadOnly(nil)
+		builder.Exit()
+
+		for _, delta := range builder.deltas {
+			buyOrder := new(order.Order)
+			buyOrder.ID = delta.BuyOrderID
+			buyOrder.Parity = order.ParityBuy
+			if _, ok := sentOrders[string(delta.BuyOrderID)]; !ok {
+				orders <- buyOrder
+				sentOrders[string(delta.BuyOrderID)] = true
+			}
+
+			sellOrder := new(order.Order)
+			sellOrder.ID = delta.SellOrderID
+			sellOrder.Parity = order.ParitySell
+			if _, ok := sentOrders[string(delta.SellOrderID)]; !ok {
+				orders <- sellOrder
+				sentOrders[string(delta.SellOrderID)] = true
+			}
+		}
+
+		for delta := range builder.newDeltaFragment {
+			buyOrder := new(order.Order)
+			buyOrder.ID = delta.BuyOrderID
+			buyOrder.Parity = order.ParityBuy
+			if _, ok := sentOrders[string(delta.BuyOrderID)]; !ok {
+				orders <- buyOrder
+				sentOrders[string(delta.BuyOrderID)] = true
+			}
+
+			sellOrder := new(order.Order)
+			sellOrder.ID = delta.SellOrderID
+			sellOrder.Parity = order.ParitySell
+			if _, ok := sentOrders[string(delta.SellOrderID)]; !ok {
+				orders <- sellOrder
+				sentOrders[string(delta.SellOrderID)] = true
+			}
+		}
+	}()
+
+	return orders
+}
+
 func (builder *DeltaBuilder) InsertDeltaFragment(deltaFragment *DeltaFragment) *Delta {
+	if len(builder.newDeltaFragment) == 100 {
+		<-builder.newDeltaFragment
+	}
+	builder.newDeltaFragment <- deltaFragment
+
 	builder.Enter(nil)
 	defer builder.Exit()
+
 	return builder.insertDeltaFragment(deltaFragment)
 }
 
@@ -103,25 +160,76 @@ func (builder *DeltaBuilder) setK(k int64) {
 type DeltaFragmentMatrix struct {
 	do.GuardedObject
 
-	prime                  *stackint.Int1024
-	buyOrderFragments      map[string]*order.Fragment
-	sellOrderFragments     map[string]*order.Fragment
-	buySellDeltaFragments  map[string]map[string]*DeltaFragment
-	completeOrderFragments map[string]bool
+	prime                 *big.Int
+	buyOrderFragments     map[string]*order.Fragment
+	sellOrderFragments    map[string]*order.Fragment
+	buySellDeltaFragments map[string]map[string]*DeltaFragment
+	newFragment           chan *order.Fragment
 }
 
 func NewDeltaFragmentMatrix(prime *stackint.Int1024) *DeltaFragmentMatrix {
 	return &DeltaFragmentMatrix{
-		GuardedObject:          do.NewGuardedObject(),
-		prime:                  prime,
-		buyOrderFragments:      map[string]*order.Fragment{},
-		sellOrderFragments:     map[string]*order.Fragment{},
-		buySellDeltaFragments:  map[string]map[string]*DeltaFragment{},
-		completeOrderFragments: map[string]bool{},
+		GuardedObject:         do.NewGuardedObject(),
+		prime:                 prime,
+		buyOrderFragments:     map[string]*order.Fragment{},
+		sellOrderFragments:    map[string]*order.Fragment{},
+		buySellDeltaFragments: map[string]map[string]*DeltaFragment{},
+		newFragment:           make(chan *order.Fragment, 100),
 	}
 }
 
+func (matrix *DeltaFragmentMatrix) OpenOrders() chan *order.Order {
+	openOrders := make(chan *order.Order, 100)
+	go func() {
+
+		matrix.EnterReadOnly(nil)
+		for orderId, orderFragment := range matrix.buyOrderFragments {
+			buyOrder := new(order.Order)
+			buyOrder.ID = []byte(orderId)
+			buyOrder.Parity = order.ParityBuy
+			buyOrder.Expiry = orderFragment.OrderExpiry
+
+			openOrders <- buyOrder
+		}
+
+		for orderId, orderFragment := range matrix.sellOrderFragments {
+			sellOrder := new(order.Order)
+			sellOrder.ID = []byte(orderId)
+			sellOrder.Parity = order.ParitySell
+			sellOrder.Expiry = orderFragment.OrderExpiry
+
+			openOrders <- sellOrder
+		}
+		matrix.ExitReadOnly()
+
+		for fragment := range matrix.newFragment {
+			_, existBuy := matrix.buyOrderFragments[string(fragment.OrderID)]
+			_, existSell := matrix.sellOrderFragments[string(fragment.OrderID)]
+
+			if (fragment.OrderParity == order.ParityBuy && !existBuy) || (fragment.OrderParity == order.ParitySell && !existSell) {
+				ord := new(order.Order)
+				ord.ID = fragment.OrderID
+				ord.Parity = fragment.OrderParity
+				ord.Expiry = fragment.OrderExpiry
+
+				openOrders <- ord
+			}
+		}
+	}()
+
+	return openOrders
+}
+
 func (matrix *DeltaFragmentMatrix) InsertOrderFragment(orderFragment *order.Fragment) ([]*DeltaFragment, error) {
+	select {
+	case matrix.newFragment <- orderFragment:
+		break
+	default:
+		go func() {
+			matrix.newFragment <- orderFragment
+		}()
+	}
+
 	matrix.Enter(nil)
 	defer matrix.Exit()
 	if orderFragment.OrderParity == order.ParityBuy {
@@ -132,9 +240,6 @@ func (matrix *DeltaFragmentMatrix) InsertOrderFragment(orderFragment *order.Frag
 
 func (matrix *DeltaFragmentMatrix) insertBuyOrderFragment(buyOrderFragment *order.Fragment) ([]*DeltaFragment, error) {
 	if _, ok := matrix.buyOrderFragments[string(buyOrderFragment.OrderID)]; ok {
-		return []*DeltaFragment{}, nil
-	}
-	if _, ok := matrix.completeOrderFragments[string(buyOrderFragment.OrderID)]; ok {
 		return []*DeltaFragment{}, nil
 	}
 
@@ -156,9 +261,6 @@ func (matrix *DeltaFragmentMatrix) insertBuyOrderFragment(buyOrderFragment *orde
 
 func (matrix *DeltaFragmentMatrix) insertSellOrderFragment(sellOrderFragment *order.Fragment) ([]*DeltaFragment, error) {
 	if _, ok := matrix.sellOrderFragments[string(sellOrderFragment.OrderID)]; ok {
-		return []*DeltaFragment{}, nil
-	}
-	if _, ok := matrix.completeOrderFragments[string(sellOrderFragment.OrderID)]; ok {
 		return []*DeltaFragment{}, nil
 	}
 
@@ -195,7 +297,6 @@ func (matrix *DeltaFragmentMatrix) removeBuyOrderFragment(buyOrderID order.ID) e
 	delete(matrix.buyOrderFragments, string(buyOrderID))
 	delete(matrix.buySellDeltaFragments, string(buyOrderID))
 
-	matrix.completeOrderFragments[string(buyOrderID)] = true
 	return nil
 }
 
@@ -208,6 +309,5 @@ func (matrix *DeltaFragmentMatrix) removeSellOrderFragment(sellOrderID order.ID)
 		delete(matrix.buySellDeltaFragments[i], string(sellOrderID))
 	}
 
-	matrix.completeOrderFragments[string(sellOrderID)] = true
 	return nil
 }

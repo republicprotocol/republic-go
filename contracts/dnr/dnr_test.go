@@ -11,9 +11,9 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-identity"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 var ether = stackint.FromUint(1000000000000000000)
@@ -31,7 +31,7 @@ var _ = Describe("Dark Node Registrar", func() {
 		log.Fatalf("Failed to create authorized transactor: %v", err)
 	}
 
-	client, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
+	client, err := connection.FromURI("https://ropsten.infura.io/", connection.ChainRopsten)
 	if err != nil {
 		log.Fatal(err)
 	}

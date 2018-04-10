@@ -11,7 +11,7 @@
   branch = "master"
   name = "github.com/aristanetworks/goarista"
   packages = ["monotime"]
-  revision = "94ff7b94cb7ddd528740cfc9c062037c2bc73b2d"
+  revision = "9cf7f6b188ea30684caffe3d18e03e61d7193e25"
 
 [[projects]]
   branch = "master"
@@ -65,8 +65,8 @@
     "rpc",
     "trie"
   ]
-  revision = "b8b9f7f4476a30a0aaf6077daade6ae77f969960"
-  version = "v1.8.2"
+  revision = "329ac18ef617d0238f71637bffe78f028b0f13f7"
+  version = "v1.8.3"
 
 [[projects]]
   name = "github.com/go-ole/go-ole"
@@ -156,7 +156,7 @@
   branch = "master"
   name = "github.com/multiformats/go-multihash"
   packages = ["."]
-  revision = "27fa400c586666336a86e50accf9e8a1c9585ad3"
+  revision = "265e72146e710ff649c6982e3699d01d4e9a18bb"
 
 [[projects]]
   name = "github.com/onsi/ginkgo"
@@ -216,82 +216,15 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/republicprotocol/go-atom"
-  packages = [
-    ".",
-    "ethereum",
-    "ethereum/contracts"
-  ]
-  revision = "0f89c029f9473483f9988af45eacfbf76fa6d9c7"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-dark-network"
-  packages = ["."]
-  revision = "7fa2a81354bd90d15b313f9c01f73c8e13cfdf19"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-dark-node"
-  packages = ["."]
-  revision = "41602aa115689ae2a275f1f857959636451a4914"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-dark-node-registrar"
-  packages = [
-    ".",
-    "contracts"
-  ]
-  revision = "e45a991b43aeab31f7f31c7da39be885bc2f7480"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-dht"
-  packages = ["."]
-  revision = "1b6ca141638bf5d069216a41870f32b4931270a1"
-
-[[projects]]
-  branch = "master"
   name = "github.com/republicprotocol/go-do"
   packages = ["."]
   revision = "0dccf0d7d287e828155a3ea16f7b968fa9662020"
 
 [[projects]]
   branch = "master"
-  name = "github.com/republicprotocol/go-identity"
-  packages = ["."]
-  revision = "c0ee5d01eece4eab67cd4e16179098407a1f32ae"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-order-compute"
-  packages = ["."]
-  revision = "760d70f804f6f7ed67a19b775ef494e010e5d4a0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-rpc"
-  packages = ["."]
-  revision = "6725f3680969ba7e5f8d6633b4b780fcde863e50"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-sss"
-  packages = ["."]
-  revision = "fa5c903575e365fcc8807c2ac1f314ee27a4f8af"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/republicprotocol/go-swarm-network"
-  packages = ["."]
-  revision = "589575d4b5997c2cf782ce7f3328562d520dcc64"
-
-[[projects]]
-  branch = "master"
   name = "github.com/rjeczalik/notify"
   packages = ["."]
-  revision = "c31e5f2cb22b3e4ef3f882f413847669bf2652b9"
+  revision = "d152f3ce359a5464dc41e84a8919fc67e55bbbf0"
 
 [[projects]]
   name = "github.com/rs/cors"
@@ -304,10 +237,11 @@
   packages = [
     "cpu",
     "internal/common",
-    "mem"
+    "mem",
+    "net"
   ]
-  revision = "c432be29ccce470088d07eea25b3ea7e68a8afbb"
-  version = "v2.18.01"
+  revision = "fc04d2dd9a512906a2604242b35275179e250eda"
+  version = "v2.18.03"
 
 [[projects]]
   name = "github.com/spaolacci/murmur3"
@@ -332,7 +266,7 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "169b1b37be738edb2813dab48c97a549bcf99bb5"
+  revision = "714f901b98fdb3aa954b4193d8cbd64a28d80cad"
 
 [[projects]]
   branch = "master"
@@ -344,7 +278,7 @@
     "scrypt",
     "sha3"
   ]
-  revision = "85f98707c97e11569271e4d9b3d397e079c4f4d0"
+  revision = "12892e8c234f4fe6f6803f052061de9057903bb2"
 
 [[projects]]
   branch = "master"
@@ -362,7 +296,7 @@
     "trace",
     "websocket"
   ]
-  revision = "07e8617a6db2368fa55d4616f371ee1b1403c817"
+  revision = "b68f30494add4df6bd8ef5e82803f308e7f7c59c"
 
 [[projects]]
   branch = "master"
@@ -371,7 +305,7 @@
     "unix",
     "windows"
   ]
-  revision = "349b81fb5c64ec1734eb6ee148df25459ea48517"
+  revision = "378d26f46672a356c46195c28f61bdb4c0a781dd"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -413,13 +347,13 @@
     "go/ast/astutil",
     "imports"
   ]
-  revision = "059bec968c61383b574810040ba9410712de36c5"
+  revision = "ac136b6c2db7c4d43955e4bc7174db36dc0539c0"
 
 [[projects]]
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "df60624c1e9b9d2973e889c7a1cff73155da81c4"
+  revision = "ab0870e398d5dd054b868c0db1481ab029b9a9f2"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -448,8 +382,8 @@
     "tap",
     "transport"
   ]
-  revision = "8e4536a86ab602859c20df5ebfd0bd4228d08655"
-  version = "v1.10.0"
+  revision = "1e2570b1b19ade82d8dbb31bba4e65e9f9ef5b34"
+  version = "v1.11.1"
 
 [[projects]]
   name = "gopkg.in/fatih/set.v0"
@@ -472,12 +406,12 @@
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
-  version = "v2.1.1"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b9e9b0f55a607f620433cc7ac5083d2b026c57b51525d554c82753044e38fe85"
+  inputs-digest = "721a086bb93ae31500507324a27f7605d205f492d0602ad0876884271012c1db"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -16,7 +16,6 @@ type MessageQueues []MessageQueue
 // The MessageQueue interface defines a set of expected functionality for a
 // queue to be integrated with the Dispatcher.
 type MessageQueue interface {
-
 	// Run the MessageQueue, processing all messages that are sent and
 	// received. Run must only be called once.
 	Run() error
@@ -26,7 +25,7 @@ type MessageQueue interface {
 	// error.
 	Shutdown() error
 
-	// Send a Message to the MessageQueue. The implementation shooruld throw a
+	// Send a Message to the MessageQueue. The implementation should throw a
 	// type error if it receives a concrete type that it does not recognize.
 	// This method should block if the MessageQueue is full.
 	Send(Message) error
@@ -67,12 +66,10 @@ func (queue *ChannelQueue) Shutdown() error {
 	queue.chMu.Lock()
 	defer queue.chMu.Unlock()
 
-	if !queue.chOpen {
-		return errors.New("cannot shutdown channel queue: already shutdown")
+	if queue.chOpen {
+		queue.chOpen = false
+		close(queue.ch)
 	}
-	queue.chOpen = false
-	close(queue.ch)
-
 	return nil
 }
 

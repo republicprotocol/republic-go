@@ -48,7 +48,7 @@ func DeregisterAll(configs []*node.Config) {
 
 	do.ForAll(configs, func(i int) {
 
-		keypair := configs[i].RepublicKeyPair
+		keypair := configs[i].KeyPair
 
 		clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
 		if err != nil {

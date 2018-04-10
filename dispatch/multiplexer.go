@@ -1,14 +1,13 @@
 package dispatch
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 )
 
 // A Multiplexer runs MessageQueues. It aggregates all messages into a unified
 // channel, allowing a dynamic number of workers to select messages from a
-// dyanmic number of MessageQueues.
+// dynamic number of MessageQueues.
 type Multiplexer struct {
 	messageQueuesMu *sync.RWMutex
 	messageQueues   map[string]MessageQueue
@@ -81,7 +80,7 @@ func (multiplexer *Multiplexer) RunMessageQueue(id string, messageQueue MessageQ
 	return err
 }
 
-// Shutdown gracefully by shuttding down all MessageQueues running in the
+// Shutdown gracefully by shutting down all MessageQueues running in the
 // Multiplexer.
 func (multiplexer *Multiplexer) Shutdown() error {
 
@@ -93,13 +92,10 @@ func (multiplexer *Multiplexer) Shutdown() error {
 
 		// While the mutex is locked, close the channel and prevent further
 		// writes
-		if !multiplexer.messagesOpen {
-			return errors.New("cannot shutdown multiplexer: already shutdown")
+		if multiplexer.messagesOpen {
+			multiplexer.messagesOpen = false
+			close(multiplexer.messages)
 		}
-		multiplexer.messagesOpen = false
-		close(multiplexer.messages)
-
-		return nil
 	}()
 	if err != nil {
 		return err
@@ -122,12 +118,14 @@ func (multiplexer *Multiplexer) Shutdown() error {
 
 // Send a Message directly to the Multiplexer unified channel. If the channel
 // is full, then this function will block.
-func (multiplexer *Multiplexer) Send(message Message) {
+func (multiplexer *Multiplexer) Send(message Message) bool {
 	multiplexer.messagesMu.RLock()
 	defer multiplexer.messagesMu.RUnlock()
 	if multiplexer.messagesOpen {
 		multiplexer.messages <- message
+		return true
 	}
+	return false
 }
 
 // Recv a Message from the Multiplexer. This function blocks until at least one
