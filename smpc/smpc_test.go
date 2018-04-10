@@ -14,10 +14,10 @@ import (
 var _ = Describe("Smpc Computer", func() {
 	Context("when performing secure multiparty computations", func() {
 
-		FIt("should produce obscure residue fragments", func() {
+		It("should produce obscure residue fragments", func() {
 			var wg sync.WaitGroup
 			ctx, cancel := context.WithCancel(context.Background())
-			n, k := int64(31), int64(16)
+			n, k, numResidues := int64(3), int64(2), 100
 
 			computers := make([]smpc.Computer, n)
 			obscureComputeChsIn := make([]smpc.ObscureComputeInput, n)
@@ -133,15 +133,14 @@ var _ = Describe("Smpc Computer", func() {
 
 			p := 0
 			for {
-				time.Sleep(time.Second)
-
+				time.Sleep(time.Millisecond)
 				for i := int64(0); i < n; i++ {
 					pLocal := computers[i].SharedObscureResidueTable().NumObscureResidues()
 					if pLocal > p {
 						p = pLocal
 					}
 				}
-				if int64(p) >= n {
+				if p >= numResidues {
 					cancel()
 					break
 				}

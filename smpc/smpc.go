@@ -29,6 +29,7 @@ type ObscureComputeInput struct {
 	MulSharesIndexed chan ObscureMulSharesIndexed
 }
 
+// Close all channels. Calling this function more than once will cause a panic.
 func (chs *ObscureComputeInput) Close() {
 	close(chs.Rng)
 	close(chs.RngShares)
@@ -136,7 +137,8 @@ func (computer *Computer) ComputeObscure(
 	}, errCh
 }
 
-func (computer *Computer) ComputeOrderMatches() {
+func (computer *Computer) ComputeOrderMatches() <-chan error {
+	panic("unimplemented")
 }
 
 func (computer *Computer) SharedOrderTable() *SharedOrderTable {

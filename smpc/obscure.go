@@ -21,7 +21,7 @@ func ProduceObscureRngs(ctx context.Context, n, k int64, sharedObscureResidueTab
 		defer close(obscureRngCh)
 		defer close(errCh)
 
-		ticker := time.NewTicker(time.Second)
+		ticker := time.NewTicker(time.Millisecond)
 		defer ticker.Stop()
 
 		for {
