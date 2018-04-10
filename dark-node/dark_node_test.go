@@ -442,7 +442,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 
 		do.CoForAll(buyShares, func(j int) {
 			// Sign order fragment with trader's keypair
-			buyShares[i].Sign(traderKeypair)
+			buyShares[j].Sign(traderKeypair)
 			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(buyShares[j]))
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
@@ -452,7 +452,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 
 		do.CoForAll(sellShares, func(j int) {
 			// Sign order fragment with trader's keypair
-			sellShares[i].Sign(traderKeypair)
+			sellShares[j].Sign(traderKeypair)
 			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(sellShares[j]))
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
