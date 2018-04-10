@@ -28,7 +28,7 @@ func NewRouter() *mux.Router {
 	// r.Methods("POST").Path("/orders").Handler(RecoveryHandler(PostOrdersHandler(*relay.multiAddress, *relay.darkPools)))
 	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(GetOrdersHandler(orderBook)))
 	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(HandleGetOrder()))
-	r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(HandleDeleteOrder()))
+	r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(DeleteOrderHandler(relay.multiAddress, *relay.darkPools)))
 	return r
 }
 
@@ -40,10 +40,11 @@ func SendOrderToDarkOcean(order order.Order, traderMultiAddress *identity.MultiA
 }
 
 // SendOrderFragmentsToDarkOcean will send order fragments to the dark ocean
-func SendOrderFragmentsToDarkOcean(fragments []*order.Fragment, traderMultiAddress *identity.MultiAddress, pools dark.Pools) {
+func SendOrderFragmentsToDarkOcean(order OrderFragments, traderMultiAddress *identity.MultiAddress, pools dark.Pools) {
 	// TODO: (Check) Validate that there are enough fragments for each node in the pool (number of fragments should be atleast 2/3 * size of pool)
 	// TODO: Integrate Dark Pool ID here ?
 	valid := false
+	fragments := order.FragmentSet[0].Fragment
 	for i := range pools {
 		if len(fragments) >= 2/3*pools[i].Size() {
 			valid = true
@@ -117,31 +118,29 @@ func sendOrder(openOrder order.Order, pools dark.Pools, traderMultiAddress ident
 // Send the shares across all nodes within the Dark Pool
 func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares []*order.Fragment) {
 
-
-
 	i := 1
 	pool.For(func(n *dark.Node) {
+		go func (n *dark.Node, multi identity.MultiAddress, share *order.Fragment) {
+			// Get multiaddress
+			multiaddress, err := getMultiAddress(n.ID.Address(), multi)
+			if err != nil {
+				log.Fatalf("cannot read multi-address: %v", err)
+			}
 
-		// Get multiaddress
-		multiaddress, err := getMultiAddress(n.ID.Address(), multi)
-		if err != nil {
-			log.Fatalf("cannot read multi-address: %v", err)
-		}
+			// Create a client
+			client, err := rpc.NewClient(multiaddress, multi)
+			if err != nil {
+				log.Fatalf("cannot connect to client: %v", err)
+			}
 
-		// Create a client
-		client, err := rpc.NewClient(multiaddress, multi)
-		if err != nil {
-			log.Fatalf("cannot connect to client: %v", err)
-		}
-
-		// Send fragment to node
-		err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[i]))
-		if err != nil {
-			log.Println(err)
-			log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(n.ID), reset)
-			return
-		}
-
+			// Send fragment to node
+			err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[i]))
+			if err != nil {
+				log.Println(err)
+				log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(n.ID), reset)
+				return
+			}
+		}(n, multi, shares[i])
 		i++
 	})
 }

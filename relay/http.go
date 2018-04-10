@@ -27,9 +27,9 @@ type HTTPDelete struct {
 // Fragments will store a list of Fragments with their order details
 type Fragments struct {
 	// TODO: Confirm this . .
-	DarkPool order.ID `json:"darkPool"`
+	DarkPool []byte `json:"darkPool"`
 
-	Fragment []*order.Fragment `json:"fragments"`
+	Fragment []*order.Fragment `json:"fragment"`
 }
 
 // OrderFragments will store a list of Fragment Sets with their order details
@@ -44,6 +44,7 @@ type OrderFragments struct {
 	FragmentSet []Fragments `json:"fragmentSet"`
 }
 
+// RecoveryHandler handles errors while processing the requests and populates the errors in the response
 func RecoveryHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -56,10 +57,21 @@ func RecoveryHandler(h http.Handler) http.Handler {
 	})
 }
 
-func PostOrdersHandler(multiAddress identity.MultiAddress, darkPools dark.Pools) http.Handler {
+// PostOrdersHandler handles all HTTP Post requests
+func PostOrdersHandler(multiAddress *identity.MultiAddress, darkPools dark.Pools) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
+		// TODO: Get this checked . .
+		postOrder := order.Order{}
+		if err := json.NewDecoder(r.Body).Decode(&postOrder); err != nil {
+			postOrder := OrderFragments{}
+			if err1 := json.NewDecoder(r.Body).Decode(&postOrder); err1 != nil {
+				panic(fmt.Sprintf("cannot decode json into an order or a list of order fragments: %v %v", err, err1))
+				return
+			}
+			SendOrderFragmentsToDarkOcean(postOrder, multiAddress, darkPools)
+		}
+		SendOrderToDarkOcean(postOrder, multiAddress, darkPools)
 	})
 }
 
@@ -78,45 +90,15 @@ func HandleGetOrder() http.Handler {
 	})
 }
 
-func HandleDeleteOrder() http.Handler {
+// DeleteOrderHandler handles HTTP Delete Requests
+func DeleteOrderHandler(multiAddress *identity.MultiAddress, darkPools dark.Pools) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
+		cancelOrder := HTTPDelete{}
+		err := json.NewDecoder(r.Body).Decode(&cancelOrder)
+		if err != nil {
+			panic(fmt.Sprintf("cannot decode json: %v", err))
+			return
+		}
+		CancelOrder(cancelOrder.ID, multiAddress, darkPools)
 	})
 }
-
-// Handles POST, DELETE and GET requests.
-// func requestHandler(w http.ResponseWriter, r *http.Request) {
-// 	switch r.Method {
-// 	case "GET":
-// 		// To-do: Add authentication + get status from ID.
-// 		slices := strings.Split(r.URL.Path, "/")
-// 		id := slices[len(slices)-1]
-// 		w.Header().Set("Content-Type", "application/json")
-// 		json.NewEncoder(w).Encode(map[string]interface{}{
-// 			"id":     id,
-// 			"status": "..",
-// 		})
-// 	case "POST":
-// 		// TODO: Get this checked . .
-// 		postOrder := order.Order{}
-// 		if err := json.NewDecoder(r.Body).Decode(&postOrder); err != nil {
-// 			postOrder := OrderFragments{}
-// 			if err1 := json.NewDecoder(r.Body).Decode(&postOrder); err1 != nil {
-// 				fmt.Errorf("cannot decode json into an order or a list of order fragments: %v %v", err, err1)
-// 				return
-// 			}
-// 			SendOrderFragmentsToDarkOcean(postOrder.Fragments, nil, nil)
-// 		}
-// 		SendOrderToDarkOcean(postOrder)
-// 	case "DELETE":
-// 		cancelOrder := HTTPDelete{}
-// 		err := json.NewDecoder(r.Body).Decode(&cancelOrder)
-// 		if err != nil {
-// 			fmt.Errorf("cannot decode json: %v", err)
-// 			return
-// 		}
-// 		CancelOrder(cancelOrder.ID)
-// 	default:
-// 		log.Println(w, "Invalid request")
-// 	}
-// }
