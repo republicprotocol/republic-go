@@ -35,8 +35,8 @@ func NewReplica(
 	return Replica{
 		ingress:         ingress,
 		egress:          egress,
-		internalIngress: EmptyChannelSet(),
-		internalEgress:  EmptyChannelSet(),
+		internalIngress: EmptyChannelSet(threshold),
+		internalEgress:  EmptyChannelSet(threshold),
 		validator:       validator,
 		signer:          signer,
 		threshold:       threshold,

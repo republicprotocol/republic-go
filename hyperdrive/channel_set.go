@@ -7,33 +7,35 @@ import (
 )
 
 type ChannelSet struct {
-	Proposal chan Proposal
-	Prepare  chan Prepare
-	Fault    chan Fault
-	Commit   chan Commit
-	Err      chan error
-	Block    chan Block
+	BufferSize uint8
+	Proposal   chan Proposal
+	Prepare    chan Prepare
+	Fault      chan Fault
+	Commit     chan Commit
+	Err        chan error
+	Block      chan Block
 }
 
-func NewChannelSet(proposal chan Proposal, prepare chan Prepare, commit chan Commit, fault chan Fault, block chan Block, err chan error) ChannelSet {
+func NewChannelSet(size uint8, proposal chan Proposal, prepare chan Prepare, commit chan Commit, fault chan Fault, block chan Block, err chan error) ChannelSet {
 	return ChannelSet{
-		Proposal: proposal,
-		Prepare:  prepare,
-		Commit:   commit,
-		Fault:    fault,
-		Block:    block,
-		Err:      err,
+		BufferSize: size,
+		Proposal:   proposal,
+		Prepare:    prepare,
+		Commit:     commit,
+		Fault:      fault,
+		Block:      block,
+		Err:        err,
 	}
 }
 
-func EmptyChannelSet() ChannelSet {
+func EmptyChannelSet(size uint8) ChannelSet {
 	return ChannelSet{
-		Proposal: make(chan Proposal, 240),
-		Prepare:  make(chan Prepare, 240),
-		Fault:    make(chan Fault, 240),
-		Commit:   make(chan Commit, 240),
-		Err:      make(chan error, 240),
-		Block:    make(chan Block, 240),
+		Proposal: make(chan Proposal, size),
+		Prepare:  make(chan Prepare, size),
+		Fault:    make(chan Fault, size),
+		Commit:   make(chan Commit, size),
+		Err:      make(chan error, size),
+		Block:    make(chan Block, size),
 	}
 }
 

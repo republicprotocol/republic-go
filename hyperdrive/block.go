@@ -13,8 +13,6 @@ type Block struct {
 	Signature
 }
 
-type BlockHash [32]byte
-
 func ConsumeBlock(ctx context.Context, blockChIn chan Block, sharedBlocks *SharedBlocks) chan error {
 	errCh := make(chan error)
 	go func() {
@@ -35,7 +33,7 @@ func ConsumeBlock(ctx context.Context, blockChIn chan Block, sharedBlocks *Share
 	return errCh
 }
 
-func getBlockHash(b Block) BlockHash {
+func BlockHash(b Block) [32]byte {
 	var blockBuffer bytes.Buffer
 	binary.Write(&blockBuffer, binary.BigEndian, b.Tuples)
 	return sha3.Sum256(blockBuffer.Bytes())

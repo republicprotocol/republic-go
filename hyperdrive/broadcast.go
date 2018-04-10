@@ -55,7 +55,7 @@ func ProcessBroadcast(chanSetIn ChannelSet, chanSetOut ChannelSet) {
 				if !ok {
 					return
 				}
-				h := getBlockHash(block)
+				h := BlockHash(block)
 				if broadcastedBlocks[h] {
 					continue
 				}

@@ -12,9 +12,9 @@ type Prepare struct {
 }
 
 func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer Signer, validator Validator, threshold uint8) (<-chan Commit, <-chan Fault, <-chan error) {
-	commitCh := make(chan Commit)
-	faultCh := make(chan Fault)
-	errCh := make(chan error)
+	commitCh := make(chan Commit, threshold)
+	faultCh := make(chan Fault, threshold)
+	errCh := make(chan error, threshold)
 	prepares := map[[32]byte]uint8{}
 	commited := map[[32]byte]bool{}
 	counter := uint64(0)
