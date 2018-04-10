@@ -21,15 +21,34 @@ type Tuple struct {
 type SharedBlocks struct {
 	mu      *sync.RWMutex
 	history map[[32]byte][32]byte
+	Height
+	Rank
 }
 
-func NewSharedBlocks() SharedBlocks {
-	return SharedBlocks{}
+func NewSharedBlocks(r Rank, h Height) SharedBlocks {
+	return SharedBlocks{
+		mu:      new(sync.RWMutex),
+		history: map[[32]byte][32]byte{},
+		Rank:    r,
+		Height:  h,
+	}
 }
 
-func (blocks *SharedBlocks) AddBlock(block Block) {
+func (blocks *SharedBlocks) IncrementHeight() {
 	blocks.mu.Lock()
 	defer blocks.mu.Unlock()
+	blocks.Height++
+}
+
+func (blocks *SharedBlocks) ReadHeight() Height {
+	blocks.mu.Lock()
+	h := blocks.Height
+	defer blocks.mu.Unlock()
+	return h
+}
+
+func (blocks *SharedBlocks) GetSharedBlocks() *SharedBlocks {
+	return blocks
 }
 
 func (blocks *SharedBlocks) ValidateTuple(tuple Tuple) bool {
