@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
 )
@@ -79,6 +80,12 @@ func (multiAddress MultiAddress) ID() ID {
 // String returns the MultiAddress as a plain string.
 func (multiAddress MultiAddress) String() string {
 	return fmt.Sprintf("%s/republic/%s", multiAddress.baseMultiAddress.String(), multiAddress.address.String())
+}
+
+// Hash returns the Keccak256 hash of a multiaddrfess. This hash is used to create
+// signatures for a multiaddress.
+func (multiAddress MultiAddress) Hash() []byte {
+	return crypto.Keccak256([]byte(multiAddress.String()))
 }
 
 // MarshalJSON implements the json.Marshaler interface.
