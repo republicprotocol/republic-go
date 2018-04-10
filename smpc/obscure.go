@@ -114,7 +114,54 @@ func ProcessObscureRngShares(ctx context.Context, obscureRngSharesChIn <-chan Ob
 		defer close(obscureRngSharesIndexedCh)
 		defer close(errCh)
 
-		panic("unimplemented")
+		obscureRngSharesIndexer := map[ObscureResidueID][]ObscureRngSharesIndexed{}
+
+		for {
+			select {
+			case <-ctx.Done():
+				errCh <- ctx.Err()
+				return
+			case obscureRngShares, ok := <-obscureRngSharesChIn:
+				if !ok {
+					return
+				}
+				if _, ok := obscureRngSharesIndexer[obscureRngShares.ObscureResidueID]; !ok {
+					obscureRngSharesIndexer[obscureRngShares.ObscureResidueID] = make([]ObscureRngSharesIndexed, obscureRngShares.N)
+					for i := int64(0); i < obscureRngShares.N; i++ {
+						obscureRngSharesIndexer[obscureRngShares.ObscureResidueID][i] = ObscureRngSharesIndexed{
+							ObscureResidueID: obscureRngShares.ObscureResidueID,
+							N:                obscureRngShares.N,
+							K:                obscureRngShares.K,
+							A:                make(shamir.Shares, 0, obscureRngShares.N),
+							B:                make(shamir.Shares, 0, obscureRngShares.N),
+							R:                make(shamir.Shares, 0, obscureRngShares.N),
+						}
+					}
+				}
+
+				for i := int64(0); i < obscureRngShares.N; i++ {
+					if int64(len(obscureRngSharesIndexer[obscureRngShares.ObscureResidueID][i].A)) == obscureRngShares.N {
+						continue
+					}
+
+					obscureRngSharesIndexer[obscureRngShares.ObscureResidueID][i].A =
+						append(obscureRngSharesIndexer[obscureRngShares.ObscureResidueID][i].A, obscureRngShares.A[i])
+					obscureRngSharesIndexer[obscureRngShares.ObscureResidueID][i].B =
+						append(obscureRngSharesIndexer[obscureRngShares.ObscureResidueID][i].B, obscureRngShares.B[i])
+					obscureRngSharesIndexer[obscureRngShares.ObscureResidueID][i].R =
+						append(obscureRngSharesIndexer[obscureRngShares.ObscureResidueID][i].R, obscureRngShares.R[i])
+
+					if int64(len(obscureRngSharesIndexer[obscureRngShares.ObscureResidueID][i].A)) == obscureRngShares.N {
+						select {
+						case <-ctx.Done():
+							errCh <- ctx.Err()
+							return
+						case obscureRngSharesIndexedCh <- obscureRngSharesIndexer[obscureRngShares.ObscureResidueID][i]:
+						}
+					}
+				}
+			}
+		}
 	}()
 
 	return obscureRngSharesIndexedCh, errCh
@@ -166,6 +213,8 @@ func ProcessObscureRngSharesIndexed(ctx context.Context, obscureRngSharesIndexed
 
 				obscureMulShares := ObscureMulShares{
 					ObscureResidueID: obscureRngSharesIndexed.ObscureResidueID,
+					N:                obscureRngSharesIndexed.N,
+					K:                obscureRngSharesIndexed.K,
 					AB:               abShares,
 					RSq:              rSqShares,
 				}
@@ -193,7 +242,53 @@ func ProcessObscureMulShares(ctx context.Context, obscureMulSharesChIn <-chan Ob
 		defer close(obscureMulSharesIndexedCh)
 		defer close(errCh)
 
-		panic("unimplemented")
+		obscureMulSharesIndexer := map[ObscureResidueID][]ObscureMulSharesIndexed{}
+
+		for {
+			select {
+			case <-ctx.Done():
+				errCh <- ctx.Err()
+				return
+			case obscureMulShares, ok := <-obscureMulSharesChIn:
+				if !ok {
+					return
+				}
+
+				if _, ok := obscureMulSharesIndexer[obscureMulShares.ObscureResidueID]; !ok {
+					obscureMulSharesIndexer[obscureMulShares.ObscureResidueID] = make([]ObscureMulSharesIndexed, obscureMulShares.N)
+					for i := int64(0); i < obscureMulShares.N; i++ {
+						obscureMulSharesIndexer[obscureMulShares.ObscureResidueID][i] = ObscureMulSharesIndexed{
+							ObscureResidueID: obscureMulShares.ObscureResidueID,
+							N:                obscureMulShares.N,
+							K:                obscureMulShares.K,
+							AB:               make(shamir.Shares, 0, obscureMulShares.N),
+							RSq:              make(shamir.Shares, 0, obscureMulShares.N),
+						}
+					}
+				}
+
+				for i := int64(0); i < obscureMulShares.N; i++ {
+					if int64(len(obscureMulSharesIndexer[obscureMulShares.ObscureResidueID][i].AB)) == obscureMulShares.N {
+						continue
+					}
+
+					obscureMulSharesIndexer[obscureMulShares.ObscureResidueID][i].AB =
+						append(obscureMulSharesIndexer[obscureMulShares.ObscureResidueID][i].AB, obscureMulShares.AB[i])
+					obscureMulSharesIndexer[obscureMulShares.ObscureResidueID][i].RSq =
+						append(obscureMulSharesIndexer[obscureMulShares.ObscureResidueID][i].RSq, obscureMulShares.RSq[i])
+
+					if int64(len(obscureMulSharesIndexer[obscureMulShares.ObscureResidueID][i].AB)) == obscureMulShares.N {
+
+						select {
+						case <-ctx.Done():
+							errCh <- ctx.Err()
+							return
+						case obscureMulSharesIndexedCh <- obscureMulSharesIndexer[obscureMulShares.ObscureResidueID][i]:
+						}
+					}
+				}
+			}
+		}
 	}()
 
 	return obscureMulSharesIndexedCh, errCh
@@ -328,11 +423,32 @@ func (table *SharedObscureResidueTable) InsertObscureResidueOwner(obscureResidue
 	table.obscureResidueOwners[obscureResidueID] = owner
 }
 
+func (table *SharedObscureResidueTable) ObscureResidue(obscureResidueID ObscureResidueID) ObscureResidueFragment {
+	table.mu.RLock()
+	defer table.mu.RUnlock()
+
+	return table.obscureResidueFragments[obscureResidueID]
+}
+
+func (table *SharedObscureResidueTable) NumObscureResidues() int {
+	table.mu.RLock()
+	defer table.mu.RUnlock()
+
+	return len(table.obscureResidueFragments)
+}
+
 func (table *SharedObscureResidueTable) ObscureResidueOwner(obscureResidueID ObscureResidueID) [32]byte {
 	table.mu.RLock()
 	defer table.mu.RUnlock()
 
 	return table.obscureResidueOwners[obscureResidueID]
+}
+
+func (table *SharedObscureResidueTable) NumObscureResidueOwners() int {
+	table.mu.RLock()
+	defer table.mu.RUnlock()
+
+	return len(table.obscureResidueOwners)
 }
 
 func (table *SharedObscureResidueTable) ID() [32]byte {

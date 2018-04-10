@@ -3,6 +3,7 @@ package smpc_test
 import (
 	"context"
 	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -23,11 +24,11 @@ var _ = Describe("Smpc Computer", func() {
 			for i := int64(0); i < n; i++ {
 				computers[i] = smpc.NewComputer([32]byte{byte(i)}, n, k)
 				obscureComputeChsIn[i] = smpc.ObscureComputeInput{
-					Rng:              make(chan smpc.ObscureRng, n),
-					RngShares:        make(chan smpc.ObscureRngShares, n),
-					RngSharesIndexed: make(chan smpc.ObscureRngSharesIndexed, n),
-					MulShares:        make(chan smpc.ObscureMulShares, n),
-					MulSharesIndexed: make(chan smpc.ObscureMulSharesIndexed, n),
+					Rng:              make(chan smpc.ObscureRng),
+					RngShares:        make(chan smpc.ObscureRngShares),
+					RngSharesIndexed: make(chan smpc.ObscureRngSharesIndexed),
+					MulShares:        make(chan smpc.ObscureMulShares),
+					MulSharesIndexed: make(chan smpc.ObscureMulSharesIndexed),
 				}
 			}
 
@@ -46,10 +47,10 @@ var _ = Describe("Smpc Computer", func() {
 
 					for v := range obscureComputeChsOut[i].Rng {
 						for j := int64(0); j < n; j++ {
-							if i == j {
-								continue
+							select {
+							case <-ctx.Done():
+							case obscureComputeChsIn[j].Rng <- v:
 							}
-							obscureComputeChsIn[j].Rng <- v
 						}
 					}
 				}(i)
@@ -61,10 +62,10 @@ var _ = Describe("Smpc Computer", func() {
 
 					for v := range obscureComputeChsOut[i].RngShares {
 						for j := int64(0); j < n; j++ {
-							if i == j {
-								continue
+							select {
+							case <-ctx.Done():
+							case obscureComputeChsIn[j].RngShares <- v:
 							}
-							obscureComputeChsIn[j].RngShares <- v
 						}
 					}
 				}(i)
@@ -75,11 +76,9 @@ var _ = Describe("Smpc Computer", func() {
 					defer wg.Done()
 
 					for v := range obscureComputeChsOut[i].RngSharesIndexed {
-						for j := int64(0); j < n; j++ {
-							if i == j {
-								continue
-							}
-							obscureComputeChsIn[j].RngSharesIndexed <- v
+						select {
+						case <-ctx.Done():
+						case obscureComputeChsIn[v.A[0].Key-1].RngSharesIndexed <- v:
 						}
 					}
 				}(i)
@@ -91,10 +90,10 @@ var _ = Describe("Smpc Computer", func() {
 
 					for v := range obscureComputeChsOut[i].MulShares {
 						for j := int64(0); j < n; j++ {
-							if i == j {
-								continue
+							select {
+							case <-ctx.Done():
+							case obscureComputeChsIn[j].MulShares <- v:
 							}
-							obscureComputeChsIn[j].MulShares <- v
 						}
 					}
 				}(i)
@@ -106,10 +105,10 @@ var _ = Describe("Smpc Computer", func() {
 
 					for v := range obscureComputeChsOut[i].MulSharesIndexed {
 						for j := int64(0); j < n; j++ {
-							if i == j {
-								continue
+							select {
+							case <-ctx.Done():
+							case obscureComputeChsIn[v.AB[0].Key-1].MulSharesIndexed <- v:
 							}
-							obscureComputeChsIn[j].MulSharesIndexed <- v
 						}
 					}
 				}(i)
@@ -126,8 +125,28 @@ var _ = Describe("Smpc Computer", func() {
 				}
 			}()
 
-			cancel()
+			p := 0
+			for {
+				time.Sleep(time.Second)
+
+				for i := int64(0); i < n; i++ {
+					pLocal := computers[i].SharedObscureResidueTable().NumObscureResidues()
+					if pLocal > p {
+						p = pLocal
+					}
+				}
+				if int64(p) >= n {
+					cancel()
+					break
+				}
+			}
+
 			wg.Wait()
+
+			// Cleanup
+			for i := int64(0); i < n; i++ {
+				obscureComputeChsIn[i].Close()
+			}
 		})
 
 	})

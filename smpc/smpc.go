@@ -29,6 +29,14 @@ type ObscureComputeInput struct {
 	MulSharesIndexed chan ObscureMulSharesIndexed
 }
 
+func (chs *ObscureComputeInput) Close() {
+	close(chs.Rng)
+	close(chs.RngShares)
+	close(chs.RngSharesIndexed)
+	close(chs.MulShares)
+	close(chs.MulSharesIndexed)
+}
+
 // ObscureComputeOutput returned by obscure computations. It stores a set of
 // read-only channels.
 type ObscureComputeOutput struct {
@@ -53,6 +61,8 @@ type Computer struct {
 func NewComputer(computerID ComputerID, n, k int64) Computer {
 	return Computer{
 		ComputerID:                computerID,
+		n:                         n,
+		k:                         k,
 		sharedOrderTable:          NewSharedOrderTable(),
 		sharedObscureResidueTable: NewSharedObscureResidueTable(computerID),
 	}
