@@ -1,112 +1,98 @@
 package hyper
 
-import (
-	"log"
-	"time"
-)
+func ProcessBuffer(chanSetIn ChannelSet, chanSetOut ChannelSet, sb *SharedBlocks) {
 
-func ProcessHeightBuffer(proposalChIn <-chan Proposal, prepareChIn <-chan Prepare, commitChIn <-chan Commit, faultChIn <-chan Fault, v Validator) (<-chan Proposal, <-chan Prepare, <-chan Commit, <-chan Fault) {
-
-	sb := v.GetSharedBlocks()
 	height := sb.Height
-	proposalChs := map[Height]chan Proposal{}
-	proposalChOut := make(chan Proposal)
-	prepareChs := map[Height]chan Prepare{}
-	prepareChOut := make(chan Prepare)
-	commitChs := map[Height]chan Commit{}
-	commitChOut := make(chan Commit)
-	faultChs := map[Height]chan Fault{}
-	faultChOut := make(chan Fault)
-
-	proposalChs[height] = make(chan Proposal)
-	prepareChs[height] = make(chan Prepare)
-	commitChs[height] = make(chan Commit)
-	faultChs[height] = make(chan Fault)
+	proposals := map[Height][]Proposal{}
+	prepares := map[Height][]Prepare{}
+	commits := map[Height][]Commit{}
+	faults := map[Height][]Fault{}
 
 	go func() {
 		for {
 			select {
-			case proposal, ok := <-proposalChIn:
+			case proposal, ok := <-chanSetIn.Proposal:
 				if !ok {
 					return
 				}
-				log.Println("reading from proposal channel", proposal.Height, sb.Height)
-				proposalChs[proposal.Height] <- proposal
+				if proposal.Height < sb.Height {
+					continue
+				}
 
-			case prepare, ok := <-prepareChIn:
+				if proposal.Height == sb.Height {
+					chanSetOut.Proposal <- proposal
+				} else {
+					proposals[proposal.Height] = append(proposals[proposal.Height], proposal)
+				}
+			case prepare, ok := <-chanSetIn.Prepare:
 				if !ok {
 					return
 				}
-				prepareChs[prepare.Height] <- prepare
+				if prepare.Height < sb.Height {
+					continue
+				}
+				if prepare.Height == sb.Height {
+					chanSetOut.Prepare <- prepare
+				} else {
+					prepares[prepare.Height] = append(prepares[prepare.Height], prepare)
+				}
 
-			case commit, ok := <-commitChIn:
+			case commit, ok := <-chanSetIn.Commit:
 				if !ok {
 					return
 				}
-				commitChs[commit.Height] <- commit
+				if commit.Height < sb.Height {
+					continue
+				}
+				if commit.Height == sb.Height {
+					chanSetOut.Commit <- commit
+				} else {
+					commits[commit.Height] = append(commits[commit.Height], commit)
+				}
 
-			case fault, ok := <-faultChIn:
+			case fault, ok := <-chanSetIn.Fault:
 				if !ok {
 					return
 				}
-				faultChs[fault.Height] <- fault
+				if fault.Height < sb.Height {
+					continue
+				}
+				if fault.Height == sb.Height {
+					chanSetOut.Fault <- fault
+				} else {
+					faults[fault.Height] = append(faults[fault.Height], fault)
+				}
 			}
 		}
 	}()
 
 	go func() {
 		for {
-			select {
-			case proposal, ok := <-proposalChs[sb.Height]:
-				log.Println("writing to proposal channel", sb.Height)
-				if !ok {
-					return
-				}
-				proposalChOut <- proposal
-			case prepare, ok := <-prepareChs[sb.Height]:
-				if !ok {
-					return
-				}
-				prepareChOut <- prepare
-
-			case commit, ok := <-commitChs[sb.Height]:
-				if !ok {
-					return
-				}
-				commitChOut <- commit
-
-			case fault, ok := <-faultChs[sb.Height]:
-				if !ok {
-					return
-				}
-				faultChOut <- fault
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			if height == sb.Height {
-				time.Sleep(1 * time.Minute)
+			newHeight := sb.ReadHeight()
+			if height == newHeight {
+				continue
 			} else {
-				close(proposalChs[height])
-				close(prepareChs[height])
-				close(commitChs[height])
-				close(faultChs[height])
+				for _, proposal := range proposals[newHeight] {
+					chanSetOut.Proposal <- proposal
+				}
+				for _, prepare := range prepares[newHeight] {
+					chanSetOut.Prepare <- prepare
+				}
+				for _, commit := range commits[newHeight] {
+					chanSetOut.Commit <- commit
+				}
+				for _, fault := range faults[newHeight] {
+					chanSetOut.Fault <- fault
+				}
 
-				delete(proposalChs, height)
-				delete(prepareChs, height)
-				delete(commitChs, height)
-				delete(faultChs, height)
-				height++
-
-				proposalChs[height] = make(chan Proposal)
-				prepareChs[height] = make(chan Prepare)
-				commitChs[height] = make(chan Commit)
-				faultChs[height] = make(chan Fault)
+				for i := height + 1; i <= newHeight; i++ {
+					delete(proposals, i)
+					delete(prepares, i)
+					delete(commits, i)
+					delete(faults, i)
+				}
+				height = newHeight
 			}
 		}
 	}()
-
-	return proposalChOut, prepareChOut, commitChOut, faultChOut
 }
