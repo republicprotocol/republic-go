@@ -15,6 +15,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/gorilla/websocket"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
@@ -57,23 +58,7 @@ type OrderFragments struct {
 	FragmentSet []Fragments `json:"fragmentSet"`
 }
 
-func handlePostOrders(w http.ResponseWriter, r *http.Request) error {
-	return nil
-}
-
-func handleGetOrders(w http.ResponseWriter, r *http.Request) error {
-	return nil
-}
-
-func handleGetOrder(w http.ResponseWriter, r *http.Request) error {
-	return nil
-}
-
-func handleDeleteOrder(w http.ResponseWriter, r *http.Request) error {
-	return nil
-}
-
-func handleError(f func(w http.ResponseWriter, r *http.Request) error) http.Handler {
+func RecoveryHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if r := recover(); r != nil {
@@ -81,9 +66,36 @@ func handleError(f func(w http.ResponseWriter, r *http.Request) error) http.Hand
 				w.Write([]byte(fmt.Sprintf("%v", r)))
 			}
 		}()
-		if err := f(w, r); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+		h.ServeHTTP(w, r)
+	})
+}
+
+func PostOrdersHandler(multiAddress identity.MultiAddress, darkPools dark.Pools) http.Handler {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	})
+}
+
+func GetOrdersHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := websocket.Upgrade(w, r, w.Header(), 1024, 1024)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("cannot open websocket connection: %v", err), http.StatusBadRequest)
 		}
+		streamOrders(r, conn)
+	})
+}
+
+func HandleGetOrder() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	})
+}
+
+func HandleDeleteOrder() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 	})
 }
 
@@ -325,8 +337,8 @@ func getLogger() (*logger.Logger, error) {
 
 // Send the shares across all nodes within the Dark Pool
 func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares []*order.Fragment) {
-	j := 0
-	pool.ForAll(func(n *dark.Node) {
+	pool.ForAll(shares, func(i int) {
+		n := pool[shares[i].Key-1]
 
 		// Get multiaddress
 		multiaddress, err := getMultiAddress(n.ID.Address(), multi)
@@ -341,13 +353,12 @@ func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares [
 		}
 
 		// Send fragment to node
-		err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[j]))
+		err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[i]))
 		if err != nil {
 			log.Println(err)
 			log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(n.ID), reset)
 			return
 		}
-		j++
 	})
 }
 

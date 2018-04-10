@@ -25,10 +25,10 @@ import (
 
 func NewRouter() *mux.Router {
 	r := mux.NewRouter().StrictSlash(true)
-	r.Methods("POST").Path("/orders").HandlerFunc(handlePostOrders)
-	r.Methods("GET").Path("/orders").HandlerFunc(handleGetOrders)
-	r.Methods("GET").Path("/orders/{orderID}").HandlerFunc(handleGetOrder)
-	r.Methods("DELETE").Path("/orders/{orderID}").HandlerFunc(handleDeleteOrder)
+	r.Methods("POST").Path("/orders").HandlerFunc(RecoveryHandler(PostOrdersHandler(nil, nil)))
+	r.Methods("GET").Path("/orders").HandlerFunc(RecoveryHandler(GetOrdersHandler()))
+	r.Methods("GET").Path("/orders/{orderID}").HandlerFunc(RecoveryHandler(handleGetOrder))
+	r.Methods("DELETE").Path("/orders/{orderID}").HandlerFunc(RecoveryHandler(handleDeleteOrder))
 	return r
 }
 
