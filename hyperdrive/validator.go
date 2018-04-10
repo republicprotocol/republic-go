@@ -7,8 +7,7 @@ type Validator interface {
 	Block(Block) bool
 	Rank(Rank) bool
 	Height(Height) bool
-	UpdateHeight()
-	GetSharedBlocks() SharedBlocks
+	GetSharedBlocks() *SharedBlocks
 }
 
 type EthereumValidator struct {
