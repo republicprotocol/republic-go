@@ -1,12 +1,16 @@
 package hyper
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
+
+	"golang.org/x/crypto/sha3"
 )
 
 type Block struct {
-	tuples    Tuples
-	signature Signature
+	Tuples
+	Signature
 }
 
 type BlockHash [32]byte
@@ -21,32 +25,18 @@ func ConsumeBlock(ctx context.Context, blockChIn chan Block, sharedBlocks *Share
 			case <-ctx.Done():
 				errCh <- ctx.Err()
 				return
-			case block, ok := <-blockChIn:
+			case _, ok := <-blockChIn:
 				if !ok {
 					return
 				}
-				sharedBlocks.AddBlock(block)
 			}
 		}
 	}()
-
 	return errCh
 }
 
-func validateBlock(b Block, sb SharedBlocks) bool {
-	for _, tuple := range b.tuples {
-		if !sb.ValidateTuple(tuple) {
-			return false
-		}
-	}
-	// TODO: Replace the validate signature with actual logic
-	return validateSignature()
-}
-
-func validateSignature() bool {
-	return true
-}
-
 func getBlockHash(b Block) BlockHash {
-	return BlockHash{}
+	var blockBuffer bytes.Buffer
+	binary.Write(&blockBuffer, binary.BigEndian, b.Tuples)
+	return sha3.Sum256(blockBuffer.Bytes())
 }
