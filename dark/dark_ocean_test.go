@@ -3,6 +3,7 @@ package dark_test
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
@@ -57,7 +58,7 @@ var _ = Describe("Dark Oceans", func() {
 
 			channel := make(chan struct{}, 1)
 			go ocean.Watch(channel)
-			Eventually(channel).Should(Receive())
+			Eventually(channel, 2*time.Second).Should(Receive())
 
 			// Would have to wait for an epoch, will slow test down too much
 			// Eventually(channel).Should(Receive())

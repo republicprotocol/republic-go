@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/republicprotocol/republic-go/stackint"
+
 	"github.com/republicprotocol/go-do"
 
 	"github.com/republicprotocol/republic-go/contracts/dnr"
@@ -55,9 +57,19 @@ func (ocean *Ocean) Update() error {
 }
 
 func (ocean *Ocean) update() error {
-	// TODO: Get these details from the smart contract.
-	blockhash := big.NewInt(1234567)
-	poolsize := 72
+	epoch, err := ocean.darkNodeRegistry.CurrentEpoch()
+	if err != nil {
+		return err
+	}
+	blockhash, err := stackint.FromBytes(epoch.Blockhash[:])
+	if err != nil {
+		return err
+	}
+
+	poolsize, err := ocean.darkNodeRegistry.MinimumDarkPoolSize()
+	if err != nil {
+		return err
+	}
 
 	nodeIDs, err := ocean.darkNodeRegistry.GetAllNodes()
 	if err != nil {
@@ -66,31 +78,51 @@ func (ocean *Ocean) update() error {
 
 	// Find the prime smaller or equal to the number of registered nodes
 	// Start at +2 because it has to greater than the maximum (x+1)
-	previousPrime := big.NewInt(int64(len(nodeIDs) + 2))
+	previousPrimeBig := big.NewInt(int64(len(nodeIDs) + 2))
 
 	// ProbablyPrime is 100% accurate for inputs less than 2^64.
 	// https://golang.org/src/math/big/prime.go
-	for !previousPrime.ProbablyPrime(0) {
-		previousPrime = previousPrime.Sub(previousPrime, big.NewInt(1))
+	for !previousPrimeBig.ProbablyPrime(0) {
+		previousPrimeBig = previousPrimeBig.Sub(previousPrimeBig, big.NewInt(1))
+	}
+
+	previousPrime, err := stackint.FromBigInt(previousPrimeBig)
+	if err != nil {
+		return err
+	}
+
+	// TODO: This has a bias
+	blockhash = blockhash.Mod(&previousPrime)
+	if blockhash.IsZero() {
+		blockhash = stackint.FromUint(1)
 	}
 
 	// Integer division
-	numberOfPools := big.NewInt(0).Div(previousPrime, big.NewInt(int64(poolsize)))
-	if numberOfPools.Int64() == 0 {
-		numberOfPools = big.NewInt(1)
+	numberOfPools := previousPrime.Div(&poolsize)
+
+	if numberOfPools.IsZero() {
+		numberOfPools = stackint.FromUint(1)
 	}
-	pools := make(Pools, numberOfPools.Int64())
+	poolCount, err := numberOfPools.ToUint()
+	if err != nil {
+		return err
+	}
+	pools := make(Pools, poolCount)
 	for i := range pools {
 		pools[i] = NewPool()
 	}
 
 	// Calcualte the pool assignment for each node
-	inverse := blockhash.ModInverse(blockhash, previousPrime)
+	inverse := blockhash.ModInverse(&previousPrime)
 	for n := range nodeIDs {
-		nPlusOne := big.NewInt(int64(n + 1))
-		i := big.NewInt(0).Mod(big.NewInt(0).Mul(nPlusOne, inverse), previousPrime)
+		nPlusOne := stackint.FromUint(uint(n + 1))
+		i := nPlusOne.MulModulo(&inverse, &previousPrime)
+		poolInt := i.Mod(&numberOfPools)
+		pool, err := poolInt.ToUint()
+		if err != nil {
+			return err
+		}
 
-		pool := big.NewInt(0).Mod(i, numberOfPools).Int64()
 		pools[pool].Append(NewNode(nodeIDs[n]))
 	}
 
@@ -131,7 +163,7 @@ func (ocean *Ocean) Watch(changes chan struct{}) {
 			}
 			changes <- struct{}{}
 		}
-		// TODO: Retrieve sleep time from epoch.Timestamp and minimumEpochInterval
+
 		nextTime := epoch.Timestamp.Add(&minInterval)
 		unix, err := nextTime.ToUint()
 		if err != nil {

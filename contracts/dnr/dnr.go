@@ -245,6 +245,15 @@ func (darkNodeRegistry *DarkNodeRegistry) MinimumEpochInterval() (stackint.Int10
 	return stackint.FromBigInt(interval)
 }
 
+// MinimumDarkPoolSize gets the minumum dark pool size
+func (darkNodeRegistry *DarkNodeRegistry) MinimumDarkPoolSize() (stackint.Int1024, error) {
+	interval, err := darkNodeRegistry.binding.MinimumDarkPoolSize(darkNodeRegistry.callOpts)
+	if err != nil {
+		return stackint.Int1024{}, err
+	}
+	return stackint.FromBigInt(interval)
+}
+
 // SetGasLimit sets the gas limit to use for transactions
 func (darkNodeRegistry *DarkNodeRegistry) SetGasLimit(limit uint64) {
 	darkNodeRegistry.transactOpts.GasLimit = limit

@@ -54,7 +54,6 @@ func DeregisterAll(configs []*node.Config) {
 
 		clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
 		if err != nil {
-			// TODO: Handler err
 			log.Fatal(err)
 		}
 

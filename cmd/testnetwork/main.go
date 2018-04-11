@@ -24,7 +24,7 @@ const yellow = "\x1b[33;1m"
 func main() {
 	parseCommandLineFlags()
 
-	out := fmt.Sprintf("Started Ganache server on port %s8545%s.", green, reset)
+	out := fmt.Sprintf("Starting Ganache server on port %s8545%s...", green, reset)
 	if !debug {
 		out = fmt.Sprintf("%s Run with `-debug` to show output.", out)
 	}
@@ -34,12 +34,15 @@ func main() {
 	cmd := connection.StartTestnet(debug, &wg)
 	go killAtExit(cmd)
 
-	time.Sleep(time.Duration(sleep) * time.Second)
+	go func() {
+		time.Sleep(time.Duration(sleep) * time.Second)
 
-	err := connection.DeployContractsToGanache("http://localhost:8545")
-	if err != nil {
-		log.Fatal(err)
-	}
+		err := connection.DeployContractsToGanache("http://localhost:8545")
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	cmd.Wait()
 }
