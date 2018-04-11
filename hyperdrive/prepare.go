@@ -8,17 +8,17 @@ type Prepare struct {
 	Signature
 	Block
 	Rank
-	Height
+	Height uint64
 }
 
-func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer Signer, validator Validator, threshold uint8) (<-chan Commit, <-chan Fault, <-chan error) {
+func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, validator Validator) (<-chan Commit, <-chan Fault, <-chan error) {
+	threshold := validator.Threshold()
 	commitCh := make(chan Commit, threshold)
 	faultCh := make(chan Fault, threshold)
 	errCh := make(chan error, threshold)
 	prepares := map[[32]byte]uint8{}
 	commited := map[[32]byte]bool{}
 	counter := uint64(0)
-	// prepareChIn = FilterPrepare(prepareChIn, func(*Prepare) bool { return false })
 
 	go func() {
 		defer close(commitCh)
@@ -31,6 +31,7 @@ func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer 
 				errCh <- ctx.Err()
 				return
 			case prepare, ok := <-prepareChIn:
+				// log.Println("Successfully reading prepares from channels")
 				if !ok {
 					return
 				}
@@ -39,23 +40,25 @@ func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer 
 				if commited[h] {
 					continue
 				}
+				// log.Println("Counting prepares on", validator.Sign(), prepares[h], "with threshold", threshold)
 				if prepares[h] >= threshold-1 {
 					commitCh <- Commit{
 						Rank:               prepare.Rank,
 						Height:             prepare.Height,
 						Block:              prepare.Block,
 						ThresholdSignature: ThresholdSignature("Threshold_BLS"),
-						Signature:          signer.Sign(),
+						Signature:          validator.Sign(),
 					}
+					// log.Println("Successfully writing commits to internal channels")
 					commited[h] = true
 				} else {
-					if validator.Prepare(prepare) {
+					if validator.ValidatePrepare(prepare) {
 						prepares[h]++
 					} else {
 						faultCh <- Fault{
 							Rank:      prepare.Rank,
 							Height:    prepare.Height,
-							Signature: signer.Sign(),
+							Signature: validator.Sign(),
 						}
 					}
 				}
