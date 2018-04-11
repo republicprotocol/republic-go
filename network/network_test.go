@@ -37,7 +37,7 @@ func generateSwarmServices(numberOfSwarms int) ([]*network.SwarmService, []*grpc
 	bootstrapNodes := make([]identity.MultiAddress, NumberOfBootstrapNodes)
 
 	for i := 0; i < len(swarms); i++ {
-		address, _, err := identity.NewAddress()
+		address, keypair, err := identity.NewAddress()
 		if err != nil {
 			return nil, nil, err
 		}
@@ -77,8 +77,13 @@ func generateSwarmServices(numberOfSwarms int) ([]*network.SwarmService, []*grpc
 		}
 		l.Start()
 
+		multiAddressSignature, err := keypair.Sign(options.MultiAddress)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		swarms[i] = network.NewSwarmService(MockDelegate{}, options,
-			&logger.Logger{}, rpc.NewClientPool(options.MultiAddress),
+			&logger.Logger{}, rpc.NewClientPool(options.MultiAddress, multiAddressSignature),
 			dht.NewDHT(options.MultiAddress.Address(), options.MaxBucketLength))
 
 	}

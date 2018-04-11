@@ -43,7 +43,9 @@ var _ = Describe("Dark service", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// keypair = darks[0]
-			pool = rpc.NewClientPool(darks[0].MultiAddress)
+			multiAddressSignature, err := keypairs[0].Sign(darks[0].MultiAddress)
+			Ω(err).ShouldNot(HaveOccurred())
+			pool = rpc.NewClientPool(darks[0].MultiAddress, multiAddressSignature)
 
 			time.Sleep(1 * time.Second)
 		})
@@ -58,18 +60,20 @@ var _ = Describe("Dark service", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
+		var fragment *order.Fragment
 		It("should be able to handle OpenOrder rpc", func() {
 			// Sign order fragment
-			fragment, err := generateOrderFragment()
+			var err error
+			fragment, err = generateOrderFragment()
 			Ω(err).ShouldNot(HaveOccurred())
 			err = fragment.Sign(*keypairs[0])
 			Ω(err).ShouldNot(HaveOccurred())
-			err = pool.OpenOrder(darks[1].MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(fragment))
+			err = pool.OpenOrder(darks[1].MultiAddress, rpc.SerializeOrderFragment(fragment))
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should be able to handle CancelOrder rpc", func() {
-			err = pool.CancelOrder(darks[1].MultiAddress, &rpc.OrderSignature{})
+			err = pool.CancelOrder(darks[1].MultiAddress, fragment.OrderID, nil)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 

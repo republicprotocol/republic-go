@@ -100,8 +100,13 @@ func NewDarkNode(config Config, darkNodeRegistry dnr.DarkNodeRegistry) (*DarkNod
 	}
 	k := int64(node.DarkPool.Size()*2/3 + 1)
 
+	multiAddressSignature, err := node.KeyPair.Sign(node.NetworkOptions.MultiAddress)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create all networking components and services
-	node.ClientPool = rpc.NewClientPool(node.NetworkOptions.MultiAddress).
+	node.ClientPool = rpc.NewClientPool(node.NetworkOptions.MultiAddress, multiAddressSignature).
 		WithTimeout(node.NetworkOptions.Timeout).
 		WithTimeoutBackoff(node.NetworkOptions.TimeoutBackoff).
 		WithTimeoutRetries(node.NetworkOptions.TimeoutRetries).

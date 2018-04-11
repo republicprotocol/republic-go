@@ -62,6 +62,11 @@ func main() {
 	}
 	log.Println("Trader Address: ", address)
 
+	multiSignature, err := keypair.Sign(multi)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Keep sending order fragment
 	for {
 		// Get orders details from Binance
@@ -133,7 +138,7 @@ func main() {
 					}
 
 					do.ForAll(fragments, func(i int) {
-						client, err := rpc.NewClient(nodes[i], multi)
+						client, err := rpc.NewClient(nodes[i], multi, multiSignature)
 						if err != nil {
 							log.Fatal(err)
 						}
@@ -143,7 +148,7 @@ func main() {
 						if err != nil {
 							log.Fatal(err)
 						}
-						err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(fragments[i]))
+						err = client.OpenOrder(rpc.SerializeOrderFragment(fragments[i]))
 						if err != nil {
 							log.Println(err)
 							log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(nodes[i].ID()), reset)
