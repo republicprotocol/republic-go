@@ -3,6 +3,7 @@ package dnr
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -169,31 +170,81 @@ func (darkNodeRegistry *DarkNodeRegistry) Epoch() (*types.Transaction, error) {
 	return tx, err
 }
 
-// WaitForEpoch guarantees that an Epoch as passed (and calls Epoch if connected to Ganache)
-func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() (*types.Transaction, error) {
-	currentEpoch, err := darkNodeRegistry.CurrentEpoch()
+// TimeUntilEpoch calculates the time remaining until the next Epoch can be called
+func (darkNodeRegistry *DarkNodeRegistry) TimeUntilEpoch() (time.Duration, error) {
+	epoch, err := darkNodeRegistry.CurrentEpoch()
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	nextEpoch := currentEpoch
-	var tx *types.Transaction
-	for currentEpoch.Blockhash == nextEpoch.Blockhash {
+
+	minInterval, err := darkNodeRegistry.MinimumEpochInterval()
+
+	nextTime := epoch.Timestamp.Add(&minInterval)
+	unix, err := nextTime.ToUint()
+	if err != nil {
+		// Either minInterval is really big, or unix epoch time has overflowed uint64s.
+		return 0, err
+	}
+
+	toWait := time.Second * time.Duration(int64(unix)-time.Now().Unix())
+
+	// Ensure toWait is at least 1
+	if toWait < 1*time.Second {
+		toWait = 1 * time.Second
+	}
+
+	// Try again within a minute
+	if toWait > time.Minute {
+		toWait = time.Minute
+	}
+
+	return toWait, nil
+
+}
+
+// WaitForEpoch guarantees that an Epoch as passed (and calls Epoch if connected to Ganache)
+func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() error {
+
+	fmt.Println("Waiting for epoch...")
+
+	previousEpoch, err := darkNodeRegistry.CurrentEpoch()
+	if err != nil {
+		return err
+	}
+
+	currentEpoch := previousEpoch
+
+	for currentEpoch.Blockhash == previousEpoch.Blockhash {
+
+		// Calculate how much time to sleep for
+		// If epoch can already be called, returns 1 second
+		toWait, err := darkNodeRegistry.TimeUntilEpoch()
+		if err != nil {
+			return err
+		}
+
+		time.Sleep(toWait)
+
+		// If on Ganache, have to call epoch manually
 		if darkNodeRegistry.Chain == connection.ChainGanache {
 			darkNodeRegistry.SetGasLimit(300000)
-			tx, err = darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
-			darkNodeRegistry.client.PatchedWaitMined(darkNodeRegistry.context, tx)
+			tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
 			darkNodeRegistry.SetGasLimit(0)
 			if err != nil {
-				return nil, err
+				return err
 			}
+			darkNodeRegistry.client.PatchedWaitMined(darkNodeRegistry.context, tx)
 		}
-		nextEpoch, err = darkNodeRegistry.CurrentEpoch()
+
+		currentEpoch, err = darkNodeRegistry.CurrentEpoch()
 		if err != nil {
-			return nil, err
+			return err
 		}
-		time.Sleep(time.Millisecond * 10)
 	}
-	return tx, nil
+
+	fmt.Println("Done waiting for epoch.")
+
+	return nil
 }
 
 // GetOwner gets the owner of the given dark node

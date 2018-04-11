@@ -266,7 +266,7 @@ func registerNodes(nodes []*node.DarkNode) error {
 			return err
 		}
 	}
-	_, err := epochDNR.WaitForEpoch()
+	err := epochDNR.WaitForEpoch()
 	return err
 }
 
@@ -283,7 +283,7 @@ func deregisterNodes(nodes []*node.DarkNode) error {
 		}
 	}
 	epochDNR.SetGasLimit(300000)
-	_, err := epochDNR.WaitForEpoch()
+	err := epochDNR.WaitForEpoch()
 	epochDNR.SetGasLimit(0)
 	if err != nil {
 		log.Fatal(err)
@@ -296,7 +296,7 @@ func deregisterNodes(nodes []*node.DarkNode) error {
 			log.Fatal(err)
 		}
 	}
-	_, err = epochDNR.WaitForEpoch()
+	err = epochDNR.WaitForEpoch()
 	return err
 }
 
@@ -334,7 +334,7 @@ func watchDarkOcean(nodes []*node.DarkNode) {
 		}(i)
 	}
 
-	_, err := epochDNR.WaitForEpoch()
+	err := epochDNR.WaitForEpoch()
 	if err != nil {
 		panic(err)
 	}

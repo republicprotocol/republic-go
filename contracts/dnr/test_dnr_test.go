@@ -62,7 +62,7 @@ var _ = Describe("Dark nodes", func() {
 			DNR, err = dnr.TestnetDNR(nil)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			_, err = DNR.WaitForEpoch()
+			err = DNR.WaitForEpoch()
 			Ω(err).ShouldNot(HaveOccurred())
 
 			configs = make([]*node.Config, NumberOfTestNODES)
@@ -123,7 +123,7 @@ var _ = Describe("Dark nodes", func() {
 
 			}
 
-			_, err = DNR.WaitForEpoch()
+			err = DNR.WaitForEpoch()
 			Ω(err).ShouldNot(HaveOccurred())
 
 		})
@@ -147,7 +147,7 @@ var _ = Describe("Dark nodes", func() {
 			Ω(dnr.IsRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(BeTrue())
 			// Ω(nodes[0].DarkNodeRegistry.IsDarkNodePendingRegistration(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(false))
 
-			_, err = DNR.WaitForEpoch()
+			err = DNR.WaitForEpoch()
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// After epoch, should be deregistered
@@ -178,7 +178,7 @@ var _ = Describe("Dark nodes", func() {
 			Ω(nodes[0].DarkNodeRegistry.IsRegistered(nodes[0].NetworkOptions.MultiAddress.ID())).Should(BeFalse())
 			// Ω(nodes[0].DarkNodeRegistry.IsDarkNodePendingRegistration(nodes[0].NetworkOptions.MultiAddress.ID())).Should(Equal(true))
 
-			_, err = DNR.WaitForEpoch()
+			err = DNR.WaitForEpoch()
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// After epoch, should be deregistered
@@ -200,7 +200,7 @@ var _ = Describe("Dark nodes", func() {
 
 			}
 
-			_, err := DNR.WaitForEpoch()
+			err := DNR.WaitForEpoch()
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for _, node := range nodes {
@@ -218,9 +218,10 @@ var _ = Describe("Dark nodes", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				dnr.SetGasLimit(0)
 
-				_, err = DNR.WaitForEpoch()
-				Ω(err).ShouldNot(HaveOccurred())
 			}
+
+			err = DNR.WaitForEpoch()
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
 })

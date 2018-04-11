@@ -7,7 +7,6 @@ import (
 
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -38,11 +37,9 @@ const (
 	ChainRopsten Chain = "ropsten"
 	// ChainGanache represents a Ganache testrpc server
 	ChainGanache Chain = "ganache"
-	// ChainSimulated represents a go-ethereum simulated backend
-	ChainSimulated Chain = "simulated"
 )
 
-// ClientDetails contains the simulated client and the contracts deployed to it
+// ClientDetails contains the client and the contracts deployed to it
 type ClientDetails struct {
 	Client     Client
 	RenAddress common.Address
@@ -77,27 +74,12 @@ func FromURI(uri string, chain Chain) (ClientDetails, error) {
 
 // PatchedWaitMined waits for tx to be mined on the blockchain.
 // It stops waiting when the context is canceled.
-// If the client is a simulated backend, it will commit the pending transactions to a block
 func (b *ClientDetails) PatchedWaitMined(ctx context.Context, tx *types.Transaction) (*types.Receipt, error) {
-
-	// sim, ok := b.(*backends.SimulatedBackend)
-	// if ok {
-	// 	sim.Commit()
-	// 	sim.AdjustTime(10 * time.Second)
-	// }
 
 	switch b.Chain {
 	case ChainGanache:
 		time.Sleep(100 * time.Millisecond)
 		return nil, nil
-	case ChainSimulated:
-		sim, ok := b.Client.(*backends.SimulatedBackend)
-		if ok {
-			sim.Commit()
-			sim.AdjustTime(10 * time.Second)
-			return nil, nil
-		}
-		fallthrough
 	default:
 		return bind.WaitMined(ctx, b.Client, tx)
 	}
@@ -130,21 +112,12 @@ func (b *ClientDetails) PatchedWaitMined(ctx context.Context, tx *types.Transact
 
 // PatchedWaitDeployed waits for a contract deployment transaction and returns the on-chain
 // contract address when it is mined. It stops waiting when ctx is canceled.
-// If the client is a simulated backend, it will commit the pending transactions to a block
 func (b *ClientDetails) PatchedWaitDeployed(ctx context.Context, tx *types.Transaction) (common.Address, error) {
 
 	switch b.Chain {
 	case ChainGanache:
 		time.Sleep(100 * time.Millisecond)
 		return common.Address{}, nil
-	case ChainSimulated:
-		sim, ok := b.Client.(*backends.SimulatedBackend)
-		if ok {
-			sim.Commit()
-			sim.AdjustTime(10 * time.Second)
-			return common.Address{}, nil
-		}
-		fallthrough
 	default:
 		return bind.WaitDeployed(ctx, b.Client, tx)
 	}

@@ -150,7 +150,6 @@ func genesisKey() (*ecdsa.PrivateKey, *bind.TransactOpts) {
 
 // deployREN deploys an ERC20 contract
 func deployREN(context context.Context, conn ClientDetails, auth *bind.TransactOpts) (*bindings.RepublicToken, common.Address, error) {
-	// Deploy a token contract on the simulated blockchain
 	address, tx, ren, err := bindings.DeployRepublicToken(auth, conn.Client)
 	if err != nil {
 		return nil, common.Address{}, fmt.Errorf("Failed to deploy REN: %v", err)
@@ -161,7 +160,6 @@ func deployREN(context context.Context, conn ClientDetails, auth *bind.TransactO
 
 // deployDNR deploys a Dark Node Registrar
 func deployDNR(context context.Context, conn ClientDetails, auth *bind.TransactOpts, renAddress common.Address) (*bindings.DarkNodeRegistry, common.Address, error) {
-	// Deploy a token contract on the simulated blockchain
 	// 10 aiREN
 	minimumBond := big.NewInt(10)
 	// One minute
