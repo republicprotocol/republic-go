@@ -3,7 +3,7 @@ package dark
 import (
 	"bytes"
 	"fmt"
-	"math/big"
+	"sort"
 	"time"
 
 	"github.com/republicprotocol/go-do"
@@ -11,25 +11,28 @@ import (
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // Ocean of Pools.
 type Ocean struct {
 	do.GuardedObject
 
-	logger           *logger.Logger
-	pools            Pools
-	darkNodeRegistry dnr.DarkNodeRegistry
+	logger            *logger.Logger
+	poolSize          int
+	pools             Pools
+	darkNodeRegistrar dnr.DarkNodeRegistry
 }
 
 // NewOcean uses a DarkNodeRegistry to read all registered nodes and sort them
 // into Pools.
-func NewOcean(logger *logger.Logger, darkNodeRegistry dnr.DarkNodeRegistry) (*Ocean, error) {
+func NewOcean(logger *logger.Logger, poolSize int, darkNodeRegistrar dnr.DarkNodeRegistry) (*Ocean, error) {
 	ocean := &Ocean{
-		GuardedObject:    do.NewGuardedObject(),
-		logger:           logger,
-		pools:            Pools{},
-		darkNodeRegistry: darkNodeRegistry,
+		GuardedObject:     do.NewGuardedObject(),
+		logger:            logger,
+		poolSize:          poolSize,
+		pools:             Pools{},
+		darkNodeRegistrar: darkNodeRegistrar,
 	}
 	return ocean, ocean.update()
 }
@@ -55,45 +58,37 @@ func (ocean *Ocean) Update() error {
 }
 
 func (ocean *Ocean) update() error {
-	// TODO: Get these details from the smart contract.
-	blockhash := big.NewInt(1234567)
-	poolsize := 72
-
-	nodeIDs, err := ocean.darkNodeRegistry.GetAllNodes()
+	epoch, err := ocean.darkNodeRegistrar.CurrentEpoch();
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get current epoch :%v", err)
 	}
 
-	// Find the prime smaller or equal to the number of registered nodes
-	// Start at +2 because it has to greater than the maximum (x+1)
-	previousPrime := big.NewInt(int64(len(nodeIDs) + 2))
-
-	// ProbablyPrime is 100% accurate for inputs less than 2^64.
-	// https://golang.org/src/math/big/prime.go
-	for !previousPrime.ProbablyPrime(0) {
-		previousPrime = previousPrime.Sub(previousPrime, big.NewInt(1))
+	nodeIDs, err := ocean.darkNodeRegistrar.GetAllNodes()
+	if err != nil {
+		return fmt.Errorf("cannot get all nodes: %v", err)
 	}
 
-	// Integer division
-	numberOfPools := big.NewInt(0).Div(previousPrime, big.NewInt(int64(poolsize)))
-	if numberOfPools.Int64() == 0 {
-		numberOfPools = big.NewInt(1)
+	nodePositionHashesToIDs := map[string][]byte{}
+	nodePositionHashes := make([][]byte, len(nodeIDs))
+	for i := range nodeIDs {
+		nodePositionHashes[i] = crypto.Keccak256(epoch.Blockhash[:], nodeIDs[i])
+		nodePositionHashesToIDs[string(nodePositionHashes[i])] = nodeIDs[i]
 	}
-	pools := make(Pools, numberOfPools.Int64())
+
+	sort.Slice(nodePositionHashes, func(i, j int) bool {
+		return bytes.Compare(nodePositionHashes[i], nodePositionHashes[j]) < 0
+	})
+
+	numberOfPools := len(nodeIDs) / ocean.poolSize
+
+	pools := make(Pools, numberOfPools)
 	for i := range pools {
 		pools[i] = NewPool()
 	}
-
-	// Calcualte the pool assignment for each node
-	inverse := blockhash.ModInverse(blockhash, previousPrime)
-	for n := range nodeIDs {
-		nPlusOne := big.NewInt(int64(n + 1))
-		i := big.NewInt(0).Mod(big.NewInt(0).Mul(nPlusOne, inverse), previousPrime)
-
-		pool := big.NewInt(0).Mod(i, numberOfPools).Int64()
-		pools[pool].Append(NewNode(nodeIDs[n]))
+	for i := range nodePositionHashes {
+		id := identity.ID(nodePositionHashesToIDs[string(nodePositionHashes[i])])
+		pools[i % numberOfPools].Append(NewNode(id))
 	}
-
 	ocean.pools = pools
 	return nil
 }
@@ -105,7 +100,7 @@ func (ocean *Ocean) Watch(changes chan struct{}) {
 	// Recover from writing to a closed channel
 	defer func() { recover() }()
 
-	minInterval, err := ocean.darkNodeRegistry.MinimumEpochInterval()
+	minInterval, err := ocean.darkNodeRegistrar.MinimumEpochInterval()
 	if err != nil {
 		ocean.logger.Error(fmt.Sprintf("cannot retrieve minimum epoch interval: %s", err.Error()))
 		return
@@ -118,7 +113,7 @@ func (ocean *Ocean) Watch(changes chan struct{}) {
 	}
 	changes <- struct{}{}
 	for {
-		epoch, err := ocean.darkNodeRegistry.CurrentEpoch()
+		epoch, err := ocean.darkNodeRegistrar.CurrentEpoch()
 		if err != nil {
 			ocean.logger.Error(fmt.Sprintf("cannot update epoch: %s", err.Error()))
 			return
@@ -154,4 +149,9 @@ func (ocean *Ocean) Watch(changes chan struct{}) {
 
 		time.Sleep(toWait)
 	}
+}
+
+// GetPools returns dark pools in the dark ocean
+func (ocean *Ocean) GetPools ()(Pools){
+	return ocean.pools
 }
