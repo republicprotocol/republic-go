@@ -44,8 +44,8 @@ func main() {
 }
 
 func parseCommandLineFlags() error {
-	debugPtr := flag.Bool("debug", false, "Print output to stdout")
-	sleepPtr := flag.Int("sleep", 5, "Time to wait for ganache to start-up")
+	debugPtr := flag.Bool("debug", debug, "Print output to stdout")
+	sleepPtr := flag.Int("sleep", sleep, "Time to wait for ganache to start-up")
 
 	flag.Parse()
 
