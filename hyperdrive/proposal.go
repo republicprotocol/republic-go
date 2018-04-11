@@ -17,10 +17,10 @@ type Proposal struct {
 	Signature
 	Block
 	Rank
-	Height
+	Height uint64
 }
 
-func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer Signer, validator Validator) (<-chan Prepare, <-chan Fault, <-chan error) {
+func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, validator Validator) (<-chan Prepare, <-chan Fault, <-chan error) {
 	prepareCh := make(chan Prepare)
 	faultCh := make(chan Fault)
 	errCh := make(chan error)
@@ -37,13 +37,14 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer S
 				errCh <- ctx.Err()
 				return
 			case proposal, ok := <-proposalChIn:
+				// log.Println("Successfully reading proposals from channels")
 				counter++
 				if !ok {
 					return
 				}
-				if validator.Proposal(proposal) {
+				if validator.ValidateProposal(proposal) {
 					prepare := Prepare{
-						signer.Sign(),
+						validator.Sign(),
 						proposal.Block,
 						proposal.Rank,
 						proposal.Height,
@@ -53,7 +54,7 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer S
 					fault := Fault{
 						proposal.Rank,
 						proposal.Height,
-						signer.Sign(),
+						validator.Sign(),
 					}
 					select {
 					case <-ctx.Done():
