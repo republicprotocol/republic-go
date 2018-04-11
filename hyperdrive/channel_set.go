@@ -99,3 +99,39 @@ func (c *ChannelSet) Split(cs []ChannelSet) {
 
 	wg.Wait()
 }
+
+func (c *ChannelSet) Copy(cs ChannelSet) {
+	go func() {
+		defer c.Close()
+		for {
+			select {
+			case proposal, ok := <-cs.Proposal:
+				if !ok {
+					return
+				}
+				c.Proposal <- proposal
+			case prepare, ok := <-cs.Prepare:
+				if !ok {
+					return
+				}
+				c.Prepare <- prepare
+			case commit, ok := <-cs.Commit:
+				if !ok {
+					return
+				}
+				c.Commit <- commit
+			case fault, ok := <-cs.Fault:
+				if !ok {
+					return
+				}
+				c.Fault <- fault
+
+			case block, ok := <-cs.Block:
+				if !ok {
+					return
+				}
+				c.Block <- block
+			}
+		}
+	}()
+}
