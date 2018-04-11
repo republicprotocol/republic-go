@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
@@ -59,8 +60,7 @@ func VerifySignature(data Signable, signature Signature, id ID) error {
 	if err != nil {
 		return err
 	}
-	// TODO: Don't convert to string to compare
-	if signer.String() != id.String() {
+	if !bytes.Equal(signer, id) {
 		return ErrInvalidSignature
 	}
 	return nil

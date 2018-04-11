@@ -142,7 +142,7 @@ func (fragment *Fragment) Equal(other *Fragment) bool {
 // order ID, it must have a different parity, it must have a different owner,
 // and all secret sharing fields must have the same secret sharing index.
 func (fragment *Fragment) IsCompatible(other *Fragment) bool {
-	// TODO: Compare signatories
+	// TODO: Check that signatories are different
 	return !fragment.ID.Equal(other.ID) &&
 		!fragment.OrderID.Equal(other.OrderID) &&
 		fragment.OrderParity != other.OrderParity &&
