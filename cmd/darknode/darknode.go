@@ -2,6 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"fmt"
+
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 
 	"github.com/republicprotocol/republic-go/darknode"
 )
@@ -14,14 +18,14 @@ func NewLocalDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (darkn
 	ctxs := make([]context.Context, numberOfDarknodes)
 	cancels := make([]context.CancelFunc, numberOfDarknodes)
 	for i := 0; i < numberOfDarknodes; i++ {
-		var config Config
-		if i < numberOfBootstrapDarknodes {
-			config = darknode.NewLocalConfig(3000 + i)
-		} else {
-			config = darknode.NewLocalConfig(4000 + i)
-		}
-		darknodes[i] = darknode.NewDarknode(config)
+		key := keystore.NewKeyForDirectICAP(rand.Reader)
+		darknodes[i] = NewLocalDarknode(key, "127.0.0.1", fmt.Sprintf("%d", 3000+i))
 		ctx[i], cancels[i] = context.WithCancel(context.Background())
 	}
 	return darknodes, ctxs, cancels
+}
+
+func NewLocalDarknode(key *keystore.Key, host, port string) Darknode {
+	config := darknode.NewLocalConfig(key, host, port)
+	return darknode.NewDarknode(config)
 }

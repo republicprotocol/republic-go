@@ -1,4 +1,4 @@
-package dnr
+package contracts
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/republicprotocol/republic-go/contracts/bindings"
-	"github.com/republicprotocol/republic-go/contracts/connection"
+	"github.com/republicprotocol/republic-go/ethereum/bindings"
+	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -21,9 +21,9 @@ type Epoch struct {
 
 // DarkNodeRegistry is the dark node interface
 type DarkNodeRegistry struct {
-	Chain                   connection.Chain
+	Chain                   client.Network
 	context                 context.Context
-	client                  *connection.ClientDetails
+	client                  *client.Connection
 	transactOpts            *bind.TransactOpts
 	callOpts                *bind.CallOpts
 	binding                 *bindings.DarkNodeRegistry
@@ -32,7 +32,7 @@ type DarkNodeRegistry struct {
 }
 
 // NewDarkNodeRegistry returns a Dark node registrar
-func NewDarkNodeRegistry(context context.Context, clientDetails *connection.ClientDetails, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (DarkNodeRegistry, error) {
+func NewDarkNodeRegistry(context context.Context, clientDetails *client.Connection, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (DarkNodeRegistry, error) {
 	contract, err := bindings.NewDarkNodeRegistry(clientDetails.DNRAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
 		return DarkNodeRegistry{}, err
@@ -42,7 +42,7 @@ func NewDarkNodeRegistry(context context.Context, clientDetails *connection.Clie
 		return DarkNodeRegistry{}, err
 	}
 	return DarkNodeRegistry{
-		Chain:                   clientDetails.Chain,
+		Chain:                   clientDetails.Network,
 		context:                 context,
 		client:                  clientDetails,
 		transactOpts:            transactOpts,
@@ -178,7 +178,7 @@ func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() (*types.Transaction, er
 	nextEpoch := currentEpoch
 	var tx *types.Transaction
 	for currentEpoch.Blockhash == nextEpoch.Blockhash {
-		if darkNodeRegistry.Chain == connection.ChainGanache {
+		if darkNodeRegistry.Chain == client.NetworkGanache {
 			tx, err = darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
 			if err != nil {
 				return nil, err

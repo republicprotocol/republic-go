@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/ethereum/client"
 )
 
 type Darknodes []Darknode
@@ -16,13 +17,18 @@ type Darknode struct {
 
 func NewDarknode(config Config) Darknode {
 
+	// Connect to Ethereum
 	transactOpts := bind.NewKeyedTransactor(config.Key.PrivateKey)
-	client := nil // TODO: Figure this out
-	darkNodeRegistry := dnr.NewDarkNodeRegistry(context.Background(), &client, transactOpts, &bind.CallOpts{})
+	client := client.Connect(
+		config.EthereumConfig.URI,
+		config.EthereumConfig.Network,
+		config.EthereumConfig.RepublicTokenAddress,
+		config.EthereumConfig.DarkNodeRegistryAddress,
+	)
 
 	return Darknode{
 		config:           config,
-		darkNodeRegistry: darkNodeRegistry,
+		darkNodeRegistry: dnr.NewDarkNodeRegistry(context.Background(), &client, transactOpts, &bind.CallOpts{}),
 	}
 }
 

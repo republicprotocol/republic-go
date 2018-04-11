@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -28,18 +29,18 @@ type Client interface {
 	BalanceAt(ctx context.Context, contract common.Address, blockNumber *big.Int) (*big.Int, error)
 }
 
-// Chain is used to represent an Ethereum chain
-type Chain string
+// Network is used to represent an Ethereum chain
+type Network string
 
 const (
-	// ChainMainnet represents the Ethereum mainnet
-	ChainMainnet Chain = "mainnet"
-	// ChainRopsten represents the Ethereum Ropsten testnet
-	ChainRopsten Chain = "ropsten"
-	// ChainGanache represents a Ganache testrpc server
-	ChainGanache Chain = "ganache"
-	// ChainSimulated represents a go-ethereum simulated backend
-	ChainSimulated Chain = "simulated"
+	// NetworkMainnet represents the Ethereum mainnet
+	NetworkMainnet Network = "mainnet"
+	// NetworkRopsten represents the Ethereum Ropsten testnet
+	NetworkRopsten Network = "ropsten"
+	// NetworkGanache represents a Ganache testrpc server
+	NetworkGanache Network = "ganache"
+	// NetworkSimulated represents a go-ethereum simulated backend
+	NetworkSimulated Network = "simulated"
 )
 
 // Connection contains the simulated client and the contracts deployed to it
@@ -47,32 +48,53 @@ type Connection struct {
 	Client     Client
 	RenAddress common.Address
 	DNRAddress common.Address
-	Chain      Chain
+	Network    Network
 }
 
-// FromURI will connect to a provided RPC uri
-func FromURI(uri string, chain Chain) (Connection, error) {
-	if uri == "" && chain == ChainMainnet {
-		uri = "https://mainnet.infura.io/"
-	} else {
-		uri = "https://ropsten.infura.io/"
+// Connect to a URI.
+func Connect(uri string, network Network, republicTokenAddress, darkNodeRegistryAddress string) (Connection, error) {
+	if uri == "" {
+		switch network {
+		case NetworkGanache:
+			uri = "http://localhost:8545"
+		case NetworkRopsten:
+			uri = "https://ropsten.infura.io"
+		default:
+			return Connection{}, fmt.Errorf("cannot connect to %s: unsupported", network)
+		}
+	}
+	if republicTokenAddress == "" {
+		switch network {
+		case NetworkGanache:
+			republicTokenAddress = RepublicTokenAddressOnGanache.String()
+		case NetworkRopsten:
+			republicTokenAddress = RepublicTokenAddressOnRopsten.String()
+		default:
+			return Connection{}, fmt.Errorf("cannot connect to %s: unsupported", network)
+		}
+	}
+	if darkNodeRegistryAddress == "" {
+		switch network {
+		case NetworkGanache:
+			darkNodeRegistryAddress = DarkNodeRegistryAddressOnGanache.String()
+		case NetworkRopsten:
+			darkNodeRegistryAddress = DarkNodeRegistryAddressOnRopsten.String()
+		default:
+			return Connection{}, fmt.Errorf("cannot connect to %s: unsupported", network)
+		}
 	}
 
-	client, err := ethclient.Dial(uri)
+	ethclient, err := ethclient.Dial(string(network))
 	if err != nil {
 		return Connection{}, err
 	}
 
-	if chain == ChainMainnet {
-		panic("unimplemented")
-	} else {
-		return Connection{
-			Client:     client,
-			RenAddress: common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54"),
-			DNRAddress: common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3"),
-			Chain:      chain,
-		}, nil
-	}
+	return Connection{
+		Client:     ethclient,
+		RenAddress: common.HexToAddress(republicTokenAddress),
+		DNRAddress: common.HexToAddress(darkNodeRegistryAddress),
+		Network:    network,
+	}, nil
 }
 
 // PatchedWaitMined waits for tx to be mined on the blockchain.
@@ -86,11 +108,11 @@ func (b *Connection) PatchedWaitMined(ctx context.Context, tx *types.Transaction
 	// 	sim.AdjustTime(10 * time.Second)
 	// }
 
-	switch b.Chain {
-	case ChainGanache:
+	switch b.Network {
+	case NetworkGanache:
 		time.Sleep(100 * time.Millisecond)
 		return nil, nil
-	case ChainSimulated:
+	case NetworkSimulated:
 		sim, ok := b.Client.(*backends.SimulatedBackend)
 		if ok {
 			sim.Commit()
@@ -133,11 +155,11 @@ func (b *Connection) PatchedWaitMined(ctx context.Context, tx *types.Transaction
 // If the client is a simulated backend, it will commit the pending transactions to a block
 func (b *Connection) PatchedWaitDeployed(ctx context.Context, tx *types.Transaction) (common.Address, error) {
 
-	switch b.Chain {
-	case ChainGanache:
+	switch b.Network {
+	case NetworkGanache:
 		time.Sleep(100 * time.Millisecond)
 		return common.Address{}, nil
-	case ChainSimulated:
+	case NetworkSimulated:
 		sim, ok := b.Client.(*backends.SimulatedBackend)
 		if ok {
 			sim.Commit()

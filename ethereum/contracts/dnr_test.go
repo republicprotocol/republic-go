@@ -1,15 +1,14 @@
-package dnr_test
+package contracts_test
 
 import (
 	"context"
 	"log"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/contracts/connection"
-	"github.com/republicprotocol/republic-go/contracts/dnr"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 

@@ -20,11 +20,15 @@ import (
 
 var genesisPrivateKey, genesisTransactor = genesis()
 
-// RepublicTokenAddress is constant because the Genesis account is always the same.
-var RepublicTokenAddress = common.HexToAddress("0x8DE2a0D285cd6fDB47ABAe34024a6EED79ef0E92")
+// GenesisPrivateKey used by Ganache.
+func GenesisPrivateKey() *ecdsa.PrivateKey {
+	return genesisPrivateKey
+}
 
-// DarkNodeRegistryAddress is constant because the Genesis account is always the same.
-var DarkNodeRegistryAddress = common.HexToAddress("0xbF195E17802736Ff4E19275b961bb1c2D45f2c8D")
+// GenesisTransactor used by Ganache.
+func GenesisTransactor() *bind.TransactOpts {
+	return genesisTransactor
+}
 
 // Start a local Ganache instance.
 func Start() *exec.Cmd {
@@ -43,9 +47,9 @@ func Connect(ganacheRPC string) (client.Connection, error) {
 	}
 	return client.Connection{
 		Client:     ethclient,
-		DNRAddress: DarkNodeRegistryAddress,
-		RenAddress: RepublicTokenAddress,
-		Chain:      client.ChainGanache,
+		DNRAddress: client.DarkNodeRegistryAddressOnGanache,
+		RenAddress: client.RepublicTokenAddressOnGanache,
+		Network:    client.NetworkGanache,
 	}, nil
 }
 
@@ -118,11 +122,11 @@ func deployContracts(conn client.Connection, transactor *bind.TransactOpts) erro
 		return err
 	}
 
-	if republicTokenAddress != RepublicTokenAddress {
-		return fmt.Errorf("RepublicToken address has changed: expected: %s, got: %s", RepublicTokenAddress.Hex(), republicTokenAddress.Hex())
+	if republicTokenAddress != client.RepublicTokenAddressOnGanache {
+		return fmt.Errorf("RepublicToken address has changed: expected: %s, got: %s", client.RepublicTokenAddressOnGanache.Hex(), republicTokenAddress.Hex())
 	}
-	if darkNodeRegistryAddress != DarkNodeRegistryAddress {
-		return fmt.Errorf("DarkNodeRegistry address has changed: expected: %s, got: %s", DarkNodeRegistryAddress.Hex(), darkNodeRegistryAddress.Hex())
+	if darkNodeRegistryAddress != client.DarkNodeRegistryAddressOnGanache {
+		return fmt.Errorf("DarkNodeRegistry address has changed: expected: %s, got: %s", client.DarkNodeRegistryAddressOnGanache.Hex(), darkNodeRegistryAddress.Hex())
 	}
 
 	return nil

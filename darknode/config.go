@@ -23,8 +23,17 @@ import (
 // }
 
 type Config struct {
-	Key         keystore.Key `json:"key"`
-	EthereumRPC string       `json:"ethereumRPC"`
+	Key            keystore.Key `json:"key"`
+	Host string `json:"host"`
+	Port string `json:"port"`
+	Ethereum EthereumConfig `json:"ethereum"`
+}
+
+type EthereumConfig struct {
+	URI                     string `json:"uri"`
+	Network                 string `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
+	RepublicTokenAddress    string `json:"republicTokenAddress"`
+	DarkNodeRegistryAddress string `json:"darkNodeRegistryAddress"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config
@@ -42,11 +51,17 @@ func LoadConfig(filename string) (*Config, error) {
 	return config, nil
 }
 
-func NewLocalConfig() Config {
-	key := keystore.NewKeyForDirectICAP(rand.Reader)
+func NewLocalConfig(key *keystore.Key, host, port string) Config {
 	return Config{
 		Key:         key,
-		EthereumRPC: "http://localhost:8545",
+		Host:  host,
+		Port: port,
+		Ethereum: EthereumConfig{
+			URI: "http://localhost:8545",
+			Network: client.NetworkGanache,
+			RepublicTokenAddress: client.RepublicTokenAddressOnGanache,
+			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache,
+		}
 	}
 }
 
