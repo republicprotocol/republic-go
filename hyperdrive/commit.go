@@ -2,22 +2,25 @@ package hyper
 
 import (
 	"context"
+	"log"
 )
 
 type ThresholdSignature Signature
 type Commit struct {
 	Rank
-	Height
+	Height uint64
 	Block
 	ThresholdSignature
 	Signature
 }
 
-func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, signer Signer, validator Validator, blocks *SharedBlocks, threshold uint8) (chan Commit, chan Block, chan Fault, chan error) {
+func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, validator Validator) (chan Commit, chan Block, chan Fault, chan error) {
 	blockCh := make(chan Block)
 	commitCh := make(chan Commit)
 	faultCh := make(chan Fault)
 	errCh := make(chan error)
+	blocks := validator.SharedBlocks()
+	threshold := validator.Threshold()
 	commits := map[[32]byte]uint8{}
 	certified := map[[32]byte]bool{}
 	go func() {
@@ -30,6 +33,7 @@ func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, signer Signer,
 				errCh <- ctx.Err()
 				return
 			case commit, ok := <-commitChIn:
+				log.Println("Reading commits")
 				if !ok {
 					return
 				}
@@ -42,20 +46,20 @@ func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, signer Signer,
 					blockCh <- commit.Block
 					blocks.IncrementHeight()
 				} else {
-					if validator.Commit(commit) {
+					if validator.ValidateCommit(commit) {
 						commits[h]++
 						commitCh <- Commit{
 							Rank:               commit.Rank,
 							Height:             commit.Height,
 							Block:              commit.Block,
 							ThresholdSignature: commit.ThresholdSignature,
-							Signature:          signer.Sign(),
+							Signature:          validator.Sign(),
 						}
 					} else {
 						faultCh <- Fault{
 							Rank:      commit.Rank,
 							Height:    commit.Height,
-							Signature: signer.Sign(),
+							Signature: validator.Sign(),
 						}
 					}
 				}
