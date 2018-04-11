@@ -3,56 +3,43 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
-	"github.com/republicprotocol/republic-go/contracts/connection"
+	"github.com/republicprotocol/republic-go/ethereum/ganache"
 )
-
-var debug = false
-var sleep = 5
 
 const reset = "\x1b[0m"
 const green = "\x1b[32;1m"
 const yellow = "\x1b[33;1m"
 
 func main() {
-	parseCommandLineFlags()
+	argSleep := flag.Int("sleep", 10, "Time to wait for ganache to start-up")
+	flag.Parse()
 
-	log := fmt.Sprintf("Started Ganache server on port %s8545%s.", green, reset)
-	if !debug {
-		log = fmt.Sprintf("%s Run with `-debug` to show output.", log)
-	}
-	fmt.Printf("%s\n", log)
+	fmt.Printf("Started Ganache server on port %s8545%s...\n", green, reset)
 
-	var wg sync.WaitGroup
-	cmd := connection.StartTestnet(debug, &wg)
+	cmd := ganache.Start()
 	go killAtExit(cmd)
 
-	time.Sleep(time.Duration(sleep) * time.Second)
+	time.Sleep(time.Duration(*argSleep) * time.Second)
 
-	err := connection.DeployContractsToGanache("http://localhost:8545")
+	conn, err := ganache.Connect("http://localhost:8545")
 	if err != nil {
-		panic(err)
+		log.Fatalf("cannot connect to ganache: %v", err)
+		return
+	}
+
+	if err := ganache.DeployContracts(conn); err != nil {
+		log.Fatalf("cannot deploy contracts to ganache: %v", err)
+		return
 	}
 
 	cmd.Wait()
-}
-
-func parseCommandLineFlags() error {
-	debugPtr := flag.Bool("debug", debug, "Print output to stdout")
-	sleepPtr := flag.Int("sleep", sleep, "Time to wait for ganache to start-up")
-
-	flag.Parse()
-
-	debug = *debugPtr
-	sleep = *sleepPtr
-
-	return nil
 }
 
 func killAtExit(cmd *exec.Cmd) {
