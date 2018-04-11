@@ -83,10 +83,12 @@ func HandleGetOrder() http.Handler {
 		// status := getOrderStatus(id)
 		status := "confirmed"
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{} {
 			"id":     id,
 			"status": status,
-		})
+		}); err != nil {
+			fmt.Sprintf("cannot encode json object: %v", err)
+		}
 	})
 }
 
