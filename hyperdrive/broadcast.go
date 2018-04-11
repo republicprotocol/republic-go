@@ -1,6 +1,7 @@
 package hyper
 
-func ProcessBroadcast(chanSetIn ChannelSet, chanSetOut ChannelSet) {
+func ProcessBroadcast(chanSetIn ChannelSet, validator Validator) ChannelSet {
+	chanSetOut := EmptyChannelSet(validator.Threshold())
 	broadcastedProposals := map[[32]byte]bool{}
 	broadcastedPrepares := map[[32]byte]bool{}
 	broadcastedCommits := map[[32]byte]bool{}
@@ -64,4 +65,5 @@ func ProcessBroadcast(chanSetIn ChannelSet, chanSetOut ChannelSet) {
 			}
 		}
 	}()
+	return chanSetOut
 }
