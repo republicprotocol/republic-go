@@ -135,7 +135,7 @@ func (ocean *Ocean) Watch(changes chan struct{}) {
 			return
 		}
 
-		toWait := time.Second * time.Duration(time.Now().Unix()-int64(unix))
+		toWait := time.Second * time.Duration(int64(unix)-time.Now().Unix())
 
 		// Wait at least one second
 		if toWait < 1*time.Second {
