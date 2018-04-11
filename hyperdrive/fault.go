@@ -4,14 +4,15 @@ import "context"
 
 type Fault struct {
 	Rank
-	Height
+	Height uint64
 	Signature
 }
 
-func ProcessFault(ctx context.Context, faultChIn chan Fault, threshold uint8) (chan Fault, chan error) {
+func ProcessFault(ctx context.Context, faultChIn chan Fault, validator Validator) (chan Fault, chan error) {
 	faultCh := make(chan Fault)
 	errCh := make(chan error)
 	faults := map[[32]byte]uint8{}
+	certified := map[[32]byte]bool{}
 
 	go func() {
 		defer close(faultCh)
@@ -24,10 +25,22 @@ func ProcessFault(ctx context.Context, faultChIn chan Fault, threshold uint8) (c
 				return
 			case fault := <-faultChIn:
 				h := FaultHash(fault)
-				if faults[h] >= threshold-1 {
-					// updateRank(fault)
+				if certified[h] {
+					continue
 				}
-				faults[h]++
+				if faults[h] >= validator.Threshold()-1 {
+					faultCh <- Fault{
+						fault.Rank,
+						fault.Height,
+						Signature("Threshold_BLS"),
+					}
+				} else {
+					faultCh <- Fault{
+						fault.Rank,
+						fault.Height,
+						validator.Sign(),
+					}
+				}
 			}
 		}
 	}()
