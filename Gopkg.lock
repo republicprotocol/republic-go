@@ -250,6 +250,12 @@
   version = "v1.1"
 
 [[projects]]
+  name = "github.com/spaolacci/murmur3"
+  packages = ["."]
+  revision = "9f5d223c60793748f04a9d5b4b4eacddfc1f755d"
+  version = "v1.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/syndtr/goleveldb"
   packages = [
@@ -412,6 +418,10 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
+<<<<<<< HEAD
   inputs-digest = "721a086bb93ae31500507324a27f7605d205f492d0602ad0876884271012c1db"
+=======
+  inputs-digest = "b1cb4a18555128f9e19cf6c2e257ac582a05144d1fe13b8f731879a4c5b628be"
+>>>>>>> relay
   solver-name = "gps-cdcl"
   solver-version = 1
