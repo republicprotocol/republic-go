@@ -84,7 +84,7 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024) (Shares, error) {
 // Join Shares into a secret. Prime is used to define the finite field from
 // which the secret was selected. The reconstructed secret, or an error, is
 // returned.
-func Join(prime *stackint.Int1024, shares Shares) *stackint.Int1024 {
+func Join(prime *stackint.Int1024, shares Shares) stackint.Int1024 {
 	secret := stackint.Zero()
 
 	// Compute the Lagrange basic polynomial interpolation.
@@ -117,7 +117,7 @@ func Join(prime *stackint.Int1024, shares Shares) *stackint.Int1024 {
 		secret = secret.AddModulo(&value, prime)
 	}
 
-	return &secret
+	return secret
 }
 
 // ToBytes encodes the Share into a slice of bytes.

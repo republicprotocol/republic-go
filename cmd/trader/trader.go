@@ -11,11 +11,9 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/stackint"
-
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -28,15 +26,15 @@ const red = "\x1b[31;1m"
 
 // OrderBook is the data returned from binance
 type OrderBook struct {
-	LastUpdateID int        `json:"lastUpdateId"`
-	Bids         [][]string `json:"bids"`
-	Asks         [][]string `json:"asks"`
+	LastUpdateId int             `json:"lastUpdateId"`
+	Bids         [][]interface{} `json:"bids"`
+	Asks         [][]interface{} `json:"asks"`
 }
 
 func main() {
 	// Parse the option parameters
-	numberOfOrders := flag.Int("order", 10, "number of orders")
-	timeInterval := flag.Int("time", 15, "time interval in second")
+	numberOfOrders := flag.Int("order", 5, "number of orders")
+	timeInterval := flag.Int("time", 30, "time interval in second")
 
 	// Get nodes/darkPool details
 	multiAddresses := getNodesDetails()
@@ -47,7 +45,6 @@ func main() {
 			log.Fatal(err)
 		}
 		nodes[i] = multi
-		log.Println(base58.Encode(nodes[i].ID()))
 	}
 
 	// Create a trader address
@@ -70,22 +67,30 @@ func main() {
 		}
 
 		response, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
 		orderBook := new(OrderBook)
 		err = json.Unmarshal(response, orderBook)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		// Generate order from the Binance data
+		buyOrders := make([]*order.Order, len(orderBook.Asks))
 		sellOrders := make([]*order.Order, len(orderBook.Asks))
+
 		for i, j := range orderBook.Asks {
-			priceInt, err := strconv.ParseFloat(j[0], 10)
-			price := stackint.FromUint(uint(priceInt * 1000000000000))
+			price, err := strconv.ParseFloat(j[0].(string), 10)
+			price = price * 1000000000000
 			if err != nil {
-				log.Fatal("fail to parse the price into a big int")
+				log.Fatal(err)
 			}
 
-			amountInt, err := strconv.ParseFloat(j[1], 10)
-			amount := stackint.FromUint(uint(amountInt * 1000000000000))
+			amount, err := strconv.ParseFloat(j[1].(string), 10)
+			amount = amount * 1000000000000
 			if err != nil {
-				log.Fatal("fail to parse the amount into a big int")
+				log.Fatal(err)
 			}
 			nonce := stackint.One()
 			order := order.NewOrder(order.TypeLimit, order.ParitySell, time.Time{},
@@ -100,13 +105,13 @@ func main() {
 			priceInt, err := strconv.ParseFloat(j[0], 10)
 			price := stackint.FromUint(uint(priceInt * 1000000000000))
 			if err != nil {
-				log.Fatal("fail to parse the price into a big int")
 			}
 
 			amountInt, err := strconv.ParseFloat(j[1], 10)
 			amount := stackint.FromUint(uint(amountInt * 1000000000000))
 			if err != nil {
-				log.Fatal("fail to parse the amount into a big int")
+				log.Println(err)
+				continue
 			}
 			nonce := stackint.One()
 			order := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Time{},
@@ -144,7 +149,10 @@ func main() {
 						}
 					})
 				}
-			}(orders)
+			})
+
+			log.Println("finish sending sell order", sellOrder.ID)
+
 		}
 		time.Sleep(time.Duration(*timeInterval) * time.Second)
 	}
@@ -160,13 +168,14 @@ func getNodesDetails() []string {
 	//	"/ip4/35.161.248.181/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
 	//}
 
-	// susruth's test nodes
+	// bootstrap nodes
 	return []string{
-		"/ip4/52.21.44.236/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
-		"/ip4/52.41.118.171/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
-		"/ip4/52.59.176.141/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
-		"/ip4/52.77.88.84/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
-		"/ip4/52.79.194.108/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
+		"/ip4/52.77.88.84/tcp/18514/republic/8MGzXN7M1ucxvtumVjQ7Ybb7xQ8TUw",
+		//"/ip4/52.59.176.141/tcp/18514/republic/8MHmrykz65HimBPYaVgm8bTSpRUoXA",
+		//"/ip4/52.21.44.236/tcp/18514/republic/8MKFT9CDQQru1hYqnaojXqCQU2Mmuk",
+		//"/ip4/52.41.118.171/tcp/18514/republic/8MGb8k337pp2GSh6yG8iv2GK6FbNHN",
+		"/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",
+		"/ip4/13.250.34.9/tcp/18514/republic/8MH9hcbekxW8yUo9ADBhA213PnZ4do",
 	}
 
 	// Local nodes

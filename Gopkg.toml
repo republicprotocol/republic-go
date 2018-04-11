@@ -42,6 +42,14 @@
   version = "1.0.0"
 
 [[constraint]]
+  branch = "master"
+  name = "github.com/multiformats/go-multiaddr"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/multiformats/go-multihash"
+
+[[constraint]]
   name = "github.com/onsi/ginkgo"
   version = "1.4.0"
 

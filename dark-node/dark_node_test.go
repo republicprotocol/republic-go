@@ -1,6 +1,7 @@
 package node_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -19,8 +20,8 @@ import (
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -213,6 +214,96 @@ var _ = Describe("Dark nodes", func() {
 			})
 		}(numberOfNodes)
 	}
+
+	// Synchronization
+	for _, numberOfNodes := range []int{32} {
+		func(numberOfNodes int) {
+			FContext(fmt.Sprintf("synchronizing with %d nodes", numberOfNodes), func() {
+
+				var err error
+				var nodes []*node.DarkNode
+
+				BeforeEach(func() {
+					By("generate nodes")
+					nodes, err = generateNodes(numberOfNodes)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					By("start node services")
+					startNodeServices(nodes)
+				})
+
+				It("should reach a fault tolerant level of connectivity", func() {
+					start := time.Now()
+					By("bootstrap nodes")
+					bootstrapNodes(nodes)
+					log.Println("bootstrapping takes ", time.Since(start))
+
+					By("send orders")
+					err := sendOrders(nodes)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					go func() {
+						defer GinkgoRecover()
+						for i := 0; i < 5; i++ {
+							time.Sleep(10 * time.Second)
+							log.Println("sending a new patch of orders")
+							err := sendOrders(nodes)
+							Ω(err).ShouldNot(HaveOccurred())
+						}
+					}()
+
+					By("synchronization")
+					ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+					defer cancel()
+
+					syncBlocks, errs := nodes[0].ClientPool.Sync(ctx, nodes[1].NetworkOptions.MultiAddress)
+					continuing := true
+					for continuing {
+						select {
+						case err := <-errs:
+							if err != nil {
+								log.Println("cannot sync", err)
+							}
+							continuing = false
+						case block, ok := <-syncBlocks:
+							if !ok {
+								continuing = false
+								break
+							}
+							// Handle received blocks
+							var ord order.Order
+							switch block.OrderBlock.(type) {
+							case *rpc.SyncBlock_Open:
+								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Open).Open)
+							case *rpc.SyncBlock_Confirmed:
+								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Confirmed).Confirmed)
+							case *rpc.SyncBlock_Unconfirmed:
+								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Unconfirmed).Unconfirmed)
+							case *rpc.SyncBlock_Canceled:
+								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Canceled).Canceled)
+							case *rpc.SyncBlock_Settled:
+								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Settled).Settled)
+							default:
+								log.Printf("unknown order status, %t", block.OrderBlock)
+							}
+
+							if ord.Parity == order.ParityBuy {
+								log.Println("buy  order received from synchronization, orderID : ", ord.ID.String())
+							} else {
+								log.Println("sell order received from synchronization, orderID : ", ord.ID.String())
+							}
+
+						}
+					}
+				})
+
+				AfterEach(func() {
+					By("stop node services")
+					stopNodes(nodes)
+				})
+			})
+		}(numberOfNodes)
+	}
 })
 
 func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
@@ -367,7 +458,9 @@ func connectNodes(nodes []*node.DarkNode, connectivity int) (int, int) {
 			isConnected := rand.Intn(100) < connectivity
 			if isConnected {
 				numberOfPings++
-				if err := from.ClientPool.Ping(to.NetworkOptions.MultiAddress); err != nil {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := from.ClientPool.Ping(ctx, to.NetworkOptions.MultiAddress); err != nil {
 					log.Printf("error pinging: %v", err)
 					numberOfErrors++
 				}
@@ -437,7 +530,16 @@ func sendOrders(nodes []*node.DarkNode) error {
 		}
 
 		do.CoForAll(buyShares, func(j int) {
-			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(buyShares[j]))
+			orderRequest := &rpc.OpenOrderRequest{
+				From: &rpc.MultiAddress{
+					Signature:    []byte{},
+					MultiAddress: nodes[0].NetworkOptions.MultiAddress.String(),
+				},
+				OrderFragment: rpc.MarshalOrderFragment(buyShares[j]),
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			err := pool.OpenOrder(ctx, nodes[j].NetworkOptions.MultiAddress, orderRequest)
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)
@@ -445,7 +547,16 @@ func sendOrders(nodes []*node.DarkNode) error {
 		})
 
 		do.CoForAll(sellShares, func(j int) {
-			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(sellShares[j]))
+			orderRequest := &rpc.OpenOrderRequest{
+				From: &rpc.MultiAddress{
+					Signature:    []byte{},
+					MultiAddress: nodes[0].NetworkOptions.MultiAddress.String(),
+				},
+				OrderFragment: rpc.MarshalOrderFragment(sellShares[j]),
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			err := pool.OpenOrder(ctx, nodes[j].NetworkOptions.MultiAddress, orderRequest)
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)

@@ -2,25 +2,26 @@ package node
 
 import (
 	"bytes"
+	"context"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"runtime"
+	"sync"
 	"sync/atomic"
 	"time"
-
-	"encoding/hex"
-	"encoding/json"
 
 	"github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/network"
 	"github.com/republicprotocol/republic-go/network/dht"
-	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/stackint"
 	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
@@ -46,21 +47,23 @@ type DarkNode struct {
 	Logger                 *logger.Logger
 	ClientPool             *rpc.ClientPool
 	DHT                    *dht.DHT
+	OrderBook              *orderbook.OrderBook
 
-	DeltaBuilder                      *compute.DeltaBuilder
-	DeltaFragmentMatrix               *compute.DeltaFragmentMatrix
-	OrderFragmentWorkerQueue          chan *order.Fragment
-	OrderFragmentWorker               *OrderFragmentWorker
-	DeltaFragmentBroadcastWorkerQueue chan *compute.DeltaFragment
-	DeltaFragmentBroadcastWorker      *DeltaFragmentBroadcastWorker
-	DeltaFragmentWorkerQueue          chan *compute.DeltaFragment
-	DeltaFragmentWorker               *DeltaFragmentWorker
-	DeltaQueue                        chan *compute.Delta
-	DeltaMatchWorker                  *DeltaMatchWorker
+	//DeltaBuilder                      *compute.DeltaBuilder
+	//DeltaFragmentMatrix               *compute.DeltaFragmentMatrix
+	//OrderFragmentWorkerQueue          chan *order.Fragment
+	//OrderFragmentWorker               *OrderFragmentWorker
+	//DeltaFragmentBroadcastWorkerQueue chan *compute.DeltaFragment
+	//DeltaFragmentBroadcastWorker      *DeltaFragmentBroadcastWorker
+	//DeltaFragmentWorkerQueue          chan *compute.DeltaFragment
+	//DeltaFragmentWorker               *DeltaFragmentWorker
+	//DeltaQueue                        chan *compute.Delta
+	//DeltaMatchWorker                  *DeltaMatchWorker
 
 	Server *grpc.Server
-	Swarm  *network.SwarmService
-	Dark   *network.DarkService
+	Swarm  *rpc.SwarmService
+	Syncer *rpc.SyncerService
+	Relay  *rpc.RelayService
 
 	DarkNodeRegistry dnr.DarkNodeRegistry
 	DarkOcean        *dark.Ocean
@@ -98,7 +101,17 @@ func NewDarkNode(config Config, darkNodeRegistry dnr.DarkNodeRegistry) (*DarkNod
 	if darkPool := node.DarkOcean.FindPool(node.ID); darkPool != nil {
 		node.DarkPool = darkPool
 	}
-	k := int64(node.DarkPool.Size()*2/3 + 1)
+	//k := int64(node.DarkPool.Size()*2/3 + 1)
+
+	// Initialize the epoch hash
+	node.EpochHashMu = new(sync.RWMutex)
+	node.EpochHashMu.Lock()
+	hash, err := node.DarkNodeRegistrar.CurrentEpoch()
+	if err != nil {
+		return nil, err
+	}
+	node.EpochBlockhash = hash.Blockhash
+	node.EpochHashMu.Unlock()
 
 	// Create all networking components and services
 	node.ClientPool = rpc.NewClientPool(node.NetworkOptions.MultiAddress).
@@ -107,9 +120,12 @@ func NewDarkNode(config Config, darkNodeRegistry dnr.DarkNodeRegistry) (*DarkNod
 		WithTimeoutRetries(node.NetworkOptions.TimeoutRetries).
 		WithCacheLimit(node.NetworkOptions.ClientPoolCacheLimit)
 	node.DHT = dht.NewDHT(node.NetworkOptions.MultiAddress.Address(), node.NetworkOptions.MaxBucketLength)
+	node.OrderBook = orderbook.NewOrderBook(config.NetworkOptions.SyncerOptions.MaxConnections)
+
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
-	node.Swarm = network.NewSwarmService(node, node.NetworkOptions, node.Logger, node.ClientPool, node.DHT)
-	node.Dark = network.NewDarkService(node, node.NetworkOptions, node.Logger)
+	node.Swarm = rpc.NewSwarmService(node.NetworkOptions, node.ClientPool, node.DHT, node.Logger)
+	node.Syncer = rpc.NewSyncerService(node.NetworkOptions, node.Logger, node.OrderBook)
+	node.Relay = rpc.NewRelayService(node.NetworkOptions, node, node.Logger)
 
 	// Create all background workers that will do all of the actual work
 	node.DeltaBuilder = compute.NewDeltaBuilder(k, prime)
@@ -137,10 +153,10 @@ func (node *DarkNode) StartBackgroundWorkers() {
 	}()
 
 	// Start background workers
-	go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
-	go node.DeltaFragmentBroadcastWorker.Run()
-	go node.DeltaFragmentWorker.Run(node.DeltaQueue)
-	go node.DeltaMatchWorker.Run(node.DeltaNotifications)
+	//go node.OrderFragmentWorker.Run(node.DeltaFragmentBroadcastWorkerQueue, node.DeltaFragmentWorkerQueue)
+	//go node.DeltaFragmentBroadcastWorker.Run()
+	//go node.DeltaFragmentWorker.Run(node.DeltaQueue)
+	//go node.DeltaMatchWorker.Run(node.DeltaNotifications)
 }
 
 // StartServices starts the gRPC listeners
@@ -148,7 +164,9 @@ func (node *DarkNode) StartServices() {
 	node.Logger.Network(logger.Info, fmt.Sprintf("gRPC services listening on %s:%s", node.Host, node.Port))
 
 	node.Swarm.Register(node.Server)
-	node.Dark.Register(node.Server)
+	node.Syncer.Register(node.Server)
+	node.Relay.Register(node.Server)
+
 	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 	if err != nil {
 		node.Logger.Error(err.Error())
@@ -216,11 +234,11 @@ func (node *DarkNode) Stop() {
 	time.Sleep(time.Second)
 
 	// Stop background workers by closing their job queues
-	close(node.OrderFragmentWorkerQueue)
-	close(node.DeltaFragmentBroadcastWorkerQueue)
-	close(node.DeltaFragmentWorkerQueue)
-	close(node.DeltaQueue)
-	close(node.DeltaNotifications)
+	//close(node.OrderFragmentWorkerQueue)
+	//close(node.DeltaFragmentBroadcastWorkerQueue)
+	//close(node.DeltaFragmentWorkerQueue)
+	//close(node.DeltaQueue)
+	//close(node.DeltaNotifications)
 
 	// Stop the logger
 	node.Logger.Stop()
@@ -294,7 +312,10 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 		}
 
 		// Ping the dark node to test the connection
-		node.ClientPool.Ping(*multiAddress)
+		ctx, cancel := context.WithTimeout(context.Background(), node.NetworkOptions.Timeout)
+		defer cancel()
+
+		node.ClientPool.Ping(ctx, *multiAddress)
 		if err != nil {
 			node.Logger.Warn(fmt.Sprintf("cannot ping to dark node %v: %s", n.ID.Address(), err.Error()))
 			return
@@ -310,6 +331,7 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 		// Update the MultiAddress in the node
 		n.SetMultiAddress(*multiAddress)
 		node.DarkPool.Append(*n)
+
 	})
 
 	// In the background, continue to attempt connections to the disconnected
@@ -335,12 +357,25 @@ func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 	// Write to a channel that might be closed
 	func() {
 		defer func() { recover() }()
-		if orderFragment.OrderParity == order.ParityBuy {
-			node.Logger.BuyOrderReceived(logger.Info, orderFragment.OrderID.String(), orderFragment.ID.String())
-		} else {
-			node.Logger.SellOrderReceived(logger.Info, orderFragment.OrderID.String(), orderFragment.ID.String())
+		//if orderFragment.OrderParity == order.ParityBuy {
+		//	node.Logger.BuyOrderReceived(logger.Info, orderFragment.OrderID.String(), orderFragment.ID.String())
+		//} else {
+		//	node.Logger.SellOrderReceived(logger.Info, orderFragment.OrderID.String(), orderFragment.ID.String())
+		//}
+
+		// Notify the orderbook about the new order
+		ord := order.Order{
+			Signature: orderFragment.Signature,
+			ID:        orderFragment.OrderID,
+			Type:      orderFragment.OrderType,
+			Parity:    orderFragment.OrderParity,
+			Expiry:    orderFragment.OrderExpiry,
 		}
-		node.OrderFragmentWorkerQueue <- orderFragment
+		node.EpochHashMu.RLock()
+		orderMessage := orderbook.NewMessage(ord, order.Open, node.EpochBlockhash)
+		node.EpochHashMu.RUnlock()
+
+		node.OrderBook.Open(orderMessage)
 	}()
 }
 
@@ -349,10 +384,10 @@ func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 // however this delegate method is called on a dedicated goroutine.
 func (node *DarkNode) OnBroadcastDeltaFragment(from identity.MultiAddress, deltaFragment *compute.DeltaFragment) {
 	// Write to a channel that might be closed
-	func() {
-		defer func() { recover() }()
-		node.DeltaFragmentWorkerQueue <- deltaFragment
-	}()
+	//func() {
+	//	defer func() { recover() }()
+	//	node.DeltaFragmentWorkerQueue <- deltaFragment
+	//}()
 }
 
 // Usage logs memory and cpu usage

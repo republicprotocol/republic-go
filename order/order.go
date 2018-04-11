@@ -55,6 +55,18 @@ func (id ID) String() string {
 	return base58.Encode(id)
 }
 
+// The Status shows what status the order is in.
+type Status uint8
+
+// Status values.
+const (
+	Open = Status(iota)
+	Unconfirmed
+	Canceled
+	Confirmed
+	Settled
+)
+
 // An Order represents the want to perform a trade of assets.
 type Order struct {
 	Signature []byte `json:"signature"`
@@ -64,17 +76,17 @@ type Order struct {
 	Parity Parity    `json:"parity"`
 	Expiry time.Time `json:"expiry"`
 
-	FstCode   CurrencyCode      `json:"fstCode"`
-	SndCode   CurrencyCode      `json:"sndCode"`
-	Price     *stackint.Int1024 `json:"price"`
-	MaxVolume *stackint.Int1024 `json:"maxVolume"`
-	MinVolume *stackint.Int1024 `json:"minVolume"`
+	FstCode   CurrencyCode     `json:"fstCode"`
+	SndCode   CurrencyCode     `json:"sndCode"`
+	Price     stackint.Int1024 `json:"price"`
+	MaxVolume stackint.Int1024 `json:"maxVolume"`
+	MinVolume stackint.Int1024 `json:"minVolume"`
 
-	Nonce *stackint.Int1024 `json:"nonce"`
+	Nonce stackint.Int1024 `json:"nonce"`
 }
 
 // NewOrder returns a new Order and computes the ID.
-func NewOrder(ty Type, parity Parity, expiry time.Time, fstCode, sndCode CurrencyCode, price, maxVolume, minVolume, nonce *stackint.Int1024) *Order {
+func NewOrder(ty Type, parity Parity, expiry time.Time, fstCode, sndCode CurrencyCode, price, maxVolume, minVolume, nonce stackint.Int1024) *Order {
 	order := &Order{
 		Type:      ty,
 		Parity:    parity,
@@ -103,15 +115,15 @@ func (order *Order) Split(n, k int64, prime *stackint.Int1024) ([]*Fragment, err
 	if err != nil {
 		return nil, err
 	}
-	priceShares, err := shamir.Split(n, k, prime, order.Price)
+	priceShares, err := shamir.Split(n, k, prime, &order.Price)
 	if err != nil {
 		return nil, err
 	}
-	maxVolumeShares, err := shamir.Split(n, k, prime, order.MaxVolume)
+	maxVolumeShares, err := shamir.Split(n, k, prime, &order.MaxVolume)
 	if err != nil {
 		return nil, err
 	}
-	minVolumeShares, err := shamir.Split(n, k, prime, order.MinVolume)
+	minVolumeShares, err := shamir.Split(n, k, prime, &order.MinVolume)
 	if err != nil {
 		return nil, err
 	}
@@ -160,8 +172,8 @@ func (order *Order) Equal(other *Order) bool {
 		order.Expiry.Equal(other.Expiry) &&
 		order.FstCode == other.FstCode &&
 		order.SndCode == other.SndCode &&
-		order.Price.Cmp(other.Price) == 0 &&
-		order.MaxVolume.Cmp(other.MaxVolume) == 0 &&
-		order.MinVolume.Cmp(other.MinVolume) == 0 &&
-		order.Nonce.Cmp(other.Nonce) == 0
+		order.Price.Cmp(&other.Price) == 0 &&
+		order.MaxVolume.Cmp(&other.MaxVolume) == 0 &&
+		order.MinVolume.Cmp(&other.MinVolume) == 0 &&
+		order.Nonce.Cmp(&other.Nonce) == 0
 }

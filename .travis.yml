@@ -21,18 +21,18 @@ script:
   - golint -set_exit_status `go list ./... | grep -Ev "(stackint/asm|vendor)"`
   - go run cmd/testnetwork/main.go -sleep 10 &
   - sleep 10
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out stackint
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out identity
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out shamir
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out order
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out compute
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out logger
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out network/dht
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out network/rpc
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out network
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out dark
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out hyperdrive
-  - ginkgo -v --trace --cover --coverprofile coverprofile.out dark-node
+  - ginkgo --race --cover --coverprofile coverprofile.out stackint
+  - ginkgo --race --cover --coverprofile coverprofile.out identity
+  - ginkgo --race --cover --coverprofile coverprofile.out shamir
+  - ginkgo --race --cover --coverprofile coverprofile.out order
+  - ginkgo --race --cover --coverprofile coverprofile.out compute
+  - ginkgo --race --cover --coverprofile coverprofile.out logger
+  - ginkgo --race --cover --coverprofile coverprofile.out network/dht
+  - ginkgo --race --cover --coverprofile coverprofile.out network/rpc
+  - ginkgo --race --cover --coverprofile coverprofile.out network
+  - ginkgo --race --cover --coverprofile coverprofile.out dark
+  - ginkgo --race --cover --coverprofile coverprofile.out hyperdrive
+  - ginkgo --race --cover --coverprofile coverprofile.out smpc
   - sed -i '/rpc.pb.go/d' network/rpc/coverprofile.out
   
 after_success:
