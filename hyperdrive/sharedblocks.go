@@ -2,7 +2,7 @@ package hyper
 
 import (
 	"bytes"
-	"sync"
+	"sync/atomic"
 )
 
 type Element struct {
@@ -19,36 +19,25 @@ type Tuple struct {
 }
 
 type SharedBlocks struct {
-	mu      *sync.RWMutex
 	history map[[32]byte][32]byte
-	Height
+	Height  uint64
 	Rank
 }
 
-func NewSharedBlocks(r Rank, h Height) SharedBlocks {
+func NewSharedBlocks(h uint64, r Rank) SharedBlocks {
 	return SharedBlocks{
-		mu:      new(sync.RWMutex),
 		history: map[[32]byte][32]byte{},
-		Rank:    r,
 		Height:  h,
+		Rank:    r,
 	}
 }
 
-func (blocks *SharedBlocks) IncrementHeight() {
-	blocks.mu.Lock()
-	defer blocks.mu.Unlock()
-	blocks.Height++
+func (sb *SharedBlocks) ReadHeight() uint64 {
+	return atomic.LoadUint64(&sb.Height)
 }
 
-func (blocks *SharedBlocks) ReadHeight() Height {
-	blocks.mu.Lock()
-	h := blocks.Height
-	defer blocks.mu.Unlock()
-	return h
-}
-
-func (blocks *SharedBlocks) GetSharedBlocks() *SharedBlocks {
-	return blocks
+func (sb *SharedBlocks) IncrementHeight() uint64 {
+	return atomic.AddUint64(&sb.Height, 1)
 }
 
 func (blocks *SharedBlocks) ValidateTuple(tuple Tuple) bool {
