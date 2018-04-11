@@ -1,6 +1,0 @@
-package hyper
-
-func IsRank() {
-
-} 
-
