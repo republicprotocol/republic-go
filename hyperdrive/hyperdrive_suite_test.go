@@ -2,6 +2,8 @@ package hyper_test
 
 import (
 	"context"
+	"log"
+	"sync"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -40,10 +42,22 @@ func (h *HyperDrive) init() {
 }
 
 func (h *HyperDrive) run(ctx context.Context) {
+	defer log.Println("Stopping the hyperdrive")
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		h.network.run(ctx)
+	}()
+
 	for i := uint8(0); i < h.commanderCount; i++ {
+		wg.Add(1)
 		go func(i uint8) {
-			h.network.Egress[i].Copy(h.replicas[i].Run(ctx))
+			defer wg.Done()
+			go h.network.Egress[i].Copy(ctx, h.replicas[i].Run(ctx))
 		}(i)
 	}
-	go h.network.run(ctx)
+
+	wg.Wait()
 }

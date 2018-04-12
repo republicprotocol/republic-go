@@ -34,12 +34,9 @@ func (r *Replica) Run(ctx context.Context) ChannelSet {
 	egress := EmptyChannelSet(r.validator.Threshold())
 	go func() {
 		internalIngress := EmptyChannelSet(r.validator.Threshold())
-		go func() {
-			internalIngress.Copy(ProcessBuffer(r.ingress, r.validator))
-		}()
-		go func() {
-			egress.Copy(ProcessBroadcast(r.internalEgress, r.validator))
-		}()
+		defer internalIngress.Close()
+		go internalIngress.Copy(ctx, ProcessBuffer(r.ingress, r.validator))
+		go egress.Copy(ctx, ProcessBroadcast(r.internalEgress, r.validator))
 		dispatch.Wait(r.HandleProposals(ctx, internalIngress), r.HandlePrepares(ctx, internalIngress), r.HandleCommits(ctx, internalIngress))
 	}()
 	return egress
@@ -123,7 +120,6 @@ func (r *Replica) HandleCommits(ctx context.Context, ingress ChannelSet) chan st
 					return
 				}
 				counter++
-				log.Println("Finality reached for block number", counter, "on", r.validator.Sign())
 				r.internalEgress.Block <- block
 			case commit, ok := <-commCh:
 				if !ok {
@@ -138,16 +134,6 @@ func (r *Replica) HandleCommits(ctx context.Context, ingress ChannelSet) chan st
 				r.internalEgress.Fault <- fault
 			}
 		}
-	}()
-	return doneCh
-}
-
-func (r *Replica) HandleBlocks(ctx context.Context) chan struct{} {
-	log.Println("In handle blocks")
-	doneCh := make(chan struct{})
-	go func() {
-		defer close(doneCh)
-		ConsumeCertifiedBlocks(r.ingress.Block, r.validator.SharedBlocks())
 	}()
 	return doneCh
 }
@@ -182,4 +168,10 @@ func FaultHash(f Fault) [32]byte {
 	binary.Write(&faultBuf, binary.BigEndian, f.Height)
 	binary.Write(&faultBuf, binary.BigEndian, f.Rank)
 	return sha3.Sum256(faultBuf.Bytes())
+}
+
+func BlockHash(b Block) [32]byte {
+	var blockBuffer bytes.Buffer
+	binary.Write(&blockBuffer, binary.BigEndian, b.Tuples)
+	return sha3.Sum256(blockBuffer.Bytes())
 }
