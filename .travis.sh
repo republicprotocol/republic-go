@@ -45,4 +45,4 @@ fuser -k 8545/tcp
 gocovmerge stackint/coverprofile.out identity/coverprofile.out shamir/coverprofile.out order/coverprofile.out compute/coverprofile.out logger/coverprofile.out contracts/connection/coverprofile.out contracts/dnr/coverprofile.out network/dht/coverprofile.out network/rpc/coverprofile.out network/coverprofile.out dark/coverprofile.out hyperdrive/coverprofile.out dark-node/coverprofile.out > coverprofile.out
 
 sed -i '/rpc.pb.go/d' coverprofile.out
-set -i '/bindings/d' coverprofile.out
+sed -i '/bindings/d' coverprofile.out
