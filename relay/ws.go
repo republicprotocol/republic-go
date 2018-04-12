@@ -1,13 +1,10 @@
 package relay
 
 import (
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/orderbook"
+	// "github.com/republicprotocol/republic-go/orderbook"
 )
 
 var upgrader = websocket.Upgrader{

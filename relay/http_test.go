@@ -20,15 +20,10 @@ import (
 )
 
 // GetPools return dark pools from a mock dnr
-func GetPools() dark.Pools {
+func GetPools(dnr dnr.DarkNodeRegistry) dark.Pools {
 	log, err := logger.NewLogger(logger.Options{})
 	if err != nil {
 		panic(fmt.Sprintf("cannot get logger: %v", err))
-	}
-
-	dnr, err := dnr.TestnetDNR(nil)
-	if err != nil {
-		panic(fmt.Sprintf("cannot get mock DNR: %v", err))
 	}
 
 	ocean, err := dark.NewOcean(log, 5, dnr)
@@ -38,11 +33,52 @@ func GetPools() dark.Pools {
 	return ocean.GetPools()
 }
 
+func GetFullOrder() order.Order {
+	fullOrder := order.Order{}
+
+	defaultStackVal, _ := stackint.FromString("179761232312312")
+
+	fullOrder.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
+	fullOrder.Type = 2
+	fullOrder.Parity = 1
+	fullOrder.Expiry = time.Time{}
+	fullOrder.FstCode = order.CurrencyCodeETH
+	fullOrder.SndCode = order.CurrencyCodeBTC
+	fullOrder.Price = &defaultStackVal
+	fullOrder.MaxVolume = &defaultStackVal
+	fullOrder.MinVolume = &defaultStackVal
+	fullOrder.Nonce = &defaultStackVal
+	return fullOrder
+}
+
+func GetFragmentedOrder() relay.Fragments {
+	defaultStackVal, _ := stackint.FromString("179761232312312")
+
+	fragmentedOrder := relay.Fragments{}
+	fragmentSet := map[string][]*order.Fragment{}
+	fragments := []*order.Fragment{}
+
+	var err error
+	fragments, err = order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, &defaultStackVal, &defaultStackVal, &defaultStackVal, &defaultStackVal).Split(2, 1, &Prime)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	fragmentSet["vrZhWU3VV9LRIM="] = fragments
+	// fragmentSet[0].DarkPool = []byte("vrZhWU3VV9LRIM=")
+
+	fragmentedOrder.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
+	fragmentedOrder.Type = 2
+	fragmentedOrder.Parity = 1
+	fragmentedOrder.Expiry = time.Time{}
+	fragmentedOrder.DarkPools = fragmentSet
+
+	return fragmentedOrder
+}
+
 var _ = Describe("HTTP handlers", func() {
 	Context("when posting orders", func() {
 
-		It("should return 500 for empty request bodies", func() {
-			pools := GetPools()
+		It("should return 400 for empty request bodies", func() {
+			pools := GetPools(epochDNR)
 
 			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
 			w := httptest.NewRecorder()
@@ -53,30 +89,22 @@ var _ = Describe("HTTP handlers", func() {
 			handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
 			handler.ServeHTTP(w, r)
 
-			Ω(w.Code).Should(Equal(http.StatusInternalServerError))
-			Expect(w.Body.String()).To(Equal("cannot decode json into an order or a list of order fragments: EOF EOF"))
+			Ω(w.Code).Should(Equal(http.StatusBadRequest))
+			Expect(w.Body.String()).To(ContainSubstring("cannot decode json into an order or a list of order fragments:"))
+			// log.Println("2.1")
 		})
 
-		It("should return 200 for full orders", func() {
+		It("should return 201 for full orders", func() {
 
-			pools := GetPools()
+			pools := GetPools(epochDNR)
 
-			fullOrder := order.Order{}
+			fullOrder := GetFullOrder()
 
-			defaultStackZero := stackint.Zero()
+			sendOrder := relay.HTTPPost{}
+			sendOrder.Order = fullOrder
+			sendOrder.OrderFragments = relay.Fragments{}
 
-			fullOrder.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
-			fullOrder.Type = 2
-			fullOrder.Parity = 1
-			fullOrder.Expiry = time.Time{}
-			fullOrder.FstCode = order.CurrencyCodeETH
-			fullOrder.SndCode = order.CurrencyCodeBTC
-			fullOrder.Price = &defaultStackZero
-			fullOrder.MaxVolume = &defaultStackZero
-			fullOrder.MinVolume = &defaultStackZero
-			fullOrder.Nonce = &defaultStackZero
-
-			s, _ := json.Marshal(fullOrder)
+			s, _ := json.Marshal(sendOrder)
 			body := bytes.NewBuffer(s)
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
@@ -87,34 +115,25 @@ var _ = Describe("HTTP handlers", func() {
 			handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
 			handler.ServeHTTP(w, r)
 
-			// Check the status code is what we expect.
-			Ω(w.Code).Should(Equal(http.StatusOK))
+			Ω(w.Code).Should(Equal(http.StatusCreated))
+			// log.Println("2.2")
 		})
 
-		It("should return 200 for fragmented orders", func() {
+		It("should return 201 for fragmented orders", func() {
 
-			pools := GetPools()
+			pools := GetPools(epochDNR)
 
-			defaultStackZero := stackint.Zero()
-			prime, _ := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+			// defaultStackZero := stackint.Zero()
 
-			fragmentedOrder := relay.OrderFragments{}
-			fragmentSet := make([]relay.Fragments, 1)
-			fragments := []*order.Fragment{}
-
-			var err error
-			fragments, err = order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, &defaultStackZero, &defaultStackZero, &defaultStackZero, &defaultStackZero).Split(2, 1, &prime)
+			fragmentedOrder, err := generateFragmentedOrderForDarkPool(pools[0])
 			Ω(err).ShouldNot(HaveOccurred())
 
-			fragmentSet[0].Fragment = fragments
-			fragmentSet[0].DarkPool = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
+			sendOrder := relay.HTTPPost{}
+			sendOrder.Order = order.Order{}
+			sendOrder.OrderFragments = fragmentedOrder
 
-			fragmentedOrder.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
-			fragmentedOrder.Type = 2
-			fragmentedOrder.Parity = 1
-			fragmentedOrder.Expiry = time.Time{}
-			fragmentedOrder.FragmentSet = fragmentSet
-			s, _ := json.Marshal(fragmentedOrder)
+			s, err := json.Marshal(sendOrder)
+			Ω(err).ShouldNot(HaveOccurred())
 			body := bytes.NewBuffer(s)
 
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
@@ -126,15 +145,17 @@ var _ = Describe("HTTP handlers", func() {
 			handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
 			handler.ServeHTTP(w, r)
 
-			Ω(w.Code).Should(Equal(http.StatusOK))
+			Ω(w.Code).Should(Equal(http.StatusCreated))
+
+			// log.Println("2.3")
 		})
 
-		It("should return 500 for malformed orders", func() {
+		It("should return 400 for malformed orders", func() {
 
-			pools := GetPools()
+			pools := GetPools(epochDNR)
 
-			fullOrder := []byte("this is not an order or an order fragment")
-			s, _ := json.Marshal(fullOrder)
+			incorrectOrder := []byte("this is not an order or an order fragment")
+			s, _ := json.Marshal(incorrectOrder)
 			body := bytes.NewBuffer(s)
 
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
@@ -146,15 +167,42 @@ var _ = Describe("HTTP handlers", func() {
 			handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
 			handler.ServeHTTP(w, r)
 
-			Ω(w.Code).Should(Equal(http.StatusInternalServerError))
-			Expect(w.Body.String()).To(Equal("cannot decode json into an order or a list of order fragments: json: cannot unmarshal string into Go value of type order.Order EOF"))
+			Ω(w.Code).Should(Equal(http.StatusBadRequest))
+			Expect(w.Body.String()).To(ContainSubstring("cannot decode json into an order or a list of order fragments:"))
+			// log.Println("2.4")
+		})
+
+		It("should return 400 for empty order constructs", func() {
+
+			pools := GetPools(epochDNR)
+
+			sendOrder := relay.HTTPPost{}
+			sendOrder.Order = order.Order{}
+			sendOrder.OrderFragments = relay.Fragments{}
+
+			s, err := json.Marshal(sendOrder)
+			Ω(err).ShouldNot(HaveOccurred())
+			body := bytes.NewBuffer(s)
+
+			r := httptest.NewRequest("POST", "http://localhost/orders", body)
+			w := httptest.NewRecorder()
+
+			trader, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
+			handler.ServeHTTP(w, r)
+
+			Ω(w.Code).Should(Equal(http.StatusBadRequest))
+			Expect(w.Body.String()).To(ContainSubstring("cannot decode json into an order or a list of order fragments: empty object"))
+			// log.Println("2.5")
 		})
 	})
 
 	Context("when cancelling orders", func() {
-		It("should return 200 for cancel order requests", func() {
+		It("should return 410 for cancel order requests", func() {
 
-			pools := GetPools()
+			pools := GetPools(epochDNR)
 			cancelRequest := relay.HTTPDelete{}
 			cancelRequest.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
 			s, _ := json.Marshal(cancelRequest)
@@ -162,20 +210,20 @@ var _ = Describe("HTTP handlers", func() {
 
 			trader, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
 			Ω(err).ShouldNot(HaveOccurred())
-			
+
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
 			handler := relay.RecoveryHandler(relay.DeleteOrderHandler(&trader, pools))
 			handler.ServeHTTP(w, r)
 
-			Ω(w.Code).Should(Equal(http.StatusOK))
-			Expect(w.Body.String()).To(Equal(""))
+			Ω(w.Code).Should(Equal(http.StatusGone))
+			// log.Println("2.6")
 		})
 
-		It("should return 500 for malformed cancel order requests", func() {
+		It("should return 400 for malformed cancel order requests", func() {
 
-			pools := GetPools()
+			pools := GetPools(epochDNR)
 
 			cancelRequest := []byte("this is not an order or an order fragment")
 			s, _ := json.Marshal(cancelRequest)
@@ -183,15 +231,16 @@ var _ = Describe("HTTP handlers", func() {
 
 			trader, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
 			Ω(err).ShouldNot(HaveOccurred())
-			
+
 			r := httptest.NewRequest("POST", "http://localhost/orders/{23213}", body)
 			w := httptest.NewRecorder()
 
 			handler := relay.RecoveryHandler(relay.DeleteOrderHandler(&trader, pools))
 			handler.ServeHTTP(w, r)
 
-			Ω(w.Code).Should(Equal(http.StatusInternalServerError))
-			Expect(w.Body.String()).To(Equal("cannot decode json: json: cannot unmarshal string into Go value of type relay.HTTPDelete"))
+			Ω(w.Code).Should(Equal(http.StatusBadRequest))
+			Expect(w.Body.String()).To(ContainSubstring("cannot decode json:"))
+			// log.Println("2.7")
 		})
 	})
 })
