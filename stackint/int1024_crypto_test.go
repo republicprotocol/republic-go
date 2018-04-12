@@ -21,5 +21,11 @@ var _ = Describe("Int1024 crypto utilities", func() {
 				Ω(r.LessThan(&max) && r.GreaterThanOrEqual(&zero)).Should(BeTrue())
 			}
 		})
+
+		It("should handle edge cases", func() {
+			r, err := Random(rand.Reader, &zero)
+			Ω(err).Should(BeNil())
+			Ω(r).Should(Equal(zero))
+		})
 	})
 })

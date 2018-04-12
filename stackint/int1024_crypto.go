@@ -10,10 +10,6 @@ func Random(rand io.Reader, max *Int1024) (Int1024, error) {
 	n := max.Sub(&one)
 	// bitLen is the maximum bit length needed to encode a value < max.
 	bitLen := n.BitLength()
-	if bitLen == 0 {
-		// the only valid result is 0
-		return Zero(), nil
-	}
 	// k is the maximum byte length needed to encode a value < max.
 	k := (bitLen + 7) / 8
 	// b is the number of bits in the most significant byte of max-1.

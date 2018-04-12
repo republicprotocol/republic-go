@@ -26,6 +26,9 @@ import (
 // }
 
 var andFn = func(inputs ...Int1024) Int1024 { return inputs[0].AND(&inputs[1]) }
+var orFn = func(inputs ...Int1024) Int1024 { return inputs[0].OR(&inputs[1]) }
+var xorFn = func(inputs ...Int1024) Int1024 { return inputs[0].XOR(&inputs[1]) }
+var notFn = func(inputs ...Int1024) Int1024 { return inputs[0].NOT() }
 
 var _ = Describe("Int1024 bitwise operations", func() {
 	Context("when left-shifting a number", func() {
@@ -38,6 +41,17 @@ var _ = Describe("Int1024 bitwise operations", func() {
 			expected = expected.Add(&one)
 			Ω(shiftHalf).Should(Equal(expected))
 
+			// Shift into next word by 1
+			shifted := oneWord.ShiftLeft(1)
+			expected = two64.Add(&oneWord)
+			expected = expected.Sub(&one)
+			Ω(shifted).Should(Equal(expected))
+
+			// Shift into next word by more than 1
+			shifted = two.ShiftLeft(63)
+			expected = two64
+			Ω(shifted).Should(Equal(expected))
+
 			zeroShiftLOne := zero.ShiftLeft(1)
 			Ω(zeroShiftLOne).Should(Equal(zero))
 		})
@@ -46,50 +60,119 @@ var _ = Describe("Int1024 bitwise operations", func() {
 			overflow := one.ShiftLeft(SIZE)
 			Ω(overflow).Should(Equal(zero))
 		})
+
 	})
 
 	Context("when right-shifting a number", func() {
 		It("should return the right result for 1024 bit numbers", func() {
+			oneShiftROne := one.ShiftRight(1)
+			Ω(oneShiftROne).Should(Equal(zero))
+
 			twoShiftROne := two.ShiftRight(1)
 			Ω(twoShiftROne).Should(Equal(one))
 
 			zeroShiftROne := zero.ShiftRight(1)
 			Ω(zeroShiftROne).Should(Equal(zero))
 
+			// (shift amount) >= (word size)
+			shifted := two64.ShiftRight(WORDSIZE)
+			expected := one
+			Ω(shifted).Should(Equal(expected))
+
+			// 1 < (shift amount) < (word size)
+			shifted = two64.ShiftRight(WORDSIZE - 1)
+			expected = two
+			Ω(shifted).Should(Equal(expected))
+
+			// shift amount == 1
+			shifted = two64.ShiftRight(1)
+			expected = FromUint(1 << (WORDSIZE - 1))
+			Ω(shifted).Should(Equal(expected))
+
 			elevenShiftRTwo := eleven.ShiftRight(2)
 			Ω(elevenShiftRTwo).Should(Equal(two))
 		})
 
 		It("should overflow without wrapping", func() {
-			oneShiftROne := one.ShiftRight(1)
+			oneShiftROne := one.ShiftRight(2)
 			Ω(oneShiftROne).Should(Equal(zero))
+
+			shifted := one.ShiftRight(WORDSIZE)
+			Ω(shifted).Should(Equal(zero))
+
+			shifted = one.ShiftRight(WORDSIZE * 2)
+			Ω(shifted).Should(Equal(zero))
 		})
 	})
 
 	Context("when taking the bitwise AND", func() {
 		It("should return the right result for 1024 bit numbers", func() {
-
 			RunAllCases(andFn, []TestCase{
 				TestCase{inputsStr: []string{"0", "0"}, expectedStr: "0"},
-				TestCase{inputsStr: []string{"0", "0"}, expectedStr: "0"},
+				TestCase{inputsStr: []string{"1", "0"}, expectedStr: "0"},
+				TestCase{inputsStr: []string{"0", "1"}, expectedStr: "0"},
+				TestCase{inputsStr: []string{"1", "1"}, expectedStr: "1"},
+				TestCase{inputsStr: []string{"10", "11"}, expectedStr: "10"},
+				TestCase{inputsStr: []string{"11", "11"}, expectedStr: "11"},
+				TestCase{inputsInt: []Int1024{max, max}, expectedInt: &max},
+				TestCase{inputsInt: []Int1024{one, max}, expectedInt: &one},
+				TestCase{inputsInt: []Int1024{max, one}, expectedInt: &one},
+				TestCase{inputsInt: []Int1024{seven, eleven}, expectedInt: &three},
 			})
+		})
+	})
 
-			maxANDMax := max.AND(&max)
-			Ω(maxANDMax).Should(Equal(max))
-
-			sevenANDEleven := seven.AND(&eleven)
-			Ω(sevenANDEleven).Should(Equal(three))
+	Context("when taking the bitwise OR", func() {
+		It("should return the right result for 1024 bit numbers", func() {
+			RunAllCases(orFn, []TestCase{
+				TestCase{inputsStr: []string{"0", "0"}, expectedStr: "0"},
+				TestCase{inputsStr: []string{"1", "0"}, expectedStr: "1"},
+				TestCase{inputsStr: []string{"0", "1"}, expectedStr: "1"},
+				TestCase{inputsStr: []string{"1", "1"}, expectedStr: "1"},
+				TestCase{inputsStr: []string{"10", "11"}, expectedStr: "11"},
+				TestCase{inputsStr: []string{"11", "11"}, expectedStr: "11"},
+				TestCase{inputsInt: []Int1024{max, max}, expectedInt: &max},
+				TestCase{inputsInt: []Int1024{one, max}, expectedInt: &max},
+				TestCase{inputsInt: []Int1024{max, one}, expectedInt: &max},
+				TestCase{inputsInt: []Int1024{seven, eleven}, expectedStr: "15"},
+			})
 		})
 	})
 
 	Context("when taking the bitwise XOR", func() {
 		It("should return the right result for 1024 bit numbers", func() {
+			maxSubOne := max.Sub(&one)
+			RunAllCases(xorFn, []TestCase{
+				TestCase{inputsStr: []string{"0", "0"}, expectedStr: "0"},
+				TestCase{inputsStr: []string{"1", "0"}, expectedStr: "1"},
+				TestCase{inputsStr: []string{"0", "1"}, expectedStr: "1"},
+				TestCase{inputsStr: []string{"1", "1"}, expectedStr: "0"},
+				TestCase{inputsStr: []string{"10", "11"}, expectedStr: "1"},
+				TestCase{inputsStr: []string{"11", "11"}, expectedStr: "0"},
+				TestCase{inputsInt: []Int1024{max, max}, expectedInt: &zero},
+				TestCase{inputsInt: []Int1024{one, max}, expectedInt: &maxSubOne},
+				TestCase{inputsInt: []Int1024{max, one}, expectedInt: &maxSubOne},
+				TestCase{inputsInt: []Int1024{seven, eleven}, expectedInt: &twelve},
+			})
+		})
+	})
 
-			maxXORMax := max.XOR(&max)
-			Ω(maxXORMax).Should(Equal(zero))
+	Context("when taking the bitwise NOT", func() {
+		It("should return the right result for 1024 bit numbers", func() {
+			maxSubOne := max.Sub(&one)
+			maxSubWord := max.Sub(&oneWord)
+			maxSubTwo64 := max.Sub(&two64)
 
-			sevenXOREleven := seven.XOR(&eleven)
-			Ω(sevenXOREleven).Should(Equal(twelve))
+			RunAllCases(notFn, []TestCase{
+				TestCase{inputsInt: []Int1024{max}, expectedInt: &zero},
+				TestCase{inputsInt: []Int1024{zero}, expectedInt: &max},
+				TestCase{inputsInt: []Int1024{one}, expectedInt: &maxSubOne},
+				TestCase{inputsInt: []Int1024{maxSubOne}, expectedInt: &one},
+				TestCase{inputsInt: []Int1024{oneWord}, expectedInt: &maxSubWord},
+				TestCase{inputsInt: []Int1024{maxSubWord}, expectedInt: &oneWord},
+				TestCase{inputsInt: []Int1024{two64}, expectedInt: &maxSubTwo64},
+				TestCase{inputsInt: []Int1024{maxSubTwo64}, expectedInt: &two64},
+			})
 		})
 	})
 
