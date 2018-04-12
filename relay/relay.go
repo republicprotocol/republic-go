@@ -22,10 +22,10 @@ type Relay struct {
 
 // NewRouter prepares Relay to handle HTTP requests
 func NewRouter() *mux.Router {
-	// relay := Relay{}
+	relay := Relay{}
 	orderBook := orderbook.NewOrderBook(100)
 	r := mux.NewRouter().StrictSlash(true)
-	// r.Methods("POST").Path("/orders").Handler(RecoveryHandler(PostOrdersHandler(*relay.multiAddress, *relay.darkPools)))
+	r.Methods("POST").Path("/orders").Handler(RecoveryHandler(PostOrdersHandler(*relay.multiAddress, *relay.darkPools)))
 	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(GetOrdersHandler(orderBook)))
 	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(HandleGetOrder()))
 	r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(DeleteOrderHandler(relay.multiAddress, *relay.darkPools)))
