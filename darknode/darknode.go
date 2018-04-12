@@ -2,6 +2,7 @@ package darknode
 
 import (
 	"context"
+	"log"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/darkocean"
@@ -14,7 +15,7 @@ type DarkNodes []DarkNode
 type DarkNode struct {
 	config           Config
 	darkNodeRegistry contracts.DarkNodeRegistry
-	ocean            darkocean.Ocean
+	ocean            *darkocean.Ocean
 }
 
 func NewDarkNode(config Config) (DarkNode, error) {
@@ -32,20 +33,27 @@ func NewDarkNode(config Config) (DarkNode, error) {
 		return DarkNode{}, err
 	}
 
-	registry, err :=  contracts.NewDarkNodeRegistry(context.Background(), &client, transactOpts, &bind.CallOpts{})
+	registry, err := contracts.NewDarkNodeRegistry(context.Background(), &client, transactOpts, &bind.CallOpts{})
+	if err != nil {
+		return DarkNode{}, err
+	}
+	ocean, err := darkocean.NewOcean(5, registry)
 	if err != nil {
 		return DarkNode{}, err
 	}
 	return DarkNode{
 		config:           config,
 		darkNodeRegistry: registry,
+		ocean:            ocean,
 	}, nil
 }
 
-func (node *DarkNode) Ocean() darkocean.Ocean  {
-	return node.ocean
+func (node *DarkNode) Ocean() darkocean.Ocean {
+	return *node.ocean
 }
 
-
 func (node *DarkNode) Run(ctx context.Context) {
+	if err := node.ocean.Update(); err != nil {
+		log.Println("cannot update darkocean", err)
+	}
 }

@@ -47,7 +47,6 @@ var _ = Describe("DarkNode", func() {
 
 			var wg sync.WaitGroup
 			wg.Add(len(DarkNodes))
-
 			for i := range DarkNodes {
 				go func(i int) {
 					defer wg.Done()
@@ -55,11 +54,13 @@ var _ = Describe("DarkNode", func() {
 					DarkNodes[i].Run(ctxs[i])
 				}(i)
 			}
+
 			go func() {
 				defer close(shutdown)
 
 				wg.Wait()
 			}()
+
 			// Wait for the DarkNodes to boot
 			time.Sleep(time.Second)
 		})
@@ -74,6 +75,7 @@ var _ = Describe("DarkNode", func() {
 			numberOfEpochs := 2
 			oceans := make(darkocean.Oceans, NumberOfDarkNodes)
 
+			By("start calling epoch")
 			for j := 0; j < numberOfEpochs; j++ {
 				// Store all DarkOceans before the turn of the epoch
 				for i := range DarkNodes {
@@ -94,6 +96,7 @@ var _ = Describe("DarkNode", func() {
 				}
 			}
 
+			By("stop all the nodes")
 			// Cancel all DarkNodes
 			for i := range DarkNodes {
 				cancels[i]()
