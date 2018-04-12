@@ -4,36 +4,46 @@ import (
 	"context"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/ethereum/client"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
 )
 
 type DarkNodes []DarkNode
 
 type DarkNode struct {
 	config           Config
-	darkNodeRegistry dnr.DarkNodeRegistry
-	Ocean            darkocean.Ocean
+	darkNodeRegistry contracts.DarkNodeRegistry
+	ocean            darkocean.Ocean
 }
 
-func NewDarknode(config Config) DarkNode {
+func NewDarkNode(config Config) (DarkNode, error) {
 
 	// Connect to Ethereum
 	transactOpts := bind.NewKeyedTransactor(config.Key.PrivateKey)
-	client := client.Connect(
-		config.EthereumConfig.URI,
-		config.EthereumConfig.Network,
-		config.EthereumConfig.RepublicTokenAddress,
-		config.EthereumConfig.DarkNodeRegistryAddress,
+	client, err := client.Connect(
+		config.Ethereum.URI,
+		config.Ethereum.Network,
+		config.Ethereum.RepublicTokenAddress,
+		config.Ethereum.DarkNodeRegistryAddress,
 	)
+	if err != nil {
+		return DarkNode{}, err
+	}
 
+	registry, err :=  contracts.NewDarkNodeRegistry(context.Background(), &client, transactOpts, &bind.CallOpts{})
+	if err != nil {
+		return DarkNode{}, err
+	}
 	return DarkNode{
 		config:           config,
-		darkNodeRegistry: dnr.NewDarkNodeRegistry(context.Background(), &client, transactOpts, &bind.CallOpts{}),
-	}
+		darkNodeRegistry: registry,
+	}, nil
 }
 
+func (node *DarkNode) Ocean() darkocean.Ocean  {
+	return node.ocean
+}
 
 
 func (node *DarkNode) Run(ctx context.Context) {

@@ -9,5 +9,5 @@ import (
 
 func TestDarknode(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Darknode Suite")
+	RunSpecs(t, "DarkNode Suite")
 }

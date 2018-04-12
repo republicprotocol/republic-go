@@ -13,12 +13,14 @@ import (
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/ethereum/ganache"
-	"github.com/republicprotocol/republic-go/rpc"
 )
 
-const GanacheRPC = "http://localhost:8545"
-const NumberOfDarkNodes = 48
-const NumberOfBootstrapDarkNodes = 5
+const (
+	GanacheRPC                 = "http://localhost:8545"
+	NumberOfDarkNodes          = 48
+	NumberOfBootstrapDarkNodes = 5
+	PoolSize                   = 5
+)
 
 var _ = Describe("DarkNode", func() {
 
@@ -75,7 +77,7 @@ var _ = Describe("DarkNode", func() {
 			for j := 0; j < numberOfEpochs; j++ {
 				// Store all DarkOceans before the turn of the epoch
 				for i := range DarkNodes {
-					oceans[i] = DarkNodes[i].Ocean
+					oceans[i] = DarkNodes[i].Ocean()
 				}
 
 				// Turn the epoch
@@ -88,7 +90,7 @@ var _ = Describe("DarkNode", func() {
 
 				// Verify that all DarkOceans have changed
 				for i := range DarkNodes {
-					Ω(oceans[i].Equal(DarkNodes[i].Ocean)).Should(BeFalse())
+					Ω(oceans[i].Equal(DarkNodes[i].Ocean())).Should(BeFalse())
 				}
 			}
 
@@ -96,7 +98,6 @@ var _ = Describe("DarkNode", func() {
 			for i := range DarkNodes {
 				cancels[i]()
 			}
-			pool := rpc.newClientPool
 		})
 
 		It("should converge on a global view of the ocean", func() {
@@ -110,9 +111,10 @@ var _ = Describe("DarkNode", func() {
 			time.Sleep(time.Second)
 
 			// Verify that all DarkNodes have converged on the DarkOcean
-			ocean := darkocean.NewOcean(darkNodeRegistry)
+			ocean, err := darkocean.NewOcean(PoolSize, darkNodeRegistry)
+			Ω(err).ShouldNot(HaveOccurred())
 			for i := range DarkNodes {
-				Ω(ocean.Equal(DarkNodes[i].Ocean)).Should(BeTrue())
+				Ω(ocean.Equal(DarkNodes[i].Ocean())).Should(BeTrue())
 			}
 
 			// Cancel all DarkNodes

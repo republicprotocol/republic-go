@@ -5,23 +5,8 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 )
-
-// // Config contains all configuration details for running a DarkNode.
-// type Config struct {
-// 	NetworkOptions rpc.Options    `json:"network"`
-// 	LoggerOptions  logger.Options `json:"logger"`
-
-// 	Path string `json:"path"`
-// 	Host string `json:"host"`
-// 	Port string `json:"port"`
-
-// 	KeyPair     identity.KeyPair `json:"keyPair"`
-// 	EthereumKey keystore.Key     `json:"ethereumKey"`
-// 	EthereumRPC string           `json:"ethereumRPC"`
-// }
 
 type Config struct {
 	Key      *keystore.Key  `json:"key"`
@@ -33,8 +18,8 @@ type Config struct {
 type EthereumConfig struct {
 	URI                     string         `json:"uri"`
 	Network                 client.Network `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
-	RepublicTokenAddress    common.Address `json:"republicTokenAddress"`
-	DarkNodeRegistryAddress common.Address `json:"darkNodeRegistryAddress"`
+	RepublicTokenAddress    string `json:"republicTokenAddress"`
+	DarkNodeRegistryAddress string `json:"darkNodeRegistryAddress"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config
@@ -60,8 +45,8 @@ func NewLocalConfig(key *keystore.Key, host, port string) Config {
 		Ethereum: EthereumConfig{
 			URI:                     "http://localhost:8545",
 			Network:                 client.NetworkGanache,
-			RepublicTokenAddress:    client.RepublicTokenAddressOnGanache,
-			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache,
+			RepublicTokenAddress:    client.RepublicTokenAddressOnGanache.Str(),
+			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.Str(),
 		},
 	}
 }
