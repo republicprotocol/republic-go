@@ -1,98 +1,105 @@
 package hyper_test
 
-// import (
-// 	"log"
-// 	"math/rand"
-// 	"sync"
-// 	"time"
+import (
+	"log"
+	"math/rand"
+	"sync"
+	"time"
 
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// 	. "github.com/republicprotocol/republic-go/hyperdrive"
-// )
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	. "github.com/republicprotocol/republic-go/hyperdrive"
+)
 
-// var _ = Describe("Buffer", func() {
+var _ = Describe("Buffer", func() {
 
-// 	Context("Proposals", func() {
+	Context("Proposals", func() {
 
-// 		It("should only return proposals of current static height", func() {
-// 			chanSetIn := EmptyChannelSet()
-// 			sb := NewSharedBlocks(1, 1)
-// 			chanSetOut := ProcessBuffer(chanSetIn, &sb)
+		// FIt("should only return proposals of current static height", func() {
+		// 	sb := NewSharedBlocks(0, 0)
+		// 	chanSetIn := EmptyChannelSet(100)
+		// 	validator, _ := NewTestValidator(sb, 100)
+		// 	chanSetOut := ProcessBuffer(chanSetIn, validator)
 
-// 			go func() {
-// 				for {
-// 					select {
-// 					case proposal, ok := <-chanSetOut.Proposal:
-// 						if !ok {
-// 							return
-// 						}
-// 						Ω(proposal.Height).Should(Equal(sb.Height))
-// 					}
-// 				}
-// 			}()
+		// 	go func() {
+		// 		for {
+		// 			select {
+		// 			case proposal, ok := <-chanSetOut.Proposal:
+		// 				if !ok {
+		// 					return
+		// 				}
+		// 				Ω(proposal.Height).Should(Equal(validator.SharedBlocks().ReadHeight()))
+		// 			}
+		// 		}
+		// 	}()
 
-// 			for i := 0; i < 100; i++ {
-// 				h := rand.Intn(4) + 1
-// 				chanSetIn.Proposal <- Proposal{
-// 					Height: Height(h),
-// 					Rank:   Rank(1),
-// 					Block:  Block{},
-// 				}
-// 			}
+		// 	for i := 0; i < 100; i++ {
+		// 		h := rand.Intn(4)
+		// 		chanSetIn.Proposal <- Proposal{
+		// 			Height: uint64(h),
+		// 			Rank:   Rank(1),
+		// 			Block:  Block{},
+		// 		}
+		// 	}
 
-// 			chanSetIn.Close()
+		// 	chanSetIn.Close()
 
-// 		})
+		// })
 
-// 		It("should only return proposals of current dynamic height which changes every second", func() {
-// 			chanSetIn := EmptyChannelSet()
-// 			counter := map[Height]uint64{}
+		FIt("should only return proposals of current dynamic height which changes every second", func() {
+			chanSetIn := EmptyChannelSet(100)
+			defer chanSetIn.Close()
 
-// 			sb := NewSharedBlocks(1, 1)
+			sb := NewSharedBlocks(0, 0)
+			validator, _ := NewTestValidator(sb, 100)
+			chanSetOut := ProcessBuffer(chanSetIn, validator)
+			counter := map[uint64]uint64{}
+			var wg sync.WaitGroup
 
-// 			chanSetOut := ProcessBuffer(chanSetIn, &sb)
-// 			var wg sync.WaitGroup
-// 			go func() {
-// 				defer GinkgoRecover()
-// 				defer log.Println("Channel closed")
-// 				for {
-// 					select {
-// 					case proposal, ok := <-chanSetOut.Prepare:
-// 						if !ok {
-// 							return
-// 						}
-// 						counter[proposal.Height]++
-// 						Ω(proposal.Height).Should(Equal(sb.Height))
-// 						log.Println("Counter", counter[1]+counter[2]+counter[3]+counter[4]+counter[5])
-// 					}
-// 				}
-// 			}()
+			randcounter := map[int]int{}
+			for i := 0; i < 100; i++ {
+				h := rand.Intn(5)
+				randcounter[h]++
+				chanSetIn.Proposal <- Proposal{
+					Height: uint64(h),
+					Rank:   Rank(1),
+					Block:  Block{},
+				}
+				log.Println("Random Counter", randcounter[0], randcounter[1], randcounter[2], randcounter[3], randcounter[4], randcounter[0]+randcounter[1]+randcounter[2]+randcounter[3]+randcounter[4])
+			}
 
-// 			for i := 0; i < 1000; i++ {
-// 				h := rand.Intn(5) + 1
-// 				chanSetIn.Proposal <- Proposal{
-// 					Height: Height(h),
-// 					Rank:   Rank(1),
-// 					Block:  Block{},
-// 				}
-// 			}
-// 			wg.Add(1)
-// 			go func() {
-// 				defer wg.Done()
-// 				defer GinkgoRecover()
-// 				defer time.Sleep(1 * time.Second)
-// 				for i := 1; i < 5; i++ {
-// 					time.Sleep(1 * time.Second)
-// 					sb.IncrementHeight()
-// 				}
-// 			}()
+			go func() {
+				defer GinkgoRecover()
+				defer log.Println("Channel closed")
+				for {
+					select {
+					case proposal, ok := <-chanSetOut.Proposal:
+						if !ok {
+							return
+						}
+						counter[proposal.Height]++
+						Ω(proposal.Height).Should(Equal(validator.SharedBlocks().ReadHeight()))
+						log.Println("Counter", counter[0], counter[1], counter[2], counter[3], counter[4], counter[0]+counter[1]+counter[2]+counter[3]+counter[4])
+					}
+				}
+			}()
 
-// 			chanSetIn.Close()
-// 			wg.Wait()
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer GinkgoRecover()
+				defer time.Sleep(1 * time.Second)
+				for i := 0; i < 5; i++ {
+					time.Sleep(2 * time.Second)
+					validator.SharedBlocks().IncrementHeight()
+				}
+			}()
 
-// 			Ω(uint64(1000)).Should(Equal(counter[1] + counter[2] + counter[3] + counter[4] + counter[5]))
-// 		})
+			wg.Wait()
 
-// 	})
-// })
+			Ω(uint64(100)).Should(Equal(counter[0] + counter[1] + counter[2] + counter[3] + counter[4]))
+
+		})
+
+	})
+})

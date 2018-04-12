@@ -1,122 +1,146 @@
 package hyper
 
 import (
+	"context"
 	"log"
 	"sync"
+	"time"
 )
 
+type HeightContext struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+var HeightContexts = map[uint64]HeightContext{}
+
+type Buffer struct {
+	mu       sync.RWMutex
+	chanSets map[uint64]ChannelSet
+}
+
+func NewBuffer()
 func ProcessBuffer(chanSetIn ChannelSet, validator Validator) ChannelSet {
+	buffer, doneCh := ProduceBuffer(chanSetIn, validator)
+	return ConsumeBuffer(buffer, doneCh, validator)
+}
+
+func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan struct{}) {
+	doneCh := make(chan struct{})
+	sb := validator.SharedBlocks()
+
+	buffer.Store
+	go func() {
+		defer close(doneCh)
+		defer time.Sleep(10 * time.Second)
+		defer log.Println("Closing done channel")
+		for {
+			h := sb.ReadHeight()
+			select {
+			case proposal, ok := <-chanSetIn.Proposal:
+				if !ok {
+					log.Println("returning because of closed proposal channel")
+					return
+				}
+				if proposal.Height < h {
+					continue
+				}
+				if _, ok := buffer.proposals[h]; !ok {
+					buffer.proposals[h] = make(chan Proposal, validator.Threshold())
+				}
+				buffer.proposals[h] <- proposal
+
+			case prepare, ok := <-chanSetIn.Prepare:
+				if !ok {
+					return
+				}
+				if prepare.Height < h {
+					continue
+				}
+				if _, ok := buffer.prepares[h]; !ok {
+					buffer.prepares[h] = make(chan Prepare, validator.Threshold())
+				}
+				buffer.prepares[h] <- prepare
+
+			case commit, ok := <-chanSetIn.Commit:
+				if !ok {
+					return
+				}
+				if commit.Height < h {
+					continue
+				}
+				if _, ok := buffer.commits[h]; !ok {
+					buffer.commits[h] = make(chan Commit, validator.Threshold())
+				}
+				buffer.commits[h] <- commit
+
+			case fault, ok := <-chanSetIn.Fault:
+				if !ok {
+					return
+				}
+				if fault.Height < h {
+					continue
+				}
+				if _, ok := buffer.faults[h]; !ok {
+					buffer.faults[h] = make(chan Fault, validator.Threshold())
+				}
+				buffer.faults[h] <- fault
+			}
+		}
+	}()
+	return buffer, doneCh
+}
+
+func ConsumeBuffer(buffer Buffer, doneCh chan struct{}, validator Validator) ChannelSet {
 
 	sb := validator.SharedBlocks()
-	threshold := validator.Threshold()
+	chanSetOut := EmptyChannelSet(validator.Threshold())
 	height := sb.ReadHeight()
-	chanSetOut := EmptyChannelSet(threshold)
-	proposals := map[uint64][]Proposal{}
-	prepares := map[uint64][]Prepare{}
-	commits := map[uint64][]Commit{}
-	faults := map[uint64][]Fault{}
-	var wg sync.WaitGroup
+
+	chanSetOut.Proposal = buffer.proposals[height]
+	chanSetOut.Prepare = buffer.prepares[height]
+	chanSetOut.Commit = buffer.commits[height]
+	chanSetOut.Fault = buffer.faults[height]
 
 	go func() {
-		defer chanSetOut.Close()
-		// log.Println("Hello")
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			defer log.Println("Closing buffer")
-			for {
-				select {
-				case proposal, ok := <-chanSetIn.Proposal:
-					log.Println("Buffering proposals")
-					if !ok {
-						return
-					}
-					if proposal.Height < sb.ReadHeight() {
-						continue
-					}
-					// log.Println("Sorting proposals")
-					if proposal.Height == sb.ReadHeight() {
-						// log.Println("Writing proposals")
-						chanSetOut.Proposal <- proposal
-					} else {
-						proposals[proposal.Height] = append(proposals[proposal.Height], proposal)
-					}
-				case prepare, ok := <-chanSetIn.Prepare:
-					if !ok {
-						return
-					}
-					if prepare.Height < sb.ReadHeight() {
-						continue
-					}
-					// log.Println("Sorting prepares")
-					if prepare.Height == sb.ReadHeight() {
-						chanSetOut.Prepare <- prepare
-					} else {
-						prepares[prepare.Height] = append(prepares[prepare.Height], prepare)
-					}
-
-				case commit, ok := <-chanSetIn.Commit:
-					if !ok {
-						return
-					}
-					if commit.Height < sb.ReadHeight() {
-						continue
-					}
-					if commit.Height == sb.ReadHeight() {
-						chanSetOut.Commit <- commit
-					} else {
-						commits[commit.Height] = append(commits[commit.Height], commit)
-					}
-
-				case fault, ok := <-chanSetIn.Fault:
-					if !ok {
-						return
-					}
-					if fault.Height < sb.ReadHeight() {
-						continue
-					}
-					if fault.Height == sb.ReadHeight() {
-						chanSetOut.Fault <- fault
-					} else {
-						faults[fault.Height] = append(faults[fault.Height], fault)
-					}
+		for {
+			select {
+			case <-doneCh:
+				if _, ok := HeightContexts[height]; ok {
+					HeightContexts[height].cancel()
 				}
-			}
-		}()
+				return
+			default:
 
-		wg.Add(1)
-		go func() {
-			log.Println("Hello2")
-			defer wg.Done()
-			for {
-				newHeight := sb.ReadHeight()
-				if height == newHeight {
+				if height == sb.ReadHeight() {
 					continue
 				} else {
-					for _, proposal := range proposals[newHeight] {
-						chanSetOut.Proposal <- proposal
-					}
-					for _, prepare := range prepares[newHeight] {
-						chanSetOut.Prepare <- prepare
-					}
-					for _, commit := range commits[newHeight] {
-						chanSetOut.Commit <- commit
-					}
-					for _, fault := range faults[newHeight] {
-						chanSetOut.Fault <- fault
+					newHeight := sb.ReadHeight()
+					ctx, cancel := context.WithCancel(context.Background())
+
+					hctx := HeightContext{
+						ctx:    ctx,
+						cancel: cancel,
 					}
 
-					for i := height + 1; i <= newHeight; i++ {
-						delete(proposals, i)
-						delete(prepares, i)
-						delete(commits, i)
-						delete(faults, i)
+					HeightContexts[newHeight] = hctx
+					if _, ok := HeightContexts[height]; ok {
+						HeightContexts[height].cancel()
+					}
+
+					chanSet := NewChannelSet(validator.Threshold(), buffer.proposals[newHeight], buffer.prepares[newHeight], buffer.commits[newHeight], buffer.faults[newHeight], make(chan Block, validator.Threshold()), make(chan error, validator.Threshold()))
+					go chanSetOut.Copy(ctx, chanSet)
+
+					for i := height; i < newHeight; i++ {
+						delete(buffer.proposals, i)
+						delete(buffer.prepares, i)
+						delete(buffer.commits, i)
+						delete(buffer.faults, i)
 					}
 					height = newHeight
 				}
 			}
-		}()
-		wg.Wait()
+		}
 	}()
 
 	return chanSetOut
