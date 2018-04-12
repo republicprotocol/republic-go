@@ -1,4 +1,4 @@
-package relay_test
+package dht_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestRelay(t *testing.T) {
+func TestGoDht(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Relay Suite")
+	RunSpecs(t, "DHT Suite")
 }

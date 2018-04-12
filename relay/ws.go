@@ -19,42 +19,44 @@ var upgrader = websocket.Upgrader{
 func GetOrdersHandler(orderBook *orderbook.OrderBook) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
+		defer conn.Close()
 		if err != nil {
-			http.Error(w, fmt.Sprintf("cannot open websocket connection: %v", err), http.StatusBadRequest)
+			fmt.Sprintf("cannot open websocket connection: %v", err)
+			return
 		}
-		streamOrders(r, conn, orderBook)
+		streamOrders(w, r, conn, orderBook)
 	})
 }
 
 // Notifies client if status of specified order has changed.
-func streamOrders(r *http.Request, conn *websocket.Conn, orderBook *orderbook.OrderBook) {
-	// Retrieve parameters from URL.
-	traderID := r.FormValue("trader")
-	orderID := r.FormValue("order")
-	// statuses := strings.Split(r.FormValue("status"), ",")
-	if (traderID == "" || orderID == "") {
+func streamOrders(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, orderBook *orderbook.OrderBook) {
+	// Retrieve ID from URL.
+	orderID := r.FormValue("id")
+	if (orderID == "") {
 		return
 	}
 
 	// Handle ping/pong.
 	writeDeadline := 10 * time.Second
-	pingInterval := 30 * time.Second
+	pingInterval := 5 * time.Second
 	pongInterval := 60 * time.Second
 	ping := time.NewTicker(pingInterval)
+	defer ping.Stop()
+	conn.SetReadDeadline(time.Now().Add(pongInterval))
 	conn.SetPongHandler(func(string) error {
 		conn.SetReadDeadline(time.Now().Add(pongInterval))
 		return nil
 	})
 
-	defer func() {
-		ping.Stop()
-		conn.Close()
-	}()
-
 	orders := make(map[string]order.Status)
 	messages := make(chan *orderbook.Message, 100)
 	queue := NewWriteOnlyChannelQueue(messages, 100)
-	orderBook.Subscribe("id", queue)
+	go func() {
+		if err := orderBook.Subscribe("id", queue); err != nil {
+			fmt.Sprintf("unable to subscribe to order book: %v", err)
+		}
+	}()
+	orders[orderID] = order.Open
 
 	for {
 		select {
@@ -62,7 +64,7 @@ func streamOrders(r *http.Request, conn *websocket.Conn, orderBook *orderbook.Or
 			if !ok {
 				return
 			}
-			if message.Status > orders[string(message.Ord.ID)] {
+			if message.Status >= orders[string(message.Ord.ID)] {
 				conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 				if err := conn.WriteJSON(message); err != nil {
 					fmt.Sprintf("cannot send json: %v", err)

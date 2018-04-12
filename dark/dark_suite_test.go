@@ -1,4 +1,4 @@
-package relay_test
+package dark_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestRelay(t *testing.T) {
+func TestDark(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Relay Suite")
+	RunSpecs(t, "Dark Suite")
 }

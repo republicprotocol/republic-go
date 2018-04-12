@@ -1,0 +1,212 @@
+syntax = "proto3";
+
+package rpc;
+
+/**
+ * Swarm
+ */
+
+service Swarm {
+  rpc Ping (MultiAddress) returns (MultiAddress);
+  rpc QueryPeers (Query) returns (stream MultiAddress);
+  rpc QueryPeersDeep (Query) returns (stream MultiAddress);
+}
+
+message Address {
+  string address = 1;
+}
+
+message MultiAddress {
+  bytes signature = 1;
+  string multiAddress = 2;
+}
+
+message Nothing {
+}
+
+message Query {
+  MultiAddress from = 1;
+  Address target = 2;
+}
+
+/**
+ * Dark
+ */
+
+service Dark {
+  rpc Sync (SyncRequest) returns (stream SyncBlock);
+
+  rpc SignOrderFragment (SignOrderFragmentRequest) returns (OrderFragmentSignature);
+  rpc OpenOrder (OpenOrderRequest) returns (Nothing);
+  rpc CancelOrder (CancelOrderRequest) returns (Nothing);
+
+  rpc RandomFragmentShares (RandomFragmentSharesRequest) returns (RandomFragments);
+  rpc ResidueFragmentShares (ResidueFragmentSharesRequest) returns (ResidueFragments);
+  rpc ComputeResidueFragment (ComputeResidueFragmentRequest) returns (Nothing);
+  rpc BroadcastAlphaBetaFragment (BroadcastAlphaBetaFragmentRequest) returns (AlphaBetaFragment);
+  rpc BroadcastDeltaFragment (BroadcastDeltaFragmentRequest) returns (DeltaFragment);
+}
+
+message SyncRequest {
+  MultiAddress from = 1;
+}
+
+message SignOrderFragmentRequest {
+  MultiAddress from = 1;
+  OrderFragmentSignature orderFragmentSignature = 2;
+}
+
+message OpenOrderRequest {
+  MultiAddress from = 1;
+  OrderSignature orderSignature = 2;
+  OrderFragment orderFragment = 3;
+}
+
+message CancelOrderRequest {
+  MultiAddress from = 1;
+  OrderSignature orderSignature = 2;
+}
+
+message RandomFragmentSharesRequest {
+  MultiAddress from = 1;
+}
+
+message ResidueFragmentSharesRequest {
+  MultiAddress from = 1;
+  RandomFragments randomFragments = 2;
+}
+
+message ComputeResidueFragmentRequest {
+  MultiAddress from = 1;
+  ResidueFragments residueFragments = 2;
+}
+
+message BroadcastAlphaBetaFragmentRequest {
+  MultiAddress from = 1;
+  AlphaBetaFragment alphaBetaFragment = 2;
+}
+
+message BroadcastDeltaFragmentRequest {
+  MultiAddress from = 1;
+  DeltaFragment deltaFragment = 2;
+}
+
+message AlphaBetaFragment {
+  bytes signature = 1;
+  bytes residueId = 2;
+  OrderFragment alphaFragment = 3;
+  OrderFragment betaFragment = 4;
+}
+
+message DeltaFragment {    
+  bytes signature = 1;
+  bytes id = 2;
+  bytes deltaId = 3;
+  bytes buyOrderId = 4;
+  bytes sellOrderId = 5;
+  bytes buyOrderFragmentId = 6;
+  bytes sellOrderFragmentId = 7;
+  
+  bytes fstCodeShare = 8;
+  bytes sndCodeShare = 9;
+  bytes priceShare = 10;
+  bytes maxVolumeShare = 11;
+  bytes minVolumeShare = 12;
+}
+
+message OrderFragment {
+  bytes signature = 1;
+  bytes id = 2;
+  bytes orderId = 3;
+  int64 orderType = 4;
+  int64 orderParity = 5;
+  
+  bytes fstCodeShare = 6;
+  bytes sndCodeShare = 7;
+  bytes priceShare = 8;
+  bytes maxVolumeShare = 9;
+  bytes minVolumeShare = 10;
+}
+
+message OrderFragmentSignature {
+  bytes signature = 1;
+  bytes orderFragmentId = 2;
+}
+
+message OrderSignature {
+  bytes signature = 1;
+  bytes orderId = 2;
+}
+
+message ResidueFragment {    
+  bytes signature = 1;
+  bytes aShare = 2;
+  bytes bShare = 3;
+  bytes cShare = 4;
+  bytes residueShare = 5;
+  bytes residueId = 6;
+}
+
+message ResidueFragments {
+  bytes signature = 1;
+  repeated ResidueFragment residueFragments = 2;
+}
+
+message RandomFragment {    
+  bytes signature = 1;
+  bytes share = 2;
+}
+
+message RandomFragments {
+  bytes signature = 1;
+  repeated RandomFragment randomFragments = 2;
+}
+
+message SyncBlock {
+  bytes signature = 1;
+  DeltaBlock deltaBlock = 2;
+  ResidueBlock residueBlock = 3;
+
+  message DeltaBlock {
+      repeated DeltaFragment pending = 1;
+      repeated DeltaFragment electing = 2;
+      repeated DeltaFragment computing = 3;
+      repeated DeltaFragment finalizing = 4;
+      repeated DeltaFragment matched = 5;
+      repeated DeltaFragment mismatched = 6;
+  }
+
+  message ResidueBlock {
+      repeated ResidueFragment pending = 1;
+      repeated ResidueFragment electing = 2;
+      repeated ResidueFragment computing = 3;
+      repeated ResidueFragment finalizing = 4;
+      repeated ResidueFragment matched = 5;
+      repeated ResidueFragment mismatched = 6;
+  }
+}
+
+/**
+ * Gossip
+ */
+
+service Gossip {
+  rpc Gossip (GossipRequest) returns (Rumor);
+  rpc Finalize (FinalizeRequest) returns (Rumor);
+}
+
+message GossipRequest {
+  MultiAddress from = 1;
+  Rumor rumor = 2;
+}
+
+message FinalizeRequest {
+  MultiAddress from = 1;
+  Rumor rumor = 2;
+}
+
+message Rumor {
+  bytes signature = 1;
+  bytes buyOrderId = 2;
+  bytes sellOrderId = 3;
+}

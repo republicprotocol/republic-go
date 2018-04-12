@@ -5,6 +5,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gorilla/mux"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/dark"
@@ -12,7 +13,10 @@ import (
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/stackint"
 )
+
+var prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 
 // Relay consists of configuration values (?)
 type Relay struct {
@@ -27,122 +31,151 @@ func NewRouter() *mux.Router {
 	r := mux.NewRouter().StrictSlash(true)
 	// r.Methods("POST").Path("/orders").Handler(RecoveryHandler(PostOrdersHandler(*relay.multiAddress, *relay.darkPools)))
 	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(GetOrdersHandler(orderBook)))
-	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(HandleGetOrder()))
-	r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(DeleteOrderHandler(relay.multiAddress, *relay.darkPools)))
+	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(HandleGetOrder(orderBook)))
+	// r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(DeleteOrderHandler(relay.multiAddress, *relay.darkPools)))
 	return r
 }
 
 // SendOrderToDarkOcean will fragment and send orders to the dark ocean
-func SendOrderToDarkOcean(order order.Order, traderMultiAddress *identity.MultiAddress, pools dark.Pools) {
-	fmt.Println(order.Type)
-
-	sendOrder(order, pools, *traderMultiAddress)
+func SendOrderToDarkOcean(order order.Order, traderMultiAddress *identity.MultiAddress, pools dark.Pools) error {
+	return sendOrder(order, pools, *traderMultiAddress)
 }
 
 // SendOrderFragmentsToDarkOcean will send order fragments to the dark ocean
-func SendOrderFragmentsToDarkOcean(order OrderFragments, traderMultiAddress *identity.MultiAddress, pools dark.Pools) {
-	// TODO: (Check) Validate that there are enough fragments for each node in the pool (number of fragments should be atleast 2/3 * size of pool)
-	// TODO: Integrate Dark Pool ID here ?
+func SendOrderFragmentsToDarkOcean(order Fragments, traderMultiAddress *identity.MultiAddress, pools dark.Pools) error {
 	valid := false
-	fragments := order.FragmentSet[0].Fragment
-	for i := range pools {
-		if len(fragments) >= 2/3*pools[i].Size() {
-			valid = true
-			sendSharesToDarkPool(pools[i], *traderMultiAddress, fragments)
+	for poolIndex := range pools {
+		fragments := order.DarkPools[GeneratePoolID(pools[poolIndex])]
+		if fragments != nil && isSafeToSend(len(fragments), pools[poolIndex].Size()) {
+			if err := sendSharesToDarkPool(pools[poolIndex], *traderMultiAddress, fragments); err == nil {
+				valid = true
+			}
 		}
 	}
 	if !valid {
-		fmt.Errorf("cannot send fragments to pools")
+		return fmt.Errorf("cannot send fragments to pools: number of fragments do not match pool size")
 	}
+	return nil
 }
 
 // CancelOrder will cancel orders that aren't confirmed or settled in the dark ocean
-func CancelOrder(order order.ID, traderMultiAddress *identity.MultiAddress, pools dark.Pools) {
-	fmt.Println(order.String())
-
+func CancelOrder(order order.ID, traderMultiAddress *identity.MultiAddress, pools dark.Pools) error {
+	//TODO: Handle errors
 	// For every Dark Pool
 	for i := range pools {
-
 		// Cancel orders for all nodes in the pool
+		var wg sync.WaitGroup
+		wg.Add(pools[i].Size())
 		pools[i].ForAll(func(n *dark.Node) {
-
+			defer wg.Done()
 			// Get multiaddress
 			multiaddress, err := getMultiAddress(n.ID.Address(), *traderMultiAddress)
 			if err != nil {
-				log.Fatalf("cannot read multi-address: %v", err)
+				log.Printf("cannot read multi-address: %v", err)
 			}
 
 			// Create a client
 			client, err := rpc.NewClient(multiaddress, *traderMultiAddress)
 			if err != nil {
-				log.Fatalf("cannot connect to client: %v", err)
+				log.Printf("cannot connect to client: %v", err)
 			}
 
 			// Close order
 			err = client.CancelOrder(&rpc.OrderSignature{})
 			if err != nil {
-				log.Println(err)
-				log.Printf("%sCoudln't cancel order to %v%s\n", red, base58.Encode(n.ID), reset)
-				return
+				log.Printf("cannot cancel order to %v", base58.Encode(n.ID))
 			}
 		})
+		wg.Wait()
 	}
+	return nil
 }
 
-func sendOrder(openOrder order.Order, pools dark.Pools, traderMultiAddress identity.MultiAddress) {
-	// Buy or sell
-	if openOrder.Parity == order.ParityBuy {
-		log.Println("sending buy order : ", base58.Encode(openOrder.ID))
-	} else {
-		log.Println("sending sell order : ", base58.Encode(openOrder.ID))
+func sendOrder(openOrder order.Order, pools dark.Pools, traderMultiAddress identity.MultiAddress) error {
+	errCh := make(chan error)
+
+	go func() {
+		defer close(errCh)
+
+		var wg sync.WaitGroup
+		wg.Add(len(pools))
+		for i := range pools {
+			go func(darkPool *dark.Pool) {
+				defer wg.Done()
+				// Split order into (number of nodes in each pool) * 2/3 fragments
+				shares, err := openOrder.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
+				if err != nil {
+					log.Printf("cannot split orders: %v", err)
+					errCh <- err
+					return
+				}
+				if err := sendSharesToDarkPool(darkPool, traderMultiAddress, shares); err != nil {
+					log.Println(err)
+					errCh <- err
+					return
+				}
+			}(pools[i])
+		}
+		wg.Wait()
+	}()
+
+	var errNum int
+	var err error
+	for errLocal := range errCh {
+		if errLocal != nil {
+			errNum++
+			if err == nil {
+				err = errLocal
+			}
+		}
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(len(pools))
-	// For every dark pool
-	for i := range pools {
-		go func(darkPool *dark.Pool) {
-			defer wg.Done()
-			// Split order into (number of nodes in each pool) * 2/3 fragments
-			shares, err := openOrder.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
-			if err != nil {
-				log.Println("cannot split orders: ", err)
-				return
-			}
-			sendSharesToDarkPool(darkPool, traderMultiAddress, shares)
-		}(pools[i])
+	if len(pools) > 0 && errNum == len(pools) {
+		return fmt.Errorf("could not send order to any dark pool: %v", err)
 	}
-	wg.Wait()
+	return nil
 }
 
 // Send the shares across all nodes within the Dark Pool
-func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares []*order.Fragment) {
+func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares []*order.Fragment) error {
 
-	i := 1
+	shareIndex := 0
+	poolID := GeneratePoolID(pool)
+	errorCh := make(chan error)
+	// canSend := true
 	pool.For(func(n *dark.Node) {
-		go func(n *dark.Node, multi identity.MultiAddress, share *order.Fragment) {
-			// Get multiaddress
-			multiaddress, err := getMultiAddress(n.ID.Address(), multi)
-			if err != nil {
-				log.Fatalf("cannot read multi-address: %v", err)
-			}
+		if shareIndex >= len(shares) {
+			go func(n *dark.Node, multi identity.MultiAddress, share *order.Fragment) {
+				// Get multiaddress
+				multiaddress, err := getMultiAddress(n.ID.Address(), multi)
+				if err != nil {
+					log.Printf("cannot read multi-address: %v", err)
+				}
 
-			// Create a client
-			client, err := rpc.NewClient(multiaddress, multi)
-			if err != nil {
-				log.Fatalf("cannot connect to client: %v", err)
-			}
+				// Create a client
+				client, err := rpc.NewClient(multiaddress, multi)
+				if err != nil {
+					log.Printf("cannot connect to client: %v", err)
+				}
 
-			// Send fragment to node
-			err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[i]))
-			if err != nil {
-				log.Println(err)
-				log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(n.ID), reset)
-				return
-			}
-		}(n, multi, shares[i])
-		i++
+				// Send fragment to node
+				err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(share))
+				if err != nil {
+					log.Println(err)
+					log.Printf("cannot send order fragment to %v%s\n", base58.Encode(n.ID), reset)
+					errorCh <- err
+					return
+				}
+			}(n, multi, shares[shareIndex])
+		}
+		shareIndex++
 	})
+
+	// check if atleast 2/3 nodes of the pool has recieved the order fragments
+	if pool.Size() > 0 && len(errorCh) > ((1/3)*pool.Size()) {
+		return fmt.Errorf("could not send orders to %v nodes (out of %v nodes) in pool %v", len(errorCh), pool.Size(), poolID)
+	}
+	return nil
 }
 
 // Function to obtain multiaddress of a node by sending requests to bootstrap nodes
@@ -185,4 +218,18 @@ func getMultiAddress(address identity.Address, traderMultiAddress identity.Multi
 		}
 	}
 	return traderMultiAddress, nil
+}
+
+// GeneratePoolID will generate crypto hash for a pool
+func GeneratePoolID(pool *dark.Pool) string {
+	var id identity.ID
+	pool.For(func(n *dark.Node) {
+		id = append(id, []byte(n.ID.String())...)
+	})
+	id = crypto.Keccak256(id)
+	return id.String()
+}
+
+func isSafeToSend(fragmentCount, poolSize int) bool {
+	return fragmentCount >= 2/3*poolSize && fragmentCount <= poolSize
 }

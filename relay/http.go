@@ -10,13 +10,16 @@ import (
 	"github.com/republicprotocol/republic-go/dark"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/stackint"
+	"github.com/republicprotocol/republic-go/orderbook"
 )
 
-var prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-
 const reset = "\x1b[0m"
-const red = "\x1b[31;1m"
+
+// The HTTPPost object
+type HTTPPost struct {
+	Order          order.Order `json:"order"`
+	OrderFragments Fragments   `json:"orderFragments"`
+}
 
 // The HTTPDelete object
 type HTTPDelete struct {
@@ -24,16 +27,8 @@ type HTTPDelete struct {
 	ID        order.ID `json:"id"`
 }
 
-// Fragments will store a list of Fragments with their order details
+// Fragments will store a list of Fragment Sets with their order details
 type Fragments struct {
-	// TODO: Confirm this . .
-	DarkPool []byte `json:"darkPool"`
-
-	Fragment []*order.Fragment `json:"fragment"`
-}
-
-// OrderFragments will store a list of Fragment Sets with their order details
-type OrderFragments struct {
 	Signature []byte   `json:"signature"`
 	ID        order.ID `json:"id"`
 
@@ -41,7 +36,7 @@ type OrderFragments struct {
 	Parity order.Parity `json:"parity"`
 	Expiry time.Time    `json:"expiry"`
 
-	FragmentSet []Fragments `json:"fragmentSet"`
+	DarkPools map[string][]*order.Fragment `json:"darkPools"`
 }
 
 // RecoveryHandler handles errors while processing the requests and populates the errors in the response
@@ -49,8 +44,7 @@ func RecoveryHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if r := recover(); r != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("%v", r)))
+				writeError(w, http.StatusInternalServerError, fmt.Sprintf("%v", r))
 			}
 		}()
 		h.ServeHTTP(w, r)
@@ -61,32 +55,43 @@ func RecoveryHandler(h http.Handler) http.Handler {
 func PostOrdersHandler(multiAddress *identity.MultiAddress, darkPools dark.Pools) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// TODO: Get this checked . .
-		postOrder := order.Order{}
+		postOrder := HTTPPost{}
 		if err := json.NewDecoder(r.Body).Decode(&postOrder); err != nil {
-			postOrder := OrderFragments{}
-			if err1 := json.NewDecoder(r.Body).Decode(&postOrder); err1 != nil {
-				panic(fmt.Sprintf("cannot decode json into an order or a list of order fragments: %v %v", err, err1))
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot decode json into an order or a list of order fragments: %v", err))
+			return
+		}
+		if len(postOrder.OrderFragments.DarkPools) > 0 {
+			if err := SendOrderFragmentsToDarkOcean(postOrder.OrderFragments, multiAddress, darkPools); err != nil {
+				writeError(w, http.StatusInternalServerError, fmt.Sprintf("error sending order fragments : %v", err))
 				return
 			}
-			SendOrderFragmentsToDarkOcean(postOrder, multiAddress, darkPools)
+		} else if postOrder.Order.ID.String() != "" {
+			if err := SendOrderToDarkOcean(postOrder.Order, multiAddress, darkPools); err != nil {
+				writeError(w, http.StatusInternalServerError, fmt.Sprintf("error sending orders : %v", err))
+				return
+			}
+		} else {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot decode json into an order or a list of order fragments: empty object"))
+			return
 		}
-		SendOrderToDarkOcean(postOrder, multiAddress, darkPools)
+		w.WriteHeader(http.StatusCreated)
 	})
 }
 
-func HandleGetOrder() http.Handler {
+func HandleGetOrder(orderBook *orderbook.OrderBook) http.Handler {
 	// To-do: Add authentication.
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		id := vars["orderID"]
-		// status := getOrderStatus(id)
-		status := "confirmed"
+		message := orderbook.Order(id)
+		if message.Order.Nonce == 0 {
+			panic(fmt.Sprintf("order id is invalid"))
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"id":     id,
-			"status": status,
-		})
+		if err := json.NewEncoder(w).Encode(message.Order); err != nil {
+			fmt.Sprintf("cannot encode object as json: %v", err)
+		}
 	})
 }
 
@@ -94,11 +99,20 @@ func HandleGetOrder() http.Handler {
 func DeleteOrderHandler(multiAddress *identity.MultiAddress, darkPools dark.Pools) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cancelOrder := HTTPDelete{}
-		err := json.NewDecoder(r.Body).Decode(&cancelOrder)
-		if err != nil {
-			panic(fmt.Sprintf("cannot decode json: %v", err))
+		if err := json.NewDecoder(r.Body).Decode(&cancelOrder); err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot decode json: %v", err))
 			return
 		}
-		CancelOrder(cancelOrder.ID, multiAddress, darkPools)
+		if err := CancelOrder(cancelOrder.ID, multiAddress, darkPools); err != nil {
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("error canceling orders : %v", err))
+			return
+		}
+		w.WriteHeader(http.StatusGone)
 	})
+}
+
+func writeError(w http.ResponseWriter, httpCode int, err string) {
+	w.WriteHeader(httpCode)
+	w.Write([]byte(err))
+	return
 }
