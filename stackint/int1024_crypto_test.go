@@ -14,8 +14,10 @@ var _ = Describe("Int1024 crypto utilities", func() {
 			Ω(FromBytes([]byte{01})).Should(Equal(FromUint(1)))
 			Ω(FromBytes([]byte{0xFF, 0xFF})).Should(Equal(FromUint(65535)))
 
-			for i := 1; i < 100; i++ {
+			// Test at least one case with bitlength % 8 = 0
+			for i := 1; i <= (1<<8 + 1); i++ {
 				max := FromUint(uint(i))
+
 				r, err := Random(rand.Reader, &max)
 				Ω(err).Should(BeNil())
 				Ω(r.LessThan(&max) && r.GreaterThanOrEqual(&zero)).Should(BeTrue())

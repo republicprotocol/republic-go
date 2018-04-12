@@ -1,6 +1,8 @@
 package stackint
 
-import "io"
+import (
+	"io"
+)
 
 // Random returns a new int1024 less than max (or equal if max is 0), filled from the io reader
 func Random(rand io.Reader, max *Int1024) (Int1024, error) {

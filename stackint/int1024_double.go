@@ -48,12 +48,17 @@ func (x *Int1024) MulModuloBig(y, n *Int1024) Int1024 {
 }
 
 // divDouble returns (x/y, x%y) for when x is a DoubleInt
+// Preconditions:
+//    len(v) >= 2,
 func (x *DoubleInt) divDouble(y *Int1024) (DoubleInt, DoubleInt) {
 
 	v := y.words
 	uIn := x.words
 
 	n := y.length
+	if n < 2 {
+		panic("y too small for divDouble")
+	}
 	m := x.length - n
 
 	var q [INT1024WORDS * 2]asm.Word
