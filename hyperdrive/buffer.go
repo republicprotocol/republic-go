@@ -2,7 +2,6 @@ package hyper
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 )
@@ -11,8 +10,6 @@ type HeightContext struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 }
-
-var HeightContexts = map[uint64]HeightContext{}
 
 type Buffer struct {
 	mu       *sync.RWMutex
@@ -38,13 +35,11 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 	go func() {
 		defer close(doneCh)
 		defer time.Sleep(10 * time.Second)
-		defer log.Println("Closing done channel")
 		for {
 			h := sb.ReadHeight()
 			select {
 			case proposal, ok := <-chanSetIn.Proposal:
 				if !ok {
-					log.Println("returning because of closed proposal channel")
 					return
 				}
 				if proposal.Height < h {
@@ -106,6 +101,9 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 
 func ConsumeBuffer(buffer Buffer, doneCh chan struct{}, validator Validator) ChannelSet {
 
+	HeightContextsMu := new(sync.RWMutex)
+	HeightContexts := map[uint64]HeightContext{}
+
 	sb := validator.SharedBlocks()
 	chanSetOut := EmptyChannelSet(validator.Threshold())
 	height := sb.ReadHeight()
@@ -115,12 +113,16 @@ func ConsumeBuffer(buffer Buffer, doneCh chan struct{}, validator Validator) Cha
 		ctx:    ctx,
 		cancel: cancel,
 	}
+	HeightContextsMu.Lock()
 	HeightContexts[height] = ictx
+	HeightContextsMu.Unlock()
 
-	buffer.mu.RLock()
-	log.Println("Start copying", height)
+	buffer.mu.Lock()
+	if _, ok := buffer.chanSets[height]; !ok {
+		buffer.chanSets[height] = EmptyChannelSet(validator.Threshold())
+	}
 	go chanSetOut.Copy(ctx, buffer.chanSets[0])
-	buffer.mu.RUnlock()
+	buffer.mu.Unlock()
 
 	go func() {
 		for {
@@ -142,14 +144,14 @@ func ConsumeBuffer(buffer Buffer, doneCh chan struct{}, validator Validator) Cha
 						cancel: cancel,
 					}
 
+					HeightContextsMu.Lock()
 					HeightContexts[newHeight] = hctx
 					if _, ok := HeightContexts[height]; ok {
-						log.Println("Stop copying", height)
 						HeightContexts[height].cancel()
 					}
+					HeightContextsMu.Unlock()
 
 					buffer.mu.RLock()
-					log.Println("Start copying", newHeight)
 					go chanSetOut.Copy(ctx, buffer.chanSets[newHeight])
 					buffer.mu.RUnlock()
 
