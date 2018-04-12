@@ -2,7 +2,8 @@ package darknode
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/darkocean"
@@ -15,7 +16,7 @@ type DarkNodes []DarkNode
 type DarkNode struct {
 	config           Config
 	darkNodeRegistry contracts.DarkNodeRegistry
-	ocean            *darkocean.Ocean
+	darkOcean        *darkocean.Ocean
 }
 
 func NewDarkNode(config Config) (DarkNode, error) {
@@ -33,27 +34,61 @@ func NewDarkNode(config Config) (DarkNode, error) {
 		return DarkNode{}, err
 	}
 
-	registry, err := contracts.NewDarkNodeRegistry(context.Background(), &client, transactOpts, &bind.CallOpts{})
+	darkNodeRegistry, err := contracts.NewDarkNodeRegistry(context.Background(), &client, transactOpts, &bind.CallOpts{})
 	if err != nil {
 		return DarkNode{}, err
 	}
-	ocean, err := darkocean.NewOcean(5, registry)
+	darkOcean, err := darkocean.NewOcean(darkNodeRegistry)
 	if err != nil {
 		return DarkNode{}, err
 	}
 	return DarkNode{
 		config:           config,
-		darkNodeRegistry: registry,
-		ocean:            ocean,
+		darkNodeRegistry: darkNodeRegistry,
+		darkOcean:        darkOcean,
 	}, nil
 }
 
-func (node *DarkNode) Ocean() darkocean.Ocean {
-	return *node.ocean
+func (node *DarkNode) Ocean() *darkocean.Ocean {
+	return node.darkOcean
 }
 
 func (node *DarkNode) Run(ctx context.Context) {
-	if err := node.ocean.Update(); err != nil {
-		log.Println("cannot update darkocean", err)
-	}
+	node.UpdateDarkOcean(ctx)
+}
+
+func (node *DarkNode) UpdateDarkOcean(ctx context.Context) <-chan error {
+	errCh := make(chan error)
+
+	go func() {
+		defer close(errCh)
+
+		minimumEpochIntervalBig, err := node.darkNodeRegistry.MinimumEpochInterval()
+		if err != nil {
+			errCh <- err
+			return
+		}
+		minimumEpochInterval, err := minimumEpochIntervalBig.ToUint()
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		t := time.NewTicker((time.Duration(minimumEpochInterval) / 24) * time.Second)
+		defer t.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				errCh <- ctx.Err()
+				return
+			case <-t.C:
+				if err := node.darkOcean.Update(); err != nil {
+					errCh <- fmt.Errorf("cannot update dark ocean: %v", err)
+				}
+			}
+		}
+	}()
+
+	return errCh
 }

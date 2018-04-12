@@ -224,7 +224,7 @@ func (darkNodeRegistry *DarkNodeRegistry) GetAllNodes() ([][]byte, error) {
 	return arr, nil
 }
 
-// MinimumBond gets the minimum viable bond amount
+// MinimumBond stored in the DarkNodeRegistry smart contract.
 func (darkNodeRegistry *DarkNodeRegistry) MinimumBond() (stackint.Int1024, error) {
 	bond, err := darkNodeRegistry.binding.MinimumBond(darkNodeRegistry.callOpts)
 	if err != nil {
@@ -233,13 +233,22 @@ func (darkNodeRegistry *DarkNodeRegistry) MinimumBond() (stackint.Int1024, error
 	return stackint.FromBigInt(bond)
 }
 
-// MinimumEpochInterval gets the minimum epoch interval
+// MinimumEpochInterval stored in the DarkNodeRegistry smart contract.
 func (darkNodeRegistry *DarkNodeRegistry) MinimumEpochInterval() (stackint.Int1024, error) {
 	interval, err := darkNodeRegistry.binding.MinimumEpochInterval(darkNodeRegistry.callOpts)
 	if err != nil {
 		return stackint.Int1024{}, err
 	}
 	return stackint.FromBigInt(interval)
+}
+
+// MinimumDarkPoolSize stored in the DarkNodeRegistry smart contract.
+func (darkNodeRegistry *DarkNodeRegistry) MinimumDarkPoolSize() (stackint.Int1024, error) {
+	darkPoolSize, err := darkNodeRegistry.binding.MinimumDarkPoolSize(darkNodeRegistry.callOpts)
+	if err != nil {
+		return stackint.Int1024{}, err
+	}
+	return stackint.FromBigInt(darkPoolSize)
 }
 
 // SetGasLimit sets the gas limit to use for transactions

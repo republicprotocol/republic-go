@@ -17,7 +17,6 @@ import (
 type Ocean struct {
 	do.GuardedObject
 
-	poolSize          int
 	pools             Pools
 	darkNodeRegistrar contracts.DarkNodeRegistry
 }
@@ -27,10 +26,9 @@ type Oceans []Ocean
 
 // NewOcean uses a DarkNodeRegistry to read all registered nodes and sort them
 // into Pools.
-func NewOcean(poolSize int, darkNodeRegistrar contracts.DarkNodeRegistry) (*Ocean, error) {
+func NewOcean(darkNodeRegistrar contracts.DarkNodeRegistry) (*Ocean, error) {
 	ocean := &Ocean{
 		GuardedObject:     do.NewGuardedObject(),
-		poolSize:          poolSize,
 		pools:             Pools{},
 		darkNodeRegistrar: darkNodeRegistrar,
 	}
@@ -79,7 +77,16 @@ func (ocean *Ocean) update() error {
 		return bytes.Compare(nodePositionHashes[i], nodePositionHashes[j]) < 0
 	})
 
-	numberOfPools := len(nodeIDs) / ocean.poolSize
+	minimumDarkPoolSizeBig, err := ocean.darkNodeRegistrar.MinimumDarkPoolSize()
+	if err != nil {
+		return fmt.Errorf("cannot get minimum dark pool size: %v", err)
+	}
+	minimumDarkPoolSize, err := minimumDarkPoolSizeBig.ToUint()
+	if err != nil {
+		return fmt.Errorf("cannot parse minimum dark pool size: %v", err)
+	}
+
+	numberOfPools := len(nodeIDs) / int(minimumDarkPoolSize)
 
 	pools := make(Pools, numberOfPools)
 	for i := range pools {
@@ -158,19 +165,15 @@ func (ocean *Ocean) GetPools() Pools {
 
 // Equal checks if two dark oceans have the same view.
 func (ocean *Ocean) Equal(other Ocean) bool {
-	if ocean.poolSize != other.poolSize {
+	if len(ocean.pools) != len(other.pools) {
 		return false
 	}
 
-	if len(ocean.pools) != len(other.pools){
-		return false
-	}
-
-	for _, pool := range  ocean.pools{
+	for _, pool := range ocean.pools {
 		has := false
-		for _ , otherPool := range other.pools{
-			if pool.Equal(otherPool){
-				has =true
+		for _, otherPool := range other.pools {
+			if pool.Equal(otherPool) {
+				has = true
 				break
 			}
 		}
