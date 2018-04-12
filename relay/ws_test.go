@@ -30,7 +30,7 @@ var _ = Describe("WebSocket streaming", func() {
 			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(true))
 		})
 
-		It("should be able to successfully read from socket with valid parameters", func() {
+		It("should be able to successfully connect to the socket with valid parameters", func() {
 			orderBook := orderbook.NewOrderBook(100)
 			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
 			u, _ := url.Parse(server.URL)
@@ -45,6 +45,25 @@ var _ = Describe("WebSocket streaming", func() {
 			// In this case the server is still open when we read, but the deadline
 			// times out due to not receiving a message, so we should not not have an
 			// unexpected close error.
+			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
+		})
+
+		It("should retrieve information about an order", func() {
+			orderBook := orderbook.NewOrderBook(100)
+			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
+			u, _ := url.Parse(server.URL)
+			u.Scheme = "ws"
+			u.Path = "orders"
+			u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM="
+
+			pools, trader := getPoolsAndTrader()
+			order := getFullOrder()
+			SendOrderToDarkOcean(order, &trader, pools)
+
+			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
+			_, _, err := conn.ReadMessage()
+
+			// To-do: Test the output of the message received.
 			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
 		})
 

@@ -31,7 +31,7 @@ func NewRouter() *mux.Router {
 	r := mux.NewRouter().StrictSlash(true)
 	// r.Methods("POST").Path("/orders").Handler(RecoveryHandler(PostOrdersHandler(*relay.multiAddress, *relay.darkPools)))
 	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(GetOrdersHandler(orderBook)))
-	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(HandleGetOrder(orderBook)))
+	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(GetOrderHandler(orderBook)))
 	// r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(DeleteOrderHandler(relay.multiAddress, *relay.darkPools)))
 	return r
 }

@@ -103,7 +103,7 @@ func (orderBook OrderBook) Settle(message *Message) error {
 	return orderBook.splitter.Send(message)
 }
 
-// Retrieve information regarding an order.
+// Order retrieves information regarding an order.
 func (orderBook OrderBook) Order(id order.ID) *Message {
 	return orderBook.orderBookCache.orders[string(id)]
 }

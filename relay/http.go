@@ -78,18 +78,19 @@ func PostOrdersHandler(multiAddress *identity.MultiAddress, darkPools dark.Pools
 	})
 }
 
-func HandleGetOrder(orderBook *orderbook.OrderBook) http.Handler {
+// GetOrderHandler handles all HTTP GET requests.
+func GetOrderHandler(orderBook *orderbook.OrderBook) http.Handler {
 	// To-do: Add authentication.
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		id := vars["orderID"]
-		message := orderbook.Order(id)
-		if message.Order.Nonce == 0 {
+		message := orderBook.Order([]byte(id))
+		if message == nil {
 			panic(fmt.Sprintf("order id is invalid"))
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(message.Order); err != nil {
+		if err := json.NewEncoder(w).Encode(message.Ord); err != nil {
 			fmt.Sprintf("cannot encode object as json: %v", err)
 		}
 	})

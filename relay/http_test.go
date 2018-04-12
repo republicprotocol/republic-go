@@ -123,7 +123,7 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("GET", "http://localhost/orders/vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.HandleGetOrder(orderBook))
+			handler := relay.RecoveryHandler(relay.GetOrderHandler(orderBook))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusOK))
@@ -136,7 +136,7 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("GET", "http://localhost/orders/test", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.HandleGetOrder(orderBook))
+			handler := relay.RecoveryHandler(relay.GetOrderHandler(orderBook))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusInternalServerError))
