@@ -53,7 +53,10 @@ var _ = Describe("Buffer", func() {
 			sb := NewSharedBlocks(0, 0)
 			validator, _ := NewTestValidator(sb, 100)
 			chanSetOut := ProcessBuffer(chanSetIn, validator)
+
+			counterMu := new(sync.RWMutex)
 			counter := map[uint64]uint64{}
+
 			var wg sync.WaitGroup
 
 			randcounter := map[int]int{}
@@ -68,8 +71,10 @@ var _ = Describe("Buffer", func() {
 				log.Println("Random Counter", randcounter[0], randcounter[1], randcounter[2], randcounter[3], randcounter[4], randcounter[0]+randcounter[1]+randcounter[2]+randcounter[3]+randcounter[4])
 			}
 
+			wg.Add(1)
 			go func() {
 				defer GinkgoRecover()
+				defer wg.Done()
 				defer log.Println("Channel closed")
 				for {
 					select {
@@ -77,14 +82,15 @@ var _ = Describe("Buffer", func() {
 						if !ok {
 							return
 						}
+						counterMu.Lock()
 						counter[proposal.Height]++
 						Ω(proposal.Height).Should(Equal(validator.SharedBlocks().ReadHeight()))
 						log.Println("Counter", counter[0], counter[1], counter[2], counter[3], counter[4], counter[0]+counter[1]+counter[2]+counter[3]+counter[4])
+						counterMu.Unlock()
 					}
 				}
 			}()
 
-			wg.Add(1)
 			go func() {
 				defer wg.Done()
 				defer GinkgoRecover()
@@ -97,7 +103,9 @@ var _ = Describe("Buffer", func() {
 
 			wg.Wait()
 
+			counterMu.RLock()
 			Ω(uint64(100)).Should(Equal(counter[0] + counter[1] + counter[2] + counter[3] + counter[4]))
+			counterMu.RUnlock()
 
 		})
 

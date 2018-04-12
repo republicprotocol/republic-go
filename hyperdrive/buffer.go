@@ -15,11 +15,17 @@ type HeightContext struct {
 var HeightContexts = map[uint64]HeightContext{}
 
 type Buffer struct {
-	mu       sync.RWMutex
+	mu       *sync.RWMutex
 	chanSets map[uint64]ChannelSet
 }
 
-func NewBuffer()
+func NewBuffer() Buffer {
+	return Buffer{
+		mu:       &sync.RWMutex{},
+		chanSets: map[uint64]ChannelSet{},
+	}
+}
+
 func ProcessBuffer(chanSetIn ChannelSet, validator Validator) ChannelSet {
 	buffer, doneCh := ProduceBuffer(chanSetIn, validator)
 	return ConsumeBuffer(buffer, doneCh, validator)
@@ -28,8 +34,7 @@ func ProcessBuffer(chanSetIn ChannelSet, validator Validator) ChannelSet {
 func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan struct{}) {
 	doneCh := make(chan struct{})
 	sb := validator.SharedBlocks()
-
-	buffer.Store
+	buffer := NewBuffer()
 	go func() {
 		defer close(doneCh)
 		defer time.Sleep(10 * time.Second)
@@ -45,10 +50,12 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 				if proposal.Height < h {
 					continue
 				}
-				if _, ok := buffer.proposals[h]; !ok {
-					buffer.proposals[h] = make(chan Proposal, validator.Threshold())
+				buffer.mu.Lock()
+				if _, ok := buffer.chanSets[proposal.Height]; !ok {
+					buffer.chanSets[proposal.Height] = EmptyChannelSet(validator.Threshold())
 				}
-				buffer.proposals[h] <- proposal
+				buffer.chanSets[proposal.Height].Proposal <- proposal
+				buffer.mu.Unlock()
 
 			case prepare, ok := <-chanSetIn.Prepare:
 				if !ok {
@@ -57,10 +64,12 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 				if prepare.Height < h {
 					continue
 				}
-				if _, ok := buffer.prepares[h]; !ok {
-					buffer.prepares[h] = make(chan Prepare, validator.Threshold())
+				buffer.mu.Lock()
+				if _, ok := buffer.chanSets[prepare.Height]; !ok {
+					buffer.chanSets[prepare.Height] = EmptyChannelSet(validator.Threshold())
 				}
-				buffer.prepares[h] <- prepare
+				buffer.chanSets[prepare.Height].Prepare <- prepare
+				buffer.mu.Unlock()
 
 			case commit, ok := <-chanSetIn.Commit:
 				if !ok {
@@ -69,10 +78,12 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 				if commit.Height < h {
 					continue
 				}
-				if _, ok := buffer.commits[h]; !ok {
-					buffer.commits[h] = make(chan Commit, validator.Threshold())
+				buffer.mu.Lock()
+				if _, ok := buffer.chanSets[commit.Height]; !ok {
+					buffer.chanSets[commit.Height] = EmptyChannelSet(validator.Threshold())
 				}
-				buffer.commits[h] <- commit
+				buffer.chanSets[commit.Height].Commit <- commit
+				buffer.mu.Unlock()
 
 			case fault, ok := <-chanSetIn.Fault:
 				if !ok {
@@ -81,10 +92,12 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 				if fault.Height < h {
 					continue
 				}
-				if _, ok := buffer.faults[h]; !ok {
-					buffer.faults[h] = make(chan Fault, validator.Threshold())
+				buffer.mu.Lock()
+				if _, ok := buffer.chanSets[fault.Height]; !ok {
+					buffer.chanSets[fault.Height] = EmptyChannelSet(validator.Threshold())
 				}
-				buffer.faults[h] <- fault
+				buffer.chanSets[fault.Height].Fault <- fault
+				buffer.mu.Unlock()
 			}
 		}
 	}()
@@ -97,10 +110,17 @@ func ConsumeBuffer(buffer Buffer, doneCh chan struct{}, validator Validator) Cha
 	chanSetOut := EmptyChannelSet(validator.Threshold())
 	height := sb.ReadHeight()
 
-	chanSetOut.Proposal = buffer.proposals[height]
-	chanSetOut.Prepare = buffer.prepares[height]
-	chanSetOut.Commit = buffer.commits[height]
-	chanSetOut.Fault = buffer.faults[height]
+	ctx, cancel := context.WithCancel(context.Background())
+	ictx := HeightContext{
+		ctx:    ctx,
+		cancel: cancel,
+	}
+	HeightContexts[height] = ictx
+
+	buffer.mu.RLock()
+	log.Println("Start copying", height)
+	go chanSetOut.Copy(ctx, buffer.chanSets[0])
+	buffer.mu.RUnlock()
 
 	go func() {
 		for {
@@ -111,7 +131,6 @@ func ConsumeBuffer(buffer Buffer, doneCh chan struct{}, validator Validator) Cha
 				}
 				return
 			default:
-
 				if height == sb.ReadHeight() {
 					continue
 				} else {
@@ -125,17 +144,19 @@ func ConsumeBuffer(buffer Buffer, doneCh chan struct{}, validator Validator) Cha
 
 					HeightContexts[newHeight] = hctx
 					if _, ok := HeightContexts[height]; ok {
+						log.Println("Stop copying", height)
 						HeightContexts[height].cancel()
 					}
 
-					chanSet := NewChannelSet(validator.Threshold(), buffer.proposals[newHeight], buffer.prepares[newHeight], buffer.commits[newHeight], buffer.faults[newHeight], make(chan Block, validator.Threshold()), make(chan error, validator.Threshold()))
-					go chanSetOut.Copy(ctx, chanSet)
+					buffer.mu.RLock()
+					log.Println("Start copying", newHeight)
+					go chanSetOut.Copy(ctx, buffer.chanSets[newHeight])
+					buffer.mu.RUnlock()
 
 					for i := height; i < newHeight; i++ {
-						delete(buffer.proposals, i)
-						delete(buffer.prepares, i)
-						delete(buffer.commits, i)
-						delete(buffer.faults, i)
+						buffer.mu.Lock()
+						delete(buffer.chanSets, i)
+						buffer.mu.Unlock()
 					}
 					height = newHeight
 				}
