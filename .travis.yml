@@ -26,5 +26,6 @@ script:
 
 after_success:
   - sed -i '/rpc.pb.go/d' coverprofile.out
-  - set -i '/bindings/d' coverprofile.out
+  - sed -i '/bindings/d' coverprofile.out
+  - sed -i '/cmd/d' coverprofile.out
   - goveralls -coverprofile=coverprofile.out -service=travis-ci -repotoken $COVERALLS_TOKEN
