@@ -40,12 +40,12 @@ func Start() *exec.Cmd {
 }
 
 // Connect to a local Ganache instance.
-func Connect(ganacheRPC string) (client.Connection, error) {
+func Connect(ganacheRPC string) (*client.Connection, error) {
 	ethclient, err := ethclient.Dial(ganacheRPC)
 	if err != nil {
-		return client.Connection{}, err
+		return nil, err
 	}
-	return client.Connection{
+	return &client.Connection{
 		Client:     ethclient,
 		DNRAddress: client.DarkNodeRegistryAddressOnGanache,
 		RenAddress: client.RepublicTokenAddressOnGanache,

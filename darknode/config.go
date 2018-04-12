@@ -1,11 +1,12 @@
 package darknode
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/republicprotocol/republic-go/ethereum/client"
 )
 
 // // Config contains all configuration details for running a DarkNode.
@@ -23,17 +24,17 @@ import (
 // }
 
 type Config struct {
-	Key            keystore.Key `json:"key"`
-	Host string `json:"host"`
-	Port string `json:"port"`
+	Key      *keystore.Key  `json:"key"`
+	Host     string         `json:"host"`
+	Port     string         `json:"port"`
 	Ethereum EthereumConfig `json:"ethereum"`
 }
 
 type EthereumConfig struct {
-	URI                     string `json:"uri"`
-	Network                 string `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
-	RepublicTokenAddress    string `json:"republicTokenAddress"`
-	DarkNodeRegistryAddress string `json:"darkNodeRegistryAddress"`
+	URI                     string         `json:"uri"`
+	Network                 client.Network `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
+	RepublicTokenAddress    common.Address `json:"republicTokenAddress"`
+	DarkNodeRegistryAddress common.Address `json:"darkNodeRegistryAddress"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config
@@ -53,15 +54,15 @@ func LoadConfig(filename string) (*Config, error) {
 
 func NewLocalConfig(key *keystore.Key, host, port string) Config {
 	return Config{
-		Key:         key,
-		Host:  host,
+		Key:  key,
+		Host: host,
 		Port: port,
 		Ethereum: EthereumConfig{
-			URI: "http://localhost:8545",
-			Network: client.NetworkGanache,
-			RepublicTokenAddress: client.RepublicTokenAddressOnGanache,
+			URI:                     "http://localhost:8545",
+			Network:                 client.NetworkGanache,
+			RepublicTokenAddress:    client.RepublicTokenAddressOnGanache,
 			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache,
-		}
+		},
 	}
 }
 

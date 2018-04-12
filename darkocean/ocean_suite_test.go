@@ -9,5 +9,5 @@ import (
 
 func TestDark(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Dark Suite")
+	RunSpecs(t, "Dark Ocean Suite")
 }

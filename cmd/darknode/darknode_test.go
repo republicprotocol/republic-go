@@ -1,97 +1,102 @@
 package main_test
 
 import (
-	"sync"
 	"context"
+	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/cmd/darknode"
 	"github.com/republicprotocol/republic-go/darknode"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/ethereum/ganache"
+	"github.com/republicprotocol/republic-go/rpc"
 )
 
-const ganacheRPC = "http://localhost:8545"
-const numberOfDarknodes = 48
-const numberOfBootstrapDarknodes = 5
+const GanacheRPC = "http://localhost:8545"
+const NumberOfDarkNodes = 48
+const NumberOfBootstrapDarkNodes = 5
 
-var _ = Describe("Darknode", func() {
+var _ = Describe("DarkNode", func() {
 
 	Context("when watching the ocean", func() {
 
-		var err error
 		var darkNodeRegistry contracts.DarkNodeRegistry
-		var darkNodes, ctxs, cancels darknode.Darknodes, []context.Context, []context.CancelFunc
+		var DarkNodes darknode.DarkNodes
+		var ctxs []context.Context
+		var cancels []context.CancelFunc
 		var shutdown chan struct{}
 
 		BeforeEach(func() {
 
 			// Bind to the DarkNodeRegistry contract
-			darkNodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), ganache.Connect(ganacheRPC), ganache.GenesisTransactor(), &bind.CallOpts{})
+			connection, err := ganache.Connect(GanacheRPC)
+			Ω(err).ShouldNot(HaveOccurred())
+			darkNodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), connection, ganache.GenesisTransactor(), &bind.CallOpts{})
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Create Darknodes and contexts/cancels for running them
-			darknodes, ctxs, cancels = NewLocalDarknodes()
+			// Create DarkNodes and contexts/cancels for running them
+			DarkNodes, ctxs, cancels = NewLocalDarkNodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
 			shutdown = make(chan struct{})
 
 			var wg sync.WaitGroup
-			wg.Add(len(darknodes))
+			wg.Add(len(DarkNodes))
 
-			for i := range darknodes {
+			for i := range DarkNodes {
 				go func(i int) {
 					defer wg.Done()
 
-					darknodes[i].Run(ctx[i])
+					DarkNodes[i].Run(ctxs[i])
 				}(i)
 			}
 			go func() {
 				defer close(shutdown)
-	
+
 				wg.Wait()
 			}()
 
-			// Wait for the Darknodes to boot
+			// Wait for the DarkNodes to boot
 			time.Sleep(time.Second)
 		})
 
 		AfterEach(func() {
 
-			// Wait for the Darknodes to shutdown
+			// Wait for the DarkNodes to shutdown
 			<-shutdown
 		})
 
 		It("should update local views of the ocean", func() {
 			numberOfEpochs := 2
-			oceans := make(darkocean.DarkOceans, numberOfDarknodes)
+			oceans := make(darkocean.Oceans, NumberOfDarkNodes)
 
 			for j := 0; j < numberOfEpochs; j++ {
 				// Store all DarkOceans before the turn of the epoch
-				for i := range darknodes {
-					oceans[i] = darknodes[i].DarkOcean()
+				for i := range DarkNodes {
+					oceans[i] = DarkNodes[i].Ocean
 				}
 
 				// Turn the epoch
 				_, err := darkNodeRegistry.Epoch()
 				Ω(err).ShouldNot(HaveOccurred())
 
-				// Wait for Darknodes to receive a notification and reconfigure
+				// Wait for DarkNodes to receive a notification and reconfigure
 				// themselves
 				time.Sleep(time.Second)
 
 				// Verify that all DarkOceans have changed
-				for i := range darknodes {
-					Ω(oceans[i].Equal(darknodes[i].DarkOcean())).Should(BeFalse())
+				for i := range DarkNodes {
+					Ω(oceans[i].Equal(DarkNodes[i].Ocean)).Should(BeFalse())
 				}
 			}
 
-			// Cancel all Darknodes
-			for i := range darknodes {
+			// Cancel all DarkNodes
+			for i := range DarkNodes {
 				cancels[i]()
 			}
+			pool := rpc.newClientPool
 		})
 
 		It("should converge on a global view of the ocean", func() {
@@ -100,18 +105,18 @@ var _ = Describe("Darknode", func() {
 			_, err := darkNodeRegistry.Epoch()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Wait for Darknodes to receive a notification and reconfigure
+			// Wait for DarkNodes to receive a notification and reconfigure
 			// themselves
 			time.Sleep(time.Second)
 
-			// Verify that all Darknodes have converged on the DarkOcean
-			ocean := darkocean.NewDarkOcean(darkNodeRegistry)
-			for i := range darknodes {
-				Ω(ocean.Equal(darknodes[i].DarkOcean())).Should(BeTrue())
+			// Verify that all DarkNodes have converged on the DarkOcean
+			ocean := darkocean.NewOcean(darkNodeRegistry)
+			for i := range DarkNodes {
+				Ω(ocean.Equal(DarkNodes[i].Ocean)).Should(BeTrue())
 			}
 
-			// Cancel all Darknodes
-			for i := range darknodes {
+			// Cancel all DarkNodes
+			for i := range DarkNodes {
 				cancels[i]()
 			}
 		})

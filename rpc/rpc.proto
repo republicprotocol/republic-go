@@ -174,3 +174,4 @@ message DeltaFragment {
   bytes minVolumeShare = 12;
 }
 
+service

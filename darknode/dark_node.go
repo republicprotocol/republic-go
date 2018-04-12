@@ -35,7 +35,7 @@ var primeVal, _ = stackint.FromString("17976931348623159077293051907890247336179
 var prime = &primeVal
 
 // The DarkNode internal state
-type DarkNode struct {
+type Darknode struct {
 	Config
 	identity.KeyPair
 	identity.ID
