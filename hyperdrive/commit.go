@@ -2,7 +2,6 @@ package hyper
 
 import (
 	"context"
-	"log"
 )
 
 type ThresholdSignature Signature
@@ -15,10 +14,10 @@ type Commit struct {
 }
 
 func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, validator Validator) (chan Commit, chan Block, chan Fault, chan error) {
-	blockCh := make(chan Block)
-	commitCh := make(chan Commit)
-	faultCh := make(chan Fault)
-	errCh := make(chan error)
+	blockCh := make(chan Block, validator.Threshold())
+	commitCh := make(chan Commit, validator.Threshold())
+	faultCh := make(chan Fault, validator.Threshold())
+	errCh := make(chan error, validator.Threshold())
 	blocks := validator.SharedBlocks()
 	threshold := validator.Threshold()
 	commits := map[[32]byte]uint8{}
@@ -33,7 +32,6 @@ func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, validator Vali
 				errCh <- ctx.Err()
 				return
 			case commit, ok := <-commitChIn:
-				log.Println("Reading commits")
 				if !ok {
 					return
 				}
@@ -48,6 +46,9 @@ func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, validator Vali
 				} else {
 					if validator.ValidateCommit(commit) {
 						commits[h]++
+						if len(commitCh) == int(validator.Threshold()) {
+							continue
+						}
 						commitCh <- Commit{
 							Rank:               commit.Rank,
 							Height:             commit.Height,
