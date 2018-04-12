@@ -16,6 +16,7 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
+// GetOrdersHandler handles WebSocket requests.
 func GetOrdersHandler(orderBook *orderbook.OrderBook) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -28,11 +29,11 @@ func GetOrdersHandler(orderBook *orderbook.OrderBook) http.Handler {
 	})
 }
 
-// Notifies client if status of specified order has changed.
+// streamOrders notifies client if status of specified order has changed.
 func streamOrders(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, orderBook *orderbook.OrderBook) {
 	// Retrieve ID from URL.
 	orderID := r.FormValue("id")
-	if (orderID == "") {
+	if orderID == "" {
 		return
 	}
 
