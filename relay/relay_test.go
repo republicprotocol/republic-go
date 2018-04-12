@@ -1,7 +1,6 @@
 package relay_test
 
 import (
-	"log"
 	"errors"
 	"fmt"
 	"sync"
@@ -12,21 +11,24 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
-	"github.com/republicprotocol/republic-go/dark"
 	"github.com/republicprotocol/republic-go/dark-node"
-	"github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/republic-go/dark"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/republicprotocol/republic-go/stackint"
-	. "github.com/republicprotocol/republic-go/relay"
 	"github.com/republicprotocol/republic-go/order"
+	. "github.com/republicprotocol/republic-go/relay"
+	"github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 var dnrOuterLock = new(sync.Mutex)
 var dnrInnerLock = new(sync.Mutex)
+
 var epochDNR dnr.DarkNodeRegistry
 var nodes []*node.DarkNode
+
 var Prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+
 var _ = BeforeSuite(func() {
 	var err error
 	epochDNR, err = dnr.TestnetDNR(nil)
@@ -60,64 +62,50 @@ var _ = Describe("Relay", func() {
 	Context("when sending full orders", func() {
 
 		It("should not return an error", func() {
-			sendOrder := GetFullOrder()
+			pools, trader := getPoolsAndTrader()
 
-			trader, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			pools := GetPools(epochDNR)
+			sendOrder := getFullOrder()
 
 			err = SendOrderToDarkOcean(sendOrder, &trader, pools)
-
 			Ω(err).ShouldNot(HaveOccurred())
-			log.Println("1.1")
 		})
 	})
+
 	Context("when sending fragmented orders that do not have sufficient fragments", func() {
 
-		It("", func() {
-			sendOrder := GetFragmentedOrder()
+		It("should return an error", func() {
+			pools, trader := getPoolsAndTrader()
 
-			trader, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			pools := GetPools(epochDNR)
+			sendOrder := getFragmentedOrder()
 
 			err = SendOrderFragmentsToDarkOcean(sendOrder, &trader, pools)
 			Ω(err).Should(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("number of fragments do not match pool size"))
-			log.Println("1.2")
 		})
 	})
+
 	Context("when sending fragmented orders that have sufficient fragments for atleast one dark pool", func() {
 
-		It("", func() {
-			trader, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			pools := GetPools(epochDNR)
+		It("should not return an error", func() {
+			pools, trader := getPoolsAndTrader()
 
 			sendOrder, err := generateFragmentedOrderForDarkPool(pools[0])
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = SendOrderFragmentsToDarkOcean(sendOrder, &trader, pools)
 			Ω(err).ShouldNot(HaveOccurred())
-			log.Println("1.3")
 		})
 	})
+
 	Context("when canceling orders", func() {
 
 		It("should not return an error", func() {
+			pools, trader := getPoolsAndTrader()
+			
 			orderID := []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
-
-			trader, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			pools := GetPools(epochDNR)
 
 			err = CancelOrder(orderID, &trader, pools)
 			Ω(err).ShouldNot(HaveOccurred())
-			log.Println("1.4")
 		})
 	})
 })
@@ -245,23 +233,76 @@ func stopNodes(nodes []*node.DarkNode) {
 	}
 }
 
-func generateFragmentPoolID(pool *dark.Pool) []byte {
-	var id identity.ID
-	pool.For(func(n *dark.Node) {
-		id = append(id, []byte(n.ID.String())...)
-	})
-	return crypto.Keccak256(id)
+// getPools return dark pools from a mock dnr
+func getPools(dnr dnr.DarkNodeRegistry) dark.Pools {
+	log, err := logger.NewLogger(logger.Options{})
+	if err != nil {
+		panic(fmt.Sprintf("cannot get logger: %v", err))
+	}
+
+	ocean, err := dark.NewOcean(log, 5, dnr)
+	if err != nil {
+		panic(fmt.Sprintf("cannot get dark ocean: %v", err))
+	}
+	return ocean.GetPools()
+}
+
+func getFullOrder() order.Order {
+	fullOrder := order.Order{}
+
+	defaultStackVal, _ := stackint.FromString("179761232312312")
+
+	fullOrder.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
+	fullOrder.Type = 2
+	fullOrder.Parity = 1
+	fullOrder.Expiry = time.Time{}
+	fullOrder.FstCode = order.CurrencyCodeETH
+	fullOrder.SndCode = order.CurrencyCodeBTC
+	fullOrder.Price = &defaultStackVal
+	fullOrder.MaxVolume = &defaultStackVal
+	fullOrder.MinVolume = &defaultStackVal
+	fullOrder.Nonce = &defaultStackVal
+	return fullOrder
+}
+
+func getFragmentedOrder() Fragments {
+	defaultStackVal, _ := stackint.FromString("179761232312312")
+
+	fragmentedOrder := Fragments{}
+	fragmentSet := map[string][]*order.Fragment{}
+	fragments := []*order.Fragment{}
+
+	var err error
+	fragments, err = order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, &defaultStackVal, &defaultStackVal, &defaultStackVal, &defaultStackVal).Split(2, 1, &Prime)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	fragmentSet["vrZhWU3VV9LRIM="] = fragments
+
+	fragmentedOrder.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
+	fragmentedOrder.Type = 2
+	fragmentedOrder.Parity = 1
+	fragmentedOrder.Expiry = time.Time{}
+	fragmentedOrder.DarkPools = fragmentSet
+
+	return fragmentedOrder
 }
 
 func generateFragmentedOrderForDarkPool(pool *dark.Pool) (Fragments, error) {
-	sendOrder := GetFullOrder()
+	sendOrder := getFullOrder()
 	fragments, err := sendOrder.Split(int64(pool.Size()), int64(pool.Size()*2/3), &Prime)
 	if err != nil {
 		return Fragments{}, err
 	}
 	fragmentSet := map[string][]*order.Fragment{}
-	fragmentOrder := GetFragmentedOrder()
+	fragmentOrder := getFragmentedOrder()
 	fragmentSet[GeneratePoolID(pool)] = fragments
 	fragmentOrder.DarkPools = fragmentSet
 	return fragmentOrder, nil
+}
+
+func getPoolsAndTrader()(dark.Pools, identity.MultiAddress) {
+	trader, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	return getPools(epochDNR), trader
 }

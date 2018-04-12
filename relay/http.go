@@ -26,12 +26,6 @@ type HTTPDelete struct {
 	ID                  order.ID                      `json:"id"`
 }
 
-// // Fragments will store a list of Fragments with their order details
-// type Fragments struct {
-// 	DarkPool            []byte            `json:"darkPool"`
-// 	Fragment            []*order.Fragment `json:"fragment"`
-// }
-
 // Fragments will store a list of Fragment Sets with their order details
 type Fragments struct {
 	Signature           []byte                         `json:"signature"`
@@ -49,8 +43,7 @@ func RecoveryHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if r := recover(); r != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("%v", r)))
+				writeError(w, http.StatusInternalServerError, fmt.Sprintf("%v", r))
 			}
 		}()
 		h.ServeHTTP(w, r)
@@ -106,13 +99,11 @@ func DeleteOrderHandler(multiAddress *identity.MultiAddress, darkPools dark.Pool
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cancelOrder := HTTPDelete{}
 		if err := json.NewDecoder(r.Body).Decode(&cancelOrder); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(fmt.Sprintf("cannot decode json: %v", err)))
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot decode json: %v", err))
 			return
 		}
 		if err := CancelOrder(cancelOrder.ID, multiAddress, darkPools); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("error canceling orders : %v", err)))
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("error canceling orders : %v", err))
 			return
 		}
 		w.WriteHeader(http.StatusGone)
