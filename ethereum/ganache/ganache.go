@@ -144,7 +144,7 @@ func deployRepublicToken(ctx context.Context, conn client.Connection, auth *bind
 func deployDarkNodeRegistry(ctx context.Context, conn client.Connection, auth *bind.TransactOpts, republicTokenAddress common.Address) (*bindings.DarkNodeRegistry, common.Address, error) {
 	// 0 REN
 	minimumBond := big.NewInt(0)
-	// 1 minute
+	// 1 second
 	minimumEpochInterval := big.NewInt(1)
 	// 24 Darknode in a pool
 	minimumPoolSize := big.NewInt(24)

@@ -1,8 +1,10 @@
 package darknode
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -49,12 +51,15 @@ func NewDarkNode(config Config) (DarkNode, error) {
 	}, nil
 }
 
-func (node *DarkNode) Ocean() *darkocean.Ocean {
-	return node.darkOcean
+func (node *DarkNode) Run(ctx context.Context) {
+	errCh := node.UpdateDarkOcean(ctx)
+	for err := range errCh {
+		log.Println(err)
+	}
 }
 
-func (node *DarkNode) Run(ctx context.Context) {
-	node.UpdateDarkOcean(ctx)
+func (node *DarkNode) DarkOcean() *darkocean.Ocean {
+	return node.darkOcean
 }
 
 func (node *DarkNode) UpdateDarkOcean(ctx context.Context) <-chan error {
@@ -63,6 +68,11 @@ func (node *DarkNode) UpdateDarkOcean(ctx context.Context) <-chan error {
 	go func() {
 		defer close(errCh)
 
+		epoch, err := node.darkNodeRegistry.CurrentEpoch()
+		if err != nil {
+			errCh <- err
+			return
+		}
 		minimumEpochIntervalBig, err := node.darkNodeRegistry.MinimumEpochInterval()
 		if err != nil {
 			errCh <- err
@@ -74,7 +84,7 @@ func (node *DarkNode) UpdateDarkOcean(ctx context.Context) <-chan error {
 			return
 		}
 
-		t := time.NewTicker((time.Duration(minimumEpochInterval) / 24) * time.Second)
+		t := time.NewTicker(time.Duration(minimumEpochInterval*1000/24) * time.Millisecond)
 		defer t.Stop()
 
 		for {
@@ -83,6 +93,15 @@ func (node *DarkNode) UpdateDarkOcean(ctx context.Context) <-chan error {
 				errCh <- ctx.Err()
 				return
 			case <-t.C:
+				nextEpoch, err := node.darkNodeRegistry.CurrentEpoch()
+				if err != nil {
+					errCh <- err
+					continue
+				}
+				if bytes.Equal(epoch.Blockhash[:], nextEpoch.Blockhash[:]) {
+					continue
+				}
+				epoch = nextEpoch
 				if err := node.darkOcean.Update(); err != nil {
 					errCh <- fmt.Errorf("cannot update dark ocean: %v", err)
 				}

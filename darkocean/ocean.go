@@ -164,7 +164,7 @@ func (ocean *Ocean) GetPools() Pools {
 }
 
 // Equal checks if two dark oceans have the same view.
-func (ocean *Ocean) Equal(other Ocean) bool {
+func (ocean *Ocean) Equal(other *Ocean) bool {
 	if len(ocean.pools) != len(other.pools) {
 		return false
 	}

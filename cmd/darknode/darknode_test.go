@@ -27,7 +27,7 @@ var _ = Describe("DarkNode", func() {
 	Context("when watching the ocean", func() {
 
 		var darkNodeRegistry contracts.DarkNodeRegistry
-		var DarkNodes darknode.DarkNodes
+		var darkNodes darknode.DarkNodes
 		var ctxs []context.Context
 		var cancels []context.CancelFunc
 		var shutdown chan struct{}
@@ -39,19 +39,20 @@ var _ = Describe("DarkNode", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			darkNodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), connection, ganache.GenesisTransactor(), &bind.CallOpts{})
 			Ω(err).ShouldNot(HaveOccurred())
+			darkNodeRegistry.SetGasLimit(1000000)
 
 			// Create DarkNodes and contexts/cancels for running them
-			DarkNodes, ctxs, cancels = NewLocalDarkNodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
+			darkNodes, ctxs, cancels = NewLocalDarkNodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
 
 			shutdown = make(chan struct{})
 
 			var wg sync.WaitGroup
-			wg.Add(len(DarkNodes))
-			for i := range DarkNodes {
+			wg.Add(len(darkNodes))
+			for i := range darkNodes {
 				go func(i int) {
 					defer wg.Done()
 
-					DarkNodes[i].Run(ctxs[i])
+					darkNodes[i].Run(ctxs[i])
 				}(i)
 			}
 
@@ -71,38 +72,6 @@ var _ = Describe("DarkNode", func() {
 			<-shutdown
 		})
 
-		It("should update local views of the ocean", func() {
-			numberOfEpochs := 2
-			oceans := make(darkocean.Oceans, NumberOfDarkNodes)
-
-			By("start calling epoch")
-			for j := 0; j < numberOfEpochs; j++ {
-				// Store all DarkOceans before the turn of the epoch
-				for i := range DarkNodes {
-					oceans[i] = DarkNodes[i].Ocean()
-				}
-
-				// Turn the epoch
-				_, err := darkNodeRegistry.Epoch()
-				Ω(err).ShouldNot(HaveOccurred())
-
-				// Wait for DarkNodes to receive a notification and reconfigure
-				// themselves
-				time.Sleep(time.Second)
-
-				// Verify that all DarkOceans have changed
-				for i := range DarkNodes {
-					Ω(oceans[i].Equal(DarkNodes[i].Ocean())).Should(BeFalse())
-				}
-			}
-
-			By("stop all the nodes")
-			// Cancel all DarkNodes
-			for i := range DarkNodes {
-				cancels[i]()
-			}
-		})
-
 		It("should converge on a global view of the ocean", func() {
 
 			// Turn the epoch
@@ -114,14 +83,14 @@ var _ = Describe("DarkNode", func() {
 			time.Sleep(time.Second)
 
 			// Verify that all DarkNodes have converged on the DarkOcean
-			ocean, err := darkocean.NewOcean(PoolSize, darkNodeRegistry)
+			ocean, err := darkocean.NewOcean(darkNodeRegistry)
 			Ω(err).ShouldNot(HaveOccurred())
-			for i := range DarkNodes {
-				Ω(ocean.Equal(DarkNodes[i].Ocean())).Should(BeTrue())
+			for i := range darkNodes {
+				Ω(ocean.Equal(darkNodes[i].DarkOcean())).Should(BeTrue())
 			}
 
 			// Cancel all DarkNodes
-			for i := range DarkNodes {
+			for i := range darkNodes {
 				cancels[i]()
 			}
 		})
