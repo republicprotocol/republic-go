@@ -1,89 +1,88 @@
 package hyper_test
 
-// import (
-// 	"context"
-// 	"sync"
+import (
+	"context"
+	"strconv"
+	"sync"
 
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// 	. "github.com/republicprotocol/republic-go/hyperdrive"
-// )
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	. "github.com/republicprotocol/republic-go/hyperdrive"
+)
 
-// var _ = Describe("Preparations", func() {
+var _ = Describe("Preparations", func() {
 
-// 	blocks := NewSharedBlocks(1, 1)
-// 	validator, _ := NewTestValidator(blocks, uint8(4))
+	blocks := NewSharedBlocks(1, 1)
+	validator, _ := NewTestValidator(blocks, uint8(4))
 
-// 	Context("when processing prepares", func() {
+	Context("when processing prepares", func() {
 
-// 		It("should return errors on shutdown", func() {
-// 			ctx, cancel := context.WithCancel(context.Background())
-// 			prepareChIn := make(chan Prepare)
+		It("should return errors on shutdown", func() {
+			ctx, cancel := context.WithCancel(context.Background())
+			prepareChIn := make(chan Prepare)
 
-// 			_, _, errCh := ProcessPreparation(ctx, prepareChIn, validator)
+			_, _, errCh := ProcessPreparation(ctx, prepareChIn, validator)
 
-// 			var wg sync.WaitGroup
-// 			wg.Add(1)
-// 			go func() {
-// 				defer wg.Done()
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 
-// 				for err := range errCh {
-// 					Ω(err).Should(HaveOccurred())
-// 					Ω(err).Should(Equal(context.Canceled))
-// 				}
-// 			}()
+				for err := range errCh {
+					Ω(err).Should(HaveOccurred())
+					Ω(err).Should(Equal(context.Canceled))
+				}
+			}()
 
-// 			cancel()
-// 			wg.Wait()
-// 		})
+			cancel()
+			wg.Wait()
+		})
 
-// 		It("should return commit after processing a threshold number of prepares", func() {
-// 			ctx, cancel := context.WithCancel(context.Background())
-// 			prepareChIn := make(chan Prepare)
-// 			commitCh, _, errCh := ProcessPreparation(ctx, prepareChIn, validator)
+		It("should return commit after processing a threshold number of prepares", func() {
+			ctx, cancel := context.WithCancel(context.Background())
+			prepareChIn := make(chan Prepare)
+			commitCh, _, errCh := ProcessPreparation(ctx, prepareChIn, validator)
 
-// 			var wg sync.WaitGroup
-// 			wg.Add(1)
-// 			go func() {
-// 				defer wg.Done()
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 
-// 				for {
-// 					select {
-// 					case err := <-errCh:
-// 						Ω(err).Should(HaveOccurred())
-// 						Ω(err).Should(Equal(context.Canceled))
-// 						return
-// 					case commit, ok := <-commitCh:
-// 						if !ok {
-// 							return
-// 						}
-// 						Ω(commit.Rank).Should(Equal(Rank(1)))
-// 						Ω(commit.Height).Should(Equal(Height(1)))
-// 						Ω(commit.Block).Should(Equal(Block{
-// 							Tuples{},
-// 							Signature(validator.Sign()),
-// 						}))
-// 						Ω(commit.Signature).Should(Equal(validator.Sign()))
-// 						Ω(commit.ThresholdSignature).Should(Equal(ThresholdSignature("Threshold_BLS")))
-// 						cancel()
-// 					}
-// 				}
-// 			}()
+				for {
+					select {
+					case err := <-errCh:
+						Ω(err).Should(HaveOccurred())
+						Ω(err).Should(Equal(context.Canceled))
+						return
+					case commit, ok := <-commitCh:
+						if !ok {
+							return
+						}
+						Ω(commit.Rank).Should(Equal(Rank(1)))
+						Ω(commit.Height).Should(Equal(uint64(1)))
+						Ω(commit.Block).Should(Equal(Block{
+							Tuples{},
+							Signature("Proposer"),
+						}))
+						Ω(commit.ThresholdSignature).Should(Equal(ThresholdSignature("Threshold_BLS")))
+						cancel()
+					}
+				}
+			}()
 
-// 			for i := uint8(0); i < validator.Threshold(); i++ {
-// 				sender, _ := NewTestValidator()
-// 				prepare := Prepare{
-// 					Signature(sender.ID().String()),
-// 					Block{
-// 						Tuples{},
-// 						Signature(proposer.ID().String()),
-// 					},
-// 					Rank(1),
-// 					Height(1),
-// 				}
-// 				prepareChIn <- prepare
-// 			}
-// 			wg.Wait()
-// 		})
-// 	})
-// })
+			for i := uint8(0); i < validator.Threshold(); i++ {
+				prepare := Prepare{
+					Signature("Signature of " + strconv.Itoa(int(i))),
+					Block{
+						Tuples{},
+						Signature("Proposer"),
+					},
+					Rank(1),
+					uint64(1),
+				}
+				prepareChIn <- prepare
+			}
+			wg.Wait()
+		})
+	})
+})
