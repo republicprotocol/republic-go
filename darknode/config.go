@@ -16,7 +16,7 @@ type Config struct {
 }
 
 type EthereumConfig struct {
-	URI                     string         `json:"uri"`
+	URI                     string `json:"uri"`
 	Network                 client.Network `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
 	RepublicTokenAddress    string `json:"republicTokenAddress"`
 	DarkNodeRegistryAddress string `json:"darkNodeRegistryAddress"`
@@ -45,8 +45,8 @@ func NewLocalConfig(key *keystore.Key, host, port string) Config {
 		Ethereum: EthereumConfig{
 			URI:                     "http://localhost:8545",
 			Network:                 client.NetworkGanache,
-			RepublicTokenAddress:    client.RepublicTokenAddressOnGanache.Str(),
-			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.Str(),
+			RepublicTokenAddress:    client.RepublicTokenAddressOnGanache.String(),
+			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.String(),
 		},
 	}
 }

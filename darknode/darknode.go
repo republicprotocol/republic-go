@@ -21,9 +21,10 @@ func NewDarkNode(config Config) (DarkNode, error) {
 
 	// Connect to Ethereum
 	transactOpts := bind.NewKeyedTransactor(config.Key.PrivateKey)
+	//log.Println("config is : ", config.Ethereum.URI, config.Ethereum.Network, config.Ethereum.RepublicTokenAddress, config.Ethereum.DarkNodeRegistryAddress)
 	client, err := client.Connect(
 		config.Ethereum.URI,
-		config.Ethereum.Network,
+		client.Network(config.Ethereum.Network),
 		config.Ethereum.RepublicTokenAddress,
 		config.Ethereum.DarkNodeRegistryAddress,
 	)

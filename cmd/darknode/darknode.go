@@ -20,6 +20,7 @@ func NewLocalDarkNodes(numberOfDarkNodes, numberOfBootstrapDarkNodes int) (darkn
 	for i := 0; i < numberOfDarkNodes + numberOfBootstrapDarkNodes; i++ {
 		key := keystore.NewKeyForDirectICAP(rand.Reader)
 		darkNodes[i] = NewLocalDarkNode(key, "127.0.0.1", fmt.Sprintf("%d", 3000+i))
+
 		ctxs[i], cancels[i] = context.WithCancel(context.Background())
 	}
 	return darkNodes, ctxs, cancels
@@ -29,7 +30,8 @@ func NewLocalDarkNode(key *keystore.Key, host, port string) darknode.DarkNode {
 	config := darknode.NewLocalConfig(key, host, port)
 	node , err := darknode.NewDarkNode(config)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("fail to create new dark node,", err)
+		return darknode.DarkNode{}
 	}
 	return node
 }

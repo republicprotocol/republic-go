@@ -42,6 +42,7 @@ var _ = Describe("DarkNode", func() {
 
 			// Create DarkNodes and contexts/cancels for running them
 			DarkNodes, ctxs, cancels = NewLocalDarkNodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
+
 			shutdown = make(chan struct{})
 
 			var wg sync.WaitGroup
@@ -59,7 +60,6 @@ var _ = Describe("DarkNode", func() {
 
 				wg.Wait()
 			}()
-
 			// Wait for the DarkNodes to boot
 			time.Sleep(time.Second)
 		})
