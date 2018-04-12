@@ -301,7 +301,8 @@ func generateFragmentedOrderForDarkPool(pool *dark.Pool) (Fragments, error) {
 }
 
 func getPoolsAndTrader()(dark.Pools, identity.MultiAddress) {
-	trader, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+	// trader, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+	trader, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	return getPools(epochDNR), trader
