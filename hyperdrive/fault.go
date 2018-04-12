@@ -1,6 +1,8 @@
 package hyper
 
-import "context"
+import (
+	"context"
+)
 
 type Fault struct {
 	Rank
@@ -9,8 +11,8 @@ type Fault struct {
 }
 
 func ProcessFault(ctx context.Context, faultChIn chan Fault, validator Validator) (chan Fault, chan error) {
-	faultCh := make(chan Fault)
-	errCh := make(chan error)
+	faultCh := make(chan Fault, validator.Threshold())
+	errCh := make(chan error, validator.Threshold())
 	faults := map[[32]byte]uint8{}
 	certified := map[[32]byte]bool{}
 
@@ -40,6 +42,7 @@ func ProcessFault(ctx context.Context, faultChIn chan Fault, validator Validator
 						fault.Height,
 						validator.Sign(),
 					}
+					faults[h]++
 				}
 			}
 		}
