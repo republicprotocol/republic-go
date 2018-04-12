@@ -12,7 +12,10 @@ type Signer interface {
 }
 
 type Signature string
-
+type Block struct {
+	Tuples
+	Signature
+}
 type Proposal struct {
 	Signature
 	Block
@@ -37,7 +40,6 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, validato
 				errCh <- ctx.Err()
 				return
 			case proposal, ok := <-proposalChIn:
-				// log.Println("Successfully reading proposals from channels")
 				counter++
 				if !ok {
 					return
