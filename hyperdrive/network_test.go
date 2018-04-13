@@ -10,13 +10,15 @@ import (
 )
 
 type TestNetwork struct {
+	ctx            context.Context
 	commanderCount uint8
 	Ingress        []ChannelSet
 	Egress         []ChannelSet
 }
 
-func NewTestNetwork(commanderCount uint8) *TestNetwork {
+func NewTestNetwork(ctx context.Context, commanderCount uint8) *TestNetwork {
 	return &TestNetwork{
+		ctx:            ctx,
 		commanderCount: commanderCount,
 		Ingress:        make([]ChannelSet, commanderCount),
 		Egress:         make([]ChannelSet, commanderCount),
@@ -25,18 +27,18 @@ func NewTestNetwork(commanderCount uint8) *TestNetwork {
 
 func (t *TestNetwork) init() {
 	for i := uint8(0); i < t.commanderCount; i++ {
-		t.Ingress[i] = EmptyChannelSet(t.commanderCount)
-		t.Egress[i] = EmptyChannelSet(t.commanderCount)
+		t.Ingress[i] = EmptyChannelSet(t.ctx, t.commanderCount)
+		t.Egress[i] = EmptyChannelSet(t.ctx, t.commanderCount)
 	}
 }
 
-func (t *TestNetwork) run(ctx context.Context) {
+func (t *TestNetwork) run() {
 	var wg sync.WaitGroup
 	for i := uint8(0); i < t.commanderCount; i++ {
 		wg.Add(1)
 		go func(i uint8) {
 			defer wg.Done()
-			t.Egress[i].Split(ctx, t.Ingress)
+			t.Egress[i].Split(t.Ingress)
 		}(i)
 	}
 	wg.Wait()
@@ -45,28 +47,30 @@ func (t *TestNetwork) run(ctx context.Context) {
 var _ = Describe("Network", func() {
 
 	Context("Test Network", func() {
-		testnet := NewTestNetwork(100)
+
 		It("Start and stop a network", func() {
-			var wg sync.WaitGroup
 			ctx, cancel := context.WithCancel(context.Background())
+			testnet := NewTestNetwork(ctx, 100)
+			var wg sync.WaitGroup
 			testnet.init()
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				testnet.run(ctx)
+				testnet.run()
 			}()
 			cancel()
 			wg.Wait()
 		})
 
 		It("Broadcasting a proposal on the network", func() {
-			var wg sync.WaitGroup
 			ctx, cancel := context.WithCancel(context.Background())
+			testnet := NewTestNetwork(ctx, 100)
+			var wg sync.WaitGroup
 			testnet.init()
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				testnet.run(ctx)
+				testnet.run()
 			}()
 
 			go func() {
