@@ -112,7 +112,7 @@ func (node *DarkNode) DarkOcean() *darkocean.Ocean {
 }
 
 func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
-	log.Printf( "order %s received from the %s", orderFragment.ID.String(), from.ID().String())
+	log.Printf( "order %s received from the %s", orderFragment.OrderID.String(), from.ID().String())
 }
 
 func (node *DarkNode) UpdateDarkOcean(ctx context.Context) <-chan error {
