@@ -170,8 +170,10 @@ func FaultHash(f Fault) [32]byte {
 }
 
 func BlockHash(b Block) [32]byte {
-	var blockBuffer bytes.Buffer
-	binary.Write(&blockBuffer, binary.BigEndian, b.Tuples)
-	log.Println(blockBuffer)
-	return sha3.Sum256(blockBuffer.Bytes())
+	blockBuffer := new(bytes.Buffer)
+	for i := range b.Tuples {
+		binary.Write(blockBuffer, binary.BigEndian, b.Tuples[i].ID)
+	}
+	// log.Println("--------------------------------------", blockBuffer.Bytes())
+	return b.Tuples[0].ID
 }

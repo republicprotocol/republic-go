@@ -2,7 +2,6 @@ package hyper
 
 import (
 	"context"
-	"log"
 	"sync"
 
 	"golang.org/x/crypto/sha3"
@@ -71,7 +70,7 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 					buffer.HeightContextsMu.Unlock()
 					buffer.chanSets[proposal.Height] = EmptyChannelSet(ctx, validator.Threshold())
 				}
-				log.Println("proposal", validator.Sign(), proposal.Height)
+				// log.Println("proposal", validator.Sign(), proposal.Height)
 				buffer.chanSets[proposal.Height].Proposal <- proposal
 				duplicateProposals[proposalID] = true
 				buffer.channelSetsMu.Unlock()

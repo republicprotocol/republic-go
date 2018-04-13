@@ -77,7 +77,7 @@ var _ = Describe("Hyperdrive", func() {
 				go func(i uint8) {
 					defer wg.Done()
 					_ = <-egress[i].Block
-					log.Println("Block recieved on", i)
+					// log.Println("Block recieved on", i)
 				}(i)
 			}
 
@@ -90,6 +90,8 @@ var _ = Describe("Hyperdrive", func() {
 
 		FIt("Achieves consensus 50 blocks over 240 commanders with 2/3 threshold", func() {
 			ctx, cancel := context.WithCancel(context.Background())
+
+			Blocks := 10
 
 			// Network
 			ingress := make([]ChannelSet, commanderCount)
@@ -126,7 +128,7 @@ var _ = Describe("Hyperdrive", func() {
 			// Broadcast proposal to all the nodes
 			go func() {
 				defer log.Println("Broadcasted the proposals")
-				for i := 0; i < 10; i++ {
+				for i := 0; i < Blocks; i++ {
 					block := Block{
 						Tuples{
 							Tuple{
@@ -135,9 +137,7 @@ var _ = Describe("Hyperdrive", func() {
 						},
 						Signature("Proposal"),
 					}
-					log.Println("These should be different", block, BlockHash(block))
 					for j := 0; j < len(replicas); j++ {
-						log.Println("sending to node no.", j)
 						ingress[j].Proposal <- Proposal{
 							Signature("Proposal"),
 							block,
@@ -155,7 +155,7 @@ var _ = Describe("Hyperdrive", func() {
 				wg.Add(1)
 				go func(i uint8) {
 					defer wg.Done()
-					for j, _ := range replicas {
+					for j := 0; j < Blocks; j++ {
 						_ = <-egress[i].Block
 						log.Println("Received blocks no", j, "on", i)
 					}
