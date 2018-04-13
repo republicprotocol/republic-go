@@ -8,7 +8,7 @@ import (
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/network/dht"
+	"github.com/republicprotocol/republic-go/dht"
 	"google.golang.org/grpc"
 )
 

@@ -7,21 +7,22 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/ethereum/client"
+	"github.com/republicprotocol/republic-go/rpc"
 )
 
-// // Config contains all configuration details for running a DarkNode.
-// type Config struct {
-// 	NetworkOptions rpc.Options    `json:"network"`
-// 	LoggerOptions  logger.Options `json:"logger"`
+// Config contains all configuration details for running a DarkNode.
+type Config struct {
+	NetworkOptions rpc.Options    `json:"network"`
+	LoggerOptions  logger.Options `json:"logger"`
 
-// 	Path string `json:"path"`
-// 	Host string `json:"host"`
-// 	Port string `json:"port"`
+	Path string `json:"path"`
+	Host string `json:"host"`
+	Port string `json:"port"`
 
-// 	KeyPair     identity.KeyPair `json:"keyPair"`
-// 	EthereumKey keystore.Key     `json:"ethereumKey"`
-// 	EthereumRPC string           `json:"ethereumRPC"`
-// }
+	KeyPair     identity.KeyPair `json:"keyPair"`
+	EthereumKey keystore.Key     `json:"ethereumKey"`
+	EthereumRPC string           `json:"ethereumRPC"`
+}
 
 type Config struct {
 	Key      *keystore.Key  `json:"key"`

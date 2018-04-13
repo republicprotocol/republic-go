@@ -34,16 +34,14 @@ func (service *RelayService) Register(server *grpc.Server) {
 	RegisterRelayServer(server, service)
 }
 
+// OpenOrder pass the openOrderRequest to the delegate and let
+// it handle the request
 func (service *RelayService) OpenOrder(ctx context.Context, req *OpenOrderRequest) (*Nothing, error) {
-	wait := do.Process(func() do.Option {
-		return do.Err(service.openOrder(req))
-	})
-
 	select {
-	case val := <-wait:
-		return &Nothing{}, val.Err
-	case <-ctx.Done():
+	case <- ctx.Done():
 		return &Nothing{}, ctx.Err()
+	default:
+		return &Nothing{},service.openOrder(req)
 	}
 }
 
