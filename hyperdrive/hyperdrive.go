@@ -118,7 +118,7 @@ func (r *Replica) HandleCommits(ctx context.Context, ingress ChannelSet) chan st
 					return
 				}
 				counter++
-				log.Printf("%sFinality reached on block%s\n", "\x1b[32;1m", r.validator.Sign())
+				// log.Printf("%sFinality reached on block%s\n", "\x1b[32;1m", r.validator.Sign())
 				r.internalEgress.Block <- block
 			case commit, ok := <-commCh:
 				if !ok {
@@ -172,5 +172,6 @@ func FaultHash(f Fault) [32]byte {
 func BlockHash(b Block) [32]byte {
 	var blockBuffer bytes.Buffer
 	binary.Write(&blockBuffer, binary.BigEndian, b.Tuples)
+	log.Println(blockBuffer)
 	return sha3.Sum256(blockBuffer.Bytes())
 }

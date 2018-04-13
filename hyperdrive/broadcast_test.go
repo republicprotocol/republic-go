@@ -61,7 +61,7 @@ var _ = Describe("Broadcast", func() {
 			wg.Wait()
 		})
 
-		FIt("should only return unique proposals", func() {
+		It("should only return unique proposals", func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			chanSetIn := EmptyChannelSet(ctx, 100)
 			validator, _ := NewTestValidator(NewSharedBlocks(0, 0), 100)
