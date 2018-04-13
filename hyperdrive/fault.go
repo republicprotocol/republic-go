@@ -13,8 +13,8 @@ type Fault struct {
 func ProcessFault(ctx context.Context, faultChIn chan Fault, validator Validator) (chan Fault, chan error) {
 	faultCh := make(chan Fault, validator.Threshold())
 	errCh := make(chan error, validator.Threshold())
-	faults := map[[32]byte]uint8{}
-	certified := map[[32]byte]bool{}
+	faults := map[uint64]uint8{}
+	certified := map[uint64]bool{}
 
 	go func() {
 		defer close(faultCh)
@@ -26,11 +26,10 @@ func ProcessFault(ctx context.Context, faultChIn chan Fault, validator Validator
 				errCh <- ctx.Err()
 				return
 			case fault := <-faultChIn:
-				h := FaultHash(fault)
-				if certified[h] {
+				if certified[fault.Height] {
 					continue
 				}
-				if faults[h] >= validator.Threshold()-1 {
+				if faults[fault.Height] >= validator.Threshold()-1 {
 					faultCh <- Fault{
 						fault.Rank,
 						fault.Height,
@@ -42,7 +41,7 @@ func ProcessFault(ctx context.Context, faultChIn chan Fault, validator Validator
 						fault.Height,
 						validator.Sign(),
 					}
-					faults[h]++
+					faults[fault.Height]++
 				}
 			}
 		}
