@@ -1,6 +1,7 @@
 package hyper_test
 
 import (
+	"context"
 	"sync"
 
 	. "github.com/onsi/ginkgo"
@@ -13,7 +14,8 @@ var _ = Describe("Broadcast", func() {
 	Context("Proposals", func() {
 
 		It("should recieve all the broadcasted proposals", func() {
-			chanSetIn := EmptyChannelSet(100)
+			ctx, cancel := context.WithCancel(context.Background())
+			chanSetIn := EmptyChannelSet(ctx, 100)
 			validator, _ := NewTestValidator(NewSharedBlocks(0, 0), 100)
 			chanSetOut := ProcessBroadcast(chanSetIn, validator)
 
@@ -23,7 +25,7 @@ var _ = Describe("Broadcast", func() {
 
 			wg.Add(2)
 			go func() {
-				defer chanSetIn.Close()
+				defer cancel()
 				defer wg.Done()
 				for i := 0; i < 100; i++ {
 					proposal := Proposal{
@@ -59,7 +61,8 @@ var _ = Describe("Broadcast", func() {
 		})
 
 		It("should only return unique proposals", func() {
-			chanSetIn := EmptyChannelSet(100)
+			ctx, cancel := context.WithCancel(context.Background())
+			chanSetIn := EmptyChannelSet(ctx, 100)
 			validator, _ := NewTestValidator(NewSharedBlocks(0, 0), 100)
 			chanSetOut := ProcessBroadcast(chanSetIn, validator)
 
@@ -69,7 +72,7 @@ var _ = Describe("Broadcast", func() {
 
 			wg.Add(2)
 			go func() {
-				defer chanSetIn.Close()
+				defer cancel()
 				defer wg.Done()
 				for i := 0; i < 100; i++ {
 					for j := 0; j < i; j++ {
