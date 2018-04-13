@@ -14,30 +14,28 @@ type OrderID string
 type Rank uint64
 
 type Replica struct {
+	ctx            context.Context
 	ingress        ChannelSet
 	internalEgress ChannelSet
 	validator      Validator
 }
 
-func NewReplica(
-	validator Validator,
-	ingress ChannelSet,
-) Replica {
+func NewReplica(ctx context.Context, validator Validator, ingress ChannelSet) Replica {
 	return Replica{
+		ctx:            ctx,
 		ingress:        ingress,
 		validator:      validator,
-		internalEgress: EmptyChannelSet(validator.Threshold()),
+		internalEgress: EmptyChannelSet(ctx, validator.Threshold()),
 	}
 }
 
-func (r *Replica) Run(ctx context.Context) ChannelSet {
-	egress := EmptyChannelSet(r.validator.Threshold())
+func (r *Replica) Run() ChannelSet {
+	egress := EmptyChannelSet(r.ctx, r.validator.Threshold())
 	go func() {
-		internalIngress := EmptyChannelSet(r.validator.Threshold())
-		defer internalIngress.Close()
-		go internalIngress.Copy(ctx, ProcessBuffer(r.ingress, r.validator))
-		go egress.Copy(ctx, ProcessBroadcast(r.internalEgress, r.validator))
-		dispatch.Wait(r.HandleProposals(ctx, internalIngress), r.HandlePrepares(ctx, internalIngress), r.HandleCommits(ctx, internalIngress))
+		internalIngress := EmptyChannelSet(r.ctx, r.validator.Threshold())
+		go internalIngress.Copy(ProcessBuffer(r.ingress, r.validator))
+		go egress.Copy(ProcessBroadcast(r.internalEgress, r.validator))
+		dispatch.Wait(r.HandleProposals(r.ctx, internalIngress), r.HandlePrepares(r.ctx, internalIngress), r.HandleCommits(r.ctx, internalIngress))
 	}()
 	return egress
 }
@@ -120,6 +118,7 @@ func (r *Replica) HandleCommits(ctx context.Context, ingress ChannelSet) chan st
 					return
 				}
 				counter++
+				log.Printf("%sFinality reached on block%s\n", "\x1b[32;1m", r.validator.Sign())
 				r.internalEgress.Block <- block
 			case commit, ok := <-commCh:
 				if !ok {

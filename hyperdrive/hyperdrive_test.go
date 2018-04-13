@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/republicprotocol/republic-go/hyperdrive"
@@ -15,8 +16,10 @@ var _ = Describe("Hyperdrive", func() {
 
 	Context("Hyperdrive", func() {
 
-		FIt("Achieves consensus on a block over 240 commanders with 75% threshold", func() {
-			hyper := NewHyperDrive(commanderCount)
+		It("Achieves consensus on a block over 240 commanders with 75% threshold", func() {
+			ctx, cancel := context.WithCancel(context.Background())
+
+			hyper := NewHyperDrive(ctx, commanderCount)
 			hyper.init()
 			var wg sync.WaitGroup
 			proposal := Proposal{
@@ -28,12 +31,11 @@ var _ = Describe("Hyperdrive", func() {
 				Rank(0),
 				0,
 			}
-			ctx, cancel := context.WithCancel(context.Background())
 
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				hyper.run(ctx)
+				hyper.run()
 			}()
 
 			wg.Add(1)
@@ -50,13 +52,13 @@ var _ = Describe("Hyperdrive", func() {
 					wg.Add(1)
 					go func(i uint8) {
 						defer wg.Done()
-						log.Println("Waiting for block on ", i)
 						_ = <-hyper.network.Egress[i].Block
-						log.Println("Block read from ", i)
 					}(i)
 				}
 				wg.Wait()
 			}()
+			time.Sleep(1 * time.Minute)
+			cancel()
 			log.Println("Waiting here")
 			wg.Wait()
 		})
