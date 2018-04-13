@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 var _ = Describe("HTTP handlers", func() {
@@ -116,37 +119,50 @@ var _ = Describe("HTTP handlers", func() {
 		})
 	})
 
-	// Context("when getting orders", func() {
-	// 	It("should return the correct information when given a valid ID", func() {
-	// 		maxConnections := 3
-	// 		orderBook = orderbook.NewOrderBook(maxConnections)
+	Context("when getting orders", func() {
+		It("should return the correct information when given a valid ID", func() {
+			maxConnections := 3
+			orderBook := orderbook.NewOrderBook(maxConnections)
 
-	// 		pools, trader := getPoolsAndTrader()
-	// 		sendOrder := getFullOrder()
-	// 		relay.SendOrderToDarkOcean(order, &trader, pools)
+			defaultStackVal, _ := stackint.FromString("179761232312312")
+			ord := order.Order{}
+			ord.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ")
+			ord.Type = 2
+			ord.Parity = 1
+			ord.Expiry = time.Time{}
+			ord.FstCode = order.CurrencyCodeETH
+			ord.SndCode = order.CurrencyCodeBTC
+			ord.Price = defaultStackVal
+			ord.MaxVolume = defaultStackVal
+			ord.MinVolume = defaultStackVal
+			ord.Nonce = defaultStackVal
 
-	// 		r := httptest.NewRequest("GET", "http://localhost/orders/vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=", body)
-	// 		w := httptest.NewRecorder()
+			var hash [32]byte
+			orderMessage := orderbook.NewMessage(ord, order.Open, hash)
+			orderBook.Open(orderMessage)
 
-	// 		handler := relay.RecoveryHandler(relay.GetOrderHandler(orderBook))
-	// 		handler.ServeHTTP(w, r)
+			r := httptest.NewRequest("GET", "http://localhost/orders/vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ", nil)
+			w := httptest.NewRecorder()
 
-	// 		Ω(w.Code).Should(Equal(http.StatusOK))
-	// 	})
+			handler := relay.RecoveryHandler(relay.GetOrderHandler(orderBook, string(ord.ID)))
+			handler.ServeHTTP(w, r)
 
-	// 	It("should error when when given an invalid ID", func() {
-	// 		maxConnections := 3
-	// 		orderBook = orderbook.NewOrderBook(maxConnections)
+			Ω(w.Code).Should(Equal(http.StatusOK))
+		})
 
-	// 		r := httptest.NewRequest("GET", "http://localhost/orders/test", body)
-	// 		w := httptest.NewRecorder()
+		It("should error when when given an invalid ID", func() {
+			maxConnections := 3
+			orderBook := orderbook.NewOrderBook(maxConnections)
 
-	// 		handler := relay.RecoveryHandler(relay.GetOrderHandler(orderBook))
-	// 		handler.ServeHTTP(w, r)
+			r := httptest.NewRequest("GET", "http://localhost/orders/test", nil)
+			w := httptest.NewRecorder()
 
-	// 		Ω(w.Code).Should(Equal(http.StatusInternalServerError))
-	// 	})
-	// })
+			handler := relay.RecoveryHandler(relay.GetOrderHandler(orderBook, ""))
+			handler.ServeHTTP(w, r)
+
+			Ω(w.Code).Should(Equal(http.StatusBadRequest))
+		})
+	})
 
 	Context("when cancelling orders", func() {
 		It("should return 410 for cancel order requests", func() {

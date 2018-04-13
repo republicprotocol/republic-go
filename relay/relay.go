@@ -40,7 +40,7 @@ func NewRouter() *mux.Router {
 	r := mux.NewRouter().StrictSlash(true)
 	// r.Methods("POST").Path("/orders").Handler(RecoveryHandler(PostOrdersHandler(*relay.multiAddress, *relay.darkPools)))
 	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(GetOrdersHandler(orderBook)))
-	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(GetOrderHandler(orderBook)))
+	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(GetOrderHandler(orderBook, "")))
 	// r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(DeleteOrderHandler(relay.multiAddress, *relay.darkPools)))
 	return r
 }
@@ -150,12 +150,12 @@ func sendOrder(openOrder order.Order, pools dark.Pools, traderMultiAddress ident
 func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares []*order.Fragment) error {
 
 	errCh := make(chan error)
-	
+
 	go func() {
 		defer close(errCh)
-	
+
 		shareIndex := 0
-	
+
 		var wg sync.WaitGroup
 		wg.Add(pool.Size())
 
@@ -217,15 +217,15 @@ func getMultiAddress(address identity.Address, traderMultiAddress identity.Multi
 	BootstrapMultiAddresses := []string{
 		"/ip4/0.0.0.0/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT",
 		"/ip4/0.0.0.0/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu",
-        "/ip4/0.0.0.0/tcp/3001/republic/8MGB2cj2HbQFepRVs43Ghct5yCRS9C",
-        "/ip4/0.0.0.0/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR",
-        "/ip4/0.0.0.0/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss",
+		"/ip4/0.0.0.0/tcp/3001/republic/8MGB2cj2HbQFepRVs43Ghct5yCRS9C",
+		"/ip4/0.0.0.0/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR",
+		"/ip4/0.0.0.0/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss",
 	}
-		// "/ip4/52.77.88.84/tcp/18514/republic/8MGzXN7M1ucxvtumVjQ7Ybb7xQ8TUw",
-		// "/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",
-		// "/ip4/52.59.176.141/tcp/18514/republic/8MHmrykz65HimBPYaVgm8bTSpRUoXA",
-		// "/ip4/52.21.44.236/tcp/18514/republic/8MKFT9CDQQru1hYqnaojXqCQU2Mmuk",
-		// "/ip4/52.41.118.171/tcp/18514/republic/8MGb8k337pp2GSh6yG8iv2GK6FbNHN",
+	// "/ip4/52.77.88.84/tcp/18514/republic/8MGzXN7M1ucxvtumVjQ7Ybb7xQ8TUw",
+	// "/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",
+	// "/ip4/52.59.176.141/tcp/18514/republic/8MHmrykz65HimBPYaVgm8bTSpRUoXA",
+	// "/ip4/52.21.44.236/tcp/18514/republic/8MKFT9CDQQru1hYqnaojXqCQU2Mmuk",
+	// "/ip4/52.41.118.171/tcp/18514/republic/8MGb8k337pp2GSh6yG8iv2GK6FbNHN",
 
 	serializedTarget := rpc.SerializeAddress(address)
 	for _, peer := range BootstrapMultiAddresses {
@@ -237,10 +237,10 @@ func getMultiAddress(address identity.Address, traderMultiAddress identity.Multi
 
 		client, err := rpc.NewClient(bootStrapMultiAddress, traderMultiAddress)
 		if err != nil {
-			log.Println(fmt.Printf("cannot establish connection with bootstrap node: %v",err))
+			log.Println(fmt.Printf("cannot establish connection with bootstrap node: %v", err))
 			return traderMultiAddress, err
 		}
-		
+
 		candidates, err := client.QueryPeersDeep(serializedTarget)
 		if err != nil {
 			return traderMultiAddress, err
