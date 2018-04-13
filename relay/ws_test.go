@@ -104,7 +104,6 @@ var _ = Describe("WebSocket streaming", func() {
 			// message to be read.
 			orderBook.Settle(orderMessage)
 			messageType, message, err := conn.ReadMessage()
-			fmt.Println(string(message))
 
 			// TODO: Check the status of this message.
 
