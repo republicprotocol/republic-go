@@ -3,6 +3,7 @@ package relay
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -32,8 +33,26 @@ func GetOrdersHandler(orderBook *orderbook.OrderBook) http.Handler {
 func streamOrders(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, orderBook *orderbook.OrderBook) {
 	// Retrieve ID from URL.
 	orderID := r.FormValue("id")
+	statuses := strings.Split(r.FormValue("status"), ",")
+	orderStatuses := []int{}
+
 	if orderID == "" {
 		return
+	}
+
+	for _, item := range statuses {
+		switch item {
+		case "open":
+			orderStatuses = append(orderStatuses, 0)
+		case "unconfirmed":
+			orderStatuses = append(orderStatuses, 1)
+		case "canceled":
+			orderStatuses = append(orderStatuses, 2)
+		case "confirmed":
+			orderStatuses = append(orderStatuses, 3)
+		case "settled":
+			orderStatuses = append(orderStatuses, 4)
+		}
 	}
 
 	// Handle ping/pong.
@@ -57,15 +76,26 @@ func streamOrders(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, 
 	}()
 
 	for {
-		fmt.Println("waiting for message")
 		select {
 		case message, ok := <-messages:
-			fmt.Printf("received a message")
 			if !ok {
 				return
 			}
-			// TODO: Check status.
-			if string(message.Ord.ID) == orderID {
+			if string(message.Ord.ID) != orderID {
+				break
+			}
+			// Loop through specified statuses.
+			for _, status := range orderStatuses {
+				if status == int(message.Status) {
+					conn.SetWriteDeadline(time.Now().Add(writeDeadline))
+					if err := conn.WriteJSON(message); err != nil {
+						fmt.Printf("cannot send json: %v", err)
+						return
+					}
+				}
+			}
+			// If the user hasn't specified a status, send them all messages.
+			if len(orderStatuses) == 0 {
 				conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 				if err := conn.WriteJSON(message); err != nil {
 					fmt.Printf("cannot send json: %v", err)
