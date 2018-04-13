@@ -3,7 +3,8 @@ package hyper
 import (
 	"context"
 	"sync"
-	"time"
+
+	"golang.org/x/crypto/sha3"
 )
 
 type HeightContext struct {
@@ -44,7 +45,6 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 	buffer := NewBuffer()
 	go func() {
 		defer close(doneCh)
-		defer time.Sleep(10 * time.Second)
 		for {
 			h := sb.ReadHeight()
 			select {
@@ -52,8 +52,9 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 				if !ok {
 					return
 				}
-
-				if proposal.Height < h || duplicateProposals[ProposalHash(proposal)] {
+				proposalHash := ProposalHash(proposal)
+				proposalID := sha3.Sum256(append([]byte(proposal.Signature), proposalHash[:]...))
+				if proposal.Height < h || duplicateProposals[proposalID] {
 					continue
 				}
 
@@ -71,16 +72,19 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 					buffer.chanSets[proposal.Height] = EmptyChannelSet(ctx, validator.Threshold())
 				}
 				buffer.chanSets[proposal.Height].Proposal <- proposal
-				duplicateProposals[ProposalHash(proposal)] = true
+				duplicateProposals[proposalID] = true
 				buffer.channelSetsMu.Unlock()
 
 			case prepare, ok := <-chanSetIn.Prepare:
 				if !ok {
 					return
 				}
-				if prepare.Height < h || duplicatePrepares[PrepareHash(prepare)] {
+				prepareHash := PrepareHash(prepare)
+				prepareID := sha3.Sum256(append([]byte(prepare.Signature), prepareHash[:]...))
+				if prepare.Height < h || duplicatePrepares[prepareID] {
 					continue
 				}
+
 				buffer.channelSetsMu.Lock()
 				if _, ok := buffer.chanSets[prepare.Height]; !ok {
 					ctx, cancel := context.WithCancel(context.Background())
@@ -95,14 +99,16 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 					buffer.chanSets[prepare.Height] = EmptyChannelSet(ctx, validator.Threshold())
 				}
 				buffer.chanSets[prepare.Height].Prepare <- prepare
-				duplicatePrepares[PrepareHash(prepare)] = true
+				duplicatePrepares[prepareID] = true
 				buffer.channelSetsMu.Unlock()
 
 			case commit, ok := <-chanSetIn.Commit:
 				if !ok {
 					return
 				}
-				if commit.Height < h || duplicateCommits[CommitHash(commit)] {
+				commitHash := CommitHash(commit)
+				commitID := sha3.Sum256(append([]byte(commit.Signature), commitHash[:]...))
+				if commit.Height < h || duplicateCommits[commitID] {
 					continue
 				}
 				buffer.channelSetsMu.Lock()
@@ -119,14 +125,16 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 					buffer.chanSets[commit.Height] = EmptyChannelSet(ctx, validator.Threshold())
 				}
 				buffer.chanSets[commit.Height].Commit <- commit
-				duplicateCommits[CommitHash(commit)] = true
+				duplicateCommits[commitID] = true
 				buffer.channelSetsMu.Unlock()
 
 			case fault, ok := <-chanSetIn.Fault:
 				if !ok {
 					return
 				}
-				if fault.Height < h || duplicateFaults[FaultHash(fault)] {
+				faultHash := FaultHash(fault)
+				faultID := sha3.Sum256(append([]byte(fault.Signature), faultHash[:]...))
+				if fault.Height < h || duplicateFaults[faultID] {
 					continue
 				}
 				buffer.channelSetsMu.Lock()
@@ -143,7 +151,7 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 					buffer.chanSets[fault.Height] = EmptyChannelSet(ctx, validator.Threshold())
 				}
 				buffer.chanSets[fault.Height].Fault <- fault
-				duplicateFaults[FaultHash(fault)] = true
+				duplicateFaults[faultID] = true
 				buffer.channelSetsMu.Unlock()
 			}
 		}

@@ -2,7 +2,6 @@ package hyper_test
 
 import (
 	"context"
-	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -76,7 +75,6 @@ var _ = Describe("Buffer", func() {
 			go func() {
 				defer GinkgoRecover()
 				defer wg.Done()
-				defer log.Println("Channel closed")
 				for {
 					select {
 					case proposal, ok := <-chanSetOut.Proposal:
