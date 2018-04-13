@@ -11,6 +11,7 @@ type Options struct {
 	SwarmOptions  `json:"swarm"`
 	SyncerOptions `json:"syncer"`
 
+	Address           identity.Address      `json:"address"`
 	MultiAddress      identity.MultiAddress `json:"multiAddress"`
 	Timeout           time.Duration         `json:"timeout"`
 	TimeoutBackoff    time.Duration         `json:"timeoutBackoff"`

@@ -16,7 +16,7 @@ import (
 // A Client is used to create and manage a gRPC connection. It provides methods
 // for all RPCs and handles all timeouts and retries.
 type Client struct {
-	SmpcClient
+	ComputerClient
 	SwarmClient
 	RelayClient
 	SyncerClient
@@ -55,7 +55,7 @@ func NewClient(ctx context.Context, to, from identity.MultiAddress) (*Client, er
 		client.Connection.Close()
 	})
 
-	client.SmpcClient = NewSmpcClient(client.Connection)
+	client.ComputerClient = NewComputerClient(client.Connection)
 	client.SwarmClient = NewSwarmClient(client.Connection)
 	client.RelayClient = NewRelayClient(client.Connection)
 	client.SyncerClient = NewSyncerClient(client.Connection)
@@ -204,11 +204,11 @@ func (client *Client) CancelOrder(ctx context.Context, cancelOrderRequest *Cance
 	return err
 }
 
-func (client *Client) Compute(ctx context.Context, messageChIn <-chan *SmpcMessage) (<-chan *SmpcMessage, <-chan error) {
-	messageCh := make(chan *SmpcMessage, 1)
+func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computation) (<-chan *Computation, <-chan error) {
+	messageCh := make(chan *Computation, 1)
 	errCh := make(chan error, 1)
 
-	stream, err := client.SmpcClient.Compute(ctx, grpc.FailFast(false))
+	stream, err := client.ComputerClient.Compute(ctx, grpc.FailFast(false))
 	if err != nil {
 		errCh <- err
 		return messageCh, errCh

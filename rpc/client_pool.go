@@ -154,3 +154,16 @@ func (pool *ClientPool) CancelOrder(ctx context.Context, to identity.MultiAddres
 
 	return client.CancelOrder(ctx, cancelOrderRequest)
 }
+
+// Compute RPC.
+func (pool *ClientPool) Compute(ctx context.Context, to identity.MultiAddress, computationChIn <-chan *Computation) (<-chan *Computation, <-chan error) {
+	client, err := pool.FindOrCreateClient(to)
+	if err != nil {
+		errCh := make(chan error, 1)
+		defer close(errCh)
+		errCh <- err
+		return nil, errCh
+	}
+
+	return client.Compute(ctx, computationChIn)
+}

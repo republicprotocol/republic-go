@@ -115,34 +115,13 @@ message CancelOrderRequest {
  * Secure multipart computation
  */
 
-service Smpc {
-  rpc Compute (stream SmpcMessage) returns (stream SmpcMessage);
+service Computer {
+  rpc Compute (stream Computation) returns (stream Computation);
 }
 
-message SmpcMessage {
+message Computation {
   MultiAddress multiAddress = 1;
-  GenerateRandomShares generateRandomShares = 2;
-  GenerateXiShares generateXiShares = 3;
-  GenerateXiFragments generateXiFragments = 4;
-  RhoSigmaFragments rhoSigmaFragments = 5;
-  DeltaFragments deltaFragments = 6;
-}
-
-message GenerateRandomShares {
-}
-
-message GenerateXiShares {
-}
-
-message GenerateXiFragments {
-}
-
-message RhoSigmaFragments {
-}
-
-message DeltaFragments {
-  bytes signature = 1;
-  repeated DeltaFragment deltaFragments = 2;
+  DeltaFragment deltaFragment = 2;
 }
 
 message Delta {
@@ -158,7 +137,7 @@ message Delta {
   bytes minVolumeShare = 9;
 }
 
-message DeltaFragment {
+message DeltaFragment {  
   bytes signature = 1;
   bytes id = 2;
   bytes deltaId = 3;
@@ -173,5 +152,3 @@ message DeltaFragment {
   bytes maxVolumeShare = 11;
   bytes minVolumeShare = 12;
 }
-
-service
