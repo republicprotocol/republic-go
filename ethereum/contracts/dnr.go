@@ -21,7 +21,7 @@ type Epoch struct {
 
 // DarkNodeRegistry is the dark node interface
 type DarkNodeRegistry struct {
-	Chain                   client.Network
+	network                 client.Network
 	context                 context.Context
 	client                  *client.Connection
 	transactOpts            *bind.TransactOpts
@@ -42,7 +42,7 @@ func NewDarkNodeRegistry(context context.Context, clientDetails *client.Connecti
 		return DarkNodeRegistry{}, err
 	}
 	return DarkNodeRegistry{
-		Chain:                   clientDetails.Network,
+		network:                 clientDetails.Network,
 		context:                 context,
 		client:                  clientDetails,
 		transactOpts:            transactOpts,
@@ -178,7 +178,7 @@ func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() (*types.Transaction, er
 	nextEpoch := currentEpoch
 	var tx *types.Transaction
 	for currentEpoch.Blockhash == nextEpoch.Blockhash {
-		if darkNodeRegistry.Chain == client.NetworkGanache {
+		if darkNodeRegistry.network == client.NetworkGanache {
 			tx, err = darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
 			if err != nil {
 				return nil, err
