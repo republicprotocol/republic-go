@@ -12,14 +12,19 @@ type HeightContext struct {
 }
 
 type Buffer struct {
-	mu       *sync.RWMutex
-	chanSets map[uint64]ChannelSet
+	channelSetsMu *sync.RWMutex
+	chanSets      map[uint64]ChannelSet
+
+	HeightContextsMu *sync.RWMutex
+	HeightContexts   map[uint64]HeightContext
 }
 
 func NewBuffer() Buffer {
 	return Buffer{
-		mu:       &sync.RWMutex{},
-		chanSets: map[uint64]ChannelSet{},
+		channelSetsMu:    &sync.RWMutex{},
+		chanSets:         map[uint64]ChannelSet{},
+		HeightContextsMu: &sync.RWMutex{},
+		HeightContexts:   map[uint64]HeightContext{},
 	}
 }
 
@@ -45,12 +50,21 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 				if proposal.Height < h {
 					continue
 				}
-				buffer.mu.Lock()
+				buffer.channelSetsMu.Lock()
 				if _, ok := buffer.chanSets[proposal.Height]; !ok {
-					buffer.chanSets[proposal.Height] = EmptyChannelSet(validator.Threshold())
+					ctx, cancel := context.WithCancel(context.Background())
+					buffer.HeightContextsMu.Lock()
+					if _, ok := buffer.HeightContexts[proposal.Height]; !ok {
+						buffer.HeightContexts[proposal.Height] = HeightContext{
+							ctx:    ctx,
+							cancel: cancel,
+						}
+					}
+					buffer.HeightContextsMu.Unlock()
+					buffer.chanSets[proposal.Height] = EmptyChannelSet(ctx, validator.Threshold())
 				}
 				buffer.chanSets[proposal.Height].Proposal <- proposal
-				buffer.mu.Unlock()
+				buffer.channelSetsMu.Unlock()
 
 			case prepare, ok := <-chanSetIn.Prepare:
 				if !ok {
@@ -59,12 +73,21 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 				if prepare.Height < h {
 					continue
 				}
-				buffer.mu.Lock()
+				buffer.channelSetsMu.Lock()
 				if _, ok := buffer.chanSets[prepare.Height]; !ok {
-					buffer.chanSets[prepare.Height] = EmptyChannelSet(validator.Threshold())
+					ctx, cancel := context.WithCancel(context.Background())
+					buffer.HeightContextsMu.Lock()
+					if _, ok := buffer.HeightContexts[prepare.Height]; !ok {
+						buffer.HeightContexts[prepare.Height] = HeightContext{
+							ctx:    ctx,
+							cancel: cancel,
+						}
+					}
+					buffer.HeightContextsMu.Unlock()
+					buffer.chanSets[prepare.Height] = EmptyChannelSet(ctx, validator.Threshold())
 				}
 				buffer.chanSets[prepare.Height].Prepare <- prepare
-				buffer.mu.Unlock()
+				buffer.channelSetsMu.Unlock()
 
 			case commit, ok := <-chanSetIn.Commit:
 				if !ok {
@@ -73,12 +96,21 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 				if commit.Height < h {
 					continue
 				}
-				buffer.mu.Lock()
+				buffer.channelSetsMu.Lock()
 				if _, ok := buffer.chanSets[commit.Height]; !ok {
-					buffer.chanSets[commit.Height] = EmptyChannelSet(validator.Threshold())
+					ctx, cancel := context.WithCancel(context.Background())
+					buffer.HeightContextsMu.Lock()
+					if _, ok := buffer.HeightContexts[commit.Height]; !ok {
+						buffer.HeightContexts[commit.Height] = HeightContext{
+							ctx:    ctx,
+							cancel: cancel,
+						}
+					}
+					buffer.HeightContextsMu.Unlock()
+					buffer.chanSets[commit.Height] = EmptyChannelSet(ctx, validator.Threshold())
 				}
 				buffer.chanSets[commit.Height].Commit <- commit
-				buffer.mu.Unlock()
+				buffer.channelSetsMu.Unlock()
 
 			case fault, ok := <-chanSetIn.Fault:
 				if !ok {
@@ -87,12 +119,21 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 				if fault.Height < h {
 					continue
 				}
-				buffer.mu.Lock()
+				buffer.channelSetsMu.Lock()
 				if _, ok := buffer.chanSets[fault.Height]; !ok {
-					buffer.chanSets[fault.Height] = EmptyChannelSet(validator.Threshold())
+					ctx, cancel := context.WithCancel(context.Background())
+					buffer.HeightContextsMu.Lock()
+					if _, ok := buffer.HeightContexts[fault.Height]; !ok {
+						buffer.HeightContexts[fault.Height] = HeightContext{
+							ctx:    ctx,
+							cancel: cancel,
+						}
+					}
+					buffer.HeightContextsMu.Unlock()
+					buffer.chanSets[fault.Height] = EmptyChannelSet(ctx, validator.Threshold())
 				}
 				buffer.chanSets[fault.Height].Fault <- fault
-				buffer.mu.Unlock()
+				buffer.channelSetsMu.Unlock()
 			}
 		}
 	}()
@@ -101,35 +142,35 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 
 func ConsumeBuffer(buffer Buffer, doneCh chan struct{}, validator Validator) ChannelSet {
 
-	HeightContextsMu := new(sync.RWMutex)
-	HeightContexts := map[uint64]HeightContext{}
-
 	sb := validator.SharedBlocks()
-	chanSetOut := EmptyChannelSet(validator.Threshold())
-	height := sb.ReadHeight()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	ictx := HeightContext{
-		ctx:    ctx,
-		cancel: cancel,
-	}
-	HeightContextsMu.Lock()
-	HeightContexts[height] = ictx
-	HeightContextsMu.Unlock()
+	chanSetOut := EmptyChannelSet(ctx, validator.Threshold())
+	height := sb.ReadHeight()
 
-	buffer.mu.Lock()
+	buffer.channelSetsMu.Lock()
 	if _, ok := buffer.chanSets[height]; !ok {
-		buffer.chanSets[height] = EmptyChannelSet(validator.Threshold())
+		hctx, hcancel := context.WithCancel(context.Background())
+		buffer.HeightContextsMu.Lock()
+		if _, ok := buffer.HeightContexts[height]; !ok {
+			buffer.HeightContexts[height] = HeightContext{
+				ctx:    hctx,
+				cancel: hcancel,
+			}
+		}
+		buffer.HeightContextsMu.Unlock()
+		buffer.chanSets[height] = EmptyChannelSet(ctx, validator.Threshold())
 	}
-	go chanSetOut.Copy(ctx, buffer.chanSets[0])
-	buffer.mu.Unlock()
+	go chanSetOut.Copy(buffer.chanSets[0])
+	buffer.channelSetsMu.Unlock()
 
 	go func() {
+		defer cancel()
 		for {
 			select {
 			case <-doneCh:
-				if _, ok := HeightContexts[height]; ok {
-					HeightContexts[height].cancel()
+				if _, ok := buffer.HeightContexts[height]; ok {
+					buffer.HeightContexts[height].cancel()
 				}
 				return
 			default:
@@ -137,28 +178,31 @@ func ConsumeBuffer(buffer Buffer, doneCh chan struct{}, validator Validator) Cha
 					continue
 				} else {
 					newHeight := sb.ReadHeight()
-					ctx, cancel := context.WithCancel(context.Background())
 
-					hctx := HeightContext{
-						ctx:    ctx,
-						cancel: cancel,
+					buffer.HeightContextsMu.Lock()
+					if _, ok := buffer.HeightContexts[height]; ok {
+						buffer.HeightContexts[height].cancel()
 					}
+					buffer.HeightContextsMu.Unlock()
 
-					HeightContextsMu.Lock()
-					HeightContexts[newHeight] = hctx
-					if _, ok := HeightContexts[height]; ok {
-						HeightContexts[height].cancel()
-					}
-					HeightContextsMu.Unlock()
-
-					buffer.mu.RLock()
-					go chanSetOut.Copy(ctx, buffer.chanSets[newHeight])
-					buffer.mu.RUnlock()
+					buffer.channelSetsMu.RLock()
+					go chanSetOut.Copy(buffer.chanSets[newHeight])
+					buffer.channelSetsMu.RUnlock()
 
 					for i := height; i < newHeight; i++ {
-						buffer.mu.Lock()
-						delete(buffer.chanSets, i)
-						buffer.mu.Unlock()
+
+						buffer.channelSetsMu.Lock()
+						if _, ok := buffer.chanSets[i]; ok {
+							delete(buffer.chanSets, i)
+						}
+						buffer.channelSetsMu.Unlock()
+
+						buffer.HeightContextsMu.Lock()
+						if _, ok := buffer.HeightContexts[i]; ok {
+							delete(buffer.HeightContexts, i)
+						}
+						buffer.HeightContextsMu.Unlock()
+
 					}
 					height = newHeight
 				}
