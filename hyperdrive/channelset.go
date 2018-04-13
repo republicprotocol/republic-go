@@ -8,35 +8,27 @@ import (
 
 type ChannelSet struct {
 	BufferSize uint8
+	ctx        context.Context
 	Proposal   chan Proposal
 	Prepare    chan Prepare
 	Fault      chan Fault
 	Commit     chan Commit
-	Err        chan error
 	Block      chan Block
 }
 
-func EmptyChannelSet(size uint8) ChannelSet {
+func EmptyChannelSet(ctx context.Context, size uint8) ChannelSet {
 	return ChannelSet{
-		Proposal: make(chan Proposal, size),
-		Prepare:  make(chan Prepare, size),
-		Fault:    make(chan Fault, size),
-		Commit:   make(chan Commit, size),
-		Err:      make(chan error, size),
-		Block:    make(chan Block, size),
+		ctx:        ctx,
+		BufferSize: size,
+		Proposal:   make(chan Proposal, size),
+		Prepare:    make(chan Prepare, size),
+		Fault:      make(chan Fault, size),
+		Commit:     make(chan Commit, size),
+		Block:      make(chan Block, size),
 	}
 }
 
-func (c *ChannelSet) Close() {
-	close(c.Proposal)
-	close(c.Prepare)
-	close(c.Fault)
-	close(c.Commit)
-	close(c.Err)
-	close(c.Block)
-}
-
-func (c *ChannelSet) Split(ctx context.Context, cs []ChannelSet) {
+func (c *ChannelSet) Split(cs []ChannelSet) {
 
 	proposals := make([]chan Proposal, len(cs))
 	prepares := make([]chan Prepare, len(cs))
@@ -61,17 +53,17 @@ func (c *ChannelSet) Split(ctx context.Context, cs []ChannelSet) {
 	func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-c.ctx.Done():
 				return
 			}
 		}
 	}()
 }
 
-func (c *ChannelSet) Copy(ctx context.Context, cs ChannelSet) {
+func (c *ChannelSet) Copy(cs ChannelSet) {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-c.ctx.Done():
 			return
 		case proposal, ok := <-cs.Proposal:
 			if !ok {
