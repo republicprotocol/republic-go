@@ -35,7 +35,33 @@ func NewDarkNodes(numberOfDarkNodes, numberOfBootstrapDarkNodes int) (darknode.D
 	return darkNodes, ctxs, cancels, nil
 }
 
+// RegisterDarkNodes using the minimum required bond and wait until the next
+// epoch. This must only be used in local test environments.
 func RegisterDarkNodes(darkNodes darknode.DarkNodes, darkNodeRegistry contract.DarkNodeRegistry) error {
+	for i := range darkNodes {
+		darkNodeID := darkNodes[i].ID()
+		if err := darkNodeRegistry.Register(darkNodeID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// DeregisterDarkNodes and wait until the next epoch. This must only be used
+// in local test environments.
+func RegisterDarkNodes(darkNodes darknode.DarkNodes, darkNodeRegistry contract.DarkNodeRegistry) error {
+	for i := range darkNodes {
+		darkNodeID := darkNodes[i].ID()
+		if err := darkNodeRegistry.Register(darkNodeID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RefundDarkNodes after they have been deregistered. This must only be used
+// in local test environments.
+func RefundDarkNodes(darkNodes darknode.DarkNodes, darkNodeRegistry contract.DarkNodeRegistry) error {
 	for i := range darkNodes {
 		darkNodeID := darkNodes[i].ID()
 		if err := darkNodeRegistry.Register(darkNodeID); err != nil {

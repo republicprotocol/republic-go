@@ -3,14 +3,14 @@ package main_test
 import (
 	"context"
 	"log"
-	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/go-do"
 	. "github.com/republicprotocol/republic-go/cmd/darknode"
+	. "github.com/republicprotocol/republic-go/darknode_test"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
@@ -47,23 +47,20 @@ var _ = Describe("DarkNode", func() {
 			darkNodeRegistry.SetGasLimit(1000000)
 
 			// Create DarkNodes and contexts/cancels for running them
-			darkNodes, ctxs, cancels, err = NewLocalDarkNodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
+			darkNodes, ctxs, cancels, err = NewDarkNodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			// Register the DarkNodes
+			err := RegisterDarkNodes(darkNodes, darkNodeRegistry)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			shutdown = make(chan struct{})
 			go func() {
 				defer close(shutdown)
 
-				var wg sync.WaitGroup
-				wg.Add(len(darkNodes))
-				for i := range darkNodes {
-					go func(i int) {
-						defer wg.Done()
-
-						darkNodes[i].Run(ctxs[i])
-					}(i)
-				}
-				wg.Wait()
+				do.CoForAll(darkNodes, func(i int) {
+					darkNodes[i].Run(ctxs[i])
+				})
 			}()
 
 			// Wait for the DarkNodes to boot
@@ -73,6 +70,14 @@ var _ = Describe("DarkNode", func() {
 		AfterEach(func() {
 			// Wait for the DarkNodes to shutdown
 			<-shutdown
+
+			// Deregister the DarkNodes
+			err := DeregisterDarkNodes(darkNodes, darkNodeRegistry)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			// Refund the DarkNodes
+			err := RefundDarkNodes(darkNodes, darkNodeRegistry)
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should converge on a global view of the ocean", func() {
@@ -130,17 +135,9 @@ var _ = Describe("DarkNode", func() {
 			go func() {
 				defer close(shutdown)
 
-				var wg sync.WaitGroup
-				wg.Add(len(darkNodes))
-				for i := range darkNodes {
-					go func(i int) {
-						defer wg.Done()
-
-						darkNodes[i].Run(ctxs[i])
-					}(i)
-				}
-
-				wg.Wait()
+				do.CoForAll(darkNodes, func(i int) {
+					darkNodes[i].Run(ctxs[i])
+				})
 			}()
 
 			// Wait for the DarkNodes to boot
