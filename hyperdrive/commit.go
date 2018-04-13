@@ -36,34 +36,36 @@ func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, validator Vali
 				if !ok {
 					return
 				}
-				h := CommitHash(commit)
+				h := BlockHash(commit.Block)
 				if certified[h] {
 					continue
 				}
+
+				if !validator.ValidateCommit(commit) {
+					faultCh <- Fault{
+						Rank:      commit.Rank,
+						Height:    commit.Height,
+						Signature: validator.Sign(),
+					}
+					continue
+				}
+				
 				log.Println("Counting commits on", validator.Sign(), commits[h], "with threshold", threshold)
 				if commits[h] >= threshold-1 {
 					certified[h] = true
 					blockCh <- commit.Block
 					blocks.IncrementHeight()
 				} else {
-					if validator.ValidateCommit(commit) {
-						commits[h]++
-						if len(commitCh) == int(validator.Threshold()) {
-							continue
-						}
-						commitCh <- Commit{
-							Rank:               commit.Rank,
-							Height:             commit.Height,
-							Block:              commit.Block,
-							ThresholdSignature: commit.ThresholdSignature,
-							Signature:          validator.Sign(),
-						}
-					} else {
-						faultCh <- Fault{
-							Rank:      commit.Rank,
-							Height:    commit.Height,
-							Signature: validator.Sign(),
-						}
+					commits[h]++
+					if len(commitCh) == int(validator.Threshold()) {
+						continue
+					}
+					commitCh <- Commit{
+						Rank:               commit.Rank,
+						Height:             commit.Height,
+						Block:              commit.Block,
+						ThresholdSignature: commit.ThresholdSignature,
+						Signature:          validator.Sign(),
 					}
 				}
 			}
