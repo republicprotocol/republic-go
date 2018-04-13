@@ -31,7 +31,7 @@ func GetOrdersHandler(orderBook *orderbook.OrderBook) http.Handler {
 
 // streamOrders notifies client if status of specified order has changed.
 func streamOrders(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, orderBook *orderbook.OrderBook) {
-	// Retrieve ID from URL.
+	// Retrieve ID and statuses from URL.
 	orderID := r.FormValue("id")
 	statuses := strings.Split(r.FormValue("status"), ",")
 	orderStatuses := []int{}
@@ -57,7 +57,7 @@ func streamOrders(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, 
 
 	// Handle ping/pong.
 	writeDeadline := 10 * time.Second
-	pingInterval := 5 * time.Second
+	pingInterval := 30 * time.Second
 	pongInterval := 60 * time.Second
 	ping := time.NewTicker(pingInterval)
 	defer ping.Stop()
