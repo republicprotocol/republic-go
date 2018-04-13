@@ -25,7 +25,7 @@ var _ = Describe("Dark Oceans", func() {
 				panic(err)
 			}
 
-			ocean, err := dark.NewOcean(log, dnr)
+			ocean, err := dark.NewOcean(log, 5, dnr)
 			if err != nil {
 				panic(err)
 			}

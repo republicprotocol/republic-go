@@ -3,12 +3,12 @@ package order
 import (
 	"bytes"
 	"encoding/binary"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	base58 "github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/shamir"
-	"github.com/republicprotocol/republic-go/stackint"
 )
 
 // A CurrencyCode is a numerical representation of the currencies supported by
@@ -55,6 +55,18 @@ func (id ID) String() string {
 	return base58.Encode(id)
 }
 
+// The Status shows what status the order is in.
+type Status uint8
+
+// Status values.
+const (
+	Open = Status(iota)
+	Unconfirmed
+	Canceled
+	Confirmed
+	Settled
+)
+
 // An Order represents the want to perform a trade of assets.
 type Order struct {
 	Signature []byte `json:"signature"`
@@ -64,17 +76,17 @@ type Order struct {
 	Parity Parity    `json:"parity"`
 	Expiry time.Time `json:"expiry"`
 
-	FstCode   CurrencyCode      `json:"fstCode"`
-	SndCode   CurrencyCode      `json:"sndCode"`
-	Price     *stackint.Int1024 `json:"price"`
-	MaxVolume *stackint.Int1024 `json:"maxVolume"`
-	MinVolume *stackint.Int1024 `json:"minVolume"`
+	FstCode   CurrencyCode `json:"fstCode"`
+	SndCode   CurrencyCode `json:"sndCode"`
+	Price     *big.Int     `json:"price"`
+	MaxVolume *big.Int     `json:"maxVolume"`
+	MinVolume *big.Int     `json:"minVolume"`
 
-	Nonce *stackint.Int1024 `json:"nonce"`
+	Nonce *big.Int `json:"nonce"`
 }
 
 // NewOrder returns a new Order and computes the ID.
-func NewOrder(ty Type, parity Parity, expiry time.Time, fstCode, sndCode CurrencyCode, price, maxVolume, minVolume, nonce *stackint.Int1024) *Order {
+func NewOrder(ty Type, parity Parity, expiry time.Time, fstCode, sndCode CurrencyCode, price, maxVolume, minVolume, nonce *big.Int) *Order {
 	order := &Order{
 		Type:      ty,
 		Parity:    parity,
@@ -92,14 +104,12 @@ func NewOrder(ty Type, parity Parity, expiry time.Time, fstCode, sndCode Currenc
 
 // Split the Order into n OrderFragments, where k OrderFragments are needed to
 // reconstruct the Order. Returns a slice of all n OrderFragments, or an error.
-func (order *Order) Split(n, k int64, prime *stackint.Int1024) ([]*Fragment, error) {
-	fstCode := stackint.FromUint(uint(order.FstCode))
-	fstCodeShares, err := shamir.Split(n, k, prime, &fstCode)
+func (order *Order) Split(n, k int64, prime *big.Int) ([]*Fragment, error) {
+	fstCodeShares, err := shamir.Split(n, k, prime, big.NewInt(int64(order.FstCode)))
 	if err != nil {
 		return nil, err
 	}
-	sndCode := stackint.FromUint(uint(order.SndCode))
-	sndCodeShares, err := shamir.Split(n, k, prime, &sndCode)
+	sndCodeShares, err := shamir.Split(n, k, prime, big.NewInt(int64(order.SndCode)))
 	if err != nil {
 		return nil, err
 	}

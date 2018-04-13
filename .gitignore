@@ -1,7 +1,7 @@
 # Output of the go coverage tool
 *.out
 
-# Output of the go profiler
+# Output of the go profiler and test
 *.pdf
 cpu.prof
 *.test
@@ -20,6 +20,3 @@ cmd/secrets
 cmd/register/register
 cmd/deregister/deregister
 cmd/epoch/epoch
-
-# Config files
-*.json

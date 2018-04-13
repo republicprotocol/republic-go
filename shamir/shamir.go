@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/json"
 
 	"github.com/republicprotocol/republic-go/stackint"
 )
@@ -13,6 +14,26 @@ import (
 type Share struct {
 	Key   int64
 	Value stackint.Int1024
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (share Share) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ToBytes(share))
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (share *Share) UnmarshalJSON(data []byte) error {
+	var bs []byte
+	if err := json.Unmarshal(data, &bs); err != nil {
+		return err
+	}
+	shareFromBytes, err := FromBytes(bs)
+	if err != nil {
+		return err
+	}
+	share.Key = shareFromBytes.Key
+	share.Value = shareFromBytes.Value
+	return nil
 }
 
 // Shares are a slice of Share structs.

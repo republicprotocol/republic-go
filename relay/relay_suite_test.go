@@ -1,13 +1,13 @@
-package rpc_test
+package relay_test
 
 import (
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"testing"
 )
 
-func TestGoRPCNetwork(t *testing.T) {
+func TestRelay(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Go RPC Suite")
+	RunSpecs(t, "Relay Suite")
 }
