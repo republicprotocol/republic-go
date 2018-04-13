@@ -61,7 +61,7 @@ func SendOrderFragmentsToDarkOcean(order Fragments, traderMultiAddress *identity
 			}
 		}
 	}
-	if !valid {
+	if !valid && len(pools) > 0 {
 		return fmt.Errorf("cannot send fragments to pools: number of fragments do not match pool size")
 	}
 	return nil
