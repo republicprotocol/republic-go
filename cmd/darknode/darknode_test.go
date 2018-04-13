@@ -39,7 +39,6 @@ var _ = Describe("DarkNode", func() {
 		var shutdown chan struct{}
 
 		BeforeEach(func() {
-
 			// Bind to the DarkNodeRegistry contract
 			connection, err := ganache.Connect(GanacheRPC)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -51,19 +50,18 @@ var _ = Describe("DarkNode", func() {
 			darkNodes, ctxs, cancels = NewLocalDarkNodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
 
 			shutdown = make(chan struct{})
-
-			var wg sync.WaitGroup
-			wg.Add(len(darkNodes))
-			for i := range darkNodes {
-				go func(i int) {
-					defer wg.Done()
-
-					darkNodes[i].Run(ctxs[i])
-				}(i)
-			}
-
 			go func() {
 				defer close(shutdown)
+
+				var wg sync.WaitGroup
+				wg.Add(len(darkNodes))
+				for i := range darkNodes {
+					go func(i int) {
+						defer wg.Done()
+
+						darkNodes[i].Run(ctxs[i])
+					}(i)
+				}
 
 				wg.Wait()
 			}()
@@ -73,7 +71,6 @@ var _ = Describe("DarkNode", func() {
 		})
 
 		AfterEach(func() {
-
 			// Wait for the DarkNodes to shutdown
 			<-shutdown
 		})
@@ -110,8 +107,7 @@ var _ = Describe("DarkNode", func() {
 		})
 	})
 
-	FContext("when computing order matches", func() {
-
+	Context("when computing order matches", func() {
 		var darkNodeRegistry contracts.DarkNodeRegistry
 		var darkNodes darknode.DarkNodes
 		var ctxs []context.Context
@@ -129,17 +125,22 @@ var _ = Describe("DarkNode", func() {
 			// Create DarkNodes and contexts/cancels for running them
 			darkNodes, ctxs, cancels = NewLocalDarkNodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
 
-			shutdown = make(chan struct{}, len(darkNodes))
-			for i := range darkNodes {
-				go func(i int) {
-					defer func() {
-						shutdown <- struct{}{}
-					}()
+			shutdown = make(chan struct{},0)
+			go func() {
+				defer close(shutdown)
 
-					darkNodes[i].Run(ctxs[i])
-				}(i)
-			}
-			log.Println(4)
+				var wg sync.WaitGroup
+				wg.Add(len(darkNodes))
+				for i := range darkNodes {
+					go func(i int) {
+						defer wg.Done()
+
+						darkNodes[i].Run(ctxs[i])
+					}(i)
+				}
+
+				wg.Wait()
+			}()
 
 			// Wait for the DarkNodes to boot
 			time.Sleep(time.Second)
@@ -147,12 +148,7 @@ var _ = Describe("DarkNode", func() {
 
 		AfterEach(func() {
 			// Wait for the DarkNodes to shutdown
-			go func() {
-				for len(shutdown) < len(darkNodes){
-					time.Sleep( 1 * time.Second)
-				}
-			}()
-
+			<- shutdown
 			for _, node := range darkNodes{
 				node.Stop()
 			}
@@ -162,6 +158,7 @@ var _ = Describe("DarkNode", func() {
 			By("start sending orders ")
 			err := sendOrders(darkNodes, NumberOfOrders)
 			Ω(err).ShouldNot(HaveOccurred())
+			By("finish sending orders ")
 		})
 
 		It("should update the order book after computing an order match", func() {

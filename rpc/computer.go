@@ -20,8 +20,8 @@ type ComputerService struct {
 	errSignals   map[string]chan (<-chan error)
 }
 
-func NewComputerService() ComputerService {
-	return ComputerService{
+func NewComputerService() *ComputerService {
+	return &ComputerService{
 		senderSignalsMu: new(sync.Mutex),
 		senderSignals:   map[string]chan (<-chan *Computation){},
 
@@ -73,7 +73,7 @@ func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 
 	senderErrCh := make(chan error, 1)
 	go func() {
-		close(senderErrCh)
+		defer close(senderErrCh)
 		senderSignal := service.senderSignal(multiAddress)
 		senderCh := <-senderSignal
 

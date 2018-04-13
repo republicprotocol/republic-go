@@ -6,7 +6,7 @@ import (
 
 // MergeErrors from multiple channels into one channel.
 func MergeErrors(errChIns ...(<-chan error)) <-chan error {
-	errCh := make(chan error)
+	errCh := make(chan error, len(errChIns))
 
 	go func() {
 		defer close(errCh)

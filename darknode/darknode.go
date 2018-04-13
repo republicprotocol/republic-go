@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/darkocean"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
@@ -31,6 +32,7 @@ type DarkNode struct {
 
 	Server           *grpc.Server
 	Relay            *rpc.RelayService
+	Smpc             *rpc.ComputerService
 }
 
 func NewDarkNode(config Config) (DarkNode, error) {
@@ -71,6 +73,7 @@ func NewDarkNode(config Config) (DarkNode, error) {
 	// Initialize RPC server and services
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
 	node.Relay = rpc.NewRelayService(node.NetworkOption, node, node.Logger)
+	node.Smpc = rpc.NewComputerService()
 
 	return *node,nil
 }
@@ -88,34 +91,47 @@ func (node *DarkNode) Stop() {
 }
 
 func (node *DarkNode) Run(ctx context.Context) {
-	// Turn the gRPC server on.
-	node.Logger.Network(logger.Info, fmt.Sprintf("gRPC services listening on %s:%s", node.Host, node.Port))
-	node.Relay.Register(node.Server)
+	errChs := [2]<-chan error{}
 
-	listener, err := net.Listen("tcp", node.Host+":"+node.Port)
-	if err != nil {
-		node.Logger.Error(err.Error())
-	}
-	if err := node.Server.Serve(listener); err != nil {
-		node.Logger.Error(err.Error())
-	}
+	errChs[0] = node.RunRPC(ctx)
+	errChs[1] = node.RunDarkOcean(ctx)
 
-	// Update the dark ocean.
-	errCh := node.UpdateDarkOcean(ctx)
-	for err := range errCh {
+	for err := range dispatch.MergeErrors(errChs[:]...) {
 		log.Println(err)
 	}
 }
 
-func (node *DarkNode) DarkOcean() *darkocean.Ocean {
-	return node.darkOcean
+func (node *DarkNode) RunRPC(ctx context.Context) <-chan error {
+	errCh := make(chan error)
+
+	go func() {
+		defer close(errCh)
+
+		// Turn the gRPC server on.
+		node.Logger.Network(logger.Info, fmt.Sprintf("gRPC services listening on %s:%s", node.Host, node.Port))
+		node.Relay.Register(node.Server)
+		node.Smpc.Register(node.Server)
+
+		listener, err := net.Listen("tcp", node.Host+":"+node.Port)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		if err := node.Server.Serve(listener); err != nil {
+			errCh <- err
+			return
+		}
+	}()
+
+	go func() {
+		<-ctx.Done()
+		node.Server.Stop()
+	}()
+
+	return errCh
 }
 
-func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
-	log.Printf( "order %s received from the %s", orderFragment.OrderID.String(), from.ID().String())
-}
-
-func (node *DarkNode) UpdateDarkOcean(ctx context.Context) <-chan error {
+func (node *DarkNode) RunDarkOcean(ctx context.Context) <-chan error {
 	errCh := make(chan error)
 
 	go func() {
@@ -163,4 +179,13 @@ func (node *DarkNode) UpdateDarkOcean(ctx context.Context) <-chan error {
 	}()
 
 	return errCh
+}
+
+func (node *DarkNode) DarkOcean() *darkocean.Ocean {
+	return node.darkOcean
+}
+
+func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
+
+	log.Printf( "order %s received from the %s", orderFragment.OrderID.String(), from.ID().String())
 }
