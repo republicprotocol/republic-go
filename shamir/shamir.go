@@ -24,7 +24,7 @@ func (share Share) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (share *Share) UnmarshalJSON(data []byte) error {
 	var bs []byte
-	if err := json.Unmarshal(data, bs); err != nil {
+	if err := json.Unmarshal(data, &bs); err != nil {
 		return err
 	}
 	shareFromBytes, err := FromBytes(bs)

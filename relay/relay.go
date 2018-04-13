@@ -13,7 +13,7 @@ import (
 	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/stackint"
-	// "github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/orderbook"
 )
 
 var prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
@@ -23,6 +23,15 @@ type Relay struct {
 	multiAddress *identity.MultiAddress
 	darkPools    *dark.Pools
 }
+
+//TODO: Initialize Relay object with trader address and dark pools
+//
+// NewRelay initializes and returns a new Relay object
+// func NewRelay() Relay{
+// 	relay := Relay{}
+// 	relay.multiAddress, err = identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT")
+// 	return relay
+// }
 
 // NewRouter prepares Relay to handle HTTP requests
 func NewRouter() *mux.Router {
@@ -99,7 +108,6 @@ func sendOrder(openOrder order.Order, pools dark.Pools, traderMultiAddress ident
 
 		var wg sync.WaitGroup
 		wg.Add(len(pools))
-		fmt.Println("pools: ",len(pools))
 		for i := range pools {
 			go func(darkPool *dark.Pool) {
 				defer wg.Done()
@@ -162,7 +170,6 @@ func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares [
 						return
 					}
 
-					fmt.Println("here multi : ", multi)
 					// Create a client
 					client, err := rpc.NewClient(multiaddress, multi)
 					if err != nil {
@@ -205,6 +212,7 @@ func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares [
 
 // Function to obtain multiaddress of a node by sending requests to bootstrap nodes
 func getMultiAddress(address identity.Address, traderMultiAddress identity.MultiAddress) (identity.MultiAddress, error) {
+	// Bootstrap nodes for local testing
 	BootstrapMultiAddresses := []string{
 		"/ip4/0.0.0.0/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT",
 		"/ip4/0.0.0.0/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu",
@@ -212,6 +220,11 @@ func getMultiAddress(address identity.Address, traderMultiAddress identity.Multi
         "/ip4/0.0.0.0/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR",
         "/ip4/0.0.0.0/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss",
 	}
+		// "/ip4/52.77.88.84/tcp/18514/republic/8MGzXN7M1ucxvtumVjQ7Ybb7xQ8TUw",
+		// "/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",
+		// "/ip4/52.59.176.141/tcp/18514/republic/8MHmrykz65HimBPYaVgm8bTSpRUoXA",
+		// "/ip4/52.21.44.236/tcp/18514/republic/8MKFT9CDQQru1hYqnaojXqCQU2Mmuk",
+		// "/ip4/52.41.118.171/tcp/18514/republic/8MGb8k337pp2GSh6yG8iv2GK6FbNHN",
 
 	//TODO: Check
 
@@ -264,6 +277,7 @@ func GeneratePoolID(pool *dark.Pool) string {
 	return id.String()
 }
 
+// isSafeToSend checks if there are enough fragments to successfully complete sending an order
 func isSafeToSend(fragmentCount, poolSize int) bool {
 	return fragmentCount >= 2/3*poolSize && fragmentCount <= poolSize
 }

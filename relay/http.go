@@ -55,10 +55,12 @@ func PostOrdersHandler(multiAddress *identity.MultiAddress, darkPools dark.Pools
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		postOrder := HTTPPost{}
+		
 		if err := json.NewDecoder(r.Body).Decode(&postOrder); err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot decode json into an order or a list of order fragments: %v", err))
 			return
 		}
+		
 		if len(postOrder.OrderFragments.DarkPools) > 0 {
 			if err := SendOrderFragmentsToDarkOcean(postOrder.OrderFragments, multiAddress, darkPools); err != nil {
 				writeError(w, http.StatusInternalServerError, fmt.Sprintf("error sending order fragments : %v", err))
@@ -73,6 +75,7 @@ func PostOrdersHandler(multiAddress *identity.MultiAddress, darkPools dark.Pools
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot decode json into an order or a list of order fragments: empty object"))
 			return
 		}
+		
 		w.WriteHeader(http.StatusCreated)
 	})
 }
