@@ -1,9 +1,5 @@
 package smpc
 
-<<<<<<< HEAD
-// type Participants struct {
-// }
-=======
 import (
 	"context"
 
@@ -152,4 +148,3 @@ func (computer *Computer) SharedOrderTable() *SharedOrderTable {
 func (computer *Computer) SharedObscureResidueTable() *SharedObscureResidueTable {
 	return &computer.sharedObscureResidueTable
 }
->>>>>>> smpc
