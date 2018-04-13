@@ -49,15 +49,17 @@ func (service *ComputerService) Register(server *grpc.Server) {
 // can be used to read Computation messages from the client. The error channel
 // will carry errors that occur when writing, or reading, Computation messages
 // to, or from, the client.
-func (service *ComputerService) WaitForCompute(to identity.MultiAddress, computationChIn <-chan *Computation) (<-chan *Computation, <-chan error) {
-	senderSignal := service.senderSignal(to.String())
-	defer service.closeSenderSignal(to.String())
+func (service *ComputerService) WaitForCompute(multiAddress identity.MultiAddress, computationChIn <-chan *Computation) (<-chan *Computation, <-chan error) {
+	multiAddressAsStr := multiAddress.String()
+
+	senderSignal := service.senderSignal(multiAddressAsStr)
+	defer service.closeSenderSignal(multiAddressAsStr)
 	senderSignal <- computationChIn
 
-	receiverSignal := service.receiverSignal(to.String())
+	receiverSignal := service.receiverSignal(multiAddressAsStr)
 	receiverCh := <-receiverSignal
 
-	errSignal := service.errSignal(to.String())
+	errSignal := service.errSignal(multiAddressAsStr)
 	errCh := <-errSignal
 
 	return receiverCh, errCh
