@@ -59,8 +59,8 @@ func (service *ComputerService) WaitForCompute(multiAddress identity.MultiAddres
 	return receiverCh, errCh
 }
 
-// Compute opens a gRPC stream for streaming computation commands and results
-// to the SmpcService.
+// Compute opens a gRPC stream for streaming Computation messages to, and from,
+// a client.
 func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 	multiAddress := "" // TODO: Get the MultiAddress from a signed authentication message
 
