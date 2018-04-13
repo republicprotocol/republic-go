@@ -23,7 +23,7 @@ type HTTPPost struct {
 
 // The HTTPDelete object
 type HTTPDelete struct {
-	signature []byte   `json:"signature"`
+	Signature []byte   `json:"signature"`
 	ID        order.ID `json:"id"`
 }
 

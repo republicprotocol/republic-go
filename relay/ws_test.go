@@ -33,6 +33,7 @@ var _ = Describe("WebSocket streaming", func() {
 			// In this case when we attempt to read, the server is already closed, so
 			// we should have an unexpected close error.
 			Ω(messageType).Should(Equal(-1))
+			// TODO: Check for websocket error responses.
 			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(true))
 		})
 
@@ -83,30 +84,32 @@ var _ = Describe("WebSocket streaming", func() {
 				orderBook.Open(orderMessage)
 			}()
 
+			// Connect to the socket.
 			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
 			u, _ := url.Parse(server.URL)
 			u.Scheme = "ws"
 			u.Path = "orders"
 			u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ"
-
-			// Connect to the socket.
 			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
 
-			// Check if there is a message to be read.
+			// We should be able to read the initial message.
 			_, message, err := conn.ReadMessage()
 			socketMessage := new(orderbook.Message)
 			if err := json.Unmarshal(message, socketMessage); err != nil {
 				fmt.Println(err)
 			}
-			Ω(orderMessage.Ord.ID).Should(Equal(socketMessage.Ord.ID))
+			Ω(socketMessage.Ord.ID).Should(Equal(orderMessage.Ord.ID))
 
 			// Update the status of the order and check if there is another
 			// message to be read.
 			orderBook.Settle(orderMessage)
 			messageType, message, err := conn.ReadMessage()
+			if err := json.Unmarshal(message, socketMessage); err != nil {
+				fmt.Println(err)
+			}
+			// fmt.Printf("\n%s", string(message))
 
-			// TODO: Check the status of this message.
-
+			// Ω(socketMessage.Status).Should(Equal(4))
 			Ω(messageType).ShouldNot(Equal(-1))
 			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
 
@@ -140,16 +143,15 @@ var _ = Describe("WebSocket streaming", func() {
 				orderBook.Open(orderMessage)
 			}()
 
+			// Connect to the socket.
 			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
 			u, _ := url.Parse(server.URL)
 			u.Scheme = "ws"
 			u.Path = "orders"
 			u.RawQuery = "id=test"
-
-			// Connect to the socket.
 			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
 
-			// Check if there is a message to be read.
+			// We should not receive any messages.
 			conn.SetReadDeadline(time.Now().Add(time.Second))
 			messageType, _, err := conn.ReadMessage()
 			Ω(messageType).Should(Equal(-1))
@@ -158,6 +160,124 @@ var _ = Describe("WebSocket streaming", func() {
 			wg.Wait()
 		})
 
-		// TODO: Test the handling of statuses.
+		// It("should provide information about specified statuses", func() {
+		// 	var wg sync.WaitGroup
+
+		// 	orderBook := orderbook.NewOrderBook(100)
+
+		// 	defaultStackVal, _ := stackint.FromString("179761232312312")
+		// 	ord := order.Order{}
+		// 	ord.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ")
+		// 	ord.Type = 2
+		// 	ord.Parity = 1
+		// 	ord.Expiry = time.Time{}
+		// 	ord.FstCode = order.CurrencyCodeETH
+		// 	ord.SndCode = order.CurrencyCodeBTC
+		// 	ord.Price = defaultStackVal
+		// 	ord.MaxVolume = defaultStackVal
+		// 	ord.MinVolume = defaultStackVal
+		// 	ord.Nonce = defaultStackVal
+
+		// 	var hash [32]byte
+		// 	orderMessage := orderbook.NewMessage(ord, order.Open, hash)
+
+		// 	wg.Add(1)
+		// 	go func() {
+		// 		defer wg.Done()
+		// 		// Open an order with the specified ID.
+		// 		orderBook.Open(orderMessage)
+		// 	}()
+
+		// 	// Connect to the socket.
+		// 	server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
+		// 	u, _ := url.Parse(server.URL)
+		// 	u.Scheme = "ws"
+		// 	u.Path = "orders"
+		// 	u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ&status=unconfirmed,confirmed"
+		// 	conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
+
+		// 	// We should be able to read the initial message.
+		// 	_, message, err := conn.ReadMessage()
+		// 	socketMessage := new(orderbook.Message)
+		// 	if err := json.Unmarshal(message, socketMessage); err != nil {
+		// 		fmt.Println(err)
+		// 	}
+		// 	Ω(socketMessage.Ord.ID).Should(Equal(orderMessage.Ord.ID))
+
+		// 	// Update the status of the order and check if there is another
+		// 	// message to be read.
+		// 	orderBook.Match(orderMessage)
+		// 	messageType, message, err := conn.ReadMessage()
+		// 	if err := json.Unmarshal(message, socketMessage); err != nil {
+		// 		fmt.Println(err)
+		// 	}
+		// 	Ω(socketMessage.Status).Should(Equal(1))
+
+		// 	orderBook.Confirm(orderMessage)
+		// 	messageType, message, err = conn.ReadMessage()
+		// 	if err := json.Unmarshal(message, socketMessage); err != nil {
+		// 		fmt.Println(err)
+		// 	}
+		// 	Ω(socketMessage.Status).Should(Equal(3))
+		// 	Ω(messageType).ShouldNot(Equal(-1))
+		// 	Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
+
+		// 	wg.Wait()
+		// })
+
+		// It("should not provide information about unspecified statuses", func() {
+		// 	var wg sync.WaitGroup
+
+		// 	orderBook := orderbook.NewOrderBook(100)
+
+		// 	defaultStackVal, _ := stackint.FromString("179761232312312")
+		// 	ord := order.Order{}
+		// 	ord.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ")
+		// 	ord.Type = 2
+		// 	ord.Parity = 1
+		// 	ord.Expiry = time.Time{}
+		// 	ord.FstCode = order.CurrencyCodeETH
+		// 	ord.SndCode = order.CurrencyCodeBTC
+		// 	ord.Price = defaultStackVal
+		// 	ord.MaxVolume = defaultStackVal
+		// 	ord.MinVolume = defaultStackVal
+		// 	ord.Nonce = defaultStackVal
+
+		// 	var hash [32]byte
+		// 	orderMessage := orderbook.NewMessage(ord, order.Open, hash)
+
+		// 	wg.Add(1)
+		// 	go func() {
+		// 		defer wg.Done()
+		// 		// Open an order with the specified ID.
+		// 		orderBook.Open(orderMessage)
+		// 	}()
+
+		// 	// Connect to the socket.
+		// 	server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
+		// 	u, _ := url.Parse(server.URL)
+		// 	u.Scheme = "ws"
+		// 	u.Path = "orders"
+		// 	u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ&status=unconfirmed,confirmed"
+		// 	conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
+
+		// 	// We should be able to read the initial message.
+		// 	_, message, err := conn.ReadMessage()
+		// 	socketMessage := new(orderbook.Message)
+		// 	if err := json.Unmarshal(message, socketMessage); err != nil {
+		// 		fmt.Println(err)
+		// 	}
+		// 	Ω(socketMessage.Ord.ID).Should(Equal(orderMessage.Ord.ID))
+
+		// 	// We should not receive the following message, as we have not
+		// 	// included the status as a parameter.
+		// 	orderBook.Settle(orderMessage)
+		// 	conn.SetReadDeadline(time.Now().Add(time.Second))
+		// 	messageType, _, err := conn.ReadMessage()
+		// 	Ω(messageType).Should(Equal(-1))
+		// 	Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
+
+		// 	wg.Wait()
+		// })
 	})
 })

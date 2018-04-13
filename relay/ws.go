@@ -22,7 +22,7 @@ func GetOrdersHandler(orderBook *orderbook.OrderBook) http.Handler {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		defer conn.Close()
 		if err != nil {
-			fmt.Sprintf("cannot open websocket connection: %v", err)
+			fmt.Printf("cannot open websocket connection: %v", err)
 			return
 		}
 		streamOrders(w, r, conn, orderBook)

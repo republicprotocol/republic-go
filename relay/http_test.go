@@ -3,6 +3,7 @@ package relay_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -147,6 +148,11 @@ var _ = Describe("HTTP handlers", func() {
 			handler := relay.RecoveryHandler(relay.GetOrderHandler(orderBook, string(ord.ID)))
 			handler.ServeHTTP(w, r)
 
+			message := new(order.Order)
+			if err := json.Unmarshal(w.Body.Bytes(), message); err != nil {
+				fmt.Println(err)
+			}
+			Ω(message.ID).Should(Equal(ord.ID))
 			Ω(w.Code).Should(Equal(http.StatusOK))
 		})
 
@@ -160,6 +166,7 @@ var _ = Describe("HTTP handlers", func() {
 			handler := relay.RecoveryHandler(relay.GetOrderHandler(orderBook, ""))
 			handler.ServeHTTP(w, r)
 
+			Expect(w.Body.String()).To(ContainSubstring("order id is invalid"))
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))
 		})
 	})
