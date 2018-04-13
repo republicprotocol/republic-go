@@ -64,7 +64,7 @@ var _ = Describe("Broadcast", func() {
 			wg.Wait()
 		})
 
-		It("should only return unique proposals", func() {
+		FIt("should only return unique proposals", func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			chanSetIn := EmptyChannelSet(ctx, 100)
 			validator, _ := NewTestValidator(NewSharedBlocks(0, 0), 100)
@@ -74,12 +74,12 @@ var _ = Describe("Broadcast", func() {
 			status := map[[32]byte]uint8{}
 			var wg sync.WaitGroup
 
-			wg.Add(100)
+			wg.Add(101)
 			go func() {
 				defer cancel()
 				defer wg.Done()
 				for i := 0; i < 100; i++ {
-					for j := 0; j < i; j++ {
+					for j := 0; j <= i; j++ {
 						proposal := Proposal{
 							Height: uint64(i),
 						}
@@ -99,6 +99,7 @@ var _ = Describe("Broadcast", func() {
 						if !ok {
 							return
 						}
+
 						statusMu.RLock()
 						Ω(status[ProposalHash(proposal)]).Should(Equal(uint8(1)))
 						statusMu.RUnlock()
