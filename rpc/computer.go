@@ -10,9 +10,6 @@ import (
 )
 
 type ComputerService struct {
-	ClientPool
-	Options
-
 	senderSignalsMu *sync.Mutex
 	senderSignals   map[string]chan (<-chan *Computation)
 
@@ -23,11 +20,8 @@ type ComputerService struct {
 	errSignals   map[string]chan (<-chan error)
 }
 
-func NewComputerService(clientPool ClientPool, options Options) ComputerService {
+func NewComputerService() ComputerService {
 	return ComputerService{
-		ClientPool: clientPool,
-		Options:    options,
-
 		senderSignalsMu: new(sync.Mutex),
 		senderSignals:   map[string]chan (<-chan *Computation){},
 
