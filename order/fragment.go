@@ -34,7 +34,7 @@ type Fragment struct {
 	OrderParity Parity
 	OrderExpiry time.Time
 
-	FstCodeShare   shamir.Share
+	FstCodeShare   shamir.Share `json:"fstCodeShare"`
 	SndCodeShare   shamir.Share
 	PriceShare     shamir.Share
 	MaxVolumeShare shamir.Share
