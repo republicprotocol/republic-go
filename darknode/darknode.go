@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/republicprotocol/republic-go/smpc"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/ethereum/client"
@@ -29,8 +31,10 @@ type DarkNode struct {
 	darkOcean        *darkocean.Ocean
 	Logger           *logger.Logger
 
-	Server           *grpc.Server
-	Relay            *rpc.RelayService
+	Server *grpc.Server
+	Relay  *rpc.RelayService
+
+	Computer smpc.Computer
 }
 
 func NewDarkNode(config Config) (DarkNode, error) {
@@ -72,7 +76,7 @@ func NewDarkNode(config Config) (DarkNode, error) {
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
 	node.Relay = rpc.NewRelayService(node.NetworkOption, node, node.Logger)
 
-	return *node,nil
+	return *node, nil
 }
 
 // Stop the DarkNode.
@@ -112,7 +116,7 @@ func (node *DarkNode) DarkOcean() *darkocean.Ocean {
 }
 
 func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
-	log.Printf( "order %s received from the %s", orderFragment.OrderID.String(), from.ID().String())
+	log.Printf("order %s received from the %s", orderFragment.OrderID.String(), from.ID().String())
 }
 
 func (node *DarkNode) UpdateDarkOcean(ctx context.Context) <-chan error {
