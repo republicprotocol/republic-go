@@ -15,12 +15,15 @@ var _ = Describe("Channel Set", func() {
 	Context("Channel Set", func() {
 
 		It("should be able to create an empty channel set", func() {
-			emptyChanSet := EmptyChannelSet(100)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			emptyChanSet := EmptyChannelSet(ctx, 100)
 			Ω(emptyChanSet).Should(Not(BeNil()))
 		})
 
 		It("should be able to create, write, read and close a channel set from channels", func() {
-			chanSet := EmptyChannelSet(100)
+			ctx, cancel := context.WithCancel(context.Background())
+			chanSet := EmptyChannelSet(ctx, 100)
 			chanSet.Proposal <- Proposal{
 				Height: 1,
 			}
@@ -40,12 +43,13 @@ var _ = Describe("Channel Set", func() {
 				}
 			}()
 			time.Sleep(10 * time.Microsecond)
-			chanSet.Close()
+			cancel()
 			wg.Wait()
 		})
 
 		It("should be able to broadcast a channel set to multiple channel sets", func() {
-			chanSet := EmptyChannelSet(100)
+			ctx, cancel := context.WithCancel(context.Background())
+			chanSet := EmptyChannelSet(ctx, 100)
 			chanSet.Proposal <- Proposal{
 				Height: 1,
 			}
@@ -53,10 +57,10 @@ var _ = Describe("Channel Set", func() {
 			chanSets := make([]ChannelSet, 100)
 
 			for i := 0; i < 100; i++ {
-				chanSets[i] = EmptyChannelSet(100)
+				chanSets[i] = EmptyChannelSet(ctx, 100)
 			}
-			ctx, cancel := context.WithCancel(context.Background())
-			go chanSet.Split(ctx, chanSets)
+
+			go chanSet.Split(chanSets)
 
 			wg.Add(100)
 			for i := 0; i < 100; i++ {
@@ -77,17 +81,16 @@ var _ = Describe("Channel Set", func() {
 
 			wg.Wait()
 			cancel()
-			chanSet.Close()
 		})
 
 		It("should be able to pipe a channel set into a different channel set", func() {
-			chanSet := EmptyChannelSet(100)
+			ctx, cancel := context.WithCancel(context.Background())
+			chanSet := EmptyChannelSet(ctx, 100)
 			chanSet.Proposal <- Proposal{
 				Height: 1,
 			}
-			chanSet2 := EmptyChannelSet(100)
-			ctx, cancel := context.WithCancel(context.Background())
-			go chanSet2.Copy(ctx, chanSet)
+			chanSet2 := EmptyChannelSet(ctx, 100)
+			go chanSet2.Copy(chanSet)
 			var wg sync.WaitGroup
 			wg.Add(1)
 			go func() {
@@ -105,8 +108,6 @@ var _ = Describe("Channel Set", func() {
 			}()
 			wg.Wait()
 			cancel()
-			chanSet.Close()
-			chanSet2.Close()
 		})
 	})
 })
