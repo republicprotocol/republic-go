@@ -34,6 +34,11 @@ func ProcessBuffer(chanSetIn ChannelSet, validator Validator) ChannelSet {
 }
 
 func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan struct{}) {
+	duplicateProposals := map[[32]byte]bool{}
+	duplicatePrepares := map[[32]byte]bool{}
+	duplicateCommits := map[[32]byte]bool{}
+	duplicateFaults := map[[32]byte]bool{}
+
 	doneCh := make(chan struct{})
 	sb := validator.SharedBlocks()
 	buffer := NewBuffer()
@@ -47,9 +52,11 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 				if !ok {
 					return
 				}
-				if proposal.Height < h {
+
+				if proposal.Height < h || duplicateProposals[ProposalHash(proposal)] {
 					continue
 				}
+
 				buffer.channelSetsMu.Lock()
 				if _, ok := buffer.chanSets[proposal.Height]; !ok {
 					ctx, cancel := context.WithCancel(context.Background())
@@ -64,13 +71,14 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 					buffer.chanSets[proposal.Height] = EmptyChannelSet(ctx, validator.Threshold())
 				}
 				buffer.chanSets[proposal.Height].Proposal <- proposal
+				duplicateProposals[ProposalHash(proposal)] = true
 				buffer.channelSetsMu.Unlock()
 
 			case prepare, ok := <-chanSetIn.Prepare:
 				if !ok {
 					return
 				}
-				if prepare.Height < h {
+				if prepare.Height < h || duplicatePrepares[PrepareHash(prepare)] {
 					continue
 				}
 				buffer.channelSetsMu.Lock()
@@ -87,13 +95,14 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 					buffer.chanSets[prepare.Height] = EmptyChannelSet(ctx, validator.Threshold())
 				}
 				buffer.chanSets[prepare.Height].Prepare <- prepare
+				duplicatePrepares[PrepareHash(prepare)] = true
 				buffer.channelSetsMu.Unlock()
 
 			case commit, ok := <-chanSetIn.Commit:
 				if !ok {
 					return
 				}
-				if commit.Height < h {
+				if commit.Height < h || duplicateCommits[CommitHash(commit)] {
 					continue
 				}
 				buffer.channelSetsMu.Lock()
@@ -110,13 +119,14 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 					buffer.chanSets[commit.Height] = EmptyChannelSet(ctx, validator.Threshold())
 				}
 				buffer.chanSets[commit.Height].Commit <- commit
+				duplicateCommits[CommitHash(commit)] = true
 				buffer.channelSetsMu.Unlock()
 
 			case fault, ok := <-chanSetIn.Fault:
 				if !ok {
 					return
 				}
-				if fault.Height < h {
+				if fault.Height < h || duplicateFaults[FaultHash(fault)] {
 					continue
 				}
 				buffer.channelSetsMu.Lock()
@@ -133,6 +143,7 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 					buffer.chanSets[fault.Height] = EmptyChannelSet(ctx, validator.Threshold())
 				}
 				buffer.chanSets[fault.Height].Fault <- fault
+				duplicateFaults[FaultHash(fault)] = true
 				buffer.channelSetsMu.Unlock()
 			}
 		}
