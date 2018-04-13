@@ -1,6 +1,7 @@
 package hyper_test
 
 import (
+	"context"
 	"log"
 	"math/rand"
 	"sync"
@@ -16,8 +17,9 @@ var _ = Describe("Buffer", func() {
 	Context("Proposals", func() {
 
 		It("should only return proposals of current static height", func() {
+			ctx, cancel := context.WithCancel(context.Background())
 			sb := NewSharedBlocks(0, 0)
-			chanSetIn := EmptyChannelSet(100)
+			chanSetIn := EmptyChannelSet(ctx, 100)
 			validator, _ := NewTestValidator(sb, 100)
 			chanSetOut := ProcessBuffer(chanSetIn, validator)
 
@@ -42,13 +44,14 @@ var _ = Describe("Buffer", func() {
 				}
 			}
 
-			chanSetIn.Close()
+			cancel()
 
 		})
 
 		It("should only return proposals of current dynamic height which changes every second", func() {
-			chanSetIn := EmptyChannelSet(100)
-			defer chanSetIn.Close()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			chanSetIn := EmptyChannelSet(ctx, 100)
 
 			sb := NewSharedBlocks(0, 0)
 			validator, _ := NewTestValidator(sb, 100)
