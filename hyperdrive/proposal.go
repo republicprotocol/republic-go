@@ -24,9 +24,9 @@ type Proposal struct {
 }
 
 func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, validator Validator) (<-chan Prepare, <-chan Fault, <-chan error) {
-	prepareCh := make(chan Prepare)
-	faultCh := make(chan Fault)
-	errCh := make(chan error)
+	prepareCh := make(chan Prepare, validator.Threshold())
+	faultCh := make(chan Fault, validator.Threshold())
+	errCh := make(chan error, validator.Threshold())
 	counter := uint64(0)
 
 	go func() {
