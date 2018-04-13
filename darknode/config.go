@@ -2,11 +2,13 @@ package darknode
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/ethereum/client"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/rpc"
 )
@@ -43,6 +45,9 @@ func LoadConfig(filename string) (*Config, error) {
 }
 
 func NewLocalConfig(key *keystore.Key, host, port string) Config {
+	address, _, _ := identity.NewAddress()
+	multi, _ := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", host, port, address.String()))
+
 	return Config{
 		Key:  key,
 		Host: host,
@@ -54,6 +59,7 @@ func NewLocalConfig(key *keystore.Key, host, port string) Config {
 			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.String(),
 		},
 		NetworkOption: rpc.Options{
+			MultiAddress:      multi,
 			Timeout:           3 * time.Second,
 			TimeoutBackoff:    3 * time.Second,
 			TimeoutRetries:    3,
