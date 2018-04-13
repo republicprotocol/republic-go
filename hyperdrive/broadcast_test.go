@@ -2,7 +2,6 @@ package hyper_test
 
 import (
 	"context"
-	"log"
 	"sync"
 
 	. "github.com/onsi/ginkgo"
@@ -28,7 +27,6 @@ var _ = Describe("Broadcast", func() {
 			go func() {
 				defer cancel()
 				defer wg.Done()
-				defer log.Println("Ended the first function")
 				for i := 0; i < 100; i++ {
 					proposal := Proposal{
 						Height: uint64(i),
@@ -41,7 +39,6 @@ var _ = Describe("Broadcast", func() {
 			}()
 
 			go func() {
-				defer log.Println("Ended the second function")
 				for {
 					select {
 					case proposal, ok := <-chanSetOut.Proposal:

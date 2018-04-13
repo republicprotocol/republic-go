@@ -34,21 +34,18 @@ func (c *ChannelSet) Split(cs []ChannelSet) {
 	prepares := make([]chan Prepare, len(cs))
 	commits := make([]chan Commit, len(cs))
 	faults := make([]chan Fault, len(cs))
-	blocks := make([]chan Block, len(cs))
 
 	for i, chset := range cs {
 		proposals[i] = chset.Proposal
 		prepares[i] = chset.Prepare
 		commits[i] = chset.Commit
 		faults[i] = chset.Fault
-		blocks[i] = chset.Block
 	}
 
 	go dispatch.Split(c.Proposal, proposals)
 	go dispatch.Split(c.Prepare, prepares)
 	go dispatch.Split(c.Commit, commits)
 	go dispatch.Split(c.Fault, faults)
-	go dispatch.Split(c.Block, blocks)
 
 	func() {
 		for {

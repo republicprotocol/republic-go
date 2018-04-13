@@ -2,7 +2,6 @@ package hyper
 
 import (
 	"context"
-	"log"
 )
 
 type Prepare struct {
@@ -50,8 +49,11 @@ func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, validat
 					}
 					continue
 				}
+
+				// log.Println("Validated prepare on", validator.Sign())
 				// log.Println("Counting prepares on", validator.Sign(), prepares[h], "with threshold", threshold)
 				if prepares[h] >= threshold-1 {
+					// log.Println("Commited on ", validator.Sign())
 					commitCh <- Commit{
 						Rank:               prepare.Rank,
 						Height:             prepare.Height,
@@ -59,7 +61,6 @@ func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, validat
 						ThresholdSignature: ThresholdSignature("Threshold_BLS"),
 						Signature:          validator.Sign(),
 					}
-					log.Println("Successfully writing commits to internal channels")
 					commited[h] = true
 				} else {
 					prepares[h]++

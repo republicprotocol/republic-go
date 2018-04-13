@@ -2,7 +2,6 @@ package hyper
 
 import (
 	"context"
-	"log"
 )
 
 type ThresholdSignature Signature
@@ -49,8 +48,8 @@ func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, validator Vali
 					}
 					continue
 				}
-				
-				log.Println("Counting commits on", validator.Sign(), commits[h], "with threshold", threshold)
+
+				// log.Println("Counting commits on", validator.Sign(), commits[h], "with threshold", threshold)
 				if commits[h] >= threshold-1 {
 					certified[h] = true
 					blockCh <- commit.Block

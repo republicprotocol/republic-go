@@ -51,6 +51,7 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, validato
 						proposal.Rank,
 						proposal.Height,
 					}
+					// log.Println("Validated proposal on", validator.Sign())
 					prepareCh <- prepare
 				} else {
 					fault := Fault{
