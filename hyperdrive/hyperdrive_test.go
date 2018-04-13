@@ -1,62 +1,90 @@
 package hyper_test
 
 import (
+	"context"
+	"log"
+	"sync"
+
 	. "github.com/onsi/ginkgo"
-	//	. "github.com/republicprotocol/republic-go/hyperdrive"
+	. "github.com/republicprotocol/republic-go/hyperdrive"
 )
 
 var _ = Describe("Hyperdrive", func() {
 
-	// commanderCount := uint8(240)
+	threshold := uint8(160)
+	commanderCount := uint8(240)
 
 	Context("Hyperdrive", func() {
 
-		// It("Achieves consensus on a block over 240 commanders with 75% threshold", func() {
-		// 	ctx, cancel := context.WithCancel(context.Background())
+		FIt("Achieves consensus on a block over 240 commanders with 75% threshold", func() {
+			ctx, cancel := context.WithCancel(context.Background())
 
-		// 	hyper := NewHyperDrive(ctx, commanderCount)
-		// 	hyper.init()
-		// 	var wg sync.WaitGroup
-		// 	proposal := Proposal{
-		// 		Signature("Proposal"),
-		// 		Block{
-		// 			Tuples{},
-		// 			Signature("Proposal"),
-		// 		},
-		// 		Rank(0),
-		// 		0,
-		// 	}
+			// Network
+			ingress := make([]ChannelSet, commanderCount)
+			egress := make([]ChannelSet, commanderCount)
 
-		// 	wg.Add(1)
-		// 	go func() {
-		// 		defer wg.Done()
-		// 		hyper.run()
-		// 	}()
+			for i := uint8(0); i < commanderCount; i++ {
+				ingress[i] = EmptyChannelSet(ctx, commanderCount)
+				egress[i] = EmptyChannelSet(ctx, commanderCount)
+			}
 
-		// 	wg.Add(1)
-		// 	go func() {
-		// 		defer wg.Done()
-		// 		defer log.Println("Finished sending proposals")
-		// 		hyper.network.propose(proposal)
-		// 	}()
+			for i := uint8(0); i < commanderCount; i++ {
+				go egress[i].Split(ingress)
+			}
 
-		// 	go func() {
-		// 		defer cancel()
-		// 		defer log.Println("Success!!")
-		// 		for i := uint8(0); i < commanderCount; i++ {
-		// 			wg.Add(1)
-		// 			go func(i uint8) {
-		// 				defer wg.Done()
-		// 				_ = <-hyper.network.Egress[i].Block
-		// 			}(i)
-		// 		}
-		// 		wg.Wait()
-		// 	}()
-		// 	time.Sleep(1 * time.Minute)
-		// 	cancel()
-		// 	log.Println("Waiting here")
-		// 	wg.Wait()
-		// })
+			log.Println("Network initialized.... ")
+
+			// Hyperdrive
+
+			// Initialize replicas
+			replicas := make([]Replica, commanderCount)
+			for i := uint8(0); i < commanderCount; i++ {
+				blocks := NewSharedBlocks(0, 0)
+				validator, _ := NewTestValidator(blocks, threshold)
+				replicas[i] = NewReplica(ctx, validator, ingress[i])
+			}
+
+			// Run replicas
+			for i := uint8(0); i < commanderCount; i++ {
+				go egress[i].Copy(replicas[i].Run())
+			}
+
+			log.Println("Starting the hyperdrive.... ")
+
+			// Broadcast proposal to all the nodes
+			proposal := Proposal{
+				Signature("Proposal"),
+				Block{
+					Tuples{},
+					Signature("Proposal"),
+				},
+				Rank(0),
+				0,
+			}
+
+			for i := 0; i < len(replicas); i++ {
+				ingress[i].Proposal <- proposal
+			}
+
+			log.Println("Broadcasted the proposals")
+
+			// Wait for the blocks from all the nodes
+			var wg sync.WaitGroup
+			for i := uint8(0); i < commanderCount; i++ {
+				wg.Add(1)
+				go func(i uint8) {
+					defer wg.Done()
+					_ = <-egress[i].Block
+					log.Println("Block recieved on", i)
+				}(i)
+			}
+
+			log.Println("Waiting for the blocks")
+			wg.Wait()
+			log.Println("Success!!!!!")
+			cancel()
+
+		})
 
 		// 	FIt("Achieves consensus 50 blocks over 240 commanders with 2/3 threshold", func() {
 		// 		numberOfBlocks := 50
