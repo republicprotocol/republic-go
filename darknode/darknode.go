@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/republicprotocol/republic-go/smpc"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -30,9 +32,10 @@ type DarkNode struct {
 	darkOcean        *darkocean.Ocean
 	Logger           *logger.Logger
 
-	Server           *grpc.Server
-	Relay            *rpc.RelayService
-	Smpc             *rpc.ComputerService
+	Server *grpc.Server
+	Relay  *rpc.RelayService
+
+	Computer smpc.Computer
 }
 
 func NewDarkNode(config Config) (DarkNode, error) {
@@ -73,9 +76,9 @@ func NewDarkNode(config Config) (DarkNode, error) {
 	// Initialize RPC server and services
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
 	node.Relay = rpc.NewRelayService(node.NetworkOption, node, node.Logger)
-	node.Smpc = rpc.NewComputerService()
+	node.Computer = rpc.NewComputerService()
 
-	return *node,nil
+	return *node, nil
 }
 
 // Stop the DarkNode.
@@ -110,7 +113,7 @@ func (node *DarkNode) RunRPC(ctx context.Context) <-chan error {
 		// Turn the gRPC server on.
 		node.Logger.Network(logger.Info, fmt.Sprintf("gRPC services listening on %s:%s", node.Host, node.Port))
 		node.Relay.Register(node.Server)
-		node.Smpc.Register(node.Server)
+		node.Computer.Register(node.Server)
 
 		listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 		if err != nil {

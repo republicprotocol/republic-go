@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
@@ -14,12 +15,12 @@ import (
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
-func ProduceRhoSigmaFragments(ctx context.Context) (<-chan RhoSigmaFragment, <-chan error) {
-	rhoSigmaFragmentCh := make(chan RhoSigmaFragment)
+func ProcessOrderTuples(ctx context.Context, orderTupleChIn <-chan OrderTuple, bufferLimit int) (<-chan DeltaFragment, <-chan error) {
+	deltaFragmentCh := make(chan DeltaFragment, bufferLimit)
 	errCh := make(chan error)
 
 	go func() {
-		defer close(rhoSigmaFragmentCh)
+		defer close(deltaFragmentCh)
 		defer close(errCh)
 
 		for {
@@ -27,18 +28,72 @@ func ProduceRhoSigmaFragments(ctx context.Context) (<-chan RhoSigmaFragment, <-c
 			case <-ctx.Done():
 				errCh <- ctx.Err()
 				return
+			case orderTuple, ok := <-orderTupleChIn:
+				if !ok {
+					return
+				}
 
+				deltaFragment := NewDeltaFragment(orderTuple.BuyOrderFragment, orderTuple.SellOrderFragment, &Prime)
+				select {
+				case <-ctx.Done():
+					errCh <- ctx.Err()
+					return
+				case deltaFragmentCh <- deltaFragment:
+				}
 			}
 		}
 	}()
 
-	return rhoSigmaFragmentCh, errCh
+	return deltaFragmentCh, errCh
 }
 
-type RhoSigmaFragment struct {
+func ProcessDeltaFragments(ctx context.Context, deltaFragmentChIn <-chan DeltaFragment, sharedDeltaBuilder *SharedDeltaBuilder, bufferLimit int) (<-chan Delta, <-chan error) {
+	deltaCh := make(chan Delta, bufferLimit)
+	errCh := make(chan error)
+
+	go func() {
+		defer close(deltaCh)
+		defer close(errCh)
+
+		buffer := make([]Delta, bufferLimit)
+		tick := time.NewTicker(time.Millisecond)
+		defer tick.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				errCh <- ctx.Err()
+				return
+			case <-tick.C:
+				for i, n := 0, sharedDeltaBuilder.Deltas(buffer[:]); i < n; i++ {
+					select {
+					case <-ctx.Done():
+						errCh <- ctx.Err()
+						return
+					case deltaCh <- buffer[i]:
+					}
+				}
+			}
+		}
+	}()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case deltaFragment, ok := <-deltaFragmentChIn:
+				if !ok {
+					return
+				}
+				sharedDeltaBuilder.ComputeDelta(deltaFragment)
+			}
+		}
+	}()
+
+	return deltaCh, errCh
 }
 
-type DeltaBuilder struct {
+type SharedDeltaBuilder struct {
 	k                    int64
 	prime                stackint.Int1024
 	fstCodeSharesCache   shamir.Shares
@@ -54,8 +109,8 @@ type DeltaBuilder struct {
 	deltasQueue            Deltas
 }
 
-func NewDeltaBuilder(k int64, prime stackint.Int1024) DeltaBuilder {
-	return DeltaBuilder{
+func NewSharedDeltaBuilder(k int64, prime stackint.Int1024) SharedDeltaBuilder {
+	return SharedDeltaBuilder{
 		k:                      k,
 		prime:                  prime,
 		fstCodeSharesCache:     make(shamir.Shares, k),
@@ -71,60 +126,58 @@ func NewDeltaBuilder(k int64, prime stackint.Int1024) DeltaBuilder {
 	}
 }
 
-func (builder *DeltaBuilder) ComputeDelta(deltaFragments DeltaFragments) {
+func (builder *SharedDeltaBuilder) ComputeDelta(deltaFragment DeltaFragment) {
 	builder.mu.Lock()
 	defer builder.mu.Unlock()
 
-	for _, deltaFragment := range deltaFragments {
-		// Store the DeltaFragment if it has not been seen before
-		if builder.hasDeltaFragment(deltaFragment.ID) {
-			continue
-		}
-		builder.deltaFragments[string(deltaFragment.ID)] = deltaFragment
+	// Store the DeltaFragment if it has not been seen before
+	if builder.hasDeltaFragment(deltaFragment.ID) {
+		return
+	}
+	builder.deltaFragments[string(deltaFragment.ID)] = deltaFragment
 
-		// Associate the DeltaFragment with its respective Delta if the Delta
-		// has not been built yet
-		if builder.hasDelta(deltaFragment.DeltaID) {
+	// Associate the DeltaFragment with its respective Delta if the Delta
+	// has not been built yet
+	if builder.hasDelta(deltaFragment.DeltaID) {
+		return
+	}
+	if _, ok := builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)]; ok {
+		builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)] =
+			append(builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)], deltaFragment)
+	} else {
+		builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)] = DeltaFragments{deltaFragment}
+	}
+
+	// Build the Delta
+	deltaFragments := builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)]
+	if int64(len(deltaFragments)) >= builder.k {
+		if !IsCompatible(deltaFragments) {
 			return
 		}
-		if _, ok := builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)]; ok {
-			builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)] =
-				append(builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)], deltaFragment)
-		} else {
-			builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)] = DeltaFragments{deltaFragment}
+
+		for i := int64(0); i < builder.k; i++ {
+			builder.fstCodeSharesCache[i] = deltaFragments[i].FstCodeShare
+			builder.sndCodeSharesCache[i] = deltaFragments[i].SndCodeShare
+			builder.priceSharesCache[i] = deltaFragments[i].PriceShare
+			builder.maxVolumeSharesCache[i] = deltaFragments[i].MaxVolumeShare
+			builder.minVolumeSharesCache[i] = deltaFragments[i].MinVolumeShare
 		}
 
-		// Build the Delta
-		deltaFragments := builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)]
-		if int64(len(deltaFragments)) >= builder.k {
-			if !IsCompatible(deltaFragments) {
-				continue
-			}
-
-			for i := int64(0); i < builder.k; i++ {
-				builder.fstCodeSharesCache[i] = deltaFragments[i].FstCodeShare
-				builder.sndCodeSharesCache[i] = deltaFragments[i].SndCodeShare
-				builder.priceSharesCache[i] = deltaFragments[i].PriceShare
-				builder.maxVolumeSharesCache[i] = deltaFragments[i].MaxVolumeShare
-				builder.minVolumeSharesCache[i] = deltaFragments[i].MinVolumeShare
-			}
-
-			delta := NewDeltaFromShares(
-				deltaFragments[0].BuyOrderID,
-				deltaFragments[0].SellOrderID,
-				builder.fstCodeSharesCache,
-				builder.sndCodeSharesCache,
-				builder.priceSharesCache,
-				builder.minVolumeSharesCache,
-				builder.maxVolumeSharesCache,
-				builder.k, builder.prime)
-			builder.deltas[string(delta.ID)] = delta
-			builder.deltasQueue = append(builder.deltasQueue, delta)
-		}
+		delta := NewDeltaFromShares(
+			deltaFragments[0].BuyOrderID,
+			deltaFragments[0].SellOrderID,
+			builder.fstCodeSharesCache,
+			builder.sndCodeSharesCache,
+			builder.priceSharesCache,
+			builder.minVolumeSharesCache,
+			builder.maxVolumeSharesCache,
+			builder.k, builder.prime)
+		builder.deltas[string(delta.ID)] = delta
+		builder.deltasQueue = append(builder.deltasQueue, delta)
 	}
 }
 
-func (builder *DeltaBuilder) Deltas(deltas Deltas) int {
+func (builder *SharedDeltaBuilder) Deltas(deltas Deltas) int {
 	builder.mu.Lock()
 	defer builder.mu.Unlock()
 
@@ -142,12 +195,12 @@ func (builder *DeltaBuilder) Deltas(deltas Deltas) int {
 	return n
 }
 
-func (builder *DeltaBuilder) hasDelta(deltaID DeltaID) bool {
+func (builder *SharedDeltaBuilder) hasDelta(deltaID DeltaID) bool {
 	_, ok := builder.deltas[string(deltaID)]
 	return ok
 }
 
-func (builder *DeltaBuilder) hasDeltaFragment(deltaFragmentID DeltaFragmentID) bool {
+func (builder *SharedDeltaBuilder) hasDeltaFragment(deltaFragmentID DeltaFragmentID) bool {
 	_, ok := builder.deltaFragments[string(deltaFragmentID)]
 	return ok
 }
@@ -251,7 +304,7 @@ type DeltaFragment struct {
 	MinVolumeShare shamir.Share
 }
 
-func NewDeltaFragment(left, right *order.Fragment, prime stackint.Int1024) DeltaFragment {
+func NewDeltaFragment(left, right *order.Fragment, prime *stackint.Int1024) DeltaFragment {
 	var buyOrderFragment, sellOrderFragment *order.Fragment
 	if left.OrderParity == order.ParityBuy {
 		buyOrderFragment = left
@@ -263,23 +316,23 @@ func NewDeltaFragment(left, right *order.Fragment, prime stackint.Int1024) Delta
 
 	fstCodeShare := shamir.Share{
 		Key:   buyOrderFragment.FstCodeShare.Key,
-		Value: buyOrderFragment.FstCodeShare.Value.SubModulo(&sellOrderFragment.FstCodeShare.Value, &prime),
+		Value: buyOrderFragment.FstCodeShare.Value.SubModulo(&sellOrderFragment.FstCodeShare.Value, prime),
 	}
 	sndCodeShare := shamir.Share{
 		Key:   buyOrderFragment.SndCodeShare.Key,
-		Value: buyOrderFragment.SndCodeShare.Value.SubModulo(&sellOrderFragment.SndCodeShare.Value, &prime),
+		Value: buyOrderFragment.SndCodeShare.Value.SubModulo(&sellOrderFragment.SndCodeShare.Value, prime),
 	}
 	priceShare := shamir.Share{
 		Key:   buyOrderFragment.PriceShare.Key,
-		Value: buyOrderFragment.PriceShare.Value.SubModulo(&sellOrderFragment.PriceShare.Value, &prime),
+		Value: buyOrderFragment.PriceShare.Value.SubModulo(&sellOrderFragment.PriceShare.Value, prime),
 	}
 	maxVolumeShare := shamir.Share{
 		Key:   buyOrderFragment.MaxVolumeShare.Key,
-		Value: buyOrderFragment.MaxVolumeShare.Value.SubModulo(&sellOrderFragment.MinVolumeShare.Value, &prime),
+		Value: buyOrderFragment.MaxVolumeShare.Value.SubModulo(&sellOrderFragment.MinVolumeShare.Value, prime),
 	}
 	minVolumeShare := shamir.Share{
 		Key:   buyOrderFragment.MinVolumeShare.Key,
-		Value: sellOrderFragment.MaxVolumeShare.Value.SubModulo(&buyOrderFragment.MinVolumeShare.Value, &prime),
+		Value: sellOrderFragment.MaxVolumeShare.Value.SubModulo(&buyOrderFragment.MinVolumeShare.Value, prime),
 	}
 
 	return DeltaFragment{
