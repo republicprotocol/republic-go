@@ -64,11 +64,11 @@ func NewDelta(deltaFragments []*DeltaFragment, prime *stackint.Int1024) *Delta {
 		BuyOrderID:  deltaFragments[0].BuyOrderID,
 		SellOrderID: deltaFragments[0].SellOrderID,
 	}
-	delta.FstCode = shamir.Join(prime, fstCodeShares)
-	delta.SndCode = shamir.Join(prime, sndCodeShares)
-	delta.Price = shamir.Join(prime, priceShares)
-	delta.MaxVolume = shamir.Join(prime, maxVolumeShares)
-	delta.MinVolume = shamir.Join(prime, minVolumeShares)
+	*delta.FstCode = shamir.Join(prime, fstCodeShares)
+	*delta.SndCode = shamir.Join(prime, sndCodeShares)
+	*delta.Price = shamir.Join(prime, priceShares)
+	*delta.MaxVolume = shamir.Join(prime, maxVolumeShares)
+	*delta.MinVolume = shamir.Join(prime, minVolumeShares)
 
 	// Compute the ResultID and return the Result.
 	delta.ID = DeltaID(crypto.Keccak256(delta.BuyOrderID[:], delta.SellOrderID[:]))
