@@ -6,40 +6,18 @@ import (
 	"log"
 
 	"github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/dht"
 	"google.golang.org/grpc"
 )
-
-// SwarmOptions defines the options for swarm service.
-type SwarmOptions struct {
-	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
-	Debug                   DebugLevel              `json:"debug"`
-	Alpha                   int                     `json:"alpha"`
-	MaxBucketLength         int                     `json:"maxBucketLength"`
-	ClientPoolCacheLimit    int                     `json:"clientPoolCacheLimit"`
-	Concurrent              bool                    `json:"concurrent"`
-}
-
-// NewSwarmOptions creates a new SwarmOptions.
-func NewSwarmOptions(bootstrapMultiAddresses identity.MultiAddresses, debug, alpha, maxBucketLength, clientPoolCacheLimit int, concurrent bool) SwarmOptions {
-	return SwarmOptions{
-		BootstrapMultiAddresses: bootstrapMultiAddresses,
-		Debug:                DebugLevel(debug),
-		Alpha:                alpha,
-		MaxBucketLength:      maxBucketLength,
-		ClientPoolCacheLimit: clientPoolCacheLimit,
-		Concurrent:           concurrent,
-	}
-}
 
 // DebugLevel defines the debug level.
 type DebugLevel int
 
 // Constants for different debug options.
 const (
-	DebugOff = int(iota)
+	DebugOff = DebugLevel(iota)
 	DebugLow
 	DebugMedium
 	DebugHigh
@@ -74,7 +52,7 @@ func (service *SwarmService) Register(server *grpc.Server) {
 // connect it to Nodes that are close to it in XOR space.
 func (service *SwarmService) Bootstrap() {
 	// Add all bootstrap Nodes to the DHT.
-	for _, bootstrapMultiAddress := range service.Options.SwarmOptions.BootstrapMultiAddresses {
+	for _, bootstrapMultiAddress := range service.Options.BootstrapMultiAddresses {
 		if err := service.DHT.UpdateMultiAddress(bootstrapMultiAddress); err != nil {
 			service.Logger.Error(err.Error())
 		}
@@ -82,14 +60,14 @@ func (service *SwarmService) Bootstrap() {
 	if service.Options.Concurrent {
 		// Concurrently search all bootstrap Nodes for itself.
 		do.ForAll(service.Options.BootstrapMultiAddresses, func(i int) {
-			bootstrapMultiAddress := service.Options.SwarmOptions.BootstrapMultiAddresses[i]
+			bootstrapMultiAddress := service.Options.BootstrapMultiAddresses[i]
 			if err := service.bootstrapUsingMultiAddress(bootstrapMultiAddress); err != nil {
 				service.Logger.Error(fmt.Sprintf("error bootstrapping with %s: %s", bootstrapMultiAddress.Address(), err.Error()))
 			}
 		})
 	} else {
 		// Sequentially search all bootstrap Nodes for itself.
-		for _, bootstrapMultiAddress := range service.Options.SwarmOptions.BootstrapMultiAddresses {
+		for _, bootstrapMultiAddress := range service.Options.BootstrapMultiAddresses {
 			if err := service.bootstrapUsingMultiAddress(bootstrapMultiAddress); err != nil {
 				service.Logger.Error(fmt.Sprintf("error bootstrapping with %s: %s", bootstrapMultiAddress.Address(), err.Error()))
 			}
@@ -314,7 +292,7 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 		case err := <-errs:
 			if err != nil {
 				service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
-				log.Println("error hehrer erere ",service.MultiAddress().String())
+				log.Println("error hehrer erere ", service.MultiAddress().String())
 			}
 			continuing = false
 		case marshaledPeer, ok := <-peers:

@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -50,11 +51,14 @@ func (service *ComputerService) WaitForCompute(multiAddress identity.MultiAddres
 	defer service.closeSenderSignal(multiAddressAsStr)
 	senderSignal <- computationChIn
 
+	errSignal := service.errSignal(multiAddressAsStr)
+	errCh := <-errSignal
+
 	receiverSignal := service.receiverSignal(multiAddressAsStr)
 	receiverCh := <-receiverSignal
 
-	errSignal := service.errSignal(multiAddressAsStr)
-	errCh := <-errSignal
+	log.Println("Opened sender")
+
 
 	return receiverCh, errCh
 }
@@ -63,6 +67,7 @@ func (service *ComputerService) WaitForCompute(multiAddress identity.MultiAddres
 // a client.
 func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 	multiAddress := "" // TODO: Get the MultiAddress from a signed authentication message
+
 
 	errCh := make(chan error)
 	defer close(errCh)
@@ -76,6 +81,8 @@ func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 		defer close(senderErrCh)
 		senderSignal := service.senderSignal(multiAddress)
 		senderCh := <-senderSignal
+
+		log.Println("Server side sending")
 
 		for message := range senderCh {
 			if err := stream.Send(message); err != nil {
@@ -95,6 +102,9 @@ func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 	receiverSignal := service.receiverSignal(multiAddress)
 	defer service.closeReceiverSignal(multiAddress)
 	receiverSignal <- receiverCh
+
+	log.Println("Got Compute from client")
+
 
 	for {
 		message, err := stream.Recv()
@@ -122,7 +132,7 @@ func (service *ComputerService) senderSignal(key string) chan (<-chan *Computati
 	defer service.senderSignalsMu.Unlock()
 
 	if _, ok := service.senderSignals[key]; !ok {
-		service.senderSignals[key] = make(chan (<-chan *Computation))
+		service.senderSignals[key] = make(chan (<-chan *Computation), 1)
 	}
 	return service.senderSignals[key]
 }
@@ -142,7 +152,7 @@ func (service *ComputerService) receiverSignal(key string) chan (<-chan *Computa
 	defer service.receiverSignalsMu.Unlock()
 
 	if _, ok := service.receiverSignals[key]; !ok {
-		service.receiverSignals[key] = make(chan (<-chan *Computation))
+		service.receiverSignals[key] = make(chan (<-chan *Computation), 1)
 	}
 	return service.receiverSignals[key]
 }
@@ -162,7 +172,7 @@ func (service *ComputerService) errSignal(key string) chan (<-chan error) {
 	defer service.errSignalsMu.Unlock()
 
 	if _, ok := service.errSignals[key]; !ok {
-		service.errSignals[key] = make(chan (<-chan error))
+		service.errSignals[key] = make(chan (<-chan error), 1)
 	}
 	return service.errSignals[key]
 }

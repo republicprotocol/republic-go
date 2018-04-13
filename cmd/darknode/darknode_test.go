@@ -23,9 +23,9 @@ import (
 
 const (
 	GanacheRPC                 = "http://localhost:8545"
-	NumberOfDarkNodes          = 48
+	NumberOfDarkNodes          = 5
 	NumberOfBootstrapDarkNodes = 5
-	NumberOfOrders             = 10
+	NumberOfOrders             = 1
 )
 
 var _ = Describe("DarkNode", func() {
@@ -47,7 +47,8 @@ var _ = Describe("DarkNode", func() {
 			darkNodeRegistry.SetGasLimit(1000000)
 
 			// Create DarkNodes and contexts/cancels for running them
-			darkNodes, ctxs, cancels = NewLocalDarkNodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
+			darkNodes, ctxs, cancels, err = NewLocalDarkNodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
+			Ω(err).ShouldNot(HaveOccurred())
 
 			shutdown = make(chan struct{})
 			go func() {
@@ -62,7 +63,6 @@ var _ = Describe("DarkNode", func() {
 						darkNodes[i].Run(ctxs[i])
 					}(i)
 				}
-
 				wg.Wait()
 			}()
 
@@ -107,7 +107,7 @@ var _ = Describe("DarkNode", func() {
 		})
 	})
 
-	Context("when computing order matches", func() {
+	FContext("when computing order matches", func() {
 		var darkNodeRegistry contracts.DarkNodeRegistry
 		var darkNodes darknode.DarkNodes
 		var ctxs []context.Context
@@ -123,9 +123,10 @@ var _ = Describe("DarkNode", func() {
 			darkNodeRegistry.SetGasLimit(1000000)
 
 			// Create DarkNodes and contexts/cancels for running them
-			darkNodes, ctxs, cancels = NewLocalDarkNodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
+			darkNodes, ctxs, cancels, err = NewLocalDarkNodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
+			Ω(err).ShouldNot(HaveOccurred())
 
-			shutdown = make(chan struct{},0)
+			shutdown = make(chan struct{}, 0)
 			go func() {
 				defer close(shutdown)
 
@@ -148,8 +149,8 @@ var _ = Describe("DarkNode", func() {
 
 		AfterEach(func() {
 			// Wait for the DarkNodes to shutdown
-			<- shutdown
-			for _, node := range darkNodes{
+			<-shutdown
+			for _, node := range darkNodes {
 				node.Stop()
 			}
 		})
@@ -159,6 +160,8 @@ var _ = Describe("DarkNode", func() {
 			err := sendOrders(darkNodes, NumberOfOrders)
 			Ω(err).ShouldNot(HaveOccurred())
 			By("finish sending orders ")
+
+			time.Sleep(time.Minute)
 		})
 
 		It("should update the order book after computing an order match", func() {
@@ -202,7 +205,7 @@ func sendOrders(nodes darknode.DarkNodes, numberOfOrders int) error {
 	prime, _ := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 	pool := rpc.NewClientPool(trader).WithTimeout(5 * time.Second).WithTimeoutBackoff(3 * time.Second)
 
-	for i :=0 ;i < numberOfOrders; i ++ {
+	for i := 0; i < numberOfOrders; i++ {
 		buyOrder, sellOrder := buyOrders[i], sellOrders[i]
 		log.Printf("Sending matched order. [BUY] %s <---> [SELL] %s", buyOrder.ID, sellOrder.ID)
 		buyShares, err := buyOrder.Split(int64(totalNodes), int64(totalNodes*2/3+1), &prime)
@@ -214,14 +217,14 @@ func sendOrders(nodes darknode.DarkNodes, numberOfOrders int) error {
 			return err
 		}
 
-		for _, shares := range [][]*order.Fragment{buyShares, sellShares}{
+		for _, shares := range [][]*order.Fragment{buyShares, sellShares} {
 			do.CoForAll(shares, func(j int) {
 				orderRequest := &rpc.OpenOrderRequest{
 					From: &rpc.MultiAddress{
 						Signature:    []byte{},
 						MultiAddress: trader.String(),
 					},
-					OrderFragment: rpc.MarshalOrderFragment(buyShares[j]),
+					OrderFragment: rpc.MarshalOrderFragment(shares[j]),
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()

@@ -3,6 +3,7 @@ package rpc
 import (
 	"fmt"
 	"io"
+	"log"
 	"runtime"
 	"sync"
 
@@ -214,6 +215,7 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 		return messageCh, errCh
 	}
 
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -246,6 +248,7 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 				if !ok {
 					return
 				}
+				log.Println("Sending")
 				if err := stream.Send(message); err != nil {
 					s, _ := status.FromError(err)
 					if s.Code() != codes.Canceled && s.Code() != codes.DeadlineExceeded {

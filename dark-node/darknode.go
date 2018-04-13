@@ -34,7 +34,5 @@ func NewDarknode(config Config) DarkNode {
 	}
 }
 
-
-
 func (node *DarkNode) Run(ctx context.Context) {
 }

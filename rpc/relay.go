@@ -38,10 +38,10 @@ func (service *RelayService) Register(server *grpc.Server) {
 // it handle the request
 func (service *RelayService) OpenOrder(ctx context.Context, req *OpenOrderRequest) (*Nothing, error) {
 	select {
-	case <- ctx.Done():
+	case <-ctx.Done():
 		return &Nothing{}, ctx.Err()
 	default:
-		return &Nothing{},service.openOrder(req)
+		return &Nothing{}, service.openOrder(req)
 	}
 }
 

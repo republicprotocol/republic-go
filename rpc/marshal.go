@@ -152,29 +152,29 @@ func UnmarshalDeltaFragment(deltaFragment *DeltaFragment) (smpc.DeltaFragment, e
 	return val, nil
 }
 
-// MarshalDeltaFragments into an RPC protobuf object.
-func MarshalDeltaFragments(deltaFragments smpc.DeltaFragments) *DeltaFragments {
-	val := make([]*DeltaFragment, len(deltaFragments))
-	for i := range deltaFragments {
-		val[i] = MarshalDeltaFragment(&deltaFragments[i])
-	}
-	return &DeltaFragments{
-		DeltaFragments: val,
-	}
-}
-
-// UnmarshalDeltaFragments from an RPC protobuf object.
-func UnmarshalDeltaFragments(deltaFragments *DeltaFragments) (smpc.DeltaFragments, error) {
-	val := make(smpc.DeltaFragments, 0, len(deltaFragments.DeltaFragments))
-	for i := range deltaFragments.DeltaFragments {
-		deltaFragment, err := UnmarshalDeltaFragment(deltaFragments.DeltaFragments[i])
-		if err != nil {
-			return val, err
-		}
-		val = append(val, deltaFragment)
-	}
-	return val, nil
-}
+//// MarshalDeltaFragments into an RPC protobuf object.
+//func MarshalDeltaFragments(deltaFragments smpc.DeltaFragments) *smpc.DeltaFragments {
+//	val := make([]*DeltaFragment, len(deltaFragments))
+//	for i := range deltaFragments {
+//		val[i] = MarshalDeltaFragment(&deltaFragments[i])
+//	}
+//	return &DeltaFragments{
+//		DeltaFragments: val,
+//	}
+//}
+//
+//// UnmarshalDeltaFragments from an RPC protobuf object.
+//func UnmarshalDeltaFragments(deltaFragments *DeltaFragments) (smpc.DeltaFragments, error) {
+//	val := make(smpc.DeltaFragments, 0, len(deltaFragments.DeltaFragments))
+//	for i := range deltaFragments.DeltaFragments {
+//		deltaFragment, err := UnmarshalDeltaFragment(deltaFragments.DeltaFragments[i])
+//		if err != nil {
+//			return val, err
+//		}
+//		val = append(val, deltaFragment)
+//	}
+//	return val, nil
+//}
 
 // MarshalOrder into an RPC protobuf object
 func MarshalOrder(ord *order.Order) *Order {

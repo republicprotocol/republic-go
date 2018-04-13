@@ -59,11 +59,18 @@ func NewLocalConfig(key *keystore.Key, host, port string) Config {
 			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.String(),
 		},
 		NetworkOption: rpc.Options{
-			MultiAddress:      multi,
-			Timeout:           3 * time.Second,
-			TimeoutBackoff:    3 * time.Second,
-			TimeoutRetries:    3,
-			MessageQueueLimit: 100,
+			Address: multi.Address(),
+			MultiAddress:            multi,
+			Timeout:                 3 * time.Second,
+			TimeoutBackoff:          3 * time.Second,
+			TimeoutRetries:          3,
+			MessageQueueLimit:       100,
+			BootstrapMultiAddresses: identity.MultiAddresses{},
+			//Concurrent:           false,
+			//Alpha:                3,
+			//MaxBucketLength:      100,
+			//ClientPoolCacheLimit: 50,
+			//Debug:                rpc.DebugHigh,
 		},
 		LoggerOptions: logger.Options{
 			Plugins: []logger.PluginOptions{

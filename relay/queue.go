@@ -15,16 +15,15 @@ type WriteOnlyChannelQueue struct {
 
 func NewWriteOnlyChannelQueue(out chan *orderbook.Message, messageQueueLimit int) WriteOnlyChannelQueue {
 	return WriteOnlyChannelQueue{
-		out: 	out,
-		write:  make(chan *orderbook.Message, messageQueueLimit),
-		quit:   make(chan struct{}),
+		out:   out,
+		write: make(chan *orderbook.Message, messageQueueLimit),
+		quit:  make(chan struct{}),
 	}
 }
 
 func (queue WriteOnlyChannelQueue) Run() error {
 	return queue.writeAll()
 }
-
 
 func (queue WriteOnlyChannelQueue) Shutdown() error {
 	var err error

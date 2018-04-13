@@ -32,7 +32,7 @@ func streamOrders(r *http.Request, conn *websocket.Conn, orderBook *orderbook.Or
 	traderID := r.FormValue("trader")
 	orderID := r.FormValue("order")
 	// statuses := strings.Split(r.FormValue("status"), ",")
-	if (traderID == "" || orderID == "") {
+	if traderID == "" || orderID == "" {
 		return
 	}
 

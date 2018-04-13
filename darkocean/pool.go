@@ -82,14 +82,14 @@ func (pool *Pool) Equal(other *Pool) bool {
 	pool.EnterReadOnly(nil)
 	defer pool.ExitReadOnly()
 
-	if len(pool.nodes) != len(other.nodes){
+	if len(pool.nodes) != len(other.nodes) {
 		return false
 	}
 
-	for _, node := range pool.nodes{
+	for _, node := range pool.nodes {
 		has := false
-		for _, otherNode := range other.nodes{
-			if bytes.Equal(node.ID, otherNode.ID){
+		for _, otherNode := range other.nodes {
+			if bytes.Equal(node.ID, otherNode.ID) {
 				has = true
 				break
 			}

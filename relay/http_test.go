@@ -162,7 +162,7 @@ var _ = Describe("HTTP handlers", func() {
 
 			trader, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
 			Ω(err).ShouldNot(HaveOccurred())
-			
+
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
@@ -183,7 +183,7 @@ var _ = Describe("HTTP handlers", func() {
 
 			trader, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
 			Ω(err).ShouldNot(HaveOccurred())
-			
+
 			r := httptest.NewRequest("POST", "http://localhost/orders/{23213}", body)
 			w := httptest.NewRecorder()
 

@@ -7,12 +7,14 @@ import (
 	"log"
 	"net"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/republicprotocol/republic-go/smpc"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/darkocean"
+	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
@@ -31,11 +33,26 @@ type DarkNode struct {
 	darkNodeRegistry contracts.DarkNodeRegistry
 	darkOcean        *darkocean.Ocean
 	Logger           *logger.Logger
+	DHT              *dht.DHT
+	Computer         smpc.Computer
+	ClientPool       rpc.ClientPool
 
-	Server *grpc.Server
-	Relay  *rpc.RelayService
+	Server          *grpc.Server
+	RelayService    *rpc.RelayService
+	ComputerService *rpc.ComputerService
 
-	Computer smpc.Computer
+	orderFragmentCh chan order.Fragment
+	orderTupleCh    <-chan smpc.OrderTuple
+	deltaFragmentCh chan smpc.DeltaFragment
+	deltaCh         <-chan smpc.Delta
+
+	sharedOrderTable   smpc.SharedOrderTable
+	sharedDeltaBuilder smpc.SharedDeltaBuilder
+
+	// FIXME: Improve beyond working for the demo.
+	routingTableOut map[string]chan *rpc.Computation
+	routingTableIn  map[string]<-chan *rpc.Computation
+	routingTableErr map[string]<-chan error
 }
 
 func NewDarkNode(config Config) (DarkNode, error) {
@@ -66,6 +83,12 @@ func NewDarkNode(config Config) (DarkNode, error) {
 	}
 	node.darkOcean = darkOcean
 
+	// Create the clientPool
+	node.ClientPool = *rpc.NewClientPool(node.NetworkOption.MultiAddress)
+
+	// Create DHT
+	node.DHT = dht.NewDHT(node.Config.NetworkOption.MultiAddress.Address(), node.Config.NetworkOption.MaxBucketLength)
+
 	// Create the logger and start all plugins
 	node.Logger, err = logger.NewLogger(config.LoggerOptions)
 	if err != nil {
@@ -75,8 +98,26 @@ func NewDarkNode(config Config) (DarkNode, error) {
 
 	// Initialize RPC server and services
 	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
-	node.Relay = rpc.NewRelayService(node.NetworkOption, node, node.Logger)
-	node.Computer = rpc.NewComputerService()
+
+	node.RelayService = rpc.NewRelayService(node.NetworkOption, node, node.Logger)
+	node.ComputerService = rpc.NewComputerService()
+
+	// smpc
+	node.orderFragmentCh = make(chan order.Fragment)
+	node.deltaFragmentCh = make(chan smpc.DeltaFragment)
+
+	node.sharedOrderTable = smpc.NewSharedOrderTable()
+	node.sharedDeltaBuilder = smpc.NewSharedDeltaBuilder(int64(len(node.NetworkOption.BootstrapMultiAddresses)), smpc.Prime)
+	node.routingTableOut = map[string]chan *rpc.Computation{}
+	node.routingTableIn = map[string]<-chan *rpc.Computation{}
+	node.routingTableErr = map[string]<-chan error{}
+
+	for _, multiAddress := range node.NetworkOption.BootstrapMultiAddresses {
+		if bytes.Equal(node.NetworkOption.Address.ID(), multiAddress.ID()) {
+			continue
+		}
+		node.routingTableOut[multiAddress.String()] = make(chan *rpc.Computation)
+	}
 
 	return *node, nil
 }
@@ -94,10 +135,75 @@ func (node *DarkNode) Stop() {
 }
 
 func (node *DarkNode) Run(ctx context.Context) {
-	errChs := [2]<-chan error{}
+
+	errChs := [5]<-chan error{}
+
+	// FIXME: Integrate correctly.
+	node.orderTupleCh, errChs[2] = smpc.ProcessOrderFragments(ctx, node.orderFragmentCh, &node.sharedOrderTable, 1)
+	deltaFragmentCh, _ := smpc.ProcessOrderTuples(ctx, node.orderTupleCh, 1)
+	go func() {
+		for deltaFragment := range deltaFragmentCh {
+			node.deltaFragmentCh <- deltaFragment
+		}
+	}()
+
+	node.deltaCh, errChs[4] = smpc.ProcessDeltaFragments(ctx, node.deltaFragmentCh, &node.sharedDeltaBuilder, 1)
 
 	errChs[0] = node.RunRPC(ctx)
 	errChs[1] = node.RunDarkOcean(ctx)
+
+	go func() {
+		for _, multiAddress := range node.NetworkOption.BootstrapMultiAddresses {
+			go func(multiAddress identity.MultiAddress) {
+				if bytes.Equal(node.NetworkOption.Address.ID(), multiAddress.ID()) {
+					return
+				}
+				if bytes.Compare(node.NetworkOption.Address.ID(), multiAddress.ID()) < 0 {
+					node.routingTableIn[multiAddress.String()], node.routingTableErr[multiAddress.String()] = node.ClientPool.Compute(ctx, multiAddress, node.routingTableOut[multiAddress.String()])
+					log.Println("Connected")
+
+					for computation := range node.routingTableIn[multiAddress.String()] {
+						log.Println("Receiving delta fragment")
+						deltaFragment, err := rpc.UnmarshalDeltaFragment(computation.DeltaFragment)
+						panic(err)
+						node.deltaFragmentCh <- deltaFragment
+					}
+				} else {
+					node.routingTableIn[multiAddress.String()], node.routingTableErr[multiAddress.String()] = node.ComputerService.WaitForCompute(multiAddress, node.routingTableOut[multiAddress.String()])
+					log.Println("Connected")
+					for computation := range node.routingTableIn[multiAddress.String()] {
+						log.Println("Receiving delta fragment")
+						deltaFragment, err := rpc.UnmarshalDeltaFragment(computation.DeltaFragment)
+						panic(err)
+						node.deltaFragmentCh <- deltaFragment
+					}
+				}
+			}(multiAddress)
+		}
+	}()
+
+	go func() {
+		for deltaFragment := range node.deltaFragmentCh {
+			var wg sync.WaitGroup
+			wg.Add(len(node.NetworkOption.BootstrapMultiAddresses))
+			for _, multiAddress := range node.NetworkOption.BootstrapMultiAddresses {
+				log.Println("Broadcasting delta fragment")
+				go func(multiAddress identity.MultiAddress) {
+					defer wg.Done()
+					node.routingTableOut[multiAddress.String()] <- &rpc.Computation{DeltaFragment: rpc.MarshalDeltaFragment(&deltaFragment)}
+				}(multiAddress)
+			}
+			wg.Wait()
+		}
+	}()
+
+	go func() {
+		for delta := range node.deltaCh {
+			if delta.IsMatch(smpc.Prime) {
+				log.Printf("match found: buy = %s; sell = %s", delta.BuyOrderID.String(), delta.SellOrderID.String())
+			}
+		}
+	}()
 
 	for err := range dispatch.MergeErrors(errChs[:]...) {
 		log.Println(err)
@@ -112,8 +218,9 @@ func (node *DarkNode) RunRPC(ctx context.Context) <-chan error {
 
 		// Turn the gRPC server on.
 		node.Logger.Network(logger.Info, fmt.Sprintf("gRPC services listening on %s:%s", node.Host, node.Port))
-		node.Relay.Register(node.Server)
-		node.Computer.Register(node.Server)
+
+		node.RelayService.Register(node.Server)
+		node.ComputerService.Register(node.Server)
 
 		listener, err := net.Listen("tcp", node.Host+":"+node.Port)
 		if err != nil {
@@ -189,6 +296,5 @@ func (node *DarkNode) DarkOcean() *darkocean.Ocean {
 }
 
 func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
-
-	log.Printf( "order %s received from the %s", orderFragment.OrderID.String(), from.ID().String())
+	go func() { node.orderFragmentCh <- *orderFragment }()
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -85,6 +86,7 @@ func ProcessDeltaFragments(ctx context.Context, deltaFragmentChIn <-chan DeltaFr
 				if !ok {
 					return
 				}
+				log.Println("Inserting Delta fragment")
 				sharedDeltaBuilder.ComputeDelta(deltaFragment)
 			}
 		}
