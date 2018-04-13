@@ -42,7 +42,7 @@ func NewOrderBook(maxConnections int) *OrderBook {
 // Subscribe will start listening to the orderbook for updates.
 func (orderBook OrderBook) Subscribe(id string, queue dispatch.MessageQueue) error {
 	var err error
-	wg := new(sync.WaitGroup)
+	var wg sync.WaitGroup
 
 	wg.Add(1)
 	go func() {

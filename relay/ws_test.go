@@ -1,15 +1,19 @@
 package relay_test
 
 import (
+	"fmt"
 	"net/http/httptest"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	. "github.com/republicprotocol/republic-go/relay"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 var _ = Describe("WebSocket streaming", func() {
@@ -49,43 +53,45 @@ var _ = Describe("WebSocket streaming", func() {
 		})
 
 		It("should retrieve information about an order", func() {
+			var wg sync.WaitGroup
+
 			orderBook := orderbook.NewOrderBook(100)
+
+			defaultStackVal, _ := stackint.FromString("179761232312312")
+			ord := order.Order{}
+			ord.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ")
+			ord.Type = 2
+			ord.Parity = 1
+			ord.Expiry = time.Time{}
+			ord.FstCode = order.CurrencyCodeETH
+			ord.SndCode = order.CurrencyCodeBTC
+			ord.Price = defaultStackVal
+			ord.MaxVolume = defaultStackVal
+			ord.MinVolume = defaultStackVal
+			ord.Nonce = defaultStackVal
+
+			var hash [32]byte
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				orderBook.Open(orderbook.NewMessage(ord, order.Open, hash))
+			}()
+
 			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
 			u, _ := url.Parse(server.URL)
 			u.Scheme = "ws"
 			u.Path = "orders"
-			u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM="
-
-			pools, trader := getPoolsAndTrader()
-			order := getFullOrder()
-			SendOrderToDarkOcean(order, &trader, pools)
+			u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ"
 
 			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
-			_, _, err := conn.ReadMessage()
+			_, message, err := conn.ReadMessage()
+			fmt.Println(message)
 
-			// To-do: Test the output of the message received.
+			// TODO: Test the output of the message received.
 			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
-		})
 
-		// It("should routinely send a ping message", func() {
-		// 	orderBook := orderbook.NewOrderBook(100)
-		// 	server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
-		// 	u, _ := url.Parse(server.URL)
-		// 	u.Scheme = "ws"
-		// 	u.Path = "orders"
-		// 	u.RawQuery = "id=test"
-		//
-		// 	conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
-		// 	// conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-		// 	var err error
-		// 	var messageType int
-		// 	log.Println("waiting for message")
-		// 	messageType, _, err = conn.ReadMessage()
-		// 	log.Println(messageType)
-		//
-		// 	// In this case we have increased the read deadline, so we are able to
-		// 	// receive a ping message.
-		// 	Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
-		// })
+			wg.Wait()
+		})
 	})
 })

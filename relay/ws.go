@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 )
 
@@ -49,33 +48,34 @@ func streamOrders(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, 
 		return nil
 	})
 
-	orders := make(map[string]order.Status)
 	messages := make(chan *orderbook.Message, 100)
 	queue := NewWriteOnlyChannelQueue(messages, 100)
 	go func() {
 		if err := orderBook.Subscribe("id", queue); err != nil {
-			fmt.Sprintf("unable to subscribe to order book: %v", err)
+			fmt.Printf("unable to subscribe to order book: %v", err)
 		}
 	}()
-	orders[orderID] = order.Open
 
 	for {
+		fmt.Println("waiting for message")
 		select {
 		case message, ok := <-messages:
+			fmt.Printf("received a message")
 			if !ok {
 				return
 			}
-			if message.Status >= orders[string(message.Ord.ID)] {
+			// TODO: Check status.
+			if string(message.Ord.ID) == orderID {
 				conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 				if err := conn.WriteJSON(message); err != nil {
-					fmt.Sprintf("cannot send json: %v", err)
+					fmt.Printf("cannot send json: %v", err)
 					return
 				}
 			}
 		case <-ping.C:
 			conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 			if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				fmt.Sprintf("cannot ping websocket: %s", err)
+				fmt.Printf("cannot ping websocket: %s", err)
 				return
 			}
 		}
