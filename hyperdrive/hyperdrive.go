@@ -175,5 +175,5 @@ func BlockHash(b Block) [32]byte {
 		binary.Write(blockBuffer, binary.BigEndian, b.Tuples[i].ID)
 	}
 	// log.Println("--------------------------------------", blockBuffer.Bytes())
-	return b.Tuples[0].ID
+	return sha3.Sum256(blockBuffer.Bytes())
 }
