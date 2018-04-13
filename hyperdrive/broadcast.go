@@ -1,14 +1,17 @@
 package hyper
 
+import "context"
+
 func ProcessBroadcast(chanSetIn ChannelSet, validator Validator) ChannelSet {
-	chanSetOut := EmptyChannelSet(validator.Threshold())
+	ctx, cancel := context.WithCancel(context.Background())
+	chanSetOut := EmptyChannelSet(ctx, validator.Threshold())
 	broadcastedProposals := map[[32]byte]bool{}
 	broadcastedPrepares := map[[32]byte]bool{}
 	broadcastedCommits := map[[32]byte]bool{}
 	broadcastedFaults := map[[32]byte]bool{}
 	broadcastedBlocks := map[[32]byte]bool{}
 	go func() {
-		defer chanSetOut.Close()
+		defer cancel()
 
 		for {
 			select {
