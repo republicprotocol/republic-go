@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"log"
+	"time"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"golang.org/x/crypto/sha3"
@@ -47,6 +48,9 @@ func (r *Replica) HandleProposals(ctx context.Context, ingress ChannelSet) chan 
 		defer close(doneCh)
 		for {
 			select {
+			case <-time.After(10 * time.Second):
+				log.Println("Replica timedout")
+				return
 			case <-ctx.Done():
 				return
 			case _, ok := <-errCh:
@@ -71,12 +75,15 @@ func (r *Replica) HandleProposals(ctx context.Context, ingress ChannelSet) chan 
 }
 
 func (r *Replica) HandlePrepares(ctx context.Context, ingress ChannelSet) chan struct{} {
-	doneCh := make(chan struct{})
+	doneCh := make(chan struct{}, r.validator.Threshold())
 	commCh, faultCh, errCh := ProcessPreparation(ctx, ingress.Prepare, r.validator)
 	go func() {
 		defer close(doneCh)
 		for {
 			select {
+			case <-time.After(10 * time.Second):
+				log.Println("Replica timedout")
+				return
 			case <-ctx.Done():
 				return
 			case _, ok := <-errCh:
@@ -102,13 +109,16 @@ func (r *Replica) HandlePrepares(ctx context.Context, ingress ChannelSet) chan s
 
 func (r *Replica) HandleCommits(ctx context.Context, ingress ChannelSet) chan struct{} {
 	doneCh := make(chan struct{})
-	blockCh := make(chan Block)
+	blockCh := make(chan Block, r.validator.Threshold())
 	counter := 0
 	commCh, blockCh, faultCh, errCh := ProcessCommit(ctx, ingress.Commit, r.validator)
 	go func() {
 		defer close(doneCh)
 		for {
 			select {
+			case <-time.After(10 * time.Second):
+				log.Println("Replica timedout")
+				return
 			case <-ctx.Done():
 				return
 			case _ = <-errCh:

@@ -5,7 +5,6 @@ import (
 	"log"
 	"strconv"
 	"sync"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/republicprotocol/republic-go/hyperdrive"
@@ -92,7 +91,7 @@ var _ = Describe("Hyperdrive", func() {
 		It("Achieves consensus 50 blocks over 240 commanders with 2/3 threshold", func() {
 			ctx, cancel := context.WithCancel(context.Background())
 
-			Blocks := 10
+			Blocks := 5
 
 			// Network
 			ingress := make([]ChannelSet, commanderCount)
@@ -164,8 +163,8 @@ var _ = Describe("Hyperdrive", func() {
 			}
 
 			log.Println("Waiting for the blocks")
-			// wg.Wait()
-			time.Sleep(10 * time.Second)
+			wg.Wait()
+			// time.Sleep(20 * time.Second)
 			log.Println("Success!!!!!")
 			cancel()
 

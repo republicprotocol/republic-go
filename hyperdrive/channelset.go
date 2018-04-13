@@ -2,12 +2,15 @@ package hyper
 
 import (
 	"context"
+	"log"
+	"time"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 )
 
 type ChannelSet struct {
 	BufferSize uint8
+	TimeOut    time.Duration
 	ctx        context.Context
 	Proposal   chan Proposal
 	Prepare    chan Prepare
@@ -20,6 +23,7 @@ func EmptyChannelSet(ctx context.Context, size uint8) ChannelSet {
 	return ChannelSet{
 		ctx:        ctx,
 		BufferSize: size,
+		TimeOut:    10 * time.Second,
 		Proposal:   make(chan Proposal, size),
 		Prepare:    make(chan Prepare, size),
 		Fault:      make(chan Fault, size),
@@ -60,6 +64,9 @@ func (c *ChannelSet) Split(cs []ChannelSet) {
 func (c *ChannelSet) Copy(cs ChannelSet) {
 	for {
 		select {
+		case <-time.After(c.TimeOut):
+			log.Println("ChannelSet copy timedout")
+			return
 		case <-c.ctx.Done():
 			return
 		case proposal, ok := <-cs.Proposal:
@@ -67,17 +74,19 @@ func (c *ChannelSet) Copy(cs ChannelSet) {
 				return
 			}
 			c.Proposal <- proposal
+
 		case prepare, ok := <-cs.Prepare:
 			if !ok {
 				return
 			}
-			// log.Println("Copying prepares in channelset")
 			c.Prepare <- prepare
+
 		case commit, ok := <-cs.Commit:
 			if !ok {
 				return
 			}
 			c.Commit <- commit
+
 		case fault, ok := <-cs.Fault:
 			if !ok {
 				return
@@ -89,6 +98,8 @@ func (c *ChannelSet) Copy(cs ChannelSet) {
 				return
 			}
 			c.Block <- block
+
 		}
+
 	}
 }
