@@ -28,18 +28,15 @@ var _ = Describe("Channel Set", func() {
 				Height: 1,
 			}
 			var wg sync.WaitGroup
-			wg.Add(2)
+			wg.Add(1)
 			go func() {
-				defer wg.Done()
-				for {
-					select {
-					case proposal, ok := <-chanSet.Proposal:
-						if !ok {
-							return
-						}
-						Ω(uint64(1)).Should(Equal(proposal.Height))
-						wg.Done()
+				select {
+				case proposal, ok := <-chanSet.Proposal:
+					if !ok {
+						return
 					}
+					Ω(uint64(1)).Should(Equal(proposal.Height))
+					wg.Done()
 				}
 			}()
 			time.Sleep(10 * time.Microsecond)

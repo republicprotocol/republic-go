@@ -24,14 +24,12 @@ var _ = Describe("Buffer", func() {
 			chanSetOut := ProcessBuffer(chanSetIn, validator)
 
 			go func() {
-				for {
-					select {
-					case proposal, ok := <-chanSetOut.Proposal:
-						if !ok {
-							return
-						}
-						Ω(proposal.Height).Should(Equal(validator.SharedBlocks().ReadHeight()))
+				select {
+				case proposal, ok := <-chanSetOut.Proposal:
+					if !ok {
+						return
 					}
+					Ω(proposal.Height).Should(Equal(validator.SharedBlocks().ReadHeight()))
 				}
 			}()
 
@@ -65,10 +63,11 @@ var _ = Describe("Buffer", func() {
 			randcounter := map[int]int{}
 			for i := 0; i < 100; i++ {
 				h := rand.Intn(5)
+				r := rand.Intn(1000000000000000000)
 				randcounter[h]++
 				chanSetIn.Proposal <- Proposal{
 					Height: uint64(h),
-					Rank:   Rank(1),
+					Rank:   Rank(r),
 					Block:  Block{},
 				}
 			}

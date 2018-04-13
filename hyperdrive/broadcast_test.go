@@ -2,6 +2,7 @@ package hyper_test
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	. "github.com/onsi/ginkgo"
@@ -23,10 +24,11 @@ var _ = Describe("Broadcast", func() {
 			status := map[[32]byte]uint8{}
 			var wg sync.WaitGroup
 
-			wg.Add(2)
+			wg.Add(101)
 			go func() {
 				defer cancel()
 				defer wg.Done()
+				defer log.Println("Ended the first function")
 				for i := 0; i < 100; i++ {
 					proposal := Proposal{
 						Height: uint64(i),
@@ -39,7 +41,7 @@ var _ = Describe("Broadcast", func() {
 			}()
 
 			go func() {
-				defer wg.Done()
+				defer log.Println("Ended the second function")
 				for {
 					select {
 					case proposal, ok := <-chanSetOut.Proposal:
@@ -53,6 +55,8 @@ var _ = Describe("Broadcast", func() {
 						statusMu.Lock()
 						status[ProposalHash(proposal)]++
 						statusMu.Unlock()
+
+						wg.Done()
 					}
 				}
 			}()
@@ -70,7 +74,7 @@ var _ = Describe("Broadcast", func() {
 			status := map[[32]byte]uint8{}
 			var wg sync.WaitGroup
 
-			wg.Add(2)
+			wg.Add(100)
 			go func() {
 				defer cancel()
 				defer wg.Done()
@@ -88,7 +92,7 @@ var _ = Describe("Broadcast", func() {
 			}()
 
 			go func() {
-				defer wg.Done()
+
 				for {
 					select {
 					case proposal, ok := <-chanSetOut.Proposal:
@@ -102,6 +106,8 @@ var _ = Describe("Broadcast", func() {
 						statusMu.Lock()
 						status[ProposalHash(proposal)]++
 						statusMu.Unlock()
+
+						wg.Done()
 					}
 				}
 			}()

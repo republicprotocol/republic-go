@@ -1,67 +1,62 @@
 package hyper_test
 
 import (
-	"context"
-	"log"
-	"sync"
-	"time"
-
 	. "github.com/onsi/ginkgo"
-	. "github.com/republicprotocol/republic-go/hyperdrive"
+	//	. "github.com/republicprotocol/republic-go/hyperdrive"
 )
 
 var _ = Describe("Hyperdrive", func() {
 
-	commanderCount := uint8(240)
+	// commanderCount := uint8(240)
 
 	Context("Hyperdrive", func() {
 
-		It("Achieves consensus on a block over 240 commanders with 75% threshold", func() {
-			ctx, cancel := context.WithCancel(context.Background())
+		// It("Achieves consensus on a block over 240 commanders with 75% threshold", func() {
+		// 	ctx, cancel := context.WithCancel(context.Background())
 
-			hyper := NewHyperDrive(ctx, commanderCount)
-			hyper.init()
-			var wg sync.WaitGroup
-			proposal := Proposal{
-				Signature("Proposal"),
-				Block{
-					Tuples{},
-					Signature("Proposal"),
-				},
-				Rank(0),
-				0,
-			}
+		// 	hyper := NewHyperDrive(ctx, commanderCount)
+		// 	hyper.init()
+		// 	var wg sync.WaitGroup
+		// 	proposal := Proposal{
+		// 		Signature("Proposal"),
+		// 		Block{
+		// 			Tuples{},
+		// 			Signature("Proposal"),
+		// 		},
+		// 		Rank(0),
+		// 		0,
+		// 	}
 
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				hyper.run()
-			}()
+		// 	wg.Add(1)
+		// 	go func() {
+		// 		defer wg.Done()
+		// 		hyper.run()
+		// 	}()
 
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				defer log.Println("Finished sending proposals")
-				hyper.network.propose(proposal)
-			}()
+		// 	wg.Add(1)
+		// 	go func() {
+		// 		defer wg.Done()
+		// 		defer log.Println("Finished sending proposals")
+		// 		hyper.network.propose(proposal)
+		// 	}()
 
-			go func() {
-				defer cancel()
-				defer log.Println("Success!!")
-				for i := uint8(0); i < commanderCount; i++ {
-					wg.Add(1)
-					go func(i uint8) {
-						defer wg.Done()
-						_ = <-hyper.network.Egress[i].Block
-					}(i)
-				}
-				wg.Wait()
-			}()
-			time.Sleep(1 * time.Minute)
-			cancel()
-			log.Println("Waiting here")
-			wg.Wait()
-		})
+		// 	go func() {
+		// 		defer cancel()
+		// 		defer log.Println("Success!!")
+		// 		for i := uint8(0); i < commanderCount; i++ {
+		// 			wg.Add(1)
+		// 			go func(i uint8) {
+		// 				defer wg.Done()
+		// 				_ = <-hyper.network.Egress[i].Block
+		// 			}(i)
+		// 		}
+		// 		wg.Wait()
+		// 	}()
+		// 	time.Sleep(1 * time.Minute)
+		// 	cancel()
+		// 	log.Println("Waiting here")
+		// 	wg.Wait()
+		// })
 
 		// 	FIt("Achieves consensus 50 blocks over 240 commanders with 2/3 threshold", func() {
 		// 		numberOfBlocks := 50
