@@ -1,4 +1,4 @@
-package darknode
+package node
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net"
 	"net/http"
 	"runtime"
@@ -22,7 +23,6 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/rpc"
-	"github.com/republicprotocol/republic-go/stackint"
 	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
@@ -31,11 +31,9 @@ import (
 )
 
 // Prime is the default prime number used to define the finite field.
-var primeVal, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-var prime = &primeVal
+var Prime, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859", 10)
 
-// The DarkNode internal state
-type Darknode struct {
+type DarkNode struct {
 	Config
 	identity.KeyPair
 	identity.ID
@@ -65,16 +63,18 @@ type Darknode struct {
 	Syncer *rpc.SyncerService
 	Relay  *rpc.RelayService
 
-	DarkNodeRegistry dnr.DarkNodeRegistry
-	DarkOcean        *dark.Ocean
-	DarkPool         *dark.Pool
-	EpochBlockhash   [32]byte
+	DarkNodeRegistrar dnr.DarkNodeRegistrar
+	DarkOcean         *dark.Ocean
+	DarkPool          *dark.Pool
+
+	EpochHashMu    *sync.RWMutex
+	EpochBlockhash [32]byte
 }
 
 // NewDarkNode return a DarkNode that adheres to the given Config. The DarkNode
 // will configure all of the components that it needs to operate but will not
 // start any of them.
-func NewDarkNode(config Config, darkNodeRegistry dnr.DarkNodeRegistry) (*DarkNode, error) {
+func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkNode, error) {
 	var err error
 	node := &DarkNode{
 		Config:             config,
@@ -92,8 +92,8 @@ func NewDarkNode(config Config, darkNodeRegistry dnr.DarkNodeRegistry) (*DarkNod
 	node.Logger.Start()
 
 	// Load the dark ocean and the dark pool for this node
-	node.DarkNodeRegistry = darkNodeRegistry
-	node.DarkOcean, err = dark.NewOcean(node.Logger, 5, darkNodeRegistry)
+	node.DarkNodeRegistrar = darkNodeRegistrar
+	node.DarkOcean, err = dark.NewOcean(node.Logger, darkNodeRegistrar)
 	if err != nil {
 		return nil, err
 	}
@@ -128,21 +128,20 @@ func NewDarkNode(config Config, darkNodeRegistry dnr.DarkNodeRegistry) (*DarkNod
 	node.Relay = rpc.NewRelayService(node.NetworkOptions, node, node.Logger)
 
 	// Create all background workers that will do all of the actual work
-	node.DeltaBuilder = compute.NewDeltaBuilder(k, prime)
-	node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(prime)
-	node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
-	node.OrderFragmentWorker = NewOrderFragmentWorker(node.Logger, node.DeltaFragmentMatrix, node.OrderFragmentWorkerQueue)
-	node.DeltaFragmentBroadcastWorkerQueue = make(chan *compute.DeltaFragment, 100)
-	node.DeltaFragmentBroadcastWorker = NewDeltaFragmentBroadcastWorker(node.Logger, node.ClientPool, node.DarkPool, node.DeltaFragmentBroadcastWorkerQueue)
-	node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
-	node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.Logger, node.DeltaBuilder, node.DeltaFragmentWorkerQueue)
-	node.DeltaQueue = make(chan *compute.Delta, 100)
-	node.DeltaMatchWorker = NewDeltaMatchWorker(node.Logger, node.DeltaFragmentMatrix, node.DeltaQueue)
+	//node.DeltaBuilder = compute.NewDeltaBuilder(k, Prime)
+	//node.DeltaFragmentMatrix = compute.NewDeltaFragmentMatrix(Prime)
+	//node.OrderFragmentWorkerQueue = make(chan *order.Fragment, 100)
+	//node.OrderFragmentWorker = NewOrderFragmentWorker(node.Logger, node.DeltaFragmentMatrix, node.OrderFragmentWorkerQueue)
+	//node.DeltaFragmentBroadcastWorkerQueue = make(chan *compute.DeltaFragment, 100)
+	//node.DeltaFragmentBroadcastWorker = NewDeltaFragmentBroadcastWorker(node.Logger, node.ClientPool, node.DarkPool, node.DeltaFragmentBroadcastWorkerQueue)
+	//node.DeltaFragmentWorkerQueue = make(chan *compute.DeltaFragment, 100)
+	//node.DeltaFragmentWorker = NewDeltaFragmentWorker(node.Logger, node.DeltaBuilder, node.DeltaFragmentWorkerQueue)
+	//node.DeltaQueue = make(chan *compute.Delta, 100)
+	//node.DeltaMatchWorker = NewDeltaMatchWorker(node.Logger, node.DeltaFragmentMatrix, node.DeltaQueue)
 
 	return node, nil
 }
 
-// StartBackgroundWorkers starts the usage logger and order/delta workers
 func (node *DarkNode) StartBackgroundWorkers() {
 	// Usage logger
 	go func() {
@@ -159,7 +158,6 @@ func (node *DarkNode) StartBackgroundWorkers() {
 	//go node.DeltaMatchWorker.Run(node.DeltaNotifications)
 }
 
-// StartServices starts the gRPC listeners
 func (node *DarkNode) StartServices() {
 	node.Logger.Network(logger.Info, fmt.Sprintf("gRPC services listening on %s:%s", node.Host, node.Port))
 
@@ -176,7 +174,6 @@ func (node *DarkNode) StartServices() {
 	}
 }
 
-// StartUI starts serving the Dark Node UI
 func (node *DarkNode) StartUI() {
 	host, err := node.NetworkOptions.MultiAddress.ValueForProtocol(identity.IP4Code)
 	if err != nil {
@@ -206,8 +203,8 @@ func (node *DarkNode) StartUI() {
 				"port": "18515",
 			},
 			"contracts": map[string]interface{}{
-				"republicToken":    "0x65d54eda5f032f2275caa557e50c029cfbccbb54",
-				"darkNodeRegistry": "0x69eb8d26157b9e12f959ea9f189A5D75991b59e3",
+				"republicToken":     "0x65d54eda5f032f2275caa557e50c029cfbccbb54",
+				"darkNodeRegistrar": "0x9c06bb4e18e1aa352f99968b2984069c59ea2969",
 			},
 		})
 	})))
@@ -222,7 +219,6 @@ func (node *DarkNode) StartUI() {
 	}
 }
 
-// Bootstrap bootstraps the node into the network (see SwarmService.Bootstrap)
 func (node *DarkNode) Bootstrap() {
 	node.Swarm.Bootstrap()
 }
@@ -250,39 +246,39 @@ func (node *DarkNode) Stop() {
 // WatchDarkOcean for changes. When a change happens, find the dark pool for
 // this DarkNode and reconnect to all of the nodes in the pool.
 func (node *DarkNode) WatchDarkOcean() {
-	// Block until the node is registered
-
-	err := node.DarkNodeRegistry.WaitUntilRegistration(node.ID)
-	for err != nil {
-		node.Logger.Error(fmt.Sprintf("cannot determine registration status: %s", err.Error()))
-
-		// Wait for 5 seconds and try again
-		time.Sleep(5 * time.Second)
-		err = node.DarkNodeRegistry.WaitUntilRegistration(node.ID)
-	}
-
-	changes := make(chan struct{})
-	go func() {
-		defer close(changes)
-		for {
-			// Wait for a change to the ocean
-			<-changes
-			node.Logger.Info("dark ocean change detected")
-
-			// Find the dark pool for this node and connect to all of the dark
-			// nodes in the pool
-			node.DarkPool.RemoveAll()
-			darkPool := node.DarkOcean.FindPool(node.ID)
-			if darkPool != nil {
-				k := int64((darkPool.Size() * 2 / 3) + 1)
-				node.DeltaBuilder.SetK(k)
-			}
-			node.ConnectToDarkPool(darkPool)
-		}
-	}()
-
-	// Check for changes every minute
-	node.DarkOcean.Watch(changes)
+	//// Block until the node is registered
+	//err := node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
+	//for err != nil {
+	//	node.Logger.Error(fmt.Sprintf("cannot determine registration status: %s", err.Error()))
+	//
+	//	// Wait for 5 seconds and try again
+	//	time.Sleep(5 * time.Second)
+	//	err = node.DarkNodeRegistrar.WaitUntilRegistration(node.ID)
+	//}
+	//
+	//changes := make(chan struct{})
+	//go func() {
+	//	defer close(changes)
+	//	for {
+	//		// Wait for a change to the ocean
+	//		<-changes
+	//		node.Logger.Info("dark ocean change detected")
+	//
+	//		// Find the dark pool for this node and connect to all of the dark
+	//		// nodes in the pool
+	//		node.DarkPool.RemoveAll()
+	//		darkPool := node.DarkOcean.FindPool(node.ID)
+	//		if darkPool != nil {
+	//			k := int64((darkPool.Size() * 2 / 3) + 1)
+	//			node.DeltaBuilder.SetK(k)
+	//		}
+	//		node.ConnectToDarkPool(darkPool)
+	//	}
+	//}()
+	//
+	//// Check for changes every minute
+	//node.DarkOcean.Watch(time.Minute, changes)
+	time.Sleep(1 * time.Minute)
 }
 
 // ConnectToDarkPool and return the connected nodes and disconnected nodes

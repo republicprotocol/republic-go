@@ -84,13 +84,13 @@ func Connect(uri string, network Network, republicTokenAddress, darkNodeRegistry
 		}
 	}
 
-	ethClient, err := ethclient.Dial(uri)
+	ethclient, err := ethclient.Dial(string(network))
 	if err != nil {
 		return Connection{}, err
 	}
 
 	return Connection{
-		Client:     ethClient,
+		Client:     ethclient,
 		RenAddress: common.HexToAddress(republicTokenAddress),
 		DNRAddress: common.HexToAddress(darkNodeRegistryAddress),
 		Network:    network,

@@ -34,7 +34,7 @@ func main() {
 		return
 	}
 
-	if err := ganache.DeployContracts(*conn); err != nil {
+	if err := ganache.DeployContracts(conn); err != nil {
 		log.Fatalf("cannot deploy contracts to ganache: %v", err)
 		return
 	}

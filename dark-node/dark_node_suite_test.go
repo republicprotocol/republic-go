@@ -1,4 +1,4 @@
-package darknode_test
+package node_test
 
 import (
 	"testing"

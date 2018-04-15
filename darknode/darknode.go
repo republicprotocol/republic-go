@@ -10,8 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/republicprotocol/republic-go/smpc"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/dht"
@@ -22,10 +20,11 @@ import (
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/rpc"
+	"github.com/republicprotocol/republic-go/smpc"
 	"google.golang.org/grpc"
 )
 
-type DarkNodes []DarkNode
+type Darknodes []Darknode
 
 type DarkNode struct {
 	Config

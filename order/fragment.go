@@ -26,19 +26,19 @@ func (id FragmentID) String() string {
 // A Fragment is a secret share of an Order, created using Shamir's secret
 // sharing on the secure fields in an Order.
 type Fragment struct {
-	Signature []byte
-	ID        FragmentID
+	Signature []byte               `json:"signature"`
+	ID        FragmentID           `json:"id"`
 
-	OrderID     ID
-	OrderType   Type
-	OrderParity Parity
-	OrderExpiry time.Time
+	OrderID     ID                 `json:"orderID"`
+	OrderType   Type               `json:"orderType"`
+	OrderParity Parity             `json:"orderParity"`
+	OrderExpiry time.Time          `json:"orderExpiry"`
 
-	FstCodeShare   shamir.Share
-	SndCodeShare   shamir.Share
-	PriceShare     shamir.Share
-	MaxVolumeShare shamir.Share
-	MinVolumeShare shamir.Share
+	FstCodeShare   shamir.Share    `json:"fstCodeShare"`
+	SndCodeShare   shamir.Share    `json:"sndCodeShare"`
+	PriceShare     shamir.Share    `json:"priceShare"`
+	MaxVolumeShare shamir.Share    `json:"maxVolumeShare"`
+	MinVolumeShare shamir.Share    `json:"minVolumeShare"`
 }
 
 // NewFragment returns a new Fragment and computes the FragmentID.

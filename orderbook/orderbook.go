@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/order"
 )
 
 type OrderBookSyncer interface {
@@ -41,7 +42,7 @@ func NewOrderBook(maxConnections int) *OrderBook {
 // Subscribe will start listening to the orderbook for updates.
 func (orderBook OrderBook) Subscribe(id string, queue dispatch.MessageQueue) error {
 	var err error
-	wg := new(sync.WaitGroup)
+	var wg sync.WaitGroup
 
 	wg.Add(1)
 	go func() {
@@ -100,4 +101,9 @@ func (orderBook OrderBook) Settle(message *Message) error {
 	orderBook.orderBookCache.Settle(message)
 	orderBook.orderBookDB.Settle(message)
 	return orderBook.splitter.Send(message)
+}
+
+// Order retrieves information regarding an order.
+func (orderBook OrderBook) Order(id order.ID) *Message {
+	return orderBook.orderBookCache.orders[string(id)]
 }

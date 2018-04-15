@@ -3,32 +3,34 @@ package darkocean
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"sort"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/go-do"
+
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 )
 
 // Ocean of Pools.
 type Ocean struct {
 	do.GuardedObject
 
+	logger            *logger.Logger
+	poolSize          int
 	pools             Pools
 	darkNodeRegistrar contracts.DarkNodeRegistry
 }
 
-// Oceans is a list of dark Oceans .
-type Oceans []Ocean
-
 // NewOcean uses a DarkNodeRegistry to read all registered nodes and sort them
 // into Pools.
-func NewOcean(darkNodeRegistrar contracts.DarkNodeRegistry) (*Ocean, error) {
+func NewOcean(logger *logger.Logger, poolSize int, darkNodeRegistrar contracts.DarkNodeRegistry) (*Ocean, error) {
 	ocean := &Ocean{
 		GuardedObject:     do.NewGuardedObject(),
+		logger:            logger,
+		poolSize:          poolSize,
 		pools:             Pools{},
 		darkNodeRegistrar: darkNodeRegistrar,
 	}
@@ -77,16 +79,7 @@ func (ocean *Ocean) update() error {
 		return bytes.Compare(nodePositionHashes[i], nodePositionHashes[j]) < 0
 	})
 
-	minimumDarkPoolSizeBig, err := ocean.darkNodeRegistrar.MinimumDarkPoolSize()
-	if err != nil {
-		return fmt.Errorf("cannot get minimum dark pool size: %v", err)
-	}
-	minimumDarkPoolSize, err := minimumDarkPoolSizeBig.ToUint()
-	if err != nil {
-		return fmt.Errorf("cannot parse minimum dark pool size: %v", err)
-	}
-
-	numberOfPools := len(nodeIDs) / int(minimumDarkPoolSize)
+	numberOfPools := len(nodeIDs) / ocean.poolSize
 
 	pools := make(Pools, numberOfPools)
 	for i := range pools {
@@ -109,26 +102,26 @@ func (ocean *Ocean) Watch(changes chan struct{}) {
 
 	minInterval, err := ocean.darkNodeRegistrar.MinimumEpochInterval()
 	if err != nil {
-		log.Printf(fmt.Sprintf("cannot retrieve minimum epoch interval: %s", err.Error()))
+		ocean.logger.Error(fmt.Sprintf("cannot retrieve minimum epoch interval: %s", err.Error()))
 		return
 	}
 
 	var currentBlockhash [32]byte
 	if err := ocean.Update(); err != nil {
-		log.Printf(fmt.Sprintf("cannot update dark ocean: %s", err.Error()))
+		ocean.logger.Error(fmt.Sprintf("cannot update dark ocean: %s", err.Error()))
 		return
 	}
 	changes <- struct{}{}
 	for {
 		epoch, err := ocean.darkNodeRegistrar.CurrentEpoch()
 		if err != nil {
-			log.Printf(fmt.Sprintf("cannot update epoch: %s", err.Error()))
+			ocean.logger.Error(fmt.Sprintf("cannot update epoch: %s", err.Error()))
 			return
 		}
 		if !bytes.Equal(currentBlockhash[:], epoch.Blockhash[:]) {
 			currentBlockhash = epoch.Blockhash
 			if err := ocean.Update(); err != nil {
-				log.Printf(fmt.Sprintf("cannot update dark ocean: %s", err.Error()))
+				ocean.logger.Error(fmt.Sprintf("cannot update dark ocean: %s", err.Error()))
 				return
 			}
 			changes <- struct{}{}
@@ -138,7 +131,7 @@ func (ocean *Ocean) Watch(changes chan struct{}) {
 		unix, err := nextTime.ToUint()
 		if err != nil {
 			// Either minInterval is really big, or unix epoch time has overflowed uint64s.
-			log.Printf(fmt.Sprintf("epoch timestamp has overflowed: %s", err.Error()))
+			ocean.logger.Error(fmt.Sprintf("epoch timestamp has overflowed: %s", err.Error()))
 			return
 		}
 
@@ -161,26 +154,4 @@ func (ocean *Ocean) Watch(changes chan struct{}) {
 // GetPools returns dark pools in the dark ocean
 func (ocean *Ocean) GetPools() Pools {
 	return ocean.pools
-}
-
-// Equal checks if two dark oceans have the same view.
-func (ocean *Ocean) Equal(other *Ocean) bool {
-	if len(ocean.pools) != len(other.pools) {
-		return false
-	}
-
-	for _, pool := range ocean.pools {
-		has := false
-		for _, otherPool := range other.pools {
-			if pool.Equal(otherPool) {
-				has = true
-				break
-			}
-		}
-		if !has {
-			return false
-		}
-	}
-
-	return true
 }

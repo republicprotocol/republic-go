@@ -3,6 +3,8 @@ package main_test
 import (
 	"context"
 	"log"
+	"sync"
+	"context"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -12,7 +14,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/darknode"
-	"github.com/republicprotocol/republic-go/darkocean"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/ethereum/ganache"
 	"github.com/republicprotocol/republic-go/identity"
@@ -28,19 +31,18 @@ const (
 	NumberOfOrders             = 1
 )
 
-var _ = Describe("DarkNode", func() {
+var _ = Describe("Darknode", func() {
 
 	Context("when watching the ocean", func() {
 
+		var err error
 		var darkNodeRegistry contracts.DarkNodeRegistry
-		var darkNodes darknode.DarkNodes
-		var ctxs []context.Context
-		var cancels []context.CancelFunc
+		var darkNodes, ctxs, cancels darknode.Darknodes, []context.Context, []context.CancelFunc
 		var shutdown chan struct{}
 
 		BeforeEach(func() {
 			// Bind to the DarkNodeRegistry contract
-			connection, err := ganache.Connect(GanacheRPC)
+			darkNodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), ganache.Connect(ganacheRPC), ganache.GenesisTransactor(), &bind.CallOpts{})
 			Ω(err).ShouldNot(HaveOccurred())
 			darkNodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), connection, ganache.GenesisTransactor(), &bind.CallOpts{})
 			Ω(err).ShouldNot(HaveOccurred())
@@ -63,7 +65,7 @@ var _ = Describe("DarkNode", func() {
 				})
 			}()
 
-			// Wait for the DarkNodes to boot
+			// Wait for the Darknodes to boot
 			time.Sleep(time.Second)
 		})
 
@@ -80,25 +82,54 @@ var _ = Describe("DarkNode", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
+		It("should update local views of the ocean", func() {
+			numberOfEpochs := 2
+			oceans := make(darkocean.DarkOceans, numberOfDarknodes)
+
+			for j := 0; j < numberOfEpochs; j++ {
+				// Store all DarkOceans before the turn of the epoch
+				for i := range darknodes {
+					oceans[i] = darknodes[i].DarkOcean()
+				}
+
+				// Turn the epoch
+				_, err := darkNodeRegistry.Epoch()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				// Wait for Darknodes to receive a notification and reconfigure
+				// themselves
+				time.Sleep(time.Second)
+
+				// Verify that all DarkOceans have changed
+				for i := range darknodes {
+					Ω(oceans[i].Equal(darknodes[i].DarkOcean())).Should(BeFalse())
+				}
+			}
+
+			// Cancel all Darknodes
+			for i := range darknodes {
+				cancels[i]()
+			}
+		})
+
 		It("should converge on a global view of the ocean", func() {
 
 			// Turn the epoch
 			_, err := darkNodeRegistry.Epoch()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			// Wait for DarkNodes to receive a notification and reconfigure
+			// Wait for Darknodes to receive a notification and reconfigure
 			// themselves
 			time.Sleep(time.Second)
 
-			// Verify that all DarkNodes have converged on the DarkOcean
-			ocean, err := darkocean.NewOcean(darkNodeRegistry)
-			Ω(err).ShouldNot(HaveOccurred())
-			for i := range darkNodes {
-				Ω(ocean.Equal(darkNodes[i].DarkOcean())).Should(BeTrue())
+			// Verify that all Darknodes have converged on the DarkOcean
+			ocean := darkocean.NewDarkOcean(darkNodeRegistry)
+			for i := range darknodes {
+				Ω(ocean.Equal(darknodes[i].DarkOcean())).Should(BeTrue())
 			}
 
-			// Cancel all DarkNodes
-			for i := range darkNodes {
+			// Cancel all Darknodes
+			for i := range darknodes {
 				cancels[i]()
 			}
 		})

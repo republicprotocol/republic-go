@@ -59,7 +59,7 @@ func NewLocalConfig(key *keystore.Key, host, port string) Config {
 			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.String(),
 		},
 		NetworkOption: rpc.Options{
-			Address: multi.Address(),
+			Address:                 multi.Address(),
 			MultiAddress:            multi,
 			Timeout:                 3 * time.Second,
 			TimeoutBackoff:          3 * time.Second,

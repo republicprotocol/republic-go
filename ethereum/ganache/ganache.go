@@ -40,12 +40,12 @@ func Start() *exec.Cmd {
 }
 
 // Connect to a local Ganache instance.
-func Connect(ganacheRPC string) (*client.Connection, error) {
+func Connect(ganacheRPC string) (client.Connection, error) {
 	ethclient, err := ethclient.Dial(ganacheRPC)
 	if err != nil {
-		return nil, err
+		return client.Connection{}, err
 	}
-	return &client.Connection{
+	return client.Connection{
 		Client:     ethclient,
 		DNRAddress: client.DarkNodeRegistryAddressOnGanache,
 		RenAddress: client.RepublicTokenAddressOnGanache,
@@ -144,7 +144,7 @@ func deployRepublicToken(ctx context.Context, conn client.Connection, auth *bind
 func deployDarkNodeRegistry(ctx context.Context, conn client.Connection, auth *bind.TransactOpts, republicTokenAddress common.Address) (*bindings.DarkNodeRegistry, common.Address, error) {
 	// 0 REN
 	minimumBond := big.NewInt(0)
-	// 1 second
+	// 1 minute
 	minimumEpochInterval := big.NewInt(1)
 	// 24 Darknode in a pool
 	minimumPoolSize := big.NewInt(24)
