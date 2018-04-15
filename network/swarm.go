@@ -116,10 +116,10 @@ func (service *SwarmService) Ping(ctx context.Context, from *rpc.MultiAddress) (
 
 	select {
 	case val := <-wait:
-		return rpc.SerializeMultiAddress(service.MultiAddress()), val.Err
+		return rpc.SerializeMultiAddress(service.MultiAddress(), nil), val.Err
 
 	case <-ctx.Done():
-		return rpc.SerializeMultiAddress(service.MultiAddress()), ctx.Err()
+		return rpc.SerializeMultiAddress(service.MultiAddress(), nil), ctx.Err()
 	}
 }
 
@@ -157,7 +157,7 @@ func (service *SwarmService) queryPeers(query *rpc.Query, stream rpc.Swarm_Query
 			return err
 		}
 		if closer {
-			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
+			if err := stream.Send(rpc.SerializeMultiAddress(peer, nil)); err != nil {
 				return err
 			}
 		}
@@ -185,7 +185,7 @@ func (service *SwarmService) QueryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 }
 
 func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_QueryPeersDeepServer) error {
-	from, err := rpc.DeserializeMultiAddress(query.From)
+	from, _, err := rpc.DeserializeMultiAddress(query.From)
 	if err != nil {
 		return err
 	}
@@ -203,7 +203,7 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 			return err
 		}
 		if closer {
-			if err := stream.Send(rpc.SerializeMultiAddress(peer)); err != nil {
+			if err := stream.Send(rpc.SerializeMultiAddress(peer, nil)); err != nil {
 				return err
 			}
 			frontier = append(frontier, peer)
@@ -239,7 +239,7 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 
 		for serializedCandidate := range candidates {
 
-			candidate, err := rpc.DeserializeMultiAddress(serializedCandidate)
+			candidate, _, err := rpc.DeserializeMultiAddress(serializedCandidate)
 			if err != nil {
 				return err
 			}
@@ -271,7 +271,7 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 	// Peers returned by the query will be added to the DHT.
 	numberOfPeers := 0
 	for serializedPeer := range peers {
-		peer, err := rpc.DeserializeMultiAddress(serializedPeer)
+		peer, _, err := rpc.DeserializeMultiAddress(serializedPeer)
 		if err != nil {
 			service.Logger.Error(fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
 			continue
@@ -290,9 +290,13 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 }
 
 func (service *SwarmService) updatePeer(peer *rpc.MultiAddress) error {
-	peerMultiAddress, err := rpc.DeserializeMultiAddress(peer)
+	peerMultiAddress, sig, err := rpc.DeserializeMultiAddress(peer)
 	if err != nil {
 		return err
+	}
+	err = peerMultiAddress.VerifySignature(sig)
+	if err != nil {
+		return nil
 	}
 	if service.Address() == peerMultiAddress.Address() {
 		return nil
@@ -337,7 +341,7 @@ func (service *SwarmService) FindNode(targetID identity.ID) (*identity.MultiAddr
 			continue
 		}
 		for candidate := range candidates {
-			deserializedCandidate, err := rpc.DeserializeMultiAddress(candidate)
+			deserializedCandidate, _, err := rpc.DeserializeMultiAddress(candidate)
 			if err != nil {
 				service.Logger.Error(fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
 				continue

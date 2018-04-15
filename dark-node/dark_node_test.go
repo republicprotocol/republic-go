@@ -31,7 +31,12 @@ const (
 
 var primeVal, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 var Prime = &primeVal
-var trader, _ = identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+
+var traderKeypair, _ = identity.NewKeyPair()
+var traderAddress = traderKeypair.Address()
+var traderMulti, _ = identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/" + traderAddress.String())
+var traderMultiSignature, _ = traderKeypair.Sign(traderMulti)
+
 var epochDNR dnr.DarkNodeRegistry
 
 var dnrOuterLock = new(sync.Mutex)
@@ -423,7 +428,9 @@ func sendOrders(nodes []*node.DarkNode) error {
 
 	// Send order fragment to the nodes
 	totalNodes := len(nodes)
-	pool := rpc.NewClientPool(trader).WithTimeout(10 * time.Second).WithTimeoutBackoff(5 * time.Second)
+	pool := rpc.NewClientPool(traderMulti, traderMultiSignature).
+		WithTimeout(10 * time.Second).
+		WithTimeoutBackoff(5 * time.Second)
 	for i := range buyOrders {
 		buyOrder, sellOrder := buyOrders[i], sellOrders[i]
 		log.Printf("Sending matched order. [BUY] %s <---> [SELL] %s", buyOrder.ID, sellOrder.ID)
@@ -437,7 +444,9 @@ func sendOrders(nodes []*node.DarkNode) error {
 		}
 
 		do.CoForAll(buyShares, func(j int) {
-			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(buyShares[j]))
+			// Sign order fragment with trader's keypair
+			buyShares[j].Sign(traderKeypair)
+			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, rpc.SerializeOrderFragment(buyShares[j]))
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)
@@ -445,7 +454,9 @@ func sendOrders(nodes []*node.DarkNode) error {
 		})
 
 		do.CoForAll(sellShares, func(j int) {
-			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(sellShares[j]))
+			// Sign order fragment with trader's keypair
+			sellShares[j].Sign(traderKeypair)
+			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, rpc.SerializeOrderFragment(sellShares[j]))
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)
