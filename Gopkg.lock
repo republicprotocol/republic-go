@@ -262,6 +262,12 @@
   version = "v1.1"
 
 [[projects]]
+  name = "github.com/spaolacci/murmur3"
+  packages = ["."]
+  revision = "9f5d223c60793748f04a9d5b4b4eacddfc1f755d"
+  version = "v1.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/syndtr/goleveldb"
   packages = [
@@ -424,6 +430,10 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
+<<<<<<< HEAD
   inputs-digest = "957420506c38ef9a61158a711b21659196f8198249e3742d1e2a38c73a2ebbe0"
+=======
+  inputs-digest = "b1cb4a18555128f9e19cf6c2e257ac582a05144d1fe13b8f731879a4c5b628be"
+>>>>>>> hyperdrive
   solver-name = "gps-cdcl"
   solver-version = 1

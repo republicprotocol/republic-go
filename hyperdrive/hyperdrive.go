@@ -1,94 +1,189 @@
 package hyper
 
 import (
-	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/republic-go/order"
+	"bytes"
+	"context"
+	"encoding/binary"
+	"log"
+	"time"
+
+	"github.com/republicprotocol/republic-go/dispatch"
+	"golang.org/x/crypto/sha3"
 )
 
-// The Delegate is a callback interface for the Hyperdrive
-type Delegate interface {
-	OnOrderReleased(order order.ID)
-	OnOrderExecuted(buyOrder order.ID, sellOrder order.ID)
+type OrderID string
+type Rank uint64
+
+type Replica struct {
+	ctx            context.Context
+	ingress        ChannelSet
+	internalEgress ChannelSet
+	validator      Validator
 }
 
-// A Tuple represents two orders that are compatible with one another
-type Tuple struct {
-	lhs order.ID
-	rhs order.ID
+func NewReplica(ctx context.Context, validator Validator, ingress ChannelSet) Replica {
+	return Replica{
+		ctx:            ctx,
+		ingress:        ingress,
+		validator:      validator,
+		internalEgress: EmptyChannelSet(ctx, validator.Threshold()),
+	}
 }
 
-// A ConflictSet contains a set of order matches that are in a direct or transitive conflict.
-type ConflictSet struct {
-	id     uint64
-	open   bool
-	tuples []Tuple
+func (r *Replica) Run() ChannelSet {
+	egress := EmptyChannelSet(r.ctx, r.validator.Threshold())
+	go func() {
+		internalIngress := EmptyChannelSet(r.ctx, r.validator.Threshold())
+		go internalIngress.Copy(ProcessBuffer(r.ingress, r.validator))
+		go egress.Copy(ProcessBroadcast(r.internalEgress, r.validator))
+		dispatch.Wait(r.HandleProposals(r.ctx, internalIngress), r.HandlePrepares(r.ctx, internalIngress), r.HandleCommits(r.ctx, internalIngress))
+	}()
+	return egress
 }
 
-// Drive contains a series of conflict sets and a mapping from tuples to their corresponding conflict sets
-type Drive struct {
-	do.GuardedObject
-
-	conflictSetsNextID        uint64
-	conflictSets              map[uint64]*ConflictSet
-	tupleToConflictSetMapping map[string]*ConflictSet
-}
-
-// AddTuple inserts a tuple into the Hyperdrive.
-// If no conflict set is found, a new one is created.
-// If one conflict set is found, the tuple is added to it.
-// If two conflict sets are found, they are merged and the tuple added to the combined set.
-func (hyperdrive *Drive) AddTuple(tuple Tuple) {
-	hyperdrive.Enter(nil)
-	defer hyperdrive.Exit()
-	hyperdrive.addTuple(tuple)
-}
-
-func (hyperdrive *Drive) addTuple(tuple Tuple) {
-	lhsConflictSet := hyperdrive.tupleToConflictSetMapping[string(tuple.lhs)]
-	rhsConflictSet := hyperdrive.tupleToConflictSetMapping[string(tuple.rhs)]
-	if lhsConflictSet != nil && rhsConflictSet != nil {
-		if !(lhsConflictSet.open && rhsConflictSet.open) {
-			return
+func (r *Replica) HandleProposals(ctx context.Context, ingress ChannelSet) chan struct{} {
+	doneCh := make(chan struct{})
+	prepCh, faultCh, errCh := ProcessProposal(ctx, ingress.Proposal, r.validator)
+	go func() {
+		defer close(doneCh)
+		for {
+			select {
+			case <-time.After(10 * time.Second):
+				log.Println("Replica timedout")
+				return
+			case <-ctx.Done():
+				return
+			case _, ok := <-errCh:
+				if !ok {
+					return
+				}
+				return
+			case prepare, ok := <-prepCh:
+				if !ok {
+					return
+				}
+				r.internalEgress.Prepare <- prepare
+			case fault, ok := <-faultCh:
+				if !ok {
+					return
+				}
+				r.internalEgress.Fault <- fault
+			}
 		}
-		lhsConflictSet.tuples = append(lhsConflictSet.tuples, tuple)
-		hyperdrive.mergeConflictSets(lhsConflictSet, rhsConflictSet)
-		return
-	}
-	if lhsConflictSet != nil {
-		if !lhsConflictSet.open {
-			return
-		}
-		lhsConflictSet.tuples = append(lhsConflictSet.tuples, tuple)
-		return
-	}
-	if rhsConflictSet != nil {
-		if !rhsConflictSet.open {
-			return
-		}
-		rhsConflictSet.tuples = append(rhsConflictSet.tuples, tuple)
-		return
-	}
-	hyperdrive.createConflictSet(tuple)
+	}()
+	return doneCh
 }
 
-func (hyperdrive *Drive) mergeConflictSets(lhsConflictSet, rhsConflictSet *ConflictSet) {
-	if lhsConflictSet == nil || rhsConflictSet == nil {
-		return
-	}
-	for _, tuple := range rhsConflictSet.tuples {
-		hyperdrive.tupleToConflictSetMapping[string(tuple.lhs)] = lhsConflictSet
-		hyperdrive.tupleToConflictSetMapping[string(tuple.rhs)] = lhsConflictSet
-	}
-	delete(hyperdrive.conflictSets, rhsConflictSet.id)
+func (r *Replica) HandlePrepares(ctx context.Context, ingress ChannelSet) chan struct{} {
+	doneCh := make(chan struct{}, r.validator.Threshold())
+	commCh, faultCh, errCh := ProcessPreparation(ctx, ingress.Prepare, r.validator)
+	go func() {
+		defer close(doneCh)
+		for {
+			select {
+			case <-time.After(10 * time.Second):
+				log.Println("Replica timedout")
+				return
+			case <-ctx.Done():
+				return
+			case _, ok := <-errCh:
+				if !ok {
+					return
+				}
+				return
+			case commit, ok := <-commCh:
+				if !ok {
+					return
+				}
+				r.internalEgress.Commit <- commit
+			case fault, ok := <-faultCh:
+				if !ok {
+					return
+				}
+				r.internalEgress.Fault <- fault
+			}
+		}
+	}()
+	return doneCh
 }
 
-func (hyperdrive *Drive) createConflictSet(tuple Tuple) {
-	conflictSet := &ConflictSet{
-		id:     hyperdrive.conflictSetsNextID,
-		tuples: []Tuple{tuple},
+func (r *Replica) HandleCommits(ctx context.Context, ingress ChannelSet) chan struct{} {
+	doneCh := make(chan struct{})
+	blockCh := make(chan Block, r.validator.Threshold())
+	counter := 0
+	commCh, blockCh, faultCh, errCh := ProcessCommit(ctx, ingress.Commit, r.validator)
+	go func() {
+		defer close(doneCh)
+		for {
+			select {
+			case <-time.After(10 * time.Second):
+				log.Println("Replica timedout")
+				return
+			case <-ctx.Done():
+				return
+			case _ = <-errCh:
+				return
+			case block, ok := <-blockCh:
+				if !ok {
+					return
+				}
+				counter++
+				// log.Printf("%sFinality reached on block%s\n", "\x1b[32;1m", r.validator.Sign())
+				r.internalEgress.Block <- block
+			case commit, ok := <-commCh:
+				if !ok {
+					return
+				}
+				r.internalEgress.Commit <- commit
+			case fault, ok := <-faultCh:
+				if !ok {
+					return
+				}
+				log.Println("Fault block reached on", r.validator.Sign())
+				r.internalEgress.Fault <- fault
+			}
+		}
+	}()
+	return doneCh
+}
+
+func PrepareHash(p Prepare) [32]byte {
+	var prepareBuf bytes.Buffer
+	binary.Write(&prepareBuf, binary.BigEndian, p.Block)
+	binary.Write(&prepareBuf, binary.BigEndian, p.Height)
+	binary.Write(&prepareBuf, binary.BigEndian, p.Rank)
+	return sha3.Sum256(prepareBuf.Bytes())
+}
+
+func ProposalHash(p Proposal) [32]byte {
+	var proposalBuf bytes.Buffer
+	binary.Write(&proposalBuf, binary.BigEndian, p.Block)
+	binary.Write(&proposalBuf, binary.BigEndian, p.Height)
+	binary.Write(&proposalBuf, binary.BigEndian, p.Rank)
+	return sha3.Sum256(proposalBuf.Bytes())
+}
+
+func CommitHash(c Commit) [32]byte {
+	var commitBuf bytes.Buffer
+	binary.Write(&commitBuf, binary.BigEndian, c.Block)
+	binary.Write(&commitBuf, binary.BigEndian, c.Height)
+	binary.Write(&commitBuf, binary.BigEndian, c.Rank)
+	binary.Write(&commitBuf, binary.BigEndian, c.ThresholdSignature)
+	return sha3.Sum256(commitBuf.Bytes())
+}
+
+func FaultHash(f Fault) [32]byte {
+	var faultBuf bytes.Buffer
+	binary.Write(&faultBuf, binary.BigEndian, f.Height)
+	binary.Write(&faultBuf, binary.BigEndian, f.Rank)
+	return sha3.Sum256(faultBuf.Bytes())
+}
+
+func BlockHash(b Block) [32]byte {
+	blockBuffer := new(bytes.Buffer)
+	for i := range b.Tuples {
+		binary.Write(blockBuffer, binary.BigEndian, b.Tuples[i].ID)
 	}
-	hyperdrive.tupleToConflictSetMapping[string(tuple.lhs)] = conflictSet
-	hyperdrive.tupleToConflictSetMapping[string(tuple.rhs)] = conflictSet
-	hyperdrive.conflictSets[hyperdrive.conflictSetsNextID] = conflictSet
-	hyperdrive.conflictSetsNextID++
+	// log.Println("--------------------------------------", blockBuffer.Bytes())
+	return sha3.Sum256(blockBuffer.Bytes())
 }
