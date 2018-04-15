@@ -1,6 +1,7 @@
 package orderbook
 
 import (
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -43,4 +44,9 @@ func (orderBookDB OrderBookDB) Release(message *Message) {
 
 func (orderBookDB OrderBookDB) Settle(message *Message) {
 	// TODO: Implement key/value file store
+}
+
+func (orderBookDB OrderBookDB) Cancel(id order.ID) error {
+	// TODO: Implement key/value file store
+	return nil
 }

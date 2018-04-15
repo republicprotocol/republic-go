@@ -8,11 +8,12 @@ import (
 )
 
 type OrderBookSyncer interface {
-	Open(message Message) error
-	Match(message Message) error
-	Confirm(message Message) error
-	Release(message Message) error
-	Settle(message Message) error
+	Open(message *Message) error
+	Match(message *Message) error
+	Confirm(message *Message) error
+	Release(message *Message) error
+	Settle(message *Message) error
+	Cancel(id order.ID) error
 }
 
 // Broadcaster is the subject in the observer design pattern
@@ -106,4 +107,17 @@ func (orderBook OrderBook) Settle(message *Message) error {
 // Order retrieves information regarding an order.
 func (orderBook OrderBook) Order(id order.ID) *Message {
 	return orderBook.orderBookCache.orders[string(id)]
+}
+
+func (orderBook OrderBook) Cancel(id order.ID) error {
+	err := orderBook.orderBookCache.Cancel(id)
+	if err != nil {
+		return err
+	}
+	err = orderBook.orderBookDB.Cancel(id)
+	if err != nil {
+		return err
+	}
+
+	return orderBook.splitter.Send(NewMessage(order.Order{ID: id}, order.Canceled, [32]byte{}))
 }
