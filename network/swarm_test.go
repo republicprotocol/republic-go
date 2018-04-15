@@ -16,7 +16,7 @@ import (
 
 var _ = Describe("Swarm service", func() {
 	var err error
-	var mu = new(sync.Mutex)
+	var mu = &sync.Mutex{}
 	var swarms []*network.SwarmService
 	var servers []*grpc.Server
 
@@ -24,7 +24,9 @@ var _ = Describe("Swarm service", func() {
 		for _, connectivity := range []int{100 /*, 80, 40*/} {
 			func(numberOfNodes, connectivity int) {
 				Context("when bootstrapping", func() {
+
 					BeforeEach(func() {
+
 						mu.Lock()
 
 						swarms, servers, err = generateSwarmServices(numberOfNodes)
@@ -84,6 +86,60 @@ var _ = Describe("Swarm service", func() {
 			}(numberOfSwarms, connectivity)
 		}
 	}
+
+	Context("when finding nodes", func() {
+		BeforeEach(func() {
+
+			mu.Lock()
+
+			swarms, servers, err = generateSwarmServices(5)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = startSwarmServices(servers, swarms)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err := connectSwarms(swarms, 100)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			do.CoForAll(swarms, func(i int) {
+				swarms[i].Bootstrap()
+			})
+
+			time.Sleep(1 * time.Second)
+		})
+
+		AfterEach(func() {
+			stopSwarmServices(servers, swarms)
+			mu.Unlock()
+		})
+
+		It("should be able to find nodes", func() {
+
+			do.CoForAll(swarms, func(i int) {
+				for j := range swarms {
+					if i == j {
+						continue
+					}
+
+					multiaddress, err := swarms[i].FindNode(swarms[j].MultiAddress().ID())
+					Ω(multiaddress.String()).Should(Equal(swarms[j].MultiAddress().String()))
+					Ω(err).ShouldNot(HaveOccurred())
+				}
+				swarms[i].Bootstrap()
+			})
+		})
+
+		It("should return nil if unable to find node", func() {
+			id, _, err := identity.NewID()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			multi, err := swarms[0].FindNode(id)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(multi).Should(BeNil())
+
+		})
+	})
+
 })
 
 func startSwarmServices(servers []*grpc.Server, swarms []*network.SwarmService) error {

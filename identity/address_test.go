@@ -37,6 +37,7 @@ var _ = Describe("", func() {
 			address1 := identity.Address("8MK6bwP1ADVPaMQ4Gxfm85KYbEdJ6Y")
 			address2 := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBgikU")
 			badAddress := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBg")
+			badAddress2 := identity.Address("8MHkhs4aQ7m7mz7rY1HqEcPwHBgik0")
 			zeroDistance := []byte{}
 			for i := 0; i < 20; i++ {
 				zeroDistance = append(zeroDistance, uint8(0))
@@ -44,6 +45,15 @@ var _ = Describe("", func() {
 
 			It("should error when calculating distance on wrong formatted address", func() {
 				_, err := address1.Distance(badAddress)
+				Ω(err).Should(HaveOccurred())
+
+				_, err = badAddress.Distance(address1)
+				Ω(err).Should(HaveOccurred())
+
+				_, err = address1.Distance(badAddress2)
+				Ω(err).Should(HaveOccurred())
+
+				_, err = badAddress2.Distance(address1)
 				Ω(err).Should(HaveOccurred())
 			})
 
@@ -70,7 +80,6 @@ var _ = Describe("", func() {
 				mannuallyCalculatedResult := []byte{160, 232, 172, 153, 9, 57, 197, 82, 23, 48, 72, 85, 64, 91, 251, 207, 200, 78, 138, 192}
 				Ω(distance1).Should(Equal(mannuallyCalculatedResult))
 			})
-
 		})
 
 		Context("comparing prefix bits", func() {

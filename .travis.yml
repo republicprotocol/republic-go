@@ -14,6 +14,7 @@ before_install:
   - go get github.com/mattn/goveralls
   - go get github.com/golang/dep/cmd/dep
   - go get github.com/golang/lint/golint
+  - go get github.com/haya14busa/goverage
   - dep ensure
 
 script:
@@ -21,19 +22,10 @@ script:
   - golint -set_exit_status `go list ./... | grep -Ev "(stackint/asm|vendor)"`
   - go run cmd/testnetwork/main.go -sleep 10 &
   - sleep 10
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out stackint
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out identity
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out shamir
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out order
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out compute
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out logger
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out network/dht
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out network/rpc
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out network
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out dark
-  - ginkgo -v --trace --race --cover --coverprofile coverprofile.out hyperdrive
-  - ginkgo -v --trace --cover --coverprofile coverprofile.out dark-node
-  - sed -i '/rpc.pb.go/d' network/rpc/coverprofile.out
-  
+  - goverage -v -coverprofile=coverprofile.out ./...
+
 after_success:
+  - sed -i '/rpc.pb.go/d' coverprofile.out
+  - sed -i '/bindings/d' coverprofile.out
+  - sed -i '/cmd/d' coverprofile.out
   - goveralls -coverprofile=coverprofile.out -service=travis-ci -repotoken $COVERALLS_TOKEN
