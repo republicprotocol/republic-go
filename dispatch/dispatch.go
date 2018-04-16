@@ -48,6 +48,56 @@ func Split(chIn interface{}, chsOut ...interface{}) {
 	}
 }
 
+type Splitter struct {
+	mu          *sync.RWMutex
+	subscribers map[interface{}]struct{}
+}
+
+func (splitter *Splitter) Subscribe(ch interface{}) {
+	splitter.mu.Lock()
+	defer splitter.mu.Unlock()
+	splitter.subscribers[ch] = struct{}{}
+}
+
+func (splitter *Splitter) Unsubscribe(ch interface{}) {
+	splitter.mu.Lock()
+	defer splitter.mu.Unlock()
+	delete(splitter.subscribers, ch)
+}
+
+func (splitter *Splitter) Split(chIn interface{}) {
+	if reflect.TypeOf(chIn).Kind() != reflect.Chan {
+		panic(fmt.Sprintf("cannot split from value of type %T", chIn))
+	}
+
+	for {
+		msg, ok := reflect.ValueOf(chIn).Recv()
+		if !ok {
+			return
+		}
+
+		func() {
+			splitter.mu.RLock()
+			defer splitter.mu.RUnlock()
+			for chOut := range splitter.subscribers {
+				switch reflect.TypeOf(chOut).Kind() {
+				case reflect.Array, reflect.Slice:
+					for i := 0; i < reflect.ValueOf(chOut).Len(); i++ {
+						if reflect.ValueOf(chOut).Index(i).Kind() != reflect.Chan {
+							panic(fmt.Sprintf("cannot split to value of type %T", chOut))
+						}
+						reflect.ValueOf(chOut).Index(i).Send(msg)
+					}
+				case reflect.Chan:
+					reflect.ValueOf(chOut).Send(msg)
+				default:
+					panic(fmt.Sprintf("cannot split to value of type %T", chOut))
+				}
+			}
+		}()
+	}
+}
+
 func Merge(chOut interface{}, chsIn ...interface{}) {
 	if reflect.TypeOf(chOut).Kind() != reflect.Chan {
 		panic(fmt.Sprintf("cannot merge to value of type %T", chOut))
