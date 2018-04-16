@@ -51,14 +51,12 @@ func (c *ChannelSet) Split(cs []ChannelSet) {
 	go dispatch.Split(c.Commit, commits)
 	go dispatch.Split(c.Fault, faults)
 
-	func() {
-		for {
-			select {
-			case <-c.ctx.Done():
-				return
-			}
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
 		}
-	}()
+	}
 }
 
 func (c *ChannelSet) Copy(cs ChannelSet) {

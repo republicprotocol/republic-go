@@ -40,10 +40,10 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, validato
 				errCh <- ctx.Err()
 				return
 			case proposal, ok := <-proposalChIn:
-				counter++
 				if !ok {
 					return
 				}
+				counter++
 				if validator.ValidateProposal(proposal) {
 					prepare := Prepare{
 						validator.Sign(),
@@ -72,33 +72,3 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, validato
 
 	return prepareCh, faultCh, errCh
 }
-
-// func signProposal(p Proposal, signer Signer) (Proposal, error) {
-// 	b, err := signBlock(p.Block, signer)
-// 	if err != nil {
-// 		return Proposal{}, err
-// 	}
-// 	p.Block = b
-// 	var proposalBuf bytes.Buffer
-// 	binary.Write(&proposalBuf, binary.BigEndian, p)
-// 	sig, err := signer.Sign(proposalBuf.Bytes())
-// 	return Proposal{
-// 		sig,
-// 		p.Block,
-// 		p.Rank,
-// 		p.Height,
-// 	}, nil
-// }
-
-// func signBlock(b Block, signer Signer) (Block, error) {
-// 	var blockBuf bytes.Buffer
-// 	binary.Write(&blockBuf, binary.BigEndian, b)
-// 	sig, err := signer.Sign(blockBuf.Bytes())
-// 	if err != nil {
-// 		return Block{}, err
-// 	}
-// 	return Block{
-// 		b.tuples,
-// 		sig,
-// 	}, nil
-// }

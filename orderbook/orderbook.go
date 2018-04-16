@@ -7,7 +7,7 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
-type OrderBookSyncer interface {
+type Syncer interface {
 	Open(message *Message) error
 	Match(message *Message) error
 	Confirm(message *Message) error
@@ -22,10 +22,9 @@ type Broadcaster interface {
 	Unsubscribe(id string)
 }
 
-// An OrderBook is responsible for store the historical orders both in
-// cache and in disk. It also streams the newly received orders to its
-// subscriber.
-type OrderBook struct {
+// An Orderbook is responsible for store the historical orders both in cache
+// and in disk. It also streams the newly received orders to its subscriber.
+type Orderbook struct {
 	orderBookCache OrderBookCache
 	orderBookDB    OrderBookDB
 	splitter       dispatch.Splitter

@@ -17,8 +17,8 @@ const reset = "\x1b[0m"
 
 // The HTTPPost object
 type HTTPPost struct {
-	Order          order.Order `json:"order"`
-	OrderFragments Fragments   `json:"orderFragments"`
+	Order          order.Order    `json:"order"`
+	OrderFragments OrderFragments `json:"orderFragments"`
 }
 
 // The HTTPDelete object
@@ -28,7 +28,7 @@ type HTTPDelete struct {
 }
 
 // Fragments will store a list of Fragment Sets with their order details
-type Fragments struct {
+type OrderFragments struct {
 	Signature []byte   `json:"signature"`
 	ID        order.ID `json:"id"`
 
@@ -124,8 +124,8 @@ func DeleteOrderHandler(multiAddress *identity.MultiAddress, darkPools dark.Pool
 	})
 }
 
-func writeError(w http.ResponseWriter, httpCode int, err string) {
-	w.WriteHeader(httpCode)
+func writeError(w http.ResponseWriter, statusCode int, err string) {
+	w.WriteHeader(statusCode)
 	w.Write([]byte(err))
 	return
 }

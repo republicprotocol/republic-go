@@ -80,7 +80,7 @@ func CancelOrder(order order.ID, traderMultiAddress *identity.MultiAddress, pool
 			// Get multiaddress
 			multiaddress, err := getMultiAddress(n.ID.Address(), *traderMultiAddress)
 			if err != nil {
-				log.Printf("cannot read multi-address: %v", err)
+				return fmt.Errorf("cannot read multi-address: %v", err)
 			}
 
 			// Create a client
@@ -101,7 +101,7 @@ func CancelOrder(order order.ID, traderMultiAddress *identity.MultiAddress, pool
 }
 
 func sendOrder(openOrder order.Order, pools dark.Pools, traderMultiAddress identity.MultiAddress) error {
-	errCh := make(chan error)
+	errCh := make(chan error, len(pools))
 
 	go func() {
 		defer close(errCh)
@@ -115,17 +115,16 @@ func sendOrder(openOrder order.Order, pools dark.Pools, traderMultiAddress ident
 				// Split order into (number of nodes in each pool) * 2/3 fragments
 				shares, err := openOrder.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
 				if err != nil {
-					log.Printf("cannot split orders: %v", err)
 					errCh <- err
 					return
 				}
 				if err := sendSharesToDarkPool(darkPool, traderMultiAddress, shares); err != nil {
-					log.Println(err)
 					errCh <- err
 					return
 				}
 			}(pools[i])
 		}
+
 		wg.Wait()
 	}()
 

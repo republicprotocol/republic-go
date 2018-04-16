@@ -11,7 +11,7 @@ import (
 // status in the cache.
 type OrderBookCache struct {
 	ordersMu *sync.RWMutex
-	orders   map[string]*Message
+	orders   map[string]Entry
 
 	cancelMu *sync.RWMutex
 	cancels  map[string]struct{}
@@ -21,7 +21,7 @@ type OrderBookCache struct {
 func NewOrderBookCache() OrderBookCache {
 	return OrderBookCache{
 		ordersMu: new(sync.RWMutex),
-		orders:   map[string]*Message{},
+		orders:   map[string]Entry{},
 
 		cancelMu: new(sync.RWMutex),
 		cancels:  map[string]struct{}{},
@@ -49,13 +49,13 @@ func (orderBookCache *OrderBookCache) Confirm(message *Message) {
 // Release will change the order status to 'open' if the order
 // is valid and it's status is 'unconfirmed'.
 func (orderBookCache *OrderBookCache) Release(message *Message) {
+	orderBookCache.ordersMu.Lock()
 	orderBookCache.cancelMu.RLock()
+	defer orderBookCache.ordersMu.Unlock()
 	defer orderBookCache.cancelMu.RUnlock()
 
 	// Check if the order has been cancelled by the trader.
-	if _, ok := orderBookCache.cancels[string(message.Ord.ID)] ; ok {
-		orderBookCache.ordersMu.RLock()
-		defer orderBookCache.ordersMu.RUnlock()
+	if _, ok := orderBookCache.cancels[string(message.Ord.ID)]; ok {
 		delete(orderBookCache.orders, string(message.Ord.ID))
 	} else {
 		orderBookCache.storeOrderMessage(message)
@@ -70,21 +70,19 @@ func (orderBookCache *OrderBookCache) Settle(message *Message) {
 
 // Cancel is called when trader wants to cancel the order.
 // Order can only be cancelled when its status is unconfirmed or open.
-func (orderBookCache *OrderBookCache) Cancel(id order.ID) error{
+func (orderBookCache *OrderBookCache) Cancel(id order.ID) error {
 	orderBookCache.ordersMu.RLock()
+	orderBookCache.cancelMu.Lock()
 	defer orderBookCache.ordersMu.RUnlock()
+	defer orderBookCache.cancelMu.Unlock()
 
-	msg ,ok := orderBookCache.orders[string(id)]
-	if !ok{
+	msg, ok := orderBookCache.orders[string(id)]
+	if !ok {
 		return fmt.Errorf("order does not exist")
 	}
-
 	if msg.Status > order.Unconfirmed {
 		return fmt.Errorf("too late too cancel the order")
 	} else if msg.Status == order.Unconfirmed {
-		orderBookCache.cancelMu.Lock()
-		defer orderBookCache.cancelMu.Unlock()
-
 		orderBookCache.cancels[string(id)] = struct{}{}
 	} else if msg.Status == order.Open {
 		delete(orderBookCache.orders, string(id))
@@ -124,5 +122,4 @@ func (orderBookCache *OrderBookCache) storeOrderMessage(message *Message) {
 		orderBookCache.orders[string(message.Ord.ID)] = message
 		return
 	}
-
 }

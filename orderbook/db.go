@@ -27,26 +27,25 @@ func (orderBookDB OrderBookDB) Close() {
 }
 
 func (orderBookDB OrderBookDB) Open(message *Message) {
-	// TODO: Implement key/value file store
+	panic("unimplemented")
 }
 
 func (orderBookDB OrderBookDB) Match(message *Message) {
-	// TODO: Implement key/value file store
+	panic("unimplemented")
 }
 
 func (orderBookDB OrderBookDB) Confirm(message *Message) {
-	// TODO: Implement key/value file store
+	panic("unimplemented")
 }
 
 func (orderBookDB OrderBookDB) Release(message *Message) {
-	// TODO: Implement key/value file store
+	panic("unimplemented")
 }
 
 func (orderBookDB OrderBookDB) Settle(message *Message) {
-	// TODO: Implement key/value file store
+	panic("unimplemented")
 }
 
 func (orderBookDB OrderBookDB) Cancel(id order.ID) error {
-	// TODO: Implement key/value file store
-	return nil
+	panic("unimplemented")
 }
