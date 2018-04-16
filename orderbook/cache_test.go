@@ -76,7 +76,7 @@ var _ = Describe("order book cache", func() {
 			Ω(len(cache.Blocks())).Should(Equal(0))
 		})
 
-		It("should not accepted orders that are told matched directly", func() {
+		It("should not accepted orders that are matched directly", func() {
 			for i := 0; i < NumberOfTestOrders; i++ {
 				ord := newEntry(order.ID([]byte{uint8(i)}))
 				cache.Match(ord)
