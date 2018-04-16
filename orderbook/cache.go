@@ -31,18 +31,27 @@ func NewCache() Cache {
 // Open is called when we first receive the order fragment.
 // It will create the order record and make its status 'open'.
 func (cache *Cache) Open(entry Entry) {
+	cache.ordersMu.Lock()
+	defer cache.ordersMu.Unlock()
+
 	cache.storeOrderMessage(entry)
 }
 
 // Match will change the order status to 'unconfirmed' if the order
 // is valid and it's status is 'open'.
 func (cache *Cache) Match(entry Entry) {
+	cache.ordersMu.Lock()
+	defer cache.ordersMu.Unlock()
+
 	cache.storeOrderMessage(entry)
 }
 
 // Confirm will change the order status to 'confirmed' if the order
 // is valid and it's status is 'unconfirmed'.
 func (cache *Cache) Confirm(entry Entry) {
+	cache.ordersMu.Lock()
+	defer cache.ordersMu.Unlock()
+
 	cache.storeOrderMessage(entry)
 }
 
@@ -65,6 +74,9 @@ func (cache *Cache) Release(entry Entry) {
 // Settle will change the order status to 'settled' if the order
 // is valid and it's status is 'confirmed'.
 func (cache *Cache) Settle(entry Entry) {
+	cache.ordersMu.Lock()
+	defer cache.ordersMu.Unlock()
+
 	cache.storeOrderMessage(entry)
 }
 
@@ -108,8 +120,6 @@ func (cache *Cache) Blocks() []Entry {
 }
 
 func (cache *Cache) storeOrderMessage(entry Entry) {
-	cache.ordersMu.Lock()
-	defer cache.ordersMu.Unlock()
 
 	// Store the order entry if we haven't seen the order before.
 	if _, ok := cache.orders[string(entry.Order.ID)]; !ok {

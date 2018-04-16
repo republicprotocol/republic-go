@@ -7,10 +7,11 @@ import (
 )
 
 var _ = Describe("orderBookDB", func() {
-	Context("FINISH ME ", func() {
-		It("NEEDS TO BE FINISHED", func() {
-			db := orderbook.NewOrderBookDB()
+	Context("opening new DB connection", func() {
+		It("should error for invalid filepath", func() {
+			db, err := orderbook.NewDatabase("")
 			Ω(db).ShouldNot(Equal(nil))
+			Ω(err).Should(HaveOccurred())
 		})
 	})
 })

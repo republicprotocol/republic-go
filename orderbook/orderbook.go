@@ -32,7 +32,7 @@ type Orderbook struct {
 }
 
 // NewOrderbook creates a new Orderbook with the given logger and splitter
-func NewOrderbook(maxConnections int) Orderbook {
+func NewOrderbook() Orderbook {
 	splitter := dispatch.NewSplitter()
 	splitCh := make(chan Entry)
 	go splitter.Split(splitCh)
@@ -68,7 +68,7 @@ func (orderbook Orderbook) Subscribe(ch interface{}) error {
 
 // Unsubscribe will stop listening to the orderbook for updates
 func (orderbook Orderbook) Unsubscribe(ch interface{}) {
-	orderbook.Unsubscribe(ch)
+	orderbook.splitter.Unsubscribe(ch)
 }
 
 // Open is called when we first receive the order fragment.
