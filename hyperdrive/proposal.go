@@ -13,6 +13,8 @@ type Signer interface {
 
 type Signature string
 type Block struct {
+	Height int
+	Rank   int
 	Tuples
 	Signature
 }
