@@ -17,7 +17,7 @@ type ChannelSet struct {
 	Faults    chan Fault
 }
 
-// NewChannels returns Channels with the given capacity.
+// NewChannelSet returns Channels with the given capacity.
 func NewChannelSet(capacity int) ChannelSet {
 	return ChannelSet{
 		Proposals: make(chan Proposal, capacity),

@@ -35,7 +35,7 @@ func (r *Replica) Run() ChannelSet {
 	go func() {
 		internalIngress := NewChannelSet(r.validator.Threshold())
 		go internalIngress.Pipe(ProcessBuffer(r.ingress, r.validator))
-		go egress.Pipe(ProcessBroadcast(r.internalEgress, r.validator))
+		go egress.Pipe(FilterDuplicates(r.internalEgress, r.validator.Threshold()))
 		dispatch.Wait(r.HandleProposals(r.ctx, internalIngress), r.HandlePrepares(r.ctx, internalIngress), r.HandleCommits(r.ctx, internalIngress))
 	}()
 	return egress

@@ -28,6 +28,43 @@ var _ = Describe("Channel set", func() {
 
 	Context("when splitting", func() {
 
+		It("should shutdown gracefully", func() {
+
+			chSet := NewChannelSet(300)
+			chSetsOut := []ChannelSet{
+				NewChannelSet(0),
+				NewChannelSet(0),
+				NewChannelSet(0),
+			}
+
+			var writeWg sync.WaitGroup
+			writeToChannelSet(chSet, 100, &writeWg)
+
+			var splitWg sync.WaitGroup
+			splitWg.Add(1)
+			go func() {
+				defer GinkgoRecover()
+				defer splitWg.Done()
+				chSet.Split(chSetsOut...)
+			}()
+
+			var n int64
+			var readWg sync.WaitGroup
+			for _, chSetOut := range chSetsOut {
+				readFromChannelSet(chSetOut, &readWg, &n)
+			}
+
+			writeWg.Wait()
+			chSet.Close()
+
+			splitWg.Wait()
+			for _, chSetOut := range chSetsOut {
+				chSetOut.Close()
+			}
+
+			readWg.Wait()
+		})
+
 		It("should split all messages to all outputs", func() {
 			inputN := 100
 
@@ -67,45 +104,37 @@ var _ = Describe("Channel set", func() {
 			Ω(n).Should(Equal(int64(inputN * len(chSetsOut) * 5)))
 		})
 
-		It("should shutdown gracefully", func() {
+	})
 
-			chSet := NewChannelSet(300)
-			chSetsOut := []ChannelSet{
-				NewChannelSet(0),
-				NewChannelSet(0),
-				NewChannelSet(0),
-			}
+	Context("when piping", func() {
+
+		It("should shutdown gracefully", func() {
+			chSet := NewChannelSet(0)
+			chSetOut := NewChannelSet(0)
 
 			var writeWg sync.WaitGroup
 			writeToChannelSet(chSet, 100, &writeWg)
 
-			var splitWg sync.WaitGroup
-			splitWg.Add(1)
+			var pipeWg sync.WaitGroup
+			pipeWg.Add(1)
 			go func() {
 				defer GinkgoRecover()
-				defer splitWg.Done()
-				chSet.Split(chSetsOut...)
+				defer pipeWg.Done()
+				chSet.Pipe(chSetOut)
 			}()
 
 			var n int64
 			var readWg sync.WaitGroup
-			for _, chSetOut := range chSetsOut {
-				readFromChannelSet(chSetOut, &readWg, &n)
-			}
+			readFromChannelSet(chSetOut, &readWg, &n)
 
 			writeWg.Wait()
 			chSet.Close()
 
-			splitWg.Wait()
-			for _, chSetOut := range chSetsOut {
-				chSetOut.Close()
-			}
+			pipeWg.Wait()
+			chSetOut.Close()
 
 			readWg.Wait()
 		})
-	})
-
-	Context("when piping", func() {
 
 		It("should pipe all messages to the output", func() {
 			inputN := 100
@@ -136,34 +165,6 @@ var _ = Describe("Channel set", func() {
 
 			readWg.Wait()
 			Ω(n).Should(Equal(int64(inputN * 5)))
-		})
-
-		It("should shutdown gracefully", func() {
-			chSet := NewChannelSet(0)
-			chSetOut := NewChannelSet(0)
-
-			var writeWg sync.WaitGroup
-			writeToChannelSet(chSet, 100, &writeWg)
-
-			var pipeWg sync.WaitGroup
-			pipeWg.Add(1)
-			go func() {
-				defer GinkgoRecover()
-				defer pipeWg.Done()
-				chSet.Pipe(chSetOut)
-			}()
-
-			var n int64
-			var readWg sync.WaitGroup
-			readFromChannelSet(chSetOut, &readWg, &n)
-
-			writeWg.Wait()
-			chSet.Close()
-
-			pipeWg.Wait()
-			chSetOut.Close()
-
-			readWg.Wait()
 		})
 
 	})
