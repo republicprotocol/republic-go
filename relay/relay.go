@@ -25,22 +25,22 @@ type Relay struct {
 }
 
 // NewRelay returns a new Relay object
-func NewRelay(multi identity.MultiAddress, pools dark.Pools, bootstrapNodes []string) Relay{
-	 return Relay{
-		multiAddress  : multi,
-		darkPools     : pools, 
+func NewRelay(multi identity.MultiAddress, pools dark.Pools, bootstrapNodes []string) Relay {
+	return Relay{
+		multiAddress:   multi,
+		darkPools:      pools,
 		bootstrapNodes: bootstrapNodes,
 	}
 }
 
 // NewRouter prepares Relay to handle HTTP requests
 func NewRouter(relay Relay) *mux.Router {
-	orderBook := orderbook.NewOrderBook(100)
+	orderbook := orderbook.NewOrderbook(100)
 	r := mux.NewRouter().StrictSlash(true)
 	r.Methods("POST").Path("/orders").Handler(RecoveryHandler(OpenOrdersHandler(relay.multiAddress, relay.darkPools)))
-	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(GetOrdersHandler(orderBook)))
-	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(GetOrderHandler(orderBook, "")))
-	r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(CancelOrderHandler(relay.multiAddress, *relay.darkPools)))
+	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(GetOrdersHandler(&orderbook)))
+	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(GetOrderHandler(&orderbook, "")))
+	r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(CancelOrderHandler(relay.multiAddress, relay.darkPools)))
 	return r
 }
 

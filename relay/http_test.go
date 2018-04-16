@@ -123,7 +123,7 @@ var _ = Describe("HTTP handlers", func() {
 	Context("when getting orders", func() {
 		It("should return the correct information when given a valid ID", func() {
 			maxConnections := 3
-			orderBook := orderbook.NewOrderBook(maxConnections)
+			book := orderbook.NewOrderbook(maxConnections)
 
 			defaultStackVal, _ := stackint.FromString("179761232312312")
 			ord := order.Order{}
@@ -139,13 +139,13 @@ var _ = Describe("HTTP handlers", func() {
 			ord.Nonce = defaultStackVal
 
 			var hash [32]byte
-			orderMessage := orderbook.NewMessage(ord, order.Open, hash)
-			orderBook.Open(orderMessage)
+			orderMessage := orderbook.NewEntry(ord, order.Open, hash)
+			book.Open(orderMessage)
 
 			r := httptest.NewRequest("GET", "http://localhost/orders/vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ", nil)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.GetOrderHandler(orderBook, string(ord.ID)))
+			handler := relay.RecoveryHandler(relay.GetOrderHandler(&book, string(ord.ID)))
 			handler.ServeHTTP(w, r)
 
 			message := new(order.Order)
@@ -158,12 +158,12 @@ var _ = Describe("HTTP handlers", func() {
 
 		It("should error when when given an invalid ID", func() {
 			maxConnections := 3
-			orderBook := orderbook.NewOrderBook(maxConnections)
+			book := orderbook.NewOrderbook(maxConnections)
 
 			r := httptest.NewRequest("GET", "http://localhost/orders/test", nil)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.GetOrderHandler(orderBook, ""))
+			handler := relay.RecoveryHandler(relay.GetOrderHandler(&book, ""))
 			handler.ServeHTTP(w, r)
 
 			Expect(w.Body.String()).To(ContainSubstring("order id is invalid"))
