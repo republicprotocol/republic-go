@@ -31,26 +31,38 @@ func Split(chIn interface{}, chsOut ...interface{}) {
 			return
 		}
 		for _, chOut := range chsOut {
-			switch reflect.TypeOf(chOut).Kind() {
-			case reflect.Array, reflect.Slice:
-				for i := 0; i < reflect.ValueOf(chOut).Len(); i++ {
-					if reflect.ValueOf(chOut).Index(i).Kind() != reflect.Chan {
-						panic(fmt.Sprintf("cannot split to value of type %T", chOut))
-					}
-					reflect.ValueOf(chOut).Index(i).Send(msg)
-				}
-			case reflect.Chan:
-				reflect.ValueOf(chOut).Send(msg)
-			default:
+			SendToInterface(chOut, msg)
+		}
+	}
+}
+
+func SendToInterface(chOut interface{}, msg interface{}) {
+	msgValue := reflect.ValueOf(msg)
+	switch reflect.TypeOf(chOut).Kind() {
+	case reflect.Array, reflect.Slice:
+		for i := 0; i < reflect.ValueOf(chOut).Len(); i++ {
+			if reflect.ValueOf(chOut).Index(i).Kind() != reflect.Chan {
 				panic(fmt.Sprintf("cannot split to value of type %T", chOut))
 			}
+			reflect.ValueOf(chOut).Index(i).Send(msgValue)
 		}
+	case reflect.Chan:
+		reflect.ValueOf(chOut).Send(msgValue)
+	default:
+		panic(fmt.Sprintf("cannot split to value of type %T", chOut))
 	}
 }
 
 type Splitter struct {
 	mu          *sync.RWMutex
 	subscribers map[interface{}]struct{}
+}
+
+func NewSplitter() Splitter {
+	return Splitter{
+		mu:          &sync.RWMutex{},
+		subscribers: make(map[interface{}]struct{}),
+	}
 }
 
 func (splitter *Splitter) Subscribe(ch interface{}) {
@@ -80,19 +92,7 @@ func (splitter *Splitter) Split(chIn interface{}) {
 			splitter.mu.RLock()
 			defer splitter.mu.RUnlock()
 			for chOut := range splitter.subscribers {
-				switch reflect.TypeOf(chOut).Kind() {
-				case reflect.Array, reflect.Slice:
-					for i := 0; i < reflect.ValueOf(chOut).Len(); i++ {
-						if reflect.ValueOf(chOut).Index(i).Kind() != reflect.Chan {
-							panic(fmt.Sprintf("cannot split to value of type %T", chOut))
-						}
-						reflect.ValueOf(chOut).Index(i).Send(msg)
-					}
-				case reflect.Chan:
-					reflect.ValueOf(chOut).Send(msg)
-				default:
-					panic(fmt.Sprintf("cannot split to value of type %T", chOut))
-				}
+				SendToInterface(chOut, msg)
 			}
 		}()
 	}

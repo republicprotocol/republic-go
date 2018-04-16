@@ -18,8 +18,8 @@ type Syncer interface {
 
 // Broadcaster is the subject in the observer design pattern
 type Broadcaster interface {
-	Subscribe(id string, queue dispatch.MessageQueue) error
-	Unsubscribe(id string)
+	Subscribe(ch interface{}) error
+	Unsubscribe(ch interface{})
 }
 
 // An Orderbook is responsible for store the historical orders both in cache
@@ -28,19 +28,25 @@ type Orderbook struct {
 	cache    Cache
 	database Database
 	splitter dispatch.Splitter
+	splitCh  chan Entry
 }
 
-// NewOrderBook creates a new OrderBook with the given logger and splitter
-func NewOrderBook(maxConnections int) *OrderBook {
-	return &OrderBook{
-		cache:    NewOrderBookCache(),
+// NewOrderbook creates a new Orderbook with the given logger and splitter
+func NewOrderbook(maxConnections int) Orderbook {
+	splitter := dispatch.NewSplitter()
+	splitCh := make(chan Entry)
+	go splitter.Split(splitCh)
+
+	return Orderbook{
+		cache:    NewCache(),
 		database: Database{},
-		splitter: dispatch.NewSplitter(maxConnections),
+		splitter: splitter,
+		splitCh:  splitCh,
 	}
 }
 
 // Subscribe will start listening to the orderbook for updates.
-func (orderBook OrderBook) Subscribe(id string, queue dispatch.MessageQueue) error {
+func (orderbook Orderbook) Subscribe(ch interface{}) error {
 	var err error
 	var wg sync.WaitGroup
 
@@ -48,15 +54,12 @@ func (orderBook OrderBook) Subscribe(id string, queue dispatch.MessageQueue) err
 	go func() {
 		defer wg.Done()
 
-		err = orderBook.splitter.RunMessageQueue(id, queue)
+		orderbook.splitter.Subscribe(ch)
 	}()
 
-	blocks := orderBook.cache.Blocks()
+	blocks := orderbook.cache.Blocks()
 	for _, block := range blocks {
-		err := queue.Send(block)
-		if err != nil {
-			return err
-		}
+		dispatch.SendToInterface(ch, block)
 	}
 
 	wg.Wait()
@@ -64,60 +67,67 @@ func (orderBook OrderBook) Subscribe(id string, queue dispatch.MessageQueue) err
 }
 
 // Unsubscribe will stop listening to the orderbook for updates
-func (orderBook OrderBook) Unsubscribe(id string) {
-	orderBook.splitter.ShutdownMessageQueue(id)
+func (orderbook Orderbook) Unsubscribe(ch interface{}) {
+	orderbook.Unsubscribe(ch)
 }
 
 // Open is called when we first receive the order fragment.
-func (orderBook OrderBook) Open(entry Entry) error {
-	orderBook.cache.Open(entry)
-	orderBook.database.Open(entry)
-	return orderBook.splitter.Send(entry)
+func (orderbook Orderbook) Open(entry Entry) error {
+	orderbook.cache.Open(entry)
+	orderbook.database.Open(entry)
+	orderbook.splitCh <- entry
+	return nil
 }
 
 // Match is called when we discover a match for the order.
-func (orderBook OrderBook) Match(entry Entry) error {
-	orderBook.cache.Match(entry)
-	orderBook.database.Match(entry)
-	return orderBook.splitter.Send(entry)
+func (orderbook Orderbook) Match(entry Entry) error {
+	orderbook.cache.Match(entry)
+	orderbook.database.Match(entry)
+	orderbook.splitCh <- entry
+	return nil
 }
 
 // Confirm is called when the order has been confirmed by the hyperdrive.
-func (orderBook OrderBook) Confirm(entry Entry) error {
-	orderBook.cache.Confirm(entry)
-	orderBook.database.Confirm(entry)
-	return orderBook.splitter.Send(entry)
+func (orderbook Orderbook) Confirm(entry Entry) error {
+	orderbook.cache.Confirm(entry)
+	orderbook.database.Confirm(entry)
+	orderbook.splitCh <- entry
+	return nil
 }
 
 // Release is called when the order has been denied by the hyperdrive.
-func (orderBook OrderBook) Release(entry Entry) error {
-	orderBook.cache.Release(entry)
-	orderBook.database.Release(entry)
-	return orderBook.splitter.Send(entry)
+func (orderbook Orderbook) Release(entry Entry) error {
+	orderbook.cache.Release(entry)
+	orderbook.database.Release(entry)
+	orderbook.splitCh <- entry
+	return nil
 }
 
 // Settle is called when the order is settled.
-func (orderBook OrderBook) Settle(entry Entry) error {
-	orderBook.cache.Settle(entry)
-	orderBook.database.Settle(entry)
-	return orderBook.splitter.Send(entry)
+func (orderbook Orderbook) Settle(entry Entry) error {
+	orderbook.cache.Settle(entry)
+	orderbook.database.Settle(entry)
+	orderbook.splitCh <- entry
+	return nil
 }
 
 // Cancel is called when the order is canceled.
-func (orderBook OrderBook) Cancel(id order.ID) error {
-	err := orderBook.cache.Cancel(id)
+func (orderbook Orderbook) Cancel(id order.ID) error {
+	err := orderbook.cache.Cancel(id)
 	if err != nil {
 		return err
 	}
-	err = orderBook.database.Cancel(id)
+	err = orderbook.database.Cancel(id)
 	if err != nil {
 		return err
 	}
 
-	return orderBook.splitter.Send(NewMessage(order.Order{ID: id}, order.Canceled, [32]byte{}))
+	entry := NewEntry(order.Order{ID: id}, order.Canceled, [32]byte{})
+	orderbook.splitCh <- entry
+	return nil
 }
 
 // Order retrieves information regarding an order.
-func (orderBook OrderBook) Order(id order.ID) Entry {
-	return orderBook.cache.orders[string(id)]
+func (orderbook Orderbook) Order(id order.ID) Entry {
+	return orderbook.cache.orders[string(id)]
 }
