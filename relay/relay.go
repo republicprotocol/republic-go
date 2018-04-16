@@ -34,7 +34,7 @@ func NewRelay(multi identity.MultiAddress, pools dark.Pools, bootstrapNodes []st
 }
 
 // NewRouter prepares Relay to handle HTTP requests
-func NewRouter() *mux.Router {
+func NewRouter(relay Relay) *mux.Router {
 	orderBook := orderbook.NewOrderBook(100)
 	r := mux.NewRouter().StrictSlash(true)
 	r.Methods("POST").Path("/orders").Handler(RecoveryHandler(OpenOrdersHandler(relay.multiAddress, relay.darkPools)))

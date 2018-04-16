@@ -8,15 +8,15 @@ import (
 )
 
 type WriteOnlyChannelQueue struct {
-	out   chan<- *orderbook.Message
-	write chan *orderbook.Message
+	out   chan<- orderbook.Entry
+	write chan orderbook.Entry
 	quit  chan struct{}
 }
 
-func NewWriteOnlyChannelQueue(out chan *orderbook.Message, messageQueueLimit int) WriteOnlyChannelQueue {
+func NewWriteOnlyChannelQueue(out chan orderbook.Entry, messageQueueLimit int) WriteOnlyChannelQueue {
 	return WriteOnlyChannelQueue{
 		out:   out,
-		write: make(chan *orderbook.Message, messageQueueLimit),
+		write: make(chan orderbook.Entry, messageQueueLimit),
 		quit:  make(chan struct{}),
 	}
 }
@@ -46,9 +46,9 @@ func (queue WriteOnlyChannelQueue) Send(message dispatch.Message) error {
 		}
 	}()
 
-	msg, ok := message.(*orderbook.Message)
+	msg, ok := message.(orderbook.Entry)
 	if !ok {
-		return fmt.Errorf("wrong message type, has %T expect *orderbook.Message", message)
+		return fmt.Errorf("wrong message type, has %T expect orderbook.Entry", message)
 	}
 	queue.write <- msg
 

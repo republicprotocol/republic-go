@@ -82,7 +82,7 @@ func OpenOrdersHandler(multiAddress identity.MultiAddress, darkPools dark.Pools)
 }
 
 // GetOrderHandler handles all HTTP GET requests.
-func GetOrderHandler(orderBook *orderbook.OrderBook, id string) http.Handler {
+func GetOrderHandler(orderBook *orderbook.Orderbook, id string) http.Handler {
 	// TODO: Add authentication.
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
@@ -97,12 +97,12 @@ func GetOrderHandler(orderBook *orderbook.OrderBook, id string) http.Handler {
 
 		// Check if there exists an item in the order book with the given ID.
 		message := orderBook.Order([]byte(orderID))
-		if message.Ord.ID == nil {
+		if message.Order.ID == nil {
 			writeError(w, http.StatusBadRequest, "order id is invalid")
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(message.Ord); err != nil {
+		if err := json.NewEncoder(w).Encode(message.Order); err != nil {
 			fmt.Printf("cannot encode object as json: %v", err)
 		}
 	})
