@@ -14,10 +14,10 @@ const NumberOfTestOrders = 100
 
 var _ = Describe("order book cache", func() {
 	Context("order status change event ", func() {
-		var cache orderbook.OrderBookCache
+		var cache orderbook.Cache
 
 		BeforeEach(func() {
-			cache = orderbook.NewOrderBookCache()
+			cache = orderbook.NewCache()
 			Ω(len(cache.Blocks())).Should(Equal(0))
 		})
 
@@ -69,10 +69,10 @@ var _ = Describe("order book cache", func() {
 	})
 
 	Context("Negative tests", func() {
-		var cache orderbook.OrderBookCache
+		var cache orderbook.Cache
 
 		BeforeEach(func() {
-			cache = orderbook.NewOrderBookCache()
+			cache = orderbook.NewCache()
 			Ω(len(cache.Blocks())).Should(Equal(0))
 		})
 
