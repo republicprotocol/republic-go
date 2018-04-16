@@ -9,7 +9,7 @@ package hyper_test
 // 	. "github.com/republicprotocol/republic-go/hyperdrive"
 // )
 
-// var _ = Describe("Buffer", func() {
+// var _ = Describe("HeightBuffer", func() {
 
 // 	Context("Proposals", func() {
 

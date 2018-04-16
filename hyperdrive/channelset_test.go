@@ -175,40 +175,44 @@ var _ = Describe("Channel set", func() {
 // ChannelSet in background goroutines. The goroutine are added to the
 // sync.WaitGroup but no waiting is done.
 func writeToChannelSet(chSet ChannelSet, n int, wg *sync.WaitGroup) {
+	writeToChannelSetWithHeight(chSet, n, 0, wg)
+}
+
+func writeToChannelSetWithHeight(chSet ChannelSet, n, height int, wg *sync.WaitGroup) {
 	wg.Add(5)
 	go func() {
 		defer GinkgoRecover()
 		defer wg.Done()
 		for i := 0; i < n; i++ {
-			chSet.Proposals <- Proposal{}
+			chSet.Proposals <- Proposal{Height: height}
 		}
 	}()
 	go func() {
 		defer GinkgoRecover()
 		defer wg.Done()
 		for i := 0; i < n; i++ {
-			chSet.Prepares <- Prepare{}
+			chSet.Prepares <- Prepare{Height: height}
 		}
 	}()
 	go func() {
 		defer GinkgoRecover()
 		defer wg.Done()
 		for i := 0; i < n; i++ {
-			chSet.Commits <- Commit{}
+			chSet.Commits <- Commit{Height: height}
 		}
 	}()
 	go func() {
 		defer GinkgoRecover()
 		defer wg.Done()
 		for i := 0; i < n; i++ {
-			chSet.Blocks <- Block{}
+			chSet.Blocks <- Block{Height: height}
 		}
 	}()
 	go func() {
 		defer GinkgoRecover()
 		defer wg.Done()
 		for i := 0; i < n; i++ {
-			chSet.Faults <- Fault{}
+			chSet.Faults <- Fault{Height: height}
 		}
 	}()
 }

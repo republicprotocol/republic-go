@@ -7,7 +7,7 @@ import (
 type ThresholdSignature Signature
 type Commit struct {
 	Rank
-	Height uint64
+	Height int
 	Block
 	ThresholdSignature
 	Signature
@@ -53,7 +53,7 @@ func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, validator Vali
 				if commits[h] >= threshold-1 {
 					certified[h] = true
 					blockCh <- commit.Block
-					blocks.IncrementHeight()
+					blocks.NextHeight()
 				} else {
 					commits[h]++
 					if len(commitCh) == int(validator.Threshold()) {

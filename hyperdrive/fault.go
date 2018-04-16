@@ -6,15 +6,15 @@ import (
 
 type Fault struct {
 	Rank
-	Height uint64
+	Height int
 	Signature
 }
 
 func ProcessFault(ctx context.Context, faultChIn chan Fault, validator Validator) (chan Fault, chan error) {
 	faultCh := make(chan Fault, validator.Threshold())
 	errCh := make(chan error, validator.Threshold())
-	faults := map[uint64]int{}
-	certified := map[uint64]bool{}
+	faults := map[int]int{}
+	certified := map[int]bool{}
 
 	go func() {
 		defer close(faultCh)

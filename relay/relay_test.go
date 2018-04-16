@@ -1,19 +1,19 @@
 package relay_test
 
 import (
-//	"errors"
+	//	"errors"
 	"fmt"
-//	"sync"
+	//	"sync"
 	"time"
 
-//	. "github.com/onsi/ginkgo"
+	//	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-//	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-//	"github.com/republicprotocol/go-do"
+	//	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	//	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark"
-//	"github.com/republicprotocol/republic-go/dark-node"
+	//	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -25,6 +25,7 @@ import (
 // var dnrInnerLock = new(sync.Mutex)
 
 var epochDNR dnr.DarkNodeRegistry
+
 // var nodes []*node.DarkNode
 
 var Prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
@@ -102,7 +103,7 @@ var Prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 
 // 		It("should not return an error", func() {
 // 			pools, trader := getPoolsAndTrader()
-			
+
 // 			orderID := []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
 
 // 			err = CancelOrder(orderID, &trader, pools)

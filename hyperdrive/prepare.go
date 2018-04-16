@@ -8,7 +8,7 @@ type Prepare struct {
 	Signature
 	Block
 	Rank
-	Height uint64
+	Height int
 }
 
 func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, validator Validator) (<-chan Commit, <-chan Fault, <-chan error) {
