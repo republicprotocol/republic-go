@@ -15,9 +15,9 @@ type Signature string
 
 type Block struct {
 	Height int
-	Rank  int
-	Signature
+	Rank   int
 	Tuples
+	Signature
 }
 
 type Proposal struct {
