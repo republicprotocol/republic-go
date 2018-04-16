@@ -30,7 +30,7 @@ var _ = Describe("order book", func() {
 		var book orderbook.Orderbook
 
 		BeforeEach(func() {
-			book = orderbook.NewOrderbook()
+			book = orderbook.NewOrderbook(10)
 		})
 
 		It("subscribe and unsubscribe", func() {
