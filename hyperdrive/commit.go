@@ -4,12 +4,15 @@ import (
 	"context"
 )
 
-type ThresholdSignature Signature
-
+// A Commit messages signals that a Replica wants to commit to the finalization
+// of a Block.
 type Commit struct {
 	Block
-	ThresholdSignature
+
+	// Signature of the Replica that produced this Commit along with all of the
+	// other Replicas that have signed it
 	Signature
+	Signatures []Signature
 }
 
 // ProcessCommits by collecting Commits. Once a threshold of Commits has been
@@ -66,10 +69,11 @@ func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, validator Val
 				}
 
 				if _, ok := commits[h]; !ok {
+					signature := validator.Sign()
 					commits[h] = Commit{
-						Block:              commit.Block,
-						ThresholdSignature: commit.ThresholdSignature,
-						Signature:          validator.Sign(),
+						Block:      commit.Block,
+						Signature:  signature,
+						Signatures: append(commit.Signatures, signature),
 					}
 					select {
 					case <-ctx.Done():

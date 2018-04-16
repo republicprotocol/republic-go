@@ -13,17 +13,13 @@ type Signer interface {
 
 type Signature string
 
-type Block struct {
-	Height int
-	Rank   int
-	Tuples
-	Signature
-}
 type Proposal struct {
-	Signature
 	Block
-	Rank
-	Height int
+
+	// Signature of the Replica that produced this Proposal along with all of
+	// the other Replicas that have signed it
+	Signature
+	Signatures []Signature
 }
 
 func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, validator Validator) (<-chan Prepare, <-chan Fault, <-chan error) {

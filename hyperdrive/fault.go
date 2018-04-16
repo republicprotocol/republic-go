@@ -6,8 +6,12 @@ import (
 
 type Fault struct {
 	Rank
-	Height int
+	Height
+
+	// Signature of the Replica that produced this Fault along with all of the
+	// other Replicas that have signed it
 	Signature
+	Signatures []Signature
 }
 
 func ProcessFault(ctx context.Context, faultChIn chan Fault, validator Validator) (chan Fault, chan error) {
