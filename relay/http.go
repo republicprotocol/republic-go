@@ -16,13 +16,13 @@ import (
 const reset = "\x1b[0m"
 
 // The HTTPPost object
-type HTTPPost struct {
+type OpenOrderRequest struct {
 	Order          order.Order    `json:"order"`
 	OrderFragments OrderFragments `json:"orderFragments"`
 }
 
-// The HTTPDelete object
-type HTTPDelete struct {
+// A CancelOrderRequest is sent to the Relay HTTP API to cancel an order.
+type CancelOrderRequest struct {
 	Signature []byte   `json:"signature"`
 	ID        order.ID `json:"id"`
 }
@@ -51,8 +51,8 @@ func RecoveryHandler(h http.Handler) http.Handler {
 	})
 }
 
-// PostOrdersHandler handles all HTTP Post requests
-func PostOrdersHandler(multiAddress *identity.MultiAddress, darkPools dark.Pools) http.Handler {
+// OpenOrderHandler handles all HTTP Post requests
+func OpenOrderHandler(multiAddress *identity.MultiAddress, darkPools dark.Pools) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		postOrder := HTTPPost{}

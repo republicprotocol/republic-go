@@ -20,25 +20,24 @@ var prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 
 // Relay consists of configuration values (?)
 type Relay struct {
-	multiAddress *identity.MultiAddress
-	darkPools    *dark.Pools
+	multiAddress identity.MultiAddress
+	darkPools    dark.Pools
 }
 
-//TODO: Initialize Relay object with trader address and dark pools
-//
-// NewRelay initializes and returns a new Relay object
-// func NewRelay() Relay{
-// 	relay := Relay{}
-// 	relay.multiAddress, err = identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT")
-// 	return relay
-// }
+// NewRelay returns a new Relay.
+func NewRelay(multiAddress identity.MultiAddress, darkPools dark.Pools) Relay {
+	return Relay{
+		multiAddress: multiAddress,
+		darkPools:    darkPools,
+	}
+}
 
 // NewRouter prepares Relay to handle HTTP requests
 func NewRouter() *mux.Router {
 	// relay := Relay{}
 	orderBook := orderbook.NewOrderBook(100)
 	r := mux.NewRouter().StrictSlash(true)
-	// r.Methods("POST").Path("/orders").Handler(RecoveryHandler(PostOrdersHandler(*relay.multiAddress, *relay.darkPools)))
+	r.Methods("POST").Path("/orders").Handler(RecoveryHandler(PostOrdersHandler(relay.multiAddress, relay.darkPools)))
 	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(GetOrdersHandler(orderBook)))
 	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(GetOrderHandler(orderBook, "")))
 	// r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(DeleteOrderHandler(relay.multiAddress, *relay.darkPools)))
@@ -97,7 +96,8 @@ func CancelOrder(order order.ID, traderMultiAddress *identity.MultiAddress, pool
 		})
 		wg.Wait()
 	}
-	return nil
+
+	panic("unimplemented")
 }
 
 func sendOrder(openOrder order.Order, pools dark.Pools, traderMultiAddress identity.MultiAddress) error {
