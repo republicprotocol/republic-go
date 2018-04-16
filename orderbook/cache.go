@@ -55,8 +55,8 @@ func (cache *Cache) Release(entry Entry) {
 	defer cache.cancelMu.RUnlock()
 
 	// Check if the order has been cancelled by the trader.
-	if _, ok := cache.cancels[string(entry.Ord.ID)]; ok {
-		delete(cache.orders, string(entry.Ord.ID))
+	if _, ok := cache.cancels[string(entry.Order.ID)]; ok {
+		delete(cache.orders, string(entry.Order.ID))
 	} else {
 		cache.storeOrderMessage(entry)
 	}
@@ -112,14 +112,14 @@ func (cache *Cache) storeOrderMessage(entry Entry) {
 	defer cache.ordersMu.Unlock()
 
 	// Store the order entry if we haven't seen the order before.
-	if _, ok := cache.orders[string(entry.Ord.ID)]; !ok {
-		cache.orders[string(entry.Ord.ID)] = entry
+	if _, ok := cache.orders[string(entry.Order.ID)]; !ok {
+		cache.orders[string(entry.Order.ID)] = entry
 		return
 	}
 
 	// Merge order by the priority of the order status
-	if entry.Status < cache.orders[string(entry.Ord.ID)].Status {
-		cache.orders[string(entry.Ord.ID)] = entry
+	if entry.Status < cache.orders[string(entry.Order.ID)].Status {
+		cache.orders[string(entry.Order.ID)] = entry
 		return
 	}
 }
