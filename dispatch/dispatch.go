@@ -56,19 +56,29 @@ func SendToInterface(chOut interface{}, msg interface{}) {
 type Splitter struct {
 	mu          *sync.RWMutex
 	subscribers map[interface{}]struct{}
+
+	maxConnections int
 }
 
-func NewSplitter() Splitter {
+func NewSplitter(maxConnections int) Splitter {
 	return Splitter{
 		mu:          &sync.RWMutex{},
 		subscribers: make(map[interface{}]struct{}),
+
+		maxConnections: maxConnections,
 	}
 }
 
-func (splitter *Splitter) Subscribe(ch interface{}) {
+func (splitter *Splitter) Subscribe(ch interface{}) error {
 	splitter.mu.Lock()
 	defer splitter.mu.Unlock()
+
+	if len(splitter.subscribers) >= splitter.maxConnections {
+		return fmt.Errorf("cannot run message queue: max connections reached")
+	}
+
 	splitter.subscribers[ch] = struct{}{}
+	return nil
 }
 
 func (splitter *Splitter) Unsubscribe(ch interface{}) {

@@ -32,8 +32,8 @@ type Orderbook struct {
 }
 
 // NewOrderbook creates a new Orderbook with the given logger and splitter
-func NewOrderbook() Orderbook {
-	splitter := dispatch.NewSplitter()
+func NewOrderbook(maxConnections int) Orderbook {
+	splitter := dispatch.NewSplitter(maxConnections)
 	splitCh := make(chan Entry)
 	go splitter.Split(splitCh)
 
