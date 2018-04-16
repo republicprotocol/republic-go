@@ -37,7 +37,7 @@ func (chSet *ChannelSet) Close() {
 	close(chSet.Faults)
 }
 
-// Split the ChannelSet into multipl ChannelSets. The output ChannelSets must
+// Split the ChannelSet into multiple ChannelSets. The output ChannelSets must
 // not be closed before the input ChannelSet. Once the input ChannelSet is
 // closed, this method will eventually terminate after all values have been
 // piped to the output ChannelSet. This method will block the current

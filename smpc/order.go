@@ -15,7 +15,6 @@ func ProcessOrderFragments(ctx context.Context, orderFragmentChIn <-chan order.F
 	orderTupleCh := make(chan OrderTuple, bufferLimit)
 	errCh := make(chan error)
 
-
 	log.Println("ProcessOrderFragments")
 
 	go func() {

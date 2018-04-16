@@ -215,7 +215,6 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 		return messageCh, errCh
 	}
 
-
 	var wg sync.WaitGroup
 	wg.Add(2)
 

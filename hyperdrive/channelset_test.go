@@ -166,9 +166,7 @@ var _ = Describe("Channel set", func() {
 			readWg.Wait()
 			Ω(n).Should(Equal(int64(inputN * 5)))
 		})
-
 	})
-
 })
 
 // writeToChannelSet writes a number of messages to all channels in the

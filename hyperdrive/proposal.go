@@ -14,15 +14,16 @@ type Signer interface {
 type Signature string
 
 type Block struct {
+	Height int
+	Rank  int
 	Signature
 	Tuples
-	Height int
 }
+
 type Proposal struct {
 	Signature
 	Block
 	Rank
-	Height int
 }
 
 func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, validator Validator) (<-chan Prepare, <-chan Fault, <-chan error) {

@@ -59,7 +59,6 @@ func (service *ComputerService) WaitForCompute(multiAddress identity.MultiAddres
 
 	log.Println("Opened sender")
 
-
 	return receiverCh, errCh
 }
 
@@ -67,7 +66,6 @@ func (service *ComputerService) WaitForCompute(multiAddress identity.MultiAddres
 // a client.
 func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 	multiAddress := "" // TODO: Get the MultiAddress from a signed authentication message
-
 
 	errCh := make(chan error)
 	defer close(errCh)
@@ -104,7 +102,6 @@ func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 	receiverSignal <- receiverCh
 
 	log.Println("Got Compute from client")
-
 
 	for {
 		message, err := stream.Recv()

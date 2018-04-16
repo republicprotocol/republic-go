@@ -5,9 +5,8 @@ import (
 )
 
 type ThresholdSignature Signature
+
 type Commit struct {
-	Rank
-	Height int
 	Block
 	ThresholdSignature
 	Signature
