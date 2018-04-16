@@ -1,103 +1,117 @@
 package hyper
 
 import (
-	"context"
-	"log"
-	"time"
+	"sync"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 )
 
+// The ChannelSet struct aggregates a set of channels that are commonly used
+// together. All channels in the ChannelSet must be closed together using the
+// Close method.
 type ChannelSet struct {
-	BufferSize uint8
-	TimeOut    time.Duration
-	ctx        context.Context
-	Proposal   chan Proposal
-	Prepare    chan Prepare
-	Fault      chan Fault
-	Commit     chan Commit
-	Block      chan Block
+	Proposals chan Proposal
+	Prepares  chan Prepare
+	Commits   chan Commit
+	Blocks    chan Block
+	Faults    chan Fault
 }
 
-func EmptyChannelSet(ctx context.Context, size uint8) ChannelSet {
+// NewChannels returns Channels with the given capacity.
+func NewChannels(capacity int) ChannelSet {
 	return ChannelSet{
-		ctx:        ctx,
-		BufferSize: size,
-		TimeOut:    10 * time.Second,
-		Proposal:   make(chan Proposal, size),
-		Prepare:    make(chan Prepare, size),
-		Fault:      make(chan Fault, size),
-		Commit:     make(chan Commit, size),
-		Block:      make(chan Block, size),
+		Proposals: make(chan Proposal, capacity),
+		Prepares:  make(chan Prepare, capacity),
+		Commits:   make(chan Commit, capacity),
+		Blocks:    make(chan Block, capacity),
+		Faults:    make(chan Fault, capacity),
 	}
 }
 
-func (c *ChannelSet) Split(cs []ChannelSet) {
-
-	proposals := make([]chan Proposal, len(cs))
-	prepares := make([]chan Prepare, len(cs))
-	commits := make([]chan Commit, len(cs))
-	faults := make([]chan Fault, len(cs))
-
-	for i, chset := range cs {
-		proposals[i] = chset.Proposal
-		prepares[i] = chset.Prepare
-		commits[i] = chset.Commit
-		faults[i] = chset.Fault
-	}
-
-	go dispatch.Split(c.Proposal, proposals)
-	go dispatch.Split(c.Prepare, prepares)
-	go dispatch.Split(c.Commit, commits)
-	go dispatch.Split(c.Fault, faults)
-
-	for {
-		select {
-		case <-c.ctx.Done():
-			return
-		}
-	}
+// Close all channels in the ChannelSet.
+func (chSet *ChannelSet) Close() {
+	close(chSet.Proposals)
+	close(chSet.Prepares)
+	close(chSet.Commits)
+	close(chSet.Blocks)
+	close(chSet.Faults)
 }
 
-func (c *ChannelSet) Copy(cs ChannelSet) {
-	for {
-		select {
-		case <-time.After(c.TimeOut):
-			log.Println("ChannelSet copy timedout")
-			return
-		case <-c.ctx.Done():
-			return
-		case proposal, ok := <-cs.Proposal:
-			if !ok {
-				return
-			}
-			c.Proposal <- proposal
-
-		case prepare, ok := <-cs.Prepare:
-			if !ok {
-				return
-			}
-			c.Prepare <- prepare
-
-		case commit, ok := <-cs.Commit:
-			if !ok {
-				return
-			}
-			c.Commit <- commit
-
-		case fault, ok := <-cs.Fault:
-			if !ok {
-				return
-			}
-			c.Fault <- fault
-
-		case block, ok := <-cs.Block:
-			if !ok {
-				return
-			}
-			c.Block <- block
-
-		}
-
+// Split the ChannelSet into multipl ChannelSets. The output ChannelSets must
+// not be closed before the input ChannelSet. Once the input ChannelSet is
+// closed, this method will eventually terminate after all values have been
+// piped to the output ChannelSet. This method will block the current
+// goroutine.
+func (chSet *ChannelSet) Split(chSetsIn ...ChannelSet) {
+	proposals := make([]chan Proposal, len(chSetsIn))
+	prepares := make([]chan Prepare, len(chSetsIn))
+	commits := make([]chan Commit, len(chSetsIn))
+	blocks := make([]chan Block, len(chSetsIn))
+	faults := make([]chan Fault, len(chSetsIn))
+	for i := range chSetsIn {
+		proposals[i] = chSetsIn[i].Proposals
+		prepares[i] = chSetsIn[i].Prepares
+		commits[i] = chSetsIn[i].Commits
+		blocks[i] = chSetsIn[i].Blocks
+		faults[i] = chSetsIn[i].Faults
 	}
+
+	var wg sync.WaitGroup
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		dispatch.Split(chSet.Proposals, proposals)
+	}()
+	go func() {
+		defer wg.Done()
+		dispatch.Split(chSet.Prepares, prepares)
+	}()
+	go func() {
+		defer wg.Done()
+		dispatch.Split(chSet.Commits, commits)
+	}()
+	go func() {
+		defer wg.Done()
+		dispatch.Split(chSet.Blocks, blocks)
+	}()
+	dispatch.Split(chSet.Faults, faults)
+	wg.Wait()
+}
+
+// Pipe all message from the ChannelSet to another ChannelSet. The output
+// ChannelSet must not be closed before the input ChannelSet. Once the input
+// ChannelSet is closed, this method will eventually terminate after all values
+// have been piped to the output ChannelSet. This method will block the current
+// goroutine.
+func (chSet *ChannelSet) Pipe(chSetOut ChannelSet) {
+	var wg sync.WaitGroup
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		for proposal := range chSet.Proposals {
+			chSetOut.Proposals <- proposal
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for prepare := range chSet.Prepares {
+			chSetOut.Prepares <- prepare
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for commit := range chSet.Commits {
+			chSetOut.Commits <- commit
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for block := range chSet.Blocks {
+			chSetOut.Blocks <- block
+		}
+	}()
+	for fault := range chSet.Faults {
+		chSetOut.Faults <- fault
+	}
+	wg.Wait()
 }
