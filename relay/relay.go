@@ -29,7 +29,7 @@ func NewRelay(multi identity.MultiAddress, pools dark.Pools, bootstrapNodes []st
 	 return Relay{
 		multiAddress  : multi,
 		darkPools     : pools, 
-		bootstrapNodes: bootstrapNodes
+		bootstrapNodes: bootstrapNodes,
 	}
 }
 
