@@ -67,8 +67,6 @@ func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, validator Val
 
 				if _, ok := commits[h]; !ok {
 					commits[h] = Commit{
-						Rank:               commit.Rank,
-						Height:             commit.Height,
 						Block:              commit.Block,
 						ThresholdSignature: commit.ThresholdSignature,
 						Signature:          validator.Sign(),

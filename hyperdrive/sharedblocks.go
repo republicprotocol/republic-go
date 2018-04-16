@@ -20,24 +20,20 @@ type Tuple struct {
 
 type SharedBlocks struct {
 	history map[[32]byte][32]byte
-	Height  uint64
+	height  uint64
 	Rank
 }
 
 func NewSharedBlocks(h uint64, r Rank) SharedBlocks {
 	return SharedBlocks{
 		history: map[[32]byte][32]byte{},
-		Height:  h,
+		height:  h,
 		Rank:    r,
 	}
 }
 
-func (sb *SharedBlocks) ReadHeight() uint64 {
-	return atomic.LoadUint64(&sb.Height)
-}
-
-func (sb *SharedBlocks) IncrementHeight() uint64 {
-	return atomic.AddUint64(&sb.Height, 1)
+func (sb *SharedBlocks) NextHeight() uint64 {
+	return atomic.AddUint64(&sb.height, 1)
 }
 
 func (blocks *SharedBlocks) ValidateTuple(tuple Tuple) bool {

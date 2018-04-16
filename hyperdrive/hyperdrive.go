@@ -7,7 +7,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/republicprotocol/republic-go/dispatch"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -30,16 +29,16 @@ func NewReplica(ctx context.Context, validator Validator, ingress ChannelSet) Re
 	}
 }
 
-func (r *Replica) Run() ChannelSet {
-	egress := NewChannelSet(r.validator.Threshold())
-	go func() {
-		internalIngress := NewChannelSet(r.validator.Threshold())
-		go internalIngress.Pipe(ProcessBuffer(r.ingress, r.validator))
-		go egress.Pipe(FilterDuplicates(r.internalEgress, r.validator.Threshold()))
-		dispatch.Wait(r.HandleProposals(r.ctx, internalIngress), r.HandlePrepares(r.ctx, internalIngress), r.HandleCommits(r.ctx, internalIngress))
-	}()
-	return egress
-}
+//func (r *Replica) Run() ChannelSet {
+//	egress := NewChannelSet(r.validator.Threshold())
+//	go func() {
+//		internalIngress := NewChannelSet(r.validator.Threshold())
+//		go internalIngress.Pipe((r.ingress, r.validator))
+//		go egress.Pipe(FilterDuplicates(r.internalEgress, r.validator.Threshold()))
+//		dispatch.Wait(r.HandleProposals(r.ctx, internalIngress), r.HandlePrepares(r.ctx, internalIngress), r.HandleCommits(r.ctx, internalIngress))
+//	}()
+//	return egress
+//}
 
 func (r *Replica) HandleProposals(ctx context.Context, ingress ChannelSet) chan struct{} {
 	doneCh := make(chan struct{})

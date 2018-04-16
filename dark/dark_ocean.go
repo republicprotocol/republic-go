@@ -8,10 +8,10 @@ import (
 
 	"github.com/republicprotocol/go-do"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // Ocean of Pools.
@@ -58,7 +58,7 @@ func (ocean *Ocean) Update() error {
 }
 
 func (ocean *Ocean) update() error {
-	epoch, err := ocean.darkNodeRegistrar.CurrentEpoch();
+	epoch, err := ocean.darkNodeRegistrar.CurrentEpoch()
 	if err != nil {
 		return fmt.Errorf("cannot get current epoch :%v", err)
 	}
@@ -87,7 +87,7 @@ func (ocean *Ocean) update() error {
 	}
 	for i := range nodePositionHashes {
 		id := identity.ID(nodePositionHashesToIDs[string(nodePositionHashes[i])])
-		pools[i % numberOfPools].Append(NewNode(id))
+		pools[i%numberOfPools].Append(NewNode(id))
 	}
 	ocean.pools = pools
 	return nil
@@ -152,6 +152,6 @@ func (ocean *Ocean) Watch(changes chan struct{}) {
 }
 
 // GetPools returns dark pools in the dark ocean
-func (ocean *Ocean) GetPools ()(Pools){
+func (ocean *Ocean) GetPools() Pools {
 	return ocean.pools
 }

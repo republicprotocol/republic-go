@@ -77,3 +77,117 @@ func FilterDuplicates(chSetIn ChannelSet, capacity int) ChannelSet {
 
 	return chSetOut
 }
+
+// FilterHeight consumes a ChannelSet and filters all messages that are not
+// for the current height. The filtered messages are buffered and reconsidered
+// when the height is changed.
+func FilterHeight(chSetIn ChannelSet, height <-chan int, capacity int) ChannelSet {
+	chSetOut := NewChannelSet(capacity)
+
+	go func() {
+		defer chSetOut.Close()
+
+		buffer := map[int]ChannelSet{}
+		defer func() {
+			for _, chSet := range buffer {
+				chSet.Close()
+			}
+		}()
+
+		h := <-height
+
+		for {
+			select {
+			case nextH := <-height:
+				h = nextH
+				if bufferedChSet, ok := buffer[h]; ok {
+					delete(buffer, h)
+					bufferedChSet.Close()
+					bufferedChSet.Pipe(chSetOut)
+				}
+
+			case proposal, ok := <-chSetIn.Proposals:
+				if !ok {
+					return
+				}
+				if proposal.Height < h {
+					continue
+				}
+				if proposal.Height == h {
+					chSetOut.Proposals <- proposal
+					continue
+				}
+				if _, ok := buffer[h]; !ok {
+					buffer[h] = NewChannelSet(capacity)
+				}
+				buffer[h].Proposals <- proposal
+
+			case prepare, ok := <-chSetIn.Prepares:
+				if !ok {
+					return
+				}
+				if prepare.Height < h {
+					continue
+				}
+				if prepare.Height == h {
+					chSetOut.Prepares <- prepare
+					continue
+				}
+				if _, ok := buffer[h]; !ok {
+					buffer[h] = NewChannelSet(capacity)
+				}
+				buffer[h].Prepares <- prepare
+
+			case commit, ok := <-chSetIn.Commits:
+				if !ok {
+					return
+				}
+				if commit.Height < h {
+					continue
+				}
+				if commit.Height == h {
+					chSetOut.Commits <- commit
+					continue
+				}
+				if _, ok := buffer[h]; !ok {
+					buffer[h] = NewChannelSet(capacity)
+				}
+				buffer[h].Commits <- commit
+
+			case block, ok := <-chSetIn.Blocks:
+				if !ok {
+					return
+				}
+				if block.Height < h {
+					continue
+				}
+				if block.Height == h {
+					chSetOut.Blocks <- block
+					continue
+				}
+				if _, ok := buffer[h]; !ok {
+					buffer[h] = NewChannelSet(capacity)
+				}
+				buffer[h].Blocks <- block
+
+			case fault, ok := <-chSetIn.Faults:
+				if !ok {
+					return
+				}
+				if fault.Height < h {
+					continue
+				}
+				if fault.Height == h {
+					chSetOut.Faults <- fault
+					continue
+				}
+				if _, ok := buffer[h]; !ok {
+					buffer[h] = NewChannelSet(capacity)
+				}
+				buffer[h].Faults <- fault
+			}
+		}
+	}()
+
+	return chSetOut
+}
