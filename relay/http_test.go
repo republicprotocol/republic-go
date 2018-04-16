@@ -31,7 +31,7 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
+			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))
@@ -43,16 +43,16 @@ var _ = Describe("HTTP handlers", func() {
 
 			fullOrder := getFullOrder()
 
-			sendOrder := relay.HTTPPost{}
+			sendOrder := relay.OpenOrderRequest{}
 			sendOrder.Order = fullOrder
-			sendOrder.OrderFragments = relay.Fragments{}
+			sendOrder.OrderFragments = relay.OrderFragments{}
 
 			s, _ := json.Marshal(sendOrder)
 			body := bytes.NewBuffer(s)
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
+			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusCreated))
@@ -64,7 +64,7 @@ var _ = Describe("HTTP handlers", func() {
 		// 	fragmentedOrder, err := generateFragmentedOrderForDarkPool(pools[0])
 		// 	Ω(err).ShouldNot(HaveOccurred())
 
-		// 	sendOrder := relay.HTTPPost{}
+		// 	sendOrder := relay.OpenOrderRequest{}
 		// 	sendOrder.Order = order.Order{}
 		// 	sendOrder.OrderFragments = fragmentedOrder
 
@@ -75,7 +75,7 @@ var _ = Describe("HTTP handlers", func() {
 		// 	r := httptest.NewRequest("POST", "http://localhost/orders", body)
 		// 	w := httptest.NewRecorder()
 
-		// 	handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
+		// 	handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
 		// 	handler.ServeHTTP(w, r)
 
 		// 	Ω(w.Code).Should(Equal(http.StatusCreated))
@@ -91,7 +91,7 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
+			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))
@@ -101,9 +101,9 @@ var _ = Describe("HTTP handlers", func() {
 		It("should return 400 for empty order constructs", func() {
 			pools, trader := getPoolsAndTrader()
 
-			sendOrder := relay.HTTPPost{}
+			sendOrder := relay.OpenOrderRequest{}
 			sendOrder.Order = order.Order{}
-			sendOrder.OrderFragments = relay.Fragments{}
+			sendOrder.OrderFragments = relay.OrderFragments{}
 
 			s, err := json.Marshal(sendOrder)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -112,7 +112,7 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
+			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))
@@ -175,7 +175,7 @@ var _ = Describe("HTTP handlers", func() {
 		It("should return 410 for cancel order requests", func() {
 			pools, trader := getPoolsAndTrader()
 
-			cancelRequest := relay.HTTPDelete{}
+			cancelRequest := relay.CancelOrderRequest{}
 			cancelRequest.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
 
 			s, _ := json.Marshal(cancelRequest)
@@ -184,7 +184,7 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.DeleteOrderHandler(&trader, pools))
+			handler := relay.RecoveryHandler(relay.CancelOrderHandler(trader, pools))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusGone))
@@ -201,7 +201,7 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders/23213", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.DeleteOrderHandler(&trader, pools))
+			handler := relay.RecoveryHandler(relay.CancelOrderHandler(trader, pools))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))
