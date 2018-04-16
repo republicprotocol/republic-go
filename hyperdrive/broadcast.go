@@ -1,21 +1,17 @@
 package hyper
 
-import "context"
-
 func ProcessBroadcast(chanSetIn ChannelSet, validator Validator) ChannelSet {
-	ctx, cancel := context.WithCancel(context.Background())
-	chanSetOut := EmptyChannelSet(ctx, validator.Threshold())
+	chanSetOut := NewChannelSet(validator.Threshold())
 	broadcastedProposals := map[[32]byte]bool{}
 	broadcastedPrepares := map[[32]byte]bool{}
 	broadcastedCommits := map[[32]byte]bool{}
 	broadcastedFaults := map[[32]byte]bool{}
 	broadcastedBlocks := map[[32]byte]bool{}
 	go func() {
-		defer cancel()
 
 		for {
 			select {
-			case proposal, ok := <-chanSetIn.Proposal:
+			case proposal, ok := <-chanSetIn.Proposals:
 				if !ok {
 					return
 				}
@@ -23,9 +19,9 @@ func ProcessBroadcast(chanSetIn ChannelSet, validator Validator) ChannelSet {
 				if broadcastedProposals[h] {
 					continue
 				}
-				chanSetOut.Proposal <- proposal
+				chanSetOut.Proposals <- proposal
 				broadcastedProposals[h] = true
-			case prepare, ok := <-chanSetIn.Prepare:
+			case prepare, ok := <-chanSetIn.Prepares:
 				if !ok {
 					return
 				}
@@ -33,9 +29,9 @@ func ProcessBroadcast(chanSetIn ChannelSet, validator Validator) ChannelSet {
 				if broadcastedPrepares[h] {
 					continue
 				}
-				chanSetOut.Prepare <- prepare
+				chanSetOut.Prepares <- prepare
 				broadcastedPrepares[h] = true
-			case commit, ok := <-chanSetIn.Commit:
+			case commit, ok := <-chanSetIn.Commits:
 				if !ok {
 					return
 				}
@@ -43,9 +39,9 @@ func ProcessBroadcast(chanSetIn ChannelSet, validator Validator) ChannelSet {
 				if broadcastedCommits[h] {
 					continue
 				}
-				chanSetOut.Commit <- commit
+				chanSetOut.Commits <- commit
 				broadcastedCommits[h] = true
-			case fault, ok := <-chanSetIn.Fault:
+			case fault, ok := <-chanSetIn.Faults:
 				if !ok {
 					return
 				}
@@ -53,9 +49,9 @@ func ProcessBroadcast(chanSetIn ChannelSet, validator Validator) ChannelSet {
 				if broadcastedFaults[h] {
 					continue
 				}
-				chanSetOut.Fault <- fault
+				chanSetOut.Faults <- fault
 				broadcastedFaults[h] = true
-			case block, ok := <-chanSetIn.Block:
+			case block, ok := <-chanSetIn.Blocks:
 				if !ok {
 					return
 				}
@@ -63,7 +59,7 @@ func ProcessBroadcast(chanSetIn ChannelSet, validator Validator) ChannelSet {
 				if broadcastedBlocks[h] {
 					continue
 				}
-				chanSetOut.Block <- block
+				chanSetOut.Blocks <- block
 				broadcastedBlocks[h] = true
 			}
 		}

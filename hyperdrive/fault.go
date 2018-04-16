@@ -13,7 +13,7 @@ type Fault struct {
 func ProcessFault(ctx context.Context, faultChIn chan Fault, validator Validator) (chan Fault, chan error) {
 	faultCh := make(chan Fault, validator.Threshold())
 	errCh := make(chan error, validator.Threshold())
-	faults := map[uint64]uint8{}
+	faults := map[uint64]int{}
 	certified := map[uint64]bool{}
 
 	go func() {

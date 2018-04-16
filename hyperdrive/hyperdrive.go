@@ -26,16 +26,16 @@ func NewReplica(ctx context.Context, validator Validator, ingress ChannelSet) Re
 		ctx:            ctx,
 		ingress:        ingress,
 		validator:      validator,
-		internalEgress: EmptyChannelSet(ctx, validator.Threshold()),
+		internalEgress: NewChannelSet(validator.Threshold()),
 	}
 }
 
 func (r *Replica) Run() ChannelSet {
-	egress := EmptyChannelSet(r.ctx, r.validator.Threshold())
+	egress := NewChannelSet(r.validator.Threshold())
 	go func() {
-		internalIngress := EmptyChannelSet(r.ctx, r.validator.Threshold())
-		go internalIngress.Copy(ProcessBuffer(r.ingress, r.validator))
-		go egress.Copy(ProcessBroadcast(r.internalEgress, r.validator))
+		internalIngress := NewChannelSet(r.validator.Threshold())
+		go internalIngress.Pipe(ProcessBuffer(r.ingress, r.validator))
+		go egress.Pipe(ProcessBroadcast(r.internalEgress, r.validator))
 		dispatch.Wait(r.HandleProposals(r.ctx, internalIngress), r.HandlePrepares(r.ctx, internalIngress), r.HandleCommits(r.ctx, internalIngress))
 	}()
 	return egress
@@ -43,7 +43,7 @@ func (r *Replica) Run() ChannelSet {
 
 func (r *Replica) HandleProposals(ctx context.Context, ingress ChannelSet) chan struct{} {
 	doneCh := make(chan struct{})
-	prepCh, faultCh, errCh := ProcessProposal(ctx, ingress.Proposal, r.validator)
+	prepCh, faultCh, errCh := ProcessProposal(ctx, ingress.Proposals, r.validator)
 	go func() {
 		defer close(doneCh)
 		for {
@@ -62,12 +62,12 @@ func (r *Replica) HandleProposals(ctx context.Context, ingress ChannelSet) chan 
 				if !ok {
 					return
 				}
-				r.internalEgress.Prepare <- prepare
+				r.internalEgress.Prepares <- prepare
 			case fault, ok := <-faultCh:
 				if !ok {
 					return
 				}
-				r.internalEgress.Fault <- fault
+				r.internalEgress.Faults <- fault
 			}
 		}
 	}()
@@ -76,7 +76,7 @@ func (r *Replica) HandleProposals(ctx context.Context, ingress ChannelSet) chan 
 
 func (r *Replica) HandlePrepares(ctx context.Context, ingress ChannelSet) chan struct{} {
 	doneCh := make(chan struct{}, r.validator.Threshold())
-	commCh, faultCh, errCh := ProcessPreparation(ctx, ingress.Prepare, r.validator)
+	commCh, faultCh, errCh := ProcessPreparation(ctx, ingress.Prepares, r.validator)
 	go func() {
 		defer close(doneCh)
 		for {
@@ -95,12 +95,12 @@ func (r *Replica) HandlePrepares(ctx context.Context, ingress ChannelSet) chan s
 				if !ok {
 					return
 				}
-				r.internalEgress.Commit <- commit
+				r.internalEgress.Commits <- commit
 			case fault, ok := <-faultCh:
 				if !ok {
 					return
 				}
-				r.internalEgress.Fault <- fault
+				r.internalEgress.Faults <- fault
 			}
 		}
 	}()
@@ -111,7 +111,7 @@ func (r *Replica) HandleCommits(ctx context.Context, ingress ChannelSet) chan st
 	doneCh := make(chan struct{})
 	blockCh := make(chan Block, r.validator.Threshold())
 	counter := 0
-	commCh, blockCh, faultCh, errCh := ProcessCommit(ctx, ingress.Commit, r.validator)
+	commCh, blockCh, faultCh, errCh := ProcessCommit(ctx, ingress.Commits, r.validator)
 	go func() {
 		defer close(doneCh)
 		for {
@@ -129,18 +129,18 @@ func (r *Replica) HandleCommits(ctx context.Context, ingress ChannelSet) chan st
 				}
 				counter++
 				// log.Printf("%sFinality reached on block%s\n", "\x1b[32;1m", r.validator.Sign())
-				r.internalEgress.Block <- block
+				r.internalEgress.Blocks <- block
 			case commit, ok := <-commCh:
 				if !ok {
 					return
 				}
-				r.internalEgress.Commit <- commit
+				r.internalEgress.Commits <- commit
 			case fault, ok := <-faultCh:
 				if !ok {
 					return
 				}
 				log.Println("Fault block reached on", r.validator.Sign())
-				r.internalEgress.Fault <- fault
+				r.internalEgress.Faults <- fault
 			}
 		}
 	}()

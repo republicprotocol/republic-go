@@ -18,7 +18,7 @@ type ChannelSet struct {
 }
 
 // NewChannels returns Channels with the given capacity.
-func NewChannels(capacity int) ChannelSet {
+func NewChannelSet(capacity int) ChannelSet {
 	return ChannelSet{
 		Proposals: make(chan Proposal, capacity),
 		Prepares:  make(chan Prepare, capacity),

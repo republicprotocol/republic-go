@@ -1,13 +1,12 @@
 package hyper_test
 
 import (
-	"context"
 	"sync"
-	"time"
+	"sync/atomic"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/hyperdrive"
+	. "github.com/republicprotocol/republic-go/hyperdrive"
 )
 
 var _ = Describe("Channel set", func() {
@@ -15,16 +14,16 @@ var _ = Describe("Channel set", func() {
 	Context("when closing", func() {
 
 		It("should panic when closed more than once", func() {
-			chSet := hyper.NewChannelSet(0)
+			chSet := NewChannelSet(0)
 			chSet.Close()
-			Ω(func() { chSet.Close }).Should(Panic())
+			Ω(func() { chSet.Close() }).Should(Panic())
 		})
 
 		It("should shutdown gracefully", func() {
-			chSet := hyper.NewChannelSet(0)
+			chSet := NewChannelSet(0)
 			defer chSet.Close()
 		})
-	
+
 	})
 
 	Context("when splitting", func() {
@@ -32,120 +31,77 @@ var _ = Describe("Channel set", func() {
 		It("should split all messages to all outputs", func() {
 			inputN := 100
 
-			chSet := hyper.NewChannelSet(0)
+			chSet := NewChannelSet(0)
 			chSetsOut := []ChannelSet{
-				hyper.NewChannelSet(0),
-				hyper.NewChannelSet(0),
-				hyper.NewChannelSet(0),
+				NewChannelSet(0),
+				NewChannelSet(0),
+				NewChannelSet(0),
 			}
 
 			var writeWg sync.WaitGroup
-			writeToChannelSet(&chSet, inputN, &writeWg)
+			writeToChannelSet(chSet, inputN, &writeWg)
 
 			var splitWg sync.WaitGroup
 			splitWg.Add(1)
 			go func() {
 				defer GinkgoRecover()
 				defer splitWg.Done()
-				chSet.Split(chSetsOut)
-			}()			
+				chSet.Split(chSetsOut...)
+			}()
 
-			var wg sync.WaitGroup
-			for chSetOut := range chSetsOut {
-				wg.Add(1)
-				go func(chSetOut ChannelSet) {
-					defer GinkgoRecover()
-					defer wg.Done()
-					n := 0
-					for range chSetOut.Proposals {
-						n++
-					}
-					Ω(n).Should(Equal(inputN))
-				}(chSetOut)
-
-				wg.Add(1)
-				go func(chSetOut ChannelSet) {
-					defer GinkgoRecover()
-					defer wg.Done()
-					n := 0
-					for range chSetOut.Prepares {
-						n++
-					}
-					Ω(n).Should(Equal(inputN))
-				}(chSetOut)
-
-				wg.Add(1)
-				go func(chSetOut ChannelSet) {
-					defer GinkgoRecover()
-					defer wg.Done()
-					n := 0
-					for range chSetOut.Commits {
-						n++
-					}
-					Ω(n).Should(Equal(inputN))
-				}(chSetOut)
-
-				wg.Add(1)
-				go func(chSetOut ChannelSet) {
-					defer GinkgoRecover()
-					defer wg.Done()
-					n := 0
-					for range chSetOut.Blocks {
-						n++
-					}
-					Ω(n).Should(Equal(inputN))
-				}(chSetOut)
-
-				wg.Add(1)
-				go func(chSetOut ChannelSet) {
-					defer GinkgoRecover()
-					defer wg.Done()
-					n := 0
-					for range chSetOut.Faults {
-						n++
-					}
-					Ω(n).Should(Equal(inputN))
-				}(chSetOut)
+			var n int64
+			var readWg sync.WaitGroup
+			for _, chSetOut := range chSetsOut {
+				readFromChannelSet(chSetOut, &readWg, &n)
 			}
 
 			writeWg.Wait()
 			chSet.Close()
 
 			splitWg.Wait()
-			for chSetOut := range chSetsOut {
+			for _, chSetOut := range chSetsOut {
 				chSetOut.Close()
 			}
 
-			wg.Wait()
+			readWg.Wait()
+			Ω(n).Should(Equal(int64(inputN * len(chSetsOut) * 5)))
 		})
 
 		It("should shutdown gracefully", func() {
 
-			chSet := hyper.NewChannelSet(0)
+			chSet := NewChannelSet(300)
 			chSetsOut := []ChannelSet{
-				hyper.NewChannelSet(0),
-				hyper.NewChannelSet(0),
-				hyper.NewChannelSet(0),
+				NewChannelSet(0),
+				NewChannelSet(0),
+				NewChannelSet(0),
 			}
 
 			var writeWg sync.WaitGroup
-			writeToChannelSet(&chSet, 100, &writeWg)
+			writeToChannelSet(chSet, 100, &writeWg)
 
 			var splitWg sync.WaitGroup
 			splitWg.Add(1)
 			go func() {
 				defer GinkgoRecover()
 				defer splitWg.Done()
-				chSet.Split(chSetsOut)
+				chSet.Split(chSetsOut...)
 			}()
+
+			var n int64
+			var readWg sync.WaitGroup
+			for _, chSetOut := range chSetsOut {
+				readFromChannelSet(chSetOut, &readWg, &n)
+			}
 
 			writeWg.Wait()
 			chSet.Close()
 
 			splitWg.Wait()
-			for chSetOut := range chSetsOut {
+			for _, chSetOut := range chSetsOut {
 				chSetOut.Close()
 			}
+
+			readWg.Wait()
 		})
 	})
 
@@ -154,12 +110,12 @@ var _ = Describe("Channel set", func() {
 		It("should pipe all messages to the output", func() {
 			inputN := 100
 
-			chSet := hyper.NewChannelSet(0)
-			chSetOut := hyper.NewChannelSet(0)
+			chSet := NewChannelSet(0)
+			chSetOut := NewChannelSet(0)
 
 			var writeWg sync.WaitGroup
-			writeToChannelSet(&chSet, inputN, &writeWg)
-			
+			writeToChannelSet(chSet, inputN, &writeWg)
+
 			var pipeWg sync.WaitGroup
 			pipeWg.Add(1)
 			go func() {
@@ -168,63 +124,9 @@ var _ = Describe("Channel set", func() {
 				chSet.Pipe(chSetOut)
 			}()
 
-			var wg sync.WaitGroup
-			for chSetOut := range chSetsOut {
-				wg.Add(1)
-				go func(chSetOut ChannelSet) {
-					defer GinkgoRecover()
-					defer wg.Done()
-					n := 0
-					for range chSetOut.Proposals {
-						n++
-					}
-					Ω(n).Should(Equal(inputN))
-				}(chSetOut)
-
-				wg.Add(1)
-				go func(chSetOut ChannelSet) {
-					defer GinkgoRecover()
-					defer wg.Done()
-					n := 0
-					for range chSetOut.Prepares {
-						n++
-					}
-					Ω(n).Should(Equal(inputN))
-				}(chSetOut)
-
-				wg.Add(1)
-				go func(chSetOut ChannelSet) {
-					defer GinkgoRecover()
-					defer wg.Done()
-					n := 0
-					for range chSetOut.Commits {
-						n++
-					}
-					Ω(n).Should(Equal(inputN))
-				}(chSetOut)
-
-				wg.Add(1)
-				go func(chSetOut ChannelSet) {
-					defer GinkgoRecover()
-					defer wg.Done()
-					n := 0
-					for range chSetOut.Blocks {
-						n++
-					}
-					Ω(n).Should(Equal(inputN))
-				}(chSetOut)
-
-				wg.Add(1)
-				go func(chSetOut ChannelSet) {
-					defer GinkgoRecover()
-					defer wg.Done()
-					n := 0
-					for range chSetOut.Faults {
-						n++
-					}
-					Ω(n).Should(Equal(inputN))
-				}(chSetOut)
-			}
+			var n int64
+			var readWg sync.WaitGroup
+			readFromChannelSet(chSetOut, &readWg, &n)
 
 			writeWg.Wait()
 			chSet.Close()
@@ -232,15 +134,16 @@ var _ = Describe("Channel set", func() {
 			pipeWg.Wait()
 			chSetOut.Close()
 
-			wg.Wait()
+			readWg.Wait()
+			Ω(n).Should(Equal(int64(inputN * 5)))
 		})
 
 		It("should shutdown gracefully", func() {
-			chSet := hyper.NewChannelSet(0)
-			chSetOut := hyper.NewChannelSet(0)
+			chSet := NewChannelSet(0)
+			chSetOut := NewChannelSet(0)
 
 			var writeWg sync.WaitGroup
-			writeToChannelSet(&chSet, 100, &writeWg)
+			writeToChannelSet(chSet, 100, &writeWg)
 
 			var pipeWg sync.WaitGroup
 			pipeWg.Add(1)
@@ -250,11 +153,17 @@ var _ = Describe("Channel set", func() {
 				chSet.Pipe(chSetOut)
 			}()
 
+			var n int64
+			var readWg sync.WaitGroup
+			readFromChannelSet(chSetOut, &readWg, &n)
+
 			writeWg.Wait()
 			chSet.Close()
 
 			pipeWg.Wait()
 			chSetOut.Close()
+
+			readWg.Wait()
 		})
 
 	})
@@ -264,104 +173,92 @@ var _ = Describe("Channel set", func() {
 // writeToChannelSet writes a number of messages to all channels in the
 // ChannelSet in background goroutines. The goroutine are added to the
 // sync.WaitGroup but no waiting is done.
-func writeToChannelSet(chSet *ChannelSet, n int, wg *sync.WaitGroup) {
+func writeToChannelSet(chSet ChannelSet, n int, wg *sync.WaitGroup) {
 	wg.Add(5)
 	go func() {
 		defer GinkgoRecover()
 		defer wg.Done()
 		for i := 0; i < n; i++ {
-			chSet.Proposals <- hyper.Proposal{}
+			chSet.Proposals <- Proposal{}
 		}
 	}()
 	go func() {
 		defer GinkgoRecover()
 		defer wg.Done()
 		for i := 0; i < n; i++ {
-			chSet.Prepares <- hyper.Prepare{}
+			chSet.Prepares <- Prepare{}
 		}
 	}()
 	go func() {
 		defer GinkgoRecover()
 		defer wg.Done()
 		for i := 0; i < n; i++ {
-			chSet.Commits <- hyper.Commit{}
+			chSet.Commits <- Commit{}
 		}
 	}()
 	go func() {
 		defer GinkgoRecover()
 		defer wg.Done()
 		for i := 0; i < n; i++ {
-			chSet.Blocks <- hyper.Blocks{}
+			chSet.Blocks <- Block{}
 		}
 	}()
 	go func() {
 		defer GinkgoRecover()
 		defer wg.Done()
 		for i := 0; i < n; i++ {
-			chSet.Faults <- hyper.Fault{}
+			chSet.Faults <- Fault{}
 		}
 	}()
 }
 
-		It("should be able to create, write, read and close a channel set from channels", func() {
-			ctx, cancel := context.WithCancel(context.Background())
-			chanSet := EmptyChannelSet(ctx, 100)
-			chanSet.Proposal <- Proposal{
-				Height: 1,
-			}
-			var wg sync.WaitGroup
-			wg.Add(1)
-			go func() {
-				select {
-				case proposal, ok := <-chanSet.Proposal:
-					if !ok {
-						return
-					}
-					Ω(uint64(1)).Should(Equal(proposal.Height))
-					wg.Done()
-				}
-			}()
-			time.Sleep(10 * time.Microsecond)
-			cancel()
-			wg.Wait()
-		})
+// readFromChannelSet reads all messages from all channels in the ChannelSet in
+// background goroutines. The goroutine are added to the sync.WaitGroup but no
+// waiting is done. Writes the total number of messages read to the int64
+// pointer using atomic increments.
+func readFromChannelSet(chSet ChannelSet, wg *sync.WaitGroup, n *int64) {
+	wg.Add(1)
+	go func() {
+		defer GinkgoRecover()
+		defer wg.Done()
+		for range chSet.Proposals {
+			atomic.AddInt64(n, 1)
+		}
+	}()
 
-		It("should be able to broadcast a channel set to multiple channel sets", func() {
-			ctx, cancel := context.WithCancel(context.Background())
-			chanSet := EmptyChannelSet(ctx, 100)
-			chanSet.Proposal <- Proposal{
-				Height: 1,
-			}
-			var wg sync.WaitGroup
-			chanSets := make([]ChannelSet, 100)
+	wg.Add(1)
+	go func() {
+		defer GinkgoRecover()
+		defer wg.Done()
+		for range chSet.Prepares {
+			atomic.AddInt64(n, 1)
+		}
+	}()
 
-			for i := 0; i < 100; i++ {
-				chanSets[i] = EmptyChannelSet(ctx, 100)
-			}
+	wg.Add(1)
+	go func() {
+		defer GinkgoRecover()
+		defer wg.Done()
+		for range chSet.Commits {
+			atomic.AddInt64(n, 1)
+		}
+	}()
 
-			go chanSet.Split(chanSets)
+	wg.Add(1)
+	go func() {
+		defer GinkgoRecover()
+		defer wg.Done()
+		for range chSet.Blocks {
+			atomic.AddInt64(n, 1)
+		}
+	}()
 
-			wg.Add(100)
-			for i := 0; i < 100; i++ {
-				go func(i int) {
-					for {
-						select {
-						case proposal, ok := <-chanSets[i].Proposal:
-							if !ok {
-								return
-							}
-							Ω(uint64(1)).Should(Equal(proposal.Height))
-							wg.Done()
-							return
-						}
-					}
-				}(i)
-			}
-
-			wg.Wait()
-			cancel()
-		})
-
-		
-	})
-})
+	wg.Add(1)
+	go func() {
+		defer GinkgoRecover()
+		defer wg.Done()
+		for range chSet.Faults {
+			atomic.AddInt64(n, 1)
+		}
+	}()
+}

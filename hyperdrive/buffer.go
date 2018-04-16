@@ -48,7 +48,7 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 		for {
 			h := sb.ReadHeight()
 			select {
-			case proposal, ok := <-chanSetIn.Proposal:
+			case proposal, ok := <-chanSetIn.Proposals:
 				if !ok {
 					return
 				}
@@ -68,14 +68,14 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 						}
 					}
 					buffer.HeightContextsMu.Unlock()
-					buffer.chanSets[proposal.Height] = EmptyChannelSet(ctx, validator.Threshold())
+					buffer.chanSets[proposal.Height] = NewChannelSet(validator.Threshold())
 				}
 				// log.Println("proposal", validator.Sign(), proposal.Height)
-				buffer.chanSets[proposal.Height].Proposal <- proposal
+				buffer.chanSets[proposal.Height].Proposals <- proposal
 				duplicateProposals[proposalID] = true
 				buffer.channelSetsMu.Unlock()
 
-			case prepare, ok := <-chanSetIn.Prepare:
+			case prepare, ok := <-chanSetIn.Prepares:
 				if !ok {
 					return
 				}
@@ -96,13 +96,13 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 						}
 					}
 					buffer.HeightContextsMu.Unlock()
-					buffer.chanSets[prepare.Height] = EmptyChannelSet(ctx, validator.Threshold())
+					buffer.chanSets[prepare.Height] = NewChannelSet(validator.Threshold())
 				}
-				buffer.chanSets[prepare.Height].Prepare <- prepare
+				buffer.chanSets[prepare.Height].Prepares <- prepare
 				duplicatePrepares[prepareID] = true
 				buffer.channelSetsMu.Unlock()
 
-			case commit, ok := <-chanSetIn.Commit:
+			case commit, ok := <-chanSetIn.Commits:
 				if !ok {
 					return
 				}
@@ -122,13 +122,13 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 						}
 					}
 					buffer.HeightContextsMu.Unlock()
-					buffer.chanSets[commit.Height] = EmptyChannelSet(ctx, validator.Threshold())
+					buffer.chanSets[commit.Height] = NewChannelSet(validator.Threshold())
 				}
-				buffer.chanSets[commit.Height].Commit <- commit
+				buffer.chanSets[commit.Height].Commits <- commit
 				duplicateCommits[commitID] = true
 				buffer.channelSetsMu.Unlock()
 
-			case fault, ok := <-chanSetIn.Fault:
+			case fault, ok := <-chanSetIn.Faults:
 				if !ok {
 					return
 				}
@@ -148,9 +148,9 @@ func ProduceBuffer(chanSetIn ChannelSet, validator Validator) (Buffer, chan stru
 						}
 					}
 					buffer.HeightContextsMu.Unlock()
-					buffer.chanSets[fault.Height] = EmptyChannelSet(ctx, validator.Threshold())
+					buffer.chanSets[fault.Height] = NewChannelSet(validator.Threshold())
 				}
-				buffer.chanSets[fault.Height].Fault <- fault
+				buffer.chanSets[fault.Height].Faults <- fault
 				duplicateFaults[faultID] = true
 				buffer.channelSetsMu.Unlock()
 			}
@@ -163,8 +163,7 @@ func ConsumeBuffer(buffer Buffer, doneCh chan struct{}, validator Validator) Cha
 
 	sb := validator.SharedBlocks()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	chanSetOut := EmptyChannelSet(ctx, validator.Threshold())
+	chanSetOut := NewChannelSet(validator.Threshold())
 	height := sb.ReadHeight()
 
 	buffer.channelSetsMu.Lock()
@@ -178,13 +177,12 @@ func ConsumeBuffer(buffer Buffer, doneCh chan struct{}, validator Validator) Cha
 			}
 		}
 		buffer.HeightContextsMu.Unlock()
-		buffer.chanSets[height] = EmptyChannelSet(ctx, validator.Threshold())
+		buffer.chanSets[height] = NewChannelSet(validator.Threshold())
 	}
-	go chanSetOut.Copy(buffer.chanSets[0])
+	go chanSetOut.Pipe(buffer.chanSets[0])
 	buffer.channelSetsMu.Unlock()
 
 	go func() {
-		defer cancel()
 		for {
 			select {
 			case <-doneCh:
@@ -205,7 +203,7 @@ func ConsumeBuffer(buffer Buffer, doneCh chan struct{}, validator Validator) Cha
 					buffer.HeightContextsMu.Unlock()
 
 					buffer.channelSetsMu.RLock()
-					go chanSetOut.Copy(buffer.chanSets[newHeight])
+					go chanSetOut.Pipe(buffer.chanSets[newHeight])
 					buffer.channelSetsMu.RUnlock()
 
 					for i := height; i < newHeight; i++ {

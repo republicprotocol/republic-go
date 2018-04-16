@@ -16,7 +16,7 @@ func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, validat
 	commitCh := make(chan Commit, threshold)
 	faultCh := make(chan Fault, threshold)
 	errCh := make(chan error, threshold)
-	prepares := map[[32]byte]uint8{}
+	prepares := map[[32]byte]int{}
 	commited := map[[32]byte]bool{}
 	counter := uint64(0)
 

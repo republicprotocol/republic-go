@@ -20,7 +20,7 @@ func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, validator Vali
 	errCh := make(chan error, validator.Threshold())
 	blocks := validator.SharedBlocks()
 	threshold := validator.Threshold()
-	commits := map[[32]byte]uint8{}
+	commits := map[[32]byte]int{}
 	certified := map[[32]byte]bool{}
 	go func() {
 		defer close(faultCh)

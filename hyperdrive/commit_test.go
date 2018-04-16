@@ -1,88 +1,88 @@
 package hyper_test
 
-import (
-	"context"
-	"strconv"
-	"sync"
+// import (
+// 	"context"
+// 	"strconv"
+// 	"sync"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/republic-go/hyperdrive"
-)
+// 	. "github.com/onsi/ginkgo"
+// 	. "github.com/onsi/gomega"
+// 	. "github.com/republicprotocol/republic-go/hyperdrive"
+// )
 
-var _ = Describe("Commits", func() {
+// var _ = Describe("Commits", func() {
 
-	blocks := NewSharedBlocks(1, 1)
-	validator, _ := NewTestValidator(blocks, 4)
+// 	blocks := NewSharedBlocks(1, 1)
+// 	validator, _ := NewTestValidator(blocks, 4)
 
-	Context("when processing commits", func() {
+// 	Context("when processing commits", func() {
 
-		It("should return errors on shutdown", func() {
-			ctx, cancel := context.WithCancel(context.Background())
-			commitChIn := make(chan Commit)
+// 		It("should return errors on shutdown", func() {
+// 			ctx, cancel := context.WithCancel(context.Background())
+// 			commitChIn := make(chan Commit)
 
-			_, _, _, errCh := ProcessCommit(ctx, commitChIn, validator)
+// 			_, _, _, errCh := ProcessCommit(ctx, commitChIn, validator)
 
-			var wg sync.WaitGroup
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+// 			var wg sync.WaitGroup
+// 			wg.Add(1)
+// 			go func() {
+// 				defer wg.Done()
 
-				for err := range errCh {
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(Equal(context.Canceled))
-				}
-			}()
+// 				for err := range errCh {
+// 					Ω(err).Should(HaveOccurred())
+// 					Ω(err).Should(Equal(context.Canceled))
+// 				}
+// 			}()
 
-			cancel()
-			wg.Wait()
-		})
+// 			cancel()
+// 			wg.Wait()
+// 		})
 
-		It("should return commit after processing a threshold number of prepares", func() {
-			ctx, cancel := context.WithCancel(context.Background())
-			commitChIn := make(chan Commit, 5)
-			_, blockCh, _, errCh := ProcessCommit(ctx, commitChIn, validator)
+// 		It("should return commit after processing a threshold number of prepares", func() {
+// 			ctx, cancel := context.WithCancel(context.Background())
+// 			commitChIn := make(chan Commit, 5)
+// 			_, blockCh, _, errCh := ProcessCommit(ctx, commitChIn, validator)
 
-			var wg sync.WaitGroup
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+// 			var wg sync.WaitGroup
+// 			wg.Add(1)
+// 			go func() {
+// 				defer wg.Done()
 
-				for {
-					select {
-					case err := <-errCh:
-						Ω(err).Should(HaveOccurred())
-						Ω(err).Should(Equal(context.Canceled))
-						return
-					case block, ok := <-blockCh:
-						if !ok {
-							return
-						}
-						Ω(block).Should(Equal(Block{
-							Tuples{},
-							Signature("Proposer"),
-						}))
-						cancel()
-					}
-				}
-			}()
+// 				for {
+// 					select {
+// 					case err := <-errCh:
+// 						Ω(err).Should(HaveOccurred())
+// 						Ω(err).Should(Equal(context.Canceled))
+// 						return
+// 					case block, ok := <-blockCh:
+// 						if !ok {
+// 							return
+// 						}
+// 						Ω(block).Should(Equal(Block{
+// 							Tuples{},
+// 							Signature("Proposer"),
+// 						}))
+// 						cancel()
+// 					}
+// 				}
+// 			}()
 
-			for i := uint8(0); i < validator.Threshold(); i++ {
-				go func(i uint8) {
-					commitChIn <- Commit{
-						ThresholdSignature: ThresholdSignature("Threshold_BLS"),
-						Signature:          Signature("Signature of " + strconv.Itoa(int(i))),
-						Block: Block{
-							Tuples{},
-							Signature("Proposer"),
-						},
-						Rank:   Rank(1),
-						Height: 1,
-					}
-				}(i)
-			}
+// 			for i := uint8(0); i < validator.Threshold(); i++ {
+// 				go func(i uint8) {
+// 					commitChIn <- Commit{
+// 						ThresholdSignature: ThresholdSignature("Threshold_BLS"),
+// 						Signature:          Signature("Signature of " + strconv.Itoa(int(i))),
+// 						Block: Block{
+// 							Tuples{},
+// 							Signature("Proposer"),
+// 						},
+// 						Rank:   Rank(1),
+// 						Height: 1,
+// 					}
+// 				}(i)
+// 			}
 
-			wg.Wait()
-		})
-	})
-})
+// 			wg.Wait()
+// 		})
+// 	})
+// })

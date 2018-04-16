@@ -3,7 +3,7 @@ package hyper
 type Validator interface {
 	Sign() Signature
 	SharedBlocks() *SharedBlocks
-	Threshold() uint8
+	Threshold() int
 	ValidateProposal(Proposal) bool
 	ValidatePrepare(Prepare) bool
 	ValidateCommit(Commit) bool
