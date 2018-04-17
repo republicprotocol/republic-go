@@ -1,9 +1,6 @@
 package orderbook
 
 import (
-	"reflect"
-	"sync"
-
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 )
@@ -47,25 +44,19 @@ func NewOrderbook(maxConnections int) Orderbook {
 	}
 }
 
-// Subscribe will start listening to the orderbook for updates.
-func (orderbook Orderbook) Subscribe(ch interface{}) error {
-	var err error
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		orderbook.splitter.Subscribe(ch)
-	}()
+// Subscribe will start listening to the orderbook for updates. The channel
+// must not be closed until after the Unsubscribe method is called.
+func (orderbook Orderbook) Subscribe(ch chan Entry) error {
+	if err := orderbook.splitter.Subscribe(ch); err != nil {
+		return err
+	}
 
 	blocks := orderbook.cache.Blocks()
 	for _, block := range blocks {
-		dispatch.SendToInterface(ch, reflect.ValueOf(block))
+		ch <- block
 	}
 
-	wg.Wait()
-	return err
+	return nil
 }
 
 // Unsubscribe will stop listening to the orderbook for updates

@@ -36,7 +36,7 @@ func (cache *Cache) Open(entry Entry) error {
 
 	// Check if the order has already been opened
 	if _, ok := cache.orders[string(entry.Order.ID)]; ok {
-		return fmt.Errorf("can't open already existing order")
+		return fmt.Errorf("cannot open already existing order")
 	}
 
 	entry.Status = order.Open
@@ -53,7 +53,7 @@ func (cache *Cache) Match(entry Entry) error {
 
 	previousStatus := cache.orders[string(entry.Order.ID)].Status
 	if previousStatus != order.Open {
-		return fmt.Errorf("can't matched order with status %v", previousStatus)
+		return fmt.Errorf("cannot matched order with status %v", previousStatus)
 	}
 
 	entry.Status = order.Unconfirmed
@@ -71,7 +71,7 @@ func (cache *Cache) Confirm(entry Entry) error {
 
 	previousStatus := cache.orders[string(entry.Order.ID)].Status
 	if previousStatus != order.Open && previousStatus != order.Unconfirmed {
-		return fmt.Errorf("can't confirm order with status %v", previousStatus)
+		return fmt.Errorf("cannot confirm order with status %v", previousStatus)
 	}
 
 	// Check if the order has been cancelled by the trader.
@@ -97,7 +97,7 @@ func (cache *Cache) Release(entry Entry) error {
 
 	previousStatus := cache.orders[string(entry.Order.ID)].Status
 	if previousStatus != order.Open && previousStatus != order.Unconfirmed {
-		return fmt.Errorf("can't release order with status %v", previousStatus)
+		return fmt.Errorf("cannot release order with status %v", previousStatus)
 	}
 
 	// Check if the order has been cancelled by the trader.
@@ -120,7 +120,7 @@ func (cache *Cache) Settle(entry Entry) error {
 
 	previousStatus := cache.orders[string(entry.Order.ID)].Status
 	if previousStatus != order.Open && previousStatus != order.Unconfirmed && previousStatus != order.Confirmed {
-		return fmt.Errorf("can't settled order with status %v", previousStatus)
+		return fmt.Errorf("cannot settled order with status %v", previousStatus)
 	}
 
 	entry.Status = order.Settled
