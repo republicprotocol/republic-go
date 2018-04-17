@@ -36,6 +36,10 @@ var _ = Describe("order book", func() {
 			broadcaster = orderbook.Broadcaster(book)
 		})
 
+		AfterEach(func() {
+			book.Close()
+		})
+
 		It("subscribe and unsubscribe", func() {
 
 			var chans [maxConnections]chan orderbook.Entry
