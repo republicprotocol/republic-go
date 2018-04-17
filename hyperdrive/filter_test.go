@@ -73,7 +73,7 @@ var _ = Describe("Filters", func() {
 				defer GinkgoRecover()
 				defer heightWg.Done()
 
-				for i := 0; i < 5; i++ {
+				for i := 0; i < 4; i++ {
 					height <- Height(i)
 					time.Sleep(time.Second)
 				}
@@ -93,7 +93,7 @@ var _ = Describe("Filters", func() {
 			close(height)
 
 			readWg.Wait()
-		})
+		}, 8) // Need 8 seconds before timing out
 
 		It("should only produce messages for the current height", func(done Done) {
 			defer close(done)

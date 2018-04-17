@@ -34,12 +34,9 @@ var _ = Describe("Messages", func() {
 			verifier := NewWeakVerifier()
 			threshold := 0
 
-			message, err := VerifyAndSignMessage(&prepare, &messageStore, &signer, &verifier,threshold)
+			message, err := VerifyAndSignMessage(&prepare, &messageStore, &signer, &verifier, threshold)
 			Ω(message).Should(BeNil())
 			Ω(err).Should(HaveOccurred())
 		})
 	})
-
-
-
 })

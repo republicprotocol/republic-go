@@ -90,19 +90,19 @@ func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer
 				// After verifying and signing the message check for Faults
 				switch message := message.(type) {
 
-				case Commit:
+				case *Commit:
 					select {
 					case <-ctx.Done():
 						errCh <- ctx.Err()
 						return
-					case commitCh <- message:
+					case commitCh <- *message:
 					}
-				case Fault:
+				case *Fault:
 					select {
 					case <-ctx.Done():
 						errCh <- ctx.Err()
 						return
-					case faultCh <- message:
+					case faultCh <- *message:
 					}
 				default:
 					// Gracefully ignore invalid messages

@@ -1,6 +1,10 @@
 package hyperdrive
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/ethereum/go-ethereum/crypto"
+)
 
 // A Hash is a Keccak256 Hash of some data.
 type Hash [32]byte
@@ -59,7 +63,7 @@ func NewWeakSigner(id [32]byte) WeakSigner {
 // Sign implements the Signer interface.
 func (signer *WeakSigner) Sign(hash Hash) (Signature, error) {
 	signature := [65]byte{}
-	copy(signature[:], signer.ID[:])
+	copy(signature[:], crypto.Keccak256Hash(hash[:], signer.ID[:]).Bytes())
 	return Signature(signature), nil
 }
 
@@ -106,11 +110,11 @@ func NewErrorVerifier() ErrorVerifier {
 }
 
 // VerifyProposeSignature implements the Verifier interface.
-func (verifier *ErrorVerifier) VerifyProposeSignature(signautre Signature) error {
+func (verifier *ErrorVerifier) VerifyProposer(signature Signature) error {
 	return errors.New("cannot use error verifier to verify")
 }
 
 // VerifySignatures implements the Verifier interface.
-func (verifier *ErrorVerifier) VerifySignatures(signautres Signatures) error {
+func (verifier *ErrorVerifier) VerifySignatures(signature Signatures) error {
 	return errors.New("cannot use error verifier to verify")
 }

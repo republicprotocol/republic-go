@@ -31,12 +31,12 @@ func ProcessFault(ctx context.Context, faultChIn chan Fault, signer Signer, veri
 				}
 				// After verifying and signing the message check for Faults
 				switch message := message.(type) {
-				case Fault:
+				case *Fault:
 					select {
 					case <-ctx.Done():
 						errCh <- ctx.Err()
 						return
-					case faultCh <- message:
+					case faultCh <- *message:
 					}
 				default:
 					// Gracefully ignore invalid messages

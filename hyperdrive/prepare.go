@@ -39,9 +39,9 @@ func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer 
 				// After verifying and signing the message check for Faults
 				switch message := message.(type) {
 
-				case Prepare:
+				case *Prepare:
 					commit := Commit{
-						Prepare:    message,
+						Prepare:    *message,
 						Signatures: message.Signatures,
 					}
 					select {
@@ -50,12 +50,12 @@ func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer 
 						return
 					case commitCh <- commit:
 					}
-				case Fault:
+				case *Fault:
 					select {
 					case <-ctx.Done():
 						errCh <- ctx.Err()
 						return
-					case faultCh <- message:
+					case faultCh <- *message:
 					}
 				default:
 					// Gracefully ignore invalid messages

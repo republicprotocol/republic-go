@@ -19,52 +19,47 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer S
 		defer close(faultCh)
 		defer close(errCh)
 
+		store := NewMessageMapStore()
+
 		for {
 			select {
 			case <-ctx.Done():
 				errCh <- ctx.Err()
 				return
-			case proposal, ok := <-proposalChIn:
-				if !ok {
-					return
-				}
-
-				if err := proposal.Verify(verifier); err != nil {
-					fault := Fault{
-						Rank:   proposal.Block.Rank,
-						Height: proposal.Block.Height,
-					}
-					signature, err := signer.Sign(fault.Hash())
-					if err != nil {
-						errCh <- err
-						continue
-					}
-					fault.Signatures = Signatures{signature}
-
-					select {
-					case <-ctx.Done():
-						errCh <- ctx.Err()
-						return
-					case faultCh <- fault:
-					}
-					continue
-				}
-
-				prepare := Prepare{
-					Proposal: proposal,
-				}
-				signature, err := signer.Sign(prepare.Hash())
+			case fault := <-proposalChIn:
+				message, err := VerifyAndSignMessage(&fault, &store, signer, verifier, 0)
 				if err != nil {
 					errCh <- err
 					continue
 				}
-				prepare.Signatures = Signatures{signature}
-
-				select {
-				case <-ctx.Done():
-					errCh <- ctx.Err()
-					return
-				case prepareCh <- prepare:
+				// After verifying and signing the message check for Faults
+				switch message := message.(type) {
+				case *Proposal:
+					prepare := Prepare{
+						Proposal: *message,
+					}
+					signature, err := signer.Sign(prepare.Hash())
+					if err != nil {
+						errCh <- err
+						continue
+					}
+					prepare.Signatures = Signatures{signature}
+					select {
+					case <-ctx.Done():
+						errCh <- ctx.Err()
+						return
+					case prepareCh <- prepare:
+					}
+				case *Fault:
+					select {
+					case <-ctx.Done():
+						errCh <- ctx.Err()
+						return
+					case faultCh <- *message:
+					}
+				default:
+					// Gracefully ignore invalid messages
+					continue
 				}
 			}
 		}
