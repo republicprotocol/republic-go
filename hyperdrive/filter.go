@@ -50,17 +50,6 @@ func FilterDuplicates(chSetIn ChannelSet, capacity int) ChannelSet {
 				chSetOut.Commits <- commit
 				commits[h] = struct{}{}
 
-			case fault, ok := <-chSetIn.Faults:
-				if !ok {
-					return
-				}
-				h := FaultHash(fault)
-				if _, ok := blocks[h]; ok {
-					continue
-				}
-				chSetOut.Faults <- fault
-				blocks[h] = struct{}{}
-
 			case block, ok := <-chSetIn.Blocks:
 				if !ok {
 					return
@@ -71,6 +60,17 @@ func FilterDuplicates(chSetIn ChannelSet, capacity int) ChannelSet {
 				}
 				chSetOut.Blocks <- block
 				faults[h] = struct{}{}
+
+			case fault, ok := <-chSetIn.Faults:
+				if !ok {
+					return
+				}
+				h := FaultHash(fault)
+				if _, ok := blocks[h]; ok {
+					continue
+				}
+				chSetOut.Faults <- fault
+				blocks[h] = struct{}{}
 			}
 		}
 	}()
