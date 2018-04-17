@@ -2,7 +2,6 @@ package smpc
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
@@ -14,8 +13,6 @@ import (
 func ProcessOrderFragments(ctx context.Context, orderFragmentChIn <-chan order.Fragment, sharedOrderTable *SharedOrderTable, bufferLimit int) (<-chan OrderTuple, <-chan error) {
 	orderTupleCh := make(chan OrderTuple, bufferLimit)
 	errCh := make(chan error)
-
-	log.Println("ProcessOrderFragments")
 
 	go func() {
 		defer close(orderTupleCh)
@@ -48,7 +45,6 @@ func ProcessOrderFragments(ctx context.Context, orderFragmentChIn <-chan order.F
 			case <-ctx.Done():
 				return
 			case orderFragment, ok := <-orderFragmentChIn:
-				log.Println("Inserting order fragment")
 				if !ok {
 					return
 				}

@@ -16,8 +16,44 @@
 [[projects]]
   branch = "master"
   name = "github.com/btcsuite/btcd"
-  packages = ["btcec"]
+  packages = [
+    "btcec",
+    "btcjson",
+    "chaincfg",
+    "chaincfg/chainhash",
+    "rpcclient",
+    "txscript",
+    "wire"
+  ]
   revision = "2be2f12b358dc57d70b8f501b00be450192efbc3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/btclog"
+  packages = ["."]
+  revision = "84c8d2346e9fc8c7b947e243b9c24e6df9fd206a"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/btcutil"
+  packages = [
+    ".",
+    "base58",
+    "bech32"
+  ]
+  revision = "501929d3d046174c3d39f0ea54ece471aa17238c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/go-socks"
+  packages = ["socks"]
+  revision = "4720035b7bfd2a9bb130b1c184f8bbe41b6f0d0f"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/websocket"
+  packages = ["."]
+  revision = "31079b6807923eb23992c421b114992b95131b55"
 
 [[projects]]
   branch = "master"
@@ -262,12 +298,6 @@
   version = "v1.1"
 
 [[projects]]
-  name = "github.com/spaolacci/murmur3"
-  packages = ["."]
-  revision = "9f5d223c60793748f04a9d5b4b4eacddfc1f755d"
-  version = "v1.1"
-
-[[projects]]
   branch = "master"
   name = "github.com/syndtr/goleveldb"
   packages = [
@@ -430,6 +460,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b1cb4a18555128f9e19cf6c2e257ac582a05144d1fe13b8f731879a4c5b628be"
+  inputs-digest = "df6683575da7a3f041c208b4ac682315d629ecdccc8bbc038421e2b9e7c09dbe"
   solver-name = "gps-cdcl"
   solver-version = 1
