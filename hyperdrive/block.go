@@ -22,6 +22,8 @@ type Height int
 // Blocks must not store any Nonce more than once within any Block.
 type Blocks []Block
 
+// BlockHeader distinguishes Blocks from other message types that have the
+// same content.
 const BlockHeader = 4
 
 // A Block of Txs on which consensus will be reached. A Block must not store
