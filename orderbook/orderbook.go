@@ -74,7 +74,9 @@ func (orderbook Orderbook) Unsubscribe(ch interface{}) {
 
 // Open is called when we first receive the order fragment.
 func (orderbook Orderbook) Open(entry Entry) error {
-	orderbook.cache.Open(entry)
+	if err := orderbook.cache.Open(entry); err != nil {
+		return err
+	}
 	// orderbook.database.Open(entry)
 	orderbook.splitCh <- entry
 	return nil
@@ -82,7 +84,9 @@ func (orderbook Orderbook) Open(entry Entry) error {
 
 // Match is called when we discover a match for the order.
 func (orderbook Orderbook) Match(entry Entry) error {
-	orderbook.cache.Match(entry)
+	if err := orderbook.cache.Match(entry); err != nil {
+		return err
+	}
 	// orderbook.database.Match(entry)
 	orderbook.splitCh <- entry
 	return nil
@@ -90,7 +94,9 @@ func (orderbook Orderbook) Match(entry Entry) error {
 
 // Confirm is called when the order has been confirmed by the hyperdrive.
 func (orderbook Orderbook) Confirm(entry Entry) error {
-	orderbook.cache.Confirm(entry)
+	if err := orderbook.cache.Confirm(entry); err != nil {
+		return err
+	}
 	// orderbook.database.Confirm(entry)
 	orderbook.splitCh <- entry
 	return nil
@@ -98,7 +104,9 @@ func (orderbook Orderbook) Confirm(entry Entry) error {
 
 // Release is called when the order has been denied by the hyperdrive.
 func (orderbook Orderbook) Release(entry Entry) error {
-	orderbook.cache.Release(entry)
+	if err := orderbook.cache.Release(entry); err != nil {
+		return err
+	}
 	// orderbook.database.Release(entry)
 	orderbook.splitCh <- entry
 	return nil
@@ -106,7 +114,9 @@ func (orderbook Orderbook) Release(entry Entry) error {
 
 // Settle is called when the order is settled.
 func (orderbook Orderbook) Settle(entry Entry) error {
-	orderbook.cache.Settle(entry)
+	if err := orderbook.cache.Settle(entry); err != nil {
+		return err
+	}
 	// orderbook.database.Settle(entry)
 	orderbook.splitCh <- entry
 	return nil
@@ -114,8 +124,7 @@ func (orderbook Orderbook) Settle(entry Entry) error {
 
 // Cancel is called when the order is canceled.
 func (orderbook Orderbook) Cancel(id order.ID) error {
-	err := orderbook.cache.Cancel(id)
-	if err != nil {
+	if err := orderbook.cache.Cancel(id); err != nil {
 		return err
 	}
 	// err = orderbook.database.Cancel(id)
