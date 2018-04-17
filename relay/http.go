@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -37,6 +38,22 @@ type OrderFragments struct {
 	Expiry time.Time    `json:"expiry"`
 
 	DarkPools map[string][]*order.Fragment `json:"darkPools"`
+}
+
+// AuthorizationHandler handles errors while processing the requests and populates the errors in the response
+func AuthorizationHandler(h http.Handler, token string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if token != "" {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader != "" {
+				if strings.Split(authHeader, " ")[1] != token {
+					writeError(w, http.StatusUnauthorized, fmt.Sprintln("Unauthorized token"))
+					return
+				}
+			}
+		}
+		h.ServeHTTP(w, r)
+	})
 }
 
 // RecoveryHandler handles errors while processing the requests and populates the errors in the response

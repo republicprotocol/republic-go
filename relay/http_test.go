@@ -23,6 +23,35 @@ var _ = Describe("HTTP handlers", func() {
 	if err != nil {
 		panic(err)
 	}
+
+	Context("when handling authentication", func() {
+
+		It("should return 401 for unauthorized tokens", func() {
+
+			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
+			r.Header.Set("Authorization", "Bearer test-token")
+			w := httptest.NewRecorder()
+
+			handler := RecoveryHandler(AuthorizationHandler(OpenOrdersHandler((identity.MultiAddress{}), nil), "token"))
+			handler.ServeHTTP(w, r)
+
+			Ω(w.Code).Should(Equal(http.StatusUnauthorized))
+			Expect(w.Body.String()).To(ContainSubstring("Unauthorized token"))
+		})
+
+		// It("should return 200 for authorized tokens", func() {
+
+		// 	r := httptest.NewRequest("POST", "http://localhost/orders", nil)
+		// 	r.Header.Set("Authorization", "Bearer token")
+		// 	w := httptest.NewRecorder()
+
+		// 	handler := RecoveryHandler(AuthorizationHandler(OpenOrdersHandler((identity.MultiAddress{}), nil), "token"))
+		// 	handler.ServeHTTP(w, r)
+
+		// 	Ω(w.Code).Should(Equal(http.StatusOK))
+		// })
+	})
+
 	Context("when posting orders", func() {
 
 		It("should return 400 for empty request bodies", func() {
