@@ -2,16 +2,7 @@ package hyper
 
 import (
 	"context"
-
-	"github.com/republicprotocol/republic-go/identity"
 )
-
-type Signer interface {
-	Sign() Signature
-	ID() identity.ID
-}
-
-type Signature string
 
 type Proposal struct {
 	Block
