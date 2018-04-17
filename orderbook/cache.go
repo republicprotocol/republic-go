@@ -156,8 +156,8 @@ func (cache *Cache) Cancel(id order.ID) error {
 	return nil
 }
 
-// Blocks will gather all the orders records and returns them in
-// the format of orderbook.Message
+// Blocks will gather all the order records and returns them in
+// the format of orderbook.Entry
 func (cache *Cache) Blocks() []Entry {
 	cache.ordersMu.RLock()
 	defer cache.ordersMu.RUnlock()
@@ -170,6 +170,11 @@ func (cache *Cache) Blocks() []Entry {
 	}
 
 	return blocks
+}
+
+// Order retrieves information regarding an order.
+func (cache *Cache) Order(id order.ID) Entry {
+	return cache.orders[string(id)]
 }
 
 func (cache *Cache) storeOrderMessage(entry Entry) {
