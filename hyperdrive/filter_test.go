@@ -140,7 +140,6 @@ var _ = Describe("Filters", func() {
 			chSet := NewChannelSet(capacity)
 			chSetOut := FilterHeight(chSet, height, numberOfMessages)
 
-			h1 := Height(1)
 			hErrCh := make(chan error)
 			go func() {
 				// defer GinkgoRecover()
@@ -149,34 +148,27 @@ var _ = Describe("Filters", func() {
 				}
 			}()
 
-			height <- 1
+			for i := 0; i < 10; i++ {
+				h := Height(i)
+				height <- h
 
-			var writeWg sync.WaitGroup
-			writeToChannelSetWithHeight(chSet, numberOfMessages, Height(1), &writeWg)
+				var writeWg sync.WaitGroup
+				writeToChannelSetWithHeight(chSet, numberOfMessages, h, &writeWg)
 
-			var n int64
-			var readWg sync.WaitGroup
-			readFromChannelSetForHeight(chSetOut, numberOfMessages, &readWg, &n, &h1, hErrCh)
+				var n int64
+				var readWg sync.WaitGroup
+				readFromChannelSetForHeight(chSetOut, numberOfMessages, &readWg, &n, &h, hErrCh)
 
-			writeWg.Wait()
-			readWg.Wait()
+				writeWg.Wait()
+				readWg.Wait()
+			}
 
-			height <- 2
-
-			writeToChannelSetWithHeight(chSet, numberOfMessages, Height(2), &writeWg)
-
-			h2 := Height(2)
-			readFromChannelSetForHeight(chSetOut, numberOfMessages, &readWg, &n, &h2, hErrCh)
-
-			writeWg.Wait()
 			chSet.Close()
 			close(height)
-
-			readWg.Wait()
 			close(hErrCh)
 		})
 
-		FIt("should produce buffered messages when the height changes", func() {
+		It("should produce buffered messages when the height changes", func() {
 			numberOfMessages := 100
 			capacity := 0
 			height := make(chan Height, capacity)

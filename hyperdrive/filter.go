@@ -106,16 +106,11 @@ func FilterHeight(chSetIn ChannelSet, height <-chan Height, capacity int) Channe
 				if !ok {
 					return
 				}
-				prevH := h
 				h = nextH
 				if bufferedChSet, ok := buffer[h]; ok {
 					delete(buffer, h)
 					bufferedChSet.Close()
 					bufferedChSet.Pipe(chSetOut)
-				}
-				if bufferedChSet, ok := buffer[prevH]; ok {
-					delete(buffer, prevH)
-					bufferedChSet.Close()
 				}
 
 			case proposal, ok := <-chSetIn.Proposals:
