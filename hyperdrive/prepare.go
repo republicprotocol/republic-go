@@ -5,10 +5,10 @@ import (
 )
 
 type Prepare struct {
-	Signature
-	Block
-	Rank
-	Height int
+	Proposal
+
+	// Signatures of the Replicas that signed this Prepare
+	Signatures []Signature
 }
 
 func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, validator Validator) (<-chan Commit, <-chan Fault, <-chan error) {

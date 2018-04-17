@@ -5,19 +5,6 @@ import (
 	"sync/atomic"
 )
 
-type Element struct {
-	ID [32]byte
-}
-
-type Elements []Element
-
-type Tuples []Tuple
-
-type Tuple struct {
-	ID [32]byte
-	Elements
-}
-
 type SharedBlocks struct {
 	history map[[32]byte][32]byte
 	height  uint64
