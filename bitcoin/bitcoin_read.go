@@ -51,7 +51,7 @@ func read(contract, contractTxBytes []byte, chain string, rpcuser string, rpcpas
 		return errors.New("transaction does not contain the contract output"), readResult{}
 	}
 
-	pushes, err := txscript.ExtractAtomicSwapDataPushes(contract)
+	pushes, err := txscript.ExtractAtomicSwapDataPushes(0, contract)
 	if err != nil {
 		return err, readResult{}
 	}

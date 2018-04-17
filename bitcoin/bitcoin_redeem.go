@@ -53,7 +53,7 @@ func redeem(contract, contractTxBytes, secret []byte, rpcUser string, rpcPass st
 		client.WaitForShutdown()
 	}()
 
-	pushes, err := txscript.ExtractAtomicSwapDataPushes(contract)
+	pushes, err := txscript.ExtractAtomicSwapDataPushes(0, contract)
 	if err != nil {
 		return err, redeemResult{}
 	}

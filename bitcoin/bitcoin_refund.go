@@ -47,7 +47,7 @@ func refund(contract, contractTxBytes []byte, chain, rpcUser, rpcPass string) (E
 		client.WaitForShutdown()
 	}()
 
-	pushes, err := txscript.ExtractAtomicSwapDataPushes(contract)
+	pushes, err := txscript.ExtractAtomicSwapDataPushes(0, contract)
 	if err != nil {
 		return err
 	}

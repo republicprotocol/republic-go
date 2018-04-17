@@ -2,23 +2,40 @@ package ethereum
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"math/big"
 	"time"
 
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	log15 "github.com/ethereum/go-ethereum/log"
 	"github.com/republicprotocol/go-atom/ethereum/contracts"
 )
 
+// Client combines the interfaces for bind.ContractBackend and bind.DeployBackend
+type Client interface {
+	TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error)
+	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
+	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
+	PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error)
+	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
+	SuggestGasPrice(ctx context.Context) (*big.Int, error)
+	EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error)
+	SendTransaction(ctx context.Context, tx *types.Transaction) error
+	FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error)
+	SubscribeFilterLogs(ctx context.Context, query ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error)
+	BalanceAt(ctx context.Context, contract common.Address, blockNumber *big.Int) (*big.Int, error)
+}
+
 // Ropsten ...
-func Ropsten(uri string) *ethclient.Client {
+func Ropsten(uri string) Client {
 	// Create an IPC based RPC connection to a remote node and an authorized transactor
 	conn, err := ethclient.Dial(uri)
 	if err != nil {
@@ -30,36 +47,35 @@ func Ropsten(uri string) *ethclient.Client {
 	return conn
 }
 
-/** SIMULATED FOR TESTS */
-func randomAuth() *bind.TransactOpts {
-	// Generate a new random account
-	key, _ := crypto.GenerateKey()
-	auth := bind.NewKeyedTransactor(key)
-	return auth
-}
-
 // Simulated ...
-func Simulated(auth1 *bind.TransactOpts, auth2 *bind.TransactOpts) *backends.SimulatedBackend {
-	sim := backends.NewSimulatedBackend(core.GenesisAlloc{auth1.From: {Balance: big.NewInt(10000000000)}, auth2.From: {Balance: big.NewInt(10000000000)}})
+func Simulated(auth1 *bind.TransactOpts, auth2 *bind.TransactOpts) Client {
+	sim := backends.NewSimulatedBackend(core.GenesisAlloc{auth1.From: {Balance: big.NewInt(9000000000000000000)}, auth2.From: {Balance: big.NewInt(9000000000000000000)}})
 	return sim
 }
 
-// DeployETH ...
-func DeployETH(connection *backends.SimulatedBackend, auth *bind.TransactOpts) common.Address {
+// DeployERC20 ...
+func DeployERC20(context context.Context, connection Client, auth *bind.TransactOpts) (*types.Transaction, common.Address) {
 	// Deploy a token contract on the simulated blockchain
-	address, _, _, err := contracts.DeployAtomicSwapEther(auth, connection)
+	address, tx, _, err := contracts.DeployAtomicSwapERC20(auth, connection)
 	if err != nil {
 		log.Fatalf("Failed to deploy: %v", err)
 	}
-	// Don't even wait, check its presence in the local pending state
-	time.Sleep(250 * time.Millisecond) // Allow it to be processed by the local node
-	return address
+	PatchedWaitDeployed(context, connection, tx)
+	return tx, address
 }
 
-// Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt
-// WaitMined waits for tx to be mined on the blockchain.
+// PatchedWaitMined waits for tx to be mined on the blockchain.
 // It stops waiting when the context is canceled.
-func PatchedWaitMined(ctx context.Context, b bind.DeployBackend, tx *types.Transaction) (*types.Receipt, error) {
+// (Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt)
+// NOTE: If something goes wrong, this will hang!
+func PatchedWaitMined(ctx context.Context, b Client, tx *types.Transaction) (*types.Receipt, error) {
+
+	sim, ok := b.(*backends.SimulatedBackend)
+	if ok {
+		sim.Commit()
+		sim.AdjustTime(10 * time.Second)
+	}
+
 	queryTicker := time.NewTicker(time.Second)
 	defer queryTicker.Stop()
 
@@ -81,4 +97,29 @@ func PatchedWaitMined(ctx context.Context, b bind.DeployBackend, tx *types.Trans
 		case <-queryTicker.C:
 		}
 	}
+}
+
+// PatchedWaitDeployed waits for a contract deployment transaction and returns the on-chain
+// contract address when it is mined. It stops waiting when ctx is canceled.
+// (Go-ethereum's WaitMined is not compatible with Parity's getTransactionReceipt)
+// NOTE: If something goes wrong, this will hang!
+func PatchedWaitDeployed(ctx context.Context, b Client, tx *types.Transaction) (common.Address, error) {
+	if tx.To() != nil {
+		return common.Address{}, fmt.Errorf("tx is not contract creation")
+	}
+	receipt, err := PatchedWaitMined(ctx, b, tx)
+	if err != nil {
+		return common.Address{}, err
+	}
+	if receipt.ContractAddress == (common.Address{}) {
+		return common.Address{}, fmt.Errorf("zero address")
+	}
+	// Check that code has indeed been deployed at the address.
+	// This matters on pre-Homestead chains: OOG in the constructor
+	// could leave an empty account behind.
+	code, err := b.CodeAt(ctx, receipt.ContractAddress, nil)
+	if err == nil && len(code) == 0 {
+		err = errors.New("no contract code after deployment")
+	}
+	return receipt.ContractAddress, err
 }
