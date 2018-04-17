@@ -27,10 +27,17 @@ const maxConnections = 3
 
 var _ = Describe("order book", func() {
 	Context("creating new orderbook", func() {
-		var book orderbook.Orderbook
+		var syncer orderbook.Syncer
+		var broadcaster orderbook.Broadcaster
 
 		BeforeEach(func() {
-			book = orderbook.NewOrderbook()
+			book := orderbook.NewOrderbook(10)
+			syncer = orderbook.Syncer(book)
+			broadcaster = orderbook.Broadcaster(book)
+		})
+
+		AfterEach(func() {
+			broadcaster.Close()
 		})
 
 		It("subscribe and unsubscribe", func() {
@@ -41,12 +48,12 @@ var _ = Describe("order book", func() {
 				// stream := NewMockStream()
 				chans[i] = make(chan orderbook.Entry)
 				defer close(chans[i])
-				err := book.Subscribe(chans[i])
+				err := broadcaster.Subscribe(chans[i])
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 
 			for i := 0; i < maxConnections; i++ {
-				book.Unsubscribe(chans[i])
+				broadcaster.Unsubscribe(chans[i])
 			}
 
 		})

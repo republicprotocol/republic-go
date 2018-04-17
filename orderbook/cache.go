@@ -34,8 +34,9 @@ func (cache *Cache) Open(entry Entry) error {
 	cache.ordersMu.Lock()
 	defer cache.ordersMu.Unlock()
 
+	// Check if the order has already been opened
 	if _, ok := cache.orders[string(entry.Order.ID)]; ok {
-		return fmt.Errorf("can't open already existing order")
+		return fmt.Errorf("cannot open already existing order")
 	}
 
 	entry.Status = order.Open
@@ -50,16 +51,13 @@ func (cache *Cache) Match(entry Entry) error {
 	cache.ordersMu.Lock()
 	defer cache.ordersMu.Unlock()
 
-	if cachedOrder, ok := cache.orders[string(entry.Order.ID)]; !ok || cachedOrder.Status != order.Open {
-		return fmt.Errorf("can only match orders with status Open")
+	previousStatus := cache.orders[string(entry.Order.ID)].Status
+	if previousStatus != order.Open {
+		return fmt.Errorf("cannot matched order with status %v", previousStatus)
 	}
 
-	if _, ok := cache.cancels[string(entry.Order.ID)]; ok {
-		delete(cache.orders, string(entry.Order.ID))
-	} else {
-		entry.Status = order.Unconfirmed
-		cache.storeOrderMessage(entry)
-	}
+	entry.Status = order.Unconfirmed
+	cache.storeOrderMessage(entry)
 
 	return nil
 
@@ -71,17 +69,19 @@ func (cache *Cache) Confirm(entry Entry) error {
 	cache.ordersMu.Lock()
 	defer cache.ordersMu.Unlock()
 
-	if cachedOrder, ok := cache.orders[string(entry.Order.ID)]; !ok || cachedOrder.Status != order.Unconfirmed {
-		return fmt.Errorf("can only confirm orders with status Unconfirmed")
+	previousStatus := cache.orders[string(entry.Order.ID)].Status
+	if previousStatus != order.Open && previousStatus != order.Unconfirmed {
+		return fmt.Errorf("cannot confirm order with status %v", previousStatus)
 	}
 
 	// Check if the order has been cancelled by the trader.
 	if _, ok := cache.cancels[string(entry.Order.ID)]; ok {
-		delete(cache.orders, string(entry.Order.ID))
-	} else {
-		entry.Status = order.Confirmed
-		cache.storeOrderMessage(entry)
+		delete(cache.cancels, string(entry.Order.ID))
 	}
+
+	// Check if the order has been cancelled by the trader.
+	entry.Status = order.Confirmed
+	cache.storeOrderMessage(entry)
 
 	return nil
 
@@ -95,18 +95,20 @@ func (cache *Cache) Release(entry Entry) error {
 	defer cache.ordersMu.Unlock()
 	defer cache.cancelMu.RUnlock()
 
-	if cachedOrder, ok := cache.orders[string(entry.Order.ID)]; !ok || cachedOrder.Status != order.Unconfirmed {
-		return fmt.Errorf("can only release orders with status Unconfirmed")
+	previousStatus := cache.orders[string(entry.Order.ID)].Status
+	if previousStatus != order.Open && previousStatus != order.Unconfirmed {
+		return fmt.Errorf("cannot release order with status %v", previousStatus)
 	}
 
 	// Check if the order has been cancelled by the trader.
 	if _, ok := cache.cancels[string(entry.Order.ID)]; ok {
-		delete(cache.orders, string(entry.Order.ID))
+		delete(cache.cancels, string(entry.Order.ID))
+		entry.Status = order.Canceled
 	} else {
 		entry.Status = order.Open
-		cache.storeOrderMessage(entry)
 	}
 
+	cache.storeOrderMessage(entry)
 	return nil
 }
 
@@ -116,8 +118,9 @@ func (cache *Cache) Settle(entry Entry) error {
 	cache.ordersMu.Lock()
 	defer cache.ordersMu.Unlock()
 
-	if cachedOrder, ok := cache.orders[string(entry.Order.ID)]; !ok || cachedOrder.Status != order.Confirmed {
-		return fmt.Errorf("can only settle orders with status Confirmed")
+	previousStatus := cache.orders[string(entry.Order.ID)].Status
+	if previousStatus != order.Open && previousStatus != order.Unconfirmed && previousStatus != order.Confirmed {
+		return fmt.Errorf("cannot settled order with status %v", previousStatus)
 	}
 
 	entry.Status = order.Settled
@@ -138,19 +141,27 @@ func (cache *Cache) Cancel(id order.ID) error {
 	if !ok {
 		return fmt.Errorf("order does not exist")
 	}
-	if msg.Status > order.Unconfirmed {
-		return fmt.Errorf("too late too cancel the order")
-	} else if msg.Status == order.Unconfirmed {
+
+	switch msg.Status {
+	case order.Open:
+		entry := cache.orders[string(id)]
+		entry.Status = order.Canceled
+		cache.storeOrderMessage(entry)
+	case order.Unconfirmed:
 		cache.cancels[string(id)] = struct{}{}
-	} else if msg.Status == order.Open {
-		delete(cache.orders, string(id))
+	default:
+		return fmt.Errorf("too late too cancel the order")
 	}
+
+	// msg.Status is Open or Unconfirmed
+	cache.cancels[string(id)] = struct{}{}
+	delete(cache.orders, string(id))
 
 	return nil
 }
 
-// Blocks will gather all the orders records and returns them in
-// the format of orderbook.Message
+// Blocks will gather all the order records and returns them in
+// the format of orderbook.Entry
 func (cache *Cache) Blocks() []Entry {
 	cache.ordersMu.RLock()
 	defer cache.ordersMu.RUnlock()
@@ -165,10 +176,11 @@ func (cache *Cache) Blocks() []Entry {
 	return blocks
 }
 
+// Order retrieves information regarding an order.
+func (cache *Cache) Order(id order.ID) Entry {
+	return cache.orders[string(id)]
+}
+
 func (cache *Cache) storeOrderMessage(entry Entry) {
-	// Store the order entry if we haven't seen the order before.
-	if _, ok := cache.orders[string(entry.Order.ID)]; !ok {
-		cache.orders[string(entry.Order.ID)] = entry
-		return
-	}
+	cache.orders[string(entry.Order.ID)] = entry
 }
