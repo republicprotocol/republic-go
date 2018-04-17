@@ -1,4 +1,4 @@
-package hyper
+package hyperdrive
 
 // FilterDuplicates from a ChannelSet and produce a new ChannelSet where all
 // messages, on all channels, are guaranteed to be unique.

@@ -1,4 +1,4 @@
-package hyper
+package hyperdrive
 
 // A Message is passed between Replicas to advanced the state of the
 // Hyperdrive blockchain.

@@ -1,4 +1,4 @@
-package hyper
+package hyperdrive
 
 // A Hash is a Keccak256 Hash of some data.
 type Hash [32]byte

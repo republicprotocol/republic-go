@@ -1,4 +1,4 @@
-package hyper_test
+package hyperdrive_test
 
 import (
 	. "github.com/republicprotocol/republic-go/hyperdrive"

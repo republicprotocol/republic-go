@@ -1,4 +1,4 @@
-package hyper
+package hyperdrive
 
 import (
 	"bytes"
@@ -7,44 +7,6 @@ import (
 
 	"golang.org/x/crypto/sha3"
 )
-
-const FaultHeader = byte(5)
-
-type Fault struct {
-	Rank
-	Height
-
-	// Signatures of the Replicas that signed this Fault
-	Signatures
-}
-
-// Hash implements the Hasher interface.
-func (fault *Fault) Hash() Hash {
-	var buf bytes.Buffer
-	binary.Write(&buf, binary.BigEndian, FaultHeader)
-	binary.Write(&buf, binary.BigEndian, fault.Rank)
-	binary.Write(&buf, binary.BigEndian, fault.Height)
-
-	return sha3.Sum256(buf.Bytes())
-}
-
-func (fault *Fault) Fault() Fault {
-	return *fault
-}
-
-// Verify the Fault message. Returns an error if the message is invalid,
-// otherwise nil.
-func (fault *Fault) Verify() error {
-	return nil
-}
-
-func (fault *Fault) SetSignatures(signatures Signatures) {
-	fault.Signatures = signatures
-}
-
-func (fault *Fault) GetSignatures() Signatures {
-	return fault.Signatures
-}
 
 func ProcessFault(ctx context.Context, faultChIn chan Fault, signer Signer, capacity int) (chan Fault, chan error) {
 	faultCh := make(chan Fault, capacity)
@@ -85,4 +47,42 @@ func ProcessFault(ctx context.Context, faultChIn chan Fault, signer Signer, capa
 	}()
 
 	return faultCh, errCh
+}
+
+const FaultHeader = byte(5)
+
+type Fault struct {
+	Rank
+	Height
+
+	// Signatures of the Replicas that signed this Fault
+	Signatures
+}
+
+// Hash implements the Hasher interface.
+func (fault *Fault) Hash() Hash {
+	var buf bytes.Buffer
+	binary.Write(&buf, binary.BigEndian, FaultHeader)
+	binary.Write(&buf, binary.BigEndian, fault.Rank)
+	binary.Write(&buf, binary.BigEndian, fault.Height)
+
+	return sha3.Sum256(buf.Bytes())
+}
+
+func (fault *Fault) Fault() Fault {
+	return *fault
+}
+
+// Verify the Fault message. Returns an error if the message is invalid,
+// otherwise nil.
+func (fault *Fault) Verify() error {
+	return nil
+}
+
+func (fault *Fault) SetSignatures(signatures Signatures) {
+	fault.Signatures = signatures
+}
+
+func (fault *Fault) GetSignatures() Signatures {
+	return fault.Signatures
 }

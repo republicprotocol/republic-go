@@ -1,4 +1,4 @@
-package hyper
+package hyperdrive
 
 import (
 	"bytes"
