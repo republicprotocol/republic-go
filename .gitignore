@@ -7,6 +7,7 @@
 
 # Dep vendors
 vendor
+Gopkg.lock
 
 # Secrets
 cmd/secrets
@@ -16,6 +17,11 @@ cmd/secrets
 .idea
 
 # Binaries
-cmd/register/register
+cmd/darknode/darknode
 cmd/deregister/deregister
 cmd/epoch/epoch
+cmd/ganacher/ganacher
+cmd/keygen/keygen
+cmd/register/register
+cmd/relay/relay
+cmd/trader/trader

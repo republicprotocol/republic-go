@@ -25,7 +25,7 @@ type Epoch struct {
 type DarkNodeRegistry struct {
 	network                 client.Network
 	context                 context.Context
-	client                  *client.Connection
+	client                  client.Connection
 	transactOpts            *bind.TransactOpts
 	callOpts                *bind.CallOpts
 	binding                 *bindings.DarkNodeRegistry
@@ -34,7 +34,7 @@ type DarkNodeRegistry struct {
 }
 
 // NewDarkNodeRegistry returns a Dark node registrar
-func NewDarkNodeRegistry(context context.Context, clientDetails *client.Connection, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (DarkNodeRegistry, error) {
+func NewDarkNodeRegistry(context context.Context, clientDetails client.Connection, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (DarkNodeRegistry, error) {
 	contract, err := bindings.NewDarkNodeRegistry(clientDetails.DNRAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
 		return DarkNodeRegistry{}, err

@@ -1,157 +1,93 @@
-package darkocean
+package darknode
 
 import (
 	"bytes"
 	"fmt"
-	"sort"
 	"time"
 
-	"github.com/republicprotocol/go-do"
-
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
-	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/logger"
 )
 
-// Ocean of Pools.
+// An Ocean of Darknodes non-deterministically shuffled into Pools.
 type Ocean struct {
-	do.GuardedObject
-
-	logger            *logger.Logger
-	poolSize          int
-	pools             Pools
-	darkNodeRegistrar contracts.DarkNodeRegistry
+	pools            Pools
+	darknodeRegistry contracts.DarkNodeRegistry
 }
 
-// NewOcean uses a DarkNodeRegistry to read all registered nodes and sort them
-// into Pools.
-func NewOcean(logger *logger.Logger, poolSize int, darkNodeRegistrar contracts.DarkNodeRegistry) (*Ocean, error) {
-	ocean := &Ocean{
-		GuardedObject:     do.NewGuardedObject(),
-		logger:            logger,
-		poolSize:          poolSize,
-		pools:             Pools{},
-		darkNodeRegistrar: darkNodeRegistrar,
+// NewOcean returns a new Ocean that uses the DarknodeRegistry to watch for
+// updates to the Ocean, and calculates the configuration of the Darknodes and
+// Pools.
+func NewOcean(darknodeRegistry contracts.DarkNodeRegistry) Ocean {
+	ocean := Ocean{
+		pools:            Pools{},
+		darknodeRegistry: darknodeRegistry,
 	}
-	return ocean, ocean.update()
+	return ocean
 }
 
-// FindPool with the given node ID. Returns the Pool, or nil if no Pool can be
-// found.
-func (ocean *Ocean) FindPool(id identity.ID) *Pool {
-	ocean.EnterReadOnly(nil)
-	defer ocean.ExitReadOnly()
-	for _, pool := range ocean.pools {
-		if pool.Has(id) != nil {
-			return pool
-		}
-	}
-	return nil
-}
+// Watch for changes to the Ocean. It will stop watching for changes when the
+// done channel is closed. Returns a signaling channel that is written to
+// whenever a change is detected.
+func (ocean *Ocean) Watch(done <-chan struct{}) (<-chan struct{}, <-chan error) {
+	changes := make(chan struct{})
+	errs := make(chan error, 1)
 
-// Update updates the dark ocean from the registrar contract
-func (ocean *Ocean) Update() error {
-	ocean.Enter(nil)
-	defer ocean.Exit()
-	return ocean.update()
-}
+	go func() {
+		defer close(changes)
+		defer close(errs)
 
-func (ocean *Ocean) update() error {
-	epoch, err := ocean.darkNodeRegistrar.CurrentEpoch()
-	if err != nil {
-		return fmt.Errorf("cannot get current epoch :%v", err)
-	}
-
-	nodeIDs, err := ocean.darkNodeRegistrar.GetAllNodes()
-	if err != nil {
-		return fmt.Errorf("cannot get all nodes: %v", err)
-	}
-
-	nodePositionHashesToIDs := map[string][]byte{}
-	nodePositionHashes := make([][]byte, len(nodeIDs))
-	for i := range nodeIDs {
-		nodePositionHashes[i] = crypto.Keccak256(epoch.Blockhash[:], nodeIDs[i])
-		nodePositionHashesToIDs[string(nodePositionHashes[i])] = nodeIDs[i]
-	}
-
-	sort.Slice(nodePositionHashes, func(i, j int) bool {
-		return bytes.Compare(nodePositionHashes[i], nodePositionHashes[j]) < 0
-	})
-
-	numberOfPools := len(nodeIDs) / ocean.poolSize
-
-	pools := make(Pools, numberOfPools)
-	for i := range pools {
-		pools[i] = NewPool()
-	}
-	for i := range nodePositionHashes {
-		id := identity.ID(nodePositionHashesToIDs[string(nodePositionHashes[i])])
-		pools[i%numberOfPools].Append(NewNode(id))
-	}
-	ocean.pools = pools
-	return nil
-}
-
-// Watch for changes to the Ocean. This function is a blocking function that
-// sleeps and wakes once per period to check for a change in epoch. It accepts
-// a channel that is pinged whenever the Ocean changes.
-func (ocean *Ocean) Watch(changes chan struct{}) {
-	// Recover from writing to a closed channel
-	defer func() { recover() }()
-
-	minInterval, err := ocean.darkNodeRegistrar.MinimumEpochInterval()
-	if err != nil {
-		ocean.logger.Error(fmt.Sprintf("cannot retrieve minimum epoch interval: %s", err.Error()))
-		return
-	}
-
-	var currentBlockhash [32]byte
-	if err := ocean.Update(); err != nil {
-		ocean.logger.Error(fmt.Sprintf("cannot update dark ocean: %s", err.Error()))
-		return
-	}
-	changes <- struct{}{}
-	for {
-		epoch, err := ocean.darkNodeRegistrar.CurrentEpoch()
+		minimumEpochInterval, err := ocean.darknodeRegistry.MinimumEpochInterval()
 		if err != nil {
-			ocean.logger.Error(fmt.Sprintf("cannot update epoch: %s", err.Error()))
+			errs <- fmt.Errorf("cannot get minimum epoch interval: %v", err)
 			return
 		}
-		if !bytes.Equal(currentBlockhash[:], epoch.Blockhash[:]) {
-			currentBlockhash = epoch.Blockhash
-			if err := ocean.Update(); err != nil {
-				ocean.logger.Error(fmt.Sprintf("cannot update dark ocean: %s", err.Error()))
+
+		currentEpoch, err := ocean.darknodeRegistry.CurrentEpoch()
+		if err != nil {
+			errs <- fmt.Errorf("cannot get current epoch: %v", err)
+			return
+		}
+
+		for {
+			// Signal that the epoch has changed
+			select {
+			case <-done:
+				return
+			case changes <- struct{}{}:
+			}
+
+			// Sleep until the next epoch
+			nextEpochTime := currentEpoch.Timestamp.Add(&minimumEpochInterval)
+			nextEpochTimeUnix, err := nextEpochTime.ToUint()
+			if err != nil {
+				errs <- fmt.Errorf("cannot convert epoch timestamp to unix timestamp: %v", err)
 				return
 			}
-			changes <- struct{}{}
+			delay := time.Duration(int64(nextEpochTimeUnix)-time.Now().Unix()) * time.Second
+			time.Sleep(delay)
+
+			// Spin-lock until the new epoch is detected or until the done
+			// channel is closed
+			for {
+
+				select {
+				case <-done:
+					return
+				default:
+				}
+
+				nextEpoch, err := ocean.darknodeRegistry.CurrentEpoch()
+				if err != nil {
+					errs <- fmt.Errorf("cannot get next epoch: %v", err)
+					return
+				}
+				if !bytes.Equal(currentEpoch.Blockhash[:], nextEpoch.Blockhash[:]) {
+					currentEpoch = nextEpoch
+					break
+				}
+			}
 		}
-		// TODO: Retrieve sleep time from epoch.Timestamp and minimumEpochInterval
-		nextTime := epoch.Timestamp.Add(&minInterval)
-		unix, err := nextTime.ToUint()
-		if err != nil {
-			// Either minInterval is really big, or unix epoch time has overflowed uint64s.
-			ocean.logger.Error(fmt.Sprintf("epoch timestamp has overflowed: %s", err.Error()))
-			return
-		}
+	}()
 
-		toWait := time.Second * time.Duration(int64(unix)-time.Now().Unix())
-
-		// Wait at least one second
-		if toWait < 1*time.Second {
-			toWait = 1 * time.Second
-		}
-
-		// Try again within a minute
-		if toWait > time.Minute {
-			toWait = time.Minute
-		}
-
-		time.Sleep(toWait)
-	}
-}
-
-// GetPools returns dark pools in the dark ocean
-func (ocean *Ocean) GetPools() Pools {
-	return ocean.pools
+	return changes, errs
 }

@@ -1,5 +1,155 @@
 package rpc_test
 
+import (
+	"context"
+	"fmt"
+	"net"
+	"sync"
+
+	"google.golang.org/grpc/codes"
+
+	"github.com/republicprotocol/republic-go/identity"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	. "github.com/republicprotocol/republic-go/rpc"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
+)
+
+var _ = Describe("Secure multi-party computer service", func() {
+
+	Context("when streaming computations", func() {
+
+		FIt("should setup a rendezvous between clients and servers", func(done Done) {
+			defer close(done)
+
+			numberOfMessages := 1
+
+			serverKeyPair, err := identity.NewKeyPair()
+			Ω(err).ShouldNot(HaveOccurred())
+			serverMulti, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/3000/republic/%s", serverKeyPair.Address().String()))
+			Ω(err).ShouldNot(HaveOccurred())
+			server := grpc.NewServer()
+
+			service := NewComputerService()
+			service.Register(server)
+
+			var wg sync.WaitGroup
+
+			wg.Add(1)
+			go func() {
+				defer GinkgoRecover()
+				defer wg.Done()
+
+				listener, err := net.Listen("tcp", "0.0.0.0:3000")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = server.Serve(listener)
+				Ω(err).ShouldNot(HaveOccurred())
+			}()
+
+			clientKeyPair, err := identity.NewKeyPair()
+			Ω(err).ShouldNot(HaveOccurred())
+			clientMulti, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/3001/republic/%s", clientKeyPair.Address().String()))
+			Ω(err).ShouldNot(HaveOccurred())
+			client, err := NewClient(context.Background(), serverMulti, clientMulti)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			clientCtx, clientCtxCancel := context.WithCancel(context.Background())
+			clientChIn := make(chan *Computation)
+			clientChOut, clientErrCh := client.Compute(clientCtx, clientChIn)
+
+			wg.Add(1)
+			go func() {
+				defer GinkgoRecover()
+				defer wg.Done()
+
+				for err := range clientErrCh {
+					if s, _ := status.FromError(err); s != nil {
+						Ω(s.Code()).Should(Equal(codes.Canceled))
+					} else {
+						Ω(err).Should(Equal(context.Canceled))
+					}
+				}
+			}()
+
+			wg.Add(1)
+			go func() {
+				defer GinkgoRecover()
+				defer wg.Done()
+
+				serviceChIn := make(chan *Computation)
+				serviceChOut, serviceErrCh := service.WaitForCompute(clientMulti, serviceChIn)
+
+				var serviceWg sync.WaitGroup
+				serviceWg.Add(1)
+				go func() {
+					defer GinkgoRecover()
+					defer wg.Done()
+
+					for err := range serviceErrCh {
+						if s, _ := status.FromError(err); s != nil {
+							Ω(s.Code()).Should(Equal(codes.Canceled))
+						} else {
+							Ω(err).Should(Equal(context.Canceled))
+						}
+					}
+				}()
+
+				serviceWg.Add(1)
+				go func() {
+					defer GinkgoRecover()
+					defer serviceWg.Done()
+
+					for i := 0; i < numberOfMessages; i++ {
+						serviceChIn <- &Computation{MultiAddress: MarshalMultiAddress(&serverMulti)}
+					}
+					close(serviceChIn)
+				}()
+				serviceWg.Add(1)
+				go func() {
+					defer GinkgoRecover()
+					defer serviceWg.Done()
+
+					for i := 0; i < numberOfMessages; i++ {
+						<-serviceChOut
+					}
+				}()
+
+				serviceWg.Wait()
+			}()
+
+			clientChIn <- &Computation{MultiAddress: MarshalMultiAddress(&clientMulti)}
+
+			wg.Add(2)
+			go func() {
+				defer GinkgoRecover()
+				defer wg.Done()
+
+				for i := 0; i < numberOfMessages; i++ {
+					clientChIn <- &Computation{}
+				}
+
+				clientCtxCancel()
+				close(clientChIn)
+			}()
+			go func() {
+				defer GinkgoRecover()
+				defer wg.Done()
+
+				for i := 0; i < numberOfMessages; i++ {
+					<-clientChOut
+				}
+			}()
+
+			wg.Wait()
+		})
+
+	})
+
+})
+
 //import (
 //	"context"
 //	"fmt"
