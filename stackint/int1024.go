@@ -310,9 +310,6 @@ func (x *Int1024) ToBinary() string {
 	for i = int16(x.length) - 2; i >= 0; i-- {
 		str = str + fmt.Sprintf("%064b", x.words[i])
 	}
-	if str == "" {
-		return "0"
-	}
 
 	return str
 }

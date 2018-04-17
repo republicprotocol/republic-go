@@ -118,11 +118,20 @@ func (service *DarkService) OpenOrder(ctx context.Context, openOrderRequest *rpc
 }
 
 func (service *DarkService) openOrder(openOrderRequest *rpc.OpenOrderRequest) (*rpc.Nothing, error) {
-	from, err := rpc.DeserializeMultiAddress(openOrderRequest.From)
+	from, sig, err := rpc.DeserializeMultiAddress(openOrderRequest.From)
+	if err != nil {
+		return &rpc.Nothing{}, err
+	}
+	err = from.VerifySignature(sig)
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
 	orderFragment, err := rpc.DeserializeOrderFragment(openOrderRequest.OrderFragment)
+	if err != nil {
+		return &rpc.Nothing{}, err
+	}
+	// Verify fragment signature
+	err = orderFragment.VerifySignature(from.ID())
 	if err != nil {
 		return &rpc.Nothing{}, err
 	}
@@ -288,7 +297,7 @@ func (service *DarkService) BroadcastDeltaFragment(ctx context.Context, broadcas
 }
 
 func (service *DarkService) broadcastDeltaFragment(broadcastDeltaFragmentRequest *rpc.BroadcastDeltaFragmentRequest) (*rpc.DeltaFragment, error) {
-	from, err := rpc.DeserializeMultiAddress(broadcastDeltaFragmentRequest.From)
+	from, _, err := rpc.DeserializeMultiAddress(broadcastDeltaFragmentRequest.From)
 	if err != nil {
 		return &rpc.DeltaFragment{}, err
 	}

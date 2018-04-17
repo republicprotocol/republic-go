@@ -325,6 +325,10 @@ func (service *SwarmService) updatePeer(peer *MultiAddress) error {
 	if err != nil {
 		return err
 	}
+	err = peerMultiAddress.VerifySignature(sig)
+	if err != nil {
+		return nil
+	}
 	if service.Address() == peerMultiAddress.Address() {
 		return nil
 	}

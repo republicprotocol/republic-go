@@ -282,6 +282,14 @@ func (x *Int1024) NOT() Int1024 {
 	for i = 0; i < x.length; i++ {
 		z.words[i] = ^x.words[i]
 	}
+	if x.length < INT1024WORDS {
+		for i = x.length; i < INT1024WORDS; i++ {
+			z.words[i] = WORDMAX
+		}
+		z.length = INT1024WORDS
+	} else {
+		z.setLength()
+	}
 	return z
 }
 

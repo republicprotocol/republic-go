@@ -58,13 +58,13 @@ message SignOrderFragmentRequest {
 
 message OpenOrderRequest {
   MultiAddress from = 1;
-  OrderSignature orderSignature = 2;
-  OrderFragment orderFragment = 3;
+  OrderFragment orderFragment = 2;
 }
 
 message CancelOrderRequest {
   MultiAddress from = 1;
-  OrderSignature orderSignature = 2;
+  bytes cancellationSignature = 2;
+  bytes orderId = 3;
 }
 
 message RandomFragmentSharesRequest {
@@ -131,11 +131,6 @@ message OrderFragment {
 message OrderFragmentSignature {
   bytes signature = 1;
   bytes orderFragmentId = 2;
-}
-
-message OrderSignature {
-  bytes signature = 1;
-  bytes orderId = 2;
 }
 
 message ResidueFragment {    
