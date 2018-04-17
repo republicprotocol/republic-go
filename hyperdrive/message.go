@@ -7,7 +7,7 @@ type Message interface {
 	Fault() Fault
 	Verify() error
 	SetSignatures(Signatures)
-	Signatures() Signatures
+	GetSignatures() Signatures
 }
 
 // A MessageStore stores and loads Messages.
@@ -18,7 +18,9 @@ type MessageStore interface {
 
 // MessageMapStore implements the MessageStore interface using an in-memory
 // map.
-type MessageMapStore = map[Hash]Message
+type MessageMapStore struct {
+	memory map[Hash]Message
+}
 
 // NewMessageMapStore returns a new MessageMapStore.
 func NewMessageMapStore() MessageMapStore {
@@ -27,7 +29,7 @@ func NewMessageMapStore() MessageMapStore {
 
 // Load implements the MessageStore interface.
 func (store *MessageMapStore) Load(hash Hash) Message {
-	if message, ok := store[hash]; ok {
+	if message, ok := store.memory[hash]; ok {
 		return message
 	}
 	return nil
@@ -35,7 +37,7 @@ func (store *MessageMapStore) Load(hash Hash) Message {
 
 // Store implements the MessageStore interface.
 func (store *MessageMapStore) Store(message Message) {
-	store[message.Hash()] = message
+	store.memory[message.Hash()] = message
 }
 
 // VerifyAndSignMessage using a MessageStore to keep the state of previously
@@ -49,7 +51,7 @@ func VerifyAndSignMessage(message Message, store MessageStore, signer Signer, th
 	// If the message is invalid then return a signed Fault
 	if err := message.Verify(); err != nil {
 		fault := message.Fault()
-		signature, err := signer.Sign(fault)
+		signature, err := signer.Sign(fault.Hash())
 		if err != nil {
 			return nil, err
 		}
@@ -63,25 +65,25 @@ func VerifyAndSignMessage(message Message, store MessageStore, signer Signer, th
 		if err != nil {
 			return nil, err
 		}
-		message.SetSignatures(message.Signatures().Merge(Signatures{signature}))
+		message.SetSignatures(message.GetSignatures().Merge(Signatures{signature}))
 		store.Store(message)
 		// If the required threshold is reached, then return the message
-		if len(message.Signatures()) >= threshold {
+		if len(message.GetSignatures()) >= threshold {
 			return message, nil
 		}
 		return nil, nil
 	}
 
-	stored := store.Load(message.Hash())
-	if len(stored.Signatures()) >= threshold {
+	loaded := store.Load(message.Hash())
+	if len(loaded.GetSignatures()) >= threshold {
 		// The stored message has already reached the threshold
 		return nil, nil
 	}
 	// Merge the signatures and if the required threshold is now reached, then
 	// return the message
-	message.SetSignatures(message.Signatures().Merge(stored.Signatures()))
+	message.SetSignatures(message.GetSignatures().Merge(loaded.GetSignatures()))
 	store.Store(message)
-	if len(message.Signatures()) >= threshold {
+	if len(message.GetSignatures()) >= threshold {
 		return message, nil
 	}
 	return nil, nil

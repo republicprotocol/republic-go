@@ -1,22 +1,57 @@
 package hyper
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
+
+	"golang.org/x/crypto/sha3"
 )
+
+// ProposalHeader distinguishes Proposal from other message types that have the
+// same content.
+const ProposalHeader = byte(2)
 
 type Proposal struct {
 	Block
 
-	// Signatures of the Replicas that signed this Fault
-	Signatures []Signature
-
+	// Signature of the Replica that produced this Proposal
+	Signature
 }
 
-func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, validator Validator) (<-chan Prepare, <-chan Fault, <-chan error) {
-	prepareCh := make(chan Prepare, validator.Threshold())
-	faultCh := make(chan Fault, validator.Threshold())
-	errCh := make(chan error, validator.Threshold())
-	counter := uint64(0)
+func (proposal *Proposal) Hash() Hash {
+	var buf bytes.Buffer
+	binary.Write(&buf, binary.BigEndian, ProposalHeader)
+	binary.Write(&buf, binary.BigEndian, proposal.Block.Hash())
+	return sha3.Sum256(buf.Bytes())
+}
+
+func (proposal *Proposal) Fault() Fault {
+	return Fault{
+		Rank:   proposal.Block.Rank,
+		Height: proposal.Block.Height,
+	}
+}
+
+// Verify the Proposal message. Returns an error if the message is invalid,
+// otherwise nil.
+func (proposal *Proposal) Verify() error {
+	return nil
+}
+
+func (proposal *Proposal) SetSignatures(signatures Signatures) {
+	return
+}
+
+func (proposal *Proposal) GetSignatures() Signatures {
+	return Signatures{proposal.Signature}
+}
+
+func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer Signer, capacity int) (<-chan Prepare, <-chan Fault, <-chan error) {
+
+	prepareCh := make(chan Prepare, capacity)
+	faultCh := make(chan Fault, capacity)
+	errCh := make(chan error, capacity)
 
 	go func() {
 		defer close(prepareCh)
@@ -32,28 +67,43 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, validato
 				if !ok {
 					return
 				}
-				counter++
-				if validator.ValidateProposal(proposal) {
-					prepare := Prepare{
-						validator.Sign(),
-						proposal.Block,
-						proposal.Rank,
-						proposal.Height,
-					}
-					// log.Println("Validated proposal on", validator.Sign())
-					prepareCh <- prepare
-				} else {
+
+				if err := proposal.Verify(); err != nil {
 					fault := Fault{
-						proposal.Rank,
-						proposal.Height,
-						validator.Sign(),
+						Rank:   proposal.Block.Rank,
+						Height: proposal.Block.Height,
 					}
+					signature, err := signer.Sign(fault.Hash())
+					if err != nil {
+						errCh <- err
+						continue
+					}
+					fault.Signatures = Signatures{signature}
+
 					select {
 					case <-ctx.Done():
 						errCh <- ctx.Err()
 						return
 					case faultCh <- fault:
 					}
+					continue
+				}
+
+				prepare := Prepare{
+					Proposal: proposal,
+				}
+				signature, err := signer.Sign(prepare.Hash())
+				if err != nil {
+					errCh <- err
+					continue
+				}
+				prepare.Signatures = Signatures{signature}
+
+				select {
+				case <-ctx.Done():
+					errCh <- ctx.Err()
+					return
+				case prepareCh <- prepare:
 				}
 			}
 		}

@@ -17,13 +17,7 @@ type Prepare struct {
 	Proposal
 
 	// Signatures of the Replicas that signed this Prepare
-	Signatures []Signature
-}
-
-// Verify the Prepare message. Returns an error if the message is invalid,
-// otherwise nil.
-func (prepare *Prepare) Verify() error {
-	return nil
+	Signatures
 }
 
 // Hash implements the Hasher interface.
@@ -34,59 +28,79 @@ func (prepare *Prepare) Hash() Hash {
 	return sha3.Sum256(buf.Bytes())
 }
 
-func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, validator Validator) (<-chan Commit, <-chan Fault, <-chan error) {
-	threshold := validator.Threshold()
+func (prepare *Prepare) Fault() Fault {
+	return Fault{
+		Rank:   prepare.Proposal.Block.Rank,
+		Height: prepare.Proposal.Block.Height,
+	}
+}
+
+// Verify the Prepare message. Returns an error if the message is invalid,
+// otherwise nil.
+func (prepare *Prepare) Verify() error {
+	return nil
+}
+
+func (prepare *Prepare) SetSignatures(signatures Signatures) {
+	prepare.Signatures = signatures
+}
+
+func (prepare *Prepare) GetSignatures() Signatures {
+	return prepare.Signatures
+}
+
+func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer Signer, capacity, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
 	commitCh := make(chan Commit, threshold)
 	faultCh := make(chan Fault, threshold)
 	errCh := make(chan error, threshold)
-	prepares := map[[32]byte]int{}
-	commited := map[[32]byte]bool{}
-	counter := uint64(0)
 
 	go func() {
 		defer close(commitCh)
 		defer close(faultCh)
 		defer close(errCh)
 
+		store := NewMessageMapStore()
+
 		for {
 			select {
+
 			case <-ctx.Done():
 				errCh <- ctx.Err()
 				return
 			case prepare, ok := <-prepareChIn:
-				// log.Println("Successfully reading prepares from channels")
 				if !ok {
 					return
 				}
-				counter++
-				h := BlockHash(prepare.Block)
-				if commited[h] {
+
+				message, err := VerifyAndSignMessage(&prepare, &store, signer, threshold)
+				if err != nil {
+					errCh <- err
 					continue
 				}
+				// After verifying and signing the message check for Faults
+				switch message := message.(type) {
 
-				if !validator.ValidatePrepare(prepare) {
-					faultCh <- Fault{
-						Rank:      prepare.Rank,
-						Height:    prepare.Height,
-						Signature: validator.Sign(),
+				case Prepare:
+					commit := Commit{
+						Prepare:    message,
+						Signatures: message.Signatures,
 					}
+					select {
+					case <-ctx.Done():
+						errCh <- ctx.Err()
+						return
+					case commitCh <- commit:
+					}
+				case Fault:
+					select {
+					case <-ctx.Done():
+						errCh <- ctx.Err()
+						return
+					case faultCh <- message:
+					}
+				default:
+					// Gracefully ignore invalid messages
 					continue
-				}
-
-				// log.Println("Validated prepare on", validator.Sign())
-				// log.Println("Counting prepares on", validator.Sign(), prepares[h], "with threshold", threshold)
-				if prepares[h] >= threshold-1 {
-					// log.Println("Commited on ", validator.Sign())
-					commitCh <- Commit{
-						Rank:               prepare.Rank,
-						Height:             prepare.Height,
-						Block:              prepare.Block,
-						ThresholdSignature: ThresholdSignature("Threshold_BLS"),
-						Signature:          validator.Sign(),
-					}
-					commited[h] = true
-				} else {
-					prepares[h]++
 				}
 			}
 		}

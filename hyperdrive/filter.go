@@ -110,10 +110,10 @@ func FilterHeight(chSetIn ChannelSet, height <-chan int, capacity int) ChannelSe
 				if !ok {
 					return
 				}
-				if proposal.Height < h {
+				if int(proposal.Height) < h {
 					continue
 				}
-				if proposal.Height == h {
+				if int(proposal.Height) == h {
 					chSetOut.Proposals <- proposal
 					continue
 				}
@@ -126,10 +126,10 @@ func FilterHeight(chSetIn ChannelSet, height <-chan int, capacity int) ChannelSe
 				if !ok {
 					return
 				}
-				if prepare.Height < h {
+				if int(prepare.Height) < h {
 					continue
 				}
-				if prepare.Height == h {
+				if int(prepare.Height) == h {
 					chSetOut.Prepares <- prepare
 					continue
 				}
@@ -142,10 +142,10 @@ func FilterHeight(chSetIn ChannelSet, height <-chan int, capacity int) ChannelSe
 				if !ok {
 					return
 				}
-				if commit.Height < h {
+				if int(commit.Height) < h {
 					continue
 				}
-				if commit.Height == h {
+				if int(commit.Height) == h {
 					chSetOut.Commits <- commit
 					continue
 				}
@@ -158,10 +158,10 @@ func FilterHeight(chSetIn ChannelSet, height <-chan int, capacity int) ChannelSe
 				if !ok {
 					return
 				}
-				if block.Height < h {
+				if int(block.Height) < h {
 					continue
 				}
-				if block.Height == h {
+				if int(block.Height) == h {
 					chSetOut.Blocks <- block
 					continue
 				}
@@ -174,10 +174,10 @@ func FilterHeight(chSetIn ChannelSet, height <-chan int, capacity int) ChannelSe
 				if !ok {
 					return
 				}
-				if fault.Height < h {
+				if int(fault.Height) < h {
 					continue
 				}
-				if fault.Height == h {
+				if int(fault.Height) == h {
 					chSetOut.Faults <- fault
 					continue
 				}

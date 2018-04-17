@@ -5,17 +5,17 @@ type Hash [32]byte
 
 // Signatures that are being collected, valid once a threshold of unique
 // Signatures has been reached.
-type Signatures = []Signature
+type Signatures []Signature
 
 // Merge Signatures together and avoid duplication. Returns the merged
 // Signatures without modifying the inputs.
 func (signatures Signatures) Merge(others Signatures) Signatures {
 	merger := map[Signature]struct{}{}
 	for i := range signatures {
-		merger[signatures[i]] = struct{}
+		merger[signatures[i]] = struct{}{}
 	}
 	for i := range others {
-		merger[others[i]] = struct{}
+		merger[others[i]] = struct{}{}
 	}
 
 	i := 0
@@ -51,6 +51,6 @@ func NewWeakSigner(id [32]byte) WeakSigner {
 // Sign implements the Signer interface.
 func (signer *WeakSigner) Sign(hash Hash) (Signature, error) {
 	signature := [65]byte{}
-	copy(signature, signer.ID)
+	copy(signature[:], signer.ID[:])
 	return Signature(signature), nil
 }

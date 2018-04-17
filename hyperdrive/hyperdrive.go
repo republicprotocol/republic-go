@@ -16,15 +16,13 @@ type Replica struct {
 	ctx            context.Context
 	ingress        ChannelSet
 	internalEgress ChannelSet
-	validator      Validator
 }
 
-func NewReplica(ctx context.Context, validator Validator, ingress ChannelSet) Replica {
+func NewReplica(ctx context.Context, ingress ChannelSet, capacity int) Replica {
 	return Replica{
 		ctx:            ctx,
 		ingress:        ingress,
-		validator:      validator,
-		internalEgress: NewChannelSet(validator.Threshold()),
+		internalEgress: NewChannelSet(capacity),
 	}
 }
 

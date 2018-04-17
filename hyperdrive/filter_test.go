@@ -90,7 +90,7 @@ var _ = Describe("Filters", func() {
 			chSetOut := FilterDuplicates(chSet, 0)
 
 			var writeWg sync.WaitGroup
-			for h := 0;h < 5 ; h ++ {
+			for h := 0; h < 5; h++ {
 				writeToChannelSet(chSet, numberOfMessages, &writeWg)
 			}
 
@@ -124,7 +124,7 @@ var _ = Describe("Filters", func() {
 			}()
 
 			var writeWg sync.WaitGroup
-			for height := 5; height >0; height-- {
+			for height := 5; height > 0; height-- {
 				writeToChannelSetWithHeight(chSet, numberOfMessages, height, &writeWg)
 			}
 

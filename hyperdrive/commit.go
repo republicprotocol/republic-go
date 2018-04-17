@@ -21,12 +21,6 @@ type Commit struct {
 	Signatures
 }
 
-// Verify the Commit message. Returns an error if the message is invalid,
-// otherwise nil.
-func (commit *Commit) Verify() error {
-	return nil
-}
-
 // Hash implements the Hasher interface.
 func (commit *Commit) Hash() Hash {
 	var buf bytes.Buffer
@@ -35,18 +29,38 @@ func (commit *Commit) Hash() Hash {
 	return sha3.Sum256(buf.Bytes())
 }
 
+func (commit *Commit) Fault() Fault {
+	return Fault{
+		Rank:   commit.Prepare.Block.Rank,
+		Height: commit.Prepare.Block.Height,
+	}
+}
+
+// Verify the Commit message. Returns an error if the message is invalid,
+// otherwise nil.
+func (commit *Commit) Verify() error {
+	return nil
+}
+
+func (commit *Commit) SetSignatures(signatures Signatures) {
+	commit.Signatures = signatures
+}
+
+func (commit *Commit) GetSignatures() Signatures {
+	return commit.Signatures
+}
+
 // ProcessCommits by collecting Commits. Once a threshold of Commits has been
 // reached for a Block, the Block is certified and produced to the Block
 // channel. The incrementing of height must be done by reading Blocks produced
 // by this process, and comparing it to the current height.
-func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer, capacity int, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
+func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer, capacity, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
 	commitCh := make(chan Commit, capacity)
 	faultCh := make(chan Fault, capacity)
 	errCh := make(chan error, capacity)
 
 	go func() {
 		defer close(commitCh)
-		defer close(blockCh)
 		defer close(faultCh)
 		defer close(errCh)
 
@@ -64,13 +78,14 @@ func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer
 					return
 				}
 
-				message, err := VerifyAndSignMessage(commit, store, signer, threshold)
+				message, err := VerifyAndSignMessage(&commit, &store, signer, threshold)
 				if err != nil {
 					errCh <- err
 					continue
 				}
 				// After verifying and signing the message check for Faults
 				switch message := message.(type) {
+
 				case Commit:
 					select {
 					case <-ctx.Done():
