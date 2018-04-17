@@ -1,6 +1,7 @@
 package orderbook
 
 import (
+	"reflect"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -59,7 +60,7 @@ func (orderbook Orderbook) Subscribe(ch interface{}) error {
 
 	blocks := orderbook.cache.Blocks()
 	for _, block := range blocks {
-		dispatch.SendToInterface(ch, block)
+		dispatch.SendToInterface(ch, reflect.ValueOf(block))
 	}
 
 	wg.Wait()
@@ -74,7 +75,7 @@ func (orderbook Orderbook) Unsubscribe(ch interface{}) {
 // Open is called when we first receive the order fragment.
 func (orderbook Orderbook) Open(entry Entry) error {
 	orderbook.cache.Open(entry)
-	orderbook.database.Open(entry)
+	// orderbook.database.Open(entry)
 	orderbook.splitCh <- entry
 	return nil
 }
@@ -82,7 +83,7 @@ func (orderbook Orderbook) Open(entry Entry) error {
 // Match is called when we discover a match for the order.
 func (orderbook Orderbook) Match(entry Entry) error {
 	orderbook.cache.Match(entry)
-	orderbook.database.Match(entry)
+	// orderbook.database.Match(entry)
 	orderbook.splitCh <- entry
 	return nil
 }
@@ -90,7 +91,7 @@ func (orderbook Orderbook) Match(entry Entry) error {
 // Confirm is called when the order has been confirmed by the hyperdrive.
 func (orderbook Orderbook) Confirm(entry Entry) error {
 	orderbook.cache.Confirm(entry)
-	orderbook.database.Confirm(entry)
+	// orderbook.database.Confirm(entry)
 	orderbook.splitCh <- entry
 	return nil
 }
@@ -98,7 +99,7 @@ func (orderbook Orderbook) Confirm(entry Entry) error {
 // Release is called when the order has been denied by the hyperdrive.
 func (orderbook Orderbook) Release(entry Entry) error {
 	orderbook.cache.Release(entry)
-	orderbook.database.Release(entry)
+	// orderbook.database.Release(entry)
 	orderbook.splitCh <- entry
 	return nil
 }
@@ -106,7 +107,7 @@ func (orderbook Orderbook) Release(entry Entry) error {
 // Settle is called when the order is settled.
 func (orderbook Orderbook) Settle(entry Entry) error {
 	orderbook.cache.Settle(entry)
-	orderbook.database.Settle(entry)
+	// orderbook.database.Settle(entry)
 	orderbook.splitCh <- entry
 	return nil
 }
@@ -117,10 +118,10 @@ func (orderbook Orderbook) Cancel(id order.ID) error {
 	if err != nil {
 		return err
 	}
-	err = orderbook.database.Cancel(id)
-	if err != nil {
-		return err
-	}
+	// err = orderbook.database.Cancel(id)
+	// if err != nil {
+	// 	return err
+	// }
 
 	entry := NewEntry(order.Order{ID: id}, order.Canceled, [32]byte{})
 	orderbook.splitCh <- entry
