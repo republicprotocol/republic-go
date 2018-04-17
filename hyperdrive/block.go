@@ -37,7 +37,7 @@ type Block struct {
 }
 
 // Hash returns the SHA3-256 hash of the block.
-func (block Block) Hash() Hash {
+func (block *Block) Hash() Hash {
 	var buf bytes.Buffer
 	binary.Write(&buf, binary.BigEndian, BlockHeader)
 	binary.Write(&buf, binary.BigEndian, block.Epoch)
@@ -46,14 +46,13 @@ func (block Block) Hash() Hash {
 	for i := range block.Txs {
 		binary.Write(&buf, binary.BigEndian, block.Txs[i])
 	}
-
 	return sha3.Sum256(buf.Bytes())
 }
 
 // Verify the Block message. Returns an error if the message is invalid,
 // otherwise nil.
-func (block Block) Verify() error {
-	return nil
+func (block *Block) Verify(verifier Verifier) error {
+	return verifier.VerifyProposer(block.Signature)
 }
 
 // Txs must not store any Nonce more than once within any Tx.

@@ -8,7 +8,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-func ProcessFault(ctx context.Context, faultChIn chan Fault, signer Signer, capacity int) (chan Fault, chan error) {
+func ProcessFault(ctx context.Context, faultChIn chan Fault, signer Signer, verifier Verifier, capacity int) (chan Fault, chan error) {
 	faultCh := make(chan Fault, capacity)
 	errCh := make(chan error, capacity)
 
@@ -24,7 +24,7 @@ func ProcessFault(ctx context.Context, faultChIn chan Fault, signer Signer, capa
 				errCh <- ctx.Err()
 				return
 			case fault := <-faultChIn:
-				message, err := VerifyAndSignMessage(&fault, &store, signer, 0)
+				message, err := VerifyAndSignMessage(&fault, &store, signer, verifier, 0)
 				if err != nil {
 					errCh <- err
 					continue
@@ -73,9 +73,7 @@ func (fault *Fault) Fault() Fault {
 	return *fault
 }
 
-// Verify the Fault message. Returns an error if the message is invalid,
-// otherwise nil.
-func (fault *Fault) Verify() error {
+func (fault *Fault) Verify(verifier Verifier) error {
 	return nil
 }
 

@@ -8,46 +8,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// ProposalHeader distinguishes Proposal from other message types that have the
-// same content.
-const ProposalHeader = byte(2)
-
-type Proposal struct {
-	Block
-
-	// Signature of the Replica that produced this Proposal
-	Signature
-}
-
-func (proposal *Proposal) Hash() Hash {
-	var buf bytes.Buffer
-	binary.Write(&buf, binary.BigEndian, ProposalHeader)
-	binary.Write(&buf, binary.BigEndian, proposal.Block.Hash())
-	return sha3.Sum256(buf.Bytes())
-}
-
-func (proposal *Proposal) Fault() Fault {
-	return Fault{
-		Rank:   proposal.Block.Rank,
-		Height: proposal.Block.Height,
-	}
-}
-
-// Verify the Proposal message. Returns an error if the message is invalid,
-// otherwise nil.
-func (proposal *Proposal) Verify() error {
-	return nil
-}
-
-func (proposal *Proposal) SetSignatures(signatures Signatures) {
-	return
-}
-
-func (proposal *Proposal) GetSignatures() Signatures {
-	return Signatures{proposal.Signature}
-}
-
-func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer Signer, capacity int) (<-chan Prepare, <-chan Fault, <-chan error) {
+func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer Signer, verifier Verifier, capacity int) (<-chan Prepare, <-chan Fault, <-chan error) {
 
 	prepareCh := make(chan Prepare, capacity)
 	faultCh := make(chan Fault, capacity)
@@ -68,7 +29,7 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer S
 					return
 				}
 
-				if err := proposal.Verify(); err != nil {
+				if err := proposal.Verify(verifier); err != nil {
 					fault := Fault{
 						Rank:   proposal.Block.Rank,
 						Height: proposal.Block.Height,
@@ -110,4 +71,46 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer S
 	}()
 
 	return prepareCh, faultCh, errCh
+}
+
+// ProposalHeader distinguishes Proposal from other message types that have the
+// same content.
+const ProposalHeader = byte(2)
+
+type Proposal struct {
+	Block
+
+	// Signature of the Replica that produced this Proposal
+	Signature
+}
+
+// Hash implements the Hasher interface.
+func (proposal *Proposal) Hash() Hash {
+	var buf bytes.Buffer
+	binary.Write(&buf, binary.BigEndian, ProposalHeader)
+	binary.Write(&buf, binary.BigEndian, proposal.Block.Hash())
+	return sha3.Sum256(buf.Bytes())
+}
+
+func (proposal *Proposal) Fault() Fault {
+	return Fault{
+		Rank:   proposal.Block.Rank,
+		Height: proposal.Block.Height,
+	}
+}
+
+func (proposal *Proposal) Verify(verifier Verifier) error {
+	// TODO: Complete verification
+	if err := proposal.Block.Verify(verifier); err != nil {
+		return err
+	}
+	return verifier.VerifyProposer(proposal.Signature)
+}
+
+func (proposal *Proposal) SetSignatures(signatures Signatures) {
+	return
+}
+
+func (proposal *Proposal) GetSignatures() Signatures {
+	return Signatures{proposal.Signature}
 }

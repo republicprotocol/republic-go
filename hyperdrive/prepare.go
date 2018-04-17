@@ -8,48 +8,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// PrepareHeader distinguishes Prepare from other message types that have the
-// same content.
-const PrepareHeader = byte(2)
-
-// A Prepare messages signals that a Replica has received a valid Proposal.
-type Prepare struct {
-	Proposal
-
-	// Signatures of the Replicas that signed this Prepare
-	Signatures
-}
-
-// Hash implements the Hasher interface.
-func (prepare *Prepare) Hash() Hash {
-	var buf bytes.Buffer
-	binary.Write(&buf, binary.BigEndian, PrepareHeader)
-	binary.Write(&buf, binary.BigEndian, prepare.Proposal.Hash())
-	return sha3.Sum256(buf.Bytes())
-}
-
-func (prepare *Prepare) Fault() Fault {
-	return Fault{
-		Rank:   prepare.Proposal.Block.Rank,
-		Height: prepare.Proposal.Block.Height,
-	}
-}
-
-// Verify the Prepare message. Returns an error if the message is invalid,
-// otherwise nil.
-func (prepare *Prepare) Verify() error {
-	return nil
-}
-
-func (prepare *Prepare) SetSignatures(signatures Signatures) {
-	prepare.Signatures = signatures
-}
-
-func (prepare *Prepare) GetSignatures() Signatures {
-	return prepare.Signatures
-}
-
-func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer Signer, capacity, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
+func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer Signer, verifier Verifier, capacity, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
 	commitCh := make(chan Commit, threshold)
 	faultCh := make(chan Fault, threshold)
 	errCh := make(chan error, threshold)
@@ -72,7 +31,7 @@ func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer 
 					return
 				}
 
-				message, err := VerifyAndSignMessage(&prepare, &store, signer, threshold)
+				message, err := VerifyAndSignMessage(&prepare, &store, signer, verifier, threshold)
 				if err != nil {
 					errCh <- err
 					continue
@@ -107,4 +66,47 @@ func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer 
 	}()
 
 	return commitCh, faultCh, errCh
+}
+
+// PrepareHeader distinguishes Prepare from other message types that have the
+// same content.
+const PrepareHeader = byte(2)
+
+// A Prepare messages signals that a Replica has received a valid Proposal.
+type Prepare struct {
+	Proposal
+
+	// Signatures of the Replicas that signed this Prepare
+	Signatures
+}
+
+// Hash implements the Hasher interface.
+func (prepare *Prepare) Hash() Hash {
+	var buf bytes.Buffer
+	binary.Write(&buf, binary.BigEndian, PrepareHeader)
+	binary.Write(&buf, binary.BigEndian, prepare.Proposal.Hash())
+	return sha3.Sum256(buf.Bytes())
+}
+
+func (prepare *Prepare) Fault() Fault {
+	return Fault{
+		Rank:   prepare.Proposal.Block.Rank,
+		Height: prepare.Proposal.Block.Height,
+	}
+}
+
+func (prepare *Prepare) Verify(verifier Verifier) error {
+	// TODO: Complete verification
+	if err := prepare.Proposal.Verify(verifier); err != nil {
+		return err
+	}
+	return verifier.VerifySignatures(prepare.Signatures)
+}
+
+func (prepare *Prepare) SetSignatures(signatures Signatures) {
+	prepare.Signatures = signatures
+}
+
+func (prepare *Prepare) GetSignatures() Signatures {
+	return prepare.Signatures
 }
