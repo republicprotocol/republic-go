@@ -36,8 +36,7 @@ func Split(chIn interface{}, chsOut ...interface{}) {
 	}
 }
 
-func SendToInterface(chOut interface{}, msg interface{}) {
-	msgValue := reflect.ValueOf(msg)
+func SendToInterface(chOut interface{}, msgValue reflect.Value) {
 	switch reflect.TypeOf(chOut).Kind() {
 	case reflect.Array, reflect.Slice:
 		for i := 0; i < reflect.ValueOf(chOut).Len(); i++ {
