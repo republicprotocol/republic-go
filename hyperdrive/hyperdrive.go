@@ -11,7 +11,6 @@ import (
 )
 
 type OrderID string
-type Rank int
 
 type Replica struct {
 	ctx            context.Context

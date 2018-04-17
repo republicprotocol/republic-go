@@ -1,14 +1,37 @@
 package hyper
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
+
+	"golang.org/x/crypto/sha3"
 )
 
+// PrepareHeader distinguishes Prepare from other message types that have the
+// same content.
+const PrepareHeader = byte(2)
+
+// A Prepare messages signals that a Replica has received a valid Proposal.
 type Prepare struct {
 	Proposal
 
 	// Signatures of the Replicas that signed this Prepare
 	Signatures []Signature
+}
+
+// Verify the Prepare message. Returns an error if the message is invalid,
+// otherwise nil.
+func (prepare *Prepare) Verify() error {
+	return nil
+}
+
+// Hash implements the Hasher interface.
+func (prepare *Prepare) Hash() Hash {
+	var buf bytes.Buffer
+	binary.Write(&buf, binary.BigEndian, PrepareHeader)
+	binary.Write(&buf, binary.BigEndian, prepare.Proposal.Hash())
+	return sha3.Sum256(buf.Bytes())
 }
 
 func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, validator Validator) (<-chan Commit, <-chan Fault, <-chan error) {

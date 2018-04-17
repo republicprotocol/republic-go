@@ -12,6 +12,20 @@ type Fault struct {
 	Signatures []Signature
 }
 
+func FaultFromCommit(commit *Commit, signer Signer) (Fault, error) {
+	fault := Fault{
+		Rank:       commit.Prepare.Block.Rank,
+		Height:     commit.Prepare.Block.Height,
+		Signatures: []Signature{},
+	}
+	signature, err := signer.Sign(commits[h])
+	if err != nil {
+		return fault, err
+	}
+	fault.Signatures = append(fault.Signatures, signature)
+	return fault, nil
+}
+
 func ProcessFault(ctx context.Context, faultChIn chan Fault, validator Validator) (chan Fault, chan error) {
 	faultCh := make(chan Fault, validator.Threshold())
 	errCh := make(chan error, validator.Threshold())
