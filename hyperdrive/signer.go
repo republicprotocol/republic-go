@@ -1,13 +1,14 @@
 package hyper
 
+// A Hash is a Keccak256 Hash of some data.
 type Hash [32]byte
 
-type Hasher interface {
-	Hash() Hash
-}
-
+// Signatures that are being collected, valid once a threshold of unique
+// Signatures has been reached.
 type Signatures = []Signature
 
+// Merge Signatures together and avoid duplication. Returns the merged
+// Signatures without modifying the inputs.
 func (signatures Signatures) Merge(others Signatures) Signatures {
 	merger := map[Signature]struct{}{}
 	for i := range signatures {
@@ -26,9 +27,11 @@ func (signatures Signatures) Merge(others Signatures) Signatures {
 	return mergedSignatures
 }
 
-type Signature [32]byte
+// A Signature produced by a Replica. The current implementation uses SECP256K1
+// ECDSA private keys for producing signatures.
+type Signature [65]byte
 
+// A Signer can produce Signatures of some Hash of data.
 type Signer interface {
-	Sign(Hasher) (Signature, error)
-	Threshold() int
+	Sign(Hash) (Signature, error)
 }
