@@ -37,7 +37,7 @@ func generateSwarmServices(numberOfSwarms int) ([]*network.SwarmService, []*grpc
 	bootstrapNodes := make([]identity.MultiAddress, NumberOfBootstrapNodes)
 
 	for i := 0; i < len(swarms); i++ {
-		address, _, err := identity.NewAddress()
+		address, keypair, err := identity.NewAddress()
 		if err != nil {
 			return nil, nil, err
 		}
@@ -77,8 +77,13 @@ func generateSwarmServices(numberOfSwarms int) ([]*network.SwarmService, []*grpc
 		}
 		l.Start()
 
+		multiAddressSignature, err := keypair.Sign(options.MultiAddress)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		swarms[i] = network.NewSwarmService(MockDelegate{}, options,
-			&logger.Logger{}, rpc.NewClientPool(options.MultiAddress),
+			&logger.Logger{}, rpc.NewClientPool(options.MultiAddress, multiAddressSignature),
 			dht.NewDHT(options.MultiAddress.Address(), options.MaxBucketLength))
 
 	}
@@ -123,29 +128,30 @@ func connectSwarms(nodes []*network.SwarmService, connectivity int) error {
 	return nil
 }
 
-func generateDarkServices(numberOfDarkService int) ([]*network.DarkService, []*grpc.Server, error) {
+func generateDarkServices(numberOfDarkService int) ([]*network.DarkService, []*grpc.Server, []*identity.KeyPair, error) {
 	// Initialize bootstrap nodes and dark services.
 	nodes := make([]*network.DarkService, NumberOfBootstrapNodes+numberOfDarkService)
+	keypairs := make([]*identity.KeyPair, NumberOfBootstrapNodes+numberOfDarkService)
 	bootstrapNodes := make([]identity.MultiAddress, NumberOfBootstrapNodes)
 
 	for i := 0; i < len(nodes); i++ {
-		address, _, err := identity.NewAddress()
+		address, keypair, err := identity.NewAddress()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		options := network.Options{}
 
 		if i < NumberOfBootstrapNodes {
 			multi, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 3000+i, address))
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			options.MultiAddress = multi
 			bootstrapNodes[i] = multi
 		} else {
 			multi, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/republic/%s", 4000+i, address))
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			options.MultiAddress = multi
 		}
@@ -165,10 +171,11 @@ func generateDarkServices(numberOfDarkService int) ([]*network.DarkService, []*g
 			},
 		})
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		l.Start()
 		nodes[i] = network.NewDarkService(&MockDelegate{}, options, &logger.Logger{})
+		keypairs[i] = &keypair
 
 	}
 	for i := 0; i < len(nodes); i++ {
@@ -180,5 +187,5 @@ func generateDarkServices(numberOfDarkService int) ([]*network.DarkService, []*g
 		}
 	}
 
-	return nodes, make([]*grpc.Server, len(nodes)), nil
+	return nodes, make([]*grpc.Server, len(nodes)), keypairs, nil
 }

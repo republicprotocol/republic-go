@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -41,7 +42,7 @@ var _ = Describe("Dark Node Registrar", func() {
 
 	// keyPair, err := identity.NewKeyPair()
 	// if err != nil {
-	// 	panic(err)
+	// 	log.Fatal(err)
 	// }
 	// publicKey := append(keyPair.PublicKey.X.Bytes(), keyPair.PublicKey.Y.Bytes()...)
 	// darkNodeID := keyPair.ID()[:20]

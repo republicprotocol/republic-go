@@ -113,8 +113,13 @@ func NewDarkNode(config Config, darkNodeRegistrar dnr.DarkNodeRegistrar) (*DarkN
 	node.EpochBlockhash = hash.Blockhash
 	node.EpochHashMu.Unlock()
 
+	multiAddressSignature, err := node.KeyPair.Sign(node.NetworkOptions.MultiAddress)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create all networking components and services
-	node.ClientPool = rpc.NewClientPool(node.NetworkOptions.MultiAddress).
+	node.ClientPool = rpc.NewClientPool(node.NetworkOptions.MultiAddress, multiAddressSignature).
 		WithTimeout(node.NetworkOptions.Timeout).
 		WithTimeoutBackoff(node.NetworkOptions.TimeoutBackoff).
 		WithTimeoutRetries(node.NetworkOptions.TimeoutRetries).
@@ -303,7 +308,7 @@ func (node *DarkNode) ConnectToDarkPool(darkPool *dark.Pool) {
 			node.Logger.Error(fmt.Sprintf("cannot find dark node %v: %s", n.ID.Address(), err.Error()))
 			return
 		} else if multiAddress == nil {
-			node.Logger.Warn(fmt.Sprintf("cannot find dark node %v: %s", n.ID.Address(), err.Error()))
+			node.Logger.Warn(fmt.Sprintf("cannot find dark node %v", n.ID.Address()))
 			return
 		}
 

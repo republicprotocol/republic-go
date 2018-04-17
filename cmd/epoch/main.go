@@ -24,13 +24,12 @@ const red = "\x1b[31;1m"
 func main() {
 	clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
 	if err != nil {
-		// TODO: Handler err
-		panic(err)
+		log.Fatal(err)
 	}
 
 	auth, err := bind.NewTransactor(strings.NewReader(key), "password1")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// Gas Price
@@ -38,12 +37,12 @@ func main() {
 
 	registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, auth, &bind.CallOpts{})
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	minimumEpochTime, err := registrar.MinimumEpochInterval()
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 
 	log.Printf("Calling Epoch every %s%v seconds%s\n", green, minimumEpochTime, reset)
@@ -51,7 +50,7 @@ func main() {
 	callEpoch(registrar)
 	uInt, err := minimumEpochTime.ToUint()
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	ticker := time.NewTicker(time.Duration(uInt) * time.Second)
 	defer ticker.Stop()

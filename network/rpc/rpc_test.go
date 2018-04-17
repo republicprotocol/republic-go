@@ -57,20 +57,20 @@ var _ = Describe("Data serialization and deserialization", func() {
 		It("should be able to serialize identity.MultiAddress", func() {
 			multiAddress, err := identity.NewMultiAddressFromString(multiAddressString)
 			Ω(err).ShouldNot(HaveOccurred())
-			serializedMulti := rpc.SerializeMultiAddress(multiAddress)
+			serializedMulti := rpc.SerializeMultiAddress(multiAddress, nil)
 			Ω(*serializedMulti).Should(Equal(rpc.MultiAddress{MultiAddress: multiAddress.String()}))
 
-			newMultiAddress, err := rpc.DeserializeMultiAddress(serializedMulti)
+			newMultiAddress, _, err := rpc.DeserializeMultiAddress(serializedMulti)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(newMultiAddress).Should(Equal(multiAddress))
 		})
 
 		It("should be able to deserialize identity.MultiAddress", func() {
 			rpcMultiAddress := &rpc.MultiAddress{MultiAddress: multiAddressString}
-			deserializedMulti, err := rpc.DeserializeMultiAddress(rpcMultiAddress)
+			deserializedMulti, _, err := rpc.DeserializeMultiAddress(rpcMultiAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			newMultiAddress := rpc.SerializeMultiAddress(deserializedMulti)
+			newMultiAddress := rpc.SerializeMultiAddress(deserializedMulti, nil)
 			Ω(newMultiAddress).Should(Equal(rpcMultiAddress))
 		})
 	})
@@ -83,8 +83,8 @@ var _ = Describe("Data serialization and deserialization", func() {
 			// Ω(err).ShouldNot(HaveOccurred())
 			// multiAddresses := identity.MultiAddresses{multiAddress1, multiAddress2}
 
-			// rpcMultiAddresses := rpc.SerializeMultiAddresses(multiAddresses)
-			// newMultiAddresses, err := rpc.DeserializeMultiAddresses(rpcMultiAddresses)
+			// rpcMultiAddresses := rpc.SerializeMultiAddresses(multiAddresses, nil)
+			// newMultiAddresses, _, err := rpc.DeserializeMultiAddresses(rpcMultiAddresses)
 			// Ω(err).ShouldNot(HaveOccurred())
 			// Ω(multiAddresses).Should(Equal(newMultiAddresses))
 		})
@@ -92,7 +92,7 @@ var _ = Describe("Data serialization and deserialization", func() {
 		It("should return an error when deserializing a malformed identity.MultiAddresses", func() {
 			// wrongMultiAddress := "/ip4/192.168.0.1/"
 			// wrongMultiAddresses := rpc.MultiAddresses{Multis: []*rpc.MultiAddress{{wrongMultiAddress}}}
-			// _, err := rpc.DeserializeMultiAddresses(&wrongMultiAddresses)
+			// _, _, err := rpc.DeserializeMultiAddresses(&wrongMultiAddresses)
 			// Ω(err).Should(HaveOccurred())
 		})
 	})
