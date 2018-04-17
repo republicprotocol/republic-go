@@ -87,12 +87,12 @@ func NewWeakVerifier() WeakVerifier {
 }
 
 // VerifyProposeSignature implements the Verifier interface.
-func (verifier *WeakVerifier) VerifyProposeSignature(signautre Signature) error {
+func (verifier *WeakVerifier) VerifyProposer(signature Signature) error {
 	return nil
 }
 
 // VerifySignatures implements the Verifier interface.
-func (verifier *WeakVerifier) VerifySignatures(signautres Signatures) error {
+func (verifier *WeakVerifier) VerifySignatures(signatures Signatures) error {
 	return nil
 }
 

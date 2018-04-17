@@ -24,7 +24,9 @@ type MessageMapStore struct {
 
 // NewMessageMapStore returns a new MessageMapStore.
 func NewMessageMapStore() MessageMapStore {
-	return MessageMapStore{}
+	return MessageMapStore{
+		memory: map[Hash]Message{},
+	}
 }
 
 // Load implements the MessageStore interface.

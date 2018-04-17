@@ -16,9 +16,10 @@ var _ = Describe("Messages", func() {
 			prepare := Prepare{}
 			messageStore := NewMessageMapStore()
 			signer := NewErrorSigner()
+			verifier := NewWeakVerifier()
 			threshold := 0
 
-			message, err := VerifyAndSignMessage(&prepare, &messageStore, &signer, threshold)
+			message, err := VerifyAndSignMessage(&prepare, &messageStore, &signer, &verifier, threshold)
 			Ω(message).Should(BeNil())
 			Ω(err).Should(HaveOccurred())
 		})
@@ -30,9 +31,10 @@ var _ = Describe("Messages", func() {
 			prepare := Prepare{}
 			messageStore := NewMessageMapStore()
 			signer := NewErrorSigner()
+			verifier := NewWeakVerifier()
 			threshold := 0
 
-			message, err := VerifyAndSignMessage(&prepare, &messageStore, &signer, threshold)
+			message, err := VerifyAndSignMessage(&prepare, &messageStore, &signer, &verifier,threshold)
 			Ω(message).Should(BeNil())
 			Ω(err).Should(HaveOccurred())
 		})
