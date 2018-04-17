@@ -9,8 +9,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"github.com/republicprotocol/republic-go/atom/ethereum"
+	"github.com/republicprotocol/republic-go/interop/atom/ethereum"
 )
 
 var _ = Describe("Ether", func() {

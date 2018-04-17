@@ -10,8 +10,8 @@ import (
 
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/republic-go/contracts/connection"
-	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/ethereum/client"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/stackint"
 )

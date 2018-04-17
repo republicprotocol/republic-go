@@ -8,12 +8,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/interop/atom/ethereum/contracts"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/republicprotocol/republic-go/atom/ethereum"
-	"github.com/republicprotocol/republic-go/atom/ethereum/contracts"
 )
 
 var ether = big.NewInt(1000000000000000000)

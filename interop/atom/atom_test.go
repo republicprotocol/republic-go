@@ -12,8 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/republic-go/atom/bitcoin"
-	"github.com/republicprotocol/republic-go/atom/ethereum"
+	"github.com/republicprotocol/republic-go/interop/atom/ethereum"
 	// . "github.com/republicprotocol/republic-go/atom"
 )
 
@@ -46,7 +45,7 @@ var _ = Describe("Atom", func() {
 		// Alice
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
-		BTCAtom := NewBTCAtomContract("testuser", "testpassword", "testnet")
+		BTCAtom := bitcoin.NewBTCAtomContract("testuser", "testpassword", "testnet")
 		err := BTCAtom.Initiate(hashLock[:], []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(10000000), time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 
@@ -71,7 +70,7 @@ var _ = Describe("Atom", func() {
 		Ω(err).Should(BeNil())
 		Ω(retSecret).Should(Equal(secret))
 		// Redeem Bitcoins
-		BTCAtomBOB := NewBTCAtomContract("testuser", "testpassword", "testnet")
+		BTCAtomBOB := bitcoin.NewBTCAtomContract("testuser", "testpassword", "testnet")
 		err = BTCAtomBOB.Redeem(retSecret)
 		Ω(err).Should(BeNil())
 	})

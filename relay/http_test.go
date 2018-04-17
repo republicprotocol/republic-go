@@ -10,7 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"

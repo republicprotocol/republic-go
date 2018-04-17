@@ -1,4 +1,4 @@
-package bitcoin_test
+package arc_bitcoin_test
 
 import (
 	"crypto/rand"
@@ -10,7 +10,7 @@ import (
 	"github.com/btcsuite/btcd/rpcclient"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/go-atom/bitcoin"
+	. "github.com/republicprotocol/republic-go/bitcoin/contracts/atom"
 )
 
 func randomBytes32() []byte {

@@ -1,4 +1,4 @@
-package bitcoin
+package arc_bitcoin
 
 import (
 	"bytes"

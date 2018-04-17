@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/compute"
-	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/dark"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"

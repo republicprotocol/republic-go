@@ -17,7 +17,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/network/rpc"

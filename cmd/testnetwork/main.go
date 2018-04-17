@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/republicprotocol/republic-go/contracts/connection"
+	"github.com/republicprotocol/republic-go/ethereum/client"
 )
 
 var debug = false

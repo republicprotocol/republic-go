@@ -6,8 +6,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/republicprotocol/republic-go/contracts/bindings"
-	"github.com/republicprotocol/republic-go/contracts/connection"
+	"github.com/republicprotocol/republic-go/ethereum/bindings"
+	"github.com/republicprotocol/republic-go/ethereum/client"
 )
 
 type EthereumData struct {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/republicprotocol/go-do"
 
-	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/ethereum/go-ethereum/crypto"
