@@ -5,11 +5,9 @@ import (
 )
 
 type Prepare struct {
-	Block
+	Proposal
 
-	// Signature of the Replica that produced this Prepare along with all of
-	// the other Replicas that have signed it
-	Signature
+	// Signatures of the Replicas that signed this Prepare
 	Signatures []Signature
 }
 

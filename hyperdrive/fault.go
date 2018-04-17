@@ -8,9 +8,7 @@ type Fault struct {
 	Rank
 	Height
 
-	// Signature of the Replica that produced this Fault along with all of the
-	// other Replicas that have signed it
-	Signature
+	// Signatures of the Replicas that signed this Fault
 	Signatures []Signature
 }
 

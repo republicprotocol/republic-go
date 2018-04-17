@@ -7,11 +7,9 @@ import (
 // A Commit messages signals that a Replica wants to commit to the finalization
 // of a Block.
 type Commit struct {
-	Block
+	Prepare
 
-	// Signature of the Replica that produced this Commit along with all of the
-	// other Replicas that have signed it
-	Signature
+	// Signatures of the Replicas that have signed this Commit
 	Signatures []Signature
 }
 
@@ -72,7 +70,6 @@ func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, validator Val
 					signature := validator.Sign()
 					commits[h] = Commit{
 						Block:      commit.Block,
-						Signature:  signature,
 						Signatures: append(commit.Signatures, signature),
 					}
 					select {
