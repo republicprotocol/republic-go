@@ -193,7 +193,7 @@ func (service *SwarmService) QueryPeersDeep(query *Query, stream Swarm_QueryPeer
 }
 
 func (service *SwarmService) queryPeersDeep(query *Query, stream Swarm_QueryPeersDeepServer) error {
-	from, err := UnmarshalMultiAddress(query.From)
+	from, _, err := UnmarshalMultiAddress(query.From)
 	if err != nil {
 		return err
 	}
@@ -257,7 +257,7 @@ func (service *SwarmService) queryPeersDeep(query *Query, stream Swarm_QueryPeer
 					break
 				}
 
-				candidate, err := UnmarshalMultiAddress(marshaledCandidate)
+				candidate, _, err := UnmarshalMultiAddress(marshaledCandidate)
 				if err != nil {
 					return err
 				}
@@ -301,7 +301,7 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 				break
 			}
 
-			peer, err := UnmarshalMultiAddress(marshaledPeer)
+			peer, _, err := UnmarshalMultiAddress(marshaledPeer)
 			if err != nil {
 				service.Logger.Error(fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
 				continue
@@ -321,9 +321,13 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 }
 
 func (service *SwarmService) updatePeer(peer *MultiAddress) error {
-	peerMultiAddress, err := UnmarshalMultiAddress(peer)
+	peerMultiAddress, sig, err := UnmarshalMultiAddress(peer)
 	if err != nil {
 		return err
+	}
+	err = peerMultiAddress.VerifySignature(sig)
+	if err != nil {
+		return nil
 	}
 	if service.Address() == peerMultiAddress.Address() {
 		return nil
@@ -371,7 +375,7 @@ func (service *SwarmService) FindNode(targetID identity.ID) (*identity.MultiAddr
 			continue
 		}
 		for candidate := range candidates {
-			unmarshalCandidate, err := UnmarshalMultiAddress(candidate)
+			unmarshalCandidate, _, err := UnmarshalMultiAddress(candidate)
 			if err != nil {
 				service.Logger.Error(fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
 				continue

@@ -83,6 +83,12 @@ var _ = Describe("Int1024", func() {
 			_, err := max.ToUint()
 			Ω(err).Should(Not(BeNil()))
 		})
+
+		It("should clear rest of words when setting to uint", func() {
+			tmp := MAXINT1024()
+			tmp.SetUint(0)
+			Ω(tmp).Should(Equal(zero))
+		})
 	})
 
 	Context("when converting from string", func() {
@@ -188,6 +194,88 @@ var _ = Describe("Int1024", func() {
 			Ω(err).Should(BeNil())
 			bigint, _ := big.NewInt(0).SetString(str, 10)
 			Ω(stackint.ToBigInt().Cmp(bigint)).Should(Equal(0))
+		})
+
+		It("should handle edge cases", func() {
+
+			// Big Endian
+			actual, err := FromBytes([]byte{})
+			Ω(err).Should(BeNil())
+			Ω(actual).Should(Equal(zero))
+
+			bytes := make([]byte, 8*INT1024WORDS+1)
+			actual, err = FromBytes(bytes)
+			Ω(err).ShouldNot(BeNil())
+
+			// Little Endian
+			actual, err = FromLittleEndianBytes([]byte{})
+			Ω(err).Should(BeNil())
+			Ω(actual).Should(Equal(zero))
+
+			bytes = make([]byte, 8*INT1024WORDS+1)
+			actual, err = FromLittleEndianBytes(bytes)
+			Ω(err).ShouldNot(BeNil())
+		})
+	})
+
+	Context("when retrieving words", func() {
+		It("should return the right result for 1024 bit numbers", func() {
+			x := FromUint(1)
+			words := x.Words()
+			Ω(words[0]).Should(Equal(uint(1)))
+			for i := 1; i < INT1024WORDS; i++ {
+				Ω(words[i]).Should(Equal(uint(0)))
+			}
+
+			x = zero
+			words = x.Words()
+			for i := 0; i < INT1024WORDS; i++ {
+				Ω(words[i]).Should(Equal(uint(0)))
+			}
+
+			x = MAXINT1024()
+			words = x.Words()
+			for i := 0; i < INT1024WORDS; i++ {
+				Ω(words[i]).Should(Equal(uint(WORDMAX)))
+			}
+		})
+
+		It("should return value, not reference", func() {
+			x := FromUint(1)
+			words := x.Words()
+			words[0] = 2
+			Ω(x).Should(Equal(one))
+		})
+	})
+
+	Context("when converting to bigint", func() {
+		It("should return the right result for 1024 bit numbers", func() {
+
+			cases := []Int1024{
+				zero,
+				one,
+				two,
+				three,
+				twelve,
+				oneWord,
+				HalfMax(),
+				two64,
+				max,
+			}
+
+			for _, stackint := range cases {
+				bigint := stackint.ToBigInt()
+				stackint2, err := FromBigInt(bigint)
+				Ω(err).Should(BeNil())
+				Ω(stackint2).Should(Equal(stackint))
+			}
+		})
+
+		It("should return error when bigint is too large", func() {
+			bigint := max.ToBigInt()
+			bigint = bigint.Add(bigint, big.NewInt(1))
+			_, err := FromBigInt(bigint)
+			Ω(err).ShouldNot(BeNil())
 		})
 	})
 })

@@ -2,13 +2,9 @@ package node_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
-	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
@@ -20,8 +16,6 @@ import (
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/network/rpc"
-	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -32,7 +26,12 @@ const (
 
 var primeVal, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 var Prime = &primeVal
-var trader, _ = identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+
+var traderKeypair, _ = identity.NewKeyPair()
+var traderAddress = traderKeypair.Address()
+var traderMulti, _ = identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/" + traderAddress.String())
+var traderMultiSignature, _ = traderKeypair.Sign(traderMulti)
+
 var epochDNR dnr.DarkNodeRegistry
 
 var dnrOuterLock = new(sync.Mutex)
@@ -55,7 +54,7 @@ var _ = Describe("Dark nodes", func() {
 	var err error
 	epochDNR, err = dnr.TestnetDNR(nil)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	var mu = new(sync.Mutex)
@@ -207,103 +206,8 @@ var _ = Describe("Dark nodes", func() {
 				})
 
 				AfterEach(func() {
-<<<<<<< HEAD
 					err := deregisterNodes(nodes)
 					Ω(err).ShouldNot(HaveOccurred())
-=======
-					err := deregisterNodes(nodes, mockRegistrar)
-					Ω(err).ShouldNot(HaveOccurred())
-					stopNodes(nodes)
-				})
-			})
-		}(numberOfNodes)
-	}
-
-	// Synchronization
-	for _, numberOfNodes := range []int{32} {
-		func(numberOfNodes int) {
-			FContext(fmt.Sprintf("synchronizing with %d nodes", numberOfNodes), func() {
-
-				var err error
-				var nodes []*node.DarkNode
-
-				BeforeEach(func() {
-					By("generate nodes")
-					nodes, err = generateNodes(numberOfNodes)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					By("start node services")
-					startNodeServices(nodes)
-				})
-
-				It("should reach a fault tolerant level of connectivity", func() {
-					start := time.Now()
-					By("bootstrap nodes")
-					bootstrapNodes(nodes)
-					log.Println("bootstrapping takes ", time.Since(start))
-
-					By("send orders")
-					err := sendOrders(nodes)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					go func() {
-						defer GinkgoRecover()
-						for i := 0; i < 5; i++ {
-							time.Sleep(10 * time.Second)
-							log.Println("sending a new patch of orders")
-							err := sendOrders(nodes)
-							Ω(err).ShouldNot(HaveOccurred())
-						}
-					}()
-
-					By("synchronization")
-					ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-					defer cancel()
-
-					syncBlocks, errs := nodes[0].ClientPool.Sync(ctx, nodes[1].NetworkOptions.MultiAddress)
-					continuing := true
-					for continuing {
-						select {
-						case err := <-errs:
-							if err != nil {
-								log.Println("cannot sync", err)
-							}
-							continuing = false
-						case block, ok := <-syncBlocks:
-							if !ok {
-								continuing = false
-								break
-							}
-							// Handle received blocks
-							var ord order.Order
-							switch block.OrderBlock.(type) {
-							case *rpc.SyncBlock_Open:
-								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Open).Open)
-							case *rpc.SyncBlock_Confirmed:
-								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Confirmed).Confirmed)
-							case *rpc.SyncBlock_Unconfirmed:
-								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Unconfirmed).Unconfirmed)
-							case *rpc.SyncBlock_Canceled:
-								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Canceled).Canceled)
-							case *rpc.SyncBlock_Settled:
-								ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Settled).Settled)
-							default:
-								log.Printf("unknown order status, %t", block.OrderBlock)
-							}
-
-							if ord.Parity == order.ParityBuy {
-								log.Println("buy  order received from synchronization, orderID : ", ord.ID.String())
-							} else {
-								log.Println("sell order received from synchronization, orderID : ", ord.ID.String())
-							}
-
-						}
-					}
-				})
-
-				AfterEach(func() {
-					By("stop node services")
->>>>>>> rpc-chans
 					stopNodes(nodes)
 				})
 			})
@@ -339,7 +243,6 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 	return nodes, nil
 }
 
-<<<<<<< HEAD
 func registerNodes(nodes []*node.DarkNode) error {
 	dnrOuterLock.Lock()
 	dnrInnerLock.Lock()
@@ -359,20 +262,14 @@ func registerNodes(nodes []*node.DarkNode) error {
 		node.DarkNodeRegistry.SetGasLimit(300000)
 		_, err = node.DarkNodeRegistry.Register(node.ID, []byte{}, &bond)
 		node.DarkNodeRegistry.SetGasLimit(0)
-=======
-func registerNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
-	for _, n := range nodes {
-		_, err := mockRegistrar.Register(n.ID, []byte{}, big.NewInt(100))
->>>>>>> rpc-chans
 		if err != nil {
 			return err
 		}
 	}
-	_, err := epochDNR.WaitForEpoch()
+	err := epochDNR.WaitForEpoch()
 	return err
 }
 
-<<<<<<< HEAD
 func deregisterNodes(nodes []*node.DarkNode) error {
 	defer dnrOuterLock.Unlock()
 	dnrInnerLock.Lock()
@@ -381,30 +278,25 @@ func deregisterNodes(nodes []*node.DarkNode) error {
 		node.DarkNodeRegistry.SetGasLimit(300000)
 		_, err := node.DarkNodeRegistry.Deregister(node.ID)
 		node.DarkNodeRegistry.SetGasLimit(0)
-=======
-func deregisterNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
-	for _, n := range nodes {
-		_, err := mockRegistrar.Deregister(n.ID)
->>>>>>> rpc-chans
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}
 	epochDNR.SetGasLimit(300000)
-	_, err := epochDNR.WaitForEpoch()
+	err := epochDNR.WaitForEpoch()
 	epochDNR.SetGasLimit(0)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	for _, node := range nodes {
 		node.DarkNodeRegistry.SetGasLimit(300000)
 		_, err := node.DarkNodeRegistry.Refund(node.ID)
 		node.DarkNodeRegistry.SetGasLimit(0)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}
-	_, err = epochDNR.WaitForEpoch()
+	err = epochDNR.WaitForEpoch()
 	return err
 }
 
@@ -442,7 +334,7 @@ func watchDarkOcean(nodes []*node.DarkNode) {
 		}(i)
 	}
 
-	_, err := epochDNR.WaitForEpoch()
+	err := epochDNR.WaitForEpoch()
 	if err != nil {
 		panic(err)
 	}
@@ -485,110 +377,4 @@ func connectNodes(nodes []*node.DarkNode, connectivity int) (int, int) {
 		}
 	})
 	return numberOfPings, numberOfErrors
-}
-
-func sendOrders(nodes []*node.DarkNode) error {
-	// Get order data from Binance
-	resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%d", NumberOfOrders))
-	if err != nil {
-		return err
-	}
-
-	response, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	orderBook := new(OrderBook)
-	if err := json.Unmarshal(response, orderBook); err != nil {
-		log.Println(response)
-		return err
-	}
-
-	// Generate order from the Binance data
-	buyOrders := make([]*order.Order, len(orderBook.Asks))
-	sellOrders := make([]*order.Order, len(orderBook.Asks))
-
-	for i, j := range orderBook.Asks {
-		price, err := strconv.ParseFloat(j[0].(string), 10)
-		if err != nil {
-			return errors.New("fail to parse the price into a float")
-		}
-		price = price * 1000000000000
-
-		amount, err := strconv.ParseFloat(j[1].(string), 10)
-		if err != nil {
-			return errors.New("fail to parse the amount into a float")
-		}
-		amount = amount * 1000000000000
-		sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour),
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint(price)), heapInt(uint(amount)),
-			heapInt(uint(amount)), heapInt(1))
-		sellOrders[i] = sellOrder
-
-		buyOrder := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour),
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint(price)), heapInt(uint(amount)),
-			heapInt(uint(amount)), heapInt(1))
-		buyOrders[i] = buyOrder
-	}
-
-	// Send order fragment to the nodes
-	totalNodes := len(nodes)
-	pool := rpc.NewClientPool(trader).WithTimeout(10 * time.Second).WithTimeoutBackoff(5 * time.Second)
-	for i := range buyOrders {
-		buyOrder, sellOrder := buyOrders[i], sellOrders[i]
-		log.Printf("Sending matched order. [BUY] %s <---> [SELL] %s", buyOrder.ID, sellOrder.ID)
-		buyShares, err := buyOrder.Split(int64(totalNodes), int64(totalNodes*2/3+1), Prime)
-		if err != nil {
-			return err
-		}
-		sellShares, err := sellOrder.Split(int64(totalNodes), int64(totalNodes*2/3+1), Prime)
-		if err != nil {
-			return err
-		}
-
-		do.CoForAll(buyShares, func(j int) {
-<<<<<<< HEAD
-			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(buyShares[j]))
-=======
-			orderRequest := &rpc.OpenOrderRequest{
-				From: &rpc.MultiAddress{
-					Signature:    []byte{},
-					MultiAddress: nodes[0].NetworkOptions.MultiAddress.String(),
-				},
-				OrderFragment: rpc.MarshalOrderFragment(buyShares[j]),
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			err := pool.OpenOrder(ctx, nodes[j].NetworkOptions.MultiAddress, orderRequest)
->>>>>>> rpc-chans
-			if err != nil {
-				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
-				log.Fatal(err)
-			}
-		})
-
-		do.CoForAll(sellShares, func(j int) {
-<<<<<<< HEAD
-			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(sellShares[j]))
-=======
-			orderRequest := &rpc.OpenOrderRequest{
-				From: &rpc.MultiAddress{
-					Signature:    []byte{},
-					MultiAddress: nodes[0].NetworkOptions.MultiAddress.String(),
-				},
-				OrderFragment: rpc.MarshalOrderFragment(sellShares[j]),
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			err := pool.OpenOrder(ctx, nodes[j].NetworkOptions.MultiAddress, orderRequest)
->>>>>>> rpc-chans
-			if err != nil {
-				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
-				log.Fatal(err)
-			}
-		})
-	}
-
-	time.Sleep(time.Second)
-	return nil
 }

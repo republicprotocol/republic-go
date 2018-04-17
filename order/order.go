@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/republicprotocol/republic-go/identity"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/shamir"
@@ -71,8 +73,8 @@ const (
 
 // An Order represents the want to perform a trade of assets.
 type Order struct {
-	Signature []byte `json:"signature"`
-	ID        ID     `json:"id"`
+	Signature identity.Signature `json:"signature"`
+	ID        ID                 `json:"id"`
 
 	Type   Type      `json:"type"`
 	Parity Parity    `json:"parity"`
@@ -190,6 +192,20 @@ func (order *Order) Split(n, k int64, prime *stackint.Int1024) ([]*Fragment, err
 // ID and signature for an Order.
 func (order *Order) Hash() []byte {
 	return crypto.Keccak256(order.Bytes())
+}
+
+// Sign signs the order using the provided keypair, and assigns it the the order's
+// Signature field.
+func (order *Order) Sign(keyPair identity.KeyPair) error {
+	var err error
+	order.Signature, err = keyPair.Sign(order)
+	return err
+}
+
+// VerifySignature verifies that the Signature field has been signed by the provided
+// ID's private key, returning an error if the signature is invalid
+func (order *Order) VerifySignature(ID identity.ID) error {
+	return identity.VerifySignature(order, order.Signature, ID)
 }
 
 // Bytes returns an Order serialized into a bytes.

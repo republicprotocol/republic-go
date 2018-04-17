@@ -16,19 +16,22 @@ import (
 
 const reset = "\x1b[0m"
 
-// OpenOrderRequest represents an HTTP request to open an Order or a set of Order Fragments
+// OpenOrderRequest is a JSON request to open an order in the Darkpool that is
+// optionally split into order fragments, and optionally signed.
 type OpenOrderRequest struct {
 	Order          order.Order    `json:"order"`
 	OrderFragments OrderFragments `json:"orderFragments"`
 }
 
-// CancelOrderRequest represents an HTTP request to cancel an Order
+// CancelOrderRequest is a JSON request to cancel an order that is optionally
+// signed.
 type CancelOrderRequest struct {
 	Signature []byte   `json:"signature"`
 	ID        order.ID `json:"id"`
 }
 
-// OrderFragments will store a list of Fragment sets with their order details
+// OrderFragments is a JSON representation of order fragments that have been
+// split for the different pools.
 type OrderFragments struct {
 	Signature []byte   `json:"signature"`
 	ID        order.ID `json:"id"`
