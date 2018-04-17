@@ -35,3 +35,22 @@ type Signature [65]byte
 type Signer interface {
 	Sign(Hash) (Signature, error)
 }
+
+// WeakSigner produces Signatures by returning its ID.
+type WeakSigner struct {
+	ID [32]byte
+}
+
+// NewWeakSigner returns a new WeakSigner.
+func NewWeakSigner(id [32]byte) WeakSigner {
+	return WeakSigner{
+		ID: id,
+	}
+}
+
+// Sign implements the Signer interface.
+func (signer *WeakSigner) Sign(hash Hash) (Signature, error) {
+	signature := [65]byte{}
+	copy(signature, signer.ID)
+	return Signature(signature), nil
+}
