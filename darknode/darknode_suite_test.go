@@ -1,4 +1,4 @@
-package darkocean_test
+package darknode_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestDark(t *testing.T) {
+func TestGoMiner(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Dark Suite")
+	RunSpecs(t, "Darknode Suite")
 }
