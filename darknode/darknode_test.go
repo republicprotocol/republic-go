@@ -5,66 +5,88 @@ import (
 	"crypto/rand"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/ethereum/client"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
 )
 
-// NewDarkNodes configured for a local test environment.
-func NewDarkNodes(numberOfDarkNodes, numberOfBootstrapDarkNodes int) (darknode.DarkNodes, []context.Context, []context.CancelFunc, error) {
-	darkNodes := make(darknode.DarkNodes, numberOfDarkNodes)
-	ctxs := make([]context.Context, numberOfDarkNodes)
-	cancels := make([]context.CancelFunc, numberOfDarkNodes)
+// NewDarknodes configured for a local test environment.
+func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (darknode.Darknodes, []context.Context, []context.CancelFunc, error) {
+	darknodes := make(darknode.Darknodes, numberOfDarknodes)
+	ctxs := make([]context.Context, numberOfDarknodes)
+	cancels := make([]context.CancelFunc, numberOfDarknodes)
 
-	configs := make([]darknode.Config, numberOfDarkNodes)
-	for i := 0; i < numberOfDarkNodes; i++ {
+	configs := make([]darknode.Config, numberOfDarknodes)
+	for i := 0; i < numberOfDarknodes; i++ {
 		key := keystore.NewKeyForDirectICAP(rand.Reader)
-		configs[i] = darknode.NewLocalConfig(key, "127.0.0.1", fmt.Sprintf("%d", 3000+i))
+		configs[i] = darknode.NewLocalConfig(*key, "127.0.0.1", fmt.Sprintf("%d", 3000+i))
 	}
-	for i := 0; i < numberOfDarkNodes; i++ {
-		for j := 0; j < numberOfDarkNodes; j++ {
-			configs[i].NetworkOption.BootstrapMultiAddresses = append(configs[i].NetworkOption.BootstrapMultiAddresses, configs[j].NetworkOption.MultiAddress)
-		}
-	}
+	// FIXME: Load bootstrap nodes into the config file
+	// for i := 0; i < numberOfDarknodes; i++ {
+	// 	for j := 0; j < numberOfDarknodes; j++ {
+	// 		configs[i].NetworkOption.BootstrapMultiAddresses = append(configs[i].NetworkOption.BootstrapMultiAddresses, configs[j].NetworkOption.MultiAddress)
+	// 	}
+	// }
 	var err error
-	for i := 0; i < numberOfDarkNodes; i++ {
-		darkNodes[i], err = darknode.NewDarkNode(configs[i])
+	for i := 0; i < numberOfDarknodes; i++ {
+		darknodes[i], err = darknode.NewDarknode(configs[i])
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		ctxs[i], cancels[i] = context.WithCancel(context.Background())
 	}
-	return darkNodes, ctxs, cancels, nil
+	return darknodes, ctxs, cancels, nil
 }
 
-// RegisterDarkNodes using the minimum required bond and wait until the next
+// RegisterDarknodes using the minimum required bond and wait until the next
 // epoch. This must only be used in local test environments.
-func RegisterDarkNodes(darkNodes darknode.DarkNodes, darkNodeRegistry contract.DarkNodeRegistry) error {
-	for i := range darkNodes {
-		darkNodeID := darkNodes[i].ID()
-		if err := darkNodeRegistry.Register(darkNodeID); err != nil {
+func RegisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarkNodeRegistry) error {
+
+	minimumBond, err := darknodeRegistry.MinimumBond()
+	if err != nil {
+		return err
+	}
+
+	for i := range darknodes {
+		darknodeID := darknodes[i].ID()
+		tx, err := darknodeRegistry.Register(darknodeID, []byte{}, &minimumBond)
+		if err != nil {
+			return err
+		}
+		if _, err := conn.PatchedWaitMined(context.Background(), tx); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// DeregisterDarkNodes and wait until the next epoch. This must only be used
+// DeregisterDarknodes and wait until the next epoch. This must only be used
 // in local test environments.
-func RegisterDarkNodes(darkNodes darknode.DarkNodes, darkNodeRegistry contract.DarkNodeRegistry) error {
-	for i := range darkNodes {
-		darkNodeID := darkNodes[i].ID()
-		if err := darkNodeRegistry.Register(darkNodeID); err != nil {
+func DeregisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarkNodeRegistry) error {
+	for i := range darknodes {
+		darknodeID := darknodes[i].ID()
+		tx, err := darknodeRegistry.Deregister(darknodeID)
+		if err != nil {
+			return err
+		}
+		if _, err := conn.PatchedWaitMined(context.Background(), tx); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// RefundDarkNodes after they have been deregistered. This must only be used
+// RefundDarknodes after they have been deregistered. This must only be used
 // in local test environments.
-func RefundDarkNodes(darkNodes darknode.DarkNodes, darkNodeRegistry contract.DarkNodeRegistry) error {
-	for i := range darkNodes {
-		darkNodeID := darkNodes[i].ID()
-		if err := darkNodeRegistry.Register(darkNodeID); err != nil {
+func RefundDarknodes(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarkNodeRegistry) error {
+	for i := range darknodes {
+		darknodeID := darknodes[i].ID()
+		tx, err := darknodeRegistry.Refund(darknodeID)
+		if err != nil {
+			return err
+		}
+		if _, err := conn.PatchedWaitMined(context.Background(), tx); err != nil {
 			return err
 		}
 	}

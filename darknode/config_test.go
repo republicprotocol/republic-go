@@ -3,15 +3,18 @@ package darknode_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/republicprotocol/republic-go/darknode"
 )
 
-var _ = Describe("Configurations", func() {
+var _ = Describe("Configs", func() {
 
-	Context("negative tests", func() {
-		It("should return an error when trying to open an non-existent file", func() {
-			_, err := LoadConfig("non-existent.json")
+	Context("when loading malformed files", func() {
+
+		It("should return an error when no file is found", func() {
+			_, err := LoadConfig("notfound.json")
 			Ω(err).Should(HaveOccurred())
 		})
+
 	})
 
 })
