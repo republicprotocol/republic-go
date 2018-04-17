@@ -9,7 +9,6 @@ import (
 )
 
 func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer Signer, verifier Verifier, capacity int) (<-chan Prepare, <-chan Fault, <-chan error) {
-
 	prepareCh := make(chan Prepare, capacity)
 	faultCh := make(chan Fault, capacity)
 	errCh := make(chan error, capacity)
@@ -77,6 +76,8 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer S
 // same content.
 const ProposalHeader = byte(2)
 
+// A Proposal message is sent by the Commander Replica to propose the next
+// Block for preparation, committment, and finalization.
 type Proposal struct {
 	Block
 
@@ -92,6 +93,7 @@ func (proposal *Proposal) Hash() Hash {
 	return sha3.Sum256(buf.Bytes())
 }
 
+// Fault implements the Message interface.
 func (proposal *Proposal) Fault() Fault {
 	return Fault{
 		Rank:   proposal.Block.Rank,
@@ -99,6 +101,7 @@ func (proposal *Proposal) Fault() Fault {
 	}
 }
 
+// Verify implements the Message interface.
 func (proposal *Proposal) Verify(verifier Verifier) error {
 	// TODO: Complete verification
 	if err := proposal.Block.Verify(verifier); err != nil {
@@ -107,10 +110,12 @@ func (proposal *Proposal) Verify(verifier Verifier) error {
 	return verifier.VerifyProposer(proposal.Signature)
 }
 
+// SetSignatures implements the Message interface.
 func (proposal *Proposal) SetSignatures(signatures Signatures) {
 	return
 }
 
+// GetSignatures implements the Message interface.
 func (proposal *Proposal) GetSignatures() Signatures {
 	return Signatures{proposal.Signature}
 }

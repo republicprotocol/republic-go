@@ -12,7 +12,7 @@ import (
 // same content.
 const CommitHeader = byte(3)
 
-// A Commit messages signals that a Replica wants to commit to the finalization
+// A Commit message signals that a Replica wants to commit to the finalization
 // of a Block.
 type Commit struct {
 	Prepare
@@ -29,6 +29,7 @@ func (commit *Commit) Hash() Hash {
 	return sha3.Sum256(buf.Bytes())
 }
 
+// Fault implements the Message interface.
 func (commit *Commit) Fault() Fault {
 	return Fault{
 		Rank:   commit.Prepare.Block.Rank,
@@ -36,8 +37,7 @@ func (commit *Commit) Fault() Fault {
 	}
 }
 
-// Verify the Commit message. Returns an error if the message is invalid,
-// otherwise nil.
+// Verify implements the Message interface.
 func (commit *Commit) Verify(verifier Verifier) error {
 	// TODO: Complete verification
 	if err := commit.Prepare.Verify(verifier); err != nil {
@@ -46,10 +46,12 @@ func (commit *Commit) Verify(verifier Verifier) error {
 	return verifier.VerifySignatures(commit.Signatures)
 }
 
+// SetSignatures implements the Message interface.
 func (commit *Commit) SetSignatures(signatures Signatures) {
 	commit.Signatures = signatures
 }
 
+// GetSignatures implements the Message interface.
 func (commit *Commit) GetSignatures() Signatures {
 	return commit.Signatures
 }
