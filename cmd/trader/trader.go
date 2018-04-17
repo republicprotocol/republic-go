@@ -199,9 +199,9 @@ func sendOrders(orders []order.Order, pools dark.Pools, traderMultiAddress ident
 	for _, ord := range orders {
 		// Buy or sell ?
 		if ord.Parity == order.ParityBuy {
-			log.Println("sending buy order : ", base58.Encode(ord.ID))
+			log.Println("sending buy order:", base58.Encode(ord.ID))
 		} else {
-			log.Println("sending sell order : ", base58.Encode(ord.ID))
+			log.Println("sending sell order:", base58.Encode(ord.ID))
 		}
 
 		var wg sync.WaitGroup
@@ -213,7 +213,7 @@ func sendOrders(orders []order.Order, pools dark.Pools, traderMultiAddress ident
 				// Split order into (number of nodes in each pool) * 2/3 fragments
 				shares, err := ord.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
 				if err != nil {
-					log.Println("cannot split orders: ", err)
+					log.Println("cannot split orders:", err)
 					return
 				}
 				sendSharesToDarkPool(darkPool, traderMultiAddress, shares)

@@ -67,7 +67,7 @@ var Prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 
 // 			sendOrder := getFullOrder()
 
-// 			err = SendOrderToDarkOcean(sendOrder, &trader, pools)
+// 			err = SendOrderToDarkOcean(sendOrder, &trader, pools, getBootstrapNodes())
 // 			Ω(err).ShouldNot(HaveOccurred())
 // 		})
 // 	})
@@ -79,7 +79,7 @@ var Prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 
 // 			sendOrder := getFragmentedOrder()
 
-// 			err = SendOrderFragmentsToDarkOcean(sendOrder, &trader, pools)
+// 			err = SendOrderFragmentsToDarkOcean(sendOrder, &trader, pools, getBootstrapNodes())
 // 			Ω(err).Should(HaveOccurred())
 // 			Expect(err.Error()).To(ContainSubstring("number of fragments do not match pool size"))
 // 		})
@@ -94,7 +94,7 @@ var Prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 // 			Ω(err).ShouldNot(HaveOccurred())
 
 // 			fmt.Println("Before relay ...", sendOrder.DarkPools)
-// 			err = SendOrderFragmentsToDarkOcean(sendOrder, &trader, pools)
+// 			err = SendOrderFragmentsToDarkOcean(sendOrder, &trader, pools, getBootstrapNodes())
 // 			Ω(err).ShouldNot(HaveOccurred())
 // 		})
 // 	})
@@ -106,7 +106,7 @@ var Prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 
 // 			orderID := []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
 
-// 			err = CancelOrder(orderID, &trader, pools)
+// 			err = CancelOrder(orderID, &trader, pools, getBootstrapNodes())
 // 			Ω(err).ShouldNot(HaveOccurred())
 // 		})
 // 	})
@@ -267,10 +267,10 @@ func getFullOrder() order.Order {
 	return fullOrder
 }
 
-func getFragmentedOrder() Fragments {
+func getFragmentedOrder() OrderFragments {
 	defaultStackVal, _ := stackint.FromString("179761232312312")
 
-	fragmentedOrder := Fragments{}
+	fragmentedOrder := OrderFragments{}
 	fragmentSet := map[string][]*order.Fragment{}
 	fragments := []*order.Fragment{}
 
@@ -289,11 +289,11 @@ func getFragmentedOrder() Fragments {
 	return fragmentedOrder
 }
 
-func generateFragmentedOrderForDarkPool(pool *dark.Pool) (Fragments, error) {
+func generateFragmentedOrderForDarkPool(pool *dark.Pool) (OrderFragments, error) {
 	sendOrder := getFullOrder()
 	fragments, err := sendOrder.Split(int64(pool.Size()), int64(pool.Size()*2/3), &Prime)
 	if err != nil {
-		return Fragments{}, err
+		return OrderFragments{}, err
 	}
 	fragmentSet := map[string][]*order.Fragment{}
 	fragmentOrder := getFragmentedOrder()
@@ -308,4 +308,14 @@ func getPoolsAndTrader() (dark.Pools, identity.MultiAddress) {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	return getPools(epochDNR), trader
+}
+
+func getBootstrapNodes() []string {
+	return []string{
+		"/ip4/0.0.0.0/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT",
+		"/ip4/0.0.0.0/tcp/3000/republic/8MJxpBsezEGKPZBbhFE26HwDFxMtFu",
+		"/ip4/0.0.0.0/tcp/3001/republic/8MGB2cj2HbQFepRVs43Ghct5yCRS9C",
+		"/ip4/0.0.0.0/tcp/3002/republic/8MGVBvrQJji8ecEf3zmb8SXFCx1PaR",
+		"/ip4/0.0.0.0/tcp/3004/republic/8MK6bq5m7UfE1mzRNunJTFH6zTbyss",
+	}
 }

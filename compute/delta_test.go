@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/compute"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -114,7 +115,7 @@ var _ = Describe("Delta and delta fragments", func() {
 			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+			result := computeDelta(lhs, rhs, n, prime)
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
 
@@ -129,7 +130,7 @@ var _ = Describe("Delta and delta fragments", func() {
 			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+			result := computeDelta(lhs, rhs, n, prime)
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
 
@@ -140,7 +141,7 @@ var _ = Describe("Delta and delta fragments", func() {
 			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+			result := computeDelta(lhs, rhs, n, prime)
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
 
@@ -151,7 +152,7 @@ var _ = Describe("Delta and delta fragments", func() {
 			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeREN, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+			result := computeDelta(lhs, rhs, n, prime)
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
 
@@ -162,7 +163,7 @@ var _ = Describe("Delta and delta fragments", func() {
 			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeREN, order.CurrencyCodeDGD, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+			result := computeDelta(lhs, rhs, n, prime)
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
 	})
@@ -176,7 +177,7 @@ var _ = Describe("Delta and delta fragments", func() {
 			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+			result := computeDelta(lhs, rhs, n, prime)
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
 
@@ -187,7 +188,7 @@ var _ = Describe("Delta and delta fragments", func() {
 			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, heapInt(12), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+			result := computeDelta(lhs, rhs, n, prime)
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
 	})
@@ -201,7 +202,7 @@ var _ = Describe("Delta and delta fragments", func() {
 			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, heapInt(10), heapInt(100), heapInt(100), heapInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+			result := computeDelta(lhs, rhs, n, prime)
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
 
@@ -212,7 +213,7 @@ var _ = Describe("Delta and delta fragments", func() {
 			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, heapInt(10), heapInt(100), heapInt(100), heapInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+			result := computeDelta(lhs, rhs, n, prime)
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
 
@@ -223,7 +224,7 @@ var _ = Describe("Delta and delta fragments", func() {
 			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+			result := computeDelta(lhs, rhs, n, prime)
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
 
@@ -234,7 +235,7 @@ var _ = Describe("Delta and delta fragments", func() {
 			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, heapInt(10), heapInt(1000), heapInt(1000), heapInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+			result := computeDelta(lhs, rhs, n, prime)
 			Ω(result.IsMatch(prime)).Should(Equal(true))
 		})
 
@@ -245,7 +246,7 @@ var _ = Describe("Delta and delta fragments", func() {
 			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, heapInt(10), heapInt(1000), heapInt(1000), heapInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+			result := computeDelta(lhs, rhs, n, prime)
 			Ω(result.IsMatch(prime)).Should(Equal(false))
 		})
 
@@ -256,8 +257,94 @@ var _ = Describe("Delta and delta fragments", func() {
 			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, heapInt(10), heapInt(100), heapInt(100), heapInt(0)).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+			result := computeDelta(lhs, rhs, n, prime)
 			Ω(result.IsMatch(prime)).Should(Equal(false))
+		})
+	})
+
+	Context("when constructing deltas", func() {
+		It("should return nil for incompatible orders", func() {
+			one, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			two, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			three, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(10), heapInt(1000), heapInt(100), heapInt(1)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			deltaFragment1 := NewDeltaFragment(one[0], two[0], prime)
+			deltaFragment2 := NewDeltaFragment(two[0], three[0], prime)
+
+			nilDelta := NewDelta([]*DeltaFragment{deltaFragment1, deltaFragment2}, prime)
+			Ω(nilDelta).Should(BeNil())
+		})
+
+		It("should return nil for an empty order array", func() {
+			nilDelta := NewDelta([]*DeltaFragment{}, prime)
+			Ω(nilDelta).Should(BeNil())
+		})
+	})
+
+	Context("delta fragment methods", func() {
+		It("comparing should return the right result", func() {
+			one, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			two, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			oneClone, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			deltaFragsOne := computeDeltaFromOrderFragments(one, two, n, prime)
+			deltaFragsClone := computeDeltaFromOrderFragments(oneClone, two, n, prime)
+
+			for i := range deltaFragsOne {
+				Ω(deltaFragsOne[i].Equals(deltaFragsOne[i])).Should(BeTrue())
+				Ω(deltaFragsOne[i].Equals(deltaFragsClone[i])).Should(BeFalse())
+			}
+		})
+	})
+
+	Context("delta fragment IDs", func() {
+		It("can be converted to strings", func() {
+			lhs := order.NewFragment([]byte("lhs"),
+				order.TypeLimit,
+				order.ParityBuy,
+				shamir.Share{Key: 0, Value: stackint.Zero()},
+				shamir.Share{Key: 0, Value: stackint.Zero()},
+				shamir.Share{Key: 0, Value: stackint.Zero()},
+				shamir.Share{Key: 0, Value: stackint.Zero()},
+				shamir.Share{Key: 0, Value: stackint.Zero()},
+			)
+
+			rhs := order.NewFragment([]byte("rhs"),
+				order.TypeLimit,
+				order.ParitySell,
+				shamir.Share{Key: 0, Value: stackint.Zero()},
+				shamir.Share{Key: 0, Value: stackint.Zero()},
+				shamir.Share{Key: 0, Value: stackint.Zero()},
+				shamir.Share{Key: 0, Value: stackint.Zero()},
+				shamir.Share{Key: 0, Value: stackint.Zero()},
+			)
+
+			frag := NewDeltaFragment(lhs, rhs, prime)
+
+			Ω(frag.ID.String()).Should(Equal("B3HMD3WLjgMgPBEvPJJ3yBxuRHsXs7T1DaZyx1QZvnbg"))
+		})
+	})
+
+	Context("constructing delta fragments", func() {
+		It("should return nil for incompatible fragments", func() {
+			lhs, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			rhs, err := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(10), heapInt(1000), heapInt(100), heapInt(0)).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			nilFrag := NewDeltaFragment(lhs[0], rhs[1], prime)
+			Ω(nilFrag).Should(BeNil())
 		})
 	})
 
@@ -281,10 +368,10 @@ func computeRandomDelta(n, k int64, prime *stackint.Int1024) (*Delta, error) {
 	if err != nil {
 		return nil, err
 	}
-	return computeDeltaFromOrderFragments(lhs, rhs, n, prime), nil
+	return computeDelta(lhs, rhs, n, prime), nil
 }
 
-func computeDeltaFromOrderFragments(lhs []*order.Fragment, rhs []*order.Fragment, n int64, prime *stackint.Int1024) *Delta {
+func computeDeltaFromOrderFragments(lhs []*order.Fragment, rhs []*order.Fragment, n int64, prime *stackint.Int1024) []*DeltaFragment {
 	deltaFragments := make([]*DeltaFragment, n)
 	for i := range deltaFragments {
 		deltaFragment := NewDeltaFragment(lhs[i], rhs[i], prime)
@@ -293,6 +380,10 @@ func computeDeltaFromOrderFragments(lhs []*order.Fragment, rhs []*order.Fragment
 		}
 		deltaFragments[i] = deltaFragment
 	}
-	return NewDelta(deltaFragments, prime)
+	return deltaFragments
+}
 
+func computeDelta(lhs []*order.Fragment, rhs []*order.Fragment, n int64, prime *stackint.Int1024) *Delta {
+	deltaFragments := computeDeltaFromOrderFragments(lhs, rhs, n, prime)
+	return NewDelta(deltaFragments, prime)
 }

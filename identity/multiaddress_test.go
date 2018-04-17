@@ -65,6 +65,19 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 			Ω(multi.String()).Should(Equal(newMulti.String()))
 		})
 
+		It("should correctly encode empty Address", func() {
+			empty := identity.MultiAddress{}
+			data, err := empty.MarshalJSON()
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(string(data)).Should(Equal("\"\""))
+
+			newEmpty := &identity.MultiAddress{}
+			err = newEmpty.UnmarshalJSON(data)
+			Ω(err).ShouldNot(HaveOccurred())
+			fmt.Println(newEmpty.Address())
+			Ω(empty.Address()).Should(Equal(newEmpty.Address()))
+		})
+
 		It("should error when trying to decoding wrong-formatted error", func() {
 			newMulti := &identity.MultiAddress{}
 			badData := []byte("this is not a valid MultiAddress")

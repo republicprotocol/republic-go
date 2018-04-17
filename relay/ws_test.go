@@ -20,8 +20,8 @@ import (
 var _ = Describe("WebSocket streaming", func() {
 	Context("when connecting to the socket", func() {
 		It("should error for missing parameters", func() {
-			orderBook := orderbook.NewOrderBook(100)
-			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
+			book := orderbook.NewOrderbook(100)
+			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(&book)))
 			u, _ := url.Parse(server.URL)
 			u.Scheme = "ws"
 			u.Path = "orders"
@@ -38,8 +38,8 @@ var _ = Describe("WebSocket streaming", func() {
 		})
 
 		It("should be able to successfully connect to the socket with valid parameters", func() {
-			orderBook := orderbook.NewOrderBook(100)
-			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
+			book := orderbook.NewOrderbook(100)
+			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(&book)))
 			u, _ := url.Parse(server.URL)
 			u.Scheme = "ws"
 			u.Path = "orders"
@@ -59,7 +59,7 @@ var _ = Describe("WebSocket streaming", func() {
 		It("should retrieve information about an order", func() {
 			var wg sync.WaitGroup
 
-			orderBook := orderbook.NewOrderBook(100)
+			book := orderbook.NewOrderbook(100)
 
 			defaultStackVal, _ := stackint.FromString("179761232312312")
 			ord := order.Order{}
@@ -75,17 +75,17 @@ var _ = Describe("WebSocket streaming", func() {
 			ord.Nonce = defaultStackVal
 
 			var hash [32]byte
-			orderMessage := orderbook.NewMessage(ord, order.Open, hash)
+			orderMessage := orderbook.NewEntry(ord, order.Open, hash)
 
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
 				// Open an order with the specified ID.
-				orderBook.Open(orderMessage)
+				book.Open(orderMessage)
 			}()
 
 			// Connect to the socket.
-			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
+			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(&book)))
 			u, _ := url.Parse(server.URL)
 			u.Scheme = "ws"
 			u.Path = "orders"
@@ -94,15 +94,15 @@ var _ = Describe("WebSocket streaming", func() {
 
 			// We should be able to read the initial message.
 			_, message, err := conn.ReadMessage()
-			socketMessage := new(orderbook.Message)
+			socketMessage := new(orderbook.Entry)
 			if err := json.Unmarshal(message, socketMessage); err != nil {
 				fmt.Println(err)
 			}
-			Ω(socketMessage.Ord.ID).Should(Equal(orderMessage.Ord.ID))
+			Ω(socketMessage.Order.ID).Should(Equal(orderMessage.Order.ID))
 
 			// Update the status of the order and check if there is another
 			// message to be read.
-			orderBook.Settle(orderMessage)
+			book.Settle(orderMessage)
 			messageType, message, err := conn.ReadMessage()
 			if err := json.Unmarshal(message, socketMessage); err != nil {
 				fmt.Println(err)
@@ -119,7 +119,7 @@ var _ = Describe("WebSocket streaming", func() {
 		It("should not retrieve information about unspecified orders", func() {
 			var wg sync.WaitGroup
 
-			orderBook := orderbook.NewOrderBook(100)
+			book := orderbook.NewOrderbook(100)
 
 			defaultStackVal, _ := stackint.FromString("179761232312312")
 			ord := order.Order{}
@@ -135,16 +135,16 @@ var _ = Describe("WebSocket streaming", func() {
 			ord.Nonce = defaultStackVal
 
 			var hash [32]byte
-			orderMessage := orderbook.NewMessage(ord, order.Open, hash)
+			orderMessage := orderbook.NewEntry(ord, order.Open, hash)
 
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				orderBook.Open(orderMessage)
+				book.Open(orderMessage)
 			}()
 
 			// Connect to the socket.
-			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
+			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(&book)))
 			u, _ := url.Parse(server.URL)
 			u.Scheme = "ws"
 			u.Path = "orders"
@@ -163,7 +163,7 @@ var _ = Describe("WebSocket streaming", func() {
 		// It("should provide information about specified statuses", func() {
 		// 	var wg sync.WaitGroup
 
-		// 	orderBook := orderbook.NewOrderBook(100)
+		// 	book := orderbook.NewOrderbook(100)
 
 		// 	defaultStackVal, _ := stackint.FromString("179761232312312")
 		// 	ord := order.Order{}
@@ -179,17 +179,17 @@ var _ = Describe("WebSocket streaming", func() {
 		// 	ord.Nonce = defaultStackVal
 
 		// 	var hash [32]byte
-		// 	orderMessage := orderbook.NewMessage(ord, order.Open, hash)
+		// 	orderMessage := orderbook.NewEntry(ord, order.Open, hash)
 
 		// 	wg.Add(1)
 		// 	go func() {
 		// 		defer wg.Done()
 		// 		// Open an order with the specified ID.
-		// 		orderBook.Open(orderMessage)
+		// 		book.Open(orderMessage)
 		// 	}()
 
 		// 	// Connect to the socket.
-		// 	server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
+		// 	server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(&book)))
 		// 	u, _ := url.Parse(server.URL)
 		// 	u.Scheme = "ws"
 		// 	u.Path = "orders"
@@ -198,22 +198,22 @@ var _ = Describe("WebSocket streaming", func() {
 
 		// 	// We should be able to read the initial message.
 		// 	_, message, err := conn.ReadMessage()
-		// 	socketMessage := new(orderbook.Message)
+		// 	socketMessage := new(orderbook.Entry)
 		// 	if err := json.Unmarshal(message, socketMessage); err != nil {
 		// 		fmt.Println(err)
 		// 	}
-		// 	Ω(socketMessage.Ord.ID).Should(Equal(orderMessage.Ord.ID))
+		// 	Ω(socketMessage.Order.ID).Should(Equal(orderMessage.Order.ID))
 
 		// 	// Update the status of the order and check if there is another
 		// 	// message to be read.
-		// 	orderBook.Match(orderMessage)
+		// 	book.Match(orderMessage)
 		// 	messageType, message, err := conn.ReadMessage()
 		// 	if err := json.Unmarshal(message, socketMessage); err != nil {
 		// 		fmt.Println(err)
 		// 	}
 		// 	Ω(socketMessage.Status).Should(Equal(1))
 
-		// 	orderBook.Confirm(orderMessage)
+		// 	book.Confirm(orderMessage)
 		// 	messageType, message, err = conn.ReadMessage()
 		// 	if err := json.Unmarshal(message, socketMessage); err != nil {
 		// 		fmt.Println(err)
@@ -228,7 +228,7 @@ var _ = Describe("WebSocket streaming", func() {
 		// It("should not provide information about unspecified statuses", func() {
 		// 	var wg sync.WaitGroup
 
-		// 	orderBook := orderbook.NewOrderBook(100)
+		// 	book := orderbook.NewOrderbook(100)
 
 		// 	defaultStackVal, _ := stackint.FromString("179761232312312")
 		// 	ord := order.Order{}
@@ -244,17 +244,17 @@ var _ = Describe("WebSocket streaming", func() {
 		// 	ord.Nonce = defaultStackVal
 
 		// 	var hash [32]byte
-		// 	orderMessage := orderbook.NewMessage(ord, order.Open, hash)
+		// 	orderMessage := orderbook.NewEntry(ord, order.Open, hash)
 
 		// 	wg.Add(1)
 		// 	go func() {
 		// 		defer wg.Done()
 		// 		// Open an order with the specified ID.
-		// 		orderBook.Open(orderMessage)
+		// 		book.Open(orderMessage)
 		// 	}()
 
 		// 	// Connect to the socket.
-		// 	server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(orderBook)))
+		// 	server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(&book)))
 		// 	u, _ := url.Parse(server.URL)
 		// 	u.Scheme = "ws"
 		// 	u.Path = "orders"
@@ -263,15 +263,15 @@ var _ = Describe("WebSocket streaming", func() {
 
 		// 	// We should be able to read the initial message.
 		// 	_, message, err := conn.ReadMessage()
-		// 	socketMessage := new(orderbook.Message)
+		// 	socketMessage := new(orderbook.Entry)
 		// 	if err := json.Unmarshal(message, socketMessage); err != nil {
 		// 		fmt.Println(err)
 		// 	}
-		// 	Ω(socketMessage.Ord.ID).Should(Equal(orderMessage.Ord.ID))
+		// 	Ω(socketMessage.Order.ID).Should(Equal(orderMessage.Order.ID))
 
 		// 	// We should not receive the following message, as we have not
 		// 	// included the status as a parameter.
-		// 	orderBook.Settle(orderMessage)
+		// 	book.Settle(orderMessage)
 		// 	conn.SetReadDeadline(time.Now().Add(time.Second))
 		// 	messageType, _, err := conn.ReadMessage()
 		// 	Ω(messageType).Should(Equal(-1))

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/order"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -15,8 +16,8 @@ import (
 // for all RPCs and handles all timeouts and retries.
 type Client struct {
 	Connection *grpc.ClientConn
-	To         *MultiAddress
 	From       *MultiAddress
+	SignedFrom *MultiAddress
 
 	Options ClientOptions
 	SwarmClient
@@ -27,7 +28,7 @@ type Client struct {
 // NewClient returns a Client that is connected to the given MultiAddress and
 // will always identify itself from the given MultiAddress. The connection will
 // be closed when the Client is garbage collected.
-func NewClient(to, from identity.MultiAddress) (*Client, error) {
+func NewClient(to, from identity.MultiAddress, fromSignature identity.Signature) (*Client, error) {
 	host, err := to.ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return nil, err
@@ -38,9 +39,9 @@ func NewClient(to, from identity.MultiAddress) (*Client, error) {
 	}
 
 	client := &Client{
-		Options: DefaultClientOptions(),
-		To:      SerializeMultiAddress(to),
-		From:    SerializeMultiAddress(from),
+		Options:    DefaultClientOptions(),
+		From:       SerializeMultiAddress(from, nil),
+		SignedFrom: SerializeMultiAddress(from, fromSignature),
 	}
 
 	if err := client.TimeoutFunc(func(ctx context.Context) error {
@@ -103,7 +104,7 @@ func (client *Client) StreamTimeoutFunc(f func(ctx context.Context) error) error
 // Ping RPC.
 func (client *Client) Ping() error {
 	return client.TimeoutFunc(func(ctx context.Context) error {
-		_, err := client.SwarmClient.Ping(ctx, client.To, grpc.FailFast(false))
+		_, err := client.SwarmClient.Ping(ctx, client.SignedFrom, grpc.FailFast(false))
 		return err
 	})
 }
@@ -114,7 +115,7 @@ func (client *Client) QueryPeers(target *Address) (chan *MultiAddress, error) {
 	ch := make(chan *MultiAddress)
 	err := client.StreamTimeoutFunc(func(ctx context.Context) error {
 		stream, err := client.SwarmClient.QueryPeers(ctx, &Query{
-			From:   client.From,
+			From:   client.SignedFrom,
 			Target: target,
 		}, grpc.FailFast(false))
 		if err != nil {
@@ -141,7 +142,7 @@ func (client *Client) QueryPeersDeep(target *Address) (chan *MultiAddress, error
 	ch := make(chan *MultiAddress)
 	err := client.StreamTimeoutFunc(func(ctx context.Context) error {
 		stream, err := client.SwarmClient.QueryPeersDeep(ctx, &Query{
-			From:   client.From,
+			From:   client.SignedFrom,
 			Target: target,
 		}, grpc.FailFast(false))
 		if err != nil {
@@ -208,23 +209,23 @@ func (client *Client) SignOrderFragment(orderFragmentSignature *OrderFragmentSig
 }
 
 // OpenOrder RPC.
-func (client *Client) OpenOrder(orderSignature *OrderSignature, orderFragment *OrderFragment) error {
+func (client *Client) OpenOrder(orderFragment *OrderFragment) error {
 	return client.TimeoutFunc(func(ctx context.Context) error {
 		_, err := client.DarkClient.OpenOrder(ctx, &OpenOrderRequest{
-			From:           client.From,
-			OrderSignature: orderSignature,
-			OrderFragment:  orderFragment,
+			From:          client.SignedFrom,
+			OrderFragment: orderFragment,
 		}, grpc.FailFast(false))
 		return err
 	})
 }
 
 // CancelOrder RPC.
-func (client *Client) CancelOrder(orderSignature *OrderSignature) error {
+func (client *Client) CancelOrder(orderID order.ID, cancellationSignature identity.Signature) error {
 	return client.TimeoutFunc(func(ctx context.Context) error {
 		_, err := client.DarkClient.CancelOrder(ctx, &CancelOrderRequest{
-			From:           client.From,
-			OrderSignature: orderSignature,
+			From:                  client.From,
+			OrderId:               orderID,
+			CancellationSignature: cancellationSignature,
 		}, grpc.FailFast(false))
 		return err
 	})

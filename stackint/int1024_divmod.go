@@ -3,14 +3,11 @@ package stackint
 import "github.com/republicprotocol/republic-go/stackint/asm"
 
 // divW sets x to x divided by the single-word y and returns x%y
+// preconditions:
+//   x > y
+//   y != 0
 func (x *Int1024) divW(y asm.Word) asm.Word {
-	switch {
-	case y == 0:
-		panic("division by zero")
-	case y == 1:
-		return 0
-	case x.IsZero():
-		x.SetUint(0)
+	if y == 1 {
 		return 0
 	}
 	// m > 0
@@ -29,7 +26,7 @@ func (x *Int1024) divW(y asm.Word) asm.Word {
 
 // DivMod returns (x/y, x%y)
 func (x *Int1024) DivMod(y *Int1024) (Int1024, Int1024) {
-	if len(y.words) == 0 {
+	if y.IsZero() {
 		panic("division by zero")
 	}
 	if x.Cmp(y) < 0 {

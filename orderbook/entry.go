@@ -14,9 +14,9 @@ type Entry struct {
 }
 
 // NewEntry returns a new Entry.
-func NewEntry(ord order.Order, status order.Status, epochHash [32]byte) Entry {
+func NewEntry(order order.Order, status order.Status, epochHash [32]byte) Entry {
 	return Entry{
-		Order:     ord,
+		Order:     order,
 		Status:    status,
 		EpochHash: epochHash,
 	}
