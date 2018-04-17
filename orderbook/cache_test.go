@@ -49,6 +49,23 @@ var _ = Describe("order book cache", func() {
 		})
 
 		It("should be able to store data and its status", func() {
+			var orders [NumberOfTestOrders]orderbook.Entry
+			for i := 0; i < NumberOfTestOrders; i++ {
+				orders[i] = newEntry(order.ID([]byte{uint8(i)}))
+			}
+
+			for i := 0; i < NumberOfTestOrders; i++ {
+				err := cache.Open(orders[i])
+				Ω(err).ShouldNot(HaveOccurred())
+			}
+			Ω(len(cache.Blocks())).Should(Equal(NumberOfTestOrders))
+
+			for i := 0; i < NumberOfTestOrders; i++ {
+				err := cache.Match(orders[i])
+				Ω(err).ShouldNot(HaveOccurred())
+			}
+			Ω(len(cache.Blocks())).Should(Equal(NumberOfTestOrders))
+
 			for i := 0; i < NumberOfTestOrders; i++ {
 				err := cache.Open(orders[i])
 				Ω(err).ShouldNot(HaveOccurred())

@@ -153,6 +153,10 @@ func (cache *Cache) Cancel(id order.ID) error {
 		return fmt.Errorf("too late too cancel the order")
 	}
 
+	// msg.Status is Open or Unconfirmed
+	cache.cancels[string(id)] = struct{}{}
+	delete(cache.orders, string(id))
+
 	return nil
 }
 

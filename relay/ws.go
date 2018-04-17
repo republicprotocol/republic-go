@@ -18,7 +18,7 @@ var upgrader = websocket.Upgrader{
 }
 
 // GetOrdersHandler handles WebSocket requests.
-func GetOrdersHandler(orderBook *orderbook.OrderBook) http.Handler {
+func GetOrdersHandler(orderBook *orderbook.Orderbook) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		defer conn.Close()
@@ -32,7 +32,7 @@ func GetOrdersHandler(orderBook *orderbook.OrderBook) http.Handler {
 
 // writeUpdatesToWebSocket to notify the client of status changes to specific
 // orders.
-func writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, orderBook *orderbook.OrderBook) {
+func writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, orderBook *orderbook.Orderbook) {
 	// Retrieve ID and statuses from URL.
 	orderID := r.FormValue("id")
 	statuses := strings.Split(r.FormValue("status"), ",")
@@ -69,15 +69,15 @@ func writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Request, conn *webso
 		return nil
 	})
 
-	messages := make(chan *orderbook.Message, 100)
+	messages := make(chan orderbook.Entry, 100)
 	defer close(messages)
 
 	go func() {
-		if err := orderBook.Subscribe(panic("uniqueID"), queue); err != nil {
+		if err := orderBook.Subscribe(messages); err != nil {
 			fmt.Printf("unable to subscribe to order book: %v", err)
 		}
 	}()
-	defer orderBook.Unsubscribe(panic("uniqueID"))
+	defer orderBook.Unsubscribe(messages)
 
 	for {
 		select {
@@ -85,7 +85,7 @@ func writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Request, conn *webso
 			if !ok {
 				return
 			}
-			if !bytes.Equal(message.Order.ID, orderID) {
+			if !bytes.Equal(message.Order.ID, []byte(orderID)) {
 				break
 			}
 			// Loop through specified statuses.
