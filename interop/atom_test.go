@@ -12,9 +12,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/go-atom/bitcoin"
-	"github.com/republicprotocol/go-atom/ethereum"
-	// . "github.com/republicprotocol/go-atom"
+	. "github.com/republicprotocol/republic-go/atom/bitcoin"
+	"github.com/republicprotocol/republic-go/atom/ethereum"
+	// . "github.com/republicprotocol/republic-go/atom"
 )
 
 func randomBytes32() []byte {

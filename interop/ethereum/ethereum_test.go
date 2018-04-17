@@ -12,8 +12,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/republicprotocol/go-atom/ethereum"
-	"github.com/republicprotocol/go-atom/ethereum/contracts"
+	"github.com/republicprotocol/republic-go/atom/ethereum"
+	"github.com/republicprotocol/republic-go/atom/ethereum/contracts"
 )
 
 var ether = big.NewInt(1000000000000000000)

@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "github.com/republicprotocol/go-atom/bitcoin"
+	. "github.com/republicprotocol/republic-go/atom/bitcoin"
 )
 
 func randomBytes32() []byte {
