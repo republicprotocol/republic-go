@@ -37,7 +37,7 @@ var _ = Describe("order book", func() {
 		})
 
 		AfterEach(func() {
-			book.Close()
+			broadcaster.Close()
 		})
 
 		It("subscribe and unsubscribe", func() {
