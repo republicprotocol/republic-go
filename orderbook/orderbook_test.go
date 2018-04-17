@@ -1,7 +1,6 @@
 package orderbook_test
 
 import (
-	"fmt"
 	"log"
 
 	. "github.com/onsi/ginkgo"
@@ -28,29 +27,34 @@ const maxConnections = 3
 
 var _ = Describe("order book", func() {
 	Context("creating new orderbook", func() {
-		var orderBook *orderbook.OrderBook
+		var syncer orderbook.Syncer
+		var book orderbook.Orderbook
 
 		BeforeEach(func() {
-			orderBook = orderbook.NewOrderBook(maxConnections)
+			book = orderbook.NewOrderbook(10)
+
+			// Test that Orderbook implements Syncer interface
+			syncer = orderbook.Syncer(book)
+		})
+
+		AfterEach(func() {
+			book.Close()
 		})
 
 		It("subscribe and unsubscribe", func() {
+
+			var chans [maxConnections]chan orderbook.Entry
+
 			for i := 0; i < maxConnections; i++ {
-				stream := NewMockStream()
-				queue := rpc.NewSyncerServerStreamQueue(stream, maxConnections)
-				err := orderBook.Subscribe(fmt.Sprintf("%d", i), queue)
+				// stream := NewMockStream()
+				chans[i] = make(chan orderbook.Entry)
+				defer close(chans[i])
+				err := book.Subscribe(chans[i])
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 
 			for i := 0; i < maxConnections; i++ {
-				stream := NewMockStream()
-				queue := rpc.NewSyncerServerStreamQueue(stream, maxConnections)
-				err := orderBook.Subscribe(fmt.Sprintf("%d", i), queue)
-				Ω(err).Should(HaveOccurred())
-			}
-
-			for i := 0; i < maxConnections; i++ {
-				orderBook.Unsubscribe(fmt.Sprintf("%d", i))
+				book.Unsubscribe(chans[i])
 			}
 
 		})

@@ -7,9 +7,9 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
-// An OrderBookCache is responsible for store the orders and their
+// Cache is responsible for store the orders and their
 // status in the cache.
-type OrderBookCache struct {
+type Cache struct {
 	ordersMu *sync.RWMutex
 	orders   map[string]Entry
 
@@ -17,9 +17,9 @@ type OrderBookCache struct {
 	cancels  map[string]struct{}
 }
 
-// NewOrderBookCache creates a new OrderBookCache
-func NewOrderBookCache() OrderBookCache {
-	return OrderBookCache{
+// NewCache creates a new Cache
+func NewCache() Cache {
+	return Cache{
 		ordersMu: new(sync.RWMutex),
 		orders:   map[string]Entry{},
 
@@ -30,76 +30,141 @@ func NewOrderBookCache() OrderBookCache {
 
 // Open is called when we first receive the order fragment.
 // It will create the order record and make its status 'open'.
-func (orderBookCache *OrderBookCache) Open(message *Message) {
-	orderBookCache.storeOrderMessage(message)
+func (cache *Cache) Open(entry Entry) error {
+	cache.ordersMu.Lock()
+	defer cache.ordersMu.Unlock()
+
+	// Check if the order has already been opened
+	if _, ok := cache.orders[string(entry.Order.ID)]; ok {
+		return fmt.Errorf("cannot open already existing order")
+	}
+
+	entry.Status = order.Open
+	cache.storeOrderMessage(entry)
+
+	return nil
 }
 
 // Match will change the order status to 'unconfirmed' if the order
 // is valid and it's status is 'open'.
-func (orderBookCache *OrderBookCache) Match(message *Message) {
-	orderBookCache.storeOrderMessage(message)
+func (cache *Cache) Match(entry Entry) error {
+	cache.ordersMu.Lock()
+	defer cache.ordersMu.Unlock()
+
+	previousStatus := cache.orders[string(entry.Order.ID)].Status
+	if previousStatus != order.Open {
+		return fmt.Errorf("cannot matched order with status %v", previousStatus)
+	}
+
+	entry.Status = order.Unconfirmed
+	cache.storeOrderMessage(entry)
+
+	return nil
+
 }
 
 // Confirm will change the order status to 'confirmed' if the order
 // is valid and it's status is 'unconfirmed'.
-func (orderBookCache *OrderBookCache) Confirm(message *Message) {
-	orderBookCache.storeOrderMessage(message)
+func (cache *Cache) Confirm(entry Entry) error {
+	cache.ordersMu.Lock()
+	defer cache.ordersMu.Unlock()
+
+	previousStatus := cache.orders[string(entry.Order.ID)].Status
+	if previousStatus != order.Open && previousStatus != order.Unconfirmed {
+		return fmt.Errorf("cannot confirm order with status %v", previousStatus)
+	}
+
+	// Check if the order has been cancelled by the trader.
+	if _, ok := cache.cancels[string(entry.Order.ID)]; ok {
+		delete(cache.cancels, string(entry.Order.ID))
+	}
+
+	// Check if the order has been cancelled by the trader.
+	entry.Status = order.Confirmed
+	cache.storeOrderMessage(entry)
+
+	return nil
+
 }
 
 // Release will change the order status to 'open' if the order
 // is valid and it's status is 'unconfirmed'.
-func (orderBookCache *OrderBookCache) Release(message *Message) {
-	orderBookCache.ordersMu.Lock()
-	orderBookCache.cancelMu.RLock()
-	defer orderBookCache.ordersMu.Unlock()
-	defer orderBookCache.cancelMu.RUnlock()
+func (cache *Cache) Release(entry Entry) error {
+	cache.ordersMu.Lock()
+	cache.cancelMu.RLock()
+	defer cache.ordersMu.Unlock()
+	defer cache.cancelMu.RUnlock()
+
+	previousStatus := cache.orders[string(entry.Order.ID)].Status
+	if previousStatus != order.Open && previousStatus != order.Unconfirmed {
+		return fmt.Errorf("cannot release order with status %v", previousStatus)
+	}
 
 	// Check if the order has been cancelled by the trader.
-	if _, ok := orderBookCache.cancels[string(message.Ord.ID)]; ok {
-		delete(orderBookCache.orders, string(message.Ord.ID))
+	if _, ok := cache.cancels[string(entry.Order.ID)]; ok {
+		delete(cache.cancels, string(entry.Order.ID))
+		entry.Status = order.Canceled
 	} else {
-		orderBookCache.storeOrderMessage(message)
+		entry.Status = order.Open
 	}
+
+	cache.storeOrderMessage(entry)
+	return nil
 }
 
 // Settle will change the order status to 'settled' if the order
 // is valid and it's status is 'confirmed'.
-func (orderBookCache *OrderBookCache) Settle(message *Message) {
-	orderBookCache.storeOrderMessage(message)
+func (cache *Cache) Settle(entry Entry) error {
+	cache.ordersMu.Lock()
+	defer cache.ordersMu.Unlock()
+
+	previousStatus := cache.orders[string(entry.Order.ID)].Status
+	if previousStatus != order.Open && previousStatus != order.Unconfirmed && previousStatus != order.Confirmed {
+		return fmt.Errorf("cannot settled order with status %v", previousStatus)
+	}
+
+	entry.Status = order.Settled
+	cache.storeOrderMessage(entry)
+
+	return nil
 }
 
 // Cancel is called when trader wants to cancel the order.
 // Order can only be cancelled when its status is unconfirmed or open.
-func (orderBookCache *OrderBookCache) Cancel(id order.ID) error {
-	orderBookCache.ordersMu.RLock()
-	orderBookCache.cancelMu.Lock()
-	defer orderBookCache.ordersMu.RUnlock()
-	defer orderBookCache.cancelMu.Unlock()
+func (cache *Cache) Cancel(id order.ID) error {
+	cache.ordersMu.RLock()
+	cache.cancelMu.Lock()
+	defer cache.ordersMu.RUnlock()
+	defer cache.cancelMu.Unlock()
 
-	msg, ok := orderBookCache.orders[string(id)]
+	msg, ok := cache.orders[string(id)]
 	if !ok {
 		return fmt.Errorf("order does not exist")
 	}
-	if msg.Status > order.Unconfirmed {
+
+	switch msg.Status {
+	case order.Open:
+		entry := cache.orders[string(id)]
+		entry.Status = order.Canceled
+		cache.storeOrderMessage(entry)
+	case order.Unconfirmed:
+		cache.cancels[string(id)] = struct{}{}
+	default:
 		return fmt.Errorf("too late too cancel the order")
-	} else if msg.Status == order.Unconfirmed {
-		orderBookCache.cancels[string(id)] = struct{}{}
-	} else if msg.Status == order.Open {
-		delete(orderBookCache.orders, string(id))
 	}
 
 	return nil
 }
 
-// Blocks will gather all the orders records and returns them in
-// the format of orderbook.Message
-func (orderBookCache *OrderBookCache) Blocks() []*Message {
-	orderBookCache.ordersMu.RLock()
-	defer orderBookCache.ordersMu.RUnlock()
+// Blocks will gather all the order records and returns them in
+// the format of orderbook.Entry
+func (cache *Cache) Blocks() []Entry {
+	cache.ordersMu.RLock()
+	defer cache.ordersMu.RUnlock()
 
-	blocks := make([]*Message, len(orderBookCache.orders))
+	blocks := make([]Entry, len(cache.orders))
 	i := 0
-	for _, ord := range orderBookCache.orders {
+	for _, ord := range cache.orders {
 		blocks[i] = ord
 		i++
 	}
@@ -107,19 +172,11 @@ func (orderBookCache *OrderBookCache) Blocks() []*Message {
 	return blocks
 }
 
-func (orderBookCache *OrderBookCache) storeOrderMessage(message *Message) {
-	orderBookCache.ordersMu.Lock()
-	defer orderBookCache.ordersMu.Unlock()
+// Order retrieves information regarding an order.
+func (cache *Cache) Order(id order.ID) Entry {
+	return cache.orders[string(id)]
+}
 
-	// Store the order message if we haven't seen the order before.
-	if _, ok := orderBookCache.orders[string(message.Ord.ID)]; !ok {
-		orderBookCache.orders[string(message.Ord.ID)] = message
-		return
-	}
-
-	// Merge order by the priority of the order status
-	if message.Status < orderBookCache.orders[string(message.Ord.ID)].Status {
-		orderBookCache.orders[string(message.Ord.ID)] = message
-		return
-	}
+func (cache *Cache) storeOrderMessage(entry Entry) {
+	cache.orders[string(entry.Order.ID)] = entry
 }
