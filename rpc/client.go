@@ -3,7 +3,6 @@ package rpc
 import (
 	"fmt"
 	"io"
-	"log"
 	"runtime"
 	"sync"
 
@@ -206,19 +205,20 @@ func (client *Client) CancelOrder(ctx context.Context, cancelOrderRequest *Cance
 }
 
 func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computation) (<-chan *Computation, <-chan error) {
-	messageCh := make(chan *Computation, 1)
+	messageCh := make(chan *Computation)
 	errCh := make(chan error, 1)
 
+	// Open a connection to the gRPC service
 	stream, err := client.ComputerClient.Compute(ctx, grpc.FailFast(false))
 	if err != nil {
 		errCh <- err
 		return messageCh, errCh
 	}
 
-
 	var wg sync.WaitGroup
 	wg.Add(2)
 
+	// Read messages from the gRPC service and write them to the output channel
 	go func() {
 		defer wg.Done()
 		defer close(messageCh)
@@ -229,14 +229,19 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 				errCh <- err
 				return
 			}
+			println("found message in gRPC client")
 			select {
 			case <-ctx.Done():
 				errCh <- ctx.Err()
 				return
 			case messageCh <- message:
+				println("written message from gRPC client")
+
 			}
 		}
 	}()
+
+	// Read messages from the input channel and write them to the gRPC service
 	go func() {
 		defer wg.Done()
 
@@ -248,7 +253,6 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 				if !ok {
 					return
 				}
-				log.Println("Sending")
 				if err := stream.Send(message); err != nil {
 					s, _ := status.FromError(err)
 					if s.Code() != codes.Canceled && s.Code() != codes.DeadlineExceeded {
@@ -259,6 +263,8 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 			}
 		}
 	}()
+
+	// Wait for both goroutines to finish and then close the error channel
 	go func() {
 		defer close(errCh)
 		wg.Wait()

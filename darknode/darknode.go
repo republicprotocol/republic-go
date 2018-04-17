@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/ethereum/client"
@@ -26,11 +25,11 @@ import (
 
 type Darknodes []Darknode
 
-type DarkNode struct {
+type Darknode struct {
 	Config
 
 	darkNodeRegistry contracts.DarkNodeRegistry
-	darkOcean        *darkocean.Ocean
+	darkOcean        *Ocean
 	Logger           *logger.Logger
 	DHT              *dht.DHT
 	Computer         smpc.Computer

@@ -1,7 +1,7 @@
 package rpc
 
 import (
-	"log"
+	"errors"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -10,6 +10,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// A ComputerService implements the Computer gRPC service. It exposes methods
+// for accepting gRPC client connections, and blocking until a gRPC client
+// connection is received.
 type ComputerService struct {
 	senderSignalsMu *sync.Mutex
 	senderSignals   map[string]chan (<-chan *Computation)
@@ -21,6 +24,7 @@ type ComputerService struct {
 	errSignals   map[string]chan (<-chan error)
 }
 
+// NewComputerService returns a new ComputerService.
 func NewComputerService() *ComputerService {
 	return &ComputerService{
 		senderSignalsMu: new(sync.Mutex),
@@ -57,32 +61,38 @@ func (service *ComputerService) WaitForCompute(multiAddress identity.MultiAddres
 	receiverSignal := service.receiverSignal(multiAddressAsStr)
 	receiverCh := <-receiverSignal
 
-	log.Println("Opened sender")
-
-
 	return receiverCh, errCh
 }
 
 // Compute opens a gRPC stream for streaming Computation messages to, and from,
 // a client.
 func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
-	multiAddress := "" // TODO: Get the MultiAddress from a signed authentication message
 
+	// Accept an initial authentication message to verify the identity of the
+	// client
+	authentication, err := stream.Recv()
+	if err != nil {
+		return err
+	}
+	if authentication.MultiAddress == nil {
+		return errors.New("cannot connect to stream: no authentication message")
+	}
+	multiAddress, _, err := UnmarshalMultiAddress(authentication.MultiAddress)
+	// FIXME: Validate the multiaddress signature.
+	multiAddressAsStr := multiAddress.String()
 
 	errCh := make(chan error)
 	defer close(errCh)
 
-	errSignal := service.errSignal(multiAddress)
-	defer service.closeErrSignal(multiAddress)
+	errSignal := service.errSignal(multiAddressAsStr)
+	defer service.closeErrSignal(multiAddressAsStr)
 	errSignal <- errCh
 
 	senderErrCh := make(chan error, 1)
 	go func() {
 		defer close(senderErrCh)
-		senderSignal := service.senderSignal(multiAddress)
+		senderSignal := service.senderSignal(multiAddressAsStr)
 		senderCh := <-senderSignal
-
-		log.Println("Server side sending")
 
 		for message := range senderCh {
 			if err := stream.Send(message); err != nil {
@@ -99,12 +109,9 @@ func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 	receiverCh := make(chan *Computation)
 	defer close(receiverCh)
 
-	receiverSignal := service.receiverSignal(multiAddress)
-	defer service.closeReceiverSignal(multiAddress)
+	receiverSignal := service.receiverSignal(multiAddressAsStr)
+	defer service.closeReceiverSignal(multiAddressAsStr)
 	receiverSignal <- receiverCh
-
-	log.Println("Got Compute from client")
-
 
 	for {
 		message, err := stream.Recv()
@@ -118,6 +125,7 @@ func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 			if !ok {
 				return nil
 			}
+			errCh <- err
 			return err
 		case <-stream.Context().Done():
 			errCh <- stream.Context().Err()

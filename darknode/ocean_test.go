@@ -1,4 +1,4 @@
-package darkocean_test
+package darknode_test
 
 import (
 	"context"
