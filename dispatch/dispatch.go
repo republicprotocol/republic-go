@@ -31,24 +31,24 @@ func Split(chIn interface{}, chsOut ...interface{}) {
 			return
 		}
 		for _, chOut := range chsOut {
-			SendToInterface(chOut, msg)
+			Send(chOut, msg)
 		}
 	}
 }
 
-func SendToInterface(chOut interface{}, msgValue reflect.Value) {
+func Send(chOut interface{}, msgValue reflect.Value) {
 	switch reflect.TypeOf(chOut).Kind() {
 	case reflect.Array, reflect.Slice:
 		for i := 0; i < reflect.ValueOf(chOut).Len(); i++ {
 			if reflect.ValueOf(chOut).Index(i).Kind() != reflect.Chan {
-				panic(fmt.Sprintf("cannot split to value of type %T", chOut))
+				panic(fmt.Sprintf("cannot send to type %T", chOut))
 			}
 			reflect.ValueOf(chOut).Index(i).Send(msgValue)
 		}
 	case reflect.Chan:
 		reflect.ValueOf(chOut).Send(msgValue)
 	default:
-		panic(fmt.Sprintf("cannot split to value of type %T", chOut))
+		panic(fmt.Sprintf("cannot send to type %T", chOut))
 	}
 }
 
@@ -73,7 +73,7 @@ func (splitter *Splitter) Subscribe(ch interface{}) error {
 	defer splitter.mu.Unlock()
 
 	if len(splitter.subscribers) >= splitter.maxConnections {
-		return fmt.Errorf("cannot run message queue: max connections reached")
+		return fmt.Errorf("cannot subscribe: max connections reached")
 	}
 
 	splitter.subscribers[ch] = struct{}{}
@@ -101,7 +101,7 @@ func (splitter *Splitter) Split(chIn interface{}) {
 			splitter.mu.RLock()
 			defer splitter.mu.RUnlock()
 			for chOut := range splitter.subscribers {
-				SendToInterface(chOut, msg)
+				Send(chOut, msg)
 			}
 		}()
 	}
@@ -109,7 +109,7 @@ func (splitter *Splitter) Split(chIn interface{}) {
 
 func Merge(chOut interface{}, chsIn ...interface{}) {
 	if reflect.TypeOf(chOut).Kind() != reflect.Chan {
-		panic(fmt.Sprintf("cannot merge to value of type %T", chOut))
+		panic(fmt.Sprintf("cannot merge to type %T", chOut))
 	}
 
 	var wg sync.WaitGroup

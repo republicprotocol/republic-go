@@ -1,9 +1,6 @@
 package orderbook
 
 import (
-	"reflect"
-	"sync"
-
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 )
@@ -15,6 +12,8 @@ type Syncer interface {
 	Release(entry Entry) error
 	Settle(entry Entry) error
 	Cancel(id order.ID) error
+	Blocks() []Entry
+	Order(id order.ID) Entry
 }
 
 // Broadcaster is the subject in the observer design pattern
@@ -27,8 +26,8 @@ type Broadcaster interface {
 // An Orderbook is responsible for store the historical orders both in cache
 // and in disk. It also streams the newly received orders to its subscriber.
 type Orderbook struct {
-	cache    Cache
-	database Database
+	cache    Syncer
+	database Syncer
 	splitter dispatch.Splitter
 	splitCh  chan Entry
 }
@@ -39,33 +38,30 @@ func NewOrderbook(maxConnections int) Orderbook {
 	splitCh := make(chan Entry)
 	go splitter.Split(splitCh)
 
+	cache := NewCache()
+	database := Database{}
+
 	return Orderbook{
-		cache:    NewCache(),
-		database: Database{},
+		cache:    &cache,
+		database: &database,
 		splitter: splitter,
 		splitCh:  splitCh,
 	}
 }
 
-// Subscribe will start listening to the orderbook for updates.
-func (orderbook Orderbook) Subscribe(ch interface{}) error {
-	var err error
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		orderbook.splitter.Subscribe(ch)
-	}()
+// Subscribe will start listening to the orderbook for updates. The channel
+// must not be closed until after the Unsubscribe method is called.
+func (orderbook Orderbook) Subscribe(ch chan Entry) error {
+	if err := orderbook.splitter.Subscribe(ch); err != nil {
+		return err
+	}
 
 	blocks := orderbook.cache.Blocks()
 	for _, block := range blocks {
-		dispatch.SendToInterface(ch, reflect.ValueOf(block))
+		ch <- block
 	}
 
-	wg.Wait()
-	return err
+	return nil
 }
 
 // Unsubscribe will stop listening to the orderbook for updates
@@ -143,7 +139,13 @@ func (orderbook Orderbook) Cancel(id order.ID) error {
 	return nil
 }
 
+// Blocks will gather all the order records and returns them in
+// the format of orderbook.Entry
+func (orderbook Orderbook) Blocks() []Entry {
+	return orderbook.cache.Blocks()
+}
+
 // Order retrieves information regarding an order.
 func (orderbook Orderbook) Order(id order.ID) Entry {
-	return orderbook.cache.orders[string(id)]
+	return orderbook.cache.Order(id)
 }
