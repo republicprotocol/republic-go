@@ -14,15 +14,16 @@ var _ = Describe("Filters", func() {
 	Context("when filtering duplicates", func() {
 
 		It("should shutdown gracefully", func() {
+			numberOfMessages := 100
 			chSet := NewChannelSet(0)
 			chSetOut := FilterDuplicates(chSet, 0)
 
 			var writeWg sync.WaitGroup
-			writeToChannelSet(chSet, 100, &writeWg)
+			writeToChannelSet(chSet, numberOfMessages, &writeWg)
 
 			var n int64
 			var readWg sync.WaitGroup
-			readFromChannelSet(chSetOut, &readWg, &n)
+			readFromChannelSet(chSetOut, numberOfMessages, &readWg, &n)
 
 			writeWg.Wait()
 			chSet.Close()
@@ -31,15 +32,16 @@ var _ = Describe("Filters", func() {
 		})
 
 		It("should never produce a duplicate", func() {
+			numberOfMessages := 100
 			chSet := NewChannelSet(0)
 			chSetOut := FilterDuplicates(chSet, 0)
 
 			var writeWg sync.WaitGroup
-			writeToChannelSet(chSet, 100, &writeWg)
+			writeToChannelSet(chSet, numberOfMessages, &writeWg)
 
 			var n int64
 			var readWg sync.WaitGroup
-			readFromChannelSet(chSetOut, &readWg, &n)
+			readFromChannelSet(chSetOut, numberOfMessages, &readWg, &n)
 
 			writeWg.Wait()
 			chSet.Close()
@@ -52,9 +54,10 @@ var _ = Describe("Filters", func() {
 
 	Context("when filtering heights", func() {
 
-		FIt("should shutdown gracefully", func() {
+		It("should shutdown gracefully", func() {
+			numberOfMessages := 100
 			capacity := 0
-			height := make(chan int, capacity)
+			height := make(chan Height, capacity)
 			chSet := NewChannelSet(capacity)
 			chSetOut := FilterHeight(chSet, height, capacity)
 
@@ -64,52 +67,43 @@ var _ = Describe("Filters", func() {
 				defer GinkgoRecover()
 				defer heightWg.Done()
 
-				for i := 0; i < 10; i++ {
-					height <- i
-					time.Sleep(2 * time.Second)
+				for i := 0; i < 5; i++ {
+					height <- Height(i)
+					time.Sleep(time.Second)
 				}
 			}()
 
 			var writeWg sync.WaitGroup
-			writeToChannelSet(chSet, 100, &writeWg)
+			writeToChannelSet(chSet, numberOfMessages, &writeWg)
 
 			var n int64
 			var readWg sync.WaitGroup
-			readFromChannelSet(chSetOut, &readWg, &n)
+			readFromChannelSet(chSetOut, numberOfMessages, &readWg, &n)
 
 			writeWg.Wait()
+			heightWg.Wait()
+
 			chSet.Close()
+			close(height)
 
 			readWg.Wait()
-			heightWg.Wait()
 		})
 
 		It("should only produce messages for the current height", func() {
 			numberOfMessages := 100
-			chSet := NewChannelSet(0)
-			chSetOut := FilterDuplicates(chSet, 0)
+			capacity := 0
+			height := make(chan Height, capacity)
+			chSet := NewChannelSet(capacity)
+			chSetOut := FilterHeight(chSet, height, numberOfMessages)
 
-			var writeWg sync.WaitGroup
-			for h := 0; h < 5; h++ {
-				writeToChannelSet(chSet, numberOfMessages, &writeWg)
-			}
-
-			var n int64
-			var readWg sync.WaitGroup
-			readFromChannelSet(chSetOut, &readWg, &n)
-
-			writeWg.Wait()
-			chSet.Close()
-
-			readWg.Wait()
-			Ω(n).Should(Equal(numberOfMessages))
-		})
-
-		It("should produce buffered messages when the height changes", func() {
-			numberOfMessages, capacity := 100, 0
-			chSet := NewChannelSet(0)
-			chSetOut := FilterDuplicates(chSet, 0)
-			height := make(chan int, capacity)
+			h := Height(1)
+			hErrCh := make(chan error)
+			go func() {
+				// defer GinkgoRecover()
+				for err := range hErrCh {
+					Ω(err).ShouldNot(HaveOccurred())
+				}
+			}()
 
 			var heightWg sync.WaitGroup
 			heightWg.Add(1)
@@ -117,29 +111,110 @@ var _ = Describe("Filters", func() {
 				defer GinkgoRecover()
 				defer heightWg.Done()
 
-				for i := 0; i < 10; i++ {
-					height <- i
-					time.Sleep(2 * time.Second)
-				}
+				height <- 1
 			}()
 
 			var writeWg sync.WaitGroup
-			for height := 5; height > 0; height-- {
-				writeToChannelSetWithHeight(chSet, numberOfMessages, height, &writeWg)
-			}
+			writeToChannelSetWithHeight(chSet, numberOfMessages, Height(1), &writeWg)
+			writeToChannelSetWithHeight(chSet, numberOfMessages, Height(2), &writeWg)
+			writeToChannelSetWithHeight(chSet, numberOfMessages, Height(3), &writeWg)
 
 			var n int64
 			var readWg sync.WaitGroup
-			readFromChannelSet(chSetOut, &readWg, &n)
+			readFromChannelSetForHeight(chSetOut, numberOfMessages, &readWg, &n, &h, hErrCh)
+
+			writeWg.Wait()
+			heightWg.Wait()
+
+			chSet.Close()
+			close(height)
+
+			readWg.Wait()
+			close(hErrCh)
+		})
+
+		It("should continue to produce messages when the height changes", func() {
+			numberOfMessages := 100
+			capacity := 0
+			height := make(chan Height, capacity)
+			chSet := NewChannelSet(capacity)
+			chSetOut := FilterHeight(chSet, height, numberOfMessages)
+
+			h1 := Height(1)
+			hErrCh := make(chan error)
+			go func() {
+				// defer GinkgoRecover()
+				for err := range hErrCh {
+					Ω(err).ShouldNot(HaveOccurred())
+				}
+			}()
+
+			height <- 1
+
+			var writeWg sync.WaitGroup
+			writeToChannelSetWithHeight(chSet, numberOfMessages, Height(1), &writeWg)
+
+			var n int64
+			var readWg sync.WaitGroup
+			readFromChannelSetForHeight(chSetOut, numberOfMessages, &readWg, &n, &h1, hErrCh)
+
+			writeWg.Wait()
+			readWg.Wait()
+
+			height <- 2
+
+			writeToChannelSetWithHeight(chSet, numberOfMessages, Height(2), &writeWg)
+
+			h2 := Height(2)
+			readFromChannelSetForHeight(chSetOut, numberOfMessages, &readWg, &n, &h2, hErrCh)
 
 			writeWg.Wait()
 			chSet.Close()
+			close(height)
 
 			readWg.Wait()
+			close(hErrCh)
+		})
 
-			heightWg.Wait()
+		FIt("should produce buffered messages when the height changes", func() {
+			numberOfMessages := 100
+			capacity := 0
+			height := make(chan Height, capacity)
+			chSet := NewChannelSet(capacity)
+			chSetOut := FilterHeight(chSet, height, numberOfMessages)
 
-			Ω(n).Should(Equal(int64(500)))
+			h1 := Height(1)
+			hErrCh := make(chan error)
+			go func() {
+				// defer GinkgoRecover()
+				for err := range hErrCh {
+					Ω(err).ShouldNot(HaveOccurred())
+				}
+			}()
+
+			height <- 1
+
+			var writeWg sync.WaitGroup
+			writeToChannelSetWithHeight(chSet, numberOfMessages, Height(1), &writeWg)
+			writeToChannelSetWithHeight(chSet, numberOfMessages, Height(2), &writeWg)
+
+			var n int64
+			var readWg sync.WaitGroup
+			readFromChannelSetForHeight(chSetOut, numberOfMessages, &readWg, &n, &h1, hErrCh)
+
+			writeWg.Wait()
+			readWg.Wait()
+
+			height <- 2
+
+			h2 := Height(2)
+			readFromChannelSetForHeight(chSetOut, numberOfMessages, &readWg, &n, &h2, hErrCh)
+
+			chSet.Close()
+			close(height)
+
+			readWg.Wait()
+			close(hErrCh)
 		})
 	})
 })

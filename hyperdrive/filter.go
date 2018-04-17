@@ -21,7 +21,7 @@ func FilterDuplicates(chSetIn ChannelSet, capacity int) ChannelSet {
 				if !ok {
 					return
 				}
-				h := ProposalHash(proposal)
+				h := proposal.Hash()
 				if _, ok := proposals[h]; ok {
 					continue
 				}
@@ -32,7 +32,7 @@ func FilterDuplicates(chSetIn ChannelSet, capacity int) ChannelSet {
 				if !ok {
 					return
 				}
-				h := PrepareHash(prepare)
+				h := prepare.Hash()
 				if _, ok := prepares[h]; ok {
 					continue
 				}
@@ -43,7 +43,7 @@ func FilterDuplicates(chSetIn ChannelSet, capacity int) ChannelSet {
 				if !ok {
 					return
 				}
-				h := CommitHash(commit)
+				h := commit.Hash()
 				if _, ok := commits[h]; ok {
 					continue
 				}
@@ -54,7 +54,7 @@ func FilterDuplicates(chSetIn ChannelSet, capacity int) ChannelSet {
 				if !ok {
 					return
 				}
-				h := BlockHash(block)
+				h := block.Hash()
 				if _, ok := faults[h]; ok {
 					continue
 				}
@@ -65,7 +65,7 @@ func FilterDuplicates(chSetIn ChannelSet, capacity int) ChannelSet {
 				if !ok {
 					return
 				}
-				h := FaultHash(fault)
+				h := fault.Hash()
 				if _, ok := blocks[h]; ok {
 					continue
 				}
@@ -78,16 +78,20 @@ func FilterDuplicates(chSetIn ChannelSet, capacity int) ChannelSet {
 	return chSetOut
 }
 
+// HeightCeiling defines the maximum height, with respective to the current
+// height, that will be buffered. Above this limit, messages will be dropped.
+const HeightCeiling = 1000
+
 // FilterHeight consumes a ChannelSet and filters all messages that are not
 // for the current height. The filtered messages are buffered and reconsidered
 // when the height is changed.
-func FilterHeight(chSetIn ChannelSet, height <-chan int, capacity int) ChannelSet {
+func FilterHeight(chSetIn ChannelSet, height <-chan Height, capacity int) ChannelSet {
 	chSetOut := NewChannelSet(capacity)
 
 	go func() {
 		defer chSetOut.Close()
 
-		buffer := map[int]ChannelSet{}
+		buffer := map[Height]ChannelSet{}
 		defer func() {
 			for _, chSet := range buffer {
 				chSet.Close()
@@ -98,93 +102,101 @@ func FilterHeight(chSetIn ChannelSet, height <-chan int, capacity int) ChannelSe
 
 		for {
 			select {
-			case nextH := <-height:
+			case nextH, ok := <-height:
+				if !ok {
+					return
+				}
+				prevH := h
 				h = nextH
 				if bufferedChSet, ok := buffer[h]; ok {
 					delete(buffer, h)
 					bufferedChSet.Close()
 					bufferedChSet.Pipe(chSetOut)
 				}
+				if bufferedChSet, ok := buffer[prevH]; ok {
+					delete(buffer, prevH)
+					bufferedChSet.Close()
+				}
 
 			case proposal, ok := <-chSetIn.Proposals:
 				if !ok {
 					return
 				}
-				if int(proposal.Height) < h {
+				if proposal.Height < h || proposal.Height > h+HeightCeiling {
 					continue
 				}
-				if int(proposal.Height) == h {
+				if proposal.Height == h {
 					chSetOut.Proposals <- proposal
 					continue
 				}
-				if _, ok := buffer[h]; !ok {
-					buffer[h] = NewChannelSet(capacity)
+				if _, ok := buffer[proposal.Height]; !ok {
+					buffer[proposal.Height] = NewChannelSet(capacity)
 				}
-				buffer[h].Proposals <- proposal
+				buffer[proposal.Height].Proposals <- proposal
 
 			case prepare, ok := <-chSetIn.Prepares:
 				if !ok {
 					return
 				}
-				if int(prepare.Height) < h {
+				if prepare.Height < h || prepare.Height > h+HeightCeiling {
 					continue
 				}
-				if int(prepare.Height) == h {
+				if prepare.Height == h {
 					chSetOut.Prepares <- prepare
 					continue
 				}
-				if _, ok := buffer[h]; !ok {
-					buffer[h] = NewChannelSet(capacity)
+				if _, ok := buffer[prepare.Height]; !ok {
+					buffer[prepare.Height] = NewChannelSet(capacity)
 				}
-				buffer[h].Prepares <- prepare
+				buffer[prepare.Height].Prepares <- prepare
 
 			case commit, ok := <-chSetIn.Commits:
 				if !ok {
 					return
 				}
-				if int(commit.Height) < h {
+				if commit.Height < h || commit.Height > h+HeightCeiling {
 					continue
 				}
-				if int(commit.Height) == h {
+				if commit.Height == h {
 					chSetOut.Commits <- commit
 					continue
 				}
-				if _, ok := buffer[h]; !ok {
-					buffer[h] = NewChannelSet(capacity)
+				if _, ok := buffer[commit.Height]; !ok {
+					buffer[commit.Height] = NewChannelSet(capacity)
 				}
-				buffer[h].Commits <- commit
+				buffer[commit.Height].Commits <- commit
 
 			case block, ok := <-chSetIn.Blocks:
 				if !ok {
 					return
 				}
-				if int(block.Height) < h {
+				if block.Height < h || block.Height > h+HeightCeiling {
 					continue
 				}
-				if int(block.Height) == h {
+				if block.Height == h {
 					chSetOut.Blocks <- block
 					continue
 				}
-				if _, ok := buffer[h]; !ok {
-					buffer[h] = NewChannelSet(capacity)
+				if _, ok := buffer[block.Height]; !ok {
+					buffer[block.Height] = NewChannelSet(capacity)
 				}
-				buffer[h].Blocks <- block
+				buffer[block.Height].Blocks <- block
 
 			case fault, ok := <-chSetIn.Faults:
 				if !ok {
 					return
 				}
-				if int(fault.Height) < h {
+				if fault.Height < h || fault.Height > h+HeightCeiling {
 					continue
 				}
-				if int(fault.Height) == h {
+				if fault.Height == h {
 					chSetOut.Faults <- fault
 					continue
 				}
-				if _, ok := buffer[h]; !ok {
-					buffer[h] = NewChannelSet(capacity)
+				if _, ok := buffer[fault.Height]; !ok {
+					buffer[fault.Height] = NewChannelSet(capacity)
 				}
-				buffer[h].Faults <- fault
+				buffer[fault.Height].Faults <- fault
 			}
 		}
 	}()

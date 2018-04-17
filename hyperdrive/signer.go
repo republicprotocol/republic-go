@@ -1,5 +1,7 @@
 package hyperdrive
 
+import "errors"
+
 // A Hash is a Keccak256 Hash of some data.
 type Hash [32]byte
 
@@ -53,4 +55,18 @@ func (signer *WeakSigner) Sign(hash Hash) (Signature, error) {
 	signature := [65]byte{}
 	copy(signature[:], signer.ID[:])
 	return Signature(signature), nil
+}
+
+// ErrorSigner returns errors instead of producing Signatures.
+type ErrorSigner struct {
+}
+
+// NewErrorSigner returns a new ErrorSigner.
+func NewErrorSigner() ErrorSigner {
+	return ErrorSigner{}
+}
+
+// Sign implements the Signer interface.
+func (signer *ErrorSigner) Sign(hash Hash) (Signature, error) {
+	return [65]byte{}, errors.New("cannot use error signer to sign")
 }
