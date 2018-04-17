@@ -12,8 +12,30 @@ type Message interface {
 
 // A MessageStore stores and loads Messages.
 type MessageStore interface {
+	Load(Hash) Message
 	Store(Message)
-	Message(Hash) Message
+}
+
+// MessageMapStore implements the MessageStore interface using an in-memory
+// map.
+type MessageMapStore = map[Hash]Message
+
+// NewMessageMapStore returns a new MessageMapStore.
+func NewMessageMapStore() MessageMapStore {
+	return MessageMapStore{}
+}
+
+// Load implements the MessageStore interface.
+func (store *MessageMapStore) Load(hash Hash) Message {
+	if message, ok := store[hash]; ok {
+		return message
+	}
+	return nil
+}
+
+// Store implements the MessageStore interface.
+func (store *MessageMapStore) Store(message Message) {
+	store[message.Hash()] = message
 }
 
 // VerifyAndSignMessage using a MessageStore to keep the state of previously
@@ -35,7 +57,7 @@ func VerifyAndSignMessage(message Message, store MessageStore, signer Signer, th
 		return fault, nil
 	}
 
-	if !store.Message(message) {
+	if store.Load(message.Hash()) == nil {
 		// If this message is not in the store, then sign it and store it
 		signature, err := signer.Sign(message.Hash())
 		if err != nil {
@@ -50,7 +72,7 @@ func VerifyAndSignMessage(message Message, store MessageStore, signer Signer, th
 		return nil, nil
 	}
 
-	stored := store.Message(message)
+	stored := store.Load(message.Hash())
 	if len(stored.Signatures()) >= threshold {
 		// The stored message has already reached the threshold
 		return nil, nil

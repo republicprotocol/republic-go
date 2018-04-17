@@ -39,7 +39,7 @@ func (commit *Commit) Hash() Hash {
 // reached for a Block, the Block is certified and produced to the Block
 // channel. The incrementing of height must be done by reading Blocks produced
 // by this process, and comparing it to the current height.
-func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer, capacity int) (<-chan Commit, <-chan Fault, <-chan error) {
+func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer, capacity int, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
 	commitCh := make(chan Commit, capacity)
 	faultCh := make(chan Fault, capacity)
 	errCh := make(chan error, capacity)
@@ -50,10 +50,7 @@ func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer
 		defer close(faultCh)
 		defer close(errCh)
 
-		threshold := validator.Threshold()
-
-		commits := map[[32]byte]Commit{}
-		certifications := map[[32]byte]struct{}{}
+		store := NewMessageMapStore()
 
 		for {
 			select {
@@ -67,13 +64,14 @@ func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer
 					return
 				}
 
-				res, err := Foo(commit, signer)
+				message, err := VerifyAndSignMessage(commit, store, signer, threshold)
 				if err != nil {
 					errCh <- err
 					continue
 				}
 
-				switch res.(type) {
+				// After verifying and signing the message check for Faults
+				switch message := message.(type) {
 				case Commit:
 					select {
 					case <-ctx.Done():
@@ -89,56 +87,8 @@ func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer
 					case faultCh <- message:
 					}
 				default:
+					// Gracefully ignore invalid messages
 					continue
-				}
-
-				hash := commit.Hash()
-				if _, ok := certifications[hash]; ok {
-					continue
-				}
-
-				if err := commit.Verify(); err != nil {
-					fault, err := FaultFromCommit(&commit, signer)
-					if err != nil {
-						errCh <- err
-						continue
-					}
-					select {
-					case <-ctx.Done():
-						errCh <- ctx.Err()
-						return
-					case faultCh <- fault:
-					}
-					continue
-				}
-
-				if _, ok := commits[hash]; !ok {
-					signature, err := signer.Sign(commit)
-					if err != nil {
-						errCh <- err
-						continue
-					}
-					commit.Signatures = commit.Signatures.Merge(Signatures{signature})
-					commits[hash] = commit
-
-					select {
-					case <-ctx.Done():
-						errCh <- ctx.Err()
-						return
-					case commitCh <- commits[hash]:
-					}
-				} else {
-					commits[hash].Signatures = commits[hash].Signatures.Merge(commit.Signatures)
-				}
-
-				if len(commits[hash].Signatures) >= threshold {
-					certifications[hash] = struct{}{}
-					select {
-					case <-ctx.Done():
-						errCh <- ctx.Err()
-						return
-					case commitCh <- commits[hash]:
-					}
 				}
 			}
 		}
