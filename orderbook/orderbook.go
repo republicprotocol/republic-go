@@ -21,6 +21,7 @@ type Syncer interface {
 type Broadcaster interface {
 	Subscribe(ch interface{}) error
 	Unsubscribe(ch interface{})
+	Close()
 }
 
 // An Orderbook is responsible for store the historical orders both in cache
@@ -70,6 +71,11 @@ func (orderbook Orderbook) Subscribe(ch interface{}) error {
 // Unsubscribe will stop listening to the orderbook for updates
 func (orderbook Orderbook) Unsubscribe(ch interface{}) {
 	orderbook.splitter.Unsubscribe(ch)
+}
+
+// Close will close the splitCh
+func (orderbook Orderbook) Close() {
+	close(orderbook.splitCh)
 }
 
 // Open is called when we first receive the order fragment.

@@ -33,6 +33,10 @@ var _ = Describe("order book", func() {
 			book = orderbook.NewOrderbook(10)
 		})
 
+		AfterEach(func() {
+			book.Close()
+		})
+
 		It("subscribe and unsubscribe", func() {
 
 			var chans [maxConnections]chan orderbook.Entry
