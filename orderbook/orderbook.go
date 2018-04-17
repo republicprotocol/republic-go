@@ -16,13 +16,6 @@ type Syncer interface {
 	Order(id order.ID) Entry
 }
 
-// Broadcaster is the subject in the observer design pattern
-type Broadcaster interface {
-	Subscribe(ch interface{}) error
-	Unsubscribe(ch interface{})
-	Close()
-}
-
 // An Orderbook is responsible for store the historical orders both in cache
 // and in disk. It also streams the newly received orders to its subscriber.
 type Orderbook struct {
