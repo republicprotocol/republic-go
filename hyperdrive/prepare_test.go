@@ -14,7 +14,7 @@ var _ = Describe("Prepare", func() {
 
 	Context("when processing prepares", func() {
 
-		It("should produce proposal", func() {
+		It("should produce commit if everything goes fine ", func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			capacity, threshold := 100, 100
 			signer := NewWeakSigner(WeakSignerID)
@@ -41,5 +41,31 @@ var _ = Describe("Prepare", func() {
 			close(prepareChIn)
 			cancel()
 		})
+	})
+
+	It("should produce a fault if it cannot be verified", func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		capacity, threshold := 100, 100
+		signer := NewWeakSigner(WeakSignerID)
+		verifier := NewErrorVerifier()
+
+		prepareChIn := make(chan Prepare)
+		go func() {
+			prepare := Prepare{
+				Proposal: Proposal{
+					Block: Block{Height: Height(1)},
+				},
+				Signatures: Signatures{Signature([65]byte{byte(0)})},
+			}
+			prepareChIn <- prepare
+		}()
+
+		_, faultCh, _ := ProcessPreparation(ctx, prepareChIn, &signer, &verifier, capacity, threshold)
+		fault, ok := <-faultCh
+		Ω(fault).ShouldNot(BeNil())
+		Ω(ok).Should(BeTrue())
+
+		close(prepareChIn)
+		cancel()
 	})
 })

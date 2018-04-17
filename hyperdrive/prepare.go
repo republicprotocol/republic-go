@@ -22,23 +22,24 @@ func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer 
 
 		for {
 			select {
-
 			case <-ctx.Done():
 				errCh <- ctx.Err()
 				return
+
 			case prepare, ok := <-prepareChIn:
 				if !ok {
 					return
 				}
 
 				message, err := VerifyAndSignMessage(&prepare, &store, signer, verifier, threshold)
+
 				if err != nil {
 					errCh <- err
 					continue
 				}
+
 				// After verifying and signing the message check for Faults
 				switch message := message.(type) {
-
 				case *Prepare:
 					commit := Commit{
 						Prepare:    *message,
@@ -88,8 +89,8 @@ func (prepare *Prepare) Hash() Hash {
 	return sha3.Sum256(buf.Bytes())
 }
 
-func (prepare *Prepare) Fault() Fault {
-	return Fault{
+func (prepare *Prepare) Fault() *Fault {
+	return &Fault{
 		Rank:   prepare.Proposal.Block.Rank,
 		Height: prepare.Proposal.Block.Height,
 	}

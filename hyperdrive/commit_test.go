@@ -12,7 +12,7 @@ var _ = Describe("Commit", func() {
 
 	Context("when processing commits", func() {
 
-		It("should create commit ", func() {
+		It("should create commit if everything goes fine ", func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			capacity, threshold := 100, 100
 			signer := NewWeakSigner(WeakSignerID)
@@ -36,6 +36,34 @@ var _ = Describe("Commit", func() {
 			commitCh, _, _ := ProcessCommits(ctx, commitChIn, &signer, &verifier, capacity, threshold)
 			commit, ok := <-commitCh
 			Ω(commit).ShouldNot(BeNil())
+			Ω(ok).Should(BeTrue())
+
+			close(commitChIn)
+			cancel()
+		})
+
+		It("should create fault if cannot be verified ", func() {
+			ctx, cancel := context.WithCancel(context.Background())
+			capacity, threshold := 100, 100
+			signer := NewWeakSigner(WeakSignerID)
+			verifier := NewErrorVerifier()
+
+			commitChIn := make(chan Commit)
+			go func() {
+				commit := Commit{
+					Prepare: Prepare{
+						Proposal: Proposal{
+							Block: Block{Height: Height(1)},
+						},
+					},
+					Signatures: Signatures{Signature([65]byte{byte(0)})},
+				}
+				commitChIn <- commit
+			}()
+
+			_, faultCh, _ := ProcessCommits(ctx, commitChIn, &signer, &verifier, capacity, threshold)
+			fault, ok := <-faultCh
+			Ω(fault).ShouldNot(BeNil())
 			Ω(ok).Should(BeTrue())
 
 			close(commitChIn)

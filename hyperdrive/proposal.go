@@ -18,47 +18,49 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer S
 		defer close(faultCh)
 		defer close(errCh)
 
-		store := NewMessageMapStore()
-
 		for {
 			select {
 			case <-ctx.Done():
 				errCh <- ctx.Err()
 				return
-			case fault := <-proposalChIn:
-				message, err := VerifyAndSignMessage(&fault, &store, signer, verifier, 0)
-				if err != nil {
-					errCh <- err
-					continue
+			case proposal, ok := <-proposalChIn:
+				if !ok {
+					return
 				}
-				// After verifying and signing the message check for Faults
-				switch message := message.(type) {
-				case *Proposal:
-					prepare := Prepare{
-						Proposal: *message,
-					}
-					signature, err := signer.Sign(prepare.Hash())
+
+				if err := proposal.Verify(verifier); err != nil {
+					fault := proposal.Fault()
+					signature, err := signer.Sign(fault.Hash())
 					if err != nil {
 						errCh <- err
 						continue
 					}
-					prepare.Signatures = Signatures{signature}
+					fault.Signatures = Signatures{signature}
+
 					select {
 					case <-ctx.Done():
 						errCh <- ctx.Err()
 						return
-					case prepareCh <- prepare:
+					case faultCh <- *fault:
 					}
-				case *Fault:
-					select {
-					case <-ctx.Done():
-						errCh <- ctx.Err()
-						return
-					case faultCh <- *message:
-					}
-				default:
-					// Gracefully ignore invalid messages
 					continue
+				}
+
+				prepare := Prepare{
+					Proposal: proposal,
+				}
+				signature, err := signer.Sign(prepare.Hash())
+				if err != nil {
+					errCh <- err
+					continue
+				}
+				prepare.Signatures = Signatures{signature}
+
+				select {
+				case <-ctx.Done():
+					errCh <- ctx.Err()
+					return
+				case prepareCh <- prepare:
 				}
 			}
 		}
@@ -89,8 +91,8 @@ func (proposal *Proposal) Hash() Hash {
 }
 
 // Fault implements the Message interface.
-func (proposal *Proposal) Fault() Fault {
-	return Fault{
+func (proposal *Proposal) Fault() *Fault {
+	return &Fault{
 		Rank:   proposal.Block.Rank,
 		Height: proposal.Block.Height,
 	}

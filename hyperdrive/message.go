@@ -4,7 +4,7 @@ package hyperdrive
 // Hyperdrive blockchain.
 type Message interface {
 	Hash() Hash
-	Fault() Fault
+	Fault() *Fault
 	Verify(Verifier) error
 	SetSignatures(Signatures)
 	GetSignatures() Signatures

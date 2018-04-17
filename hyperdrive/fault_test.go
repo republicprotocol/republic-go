@@ -21,7 +21,7 @@ var _ = Describe("Faults", func() {
 			faultChIn := make(chan Fault)
 			go func() {
 				fault := Fault{
-					Rank : 1,
+					Rank:   1,
 					Height: 1,
 				}
 				faultChIn <- fault

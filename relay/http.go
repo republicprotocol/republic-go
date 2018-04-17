@@ -22,7 +22,6 @@ type OpenOrderRequest struct {
 	OrderFragments OrderFragments `json:"orderFragments"`
 }
 
-
 // CancelOrderRequest is a JSON request to cancel an order that is optionally
 // signed.
 type CancelOrderRequest struct {
@@ -54,7 +53,6 @@ func RecoveryHandler(h http.Handler) http.Handler {
 		h.ServeHTTP(w, r)
 	})
 }
-
 
 // OpenOrdersHandler handles all HTTP open order requests
 func OpenOrdersHandler(multiAddress identity.MultiAddress, darkPools dark.Pools) http.Handler {

@@ -69,8 +69,8 @@ func (fault *Fault) Hash() Hash {
 	return sha3.Sum256(buf.Bytes())
 }
 
-func (fault *Fault) Fault() Fault {
-	return *fault
+func (fault *Fault) Fault() *Fault {
+	return fault
 }
 
 func (fault *Fault) Verify(verifier Verifier) error {

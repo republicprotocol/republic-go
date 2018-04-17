@@ -19,7 +19,6 @@ var prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 
 // Relay consists of configuration values (?)
 type Relay struct {
-
 	multiAddress   identity.MultiAddress
 	darkPools      dark.Pools
 	bootstrapNodes []string
@@ -107,7 +106,6 @@ func SendOrderFragmentsToDarkOcean(order OrderFragments, traderMultiAddress iden
 	}
 	return nil
 }
-
 
 func CancelOrder(order order.ID, traderMultiAddress identity.MultiAddress, pools dark.Pools, bootstrapNodes []string) error {
 	errCh := make(chan error, len(pools))

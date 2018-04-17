@@ -30,8 +30,8 @@ func (commit *Commit) Hash() Hash {
 }
 
 // Fault implements the Message interface.
-func (commit *Commit) Fault() Fault {
-	return Fault{
+func (commit *Commit) Fault() *Fault {
+	return &Fault{
 		Rank:   commit.Prepare.Block.Rank,
 		Height: commit.Prepare.Block.Height,
 	}
