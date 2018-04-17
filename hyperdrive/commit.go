@@ -39,7 +39,11 @@ func (commit *Commit) Fault() Fault {
 // Verify the Commit message. Returns an error if the message is invalid,
 // otherwise nil.
 func (commit *Commit) Verify(verifier Verifier) error {
-	return nil
+	// TODO: Complete verification
+	if err := commit.Prepare.Verify(verifier); err != nil {
+		return err
+	}
+	return verifier.VerifySignatures(commit.Signatures)
 }
 
 func (commit *Commit) SetSignatures(signatures Signatures) {
@@ -54,7 +58,7 @@ func (commit *Commit) GetSignatures() Signatures {
 // reached for a Block, the Block is certified and produced to the Block
 // channel. The incrementing of height must be done by reading Blocks produced
 // by this process, and comparing it to the current height.
-func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer, capacity, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
+func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer, verifier Verifier, capacity, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
 	commitCh := make(chan Commit, capacity)
 	faultCh := make(chan Fault, capacity)
 	errCh := make(chan error, capacity)
@@ -78,7 +82,7 @@ func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer
 					return
 				}
 
-				message, err := VerifyAndSignMessage(&commit, &store, signer, threshold)
+				message, err := VerifyAndSignMessage(&commit, &store, signer, verifier, threshold)
 				if err != nil {
 					errCh <- err
 					continue

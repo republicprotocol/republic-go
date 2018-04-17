@@ -38,6 +38,12 @@ type Signer interface {
 	Sign(Hash) (Signature, error)
 }
 
+// A Verifier is used to verify Messages.
+type Verifier interface {
+	VerifyProposer(Signature) error
+	VerifySignatures(Signatures) error
+}
+
 // WeakSigner produces Signatures by returning its ID.
 type WeakSigner struct {
 	ID [32]byte
@@ -69,4 +75,42 @@ func NewErrorSigner() ErrorSigner {
 // Sign implements the Signer interface.
 func (signer *ErrorSigner) Sign(hash Hash) (Signature, error) {
 	return [65]byte{}, errors.New("cannot use error signer to sign")
+}
+
+// WeakVerifier verifies all Messages.
+type WeakVerifier struct {
+}
+
+// NewWeakVerifier returns a new WeakVerifier.
+func NewWeakVerifier() WeakVerifier {
+	return WeakVerifier{}
+}
+
+// VerifyProposeSignature implements the Verifier interface.
+func (verifier *WeakVerifier) VerifyProposeSignature(signautre Signature) error {
+	return nil
+}
+
+// VerifySignatures implements the Verifier interface.
+func (verifier *WeakVerifier) VerifySignatures(signautres Signatures) error {
+	return nil
+}
+
+// ErrorVerifier returns errors instead of verifying Messages.
+type ErrorVerifier struct {
+}
+
+// NewErrorVerifier returns a new ErrorVerifier.
+func NewErrorVerifier() ErrorVerifier {
+	return ErrorVerifier{}
+}
+
+// VerifyProposeSignature implements the Verifier interface.
+func (verifier *ErrorVerifier) VerifyProposeSignature(signautre Signature) error {
+	return errors.New("cannot use error verifier to verify")
+}
+
+// VerifySignatures implements the Verifier interface.
+func (verifier *ErrorVerifier) VerifySignatures(signautres Signatures) error {
+	return errors.New("cannot use error verifier to verify")
 }

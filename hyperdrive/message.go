@@ -10,10 +10,6 @@ type Message interface {
 	GetSignatures() Signatures
 }
 
-type Verifier struct {
-
-}
-
 // A MessageStore stores and loads Messages.
 type MessageStore interface {
 	Load(Hash) Message
@@ -50,10 +46,10 @@ func (store *MessageMapStore) Store(message Message) {
 // the Message, if it has reached its threshold of Signatures. Returns a Fault
 // if the Message is invalid. Otherwise, returns nil, and any error
 // encountered.
-func VerifyAndSignMessage(message Message, store MessageStore, signer Signer, threshold int) (interface{}, error) {
+func VerifyAndSignMessage(message Message, store MessageStore, signer Signer, verifier Verifier, threshold int) (interface{}, error) {
 
 	// If the message is invalid then return a signed Fault
-	if err := message.Verify(); err != nil {
+	if err := message.Verify(verifier); err != nil {
 		fault := message.Fault()
 		signature, err := signer.Sign(fault.Hash())
 		if err != nil {
