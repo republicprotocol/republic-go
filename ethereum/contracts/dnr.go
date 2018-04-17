@@ -5,8 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -225,7 +223,7 @@ func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() error {
 		time.Sleep(toWait)
 
 		// If on Ganache, have to call epoch manually
-		if darkNodeRegistry.Chain == contracts.ChainGanache {
+		if darkNodeRegistry.network == client.NetworkGanache {
 			darkNodeRegistry.SetGasLimit(300000)
 			tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
 			darkNodeRegistry.SetGasLimit(0)
