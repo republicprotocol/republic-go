@@ -13,12 +13,16 @@ import (
 var _ = Describe("Channel set", func() {
 
 	Context("when closing", func() {
-		It("should shutdown gracefully", func() {
+		It("should shutdown gracefully", func(done Done) {
+			defer close(done)
+
 			chSet := NewChannelSet(0)
 			defer chSet.Close()
 		})
 
-		It("should panic when closed more than once", func() {
+		It("should panic when closed more than once", func(done Done) {
+			defer close(done)
+
 			chSet := NewChannelSet(0)
 			chSet.Close()
 			Ω(func() { chSet.Close() }).Should(Panic())
@@ -26,7 +30,9 @@ var _ = Describe("Channel set", func() {
 	})
 
 	Context("when splitting", func() {
-		It("should shutdown gracefully", func() {
+		It("should shutdown gracefully", func(done Done) {
+			defer close(done)
+
 			numberOfMessages := 100
 			chSet := NewChannelSet(300)
 			chSetsOut := []ChannelSet{
@@ -64,9 +70,10 @@ var _ = Describe("Channel set", func() {
 			readWg.Wait()
 		})
 
-		It("should split all messages to all outputs", func() {
-			numberOfMessages := 100
+		It("should split all messages to all outputs", func(done Done) {
+			defer close(done)
 
+			numberOfMessages := 100
 			chSet := NewChannelSet(0)
 			chSetsOut := []ChannelSet{
 				NewChannelSet(0),
@@ -107,7 +114,9 @@ var _ = Describe("Channel set", func() {
 
 	Context("when piping", func() {
 
-		It("should shutdown gracefully", func() {
+		It("should shutdown gracefully", func(done Done) {
+			defer close(done)
+
 			numberOfMessages := 100
 			chSet := NewChannelSet(0)
 			chSetOut := NewChannelSet(0)
@@ -136,7 +145,9 @@ var _ = Describe("Channel set", func() {
 			readWg.Wait()
 		})
 
-		It("should pipe all messages to the output", func() {
+		It("should pipe all messages to the output", func(done Done) {
+			defer close(done)
+
 			numberOfMessages := 100
 			chSet := NewChannelSet(0)
 			chSetOut := NewChannelSet(0)

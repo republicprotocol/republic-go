@@ -10,7 +10,8 @@ var _ = Describe("Messages", func() {
 
 	Context("when verifying and signing", func() {
 
-		It("should return an error when signing returns an error", func() {
+		It("should return an error when signing returns an error", func(done Done) {
+			defer close(done)
 
 			prepare := Prepare{}
 			messageStore := NewMessageMapStore()

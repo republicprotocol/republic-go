@@ -13,7 +13,9 @@ var _ = Describe("Filters", func() {
 
 	Context("when filtering duplicates", func() {
 
-		It("should shutdown gracefully", func() {
+		It("should shutdown gracefully", func(done Done) {
+			defer close(done)
+
 			numberOfMessages := 100
 			chSet := NewChannelSet(0)
 			chSetOut := FilterDuplicates(chSet, 0)
@@ -31,7 +33,9 @@ var _ = Describe("Filters", func() {
 			readWg.Wait()
 		})
 
-		It("should never produce a duplicate", func() {
+		It("should never produce a duplicate", func(done Done) {
+			defer close(done)
+
 			numberOfMessages := 100
 			chSet := NewChannelSet(0)
 			chSetOut := FilterDuplicates(chSet, 0)
@@ -54,7 +58,9 @@ var _ = Describe("Filters", func() {
 
 	Context("when filtering heights", func() {
 
-		It("should shutdown gracefully", func() {
+		It("should shutdown gracefully", func(done Done) {
+			defer close(done)
+
 			numberOfMessages := 100
 			capacity := 0
 			height := make(chan Height, capacity)
@@ -89,7 +95,9 @@ var _ = Describe("Filters", func() {
 			readWg.Wait()
 		})
 
-		It("should only produce messages for the current height", func() {
+		It("should only produce messages for the current height", func(done Done) {
+			defer close(done)
+
 			numberOfMessages := 100
 			capacity := 0
 			height := make(chan Height, capacity)
@@ -99,7 +107,8 @@ var _ = Describe("Filters", func() {
 			h := Height(1)
 			hErrCh := make(chan error)
 			go func() {
-				// defer GinkgoRecover()
+				defer GinkgoRecover()
+
 				for err := range hErrCh {
 					Ω(err).ShouldNot(HaveOccurred())
 				}
@@ -133,7 +142,9 @@ var _ = Describe("Filters", func() {
 			close(hErrCh)
 		})
 
-		It("should continue to produce messages when the height changes", func() {
+		It("should continue to produce messages when the height changes", func(done Done) {
+			defer close(done)
+
 			numberOfMessages := 100
 			capacity := 0
 			height := make(chan Height, capacity)
@@ -142,7 +153,8 @@ var _ = Describe("Filters", func() {
 
 			hErrCh := make(chan error)
 			go func() {
-				// defer GinkgoRecover()
+				defer GinkgoRecover()
+
 				for err := range hErrCh {
 					Ω(err).ShouldNot(HaveOccurred())
 				}
@@ -168,7 +180,9 @@ var _ = Describe("Filters", func() {
 			close(hErrCh)
 		})
 
-		It("should produce buffered messages when the height changes", func() {
+		It("should produce buffered messages when the height changes", func(done Done) {
+			defer close(done)
+
 			numberOfMessages := 100
 			capacity := 0
 			height := make(chan Height, capacity)
@@ -178,7 +192,8 @@ var _ = Describe("Filters", func() {
 			h1 := Height(1)
 			hErrCh := make(chan error)
 			go func() {
-				// defer GinkgoRecover()
+				defer GinkgoRecover()
+
 				for err := range hErrCh {
 					Ω(err).ShouldNot(HaveOccurred())
 				}
