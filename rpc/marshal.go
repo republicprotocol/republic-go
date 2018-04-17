@@ -30,8 +30,9 @@ func MarshalMultiAddress(multiAddress *identity.MultiAddress) *MultiAddress {
 }
 
 // UnmarshalMultiAddress from a RPC protobuf object.
-func UnmarshalMultiAddress(multiAddress *MultiAddress) (identity.MultiAddress, error) {
-	return identity.NewMultiAddressFromString(multiAddress.MultiAddress)
+func UnmarshalMultiAddress(multiAddress *MultiAddress) (identity.MultiAddress, []byte, error) {
+	multi, err := identity.NewMultiAddressFromString(multiAddress.MultiAddress)
+	return multi, multiAddress.Signature, err
 }
 
 // MarshalOrderFragment converts an order.Fragment into its network
