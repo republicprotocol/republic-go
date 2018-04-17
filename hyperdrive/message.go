@@ -5,9 +5,13 @@ package hyperdrive
 type Message interface {
 	Hash() Hash
 	Fault() Fault
-	Verify() error
+	Verify(Verifier) error
 	SetSignatures(Signatures)
 	GetSignatures() Signatures
+}
+
+type Verifier struct {
+
 }
 
 // A MessageStore stores and loads Messages.

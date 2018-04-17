@@ -50,9 +50,9 @@ func (prepare *Prepare) GetSignatures() Signatures {
 }
 
 func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer Signer, capacity, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
-	commitCh := make(chan Commit, threshold)
-	faultCh := make(chan Fault, threshold)
-	errCh := make(chan error, threshold)
+	commitCh := make(chan Commit, capacity)
+	faultCh := make(chan Fault, capacity)
+	errCh := make(chan error, capacity)
 
 	go func() {
 		defer close(commitCh)

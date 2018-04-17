@@ -38,7 +38,7 @@ func (commit *Commit) Fault() Fault {
 
 // Verify the Commit message. Returns an error if the message is invalid,
 // otherwise nil.
-func (commit *Commit) Verify() error {
+func (commit *Commit) Verify(verifier Verifier) error {
 	return nil
 }
 
