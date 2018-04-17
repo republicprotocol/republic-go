@@ -15,8 +15,8 @@ Install the Ganache CLI.
 npm i -g ganache-cli
 ```
 
-Before running tests that use the Ethereum network, run the Ganacher tool.
+Before running tests that use the Ethereum network, run Ganache.
 
 ```sh
-go run ./cmd/ganacher/ganacher.go
+go run ./cmd/ganache/ganache.go
 ```
