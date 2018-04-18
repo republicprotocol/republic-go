@@ -107,7 +107,6 @@ func SendOrderFragmentsToDarkOcean(order OrderFragments, traderMultiAddress iden
 	return nil
 }
 
-// CancelOrder will cancel orders that aren't confirmed or settled in the dark ocean
 func CancelOrder(order order.ID, traderMultiAddress identity.MultiAddress, pools dark.Pools, bootstrapNodes []string) error {
 	errCh := make(chan error, len(pools))
 	go func() {
