@@ -6,6 +6,26 @@ import (
 	"sync"
 )
 
+// Dispatch functions onto goroutine in the background. Returns a channel that
+// is closed when all goroutines have terminated.
+func Dispatch(fs ...func()) <-chan struct{} {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		var wg sync.WaitGroup
+		for _, f := range fs {
+			wg.Add(1)
+			go func(f func()) {
+				defer wg.Done()
+				f()
+			}(f)
+		}
+		wg.Wait()
+	}()
+	return done
+}
+
 // Wait waits for multiple signal channels to end
 func Wait(chs ...chan struct{}) {
 	for _, ch := range chs {
@@ -35,20 +55,79 @@ func Split(chIn interface{}, chsOut ...interface{}) {
 			return
 		}
 		for _, chOut := range chsOut {
-			switch reflect.TypeOf(chOut).Kind() {
-			case reflect.Array, reflect.Slice:
-				for i := 0; i < reflect.ValueOf(chOut).Len(); i++ {
-					if reflect.ValueOf(chOut).Index(i).Kind() != reflect.Chan {
-						panic(fmt.Sprintf("cannot split to value of type %T", chOut))
-					}
-					reflect.ValueOf(chOut).Index(i).Send(msg)
-				}
-			case reflect.Chan:
-				reflect.ValueOf(chOut).Send(msg)
-			default:
-				panic(fmt.Sprintf("cannot split to value of type %T", chOut))
-			}
+			Send(chOut, msg)
 		}
+	}
+}
+
+func Send(chOut interface{}, msgValue reflect.Value) {
+	switch reflect.TypeOf(chOut).Kind() {
+	case reflect.Array, reflect.Slice:
+		for i := 0; i < reflect.ValueOf(chOut).Len(); i++ {
+			if reflect.ValueOf(chOut).Index(i).Kind() != reflect.Chan {
+				panic(fmt.Sprintf("cannot send to type %T", chOut))
+			}
+			reflect.ValueOf(chOut).Index(i).Send(msgValue)
+		}
+	case reflect.Chan:
+		reflect.ValueOf(chOut).Send(msgValue)
+	default:
+		panic(fmt.Sprintf("cannot send to type %T", chOut))
+	}
+}
+
+type Splitter struct {
+	mu          *sync.RWMutex
+	subscribers map[interface{}]struct{}
+
+	maxConnections int
+}
+
+func NewSplitter(maxConnections int) Splitter {
+	return Splitter{
+		mu:          &sync.RWMutex{},
+		subscribers: make(map[interface{}]struct{}),
+
+		maxConnections: maxConnections,
+	}
+}
+
+func (splitter *Splitter) Subscribe(ch interface{}) error {
+	splitter.mu.Lock()
+	defer splitter.mu.Unlock()
+
+	if len(splitter.subscribers) >= splitter.maxConnections {
+		return fmt.Errorf("cannot subscribe: max connections reached")
+	}
+
+	splitter.subscribers[ch] = struct{}{}
+	return nil
+}
+
+func (splitter *Splitter) Unsubscribe(ch interface{}) {
+	splitter.mu.Lock()
+	defer splitter.mu.Unlock()
+	delete(splitter.subscribers, ch)
+}
+
+func (splitter *Splitter) Split(chIn interface{}) {
+	if reflect.TypeOf(chIn).Kind() != reflect.Chan {
+		panic(fmt.Sprintf("cannot split from value of type %T", chIn))
+	}
+
+	for {
+		msg, ok := reflect.ValueOf(chIn).Recv()
+		if !ok {
+			return
+		}
+
+		func() {
+			splitter.mu.RLock()
+			defer splitter.mu.RUnlock()
+			for chOut := range splitter.subscribers {
+				Send(chOut, msg)
+			}
+		}()
 	}
 }
 
@@ -56,7 +135,7 @@ func Split(chIn interface{}, chsOut ...interface{}) {
 // The input and output channels should be of the same type
 func Merge(chOut interface{}, chsIn ...interface{}) {
 	if reflect.TypeOf(chOut).Kind() != reflect.Chan {
-		panic(fmt.Sprintf("cannot merge to value of type %T", chOut))
+		panic(fmt.Sprintf("cannot merge to type %T", chOut))
 	}
 
 	var wg sync.WaitGroup
@@ -91,4 +170,37 @@ func Merge(chOut interface{}, chsIn ...interface{}) {
 	}
 
 	wg.Wait()
+}
+
+// Pipe all values from a producer channel to a consumer channel until the
+// producer is closed, and empty, or until the done channel is closed.
+// The consumer channel must not be closed until the Pipe function has
+// returned.
+func Pipe(done <-chan struct{}, producer interface{}, consumer interface{}) {
+	// Type guard the interface inputs
+	if reflect.TypeOf(producer).Kind() != reflect.Chan {
+		panic(fmt.Sprintf("cannot pipe from type %T", producer))
+	}
+	if reflect.TypeOf(consumer).Kind() != reflect.Chan {
+		panic(fmt.Sprintf("cannot pipe to type %T", consumer))
+	}
+	for {
+		cases := [2]reflect.SelectCase{
+			reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(done)},
+			reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(producer)},
+		}
+		i, val, ok := reflect.Select(cases[:])
+		if i == 0 || !ok {
+			return
+		}
+
+		cases = [2]reflect.SelectCase{
+			reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(done)},
+			reflect.SelectCase{Dir: reflect.SelectSend, Chan: reflect.ValueOf(consumer), Send: val},
+		}
+		i, val, ok = reflect.Select(cases[:])
+		if i == 0 {
+			return
+		}
+	}
 }

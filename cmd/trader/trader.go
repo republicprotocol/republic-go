@@ -97,27 +97,67 @@ func main() {
 		return
 	}
 
-	// Create a trader address
-	keypair, err := identity.NewKeyPair()
+}
+
+// openOrder will send order to all nodes in the dark ocean
+func openOrder(openOrderFile, openKeyFile, openPassphrase string) {
+
+	// Get trader address and dark pools
+	traderMultiAddress, pools, err := getTraderAddressAndDarkPools(openKeyFile, openPassphrase)
 	if err != nil {
 		log.Fatalf("cannot get trader multi address and dark pools: %v", err)
 	}
-	address := keypair.Address()
-	multi, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/80/republic/" + address.String())
+
+	// Get orders from JSON file
+	orders, err := order.NewOrdersFromJSONFile(openOrderFile)
+	if err != nil {
+		log.Fatalf("cannot read orders from file: %v", err)
+	}
+
+	sendOrders(orders, pools, *traderMultiAddress)
+}
+
+func cancelOrder(closeOrderFile, closeKeyFile, closePassphrase string) {
+
+	// Get trader address and dark pools
+	traderMultiAddress, pools, err := getTraderAddressAndDarkPools(closeKeyFile, closePassphrase)
+	if err != nil {
+		log.Fatalf("cannot get trader multi address and dark pools: %v", err)
+	}
+
+	// TODO : uncomment this code when cancelOrders is functioning
+	//
+	// Get orders from JSON file
+	// orders, err := order.NewOrdersFromJSONFile(closeOrderFile)
+	// if err != nil {
+	// 	log.Fatalf("cannot read orders from file: %v", err)
+	// }
+
+	// TODO: cancel only orders that are retrieved from file
+	cancelTraderOrder(pools, *traderMultiAddress)
+}
+
+func binanceOrder(binanceOrderFile, binanceKeyFile, binancePassphrase string, binanceNumberOfOrders int) {
+
+	// Get orders details from Binance
+	resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%v", binanceNumberOfOrders))
 	if err != nil {
 		log.Fatalf("cannot read data from binance: %v", err)
 	}
 	defer resp.Body.Close()
 
-	multiSignature, err := keypair.Sign(multi)
-	if err != nil {
-		log.Fatal(err)
+	orderBook := new(OrderBook)
+	if err := json.NewDecoder(resp.Body).Decode(orderBook); err != nil {
+		log.Fatalf("cannot parse orders from binance: %v", err)
 	}
 
-	// Keep sending order fragment
-	for {
-		// Get orders details from Binance
-		resp, err := http.Get(fmt.Sprintf("https://api.binance.com/api/v1/depth?symbol=ETHBTC&limit=%v", *numberOfOrders))
+	writeOrders := make([]*order.Order, len(orderBook.Bids)+len(orderBook.Asks))
+
+	// Generate orders from the Binance data
+	sellOrders := make([]*order.Order, len(orderBook.Asks))
+	for i, j := range orderBook.Asks {
+
+		price, amount, err := parsePriceAndAmount(j)
 		if err != nil {
 			log.Fatalf("cannot parse price and amount: %v", err)
 		}
@@ -159,9 +199,9 @@ func sendOrders(orders []order.Order, pools dark.Pools, traderMultiAddress ident
 	for _, ord := range orders {
 		// Buy or sell ?
 		if ord.Parity == order.ParityBuy {
-			log.Println("sending buy order : ", base58.Encode(ord.ID))
+			log.Println("sending buy order:", base58.Encode(ord.ID))
 		} else {
-			log.Println("sending sell order : ", base58.Encode(ord.ID))
+			log.Println("sending sell order:", base58.Encode(ord.ID))
 		}
 
 		var wg sync.WaitGroup
@@ -173,7 +213,7 @@ func sendOrders(orders []order.Order, pools dark.Pools, traderMultiAddress ident
 				// Split order into (number of nodes in each pool) * 2/3 fragments
 				shares, err := ord.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
 				if err != nil {
-					log.Println("cannot split orders: ", err)
+					log.Println("cannot split orders:", err)
 					return
 				}
 				sendSharesToDarkPool(darkPool, traderMultiAddress, shares)
@@ -266,42 +306,18 @@ func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares [
 			log.Fatalf("cannot read multi-address: %v", err)
 		}
 
-		// Send order fragment to the nodes
-		for _, orders := range [][]*order.Order{buyOrders, sellOrders} {
-			go func(orders []*order.Order) {
-				for _, ord := range orders {
-					//todo
-					if ord.Parity == order.ParityBuy {
-						log.Println("sending buy order :", base58.Encode(ord.ID))
-					} else {
-						log.Println("sending sell order :", base58.Encode(ord.ID))
-					}
+		// Create a client
+		client, err := rpc.NewClient(multiaddress, multi)
+		if err != nil {
+			log.Fatalf("cannot connect to client: %v", err)
+		}
 
-					fragments, err := ord.Split(int64(len(nodes)), int64(len(nodes)*2/3), &prime)
-					if err != nil {
-						continue
-					}
-
-					do.ForAll(fragments, func(i int) {
-						client, err := rpc.NewClient(nodes[i], multi, multiSignature)
-						if err != nil {
-							log.Fatal(err)
-						}
-
-						// Sign order fragment
-						err = fragments[i].Sign(keypair)
-						if err != nil {
-							log.Fatal(err)
-						}
-						err = client.OpenOrder(rpc.SerializeOrderFragment(fragments[i]))
-						if err != nil {
-							log.Println(err)
-							log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(nodes[i].ID()), reset)
-							return
-						}
-					})
-				}
-			}(orders)
+		// Send fragment to node
+		err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(shares[j]))
+		if err != nil {
+			log.Println(err)
+			log.Printf("%sCoudln't send order fragment to %v%s\n", red, base58.Encode(n.ID), reset)
+			return
 		}
 		j++
 	})

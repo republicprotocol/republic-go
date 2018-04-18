@@ -1,70 +1,72 @@
-package hyper
+package hyperdrive
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 
-	"github.com/republicprotocol/republic-go/identity"
+	"golang.org/x/crypto/sha3"
 )
 
-type Signer interface {
-	Sign() Signature
-	ID() identity.ID
-}
-
-type Signature string
-type Block struct {
-	Tuples
-	Signature
-}
-type Proposal struct {
-	Signature
-	Block
-	Rank
-	Height uint64
-}
-
-func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, validator Validator) (<-chan Prepare, <-chan Fault, <-chan error) {
-	prepareCh := make(chan Prepare, validator.Threshold())
-	faultCh := make(chan Fault, validator.Threshold())
-	errCh := make(chan error, validator.Threshold())
-	counter := uint64(0)
+func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer Signer, verifier Verifier, capacity int) (<-chan Prepare, <-chan Fault, <-chan error) {
+	prepareCh := make(chan Prepare, capacity)
+	faultCh := make(chan Fault, capacity)
+	errCh := make(chan error, capacity)
 
 	go func() {
 		defer close(prepareCh)
 		defer close(faultCh)
 		defer close(errCh)
 
+		store := NewMessageMapStore()
+
 		for {
 			select {
 			case <-ctx.Done():
 				errCh <- ctx.Err()
 				return
+
 			case proposal, ok := <-proposalChIn:
-				counter++
 				if !ok {
 					return
 				}
-				if validator.ValidateProposal(proposal) {
+
+				message, err := VerifyAndSignMessage(&proposal, &store, signer, verifier, 0)
+
+				if err != nil {
+					errCh <- err
+					continue
+				}
+
+				// After verifying and signing the message check for Faults
+				switch message := message.(type) {
+				case *Proposal:
 					prepare := Prepare{
-						validator.Sign(),
-						proposal.Block,
-						proposal.Rank,
-						proposal.Height,
+						Proposal: *message,
 					}
-					// log.Println("Validated proposal on", validator.Sign())
-					prepareCh <- prepare
-				} else {
-					fault := Fault{
-						proposal.Rank,
-						proposal.Height,
-						validator.Sign(),
+					signature, err := signer.Sign(prepare.Hash())
+					if err != nil {
+						errCh <- err
+						continue
 					}
+					prepare.Signatures = Signatures{signature}
+
 					select {
 					case <-ctx.Done():
 						errCh <- ctx.Err()
 						return
-					case faultCh <- fault:
+					case prepareCh <- prepare:
 					}
+				case *Fault:
+					select {
+					case <-ctx.Done():
+						errCh <- ctx.Err()
+						return
+					case faultCh <- *message:
+					}
+				default:
+					// Gracefully ignore invalid messages
+					continue
 				}
 			}
 		}
@@ -73,32 +75,50 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, validato
 	return prepareCh, faultCh, errCh
 }
 
-// func signProposal(p Proposal, signer Signer) (Proposal, error) {
-// 	b, err := signBlock(p.Block, signer)
-// 	if err != nil {
-// 		return Proposal{}, err
-// 	}
-// 	p.Block = b
-// 	var proposalBuf bytes.Buffer
-// 	binary.Write(&proposalBuf, binary.BigEndian, p)
-// 	sig, err := signer.Sign(proposalBuf.Bytes())
-// 	return Proposal{
-// 		sig,
-// 		p.Block,
-// 		p.Rank,
-// 		p.Height,
-// 	}, nil
-// }
+// ProposalHeader distinguishes Proposal from other message types that have the
+// same content.
+const ProposalHeader = byte(2)
 
-// func signBlock(b Block, signer Signer) (Block, error) {
-// 	var blockBuf bytes.Buffer
-// 	binary.Write(&blockBuf, binary.BigEndian, b)
-// 	sig, err := signer.Sign(blockBuf.Bytes())
-// 	if err != nil {
-// 		return Block{}, err
-// 	}
-// 	return Block{
-// 		b.tuples,
-// 		sig,
-// 	}, nil
-// }
+// A Proposal message is sent by the Commander Replica to propose the next
+// Block for preparation, committment, and finalization.
+type Proposal struct {
+	Block
+
+	// Signature of the Replica that produced this Proposal
+	Signature
+}
+
+// Hash implements the Hasher interface.
+func (proposal *Proposal) Hash() Hash {
+	var buf bytes.Buffer
+	binary.Write(&buf, binary.BigEndian, ProposalHeader)
+	binary.Write(&buf, binary.BigEndian, proposal.Block.Hash())
+	return sha3.Sum256(buf.Bytes())
+}
+
+// Fault implements the Message interface.
+func (proposal *Proposal) Fault() *Fault {
+	return &Fault{
+		Rank:   proposal.Block.Rank,
+		Height: proposal.Block.Height,
+	}
+}
+
+// Verify implements the Message interface.
+func (proposal *Proposal) Verify(verifier Verifier) error {
+	// TODO: Complete verification
+	if err := proposal.Block.Verify(verifier); err != nil {
+		return err
+	}
+	return verifier.VerifyProposer(proposal.Signature)
+}
+
+// SetSignatures implements the Message interface.
+func (proposal *Proposal) SetSignatures(signatures Signatures) {
+	return
+}
+
+// GetSignatures implements the Message interface.
+func (proposal *Proposal) GetSignatures() Signatures {
+	return Signatures{proposal.Signature}
+}

@@ -31,7 +31,7 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
+			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))
@@ -43,16 +43,16 @@ var _ = Describe("HTTP handlers", func() {
 
 			fullOrder := getFullOrder()
 
-			sendOrder := relay.HTTPPost{}
+			sendOrder := relay.OpenOrderRequest{}
 			sendOrder.Order = fullOrder
-			sendOrder.OrderFragments = relay.Fragments{}
+			sendOrder.OrderFragments = relay.OrderFragments{}
 
 			s, _ := json.Marshal(sendOrder)
 			body := bytes.NewBuffer(s)
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
+			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusCreated))
@@ -64,7 +64,7 @@ var _ = Describe("HTTP handlers", func() {
 		// 	fragmentedOrder, err := generateFragmentedOrderForDarkPool(pools[0])
 		// 	Ω(err).ShouldNot(HaveOccurred())
 
-		// 	sendOrder := relay.HTTPPost{}
+		// 	sendOrder := relay.OpenOrderRequest{}
 		// 	sendOrder.Order = order.Order{}
 		// 	sendOrder.OrderFragments = fragmentedOrder
 
@@ -75,7 +75,7 @@ var _ = Describe("HTTP handlers", func() {
 		// 	r := httptest.NewRequest("POST", "http://localhost/orders", body)
 		// 	w := httptest.NewRecorder()
 
-		// 	handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
+		// 	handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
 		// 	handler.ServeHTTP(w, r)
 
 		// 	Ω(w.Code).Should(Equal(http.StatusCreated))
@@ -91,7 +91,7 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
+			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))
@@ -101,9 +101,9 @@ var _ = Describe("HTTP handlers", func() {
 		It("should return 400 for empty order constructs", func() {
 			pools, trader := getPoolsAndTrader()
 
-			sendOrder := relay.HTTPPost{}
+			sendOrder := relay.OpenOrderRequest{}
 			sendOrder.Order = order.Order{}
-			sendOrder.OrderFragments = relay.Fragments{}
+			sendOrder.OrderFragments = relay.OrderFragments{}
 
 			s, err := json.Marshal(sendOrder)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -112,7 +112,7 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.PostOrdersHandler(&trader, pools))
+			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))
@@ -123,7 +123,7 @@ var _ = Describe("HTTP handlers", func() {
 	Context("when getting orders", func() {
 		It("should return the correct information when given a valid ID", func() {
 			maxConnections := 3
-			orderBook := orderbook.NewOrderBook(maxConnections)
+			book := orderbook.NewOrderbook(maxConnections)
 
 			defaultStackVal, _ := stackint.FromString("179761232312312")
 			ord := order.Order{}
@@ -139,13 +139,13 @@ var _ = Describe("HTTP handlers", func() {
 			ord.Nonce = defaultStackVal
 
 			var hash [32]byte
-			orderMessage := orderbook.NewMessage(ord, order.Open, hash)
-			orderBook.Open(orderMessage)
+			orderMessage := orderbook.NewEntry(ord, order.Open, hash)
+			book.Open(orderMessage)
 
 			r := httptest.NewRequest("GET", "http://localhost/orders/vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ", nil)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.GetOrderHandler(orderBook, string(ord.ID)))
+			handler := relay.RecoveryHandler(relay.GetOrderHandler(&book, string(ord.ID)))
 			handler.ServeHTTP(w, r)
 
 			message := new(order.Order)
@@ -158,12 +158,12 @@ var _ = Describe("HTTP handlers", func() {
 
 		It("should error when when given an invalid ID", func() {
 			maxConnections := 3
-			orderBook := orderbook.NewOrderBook(maxConnections)
+			book := orderbook.NewOrderbook(maxConnections)
 
 			r := httptest.NewRequest("GET", "http://localhost/orders/test", nil)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.GetOrderHandler(orderBook, ""))
+			handler := relay.RecoveryHandler(relay.GetOrderHandler(&book, ""))
 			handler.ServeHTTP(w, r)
 
 			Expect(w.Body.String()).To(ContainSubstring("order id is invalid"))
@@ -175,7 +175,7 @@ var _ = Describe("HTTP handlers", func() {
 		It("should return 410 for cancel order requests", func() {
 			pools, trader := getPoolsAndTrader()
 
-			cancelRequest := relay.HTTPDelete{}
+			cancelRequest := relay.CancelOrderRequest{}
 			cancelRequest.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
 
 			s, _ := json.Marshal(cancelRequest)
@@ -184,7 +184,7 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.DeleteOrderHandler(&trader, pools))
+			handler := relay.RecoveryHandler(relay.CancelOrderHandler(trader, pools))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusGone))
@@ -201,7 +201,7 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders/23213", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.DeleteOrderHandler(&trader, pools))
+			handler := relay.RecoveryHandler(relay.CancelOrderHandler(trader, pools))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))

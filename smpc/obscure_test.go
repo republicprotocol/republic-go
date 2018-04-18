@@ -16,7 +16,9 @@ import (
 var _ = Describe("Obscure residue fragments", func() {
 	Context("when producing obscure residue fragments", func() {
 
-		It("should produce obscure random number generators", func() {
+		It("should produce obscure random number generators", func(done Done) {
+			defer close(done)
+
 			var wg sync.WaitGroup
 			ctx, cancel := context.WithCancel(context.Background())
 			n, k := int64(31), int64(16)
@@ -51,7 +53,9 @@ var _ = Describe("Obscure residue fragments", func() {
 			wg.Wait()
 		})
 
-		It("should produce verifiable obscure random numbers", func() {
+		It("should produce verifiable obscure random numbers", func(done Done) {
+			defer close(done)
+
 			var wg sync.WaitGroup
 			ctx, cancel := context.WithCancel(context.Background())
 			n, k := int64(31), int64(16)
@@ -133,7 +137,9 @@ var _ = Describe("Obscure residue fragments", func() {
 			wg.Wait()
 		})
 
-		It("should produce verifiable obscure multiplication shares", func() {
+		It("should produce verifiable obscure multiplication shares", func(done Done) {
+			defer close(done)
+
 			var wg sync.WaitGroup
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -251,9 +257,11 @@ var _ = Describe("Obscure residue fragments", func() {
 
 			cancel()
 			wg.Wait()
-		})
+		}, 2) // Need 2 second timeout
 
-		It("should produce verifiable obscure residue fragments", func() {
+		It("should produce verifiable obscure residue fragments", func(done Done) {
+			defer close(done)
+
 			var wg sync.WaitGroup
 
 			ctx, cancel := context.WithCancel(context.Background())

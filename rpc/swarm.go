@@ -122,10 +122,19 @@ func (service *SwarmService) Ping(ctx context.Context, from *MultiAddress) (*Mul
 
 	select {
 	case val := <-wait:
+<<<<<<< HEAD
 		return rpc.SerializeMultiAddress(service.MultiAddress(), nil), val.Err
 
 	case <-ctx.Done():
 		return rpc.SerializeMultiAddress(service.MultiAddress(), nil), ctx.Err()
+=======
+		multi := service.MultiAddress()
+		return MarshalMultiAddress(&multi), val.Err
+
+	case <-ctx.Done():
+		multi := service.MultiAddress()
+		return MarshalMultiAddress(&multi), ctx.Err()
+>>>>>>> develop
 	}
 }
 
@@ -163,7 +172,11 @@ func (service *SwarmService) queryPeers(query *Query, stream Swarm_QueryPeersSer
 			return err
 		}
 		if closer {
+<<<<<<< HEAD
 			if err := stream.Send(rpc.SerializeMultiAddress(peer, nil)); err != nil {
+=======
+			if err := stream.Send(MarshalMultiAddress(&peer)); err != nil {
+>>>>>>> develop
 				return err
 			}
 		}
@@ -190,8 +203,13 @@ func (service *SwarmService) QueryPeersDeep(query *Query, stream Swarm_QueryPeer
 	}
 }
 
+<<<<<<< HEAD
 func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_QueryPeersDeepServer) error {
 	from, _, err := rpc.DeserializeMultiAddress(query.From)
+=======
+func (service *SwarmService) queryPeersDeep(query *Query, stream Swarm_QueryPeersDeepServer) error {
+	from, _, err := UnmarshalMultiAddress(query.From)
+>>>>>>> develop
 	if err != nil {
 		return err
 	}
@@ -209,7 +227,11 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 			return err
 		}
 		if closer {
+<<<<<<< HEAD
 			if err := stream.Send(rpc.SerializeMultiAddress(peer, nil)); err != nil {
+=======
+			if err := stream.Send(MarshalMultiAddress(&peer)); err != nil {
+>>>>>>> develop
 				return err
 			}
 			frontier = append(frontier, peer)
@@ -237,6 +259,7 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 			continue
 		}
 
+<<<<<<< HEAD
 		candidates, err := service.ClientPool.QueryPeers(peer, query.Target)
 		if err != nil {
 			service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
@@ -256,6 +279,40 @@ func (service *SwarmService) queryPeersDeep(query *rpc.Query, stream rpc.Swarm_Q
 			// explored, and store them in a persistent list of close peers.
 			if err := stream.Send(serializedCandidate); err != nil {
 				return err
+=======
+		ctx, cancel := context.WithTimeout(context.Background(), service.Timeout)
+		defer cancel()
+
+		candidates, errs := service.ClientPool.QueryPeers(ctx, peer, query.Target)
+		continuing := true
+		for continuing {
+			select {
+			case err := <-errs:
+				if err != nil {
+					service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
+				}
+				continuing = false
+			case marshaledCandidate, ok := <-candidates:
+				if !ok {
+					continuing = false
+					break
+				}
+
+				candidate, _, err := UnmarshalMultiAddress(marshaledCandidate)
+				if err != nil {
+					return err
+				}
+				if _, ok := visited[candidate.Address()]; ok {
+					continue
+				}
+				// Expand the frontier by candidates that have not already been
+				// explored, and store them in a persistent list of close peers.
+				if err := stream.Send(marshaledCandidate); err != nil {
+					return err
+				}
+				frontier = append(frontier, candidate)
+				visited[candidate.Address()] = struct{}{}
+>>>>>>> develop
 			}
 
 		}
@@ -272,6 +329,7 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 
 	continuing := true
 	numberOfPeers := 0
+<<<<<<< HEAD
 	for serializedPeer := range peers {
 		peer, _, err := rpc.DeserializeMultiAddress(serializedPeer)
 		if err != nil {
@@ -284,6 +342,34 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 		numberOfPeers++
 		if err := service.DHT.UpdateMultiAddress(peer); err != nil {
 			service.Logger.Error(fmt.Sprintf("cannot update DHT: %s", err.Error()))
+=======
+	for continuing {
+		select {
+		case err := <-errs:
+			if err != nil {
+				service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
+				log.Println("error hehrer erere ", service.MultiAddress().String())
+			}
+			continuing = false
+		case marshaledPeer, ok := <-peers:
+			if !ok {
+				continuing = false
+				break
+			}
+
+			peer, _, err := UnmarshalMultiAddress(marshaledPeer)
+			if err != nil {
+				service.Logger.Error(fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
+				continue
+			}
+			if peer.Address() == service.Address() {
+				continue
+			}
+			numberOfPeers++
+			if err := service.DHT.UpdateMultiAddress(peer); err != nil {
+				service.Logger.Error(fmt.Sprintf("cannot update DHT: %s", err.Error()))
+			}
+>>>>>>> develop
 		}
 	}
 
@@ -291,8 +377,13 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 	return nil
 }
 
+<<<<<<< HEAD
 func (service *SwarmService) updatePeer(peer *rpc.MultiAddress) error {
 	peerMultiAddress, sig, err := rpc.DeserializeMultiAddress(peer)
+=======
+func (service *SwarmService) updatePeer(peer *MultiAddress) error {
+	peerMultiAddress, sig, err := UnmarshalMultiAddress(peer)
+>>>>>>> develop
 	if err != nil {
 		return err
 	}
@@ -346,7 +437,11 @@ func (service *SwarmService) FindNode(targetID identity.ID) (*identity.MultiAddr
 			continue
 		}
 		for candidate := range candidates {
+<<<<<<< HEAD
 			deserializedCandidate, _, err := rpc.DeserializeMultiAddress(candidate)
+=======
+			unmarshalCandidate, _, err := UnmarshalMultiAddress(candidate)
+>>>>>>> develop
 			if err != nil {
 				service.Logger.Error(fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
 				continue

@@ -4,296 +4,387 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"net"
-	"runtime"
-	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/republicprotocol/republic-go/darkocean"
-	"github.com/republicprotocol/republic-go/dht"
-	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/ethereum/client"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
-	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/go-do"
+
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/rpc"
-	"github.com/republicprotocol/republic-go/smpc"
 	"google.golang.org/grpc"
+
+	"github.com/republicprotocol/republic-go/smpc"
+
+	"github.com/republicprotocol/republic-go/identity"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/ethereum/client"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
 )
+
+type EpochRoute struct {
+	Epoch          [32]byte
+	OrderFragments chan<- order.Fragment
+	DeltaFragments chan<- smpc.DeltaFragment
+}
 
 type Darknodes []Darknode
 
-type DarkNode struct {
+type Darknode struct {
 	Config
+	Logger *logger.Logger
 
-	darkNodeRegistry contracts.DarkNodeRegistry
-	darkOcean        *darkocean.Ocean
-	Logger           *logger.Logger
-	DHT              *dht.DHT
-	Computer         smpc.Computer
-	ClientPool       rpc.ClientPool
+	id           identity.ID
+	address      identity.Address
+	multiAddress identity.MultiAddress
 
-	Server          *grpc.Server
-	RelayService    *rpc.RelayService
-	ComputerService *rpc.ComputerService
+	darknodeRegistry contracts.DarkNodeRegistry
+	ocean            Ocean
 
-	orderFragmentCh chan order.Fragment
-	orderTupleCh    <-chan smpc.OrderTuple
-	deltaFragmentCh chan smpc.DeltaFragment
-	deltaCh         <-chan smpc.Delta
+	relayer rpc.RelayService
+	smpcer  rpc.ComputerService
 
-	sharedOrderTable   smpc.SharedOrderTable
-	sharedDeltaBuilder smpc.SharedDeltaBuilder
-
-	// FIXME: Improve beyond working for the demo.
-	routingTableOut map[string]chan *rpc.Computation
-	routingTableIn  map[string]<-chan *rpc.Computation
-	routingTableErr map[string]<-chan error
+	epochRoutes    chan EpochRoute
+	orderFragments chan order.Fragment
+	deltaFragments chan smpc.DeltaFragment
 }
 
-func NewDarkNode(config Config) (DarkNode, error) {
-	node := new(DarkNode)
-	node.Config = config
+// NewDarknode returns a new Darknode.
+func NewDarknode(config Config) (Darknode, error) {
+	node := Darknode{
+		Config: config,
+		Logger: logger.StdoutLogger,
+	}
 
-	// Connect to Ethereum
+	// Get identity information from the Config
+	key, err := identity.NewKeyPairFromPrivateKey(node.Config.Key.PrivateKey)
+	if err != nil {
+		return node, fmt.Errorf("cannot get ID from private key: %v", err)
+	}
+	node.id = key.ID()
+	node.address = key.Address()
+	node.multiAddress = config.Network.MultiAddress
+
+	// Open a connection to the Ethereum network
 	transactOpts := bind.NewKeyedTransactor(config.Key.PrivateKey)
 	client, err := client.Connect(
 		config.Ethereum.URI,
-		client.Network(config.Ethereum.Network),
+		config.Ethereum.Network,
 		config.Ethereum.RepublicTokenAddress,
 		config.Ethereum.DarkNodeRegistryAddress,
 	)
 	if err != nil {
-		return DarkNode{}, err
+		println("ERR!", err)
+		return node, err
 	}
-	darkNodeRegistry, err := contracts.NewDarkNodeRegistry(context.Background(), &client, transactOpts, &bind.CallOpts{})
+
+	// Create bindings to the DarknodeRegistry and Ocean
+	darknodeRegistry, err := contracts.NewDarkNodeRegistry(context.Background(), client, transactOpts, &bind.CallOpts{})
 	if err != nil {
-		return DarkNode{}, err
+		return Darknode{}, err
 	}
-	node.darkNodeRegistry = darkNodeRegistry
+	node.darknodeRegistry = darknodeRegistry
+	node.ocean = NewOcean(darknodeRegistry)
 
-	// Create dark ocean.
-	darkOcean, err := darkocean.NewOcean(darkNodeRegistry)
-	if err != nil {
-		return DarkNode{}, err
-	}
-	node.darkOcean = darkOcean
+	// Create a channel for notifying the Darknode about new epochs
+	node.epochRoutes = make(chan EpochRoute, 2)
+	node.orderFragments = make(chan order.Fragment)
+	node.deltaFragments = make(chan smpc.DeltaFragment)
 
-	// Create the clientPool
-	node.ClientPool = *rpc.NewClientPool(node.NetworkOption.MultiAddress)
-
-	// Create DHT
-	node.DHT = dht.NewDHT(node.Config.NetworkOption.MultiAddress.Address(), node.Config.NetworkOption.MaxBucketLength)
-
-	// Create the logger and start all plugins
-	node.Logger, err = logger.NewLogger(config.LoggerOptions)
-	if err != nil {
-		return DarkNode{}, err
-	}
-	node.Logger.Start()
-
-	// Initialize RPC server and services
-	node.Server = grpc.NewServer(grpc.ConnectionTimeout(time.Minute))
-
-	node.RelayService = rpc.NewRelayService(node.NetworkOption, node, node.Logger)
-	node.ComputerService = rpc.NewComputerService()
-
-	// smpc
-	node.orderFragmentCh = make(chan order.Fragment)
-	node.deltaFragmentCh = make(chan smpc.DeltaFragment)
-
-	node.sharedOrderTable = smpc.NewSharedOrderTable()
-	node.sharedDeltaBuilder = smpc.NewSharedDeltaBuilder(int64(len(node.NetworkOption.BootstrapMultiAddresses)), smpc.Prime)
-	node.routingTableOut = map[string]chan *rpc.Computation{}
-	node.routingTableIn = map[string]<-chan *rpc.Computation{}
-	node.routingTableErr = map[string]<-chan error{}
-
-	for _, multiAddress := range node.NetworkOption.BootstrapMultiAddresses {
-		if bytes.Equal(node.NetworkOption.Address.ID(), multiAddress.ID()) {
-			continue
-		}
-		node.routingTableOut[multiAddress.String()] = make(chan *rpc.Computation)
-	}
-
-	return *node, nil
+	return node, nil
 }
 
-// Stop the DarkNode.
-func (node *DarkNode) Stop() {
-	// Stop serving gRPC services
-	node.Server.Stop()
+// ServeRPC services, using a gRPC server, until the done channel is closed or
+// an error is encountered.
+func (node *Darknode) ServeRPC(done <-chan struct{}) <-chan error {
+	errs := make(chan error, 1)
 
-	// Stop the logger
-	node.Logger.Stop()
-
-	// Force the GC to run
-	runtime.GC()
-}
-
-func (node *DarkNode) Run(ctx context.Context) {
-
-	errChs := [5]<-chan error{}
-
-	// FIXME: Integrate correctly.
-	node.orderTupleCh, errChs[2] = smpc.ProcessOrderFragments(ctx, node.orderFragmentCh, &node.sharedOrderTable, 1)
-	deltaFragmentCh, _ := smpc.ProcessOrderTuples(ctx, node.orderTupleCh, 1)
 	go func() {
-		for deltaFragment := range deltaFragmentCh {
-			node.deltaFragmentCh <- deltaFragment
+		defer close(errs)
+
+		server := grpc.NewServer()
+		go func() {
+			defer server.Stop()
+			<-done
+		}()
+
+		node.relayer = rpc.NewRelayService(rpc.Options{}, node, node.Logger)
+		node.relayer.Register(server)
+
+		node.smpcer = rpc.NewComputerService()
+		node.smpcer.Register(server)
+
+		listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", node.Config.Host, node.Config.Port))
+		if err != nil {
+			node.Logger.Network(logger.Error, err.Error())
+			errs <- err
+			return
+		}
+
+		node.Logger.Network(logger.Info, fmt.Sprintf("listening on %v:%v", node.Config.Host, node.Config.Port))
+		if err := server.Serve(listener); err != nil {
+			node.Logger.Network(logger.Error, err.Error())
+			errs <- err
+			return
 		}
 	}()
 
-	node.deltaCh, errChs[4] = smpc.ProcessDeltaFragments(ctx, node.deltaFragmentCh, &node.sharedDeltaBuilder, 1)
+	time.Sleep(2 * time.Second)
+	return errs
+}
 
-	errChs[0] = node.RunRPC(ctx)
-	errChs[1] = node.RunDarkOcean(ctx)
+// RunWatcher will watch for changes to the Ocean and run the secure
+// multi-party computation with new Pools. Stops when the done channel is
+// closed, and will attempt to recover from errors encountered while
+// interacting with the Ocean.
+func (node *Darknode) RunWatcher(done <-chan struct{}) <-chan error {
+	errs := make(chan error, 1)
 
 	go func() {
-		for _, multiAddress := range node.NetworkOption.BootstrapMultiAddresses {
-			go func(multiAddress identity.MultiAddress) {
-				if bytes.Equal(node.NetworkOption.Address.ID(), multiAddress.ID()) {
+		err := node.darknodeRegistry.WaitUntilRegistration(node.ID())
+		if err != nil {
+			errs <- err
+			return
+		}
+
+		// Maintain multiple done channels so that multiple epochs can be running
+		// in parallel
+		var prevDone chan struct{}
+		var currDone chan struct{}
+		defer func() {
+			if prevDone != nil {
+				close(prevDone)
+			}
+			if currDone != nil {
+				close(currDone)
+			}
+		}()
+
+		// Looping until the done channel is closed will recover from errors
+		// returned by watching the Ocean
+		for {
+			select {
+			case <-done:
+				return
+			default:
+			}
+
+			epochs, errs := node.ocean.Watch(done)
+
+			for quit := false; !quit; {
+				select {
+
+				case <-done:
+					return
+
+				case err, ok := <-errs:
+					if !ok {
+						quit = true
+						break
+					}
+					node.Logger.Network(logger.Error, err.Error())
+
+				case epoch, ok := <-epochs:
+					if !ok {
+						quit = true
+						break
+					}
+
+					if prevDone != nil {
+						close(prevDone)
+					}
+					prevDone = currDone
+					currDone = make(chan struct{})
+					node.RunEpoch(currDone, epoch)
+				}
+			}
+		}
+	}()
+
+	return errs
+}
+
+// RunEpoch until the done channel is closed. Order fragments will be received,
+// computed, and broadcast in accordance to the epoch.
+func (node *Darknode) RunEpoch(done <-chan struct{}, epoch contracts.Epoch) {
+
+	// FIXME: Compute n and k from the epoch
+	n := int64(5)
+	k := (n + 1) * 2 / 3
+
+	smpcerID := smpc.ComputerID{}
+	copy(smpcerID[:], node.ID()[:])
+	smpcer := smpc.NewComputer(smpcerID, n, k)
+
+	// Run secure multi-party computer
+	orderFragments, deltaFragments := make(chan order.Fragment), make(chan smpc.DeltaFragment)
+	defer func() {
+		close(orderFragments)
+		close(deltaFragments)
+	}()
+	deltaFragmentsComputed, deltasComputed := smpcer.ComputeOrderMatches(done, orderFragments, deltaFragments)
+
+	go func() {
+		for delta := range deltasComputed {
+			if delta.IsMatch(smpc.Prime) {
+				node.Logger.OrderMatch(logger.Info, delta.ID.String(), delta.BuyOrderID.String(), delta.SellOrderID.String())
+				node.OrderMatchToHyperdrive(delta)
+			}
+		}
+	}()
+
+	computationConns := []chan<- *rpc.Computation{}
+
+	for _, peerMulti := range node.Config.Network.BootstrapMultiAddresses {
+		peerID := peerMulti.ID()
+
+		computationsIn := make(chan *rpc.Computation)
+		computationConns = append(computationConns, computationsIn)
+
+		var computations <-chan *rpc.Computation
+		var errs <-chan error
+
+		go func(peerMulti identity.MultiAddress) {
+			if bytes.Compare(node.ID(), peerID) < 0 {
+				computations, errs = node.smpcer.WaitForCompute(peerMulti, computationsIn)
+				go func() {
+					for err := range errs {
+						node.Logger.Compute(logger.Error, "server error: "+err.Error())
+					}
+				}()
+			} else {
+				client, err := rpc.NewClient(context.Background(), peerMulti, node.MultiAddress())
+				if err != nil {
+					node.Logger.Network(logger.Error, err.Error())
 					return
 				}
-				if bytes.Compare(node.NetworkOption.Address.ID(), multiAddress.ID()) < 0 {
-					node.routingTableIn[multiAddress.String()], node.routingTableErr[multiAddress.String()] = node.ClientPool.Compute(ctx, multiAddress, node.routingTableOut[multiAddress.String()])
-					log.Println("Connected")
-
-					for computation := range node.routingTableIn[multiAddress.String()] {
-						log.Println("Receiving delta fragment")
-						deltaFragment, err := rpc.UnmarshalDeltaFragment(computation.DeltaFragment)
-						panic(err)
-						node.deltaFragmentCh <- deltaFragment
+				computations, errs = client.Compute(context.Background(), computationsIn)
+				go func() {
+					for err := range errs {
+						node.Logger.Compute(logger.Error, "client error: "+err.Error())
 					}
-				} else {
-					node.routingTableIn[multiAddress.String()], node.routingTableErr[multiAddress.String()] = node.ComputerService.WaitForCompute(multiAddress, node.routingTableOut[multiAddress.String()])
-					log.Println("Connected")
-					for computation := range node.routingTableIn[multiAddress.String()] {
-						log.Println("Receiving delta fragment")
+				}()
+
+				multi := node.MultiAddress()
+				computationsIn <- &rpc.Computation{MultiAddress: rpc.MarshalMultiAddress(&multi)}
+			}
+
+			go func() {
+				for computation := range computations {
+					if computation.DeltaFragment != nil {
 						deltaFragment, err := rpc.UnmarshalDeltaFragment(computation.DeltaFragment)
-						panic(err)
-						node.deltaFragmentCh <- deltaFragment
+						if err != nil {
+							node.Logger.Compute(logger.Error, err.Error())
+						}
+						deltaFragments <- deltaFragment
 					}
 				}
-			}(multiAddress)
-		}
-	}()
+			}()
 
-	go func() {
-		for deltaFragment := range node.deltaFragmentCh {
-			var wg sync.WaitGroup
-			wg.Add(len(node.NetworkOption.BootstrapMultiAddresses))
-			for _, multiAddress := range node.NetworkOption.BootstrapMultiAddresses {
-				log.Println("Broadcasting delta fragment")
-				go func(multiAddress identity.MultiAddress) {
-					defer wg.Done()
-					node.routingTableOut[multiAddress.String()] <- &rpc.Computation{DeltaFragment: rpc.MarshalDeltaFragment(&deltaFragment)}
-				}(multiAddress)
-			}
-			wg.Wait()
-		}
-	}()
-
-	go func() {
-		for delta := range node.deltaCh {
-			if delta.IsMatch(smpc.Prime) {
-				log.Printf("match found: buy = %s; sell = %s", delta.BuyOrderID.String(), delta.SellOrderID.String())
-			}
-		}
-	}()
-
-	for err := range dispatch.MergeErrors(errChs[:]...) {
-		log.Println(err)
+		}(peerMulti)
 	}
-}
-
-func (node *DarkNode) RunRPC(ctx context.Context) <-chan error {
-	errCh := make(chan error)
 
 	go func() {
-		defer close(errCh)
-
-		// Turn the gRPC server on.
-		node.Logger.Network(logger.Info, fmt.Sprintf("gRPC services listening on %s:%s", node.Host, node.Port))
-
-		node.RelayService.Register(node.Server)
-		node.ComputerService.Register(node.Server)
-
-		listener, err := net.Listen("tcp", node.Host+":"+node.Port)
-		if err != nil {
-			errCh <- err
-			return
-		}
-		if err := node.Server.Serve(listener); err != nil {
-			errCh <- err
-			return
+		for deltaFragment := range deltaFragmentsComputed {
+			println("SENDING DELTA FRAGMENT")
+			do.CoForAll(computationConns, func(i int) {
+				computationConns[i] <- &rpc.Computation{
+					DeltaFragment: rpc.MarshalDeltaFragment(&deltaFragment),
+				}
+			})
 		}
 	}()
 
-	go func() {
-		<-ctx.Done()
-		node.Server.Stop()
-	}()
+	node.epochRoutes <- EpochRoute{
+		Epoch:          epoch.Blockhash,
+		OrderFragments: orderFragments,
+		DeltaFragments: deltaFragments,
+	}
 
-	return errCh
+	<-done
 }
 
-func (node *DarkNode) RunDarkOcean(ctx context.Context) <-chan error {
-	errCh := make(chan error)
-
+// RunEpochSwitch until the done channel is closed. EpochRoutes will be
+// received and used to switch messages to the correct goroutine. This allows
+// multiple goroutines to run in parallel, each processing a different epoch.
+func (node *Darknode) RunEpochSwitch(done <-chan struct{}) {
 	go func() {
-		defer close(errCh)
+		var currRoute EpochRoute
+		var ok bool
 
-		epoch, err := node.darkNodeRegistry.CurrentEpoch()
-		if err != nil {
-			errCh <- err
-			return
+		select {
+		case <-done:
+		case currRoute, ok = <-node.epochRoutes:
+			if !ok {
+				return
+			}
 		}
-		minimumEpochIntervalBig, err := node.darkNodeRegistry.MinimumEpochInterval()
-		if err != nil {
-			errCh <- err
-			return
-		}
-		minimumEpochInterval, err := minimumEpochIntervalBig.ToUint()
-		if err != nil {
-			errCh <- err
-			return
-		}
-
-		t := time.NewTicker(time.Duration(minimumEpochInterval*1000/24) * time.Millisecond)
-		defer t.Stop()
 
 		for {
 			select {
-			case <-ctx.Done():
-				errCh <- ctx.Err()
+			case <-done:
 				return
-			case <-t.C:
-				nextEpoch, err := node.darkNodeRegistry.CurrentEpoch()
-				if err != nil {
-					errCh <- err
-					continue
+			case route, ok := <-node.epochRoutes:
+				if !ok {
+					return
 				}
-				if bytes.Equal(epoch.Blockhash[:], nextEpoch.Blockhash[:]) {
-					continue
+				currRoute = route
+			case orderFragment, ok := <-node.orderFragments:
+				if !ok {
+					return
 				}
-				epoch = nextEpoch
-				if err := node.darkOcean.Update(); err != nil {
-					errCh <- fmt.Errorf("cannot update dark ocean: %v", err)
+				select {
+				case <-done:
+				case currRoute.OrderFragments <- orderFragment:
+				}
+			case deltaFragment, ok := <-node.deltaFragments:
+				if !ok {
+					return
+				}
+				select {
+				case <-done:
+				case currRoute.DeltaFragments <- deltaFragment:
 				}
 			}
 		}
 	}()
-
-	return errCh
 }
 
-func (node *DarkNode) DarkOcean() *darkocean.Ocean {
-	return node.darkOcean
+// OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
+// forwards it to the Hyperdrive.
+func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) {
+	if !delta.IsMatch(smpc.Prime) {
+		return
+	}
+
+	// TODO: Implement
 }
 
-func (node *DarkNode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
-	go func() { node.orderFragmentCh <- *orderFragment }()
+// OnOpenOrder implements the rpc.RelayDelegate interface.
+func (node *Darknode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
+	println("ORDER RECEIVED")
+	node.orderFragments <- *orderFragment
+	println("ORDER PROCESSED")
+}
+
+// Ocean returns the Ocean used by this Darknode for computing the Pools and
+// its position in them.
+func (node *Darknode) Ocean() Ocean {
+	return node.ocean
+}
+
+// ID returns the ID of the Darknode.
+func (node *Darknode) ID() identity.ID {
+	return node.id
+}
+
+// Address returns the Address of the Darknode.
+func (node *Darknode) Address() identity.Address {
+	return node.address
+}
+
+// MultiAddress returns the MultiAddress of the Darknode.
+func (node *Darknode) MultiAddress() identity.MultiAddress {
+	return node.multiAddress
 }

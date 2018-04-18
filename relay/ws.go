@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"strings"
@@ -17,7 +18,7 @@ var upgrader = websocket.Upgrader{
 }
 
 // GetOrdersHandler handles WebSocket requests.
-func GetOrdersHandler(orderBook *orderbook.OrderBook) http.Handler {
+func GetOrdersHandler(orderBook *orderbook.Orderbook) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		defer conn.Close()
@@ -25,12 +26,13 @@ func GetOrdersHandler(orderBook *orderbook.OrderBook) http.Handler {
 			fmt.Printf("cannot open websocket connection: %v", err)
 			return
 		}
-		streamOrders(w, r, conn, orderBook)
+		writeUpdatesToWebSocket(w, r, conn, orderBook)
 	})
 }
 
-// streamOrders notifies client if status of specified order has changed.
-func streamOrders(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, orderBook *orderbook.OrderBook) {
+// writeUpdatesToWebSocket to notify the client of status changes to specific
+// orders.
+func writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, orderBook *orderbook.Orderbook) {
 	// Retrieve ID and statuses from URL.
 	orderID := r.FormValue("id")
 	statuses := strings.Split(r.FormValue("status"), ",")
@@ -67,13 +69,15 @@ func streamOrders(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, 
 		return nil
 	})
 
-	messages := make(chan *orderbook.Message, 100)
-	queue := NewWriteOnlyChannelQueue(messages, 100)
+	messages := make(chan orderbook.Entry, 100)
+	defer close(messages)
+
 	go func() {
-		if err := orderBook.Subscribe("id", queue); err != nil {
+		if err := orderBook.Subscribe(messages); err != nil {
 			fmt.Printf("unable to subscribe to order book: %v", err)
 		}
 	}()
+	defer orderBook.Unsubscribe(messages)
 
 	for {
 		select {
@@ -81,7 +85,7 @@ func streamOrders(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, 
 			if !ok {
 				return
 			}
-			if string(message.Ord.ID) != orderID {
+			if !bytes.Equal(message.Order.ID, []byte(orderID)) {
 				break
 			}
 			// Loop through specified statuses.
@@ -89,7 +93,7 @@ func streamOrders(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, 
 				if status == int(message.Status) {
 					conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 					if err := conn.WriteJSON(message); err != nil {
-						fmt.Printf("cannot send json: %v", err)
+						fmt.Printf("cannot send json: %v", err) // FIXME: Use a logger
 						return
 					}
 				}
@@ -98,14 +102,14 @@ func streamOrders(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, 
 			if len(orderStatuses) == 0 {
 				conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 				if err := conn.WriteJSON(message); err != nil {
-					fmt.Printf("cannot send json: %v", err)
+					fmt.Printf("cannot send json: %v", err) // FIXME: Use a logger
 					return
 				}
 			}
 		case <-ping.C:
 			conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 			if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				fmt.Printf("cannot ping websocket: %s", err)
+				fmt.Printf("cannot ping websocket: %s", err) // FIXME: Use a logger
 				return
 			}
 		}

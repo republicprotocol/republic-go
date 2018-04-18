@@ -1,5 +1,7 @@
 package node_test
 
+package darknode_test
+
 import (
 	"context"
 	"encoding/json"
@@ -18,26 +20,21 @@ import (
 	"github.com/pkg/errors"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
-	"github.com/republicprotocol/republic-go/dark-node"
+	node "github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
 const (
 	NumberOfBootstrapNodes = 5
-	NumberOfOrders         = 5
+	NumberOfOrders         = 10
 )
 
 var primeVal, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 var Prime = &primeVal
-
-var traderKeypair, _ = identity.NewKeyPair()
-var traderAddress = traderKeypair.Address()
-var traderMulti, _ = identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/" + traderAddress.String())
-var traderMultiSignature, _ = traderKeypair.Sign(traderMulti)
-
+var trader, _ = identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
 var epochDNR dnr.DarkNodeRegistry
 
 var dnrOuterLock = new(sync.Mutex)
@@ -60,7 +57,7 @@ var _ = Describe("Dark nodes", func() {
 	var err error
 	epochDNR, err = dnr.TestnetDNR(nil)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	var mu = new(sync.Mutex)
@@ -212,7 +209,11 @@ var _ = Describe("Dark nodes", func() {
 				})
 
 				AfterEach(func() {
+<<<<<<< HEAD
 					err := deregisterNodes(nodes, mockRegistrar)
+=======
+					err := deregisterNodes(nodes)
+>>>>>>> develop
 					Ω(err).ShouldNot(HaveOccurred())
 					stopNodes(nodes)
 				})
@@ -339,39 +340,72 @@ func generateNodes(numberOfNodes int) ([]*node.DarkNode, error) {
 	return nodes, nil
 }
 
+<<<<<<< HEAD
 func registerNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
 	for _, n := range nodes {
 		_, err := mockRegistrar.Register(n.ID, []byte{}, big.NewInt(100))
+=======
+func registerNodes(nodes []*node.DarkNode) error {
+	dnrOuterLock.Lock()
+	dnrInnerLock.Lock()
+	defer dnrInnerLock.Unlock()
+	for _, node := range nodes {
+		isRegistered, err := node.DarkNodeRegistry.IsRegistered(nodes[0].NetworkOptions.MultiAddress.ID())
+		if isRegistered {
+			return errors.New("already registered")
+		}
+
+		bond := stackint.FromUint(10)
+		err = node.DarkNodeRegistry.ApproveRen(&bond)
+		if err != nil {
+			return err
+		}
+
+		node.DarkNodeRegistry.SetGasLimit(300000)
+		_, err = node.DarkNodeRegistry.Register(node.ID, []byte{}, &bond)
+		node.DarkNodeRegistry.SetGasLimit(0)
+>>>>>>> develop
 		if err != nil {
 			return err
 		}
 	}
-	err := epochDNR.WaitForEpoch()
+	_, err := epochDNR.WaitForEpoch()
 	return err
 }
 
+<<<<<<< HEAD
 func deregisterNodes(nodes []*node.DarkNode, dnr dnr.DarkNodeRegistrar) error {
 	for _, n := range nodes {
 		_, err := mockRegistrar.Deregister(n.ID)
+=======
+func deregisterNodes(nodes []*node.DarkNode) error {
+	defer dnrOuterLock.Unlock()
+	dnrInnerLock.Lock()
+	defer dnrInnerLock.Unlock()
+	for _, node := range nodes {
+		node.DarkNodeRegistry.SetGasLimit(300000)
+		_, err := node.DarkNodeRegistry.Deregister(node.ID)
+		node.DarkNodeRegistry.SetGasLimit(0)
+>>>>>>> develop
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 	}
 	epochDNR.SetGasLimit(300000)
-	err := epochDNR.WaitForEpoch()
+	_, err := epochDNR.WaitForEpoch()
 	epochDNR.SetGasLimit(0)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	for _, node := range nodes {
 		node.DarkNodeRegistry.SetGasLimit(300000)
 		_, err := node.DarkNodeRegistry.Refund(node.ID)
 		node.DarkNodeRegistry.SetGasLimit(0)
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 	}
-	err = epochDNR.WaitForEpoch()
+	_, err = epochDNR.WaitForEpoch()
 	return err
 }
 
@@ -409,7 +443,7 @@ func watchDarkOcean(nodes []*node.DarkNode) {
 		}(i)
 	}
 
-	err := epochDNR.WaitForEpoch()
+	_, err := epochDNR.WaitForEpoch()
 	if err != nil {
 		panic(err)
 	}
@@ -500,9 +534,7 @@ func sendOrders(nodes []*node.DarkNode) error {
 
 	// Send order fragment to the nodes
 	totalNodes := len(nodes)
-	pool := rpc.NewClientPool(traderMulti, traderMultiSignature).
-		WithTimeout(10 * time.Second).
-		WithTimeoutBackoff(5 * time.Second)
+	pool := rpc.NewClientPool(trader).WithTimeout(10 * time.Second).WithTimeoutBackoff(5 * time.Second)
 	for i := range buyOrders {
 		buyOrder, sellOrder := buyOrders[i], sellOrders[i]
 		log.Printf("Sending matched order. [BUY] %s <---> [SELL] %s", buyOrder.ID, sellOrder.ID)
@@ -518,8 +550,11 @@ func sendOrders(nodes []*node.DarkNode) error {
 		do.CoForAll(buyShares, func(j int) {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(buyShares[j]))
 =======
+=======
+>>>>>>> develop
 			orderRequest := &rpc.OpenOrderRequest{
 				From: &rpc.MultiAddress{
 					Signature:    []byte{},
@@ -530,12 +565,15 @@ func sendOrders(nodes []*node.DarkNode) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			err := pool.OpenOrder(ctx, nodes[j].NetworkOptions.MultiAddress, orderRequest)
+<<<<<<< HEAD
 >>>>>>> rpc-chans
 =======
 			// Sign order fragment with trader's keypair
 			buyShares[j].Sign(traderKeypair)
 			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, rpc.SerializeOrderFragment(buyShares[j]))
 >>>>>>> origin
+=======
+>>>>>>> develop
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)
@@ -545,8 +583,11 @@ func sendOrders(nodes []*node.DarkNode) error {
 		do.CoForAll(sellShares, func(j int) {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, &rpc.OrderSignature{}, rpc.SerializeOrderFragment(sellShares[j]))
 =======
+=======
+>>>>>>> develop
 			orderRequest := &rpc.OpenOrderRequest{
 				From: &rpc.MultiAddress{
 					Signature:    []byte{},
@@ -557,12 +598,15 @@ func sendOrders(nodes []*node.DarkNode) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			err := pool.OpenOrder(ctx, nodes[j].NetworkOptions.MultiAddress, orderRequest)
+<<<<<<< HEAD
 >>>>>>> rpc-chans
 =======
 			// Sign order fragment with trader's keypair
 			sellShares[j].Sign(traderKeypair)
 			pool.OpenOrder(nodes[j].NetworkOptions.MultiAddress, rpc.SerializeOrderFragment(sellShares[j]))
 >>>>>>> origin
+=======
+>>>>>>> develop
 			if err != nil {
 				log.Printf("Coudln't send order fragment to %s\n", nodes[j].NetworkOptions.MultiAddress.ID())
 				log.Fatal(err)

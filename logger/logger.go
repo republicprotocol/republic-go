@@ -9,6 +9,19 @@ import (
 	"github.com/republicprotocol/go-do"
 )
 
+// StdoutLogger is configured to log all Events to Stdout.
+var StdoutLogger = func() *Logger {
+	logger, err := NewLogger(Options{
+		Plugins: []PluginOptions{
+			PluginOptions{File: &FilePluginOptions{Path: "stdout"}, WebSocket: nil},
+		},
+	})
+	if err != nil {
+		panic(fmt.Sprintf("cannot init stdout logger: %v", err))
+	}
+	return logger
+}()
+
 // Logger handles distributing logs to plugins registered with it
 type Logger struct {
 	do.GuardedObject

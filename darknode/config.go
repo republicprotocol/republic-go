@@ -4,22 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
+
+	"github.com/republicprotocol/republic-go/identity"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/ethereum/client"
-	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/rpc"
 )
 
 type Config struct {
-	Key           *keystore.Key  `json:"key"`
-	Host          string         `json:"host"`
-	Port          string         `json:"port"`
-	Ethereum      EthereumConfig `json:"ethereum"`
-	NetworkOption rpc.Options    `json:"network"`
-	LoggerOptions logger.Options `json:"logger"`
+	Key      keystore.Key   `json:"key"`
+	Host     string         `json:"host"`
+	Port     string         `json:"port"`
+	Ethereum EthereumConfig `json:"ethereum"`
+	Network  rpc.Options    `json:"network"`
+	Logs     logger.Options `json:"logs"`
 }
 
 type EthereumConfig struct {
@@ -44,40 +44,29 @@ func LoadConfig(filename string) (*Config, error) {
 	return config, nil
 }
 
-func NewLocalConfig(key *keystore.Key, host, port string) Config {
-	address, _, _ := identity.NewAddress()
-	multi, _ := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", host, port, address.String()))
-
+func NewLocalConfig(key keystore.Key, host, port string) (Config, error) {
+	keyPair, err := identity.NewKeyPairFromPrivateKey(key.PrivateKey)
+	if err != nil {
+		return Config{}, err
+	}
+	multi, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", host, port, keyPair.Address()))
+	if err != nil {
+		return Config{}, err
+	}
 	return Config{
 		Key:  key,
 		Host: host,
 		Port: port,
+		Network: rpc.Options{
+			MultiAddress: multi,
+		},
 		Ethereum: EthereumConfig{
 			URI:                     "http://localhost:8545",
 			Network:                 client.NetworkGanache,
 			RepublicTokenAddress:    client.RepublicTokenAddressOnGanache.String(),
 			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.String(),
 		},
-		NetworkOption: rpc.Options{
-			Address:                 multi.Address(),
-			MultiAddress:            multi,
-			Timeout:                 3 * time.Second,
-			TimeoutBackoff:          3 * time.Second,
-			TimeoutRetries:          3,
-			MessageQueueLimit:       100,
-			BootstrapMultiAddresses: identity.MultiAddresses{},
-			//Concurrent:           false,
-			//Alpha:                3,
-			//MaxBucketLength:      100,
-			//ClientPoolCacheLimit: 50,
-			//Debug:                rpc.DebugHigh,
-		},
-		LoggerOptions: logger.Options{
-			Plugins: []logger.PluginOptions{
-				{File: &logger.FilePluginOptions{Path: "stdout"}},
-			},
-		},
-	}
+	}, nil
 }
 
 func NewFalconConfig() Config {

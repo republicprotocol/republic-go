@@ -2,59 +2,70 @@ package smpc
 
 import (
 	"bytes"
-	"context"
-	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
-	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
-func ProcessOrderTuples(ctx context.Context, orderTupleChIn <-chan OrderTuple, bufferLimit int) (<-chan DeltaFragment, <-chan error) {
-	deltaFragmentCh := make(chan DeltaFragment, bufferLimit)
-	errCh := make(chan error)
+// OrderTuplesToDeltaFragments reads OrderTuples from an input channel and
+// uses them to build DeltaFragments.
+func OrderTuplesToDeltaFragments(done <-chan struct{}, orderTuples <-chan OrderTuple, bufferLimit int) <-chan DeltaFragment {
+	deltaFragments := make(chan DeltaFragment, bufferLimit)
 
 	go func() {
-		defer close(deltaFragmentCh)
-		defer close(errCh)
+		defer close(deltaFragments)
 
 		for {
 			select {
-			case <-ctx.Done():
-				errCh <- ctx.Err()
+			case <-done:
 				return
-			case orderTuple, ok := <-orderTupleChIn:
+			case orderTuple, ok := <-orderTuples:
 				if !ok {
 					return
 				}
-
 				deltaFragment := NewDeltaFragment(orderTuple.BuyOrderFragment, orderTuple.SellOrderFragment, &Prime)
 				select {
-				case <-ctx.Done():
-					errCh <- ctx.Err()
+				case <-done:
 					return
-				case deltaFragmentCh <- deltaFragment:
+				case deltaFragments <- deltaFragment:
 				}
 			}
 		}
 	}()
 
-	return deltaFragmentCh, errCh
+	return deltaFragments
 }
 
-func ProcessDeltaFragments(ctx context.Context, deltaFragmentChIn <-chan DeltaFragment, sharedDeltaBuilder *SharedDeltaBuilder, bufferLimit int) (<-chan Delta, <-chan error) {
-	deltaCh := make(chan Delta, bufferLimit)
-	errCh := make(chan error)
+// BuildDeltas by reading DeltaFragments from an input channel and using a
+// SharedDeltaBuilder to store them. Deltas can be built from the
+// SharedDeltaBuilder after a threshold of DeltaFragments has been reached.
+func BuildDeltas(done <-chan struct{}, deltaFragments <-chan DeltaFragment, sharedDeltaBuilder *SharedDeltaBuilder, bufferLimit int) <-chan Delta {
+	deltas := make(chan Delta, bufferLimit)
 
+	// Insert DeltaFragments into the SharedDeltaBuilder
 	go func() {
-		defer close(deltaCh)
-		defer close(errCh)
+		for {
+			select {
+			case <-done:
+				return
+			case deltaFragment, ok := <-deltaFragments:
+				if !ok {
+					return
+				}
+				sharedDeltaBuilder.InsertDeltaFragment(deltaFragment)
+			}
+		}
+	}()
+
+	// Periodically read computed Deltas from the SharedDeltaBuilder into a
+	// buffer
+	go func() {
+		defer close(deltas)
 
 		buffer := make([]Delta, bufferLimit)
 		tick := time.NewTicker(time.Millisecond)
@@ -62,37 +73,21 @@ func ProcessDeltaFragments(ctx context.Context, deltaFragmentChIn <-chan DeltaFr
 
 		for {
 			select {
-			case <-ctx.Done():
-				errCh <- ctx.Err()
+			case <-done:
 				return
 			case <-tick.C:
 				for i, n := 0, sharedDeltaBuilder.Deltas(buffer[:]); i < n; i++ {
 					select {
-					case <-ctx.Done():
-						errCh <- ctx.Err()
+					case <-done:
 						return
-					case deltaCh <- buffer[i]:
+					case deltas <- buffer[i]:
 					}
 				}
 			}
 		}
 	}()
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case deltaFragment, ok := <-deltaFragmentChIn:
-				if !ok {
-					return
-				}
-				log.Println("Inserting Delta fragment")
-				sharedDeltaBuilder.ComputeDelta(deltaFragment)
-			}
-		}
-	}()
 
-	return deltaCh, errCh
+	return deltas
 }
 
 type SharedDeltaBuilder struct {
@@ -128,7 +123,7 @@ func NewSharedDeltaBuilder(k int64, prime stackint.Int1024) SharedDeltaBuilder {
 	}
 }
 
-func (builder *SharedDeltaBuilder) ComputeDelta(deltaFragment DeltaFragment) {
+func (builder *SharedDeltaBuilder) InsertDeltaFragment(deltaFragment DeltaFragment) {
 	builder.mu.Lock()
 	defer builder.mu.Unlock()
 
@@ -384,67 +379,4 @@ func IsCompatible(deltaFragments DeltaFragments) bool {
 		}
 	}
 	return true
-}
-
-// DeltaQueues is a slice of DeltaQueue components.
-type DeltaQueues []DeltaQueue
-
-// A DeltaQueue owns a channel of Delta components.
-type DeltaQueue struct {
-	chMu   *sync.RWMutex
-	chOpen bool
-	ch     chan Delta
-}
-
-// NewDeltaQueue returns a MessageQueue interface that channels Delta
-//components.
-func NewDeltaQueue(messageQueueLimit int) DeltaQueue {
-	return DeltaQueue{
-		chMu:   new(sync.RWMutex),
-		chOpen: true,
-		ch:     make(chan Delta, messageQueueLimit),
-	}
-}
-
-// Run the DeltaQueue. The DeltaQueue is an abstraction over a channel of Delta
-// components and does not need to be run. This method does nothing.
-func (queue *DeltaQueue) Run() error {
-	return nil
-}
-
-// Shutdown the DeltaQueue. If it has already been Shutdown, an error will be
-// returned.
-func (queue *DeltaQueue) Shutdown() error {
-	queue.chMu.Lock()
-	defer queue.chMu.Unlock()
-
-	queue.chOpen = false
-	close(queue.ch)
-	return nil
-}
-
-// Send a message to the DeltaQueue. The Message must be a Delta component,
-// otherwise an error is returned.
-func (queue *DeltaQueue) Send(message dispatch.Message) error {
-	queue.chMu.RLock()
-	defer queue.chMu.RUnlock()
-
-	if !queue.chOpen {
-		return nil
-	}
-
-	switch message := message.(type) {
-	case Delta:
-		queue.ch <- message
-	default:
-		return fmt.Errorf("cannot send message: unrecognized type %T", message)
-	}
-	return nil
-}
-
-// Recv a message from the DeltaQueue. All Messages returned will be Delta
-// components.
-func (queue *DeltaQueue) Recv() (dispatch.Message, bool) {
-	message, ok := <-queue.ch
-	return message, ok
 }
