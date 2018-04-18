@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 
+	"github.com/republicprotocol/republic-go/identity"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -35,11 +36,11 @@ type Block struct {
 	Txs
 
 	// Signature of the Replica that proposed this Block
-	Signature
+	identity.Signature
 }
 
 // Hash returns the SHA3-256 hash of the block.
-func (block *Block) Hash() Hash {
+func (block *Block) Hash() identity.Hash {
 	var buf bytes.Buffer
 	binary.Write(&buf, binary.BigEndian, BlockHeader)
 	binary.Write(&buf, binary.BigEndian, block.Epoch)
@@ -53,7 +54,7 @@ func (block *Block) Hash() Hash {
 
 // Verify the Block message. Returns an error if the message is invalid,
 // otherwise nil.
-func (block *Block) Verify(verifier Verifier) error {
+func (block *Block) Verify(verifier identity.Verifier) error {
 	return verifier.VerifyProposer(block.Signature)
 }
 

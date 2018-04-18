@@ -1,36 +1,40 @@
 package hyperdrive
 
+import (
+	"github.com/republicprotocol/republic-go/identity"
+)
+
 // A Message is passed between Replicas to advanced the state of the
 // Hyperdrive blockchain.
 type Message interface {
-	Hash() Hash
+	Hash() identity.Hash
 	Fault() *Fault
-	Verify(Verifier) error
-	SetSignatures(Signatures)
-	GetSignatures() Signatures
+	Verify(identity.Verifier) error
+	SetSignatures(identity.Signatures)
+	GetSignatures() identity.Signatures
 }
 
 // A MessageStore stores and loads Messages.
 type MessageStore interface {
-	Load(Hash) Message
+	Load(identity.Hash) Message
 	Store(Message)
 }
 
 // MessageMapStore implements the MessageStore interface using an in-memory
 // map.
 type MessageMapStore struct {
-	memory map[Hash]Message
+	memory map[identity.Hash]Message
 }
 
 // NewMessageMapStore returns a new MessageMapStore.
 func NewMessageMapStore() MessageMapStore {
 	return MessageMapStore{
-		memory: map[Hash]Message{},
+		memory: map[identity.Hash]Message{},
 	}
 }
 
 // Load implements the MessageStore interface.
-func (store *MessageMapStore) Load(hash Hash) Message {
+func (store *MessageMapStore) Load(hash identity.Hash) Message {
 	if message, ok := store.memory[hash]; ok {
 		return message
 	}
@@ -48,7 +52,7 @@ func (store *MessageMapStore) Store(message Message) {
 // the Message, if it has reached its threshold of Signatures. Returns a Fault
 // if the Message is invalid. Otherwise, returns nil, and any error
 // encountered.
-func VerifyAndSignMessage(message Message, store MessageStore, signer Signer, verifier Verifier, threshold int) (interface{}, error) {
+func VerifyAndSignMessage(message Message, store MessageStore, signer identity.Signer, verifier identity.Verifier, threshold int) (interface{}, error) {
 
 	// If the message is invalid then return a signed Fault
 	if err := message.Verify(verifier); err != nil {
@@ -57,7 +61,7 @@ func VerifyAndSignMessage(message Message, store MessageStore, signer Signer, ve
 		if err != nil {
 			return nil, err
 		}
-		fault.Signatures = Signatures{signature}
+		fault.Signatures = identity.Signatures{signature}
 		return fault, nil
 	}
 
@@ -67,7 +71,7 @@ func VerifyAndSignMessage(message Message, store MessageStore, signer Signer, ve
 		if err != nil {
 			return nil, err
 		}
-		message.SetSignatures(message.GetSignatures().Merge(Signatures{signature}))
+		message.SetSignatures(message.GetSignatures().Merge(identity.Signatures{signature}))
 		store.Store(message)
 		// If the required threshold is reached, then return the message
 		if len(message.GetSignatures()) >= threshold {

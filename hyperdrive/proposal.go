@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/binary"
 
+	"github.com/republicprotocol/republic-go/identity"
 	"golang.org/x/crypto/sha3"
 )
 
-func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer Signer, verifier Verifier, capacity int) (<-chan Prepare, <-chan Fault, <-chan error) {
+func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer identity.Signer, verifier identity.Verifier, capacity int) (<-chan Prepare, <-chan Fault, <-chan error) {
 	prepareCh := make(chan Prepare, capacity)
 	faultCh := make(chan Fault, capacity)
 	errCh := make(chan error, capacity)
@@ -49,7 +50,7 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer S
 						errCh <- err
 						continue
 					}
-					prepare.Signatures = Signatures{signature}
+					prepare.Signatures = identity.Signatures{signature}
 
 					select {
 					case <-ctx.Done():
@@ -85,11 +86,11 @@ type Proposal struct {
 	Block
 
 	// Signature of the Replica that produced this Proposal
-	Signature
+	identity.Signature
 }
 
 // Hash implements the Hasher interface.
-func (proposal *Proposal) Hash() Hash {
+func (proposal *Proposal) Hash() identity.Hash {
 	var buf bytes.Buffer
 	binary.Write(&buf, binary.BigEndian, ProposalHeader)
 	binary.Write(&buf, binary.BigEndian, proposal.Block.Hash())
@@ -105,7 +106,7 @@ func (proposal *Proposal) Fault() *Fault {
 }
 
 // Verify implements the Message interface.
-func (proposal *Proposal) Verify(verifier Verifier) error {
+func (proposal *Proposal) Verify(verifier identity.Verifier) error {
 	// TODO: Complete verification
 	if err := proposal.Block.Verify(verifier); err != nil {
 		return err
@@ -114,11 +115,11 @@ func (proposal *Proposal) Verify(verifier Verifier) error {
 }
 
 // SetSignatures implements the Message interface.
-func (proposal *Proposal) SetSignatures(signatures Signatures) {
+func (proposal *Proposal) SetSignatures(signatures identity.Signatures) {
 	return
 }
 
 // GetSignatures implements the Message interface.
-func (proposal *Proposal) GetSignatures() Signatures {
-	return Signatures{proposal.Signature}
+func (proposal *Proposal) GetSignatures() identity.Signatures {
+	return identity.Signatures{proposal.Signature}
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 
+	"github.com/republicprotocol/republic-go/identity"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -18,11 +19,11 @@ type Commit struct {
 	Prepare
 
 	// Signatures of the Replicas that have signed this Commit
-	Signatures
+	identity.Signatures
 }
 
 // Hash implements the Hasher interface.
-func (commit *Commit) Hash() Hash {
+func (commit *Commit) Hash() identity.Hash {
 	var buf bytes.Buffer
 	binary.Write(&buf, binary.BigEndian, CommitHeader)
 	binary.Write(&buf, binary.BigEndian, commit.Prepare.Hash())
@@ -38,7 +39,7 @@ func (commit *Commit) Fault() *Fault {
 }
 
 // Verify implements the Message interface.
-func (commit *Commit) Verify(verifier Verifier) error {
+func (commit *Commit) Verify(verifier identity.Verifier) error {
 	// TODO: Complete verification
 	if err := commit.Prepare.Verify(verifier); err != nil {
 		return err
@@ -47,12 +48,12 @@ func (commit *Commit) Verify(verifier Verifier) error {
 }
 
 // SetSignatures implements the Message interface.
-func (commit *Commit) SetSignatures(signatures Signatures) {
+func (commit *Commit) SetSignatures(signatures identity.Signatures) {
 	commit.Signatures = signatures
 }
 
 // GetSignatures implements the Message interface.
-func (commit *Commit) GetSignatures() Signatures {
+func (commit *Commit) GetSignatures() identity.Signatures {
 	return commit.Signatures
 }
 
@@ -60,7 +61,7 @@ func (commit *Commit) GetSignatures() Signatures {
 // reached for a Block, the Block is certified and produced to the Block
 // channel. The incrementing of height must be done by reading Blocks produced
 // by this process, and comparing it to the current height.
-func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer, verifier Verifier, capacity, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
+func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer identity.Signer, verifier identity.Verifier, capacity, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
 	commitCh := make(chan Commit, capacity)
 	faultCh := make(chan Fault, capacity)
 	errCh := make(chan error, capacity)

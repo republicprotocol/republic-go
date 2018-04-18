@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/binary"
 
+	"github.com/republicprotocol/republic-go/identity"
 	"golang.org/x/crypto/sha3"
 )
 
-func ProcessFault(ctx context.Context, faultChIn chan Fault, signer Signer, verifier Verifier, capacity int) (chan Fault, chan error) {
+func ProcessFault(ctx context.Context, faultChIn chan Fault, signer identity.Signer, verifier identity.Verifier, capacity int) (chan Fault, chan error) {
 	faultCh := make(chan Fault, capacity)
 	errCh := make(chan error, capacity)
 
@@ -56,11 +57,11 @@ type Fault struct {
 	Height
 
 	// Signatures of the Replicas that signed this Fault
-	Signatures
+	identity.Signatures
 }
 
 // Hash implements the Hasher interface.
-func (fault *Fault) Hash() Hash {
+func (fault *Fault) Hash() identity.Hash {
 	var buf bytes.Buffer
 	binary.Write(&buf, binary.BigEndian, FaultHeader)
 	binary.Write(&buf, binary.BigEndian, fault.Rank)
@@ -73,14 +74,14 @@ func (fault *Fault) Fault() *Fault {
 	return fault
 }
 
-func (fault *Fault) Verify(verifier Verifier) error {
+func (fault *Fault) Verify(verifier identity.Verifier) error {
 	return nil
 }
 
-func (fault *Fault) SetSignatures(signatures Signatures) {
+func (fault *Fault) SetSignatures(signatures identity.Signatures) {
 	fault.Signatures = signatures
 }
 
-func (fault *Fault) GetSignatures() Signatures {
+func (fault *Fault) GetSignatures() identity.Signatures {
 	return fault.Signatures
 }

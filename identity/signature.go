@@ -10,10 +10,24 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
+// A Hash is a Keccak256 Hash of some data.
+type Hash [32]byte
+
 // A Signable struct is able to be signed by a KeyPair
 // Hash must return a 32-byte []byte array
 type Signable interface {
-	Hash() [32]byte
+	Hash() Hash
+}
+
+// A Signer can produce Signatures of some Hash of data.
+type Signer interface {
+	Sign(Hash) (Signature, error)
+}
+
+// A Verifier is used to verify Messages.
+type Verifier interface {
+	VerifyProposer(Signature) error
+	VerifySignatures(Signatures) error
 }
 
 // The Signature type represents the signature of the hash of Signable data
@@ -78,4 +92,27 @@ func VerifySignature(data Signable, signature Signature, id ID) error {
 		return ErrInvalidSignature
 	}
 	return nil
+}
+
+// Signatures is a slice of Signature.
+type Signatures []Signature
+
+// Merge Signatures together and avoid duplication. Returns the merged
+// Signatures without modifying the inputs.
+func (signatures Signatures) Merge(others Signatures) Signatures {
+	merger := map[Signature]struct{}{}
+	for i := range signatures {
+		merger[signatures[i]] = struct{}{}
+	}
+	for i := range others {
+		merger[others[i]] = struct{}{}
+	}
+
+	i := 0
+	mergedSignatures := make(Signatures, len(merger))
+	for key := range merger {
+		mergedSignatures[i] = key
+		i++
+	}
+	return mergedSignatures
 }

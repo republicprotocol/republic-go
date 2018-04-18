@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/binary"
 
+	"github.com/republicprotocol/republic-go/identity"
 	"golang.org/x/crypto/sha3"
 )
 
-func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer Signer, verifier Verifier, capacity, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
+func ProcessPreparation(ctx context.Context, prepareChIn <-chan Prepare, signer identity.Signer, verifier identity.Verifier, capacity, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
 	commitCh := make(chan Commit, threshold)
 	faultCh := make(chan Fault, threshold)
 	errCh := make(chan error, threshold)
@@ -78,11 +79,11 @@ type Prepare struct {
 	Proposal
 
 	// Signatures of the Replicas that signed this Prepare
-	Signatures
+	identity.Signatures
 }
 
 // Hash implements the Hasher interface.
-func (prepare *Prepare) Hash() Hash {
+func (prepare *Prepare) Hash() identity.Hash {
 	var buf bytes.Buffer
 	binary.Write(&buf, binary.BigEndian, PrepareHeader)
 	binary.Write(&buf, binary.BigEndian, prepare.Proposal.Hash())
@@ -96,7 +97,7 @@ func (prepare *Prepare) Fault() *Fault {
 	}
 }
 
-func (prepare *Prepare) Verify(verifier Verifier) error {
+func (prepare *Prepare) Verify(verifier identity.Verifier) error {
 	// TODO: Complete verification
 	if err := prepare.Proposal.Verify(verifier); err != nil {
 		return err
@@ -104,10 +105,10 @@ func (prepare *Prepare) Verify(verifier Verifier) error {
 	return verifier.VerifySignatures(prepare.Signatures)
 }
 
-func (prepare *Prepare) SetSignatures(signatures Signatures) {
+func (prepare *Prepare) SetSignatures(signatures identity.Signatures) {
 	prepare.Signatures = signatures
 }
 
-func (prepare *Prepare) GetSignatures() Signatures {
+func (prepare *Prepare) GetSignatures() identity.Signatures {
 	return prepare.Signatures
 }

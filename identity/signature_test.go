@@ -63,7 +63,7 @@ var _ = Describe("Signing and verifying signatures with KeyPairs", func() {
 		})
 
 		It("should be able to sign the multiAddress and verify the signature", func() {
-			multi, err  := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/80/republic/"+ keyPair.Address().String())
+			multi, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/80/republic/" + keyPair.Address().String())
 			Ω(err).ShouldNot(HaveOccurred())
 
 			signature, err := keyPair.Sign(multi)

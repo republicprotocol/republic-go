@@ -1,5 +1,83 @@
 package hyperdrive_test
 
+import (
+	"errors"
+
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/republicprotocol/republic-go/identity"
+)
+
+// WeakSigner produces Signatures by returning its ID.
+type WeakSigner struct {
+	ID [32]byte
+}
+
+// NewWeakSigner returns a new WeakSigner.
+func NewWeakSigner(id [32]byte) WeakSigner {
+	return WeakSigner{
+		ID: id,
+	}
+}
+
+// Sign implements the Signer interface.
+func (signer *WeakSigner) Sign(hash identity.Hash) (identity.Signature, error) {
+	signature := [65]byte{}
+	copy(signature[:], crypto.Keccak256Hash(hash[:], signer.ID[:]).Bytes())
+	return identity.Signature(signature), nil
+}
+
+// ErrorSigner returns errors instead of producing Signatures.
+type ErrorSigner struct {
+}
+
+// NewErrorSigner returns a new ErrorSigner.
+func NewErrorSigner() ErrorSigner {
+	return ErrorSigner{}
+}
+
+// Sign implements the Signer interface.
+func (signer *ErrorSigner) Sign(hash identity.Hash) (identity.Signature, error) {
+	return [65]byte{}, errors.New("cannot use error signer to sign")
+}
+
+// WeakVerifier verifies all Messages.
+type WeakVerifier struct {
+}
+
+// NewWeakVerifier returns a new WeakVerifier.
+func NewWeakVerifier() WeakVerifier {
+	return WeakVerifier{}
+}
+
+// VerifyProposeSignature implements the Verifier interface.
+func (verifier *WeakVerifier) VerifyProposer(signature identity.Signature) error {
+	return nil
+}
+
+// VerifySignatures implements the Verifier interface.
+func (verifier *WeakVerifier) VerifySignatures(signatures identity.Signatures) error {
+	return nil
+}
+
+// ErrorVerifier returns errors instead of verifying Messages.
+type ErrorVerifier struct {
+}
+
+// NewErrorVerifier returns a new ErrorVerifier.
+func NewErrorVerifier() ErrorVerifier {
+	return ErrorVerifier{}
+}
+
+// VerifyProposeSignature implements the Verifier interface.
+func (verifier *ErrorVerifier) VerifyProposer(signature identity.Signature) error {
+	return errors.New("cannot use error verifier to verify")
+}
+
+// VerifySignatures implements the Verifier interface.
+func (verifier *ErrorVerifier) VerifySignatures(signature identity.Signatures) error {
+	return errors.New("cannot use error verifier to verify")
+}
+
 // import (
 // 	"context"
 // 	"log"
