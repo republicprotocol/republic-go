@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"strings"
 	"fmt"
 	"sync"
 
@@ -19,6 +20,7 @@ var prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 
 // Relay consists of configuration values (?)
 type Relay struct {
+	keyPair        identity.KeyPair
 	multiAddress   identity.MultiAddress
 	darkPools      dark.Pools
 	token          string
@@ -26,10 +28,12 @@ type Relay struct {
 }
 
 // NewRelay returns a new Relay object
-func NewRelay(multi identity.MultiAddress, pools dark.Pools, bootstrapNodes []string) Relay {
-	return Relay{
-		multiAddress:   multi,
-		darkPools:      pools,
+func NewRelay(keyPair identity.KeyPair, multi identity.MultiAddress, pools dark.Pools, authToken string, bootstrapNodes []string) Relay{
+	 return Relay{
+		keyPair       : keyPair,
+		multiAddress  : multi,
+		darkPools     : pools, 
+		token         : authToken,
 		bootstrapNodes: bootstrapNodes,
 	}
 }
@@ -38,24 +42,28 @@ func NewRelay(multi identity.MultiAddress, pools dark.Pools, bootstrapNodes []st
 func NewRouter(relay Relay) *mux.Router {
 	orderbook := orderbook.NewOrderbook(100)
 	r := mux.NewRouter().StrictSlash(true)
-	r.Methods("POST").Path("/orders").Handler(RecoveryHandler(OpenOrdersHandler(relay.multiAddress, relay.darkPools)))
-	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(GetOrdersHandler(&orderbook)))
-	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(GetOrderHandler(&orderbook, "")))
-	r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(CancelOrderHandler(relay.multiAddress, relay.darkPools)))
+	r.Methods("POST").Path("/orders").Handler(RecoveryHandler(AuthorizationHandler(OpenOrdersHandler(relay), relay.token)))
+	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(AuthorizationHandler(GetOrdersHandler(orderBook), relay.token)))
+	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(AuthorizationHandler(GetOrderHandler(orderBook, ""), relay.token)))
+	r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(AuthorizationHandler(CancelOrderHandler(relay), relay.token)))
 	return r
 }
 
+// TODO: Sign orders and order fragments before sending them. 
+// 1. Merge master up to relay-commandline
+// 2. Check signature.go Sign method. That should be used for signing orders
+
 // SendOrderToDarkOcean will fragment and send orders to the dark ocean
-func SendOrderToDarkOcean(openOrder order.Order, traderMultiAddress identity.MultiAddress, pools dark.Pools, bootstrapNodes []string) error {
-	errCh := make(chan error, len(pools))
+func SendOrderToDarkOcean(openOrder order.Order, relayConfig Relay) error {
+	errCh := make(chan error, len(relayConfig.darkPools))
 
 	go func() {
 		defer close(errCh)
 
 		var wg sync.WaitGroup
-		wg.Add(len(pools))
+		wg.Add(len(relayConfig.darkPools))
 
-		for i := range pools {
+		for i := range relayConfig.darkPools {
 			go func(darkPool *dark.Pool) {
 				defer wg.Done()
 				// Split order into (number of nodes in each pool) * 2/3 fragments
@@ -64,11 +72,11 @@ func SendOrderToDarkOcean(openOrder order.Order, traderMultiAddress identity.Mul
 					errCh <- err
 					return
 				}
-				if err := sendSharesToDarkPool(darkPool, traderMultiAddress, shares, bootstrapNodes); err != nil {
+				if err := sendSharesToDarkPool(darkPool, shares, relayConfig); err != nil {
 					errCh <- err
 					return
 				}
-			}(pools[i])
+			}(relayConfig.darkPools[i])
 		}
 
 		wg.Wait()
@@ -85,50 +93,50 @@ func SendOrderToDarkOcean(openOrder order.Order, traderMultiAddress identity.Mul
 		}
 	}
 
-	if len(pools) > 0 && errNum == len(pools) {
+	if len(relayConfig.darkPools) > 0 && errNum == len(relayConfig.darkPools) {
 		return fmt.Errorf("could not send order to any dark pool: %v", err)
 	}
 	return nil
 }
 
 // SendOrderFragmentsToDarkOcean will send order fragments to the dark ocean
-func SendOrderFragmentsToDarkOcean(order OrderFragments, traderMultiAddress identity.MultiAddress, pools dark.Pools, bootstrapNodes []string) error {
+func SendOrderFragmentsToDarkOcean(order OrderFragments, relayConfig Relay) error {
 	valid := false
-	for poolIndex := range pools {
-		fragments := order.DarkPools[GeneratePoolID(pools[poolIndex])]
-		if fragments != nil && isSafeToSend(len(fragments), pools[poolIndex].Size()) {
-			if err := sendSharesToDarkPool(pools[poolIndex], traderMultiAddress, fragments, bootstrapNodes); err == nil {
+	for poolIndex := range relayConfig.darkPools {
+		fragments := order.DarkPools[GeneratePoolID(relayConfig.darkPools[poolIndex])]
+		if fragments != nil && isSafeToSend(len(fragments), relayConfig.darkPools[poolIndex].Size()) {
+			if err := sendSharesToDarkPool(relayConfig.darkPools[poolIndex], fragments, relayConfig); err == nil {
 				valid = true
 			}
 		}
 	}
-	if !valid && len(pools) > 0 {
+	if !valid && len(relayConfig.darkPools) > 0 {
 		return fmt.Errorf("cannot send fragments to pools: number of fragments do not match pool size")
 	}
 	return nil
 }
 
 // CancelOrder will cancel orders that aren't confirmed or settled in the dark ocean
-func CancelOrder(order order.ID, traderMultiAddress identity.MultiAddress, pools dark.Pools, bootstrapNodes []string) error {
-	errCh := make(chan error, len(pools))
+func CancelOrder(order order.ID, relayConfig Relay) error {
+	errCh := make(chan error, len(relayConfig.darkPools))
 	go func() {
 		defer close(errCh)
 		// For every Dark Pool
-		for i := range pools {
+		for i := range relayConfig.darkPools {
 			// Cancel orders for all nodes in the pool
 			var wg sync.WaitGroup
-			wg.Add(pools[i].Size())
-			pools[i].ForAll(func(n *dark.Node) {
+			wg.Add(relayConfig.darkPools[i].Size())
+			relayConfig.darkPools[i].ForAll(func(n *dark.Node) {
 				defer wg.Done()
 				// Get multiaddress
-				multiaddress, err := getMultiAddress(n.ID.Address(), traderMultiAddress, bootstrapNodes)
+				multiaddress, err := getMultiAddress(n.ID.Address(), relayConfig)
 				if err != nil {
 					errCh <- fmt.Errorf("cannot read multi-address: %v", err)
 					return
 				}
 
 				// Create a client
-				client, err := rpc.NewClient(multiaddress, traderMultiAddress)
+				client, err := rpc.NewClient(multiaddress, relayConfig.multiAddress)
 				if err != nil {
 					errCh <- fmt.Errorf("cannot connect to client: %v", err)
 					return
@@ -155,14 +163,14 @@ func CancelOrder(order order.ID, traderMultiAddress identity.MultiAddress, pools
 			}
 		}
 	}
-	if len(pools) > 0 && errNum == len(pools) {
+	if len(relayConfig.darkPools) > 0 && errNum == len(relayConfig.darkPools) {
 		return fmt.Errorf("could not cancel order to any dark pool: %v", err)
 	}
 	return nil
 }
 
 // Send the shares across all nodes within the Dark Pool
-func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares []*order.Fragment, bootstrapNodes []string) error {
+func sendSharesToDarkPool(pool *dark.Pool, shares []*order.Fragment, relayConfig Relay) error {
 
 	errCh := make(chan error)
 
@@ -171,34 +179,42 @@ func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares [
 
 		shareIndex := 0
 
+		// TODO: Ask Noah if this is the correct way to sign orders
+		multiSignature, err := relayConfig.keyPair.Sign(relayConfig.multiAddress)
+		if err != nil {
+			errCh <- fmt.Errorf("cannot create signature: %v", err)
+		}
+
 		var wg sync.WaitGroup
 		wg.Add(pool.Size())
 
 		pool.For(func(n *dark.Node) {
 			if shareIndex < len(shares) {
-				go func(n *dark.Node, multi identity.MultiAddress, share *order.Fragment) {
+				go func(n *dark.Node, share *order.Fragment, relayConfig Relay) {
 					defer wg.Done()
 					// Get multiaddress
-					multiaddress, err := getMultiAddress(n.ID.Address(), multi, bootstrapNodes)
+					multiaddress, err := getMultiAddress(n.ID.Address(), relayConfig)
 					if err != nil {
 						errCh <- fmt.Errorf("cannot read multi-address: %v", err)
 						return
 					}
 
+					// TODO: Ask Noah if this is the correct way to sign orders
 					// Create a client
-					client, err := rpc.NewClient(multiaddress, multi)
+					client, err := rpc.NewClient(multiaddress, relayConfig.multiAddress, multiSignature)
 					if err != nil {
 						errCh <- fmt.Errorf("cannot connect to client: %v", err)
 						return
 					}
 
+					// TODO: Ask Noah if this is the correct way to sign orders
 					// Send fragment to node
-					err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(share))
+					err = client.OpenOrder(rpc.SerializeOrderFragment(share))
 					if err != nil {
 						errCh <- fmt.Errorf("cannot send order fragment: %v", err)
 						return
 					}
-				}(n, multi, shares[shareIndex])
+				}(n, shares[shareIndex], relayConfig)
 			}
 			shareIndex++
 		})
@@ -216,43 +232,44 @@ func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares [
 		}
 	}
 	// check if atleast 2/3 nodes of the pool has recieved the order fragments
-	if pool.Size() > 0 && errNum > ((1/3)*pool.Size()) {
+	// TODO check if error is cannot get signature
+	if pool.Size() > 0 && errNum > ((1/3)*pool.Size()) || strings.Contains(err.Error(), "cannot create signature: "){
 		return fmt.Errorf("could not send orders to %v nodes (out of %v nodes) in pool %v", errNum, pool.Size(), GeneratePoolID(pool))
 	}
 	return nil
 }
 
 // Function to obtain multiaddress of a node by sending requests to bootstrap nodes
-func getMultiAddress(address identity.Address, traderMultiAddress identity.MultiAddress, bootstrapNodes []string) (identity.MultiAddress, error) {
+func getMultiAddress(address identity.Address, relayConfig Relay) (identity.MultiAddress, error) {
 	serializedTarget := rpc.SerializeAddress(address)
-	for _, peer := range bootstrapNodes {
+	for _, peer := range relayConfig.bootstrapNodes {
 
 		bootStrapMultiAddress, err := identity.NewMultiAddressFromString(peer)
 		if err != nil {
-			return traderMultiAddress, err
+			return (identity.MultiAddress{}), err
 		}
 
-		client, err := rpc.NewClient(bootStrapMultiAddress, traderMultiAddress)
+		client, err := rpc.NewClient(bootStrapMultiAddress, relayConfig.multiAddress)
 		if err != nil {
-			return traderMultiAddress, fmt.Errorf("cannot establish connection with bootstrap node: %v", err)
+			return (identity.MultiAddress{}), fmt.Errorf("cannot establish connection with bootstrap node: %v", err)
 		}
 
 		candidates, err := client.QueryPeersDeep(serializedTarget)
 		if err != nil {
-			return traderMultiAddress, err
+			return (identity.MultiAddress{}), err
 		}
 
 		for candidate := range candidates {
 			deserializedCandidate, err := rpc.DeserializeMultiAddress(candidate)
 			if err != nil {
-				return traderMultiAddress, err
+				return (identity.MultiAddress{}), err
 			}
 			if address == deserializedCandidate.Address() {
 				return deserializedCandidate, nil
 			}
 		}
 	}
-	return traderMultiAddress, nil
+	return (identity.MultiAddress{}), nil
 }
 
 // GeneratePoolID will generate crypto hash for a pool

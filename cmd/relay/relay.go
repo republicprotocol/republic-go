@@ -35,12 +35,12 @@ func main() {
 			flag.Usage()
 			return
 		}
-		relayAddress, pools, err := getRelayAddressAndDarkPools(*keystore, *passphrase, *port)
+		keyPair, relayAddress, pools, err := getRelayAddressAndDarkPools(*keystore, *passphrase, *port)
 		if err != nil {
 			fmt.Println(fmt.Errorf("cannot obtain address and pools: %v", err))
 			return
 		}
-		relayNode := relay.NewRelay(relayAddress, pools, *token, getBootstrapNodes())
+		relayNode := relay.NewRelay(keyPair, relayAddress, pools, *token, getBootstrapNodes())
 		r := relay.NewRouter(relayNode)
 		if err := http.ListenAndServe(*bindAddress, r); err != nil {
 			fmt.Printf("could not start router: %v", err)
@@ -49,20 +49,20 @@ func main() {
 	}
 }
 
-func getRelayAddressAndDarkPools(keyFile, passphrase string, port int) (identity.MultiAddress, dark.Pools, error) {
+func getRelayAddressAndDarkPools(keyFile, passphrase string, port int) (identity.KeyPair, identity.MultiAddress, dark.Pools, error) {
 	// Get key and traderMultiAddress
-	key, multiAddress, err := getKeyAndAddress(keyFile, passphrase, port)
+	keyPair, key, multiAddress, err := getKeyPairAndAddress(keyFile, passphrase, port)
 	if err != nil {
-		return (identity.MultiAddress{}), nil, err
+		return (identity.KeyPair{}), (identity.MultiAddress{}), nil, err
 	}
 
 	// Get dark pools
 	pools, err := getDarkPools(key)
 	if err != nil {
-		return (identity.MultiAddress{}), nil, err
+		return (identity.KeyPair{}), (identity.MultiAddress{}), nil, err
 	}
 
-	return multiAddress, pools, nil
+	return keyPair, multiAddress, pools, nil
 }
 
 func getLogger() (*logger.Logger, error) {
@@ -77,37 +77,37 @@ func getLogger() (*logger.Logger, error) {
 }
 
 // Returns key and multi address
-func getKeyAndAddress(filename, passphrase string, port int) (*keystore.Key, identity.MultiAddress, error) {
+func getKeyPairAndAddress(filename, passphrase string, port int) (identity.KeyPair, *keystore.Key, identity.MultiAddress, error) {
 
 	// Get our IP address
 	ipInfoOut, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
 	if err != nil {
-		return nil, (identity.MultiAddress{}), err
+		return (identity.KeyPair{}), nil, (identity.MultiAddress{}), err
 	}
 	ipAddress := strings.Trim(string(ipInfoOut), "\n ")
 
 	// Read data from keystore file and generate the key
 	encryptedKey, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, (identity.MultiAddress{}), fmt.Errorf("cannot read keystore file: %v", err)
+		return (identity.KeyPair{}), nil, (identity.MultiAddress{}), fmt.Errorf("cannot read keystore file: %v", err)
 	}
 
 	key, err := keystore.DecryptKey(encryptedKey, passphrase)
 	if err != nil {
-		return nil, (identity.MultiAddress{}), fmt.Errorf("cannot decrypt key with provided passphrase: %v", err)
+		return (identity.KeyPair{}), nil, (identity.MultiAddress{}), fmt.Errorf("cannot decrypt key with provided passphrase: %v", err)
 	}
 
 	id, err := identity.NewKeyPairFromPrivateKey(key.PrivateKey)
 	if err != nil {
-		return nil, (identity.MultiAddress{}), fmt.Errorf("cannot generate id from key %v", err)
+		return (identity.KeyPair{}), nil, (identity.MultiAddress{}), fmt.Errorf("cannot generate id from key %v", err)
 	}
 
 	traderMultiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", ipAddress, strconv.Itoa(port), id.Address().String()))
 	if err != nil {
-		return nil, (identity.MultiAddress{}), fmt.Errorf("cannot obtain trader multi address %v", err)
+		return (identity.KeyPair{}), nil, (identity.MultiAddress{}), fmt.Errorf("cannot obtain trader multi address %v", err)
 	}
 
-	return key, traderMultiAddress, nil
+	return id, key, traderMultiAddress, nil
 }
 
 func getDarkPools(key *keystore.Key) (dark.Pools, error) {
