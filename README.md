@@ -5,10 +5,18 @@
 
 An official reference implementation of Republic Protocol, written in Go.
 
-## Ganache
+## Testing
+
+### Ganache
 
 Install the Ganache CLI.
 
 ```sh
 npm i -g ganache-cli
+```
+
+Before running tests that use the Ethereum network, run Ganache.
+
+```sh
+go run ./cmd/ganache/ganache.go
 ```
