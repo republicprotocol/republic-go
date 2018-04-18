@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gorilla/mux"
 	"github.com/jbenet/go-base58"
-	"github.com/republicprotocol/republic-go/dark"
+	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -21,13 +21,13 @@ var prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 type Relay struct {
 	keyPair        identity.KeyPair
 	multiAddress   identity.MultiAddress
-	darkPools      dark.Pools
+	darkPools      darknode.Pools
 	token          string
 	bootstrapNodes []string
 }
 
 // NewRelay returns a new Relay object
-func NewRelay(keyPair identity.KeyPair, multi identity.MultiAddress, pools dark.Pools, orderbook orderbook.Orderbook, authToken string, bootstrapNodes []string) Relay {
+func NewRelay(keyPair identity.KeyPair, multi identity.MultiAddress, pools darknode.Pools, orderbook orderbook.Orderbook, authToken string, bootstrapNodes []string) Relay {
 	return Relay{
 		keyPair:        keyPair,
 		multiAddress:   multi,
