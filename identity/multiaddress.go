@@ -84,8 +84,11 @@ func (multiAddress MultiAddress) String() string {
 
 // Hash returns the Keccak256 hash of a multiaddrfess. This hash is used to create
 // signatures for a multiaddress.
-func (multiAddress MultiAddress) Hash() []byte {
-	return crypto.Keccak256([]byte(multiAddress.String()))
+func (multiAddress MultiAddress) Hash() [32]byte {
+	var hash [32]byte
+	copy(crypto.Keccak256([]byte(multiAddress.String())), hash[:])
+
+	return hash
 }
 
 // VerifySignature verifies that the multiaddresses's signature has been signed

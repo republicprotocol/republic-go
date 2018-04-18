@@ -13,11 +13,14 @@ type SignableStruct struct {
 	value string
 }
 
-func (s SignableStruct) Hash() []byte {
-	return crypto.Keccak256([]byte(s.value))
+func (s SignableStruct) Hash() [32]byte {
+	var hash [32]byte
+	copy(crypto.Keccak256([]byte(s.value)), hash[:])
+
+	return hash
 }
 
-var _ = Describe("Siging and verifying signatures with KeyPairs", func() {
+var _ = Describe("Signing and verifying signatures with KeyPairs", func() {
 
 	Context("basic SignableStruct", func() {
 
@@ -59,16 +62,15 @@ var _ = Describe("Siging and verifying signatures with KeyPairs", func() {
 			Ω(err).Should(Equal(identity.ErrInvalidSignature))
 		})
 
-		It("signature verification should error for wrong data", func() {
-			value := make([]byte, 10)
-			rand.Read(value)
-			testStruct2 := SignableStruct{
-				value: string(value),
-			}
+		It("should be able to sign the multiAddress and verify the signature", func() {
+			multi, err  := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/80/republic/"+ keyPair.Address().String())
+			Ω(err).ShouldNot(HaveOccurred())
 
-			signature, err := keyPair.Sign(testStruct)
-			err = identity.VerifySignature(testStruct2, signature, keyPair.ID())
-			Ω(err).Should(Equal(identity.ErrInvalidSignature))
+			signature, err := keyPair.Sign(multi)
+			err = identity.VerifySignature(testStruct, signature, keyPair.ID())
+			Ω(err).Should(Not(HaveOccurred()))
+
+			Ω(multi.VerifySignature(signature)).ShouldNot(HaveOccurred())
 		})
 
 	})
