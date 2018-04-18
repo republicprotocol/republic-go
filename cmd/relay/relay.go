@@ -6,19 +6,20 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/big"
-	"strconv"
 	"net/http"
 	"os/exec"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
-	"github.com/republicprotocol/republic-go/dark"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/relay"
+	"github.com/republicprotocol/republic-go/rpc"
 )
 
 func main() {
@@ -26,9 +27,12 @@ func main() {
 	keystore := flag.String("keystore", "", "path of keystore file")
 	passphrase := flag.String("passphrase", "", "passphrase to decrypt keystore")
 	bindAddress := flag.String("bind", "", "bind address")
-	port := flag.Int("port", 80, "port to bind API")       // defaults to 80
+	port := flag.Int("port", 80, "port to bind API") // defaults to 80
 	token := flag.String("token", "", "optional token")
 	flag.Parse()
+
+	// Get list of nodes
+	nodeAddresses := getBootstrapNodes()
 
 	if flag.Parsed() {
 		if *keystore == "" || *passphrase == "" || *bindAddress == "" {
@@ -37,14 +41,47 @@ func main() {
 		}
 		keyPair, relayAddress, pools, err := getRelayAddressAndDarkPools(*keystore, *passphrase, *port)
 		if err != nil {
-			fmt.Println(fmt.Errorf("cannot obtain address and pools: %v", err))
+			fmt.Println(fmt.Errorf("cannot obtain address and pools: %s", err))
 			return
 		}
-		relayNode := relay.NewRelay(keyPair, relayAddress, pools, *token, getBootstrapNodes())
+		orderbook := orderbook.NewOrderbook(100) // TODO: Check max connections
+		relayNode := relay.NewRelay(keyPair, relayAddress, pools, *token, nodeAddresses, orderbook)
 		r := relay.NewRouter(relayNode)
 		if err := http.ListenAndServe(*bindAddress, r); err != nil {
-			fmt.Printf("could not start router: %v", err)
+			fmt.Println(fmt.Errorf("could not start router: %s", err))
 			return
+		}
+	}
+
+	// Handle orderbook synchronization
+	selfMulti, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/18415/republic/8MGzNX7M1ucyvtumVj7QYbb7wQ8UTx")
+	if err != nil {
+		fmt.Println(fmt.Errorf("could not generate multiaddress: %s", err))
+		return
+	}
+	clientPool := rpc.NewClientPool(selfMulti).WithTimeout(10 * time.Second).WithTimeoutBackoff(0)
+	go synchronizeOrderbook(orderbook, clientPool)
+}
+
+// Synchronize orderbook using 3 randomly selected nodes
+func synchronizeOrderbook(orderbook *orderbook.Orderbook, clientPool *rpc.ClientPool) {
+	nodes := getBootstrapNodes() // TODO: Select these randomly
+	index, length := 0, len(nodes)
+	context, cancel := context.WithCancel(context.Background())
+	// TODO: Close this?
+	for {
+		blocks, errs := clientPool.Sync(ctx, *multi)
+		select {
+		case err := <-errs:
+			if err != nil {
+				fmt.Println(fmt.Errorf("error when trying to sync client pool: %s", err)
+			}
+		case block, ok := <-blocks:
+			if !ok {
+				break
+			}
+			
+			// TODO: Handle received blocks.
 		}
 	}
 }
