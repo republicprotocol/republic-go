@@ -1,88 +1,73 @@
-package hyper_test
+package hyperdrive_test
 
 import (
 	"context"
-	"strconv"
-	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/hyperdrive"
 )
 
-var _ = Describe("Commits", func() {
-
-	blocks := NewSharedBlocks(1, 1)
-	validator, _ := NewTestValidator(blocks, 4)
+var _ = Describe("Commit", func() {
 
 	Context("when processing commits", func() {
 
-		It("should return errors on shutdown", func() {
+		It("should create commit if everything goes fine ", func() {
 			ctx, cancel := context.WithCancel(context.Background())
+			capacity, threshold := 100, 100
+			signer := NewWeakSigner(WeakSignerID)
+			verifier := NewWeakVerifier()
+
 			commitChIn := make(chan Commit)
-
-			_, _, _, errCh := ProcessCommit(ctx, commitChIn, validator)
-
-			var wg sync.WaitGroup
-			wg.Add(1)
 			go func() {
-				defer wg.Done()
-
-				for err := range errCh {
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(Equal(context.Canceled))
+				for i := 0; i < threshold; i++ {
+					commit := Commit{
+						Prepare: Prepare{
+							Proposal: Proposal{
+								Block: Block{Height: Height(1)},
+							},
+						},
+						Signatures: Signatures{Signature([65]byte{byte(i)})},
+					}
+					commitChIn <- commit
 				}
 			}()
 
+			commitCh, _, _ := ProcessCommits(ctx, commitChIn, &signer, &verifier, capacity, threshold)
+			commit, ok := <-commitCh
+			Ω(commit).ShouldNot(BeNil())
+			Ω(ok).Should(BeTrue())
+
+			close(commitChIn)
 			cancel()
-			wg.Wait()
 		})
 
-		It("should return commit after processing a threshold number of prepares", func() {
+		It("should create fault if cannot be verified ", func() {
 			ctx, cancel := context.WithCancel(context.Background())
-			commitChIn := make(chan Commit, 5)
-			_, blockCh, _, errCh := ProcessCommit(ctx, commitChIn, validator)
+			capacity, threshold := 100, 100
+			signer := NewWeakSigner(WeakSignerID)
+			verifier := NewErrorVerifier()
 
-			var wg sync.WaitGroup
-			wg.Add(1)
+			commitChIn := make(chan Commit)
 			go func() {
-				defer wg.Done()
-
-				for {
-					select {
-					case err := <-errCh:
-						Ω(err).Should(HaveOccurred())
-						Ω(err).Should(Equal(context.Canceled))
-						return
-					case block, ok := <-blockCh:
-						if !ok {
-							return
-						}
-						Ω(block).Should(Equal(Block{
-							Tuples{},
-							Signature("Proposer"),
-						}))
-						cancel()
-					}
+				commit := Commit{
+					Prepare: Prepare{
+						Proposal: Proposal{
+							Block: Block{Height: Height(1)},
+						},
+					},
+					Signatures: Signatures{Signature([65]byte{byte(0)})},
 				}
+				commitChIn <- commit
 			}()
 
-			for i := uint8(0); i < validator.Threshold(); i++ {
-				go func(i uint8) {
-					commitChIn <- Commit{
-						ThresholdSignature: ThresholdSignature("Threshold_BLS"),
-						Signature:          Signature("Signature of " + strconv.Itoa(int(i))),
-						Block: Block{
-							Tuples{},
-							Signature("Proposer"),
-						},
-						Rank:   Rank(1),
-						Height: 1,
-					}
-				}(i)
-			}
+			_, faultCh, _ := ProcessCommits(ctx, commitChIn, &signer, &verifier, capacity, threshold)
+			fault, ok := <-faultCh
+			Ω(fault).ShouldNot(BeNil())
+			Ω(ok).Should(BeTrue())
 
-			wg.Wait()
+			close(commitChIn)
+			cancel()
 		})
 	})
 })

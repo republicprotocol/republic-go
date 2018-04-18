@@ -16,7 +16,9 @@ import (
 var _ = Describe("Order fragment processor", func() {
 	Context("when receiving order fragments", func() {
 
-		It("should shutdown when the context is canceled", func() {
+		It("should shutdown when the context is canceled", func(done Done) {
+			defer close(done)
+
 			var wg sync.WaitGroup
 			ctx, cancel := context.WithCancel(context.Background())
 
@@ -38,7 +40,9 @@ var _ = Describe("Order fragment processor", func() {
 			wg.Wait()
 		})
 
-		It("should produce order tuples for all order pairs", func() {
+		It("should produce order tuples for all order pairs", func(done Done) {
+			defer close(done)
+
 			var wg sync.WaitGroup
 			ctx, cancel := context.WithCancel(context.Background())
 
