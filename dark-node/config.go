@@ -24,19 +24,6 @@ type Config struct {
 	EthereumRPC string           `json:"ethereumRPC"`
 }
 
-type Config struct {
-	NetworkOptions network.Options `json:"network"`
-	LoggerOptions  logger.Options  `json:"logger"`
-
-	Path string `json:"path"`
-	Host string `json:"host"`
-	Port string `json:"port"`
-
-	KeyPair     identity.KeyPair `json:"keyPair"`
-	EthereumKey keystore.Key     `json:"ethereumKey"`
-	EthereumRPC string           `json:"ethereumRPC"`
-}
-
 // LoadConfig loads a Config object from the given filename. Returns the Config
 // object, or an error.
 func LoadConfig(filename string) (*Config, error) {

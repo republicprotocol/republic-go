@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/order"
+	// "github.com/republicprotocol/republic-go/order"
 
 	"github.com/republicprotocol/republic-go/smpc"
 
@@ -57,10 +57,10 @@ func NewDarknode(config Config) (Darknode, error) {
 
 // Teardown destroys all resources allocated by the Darknode. The Darknode must
 // not be used afterwards.
-func (node *Darknode) Teardown() {
-	close(node.orderFragments)
-	close(node.deltaFragments)
-}
+// func (node *Darknode) Teardown() {
+// 	close(node.orderFragments)
+// 	close(node.deltaFragments)
+// }
 
 // ID returns the ID of the Darknode.
 func (node *Darknode) ID() identity.ID {
@@ -115,7 +115,7 @@ func (node *Darknode) WatchDarknodeRegistryEpoch(done <-chan struct{}) {
 					quit = true
 					break
 				}
-				node.Logger.Network(logger.Error, err.String())
+				node.Logger.Network(logger.Error, err.Error())
 
 			case epoch, ok := <-epochs:
 				if !ok {
@@ -140,37 +140,37 @@ func (node *Darknode) RunEpoch(done <-chan struct{}, epoch contracts.Epoch) {
 
 	// Setup a secure multi-party computer
 	// FIXME: Calculate n-k threshold correctly
-	n := int64(5)
-	k := (n + 1) * 2 / 3
+	// n := int64(5)
+	// k := (n + 1) * 2 / 3
 
-	smpcerID := smpc.ComputerID{}
-	copy(smpcerID[:], node.ID()[:])
-	smpcer = smpc.NewComputer(smpcerID, n, k)
+	// smpcerID := smpc.ComputerID{}
+	// copy(smpcerID[:], node.ID()[:])
+	// smpcer := smpc.NewComputer(smpcerID, n, k)
 
-	// Initialize channels
-	orderFragments = make(chan order.Fragment)
-	deltaFragments = make(chan smpc.DeltaFragment)
+	// // Initialize channels
+	// orderFragments := make(chan order.Fragment)
+	// deltaFragments := make(chan smpc.DeltaFragment)
 
 }
 
 // Compute begins the Smpcer.
 func (node *Darknode) Compute(done <-chan struct{}) {
-	deltaFragmentsComputed, deltasComputed := node.smpcer.ComputeOrderMatches(done, node.orderFragments, node.deltaFragments)
+	// deltaFragmentsComputed, deltasComputed := node.smpcer.ComputeOrderMatches(done, node.orderFragments, node.deltaFragments)
 
-	go func() {
-		for delta := range deltasComputed {
-			if delta.IsMatch(&smpc.Prime) {
-				node.Logger.OrderMatch(logger.Info, delta.ID.String(), delta.BuyOrderID.String(), delta.SellOrderID.String())
-				node.OrderMatchToHyperdrive(delta)
-			}
-		}
-	}()
+	// go func() {
+	// 	for delta := range deltasComputed {
+	// 		if delta.IsMatch(&smpc.Prime) {
+	// 			node.Logger.OrderMatch(logger.Info, delta.ID.String(), delta.BuyOrderID.String(), delta.SellOrderID.String())
+	// 			node.OrderMatchToHyperdrive(delta)
+	// 		}
+	// 	}
+	// }()
 }
 
 func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) {
-	if !delta.IsMatch(&smpc.Prime) {
-		return
-	}
+	// if !delta.IsMatch(&smpc.Prime) {
+	// 	return
+	// }
 
 	// TODO:
 	// 1. Create a Tx for Hyperdrive

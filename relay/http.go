@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/republicprotocol/republic-go/dark"
-	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 )
@@ -48,11 +46,18 @@ func AuthorizationHandler(h http.Handler, token string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if token != "" {
 			authHeader := r.Header.Get("Authorization")
-			if authHeader != "" {
-				if strings.Split(authHeader, " ")[1] != token {
-					writeError(w, http.StatusUnauthorized, fmt.Sprintln("Unauthorized token"))
-					return
-				}
+			if authHeader == "" {
+				writeError(w, http.StatusUnauthorized, "")
+				return
+			}
+			coms := strings.Split(authHeader, " ")
+			if len(coms) != 2 {
+				writeError(w, http.StatusUnauthorized, "")
+				return
+			}
+			if coms[0] != "Bearer" || coms[1] != token {
+				writeError(w, http.StatusUnauthorized, "")
+				return
 			}
 		}
 		h.ServeHTTP(w, r)

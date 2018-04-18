@@ -200,68 +200,68 @@ type ComputationWithID struct {
 	Computation *Computation
 }
 
-func ZipComputationsWithID(done <-chan struct{}, computations <-chan *Computation, id [32]byte) <-chan ComputationWithID {
-	computationsWithID := make([]<-chan ComputationWithID, len(computationChs))
+// func ZipComputationsWithID(done <-chan struct{}, computations <-chan *Computation, id [32]byte) <-chan ComputationWithID {
+// 	computationsWithID := make([]<-chan ComputationWithID, len(computationChs))
 
-	go func() {
-		defer close(computationsWithID)
-		for {
-			select {
-			case <-done:
-				return
-			case computation, ok := <-computations:
-				if !ok {
-					return
-				}
-				computationWithID := ComputationWithID{
-					ID:          id,
-					Computation: computation,
-				}
-				select {
-				case <-done:
-					return
-				case computationsWithID <- computationWithID:
-				}
-			}
-		}
-	}()
+// 	go func() {
+// 		defer close(computationsWithID)
+// 		for {
+// 			select {
+// 			case <-done:
+// 				return
+// 			case computation, ok := <-computations:
+// 				if !ok {
+// 					return
+// 				}
+// 				computationWithID := ComputationWithID{
+// 					ID:          id,
+// 					Computation: computation,
+// 				}
+// 				select {
+// 				case <-done:
+// 					return
+// 				case computationsWithID <- computationWithID:
+// 				}
+// 			}
+// 		}
+// 	}()
 
-	return computationsWithID
-}
+// 	return computationsWithID
+// }
 
-type ComputeMap struct {
-	clientPool ClientPool
+// type ComputeMap struct {
+// 	clientPool ClientPool
 
-	inputs map[[32]byte]chan ComputationWithID
-	outputs map[[32]byte]chan ComputationWithID
-}
+// 	inputs map[[32]byte]chan ComputationWithID
+// 	outputs map[[32]byte]chan ComputationWithID
+// }
 
-func (computeMap *ComputeMap) Setup(multiAddresses []identity.MultiAddress) {
+// func (computeMap *ComputeMap) Setup(multiAddresses []identity.MultiAddress) {
 
 
 
-}
+// }
 
-func (computeMap *ComputeMap) Compute(done chan struct{}, multiAddresses []identity.MultiAddress) <-chan ComputationWithID {
-	computationsWithID := make(chan ComputationWithID)
+// func (computeMap *ComputeMap) Compute(done chan struct{}, multiAddresses []identity.MultiAddress) <-chan ComputationWithID {
+// 	computationsWithID := make(chan ComputationWithID)
 
-	go func() {
-		defer close(computationsWithID)
+// 	go func() {
+// 		defer close(computationsWithID)
 
-		arrayOfComputationsWithID := []<-chan ComputationWithID{}
-		for i := range multiAddresses {
+// 		arrayOfComputationsWithID := []<-chan ComputationWithID{}
+// 		for i := range multiAddresses {
 
-			id := [32]byte{}
-			copy(id[:], multiAddresses[i].ID())
+// 			id := [32]byte{}
+// 			copy(id[:], multiAddresses[i].ID())
 	
-			computations, errs := clientPool.Compute(...)
-			arrayOfComputationsWithID = append(arrayOfComputationsWithID, ZipComputationsWithID(done, computations, id))
-		}
+// 			computations, errs := clientPool.Compute(...)
+// 			arrayOfComputationsWithID = append(arrayOfComputationsWithID, ZipComputationsWithID(done, computations, id))
+// 		}
 
-		dispatch.Merge(computationsWithID, arrayOfComputationsWithID)
-	}()
+// 		dispatch.Merge(computationsWithID, arrayOfComputationsWithID)
+// 	}()
 
-	return computationsWithID
-}
+// 	return computationsWithID
+// }
 
-func (computeMap) 
+// func (computeMap) 

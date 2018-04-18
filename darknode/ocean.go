@@ -91,3 +91,7 @@ func (ocean *Ocean) Watch(done <-chan struct{}) (<-chan contracts.Epoch, <-chan 
 
 	return changes, errs
 }
+
+func (ocean Ocean) GetPools() Pools {
+	return ocean.pools;
+}

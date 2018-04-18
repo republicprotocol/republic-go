@@ -2,7 +2,7 @@ package relay_test
 
 import (
 //	"errors"
-	"fmt"
+	// "fmt"
 //	"sync"
 	"time"
 
@@ -11,11 +11,11 @@ import (
 
 //	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 //	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/republic-go/contracts/dnr"
-	"github.com/republicprotocol/republic-go/dark"
-//	"github.com/republicprotocol/republic-go/dark-node"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
+	// "github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/logger"
+	// "github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	. "github.com/republicprotocol/republic-go/relay"
 	"github.com/republicprotocol/republic-go/stackint"
@@ -24,7 +24,7 @@ import (
 // var dnrOuterLock = new(sync.Mutex)
 // var dnrInnerLock = new(sync.Mutex)
 
-var epochDNR dnr.DarkNodeRegistry
+var epochDNR contracts.DarkNodeRegistry
 // var nodes []*node.DarkNode
 
 var Prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
@@ -235,17 +235,17 @@ var Prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 // }
 
 // getPools return dark pools from a mock dnr
-func getPools(dnr dnr.DarkNodeRegistry) dark.Pools {
-	log, err := logger.NewLogger(logger.Options{})
-	if err != nil {
-		panic(fmt.Sprintf("cannot get logger: %v", err))
-	}
+func getPools(dnr contracts.DarkNodeRegistry) darknode.Pools {
+	// log, err := logger.NewLogger(logger.Options{})
+	// if err != nil {
+	// 	panic(fmt.Sprintf("cannot get logger: %v", err))
+	// }
 
-	ocean, err := dark.NewOcean(log, 5, dnr)
-	if err != nil {
-		panic(fmt.Sprintf("cannot get dark ocean: %v", err))
-	}
-	return ocean.GetPools()
+	ocean := darknode.NewOcean(dnr)
+	// if err != nil {
+	// 	panic(fmt.Sprintf("cannot get dark ocean: %v", err))
+	// }
+	return ocean.GetPools();
 }
 
 func getFullOrder() order.Order {
@@ -288,7 +288,7 @@ func getFragmentedOrder() OrderFragments {
 	return fragmentedOrder
 }
 
-func generateFragmentedOrderForDarkPool(pool *dark.Pool) (OrderFragments, error) {
+func generateFragmentedOrderForDarkPool(pool *darknode.Pool) (OrderFragments, error) {
 	sendOrder := getFullOrder()
 	fragments, err := sendOrder.Split(int64(pool.Size()), int64(pool.Size()*2/3), &Prime)
 	if err != nil {
@@ -301,7 +301,7 @@ func generateFragmentedOrderForDarkPool(pool *dark.Pool) (OrderFragments, error)
 	return fragmentOrder, nil
 }
 
-func getPoolsAndTrader() (dark.Pools, identity.MultiAddress) {
+func getPoolsAndTrader() (darknode.Pools, identity.MultiAddress) {
 	// trader, err := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
 	trader, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/3003/republic/8MJNCQhMrUCHuAk977igrdJk3tSzkT")
 	Ω(err).ShouldNot(HaveOccurred())

@@ -56,7 +56,7 @@ func (pool *ClientPool) findOrCreateClient(to identity.MultiAddress) (*Client, e
 		return clientCacheEntry.Client, nil
 	}
 
-	client, err := NewClient(context.Background(), to, pool.from)
+	client, err := NewClient(context.Background(), to, pool.from, (identity.KeyPair{}))
 	if err != nil {
 		return client, err
 	}
