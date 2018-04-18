@@ -1,3 +1,6 @@
 [submodule "contracts/bindings/republic-sol"]
 	path = contracts/bindings/republic-sol
 	url = https://github.com/republicprotocol/republic-sol.git
+[submodule "ethereum/bindings/republic-sol"]
+	path = ethereum/bindings/republic-sol
+	url = https://github.com/republicprotocol/republic-sol.git
