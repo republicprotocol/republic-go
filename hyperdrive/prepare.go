@@ -98,6 +98,7 @@ func (prepare *Prepare) Fault() *Fault {
 }
 
 func (prepare *Prepare) Verify(verifier identity.Verifier) error {
+
 	// TODO: Complete verification
 	if err := prepare.Proposal.Verify(verifier); err != nil {
 		return err

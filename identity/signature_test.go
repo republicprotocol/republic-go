@@ -75,20 +75,20 @@ var _ = Describe("Signing and verifying signatures with KeyPairs", func() {
 
 		It("should be able to merge signatures and verify them", func() {
 
-			testStructs := make([]SignableStruct, 10 )
+			testStructs := make([]SignableStruct, 10)
 			signatures := identity.Signatures{}
-			for i := 0;i <10 ;i ++{
+			for i := 0; i < 10; i++ {
 				value := make([]byte, 10)
 				rand.Read(value)
-				testStructs[i] =  SignableStruct{
+				testStructs[i] = SignableStruct{
 					value: string(value),
 				}
-				signature ,err  := keyPair.Sign(testStruct)
+				signature, err := keyPair.Sign(testStruct)
 				Ω(err).Should(Not(HaveOccurred()))
 				signatures = signatures.Merge(identity.Signatures{signature})
 			}
 
-			for i , sig := range signatures{
+			for i, sig := range signatures {
 				Ω(identity.VerifySignature(testStructs[i], sig, keyPair.ID())).ShouldNot(HaveOccurred())
 			}
 		})

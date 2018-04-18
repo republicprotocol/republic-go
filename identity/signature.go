@@ -10,11 +10,19 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
+var (
+	// ErrInvalidSignature indicates that a signature could not be verified against the provided Identity
+	ErrInvalidSignature = fmt.Errorf("failed to verify signature")
+
+	// ErrSignData indicates failure of signing.
+	ErrSignData = fmt.Errorf("failed to sign the data")
+)
+
 // A Hash is a Keccak256 Hash of some data.
 type Hash [32]byte
 
-// A Signable struct is able to be signed by a KeyPair
-// Hash must return a 32-byte []byte array
+// A Signable struct is able to be signed by a KeyPair.
+// Hash must return a 32-byte Hash.
 type Signable interface {
 	Hash() Hash
 }
@@ -24,20 +32,14 @@ type Signer interface {
 	Sign(Hash) (Signature, error)
 }
 
-// A Verifier is used to verify Messages.
+// A Verifier is used to verify Signature and Signatures .
 type Verifier interface {
-	VerifyProposer(Signature) error
+	VerifySignature(Signature) error
 	VerifySignatures(Signatures) error
 }
 
 // The Signature type represents the signature of the hash of Signable data
 type Signature = [65]byte
-
-// ErrInvalidSignature indicates that a signature could not be verified against the provided Identity
-var ErrInvalidSignature = fmt.Errorf("failed to verify signature")
-
-// ErrSignData indicates that we fail to sign the data.
-var ErrSignData = fmt.Errorf("failed to sign the data")
 
 // Sign hashes and signs the Signable data
 // If the Hash() function defined does not correctly hash the struct,

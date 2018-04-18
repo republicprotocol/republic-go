@@ -81,7 +81,7 @@ func ProcessProposal(ctx context.Context, proposalChIn <-chan Proposal, signer i
 const ProposalHeader = byte(2)
 
 // A Proposal message is sent by the Commander Replica to propose the next
-// Block for preparation, committment, and finalization.
+// Block for preparation, commitment, and finalization.
 type Proposal struct {
 	Block
 
@@ -108,6 +108,9 @@ func (proposal *Proposal) Fault() *Fault {
 // Verify implements the Message interface.
 func (proposal *Proposal) Verify(verifier identity.Verifier) error {
 	// TODO: Complete verification
+	if err := verifier.(); err != nil {
+		return err
+	}
 	if err := proposal.Block.Verify(verifier); err != nil {
 		return err
 	}
