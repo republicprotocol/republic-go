@@ -1,8 +1,9 @@
 package relay
 
 import (
+	"context"
 	"fmt"
-	"strings"
+	"log"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -10,8 +11,9 @@ import (
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/rpc"
 	// "github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/stackint"
 )
@@ -25,17 +27,18 @@ type Relay struct {
 	darkPools      darknode.Pools
 	token          string
 	bootstrapNodes []string
+	orderbook      orderbook.Orderbook
 }
 
 // NewRelay returns a new Relay object
-func NewRelay(keyPair identity.KeyPair, multi identity.MultiAddress, pools darknode.Pools, orderbook orderbook.Orderbook, authToken string, bootstrapNodes []string) Relay {
+func NewRelay(keyPair identity.KeyPair, multi identity.MultiAddress, pools darknode.Pools, book orderbook.Orderbook, authToken string, bootstrapNodes []string) Relay {
 	return Relay{
 		keyPair:        keyPair,
 		multiAddress:   multi,
 		darkPools:      pools,
 		token:          authToken,
 		bootstrapNodes: bootstrapNodes,
-		orderbook:      orderbook,
+		orderbook:      book,
 	}
 }
 
@@ -43,8 +46,8 @@ func NewRelay(keyPair identity.KeyPair, multi identity.MultiAddress, pools darkn
 func NewRouter(relay Relay) *mux.Router {
 	r := mux.NewRouter().StrictSlash(true)
 	r.Methods("POST").Path("/orders").Handler(RecoveryHandler(AuthorizationHandler(OpenOrdersHandler(relay), relay.token)))
-	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(AuthorizationHandler(GetOrdersHandler(relay.orderbook), relay.token)))
-	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(AuthorizationHandler(GetOrderHandler(relay.orderbook, ""), relay.token)))
+	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(AuthorizationHandler(GetOrdersHandler(&relay.orderbook), relay.token)))
+	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(AuthorizationHandler(GetOrderHandler(&relay.orderbook, ""), relay.token)))
 	r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(AuthorizationHandler(CancelOrderHandler(relay), relay.token)))
 	return r
 }
@@ -264,7 +267,7 @@ func sendSharesToDarkPool(pool *darknode.Pool, shares []*order.Fragment, relayCo
 		}
 	}
 	// check if atleast 2/3 nodes of the pool has recieved the order fragments
-	if pool.Size() > 0 && errNum > ((1/3)*pool.Size()){
+	if pool.Size() > 0 && errNum > ((1/3)*pool.Size()) {
 		return fmt.Errorf("could not send orders to %v nodes (out of %v nodes) in pool %v", errNum, pool.Size(), GeneratePoolID(pool))
 	}
 	return nil
@@ -286,7 +289,7 @@ func getMultiAddress(address identity.Address, relayConfig Relay) (identity.Mult
 		}
 
 		candidates, errs := client.QueryPeersDeep(context.Background(), serializedTarget)
-		
+
 		// TODO: duplicated from swarm.go
 		continuing := true
 		for continuing {
