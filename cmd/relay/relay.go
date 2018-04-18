@@ -66,22 +66,38 @@ func main() {
 // Synchronize orderbook using 3 randomly selected nodes
 func synchronizeOrderbook(orderbook *orderbook.Orderbook, clientPool *rpc.ClientPool) {
 	nodes := getBootstrapNodes() // TODO: Select these randomly
-	index, length := 0, len(nodes)
+	index := 0
 	context, cancel := context.WithCancel(context.Background())
 	// TODO: Close this?
 	for {
-		blocks, errs := clientPool.Sync(ctx, *multi)
+		multiaddressString := nodes[index % len(nodes)]
+		index++
+		multi := identity.NewMultiAddressFromString(multiaddressString)
+		blocks, errs := clientPool.Sync(context, *multi)
 		select {
-		case err := <-errs:
 			if err != nil {
+			case err := <-errs:
 				fmt.Println(fmt.Errorf("error when trying to sync client pool: %s", err)
 			}
 		case block, ok := <-blocks:
 			if !ok {
 				break
 			}
-
-			// TODO: Handle received blocks.
+			switch block.OrderBlock.(type) {
+			case *rpc.SyncBlock_Open:
+				ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Open).Open)
+			case *rpc.SyncBlock_Confirmed:
+				ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Confirmed).Confirmed)
+			case *rpc.SyncBlock_Unconfirmed:
+				ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Unconfirmed).Unconfirmed)
+			case *rpc.SyncBlock_Canceled:
+				ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Canceled).Canceled)
+			case *rpc.SyncBlock_Settled:
+				ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Settled).Settled)
+			default:
+				log.Printf("unknown order status, %t", block.OrderBlock)
+			}
+			// TODO: Send order to orderbook.
 		}
 	}
 }
