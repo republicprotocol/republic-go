@@ -1,10 +1,8 @@
 package relay
 
 import (
-	// "strings"
-	"context"
 	"fmt"
-	"log"
+	"strings"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -30,30 +28,26 @@ type Relay struct {
 }
 
 // NewRelay returns a new Relay object
-func NewRelay(keyPair identity.KeyPair, multi identity.MultiAddress, pools darknode.Pools, authToken string, bootstrapNodes []string) Relay{
-	 return Relay{
-		keyPair       : keyPair,
-		multiAddress  : multi,
-		darkPools     : pools, 
-		token         : authToken,
+func NewRelay(keyPair identity.KeyPair, multi identity.MultiAddress, pools darknode.Pools, orderbook orderbook.Orderbook, authToken string, bootstrapNodes []string) Relay {
+	return Relay{
+		keyPair:        keyPair,
+		multiAddress:   multi,
+		darkPools:      pools,
+		token:          authToken,
 		bootstrapNodes: bootstrapNodes,
+		orderbook:      orderbook,
 	}
 }
 
 // NewRouter prepares Relay to handle HTTP requests
 func NewRouter(relay Relay) *mux.Router {
-	// orderbook := orderbook.NewOrderbook(100)
 	r := mux.NewRouter().StrictSlash(true)
 	r.Methods("POST").Path("/orders").Handler(RecoveryHandler(AuthorizationHandler(OpenOrdersHandler(relay), relay.token)))
-	// r.Methods("GET").Path("/orders").Handler(RecoveryHandler(AuthorizationHandler(GetOrdersHandler(orderbook), relay.token)))
-	// r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(AuthorizationHandler(GetOrderHandler(orderbook, ""), relay.token)))
+	r.Methods("GET").Path("/orders").Handler(RecoveryHandler(AuthorizationHandler(GetOrdersHandler(relay.orderbook), relay.token)))
+	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(AuthorizationHandler(GetOrderHandler(relay.orderbook, ""), relay.token)))
 	r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(AuthorizationHandler(CancelOrderHandler(relay), relay.token)))
 	return r
 }
-
-// TODO: Sign orders and order fragments before sending them. 
-// 2. Check signature.go Sign method. That should be used for signing orders
-// 3. Order-ids must be signed and these must be set in the Signature field of orders and order fragments
 
 // SendOrderToDarkOcean will fragment and send orders to the dark ocean
 func SendOrderToDarkOcean(openOrder order.Order, relayConfig Relay) error {
