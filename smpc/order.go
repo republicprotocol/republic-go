@@ -23,6 +23,7 @@ func OrderFragmentsToOrderTuples(done <-chan struct{}, orderFragments <-chan ord
 				if !ok {
 					return
 				}
+				println("INSERTING ORDER FRAGMENT")
 				if orderFragment.OrderParity == order.ParityBuy {
 					sharedOrderTable.InsertBuyOrder(orderFragment)
 				} else {

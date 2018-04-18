@@ -190,7 +190,7 @@ func Pipe(done <-chan struct{}, producer interface{}, consumer interface{}) {
 
 		cases = [2]reflect.SelectCase{
 			reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(done)},
-			reflect.SelectCase{Dir: reflect.SelectSend, Chan: reflect.ValueOf(producer), Send: val},
+			reflect.SelectCase{Dir: reflect.SelectSend, Chan: reflect.ValueOf(consumer), Send: val},
 		}
 		i, val, ok = reflect.Select(cases[:])
 		if i == 0 {

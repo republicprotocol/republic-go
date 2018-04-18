@@ -2,7 +2,10 @@ package darknode
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+
+	"github.com/republicprotocol/republic-go/identity"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/ethereum/client"
@@ -41,18 +44,29 @@ func LoadConfig(filename string) (*Config, error) {
 	return config, nil
 }
 
-func NewLocalConfig(key keystore.Key, host, port string) Config {
+func NewLocalConfig(key keystore.Key, host, port string) (Config, error) {
+	keyPair, err := identity.NewKeyPairFromPrivateKey(key.PrivateKey)
+	if err != nil {
+		return Config{}, err
+	}
+	multi, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", host, port, keyPair.Address()))
+	if err != nil {
+		return Config{}, err
+	}
 	return Config{
 		Key:  key,
 		Host: host,
 		Port: port,
+		Network: rpc.Options{
+			MultiAddress: multi,
+		},
 		Ethereum: EthereumConfig{
 			URI:                     "http://localhost:8545",
 			Network:                 client.NetworkGanache,
 			RepublicTokenAddress:    client.RepublicTokenAddressOnGanache.String(),
 			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.String(),
 		},
-	}
+	}, nil
 }
 
 func NewFalconConfig() Config {

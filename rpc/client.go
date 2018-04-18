@@ -3,7 +3,6 @@ package rpc
 import (
 	"fmt"
 	"io"
-	"runtime"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 
@@ -52,9 +51,13 @@ func NewClient(ctx context.Context, to, from identity.MultiAddress) (*Client, er
 		return nil, err
 	}
 	client.Connection = connection
-	runtime.SetFinalizer(client, func(client *Client) {
-		client.Connection.Close()
-	})
+
+	// FIXME: This does not work because we do not always keep a reference to
+	// the client while background streams are open. Instead, we need another
+	// way to manage clients and connections.
+	// runtime.SetFinalizer(client, func(client *Client) {
+	// 	client.Connection.Close()
+	// })
 
 	client.ComputerClient = NewComputerClient(client.Connection)
 	client.SwarmClient = NewSwarmClient(client.Connection)
