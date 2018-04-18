@@ -1,21 +1,14 @@
 package relay
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"strings"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gorilla/mux"
 	"github.com/jbenet/go-base58"
-	"github.com/republicprotocol/republic-go/contracts/connection"
-	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -169,7 +162,7 @@ func CancelOrder(order order.ID, traderMultiAddress identity.MultiAddress, pools
 }
 
 // Send the shares across all nodes within the Dark Pool
-func sendSharesToDarkPool(pool *darknode.Pool, multi identity.MultiAddress, shares []*order.Fragment, bootstrapNodes []string) error {
+func sendSharesToDarkPool(pool *darknode.Pool, registrar *contracts.DarkNodeRegistry, multi identity.MultiAddress, shares []*order.Fragment, bootstrapNodes []string) error {
 
 	errCh := make(chan error)
 
@@ -193,39 +186,8 @@ func sendSharesToDarkPool(pool *darknode.Pool, multi identity.MultiAddress, shar
 						return
 					}
 
-					// Create a client
-					client, err := rpc.NewClient(multiaddress, multi)
-					if err != nil {
-						errCh <- fmt.Errorf("cannot connect to client: %v", err)
-						return
-					}
-
-					// Connect to the registrar to attain the public key of the darknode
-					clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					raw, err := ioutil.ReadFile("../secrets/secrets.json")
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					var s Secret
-					json.Unmarshal(raw, &s)
-
-					key := s.PrivateKey
-					transactOps, err := bind.NewTransactor(strings.NewReader(key), s.Password)
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, transactOps, &bind.CallOpts{})
-					pubKeyBytes := registrar.GetPublicKey(n.ID)
-					pubKey := crypto.GeneratePublicKeyFromBytes(pubKeyBytes)
-
 					// Send fragment to node
-					err = client.OpenOrder(rpc.MarshalOrderFragment(pubKey, share))
+					err = client.OpenOrder(rpc.MarshalOrderFragment(n.pubKey, share))
 					if err != nil {
 						errCh <- fmt.Errorf("cannot send order fragment: %v", err)
 						return

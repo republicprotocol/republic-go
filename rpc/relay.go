@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"crypto/rsa"
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
@@ -17,8 +18,9 @@ type RelayDelegate interface {
 type RelayService struct {
 	Options
 
-	Delegate RelayDelegate
-	Logger   *logger.Logger
+	PrivateKey *rsa.PrivateKey
+	Delegate   RelayDelegate
+	Logger     *logger.Logger
 }
 
 func NewRelayService(options Options, delegate RelayDelegate, logger *logger.Logger) *RelayService {
@@ -51,7 +53,7 @@ func (service *RelayService) openOrder(req *OpenOrderRequest) error {
 		return err
 	}
 
-	fragment, err := UnmarshalOrderFragment(req.OrderFragment)
+	fragment, err := UnmarshalOrderFragment(service.PrivateKey, req.OrderFragment)
 	if err != nil {
 		return err
 	}

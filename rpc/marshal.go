@@ -39,7 +39,7 @@ func UnmarshalMultiAddress(multiAddress *MultiAddress) (identity.MultiAddress, [
 
 // MarshalOrderFragment converts an order.Fragment into its network
 // representation.
-func MarshalOrderFragment(pubKey *rsa.PublicKey, orderFragment *order.Fragment) *OrderFragment {
+func MarshalOrderFragment(pubKey *rsa.PublicKey, orderFragment *order.Fragment) (*OrderFragment, error) {
 	val := &OrderFragment{
 		Id: &OrderFragmentId{
 			Signature:       orderFragment.Signature,
@@ -56,28 +56,29 @@ func MarshalOrderFragment(pubKey *rsa.PublicKey, orderFragment *order.Fragment) 
 		},
 	}
 
-	val.FstCodeShare, err = crypto.Encrypt(pubKey, orderFragment.FstCodeShare)
+	var err error
+	val.FstCodeShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.FstCodeShare))
 	if err != nil {
 		return nil, err
 	}
-	val.SndCodeShare, err = crypto.Encrypt(pubKey, orderFragment.SndCodeShare)
+	val.SndCodeShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.SndCodeShare))
 	if err != nil {
 		return nil, err
 	}
-	val.PriceShare, err = crypto.Encrypt(pubKey, orderFragment.PriceShare)
+	val.PriceShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.PriceShare))
 	if err != nil {
 		return nil, err
 	}
-	val.MaxVolumeShare, err = crypto.Encrypt(pubKey, orderFragment.MaxVolumeShare)
+	val.MaxVolumeShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.MaxVolumeShare))
 	if err != nil {
 		return nil, err
 	}
-	val.MinVolumeShare, err = crypto.Encrypt(pubKey, orderFragment.MinVolumeShare)
+	val.MinVolumeShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.MinVolumeShare))
 	if err != nil {
 		return nil, err
 	}
 
-	return val
+	return val, nil
 }
 
 // UnmarshalOrderFragment converts a network representation of an
