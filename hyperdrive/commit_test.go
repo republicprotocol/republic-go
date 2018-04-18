@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/hyperdrive"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 var _ = Describe("Commit", func() {
@@ -27,7 +28,7 @@ var _ = Describe("Commit", func() {
 								Block: Block{Height: Height(1)},
 							},
 						},
-						Signatures: Signatures{Signature([65]byte{byte(i)})},
+						Signatures: identity.Signatures{identity.Signature([65]byte{byte(i)})},
 					}
 					commitChIn <- commit
 				}
@@ -56,7 +57,7 @@ var _ = Describe("Commit", func() {
 							Block: Block{Height: Height(1)},
 						},
 					},
-					Signatures: Signatures{Signature([65]byte{byte(0)})},
+					Signatures: identity.Signatures{identity.Signature([65]byte{byte(0)})},
 				}
 				commitChIn <- commit
 			}()

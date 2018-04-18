@@ -107,14 +107,12 @@ func (proposal *Proposal) Fault() *Fault {
 
 // Verify implements the Message interface.
 func (proposal *Proposal) Verify(verifier identity.Verifier) error {
+
 	// TODO: Complete verification
-	if err := verifier.(); err != nil {
-		return err
-	}
 	if err := proposal.Block.Verify(verifier); err != nil {
 		return err
 	}
-	return verifier.VerifyProposer(proposal.Signature)
+	return verifier.VerifySignature(proposal.Signature)
 }
 
 // SetSignatures implements the Message interface.

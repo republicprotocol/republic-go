@@ -3,11 +3,10 @@ package darknode
 import (
 	"context"
 
-	"github.com/republicprotocol/republic-go/identity"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 type Darknodes []Darknode

@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/hyperdrive"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 var _ = Describe("Channel set", func() {
@@ -202,7 +203,7 @@ func writeToChannelSetWithHeight(chSet ChannelSet, numberOfMessages int, height 
 			chSet.Prepares <- Prepare{
 				Proposal: Proposal{
 					Block:     Block{Height: height},
-					Signature: Signature{},
+					Signature: identity.Signature{},
 				},
 			}
 		}
@@ -215,7 +216,7 @@ func writeToChannelSetWithHeight(chSet ChannelSet, numberOfMessages int, height 
 				Prepare: Prepare{
 					Proposal: Proposal{
 						Block:     Block{Height: height},
-						Signature: Signature{},
+						Signature: identity.Signature{},
 					},
 				},
 			}

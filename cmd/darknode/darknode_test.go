@@ -37,7 +37,9 @@ var _ = Describe("Darknode", func() {
 
 		var err error
 		var darkNodeRegistry contracts.DarkNodeRegistry
-		var darkNodes, ctxs, cancels darknode.Darknodes, []context.Context, []context.CancelFunc
+		var darkNodes  darknode.Darknodes
+		var ctxs []context.Context
+		var cancels []context.CancelFunc
 		var shutdown chan struct{}
 
 		BeforeEach(func() {

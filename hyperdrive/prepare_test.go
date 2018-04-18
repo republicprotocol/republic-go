@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/hyperdrive"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 var WeakSignerID = [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
@@ -27,7 +28,7 @@ var _ = Describe("Prepare", func() {
 						Proposal: Proposal{
 							Block: Block{Height: Height(1)},
 						},
-						Signatures: Signatures{Signature([65]byte{byte(i)})},
+						Signatures: identity.Signatures{identity.Signature([65]byte{byte(i)})},
 					}
 					prepareChIn <- prepare
 				}
@@ -55,7 +56,7 @@ var _ = Describe("Prepare", func() {
 				Proposal: Proposal{
 					Block: Block{Height: Height(1)},
 				},
-				Signatures: Signatures{Signature([65]byte{byte(0)})},
+				Signatures: identity.Signatures{identity.Signature([65]byte{byte(0)})},
 			}
 			prepareChIn <- prepare
 		}()

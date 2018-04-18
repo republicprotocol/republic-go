@@ -50,7 +50,7 @@ func NewWeakVerifier() WeakVerifier {
 }
 
 // VerifyProposeSignature implements the Verifier interface.
-func (verifier *WeakVerifier) VerifyProposer(signature identity.Signature) error {
+func (verifier *WeakVerifier) VerifySignature(signature identity.Signature) error {
 	return nil
 }
 
@@ -69,7 +69,7 @@ func NewErrorVerifier() ErrorVerifier {
 }
 
 // VerifyProposeSignature implements the Verifier interface.
-func (verifier *ErrorVerifier) VerifyProposer(signature identity.Signature) error {
+func (verifier *ErrorVerifier) VerifySignature(signature identity.Signature) error {
 	return errors.New("cannot use error verifier to verify")
 }
 

@@ -55,7 +55,7 @@ func (block *Block) Hash() identity.Hash {
 // Verify the Block message. Returns an error if the message is invalid,
 // otherwise nil.
 func (block *Block) Verify(verifier identity.Verifier) error {
-	return verifier.VerifyProposer(block.Signature)
+	return verifier.VerifySignature(block.Signature)
 }
 
 // Txs must not store any Nonce more than once within any Tx.
