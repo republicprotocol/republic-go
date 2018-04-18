@@ -1,17 +1,25 @@
 package relay
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"strings"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gorilla/mux"
 	"github.com/jbenet/go-base58"
-	"github.com/republicprotocol/republic-go/dark"
+	"github.com/republicprotocol/republic-go/contracts/connection"
+	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/network/rpc"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -20,12 +28,12 @@ var prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 // Relay consists of configuration values (?)
 type Relay struct {
 	multiAddress   identity.MultiAddress
-	darkPools      dark.Pools
+	darkPools      darknode.Pools
 	bootstrapNodes []string
 }
 
 // NewRelay returns a new Relay object
-func NewRelay(multi identity.MultiAddress, pools dark.Pools, bootstrapNodes []string) Relay {
+func NewRelay(multi identity.MultiAddress, pools darknode.Pools, bootstrapNodes []string) Relay {
 	return Relay{
 		multiAddress:   multi,
 		darkPools:      pools,
@@ -45,7 +53,7 @@ func NewRouter(relay Relay) *mux.Router {
 }
 
 // SendOrderToDarkOcean will fragment and send orders to the dark ocean
-func SendOrderToDarkOcean(openOrder order.Order, traderMultiAddress identity.MultiAddress, pools dark.Pools, bootstrapNodes []string) error {
+func SendOrderToDarkOcean(openOrder order.Order, traderMultiAddress identity.MultiAddress, pools darknode.Pools, bootstrapNodes []string) error {
 	errCh := make(chan error, len(pools))
 
 	go func() {
@@ -55,7 +63,7 @@ func SendOrderToDarkOcean(openOrder order.Order, traderMultiAddress identity.Mul
 		wg.Add(len(pools))
 
 		for i := range pools {
-			go func(darkPool *dark.Pool) {
+			go func(darkPool *darknode.Pool) {
 				defer wg.Done()
 				// Split order into (number of nodes in each pool) * 2/3 fragments
 				shares, err := openOrder.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
@@ -91,7 +99,7 @@ func SendOrderToDarkOcean(openOrder order.Order, traderMultiAddress identity.Mul
 }
 
 // SendOrderFragmentsToDarkOcean will send order fragments to the dark ocean
-func SendOrderFragmentsToDarkOcean(order OrderFragments, traderMultiAddress identity.MultiAddress, pools dark.Pools, bootstrapNodes []string) error {
+func SendOrderFragmentsToDarkOcean(order OrderFragments, traderMultiAddress identity.MultiAddress, pools darknode.Pools, bootstrapNodes []string) error {
 	valid := false
 	for poolIndex := range pools {
 		fragments := order.DarkPools[GeneratePoolID(pools[poolIndex])]
@@ -108,7 +116,7 @@ func SendOrderFragmentsToDarkOcean(order OrderFragments, traderMultiAddress iden
 }
 
 // CancelOrder will cancel orders that aren't confirmed or settled in the dark ocean
-func CancelOrder(order order.ID, traderMultiAddress identity.MultiAddress, pools dark.Pools, bootstrapNodes []string) error {
+func CancelOrder(order order.ID, traderMultiAddress identity.MultiAddress, pools darknode.Pools, bootstrapNodes []string) error {
 	errCh := make(chan error, len(pools))
 	go func() {
 		defer close(errCh)
@@ -117,7 +125,7 @@ func CancelOrder(order order.ID, traderMultiAddress identity.MultiAddress, pools
 			// Cancel orders for all nodes in the pool
 			var wg sync.WaitGroup
 			wg.Add(pools[i].Size())
-			pools[i].ForAll(func(n *dark.Node) {
+			pools[i].ForAll(func(n *darknode.Node) {
 				defer wg.Done()
 				// Get multiaddress
 				multiaddress, err := getMultiAddress(n.ID.Address(), traderMultiAddress, bootstrapNodes)
@@ -161,7 +169,7 @@ func CancelOrder(order order.ID, traderMultiAddress identity.MultiAddress, pools
 }
 
 // Send the shares across all nodes within the Dark Pool
-func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares []*order.Fragment, bootstrapNodes []string) error {
+func sendSharesToDarkPool(pool *darknode.Pool, multi identity.MultiAddress, shares []*order.Fragment, bootstrapNodes []string) error {
 
 	errCh := make(chan error)
 
@@ -173,10 +181,11 @@ func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares [
 		var wg sync.WaitGroup
 		wg.Add(pool.Size())
 
-		pool.For(func(n *dark.Node) {
+		pool.For(func(n *darknode.Node) {
 			if shareIndex < len(shares) {
-				go func(n *dark.Node, multi identity.MultiAddress, share *order.Fragment) {
+				go func(n *darknode.Node, multi identity.MultiAddress, share *order.Fragment) {
 					defer wg.Done()
+
 					// Get multiaddress
 					multiaddress, err := getMultiAddress(n.ID.Address(), multi, bootstrapNodes)
 					if err != nil {
@@ -191,8 +200,32 @@ func sendSharesToDarkPool(pool *dark.Pool, multi identity.MultiAddress, shares [
 						return
 					}
 
+					// Connect to the registrar to attain the public key of the darknode
+					clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					raw, err := ioutil.ReadFile("../secrets/secrets.json")
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					var s Secret
+					json.Unmarshal(raw, &s)
+
+					key := s.PrivateKey
+					transactOps, err := bind.NewTransactor(strings.NewReader(key), s.Password)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, transactOps, &bind.CallOpts{})
+					pubKeyBytes := registrar.GetPublicKey(n.ID)
+					pubKey := crypto.GeneratePublicKeyFromBytes(pubKeyBytes)
+
 					// Send fragment to node
-					err = client.OpenOrder(&rpc.OrderSignature{}, rpc.SerializeOrderFragment(share))
+					err = client.OpenOrder(rpc.MarshalOrderFragment(pubKey, share))
 					if err != nil {
 						errCh <- fmt.Errorf("cannot send order fragment: %v", err)
 						return
@@ -255,9 +288,9 @@ func getMultiAddress(address identity.Address, traderMultiAddress identity.Multi
 }
 
 // GeneratePoolID will generate crypto hash for a pool
-func GeneratePoolID(pool *dark.Pool) string {
+func GeneratePoolID(pool *darknode.Pool) string {
 	var id identity.ID
-	pool.For(func(n *dark.Node) {
+	pool.For(func(n *darknode.Node) {
 		id = append(id, []byte(n.ID.String())...)
 	})
 	id = crypto.Keccak256(id)
