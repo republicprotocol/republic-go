@@ -25,8 +25,8 @@ type ComputerService struct {
 }
 
 // NewComputerService returns a new ComputerService.
-func NewComputerService() *ComputerService {
-	return &ComputerService{
+func NewComputerService() ComputerService {
+	return ComputerService{
 		senderSignalsMu: new(sync.Mutex),
 		senderSignals:   map[string]chan (<-chan *Computation){},
 
