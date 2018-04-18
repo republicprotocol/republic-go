@@ -5,6 +5,7 @@ import (
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/order"
 )
 
 // A ClientCacheEntry is pointer to a Client that is stored in a cache. It is
@@ -21,18 +22,20 @@ type ClientCacheEntry struct {
 type ClientPool struct {
 	do.GuardedObject
 
-	from    identity.MultiAddress
-	cache   map[string]ClientCacheEntry
-	options ClientPoolOptions
+	from          identity.MultiAddress
+	fromSignature identity.Signature
+	cache         map[string]ClientCacheEntry
+	options       ClientPoolOptions
 }
 
 // NewClientPool returns a new ClientPool with the given cache limit. All
 // Clients that are created in this pool will identify themselves using the
 // given MultiAddress.
-func NewClientPool(from identity.MultiAddress) *ClientPool {
+func NewClientPool(from identity.MultiAddress, fromSignature identity.Signature) *ClientPool {
 	pool := new(ClientPool)
 	pool.GuardedObject = do.NewGuardedObject()
 	pool.from = from
+	pool.fromSignature = fromSignature
 	pool.cache = map[string]ClientCacheEntry{}
 	pool.options = DefaultClientPoolOptions()
 	return pool
@@ -55,7 +58,7 @@ func (pool *ClientPool) findOrCreateClient(to identity.MultiAddress) (*Client, e
 		return clientCacheEntry.Client, nil
 	}
 
-	client, err := NewClient(to, pool.from)
+	client, err := NewClient(to, pool.from, pool.fromSignature)
 	if err != nil {
 		return client, err
 	}
@@ -124,21 +127,21 @@ func (pool *ClientPool) SignOrderFragment(to identity.MultiAddress, orderFragmen
 }
 
 // OpenOrder RPC.
-func (pool *ClientPool) OpenOrder(to identity.MultiAddress, orderSignature *OrderSignature, orderFragment *OrderFragment) error {
+func (pool *ClientPool) OpenOrder(to identity.MultiAddress, orderFragment *OrderFragment) error {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		return err
 	}
-	return client.OpenOrder(orderSignature, orderFragment)
+	return client.OpenOrder(orderFragment)
 }
 
 // CancelOrder RPC.
-func (pool *ClientPool) CancelOrder(to identity.MultiAddress, orderSignature *OrderSignature) error {
+func (pool *ClientPool) CancelOrder(to identity.MultiAddress, orderID order.ID, cancellationSignature identity.Signature) error {
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		return err
 	}
-	return client.CancelOrder(orderSignature)
+	return client.CancelOrder(orderID, cancellationSignature)
 }
 
 // RandomFragmentShares RPC.

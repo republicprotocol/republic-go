@@ -33,7 +33,7 @@ func main() {
 		fileName := configFiles[file]
 		config, err := node.LoadConfig(fileName)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		configs[file] = config
 	}
@@ -54,13 +54,12 @@ func DeregisterAll(configs []*node.Config) {
 
 		clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
 		if err != nil {
-			// TODO: Handler err
-			panic(err)
+			log.Fatal(err)
 		}
 
 		raw, err := ioutil.ReadFile("../secrets/secrets.json")
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 
 		var s Secret
@@ -69,7 +68,7 @@ func DeregisterAll(configs []*node.Config) {
 		key := s.PrivateKey
 		auth, err := bind.NewTransactor(strings.NewReader(key), s.Password)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 
 		registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, auth, &bind.CallOpts{})

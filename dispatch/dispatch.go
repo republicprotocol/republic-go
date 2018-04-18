@@ -2,7 +2,6 @@ package dispatch
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"sync"
 )
@@ -65,7 +64,6 @@ func Merge(chOut interface{}, chsIn ...interface{}) {
 	mergeCh := func(chIn interface{}) {
 		defer wg.Done()
 		for {
-			log.Printf("%s %v %t", reflect.TypeOf(chIn).Kind(), chIn, chIn)
 			msg, ok := reflect.ValueOf(chIn).Recv()
 			if !ok {
 				return
@@ -82,7 +80,7 @@ func Merge(chOut interface{}, chsIn ...interface{}) {
 					panic(fmt.Sprintf("cannot merge from value of type %T", chIn))
 				}
 				wg.Add(1)
-				go mergeCh(reflect.ValueOf(chIn).Index(i))
+				go mergeCh(reflect.ValueOf(chIn).Index(i).Interface())
 			}
 		case reflect.Chan:
 			wg.Add(1)

@@ -44,7 +44,7 @@ var _ = Describe("Dark Node Registrar", func() {
 
 	// keyPair, err := identity.NewKeyPair()
 	// if err != nil {
-	// 	panic(err)
+	// 	log.Fatal(err)
 	// }
 	// publicKey := append(keyPair.PublicKey.X.Bytes(), keyPair.PublicKey.Y.Bytes()...)
 	// darkNodeID := keyPair.ID()[:20]

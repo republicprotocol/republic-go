@@ -22,21 +22,23 @@ func DeserializeAddress(address *Address) identity.Address {
 
 // SerializeMultiAddress converts an identity.MultiAddress into its network
 // representation.
-func SerializeMultiAddress(multiAddress identity.MultiAddress) *MultiAddress {
-	return &MultiAddress{MultiAddress: multiAddress.String()}
+func SerializeMultiAddress(multiAddress identity.MultiAddress, signature identity.Signature) *MultiAddress {
+	return &MultiAddress{MultiAddress: multiAddress.String(), Signature: signature}
 }
 
 // DeserializeMultiAddress converts a network representation of a MultiAddress
 // into an identity.MultiAddress. An error is returned if the network
 // representation is malformed.
-func DeserializeMultiAddress(multiAddress *MultiAddress) (identity.MultiAddress, error) {
-	return identity.NewMultiAddressFromString(multiAddress.MultiAddress)
+func DeserializeMultiAddress(multiAddress *MultiAddress) (identity.MultiAddress, identity.Signature, error) {
+	deserialized, err := identity.NewMultiAddressFromString(multiAddress.MultiAddress)
+	return deserialized, multiAddress.Signature, err
 }
 
 // SerializeOrderFragment converts an order.Fragment into its network
 // representation.
 func SerializeOrderFragment(orderFragment *order.Fragment) *OrderFragment {
 	val := &OrderFragment{
+		Signature:   []byte(orderFragment.Signature),
 		Id:          []byte(orderFragment.ID),
 		OrderId:     []byte(orderFragment.OrderID),
 		OrderType:   int64(orderFragment.OrderType),
@@ -55,6 +57,7 @@ func SerializeOrderFragment(orderFragment *order.Fragment) *OrderFragment {
 // representation is malformed.
 func DeserializeOrderFragment(orderFragment *OrderFragment) (*order.Fragment, error) {
 	val := &order.Fragment{
+		Signature:   []byte(orderFragment.Signature),
 		ID:          order.FragmentID(orderFragment.Id),
 		OrderID:     order.ID(orderFragment.OrderId),
 		OrderType:   order.Type(orderFragment.OrderType),

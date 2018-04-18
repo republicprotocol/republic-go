@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
@@ -26,19 +27,19 @@ func (id FragmentID) String() string {
 // A Fragment is a secret share of an Order, created using Shamir's secret
 // sharing on the secure fields in an Order.
 type Fragment struct {
-	Signature []byte               `json:"signature"`
-	ID        FragmentID           `json:"id"`
+	Signature identity.Signature
+	ID        FragmentID
 
-	OrderID     ID                 `json:"orderID"`
-	OrderType   Type               `json:"orderType"`
-	OrderParity Parity             `json:"orderParity"`
-	OrderExpiry time.Time          `json:"orderExpiry"`
+	OrderID     ID
+	OrderType   Type
+	OrderParity Parity
+	OrderExpiry time.Time
 
-	FstCodeShare   shamir.Share    `json:"fstCodeShare"`
-	SndCodeShare   shamir.Share    `json:"sndCodeShare"`
-	PriceShare     shamir.Share    `json:"priceShare"`
-	MaxVolumeShare shamir.Share    `json:"maxVolumeShare"`
-	MinVolumeShare shamir.Share    `json:"minVolumeShare"`
+	FstCodeShare   shamir.Share
+	SndCodeShare   shamir.Share
+	PriceShare     shamir.Share
+	MaxVolumeShare shamir.Share
+	MinVolumeShare shamir.Share
 }
 
 // NewFragment returns a new Fragment and computes the FragmentID.
@@ -61,6 +62,41 @@ func NewFragment(orderID ID, orderType Type, orderParity Parity, fstCodeShare, s
 // the FragmentID and signature for a Fragment.
 func (fragment *Fragment) Hash() []byte {
 	return crypto.Keccak256(fragment.Bytes())
+}
+
+// Sign signs the fragment using the provided keypair, and assigns it the the fragments's
+// Signature field.
+func (fragment *Fragment) Sign(keyPair identity.KeyPair) error {
+	var err error
+	fragment.Signature, err = keyPair.Sign(fragment)
+	return err
+}
+
+// SignFragments maps over an array of fragments, calling Sign on each one
+func SignFragments(keyPair identity.KeyPair, fragments []*Fragment) error {
+	for _, fragment := range fragments {
+		if err := fragment.Sign(keyPair); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// VerifySignature verifies that the Signature field has been signed by the provided
+// ID's private key, returning an error if the signature is invalid
+func (fragment *Fragment) VerifySignature(ID identity.ID) error {
+	return identity.VerifySignature(fragment, fragment.Signature, ID)
+}
+
+// VerifyFragmentSignatures maps over an array of fragments,
+// calling VerifySignature on each one
+func VerifyFragmentSignatures(ID identity.ID, fragments []*Fragment) error {
+	for _, fragment := range fragments {
+		if err := fragment.VerifySignature(ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Bytes returns a Fragment serialized into a bytes.
@@ -106,7 +142,7 @@ func (fragment *Fragment) Equal(other *Fragment) bool {
 // order ID, it must have a different parity, it must have a different owner,
 // and all secret sharing fields must have the same secret sharing index.
 func (fragment *Fragment) IsCompatible(other *Fragment) bool {
-	// TODO: Compare signatories
+	// TODO: Check that signatories are different
 	return !fragment.ID.Equal(other.ID) &&
 		!fragment.OrderID.Equal(other.OrderID) &&
 		fragment.OrderParity != other.OrderParity &&

@@ -264,10 +264,14 @@ func (x *Int1024) AddModulo(y, n *Int1024) Int1024 {
 		return tmp.Mod(n)
 	}
 
-	if n.IsZero() {
-		// Can be placed at the top but then might be checked again in Mod()
-		panic("division by zero")
-	}
+	// n.IsZero() doesn't have to be checked because if n is zero then either:
+	// x > 0, in which case x.mod(0) will panic
+	// x == 0, which case the first condition will enter and panic
+
+	// At this point, n's last bit is set and x's last bit is set
+	// So diff=(n-x)'s last bit is NOT set
+	// y's last bit is set, so (diff < y)
+	// So the following `if` always holds
 
 	diff := n.Sub(&X)
 	if diff.LessThanOrEqual(&Y) {
@@ -281,6 +285,12 @@ func (x *Int1024) AddModulo(y, n *Int1024) Int1024 {
 // MulModulo returns (x*y) % n
 func (x *Int1024) MulModulo(y, n *Int1024) Int1024 {
 	if x.length+y.length > INT1024WORDS {
+		if n.length < INT1024WORDS/2 {
+			X := x.Mod(n)
+			Y := y.Mod(n)
+			XY := X.Mul(&Y)
+			return XY.Mod(n)
+		}
 		return x.MulModuloBig(y, n)
 	}
 	z := x.Mul(y)

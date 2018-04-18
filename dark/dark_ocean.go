@@ -6,6 +6,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/republicprotocol/republic-go/stackint"
+
 	"github.com/republicprotocol/go-do"
 
 	"github.com/republicprotocol/republic-go/contracts/dnr"
@@ -58,36 +60,73 @@ func (ocean *Ocean) Update() error {
 }
 
 func (ocean *Ocean) update() error {
-	epoch, err := ocean.darkNodeRegistrar.CurrentEpoch();
+	epoch, err := ocean.darkNodeRegistry.CurrentEpoch()
+	if err != nil {
+		return err
+	}
+	blockhash, err := stackint.FromBytes(epoch.Blockhash[:])
+	if err != nil {
+		return err
+	}
+
+	poolsize, err := ocean.darkNodeRegistry.MinimumDarkPoolSize()
+	if err != nil {
+		return err
+	}
+
+	nodeIDs, err := ocean.darkNodeRegistry.GetAllNodes()
 	if err != nil {
 		return fmt.Errorf("cannot get current epoch :%v", err)
 	}
 
-	nodeIDs, err := ocean.darkNodeRegistrar.GetAllNodes()
+	// Find the prime smaller or equal to the number of registered nodes
+	// Start at +2 because it has to greater than the maximum (x+1)
+	previousPrimeBig := big.NewInt(int64(len(nodeIDs) + 2))
+
+	// ProbablyPrime is 100% accurate for inputs less than 2^64.
+	// https://golang.org/src/math/big/prime.go
+	for !previousPrimeBig.ProbablyPrime(0) {
+		previousPrimeBig = previousPrimeBig.Sub(previousPrimeBig, big.NewInt(1))
+	}
+
+	previousPrime, err := stackint.FromBigInt(previousPrimeBig)
 	if err != nil {
-		return fmt.Errorf("cannot get all nodes: %v", err)
+		return err
 	}
 
-	nodePositionHashesToIDs := map[string][]byte{}
-	nodePositionHashes := make([][]byte, len(nodeIDs))
-	for i := range nodeIDs {
-		nodePositionHashes[i] = crypto.Keccak256(epoch.Blockhash[:], nodeIDs[i])
-		nodePositionHashesToIDs[string(nodePositionHashes[i])] = nodeIDs[i]
+	// TODO: This has a bias
+	blockhash = blockhash.Mod(&previousPrime)
+	if blockhash.IsZero() {
+		blockhash = stackint.FromUint(1)
 	}
 
-	sort.Slice(nodePositionHashes, func(i, j int) bool {
-		return bytes.Compare(nodePositionHashes[i], nodePositionHashes[j]) < 0
-	})
+	// Integer division
+	numberOfPools := previousPrime.Div(&poolsize)
 
-	numberOfPools := len(nodeIDs) / ocean.poolSize
-
-	pools := make(Pools, numberOfPools)
+	if numberOfPools.IsZero() {
+		numberOfPools = stackint.FromUint(1)
+	}
+	poolCount, err := numberOfPools.ToUint()
+	if err != nil {
+		return err
+	}
+	pools := make(Pools, poolCount)
 	for i := range pools {
 		pools[i] = NewPool()
 	}
-	for i := range nodePositionHashes {
-		id := identity.ID(nodePositionHashesToIDs[string(nodePositionHashes[i])])
-		pools[i % numberOfPools].Append(NewNode(id))
+
+	// Calcualte the pool assignment for each node
+	inverse := blockhash.ModInverse(&previousPrime)
+	for n := range nodeIDs {
+		nPlusOne := stackint.FromUint(uint(n + 1))
+		i := nPlusOne.MulModulo(&inverse, &previousPrime)
+		poolInt := i.Mod(&numberOfPools)
+		pool, err := poolInt.ToUint()
+		if err != nil {
+			return err
+		}
+
+		pools[pool].Append(NewNode(nodeIDs[n]))
 	}
 	ocean.pools = pools
 	return nil
@@ -126,7 +165,7 @@ func (ocean *Ocean) Watch(changes chan struct{}) {
 			}
 			changes <- struct{}{}
 		}
-		// TODO: Retrieve sleep time from epoch.Timestamp and minimumEpochInterval
+
 		nextTime := epoch.Timestamp.Add(&minInterval)
 		unix, err := nextTime.ToUint()
 		if err != nil {

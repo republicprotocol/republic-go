@@ -103,6 +103,20 @@ var _ = Describe("", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(*newKeyPair).Should(Equal(keyPair))
 			})
+
+			It("should return error for invalid keypair", func() {
+				data := []byte("{\"valid\": \"false\"}")
+				newKeyPair := new(identity.KeyPair)
+				err = newKeyPair.UnmarshalJSON(data)
+				Ω(err).Should(HaveOccurred())
+			})
+
+			It("should return error for invalid private key", func() {
+				data := []byte{34, 50, 121, 113, 84, 75, 53, 100, 119, 121, 103, 120, 70, 116, 110, 67, 51, 103, 99, 68, 115, 50, 111, 107, 68, 84, 121, 90, 77, 77, 80, 114, 109, 117, 71, 76, 118, 82, 75, 78, 88, 115, 102, 119, 34}
+				newKeyPair := new(identity.KeyPair)
+				err = newKeyPair.UnmarshalJSON(data)
+				Ω(err).Should(HaveOccurred())
+			})
 		})
 	})
 })

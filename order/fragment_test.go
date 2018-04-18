@@ -3,6 +3,7 @@ package order_test
 import (
 	"time"
 
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/stackint"
 
 	. "github.com/onsi/ginkgo"
@@ -152,6 +153,56 @@ var _ = Describe("Order fragments", func() {
 					Ω(lhs[i].IsCompatible(rhs[j])).Should(Equal(false))
 				}
 			}
+		})
+	})
+
+	Context("when being signed", func() {
+
+		keyPair, err := identity.NewKeyPair()
+		if err != nil {
+			panic(err)
+		}
+
+		nonce := stackint.FromUint(0)
+		fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
+		if err != nil {
+			panic(err)
+		}
+
+		It("can be signed and verified", func() {
+			err = SignFragments(keyPair, fragments)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = VerifyFragmentSignatures(keyPair.ID(), fragments)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should error for invalid ID", func() {
+			keyPair2, err := identity.NewKeyPair()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = SignFragments(keyPair, fragments)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = VerifyFragmentSignatures(keyPair2.ID(), fragments)
+			Ω(err).Should(Equal(identity.ErrInvalidSignature))
+		})
+
+		It("should error for invalid data", func() {
+
+			nonce2 := stackint.One()
+			fragments2, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce2).Split(n, k, prime)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = SignFragments(keyPair, fragments)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			for i := range fragments2 {
+				fragments2[i].Signature = fragments[i].Signature
+			}
+
+			err = VerifyFragmentSignatures(keyPair.ID(), fragments2)
+			Ω(err).Should(Equal(identity.ErrInvalidSignature))
 		})
 	})
 
