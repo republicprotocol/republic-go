@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -48,6 +49,26 @@ type ObscureComputeOutput struct {
 	MulSharesIndexed <-chan ObscureMulSharesIndexed
 }
 
+// OrderMatchComputeInput accepted by order matching computations. It stores a
+// set of read-write channels.
+type OrderMatchComputeInput struct {
+	OrderFragments chan order.Fragment
+	DeltaFragments chan DeltaFragment
+}
+
+// Close all channels. Calling this function more than once will cause a panic.
+func (chs *OrderMatchComputeInput) Close() {
+	close(chs.OrderFragments)
+	close(chs.DeltaFragments)
+}
+
+// OrderMatchComputeOutput returned by obscure computations. It stores a set of
+// read-only channels.
+type OrderMatchComputeOutput struct {
+	DeltaFragments <-chan DeltaFragment
+	Deltas         <-chan Delta
+}
+
 // Computer of sMPC messages.
 type Computer struct {
 	ComputerID
@@ -55,6 +76,7 @@ type Computer struct {
 	n, k                      int64
 	sharedOrderTable          SharedOrderTable
 	sharedObscureResidueTable SharedObscureResidueTable
+	sharedDeltaBuilder        SharedDeltaBuilder
 }
 
 // NewComputer returns a new Computer with the given ComputerID and N-K
@@ -66,6 +88,7 @@ func NewComputer(computerID ComputerID, n, k int64) Computer {
 		k:                         k,
 		sharedOrderTable:          NewSharedOrderTable(),
 		sharedObscureResidueTable: NewSharedObscureResidueTable(computerID),
+		sharedDeltaBuilder:        NewSharedDeltaBuilder(k, Prime),
 	}
 }
 
@@ -137,8 +160,33 @@ func (computer *Computer) ComputeObscure(
 	}, errCh
 }
 
-func (computer *Computer) ComputeOrderMatches() <-chan error {
-	panic("unimplemented")
+// ComputeOrderMatches using order fragments and delta fragments.
+func (computer *Computer) ComputeOrderMatches(done <-chan struct{}, orderFragmentsIn <-chan order.Fragment, deltaFragmentsIn <-chan DeltaFragment) (<-chan DeltaFragment, <-chan Delta) {
+	deltaFragmentsOut := make(chan DeltaFragment)
+	deltasOut := make(chan Delta)
+
+	go func() {
+		defer close(deltaFragmentsOut)
+		defer close(deltasOut)
+
+		orderTuples := OrderFragmentsToOrderTuples(done, orderFragmentsIn, &computer.sharedOrderTable, 100)
+		deltaFragmentsFromOrderTuples := OrderTuplesToDeltaFragments(done, orderTuples, 100)
+
+		deltaFragments := make(chan DeltaFragment)
+		go func() {
+			defer close(deltaFragments)
+			<-dispatch.Dispatch(func() {
+				dispatch.Split(done, deltaFragmentsFromOrderTuples, deltaFragments, deltaFragmentsOut)
+			}, func() {
+				dispatch.Pipe(done, deltaFragmentsIn, deltaFragments)
+			})
+		}()
+
+		deltas := BuildDeltas(done, deltaFragments, &computer.sharedDeltaBuilder, 100)
+		dispatch.Pipe(done, deltas, deltasOut)
+	}()
+
+	return deltaFragmentsOut, deltasOut
 }
 
 func (computer *Computer) SharedOrderTable() *SharedOrderTable {

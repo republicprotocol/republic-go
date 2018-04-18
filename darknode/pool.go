@@ -1,4 +1,4 @@
-package dark
+package darknode
 
 import (
 	"bytes"
@@ -75,6 +75,31 @@ func (pool *Pool) Has(nodeID identity.ID) *Node {
 		}
 	}
 	return nil
+}
+
+// Size returns the number of Nodes in the Pool.
+func (pool *Pool) Equal(other *Pool) bool {
+	pool.EnterReadOnly(nil)
+	defer pool.ExitReadOnly()
+
+	if len(pool.nodes) != len(other.nodes) {
+		return false
+	}
+
+	for _, node := range pool.nodes {
+		has := false
+		for _, otherNode := range other.nodes {
+			if bytes.Equal(node.ID, otherNode.ID) {
+				has = true
+				break
+			}
+		}
+		if !has {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Size returns the number of Nodes in the Pool.

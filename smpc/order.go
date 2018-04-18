@@ -1,55 +1,25 @@
 package smpc
 
 import (
-	"context"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/republicprotocol/republic-go/order"
 )
 
-// ProcessOrderFragments by reading order fragments from an input channel, and
-// writing OrderTuples to an output channel.
-func ProcessOrderFragments(ctx context.Context, orderFragmentChIn <-chan order.Fragment, sharedOrderTable *SharedOrderTable, bufferLimit int) (<-chan OrderTuple, <-chan error) {
-	orderTupleCh := make(chan OrderTuple, bufferLimit)
-	errCh := make(chan error)
+// OrderFragmentsToOrderTuples reads order.Fragments from an input channel and
+// stores them in a SharedOrderTable. From this table, it produces OrderTuples
+// for all combinations of compatible order.Fragments.
+func OrderFragmentsToOrderTuples(done <-chan struct{}, orderFragments <-chan order.Fragment, sharedOrderTable *SharedOrderTable, bufferLimit int) <-chan OrderTuple {
+	orderTuples := make(chan OrderTuple, bufferLimit)
 
-
-	log.Println("ProcessOrderFragments")
-
-	go func() {
-		defer close(orderTupleCh)
-		defer close(errCh)
-
-		buffer := make([]OrderTuple, bufferLimit)
-		tick := time.NewTicker(time.Millisecond)
-		defer tick.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				errCh <- ctx.Err()
-				return
-			case <-tick.C:
-				for i, n := 0, sharedOrderTable.OrderTuples(buffer[:]); i < n; i++ {
-					select {
-					case <-ctx.Done():
-						errCh <- ctx.Err()
-						return
-					case orderTupleCh <- buffer[i]:
-					}
-				}
-			}
-		}
-	}()
+	// Insert order.Fragments into the SharedOrderTable
 	go func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-done:
 				return
-			case orderFragment, ok := <-orderFragmentChIn:
-				log.Println("Inserting order fragment")
+			case orderFragment, ok := <-orderFragments:
 				if !ok {
 					return
 				}
@@ -62,7 +32,32 @@ func ProcessOrderFragments(ctx context.Context, orderFragmentChIn <-chan order.F
 		}
 	}()
 
-	return orderTupleCh, errCh
+	// Periodically read OrderTuples from the SharedOrderTable into a buffer
+	// and write them to the output channel
+	go func() {
+		defer close(orderTuples)
+
+		buffer := make([]OrderTuple, bufferLimit)
+		tick := time.NewTicker(time.Millisecond)
+		defer tick.Stop()
+
+		for {
+			select {
+			case <-done:
+				return
+			case <-tick.C:
+				for i, n := 0, sharedOrderTable.OrderTuples(buffer[:]); i < n; i++ {
+					select {
+					case <-done:
+						return
+					case orderTuples <- buffer[i]:
+					}
+				}
+			}
+		}
+	}()
+
+	return orderTuples
 }
 
 // OrderTuple involving a buy order, and a sell order. Orders are stores as

@@ -1,7 +1,7 @@
 package rpc
 
 import (
-	"log"
+	"errors"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -10,6 +10,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// A ComputerService implements the Computer gRPC service. It exposes methods
+// for accepting gRPC client connections, and blocking until a gRPC client
+// connection is received.
 type ComputerService struct {
 	senderSignalsMu *sync.Mutex
 	senderSignals   map[string]chan (<-chan *Computation)
@@ -21,6 +24,7 @@ type ComputerService struct {
 	errSignals   map[string]chan (<-chan error)
 }
 
+// NewComputerService returns a new ComputerService.
 func NewComputerService() *ComputerService {
 	return &ComputerService{
 		senderSignalsMu: new(sync.Mutex),
@@ -57,32 +61,38 @@ func (service *ComputerService) WaitForCompute(multiAddress identity.MultiAddres
 	receiverSignal := service.receiverSignal(multiAddressAsStr)
 	receiverCh := <-receiverSignal
 
-	log.Println("Opened sender")
-
-
 	return receiverCh, errCh
 }
 
 // Compute opens a gRPC stream for streaming Computation messages to, and from,
 // a client.
 func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
-	multiAddress := "" // TODO: Get the MultiAddress from a signed authentication message
 
+	// Accept an initial authentication message to verify the identity of the
+	// client
+	authentication, err := stream.Recv()
+	if err != nil {
+		return err
+	}
+	if authentication.MultiAddress == nil {
+		return errors.New("cannot connect to stream: no authentication message")
+	}
+	multiAddress, _, err := UnmarshalMultiAddress(authentication.MultiAddress)
+	// FIXME: Validate the multiaddress signature.
+	multiAddressAsStr := multiAddress.String()
 
 	errCh := make(chan error)
 	defer close(errCh)
 
-	errSignal := service.errSignal(multiAddress)
-	defer service.closeErrSignal(multiAddress)
+	errSignal := service.errSignal(multiAddressAsStr)
+	defer service.closeErrSignal(multiAddressAsStr)
 	errSignal <- errCh
 
 	senderErrCh := make(chan error, 1)
 	go func() {
 		defer close(senderErrCh)
-		senderSignal := service.senderSignal(multiAddress)
+		senderSignal := service.senderSignal(multiAddressAsStr)
 		senderCh := <-senderSignal
-
-		log.Println("Server side sending")
 
 		for message := range senderCh {
 			if err := stream.Send(message); err != nil {
@@ -99,12 +109,9 @@ func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 	receiverCh := make(chan *Computation)
 	defer close(receiverCh)
 
-	receiverSignal := service.receiverSignal(multiAddress)
-	defer service.closeReceiverSignal(multiAddress)
+	receiverSignal := service.receiverSignal(multiAddressAsStr)
+	defer service.closeReceiverSignal(multiAddressAsStr)
 	receiverSignal <- receiverCh
-
-	log.Println("Got Compute from client")
-
 
 	for {
 		message, err := stream.Recv()
@@ -118,6 +125,7 @@ func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 			if !ok {
 				return nil
 			}
+			errCh <- err
 			return err
 		case <-stream.Context().Done():
 			errCh <- stream.Context().Err()
@@ -186,3 +194,74 @@ func (service *ComputerService) closeErrSignal(key string) {
 		delete(service.errSignals, key)
 	}
 }
+
+type ComputationWithID struct {
+	ID          [32]byte
+	Computation *Computation
+}
+
+func ZipComputationsWithID(done <-chan struct{}, computations <-chan *Computation, id [32]byte) <-chan ComputationWithID {
+	computationsWithID := make([]<-chan ComputationWithID, len(computationChs))
+
+	go func() {
+		defer close(computationsWithID)
+		for {
+			select {
+			case <-done:
+				return
+			case computation, ok := <-computations:
+				if !ok {
+					return
+				}
+				computationWithID := ComputationWithID{
+					ID:          id,
+					Computation: computation,
+				}
+				select {
+				case <-done:
+					return
+				case computationsWithID <- computationWithID:
+				}
+			}
+		}
+	}()
+
+	return computationsWithID
+}
+
+type ComputeMap struct {
+	clientPool ClientPool
+
+	inputs map[[32]byte]chan ComputationWithID
+	outputs map[[32]byte]chan ComputationWithID
+}
+
+func (computeMap *ComputeMap) Setup(multiAddresses []identity.MultiAddress) {
+
+
+
+}
+
+func (computeMap *ComputeMap) Compute(done chan struct{}, multiAddresses []identity.MultiAddress) <-chan ComputationWithID {
+	computationsWithID := make(chan ComputationWithID)
+
+	go func() {
+		defer close(computationsWithID)
+
+		arrayOfComputationsWithID := []<-chan ComputationWithID{}
+		for i := range multiAddresses {
+
+			id := [32]byte{}
+			copy(id[:], multiAddresses[i].ID())
+	
+			computations, errs := clientPool.Compute(...)
+			arrayOfComputationsWithID = append(arrayOfComputationsWithID, ZipComputationsWithID(done, computations, id))
+		}
+
+		dispatch.Merge(computationsWithID, arrayOfComputationsWithID)
+	}()
+
+	return computationsWithID
+}
+
+func (computeMap) 
