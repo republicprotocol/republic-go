@@ -25,11 +25,11 @@ func NewOcean(darknodeRegistry contracts.DarkNodeRegistry) Ocean {
 	return ocean
 }
 
-// Watch for changes to the Ocean. It will stop watching for changes when the
-// done channel is closed. Returns a signaling channel that is written to
-// whenever a change is detected.
-func (ocean *Ocean) Watch(done <-chan struct{}) (<-chan struct{}, <-chan error) {
-	changes := make(chan struct{})
+// Watch for changes to the Darknode Registry epoch. It will stop watching for
+// changes when the done channel is closed. Returns a read-only channel that
+// can be used to read epochs as they change.
+func (ocean *Ocean) Watch(done <-chan struct{}) (<-chan contracts.Epoch, <-chan error) {
+	changes := make(chan contracts.Epoch)
 	errs := make(chan error, 1)
 
 	go func() {
@@ -53,7 +53,7 @@ func (ocean *Ocean) Watch(done <-chan struct{}) (<-chan struct{}, <-chan error) 
 			select {
 			case <-done:
 				return
-			case changes <- struct{}{}:
+			case changes <- currentEpoch:
 			}
 
 			// Sleep until the next epoch

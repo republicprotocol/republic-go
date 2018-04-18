@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"io"
 	"runtime"
-	"sync"
+
+	"github.com/republicprotocol/republic-go/dispatch"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"golang.org/x/net/context"
@@ -215,59 +216,50 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 		return messageCh, errCh
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	// Read messages from the gRPC service and write them to the output channel
-	go func() {
-		defer wg.Done()
-		defer close(messageCh)
-
-		for {
-			message, err := stream.Recv()
-			if err != nil {
-				errCh <- err
-				return
-			}
-			println("found message in gRPC client")
-			select {
-			case <-ctx.Done():
-				errCh <- ctx.Err()
-				return
-			case messageCh <- message:
-				println("written message from gRPC client")
-
-			}
-		}
-	}()
-
-	// Read messages from the input channel and write them to the gRPC service
-	go func() {
-		defer wg.Done()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case message, ok := <-messageChIn:
-				if !ok {
-					return
-				}
-				if err := stream.Send(message); err != nil {
-					s, _ := status.FromError(err)
-					if s.Code() != codes.Canceled && s.Code() != codes.DeadlineExceeded {
-						errCh <- err
-					}
-					return
-				}
-			}
-		}
-	}()
-
 	// Wait for both goroutines to finish and then close the error channel
 	go func() {
 		defer close(errCh)
-		wg.Wait()
+		<-dispatch.Dispatch(func() {
+
+			// Read messages from the gRPC service and write them to the output channel
+			defer close(messageCh)
+			for {
+				message, err := stream.Recv()
+				if err != nil {
+					errCh <- err
+					return
+				}
+				println("found message in gRPC client")
+				select {
+				case <-ctx.Done():
+					errCh <- ctx.Err()
+					return
+				case messageCh <- message:
+					println("written message from gRPC client")
+
+				}
+			}
+		}, func() {
+
+			// Read messages from the input channel and write them to the gRPC service
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case message, ok := <-messageChIn:
+					if !ok {
+						return
+					}
+					if err := stream.Send(message); err != nil {
+						s, _ := status.FromError(err)
+						if s.Code() != codes.Canceled && s.Code() != codes.DeadlineExceeded {
+							errCh <- err
+						}
+						return
+					}
+				}
+			}
+		})
 	}()
 
 	return messageCh, errCh
