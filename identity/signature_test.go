@@ -13,8 +13,8 @@ type SignableStruct struct {
 	value string
 }
 
-func (s SignableStruct) Hash() [32]byte {
-	var hash [32]byte
+func (s SignableStruct) Hash() identity.Hash {
+	var hash identity.Hash
 	copy(crypto.Keccak256([]byte(s.value)), hash[:])
 
 	return hash
@@ -71,6 +71,26 @@ var _ = Describe("Signing and verifying signatures with KeyPairs", func() {
 			Ω(err).Should(Not(HaveOccurred()))
 
 			Ω(multi.VerifySignature(signature)).ShouldNot(HaveOccurred())
+		})
+
+		It("should be able to merge signatures and verify them", func() {
+
+			testStructs := make([]SignableStruct, 10 )
+			signatures := identity.Signatures{}
+			for i := 0;i <10 ;i ++{
+				value := make([]byte, 10)
+				rand.Read(value)
+				testStructs[i] =  SignableStruct{
+					value: string(value),
+				}
+				signature ,err  := keyPair.Sign(testStruct)
+				Ω(err).Should(Not(HaveOccurred()))
+				signatures = signatures.Merge(identity.Signatures{signature})
+			}
+
+			for i , sig := range signatures{
+				Ω(identity.VerifySignature(testStructs[i], sig, keyPair.ID())).ShouldNot(HaveOccurred())
+			}
 		})
 
 	})
