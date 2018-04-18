@@ -48,8 +48,11 @@ var _ = Describe("Darknode", func() {
 		darknodes, err = NewDarknodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		// Register the DarkNodes
+		// Register the Darknodes and trigger an epoch to accept their
+		// registrations
 		err = RegisterDarknodes(darknodes, conn, darknodeRegistry)
+		Expect(err).ShouldNot(HaveOccurred())
+		_, err = darknodeRegistry.Epoch()
 		Expect(err).ShouldNot(HaveOccurred())
 
 		done = make(chan struct{})

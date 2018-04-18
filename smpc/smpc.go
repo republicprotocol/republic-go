@@ -176,7 +176,7 @@ func (computer *Computer) ComputeOrderMatches(done <-chan struct{}, orderFragmen
 		go func() {
 			defer close(deltaFragments)
 			<-dispatch.Dispatch(func() {
-				dispatch.Split(done, deltaFragmentsFromOrderTuples, deltaFragments, deltaFragmentsOut)
+				dispatch.Split(deltaFragmentsFromOrderTuples, deltaFragments, deltaFragmentsOut)
 			}, func() {
 				dispatch.Pipe(done, deltaFragmentsIn, deltaFragments)
 			})

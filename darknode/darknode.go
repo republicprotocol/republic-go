@@ -138,8 +138,15 @@ func (node *Darknode) ServeRPC(done <-chan struct{}) <-chan error {
 // multi-party computation with new Pools. Stops when the done channel is
 // closed, and will attempt to recover from errors encountered while
 // interacting with the Ocean.
-func (node *Darknode) RunWatcher(done <-chan struct{}) {
+func (node *Darknode) RunWatcher(done <-chan struct{}) <-chan error {
+	errs := make(chan error, 1)
+
 	go func() {
+		err := node.darknodeRegistry.WaitUntilRegistration(node.ID())
+		if err != nil {
+			errs <- err
+			return
+		}
 
 		// Maintain multiple done channels so that multiple epochs can be running
 		// in parallel
@@ -194,6 +201,8 @@ func (node *Darknode) RunWatcher(done <-chan struct{}) {
 			}
 		}
 	}()
+
+	return errs
 }
 
 // RunEpoch until the done channel is closed. Order fragments will be received,
