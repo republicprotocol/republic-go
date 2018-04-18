@@ -27,7 +27,7 @@ func main() {
 	keystore := flag.String("keystore", "", "path of keystore file")
 	passphrase := flag.String("passphrase", "", "passphrase to decrypt keystore")
 	bindAddress := flag.String("bind", "", "bind address")
-	port := flag.Int("port", 80, "port to bind API") // defaults to 80
+	port := flag.Int("port", 80, "port to bind API") // Defaults to 80
 	token := flag.String("token", "", "optional token")
 	flag.Parse()
 
@@ -80,7 +80,7 @@ func synchronizeOrderbook(orderbook *orderbook.Orderbook, clientPool *rpc.Client
 			if !ok {
 				break
 			}
-			
+
 			// TODO: Handle received blocks.
 		}
 	}
@@ -165,7 +165,7 @@ func getDarkPools(key *keystore.Key) (dark.Pools, error) {
 		return nil, fmt.Errorf("cannot fetch dark node registry: %v", err)
 	}
 
-	// Gas Price
+	// Gas price
 	auth.GasPrice = big.NewInt(6000000000)
 
 	registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, auth, &bind.CallOpts{})
@@ -180,11 +180,11 @@ func getDarkPools(key *keystore.Key) (dark.Pools, error) {
 		return nil, fmt.Errorf("cannot read dark ocean: %v", err)
 	}
 
-	// return the dark pools
+	// Return the dark pools
 	return ocean.GetPools(), nil
 }
 
-//TODO: (temporary hard-coded bootstrap nodes) Fetch from a config file.
+// TODO: (temporary hard-coded bootstrap nodes) Fetch from a config file.
 func getBootstrapNodes() []string {
 	return []string{
 		"/ip4/52.77.88.84/tcp/18514/republic/8MGzXN7M1ucxvtumVjQ7Ybb7xQ8TUw",
