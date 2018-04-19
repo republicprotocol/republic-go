@@ -49,25 +49,32 @@ func RunEpochProcess(done <-chan struct{}, id identity.ID, darkOcean DarkOcean, 
 		// Run secure multi-party computer
 		deltaFragments := make(chan smpc.DeltaFragment)
 		close(deltaFragments)
-		deltaFragmentsComputed, deltasComputed := smpcer.ComputeOrderMatches(done, router.OpenOrders(darkOcean.Epoch), deltaFragments)
+		deltaFragmentsComputed, deltasComputed := smpcer.ComputeOrderMatches(done, router.OrderFragments(darkOcean.Epoch), deltaFragments)
 
 		dispatch.CoBegin(func() {
 
 			// Receive smpc.DeltaFragments from other Darknodes in the Pool
 			dispatch.CoForAll(receivers, func(receiver identity.Address) {
-				select {
-				case <-done:
-					return
-				case computation, ok := <-receivers[receiver]:
-					if !ok {
+				for {
+					select {
+					case <-done:
 						return
-					}
-					if computation.DeltaFragment != nil {
-						deltaFragment, err := rpc.UnmarshalDeltaFragment(computation.DeltaFragment)
-						if err != nil {
-							errs <- err
+					case computation, ok := <-receivers[receiver]:
+						if !ok {
+							return
 						}
-						deltaFragments <- deltaFragment
+						if computation.DeltaFragment != nil {
+							deltaFragment, err := rpc.UnmarshalDeltaFragment(computation.DeltaFragment)
+							if err != nil {
+								errs <- err
+								continue
+							}
+							select {
+							case <-done:
+								return
+							case deltaFragments <- deltaFragment:
+							}
+						}
 					}
 				}
 			})

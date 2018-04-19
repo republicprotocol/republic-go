@@ -171,13 +171,13 @@ func (computer *Computer) ComputeOrderMatches(done <-chan struct{}, orderFragmen
 		defer close(deltasOut)
 
 		orderTuples := OrderFragmentsToOrderTuples(done, orderFragmentsIn, &computer.sharedOrderTable, 100)
-		deltaFragmentsFromOrderTuples := OrderTuplesToDeltaFragments(done, orderTuples, 100)
+		deltaFragmentsComputed := OrderTuplesToDeltaFragments(done, orderTuples, 100)
 
 		deltaFragments := make(chan DeltaFragment)
 		go func() {
 			defer close(deltaFragments)
 			dispatch.CoBegin(func() {
-				dispatch.Split(deltaFragmentsFromOrderTuples, deltaFragments, deltaFragmentsOut)
+				dispatch.Split(deltaFragmentsComputed, deltaFragments, deltaFragmentsOut)
 			}, func() {
 				dispatch.Pipe(done, deltaFragmentsIn, deltaFragments)
 			})
