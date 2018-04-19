@@ -1,0 +1,76 @@
+package dispatch_test
+
+import (
+	"fmt"
+	"sync/atomic"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	. "github.com/republicprotocol/republic-go/dispatch"
+)
+
+var _ = FDescribe("Concurrency", func() {
+
+	Context("when using coforall loops", func() {
+
+		It("should iterate over arrays", func() {
+			num := int64(0)
+			xs := [10]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+			CoForAll(xs, func(i int) {
+				Expect(xs[i]).Should(Equal(i + 1))
+				atomic.AddInt64(&num, 1)
+			})
+			Expect(num).Should(Equal(int64(10)))
+		})
+
+		It("should iterate over slices", func() {
+			num := int64(0)
+			xs := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+			CoForAll(xs[:], func(i int) {
+				Expect(xs[i]).Should(Equal(i + 1))
+				atomic.AddInt64(&num, 1)
+			})
+			Expect(num).Should(Equal(int64(10)))
+		})
+
+		It("should over maps", func() {
+			num := int64(0)
+			xs := map[string]int{
+				"1": 1,
+				"2": 2,
+				"3": 3,
+			}
+			CoForAll(xs, func(key string) {
+				switch key {
+				case "1":
+					Expect(xs[key]).Should(Equal(1))
+				case "2":
+					Expect(xs[key]).Should(Equal(2))
+				case "3":
+					Expect(xs[key]).Should(Equal(3))
+				default:
+					panic(fmt.Sprintf("coforall error: invalid key found in map %v", key))
+				}
+				atomic.AddInt64(&num, 1)
+			})
+			Expect(num).Should(Equal(int64(3)))
+		})
+
+		It("should iterate over ints", func(done Done) {
+			defer close(done)
+
+			xs := make(chan int, 10)
+			CoForAll(10, func(i int) {
+				xs <- (i + 1)
+			})
+			close(xs)
+
+			for i := range xs {
+				Expect(i).Should(BeNumerically(">=", 1))
+				Expect(i).Should(BeNumerically("<=", 10))
+			}
+		})
+
+	})
+
+})
