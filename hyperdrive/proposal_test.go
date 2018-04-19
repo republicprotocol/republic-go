@@ -1,222 +1,58 @@
-package hyper_test
+package hyperdrive_test
 
 import (
 	"context"
-	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/hyperdrive"
 )
 
-var _ = Describe("Processors", func() {
+var _ = Describe("Proposals", func() {
 
-	blocks := NewSharedBlocks(1, 1)
-	validator, _ := NewTestValidator(blocks, 100)
+	Context("when processing proposal", func() {
 
-	Context("when processing proposals", func() {
-
-		It("should return errors on shutdown", func() {
+		It("should produce prepare if everything goes fine ", func() {
 			ctx, cancel := context.WithCancel(context.Background())
+			capacity := 100
+			signer := NewWeakSigner(WeakSignerID)
+			verifier := NewWeakVerifier()
+
 			proposalChIn := make(chan Proposal)
-
-			_, _, errCh := ProcessProposal(ctx, proposalChIn, validator)
-
-			var wg sync.WaitGroup
-			wg.Add(1)
 			go func() {
-				defer wg.Done()
-
-				for err := range errCh {
-					Ω(err).Should(HaveOccurred())
-					Ω(err).Should(Equal(context.Canceled))
-				}
+				proposal := Proposal{Block: Block{Height: Height(1)}}
+				proposalChIn <- proposal
 			}()
 
+			prepareCh, _, _ := ProcessProposal(ctx, proposalChIn, &signer, &verifier, capacity)
+			prepare, ok := <-prepareCh
+			Ω(prepare).ShouldNot(BeNil())
+			Ω(ok).Should(BeTrue())
+
+			close(proposalChIn)
 			cancel()
-			wg.Wait()
 		})
 
-		It("should return prepares after processing a valid proposal", func() {
+		It("should produce a fault if it cannot be verified", func() {
 			ctx, cancel := context.WithCancel(context.Background())
+			capacity := 100
+			signer := NewWeakSigner(WeakSignerID)
+			verifier := NewErrorVerifier()
+
 			proposalChIn := make(chan Proposal)
-
-			proposal := Proposal{
-				Signature("Proposal"),
-				Block{
-					Tuples{},
-					Signature("Proposal"),
-				},
-				Rank(1),
-				uint64(1),
-			}
-			prepCh, _, errCh := ProcessProposal(ctx, proposalChIn, validator)
-
-			var wg sync.WaitGroup
-			wg.Add(1)
 			go func() {
-				defer wg.Done()
-
-				for {
-					select {
-					case err := <-errCh:
-						Ω(err).Should(HaveOccurred())
-						Ω(err).Should(Equal(context.Canceled))
-						return
-					case prepare, ok := <-prepCh:
-						if !ok {
-							return
-						}
-						Ω(prepare.Rank).Should(Equal(proposal.Rank))
-						Ω(prepare.Height).Should(Equal(proposal.Height))
-						Ω(prepare.Block).Should(Equal(proposal.Block))
-						Ω(prepare.Signature).Should(Equal(validator.Sign()))
-						cancel()
-					}
-				}
+				proposal := Proposal{Block: Block{Height: Height(1)}}
+				proposalChIn <- proposal
 			}()
 
-			proposalChIn <- proposal
-			wg.Wait()
+			_, faultCh, _ := ProcessProposal(ctx, proposalChIn, &signer, &verifier, capacity)
+			fault, ok := <-faultCh
+			Ω(fault).ShouldNot(BeNil())
+			Ω(ok).Should(BeTrue())
+
+			close(proposalChIn)
+			cancel()
 		})
-
-		// It("should return faults after processing an invalid proposal", func() {
-		// 	ctx, cancel := context.WithCancel(context.Background())
-		// 	proposalChIn := make(chan Proposal)
-
-		// 	proposal := Proposal{
-		// 		Signature("Proposer"),
-		// 		Block{
-		// 			Tuples{},
-		// 			Signature("Proposer"),
-		// 		},
-		// 		Rank(2),
-		// 		uint64(1),
-		// 	}
-		// 	_, faultCh, errCh := ProcessProposal(ctx, proposalChIn, validator)
-
-		// 	var wg sync.WaitGroup
-		// 	wg.Add(1)
-		// 	go func() {
-		// 		defer wg.Done()
-
-		// 		for {
-		// 			select {
-		// 			case err := <-errCh:
-		// 				Ω(err).Should(HaveOccurred())
-		// 				Ω(err).Should(Equal(context.Canceled))
-		// 				return
-		// 			case fault, ok := <-faultCh:
-		// 				if !ok {
-		// 					return
-		// 				}
-		// 				Ω(fault.Rank).Should(Equal(proposal.Rank))
-		// 				Ω(fault.Height).Should(Equal(proposal.Height))
-		// 				Ω(fault.Signature).Should(Equal(signer.Sign()))
-		// 				cancel()
-		// 			}
-		// 		}
-		// 	}()
-
-		// 	proposalChIn <- proposal
-		// 	wg.Wait()
-		// })
-
-		// It("should not return a prepare after processing an invalid proposal", func() {
-		// 	ctx, cancel := context.WithCancel(context.Background())
-		// 	proposalChIn := make(chan Proposal)
-
-		// 	proposal := Proposal{
-		// 		Signature(Proposal),
-		// 		Block{
-		// 			Tuples{},
-		// 			Signature(Proposal),
-		// 		},
-		// 		Rank(2),
-		// 		uint64(1),
-		// 	}
-		// 	prepCh, faultCh, errCh := ProcessProposal(ctx, proposalChIn, validator)
-
-		// 	var wg sync.WaitGroup
-		// 	wg.Add(1)
-		// 	go func() {
-		// 		defer wg.Done()
-
-		// 		for {
-		// 			select {
-		// 			case err := <-errCh:
-		// 				Ω(err).Should(HaveOccurred())
-		// 				Ω(err).Should(Equal(context.Canceled))
-		// 				return
-		// 			case prepare, ok := <-prepCh:
-		// 				if !ok {
-		// 					return
-		// 				}
-		// 				Ω(prepare).Should(Not(HaveOccurred()))
-		// 				cancel()
-		// 			case fault, ok := <-faultCh:
-		// 				if !ok {
-		// 					return
-		// 				}
-		// 				Ω(fault.Rank).Should(Equal(proposal.Rank))
-		// 				Ω(fault.Height).Should(Equal(proposal.Height))
-		// 				Ω(fault.Signature).Should(Equal(signer.Sign()))
-		// 				cancel()
-		// 			}
-		// 		}
-		// 	}()
-
-		// 	proposalChIn <- proposal
-		// 	wg.Wait()
-		// })
-
-		// It("should not return a fault after processing a valid proposal", func() {
-		// 	ctx, cancel := context.WithCancel(context.Background())
-		// 	proposalChIn := make(chan Proposal)
-
-		// 	proposal := Proposal{
-		// 		Signature(Proposal),
-		// 		Block{
-		// 			Tuples{},
-		// 			Signature(Proposal),
-		// 		},
-		// 		Rank(1),
-		// 		Height(1),
-		// 	}
-		// 	prepCh, faultCh, errCh := ProcessProposal(ctx, proposalChIn, validator)
-
-		// 	var wg sync.WaitGroup
-		// 	wg.Add(1)
-		// 	go func() {
-		// 		defer wg.Done()
-
-		// 		for {
-		// 			select {
-		// 			case err := <-errCh:
-		// 				Ω(err).Should(HaveOccurred())
-		// 				Ω(err).Should(Equal(context.Canceled))
-		// 				return
-		// 			case prepare, ok := <-prepCh:
-		// 				if !ok {
-		// 					return
-		// 				}
-		// 				Ω(prepare.Rank).Should(Equal(proposal.Rank))
-		// 				Ω(prepare.Height).Should(Equal(proposal.Height))
-		// 				Ω(prepare.Block).Should(Equal(proposal.Block))
-		// 				Ω(prepare.Signature).Should(Equal(signer.Sign()))
-		// 				cancel()
-		// 			case fault, ok := <-faultCh:
-		// 				if !ok {
-		// 					return
-		// 				}
-		// 				Ω(fault).Should(Not(HaveOccurred()))
-		// 				cancel()
-		// 			}
-		// 		}
-		// 	}()
-
-		// 	proposalChIn <- proposal
-		// 	wg.Wait()
-		// })
 	})
+
 })

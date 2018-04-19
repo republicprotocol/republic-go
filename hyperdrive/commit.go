@@ -1,74 +1,118 @@
-package hyper
+package hyperdrive
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
+
+	"golang.org/x/crypto/sha3"
 )
 
-type ThresholdSignature Signature
+// CommitHeader distinguishes Commits from other message types that have the
+// same content.
+const CommitHeader = byte(3)
+
+// A Commit message signals that a Replica wants to commit to the finalization
+// of a Block.
 type Commit struct {
-	Rank
-	Height uint64
-	Block
-	ThresholdSignature
-	Signature
+	Prepare
+
+	// Signatures of the Replicas that have signed this Commit
+	Signatures
 }
 
-func ProcessCommit(ctx context.Context, commitChIn <-chan Commit, validator Validator) (chan Commit, chan Block, chan Fault, chan error) {
-	blockCh := make(chan Block, validator.Threshold())
-	commitCh := make(chan Commit, validator.Threshold())
-	faultCh := make(chan Fault, validator.Threshold())
-	errCh := make(chan error, validator.Threshold())
-	blocks := validator.SharedBlocks()
-	threshold := validator.Threshold()
-	commits := map[[32]byte]uint8{}
-	certified := map[[32]byte]bool{}
+// Hash implements the Hasher interface.
+func (commit *Commit) Hash() Hash {
+	var buf bytes.Buffer
+	binary.Write(&buf, binary.BigEndian, CommitHeader)
+	binary.Write(&buf, binary.BigEndian, commit.Prepare.Hash())
+	return sha3.Sum256(buf.Bytes())
+}
+
+// Fault implements the Message interface.
+func (commit *Commit) Fault() *Fault {
+	return &Fault{
+		Rank:   commit.Prepare.Block.Rank,
+		Height: commit.Prepare.Block.Height,
+	}
+}
+
+// Verify implements the Message interface.
+func (commit *Commit) Verify(verifier Verifier) error {
+	// TODO: Complete verification
+	if err := commit.Prepare.Verify(verifier); err != nil {
+		return err
+	}
+	return verifier.VerifySignatures(commit.Signatures)
+}
+
+// SetSignatures implements the Message interface.
+func (commit *Commit) SetSignatures(signatures Signatures) {
+	commit.Signatures = signatures
+}
+
+// GetSignatures implements the Message interface.
+func (commit *Commit) GetSignatures() Signatures {
+	return commit.Signatures
+}
+
+// ProcessCommits by collecting Commits. Once a threshold of Commits has been
+// reached for a Block, the Block is certified and produced to the Block
+// channel. The incrementing of height must be done by reading Blocks produced
+// by this process, and comparing it to the current height.
+func ProcessCommits(ctx context.Context, commitChIn <-chan Commit, signer Signer, verifier Verifier, capacity, threshold int) (<-chan Commit, <-chan Fault, <-chan error) {
+	commitCh := make(chan Commit, capacity)
+	faultCh := make(chan Fault, capacity)
+	errCh := make(chan error, capacity)
+
 	go func() {
+		defer close(commitCh)
 		defer close(faultCh)
 		defer close(errCh)
 
+		store := NewMessageMapStore()
+
 		for {
 			select {
+
 			case <-ctx.Done():
 				errCh <- ctx.Err()
 				return
+
 			case commit, ok := <-commitChIn:
 				if !ok {
 					return
 				}
-				h := BlockHash(commit.Block)
-				if certified[h] {
+
+				message, err := VerifyAndSignMessage(&commit, &store, signer, verifier, threshold)
+				if err != nil {
+					errCh <- err
 					continue
 				}
+				// After verifying and signing the message check for Faults
+				switch message := message.(type) {
 
-				if !validator.ValidateCommit(commit) {
-					faultCh <- Fault{
-						Rank:      commit.Rank,
-						Height:    commit.Height,
-						Signature: validator.Sign(),
+				case *Commit:
+					select {
+					case <-ctx.Done():
+						errCh <- ctx.Err()
+						return
+					case commitCh <- *message:
 					}
+				case *Fault:
+					select {
+					case <-ctx.Done():
+						errCh <- ctx.Err()
+						return
+					case faultCh <- *message:
+					}
+				default:
+					// Gracefully ignore invalid messages
 					continue
-				}
-
-				// log.Println("Counting commits on", validator.Sign(), commits[h], "with threshold", threshold)
-				if commits[h] >= threshold-1 {
-					certified[h] = true
-					blockCh <- commit.Block
-					blocks.IncrementHeight()
-				} else {
-					commits[h]++
-					if len(commitCh) == int(validator.Threshold()) {
-						continue
-					}
-					commitCh <- Commit{
-						Rank:               commit.Rank,
-						Height:             commit.Height,
-						Block:              commit.Block,
-						ThresholdSignature: commit.ThresholdSignature,
-						Signature:          validator.Sign(),
-					}
 				}
 			}
 		}
 	}()
-	return commitCh, blockCh, faultCh, errCh
+
+	return commitCh, faultCh, errCh
 }

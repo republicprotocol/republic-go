@@ -81,7 +81,7 @@ func Connect(uri string, network Network, republicTokenAddress, darkNodeRegistry
 		}
 	}
 
-	ethclient, err := ethclient.Dial(string(network))
+	ethclient, err := ethclient.Dial(uri)
 	if err != nil {
 		return Connection{}, err
 	}

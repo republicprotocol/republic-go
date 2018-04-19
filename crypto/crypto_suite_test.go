@@ -1,4 +1,4 @@
-package main_test
+package crypto_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestDarknode(t *testing.T) {
+func TestCrypto(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Darknode Suite")
+	RunSpecs(t, "Crypto Suite")
 }

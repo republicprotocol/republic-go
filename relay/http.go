@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/republicprotocol/republic-go/dark"
+	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -55,7 +55,7 @@ func RecoveryHandler(h http.Handler) http.Handler {
 }
 
 // OpenOrdersHandler handles all HTTP open order requests
-func OpenOrdersHandler(multiAddress identity.MultiAddress, darkPools dark.Pools) http.Handler {
+func OpenOrdersHandler(multiAddress identity.MultiAddress, darkPools darknode.Pools) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		openOrder := OpenOrderRequest{}
@@ -112,7 +112,7 @@ func GetOrderHandler(orderBook *orderbook.Orderbook, id string) http.Handler {
 }
 
 // CancelOrderHandler handles HTTP Delete Requests
-func CancelOrderHandler(multiAddress identity.MultiAddress, darkPools dark.Pools) http.Handler {
+func CancelOrderHandler(multiAddress identity.MultiAddress, darkPools darknode.Pools) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cancelOrder := CancelOrderRequest{}
 		if err := json.NewDecoder(r.Body).Decode(&cancelOrder); err != nil {
