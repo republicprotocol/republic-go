@@ -31,14 +31,8 @@ type Darknode struct {
 	multiAddress identity.MultiAddress
 
 	darknodeRegistry contracts.DarkNodeRegistry
-	ocean            Ocean
-
-	relayer rpc.RelayService
-	smpcer  rpc.ComputerService
-
-	epochRoutes    chan EpochRoute
-	orderFragments chan order.Fragment
-	deltaFragments chan smpc.DeltaFragment
+	relayer          rpc.RelayService
+	smpcer           rpc.ComputerService
 }
 
 // NewDarknode returns a new Darknode.
@@ -161,8 +155,8 @@ func (node *Darknode) RunWatcher(done <-chan struct{}) <-chan error {
 			default:
 			}
 
-			epochs, errs := node.ocean.Watch(done)
-
+			// Start watching epochs
+			epochs, errs := RunEpochWatcher(done)
 			for quit := false; !quit; {
 				select {
 
@@ -181,13 +175,27 @@ func (node *Darknode) RunWatcher(done <-chan struct{}) <-chan error {
 						quit = true
 						break
 					}
-
 					if prevDone != nil {
 						close(prevDone)
 					}
 					prevDone = currDone
 					currDone = make(chan struct{})
-					node.RunEpoch(currDone, epoch)
+
+					darknodeIDs, err := node.darknodeRegistry.GetAllNodes()
+					if err != nil {
+						// FIXME: Do not skip the epoch. Retry with a backoff.
+						errs <- err
+						continue
+					}
+					darkOcean, err := NewDarkOcean(epoch, darknodeIDs)
+					if err != nil {
+						// FIXME: Do not skip the epoch. Retry with a backoff.
+						errs <- err
+						continue
+					}
+
+					deltas, errs := RunEpochProcess(currDone, node.ID(), darkOcean, node.router)
+					// TODO: Do something with the smpc.Deltas
 				}
 			}
 		}
@@ -202,15 +210,11 @@ func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) {
 	if !delta.IsMatch(smpc.Prime) {
 		return
 	}
-
 	// TODO: Implement
 }
 
 // OnOpenOrder implements the rpc.RelayDelegate interface.
 func (node *Darknode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
-	println("ORDER RECEIVED")
-	node.orderFragments <- *orderFragment
-	println("ORDER PROCESSED")
 }
 
 // Ocean returns the Ocean used by this Darknode for computing the Pools and

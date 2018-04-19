@@ -7,26 +7,6 @@ import (
 	"sync"
 )
 
-// Dispatch functions onto goroutine in the background. Returns a channel that
-// is closed when all goroutines have terminated.
-func Dispatch(fs ...func()) <-chan struct{} {
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-
-		var wg sync.WaitGroup
-		for _, f := range fs {
-			wg.Add(1)
-			go func(f func()) {
-				defer wg.Done()
-				f()
-			}(f)
-		}
-		wg.Wait()
-	}()
-	return done
-}
-
 // Wait waits for multiple signal channels to end
 func Wait(chs ...chan struct{}) {
 	for _, ch := range chs {

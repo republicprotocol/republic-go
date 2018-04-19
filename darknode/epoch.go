@@ -15,11 +15,11 @@ import (
 
 // RunEpochProcess until the done channel is closed. Epochs define the Pools in
 // which Darknodes cooperate to match orders by receiving order.Fragments from
-// traders, performing secure multi-party computations. The EpochProcess will
-// register with the EpochSwitcher by message passing an EpochRoute.
-func RunEpochProcess(done <-chan struct{}, epochRoutes chan<- EpochRoute, id identity.ID, darkOcean DarkOcean, router Router) (<-chan smpc.Delta, <-chan error) {
+// traders, performing secure multi-party computations. The EpochProcess uses a
+// DarkOcean to determine the epoch, and a Router to receive messages.
+func RunEpochProcess(done <-chan struct{}, id identity.ID, darkOcean DarkOcean, router Router) (<-chan smpc.Delta, <-chan error) {
 	deltas := make(chan smpc.Delta)
-	errs := make(chan error)
+	errs := make(chan error, 1)
 
 	go func() {
 		defer close(deltas)
@@ -51,36 +51,34 @@ func RunEpochProcess(done <-chan struct{}, epochRoutes chan<- EpochRoute, id ide
 		close(deltaFragments)
 		deltaFragmentsComputed, deltasComputed := smpcer.ComputeOrderMatches(done, router.OpenOrders(darkOcean.Epoch), deltaFragments)
 
-		<-dispatch.Dispatch(func() {
-			// Receive smpc.DeltaFragments from other Darknodes in the Pool
-			for _, receiver := range receivers {
-				go func(receiver <-chan *rpc.Computation) {
-					select {
-					case <-done:
-						return
+		dispatch.CoBegin(func() {
 
-					case computation, ok := <-receiver:
-						if !ok {
-							return
-						}
-						if computation.DeltaFragment != nil {
-							deltaFragment, err := rpc.UnmarshalDeltaFragment(computation.DeltaFragment)
-							if err != nil {
-								// ???
-							}
-							deltaFragments <- deltaFragment
-						}
+			// Receive smpc.DeltaFragments from other Darknodes in the Pool
+			dispatch.CoForAll(receivers, func(receiver identity.Address) {
+				select {
+				case <-done:
+					return
+				case computation, ok := <-receivers[receiver]:
+					if !ok {
+						return
 					}
-				}(receiver)
-			}
+					if computation.DeltaFragment != nil {
+						deltaFragment, err := rpc.UnmarshalDeltaFragment(computation.DeltaFragment)
+						if err != nil {
+							errs <- err
+						}
+						deltaFragments <- deltaFragment
+					}
+				}
+			})
 		}, func() {
+
 			// Broadcast computed smpc.DeltaFragments to other Darknodes in the
 			// Pool
 			for {
 				select {
 				case <-done:
 					return
-
 				case deltaFragment, ok := <-deltaFragmentsComputed:
 					if !ok {
 						return
@@ -102,7 +100,8 @@ func RunEpochProcess(done <-chan struct{}, epochRoutes chan<- EpochRoute, id ide
 				}
 			}
 		}, func() {
-			// Output smpc.Deltas that have been computed
+
+			// Output computed smpc.Deltas
 			dispatch.Pipe(done, deltasComputed, deltas)
 		})
 	}()

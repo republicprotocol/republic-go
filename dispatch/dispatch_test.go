@@ -157,7 +157,7 @@ var _ = Describe("Dispatch Package", func() {
 
 	Context("Merge", func() {
 
-		FIt("should merge an array of channels into a channel", func() {
+		It("should merge an array of channels into a channel", func() {
 
 			outCh := make(chan int)
 			inChs := make([]chan int, 100)
