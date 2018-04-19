@@ -3,6 +3,7 @@ package darknode
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"net"
@@ -40,13 +41,13 @@ type Router struct {
 	smpcer     rpc.ComputerService
 }
 
-func NewRouter(maxConnections int, multiAddress identity.MultiAddress, options rpc.Options) *Router {
+func NewRouter(maxConnections int, multiAddress identity.MultiAddress, options rpc.Options, privateKey *rsa.PrivateKey) *Router {
 	router := &Router{
 		maxConnections: maxConnections,
 		address:        multiAddress.Address(),
 		multiAddress:   multiAddress,
 
-		orderFragmentSplitterCh: make(chan<- order.Fragment),
+		orderFragmentSplitterCh: make(chan<- order.Fragment, 100),
 		orderFragmentSplitter:   dispatch.NewSplitter(maxConnections),
 
 		mu:               new(sync.Mutex),
@@ -58,7 +59,7 @@ func NewRouter(maxConnections int, multiAddress identity.MultiAddress, options r
 	router.dht = dht.NewDHT(multiAddress.Address(), 100)
 	router.clientPool = rpc.NewClientPool(multiAddress)
 	router.swarmer = rpc.NewSwarmService(options, router.clientPool, router.dht, logger.StdoutLogger)
-	router.relayer = rpc.NewRelayService(options, router, logger.StdoutLogger)
+	router.relayer = rpc.NewRelayService(options, router, privateKey, logger.StdoutLogger)
 	router.smpcer = rpc.NewComputerService()
 	return router
 }

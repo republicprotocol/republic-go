@@ -66,7 +66,7 @@ func NewDarknode(config Config) (Darknode, error) {
 		return Darknode{}, err
 	}
 	node.darknodeRegistry = darknodeRegistry
-	node.router = NewRouter(100, node.multiAddress, config.Network)
+	node.router = NewRouter(100, node.multiAddress, config.Network, config.RsaKey.PrivateKey)
 
 	return node, nil
 }
@@ -78,7 +78,8 @@ func (node *Darknode) ServeRPC(done <-chan struct{}) <-chan error {
 
 	go func() {
 		defer close(errs)
-
+		routerErrs := node.router.Run(done, node.Host, node.Port)
+		dispatch.Pipe(done, routerErrs, errs)
 	}()
 
 	time.Sleep(2 * time.Second)
