@@ -5,12 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/big"
+	"math/rand"
 	"net/http"
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -45,31 +46,31 @@ func main() {
 
 		key, err := getKey(*keystore, *passphrase)
 		if err != nil {
-			fmt.Println(fmt.Errorf("cannot get key: %s", err))
+			fmt.Println(fmt.Errorf("could not obtain key: %s", err))
 			return
 		}
 
 		keyPair, err := getKeyPair(key)
 		if err != nil {
-			fmt.Println(fmt.Errorf("cannot get keypair: %s", err))
+			fmt.Println(fmt.Errorf("could not obtain keypair: %s", err))
 			return
 		}
 
 		relayAddress, err := getRelayMultiaddress(keyPair, *port)
 		if err != nil {
-			fmt.Println(fmt.Errorf("cannot get multiaddress: %s", err))
+			fmt.Println(fmt.Errorf("could not obtain multiaddress: %s", err))
 			return
 		}
 
-		registrar, err := getRegistrar(key)
+		registrar, err := createRegistrar(key)
 		if err != nil {
-			fmt.Println(fmt.Errorf("cannot create registrar: %s", err))
+			fmt.Println(fmt.Errorf("could not create registrar: %s", err))
 			return
 		}
 
 		pools, err := getDarkPools(key, registrar)
 		if err != nil {
-			fmt.Println(fmt.Errorf("cannot obtain address and pools: %s", err))
+			fmt.Println(fmt.Errorf("could not obtain address and pools: %s", err))
 			return
 		}
 
@@ -93,38 +94,65 @@ func main() {
 	}
 }
 
-// Synchronize orderbook using 3 randomly selected nodes
+// Synchronize orderbook using 3 randomly selected nodes.
 func synchronizeOrderbook(book *orderbook.Orderbook, clientPool *rpc.ClientPool, registrar contracts.DarkNodeRegistry) {
-	nodes := getBootstrapNodes() // TODO: Select these randomly
-	index, connections := 0, 0
+	nodes, err := registrar.GetAllNodes()
+	if err != nil {
+		fmt.Println(fmt.Errorf("could not retrieve nodes: %s", err))
+	}
+	connections := int32(0)
 	context, cancel := context.WithCancel(context.Background())
 	defer cancel() // TODO: Check this
 	for {
-		// If there are at least 3 connections, try again in 10 seconds
-		if connections >= 3 {
+		// If there are at least 3 connections, we try again in 10 seconds.
+		if atomic.LoadInt32(&connections) >= 3 {
 			time.Sleep(10 * time.Second)
 			break
 		}
-		// TODO: Handle disconnected nodes
-		multiaddressString := nodes[index%len(nodes)]
-		index, connections = index+1, connections+1
-		multi, err := identity.NewMultiAddressFromString(multiaddressString)
+
+		// Select a node in a random position and increment the number of
+		// connected nodes.
+		randIndex := rand.Intn(len(nodes))
+		multiaddressString := nodes[randIndex]
+		atomic.AddInt32(&connections, 1)
+
+		// Retrieve the multiaddress of the selected node.
+		multi, err := identity.NewMultiAddressFromString(string(multiaddressString))
 		if err != nil {
-			fmt.Println(fmt.Errorf("unable to convert string %s to multiaddress: %s", multiaddressString, err))
+			fmt.Println(fmt.Errorf("unable to convert \"%s\" to multiaddress: %s", multiaddressString, err))
 		}
+
+		// Check for any messages received from this node and forward them to
+		// orderbook stored in the relay.
 		blocks, errs := clientPool.Sync(context, multi)
+		go forwardMessages(blocks, errs, &connections, book)
+	}
+}
+
+// Forward any messages we receive from the channels and store them in the
+// orderbook.
+func forwardMessages(blocks <-chan *rpc.SyncBlock, errs <-chan error, connections *int32, book *orderbook.Orderbook) {
+	// The only way the loop will finish is due to an error, so when it ends we
+	// decrement the total number of connections.
+	defer atomic.AddInt32(connections, -1)
+	alive := true
+	for alive {
 		select {
 		case err, ok := <-errs:
-			if !ok {
-				break
-			}
-			if err != nil {
+			// Output an error and end the connection.
+			if !ok || err != nil {
 				fmt.Println(fmt.Errorf("error when trying to sync client pool: %s", err))
+				alive = false
+				break
 			}
 		case block, ok := <-blocks:
 			if !ok {
 				break
 			}
+
+			// The epoch hash we retrieve is stored in a dynamic sized byte
+			// array, so we must copy this to one of a fixed length in order
+			// to include it in the order entry.
 			var epochHash [32]byte
 			if len(block.EpochHash) == 32 {
 				copy(epochHash[:], block.EpochHash[:32])
@@ -132,43 +160,59 @@ func synchronizeOrderbook(book *orderbook.Orderbook, clientPool *rpc.ClientPool,
 				fmt.Println(fmt.Errorf("epoch hash is required to be exactly 32 bytes (%d)", len(block.EpochHash)))
 				break
 			}
-			switch block.OrderBlock.(type) {
-			case *rpc.SyncBlock_Open:
-				ord := rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Open).Open)
-				entry := orderbook.NewEntry(ord, order.Open, epochHash)
-				book.Open(entry)
-			case *rpc.SyncBlock_Confirmed:
-				ord := rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Confirmed).Confirmed)
-				entry := orderbook.NewEntry(ord, order.Confirmed, epochHash)
-				book.Confirm(entry)
-			case *rpc.SyncBlock_Unconfirmed:
-				ord := rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Unconfirmed).Unconfirmed)
-				entry := orderbook.NewEntry(ord, order.Unconfirmed, epochHash)
-				book.Match(entry)
-			case *rpc.SyncBlock_Canceled:
-				ord := rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Canceled).Canceled)
-				entry := orderbook.NewEntry(ord, order.Canceled, epochHash)
-				book.Release(entry)
-			case *rpc.SyncBlock_Settled:
-				ord := rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Settled).Settled)
-				entry := orderbook.NewEntry(ord, order.Settled, epochHash)
-				book.Settle(entry)
-			default:
-				log.Printf("unknown order status, %t", block.OrderBlock)
-			}
+
+			// Store this entry in the relay orderbook.
+			storeEntry(block, epochHash, book)
 		}
+	}
+}
+
+func storeEntry(block *rpc.SyncBlock, epochHash [32]byte, book *orderbook.Orderbook) {
+	// Check the status of the order message received and call the
+	// corresponding function from the orderbook.
+	switch block.OrderBlock.(type) {
+	case *rpc.SyncBlock_Open:
+		ord := rpc.UnmarshalOrder(block.GetOpen())
+		entry := orderbook.NewEntry(ord, order.Open, epochHash)
+		if err := book.Open(entry); err != nil {
+			fmt.Println(fmt.Errorf("error when synchronizing order: %s", err))
+		}
+	case *rpc.SyncBlock_Confirmed:
+		ord := rpc.UnmarshalOrder(block.GetConfirmed())
+		entry := orderbook.NewEntry(ord, order.Confirmed, epochHash)
+		if err := book.Confirm(entry); err != nil {
+			fmt.Println(fmt.Errorf("error when synchronizing order: %s", err))
+		}
+	case *rpc.SyncBlock_Unconfirmed:
+		ord := rpc.UnmarshalOrder(block.GetUnconfirmed())
+		entry := orderbook.NewEntry(ord, order.Unconfirmed, epochHash)
+		if err := book.Match(entry); err != nil {
+			fmt.Println(fmt.Errorf("error when synchronizing order: %s", err))
+		}
+	case *rpc.SyncBlock_Canceled:
+		ord := rpc.UnmarshalOrder(block.GetCanceled())
+		entry := orderbook.NewEntry(ord, order.Canceled, epochHash)
+		if err := book.Release(entry); err != nil {
+			fmt.Println(fmt.Errorf("error when synchronizing order: %s", err))
+		}
+	case *rpc.SyncBlock_Settled:
+		ord := rpc.UnmarshalOrder(block.GetSettled())
+		entry := orderbook.NewEntry(ord, order.Settled, epochHash)
+		if err := book.Settle(entry); err != nil {
+			fmt.Println(fmt.Errorf("error when synchronizing order: %s", err))
+		}
+	default:
+		fmt.Println(fmt.Errorf("unknown order status, %t", block.OrderBlock))
 	}
 }
 
 func getDarkPools(key *keystore.Key, registrar contracts.DarkNodeRegistry) (darknode.Pools, error) {
 	ocean := darknode.NewOcean(registrar)
-
-	// Return the dark pools
 	return ocean.GetPools(), nil
 }
 
 func getKey(filename, passphrase string) (*keystore.Key, error) {
-	// Read data from keystore file and generate the key
+	// Read data from the keystore file and generate the key
 	encryptedKey, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read keystore file: %v", err)
@@ -207,8 +251,8 @@ func getRelayMultiaddress(id identity.KeyPair, port int) (identity.MultiAddress,
 	return relayMultiaddress, nil
 }
 
-func getRegistrar(key *keystore.Key) (contracts.DarkNodeRegistry, error) {
-	// Handle the creation of the Darknode registrar
+// Handles the creation of the Darknode registrar
+func createRegistrar(key *keystore.Key) (contracts.DarkNodeRegistry, error) {
 	conn, err := ganache.Connect("http://localhost:8545")
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
 	if err != nil {
