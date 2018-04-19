@@ -137,7 +137,7 @@ message Delta {
   bytes minVolumeShare = 9;
 }
 
-message DeltaFragment {  
+message DeltaFragment {
   bytes signature = 1;
   bytes id = 2;
   bytes deltaId = 3;
@@ -145,10 +145,68 @@ message DeltaFragment {
   bytes sellOrderId = 5;
   bytes buyOrderFragmentId = 6;
   bytes sellOrderFragmentId = 7;
-  
+
   bytes fstCodeShare = 8;
   bytes sndCodeShare = 9;
   bytes priceShare = 10;
   bytes maxVolumeShare = 11;
   bytes minVolumeShare = 12;
+}
+
+/**
+ * Hyperdrive
+ */
+
+service Hyperdrive {
+  rpc SendTx(Tx) returns (Nothing);
+  rpc SyncBlock(Nothing) returns (stream Block);
+  rpc Drive (stream DriveMessage) returns (stream DriveMessage);
+}
+
+message DriveMessage {
+    oneof driveMessage{
+        Block block = 1;
+        Tx tx = 2;
+        Proposal proposal = 3;
+        Prepare prepare = 4;
+        Commit commit  = 5;
+        Fault fault = 6;
+    }
+}
+
+message Signatures {
+    repeated bytes signature =1 ;
+}
+
+message Block {
+  int64 height = 1;
+  int64 rank = 2;
+  bytes epocHash = 3;
+  repeated Tx Txs = 4 ;
+  bytes signature = 5;
+}
+
+message Tx {
+  bytes tx = 1;
+}
+
+message Proposal {
+    Block block = 1;
+    bytes signature = 2;
+}
+
+message Prepare {
+    Proposal proposal = 1;
+    Signatures signatures = 2;
+}
+
+message Commit{
+    Prepare prepare = 1;
+    Signatures signatures = 2;
+}
+
+message Fault{
+    int64 height = 1;
+    int64 rank = 2;
+    Signatures signatures = 3;
 }

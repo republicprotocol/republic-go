@@ -48,7 +48,7 @@ type Connection struct {
 	Client     Client
 	RenAddress common.Address
 	DNRAddress common.Address
-	HDEAddress  common.Address
+	HDEAddress common.Address
 	Network    Network
 }
 

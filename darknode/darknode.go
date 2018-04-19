@@ -72,6 +72,7 @@ func NewDarknode(config Config) (Darknode, error) {
 		config.Ethereum.Network,
 		config.Ethereum.RepublicTokenAddress,
 		config.Ethereum.DarkNodeRegistryAddress,
+		config.Ethereum.HyperdriveRegistryAddres,
 	)
 	if err != nil {
 		println("ERR!", err)

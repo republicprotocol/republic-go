@@ -23,10 +23,11 @@ type Config struct {
 }
 
 type EthereumConfig struct {
-	URI                     string         `json:"uri"`
-	Network                 client.Network `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
-	RepublicTokenAddress    string         `json:"republicTokenAddress"`
-	DarkNodeRegistryAddress string         `json:"darkNodeRegistryAddress"`
+	URI                      string         `json:"uri"`
+	Network                  client.Network `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
+	RepublicTokenAddress     string         `json:"republicTokenAddress"`
+	DarkNodeRegistryAddress  string         `json:"darkNodeRegistryAddress"`
+	HyperdriveRegistryAddres string         `json:"hyperdriveRegistryAddress"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config

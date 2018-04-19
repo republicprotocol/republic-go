@@ -29,11 +29,11 @@ func NewHyperdriveEpoch(ctx context.Context, clientDetails client.Connection, tr
 	}
 
 	return HyperdriveRegistry{
-		network:  clientDetails.Network,
-		context:  ctx,
-		callOpts: callOpts,
+		network:      clientDetails.Network,
+		context:      ctx,
+		callOpts:     callOpts,
 		transactOpts: transactOpts,
-		binding:  contract,
+		binding:      contract,
 	}, nil
 }
 
@@ -58,7 +58,7 @@ func (hyper HyperdriveRegistry) CurrentEpoch() (Epoch, error) {
 	}, nil
 }
 
-func (hyper  HyperdriveRegistry)  Epoch()(*types.Transaction, error){
+func (hyper HyperdriveRegistry) Epoch() (*types.Transaction, error) {
 	tx, err := hyper.binding.Epoch(hyper.transactOpts)
 	if err != nil {
 		return nil, err

@@ -118,6 +118,7 @@ func (pool *ClientPool) Sync(ctx context.Context, to identity.MultiAddress) (<-c
 	client, err := pool.FindOrCreateClient(to)
 	if err != nil {
 		errCh := make(chan error, 1)
+		defer close(errCh)
 		errCh <- err
 		return nil, errCh
 	}
@@ -166,4 +167,40 @@ func (pool *ClientPool) Compute(ctx context.Context, to identity.MultiAddress, c
 	}
 
 	return client.Compute(ctx, computationChIn)
+}
+
+// OrderMatch RPC.
+func (pool *ClientPool) SendTx(ctx context.Context, to identity.MultiAddress, tx *Tx) error {
+	client, err := pool.FindOrCreateClient(to)
+	if err != nil {
+		return err
+	}
+
+	return client.SendTx(ctx, tx)
+}
+
+// FinalizedBlock RPC.
+func (pool *ClientPool) SyncBlocks(ctx context.Context, to identity.MultiAddress) (<-chan *Block, <-chan error) {
+	client, err := pool.FindOrCreateClient(to)
+	if err != nil {
+		errCh := make(chan error, 1)
+		defer close(errCh)
+		errCh <- err
+		return nil, errCh
+	}
+
+	return client.SyncBlock(ctx)
+}
+
+// Drive RPC.
+func (pool *ClientPool) Drive(ctx context.Context, to identity.MultiAddress, driveMessages <-chan *DriveMessage) (<-chan *DriveMessage, <-chan error) {
+	client, err := pool.FindOrCreateClient(to)
+	if err != nil {
+		errCh := make(chan error, 1)
+		defer close(errCh)
+		errCh <- err
+		return nil, errCh
+	}
+
+	return client.Drive(ctx, driveMessages)
 }

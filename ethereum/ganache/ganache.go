@@ -112,7 +112,7 @@ func genesis() (*ecdsa.PrivateKey, *bind.TransactOpts) {
 
 func deployContracts(conn client.Connection, transactor *bind.TransactOpts) error {
 
-	 // Deploy contracts
+	// Deploy contracts
 	_, republicTokenAddress, err := deployRepublicToken(context.Background(), conn, transactor)
 	if err != nil {
 		return err

@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/republicprotocol/republic-go/dispatch"
-
 	"github.com/republicprotocol/republic-go/identity"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -20,6 +19,7 @@ type Client struct {
 	SwarmClient
 	RelayClient
 	SyncerClient
+	HyperdriveClient
 
 	Connection *grpc.ClientConn
 	To         *MultiAddress
@@ -63,6 +63,7 @@ func NewClient(ctx context.Context, to, from identity.MultiAddress) (*Client, er
 	client.SwarmClient = NewSwarmClient(client.Connection)
 	client.RelayClient = NewRelayClient(client.Connection)
 	client.SyncerClient = NewSyncerClient(client.Connection)
+	client.HyperdriveClient = NewHyperdriveClient(client.Connection)
 
 	return client, nil
 }
@@ -232,14 +233,12 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 					errCh <- err
 					return
 				}
-				println("found message in gRPC client")
+
 				select {
 				case <-ctx.Done():
 					errCh <- ctx.Err()
 					return
 				case messageCh <- message:
-					println("written message from gRPC client")
-
 				}
 			}
 		}, func() {
@@ -250,6 +249,105 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 				case <-ctx.Done():
 					return
 				case message, ok := <-messageChIn:
+					if !ok {
+						return
+					}
+					if err := stream.Send(message); err != nil {
+						s, _ := status.FromError(err)
+						if s.Code() != codes.Canceled && s.Code() != codes.DeadlineExceeded {
+							errCh <- err
+						}
+						return
+					}
+				}
+			}
+		})
+	}()
+
+	return messageCh, errCh
+}
+
+func (client *Client) SendTx(ctx context.Context, tx *Tx) error {
+	_, err := client.HyperdriveClient.SendTx(ctx, tx, grpc.FailFast(false))
+
+	return err
+}
+
+func (client *Client) SyncBlock(ctx context.Context) (chan *Block, chan error) {
+	blockCh := make(chan *Block)
+	errCh := make(chan error)
+
+	go func() {
+		defer close(blockCh)
+		defer close(errCh)
+
+		stream, err := client.HyperdriveClient.SyncBlock(ctx, &Nothing{}, grpc.FailFast(false))
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		for {
+			block, err := stream.Recv()
+			if err != nil {
+				if err != io.EOF {
+					errCh <- err
+				}
+				return
+			}
+
+			select {
+			case <-ctx.Done():
+				errCh <- ctx.Err()
+				return
+			case blockCh <- block:
+			}
+		}
+	}()
+
+	return blockCh, errCh
+}
+
+func (client *Client) Drive(ctx context.Context, driveMessage <-chan *DriveMessage) (<-chan *DriveMessage, <-chan error) {
+	messageCh := make(chan *DriveMessage)
+	errCh := make(chan error, 1)
+
+	// Open a connection to the gRPC service
+	stream, err := client.HyperdriveClient.Drive(ctx, grpc.FailFast(false))
+	if err != nil {
+		errCh <- err
+		return messageCh, errCh
+	}
+
+	// Wait for both goroutines to finish and then close the error channel
+	go func() {
+		defer close(errCh)
+		<-dispatch.Dispatch(func() {
+
+			// Read messages from the gRPC service and write them to the output channel
+			defer close(messageCh)
+			for {
+				message, err := stream.Recv()
+				if err != nil {
+					errCh <- err
+					return
+				}
+				select {
+				case <-ctx.Done():
+					errCh <- ctx.Err()
+					return
+				case messageCh <- message:
+
+				}
+			}
+		}, func() {
+
+			// Read messages from the input channel and write them to the gRPC service
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case message, ok := <-driveMessage:
 					if !ok {
 						return
 					}
