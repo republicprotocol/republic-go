@@ -23,6 +23,7 @@ type ClientPool struct {
 	do.GuardedObject
 
 	from    identity.MultiAddress
+	keyPair identity.KeyPair
 	cache   map[string]ClientCacheEntry
 	options ClientPoolOptions
 }
@@ -30,10 +31,11 @@ type ClientPool struct {
 // NewClientPool returns a new ClientPool with the given cache limit. All
 // Clients that are created in this pool will identify themselves using the
 // given MultiAddress.
-func NewClientPool(from identity.MultiAddress) *ClientPool {
+func NewClientPool(from identity.MultiAddress, keyPair identity.KeyPair) *ClientPool {
 	pool := new(ClientPool)
 	pool.GuardedObject = do.NewGuardedObject()
 	pool.from = from
+	pool.keyPair = keyPair
 	pool.cache = map[string]ClientCacheEntry{}
 	pool.options = DefaultClientPoolOptions()
 	return pool
@@ -56,7 +58,7 @@ func (pool *ClientPool) findOrCreateClient(to identity.MultiAddress) (*Client, e
 		return clientCacheEntry.Client, nil
 	}
 
-	client, err := NewClient(context.Background(), to, pool.from, (identity.KeyPair{}))
+	client, err := NewClient(context.Background(), to, pool.from, pool.keyPair)
 	if err != nil {
 		return client, err
 	}
