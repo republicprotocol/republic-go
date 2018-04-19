@@ -60,6 +60,7 @@ func Split(chIn interface{}, chsOut ...interface{}) {
 	}
 }
 
+// Send sends a msg to a channel or an array of channels
 func Send(chOut interface{}, msgValue reflect.Value) {
 	switch reflect.TypeOf(chOut).Kind() {
 	case reflect.Array, reflect.Slice:
@@ -76,6 +77,7 @@ func Send(chOut interface{}, msgValue reflect.Value) {
 	}
 }
 
+// Splitter is a protected map
 type Splitter struct {
 	mu          *sync.RWMutex
 	subscribers map[interface{}]struct{}
@@ -83,6 +85,7 @@ type Splitter struct {
 	maxConnections int
 }
 
+// NewSplitter creates and returns a new Splitter object
 func NewSplitter(maxConnections int) Splitter {
 	return Splitter{
 		mu:          &sync.RWMutex{},
@@ -92,6 +95,8 @@ func NewSplitter(maxConnections int) Splitter {
 	}
 }
 
+// Subscribe subscribes a channel to get messages from another channel.
+// returns an error if it fails
 func (splitter *Splitter) Subscribe(ch interface{}) error {
 	splitter.mu.Lock()
 	defer splitter.mu.Unlock()
@@ -104,12 +109,15 @@ func (splitter *Splitter) Subscribe(ch interface{}) error {
 	return nil
 }
 
+// Unsubscribe unsubscribes a channel from getting messages from
+// another channel.
 func (splitter *Splitter) Unsubscribe(ch interface{}) {
 	splitter.mu.Lock()
 	defer splitter.mu.Unlock()
 	delete(splitter.subscribers, ch)
 }
 
+// Split multicasts the channel to all the subscribed channels.
 func (splitter *Splitter) Split(chIn interface{}) {
 	if reflect.TypeOf(chIn).Kind() != reflect.Chan {
 		panic(fmt.Sprintf("cannot split from value of type %T", chIn))
@@ -120,7 +128,6 @@ func (splitter *Splitter) Split(chIn interface{}) {
 		if !ok {
 			return
 		}
-
 		func() {
 			splitter.mu.RLock()
 			defer splitter.mu.RUnlock()
