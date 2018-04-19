@@ -1,13 +1,10 @@
 package darknode
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net"
 	"time"
-
-	"github.com/republicprotocol/go-do"
 
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -22,12 +19,6 @@ import (
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 )
-
-type EpochRoute struct {
-	Epoch          [32]byte
-	OrderFragments chan<- order.Fragment
-	DeltaFragments chan<- smpc.DeltaFragment
-}
 
 type Darknodes []Darknode
 
@@ -203,152 +194,6 @@ func (node *Darknode) RunWatcher(done <-chan struct{}) <-chan error {
 	}()
 
 	return errs
-}
-
-// RunEpoch until the done channel is closed. Order fragments will be received,
-// computed, and broadcast in accordance to the epoch.
-func (node *Darknode) RunEpoch(done <-chan struct{}, epoch contracts.Epoch) {
-
-	// FIXME: Compute n and k from the epoch
-	n := int64(5)
-	k := (n + 1) * 2 / 3
-
-	smpcerID := smpc.ComputerID{}
-	copy(smpcerID[:], node.ID()[:])
-	smpcer := smpc.NewComputer(smpcerID, n, k)
-
-	// Run secure multi-party computer
-	orderFragments, deltaFragments := make(chan order.Fragment), make(chan smpc.DeltaFragment)
-	defer func() {
-		close(orderFragments)
-		close(deltaFragments)
-	}()
-	deltaFragmentsComputed, deltasComputed := smpcer.ComputeOrderMatches(done, orderFragments, deltaFragments)
-
-	go func() {
-		for delta := range deltasComputed {
-			if delta.IsMatch(smpc.Prime) {
-				node.Logger.OrderMatch(logger.Info, delta.ID.String(), delta.BuyOrderID.String(), delta.SellOrderID.String())
-				node.OrderMatchToHyperdrive(delta)
-			}
-		}
-	}()
-
-	computationConns := []chan<- *rpc.Computation{}
-
-	for _, peerMulti := range node.Config.Network.BootstrapMultiAddresses {
-		peerID := peerMulti.ID()
-
-		computationsIn := make(chan *rpc.Computation)
-		computationConns = append(computationConns, computationsIn)
-
-		var computations <-chan *rpc.Computation
-		var errs <-chan error
-
-		go func(peerMulti identity.MultiAddress) {
-			if bytes.Compare(node.ID(), peerID) < 0 {
-				computations, errs = node.smpcer.WaitForCompute(peerMulti, computationsIn)
-				go func() {
-					for err := range errs {
-						node.Logger.Compute(logger.Error, "server error: "+err.Error())
-					}
-				}()
-			} else {
-				client, err := rpc.NewClient(context.Background(), peerMulti, node.MultiAddress())
-				if err != nil {
-					node.Logger.Network(logger.Error, err.Error())
-					return
-				}
-				computations, errs = client.Compute(context.Background(), computationsIn)
-				go func() {
-					for err := range errs {
-						node.Logger.Compute(logger.Error, "client error: "+err.Error())
-					}
-				}()
-
-				multi := node.MultiAddress()
-				computationsIn <- &rpc.Computation{MultiAddress: rpc.MarshalMultiAddress(&multi)}
-			}
-
-			go func() {
-				for computation := range computations {
-					if computation.DeltaFragment != nil {
-						deltaFragment, err := rpc.UnmarshalDeltaFragment(computation.DeltaFragment)
-						if err != nil {
-							node.Logger.Compute(logger.Error, err.Error())
-						}
-						deltaFragments <- deltaFragment
-					}
-				}
-			}()
-
-		}(peerMulti)
-	}
-
-	go func() {
-		for deltaFragment := range deltaFragmentsComputed {
-			println("SENDING DELTA FRAGMENT")
-			do.CoForAll(computationConns, func(i int) {
-				computationConns[i] <- &rpc.Computation{
-					DeltaFragment: rpc.MarshalDeltaFragment(&deltaFragment),
-				}
-			})
-		}
-	}()
-
-	node.epochRoutes <- EpochRoute{
-		Epoch:          epoch.Blockhash,
-		OrderFragments: orderFragments,
-		DeltaFragments: deltaFragments,
-	}
-
-	<-done
-}
-
-// RunEpochSwitch until the done channel is closed. EpochRoutes will be
-// received and used to switch messages to the correct goroutine. This allows
-// multiple goroutines to run in parallel, each processing a different epoch.
-func (node *Darknode) RunEpochSwitch(done <-chan struct{}) {
-	go func() {
-		var currRoute EpochRoute
-		var ok bool
-
-		select {
-		case <-done:
-		case currRoute, ok = <-node.epochRoutes:
-			if !ok {
-				return
-			}
-		}
-
-		for {
-			select {
-			case <-done:
-				return
-			case route, ok := <-node.epochRoutes:
-				if !ok {
-					return
-				}
-				currRoute = route
-			case orderFragment, ok := <-node.orderFragments:
-				if !ok {
-					return
-				}
-				select {
-				case <-done:
-				case currRoute.OrderFragments <- orderFragment:
-				}
-			case deltaFragment, ok := <-node.deltaFragments:
-				if !ok {
-					return
-				}
-				select {
-				case <-done:
-				case currRoute.DeltaFragments <- deltaFragment:
-				}
-			}
-		}
-	}()
 }
 
 // OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and

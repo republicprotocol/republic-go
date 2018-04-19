@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/stackint"
 )
@@ -71,7 +72,7 @@ type OrderMatchComputeOutput struct {
 
 // Computer of sMPC messages.
 type Computer struct {
-	ComputerID
+	id identity.ID
 
 	n, k                      int64
 	sharedOrderTable          SharedOrderTable
@@ -81,13 +82,13 @@ type Computer struct {
 
 // NewComputer returns a new Computer with the given ComputerID and N-K
 // threshold.
-func NewComputer(computerID ComputerID, n, k int64) Computer {
+func NewComputer(id identity.ID, n, k int64) Computer {
 	return Computer{
-		ComputerID:                computerID,
+		id:                        id,
 		n:                         n,
 		k:                         k,
 		sharedOrderTable:          NewSharedOrderTable(),
-		sharedObscureResidueTable: NewSharedObscureResidueTable(computerID),
+		sharedObscureResidueTable: NewSharedObscureResidueTable(id),
 		sharedDeltaBuilder:        NewSharedDeltaBuilder(k, Prime),
 	}
 }
