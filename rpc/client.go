@@ -222,7 +222,7 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 	// Wait for both goroutines to finish and then close the error channel
 	go func() {
 		defer close(errCh)
-		<-dispatch.Dispatch(func() {
+		dispatch.CoBegin(func() {
 
 			// Read messages from the gRPC service and write them to the output channel
 			defer close(messageCh)

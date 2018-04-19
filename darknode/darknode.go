@@ -6,8 +6,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/rpc"
 	"google.golang.org/grpc"
 
@@ -31,8 +31,7 @@ type Darknode struct {
 	multiAddress identity.MultiAddress
 
 	darknodeRegistry contracts.DarkNodeRegistry
-	relayer          rpc.RelayService
-	smpcer           rpc.ComputerService
+	router           Router
 }
 
 // NewDarknode returns a new Darknode.
@@ -43,7 +42,7 @@ func NewDarknode(config Config) (Darknode, error) {
 	}
 
 	// Get identity information from the Config
-	key, err := identity.NewKeyPairFromPrivateKey(node.Config.Key.PrivateKey)
+	key, err := identity.NewKeyPairFromPrivateKey(node.Config.EcdsaKey.PrivateKey)
 	if err != nil {
 		return node, fmt.Errorf("cannot get ID from private key: %v", err)
 	}
@@ -52,7 +51,7 @@ func NewDarknode(config Config) (Darknode, error) {
 	node.multiAddress = config.Network.MultiAddress
 
 	// Open a connection to the Ethereum network
-	transactOpts := bind.NewKeyedTransactor(config.Key.PrivateKey)
+	transactOpts := bind.NewKeyedTransactor(config.EcdsaKey.PrivateKey)
 	client, err := client.Connect(
 		config.Ethereum.URI,
 		config.Ethereum.Network,
@@ -70,12 +69,7 @@ func NewDarknode(config Config) (Darknode, error) {
 		return Darknode{}, err
 	}
 	node.darknodeRegistry = darknodeRegistry
-	node.ocean = NewOcean(darknodeRegistry)
-
-	// Create a channel for notifying the Darknode about new epochs
-	node.epochRoutes = make(chan EpochRoute, 2)
-	node.orderFragments = make(chan order.Fragment)
-	node.deltaFragments = make(chan smpc.DeltaFragment)
+	node.router = NewRouter(100, node.address, node.multiAddress)
 
 	return node, nil
 }
@@ -88,31 +82,9 @@ func (node *Darknode) ServeRPC(done <-chan struct{}) <-chan error {
 	go func() {
 		defer close(errs)
 
-		server := grpc.NewServer()
-		go func() {
-			defer server.Stop()
-			<-done
-		}()
+	
 
-		node.relayer = rpc.NewRelayService(rpc.Options{}, node, node.Logger)
-		node.relayer.Register(server)
-
-		node.smpcer = rpc.NewComputerService()
-		node.smpcer.Register(server)
-
-		listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", node.Config.Host, node.Config.Port))
-		if err != nil {
-			node.Logger.Network(logger.Error, err.Error())
-			errs <- err
-			return
-		}
-
-		node.Logger.Network(logger.Info, fmt.Sprintf("listening on %v:%v", node.Config.Host, node.Config.Port))
-		if err := server.Serve(listener); err != nil {
-			node.Logger.Network(logger.Error, err.Error())
-			errs <- err
-			return
-		}
+		
 	}()
 
 	time.Sleep(2 * time.Second)
@@ -156,7 +128,9 @@ func (node *Darknode) RunWatcher(done <-chan struct{}) <-chan error {
 			}
 
 			// Start watching epochs
-			epochs, errs := RunEpochWatcher(done)
+			epochs, epochErrs := RunEpochWatcher(done, node.darknodeRegistry)
+			go dispatch.Pipe(done, epochErrs, errs)
+
 			for quit := false; !quit; {
 				select {
 
@@ -187,15 +161,17 @@ func (node *Darknode) RunWatcher(done <-chan struct{}) <-chan error {
 						errs <- err
 						continue
 					}
-					darkOcean, err := NewDarkOcean(epoch, darknodeIDs)
-					if err != nil {
-						// FIXME: Do not skip the epoch. Retry with a backoff.
-						errs <- err
-						continue
-					}
 
-					deltas, errs := RunEpochProcess(currDone, node.ID(), darkOcean, node.router)
-					// TODO: Do something with the smpc.Deltas
+					darkOcean := NewDarkOcean(epoch.Blockhash, darknodeIDs)
+					deltas, deltaErrs := RunEpochProcess(currDone, node.ID(), darkOcean, node.router)
+					go dispatch.Pipe(done, deltaErrs, errs)
+					go func() {
+						for delta := range deltas {
+							if delta.IsMatch(smpc.Prime) {
+								node.Logger.OrderMatch(logger.Info, delta.ID.String(), delta.BuyOrderID.String(), delta.SellOrderID.String())
+							}
+						}
+					}()
 				}
 			}
 		}
@@ -211,16 +187,6 @@ func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) {
 		return
 	}
 	// TODO: Implement
-}
-
-// OnOpenOrder implements the rpc.RelayDelegate interface.
-func (node *Darknode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
-}
-
-// Ocean returns the Ocean used by this Darknode for computing the Pools and
-// its position in them.
-func (node *Darknode) Ocean() Ocean {
-	return node.ocean
 }
 
 // ID returns the ID of the Darknode.

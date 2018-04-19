@@ -2,8 +2,10 @@ package darknode
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
 
@@ -17,9 +19,20 @@ type DarkOcean struct {
 // NewDarkOcean returns a new DarkOcean that uses the Darknodes, and
 // DarknodeRegistry to create Pools.
 func NewDarkOcean(epoch [32]byte, darknodes [][]byte) DarkOcean {
+
+	pool := Pool{
+		addresses: identity.Addresses{},
+	}
+	for i := range darknodes {
+		fmt.Printf("Susruth, it is a fucking %T", i)
+		pool.addresses = append(pool.addresses, identity.ID(darknodes[i]).Address())
+	}
+	copy(pool.id[:], crypto.Keccak256(darknodes...))
+	pools := Pools{pool}
+
 	return DarkOcean{
 		epoch: epoch,
-		pools: Pools{},
+		pools: pools,
 	}
 }
 
@@ -33,7 +46,7 @@ func (darkOcean *DarkOcean) Epoch() [32]byte {
 func (darkOcean *DarkOcean) Pool(id identity.ID) (Pool, error) {
 	for i := range darkOcean.pools {
 		for j := range darkOcean.pools[i].addresses {
-			if bytes.Equal(id[:], darkOcean.pools[i].addresses[i].ID()[:]) {
+			if bytes.Equal(id[:], darkOcean.pools[i].addresses[j].ID()[:]) {
 				return darkOcean.pools[i], nil
 			}
 		}
@@ -60,5 +73,10 @@ func (pool *Pool) Addresses() identity.Addresses {
 	return pool.addresses
 }
 
+// Size of the Pool.
+func (pool *Pool) Size() int {
+	return len(pool.addresses)
+}
+
 // ErrPoolNotFound is returned when no Pool can be found for a given ID.
-var ErrPoolNotFound = fmt.Sprintf("pool not found")
+var ErrPoolNotFound = errors.New("pool not found")

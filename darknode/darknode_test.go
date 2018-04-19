@@ -60,7 +60,6 @@ var _ = Describe("Darknode", func() {
 			do.CoForAll(darknodes, func(i int) {
 				darknodes[i].ServeRPC(done)
 				darknodes[i].RunWatcher(done)
-				darknodes[i].RunEpochSwitch(done)
 			})
 		}()
 
@@ -212,16 +211,18 @@ func sendOrders(nodes Darknodes, numberOfOrders int) error {
 
 		for _, shares := range [][]*order.Fragment{buyShares, sellShares} {
 			do.CoForAll(shares, func(j int) {
+				orderFragment, err := rpc.MarshalOrderFragment(nodes[j].Config.RsaKey.PublicKey, shares[j])
+				Expect(err).Should(BeNil())
 				orderRequest := &rpc.OpenOrderRequest{
 					From: &rpc.MultiAddress{
 						Signature:    []byte{},
 						MultiAddress: trader.String(),
 					},
-					OrderFragment: rpc.MarshalOrderFragment(shares[j]),
+					OrderFragment: orderFragment,
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				err := pool.OpenOrder(ctx, nodes[j].Network.MultiAddress, orderRequest)
+				err = pool.OpenOrder(ctx, nodes[j].Network.MultiAddress, orderRequest)
 				if err != nil {
 					log.Printf("Coudln't send order fragment to %s\n", nodes[j].Network.MultiAddress.ID())
 					log.Fatal(err)

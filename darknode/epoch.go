@@ -39,17 +39,20 @@ func RunEpochProcess(done <-chan struct{}, id identity.ID, darkOcean DarkOcean, 
 			defer close(sender)
 
 			senders[address] = sender
-			receivers[address], errors[address] = router.Compute(darkOcean.Epoch, address, sender)
+			receivers[address], errors[address] = router.Compute(done, address, sender)
 		}
 
-		n := pool.Size()
-		k := (pool.Size() + 1) * 2 / 3
+		n := int64(pool.Size())
+		k := (n + 1) * 2 / 3
 		smpcer := smpc.NewComputer(id, n, k)
 
-		// Run secure multi-party computer
+		orderFragments, orderFragmentErrs := router.OrderFragments(done)
+		go dispatch.Pipe(done, orderFragmentErrs, errs)
+
 		deltaFragments := make(chan smpc.DeltaFragment)
 		close(deltaFragments)
-		deltaFragmentsComputed, deltasComputed := smpcer.ComputeOrderMatches(done, router.OrderFragments(darkOcean.Epoch), deltaFragments)
+
+		deltaFragmentsComputed, deltasComputed := smpcer.ComputeOrderMatches(done, orderFragments, deltaFragments)
 
 		dispatch.CoBegin(func() {
 

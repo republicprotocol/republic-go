@@ -1,69 +1,64 @@
 package darknode_test
 
-import (
-	"context"
-	"time"
+// . "github.com/onsi/ginkgo"
+// . "github.com/onsi/gomega"
+// . "github.com/republicprotocol/republic-go/darknode"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/republic-go/darknode"
+// var _ = Describe("Ocean", func() {
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
-	"github.com/republicprotocol/republic-go/ethereum/ganache"
-)
+// 	Context("when watching for changes to the Ocean", func() {
 
-var _ = Describe("Ocean", func() {
+// 		It("should signal changes once per epoch", func(done Done) {
+// 			defer close(done)
 
-	Context("when watching for changes to the Ocean", func() {
+// 			numberOfEpochs := 10
 
-		It("should signal changes once per epoch", func(done Done) {
-			defer close(done)
+// 			conn, err := ganache.Connect("http://localhost:8545")
+// 			Expect(err).ShouldNot(HaveOccurred())
+// 			darknodeRegistry, err := contracts.NewDarkNodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
+// 			Expect(err).ShouldNot(HaveOccurred())
+// 			darknodeRegistry.SetGasLimit(1000000)
+// 			minimumEpochInterval, err := darknodeRegistry.MinimumEpochInterval()
+// 			Expect(err).ShouldNot(HaveOccurred())
+// 			minimumEpochIntervalInSeconds, err := minimumEpochInterval.ToUint()
+// 			Expect(err).ShouldNot(HaveOccurred())
+// 			minimumEpochIntervalDuration := time.Duration(minimumEpochIntervalInSeconds) * time.Second
 
-			numberOfEpochs := 10
+// 			quit := make(chan struct{})
 
-			conn, err := ganache.Connect("http://localhost:8545")
-			Expect(err).ShouldNot(HaveOccurred())
-			darknodeRegistry, err := contracts.NewDarkNodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
-			Expect(err).ShouldNot(HaveOccurred())
-			darknodeRegistry.SetGasLimit(1000000)
-			minimumEpochInterval, err := darknodeRegistry.MinimumEpochInterval()
-			Expect(err).ShouldNot(HaveOccurred())
-			minimumEpochIntervalInSeconds, err := minimumEpochInterval.ToUint()
-			Expect(err).ShouldNot(HaveOccurred())
-			minimumEpochIntervalDuration := time.Duration(minimumEpochIntervalInSeconds) * time.Second
+// 			// Start turning epochs in the background
+// 			go func() {
+// 				defer GinkgoRecover()
 
-			quit := make(chan struct{})
+// 				t := time.NewTicker(minimumEpochIntervalDuration)
+// 				defer t.Stop()
 
-			// Start turning epochs in the background
-			go func() {
-				defer GinkgoRecover()
+// 				for {
+// 					select {
+// 					case <-quit:
+// 						return
+// 					case <-t.C:
+// 						_, err := darknodeRegistry.Epoch()
+// 						Expect(err).ShouldNot(HaveOccurred())
+// 					}
+// 				}
+// 			}()
 
-				t := time.NewTicker(minimumEpochIntervalDuration)
-				defer t.Stop()
+// 			nodes, err := darknodeRegistry.GetAllNodes()
+// 			Expect(err).Should(BeNil())
+// 			epoch, err := darknodeRegistry.CurrentEpoch()
+// 			Expect(err).Should(BeNil())
+// 			// Start watching for updates to the Ocean
+// 			ocean := NewDarkOcean(epoch.Blockhash, nodes)
+// 			changes, errs := ocean.Watch(quit)
+// 			for i := 0; i < numberOfEpochs; i++ {
+// 				Eventually(changes, 2*minimumEpochIntervalDuration).Should(Receive())
+// 			}
 
-				for {
-					select {
-					case <-quit:
-						return
-					case <-t.C:
-						_, err := darknodeRegistry.Epoch()
-						Expect(err).ShouldNot(HaveOccurred())
-					}
-				}
-			}()
+// 			close(quit)
+// 			Expect(<-errs).ShouldNot(HaveOccurred())
 
-			// Start watching for updates to the Ocean
-			ocean := NewOcean(darknodeRegistry)
-			changes, errs := ocean.Watch(quit)
-			for i := 0; i < numberOfEpochs; i++ {
-				Eventually(changes, 2*minimumEpochIntervalDuration).Should(Receive())
-			}
+// 		}, 600)
+// 	})
 
-			close(quit)
-			Expect(<-errs).ShouldNot(HaveOccurred())
-
-		}, 600)
-	})
-
-})
+// })
