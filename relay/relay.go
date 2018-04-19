@@ -14,7 +14,6 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/rpc"
-	// "github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -31,7 +30,7 @@ type Relay struct {
 }
 
 // NewRelay returns a new Relay object
-func NewRelay(keyPair identity.KeyPair, multi identity.MultiAddress, pools darknode.Pools, book orderbook.Orderbook, authToken string, bootstrapNodes []string) Relay {
+func NewRelay(keyPair identity.KeyPair, multi identity.MultiAddress, pools darknode.Pools, authToken string, bootstrapNodes []string, book orderbook.Orderbook) Relay {
 	return Relay{
 		keyPair:        keyPair,
 		multiAddress:   multi,

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/big"
 	"net/http"
 	"os/exec"
@@ -14,10 +15,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/republicprotocol/republic-go/contracts/connection"
-	"github.com/republicprotocol/republic-go/contracts/dnr"
+	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
+	"github.com/republicprotocol/republic-go/ethereum/ganache"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"
 	"github.com/republicprotocol/republic-go/rpc"
 )
@@ -44,56 +48,85 @@ func main() {
 			fmt.Println(fmt.Errorf("cannot obtain address and pools: %s", err))
 			return
 		}
-		orderbook := orderbook.NewOrderbook(100) // TODO: Check max connections
-		relayNode := relay.NewRelay(keyPair, relayAddress, pools, *token, nodeAddresses, orderbook)
+		book := orderbook.NewOrderbook(100) // TODO: Check max connections
+		relayNode := relay.NewRelay(keyPair, relayAddress, pools, *token, nodeAddresses, book)
 		r := relay.NewRouter(relayNode)
 		if err := http.ListenAndServe(*bindAddress, r); err != nil {
 			fmt.Println(fmt.Errorf("could not start router: %s", err))
 			return
 		}
-	}
 
-	// Handle orderbook synchronization
-	selfMulti, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/18415/republic/8MGzNX7M1ucyvtumVj7QYbb7wQ8UTx")
-	if err != nil {
-		fmt.Println(fmt.Errorf("could not generate multiaddress: %s", err))
-		return
+		// Handle orderbook synchronization
+		selfMulti, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/18415/republic/8MGzNX7M1ucyvtumVj7QYbb7wQ8UTx")
+		if err != nil {
+			fmt.Println(fmt.Errorf("could not generate multiaddress: %s", err))
+			return
+		}
+		clientPool := rpc.NewClientPool(selfMulti).WithTimeout(10 * time.Second).WithTimeoutBackoff(0)
+		go synchronizeOrderbook(&book, clientPool)
 	}
-	clientPool := rpc.NewClientPool(selfMulti).WithTimeout(10 * time.Second).WithTimeoutBackoff(0)
-	go synchronizeOrderbook(orderbook, clientPool)
 }
 
 // Synchronize orderbook using 3 randomly selected nodes
-func synchronizeOrderbook(orderbook *orderbook.Orderbook, clientPool *rpc.ClientPool) {
+func synchronizeOrderbook(book *orderbook.Orderbook, clientPool *rpc.ClientPool) {
 	nodes := getBootstrapNodes() // TODO: Select these randomly
-	index := 0
+	index, connections := 0, 0
 	context, cancel := context.WithCancel(context.Background())
-	// TODO: Close this?
+	defer cancel() // TODO: Check this
 	for {
-		multiaddressString := nodes[index % len(nodes)]
-		index++
-		multi := identity.NewMultiAddressFromString(multiaddressString)
-		blocks, errs := clientPool.Sync(context, *multi)
+		// If there are at least 3 connections, try again in 10 seconds
+		if connections >= 3 {
+			time.Sleep(10 * time.Second)
+			break
+		}
+		// TODO: Handle disconnected nodes
+		multiaddressString := nodes[index%len(nodes)]
+		index, connections = index+1, connections+1
+		multi, err := identity.NewMultiAddressFromString(multiaddressString)
+		if err != nil {
+			fmt.Println(fmt.Errorf("unable to convert string %s to multiaddress: %s", multiaddressString, err))
+		}
+		blocks, errs := clientPool.Sync(context, multi)
 		select {
+		case err, ok := <-errs:
+			if !ok {
+				break
+			}
 			if err != nil {
-			case err := <-errs:
-				fmt.Println(fmt.Errorf("error when trying to sync client pool: %s", err)
+				fmt.Println(fmt.Errorf("error when trying to sync client pool: %s", err))
 			}
 		case block, ok := <-blocks:
 			if !ok {
 				break
 			}
+			var epochHash [32]byte
+			if len(block.EpochHash) == 32 {
+				copy(epochHash[:], block.EpochHash[:32])
+			} else {
+				fmt.Println("size of epoch hash is invalid")
+				break
+			}
 			switch block.OrderBlock.(type) {
 			case *rpc.SyncBlock_Open:
-				ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Open).Open)
+				ord := rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Open).Open)
+				entry := orderbook.NewEntry(ord, order.Open, epochHash)
+				book.Open(entry)
 			case *rpc.SyncBlock_Confirmed:
-				ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Confirmed).Confirmed)
+				ord := rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Confirmed).Confirmed)
+				entry := orderbook.NewEntry(ord, order.Confirmed, epochHash)
+				book.Confirm(entry)
 			case *rpc.SyncBlock_Unconfirmed:
-				ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Unconfirmed).Unconfirmed)
+				ord := rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Unconfirmed).Unconfirmed)
+				entry := orderbook.NewEntry(ord, order.Unconfirmed, epochHash)
+				book.Match(entry)
 			case *rpc.SyncBlock_Canceled:
-				ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Canceled).Canceled)
+				ord := rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Canceled).Canceled)
+				entry := orderbook.NewEntry(ord, order.Canceled, epochHash)
+				book.Release(entry)
 			case *rpc.SyncBlock_Settled:
-				ord = rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Settled).Settled)
+				ord := rpc.UnmarshalOrder(block.OrderBlock.(*rpc.SyncBlock_Settled).Settled)
+				entry := orderbook.NewEntry(ord, order.Settled, epochHash)
+				book.Settle(entry)
 			default:
 				log.Printf("unknown order status, %t", block.OrderBlock)
 			}
@@ -102,7 +135,7 @@ func synchronizeOrderbook(orderbook *orderbook.Orderbook, clientPool *rpc.Client
 	}
 }
 
-func getRelayAddressAndDarkPools(keyFile, passphrase string, port int) (identity.KeyPair, identity.MultiAddress, dark.Pools, error) {
+func getRelayAddressAndDarkPools(keyFile, passphrase string, port int) (identity.KeyPair, identity.MultiAddress, darknode.Pools, error) {
 	// Get key and traderMultiAddress
 	keyPair, key, multiAddress, err := getKeyPairAndAddress(keyFile, passphrase, port)
 	if err != nil {
@@ -163,38 +196,20 @@ func getKeyPairAndAddress(filename, passphrase string, port int) (identity.KeyPa
 	return id, key, traderMultiAddress, nil
 }
 
-func getDarkPools(key *keystore.Key) (dark.Pools, error) {
-	// Logger
-	logs, err := getLogger()
-	if err != nil {
-		return nil, fmt.Errorf("cannot get logger: %v", err)
-	}
-
-	// Get Dark Node Registry
-	clientDetails, err := connection.FromURI("https://ropsten.infura.io/", connection.ChainRopsten)
-	if err != nil {
-		return nil, fmt.Errorf("cannot fetch dark node registry: %v", err)
-	}
+func getDarkPools(key *keystore.Key) (darknode.Pools, error) {
+	conn, err := ganache.Connect("http://localhost:8545")
 
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot fetch dark node registry: %v", err)
 	}
 
-	// Gas price
 	auth.GasPrice = big.NewInt(6000000000)
-
-	registrar, err := dnr.NewDarkNodeRegistry(context.Background(), &clientDetails, auth, &bind.CallOpts{})
+	registrar, err := contracts.NewDarkNodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("cannot fetch dark node registry: %v", err)
 	}
-
-	// print(registrar.client)
-	// Get the Dark Ocean
-	ocean, err := dark.NewOcean(logs, 5, registrar)
-	if err != nil {
-		return nil, fmt.Errorf("cannot read dark ocean: %v", err)
-	}
+	ocean := darknode.NewOcean(registrar)
 
 	// Return the dark pools
 	return ocean.GetPools(), nil
