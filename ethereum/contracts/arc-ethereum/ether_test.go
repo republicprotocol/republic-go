@@ -3,7 +3,6 @@ package arc_ethereum_test
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 )
 
 var _ = Describe("ether", func() {
+
 	var alice, bob *bind.TransactOpts
 	var aliceAddr, bobAddr common.Address
 	var conn client.Connection
@@ -36,13 +36,12 @@ var _ = Describe("ether", func() {
 		alice.GasLimit = 3000000
 		bob, bobAddr, err = ganache.NewAccount(conn, big.NewInt(10))
 		Expect(err).ShouldNot(HaveOccurred())
-
-		fmt.Printf("Alice: %v\n", aliceAddr)
-		fmt.Printf("Bobsa: %v\n", bobAddr)
-		Expect(common.BytesToAddress(aliceAddr.Bytes())).Should(Equal(aliceAddr))
+		bob.GasLimit = 3000000
 
 		value = big.NewInt(10)
 		validity = int64(time.Hour * 24)
+
+		swapID[0] = 0x13
 	})
 
 	It("can perform ETH-ETH arc swap", func() {
@@ -56,9 +55,8 @@ var _ = Describe("ether", func() {
 			aliceArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, alice, common.Address{}, swapID)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			aliceSecret := []byte("the secret")
+			aliceSecret = []byte{1, 3, 3, 7}
 			secretHash = sha256.Sum256(aliceSecret)
-			fmt.Printf("secret: %v\n", secretHash)
 			err = aliceArc.Initiate(secretHash, bobAddr.Bytes(), value, validity)
 			Expect(err).ShouldNot(HaveOccurred())
 			aliceArcAddress = aliceArc.EthereumArcData.ContractAddress
@@ -70,7 +68,6 @@ var _ = Describe("ether", func() {
 
 			_secretHash, _, to, _value, _, err := aliceArc.Audit()
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(_secretHash).Should(Equal(secretHash))
 			Expect(to).Should(Equal(bobAddr.Bytes()))
 			Expect(_value).Should(Equal(value))
 			// Expect(_expiry.Int64()).Should(Equal(expiry))
@@ -86,15 +83,12 @@ var _ = Describe("ether", func() {
 			bobArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, alice, bobArcAddress, swapID)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			secretHash := sha256.Sum256(aliceSecret[:])
-
 			_secretHash, _, to, _value, _, err := bobArc.Audit()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(_secretHash).Should(Equal(secretHash))
 			Expect(to).Should(Equal(aliceAddr.Bytes()))
 			Expect(to).Should(Equal(aliceAddr.Bytes()))
 			Expect(_value).Should(Equal(value))
-			// Expect(_expiry.Int64()).Should(Equal(expiry))
 
 			err = bobArc.Redeem(aliceSecret)
 			Expect(err).ShouldNot(HaveOccurred())
