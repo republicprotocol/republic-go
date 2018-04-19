@@ -10,6 +10,7 @@ import (
 func Wait(chs ...chan struct{}) {
 	for _, ch := range chs {
 		for range ch {
+			// Pass
 		}
 	}
 }

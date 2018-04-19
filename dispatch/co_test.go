@@ -3,13 +3,42 @@ package dispatch_test
 import (
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/dispatch"
 )
 
-var _ = FDescribe("Concurrency", func() {
+var _ = Describe("Concurrency", func() {
+
+	Context("when using cobegin", func() {
+
+		It("should block until all goroutines terminate", func() {
+			start := time.Now()
+			CoBegin(func() {
+				time.Sleep(1 * time.Second)
+			})
+			end := time.Now()
+			Expect(end.Sub(start).Seconds() >= 1).Should(BeTrue())
+		})
+
+		It("should wait for multiple functions to end", func() {
+			start := time.Now()
+			CoBegin(func() {
+				time.Sleep(250 * time.Millisecond)
+			}, func() {
+				time.Sleep(500 * time.Millisecond)
+			}, func() {
+				time.Sleep(750 * time.Millisecond)
+			}, func() {
+				time.Sleep(1 * time.Second)
+			})
+			end := time.Now()
+			Expect(end.Sub(start).Seconds() >= 1).Should(BeTrue())
+		})
+
+	})
 
 	Context("when using coforall loops", func() {
 
