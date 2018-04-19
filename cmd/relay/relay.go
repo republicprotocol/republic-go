@@ -19,7 +19,6 @@ import (
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/ethereum/ganache"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"
@@ -43,11 +42,38 @@ func main() {
 			flag.Usage()
 			return
 		}
-		keyPair, relayAddress, pools, err := getRelayAddressAndDarkPools(*keystore, *passphrase, *port)
+
+		key, err := getKey(*keystore, *passphrase)
+		if err != nil {
+			fmt.Println(fmt.Errorf("cannot get key: %s", err))
+			return
+		}
+
+		keyPair, err := getKeyPair(key)
+		if err != nil {
+			fmt.Println(fmt.Errorf("cannot get keypair: %s", err))
+			return
+		}
+
+		relayAddress, err := getRelayMultiaddress(keyPair, *port)
+		if err != nil {
+			fmt.Println(fmt.Errorf("cannot get multiaddress: %s", err))
+			return
+		}
+
+		registrar, err := getRegistrar(key)
+		if err != nil {
+			fmt.Println(fmt.Errorf("cannot create registrar: %s", err))
+			return
+		}
+
+		pools, err := getDarkPools(key, registrar)
 		if err != nil {
 			fmt.Println(fmt.Errorf("cannot obtain address and pools: %s", err))
 			return
 		}
+
+		// Create relay node
 		book := orderbook.NewOrderbook(100) // TODO: Check max connections
 		relayNode := relay.NewRelay(keyPair, relayAddress, pools, *token, nodeAddresses, book)
 		r := relay.NewRouter(relayNode)
@@ -57,18 +83,18 @@ func main() {
 		}
 
 		// Handle orderbook synchronization
-		selfMulti, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/18415/republic/8MGzNX7M1ucyvtumVj7QYbb7wQ8UTx")
+		multi, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/18415/republic/8MGzNX7M1ucyvtumVj7QYbb7wQ8UTx")
 		if err != nil {
 			fmt.Println(fmt.Errorf("could not generate multiaddress: %s", err))
 			return
 		}
-		clientPool := rpc.NewClientPool(selfMulti).WithTimeout(10 * time.Second).WithTimeoutBackoff(0)
-		go synchronizeOrderbook(&book, clientPool)
+		clientPool := rpc.NewClientPool(multi, keyPair).WithTimeout(10 * time.Second).WithTimeoutBackoff(0)
+		go synchronizeOrderbook(&book, clientPool, registrar)
 	}
 }
 
 // Synchronize orderbook using 3 randomly selected nodes
-func synchronizeOrderbook(book *orderbook.Orderbook, clientPool *rpc.ClientPool) {
+func synchronizeOrderbook(book *orderbook.Orderbook, clientPool *rpc.ClientPool, registrar contracts.DarkNodeRegistry) {
 	nodes := getBootstrapNodes() // TODO: Select these randomly
 	index, connections := 0, 0
 	context, cancel := context.WithCancel(context.Background())
@@ -103,7 +129,7 @@ func synchronizeOrderbook(book *orderbook.Orderbook, clientPool *rpc.ClientPool)
 			if len(block.EpochHash) == 32 {
 				copy(epochHash[:], block.EpochHash[:32])
 			} else {
-				fmt.Println("size of epoch hash is invalid")
+				fmt.Println(fmt.Errorf("epoch hash is required to be exactly 32 bytes (%d)", len(block.EpochHash)))
 				break
 			}
 			switch block.OrderBlock.(type) {
@@ -130,89 +156,73 @@ func synchronizeOrderbook(book *orderbook.Orderbook, clientPool *rpc.ClientPool)
 			default:
 				log.Printf("unknown order status, %t", block.OrderBlock)
 			}
-			// TODO: Send order to orderbook.
 		}
 	}
 }
 
-func getRelayAddressAndDarkPools(keyFile, passphrase string, port int) (identity.KeyPair, identity.MultiAddress, darknode.Pools, error) {
-	// Get key and traderMultiAddress
-	keyPair, key, multiAddress, err := getKeyPairAndAddress(keyFile, passphrase, port)
-	if err != nil {
-		return (identity.KeyPair{}), (identity.MultiAddress{}), nil, err
-	}
-
-	// Get dark pools
-	pools, err := getDarkPools(key)
-	if err != nil {
-		return (identity.KeyPair{}), (identity.MultiAddress{}), nil, err
-	}
-
-	return keyPair, multiAddress, pools, nil
-}
-
-func getLogger() (*logger.Logger, error) {
-	return logger.NewLogger(logger.Options{
-		Plugins: []logger.PluginOptions{
-			logger.PluginOptions{
-				File: &logger.FilePluginOptions{
-					Path: "stdout",
-				},
-			},
-		}})
-}
-
-// Returns key and multi address
-func getKeyPairAndAddress(filename, passphrase string, port int) (identity.KeyPair, *keystore.Key, identity.MultiAddress, error) {
-
-	// Get our IP address
-	ipInfoOut, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
-	if err != nil {
-		return (identity.KeyPair{}), nil, (identity.MultiAddress{}), err
-	}
-	ipAddress := strings.Trim(string(ipInfoOut), "\n ")
-
-	// Read data from keystore file and generate the key
-	encryptedKey, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return (identity.KeyPair{}), nil, (identity.MultiAddress{}), fmt.Errorf("cannot read keystore file: %v", err)
-	}
-
-	key, err := keystore.DecryptKey(encryptedKey, passphrase)
-	if err != nil {
-		return (identity.KeyPair{}), nil, (identity.MultiAddress{}), fmt.Errorf("cannot decrypt key with provided passphrase: %v", err)
-	}
-
-	id, err := identity.NewKeyPairFromPrivateKey(key.PrivateKey)
-	if err != nil {
-		return (identity.KeyPair{}), nil, (identity.MultiAddress{}), fmt.Errorf("cannot generate id from key %v", err)
-	}
-
-	traderMultiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", ipAddress, strconv.Itoa(port), id.Address().String()))
-	if err != nil {
-		return (identity.KeyPair{}), nil, (identity.MultiAddress{}), fmt.Errorf("cannot obtain trader multi address %v", err)
-	}
-
-	return id, key, traderMultiAddress, nil
-}
-
-func getDarkPools(key *keystore.Key) (darknode.Pools, error) {
-	conn, err := ganache.Connect("http://localhost:8545")
-
-	auth := bind.NewKeyedTransactor(key.PrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("cannot fetch dark node registry: %v", err)
-	}
-
-	auth.GasPrice = big.NewInt(6000000000)
-	registrar, err := contracts.NewDarkNodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
-	if err != nil {
-		return nil, fmt.Errorf("cannot fetch dark node registry: %v", err)
-	}
+func getDarkPools(key *keystore.Key, registrar contracts.DarkNodeRegistry) (darknode.Pools, error) {
 	ocean := darknode.NewOcean(registrar)
 
 	// Return the dark pools
 	return ocean.GetPools(), nil
+}
+
+func getKey(filename, passphrase string) (*keystore.Key, error) {
+	// Read data from keystore file and generate the key
+	encryptedKey, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read keystore file: %v", err)
+	}
+
+	key, err := keystore.DecryptKey(encryptedKey, passphrase)
+	if err != nil {
+		return nil, fmt.Errorf("cannot decrypt key with provided passphrase: %v", err)
+	}
+
+	return key, nil
+}
+
+func getKeyPair(key *keystore.Key) (identity.KeyPair, error) {
+	id, err := identity.NewKeyPairFromPrivateKey(key.PrivateKey)
+	if err != nil {
+		return identity.KeyPair{}, fmt.Errorf("cannot generate id from key %v", err)
+	}
+
+	return id, nil
+}
+
+func getRelayMultiaddress(id identity.KeyPair, port int) (identity.MultiAddress, error) {
+	// Get our IP address
+	ipInfoOut, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
+	if err != nil {
+		return identity.MultiAddress{}, err
+	}
+	ipAddress := strings.Trim(string(ipInfoOut), "\n ")
+
+	relayMultiaddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", ipAddress, strconv.Itoa(port), id.Address().String()))
+	if err != nil {
+		return identity.MultiAddress{}, fmt.Errorf("cannot obtain trader multi address %v", err)
+	}
+
+	return relayMultiaddress, nil
+}
+
+func getRegistrar(key *keystore.Key) (contracts.DarkNodeRegistry, error) {
+	// Handle the creation of the Darknode registrar
+	conn, err := ganache.Connect("http://localhost:8545")
+	auth := bind.NewKeyedTransactor(key.PrivateKey)
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot fetch dark node registry: %s", err))
+		return contracts.DarkNodeRegistry{}, err
+	}
+	auth.GasPrice = big.NewInt(6000000000)
+	registrar, err := contracts.NewDarkNodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot fetch dark node registry: %s", err))
+		return contracts.DarkNodeRegistry{}, err
+	}
+
+	return registrar, nil
 }
 
 // TODO: (temporary hard-coded bootstrap nodes) Fetch from a config file.
