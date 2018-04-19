@@ -1,4 +1,4 @@
-package ethereum_test
+package arc_ethereum_test
 
 import (
 	"testing"

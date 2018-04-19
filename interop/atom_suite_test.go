@@ -1,4 +1,4 @@
-package atom_test
+package interop_test
 
 import (
 	"testing"
