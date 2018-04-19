@@ -48,11 +48,12 @@ type Connection struct {
 	Client     Client
 	RenAddress common.Address
 	DNRAddress common.Address
+	HDEAddress  common.Address
 	Network    Network
 }
 
 // Connect to a URI.
-func Connect(uri string, network Network, republicTokenAddress, darkNodeRegistryAddress string) (Connection, error) {
+func Connect(uri string, network Network, republicTokenAddress, darkNodeRegistryAddress, hyperdriveRegistry string) (Connection, error) {
 	if uri == "" {
 		switch network {
 		case NetworkGanache:
@@ -78,6 +79,18 @@ func Connect(uri string, network Network, republicTokenAddress, darkNodeRegistry
 		case NetworkGanache:
 			darkNodeRegistryAddress = DarkNodeRegistryAddressOnGanache.String()
 		case NetworkRopsten:
+			darkNodeRegistryAddress = DarkNodeRegistryAddressOnRopsten.String()
+		default:
+			return Connection{}, fmt.Errorf("cannot connect to %s: unsupported", network)
+		}
+	}
+	if hyperdriveRegistry == "" {
+		switch network {
+		case NetworkGanache:
+			// fixme
+			darkNodeRegistryAddress = DarkNodeRegistryAddressOnGanache.String()
+		case NetworkRopsten:
+			// fixme
 			darkNodeRegistryAddress = DarkNodeRegistryAddressOnRopsten.String()
 		default:
 			return Connection{}, fmt.Errorf("cannot connect to %s: unsupported", network)

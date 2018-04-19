@@ -112,21 +112,29 @@ func genesis() (*ecdsa.PrivateKey, *bind.TransactOpts) {
 
 func deployContracts(conn client.Connection, transactor *bind.TransactOpts) error {
 
+	 // Deploy contracts
 	_, republicTokenAddress, err := deployRepublicToken(context.Background(), conn, transactor)
 	if err != nil {
 		return err
 	}
-
 	_, darkNodeRegistryAddress, err := deployDarkNodeRegistry(context.Background(), conn, transactor, republicTokenAddress)
 	if err != nil {
 		return err
 	}
+	_, hyperdriveRegistryAdrress, err := deployHyperdriveRegistry(context.Background(), conn, transactor)
+	if err != nil {
+		return err
+	}
 
+	// Check contract address
 	if republicTokenAddress != client.RepublicTokenAddressOnGanache {
 		return fmt.Errorf("RepublicToken address has changed: expected: %s, got: %s", client.RepublicTokenAddressOnGanache.Hex(), republicTokenAddress.Hex())
 	}
 	if darkNodeRegistryAddress != client.DarkNodeRegistryAddressOnGanache {
 		return fmt.Errorf("DarkNodeRegistry address has changed: expected: %s, got: %s", client.DarkNodeRegistryAddressOnGanache.Hex(), darkNodeRegistryAddress.Hex())
+	}
+	if hyperdriveRegistryAdrress != client.HyperDriveRegistryAdreessOnGanache {
+		return fmt.Errorf("HyperdriveRegistry address has changed: expected: %s, got: %s", client.HyperDriveRegistryAdreessOnGanache.Hex(), hyperdriveRegistryAdrress.Hex())
 	}
 
 	return nil
@@ -134,6 +142,18 @@ func deployContracts(conn client.Connection, transactor *bind.TransactOpts) erro
 
 func deployRepublicToken(ctx context.Context, conn client.Connection, auth *bind.TransactOpts) (*bindings.RepublicToken, common.Address, error) {
 	address, tx, ren, err := bindings.DeployRepublicToken(auth, conn.Client)
+	if err != nil {
+		return nil, common.Address{}, fmt.Errorf("cannot deploy RepublicToken: %v", err)
+	}
+	conn.PatchedWaitDeployed(ctx, tx)
+	return ren, address, nil
+}
+
+func deployHyperdriveRegistry(ctx context.Context, conn client.Connection, auth *bind.TransactOpts) (*bindings.HyperdriveEpoch, common.Address, error) {
+	// 1 second
+	minimumEpochInterval := big.NewInt(1)
+
+	address, tx, ren, err := bindings.DeployHyperdriveEpoch(auth, conn.Client, minimumEpochInterval)
 	if err != nil {
 		return nil, common.Address{}, fmt.Errorf("cannot deploy RepublicToken: %v", err)
 	}
