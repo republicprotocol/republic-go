@@ -3,7 +3,6 @@ package darknode
 import (
 	"bytes"
 	"errors"
-	"fmt"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -24,7 +23,6 @@ func NewDarkOcean(epoch [32]byte, darknodes [][]byte) DarkOcean {
 		addresses: identity.Addresses{},
 	}
 	for i := range darknodes {
-		fmt.Printf("Susruth, it is a fucking %T", i)
 		pool.addresses = append(pool.addresses, identity.ID(darknodes[i]).Address())
 	}
 	copy(pool.id[:], crypto.Keccak256(darknodes...))

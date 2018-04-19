@@ -3,13 +3,10 @@ package darknode
 import (
 	"context"
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/rpc"
-	"google.golang.org/grpc"
 
 	"github.com/republicprotocol/republic-go/smpc"
 
@@ -31,7 +28,7 @@ type Darknode struct {
 	multiAddress identity.MultiAddress
 
 	darknodeRegistry contracts.DarkNodeRegistry
-	router           Router
+	router           *Router
 }
 
 // NewDarknode returns a new Darknode.
@@ -69,7 +66,7 @@ func NewDarknode(config Config) (Darknode, error) {
 		return Darknode{}, err
 	}
 	node.darknodeRegistry = darknodeRegistry
-	node.router = NewRouter(100, node.address, node.multiAddress)
+	node.router = NewRouter(100, node.multiAddress, config.Network)
 
 	return node, nil
 }
@@ -82,9 +79,6 @@ func (node *Darknode) ServeRPC(done <-chan struct{}) <-chan error {
 	go func() {
 		defer close(errs)
 
-	
-
-		
 	}()
 
 	time.Sleep(2 * time.Second)

@@ -17,7 +17,7 @@ import (
 // which Darknodes cooperate to match orders by receiving order.Fragments from
 // traders, performing secure multi-party computations. The EpochProcess uses a
 // DarkOcean to determine the epoch, and a Router to receive messages.
-func RunEpochProcess(done <-chan struct{}, id identity.ID, darkOcean DarkOcean, router Router) (<-chan smpc.Delta, <-chan error) {
+func RunEpochProcess(done <-chan struct{}, id identity.ID, darkOcean DarkOcean, router *Router) (<-chan smpc.Delta, <-chan error) {
 	deltas := make(chan smpc.Delta)
 	errs := make(chan error, 1)
 

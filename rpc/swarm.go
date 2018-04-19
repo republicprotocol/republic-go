@@ -33,8 +33,8 @@ type SwarmService struct {
 }
 
 // NewSwarmService returns a SwarmService.
-func NewSwarmService(options Options, clientPool *ClientPool, dht *dht.DHT, logger *logger.Logger) *SwarmService {
-	return &SwarmService{
+func NewSwarmService(options Options, clientPool *ClientPool, dht *dht.DHT, logger *logger.Logger) SwarmService {
+	return SwarmService{
 		Options:    options,
 		ClientPool: clientPool,
 		DHT:        dht,
