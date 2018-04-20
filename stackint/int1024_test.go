@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/republicprotocol/republic-go/stackint"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/stackint"
@@ -276,6 +278,33 @@ var _ = Describe("Int1024", func() {
 			bigint = bigint.Add(bigint, big.NewInt(1))
 			_, err := FromBigInt(bigint)
 			Ω(err).ShouldNot(BeNil())
+		})
+	})
+
+	Context("when marshaling to JSON", func() {
+		int1024 := MAXINT1024()
+
+		It("should encode and then decode to the same value", func() {
+			data, err := int1024.MarshalJSON()
+			Ω(err).ShouldNot(HaveOccurred())
+			newInt1024 := new(stackint.Int1024)
+			err = newInt1024.UnmarshalJSON(data)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(*newInt1024).Should(Equal(int1024))
+		})
+
+		It("should return error for invalid json", func() {
+			data := []byte("{\"valid\": \"false\"}")
+			newInt1024 := new(stackint.Int1024)
+			err := newInt1024.UnmarshalJSON(data)
+			Ω(err).Should(HaveOccurred())
+		})
+
+		It("should return error for invalid stackint", func() {
+			data := []byte("\"//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=\"")
+			newInt1024 := new(stackint.Int1024)
+			err := newInt1024.UnmarshalJSON(data)
+			Ω(err).Should(HaveOccurred())
 		})
 	})
 })
