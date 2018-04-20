@@ -282,7 +282,7 @@ var _ = Describe("Int1024", func() {
 	})
 
 	Context("when marshaling to JSON", func() {
-		int1024 := MAXINT1024()
+		int1024 := HalfMax()
 
 		It("should encode and then decode to the same value", func() {
 			data, err := int1024.MarshalJSON()
