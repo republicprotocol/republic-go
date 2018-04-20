@@ -290,7 +290,7 @@ func (x *Int1024) NOT() Int1024 {
 	return z
 }
 
-// BitLength returns the number bits required to represent x (equivalent to len(x.ToBinary()))
+// BitLength returns the length of x in bits (returns 0 for zero)
 func (x *Int1024) BitLength() int {
 	if x.length == 0 {
 		return 0

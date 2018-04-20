@@ -179,6 +179,7 @@ func (x *Int1024) Bytes() []byte {
 		i++
 	}
 	buf := make([]byte, i)
+
 	var k uint16
 	for k = 0; k < x.length; k++ {
 		d := x.words[k]
@@ -205,6 +206,15 @@ func FromBytes(bytesAll []byte) (Int1024, error) {
 // SetBytes deserializes an array of BYTECOUNT (128) bytes in place
 // (Big Endian)
 func (x *Int1024) SetBytes(bytesAll []byte) error {
+
+	leadingZeros := 0
+	for i, b := range bytesAll {
+		if b != 0 {
+			break
+		}
+		leadingZeros = i
+	}
+	bytesAll = bytesAll[leadingZeros:]
 
 	numWords := len(bytesAll) / 8
 	if len(bytesAll) > 0 && len(bytesAll)%8 != 0 {
@@ -242,75 +252,77 @@ func (x *Int1024) SetBytes(bytesAll []byte) error {
 	return nil
 }
 
-// LittleEndianBytes returns an array of BYTECOUNT (128) bytes (Little Endian)
-func (x *Int1024) LittleEndianBytes() []byte {
+// // LittleEndianBytes returns an array of BYTECOUNT (128) bytes (Little Endian)
+// func (x *Int1024) LittleEndianBytes() []byte {
 
-	bitlen := x.BitLength()
-	i := uint16(bitlen / 8)
-	if bitlen%8 > 0 {
-		i++
-	}
-	buf := make([]byte, i)
+// 	bitlen := x.BitLength()
+// 	i := uint16(bitlen / 8)
+// 	if bitlen%8 > 0 {
+// 		i++
+// 	}
+// 	buf := make([]byte, i)
 
-	var index uint16
-	var k uint16
-	for k = 0; k < x.length; k++ {
-		d := x.words[k]
-		for j := 0; j < asm.S && d > 0; j++ {
-			if d > 0 {
-				buf[index] = byte(d)
-			}
-			d >>= 8
-			index++
-		}
-	}
-	return buf
-}
+// 	var index uint16
+// 	var k uint16
+// 	for k = 0; k < x.length; k++ {
+// 		d := x.words[k]
+// 		for j := 0; j < asm.S && d > 0; j++ {
+// 			if d > 0 {
+// 				buf[index] = byte(d)
+// 			}
+// 			d >>= 8
+// 			index++
+// 		}
+// 	}
+// 	return buf
+// }
 
-// SetLittleEndianBytes deserializes an array of 128 bytes to an Int1024
-// (LittleBig Endian)
-func FromLittleEndianBytes(bytesAll []byte) (Int1024, error) {
-	x := Zero()
-	err := x.SetLittleEndianBytes(bytesAll)
-	return x, err
-}
+// // SetLittleEndianBytes deserializes an array of 128 bytes to an Int1024
+// // (LittleBig Endian)
+// func FromLittleEndianBytes(bytesAll []byte) (Int1024, error) {
+// 	x := Zero()
+// 	err := x.SetLittleEndianBytes(bytesAll)
+// 	return x, err
+// }
 
-// SetLittleEndianBytes deserializes an array of 128 bytes to an Int1024
-// (LittleBig Endian)
-func (x *Int1024) SetLittleEndianBytes(bytesAll []byte) error {
+// // SetLittleEndianBytes deserializes an array of 128 bytes to an Int1024
+// // (LittleBig Endian)
+// func (x *Int1024) SetLittleEndianBytes(bytesAll []byte) error {
 
-	len := len(bytesAll)
+// 	fmt.Println(bytesAll)
+// 	len := len(bytesAll)
 
-	if len == 0 {
-		return nil
-	}
+// 	if len == 0 {
+// 		return nil
+// 	}
 
-	numWords := len / 8
-	if len%8 != 0 {
-		numWords++
-	}
+// 	numWords := len / 8
+// 	if len%8 != 0 {
+// 		numWords++
+// 	}
 
-	if numWords > INT1024WORDS {
-		return errors.New("bytes array too long")
-	}
+// 	if numWords > INT1024WORDS {
+// 		return errors.New("bytes array too long")
+// 	}
 
-	for i := 0; i < numWords; i++ {
-		b8 := make([]byte, 8)
-		last := (i + 1) * 8
-		if last > len {
-			last = len
-		}
-		copy(b8, bytesAll[i*8:last])
-		x.words[i] = asm.Word(binary.LittleEndian.Uint64(b8))
-	}
-	for i := numWords; i < INT1024WORDS; i++ {
-		x.words[i] = 0
-	}
+// 	for i := 0; i < numWords; i++ {
+// 		b8 := make([]byte, 8)
+// 		last := (i + 1) * 8
+// 		if last > len {
+// 			last = len
+// 		}
+// 		copy(b8, bytesAll[i*8:last])
+// 		x.words[i] = asm.Word(binary.LittleEndian.Uint64(b8))
+// 	}
+// 	for i := numWords; i < INT1024WORDS; i++ {
+// 		x.words[i] = 0
+// 	}
 
-	x.length = uint16(numWords)
+// 	x.length = uint16(numWords)
+// 	fmt.Println(x)
 
-	return nil
-}
+// 	return nil
+// }
 
 // MarshalJSON implements the json.Marshaler interface.
 func (x *Int1024) MarshalJSON() ([]byte, error) {
