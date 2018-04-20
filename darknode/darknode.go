@@ -5,18 +5,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/republicprotocol/republic-go/orderbook"
-
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/logger"
-
-	"github.com/republicprotocol/republic-go/smpc"
-
-	"github.com/republicprotocol/republic-go/identity"
-
+	"github.com/republicprotocol/republic-go/orderbook"
+	// "github.com/republicprotocol/republic-go/order"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/smpc"
 )
 
 type Darknodes []Darknode

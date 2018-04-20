@@ -1,37 +1,103 @@
 package relay_test
 
 import (
+	"log"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/contracts/dnr"
+	
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/ethereum/ganache"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
-var _ = Describe("HTTP handlers", func() {
-	var err error
-	epochDNR, err = dnr.TestnetDNR(nil)
-	if err != nil {
-		panic(err)
-	}
-	Context("when posting orders", func() {
+const (
+	GanacheRPC                 = "http://localhost:8545"
+	NumberOfDarkNodes          = 5
+	NumberOfBootstrapDarkNodes = 5
+	NumberOfOrders             = 1
+)
 
-		It("should return 400 for empty request bodies", func() {
-			pools, trader := getPoolsAndTrader()
+var _ = Describe("HTTP handlers", func() {
+	connection, err := ganache.Connect(GanacheRPC)
+	log.Println(err)
+	// Ω(err).ShouldNot(HaveOccurred())
+	epochDNR, err = contracts.NewDarkNodeRegistry(context.Background(), connection, ganache.GenesisTransactor(), &bind.CallOpts{})
+	// Ω(err).ShouldNot(HaveOccurred())
+	log.Println(err)
+	epochDNR.SetGasLimit(1000000)
+
+	Context("when handling authentication", func() {
+
+		It("should return 401 for unauthorized tokens", func() {
+
+			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
+			r.Header.Set("Authorization", "Bearer token test")
+			w := httptest.NewRecorder()
+
+			handler := relay.RecoveryHandler(relay.AuthorizationHandler(relay.OpenOrdersHandler((relay.Relay{})), "token"))
+			handler.ServeHTTP(w, r)
+
+			Ω(w.Code).Should(Equal(http.StatusUnauthorized))
+		})
+
+		It("should return 401 for authorization headers that are not Bearer type", func() {
+
+			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
+			r.Header.Set("Authorization", "Not-Bearer token")
+			w := httptest.NewRecorder()
+
+			handler := relay.RecoveryHandler(relay.AuthorizationHandler(relay.OpenOrdersHandler((relay.Relay{})), "token"))
+			handler.ServeHTTP(w, r)
+
+			Ω(w.Code).Should(Equal(http.StatusUnauthorized))
+		})
+
+		It("should return 401 for requests without headers", func() {
 
 			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
+			handler := relay.RecoveryHandler(relay.AuthorizationHandler(relay.OpenOrdersHandler((relay.Relay{})), "token"))
+			handler.ServeHTTP(w, r)
+
+			Ω(w.Code).Should(Equal(http.StatusUnauthorized))
+		})
+
+		// It("should return 200 for authorized tokens", func() {
+
+		// 	r := httptest.NewRequest("POST", "http://localhost/orders", nil)
+		// 	r.Header.Set("Authorization", "Bearer token")
+		// 	w := httptest.NewRecorder()
+
+		// 	handler := RecoveryHandler(AuthorizationHandler(OpenOrdersHandler((identity.MultiAddress{}), nil), "token"))
+		// 	handler.ServeHTTP(w, r)
+
+		// 	Ω(w.Code).Should(Equal(http.StatusOK))
+		// })
+	})
+
+	Context("when posting orders", func() {
+
+		It("should return 400 for empty request bodies", func() {
+			// pools, trader := getPoolsAndTrader()
+
+			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
+			w := httptest.NewRecorder()
+
+			relayNode := relay.Relay{}
+			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(relayNode))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))
@@ -39,7 +105,7 @@ var _ = Describe("HTTP handlers", func() {
 		})
 
 		It("should return 201 for full orders", func() {
-			pools, trader := getPoolsAndTrader()
+			// pools, trader := getPoolsAndTrader()
 
 			fullOrder := getFullOrder()
 
@@ -52,7 +118,8 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
+			relayNode := relay.Relay{}
+			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(relayNode))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusCreated))
@@ -82,7 +149,7 @@ var _ = Describe("HTTP handlers", func() {
 		// })
 
 		It("should return 400 for malformed orders", func() {
-			pools, trader := getPoolsAndTrader()
+			// pools, trader := getPoolsAndTrader()
 
 			incorrectOrder := []byte("this is not an order or an order fragment")
 			s, _ := json.Marshal(incorrectOrder)
@@ -91,7 +158,8 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
+			relayNode := relay.Relay{}
+			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(relayNode))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))
@@ -99,7 +167,7 @@ var _ = Describe("HTTP handlers", func() {
 		})
 
 		It("should return 400 for empty order constructs", func() {
-			pools, trader := getPoolsAndTrader()
+			// pools, trader := getPoolsAndTrader()
 
 			sendOrder := relay.OpenOrderRequest{}
 			sendOrder.Order = order.Order{}
@@ -112,7 +180,8 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
+			relayNode := relay.Relay{}
+			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(relayNode))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))
@@ -173,7 +242,7 @@ var _ = Describe("HTTP handlers", func() {
 
 	Context("when cancelling orders", func() {
 		It("should return 410 for cancel order requests", func() {
-			pools, trader := getPoolsAndTrader()
+			// pools, trader := getPoolsAndTrader()
 
 			cancelRequest := relay.CancelOrderRequest{}
 			cancelRequest.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
@@ -184,14 +253,15 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.CancelOrderHandler(trader, pools))
+			relayNode := relay.Relay{}
+			handler := relay.RecoveryHandler(relay.CancelOrderHandler(relayNode))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusGone))
 		})
 
 		It("should return 400 for malformed cancel order requests", func() {
-			pools, trader := getPoolsAndTrader()
+			// pools, trader := getPoolsAndTrader()
 
 			cancelRequest := []byte("this is not an order or an order fragment")
 
@@ -201,7 +271,8 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders/23213", body)
 			w := httptest.NewRecorder()
 
-			handler := relay.RecoveryHandler(relay.CancelOrderHandler(trader, pools))
+			relayNode := relay.Relay{}
+			handler := relay.RecoveryHandler(relay.CancelOrderHandler(relayNode))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))
