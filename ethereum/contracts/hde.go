@@ -22,7 +22,7 @@ type HyperdriveRegistry struct {
 	hyperdriveRegistryAddress common.Address
 }
 
-func NewHyperdriveEpoch(ctx context.Context, clientDetails client.Connection, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (HyperdriveRegistry, error) {
+func NewHyperdriveRegistry(ctx context.Context, clientDetails client.Connection, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (HyperdriveRegistry, error) {
 	contract, err := bindings.NewHyperdriveEpoch(clientDetails.DNRAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
 		return HyperdriveRegistry{}, err

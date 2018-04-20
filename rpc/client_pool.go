@@ -14,6 +14,7 @@ import (
 type ClientCacheEntry struct {
 	*Client
 	Timestamp time.Time
+	Hyperdrive_DriveClient
 }
 
 // A ClientPool maintains a concurrency-safe pool of Clients. It caches all

@@ -24,6 +24,7 @@ func Dispatch(fs ...func()) <-chan struct{} {
 		}
 		wg.Wait()
 	}()
+
 	return done
 }
 

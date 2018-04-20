@@ -2,8 +2,11 @@ package hyperdrive
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
+	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/republicprotocol/republic-go/identity"
 	"golang.org/x/crypto/sha3"
 )
@@ -58,19 +61,90 @@ func (block *Block) Verify(verifier identity.Verifier) error {
 	return verifier.VerifySignature(block.Signature)
 }
 
-// Txs must not store any Nonce more than once within any Tx.
-type Txs []Tx
+type HyperChain struct {
+	mu          *sync.RWMutex
+	epochChange *sync.Cond
 
-// A Tx stores Nonces alongside a Keccak256 Hash of the Nonces. A valid Tx must
-// not store any Nonce more than once.
-type Tx struct {
-	Hash [32]byte
-	Nonces
+	blocks []Block
+	nonces map[[32]byte]struct{}
 }
 
-// Nonces must not store any Nonce more than once.
-type Nonces []Nonce
+func NewHyperChain() HyperChain {
+	return HyperChain{
+		mu:          new(sync.RWMutex),
+		epochChange: sync.NewCond(new(sync.Mutex)),
 
-// A Nonce is a unique 256-bit value that makes up a Tx. It must be unique
-// within the entire Hyperdrive blockchain.
-type Nonce [32]byte
+		blocks: make([]Block, 0),
+		nonces: map[[32]byte]struct{}{},
+	}
+}
+
+func (chain *HyperChain) FinalizeBlock(block Block) error {
+	chain.mu.Lock()
+	defer chain.mu.Unlock()
+
+	// Check block has no conflicts with nonces in the past blocks
+	for _, tx := range block.Txs {
+		for _, nonce := range tx.Nonces {
+			if _, ok := chain.nonces[nonce]; ok {
+				return errors.New("nonces already recorded in the hyper chain")
+			}
+		}
+	}
+
+	// Check the height is right
+	if len(chain.blocks) != int(block.Height) {
+		return errors.New("invalid block to add to the chain")
+	}
+
+	// Finalize the block in the hyperChain
+	chain.blocks = append(chain.blocks, block)
+	for _, tx := range block.Txs {
+		for _, nonce := range tx.Nonces {
+			chain.nonces[nonce] = struct{}{}
+		}
+	}
+
+	// When we reach certain blocks, trigger an epoch.
+	if len(chain.blocks)%10 == 0 {
+		chain.epochChange.L.Lock()
+		chain.epochChange.Broadcast()
+		chain.epochChange.L.Unlock()
+	}
+
+	return nil
+}
+
+func (chain *HyperChain) Block(i int) (Block, error) {
+	chain.mu.RLock()
+	defer chain.mu.RUnlock()
+
+	if len(chain.blocks) < i {
+		return Block{}, errors.New("invalid block height")
+	}
+
+	return chain.blocks[i], nil
+}
+
+func (chain *HyperChain) ListenForEpochChange(ctx context.Context) <-chan struct{} {
+	epochChange := make(chan struct{})
+	go func() {
+		// todo : does this goroutine get closed gracefully?
+		defer close(epochChange)
+
+		for {
+			chain.epochChange.L.Lock()
+			chain.epochChange.Wait()
+			chain.epochChange.L.Unlock()
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				epochChange <- struct{}{}
+			}
+		}
+	}()
+
+	return epochChange
+}

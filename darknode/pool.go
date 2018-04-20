@@ -25,6 +25,17 @@ func NewNode(id identity.ID) Node {
 }
 
 // SetMultiAddress sets the multiaddress of the Node
+func (node *Node) Equal(another *Node) bool {
+	node.mu.Lock()
+	defer node.mu.Unlock()
+	if bytes.Equal(node.ID, another.ID) && node.multiAddress.String() == another.multiAddress.String(){
+		return true
+	}
+	return false
+}
+
+
+// SetMultiAddress sets the multiaddress of the Node
 func (node *Node) SetMultiAddress(multiAddress identity.MultiAddress) {
 	node.mu.Lock()
 	defer node.mu.Unlock()

@@ -3,6 +3,7 @@ package rpc
 import (
 	"time"
 
+	"github.com/republicprotocol/republic-go/hyperdrive"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
@@ -201,4 +202,33 @@ func UnmarshalOrder(rpcOrder *Order) order.Order {
 	ord.Expiry = time.Unix(rpcOrder.Expiry, 0)
 
 	return ord
+}
+
+func MarshalTx(tx hyperdrive.Tx) *Tx{
+	nonces := make([]*Nonce, len(tx.Nonces) )
+	for i := range nonces {
+		nonces [i] = &Nonce{
+			Nonce: tx.Nonces[i][:],
+		}
+	}
+
+	return &Tx{
+		Hash: tx.Hash[:],
+		Nonces: nonces,
+	}
+}
+
+func UnmarshalTx (tx *Tx) hyperdrive.Tx{
+	var hash identity.Hash
+	copy(hash[:], tx.Hash)
+
+	nonces := make(hyperdrive.Nonces, len(tx.Nonces))
+	for i := range nonces{
+		copy(nonces[i][:], tx.Nonces[i].Nonce)
+	}
+
+	return hyperdrive.Tx{
+		Hash : hash ,
+		Nonces : nonces,
+	}
 }

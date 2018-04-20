@@ -4,22 +4,23 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"net"
+	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/go-do"
-
+	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/ethereum/client"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
+	"github.com/republicprotocol/republic-go/hyperdrive"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/rpc"
-	"google.golang.org/grpc"
-
 	"github.com/republicprotocol/republic-go/smpc"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/republicprotocol/republic-go/ethereum/client"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
-	"github.com/republicprotocol/republic-go/identity"
+	"google.golang.org/grpc"
 )
 
 type EpochRoute struct {
@@ -41,12 +42,29 @@ type Darknode struct {
 	darknodeRegistry contracts.DarkNodeRegistry
 	ocean            Ocean
 
-	relayer rpc.RelayService
-	smpcer  rpc.ComputerService
+	relayService      rpc.RelayService
+	smpcService       rpc.ComputerService
+	hyperdriveService rpc.HyperdriveService
+	clientPool        rpc.ClientPool
 
 	epochRoutes    chan EpochRoute
 	orderFragments chan order.Fragment
 	deltaFragments chan smpc.DeltaFragment
+
+	hyperdriveRegistry contracts.HyperdriveRegistry
+	txPool             hyperdrive.TxPool
+	hyperChain         hyperdrive.HyperChain
+	proposalCh         chan hyperdrive.Proposal
+	prepareCh          chan hyperdrive.Prepare
+	commitCh           chan hyperdrive.Commit
+	blockCh            chan hyperdrive.Block
+	faultCh            chan hyperdrive.Fault
+	driveMessages      chan *rpc.DriveMessage
+	signer             identity.Signer
+	verifier           identity.Verifier
+
+	replicasMu *sync.RWMutex
+	replicas   Pool
 }
 
 // NewDarknode returns a new Darknode.
@@ -92,6 +110,15 @@ func NewDarknode(config Config) (Darknode, error) {
 	node.orderFragments = make(chan order.Fragment)
 	node.deltaFragments = make(chan smpc.DeltaFragment)
 
+	// Create rpc client pool and services
+
+	// Create hyperdrive registry and other related stuff.
+	hyperdriveRegistry, err := contracts.NewHyperdriveRegistry(context.Background(), client, transactOpts, &bind.CallOpts{})
+	if err != nil {
+		return Darknode{}, err
+	}
+	node.hyperdriveRegistry = hyperdriveRegistry
+
 	return node, nil
 }
 
@@ -109,11 +136,11 @@ func (node *Darknode) ServeRPC(done <-chan struct{}) <-chan error {
 			<-done
 		}()
 
-		node.relayer = rpc.NewRelayService(rpc.Options{}, node, node.Logger)
-		node.relayer.Register(server)
+		node.relayService = rpc.NewRelayService(rpc.Options{}, node, node.Logger)
+		node.relayService.Register(server)
 
-		node.smpcer = rpc.NewComputerService()
-		node.smpcer.Register(server)
+		node.smpcService = rpc.NewComputerService()
+		node.smpcService.Register(server)
 
 		listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", node.Config.Host, node.Config.Port))
 		if err != nil {
@@ -238,7 +265,7 @@ func (node *Darknode) RunEpoch(done <-chan struct{}, epoch contracts.Epoch) {
 
 		go func(peerMulti identity.MultiAddress) {
 			if bytes.Compare(node.ID(), peerID) < 0 {
-				computations, errs = node.smpcer.WaitForCompute(peerMulti, computationsIn)
+				computations, errs = node.smpcService.WaitForCompute(peerMulti, computationsIn)
 				go func() {
 					for err := range errs {
 						node.Logger.Compute(logger.Error, "server error: "+err.Error())
@@ -342,23 +369,6 @@ func (node *Darknode) RunEpochSwitch(done <-chan struct{}) {
 	}()
 }
 
-// OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
-// forwards it to the Hyperdrive.
-func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) {
-	if !delta.IsMatch(smpc.Prime) {
-		return
-	}
-
-	// TODO: Implement
-}
-
-// OnOpenOrder implements the rpc.RelayDelegate interface.
-func (node *Darknode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
-	println("ORDER RECEIVED")
-	node.orderFragments <- *orderFragment
-	println("ORDER PROCESSED")
-}
-
 // Ocean returns the Ocean used by this Darknode for computing the Pools and
 // its position in them.
 func (node *Darknode) Ocean() Ocean {
@@ -378,4 +388,127 @@ func (node *Darknode) Address() identity.Address {
 // MultiAddress returns the MultiAddress of the Darknode.
 func (node *Darknode) MultiAddress() identity.MultiAddress {
 	return node.multiAddress
+}
+
+// OnOpenOrder implements the rpc.RelayDelegate interface.
+func (node *Darknode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
+	println("ORDER RECEIVED")
+	node.orderFragments <- *orderFragment
+	println("ORDER PROCESSED")
+}
+
+// OnTxReceived handles the Tx received from non-replica.
+// It will store the tx in the txPool and forward it to replicas
+// if it's an valid Tx.
+func (node *Darknode) OnTxReceived(tx *rpc.Tx) {
+	valid := node.txPool.NewTx(rpc.UnmarshalTx(tx))
+	if valid {
+		node.driveMessages <- &rpc.DriveMessage{
+			DriveMessage: &rpc.DriveMessage_Tx{
+				Tx: tx,
+			},
+		}
+	}
+}
+
+// ProcessDriveMessages handles driveMessages from/to grpc clients until the
+// context is canceled.
+func (node *Darknode) ProcessDriveMessages(ctx context.Context) {
+	// split the driveMessages channel to each replica's channel
+	node.replicasMu.RLock()
+	driveMessageSendings := make([]chan *rpc.DriveMessage, len(node.replicas.nodes))
+	for i := range driveMessageSendings {
+		driveMessageSendings[i] = make(chan *rpc.DriveMessage)
+	}
+	dispatch.Split(node.driveMessages, driveMessageSendings)
+
+	// Either try to connect to the replica or wait for connection
+	// depends on the ID difference.
+	for i := range node.replicas.nodes {
+		var driveMessageReceiving <-chan *rpc.DriveMessage
+		var errs <-chan error
+
+		go func(i int) {
+			if bytes.Compare(node.ID(), node.replicas.nodes[i].ID) < 0 {
+				driveMessageReceiving, errs = node.hyperdriveService.WaitForDrive(*node.replicas.nodes[i].MultiAddress(), driveMessageSendings[i])
+				go func() {
+					for err := range errs {
+						node.Logger.Compute(logger.Error, "server error: "+err.Error())
+					}
+				}()
+			} else if bytes.Compare(node.ID(), node.replicas.nodes[i].ID) > 0 {
+				driveMessageReceiving, errs = node.clientPool.Drive(context.Background(), *node.replicas.nodes[i].multiAddress, driveMessageSendings[i])
+				go func() {
+					for err := range errs {
+						node.Logger.Compute(logger.Error, "client error: "+err.Error())
+					}
+				}()
+
+				// Send initial authentication message
+				multi := node.MultiAddress()
+				driveMessageSendings[i] <- &rpc.DriveMessage{MultiAddress: rpc.MarshalMultiAddress(&multi)}
+			}
+		}(i)
+
+		go func() {
+			for msg := range driveMessageReceiving {
+				switch msg.DriveMessage.(type) {
+				case *rpc.DriveMessage_Tx:
+					tx := msg.DriveMessage.(*rpc.DriveMessage_Tx).Tx
+					valid := node.txPool.NewTx(rpc.UnmarshalTx(tx))
+					if valid {
+						node.driveMessages <- msg
+					}
+				case *rpc.DriveMessage_Prepare:
+					hyperdrive.ProcessProposal(ctx, node.proposalCh, node.signer, node.verifier, 100 )
+				case *rpc.DriveMessage_Proposal:
+					//todo :
+				case *rpc.DriveMessage_Fault:
+					//todo :
+				}
+
+			}
+		}()
+	}
+	node.replicasMu.RUnlock()
+
+	<-ctx.Done()
+}
+
+func (node *Darknode) ProcessProposal(ctx context.Context){
+	prepares ,faults,  errs := hyperdrive.ProcessProposal(ctx, node.proposalCh, node.signer, node.verifier, 100)
+	for {
+		select {
+		case <- ctx.Done():
+			return
+		case prepare := <- prepares:
+			// todo : validate the prepare
+			node.prepareCh <- prepare
+		case fault := <- faults:
+			node.faultCh <- fault
+		case err := <- errs:
+			log.Println(err)
+		}
+	}
+}
+
+// OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
+// forwards it to the Hyperdrive.
+func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) {
+
+	// Defensively check that the smpc.Delta is actually a match
+	if !delta.IsMatch(smpc.Prime) {
+		return
+	}
+
+	// Convert an order match into a Tx
+	tx := hyperdrive.NewTxFromByteSlices(delta.SellOrderID, delta.BuyOrderID)
+	valid := node.txPool.NewTx(tx)
+	if valid {
+		node.driveMessages <- &rpc.DriveMessage{
+			DriveMessage: &rpc.DriveMessage_Tx{
+				Tx: rpc.MarshalTx(tx),
+			},
+		}
+	}
 }

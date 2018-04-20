@@ -164,13 +164,14 @@ service Hyperdrive {
 }
 
 message DriveMessage {
-    oneof driveMessage{
-        Block block = 1;
-        Tx tx = 2;
-        Proposal proposal = 3;
-        Prepare prepare = 4;
-        Commit commit  = 5;
-        Fault fault = 6;
+  MultiAddress multiAddress = 1;
+  oneof driveMessage{
+        Block block = 2;
+        Tx tx = 3;
+        Proposal proposal = 4;
+        Prepare prepare = 5;
+        Commit commit  = 6;
+        Fault fault = 7;
     }
 }
 
@@ -187,26 +188,31 @@ message Block {
 }
 
 message Tx {
-  bytes tx = 1;
+  bytes hash = 1;
+  repeated Nonce nonces  = 2;
+}
+
+message Nonce {
+  bytes nonce = 1;
 }
 
 message Proposal {
-    Block block = 1;
-    bytes signature = 2;
+  Block block = 1;
+  bytes signature = 2;
 }
 
 message Prepare {
-    Proposal proposal = 1;
-    Signatures signatures = 2;
+  Proposal proposal = 1;
+  Signatures signatures = 2;
 }
 
 message Commit{
-    Prepare prepare = 1;
-    Signatures signatures = 2;
+  Prepare prepare = 1;
+  Signatures signatures = 2;
 }
 
 message Fault{
-    int64 height = 1;
-    int64 rank = 2;
-    Signatures signatures = 3;
+  int64 height = 1;
+  int64 rank = 2;
+  Signatures signatures = 3;
 }
