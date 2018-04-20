@@ -52,6 +52,11 @@ func (darkOcean *DarkOcean) Pool(id identity.ID) (Pool, error) {
 	return Pool{}, ErrPoolNotFound
 }
 
+// Pools returns all Pools in the DarkOcean.
+func (darkOcean *DarkOcean) Pools() Pools {
+	return darkOcean.pools
+}
+
 // Pools is an alias of a slice.
 type Pools []Pool
 

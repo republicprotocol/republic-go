@@ -60,7 +60,22 @@ func main() {
 		BootstrapNodes: getBootstrapNodes(),
 		BindAddress:    *bindAddress,
 	}
-	pools := darknode.NewOcean(registrar).GetPools()
+	darknodeIDs, err := registrar.GetAllNodes()
+	if err != nil {
+		fmt.Println(fmt.Errorf("could not get dark nodes: %s", err))
+		return
+	}
+
+	epoch, err := registrar.CurrentEpoch()
+	if err != nil {
+		fmt.Println(fmt.Errorf("could not obtain epoch: %s", err))
+		return
+	}
+
+	darkOcean := darknode.NewDarkOcean(epoch.Blockhash, darknodeIDs)
+
+	// return darkOcean.Pools()
+	pools := darkOcean.Pools()
 	book := orderbook.NewOrderbook(100) // TODO: Check max connections
 	relay.RunRelay(config, pools, book, registrar)
 }

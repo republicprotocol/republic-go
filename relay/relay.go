@@ -3,7 +3,6 @@ package relay
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"sync"
@@ -435,49 +434,41 @@ func sendSharesToDarkPool(pool darknode.Pool, shares []*order.Fragment, relay Re
 	return nil
 }
 
+// TODO: Change this function to not Query and fetch multiaddresses from DHT
 // Function to obtain multiaddress of a node by sending requests to bootstrap nodes
 func getMultiAddress(address identity.Address, relay Relay) (identity.MultiAddress, error) {
-	serializedTarget := rpc.MarshalAddress(address)
-	for _, peer := range relay.Config.BootstrapNodes {
 
-		bootStrapMultiAddress, err := identity.NewMultiAddressFromString(peer)
-		if err != nil {
-			return (identity.MultiAddress{}), err
-		}
+	// serializedTarget := rpc.MarshalAddress(address)
+	
+	// for _, peer := range relay.Config.BootstrapNodes {
 
-		client, err := rpc.NewClient(context.Background(), bootStrapMultiAddress, relay.Config.MultiAddress, relay.Config.KeyPair)
-		if err != nil {
-			return (identity.MultiAddress{}), fmt.Errorf("cannot establish connection with bootstrap node: %v", err)
-		}
+	// 	bootStrapMultiAddress, err := identity.NewMultiAddressFromString(peer)
+	// 	if err != nil {
+	// 		return (identity.MultiAddress{}), err
+	// 	}
 
-		candidates, errs := client.QueryPeersDeep(context.Background(), serializedTarget)
+	// 	client, err := rpc.NewClient(context.Background(), bootStrapMultiAddress, relay.Config.MultiAddress, relay.Config.KeyPair)
+	// 	if err != nil {
+	// 		return (identity.MultiAddress{}), fmt.Errorf("cannot establish connection with bootstrap node: %v", err)
+	// 	}
 
-		// TODO: duplicated from swarm.go
-		continuing := true
-		for continuing {
-			select {
-			case err := <-errs:
-				if err != nil {
-					log.Println(fmt.Errorf(fmt.Sprintf("cannot deepen query: %v", err)))
-				}
-				continuing = false
-			case marshaledPeer, ok := <-candidates:
-				if !ok {
-					continuing = false
-					break
-				}
-
-				peer, _, err := rpc.UnmarshalMultiAddress(marshaledPeer)
-				if err != nil {
-					log.Println(fmt.Errorf(fmt.Sprintf("cannot deserialize multiaddress: %v", err)))
-					continue
-				}
-				if address == peer.Address() {
-					return peer, nil
-				}
-			}
-		}
-	}
+	// 	candidates, errs := client.QueryPeersDeep(context.Background(), serializedTarget)
+	// 	for err := range errs {
+	// 		log.Println(fmt.Sprintf("error finding node: %s", err.Error()))
+	// 		continue
+	// 	}
+	// 	for candidate := range candidates {
+	// 		unmarshalCandidate, _, err := rpc.UnmarshalMultiAddress(candidate)
+	// 		if err != nil {
+	// 			log.Println(fmt.Sprintf("cannot deserialize multiaddress: %s", err.Error()))
+	// 			continue
+	// 		}
+	// 		if address == unmarshalCandidate.Address() {
+	// 			log.Println("found address")
+	// 			return unmarshalCandidate, nil
+	// 		}
+	// 	}
+	// }
 	return (identity.MultiAddress{}), nil
 }
 

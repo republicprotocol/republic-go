@@ -2,10 +2,8 @@ package relay_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -13,30 +11,13 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
-	"github.com/republicprotocol/republic-go/ethereum/ganache"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
-const (
-	GanacheRPC                 = "http://localhost:8545"
-	NumberOfDarkNodes          = 5
-	NumberOfBootstrapDarkNodes = 5
-	NumberOfOrders             = 1
-)
-
 var _ = Describe("HTTP handlers", func() {
-	connection, err := ganache.Connect(GanacheRPC)
-	log.Println(err)
-	// Ω(err).ShouldNot(HaveOccurred())
-	epochDNR, err = contracts.NewDarkNodeRegistry(context.Background(), connection, ganache.GenesisTransactor(), &bind.CallOpts{})
-	// Ω(err).ShouldNot(HaveOccurred())
-	log.Println(err)
-	epochDNR.SetGasLimit(1000000)
 
 	Context("when handling authentication", func() {
 
@@ -81,7 +62,7 @@ var _ = Describe("HTTP handlers", func() {
 		// 	r.Header.Set("Authorization", "Bearer token")
 		// 	w := httptest.NewRecorder()
 
-		// 	handler := RecoveryHandler(AuthorizationHandler(OpenOrdersHandler((identity.MultiAddress{}), nil), "token"))
+		// 	handler := relay.RecoveryHandler(relay.AuthorizationHandler(relay.OpenOrdersHandler((relay.Relay{})), "token"))
 		// 	handler.ServeHTTP(w, r)
 
 		// 	Ω(w.Code).Should(Equal(http.StatusOK))
