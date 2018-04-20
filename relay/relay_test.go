@@ -1,16 +1,19 @@
 package relay_test
 
 import (
+	"context"
 	"errors"
 	"sync"
-	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"github.com/republicprotocol/republic-go/darknode"
+	. "github.com/republicprotocol/republic-go/darknodetest"
+	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
-	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/ethereum/ganache"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	. "github.com/republicprotocol/republic-go/relay"
@@ -22,9 +25,9 @@ var _ = Describe("Relay", func() {
 
 	var conn client.Connection
 	var darknodeRegistry contracts.DarkNodeRegistry
-	var darknodes Darknodes
+	var darknodes darknode.Darknodes
 
-	BeforeEach(func() {
+	BeforeSuite(func() {
 		var err error
 
 		// Connect to Ganache
@@ -44,7 +47,7 @@ var _ = Describe("Relay", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
-	AfterEach(func() {
+	AfterSuite(func() {
 		var err error
 
 		// Deregister the DarkNodes
@@ -56,19 +59,20 @@ var _ = Describe("Relay", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
-	FContext("running the relay", func() {
+	/* Context("running the relay", func() {
 		It("should", func() {
-			config := relay.Config{
-				KeyPair: keyPair,
-				MultiAddress: relayAddress,
-				Token: token,
-				BootstrapNodes: getBootstrapNodes()
+			config := Config{
+				KeyPair:        identity.KeyPair{},
+				MultiAddress:   identity.MultiAddress{},
+				Token:          "",
+				BootstrapNodes: getBootstrapNodes(),
+				BindAddress:    "127.0.0.1:8000",
 			}
 			pools := darknode.NewOcean(darknodeRegistry).GetPools()
-			book := orderbook.NewOrderbook(100) // TODO: Check max connections
-			relay.RunRelay(config, pools, book)
-		}
-	})
+			book := orderbook.NewOrderbook(100)
+			RunRelay(config, pools, book, darknodeRegistry)
+		})
+	}) */
 
 	Context("storing and updating orders", func() {
 		It("should store entry in local orderbook", func() {
@@ -622,7 +626,7 @@ func getPools(dnr contracts.DarkNodeRegistry) darknode.Pools {
 	return ocean.GetPools()
 }
 
-func getFullOrder() order.Order {
+/* func getFullOrder() order.Order {
 	fullOrder := order.Order{}
 
 	defaultStackVal, _ := stackint.FromString("179761232312312")
@@ -681,7 +685,7 @@ func getPoolsAndTrader() (darknode.Pools, identity.MultiAddress) {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	return getPools(epochDNR), trader
-}
+} */
 
 func getBootstrapNodes() []string {
 	return []string{

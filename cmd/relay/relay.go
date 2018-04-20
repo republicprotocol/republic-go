@@ -6,22 +6,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/big"
-	"net/http"
 	"os/exec"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	node "github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/ethereum/ganache"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"
-	"github.com/republicprotocol/republic-go/rpc"
 )
 
 func main() {
@@ -58,33 +54,15 @@ func main() {
 	}
 
 	config := relay.Config{
-		KeyPair: keyPair,
-		MultiAddress: relayAddress,
-		Token: token,
-		BootstrapNodes: getBootstrapNodes()
+		KeyPair:        keyPair,
+		MultiAddress:   relayAddress,
+		Token:          *token,
+		BootstrapNodes: getBootstrapNodes(),
+		BindAddress:    *bindAddress,
 	}
 	pools := darknode.NewOcean(registrar).GetPools()
 	book := orderbook.NewOrderbook(100) // TODO: Check max connections
-	RunRelay(config, pools, book)
-}
-
-// Start the relay
-func RunRelay(config relay.Config, pools darknode.Pools, book orderbook.Orderbook) {
-	relayNode := relay.NewRelay(config, pools, book)
-	r := relay.NewRouter(relayNode)
-	if err := http.ListenAndServe(*bindAddress, r); err != nil {
-		fmt.Println(fmt.Errorf("could not start router: %s", err))
-		return
-	}
-
-	// Handle orderbook synchronization
-	multi, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/18415/republic/8MGzNX7M1ucyvtumVj7QYbb7wQ8UTx")
-	if err != nil {
-		fmt.Println(fmt.Errorf("could not generate multiaddress: %s", err))
-		return
-	}
-	clientPool := rpc.NewClientPool(multi, keyPair).WithTimeout(10 * time.Second).WithTimeoutBackoff(0)
-	go relay.SynchronizeOrderbook(&book, clientPool, registrar)
+	relay.RunRelay(config, pools, book, registrar)
 }
 
 func getKey(filename, passphrase string) (*keystore.Key, error) {

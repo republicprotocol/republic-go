@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/jbenet/go-base58"
-	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
@@ -35,6 +36,7 @@ type Config struct {
 	MultiAddress   identity.MultiAddress
 	Token          string
 	BootstrapNodes []string
+	BindAddress    string
 }
 
 // NewRelay returns a new Relay object
@@ -55,6 +57,25 @@ func NewRouter(relay Relay) *mux.Router {
 	r.Methods("GET").Path("/orders/{orderID}").Handler(RecoveryHandler(AuthorizationHandler(GetOrderHandler(&relay.Orderbook, ""), relay.Config.Token)))
 	r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(AuthorizationHandler(CancelOrderHandler(relay), relay.Config.Token)))
 	return r
+}
+
+// RunRelay starts the relay
+func RunRelay(config Config, pools darknode.Pools, book orderbook.Orderbook, registrar contracts.DarkNodeRegistry) {
+	relayNode := NewRelay(config, pools, book, registrar)
+	r := NewRouter(relayNode)
+	if err := http.ListenAndServe(config.BindAddress, r); err != nil {
+		fmt.Println(fmt.Errorf("could not start router: %s", err))
+		return
+	}
+
+	// Handle orderbook synchronization
+	multi, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/18415/republic/8MGzNX7M1ucyvtumVj7QYbb7wQ8UTx")
+	if err != nil {
+		fmt.Println(fmt.Errorf("could not generate multiaddress: %s", err))
+		return
+	}
+	clientPool := rpc.NewClientPool(multi, config.KeyPair).WithTimeout(10 * time.Second).WithTimeoutBackoff(0)
+	go SynchronizeOrderbook(&book, clientPool, registrar)
 }
 
 // SendOrderToDarkOcean will fragment and send orders to the dark ocean

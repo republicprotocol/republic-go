@@ -1,21 +1,21 @@
 package relay_test
 
 import (
-	"log"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"context"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/republicprotocol/republic-go/ethereum/ganache"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
+	"github.com/republicprotocol/republic-go/ethereum/ganache"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"
@@ -104,26 +104,26 @@ var _ = Describe("HTTP handlers", func() {
 			Expect(w.Body.String()).To(ContainSubstring("cannot decode json into an order or a list of order fragments:"))
 		})
 
-		It("should return 201 for full orders", func() {
-			// pools, trader := getPoolsAndTrader()
+		// It("should return 201 for full orders", func() {
+		// 	// pools, trader := getPoolsAndTrader()
 
-			fullOrder := getFullOrder()
+		// 	fullOrder := getFullOrder()
 
-			sendOrder := relay.OpenOrderRequest{}
-			sendOrder.Order = fullOrder
-			sendOrder.OrderFragments = relay.OrderFragments{}
+		// 	sendOrder := relay.OpenOrderRequest{}
+		// 	sendOrder.Order = fullOrder
+		// 	sendOrder.OrderFragments = relay.OrderFragments{}
 
-			s, _ := json.Marshal(sendOrder)
-			body := bytes.NewBuffer(s)
-			r := httptest.NewRequest("POST", "http://localhost/orders", body)
-			w := httptest.NewRecorder()
+		// 	s, _ := json.Marshal(sendOrder)
+		// 	body := bytes.NewBuffer(s)
+		// 	r := httptest.NewRequest("POST", "http://localhost/orders", body)
+		// 	w := httptest.NewRecorder()
 
-			relayNode := relay.Relay{}
-			handler := relay.RecoveryHandler(relay.OpenOrdersHandler(relayNode))
-			handler.ServeHTTP(w, r)
+		// 	relayNode := relay.Relay{}
+		// 	handler := relay.RecoveryHandler(relay.OpenOrdersHandler(relayNode))
+		// 	handler.ServeHTTP(w, r)
 
-			Ω(w.Code).Should(Equal(http.StatusCreated))
-		})
+		// 	Ω(w.Code).Should(Equal(http.StatusCreated))
+		// })
 
 		// It("should return 201 for fragmented orders", func() {
 		// 	pools, trader := getPoolsAndTrader()
@@ -241,24 +241,24 @@ var _ = Describe("HTTP handlers", func() {
 	})
 
 	Context("when cancelling orders", func() {
-		It("should return 410 for cancel order requests", func() {
-			// pools, trader := getPoolsAndTrader()
+		// It("should return 410 for cancel order requests", func() {
+		// 	// pools, trader := getPoolsAndTrader()
 
-			cancelRequest := relay.CancelOrderRequest{}
-			cancelRequest.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
+		// 	cancelRequest := relay.CancelOrderRequest{}
+		// 	cancelRequest.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
 
-			s, _ := json.Marshal(cancelRequest)
-			body := bytes.NewBuffer(s)
+		// 	s, _ := json.Marshal(cancelRequest)
+		// 	body := bytes.NewBuffer(s)
 
-			r := httptest.NewRequest("POST", "http://localhost/orders", body)
-			w := httptest.NewRecorder()
+		// 	r := httptest.NewRequest("POST", "http://localhost/orders", body)
+		// 	w := httptest.NewRecorder()
 
-			relayNode := relay.Relay{}
-			handler := relay.RecoveryHandler(relay.CancelOrderHandler(relayNode))
-			handler.ServeHTTP(w, r)
+		// 	relayNode := relay.Relay{}
+		// 	handler := relay.RecoveryHandler(relay.CancelOrderHandler(relayNode))
+		// 	handler.ServeHTTP(w, r)
 
-			Ω(w.Code).Should(Equal(http.StatusGone))
-		})
+		// 	Ω(w.Code).Should(Equal(http.StatusGone))
+		// })
 
 		It("should return 400 for malformed cancel order requests", func() {
 			// pools, trader := getPoolsAndTrader()
