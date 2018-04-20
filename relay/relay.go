@@ -9,10 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gorilla/mux"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
@@ -74,7 +74,7 @@ func SendOrderToDarkOcean(openOrder order.Order, relay Relay) error {
 		wg.Add(len(relay.DarkPools))
 
 		for i := range relay.DarkPools {
-			go func(darkPool *darknode.Pool) {
+			go func(darkPool darknode.Pool) {
 				defer wg.Done()
 				// Split order into (number of nodes in each pool) * 2/3 fragments
 				shares, err := openOrder.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
@@ -86,7 +86,7 @@ func SendOrderToDarkOcean(openOrder order.Order, relay Relay) error {
 					errCh <- err
 					return
 				}
-			}(&relay.DarkPools[i])
+			}(relay.DarkPools[i])
 		}
 
 		wg.Wait()
@@ -113,9 +113,9 @@ func SendOrderToDarkOcean(openOrder order.Order, relay Relay) error {
 func SendOrderFragmentsToDarkOcean(order OrderFragments, relay Relay) error {
 	valid := false
 	for poolIndex := range relay.DarkPools {
-		fragments := order.DarkPools[GeneratePoolID(&relay.DarkPools[poolIndex])]
+		fragments := order.DarkPools[GeneratePoolID(relay.DarkPools[poolIndex])]
 		if fragments != nil && isSafeToSend(len(fragments), relay.DarkPools[poolIndex].Size()) {
-			if err := sendSharesToDarkPool(&relay.DarkPools[poolIndex], fragments, relay); err == nil {
+			if err := sendSharesToDarkPool(relay.DarkPools[poolIndex], fragments, relay); err == nil {
 				valid = true
 			}
 		}
@@ -142,10 +142,10 @@ func CancelOrder(cancelOrder order.ID, relay Relay) error {
 			// Cancel orders for all nodes in the pool
 			var wg sync.WaitGroup
 			wg.Add(relay.DarkPools[i].Size())
-			for node := range relay.DarkPools[i].Addresses() {
+			for _, node := range relay.DarkPools[i].Addresses() {
 				defer wg.Done()
 				// Get multiaddress
-				multiaddress, err := getMultiAddress(node), relay)
+				multiaddress, err := getMultiAddress(node, relay)
 				if err != nil {
 					errCh <- fmt.Errorf("cannot read multi-address: %v", err)
 					return
@@ -316,7 +316,7 @@ func StoreEntryInOrderbook(block *rpc.SyncBlock, epochHash [32]byte, book *order
 }
 
 // Send the shares across all nodes within the Dark Pool
-func sendSharesToDarkPool(pool *darknode.Pool, shares []*order.Fragment, relay Relay) error {
+func sendSharesToDarkPool(pool darknode.Pool, shares []*order.Fragment, relay Relay) error {
 	errCh := make(chan error)
 
 	go func() {
@@ -358,7 +358,19 @@ func sendSharesToDarkPool(pool *darknode.Pool, shares []*order.Fragment, relay R
 						return
 					}
 
-					// orderFragment, err := rpc.MarshalOrderFragment(n.Config.RsaKey.PublicKey, share)
+					nodePublicKey, err := relay.Registrar.GetPublicKey([]byte(node.String()))
+					if err != nil {
+						errCh <- fmt.Errorf("cannot get public key: %v", err)
+						return
+					}
+
+					nodeRsaKey, err := crypto.BytesToPublicKey(nodePublicKey)
+					if err != nil {
+						errCh <- fmt.Errorf("cannot convert public key to rsa public key: %v", err)
+						return
+					}
+
+					orderFragment, err := rpc.MarshalOrderFragment(nodeRsaKey, share)
 					if err != nil {
 						errCh <- fmt.Errorf("cannot marshal order fragment: %v", err)
 						return
@@ -450,12 +462,8 @@ func getMultiAddress(address identity.Address, relay Relay) (identity.MultiAddre
 
 // GeneratePoolID will generate crypto hash for a pool
 func GeneratePoolID(pool darknode.Pool) string {
-	// var id identity.ID
-	// pool.For(func(n identity.Address) {
-	// 	id = append(id, []byte(n.ID().String())...)
-	// })
-	// id = crypto.Keccak256(id)
-	return string(pool.ID()[:])
+	poolID := pool.ID()
+	return string(poolID[:])
 }
 
 // isSafeToSend checks if there are enough fragments to successfully complete sending an order
