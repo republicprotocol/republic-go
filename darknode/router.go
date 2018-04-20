@@ -43,7 +43,7 @@ type Router struct {
 	smpcer     rpc.ComputerService
 }
 
-func NewRouter(maxConnections int, multiAddress identity.MultiAddress, options rpc.Options, privateKey *rsa.PrivateKey, orderbook *orderbook.Orderbook) *Router {
+func NewRouter(maxConnections int, multiAddress identity.MultiAddress, options rpc.Options, key identity.KeyPair, privateKey *rsa.PrivateKey, orderbook *orderbook.Orderbook) *Router {
 	router := &Router{
 		maxConnections: maxConnections,
 		address:        multiAddress.Address(),
@@ -59,7 +59,7 @@ func NewRouter(maxConnections int, multiAddress identity.MultiAddress, options r
 		computeArcs:      map[identity.Address]int{},
 	}
 	router.dht = dht.NewDHT(multiAddress.Address(), 100)
-	router.clientPool = rpc.NewClientPool(multiAddress)
+	router.clientPool = rpc.NewClientPool(multiAddress, key)
 	router.swarmer = rpc.NewSwarmService(options, router.clientPool, router.dht, logger.StdoutLogger)
 	router.relayer = rpc.NewRelayService(options, router, privateKey, logger.StdoutLogger)
 	router.smpcer = rpc.NewComputerService()

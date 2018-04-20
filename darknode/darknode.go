@@ -67,7 +67,7 @@ func NewDarknode(config Config) (Darknode, error) {
 		return Darknode{}, err
 	}
 	node.darknodeRegistry = darknodeRegistry
-	node.router = NewRouter(100, node.multiAddress, config.Network, config.RsaKey.PrivateKey, &node.orderbook)
+	node.router = NewRouter(100, node.multiAddress, config.Network, key, config.RsaKey.PrivateKey, &node.orderbook)
 
 	return node, nil
 }
