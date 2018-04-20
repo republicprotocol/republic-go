@@ -56,6 +56,10 @@ func TC(in ...interface{}) []interface{} {
 
 var _ = Describe("Int1024", func() {
 
+	It("uninitialized Int1024 should equal zero", func() {
+		Ω(Int1024{}).Should(Equal(zero))
+	})
+
 	Context("when converting from and to Words", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 			cases := []uint{

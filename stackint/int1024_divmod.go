@@ -1,6 +1,8 @@
 package stackint
 
-import "github.com/republicprotocol/republic-go/stackint/asm"
+import (
+	"github.com/republicprotocol/republic-go/stackint/asm"
+)
 
 // divW sets x to x divided by the single-word y and returns x%y
 // preconditions:
@@ -17,10 +19,10 @@ func (x *Int1024) divW(y asm.Word) asm.Word {
 	for i := int(x.length - 1); i >= 0; i-- {
 		x.words[i], r = asm.DivWW_g(r, x.words[i], y)
 		if first == 0 && x.words[i] != 0 {
-			first = uint16(i)
+			first = uint16(i) + 1
 		}
 	}
-	x.length = first + 1
+	x.length = first
 	return r
 }
 
@@ -126,8 +128,8 @@ func (x *Int1024) divLarge(y *Int1024) (Int1024, Int1024) {
 			qhat--
 		}
 		q[j] = qhat
-		if j > highestQ && q[j] > 0 {
-			highestQ = j
+		if (j+1) > highestQ && q[j] > 0 {
+			highestQ = j + 1
 		}
 	}
 	asm.ShrVU_g(u[:x.length+1], u[:uint(x.length)+1], shift)
@@ -137,9 +139,9 @@ func (x *Int1024) divLarge(y *Int1024) (Int1024, Int1024) {
 	var highestR uint16
 	for i := 0; i < int(min(INT1024WORDS, uint16(len(u)))); i++ {
 		if rWords[i] != 0 {
-			highestR = uint16(i)
+			highestR = uint16(i) + 1
 		}
 	}
 
-	return Int1024{q, highestQ + 1}, Int1024{rWords, highestR + 1}
+	return Int1024{q, highestQ}, Int1024{rWords, highestR}
 }

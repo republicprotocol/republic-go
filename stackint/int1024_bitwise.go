@@ -25,13 +25,13 @@ func (x *Int1024) ShiftLeftInPlace(n uint) {
 		for i = uint(words) - 1; i >= div; i-- {
 			x.words[i] = x.words[i-div]
 			if x.words[i] != 0 && firstPositive == 0 {
-				firstPositive = uint16(i)
+				firstPositive = uint16(i) + 1
 			}
 		}
 		for i = 0; i < div; i++ {
 			x.words[i] = 0
 		}
-		x.length = firstPositive + 1
+		x.length = firstPositive
 		n = n - div*WORDSIZE
 	}
 
@@ -59,7 +59,7 @@ func (x *Int1024) shiftleft(n uint) {
 		// If previous word overflowed, add 1
 		x.words[i] = (x.words[i] << n) | overflow
 		if x.words[i] != 0 {
-			firstPositive = i
+			firstPositive = i + 1
 		}
 		overflow = newOverflow
 	}
@@ -67,7 +67,7 @@ func (x *Int1024) shiftleft(n uint) {
 		x.length++
 		x.words[x.length-1] = overflow
 	} else {
-		x.length = firstPositive + 1
+		x.length = firstPositive
 	}
 }
 
@@ -83,15 +83,15 @@ func (x *Int1024) shiftleftone() {
 		// If previous word overflowed, add 1
 		x.words[i] = (x.words[i] << 1) | overflow
 		if x.words[i] != 0 {
-			firstPositive = i
+			firstPositive = i + 1
 		}
 		overflow = newOverflow
 	}
 	if overflow != 0 && x.length < INT1024WORDS {
-		firstPositive = i
+		firstPositive = i + 1
 		x.words[i] = overflow
 	}
-	x.length = firstPositive + 1
+	x.length = firstPositive
 
 }
 
@@ -122,9 +122,6 @@ func (x *Int1024) ShiftRightInPlace(n uint) {
 		for i = x.length; i < previous; i++ {
 			x.words[i] = 0
 		}
-		if x.length == 0 {
-			x.length = 1
-		}
 		n = n - div*WORDSIZE
 	}
 
@@ -151,7 +148,7 @@ func (x *Int1024) shiftright(n uint) {
 		x.words[i] = (x.words[i] >> n) | overflow
 		overflow = newOverflow
 	}
-	if x.words[x.length-1] == 0 && x.length > 1 {
+	if x.length > 0 && x.words[x.length-1] == 0 {
 		x.length--
 	}
 }
@@ -167,7 +164,7 @@ func (x *Int1024) shiftrightone() {
 		x.words[i] = (x.words[i] >> 1) | overflow
 		overflow = newOverflow
 	}
-	if x.words[x.length-1] == 0 && x.length > 1 {
+	if x.length > 0 && x.words[x.length-1] == 0 {
 		x.length--
 	}
 
@@ -200,10 +197,10 @@ func (x *Int1024) AND(y *Int1024) Int1024 {
 	for i = 0; i < min; i++ {
 		z.words[i] = x.words[i] & y.words[i]
 		if z.words[i] != 0 {
-			firstPositive = i
+			firstPositive = i + 1
 		}
 	}
-	z.length = firstPositive + 1
+	z.length = firstPositive
 	return z
 }
 
@@ -230,17 +227,17 @@ func (x *Int1024) ORInPlace(y *Int1024) {
 	for i = 0; i < min; i++ {
 		x.words[i] = x.words[i] | y.words[i]
 		if x.words[i] != 0 {
-			firstPositive = i
+			firstPositive = i + 1
 		}
 	}
 	for i = min; i < max; i++ {
 		x.words[i] = maxi.words[i]
 		if x.words[i] != 0 {
-			firstPositive = i
+			firstPositive = i + 1
 		}
 	}
 
-	x.length = firstPositive + 1
+	x.length = firstPositive
 }
 
 // XOR returns x&y
@@ -259,16 +256,16 @@ func (x *Int1024) XOR(y *Int1024) Int1024 {
 	for i = 0; i < min; i++ {
 		words[i] = x.words[i] ^ y.words[i]
 		if words[i] != 0 {
-			firstPositive = i
+			firstPositive = i + 1
 		}
 	}
 	for i = min; i < max; i++ {
 		words[i] = maxi.words[i]
 		if words[i] != 0 {
-			firstPositive = i
+			firstPositive = i + 1
 		}
 	}
-	length := firstPositive + 1
+	length := firstPositive
 	return Int1024{
 		words:  words,
 		length: length,
@@ -295,8 +292,8 @@ func (x *Int1024) NOT() Int1024 {
 
 // BitLength returns the number bits required to represent x (equivalent to len(x.ToBinary()))
 func (x *Int1024) BitLength() int {
-	if x.length == 1 && x.words[0] == 0 {
-		return 1
+	if x.length == 0 {
+		return 0
 	}
 	return (int(x.length-1))*64 + bits.Len64(uint64(x.words[x.length-1]))
 }
