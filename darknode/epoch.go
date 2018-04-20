@@ -44,8 +44,11 @@ func RunEpochProcess(done <-chan struct{}, id identity.ID, darkOcean DarkOcean, 
 
 		addresses := pool.Addresses()
 		dispatch.CoForAll(addresses, func(i int) {
-			sender := make(chan *rpc.Computation)
+			if bytes.Compare(addresses[i].ID()[:], id[:]) == 0 {
+				return
+			}
 
+			sender := make(chan *rpc.Computation)
 			receiver, errs := router.Compute(done, addresses[i], sender)
 
 			mu.Lock()

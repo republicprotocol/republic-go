@@ -76,6 +76,7 @@ func (router *Router) Run(done <-chan struct{}, host, port string) <-chan error 
 		server := grpc.NewServer()
 		router.swarmer.Register(server)
 		router.relayer.Register(server)
+		router.syncer.Register(server)
 		router.smpcer.Register(server)
 		listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", host, port))
 		if err != nil {
@@ -154,7 +155,6 @@ func (router *Router) Compute(done <-chan struct{}, addr identity.Address, compu
 			router.mu.Unlock()
 		}()
 
-		println("READING FROM COMPUTATION SENDER")
 		for {
 			select {
 			case <-done:
@@ -221,5 +221,4 @@ func (router *Router) teardownCompute(addr identity.Address) {
 
 func (router *Router) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
 	router.orderFragmentSplitterCh <- *orderFragment
-	println("WRITTEN ORDER FRAGMENTS")
 }

@@ -2,7 +2,12 @@ package darknode_test
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
+	"os/exec"
+	"os/signal"
+	"syscall"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -23,9 +28,9 @@ import (
 
 const (
 	GanacheRPC                 = "http://localhost:8545"
-	NumberOfDarkNodes          = 5
-	NumberOfBootstrapDarkNodes = 5
-	NumberOfOrders             = 100
+	NumberOfDarkNodes          = 24
+	NumberOfBootstrapDarkNodes = 24
+	NumberOfOrders             = 1
 )
 
 var _ = Describe("Darknode", func() {
@@ -37,9 +42,19 @@ var _ = Describe("Darknode", func() {
 	BeforeEach(func() {
 		var err error
 
-		// Connect to Ganache
+		cmd := ganache.Start()
+		time.Sleep(5 * time.Second)
 		conn, err = ganache.Connect("http://localhost:8545")
 		Expect(err).ShouldNot(HaveOccurred())
+		err = ganache.DeployContracts(conn)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		go func() {
+			go killAtExit(cmd)
+			cmd.Wait()
+		}()
+
+		// Connect to Ganache
 		darknodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
 		Expect(err).ShouldNot(HaveOccurred())
 		darknodeRegistry.SetGasLimit(1000000)
@@ -187,9 +202,11 @@ func sendOrders(nodes Darknodes, numberOfOrders int) error {
 
 	// Send order fragment to the nodes
 	totalNodes := len(nodes)
-	trader, _ := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+	traderAddr, traderKey, err := identity.NewAddress()
+	Expect(err).ShouldNot(HaveOccurred())
+	trader, _ := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/80/republic/%v", traderAddr))
 	prime, _ := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-	pool := rpc.NewClientPool(trader).WithTimeout(5 * time.Second).WithTimeoutBackoff(3 * time.Second)
+	pool := rpc.NewClientPool(trader, traderKey).WithTimeout(5 * time.Second).WithTimeoutBackoff(3 * time.Second)
 
 	for i := 0; i < numberOfOrders; i++ {
 		buyOrder, sellOrder := buyOrders[i], sellOrders[i]
@@ -226,4 +243,15 @@ func sendOrders(nodes Darknodes, numberOfOrders int) error {
 	}
 
 	return nil
+}
+
+func killAtExit(cmd *exec.Cmd) {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		fmt.Printf("shutting down Ganache...\n")
+		cmd.Process.Kill()
+		os.Exit(0)
+	}()
 }

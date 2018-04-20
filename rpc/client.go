@@ -239,14 +239,11 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 					errCh <- err
 					return
 				}
-				println("found message in gRPC client")
 				select {
 				case <-ctx.Done():
 					errCh <- ctx.Err()
 					return
 				case messageCh <- message:
-					println("written message from gRPC client")
-
 				}
 			}
 		}, func() {
