@@ -413,14 +413,14 @@ func (node *Darknode) OnTxReceived(tx *rpc.Tx) {
 
 // ProcessDriveMessages handles driveMessages from/to grpc clients until the
 // context is canceled.
-func (node *Darknode) ProcessDriveMessages(ctx context.Context) {
-	// split the driveMessages channel to each replica's channel
+func (node *Darknode) ProcessDriveMessages(ctx context.Context, threshold int ) {
+	// Split the driveMessages channel to each replica's channel
 	node.replicasMu.RLock()
 	driveMessageSendings := make([]chan *rpc.DriveMessage, len(node.replicas.nodes))
 	for i := range driveMessageSendings {
 		driveMessageSendings[i] = make(chan *rpc.DriveMessage)
 	}
-	dispatch.Split(node.driveMessages, driveMessageSendings)
+	go dispatch.Split(node.driveMessages, driveMessageSendings)
 
 	// Either try to connect to the replica or wait for connection
 	// depends on the ID difference.
@@ -446,7 +446,11 @@ func (node *Darknode) ProcessDriveMessages(ctx context.Context) {
 
 				// Send initial authentication message
 				multi := node.MultiAddress()
-				driveMessageSendings[i] <- &rpc.DriveMessage{MultiAddress: rpc.MarshalMultiAddress(&multi)}
+				select {
+				case driveMessageSendings[i] <- &rpc.DriveMessage{MultiAddress: rpc.MarshalMultiAddress(&multi)}:
+				case <-ctx.Done():
+					return
+				}
 			}
 		}(i)
 
@@ -459,14 +463,27 @@ func (node *Darknode) ProcessDriveMessages(ctx context.Context) {
 					if valid {
 						node.driveMessages <- msg
 					}
-				case *rpc.DriveMessage_Prepare:
-					hyperdrive.ProcessProposal(ctx, node.proposalCh, node.signer, node.verifier, 100 )
 				case *rpc.DriveMessage_Proposal:
+					proposal := *rpc.UnmarshalProposal(msg.DriveMessage.(*rpc.DriveMessage_Proposal).Proposal)
+					if node.hyperChain.AddProposal(proposal){
+						node.proposalCh <- proposal
+					}
+				case *rpc.DriveMessage_Prepare:
+					prepare := *rpc.UnmarshalPrepare(msg.DriveMessage.(*rpc.DriveMessage_Prepare).Prepare)
+					if node.hyperChain.AddPrepare(prepare, threshold){
+						node.prepareCh <- prepare
+					}
+				case *rpc.DriveMessage_Commit:
+					commit := *rpc.UnmarshalCommit(msg.DriveMessage.(*rpc.DriveMessage_Commit).Commit)
+				case *rpc.DriveMessage_Block:
 					//todo :
+					node.blockCh <- *rpc.UnmarshalBlock(msg.DriveMessage.(*rpc.DriveMessage_Block).Block)
 				case *rpc.DriveMessage_Fault:
 					//todo :
+					//node.faultCh <- rpc.UnmarshalFault(msg.DriveMessage.(*rpc.DriveMessage_Fault).Fault)
+				default:
+					node.Logger.Compute(logger.Error, "client error: unrecognized message type ")
 				}
-
 			}
 		}()
 	}
@@ -475,18 +492,52 @@ func (node *Darknode) ProcessDriveMessages(ctx context.Context) {
 	<-ctx.Done()
 }
 
-func (node *Darknode) ProcessProposal(ctx context.Context){
-	prepares ,faults,  errs := hyperdrive.ProcessProposal(ctx, node.proposalCh, node.signer, node.verifier, 100)
+func (node *Darknode) ProcessProposal(ctx context.Context) {
+	prepares, faults, errs := hyperdrive.ProcessProposal(ctx, node.proposalCh, node.signer, node.verifier, 100)
 	for {
 		select {
-		case <- ctx.Done():
+		case <-ctx.Done():
 			return
-		case prepare := <- prepares:
+		case prepare := <-prepares:
 			// todo : validate the prepare
 			node.prepareCh <- prepare
-		case fault := <- faults:
+		case fault := <-faults:
 			node.faultCh <- fault
-		case err := <- errs:
+		case err := <-errs:
+			log.Println(err)
+		}
+	}
+}
+
+func (node *Darknode) ProcessPrepare(ctx context.Context) {
+	commits, faults, errs := hyperdrive.ProcessPreparation(ctx, node.prepareCh, node.signer, node.verifier, 100, 80)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case commit := <-commits:
+			// todo : validate the prepare
+			node.commitCh <- commit
+		case fault := <-faults:
+			node.faultCh <- fault
+		case err := <-errs:
+			log.Println(err)
+		}
+	}
+}
+
+func (node *Darknode) ProcessCommit(ctx context.Context) {
+	commits, faults, errs := hyperdrive.ProcessCommits(ctx, node.commitCh, node.signer, node.verifier, 100, 80)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case commit := <-commits:
+			//todo : how to do this ?
+			log.Println(commit)
+		case fault := <-faults:
+			node.faultCh <- fault
+		case err := <-errs:
 			log.Println(err)
 		}
 	}

@@ -52,18 +52,16 @@ type Nonces []Nonce
 type Nonce [32]byte
 
 type TxPool struct {
-	mu      *sync.Mutex
-	pool    map[[32]byte]Tx
-	pending map[[32]byte]Tx
-	nonces  map[[32]byte]struct{}
+	mu    *sync.RWMutex
+	chain *HyperChain
+	pool  map[[32]byte]Tx
 }
 
-func NewTxPool() TxPool {
+func NewTxPool(chain *HyperChain) TxPool {
 	return TxPool{
-		mu:      new(sync.Mutex),
-		pool:    map[[32]byte]Tx{},
-		pending: map[[32]byte]Tx{},
-		nonces:  map[[32]byte]struct{}{},
+		mu:    new(sync.RWMutex),
+		chain: chain,
+		pool:  map[[32]byte]Tx{},
 	}
 }
 
@@ -71,35 +69,21 @@ func (txPool *TxPool) NewTx(tx Tx) bool {
 	txPool.mu.Lock()
 	defer txPool.mu.Unlock()
 
-	// Check tx has no conflicts with txs in the pool
-	for _, nonce := range tx.Nonces {
-		if _, ok := txPool.nonces[nonce]; ok {
-			return false
-		}
-	}
-	if _, ok := txPool.pool[tx.Hash]; ok {
-		return false
-	}
-	if _, ok := txPool.pending[tx.Hash]; ok {
+	if !txPool.chain.VerifyTx(tx) {
 		return false
 	}
 
-	txPool.pending[tx.Hash] = tx
+	if _, ok := txPool.pool[tx.Hash]; ok {
+		return false
+	}
+	txPool.pool[tx.Hash] = tx
 
 	return true
 }
 
-func (txPool *TxPool) FinalizeTx(tx Tx) bool {
+func (txPool *TxPool) FinalizeTx(tx Tx) {
 	txPool.mu.Lock()
 	defer txPool.mu.Unlock()
 
-	if _, ok := txPool.pool[tx.Hash]; ok {
-		return false
-	}
-	if _, ok := txPool.pending[tx.Hash]; ok {
-		delete(txPool.pending, tx.Hash)
-		txPool.pool[tx.Hash]= *tx
-	}
-
-	return true
+	delete(txPool.pool, tx.Hash)
 }

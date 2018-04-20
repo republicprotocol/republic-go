@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pkg/errors"
 	"github.com/republicprotocol/republic-go/identity"
@@ -52,44 +53,126 @@ func (block *Block) Hash() identity.Hash {
 	for i := range block.Txs {
 		binary.Write(&buf, binary.BigEndian, block.Txs[i])
 	}
+	binary.Write(&buf, binary.BigEndian, block.Signature)
+
 	return sha3.Sum256(buf.Bytes())
 }
 
 // Verify the Block message. Returns an error if the message is invalid,
 // otherwise nil.
-func (block *Block) Verify(verifier identity.Verifier) error {
+func (block *Block) VerifyBlock(verifier identity.Verifier) error {
 	return verifier.VerifySignature(block.Signature)
 }
 
 type HyperChain struct {
-	mu          *sync.RWMutex
 	epochChange *sync.Cond
+	signer      *identity.Signer
+	verifier    *identity.Verifier
 
-	blocks []Block
-	nonces map[[32]byte]struct{}
+	proposalMu *sync.RWMutex
+	proposals  map[[32]byte]struct{}
+
+	prepareMu *sync.RWMutex
+	prepares  map[[32]byte]*int64
+
+	commitMu *sync.RWMutex
+	commit   map[[32]byte]*int64
+
+	blockMu *sync.RWMutex
+	blocks  []Block
+
+	faultMu *sync.RWMutex
+	faults  map[[32]byte]*int64
+
+	nonceMu *sync.RWMutex
+	nonces  map[[32]byte]struct{}
 }
 
 func NewHyperChain() HyperChain {
 	return HyperChain{
-		mu:          new(sync.RWMutex),
 		epochChange: sync.NewCond(new(sync.Mutex)),
 
-		blocks: make([]Block, 0),
-		nonces: map[[32]byte]struct{}{},
+		proposalMu: new(sync.RWMutex),
+		proposals:  map[[32]byte]struct{}{},
+
+		prepareMu: new(sync.RWMutex),
+		prepares:  map[[32]byte]*int64{},
+
+		commitMu: new(sync.RWMutex),
+		commit:   map[[32]byte]*int64{},
+
+		blockMu: new(sync.RWMutex),
+		blocks:  []Block{},
+
+		faultMu: new(sync.RWMutex),
+		faults:  map[[32]byte]*int64{},
+
+		nonceMu: new(sync.RWMutex),
+		nonces:  map[[32]byte]struct{}{},
 	}
 }
 
-func (chain *HyperChain) FinalizeBlock(block Block) error {
-	chain.mu.Lock()
-	defer chain.mu.Unlock()
+func (chain *HyperChain) AddProposal(proposal Proposal) bool {
+	if chain.VerifyBlock(proposal.Block) {
+		chain.proposalMu.Lock()
+		defer chain.proposalMu.Unlock()
 
-	// Check block has no conflicts with nonces in the past blocks
-	for _, tx := range block.Txs {
-		for _, nonce := range tx.Nonces {
-			if _, ok := chain.nonces[nonce]; ok {
-				return errors.New("nonces already recorded in the hyper chain")
+		if _, ok := chain.proposals[proposal.Hash()]; !ok {
+			chain.proposals[proposal.Hash()] = struct{}{}
+			return true
+		}
+	}
+
+	return false
+}
+
+func (chain *HyperChain) AddPrepare(prepare Prepare, threshold int) bool {
+	if chain.VerifyBlock(prepare.Proposal.Block) {
+		if _, ok := chain.prepares[prepare.Hash()]; !ok {
+			chain.prepareMu.Lock()
+			defer chain.prepareMu.Unlock()
+
+			count := int64(1)
+			chain.prepares[prepare.Hash()] = &count
+		} else {
+			chain.prepareMu.RLock()
+			defer chain.prepareMu.RUnlock()
+
+			atomic.AddInt64(chain.prepares[prepare.Hash()], 1)
+			if atomic.LoadInt64(chain.prepares[prepare.Hash()]) > int64(threshold) {
+				return true
 			}
 		}
+	}
+
+	return false
+}
+
+func (chain *HyperChain) AddCommit(commit Commit, threshold int) bool {
+	if chain.VerifyBlock(commit.Proposal.Block) {
+		if _, ok := chain.commit[commit.Hash()]; !ok {
+			chain.commitMu.Lock()
+			defer chain.commitMu.Unlock()
+
+			count := int64(1)
+			chain.commit[commit.Hash()] = &count
+		} else {
+			chain.commitMu.RLock()
+			defer chain.commitMu.RUnlock()
+
+			atomic.AddInt64(chain.commit[commit.Hash()], 1)
+			if atomic.LoadInt64(chain.commit[commit.Hash()]) > int64(threshold) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func (chain *HyperChain) AddBlock(block Block) error {
+	if !chain.VerifyBlock(block) {
+		return errors.New("conflicts with previous blocks")
 	}
 
 	// Check the height is right
@@ -98,32 +181,27 @@ func (chain *HyperChain) FinalizeBlock(block Block) error {
 	}
 
 	// Finalize the block in the hyperChain
+	chain.blockMu.Lock()
 	chain.blocks = append(chain.blocks, block)
-	for _, tx := range block.Txs {
-		for _, nonce := range tx.Nonces {
-			chain.nonces[nonce] = struct{}{}
-		}
-	}
 
-	// When we reach certain blocks, trigger an epoch.
+	// When we reach certain number of blocks, trigger an epoch.
 	if len(chain.blocks)%10 == 0 {
 		chain.epochChange.L.Lock()
 		chain.epochChange.Broadcast()
 		chain.epochChange.L.Unlock()
 	}
+	chain.blockMu.Unlock()
+
+	// Update the nonces
+	chain.nonceMu.Lock()
+	for _, tx := range block.Txs {
+		for _, nonce := range tx.Nonces {
+			chain.nonces[nonce] = struct{}{}
+		}
+	}
+	chain.nonceMu.Unlock()
 
 	return nil
-}
-
-func (chain *HyperChain) Block(i int) (Block, error) {
-	chain.mu.RLock()
-	defer chain.mu.RUnlock()
-
-	if len(chain.blocks) < i {
-		return Block{}, errors.New("invalid block height")
-	}
-
-	return chain.blocks[i], nil
 }
 
 func (chain *HyperChain) ListenForEpochChange(ctx context.Context) <-chan struct{} {
@@ -147,4 +225,34 @@ func (chain *HyperChain) ListenForEpochChange(ctx context.Context) <-chan struct
 	}()
 
 	return epochChange
+}
+
+func (chain *HyperChain) VerifyBlock(block Block) bool {
+	chain.nonceMu.RLock()
+	defer chain.nonceMu.RUnlock()
+
+	// Check block has no conflicts with nonces in the past blocks
+	for _, tx := range block.Txs {
+		for _, nonce := range tx.Nonces {
+			if _, ok := chain.nonces[nonce]; ok {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func (chain *HyperChain) VerifyTx(tx Tx) bool {
+	chain.nonceMu.RLock()
+	defer chain.nonceMu.RUnlock()
+
+	// Check block has no conflicts with nonces in the past blocks
+	for _, nonce := range tx.Nonces {
+		if _, ok := chain.nonces[nonce]; ok {
+			return false
+		}
+	}
+
+	return true
 }

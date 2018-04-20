@@ -204,31 +204,106 @@ func UnmarshalOrder(rpcOrder *Order) order.Order {
 	return ord
 }
 
-func MarshalTx(tx hyperdrive.Tx) *Tx{
-	nonces := make([]*Nonce, len(tx.Nonces) )
+func MarshalTx(tx hyperdrive.Tx) *Tx {
+	nonces := make([]*Nonce, len(tx.Nonces))
 	for i := range nonces {
-		nonces [i] = &Nonce{
+		nonces[i] = &Nonce{
 			Nonce: tx.Nonces[i][:],
 		}
 	}
 
 	return &Tx{
-		Hash: tx.Hash[:],
+		Hash:   tx.Hash[:],
 		Nonces: nonces,
 	}
 }
 
-func UnmarshalTx (tx *Tx) hyperdrive.Tx{
+func UnmarshalTx(tx *Tx) hyperdrive.Tx {
 	var hash identity.Hash
 	copy(hash[:], tx.Hash)
 
 	nonces := make(hyperdrive.Nonces, len(tx.Nonces))
-	for i := range nonces{
+	for i := range nonces {
 		copy(nonces[i][:], tx.Nonces[i].Nonce)
 	}
 
 	return hyperdrive.Tx{
-		Hash : hash ,
-		Nonces : nonces,
+		Hash:   hash,
+		Nonces: nonces,
+	}
+}
+
+func MarshalBlock(block hyperdrive.Block) *Block {
+	txs := make([]*Tx, len(block.Txs))
+	for i := range block.Txs {
+		txs[i] = MarshalTx(block.Txs[i])
+	}
+
+	return &Block{
+		Height:    int64(block.Height),
+		Rank:      int64(block.Rank),
+		EpocHash:  block.Epoch[:],
+		Txs:       txs,
+		Signature: block.Signature[:],
+	}
+}
+
+func UnmarshalBlock(block *Block) *hyperdrive.Block {
+	txs := make([]hyperdrive.Tx, len(block.Txs))
+	for i := range block.Txs {
+		txs[i] = UnmarshalTx(block.Txs[i])
+	}
+
+	var epochHash [32]byte
+	copy(epochHash[:], block.EpocHash)
+	var signature [65]byte
+	copy(signature[:], block.Signature)
+
+	return &hyperdrive.Block{
+		Height:    hyperdrive.Height(block.Height),
+		Rank:      hyperdrive.Rank(block.Rank),
+		Epoch:     epochHash,
+		Txs:       txs,
+		Signature: signature,
+	}
+}
+
+func MarshalProposal(tx hyperdrive.Proposal) *Proposal {
+	return &Proposal{
+		Block:     MarshalBlock(tx.Block),
+		Signature: tx.Signature[:],
+	}
+}
+
+func UnmarshalProposal(proposal *Proposal) *hyperdrive.Proposal {
+	var signature [65]byte
+	copy(signature[:], proposal.Signature)
+	return &hyperdrive.Proposal{
+		Block:     *UnmarshalBlock(proposal.Block),
+		Signature: signature,
+	}
+}
+
+func MarshalPrepare(prepare hyperdrive.Prepare) *Prepare {
+	signatures := Signatures{Signature: make([][]byte, len(prepare.Signature))}
+	for i := range signatures.Signature {
+		signatures.Signature[i] = prepare.Signatures[i][:]
+	}
+	return &Prepare{
+		Proposal:   MarshalProposal(prepare.Proposal),
+		Signatures: &signatures,
+	}
+}
+
+func UnmarshalPrepare(prepare *Prepare) *hyperdrive.Prepare {
+	signature := make(identity.Signatures, len(prepare.Signatures.Signature))
+	for i := range signature {
+		signature[i] = [65]byte{}
+		copy(signature[i][:], prepare.Signatures.Signature[i])
+	}
+
+	return &hyperdrive.Prepare{
+		Proposal:   *UnmarshalProposal(prepare.Proposal),
+		Signatures: signature,
 	}
 }

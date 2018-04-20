@@ -93,7 +93,8 @@ type Proposal struct {
 func (proposal *Proposal) Hash() identity.Hash {
 	var buf bytes.Buffer
 	binary.Write(&buf, binary.BigEndian, ProposalHeader)
-	binary.Write(&buf, binary.BigEndian, proposal.Block.Hash())
+	binary.Write(&buf, binary.BigEndian, proposal.Block)
+
 	return sha3.Sum256(buf.Bytes())
 }
 
