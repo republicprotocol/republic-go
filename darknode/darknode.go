@@ -5,18 +5,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/republicprotocol/republic-go/orderbook"
-
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/logger"
-
-	"github.com/republicprotocol/republic-go/smpc"
-
-	"github.com/republicprotocol/republic-go/identity"
-
+	"github.com/republicprotocol/republic-go/orderbook"
+	// "github.com/republicprotocol/republic-go/order"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/smpc"
 )
 
 type Darknodes []Darknode
@@ -70,7 +67,7 @@ func NewDarknode(config Config) (Darknode, error) {
 		return Darknode{}, err
 	}
 	node.darknodeRegistry = darknodeRegistry
-	node.router = NewRouter(100, node.multiAddress, config.Network, config.RsaKey.PrivateKey, &node.orderbook)
+	node.router = NewRouter(100, node.multiAddress, config.Network, key, config.RsaKey.PrivateKey, &node.orderbook)
 
 	return node, nil
 }

@@ -2,15 +2,15 @@ package relay_test
 
 import (
 	//	"errors"
-	"fmt"
+	// "fmt"
 	//	"sync"
 	"time"
 
 	//	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-//	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-//	"github.com/republicprotocol/go-do"
+	//	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	//	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	// "github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/darknode"
@@ -245,7 +245,7 @@ func getPools(dnr contracts.DarkNodeRegistry) darknode.Pools {
 	// if err != nil {
 	// 	panic(fmt.Sprintf("cannot get dark ocean: %v", err))
 	// }
-	return ocean.GetPools();
+	return ocean.GetPools()
 }
 
 func getFullOrder() order.Order {
