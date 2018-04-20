@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"net"
 
 	"crypto/sha256"
 
-	"encoding/hex"
 	"encoding/json"
 
 	"github.com/btcsuite/btcd/chaincfg"
@@ -20,6 +18,7 @@ import (
 	"golang.org/x/crypto/ripemd160"
 
 	rpc "github.com/btcsuite/btcd/rpcclient"
+	"github.com/republicprotocol/republic-go/bitcoin/client"
 )
 
 const txVersion = 2
@@ -67,19 +66,6 @@ func estimateRedeemSerializeSize(contract []byte, txOuts []*wire.TxOut) int {
 		sumOutputSerializeSizes(txOuts)
 }
 
-func normalizeAddress(addr string, defaultPort string) (hostport string, err error) {
-	host, port, origErr := net.SplitHostPort(addr)
-	if origErr == nil {
-		return net.JoinHostPort(host, port), nil
-	}
-	addr = net.JoinHostPort(addr, defaultPort)
-	_, _, err = net.SplitHostPort(addr)
-	if err != nil {
-		return "", origErr
-	}
-	return addr, nil
-}
-
 func buildContract(c *rpc.Client, args *contractArgs, chain string) (*builtContract, error) {
 	var chainParams *chaincfg.Params
 	if chain == "regtest" {
@@ -117,7 +103,7 @@ func buildContract(c *rpc.Client, args *contractArgs, chain string) (*builtContr
 
 	unsignedContract := wire.NewMsgTx(txVersion)
 	unsignedContract.AddTxOut(wire.NewTxOut(int64(args.amount), contractP2SHPkScript))
-	unsignedContract, err = fundRawTransaction(c, unsignedContract)
+	unsignedContract, err = client.FundRawTransaction(c, unsignedContract)
 	if err != nil {
 		return nil, fmt.Errorf("fundrawtransaction: %v", err)
 	}
@@ -145,19 +131,6 @@ func buildContract(c *rpc.Client, args *contractArgs, chain string) (*builtContr
 	}, nil
 }
 
-func walletPort(params *chaincfg.Params) string {
-	switch params {
-	case &chaincfg.MainNetParams:
-		return "8332"
-	case &chaincfg.TestNet3Params:
-		return "18332"
-	case &chaincfg.RegressionNetParams:
-		return "18444"
-	default:
-		return ""
-	}
-}
-
 func sha256Hash(x []byte) []byte {
 	h := sha256.Sum256(x)
 	return h[:]
@@ -182,52 +155,6 @@ func getRawChangeAddress(c *rpc.Client, chainParams *chaincfg.Params) (btcutil.A
 			addrStr, chainParams.Name)
 	}
 	return addr, nil
-}
-
-func fundRawTransaction(c *rpc.Client, tx *wire.MsgTx) (fundedTx *wire.MsgTx, err error) {
-	var buf bytes.Buffer
-	buf.Grow(tx.SerializeSize())
-	tx.Serialize(&buf)
-	param0, err := json.Marshal(hex.EncodeToString(buf.Bytes()))
-	if err != nil {
-		return nil, err
-	}
-	if err != nil {
-		return nil, err
-	}
-	params := []json.RawMessage{param0}
-	rawResp, err := c.RawRequest("fundrawtransaction", params)
-	if err != nil {
-		return nil, err
-	}
-	var resp struct {
-		Hex       string  `json:"hex"`
-		Fee       float64 `json:"fee"`
-		ChangePos float64 `json:"changepos"`
-	}
-	err = json.Unmarshal(rawResp, &resp)
-	if err != nil {
-		return nil, err
-	}
-	fundedTxBytes, err := hex.DecodeString(resp.Hex)
-	if err != nil {
-		return nil, err
-	}
-	fundedTx = &wire.MsgTx{}
-	err = fundedTx.Deserialize(bytes.NewReader(fundedTxBytes))
-	if err != nil {
-		return nil, err
-	}
-	return fundedTx, nil
-}
-
-func promptPublishTx(c *rpc.Client, tx *wire.MsgTx, name string) error {
-	txHash, err := c.SendRawTransaction(tx, false)
-	if err != nil {
-		return fmt.Errorf("sendrawtransaction: %v", err)
-	}
-	fmt.Printf("Published %s transaction (%v)\n", name, txHash)
-	return nil
 }
 
 func buildRefund(c *rpc.Client, contract []byte, contractTx *wire.MsgTx, chainParams *chaincfg.Params) (

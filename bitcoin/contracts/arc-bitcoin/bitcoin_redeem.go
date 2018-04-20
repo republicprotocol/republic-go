@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/chaincfg"
-	rpc "github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
+	"github.com/republicprotocol/republic-go/bitcoin/client"
 )
 
 type redeemResult struct {
@@ -33,26 +33,13 @@ func redeem(contract, contractTxBytes, secret []byte, rpcUser string, rpcPass st
 		return fmt.Errorf("failed to decode contract transaction: %v", err), redeemResult{}
 	}
 
-	connect, err := normalizeAddress("localhost", walletPort(chainParams))
+	rpcClient, err := client.ConnectToRPC(chainParams, rpcUser, rpcPass)
 	if err != nil {
-		return fmt.Errorf("wallet server address: %v", err), redeemResult{}
-	}
-
-	connConfig := &rpc.ConnConfig{
-		Host:         connect,
-		User:         rpcUser,
-		Pass:         rpcPass,
-		DisableTLS:   true,
-		HTTPPostMode: true,
-	}
-
-	client, err := rpc.New(connConfig, nil)
-	if err != nil {
-		return fmt.Errorf("rpc connect: %v", err), redeemResult{}
+		return err, redeemResult{}
 	}
 	defer func() {
-		client.Shutdown()
-		client.WaitForShutdown()
+		rpcClient.Shutdown()
+		rpcClient.WaitForShutdown()
 	}()
 
 	pushes, err := txscript.ExtractAtomicSwapDataPushes(0, contract)
@@ -81,7 +68,7 @@ func redeem(contract, contractTxBytes, secret []byte, rpcUser string, rpcPass st
 		return errors.New("transaction does not contain a contract output"), redeemResult{}
 	}
 
-	addr, err := getRawChangeAddress(client, chainParams)
+	addr, err := getRawChangeAddress(rpcClient, chainParams)
 	if err != nil {
 		return fmt.Errorf("getrawchangeaddres: %v", err), redeemResult{}
 	}
@@ -100,7 +87,7 @@ func redeem(contract, contractTxBytes, secret []byte, rpcUser string, rpcPass st
 	redeemTx.LockTime = uint32(pushes.LockTime)
 	redeemTx.AddTxIn(wire.NewTxIn(&contractOutPoint, nil, nil))
 	redeemTx.AddTxOut(wire.NewTxOut(0, outScript)) // amount set below
-	redeemSig, redeemPubKey, err := createSig(redeemTx, 0, contract, recipientAddr, client)
+	redeemSig, redeemPubKey, err := createSig(redeemTx, 0, contract, recipientAddr, rpcClient)
 	if err != nil {
 		return err, redeemResult{}
 	}
@@ -129,7 +116,14 @@ func redeem(contract, contractTxBytes, secret []byte, rpcUser string, rpcPass st
 		}
 	}
 
-	return promptPublishTx(client, redeemTx, "redeem"), redeemResult{
+	txHash, err := client.PromptPublishTx(rpcClient, redeemTx, "redeem")
+	if err != nil {
+		return err, redeemResult{}
+	}
+
+	client.WaitForConfirmations(rpcClient, txHash, 1)
+
+	return nil, redeemResult{
 		redeemTx:     buf.Bytes(),
 		redeemTxHash: redeemTxHash,
 	}

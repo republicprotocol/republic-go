@@ -6,11 +6,11 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/chaincfg"
-	rpc "github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcutil"
+	"github.com/republicprotocol/republic-go/bitcoin/client"
 )
 
-func initiate(participantAddress string, value int64, chain string, rpcuser string, rpcpass string, hash []byte, lockTime int64) (err error, result BitcoinData) {
+func initiate(participantAddress string, value int64, chain string, rpcUser string, rpcPass string, hash []byte, lockTime int64) (err error, result BitcoinData) {
 	var chainParams *chaincfg.Params
 	if chain == "regtest" {
 		chainParams = &chaincfg.RegressionNetParams
@@ -33,29 +33,16 @@ func initiate(participantAddress string, value int64, chain string, rpcuser stri
 		return errors.New("participant address is not P2PKH"), BitcoinData{}
 	}
 
-	connect, err := normalizeAddress("localhost", walletPort(chainParams))
+	rpcClient, err := client.ConnectToRPC(chainParams, rpcUser, rpcPass)
 	if err != nil {
-		return fmt.Errorf("wallet server address: %v", err), BitcoinData{}
-	}
-
-	connConfig := &rpc.ConnConfig{
-		Host:         connect,
-		User:         rpcuser,
-		Pass:         rpcpass,
-		DisableTLS:   true,
-		HTTPPostMode: true,
-	}
-
-	client, err := rpc.New(connConfig, nil)
-	if err != nil {
-		return fmt.Errorf("rpc connect: %v", err), BitcoinData{}
+		return err, BitcoinData{}
 	}
 	defer func() {
-		client.Shutdown()
-		client.WaitForShutdown()
+		rpcClient.Shutdown()
+		rpcClient.WaitForShutdown()
 	}()
 
-	b, err := buildContract(client, &contractArgs{
+	b, err := buildContract(rpcClient, &contractArgs{
 		them:       cp2AddrP2PKH,
 		amount:     value,
 		locktime:   lockTime,
@@ -73,9 +60,13 @@ func initiate(participantAddress string, value int64, chain string, rpcuser stri
 	refundBuf.Grow(b.refundTx.SerializeSize())
 	b.refundTx.Serialize(&refundBuf)
 
-	if err := promptPublishTx(client, b.contractTx, "contract"); err != nil {
+	txHash, err := client.PromptPublishTx(rpcClient, b.contractTx, "contract")
+
+	if err != nil {
 		return err, BitcoinData{}
 	}
+
+	client.WaitForConfirmations(rpcClient, txHash, 1)
 
 	refundTx := *b.refundTx
 	return nil, BitcoinData{

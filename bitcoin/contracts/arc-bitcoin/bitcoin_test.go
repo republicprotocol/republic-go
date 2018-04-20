@@ -3,12 +3,18 @@ package arc_bitcoin_test
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"fmt"
 	"math/big"
 	"time"
 
+	"github.com/btcsuite/btcd/chaincfg"
+	rpc "github.com/btcsuite/btcd/rpcclient"
+	"github.com/btcsuite/btcutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/bitcoin/client"
 	"github.com/republicprotocol/republic-go/bitcoin/contracts/arc-bitcoin"
+	"github.com/republicprotocol/republic-go/bitcoin/regtest"
 )
 
 const CHAIN = "regtest"
@@ -23,12 +29,39 @@ func randomBytes32() []byte {
 }
 
 var _ = Describe("Bitcoin", func() {
+	var rpcClient *rpc.Client
+
+	var aliceAddr, bobAddr btcutil.Address
+
+	BeforeSuite(func() {
+		var err error
+		rpcClient, err = client.ConnectToRPC(&chaincfg.RegressionNetParams, "testuser", "testpassword")
+		Expect(err).ShouldNot(HaveOccurred())
+
+		regtest.Mine(rpcClient)
+
+		aliceAddr, err = regtest.NewAccount(rpcClient, "alice", 1000000000)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		bobAddr, err = regtest.NewAccount(rpcClient, "bob", 1000000000)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		fmt.Println("Alice")
+		fmt.Println(aliceAddr.String())
+		fmt.Println("Bob")
+		fmt.Println(bobAddr.String())
+	})
+
+	AfterSuite(func() {
+		rpcClient.Shutdown()
+		rpcClient.WaitForShutdown()
+	})
 
 	It("can initiate a bitcoin atomic swap", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
-		err := BTCAtom.Initiate(hashLock, []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(3000000), time.Now().Unix()+10000)
+		err := BTCAtom.Initiate(hashLock, []byte(aliceAddr.String()), []byte(bobAddr.String()), big.NewInt(3000000), time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 	})
 
@@ -36,7 +69,7 @@ var _ = Describe("Bitcoin", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
-		err := BTCAtom.Initiate(hashLock, []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(3000000), time.Now().Unix()+10000)
+		err := BTCAtom.Initiate(hashLock, []byte(aliceAddr.String()), []byte(bobAddr.String()), big.NewInt(3000000), time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 		err = BTCAtom.Redeem(secret)
 		Ω(err).Should(BeNil())
@@ -47,7 +80,7 @@ var _ = Describe("Bitcoin", func() {
 		wrongSecret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
-		err := BTCAtom.Initiate(hashLock, []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(3000000), time.Now().Unix()+10000)
+		err := BTCAtom.Initiate(hashLock, []byte(aliceAddr.String()), []byte(bobAddr.String()), big.NewInt(3000000), time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 		err = BTCAtom.Redeem(wrongSecret)
 		Ω(err).Should(Not(BeNil()))
@@ -57,8 +90,8 @@ var _ = Describe("Bitcoin", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
-		to := []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe")
-		from := []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6")
+		to := []byte(aliceAddr.String())
+		from := []byte(bobAddr.String())
 		value := big.NewInt(1000000)
 		expiry := time.Now().Unix() + 10000
 		err := BTCAtom.Initiate(hashLock, to, from, value, expiry)
@@ -75,7 +108,7 @@ var _ = Describe("Bitcoin", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
-		err := BTCAtom.Initiate(hashLock, []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(3000000), time.Now().Unix()+10000)
+		err := BTCAtom.Initiate(hashLock, []byte(aliceAddr.String()), []byte(bobAddr.String()), big.NewInt(3000000), time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 		err = BTCAtom.Redeem(secret)
 		Ω(err).Should(BeNil())
@@ -88,7 +121,7 @@ var _ = Describe("Bitcoin", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
-		err := BTCAtom.Initiate(hashLock, []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(3000000), time.Now().Unix()+10000)
+		err := BTCAtom.Initiate(hashLock, []byte(aliceAddr.String()), []byte(bobAddr.String()), big.NewInt(3000000), time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 		err = BTCAtom.Refund()
 		Ω(err).Should(Not(BeNil()))
@@ -98,7 +131,7 @@ var _ = Describe("Bitcoin", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
 		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
-		err := BTCAtom.Initiate(hashLock, []byte("mgTCJazbqe8JUCNQTbcVLJDv5yseRfAMVe"), []byte("mv8p79yFBUfrbWCSMPc4fNTThZS1zdPpR6"), big.NewInt(3000000), time.Now().Unix()+600)
+		err := BTCAtom.Initiate(hashLock, []byte(aliceAddr.String()), []byte(bobAddr.String()), big.NewInt(3000000), time.Now().Unix()+600)
 		Ω(err).Should(BeNil())
 		time.Sleep(30 * time.Minute)
 		err = BTCAtom.Refund()
