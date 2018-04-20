@@ -2,9 +2,13 @@ package darknode
 
 import (
 	"context"
+	"fmt"
+	"time"
 
+	"github.com/republicprotocol/republic-go/orderbook"
+
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/logger"
-	// "github.com/republicprotocol/republic-go/order"
 
 	"github.com/republicprotocol/republic-go/smpc"
 
@@ -21,8 +25,13 @@ type Darknode struct {
 	Config
 	Logger *logger.Logger
 
+	id           identity.ID
+	address      identity.Address
+	multiAddress identity.MultiAddress
+	orderbook    orderbook.Orderbook
+
 	darknodeRegistry contracts.DarkNodeRegistry
-	ocean            Ocean
+	router           *Router
 }
 
 // NewDarknode returns a new Darknode.
@@ -32,16 +41,27 @@ func NewDarknode(config Config) (Darknode, error) {
 		Logger: logger.StdoutLogger,
 	}
 
+	// Get identity information from the Config
+	key, err := identity.NewKeyPairFromPrivateKey(node.Config.EcdsaKey.PrivateKey)
+	if err != nil {
+		return node, fmt.Errorf("cannot get ID from private key: %v", err)
+	}
+	node.id = key.ID()
+	node.address = key.Address()
+	node.multiAddress = config.Network.MultiAddress
+	node.orderbook = orderbook.NewOrderbook(3)
+
 	// Open a connection to the Ethereum network
-	transactOpts := bind.NewKeyedTransactor(config.Key.PrivateKey)
+	transactOpts := bind.NewKeyedTransactor(config.EcdsaKey.PrivateKey)
 	client, err := client.Connect(
 		config.Ethereum.URI,
-		client.Network(config.Ethereum.Network),
+		config.Ethereum.Network,
 		config.Ethereum.RepublicTokenAddress,
 		config.Ethereum.DarkNodeRegistryAddress,
 	)
 	if err != nil {
-		return Darknode{}, err
+		println("ERR!", err)
+		return node, err
 	}
 
 	// Create bindings to the DarknodeRegistry and Ocean
@@ -50,130 +70,151 @@ func NewDarknode(config Config) (Darknode, error) {
 		return Darknode{}, err
 	}
 	node.darknodeRegistry = darknodeRegistry
-	node.ocean = NewOcean(darknodeRegistry)
+	node.router = NewRouter(100, node.multiAddress, config.Network, config.RsaKey.PrivateKey, &node.orderbook)
 
 	return node, nil
 }
 
-// Teardown destroys all resources allocated by the Darknode. The Darknode must
-// not be used afterwards.
-// func (node *Darknode) Teardown() {
-// 	close(node.orderFragments)
-// 	close(node.deltaFragments)
-// }
+// Run the Darknode until the done channel is closed.
+func (node *Darknode) Run(done <-chan struct{}) <-chan error {
+	errs := make(chan error, 1)
 
-// ID returns the ID of the Darknode.
-func (node *Darknode) ID() identity.ID {
-	key, err := identity.NewKeyPairFromPrivateKey(node.Config.Key.PrivateKey)
-	if err != nil {
-		panic(err)
-	}
-	return key.ID()
+	go func() {
+		defer close(errs)
+
+		dispatch.CoBegin(func() {
+			dispatch.Pipe(done, node.ServeRPC(done), errs)
+		}, func() {
+			dispatch.Pipe(done, node.RunWatcher(done), errs)
+		})
+	}()
+
+	return errs
 }
 
-// Ocean returns the Ocean used by this Darknode for computing the Pools and
-// its position in them.
-func (node *Darknode) Ocean() Ocean {
-	return node.ocean
+// ServeRPC services, using a gRPC server, until the done channel is closed or
+// an error is encountered.
+func (node *Darknode) ServeRPC(done <-chan struct{}) <-chan error {
+	errs := make(chan error, 1)
+
+	go func() {
+		defer close(errs)
+		dispatch.Pipe(done, node.router.Run(done, node.Host, node.Port), errs)
+	}()
+
+	time.Sleep(2 * time.Second)
+	return errs
 }
 
-// WatchDarknodeRegistryEpoch for changes and connect to Pools as needed.
-func (node *Darknode) WatchDarknodeRegistryEpoch(done <-chan struct{}) {
+// RunWatcher will watch for changes to the Ocean and run the secure
+// multi-party computation with new Pools. Stops when the done channel is
+// closed, and will attempt to recover from errors encountered while
+// interacting with the Ocean.
+func (node *Darknode) RunWatcher(done <-chan struct{}) <-chan error {
+	errs := make(chan error, 1)
 
-	// Maintain multiple done channels so that multiple epochs can be running
-	// in parallel
-	var prevDone chan struct{}
-	var currDone chan struct{}
-	defer func() {
-		if prevDone != nil {
-			close(prevDone)
+	go func() {
+		err := node.darknodeRegistry.WaitUntilRegistration(node.ID())
+		if err != nil {
+			errs <- err
+			return
 		}
-		if currDone != nil {
-			close(currDone)
+
+		// Maintain multiple done channels so that multiple epochs can be running
+		// in parallel
+		var prevDone chan struct{}
+		var currDone chan struct{}
+		defer func() {
+			if prevDone != nil {
+				close(prevDone)
+			}
+			if currDone != nil {
+				close(currDone)
+			}
+		}()
+
+		// Looping until the done channel is closed will recover from errors
+		// returned by watching the Ocean
+		for {
+			select {
+			case <-done:
+				return
+			default:
+			}
+
+			// Start watching epochs
+			epochs, epochErrs := RunEpochWatcher(done, node.darknodeRegistry)
+			go dispatch.Pipe(done, epochErrs, errs)
+
+			for quit := false; !quit; {
+				select {
+
+				case <-done:
+					return
+
+				case err, ok := <-errs:
+					if !ok {
+						quit = true
+						break
+					}
+					node.Logger.Network(logger.Error, err.Error())
+
+				case epoch, ok := <-epochs:
+					if !ok {
+						quit = true
+						break
+					}
+					if prevDone != nil {
+						close(prevDone)
+					}
+					prevDone = currDone
+					currDone = make(chan struct{})
+
+					darknodeIDs, err := node.darknodeRegistry.GetAllNodes()
+					if err != nil {
+						// FIXME: Do not skip the epoch. Retry with a backoff.
+						errs <- err
+						continue
+					}
+
+					darkOcean := NewDarkOcean(epoch.Blockhash, darknodeIDs)
+					deltas, deltaErrs := RunEpochProcess(currDone, node.ID(), darkOcean, node.router)
+					go dispatch.Pipe(done, deltaErrs, errs)
+					go func() {
+						for delta := range deltas {
+							if delta.IsMatch(smpc.Prime) {
+								node.Logger.OrderMatch(logger.Info, delta.ID.String(), delta.BuyOrderID.String(), delta.SellOrderID.String())
+							}
+						}
+					}()
+				}
+			}
 		}
 	}()
 
-	// Looping until the done channel is closed will recover from errors
-	// returned by watching the Ocean
-	for {
-		select {
-		case <-done:
-			return
-		default:
-		}
-
-		epochs, errs := node.ocean.Watch(done)
-
-		for quit := false; !quit; {
-			select {
-
-			case <-done:
-				return
-
-			case err, ok := <-errs:
-				if !ok {
-					quit = true
-					break
-				}
-				node.Logger.Network(logger.Error, err.Error())
-
-			case epoch, ok := <-epochs:
-				if !ok {
-					quit = true
-					break
-				}
-
-				if prevDone != nil {
-					close(prevDone)
-				}
-				prevDone = currDone
-				currDone = make(chan struct{})
-				node.RunEpoch(currDone, epoch)
-			}
-		}
-	}
+	return errs
 }
 
-// RunEpoch until the done channel is closed. Order fragments will be received,
-// computed, and broadcast in accordance to the epoch.
-func (node *Darknode) RunEpoch(done <-chan struct{}, epoch contracts.Epoch) {
-
-	// Setup a secure multi-party computer
-	// FIXME: Calculate n-k threshold correctly
-	// n := int64(5)
-	// k := (n + 1) * 2 / 3
-
-	// smpcerID := smpc.ComputerID{}
-	// copy(smpcerID[:], node.ID()[:])
-	// smpcer := smpc.NewComputer(smpcerID, n, k)
-
-	// // Initialize channels
-	// orderFragments := make(chan order.Fragment)
-	// deltaFragments := make(chan smpc.DeltaFragment)
-
-}
-
-// Compute begins the Smpcer.
-func (node *Darknode) Compute(done <-chan struct{}) {
-	// deltaFragmentsComputed, deltasComputed := node.smpcer.ComputeOrderMatches(done, node.orderFragments, node.deltaFragments)
-
-	// go func() {
-	// 	for delta := range deltasComputed {
-	// 		if delta.IsMatch(&smpc.Prime) {
-	// 			node.Logger.OrderMatch(logger.Info, delta.ID.String(), delta.BuyOrderID.String(), delta.SellOrderID.String())
-	// 			node.OrderMatchToHyperdrive(delta)
-	// 		}
-	// 	}
-	// }()
-}
-
+// OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
+// forwards it to the Hyperdrive.
 func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) {
-	// if !delta.IsMatch(&smpc.Prime) {
-	// 	return
-	// }
+	if !delta.IsMatch(smpc.Prime) {
+		return
+	}
+	// TODO: Implement
+}
 
-	// TODO:
-	// 1. Create a Tx for Hyperdrive
-	// 2. Gossip the Tx to the Hyperdrive replicas and eventually it will reach
-	//    the proposer replica
+// ID returns the ID of the Darknode.
+func (node *Darknode) ID() identity.ID {
+	return node.id
+}
+
+// Address returns the Address of the Darknode.
+func (node *Darknode) Address() identity.Address {
+	return node.address
+}
+
+// MultiAddress returns the MultiAddress of the Darknode.
+func (node *Darknode) MultiAddress() identity.MultiAddress {
+	return node.multiAddress
 }

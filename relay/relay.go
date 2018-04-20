@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -239,7 +240,7 @@ func sendSharesToDarkPool(pool *darknode.Pool, shares []*order.Fragment, relayCo
 							Signature:    relaySignature,
 							MultiAddress: relayConfig.multiAddress.String(),
 						},
-						OrderFragment: rpc.MarshalOrderFragment(share),
+						OrderFragment: rpc.MarshalOrderFragment(n.pubKey, share),
 					}
 
 					// Send fragment to node

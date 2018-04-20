@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 )

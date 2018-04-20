@@ -21,7 +21,7 @@ type Syncer interface {
 type Orderbook struct {
 	cache    Syncer
 	database Syncer
-	splitter dispatch.Splitter
+	splitter *dispatch.Splitter
 	splitCh  chan Entry
 }
 

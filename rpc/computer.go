@@ -25,8 +25,8 @@ type ComputerService struct {
 }
 
 // NewComputerService returns a new ComputerService.
-func NewComputerService() *ComputerService {
-	return &ComputerService{
+func NewComputerService() ComputerService {
+	return ComputerService{
 		senderSignalsMu: new(sync.Mutex),
 		senderSignals:   map[string]chan (<-chan *Computation){},
 
@@ -48,17 +48,17 @@ func (service *ComputerService) Register(server *grpc.Server) {
 // can be used to read Computation messages from the client. The error channel
 // will carry errors that occur when writing, or reading, Computation messages
 // to, or from, the client.
-func (service *ComputerService) WaitForCompute(multiAddress identity.MultiAddress, computationChIn <-chan *Computation) (<-chan *Computation, <-chan error) {
-	multiAddressAsStr := multiAddress.String()
+func (service *ComputerService) WaitForCompute(addr identity.Address, computationChIn <-chan *Computation) (<-chan *Computation, <-chan error) {
+	addrAsStr := addr.String()
 
-	senderSignal := service.senderSignal(multiAddressAsStr)
-	defer service.closeSenderSignal(multiAddressAsStr)
+	senderSignal := service.senderSignal(addrAsStr)
+	defer service.closeSenderSignal(addrAsStr)
 	senderSignal <- computationChIn
 
-	errSignal := service.errSignal(multiAddressAsStr)
+	errSignal := service.errSignal(addrAsStr)
 	errCh := <-errSignal
 
-	receiverSignal := service.receiverSignal(multiAddressAsStr)
+	receiverSignal := service.receiverSignal(addrAsStr)
 	receiverCh := <-receiverSignal
 
 	return receiverCh, errCh
@@ -79,19 +79,19 @@ func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 	}
 	multiAddress, _, err := UnmarshalMultiAddress(authentication.MultiAddress)
 	// FIXME: Validate the multiaddress signature.
-	multiAddressAsStr := multiAddress.String()
+	addrAsStr := multiAddress.Address().String()
 
 	errCh := make(chan error)
 	defer close(errCh)
 
-	errSignal := service.errSignal(multiAddressAsStr)
-	defer service.closeErrSignal(multiAddressAsStr)
+	errSignal := service.errSignal(addrAsStr)
+	defer service.closeErrSignal(addrAsStr)
 	errSignal <- errCh
 
 	senderErrCh := make(chan error, 1)
 	go func() {
 		defer close(senderErrCh)
-		senderSignal := service.senderSignal(multiAddressAsStr)
+		senderSignal := service.senderSignal(addrAsStr)
 		senderCh := <-senderSignal
 
 		for message := range senderCh {
@@ -109,8 +109,8 @@ func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 	receiverCh := make(chan *Computation)
 	defer close(receiverCh)
 
-	receiverSignal := service.receiverSignal(multiAddressAsStr)
-	defer service.closeReceiverSignal(multiAddressAsStr)
+	receiverSignal := service.receiverSignal(addrAsStr)
+	defer service.closeReceiverSignal(addrAsStr)
 	receiverSignal <- receiverCh
 
 	for {
@@ -194,74 +194,3 @@ func (service *ComputerService) closeErrSignal(key string) {
 		delete(service.errSignals, key)
 	}
 }
-
-type ComputationWithID struct {
-	ID          [32]byte
-	Computation *Computation
-}
-
-// func ZipComputationsWithID(done <-chan struct{}, computations <-chan *Computation, id [32]byte) <-chan ComputationWithID {
-// 	computationsWithID := make([]<-chan ComputationWithID, len(computationChs))
-
-// 	go func() {
-// 		defer close(computationsWithID)
-// 		for {
-// 			select {
-// 			case <-done:
-// 				return
-// 			case computation, ok := <-computations:
-// 				if !ok {
-// 					return
-// 				}
-// 				computationWithID := ComputationWithID{
-// 					ID:          id,
-// 					Computation: computation,
-// 				}
-// 				select {
-// 				case <-done:
-// 					return
-// 				case computationsWithID <- computationWithID:
-// 				}
-// 			}
-// 		}
-// 	}()
-
-// 	return computationsWithID
-// }
-
-// type ComputeMap struct {
-// 	clientPool ClientPool
-
-// 	inputs map[[32]byte]chan ComputationWithID
-// 	outputs map[[32]byte]chan ComputationWithID
-// }
-
-// func (computeMap *ComputeMap) Setup(multiAddresses []identity.MultiAddress) {
-
-
-
-// }
-
-// func (computeMap *ComputeMap) Compute(done chan struct{}, multiAddresses []identity.MultiAddress) <-chan ComputationWithID {
-// 	computationsWithID := make(chan ComputationWithID)
-
-// 	go func() {
-// 		defer close(computationsWithID)
-
-// 		arrayOfComputationsWithID := []<-chan ComputationWithID{}
-// 		for i := range multiAddresses {
-
-// 			id := [32]byte{}
-// 			copy(id[:], multiAddresses[i].ID())
-	
-// 			computations, errs := clientPool.Compute(...)
-// 			arrayOfComputationsWithID = append(arrayOfComputationsWithID, ZipComputationsWithID(done, computations, id))
-// 		}
-
-// 		dispatch.Merge(computationsWithID, arrayOfComputationsWithID)
-// 	}()
-
-// 	return computationsWithID
-// }
-
-// func (computeMap) 

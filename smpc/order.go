@@ -38,7 +38,7 @@ func OrderFragmentsToOrderTuples(done <-chan struct{}, orderFragments <-chan ord
 		defer close(orderTuples)
 
 		buffer := make([]OrderTuple, bufferLimit)
-		tick := time.NewTicker(time.Millisecond)
+		tick := time.NewTicker(time.Second)
 		defer tick.Stop()
 
 		for {

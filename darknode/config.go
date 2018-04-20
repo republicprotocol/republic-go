@@ -2,7 +2,11 @@ package darknode
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/identity"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/ethereum/client"
@@ -11,12 +15,13 @@ import (
 )
 
 type Config struct {
-	Key      keystore.Key   `json:"key"`
-	Host     string         `json:"host"`
-	Port     string         `json:"port"`
-	Ethereum EthereumConfig `json:"ethereum"`
-	Network  rpc.Options    `json:"network"`
-	Logs     logger.Options `json:"logs"`
+	EcdsaKey keystore.Key      `json:"ecdsaKey"`
+	RsaKey   crypto.RsaKeyPair `json:"rsaKey"`
+	Host     string            `json:"host"`
+	Port     string            `json:"port"`
+	Ethereum EthereumConfig    `json:"ethereum"`
+	Network  rpc.Options       `json:"network"`
+	Logs     logger.Options    `json:"logs"`
 }
 
 type EthereumConfig struct {
@@ -41,18 +46,36 @@ func LoadConfig(filename string) (*Config, error) {
 	return config, nil
 }
 
-func NewLocalConfig(key keystore.Key, host, port string) Config {
+func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (Config, error) {
+	keyPair, err := identity.NewKeyPairFromPrivateKey(ecdsaKey.PrivateKey)
+	if err != nil {
+		return Config{}, err
+	}
+
+	rsaKey, err := crypto.NewRsaKeyPair()
+	if err != nil {
+		return Config{}, err
+	}
+
+	multi, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", host, port, keyPair.Address()))
+	if err != nil {
+		return Config{}, err
+	}
 	return Config{
-		Key:  key,
-		Host: host,
-		Port: port,
+		EcdsaKey: ecdsaKey,
+		RsaKey:   rsaKey,
+		Host:     host,
+		Port:     port,
+		Network: rpc.Options{
+			MultiAddress: multi,
+		},
 		Ethereum: EthereumConfig{
 			URI:                     "http://localhost:8545",
 			Network:                 client.NetworkGanache,
 			RepublicTokenAddress:    client.RepublicTokenAddressOnGanache.String(),
 			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.String(),
 		},
-	}
+	}, nil
 }
 
 func NewFalconConfig() Config {

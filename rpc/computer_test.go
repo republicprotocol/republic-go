@@ -21,7 +21,7 @@ var _ = Describe("Secure multi-party computer service", func() {
 
 	Context("when streaming computations", func() {
 
-		FIt("should setup a rendezvous between clients and servers", func(done Done) {
+		It("should setup a rendezvous between clients and servers", func(done Done) {
 			defer close(done)
 
 			numberOfMessages := 1

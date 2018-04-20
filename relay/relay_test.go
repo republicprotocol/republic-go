@@ -1,12 +1,12 @@
 package relay_test
 
 import (
-//	"errors"
-	// "fmt"
-//	"sync"
+	//	"errors"
+	"fmt"
+	//	"sync"
 	"time"
 
-//	. "github.com/onsi/ginkgo"
+	//	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 //	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -102,7 +102,7 @@ var Prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 
 // 		It("should not return an error", func() {
 // 			pools, trader := getPoolsAndTrader()
-			
+
 // 			orderID := []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
 
 // 			err = CancelOrder(orderID, &trader, pools, getBootstrapNodes())

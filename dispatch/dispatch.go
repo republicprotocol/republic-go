@@ -6,33 +6,16 @@ import (
 	"sync"
 )
 
-// Dispatch functions onto goroutine in the background. Returns a channel that
-// is closed when all goroutines have terminated.
-func Dispatch(fs ...func()) <-chan struct{} {
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-
-		var wg sync.WaitGroup
-		for _, f := range fs {
-			wg.Add(1)
-			go func(f func()) {
-				defer wg.Done()
-				f()
-			}(f)
-		}
-		wg.Wait()
-	}()
-	return done
-}
-
+// Wait waits for multiple signal channels to end
 func Wait(chs ...chan struct{}) {
 	for _, ch := range chs {
 		for range ch {
+			// Pass
 		}
 	}
 }
 
+// Close closes multiple channels
 func Close(chs ...interface{}) {
 	for _, ch := range chs {
 		if reflect.TypeOf(ch).Kind() == reflect.Chan {
@@ -41,6 +24,8 @@ func Close(chs ...interface{}) {
 	}
 }
 
+// Split splits a channel into multiple channel
+// The input and output channels should be of the same type
 func Split(chIn interface{}, chsOut ...interface{}) {
 	if reflect.TypeOf(chIn).Kind() != reflect.Chan {
 		panic(fmt.Sprintf("cannot split from value of type %T", chIn))
@@ -56,6 +41,7 @@ func Split(chIn interface{}, chsOut ...interface{}) {
 	}
 }
 
+// Send sends a msg to a channel or an array of channels
 func Send(chOut interface{}, msgValue reflect.Value) {
 	switch reflect.TypeOf(chOut).Kind() {
 	case reflect.Array, reflect.Slice:
@@ -72,6 +58,7 @@ func Send(chOut interface{}, msgValue reflect.Value) {
 	}
 }
 
+// Splitter is a protected map
 type Splitter struct {
 	mu          *sync.RWMutex
 	subscribers map[interface{}]struct{}
@@ -79,8 +66,9 @@ type Splitter struct {
 	maxConnections int
 }
 
-func NewSplitter(maxConnections int) Splitter {
-	return Splitter{
+// NewSplitter creates and returns a new Splitter object
+func NewSplitter(maxConnections int) *Splitter {
+	return &Splitter{
 		mu:          &sync.RWMutex{},
 		subscribers: make(map[interface{}]struct{}),
 
@@ -88,6 +76,8 @@ func NewSplitter(maxConnections int) Splitter {
 	}
 }
 
+// Subscribe subscribes a channel to get messages from another channel.
+// returns an error if it fails
 func (splitter *Splitter) Subscribe(ch interface{}) error {
 	splitter.mu.Lock()
 	defer splitter.mu.Unlock()
@@ -100,12 +90,15 @@ func (splitter *Splitter) Subscribe(ch interface{}) error {
 	return nil
 }
 
+// Unsubscribe unsubscribes a channel from getting messages from
+// another channel.
 func (splitter *Splitter) Unsubscribe(ch interface{}) {
 	splitter.mu.Lock()
 	defer splitter.mu.Unlock()
 	delete(splitter.subscribers, ch)
 }
 
+// Split multicasts the channel to all the subscribed channels.
 func (splitter *Splitter) Split(chIn interface{}) {
 	if reflect.TypeOf(chIn).Kind() != reflect.Chan {
 		panic(fmt.Sprintf("cannot split from value of type %T", chIn))
@@ -116,7 +109,6 @@ func (splitter *Splitter) Split(chIn interface{}) {
 		if !ok {
 			return
 		}
-
 		func() {
 			splitter.mu.RLock()
 			defer splitter.mu.RUnlock()
@@ -127,6 +119,8 @@ func (splitter *Splitter) Split(chIn interface{}) {
 	}
 }
 
+// Merge merges multiple channels of into a channel
+// The input and output channels should be of the same type
 func Merge(chOut interface{}, chsIn ...interface{}) {
 	if reflect.TypeOf(chOut).Kind() != reflect.Chan {
 		panic(fmt.Sprintf("cannot merge to type %T", chOut))
@@ -153,7 +147,7 @@ func Merge(chOut interface{}, chsIn ...interface{}) {
 					panic(fmt.Sprintf("cannot merge from value of type %T", chIn))
 				}
 				wg.Add(1)
-				go mergeCh(reflect.ValueOf(chIn).Index(i))
+				go mergeCh(reflect.ValueOf(chIn).Index(i).Interface())
 			}
 		case reflect.Chan:
 			wg.Add(1)
@@ -190,7 +184,7 @@ func Pipe(done <-chan struct{}, producer interface{}, consumer interface{}) {
 
 		cases = [2]reflect.SelectCase{
 			reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(done)},
-			reflect.SelectCase{Dir: reflect.SelectSend, Chan: reflect.ValueOf(producer), Send: val},
+			reflect.SelectCase{Dir: reflect.SelectSend, Chan: reflect.ValueOf(consumer), Send: val},
 		}
 		i, val, ok = reflect.Select(cases[:])
 		if i == 0 {

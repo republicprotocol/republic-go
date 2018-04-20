@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"sync"
 
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/stackint"
 
 	. "github.com/onsi/ginkgo"
@@ -16,13 +17,15 @@ import (
 var _ = Describe("Obscure residue fragments", func() {
 	Context("when producing obscure residue fragments", func() {
 
-		It("should produce obscure random number generators", func() {
+		It("should produce obscure random number generators", func(done Done) {
+			defer close(done)
+
 			var wg sync.WaitGroup
 			ctx, cancel := context.WithCancel(context.Background())
 			n, k := int64(31), int64(16)
 
 			// Start the producer in the background
-			sharedOrderResidueTable := smpc.NewSharedObscureResidueTable([32]byte{})
+			sharedOrderResidueTable := smpc.NewSharedObscureResidueTable(identity.ID{})
 			obscureRngCh, errCh := smpc.ProduceObscureRngs(ctx, n, k, &sharedOrderResidueTable, int(n))
 
 			wg.Add(1)
@@ -51,7 +54,9 @@ var _ = Describe("Obscure residue fragments", func() {
 			wg.Wait()
 		})
 
-		It("should produce verifiable obscure random numbers", func() {
+		It("should produce verifiable obscure random numbers", func(done Done) {
+			defer close(done)
+
 			var wg sync.WaitGroup
 			ctx, cancel := context.WithCancel(context.Background())
 			n, k := int64(31), int64(16)
@@ -75,7 +80,7 @@ var _ = Describe("Obscure residue fragments", func() {
 				for i := range obscureRngChs {
 					obscureRngChs[i] <- smpc.ObscureRng{
 						ObscureResidueID: [32]byte{1},
-						Owner:            [32]byte{1},
+						Owner:            identity.ID{1},
 						Signature:        [32]byte{},
 						N:                n,
 						K:                k,
@@ -85,7 +90,7 @@ var _ = Describe("Obscure residue fragments", func() {
 
 			// Create N processes that will consume ObscureRngs and
 			// produce ObscureRngSharesIndexed
-			sharedOrderResidueTable := smpc.NewSharedObscureResidueTable([32]byte{})
+			sharedOrderResidueTable := smpc.NewSharedObscureResidueTable(identity.ID{})
 			obscureRngSharesChs := make([]<-chan smpc.ObscureRngShares, n)
 			for i := int64(0); i < n; i++ {
 				obscureRngShares, errCh := smpc.ProcessObscureRngs(ctx, obscureRngChs[i], &sharedOrderResidueTable, int(n))
@@ -133,7 +138,9 @@ var _ = Describe("Obscure residue fragments", func() {
 			wg.Wait()
 		})
 
-		It("should produce verifiable obscure multiplication shares", func() {
+		It("should produce verifiable obscure multiplication shares", func(done Done) {
+			defer close(done)
+
 			var wg sync.WaitGroup
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -251,9 +258,11 @@ var _ = Describe("Obscure residue fragments", func() {
 
 			cancel()
 			wg.Wait()
-		})
+		}, 2) // Need 2 second timeout
 
-		It("should produce verifiable obscure residue fragments", func() {
+		It("should produce verifiable obscure residue fragments", func(done Done) {
+			defer close(done)
+
 			var wg sync.WaitGroup
 
 			ctx, cancel := context.WithCancel(context.Background())
