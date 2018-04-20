@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/dispatch"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/go-do"
@@ -24,7 +25,7 @@ const (
 	GanacheRPC                 = "http://localhost:8545"
 	NumberOfDarkNodes          = 5
 	NumberOfBootstrapDarkNodes = 5
-	NumberOfOrders             = 1
+	NumberOfOrders             = 100
 )
 
 var _ = Describe("Darknode", func() {
@@ -32,7 +33,6 @@ var _ = Describe("Darknode", func() {
 	var conn client.Connection
 	var darknodeRegistry contracts.DarkNodeRegistry
 	var darknodes Darknodes
-	var done chan struct{}
 
 	BeforeEach(func() {
 		var err error
@@ -52,26 +52,10 @@ var _ = Describe("Darknode", func() {
 		// registrations
 		err = RegisterDarknodes(darknodes, conn, darknodeRegistry)
 		Expect(err).ShouldNot(HaveOccurred())
-		_, err = darknodeRegistry.Epoch()
-		Expect(err).ShouldNot(HaveOccurred())
-
-		done = make(chan struct{})
-		go func() {
-			do.CoForAll(darknodes, func(i int) {
-				darknodes[i].ServeRPC(done)
-				darknodes[i].RunWatcher(done)
-			})
-		}()
-
-		// Wait for the Darknodes to boot
-		time.Sleep(time.Second)
 	})
 
 	AfterEach(func() {
 		var err error
-
-		// Wait for the DarkNodes to shutdown
-		close(done)
 
 		// Deregister the DarkNodes
 		err = DeregisterDarknodes(darknodes, conn, darknodeRegistry)
@@ -148,11 +132,20 @@ var _ = Describe("Darknode", func() {
 	FContext("when computing order matches", func() {
 
 		FIt("should process the distribute order table in parallel with other pools", func() {
-			By("start sending orders ")
+
+			By("booting darknodes...")
+			done := make(chan struct{})
+			defer close(done)
+			go dispatch.CoForAll(darknodes, func(i int) {
+				darknodes[i].Run(done)
+			})
+			time.Sleep(NumberOfDarkNodes * time.Second)
+
+			By("sending orders...")
 			err := sendOrders(darknodes, NumberOfOrders)
 			Ω(err).ShouldNot(HaveOccurred())
-			By("finish sending orders ")
 
+			By("waiting for results...")
 			time.Sleep(time.Minute)
 		})
 
@@ -175,6 +168,7 @@ var _ = Describe("Darknode", func() {
 })
 
 func sendOrders(nodes Darknodes, numberOfOrders int) error {
+
 	// Generate buy-sell order pairs
 	buyOrders, sellOrders := make([]*order.Order, numberOfOrders), make([]*order.Order, numberOfOrders)
 	for i := 0; i < numberOfOrders; i++ {

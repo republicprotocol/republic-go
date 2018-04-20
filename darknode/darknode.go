@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/republicprotocol/republic-go/orderbook"
+
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/logger"
 
@@ -26,6 +28,7 @@ type Darknode struct {
 	id           identity.ID
 	address      identity.Address
 	multiAddress identity.MultiAddress
+	orderbook    orderbook.Orderbook
 
 	darknodeRegistry contracts.DarkNodeRegistry
 	router           *Router
@@ -46,6 +49,7 @@ func NewDarknode(config Config) (Darknode, error) {
 	node.id = key.ID()
 	node.address = key.Address()
 	node.multiAddress = config.Network.MultiAddress
+	node.orderbook = orderbook.NewOrderbook(3)
 
 	// Open a connection to the Ethereum network
 	transactOpts := bind.NewKeyedTransactor(config.EcdsaKey.PrivateKey)
@@ -66,9 +70,26 @@ func NewDarknode(config Config) (Darknode, error) {
 		return Darknode{}, err
 	}
 	node.darknodeRegistry = darknodeRegistry
-	node.router = NewRouter(100, node.multiAddress, config.Network, config.RsaKey.PrivateKey)
+	node.router = NewRouter(100, node.multiAddress, config.Network, config.RsaKey.PrivateKey, &node.orderbook)
 
 	return node, nil
+}
+
+// Run the Darknode until the done channel is closed.
+func (node *Darknode) Run(done <-chan struct{}) <-chan error {
+	errs := make(chan error, 1)
+
+	go func() {
+		defer close(errs)
+
+		dispatch.CoBegin(func() {
+			dispatch.Pipe(done, node.ServeRPC(done), errs)
+		}, func() {
+			dispatch.Pipe(done, node.RunWatcher(done), errs)
+		})
+	}()
+
+	return errs
 }
 
 // ServeRPC services, using a gRPC server, until the done channel is closed or
@@ -78,8 +99,7 @@ func (node *Darknode) ServeRPC(done <-chan struct{}) <-chan error {
 
 	go func() {
 		defer close(errs)
-		routerErrs := node.router.Run(done, node.Host, node.Port)
-		dispatch.Pipe(done, routerErrs, errs)
+		dispatch.Pipe(done, node.router.Run(done, node.Host, node.Port), errs)
 	}()
 
 	time.Sleep(2 * time.Second)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -31,16 +32,28 @@ func RunEpochProcess(done <-chan struct{}, id identity.ID, darkOcean DarkOcean, 
 		}
 
 		// Open connections with all Darknodes in the Pool
+		mu := new(sync.Mutex)
 		senders := map[identity.Address]chan<- *rpc.Computation{}
+		defer func() {
+			for key := range senders {
+				close(senders[key])
+			}
+		}()
 		receivers := map[identity.Address]<-chan *rpc.Computation{}
 		errors := map[identity.Address]<-chan error{}
-		for _, address := range pool.Addresses() {
-			sender := make(chan *rpc.Computation)
-			defer close(sender)
 
-			senders[address] = sender
-			receivers[address], errors[address] = router.Compute(done, address, sender)
-		}
+		addresses := pool.Addresses()
+		dispatch.CoForAll(addresses, func(i int) {
+			sender := make(chan *rpc.Computation)
+
+			receiver, errs := router.Compute(done, addresses[i], sender)
+
+			mu.Lock()
+			defer mu.Unlock()
+			senders[addresses[i]] = sender
+			receivers[addresses[i]] = receiver
+			errors[addresses[i]] = errs
+		})
 
 		n := int64(pool.Size())
 		k := (n + 1) * 2 / 3
@@ -50,7 +63,7 @@ func RunEpochProcess(done <-chan struct{}, id identity.ID, darkOcean DarkOcean, 
 		go dispatch.Pipe(done, orderFragmentErrs, errs)
 
 		deltaFragments := make(chan smpc.DeltaFragment)
-		close(deltaFragments)
+		defer close(deltaFragments)
 
 		deltaFragmentsComputed, deltasComputed := smpcer.ComputeOrderMatches(done, orderFragments, deltaFragments)
 
@@ -179,6 +192,8 @@ func RunEpochWatcher(done <-chan struct{}, darknodeRegistry contracts.DarkNodeRe
 					currentEpoch = nextEpoch
 					break
 				}
+
+				time.Sleep(time.Minute)
 			}
 		}
 	}()

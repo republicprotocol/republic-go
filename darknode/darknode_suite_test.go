@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	. "github.com/onsi/ginkgo"
@@ -65,6 +66,16 @@ func RegisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, dar
 		if _, err := conn.PatchedWaitMined(context.Background(), tx); err != nil {
 			return err
 		}
+	}
+
+	// Turn the epoch to approve registrations
+	time.Sleep(time.Second)
+	tx, err := darknodeRegistry.Epoch()
+	if err != nil {
+		return err
+	}
+	if _, err := conn.PatchedWaitMined(context.Background(), tx); err != nil {
+		return err
 	}
 	return nil
 }

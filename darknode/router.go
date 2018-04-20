@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"crypto/rsa"
-	"errors"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/orderbook"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"google.golang.org/grpc"
@@ -25,7 +26,7 @@ type Router struct {
 	address        identity.Address
 	multiAddress   identity.MultiAddress
 
-	orderFragmentSplitterCh chan<- order.Fragment
+	orderFragmentSplitterCh chan order.Fragment
 	orderFragmentSplitter   *dispatch.Splitter
 
 	mu               *sync.Mutex
@@ -38,16 +39,17 @@ type Router struct {
 	clientPool *rpc.ClientPool
 	swarmer    rpc.SwarmService
 	relayer    rpc.RelayService
+	syncer     rpc.SyncerService
 	smpcer     rpc.ComputerService
 }
 
-func NewRouter(maxConnections int, multiAddress identity.MultiAddress, options rpc.Options, privateKey *rsa.PrivateKey) *Router {
+func NewRouter(maxConnections int, multiAddress identity.MultiAddress, options rpc.Options, privateKey *rsa.PrivateKey, orderbook *orderbook.Orderbook) *Router {
 	router := &Router{
 		maxConnections: maxConnections,
 		address:        multiAddress.Address(),
 		multiAddress:   multiAddress,
 
-		orderFragmentSplitterCh: make(chan<- order.Fragment, 100),
+		orderFragmentSplitterCh: make(chan order.Fragment, 100),
 		orderFragmentSplitter:   dispatch.NewSplitter(maxConnections),
 
 		mu:               new(sync.Mutex),
@@ -61,6 +63,7 @@ func NewRouter(maxConnections int, multiAddress identity.MultiAddress, options r
 	router.swarmer = rpc.NewSwarmService(options, router.clientPool, router.dht, logger.StdoutLogger)
 	router.relayer = rpc.NewRelayService(options, router, privateKey, logger.StdoutLogger)
 	router.smpcer = rpc.NewComputerService()
+	router.syncer = rpc.NewSyncerService(options, logger.StdoutLogger, orderbook)
 	return router
 }
 
@@ -69,7 +72,9 @@ func (router *Router) Run(done <-chan struct{}, host, port string) <-chan error 
 
 	go func() {
 		defer close(errs)
+
 		server := grpc.NewServer()
+		router.swarmer.Register(server)
 		router.relayer.Register(server)
 		router.smpcer.Register(server)
 		listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", host, port))
@@ -78,10 +83,16 @@ func (router *Router) Run(done <-chan struct{}, host, port string) <-chan error 
 			return
 		}
 
-		if err := server.Serve(listener); err != nil {
-			errs <- err
-			return
-		}
+		dispatch.CoBegin(func() {
+			if err := server.Serve(listener); err != nil {
+				errs <- err
+				return
+			}
+		}, func() {
+			router.swarmer.Bootstrap()
+		}, func() {
+			router.orderFragmentSplitter.Split(router.orderFragmentSplitterCh)
+		})
 	}()
 
 	return errs
@@ -117,12 +128,13 @@ func (router *Router) Compute(done <-chan struct{}, addr identity.Address, compu
 
 		var err error
 		router.mu.Lock()
-		if _, ok := router.computeReceivers[addr]; !ok {
+		if _, ok := router.computeSenders[addr]; !ok {
 			err = router.setupCompute(addr)
 		}
 		router.computeArcs[addr]++
 		router.mu.Unlock()
 		if err != nil {
+			log.Printf("err: %v", err)
 			errs <- err
 			return
 		}
@@ -142,6 +154,7 @@ func (router *Router) Compute(done <-chan struct{}, addr identity.Address, compu
 			router.mu.Unlock()
 		}()
 
+		println("READING FROM COMPUTATION SENDER")
 		for {
 			select {
 			case <-done:
@@ -167,6 +180,8 @@ func (router *Router) setupCompute(addr identity.Address) error {
 	var errs <-chan error
 
 	sender := make(chan *rpc.Computation)
+	router.computeSenders[addr] = sender
+
 	if bytes.Compare(router.address.ID()[:], addr.ID()[:]) < 0 {
 
 		multiAddr, err := router.swarmer.FindNode(addr.ID())
@@ -174,20 +189,26 @@ func (router *Router) setupCompute(addr identity.Address) error {
 			return err
 		}
 		if multiAddr == nil {
-			return errors.New("multiaddress not found")
+			return fmt.Errorf("multiaddress not found: %v", addr)
 		}
 
+		router.mu.Unlock()
 		receiver, errs = router.clientPool.Compute(context.Background(), *multiAddr, sender)
 		sender <- &rpc.Computation{MultiAddress: rpc.MarshalMultiAddress(&router.multiAddress)}
+		println("client rendezvous connected!")
+		router.mu.Lock()
+
 	} else {
+		router.mu.Unlock()
 		receiver, errs = router.smpcer.WaitForCompute(addr, sender)
+		println("service rendezvous connected!")
+		router.mu.Lock()
 	}
 
-	router.computeSenders[addr] = sender
 	router.computeReceivers[addr] = dispatch.NewSplitter(router.maxConnections)
-	router.computeReceivers[addr].Split(receiver)
+	go router.computeReceivers[addr].Split(receiver)
 	router.computeErrs[addr] = dispatch.NewSplitter(router.maxConnections)
-	router.computeErrs[addr].Split(errs)
+	go router.computeErrs[addr].Split(errs)
 	return nil
 }
 
@@ -200,4 +221,5 @@ func (router *Router) teardownCompute(addr identity.Address) {
 
 func (router *Router) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
 	router.orderFragmentSplitterCh <- *orderFragment
+	println("WRITTEN ORDER FRAGMENTS")
 }

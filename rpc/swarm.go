@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/dht"
@@ -292,7 +291,6 @@ func (service *SwarmService) bootstrapUsingMultiAddress(bootstrapMultiAddress id
 		case err := <-errs:
 			if err != nil {
 				service.Logger.Error(fmt.Sprintf("cannot deepen query: %s", err.Error()))
-				log.Println("error hehrer erere ", service.MultiAddress().String())
 			}
 			continuing = false
 		case marshaledPeer, ok := <-peers:
