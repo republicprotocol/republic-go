@@ -28,9 +28,9 @@ import (
 
 const (
 	GanacheRPC                 = "http://localhost:8545"
-	NumberOfDarkNodes          = 24
-	NumberOfBootstrapDarkNodes = 24
-	NumberOfOrders             = 1
+	NumberOfDarkNodes          = 12
+	NumberOfBootstrapDarkNodes = 1
+	NumberOfOrders             = 1000
 )
 
 var _ = Describe("Darknode", func() {
@@ -152,9 +152,18 @@ var _ = Describe("Darknode", func() {
 			done := make(chan struct{})
 			defer close(done)
 			go dispatch.CoForAll(darknodes, func(i int) {
+				for err := range darknodes[i].Serve(done) {
+					Expect(err).ShouldNot(HaveOccurred())
+				}
+			})
+			time.Sleep(10 * time.Second)
+			dispatch.CoForAll(darknodes, func(i int) {
+				darknodes[i].Bootstrap()
+			})
+			go dispatch.CoForAll(darknodes, func(i int) {
 				darknodes[i].Run(done)
 			})
-			time.Sleep(NumberOfDarkNodes * time.Second)
+			time.Sleep(10 * time.Second)
 
 			By("sending orders...")
 			err := sendOrders(darknodes, NumberOfOrders)
@@ -211,11 +220,11 @@ func sendOrders(nodes Darknodes, numberOfOrders int) error {
 	for i := 0; i < numberOfOrders; i++ {
 		buyOrder, sellOrder := buyOrders[i], sellOrders[i]
 		log.Printf("Sending matched order. [BUY] %s <---> [SELL] %s", buyOrder.ID, sellOrder.ID)
-		buyShares, err := buyOrder.Split(int64(totalNodes), int64(totalNodes*2/3+1), &prime)
+		buyShares, err := buyOrder.Split(int64(totalNodes), int64((totalNodes+1)*2/3), &prime)
 		if err != nil {
 			return err
 		}
-		sellShares, err := sellOrder.Split(int64(totalNodes), int64(totalNodes*2/3+1), &prime)
+		sellShares, err := sellOrder.Split(int64(totalNodes), int64((totalNodes+1)*2/3), &prime)
 		if err != nil {
 			return err
 		}
@@ -235,8 +244,7 @@ func sendOrders(nodes Darknodes, numberOfOrders int) error {
 				defer cancel()
 				err = pool.OpenOrder(ctx, nodes[j].Network.MultiAddress, orderRequest)
 				if err != nil {
-					log.Printf("Coudln't send order fragment to %s\n", nodes[j].Network.MultiAddress.ID())
-					log.Fatal(err)
+					log.Printf("cannot send order fragment to: %s", nodes[j].Network.MultiAddress.ID())
 				}
 			})
 		}

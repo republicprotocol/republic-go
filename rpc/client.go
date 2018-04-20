@@ -119,7 +119,7 @@ func (client *Client) QueryPeers(ctx context.Context, target *Address) (<-chan *
 
 func (client *Client) QueryPeersDeep(ctx context.Context, target *Address) (<-chan *MultiAddress, <-chan error) {
 	multiAddressCh := make(chan *MultiAddress)
-	errCh := make(chan error)
+	errCh := make(chan error, 1)
 
 	go func() {
 		defer close(multiAddressCh)

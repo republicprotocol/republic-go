@@ -35,6 +35,9 @@ func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (darknode.D
 	}
 	for i := 0; i < numberOfDarknodes; i++ {
 		for j := 0; j < numberOfDarknodes; j++ {
+			if i == j {
+				continue
+			}
 			configs[i].Network.BootstrapMultiAddresses = append(configs[i].Network.BootstrapMultiAddresses, configs[j].Network.MultiAddress)
 		}
 	}

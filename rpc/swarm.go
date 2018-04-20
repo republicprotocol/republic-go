@@ -213,7 +213,9 @@ func (service *SwarmService) queryPeersDeep(query *Query, stream Swarm_QueryPeer
 			if err := stream.Send(MarshalMultiAddress(&peer)); err != nil {
 				return err
 			}
-			frontier = append(frontier, peer)
+			if len(frontier) < service.Alpha {
+				frontier = append(frontier, peer)
+			}
 		}
 	}
 

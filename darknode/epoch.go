@@ -128,7 +128,25 @@ func RunEpochProcess(done <-chan struct{}, id identity.ID, darkOcean DarkOcean, 
 		}, func() {
 
 			// Output computed smpc.Deltas
-			dispatch.Pipe(done, deltasComputed, deltas)
+			for {
+				select {
+				case <-done:
+					return
+				case deltaComputed, ok := <-deltasComputed:
+					if !ok {
+						return
+					}
+					if deltaComputed.IsMatch(smpc.Prime) {
+						smpcer.SharedOrderTable().RemoveBuyOrder(deltaComputed.BuyOrderID)
+						smpcer.SharedOrderTable().RemoveSellOrder(deltaComputed.SellOrderID)
+					}
+					select {
+					case <-done:
+						return
+					case deltas <- deltaComputed:
+					}
+				}
+			}
 		})
 	}()
 
