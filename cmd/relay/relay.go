@@ -53,13 +53,7 @@ func main() {
 
 	registrar, err := getRegistrar(key)
 	if err != nil {
-		fmt.Println(fmt.Errorf("could not create registrar: %s", err))
-		return
-	}
-
-	pools, err := getDarkPools(key, registrar)
-	if err != nil {
-		fmt.Println(fmt.Errorf("could not obtain address and pools: %s", err))
+		fmt.Println(fmt.Errorf("could not obtain registrar: %s", err))
 		return
 	}
 
@@ -69,12 +63,13 @@ func main() {
 		Token: token,
 		BootstrapNodes: getBootstrapNodes()
 	}
+	pools := darknode.NewOcean(registrar).GetPools()
 	book := orderbook.NewOrderbook(100) // TODO: Check max connections
-	runRelay(config, pools, book)
+	RunRelay(config, pools, book)
 }
 
 // Start the relay
-func runRelay(config relay.Config, pools darknode.Pools, book orderbook.Orderbook) {
+func RunRelay(config relay.Config, pools darknode.Pools, book orderbook.Orderbook) {
 	relayNode := relay.NewRelay(config, pools, book)
 	r := relay.NewRouter(relayNode)
 	if err := http.ListenAndServe(*bindAddress, r); err != nil {
@@ -89,12 +84,7 @@ func runRelay(config relay.Config, pools darknode.Pools, book orderbook.Orderboo
 		return
 	}
 	clientPool := rpc.NewClientPool(multi, keyPair).WithTimeout(10 * time.Second).WithTimeoutBackoff(0)
-	go synchronizeOrderbook(&book, clientPool, registrar)
-}
-
-func getDarkPools(key *keystore.Key, registrar contracts.DarkNodeRegistry) (darknode.Pools, error) {
-	ocean := darknode.NewOcean(registrar)
-	return ocean.GetPools(), nil
+	go relay.SynchronizeOrderbook(&book, clientPool, registrar)
 }
 
 func getKey(filename, passphrase string) (*keystore.Key, error) {

@@ -1,346 +1,396 @@
 package relay_test
 
 import (
-	//	"errors"
-	// "fmt"
-	//	"sync"
+	"errors"
+	"sync"
 	"time"
 
-	//	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	//	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	//	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
-	// "github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
-	// "github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
 	. "github.com/republicprotocol/republic-go/relay"
+	"github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
-Context("storing and updating orders", func() {
-	It("should store entry in local orderbook", func() {
-		book := orderbook.NewOrderbook(100)
-		block := rpc.SyncBlock{
-			Signature: []byte{},
-			Timestamp: 0,
-			EpochHash: []byte{},
-			OrderBlock: &rpc.SyncBlock_Open{
-				Open: &rpc.Order{
-					Id: &rpc.OrderId{
-						OrderId: []byte("ID"),
-					},
-					Type:   0,
-					Parity: 0,
-					Expiry: 0,
-				},
-			},
-		}
+var _ = Describe("Relay", func() {
 
-		err := StoreEntryInOrderbook(&block, [32]byte{}, &book)
-		Ω(err).ShouldNot(HaveOccurred())
+	var conn client.Connection
+	var darknodeRegistry contracts.DarkNodeRegistry
+	var darknodes Darknodes
 
-		// Check to see if orderbook is as expected
-		blocks := book.Blocks()
-		Ω(len(blocks)).Should(Equal(1))
-		Ω(blocks[0].Status).Should(Equal(order.Open))
+	BeforeEach(func() {
+		var err error
+
+		// Connect to Ganache
+		conn, err = ganache.Connect("http://localhost:8545")
+		Expect(err).ShouldNot(HaveOccurred())
+		darknodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
+		Expect(err).ShouldNot(HaveOccurred())
+		darknodeRegistry.SetGasLimit(1000000)
+
+		// Create DarkNodes and contexts/cancels for running them
+		darknodes, err = NewDarknodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		// Register the Darknodes and trigger an epoch to accept their
+		// registrations
+		err = RegisterDarknodes(darknodes, conn, darknodeRegistry)
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 
-	It("should store multiple entries in local orderbook", func() {
-		book := orderbook.NewOrderbook(100)
-		fstBlock := rpc.SyncBlock{
-			Signature: []byte{},
-			Timestamp: 0,
-			EpochHash: []byte{},
-			OrderBlock: &rpc.SyncBlock_Open{
-				Open: &rpc.Order{
-					Id: &rpc.OrderId{
-						OrderId: []byte("fstID"),
-					},
-					Type:   0,
-					Parity: 0,
-					Expiry: 0,
-				},
-			},
-		}
-		sndBlock := rpc.SyncBlock{
-			Signature: []byte{},
-			Timestamp: 0,
-			EpochHash: []byte{},
-			OrderBlock: &rpc.SyncBlock_Open{
-				Open: &rpc.Order{
-					Id: &rpc.OrderId{
-						OrderId: []byte("sndID"),
-					},
-					Type:   0,
-					Parity: 0,
-					Expiry: 0,
-				},
-			},
-		}
+	AfterEach(func() {
+		var err error
 
-		err := StoreEntryInOrderbook(&fstBlock, [32]byte{}, &book)
-		Ω(err).ShouldNot(HaveOccurred())
-		err = StoreEntryInOrderbook(&sndBlock, [32]byte{}, &book)
-		Ω(err).ShouldNot(HaveOccurred())
+		// Deregister the DarkNodes
+		err = DeregisterDarknodes(darknodes, conn, darknodeRegistry)
+		Expect(err).ShouldNot(HaveOccurred())
 
-		// Check to see if orderbook is as expected
-		blocks := book.Blocks()
-		Ω(len(blocks)).Should(Equal(2))
-		Ω(blocks[0].Status).Should(Equal(order.Open))
-		Ω(blocks[1].Status).Should(Equal(order.Open))
+		// Refund the DarkNodes
+		err = RefundDarknodes(darknodes, conn, darknodeRegistry)
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 
-	It("should update entries with a higher status", func() {
-		book := orderbook.NewOrderbook(100)
-		openBlock := rpc.SyncBlock{
-			Signature: []byte{},
-			Timestamp: 0,
-			EpochHash: []byte{},
-			OrderBlock: &rpc.SyncBlock_Open{
-				Open: &rpc.Order{
-					Id: &rpc.OrderId{
-						OrderId: []byte("ID"),
-					},
-					Type:   0,
-					Parity: 0,
-					Expiry: 0,
-				},
-			},
+	FContext("running the relay", func() {
+		It("should", func() {
+			config := relay.Config{
+				KeyPair: keyPair,
+				MultiAddress: relayAddress,
+				Token: token,
+				BootstrapNodes: getBootstrapNodes()
+			}
+			pools := darknode.NewOcean(darknodeRegistry).GetPools()
+			book := orderbook.NewOrderbook(100) // TODO: Check max connections
+			relay.RunRelay(config, pools, book)
 		}
-		confirmedBlock := rpc.SyncBlock{
-			Signature: []byte{},
-			Timestamp: 0,
-			EpochHash: []byte{},
-			OrderBlock: &rpc.SyncBlock_Confirmed{
-				Confirmed: &rpc.Order{
-					Id: &rpc.OrderId{
-						OrderId: []byte("ID"),
-					},
-					Type:   0,
-					Parity: 0,
-					Expiry: 0,
-				},
-			},
-		}
-
-		err := StoreEntryInOrderbook(&openBlock, [32]byte{}, &book)
-		Ω(err).ShouldNot(HaveOccurred())
-		err = StoreEntryInOrderbook(&confirmedBlock, [32]byte{}, &book)
-		Ω(err).ShouldNot(HaveOccurred())
-
-		// Check to see if orderbook is as expected
-		blocks := book.Blocks()
-		Ω(len(blocks)).Should(Equal(1))
-		Ω(blocks[0].Status).Should(Equal(order.Confirmed))
 	})
 
-	It("should not update entries with a lesser status", func() {
-		book := orderbook.NewOrderbook(100)
-		confirmedBlock := rpc.SyncBlock{
-			Signature: []byte{},
-			Timestamp: 0,
-			EpochHash: []byte{},
-			OrderBlock: &rpc.SyncBlock_Confirmed{
-				Confirmed: &rpc.Order{
-					Id: &rpc.OrderId{
-						OrderId: []byte("ID"),
+	Context("storing and updating orders", func() {
+		It("should store entry in local orderbook", func() {
+			book := orderbook.NewOrderbook(100)
+			block := rpc.SyncBlock{
+				Signature: []byte{},
+				Timestamp: 0,
+				EpochHash: []byte{},
+				OrderBlock: &rpc.SyncBlock_Open{
+					Open: &rpc.Order{
+						Id: &rpc.OrderId{
+							OrderId: []byte("ID"),
+						},
+						Type:   0,
+						Parity: 0,
+						Expiry: 0,
 					},
-					Type:   0,
-					Parity: 0,
-					Expiry: 0,
 				},
-			},
-		}
-		openBlock := rpc.SyncBlock{
-			Signature: []byte{},
-			Timestamp: 0,
-			EpochHash: []byte{},
-			OrderBlock: &rpc.SyncBlock_Open{
-				Open: &rpc.Order{
-					Id: &rpc.OrderId{
-						OrderId: []byte("ID"),
+			}
+
+			err := StoreEntryInOrderbook(&block, [32]byte{}, &book)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			// Check to see if orderbook is as expected
+			blocks := book.Blocks()
+			Ω(len(blocks)).Should(Equal(1))
+			Ω(blocks[0].Status).Should(Equal(order.Open))
+		})
+
+		It("should store multiple entries in local orderbook", func() {
+			book := orderbook.NewOrderbook(100)
+			fstBlock := rpc.SyncBlock{
+				Signature: []byte{},
+				Timestamp: 0,
+				EpochHash: []byte{},
+				OrderBlock: &rpc.SyncBlock_Open{
+					Open: &rpc.Order{
+						Id: &rpc.OrderId{
+							OrderId: []byte("fstID"),
+						},
+						Type:   0,
+						Parity: 0,
+						Expiry: 0,
 					},
-					Type:   0,
-					Parity: 0,
-					Expiry: 0,
 				},
-			},
-		}
-
-		err := StoreEntryInOrderbook(&confirmedBlock, [32]byte{}, &book)
-		Ω(err).ShouldNot(HaveOccurred())
-		err = StoreEntryInOrderbook(&openBlock, [32]byte{}, &book)
-		Ω(err).Should(HaveOccurred())
-
-		// Check to see if orderbook is as expected
-		blocks := book.Blocks()
-		Ω(len(blocks)).Should(Equal(1))
-		Ω(blocks[0].Status).Should(Equal(order.Confirmed))
-	})
-})
-
-Context("forwarding orders", func() {
-	It("should forward orders read from the connection", func() {
-		// Construct channels
-		blocks, errs := make(chan *rpc.SyncBlock), make(chan error)
-		defer close(blocks)
-		defer close(errs)
-
-		connections := int32(1)
-		book := orderbook.NewOrderbook(100)
-		fstBlock := rpc.SyncBlock{
-			Signature: []byte{},
-			Timestamp: 0,
-			EpochHash: make([]byte, 32),
-			OrderBlock: &rpc.SyncBlock_Open{
-				Open: &rpc.Order{
-					Id: &rpc.OrderId{
-						OrderId: []byte("fstID"),
+			}
+			sndBlock := rpc.SyncBlock{
+				Signature: []byte{},
+				Timestamp: 0,
+				EpochHash: []byte{},
+				OrderBlock: &rpc.SyncBlock_Open{
+					Open: &rpc.Order{
+						Id: &rpc.OrderId{
+							OrderId: []byte("sndID"),
+						},
+						Type:   0,
+						Parity: 0,
+						Expiry: 0,
 					},
-					Type:   0,
-					Parity: 0,
-					Expiry: 0,
 				},
-			},
-		}
-		sndBlock := rpc.SyncBlock{
-			Signature: []byte{},
-			Timestamp: 0,
-			EpochHash: make([]byte, 32),
-			OrderBlock: &rpc.SyncBlock_Open{
-				Open: &rpc.Order{
-					Id: &rpc.OrderId{
-						OrderId: []byte("sndID"),
+			}
+
+			err := StoreEntryInOrderbook(&fstBlock, [32]byte{}, &book)
+			Ω(err).ShouldNot(HaveOccurred())
+			err = StoreEntryInOrderbook(&sndBlock, [32]byte{}, &book)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			// Check to see if orderbook is as expected
+			blocks := book.Blocks()
+			Ω(len(blocks)).Should(Equal(2))
+			Ω(blocks[0].Status).Should(Equal(order.Open))
+			Ω(blocks[1].Status).Should(Equal(order.Open))
+		})
+
+		It("should update entries with a higher status", func() {
+			book := orderbook.NewOrderbook(100)
+			openBlock := rpc.SyncBlock{
+				Signature: []byte{},
+				Timestamp: 0,
+				EpochHash: []byte{},
+				OrderBlock: &rpc.SyncBlock_Open{
+					Open: &rpc.Order{
+						Id: &rpc.OrderId{
+							OrderId: []byte("ID"),
+						},
+						Type:   0,
+						Parity: 0,
+						Expiry: 0,
 					},
-					Type:   0,
-					Parity: 0,
-					Expiry: 0,
 				},
-			},
-		}
-
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			blocks <- &fstBlock
-			blocks <- &sndBlock
-			errs <- errors.New("connection lost")
-		}()
-
-		Ω(len(book.Blocks())).Should(Equal(0))
-		err := ForwardMessagesToOrderbook(blocks, errs, &connections, &book)
-		Ω(err).Should(HaveOccurred())
-		Ω(len(book.Blocks())).Should(Equal(2))
-		wg.Wait()
-	})
-
-	It("should forward orders from multiple connections", func() {
-		// Construct channels
-		fstBlocks, fstErrs := make(chan *rpc.SyncBlock), make(chan error)
-		sndBlocks, sndErrs := make(chan *rpc.SyncBlock), make(chan error)
-		defer close(fstBlocks)
-		defer close(fstErrs)
-		defer close(sndBlocks)
-		defer close(sndErrs)
-
-		connections := int32(2)
-		book := orderbook.NewOrderbook(100)
-		fstBlock := rpc.SyncBlock{
-			Signature: []byte{},
-			Timestamp: 0,
-			EpochHash: make([]byte, 32),
-			OrderBlock: &rpc.SyncBlock_Open{
-				Open: &rpc.Order{
-					Id: &rpc.OrderId{
-						OrderId: []byte("fstID"),
+			}
+			confirmedBlock := rpc.SyncBlock{
+				Signature: []byte{},
+				Timestamp: 0,
+				EpochHash: []byte{},
+				OrderBlock: &rpc.SyncBlock_Confirmed{
+					Confirmed: &rpc.Order{
+						Id: &rpc.OrderId{
+							OrderId: []byte("ID"),
+						},
+						Type:   0,
+						Parity: 0,
+						Expiry: 0,
 					},
-					Type:   0,
-					Parity: 0,
-					Expiry: 0,
 				},
-			},
-		}
-		sndBlock := rpc.SyncBlock{
-			Signature: []byte{},
-			Timestamp: 0,
-			EpochHash: make([]byte, 32),
-			OrderBlock: &rpc.SyncBlock_Open{
-				Open: &rpc.Order{
-					Id: &rpc.OrderId{
-						OrderId: []byte("sndID"),
+			}
+
+			err := StoreEntryInOrderbook(&openBlock, [32]byte{}, &book)
+			Ω(err).ShouldNot(HaveOccurred())
+			err = StoreEntryInOrderbook(&confirmedBlock, [32]byte{}, &book)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			// Check to see if orderbook is as expected
+			blocks := book.Blocks()
+			Ω(len(blocks)).Should(Equal(1))
+			Ω(blocks[0].Status).Should(Equal(order.Confirmed))
+		})
+
+		It("should not update entries with a lesser status", func() {
+			book := orderbook.NewOrderbook(100)
+			confirmedBlock := rpc.SyncBlock{
+				Signature: []byte{},
+				Timestamp: 0,
+				EpochHash: []byte{},
+				OrderBlock: &rpc.SyncBlock_Confirmed{
+					Confirmed: &rpc.Order{
+						Id: &rpc.OrderId{
+							OrderId: []byte("ID"),
+						},
+						Type:   0,
+						Parity: 0,
+						Expiry: 0,
 					},
-					Type:   0,
-					Parity: 0,
-					Expiry: 0,
 				},
-			},
-		}
+			}
+			openBlock := rpc.SyncBlock{
+				Signature: []byte{},
+				Timestamp: 0,
+				EpochHash: []byte{},
+				OrderBlock: &rpc.SyncBlock_Open{
+					Open: &rpc.Order{
+						Id: &rpc.OrderId{
+							OrderId: []byte("ID"),
+						},
+						Type:   0,
+						Parity: 0,
+						Expiry: 0,
+					},
+				},
+			}
 
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			fstBlocks <- &fstBlock
-			fstErrs <- errors.New("connection lost")
-		}()
+			err := StoreEntryInOrderbook(&confirmedBlock, [32]byte{}, &book)
+			Ω(err).ShouldNot(HaveOccurred())
+			err = StoreEntryInOrderbook(&openBlock, [32]byte{}, &book)
+			Ω(err).Should(HaveOccurred())
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			sndBlocks <- &sndBlock
-			sndErrs <- errors.New("connection lost")
-		}()
-
-		Ω(len(book.Blocks())).Should(Equal(0))
-		err := ForwardMessagesToOrderbook(fstBlocks, fstErrs, &connections, &book)
-		Ω(err).Should(HaveOccurred())
-		err = ForwardMessagesToOrderbook(sndBlocks, sndErrs, &connections, &book)
-		Ω(err).Should(HaveOccurred())
-		Ω(len(book.Blocks())).Should(Equal(2))
-		wg.Wait()
+			// Check to see if orderbook is as expected
+			blocks := book.Blocks()
+			Ω(len(blocks)).Should(Equal(1))
+			Ω(blocks[0].Status).Should(Equal(order.Confirmed))
+		})
 	})
 
-	It("should not forward orders with an invalid epoch hash", func() {
-		// Construct channels
-		blocks, errs := make(chan *rpc.SyncBlock), make(chan error)
-		defer close(blocks)
-		defer close(errs)
+	Context("forwarding orders", func() {
+		It("should forward orders read from the connection", func() {
+			// Construct channels
+			blocks, errs := make(chan *rpc.SyncBlock), make(chan error)
+			defer close(blocks)
+			defer close(errs)
 
-		connections := int32(1)
-		book := orderbook.NewOrderbook(100)
-		block := rpc.SyncBlock{
-			Signature: []byte{},
-			Timestamp: 0,
-			EpochHash: []byte{},
-			OrderBlock: &rpc.SyncBlock_Open{
-				Open: &rpc.Order{
-					Id: &rpc.OrderId{
-						OrderId: []byte("fstID"),
+			connections := int32(1)
+			book := orderbook.NewOrderbook(100)
+			fstBlock := rpc.SyncBlock{
+				Signature: []byte{},
+				Timestamp: 0,
+				EpochHash: make([]byte, 32),
+				OrderBlock: &rpc.SyncBlock_Open{
+					Open: &rpc.Order{
+						Id: &rpc.OrderId{
+							OrderId: []byte("fstID"),
+						},
+						Type:   0,
+						Parity: 0,
+						Expiry: 0,
 					},
-					Type:   0,
-					Parity: 0,
-					Expiry: 0,
 				},
-			},
-		}
+			}
+			sndBlock := rpc.SyncBlock{
+				Signature: []byte{},
+				Timestamp: 0,
+				EpochHash: make([]byte, 32),
+				OrderBlock: &rpc.SyncBlock_Open{
+					Open: &rpc.Order{
+						Id: &rpc.OrderId{
+							OrderId: []byte("sndID"),
+						},
+						Type:   0,
+						Parity: 0,
+						Expiry: 0,
+					},
+				},
+			}
 
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			blocks <- &block
-		}()
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				blocks <- &fstBlock
+				blocks <- &sndBlock
+				errs <- errors.New("connection lost")
+			}()
 
-		Ω(len(book.Blocks())).Should(Equal(0))
-		err := ForwardMessagesToOrderbook(blocks, errs, &connections, &book)
-		Ω(err).Should(HaveOccurred())
-		Ω(len(book.Blocks())).Should(Equal(0))
-		wg.Wait()
+			Ω(len(book.Blocks())).Should(Equal(0))
+			err := ForwardMessagesToOrderbook(blocks, errs, &connections, &book)
+			Ω(err).Should(HaveOccurred())
+			Ω(len(book.Blocks())).Should(Equal(2))
+			wg.Wait()
+		})
+
+		It("should forward orders from multiple connections", func() {
+			// Construct channels
+			fstBlocks, fstErrs := make(chan *rpc.SyncBlock), make(chan error)
+			sndBlocks, sndErrs := make(chan *rpc.SyncBlock), make(chan error)
+			defer close(fstBlocks)
+			defer close(fstErrs)
+			defer close(sndBlocks)
+			defer close(sndErrs)
+
+			connections := int32(2)
+			book := orderbook.NewOrderbook(100)
+			fstBlock := rpc.SyncBlock{
+				Signature: []byte{},
+				Timestamp: 0,
+				EpochHash: make([]byte, 32),
+				OrderBlock: &rpc.SyncBlock_Open{
+					Open: &rpc.Order{
+						Id: &rpc.OrderId{
+							OrderId: []byte("fstID"),
+						},
+						Type:   0,
+						Parity: 0,
+						Expiry: 0,
+					},
+				},
+			}
+			sndBlock := rpc.SyncBlock{
+				Signature: []byte{},
+				Timestamp: 0,
+				EpochHash: make([]byte, 32),
+				OrderBlock: &rpc.SyncBlock_Open{
+					Open: &rpc.Order{
+						Id: &rpc.OrderId{
+							OrderId: []byte("sndID"),
+						},
+						Type:   0,
+						Parity: 0,
+						Expiry: 0,
+					},
+				},
+			}
+
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				fstBlocks <- &fstBlock
+				fstErrs <- errors.New("connection lost")
+			}()
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				sndBlocks <- &sndBlock
+				sndErrs <- errors.New("connection lost")
+			}()
+
+			Ω(len(book.Blocks())).Should(Equal(0))
+			err := ForwardMessagesToOrderbook(fstBlocks, fstErrs, &connections, &book)
+			Ω(err).Should(HaveOccurred())
+			err = ForwardMessagesToOrderbook(sndBlocks, sndErrs, &connections, &book)
+			Ω(err).Should(HaveOccurred())
+			Ω(len(book.Blocks())).Should(Equal(2))
+			wg.Wait()
+		})
+
+		It("should not forward orders with an invalid epoch hash", func() {
+			// Construct channels
+			blocks, errs := make(chan *rpc.SyncBlock), make(chan error)
+			defer close(blocks)
+			defer close(errs)
+
+			connections := int32(1)
+			book := orderbook.NewOrderbook(100)
+			block := rpc.SyncBlock{
+				Signature: []byte{},
+				Timestamp: 0,
+				EpochHash: []byte{},
+				OrderBlock: &rpc.SyncBlock_Open{
+					Open: &rpc.Order{
+						Id: &rpc.OrderId{
+							OrderId: []byte("fstID"),
+						},
+						Type:   0,
+						Parity: 0,
+						Expiry: 0,
+					},
+				},
+			}
+
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				blocks <- &block
+			}()
+
+			Ω(len(book.Blocks())).Should(Equal(0))
+			err := ForwardMessagesToOrderbook(blocks, errs, &connections, &book)
+			Ω(err).Should(HaveOccurred())
+			Ω(len(book.Blocks())).Should(Equal(0))
+			wg.Wait()
+		})
 	})
 })
 
@@ -348,6 +398,7 @@ Context("forwarding orders", func() {
 // var dnrInnerLock = new(sync.Mutex)
 
 var epochDNR contracts.DarkNodeRegistry
+
 // var nodes []*node.DarkNode
 
 var Prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
