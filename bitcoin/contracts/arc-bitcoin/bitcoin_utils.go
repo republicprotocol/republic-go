@@ -82,7 +82,9 @@ func normalizeAddress(addr string, defaultPort string) (hostport string, err err
 
 func buildContract(c *rpc.Client, args *contractArgs, chain string) (*builtContract, error) {
 	var chainParams *chaincfg.Params
-	if chain == "testnet" {
+	if chain == "regtest" {
+		chainParams = &chaincfg.RegressionNetParams
+	} else if chain == "testnet" {
 		chainParams = &chaincfg.TestNet3Params
 	} else {
 		chainParams = &chaincfg.MainNetParams
@@ -149,6 +151,8 @@ func walletPort(params *chaincfg.Params) string {
 		return "8332"
 	case &chaincfg.TestNet3Params:
 		return "18332"
+	case &chaincfg.RegressionNetParams:
+		return "18444"
 	default:
 		return ""
 	}

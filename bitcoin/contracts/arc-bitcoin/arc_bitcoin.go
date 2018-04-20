@@ -44,10 +44,10 @@ func (arc *BitcoinArc) Initiate(hash [32]byte, from, to []byte, value *big.Int, 
 	return nil
 }
 
-func (arc *BitcoinArc) Audit() (hash, to, from []byte, value *big.Int, expiry int64, err error) {
+func (arc *BitcoinArc) Audit() (hash [32]byte, to, from []byte, value *big.Int, expiry int64, err error) {
 	err, result := read(arc.ledgerData.contract, arc.ledgerData.contractTx, arc.chain, arc.rpcUser, arc.rpcPass)
 	if err != nil {
-		return []byte{}, []byte{}, []byte{}, big.NewInt(0), 0, err
+		return [32]byte{}, []byte{}, []byte{}, big.NewInt(0), 0, err
 	}
 	return result.secretHash, result.recipientAddress, result.refundAddress, big.NewInt(result.amount), result.lockTime, nil
 }

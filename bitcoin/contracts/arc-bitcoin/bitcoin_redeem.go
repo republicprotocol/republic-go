@@ -19,7 +19,9 @@ type redeemResult struct {
 
 func redeem(contract, contractTxBytes, secret []byte, rpcUser string, rpcPass string, chain string) (Error error, result redeemResult) {
 	var chainParams *chaincfg.Params
-	if chain == "testnet" {
+	if chain == "regtest" {
+		chainParams = &chaincfg.RegressionNetParams
+	} else if chain == "testnet" {
 		chainParams = &chaincfg.TestNet3Params
 	} else {
 		chainParams = &chaincfg.MainNetParams

@@ -12,7 +12,9 @@ import (
 
 func initiate(participantAddress string, value int64, chain string, rpcuser string, rpcpass string, hash []byte, lockTime int64) (err error, result BitcoinData) {
 	var chainParams *chaincfg.Params
-	if chain == "testnet" {
+	if chain == "regtest" {
+		chainParams = &chaincfg.RegressionNetParams
+	} else if chain == "testnet" {
 		chainParams = &chaincfg.TestNet3Params
 	} else {
 		chainParams = &chaincfg.MainNetParams

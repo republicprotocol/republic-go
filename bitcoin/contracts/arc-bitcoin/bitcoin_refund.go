@@ -13,7 +13,9 @@ import (
 
 func refund(contract, contractTxBytes []byte, chain, rpcUser, rpcPass string) (Error error) {
 	var chainParams *chaincfg.Params
-	if chain == "testnet" {
+	if chain == "regtest" {
+		chainParams = &chaincfg.RegressionNetParams
+	} else if chain == "testnet" {
 		chainParams = &chaincfg.TestNet3Params
 	} else {
 		chainParams = &chaincfg.MainNetParams

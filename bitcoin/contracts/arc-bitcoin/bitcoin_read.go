@@ -16,13 +16,15 @@ type readResult struct {
 	amount           int64
 	recipientAddress []byte
 	refundAddress    []byte
-	secretHash       []byte
+	secretHash       [32]byte
 	lockTime         int64
 }
 
 func read(contract, contractTxBytes []byte, chain string, rpcuser string, rpcpass string) (Error error, result readResult) {
 	var chainParams *chaincfg.Params
-	if chain == "testnet" {
+	if chain == "regtest" {
+		chainParams = &chaincfg.RegressionNetParams
+	} else if chain == "testnet" {
 		chainParams = &chaincfg.TestNet3Params
 	} else {
 		chainParams = &chaincfg.MainNetParams
@@ -79,7 +81,7 @@ func read(contract, contractTxBytes []byte, chain string, rpcuser string, rpcpas
 		amount:           int64(btcutil.Amount(contractTx.TxOut[contractOut].Value)),
 		recipientAddress: []byte(recipientAddr.EncodeAddress()),
 		refundAddress:    []byte(refundAddr.EncodeAddress()),
-		secretHash:       pushes.SecretHash[:],
+		secretHash:       pushes.SecretHash,
 		lockTime:         pushes.LockTime,
 	}
 }
