@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/republicprotocol/republic-go/dispatch"
+
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/rpc/dht"
 	"golang.org/x/net/context"
@@ -85,6 +87,29 @@ func (swarm *Swarm) Query(request *QueryRequest, stream Swarm_QueryServer) error
 	}
 
 	return nil
+}
+
+func (swarm *Swarm) Bootstrap(multiAddresses identity.MultiAddresses, depth int) <-chan error {
+	errs := make(chan error, len(multiAddresses))
+
+	go func() {
+		defer close(errs)
+
+		dispatch.CoForAll(multiAddresses, func(i int) {
+			multiAddress := multiAddresses[i]
+
+			// FIXME: Provide a verifiable signature
+			queryRequest := &QueryRequest{
+				Signature: []byte{},
+				Address:   swarm.multiAddress.Address().String(),
+			}
+			if _, err := swarm.QueryDeep(queryRequest, depth); err != nil {
+				errs <- err
+			}
+		})
+	}()
+
+	return errs
 }
 
 func (swarm *Swarm) QueryDeep(request *QueryRequest, depth int) (identity.MultiAddress, error) {
