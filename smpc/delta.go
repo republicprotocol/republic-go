@@ -168,7 +168,8 @@ func (builder *SharedDeltaBuilder) InsertDeltaFragment(deltaFragment DeltaFragme
 			builder.priceSharesCache,
 			builder.minVolumeSharesCache,
 			builder.maxVolumeSharesCache,
-			builder.k, builder.prime)
+			builder.k,
+			builder.prime)
 		builder.deltas[string(delta.ID)] = delta
 		builder.deltasQueue = append(builder.deltasQueue, delta)
 	}

@@ -8,9 +8,11 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/dispatch"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/go-do"
+	. "github.com/republicprotocol/republic-go/darknodetest"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/ethereum/ganache"
@@ -24,7 +26,7 @@ const (
 	GanacheRPC                 = "http://localhost:8545"
 	NumberOfDarkNodes          = 5
 	NumberOfBootstrapDarkNodes = 5
-	NumberOfOrders             = 1
+	NumberOfOrders             = 100
 )
 
 var _ = Describe("Darknode", func() {
@@ -32,7 +34,6 @@ var _ = Describe("Darknode", func() {
 	var conn client.Connection
 	var darknodeRegistry contracts.DarkNodeRegistry
 	var darknodes Darknodes
-	var done chan struct{}
 
 	BeforeEach(func() {
 		var err error
@@ -52,27 +53,10 @@ var _ = Describe("Darknode", func() {
 		// registrations
 		err = RegisterDarknodes(darknodes, conn, darknodeRegistry)
 		Expect(err).ShouldNot(HaveOccurred())
-		_, err = darknodeRegistry.Epoch()
-		Expect(err).ShouldNot(HaveOccurred())
-
-		done = make(chan struct{})
-		go func() {
-			do.CoForAll(darknodes, func(i int) {
-				darknodes[i].ServeRPC(done)
-				darknodes[i].RunWatcher(done)
-				darknodes[i].RunEpochSwitch(done)
-			})
-		}()
-
-		// Wait for the Darknodes to boot
-		time.Sleep(time.Second)
 	})
 
 	AfterEach(func() {
 		var err error
-
-		// Wait for the DarkNodes to shutdown
-		close(done)
 
 		// Deregister the DarkNodes
 		err = DeregisterDarknodes(darknodes, conn, darknodeRegistry)
@@ -149,11 +133,20 @@ var _ = Describe("Darknode", func() {
 	FContext("when computing order matches", func() {
 
 		FIt("should process the distribute order table in parallel with other pools", func() {
-			By("start sending orders ")
+
+			By("booting darknodes...")
+			done := make(chan struct{})
+			defer close(done)
+			go dispatch.CoForAll(darknodes, func(i int) {
+				darknodes[i].Run(done)
+			})
+			time.Sleep(NumberOfDarkNodes * time.Second)
+
+			By("sending orders...")
 			err := sendOrders(darknodes, NumberOfOrders)
 			Ω(err).ShouldNot(HaveOccurred())
-			By("finish sending orders ")
 
+			By("waiting for results...")
 			time.Sleep(time.Minute)
 		})
 
@@ -176,6 +169,7 @@ var _ = Describe("Darknode", func() {
 })
 
 func sendOrders(nodes Darknodes, numberOfOrders int) error {
+
 	// Generate buy-sell order pairs
 	buyOrders, sellOrders := make([]*order.Order, numberOfOrders), make([]*order.Order, numberOfOrders)
 	for i := 0; i < numberOfOrders; i++ {
@@ -212,16 +206,18 @@ func sendOrders(nodes Darknodes, numberOfOrders int) error {
 
 		for _, shares := range [][]*order.Fragment{buyShares, sellShares} {
 			do.CoForAll(shares, func(j int) {
+				orderFragment, err := rpc.MarshalOrderFragment(nodes[j].Config.RsaKey.PublicKey, shares[j])
+				Expect(err).Should(BeNil())
 				orderRequest := &rpc.OpenOrderRequest{
 					From: &rpc.MultiAddress{
 						Signature:    []byte{},
 						MultiAddress: trader.String(),
 					},
-					OrderFragment: rpc.MarshalOrderFragment(shares[j]),
+					OrderFragment: orderFragment,
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				err := pool.OpenOrder(ctx, nodes[j].Network.MultiAddress, orderRequest)
+				err = pool.OpenOrder(ctx, nodes[j].Network.MultiAddress, orderRequest)
 				if err != nil {
 					log.Printf("Coudln't send order fragment to %s\n", nodes[j].Network.MultiAddress.ID())
 					log.Fatal(err)
