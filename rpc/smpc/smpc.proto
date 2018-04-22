@@ -4,7 +4,7 @@ package smpc;
 
 service Smpc {
     rpc OpenOrder (OpenOrderRequest) returns (OpenOrderResponse);
-    rpc CloseOrder (CancelOrderRequest) returns (CancelOrderResponse);
+    rpc CancelOrder (CancelOrderRequest) returns (CancelOrderResponse);
     rpc Compute (stream ComputeMessage) returns (stream ComputeMessage);
 }
 
@@ -27,7 +27,8 @@ message CancelOrderResponse {
 message ComputeMessage {
     bytes signature = 1;
     oneof Value {
-        DeltaFragment deltaFragment = 2;
+        string address = 2;
+        DeltaFragment deltaFragment = 3;
     }
 }
 

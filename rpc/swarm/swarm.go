@@ -66,6 +66,7 @@ func (swarm *Swarm) Query(query *QueryRequest, stream Swarm_QueryServer) error {
 		if isPeerCloser {
 			// TODO: Send the peer signature for this identity.MultiAddress so
 			// that the client can verify it
+
 			queryResponse := &QueryResponse{
 				Signature:    []byte{},
 				MultiAddress: multiAddr.String(),
