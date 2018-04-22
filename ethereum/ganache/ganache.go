@@ -8,6 +8,9 @@ import (
 	"math/big"
 	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -35,6 +38,23 @@ func Start() *exec.Cmd {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Start()
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	go func() {
+		<-signals
+		fmt.Printf("ganache is shutting down...\n")
+		if err := cmd.Process.Kill(); err != nil {
+			fmt.Printf("ganache cannot shutdown: %v", err)
+			return
+		}
+		if err := cmd.Wait(); err != nil {
+			fmt.Printf("ganache cannot shutdown: %v", err)
+			return
+		}
+		fmt.Printf("ganache shutdown")
+	}()
+
 	return cmd
 }
 
@@ -50,6 +70,20 @@ func Connect(ganacheRPC string) (client.Connection, error) {
 		RenAddress: client.RepublicTokenAddressOnGanache,
 		Network:    client.NetworkGanache,
 	}, nil
+}
+
+// StartAndConnect to a local Ganache instance and deploy all smart contracts.
+func StartAndConnect() (*exec.Cmd, client.Connection, error) {
+	cmd := Start()
+	time.Sleep(time.Second)
+	conn, err := Connect("http://localhost:8545")
+	if err != nil {
+		return cmd, conn, err
+	}
+	if err := DeployContracts(conn); err != nil {
+		return cmd, conn, err
+	}
+	return cmd, conn, nil
 }
 
 // DeployContracts to Ganache deploys REN and DNR contracts using the genesis private key

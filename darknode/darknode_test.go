@@ -4,20 +4,16 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
-	"os/exec"
-	"os/signal"
-	"syscall"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/darknode"
-	"github.com/republicprotocol/republic-go/dispatch"
+	. "github.com/republicprotocol/republic-go/darknodetest"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/go-do"
-	. "github.com/republicprotocol/republic-go/darknodetest"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/ethereum/ganache"
@@ -43,11 +39,7 @@ var _ = Describe("Darknode", func() {
 	BeforeEach(func() {
 		var err error
 
-		cmd := ganache.Start()
-		time.Sleep(5 * time.Second)
-		conn, err = ganache.Connect("http://localhost:8545")
-		Expect(err).ShouldNot(HaveOccurred())
-		err = ganache.DeployContracts(conn)
+		cmd, conn, err := ganache.StartAndConnect()
 		Expect(err).ShouldNot(HaveOccurred())
 
 		go func() {
@@ -252,15 +244,4 @@ func sendOrders(nodes Darknodes, numberOfOrders int) error {
 	}
 
 	return nil
-}
-
-func killAtExit(cmd *exec.Cmd) {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
-	go func() {
-		<-sigs
-		fmt.Printf("shutting down Ganache...\n")
-		cmd.Process.Kill()
-		os.Exit(0)
-	}()
 }
