@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package smpc;
+
+service Smpc {
+    rpc OpenOrder (OpenOrderRequest) returns (OpenOrderResponse);
+    rpc CloseOrder (CancelOrderRequest) returns (CancelOrderResponse);
+    rpc Compute (stream ComputeMessage) returns (stream ComputeMessage);
+}
+
+message OpenOrderRequest {
+    bytes signature = 1;
+    OrderFragment orderFragment = 2;
+}
+
+message OpenOrderResponse {
+}
+
+message CancelOrderRequest {
+    bytes signature = 1;
+    bytes orderId = 2;
+}
+
+message CancelOrderResponse {
+}
+
+message ComputeMessage {
+    bytes signature = 1;
+    oneof Value {
+        DeltaFragment deltaFragment = 2;
+    }
+}
+
+message OrderFragment {
+    bytes orderFragmenId = 1;
+    bytes orderId = 2;
+    int64 expiry = 3;
+    int32 type = 4;
+    int32 tokens = 5;
+    Share priceShare = 6;
+    Share volumeShare = 7;
+}
+
+message DeltaFragment {  
+    bytes deltaFragmentId = 1;
+    bytes buyOrderId = 2;
+    bytes sellOrderId = 3;
+    Share priceShare = 4;
+    Share volumeShare = 5;
+}
+
+message Share {
+    int64 index = 1;
+    bytes value = 2; // RSA encrypted int64
+}

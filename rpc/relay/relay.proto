@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package smpc;
+
+service Relay {
+    rpc Sync (SyncRequest) returns (stream SyncResponse);
+}
+
+message SyncRequest {
+    bytes signature = 1;
+    bytes epoch = 2;
+    OrderbookEntry entry = 3;
+}
+
+message SyncResponse {
+}
+
+message OrderbookEntry {
+    Order order = 1;
+    OrderStatus orderStatus = 2;
+}
+
+message Order {
+    bytes orderId = 1;
+    int64 expiry = 2;
+    int32 type = 3;
+    int32 tokens = 4;
+}
+
+enum OrderStatus {
+    Open = 1;
+    Canceled = 2;
+    Unconfirmed = 3;
+    Confirmed = 4;
+    Settled = 5;
+}
