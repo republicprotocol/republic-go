@@ -119,7 +119,7 @@ func (client *Client) QueryPeers(ctx context.Context, target *Address) (<-chan *
 
 func (client *Client) QueryPeersDeep(ctx context.Context, target *Address) (<-chan *MultiAddress, <-chan error) {
 	multiAddressCh := make(chan *MultiAddress)
-	errCh := make(chan error)
+	errCh := make(chan error, 1)
 
 	go func() {
 		defer close(multiAddressCh)
@@ -239,14 +239,11 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 					errCh <- err
 					return
 				}
-				println("found message in gRPC client")
 				select {
 				case <-ctx.Done():
 					errCh <- ctx.Err()
 					return
 				case messageCh <- message:
-					println("written message from gRPC client")
-
 				}
 			}
 		}, func() {

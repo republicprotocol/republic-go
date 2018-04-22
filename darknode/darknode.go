@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/orderbook"
-	// "github.com/republicprotocol/republic-go/order"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
@@ -57,7 +56,6 @@ func NewDarknode(config Config) (Darknode, error) {
 		config.Ethereum.DarkNodeRegistryAddress,
 	)
 	if err != nil {
-		println("ERR!", err)
 		return node, err
 	}
 
@@ -72,6 +70,14 @@ func NewDarknode(config Config) (Darknode, error) {
 	return node, nil
 }
 
+func (node *Darknode) Serve(done <-chan struct{}) <-chan error {
+	return node.router.Serve(done, node.Host, node.Port)
+}
+
+func (node *Darknode) Bootstrap() {
+	node.router.Bootstrap()
+}
+
 // Run the Darknode until the done channel is closed.
 func (node *Darknode) Run(done <-chan struct{}) <-chan error {
 	errs := make(chan error, 1)
@@ -79,35 +85,30 @@ func (node *Darknode) Run(done <-chan struct{}) <-chan error {
 	go func() {
 		defer close(errs)
 
+		// Wait until registration is approved
+		if err := node.darknodeRegistry.WaitUntilRegistration(node.ID()[:]); err != nil {
+			errs <- err
+			return
+		}
+
+		// Bootstrap into the network
+		time.Sleep(time.Second)
+
 		dispatch.CoBegin(func() {
-			dispatch.Pipe(done, node.ServeRPC(done), errs)
+			node.router.Run()
 		}, func() {
-			dispatch.Pipe(done, node.RunWatcher(done), errs)
+			dispatch.Pipe(done, node.RunEpochs(done), errs)
 		})
 	}()
 
 	return errs
 }
 
-// ServeRPC services, using a gRPC server, until the done channel is closed or
-// an error is encountered.
-func (node *Darknode) ServeRPC(done <-chan struct{}) <-chan error {
-	errs := make(chan error, 1)
-
-	go func() {
-		defer close(errs)
-		dispatch.Pipe(done, node.router.Run(done, node.Host, node.Port), errs)
-	}()
-
-	time.Sleep(2 * time.Second)
-	return errs
-}
-
-// RunWatcher will watch for changes to the Ocean and run the secure
+// RunEpochs will watch for changes to the Ocean and run the secure
 // multi-party computation with new Pools. Stops when the done channel is
 // closed, and will attempt to recover from errors encountered while
 // interacting with the Ocean.
-func (node *Darknode) RunWatcher(done <-chan struct{}) <-chan error {
+func (node *Darknode) RunEpochs(done <-chan struct{}) <-chan error {
 	errs := make(chan error, 1)
 
 	go func() {

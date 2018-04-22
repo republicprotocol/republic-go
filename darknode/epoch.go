@@ -44,8 +44,11 @@ func RunEpochProcess(done <-chan struct{}, id identity.ID, darkOcean DarkOcean, 
 
 		addresses := pool.Addresses()
 		dispatch.CoForAll(addresses, func(i int) {
-			sender := make(chan *rpc.Computation)
+			if bytes.Compare(addresses[i].ID()[:], id[:]) == 0 {
+				return
+			}
 
+			sender := make(chan *rpc.Computation)
 			receiver, errs := router.Compute(done, addresses[i], sender)
 
 			mu.Lock()
@@ -125,7 +128,25 @@ func RunEpochProcess(done <-chan struct{}, id identity.ID, darkOcean DarkOcean, 
 		}, func() {
 
 			// Output computed smpc.Deltas
-			dispatch.Pipe(done, deltasComputed, deltas)
+			for {
+				select {
+				case <-done:
+					return
+				case deltaComputed, ok := <-deltasComputed:
+					if !ok {
+						return
+					}
+					if deltaComputed.IsMatch(smpc.Prime) {
+						smpcer.SharedOrderTable().RemoveBuyOrder(deltaComputed.BuyOrderID)
+						smpcer.SharedOrderTable().RemoveSellOrder(deltaComputed.SellOrderID)
+					}
+					select {
+					case <-done:
+						return
+					case deltas <- deltaComputed:
+					}
+				}
+			}
 		})
 	}()
 

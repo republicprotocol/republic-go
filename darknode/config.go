@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -67,7 +68,13 @@ func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (Config, error) {
 		Host:     host,
 		Port:     port,
 		Network: rpc.Options{
-			MultiAddress: multi,
+			Alpha:                5,
+			MultiAddress:         multi,
+			MaxBucketLength:      100,
+			ClientPoolCacheLimit: 100,
+			Timeout:              10 * time.Second,
+			TimeoutBackoff:       0,
+			TimeoutRetries:       1,
 		},
 		Ethereum: EthereumConfig{
 			URI:                     "http://localhost:8545",

@@ -67,35 +67,47 @@ func NewRouter(maxConnections int, multiAddress identity.MultiAddress, options r
 	return router
 }
 
-func (router *Router) Run(done <-chan struct{}, host, port string) <-chan error {
+// Serve the Router services, using a TCP listener on the selected host and
+// port, until the done channel is closed.
+func (router *Router) Serve(done <-chan struct{}, host, port string) <-chan error {
 	errs := make(chan error, 1)
-
 	go func() {
 		defer close(errs)
 
+		// Init the gRPC server
 		server := grpc.NewServer()
 		router.swarmer.Register(server)
 		router.relayer.Register(server)
 		router.smpcer.Register(server)
-		listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", host, port))
+
+		// Init a TCP listener
+		listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", host, port))
 		if err != nil {
 			errs <- err
 			return
 		}
 
+		// Start the gRPC server and stop it when the done channel is closed
 		dispatch.CoBegin(func() {
+			log.Printf("Listening on %v:%v...", host, port)
 			if err := server.Serve(listener); err != nil {
 				errs <- err
-				return
 			}
 		}, func() {
-			router.swarmer.Bootstrap()
-		}, func() {
-			router.orderFragmentSplitter.Split(router.orderFragmentSplitterCh)
+			<-done
+			server.Stop()
 		})
 	}()
-
 	return errs
+}
+
+// Bootstrap into the network using the Swarmer.
+func (router *Router) Bootstrap() {
+	router.swarmer.Bootstrap()
+}
+
+func (router *Router) Run() {
+	router.orderFragmentSplitter.Split(router.orderFragmentSplitterCh)
 }
 
 func (router *Router) OrderFragments(done <-chan struct{}) (<-chan order.Fragment, <-chan error) {
@@ -154,7 +166,6 @@ func (router *Router) Compute(done <-chan struct{}, addr identity.Address, compu
 			router.mu.Unlock()
 		}()
 
-		println("READING FROM COMPUTATION SENDER")
 		for {
 			select {
 			case <-done:
@@ -221,5 +232,4 @@ func (router *Router) teardownCompute(addr identity.Address) {
 
 func (router *Router) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
 	router.orderFragmentSplitterCh <- *orderFragment
-	println("WRITTEN ORDER FRAGMENTS")
 }
