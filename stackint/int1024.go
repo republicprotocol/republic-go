@@ -2,6 +2,7 @@ package stackint
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big" // Used for converting to/from big.Ints
@@ -186,10 +187,17 @@ func (x *Int1024) Bytes() []byte {
 	return buf
 }
 
-// FromBytes deserializes an array of BYTECOUNT (128) bytes to an Int1024 (Big Endian)
+// FromBytes deserializes an array of BYTECOUNT (128) bytes to a new Int1024
+// (Big Endian)
 func FromBytes(bytesAll []byte) (Int1024, error) {
-
 	x := Zero()
+	err := x.SetBytes(bytesAll)
+	return x, err
+}
+
+// SetBytes deserializes an array of BYTECOUNT (128) bytes in place
+// (Big Endian)
+func (x *Int1024) SetBytes(bytesAll []byte) error {
 
 	numWords := len(bytesAll) / 8
 	if len(bytesAll)%8 != 0 {
@@ -197,7 +205,7 @@ func FromBytes(bytesAll []byte) (Int1024, error) {
 	}
 
 	if numWords > INT1024WORDS {
-		return Int1024{}, errors.New("bytes array too long")
+		return errors.New("bytes array too long")
 	}
 
 	// mod := 8 - len(bytesAll)%8
@@ -221,7 +229,7 @@ func FromBytes(bytesAll []byte) (Int1024, error) {
 
 	x.length = firstPositive + 1
 
-	return x, nil
+	return nil
 }
 
 // LittleEndianBytes returns an array of BYTECOUNT (128) bytes (Little Endian)
@@ -277,6 +285,20 @@ func FromLittleEndianBytes(bytesAll []byte) (Int1024, error) {
 	x.length = max(1, uint16(numWords))
 
 	return x, nil
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (x *Int1024) MarshalJSON() ([]byte, error) {
+	return json.Marshal(x.Bytes())
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (x *Int1024) UnmarshalJSON(data []byte) error {
+	var bytes []byte
+	if err := json.Unmarshal(data, &bytes); err != nil {
+		return err
+	}
+	return x.SetBytes(bytes)
 }
 
 // Clone returns a new Int1024 representing the same value as x
