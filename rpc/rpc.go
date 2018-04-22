@@ -21,3 +21,11 @@ type Options struct {
 	ClientPoolCacheLimit    int                     `json:"clientPoolCacheLimit"`
 	Debug                   DebugLevel              `json:"debug"`
 }
+
+type Provider struct {
+	swarm Swarm
+}
+
+func NewProvider(swarm Swarm) {
+
+}

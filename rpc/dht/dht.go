@@ -1,10 +1,18 @@
 package dht
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/identity"
+)
+
+// ErrFullBucket is used when a peer is inserted into a Bucket that already has
+// the maximum number of Entries.
+var (
+	ErrFullBucket = fmt.Errorf("cannot add entry to a full bucket")
+	ErrDHTAddress = fmt.Errorf("cannot use the DHT address in the DHT")
 )
 
 // Constants for use in the DHT.
