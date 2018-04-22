@@ -2,6 +2,7 @@ package darknode
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"sync"
 
 	"github.com/republicprotocol/go-do"
@@ -13,14 +14,16 @@ type Node struct {
 	identity.ID
 	mu           *sync.RWMutex
 	multiAddress *identity.MultiAddress
+	rsaPublicKey *rsa.PublicKey
 }
 
 // NewNode returns a new Node representing the dark pool with the given ID
-func NewNode(id identity.ID) Node {
+func NewNode(id identity.ID, pubKey *rsa.PublicKey) Node {
 	return Node{
 		ID:           id,
 		mu:           new(sync.RWMutex),
 		multiAddress: nil,
+		rsaPublicKey: pubKey
 	}
 }
 

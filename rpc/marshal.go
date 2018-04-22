@@ -1,8 +1,10 @@
 package rpc
 
 import (
+	"crypto/rsa"
 	"time"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/hyperdrive"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
@@ -38,7 +40,7 @@ func UnmarshalMultiAddress(multiAddress *MultiAddress) (identity.MultiAddress, [
 
 // MarshalOrderFragment converts an order.Fragment into its network
 // representation.
-func MarshalOrderFragment(orderFragment *order.Fragment) *OrderFragment {
+func MarshalOrderFragment(pubKey *rsa.PublicKey, orderFragment *order.Fragment) (*OrderFragment, error) {
 	val := &OrderFragment{
 		Id: &OrderFragmentId{
 			Signature:       orderFragment.Signature,
@@ -53,20 +55,37 @@ func MarshalOrderFragment(orderFragment *order.Fragment) *OrderFragment {
 			Parity: int64(orderFragment.OrderParity),
 			Expiry: orderFragment.OrderExpiry.Unix(),
 		},
-		FstCodeShare:   shamir.ToBytes(orderFragment.FstCodeShare),
-		SndCodeShare:   shamir.ToBytes(orderFragment.SndCodeShare),
-		PriceShare:     shamir.ToBytes(orderFragment.PriceShare),
-		MaxVolumeShare: shamir.ToBytes(orderFragment.MaxVolumeShare),
-		MinVolumeShare: shamir.ToBytes(orderFragment.MinVolumeShare),
 	}
 
-	return val
+	var err error
+	val.FstCodeShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.FstCodeShare))
+	if err != nil {
+		return nil, err
+	}
+	val.SndCodeShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.SndCodeShare))
+	if err != nil {
+		return nil, err
+	}
+	val.PriceShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.PriceShare))
+	if err != nil {
+		return nil, err
+	}
+	val.MaxVolumeShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.MaxVolumeShare))
+	if err != nil {
+		return nil, err
+	}
+	val.MinVolumeShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.MinVolumeShare))
+	if err != nil {
+		return nil, err
+	}
+
+	return val, nil
 }
 
 // UnmarshalOrderFragment converts a network representation of an
 // OrderFragment into an order.Fragment. An error is returned if the network
 // representation is malformed.
-func UnmarshalOrderFragment(orderFragment *OrderFragment) (*order.Fragment, error) {
+func UnmarshalOrderFragment(privKey *rsa.PrivateKey, orderFragment *OrderFragment) (*order.Fragment, error) {
 	var err error
 
 	val := &order.Fragment{
@@ -79,23 +98,47 @@ func UnmarshalOrderFragment(orderFragment *OrderFragment) (*order.Fragment, erro
 		OrderExpiry: time.Unix(orderFragment.Order.Expiry, 0),
 	}
 
-	val.FstCodeShare, err = shamir.FromBytes(orderFragment.FstCodeShare)
+	fstCodeShare, err := crypto.Decrypt(privKey, orderFragment.FstCodeShare)
 	if err != nil {
 		return nil, err
 	}
-	val.SndCodeShare, err = shamir.FromBytes(orderFragment.SndCodeShare)
+	val.FstCodeShare, err = shamir.FromBytes(fstCodeShare)
 	if err != nil {
 		return nil, err
 	}
-	val.PriceShare, err = shamir.FromBytes(orderFragment.PriceShare)
+
+	sndCodeShare, err := crypto.Decrypt(privKey, orderFragment.SndCodeShare)
 	if err != nil {
 		return nil, err
 	}
-	val.MaxVolumeShare, err = shamir.FromBytes(orderFragment.MaxVolumeShare)
+	val.SndCodeShare, err = shamir.FromBytes(sndCodeShare)
 	if err != nil {
 		return nil, err
 	}
-	val.MinVolumeShare, err = shamir.FromBytes(orderFragment.MinVolumeShare)
+
+	priceShare, err := crypto.Decrypt(privKey, orderFragment.PriceShare)
+	if err != nil {
+		return nil, err
+	}
+	val.PriceShare, err = shamir.FromBytes(priceShare)
+	if err != nil {
+		return nil, err
+	}
+
+	maxVolumeShare, err := crypto.Decrypt(privKey, orderFragment.MaxVolumeShare)
+	if err != nil {
+		return nil, err
+	}
+	val.MaxVolumeShare, err = shamir.FromBytes(maxVolumeShare)
+	if err != nil {
+		return nil, err
+	}
+
+	minVolumeShare, err := crypto.Decrypt(privKey, orderFragment.MinVolumeShare)
+	if err != nil {
+		return nil, err
+	}
+	val.MinVolumeShare, err = shamir.FromBytes(minVolumeShare)
 	if err != nil {
 		return nil, err
 	}

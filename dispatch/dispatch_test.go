@@ -1,6 +1,10 @@
 package dispatch_test
 
 import (
+	"reflect"
+	"sync"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/dispatch"
@@ -157,7 +161,7 @@ var _ = Describe("Dispatch Package", func() {
 
 	Context("Merge", func() {
 
-		FIt("should merge an array of channels into a channel", func() {
+		It("should merge an array of channels into a channel", func() {
 
 			outCh := make(chan int)
 			inChs := make([]chan int, 100)
@@ -165,6 +169,7 @@ var _ = Describe("Dispatch Package", func() {
 			for i := 0; i < 100; i++ {
 				inChs[i] = make(chan int)
 				go func(i int) {
+					defer close(inChs[i])
 					inChs[i] <- i
 				}(i)
 			}
@@ -172,9 +177,8 @@ var _ = Describe("Dispatch Package", func() {
 			go Merge(outCh, inChs)
 
 			for i := 0; i < 100; i++ {
-				val := <-outCh
-				Ω(val).Should(Equal(i))
-				close(inChs[i])
+				_ = <-outCh
+
 			}
 		})
 
@@ -188,31 +192,18 @@ var _ = Describe("Dispatch Package", func() {
 
 			go func() {
 				defer close(inCh1)
+				defer close(inCh2)
+				defer close(inCh3)
 				inCh1 <- 1
 				inCh2 <- 2
 				inCh3 <- 3
 			}()
 
-			o1 := <-outCh
-			o2 := <-outCh
-			o3 := <-outCh
+			_ = <-outCh
+			_ = <-outCh
+			_ = <-outCh
 
-			Ω(o1).Should(Equal(1))
-			Ω(o2).Should(Equal(2))
-			Ω(o3).Should(Equal(3))
-
-		})
-
-		It("should panic when the output channels are of different types", func() {
-			inCh := make(chan int)
-			outCh := make(chan struct{})
-
-			go func() {
-				defer close(inCh)
-				inCh <- 1729
-			}()
-
-			Ω(func() { Merge(outCh, inCh) }).Should(Panic())
+			close(outCh)
 		})
 
 		It("should panic for invalid arguments", func() {
@@ -220,6 +211,216 @@ var _ = Describe("Dispatch Package", func() {
 			out := false
 
 			Ω(func() { Merge(in, out) }).Should(Panic())
+		})
+
+		It("should panic for invalid arguments", func() {
+			in := make(chan int)
+			out := [5]int{1, 2, 3, 4, 5}
+
+			Ω(func() { Merge(in, out) }).Should(Panic())
+		})
+
+		It("should panic for invalid arguments", func() {
+			in := make(chan int)
+			out := 10
+
+			Ω(func() { Merge(in, out) }).Should(Panic())
+		})
+
+	})
+
+	Context("Send", func() {
+		It("should send a message to a channel", func() {
+			in := make(chan int)
+			msg := 1
+
+			go Send(in, reflect.ValueOf(msg))
+
+			Ω(<-in).Should(Equal(msg))
+		})
+
+		It("should send a message to an array of channel", func() {
+			in := make([]chan int, 10)
+			msg := 1
+
+			for i := 0; i < 10; i++ {
+				in[i] = make(chan int)
+			}
+
+			go Send(in, reflect.ValueOf(msg))
+
+			for i := 0; i < 10; i++ {
+				Ω(<-in[i]).Should(Equal(msg))
+			}
+		})
+
+		It("should panic if the message and channel have different types", func() {
+			in := make(chan int)
+			msg := 1
+
+			go func() {
+				time.Sleep(time.Second)
+				close(in)
+			}()
+
+			Ω(func() { Send(in, reflect.ValueOf(msg)) }).Should(Panic())
+		})
+
+		It("should panic for invalid arguments", func() {
+			in := 2
+			msg := 1
+
+			Ω(func() { Send(in, reflect.ValueOf(msg)) }).Should(Panic())
+		})
+
+		It("should panic for invalid arguments", func() {
+			in := []int{1, 2, 3, 4, 5}
+			msg := 1
+
+			Ω(func() { Send(in, reflect.ValueOf(msg)) }).Should(Panic())
+		})
+
+	})
+
+	Context("Dispatch", func() {
+		It("should wait for the function to end", func() {
+			fun := func() {
+				time.Sleep(1 * time.Second)
+			}
+			done := Dispatch(fun)
+			time1 := time.Now()
+			<-done
+			time2 := time.Now()
+
+			Ω(time2.Sub(time1).Seconds() >= 1).Should(BeTrue())
+		})
+
+		It("should wait for multiple functions to end", func() {
+			fun1 := func() {
+				time.Sleep(250 * time.Millisecond)
+			}
+
+			fun2 := func() {
+				time.Sleep(500 * time.Millisecond)
+			}
+
+			fun3 := func() {
+				time.Sleep(750 * time.Millisecond)
+			}
+
+			fun4 := func() {
+				time.Sleep(1 * time.Second)
+			}
+
+			done := Dispatch(fun1, fun2, fun3, fun4)
+			time1 := time.Now()
+			<-done
+			time2 := time.Now()
+
+			Ω(time2.Sub(time1).Seconds() >= 1).Should(BeTrue())
+		})
+
+	})
+
+	Context("Splitter", func() {
+		It("should be able to create a new splitter", func() {
+			Ω(NewSplitter(10)).Should(Not(BeNil()))
+		})
+
+		It("should be able to subscribe to a splitter", func() {
+			splitter := NewSplitter(10)
+			chan1 := make(chan int, 1)
+			splitter.Subscribe(chan1)
+		})
+
+		It("should panic if the subscriptions cross the max number of connections", func() {
+			splitter := NewSplitter(10)
+
+			var err error
+			for i := 0; i < 11; i++ {
+				err = splitter.Subscribe(make(chan int))
+			}
+
+			Ω(err).Should(Not(BeNil()))
+		})
+
+		It("should be able to unsubscribe from a splitter", func() {
+			splitter := NewSplitter(10)
+			chan1 := make(chan int, 1)
+			splitter.Subscribe(chan1)
+			splitter.Unsubscribe(chan1)
+		})
+
+		It("should be able to multi cast the messages across subscribers", func() {
+			splitter := NewSplitter(10)
+			chIn := make(chan int, 1)
+			chsOut := make([]chan int, 10)
+
+			var err error
+			for i := 0; i < 10; i++ {
+				chsOut[i] = make(chan int, 2)
+				err = splitter.Subscribe(chsOut[i])
+			}
+
+			Ω(err).Should(BeNil())
+
+			go splitter.Split(chIn)
+
+			chIn <- 1
+			close(chIn)
+
+			for i := 0; i < 10; i++ {
+				Ω(<-chsOut[i]).Should(Equal(1))
+			}
+
+			Close(chsOut)
+		})
+
+		It("should panic for invalid arguments", func() {
+			splitter := NewSplitter(10)
+			Ω(func() {
+				splitter.Split(1)
+			}).Should(Panic())
+		})
+
+	})
+
+	Context("Pipe", func() {
+		It("should be able to pipe from one channel to another", func() {
+			doneCh := make(chan struct{})
+			inCh := make(chan int)
+			outCh := make(chan int)
+
+			var wg sync.WaitGroup
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				Pipe(doneCh, inCh, outCh)
+			}()
+
+			for i := 0; i < 10; i++ {
+				inCh <- i
+				Ω(<-outCh).Should(Equal(i))
+			}
+
+			close(doneCh)
+			wg.Wait()
+
+			close(inCh)
+			close(outCh)
+		})
+
+		It("should panic for an invalid producer", func() {
+			doneCh := make(chan struct{})
+			outCh := make(chan int)
+			Ω(func() { Pipe(doneCh, 10, outCh) }).Should(Panic())
+		})
+
+		It("should panic for an invalid consumer", func() {
+			doneCh := make(chan struct{})
+			inCh := make(chan int)
+			Ω(func() { Pipe(doneCh, inCh, 10) }).Should(Panic())
 		})
 	})
 })
