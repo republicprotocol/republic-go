@@ -23,11 +23,12 @@ type RelayService struct {
 	Logger     *logger.Logger
 }
 
-func NewRelayService(options Options, delegate RelayDelegate, logger *logger.Logger) RelayService {
+func NewRelayService(options Options, delegate RelayDelegate, privateKey *rsa.PrivateKey, logger *logger.Logger) RelayService {
 	return RelayService{
-		Options:  options,
-		Delegate: delegate,
-		Logger:   logger,
+		Options:    options,
+		PrivateKey: privateKey,
+		Delegate:   delegate,
+		Logger:     logger,
 	}
 }
 

@@ -48,17 +48,17 @@ func (service *ComputerService) Register(server *grpc.Server) {
 // can be used to read Computation messages from the client. The error channel
 // will carry errors that occur when writing, or reading, Computation messages
 // to, or from, the client.
-func (service *ComputerService) WaitForCompute(multiAddress identity.MultiAddress, computationChIn <-chan *Computation) (<-chan *Computation, <-chan error) {
-	multiAddressAsStr := multiAddress.String()
+func (service *ComputerService) WaitForCompute(addr identity.Address, computationChIn <-chan *Computation) (<-chan *Computation, <-chan error) {
+	addrAsStr := addr.String()
 
-	senderSignal := service.senderSignal(multiAddressAsStr)
-	defer service.closeSenderSignal(multiAddressAsStr)
+	senderSignal := service.senderSignal(addrAsStr)
+	defer service.closeSenderSignal(addrAsStr)
 	senderSignal <- computationChIn
 
-	errSignal := service.errSignal(multiAddressAsStr)
+	errSignal := service.errSignal(addrAsStr)
 	errCh := <-errSignal
 
-	receiverSignal := service.receiverSignal(multiAddressAsStr)
+	receiverSignal := service.receiverSignal(addrAsStr)
 	receiverCh := <-receiverSignal
 
 	return receiverCh, errCh
@@ -79,19 +79,19 @@ func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 	}
 	multiAddress, _, err := UnmarshalMultiAddress(authentication.MultiAddress)
 	// FIXME: Validate the multiaddress signature.
-	multiAddressAsStr := multiAddress.String()
+	addrAsStr := multiAddress.Address().String()
 
 	errCh := make(chan error)
 	defer close(errCh)
 
-	errSignal := service.errSignal(multiAddressAsStr)
-	defer service.closeErrSignal(multiAddressAsStr)
+	errSignal := service.errSignal(addrAsStr)
+	defer service.closeErrSignal(addrAsStr)
 	errSignal <- errCh
 
 	senderErrCh := make(chan error, 1)
 	go func() {
 		defer close(senderErrCh)
-		senderSignal := service.senderSignal(multiAddressAsStr)
+		senderSignal := service.senderSignal(addrAsStr)
 		senderCh := <-senderSignal
 
 		for message := range senderCh {
@@ -109,8 +109,8 @@ func (service *ComputerService) Compute(stream Computer_ComputeServer) error {
 	receiverCh := make(chan *Computation)
 	defer close(receiverCh)
 
-	receiverSignal := service.receiverSignal(multiAddressAsStr)
-	defer service.closeReceiverSignal(multiAddressAsStr)
+	receiverSignal := service.receiverSignal(addrAsStr)
+	defer service.closeReceiverSignal(addrAsStr)
 	receiverSignal <- receiverCh
 
 	for {

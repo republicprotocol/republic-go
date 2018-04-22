@@ -21,8 +21,8 @@ type SyncerService struct {
 }
 
 // NewSyncerService creates a SyncerService with the given options.
-func NewSyncerService(options Options, logger *logger.Logger, orderbook *orderbook.Orderbook) *SyncerService {
-	return &SyncerService{
+func NewSyncerService(options Options, logger *logger.Logger, orderbook *orderbook.Orderbook) SyncerService {
+	return SyncerService{
 		Options:   options,
 		Logger:    logger,
 		Orderbook: orderbook,

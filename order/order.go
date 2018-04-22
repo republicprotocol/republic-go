@@ -59,6 +59,10 @@ func (id ID) String() string {
 	return base58.Encode(id)
 }
 
+func (id ID) Hash() []byte {
+	return crypto.Keccak256([]byte(id.String()))
+}
+
 // The Status shows what status the order is in.
 type Status uint8
 

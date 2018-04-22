@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stackint"
 )
@@ -392,20 +393,20 @@ func ProcessObscureMulSharesIndexed(ctx context.Context, obscureMulSharesIndexed
 // of the owners. Only the owner of an obscure residue can elect to use that
 // residue in a computation.
 type SharedObscureResidueTable struct {
-	id [32]byte
+	id identity.ID
 
 	mu                      *sync.RWMutex
 	obscureResidueFragments map[ObscureResidueID]ObscureResidueFragment
-	obscureResidueOwners    map[ObscureResidueID][32]byte
+	obscureResidueOwners    map[ObscureResidueID]identity.ID
 }
 
-func NewSharedObscureResidueTable(id [32]byte) SharedObscureResidueTable {
+func NewSharedObscureResidueTable(id identity.ID) SharedObscureResidueTable {
 	return SharedObscureResidueTable{
 		id: id,
 
 		mu: new(sync.RWMutex),
 		obscureResidueFragments: map[ObscureResidueID]ObscureResidueFragment{},
-		obscureResidueOwners:    map[ObscureResidueID][32]byte{},
+		obscureResidueOwners:    map[ObscureResidueID]identity.ID{},
 	}
 }
 
@@ -416,7 +417,7 @@ func (table *SharedObscureResidueTable) InsertObscureResidue(obscureResidueFragm
 	table.obscureResidueFragments[obscureResidueFragment.ObscureResidueID] = obscureResidueFragment
 }
 
-func (table *SharedObscureResidueTable) InsertObscureResidueOwner(obscureResidueID ObscureResidueID, owner [32]byte) {
+func (table *SharedObscureResidueTable) InsertObscureResidueOwner(obscureResidueID ObscureResidueID, owner identity.ID) {
 	table.mu.Lock()
 	defer table.mu.Unlock()
 
@@ -437,7 +438,7 @@ func (table *SharedObscureResidueTable) NumObscureResidues() int {
 	return len(table.obscureResidueFragments)
 }
 
-func (table *SharedObscureResidueTable) ObscureResidueOwner(obscureResidueID ObscureResidueID) [32]byte {
+func (table *SharedObscureResidueTable) ObscureResidueOwner(obscureResidueID ObscureResidueID) identity.ID {
 	table.mu.RLock()
 	defer table.mu.RUnlock()
 
@@ -451,7 +452,7 @@ func (table *SharedObscureResidueTable) NumObscureResidueOwners() int {
 	return len(table.obscureResidueOwners)
 }
 
-func (table *SharedObscureResidueTable) ID() [32]byte {
+func (table *SharedObscureResidueTable) ID() identity.ID {
 	return table.id
 }
 
@@ -483,7 +484,7 @@ type ObscureRng struct {
 	ObscureResidueID
 
 	// Used to verify the sender of the ObscureRng
-	Owner     [32]byte
+	Owner     identity.ID
 	Signature [32]byte
 
 	// Used to parameterize the number of shares generated, and the number of

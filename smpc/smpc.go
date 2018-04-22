@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/stackint"
 )
@@ -71,7 +72,7 @@ type OrderMatchComputeOutput struct {
 
 // Computer of sMPC messages.
 type Computer struct {
-	ComputerID
+	id identity.ID
 
 	n, k                      int64
 	sharedOrderTable          SharedOrderTable
@@ -81,13 +82,13 @@ type Computer struct {
 
 // NewComputer returns a new Computer with the given ComputerID and N-K
 // threshold.
-func NewComputer(computerID ComputerID, n, k int64) Computer {
+func NewComputer(id identity.ID, n, k int64) Computer {
 	return Computer{
-		ComputerID:                computerID,
+		id:                        id,
 		n:                         n,
 		k:                         k,
 		sharedOrderTable:          NewSharedOrderTable(),
-		sharedObscureResidueTable: NewSharedObscureResidueTable(computerID),
+		sharedObscureResidueTable: NewSharedObscureResidueTable(id),
 		sharedDeltaBuilder:        NewSharedDeltaBuilder(k, Prime),
 	}
 }
@@ -170,13 +171,13 @@ func (computer *Computer) ComputeOrderMatches(done <-chan struct{}, orderFragmen
 		defer close(deltasOut)
 
 		orderTuples := OrderFragmentsToOrderTuples(done, orderFragmentsIn, &computer.sharedOrderTable, 100)
-		deltaFragmentsFromOrderTuples := OrderTuplesToDeltaFragments(done, orderTuples, 100)
+		deltaFragmentsComputed := OrderTuplesToDeltaFragments(done, orderTuples, 100)
 
 		deltaFragments := make(chan DeltaFragment)
 		go func() {
 			defer close(deltaFragments)
-			<-dispatch.Dispatch(func() {
-				dispatch.Split(deltaFragmentsFromOrderTuples, deltaFragments, deltaFragmentsOut)
+			dispatch.CoBegin(func() {
+				dispatch.Split(deltaFragmentsComputed, deltaFragments, deltaFragmentsOut)
 			}, func() {
 				dispatch.Pipe(done, deltaFragmentsIn, deltaFragments)
 			})
