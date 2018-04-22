@@ -23,7 +23,6 @@ func OrderFragmentsToOrderTuples(done <-chan struct{}, orderFragments <-chan ord
 				if !ok {
 					return
 				}
-				println("INSERTING ORDER FRAGMENT")
 				if orderFragment.OrderParity == order.ParityBuy {
 					sharedOrderTable.InsertBuyOrder(orderFragment)
 				} else {
@@ -39,7 +38,7 @@ func OrderFragmentsToOrderTuples(done <-chan struct{}, orderFragments <-chan ord
 		defer close(orderTuples)
 
 		buffer := make([]OrderTuple, bufferLimit)
-		tick := time.NewTicker(time.Millisecond)
+		tick := time.NewTicker(time.Second)
 		defer tick.Stop()
 
 		for {
@@ -69,30 +68,11 @@ type OrderTuple struct {
 	SellOrderFragment *order.Fragment
 }
 
-// OrderState of an order in the SharedOrderTable determines whether or not it
-// is active.
-type OrderState int
-
-const (
-	// OrderStateOn allows an order to be considered in the construction of
-	// OrderTuples.
-	OrderStateOn = 1
-
-	// OrderStateOff disallows an order to be considered in the construction of
-	// OrderTuples.
-	OrderStateOff = 2
-)
-
 // A SharedOrderTable stores order fragments and generates OrderTuples that
 // will be used to perform order matching computations. It is safe for
 // concurrent use.
 type SharedOrderTable struct {
-	mu *sync.Mutex
-
-	// State maps store a fragment as either being seen, or as not being seen.
-	buyOrderStates  map[string]OrderState
-	sellOrderStates map[string]OrderState
-
+	mu                 *sync.Mutex
 	buyOrderFragments  []order.Fragment
 	sellOrderFragments []order.Fragment
 	orderTuples        []OrderTuple
@@ -102,8 +82,6 @@ type SharedOrderTable struct {
 func NewSharedOrderTable() SharedOrderTable {
 	return SharedOrderTable{
 		mu:                 new(sync.Mutex),
-		buyOrderStates:     map[string]OrderState{},
-		sellOrderStates:    map[string]OrderState{},
 		buyOrderFragments:  []order.Fragment{},
 		sellOrderFragments: []order.Fragment{},
 		orderTuples:        []OrderTuple{},
@@ -117,17 +95,8 @@ func (table *SharedOrderTable) InsertBuyOrder(buyOrderFragment order.Fragment) {
 	table.mu.Lock()
 	defer table.mu.Unlock()
 
-	buyOrderID := string(buyOrderFragment.OrderID)
-	if _, ok := table.buyOrderStates[buyOrderID]; ok {
-		return
-	}
-	table.buyOrderStates[buyOrderID] = OrderStateOn
 	table.buyOrderFragments = append(table.buyOrderFragments, buyOrderFragment)
-
 	for i := range table.sellOrderFragments {
-		if table.sellOrderStates[string(table.sellOrderFragments[i].OrderID)] != OrderStateOn {
-			continue
-		}
 		table.orderTuples = append(table.orderTuples, OrderTuple{
 			BuyOrderFragment:  &table.buyOrderFragments[len(table.buyOrderFragments)-1],
 			SellOrderFragment: &table.sellOrderFragments[i],
@@ -142,17 +111,8 @@ func (table *SharedOrderTable) InsertSellOrder(sellOrderFragment order.Fragment)
 	table.mu.Lock()
 	defer table.mu.Unlock()
 
-	sellOrderID := string(sellOrderFragment.OrderID)
-	if _, ok := table.sellOrderStates[sellOrderID]; ok {
-		return
-	}
-	table.sellOrderStates[sellOrderID] = OrderStateOn
 	table.sellOrderFragments = append(table.sellOrderFragments, sellOrderFragment)
-
 	for i := range table.buyOrderFragments {
-		if table.buyOrderStates[string(table.buyOrderFragments[i].OrderID)] != OrderStateOn {
-			continue
-		}
 		table.orderTuples = append(table.orderTuples, OrderTuple{
 			BuyOrderFragment:  &table.buyOrderFragments[i],
 			SellOrderFragment: &table.sellOrderFragments[len(table.sellOrderFragments)-1],
@@ -160,50 +120,60 @@ func (table *SharedOrderTable) InsertSellOrder(sellOrderFragment order.Fragment)
 	}
 }
 
-// SetBuyOrderState for an order in the SharedOrderTable. Setting the state to
-// OrderStateOff will remove all OrderTuples involving the order.
-func (table *SharedOrderTable) SetBuyOrderState(orderID order.ID, state OrderState) {
+// RemoveBuyOrder from the SharedOrderTable. This will also remove all
+// OrderTuples involving the order.
+func (table *SharedOrderTable) RemoveBuyOrder(orderID order.ID) {
 	table.mu.Lock()
 	defer table.mu.Unlock()
 
-	table.buyOrderStates[string(orderID)] = state
-
-	// If the order has been turned off, then remove it from the existing set
-	// of OrderTuples.
-	if state != OrderStateOn {
-		n := len(table.orderTuples)
-		d := 0
-		for i := 0; i < n; i++ {
-			if table.orderTuples[i].BuyOrderFragment.OrderID.Equal(orderID) {
-				table.orderTuples[i] = table.orderTuples[n-d-1]
-				d++
-			}
+	// Remove buy order fragment
+	n := len(table.buyOrderFragments)
+	for i := 0; i < n; i++ {
+		if table.buyOrderFragments[i].OrderID.Equal(orderID) {
+			table.buyOrderFragments[i] = table.buyOrderFragments[n-1]
+			table.buyOrderFragments = table.buyOrderFragments[:n-1]
+			break
 		}
-		table.orderTuples = table.orderTuples[:n-d]
 	}
+
+	// Remove related order tuples
+	n = len(table.orderTuples)
+	d := 0
+	for i := 0; i < n; i++ {
+		if table.orderTuples[i].BuyOrderFragment.OrderID.Equal(orderID) {
+			table.orderTuples[i] = table.orderTuples[n-d-1]
+			d++
+		}
+	}
+	table.orderTuples = table.orderTuples[:n-d]
 }
 
-// SetSellOrderState for an order in the SharedOrderTable. Setting the state to
-// OrderStateOff will remove all OrderTuples involving the order.
-func (table *SharedOrderTable) SetSellOrderState(orderID order.ID, state OrderState) {
+// RemoveSellOrder from the SharedOrderTable. This will also remove all
+// OrderTuples involving the order.
+func (table *SharedOrderTable) RemoveSellOrder(orderID order.ID) {
 	table.mu.Lock()
 	defer table.mu.Unlock()
 
-	table.sellOrderStates[string(orderID)] = state
-
-	// If the order has been turned off, then remove it from the existing set
-	// of OrderTuples.
-	if state != OrderStateOn {
-		n := len(table.orderTuples)
-		d := 0
-		for i := 0; i < n; i++ {
-			if table.orderTuples[i].SellOrderFragment.OrderID.Equal(orderID) {
-				table.orderTuples[i] = table.orderTuples[n-d-1]
-				d++
-			}
+	// Remove sell order fragment
+	n := len(table.sellOrderFragments)
+	for i := 0; i < n; i++ {
+		if table.sellOrderFragments[i].OrderID.Equal(orderID) {
+			table.sellOrderFragments[i] = table.sellOrderFragments[n-1]
+			table.sellOrderFragments = table.sellOrderFragments[:n-1]
+			break
 		}
-		table.orderTuples = table.orderTuples[:n-d]
 	}
+
+	// Remove related order tuples
+	n = len(table.orderTuples)
+	d := 0
+	for i := 0; i < n; i++ {
+		if table.orderTuples[i].SellOrderFragment.OrderID.Equal(orderID) {
+			table.orderTuples[i] = table.orderTuples[n-d-1]
+			d++
+		}
+	}
+	table.orderTuples = table.orderTuples[:n-d]
 }
 
 // OrderTuples writes a list of OrderTuples to the buffer and returns the

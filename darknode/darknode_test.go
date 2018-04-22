@@ -2,15 +2,18 @@ package darknode_test
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/darknode"
+	. "github.com/republicprotocol/republic-go/darknodetest"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/ethereum/ganache"
@@ -22,9 +25,9 @@ import (
 
 const (
 	GanacheRPC                 = "http://localhost:8545"
-	NumberOfDarkNodes          = 5
-	NumberOfBootstrapDarkNodes = 5
-	NumberOfOrders             = 1
+	NumberOfDarkNodes          = 12
+	NumberOfBootstrapDarkNodes = 1
+	NumberOfOrders             = 1000
 )
 
 var _ = Describe("Darknode", func() {
@@ -32,14 +35,19 @@ var _ = Describe("Darknode", func() {
 	var conn client.Connection
 	var darknodeRegistry contracts.DarkNodeRegistry
 	var darknodes Darknodes
-	var done chan struct{}
 
 	BeforeEach(func() {
 		var err error
 
-		// Connect to Ganache
-		conn, err = ganache.Connect("http://localhost:8545")
+		cmd, conn, err := ganache.StartAndConnect()
 		Expect(err).ShouldNot(HaveOccurred())
+
+		go func() {
+			go killAtExit(cmd)
+			cmd.Wait()
+		}()
+
+		// Connect to Ganache
 		darknodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
 		Expect(err).ShouldNot(HaveOccurred())
 		darknodeRegistry.SetGasLimit(1000000)
@@ -52,27 +60,10 @@ var _ = Describe("Darknode", func() {
 		// registrations
 		err = RegisterDarknodes(darknodes, conn, darknodeRegistry)
 		Expect(err).ShouldNot(HaveOccurred())
-		_, err = darknodeRegistry.Epoch()
-		Expect(err).ShouldNot(HaveOccurred())
-
-		done = make(chan struct{})
-		go func() {
-			do.CoForAll(darknodes, func(i int) {
-				darknodes[i].ServeRPC(done)
-				darknodes[i].RunWatcher(done)
-				darknodes[i].RunEpochSwitch(done)
-			})
-		}()
-
-		// Wait for the Darknodes to boot
-		time.Sleep(time.Second)
 	})
 
 	AfterEach(func() {
 		var err error
-
-		// Wait for the DarkNodes to shutdown
-		close(done)
 
 		// Deregister the DarkNodes
 		err = DeregisterDarknodes(darknodes, conn, darknodeRegistry)
@@ -149,11 +140,29 @@ var _ = Describe("Darknode", func() {
 	FContext("when computing order matches", func() {
 
 		FIt("should process the distribute order table in parallel with other pools", func() {
-			By("start sending orders ")
+
+			By("booting darknodes...")
+			done := make(chan struct{})
+			defer close(done)
+			go dispatch.CoForAll(darknodes, func(i int) {
+				for err := range darknodes[i].Serve(done) {
+					Expect(err).ShouldNot(HaveOccurred())
+				}
+			})
+			time.Sleep(10 * time.Second)
+			dispatch.CoForAll(darknodes, func(i int) {
+				darknodes[i].Bootstrap()
+			})
+			go dispatch.CoForAll(darknodes, func(i int) {
+				darknodes[i].Run(done)
+			})
+			time.Sleep(10 * time.Second)
+
+			By("sending orders...")
 			err := sendOrders(darknodes, NumberOfOrders)
 			Ω(err).ShouldNot(HaveOccurred())
-			By("finish sending orders ")
 
+			By("waiting for results...")
 			time.Sleep(time.Minute)
 		})
 
@@ -176,6 +185,7 @@ var _ = Describe("Darknode", func() {
 })
 
 func sendOrders(nodes Darknodes, numberOfOrders int) error {
+
 	// Generate buy-sell order pairs
 	buyOrders, sellOrders := make([]*order.Order, numberOfOrders), make([]*order.Order, numberOfOrders)
 	for i := 0; i < numberOfOrders; i++ {
@@ -194,37 +204,40 @@ func sendOrders(nodes Darknodes, numberOfOrders int) error {
 
 	// Send order fragment to the nodes
 	totalNodes := len(nodes)
-	trader, _ := identity.NewMultiAddressFromString("/ip4/127.0.0.1/tcp/80/republic/8MGfbzAMS59Gb4cSjpm34soGNYsM2f")
+	traderAddr, traderKey, err := identity.NewAddress()
+	Expect(err).ShouldNot(HaveOccurred())
+	trader, _ := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/80/republic/%v", traderAddr))
 	prime, _ := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-	pool := rpc.NewClientPool(trader).WithTimeout(5 * time.Second).WithTimeoutBackoff(3 * time.Second)
+	pool := rpc.NewClientPool(trader, traderKey).WithTimeout(5 * time.Second).WithTimeoutBackoff(3 * time.Second)
 
 	for i := 0; i < numberOfOrders; i++ {
 		buyOrder, sellOrder := buyOrders[i], sellOrders[i]
 		log.Printf("Sending matched order. [BUY] %s <---> [SELL] %s", buyOrder.ID, sellOrder.ID)
-		buyShares, err := buyOrder.Split(int64(totalNodes), int64(totalNodes*2/3+1), &prime)
+		buyShares, err := buyOrder.Split(int64(totalNodes), int64((totalNodes+1)*2/3), &prime)
 		if err != nil {
 			return err
 		}
-		sellShares, err := sellOrder.Split(int64(totalNodes), int64(totalNodes*2/3+1), &prime)
+		sellShares, err := sellOrder.Split(int64(totalNodes), int64((totalNodes+1)*2/3), &prime)
 		if err != nil {
 			return err
 		}
 
 		for _, shares := range [][]*order.Fragment{buyShares, sellShares} {
 			do.CoForAll(shares, func(j int) {
+				orderFragment, err := rpc.MarshalOrderFragment(nodes[j].Config.RsaKey.PublicKey, shares[j])
+				Expect(err).Should(BeNil())
 				orderRequest := &rpc.OpenOrderRequest{
 					From: &rpc.MultiAddress{
 						Signature:    []byte{},
 						MultiAddress: trader.String(),
 					},
-					OrderFragment: rpc.MarshalOrderFragment(shares[j]),
+					OrderFragment: orderFragment,
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				err := pool.OpenOrder(ctx, nodes[j].Network.MultiAddress, orderRequest)
+				err = pool.OpenOrder(ctx, nodes[j].Network.MultiAddress, orderRequest)
 				if err != nil {
-					log.Printf("Coudln't send order fragment to %s\n", nodes[j].Network.MultiAddress.ID())
-					log.Fatal(err)
+					log.Printf("cannot send order fragment to: %s", nodes[j].Network.MultiAddress.ID())
 				}
 			})
 		}

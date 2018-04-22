@@ -40,15 +40,19 @@ var _ = Describe("Dispatch Package", func() {
 			signal4 := true
 
 			go func() {
+				sigCh1 <- struct{}{}
 				signal1 = false
 				close(sigCh1)
 
+				sigCh2 <- struct{}{}
 				signal2 = false
 				close(sigCh2)
 
+				sigCh3 <- struct{}{}
 				signal3 = false
 				close(sigCh3)
 
+				sigCh4 <- struct{}{}
 				signal4 = false
 				close(sigCh4)
 			}()
@@ -278,46 +282,6 @@ var _ = Describe("Dispatch Package", func() {
 			msg := 1
 
 			Ω(func() { Send(in, reflect.ValueOf(msg)) }).Should(Panic())
-		})
-
-	})
-
-	Context("Dispatch", func() {
-		It("should wait for the function to end", func() {
-			fun := func() {
-				time.Sleep(1 * time.Second)
-			}
-			done := Dispatch(fun)
-			time1 := time.Now()
-			<-done
-			time2 := time.Now()
-
-			Ω(time2.Sub(time1).Seconds() >= 1).Should(BeTrue())
-		})
-
-		It("should wait for multiple functions to end", func() {
-			fun1 := func() {
-				time.Sleep(250 * time.Millisecond)
-			}
-
-			fun2 := func() {
-				time.Sleep(500 * time.Millisecond)
-			}
-
-			fun3 := func() {
-				time.Sleep(750 * time.Millisecond)
-			}
-
-			fun4 := func() {
-				time.Sleep(1 * time.Second)
-			}
-
-			done := Dispatch(fun1, fun2, fun3, fun4)
-			time1 := time.Now()
-			<-done
-			time2 := time.Now()
-
-			Ω(time2.Sub(time1).Seconds() >= 1).Should(BeTrue())
 		})
 
 	})

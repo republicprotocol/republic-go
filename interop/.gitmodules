@@ -1,0 +1,3 @@
+[submodule "ethereum/contracts/eth-atomic-swap"]
+	path = ethereum/contracts/eth-atomic-swap
+	url = https://github.com/republicprotocol/eth-atomic-swap.git

@@ -30,7 +30,7 @@ type Client struct {
 // NewClient returns a Client that is connected to the given MultiAddress and
 // will always identify itself from the given MultiAddress. The connection will
 // be closed when the Client is garbage collected.
-func NewClient(ctx context.Context, to, from identity.MultiAddress) (*Client, error) {
+func NewClient(ctx context.Context, to, from identity.MultiAddress, keypair identity.KeyPair) (*Client, error) {
 	host, err := to.ValueForProtocol(identity.IP4Code)
 	if err != nil {
 		return nil, err
@@ -45,6 +45,13 @@ func NewClient(ctx context.Context, to, from identity.MultiAddress) (*Client, er
 		To:      MarshalMultiAddress(&to),
 		From:    MarshalMultiAddress(&from),
 	}
+
+	multiSignature, err := keypair.Sign(from)
+	if err != nil {
+		return nil, err
+	}
+
+	client.From.Signature = multiSignature
 
 	connection, err := grpc.DialContext(ctx, fmt.Sprintf("%s:%s", host, port), grpc.WithInsecure())
 	if err != nil {
@@ -112,7 +119,7 @@ func (client *Client) QueryPeers(ctx context.Context, target *Address) (<-chan *
 
 func (client *Client) QueryPeersDeep(ctx context.Context, target *Address) (<-chan *MultiAddress, <-chan error) {
 	multiAddressCh := make(chan *MultiAddress)
-	errCh := make(chan error)
+	errCh := make(chan error, 1)
 
 	go func() {
 		defer close(multiAddressCh)
@@ -222,7 +229,7 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 	// Wait for both goroutines to finish and then close the error channel
 	go func() {
 		defer close(errCh)
-		<-dispatch.Dispatch(func() {
+		dispatch.CoBegin(func() {
 
 			// Read messages from the gRPC service and write them to the output channel
 			defer close(messageCh)
@@ -232,14 +239,11 @@ func (client *Client) Compute(ctx context.Context, messageChIn <-chan *Computati
 					errCh <- err
 					return
 				}
-				println("found message in gRPC client")
 				select {
 				case <-ctx.Done():
 					errCh <- ctx.Err()
 					return
 				case messageCh <- message:
-					println("written message from gRPC client")
-
 				}
 			}
 		}, func() {
