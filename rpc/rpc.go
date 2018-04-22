@@ -3,7 +3,10 @@ package rpc
 import (
 	"time"
 
+	"github.com/republicprotocol/republic-go/dispatch"
+
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/rpc/swarm"
 )
 
 // Options that parameterize the behavior of Nodes.
@@ -22,10 +25,16 @@ type Options struct {
 	Debug                   DebugLevel              `json:"debug"`
 }
 
-type Provider struct {
-	swarm Swarm
-}
+func Bootstrap(addr identity.Address, depth int, bootstrapMultiAddresses identity.MultiAddresses, swarmer swarm.Swarm) {
+	errs := make(chan error, len(bootstrapMultiAddresses))
 
-func NewProvider(swarm Swarm) {
+	go func() {
+		defer close(errs)
 
+		dispatch.CoForAll(bootstrapMultiAddresses, func(i int) {
+
+		})
+	}()
+
+	return errs
 }

@@ -19,6 +19,8 @@ type Connection struct {
 	Receiver chan *ComputeMessage
 }
 
+// A Delegate is responsible for processing OpenOrderRequests and
+// CancelOrderRequests.
 type Delegate interface {
 	OpenOrder(signature []byte, orderFragment *OrderFragment) error
 	CancelOrder(signature []byte, orderID []byte) error
@@ -92,7 +94,6 @@ func (smpc *Smpc) CancelOrder(ctx context.Context, request *CancelOrderRequest) 
 }
 
 func (smpc *Smpc) Compute(stream Smpc_ComputeServer) error {
-
 	auth, err := stream.Recv()
 	if err != nil {
 		return err
@@ -101,7 +102,7 @@ func (smpc *Smpc) Compute(stream Smpc_ComputeServer) error {
 	if addr == "" {
 		return ErrUnauthorized
 	}
-	// TODO: Verify the client signature
+	// TODO: Verify the client signature matches the address
 
 	conn := smpc.AcquireConnection(addr)
 	defer smpc.ReleaseConnection(addr)
