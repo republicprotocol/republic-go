@@ -11,7 +11,7 @@ import (
 
 	//	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	//	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/republic-go/dark"
+	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	//	"github.com/republicprotocol/republic-go/dark-node"
 	"github.com/republicprotocol/republic-go/identity"
@@ -236,13 +236,13 @@ var Prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 // }
 
 // getPools return dark pools from a mock dnr
-func getPools(dnr dnr.DarkNodeRegistry) dark.Pools {
+func getPools(dnr dnr.DarkNodeRegistry) darknode.Pools {
 	log, err := logger.NewLogger(logger.Options{})
 	if err != nil {
 		panic(fmt.Sprintf("cannot get logger: %v", err))
 	}
 
-	ocean, err := dark.NewOcean(log, 5, dnr)
+	ocean, err := darknode.NewDarkOcean(log, 5, dnr)
 	if err != nil {
 		panic(fmt.Sprintf("cannot get dark ocean: %v", err))
 	}

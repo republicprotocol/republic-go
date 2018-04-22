@@ -19,9 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/jbenet/go-base58"
-	"github.com/republicprotocol/republic-go/ethereum/client"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
-	"github.com/republicprotocol/republic-go/dark"
+	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -33,11 +31,10 @@ var prime, _ = stackint.FromString("17976931348623159077293051907890247336179769
 const reset = "\x1b[0m"
 const red = "\x1b[31;1m"
 
-// OrderBook is the data returned from binance
+// OrderBook is the data returned from Binance
 type OrderBook struct {
-	LastUpdateId int             `json:"lastUpdateId"`
-	Bids         [][]interface{} `json:"bids"`
-	Asks         [][]interface{} `json:"asks"`
+	Bids [][]interface{} `json:"bids"`
+	Asks [][]interface{} `json:"asks"`
 }
 
 // heapInt creates a stackint on the heap - temporary convenience method
@@ -162,9 +159,7 @@ func binanceOrder(binanceOrderFile, binanceKeyFile, binancePassphrase string, bi
 			log.Fatalf("cannot parse price and amount: %v", err)
 		}
 
-		order := order.NewOrder(order.TypeLimit, order.ParitySell, time.Time{},
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint(price)), heapInt(uint(amount)),
-			heapInt(uint(amount)), heapInt(1))
+		order := order.NewOrder(order.TypeLimit, order.ParitySell, time.Time{}, order.CurrencyCodeETH, order.CurrencyCodeBTC, stackint.FromUint(uint(price)), stackint.FromUint(uint(amount)), stackint.FromUint(uint(amount)), stackint.FromUint(1))
 		sellOrders[i] = order
 	}
 
@@ -176,9 +171,7 @@ func binanceOrder(binanceOrderFile, binanceKeyFile, binancePassphrase string, bi
 			log.Fatalf("cannot parse price and amount: %v", err)
 		}
 
-		order := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Time{},
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, heapInt(uint(price)), heapInt(uint(amount)),
-			heapInt(uint(amount)), heapInt(1))
+		order := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Time{}, order.CurrencyCodeETH, order.CurrencyCodeBTC, stackint.FromUint(uint(price)), stackint.FromUint(uint(amount)), stackint.FromUint(uint(amount)), stackint.FromUint(1))
 		buyOrders[i] = order
 	}
 
@@ -195,7 +188,7 @@ func binanceOrder(binanceOrderFile, binanceKeyFile, binancePassphrase string, bi
 	}
 }
 
-func sendOrders(orders []order.Order, pools dark.Pools, traderMultiAddress identity.MultiAddress) {
+func sendOrders(orders []order.Order, pools darknode.Pools, traderMultiAddress identity.MultiAddress) {
 	for _, ord := range orders {
 		// Buy or sell ?
 		if ord.Parity == order.ParityBuy {
@@ -208,7 +201,7 @@ func sendOrders(orders []order.Order, pools dark.Pools, traderMultiAddress ident
 		wg.Add(len(pools))
 		// For every dark pool
 		for i := range pools {
-			go func(darkPool *dark.Pool) {
+			go func(darkPool *darknode.Pool) {
 				defer wg.Done()
 				// Split order into (number of nodes in each pool) * 2/3 fragments
 				shares, err := ord.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
@@ -223,13 +216,12 @@ func sendOrders(orders []order.Order, pools dark.Pools, traderMultiAddress ident
 	}
 }
 
-func cancelTraderOrder(pools dark.Pools, traderAddress identity.MultiAddress) {
+func cancelTraderOrder(pools darknode.Pools, traderAddress identity.MultiAddress) {
 	// For every Dark Pool
 	for i := range pools {
 
-		// Cancel orders for all nodes in the pool
-		pools[i].ForAll(func(n *dark.Node) {
-
+		// Cancel orders for all nodes
+		dispatch.CoForAll(pools, func(i int) {
 			// Get multiaddress
 			multiaddress, err := getMultiAddress(n.ID.Address(), traderAddress)
 			if err != nil {

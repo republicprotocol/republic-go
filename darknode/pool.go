@@ -23,7 +23,7 @@ func NewNode(id identity.ID, pubKey *rsa.PublicKey) Node {
 		ID:           id,
 		mu:           new(sync.RWMutex),
 		multiAddress: nil,
-		rsaPublicKey: pubKey
+		rsaPublicKey: pubKey,
 	}
 }
 
