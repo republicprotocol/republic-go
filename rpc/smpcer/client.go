@@ -13,12 +13,14 @@ var ErrConnectToSelf = errors.New("connect to self")
 type Client struct {
 	multiAddress identity.MultiAddress
 	rendezvous   Rendezvous
+	streamer     Streamer
 }
 
 func NewClient(multiAddress identity.MultiAddress, connPool *client.ConnPool) Client {
 	return Client{
 		multiAddress: multiAddress,
 		rendezvous:   NewRendezvous(),
+		streamer:     NewStreamer(multiAddress, connPool),
 	}
 }
 
@@ -54,7 +56,7 @@ func (client *Client) MultiAddress() identity.MultiAddress {
 }
 
 func (client *Client) connect(ctx context.Context, multiAddress identity.MultiAddress, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {
-	panic("unimplemented")
+	return client.streamer.connect(ctx, multiAddress, sender)
 }
 
 func (client *Client) wait(ctx context.Context, multiAddress identity.MultiAddress, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {

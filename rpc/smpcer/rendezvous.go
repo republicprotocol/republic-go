@@ -17,6 +17,7 @@ type Rendezvous struct {
 
 func NewRendezvous() Rendezvous {
 	return Rendezvous{
+		mu:        new(sync.Mutex),
 		senders:   map[identity.Address]chan *ComputeMessage{},
 		receivers: map[identity.Address]*dispatch.Splitter{},
 		errs:      map[identity.Address]*dispatch.Splitter{},
@@ -95,36 +96,6 @@ func (rendezvous *Rendezvous) releaseConn(addr identity.Address) {
 		delete(rendezvous.errs, addr)
 	}
 }
-
-// func (connector *Connector) compute(ctx context.Context, multiAddress identity.MultiAddress) (Smpc_ComputeClient, error) {
-
-// 	// Dial the client.ConnPool for a client.Conn
-// 	conn, err := connector.connPool.Dial(ctx, multiAddress)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("cannot dial %v: %v", multiAddress, err)
-// 	}
-// 	defer conn.Close()
-
-// 	// Create an SmpcClient and call the Compute RPC
-// 	smpcClient := NewSmpcClient(conn.ClientConn)
-// 	stream, err := smpcClient.Compute(ctx)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("cannot open stream to %v: %v", multiAddress, err)
-// 	}
-
-// 	// Send an authentication message to the Smpc service
-// 	auth := &ComputeMessage{
-// 		Signature: []byte{}, // FIXME: Provide verifiable signature
-// 		Value: &ComputeMessage_Address{
-// 			Address: connector.multiAddress.Address().String(),
-// 		},
-// 	}
-// 	if err := stream.Send(auth); err != nil {
-// 		return nil, fmt.Errorf("cannot authenticate with %v: %v", multiAddress, err)
-// 	}
-
-// 	return stream, nil
-// }
 
 type listener struct {
 	ch   chan *ComputeMessage
