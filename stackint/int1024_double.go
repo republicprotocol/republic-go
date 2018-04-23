@@ -19,23 +19,22 @@ func (x *Int1024) MulModuloBig(y, n *Int1024) Int1024 {
 
 	words := x.BasicMulBig(y)
 	var highest uint16
-	var i uint16
-	for i = x.length + y.length - 1; i > 0; i-- {
+	for i := int(x.length+y.length) - 1; i >= 0; i-- {
 		if words[i] > 0 {
-			highest = i
+			highest = uint16(i) + 1
 			break
 		}
 	}
 
 	xyDouble := DoubleInt{
-		words, highest + 1,
+		words, highest,
 	}
 
-	if (highest + 1) <= INT1024WORDS {
+	if (highest) <= INT1024WORDS {
 		var words2 [INT1024WORDS]asm.Word
 		copy(words2[:], words[:INT1024WORDS])
 		xy := Int1024{
-			words2, highest + 1,
+			words2, highest,
 		}
 		return xy.Mod(n)
 	}
@@ -123,8 +122,8 @@ func (x *DoubleInt) divDouble(y *Int1024) (DoubleInt, DoubleInt) {
 			qhat--
 		}
 		q[j] = qhat
-		if j > highestQ && q[j] > 0 {
-			highestQ = j
+		if (j+1) > highestQ && q[j] > 0 {
+			highestQ = j + 1
 		}
 	}
 	asm.ShrVU_g(u[:x.length+1], u[:uint(x.length)+1], shift)
@@ -136,9 +135,9 @@ func (x *DoubleInt) divDouble(y *Int1024) (DoubleInt, DoubleInt) {
 	var highestR uint16
 	for i := 0; i < int(min(INT1024WORDS*2, uint16(len(u)))); i++ {
 		if rWords[i] != 0 {
-			highestR = uint16(i)
+			highestR = uint16(i) + 1
 		}
 	}
 
-	return DoubleInt{q, highestQ + 1}, DoubleInt{rWords, highestR + 1}
+	return DoubleInt{q, highestQ}, DoubleInt{rWords, highestR}
 }
