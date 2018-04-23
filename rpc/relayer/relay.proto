@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package relay;
+package relayer;
 
 service Relay {
     rpc Sync (SyncRequest) returns (stream SyncResponse);

@@ -1,4 +1,4 @@
-package relay_test
+package relayer_test
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestRpc(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Relay Suite")
+	RunSpecs(t, "Relayer Suite")
 }
