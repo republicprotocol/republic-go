@@ -25,12 +25,15 @@ func Mine(rpcClient *rpc.Client) error {
 		return err
 	}
 
-	tick := time.NewTicker(5 * time.Second)
-	select {
-	case <-tick.C:
-		_, err := rpcClient.Generate(1)
-		if err != nil {
-			return err
+	tick := time.NewTicker(2 * time.Second)
+	defer tick.Stop()
+	for {
+		select {
+		case <-tick.C:
+			_, err := rpcClient.Generate(1)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

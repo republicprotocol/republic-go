@@ -86,7 +86,6 @@ func PromptPublishTx(c *rpc.Client, tx *wire.MsgTx, name string) (*chainhash.Has
 	if err != nil {
 		return nil, fmt.Errorf("sendrawtransaction: %v", err)
 	}
-	fmt.Printf("Published %s transaction (%v)\n", name, txHash)
 	return txHash, nil
 }
 
@@ -125,7 +124,7 @@ func walletPort(params *chaincfg.Params) string {
 	case &chaincfg.TestNet3Params:
 		return "18332"
 	case &chaincfg.RegressionNetParams:
-		return "18444"
+		return "18443"
 	default:
 		return ""
 	}

@@ -19,9 +19,9 @@ import (
 
 // Arc is the interface defining the Atomic Swap Interface
 type Arc interface {
-	Initiate(hash [32]byte, to, from []byte, value *big.Int, expiry int64) error
+	Initiate(hash [32]byte, from, to []byte, value *big.Int, expiry int64) error
 	Redeem(secret []byte) error
 	Refund() error
-	Audit() (hash [32]byte, to, from []byte, value *big.Int, expiry int64, err error)
+	Audit() (hash [32]byte, from, to []byte, value *big.Int, expiry int64, err error)
 	AuditSecret() (secret []byte, err error)
 }

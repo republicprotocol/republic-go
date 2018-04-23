@@ -194,6 +194,9 @@ func buildRefund(c *rpc.Client, contract []byte, contractTx *wire.MsgTx, chainPa
 	if err != nil {
 		return nil, err
 	}
+	if pushes == nil {
+		return nil, fmt.Errorf("failed to extract atomic swap data")
+	}
 
 	refundAddr, err := btcutil.NewAddressPubKeyHash(pushes.RefundHash160[:], chainParams)
 	if err != nil {

@@ -9,6 +9,9 @@ cache:
 
 before_install:
   - npm install -g ganache-cli
+  - sudo apt-add-repository ppa:bitcoin/bitcoin -y
+  - sudo apt-get update -qqmoving
+  - sudo apt-get install bitcoind -y
   - go get github.com/onsi/gomega
   - go get github.com/onsi/ginkgo/ginkgo
   - go get github.com/mattn/goveralls
@@ -17,9 +20,14 @@ before_install:
   - go get github.com/haya14busa/goverage
   - dep ensure
 
+apt_packages:
+  - bitcoind
+
 script:
   - go vet ./...
   - golint -set_exit_status `go list ./... | grep -Ev "(stackint/asm|vendor)"`
+  - mkdir -p /home/travis/.bitcoin && cp bitcoin/regtest/bitcoin.conf /home/travis/.bitcoin/bitcoin.conf
+  - bitcoind -regtest -daemon
   - go run cmd/testnetwork/main.go -sleep 10 &
   - sleep 10
   - goverage -v -coverprofile=coverprofile.out ./...

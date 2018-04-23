@@ -49,6 +49,7 @@ OP_ELSE
 	<lock_time>
 	OP_CHECKLOCKTIMEVERIFY
 	OP_DROP
+	OP_DUP
 	OP_HASH160
 	<pubKey_hash_alice>
 OP_ENDIF
@@ -62,6 +63,9 @@ func atomicSwapContract(pkhMe, pkhThem *[ripemd160.Size]byte, locktime int64, se
 
 	b.AddOp(txscript.OP_IF)
 	{
+		b.AddOp(txscript.OP_SIZE)
+		b.AddData([]byte{32})
+		b.AddOp(txscript.OP_EQUALVERIFY)
 		b.AddOp(txscript.OP_SHA256)
 		b.AddData(secretHash)
 		b.AddOp(txscript.OP_EQUALVERIFY)
