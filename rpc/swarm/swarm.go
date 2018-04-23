@@ -3,12 +3,8 @@ package swarm
 import (
 	"errors"
 	"fmt"
-	"time"
-
-	"github.com/republicprotocol/republic-go/dispatch"
 
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/rpc/dht"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -19,28 +15,27 @@ var ErrNotFound = errors.New("multiaddress not found")
 
 // Swarm implements the gRPC Swarm service.
 type Swarm struct {
-	multiAddress identity.MultiAddress
-	dht          *dht.DHT
+	client *Client
 }
 
-// NewSwarm that will use the dht.DHT to store information about peers.
-func NewSwarm(multiAddress identity.MultiAddress, dht *dht.DHT) Swarm {
+// NewSwarm that will use the a Client to call RPCs on other Swarm services and
+// to identify itself.
+func NewSwarm(client *Client) Swarm {
 	return Swarm{
-		multiAddress: multiAddress,
-		dht:          dht,
+		client: client,
 	}
 }
 
 // Register the gRPC service to a grpc.Server.
-func (swarm *Swarm) Register(server *grpc.Server) {
-	RegisterSwarmServer(server, swarm)
+func (swarmer *Swarm) Register(server *grpc.Server) {
+	RegisterSwarmServer(server, swarmer)
 }
 
 // Ping is an RPC used to notify a Swarm service about the existence of a
 // client. In the PingRequest, the client sends a signed identity.MultiAddress
 // that the Swarm service will add to its dht.DHT. If successfuly, the Swarm
 // service will respond with an empty PingResponse.
-func (swarm *Swarm) Ping(ctx context.Context, request *PingRequest) (*PingResponse, error) {
+func (swarmer *Swarm) Ping(ctx context.Context, request *PingRequest) (*PingResponse, error) {
 	// FIXME: Verify the client signature
 	signature := request.GetSignature()
 	multiAddress, err := identity.NewMultiAddressFromString(request.GetMultiAddress())
@@ -50,7 +45,7 @@ func (swarm *Swarm) Ping(ctx context.Context, request *PingRequest) (*PingRespon
 	if err := multiAddress.VerifySignature(signature); err != nil {
 		return nil, fmt.Errorf("cannot verify multiaddress: %v", err)
 	}
-	if err := swarm.dht.UpdateMultiAddress(multiAddress); err != nil {
+	if err := swarmer.client.UpdateDHT(multiAddress); err != nil {
 		return nil, fmt.Errorf("cannot update dht: %v", err)
 	}
 	return &PingResponse{}, nil
@@ -61,197 +56,30 @@ func (swarm *Swarm) Ping(ctx context.Context, request *PingRequest) (*PingRespon
 // identity.MultiAddresses to the client. The Swarm service will stream all
 // identity.MultiAddresses that are closer to the queried identity.Address than
 // the Swarm service itself.
-func (swarm *Swarm) Query(request *QueryRequest, stream Swarm_QueryServer) error {
-	// TODO: Verify the client signature
+func (swarmer *Swarm) Query(request *QueryRequest, stream Swarm_QueryServer) error {
+	// FIXME: Verify the client signature
 
 	query := identity.Address(request.GetAddress())
-	multiAddrs := swarm.dht.MultiAddresses()
+	multiAddrs := swarmer.client.DHT().MultiAddresses()
 
 	for _, multiAddr := range multiAddrs {
-		isPeerCloser, err := identity.Closer(multiAddr.Address(), swarm.dht.Address, query)
+		isPeerCloser, err := identity.Closer(multiAddr.Address(), swarmer.client.Address(), query)
 		if err != nil {
 			return err
 		}
 		if isPeerCloser {
-			// TODO: Send the peer signature for this identity.MultiAddress so
+			// FIXME: Send the peer signature for this identity.MultiAddress so
 			// that the client can verify it
 
-			queryResponse := &QueryResponse{
+			response := &QueryResponse{
 				Signature:    []byte{},
 				MultiAddress: multiAddr.String(),
 			}
-			if err := stream.Send(queryResponse); err != nil {
+			if err := stream.Send(response); err != nil {
 				return err
 			}
 		}
 	}
 
 	return nil
-}
-
-func (swarm *Swarm) Bootstrap(multiAddresses identity.MultiAddresses, depth int) <-chan error {
-	errs := make(chan error, len(multiAddresses))
-
-	go func() {
-		defer close(errs)
-
-		dispatch.CoForAll(multiAddresses, func(i int) {
-			multiAddress := multiAddresses[i]
-
-			// FIXME: Provide a verifiable signature
-			queryRequest := &QueryRequest{
-				Signature: []byte{},
-				Address:   swarm.multiAddress.Address().String(),
-			}
-			if _, err := swarm.QueryDeep(queryRequest, depth); err != nil {
-				errs <- err
-			}
-		})
-	}()
-
-	return errs
-}
-
-func (swarm *Swarm) QueryDeep(request *QueryRequest, depth int) (identity.MultiAddress, error) {
-
-	whitelist := identity.MultiAddresses{}
-	blacklist := map[identity.Address]struct{}{}
-
-	// Build a list of identity.MultiAddresses that are closer to the query
-	// than the Swarm service
-	query := identity.Address(request.GetAddress())
-	multiAddrs := swarm.dht.MultiAddresses()
-	for _, multiAddr := range multiAddrs {
-		// Shrort circuit if the Swarm service is directly connected to the
-		// query
-		if query == multiAddr.Address() {
-			return multiAddr, nil
-		}
-
-		isPeerCloser, err := identity.Closer(multiAddr.Address(), swarm.dht.Address, query)
-		if err != nil {
-			return identity.MultiAddress{}, err
-		}
-		if isPeerCloser {
-			whitelist = append(whitelist, multiAddr)
-		}
-	}
-
-	// Search all peers for identiyt.MultiAddresses that are even closer to the
-	// query until the depth limit is reach or there are no more peers left to
-	// search
-	for i := 0; (i < depth || depth == 0) && len(whitelist) > 0; i++ {
-
-		peer := whitelist[0]
-		whitelist = whitelist[1:]
-		if _, ok := blacklist[peer.Address()]; ok {
-			continue
-		}
-		blacklist[peer.Address()] = struct{}{}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-
-		conn, err := swarm.connectionPool.Dial(ctx, peer)
-		if err != nil {
-			return identity.MultiAddress{}, fmt.Errorf("cannot dial %v: %v", peer, err)
-		}
-		defer conn.Close()
-
-		client := NewSwarmClient(conn)
-		// FIXME: Provide verifiable signature
-		stream, err := client.Query(ctx, request)
-		if err != nil {
-			return identity.MultiAddress{}, err
-		}
-		if err := swarm.updateDHT(peer); err != nil {
-			return identity.MultiAddress{}, fmt.Errorf("cannot update dht: %v", err)
-		}
-
-		for {
-			message, err := stream.Recv()
-			if err != nil {
-				return identity.MultiAddress{}, err
-			}
-
-			// FIXME: Verify the message signature
-			signature := message.GetSignature()
-			multiAddress, err := identity.NewMultiAddressFromString(message.GetMultiAddress())
-			if err != nil {
-				continue
-			}
-			if err := multiAddress.VerifySignature(signature); err != nil {
-				continue
-			}
-			if err := swarm.dht.UpdateMultiAddress(multiAddress); err != nil {
-				continue
-			}
-
-			if query == multiAddress.Address() {
-				return multiAddress, nil
-			}
-			isPeerCloser, err := identity.Closer(multiAddress.Address(), swarm.dht.Address, query)
-			if err != nil {
-				return identity.MultiAddress{}, err
-			}
-			if isPeerCloser {
-				whitelist = append(whitelist, multiAddress)
-			}
-		}
-	}
-
-	return identity.MultiAddress{}, ErrNotFound
-}
-
-func (swarm *Swarm) updateDHT(multiAddress identity.MultiAddress) error {
-	if swarm.multiAddress.Address() == multiAddress.Address() {
-		return nil
-	}
-	if err := swarm.dht.UpdateMultiAddress(multiAddress); err != nil {
-		if err == dht.ErrFullBucket {
-			prune := swarm.pruneDHT(multiAddress.Address())
-			if prune {
-				return swarm.dht.UpdateMultiAddress(multiAddress)
-			}
-			return nil
-		}
-		return err
-	}
-	return nil
-}
-
-func (swarm *Swarm) pruneDHT(addr identity.Address) bool {
-	bucket, err := swarm.dht.FindBucket(addr)
-	if err != nil {
-		return false
-	}
-	if bucket == nil || bucket.Length() == 0 {
-		return false
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// Ping the first multiaddress in the bucket and see if they are still
-	// responsive
-	multiAddress := bucket.MultiAddresses[0]
-	conn, err := swarm.connectionPool.Dial(ctx, multiAddress)
-	if err != nil {
-		swarm.dht.RemoveMultiAddress(multiAddress)
-		return true
-	}
-	defer conn.Close()
-
-	// FIXME: Provide verifiable signature of the multiaddress
-	client := NewSwarmClient(conn)
-	if _, err := client.Ping(ctx, &PingRequest{
-		Signature:    []byte{},
-		MultiAddress: swarm.multiAddress.String(),
-	}); err != nil {
-		swarm.dht.RemoveMultiAddress(multiAddress)
-		return true
-	}
-
-	swarm.dht.UpdateMultiAddress(multiAddress)
-	return false
 }
