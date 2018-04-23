@@ -14,10 +14,25 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
-func ConnectToRPC(chainParams *chaincfg.Params, rpcUser, rpcPass string) (*rpc.Client, error) {
+type Connection struct {
+	Client      *rpc.Client
+	ChainParams *chaincfg.Params
+}
+
+func Connect(chain string, rpcUser, rpcPass string) (Connection, error) {
+	var chainParams *chaincfg.Params
+	switch chain {
+	case "regtest":
+		chainParams = &chaincfg.RegressionNetParams
+	case "testnet":
+		chainParams = &chaincfg.TestNet3Params
+	default:
+		chainParams = &chaincfg.MainNetParams
+	}
+
 	connect, err := normalizeAddress("localhost", walletPort(chainParams))
 	if err != nil {
-		return nil, fmt.Errorf("wallet server address: %v", err)
+		return Connection{}, fmt.Errorf("wallet server address: %v", err)
 	}
 
 	connConfig := &rpc.ConnConfig{
@@ -30,7 +45,7 @@ func ConnectToRPC(chainParams *chaincfg.Params, rpcUser, rpcPass string) (*rpc.C
 
 	rpcClient, err := rpc.New(connConfig, nil)
 	if err != nil {
-		return nil, fmt.Errorf("rpc connect: %v", err)
+		return Connection{}, fmt.Errorf("rpc connect: %v", err)
 	}
 
 	// Should call the following after this function:
@@ -41,10 +56,13 @@ func ConnectToRPC(chainParams *chaincfg.Params, rpcUser, rpcPass string) (*rpc.C
 		}()
 	*/
 
-	return rpcClient, nil
+	return Connection{
+		Client:      rpcClient,
+		ChainParams: chainParams,
+	}, nil
 }
 
-func FundRawTransaction(c *rpc.Client, tx *wire.MsgTx) (fundedTx *wire.MsgTx, err error) {
+func (connection Connection) FundRawTransaction(tx *wire.MsgTx) (fundedTx *wire.MsgTx, err error) {
 	var buf bytes.Buffer
 	buf.Grow(tx.SerializeSize())
 	tx.Serialize(&buf)
@@ -56,7 +74,7 @@ func FundRawTransaction(c *rpc.Client, tx *wire.MsgTx) (fundedTx *wire.MsgTx, er
 		return nil, err
 	}
 	params := []json.RawMessage{param0}
-	rawResp, err := c.RawRequest("fundrawtransaction", params)
+	rawResp, err := connection.Client.RawRequest("fundrawtransaction", params)
 	if err != nil {
 		return nil, err
 	}
@@ -81,18 +99,18 @@ func FundRawTransaction(c *rpc.Client, tx *wire.MsgTx) (fundedTx *wire.MsgTx, er
 	return fundedTx, nil
 }
 
-func PromptPublishTx(c *rpc.Client, tx *wire.MsgTx, name string) (*chainhash.Hash, error) {
-	txHash, err := c.SendRawTransaction(tx, false)
+func (connection Connection) PromptPublishTx(tx *wire.MsgTx, name string) (*chainhash.Hash, error) {
+	txHash, err := connection.Client.SendRawTransaction(tx, false)
 	if err != nil {
 		return nil, fmt.Errorf("sendrawtransaction: %v", err)
 	}
 	return txHash, nil
 }
 
-func WaitForConfirmations(c *rpc.Client, txHash *chainhash.Hash, requiredConfirmations int64) error {
+func (connection Connection) WaitForConfirmations(txHash *chainhash.Hash, requiredConfirmations int64) error {
 	confirmations := int64(0)
 	for confirmations < requiredConfirmations {
-		txDetails, err := c.GetTransaction(txHash)
+		txDetails, err := connection.Client.GetTransaction(txHash)
 		if err != nil {
 			return err
 		}
@@ -102,6 +120,11 @@ func WaitForConfirmations(c *rpc.Client, txHash *chainhash.Hash, requiredConfirm
 		time.Sleep(1 * time.Second)
 	}
 	return nil
+}
+
+func (connection Connection) Shutdown() {
+	connection.Client.Shutdown()
+	connection.Client.WaitForShutdown()
 }
 
 func normalizeAddress(addr string, defaultPort string) (hostport string, err error) {

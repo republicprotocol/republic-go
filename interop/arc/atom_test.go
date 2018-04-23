@@ -1,4 +1,4 @@
-package interop_test
+package arc_test
 
 // import (
 // 	"context"

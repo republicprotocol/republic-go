@@ -116,11 +116,11 @@ Bitcoin Refund Script: Bob is trying to redeem and get his bitcoins.
 <Contract>
 */
 
-func redeemP2SHContract(contract, sig, pubkey, secret []byte) ([]byte, error) {
+func redeemP2SHContract(contract, sig, pubkey []byte, secret [32]byte) ([]byte, error) {
 	b := txscript.NewScriptBuilder()
 	b.AddData(sig)
 	b.AddData(pubkey)
-	b.AddData(secret)
+	b.AddData(secret[:])
 	b.AddInt64(1)
 	b.AddData(contract)
 	return b.Script()

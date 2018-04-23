@@ -5,8 +5,8 @@ import (
 	"os/exec"
 	"time"
 
-	rpc "github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcutil"
+	"github.com/republicprotocol/republic-go/bitcoin/client"
 )
 
 // Start a local Ganache instance.
@@ -18,9 +18,9 @@ func Start() *exec.Cmd {
 	return cmd
 }
 
-func Mine(rpcClient *rpc.Client) error {
+func Mine(connection client.Connection) error {
 
-	_, err := rpcClient.Generate(1000)
+	_, err := connection.Client.Generate(1000)
 	if err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func Mine(rpcClient *rpc.Client) error {
 	for {
 		select {
 		case <-tick.C:
-			_, err := rpcClient.Generate(1)
+			_, err := connection.Client.Generate(1)
 			if err != nil {
 				return err
 			}
@@ -40,14 +40,17 @@ func Mine(rpcClient *rpc.Client) error {
 	return nil
 }
 
-func NewAccount(rpcClient *rpc.Client, name string, value btcutil.Amount) (btcutil.Address, error) {
-	addr, err := rpcClient.GetAccountAddress(name)
+func NewAccount(connection client.Connection, name string, value btcutil.Amount) (btcutil.Address, error) {
+	addr, err := connection.Client.GetAccountAddress(name)
 	if err != nil {
 		return nil, err
 	}
-	rpcClient.SendToAddress(addr, value)
+	_, err = connection.Client.SendToAddress(addr, value)
+	if err != nil {
+		return nil, err
+	}
 
-	_, err = rpcClient.Generate(1)
+	_, err = connection.Client.Generate(1)
 	if err != nil {
 		return nil, err
 	}

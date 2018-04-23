@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"math/big"
 
-	interop "github.com/republicprotocol/republic-go/interop"
+	"github.com/republicprotocol/republic-go/bitcoin/client"
+	arc "github.com/republicprotocol/republic-go/interop/arc"
 )
 
 type BitcoinData struct {
@@ -19,24 +20,20 @@ type BitcoinData struct {
 }
 
 type BitcoinArc struct {
-	rpcUser    string
-	rpcPass    string
-	chain      string
+	connection client.Connection
 	secretHash [32]byte
 	ledgerData BitcoinData
 }
 
 // NewBitcoinArc returns an arc object
-func NewBitcoinArc(rpcUser, rpcPass, chain string) interop.Arc {
+func NewBitcoinArc(connection client.Connection) arc.Arc {
 	return &BitcoinArc{
-		rpcUser: rpcUser,
-		rpcPass: rpcPass,
-		chain:   chain,
+		connection: connection,
 	}
 }
 
 func (arc *BitcoinArc) Initiate(hash [32]byte, from, to []byte, value *big.Int, expiry int64) (err error) {
-	err, result := initiate(string(to), value.Int64(), arc.chain, arc.rpcUser, arc.rpcPass, hash[:], expiry)
+	result, err := initiate(arc.connection, string(to), value.Int64(), hash[:], expiry)
 	if err != nil {
 		return err
 	}
@@ -46,15 +43,15 @@ func (arc *BitcoinArc) Initiate(hash [32]byte, from, to []byte, value *big.Int, 
 }
 
 func (arc *BitcoinArc) Audit() (hash [32]byte, from, to []byte, value *big.Int, expiry int64, err error) {
-	err, result := read(arc.ledgerData.contract, arc.ledgerData.contractTx, arc.chain, arc.rpcUser, arc.rpcPass)
+	result, err := read(arc.connection, arc.ledgerData.contract, arc.ledgerData.contractTx)
 	if err != nil {
 		return [32]byte{}, []byte{}, []byte{}, big.NewInt(0), 0, err
 	}
 	return result.secretHash, result.refundAddress, result.recipientAddress, big.NewInt(result.amount), result.lockTime, nil
 }
 
-func (arc *BitcoinArc) Redeem(secret []byte) error {
-	err, result := redeem(arc.ledgerData.contract, arc.ledgerData.contractTx, secret, arc.rpcUser, arc.rpcPass, arc.chain)
+func (arc *BitcoinArc) Redeem(secret [32]byte) error {
+	result, err := redeem(arc.connection, arc.ledgerData.contract, arc.ledgerData.contractTx, secret)
 	if err != nil {
 		return err
 	}
@@ -63,16 +60,16 @@ func (arc *BitcoinArc) Redeem(secret []byte) error {
 	return nil
 }
 
-func (arc *BitcoinArc) AuditSecret() (secret []byte, err error) {
-	err, result := readSecret(arc.ledgerData.redeemTx, arc.secretHash[:], arc.rpcUser, arc.rpcPass)
+func (arc *BitcoinArc) AuditSecret() (secret [32]byte, err error) {
+	result, err := readSecret(arc.connection, arc.ledgerData.redeemTx, arc.secretHash[:])
 	if err != nil {
-		return []byte{}, err
+		return [32]byte{}, err
 	}
 	return result, nil
 }
 
 func (arc *BitcoinArc) Refund() error {
-	return refund(arc.ledgerData.contract, arc.ledgerData.contractTx, arc.chain, arc.rpcUser, arc.rpcPass)
+	return refund(arc.connection, arc.ledgerData.contract, arc.ledgerData.contractTx)
 }
 
 func (arc *BitcoinArc) Serialize() ([]byte, error) {

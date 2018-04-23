@@ -1,4 +1,4 @@
-package interop_test
+package arc_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestGoAtom(t *testing.T) {
+func TestArc(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Atom Protocol Suite")
+	RunSpecs(t, "Arc Suite")
 }

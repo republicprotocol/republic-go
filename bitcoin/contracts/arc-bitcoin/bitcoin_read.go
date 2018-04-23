@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
+	"github.com/republicprotocol/republic-go/bitcoin/client"
 )
 
 type readResult struct {
@@ -20,27 +20,19 @@ type readResult struct {
 	lockTime         int64
 }
 
-func read(contract, contractTxBytes []byte, chain string, rpcuser string, rpcpass string) (Error error, result readResult) {
-	var chainParams *chaincfg.Params
-	if chain == "regtest" {
-		chainParams = &chaincfg.RegressionNetParams
-	} else if chain == "testnet" {
-		chainParams = &chaincfg.TestNet3Params
-	} else {
-		chainParams = &chaincfg.MainNetParams
-	}
+func read(connection client.Connection, contract, contractTxBytes []byte) (readResult, error) {
 
 	var contractTx wire.MsgTx
 	err := contractTx.Deserialize(bytes.NewReader(contractTxBytes))
 	if err != nil {
-		return fmt.Errorf("failed to decode contract transaction: %v", err), readResult{}
+		return readResult{}, fmt.Errorf("failed to decode contract transaction: %v", err)
 	}
 
 	contractHash160 := btcutil.Hash160(contract)
 	contractOut := -1
 
 	for i, out := range contractTx.TxOut {
-		sc, addrs, _, err := txscript.ExtractPkScriptAddrs(out.PkScript, chainParams)
+		sc, addrs, _, err := txscript.ExtractPkScriptAddrs(out.PkScript, connection.ChainParams)
 		if err != nil || sc != txscript.ScriptHashTy {
 			continue
 		}
@@ -50,38 +42,38 @@ func read(contract, contractTxBytes []byte, chain string, rpcuser string, rpcpas
 		}
 	}
 	if contractOut == -1 {
-		return errors.New("transaction does not contain the contract output"), readResult{}
+		return readResult{}, errors.New("transaction does not contain the contract output")
 	}
 
 	pushes, err := txscript.ExtractAtomicSwapDataPushes(0, contract)
 	if err != nil {
-		return err, readResult{}
+		return readResult{}, err
 	}
 	if pushes == nil {
-		return errors.New("contract is not an atomic swap script recognized by this tool"), readResult{}
+		return readResult{}, errors.New("contract is not an atomic swap script recognized by this tool")
 	}
 
-	contractAddr, err := btcutil.NewAddressScriptHash(contract, chainParams)
+	contractAddr, err := btcutil.NewAddressScriptHash(contract, connection.ChainParams)
 	if err != nil {
-		return err, readResult{}
+		return readResult{}, err
 	}
 	recipientAddr, err := btcutil.NewAddressPubKeyHash(pushes.RecipientHash160[:],
-		chainParams)
+		connection.ChainParams)
 	if err != nil {
-		return err, readResult{}
+		return readResult{}, err
 	}
 	refundAddr, err := btcutil.NewAddressPubKeyHash(pushes.RefundHash160[:],
-		chainParams)
+		connection.ChainParams)
 	if err != nil {
-		return err, readResult{}
+		return readResult{}, err
 	}
 
-	return nil, readResult{
+	return readResult{
 		contractAddress:  contractAddr.ScriptAddress(),
 		amount:           int64(btcutil.Amount(contractTx.TxOut[contractOut].Value)),
 		recipientAddress: []byte(recipientAddr.EncodeAddress()),
 		refundAddress:    []byte(refundAddr.EncodeAddress()),
 		secretHash:       pushes.SecretHash,
 		lockTime:         pushes.LockTime,
-	}
+	}, nil
 }
