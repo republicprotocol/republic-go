@@ -16,6 +16,8 @@ type Relayer struct {
 // NewRelayer returns a Relayer that will use an orderbook.Orderbook for
 // synchronization (see Relay.Sync).
 func NewRelayer(orderbook *orderbook.Orderbook) Relayer {
+	// TODO: Implement a max connection parameter to prevent too many clients
+	// from syncing and slowing down the Relay service
 	return Relayer{
 		orderbook: orderbook,
 	}
