@@ -110,7 +110,7 @@ func (proposal *Proposal) Fault() *Fault {
 func (proposal *Proposal) Verify(verifier identity.Verifier) error {
 
 	// TODO: Complete verification
-	if err := proposal.Block.Verify(verifier); err != nil {
+	if err := proposal.Block.VerifyBlock(verifier); err != nil {
 		return err
 	}
 	return verifier.VerifySignature(proposal.Signature)

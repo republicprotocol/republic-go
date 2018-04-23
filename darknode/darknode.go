@@ -5,11 +5,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/big"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -19,6 +21,7 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/smpc"
 	"google.golang.org/grpc"
@@ -43,6 +46,7 @@ type Darknode struct {
 	darknodeRegistry   contracts.DarkNodeRegistry
 	hyperdriveContract contracts.HyperdriveContract
 	ocean              Ocean
+	orderbook          orderbook.Orderbook
 
 	relayService      rpc.RelayService
 	smpcService       rpc.ComputerService
@@ -53,16 +57,17 @@ type Darknode struct {
 	orderFragments chan order.Fragment
 	deltaFragments chan smpc.DeltaFragment
 
-	txPool        hyperdrive.TxPool
-	hyperChain    hyperdrive.HyperChain
-	proposalCh    chan hyperdrive.Proposal
-	prepareCh     chan hyperdrive.Prepare
-	commitCh      chan hyperdrive.Commit
-	blockCh       chan hyperdrive.Block
-	faultCh       chan hyperdrive.Fault
-	driveMessages chan *rpc.DriveMessage
-	signer        identity.Signer
-	verifier      identity.Verifier
+	txsToBeFinalized chan TxWithBlockNumber
+	txPool           hyperdrive.TxPool
+	hyperChain       hyperdrive.HyperChain
+	proposalCh       chan hyperdrive.Proposal
+	prepareCh        chan hyperdrive.Prepare
+	commitCh         chan hyperdrive.Commit
+	blockCh          chan hyperdrive.Block
+	faultCh          chan hyperdrive.Fault
+	driveMessages    chan *rpc.DriveMessage
+	signer           identity.Signer
+	verifier         identity.Verifier
 
 	replicasMu *sync.RWMutex
 	replicas   Pool
@@ -479,7 +484,7 @@ func (node *Darknode) ProcessDriveMessages(ctx context.Context, threshold int) {
 						node.prepareCh <- prepare
 					}
 				case *rpc.DriveMessage_Commit:
-					commit := *rpc.UnmarshalCommit(msg.DriveMessage.(*rpc.DriveMessage_Commit).Commit)
+					//commit := *rpc.UnmarshalCommit(msg.DriveMessage.(*rpc.DriveMessage_Commit).Commit)
 				case *rpc.DriveMessage_Block:
 					//todo :
 					node.blockCh <- *rpc.UnmarshalBlock(msg.DriveMessage.(*rpc.DriveMessage_Block).Block)
@@ -568,10 +573,96 @@ func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) error {
 		}
 	}
 
-	_, err := node.hyperdriveContract.SendTx(tx)
+	transaction, err := node.hyperdriveContract.SendTx(tx)
 	if err != nil {
 		return fmt.Errorf("fail to send tx to hyperdrive contract , %s", err)
 	}
 
+	blockNumber, err := node.hyperdriveContract.GetBlockNumberOfTx(transaction)
+	if err != nil {
+		return fmt.Errorf("fail to get block number of the transaction , %s", err)
+	}
+	node.txsToBeFinalized <- NewTxWithBlockNumber(transaction.Hash(), blockNumber)
+
 	return nil
+}
+
+type TxWithBlockNumber struct {
+	hash        common.Hash
+	blockNumber uint64
+}
+
+func NewTxWithBlockNumber(hash common.Hash, blockNumber uint64) TxWithBlockNumber {
+	return TxWithBlockNumber{
+		hash:        hash,
+		blockNumber: blockNumber,
+	}
+}
+
+func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth int) <-chan error {
+	errs := make(chan error, 1)
+
+	go func() {
+		defer close(errs)
+
+		mu := new(sync.Mutex)
+		watchingList := map[uint64][]common.Hash{}
+
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-done:
+				return
+			case tx := <-node.txsToBeFinalized:
+				mu.Lock()
+				if _, ok := watchingList[tx.blockNumber]; !ok {
+					watchingList[tx.blockNumber] = []common.Hash{}
+				}
+				watchingList[tx.blockNumber] = append(watchingList[tx.blockNumber], tx.hash)
+				mu.Unlock()
+			case <-ticker.C:
+				currentBlock, err := node.hyperdriveContract.CurrentBlock()
+				if err != nil {
+					errs <- err
+					return
+				}
+
+				mu.Lock()
+				if hashes, ok := watchingList[currentBlock.NumberU64()-16]; ok {
+					// Create a hashTable
+					hashTable := map[common.Hash]struct{}{}
+					var subtraction *big.Int
+					previousBlock, err := node.hyperdriveContract.BlockByNumber(subtraction.Sub(currentBlock.Number(), big.NewInt(16)))
+					if err != nil {
+						errs <- err
+						return
+					}
+					for _, h := range previousBlock.Transactions() {
+						hashTable[h.Hash()] = struct{}{}
+					}
+
+					for _, hash := range hashes {
+						if _, ok := hashTable[hash]; ok {
+							// Fixme :  generate the correct entry
+							entry := orderbook.Entry{
+								Order: order.Order{
+									ID: hash.Bytes(),
+								},
+								Status: order.Confirmed,
+							}
+
+							node.orderbook.Confirm(entry)
+						}
+					}
+
+					delete(watchingList, currentBlock.NumberU64()-16)
+				}
+				mu.Unlock()
+			}
+		}
+	}()
+
+	return errs
 }

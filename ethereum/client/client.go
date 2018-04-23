@@ -48,7 +48,7 @@ type Connection struct {
 	Client     Client
 	RenAddress common.Address
 	DNRAddress common.Address
-	HDEAddress common.Address
+	HDAddress  common.Address
 	Network    Network
 }
 
@@ -87,10 +87,10 @@ func Connect(uri string, network Network, republicTokenAddress, darkNodeRegistry
 	if hyperdriveAddress == "" {
 		switch network {
 		case NetworkGanache:
-			darkNodeRegistryAddress = DarkNodeRegistryAddressOnGanache.String()
+			hyperdriveAddress = HyperDriveAddressOnGanache.String()
 		case NetworkRopsten:
 			// fixme
-			darkNodeRegistryAddress = DarkNodeRegistryAddressOnRopsten.String()
+			hyperdriveAddress = HyperDriveAddressOnGanache.String()
 		default:
 			return Connection{}, fmt.Errorf("cannot connect to %s: unsupported", network)
 		}
@@ -105,6 +105,7 @@ func Connect(uri string, network Network, republicTokenAddress, darkNodeRegistry
 		Client:     ethclient,
 		RenAddress: common.HexToAddress(republicTokenAddress),
 		DNRAddress: common.HexToAddress(darkNodeRegistryAddress),
+		HDAddress:  common.HexToAddress(hyperdriveAddress),
 		Network:    network,
 	}, nil
 }

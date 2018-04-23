@@ -49,6 +49,7 @@ func Connect(ganacheRPC string) (client.Connection, error) {
 		Client:     ethclient,
 		DNRAddress: client.DarkNodeRegistryAddressOnGanache,
 		RenAddress: client.RepublicTokenAddressOnGanache,
+		HDAddress:  client.HyperDriveAddressOnGanache,
 		Network:    client.NetworkGanache,
 	}, nil
 }
@@ -121,7 +122,7 @@ func deployContracts(conn client.Connection, transactor *bind.TransactOpts) erro
 	if err != nil {
 		return err
 	}
-	_, hyperdriveRegistryAdrress, err := deployHyperdriveRegistry(context.Background(), conn, transactor)
+	_, hyperdriveAddress, err := deployHyperdrive(context.Background(), conn, transactor, conn.DNRAddress)
 	if err != nil {
 		return err
 	}
@@ -133,8 +134,8 @@ func deployContracts(conn client.Connection, transactor *bind.TransactOpts) erro
 	if darkNodeRegistryAddress != client.DarkNodeRegistryAddressOnGanache {
 		return fmt.Errorf("DarkNodeRegistry address has changed: expected: %s, got: %s", client.DarkNodeRegistryAddressOnGanache.Hex(), darkNodeRegistryAddress.Hex())
 	}
-	if hyperdriveRegistryAdrress != client.HyperDriveAddressOnGanache {
-		return fmt.Errorf("HyperdriveContract address has changed: expected: %s, got: %s", client.HyperDriveAddressOnGanache.Hex(), hyperdriveRegistryAdrress.Hex())
+	if hyperdriveAddress != client.HyperDriveAddressOnGanache {
+		return fmt.Errorf("HyperdriveContract address has changed: expected: %s, got: %s", client.HyperDriveAddressOnGanache.Hex(), hyperdriveAddress.Hex())
 	}
 
 	return nil
@@ -149,16 +150,13 @@ func deployRepublicToken(ctx context.Context, conn client.Connection, auth *bind
 	return ren, address, nil
 }
 
-func deployHyperdriveRegistry(ctx context.Context, conn client.Connection, auth *bind.TransactOpts) (*bindings.HyperdriveEpoch, common.Address, error) {
-	// 1 second
-	minimumEpochInterval := big.NewInt(1)
-
-	address, tx, ren, err := bindings.DeployHyperdriveEpoch(auth, conn.Client, minimumEpochInterval)
+func deployHyperdrive(ctx context.Context, conn client.Connection, auth *bind.TransactOpts, hyperdriveAddress common.Address) (*bindings.Hyperdrive, common.Address, error) {
+	address, tx, hyper, err := bindings.DeployHyperdrive(auth, conn.Client, hyperdriveAddress)
 	if err != nil {
 		return nil, common.Address{}, fmt.Errorf("cannot deploy RepublicToken: %v", err)
 	}
 	conn.PatchedWaitDeployed(ctx, tx)
-	return ren, address, nil
+	return hyper, address, nil
 }
 
 func deployDarkNodeRegistry(ctx context.Context, conn client.Connection, auth *bind.TransactOpts, republicTokenAddress common.Address) (*bindings.DarkNodeRegistry, common.Address, error) {
