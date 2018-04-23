@@ -128,16 +128,16 @@ func (rendezvous *Rendezvous) releaseConn(addr identity.Address) {
 
 type listener struct {
 	ch   chan *ComputeMessage
-	quit <-chan struct{}
+	done <-chan struct{}
 }
 
-type broadcaster struct {
+type dispatcher struct {
 	ch        chan *ComputeMessage
 	listeners chan listener
 }
 
-func newBroadcaster(done <-chan struct{}) *broadcaster {
-	b := &broadcaster{
+func newDispatcher(done <-chan struct{}) *dispatcher {
+	d := &dispatcher{
 		ch:        make(chan *ComputeMessage),
 		listeners: make(chan listener),
 	}
@@ -145,7 +145,8 @@ func newBroadcaster(done <-chan struct{}) *broadcaster {
 	go func() {
 		listeners := map[chan *ComputeMessage](<-chan struct{}){}
 		defer func() {
-			for listener := range listeners {
+			for listener, listenerDone := range listeners {
+				<-listenerDone
 				close(listener)
 			}
 		}()
@@ -154,7 +155,7 @@ func newBroadcaster(done <-chan struct{}) *broadcaster {
 			select {
 			case <-done:
 				return
-			case msg, ok := <-b.ch:
+			case msg, ok := <-d.ch:
 				if !ok {
 					return
 				}
@@ -162,54 +163,55 @@ func newBroadcaster(done <-chan struct{}) *broadcaster {
 					close(listener)
 					delete(listeners, listener)
 				}
-				for listener, quit := range listeners {
+				for listener, listenerDone := range listeners {
 					select {
 					case <-done:
 						deleteListener(listener)
-					case <-quit:
+					case <-listenerDone:
 						deleteListener(listener)
 					case listener <- msg:
 					}
 				}
-			case listener, ok := <-b.listeners:
+			case listener, ok := <-d.listeners:
 				if !ok {
 					return
 				}
-				listeners[listener.ch] = listener.quit
+				listeners[listener.ch] = listener.done
 			}
 		}
-
 	}()
 
-	return b
+	return d
 }
 
-func (b *broadcaster) broadcast(done <-chan struct{}, ch <-chan *ComputeMessage) {
+func (d *dispatcher) broadcast(done <-chan struct{}, ch <-chan *ComputeMessage) {
 	for {
 		select {
 		case <-done:
 			return
-		case c, ok := <-ch:
+		case msg, ok := <-ch:
 			if !ok {
+				<-done
 				return
 			}
 			select {
 			case <-done:
-			case b.ch <- c:
+				return
+			case d.ch <- msg:
 			}
 		}
 	}
 }
 
-func (b *broadcaster) listen(done <-chan struct{}) <-chan *ComputeMessage {
+func (d *dispatcher) listen(done <-chan struct{}) <-chan *ComputeMessage {
 	listener := listener{
 		ch:   make(chan *ComputeMessage),
-		quit: done,
+		done: done,
 	}
 	select {
 	case <-done:
 		close(listener.ch)
-	case b.listeners <- listener:
+	case d.listeners <- listener:
 	}
 	return listener.ch
 }
