@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/republicprotocol/republic-go/identity"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -115,8 +116,59 @@ func (smpcer *Smpcer) Compute(stream Smpc_ComputeServer) error {
 		return ErrMaxConnectionsReached
 	}
 
-	conn := smpcer.client.rendezvous.acquireConn(addr)
-	defer smpcer.client.rendezvous.releaseConn(addr)
+	done := make(chan struct{})
+	defer close(done)
 
-	return conn.stream(stream)
+	receiver := make(chan *ComputeMessage)
+	defer close(receiver)
+
+	sender := smpcer.client.rendezvous.connect(identity.Address(addr), done, receiver)
+
+	// Read all messages from the sender channel and write them to the gRPC
+	// stream
+	errs := make(chan error, 1)
+	go func() {
+		defer close(errs)
+		for {
+			select {
+			case <-done:
+				// The receiver has terminated
+				return
+			case <-stream.Context().Done():
+				// Writing to the error channel will cause the receiver to
+				// terminate
+				errs <- stream.Context().Err()
+				return
+			case message, ok := <-sender:
+				if !ok {
+					return
+				}
+				if err := stream.Send(message); err != nil {
+					errs <- err
+					return
+				}
+			}
+		}
+	}()
+
+	// Read all messages from the gRPC stream and write them to the receiver
+	// channel
+	for {
+		message, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+		select {
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		case err, ok := <-errs:
+			// The sender has terminated, possibly with an error that should be
+			// returned
+			if !ok {
+				return nil
+			}
+			return err
+		case receiver <- message:
+		}
+	}
 }

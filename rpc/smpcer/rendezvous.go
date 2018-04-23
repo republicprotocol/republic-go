@@ -3,107 +3,125 @@ package smpcer
 import (
 	"sync"
 
-	"google.golang.org/grpc"
+	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
-// RendezvousConn is created and returned by a Rendezvous.
-type RendezvousConn struct {
-	Sender   chan *ComputeMessage
-	Receiver chan *ComputeMessage
+type Rendezvous struct {
+	mu        *sync.Mutex
+	senders   map[identity.Address]chan *ComputeMessage
+	receivers map[identity.Address]*dispatch.Splitter
+	errs      map[identity.Address]*dispatch.Splitter
+	rcs       map[identity.Address]int
 }
 
-func (conn *RendezvousConn) stream(stream grpc.Stream) error {
-	// The done channel will signal to the sender goroutine that it should
-	// exit
-	done := make(chan struct{})
-	defer close(done)
+func NewRendezvous() Rendezvous {
+	return Rendezvous{
+		senders:   map[identity.Address]chan *ComputeMessage{},
+		receivers: map[identity.Address]*dispatch.Splitter{},
+		errs:      map[identity.Address]*dispatch.Splitter{},
+		rcs:       map[identity.Address]int{},
+	}
+}
 
-	errs := make(chan error, 1)
+// connect an accepted Compute RPC connection from an address. Messages written
+// to the sender channels passed in from calls to Rendezvous.waitForClient and
+// Rendezvous.waitForService are written to the stream. Messages read from the
+// stream are split and written to all receiver channels created in calls to
+// Rendezvous.waitForClient and Rendezvous.waitForService. Calls to
+// Rendezvous.connect must only be made by an Smpc service.
+func (rendezvous *Rendezvous) connect(addr identity.Address, done <-chan struct{}, receiver <-chan *ComputeMessage) <-chan *ComputeMessage {
+	sender := make(chan *ComputeMessage)
 	go func() {
+		defer close(sender)
+
+		rendezvous.acquireConn(addr)
+		defer rendezvous.releaseConn(addr)
+
+		dispatch.CoBegin(func() {
+			rendezvous.receivers[addr].Split(receiver)
+		}, func() {
+			dispatch.Pipe(done, rendezvous.senders[addr], sender)
+		})
+	}()
+	return sender
+}
+
+// wait for the Rendezvous to be connected to from an address. The Rendezvous
+// read messages from the sender channel and forward them to the address. The
+// user can read messages sent by the address from the returned channel. Calls
+// to Rendezvous.wait must only be made by a Client.
+func (rendezvous *Rendezvous) wait(addr identity.Address, done <-chan struct{}, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {
+	receiver := make(chan *ComputeMessage)
+	errs := make(chan error, 1)
+
+	go func() {
+		defer close(receiver)
 		defer close(errs)
 
-		for {
-			select {
-			case <-done:
-				// When the receiver exits the done channel will be closed and
-				// this goroutine will eventually exit
-				return
-			case <-stream.Context().Done():
-				errs <- stream.Context().Err()
-				return
-			case message, ok := <-conn.Sender:
-				if !ok {
-					return
-				}
-				if err := stream.SendMsg(message); err != nil {
-					errs <- err
-					return
-				}
-			}
+		rendezvous.acquireConn(addr)
+		defer rendezvous.releaseConn(addr)
+
+		if err := rendezvous.receivers[addr].Subscribe(receiver); err != nil {
+			errs <- err
+			return
 		}
+		defer rendezvous.receivers[addr].Unsubscribe(receiver)
 	}()
+	return receiver, errs
+}
 
-	// Receive messages from the client until the context is done, or an error
-	// is received
-	for {
-		message := new(ComputeMessage)
-		if err := stream.RecvMsg(message); err != nil {
-			return err
-		}
+func (rendezvous *Rendezvous) acquireConn(addr identity.Address) {
+	rendezvous.mu.Lock()
+	defer rendezvous.mu.Unlock()
 
-		select {
-		case <-stream.Context().Done():
-			return stream.Context().Err()
-		case err, ok := <-errs:
-			if !ok {
-				// When the sender exits this error channel will be closed and
-				// this goroutine will eventually exit
-				return nil
-			}
-			return err
-		case conn.Receiver <- message:
-		}
+	if rendezvous.rcs[addr] == 0 {
+		sender := make(chan *ComputeMessage)
+		rendezvous.senders[addr] = sender
+		rendezvous.receivers[addr] = dispatch.NewSplitter(MaxConnections)
+	}
+	rendezvous.rcs[addr]++
+}
+
+func (rendezvous *Rendezvous) releaseConn(addr identity.Address) {
+	rendezvous.mu.Lock()
+	defer rendezvous.mu.Unlock()
+
+	rendezvous.rcs[addr]--
+	if rendezvous.rcs[addr] == 0 {
+		close(rendezvous.senders[addr])
+		delete(rendezvous.senders, addr)
+		delete(rendezvous.receivers, addr)
+		delete(rendezvous.errs, addr)
 	}
 }
 
-// Rendezvous maintains bi-directional streams between gRPC clients and gRPC
-// services.
-type Rendezvous struct {
-	connsMu *sync.Mutex
-	connsRc map[string]int
-	conns   map[string]RendezvousConn
-}
+// func (connector *Connector) compute(ctx context.Context, multiAddress identity.MultiAddress) (Smpc_ComputeClient, error) {
 
-func newRendezvous() Rendezvous {
-	return Rendezvous{
-		connsMu: new(sync.Mutex),
-		connsRc: map[string]int{},
-		conns:   map[string]RendezvousConn{},
-	}
-}
+// 	// Dial the client.ConnPool for a client.Conn
+// 	conn, err := connector.connPool.Dial(ctx, multiAddress)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("cannot dial %v: %v", multiAddress, err)
+// 	}
+// 	defer conn.Close()
 
-func (r *Rendezvous) acquireConn(addr string) RendezvousConn {
-	r.connsMu.Lock()
-	defer r.connsMu.Unlock()
+// 	// Create an SmpcClient and call the Compute RPC
+// 	smpcClient := NewSmpcClient(conn.ClientConn)
+// 	stream, err := smpcClient.Compute(ctx)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("cannot open stream to %v: %v", multiAddress, err)
+// 	}
 
-	if r.connsRc[addr] == 0 {
-		r.conns[addr] = RendezvousConn{
-			Sender:   make(chan *ComputeMessage),
-			Receiver: make(chan *ComputeMessage),
-		}
-	}
-	r.connsRc[addr]++
-	return r.conns[addr]
-}
+// 	// Send an authentication message to the Smpc service
+// 	auth := &ComputeMessage{
+// 		Signature: []byte{}, // FIXME: Provide verifiable signature
+// 		Value: &ComputeMessage_Address{
+// 			Address: connector.multiAddress.Address().String(),
+// 		},
+// 	}
+// 	if err := stream.Send(auth); err != nil {
+// 		return nil, fmt.Errorf("cannot authenticate with %v: %v", multiAddress, err)
+// 	}
 
-func (r *Rendezvous) releaseConn(addr string) {
-	r.connsMu.Lock()
-	defer r.connsMu.Unlock()
-
-	r.connsRc[addr]--
-	if r.connsRc[addr] == 0 {
-		close(r.conns[addr].Sender)
-		close(r.conns[addr].Receiver)
-		delete(r.conns, addr)
-	}
-}
+// 	return stream, nil
+// }
