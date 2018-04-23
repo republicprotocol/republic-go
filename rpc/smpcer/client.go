@@ -13,14 +13,14 @@ var ErrConnectToSelf = errors.New("connect to self")
 
 type Client struct {
 	multiAddress identity.MultiAddress
-	router       *RendezvousRouter
 	connPool     *client.ConnPool
+	rendezvous   *Rendezvous
 }
 
-func NewClient(multiAddress identity.MultiAddress, router *RendezvousRouter, connPool *client.ConnPool) Client {
+func NewClient(multiAddress identity.MultiAddress, rendezvous *Rendezvous, connPool *client.ConnPool) Client {
 	return Client{
 		multiAddress: multiAddress,
-		router:       router,
+		rendezvous:   rendezvous,
 		connPool:     connPool,
 	}
 }
@@ -50,15 +50,9 @@ func (client *Client) MultiAddress() identity.MultiAddress {
 	return client.multiAddress
 }
 
-// RendezvousRouter used by the Client to connect synchronously with Smpc
-// services.
-func (client *Client) RendezvousRouter() *RendezvousRouter {
-	return client.router
-}
-
 func (client *Client) connect(ctx context.Context, multiAddress identity.MultiAddress, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {
 	receiver := make(chan *ComputeMessage)
-	errs := make(chan error, 1)
+	errs := make(chan error, 2)
 	go func() {
 		defer close(receiver)
 		defer close(errs)
@@ -88,10 +82,11 @@ func (client *Client) connect(ctx context.Context, multiAddress identity.MultiAd
 			return
 		}
 
-		rendezvous := client.router.Acquire(multiAddress.Address().String())
-		defer client.router.Release(multiAddress.Address().String())
+		rendezvousConn := client.rendezvous.acquireConn(multiAddress.Address().String())
+		defer client.rendezvous.releaseConn(multiAddress.Address().String())
 
-		if err := client.mergeStreamAndRendezvous(stream, rendezvous); err != nil {
+		go client.streamRendezvousConn(ctx, rendezvousConn, sender, receiver, errs)
+		if err := rendezvousConn.stream(stream); err != nil {
 			errs <- err
 			return
 		}
@@ -106,36 +101,40 @@ func (client *Client) waitForConnect(ctx context.Context, multiAddress identity.
 		defer close(receiver)
 		defer close(errs)
 
-		rendezvous := client.router.Acquire(multiAddress.Address().String())
-		defer client.router.Release(multiAddress.Address().String())
+		rendezvousConn := client.rendezvous.acquireConn(multiAddress.Address().String())
+		defer client.rendezvous.releaseConn(multiAddress.Address().String())
 
-		for {
+		client.streamRendezvousConn(ctx, rendezvousConn, sender, receiver, errs)
+	}()
+	return receiver, errs
+}
+
+func (client *Client) streamRendezvousConn(ctx context.Context, conn RendezvousConn, sender <-chan *ComputeMessage, receiver chan<- *ComputeMessage, errs chan<- error) {
+	for {
+		select {
+		case <-ctx.Done():
+			errs <- ctx.Err()
+			return
+		case message, ok := <-sender:
+			if !ok {
+				return
+			}
 			select {
 			case <-ctx.Done():
 				errs <- ctx.Err()
 				return
-			case message, ok := <-sender:
-				if !ok {
-					return
-				}
-				select {
-				case <-ctx.Done():
-					errs <- ctx.Err()
-					return
-				case rendezvous.Sender <- message:
-				}
-			case message, ok := <-rendezvous.Receiver:
-				if !ok {
-					return
-				}
-				select {
-				case <-ctx.Done():
-					errs <- ctx.Err()
-					return
-				case receiver <- message:
-				}
+			case conn.Sender <- message:
+			}
+		case message, ok := <-conn.Receiver:
+			if !ok {
+				return
+			}
+			select {
+			case <-ctx.Done():
+				errs <- ctx.Err()
+				return
+			case receiver <- message:
 			}
 		}
-	}()
-	return receiver, errs
+	}
 }

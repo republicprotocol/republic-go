@@ -8,6 +8,9 @@ import (
 	"google.golang.org/grpc"
 )
 
+// MaxConnections that can be serviced by an Smpc service.
+const MaxConnections = 256
+
 // ErrUnauthorized is returned when an unauthorized client makes a call to
 // Compute.
 var ErrUnauthorized = errors.New("unauthorized")
@@ -112,5 +115,8 @@ func (smpcer *Smpcer) Compute(stream Smpc_ComputeServer) error {
 		return ErrMaxConnectionsReached
 	}
 
-	return smpcer.client.router.connect(addr, stream)
+	conn := smpcer.client.rendezvous.acquireConn(addr)
+	defer smpcer.client.rendezvous.releaseConn(addr)
+
+	return conn.stream(stream)
 }
