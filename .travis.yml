@@ -20,9 +20,6 @@ before_install:
   - go get github.com/haya14busa/goverage
   - dep ensure
 
-apt_packages:
-  - bitcoind
-
 script:
   - go vet ./...
   - golint -set_exit_status `go list ./... | grep -Ev "(stackint/asm|vendor)"`
