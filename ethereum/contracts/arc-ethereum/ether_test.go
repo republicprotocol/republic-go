@@ -48,15 +48,15 @@ var _ = Describe("ether", func() {
 
 		var aliceArcData, bobArcData []byte
 
-		var aliceSecret []byte
+		var aliceSecret [32]byte
 		var secretHash [32]byte
 
 		{ // Alice can initiate swap
 			aliceArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, alice, swapID)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			aliceSecret = []byte{1, 3, 3, 7}
-			secretHash = sha256.Sum256(aliceSecret)
+			aliceSecret = [32]byte{1, 3, 3, 7}
+			secretHash = sha256.Sum256(aliceSecret[:])
 			err = aliceArc.Initiate(secretHash, aliceAddr.Bytes(), bobAddr.Bytes(), value, validity)
 			Expect(err).ShouldNot(HaveOccurred())
 			aliceArcData, err = aliceArc.Serialize()

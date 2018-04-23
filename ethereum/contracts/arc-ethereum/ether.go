@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/ethereum/bindings"
 	"github.com/republicprotocol/republic-go/ethereum/client"
-	"github.com/republicprotocol/republic-go/interop"
+	"github.com/republicprotocol/republic-go/interop/arc"
 )
 
 type EthereumArcData struct {
@@ -29,7 +29,7 @@ type EthereumArc struct {
 }
 
 // NewEthereumArc returns a new EthereumArc instance
-func NewEthereumArc(context context.Context, client client.Connection, auth *bind.TransactOpts, swapID [32]byte) (interop.Arc, error) {
+func NewEthereumArc(context context.Context, client client.Connection, auth *bind.TransactOpts, swapID [32]byte) (arc.Arc, error) {
 	return &EthereumArc{
 		context: context,
 		client:  client,
@@ -60,7 +60,7 @@ func (arc *EthereumArc) Initiate(hash [32]byte, from []byte, to []byte, value *b
 	return err
 }
 
-func (arc *EthereumArc) Redeem(secret []byte) error {
+func (arc *EthereumArc) Redeem(secret [32]byte) error {
 	tx, err := arc.binding.Redeem(arc.auth, secret)
 	if err == nil {
 		_, err = arc.client.PatchedWaitMined(arc.context, tx)
@@ -87,7 +87,7 @@ func (arc *EthereumArc) Audit() (hash [32]byte, to, from []byte, value *big.Int,
 	return hash, arc.arcData.ContractAddress.Bytes(), toAddr.Bytes(), value, expiry, err
 }
 
-func (arc *EthereumArc) AuditSecret() ([]byte, error) {
+func (arc *EthereumArc) AuditSecret() ([32]byte, error) {
 	secret, err := arc.binding.AuditSecret(&bind.CallOpts{})
 	// if err != nil {
 	// 	return [32]byte{}, err
