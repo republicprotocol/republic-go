@@ -24,4 +24,6 @@ type Arc interface {
 	Refund() error
 	Audit() (hash [32]byte, from, to []byte, value *big.Int, expiry int64, err error)
 	AuditSecret() (secret []byte, err error)
+	Serialize() ([]byte, error)
+	Deserialize([]byte) error
 }

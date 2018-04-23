@@ -46,24 +46,27 @@ var _ = Describe("ether", func() {
 
 	It("can perform ETH-ETH arc swap", func() {
 
-		var aliceArcAddress, bobArcAddress common.Address
+		var aliceArcData, bobArcData []byte
 
 		var aliceSecret []byte
 		var secretHash [32]byte
 
 		{ // Alice can initiate swap
-			aliceArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, alice, common.Address{}, swapID)
+			aliceArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, alice, swapID)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			aliceSecret = []byte{1, 3, 3, 7}
 			secretHash = sha256.Sum256(aliceSecret)
-			err = aliceArc.Initiate(secretHash, bobAddr.Bytes(), value, validity)
+			err = aliceArc.Initiate(secretHash, aliceAddr.Bytes(), bobAddr.Bytes(), value, validity)
 			Expect(err).ShouldNot(HaveOccurred())
-			aliceArcAddress = aliceArc.EthereumArcData.ContractAddress
+			aliceArcData, err = aliceArc.Serialize()
+			Expect(err).ShouldNot(HaveOccurred())
 		}
 
 		{ // Bob can audit Alice's contract and upload his own
-			aliceArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, bob, aliceArcAddress, swapID)
+			aliceArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, bob, swapID)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = aliceArc.Deserialize(aliceArcData)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			_secretHash, _, to, _value, _, err := aliceArc.Audit()
@@ -72,15 +75,18 @@ var _ = Describe("ether", func() {
 			Expect(_value).Should(Equal(value))
 			// Expect(_expiry.Int64()).Should(Equal(expiry))
 
-			bobArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, bob, common.Address{}, swapID)
+			bobArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, bob, swapID)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = bobArc.Initiate(_secretHash, aliceAddr.Bytes(), value, validity)
+			err = bobArc.Initiate(_secretHash, bobAddr.Bytes(), aliceAddr.Bytes(), value, validity)
 			Expect(err).ShouldNot(HaveOccurred())
-			bobArcAddress = bobArc.EthereumArcData.ContractAddress
+			bobArcData, err = bobArc.Serialize()
+			Expect(err).ShouldNot(HaveOccurred())
 		}
 
 		{ // Alice can audit Bob's contract and reveal the secret
-			bobArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, alice, bobArcAddress, swapID)
+			bobArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, alice, swapID)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = bobArc.Deserialize(bobArcData)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			_secretHash, _, to, _value, _, err := bobArc.Audit()
@@ -95,13 +101,17 @@ var _ = Describe("ether", func() {
 		}
 
 		{ // Bob can retrieve the secret from his contract and complete the swap
-			bobArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, bob, bobArcAddress, swapID)
+			bobArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, bob, swapID)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = bobArc.Deserialize(bobArcData)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			secret, err := bobArc.AuditSecret()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			aliceArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, bob, aliceArcAddress, swapID)
+			aliceArc, err := arc_ethereum.NewEthereumArc(context.Background(), conn, bob, swapID)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = aliceArc.Deserialize(aliceArcData)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			err = aliceArc.Redeem(secret)

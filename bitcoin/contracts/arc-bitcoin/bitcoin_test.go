@@ -17,6 +17,8 @@ import (
 )
 
 const CHAIN = "regtest"
+const RPC_USERNAME = "testuser"
+const RPC_PASSWORD = "testpassword"
 
 func randomBytes32() []byte {
 	randString := [32]byte{}
@@ -34,7 +36,7 @@ var _ = Describe("Bitcoin", func() {
 
 	BeforeSuite(func() {
 		var err error
-		rpcClient, err = client.ConnectToRPC(&chaincfg.RegressionNetParams, "testuser", "testpassword")
+		rpcClient, err = client.ConnectToRPC(&chaincfg.RegressionNetParams, RPC_USERNAME, RPC_PASSWORD)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		go func() {
@@ -64,7 +66,7 @@ var _ = Describe("Bitcoin", func() {
 	It("can initiate a bitcoin atomic swap", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
-		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
+		BTCAtom := arc_bitcoin.NewBitcoinArc(RPC_USERNAME, RPC_PASSWORD, CHAIN)
 		err := BTCAtom.Initiate(hashLock, []byte(aliceAddr), []byte(bobAddr), big.NewInt(3000000), time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 	})
@@ -72,7 +74,7 @@ var _ = Describe("Bitcoin", func() {
 	It("can redeem a bitcoin atomic swap with correct secret", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
-		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
+		BTCAtom := arc_bitcoin.NewBitcoinArc(RPC_USERNAME, RPC_PASSWORD, CHAIN)
 		err := BTCAtom.Initiate(hashLock, []byte(aliceAddr), []byte(bobAddr), big.NewInt(3000000), time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 		err = BTCAtom.Redeem(secret)
@@ -83,7 +85,7 @@ var _ = Describe("Bitcoin", func() {
 		secret := randomBytes32()
 		wrongSecret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
-		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
+		BTCAtom := arc_bitcoin.NewBitcoinArc(RPC_USERNAME, RPC_PASSWORD, CHAIN)
 		err := BTCAtom.Initiate(hashLock, []byte(aliceAddr), []byte(bobAddr), big.NewInt(3000000), time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 		err = BTCAtom.Redeem(wrongSecret)
@@ -93,7 +95,7 @@ var _ = Describe("Bitcoin", func() {
 	It("can read a bitcoin atomic swap", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
-		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
+		BTCAtom := arc_bitcoin.NewBitcoinArc(RPC_USERNAME, RPC_PASSWORD, CHAIN)
 		to := []byte(aliceAddr)
 		from := []byte(bobAddr)
 		value := big.NewInt(1000000)
@@ -111,7 +113,7 @@ var _ = Describe("Bitcoin", func() {
 	It("can read the correct secret from a bitcoin atomic swap", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
-		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
+		BTCAtom := arc_bitcoin.NewBitcoinArc(RPC_USERNAME, RPC_PASSWORD, CHAIN)
 		err := BTCAtom.Initiate(hashLock, []byte(aliceAddr), []byte(bobAddr), big.NewInt(3000000), time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 		err = BTCAtom.Redeem(secret)
@@ -124,7 +126,7 @@ var _ = Describe("Bitcoin", func() {
 	It("cannot refund a bitcoin atomic swap before expiry", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
-		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
+		BTCAtom := arc_bitcoin.NewBitcoinArc(RPC_USERNAME, RPC_PASSWORD, CHAIN)
 		err := BTCAtom.Initiate(hashLock, []byte(aliceAddr), []byte(bobAddr), big.NewInt(3000000), time.Now().Unix()+10000)
 		Ω(err).Should(BeNil())
 		err = BTCAtom.Refund()
@@ -134,7 +136,7 @@ var _ = Describe("Bitcoin", func() {
 	It("can refund a bitcoin atomic swap", func() {
 		secret := randomBytes32()
 		hashLock := sha256.Sum256(secret)
-		BTCAtom := arc_bitcoin.NewBitcoinArc("testuser", "testpassword", CHAIN)
+		BTCAtom := arc_bitcoin.NewBitcoinArc(RPC_USERNAME, RPC_PASSWORD, CHAIN)
 		err := BTCAtom.Initiate(hashLock, []byte(aliceAddr), []byte(bobAddr), big.NewInt(3000000), time.Now().Unix()+10)
 		Ω(err).Should(BeNil())
 		time.Sleep(15 * time.Second)

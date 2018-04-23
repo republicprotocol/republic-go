@@ -1,6 +1,7 @@
 package arc_bitcoin
 
 import (
+	"encoding/json"
 	"math/big"
 
 	interop "github.com/republicprotocol/republic-go/interop"
@@ -72,4 +73,13 @@ func (arc *BitcoinArc) AuditSecret() (secret []byte, err error) {
 
 func (arc *BitcoinArc) Refund() error {
 	return refund(arc.ledgerData.contract, arc.ledgerData.contractTx, arc.chain, arc.rpcUser, arc.rpcPass)
+}
+
+func (arc *BitcoinArc) Serialize() ([]byte, error) {
+	b, err := json.Marshal(arc.ledgerData)
+	return b, err
+}
+
+func (arc *BitcoinArc) Deserialize(b []byte) error {
+	return json.Unmarshal(b, &arc.ledgerData)
 }
