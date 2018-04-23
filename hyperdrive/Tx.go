@@ -49,7 +49,7 @@ type Nonces []Nonce
 
 // A Nonce is a unique 256-bit value that makes up a Tx. It must be unique
 // within the entire Hyperdrive blockchain.
-type Nonce [32]byte
+type Nonce = [32]byte
 
 type TxPool struct {
 	mu    *sync.RWMutex

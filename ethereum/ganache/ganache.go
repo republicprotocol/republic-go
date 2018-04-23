@@ -133,8 +133,8 @@ func deployContracts(conn client.Connection, transactor *bind.TransactOpts) erro
 	if darkNodeRegistryAddress != client.DarkNodeRegistryAddressOnGanache {
 		return fmt.Errorf("DarkNodeRegistry address has changed: expected: %s, got: %s", client.DarkNodeRegistryAddressOnGanache.Hex(), darkNodeRegistryAddress.Hex())
 	}
-	if hyperdriveRegistryAdrress != client.HyperDriveRegistryAdreessOnGanache {
-		return fmt.Errorf("HyperdriveRegistry address has changed: expected: %s, got: %s", client.HyperDriveRegistryAdreessOnGanache.Hex(), hyperdriveRegistryAdrress.Hex())
+	if hyperdriveRegistryAdrress != client.HyperDriveAddressOnGanache {
+		return fmt.Errorf("HyperdriveContract address has changed: expected: %s, got: %s", client.HyperDriveAddressOnGanache.Hex(), hyperdriveRegistryAdrress.Hex())
 	}
 
 	return nil

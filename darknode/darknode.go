@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/pkg/errors"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/ethereum/client"
@@ -39,8 +40,9 @@ type Darknode struct {
 	address      identity.Address
 	multiAddress identity.MultiAddress
 
-	darknodeRegistry contracts.DarkNodeRegistry
-	ocean            Ocean
+	darknodeRegistry   contracts.DarkNodeRegistry
+	hyperdriveContract contracts.HyperdriveContract
+	ocean              Ocean
 
 	relayService      rpc.RelayService
 	smpcService       rpc.ComputerService
@@ -51,17 +53,16 @@ type Darknode struct {
 	orderFragments chan order.Fragment
 	deltaFragments chan smpc.DeltaFragment
 
-	hyperdriveRegistry contracts.HyperdriveRegistry
-	txPool             hyperdrive.TxPool
-	hyperChain         hyperdrive.HyperChain
-	proposalCh         chan hyperdrive.Proposal
-	prepareCh          chan hyperdrive.Prepare
-	commitCh           chan hyperdrive.Commit
-	blockCh            chan hyperdrive.Block
-	faultCh            chan hyperdrive.Fault
-	driveMessages      chan *rpc.DriveMessage
-	signer             identity.Signer
-	verifier           identity.Verifier
+	txPool        hyperdrive.TxPool
+	hyperChain    hyperdrive.HyperChain
+	proposalCh    chan hyperdrive.Proposal
+	prepareCh     chan hyperdrive.Prepare
+	commitCh      chan hyperdrive.Commit
+	blockCh       chan hyperdrive.Block
+	faultCh       chan hyperdrive.Fault
+	driveMessages chan *rpc.DriveMessage
+	signer        identity.Signer
+	verifier      identity.Verifier
 
 	replicasMu *sync.RWMutex
 	replicas   Pool
@@ -113,11 +114,6 @@ func NewDarknode(config Config) (Darknode, error) {
 	// Create rpc client pool and services
 
 	// Create hyperdrive registry and other related stuff.
-	hyperdriveRegistry, err := contracts.NewHyperdriveRegistry(context.Background(), client, transactOpts, &bind.CallOpts{})
-	if err != nil {
-		return Darknode{}, err
-	}
-	node.hyperdriveRegistry = hyperdriveRegistry
 
 	return node, nil
 }
@@ -422,7 +418,7 @@ func (node *Darknode) OnTxReceived(tx *rpc.Tx) {
 
 // ProcessDriveMessages handles driveMessages from/to grpc clients until the
 // context is canceled.
-func (node *Darknode) ProcessDriveMessages(ctx context.Context, threshold int ) {
+func (node *Darknode) ProcessDriveMessages(ctx context.Context, threshold int) {
 	// Split the driveMessages channel to each replica's channel
 	node.replicasMu.RLock()
 	driveMessageSendings := make([]chan *rpc.DriveMessage, len(node.replicas.nodes))
@@ -474,12 +470,12 @@ func (node *Darknode) ProcessDriveMessages(ctx context.Context, threshold int ) 
 					}
 				case *rpc.DriveMessage_Proposal:
 					proposal := *rpc.UnmarshalProposal(msg.DriveMessage.(*rpc.DriveMessage_Proposal).Proposal)
-					if node.hyperChain.AddProposal(proposal){
+					if node.hyperChain.AddProposal(proposal) {
 						node.proposalCh <- proposal
 					}
 				case *rpc.DriveMessage_Prepare:
 					prepare := *rpc.UnmarshalPrepare(msg.DriveMessage.(*rpc.DriveMessage_Prepare).Prepare)
-					if node.hyperChain.AddPrepare(prepare, threshold){
+					if node.hyperChain.AddPrepare(prepare, threshold) {
 						node.prepareCh <- prepare
 					}
 				case *rpc.DriveMessage_Commit:
@@ -554,11 +550,11 @@ func (node *Darknode) ProcessCommit(ctx context.Context) {
 
 // OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
 // forwards it to the Hyperdrive.
-func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) {
+func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) error {
 
 	// Defensively check that the smpc.Delta is actually a match
 	if !delta.IsMatch(smpc.Prime) {
-		return
+		return errors.New("delta is not an order match")
 	}
 
 	// Convert an order match into a Tx
@@ -571,4 +567,11 @@ func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) {
 			},
 		}
 	}
+
+	_, err := node.hyperdriveContract.SendTx(tx)
+	if err != nil {
+		return fmt.Errorf("fail to send tx to hyperdrive contract , %s", err)
+	}
+
+	return nil
 }

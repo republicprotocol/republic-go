@@ -53,7 +53,7 @@ type Connection struct {
 }
 
 // Connect to a URI.
-func Connect(uri string, network Network, republicTokenAddress, darkNodeRegistryAddress, hyperdriveRegistry string) (Connection, error) {
+func Connect(uri string, network Network, republicTokenAddress, darkNodeRegistryAddress, hyperdriveAddress string) (Connection, error) {
 	if uri == "" {
 		switch network {
 		case NetworkGanache:
@@ -84,10 +84,9 @@ func Connect(uri string, network Network, republicTokenAddress, darkNodeRegistry
 			return Connection{}, fmt.Errorf("cannot connect to %s: unsupported", network)
 		}
 	}
-	if hyperdriveRegistry == "" {
+	if hyperdriveAddress == "" {
 		switch network {
 		case NetworkGanache:
-			// fixme
 			darkNodeRegistryAddress = DarkNodeRegistryAddressOnGanache.String()
 		case NetworkRopsten:
 			// fixme
