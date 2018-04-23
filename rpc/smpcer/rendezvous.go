@@ -3,7 +3,13 @@ package smpcer
 import (
 	"errors"
 	"sync"
+
+	"github.com/republicprotocol/republic-go/dispatch"
+	"google.golang.org/grpc"
 )
+
+// MaxConnections that can be serviced by an Smpc service.
+const MaxConnections = 256
 
 var ErrRendezvousIsClosed = errors.New("rendezvous is closed")
 
@@ -151,50 +157,111 @@ func (conn *RendezvousConn) Close() {
 // RendezvousRouter.Release). Calls to RendezvousRouter.Acquire reuse
 // Rendezvous when one is already open.
 type RendezvousRouter struct {
-	rendezvousMu     *sync.Mutex
-	rendezvousRc     map[string]int
-	rendezvousQ      map[string]chan struct{}
-	rendezvousRoutes map[string]*Rendezvous
+	rendezvousMu       *sync.Mutex
+	rendezvousSplitter map[string]*dispatch.Splitter
 }
 
 // NewRendezvousRouter returns an empty RendezvousRouter.
 func NewRendezvousRouter() RendezvousRouter {
 	return RendezvousRouter{
-		rendezvousMu:     new(sync.Mutex),
-		rendezvousRc:     map[string]int{},
-		rendezvousQ:      map[string]chan struct{}{},
-		rendezvousRoutes: map[string]*Rendezvous{},
+		rendezvousMu:       new(sync.Mutex),
+		rendezvousSplitter: map[string]*dispatch.Splitter{},
 	}
 }
 
-// Acquire a Rendezvous with an address. If a Rendezvous with that address is
-// already open, then it will be reused. Otherwise, a new Rendezvous will be
-// created. A call to RendezvousRouter.Acquire must be accompanied by exactly
-// one call to RendezvousRouter.Release, using the same address.
-func (router *RendezvousRouter) Acquire(addr string) *RendezvousConn {
+// waitForClient to have its Compute RPC connection accepted by the address.
+// Once the connection is accepted, all messages written to the sender channel
+// will be forwarded to the address, and all messages received from the address
+// will be written to the returned receiver channel. Calls to
+// Rendezvous.waitForClient must only be made by a Client.
+func (router *RendezvousRouter) waitForClient(addr string, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {
 	router.rendezvousMu.Lock()
 	defer router.rendezvousMu.Unlock()
 
-	if router.rendezvousRc[addr] == 0 {
-		router.rendezvousQ[addr] = make(chan struct{})
-		router.rendezvousRoutes[addr] = NewRendezvous(router.rendezvousQ[addr])
-	}
-	router.rendezvousRc[addr]++
-
-	conn := NewRendezvousConn()
-	router.rendezvousRoutes[addr].Connect(conn)
-	return conn
+	panic("unimplemented")
 }
 
-// Release a Rendezvous with an address. If no other references to the
-// Rendezvous exists, then the Rendezvous will be closed and deleted.
-func (router *RendezvousRouter) Release(addr string) {
+// waitForService to accept a Compute RPC connection from the address. Once the
+// connection is accepted, all messages written to the sender channel will be
+// forwarded to the address, and all messages received from the address will be
+// written to the returned receiver channel. Calls to Rendezvous.waitForService
+// must only be made by a Client.
+func (router *RendezvousRouter) waitForService(addr string, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {
 	router.rendezvousMu.Lock()
 	defer router.rendezvousMu.Unlock()
 
-	router.rendezvousRc[addr]--
-	if router.rendezvousRc[addr] == 0 {
-		close(router.rendezvousQ[addr])
-		delete(router.rendezvousRoutes, addr)
+	panic("unimplemented")
+}
+
+// connect an accepted Compute RPC connection from an address. Messages written
+// to the sender channels passed in from calls to Rendezvous.waitForClient and
+// Rendezvous.waitForService are written to the stream. Messages read from the
+// stream are split and written to all receiver channels created in calls to
+// Rendezvous.waitForClient and Rendezvous.waitForService. Calls to
+// Rendezvous.connect must only be made by an Smpc service.
+func (router *RendezvousRouter) connect(addr string, stream Smpc_ComputeServer) error {
+	router.rendezvousMu.Lock()
+	defer router.rendezvousMu.Unlock()
+
+	panic("unimplemented")
+}
+
+func handleStream(stream grpc.Stream, in <-chan *ComputeMessage, out chan<- *ComputeMessage) error {
+	defer func() {
+		if clientStream, ok := stream.(Smpc_ComputeClient); ok {
+			clientStream.CloseSend()
+		}
+	}()
+
+	// The done channel will signal to the sender goroutine that it should
+	// exit
+	done := make(chan struct{})
+	defer close(done)
+
+	errs := make(chan error, 1)
+	go func() {
+		defer close(errs)
+
+		for {
+			select {
+			case <-done:
+				// When the receiver exits the done channel will be closed and
+				// this goroutine will eventually exit
+				return
+			case <-stream.Context().Done():
+				errs <- stream.Context().Err()
+				return
+			case computeMessage, ok := <-in:
+				if !ok {
+					return
+				}
+				if err := stream.SendMsg(computeMessage); err != nil {
+					errs <- err
+					return
+				}
+			}
+		}
+	}()
+
+	// Receive messages from the client until the context is done, or an error
+	// is received
+	for {
+		message := new(ComputeMessage)
+		if err := stream.RecvMsg(message); err != nil {
+			return err
+		}
+
+		select {
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		case err, ok := <-errs:
+			if !ok {
+				// When the sender exits this error channel will be closed and
+				// this goroutine will eventually exit
+				return nil
+			}
+			return err
+		case out <- message:
+		}
 	}
 }

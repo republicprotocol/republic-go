@@ -2,6 +2,7 @@ package smpcer
 
 import (
 	"errors"
+	"sync"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -10,6 +11,10 @@ import (
 // ErrUnauthorized is returned when an unauthorized client makes a call to
 // Compute.
 var ErrUnauthorized = errors.New("unauthorized")
+
+// ErrMaxConnectionsReached is returned when an Smpc service is servicing too
+// many connection, or a client has attempted to connect more than once.
+var ErrMaxConnectionsReached = errors.New("max connections reached")
 
 // Delegate processing of OpenOrderRequests and CancelOrderRequests.
 type Delegate interface {
@@ -20,12 +25,18 @@ type Delegate interface {
 type Smpcer struct {
 	delegate Delegate
 	client   Client
+
+	connsMu *sync.Mutex
+	conns   map[string]struct{}
 }
 
 func NewSmpcer(delegate Delegate, client Client) Smpcer {
 	return Smpcer{
 		delegate: delegate,
 		client:   client,
+
+		connsMu: new(sync.Mutex),
+		conns:   map[string]struct{}{},
 	}
 }
 
@@ -84,13 +95,22 @@ func (smpcer *Smpcer) Compute(stream Smpc_ComputeServer) error {
 		return err
 	}
 	addr := auth.GetAddress()
-	if addr == "" {
+	if addr == "" || addr > smpcer.client.Address().String() {
+		// The address cannot be empty and cannot be greater than the Smpc
+		// service address (in such cases, the Smpc service is meant to call
+		// the RPC)
 		return ErrUnauthorized
 	}
-	// TODO: Verify the client signature matches the address
+	// FIXME: Verify the client signature matches the address
 
-	rendezvous := smpcer.client.router.Acquire(addr)
-	defer smpcer.client.router.Release(addr)
+	smpcer.connsMu.Lock()
+	_, ok := smpcer.conns[addr]
+	maxConnectionsReached := ok || len(smpcer.conns) >= MaxConnections
+	smpcer.connsMu.Unlock()
 
-	return smpcer.client.mergeStreamAndRendezvous(stream, rendezvous)
+	if maxConnectionsReached {
+		return ErrMaxConnectionsReached
+	}
+
+	return smpcer.client.router.connect(addr, stream)
 }

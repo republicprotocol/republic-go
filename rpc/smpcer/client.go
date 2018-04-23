@@ -7,7 +7,6 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/rpc/client"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 var ErrConnectToSelf = errors.New("connect to self")
@@ -139,64 +138,4 @@ func (client *Client) waitForConnect(ctx context.Context, multiAddress identity.
 		}
 	}()
 	return receiver, errs
-}
-
-func (client *Client) mergeStreamAndRendezvous(stream grpc.Stream, rendezvous Rendezvous) error {
-	defer func() {
-		if clientStream, ok := stream.(Smpc_ComputeClient); ok {
-			clientStream.CloseSend()
-		}
-	}()
-
-	// The done channel will signal to the sender goroutine that it should
-	// exit
-	done := make(chan struct{})
-	defer close(done)
-
-	senderErrs := make(chan error, 1)
-	go func() {
-		defer close(senderErrs)
-
-		for {
-			select {
-			case <-done:
-				// When the receiver exits the done channel will be closed and
-				// this goroutine will eventually exit
-				return
-			case <-stream.Context().Done():
-				senderErrs <- stream.Context().Err()
-				return
-			case computeMessage, ok := <-rendezvous.Sender:
-				if !ok {
-					return
-				}
-				if err := stream.SendMsg(computeMessage); err != nil {
-					senderErrs <- err
-					return
-				}
-			}
-		}
-	}()
-
-	// Receive messages from the client until the context is done, or an error
-	// is received
-	for {
-		message := new(ComputeMessage)
-		if err := stream.RecvMsg(message); err != nil {
-			return err
-		}
-
-		select {
-		case <-stream.Context().Done():
-			return stream.Context().Err()
-		case err, ok := <-senderErrs:
-			if !ok {
-				// When the sender exits this error channel will be closed and
-				// this goroutine will eventually exit
-				return nil
-			}
-			return err
-		case rendezvous.Receiver <- message:
-		}
-	}
 }
