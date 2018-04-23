@@ -125,3 +125,91 @@ func (rendezvous *Rendezvous) releaseConn(addr identity.Address) {
 
 // 	return stream, nil
 // }
+
+type listener struct {
+	ch   chan *ComputeMessage
+	quit <-chan struct{}
+}
+
+type broadcaster struct {
+	ch        chan *ComputeMessage
+	listeners chan listener
+}
+
+func newBroadcaster(done <-chan struct{}) *broadcaster {
+	b := &broadcaster{
+		ch:        make(chan *ComputeMessage),
+		listeners: make(chan listener),
+	}
+
+	go func() {
+		listeners := map[chan *ComputeMessage](<-chan struct{}){}
+		defer func() {
+			for listener := range listeners {
+				close(listener)
+			}
+		}()
+
+		for {
+			select {
+			case <-done:
+				return
+			case msg, ok := <-b.ch:
+				if !ok {
+					return
+				}
+				deleteListener := func(listener chan *ComputeMessage) {
+					close(listener)
+					delete(listeners, listener)
+				}
+				for listener, quit := range listeners {
+					select {
+					case <-done:
+						deleteListener(listener)
+					case <-quit:
+						deleteListener(listener)
+					case listener <- msg:
+					}
+				}
+			case listener, ok := <-b.listeners:
+				if !ok {
+					return
+				}
+				listeners[listener.ch] = listener.quit
+			}
+		}
+
+	}()
+
+	return b
+}
+
+func (b *broadcaster) broadcast(done <-chan struct{}, ch <-chan *ComputeMessage) {
+	for {
+		select {
+		case <-done:
+			return
+		case c, ok := <-ch:
+			if !ok {
+				return
+			}
+			select {
+			case <-done:
+			case b.ch <- c:
+			}
+		}
+	}
+}
+
+func (b *broadcaster) listen(done <-chan struct{}) <-chan *ComputeMessage {
+	listener := listener{
+		ch:   make(chan *ComputeMessage),
+		quit: done,
+	}
+	select {
+	case <-done:
+		close(listener.ch)
+	case b.listeners <- listener:
+	}
+	return listener.ch
+}
