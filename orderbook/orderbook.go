@@ -127,7 +127,7 @@ func (orderbook Orderbook) Cancel(id order.ID) error {
 	// 	return err
 	// }
 
-	entry := NewEntry(order.Order{ID: id}, order.Canceled, [32]byte{})
+	entry := NewEntry(order.Order{ID: id}, order.Canceled)
 	orderbook.splitCh <- entry
 	return nil
 }

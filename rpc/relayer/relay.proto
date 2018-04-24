@@ -8,12 +8,11 @@ service Relay {
 
 message SyncRequest {
     bytes signature = 1;
-    bytes epoch = 2;
+    string address = 2;
 }
 
 message SyncResponse {
     bytes signature = 1;
-    bytes epoch = 2;
     OrderbookEntry entry = 3;
 }
 

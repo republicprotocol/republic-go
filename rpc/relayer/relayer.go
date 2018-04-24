@@ -3,6 +3,7 @@ package relayer
 import (
 	"fmt"
 
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"google.golang.org/grpc"
@@ -10,15 +11,17 @@ import (
 
 // Relayer implements the gRPC Relay service.
 type Relayer struct {
+	client    *Client
 	orderbook *orderbook.Orderbook
 }
 
 // NewRelayer returns a Relayer that will use an orderbook.Orderbook for
 // synchronization (see Relay.Sync).
-func NewRelayer(orderbook *orderbook.Orderbook) Relayer {
+func NewRelayer(client *Client, orderbook *orderbook.Orderbook) Relayer {
 	// TODO: Implement a max connection parameter to prevent too many clients
 	// from syncing and slowing down the Relay service
 	return Relayer{
+		client:    client,
 		orderbook: orderbook,
 	}
 }
@@ -35,6 +38,12 @@ func (relayer *Relayer) Register(server *grpc.Server) {
 // waiting for the existing entries to finish. The client must manage the
 // merging of conflicting entries.
 func (relayer *Relayer) Sync(request *SyncRequest, stream Relay_SyncServer) error {
+	addrSignature := request.GetSignature()
+	addr := identity.Address(request.GetAddress())
+	if err := relayer.client.crypter.Verify(addr, addrSignature); err != nil {
+		return err
+	}
+
 	entries := make(chan orderbook.Entry)
 	defer close(entries)
 
@@ -68,7 +77,6 @@ func (relayer *Relayer) Sync(request *SyncRequest, stream Relay_SyncServer) erro
 
 			syncResponse := &SyncResponse{
 				Signature: []byte{},
-				Epoch:     request.Epoch,
 				Entry: &OrderbookEntry{
 					Order: &Order{
 						OrderId: entry.Order.ID,

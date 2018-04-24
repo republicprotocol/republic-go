@@ -35,7 +35,7 @@ type Smpcer struct {
 	conns   map[string]struct{}
 }
 
-func NewSmpcer(delegate Delegate, client *Client) Smpcer {
+func NewSmpcer(client *Client, delegate Delegate) Smpcer {
 	return Smpcer{
 		delegate: delegate,
 		client:   client,
