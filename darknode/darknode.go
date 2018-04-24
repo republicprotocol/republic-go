@@ -553,6 +553,18 @@ func (node *Darknode) ProcessCommit(ctx context.Context) {
 	}
 }
 
+type TxWithBlockNumber struct {
+	hash        common.Hash
+	blockNumber uint64
+}
+
+func NewTxWithBlockNumber(hash common.Hash, blockNumber uint64) TxWithBlockNumber {
+	return TxWithBlockNumber{
+		hash:        hash,
+		blockNumber: blockNumber,
+	}
+}
+
 // OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
 // forwards it to the Hyperdrive.
 func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) error {
@@ -564,39 +576,19 @@ func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) error {
 
 	// Convert an order match into a Tx
 	tx := hyperdrive.NewTxFromByteSlices(delta.SellOrderID, delta.BuyOrderID)
-	valid := node.txPool.NewTx(tx)
-	if valid {
-		node.driveMessages <- &rpc.DriveMessage{
-			DriveMessage: &rpc.DriveMessage_Tx{
-				Tx: rpc.MarshalTx(tx),
-			},
-		}
-	}
 
-	receipt, err := node.hyperdriveContract.SendTx(tx)
+	transaction, err := node.hyperdriveContract.SendTx(tx)
 	if err != nil {
 		return fmt.Errorf("fail to send tx to hyperdrive contract , %s", err)
 	}
 
-	blockNumber, err := node.hyperdriveContract.GetBlockNumberOfTx(receipt)
+	blockNumber, err := node.hyperdriveContract.GetBlockNumberOfTx(transaction.Hash())
 	if err != nil {
 		return fmt.Errorf("fail to get block number of the transaction , %s", err)
 	}
-	node.txsToBeFinalized <- NewTxWithBlockNumber(receipt.TxHash, blockNumber)
+	node.txsToBeFinalized <- NewTxWithBlockNumber(transaction.Hash(), blockNumber)
 
 	return nil
-}
-
-type TxWithBlockNumber struct {
-	hash        common.Hash
-	blockNumber uint64
-}
-
-func NewTxWithBlockNumber(hash common.Hash, blockNumber uint64) TxWithBlockNumber {
-	return TxWithBlockNumber{
-		hash:        hash,
-		blockNumber: blockNumber,
-	}
 }
 
 func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth int) <-chan error {
@@ -633,13 +625,12 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth int
 				if hashes, ok := watchingList[currentBlock.NumberU64()-16]; ok {
 					// Create a hashTable
 					hashTable := map[common.Hash]struct{}{}
-					var subtraction *big.Int
-					previousBlock, err := node.hyperdriveContract.BlockByNumber(subtraction.Sub(currentBlock.Number(), big.NewInt(16)))
+					block, err := node.hyperdriveContract.BlockByNumber(big.NewInt(int64(currentBlock.NumberU64() -16)))
 					if err != nil {
 						errs <- err
 						return
 					}
-					for _, h := range previousBlock.Transactions() {
+					for _, h := range block.Transactions() {
 						hashTable[h.Hash()] = struct{}{}
 					}
 
@@ -653,7 +644,10 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth int
 								Status: order.Confirmed,
 							}
 
-							node.orderbook.Confirm(entry)
+							if err := node.orderbook.Confirm(entry); err != nil {
+								errs <- err
+								return
+							}
 						}
 					}
 
