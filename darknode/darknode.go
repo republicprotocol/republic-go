@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/republicprotocol/republic-go/rpc/dht"
+	"github.com/republicprotocol/republic-go/rpc"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/crypto"
@@ -15,10 +15,6 @@ import (
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"
-	"github.com/republicprotocol/republic-go/rpc/client"
-	"github.com/republicprotocol/republic-go/rpc/relayer"
-	"github.com/republicprotocol/republic-go/rpc/smpcer"
-	"github.com/republicprotocol/republic-go/rpc/swarmer"
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
@@ -37,11 +33,7 @@ type Darknode struct {
 
 	darknodeRegistry contracts.DarkNodeRegistry
 
-	dht           dht.DHT
-	connPool      client.ConnPool
-	smpcerClient  smpcer.Client
-	relayerClient relayer.Client
-	swarmerClient swarmer.Client
+	rpc *rpc.RPC
 
 	smpc  smpc.Computer
 	relay relay.Relay
@@ -62,7 +54,7 @@ func NewDarknode(config Config) (Darknode, error) {
 	node.id = key.ID()
 	node.address = key.Address()
 	node.multiAddress = config.MultiAddress
-	node.orderbook = orderbook.NewOrderbook(3)
+	node.orderbook = orderbook.NewOrderbook(4)
 
 	// Open a connection to the Ethereum network
 	transactOpts := bind.NewKeyedTransactor(config.EcdsaKey.PrivateKey)
@@ -87,11 +79,7 @@ func NewDarknode(config Config) (Darknode, error) {
 	weakCrypter := crypto.NewWeakCrypter()
 	node.crypter = &weakCrypter
 
-	node.dht = dht.NewDHT(node.address, 100)
-	node.connPool = client.NewConnPool(100)
-	node.smpcerClient = smpcer.NewClient(node.crypter, node.multiAddress, &node.connPool)
-	node.relayerClient = relayer.NewClient(&node.dht, &node.connPool)
-	node.swarmerClient = swarmer.NewClient(node.crypter, node.multiAddress, &node.dht, &node.connPool)
+	node.rpc = rpc.NewRPC(node.crypter, node.multiAddress, &node.orderbook)
 
 	node.relay = relay.NewRelay(relay.Config{}, darkocean.Pools{}, darknodeRegistry, &node.orderbook, node.relayerClient, node.swarmerClient, node.smpcerClient)
 
@@ -104,7 +92,7 @@ func NewDarknode(config Config) (Darknode, error) {
 // errors encountered. Users should not call Darknode.Bootstrap until the
 // Darknode is registered, and the its registration is approved.
 func (node *Darknode) Bootstrap(ctx context.Context) <-chan error {
-	return node.swarmerClient.Bootstrap(ctx, node.BootstrapMultiAddresses, -1)
+	return node.rpc.SwarmerClient().Bootstrap(ctx, node.BootstrapMultiAddresses, -1)
 }
 
 // // Run the Darknode until the done channel is closed.

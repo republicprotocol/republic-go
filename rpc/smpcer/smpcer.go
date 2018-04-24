@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/order"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -22,8 +23,8 @@ var ErrMaxConnectionsReached = errors.New("max connections reached")
 
 // Delegate processing of OpenOrderRequests and CancelOrderRequests.
 type Delegate interface {
-	OpenOrder(signature []byte, orderFragment *OrderFragment) error
-	CancelOrder(signature []byte, orderID []byte) error
+	OpenOrder(signature []byte, orderFragment order.Fragment) error
+	CancelOrder(signature []byte, orderID order.ID) error
 }
 
 type Smpcer struct {
@@ -55,7 +56,11 @@ func (smpcer *Smpcer) OpenOrder(ctx context.Context, request *OpenOrderRequest) 
 	errs := make(chan error, 1)
 	go func() {
 		defer close(errs)
-		if err := smpcer.delegate.OpenOrder(request.GetSignature(), request.GetOrderFragment()); err != nil {
+
+		orderFragmentSignature := request.GetSignature()
+		orderFragment := UnmarshalOrderFragment(request.GetOrderFragment())
+
+		if err := smpcer.delegate.OpenOrder(); err != nil {
 			errs <- err
 		}
 	}()
