@@ -18,6 +18,7 @@ import (
 	ethClient "github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts/arc-ethereum"
 	"github.com/republicprotocol/republic-go/ethereum/ganache"
+	"github.com/republicprotocol/republic-go/interop"
 )
 
 const CHAIN = "regtest"
@@ -36,7 +37,8 @@ var _ = Describe("ARC", func() {
 	var aliceBtcConnection, bobBtcConnection btcClient.Connection
 	var aliceBtcAddr, bobBtcAddr string // btcutil.Address
 
-	Context("BTC-ETH", func() {
+	// Don't run on CI
+	interop.LocalContext("BTC-ETH", func() {
 
 		BeforeSuite(func() {
 
