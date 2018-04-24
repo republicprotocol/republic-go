@@ -136,7 +136,7 @@ var _ = Describe("Bitcoin", func() {
 		BTCAtom := arc_bitcoin.NewBitcoinArc(connection)
 		err := BTCAtom.Initiate(hashLock, []byte(aliceAddr), []byte(bobAddr), big.NewInt(3000000), time.Now().Unix()+10)
 		Ω(err).Should(BeNil())
-		time.Sleep(15 * time.Second)
+		time.Sleep(20 * time.Second)
 		err = BTCAtom.Refund()
 		Ω(err).Should(BeNil())
 	})

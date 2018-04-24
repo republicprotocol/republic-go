@@ -52,11 +52,11 @@ func initiate(connection client.Connection, participantAddress string, value int
 
 	refundTx := *b.refundTx
 	return BitcoinData{
-		contract:       b.contract,
-		contractHash:   b.contractP2SH.EncodeAddress(),
-		contractTx:     contractBuf.Bytes(),
-		contractTxHash: b.contractTxHash.CloneBytes(),
-		refundTx:       refundBuf.Bytes(),
-		refundTxHash:   refundTx.TxHash(),
+		Contract:       b.contract,
+		ContractHash:   b.contractP2SH.EncodeAddress(),
+		ContractTx:     contractBuf.Bytes(),
+		ContractTxHash: b.contractTxHash.CloneBytes(),
+		RefundTx:       refundBuf.Bytes(),
+		RefundTxHash:   refundTx.TxHash(),
 	}, nil
 }

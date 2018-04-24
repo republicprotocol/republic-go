@@ -1,6 +1,7 @@
 package regtest
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"time"
@@ -20,10 +21,12 @@ func Start() *exec.Cmd {
 
 func Mine(connection client.Connection) error {
 
-	_, err := connection.Client.Generate(1000)
+	fmt.Println("initial 100")
+	_, err := connection.Client.Generate(100)
 	if err != nil {
 		return err
 	}
+	fmt.Println("100 done")
 
 	tick := time.NewTicker(2 * time.Second)
 	defer tick.Stop()
@@ -45,14 +48,17 @@ func NewAccount(connection client.Connection, name string, value btcutil.Amount)
 	if err != nil {
 		return nil, err
 	}
-	_, err = connection.Client.SendToAddress(addr, value)
-	if err != nil {
-		return nil, err
-	}
 
-	_, err = connection.Client.Generate(1)
-	if err != nil {
-		return nil, err
+	if value > 0 {
+		_, err = connection.Client.SendToAddress(addr, value)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = connection.Client.Generate(1)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return addr, nil
