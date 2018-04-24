@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/rpc"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -35,7 +36,7 @@ type Darknode struct {
 
 	rpc *rpc.RPC
 
-	smpc  smpc.Computer
+	smpc  smpc.Smpc
 	relay relay.Relay
 }
 
@@ -81,7 +82,7 @@ func NewDarknode(config Config) (Darknode, error) {
 
 	node.rpc = rpc.NewRPC(node.crypter, node.multiAddress, &node.orderbook)
 
-	node.relay = relay.NewRelay(relay.Config{}, darkocean.Pools{}, darknodeRegistry, &node.orderbook, node.relayerClient, node.swarmerClient, node.smpcerClient)
+	node.relay = relay.NewRelay(relay.Config{}, darkocean.Pools{}, darknodeRegistry, &node.orderbook, node.rpc.RelayerClient(), node.rpc.SmpcerClient(), node.rpc.SwarmerClient())
 
 	return node, nil
 }
@@ -208,7 +209,7 @@ func (node *Darknode) Bootstrap(ctx context.Context) <-chan error {
 
 // OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
 // forwards it to the Hyperdrive.
-func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) {
+func (node *Darknode) OrderMatchToHyperdrive(delta delta.Delta) {
 	if !delta.IsMatch(smpc.Prime) {
 		return
 	}

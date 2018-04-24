@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 // NewDarknodes configured for a local test environment.
@@ -20,14 +22,14 @@ func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (darknode.D
 	configs := make([]darknode.Config, numberOfDarknodes)
 	for i := 0; i < numberOfDarknodes; i++ {
 		key := keystore.NewKeyForDirectICAP(rand.Reader)
-		configs[i], err = darknode.NewLocalConfig(*key, "127.0.0.1", fmt.Sprintf("%d", 3000+i))
+		configs[i], err = NewLocalConfig(*key, "127.0.0.1", fmt.Sprintf("%d", 3000+i))
 		if err != nil {
 			return nil, err
 		}
 	}
 	for i := 0; i < numberOfDarknodes; i++ {
 		for j := 0; j < numberOfBootstrapDarknodes; j++ {
-			configs[i].Network.BootstrapMultiAddresses = append(configs[i].Network.BootstrapMultiAddresses, configs[j].Network.MultiAddress)
+			configs[i].BootstrapMultiAddresses = append(configs[i].BootstrapMultiAddresses, configs[j].MultiAddress)
 		}
 	}
 	for i := 0; i < numberOfDarknodes; i++ {
@@ -102,4 +104,46 @@ func RefundDarknodes(darknodes darknode.Darknodes, conn client.Connection, darkn
 		}
 	}
 	return nil
+}
+
+func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (darknode.Config, error) {
+	keyPair, err := identity.NewKeyPairFromPrivateKey(ecdsaKey.PrivateKey)
+	if err != nil {
+		return darknode.Config{}, err
+	}
+
+	rsaKey, err := crypto.NewRsaKeyPair()
+	if err != nil {
+		return darknode.Config{}, err
+	}
+
+	multi, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", host, port, keyPair.Address()))
+	if err != nil {
+		return darknode.Config{}, err
+	}
+	return darknode.Config{
+		EcdsaKey:     ecdsaKey,
+		RsaKey:       rsaKey,
+		Host:         host,
+		Port:         port,
+		MultiAddress: multi,
+		Ethereum: darknode.EthereumConfig{
+			Network:                 client.NetworkGanache,
+			URI:                     "http://localhost:8545",
+			RepublicTokenAddress:    client.RepublicTokenAddressOnGanache.String(),
+			DarknodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.String(),
+		},
+	}, nil
+}
+
+func NewFalconConfig() darknode.Config {
+	return darknode.Config{}
+}
+
+var FalconBootstrapMultis = []string{
+	"/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",
+	"/ip4/52.21.44.236/tcp/18514/republic/8MGzXN7M1ucxvtumVjQ7Ybb7xQ8TUw",
+	"/ip4/52.41.118.171/tcp/18514/republic/8MHmrykz65HimBPYaVgm8bTSpRUoXA",
+	"/ip4/52.59.176.141/tcp/18514/republic/8MKFT9CDQQru1hYqnaojXqCQU2Mmuk",
+	"/ip4/52.77.88.84/tcp/18514/republic/8MGb8k337pp2GSh6yG8iv2GK6FbNHN",
 }

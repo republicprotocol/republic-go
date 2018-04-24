@@ -34,25 +34,27 @@ type Relay struct {
 	DarkPools darkocean.Pools
 	Registrar contracts.DarkNodeRegistry
 
-	orderbook     *orderbook.Orderbook
-	relayer       relayer.Relayer
-	relayerClient relayer.Client
-	swarmerClient swarmer.Client
-	smpcerClient  smpcer.Client
+	relayer   relayer.Relayer
+	orderbook *orderbook.Orderbook
+
+	relayerClient *relayer.Client
+	smpcerClient  *smpcer.Client
+	swarmerClient *swarmer.Client
 }
 
 // NewRelay returns a new Relay object
-func NewRelay(config Config, pools darkocean.Pools, registrar contracts.DarkNodeRegistry, orderbook *orderbook.Orderbook, relayerClient relayer.Client, swarmerClient swarmer.Client, smpcerClient smpcer.Client) Relay {
+func NewRelay(config Config, pools darkocean.Pools, registrar contracts.DarkNodeRegistry, orderbook *orderbook.Orderbook, relayerClient *relayer.Client, smpcerClient *smpcer.Client, swarmerClient *swarmer.Client) Relay {
 	return Relay{
 		Config:    config,
 		DarkPools: pools,
 		Registrar: registrar,
 
-		orderbook:     orderbook,
-		relayer:       relayer.NewRelayer(orderbook),
+		relayer:   relayer.NewRelayer(orderbook),
+		orderbook: orderbook,
+
 		relayerClient: relayerClient,
-		swarmerClient: swarmerClient,
 		smpcerClient:  smpcerClient,
+		swarmerClient: swarmerClient,
 	}
 }
 

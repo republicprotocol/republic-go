@@ -17,14 +17,14 @@ type RPC struct {
 	dht      dht.DHT
 	connPool client.ConnPool
 
-	swarmerClient swarmer.Client
-	swarmer       swarmer.Swarmer
+	relayerClient relayer.Client
+	relayer       relayer.Relayer
 
 	smpcerClient smpcer.Client
 	smpcer       smpcer.Smpcer
 
-	relayerClient relayer.Client
-	relayer       relayer.Relayer
+	swarmerClient swarmer.Client
+	swarmer       swarmer.Swarmer
 
 	onOpenOrder   func([]byte, order.Fragment) error
 	onCancelOrder func([]byte, order.ID) error
@@ -37,14 +37,14 @@ func NewRPC(crypter crypto.Crypter, multiAddress identity.MultiAddress, orderboo
 	rpc.dht = dht.NewDHT(multiAddress.Address(), 128)
 	rpc.connPool = client.NewConnPool(256)
 
-	rpc.swarmerClient = swarmer.NewClient(rpc.crypter, multiAddress, &rpc.dht, &rpc.connPool)
-	rpc.swarmer = swarmer.NewSwarmer(&rpc.swarmerClient)
+	rpc.relayerClient = relayer.NewClient(&rpc.dht, &rpc.connPool)
+	rpc.relayer = relayer.NewRelayer(orderbook)
 
 	rpc.smpcerClient = smpcer.NewClient(rpc.crypter, multiAddress, &rpc.connPool)
 	rpc.smpcer = smpcer.NewSmpcer(rpc, &rpc.smpcerClient)
 
-	rpc.relayerClient = relayer.NewClient(&rpc.dht, &rpc.connPool)
-	rpc.relayer = relayer.NewRelayer(orderbook)
+	rpc.swarmerClient = swarmer.NewClient(rpc.crypter, multiAddress, &rpc.dht, &rpc.connPool)
+	rpc.swarmer = swarmer.NewSwarmer(&rpc.swarmerClient)
 
 	return rpc
 }
@@ -75,14 +75,14 @@ func (rpc *RPC) OnCancelOrder(delegate func([]byte, order.ID) error) {
 	rpc.onCancelOrder = delegate
 }
 
-// SwarmerClient used by the RPC.
-func (rpc *RPC) SwarmerClient() *swarmer.Client {
-	return &rpc.swarmerClient
+// RelayerClient used by the RPC.
+func (rpc *RPC) RelayerClient() *relayer.Client {
+	return &rpc.relayerClient
 }
 
-// Swarmer used by the RPC.
-func (rpc *RPC) Swarmer() *swarmer.Swarmer {
-	return &rpc.swarmer
+// Relayer used by the RPC.
+func (rpc *RPC) Relayer() *relayer.Relayer {
+	return &rpc.relayer
 }
 
 // SmpcerClient used by the RPC.
@@ -95,12 +95,12 @@ func (rpc *RPC) Smpcer() *smpcer.Smpcer {
 	return &rpc.smpcer
 }
 
-// RelayerClient used by the RPC.
-func (rpc *RPC) RelayerClient() *relayer.Client {
-	return &rpc.relayerClient
+// SwarmerClient used by the RPC.
+func (rpc *RPC) SwarmerClient() *swarmer.Client {
+	return &rpc.swarmerClient
 }
 
-// Relayer used by the RPC.
-func (rpc *RPC) Relayer() *relayer.Relayer {
-	return &rpc.relayer
+// Swarmer used by the RPC.
+func (rpc *RPC) Swarmer() *swarmer.Swarmer {
+	return &rpc.swarmer
 }
