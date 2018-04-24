@@ -1,223 +1,209 @@
 package darknode
 
-import (
-	"bytes"
-	"context"
-	"fmt"
-	"sync"
-	"time"
+// // RunEpochProcess until the done channel is closed. Epochs define the Pools in
+// // which Darknodes cooperate to match orders by receiving order.Fragments from
+// // traders, performing secure multi-party computations. The EpochProcess uses a
+// // DarkOcean to determine the epoch, and a Router to receive messages.
+// func RunEpochProcess(done <-chan struct{}, id identity.ID, darkOcean DarkOcean, router *Router) (<-chan smpc.Delta, <-chan error) {
+// 	deltas := make(chan smpc.Delta)
+// 	errs := make(chan error, 1)
 
-	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
-	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/rpc"
-	"github.com/republicprotocol/republic-go/smpc"
-)
+// 	go func() {
+// 		defer close(deltas)
 
-// RunEpochProcess until the done channel is closed. Epochs define the Pools in
-// which Darknodes cooperate to match orders by receiving order.Fragments from
-// traders, performing secure multi-party computations. The EpochProcess uses a
-// DarkOcean to determine the epoch, and a Router to receive messages.
-func RunEpochProcess(done <-chan struct{}, id identity.ID, darkOcean DarkOcean, router *Router) (<-chan smpc.Delta, <-chan error) {
-	deltas := make(chan smpc.Delta)
-	errs := make(chan error, 1)
+// 		pool, err := darkOcean.Pool(id)
+// 		if err != nil {
+// 			errs <- err
+// 			return
+// 		}
 
-	go func() {
-		defer close(deltas)
+// 		// Open connections with all Darknodes in the Pool
+// 		mu := new(sync.Mutex)
+// 		senders := map[identity.Address]chan<- *rpc.Computation{}
+// 		defer func() {
+// 			for key := range senders {
+// 				close(senders[key])
+// 			}
+// 		}()
+// 		receivers := map[identity.Address]<-chan *rpc.Computation{}
+// 		errors := map[identity.Address]<-chan error{}
 
-		pool, err := darkOcean.Pool(id)
-		if err != nil {
-			errs <- err
-			return
-		}
+// 		addresses := pool.Addresses()
+// 		dispatch.CoForAll(addresses, func(i int) {
+// 			if bytes.Compare(addresses[i].ID()[:], id[:]) == 0 {
+// 				return
+// 			}
 
-		// Open connections with all Darknodes in the Pool
-		mu := new(sync.Mutex)
-		senders := map[identity.Address]chan<- *rpc.Computation{}
-		defer func() {
-			for key := range senders {
-				close(senders[key])
-			}
-		}()
-		receivers := map[identity.Address]<-chan *rpc.Computation{}
-		errors := map[identity.Address]<-chan error{}
+// 			sender := make(chan *rpc.Computation)
+// 			receiver, errs := router.Compute(done, addresses[i], sender)
 
-		addresses := pool.Addresses()
-		dispatch.CoForAll(addresses, func(i int) {
-			if bytes.Compare(addresses[i].ID()[:], id[:]) == 0 {
-				return
-			}
+// 			mu.Lock()
+// 			defer mu.Unlock()
+// 			senders[addresses[i]] = sender
+// 			receivers[addresses[i]] = receiver
+// 			errors[addresses[i]] = errs
+// 		})
 
-			sender := make(chan *rpc.Computation)
-			receiver, errs := router.Compute(done, addresses[i], sender)
+// 		n := int64(pool.Size())
+// 		k := (n + 1) * 2 / 3
+// 		smpcer := smpc.NewComputer(id, n, k)
 
-			mu.Lock()
-			defer mu.Unlock()
-			senders[addresses[i]] = sender
-			receivers[addresses[i]] = receiver
-			errors[addresses[i]] = errs
-		})
+// 		orderFragments, orderFragmentErrs := router.OrderFragments(done)
+// 		go dispatch.Pipe(done, orderFragmentErrs, errs)
 
-		n := int64(pool.Size())
-		k := (n + 1) * 2 / 3
-		smpcer := smpc.NewComputer(id, n, k)
+// 		deltaFragments := make(chan smpc.DeltaFragment)
+// 		defer close(deltaFragments)
 
-		orderFragments, orderFragmentErrs := router.OrderFragments(done)
-		go dispatch.Pipe(done, orderFragmentErrs, errs)
+// 		deltaFragmentsComputed, deltasComputed := smpcer.ComputeOrderMatches(done, orderFragments, deltaFragments)
 
-		deltaFragments := make(chan smpc.DeltaFragment)
-		defer close(deltaFragments)
+// 		dispatch.CoBegin(func() {
 
-		deltaFragmentsComputed, deltasComputed := smpcer.ComputeOrderMatches(done, orderFragments, deltaFragments)
+// 			// Receive smpc.DeltaFragments from other Darknodes in the Pool
+// 			dispatch.CoForAll(receivers, func(receiver identity.Address) {
+// 				for {
+// 					select {
+// 					case <-done:
+// 						return
+// 					case computation, ok := <-receivers[receiver]:
+// 						if !ok {
+// 							return
+// 						}
+// 						if computation.DeltaFragment != nil {
+// 							deltaFragment, err := rpc.UnmarshalDeltaFragment(computation.DeltaFragment)
+// 							if err != nil {
+// 								errs <- err
+// 								continue
+// 							}
+// 							select {
+// 							case <-done:
+// 								return
+// 							case deltaFragments <- deltaFragment:
+// 							}
+// 						}
+// 					}
+// 				}
+// 			})
+// 		}, func() {
 
-		dispatch.CoBegin(func() {
+// 			// Broadcast computed smpc.DeltaFragments to other Darknodes in the
+// 			// Pool
+// 			for {
+// 				select {
+// 				case <-done:
+// 					return
+// 				case deltaFragment, ok := <-deltaFragmentsComputed:
+// 					if !ok {
+// 						return
+// 					}
+// 					computation := &rpc.Computation{DeltaFragment: rpc.MarshalDeltaFragment(&deltaFragment)}
+// 					for _, sender := range senders {
+// 						ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+// 						select {
+// 						case <-done:
+// 							cancel()
+// 							return
+// 						case <-ctx.Done():
+// 							cancel()
+// 							continue
+// 						case sender <- computation:
+// 						}
+// 						cancel()
+// 					}
+// 				}
+// 			}
+// 		}, func() {
 
-			// Receive smpc.DeltaFragments from other Darknodes in the Pool
-			dispatch.CoForAll(receivers, func(receiver identity.Address) {
-				for {
-					select {
-					case <-done:
-						return
-					case computation, ok := <-receivers[receiver]:
-						if !ok {
-							return
-						}
-						if computation.DeltaFragment != nil {
-							deltaFragment, err := rpc.UnmarshalDeltaFragment(computation.DeltaFragment)
-							if err != nil {
-								errs <- err
-								continue
-							}
-							select {
-							case <-done:
-								return
-							case deltaFragments <- deltaFragment:
-							}
-						}
-					}
-				}
-			})
-		}, func() {
+// 			// Output computed smpc.Deltas
+// 			for {
+// 				select {
+// 				case <-done:
+// 					return
+// 				case deltaComputed, ok := <-deltasComputed:
+// 					if !ok {
+// 						return
+// 					}
+// 					if deltaComputed.IsMatch(smpc.Prime) {
+// 						smpcer.SharedOrderTable().RemoveBuyOrder(deltaComputed.BuyOrderID)
+// 						smpcer.SharedOrderTable().RemoveSellOrder(deltaComputed.SellOrderID)
+// 					}
+// 					select {
+// 					case <-done:
+// 						return
+// 					case deltas <- deltaComputed:
+// 					}
+// 				}
+// 			}
+// 		})
+// 	}()
 
-			// Broadcast computed smpc.DeltaFragments to other Darknodes in the
-			// Pool
-			for {
-				select {
-				case <-done:
-					return
-				case deltaFragment, ok := <-deltaFragmentsComputed:
-					if !ok {
-						return
-					}
-					computation := &rpc.Computation{DeltaFragment: rpc.MarshalDeltaFragment(&deltaFragment)}
-					for _, sender := range senders {
-						ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-						select {
-						case <-done:
-							cancel()
-							return
-						case <-ctx.Done():
-							cancel()
-							continue
-						case sender <- computation:
-						}
-						cancel()
-					}
-				}
-			}
-		}, func() {
+// 	return deltas, errs
+// }
 
-			// Output computed smpc.Deltas
-			for {
-				select {
-				case <-done:
-					return
-				case deltaComputed, ok := <-deltasComputed:
-					if !ok {
-						return
-					}
-					if deltaComputed.IsMatch(smpc.Prime) {
-						smpcer.SharedOrderTable().RemoveBuyOrder(deltaComputed.BuyOrderID)
-						smpcer.SharedOrderTable().RemoveSellOrder(deltaComputed.SellOrderID)
-					}
-					select {
-					case <-done:
-						return
-					case deltas <- deltaComputed:
-					}
-				}
-			}
-		})
-	}()
+// // RunEpochWatcher until the done channel is closed. An EpochWatcher will watch
+// // for changes to the DarknodeRegistry epoch. Returns a read-only channel that
+// // can be used to read epochs as they change.
+// func RunEpochWatcher(done <-chan struct{}, darknodeRegistry contracts.DarkNodeRegistry) (<-chan contracts.Epoch, <-chan error) {
+// 	changes := make(chan contracts.Epoch)
+// 	errs := make(chan error, 1)
 
-	return deltas, errs
-}
+// 	go func() {
+// 		defer close(changes)
+// 		defer close(errs)
 
-// RunEpochWatcher until the done channel is closed. An EpochWatcher will watch
-// for changes to the DarknodeRegistry epoch. Returns a read-only channel that
-// can be used to read epochs as they change.
-func RunEpochWatcher(done <-chan struct{}, darknodeRegistry contracts.DarkNodeRegistry) (<-chan contracts.Epoch, <-chan error) {
-	changes := make(chan contracts.Epoch)
-	errs := make(chan error, 1)
+// 		minimumEpochInterval, err := darknodeRegistry.MinimumEpochInterval()
+// 		if err != nil {
+// 			errs <- fmt.Errorf("cannot get minimum epoch interval: %v", err)
+// 			return
+// 		}
 
-	go func() {
-		defer close(changes)
-		defer close(errs)
+// 		currentEpoch, err := darknodeRegistry.CurrentEpoch()
+// 		if err != nil {
+// 			errs <- fmt.Errorf("cannot get current epoch: %v", err)
+// 			return
+// 		}
 
-		minimumEpochInterval, err := darknodeRegistry.MinimumEpochInterval()
-		if err != nil {
-			errs <- fmt.Errorf("cannot get minimum epoch interval: %v", err)
-			return
-		}
+// 		for {
+// 			// Signal that the epoch has changed
+// 			select {
+// 			case <-done:
+// 				return
+// 			case changes <- currentEpoch:
+// 			}
 
-		currentEpoch, err := darknodeRegistry.CurrentEpoch()
-		if err != nil {
-			errs <- fmt.Errorf("cannot get current epoch: %v", err)
-			return
-		}
+// 			// Sleep until the next epoch
+// 			nextEpochTime := currentEpoch.Timestamp.Add(&minimumEpochInterval)
+// 			nextEpochTimeUnix, err := nextEpochTime.ToUint()
+// 			if err != nil {
+// 				errs <- fmt.Errorf("cannot convert epoch timestamp to unix timestamp: %v", err)
+// 				return
+// 			}
+// 			delay := time.Duration(int64(nextEpochTimeUnix)-time.Now().Unix()) * time.Second
+// 			time.Sleep(delay)
 
-		for {
-			// Signal that the epoch has changed
-			select {
-			case <-done:
-				return
-			case changes <- currentEpoch:
-			}
+// 			// Spin-lock until the new epoch is detected or until the done
+// 			// channel is closed
+// 			for {
 
-			// Sleep until the next epoch
-			nextEpochTime := currentEpoch.Timestamp.Add(&minimumEpochInterval)
-			nextEpochTimeUnix, err := nextEpochTime.ToUint()
-			if err != nil {
-				errs <- fmt.Errorf("cannot convert epoch timestamp to unix timestamp: %v", err)
-				return
-			}
-			delay := time.Duration(int64(nextEpochTimeUnix)-time.Now().Unix()) * time.Second
-			time.Sleep(delay)
+// 				select {
+// 				case <-done:
+// 					return
+// 				default:
+// 				}
 
-			// Spin-lock until the new epoch is detected or until the done
-			// channel is closed
-			for {
+// 				nextEpoch, err := darknodeRegistry.CurrentEpoch()
+// 				if err != nil {
+// 					errs <- fmt.Errorf("cannot get next epoch: %v", err)
+// 					return
+// 				}
+// 				if !bytes.Equal(currentEpoch.Blockhash[:], nextEpoch.Blockhash[:]) {
+// 					currentEpoch = nextEpoch
+// 					break
+// 				}
 
-				select {
-				case <-done:
-					return
-				default:
-				}
+// 				time.Sleep(time.Minute)
+// 			}
+// 		}
+// 	}()
 
-				nextEpoch, err := darknodeRegistry.CurrentEpoch()
-				if err != nil {
-					errs <- fmt.Errorf("cannot get next epoch: %v", err)
-					return
-				}
-				if !bytes.Equal(currentEpoch.Blockhash[:], nextEpoch.Blockhash[:]) {
-					currentEpoch = nextEpoch
-					break
-				}
-
-				time.Sleep(time.Minute)
-			}
-		}
-	}()
-
-	return changes, errs
-}
+// 	return changes, errs
+// }
