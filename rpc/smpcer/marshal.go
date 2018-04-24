@@ -1,61 +1,45 @@
 package smpcer
 
 import (
-	"crypto/rsa"
-
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/smpc"
 )
 
 // MarshalOrderFragment converts an order.Fragment into its network
 // representation.
-func MarshalOrderFragment(pubKey *rsa.PublicKey, orderFragment *order.Fragment) (*OrderFragment, error) {
-	// val := &OrderFragment{
-	// 	Id: &OrderFragmentId{
-	// 		Signature:       orderFragment.Signature,
-	// 		OrderFragmentId: orderFragment.ID,
-	// 	},
-	// 	Order: &Order{
-	// 		Id: &OrderId{
-	// 			Signature: orderFragment.Signature,
-	// 			OrderId:   orderFragment.OrderID,
-	// 		},
-	// 		Type:   int64(orderFragment.OrderType),
-	// 		Parity: int64(orderFragment.OrderParity),
-	// 		Expiry: orderFragment.OrderExpiry.Unix(),
-	// 	},
-	// }
+func MarshalOrderFragment(crypter crypto.Crypter, orderFragment *order.Fragment) (*OrderFragment, error) {
+	val := &OrderFragment{
+		OrderFragmenId: orderFragment.ID,
+		OrderId:        orderFragment.OrderID,
+		Expiry:         orderFragment.OrderExpiry.Unix(),
+		Type:           int32(orderFragment.OrderType),
+		Tokens:         int32(0), // FIXME: Real token pairing
+		PriceShare: &Share{
+			Index: orderFragment.PriceShare.Key,
+		},
+		VolumeShare: &Share{
+			Index: orderFragment.MaxVolumeShare.Key, // FIXME: Unify volumes
+		},
+	}
 
-	// var err error
-	// val.FstCodeShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.FstCodeShare))
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// val.SndCodeShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.SndCodeShare))
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// val.PriceShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.PriceShare))
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// val.MaxVolumeShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.MaxVolumeShare))
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// val.MinVolumeShare, err = crypto.Encrypt(pubKey, shamir.ToBytes(orderFragment.MinVolumeShare))
-	// if err != nil {
-	// 	return nil, err
-	// }
+	var err error
+	val.PriceShare.Value, err = crypter.Encrypt(orderFragment.PriceShare.Value.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	val.VolumeShare.Value, err = crypter.Encrypt(orderFragment.MaxVolumeShare.Value.Bytes()) // FIXME: Unify volumes
+	if err != nil {
+		return nil, err
+	}
 
-	// return val, nil
-	panic("unimplemented")
+	return val, nil
 }
 
 // UnmarshalOrderFragment converts a network representation of an
 // OrderFragment into an order.Fragment. An error is returned if the network
 // representation is malformed.
-func UnmarshalOrderFragment(orderFragment *OrderFragment) (*order.Fragment, error) {
+func UnmarshalOrderFragment(orderFragment *OrderFragment) (order.Fragment, error) {
 	// var err error
 
 	// val := &order.Fragment{
@@ -118,25 +102,24 @@ func UnmarshalOrderFragment(orderFragment *OrderFragment) (*order.Fragment, erro
 }
 
 // MarshalDeltaFragment into a RPC protobuf object.
-func MarshalDeltaFragment(deltaFragment *smpc.DeltaFragment) *DeltaFragment {
-	// return &DeltaFragment{
-	// 	Id:                  deltaFragment.ID,
-	// 	DeltaId:             deltaFragment.DeltaID,
-	// 	BuyOrderId:          deltaFragment.BuyOrderID,
-	// 	SellOrderId:         deltaFragment.SellOrderID,
-	// 	BuyOrderFragmentId:  deltaFragment.BuyOrderFragmentID,
-	// 	SellOrderFragmentId: deltaFragment.SellOrderFragmentID,
-	// 	FstCodeShare:        shamir.ToBytes(deltaFragment.FstCodeShare),
-	// 	SndCodeShare:        shamir.ToBytes(deltaFragment.SndCodeShare),
-	// 	PriceShare:          shamir.ToBytes(deltaFragment.PriceShare),
-	// 	MaxVolumeShare:      shamir.ToBytes(deltaFragment.MaxVolumeShare),
-	// 	MinVolumeShare:      shamir.ToBytes(deltaFragment.MinVolumeShare),
-	// }
-	panic("unimplemented")
+func MarshalDeltaFragment(deltaFragment *delta.Fragment) *DeltaFragment {
+	return &DeltaFragment{
+		DeltaFragmentId: deltaFragment.ID,
+		BuyOrderId:      deltaFragment.BuyOrderID,
+		SellOrderId:     deltaFragment.SellOrderID,
+		PriceShare: &Share{
+			Index: deltaFragment.PriceShare.Key,
+			Value: deltaFragment.PriceShare.Value.Bytes(),
+		},
+		VolumeShare: &Share{
+			Index: deltaFragment.MaxVolumeShare.Key,           // FIXME: Unify volumes
+			Value: deltaFragment.MaxVolumeShare.Value.Bytes(), // FIXME: Unify volumes
+		},
+	}
 }
 
 // UnmarshalDeltaFragment from a RPC protobuf object.
-func UnmarshalDeltaFragment(deltaFragment *DeltaFragment) (smpc.DeltaFragment, error) {
+func UnmarshalDeltaFragment(deltaFragment *DeltaFragment) (delta.Fragment, error) {
 	// val := smpc.DeltaFragment{
 	// 	ID:                  deltaFragment.Id,
 	// 	DeltaID:             deltaFragment.DeltaId,

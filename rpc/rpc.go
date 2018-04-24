@@ -26,8 +26,8 @@ type RPC struct {
 	relayerClient relayer.Client
 	relayer       relayer.Relayer
 
-	onOpenOrder   func(order.Fragment) error
-	onCancelOrder func(order.ID) error
+	onOpenOrder   func([]byte, order.Fragment) error
+	onCancelOrder func([]byte, order.ID) error
 }
 
 func NewRPC(crypter crypto.Crypter, multiAddress identity.MultiAddress, orderbook *orderbook.Orderbook) *RPC {
@@ -49,20 +49,30 @@ func NewRPC(crypter crypto.Crypter, multiAddress identity.MultiAddress, orderboo
 	return rpc
 }
 
-func (rpc *RPC) OpenOrder(signature []byte, orderFragment *smpcer.OrderFragment) error {
-	panic("unimplemented")
+// OpenOrder implements the smpcer.Delegate interface.
+func (rpc *RPC) OpenOrder(signature []byte, orderFragment order.Fragment) error {
+	if rpc.onOpenOrder != nil {
+		return rpc.onOpenOrder(signature, orderFragment)
+	}
+	return nil
 }
 
-func (rpc *RPC) CancelOrder(signature []byte, orderID []byte) error {
-	panic("unimplemented")
+// CancelOrder implements the smpcer.Delegate interface.
+func (rpc *RPC) CancelOrder(signature []byte, orderID order.ID) error {
+	if rpc.onCancelOrder != nil {
+		return rpc.onCancelOrder(signature, orderID)
+	}
+	return nil
 }
 
-func (rpc *RPC) OnOpenOrder(handler func()) {
-	panic("unimplemented")
+// OnOpenOrder call the delegate method.
+func (rpc *RPC) OnOpenOrder(delegate func([]byte, order.Fragment) error) {
+	rpc.onOpenOrder = delegate
 }
 
-func (rpc *RPC) OnCancelOrder(signature []byte, orderID []byte) error {
-	panic("unimplemented")
+// OnCancelOrder call the delegate method.
+func (rpc *RPC) OnCancelOrder(delegate func([]byte, order.ID) error) {
+	rpc.onCancelOrder = delegate
 }
 
 // SwarmerClient used by the RPC.

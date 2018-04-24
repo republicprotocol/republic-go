@@ -58,9 +58,16 @@ func (smpcer *Smpcer) OpenOrder(ctx context.Context, request *OpenOrderRequest) 
 		defer close(errs)
 
 		orderFragmentSignature := request.GetSignature()
-		orderFragment := UnmarshalOrderFragment(request.GetOrderFragment())
-
-		if err := smpcer.delegate.OpenOrder(); err != nil {
+		orderFragment, err := UnmarshalOrderFragment(request.GetOrderFragment())
+		if err != nil {
+			errs <- err
+			return
+		}
+		if err := smpcer.client.crypter.Verify(&orderFragment, orderFragmentSignature); err != nil {
+			errs <- err
+			return
+		}
+		if err := smpcer.delegate.OpenOrder(orderFragmentSignature, orderFragment); err != nil {
 			errs <- err
 		}
 	}()
@@ -82,6 +89,13 @@ func (smpcer *Smpcer) CancelOrder(ctx context.Context, request *CancelOrderReque
 	errs := make(chan error, 1)
 	go func() {
 		defer close(errs)
+
+		orderIDSignature := request.GetSignature()
+		orderID := order.ID(request.GetOrderId())
+		if err := smpcer.client.crypter.Verify(orderID, orderIDSignature); err != nil {
+			errs <- err
+			return
+		}
 		if err := smpcer.delegate.CancelOrder(request.GetSignature(), request.GetOrderId()); err != nil {
 			errs <- err
 		}
