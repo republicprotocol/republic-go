@@ -50,7 +50,7 @@ var _ = Describe("Darknode", func() {
 			txInput := make(chan hyperdrive.TxWithBlockNumber)
 
 			go func() {
-				i := uint8(70)
+				i := uint8(145)
 				for {
 					select {
 					case <-done:
@@ -80,7 +80,6 @@ var _ = Describe("Darknode", func() {
 			}
 		})
 	})
-
 })
 
 // OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
@@ -137,23 +136,38 @@ func WatchForHyperdriveContract(done <-chan struct{}, txInput chan hyperdrive.Tx
 
 				for key, value := range watchingList {
 					if key <= currentBlock.NumberU64()-depth {
-						// Create a hashTable
-						hashTable := map[common.Hash]struct{}{}
-						block, err := hyper.BlockByNumber(big.NewInt(int64(key)))
-						if err != nil {
-							errs <- err
-							return
-						}
-						for _, h := range block.Transactions() {
-							hashTable[h.Hash()] = struct{}{}
-						}
+						for _, hash := range value{
+							// Check if there is a block shuffle
+							newBlockNumber ,err := hyper.GetBlockNumberOfTx(hash)
+							log.Println("new block number is ", newBlockNumber)
+							if err != nil {
+								errs <- err
+								return
+							}
+							if newBlockNumber != key {
+								if _, ok := watchingList[newBlockNumber]; !ok {
+									watchingList[newBlockNumber] = []common.Hash{}
+								}
+								// "If map entries are created during iteration, that entry may be produced during the iteration or may be skipped."
+								watchingList[newBlockNumber]= append(watchingList[newBlockNumber], hash)
+								continue
+							}
 
-						for _, hash := range value {
+							// Create a hashTable
+							hashTable := map[common.Hash]struct{}{}
+							block, err := hyper.BlockByNumber(big.NewInt(int64(key)))
+							if err != nil {
+								errs <- err
+								return
+							}
+							for _, h := range block.Transactions() {
+								hashTable[h.Hash()] = struct{}{}
+							}
+
 							if _, ok := hashTable[hash]; ok {
 								log.Println(hash.Hex(), "has been finalized in block ", key)
 							}
 						}
-
 						delete(watchingList, key)
 					}
 				}

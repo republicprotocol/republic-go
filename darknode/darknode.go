@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"math/big"
 	"net"
 	"time"
@@ -425,7 +424,8 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 		defer close(errs)
 
 		watchingList := map[uint64][]common.Hash{}
-		ticker := time.NewTicker(10 * time.Second)
+
+		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()
 
 		for {
@@ -446,35 +446,36 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 
 				for key, value := range watchingList {
 					if key <= currentBlock.NumberU64()-depth {
-						// Create a hashTable
-						hashTable := map[common.Hash]struct{}{}
-						block, err := node.hyperdriveContract.BlockByNumber(big.NewInt(int64(key)))
-						if err != nil {
-							errs <- err
-							return
-						}
-						for _, h := range block.Transactions() {
-							hashTable[h.Hash()] = struct{}{}
-						}
+						for _, hash := range value{
+							// Check if there is a block shuffle
+							newBlockNumber ,err := node.hyperdriveContract.GetBlockNumberOfTx(hash)
+							if err != nil {
+								errs <- err
+								return
+							}
+							if newBlockNumber != key {
+								if _, ok := watchingList[newBlockNumber]; !ok {
+									watchingList[newBlockNumber] = []common.Hash{}
+								}
+								// "If map entries are created during iteration, that entry may be produced during the iteration or may be skipped."
+								watchingList[newBlockNumber]= append(watchingList[newBlockNumber], hash)
+								continue
+							}
 
-						for _, hash := range value {
+							// Create a hashTable
+							hashTable := map[common.Hash]struct{}{}
+							block, err := node.hyperdriveContract.BlockByNumber(big.NewInt(int64(key)))
+							if err != nil {
+								errs <- err
+								return
+							}
+							for _, h := range block.Transactions() {
+								hashTable[h.Hash()] = struct{}{}
+							}
+
 							if _, ok := hashTable[hash]; ok {
-								log.Println(hash.Hex(), "has been finalized in block ", key)
-								// Fixme :  generate the correct entry
-								entry := orderbook.Entry{
-									Order: order.Order{
-										ID: hash.Bytes(),
-									},
-									Status: order.Confirmed,
-								}
-
-								if err := node.orderbook.Confirm(entry); err != nil {
-									errs <- err
-									return
-								}
 							}
 						}
-
 						delete(watchingList, key)
 					}
 				}
