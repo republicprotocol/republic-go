@@ -28,13 +28,13 @@ type Delegate interface {
 
 type Smpcer struct {
 	delegate Delegate
-	client   Client
+	client   *Client
 
 	connsMu *sync.Mutex
 	conns   map[string]struct{}
 }
 
-func NewSmpcer(delegate Delegate, client Client) Smpcer {
+func NewSmpcer(delegate Delegate, client *Client) Smpcer {
 	return Smpcer{
 		delegate: delegate,
 		client:   client,
