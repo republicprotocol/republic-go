@@ -11,7 +11,6 @@ type Rendezvous struct {
 	mu        *sync.Mutex
 	senders   map[identity.Address]chan *ComputeMessage
 	receivers map[identity.Address]*dispatch.Splitter
-	errs      map[identity.Address]*dispatch.Splitter
 	rcs       map[identity.Address]int
 }
 
@@ -20,7 +19,6 @@ func NewRendezvous() Rendezvous {
 		mu:        new(sync.Mutex),
 		senders:   map[identity.Address]chan *ComputeMessage{},
 		receivers: map[identity.Address]*dispatch.Splitter{},
-		errs:      map[identity.Address]*dispatch.Splitter{},
 		rcs:       map[identity.Address]int{},
 	}
 }
@@ -68,6 +66,8 @@ func (rendezvous *Rendezvous) wait(addr identity.Address, done <-chan struct{}, 
 			return
 		}
 		defer rendezvous.receivers[addr].Unsubscribe(receiver)
+
+		dispatch.Pipe(done, sender, rendezvous.senders[addr])
 	}()
 	return receiver, errs
 }
@@ -77,8 +77,7 @@ func (rendezvous *Rendezvous) acquireConn(addr identity.Address) {
 	defer rendezvous.mu.Unlock()
 
 	if rendezvous.rcs[addr] == 0 {
-		sender := make(chan *ComputeMessage)
-		rendezvous.senders[addr] = sender
+		rendezvous.senders[addr] = make(chan *ComputeMessage)
 		rendezvous.receivers[addr] = dispatch.NewSplitter(MaxConnections)
 	}
 	rendezvous.rcs[addr]++
@@ -93,7 +92,6 @@ func (rendezvous *Rendezvous) releaseConn(addr identity.Address) {
 		close(rendezvous.senders[addr])
 		delete(rendezvous.senders, addr)
 		delete(rendezvous.receivers, addr)
-		delete(rendezvous.errs, addr)
 	}
 }
 

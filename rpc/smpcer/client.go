@@ -107,7 +107,7 @@ func (client *Client) MultiAddress() identity.MultiAddress {
 }
 
 func (client *Client) connect(ctx context.Context, multiAddress identity.MultiAddress, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {
-	return client.streamer.connect(ctx, multiAddress, sender)
+	return client.streamer.connect(multiAddress, ctx.Done(), sender)
 }
 
 func (client *Client) wait(ctx context.Context, multiAddress identity.MultiAddress, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {

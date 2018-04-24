@@ -111,7 +111,6 @@ func (smpcer *Smpcer) Compute(stream Smpc_ComputeServer) error {
 	_, ok := smpcer.conns[addr]
 	maxConnectionsReached := ok || len(smpcer.conns) >= MaxConnections
 	smpcer.connsMu.Unlock()
-
 	if maxConnectionsReached {
 		return ErrMaxConnectionsReached
 	}
