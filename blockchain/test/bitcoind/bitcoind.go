@@ -1,4 +1,4 @@
-package regtest
+package bitcoind
 
 import (
 	"fmt"
@@ -19,10 +19,10 @@ func Start() *exec.Cmd {
 	return cmd
 }
 
-func Mine(connection client.Connection) error {
+func Mine(conn bitcoin.Conn) error {
 
 	fmt.Println("initial 100")
-	_, err := connection.Client.Generate(100)
+	_, err := conn.Client.Generate(100)
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func Mine(connection client.Connection) error {
 	for {
 		select {
 		case <-tick.C:
-			_, err := connection.Client.Generate(1)
+			_, err := conn.Client.Generate(1)
 			if err != nil {
 				return err
 			}
@@ -43,19 +43,19 @@ func Mine(connection client.Connection) error {
 	return nil
 }
 
-func NewAccount(connection client.Connection, name string, value btcutil.Amount) (btcutil.Address, error) {
-	addr, err := connection.Client.GetAccountAddress(name)
+func NewAccount(conn bitcoin.Conn, name string, value btcutil.Amount) (btcutil.Address, error) {
+	addr, err := conn.Client.GetAccountAddress(name)
 	if err != nil {
 		return nil, err
 	}
 
 	if value > 0 {
-		_, err = connection.Client.SendToAddress(addr, value)
+		_, err = conn.Client.SendToAddress(addr, value)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = connection.Client.Generate(1)
+		_, err = conn.Client.Generate(1)
 		if err != nil {
 			return nil, err
 		}

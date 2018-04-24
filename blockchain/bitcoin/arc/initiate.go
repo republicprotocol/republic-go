@@ -1,4 +1,4 @@
-package arc_bitcoin
+package arc
 
 import (
 	"bytes"
@@ -9,22 +9,22 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/bitcoin"
 )
 
-func initiate(connection client.Connection, participantAddress string, value int64, hash []byte, lockTime int64) (BitcoinData, error) {
+func initiate(conn bitcoin.Conn, participantAddress string, value int64, hash []byte, lockTime int64) (BitcoinData, error) {
 
-	cp2Addr, err := btcutil.DecodeAddress(participantAddress, connection.ChainParams)
+	cp2Addr, err := btcutil.DecodeAddress(participantAddress, conn.ChainParams)
 	if err != nil {
 		return BitcoinData{}, fmt.Errorf("failed to decode participant address: %v", err)
 	}
-	if !cp2Addr.IsForNet(connection.ChainParams) {
+	if !cp2Addr.IsForNet(conn.ChainParams) {
 		return BitcoinData{}, fmt.Errorf("participant address is not "+
-			"intended for use on %v", connection.ChainParams.Name)
+			"intended for use on %v", conn.ChainParams.Name)
 	}
 	cp2AddrP2PKH, ok := cp2Addr.(*btcutil.AddressPubKeyHash)
 	if !ok {
 		return BitcoinData{}, errors.New("participant address is not P2PKH")
 	}
 
-	b, err := buildContract(connection, &contractArgs{
+	b, err := buildContract(conn, &contractArgs{
 		them:       cp2AddrP2PKH,
 		amount:     value,
 		locktime:   lockTime,
@@ -42,13 +42,13 @@ func initiate(connection client.Connection, participantAddress string, value int
 	refundBuf.Grow(b.refundTx.SerializeSize())
 	b.refundTx.Serialize(&refundBuf)
 
-	txHash, err := connection.PromptPublishTx(b.contractTx, "contract")
+	txHash, err := conn.PromptPublishTx(b.contractTx, "contract")
 
 	if err != nil {
 		return BitcoinData{}, err
 	}
 
-	connection.WaitForConfirmations(txHash, 1)
+	conn.WaitForConfirmations(txHash, 1)
 
 	refundTx := *b.refundTx
 	return BitcoinData{

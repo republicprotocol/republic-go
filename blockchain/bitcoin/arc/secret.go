@@ -1,4 +1,4 @@
-package arc_bitcoin
+package arc
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/bitcoin"
 )
 
-func readSecret(connection client.Connection, redemptionTxBytes, secretHash []byte) ([32]byte, error) {
+func readSecret(conn bitcoin.Conn, redemptionTxBytes, secretHash []byte) ([32]byte, error) {
 	var redemptionTx wire.MsgTx
 	err := redemptionTx.Deserialize(bytes.NewReader(redemptionTxBytes))
 	if err != nil {

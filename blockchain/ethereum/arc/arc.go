@@ -1,4 +1,4 @@
-package arc_ethereum
+package arc
 
 import (
 	"context"
@@ -17,9 +17,9 @@ type EthereumArcData struct {
 	Value           *big.Int       `json:"value"`
 }
 
-type EthereumArc struct {
+type Arc struct {
 	context context.Context
-	client  client.Connection
+	conn    ethereum.Conn
 	auth    *bind.TransactOpts
 	// binding      *interop.Arc
 	arcData EthereumArcData
@@ -28,11 +28,11 @@ type EthereumArc struct {
 	swapID  [32]byte
 }
 
-// NewEthereumArc returns a new EthereumArc instance
-func NewEthereumArc(context context.Context, client client.Connection, auth *bind.TransactOpts, swapID [32]byte) (arc.Arc, error) {
-	return &EthereumArc{
+// NewArc returns a new EthereumArc instance
+func NewArc(context context.Context, conn ethereum.Conn, auth *bind.TransactOpts, swapID [32]byte) (arc.Arc, error) {
+	return &Arc{
 		context: context,
-		client:  client,
+		conn:    conn,
 		auth:    auth,
 		arcData: EthereumArcData{},
 		binding: nil,
@@ -41,13 +41,13 @@ func NewEthereumArc(context context.Context, client client.Connection, auth *bin
 }
 
 // Initiate a new Arc swap by deploying an Arc contract
-func (arc *EthereumArc) Initiate(hash [32]byte, from []byte, to []byte, value *big.Int, expiry int64) error {
-	contractAddress, tx, binding, err := bindings.DeployArc(arc.auth, arc.client.Client, hash, common.HexToAddress("0x1"), value, big.NewInt(expiry), common.BytesToAddress(to))
+func (arc *Arc) Initiate(hash [32]byte, from []byte, to []byte, value *big.Int, expiry int64) error {
+	contractAddress, tx, binding, err := bindings.DeployArc(arc.auth, arc.conn.Client, hash, common.HexToAddress("0x1"), value, big.NewInt(expiry), common.BytesToAddress(to))
 	if err != nil {
 		return err
 	}
 
-	if err := arc.client.TransferEth(arc.context, arc.auth, contractAddress, value); err != nil {
+	if err := arc.conn.TransferEth(arc.context, arc.auth, contractAddress, value); err != nil {
 		return err
 	}
 
@@ -56,27 +56,27 @@ func (arc *EthereumArc) Initiate(hash [32]byte, from []byte, to []byte, value *b
 	}
 	arc.binding = binding
 
-	_, err = arc.client.PatchedWaitDeployed(arc.context, tx)
+	_, err = arc.conn.PatchedWaitDeployed(arc.context, tx)
 	return err
 }
 
-func (arc *EthereumArc) Redeem(secret [32]byte) error {
+func (arc *Arc) Redeem(secret [32]byte) error {
 	tx, err := arc.binding.Redeem(arc.auth, secret)
 	if err == nil {
-		_, err = arc.client.PatchedWaitMined(arc.context, tx)
+		_, err = arc.conn.PatchedWaitMined(arc.context, tx)
 	}
 	return err
 }
 
-func (arc *EthereumArc) Refund() error {
+func (arc *Arc) Refund() error {
 	tx, err := arc.binding.Refund(arc.auth, common.HexToAddress("0x1"), arc.arcData.Value)
 	if err == nil {
-		_, err = arc.client.PatchedWaitMined(arc.context, tx)
+		_, err = arc.conn.PatchedWaitMined(arc.context, tx)
 	}
 	return err
 }
 
-func (arc *EthereumArc) Audit() (hash [32]byte, to, from []byte, value *big.Int, expiry int64, err error) {
+func (arc *Arc) Audit() (hash [32]byte, to, from []byte, value *big.Int, expiry int64, err error) {
 	hash, _, toAddr, value, _expiry, err := arc.binding.Audit(&bind.CallOpts{})
 	if err != nil {
 		return [32]byte{}, nil, nil, nil, 0, err
@@ -87,7 +87,7 @@ func (arc *EthereumArc) Audit() (hash [32]byte, to, from []byte, value *big.Int,
 	return hash, arc.arcData.ContractAddress.Bytes(), toAddr.Bytes(), value, expiry, err
 }
 
-func (arc *EthereumArc) AuditSecret() ([32]byte, error) {
+func (arc *Arc) AuditSecret() ([32]byte, error) {
 	secret, err := arc.binding.AuditSecret(&bind.CallOpts{})
 	// if err != nil {
 	// 	return [32]byte{}, err
@@ -98,17 +98,17 @@ func (arc *EthereumArc) AuditSecret() ([32]byte, error) {
 	return secret, err
 }
 
-func (arc *EthereumArc) Serialize() ([]byte, error) {
+func (arc *Arc) Serialize() ([]byte, error) {
 	b, err := json.Marshal(arc.arcData)
 	return b, err
 }
 
-func (arc *EthereumArc) Deserialize(b []byte) error {
+func (arc *Arc) Deserialize(b []byte) error {
 	if err := json.Unmarshal(b, &arc.arcData); err != nil {
 		return err
 	}
 
-	contract, err := bindings.NewArc(arc.arcData.ContractAddress, bind.ContractBackend(arc.client.Client))
+	contract, err := bindings.NewArc(arc.arcData.ContractAddress, bind.ContractBackend(arc.conn.Client))
 	if err != nil {
 		return err
 	}

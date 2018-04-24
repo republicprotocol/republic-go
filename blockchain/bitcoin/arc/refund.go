@@ -1,4 +1,4 @@
-package arc_bitcoin
+package arc
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/bitcoin"
 )
 
-func refund(connection client.Connection, contract, contractTxBytes []byte) error {
+func refund(conn bitcoin.Conn, contract, contractTxBytes []byte) error {
 
 	var contractTx wire.MsgTx
 	err := contractTx.Deserialize(bytes.NewReader(contractTxBytes))
@@ -26,17 +26,17 @@ func refund(connection client.Connection, contract, contractTxBytes []byte) erro
 		return errors.New("contract is not an atomic swap script recognized by this tool")
 	}
 
-	refundTx, err := buildRefund(connection, contract, &contractTx)
+	refundTx, err := buildRefund(conn, contract, &contractTx)
 	if err != nil {
 		return err
 	}
 
-	txHash, err := connection.PromptPublishTx(refundTx, "refund")
+	txHash, err := conn.PromptPublishTx(refundTx, "refund")
 	if err != nil {
 		return err
 	}
 
-	connection.WaitForConfirmations(txHash, 1)
+	conn.WaitForConfirmations(txHash, 1)
 
 	return nil
 }

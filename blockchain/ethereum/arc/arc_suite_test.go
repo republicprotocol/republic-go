@@ -1,4 +1,4 @@
-package arc_ethereum_test
+package arc_test
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestEthereum(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Ethereum Atom Protocol Suite")
+	RunSpecs(t, "Arc Suite")
 }

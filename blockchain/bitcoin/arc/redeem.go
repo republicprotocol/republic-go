@@ -1,4 +1,4 @@
-package arc_bitcoin
+package arc
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ type redeemResult struct {
 	redeemTxHash [32]byte
 }
 
-func redeem(connection client.Connection, contract, contractTxBytes []byte, secret [32]byte) (redeemResult, error) {
+func redeem(conn bitcoin.Conn, contract, contractTxBytes []byte, secret [32]byte) (redeemResult, error) {
 	var contractTx wire.MsgTx
 	err := contractTx.Deserialize(bytes.NewReader(contractTxBytes))
 	if err != nil {
@@ -31,14 +31,14 @@ func redeem(connection client.Connection, contract, contractTxBytes []byte, secr
 		return redeemResult{}, errors.New("contract is not an atomic swap script recognized by this tool")
 	}
 	recipientAddr, err := btcutil.NewAddressPubKeyHash(pushes.RecipientHash160[:],
-		connection.ChainParams)
+		conn.ChainParams)
 	if err != nil {
 		return redeemResult{}, err
 	}
 	contractHash := btcutil.Hash160(contract)
 	contractOut := -1
 	for i, out := range contractTx.TxOut {
-		sc, addrs, _, _ := txscript.ExtractPkScriptAddrs(out.PkScript, connection.ChainParams)
+		sc, addrs, _, _ := txscript.ExtractPkScriptAddrs(out.PkScript, conn.ChainParams)
 		if sc == txscript.ScriptHashTy &&
 			bytes.Equal(addrs[0].(*btcutil.AddressScriptHash).Hash160()[:], contractHash) {
 			contractOut = i
@@ -49,7 +49,7 @@ func redeem(connection client.Connection, contract, contractTxBytes []byte, secr
 		return redeemResult{}, errors.New("transaction does not contain a contract output")
 	}
 
-	addr, err := getRawChangeAddress(connection)
+	addr, err := getRawChangeAddress(conn)
 	if err != nil {
 		return redeemResult{}, fmt.Errorf("getrawchangeaddres: %v", err)
 	}
@@ -68,7 +68,7 @@ func redeem(connection client.Connection, contract, contractTxBytes []byte, secr
 	redeemTx.LockTime = uint32(pushes.LockTime)
 	redeemTx.AddTxIn(wire.NewTxIn(&contractOutPoint, nil, nil))
 	redeemTx.AddTxOut(wire.NewTxOut(0, outScript)) // amount set below
-	redeemSig, redeemPubKey, err := createSig(connection, redeemTx, 0, contract, recipientAddr)
+	redeemSig, redeemPubKey, err := createSig(conn, redeemTx, 0, contract, recipientAddr)
 	if err != nil {
 		return redeemResult{}, err
 	}
@@ -97,12 +97,12 @@ func redeem(connection client.Connection, contract, contractTxBytes []byte, secr
 		}
 	}
 
-	txHash, err := connection.PromptPublishTx(redeemTx, "redeem")
+	txHash, err := conn.PromptPublishTx(redeemTx, "redeem")
 	if err != nil {
 		return redeemResult{}, err
 	}
 
-	connection.WaitForConfirmations(txHash, 1)
+	conn.WaitForConfirmations(txHash, 1)
 
 	return redeemResult{
 		redeemTx:     buf.Bytes(),

@@ -1,4 +1,4 @@
-package arc_bitcoin_test
+package arc_test
 
 import (
 	"testing"

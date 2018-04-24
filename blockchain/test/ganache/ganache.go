@@ -39,26 +39,26 @@ func Start() *exec.Cmd {
 }
 
 // Connect to a local Ganache instance.
-func Connect(ganacheRPC string) (client.Connection, error) {
+func Connect(ganacheRPC string) (ethereum.Conn, error) {
 	ethclient, err := ethclient.Dial(ganacheRPC)
 	if err != nil {
-		return client.Connection{}, err
+		return ethereum.Conn{}, err
 	}
-	return client.Connection{
-		Client:     ethclient,
-		DNRAddress: client.DarkNodeRegistryAddressOnGanache,
-		RenAddress: client.RepublicTokenAddressOnGanache,
-		Network:    client.NetworkGanache,
+	return ethereum.Conn{
+		Client:                  ethclient,
+		Network:                 ethereum.NetworkGanache,
+		DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache,
+		RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache,
 	}, nil
 }
 
 // DeployContracts to Ganache deploys REN and DNR contracts using the genesis private key
-func DeployContracts(conn client.Connection) error {
+func DeployContracts(conn ethereum.Conn) error {
 	return deployContracts(conn, genesisTransactor)
 }
 
 // DistributeEth transfers ETH to each of the addresses
-func DistributeEth(conn client.Connection, addresses ...common.Address) error {
+func DistributeEth(conn ethereum.Conn, addresses ...common.Address) error {
 
 	for _, address := range addresses {
 		err := conn.TransferEth(context.Background(), genesisTransactor, address, big.NewInt(1000000000000000000))
@@ -71,9 +71,9 @@ func DistributeEth(conn client.Connection, addresses ...common.Address) error {
 }
 
 // DistributeREN transfers REN to each of the addresses
-func DistributeREN(conn client.Connection, addresses ...common.Address) error {
+func DistributeREN(conn ethereum.Conn, addresses ...common.Address) error {
 
-	republicTokenContract, err := bindings.NewRepublicToken(conn.RenAddress, bind.ContractBackend(conn.Client))
+	republicTokenContract, err := bindings.NewRepublicToken(conn.RepublicTokenAddress, bind.ContractBackend(conn.Client))
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func DistributeREN(conn client.Connection, addresses ...common.Address) error {
 	return nil
 }
 
-func NewAccount(conn client.Connection, eth *big.Int) (*bind.TransactOpts, common.Address, error) {
+func NewAccount(conn ethereum.Conn, eth *big.Int) (*bind.TransactOpts, common.Address, error) {
 	ethereumPair, err := crypto.GenerateKey()
 	if err != nil {
 		return nil, common.Address{}, err
@@ -113,7 +113,7 @@ func genesis() (*ecdsa.PrivateKey, *bind.TransactOpts) {
 	return deployerKey, deployerAuth
 }
 
-func deployContracts(conn client.Connection, transactor *bind.TransactOpts) error {
+func deployContracts(conn ethereum.Conn, transactor *bind.TransactOpts) error {
 
 	_, republicTokenAddress, err := deployRepublicToken(context.Background(), conn, transactor)
 	if err != nil {
@@ -125,17 +125,17 @@ func deployContracts(conn client.Connection, transactor *bind.TransactOpts) erro
 		return err
 	}
 
-	if republicTokenAddress != client.RepublicTokenAddressOnGanache {
-		return fmt.Errorf("RepublicToken address has changed: expected: %s, got: %s", client.RepublicTokenAddressOnGanache.Hex(), republicTokenAddress.Hex())
+	if republicTokenAddress != ethereum.RepublicTokenAddressOnGanache {
+		return fmt.Errorf("RepublicToken address has changed: expected: %s, got: %s", ethereum.RepublicTokenAddressOnGanache.Hex(), republicTokenAddress.Hex())
 	}
-	if darkNodeRegistryAddress != client.DarkNodeRegistryAddressOnGanache {
-		return fmt.Errorf("DarkNodeRegistry address has changed: expected: %s, got: %s", client.DarkNodeRegistryAddressOnGanache.Hex(), darkNodeRegistryAddress.Hex())
+	if darkNodeRegistryAddress != ethereum.DarknodeRegistryAddressOnGanache {
+		return fmt.Errorf("DarkNodeRegistry address has changed: expected: %s, got: %s", ethereum.DarknodeRegistryAddressOnGanache.Hex(), darkNodeRegistryAddress.Hex())
 	}
 
 	return nil
 }
 
-func deployRepublicToken(ctx context.Context, conn client.Connection, auth *bind.TransactOpts) (*bindings.RepublicToken, common.Address, error) {
+func deployRepublicToken(ctx context.Context, conn ethereum.Conn, auth *bind.TransactOpts) (*bindings.RepublicToken, common.Address, error) {
 	address, tx, ren, err := bindings.DeployRepublicToken(auth, conn.Client)
 	if err != nil {
 		return nil, common.Address{}, fmt.Errorf("cannot deploy RepublicToken: %v", err)
@@ -144,7 +144,7 @@ func deployRepublicToken(ctx context.Context, conn client.Connection, auth *bind
 	return ren, address, nil
 }
 
-func deployDarkNodeRegistry(ctx context.Context, conn client.Connection, auth *bind.TransactOpts, republicTokenAddress common.Address) (*bindings.DarkNodeRegistry, common.Address, error) {
+func deployDarkNodeRegistry(ctx context.Context, conn ethereum.Conn, auth *bind.TransactOpts, republicTokenAddress common.Address) (*bindings.DarkNodeRegistry, common.Address, error) {
 	// 0 REN
 	minimumBond := big.NewInt(0)
 	// 1 second

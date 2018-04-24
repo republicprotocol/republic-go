@@ -1,4 +1,4 @@
-package client
+package bitcoin
 
 import (
 	"bytes"
@@ -10,16 +10,16 @@ import (
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	rpc "github.com/btcsuite/btcd/rpcclient"
+	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
 )
 
-type Connection struct {
-	Client      *rpc.Client
+type Conn struct {
+	Client      *rpcclient.Client
 	ChainParams *chaincfg.Params
 }
 
-func Connect(chain string, rpcUser, rpcPass string) (Connection, error) {
+func Connect(chain string, rpcUser, rpcPass string) (Conn, error) {
 	var chainParams *chaincfg.Params
 	switch chain {
 	case "regtest":
@@ -32,10 +32,10 @@ func Connect(chain string, rpcUser, rpcPass string) (Connection, error) {
 
 	connect, err := normalizeAddress("localhost", walletPort(chainParams))
 	if err != nil {
-		return Connection{}, fmt.Errorf("wallet server address: %v", err)
+		return Conn{}, fmt.Errorf("wallet server address: %v", err)
 	}
 
-	connConfig := &rpc.ConnConfig{
+	connConfig := &rpcclient.ConnConfig{
 		Host:         connect,
 		User:         rpcUser,
 		Pass:         rpcPass,
@@ -43,9 +43,9 @@ func Connect(chain string, rpcUser, rpcPass string) (Connection, error) {
 		HTTPPostMode: true,
 	}
 
-	rpcClient, err := rpc.New(connConfig, nil)
+	rpcClient, err := rpcclient.New(connConfig, nil)
 	if err != nil {
-		return Connection{}, fmt.Errorf("rpc connect: %v", err)
+		return Conn{}, fmt.Errorf("rpc connect: %v", err)
 	}
 
 	// Should call the following after this function:
@@ -56,13 +56,13 @@ func Connect(chain string, rpcUser, rpcPass string) (Connection, error) {
 		}()
 	*/
 
-	return Connection{
+	return Conn{
 		Client:      rpcClient,
 		ChainParams: chainParams,
 	}, nil
 }
 
-func (connection Connection) FundRawTransaction(tx *wire.MsgTx) (fundedTx *wire.MsgTx, err error) {
+func (conn Conn) FundRawTransaction(tx *wire.MsgTx) (fundedTx *wire.MsgTx, err error) {
 	var buf bytes.Buffer
 	buf.Grow(tx.SerializeSize())
 	tx.Serialize(&buf)
@@ -74,7 +74,7 @@ func (connection Connection) FundRawTransaction(tx *wire.MsgTx) (fundedTx *wire.
 		return nil, err
 	}
 	params := []json.RawMessage{param0}
-	rawResp, err := connection.Client.RawRequest("fundrawtransaction", params)
+	rawResp, err := conn.Client.RawRequest("fundrawtransaction", params)
 	if err != nil {
 		return nil, err
 	}
@@ -99,18 +99,18 @@ func (connection Connection) FundRawTransaction(tx *wire.MsgTx) (fundedTx *wire.
 	return fundedTx, nil
 }
 
-func (connection Connection) PromptPublishTx(tx *wire.MsgTx, name string) (*chainhash.Hash, error) {
-	txHash, err := connection.Client.SendRawTransaction(tx, false)
+func (conn Conn) PromptPublishTx(tx *wire.MsgTx, name string) (*chainhash.Hash, error) {
+	txHash, err := conn.Client.SendRawTransaction(tx, false)
 	if err != nil {
 		return nil, fmt.Errorf("sendrawtransaction: %v", err)
 	}
 	return txHash, nil
 }
 
-func (connection Connection) WaitForConfirmations(txHash *chainhash.Hash, requiredConfirmations int64) error {
+func (conn Conn) WaitForConfirmations(txHash *chainhash.Hash, requiredConfirmations int64) error {
 	confirmations := int64(0)
 	for confirmations < requiredConfirmations {
-		txDetails, err := connection.Client.GetTransaction(txHash)
+		txDetails, err := conn.Client.GetTransaction(txHash)
 		if err != nil {
 			return err
 		}
@@ -122,9 +122,9 @@ func (connection Connection) WaitForConfirmations(txHash *chainhash.Hash, requir
 	return nil
 }
 
-func (connection Connection) Shutdown() {
-	connection.Client.Shutdown()
-	connection.Client.WaitForShutdown()
+func (conn Conn) Shutdown() {
+	conn.Client.Shutdown()
+	conn.Client.WaitForShutdown()
 }
 
 func normalizeAddress(addr string, defaultPort string) (hostport string, err error) {

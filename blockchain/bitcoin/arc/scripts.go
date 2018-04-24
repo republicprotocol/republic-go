@@ -1,4 +1,4 @@
-package arc_bitcoin
+package arc
 
 import (
 	"github.com/btcsuite/btcd/txscript"

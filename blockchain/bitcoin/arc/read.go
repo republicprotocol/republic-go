@@ -1,4 +1,4 @@
-package arc_bitcoin
+package arc
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ type readResult struct {
 	lockTime         int64
 }
 
-func read(connection client.Connection, contract, contractTxBytes []byte) (readResult, error) {
+func read(conn bitcoin.Conn, contract, contractTxBytes []byte) (readResult, error) {
 
 	var contractTx wire.MsgTx
 	err := contractTx.Deserialize(bytes.NewReader(contractTxBytes))
@@ -32,7 +32,7 @@ func read(connection client.Connection, contract, contractTxBytes []byte) (readR
 	contractOut := -1
 
 	for i, out := range contractTx.TxOut {
-		sc, addrs, _, err := txscript.ExtractPkScriptAddrs(out.PkScript, connection.ChainParams)
+		sc, addrs, _, err := txscript.ExtractPkScriptAddrs(out.PkScript, conn.ChainParams)
 		if err != nil || sc != txscript.ScriptHashTy {
 			continue
 		}
@@ -53,17 +53,17 @@ func read(connection client.Connection, contract, contractTxBytes []byte) (readR
 		return readResult{}, errors.New("contract is not an atomic swap script recognized by this tool")
 	}
 
-	contractAddr, err := btcutil.NewAddressScriptHash(contract, connection.ChainParams)
+	contractAddr, err := btcutil.NewAddressScriptHash(contract, conn.ChainParams)
 	if err != nil {
 		return readResult{}, err
 	}
 	recipientAddr, err := btcutil.NewAddressPubKeyHash(pushes.RecipientHash160[:],
-		connection.ChainParams)
+		conn.ChainParams)
 	if err != nil {
 		return readResult{}, err
 	}
 	refundAddr, err := btcutil.NewAddressPubKeyHash(pushes.RefundHash160[:],
-		connection.ChainParams)
+		conn.ChainParams)
 	if err != nil {
 		return readResult{}, err
 	}

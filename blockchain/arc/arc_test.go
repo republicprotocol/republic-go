@@ -12,12 +12,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	btcClient "github.com/republicprotocol/republic-go/blockchain/bitcoin"
-	"github.com/republicprotocol/republic-go/blockchain/bitcoin/contracts/arc-bitcoin"
-	ethClient "github.com/republicprotocol/republic-go/blockchain/ethereum"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/contracts/arc-ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/test"
-	regtest "github.com/republicprotocol/republic-go/blockchain/test/bitcoind"
+	"github.com/republicprotocol/republic-go/blockchain/test/bitcoind"
 	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 )
 
@@ -47,10 +43,10 @@ var _ = Describe("ARC", func() {
 				minerBtcConnection, err := btcClient.Connect("regtest", RPC_USERNAME, RPC_PASSWORD)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				_aliceBtcAddr, err := regtest.NewAccount(minerBtcConnection, "alice", 100000000)
+				_aliceBtcAddr, err := bitcoind.NewAccount(minerBtcConnection, "alice", 100000000)
 				Expect(err).ShouldNot(HaveOccurred())
 				aliceBtcAddr = _aliceBtcAddr.EncodeAddress()
-				_bobBtcAddr, err := regtest.NewAccount(minerBtcConnection, "bob", 0)
+				_bobBtcAddr, err := bitcoind.NewAccount(minerBtcConnection, "bob", 0)
 				Expect(err).ShouldNot(HaveOccurred())
 				bobBtcAddr = _bobBtcAddr.EncodeAddress()
 
@@ -61,7 +57,7 @@ var _ = Describe("ARC", func() {
 
 				go func() {
 					defer minerBtcConnection.Shutdown()
-					err = regtest.Mine(minerBtcConnection)
+					err = bitcoind.Mine(minerBtcConnection)
 					Expect(err).ShouldNot(HaveOccurred())
 				}()
 
@@ -101,7 +97,7 @@ var _ = Describe("ARC", func() {
 			var secretHash [32]byte
 
 			{ // Alice can initiate swap on ethereum
-				aliceEthArc, err := arc_ethereum.NewEthereumArc(context.Background(), ethConnection, aliceEthAcc, swapID)
+				aliceEthArc, err := arc.NewEthereumArc(context.Background(), ethConnection, aliceEthAcc, swapID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				// Genreate random secret
@@ -118,7 +114,7 @@ var _ = Describe("ARC", func() {
 			}
 
 			{ // Bob audits Alice's ethereum contract, uploads his bitcoin script
-				bobEthArc, err := arc_ethereum.NewEthereumArc(context.Background(), ethConnection, bobEthAcc, swapID)
+				bobEthArc, err := arc.NewEthereumArc(context.Background(), ethConnection, bobEthAcc, swapID)
 				Expect(err).ShouldNot(HaveOccurred())
 				err = bobEthArc.Deserialize(ethArcData)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -130,7 +126,7 @@ var _ = Describe("ARC", func() {
 				Expect(_secretHash).Should(Equal(secretHash))
 				// Expect(_expiry.Int64()).Should(Equal(expiry))
 
-				bobBtcArc := arc_bitcoin.NewBitcoinArc(bobBtcConnection)
+				bobBtcArc := arc.NewBitcoinArc(bobBtcConnection)
 				err = bobBtcArc.Initiate(_secretHash, []byte(bobBtcAddr), []byte(aliceBtcAddr), btcValue, time.Now().Unix()+validity)
 				Expect(err).ShouldNot(HaveOccurred())
 				btcArcData, err = bobBtcArc.Serialize()
@@ -138,7 +134,7 @@ var _ = Describe("ARC", func() {
 			}
 
 			{ // Alice audits Bob's bitcoin script, redeems it with her password
-				aliceBtcArc := arc_bitcoin.NewBitcoinArc(aliceBtcConnection)
+				aliceBtcArc := arc.NewBitcoinArc(aliceBtcConnection)
 				err := aliceBtcArc.Deserialize(btcArcData)
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -157,14 +153,14 @@ var _ = Describe("ARC", func() {
 
 			{ // Bob audits Alice's password on bitcoin, redeems the ethereum swap with it
 
-				bobBtcArc := arc_bitcoin.NewBitcoinArc(bobBtcConnection)
+				bobBtcArc := arc.NewBitcoinArc(bobBtcConnection)
 				err := bobBtcArc.Deserialize(btcArcData)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				_secret, err := bobBtcArc.AuditSecret()
 				Expect(err).ShouldNot(HaveOccurred())
 
-				bobEthArc, err := arc_ethereum.NewEthereumArc(context.Background(), ethConnection, bobEthAcc, swapID)
+				bobEthArc, err := arc.NewEthereumArc(context.Background(), ethConnection, bobEthAcc, swapID)
 				Expect(err).ShouldNot(HaveOccurred())
 				err = bobEthArc.Deserialize(ethArcData)
 				Expect(err).ShouldNot(HaveOccurred())
