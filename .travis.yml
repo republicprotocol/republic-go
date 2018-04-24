@@ -19,8 +19,6 @@ before_install:
 script:
   - go vet ./...
   - golint -set_exit_status `go list ./... | grep -Ev "(stackint/asm|vendor)"`
-  - go run cmd/testnetwork/main.go -sleep 10 &
-  - sleep 10
   - goverage -v -coverprofile=coverprofile.out ./...
 
 after_success:
