@@ -3,6 +3,7 @@ package smpc
 import (
 	"context"
 
+	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
@@ -54,7 +55,7 @@ type ObscureComputeOutput struct {
 // set of read-write channels.
 type OrderMatchComputeInput struct {
 	OrderFragments chan order.Fragment
-	DeltaFragments chan DeltaFragment
+	DeltaFragments chan delta.Fragment
 }
 
 // Close all channels. Calling this function more than once will cause a panic.
@@ -66,8 +67,8 @@ func (chs *OrderMatchComputeInput) Close() {
 // OrderMatchComputeOutput returned by obscure computations. It stores a set of
 // read-only channels.
 type OrderMatchComputeOutput struct {
-	DeltaFragments <-chan DeltaFragment
-	Deltas         <-chan Delta
+	DeltaFragments <-chan delta.Fragment
+	Deltas         <-chan delta.Delta
 }
 
 // Computer of sMPC messages.
@@ -162,9 +163,9 @@ func (computer *Computer) ComputeObscure(
 }
 
 // ComputeOrderMatches using order fragments and delta fragments.
-func (computer *Computer) ComputeOrderMatches(done <-chan struct{}, orderFragmentsIn <-chan order.Fragment, deltaFragmentsIn <-chan DeltaFragment) (<-chan DeltaFragment, <-chan Delta) {
-	deltaFragmentsOut := make(chan DeltaFragment)
-	deltasOut := make(chan Delta)
+func (computer *Computer) ComputeOrderMatches(done <-chan struct{}, orderFragmentsIn <-chan order.Fragment, deltaFragmentsIn <-chan delta.Fragment) (<-chan delta.Fragment, <-chan delta.Delta) {
+	deltaFragmentsOut := make(chan delta.Fragment)
+	deltasOut := make(chan delta.Delta)
 
 	go func() {
 		defer close(deltaFragmentsOut)
@@ -173,7 +174,7 @@ func (computer *Computer) ComputeOrderMatches(done <-chan struct{}, orderFragmen
 		orderTuples := OrderFragmentsToOrderTuples(done, orderFragmentsIn, &computer.sharedOrderTable, 100)
 		deltaFragmentsComputed := OrderTuplesToDeltaFragments(done, orderTuples, 100)
 
-		deltaFragments := make(chan DeltaFragment)
+		deltaFragments := make(chan delta.Fragment)
 		go func() {
 			defer close(deltaFragments)
 			dispatch.CoBegin(func() {
