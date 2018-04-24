@@ -12,6 +12,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/republicprotocol/republic-go/blockchain/bitcoin"
+	btcarc "github.com/republicprotocol/republic-go/blockchain/bitcoin/arc"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	etharc "github.com/republicprotocol/republic-go/blockchain/ethereum/arc"
 	"github.com/republicprotocol/republic-go/blockchain/test"
 	"github.com/republicprotocol/republic-go/blockchain/test/bitcoind"
 	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
@@ -25,12 +29,12 @@ var _ = Describe("ARC", func() {
 
 	var aliceEthAcc, bobEthAcc *bind.TransactOpts
 	var aliceEthAddr, bobEthAddr common.Address
-	var ethConnection ethClient.Connection
+	var ethConnection ethereum.Conn
 	var swapID [32]byte
 	var btcValue, ethValue *big.Int
 	var validity int64
 
-	var aliceBtcConnection, bobBtcConnection btcClient.Connection
+	var aliceBtcConnection, bobBtcConnection bitcoin.Conn
 	var aliceBtcAddr, bobBtcAddr string // btcutil.Address
 
 	// Don't run on CI
@@ -40,7 +44,7 @@ var _ = Describe("ARC", func() {
 
 			{ // BITCOIN
 				var err error
-				minerBtcConnection, err := btcClient.Connect("regtest", RPC_USERNAME, RPC_PASSWORD)
+				minerBtcConnection, err := bitcoin.Connect("regtest", RPC_USERNAME, RPC_PASSWORD)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				_aliceBtcAddr, err := bitcoind.NewAccount(minerBtcConnection, "alice", 100000000)
@@ -50,9 +54,9 @@ var _ = Describe("ARC", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				bobBtcAddr = _bobBtcAddr.EncodeAddress()
 
-				aliceBtcConnection, err = btcClient.Connect("regtest", RPC_USERNAME, RPC_PASSWORD)
+				aliceBtcConnection, err = bitcoin.Connect("regtest", RPC_USERNAME, RPC_PASSWORD)
 				Expect(err).ShouldNot(HaveOccurred())
-				bobBtcConnection, err = btcClient.Connect("regtest", RPC_USERNAME, RPC_PASSWORD)
+				bobBtcConnection, err = bitcoin.Connect("regtest", RPC_USERNAME, RPC_PASSWORD)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				go func() {
@@ -97,7 +101,7 @@ var _ = Describe("ARC", func() {
 			var secretHash [32]byte
 
 			{ // Alice can initiate swap on ethereum
-				aliceEthArc, err := arc.NewEthereumArc(context.Background(), ethConnection, aliceEthAcc, swapID)
+				aliceEthArc, err := etharc.NewArc(context.Background(), ethConnection, aliceEthAcc, swapID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				// Genreate random secret
@@ -114,7 +118,7 @@ var _ = Describe("ARC", func() {
 			}
 
 			{ // Bob audits Alice's ethereum contract, uploads his bitcoin script
-				bobEthArc, err := arc.NewEthereumArc(context.Background(), ethConnection, bobEthAcc, swapID)
+				bobEthArc, err := etharc.NewArc(context.Background(), ethConnection, bobEthAcc, swapID)
 				Expect(err).ShouldNot(HaveOccurred())
 				err = bobEthArc.Deserialize(ethArcData)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -126,7 +130,7 @@ var _ = Describe("ARC", func() {
 				Expect(_secretHash).Should(Equal(secretHash))
 				// Expect(_expiry.Int64()).Should(Equal(expiry))
 
-				bobBtcArc := arc.NewBitcoinArc(bobBtcConnection)
+				bobBtcArc := btcarc.NewArc(bobBtcConnection)
 				err = bobBtcArc.Initiate(_secretHash, []byte(bobBtcAddr), []byte(aliceBtcAddr), btcValue, time.Now().Unix()+validity)
 				Expect(err).ShouldNot(HaveOccurred())
 				btcArcData, err = bobBtcArc.Serialize()
@@ -134,7 +138,7 @@ var _ = Describe("ARC", func() {
 			}
 
 			{ // Alice audits Bob's bitcoin script, redeems it with her password
-				aliceBtcArc := arc.NewBitcoinArc(aliceBtcConnection)
+				aliceBtcArc := btcarc.NewArc(aliceBtcConnection)
 				err := aliceBtcArc.Deserialize(btcArcData)
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -153,14 +157,14 @@ var _ = Describe("ARC", func() {
 
 			{ // Bob audits Alice's password on bitcoin, redeems the ethereum swap with it
 
-				bobBtcArc := arc.NewBitcoinArc(bobBtcConnection)
+				bobBtcArc := btcarc.NewArc(bobBtcConnection)
 				err := bobBtcArc.Deserialize(btcArcData)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				_secret, err := bobBtcArc.AuditSecret()
 				Expect(err).ShouldNot(HaveOccurred())
 
-				bobEthArc, err := arc.NewEthereumArc(context.Background(), ethConnection, bobEthAcc, swapID)
+				bobEthArc, err := etharc.NewArc(context.Background(), ethConnection, bobEthAcc, swapID)
 				Expect(err).ShouldNot(HaveOccurred())
 				err = bobEthArc.Deserialize(ethArcData)
 				Expect(err).ShouldNot(HaveOccurred())

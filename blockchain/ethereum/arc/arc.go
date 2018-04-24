@@ -21,7 +21,6 @@ type Arc struct {
 	context context.Context
 	conn    ethereum.Conn
 	auth    *bind.TransactOpts
-	// binding      *interop.Arc
 	arcData EthereumArcData
 
 	binding *bindings.Arc
