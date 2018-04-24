@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcutil"
-	"github.com/republicprotocol/republic-go/bitcoin/client"
+	"github.com/republicprotocol/republic-go/blockchain/bitcoin"
 )
 
 // Start a local Ganache instance.
@@ -63,19 +63,3 @@ func NewAccount(connection client.Connection, name string, value btcutil.Amount)
 
 	return addr, nil
 }
-
-// func NewAccount(conn client.Connection, eth *big.Int) (*bind.TransactOpts, common.Address, error) {
-// 	ethereumPair, err := crypto.GenerateKey()
-// 	if err != nil {
-// 		return nil, common.Address{}, err
-// 	}
-// 	addr := crypto.PubkeyToAddress(ethereumPair.PublicKey)
-// 	account := bind.NewKeyedTransactor(ethereumPair)
-// 	if eth.Cmp(big.NewInt(0)) > 0 {
-// 		if err := DistributeEth(conn, addr); err != nil {
-// 			return nil, common.Address{}, err
-// 		}
-// 	}
-
-// 	return account, addr, nil
-// }

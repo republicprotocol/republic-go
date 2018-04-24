@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcutil"
-	"github.com/republicprotocol/republic-go/bitcoin/client"
+	"github.com/republicprotocol/republic-go/blockchain/bitcoin"
 )
 
 func initiate(connection client.Connection, participantAddress string, value int64, hash []byte, lockTime int64) (BitcoinData, error) {

@@ -12,13 +12,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	btcClient "github.com/republicprotocol/republic-go/bitcoin/client"
-	"github.com/republicprotocol/republic-go/bitcoin/contracts/arc-bitcoin"
-	"github.com/republicprotocol/republic-go/bitcoin/regtest"
-	ethClient "github.com/republicprotocol/republic-go/ethereum/client"
-	"github.com/republicprotocol/republic-go/ethereum/contracts/arc-ethereum"
-	"github.com/republicprotocol/republic-go/ethereum/ganache"
-	"github.com/republicprotocol/republic-go/interop"
+	btcClient "github.com/republicprotocol/republic-go/blockchain/bitcoin"
+	"github.com/republicprotocol/republic-go/blockchain/bitcoin/contracts/arc-bitcoin"
+	ethClient "github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/contracts/arc-ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/test"
+	regtest "github.com/republicprotocol/republic-go/blockchain/test/bitcoind"
+	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 )
 
 const CHAIN = "regtest"
@@ -38,7 +38,7 @@ var _ = Describe("ARC", func() {
 	var aliceBtcAddr, bobBtcAddr string // btcutil.Address
 
 	// Don't run on CI
-	interop.LocalContext("BTC-ETH", func() {
+	test.Context("BTC-ETH", func() {
 
 		BeforeSuite(func() {
 

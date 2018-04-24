@@ -1,4 +1,4 @@
-package interop
+package test
 
 import (
 	"os"
@@ -7,9 +7,9 @@ import (
 	"github.com/onsi/ginkgo"
 )
 
-// LocalContext allows you to mark a ginkgo context as being local-only.
+// Context allows you to mark a ginkgo context as being local-only.
 // It won't run if the CI environment variable is true.
-func LocalContext(description string, f func()) {
+func Context(description string, f func()) {
 	var local bool
 
 	ciEnv := os.Getenv("CI")

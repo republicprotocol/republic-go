@@ -9,10 +9,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/bitcoin/client"
-	"github.com/republicprotocol/republic-go/bitcoin/contracts/arc-bitcoin"
-	"github.com/republicprotocol/republic-go/bitcoin/regtest"
-	"github.com/republicprotocol/republic-go/interop"
+	"github.com/republicprotocol/republic-go/blockchain/bitcoin"
+	"github.com/republicprotocol/republic-go/blockchain/bitcoin/contracts/arc-bitcoin"
+	"github.com/republicprotocol/republic-go/blockchain/bitcoin/regtest"
 )
 
 const CHAIN = "regtest"

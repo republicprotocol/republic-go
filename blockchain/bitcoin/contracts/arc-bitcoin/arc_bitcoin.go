@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/republicprotocol/republic-go/bitcoin/client"
-	arc "github.com/republicprotocol/republic-go/interop/arc"
+	"github.com/republicprotocol/republic-go/blockchain/arc"
+	"github.com/republicprotocol/republic-go/blockchain/bitcoin"
 )
 
 type BitcoinData struct {

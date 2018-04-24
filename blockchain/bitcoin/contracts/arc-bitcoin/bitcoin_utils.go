@@ -13,10 +13,8 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
-
+	"github.com/republicprotocol/republic-go/blockchain/bitcoin"
 	"golang.org/x/crypto/ripemd160"
-
-	"github.com/republicprotocol/republic-go/bitcoin/client"
 )
 
 const txVersion = 2

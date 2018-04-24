@@ -8,7 +8,7 @@ import (
 
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/republicprotocol/republic-go/bitcoin/client"
+	"github.com/republicprotocol/republic-go/blockchain/bitcoin"
 )
 
 func readSecret(connection client.Connection, redemptionTxBytes, secretHash []byte) ([32]byte, error) {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/republicprotocol/republic-go/bitcoin/client"
+	"github.com/republicprotocol/republic-go/blockchain/bitcoin"
 )
 
 func refund(connection client.Connection, contract, contractTxBytes []byte) error {
