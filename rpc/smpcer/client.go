@@ -58,7 +58,7 @@ func (client *Client) OpenOrder(ctx context.Context, multiAddr identity.MultiAdd
 	return err
 }
 
-func (client *Client) CloseOrder(ctx context.Context, multiAddr identity.MultiAddress orderId []byte) error {
+func (client *Client) CloseOrder(ctx context.Context, multiAddr identity.MultiAddress, orderID []byte) error {
 	conn, err := client.connPool.Dial(ctx, multiAddr)
 	if err != nil {
 		return fmt.Errorf("cannot dial %v:%v", multiAddr, err)
@@ -66,9 +66,13 @@ func (client *Client) CloseOrder(ctx context.Context, multiAddr identity.MultiAd
 	defer conn.Close()
 
 	smpcerClient := NewSmpcClient(conn.ClientConn)
-	request := &CancelOrderRequest {
+	request := &CancelOrderRequest{
 		Signature: []byte{}, // FIXME: Provide verifiable signature
+		OrderId:   orderID,
 	}
+
+	_, err = smpcerClient.CancelOrder(ctx, request)
+	return err
 }
 
 func (client *Client) Compute(ctx context.Context, multiAddress identity.MultiAddress, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {
