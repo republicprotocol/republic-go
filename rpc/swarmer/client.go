@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/rpc/client"
@@ -17,6 +18,7 @@ import (
 // client.ConnPool to reuse gRPC connections. The Client is used by Swarm
 // services to interact with other Swarm services in the network.
 type Client struct {
+	crypter      crypto.Crypter
 	multiAddress identity.MultiAddress
 	dht          *dht.DHT
 	connPool     *client.ConnPool
@@ -25,8 +27,9 @@ type Client struct {
 // NewClient returns a Client that identifies itself using an
 // identity.MultiAddress and uses a dht.DHT and client.ConnPool when
 // interacting with the swarm network.
-func NewClient(multiAddress identity.MultiAddress, dht *dht.DHT, connPool *client.ConnPool) Client {
+func NewClient(crypter crypto.Crypter, multiAddress identity.MultiAddress, dht *dht.DHT, connPool *client.ConnPool) Client {
 	return Client{
+		crypter:      crypter,
 		multiAddress: multiAddress,
 		dht:          dht,
 		connPool:     connPool,
@@ -130,10 +133,13 @@ func (client *Client) QueryTo(ctx context.Context, peer identity.MultiAddress, q
 	}
 	defer conn.Close()
 
-	// FIXME: Provide verifiable signature
 	swarmClient := NewSwarmClient(conn.ClientConn)
+	requestSignature, err := client.crypter.Sign(query)
+	if err != nil {
+		return identity.MultiAddresses{}, fmt.Errorf("cannot sign request: %v", err)
+	}
 	request := &QueryRequest{
-		Signature: []byte{},
+		Signature: requestSignature,
 		Address:   query.String(),
 	}
 	stream, err := swarmClient.Query(ctx, request)
@@ -225,8 +231,12 @@ func (client *Client) pruneDHT(addr identity.Address) bool {
 
 	// FIXME: Provide verifiable signature
 	swarmClient := NewSwarmClient(conn.ClientConn)
+	requestSignature, err := client.crypter.Sign(client.multiAddress)
+	if err != nil {
+		return false
+	}
 	request := &PingRequest{
-		Signature:    []byte{},
+		Signature:    requestSignature,
 		MultiAddress: client.multiAddress.String(),
 	}
 	if _, err := swarmClient.Ping(ctx, request); err != nil {

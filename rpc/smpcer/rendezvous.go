@@ -53,7 +53,6 @@ func (rendezvous *Rendezvous) connect(addr identity.Address, done <-chan struct{
 func (rendezvous *Rendezvous) wait(addr identity.Address, done <-chan struct{}, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {
 	receiver := make(chan *ComputeMessage)
 	errs := make(chan error, 1)
-
 	go func() {
 		defer close(receiver)
 		defer close(errs)

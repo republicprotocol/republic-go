@@ -6,7 +6,7 @@ import (
 	// . "github.com/republicprotocol/republic-go/rpc/client"
 )
 
-var _ = Describe("connectionPool", func() {
+var _ = Describe("Client connection pools", func() {
 
 	Context("NewConnPool method", func() {
 

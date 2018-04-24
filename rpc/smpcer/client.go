@@ -4,6 +4,7 @@ import (
 	"errors"
 	fmt "fmt"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/rpc/client"
@@ -13,14 +14,16 @@ import (
 var ErrConnectToSelf = errors.New("connect to self")
 
 type Client struct {
+	crypter      crypto.Crypter
 	multiAddress identity.MultiAddress
 	rendezvous   Rendezvous
 	streamer     Streamer
 	connPool     *client.ConnPool
 }
 
-func NewClient(multiAddress identity.MultiAddress, connPool *client.ConnPool) Client {
+func NewClient(crypter crypto.Crypter, multiAddress identity.MultiAddress, connPool *client.ConnPool) Client {
 	return Client{
+		crypter:      crypter,
 		multiAddress: multiAddress,
 		rendezvous:   NewRendezvous(),
 		streamer:     NewStreamer(multiAddress, connPool),
@@ -36,21 +39,33 @@ func (client *Client) OpenOrder(ctx context.Context, multiAddr identity.MultiAdd
 	defer conn.Close()
 
 	smpcerClient := NewSmpcClient(conn.ClientConn)
+	orderFragmentSignature, err := client.crypter.Sign(&orderFragment)
+	if err != nil {
+		return err
+	}
+	priceEncrypted, err := client.crypter.Encrypt(orderFragment.PriceShare.Value.Bytes())
+	if err != nil {
+		return err
+	}
+	volumeEncrypted, err := client.crypter.Encrypt(orderFragment.MaxVolumeShare.Value.Bytes()) // FIXME: Unify volumes
+	if err != nil {
+		return err
+	}
 	request := &OpenOrderRequest{
-		Signature: []byte{}, // FIXME: Provide verifiable signature
+		Signature: orderFragmentSignature,
 		OrderFragment: &OrderFragment{
 			OrderFragmenId: orderFragment.ID,
 			OrderId:        orderFragment.OrderID,
 			Expiry:         orderFragment.OrderExpiry.Unix(),
-			Type:           int32(orderFragment.OrderType), // FIXME: Put actual token pairing here
-			Tokens:         int32(0),                       // FIXME: Put actual token pairing here
+			Type:           int32(orderFragment.OrderType),
+			Tokens:         int32(0), // FIXME: Put actual token pairing here
 			PriceShare: &Share{
 				Index: orderFragment.PriceShare.Key,
-				Value: []byte{}, // RSA encrption of orderFragment.PriceShare.Value
+				Value: priceEncrypted,
 			},
 			VolumeShare: &Share{
 				Index: orderFragment.MaxVolumeShare.Key, // FIXME: Unify volumes
-				Value: []byte{},                         // RSA encrption of orderFragment.PriceShare.Value
+				Value: volumeEncrypted,
 			},
 		},
 	}

@@ -5,7 +5,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/republic-go/dht"
+	. "github.com/republicprotocol/republic-go/rpc/dht"
+
 	"github.com/republicprotocol/republic-go/identity"
 )
 

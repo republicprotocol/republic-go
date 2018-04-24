@@ -13,13 +13,14 @@ import (
 	"google.golang.org/grpc"
 )
 
-var server grpc.Server
+var _ = Describe("Client connections", func() {
 
-var _ = Describe("clientConn methods", func() {
+	var server *grpc.Server
+
 	BeforeSuite(func(done Done) {
 		defer close(done)
 
-		server := grpc.NewServer()
+		server = grpc.NewServer()
 		listener, err := net.Listen("tcp", "127.0.0.1:3000")
 		Expect(err).ShouldNot(HaveOccurred())
 		go func() {
