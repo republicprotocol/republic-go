@@ -150,10 +150,10 @@ func deployRepublicToken(ctx context.Context, conn client.Connection, auth *bind
 	return ren, address, nil
 }
 
-func deployHyperdrive(ctx context.Context, conn client.Connection, auth *bind.TransactOpts, hyperdriveAddress common.Address) (*bindings.Hyperdrive, common.Address, error) {
-	address, tx, hyper, err := bindings.DeployHyperdrive(auth, conn.Client, hyperdriveAddress)
+func deployHyperdrive(ctx context.Context, conn client.Connection, auth *bind.TransactOpts, dnrAddress common.Address) (*bindings.Hyperdrive, common.Address, error) {
+	address, tx, hyper, err := bindings.DeployHyperdrive(auth, conn.Client, dnrAddress)
 	if err != nil {
-		return nil, common.Address{}, fmt.Errorf("cannot deploy RepublicToken: %v", err)
+		return nil, common.Address{}, fmt.Errorf("cannot deploy Hyperdriver contract: %v", err)
 	}
 	conn.PatchedWaitDeployed(ctx, tx)
 	return hyper, address, nil

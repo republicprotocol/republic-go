@@ -44,6 +44,7 @@ type ClientDetails struct {
 	Client     Client
 	RenAddress common.Address
 	DNRAddress common.Address
+	HDAddress  common.Address
 	Chain      Chain
 }
 
@@ -67,6 +68,7 @@ func FromURI(uri string, chain Chain) (ClientDetails, error) {
 			Client:     client,
 			RenAddress: common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54"),
 			DNRAddress: common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3"),
+			HDAddress:  common.HexToAddress("0x9db5820c2c5aa57cebe502727c98d952dae8e15f"),
 			Chain:      chain,
 		}, nil
 	}

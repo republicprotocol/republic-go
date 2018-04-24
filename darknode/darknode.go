@@ -573,16 +573,16 @@ func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) error {
 		}
 	}
 
-	transaction, err := node.hyperdriveContract.SendTx(tx)
+	receipt, err := node.hyperdriveContract.SendTx(tx)
 	if err != nil {
 		return fmt.Errorf("fail to send tx to hyperdrive contract , %s", err)
 	}
 
-	blockNumber, err := node.hyperdriveContract.GetBlockNumberOfTx(transaction)
+	blockNumber, err := node.hyperdriveContract.GetBlockNumberOfTx(receipt)
 	if err != nil {
 		return fmt.Errorf("fail to get block number of the transaction , %s", err)
 	}
-	node.txsToBeFinalized <- NewTxWithBlockNumber(transaction.Hash(), blockNumber)
+	node.txsToBeFinalized <- NewTxWithBlockNumber(receipt.TxHash, blockNumber)
 
 	return nil
 }

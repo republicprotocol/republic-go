@@ -1,14 +1,19 @@
 package contracts
 
 import (
+	"bytes"
 	"context"
-	"log"
+	"encoding/json"
+	"fmt"
 	"math/big"
+	"net/http"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/pkg/errors"
 	"github.com/republicprotocol/republic-go/ethereum/bindings"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/hyperdrive"
@@ -44,11 +49,16 @@ func NewHyperdriveContract(ctx context.Context, clientDetails client.Connection,
 	}, nil
 }
 
-// SendTx sends an tx to the contract, it returns an error if there is an
-// conflict with previous orders. You need to register with the darkNodeRegistry
-// to send the tx.
+// SendTx sends an tx to the contract. It will block until the transaction has
+// been mined. It returns an error if there is an conflict with previous txs.
+// You need to register with the darkNodeRegistry to send the tx.
 func (hyper HyperdriveContract) SendTx(tx hyperdrive.Tx) (*types.Transaction, error) {
 	transaction, err := hyper.binding.SendTx(hyper.transactOpts, tx.Nonces)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = hyper.client.PatchedWaitMined(hyper.context, transaction)
 	if err != nil {
 		return nil, err
 	}
@@ -56,15 +66,37 @@ func (hyper HyperdriveContract) SendTx(tx hyperdrive.Tx) (*types.Transaction, er
 	return transaction, nil
 }
 
-func (hyper HyperdriveContract) GetBlockNumberOfTx(tx *types.Transaction) (uint64, error) {
-	receipt, err := hyper.client.Client.(*ethclient.Client).TransactionReceipt(hyper.context, tx.Hash())
-	log.Println("err here  is ", err)
-	if err != nil {
-		return 0, err
+func (hyper HyperdriveContract) GetBlockNumberOfTx(transaction common.Hash) (uint64, error) {
+	switch hyper.client.Network {
+	// Acording to this https://github.com/ethereum/go-ethereum/issues/15210
+	// we have to use json-rpc to get the block number.
+	case client.NetworkRopsten:
+		hash := []byte(`{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["` + transaction.Hex() + `"],"id":1}`)
+		resp, err := http.Post("https://ropsten.infura.io", "application/json", bytes.NewBuffer(hash))
+		if err != nil {
+			return 0, err
+		}
+
+		// Read the response status
+		if resp.StatusCode != http.StatusOK {
+			return 0, fmt.Errorf("request failed with status code %s", resp.StatusCode)
+		}
+		// Get the result
+		var data map[string]interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			return 0, err
+		}
+		if result, ok := data["result"]; ok {
+			if blockNumber, ok := result.(map[string]interface{})["blockNumber"]; ok {
+				if blockNumberStr, ok := blockNumber.(string); ok {
+					return strconv.ParseUint(blockNumberStr[2:], 16, 64)
+				}
+			}
+		}
+		return 0, errors.New("fail to unmarshal the json response")
 	}
 
-	log.Println("receipt is ", receipt)
-	return 1, nil
+	return 0, nil
 }
 
 func (hyper HyperdriveContract) CurrentBlock() (*types.Block, error) {

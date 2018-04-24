@@ -123,8 +123,8 @@ func (b *Connection) PatchedWaitMined(ctx context.Context, tx *types.Transaction
 
 	switch b.Network {
 	case NetworkGanache:
-		time.Sleep(100 * time.Millisecond)
-		return nil, nil
+		time.Sleep(1000 * time.Millisecond)
+		return nil, nil // b.Client.TransactionReceipt(ctx, tx.Hash())
 	case NetworkSimulated:
 		sim, ok := b.Client.(*backends.SimulatedBackend)
 		if ok {
