@@ -7,8 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/republicprotocol/republic-go/dispatch"
+
 	"github.com/gorilla/mux"
-	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
@@ -150,61 +151,36 @@ func (relay *Relay) SendOrderFragmentsToDarkOcean(order OrderFragments) error {
 
 // CancelOrder will cancel orders that aren't confirmed or settled in the dark ocean
 func (relay *Relay) CancelOrder(cancelOrder order.ID) error {
-	errCh := make(chan error, len(relay.DarkPools))
-
-	orderSignature, err := relay.Config.KeyPair.Sign(&cancelOrder)
-	if err != nil {
-		return err
-	}
-
+	errs := make(chan error, len(relay.DarkPools))
 	go func() {
-		defer close(errCh)
-		// For every Dark Pool
-		for i := range relay.DarkPools {
-			// Cancel orders for all nodes in the pool
-			var wg sync.WaitGroup
-			wg.Add(relay.DarkPools[i].Size())
-			for _, node := range relay.DarkPools[i].Addresses() {
-				defer wg.Done()
-				// Get multiaddress
-				multiaddress, err := getMultiAddress(node, relay)
+		defer close(errs)
+
+		dispatch.CoForAll(relay.DarkPools, func(i int) {
+			addrs := relay.DarkPools[i].Addresses()
+
+			dispatch.CoForAll(addrs, func(j int) {
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+
+				multiAddr, err := relay.swarmerClient.Query(ctx, addrs[j], 1)
 				if err != nil {
-					errCh <- fmt.Errorf("cannot read multi-address: %v", err)
+					errs <- err
 					return
 				}
 
-				// Create a client
-				client, err := rpc.NewClient(context.Background(), multiaddress, relay.Config.MultiAddress, relay.Config.KeyPair)
-				if err != nil {
-					errCh <- fmt.Errorf("cannot connect to client: %v", err)
+				// FIXME: Encryption
+				if err := relay.smpcerClient.CloseOrder(ctx, multiAddr, cancelOrder); err != nil {
+					errs <- err
 					return
 				}
-
-				// TODO: Send signature here?
-				cancelOrderRequest := &rpc.CancelOrderRequest{
-					From: &rpc.MultiAddress{
-						Signature:    []byte{},
-						MultiAddress: relay.Config.MultiAddress.String(),
-					},
-					OrderFragmentId: &rpc.OrderFragmentId{
-						Signature:       orderSignature,
-						OrderFragmentId: cancelOrder,
-					},
-				}
-
-				// Cancel order
-				err = client.CancelOrder(context.Background(), cancelOrderRequest)
-				if err != nil {
-					errCh <- fmt.Errorf("cannot cancel order to %v", base58.Encode(node.ID()))
-					return
-				}
-			}
-			wg.Wait()
-		}
+			})
+		})
 	}()
 
+	// Store the first error that occurred, if any
+	var err error
 	var errNum int
-	for errLocal := range errCh {
+	for errLocal := range errs {
 		if errLocal != nil {
 			errNum++
 			if err == nil {
@@ -213,6 +189,7 @@ func (relay *Relay) CancelOrder(cancelOrder order.ID) error {
 		}
 	}
 
+	// FIXME: Error if at least one dark pool could not cancel the order
 	if len(relay.DarkPools) > 0 && errNum == len(relay.DarkPools) {
 		return fmt.Errorf("could not cancel order to any dark pool: %v", err)
 	}
@@ -243,12 +220,6 @@ func (relay *Relay) sendSharesToDarkPool(pool darkocean.Pool, shares []*order.Fr
 						return
 					}
 					share.Signature = shareSignature
-
-					relaySignature, err := relay.Config.KeyPair.Sign(relay.Config.MultiAddress)
-					if err != nil {
-						errCh <- err
-						return
-					}
 
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer cancel()

@@ -6,27 +6,26 @@ import (
 	"sync"
 	"time"
 
-	dht "github.com/republicprotocol/go-dht"
-	"github.com/republicprotocol/republic-go/rpc/relayer"
-	"github.com/republicprotocol/republic-go/rpc/smpcer"
-	"github.com/republicprotocol/republic-go/rpc/swarmer"
-	"google.golang.org/grpc"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"github.com/republicprotocol/republic-go/darknode"
 	. "github.com/republicprotocol/republic-go/darknodetest"
+	. "github.com/republicprotocol/republic-go/relay"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/ethereum/ganache"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
-	. "github.com/republicprotocol/republic-go/relay"
 	"github.com/republicprotocol/republic-go/rpc"
+	"github.com/republicprotocol/republic-go/rpc/dht"
+	"github.com/republicprotocol/republic-go/rpc/relayer"
+	"github.com/republicprotocol/republic-go/rpc/smpcer"
+	"github.com/republicprotocol/republic-go/rpc/swarmer"
 	"github.com/republicprotocol/republic-go/stackint"
+	"google.golang.org/grpc"
 )
 
 var Prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
