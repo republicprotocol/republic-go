@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -51,7 +50,7 @@ var _ = Describe("Darknode", func() {
 			txInput := make(chan hyperdrive.TxWithBlockNumber)
 
 			go func() {
-				i := uint8(30)
+				i := uint8(70)
 				for {
 					select {
 					case <-done:
@@ -71,7 +70,7 @@ var _ = Describe("Darknode", func() {
 
 			go func() {
 				// Quit the test after 5 minutes
-				time.Sleep(10  * time.Minute)
+				time.Sleep(10 * time.Minute)
 				close(done)
 			}()
 
@@ -113,10 +112,9 @@ func WatchForHyperdriveContract(done <-chan struct{}, txInput chan hyperdrive.Tx
 	go func() {
 		defer close(errs)
 
-		mu := new(sync.Mutex)
 		watchingList := map[uint64][]common.Hash{}
 
-		ticker := time.NewTicker(10 * time.Second)
+		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()
 
 		for {
@@ -124,13 +122,11 @@ func WatchForHyperdriveContract(done <-chan struct{}, txInput chan hyperdrive.Tx
 			case <-done:
 				return
 			case tx := <-txInput:
-				mu.Lock()
 				if _, ok := watchingList[tx.BlockNumber]; !ok {
 					watchingList[tx.BlockNumber] = []common.Hash{}
 				}
-				log.Printf("receive tx with block number %d", tx.BlockNumber )
+				log.Printf("receive tx with block number %d", tx.BlockNumber)
 				watchingList[tx.BlockNumber] = append(watchingList[tx.BlockNumber], tx.Hash)
-				mu.Unlock()
 			case <-ticker.C:
 				currentBlock, err := hyper.CurrentBlock()
 				log.Println("Current block is ", currentBlock.NumberU64())
@@ -139,28 +135,28 @@ func WatchForHyperdriveContract(done <-chan struct{}, txInput chan hyperdrive.Tx
 					return
 				}
 
-				mu.Lock()
-				if hashes, ok := watchingList[currentBlock.NumberU64()- depth]; ok {
-					// Create a hashTable
-					hashTable := map[common.Hash]struct{}{}
-					block, err := hyper.BlockByNumber(big.NewInt(int64(currentBlock.NumberU64() - depth)))
-					if err != nil {
-						errs <- err
-						return
-					}
-					for _, h := range block.Transactions() {
-						hashTable[h.Hash()] = struct{}{}
-					}
-
-					for _, hash := range hashes {
-						if _, ok := hashTable[hash]; ok {
-							log.Println(hash.Hex(), "has been finalized in block ", currentBlock.NumberU64()-depth)
+				for key, value := range watchingList {
+					if key <= currentBlock.NumberU64()-depth {
+						// Create a hashTable
+						hashTable := map[common.Hash]struct{}{}
+						block, err := hyper.BlockByNumber(big.NewInt(int64(key)))
+						if err != nil {
+							errs <- err
+							return
 						}
-					}
+						for _, h := range block.Transactions() {
+							hashTable[h.Hash()] = struct{}{}
+						}
 
-					delete(watchingList, currentBlock.NumberU64()-depth)
+						for _, hash := range value {
+							if _, ok := hashTable[hash]; ok {
+								log.Println(hash.Hex(), "has been finalized in block ", key)
+							}
+						}
+
+						delete(watchingList, key)
+					}
 				}
-				mu.Unlock()
 			}
 		}
 	}()

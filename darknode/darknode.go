@@ -7,7 +7,6 @@ import (
 	"log"
 	"math/big"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -421,12 +420,11 @@ func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) error {
 
 func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uint64) <-chan error {
 	errs := make(chan error, 1)
-	mu := new(sync.Mutex)
-	watchingList := map[uint64][]common.Hash{}
 
 	go func() {
 		defer close(errs)
 
+		watchingList := map[uint64][]common.Hash{}
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
 
@@ -435,12 +433,10 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 			case <-done:
 				return
 			case tx := <-node.txsToBeFinalized:
-				mu.Lock()
 				if _, ok := watchingList[tx.BlockNumber]; !ok {
 					watchingList[tx.BlockNumber] = []common.Hash{}
 				}
 				watchingList[tx.BlockNumber] = append(watchingList[tx.BlockNumber], tx.Hash)
-				mu.Unlock()
 			case <-ticker.C:
 				currentBlock, err := node.hyperdriveContract.CurrentBlock()
 				if err != nil {
@@ -448,12 +444,11 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 					return
 				}
 
-				mu.Lock()
 				for key, value := range watchingList {
 					if key <= currentBlock.NumberU64()-depth {
 						// Create a hashTable
 						hashTable := map[common.Hash]struct{}{}
-						block, err := node.hyperdriveContract.BlockByNumber(big.NewInt(int64(currentBlock.NumberU64() - depth)))
+						block, err := node.hyperdriveContract.BlockByNumber(big.NewInt(int64(key)))
 						if err != nil {
 							errs <- err
 							return
@@ -464,7 +459,7 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 
 						for _, hash := range value {
 							if _, ok := hashTable[hash]; ok {
-								log.Println(hash.Hex(), "has been finalized in block ", currentBlock.NumberU64()-depth)
+								log.Println(hash.Hex(), "has been finalized in block ", key)
 								// Fixme :  generate the correct entry
 								entry := orderbook.Entry{
 									Order: order.Order{
@@ -480,11 +475,9 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 							}
 						}
 
-						delete(watchingList, currentBlock.NumberU64()-depth)
-
+						delete(watchingList, key)
 					}
 				}
-				mu.Unlock()
 			}
 		}
 	}()
