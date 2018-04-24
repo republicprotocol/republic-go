@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/republicprotocol/republic-go/delta"
-	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/rpc"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darkocean"
+	"github.com/republicprotocol/republic-go/delta"
+	"github.com/republicprotocol/republic-go/dispatch"
 	ethclient "github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"
+	"github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
@@ -25,7 +25,7 @@ import (
 type Darknodes []Darknode
 
 type Darknode struct {
-	Config
+	Config *Config
 	Logger *logger.Logger
 
 	id           identity.ID
@@ -36,14 +36,15 @@ type Darknode struct {
 
 	darknodeRegistry contracts.DarkNodeRegistry
 
-	rpc *rpc.RPC
+	orderFragments chan order.Fragment
+	rpc            *rpc.RPC
 
 	smpc  smpc.Smpc
 	relay relay.Relay
 }
 
 // NewDarknode returns a new Darknode.
-func NewDarknode(config Config) (Darknode, error) {
+func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, error) {
 	node := Darknode{
 		Config: config,
 		Logger: logger.StdoutLogger,
@@ -56,7 +57,7 @@ func NewDarknode(config Config) (Darknode, error) {
 	}
 	node.id = key.ID()
 	node.address = key.Address()
-	node.multiAddress = config.MultiAddress
+	node.multiAddress = multiAddr
 	node.orderbook = orderbook.NewOrderbook(4)
 
 	// Open a connection to the Ethereum network
@@ -82,7 +83,12 @@ func NewDarknode(config Config) (Darknode, error) {
 	weakCrypter := crypto.NewWeakCrypter()
 	node.crypter = &weakCrypter
 
+	node.orderFragments = make(chan order.Fragment, 1)
 	node.rpc = rpc.NewRPC(node.crypter, node.multiAddress, &node.orderbook)
+	node.rpc.OnOpenOrder(func(sig []byte, orderFragment order.Fragment) error {
+		node.orderFragments <- orderFragment
+		return nil
+	})
 
 	node.relay = relay.NewRelay(relay.Config{}, darkocean.Pools{}, darknodeRegistry, &node.orderbook, node.rpc.RelayerClient(), node.rpc.SmpcerClient(), node.rpc.SwarmerClient())
 
@@ -95,11 +101,11 @@ func NewDarknode(config Config) (Darknode, error) {
 // errors encountered. Users should not call Darknode.Bootstrap until the
 // Darknode is registered, and the its registration is approved.
 func (node *Darknode) Bootstrap(ctx context.Context) <-chan error {
-	return node.rpc.SwarmerClient().Bootstrap(ctx, node.BootstrapMultiAddresses, -1)
+	return node.rpc.SwarmerClient().Bootstrap(ctx, node.Config.BootstrapMultiAddresses, -1)
 }
 
-// Run the Darknode until the done channel is closed.
-func (node *Darknode) Run(done <-chan struct{}) <-chan error {
+// Serve the Darknode services until the done channel is closed.
+func (node *Darknode) Serve(done <-chan struct{}) <-chan error {
 	errs := make(chan error, 1)
 
 	go func() {
@@ -111,9 +117,13 @@ func (node *Darknode) Run(done <-chan struct{}) <-chan error {
 			return
 		}
 
-		// Bootstrap into the network
+		// Bootstrap into the network for 10 seconds maximum
 		time.Sleep(time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		dispatch.Pipe(done, node.Bootstrap(ctx), errs)
 
+		// Run epochs
 		dispatch.Pipe(done, node.RunEpochs(done), errs)
 	}()
 
@@ -191,8 +201,8 @@ func (node *Darknode) RunEpochs(done <-chan struct{}) <-chan error {
 						continue
 					}
 
-					darkOcean := NewDarkOcean(epoch.Blockhash, darknodeIDs)
-					deltas, deltaErrs := RunEpochProcess(currDone, node.ID(), darkOcean, node.router)
+					darkOcean := darkocean.NewDarkOcean(epoch.Blockhash, darknodeIDs)
+					deltas, deltaErrs := node.RunEpochProcess(currDone, darkOcean)
 					go dispatch.Pipe(done, deltaErrs, errs)
 					go func() {
 						for delta := range deltas {

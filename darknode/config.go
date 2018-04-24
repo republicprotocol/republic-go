@@ -19,7 +19,7 @@ type Config struct {
 	Ethereum EthereumConfig    `json:"ethereum"`
 	Logs     logger.Options    `json:"logs"`
 
-	MultiAddress            identity.MultiAddress   `json:"multiAddress"`
+	Address                 identity.Address        `json:"address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
 	Host                    string                  `json:"host"`
 	Port                    string                  `json:"port"`

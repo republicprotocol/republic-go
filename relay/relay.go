@@ -49,7 +49,7 @@ func NewRelay(config Config, pools darkocean.Pools, registrar contracts.DarkNode
 		DarkPools: pools,
 		Registrar: registrar,
 
-		relayer:   relayer.NewRelayer(orderbook),
+		relayer:   relayer.NewRelayer(relayerClient, orderbook),
 		orderbook: orderbook,
 
 		relayerClient: relayerClient,

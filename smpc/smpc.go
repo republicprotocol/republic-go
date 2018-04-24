@@ -80,9 +80,9 @@ type Smpc struct {
 	sharedDeltaBuilder        SharedDeltaBuilder
 }
 
-// NewComputer returns a new Smpc with the given ComputerID and N-K
+// NewSmpc returns a new Smpc with the given ComputerID and N-K
 // threshold.
-func NewComputer(id identity.ID, n, k int64) Smpc {
+func NewSmpc(id identity.ID, n, k int64) Smpc {
 	return Smpc{
 		id:                        id,
 		n:                         n,
@@ -196,4 +196,8 @@ func (computer *Smpc) SharedOrderTable() *SharedOrderTable {
 
 func (computer *Smpc) SharedObscureResidueTable() *SharedObscureResidueTable {
 	return &computer.sharedObscureResidueTable
+}
+
+func (computer *Smpc) Prime() stackint.Int1024 {
+	return Prime
 }

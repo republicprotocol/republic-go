@@ -38,10 +38,10 @@ func NewRPC(crypter crypto.Crypter, multiAddress identity.MultiAddress, orderboo
 	rpc.connPool = client.NewConnPool(256)
 
 	rpc.relayerClient = relayer.NewClient(rpc.crypter, &rpc.dht, &rpc.connPool)
-	rpc.relayer = relayer.NewRelayer(orderbook)
+	rpc.relayer = relayer.NewRelayer(&rpc.relayerClient, orderbook)
 
 	rpc.smpcerClient = smpcer.NewClient(rpc.crypter, multiAddress, &rpc.connPool)
-	rpc.smpcer = smpcer.NewSmpcer(rpc, &rpc.smpcerClient)
+	rpc.smpcer = smpcer.NewSmpcer(&rpc.smpcerClient, rpc)
 
 	rpc.swarmerClient = swarmer.NewClient(rpc.crypter, multiAddress, &rpc.dht, &rpc.connPool)
 	rpc.swarmer = swarmer.NewSwarmer(&rpc.swarmerClient)

@@ -19,21 +19,22 @@ func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (darknode.D
 	var err error
 
 	darknodes := make(darknode.Darknodes, numberOfDarknodes)
+	multiAddrs := make([]identity.MultiAddress, numberOfDarknodes)
 	configs := make([]darknode.Config, numberOfDarknodes)
 	for i := 0; i < numberOfDarknodes; i++ {
 		key := keystore.NewKeyForDirectICAP(rand.Reader)
-		configs[i], err = NewLocalConfig(*key, "127.0.0.1", fmt.Sprintf("%d", 3000+i))
+		multiAddrs[i], configs[i], err = NewLocalConfig(*key, "127.0.0.1", fmt.Sprintf("%d", 3000+i))
 		if err != nil {
 			return nil, err
 		}
 	}
 	for i := 0; i < numberOfDarknodes; i++ {
 		for j := 0; j < numberOfBootstrapDarknodes; j++ {
-			configs[i].BootstrapMultiAddresses = append(configs[i].BootstrapMultiAddresses, configs[j].MultiAddress)
+			configs[i].BootstrapMultiAddresses = append(configs[i].BootstrapMultiAddresses, multiAddrs[i])
 		}
 	}
 	for i := 0; i < numberOfDarknodes; i++ {
-		darknodes[i], err = darknode.NewDarknode(configs[i])
+		darknodes[i], err = darknode.NewDarknode(multiAddrs[i], &configs[i])
 		if err != nil {
 			return nil, err
 		}
@@ -106,27 +107,26 @@ func RefundDarknodes(darknodes darknode.Darknodes, conn client.Connection, darkn
 	return nil
 }
 
-func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (darknode.Config, error) {
+func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAddress, darknode.Config, error) {
 	keyPair, err := identity.NewKeyPairFromPrivateKey(ecdsaKey.PrivateKey)
 	if err != nil {
-		return darknode.Config{}, err
+		return identity.MultiAddress{}, darknode.Config{}, err
 	}
 
 	rsaKey, err := crypto.NewRsaKeyPair()
 	if err != nil {
-		return darknode.Config{}, err
+		return identity.MultiAddress{}, darknode.Config{}, err
 	}
 
-	multi, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", host, port, keyPair.Address()))
+	multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", host, port, keyPair.Address()))
 	if err != nil {
-		return darknode.Config{}, err
+		return identity.MultiAddress{}, darknode.Config{}, err
 	}
-	return darknode.Config{
-		EcdsaKey:     ecdsaKey,
-		RsaKey:       rsaKey,
-		Host:         host,
-		Port:         port,
-		MultiAddress: multi,
+	return multiAddr, darknode.Config{
+		EcdsaKey: ecdsaKey,
+		RsaKey:   rsaKey,
+		Host:     host,
+		Port:     port,
 		Ethereum: darknode.EthereumConfig{
 			Network:                 client.NetworkGanache,
 			URI:                     "http://localhost:8545",
