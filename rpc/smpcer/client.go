@@ -2,8 +2,10 @@ package smpcer
 
 import (
 	"errors"
+	fmt "fmt"
 
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/rpc/client"
 	"golang.org/x/net/context"
 )
@@ -14,6 +16,7 @@ type Client struct {
 	multiAddress identity.MultiAddress
 	rendezvous   Rendezvous
 	streamer     Streamer
+	connPool     *client.ConnPool
 }
 
 func NewClient(multiAddress identity.MultiAddress, connPool *client.ConnPool) Client {
@@ -21,6 +24,50 @@ func NewClient(multiAddress identity.MultiAddress, connPool *client.ConnPool) Cl
 		multiAddress: multiAddress,
 		rendezvous:   NewRendezvous(),
 		streamer:     NewStreamer(multiAddress, connPool),
+		connPool:     connPool,
+	}
+}
+
+func (client *Client) OpenOrder(ctx context.Context, multiAddr identity.MultiAddress, orderFragment order.Fragment) error {
+	conn, err := client.connPool.Dial(ctx, multiAddr)
+	if err != nil {
+		return fmt.Errorf("cannot dial %v: %v", multiAddr, err)
+	}
+	defer conn.Close()
+
+	smpcerClient := NewSmpcClient(conn.ClientConn)
+	request := &OpenOrderRequest{
+		Signature: []byte{}, // FIXME: Provide verifiable signature
+		OrderFragment: &OrderFragment{
+			OrderFragmenId: orderFragment.ID,
+			OrderId:        orderFragment.OrderID,
+			Expiry:         orderFragment.OrderExpiry.Unix(),
+			Type:           int32(orderFragment.OrderType), // FIXME: Put actual token pairing here
+			Tokens:         int32(0),                       // FIXME: Put actual token pairing here
+			PriceShare: &Share{
+				Index: orderFragment.PriceShare.Key,
+				Value: []byte{}, // RSA encrption of orderFragment.PriceShare.Value
+			},
+			VolumeShare: &Share{
+				Index: orderFragment.MaxVolumeShare.Key, // FIXME: Unify volumes
+				Value: []byte{},                         // RSA encrption of orderFragment.PriceShare.Value
+			},
+		},
+	}
+	_, err = smpcerClient.OpenOrder(ctx, request)
+	return err
+}
+
+func (client *Client) CloseOrder(ctx context.Context, multiAddr identity.MultiAddress orderId []byte) error {
+	conn, err := client.connPool.Dial(ctx, multiAddr)
+	if err != nil {
+		return fmt.Errorf("cannot dial %v:%v", multiAddr, err)
+	}
+	defer conn.Close()
+
+	smpcerClient := NewSmpcClient(conn.ClientConn)
+	request := &CancelOrderRequest {
+		Signature: []byte{}, // FIXME: Provide verifiable signature
 	}
 }
 

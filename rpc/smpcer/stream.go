@@ -35,7 +35,7 @@ func NewStreamer(multiAddress identity.MultiAddress, connPool *client.ConnPool) 
 }
 
 func (streamer *Streamer) connect(ctx context.Context, multiAddr identity.MultiAddress, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {
-
+	panic("unimplemented")
 }
 
 func (streamer *Streamer) acquireConn(multiAddr identity.MultiAddress) {
@@ -68,9 +68,7 @@ func (streamer *Streamer) releaseConn(addr identity.Address) {
 }
 
 func (streamer *Streamer) stream(multiAddress identity.MultiAddress) {
-	addr := multiAddr.Address()
-
-	stream, err := streamer.compute(context.Background(), multiAddress)
+	panic("unimplemented")
 }
 
 func (streamer *Streamer) compute(ctx context.Context, multiAddress identity.MultiAddress) (Smpc_ComputeClient, error) {

@@ -19,5 +19,5 @@ type Options struct {
 	Alpha                   int                     `json:"alpha"`
 	MaxBucketLength         int                     `json:"maxBucketLength"`
 	ClientPoolCacheLimit    int                     `json:"clientPoolCacheLimit"`
-	Debug                   DebugLevel              `json:"debug"`
+	Debug                   int                     `json:"debug"`
 }

@@ -9,16 +9,14 @@ import (
 	"net"
 	"sync"
 
-	"github.com/republicprotocol/republic-go/dht"
-	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/orderbook"
-
 	"github.com/republicprotocol/republic-go/dispatch"
-	"google.golang.org/grpc"
-
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/rpc"
+	"github.com/republicprotocol/republic-go/rpc/dht"
+	"google.golang.org/grpc"
 )
 
 type Router struct {

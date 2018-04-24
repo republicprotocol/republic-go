@@ -1,4 +1,4 @@
-package darknode_test
+package darkocean_test
 
 // . "github.com/onsi/ginkgo"
 // . "github.com/onsi/gomega"

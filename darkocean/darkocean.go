@@ -1,4 +1,4 @@
-package darknode
+package darkocean
 
 import (
 	"bytes"

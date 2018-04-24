@@ -18,7 +18,7 @@ var upgrader = websocket.Upgrader{
 }
 
 // GetOrdersHandler handles WebSocket requests.
-func GetOrdersHandler(book *orderbook.Orderbook) http.Handler {
+func (relay *Relay) GetOrdersHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		defer conn.Close()
@@ -26,13 +26,13 @@ func GetOrdersHandler(book *orderbook.Orderbook) http.Handler {
 			fmt.Printf("cannot open websocket connection: %v", err)
 			return
 		}
-		writeUpdatesToWebSocket(w, r, conn, book)
+		relay.writeUpdatesToWebSocket(w, r, conn)
 	})
 }
 
 // writeUpdatesToWebSocket to notify the client of status changes to specific
 // orders.
-func writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Request, conn *websocket.Conn, book *orderbook.Orderbook) {
+func (relay *Relay) writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Request, conn *websocket.Conn) {
 	// Retrieve ID and statuses from URL.
 	orderID := r.FormValue("id")
 	statuses := strings.Split(r.FormValue("status"), ",")
@@ -73,11 +73,11 @@ func writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Request, conn *webso
 	defer close(messages)
 
 	go func() {
-		if err := book.Subscribe(messages); err != nil {
+		if err := relay.orderbook.Subscribe(messages); err != nil {
 			fmt.Printf("unable to subscribe to order book: %v", err)
 		}
 	}()
-	defer book.Unsubscribe(messages)
+	defer relay.orderbook.Unsubscribe(messages)
 
 	for {
 		select {

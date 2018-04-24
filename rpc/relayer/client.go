@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/rpc"
 
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -61,7 +60,7 @@ func (client *Client) Sync(ctx context.Context, orderbook *orderbook.Orderbook, 
 			// If the number of desired peers are successfully synchronizing
 			// then sleep for a minute and check again
 			if atomic.LoadInt64(&conns) >= int64(peers) {
-				t := time.NewTimer(time.Minute)
+				t := time.NewTimer(10 * time.Second)
 				select {
 				case <-ctx.Done():
 					errs <- ctx.Err()
@@ -118,10 +117,16 @@ func (client *Client) SyncFrom(ctx context.Context, multiAddr identity.MultiAddr
 		defer close(responses)
 		defer close(errs)
 
-		// FIXME: Provide verifiable signature
+		conn, err := client.connPool.Dial(ctx, multiAddr)
+		if err != nil {
+			errs <- err
+			return
+		}
+		defer conn.Close()
+
 		relayClient := NewRelayClient(conn.ClientConn)
 		request := &SyncRequest{
-			Signature: []byte{},
+			Signature: []byte{}, // FIXME: Provide verifiable signature
 			Epoch:     epoch[:],
 		}
 		stream, err := relayClient.Sync(ctx, request)
@@ -140,7 +145,7 @@ func (client *Client) SyncFrom(ctx context.Context, multiAddr identity.MultiAddr
 			case <-ctx.Done():
 				errs <- ctx.Err()
 				return
-			case responses <- err:
+			case responses <- message:
 			}
 		}
 	}()
@@ -158,7 +163,7 @@ func mergeEntry(book *orderbook.Orderbook, val *SyncResponse) error {
 		return fmt.Errorf("cannot merge entry: epoch %v", val.GetEpoch())
 	}
 
-	ord := rpc.UnmarshalOrder(val.GetEntry().GetOrder())
+	ord := UnmarshalOrder(val.GetEntry().GetOrder())
 	epoch := [32]byte{}
 	copy(epoch[:], val.GetEpoch())
 
@@ -167,7 +172,7 @@ func mergeEntry(book *orderbook.Orderbook, val *SyncResponse) error {
 	case OrderStatus_Open:
 		err = book.Open(orderbook.NewEntry(ord, order.Open, epoch))
 	case OrderStatus_Canceled:
-		err = book.Cancel(orderbook.NewEntry(ord, order.Canceled, epoch))
+		err = book.Cancel(ord.ID)
 	case OrderStatus_Unconfirmed:
 		err = book.Match(orderbook.NewEntry(ord, order.Unconfirmed, epoch))
 	case OrderStatus_Confirmed:
@@ -175,7 +180,7 @@ func mergeEntry(book *orderbook.Orderbook, val *SyncResponse) error {
 	case OrderStatus_Settled:
 		err = book.Settle(orderbook.NewEntry(ord, order.Settled, epoch))
 	default:
-		return fmt.Errorf("cannot merge entry: status %v", status)
+		return fmt.Errorf("cannot merge entry: status %v", val.GetEntry().GetOrderStatus())
 	}
 	return err
 }

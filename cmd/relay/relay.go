@@ -5,19 +5,25 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/big"
+	"net"
+	"os"
 	"os/exec"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/ethereum/ganache"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -41,7 +47,7 @@ func main() {
 		return
 	}
 
-	relayAddress, err := getRelayMultiaddress(keyPair, *port)
+	multiAddr, err := getMultiaddress(keyPair, *port)
 	if err != nil {
 		fmt.Println(fmt.Errorf("could not obtain multiaddress: %s", err))
 		return
@@ -55,7 +61,7 @@ func main() {
 
 	config := relay.Config{
 		KeyPair:        keyPair,
-		MultiAddress:   relayAddress,
+		MultiAddress:   multiAddr,
 		Token:          *token,
 		BootstrapNodes: getBootstrapNodes(),
 		BindAddress:    *bindAddress,
@@ -72,12 +78,29 @@ func main() {
 		return
 	}
 
-	darkOcean := darknode.NewDarkOcean(epoch.Blockhash, darknodeIDs)
+	darkOcean := darkocean.NewDarkOcean(epoch.Blockhash, darknodeIDs)
 
 	// return darkOcean.Pools()
 	pools := darkOcean.Pools()
 	book := orderbook.NewOrderbook(100) // TODO: Check max connections
 	relay.RunRelay(config, pools, book, registrar)
+
+	server := grpc.NewServer()
+	listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", *bindAddress, *port))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	go func() {
+		<-signals
+		log.Println("shutting down...")
+		server.Stop()
+		os.Exit(0)
+	}()
+
+	go server.Serve(listener)
 }
 
 func getKey(filename, passphrase string) (*keystore.Key, error) {
@@ -100,11 +123,10 @@ func getKeyPair(key *keystore.Key) (identity.KeyPair, error) {
 	if err != nil {
 		return identity.KeyPair{}, fmt.Errorf("cannot generate id from key %v", err)
 	}
-
 	return id, nil
 }
 
-func getRelayMultiaddress(id identity.KeyPair, port int) (identity.MultiAddress, error) {
+func getMultiaddress(id identity.KeyPair, port int) (identity.MultiAddress, error) {
 	// Get our IP address
 	ipInfoOut, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
 	if err != nil {
