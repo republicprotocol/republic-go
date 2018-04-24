@@ -7,10 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/republicprotocol/republic-go/dispatch"
-
 	"github.com/gorilla/mux"
 	"github.com/republicprotocol/republic-go/darkocean"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
