@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/republicprotocol/republic-go/identity"
-
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/ethereum/client"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/rpc"
 )

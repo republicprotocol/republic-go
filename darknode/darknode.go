@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/hyperdrive"
@@ -53,24 +52,10 @@ type Darknode struct {
 	hyperdriveService rpc.HyperdriveService
 	clientPool        rpc.ClientPool
 
-	epochRoutes    chan EpochRoute
-	orderFragments chan order.Fragment
-	deltaFragments chan smpc.DeltaFragment
-
-	txsToBeFinalized chan TxWithBlockNumber
-	txPool           hyperdrive.TxPool
-	hyperChain       hyperdrive.HyperChain
-	proposalCh       chan hyperdrive.Proposal
-	prepareCh        chan hyperdrive.Prepare
-	commitCh         chan hyperdrive.Commit
-	blockCh          chan hyperdrive.Block
-	faultCh          chan hyperdrive.Fault
-	driveMessages    chan *rpc.DriveMessage
-	signer           identity.Signer
-	verifier         identity.Verifier
-
-	replicasMu *sync.RWMutex
-	replicas   Pool
+	epochRoutes      chan EpochRoute
+	orderFragments   chan order.Fragment
+	deltaFragments   chan smpc.DeltaFragment
+	txsToBeFinalized chan hyperdrive.TxWithBlockNumber
 }
 
 // NewDarknode returns a new Darknode.
@@ -115,6 +100,7 @@ func NewDarknode(config Config) (Darknode, error) {
 	node.epochRoutes = make(chan EpochRoute, 2)
 	node.orderFragments = make(chan order.Fragment)
 	node.deltaFragments = make(chan smpc.DeltaFragment)
+	node.txsToBeFinalized = make(chan hyperdrive.TxWithBlockNumber)
 
 	// Create rpc client pool and services
 
@@ -407,164 +393,6 @@ func (node *Darknode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 	println("ORDER PROCESSED")
 }
 
-// OnTxReceived handles the Tx received from non-replica.
-// It will store the tx in the txPool and forward it to replicas
-// if it's an valid Tx.
-func (node *Darknode) OnTxReceived(tx *rpc.Tx) {
-	valid := node.txPool.NewTx(rpc.UnmarshalTx(tx))
-	if valid {
-		node.driveMessages <- &rpc.DriveMessage{
-			DriveMessage: &rpc.DriveMessage_Tx{
-				Tx: tx,
-			},
-		}
-	}
-}
-
-// ProcessDriveMessages handles driveMessages from/to grpc clients until the
-// context is canceled.
-func (node *Darknode) ProcessDriveMessages(ctx context.Context, threshold int) {
-	// Split the driveMessages channel to each replica's channel
-	node.replicasMu.RLock()
-	driveMessageSendings := make([]chan *rpc.DriveMessage, len(node.replicas.nodes))
-	for i := range driveMessageSendings {
-		driveMessageSendings[i] = make(chan *rpc.DriveMessage)
-	}
-	go dispatch.Split(node.driveMessages, driveMessageSendings)
-
-	// Either try to connect to the replica or wait for connection
-	// depends on the ID difference.
-	for i := range node.replicas.nodes {
-		var driveMessageReceiving <-chan *rpc.DriveMessage
-		var errs <-chan error
-
-		go func(i int) {
-			if bytes.Compare(node.ID(), node.replicas.nodes[i].ID) < 0 {
-				driveMessageReceiving, errs = node.hyperdriveService.WaitForDrive(*node.replicas.nodes[i].MultiAddress(), driveMessageSendings[i])
-				go func() {
-					for err := range errs {
-						node.Logger.Compute(logger.Error, "server error: "+err.Error())
-					}
-				}()
-			} else if bytes.Compare(node.ID(), node.replicas.nodes[i].ID) > 0 {
-				driveMessageReceiving, errs = node.clientPool.Drive(context.Background(), *node.replicas.nodes[i].multiAddress, driveMessageSendings[i])
-				go func() {
-					for err := range errs {
-						node.Logger.Compute(logger.Error, "client error: "+err.Error())
-					}
-				}()
-
-				// Send initial authentication message
-				multi := node.MultiAddress()
-				select {
-				case driveMessageSendings[i] <- &rpc.DriveMessage{MultiAddress: rpc.MarshalMultiAddress(&multi)}:
-				case <-ctx.Done():
-					return
-				}
-			}
-		}(i)
-
-		go func() {
-			for msg := range driveMessageReceiving {
-				switch msg.DriveMessage.(type) {
-				case *rpc.DriveMessage_Tx:
-					tx := msg.DriveMessage.(*rpc.DriveMessage_Tx).Tx
-					valid := node.txPool.NewTx(rpc.UnmarshalTx(tx))
-					if valid {
-						node.driveMessages <- msg
-					}
-				case *rpc.DriveMessage_Proposal:
-					proposal := *rpc.UnmarshalProposal(msg.DriveMessage.(*rpc.DriveMessage_Proposal).Proposal)
-					if node.hyperChain.AddProposal(proposal) {
-						node.proposalCh <- proposal
-					}
-				case *rpc.DriveMessage_Prepare:
-					prepare := *rpc.UnmarshalPrepare(msg.DriveMessage.(*rpc.DriveMessage_Prepare).Prepare)
-					if node.hyperChain.AddPrepare(prepare, threshold) {
-						node.prepareCh <- prepare
-					}
-				case *rpc.DriveMessage_Commit:
-					//commit := *rpc.UnmarshalCommit(msg.DriveMessage.(*rpc.DriveMessage_Commit).Commit)
-				case *rpc.DriveMessage_Block:
-					//todo :
-					node.blockCh <- *rpc.UnmarshalBlock(msg.DriveMessage.(*rpc.DriveMessage_Block).Block)
-				case *rpc.DriveMessage_Fault:
-					//todo :
-					//node.faultCh <- rpc.UnmarshalFault(msg.DriveMessage.(*rpc.DriveMessage_Fault).Fault)
-				default:
-					node.Logger.Compute(logger.Error, "client error: unrecognized message type ")
-				}
-			}
-		}()
-	}
-	node.replicasMu.RUnlock()
-
-	<-ctx.Done()
-}
-
-func (node *Darknode) ProcessProposal(ctx context.Context) {
-	prepares, faults, errs := hyperdrive.ProcessProposal(ctx, node.proposalCh, node.signer, node.verifier, 100)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case prepare := <-prepares:
-			// todo : validate the prepare
-			node.prepareCh <- prepare
-		case fault := <-faults:
-			node.faultCh <- fault
-		case err := <-errs:
-			log.Println(err)
-		}
-	}
-}
-
-func (node *Darknode) ProcessPrepare(ctx context.Context) {
-	commits, faults, errs := hyperdrive.ProcessPreparation(ctx, node.prepareCh, node.signer, node.verifier, 100, 80)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case commit := <-commits:
-			// todo : validate the prepare
-			node.commitCh <- commit
-		case fault := <-faults:
-			node.faultCh <- fault
-		case err := <-errs:
-			log.Println(err)
-		}
-	}
-}
-
-func (node *Darknode) ProcessCommit(ctx context.Context) {
-	commits, faults, errs := hyperdrive.ProcessCommits(ctx, node.commitCh, node.signer, node.verifier, 100, 80)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case commit := <-commits:
-			//todo : how to do this ?
-			log.Println(commit)
-		case fault := <-faults:
-			node.faultCh <- fault
-		case err := <-errs:
-			log.Println(err)
-		}
-	}
-}
-
-type TxWithBlockNumber struct {
-	hash        common.Hash
-	blockNumber uint64
-}
-
-func NewTxWithBlockNumber(hash common.Hash, blockNumber uint64) TxWithBlockNumber {
-	return TxWithBlockNumber{
-		hash:        hash,
-		blockNumber: blockNumber,
-	}
-}
-
 // OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
 // forwards it to the Hyperdrive.
 func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) error {
@@ -586,19 +414,18 @@ func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) error {
 	if err != nil {
 		return fmt.Errorf("fail to get block number of the transaction , %s", err)
 	}
-	node.txsToBeFinalized <- NewTxWithBlockNumber(transaction.Hash(), blockNumber)
+	node.txsToBeFinalized <- hyperdrive.NewTxWithBlockNumber(transaction.Hash(), blockNumber)
 
 	return nil
 }
 
-func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth int) <-chan error {
+func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uint64) <-chan error {
 	errs := make(chan error, 1)
+	mu := new(sync.Mutex)
+	watchingList := map[uint64][]common.Hash{}
 
 	go func() {
 		defer close(errs)
-
-		mu := new(sync.Mutex)
-		watchingList := map[uint64][]common.Hash{}
 
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
@@ -609,10 +436,10 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth int
 				return
 			case tx := <-node.txsToBeFinalized:
 				mu.Lock()
-				if _, ok := watchingList[tx.blockNumber]; !ok {
-					watchingList[tx.blockNumber] = []common.Hash{}
+				if _, ok := watchingList[tx.BlockNumber]; !ok {
+					watchingList[tx.BlockNumber] = []common.Hash{}
 				}
-				watchingList[tx.blockNumber] = append(watchingList[tx.blockNumber], tx.hash)
+				watchingList[tx.BlockNumber] = append(watchingList[tx.BlockNumber], tx.Hash)
 				mu.Unlock()
 			case <-ticker.C:
 				currentBlock, err := node.hyperdriveContract.CurrentBlock()
@@ -622,36 +449,40 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth int
 				}
 
 				mu.Lock()
-				if hashes, ok := watchingList[currentBlock.NumberU64()-16]; ok {
-					// Create a hashTable
-					hashTable := map[common.Hash]struct{}{}
-					block, err := node.hyperdriveContract.BlockByNumber(big.NewInt(int64(currentBlock.NumberU64() -16)))
-					if err != nil {
-						errs <- err
-						return
-					}
-					for _, h := range block.Transactions() {
-						hashTable[h.Hash()] = struct{}{}
-					}
+				for key, value := range watchingList {
+					if key <= currentBlock.NumberU64()-depth {
+						// Create a hashTable
+						hashTable := map[common.Hash]struct{}{}
+						block, err := node.hyperdriveContract.BlockByNumber(big.NewInt(int64(currentBlock.NumberU64() - depth)))
+						if err != nil {
+							errs <- err
+							return
+						}
+						for _, h := range block.Transactions() {
+							hashTable[h.Hash()] = struct{}{}
+						}
 
-					for _, hash := range hashes {
-						if _, ok := hashTable[hash]; ok {
-							// Fixme :  generate the correct entry
-							entry := orderbook.Entry{
-								Order: order.Order{
-									ID: hash.Bytes(),
-								},
-								Status: order.Confirmed,
-							}
+						for _, hash := range value {
+							if _, ok := hashTable[hash]; ok {
+								log.Println(hash.Hex(), "has been finalized in block ", currentBlock.NumberU64()-depth)
+								// Fixme :  generate the correct entry
+								entry := orderbook.Entry{
+									Order: order.Order{
+										ID: hash.Bytes(),
+									},
+									Status: order.Confirmed,
+								}
 
-							if err := node.orderbook.Confirm(entry); err != nil {
-								errs <- err
-								return
+								if err := node.orderbook.Confirm(entry); err != nil {
+									errs <- err
+									return
+								}
 							}
 						}
-					}
 
-					delete(watchingList, currentBlock.NumberU64()-16)
+						delete(watchingList, currentBlock.NumberU64()-depth)
+
+					}
 				}
 				mu.Unlock()
 			}

@@ -102,7 +102,7 @@ func NewOrder(ty Type, parity Parity, expiry time.Time, fstCode, sndCode Currenc
 		MinVolume: minVolume,
 		Nonce:     nonce,
 	}
-	order.ID = ID(order.Hash())
+	order.ID = order.Hash()[:]
 	return order
 }
 
@@ -190,8 +190,10 @@ func (order *Order) Split(n, k int64, prime *stackint.Int1024) ([]*Fragment, err
 
 // Hash returns the Keccak256 hash of an Order. This hash is used to create the
 // ID and signature for an Order.
-func (order *Order) Hash() []byte {
-	return crypto.Keccak256(order.Bytes())
+func (order *Order) Hash() identity.Hash {
+	var hash [32]byte
+	copy(hash[:], crypto.Keccak256(order.Bytes()))
+	return hash
 }
 
 // Sign signs the order using the provided keypair, and assigns it the the order's

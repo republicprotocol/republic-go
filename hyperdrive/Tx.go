@@ -1,8 +1,7 @@
 package hyperdrive
 
 import (
-	"sync"
-
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
@@ -44,46 +43,21 @@ func NewTxFromByteSlices(nonces ...[]byte) Tx {
 	}
 }
 
+type TxWithBlockNumber struct {
+	Hash        common.Hash
+	BlockNumber uint64
+}
+
+func NewTxWithBlockNumber(hash common.Hash, blockNumber uint64) TxWithBlockNumber {
+	return TxWithBlockNumber{
+		Hash:        hash,
+		BlockNumber: blockNumber,
+	}
+}
+
 // Nonces must not store any Nonce more than once.
 type Nonces []Nonce
 
 // A Nonce is a unique 256-bit value that makes up a Tx. It must be unique
 // within the entire Hyperdrive blockchain.
 type Nonce = [32]byte
-
-type TxPool struct {
-	mu    *sync.RWMutex
-	chain *HyperChain
-	pool  map[[32]byte]Tx
-}
-
-func NewTxPool(chain *HyperChain) TxPool {
-	return TxPool{
-		mu:    new(sync.RWMutex),
-		chain: chain,
-		pool:  map[[32]byte]Tx{},
-	}
-}
-
-func (txPool *TxPool) NewTx(tx Tx) bool {
-	txPool.mu.Lock()
-	defer txPool.mu.Unlock()
-
-	if !txPool.chain.VerifyTx(tx) {
-		return false
-	}
-
-	if _, ok := txPool.pool[tx.Hash]; ok {
-		return false
-	}
-	txPool.pool[tx.Hash] = tx
-
-	return true
-}
-
-func (txPool *TxPool) FinalizeTx(tx Tx) {
-	txPool.mu.Lock()
-	defer txPool.mu.Unlock()
-
-	delete(txPool.pool, tx.Hash)
-}

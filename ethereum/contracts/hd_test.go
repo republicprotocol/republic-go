@@ -73,7 +73,6 @@ var _ = Describe("Dark Node Registrar", func() {
 	})
 
 	Context("Tests with Ropsten", func() {
-		// creatorAccountAddress := "0x9b5683153ddb50b4106Ef9296a65D26E0b87002c"
 		renContractAddress := "0xad6ab5ccbd2d761d11ba7e976ba7a93a6e3dd41a"
 		dnrContractAddress := "0x429b5ba768e58f1a26b58742975aaeee417f3211"
 		hyperdriveAddress := "0x9db5820c2c5aa57cebe502727c98d952dae8e15f"
@@ -110,7 +109,7 @@ var _ = Describe("Dark Node Registrar", func() {
 			// log.Println("blockNumber is ", blockNumber)
 		})
 
-		FIt("should be able to get current block number and block number of certain transaction", func() {
+		It("should be able to get current block number and block number of certain transaction", func() {
 			conn, err := client.Connect("https://ropsten.infura.io", client.NetworkRopsten, renContractAddress, dnrContractAddress, hyperdriveAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
