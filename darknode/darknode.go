@@ -95,7 +95,7 @@ func NewDarknode(config Config) (Darknode, error) {
 	node.relayerClient = relayer.NewClient(&node.dht, &node.connPool)
 	node.swarmerClient = swarmer.NewClient(node.crypter, node.multiAddress, &node.dht, &node.connPool)
 
-	node.relay = relay.NewRelay(relay.Config{}, darkocean.Pools{}, darknodeRegistry, &node.orderbook, rel)
+	node.relay = relay.NewRelay(relay.Config{}, darkocean.Pools{}, darknodeRegistry, &node.orderbook, node.relayerClient, node.swarmerClient, node.smpcerClient)
 
 	return node, nil
 }
@@ -104,8 +104,8 @@ func (node *Darknode) Serve(done <-chan struct{}) <-chan error {
 	return node.router.Serve(done, node.Host, node.Port)
 }
 
-func (node *Darknode) Bootstrap() {
-	node.router.Bootstrap()
+func (node *Darknode) Bootstrap(ctx context.Context) <-chan error {
+	return node.swarmerClient.Bootstrap(ctx, node.BootstrapMultiAddresses, -1)
 }
 
 // Run the Darknode until the done channel is closed.
