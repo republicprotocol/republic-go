@@ -37,11 +37,11 @@ func NewWeakCrypter() WeakCrypter {
 	return WeakCrypter{}
 }
 
-func (crypter *WeakCrypter) Signer(hasher Hasher) ([]byte, error) {
+func (crypter *WeakCrypter) Sign(hasher Hasher) ([]byte, error) {
 	return hasher.Hash(), nil
 }
 
-func (crypter *WeakCrypter) Verifier(hasher Hasher, signature []byte) error {
+func (crypter *WeakCrypter) Verify(hasher Hasher, signature []byte) error {
 	if bytes.Compare(hasher.Hash(), signature) == 0 {
 		return nil
 	}

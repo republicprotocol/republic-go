@@ -5,16 +5,26 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/republicprotocol/republic-go/rpc/dht"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/ethereum/client"
+	ethclient "github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/relay"
+	"github.com/republicprotocol/republic-go/rpc/client"
+	"github.com/republicprotocol/republic-go/rpc/relayer"
+	"github.com/republicprotocol/republic-go/rpc/smpcer"
+	"github.com/republicprotocol/republic-go/rpc/swarmer"
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
+// Darknodes is an alias.
 type Darknodes []Darknode
 
 type Darknode struct {
@@ -25,9 +35,18 @@ type Darknode struct {
 	address      identity.Address
 	multiAddress identity.MultiAddress
 	orderbook    orderbook.Orderbook
+	crypter      crypto.Crypter
 
 	darknodeRegistry contracts.DarkNodeRegistry
-	router           *Router
+
+	dht           dht.DHT
+	connPool      client.ConnPool
+	smpcerClient  smpcer.Client
+	relayerClient relayer.Client
+	swarmerClient swarmer.Client
+
+	smpc  smpc.Computer
+	relay relay.Relay
 }
 
 // NewDarknode returns a new Darknode.
@@ -44,28 +63,39 @@ func NewDarknode(config Config) (Darknode, error) {
 	}
 	node.id = key.ID()
 	node.address = key.Address()
-	node.multiAddress = config.Network.MultiAddress
+	node.multiAddress = config.MultiAddress
 	node.orderbook = orderbook.NewOrderbook(3)
 
 	// Open a connection to the Ethereum network
 	transactOpts := bind.NewKeyedTransactor(config.EcdsaKey.PrivateKey)
-	client, err := client.Connect(
+	ethclient, err := ethclient.Connect(
 		config.Ethereum.URI,
 		config.Ethereum.Network,
 		config.Ethereum.RepublicTokenAddress,
-		config.Ethereum.DarkNodeRegistryAddress,
+		config.Ethereum.DarknodeRegistryAddress,
 	)
 	if err != nil {
 		return node, err
 	}
 
 	// Create bindings to the DarknodeRegistry and Ocean
-	darknodeRegistry, err := contracts.NewDarkNodeRegistry(context.Background(), client, transactOpts, &bind.CallOpts{})
+	darknodeRegistry, err := contracts.NewDarkNodeRegistry(context.Background(), ethclient, transactOpts, &bind.CallOpts{})
 	if err != nil {
 		return Darknode{}, err
 	}
 	node.darknodeRegistry = darknodeRegistry
-	node.router = NewRouter(100, node.multiAddress, config.Network, key, config.RsaKey.PrivateKey, &node.orderbook)
+
+	// FIXME: Use a production Crypter implementation
+	weakCrypter := crypto.NewWeakCrypter()
+	node.crypter = &weakCrypter
+
+	node.dht = dht.NewDHT(node.address, 100)
+	node.connPool = client.NewConnPool(100)
+	node.smpcerClient = smpcer.NewClient(node.crypter, node.multiAddress, &node.connPool)
+	node.relayerClient = relayer.NewClient(&node.dht, &node.connPool)
+	node.swarmerClient = swarmer.NewClient(node.crypter, node.multiAddress, &node.dht, &node.connPool)
+
+	node.relay = relay.NewRelay(relay.Config{}, darkocean.Pools{}, darknodeRegistry, &node.orderbook, rel)
 
 	return node, nil
 }

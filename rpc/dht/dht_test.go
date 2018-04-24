@@ -33,7 +33,8 @@ func randomDHTAndAddress() (*DHT, *identity.Address, *identity.MultiAddress, err
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	return NewDHT(dhtAddress, maxBucketLength), randomAddress, randomMultiAddress, nil
+	dht := NewDHT(dhtAddress, maxBucketLength)
+	return &dht, randomAddress, randomMultiAddress, nil
 }
 
 func isSortedMultiAddresses(multiAddresses identity.MultiAddresses, target identity.Address) (bool, error) {

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -12,24 +11,31 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/rpc"
 )
 
+// A Config defines the different settings for a Darknode.
 type Config struct {
 	EcdsaKey keystore.Key      `json:"ecdsaKey"`
 	RsaKey   crypto.RsaKeyPair `json:"rsaKey"`
-	Host     string            `json:"host"`
-	Port     string            `json:"port"`
 	Ethereum EthereumConfig    `json:"ethereum"`
-	Network  rpc.Options       `json:"network"`
 	Logs     logger.Options    `json:"logs"`
+
+	MultiAddress            identity.MultiAddress   `json:"multiAddress"`
+	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
+	Host                    string                  `json:"host"`
+	Port                    string                  `json:"port"`
 }
 
+// An EthereumConfig defines the different settings for connecting the Darknode
+// to an Ethereum network, and the Republic Protocol smart contracts deployed
+// on Ethereum.
 type EthereumConfig struct {
-	URI                     string         `json:"uri"`
 	Network                 client.Network `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
+	URI                     string         `json:"uri"`
 	RepublicTokenAddress    string         `json:"republicTokenAddress"`
-	DarkNodeRegistryAddress string         `json:"darkNodeRegistryAddress"`
+	DarknodeRegistryAddress string         `json:"darknodeRegistryAddress"`
+	TraderRegistryAddress   string         `json:"traderRegistryAddress"`
+	HyperdriveAddress       string         `json:"hyperdriveAddress"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config
@@ -63,24 +69,16 @@ func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (Config, error) {
 		return Config{}, err
 	}
 	return Config{
-		EcdsaKey: ecdsaKey,
-		RsaKey:   rsaKey,
-		Host:     host,
-		Port:     port,
-		Network: rpc.Options{
-			Alpha:                5,
-			MultiAddress:         multi,
-			MaxBucketLength:      100,
-			ClientPoolCacheLimit: 100,
-			Timeout:              10 * time.Second,
-			TimeoutBackoff:       0,
-			TimeoutRetries:       1,
-		},
+		EcdsaKey:     ecdsaKey,
+		RsaKey:       rsaKey,
+		Host:         host,
+		Port:         port,
+		MultiAddress: multi,
 		Ethereum: EthereumConfig{
-			URI:                     "http://localhost:8545",
 			Network:                 client.NetworkGanache,
+			URI:                     "http://localhost:8545",
 			RepublicTokenAddress:    client.RepublicTokenAddressOnGanache.String(),
-			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.String(),
+			DarknodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.String(),
 		},
 	}, nil
 }
