@@ -169,28 +169,77 @@ func (darkNodeRegistry *DarkNodeRegistry) Epoch() (*types.Transaction, error) {
 	return tx, err
 }
 
-// WaitForEpoch guarantees that an Epoch as passed (and calls Epoch if connected to Ganache)
-func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() (*types.Transaction, error) {
-	currentEpoch, err := darkNodeRegistry.CurrentEpoch()
+// TimeUntilEpoch calculates the time remaining until the next Epoch can be called
+func (darkNodeRegistry *DarkNodeRegistry) TimeUntilEpoch() (time.Duration, error) {
+	epoch, err := darkNodeRegistry.CurrentEpoch()
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	nextEpoch := currentEpoch
-	var tx *types.Transaction
-	for currentEpoch.Blockhash == nextEpoch.Blockhash {
-		if darkNodeRegistry.network == client.NetworkGanache {
-			tx, err = darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
-			if err != nil {
-				return nil, err
-			}
-		}
-		nextEpoch, err = darkNodeRegistry.CurrentEpoch()
+
+	minInterval, err := darkNodeRegistry.MinimumEpochInterval()
+
+	nextTime := epoch.Timestamp.Add(&minInterval)
+	unix, err := nextTime.ToUint()
+	if err != nil {
+		// Either minInterval is really big, or unix epoch time has overflowed uint64s.
+		return 0, err
+	}
+
+	toWait := time.Second * time.Duration(int64(unix)-time.Now().Unix())
+
+	// Ensure toWait is at least 1
+	if toWait < 1*time.Second {
+		toWait = 1 * time.Second
+	}
+
+	// Try again within a minute
+	if toWait > time.Minute {
+		toWait = time.Minute
+	}
+
+	return toWait, nil
+
+}
+
+// WaitForEpoch guarantees that an Epoch as passed (and calls Epoch if connected to Ganache)
+func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() error {
+
+	previousEpoch, err := darkNodeRegistry.CurrentEpoch()
+	if err != nil {
+		return err
+	}
+
+	currentEpoch := previousEpoch
+
+	for currentEpoch.Blockhash == previousEpoch.Blockhash {
+
+		// Calculate how much time to sleep for
+		// If epoch can already be called, returns 1 second
+		toWait, err := darkNodeRegistry.TimeUntilEpoch()
 		if err != nil {
-			return nil, err
+			return err
 		}
-		time.Sleep(time.Millisecond * 10)
+
+		time.Sleep(toWait)
+
+		// If on Ganache, have to call epoch manually
+		if darkNodeRegistry.network == client.NetworkGanache {
+			darkNodeRegistry.SetGasLimit(300000)
+			tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
+			darkNodeRegistry.SetGasLimit(0)
+			if err != nil {
+				return err
+			}
+			darkNodeRegistry.client.PatchedWaitMined(darkNodeRegistry.context, tx)
+		}
+
+		currentEpoch, err = darkNodeRegistry.CurrentEpoch()
+		if err != nil {
+			return err
+		}
 	}
-	return tx, nil
+
+	return nil
 }
 
 // GetOwner gets the owner of the given dark node
@@ -236,6 +285,15 @@ func (darkNodeRegistry *DarkNodeRegistry) MinimumBond() (stackint.Int1024, error
 // MinimumEpochInterval gets the minimum epoch interval
 func (darkNodeRegistry *DarkNodeRegistry) MinimumEpochInterval() (stackint.Int1024, error) {
 	interval, err := darkNodeRegistry.binding.MinimumEpochInterval(darkNodeRegistry.callOpts)
+	if err != nil {
+		return stackint.Int1024{}, err
+	}
+	return stackint.FromBigInt(interval)
+}
+
+// MinimumDarkPoolSize gets the minumum dark pool size
+func (darkNodeRegistry *DarkNodeRegistry) MinimumDarkPoolSize() (stackint.Int1024, error) {
+	interval, err := darkNodeRegistry.binding.MinimumDarkPoolSize(darkNodeRegistry.callOpts)
 	if err != nil {
 		return stackint.Int1024{}, err
 	}

@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -61,23 +60,11 @@ func DeployContracts(conn client.Connection) error {
 // DistributeEth transfers ETH to each of the addresses
 func DistributeEth(conn client.Connection, addresses ...common.Address) error {
 
-	transactor := &bind.TransactOpts{
-		From:     genesisTransactor.From,
-		Nonce:    genesisTransactor.Nonce,
-		Signer:   genesisTransactor.Signer,
-		Value:    big.NewInt(1000000000000000000),
-		GasPrice: genesisTransactor.GasPrice,
-		GasLimit: 30000,
-		Context:  genesisTransactor.Context,
-	}
-
 	for _, address := range addresses {
-		bound := bind.NewBoundContract(address, abi.ABI{}, nil, conn.Client, nil)
-		tx, err := bound.Transfer(transactor)
+		err := conn.TransferEth(context.Background(), genesisTransactor, address, big.NewInt(1000000000000000000))
 		if err != nil {
 			return err
 		}
-		conn.PatchedWaitMined(context.Background(), tx)
 	}
 
 	return nil
@@ -98,6 +85,22 @@ func DistributeREN(conn client.Connection, addresses ...common.Address) error {
 	}
 
 	return nil
+}
+
+func NewAccount(conn client.Connection, eth *big.Int) (*bind.TransactOpts, common.Address, error) {
+	ethereumPair, err := crypto.GenerateKey()
+	if err != nil {
+		return nil, common.Address{}, err
+	}
+	addr := crypto.PubkeyToAddress(ethereumPair.PublicKey)
+	account := bind.NewKeyedTransactor(ethereumPair)
+	if eth.Cmp(big.NewInt(0)) > 0 {
+		if err := DistributeEth(conn, addr); err != nil {
+			return nil, common.Address{}, err
+		}
+	}
+
+	return account, addr, nil
 }
 
 func genesis() (*ecdsa.PrivateKey, *bind.TransactOpts) {
