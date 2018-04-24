@@ -3270,10 +3270,10 @@ func (_ERC20Basic *ERC20BasicFilterer) WatchTransfer(opts *bind.WatchOpts, sink 
 }
 
 // HyperdriveABI is the input ABI used to generate the binding from.
-const HyperdriveABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"tx\",\"type\":\"bytes32[]\"}],\"name\":\"sendTx\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"dnr\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"}]"
+const HyperdriveABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"tx\",\"type\":\"bytes32[]\"}],\"name\":\"sendTx\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"nonces\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"nonce\",\"type\":\"bytes32\"}],\"name\":\"depth\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"dnr\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"nonce\",\"type\":\"bytes32\"}],\"name\":\"Tx\",\"type\":\"event\"}]"
 
 // HyperdriveBin is the compiled bytecode used for deploying new contracts.
-const HyperdriveBin = `0x608060405234801561001057600080fd5b5060405160208061028c833981016040525160018054600160a060020a031916600160a060020a0390921691909117905561023c806100506000396000f3006080604052600436106100405763ffffffff7c010000000000000000000000000000000000000000000000000000000060003504166387a0c5288114610045575b600080fd5b34801561005157600080fd5b506040805160206004803580820135838102808601850190965280855261009a9536959394602494938501929182918501908490808284375094975061009c9650505050505050565b005b600154604080517f4f5550fc000000000000000000000000000000000000000000000000000000008152336c0100000000000000000000000081026bffffffffffffffffffffffff19166004830152915160009373ffffffffffffffffffffffffffffffffffffffff1691634f5550fc91602480830192602092919082900301818887803b15801561012d57600080fd5b505af1158015610141573d6000803e3d6000fd5b505050506040513d602081101561015757600080fd5b5051151561016457600080fd5b600091505b82518210156101b557600080848481518110151561018357fe5b602090810290910181015182528101919091526040016000205460ff16156101aa57600080fd5b600190910190610169565b600091505b825182101561020b57600160008085858151811015156101d657fe5b6020908102919091018101518252810191909152604001600020805460ff1916911515919091179055600191909101906101ba565b5050505600a165627a7a72305820704b51dbefe1c7ba0df3a7f1f74334b60fbe4e1e3e33f7b030c03584360a0bec0029`
+const HyperdriveBin = `0x608060405234801561001057600080fd5b50604051602080610363833981016040525160018054600160a060020a031916600160a060020a03909216919091179055610313806100506000396000f3006080604052600436106100565763ffffffff7c010000000000000000000000000000000000000000000000000000000060003504166387a0c528811461005b5780639e317f12146100b25780639e77a298146100dc575b600080fd5b34801561006757600080fd5b50604080516020600480358082013583810280860185019096528085526100b0953695939460249493850192918291850190849080828437509497506100f49650505050505050565b005b3480156100be57600080fd5b506100ca6004356102a0565b60408051918252519081900360200190f35b3480156100e857600080fd5b506100ca6004356102b2565b600154604080517f4f5550fc000000000000000000000000000000000000000000000000000000008152336c0100000000000000000000000081026bffffffffffffffffffffffff19166004830152915160009373ffffffffffffffffffffffffffffffffffffffff1691634f5550fc91602480830192602092919082900301818887803b15801561018557600080fd5b505af1158015610199573d6000803e3d6000fd5b505050506040513d60208110156101af57600080fd5b505115156101bc57600080fd5b600091505b825182101561020a5760008084848151811015156101db57fe5b6020908102909101810151825281019190915260400160002054156101ff57600080fd5b6001909101906101c1565b600091505b825182101561029b5743600080858581518110151561022a57fe5b602090810290910181015182528101919091526040016000205582517fd42897673f8a1e677ee9b2221ac4bebe4fe8506dc6a42e7909041a1f1015c62a9084908490811061027457fe5b602090810290910181015160408051918252519081900390910190a160019091019061020f565b505050565b60006020819052908152604090205481565b60008181526020819052604081205415156102cf575060006102e2565b5060008181526020819052604090205443035b9190505600a165627a7a723058206ece87d9adde099c77d6cc205ddfa6ae966f84c4da4e01dd66dd283b2373989b0029`
 
 // DeployHyperdrive deploys a new Ethereum contract, binding an instance of Hyperdrive to it.
 func DeployHyperdrive(auth *bind.TransactOpts, backend bind.ContractBackend, dnr common.Address) (common.Address, *types.Transaction, *Hyperdrive, error) {
@@ -3430,6 +3430,58 @@ func (_Hyperdrive *HyperdriveTransactorRaw) Transact(opts *bind.TransactOpts, me
 	return _Hyperdrive.Contract.contract.Transact(opts, method, params...)
 }
 
+// Depth is a free data retrieval call binding the contract method 0x9e77a298.
+//
+// Solidity: function depth(nonce bytes32) constant returns(uint256)
+func (_Hyperdrive *HyperdriveCaller) Depth(opts *bind.CallOpts, nonce [32]byte) (*big.Int, error) {
+	var (
+		ret0 = new(*big.Int)
+	)
+	out := ret0
+	err := _Hyperdrive.contract.Call(opts, out, "depth", nonce)
+	return *ret0, err
+}
+
+// Depth is a free data retrieval call binding the contract method 0x9e77a298.
+//
+// Solidity: function depth(nonce bytes32) constant returns(uint256)
+func (_Hyperdrive *HyperdriveSession) Depth(nonce [32]byte) (*big.Int, error) {
+	return _Hyperdrive.Contract.Depth(&_Hyperdrive.CallOpts, nonce)
+}
+
+// Depth is a free data retrieval call binding the contract method 0x9e77a298.
+//
+// Solidity: function depth(nonce bytes32) constant returns(uint256)
+func (_Hyperdrive *HyperdriveCallerSession) Depth(nonce [32]byte) (*big.Int, error) {
+	return _Hyperdrive.Contract.Depth(&_Hyperdrive.CallOpts, nonce)
+}
+
+// Nonces is a free data retrieval call binding the contract method 0x9e317f12.
+//
+// Solidity: function nonces( bytes32) constant returns(uint256)
+func (_Hyperdrive *HyperdriveCaller) Nonces(opts *bind.CallOpts, arg0 [32]byte) (*big.Int, error) {
+	var (
+		ret0 = new(*big.Int)
+	)
+	out := ret0
+	err := _Hyperdrive.contract.Call(opts, out, "nonces", arg0)
+	return *ret0, err
+}
+
+// Nonces is a free data retrieval call binding the contract method 0x9e317f12.
+//
+// Solidity: function nonces( bytes32) constant returns(uint256)
+func (_Hyperdrive *HyperdriveSession) Nonces(arg0 [32]byte) (*big.Int, error) {
+	return _Hyperdrive.Contract.Nonces(&_Hyperdrive.CallOpts, arg0)
+}
+
+// Nonces is a free data retrieval call binding the contract method 0x9e317f12.
+//
+// Solidity: function nonces( bytes32) constant returns(uint256)
+func (_Hyperdrive *HyperdriveCallerSession) Nonces(arg0 [32]byte) (*big.Int, error) {
+	return _Hyperdrive.Contract.Nonces(&_Hyperdrive.CallOpts, arg0)
+}
+
 // SendTx is a paid mutator transaction binding the contract method 0x87a0c528.
 //
 // Solidity: function sendTx(tx bytes32[]) returns()
@@ -3449,6 +3501,128 @@ func (_Hyperdrive *HyperdriveSession) SendTx(tx [][32]byte) (*types.Transaction,
 // Solidity: function sendTx(tx bytes32[]) returns()
 func (_Hyperdrive *HyperdriveTransactorSession) SendTx(tx [][32]byte) (*types.Transaction, error) {
 	return _Hyperdrive.Contract.SendTx(&_Hyperdrive.TransactOpts, tx)
+}
+
+// HyperdriveTxIterator is returned from FilterTx and is used to iterate over the raw logs and unpacked data for Tx events raised by the Hyperdrive contract.
+type HyperdriveTxIterator struct {
+	Event *HyperdriveTx // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *HyperdriveTxIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(HyperdriveTx)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(HyperdriveTx)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *HyperdriveTxIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *HyperdriveTxIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// HyperdriveTx represents a Tx event raised by the Hyperdrive contract.
+type HyperdriveTx struct {
+	Nonce [32]byte
+	Raw   types.Log // Blockchain specific contextual infos
+}
+
+// FilterTx is a free log retrieval operation binding the contract event 0xd42897673f8a1e677ee9b2221ac4bebe4fe8506dc6a42e7909041a1f1015c62a.
+//
+// Solidity: event Tx(nonce bytes32)
+func (_Hyperdrive *HyperdriveFilterer) FilterTx(opts *bind.FilterOpts) (*HyperdriveTxIterator, error) {
+
+	logs, sub, err := _Hyperdrive.contract.FilterLogs(opts, "Tx")
+	if err != nil {
+		return nil, err
+	}
+	return &HyperdriveTxIterator{contract: _Hyperdrive.contract, event: "Tx", logs: logs, sub: sub}, nil
+}
+
+// WatchTx is a free log subscription operation binding the contract event 0xd42897673f8a1e677ee9b2221ac4bebe4fe8506dc6a42e7909041a1f1015c62a.
+//
+// Solidity: event Tx(nonce bytes32)
+func (_Hyperdrive *HyperdriveFilterer) WatchTx(opts *bind.WatchOpts, sink chan<- *HyperdriveTx) (event.Subscription, error) {
+
+	logs, sub, err := _Hyperdrive.contract.WatchLogs(opts, "Tx")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(HyperdriveTx)
+				if err := _Hyperdrive.contract.UnpackLog(event, "Tx", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
 }
 
 // LinkedListABI is the input ABI used to generate the binding from.

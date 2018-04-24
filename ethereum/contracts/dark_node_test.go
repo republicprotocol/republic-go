@@ -50,16 +50,17 @@ var _ = Describe("Darknode", func() {
 			txInput := make(chan hyperdrive.TxWithBlockNumber)
 
 			go func() {
-				i := uint8(145)
+
+				i := uint8(180)
 				for {
+					t := time.NewTimer(time.Second)
 					select {
 					case <-done:
 						return
-					default:
-						time.Sleep(5 * time.Second)
+					case <-t.C:
 						delta := Delta{
 							BuyOrderID:  []byte{i},
-							SellOrderID: []byte{i},
+							SellOrderID: []byte{i+1},
 						}
 						log.Printf("Found order match! Sending it to hyperdrive...")
 						Ω(OrderMatchToHyperdrive(delta, hyper, txInput)).ShouldNot(HaveOccurred())
@@ -113,7 +114,7 @@ func WatchForHyperdriveContract(done <-chan struct{}, txInput chan hyperdrive.Tx
 
 		watchingList := map[uint64][]common.Hash{}
 
-		ticker := time.NewTicker(15 * time.Second)
+		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 
 		for {
@@ -136,9 +137,9 @@ func WatchForHyperdriveContract(done <-chan struct{}, txInput chan hyperdrive.Tx
 
 				for key, value := range watchingList {
 					if key <= currentBlock.NumberU64()-depth {
-						for _, hash := range value{
+						for _, hash := range value {
 							// Check if there is a block shuffle
-							newBlockNumber ,err := hyper.GetBlockNumberOfTx(hash)
+							newBlockNumber, err := hyper.GetBlockNumberOfTx(hash)
 							log.Println("new block number is ", newBlockNumber)
 							if err != nil {
 								errs <- err
@@ -149,7 +150,7 @@ func WatchForHyperdriveContract(done <-chan struct{}, txInput chan hyperdrive.Tx
 									watchingList[newBlockNumber] = []common.Hash{}
 								}
 								// "If map entries are created during iteration, that entry may be produced during the iteration or may be skipped."
-								watchingList[newBlockNumber]= append(watchingList[newBlockNumber], hash)
+								watchingList[newBlockNumber] = append(watchingList[newBlockNumber], hash)
 								continue
 							}
 
