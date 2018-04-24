@@ -6,6 +6,12 @@ import (
 	"sync"
 	"time"
 
+	dht "github.com/republicprotocol/go-dht"
+	"github.com/republicprotocol/republic-go/rpc/relayer"
+	"github.com/republicprotocol/republic-go/rpc/smpcer"
+	"github.com/republicprotocol/republic-go/rpc/swarmer"
+	"google.golang.org/grpc"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -81,20 +87,36 @@ var _ = Describe("Relay", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
-	/* Context("running the relay", func() {
+	Context("running the relay", func() {
 		It("should", func() {
 			config := Config{
-				KeyPair:        identity.KeyPair{},
-				MultiAddress:   identity.MultiAddress{},
-				Token:          "",
-				BootstrapNodes: bootstrapNodes,
-				BindAddress:    "127.0.0.1:8000",
+				KeyPair:      identity.KeyPair{},
+				MultiAddress: identity.MultiAddress{},
+				Token:        "",
 			}
 			pools := darknode.NewOcean(darknodeRegistry).GetPools()
-			book := orderbook.NewOrderbook(100)
-			RunRelay(config, pools, book, darknodeRegistry)
+			orderbook := orderorderbook.NewOrderbook(100)
+
+			// Initialise DHT using registered nodes
+			dht := dht.NewDHT(identity.Address{}, 100)
+			for i := 0; i < len(darknodes); i++ {
+				dht.UpdateMultiAddress(darknodes[i].MultiAddress)
+			}
+
+			connPool := client.NewConnPool(100)
+			relayerClient := relayer.NewClient(dht, connPool)
+			swarmerClient := swarmer.NewClient(config.MultiAddress, dht, connPool)
+			smpcerClient := smpcer.NewClient(config.MultiAddress, connPool)
+
+			relay := NewRelay(config, pools, darknodeRegistry, orderbook, relayerClient, swarmerClient, smpcerClient)
+
+			server := grpc.NewServer()
+			relay.Register(server)
+			relay.Sync(context.Background(), make([]byte, 32), 3)
+
+			// TODO: Send orders to selected nodes
 		})
-	}) */
+	})
 
 	Context("storing and updating orders", func() {
 		It("should store entry in local orderbook", func() {

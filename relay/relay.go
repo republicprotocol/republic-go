@@ -14,7 +14,6 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/rpc/relayer"
 	"github.com/republicprotocol/republic-go/rpc/smpcer"
 	"github.com/republicprotocol/republic-go/rpc/swarmer"
@@ -43,7 +42,7 @@ type Relay struct {
 }
 
 // NewRelay returns a new Relay object
-func NewRelay(config Config, pools darkocean.Pools, orderbook *orderbook.Orderbook, registrar contracts.DarkNodeRegistry, relayerClient relayer.Client, swarmererClient swarmer.Client, smpcerClient smpcer.Client) Relay {
+func NewRelay(config Config, pools darkocean.Pools, registrar contracts.DarkNodeRegistry, orderbook *orderbook.Orderbook, relayerClient relayer.Client, swarmerClient swarmer.Client, smpcerClient smpcer.Client) Relay {
 	return Relay{
 		Config:    config,
 		DarkPools: pools,
@@ -52,6 +51,8 @@ func NewRelay(config Config, pools darkocean.Pools, orderbook *orderbook.Orderbo
 		orderbook:     orderbook,
 		relayer:       relayer.NewRelayer(orderbook),
 		relayerClient: relayerClient,
+		swarmerClient: swarmerClient,
+		smpcerClient:  smpcerClient,
 	}
 }
 
