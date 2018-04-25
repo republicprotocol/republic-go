@@ -8,22 +8,16 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/crypto"
 	. "github.com/republicprotocol/republic-go/darknodetest"
-	ethClient "github.com/republicprotocol/republic-go/ethereum/client"
+	"github.com/republicprotocol/republic-go/darkocean"
 	. "github.com/republicprotocol/republic-go/relay"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-<<<<<<< HEAD
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/darknode"
-=======
-	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/darknode"
-	"github.com/republicprotocol/republic-go/darkocean"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
-	"github.com/republicprotocol/republic-go/ethereum/ganache"
->>>>>>> c1c0ae2e736b7d5333eb96faeaab06f823810de0
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -50,11 +44,7 @@ const (
 
 var _ = Describe("Relay", func() {
 
-<<<<<<< HEAD
 	var conn ethereum.Conn
-=======
-	var conn ethClient.Connection
->>>>>>> c1c0ae2e736b7d5333eb96faeaab06f823810de0
 	var darknodes darknode.Darknodes
 	var bootstrapNodes []string
 
@@ -555,7 +545,7 @@ var _ = Describe("Relay", func() {
 	})
 })
 
-func getPools(dnr contracts.DarkNodeRegistry) darkocean.Pools {
+func getPools(dnr dnr.DarknodeRegistry) darkocean.Pools {
 	darknodeIDs, err := dnr.GetAllNodes()
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -618,9 +608,4 @@ func generateFragmentedOrderForDarkPool(pool darkocean.Pool) (OrderFragments, er
 	fragmentSet[GeneratePoolID(pool)] = fragments
 	fragmentOrder.DarkPools = fragmentSet
 	return fragmentOrder, nil
-}
-
-// FIXME:
-func StoreEntryInOrderbook(block rpc.SyncBlock, book orderbook.Orderbook) error {
-	panic("unimplemented")
 }

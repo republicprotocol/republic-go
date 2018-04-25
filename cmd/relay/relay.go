@@ -15,24 +15,22 @@ import (
 	"strings"
 	"syscall"
 
+	. "github.com/republicprotocol/republic-go/relay"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/republicprotocol/republic-go/darkocean"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
-	"github.com/republicprotocol/republic-go/ethereum/ganache"
+	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/relay"
 	"google.golang.org/grpc"
 )
 
 func main() {
-	// Parse the command-line arguments
-	keystore := flag.String("keystore", "", "path of keystore file")
-	passphrase := flag.String("passphrase", "", "passphrase to decrypt keystore")
-	bindAddress := flag.String("bind", "", "bind address")
-	port := flag.Int("port", 80, "port to bind API") // Defaults to 80
-	token := flag.String("token", "", "optional token")
+	keystore := flag.String("keystore", "", "Encrypted keystore file")
+	passphrase := flag.String("passphrase", "", "Passphrase for the encrypted keystore file")
+	bind := flag.String("bind", "127.0.0.1", "Binding address for the gRPC and HTTP API")
+	port := flag.String("port", "18515", "Binding port for the HTTP API")
+	token := flag.String("token", "", "Bearer token for restricting access")
+	maxConnections := flag.Int("maxConnections", 4, "Maximum number of connections to peers during synchronization")
 	flag.Parse()
 
 	key, err := getKey(*keystore, *passphrase)
@@ -59,48 +57,47 @@ func main() {
 		return
 	}
 
-	config := relay.Config{
-		KeyPair:        keyPair,
-		MultiAddress:   multiAddr,
-		Token:          *token,
-		BootstrapNodes: getBootstrapNodes(),
-		BindAddress:    *bindAddress,
-	}
-	darknodeIDs, err := registrar.GetAllNodes()
-	if err != nil {
-		fmt.Println(fmt.Errorf("could not get dark nodes: %s", err))
-		return
-	}
-
-	epoch, err := registrar.CurrentEpoch()
-	if err != nil {
-		fmt.Println(fmt.Errorf("could not obtain epoch: %s", err))
-		return
-	}
-
-	darkOcean := darkocean.NewDarkOcean(epoch.Blockhash, darknodeIDs)
-
-	// return darkOcean.Pools()
-	pools := darkOcean.Pools()
-	book := orderbook.NewOrderbook(100) // TODO: Check max connections
-	relay.RunRelay(config, pools, book, registrar)
-
+	// Create gRPC server and TCP listener always using port 18514
 	server := grpc.NewServer()
-	listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", *bindAddress, *port))
+	listener, err := net.Listen("tcp", fmt.Sprintf("%v:18514", *bind))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	signals := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	// Create Relay
+	config := Config{
+		KeyPair:        keyPair,
+		MultiAddress:   multiAddr,
+		Token:          *token,
+		BootstrapNodes: getBootstrapNodes(),
+	}
+	relay := NewRelay(...)
+
+	// Server gRPC and RESTful API
+	dispatch.CoBegin(func() {
+		if err := relay.ListenAndServe(*bind, *port); err != nil {
+			log.Fatalf("error serving http: %v", err)
+		}
+	}, func() {
+		relay.Register(server)
+		if err := server.Serve(listener); err != nil {
+			log.Fatalf("error serving grpc: %v", err)
+		}
+	}, func() {
+		relay.Sync(context.Background(), *maxConnections)
+	}),
+
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
 	go func() {
-		<-signals
-		log.Println("shutting down...")
+		<-sig
 		server.Stop()
-		os.Exit(0)
 	}()
 
-	go server.Serve(listener)
+	if err := server.Serve(listener); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func getKey(filename, passphrase string) (*keystore.Key, error) {
@@ -142,7 +139,7 @@ func getMultiaddress(id identity.KeyPair, port int) (identity.MultiAddress, erro
 	return relayMultiaddress, nil
 }
 
-func getRegistrar(key *keystore.Key) (contracts.DarkNodeRegistry, error) {
+func getRegistry(key *keystore.Key) (dnr.DarknodeRegistry, error) {
 	conn, err := ganache.Connect("http://localhost:8545")
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
 	if err != nil {

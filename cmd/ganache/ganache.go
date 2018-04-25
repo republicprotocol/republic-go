@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/republicprotocol/republic-go/ethereum/ganache"
+	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 )
 
 const reset = "\x1b[0m"
@@ -18,10 +18,10 @@ const green = "\x1b[32;1m"
 const yellow = "\x1b[33;1m"
 
 func main() {
-	argSleep := flag.Int("sleep", 10, "Time to wait for ganache to start-up")
+	argSleep := flag.Int("sleep", 10, "Seconds to sleep after starting ganache")
 	flag.Parse()
 
-	fmt.Printf("Started Ganache server on port %s8545%s...\n", green, reset)
+	fmt.Printf("Ganache is listening on %shttp://localhost:8545%s...\n", green, reset)
 
 	cmd := ganache.Start()
 	go killAtExit(cmd)
@@ -47,7 +47,6 @@ func killAtExit(cmd *exec.Cmd) {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
 	go func() {
 		<-sigs
-		fmt.Printf("%sShutting down Ganache...%s\n", yellow, reset)
 		cmd.Process.Kill()
 		os.Exit(0)
 	}()

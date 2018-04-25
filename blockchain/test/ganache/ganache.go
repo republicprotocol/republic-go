@@ -166,7 +166,7 @@ func deployContracts(conn ethereum.Conn, transactor *bind.TransactOpts) error {
 		return fmt.Errorf("RepublicToken address has changed: expected: %s, got: %s", ethereum.RepublicTokenAddressOnGanache.Hex(), republicTokenAddress.Hex())
 	}
 	if darkNodeRegistryAddress != ethereum.DarknodeRegistryAddressOnGanache {
-		return fmt.Errorf("DarkNodeRegistry address has changed: expected: %s, got: %s", ethereum.DarknodeRegistryAddressOnGanache.Hex(), darkNodeRegistryAddress.Hex())
+		return fmt.Errorf("DarknodeRegistry address has changed: expected: %s, got: %s", ethereum.DarknodeRegistryAddressOnGanache.Hex(), darkNodeRegistryAddress.Hex())
 	}
 
 	return nil

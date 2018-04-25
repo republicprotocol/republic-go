@@ -39,7 +39,7 @@ func main() {
 	// Get multi-address
 	multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/18514/republic/%s", ipAddr, config.Address))
 	if err != nil {
-		log.Fatalf("cannot get multi-address: %v", err)
+		log.Fatalf("cannot get multiaddress: %v", err)
 	}
 
 	// Create the Darknode
@@ -56,7 +56,9 @@ func main() {
 		defer close(done)
 		<-sig
 	}()
-	node.Serve(done)
+	for err := range node.Run(done) {
+		log.Println(err)
+	}
 }
 
 func getIPAddress() (string, error) {
