@@ -33,24 +33,56 @@ message ComputeMessage {
 }
 
 message OrderFragment {
-    bytes orderFragmenId = 1;
+    bytes orderFragmentId = 1;
     bytes orderId = 2;
-    int64 expiry = 3;
-    int32 type = 4;
-    int32 tokens = 5;
-    Share priceShare = 6;
-    Share volumeShare = 7;
+    int64 type = 3;
+    int64 parity = 4;
+    int64 expiry = 5;
+
+    bytes fstCodeShare = 6;
+    bytes sndCodeShare = 7;
+    bytes priceShare = 8;
+    bytes maxVolumeShare = 9;
+    bytes minVolumeShare = 10;
+
+    // TODO: upgrade to improved order fragment format
+    // Hash orderFragmentId = 1;
+    // Hash orderId = 2;
+    // int64 expiry = 3;
+    // int32 type = 4;
+    // int32 tokens = 5;
+    // Share priceShare = 6;
+    // Share volumeShare = 7;
 }
 
 message DeltaFragment {  
     bytes deltaFragmentId = 1;
-    bytes buyOrderId = 2;
-    bytes sellOrderId = 3;
-    Share priceShare = 4;
-    Share volumeShare = 5;
+    bytes deltaId = 2;
+    bytes buyOrderId = 3;
+    bytes sellOrderId = 4;
+    bytes buyOrderFragmentId = 5;
+    bytes sellOrderFragmentId = 6;
+    
+    bytes fstCodeShare = 7;
+    bytes sndCodeShare = 8;
+    bytes priceShare = 9;
+    bytes maxVolumeShare = 10;
+    bytes minVolumeShare = 11;
+
+    // TODO: upgrade to improved delta fragment format
+    // Hash deltaFragmentId = 1;
+    // Hash buyOrderId = 2;
+    // Hash sellOrderId = 3;
+    // Share priceShare = 4;
+    // Share volumeShare = 5;
 }
 
 message Share {
     int64 index = 1;
     bytes value = 2; // RSA encrypted int64
+}
+
+message Hash {
+    bytes signature = 1;
+    bytes hash = 2;
 }

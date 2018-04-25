@@ -55,6 +55,9 @@ func Start() *exec.Cmd {
 		fmt.Printf("ganache shutdown")
 	}()
 
+	// Wait for ganache to boot
+	time.Sleep(10 * time.Second)
+
 	return cmd
 }
 

@@ -43,31 +43,13 @@ func (client *Client) OpenOrder(ctx context.Context, multiAddr identity.MultiAdd
 	if err != nil {
 		return err
 	}
-	priceEncrypted, err := client.crypter.Encrypt(orderFragment.PriceShare.Value.Bytes())
-	if err != nil {
-		return err
-	}
-	volumeEncrypted, err := client.crypter.Encrypt(orderFragment.MaxVolumeShare.Value.Bytes()) // FIXME: Unify volumes
+	orderFragmentData, err := MarshalOrderFragment(client.crypter, &orderFragment)
 	if err != nil {
 		return err
 	}
 	request := &OpenOrderRequest{
-		Signature: orderFragmentSignature,
-		OrderFragment: &OrderFragment{
-			OrderFragmenId: orderFragment.ID,
-			OrderId:        orderFragment.OrderID,
-			Expiry:         orderFragment.OrderExpiry.Unix(),
-			Type:           int32(orderFragment.OrderType),
-			Tokens:         int32(0), // FIXME: Put actual token pairing here
-			PriceShare: &Share{
-				Index: orderFragment.PriceShare.Key,
-				Value: priceEncrypted,
-			},
-			VolumeShare: &Share{
-				Index: orderFragment.MaxVolumeShare.Key, // FIXME: Unify volumes
-				Value: volumeEncrypted,
-			},
-		},
+		Signature:     orderFragmentSignature,
+		OrderFragment: orderFragmentData,
 	}
 	_, err = smpcerClient.OpenOrder(ctx, request)
 	return err

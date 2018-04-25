@@ -53,21 +53,23 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 				return
 			}
 
+			mu.Lock()
 			ctxs[addr], cancels[addr] = context.WithCancel(context.Background())
+			mu.Unlock()
+
+			sender := make(chan *smpcer.ComputeMessage)
 			multiAddr, err := node.rpc.SwarmerClient().Query(ctxs[addr], addr, 3)
 			if err != nil {
 				log.Println(err)
 				return
 			}
-
-			sender := make(chan *smpcer.ComputeMessage)
 			receiver, errs := node.rpc.SmpcerClient().Compute(ctxs[addresses[i]], multiAddr, sender)
 
 			mu.Lock()
-			defer mu.Unlock()
 			senders[addr] = sender
 			receivers[addr] = receiver
 			errors[addr] = errs
+			mu.Unlock()
 		})
 
 		n := int64(pool.Size())

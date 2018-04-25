@@ -58,7 +58,7 @@ func (smpcer *Smpcer) OpenOrder(ctx context.Context, request *OpenOrderRequest) 
 		defer close(errs)
 
 		orderFragmentSignature := request.GetSignature()
-		orderFragment, err := UnmarshalOrderFragment(request.GetOrderFragment())
+		orderFragment, err := UnmarshalOrderFragment(smpcer.client.crypter, request.GetOrderFragment())
 		if err != nil {
 			errs <- err
 			return

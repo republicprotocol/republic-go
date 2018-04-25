@@ -3,6 +3,7 @@ package darknode
 import (
 	"context"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -19,6 +20,7 @@ import (
 	"github.com/republicprotocol/republic-go/relay"
 	"github.com/republicprotocol/republic-go/rpc"
 	"github.com/republicprotocol/republic-go/smpc"
+	"google.golang.org/grpc"
 )
 
 // Darknodes is an alias.
@@ -116,6 +118,28 @@ func (node *Darknode) Serve(done <-chan struct{}) <-chan error {
 			errs <- err
 			return
 		}
+
+		server := grpc.NewServer()
+		listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", node.Config.Host, node.Config.Port))
+		if err != nil {
+			errs <- err
+			return
+		}
+
+		node.rpc.Relayer().Register(server)
+		node.rpc.Smpcer().Register(server)
+		node.rpc.Swarmer().Register(server)
+
+		go func() {
+			if err := server.Serve(listener); err != nil {
+				errs <- err
+				return
+			}
+		}()
+		go func() {
+			<-done
+			server.Stop()
+		}()
 
 		// Bootstrap into the network for 10 seconds maximum
 		time.Sleep(time.Second)
