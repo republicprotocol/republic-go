@@ -60,10 +60,8 @@ func NewFragment(orderID ID, orderType Type, orderParity Parity, fstCodeShare, s
 
 // Hash returns the Keccak256 hash of a Fragment. This hash is used to create
 // the FragmentID and signature for a Fragment.
-func (fragment *Fragment) Hash() identity.Hash {
-	var hash [32]byte
-	copy(hash[:], crypto.Keccak256(fragment.Bytes()))
-	return hash
+func (fragment *Fragment) Hash() []byte {
+	return crypto.Keccak256(fragment.Bytes())
 }
 
 // Sign signs the fragment using the provided keypair, and assigns it the the fragments's

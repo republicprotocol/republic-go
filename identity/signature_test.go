@@ -13,14 +13,11 @@ type SignableStruct struct {
 	value string
 }
 
-func (s SignableStruct) Hash() identity.Hash {
-	var hash identity.Hash
-	copy(crypto.Keccak256([]byte(s.value)), hash[:])
-
-	return hash
+func (s SignableStruct) Hash() []byte {
+	return crypto.Keccak256([]byte(s.value))
 }
 
-var _ = Describe("Signing and verifying signatures with KeyPairs", func() {
+var _ = Describe("Siging and verifying signatures with KeyPairs", func() {
 
 	Context("basic SignableStruct", func() {
 
@@ -62,35 +59,16 @@ var _ = Describe("Signing and verifying signatures with KeyPairs", func() {
 			Ω(err).Should(Equal(identity.ErrInvalidSignature))
 		})
 
-		It("should be able to sign the multiAddress and verify the signature", func() {
-			multi, err := identity.NewMultiAddressFromString("/ip4/0.0.0.0/tcp/80/republic/" + keyPair.Address().String())
-			Ω(err).ShouldNot(HaveOccurred())
-
-			signature, err := keyPair.Sign(multi)
-			err = identity.VerifySignature(testStruct, signature, keyPair.ID())
-			Ω(err).Should(Not(HaveOccurred()))
-
-			Ω(multi.VerifySignature(signature)).ShouldNot(HaveOccurred())
-		})
-
-		It("should be able to merge signatures and verify them", func() {
-
-			testStructs := make([]SignableStruct, 10)
-			signatures := identity.Signatures{}
-			for i := 0; i < 10; i++ {
-				value := make([]byte, 10)
-				rand.Read(value)
-				testStructs[i] = SignableStruct{
-					value: string(value),
-				}
-				signature, err := keyPair.Sign(testStruct)
-				Ω(err).Should(Not(HaveOccurred()))
-				signatures = signatures.Merge(identity.Signatures{signature})
+		It("signature verification should error for wrong data", func() {
+			value := make([]byte, 10)
+			rand.Read(value)
+			testStruct2 := SignableStruct{
+				value: string(value),
 			}
 
-			for i, sig := range signatures {
-				Ω(identity.VerifySignature(testStructs[i], sig, keyPair.ID())).ShouldNot(HaveOccurred())
-			}
+			signature, err := keyPair.Sign(testStruct)
+			err = identity.VerifySignature(testStruct2, signature, keyPair.ID())
+			Ω(err).Should(Equal(identity.ErrInvalidSignature))
 		})
 
 	})

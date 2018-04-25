@@ -12,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
 	"github.com/republicprotocol/republic-go/ethereum/bindings"
 	"github.com/republicprotocol/republic-go/ethereum/client"
@@ -53,7 +52,11 @@ func NewHyperdriveContract(ctx context.Context, clientDetails client.Connection,
 // been mined. It returns an error if there is an conflict with previous txs.
 // You need to register with the darkNodeRegistry to send the tx.
 func (hyper HyperdriveContract) SendTx(tx hyperdrive.Tx) (*types.Transaction, error) {
-	transaction, err := hyper.binding.SendTx(hyper.transactOpts, tx.Nonces)
+	nonces := make([][32]byte, len(tx.Nonces))
+	for i := range nonces {
+		copy(nonces[i][:], tx.Nonces[i])
+	}
+	transaction, err := hyper.binding.SendTx(hyper.transactOpts, nonces)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +71,9 @@ func (hyper HyperdriveContract) SendTx(tx hyperdrive.Tx) (*types.Transaction, er
 
 // GetDepth read the depth of the nonce from the hyperdrive contract.
 func (hyper *HyperdriveContract) GetDepth(nonce hyperdrive.Nonce) (uint64, error) {
-	depth, err := hyper.binding.Depth(hyper.callOpts, nonce)
+	var nonceIn32Bytes [32]byte
+	copy(nonceIn32Bytes[:], nonce)
+	depth, err := hyper.binding.Depth(hyper.callOpts, nonceIn32Bytes)
 	if err != nil {
 		return 0, err
 	}

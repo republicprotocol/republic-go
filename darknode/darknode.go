@@ -292,7 +292,7 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 	go func() {
 		defer close(errs)
 
-		watchingList := map[identity.Hash]hyperdrive.TxWithTimestamp{}
+		watchingList := map[string]hyperdrive.TxWithTimestamp{}
 
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
@@ -302,7 +302,7 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 			case <-done:
 				return
 			case tx := <-node.txsToBeFinalized:
-				watchingList[tx.Tx.Hash] = tx
+				watchingList[string(tx.Tx.Hash)] = tx
 			case <-ticker.C:
 				for key, tx := range watchingList {
 					if time.Now().Before(tx.Timestamp.Add(5 * time.Minute)) {
