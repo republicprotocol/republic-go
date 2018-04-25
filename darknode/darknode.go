@@ -44,9 +44,8 @@ type Darknode struct {
 
 	orderFragments chan order.Fragment
 	rpc            *rpc.RPC
-
-	smpc  smpc.Smpc
-	relay relay.Relay
+	smpc           smpc.Smpc
+	relay          relay.Relay
 }
 
 // NewDarknode returns a new Darknode.
@@ -85,6 +84,12 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 		return Darknode{}, err
 	}
 	node.darknodeRegistry = darknodeRegistry
+	hyperdriveContract, err  := contracts.NewHyperdriveContract(context.Background(), ethclient, transactOpts, &bind.CallOpts{})
+	if err != nil {
+		return Darknode{}, err
+	}
+	node.hyperdriveContract = hyperdriveContract
+	node.txsToBeFinalized = make(chan hyperdrive.TxWithTimestamp)
 
 	// FIXME: Use a production Crypter implementation
 	weakCrypter := crypto.NewWeakCrypter()
@@ -96,7 +101,6 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 		node.orderFragments <- orderFragment
 		return nil
 	})
-	node.txsToBeFinalized = make(chan hyperdrive.TxWithTimestamp)
 	node.relay = relay.NewRelay(relay.Config{}, darkocean.Pools{}, darknodeRegistry, &node.orderbook, node.rpc.RelayerClient(), node.rpc.SmpcerClient(), node.rpc.SwarmerClient())
 
 	return node, nil
@@ -231,6 +235,10 @@ func (node *Darknode) RunEpochs(done <-chan struct{}) <-chan error {
 						for delta := range deltas {
 							if delta.IsMatch(smpc.Prime) {
 								node.Logger.OrderMatch(logger.Info, delta.ID.String(), delta.BuyOrderID.String(), delta.SellOrderID.String())
+								err = node.OrderMatchToHyperdrive(delta)
+								if err != nil {
+									node.Logger.Compute(logger.Error, err.Error())
+								}
 							}
 						}
 					}()
@@ -259,9 +267,14 @@ func (node *Darknode) MultiAddress() identity.MultiAddress {
 
 // OnOpenOrder implements the rpc.RelayDelegate interface.
 func (node *Darknode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
-	println("ORDER RECEIVED")
 	node.orderFragments <- *orderFragment
-	println("ORDER PROCESSED")
+	entry := orderbook.NewEntry(order.Order{
+		ID: orderFragment.OrderID,
+	}, order.Open)
+	err := node.orderbook.Open(entry)
+	if err != nil {
+		node.Logger.Compute(logger.Error, err.Error())
+	}
 }
 
 // OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
@@ -272,6 +285,17 @@ func (node *Darknode) OrderMatchToHyperdrive(delta delta.Delta) error {
 	if !delta.IsMatch(smpc.Prime) {
 		return errors.New("delta is not an order match")
 	}
+
+	// Update the buy/sell orders in the orderbook
+	entryBuy := orderbook.NewEntry(order.Order{
+		ID: delta.BuyOrderID,
+	}, order.Unconfirmed)
+	node.orderbook.Match(entryBuy)
+
+	entrySell := orderbook.NewEntry(order.Order{
+		ID: delta.SellOrderID,
+	}, order.Unconfirmed)
+	node.orderbook.Match(entrySell)
 
 	// Convert an order match into a Tx
 	tx := hyperdrive.NewTxFromByteSlices(delta.SellOrderID, delta.BuyOrderID)
@@ -310,11 +334,10 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 						for _, nonce := range tx.Nonces {
 							dep, err := node.hyperdriveContract.GetDepth(nonce)
 							if err != nil {
-								// todo : release tx in the orderbook since there is an error
 								for _, nonce := range tx.Nonces {
 									entry := orderbook.Entry{
 										Order: order.Order{
-											ID: nonce[:],
+											ID: order.ID(nonce),
 										},
 										Status: order.Unconfirmed,
 									}
@@ -331,11 +354,11 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 						}
 
 						if finalized {
-							//todo : confirm the finalized transaction in the orderbook.
+							node.Logger.Info(fmt.Sprintf("%v has been confirmed by hyperdrive ", tx.Nonces))
 							for _, nonce := range tx.Nonces {
 								entry := orderbook.Entry{
 									Order: order.Order{
-										ID: nonce[:],
+										ID: order.ID(nonce),
 									},
 									Status: order.Confirmed,
 								}
@@ -344,11 +367,10 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 							delete(watchingList, key)
 						}
 					} else {
-						// todo : release tx in the orderbook as it expires
 						for _, nonce := range tx.Nonces {
 							entry := orderbook.Entry{
 								Order: order.Order{
-									ID: nonce[:],
+									ID: order.ID(nonce),
 								},
 								Status: order.Unconfirmed,
 							}

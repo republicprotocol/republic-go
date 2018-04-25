@@ -71,7 +71,7 @@ func Connect(ganacheRPC string) (client.Connection, error) {
 		Client:     ethclient,
 		DNRAddress: client.DarkNodeRegistryAddressOnGanache,
 		RenAddress: client.RepublicTokenAddressOnGanache,
-		HDAddress:  client.HyperDriveAddressOnGanache,
+		HDAddress:  client.HyperdriveAddressOnGanache,
 		Network:    client.NetworkGanache,
 	}, nil
 }
@@ -174,8 +174,8 @@ func deployContracts(conn client.Connection, transactor *bind.TransactOpts) erro
 	if darkNodeRegistryAddress != client.DarkNodeRegistryAddressOnGanache {
 		return fmt.Errorf("DarkNodeRegistry address has changed: expected: %s, got: %s", client.DarkNodeRegistryAddressOnGanache.Hex(), darkNodeRegistryAddress.Hex())
 	}
-	if hyperdriveAddress != client.HyperDriveAddressOnGanache {
-		return fmt.Errorf("HyperdriveContract address has changed: expected: %s, got: %s", client.HyperDriveAddressOnGanache.Hex(), hyperdriveAddress.Hex())
+	if hyperdriveAddress != client.HyperdriveAddressOnGanache {
+		return fmt.Errorf("HyperdriveContract address has changed: expected: %s, got: %s", client.HyperdriveAddressOnGanache.Hex(), hyperdriveAddress.Hex())
 	}
 
 	return nil

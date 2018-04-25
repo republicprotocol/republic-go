@@ -28,9 +28,9 @@ import (
 
 const (
 	GanacheRPC                 = "http://localhost:8545"
-	NumberOfDarkNodes          = 12
+	NumberOfDarkNodes          = 5
 	NumberOfBootstrapDarkNodes = 3
-	NumberOfOrders             = 1000
+	NumberOfOrders             = 10
 )
 
 var _ = Describe("Darknode", func() {

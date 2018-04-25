@@ -84,10 +84,9 @@ func Connect(uri string, network Network, republicTokenAddress, darkNodeRegistry
 	if hyperdriveAddress == "" {
 		switch network {
 		case NetworkGanache:
-			hyperdriveAddress = HyperDriveAddressOnGanache.String()
+			hyperdriveAddress = HyperdriveAddressOnGanache.String()
 		case NetworkRopsten:
-			// fixme
-			hyperdriveAddress = HyperDriveAddressOnGanache.String()
+			hyperdriveAddress = HyperdriveAddressOnRopsten.String()
 		default:
 			return Connection{}, fmt.Errorf("cannot connect to %s: unsupported", network)
 		}
