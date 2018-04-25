@@ -77,8 +77,8 @@ func (relay *Relay) Register(server *grpc.Server) {
 }
 
 // Sync the Relay with other random Relay in the network.
-func (relay *Relay) Sync(ctx context.Context, epoch [32]byte, peers int) {
-	relay.relayerClient.Sync(ctx, relay.orderbook, epoch, peers)
+func (relay *Relay) Sync(ctx context.Context, peers int) {
+	relay.relayerClient.Sync(ctx, relay.orderbook, peers)
 }
 
 // SendOrderToDarkOcean will fragment and send orders to the dark ocean

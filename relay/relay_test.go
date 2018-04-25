@@ -9,17 +9,20 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/darknodetest"
+	ethClient "github.com/republicprotocol/republic-go/ethereum/client"
 	. "github.com/republicprotocol/republic-go/relay"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
-	"github.com/republicprotocol/republic-go/ethereum/client"
+	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/ethereum/ganache"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/rpc"
+	"github.com/republicprotocol/republic-go/rpc/client"
 	"github.com/republicprotocol/republic-go/rpc/dht"
 	"github.com/republicprotocol/republic-go/rpc/relayer"
 	"github.com/republicprotocol/republic-go/rpc/smpcer"
@@ -41,7 +44,7 @@ const (
 
 var _ = Describe("Relay", func() {
 
-	var conn client.Connection
+	var conn ethClient.Connection
 	var darknodes darknode.Darknodes
 	var bootstrapNodes []string
 
@@ -93,25 +96,27 @@ var _ = Describe("Relay", func() {
 				MultiAddress: identity.MultiAddress{},
 				Token:        "",
 			}
-			pools := darknode.NewOcean(darknodeRegistry).GetPools()
-			orderbook := orderorderbook.NewOrderbook(100)
+			pools := getPools(darknodeRegistry)
+			book := orderbook.NewOrderbook(100)
 
 			// Initialise DHT using registered nodes
-			dht := dht.NewDHT(identity.Address{}, 100)
+			address, _, _ := identity.NewAddress()
+			dht := dht.NewDHT(address, 100)
 			for i := 0; i < len(darknodes); i++ {
-				dht.UpdateMultiAddress(darknodes[i].MultiAddress)
+				dht.UpdateMultiAddress(darknodes[i].MultiAddress())
 			}
 
+			crypter := crypto.NewWeakCrypter()
 			connPool := client.NewConnPool(100)
-			relayerClient := relayer.NewClient(dht, connPool)
-			swarmerClient := swarmer.NewClient(config.MultiAddress, dht, connPool)
-			smpcerClient := smpcer.NewClient(config.MultiAddress, connPool)
+			relayerClient := relayer.NewClient(&crypter, &dht, &connPool)
+			swarmerClient := swarmer.NewClient(&crypter, config.MultiAddress, &dht, &connPool)
+			smpcerClient := smpcer.NewClient(&crypter, config.MultiAddress, &connPool)
 
-			relay := NewRelay(config, pools, darknodeRegistry, orderbook, relayerClient, swarmerClient, smpcerClient)
+			relay := NewRelay(config, pools, darknodeRegistry, &book, &relayerClient, &smpcerClient, &swarmerClient)
 
 			server := grpc.NewServer()
 			relay.Register(server)
-			relay.Sync(context.Background(), make([]byte, 32), 3)
+			relay.Sync(context.Background(), 3)
 
 			// TODO: Send orders to selected nodes
 		})
@@ -136,7 +141,7 @@ var _ = Describe("Relay", func() {
 				},
 			}
 
-			err := StoreEntryInOrderbook(&block, [32]byte{}, &book)
+			err := StoreEntryInOrderbook(&block, &book)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Check to see if orderbook is as expected
@@ -178,9 +183,9 @@ var _ = Describe("Relay", func() {
 				},
 			}
 
-			err := StoreEntryInOrderbook(&fstBlock, [32]byte{}, &book)
+			err := StoreEntryInOrderbook(&fstBlock, &book)
 			Ω(err).ShouldNot(HaveOccurred())
-			err = StoreEntryInOrderbook(&sndBlock, [32]byte{}, &book)
+			err = StoreEntryInOrderbook(&sndBlock, &book)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Check to see if orderbook is as expected
@@ -223,9 +228,9 @@ var _ = Describe("Relay", func() {
 				},
 			}
 
-			err := StoreEntryInOrderbook(&openBlock, [32]byte{}, &book)
+			err := StoreEntryInOrderbook(&openBlock, &book)
 			Ω(err).ShouldNot(HaveOccurred())
-			err = StoreEntryInOrderbook(&confirmedBlock, [32]byte{}, &book)
+			err = StoreEntryInOrderbook(&confirmedBlock, &book)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Check to see if orderbook is as expected
@@ -443,7 +448,8 @@ var _ = Describe("Relay", func() {
 	Context("when sending full orders", func() {
 
 		It("should not return an error", func() {
-			pools, trader := getPoolsAndTrader(darknodeRegistry)
+			pools := getPools(darknodeRegistry)
+			trader := identity.MultiAddress{}
 
 			keyPair, err := identity.NewKeyPair()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -466,7 +472,8 @@ var _ = Describe("Relay", func() {
 	Context("when sending fragmented orders that do not have sufficient fragments", func() {
 
 		It("should return an error", func() {
-			pools, trader := getPoolsAndTrader(darknodeRegistry)
+			pools := getPools(darknodeRegistry)
+			trader := identity.MultiAddress{}
 
 			keyPair, err := identity.NewKeyPair()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -490,7 +497,8 @@ var _ = Describe("Relay", func() {
 	Context("when sending fragmented orders that have sufficient fragments for atleast one dark pool", func() {
 
 		It("should not return an error", func() {
-			pools, trader := getPoolsAndTrader(darknodeRegistry)
+			pools := getPools(darknodeRegistry)
+			trader := identity.MultiAddress{}
 
 			keyPair, err := identity.NewKeyPair()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -515,7 +523,8 @@ var _ = Describe("Relay", func() {
 	Context("when canceling orders", func() {
 
 		It("should not return an error", func() {
-			pools, trader := getPoolsAndTrader(darknodeRegistry)
+			pools := getPools(darknodeRegistry)
+			trader := identity.MultiAddress{}
 
 			keyPair, err := identity.NewKeyPair()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -536,14 +545,13 @@ var _ = Describe("Relay", func() {
 	})
 })
 
-// getPools return dark pools from a mock dnr
-func getPools(dnr contracts.DarkNodeRegistry) darknode.Pools {
+func getPools(dnr contracts.DarkNodeRegistry) darkocean.Pools {
 	darknodeIDs, err := dnr.GetAllNodes()
 	Ω(err).ShouldNot(HaveOccurred())
 
 	epoch, err := dnr.CurrentEpoch()
 	Ω(err).ShouldNot(HaveOccurred())
-	darkOcean := darknode.NewDarkOcean(epoch.Blockhash, darknodeIDs)
+	darkOcean := darkocean.NewDarkOcean(epoch.Blockhash, darknodeIDs)
 
 	return darkOcean.Pools()
 }
@@ -589,7 +597,7 @@ func getFragmentedOrder() OrderFragments {
 	return fragmentedOrder
 }
 
-func generateFragmentedOrderForDarkPool(pool darknode.Pool) (OrderFragments, error) {
+func generateFragmentedOrderForDarkPool(pool darkocean.Pool) (OrderFragments, error) {
 	sendOrder := getFullOrder()
 	fragments, err := sendOrder.Split(int64(pool.Size()), int64(pool.Size()*2/3), &Prime)
 	if err != nil {
@@ -602,9 +610,7 @@ func generateFragmentedOrderForDarkPool(pool darknode.Pool) (OrderFragments, err
 	return fragmentOrder, nil
 }
 
-func getPoolsAndTrader(darknodeRegistry contracts.DarkNodeRegistry) (darknode.Pools, identity.MultiAddress) {
-	trader, err := identity.NewMultiAddressFromString(traderMulti)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	return getPools(darknodeRegistry), trader
+// FIXME:
+func StoreEntryInOrderbook(block rpc.SyncBlock, book orderbook.Orderbook) error {
+	panic("unimplemented")
 }
