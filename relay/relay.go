@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -32,7 +32,7 @@ type Config struct {
 type Relay struct {
 	Config
 	DarkPools darkocean.Pools
-	Registrar contracts.DarkNodeRegistry
+	Registrar dnr.DarknodeRegistry
 
 	relayer   relayer.Relayer
 	orderbook *orderbook.Orderbook
@@ -43,7 +43,7 @@ type Relay struct {
 }
 
 // NewRelay returns a new Relay object
-func NewRelay(config Config, pools darkocean.Pools, registrar contracts.DarkNodeRegistry, orderbook *orderbook.Orderbook, relayerClient *relayer.Client, smpcerClient *smpcer.Client, swarmerClient *swarmer.Client) Relay {
+func NewRelay(config Config, pools darkocean.Pools, registrar dnr.DarknodeRegistry, orderbook *orderbook.Orderbook, relayerClient *relayer.Client, smpcerClient *smpcer.Client, swarmerClient *swarmer.Client) Relay {
 	return Relay{
 		Config:    config,
 		DarkPools: pools,
@@ -77,8 +77,8 @@ func (relay *Relay) Register(server *grpc.Server) {
 }
 
 // Sync the Relay with other random Relay in the network.
-func (relay *Relay) Sync(ctx context.Context, epoch [32]byte, peers int) {
-	relay.relayerClient.Sync(ctx, relay.orderbook, epoch, peers)
+func (relay *Relay) Sync(ctx context.Context, peers int) {
+	relay.relayerClient.Sync(ctx, relay.orderbook, peers)
 }
 
 // SendOrderToDarkOcean will fragment and send orders to the dark ocean

@@ -16,28 +16,14 @@ import (
 var _ = Describe("Order fragment processor", func() {
 	Context("when receiving order fragments", func() {
 
-		It("should shutdown when the context is canceled", func(done Done) {
-			defer close(done)
-
-			var wg sync.WaitGroup
-			ctx, cancel := context.WithCancel(context.Background())
-
+		It("should shutdown when the context is canceled", func() {
+			done := make(chan struct{})
 			orderFragmentCh := make(chan order.Fragment)
 			sharedOrderTable := smpc.NewSharedOrderTable()
-			_, errCh := smpc.ProcessOrderFragments(ctx, orderFragmentCh, &sharedOrderTable, 0)
-
-			wg.Add(1)
-			go func() {
-				defer GinkgoRecover()
-				defer wg.Done()
-
-				for err := range errCh {
-					Ω(err).Should(Equal(context.Canceled))
-				}
-			}()
-
-			cancel()
-			wg.Wait()
+			ch := smpc.OrderFragmentsToOrderTuples(done, orderFragmentCh, &sharedOrderTable, 0)
+			close(done)
+			for range ch {
+			}
 		})
 
 		It("should produce order tuples for all order pairs", func(done Done) {
@@ -52,7 +38,7 @@ var _ = Describe("Order fragment processor", func() {
 
 			orderFragmentCh := make(chan order.Fragment)
 			sharedOrderTable := smpc.NewSharedOrderTable()
-			orderTuplesCh, errCh := smpc.ProcessOrderFragments(ctx, orderFragmentCh, &sharedOrderTable, numOrderTuples)
+			orderTuplesCh := smpc.OrderFragmentsToOrderTuples(ctx.Done(), orderFragmentCh, &sharedOrderTable, numOrderTuples)
 
 			// Consume OrderTuples and cancel the process once all OrderTuples
 			// have been consumed
@@ -69,17 +55,6 @@ var _ = Describe("Order fragment processor", func() {
 					}
 				}
 				cancel()
-			}()
-
-			// Consume all errors
-			wg.Add(1)
-			go func() {
-				defer GinkgoRecover()
-				defer wg.Done()
-
-				for err := range errCh {
-					Ω(err).Should(Equal(context.Canceled))
-				}
 			}()
 
 			// Produce order fragments for the process

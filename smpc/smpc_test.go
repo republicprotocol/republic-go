@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
@@ -21,10 +22,10 @@ var _ = Describe("Smpc Computer", func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			n, k, numResidues := int64(3), int64(2), 100
 
-			computers := make([]smpc.Computer, n)
+			computers := make([]smpc.Smpc, n)
 			obscureComputeChsIn := make([]smpc.ObscureComputeInput, n)
 			for i := int64(0); i < n; i++ {
-				computers[i] = smpc.NewComputer([32]byte{byte(i)}, n, k)
+				computers[i] = smpc.NewSmpc(identity.ID([]byte{byte(i)}), n, k)
 				obscureComputeChsIn[i] = smpc.ObscureComputeInput{
 					Rng:              make(chan smpc.ObscureRng, n),
 					RngShares:        make(chan smpc.ObscureRngShares, n),

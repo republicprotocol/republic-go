@@ -1,1 +1,1 @@
-package contracts_test
+package dnr_test

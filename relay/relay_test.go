@@ -12,14 +12,14 @@ import (
 	. "github.com/republicprotocol/republic-go/relay"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/darknode"
-	"github.com/republicprotocol/republic-go/ethereum/client"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
-	"github.com/republicprotocol/republic-go/ethereum/ganache"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/rpc"
+	"github.com/republicprotocol/republic-go/rpc/client"
 	"github.com/republicprotocol/republic-go/rpc/dht"
 	"github.com/republicprotocol/republic-go/rpc/relayer"
 	"github.com/republicprotocol/republic-go/rpc/smpcer"
@@ -41,7 +41,7 @@ const (
 
 var _ = Describe("Relay", func() {
 
-	var conn client.Connection
+	var conn ethereum.Conn
 	var darknodes darknode.Darknodes
 	var bootstrapNodes []string
 

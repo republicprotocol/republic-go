@@ -17,11 +17,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/go-do"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
-	ethereum "github.com/republicprotocol/republic-go/ethereum/client"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
-	"github.com/republicprotocol/republic-go/ethereum/ganache"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/rpc/client"
@@ -39,8 +39,8 @@ const (
 var _ = Describe("Darknode", func() {
 
 	var cmd *exec.Cmd
-	var conn ethereum.Connection
-	var darknodeRegistry contracts.DarkNodeRegistry
+	var conn ethereum.Conn
+	var darknodeRegistry dnr.DarknodeRegistry
 	var darknodes Darknodes
 
 	BeforeEach(func() {
@@ -50,7 +50,7 @@ var _ = Describe("Darknode", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Connect to Ganache
-		darknodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
+		darknodeRegistry, err = dnr.NewDarknodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
 		Expect(err).ShouldNot(HaveOccurred())
 		darknodeRegistry.SetGasLimit(1000000)
 
@@ -152,9 +152,8 @@ var _ = Describe("Darknode", func() {
 			defer close(done)
 			go dispatch.CoForAll(darknodes, func(i int) {
 				defer GinkgoRecover()
-				for err := range darknodes[i].Serve(done) {
-					Expect(err).ShouldNot(HaveOccurred())
-				}
+				err := darknodes[i].Serve(done)
+				Expect(err).ShouldNot(HaveOccurred())
 			})
 			time.Sleep(10 * time.Second)
 			for _, node := range darknodes {

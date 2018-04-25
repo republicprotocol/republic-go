@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"os"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
-
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/logger"
 )
 
@@ -29,12 +28,12 @@ type Config struct {
 // to an Ethereum network, and the Republic Protocol smart contracts deployed
 // on Ethereum.
 type EthereumConfig struct {
-	Network                 client.Network `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
-	URI                     string         `json:"uri"`
-	RepublicTokenAddress    string         `json:"republicTokenAddress"`
-	DarknodeRegistryAddress string         `json:"darknodeRegistryAddress"`
-	TraderRegistryAddress   string         `json:"traderRegistryAddress"`
-	HyperdriveAddress       string         `json:"hyperdriveAddress"`
+	Network                 ethereum.Network `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
+	URI                     string           `json:"uri"`
+	RepublicTokenAddress    string           `json:"republicTokenAddress"`
+	DarknodeRegistryAddress string           `json:"darknodeRegistryAddress"`
+	TraderRegistryAddress   string           `json:"traderRegistryAddress"`
+	HyperdriveAddress       string           `json:"hyperdriveAddress"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config

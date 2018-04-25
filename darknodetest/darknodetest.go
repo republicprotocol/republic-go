@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
-	"github.com/republicprotocol/republic-go/ethereum/client"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
 )
 
@@ -48,7 +48,7 @@ func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (darknode.D
 
 // RegisterDarknodes using the minimum required bond and wait until the next
 // epoch. This must only be used in local test environments.
-func RegisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarkNodeRegistry) error {
+func RegisterDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darknodeRegistry dnr.DarknodeRegistry) error {
 
 	minimumBond, err := darknodeRegistry.MinimumBond()
 	if err != nil {
@@ -80,7 +80,7 @@ func RegisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, dar
 
 // DeregisterDarknodes and wait until the next epoch. This must only be used
 // in local test environments.
-func DeregisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarkNodeRegistry) error {
+func DeregisterDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darknodeRegistry dnr.DarknodeRegistry) error {
 	for i := range darknodes {
 		darknodeID := darknodes[i].ID()
 		tx, err := darknodeRegistry.Deregister(darknodeID)
@@ -96,7 +96,7 @@ func DeregisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, d
 
 // RefundDarknodes after they have been deregistered. This must only be used
 // in local test environments.
-func RefundDarknodes(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarkNodeRegistry) error {
+func RefundDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darknodeRegistry dnr.DarknodeRegistry) error {
 	for i := range darknodes {
 		darknodeID := darknodes[i].ID()
 		tx, err := darknodeRegistry.Refund(darknodeID)
@@ -131,10 +131,10 @@ func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAdd
 		Host:     host,
 		Port:     port,
 		Ethereum: darknode.EthereumConfig{
-			Network:                 client.NetworkGanache,
+			Network:                 ethereum.NetworkGanache,
 			URI:                     "http://localhost:8545",
-			RepublicTokenAddress:    client.RepublicTokenAddressOnGanache.String(),
-			DarknodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.String(),
+			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
+			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
 		},
 	}, nil
 }

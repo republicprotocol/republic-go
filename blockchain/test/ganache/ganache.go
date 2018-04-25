@@ -76,7 +76,7 @@ func Connect(ganacheRPC string) (ethereum.Conn, error) {
 }
 
 // StartAndConnect to a local Ganache instance and deploy all smart contracts.
-func StartAndConnect() (*exec.Cmd, client.Connection, error) {
+func StartAndConnect() (*exec.Cmd, ethereum.Conn, error) {
 	cmd := Start()
 	time.Sleep(time.Second)
 	conn, err := Connect("http://localhost:8545")

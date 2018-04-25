@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/dispatch"
-	ethclient "github.com/republicprotocol/republic-go/ethereum/client"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -36,7 +36,7 @@ type Darknode struct {
 	orderbook    orderbook.Orderbook
 	crypter      crypto.Crypter
 
-	darknodeRegistry contracts.DarkNodeRegistry
+	darknodeRegistry dnr.DarknodeRegistry
 
 	orderFragments         chan order.Fragment
 	orderFragmentsCanceled chan order.ID
@@ -65,7 +65,7 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 
 	// Open a connection to the Ethereum network
 	transactOpts := bind.NewKeyedTransactor(config.EcdsaKey.PrivateKey)
-	ethclient, err := ethclient.Connect(
+	ethclient, err := ethereum.Connect(
 		config.Ethereum.URI,
 		config.Ethereum.Network,
 		config.Ethereum.RepublicTokenAddress,
@@ -76,7 +76,7 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 	}
 
 	// Create bindings to the DarknodeRegistry and Ocean
-	darknodeRegistry, err := contracts.NewDarkNodeRegistry(context.Background(), ethclient, transactOpts, &bind.CallOpts{})
+	darknodeRegistry, err := dnr.NewDarknodeRegistry(context.Background(), ethclient, transactOpts, &bind.CallOpts{})
 	if err != nil {
 		return Darknode{}, err
 	}

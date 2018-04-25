@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/rpc/smpcer"
 	"github.com/republicprotocol/republic-go/smpc"
@@ -191,8 +191,8 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 // RunEpochWatcher until the done channel is closed. An EpochWatcher will watch
 // for changes to the DarknodeRegistry epoch. Returns a read-only channel that
 // can be used to read epochs as they change.
-func RunEpochWatcher(done <-chan struct{}, darknodeRegistry contracts.DarkNodeRegistry) (<-chan contracts.Epoch, <-chan error) {
-	changes := make(chan contracts.Epoch)
+func RunEpochWatcher(done <-chan struct{}, darknodeRegistry dnr.DarknodeRegistry) (<-chan dnr.Epoch, <-chan error) {
+	changes := make(chan dnr.Epoch)
 	errs := make(chan error, 1)
 
 	go func() {
