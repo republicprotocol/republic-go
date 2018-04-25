@@ -78,13 +78,29 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 		k := (n + 1) * 2 / 3
 		smpc := smpc.NewSmpc(node.ID(), n, k)
 
-		orderFragments := node.orderFragments // FIXME: Splitter for the order.Fragments
+		orderFragments := node.orderFragments                 // TODO: Splitter for multiple epochs
+		orderFragmentsCanceled := node.orderFragmentsCanceled // TODO: Splitter for multiple epochs
 		deltaFragments := make(chan delta.Fragment)
 		defer close(deltaFragments)
 
 		deltaFragmentsComputed, deltasComputed := smpc.ComputeOrderMatches(done, orderFragments, deltaFragments)
 
 		dispatch.CoBegin(func() {
+
+			// Receive cancelations
+			for {
+				select {
+				case <-done:
+					return
+				case orderID, ok := <-orderFragmentsCanceled:
+					if !ok {
+						return
+					}
+					smpc.SharedOrderTable().RemoveBuyOrder(orderID)
+					smpc.SharedOrderTable().RemoveSellOrder(orderID)
+				}
+			}
+		}, func() {
 
 			// Receive smpc.DeltaFragments from other Darknodes in the Pool
 			dispatch.CoForAll(receivers, func(receiver identity.Address) {
