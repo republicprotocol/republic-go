@@ -46,40 +46,32 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 		receivers := map[identity.Address]<-chan *smpcer.ComputeMessage{}
 		errors := map[identity.Address]<-chan error{}
 
-		println("#1")
-
 		addresses := pool.Addresses()
 		dispatch.CoForAll(addresses, func(i int) {
-
-			println("#2")
 
 			addr := addresses[i]
 			if bytes.Compare(addr.ID()[:], node.ID()[:]) == 0 {
 				return
 			}
 
+			ctx, cancel := context.WithCancel(context.Background())
 			mu.Lock()
-			ctxs[addr], cancels[addr] = context.WithCancel(context.Background())
+			ctxs[addr], cancels[addr] = ctx, cancel
 			mu.Unlock()
 
 			sender := make(chan *smpcer.ComputeMessage)
-			multiAddr, err := node.rpc.SwarmerClient().Query(ctxs[addr], addr, 3)
+			multiAddr, err := node.rpc.SwarmerClient().Query(ctx, addr, 3)
 			if err != nil {
 				log.Println(err)
 				return
 			}
-
-			println("#3")
-
-			receiver, errs := node.rpc.SmpcerClient().Compute(ctxs[addresses[i]], multiAddr, sender)
+			receiver, errs := node.rpc.SmpcerClient().Compute(ctx, multiAddr, sender)
 
 			mu.Lock()
 			senders[addr] = sender
 			receivers[addr] = receiver
 			errors[addr] = errs
 			mu.Unlock()
-
-			println("#4")
 		})
 
 		n := int64(pool.Size())
@@ -90,11 +82,7 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 		deltaFragments := make(chan delta.Fragment)
 		defer close(deltaFragments)
 
-		println("#5")
-
 		deltaFragmentsComputed, deltasComputed := smpc.ComputeOrderMatches(done, orderFragments, deltaFragments)
-
-		println("#6")
 
 		dispatch.CoBegin(func() {
 
@@ -135,6 +123,7 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 					if !ok {
 						return
 					}
+					println("BROADCASTING")
 					computation := &smpcer.ComputeMessage{
 						Value: &smpcer.ComputeMessage_DeltaFragment{
 							DeltaFragment: smpcer.MarshalDeltaFragment(&deltaFragment),

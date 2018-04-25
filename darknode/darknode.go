@@ -89,6 +89,7 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 	node.orderFragments = make(chan order.Fragment, 1)
 	node.rpc = rpc.NewRPC(node.crypter, node.multiAddress, &node.orderbook)
 	node.rpc.OnOpenOrder(func(sig []byte, orderFragment order.Fragment) error {
+		log.Printf("OnOpenOrder RECEIVED")
 		node.orderFragments <- orderFragment
 		return nil
 	})
@@ -104,7 +105,6 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 // errors encountered. Users should not call Darknode.Bootstrap until the
 // Darknode is registered, and the its registration is approved.
 func (node *Darknode) Bootstrap(ctx context.Context) <-chan error {
-	log.Printf("config %v", node.Config.BootstrapMultiAddresses)
 	return node.rpc.SwarmerClient().Bootstrap(ctx, node.Config.BootstrapMultiAddresses, -1)
 }
 
@@ -161,7 +161,6 @@ func (node *Darknode) Serve(done <-chan struct{}) <-chan error {
 // closed, and will attempt to recover from errors encountered while
 // interacting with the Ocean.
 func (node *Darknode) RunEpochs(done <-chan struct{}) <-chan error {
-	println("starting epochs")
 	errs := make(chan error, 1)
 
 	go func() {

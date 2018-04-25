@@ -51,22 +51,18 @@ func (client *Client) Bootstrap(ctx context.Context, bootstrapMultiAddrs identit
 		defer close(errs)
 		for _, bootstrapMultiAddr := range bootstrapMultiAddrs {
 			if err := client.dht.UpdateMultiAddress(bootstrapMultiAddr); err != nil {
-				log.Println(fmt.Errorf("cannot store bootstrap node %v in dht: %v", bootstrapMultiAddr, err))
 				errs <- fmt.Errorf("cannot store bootstrap node %v in dht: %v", bootstrapMultiAddr, err)
 			}
 		}
 		dispatch.CoForAll(bootstrapMultiAddrs, func(i int) {
 			if err := client.Ping(ctx, bootstrapMultiAddrs[i]); err != nil {
-				log.Println(fmt.Errorf("cannot ping bootstrap node %v: %v", bootstrapMultiAddrs[i], err))
 				errs <- fmt.Errorf("cannot ping bootstrap node %v: %v", bootstrapMultiAddrs[i], err)
 			}
 		})
 		_, err := client.Query(ctx, client.Address(), depth)
 		if err != nil {
-			log.Println(fmt.Errorf("error while bootstrapping: %v", err))
 			errs <- fmt.Errorf("error while bootstrapping: %v", err)
 		}
-		log.Printf("bootstrap from %v got %v", client.Address(), len(client.dht.MultiAddresses()))
 	}()
 	return errs
 }
@@ -152,7 +148,6 @@ func (client *Client) Query(ctx context.Context, query identity.Address, depth i
 		if err != nil && err != io.EOF {
 			return identity.MultiAddress{}, fmt.Errorf("cannot send query to %v: %v", peer, err)
 		}
-		log.Printf("query to %v: %v", peer, multiAddrs)
 		for _, multiAddr := range multiAddrs {
 			whitelist = append(whitelist, multiAddr)
 		}
