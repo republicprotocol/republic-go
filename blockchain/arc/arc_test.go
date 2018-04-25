@@ -38,7 +38,7 @@ var _ = Describe("ARC", func() {
 	var aliceBtcAddr, bobBtcAddr string // btcutil.Address
 
 	// Don't run on CI
-	test.Context("BTC-ETH", func() {
+	test.SkipCiContext("BTC-ETH", func() {
 
 		BeforeSuite(func() {
 

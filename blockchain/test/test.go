@@ -7,9 +7,10 @@ import (
 	"github.com/onsi/ginkgo"
 )
 
-// Context allows you to mark a ginkgo context as being local-only.
-// It won't run if the CI environment variable is true.
-func Context(description string, f func()) {
+// SkipCiContext can be used instead of Context to skip tests when they are
+// being run in a CI environment (to avoid getting flagged for running Bitcoin
+// mining software).
+func SkipCiContext(description string, f func()) {
 	var local bool
 
 	ciEnv := os.Getenv("CI")
