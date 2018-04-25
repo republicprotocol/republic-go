@@ -2,10 +2,13 @@ package darknode_test
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"log"
 	"os/exec"
 	"time"
+
+	"github.com/republicprotocol/republic-go/smpc"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -28,9 +31,9 @@ import (
 
 const (
 	GanacheRPC                 = "http://localhost:8545"
-	NumberOfDarkNodes          = 5
+	NumberOfDarkNodes          = 3
 	NumberOfBootstrapDarkNodes = 3
-	NumberOfOrders             = 10
+	NumberOfOrdersPerSecond    = 5
 )
 
 var _ = Describe("Darknode", func() {
@@ -149,18 +152,20 @@ var _ = Describe("Darknode", func() {
 			defer close(done)
 			go dispatch.CoForAll(darknodes, func(i int) {
 				defer GinkgoRecover()
-				for err := range darknodes[i].Serve(done) {
-					Expect(err).ShouldNot(HaveOccurred())
-				}
+
+				Expect(darknodes[i].Serve(done)).ShouldNot(HaveOccurred())
 			})
 			time.Sleep(10 * time.Second)
+			for _, node := range darknodes {
+				log.Printf("%v has %v peers", node.Address(), len(node.RPC().SwarmerClient().DHT().MultiAddresses()))
+			}
 
 			By("sending orders...")
-			err := sendOrders(darknodes, NumberOfOrders)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			By("waiting for results...")
-			time.Sleep(time.Minute)
+			for {
+				time.Sleep(time.Second)
+				err := sendOrders(darknodes, NumberOfOrdersPerSecond)
+				Ω(err).ShouldNot(HaveOccurred())
+			}
 		}, 24*60*60) // Timeout is set to 24 hours
 
 		It("should update the order book after computing an order match", func() {
@@ -188,14 +193,20 @@ func sendOrders(nodes Darknodes, numberOfOrders int) error {
 	for i := 0; i < numberOfOrders; i++ {
 		price := i * 1000000000000
 		amount := i * 1000000000000
+
+		nonce, err := stackint.Random(rand.Reader, &smpc.Prime)
+		if err != nil {
+			return err
+		}
+
 		sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour),
 			order.CurrencyCodeETH, order.CurrencyCodeBTC, stackint.FromUint(uint(price)), stackint.FromUint(uint(amount)),
-			stackint.FromUint(uint(amount)), stackint.FromUint(1))
+			stackint.FromUint(uint(amount)), nonce)
 		sellOrders[i] = sellOrder
 
 		buyOrder := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour),
 			order.CurrencyCodeETH, order.CurrencyCodeBTC, stackint.FromUint(uint(price)), stackint.FromUint(uint(amount)),
-			stackint.FromUint(uint(amount)), stackint.FromUint(1))
+			stackint.FromUint(uint(amount)), nonce)
 		buyOrders[i] = buyOrder
 	}
 
@@ -208,11 +219,12 @@ func sendOrders(nodes Darknodes, numberOfOrders int) error {
 
 	crypter := crypto.NewWeakCrypter()
 	connPool := client.NewConnPool(256)
+	defer connPool.Close()
 	smpcerClient := smpcer.NewClient(&crypter, trader, &connPool)
 
 	for i := 0; i < numberOfOrders; i++ {
 		buyOrder, sellOrder := buyOrders[i], sellOrders[i]
-		log.Printf("Sending matched order. [BUY] %s <---> [SELL] %s", buyOrder.ID, sellOrder.ID)
+		log.Printf("sending buy/sell pair (%s, %s)", buyOrder.ID, sellOrder.ID)
 		buyShares, err := buyOrder.Split(int64(totalNodes), int64((totalNodes+1)*2/3), &prime)
 		if err != nil {
 			return err

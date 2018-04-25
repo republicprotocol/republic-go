@@ -43,6 +43,8 @@ type Darknode struct {
 	txsToBeFinalized   chan hyperdrive.TxWithTimestamp
 
 	orderFragments chan order.Fragment
+	orderFragmentsCanceled chan order.ID
+
 	rpc            *rpc.RPC
 	smpc           smpc.Smpc
 	relay          relay.Relay
@@ -96,14 +98,56 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 	node.crypter = &weakCrypter
 
 	node.orderFragments = make(chan order.Fragment, 1)
+	node.orderFragmentsCanceled = make(chan order.ID, 1)
 	node.rpc = rpc.NewRPC(node.crypter, node.multiAddress, &node.orderbook)
 	node.rpc.OnOpenOrder(func(sig []byte, orderFragment order.Fragment) error {
 		node.orderFragments <- orderFragment
 		return nil
 	})
+
+	node.rpc.OnCancelOrder(func(sig []byte, orderID order.ID) error {
+		node.orderFragmentsCanceled <- orderID
+		return nil
+	})
+
 	node.relay = relay.NewRelay(relay.Config{}, darkocean.Pools{}, darknodeRegistry, &node.orderbook, node.rpc.RelayerClient(), node.rpc.SmpcerClient(), node.rpc.SwarmerClient())
 
 	return node, nil
+}
+
+// Run is the recommended way to turn on a Darknode.
+func (node *Darknode) Run(done <-chan struct{}) <-chan error {
+	errs := make(chan error, 1)
+
+	go func() {
+		defer close(errs)
+
+		// Wait until registration is approved
+		if err := node.darknodeRegistry.WaitUntilRegistration(node.ID()[:]); err != nil {
+			errs <- err
+			return
+		}
+
+		// Start serving
+		go func() {
+			if err := node.Serve(done); err != nil {
+				errs <- err
+				return
+			}
+		}()
+		time.Sleep(time.Second)
+
+		// Bootstrap into the network and stop after all search paths are
+		// exhausted, or one minute has passed
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		dispatch.Pipe(done, node.Bootstrap(ctx), errs)
+
+		// Run epochs
+		dispatch.Pipe(done, node.RunEpochs(done), errs)
+	}()
+
+	return errs
 }
 
 // Bootstrap the Darknode into the swarm network. The Darknode will query all
@@ -116,51 +160,24 @@ func (node *Darknode) Bootstrap(ctx context.Context) <-chan error {
 }
 
 // Serve the Darknode services until the done channel is closed.
-func (node *Darknode) Serve(done <-chan struct{}) <-chan error {
-	errs := make(chan error, 1)
+func (node *Darknode) Serve(done <-chan struct{}) error {
+	server := grpc.NewServer()
+	listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", node.Config.Host, node.Config.Port))
+	if err != nil {
+		return err
+	}
+	node.rpc.Relayer().Register(server)
+	node.rpc.Smpcer().Register(server)
+	node.rpc.Swarmer().Register(server)
 
 	go func() {
-		defer close(errs)
-
-		// Wait until registration is approved
-		if err := node.darknodeRegistry.WaitUntilRegistration(node.ID()[:]); err != nil {
-			errs <- err
+		if err = server.Serve(listener); err != nil {
 			return
 		}
-
-		server := grpc.NewServer()
-		listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", node.Config.Host, node.Config.Port))
-		if err != nil {
-			errs <- err
-			return
-		}
-
-		node.rpc.Relayer().Register(server)
-		node.rpc.Smpcer().Register(server)
-		node.rpc.Swarmer().Register(server)
-
-		go func() {
-			if err := server.Serve(listener); err != nil {
-				errs <- err
-				return
-			}
-		}()
-		go func() {
-			<-done
-			server.Stop()
-		}()
-
-		// Bootstrap into the network for 10 seconds maximum
-		time.Sleep(time.Second)
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		dispatch.Pipe(done, node.Bootstrap(ctx), errs)
-
-		// Run epochs
-		dispatch.Pipe(done, node.RunEpochs(done), errs)
 	}()
-
-	return errs
+	<-done
+	server.Stop()
+	return err
 }
 
 // RunEpochs will watch for changes to the Ocean and run the secure
@@ -384,4 +401,10 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 	}()
 
 	return errs
+
+}
+
+// RPC used by the Darknode.
+func (node *Darknode) RPC() *rpc.RPC {
+	return node.rpc
 }
