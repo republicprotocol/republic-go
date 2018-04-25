@@ -15,7 +15,7 @@ import (
 	"github.com/republicprotocol/republic-go/hyperdrive"
 )
 
-var _ = Describe("Dark Node Registrar", func() {
+var _ = Describe("hyperdrive", func() {
 	Context("Local test with ganache", func() {
 		It("should be able to send txs which have no conflicts", func() {
 			// Connect to local ganache blockchain
@@ -75,7 +75,7 @@ var _ = Describe("Dark Node Registrar", func() {
 	Context("Tests with Ropsten", func() {
 		renContractAddress := "0xad6ab5ccbd2d761d11ba7e976ba7a93a6e3dd41a"
 		dnrContractAddress := "0x429b5ba768e58f1a26b58742975aaeee417f3211"
-		hyperdriveAddress := "0x9db5820c2c5aa57cebe502727c98d952dae8e15f"
+		hyperdriveAddress := "0x348496ad820f2ee256268f9f9d0b9f5bacdc26cd"
 
 		BeforeEach(func() {
 

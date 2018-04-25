@@ -31,7 +31,7 @@ type HyperdriveContract struct {
 	hyperdriveAddress common.Address
 }
 
-// NewHyperdriveContract creates a new HyperdriveContract with given parameters
+// NewHyperdriveContract creates a new HyperdriveContract with given parameters.
 func NewHyperdriveContract(ctx context.Context, clientDetails client.Connection, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (HyperdriveContract, error) {
 	contract, err := bindings.NewHyperdrive(clientDetails.HDAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
@@ -66,9 +66,20 @@ func (hyper HyperdriveContract) SendTx(tx hyperdrive.Tx) (*types.Transaction, er
 	return transaction, nil
 }
 
+// GetDepth read the depth of the nonce from the hyperdrive contract.
+func (hyper *HyperdriveContract) GetDepth(nonce hyperdrive.Nonce) (uint64, error) {
+	depth, err := hyper.binding.Depth(hyper.callOpts, nonce)
+	if err != nil {
+		return 0, err
+	}
+	return depth.Uint64(), nil
+}
+
+// GetBlockNumberOfTx gets the block number of the transaction hash.
+// It calls infura using json-RPC.
 func (hyper HyperdriveContract) GetBlockNumberOfTx(transaction common.Hash) (uint64, error) {
 	switch hyper.client.Network {
-	// Acording to this https://github.com/ethereum/go-ethereum/issues/15210
+	// According to this https://github.com/ethereum/go-ethereum/issues/15210
 	// we have to use json-rpc to get the block number.
 	case client.NetworkRopsten:
 		hash := []byte(`{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["` + transaction.Hex() + `"],"id":1}`)
@@ -99,15 +110,17 @@ func (hyper HyperdriveContract) GetBlockNumberOfTx(transaction common.Hash) (uin
 	return 0, nil
 }
 
+// CurrentBlock gets the latest block.
 func (hyper HyperdriveContract) CurrentBlock() (*types.Block, error) {
 	return hyper.client.Client.(*ethclient.Client).BlockByNumber(hyper.context, nil)
 }
 
-// SetGasLimit sets the gas limit to use for transactions
-func (hyper *HyperdriveContract) SetGasLimit(limit uint64) {
-	hyper.transactOpts.GasLimit = limit
-}
-
+// BlockByNumber gets the block of given number.
 func (hyper *HyperdriveContract) BlockByNumber(blockNumber *big.Int) (*types.Block, error) {
 	return hyper.client.Client.(*ethclient.Client).BlockByNumber(hyper.context, blockNumber)
+}
+
+// SetGasLimit sets the gas limit to use for transactions.
+func (hyper *HyperdriveContract) SetGasLimit(limit uint64) {
+	hyper.transactOpts.GasLimit = limit
 }

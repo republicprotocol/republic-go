@@ -1,6 +1,8 @@
 package hyperdrive
 
 import (
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -52,6 +54,18 @@ func NewTxWithBlockNumber(hash common.Hash, blockNumber uint64) TxWithBlockNumbe
 	return TxWithBlockNumber{
 		Hash:        hash,
 		BlockNumber: blockNumber,
+	}
+}
+
+type TxWithTimestamp struct {
+	Tx
+	Timestamp time.Time
+}
+
+func NewTxWithTimestamp(tx Tx, t time.Time) TxWithTimestamp {
+	return TxWithTimestamp{
+		Tx:        tx,
+		Timestamp: t,
 	}
 }
 

@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/big"
 	"net"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/ethereum/client"
@@ -53,7 +51,7 @@ type Darknode struct {
 	epochRoutes      chan EpochRoute
 	orderFragments   chan order.Fragment
 	deltaFragments   chan smpc.DeltaFragment
-	txsToBeFinalized chan hyperdrive.TxWithBlockNumber
+	txsToBeFinalized chan hyperdrive.TxWithTimestamp
 }
 
 // NewDarknode returns a new Darknode.
@@ -98,7 +96,7 @@ func NewDarknode(config Config) (Darknode, error) {
 	node.epochRoutes = make(chan EpochRoute, 2)
 	node.orderFragments = make(chan order.Fragment)
 	node.deltaFragments = make(chan smpc.DeltaFragment)
-	node.txsToBeFinalized = make(chan hyperdrive.TxWithBlockNumber)
+	node.txsToBeFinalized = make(chan hyperdrive.TxWithTimestamp)
 
 	// Create rpc client pool and services
 
@@ -403,16 +401,13 @@ func (node *Darknode) OrderMatchToHyperdrive(delta smpc.Delta) error {
 	// Convert an order match into a Tx
 	tx := hyperdrive.NewTxFromByteSlices(delta.SellOrderID, delta.BuyOrderID)
 
-	transaction, err := node.hyperdriveContract.SendTx(tx)
+	// Fixme: this function might panic?
+	_, err := node.hyperdriveContract.SendTx(tx)
 	if err != nil {
 		return fmt.Errorf("fail to send tx to hyperdrive contract , %s", err)
 	}
 
-	blockNumber, err := node.hyperdriveContract.GetBlockNumberOfTx(transaction.Hash())
-	if err != nil {
-		return fmt.Errorf("fail to get block number of the transaction , %s", err)
-	}
-	node.txsToBeFinalized <- hyperdrive.NewTxWithBlockNumber(transaction.Hash(), blockNumber)
+	node.txsToBeFinalized <- hyperdrive.NewTxWithTimestamp(tx, time.Now())
 
 	return nil
 }
@@ -423,9 +418,9 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 	go func() {
 		defer close(errs)
 
-		watchingList := map[uint64][]common.Hash{}
+		watchingList := map[identity.Hash]hyperdrive.TxWithTimestamp{}
 
-		ticker := time.NewTicker(15 * time.Second)
+		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 
 		for {
@@ -433,48 +428,57 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 			case <-done:
 				return
 			case tx := <-node.txsToBeFinalized:
-				if _, ok := watchingList[tx.BlockNumber]; !ok {
-					watchingList[tx.BlockNumber] = []common.Hash{}
-				}
-				watchingList[tx.BlockNumber] = append(watchingList[tx.BlockNumber], tx.Hash)
+				watchingList[tx.Tx.Hash] = tx
 			case <-ticker.C:
-				currentBlock, err := node.hyperdriveContract.CurrentBlock()
-				if err != nil {
-					errs <- err
-					return
-				}
-
-				for key, value := range watchingList {
-					if key <= currentBlock.NumberU64()-depth {
-						for _, hash := range value{
-							// Check if there is a block shuffle
-							newBlockNumber ,err := node.hyperdriveContract.GetBlockNumberOfTx(hash)
+				for key, tx := range watchingList {
+					if time.Now().Before(tx.Timestamp.Add(5 * time.Minute)) {
+						finalized := true
+						for _, nonce := range tx.Nonces {
+							dep, err := node.hyperdriveContract.GetDepth(nonce)
 							if err != nil {
-								errs <- err
-								return
-							}
-							if newBlockNumber != key {
-								if _, ok := watchingList[newBlockNumber]; !ok {
-									watchingList[newBlockNumber] = []common.Hash{}
+								// todo : release tx in the orderbook since there is an error
+								for _, nonce := range tx.Nonces {
+									entry := orderbook.Entry{
+										Order: order.Order{
+											ID: nonce[:],
+										},
+										Status: order.Unconfirmed,
+									}
+									node.orderbook.Release(entry)
 								}
-								// "If map entries are created during iteration, that entry may be produced during the iteration or may be skipped."
-								watchingList[newBlockNumber]= append(watchingList[newBlockNumber], hash)
-								continue
+								finalized = false
+								delete(watchingList, key)
+								break
 							}
+							if dep < depth {
+								finalized = false
+								break
+							}
+						}
 
-							// Create a hashTable
-							hashTable := map[common.Hash]struct{}{}
-							block, err := node.hyperdriveContract.BlockByNumber(big.NewInt(int64(key)))
-							if err != nil {
-								errs <- err
-								return
+						if finalized {
+							//todo : confirm the finalized transaction in the orderbook.
+							for _, nonce := range tx.Nonces {
+								entry := orderbook.Entry{
+									Order: order.Order{
+										ID: nonce[:],
+									},
+									Status: order.Confirmed,
+								}
+								node.orderbook.Confirm(entry)
 							}
-							for _, h := range block.Transactions() {
-								hashTable[h.Hash()] = struct{}{}
+							delete(watchingList, key)
+						}
+					} else {
+						// todo : release tx in the orderbook as it expires
+						for _, nonce := range tx.Nonces {
+							entry := orderbook.Entry{
+								Order: order.Order{
+									ID: nonce[:],
+								},
+								Status: order.Unconfirmed,
 							}
-
-							if _, ok := hashTable[hash]; ok {
-							}
+							node.orderbook.Release(entry)
 						}
 						delete(watchingList, key)
 					}

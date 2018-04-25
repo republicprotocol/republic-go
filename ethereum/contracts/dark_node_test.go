@@ -4,24 +4,23 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/big"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/ethereum/contracts"
 	"github.com/republicprotocol/republic-go/hyperdrive"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 const (
 	renContractAddress = "0xad6ab5ccbd2d761d11ba7e976ba7a93a6e3dd41a"
 	dnrContractAddress = "0x429b5ba768e58f1a26b58742975aaeee417f3211"
-	hyperdriveAddress  = "0x9db5820c2c5aa57cebe502727c98d952dae8e15f"
+	hyperdriveAddress  = "0x348496ad820f2ee256268f9f9d0b9f5bacdc26cd"
 )
 
 type Delta struct {
@@ -47,11 +46,10 @@ var _ = Describe("Darknode", func() {
 
 			// Initialize other parameters for the test
 			done, depth := make(chan struct{}), uint64(5)
-			txInput := make(chan hyperdrive.TxWithBlockNumber)
+			txInput := make(chan hyperdrive.TxWithTimestamp)
 
 			go func() {
-
-				i := uint8(180)
+				i := uint8(65)
 				for {
 					t := time.NewTimer(time.Second)
 					select {
@@ -60,7 +58,7 @@ var _ = Describe("Darknode", func() {
 					case <-t.C:
 						delta := Delta{
 							BuyOrderID:  []byte{i},
-							SellOrderID: []byte{i+1},
+							SellOrderID: []byte{i + 1},
 						}
 						log.Printf("Found order match! Sending it to hyperdrive...")
 						Ω(OrderMatchToHyperdrive(delta, hyper, txInput)).ShouldNot(HaveOccurred())
@@ -85,34 +83,31 @@ var _ = Describe("Darknode", func() {
 
 // OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
 // forwards it to the Hyperdrive.
-func OrderMatchToHyperdrive(delta Delta, hyper contracts.HyperdriveContract, txInput chan hyperdrive.TxWithBlockNumber) error {
+func OrderMatchToHyperdrive(delta Delta, hyper contracts.HyperdriveContract, txInput chan hyperdrive.TxWithTimestamp) error {
 
 	// Convert an order match into a Tx
 	tx := hyperdrive.NewTxFromByteSlices(delta.SellOrderID, delta.BuyOrderID)
 
-	transaction, err := hyper.SendTx(tx)
+	_, err := hyper.SendTx(tx)
+
 	if err != nil {
 		return fmt.Errorf("fail to send tx to hyperdrive contract , %s", err)
 	}
 
-	blockNumber, err := hyper.GetBlockNumberOfTx(transaction.Hash())
-	if err != nil {
-		return fmt.Errorf("fail to get block number of the transaction , %s", err)
-	}
-	txInput <- hyperdrive.NewTxWithBlockNumber(transaction.Hash(), blockNumber)
+	txInput <- hyperdrive.NewTxWithTimestamp(tx, time.Now())
 
 	return nil
 }
 
 // Decouple the WatchForHyperdriveContract from the darknode so that we can
 // do unit testing on it .
-func WatchForHyperdriveContract(done <-chan struct{}, txInput chan hyperdrive.TxWithBlockNumber, depth uint64, hyper contracts.HyperdriveContract) <-chan error {
+func WatchForHyperdriveContract(done <-chan struct{}, txInput chan hyperdrive.TxWithTimestamp, depth uint64, hyper contracts.HyperdriveContract) <-chan error {
 	errs := make(chan error, 1)
 
 	go func() {
 		defer close(errs)
 
-		watchingList := map[uint64][]common.Hash{}
+		watchingList := map[identity.Hash]hyperdrive.TxWithTimestamp{}
 
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
@@ -122,56 +117,37 @@ func WatchForHyperdriveContract(done <-chan struct{}, txInput chan hyperdrive.Tx
 			case <-done:
 				return
 			case tx := <-txInput:
-				if _, ok := watchingList[tx.BlockNumber]; !ok {
-					watchingList[tx.BlockNumber] = []common.Hash{}
-				}
-				log.Printf("receive tx with block number %d", tx.BlockNumber)
-				watchingList[tx.BlockNumber] = append(watchingList[tx.BlockNumber], tx.Hash)
+				log.Printf("receive tx with %v  at  %s ", tx.Hash)
+				watchingList[tx.Tx.Hash] = tx
 			case <-ticker.C:
-				currentBlock, err := hyper.CurrentBlock()
-				log.Println("Current block is ", currentBlock.NumberU64())
-				if err != nil {
-					errs <- err
-					return
-				}
-
-				for key, value := range watchingList {
-					if key <= currentBlock.NumberU64()-depth {
-						for _, hash := range value {
-							// Check if there is a block shuffle
-							newBlockNumber, err := hyper.GetBlockNumberOfTx(hash)
-							log.Println("new block number is ", newBlockNumber)
+				log.Println("tik tok ......")
+				for key, tx := range watchingList {
+					if time.Now().Before(tx.Timestamp.Add(time.Minute)) {
+						finalized := true
+						for _, nonce := range tx.Nonces {
+							dep, err := hyper.GetDepth(nonce)
 							if err != nil {
-								errs <- err
-								return
+								log.Println("fail to get the depth of the transaction. ")
+								finalized = false
+								delete(watchingList, key)
+								break
 							}
-							if newBlockNumber != key {
-								if _, ok := watchingList[newBlockNumber]; !ok {
-									watchingList[newBlockNumber] = []common.Hash{}
-								}
-								// "If map entries are created during iteration, that entry may be produced during the iteration or may be skipped."
-								watchingList[newBlockNumber] = append(watchingList[newBlockNumber], hash)
-								continue
-							}
-
-							// Create a hashTable
-							hashTable := map[common.Hash]struct{}{}
-							block, err := hyper.BlockByNumber(big.NewInt(int64(key)))
-							if err != nil {
-								errs <- err
-								return
-							}
-							for _, h := range block.Transactions() {
-								hashTable[h.Hash()] = struct{}{}
-							}
-
-							if _, ok := hashTable[hash]; ok {
-								log.Println(hash.Hex(), "has been finalized in block ", key)
+							if dep < depth {
+								finalized = false
+								break
 							}
 						}
+
+						if finalized {
+							delete(watchingList, key)
+							log.Println(tx.Hash, "has been finalized in block ")
+						}
+					} else {
+						log.Println("time expire")
 						delete(watchingList, key)
 					}
 				}
+				log.Println("number of elements in the map ", len(watchingList))
 			}
 		}
 	}()
