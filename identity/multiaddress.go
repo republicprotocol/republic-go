@@ -88,12 +88,6 @@ func (multiAddress MultiAddress) Hash() []byte {
 	return crypto.Keccak256([]byte(multiAddress.String()))
 }
 
-// VerifySignature verifies that the multiaddresses's signature has been signed
-// by its corresponding private key
-func (multiAddress MultiAddress) VerifySignature(signature Signature) error {
-	return VerifySignature(multiAddress, signature, multiAddress.ID())
-}
-
 // MarshalJSON implements the json.Marshaler interface.
 func (multiAddress MultiAddress) MarshalJSON() ([]byte, error) {
 	if multiAddress.address.String() == "" {
