@@ -2,76 +2,34 @@ package relayer_test
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"net"
 	"sync"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/crypto"
-	. "github.com/republicprotocol/republic-go/rpc/relayer"
 	"github.com/republicprotocol/republic-go/stackint"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	. "github.com/republicprotocol/republic-go/rpc/relayer"
+
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/relay"
 	"github.com/republicprotocol/republic-go/rpc/client"
 	"github.com/republicprotocol/republic-go/rpc/dht"
-	"github.com/republicprotocol/republic-go/rpc/smpcer"
+	"google.golang.org/grpc"
 )
 
 var _ = Describe("Relayer", func() {
-	/* var conn client.Connection
-	var darknodes darknode.Darknodes
-	var bootstrapNodes []string
-
-	BeforeSuite(func() {
-		var err error
-
-		// Connect to Ganache
-		conn, err = ganache.Connect("http://localhost:8545")
-		Expect(err).ShouldNot(HaveOccurred())
-		darknodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
-		Expect(err).ShouldNot(HaveOccurred())
-		darknodeRegistry.SetGasLimit(1000000)
-
-		// Create DarkNodes and contexts/cancels for running them
-		darknodes, err = NewDarknodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		// Populate bootstrap nodes
-		bootstrapNodes = make([]string, 5)
-		for i := 0; i < NumberOfBootstrapDarkNodes; i++ {
-			bootstrapNodes[i] = darknodes[i].MultiAddress().String()
-		}
-
-		// Assign trader address with the first dark node multiaddress
-		traderMulti = darknodes[0].MultiAddress().String()
-
-		// Register the Darknodes and trigger an epoch to accept their
-		// registrations
-		err = RegisterDarknodes(darknodes, conn, darknodeRegistry)
-		Expect(err).ShouldNot(HaveOccurred())
-	})
-
-	AfterSuite(func() {
-		var err error
-
-		// Deregister the DarkNodes
-		err = DeregisterDarknodes(darknodes, conn, darknodeRegistry)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		// Refund the DarkNodes
-		err = RefundDarknodes(darknodes, conn, darknodeRegistry)
-		Expect(err).ShouldNot(HaveOccurred())
-	}) */
 
 	Context("when merging entries", func() {
 		It("should update the orderbook with a valid response", func() {
 			orderbook := orderbook.NewOrderbook(100)
-			syncResponse := getSyncResponse(make([]byte, 32), OrderStatus_Open)
-			err := mergeEntry(&orderbook, &syncResponse)
+			syncResponse := getSyncResponse(OrderStatus_Open)
+			err := MergeEntry(&orderbook, &syncResponse)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(orderbook.Blocks())).Should(Equal(1))
 		})
@@ -80,34 +38,17 @@ var _ = Describe("Relayer", func() {
 			orderbook := orderbook.NewOrderbook(100)
 			syncResponse := SyncResponse{
 				Signature: []byte{},
-				Epoch:     make([]byte, 32),
 				Entry:     nil,
 			}
-			err := mergeEntry(&orderbook, &syncResponse)
-			Ω(err).Should(HaveOccurred())
-			Ω(len(orderbook.Blocks())).Should(Equal(0))
-		})
-
-		It("should not update the orderbook with a nil epoch hash", func() {
-			orderbook := orderbook.NewOrderbook(100)
-			syncResponse := getSyncResponse(nil, OrderStatus_Open)
-			err := mergeEntry(&orderbook, &syncResponse)
-			Ω(err).Should(HaveOccurred())
-			Ω(len(orderbook.Blocks())).Should(Equal(0))
-		})
-
-		It("should not update the orderbook with an epoch hash with invalid length", func() {
-			orderbook := orderbook.NewOrderbook(100)
-			syncResponse := getSyncResponse([]byte{}, OrderStatus_Open)
-			err := mergeEntry(&orderbook, &syncResponse)
+			err := MergeEntry(&orderbook, &syncResponse)
 			Ω(err).Should(HaveOccurred())
 			Ω(len(orderbook.Blocks())).Should(Equal(0))
 		})
 
 		It("should not update the orderbook with an invalid order status", func() {
 			orderbook := orderbook.NewOrderbook(100)
-			syncResponse := getSyncResponse(make([]byte, 32), -1)
-			err := mergeEntry(&orderbook, &syncResponse)
+			syncResponse := getSyncResponse(-1)
+			err := MergeEntry(&orderbook, &syncResponse)
 			Ω(err).Should(HaveOccurred())
 			Ω(len(orderbook.Blocks())).Should(Equal(0))
 		})
@@ -115,61 +56,120 @@ var _ = Describe("Relayer", func() {
 
 	Context("when syncing orders", func() {
 		It("should sync the orderbook from a specified node", func() {
-			dht := dht.NewDHT("", 100)
+			crypter := crypto.NewWeakCrypter()
+			address, _, err := identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			dht := dht.NewDHT(address, 100)
 			connPool := client.NewConnPool(100)
-			client := NewClient(&dht, &connPool)
+			client := NewClient(&crypter, &dht, &connPool)
 
-			ctx := context.Background()
-			var epochHash [32]byte
-			// msgs, errs := client.SyncFrom(context.Background(), darknodes[0].MultiAddress, epochHash)
-			msgs, errs := client.SyncFrom(ctx, identity.MultiAddress{}, epochHash)
+			server := grpc.NewServer()
+			listener, err := net.Listen("tcp", "127.0.0.1:3000")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			book := orderbook.NewOrderbook(100)
+			relayer := NewRelayer(&client, &book)
+			relayer.Register(server)
 
 			var wg sync.WaitGroup
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				for {
-					select {
-					case msg := <-msgs:
-						log.Println(msg)
-					case err := <-errs:
-						log.Println(err)
-					}
+				err := server.Serve(listener)
+				Ω(err).ShouldNot(HaveOccurred())
+			}()
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				time.Sleep(2 * time.Second)
+				server.Stop()
+			}()
+
+			stackint := stackint.FromUint(0)
+			ord := order.NewOrder(1, 1, time.Time{}, 1, 2, stackint, stackint, stackint, stackint)
+			entry := orderbook.NewEntry(*ord, order.Open)
+			book.Open(entry)
+
+			ctx := context.Background()
+			multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/3000/republic/%v", address))
+			var epochHash [32]byte
+			msgs, errs := client.SyncFrom(ctx, multiAddr, epochHash)
+			// errs := client.Sync(ctx, &book, epochHash, 3)
+
+			// FIXME:
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				select {
+				case msg := <-msgs:
+					log.Println(msg)
+				case err := <-errs:
+					log.Println(err)
 				}
 			}()
 
-			// TODO: Send order to connected node
+			wg.Wait()
+		})
 
-			req := relay.OpenOrderRequest{
-				Order: order.Order{
-					Signature: identity.Signature{},
-					ID:        []byte{},
-					Type:      1,
-					Parity:    1,
-					Expiry:    time.Time{},
-					FstCode:   1,
-					SndCode:   2,
-					Price:     stackint.FromUint(0),
-					MaxVolume: stackint.FromUint(0),
-					MinVolume: stackint.FromUint(0),
-					Nonce:     stackint.FromUint(0),
-				},
-				OrderFragments: relay.OrderFragments{},
-			}
-
+		It("should send an error if the connection gets closed", func() {
 			crypter := crypto.NewWeakCrypter()
-			smpcerClient := smpcer.NewClient(&crypter, identity.MultiAddress{}, &connPool)
-			// smpcerClient.OpenOrder(ctx, darknodes[0].MultiAddress, )
+			address, _, err := identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			dht := dht.NewDHT(address, 100)
+			connPool := client.NewConnPool(100)
+			client := NewClient(&crypter, &dht, &connPool)
+
+			server := grpc.NewServer()
+			listener, err := net.Listen("tcp", "127.0.0.1:3000")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			book := orderbook.NewOrderbook(100)
+			relayer := NewRelayer(&client, &book)
+			relayer.Register(server)
+
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				err := server.Serve(listener)
+				Ω(err).ShouldNot(HaveOccurred())
+			}()
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				time.Sleep(2 * time.Second)
+				server.Stop()
+			}()
+
+			ctx := context.Background()
+			multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/3000/republic/%v", address))
+			var epochHash [32]byte
+			msgs, errs := client.SyncFrom(ctx, multiAddr, epochHash)
+
+			msgCount, errCount := 0, 0
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				select {
+				case <-msgs:
+					msgCount++
+				case <-errs:
+					errCount++
+				}
+			}()
 
 			wg.Wait()
+			Ω(msgCount).Should(Equal(0))
+			Ω(errCount).Should(Equal(1))
 		})
 	})
 })
 
-func getSyncResponse(epochHash []byte, orderStatus OrderStatus) SyncResponse {
+func getSyncResponse(orderStatus OrderStatus) SyncResponse {
 	return SyncResponse{
 		Signature: []byte{},
-		Epoch:     epochHash,
 		Entry: &OrderbookEntry{
 			Order: &Order{
 				OrderId: []byte{},

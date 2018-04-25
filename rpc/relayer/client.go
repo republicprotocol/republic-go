@@ -92,7 +92,7 @@ func (client *Client) Sync(ctx context.Context, orderbook *orderbook.Orderbook, 
 						if !ok {
 							return
 						}
-						mergeEntry(orderbook, val)
+						MergeEntry(orderbook, val)
 					case err, ok := <-syncErrs:
 						if !ok {
 							return
@@ -160,7 +160,7 @@ func (client *Client) SyncFrom(ctx context.Context, multiAddr identity.MultiAddr
 	return responses, errs
 }
 
-func mergeEntry(book *orderbook.Orderbook, val *SyncResponse) error {
+func MergeEntry(book *orderbook.Orderbook, val *SyncResponse) error {
 	if val.GetEntry() == nil {
 		return errors.New("cannot merge entry: nil entry")
 	}
