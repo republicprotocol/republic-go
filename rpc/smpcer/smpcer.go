@@ -69,6 +69,7 @@ func (smpcer *Smpcer) OpenOrder(ctx context.Context, request *OpenOrderRequest) 
 		}
 		if err := smpcer.delegate.OpenOrder(orderFragmentSignature, orderFragment); err != nil {
 			errs <- err
+			return
 		}
 	}()
 

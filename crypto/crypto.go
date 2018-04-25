@@ -1,7 +1,6 @@
 package crypto
 
 import (
-	"bytes"
 	"errors"
 )
 
@@ -42,10 +41,7 @@ func (crypter *WeakCrypter) Sign(hasher Hasher) ([]byte, error) {
 }
 
 func (crypter *WeakCrypter) Verify(hasher Hasher, signature []byte) error {
-	if bytes.Compare(hasher.Hash(), signature) == 0 {
-		return nil
-	}
-	return ErrInvalidSignature
+	return nil
 }
 
 func (crypter *WeakCrypter) Encrypt(plaintext []byte) ([]byte, error) {

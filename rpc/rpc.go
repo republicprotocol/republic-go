@@ -51,6 +51,7 @@ func NewRPC(crypter crypto.Crypter, multiAddress identity.MultiAddress, orderboo
 
 // OpenOrder implements the smpcer.Delegate interface.
 func (rpc *RPC) OpenOrder(signature []byte, orderFragment order.Fragment) error {
+	println("RPC OpenOrder")
 	if rpc.onOpenOrder != nil {
 		return rpc.onOpenOrder(signature, orderFragment)
 	}

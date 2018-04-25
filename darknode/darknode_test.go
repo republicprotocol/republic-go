@@ -226,9 +226,9 @@ func sendOrders(nodes Darknodes, numberOfOrders int) error {
 			do.CoForAll(shares, func(j int) {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				smpcerClient.OpenOrder(ctx, nodes[j].MultiAddress(), *shares[j])
-				if err != nil {
-					log.Printf("cannot send order fragment to: %s", nodes[j].Address())
+
+				if err := smpcerClient.OpenOrder(ctx, nodes[j].MultiAddress(), *shares[j]); err != nil {
+					log.Printf("cannot send order fragment to %s: %v", nodes[j].Address(), err)
 				}
 			})
 		}
