@@ -102,6 +102,9 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 								errs <- err
 								continue
 							}
+
+							log.Println(deltaFragment)
+
 							select {
 							case <-done:
 								return
@@ -123,7 +126,6 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 					if !ok {
 						return
 					}
-					println("BROADCASTING")
 					computation := &smpcer.ComputeMessage{
 						Value: &smpcer.ComputeMessage_DeltaFragment{
 							DeltaFragment: smpcer.MarshalDeltaFragment(&deltaFragment),

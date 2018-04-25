@@ -55,26 +55,24 @@ func NewDeltaFromShares(buyOrderID, sellOrderID order.ID, fstCodeShares, sndCode
 }
 
 func (delta *Delta) IsMatch(prime stackint.Int1024) bool {
-	// zero := stackint.Zero()
+	zero := stackint.Zero()
 	two := stackint.Two()
 	zeroThreshold := prime.Div(&two)
 
-	// TODO: Use real tokens
-	// if delta.FstCode.Cmp(&zero) != 0 {
-	// 	return false
-	// }
-	// if delta.SndCode.Cmp(&zero) != 0 {
-	// 	return false
-	// }
+	if delta.FstCode.Cmp(&zero) != 0 {
+		return false
+	}
+	if delta.SndCode.Cmp(&zero) != 0 {
+		return false
+	}
 	if delta.Price.Cmp(&zeroThreshold) == 1 {
 		return false
 	}
-	// TODO: Unify max volume
-	// if delta.MaxVolume.Cmp(&zeroThreshold) == 1 {
-	// 	return false
-	// }
-	// if delta.MinVolume.Cmp(&zeroThreshold) == 1 {
-	// 	return false
-	// }
+	if delta.MaxVolume.Cmp(&zeroThreshold) == 1 {
+		return false
+	}
+	if delta.MinVolume.Cmp(&zeroThreshold) == 1 {
+		return false
+	}
 	return true
 }

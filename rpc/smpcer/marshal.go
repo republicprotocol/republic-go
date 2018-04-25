@@ -21,23 +21,23 @@ func MarshalOrderFragment(crypter crypto.Crypter, orderFragment *order.Fragment)
 	}
 
 	var err error
-	val.FstCodeShare, err = crypter.Encrypt(orderFragment.FstCodeShare.Value.Bytes())
+	val.FstCodeShare, err = crypter.Encrypt(shamir.ToBytes(orderFragment.FstCodeShare))
 	if err != nil {
 		return nil, err
 	}
-	val.SndCodeShare, err = crypter.Encrypt(orderFragment.SndCodeShare.Value.Bytes())
+	val.SndCodeShare, err = crypter.Encrypt(shamir.ToBytes(orderFragment.SndCodeShare))
 	if err != nil {
 		return nil, err
 	}
-	val.PriceShare, err = crypter.Encrypt(orderFragment.PriceShare.Value.Bytes())
+	val.PriceShare, err = crypter.Encrypt(shamir.ToBytes(orderFragment.PriceShare))
 	if err != nil {
 		return nil, err
 	}
-	val.MaxVolumeShare, err = crypter.Encrypt(orderFragment.MaxVolumeShare.Value.Bytes()) // FIXME: Unify volumes
+	val.MaxVolumeShare, err = crypter.Encrypt(shamir.ToBytes(orderFragment.MaxVolumeShare)) // FIXME: Unify volumes
 	if err != nil {
 		return nil, err
 	}
-	val.MinVolumeShare, err = crypter.Encrypt(orderFragment.MinVolumeShare.Value.Bytes()) // FIXME: Unify volumes
+	val.MinVolumeShare, err = crypter.Encrypt(shamir.ToBytes(orderFragment.MinVolumeShare)) // FIXME: Unify volumes
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func UnmarshalOrderFragment(crypter crypto.Crypter, orderFragment *OrderFragment
 	var err error
 
 	val := order.Fragment{
-		Signature: []byte{}, // FIXME: Signature needed
+		Signature: []byte{}, // FIXME: Verify signature from the RPC order fragment
 		ID:        orderFragment.GetOrderFragmentId(),
 
 		OrderID:     order.ID(orderFragment.GetOrderId()),
@@ -113,12 +113,13 @@ func UnmarshalOrderFragment(crypter crypto.Crypter, orderFragment *OrderFragment
 func MarshalDeltaFragment(deltaFragment *delta.Fragment) *DeltaFragment {
 	return &DeltaFragment{
 		DeltaFragmentId:     deltaFragment.ID,
+		DeltaId:             deltaFragment.DeltaID,
 		BuyOrderId:          deltaFragment.BuyOrderID,
 		SellOrderId:         deltaFragment.SellOrderID,
 		BuyOrderFragmentId:  deltaFragment.BuyOrderFragmentID,
 		SellOrderFragmentId: deltaFragment.SellOrderFragmentID,
-		FstCodeShare:        deltaFragment.PriceShare.Value.Bytes(),
-		SndCodeShare:        deltaFragment.PriceShare.Value.Bytes(),
+		FstCodeShare:        deltaFragment.FstCodeShare.Value.Bytes(),
+		SndCodeShare:        deltaFragment.SndCodeShare.Value.Bytes(),
 		PriceShare:          deltaFragment.PriceShare.Value.Bytes(),
 		MaxVolumeShare:      deltaFragment.MaxVolumeShare.Value.Bytes(),
 		MinVolumeShare:      deltaFragment.MinVolumeShare.Value.Bytes(),

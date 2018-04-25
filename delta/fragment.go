@@ -92,7 +92,7 @@ func NewDeltaFragment(left, right *order.Fragment, prime *stackint.Int1024) Frag
 // Equals checks if two Fragments are equal in value.
 func (deltaFragment *Fragment) Equals(other *Fragment) bool {
 	return deltaFragment.ID.Equal(other.ID) &&
-		deltaFragment.ID.Equal(other.ID) &&
+		deltaFragment.DeltaID.Equal(other.DeltaID) &&
 		deltaFragment.BuyOrderID.Equal(other.BuyOrderID) &&
 		deltaFragment.SellOrderID.Equal(other.SellOrderID) &&
 		deltaFragment.BuyOrderFragmentID.Equal(other.BuyOrderFragmentID) &&
@@ -116,7 +116,7 @@ func IsCompatible(deltaFragments Fragments) bool {
 		return false
 	}
 	for i := range deltaFragments {
-		if !deltaFragments[i].ID.Equal(deltaFragments[0].ID) {
+		if !deltaFragments[i].DeltaID.Equal(deltaFragments[0].DeltaID) {
 			return false
 		}
 	}
