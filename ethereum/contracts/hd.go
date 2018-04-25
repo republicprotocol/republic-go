@@ -112,12 +112,12 @@ func (hyper HyperdriveContract) GetBlockNumberOfTx(transaction common.Hash) (uin
 
 // CurrentBlock gets the latest block.
 func (hyper HyperdriveContract) CurrentBlock() (*types.Block, error) {
-	return hyper.client.Client.(*ethclient.Client).BlockByNumber(hyper.context, nil)
+	return hyper.client.Client.BlockByNumber(hyper.context, nil)
 }
 
 // BlockByNumber gets the block of given number.
 func (hyper *HyperdriveContract) BlockByNumber(blockNumber *big.Int) (*types.Block, error) {
-	return hyper.client.Client.(*ethclient.Client).BlockByNumber(hyper.context, blockNumber)
+	return hyper.client.Client.BlockByNumber(hyper.context, blockNumber)
 }
 
 // SetGasLimit sets the gas limit to use for transactions.

@@ -54,7 +54,7 @@ func NewFragment(orderID ID, orderType Type, orderParity Parity, fstCodeShare, s
 		MaxVolumeShare: maxVolumeShare,
 		MinVolumeShare: minVolumeShare,
 	}
-	fragment.ID = FragmentID(fragment.Hash()[:])
+	fragment.ID = FragmentID(fragment.Hash())
 	return fragment
 }
 
