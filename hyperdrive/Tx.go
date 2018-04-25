@@ -3,7 +3,6 @@ package hyperdrive
 import (
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
@@ -42,18 +41,6 @@ func NewTxFromByteSlices(nonces ...[]byte) Tx {
 	return Tx{
 		Hash:   hash,
 		Nonces: noncesArray,
-	}
-}
-
-type TxWithBlockNumber struct {
-	Hash        common.Hash
-	BlockNumber uint64
-}
-
-func NewTxWithBlockNumber(hash common.Hash, blockNumber uint64) TxWithBlockNumber {
-	return TxWithBlockNumber{
-		Hash:        hash,
-		BlockNumber: blockNumber,
 	}
 }
 
