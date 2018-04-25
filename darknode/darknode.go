@@ -3,7 +3,6 @@ package darknode
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"time"
 
@@ -89,7 +88,6 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 	node.orderFragments = make(chan order.Fragment, 1)
 	node.rpc = rpc.NewRPC(node.crypter, node.multiAddress, &node.orderbook)
 	node.rpc.OnOpenOrder(func(sig []byte, orderFragment order.Fragment) error {
-		log.Printf("OnOpenOrder RECEIVED")
 		node.orderFragments <- orderFragment
 		return nil
 	})

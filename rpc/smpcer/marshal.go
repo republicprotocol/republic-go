@@ -16,6 +16,7 @@ func MarshalOrderFragment(crypter crypto.Crypter, orderFragment *order.Fragment)
 		OrderFragmentId: orderFragment.ID,
 		OrderId:         orderFragment.OrderID,
 		Expiry:          orderFragment.OrderExpiry.Unix(),
+		Parity:          int64(orderFragment.OrderParity),
 		Type:            int64(orderFragment.OrderType),
 	}
 
@@ -56,6 +57,7 @@ func UnmarshalOrderFragment(crypter crypto.Crypter, orderFragment *OrderFragment
 
 		OrderID:     order.ID(orderFragment.GetOrderId()),
 		OrderType:   order.Type(orderFragment.Type),
+		OrderParity: order.Parity(orderFragment.Parity),
 		OrderExpiry: time.Unix(orderFragment.Expiry, 0),
 	}
 
