@@ -51,7 +51,6 @@ func BuildDeltas(done <-chan struct{}, deltaFragments <-chan delta.Fragment, sha
 			case <-done:
 				return
 			case deltaFragment, ok := <-deltaFragments:
-				println("RECEIVED DELTA FRAGMENTs")
 				if !ok {
 					return
 				}
