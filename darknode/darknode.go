@@ -78,7 +78,7 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 		return node, err
 	}
 
-	// Create bindings to the DarknodeRegistry and Ocean
+	// Create bindings to the DarknodeRegistry and Hyperdrive
 	darknodeRegistry, err := contracts.NewDarkNodeRegistry(context.Background(), ethclient, transactOpts, &bind.CallOpts{})
 	if err != nil {
 		return Darknode{}, err

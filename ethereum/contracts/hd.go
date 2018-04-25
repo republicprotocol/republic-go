@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -52,6 +53,7 @@ func NewHyperdriveContract(ctx context.Context, clientDetails client.Connection,
 // been mined. It returns an error if there is an conflict with previous txs.
 // You need to register with the darkNodeRegistry to send the tx.
 func (hyper HyperdriveContract) SendTx(tx hyperdrive.Tx) (*types.Transaction, error) {
+	log.Println("send tx with id " , hyper.transactOpts.From.Bytes() , hyper.transactOpts.From.Hex())
 	nonces := make([][32]byte, len(tx.Nonces))
 	for i := range nonces {
 		copy(nonces[i][:], tx.Nonces[i])
