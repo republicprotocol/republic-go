@@ -1,30 +1,39 @@
 package client_test
 
 import (
+	"context"
+	"fmt"
+
 	. "github.com/onsi/ginkgo"
-	// . "github.com/onsi/gomega"
-	// . "github.com/republicprotocol/republic-go/rpc/client"
+	. "github.com/onsi/gomega"
+	. "github.com/republicprotocol/republic-go/rpc/client"
+
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 var _ = Describe("Client connection pools", func() {
 
+	var connPool ConnPool
+
 	Context("NewConnPool method", func() {
 
 		It("should return an empty connection pool object with cacheLimit set", func() {
-
+			Expect(NewConnPool(5)).ShouldNot(BeNil())
 		})
 	})
 
 	Context("Dial method", func() {
 
-		It("should return existing connection with updated timestamp when it is present in cache", func() {
-
-		})
-
 		Context("when it is not present in cache", func() {
-
+			connPool = NewConnPool(5)
 			It("should return new connection", func() {
-
+			addr, _, err := identity.NewAddress()
+			Expect(err).ShouldNot(HaveOccurred())
+			multiaddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/80/republic/%v", addr))
+			Expect(err).ShouldNot(HaveOccurred())
+			conn, err := connPool.Dial(context.Background(), multiaddress)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(conn).ShouldNot(BeNil())
 			})
 
 			Context("and when cache is full", func() {
@@ -34,6 +43,11 @@ var _ = Describe("Client connection pools", func() {
 				})
 			})
 		})
+
+		It("should return existing connection with updated timestamp when it is present in cache", func() {
+			
+		})
+
 	})
 
 	Context("on calling Close method", func() {
