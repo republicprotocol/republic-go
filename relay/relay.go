@@ -31,8 +31,9 @@ type Config struct {
 
 type Relay struct {
 	Config
-	DarkPools darkocean.Pools
-	Registrar dnr.DarknodeRegistry
+
+	registry dnr.DarknodeRegistry
+	ocean    *darkocean.DarkOcean
 
 	relayer   relayer.Relayer
 	orderbook *orderbook.Orderbook
@@ -43,11 +44,12 @@ type Relay struct {
 }
 
 // NewRelay returns a new Relay object
-func NewRelay(config Config, pools darkocean.Pools, registrar dnr.DarknodeRegistry, orderbook *orderbook.Orderbook, relayerClient *relayer.Client, smpcerClient *smpcer.Client, swarmerClient *swarmer.Client) Relay {
+func NewRelay(config Config, registry dnr.DarknodeRegistry, orderbook *orderbook.Orderbook, relayerClient *relayer.Client, smpcerClient *smpcer.Client, swarmerClient *swarmer.Client) Relay {
 	return Relay{
-		Config:    config,
-		DarkPools: pools,
-		Registrar: registrar,
+		Config: config,
+
+		registry: registry,
+		ocean:    nil,
 
 		relayer:   relayer.NewRelayer(relayerClient, orderbook),
 		orderbook: orderbook,
