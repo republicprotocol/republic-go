@@ -23,7 +23,7 @@ var _ = Describe("Marshal", func() {
 		It(" should return a network representation of the order fragment", func() {
 			crypter := crypto.NewWeakCrypter()
 
-			orderFragment, _, err := CreateNewOrderFragment()
+			orderFragment, _, err := createNewOrderFragment()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			marshalledFragment, err := MarshalOrderFragment(&crypter, &orderFragment)
@@ -39,7 +39,7 @@ var _ = Describe("Marshal", func() {
 		It(" should convert a network representation of an OrderFragment into an order.Fragment", func() {
 			crypter := crypto.NewWeakCrypter()
 
-			orderFragment, _, err := CreateNewOrderFragment()
+			orderFragment, _, err := createNewOrderFragment()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			marshalledFragment, err := MarshalOrderFragment(&crypter, &orderFragment)
@@ -66,7 +66,7 @@ var _ = Describe("Marshal", func() {
 	Context("MarshalDeltaFragment method", func() {
 
 		It(" should convert delta.Fragment into a RPC protobuf object", func() {
-			deltaFragment, err := CreateNewDeltaFragment()
+			deltaFragment, err := createNewDeltaFragment()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			marshalledFragment := MarshalDeltaFragment(&deltaFragment)
@@ -78,7 +78,7 @@ var _ = Describe("Marshal", func() {
 	Context("UnmarshalDeltaFragment method", func() {
 
 		It(" should convert a RPC protobuf object into an delta.Fragment", func() {
-			deltaFragment, err := CreateNewDeltaFragment()
+			deltaFragment, err := createNewDeltaFragment()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			marshalledFragment := MarshalDeltaFragment(&deltaFragment)
@@ -91,8 +91,8 @@ var _ = Describe("Marshal", func() {
 	})
 })
 
-// CreateNewOrderFragment creates a test order fragment
-func CreateNewOrderFragment() (order.Fragment, stackint.Int1024, error) {
+// createNewOrderFragment creates a test order fragment
+func createNewOrderFragment() (order.Fragment, stackint.Int1024, error) {
 
 	price := 1000000000000
 	testOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour),
@@ -124,9 +124,9 @@ func CreateNewOrderFragment() (order.Fragment, stackint.Int1024, error) {
 }
 
 // CreateNewDeltaFragment creates a test delta fragment
-func CreateNewDeltaFragment() (delta.Fragment, error) {
+func createNewDeltaFragment() (delta.Fragment, error) {
 
-	fragment, prime, err := CreateNewOrderFragment()
+	fragment, prime, err := createNewOrderFragment()
 	if err != nil {
 		return delta.Fragment{}, err
 	}
