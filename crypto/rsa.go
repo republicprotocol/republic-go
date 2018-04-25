@@ -1,69 +1,71 @@
 package crypto
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
-	"encoding/json"
+	"encoding/binary"
+	"math/big"
 )
 
-// RsaKeyPair contains a RSA key pair
-type RsaKeyPair struct {
-	*rsa.PublicKey
+// RsaKey for encrypting and decrypting sensitive data that must be transported
+// between actors in the network.
+type RsaKey struct {
 	*rsa.PrivateKey
 }
 
-// NewRsaKeyPair generates a new RSA key pair.
-// It returns a randomly generated KeyPair, or an error.
-// It precomputes some useful values to save time on decryption.
-func NewRsaKeyPair() (RsaKeyPair, error) {
+// RandomRsaKey using 2048 bits, with precomputed values for improved
+// performance.
+func RandomRsaKey() (RsaKey, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	privateKey.Precompute()
 	if err != nil {
-		return RsaKeyPair{}, err
+		return RsaKey{}, err
 	}
-	publicKey := privateKey.PublicKey
-	return RsaKeyPair{
-		PublicKey:  &publicKey,
+	return RsaKey{
 		PrivateKey: privateKey,
 	}, nil
 }
 
-// NewRsaKeyPairFromPrivateKey a new RSA key pair using a given private key. It
-// does not validate that this private key was generated correctly.
-// It precomputes some useful values to save time on decryption.
-func NewRsaKeyPairFromPrivateKey(privKey *rsa.PrivateKey) RsaKeyPair {
-	privKey.Precompute()
-	return RsaKeyPair{
-		PublicKey:  &privKey.PublicKey,
-		PrivateKey: privKey,
+// NewRsaKey returns an RsaKey from an existing private key. It does not verify
+// that the private key was generated correctly. It precomputes values for
+// improved performance
+func NewRsaKey(privateKey *rsa.PrivateKey) RsaKey {
+	privateKey.Precompute()
+	return RsaKey{
+		PrivateKey: privateKey,
 	}
 }
 
-// Encrypt encrypts a message with the provided RSA public key.
-// It returns the cipher text, or an error.
-func Encrypt(pubKey *rsa.PublicKey, msg []byte) ([]byte, error) {
-	return rsa.EncryptPKCS1v15(rand.Reader, pubKey, msg)
+// Encrypt a plain text and return the cipher text.
+func (key *RsaKey) Encrypt(plaintext []byte) ([]byte, error) {
+	return rsa.EncryptPKCS1v15(rand.Reader, &key.PublicKey, plaintext)
 }
 
-// Decrypt decrypts the given cipher text with the provided RSA private key.
-// It returns the decrypted message, or an error.
-func Decrypt(privKey *rsa.PrivateKey, cipherText []byte) ([]byte, error) {
-	return rsa.DecryptPKCS1v15(rand.Reader, privKey, cipherText)
+// Decrypt a cipher text and return the plain text.
+func (key *RsaKey) Decrypt(ciphertext []byte) ([]byte, error) {
+	return rsa.DecryptPKCS1v15(rand.Reader, key.PrivateKey, ciphertext)
 }
 
-// PublicKeyToBytes converts Public Key to a byte array.
-// It returns the byte array, or an error.
-func PublicKeyToBytes(publicKey *rsa.PublicKey) ([]byte, error) {
-	return json.Marshal(publicKey)
+// PublicKeyToBytes by writing E as an int64, and then writing N as a stream
+// of bytes. Big endian encoding is used.
+func PublicKeyToBytes(publicKey *rsa.PublicKey) []byte {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.BigEndian, int64(publicKey.E))
+	binary.Write(buf, binary.BigEndian, publicKey.N.Bytes())
+	return buf.Bytes()
 }
 
 // BytesToPublicKey converts a byte array to a RSA Public Key
 // It returns pointer to a RSA public key
-func BytesToPublicKey(publicKey []byte) (*rsa.PublicKey, error) {
-	var pubKey rsa.PublicKey
-	err := json.Unmarshal(publicKey, &pubKey)
-	if err != nil {
-		return &rsa.PublicKey{}, err
-	}
-	return &pubKey, nil
+func BytesToPublicKey(data []byte) rsa.PublicKey {
+	r := bytes.NewReader(data)
+	e := int64(0)
+	binary.Read(r, binary.BigEndian, &e)
+	n := make([]byte, r.Len())
+	binary.Read(r, binary.BigEndian, n)
+	var publicKey rsa.PublicKey
+	publicKey.E = int(e)
+	publicKey.N = big.NewInt(0).SetBytes(n)
+	return publicKey
 }
