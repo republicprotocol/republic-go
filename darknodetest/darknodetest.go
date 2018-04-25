@@ -3,9 +3,7 @@ package darknodetest
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -60,7 +58,6 @@ func RegisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, dar
 	for i := range darknodes {
 		darknodeID := darknodes[i].ID()
 		tx, err := darknodeRegistry.Register(darknodeID, []byte{}, &minimumBond)
-		log.Println("register with ID " , hex.EncodeToString([]byte(darknodeID)))
 
 		if err != nil {
 			return err
@@ -141,6 +138,10 @@ func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAdd
 			DarknodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.String(),
 		},
 	}, nil
+}
+
+func DistributeEth (darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarkNodeRegistry){
+
 }
 
 func NewFalconConfig() darknode.Config {

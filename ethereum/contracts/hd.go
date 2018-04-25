@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -53,7 +52,6 @@ func NewHyperdriveContract(ctx context.Context, clientDetails client.Connection,
 // been mined. It returns an error if there is an conflict with previous txs.
 // You need to register with the darkNodeRegistry to send the tx.
 func (hyper HyperdriveContract) SendTx(tx hyperdrive.Tx) (*types.Transaction, error) {
-	log.Println("send tx with id " , hyper.transactOpts.From.Bytes() , hyper.transactOpts.From.Hex())
 	nonces := make([][32]byte, len(tx.Nonces))
 	for i := range nonces {
 		copy(nonces[i][:], tx.Nonces[i])
@@ -69,6 +67,16 @@ func (hyper HyperdriveContract) SendTx(tx hyperdrive.Tx) (*types.Transaction, er
 	}
 
 	return transaction, nil
+}
+
+func (hyper *HyperdriveContract) Nonce (nonce hyperdrive.Nonce) (uint64, error){
+	var nonceIn32Bytes [32]byte
+	copy(nonceIn32Bytes[:],nonce )
+	bn , err  := hyper.binding.Nonces(hyper.callOpts, nonceIn32Bytes)
+	if err != nil {
+		return 0 , err
+	}
+	return bn.Uint64(), nil
 }
 
 // GetDepth read the depth of the nonce from the hyperdrive contract.

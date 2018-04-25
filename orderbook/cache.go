@@ -35,8 +35,8 @@ func (cache *Cache) Open(entry Entry) error {
 	defer cache.ordersMu.Unlock()
 
 	// Check if the order has already been opened
-	if _, ok := cache.orders[string(entry.Order.ID)]; ok {
-		return fmt.Errorf("cannot open already existing order")
+	if  entry , ok := cache.orders[string(entry.Order.ID)]; ok && entry.Status!= order.Open {
+		return fmt.Errorf("cannot open order ")
 	}
 
 	entry.Status = order.Open

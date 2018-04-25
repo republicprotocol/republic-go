@@ -3,12 +3,11 @@ package darknode_test
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"os/exec"
 	"time"
-
-	"github.com/republicprotocol/republic-go/smpc"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -16,6 +15,7 @@ import (
 	. "github.com/republicprotocol/republic-go/darknodetest"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -26,6 +26,7 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/rpc/client"
 	"github.com/republicprotocol/republic-go/rpc/smpcer"
+	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -33,7 +34,7 @@ const (
 	GanacheRPC                 = "http://localhost:8545"
 	NumberOfDarkNodes          = 3
 	NumberOfBootstrapDarkNodes = 3
-	NumberOfOrdersPerSecond    = 5
+	NumberOfOrdersPerSecond    = 1
 )
 
 var _ = Describe("Darknode", func() {
@@ -62,6 +63,12 @@ var _ = Describe("Darknode", func() {
 		// registrations
 		err = RegisterDarknodes(darknodes, conn, darknodeRegistry)
 		Expect(err).ShouldNot(HaveOccurred())
+
+		// Distribute eth to each node
+		for _, node := range darknodes {
+			err = ganache.DistributeEth(conn, common.HexToAddress("0x"+hex.EncodeToString(node.ID())))
+			Expect(err).ShouldNot(HaveOccurred())
+		}
 	})
 
 	AfterEach(func() {
@@ -152,8 +159,9 @@ var _ = Describe("Darknode", func() {
 			defer close(done)
 			go dispatch.CoForAll(darknodes, func(i int) {
 				defer GinkgoRecover()
-
-				Expect(darknodes[i].Serve(done)).ShouldNot(HaveOccurred())
+				for err := range darknodes[i].Run(done) {
+					Expect(err).ShouldNot(HaveOccurred())
+				}
 			})
 			time.Sleep(10 * time.Second)
 			for _, node := range darknodes {
