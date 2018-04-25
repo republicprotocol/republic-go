@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	base58 "github.com/jbenet/go-base58"
+	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stackint"
@@ -56,8 +56,8 @@ func NewDeltaFromShares(buyOrderID, sellOrderID order.ID, fstCodeShares, sndCode
 
 func (delta *Delta) IsMatch(prime stackint.Int1024) bool {
 	zero := stackint.Zero()
-	two := stackint.Two()
-	zeroThreshold := prime.Div(&two)
+	// two := stackint.Two()
+	// zeroThreshold := prime.Div(&two)
 
 	if delta.FstCode.Cmp(&zero) != 0 {
 		return false
@@ -65,14 +65,14 @@ func (delta *Delta) IsMatch(prime stackint.Int1024) bool {
 	if delta.SndCode.Cmp(&zero) != 0 {
 		return false
 	}
-	if delta.Price.Cmp(&zeroThreshold) == 1 {
-		return false
-	}
-	if delta.MaxVolume.Cmp(&zeroThreshold) == 1 {
-		return false
-	}
-	if delta.MinVolume.Cmp(&zeroThreshold) == 1 {
-		return false
-	}
+	// if delta.Price.Cmp(&zeroThreshold) == 1 {
+	// 	return false
+	// }
+	// if delta.MaxVolume.Cmp(&zeroThreshold) == 1 {
+	// 	return false
+	// }
+	// if delta.MinVolume.Cmp(&zeroThreshold) == 1 {
+	// 	return false
+	// }
 	return true
 }

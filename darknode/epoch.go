@@ -103,8 +103,6 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 								continue
 							}
 
-							log.Println(deltaFragment)
-
 							select {
 							case <-done:
 								return

@@ -127,7 +127,6 @@ func (builder *SharedDeltaBuilder) InsertDeltaFragment(deltaFragment delta.Fragm
 
 	// Store the DeltaFragment if it has not been seen before
 	if builder.hasDeltaFragment(deltaFragment.ID) {
-		println("same fragment twice")
 		return
 	}
 	builder.deltaFragments[string(deltaFragment.ID)] = deltaFragment
@@ -135,7 +134,6 @@ func (builder *SharedDeltaBuilder) InsertDeltaFragment(deltaFragment delta.Fragm
 	// Associate the DeltaFragment with its respective Delta if the Delta
 	// has not been built yet
 	if builder.hasDelta(deltaFragment.DeltaID) {
-		println("same delta twice")
 		return
 	}
 	if _, ok := builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)]; ok {
@@ -149,7 +147,6 @@ func (builder *SharedDeltaBuilder) InsertDeltaFragment(deltaFragment delta.Fragm
 	deltaFragments := builder.deltasToDeltaFragments[string(deltaFragment.DeltaID)]
 	if int64(len(deltaFragments)) >= builder.k {
 		if !delta.IsCompatible(deltaFragments) {
-			println("incompatible")
 			return
 		}
 

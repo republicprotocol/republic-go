@@ -3,6 +3,7 @@ package darknode
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"time"
 
@@ -224,6 +225,7 @@ func (node *Darknode) RunEpochs(done <-chan struct{}) <-chan error {
 					go dispatch.Pipe(done, deltaErrs, errs)
 					go func() {
 						for delta := range deltas {
+							log.Println("DELTA")
 							if delta.IsMatch(smpc.Prime) {
 								node.Logger.OrderMatch(logger.Info, delta.ID.String(), delta.BuyOrderID.String(), delta.SellOrderID.String())
 							}

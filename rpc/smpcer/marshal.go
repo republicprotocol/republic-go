@@ -118,11 +118,11 @@ func MarshalDeltaFragment(deltaFragment *delta.Fragment) *DeltaFragment {
 		SellOrderId:         deltaFragment.SellOrderID,
 		BuyOrderFragmentId:  deltaFragment.BuyOrderFragmentID,
 		SellOrderFragmentId: deltaFragment.SellOrderFragmentID,
-		FstCodeShare:        deltaFragment.FstCodeShare.Value.Bytes(),
-		SndCodeShare:        deltaFragment.SndCodeShare.Value.Bytes(),
-		PriceShare:          deltaFragment.PriceShare.Value.Bytes(),
-		MaxVolumeShare:      deltaFragment.MaxVolumeShare.Value.Bytes(),
-		MinVolumeShare:      deltaFragment.MinVolumeShare.Value.Bytes(),
+		FstCodeShare:        shamir.ToBytes(deltaFragment.FstCodeShare),
+		SndCodeShare:        shamir.ToBytes(deltaFragment.SndCodeShare),
+		PriceShare:          shamir.ToBytes(deltaFragment.PriceShare),
+		MaxVolumeShare:      shamir.ToBytes(deltaFragment.MaxVolumeShare),
+		MinVolumeShare:      shamir.ToBytes(deltaFragment.MinVolumeShare),
 	}
 }
 
