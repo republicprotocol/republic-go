@@ -205,7 +205,7 @@ func (client *Client) QueryTo(ctx context.Context, peer identity.MultiAddress, q
 			log.Printf("cannot parse %v: %v", message.GetMultiAddress(), err)
 			continue
 		}
-		if err := multiAddr.VerifySignature(signature); err != nil {
+		if err := client.crypter.Verify(multiAddr, signature); err != nil {
 			log.Printf("cannot verify signature of %v: %v", message.GetMultiAddress(), err)
 			continue
 		}
