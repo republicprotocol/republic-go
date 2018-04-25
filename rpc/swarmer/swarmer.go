@@ -3,6 +3,7 @@ package swarmer
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"golang.org/x/net/context"
@@ -77,6 +78,9 @@ func (swarmer *Swarmer) Query(request *QueryRequest, stream Swarm_QueryServer) e
 				MultiAddress: multiAddr.String(),
 			}
 			if err := stream.Send(response); err != nil {
+				if err == io.EOF {
+					return nil
+				}
 				return err
 			}
 		}

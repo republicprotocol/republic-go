@@ -30,7 +30,7 @@ const (
 	GanacheRPC                 = "http://localhost:8545"
 	NumberOfDarkNodes          = 5
 	NumberOfBootstrapDarkNodes = 5
-	NumberOfOrders             = 1000
+	NumberOfOrders             = 1
 )
 
 var _ = Describe("Darknode", func() {

@@ -56,7 +56,7 @@ func Start() *exec.Cmd {
 	}()
 
 	// Wait for ganache to boot
-	time.Sleep(10 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	return cmd
 }

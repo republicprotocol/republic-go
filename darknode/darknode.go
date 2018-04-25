@@ -3,6 +3,7 @@ package darknode
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"time"
 
@@ -103,6 +104,7 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 // errors encountered. Users should not call Darknode.Bootstrap until the
 // Darknode is registered, and the its registration is approved.
 func (node *Darknode) Bootstrap(ctx context.Context) <-chan error {
+	log.Printf("config %v", node.Config.BootstrapMultiAddresses)
 	return node.rpc.SwarmerClient().Bootstrap(ctx, node.Config.BootstrapMultiAddresses, -1)
 }
 
@@ -143,7 +145,7 @@ func (node *Darknode) Serve(done <-chan struct{}) <-chan error {
 
 		// Bootstrap into the network for 10 seconds maximum
 		time.Sleep(time.Second)
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		dispatch.Pipe(done, node.Bootstrap(ctx), errs)
 
@@ -159,15 +161,10 @@ func (node *Darknode) Serve(done <-chan struct{}) <-chan error {
 // closed, and will attempt to recover from errors encountered while
 // interacting with the Ocean.
 func (node *Darknode) RunEpochs(done <-chan struct{}) <-chan error {
+	println("starting epochs")
 	errs := make(chan error, 1)
 
 	go func() {
-		err := node.darknodeRegistry.WaitUntilRegistration(node.ID())
-		if err != nil {
-			errs <- err
-			return
-		}
-
 		// Maintain multiple done channels so that multiple epochs can be running
 		// in parallel
 		var prevDone chan struct{}

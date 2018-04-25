@@ -3,6 +3,8 @@ package swarmer
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -44,17 +46,56 @@ func NewClient(crypter crypto.Crypter, multiAddress identity.MultiAddress, dht *
 // query for itself before stopping, with a negative value defining that the
 // Client should not stop until all search paths are fully exhausted.
 func (client *Client) Bootstrap(ctx context.Context, bootstrapMultiAddrs identity.MultiAddresses, depth int) <-chan error {
-	errs := make(chan error, len(bootstrapMultiAddrs))
+	errs := make(chan error, 2*len(bootstrapMultiAddrs)+1)
 	go func() {
 		defer close(errs)
+		for _, bootstrapMultiAddr := range bootstrapMultiAddrs {
+			if err := client.dht.UpdateMultiAddress(bootstrapMultiAddr); err != nil {
+				log.Println(fmt.Errorf("cannot store bootstrap node %v in dht: %v", bootstrapMultiAddr, err))
+				errs <- fmt.Errorf("cannot store bootstrap node %v in dht: %v", bootstrapMultiAddr, err)
+			}
+		}
 		dispatch.CoForAll(bootstrapMultiAddrs, func(i int) {
-			_, err := client.QueryTo(ctx, bootstrapMultiAddrs[i], client.Address())
-			if err != nil {
-				errs <- fmt.Errorf("error while bootstrapping: %v", err)
+			if err := client.Ping(ctx, bootstrapMultiAddrs[i]); err != nil {
+				log.Println(fmt.Errorf("cannot ping bootstrap node %v: %v", bootstrapMultiAddrs[i], err))
+				errs <- fmt.Errorf("cannot ping bootstrap node %v: %v", bootstrapMultiAddrs[i], err)
 			}
 		})
+		_, err := client.Query(ctx, client.Address(), depth)
+		if err != nil {
+			log.Println(fmt.Errorf("error while bootstrapping: %v", err))
+			errs <- fmt.Errorf("error while bootstrapping: %v", err)
+		}
+		log.Printf("bootstrap from %v got %v", client.Address(), len(client.dht.MultiAddresses()))
 	}()
 	return errs
+}
+
+// Ping a peer in the swarm network. A context can be used to cancel or expire
+// the ping. Once this function returns, the cancellation and expiration of the
+// Context will do nothing.
+func (client *Client) Ping(ctx context.Context, peer identity.MultiAddress) error {
+	conn, err := client.connPool.Dial(ctx, peer)
+	if err != nil {
+		return fmt.Errorf("cannot dial %v: %v", peer, err)
+	}
+	defer conn.Close()
+
+	swarmClient := NewSwarmClient(conn.ClientConn)
+	requestSignature, err := client.crypter.Sign(client.MultiAddress())
+	if err != nil {
+		return fmt.Errorf("cannot sign request: %v", err)
+	}
+	request := &PingRequest{
+		Signature:    requestSignature,
+		MultiAddress: client.MultiAddress().String(),
+	}
+
+	_, err = swarmClient.Ping(ctx, request)
+	if err != nil && err != io.EOF {
+		return err
+	}
+	return nil
 }
 
 // Query the swarm network for the identity.MultiAddress of an
@@ -108,9 +149,10 @@ func (client *Client) Query(ctx context.Context, query identity.Address, depth i
 		// Query for identity.MultiAddresses that are closer to the query
 		// target than the peer itself, and add them to the whitelist
 		multiAddrs, err := client.QueryTo(ctx, peer, query)
-		if err != nil {
+		if err != nil && err != io.EOF {
 			return identity.MultiAddress{}, fmt.Errorf("cannot send query to %v: %v", peer, err)
 		}
+		log.Printf("query to %v: %v", peer, multiAddrs)
 		for _, multiAddr := range multiAddrs {
 			whitelist = append(whitelist, multiAddr)
 		}
@@ -142,8 +184,9 @@ func (client *Client) QueryTo(ctx context.Context, peer identity.MultiAddress, q
 		Signature: requestSignature,
 		Address:   query.String(),
 	}
+
 	stream, err := swarmClient.Query(ctx, request)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return identity.MultiAddresses{}, err
 	}
 	if err := client.UpdateDHT(peer); err != nil {
@@ -154,6 +197,9 @@ func (client *Client) QueryTo(ctx context.Context, peer identity.MultiAddress, q
 	for {
 		message, err := stream.Recv()
 		if err != nil {
+			if err == io.EOF {
+				return multiAddrs, nil
+			}
 			return multiAddrs, err
 		}
 
@@ -161,14 +207,18 @@ func (client *Client) QueryTo(ctx context.Context, peer identity.MultiAddress, q
 		signature := message.GetSignature()
 		multiAddr, err := identity.NewMultiAddressFromString(message.GetMultiAddress())
 		if err != nil {
+			log.Printf("cannot parse %v: %v", message.GetMultiAddress(), err)
 			continue
 		}
 		if err := multiAddr.VerifySignature(signature); err != nil {
+			log.Printf("cannot verify signature of %v: %v", message.GetMultiAddress(), err)
 			continue
 		}
 		if err := client.UpdateDHT(multiAddr); err != nil {
+			log.Printf("cannot store %v in dht: %v", message.GetMultiAddress(), err)
 			continue
 		}
+		log.Println(multiAddr)
 		multiAddrs = append(multiAddrs, multiAddr)
 	}
 }

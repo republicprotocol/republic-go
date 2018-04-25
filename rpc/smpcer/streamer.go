@@ -32,6 +32,8 @@ func NewStreamer(multiAddress identity.MultiAddress, connPool *client.ConnPool) 
 		senders:     map[identity.Address]chan *ComputeMessage{},
 		receivers:   map[identity.Address]*dispatch.Splitter{},
 		receiverChs: map[identity.Address]chan *ComputeMessage{},
+		errs:        map[identity.Address]*dispatch.Splitter{},
+		errChs:      map[identity.Address]chan error{},
 		rcs:         map[identity.Address]int{},
 	}
 }

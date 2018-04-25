@@ -46,8 +46,13 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 		receivers := map[identity.Address]<-chan *smpcer.ComputeMessage{}
 		errors := map[identity.Address]<-chan error{}
 
+		println("#1")
+
 		addresses := pool.Addresses()
 		dispatch.CoForAll(addresses, func(i int) {
+
+			println("#2")
+
 			addr := addresses[i]
 			if bytes.Compare(addr.ID()[:], node.ID()[:]) == 0 {
 				return
@@ -63,6 +68,9 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 				log.Println(err)
 				return
 			}
+
+			println("#3")
+
 			receiver, errs := node.rpc.SmpcerClient().Compute(ctxs[addresses[i]], multiAddr, sender)
 
 			mu.Lock()
@@ -70,6 +78,8 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 			receivers[addr] = receiver
 			errors[addr] = errs
 			mu.Unlock()
+
+			println("#4")
 		})
 
 		n := int64(pool.Size())
@@ -80,7 +90,11 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 		deltaFragments := make(chan delta.Fragment)
 		defer close(deltaFragments)
 
+		println("#5")
+
 		deltaFragmentsComputed, deltasComputed := smpc.ComputeOrderMatches(done, orderFragments, deltaFragments)
+
+		println("#6")
 
 		dispatch.CoBegin(func() {
 
