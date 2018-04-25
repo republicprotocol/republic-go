@@ -59,7 +59,7 @@ func (client *Client) Bootstrap(ctx context.Context, bootstrapMultiAddrs identit
 				errs <- fmt.Errorf("cannot ping bootstrap node %v: %v", bootstrapMultiAddrs[i], err)
 			}
 		})
-		_, err := client.Query(ctx, client.Address(), depth)
+		_, err := client.query(ctx, client.Address(), depth, true)
 		if err != nil {
 			errs <- fmt.Errorf("error while bootstrapping: %v", err)
 		}
@@ -104,56 +104,7 @@ func (client *Client) Ping(ctx context.Context, peer identity.MultiAddress) erro
 // value defining that the Client should not stop until all search paths are
 // fully exhausted.
 func (client *Client) Query(ctx context.Context, query identity.Address, depth int) (identity.MultiAddress, error) {
-
-	whitelist := identity.MultiAddresses{}
-	blacklist := map[identity.Address]struct{}{}
-
-	// Build a list of identity.MultiAddresses that are closer to the query
-	// than the Swarm service
-	multiAddrs := client.dht.MultiAddresses()
-	for _, multiAddr := range multiAddrs {
-		// Short circuit if the Swarm service is directly connected to the
-		// query
-		if query == multiAddr.Address() {
-			return multiAddr, nil
-		}
-
-		isPeerCloser, err := identity.Closer(multiAddr.Address(), client.Address(), query)
-		if err != nil {
-			return identity.MultiAddress{}, fmt.Errorf("cannot compare address distances %v and %v: %v", multiAddr.Address(), client.Address(), err)
-		}
-		if isPeerCloser {
-			whitelist = append(whitelist, multiAddr)
-		}
-	}
-
-	// Search all peers for identity.MultiAddresses that are closer to the
-	// query until the depth limit is reach or there are no more peers left to
-	// search
-	for i := 0; (i < depth || depth < 0) && len(whitelist) > 0; i++ {
-
-		peer := whitelist[0]
-		whitelist = whitelist[1:]
-		if _, ok := blacklist[peer.Address()]; ok {
-			continue
-		}
-		blacklist[peer.Address()] = struct{}{}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-
-		// Query for identity.MultiAddresses that are closer to the query
-		// target than the peer itself, and add them to the whitelist
-		multiAddrs, err := client.QueryTo(ctx, peer, query)
-		if err != nil && err != io.EOF {
-			return identity.MultiAddress{}, fmt.Errorf("cannot send query to %v: %v", peer, err)
-		}
-		for _, multiAddr := range multiAddrs {
-			whitelist = append(whitelist, multiAddr)
-		}
-	}
-
-	return identity.MultiAddress{}, ErrNotFound
+	return client.query(ctx, query, depth, false)
 }
 
 // QueryTo a peer for the identity.MultiAddress of an identity.Address. A
@@ -179,6 +130,9 @@ func (client *Client) QueryTo(ctx context.Context, peer identity.MultiAddress, q
 		Signature: requestSignature,
 		Address:   query.String(),
 	}
+
+	// Regardless of the success of the ping, continue querying the peer
+	_ = client.Ping(ctx, peer)
 
 	stream, err := swarmClient.Query(ctx, request)
 	if err != nil && err != io.EOF {
@@ -213,7 +167,6 @@ func (client *Client) QueryTo(ctx context.Context, peer identity.MultiAddress, q
 			log.Printf("cannot store %v in dht: %v", message.GetMultiAddress(), err)
 			continue
 		}
-		log.Println(multiAddr)
 		multiAddrs = append(multiAddrs, multiAddr)
 	}
 }
@@ -250,6 +203,66 @@ func (client *Client) UpdateDHT(multiAddress identity.MultiAddress) error {
 		return err
 	}
 	return nil
+}
+
+func (client *Client) query(ctx context.Context, query identity.Address, depth int, ignoreResponse bool) (identity.MultiAddress, error) {
+	whitelist := identity.MultiAddresses{}
+	blacklist := map[identity.Address]struct{}{}
+
+	// Build a list of identity.MultiAddresses that are closer to the query
+	// than the Swarm service
+	multiAddrs := client.dht.MultiAddresses()
+	for _, multiAddr := range multiAddrs {
+		// Short circuit if the Swarm service is directly connected to the
+		// query
+		if query == multiAddr.Address() && !ignoreResponse {
+			return multiAddr, nil
+		}
+
+		isPeerCloser, err := identity.Closer(multiAddr.Address(), client.Address(), query)
+		if err != nil {
+			return identity.MultiAddress{}, fmt.Errorf("cannot compare address distances %v and %v: %v", multiAddr.Address(), client.Address(), err)
+		}
+		if isPeerCloser && !ignoreResponse {
+			whitelist = append(whitelist, multiAddr)
+		}
+	}
+
+	// Search all peers for identity.MultiAddresses that are closer to the
+	// query until the depth limit is reach or there are no more peers left to
+	// search
+	for i := 0; (i < depth || depth < 0) && len(whitelist) > 0; i++ {
+
+		peer := whitelist[0]
+		whitelist = whitelist[1:]
+		if _, ok := blacklist[peer.Address()]; ok {
+			continue
+		}
+		blacklist[peer.Address()] = struct{}{}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		// Query for identity.MultiAddresses that are closer to the query
+		// target than the peer itself, and add them to the whitelist
+		multiAddrs, err := client.QueryTo(ctx, peer, query)
+		if err != nil && err != io.EOF {
+			return identity.MultiAddress{}, fmt.Errorf("cannot send query to %v: %v", peer, err)
+		}
+
+		// Add the peer to the DHT after a successful query and ignore the
+		// error
+		for _, multiAddr := range multiAddrs {
+			if multiAddr.Address() == query && !ignoreResponse {
+				return multiAddr, nil
+			}
+			if _, ok := blacklist[multiAddr.Address()]; ok {
+				continue
+			}
+			whitelist = append(whitelist, multiAddr)
+		}
+	}
+	return identity.MultiAddress{}, ErrNotFound
 }
 
 func (client *Client) pruneDHT(addr identity.Address) bool {

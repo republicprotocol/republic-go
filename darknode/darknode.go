@@ -141,9 +141,10 @@ func (node *Darknode) Serve(done <-chan struct{}) <-chan error {
 			server.Stop()
 		}()
 
-		// Bootstrap into the network for 10 seconds maximum
+		// Bootstrap into the network and stop after all search paths are
+		// exhausted, or one minute has passed
 		time.Sleep(time.Second)
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 		dispatch.Pipe(done, node.Bootstrap(ctx), errs)
 
@@ -259,4 +260,9 @@ func (node *Darknode) Address() identity.Address {
 // MultiAddress returns the MultiAddress of the Darknode.
 func (node *Darknode) MultiAddress() identity.MultiAddress {
 	return node.multiAddress
+}
+
+// RPC used by the Darknode.
+func (node *Darknode) RPC() *rpc.RPC {
+	return node.rpc
 }

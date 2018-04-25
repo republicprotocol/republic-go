@@ -2,6 +2,7 @@ package smpc
 
 import (
 	"context"
+	"sync"
 
 	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -174,7 +175,11 @@ func (computer *Smpc) ComputeOrderMatches(done <-chan struct{}, orderFragmentsIn
 		deltaFragmentsComputed := OrderTuplesToDeltaFragments(done, orderTuples, 100)
 
 		deltaFragments := make(chan delta.Fragment)
+
+		var wg sync.WaitGroup
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			defer close(deltaFragments)
 			dispatch.CoBegin(func() {
 				dispatch.Split(deltaFragmentsComputed, deltaFragments, deltaFragmentsOut)
@@ -185,6 +190,8 @@ func (computer *Smpc) ComputeOrderMatches(done <-chan struct{}, orderFragmentsIn
 
 		deltas := BuildDeltas(done, deltaFragments, &computer.sharedDeltaBuilder, 100)
 		dispatch.Pipe(done, deltas, deltasOut)
+
+		wg.Wait()
 	}()
 
 	return deltaFragmentsOut, deltasOut

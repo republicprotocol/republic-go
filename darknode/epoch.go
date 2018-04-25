@@ -62,7 +62,7 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 			sender := make(chan *smpcer.ComputeMessage)
 			multiAddr, err := node.rpc.SwarmerClient().Query(ctx, addr, 3)
 			if err != nil {
-				log.Println(err)
+				log.Printf("cannot query smpc peer %v: %v", addr, err)
 				return
 			}
 			receiver, errs := node.rpc.SmpcerClient().Compute(ctx, multiAddr, sender)

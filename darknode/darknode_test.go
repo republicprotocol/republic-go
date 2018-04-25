@@ -154,6 +154,9 @@ var _ = Describe("Darknode", func() {
 				}
 			})
 			time.Sleep(10 * time.Second)
+			for _, node := range darknodes {
+				log.Printf("%v has %v peers", node.Address(), len(node.RPC().SwarmerClient().DHT().MultiAddresses()))
+			}
 
 			By("sending orders...")
 			err := sendOrders(darknodes, NumberOfOrders)
