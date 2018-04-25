@@ -73,11 +73,11 @@ func (relay *Relay) writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Reque
 	defer close(messages)
 
 	go func() {
+		defer relay.orderbook.Unsubscribe(messages)
 		if err := relay.orderbook.Subscribe(messages); err != nil {
 			fmt.Printf("unable to subscribe to order book: %v", err)
 		}
 	}()
-	defer relay.orderbook.Unsubscribe(messages)
 
 	for {
 		select {

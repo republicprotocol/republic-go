@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"sync/atomic"
 	"time"
@@ -46,7 +47,7 @@ func NewClient(crypter crypto.Crypter, dht *dht.DHT, connPool *client.ConnPool) 
 // returned during the synchronization are written to the orderbook.Orderbook.
 // Users can subscribe to the orderbook.Orderbook to receive notifications when
 // an entry is synchronized.
-func (client *Client) Sync(ctx context.Context, orderbook *orderbook.Orderbook, epoch [32]byte, peers int) <-chan error {
+func (client *Client) Sync(ctx context.Context, orderbook *orderbook.Orderbook, peers int) <-chan error {
 	errs := make(chan error, peers+1)
 	go func() {
 		defer close(errs)
@@ -75,12 +76,15 @@ func (client *Client) Sync(ctx context.Context, orderbook *orderbook.Orderbook, 
 
 			// Select a random peer to synchronize with
 			multiAddrs := client.dht.MultiAddresses()
+			if len(multiAddrs) == 0 {
+				return
+			}
 			i := rand.Intn(len(multiAddrs))
 
 			go func() {
 				// Connect to the peer and begin synchronizing the
 				// orderbook.Orderbook
-				syncVals, syncErrs := client.SyncFrom(ctx, multiAddrs[i], epoch)
+				syncVals, syncErrs := client.SyncFrom(ctx, multiAddrs[i])
 				atomic.AddInt64(&conns, 1)
 				defer atomic.AddInt64(&conns, -1)
 
@@ -113,7 +117,7 @@ func (client *Client) Sync(ctx context.Context, orderbook *orderbook.Orderbook, 
 // Client will synchronize from the given peer, expecting entries for a
 // specific epoch. All entries and errors will be written to channels that are
 // returned immediately.
-func (client *Client) SyncFrom(ctx context.Context, multiAddr identity.MultiAddress, epoch [32]byte) (<-chan *SyncResponse, <-chan error) {
+func (client *Client) SyncFrom(ctx context.Context, multiAddr identity.MultiAddress) (<-chan *SyncResponse, <-chan error) {
 	responses := make(chan *SyncResponse)
 	errs := make(chan error, 1)
 	go func() {
@@ -122,7 +126,7 @@ func (client *Client) SyncFrom(ctx context.Context, multiAddr identity.MultiAddr
 
 		conn, err := client.connPool.Dial(ctx, multiAddr)
 		if err != nil {
-			errs <- err
+			errs <- fmt.Errorf("cannot dial %v: %v", multiAddr, err)
 			return
 		}
 		defer conn.Close()
@@ -130,7 +134,7 @@ func (client *Client) SyncFrom(ctx context.Context, multiAddr identity.MultiAddr
 		relayClient := NewRelayClient(conn.ClientConn)
 		requestSignature, err := client.crypter.Sign(client.dht.Address)
 		if err != nil {
-			errs <- err
+			errs <- fmt.Errorf("cannot sign sync request: %v", err)
 			return
 		}
 		request := &SyncRequest{
@@ -139,13 +143,16 @@ func (client *Client) SyncFrom(ctx context.Context, multiAddr identity.MultiAddr
 		}
 		stream, err := relayClient.Sync(ctx, request)
 		if err != nil {
-			errs <- err
+			errs <- fmt.Errorf("cannot sync with %v: %v", multiAddr, err)
 			return
 		}
 
 		for {
 			message, err := stream.Recv()
 			if err != nil {
+				if err == io.EOF {
+					return
+				}
 				errs <- err
 				return
 			}

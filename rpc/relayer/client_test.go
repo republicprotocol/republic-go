@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/republicprotocol/republic-go/stackint"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/rpc/relayer"
@@ -55,22 +53,26 @@ var _ = Describe("Relayer", func() {
 	})
 
 	Context("when syncing orders", func() {
-		It("should sync the orderbook from a specified node", func() {
+		It("should sync orders from a given peer", func() {
+			// Initialise the client
 			crypter := crypto.NewWeakCrypter()
-			address, _, err := identity.NewAddress()
+			dhtAddress, _, err := identity.NewAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			dht := dht.NewDHT(address, 100)
+			dht := dht.NewDHT(dhtAddress, 100)
 			connPool := client.NewConnPool(100)
 			client := NewClient(&crypter, &dht, &connPool)
 
+			// Set-up the server
 			server := grpc.NewServer()
 			listener, err := net.Listen("tcp", "127.0.0.1:3000")
 			Ω(err).ShouldNot(HaveOccurred())
 
+			// Create a relay and register it with the server
 			book := orderbook.NewOrderbook(100)
 			relayer := NewRelayer(&client, &book)
 			relayer.Register(server)
 
+			// Serve the server
 			var wg sync.WaitGroup
 			wg.Add(1)
 			go func() {
@@ -79,90 +81,108 @@ var _ = Describe("Relayer", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			}()
 
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				time.Sleep(2 * time.Second)
-				server.Stop()
-			}()
-
-			stackint := stackint.FromUint(0)
-			ord := order.NewOrder(1, 1, time.Time{}, 1, 2, stackint, stackint, stackint, stackint)
-			entry := orderbook.NewEntry(*ord, order.Open)
+			// Add a new entry to the orderbook
+			entry := orderbook.NewEntry(order.Order{}, order.Open)
 			book.Open(entry)
 
-			ctx := context.Background()
-			multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/3000/republic/%v", address))
-			var epochHash [32]byte
-			msgs, errs := client.SyncFrom(ctx, multiAddr, epochHash)
-			// errs := client.Sync(ctx, &book, epochHash, 3)
-
-			// FIXME:
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				select {
-				case msg := <-msgs:
-					log.Println(msg)
-				case err := <-errs:
-					log.Println(err)
-				}
-			}()
-
-			wg.Wait()
-		})
-
-		It("should send an error if the connection gets closed", func() {
-			crypter := crypto.NewWeakCrypter()
+			// Synchronise the orderbook through the peer
 			address, _, err := identity.NewAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			dht := dht.NewDHT(address, 100)
-			connPool := client.NewConnPool(100)
-			client := NewClient(&crypter, &dht, &connPool)
-
-			server := grpc.NewServer()
-			listener, err := net.Listen("tcp", "127.0.0.1:3000")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			book := orderbook.NewOrderbook(100)
-			relayer := NewRelayer(&client, &book)
-			relayer.Register(server)
-
-			var wg sync.WaitGroup
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				err := server.Serve(listener)
-				Ω(err).ShouldNot(HaveOccurred())
-			}()
-
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				time.Sleep(2 * time.Second)
-				server.Stop()
-			}()
-
-			ctx := context.Background()
 			multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/3000/republic/%v", address))
-			var epochHash [32]byte
-			msgs, errs := client.SyncFrom(ctx, multiAddr, epochHash)
+			Ω(err).ShouldNot(HaveOccurred())
+			responses, errs := client.SyncFrom(context.Background(), multiAddr)
 
-			msgCount, errCount := 0, 0
+			// Check for any responses or errors
+			resCount, errCount := 0, 0
 			wg.Add(1)
 			go func() {
+				defer GinkgoRecover()
 				defer wg.Done()
 				select {
-				case <-msgs:
-					msgCount++
+				case res := <-responses:
+					submitID := []uint8(book.Blocks()[0].ID)
+					resID := res.GetEntry().GetOrder().GetOrderId()
+					Ω(submitID).Should(Equal(resID))
+					resCount++
 				case <-errs:
 					errCount++
 				}
 			}()
 
+			time.Sleep(time.Second)
+			server.Stop()
 			wg.Wait()
-			Ω(msgCount).Should(Equal(0))
-			Ω(errCount).Should(Equal(1))
+
+			Ω(len(book.Blocks())).Should(Equal(1))
+			Ω(resCount).Should(Equal(1))
+			Ω(errCount).Should(Equal(0))
+		})
+
+		It("should sync orders from random peers", func() {
+			// Initialise the client
+			crypter := crypto.NewWeakCrypter()
+			dhtAddress, _, err := identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			dht := dht.NewDHT(dhtAddress, 100)
+			connPool := client.NewConnPool(100)
+			client := NewClient(&crypter, &dht, &connPool)
+
+			// Set-up the server
+			server := grpc.NewServer()
+			listener, err := net.Listen("tcp", "127.0.0.1:3000")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			// Create a relay and register it with the server
+			relayBook := orderbook.NewOrderbook(100)
+			relayer := NewRelayer(&client, &relayBook)
+			relayer.Register(server)
+
+			// Serve the server
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				err := server.Serve(listener)
+				Ω(err).ShouldNot(HaveOccurred())
+			}()
+
+			// Add a new entry to the orderbook
+			entry := orderbook.NewEntry(order.Order{}, order.Open)
+			relayBook.Open(entry)
+
+			// Synchronise the orderbook through any peers
+			address, _, err := identity.NewAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/3000/republic/%v", address))
+			Ω(err).ShouldNot(HaveOccurred())
+			err = dht.UpdateMultiAddress(multiAddr)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			ctx, cancel := context.WithCancel(context.Background())
+			book := orderbook.NewOrderbook(100)
+			errs := client.Sync(context.Background(), &book, 1)
+
+			// Check for any responses or errors
+			errCount := 0
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				select {
+				case <-ctx.Done():
+				case err := <-errs:
+					log.Println(err)
+					errCount++
+				}
+			}()
+
+			time.Sleep(time.Second)
+			cancel()
+
+			server.Stop()
+			wg.Wait()
+
+			Ω(len(book.Blocks())).Should(Equal(1))
+			Ω(errCount).Should(Equal(0))
 		})
 	})
 })
