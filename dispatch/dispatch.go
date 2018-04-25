@@ -31,6 +31,7 @@ func Dispatch(fs ...func()) <-chan struct{} {
 func Wait(chs ...chan struct{}) {
 	for _, ch := range chs {
 		for range ch {
+			// Pass
 		}
 	}
 }
@@ -87,8 +88,8 @@ type Splitter struct {
 }
 
 // NewSplitter creates and returns a new Splitter object
-func NewSplitter(maxConnections int) Splitter {
-	return Splitter{
+func NewSplitter(maxConnections int) *Splitter {
+	return &Splitter{
 		mu:          &sync.RWMutex{},
 		subscribers: make(map[interface{}]struct{}),
 

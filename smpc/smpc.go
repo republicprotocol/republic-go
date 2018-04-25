@@ -3,7 +3,9 @@ package smpc
 import (
 	"context"
 
+	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/stackint"
 )
@@ -17,7 +19,7 @@ var Prime = func() stackint.Int1024 {
 	return prime
 }()
 
-// ComputerID uniquely identifies the Computer.
+// ComputerID uniquely identifies the Smpc.
 type ComputerID [32]byte
 
 // ObscureComputeInput accepted by obscure computations. It stores a set of
@@ -53,7 +55,7 @@ type ObscureComputeOutput struct {
 // set of read-write channels.
 type OrderMatchComputeInput struct {
 	OrderFragments chan order.Fragment
-	DeltaFragments chan DeltaFragment
+	DeltaFragments chan delta.Fragment
 }
 
 // Close all channels. Calling this function more than once will cause a panic.
@@ -65,13 +67,12 @@ func (chs *OrderMatchComputeInput) Close() {
 // OrderMatchComputeOutput returned by obscure computations. It stores a set of
 // read-only channels.
 type OrderMatchComputeOutput struct {
-	DeltaFragments <-chan DeltaFragment
-	Deltas         <-chan Delta
+	DeltaFragments <-chan delta.Fragment
+	Deltas         <-chan delta.Delta
 }
 
-// Computer of sMPC messages.
-type Computer struct {
-	ComputerID
+type Smpc struct {
+	id identity.ID
 
 	n, k                      int64
 	sharedOrderTable          SharedOrderTable
@@ -79,22 +80,22 @@ type Computer struct {
 	sharedDeltaBuilder        SharedDeltaBuilder
 }
 
-// NewComputer returns a new Computer with the given ComputerID and N-K
+// NewSmpc returns a new Smpc with the given ComputerID and N-K
 // threshold.
-func NewComputer(computerID ComputerID, n, k int64) Computer {
-	return Computer{
-		ComputerID:                computerID,
+func NewSmpc(id identity.ID, n, k int64) Smpc {
+	return Smpc{
+		id:                        id,
 		n:                         n,
 		k:                         k,
 		sharedOrderTable:          NewSharedOrderTable(),
-		sharedObscureResidueTable: NewSharedObscureResidueTable(computerID),
+		sharedObscureResidueTable: NewSharedObscureResidueTable(id),
 		sharedDeltaBuilder:        NewSharedDeltaBuilder(k, Prime),
 	}
 }
 
 // ComputeObscure residues that will be used during order matching to obscure
 // Deltas.
-func (computer *Computer) ComputeObscure(
+func (computer *Smpc) ComputeObscure(
 	ctx context.Context,
 	obscureComputeChs ObscureComputeInput,
 ) (
@@ -104,32 +105,32 @@ func (computer *Computer) ComputeObscure(
 	errChs := make([]<-chan error, 6)
 
 	// ProduceObscureRngs to initiate the creation of an obscure residue that
-	// will be owned by this Computer
+	// will be owned by this Smpc
 	obscureRngCh, errCh := ProduceObscureRngs(ctx, computer.n, computer.k, &computer.sharedObscureResidueTable, int(computer.n))
 	errChs[0] = errCh
 
 	// ProcessObscureRngs that were initiated by other Computers and broadcast
-	// to this Computer
+	// to this Smpc
 	obscureRngSharesCh, errCh := ProcessObscureRngs(ctx, obscureComputeChs.Rng, &computer.sharedObscureResidueTable, int(computer.n))
 	errChs[1] = errCh
 
-	// ProcessObscureRngShares broadcast to this Computer in response to an
-	// ObscureRng that was produced by this Computer
+	// ProcessObscureRngShares broadcast to this Smpc in response to an
+	// ObscureRng that was produced by this Smpc
 	obscureRngSharesIndexedCh, errCh := ProcessObscureRngShares(ctx, obscureComputeChs.RngShares, int(computer.n))
 	errChs[2] = errCh
 
-	// ProcessObscureRngSharesIndexed broadcast to this Computer by another
-	// Computer that is progressing through the creation of its obscure residue
+	// ProcessObscureRngSharesIndexed broadcast to this Smpc by another
+	// Smpc that is progressing through the creation of its obscure residue
 	obscureMulShares, errCh := ProcessObscureRngSharesIndexed(ctx, obscureComputeChs.RngSharesIndexed, int(computer.n))
 	errChs[3] = errCh
 
-	// ProcessObscureMulShares broadcast to this Computer in response to
-	// ObscureRngSharesIndexed that were produced by this Computer
+	// ProcessObscureMulShares broadcast to this Smpc in response to
+	// ObscureRngSharesIndexed that were produced by this Smpc
 	obscureMulSharesIndexedCh, errCh := ProcessObscureMulShares(ctx, obscureComputeChs.MulShares, int(computer.n))
 	errChs[4] = errCh
 
-	// ProcessObscureMulSharesIndexed broadcast to this Computer by another
-	// Computer that is progressing through the creation of its obscure residue
+	// ProcessObscureMulSharesIndexed broadcast to this Smpc by another
+	// Smpc that is progressing through the creation of its obscure residue
 	obscureResidueFragmentCh, errCh := ProcessObscureMulSharesIndexed(ctx, obscureComputeChs.MulSharesIndexed, int(computer.n))
 	errChs[5] = errCh
 
@@ -161,22 +162,22 @@ func (computer *Computer) ComputeObscure(
 }
 
 // ComputeOrderMatches using order fragments and delta fragments.
-func (computer *Computer) ComputeOrderMatches(done <-chan struct{}, orderFragmentsIn <-chan order.Fragment, deltaFragmentsIn <-chan DeltaFragment) (<-chan DeltaFragment, <-chan Delta) {
-	deltaFragmentsOut := make(chan DeltaFragment)
-	deltasOut := make(chan Delta)
+func (computer *Smpc) ComputeOrderMatches(done <-chan struct{}, orderFragmentsIn <-chan order.Fragment, deltaFragmentsIn <-chan delta.Fragment) (<-chan delta.Fragment, <-chan delta.Delta) {
+	deltaFragmentsOut := make(chan delta.Fragment)
+	deltasOut := make(chan delta.Delta)
 
 	go func() {
 		defer close(deltaFragmentsOut)
 		defer close(deltasOut)
 
 		orderTuples := OrderFragmentsToOrderTuples(done, orderFragmentsIn, &computer.sharedOrderTable, 100)
-		deltaFragmentsFromOrderTuples := OrderTuplesToDeltaFragments(done, orderTuples, 100)
+		deltaFragmentsComputed := OrderTuplesToDeltaFragments(done, orderTuples, 100)
 
-		deltaFragments := make(chan DeltaFragment)
+		deltaFragments := make(chan delta.Fragment)
 		go func() {
 			defer close(deltaFragments)
-			<-dispatch.Dispatch(func() {
-				dispatch.Split(deltaFragmentsFromOrderTuples, deltaFragments, deltaFragmentsOut)
+			dispatch.CoBegin(func() {
+				dispatch.Split(deltaFragmentsComputed, deltaFragments, deltaFragmentsOut)
 			}, func() {
 				dispatch.Pipe(done, deltaFragmentsIn, deltaFragments)
 			})
@@ -189,10 +190,14 @@ func (computer *Computer) ComputeOrderMatches(done <-chan struct{}, orderFragmen
 	return deltaFragmentsOut, deltasOut
 }
 
-func (computer *Computer) SharedOrderTable() *SharedOrderTable {
+func (computer *Smpc) SharedOrderTable() *SharedOrderTable {
 	return &computer.sharedOrderTable
 }
 
-func (computer *Computer) SharedObscureResidueTable() *SharedObscureResidueTable {
+func (computer *Smpc) SharedObscureResidueTable() *SharedObscureResidueTable {
 	return &computer.sharedObscureResidueTable
+}
+
+func (computer *Smpc) Prime() stackint.Int1024 {
+	return Prime
 }

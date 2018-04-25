@@ -86,6 +86,9 @@ func RecoverSigner(data Signable, signature Signature) (ID, error) {
 // VerifySignature verifies that the data's signature has been signed by the provided
 // ID's private key
 func VerifySignature(data Signable, signature Signature, id ID) error {
+	if signature == nil {
+		return ErrInvalidSignature
+	}
 	signer, err := RecoverSigner(data, signature)
 	if err != nil {
 		return err

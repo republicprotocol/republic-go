@@ -92,7 +92,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 					kShares[index] = shares[index]
 				}
 				decodedSecret := Join(&prime, kShares)
-				Ω(decodedSecret).Should(Equal(&secret))
+				Ω(decodedSecret.Cmp(&secret)).Should(Equal(0))
 			}
 		})
 

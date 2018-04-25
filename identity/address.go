@@ -93,6 +93,11 @@ func (address Address) ID() ID {
 	return ID(bytes)
 }
 
+// Hash implements the crypto.Hasher interface for signing.
+func (address Address) Hash() []byte {
+	return []byte(address)
+}
+
 // Closer returns true if the left Address is closer to the target than the
 // right Address, otherwise it returns false. In the case that both Addresses
 // are equal distances from the target, it returns true.

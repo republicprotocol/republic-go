@@ -4,13 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/republicprotocol/republic-go/darknode"
-	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/orderbook"
 )
 
 const reset = "\x1b[0m"
@@ -54,8 +52,31 @@ func RecoveryHandler(h http.Handler) http.Handler {
 	})
 }
 
+// AuthorizationHandler handles errors while processing the requests and populates the errors in the response
+func (relay *Relay) AuthorizationHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if relay.Config.Token != "" {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				writeError(w, http.StatusUnauthorized, "")
+				return
+			}
+			coms := strings.Split(authHeader, " ")
+			if len(coms) != 2 {
+				writeError(w, http.StatusUnauthorized, "")
+				return
+			}
+			if coms[0] != "Bearer" || coms[1] != relay.Config.Token {
+				writeError(w, http.StatusUnauthorized, "")
+				return
+			}
+		}
+		h.ServeHTTP(w, r)
+	})
+}
+
 // OpenOrdersHandler handles all HTTP open order requests
-func OpenOrdersHandler(multiAddress identity.MultiAddress, darkPools darknode.Pools) http.Handler {
+func (relay *Relay) OpenOrdersHandler() http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		openOrder := OpenOrderRequest{}
@@ -66,13 +87,13 @@ func OpenOrdersHandler(multiAddress identity.MultiAddress, darkPools darknode.Po
 		}
 
 		if len(openOrder.OrderFragments.DarkPools) > 0 {
-			if err := SendOrderFragmentsToDarkOcean(openOrder.OrderFragments, multiAddress, darkPools, []string{}); err != nil {
-				writeError(w, http.StatusInternalServerError, fmt.Sprintf("error sending order fragments : %v", err))
+			if err := relay.SendOrderFragmentsToDarkOcean(openOrder.OrderFragments); err != nil {
+				writeError(w, http.StatusInternalServerError, fmt.Sprintf("error sending order fragments: %v", err))
 				return
 			}
 		} else if openOrder.Order.ID.String() != "" {
-			if err := SendOrderToDarkOcean(openOrder.Order, multiAddress, darkPools, []string{}); err != nil {
-				writeError(w, http.StatusInternalServerError, fmt.Sprintf("error sending orders : %v", err))
+			if err := relay.SendOrderToDarkOcean(openOrder.Order); err != nil {
+				writeError(w, http.StatusInternalServerError, fmt.Sprintf("error sending orders: %v", err))
 				return
 			}
 		} else {
@@ -85,21 +106,17 @@ func OpenOrdersHandler(multiAddress identity.MultiAddress, darkPools darknode.Po
 }
 
 // GetOrderHandler handles all HTTP GET requests.
-func GetOrderHandler(orderBook *orderbook.Orderbook, id string) http.Handler {
-	// TODO: Add authentication.
+func (relay *Relay) GetOrderHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		orderID := vars["orderID"]
 		if orderID == "" {
-			if id == "" {
-				writeError(w, http.StatusBadRequest, "order id is invalid")
-				return
-			}
-			orderID = id
+			writeError(w, http.StatusBadRequest, "order id is invalid")
+			return
 		}
 
 		// Check if there exists an item in the order book with the given ID.
-		message := orderBook.Order([]byte(orderID))
+		message := relay.orderbook.Order([]byte(orderID))
 		if message.Order.ID == nil {
 			writeError(w, http.StatusBadRequest, "order id is invalid")
 			return
@@ -112,14 +129,16 @@ func GetOrderHandler(orderBook *orderbook.Orderbook, id string) http.Handler {
 }
 
 // CancelOrderHandler handles HTTP Delete Requests
-func CancelOrderHandler(multiAddress identity.MultiAddress, darkPools darknode.Pools) http.Handler {
+func (relay *Relay) CancelOrderHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// FIXME: Check that cancelOrder.ID matches mux.Vars(r)["orderID"]
+
 		cancelOrder := CancelOrderRequest{}
 		if err := json.NewDecoder(r.Body).Decode(&cancelOrder); err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot decode json: %v", err))
 			return
 		}
-		if err := CancelOrder(cancelOrder.ID, multiAddress, darkPools, []string{}); err != nil {
+		if err := relay.CancelOrder(cancelOrder.ID); err != nil {
 			writeError(w, http.StatusInternalServerError, fmt.Sprintf("error canceling orders : %v", err))
 			return
 		}

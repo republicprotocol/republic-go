@@ -9,15 +9,12 @@ import (
 type Entry struct {
 	order.Order
 	order.Status
-
-	EpochHash [32]byte
 }
 
 // NewEntry returns a new Entry.
-func NewEntry(order order.Order, status order.Status, epochHash [32]byte) Entry {
+func NewEntry(order order.Order, status order.Status) Entry {
 	return Entry{
-		Order:     order,
-		Status:    status,
-		EpochHash: epochHash,
+		Order:  order,
+		Status: status,
 	}
 }

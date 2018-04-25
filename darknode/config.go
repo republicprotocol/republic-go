@@ -2,31 +2,38 @@ package darknode
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/ethereum/client"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/rpc"
 )
 
+// A Config defines the different settings for a Darknode.
 type Config struct {
-	Key      keystore.Key   `json:"key"`
-	Host     string         `json:"host"`
-	Port     string         `json:"port"`
-	Ethereum EthereumConfig `json:"ethereum"`
-	Network  rpc.Options    `json:"network"`
-	Logs     logger.Options `json:"logs"`
+	EcdsaKey keystore.Key      `json:"ecdsaKey"`
+	RsaKey   crypto.RsaKeyPair `json:"rsaKey"`
+	Ethereum EthereumConfig    `json:"ethereum"`
+	Logs     logger.Options    `json:"logs"`
+
+	Address                 identity.Address        `json:"address"`
+	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
+	Host                    string                  `json:"host"`
+	Port                    string                  `json:"port"`
 }
 
+// An EthereumConfig defines the different settings for connecting the Darknode
+// to an Ethereum network, and the Republic Protocol smart contracts deployed
+// on Ethereum.
 type EthereumConfig struct {
-	URI                      string         `json:"uri"`
-	Network                  client.Network `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
-	RepublicTokenAddress     string         `json:"republicTokenAddress"`
-	DarkNodeRegistryAddress  string         `json:"darkNodeRegistryAddress"`
-	HyperdriveRegistryAddres string         `json:"hyperdriveRegistryAddress"`
+	Network                 client.Network `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
+	URI                     string         `json:"uri"`
+	RepublicTokenAddress    string         `json:"republicTokenAddress"`
+	DarknodeRegistryAddress string         `json:"darknodeRegistryAddress"`
+	TraderRegistryAddress   string         `json:"traderRegistryAddress"`
+	HyperdriveAddress       string         `json:"hyperdriveAddress"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config
@@ -42,41 +49,4 @@ func LoadConfig(filename string) (*Config, error) {
 		return nil, err
 	}
 	return config, nil
-}
-
-func NewLocalConfig(key keystore.Key, host, port string) (Config, error) {
-	keyPair, err := identity.NewKeyPairFromPrivateKey(key.PrivateKey)
-	if err != nil {
-		return Config{}, err
-	}
-	multi, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", host, port, keyPair.Address()))
-	if err != nil {
-		return Config{}, err
-	}
-	return Config{
-		Key:  key,
-		Host: host,
-		Port: port,
-		Network: rpc.Options{
-			MultiAddress: multi,
-		},
-		Ethereum: EthereumConfig{
-			URI:                     "http://localhost:8545",
-			Network:                 client.NetworkGanache,
-			RepublicTokenAddress:    client.RepublicTokenAddressOnGanache.String(),
-			DarkNodeRegistryAddress: client.DarkNodeRegistryAddressOnGanache.String(),
-		},
-	}, nil
-}
-
-func NewFalconConfig() Config {
-	return Config{}
-}
-
-var FalconBootstrapMultis = []string{
-	"/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",
-	"/ip4/52.21.44.236/tcp/18514/republic/8MGzXN7M1ucxvtumVjQ7Ybb7xQ8TUw",
-	"/ip4/52.41.118.171/tcp/18514/republic/8MHmrykz65HimBPYaVgm8bTSpRUoXA",
-	"/ip4/52.59.176.141/tcp/18514/republic/8MKFT9CDQQru1hYqnaojXqCQU2Mmuk",
-	"/ip4/52.77.88.84/tcp/18514/republic/8MGb8k337pp2GSh6yG8iv2GK6FbNHN",
 }
