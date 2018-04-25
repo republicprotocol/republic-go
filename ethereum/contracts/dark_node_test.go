@@ -49,33 +49,29 @@ var _ = Describe("Darknode", func() {
 			txInput := make(chan hyperdrive.TxWithTimestamp)
 
 			go func() {
-				i := uint8(65)
-				for {
-					t := time.NewTimer(time.Second)
-					select {
-					case <-done:
-						return
-					case <-t.C:
-						delta := Delta{
-							BuyOrderID:  []byte{i},
-							SellOrderID: []byte{i + 1},
-						}
-						log.Printf("Found order match! Sending it to hyperdrive...")
-						Ω(OrderMatchToHyperdrive(delta, hyper, txInput)).ShouldNot(HaveOccurred())
-					}
-					i += 2
-				}
-			}()
-
-			go func() {
 				// Quit the test after 5 minutes
 				time.Sleep(10 * time.Minute)
 				close(done)
 			}()
 
-			errs := WatchForHyperdriveContract(done, txInput, depth, hyper)
-			for err := range errs {
-				Ω(err).ShouldNot(HaveOccurred())
+			go WatchForHyperdriveContract(done, txInput, depth, hyper)
+
+			i := uint8(80)
+			for {
+				t := time.NewTimer(time.Second)
+				select {
+				case <-done:
+					return
+				case <-t.C:
+					delta := Delta{
+						BuyOrderID:  []byte{i},
+						SellOrderID: []byte{i + 1},
+					}
+					log.Printf("Found order match! Sending it to hyperdrive...")
+					err = OrderMatchToHyperdrive(delta, hyper, txInput)
+					Ω(err).ShouldNot(HaveOccurred())
+				}
+				i += 2
 			}
 		})
 	})
@@ -117,12 +113,12 @@ func WatchForHyperdriveContract(done <-chan struct{}, txInput chan hyperdrive.Tx
 			case <-done:
 				return
 			case tx := <-txInput:
-				log.Printf("receive tx with %v  at  %s ", tx.Hash)
+				log.Printf("receive tx with %v  at  ", tx.Hash)
 				watchingList[tx.Tx.Hash] = tx
 			case <-ticker.C:
 				log.Println("tik tok ......")
 				for key, tx := range watchingList {
-					if time.Now().Before(tx.Timestamp.Add(time.Minute)) {
+					if time.Now().Before(tx.Timestamp.Add(5 * time.Minute)) {
 						finalized := true
 						for _, nonce := range tx.Nonces {
 							dep, err := hyper.GetDepth(nonce)
