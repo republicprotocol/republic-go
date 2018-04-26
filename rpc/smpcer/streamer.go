@@ -1,7 +1,7 @@
 package smpcer
 
 import (
-	fmt "fmt"
+	"fmt"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -96,6 +96,9 @@ func (streamer *Streamer) releaseConn(addr identity.Address) {
 		delete(streamer.senders, addr)
 		delete(streamer.receivers, addr)
 		delete(streamer.receiverChs, addr)
+		delete(streamer.rcs, addr)
+		delete(streamer.errs, addr)
+		delete(streamer.errChs, addr)
 	}
 }
 
