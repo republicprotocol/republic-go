@@ -41,6 +41,7 @@ func main() {
 	maxConnections := flag.Int("maxConnections", 4, "Maximum number of connections to peers during synchronization")
 	flag.Parse()
 
+	fmt.Println("Decrypting keystore...")
 	key, err := getKey(*keystore, *passphrase)
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot obtain key: %s", err))
@@ -88,6 +89,7 @@ func main() {
 	relay := NewRelay(config, registrar, &book, &relayerClient, &smpcerClient, &swarmerClient)
 
 	// Server gRPC and RESTful API
+	fmt.Println(fmt.Sprintf("Relay API available at %s:%s", *bind, *port))
 	dispatch.CoBegin(func() {
 		if err := relay.ListenAndServe(*bind, *port); err != nil {
 			log.Fatalf("error serving http: %v", err)
