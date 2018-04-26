@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 
@@ -19,8 +18,17 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/rpc/client"
+	"github.com/republicprotocol/republic-go/rpc/dht"
+	"github.com/republicprotocol/republic-go/rpc/relayer"
+	"github.com/republicprotocol/republic-go/rpc/smpcer"
+	"github.com/republicprotocol/republic-go/rpc/swarmer"
 	"google.golang.org/grpc"
 )
 
@@ -33,27 +41,28 @@ func main() {
 	maxConnections := flag.Int("maxConnections", 4, "Maximum number of connections to peers during synchronization")
 	flag.Parse()
 
+	fmt.Println("Decrypting keystore...")
 	key, err := getKey(*keystore, *passphrase)
 	if err != nil {
-		fmt.Println(fmt.Errorf("could not obtain key: %s", err))
+		fmt.Println(fmt.Errorf("cannot obtain key: %s", err))
 		return
 	}
 
 	keyPair, err := getKeyPair(key)
 	if err != nil {
-		fmt.Println(fmt.Errorf("could not obtain keypair: %s", err))
+		fmt.Println(fmt.Errorf("cannot obtain keypair: %s", err))
 		return
 	}
 
 	multiAddr, err := getMultiaddress(keyPair, *port)
 	if err != nil {
-		fmt.Println(fmt.Errorf("could not obtain multiaddress: %s", err))
+		fmt.Println(fmt.Errorf("cannot obtain multiaddress: %s", err))
 		return
 	}
 
-	registrar, err := getRegistrar(key)
+	registrar, err := getRegistry(key)
 	if err != nil {
-		fmt.Println(fmt.Errorf("could not obtain registrar: %s", err))
+		fmt.Println(fmt.Errorf("cannot obtain registrar: %s", err))
 		return
 	}
 
@@ -66,14 +75,21 @@ func main() {
 
 	// Create Relay
 	config := Config{
-		KeyPair:        keyPair,
-		MultiAddress:   multiAddr,
-		Token:          *token,
-		BootstrapNodes: getBootstrapNodes(),
+		KeyPair:      keyPair,
+		MultiAddress: multiAddr,
+		Token:        *token,
 	}
-	relay := NewRelay(...)
+	book := orderbook.NewOrderbook(100)
+	crypter := crypto.NewWeakCrypter()
+	dht := dht.NewDHT(multiAddr.Address(), 100)
+	connPool := client.NewConnPool(100)
+	relayerClient := relayer.NewClient(&crypter, &dht, &connPool)
+	smpcerClient := smpcer.NewClient(&crypter, multiAddr, &connPool)
+	swarmerClient := swarmer.NewClient(&crypter, multiAddr, &dht, &connPool)
+	relay := NewRelay(config, registrar, &book, &relayerClient, &smpcerClient, &swarmerClient)
 
 	// Server gRPC and RESTful API
+	fmt.Println(fmt.Sprintf("Relay API available at %s:%s", *bind, *port))
 	dispatch.CoBegin(func() {
 		if err := relay.ListenAndServe(*bind, *port); err != nil {
 			log.Fatalf("error serving http: %v", err)
@@ -85,8 +101,7 @@ func main() {
 		}
 	}, func() {
 		relay.Sync(context.Background(), *maxConnections)
-	}),
-
+	})
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
@@ -123,7 +138,7 @@ func getKeyPair(key *keystore.Key) (identity.KeyPair, error) {
 	return id, nil
 }
 
-func getMultiaddress(id identity.KeyPair, port int) (identity.MultiAddress, error) {
+func getMultiaddress(id identity.KeyPair, port string) (identity.MultiAddress, error) {
 	// Get our IP address
 	ipInfoOut, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
 	if err != nil {
@@ -131,7 +146,7 @@ func getMultiaddress(id identity.KeyPair, port int) (identity.MultiAddress, erro
 	}
 	ipAddress := strings.Trim(string(ipInfoOut), "\n ")
 
-	relayMultiaddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", ipAddress, strconv.Itoa(port), id.Address().String()))
+	relayMultiaddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", ipAddress, port, id.Address().String()))
 	if err != nil {
 		return identity.MultiAddress{}, fmt.Errorf("cannot obtain trader multi address %v", err)
 	}
@@ -144,25 +159,14 @@ func getRegistry(key *keystore.Key) (dnr.DarknodeRegistry, error) {
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot fetch dark node registry: %s", err))
-		return contracts.DarkNodeRegistry{}, err
+		return dnr.DarknodeRegistry{}, err
 	}
 	auth.GasPrice = big.NewInt(6000000000)
-	registrar, err := contracts.NewDarkNodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
+	registrar, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot fetch dark node registry: %s", err))
-		return contracts.DarkNodeRegistry{}, err
+		return dnr.DarknodeRegistry{}, err
 	}
 
 	return registrar, nil
-}
-
-// TODO: (temporary hard-coded bootstrap nodes) Fetch from a config file.
-func getBootstrapNodes() []string {
-	return []string{
-		"/ip4/52.77.88.84/tcp/18514/republic/8MGzXN7M1ucxvtumVjQ7Ybb7xQ8TUw",
-		"/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",
-		"/ip4/52.59.176.141/tcp/18514/republic/8MHmrykz65HimBPYaVgm8bTSpRUoXA",
-		"/ip4/52.21.44.236/tcp/18514/republic/8MKFT9CDQQru1hYqnaojXqCQU2Mmuk",
-		"/ip4/52.41.118.171/tcp/18514/republic/8MGb8k337pp2GSh6yG8iv2GK6FbNHN",
-	}
 }
