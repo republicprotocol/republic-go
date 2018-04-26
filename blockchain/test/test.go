@@ -17,15 +17,31 @@ func GetCIEnv() bool {
 	return ci
 }
 
-// SkipCiContext can be used instead of Context to skip tests when they are
+// SkipCIContext can be used instead of Context to skip tests when they are
 // being run in a CI environment (to avoid getting flagged for running Bitcoin
 // mining software).
-func SkipCiContext(description string, f func()) {
+func SkipCIContext(description string, f func()) bool {
 	if GetCIEnv() {
-		ginkgo.PContext(description, func() {
+		return ginkgo.PContext(description, func() {
 			ginkgo.It("SKIPPING LOCAL TESTS", func() {})
 		})
 	} else {
-		ginkgo.Context(description, f)
+		return ginkgo.Context(description, f)
 	}
+}
+
+// SkipCIBeforeSuite skips the BeforeSuite, which runs even if there are no tests
+func SkipCIBeforeSuite(f func()) bool {
+	if !GetCIEnv() {
+		return ginkgo.BeforeSuite(f)
+	}
+	return false
+}
+
+// SkipCIAfterSuite skips the AfterSuite, which runs even if there are no tests
+func SkipCIAfterSuite(f func()) bool {
+	if !GetCIEnv() {
+		return ginkgo.AfterSuite(f)
+	}
+	return false
 }

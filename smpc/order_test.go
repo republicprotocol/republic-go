@@ -26,7 +26,7 @@ var _ = Describe("Order fragment processor", func() {
 			}
 		})
 
-		It("should produce order tuples for all order pairs", func(done Done) {
+		PIt("should produce order tuples for all order pairs", func(done Done) {
 			defer close(done)
 
 			var wg sync.WaitGroup

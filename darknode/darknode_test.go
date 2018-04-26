@@ -78,7 +78,7 @@ var _ = Describe("Darknode", func() {
 
 	})
 
-	test.SkipCiContext("when watching the ocean", func() {
+	test.SkipCIContext("when watching the ocean", func() {
 
 		// It("should update local views of the ocean", func() {
 		// 	numberOfEpochs := 2
@@ -141,7 +141,7 @@ var _ = Describe("Darknode", func() {
 		})
 	})
 
-	Context("when computing order matches", func() {
+	test.SkipCIContext("when computing order matches", func() {
 
 		It("should process the distribute order table in parallel with other pools", func(d Done) {
 			defer close(d)
@@ -173,7 +173,7 @@ var _ = Describe("Darknode", func() {
 
 	})
 
-	Context("when confirming order matches", func() {
+	test.SkipCIContext("when confirming order matches", func() {
 
 		It("should update the order book after confirming an order match", func() {
 

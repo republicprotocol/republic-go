@@ -23,16 +23,16 @@ var _ = Describe("Orders", func() {
 
 		It("should return the same string for the same orders", func() {
 			nonce := stackint.Zero()
-			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
-			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
+			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
+			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
 			Ω(lhs.ID.String()).Should(Equal(rhs.ID.String()))
 		})
 
 		It("should return different strings for different orders", func() {
 			nonce := stackint.Zero()
-			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
+			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
 			nonce = stackint.One()
-			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
+			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
 			Ω(lhs.ID.String()).ShouldNot(Equal(rhs.ID.String()))
 		})
 	})
@@ -41,24 +41,24 @@ var _ = Describe("Orders", func() {
 
 		It("should return true for order IDs that are equal", func() {
 			nonce := stackint.Zero()
-			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
-			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
+			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
+			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
 			Ω(lhs.ID.Equal(rhs.ID)).Should(Equal(true))
 		})
 
 		It("should return false for order IDs that are not equal", func() {
 			nonce := stackint.Zero()
-			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
+			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
 			nonce = stackint.One()
-			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
+			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
 			Ω(lhs.ID.Equal(rhs.ID)).Should(Equal(false))
 		})
 
 		It("should return true for orders that are equal", func() {
 			expiry := time.Now().Add(time.Hour)
 			nonce := stackint.Zero()
-			lhs := NewOrder(TypeLimit, ParityBuy, expiry, CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
-			rhs := NewOrder(TypeLimit, ParityBuy, expiry, CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
+			lhs := NewOrder(TypeLimit, ParityBuy, expiry, CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
+			rhs := NewOrder(TypeLimit, ParityBuy, expiry, CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
 			println(lhs)
 			println(rhs)
 			Ω(lhs.Equal(rhs)).Should(Equal(true))
@@ -66,9 +66,9 @@ var _ = Describe("Orders", func() {
 
 		It("should return true for orders that are not equal", func() {
 			nonce := stackint.Zero()
-			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
+			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
 			nonce = stackint.One()
-			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
+			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
 			Ω(lhs.Equal(rhs)).Should(Equal(false))
 		})
 	})
@@ -81,7 +81,7 @@ var _ = Describe("Orders", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			nonce := stackint.Zero()
-			order := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
+			order := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
 			fragments, err := order.Split(n, k, &prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(fragments)).Should(Equal(int(n)))
@@ -93,7 +93,7 @@ var _ = Describe("Orders", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			nonce := stackint.Zero()
-			order := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
+			order := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
 			fragments, err := order.Split(n, k, &prime)
 			Ω(err).ShouldNot(HaveOccurred())
 			for i := range fragments {
@@ -112,7 +112,7 @@ var _ = Describe("Orders", func() {
 		}
 
 		nonce := stackint.Zero()
-		order := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce)
+		order := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
 
 		It("can be signed and verified", func() {
 			err = order.Sign(keyPair)
@@ -136,7 +136,7 @@ var _ = Describe("Orders", func() {
 		It("should error for invalid data", func() {
 
 			nonce2 := stackint.One()
-			order2 := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce2)
+			order2 := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce2)
 
 			err = order.Sign(keyPair)
 			Ω(err).ShouldNot(HaveOccurred())

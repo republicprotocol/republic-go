@@ -38,9 +38,9 @@ var _ = Describe("ARC", func() {
 	var aliceBtcAddr, bobBtcAddr string // btcutil.Address
 
 	// Don't run on CI
-	test.SkipCiContext("BTC-ETH", func() {
+	test.SkipCIContext("BTC-ETH", func() {
 
-		BeforeSuite(func() {
+		BeforeEach(func() {
 
 			{ // BITCOIN
 				var err error
@@ -88,7 +88,7 @@ var _ = Describe("ARC", func() {
 			}
 		})
 
-		AfterSuite(func() {
+		AfterEach(func() {
 			aliceBtcConnection.Shutdown()
 			bobBtcConnection.Shutdown()
 		})

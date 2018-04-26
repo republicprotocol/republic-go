@@ -36,7 +36,8 @@ func GenesisTransactor() bind.TransactOpts {
 }
 
 // WatchForInterrupt will stop Ganache upon receiving receiving a interrupt signal
-func WatchForInterrupt(cmd *exec.Cmd) {
+func WatchForInterrupt() {
+	cmd := globalGanacheCmd
 	signals := make(chan os.Signal, 1)
 	defer close(signals)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
@@ -74,7 +75,7 @@ func Start() bool {
 	cmd.Stderr = os.Stderr
 	cmd.Start()
 
-	go WatchForInterrupt(cmd)
+	go WatchForInterrupt()
 
 	// Wait for ganache to boot
 	var delay time.Duration
@@ -89,6 +90,10 @@ func Start() bool {
 	globalGanacheCmd = cmd
 
 	return true
+}
+
+func Wait() error {
+	return globalGanacheCmd.Wait()
 }
 
 // Stop will kill the local Ganache instance

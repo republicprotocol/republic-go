@@ -28,8 +28,7 @@ var _ = Describe("entry", func() {
 				Nonce:     stackint.FromUint(100),
 			}
 
-			var epochHash [32]byte
-			entry := orderbook.NewEntry(ord, order.Open, epochHash)
+			entry := orderbook.NewEntry(ord, order.Open)
 			Ω(entry).ShouldNot(BeNil())
 		})
 	})
