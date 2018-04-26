@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 // Network is used to represent an Ethereum chain
@@ -39,6 +40,7 @@ var (
 
 // Conn contains the client and the contracts deployed to it
 type Conn struct {
+	RawClient               *ethrpc.Client
 	Client                  *ethclient.Client
 	Network                 Network
 	RepublicTokenAddress    common.Address

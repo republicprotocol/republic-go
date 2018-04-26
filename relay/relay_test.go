@@ -54,7 +54,8 @@ var _ = Describe("Relay", func() {
 		// Connect to Ganache
 		conn, err = ganache.Connect("http://localhost:8545")
 		Expect(err).ShouldNot(HaveOccurred())
-		darknodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
+		transactor := ganache.GenesisTransactor()
+		darknodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), conn, &transactor, &bind.CallOpts{})
 		Expect(err).ShouldNot(HaveOccurred())
 		darknodeRegistry.SetGasLimit(1000000)
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"math/big"
-	"os/exec"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -20,7 +19,6 @@ import (
 
 var _ = Describe("ether", func() {
 
-	var cmd *exec.Cmd
 	var conn ethereum.Conn
 
 	var alice, bob *bind.TransactOpts
@@ -32,7 +30,7 @@ var _ = Describe("ether", func() {
 	BeforeEach(func() {
 		var err error
 
-		cmd, conn, err = ganache.StartAndConnect()
+		conn, err = ganache.StartAndConnect()
 		Expect(err).ShouldNot(HaveOccurred())
 
 		alice, aliceAddr, err = ganache.NewAccount(conn, big.NewInt(10))
@@ -50,13 +48,7 @@ var _ = Describe("ether", func() {
 	})
 
 	AfterEach(func() {
-		var err error
-
-		err = cmd.Process.Kill()
-		Expect(err).ShouldNot(HaveOccurred())
-
-		err = cmd.Wait()
-		Expect(err).ShouldNot(HaveOccurred())
+		ganache.Stop()
 	})
 
 	test.SkipCiContext("when using Ethereum", func() {

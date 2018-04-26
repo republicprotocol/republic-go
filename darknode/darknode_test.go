@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"log"
-	"os/exec"
 	"time"
 
 	"github.com/republicprotocol/republic-go/smpc"
@@ -38,7 +37,6 @@ const (
 
 var _ = Describe("Darknode", func() {
 
-	var cmd *exec.Cmd
 	var conn ethereum.Conn
 	var darknodeRegistry dnr.DarknodeRegistry
 	var darknodes Darknodes
@@ -46,13 +44,14 @@ var _ = Describe("Darknode", func() {
 	BeforeEach(func() {
 		var err error
 
-		cmd, conn, err = ganache.StartAndConnect()
+		conn, err = ganache.StartAndConnect()
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Connect to Ganache
-		darknodeRegistry, err = dnr.NewDarknodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
+		transactor := ganache.GenesisTransactor()
+		darknodeRegistry, err = dnr.NewDarknodeRegistry(context.Background(), conn, &transactor, &bind.CallOpts{})
 		Expect(err).ShouldNot(HaveOccurred())
-		darknodeRegistry.SetGasLimit(1000000)
+		darknodeRegistry.SetGasLimit(3000000)
 
 		// Create DarkNodes and contexts/cancels for running them
 		darknodes, err = NewDarknodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
@@ -62,9 +61,12 @@ var _ = Describe("Darknode", func() {
 		// registrations
 		err = RegisterDarknodes(darknodes, conn, darknodeRegistry)
 		Expect(err).ShouldNot(HaveOccurred())
+
 	})
 
 	AfterEach(func() {
+		defer ganache.Stop()
+
 		var err error
 
 		// Deregister the DarkNodes
@@ -75,8 +77,6 @@ var _ = Describe("Darknode", func() {
 		err = RefundDarknodes(darknodes, conn, darknodeRegistry)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		cmd.Process.Kill()
-		cmd.Wait()
 	})
 
 	Context("when watching the ocean", func() {
@@ -142,9 +142,9 @@ var _ = Describe("Darknode", func() {
 		})
 	})
 
-	FContext("when computing order matches", func() {
+	Context("when computing order matches", func() {
 
-		FIt("should process the distribute order table in parallel with other pools", func(d Done) {
+		It("should process the distribute order table in parallel with other pools", func(d Done) {
 			defer close(d)
 
 			By("booting darknodes...")
@@ -152,7 +152,7 @@ var _ = Describe("Darknode", func() {
 			defer close(done)
 			go dispatch.CoForAll(darknodes, func(i int) {
 				defer GinkgoRecover()
-				err := darknodes[i].Serve(done)
+				err := darknodes[i].Run(done)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 			time.Sleep(10 * time.Second)
@@ -166,7 +166,7 @@ var _ = Describe("Darknode", func() {
 				err := sendOrders(darknodes, NumberOfOrdersPerSecond)
 				Ω(err).ShouldNot(HaveOccurred())
 			}
-		}, 24*60*60) // Timeout is set to 24 hours
+		}, 30) // Timeout is set to 30 seconds
 
 		It("should update the order book after computing an order match", func() {
 

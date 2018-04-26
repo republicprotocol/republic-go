@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -16,58 +17,136 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/bindings"
+	"github.com/republicprotocol/republic-go/blockchain/test"
 )
 
 var genesisPrivateKey, genesisTransactor = genesis()
 
 // GenesisPrivateKey used by Ganache.
-func GenesisPrivateKey() *ecdsa.PrivateKey {
-	return genesisPrivateKey
+func GenesisPrivateKey() ecdsa.PrivateKey {
+	return *genesisPrivateKey
 }
 
 // GenesisTransactor used by Ganache.
-func GenesisTransactor() *bind.TransactOpts {
-	return genesisTransactor
+func GenesisTransactor() bind.TransactOpts {
+	return *genesisTransactor
 }
 
+// WatchForInterrupt will stop Ganache upon receiving receiving a interrupt signal
+func WatchForInterrupt(cmd *exec.Cmd) {
+	signals := make(chan os.Signal, 1)
+	defer close(signals)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	<-signals
+	fmt.Println("ganache is shutting down...")
+	if err := cmd.Process.Kill(); err != nil {
+		fmt.Printf("ganache cannot shutdown: %v", err)
+		return
+	}
+	if err := cmd.Wait(); err != nil {
+		fmt.Printf("ganache cannot shutdown: %v", err)
+		return
+	}
+	fmt.Printf("ganache shutdown")
+}
+
+var globalGanacheMu = &sync.Mutex{}
+var globalGanacheCounter uint64
+var globalGanacheCmd *exec.Cmd
+var globalGanacheSnapshot string
+var globalGanacheStopSchedule time.Time
+
 // Start a local Ganache instance.
-func Start() *exec.Cmd {
+func Start() bool {
+	globalGanacheMu.Lock()
+	defer globalGanacheMu.Unlock()
+
+	if globalGanacheCounter > 0 {
+		globalGanacheCounter++
+		return false
+	}
+
 	cmd := exec.Command("ganache-cli", fmt.Sprintf("--account=0x%x,1000000000000000000000", crypto.FromECDSA(genesisPrivateKey)))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Start()
 
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
-	go func() {
-		<-signals
-		fmt.Printf("ganache is shutting down...\n")
-		if err := cmd.Process.Kill(); err != nil {
-			fmt.Printf("ganache cannot shutdown: %v", err)
-			return
-		}
-		if err := cmd.Wait(); err != nil {
-			fmt.Printf("ganache cannot shutdown: %v", err)
-			return
-		}
-		fmt.Printf("ganache shutdown")
-	}()
+	go WatchForInterrupt(cmd)
 
 	// Wait for ganache to boot
-	time.Sleep(2 * time.Second)
+	var delay time.Duration
+	if test.GetCIEnv() {
+		delay = 10 * time.Second
+	} else {
+		delay = 4 * time.Second
+	}
+	time.Sleep(delay)
 
-	return cmd
+	globalGanacheCounter++
+	globalGanacheCmd = cmd
+
+	return true
+}
+
+// Stop will kill the local Ganache instance
+func Stop() {
+
+	globalGanacheMu.Lock()
+	if globalGanacheCounter > 1 {
+		globalGanacheCounter--
+		globalGanacheMu.Unlock()
+		return
+	}
+	globalGanacheMu.Unlock()
+
+	globalGanacheStopSchedule = time.Now().Add(3 * time.Second)
+
+	go func() {
+		tick := time.NewTicker(1 * time.Second)
+		defer tick.Stop()
+		for {
+			<-tick.C
+			globalGanacheMu.Lock()
+			if globalGanacheCounter > 1 {
+				globalGanacheCounter--
+				globalGanacheMu.Unlock()
+				return
+			}
+			globalGanacheMu.Unlock()
+
+			if time.Now().After(globalGanacheStopSchedule) {
+				break
+			}
+		}
+
+		globalGanacheMu.Lock()
+		defer globalGanacheMu.Unlock()
+
+		if err := globalGanacheCmd.Process.Kill(); err != nil {
+			panic(err)
+		}
+		if err := globalGanacheCmd.Wait(); err != nil {
+			panic(err)
+		}
+		globalGanacheCounter--
+
+		return
+	}()
 }
 
 // Connect to a local Ganache instance.
 func Connect(ganacheRPC string) (ethereum.Conn, error) {
-	ethclient, err := ethclient.Dial(ganacheRPC)
+	raw, err := rpc.DialContext(context.Background(), ganacheRPC)
 	if err != nil {
 		return ethereum.Conn{}, err
 	}
+	ethclient := ethclient.NewClient(raw)
+
 	return ethereum.Conn{
+		RawClient:               raw,
 		Client:                  ethclient,
 		Network:                 ethereum.NetworkGanache,
 		DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache,
@@ -76,17 +155,48 @@ func Connect(ganacheRPC string) (ethereum.Conn, error) {
 }
 
 // StartAndConnect to a local Ganache instance and deploy all smart contracts.
-func StartAndConnect() (*exec.Cmd, ethereum.Conn, error) {
-	cmd := Start()
-	time.Sleep(time.Second)
+func StartAndConnect() (ethereum.Conn, error) {
+	firstConnection := Start()
+
 	conn, err := Connect("http://localhost:8545")
 	if err != nil {
-		return cmd, conn, err
+		return conn, err
 	}
-	if err := DeployContracts(conn); err != nil {
-		return cmd, conn, err
+
+	if firstConnection {
+		// Deploy contracts and take snapshot
+
+		if err := DeployContracts(conn); err != nil {
+			return conn, err
+		}
+		snapshot, err := snapshot(conn)
+		if err != nil {
+			return conn, err
+		}
+		globalGanacheSnapshot = snapshot
+	} else {
+		// Roll back to snapshot
+		if err := revertToSnapshot(conn, globalGanacheSnapshot); err != nil {
+			return conn, err
+		}
 	}
-	return cmd, conn, nil
+	return conn, nil
+}
+
+// Snapshot current Ganache state
+func snapshot(conn ethereum.Conn) (string, error) {
+	fmt.Printf("\n\nTaking snapshot!!!\n\n\n")
+	var result string
+	err := conn.RawClient.CallContext(context.Background(), &result, "evm_snapshot")
+	return result, err
+}
+
+// RevertToSnapshot resets Ganache state to most recent snapshot
+func revertToSnapshot(conn ethereum.Conn, snaptshotID string) error {
+	fmt.Printf("\n\nReverting to snapshot!!!\n\n\n")
+	var result bool
+	err := conn.RawClient.CallContext(context.Background(), &result, "evm_revert", snaptshotID)
+	return err
 }
 
 // DeployContracts to Ganache deploys REN and DNR contracts using the genesis private key
@@ -154,12 +264,12 @@ func deployContracts(conn ethereum.Conn, transactor *bind.TransactOpts) error {
 
 	_, republicTokenAddress, err := deployRepublicToken(context.Background(), conn, transactor)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	_, darkNodeRegistryAddress, err := deployDarkNodeRegistry(context.Background(), conn, transactor, republicTokenAddress)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	if republicTokenAddress != ethereum.RepublicTokenAddressOnGanache {
@@ -182,8 +292,8 @@ func deployRepublicToken(ctx context.Context, conn ethereum.Conn, auth *bind.Tra
 }
 
 func deployDarkNodeRegistry(ctx context.Context, conn ethereum.Conn, auth *bind.TransactOpts, republicTokenAddress common.Address) (*bindings.DarkNodeRegistry, common.Address, error) {
-	// 0 REN
-	minimumBond := big.NewInt(0)
+	// 1 aiREN
+	minimumBond := big.NewInt(1)
 	// 1 second
 	minimumEpochInterval := big.NewInt(1)
 	// 24 Darknode in a pool
