@@ -94,6 +94,12 @@ func (plugin *WebSocketPlugin) handler(w http.ResponseWriter, r *http.Request) {
 	plugin.logs[id] = logs
 	plugin.logsMu.Unlock()
 
+	defer func() {
+		plugin.logsMu.Lock()
+		delete(plugin.logs, id)
+		plugin.logsMu.Unlock()
+	}()
+
 	// Broadcast logs to the WebSocket
 	for {
 		select {

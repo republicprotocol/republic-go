@@ -51,7 +51,7 @@ var _ = Describe("ether", func() {
 		ganache.Stop()
 	})
 
-	test.SkipCiContext("when using Ethereum", func() {
+	test.SkipCIContext("when using Ethereum", func() {
 
 		It("should successfully perform Ether to Ether atomic swaps", func() {
 

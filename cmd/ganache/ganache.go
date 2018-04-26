@@ -20,9 +20,9 @@ func main() {
 
 	fmt.Printf("Ganache is listening on %shttp://localhost:8545%s...\n", green, reset)
 
-	cmd := ganache.Start()
+	ganache.Start()
 	go func() {
-		ganache.WatchForInterrupt(cmd)
+		ganache.WatchForInterrupt()
 		os.Exit(0)
 	}()
 
@@ -39,5 +39,5 @@ func main() {
 		return
 	}
 
-	cmd.Wait()
+	ganache.Wait()
 }
