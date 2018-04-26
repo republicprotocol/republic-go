@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -13,11 +14,16 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
+
+	"github.com/republicprotocol/republic-go/order"
 
 	. "github.com/republicprotocol/republic-go/relay"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/republicprotocol/republic-go/blockchain/bitcoin/arc"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/arc"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/crypto"
@@ -88,6 +94,15 @@ func main() {
 	swarmerClient := swarmer.NewClient(&crypter, multiAddr, &dht, &connPool)
 	relay := NewRelay(config, registrar, &book, &relayerClient, &smpcerClient, &swarmerClient)
 
+	entries := make(chan orderbook.Entry)
+	defer close(entries)
+	go func() {
+		defer book.Unsubscribe(entries)
+		if err := book.Subscribe(entries); err != nil {
+			log.Fatalf("cannot subscribe to orderbook: %v", err)
+		}
+	}()
+
 	// Server gRPC and RESTful API
 	fmt.Println(fmt.Sprintf("Relay API available at %s:%s", *bind, *port))
 	dispatch.CoBegin(func() {
@@ -113,6 +128,61 @@ func main() {
 	if err := server.Serve(listener); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func processOrderbookEntries(entryInCh <-chan orderbook.Entry) <-chan orderbook.Entry {
+	unconfirmedOrders := make(chan orderbook.Entry, 100)
+	confirmedEntries := make(chan orderbook.Entry)
+	go func() {
+		defer close(confirmedEntries)
+		for {
+			select {
+			case entry, ok := <-entryInCh:
+				if !ok {
+					return
+				}
+				if !orderConfirmed(entry.Order.ID) {
+					unconfirmedOrders <- entry
+				} else {
+					entry.Status = order.Confirmed
+					confirmedEntries <- entry
+				}
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case entry, ok := <-unconfirmedOrders:
+				if !ok {
+					return
+				}
+				if !orderConfirmed(entry.Order.ID) {
+					unconfirmedOrders <- entry
+					time.Sleep(time.Second)
+				} else {
+					entry.Status = order.Confirmed
+					confirmedEntries <- entry
+				}
+			}
+		}
+	}()
+	return confirmedEntries
+}
+
+func atomicSwap(entries <-chan orderbook.Entry, privateKey *ecdsa.PrivateKey) error {
+	conn, err := client.Connect(uri, network, republicTokenAddress, darknodeRegistryAddr)
+	if err != nil {
+		return err
+	}
+	transOps := bind.NewKeyedTransactor(privateKey)
+	arc.NewArc(context.Background(), conn, transOps)
+	return nil
+}
+
+func orderConfirmed(orderID order.ID) bool {
+	return false
 }
 
 func getKey(filename, passphrase string) (*keystore.Key, error) {

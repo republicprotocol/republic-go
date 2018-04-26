@@ -24,18 +24,16 @@ type Arc struct {
 	arcData EthereumArcData
 
 	binding *bindings.Arc
-	swapID  [32]byte
 }
 
 // NewArc returns a new EthereumArc instance
-func NewArc(context context.Context, conn ethereum.Conn, auth *bind.TransactOpts, swapID [32]byte) (arc.Arc, error) {
+func NewArc(context context.Context, conn ethereum.Conn, auth *bind.TransactOpts) (arc.Arc, error) {
 	return &Arc{
 		context: context,
 		conn:    conn,
 		auth:    auth,
 		arcData: EthereumArcData{},
 		binding: nil,
-		swapID:  swapID,
 	}, nil
 }
 
