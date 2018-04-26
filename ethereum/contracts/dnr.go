@@ -19,29 +19,29 @@ type Epoch struct {
 	Timestamp stackint.Int1024
 }
 
-// DarkNodeRegistry is the dark node interface
-type DarkNodeRegistry struct {
+// DarknodeRegistry is the dark node interface
+type DarknodeRegistry struct {
 	network                 client.Network
 	context                 context.Context
 	client                  client.Connection
 	transactOpts            *bind.TransactOpts
 	callOpts                *bind.CallOpts
-	binding                 *bindings.DarkNodeRegistry
+	binding                 *bindings.DarknodeRegistry
 	tokenBinding            *bindings.RepublicToken
-	darkNodeRegistryAddress common.Address
+	DarknodeRegistryAddress common.Address
 }
 
-// NewDarkNodeRegistry returns a Dark node registrar
-func NewDarkNodeRegistry(context context.Context, clientDetails client.Connection, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (DarkNodeRegistry, error) {
-	contract, err := bindings.NewDarkNodeRegistry(clientDetails.DNRAddress, bind.ContractBackend(clientDetails.Client))
+// NewDarknodeRegistry returns a Dark node registrar
+func NewDarknodeRegistry(context context.Context, clientDetails client.Connection, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (DarknodeRegistry, error) {
+	contract, err := bindings.NewDarknodeRegistry(clientDetails.DNRAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
-		return DarkNodeRegistry{}, err
+		return DarknodeRegistry{}, err
 	}
 	renContract, err := bindings.NewRepublicToken(clientDetails.RenAddress, bind.ContractBackend(clientDetails.Client))
 	if err != nil {
-		return DarkNodeRegistry{}, err
+		return DarknodeRegistry{}, err
 	}
-	return DarkNodeRegistry{
+	return DarknodeRegistry{
 		network:                 clientDetails.Network,
 		context:                 context,
 		client:                  clientDetails,
@@ -49,60 +49,60 @@ func NewDarkNodeRegistry(context context.Context, clientDetails client.Connectio
 		callOpts:                callOpts,
 		binding:                 contract,
 		tokenBinding:            renContract,
-		darkNodeRegistryAddress: clientDetails.DNRAddress,
+		DarknodeRegistryAddress: clientDetails.DNRAddress,
 	}, nil
 }
 
 // Register a new dark node
-func (darkNodeRegistry *DarkNodeRegistry) Register(darkNodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
+func (DarknodeRegistry *DarknodeRegistry) Register(darkNodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
 		return &types.Transaction{}, err
 	}
 
-	txn, err := darkNodeRegistry.binding.Register(darkNodeRegistry.transactOpts, darkNodeIDByte, publicKey, bond.ToBigInt())
+	txn, err := DarknodeRegistry.binding.Register(DarknodeRegistry.transactOpts, darkNodeIDByte, publicKey, bond.ToBigInt())
 	if err != nil {
 		return nil, err
 	}
-	_, err = darkNodeRegistry.client.PatchedWaitMined(darkNodeRegistry.context, txn)
+	_, err = DarknodeRegistry.client.PatchedWaitMined(DarknodeRegistry.context, txn)
 	return txn, err
 }
 
 // Deregister an existing dark node
-func (darkNodeRegistry *DarkNodeRegistry) Deregister(darkNodeID []byte) (*types.Transaction, error) {
+func (DarknodeRegistry *DarknodeRegistry) Deregister(darkNodeID []byte) (*types.Transaction, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
 		return &types.Transaction{}, err
 	}
-	tx, err := darkNodeRegistry.binding.Deregister(darkNodeRegistry.transactOpts, darkNodeIDByte)
+	tx, err := DarknodeRegistry.binding.Deregister(DarknodeRegistry.transactOpts, darkNodeIDByte)
 	if err != nil {
 		return tx, err
 	}
-	_, err = darkNodeRegistry.client.PatchedWaitMined(darkNodeRegistry.context, tx)
+	_, err = DarknodeRegistry.client.PatchedWaitMined(DarknodeRegistry.context, tx)
 	return tx, err
 }
 
 // Refund withdraws the bond. Must be called before reregistering.
-func (darkNodeRegistry *DarkNodeRegistry) Refund(darkNodeID []byte) (*types.Transaction, error) {
+func (DarknodeRegistry *DarknodeRegistry) Refund(darkNodeID []byte) (*types.Transaction, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
 		return &types.Transaction{}, err
 	}
-	tx, err := darkNodeRegistry.binding.Refund(darkNodeRegistry.transactOpts, darkNodeIDByte)
+	tx, err := DarknodeRegistry.binding.Refund(DarknodeRegistry.transactOpts, darkNodeIDByte)
 	if err != nil {
 		return tx, err
 	}
-	_, err = darkNodeRegistry.client.PatchedWaitMined(darkNodeRegistry.context, tx)
+	_, err = DarknodeRegistry.client.PatchedWaitMined(DarknodeRegistry.context, tx)
 	return tx, err
 }
 
 // GetBond retrieves the bond of an existing dark node
-func (darkNodeRegistry *DarkNodeRegistry) GetBond(darkNodeID []byte) (stackint.Int1024, error) {
+func (DarknodeRegistry *DarknodeRegistry) GetBond(darkNodeID []byte) (stackint.Int1024, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
 		return stackint.Int1024{}, err
 	}
-	bond, err := darkNodeRegistry.binding.GetBond(darkNodeRegistry.callOpts, darkNodeIDByte)
+	bond, err := DarknodeRegistry.binding.GetBond(DarknodeRegistry.callOpts, darkNodeIDByte)
 	if err != nil {
 		return stackint.Int1024{}, err
 	}
@@ -110,36 +110,36 @@ func (darkNodeRegistry *DarkNodeRegistry) GetBond(darkNodeID []byte) (stackint.I
 }
 
 // IsRegistered returns true if the node is registered
-func (darkNodeRegistry *DarkNodeRegistry) IsRegistered(darkNodeID []byte) (bool, error) {
+func (DarknodeRegistry *DarknodeRegistry) IsRegistered(darkNodeID []byte) (bool, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
 		return false, err
 	}
-	return darkNodeRegistry.binding.IsRegistered(darkNodeRegistry.callOpts, darkNodeIDByte)
+	return DarknodeRegistry.binding.IsRegistered(DarknodeRegistry.callOpts, darkNodeIDByte)
 }
 
 // IsDeregistered returns true if the node is deregistered
-func (darkNodeRegistry *DarkNodeRegistry) IsDeregistered(darkNodeID []byte) (bool, error) {
+func (DarknodeRegistry *DarknodeRegistry) IsDeregistered(darkNodeID []byte) (bool, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
 		return false, err
 	}
-	return darkNodeRegistry.binding.IsDeregistered(darkNodeRegistry.callOpts, darkNodeIDByte)
+	return DarknodeRegistry.binding.IsDeregistered(DarknodeRegistry.callOpts, darkNodeIDByte)
 }
 
 // ApproveRen doesn't actually talk to the DNR - instead it approved Ren to it
-func (darkNodeRegistry *DarkNodeRegistry) ApproveRen(value *stackint.Int1024) error {
-	txn, err := darkNodeRegistry.tokenBinding.Approve(darkNodeRegistry.transactOpts, darkNodeRegistry.client.DNRAddress, value.ToBigInt())
+func (DarknodeRegistry *DarknodeRegistry) ApproveRen(value *stackint.Int1024) error {
+	txn, err := DarknodeRegistry.tokenBinding.Approve(DarknodeRegistry.transactOpts, DarknodeRegistry.client.DNRAddress, value.ToBigInt())
 	if err != nil {
 		return err
 	}
-	_, err = darkNodeRegistry.client.PatchedWaitMined(darkNodeRegistry.context, txn)
+	_, err = DarknodeRegistry.client.PatchedWaitMined(DarknodeRegistry.context, txn)
 	return err
 }
 
 // CurrentEpoch returns the current epoch
-func (darkNodeRegistry *DarkNodeRegistry) CurrentEpoch() (Epoch, error) {
-	epoch, err := darkNodeRegistry.binding.CurrentEpoch(darkNodeRegistry.callOpts)
+func (DarknodeRegistry *DarknodeRegistry) CurrentEpoch() (Epoch, error) {
+	epoch, err := DarknodeRegistry.binding.CurrentEpoch(DarknodeRegistry.callOpts)
 	if err != nil {
 		return Epoch{}, err
 	}
@@ -149,7 +149,7 @@ func (darkNodeRegistry *DarkNodeRegistry) CurrentEpoch() (Epoch, error) {
 	}
 
 	var blockhash [32]byte
-	for i, b := range epoch.Blockhash.Bytes() {
+	for i, b := range epoch.Epochhash.Bytes() {
 		blockhash[i] = b
 	}
 
@@ -160,23 +160,23 @@ func (darkNodeRegistry *DarkNodeRegistry) CurrentEpoch() (Epoch, error) {
 }
 
 // Epoch updates the current Epoch if the Minimum Epoch Interval has passed since the previous Epoch
-func (darkNodeRegistry *DarkNodeRegistry) Epoch() (*types.Transaction, error) {
-	tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
+func (DarknodeRegistry *DarknodeRegistry) Epoch() (*types.Transaction, error) {
+	tx, err := DarknodeRegistry.binding.Epoch(DarknodeRegistry.transactOpts)
 	if err != nil {
 		return nil, err
 	}
-	_, err = darkNodeRegistry.client.PatchedWaitMined(darkNodeRegistry.context, tx)
+	_, err = DarknodeRegistry.client.PatchedWaitMined(DarknodeRegistry.context, tx)
 	return tx, err
 }
 
 // TimeUntilEpoch calculates the time remaining until the next Epoch can be called
-func (darkNodeRegistry *DarkNodeRegistry) TimeUntilEpoch() (time.Duration, error) {
-	epoch, err := darkNodeRegistry.CurrentEpoch()
+func (DarknodeRegistry *DarknodeRegistry) TimeUntilEpoch() (time.Duration, error) {
+	epoch, err := DarknodeRegistry.CurrentEpoch()
 	if err != nil {
 		return 0, err
 	}
 
-	minInterval, err := darkNodeRegistry.MinimumEpochInterval()
+	minInterval, err := DarknodeRegistry.MinimumEpochInterval()
 
 	nextTime := epoch.Timestamp.Add(&minInterval)
 	unix, err := nextTime.ToUint()
@@ -202,9 +202,9 @@ func (darkNodeRegistry *DarkNodeRegistry) TimeUntilEpoch() (time.Duration, error
 }
 
 // WaitForEpoch guarantees that an Epoch as passed (and calls Epoch if connected to Ganache)
-func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() error {
+func (DarknodeRegistry *DarknodeRegistry) WaitForEpoch() error {
 
-	previousEpoch, err := darkNodeRegistry.CurrentEpoch()
+	previousEpoch, err := DarknodeRegistry.CurrentEpoch()
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() error {
 
 		// Calculate how much time to sleep for
 		// If epoch can already be called, returns 1 second
-		toWait, err := darkNodeRegistry.TimeUntilEpoch()
+		toWait, err := DarknodeRegistry.TimeUntilEpoch()
 		if err != nil {
 			return err
 		}
@@ -223,17 +223,17 @@ func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() error {
 		time.Sleep(toWait)
 
 		// If on Ganache, have to call epoch manually
-		if darkNodeRegistry.network == client.NetworkGanache {
-			darkNodeRegistry.SetGasLimit(300000)
-			tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
-			darkNodeRegistry.SetGasLimit(0)
+		if DarknodeRegistry.network == client.NetworkGanache {
+			DarknodeRegistry.SetGasLimit(300000)
+			tx, err := DarknodeRegistry.binding.Epoch(DarknodeRegistry.transactOpts)
+			DarknodeRegistry.SetGasLimit(0)
 			if err != nil {
 				return err
 			}
-			darkNodeRegistry.client.PatchedWaitMined(darkNodeRegistry.context, tx)
+			DarknodeRegistry.client.PatchedWaitMined(DarknodeRegistry.context, tx)
 		}
 
-		currentEpoch, err = darkNodeRegistry.CurrentEpoch()
+		currentEpoch, err = DarknodeRegistry.CurrentEpoch()
 		if err != nil {
 			return err
 		}
@@ -243,26 +243,26 @@ func (darkNodeRegistry *DarkNodeRegistry) WaitForEpoch() error {
 }
 
 // GetOwner gets the owner of the given dark node
-func (darkNodeRegistry *DarkNodeRegistry) GetOwner(darkNodeID []byte) (common.Address, error) {
+func (DarknodeRegistry *DarknodeRegistry) GetOwner(darkNodeID []byte) (common.Address, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
 		return common.Address{}, err
 	}
-	return darkNodeRegistry.binding.GetOwner(darkNodeRegistry.callOpts, darkNodeIDByte)
+	return DarknodeRegistry.binding.GetOwner(DarknodeRegistry.callOpts, darkNodeIDByte)
 }
 
 // GetPublicKey gets the public key of the goven dark node
-func (darkNodeRegistry *DarkNodeRegistry) GetPublicKey(darkNodeID []byte) ([]byte, error) {
+func (DarknodeRegistry *DarknodeRegistry) GetPublicKey(darkNodeID []byte) ([]byte, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
 		return []byte{}, err
 	}
-	return darkNodeRegistry.binding.GetPublicKey(darkNodeRegistry.callOpts, darkNodeIDByte)
+	return DarknodeRegistry.binding.GetPublicKey(DarknodeRegistry.callOpts, darkNodeIDByte)
 }
 
 // GetAllNodes gets all dark nodes
-func (darkNodeRegistry *DarkNodeRegistry) GetAllNodes() ([][]byte, error) {
-	ret, err := darkNodeRegistry.binding.GetDarkNodes(darkNodeRegistry.callOpts)
+func (DarknodeRegistry *DarknodeRegistry) GetAllNodes() ([][]byte, error) {
+	ret, err := DarknodeRegistry.binding.GetDarkNodes(DarknodeRegistry.callOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -274,8 +274,8 @@ func (darkNodeRegistry *DarkNodeRegistry) GetAllNodes() ([][]byte, error) {
 }
 
 // MinimumBond gets the minimum viable bond amount
-func (darkNodeRegistry *DarkNodeRegistry) MinimumBond() (stackint.Int1024, error) {
-	bond, err := darkNodeRegistry.binding.MinimumBond(darkNodeRegistry.callOpts)
+func (DarknodeRegistry *DarknodeRegistry) MinimumBond() (stackint.Int1024, error) {
+	bond, err := DarknodeRegistry.binding.MinimumBond(DarknodeRegistry.callOpts)
 	if err != nil {
 		return stackint.Int1024{}, err
 	}
@@ -283,8 +283,8 @@ func (darkNodeRegistry *DarkNodeRegistry) MinimumBond() (stackint.Int1024, error
 }
 
 // MinimumEpochInterval gets the minimum epoch interval
-func (darkNodeRegistry *DarkNodeRegistry) MinimumEpochInterval() (stackint.Int1024, error) {
-	interval, err := darkNodeRegistry.binding.MinimumEpochInterval(darkNodeRegistry.callOpts)
+func (DarknodeRegistry *DarknodeRegistry) MinimumEpochInterval() (stackint.Int1024, error) {
+	interval, err := DarknodeRegistry.binding.MinimumEpochInterval(DarknodeRegistry.callOpts)
 	if err != nil {
 		return stackint.Int1024{}, err
 	}
@@ -292,8 +292,8 @@ func (darkNodeRegistry *DarkNodeRegistry) MinimumEpochInterval() (stackint.Int10
 }
 
 // MinimumDarkPoolSize gets the minumum dark pool size
-func (darkNodeRegistry *DarkNodeRegistry) MinimumDarkPoolSize() (stackint.Int1024, error) {
-	interval, err := darkNodeRegistry.binding.MinimumDarkPoolSize(darkNodeRegistry.callOpts)
+func (DarknodeRegistry *DarknodeRegistry) MinimumDarkPoolSize() (stackint.Int1024, error) {
+	interval, err := DarknodeRegistry.binding.MinimumDarkPoolSize(DarknodeRegistry.callOpts)
 	if err != nil {
 		return stackint.Int1024{}, err
 	}
@@ -301,20 +301,20 @@ func (darkNodeRegistry *DarkNodeRegistry) MinimumDarkPoolSize() (stackint.Int102
 }
 
 // SetGasLimit sets the gas limit to use for transactions
-func (darkNodeRegistry *DarkNodeRegistry) SetGasLimit(limit uint64) {
-	darkNodeRegistry.transactOpts.GasLimit = limit
+func (DarknodeRegistry *DarknodeRegistry) SetGasLimit(limit uint64) {
+	DarknodeRegistry.transactOpts.GasLimit = limit
 }
 
 // WaitUntilRegistration waits until the registration is successful
-func (darkNodeRegistry *DarkNodeRegistry) WaitUntilRegistration(darkNodeID []byte) error {
+func (DarknodeRegistry *DarknodeRegistry) WaitUntilRegistration(darkNodeID []byte) error {
 	isRegistered := false
 	for !isRegistered {
 		var err error
-		isRegistered, err = darkNodeRegistry.IsRegistered(darkNodeID)
+		isRegistered, err = DarknodeRegistry.IsRegistered(darkNodeID)
 		if err != nil {
 			return err
 		}
-		darkNodeRegistry.WaitForEpoch()
+		DarknodeRegistry.WaitForEpoch()
 
 	}
 	return nil

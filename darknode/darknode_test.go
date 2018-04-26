@@ -41,7 +41,7 @@ var _ = Describe("Darknode", func() {
 
 	var cmd *exec.Cmd
 	var conn ethereum.Connection
-	var darknodeRegistry contracts.DarkNodeRegistry
+	var darknodeRegistry contracts.DarknodeRegistry
 	var darknodes Darknodes
 
 	BeforeEach(func() {
@@ -51,7 +51,7 @@ var _ = Describe("Darknode", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Connect to Ganache
-		darknodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
+		darknodeRegistry, err = contracts.NewDarknodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
 		Expect(err).ShouldNot(HaveOccurred())
 		darknodeRegistry.SetGasLimit(1000000)
 
@@ -172,7 +172,7 @@ var _ = Describe("Darknode", func() {
 			for {
 				err := sendOrders(darknodes, NumberOfOrdersPerSecond)
 				Ω(err).ShouldNot(HaveOccurred())
-				time.Sleep(1 * time.Second)
+				time.Sleep(10 * time.Second)
 			}
 		}, 24*60*60) // Timeout is set to 24 hours
 

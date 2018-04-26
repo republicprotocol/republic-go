@@ -41,7 +41,7 @@ type Darknode struct {
 	orderbook    orderbook.Orderbook
 	crypter      crypto.Crypter
 
-	darknodeRegistry   contracts.DarkNodeRegistry
+	darknodeRegistry   contracts.DarknodeRegistry
 	hyperdriveContract contracts.HyperdriveContract
 	hyperdriveNonces   chan hyperdrive.NonceWithTimestamp
 
@@ -84,7 +84,7 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 	}
 
 	// Create bindings to the DarknodeRegistry and Hyperdrive
-	darknodeRegistry, err := contracts.NewDarkNodeRegistry(context.Background(), ethclient, transactOpts, &bind.CallOpts{})
+	darknodeRegistry, err := contracts.NewDarknodeRegistry(context.Background(), ethclient, transactOpts, &bind.CallOpts{})
 	if err != nil {
 		return Darknode{}, err
 	}
@@ -405,11 +405,11 @@ func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
 	log.Println(node.Address().String(), "start checking consensus")
 
 	// Check the order status from the hyperdrive contract.
-	buyBlock, err := node.hyperdriveContract.Nonce([]byte(delta.BuyOrderID))
+	buyBlock, err := node.hyperdriveContract.CheckOrders([]byte(delta.BuyOrderID))
 	if err != nil {
 		return err
 	}
-	sellBlock, err := node.hyperdriveContract.Nonce([]byte(delta.SellOrderID))
+	sellBlock, err := node.hyperdriveContract.CheckOrders([]byte(delta.SellOrderID))
 	if err != nil {
 		return err
 	}

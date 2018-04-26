@@ -29,7 +29,7 @@ import (
 )
 
 var Prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-var darknodeRegistry contracts.DarkNodeRegistry
+var darknodeRegistry contracts.DarknodeRegistry
 var traderMulti string
 
 const (
@@ -51,7 +51,7 @@ var _ = Describe("Relay", func() {
 		// Connect to Ganache
 		conn, err = ganache.Connect("http://localhost:8545")
 		Expect(err).ShouldNot(HaveOccurred())
-		darknodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
+		darknodeRegistry, err = contracts.NewDarknodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
 		Expect(err).ShouldNot(HaveOccurred())
 		darknodeRegistry.SetGasLimit(1000000)
 
@@ -537,7 +537,7 @@ var _ = Describe("Relay", func() {
 })
 
 // getPools return dark pools from a mock dnr
-func getPools(dnr contracts.DarkNodeRegistry) darknode.Pools {
+func getPools(dnr contracts.DarknodeRegistry) darknode.Pools {
 	darknodeIDs, err := dnr.GetAllNodes()
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -602,7 +602,7 @@ func generateFragmentedOrderForDarkPool(pool darknode.Pool) (OrderFragments, err
 	return fragmentOrder, nil
 }
 
-func getPoolsAndTrader(darknodeRegistry contracts.DarkNodeRegistry) (darknode.Pools, identity.MultiAddress) {
+func getPoolsAndTrader(darknodeRegistry contracts.DarknodeRegistry) (darknode.Pools, identity.MultiAddress) {
 	trader, err := identity.NewMultiAddressFromString(traderMulti)
 	Ω(err).ShouldNot(HaveOccurred())
 

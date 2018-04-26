@@ -48,7 +48,7 @@ func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (darknode.D
 
 // RegisterDarknodes using the minimum required bond and wait until the next
 // epoch. This must only be used in local test environments.
-func RegisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarkNodeRegistry) error {
+func RegisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarknodeRegistry) error {
 
 	minimumBond, err := darknodeRegistry.MinimumBond()
 	if err != nil {
@@ -81,7 +81,7 @@ func RegisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, dar
 
 // DeregisterDarknodes and wait until the next epoch. This must only be used
 // in local test environments.
-func DeregisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarkNodeRegistry) error {
+func DeregisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarknodeRegistry) error {
 	for i := range darknodes {
 		darknodeID := darknodes[i].ID()
 		tx, err := darknodeRegistry.Deregister(darknodeID)
@@ -97,7 +97,7 @@ func DeregisterDarknodes(darknodes darknode.Darknodes, conn client.Connection, d
 
 // RefundDarknodes after they have been deregistered. This must only be used
 // in local test environments.
-func RefundDarknodes(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarkNodeRegistry) error {
+func RefundDarknodes(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarknodeRegistry) error {
 	for i := range darknodes {
 		darknodeID := darknodes[i].ID()
 		tx, err := darknodeRegistry.Refund(darknodeID)
@@ -140,7 +140,7 @@ func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAdd
 	}, nil
 }
 
-func DistributeEth(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarkNodeRegistry) {
+func DistributeEth(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarknodeRegistry) {
 
 }
 

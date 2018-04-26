@@ -142,18 +142,18 @@ func getMultiaddress(id identity.KeyPair, port int) (identity.MultiAddress, erro
 	return relayMultiaddress, nil
 }
 
-func getRegistrar(key *keystore.Key) (contracts.DarkNodeRegistry, error) {
+func getRegistrar(key *keystore.Key) (contracts.DarknodeRegistry, error) {
 	conn, err := ganache.Connect("http://localhost:8545")
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot fetch dark node registry: %s", err))
-		return contracts.DarkNodeRegistry{}, err
+		return contracts.DarknodeRegistry{}, err
 	}
 	auth.GasPrice = big.NewInt(6000000000)
-	registrar, err := contracts.NewDarkNodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
+	registrar, err := contracts.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot fetch dark node registry: %s", err))
-		return contracts.DarkNodeRegistry{}, err
+		return contracts.DarknodeRegistry{}, err
 	}
 
 	return registrar, nil

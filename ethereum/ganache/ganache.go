@@ -199,7 +199,7 @@ func deployHyperdrive(ctx context.Context, conn client.Connection, auth *bind.Tr
 	return hyper, address, nil
 }
 
-func deployDarkNodeRegistry(ctx context.Context, conn client.Connection, auth *bind.TransactOpts, republicTokenAddress common.Address) (*bindings.DarkNodeRegistry, common.Address, error) {
+func deployDarkNodeRegistry(ctx context.Context, conn client.Connection, auth *bind.TransactOpts, republicTokenAddress common.Address) (*bindings.DarknodeRegistry, common.Address, error) {
 	// 0 REN
 	minimumBond := big.NewInt(0)
 	// 1 second
@@ -207,7 +207,7 @@ func deployDarkNodeRegistry(ctx context.Context, conn client.Connection, auth *b
 	// 24 Darknode in a pool
 	minimumPoolSize := big.NewInt(24)
 
-	address, tx, dnr, err := bindings.DeployDarkNodeRegistry(auth, conn.Client, republicTokenAddress, minimumBond, minimumPoolSize, minimumEpochInterval)
+	address, tx, dnr, err := bindings.DeployDarknodeRegistry(auth, conn.Client, republicTokenAddress, minimumBond, minimumPoolSize, minimumEpochInterval)
 	if err != nil {
 		return nil, common.Address{}, fmt.Errorf("cannot deploy DarkNodeRegistry: %v", err)
 	}

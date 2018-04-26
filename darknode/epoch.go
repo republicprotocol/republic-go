@@ -191,7 +191,7 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 // RunEpochWatcher until the done channel is closed. An EpochWatcher will watch
 // for changes to the DarknodeRegistry epoch. Returns a read-only channel that
 // can be used to read epochs as they change.
-func RunEpochWatcher(done <-chan struct{}, darknodeRegistry contracts.DarkNodeRegistry) (<-chan contracts.Epoch, <-chan error) {
+func RunEpochWatcher(done <-chan struct{}, darknodeRegistry contracts.DarknodeRegistry) (<-chan contracts.Epoch, <-chan error) {
 	changes := make(chan contracts.Epoch)
 	errs := make(chan error, 1)
 
