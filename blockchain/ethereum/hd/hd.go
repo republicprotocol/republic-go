@@ -1,4 +1,4 @@
-package contracts
+package hd
 
 import (
 	"bytes"
@@ -53,7 +53,7 @@ func NewHyperdriveContract(ctx context.Context, clientDetails client.Connection,
 // You need to register with the darkNodeRegistry to send the tx.
 func (hyper HyperdriveContract) SendTx(tx hyperdrive.Tx) (*types.Transaction, error) {
 	var hash [32]byte
- 	copy(hash[:], tx.Hash)
+	copy(hash[:], tx.Hash)
 
 	nonces := make([][32]byte, len(tx.Nonces))
 	for i := range nonces {

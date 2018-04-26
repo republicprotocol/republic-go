@@ -1,4 +1,4 @@
-package contracts
+package hd_test
 
 import (
 	"context"
