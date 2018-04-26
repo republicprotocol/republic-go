@@ -14,7 +14,7 @@ type Txs []Tx
 // not store any Nonce more than once.
 type Tx struct {
 	Hash []byte
-	Nonces
+	Nonces [][]byte
 }
 
 func NewTx(nonces ...Nonce) Tx {
@@ -24,24 +24,17 @@ func NewTx(nonces ...Nonce) Tx {
 	}
 }
 
-func NewTxFromByteSlices(nonces ...[]byte) Tx {
-	return Tx{
-		Hash:   crypto.Keccak256(nonces...),
-		Nonces: nonces,
-	}
-}
-
 type NonceWithTimestamp struct {
-	Nonce     Nonce
-	Timestamp time.Time
-	DeltaID   delta.ID
+	DeltaID      delta.ID
+	Nonce        Nonce
+	Timestamp    time.Time
 }
 
 func NewNonceWithTimestamp(nonce Nonce, t time.Time, deltaID delta.ID) NonceWithTimestamp {
 	return NonceWithTimestamp{
-		Nonce:     nonce,
-		Timestamp: t,
-		DeltaID:   deltaID,
+		Nonce:        nonce,
+		Timestamp:    t,
+		DeltaID:      deltaID,
 	}
 }
 
