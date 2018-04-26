@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/republicprotocol/republic-go/delta"
 )
 
 // Txs must not store any Nonce more than once within any Tx.
@@ -13,7 +12,7 @@ type Txs []Tx
 // A Tx stores Nonces alongside a Keccak256 Hash of the Nonces. A valid Tx must
 // not store any Nonce more than once.
 type Tx struct {
-	Hash []byte
+	Hash   []byte
 	Nonces [][]byte
 }
 
@@ -25,16 +24,14 @@ func NewTx(nonces ...Nonce) Tx {
 }
 
 type NonceWithTimestamp struct {
-	DeltaID      delta.ID
-	Nonce        Nonce
-	Timestamp    time.Time
+	Nonce     Nonce
+	Timestamp time.Time
 }
 
-func NewNonceWithTimestamp(nonce Nonce, t time.Time, deltaID delta.ID) NonceWithTimestamp {
+func NewNonceWithTimestamp(nonce Nonce, t time.Time) NonceWithTimestamp {
 	return NonceWithTimestamp{
-		Nonce:        nonce,
-		Timestamp:    t,
-		DeltaID:      deltaID,
+		Nonce:     nonce,
+		Timestamp: t,
 	}
 }
 

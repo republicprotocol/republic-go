@@ -172,7 +172,7 @@ var _ = Describe("Darknode", func() {
 			for {
 				err := sendOrders(darknodes, NumberOfOrdersPerSecond)
 				Ω(err).ShouldNot(HaveOccurred())
-				time.Sleep(10 * time.Second)
+				time.Sleep(1 * time.Second)
 			}
 		}, 24*60*60) // Timeout is set to 24 hours
 
