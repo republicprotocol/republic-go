@@ -113,7 +113,7 @@ var _ = Describe("Relay", func() {
 			swarmerClient := swarmer.NewClient(&crypter, config.MultiAddress, &dht, &connPool)
 			smpcerClient := smpcer.NewClient(&crypter, config.MultiAddress, &connPool)
 
-			relay := NewRelay(config, pools, darknodeRegistry, &book, &relayerClient, &smpcerClient, &swarmerClient)
+			relay := NewRelay(config, darknodeRegistry, &book, &relayerClient, &smpcerClient, &swarmerClient)
 
 			server := grpc.NewServer()
 			relay.Register(server)
@@ -462,7 +462,7 @@ var _ = Describe("Relay", func() {
 				BindAddress:    "127.0.0.1:8000",
 			}
 
-			relayNode := NewRelay(config, pools, orderbook.NewOrderbook(100), darknodeRegistry)
+			relayNode := NewRelay(config, orderbook.NewOrderbook(100), darknodeRegistry)
 			sendOrder := getFullOrder()
 
 			err = SendOrderToDarkOcean(sendOrder, relayNode)
@@ -486,7 +486,7 @@ var _ = Describe("Relay", func() {
 				BindAddress:    "127.0.0.1:8000",
 			}
 
-			relayNode := NewRelay(config, pools, orderbook.NewOrderbook(100), darknodeRegistry)
+			relayNode := NewRelay(config, orderbook.NewOrderbook(100), darknodeRegistry)
 			sendOrder := getFragmentedOrder()
 
 			err = SendOrderFragmentsToDarkOcean(sendOrder, relayNode)
@@ -511,7 +511,7 @@ var _ = Describe("Relay", func() {
 				BindAddress:    "127.0.0.1:8000",
 			}
 
-			relayNode := NewRelay(config, pools, orderbook.NewOrderbook(100), darknodeRegistry)
+			relayNode := NewRelay(config, orderbook.NewOrderbook(100), darknodeRegistry)
 
 			sendOrder, err := generateFragmentedOrderForDarkPool(pools[0])
 			Ω(err).ShouldNot(HaveOccurred())
@@ -537,7 +537,7 @@ var _ = Describe("Relay", func() {
 				BindAddress:    "127.0.0.1:8000",
 			}
 
-			relayNode := NewRelay(config, pools, orderbook.NewOrderbook(100), darknodeRegistry)
+			relayNode := NewRelay(config, orderbook.NewOrderbook(100), darknodeRegistry)
 			orderID := []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
 
 			err = CancelOrder(orderID, relayNode)

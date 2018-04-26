@@ -98,7 +98,7 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 		return nil
 	})
 
-	node.relay = relay.NewRelay(relay.Config{}, darkocean.Pools{}, darknodeRegistry, &node.orderbook, node.rpc.RelayerClient(), node.rpc.SmpcerClient(), node.rpc.SwarmerClient())
+	node.relay = relay.NewRelay(relay.Config{}, darknodeRegistry, &node.orderbook, node.rpc.RelayerClient(), node.rpc.SmpcerClient(), node.rpc.SwarmerClient())
 
 	return node, nil
 }
