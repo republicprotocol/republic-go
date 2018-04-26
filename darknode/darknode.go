@@ -88,7 +88,7 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 		return Darknode{}, err
 	}
 	node.darknodeRegistry = darknodeRegistry
-	hyperdriveContract, err := contracts.NewHyperdriveContract(context.Background(), ethclient, transactOpts, &bind.CallOpts{})
+	hyperdriveContract, err := hd.NewHyperdriveContract(context.Background(), ethclient, transactOpts, &bind.CallOpts{})
 	if err != nil {
 		return Darknode{}, err
 	}

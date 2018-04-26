@@ -30,12 +30,14 @@ const (
 var (
 	RepublicTokenAddressOnGanache    = common.HexToAddress("0x8DE2a0D285cd6fDB47ABAe34024a6EED79ef0E92")
 	DarknodeRegistryAddressOnGanache = common.HexToAddress("0xbF195E17802736Ff4E19275b961bb1c2D45f2c8D")
+	HyperdriveAddressOnGanache       = common.HexToAddress("0x01cbe20EA5A49649F5615A59FaA30E88584634a2")
 )
 
 // Contract addresses on Ropsten
 var (
 	RepublicTokenAddressOnRopsten    = common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54")
 	DarknodeRegistryAddressOnRopsten = common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3")
+	HyperdriveAddressOnRopsten       = common.HexToAddress("0x348496ad820f2ee256268f9f9d0b9f5bacdc26cd")
 )
 
 // Conn contains the client and the contracts deployed to it
@@ -50,7 +52,7 @@ type Conn struct {
 }
 
 // Connect to a URI.
-func Connect(uri string, network Network, republicTokenAddress, darknodeRegistryAddr string) (Conn, error) {
+func Connect(uri string, network Network, republicTokenAddress, darknodeRegistryAddr, hyperdriveAddr string) (Conn, error) {
 	if uri == "" {
 		switch network {
 		case NetworkGanache:
@@ -81,6 +83,16 @@ func Connect(uri string, network Network, republicTokenAddress, darknodeRegistry
 			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", network)
 		}
 	}
+	if hyperdriveAddr == "" {
+		switch network {
+		case NetworkGanache:
+			hyperdriveAddr = HyperdriveAddressOnGanache.String()
+		case NetworkRopsten:
+			hyperdriveAddr = HyperdriveAddressOnRopsten.String()
+		default:
+			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", network)
+		}
+	}
 
 	ethclient, err := ethclient.Dial(uri)
 	if err != nil {
@@ -91,6 +103,7 @@ func Connect(uri string, network Network, republicTokenAddress, darknodeRegistry
 		Client:                  ethclient,
 		RepublicTokenAddress:    common.HexToAddress(republicTokenAddress),
 		DarknodeRegistryAddress: common.HexToAddress(darknodeRegistryAddr),
+		HyperdriveAddress:       common.HexToAddress(hyperdriveAddr),
 		Network:                 network,
 	}, nil
 }

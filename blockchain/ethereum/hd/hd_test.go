@@ -5,13 +5,15 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/republicprotocol/republic-go/blockchain/ethereum/hd"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/republicprotocol/republic-go/ethereum/client"
-	"github.com/republicprotocol/republic-go/ethereum/ganache"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/hyperdrive"
 )
 
@@ -38,7 +40,7 @@ var _ = Describe("hyperdrive", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Register the account
-			darknodeRegistry, err := NewDarkNodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
+			darknodeRegistry, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			darknodeRegistry.SetGasLimit(1000000)
@@ -52,7 +54,7 @@ var _ = Describe("hyperdrive", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				_, err = conn.PatchedWaitMined(context.Background(), transaction)
 				Ω(err).ShouldNot(HaveOccurred())
-				_, err = darknodeRegistry.WaitForEpoch()
+				err = darknodeRegistry.WaitForEpoch()
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 
@@ -62,7 +64,7 @@ var _ = Describe("hyperdrive", func() {
 			hyper.SetGasLimit(1000000)
 
 			tx := hyperdrive.Tx{
-				Nonces: [][32]byte{
+				Nonces: [][]byte{
 					{0, 1},
 				},
 			}
@@ -82,7 +84,7 @@ var _ = Describe("hyperdrive", func() {
 		})
 
 		It("should be able to send txs with no conflicts", func() {
-			conn, err := client.Connect("https://ropsten.infura.io", client.NetworkRopsten, renContractAddress, dnrContractAddress, hyperdriveAddress)
+			conn, err := ethereum.Connect("https://ropsten.infura.io", ethereum.NetworkRopsten, renContractAddress, dnrContractAddress, hyperdriveAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			testKey, err := crypto.HexToECDSA("b44a49889a79983336d15385161533868644d35c1ea670854a0a0b4b784ae40c")
@@ -94,7 +96,7 @@ var _ = Describe("hyperdrive", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			tx := hyperdrive.Tx{
-				Nonces: [][32]byte{
+				Nonces: [][]byte{
 					{7}, // Make sure you increment this number before running the test
 				},
 			}
@@ -110,7 +112,7 @@ var _ = Describe("hyperdrive", func() {
 		})
 
 		It("should be able to get current block number and block number of certain transaction", func() {
-			conn, err := client.Connect("https://ropsten.infura.io", client.NetworkRopsten, renContractAddress, dnrContractAddress, hyperdriveAddress)
+			conn, err := ethereum.Connect("https://ropsten.infura.io", ethereum.NetworkRopsten, renContractAddress, dnrContractAddress, hyperdriveAddress)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			testKey, err := crypto.HexToECDSA("b44a49889a79983336d15385161533868644d35c1ea670854a0a0b4b784ae40c")

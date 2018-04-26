@@ -134,10 +134,10 @@ var _ = Describe("order book cache", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 
-			// Open second time
+			// Open second time should return nil and do nothing
 			for _, order := range orders {
 				err := cache.Open(order)
-				Ω(err).Should(HaveOccurred())
+				Ω(err).ShouldNot(HaveOccurred())
 			}
 
 			Ω(len(cache.Blocks())).Should(Equal(NumberOfTestOrders))
