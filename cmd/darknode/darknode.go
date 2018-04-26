@@ -11,9 +11,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/republicprotocol/republic-go/identity"
-
 	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 var configFile *string
