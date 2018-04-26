@@ -13,17 +13,17 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
-	"github.com/republicprotocol/republic-go/ethereum/bindings"
-	"github.com/republicprotocol/republic-go/ethereum/client"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/bindings"
 	"github.com/republicprotocol/republic-go/hyperdrive"
 )
 
 // HyperdriveContract defines the golang interface for interacting with the
 // hyperdrive smart contract on Ethereum.
 type HyperdriveContract struct {
-	network           client.Network
+	network           ethereum.Network
 	context           context.Context
-	client            client.Connection
+	client            ethereum.Conn
 	callOpts          *bind.CallOpts
 	transactOpts      *bind.TransactOpts
 	binding           *bindings.Hyperdrive
@@ -31,20 +31,20 @@ type HyperdriveContract struct {
 }
 
 // NewHyperdriveContract creates a new HyperdriveContract with given parameters.
-func NewHyperdriveContract(ctx context.Context, clientDetails client.Connection, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (HyperdriveContract, error) {
-	contract, err := bindings.NewHyperdrive(clientDetails.HDAddress, bind.ContractBackend(clientDetails.Client))
+func NewHyperdriveContract(ctx context.Context, conn ethereum.Conn, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (HyperdriveContract, error) {
+	contract, err := bindings.NewHyperdrive(conn.HyperdriveAddress, bind.ContractBackend(conn.Client))
 	if err != nil {
 		return HyperdriveContract{}, err
 	}
 
 	return HyperdriveContract{
-		network:           clientDetails.Network,
+		network:           conn.Network,
 		context:           ctx,
-		client:            clientDetails,
+		client:            conn,
 		callOpts:          callOpts,
 		transactOpts:      transactOpts,
 		binding:           contract,
-		hyperdriveAddress: clientDetails.HDAddress,
+		hyperdriveAddress: conn.HyperdriveAddress,
 	}, nil
 }
 
@@ -100,7 +100,7 @@ func (hyper HyperdriveContract) GetBlockNumberOfTx(transaction common.Hash) (uin
 	switch hyper.client.Network {
 	// According to this https://github.com/ethereum/go-ethereum/issues/15210
 	// we have to use json-rpc to get the block number.
-	case client.NetworkRopsten:
+	case ethereum.NetworkRopsten:
 		hash := []byte(`{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["` + transaction.Hex() + `"],"id":1}`)
 		resp, err := http.Post("https://ropsten.infura.io", "application/json", bytes.NewBuffer(hash))
 		if err != nil {
