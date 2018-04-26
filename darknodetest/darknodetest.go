@@ -140,7 +140,7 @@ func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAdd
 	}, nil
 }
 
-func DistributeEth (darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarkNodeRegistry){
+func DistributeEth(darknodes darknode.Darknodes, conn client.Connection, darknodeRegistry contracts.DarkNodeRegistry) {
 
 }
 

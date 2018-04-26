@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/republicprotocol/republic-go/delta"
 )
 
 // Txs must not store any Nonce more than once within any Tx.
@@ -30,15 +31,17 @@ func NewTxFromByteSlices(nonces ...[]byte) Tx {
 	}
 }
 
-type TxWithTimestamp struct {
-	Tx
+type NonceWithTimestamp struct {
+	Nonce     Nonce
 	Timestamp time.Time
+	DeltaID   delta.ID
 }
 
-func NewTxWithTimestamp(tx Tx, t time.Time) TxWithTimestamp {
-	return TxWithTimestamp{
-		Tx:        tx,
+func NewNonceWithTimestamp(nonce Nonce, t time.Time, deltaID delta.ID) NonceWithTimestamp {
+	return NonceWithTimestamp{
+		Nonce:     nonce,
 		Timestamp: t,
+		DeltaID:   deltaID,
 	}
 }
 

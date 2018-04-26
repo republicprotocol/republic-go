@@ -69,12 +69,12 @@ func (hyper HyperdriveContract) SendTx(tx hyperdrive.Tx) (*types.Transaction, er
 	return transaction, nil
 }
 
-func (hyper *HyperdriveContract) Nonce (nonce hyperdrive.Nonce) (uint64, error){
+func (hyper *HyperdriveContract) Nonce(nonce hyperdrive.Nonce) (uint64, error) {
 	var nonceIn32Bytes [32]byte
-	copy(nonceIn32Bytes[:],nonce )
-	bn , err  := hyper.binding.Nonces(hyper.callOpts, nonceIn32Bytes)
+	copy(nonceIn32Bytes[:], nonce)
+	bn, err := hyper.binding.Nonces(hyper.callOpts, nonceIn32Bytes)
 	if err != nil {
-		return 0 , err
+		return 0, err
 	}
 	return bn.Uint64(), nil
 }

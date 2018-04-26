@@ -46,7 +46,7 @@ var _ = Describe("Darknode", func() {
 
 			// Initialize other parameters for the test
 			done, depth := make(chan struct{}), uint64(5)
-			txInput := make(chan hyperdrive.TxWithTimestamp)
+			txInput := make(chan hyperdrive.NonceWithTimestamp)
 
 			go func() {
 				// Quit the test after 5 minutes
@@ -79,7 +79,7 @@ var _ = Describe("Darknode", func() {
 
 // OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
 // forwards it to the Hyperdrive.
-func OrderMatchToHyperdrive(delta Delta, hyper contracts.HyperdriveContract, txInput chan hyperdrive.TxWithTimestamp) error {
+func OrderMatchToHyperdrive(delta Delta, hyper contracts.HyperdriveContract, txInput chan hyperdrive.NonceWithTimestamp) error {
 
 	// Convert an order match into a Tx
 	tx := hyperdrive.NewTxFromByteSlices(delta.SellOrderID, delta.BuyOrderID)
@@ -90,20 +90,20 @@ func OrderMatchToHyperdrive(delta Delta, hyper contracts.HyperdriveContract, txI
 		return fmt.Errorf("fail to send tx to hyperdrive contract , %s", err)
 	}
 
-	txInput <- hyperdrive.NewTxWithTimestamp(tx, time.Now())
+	txInput <- hyperdrive.NewNonceWithTimestamp(tx, time.Now())
 
 	return nil
 }
 
 // Decouple the WatchForHyperdriveContract from the darknode so that we can
 // do unit testing on it .
-func WatchForHyperdriveContract(done <-chan struct{}, txInput chan hyperdrive.TxWithTimestamp, depth uint64, hyper contracts.HyperdriveContract) <-chan error {
+func WatchForHyperdriveContract(done <-chan struct{}, txInput chan hyperdrive.NonceWithTimestamp, depth uint64, hyper contracts.HyperdriveContract) <-chan error {
 	errs := make(chan error, 1)
 
 	go func() {
 		defer close(errs)
 
-		watchingList := map[identity.Hash]hyperdrive.TxWithTimestamp{}
+		watchingList := map[identity.Hash]hyperdrive.NonceWithTimestamp{}
 
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()

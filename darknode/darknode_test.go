@@ -170,7 +170,7 @@ var _ = Describe("Darknode", func() {
 
 			By("sending orders...")
 			for {
-				time.Sleep(time.Second)
+				time.Sleep(10 * time.Second)
 				err := sendOrders(darknodes, NumberOfOrdersPerSecond)
 				Ω(err).ShouldNot(HaveOccurred())
 			}
