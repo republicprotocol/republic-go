@@ -31,12 +31,10 @@ func main() {
 	conn, err := ganache.Connect("http://localhost:8545")
 	if err != nil {
 		log.Fatalf("cannot connect to ganache: %v", err)
-		return
 	}
 
 	if err := ganache.DeployContracts(conn); err != nil {
 		log.Fatalf("cannot deploy contracts to ganache: %v", err)
-		return
 	}
 
 	ganache.Wait()

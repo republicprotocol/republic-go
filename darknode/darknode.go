@@ -2,17 +2,21 @@ package darknode
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/hd"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/hyperdrive"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -36,12 +40,14 @@ type Darknode struct {
 	orderbook    orderbook.Orderbook
 	crypter      crypto.Crypter
 
-	darknodeRegistry dnr.DarknodeRegistry
+	darknodeRegistry   dnr.DarknodeRegistry
+	hyperdriveContract hd.HyperdriveContract
+	hyperdriveNonces   chan hyperdrive.NonceWithTimestamp
 
 	orderFragments         chan order.Fragment
 	orderFragmentsCanceled chan order.ID
-	rpc                    *rpc.RPC
 
+	rpc   *rpc.RPC
 	smpc  smpc.Smpc
 	relay relay.Relay
 }
@@ -70,6 +76,7 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 		config.Ethereum.Network,
 		config.Ethereum.RepublicTokenAddress,
 		config.Ethereum.DarknodeRegistryAddress,
+		config.Ethereum.HyperdriveAddress,
 	)
 	if err != nil {
 		return node, err
@@ -81,6 +88,12 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 		return Darknode{}, err
 	}
 	node.darknodeRegistry = darknodeRegistry
+	hyperdriveContract, err := contracts.NewHyperdriveContract(context.Background(), ethclient, transactOpts, &bind.CallOpts{})
+	if err != nil {
+		return Darknode{}, err
+	}
+	node.hyperdriveContract = hyperdriveContract
+	node.hyperdriveNonces = make(chan hyperdrive.NonceWithTimestamp)
 
 	// FIXME: Use a production Crypter implementation
 	weakCrypter := crypto.NewWeakCrypter()
@@ -93,6 +106,7 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 		node.orderFragments <- orderFragment
 		return nil
 	})
+
 	node.rpc.OnCancelOrder(func(sig []byte, orderID order.ID) error {
 		node.orderFragmentsCanceled <- orderID
 		return nil
@@ -106,6 +120,13 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 // Run is the recommended way to turn on a Darknode.
 func (node *Darknode) Run(done <-chan struct{}) <-chan error {
 	errs := make(chan error, 1)
+
+	go func() {
+		hyperdriveErrs := node.WatchForHyperdriveContract(done, 3)
+		for err := range hyperdriveErrs {
+			node.Logger.Error(err.Error())
+		}
+	}()
 
 	go func() {
 		defer close(errs)
@@ -237,9 +258,15 @@ func (node *Darknode) RunEpochs(done <-chan struct{}) <-chan error {
 					deltas, deltaErrs := node.RunEpochProcess(currDone, darkOcean)
 					go dispatch.Pipe(done, deltaErrs, errs)
 					go func() {
-						for delta := range deltas {
-							if delta.IsMatch(smpc.Prime) {
-								node.Logger.OrderMatch(logger.Info, delta.ID.String(), delta.BuyOrderID.String(), delta.SellOrderID.String())
+						for dlt := range deltas {
+							if dlt.IsMatch(smpc.Prime) {
+								node.Logger.OrderMatch(logger.Info, dlt.ID.String(), dlt.BuyOrderID.String(), dlt.SellOrderID.String())
+								go func(delta delta.Delta) {
+									err = node.OrderMatchToHyperdrive(delta)
+									if err != nil {
+										node.Logger.Compute(logger.Error, err.Error())
+									}
+								}(dlt)
 							}
 						}
 					}()
@@ -249,15 +276,6 @@ func (node *Darknode) RunEpochs(done <-chan struct{}) <-chan error {
 	}()
 
 	return errs
-}
-
-// OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
-// forwards it to the Hyperdrive.
-func (node *Darknode) OrderMatchToHyperdrive(delta delta.Delta) {
-	if !delta.IsMatch(smpc.Prime) {
-		return
-	}
-	// TODO: Implement
 }
 
 // ID returns the ID of the Darknode.
@@ -275,7 +293,182 @@ func (node *Darknode) MultiAddress() identity.MultiAddress {
 	return node.multiAddress
 }
 
+// OnOpenOrder implements the rpc.RelayDelegate interface.
+func (node *Darknode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
+	node.orderFragments <- *orderFragment
+	entry := orderbook.NewEntry(order.Order{
+		ID: orderFragment.OrderID,
+	}, order.Open)
+	err := node.orderbook.Open(entry)
+	if err != nil {
+		node.Logger.Compute(logger.Error, err.Error())
+	}
+}
+
+// OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
+// forwards it to the Hyperdrive.
+func (node *Darknode) OrderMatchToHyperdrive(delta delta.Delta) error {
+
+	// Defensively check that the smpc.Delta is actually a match
+	if !delta.IsMatch(smpc.Prime) {
+		return errors.New("delta is not an order match")
+	}
+
+	// Update the buy/sell orders in the orderbook
+	entryBuy := orderbook.NewEntry(order.Order{
+		ID: delta.BuyOrderID,
+	}, order.Unconfirmed)
+	if err := node.orderbook.Match(entryBuy); err != nil {
+		return err
+	}
+	entrySell := orderbook.NewEntry(order.Order{
+		ID: delta.SellOrderID,
+	}, order.Unconfirmed)
+	if err := node.orderbook.Match(entrySell); err != nil {
+		return err
+	}
+
+	return node.checkOrderConsensus(delta)
+}
+
+func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uint64) <-chan error {
+	errs := make(chan error, 1)
+
+	go func() {
+		defer close(errs)
+
+		watchingList := map[string]hyperdrive.NonceWithTimestamp{}
+
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-done:
+				return
+			case nonce := <-node.hyperdriveNonces:
+				watchingList[string(nonce.Nonce)] = nonce
+			case <-ticker.C:
+				for key, value := range watchingList {
+					if time.Now().Before(value.Timestamp.Add(5 * time.Minute)) {
+						dep, err := node.hyperdriveContract.GetDepth(value.Nonce)
+						if err != nil {
+							errs <- err
+							return
+						}
+						if dep > depth {
+							entry := orderbook.Entry{
+								Order: order.Order{
+									ID: order.ID(value.Nonce),
+								},
+								Status: order.Confirmed,
+							}
+							node.orderbook.Confirm(entry)
+							delete(watchingList, key)
+						}
+					} else {
+						entry := orderbook.Entry{
+							Order: order.Order{
+								ID: order.ID(value.Nonce),
+							},
+							Status: order.Unconfirmed,
+						}
+						node.orderbook.Release(entry)
+						delete(watchingList, key)
+					}
+				}
+			}
+		}
+	}()
+
+	return errs
+
+}
+
 // RPC used by the Darknode.
 func (node *Darknode) RPC() *rpc.RPC {
 	return node.rpc
+}
+
+func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
+
+	// Wait a number of seconds and check hyperdrive contract.
+	time.Sleep(time.Duration(rand.Intn(10)) * time.Second)
+
+	// Check the order status from the hyperdrive contract.
+	buyBlock, err := node.hyperdriveContract.CheckOrders([]byte(delta.BuyOrderID))
+	if err != nil {
+		return err
+	}
+	sellBlock, err := node.hyperdriveContract.CheckOrders([]byte(delta.SellOrderID))
+	if err != nil {
+		return err
+	}
+
+	// todo : this part can be simplified by simplifying the orderbook.
+	if buyBlock == 0 && sellBlock == 0 {
+		// Convert an order match into a Tx
+		tx := hyperdrive.NewTx([]byte(delta.SellOrderID), []byte(delta.BuyOrderID))
+		_, err := node.hyperdriveContract.SendTx(tx)
+		if err != nil {
+			time.Sleep(5 * time.Second)
+			return node.checkOrderConsensus(delta)
+		}
+		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.BuyOrderID), time.Now())
+		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.SellOrderID), time.Now())
+	} else if buyBlock == 0 {
+		buyOrderEntry := orderbook.Entry{
+			Order: order.Order{
+				ID: order.ID(delta.BuyOrderID),
+			},
+			Status: order.Open,
+		}
+		node.orderbook.Release(buyOrderEntry)
+
+		sellOrderEntry := orderbook.Entry{
+			Order: order.Order{
+				ID: order.ID(delta.SellOrderID),
+			},
+			Status: order.Confirmed,
+		}
+		node.orderbook.Confirm(sellOrderEntry)
+		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.SellOrderID), time.Now())
+	} else if sellBlock == 0 {
+		buyOrderEntry := orderbook.Entry{
+			Order: order.Order{
+				ID: order.ID(delta.BuyOrderID),
+			},
+			Status: order.Confirmed,
+		}
+		node.orderbook.Confirm(buyOrderEntry)
+
+		sellOrderEntry := orderbook.Entry{
+			Order: order.Order{
+				ID: order.ID(delta.SellOrderID),
+			},
+			Status: order.Open,
+		}
+		node.orderbook.Release(sellOrderEntry)
+		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.BuyOrderID), time.Now())
+	} else {
+		buyOrderEntry := orderbook.Entry{
+			Order: order.Order{
+				ID: order.ID(delta.BuyOrderID),
+			},
+			Status: order.Confirmed,
+		}
+		node.orderbook.Confirm(buyOrderEntry)
+
+		sellOrderEntry := orderbook.Entry{
+			Order: order.Order{
+				ID: order.ID(delta.SellOrderID),
+			},
+			Status: order.Confirmed,
+		}
+		node.orderbook.Confirm(sellOrderEntry)
+
+		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.BuyOrderID), time.Now())
+		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.SellOrderID), time.Now())
+	}
+	return nil
 }

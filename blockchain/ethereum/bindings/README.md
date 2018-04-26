@@ -35,7 +35,7 @@ sudo apt-get update
 sudo apt-get install solc
 ```
 
-MacOS:
+macOS:
 
 ```sh
 brew update
