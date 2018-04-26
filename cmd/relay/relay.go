@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -23,7 +22,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/blockchain/bitcoin/arc"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/arc"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/crypto"
@@ -169,16 +167,6 @@ func processOrderbookEntries(entryInCh <-chan orderbook.Entry) <-chan orderbook.
 		}
 	}()
 	return confirmedEntries
-}
-
-func atomicSwap(entries <-chan orderbook.Entry, privateKey *ecdsa.PrivateKey) error {
-	conn, err := client.Connect(uri, network, republicTokenAddress, darknodeRegistryAddr)
-	if err != nil {
-		return err
-	}
-	transOps := bind.NewKeyedTransactor(privateKey)
-	arc.NewArc(context.Background(), conn, transOps)
-	return nil
 }
 
 func orderConfirmed(orderID order.ID) bool {
