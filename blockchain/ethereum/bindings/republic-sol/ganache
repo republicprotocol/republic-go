@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# accountNumber=$(grep 'accountNumber: \d*' republic-config.js | grep -o '\d\+')
+accountNumber=${1:-10}
+echo "Starting with $accountNumber accounts..."
+
+ganache-cli --port 8545 --accounts $accountNumber -d
+
+#$(npm bin)/ganache-cli
