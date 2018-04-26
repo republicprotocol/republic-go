@@ -33,7 +33,6 @@ type Relay struct {
 	Config
 
 	registry dnr.DarknodeRegistry
-	ocean    *darkocean.DarkOcean
 
 	relayer   relayer.Relayer
 	orderbook *orderbook.Orderbook
@@ -49,7 +48,6 @@ func NewRelay(config Config, registry dnr.DarknodeRegistry, orderbook *orderbook
 		Config: config,
 
 		registry: registry,
-		ocean:    nil,
 
 		relayer:   relayer.NewRelayer(relayerClient, orderbook),
 		orderbook: orderbook,
@@ -85,7 +83,21 @@ func (relay *Relay) Sync(ctx context.Context, peers int) {
 
 // SendOrderToDarkOcean will fragment and send orders to the dark ocean
 func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
-	errCh := make(chan error, len(relay.DarkPools))
+	// Construct a new DarkOcean and store it in the relay to get the current
+	// pool layout.
+	epoch, err := relay.registry.CurrentEpoch()
+	if err != nil {
+		return err
+	}
+	darknodeIDs, err := relay.registry.GetAllNodes()
+	if err != nil {
+		return err
+	}
+	darkOcean := darkocean.NewDarkOcean(epoch.Blockhash, darknodeIDs)
+	relay.ocean = &darkOcean
+	darkPools := darkOcean.Pools()
+
+	errCh := make(chan error, len(darkPools))
 
 	multiSignature, err := relay.Config.KeyPair.Sign(&openOrder)
 	if err != nil {
@@ -97,9 +109,9 @@ func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
 		defer close(errCh)
 
 		var wg sync.WaitGroup
-		wg.Add(len(relay.DarkPools))
+		wg.Add(len(darkPools))
 
-		for i := range relay.DarkPools {
+		for i := range darkPools {
 			go func(darkPool darkocean.Pool) {
 				defer wg.Done()
 				// Split order into (number of nodes in each pool) * 2/3 fragments
@@ -112,7 +124,7 @@ func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
 					errCh <- err
 					return
 				}
-			}(relay.DarkPools[i])
+			}(darkPools[i])
 		}
 
 		wg.Wait()
@@ -129,7 +141,7 @@ func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
 		}
 	}
 
-	if len(relay.DarkPools) > 0 && errNum == len(relay.DarkPools) {
+	if len(darkPools) > 0 && errNum == len(darkPools) {
 		return fmt.Errorf("could not send order to any dark pool: %v", err)
 	}
 	return nil
@@ -138,15 +150,15 @@ func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
 // SendOrderFragmentsToDarkOcean will send order fragments to the dark ocean
 func (relay *Relay) SendOrderFragmentsToDarkOcean(order OrderFragments) error {
 	valid := false
-	for poolIndex := range relay.DarkPools {
-		fragments := order.DarkPools[GeneratePoolID(relay.DarkPools[poolIndex])]
-		if fragments != nil && isSafeToSend(len(fragments), relay.DarkPools[poolIndex].Size()) {
-			if err := relay.sendSharesToDarkPool(relay.DarkPools[poolIndex], fragments); err == nil {
+	for poolIndex := range relay.ocean.Pools() {
+		fragments := order.DarkPools[GeneratePoolID(relay.ocean.Pools()[poolIndex])]
+		if fragments != nil && isSafeToSend(len(fragments), relay.ocean.Pools()[poolIndex].Size()) {
+			if err := relay.sendSharesToDarkPool(relay.ocean.Pools()[poolIndex], fragments); err == nil {
 				valid = true
 			}
 		}
 	}
-	if !valid && len(relay.DarkPools) > 0 {
+	if !valid && len(relay.ocean.Pools()) > 0 {
 		return fmt.Errorf("cannot send fragments to pools: number of fragments do not match pool size")
 	}
 	return nil
@@ -154,12 +166,12 @@ func (relay *Relay) SendOrderFragmentsToDarkOcean(order OrderFragments) error {
 
 // CancelOrder will cancel orders that aren't confirmed or settled in the dark ocean
 func (relay *Relay) CancelOrder(cancelOrder order.ID) error {
-	errs := make(chan error, len(relay.DarkPools))
+	errs := make(chan error, len(relay.ocean.Pools()))
 	go func() {
 		defer close(errs)
 
-		dispatch.CoForAll(relay.DarkPools, func(i int) {
-			addrs := relay.DarkPools[i].Addresses()
+		dispatch.CoForAll(relay.ocean.Pools(), func(i int) {
+			addrs := relay.ocean.Pools()[i].Addresses()
 
 			dispatch.CoForAll(addrs, func(j int) {
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -193,7 +205,7 @@ func (relay *Relay) CancelOrder(cancelOrder order.ID) error {
 	}
 
 	// FIXME: Error if at least one dark pool could not cancel the order
-	if len(relay.DarkPools) > 0 && errNum == len(relay.DarkPools) {
+	if len(relay.ocean.Pools()) > 0 && errNum == len(relay.ocean.Pools()) {
 		return fmt.Errorf("could not cancel order to any dark pool: %v", err)
 	}
 	return nil
