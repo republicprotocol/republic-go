@@ -28,7 +28,7 @@ var _ = Describe("Smpcer", func() {
 
 	Context("Smpc method", func() {
 
-		It("should create two smpc clients and attempt to connect", func() {
+		PIt("should create two smpc clients and attempt to connect", func() {
 			client1, multiaddr1, err := createNewClient("127.0.0.1", "3001")
 			Expect(err).ShouldNot(HaveOccurred())
 			rpc := new(rpc.RPC)

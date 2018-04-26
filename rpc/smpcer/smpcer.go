@@ -131,9 +131,19 @@ func (smpcer *Smpcer) Compute(stream Smpc_ComputeServer) error {
 	_, ok := smpcer.conns[addr]
 	maxConnectionsReached := ok || len(smpcer.conns) >= MaxConnections
 	smpcer.connsMu.Unlock()
+
 	if maxConnectionsReached {
 		return ErrMaxConnectionsReached
 	}
+
+	smpcer.connsMu.Lock()
+	smpcer.conns[addr] = struct{}{}
+	smpcer.connsMu.Unlock()
+	defer func() {
+		smpcer.connsMu.Lock()
+		delete(smpcer.conns, addr)
+		smpcer.connsMu.Unlock()
+	}()
 
 	done := make(chan struct{})
 	defer close(done)

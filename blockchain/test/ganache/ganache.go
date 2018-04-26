@@ -36,7 +36,8 @@ func GenesisTransactor() bind.TransactOpts {
 }
 
 // WatchForInterrupt will stop Ganache upon receiving receiving a interrupt signal
-func WatchForInterrupt(cmd *exec.Cmd) {
+func WatchForInterrupt() {
+	cmd := globalGanacheCmd
 	signals := make(chan os.Signal, 1)
 	defer close(signals)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
@@ -74,7 +75,7 @@ func Start() bool {
 	cmd.Stderr = os.Stderr
 	cmd.Start()
 
-	go WatchForInterrupt(cmd)
+	go WatchForInterrupt()
 
 	// Wait for ganache to boot
 	var delay time.Duration
@@ -91,50 +92,26 @@ func Start() bool {
 	return true
 }
 
+func Wait() error {
+	return globalGanacheCmd.Wait()
+}
+
 // Stop will kill the local Ganache instance
 func Stop() {
-
 	globalGanacheMu.Lock()
+	defer globalGanacheMu.Unlock()
 	if globalGanacheCounter > 1 {
 		globalGanacheCounter--
-		globalGanacheMu.Unlock()
 		return
 	}
-	globalGanacheMu.Unlock()
 
-	globalGanacheStopSchedule = time.Now().Add(3 * time.Second)
+	globalGanacheCounter--
 
-	go func() {
-		tick := time.NewTicker(1 * time.Second)
-		defer tick.Stop()
-		for {
-			<-tick.C
-			globalGanacheMu.Lock()
-			if globalGanacheCounter > 1 {
-				globalGanacheCounter--
-				globalGanacheMu.Unlock()
-				return
-			}
-			globalGanacheMu.Unlock()
-
-			if time.Now().After(globalGanacheStopSchedule) {
-				break
-			}
-		}
-
-		globalGanacheMu.Lock()
-		defer globalGanacheMu.Unlock()
-
-		if err := globalGanacheCmd.Process.Kill(); err != nil {
-			panic(err)
-		}
-		if err := globalGanacheCmd.Wait(); err != nil {
-			panic(err)
-		}
-		globalGanacheCounter--
-
-		return
-	}()
+	// Stop ganache
+	if err := globalGanacheCmd.Process.Kill(); err != nil {
+		panic(err)
+	}
+	globalGanacheCmd.Wait()
 }
 
 // Connect to a local Ganache instance.
@@ -179,13 +156,19 @@ func StartAndConnect() (ethereum.Conn, error) {
 		if err := revertToSnapshot(conn, globalGanacheSnapshot); err != nil {
 			return conn, err
 		}
+
+		// Take snapshot again -- avoid problem with Ganache freezing
+		snapshot, err := snapshot(conn)
+		if err != nil {
+			return conn, err
+		}
+		globalGanacheSnapshot = snapshot
 	}
 	return conn, nil
 }
 
 // Snapshot current Ganache state
 func snapshot(conn ethereum.Conn) (string, error) {
-	fmt.Printf("\n\nTaking snapshot!!!\n\n\n")
 	var result string
 	err := conn.RawClient.CallContext(context.Background(), &result, "evm_snapshot")
 	return result, err
@@ -193,7 +176,6 @@ func snapshot(conn ethereum.Conn) (string, error) {
 
 // RevertToSnapshot resets Ganache state to most recent snapshot
 func revertToSnapshot(conn ethereum.Conn, snaptshotID string) error {
-	fmt.Printf("\n\nReverting to snapshot!!!\n\n\n")
 	var result bool
 	err := conn.RawClient.CallContext(context.Background(), &result, "evm_revert", snaptshotID)
 	return err
