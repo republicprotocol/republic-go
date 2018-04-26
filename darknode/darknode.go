@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/delta"
@@ -125,7 +123,7 @@ func (node *Darknode) Run(done <-chan struct{}) <-chan error {
 	go func() {
 		hyperdriveErrs := node.WatchForHyperdriveContract(done, 3)
 		for err := range hyperdriveErrs {
-			log.Println("hyperdrive error,", err.Error())
+			node.Logger.Error(err.Error())
 		}
 	}()
 
@@ -349,8 +347,6 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 				return
 			case nonce := <-node.hyperdriveNonces:
 				watchingList[string(nonce.Nonce)] = nonce
-				log.Println(node.Address().String(), "watching for order", base58.Encode(nonce.Nonce))
-
 			case <-ticker.C:
 				for key, value := range watchingList {
 					if time.Now().Before(value.Timestamp.Add(5 * time.Minute)) {
@@ -360,8 +356,6 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 							return
 						}
 						if dep > depth {
-							log.Println(node.Address().String(), base58.Encode([]byte(key)), " has reach certin depth of block , confimed by hyperdrive ")
-
 							entry := orderbook.Entry{
 								Order: order.Order{
 									ID: order.ID(value.Nonce),
@@ -372,8 +366,6 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 							delete(watchingList, key)
 						}
 					} else {
-						log.Println(node.Address().String(), base58.Encode([]byte(key)), "expires")
-
 						entry := orderbook.Entry{
 							Order: order.Order{
 								ID: order.ID(value.Nonce),
@@ -400,9 +392,7 @@ func (node *Darknode) RPC() *rpc.RPC {
 func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
 
 	// Wait a number of seconds and check hyperdrive contract.
-	log.Println(node.Address().String(), "sleep for a certain amout of time")
 	time.Sleep(time.Duration(rand.Intn(10)) * time.Second)
-	log.Println(node.Address().String(), "start checking consensus")
 
 	// Check the order status from the hyperdrive contract.
 	buyBlock, err := node.hyperdriveContract.CheckOrders([]byte(delta.BuyOrderID))
@@ -416,7 +406,6 @@ func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
 
 	// todo : this part can be simplified by simplifying the orderbook.
 	if buyBlock == 0 && sellBlock == 0 {
-		log.Println(node.Address().String(), "none of the order is in hyperdrive. I'll post this tx!")
 		// Convert an order match into a Tx
 		tx := hyperdrive.NewTx([]byte(delta.SellOrderID), []byte(delta.BuyOrderID))
 		_, err := node.hyperdriveContract.SendTx(tx)
@@ -427,7 +416,6 @@ func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.BuyOrderID), time.Now())
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.SellOrderID), time.Now())
 	} else if buyBlock == 0 {
-		log.Println(node.Address().String(), "sell order is in the contract.")
 		buyOrderEntry := orderbook.Entry{
 			Order: order.Order{
 				ID: order.ID(delta.BuyOrderID),
@@ -445,7 +433,6 @@ func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
 		node.orderbook.Confirm(sellOrderEntry)
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.SellOrderID), time.Now())
 	} else if sellBlock == 0 {
-		log.Println(node.Address().String(), "buy order is in the contract.")
 		buyOrderEntry := orderbook.Entry{
 			Order: order.Order{
 				ID: order.ID(delta.BuyOrderID),
@@ -463,8 +450,6 @@ func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
 		node.orderbook.Release(sellOrderEntry)
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.BuyOrderID), time.Now())
 	} else {
-		log.Println(node.Address().String(), "both orders are in the contract.")
-
 		buyOrderEntry := orderbook.Entry{
 			Order: order.Order{
 				ID: order.ID(delta.BuyOrderID),
