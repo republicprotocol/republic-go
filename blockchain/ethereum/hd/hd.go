@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -12,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/pkg/errors"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/bindings"
 	"github.com/republicprotocol/republic-go/hyperdrive"
@@ -109,7 +109,7 @@ func (hyper HyperdriveContract) GetBlockNumberOfTx(transaction common.Hash) (uin
 
 		// Read the response status
 		if resp.StatusCode != http.StatusOK {
-			return 0, fmt.Errorf("request failed with status code %s", resp.StatusCode)
+			return 0, fmt.Errorf("request failed with status code %d", resp.StatusCode)
 		}
 		// Get the result
 		var data map[string]interface{}
