@@ -1,4 +1,4 @@
-package darknode
+package relay
 
 import (
 	"encoding/json"
@@ -11,17 +11,12 @@ import (
 	"github.com/republicprotocol/republic-go/logger"
 )
 
-// A Config defines the different settings for a Darknode.
+// A Config defines the different settings for a Relay.
 type Config struct {
-	EcdsaKey keystore.Key      `json:"ecdsaKey"`
-	RsaKey   crypto.RsaKeyPair `json:"rsaKey"`
-	Ethereum ethereum.Config   `json:"ethereum"`
-	Logs     logger.Options    `json:"logs"`
-
-	Address                 identity.Address        `json:"address"`
-	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
-	Host                    string                  `json:"host"`
-	Port                    string                  `json:"port"`
+	Token        string                `json:"token"`
+	KeyPair      identity.KeyPair      `json:"keypair"`
+	MultiAddress identity.MultiAddress `json:"multiAddress"`
+	Ethereum     ethereum.Config       `json:"ethereum"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config

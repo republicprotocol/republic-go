@@ -134,6 +134,11 @@ func (hyper HyperdriveContract) CurrentBlock() (*types.Block, error) {
 	return hyper.client.Client.BlockByNumber(hyper.context, nil)
 }
 
+// GetOrderMatch gets the order match for the given order id.
+func (hyper HyperdriveContract) GetOrderMatch(orderID [32]byte) ([32]byte, [][32]byte, error) {
+	return hyper.binding.GetOrderMatch(hyper.callOpts, orderID)
+}
+
 // BlockByNumber gets the block of given number.
 func (hyper *HyperdriveContract) BlockByNumber(blockNumber *big.Int) (*types.Block, error) {
 	return hyper.client.Client.BlockByNumber(hyper.context, blockNumber)
