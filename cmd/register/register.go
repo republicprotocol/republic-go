@@ -12,7 +12,6 @@ import (
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
-	"github.com/republicprotocol/republic-go/darknode"
 )
 
 const RepublicTokenAddress = "0x65d54eda5f032f2275caa557e50c029cfbccbb54"
@@ -35,23 +34,31 @@ type Secret struct {
 
 func main() {
 
-	configFiles := os.Args[1:]
-	configs := make([]*darknode.Config, len(configFiles))
+	//configFiles := os.Args[1:]
+	//configs := make([]*darknode.Config, len(configFiles))
+	//
+	//for file := range configFiles {
+	//	fileName := configFiles[file]
+	//	config, err := darknode.LoadConfig(fileName)
+	//	if err != nil {
+	//		log.Fatal(err)
+	//	}
+	//	configs[file] = config
+	//}
+	//
+	//RegisterAll(configs)
 
-	for file := range configFiles {
-		fileName := configFiles[file]
-		config, err := darknode.LoadConfig(fileName)
-		if err != nil {
-			log.Fatal(err)
-		}
-		configs[file] = config
+	addresess := []string{
+		"0x69e68ba23a110a143e3432dc9fc78e14eb4dba7a",
+		"0x96e703b6067518b94627ebe5b421028e1a736018",
+		"0xd4b8523fd906c85bd240422b7216484c2494a432",
 	}
 
-	RegisterAll(configs)
+	RegisterAll(addresess)
 }
 
 // RegisterAll takes a slice of republic private keys and registers them
-func RegisterAll(configs []*darknode.Config) {
+func RegisterAll(addresses []string) {
 
 	/*
 		0x3ccB53DBB5f801C28856b3396B01941ecD21Ac1d
@@ -60,7 +67,7 @@ func RegisterAll(configs []*darknode.Config) {
 		0x1629de08ec625d2452a564e5e1990f6890f85a5e
 	*/
 
-	do.ForAll(configs, func(i int) {
+	do.ForAll(addresses, func(i int) {
 		key := new(keystore.Key)
 		file, err := os.Open("key.json")
 		if err != nil {
@@ -73,7 +80,7 @@ func RegisterAll(configs []*darknode.Config) {
 		}
 
 		auth := bind.NewKeyedTransactor(key.PrivateKey)
-		auth.GasPrice = big.NewInt(6000000000)
+		auth.GasPrice = big.NewInt(60000000000)
 
 		// Create the eth-client so we can interact with the Registrar contract
 		client, err := ethereum.Connect("https://ropsten.infura.io",
@@ -85,15 +92,16 @@ func RegisterAll(configs []*darknode.Config) {
 			log.Fatal(err)
 		}
 
-		isRegistered, err := registrar.IsRegistered(configs[i].EcdsaKey.Address.Bytes())
+		isRegistered, err := registrar.IsRegistered([]byte(addresses[i]))
 
 		if err != nil {
-			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", configs[i].EcdsaKey.Address, red, reset, err)
+			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", []byte(addresses[i]), red, reset, err)
 			return
 		}
 
 
 		if !isRegistered {
+
 			minimumBond, err := registrar.MinimumBond()
 			if err != nil {
 				log.Fatal(err)
@@ -104,14 +112,14 @@ func RegisterAll(configs []*darknode.Config) {
 				log.Fatal(err)
 			}
 
-			_, err = registrar.Register(configs[i].EcdsaKey.Id, []byte{}, &minimumBond)
+			_, err = registrar.Register([]byte(addresses[i]), []byte{}, &minimumBond)
 			if err != nil {
-				log.Printf("[%v] %sCouldn't register node%s: %v\n",configs[i].EcdsaKey.Address, red, reset, err)
+				log.Printf("[%v] %sCouldn't register node%s: %v\n",addresses[i], red, reset, err)
 			} else {
-				log.Printf("[%v] %sNode will be registered next epoch%s\n", configs[i].EcdsaKey.Address, green, reset)
+				log.Printf("[%v] %sNode will be registered next epoch%s\n", addresses[i], green, reset)
 			}
 		} else if isRegistered {
-			log.Printf("[%v] %sNode already registered%s\n", configs[i].EcdsaKey.Address, yellow, reset)
+			log.Printf("[%v] %sNode already registered%s\n", addresses[i], yellow, reset)
 		}
 	})
 }
