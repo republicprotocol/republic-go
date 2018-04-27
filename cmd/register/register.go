@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/big"
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/republicprotocol/go-do"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 )
@@ -48,17 +49,17 @@ func main() {
 	//
 	//RegisterAll(configs)
 
-	addresess := []string{
-		"0x69e68ba23a110a143e3432dc9fc78e14eb4dba7a",
-		"0x96e703b6067518b94627ebe5b421028e1a736018",
-		"0xd4b8523fd906c85bd240422b7216484c2494a432",
+	addresess := [][]byte{
+		common.HexToAddress("0x69e68ba23a110a143e3432dc9fc78e14eb4dba7a").Bytes(),
+		common.HexToAddress("0x96e703b6067518b94627ebe5b421028e1a736018").Bytes(),
+		common.HexToAddress("0xd4b8523fd906c85bd240422b7216484c2494a432").Bytes(),
 	}
 
 	RegisterAll(addresess)
 }
 
 // RegisterAll takes a slice of republic private keys and registers them
-func RegisterAll(addresses []string) {
+func RegisterAll(addresses [][]byte) {
 
 	/*
 		0x3ccB53DBB5f801C28856b3396B01941ecD21Ac1d
@@ -67,7 +68,7 @@ func RegisterAll(addresses []string) {
 		0x1629de08ec625d2452a564e5e1990f6890f85a5e
 	*/
 
-	do.ForAll(addresses, func(i int) {
+	for i := range addresses {
 		key := new(keystore.Key)
 		file, err := os.Open("key.json")
 		if err != nil {
@@ -92,13 +93,13 @@ func RegisterAll(addresses []string) {
 			log.Fatal(err)
 		}
 
+		fmt.Println(addresses[i])
 		isRegistered, err := registrar.IsRegistered([]byte(addresses[i]))
 
 		if err != nil {
 			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", []byte(addresses[i]), red, reset, err)
 			return
 		}
-
 
 		if !isRegistered {
 
@@ -114,12 +115,12 @@ func RegisterAll(addresses []string) {
 
 			_, err = registrar.Register([]byte(addresses[i]), []byte{}, &minimumBond)
 			if err != nil {
-				log.Printf("[%v] %sCouldn't register node%s: %v\n",addresses[i], red, reset, err)
+				log.Printf("[%v] %sCouldn't register node%s: %v\n", addresses[i], red, reset, err)
 			} else {
 				log.Printf("[%v] %sNode will be registered next epoch%s\n", addresses[i], green, reset)
 			}
 		} else if isRegistered {
 			log.Printf("[%v] %sNode already registered%s\n", addresses[i], yellow, reset)
 		}
-	})
+	}
 }
