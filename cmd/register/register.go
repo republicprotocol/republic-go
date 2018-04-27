@@ -9,7 +9,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
@@ -86,10 +85,10 @@ func RegisterAll(configs []*darknode.Config) {
 			log.Fatal(err)
 		}
 
-		isRegistered, err := registrar.IsRegistered([]byte(configs[i].EcdsaKey.Id))
+		isRegistered, err := registrar.IsRegistered(configs[i].EcdsaKey.Address.Bytes())
 
 		if err != nil {
-			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", base58.Encode(configs[i].EcdsaKey.Id), red, reset, err)
+			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", configs[i].EcdsaKey.Address, red, reset, err)
 			return
 		}
 
@@ -107,12 +106,12 @@ func RegisterAll(configs []*darknode.Config) {
 
 			_, err = registrar.Register(configs[i].EcdsaKey.Id, []byte{}, &minimumBond)
 			if err != nil {
-				log.Printf("[%v] %sCouldn't register node%s: %v\n", base58.Encode(configs[i].EcdsaKey.Id), red, reset, err)
+				log.Printf("[%v] %sCouldn't register node%s: %v\n",configs[i].EcdsaKey.Address, red, reset, err)
 			} else {
-				log.Printf("[%v] %sNode will be registered next epoch%s\n", base58.Encode(configs[i].EcdsaKey.Id), green, reset)
+				log.Printf("[%v] %sNode will be registered next epoch%s\n", configs[i].EcdsaKey.Address, green, reset)
 			}
 		} else if isRegistered {
-			log.Printf("[%v] %sNode already registered%s\n", base58.Encode(configs[i].EcdsaKey.Id), yellow, reset)
+			log.Printf("[%v] %sNode already registered%s\n", configs[i].EcdsaKey.Address, yellow, reset)
 		}
 	})
 }
