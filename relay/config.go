@@ -4,19 +4,18 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/logger"
 )
 
 // A Config defines the different settings for a Relay.
 type Config struct {
-	Token        string                `json:"token"`
-	KeyPair      identity.KeyPair      `json:"keypair"`
-	MultiAddress identity.MultiAddress `json:"multiAddress"`
-	Ethereum     ethereum.Config       `json:"ethereum"`
+	Token                   string                  `json:"token"`
+	EthereumAddress         string                  `json:"ethereumAddress"`
+	KeyPair                 identity.KeyPair        `json:"keypair"`
+	MultiAddress            identity.MultiAddress   `json:"multiAddress"`
+	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
+	Ethereum                ethereum.Config         `json:"ethereum"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config

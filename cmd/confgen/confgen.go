@@ -43,7 +43,7 @@ func main() {
 				},
 			},
 		},
-		Ethereum: darknode.EthereumConfig{
+		Ethereum: ethereum.Config{
 			Network:                 ethereum.NetworkRopsten,
 			URI:                     "https://ropsten.infura.io",
 			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),

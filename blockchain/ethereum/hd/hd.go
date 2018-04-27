@@ -32,19 +32,19 @@ type HyperdriveContract struct {
 
 // NewHyperdriveContract creates a new HyperdriveContract with given parameters.
 func NewHyperdriveContract(ctx context.Context, conn ethereum.Conn, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (HyperdriveContract, error) {
-	contract, err := bindings.NewHyperdrive(conn.HyperdriveAddress, bind.ContractBackend(conn.Client))
+	contract, err := bindings.NewHyperdrive(common.HexToAddress(conn.Config.HyperdriveAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		return HyperdriveContract{}, err
 	}
 
 	return HyperdriveContract{
-		network:           conn.Network,
+		network:           conn.Config.Network,
 		context:           ctx,
 		client:            conn,
 		callOpts:          callOpts,
 		transactOpts:      transactOpts,
 		binding:           contract,
-		hyperdriveAddress: conn.HyperdriveAddress,
+		hyperdriveAddress: common.HexToAddress(conn.Config.HyperdriveAddress),
 	}, nil
 }
 
@@ -97,7 +97,7 @@ func (hyper *HyperdriveContract) GetDepth(nonce hyperdrive.Nonce) (uint64, error
 // GetBlockNumberOfTx gets the block number of the transaction hash.
 // It calls infura using json-RPC.
 func (hyper HyperdriveContract) GetBlockNumberOfTx(transaction common.Hash) (uint64, error) {
-	switch hyper.client.Network {
+	switch hyper.client.Config.Network {
 	// According to this https://github.com/ethereum/go-ethereum/issues/15210
 	// we have to use json-rpc to get the block number.
 	case ethereum.NetworkRopsten:

@@ -38,8 +38,7 @@ var (
 	RepublicTokenAddressOnRopsten    = common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54")
 	DarknodeRegistryAddressOnRopsten = common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3")
 	HyperdriveAddressOnRopsten       = common.HexToAddress("0x348496ad820f2ee256268f9f9d0b9f5bacdc26cd")
-	RewardGatewayAddressOnRopsten    = common.HexToAddress("")
-	ArcAddressOnRopsten              = common.HexToAddress("")
+	ArcAddressOnRopsten              = common.HexToAddress("0x2940089833b688a1a46c150085ef004f85fcee87")
 )
 
 // Config defines the different settings for connecting the Darknode
@@ -50,7 +49,6 @@ type Config struct {
 	URI                     string  `json:"uri"`
 	RepublicTokenAddress    string  `json:"republicTokenAddress"`
 	DarknodeRegistryAddress string  `json:"darknodeRegistryAddress"`
-	TraderRegistryAddress   string  `json:"traderRegistryAddress"`
 	HyperdriveAddress       string  `json:"hyperdriveAddress"`
 	ArcAddress              string  `json:"arcAddress"`
 }

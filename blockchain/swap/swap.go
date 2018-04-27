@@ -11,19 +11,19 @@ import (
 )
 
 type SwapItem struct {
-	orderID   [32]byte
-	from      []byte
-	to        []byte
-	value     *big.Int
-	expiry    int64
-	arc       arc.Arc
-	goesFirst bool
+	OrderID   [32]byte
+	From      []byte
+	To        []byte
+	Value     *big.Int
+	Expiry    int64
+	Arc       arc.Arc
+	GoesFirst bool
 }
 type Swap struct {
-	hash    [32]byte
-	secret  [32]byte
-	fstItem SwapItem
-	sndItem SwapItem
+	Hash    [32]byte
+	Secret  [32]byte
+	FstItem SwapItem
+	SndItem SwapItem
 }
 
 func NewSwap(fstItem, sndItem SwapItem) Swap {
@@ -31,46 +31,46 @@ func NewSwap(fstItem, sndItem SwapItem) Swap {
 
 	secret := [32]byte{}
 	hash := [32]byte{}
-	if fstItem.goesFirst {
+	if fstItem.GoesFirst {
 		rand.Read(secret[:])
 		hash = sha256.Sum256(secret[:])
 	}
 
 	return Swap{
-		hash:    hash,
-		secret:  secret,
-		fstItem: fstItem,
-		sndItem: sndItem,
+		Hash:    hash,
+		Secret:  secret,
+		FstItem: fstItem,
+		SndItem: sndItem,
 	}
 }
 
 func (swap *Swap) Execute(ctx context.Context) error {
 
-	if swap.fstItem.goesFirst {
-		if err := swap.fstItem.arc.Initiate(swap.hash, swap.fstItem.from, swap.fstItem.to, swap.fstItem.value, swap.fstItem.expiry); err != nil {
+	if swap.FstItem.GoesFirst {
+		if err := swap.FstItem.Arc.Initiate(swap.Hash, swap.FstItem.From, swap.FstItem.To, swap.FstItem.Value, swap.FstItem.Expiry); err != nil {
 			return err
 		}
 		status := waitForTheOtherTraderToInitiate(swap)
 		if status {
-			return swap.fstItem.arc.Redeem(swap.sndItem.orderID, swap.secret)
+			return swap.FstItem.Arc.Redeem(swap.SndItem.OrderID, swap.Secret)
 		} else {
-			return swap.fstItem.arc.Refund(swap.sndItem.orderID)
+			return swap.FstItem.Arc.Refund(swap.SndItem.OrderID)
 		}
 	} else {
-		hash, from, to, _, expiry, err := swap.sndItem.arc.Audit(swap.sndItem.orderID)
-		if err := swap.fstItem.arc.Initiate(hash, to, from, swap.fstItem.value, expiry-(24*60*60)); err != nil {
+		hash, from, to, _, expiry, err := swap.SndItem.Arc.Audit(swap.SndItem.OrderID)
+		if err := swap.FstItem.Arc.Initiate(hash, to, from, swap.FstItem.Value, expiry-(24*60*60)); err != nil {
 			return err
 		}
 		status := waitForOtherTraderToRedeem(swap, expiry-(24*60*60))
-		secret, err := swap.fstItem.arc.AuditSecret(swap.fstItem.orderID)
+		secret, err := swap.FstItem.Arc.AuditSecret(swap.FstItem.OrderID)
 		if err != nil {
 			return err
 		}
 		if status {
 			// This should never return an error, if it happens it means someone is going to lose their funds.
-			return swap.fstItem.arc.Redeem(swap.fstItem.orderID, secret)
+			return swap.FstItem.Arc.Redeem(swap.FstItem.OrderID, secret)
 		} else {
-			return swap.fstItem.arc.Refund(swap.fstItem.orderID)
+			return swap.FstItem.Arc.Refund(swap.FstItem.OrderID)
 		}
 	}
 }
@@ -78,7 +78,7 @@ func (swap *Swap) Execute(ctx context.Context) error {
 func waitForTheOtherTraderToInitiate(swap *Swap) bool {
 	for {
 		t := time.Now().Unix()
-		_, _, _, _, expiry, err := swap.sndItem.arc.Audit(swap.sndItem.orderID)
+		_, _, _, _, expiry, err := swap.SndItem.Arc.Audit(swap.SndItem.OrderID)
 		if err != nil {
 			if expiry < t {
 				return false
@@ -93,7 +93,7 @@ func waitForTheOtherTraderToInitiate(swap *Swap) bool {
 func waitForOtherTraderToRedeem(swap *Swap, expiry int64) bool {
 	for {
 		t := time.Now().Unix()
-		_, err := swap.sndItem.arc.AuditSecret(swap.sndItem.orderID)
+		_, err := swap.SndItem.Arc.AuditSecret(swap.SndItem.OrderID)
 		if err != nil {
 			if expiry < t {
 				return false

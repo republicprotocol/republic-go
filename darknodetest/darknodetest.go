@@ -116,7 +116,7 @@ func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAdd
 		RsaKey:   rsaKey,
 		Host:     host,
 		Port:     port,
-		Ethereum: darknode.EthereumConfig{
+		Ethereum: ethereum.Config{
 			Network:                 ethereum.NetworkGanache,
 			URI:                     "http://localhost:8545",
 			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),

@@ -71,13 +71,7 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 
 	// Open a connection to the Ethereum network
 	transactOpts := bind.NewKeyedTransactor(config.EcdsaKey.PrivateKey)
-	ethclient, err := ethereum.Connect(
-		config.Ethereum.URI,
-		config.Ethereum.Network,
-		config.Ethereum.RepublicTokenAddress,
-		config.Ethereum.DarknodeRegistryAddress,
-		config.Ethereum.HyperdriveAddress,
-	)
+	ethclient, err := ethereum.Connect(config.Ethereum)
 	if err != nil {
 		return node, err
 	}

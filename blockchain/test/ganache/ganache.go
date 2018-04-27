@@ -123,12 +123,14 @@ func Connect(ganacheRPC string) (ethereum.Conn, error) {
 	ethclient := ethclient.NewClient(raw)
 
 	return ethereum.Conn{
-		RawClient:               raw,
-		Client:                  ethclient,
-		Network:                 ethereum.NetworkGanache,
-		DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache,
-		RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache,
-		HyperdriveAddress:       ethereum.HyperdriveAddressOnGanache,
+		RawClient: raw,
+		Client:    ethclient,
+		Config: ethereum.Config{
+			Network:                 ethereum.NetworkGanache,
+			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
+			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
+			HyperdriveAddress:       ethereum.HyperdriveAddressOnGanache.String(),
+		},
 	}, nil
 }
 
@@ -203,7 +205,7 @@ func DistributeEth(conn ethereum.Conn, addresses ...common.Address) error {
 // DistributeREN transfers REN to each of the addresses
 func DistributeREN(conn ethereum.Conn, addresses ...common.Address) error {
 
-	republicTokenContract, err := bindings.NewRepublicToken(conn.RepublicTokenAddress, bind.ContractBackend(conn.Client))
+	republicTokenContract, err := bindings.NewRepublicToken(common.HexToAddress(conn.Config.RepublicTokenAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		return err
 	}

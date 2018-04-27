@@ -15,18 +15,20 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/arc"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/hd"
 	"github.com/republicprotocol/republic-go/blockchain/swap"
+	"github.com/republicprotocol/republic-go/stackint"
 
 	"github.com/republicprotocol/republic-go/order"
 
 	. "github.com/republicprotocol/republic-go/relay"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	abiBind "github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
-	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
@@ -40,21 +42,21 @@ import (
 )
 
 func main() {
-	keystore := flag.String("keystore", "", "Encrypted keystore file")
-	passphrase := flag.String("passphrase", "", "Passphrase for the encrypted keystore file")
+	// keystore := flag.String("keystore", "", "Encrypted keystore file")
+	// passphrase := flag.String("passphrase", "", "Passphrase for the encrypted keystore file")
 	bind := flag.String("bind", "127.0.0.1", "Binding address for the gRPC and HTTP API")
 	port := flag.String("port", "18515", "Binding port for the HTTP API")
-	token := flag.String("token", "", "Bearer token for restricting access")
+	// token := flag.String("token", "", "Bearer token for restricting access")
 	configLocation := flag.String("config", "", "Relay configuration file location")
 	maxConnections := flag.Int("maxConnections", 4, "Maximum number of connections to peers during synchronization")
 	flag.Parse()
 
-	fmt.Println("Decrypting keystore...")
-	key, err := getKey(*keystore, *passphrase)
-	if err != nil {
-		fmt.Println(fmt.Errorf("cannot obtain key: %s", err))
-		return
-	}
+	// fmt.Println("Decrypting keystore...")
+	// key, err := getKey(*keystore, *passphrase)
+	// if err != nil {
+	// 	fmt.Println(fmt.Errorf("cannot obtain key: %s", err))
+	// 	return
+	// }
 
 	// keyPair, err := getKeyPair(key)
 	// if err != nil {
@@ -75,7 +77,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-
 	// Create Relay
 	// config := Config{
 	// 	KeyPair:      keyPair,
@@ -83,7 +84,10 @@ func main() {
 	// 	Token:        *token,
 	// }
 
-	config := LoadConfig(configLocation);
+	config, err := LoadConfig(*configLocation)
+	if err != nil {
+		log.Fatalf("cannot load config: %v", err)
+	}
 
 	registrar, err := getRegistry(config)
 	if err != nil {
@@ -99,12 +103,18 @@ func main() {
 
 	book := orderbook.NewOrderbook(100)
 	crypter := crypto.NewWeakCrypter()
-	dht := dht.NewDHT(multiAddr.Address(), 100)
+	dht := dht.NewDHT(config.MultiAddress.Address(), 100)
 	connPool := client.NewConnPool(100)
 	relayerClient := relayer.NewClient(&crypter, &dht, &connPool)
-	smpcerClient := smpcer.NewClient(&crypter, multiAddr, &connPool)
-	swarmerClient := swarmer.NewClient(&crypter, multiAddr, &dht, &connPool)
-	relay := NewRelay(config, registrar, &book, &relayerClient, &smpcerClient, &swarmerClient)
+	smpcerClient := smpcer.NewClient(&crypter, config.MultiAddress, &connPool)
+	swarmerClient := swarmer.NewClient(&crypter, config.MultiAddress, &dht, &connPool)
+	relay := NewRelay(*config, registrar, &book, &relayerClient, &smpcerClient, &swarmerClient)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	for err := range swarmerClient.Bootstrap(ctx, config.BootstrapMultiAddresses, -1) {
+		log.Printf("error while bootstrapping the relay: %v", err)
+	}
 
 	entries := make(chan orderbook.Entry)
 	defer close(entries)
@@ -114,16 +124,15 @@ func main() {
 			log.Fatalf("cannot subscribe to orderbook: %v", err)
 		}
 	}()
-	
-	ethereumConn, err := ethereum.Connect("", ethereum.NetworkRopsten, config.)
+	confirmedOrders := processOrderbookEntries(hyperdrive, entries)
+	conn, err := ethereum.Connect(config.Ethereum)
+	auth := abiBind.NewKeyedTransactor(config.KeyPair.PrivateKey)
 	if err != nil {
-		log.Fatalf("cannot connect to ethereum: %v", err)
+		log.Fatalf("cannot fetch dark node registry: %s", err)
 	}
-	
-	confirmedOrders := processOrderbookEntries()
-	swaps := executeConfirmedOrders()
+	swaps := executeConfirmedOrders(context.Background(), conn, auth, hyperdrive, confirmedOrders)
 	processAtomicSwaps(swaps)
-	
+
 	// Server gRPC and RESTful API
 	fmt.Println(fmt.Sprintf("Relay API available at %s:%s", *bind, *port))
 	dispatch.CoBegin(func() {
@@ -136,6 +145,9 @@ func main() {
 			log.Fatalf("error serving grpc: %v", err)
 		}
 	}, func() {
+		// if err := relay.Sync(context.Background(), *maxConnections); err != nil {
+		// 	log.Fatalf("error syncing relay: %v", err)
+		// }
 		relay.Sync(context.Background(), *maxConnections)
 	})
 
@@ -145,23 +157,19 @@ func main() {
 		<-sig
 		server.Stop()
 	}()
-
-	if err := server.Serve(listener); err != nil {
-		log.Fatal(err)
-	}
 }
 
 func processOrderbookEntries(hyperdrive hd.HyperdriveContract, entryInCh <-chan orderbook.Entry) <-chan orderbook.Entry {
 	unconfirmedOrders := make(chan orderbook.Entry, 100)
 	confirmedEntries := make(chan orderbook.Entry)
 
-	orderConfirmed := func(orderID byte[32]) {
+	orderConfirmed := func(orderID []byte) bool {
 		depth, err := hyperdrive.GetDepth(orderID)
 		if err != nil {
 			log.Fatalf("failed to get depth: %v", err)
 		}
 		return (depth >= 16)
-	}()
+	}
 
 	go func() {
 		defer close(confirmedEntries)
@@ -202,9 +210,9 @@ func processOrderbookEntries(hyperdrive hd.HyperdriveContract, entryInCh <-chan 
 	return confirmedEntries
 }
 
-func executeConfirmedOrders(ctx context.Context, conn ethereum.Conn, auth *bind.TransactOpts, hyperdrive hd.HyperdriveContract, entries <-chan orderbook.Entry) <-chan swap.Swap {
+func executeConfirmedOrders(ctx context.Context, conn ethereum.Conn, auth *abiBind.TransactOpts, hyperdrive hd.HyperdriveContract, entries <-chan orderbook.Entry) <-chan swap.Swap {
 	swaps := make(chan swap.Swap)
-	
+
 	go func() {
 		defer close(swaps)
 		for {
@@ -215,7 +223,7 @@ func executeConfirmedOrders(ctx context.Context, conn ethereum.Conn, auth *bind.
 				}
 				orderID := [32]byte{}
 				copy(orderID[:], entry.Order.ID)
-				_, orderIDs, err := hdc.GetOrderMatch(orderID)
+				_, orderIDs, err := hyperdrive.GetOrderMatch(orderID)
 				if err != nil {
 					log.Fatalf("failed to get order match: %v", err)
 					continue
@@ -229,7 +237,7 @@ func executeConfirmedOrders(ctx context.Context, conn ethereum.Conn, auth *bind.
 		}
 	}()
 
-	return swaps, errs
+	return swaps
 }
 
 func getKey(filename, passphrase string) (*keystore.Key, error) {
@@ -273,13 +281,13 @@ func getMultiaddress(id identity.KeyPair, port string) (identity.MultiAddress, e
 
 func getRegistry(config *Config) (dnr.DarknodeRegistry, error) {
 	conn, err := ethereum.Connect(config.Ethereum)
-	auth := bind.NewKeyedTransactor(config.KeyPair.PrivateKey)
+	auth := abiBind.NewKeyedTransactor(config.KeyPair.PrivateKey)
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot fetch dark node registry: %s", err))
 		return dnr.DarknodeRegistry{}, err
 	}
 	auth.GasPrice = big.NewInt(6000000000)
-	registrar, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
+	registrar, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &abiBind.CallOpts{})
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot fetch dark node registry: %s", err))
 		return dnr.DarknodeRegistry{}, err
@@ -289,16 +297,102 @@ func getRegistry(config *Config) (dnr.DarknodeRegistry, error) {
 
 func getHyperdrive(config *Config) (hd.HyperdriveContract, error) {
 	conn, err := ethereum.Connect(config.Ethereum)
-	auth := bind.NewKeyedTransactor(config.KeyPair.PrivateKey)
+	auth := abiBind.NewKeyedTransactor(config.KeyPair.PrivateKey)
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot fetch hyperdrive: %s", err))
 		return hd.HyperdriveContract{}, err
 	}
 	auth.GasPrice = big.NewInt(6000000000)
-	hyperdrive, err := hd.NewHyperdriveContract(context.Background(), conn, auth, &bind.CallOpts{})
+	hyperdrive, err := hd.NewHyperdriveContract(context.Background(), conn, auth, &abiBind.CallOpts{})
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot fetch hyperdrive: %s", err))
 		return hd.HyperdriveContract{}, err
 	}
 	return hyperdrive, nil
+}
+
+func initSwap(ctx context.Context, conn ethereum.Conn, auth *abiBind.TransactOpts, entry orderbook.Entry, fstOrderID, sndOrderID [32]byte) swap.Swap {
+	fstTokenAddress := getTokenAddress(entry.FstCode)
+	sndTokenAddress := getTokenAddress(entry.SndCode)
+	goesFirst := entry.Parity == order.ParitySell
+
+	expiry := time.Now().Unix() + 24*60*60
+	from := common.HexToAddress("0x1a459f0dF58cF0B9a4246Bd193a00125B45492Df").Bytes()
+	to := common.HexToAddress("0xad560E16C7f474281A31c5F38F903382EaBAc107").Bytes()
+	value := getFstValue(entry.Price, entry.MaxVolume) // Assuming max and min volume to be same
+	if goesFirst {
+		expiry = time.Now().Unix() + 48*60*60
+		from = common.HexToAddress("0xad560E16C7f474281A31c5F38F903382EaBAc107").Bytes()
+		to = common.HexToAddress("0x1a459f0dF58cF0B9a4246Bd193a00125B45492Df").Bytes()
+		value = getSndValue(entry.Price, entry.MaxVolume) // Assuming max and min volume to be same
+	}
+	order := entry.Order.Bytes()
+	fee := big.NewInt(2)
+
+	fstArc, err := arc.NewArc(ctx, conn, auth, order, fstTokenAddress, fee)
+	if err != nil {
+		log.Fatalf("cannot create new arc: %s", err)
+	}
+	sndArc, err := arc.NewArc(ctx, conn, auth, []byte{}, sndTokenAddress, fee)
+	if err != nil {
+		log.Fatalf("cannot create new arc: %s", err)
+	}
+	fstItem := swap.SwapItem{
+		OrderID:   fstOrderID,
+		From:      from,
+		To:        to,
+		Value:     value,
+		Expiry:    expiry,
+		Arc:       fstArc,
+		GoesFirst: goesFirst,
+	}
+	sndItem := swap.SwapItem{
+		OrderID: sndOrderID,
+		Arc:     sndArc,
+	}
+	return swap.NewSwap(fstItem, sndItem)
+}
+
+func processAtomicSwaps(swaps <-chan swap.Swap) {
+	go func() {
+		for {
+			select {
+			case swap, ok := <-swaps:
+				if !ok {
+					return
+				}
+				go func() {
+					err := swap.Execute(context.Background())
+					if err != nil {
+						log.Fatalf("failed to execute the atomic swap: %v", err)
+						return
+					}
+				}()
+			}
+		}
+	}()
+}
+
+func getTokenAddress(currencyCode order.CurrencyCode) common.Address {
+	switch currencyCode {
+	case order.CurrencyCodeREN:
+		return common.HexToAddress("0x65d54EDa5f032F2275Caa557E50c029cFbCCBB54")
+	case order.CurrencyCodeETH:
+		return common.HexToAddress("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")
+	default:
+		log.Fatalf("error unsupported currency code")
+		return common.Address{}
+	}
+}
+
+func getFstValue(price, volume stackint.Int1024) *big.Int {
+	value := volume.Mul(&price)
+	return value.ToBigInt()
+}
+
+func getSndValue(price, volume stackint.Int1024) *big.Int {
+	one := stackint.One()
+	price = one.Div(&price)
+	value := volume.Mul(&price)
+	return value.ToBigInt()
 }

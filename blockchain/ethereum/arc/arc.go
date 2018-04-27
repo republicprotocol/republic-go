@@ -34,7 +34,7 @@ type Arc struct {
 
 // NewArc returns a new EthereumArc instance
 func NewArc(context context.Context, conn ethereum.Conn, auth *bind.TransactOpts, order []byte, tokenAddress common.Address, fee *big.Int) (arc.Arc, error) {
-	arc, err := bindings.NewArc(conn.ArcAddress, conn.Client)
+	arc, err := bindings.NewArc(common.HexToAddress(conn.Config.ArcAddress), conn.Client)
 	if err != nil {
 		return &Arc{}, err
 	}
@@ -70,7 +70,7 @@ func (arc *Arc) Initiate(hash [32]byte, from []byte, to []byte, value *big.Int, 
 		tx, err = arc.binding.Initiate(arc.auth, hash, arc.tokenAddress, value, arc.fee, big.NewInt(expiry), common.BytesToAddress(to), arc.order)
 		arc.auth.Value = big.NewInt(0)
 	} else {
-		tx, err = arc.tokenBinding.Approve(arc.auth, arc.conn.ArcAddress, value)
+		tx, err = arc.tokenBinding.Approve(arc.auth, common.HexToAddress(arc.conn.Config.ArcAddress), value)
 	}
 
 	if err != nil {
