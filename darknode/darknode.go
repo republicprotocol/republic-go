@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
 	"time"
@@ -139,6 +140,7 @@ func (node *Darknode) Run(done <-chan struct{}) <-chan error {
 
 		// Start serving
 		go func() {
+
 			if err := node.Serve(done); err != nil {
 				errs <- err
 				return
@@ -180,6 +182,7 @@ func (node *Darknode) Serve(done <-chan struct{}) error {
 	node.rpc.Swarmer().Register(server)
 
 	go func() {
+		node.Logger.Info( "darknode start listening in port " + node.Config.Port)
 		if err = server.Serve(listener); err != nil {
 			return
 		}
