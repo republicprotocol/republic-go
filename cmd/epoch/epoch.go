@@ -29,19 +29,19 @@ func main() {
 	auth.GasPrice = big.NewInt(6000000000)
 
 	// Create the eth-client so we can interact with the Registrar contract
-	client, err := ethereum.Connect("https://ropsten.infura.io",ethereum.NetworkRopsten, ethereum.RepublicTokenAddressOnRopsten.Hex(),
-		ethereum.DarknodeRegistryAddressOnRopsten.Hex(), ethereum.HyperdriveAddressOnRopsten.Hex())
+	client, err := ethereum.Connect("https://ropsten.infura.io",
+		ethereum.NetworkRopsten, ethereum.RepublicTokenAddressOnRopsten.Hex(),
+		ethereum.DarknodeRegistryAddressOnRopsten.Hex(),
+		ethereum.HyperdriveAddressOnRopsten.Hex())
 	registrar, err := dnr.NewDarknodeRegistry(context.Background(), client, auth, &bind.CallOpts{})
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println("calling the epoch")
-	_ , err = registrar.Epoch()
+	_, err = registrar.Epoch()
 	if err != nil {
 		log.Fatal("fail to call epoch")
 	}
 	log.Println("epoch finished ")
 }
-
-

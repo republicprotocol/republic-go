@@ -181,7 +181,7 @@ func (node *Darknode) Serve(done <-chan struct{}) error {
 	node.rpc.Swarmer().Register(server)
 
 	go func() {
-		node.Logger.Info( "darknode start listening in port " + node.Config.Port)
+		node.Logger.Info("darknode start listening in port " + node.Config.Port)
 		if err = server.Serve(listener); err != nil {
 			return
 		}

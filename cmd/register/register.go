@@ -18,7 +18,6 @@ const RepublicTokenAddress = "0x65d54eda5f032f2275caa557e50c029cfbccbb54"
 const DarknodeRegistryAddress = "0x69eb8d26157b9e12f959ea9f189A5D75991b59e3"
 const HyperdriveAddress = "0x348496ad820f2ee256268f9f9d0b9f5bacdc26cd"
 
-
 const reset = "\x1b[0m"
 const yellow = "\x1b[33;1m"
 const green = "\x1b[32;1m"
@@ -47,7 +46,7 @@ func main() {
 		configs[file] = config
 	}
 
-	RegisterAll( configs)
+	RegisterAll(configs)
 }
 
 // RegisterAll takes a slice of republic private keys and registers them
@@ -73,7 +72,7 @@ func RegisterAll(configs []*darknode.Config) {
 			log.Fatal(err)
 		}
 
-		auth := bind.NewKeyedTransactor( configs[i].EcdsaKey.PrivateKey)
+		auth := bind.NewKeyedTransactor(configs[i].EcdsaKey.PrivateKey)
 
 		registrar, err := dnr.NewDarknodeRegistry(context.Background(), clientDetails, auth, &bind.CallOpts{})
 		if err != nil {
