@@ -38,6 +38,8 @@ var (
 	RepublicTokenAddressOnRopsten    = common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54")
 	DarknodeRegistryAddressOnRopsten = common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3")
 	HyperdriveAddressOnRopsten       = common.HexToAddress("0x348496ad820f2ee256268f9f9d0b9f5bacdc26cd")
+	RewardGatewayAddressOnRopsten    = common.HexToAddress("")
+	ArcAddressOnRopsten              = common.HexToAddress("")
 )
 
 // Conn contains the client and the contracts deployed to it
@@ -49,6 +51,7 @@ type Conn struct {
 	DarknodeRegistryAddress common.Address
 	TraderRegistryAddress   common.Address
 	HyperdriveAddress       common.Address
+	ArcAddress              common.Address
 }
 
 // Connect to a URI.
