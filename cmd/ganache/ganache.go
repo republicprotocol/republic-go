@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
@@ -23,31 +20,22 @@ func main() {
 
 	fmt.Printf("Ganache is listening on %shttp://localhost:8545%s...\n", green, reset)
 
-	cmd := ganache.Start()
-	go killAtExit(cmd)
+	ganache.Start()
+	go func() {
+		ganache.WatchForInterrupt()
+		os.Exit(0)
+	}()
 
 	time.Sleep(time.Duration(*argSleep) * time.Second)
 
 	conn, err := ganache.Connect("http://localhost:8545")
 	if err != nil {
 		log.Fatalf("cannot connect to ganache: %v", err)
-		return
 	}
 
 	if err := ganache.DeployContracts(conn); err != nil {
 		log.Fatalf("cannot deploy contracts to ganache: %v", err)
-		return
 	}
 
-	cmd.Wait()
-}
-
-func killAtExit(cmd *exec.Cmd) {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
-	go func() {
-		<-sigs
-		cmd.Process.Kill()
-		os.Exit(0)
-	}()
+	ganache.Wait()
 }

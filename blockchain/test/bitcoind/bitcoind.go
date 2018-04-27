@@ -39,8 +39,6 @@ func Mine(conn bitcoin.Conn) error {
 			}
 		}
 	}
-
-	return nil
 }
 
 func NewAccount(conn bitcoin.Conn, name string, value btcutil.Amount) (btcutil.Address, error) {

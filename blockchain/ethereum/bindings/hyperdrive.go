@@ -925,7 +925,7 @@ func (_BurnableToken *BurnableTokenFilterer) WatchTransfer(opts *bind.WatchOpts,
 const DarknodeRegistryABI = "[{\"constant\":true,\"inputs\":[],\"name\":\"numDarkNodes\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"numDarkNodesNextEpoch\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darkNodeID\",\"type\":\"bytes20\"}],\"name\":\"isDeregistered\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darkNodeID\",\"type\":\"bytes20\"}],\"name\":\"getPublicKey\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_darkNodeID\",\"type\":\"bytes20\"},{\"name\":\"_publicKey\",\"type\":\"bytes\"},{\"name\":\"_bond\",\"type\":\"uint256\"}],\"name\":\"register\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darkNodeID\",\"type\":\"bytes20\"}],\"name\":\"isRegistered\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"minimumEpochInterval\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_darkNodeID\",\"type\":\"bytes20\"}],\"name\":\"refund\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darkNodeID\",\"type\":\"bytes20\"}],\"name\":\"getBond\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"currentEpoch\",\"outputs\":[{\"name\":\"epochhash\",\"type\":\"uint256\"},{\"name\":\"timestamp\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getDarkNodes\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes20[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"epoch\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"minimumBond\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"minimumDarkPoolSize\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darkNodeID\",\"type\":\"bytes20\"}],\"name\":\"isUnregistered\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_darkNodeID\",\"type\":\"bytes20\"}],\"name\":\"deregister\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darkNodeID\",\"type\":\"bytes20\"}],\"name\":\"getOwner\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_token\",\"type\":\"address\"},{\"name\":\"_minimumBond\",\"type\":\"uint256\"},{\"name\":\"_minimumDarkPoolSize\",\"type\":\"uint256\"},{\"name\":\"_minimumEpochInterval\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"_darkNodeID\",\"type\":\"bytes20\"},{\"indexed\":false,\"name\":\"_bond\",\"type\":\"uint256\"}],\"name\":\"DarkNodeRegistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"_darkNodeID\",\"type\":\"bytes20\"}],\"name\":\"DarkNodeDeregistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"_owner\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"_amount\",\"type\":\"uint256\"}],\"name\":\"OwnerRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[],\"name\":\"NewEpoch\",\"type\":\"event\"}]"
 
 // DarknodeRegistryBin is the compiled bytecode used for deploying new contracts.
-const DarknodeRegistryBin = `0x608060405234801561001057600080fd5b506040516080806110df83398101604081815282516020808501518386015160609096015160008054600160a060020a03909516600160a060020a03199095169490941784556005919091556006959095556007949094558183019091524360001901408083524293909201839052600891909155600991909155600381905560045561103d806100a26000396000f3006080604052600436106100f05763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663060a2cfd81146100f55780630620eb921461011c578063171f6ea81461013157806332ccd52f14610167578063375a8be3146101fe5780634f5550fc1461026a57806355cacda51461028c5780635a8f9b81146102a157806368f209eb146102c357806376671808146102e5578063879ae08414610313578063900cf0cf14610378578063aa7517e11461038d578063b31575d5146103a2578063d3841c25146103b7578063e08b4c8a146103d9578063e487eb58146103fb575b600080fd5b34801561010157600080fd5b5061010a610439565b60408051918252519081900360200190f35b34801561012857600080fd5b5061010a61043f565b34801561013d57600080fd5b506101536001606060020a031960043516610445565b604080519115158252519081900360200190f35b34801561017357600080fd5b506101896001606060020a031960043516610494565b6040805160208082528351818301528351919283929083019185019080838360005b838110156101c35781810151838201526020016101ab565b50505050905090810190601f1680156101f05780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b34801561020a57600080fd5b5060408051602060046024803582810135601f81018590048502860185019096528585526102689583356001606060020a03191695369560449491939091019190819084018382808284375094975050933594506105429350505050565b005b34801561027657600080fd5b506101536001606060020a0319600435166107c8565b34801561029857600080fd5b5061010a610828565b3480156102ad57600080fd5b506102686001606060020a03196004351661082e565b3480156102cf57600080fd5b5061010a6001606060020a031960043516610a40565b3480156102f157600080fd5b506102fa610a60565b6040805192835260208301919091528051918290030190f35b34801561031f57600080fd5b50610328610a69565b60408051602080825283518183015283519192839290830191858101910280838360005b8381101561036457818101518382015260200161034c565b505050509050019250505060405180910390f35b34801561038457600080fd5b50610268610b21565b34801561039957600080fd5b5061010a610b95565b3480156103ae57600080fd5b5061010a610b9b565b3480156103c357600080fd5b506101536001606060020a031960043516610ba1565b3480156103e557600080fd5b506102686001606060020a031960043516610bc1565b34801561040757600080fd5b5061041d6001606060020a031960043516610c7b565b60408051600160a060020a039092168252519081900360200190f35b60035481565b60045481565b6001606060020a031981166000908152600160205260408120600301541580159061048e57506009546001606060020a0319831660009081526001602052604090206003015411155b92915050565b6001606060020a0319811660009081526001602081815260409283902060040180548451600294821615610100026000190190911693909304601f810183900483028401830190945283835260609390918301828280156105365780601f1061050b57610100808354040283529160200191610536565b820191906000526020600020905b81548152906001019060200180831161051957829003601f168201915b50505050509050919050565b8261054c81610ba1565b151561055757600080fd5b60055482101561056657600080fd5b60008054604080517fdd62ed3e000000000000000000000000000000000000000000000000000000008152600160a060020a03338116600483015230811660248301529151919092169263dd62ed3e92604480820193602093909283900390910190829087803b1580156105d957600080fd5b505af11580156105ed573d6000803e3d6000fd5b505050506040513d602081101561060357600080fd5b505182111561061157600080fd5b60008054604080517f23b872dd000000000000000000000000000000000000000000000000000000008152600160a060020a033381166004830152308116602483015260448201879052915191909216926323b872dd92606480820193602093909283900390910190829087803b15801561068b57600080fd5b505af115801561069f573d6000803e3d6000fd5b505050506040513d60208110156106b557600080fd5b505115156106c257600080fd5b6040805160a08101825233600160a060020a039081168252602080830186815260075460095401848601908152600060608601818152608087018b81526001606060020a03198d1683526001808752989092208751815473ffffffffffffffffffffffffffffffffffffffff1916971696909617865592519685019690965551600284015551600383015592518051929391926107659260048501920190610f76565b50905050610774600285610ca0565b600480546001019055604080516001606060020a0319861681526020810184905281517fcde427a7822769e806a704726602a3a8a44458da1352d9b5a46bcfb95142ad38929181900390910190a150505050565b6001606060020a031981166000908152600160205260408120600201541580159061081157506009546001606060020a0319831660009081526001602052604090206002015411155b801561048e575061082182610445565b1592915050565b60075481565b6001606060020a03198116600090815260016020526040812054829033600160a060020a0390811691161461086257600080fd5b8261086c81610445565b151561087757600080fd5b6001606060020a031984166000908152600160208190526040822001549350831161089e57fe5b6108a9600285610ccb565b6040805160a081018252600080825260208083018281528385018381526060850184815286518085018852858152608087019081526001606060020a03198c1686526001808652979095208651815473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a03909116178155925196830196909655516002820155935160038501559051805192939261094a9260048501920190610f76565b505060008054604080517fa9059cbb000000000000000000000000000000000000000000000000000000008152600160a060020a03338116600483015260248201899052915191909216935063a9059cbb92604480840193602093929083900390910190829087803b1580156109bf57600080fd5b505af11580156109d3573d6000803e3d6000fd5b505050506040513d60208110156109e957600080fd5b505115156109f657600080fd5b60408051600160a060020a03331681526020810185905281517f8dce8f4eb4097fbdf948a109703513f52a7fabcc7e328ba7f29ad8165033e953929181900390910190a150505050565b6001606060020a0319166000908152600160208190526040909120015490565b60085460095482565b606080600080600354604051908082528060200260200182016040528015610a9b578160200160208202803883390190505b50925060009150610aac6002610dc4565b90505b600354821015610b1957610ac2816107c8565b1515610ada57610ad3600282610de9565b9050610aaf565b808383815181101515610ae957fe5b6001606060020a0319909216602092830290910190910152610b0c600282610de9565b6001909201919050610aaf565b509092915050565b600754600954600091014211610b3657600080fd5b5060408051808201825260001943014080825260075460098054909101602090930183905260088290559190915560045460035590517fe358419ca0dd7928a310d787a606dfae5d869f5071249efa6107105e7afc40bc90600090a150565b60055481565b60065481565b6001606060020a0319166000908152600160205260409020600201541590565b80610bcb816107c8565b1515610bd657600080fd5b6001606060020a03198216600090815260016020526040902054829033600160a060020a03908116911614610c0a57600080fd5b6007546009546001606060020a031985166000818152600160209081526040918290209390940160039093019290925560048054600019019055815190815290517fe3365373f442312a7d66aa1003b60fd4a0f9ed1c85fd8bb384240f8eb4fe916c929181900390910190a1505050565b6001606060020a031916600090815260016020526040902054600160a060020a031690565b610caa8282610e30565b15610cb457600080fd5b610cc782610cc184610e50565b83610e78565b5050565b600080610cd88484610e30565b1515610ce357600080fd5b6001606060020a031983161515610cf957610dbe565b50506001606060020a03198082166000818152602085905260408082208054600180830180546c01000000000000000000000000610100948590048102808b168952878920909401805492820282810473ffffffffffffffffffffffffffffffffffffffff1994851617909155998a168852958720805496840490940274ffffffffffffffffffffffffffffffffffffffff00199096169590951790925594909352805474ffffffffffffffffffffffffffffffffffffffffff191690558154169055905b50505050565b600080805260209190915260409020600101546c010000000000000000000000000290565b6000610df58383610e30565b1515610e0057600080fd5b506001606060020a031916600090815260209190915260409020600101546c010000000000000000000000000290565b6001606060020a0319166000908152602091909152604090205460ff1690565b60008080526020829052604090205461010090046c0100000000000000000000000002919050565b6000610e848483610e30565b15610e8e57600080fd5b610e988484610e30565b80610eab57506001606060020a03198316155b1515610eb657600080fd5b506001606060020a0319808316600090815260209490945260408085206001908101805485851680895284892080546c01000000000000000000000000998a900461010090810274ffffffffffffffffffffffffffffffffffffffff00199283161783558287018054958c028c810473ffffffffffffffffffffffffffffffffffffffff199788161790915586549b909a049a9094168a179094559690951688529287208054969093029516949094179055909252815460ff1916179055565b828054600181600116156101000203166002900490600052602060002090601f016020900481019282601f10610fb757805160ff1916838001178555610fe4565b82800160010185558215610fe4579182015b82811115610fe4578251825591602001919060010190610fc9565b50610ff0929150610ff4565b5090565b61100e91905b80821115610ff05760008155600101610ffa565b905600a165627a7a72305820b04a9e37d5d431f9b779dfb5b47f22640b8155859dec1b6100a3b4731a3323dd0029`
+const DarknodeRegistryBin = `0x608060405234801561001057600080fd5b506040516080806110df83398101604081815282516020808501518386015160609096015160008054600160a060020a03909516600160a060020a03199095169490941784556005919091556006959095556007949094558183019091524360001901408083524293909201839052600891909155600991909155600381905560045561103d806100a26000396000f3006080604052600436106100f05763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663060a2cfd81146100f55780630620eb921461011c578063171f6ea81461013157806332ccd52f14610167578063375a8be3146101fe5780634f5550fc1461026a57806355cacda51461028c5780635a8f9b81146102a157806368f209eb146102c357806376671808146102e5578063879ae08414610313578063900cf0cf14610378578063aa7517e11461038d578063b31575d5146103a2578063d3841c25146103b7578063e08b4c8a146103d9578063e487eb58146103fb575b600080fd5b34801561010157600080fd5b5061010a610439565b60408051918252519081900360200190f35b34801561012857600080fd5b5061010a61043f565b34801561013d57600080fd5b506101536001606060020a031960043516610445565b604080519115158252519081900360200190f35b34801561017357600080fd5b506101896001606060020a031960043516610494565b6040805160208082528351818301528351919283929083019185019080838360005b838110156101c35781810151838201526020016101ab565b50505050905090810190601f1680156101f05780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b34801561020a57600080fd5b5060408051602060046024803582810135601f81018590048502860185019096528585526102689583356001606060020a03191695369560449491939091019190819084018382808284375094975050933594506105429350505050565b005b34801561027657600080fd5b506101536001606060020a0319600435166107c8565b34801561029857600080fd5b5061010a610828565b3480156102ad57600080fd5b506102686001606060020a03196004351661082e565b3480156102cf57600080fd5b5061010a6001606060020a031960043516610a40565b3480156102f157600080fd5b506102fa610a60565b6040805192835260208301919091528051918290030190f35b34801561031f57600080fd5b50610328610a69565b60408051602080825283518183015283519192839290830191858101910280838360005b8381101561036457818101518382015260200161034c565b505050509050019250505060405180910390f35b34801561038457600080fd5b50610268610b21565b34801561039957600080fd5b5061010a610b95565b3480156103ae57600080fd5b5061010a610b9b565b3480156103c357600080fd5b506101536001606060020a031960043516610ba1565b3480156103e557600080fd5b506102686001606060020a031960043516610bc1565b34801561040757600080fd5b5061041d6001606060020a031960043516610c7b565b60408051600160a060020a039092168252519081900360200190f35b60035481565b60045481565b6001606060020a031981166000908152600160205260408120600301541580159061048e57506009546001606060020a0319831660009081526001602052604090206003015411155b92915050565b6001606060020a0319811660009081526001602081815260409283902060040180548451600294821615610100026000190190911693909304601f810183900483028401830190945283835260609390918301828280156105365780601f1061050b57610100808354040283529160200191610536565b820191906000526020600020905b81548152906001019060200180831161051957829003601f168201915b50505050509050919050565b8261054c81610ba1565b151561055757600080fd5b60055482101561056657600080fd5b60008054604080517fdd62ed3e000000000000000000000000000000000000000000000000000000008152600160a060020a03338116600483015230811660248301529151919092169263dd62ed3e92604480820193602093909283900390910190829087803b1580156105d957600080fd5b505af11580156105ed573d6000803e3d6000fd5b505050506040513d602081101561060357600080fd5b505182111561061157600080fd5b60008054604080517f23b872dd000000000000000000000000000000000000000000000000000000008152600160a060020a033381166004830152308116602483015260448201879052915191909216926323b872dd92606480820193602093909283900390910190829087803b15801561068b57600080fd5b505af115801561069f573d6000803e3d6000fd5b505050506040513d60208110156106b557600080fd5b505115156106c257600080fd5b6040805160a08101825233600160a060020a039081168252602080830186815260075460095401848601908152600060608601818152608087018b81526001606060020a03198d1683526001808752989092208751815473ffffffffffffffffffffffffffffffffffffffff1916971696909617865592519685019690965551600284015551600383015592518051929391926107659260048501920190610f76565b50905050610774600285610ca0565b600480546001019055604080516001606060020a0319861681526020810184905281517fcde427a7822769e806a704726602a3a8a44458da1352d9b5a46bcfb95142ad38929181900390910190a150505050565b6001606060020a031981166000908152600160205260408120600201541580159061081157506009546001606060020a0319831660009081526001602052604090206002015411155b801561048e575061082182610445565b1592915050565b60075481565b6001606060020a03198116600090815260016020526040812054829033600160a060020a0390811691161461086257600080fd5b8261086c81610445565b151561087757600080fd5b6001606060020a031984166000908152600160208190526040822001549350831161089e57fe5b6108a9600285610ccb565b6040805160a081018252600080825260208083018281528385018381526060850184815286518085018852858152608087019081526001606060020a03198c1686526001808652979095208651815473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a03909116178155925196830196909655516002820155935160038501559051805192939261094a9260048501920190610f76565b505060008054604080517fa9059cbb000000000000000000000000000000000000000000000000000000008152600160a060020a03338116600483015260248201899052915191909216935063a9059cbb92604480840193602093929083900390910190829087803b1580156109bf57600080fd5b505af11580156109d3573d6000803e3d6000fd5b505050506040513d60208110156109e957600080fd5b505115156109f657600080fd5b60408051600160a060020a03331681526020810185905281517f8dce8f4eb4097fbdf948a109703513f52a7fabcc7e328ba7f29ad8165033e953929181900390910190a150505050565b6001606060020a0319166000908152600160208190526040909120015490565b60085460095482565b606080600080600354604051908082528060200260200182016040528015610a9b578160200160208202803883390190505b50925060009150610aac6002610dc4565b90505b600354821015610b1957610ac2816107c8565b1515610ada57610ad3600282610de9565b9050610aaf565b808383815181101515610ae957fe5b6001606060020a0319909216602092830290910190910152610b0c600282610de9565b6001909201919050610aaf565b509092915050565b600754600954600091014211610b3657600080fd5b5060408051808201825260001943014080825260075460098054909101602090930183905260088290559190915560045460035590517fe358419ca0dd7928a310d787a606dfae5d869f5071249efa6107105e7afc40bc90600090a150565b60055481565b60065481565b6001606060020a0319166000908152600160205260409020600201541590565b80610bcb816107c8565b1515610bd657600080fd5b6001606060020a03198216600090815260016020526040902054829033600160a060020a03908116911614610c0a57600080fd5b6007546009546001606060020a031985166000818152600160209081526040918290209390940160039093019290925560048054600019019055815190815290517fe3365373f442312a7d66aa1003b60fd4a0f9ed1c85fd8bb384240f8eb4fe916c929181900390910190a1505050565b6001606060020a031916600090815260016020526040902054600160a060020a031690565b610caa8282610e30565b15610cb457600080fd5b610cc782610cc184610e50565b83610e78565b5050565b600080610cd88484610e30565b1515610ce357600080fd5b6001606060020a031983161515610cf957610dbe565b50506001606060020a03198082166000818152602085905260408082208054600180830180546c01000000000000000000000000610100948590048102808b168952878920909401805492820282810473ffffffffffffffffffffffffffffffffffffffff1994851617909155998a168852958720805496840490940274ffffffffffffffffffffffffffffffffffffffff00199096169590951790925594909352805474ffffffffffffffffffffffffffffffffffffffffff191690558154169055905b50505050565b600080805260209190915260409020600101546c010000000000000000000000000290565b6000610df58383610e30565b1515610e0057600080fd5b506001606060020a031916600090815260209190915260409020600101546c010000000000000000000000000290565b6001606060020a0319166000908152602091909152604090205460ff1690565b60008080526020829052604090205461010090046c0100000000000000000000000002919050565b6000610e848483610e30565b15610e8e57600080fd5b610e988484610e30565b80610eab57506001606060020a03198316155b1515610eb657600080fd5b506001606060020a0319808316600090815260209490945260408085206001908101805485851680895284892080546c01000000000000000000000000998a900461010090810274ffffffffffffffffffffffffffffffffffffffff00199283161783558287018054958c028c810473ffffffffffffffffffffffffffffffffffffffff199788161790915586549b909a049a9094168a179094559690951688529287208054969093029516949094179055909252815460ff1916179055565b828054600181600116156101000203166002900490600052602060002090601f016020900481019282601f10610fb757805160ff1916838001178555610fe4565b82800160010185558215610fe4579182015b82811115610fe4578251825591602001919060010190610fc9565b50610ff0929150610ff4565b5090565b61100e91905b80821115610ff05760008155600101610ffa565b905600a165627a7a7230582095d404ffbcb671e9f1922f607b251cd0b6769dc1227fa33ed50dd41ce4de06330029`
 
 // DeployDarknodeRegistry deploys a new Ethereum contract, binding an instance of DarknodeRegistry to it.
 func DeployDarknodeRegistry(auth *bind.TransactOpts, backend bind.ContractBackend, _token common.Address, _minimumBond *big.Int, _minimumDarkPoolSize *big.Int, _minimumEpochInterval *big.Int) (common.Address, *types.Transaction, *DarknodeRegistry, error) {
@@ -2965,11 +2965,397 @@ func (_ERC20Basic *ERC20BasicFilterer) WatchTransfer(opts *bind.WatchOpts, sink 
 	}), nil
 }
 
+// HyperdriveABI is the input ABI used to generate the binding from.
+const HyperdriveABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"hash\",\"type\":\"bytes32\"},{\"name\":\"orderHashes\",\"type\":\"bytes32[]\"}],\"name\":\"sendOrderMatch\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"getOrderMatch\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bytes32[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"orderHash\",\"type\":\"bytes32\"}],\"name\":\"depth\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"confirmedOrders\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"dnr\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"orderHash\",\"type\":\"bytes32\"}],\"name\":\"Confirm\",\"type\":\"event\"}]"
+
+// HyperdriveBin is the compiled bytecode used for deploying new contracts.
+const HyperdriveBin = `0x608060405234801561001057600080fd5b50604051602080610526833981016040525160028054600160a060020a031916600160a060020a039092169190911790556104d6806100506000396000f3006080604052600436106100615763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416632e7c8ba581146100665780636a5ba3ce146100c25780639e77a29814610134578063e58d75111461015e575b600080fd5b34801561007257600080fd5b506040805160206004602480358281013584810280870186019097528086526100c0968435963696604495919490910192918291850190849080828437509497506101769650505050505050565b005b3480156100ce57600080fd5b506100da600435610388565b60408051838152602080820183815284519383019390935283519192916060840191858101910280838360005b8381101561011f578181015183820152602001610107565b50505050905001935050505060405180910390f35b34801561014057600080fd5b5061014c6004356103f9565b60408051918252519081900360200190f35b34801561016a57600080fd5b5061014c60043561042e565b600254604080517f4f5550fc000000000000000000000000000000000000000000000000000000008152336c0100000000000000000000000081026bffffffffffffffffffffffff19166004830152915160009373ffffffffffffffffffffffffffffffffffffffff1691634f5550fc91602480830192602092919082900301818887803b15801561020757600080fd5b505af115801561021b573d6000803e3d6000fd5b505050506040513d602081101561023157600080fd5b5051151561023e57600080fd5b600091505b825182101561028d5760016000848481518110151561025e57fe5b60209081029091018101518252810191909152604001600020541561028257600080fd5b600190910190610243565b600091505b8251821015610382576040805180820190915284815260208101849052835160009081908690869081106102c257fe5b60209081029091018101518252818101929092526040016000208251815582820151805191926102fa92600185019290910190610440565b509050504360016000858581518110151561031157fe5b602090810290910181015182528101919091526040016000205582517f94d94affe11eeecd469f8d64826f21e58723e70a2d6f0a69d3475ec3f6ff6f689084908490811061035b57fe5b602090810290910181015160408051918252519081900390910190a1600190910190610292565b50505050565b600081815260208181526040808320805460019091018054835181860281018601909452808452606094929391928391908301828280156103e957602002820191906000526020600020905b815481526001909101906020018083116103d4575b5050505050905091509150915091565b600081815260016020526040812054151561041657506000610429565b5060008181526001602052604090205443035b919050565b60016020526000908152604090205481565b82805482825590600052602060002090810192821561047d579160200282015b8281111561047d5782518255602090920191600190910190610460565b5061048992915061048d565b5090565b6104a791905b808211156104895760008155600101610493565b905600a165627a7a72305820df404005bdd8118ecf8e97d45154c110da72abc0beb631286bf4f44f4ce450ac0029`
+
+// DeployHyperdrive deploys a new Ethereum contract, binding an instance of Hyperdrive to it.
+func DeployHyperdrive(auth *bind.TransactOpts, backend bind.ContractBackend, dnr common.Address) (common.Address, *types.Transaction, *Hyperdrive, error) {
+	parsed, err := abi.JSON(strings.NewReader(HyperdriveABI))
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(HyperdriveBin), backend, dnr)
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	return address, tx, &Hyperdrive{HyperdriveCaller: HyperdriveCaller{contract: contract}, HyperdriveTransactor: HyperdriveTransactor{contract: contract}, HyperdriveFilterer: HyperdriveFilterer{contract: contract}}, nil
+}
+
+// Hyperdrive is an auto generated Go binding around an Ethereum contract.
+type Hyperdrive struct {
+	HyperdriveCaller     // Read-only binding to the contract
+	HyperdriveTransactor // Write-only binding to the contract
+	HyperdriveFilterer   // Log filterer for contract events
+}
+
+// HyperdriveCaller is an auto generated read-only Go binding around an Ethereum contract.
+type HyperdriveCaller struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// HyperdriveTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type HyperdriveTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// HyperdriveFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type HyperdriveFilterer struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// HyperdriveSession is an auto generated Go binding around an Ethereum contract,
+// with pre-set call and transact options.
+type HyperdriveSession struct {
+	Contract     *Hyperdrive       // Generic contract binding to set the session for
+	CallOpts     bind.CallOpts     // Call options to use throughout this session
+	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
+}
+
+// HyperdriveCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// with pre-set call options.
+type HyperdriveCallerSession struct {
+	Contract *HyperdriveCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts     // Call options to use throughout this session
+}
+
+// HyperdriveTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// with pre-set transact options.
+type HyperdriveTransactorSession struct {
+	Contract     *HyperdriveTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts     // Transaction auth options to use throughout this session
+}
+
+// HyperdriveRaw is an auto generated low-level Go binding around an Ethereum contract.
+type HyperdriveRaw struct {
+	Contract *Hyperdrive // Generic contract binding to access the raw methods on
+}
+
+// HyperdriveCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type HyperdriveCallerRaw struct {
+	Contract *HyperdriveCaller // Generic read-only contract binding to access the raw methods on
+}
+
+// HyperdriveTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type HyperdriveTransactorRaw struct {
+	Contract *HyperdriveTransactor // Generic write-only contract binding to access the raw methods on
+}
+
+// NewHyperdrive creates a new instance of Hyperdrive, bound to a specific deployed contract.
+func NewHyperdrive(address common.Address, backend bind.ContractBackend) (*Hyperdrive, error) {
+	contract, err := bindHyperdrive(address, backend, backend, backend)
+	if err != nil {
+		return nil, err
+	}
+	return &Hyperdrive{HyperdriveCaller: HyperdriveCaller{contract: contract}, HyperdriveTransactor: HyperdriveTransactor{contract: contract}, HyperdriveFilterer: HyperdriveFilterer{contract: contract}}, nil
+}
+
+// NewHyperdriveCaller creates a new read-only instance of Hyperdrive, bound to a specific deployed contract.
+func NewHyperdriveCaller(address common.Address, caller bind.ContractCaller) (*HyperdriveCaller, error) {
+	contract, err := bindHyperdrive(address, caller, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &HyperdriveCaller{contract: contract}, nil
+}
+
+// NewHyperdriveTransactor creates a new write-only instance of Hyperdrive, bound to a specific deployed contract.
+func NewHyperdriveTransactor(address common.Address, transactor bind.ContractTransactor) (*HyperdriveTransactor, error) {
+	contract, err := bindHyperdrive(address, nil, transactor, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &HyperdriveTransactor{contract: contract}, nil
+}
+
+// NewHyperdriveFilterer creates a new log filterer instance of Hyperdrive, bound to a specific deployed contract.
+func NewHyperdriveFilterer(address common.Address, filterer bind.ContractFilterer) (*HyperdriveFilterer, error) {
+	contract, err := bindHyperdrive(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &HyperdriveFilterer{contract: contract}, nil
+}
+
+// bindHyperdrive binds a generic wrapper to an already deployed contract.
+func bindHyperdrive(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := abi.JSON(strings.NewReader(HyperdriveABI))
+	if err != nil {
+		return nil, err
+	}
+	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_Hyperdrive *HyperdriveRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
+	return _Hyperdrive.Contract.HyperdriveCaller.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_Hyperdrive *HyperdriveRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Hyperdrive.Contract.HyperdriveTransactor.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_Hyperdrive *HyperdriveRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _Hyperdrive.Contract.HyperdriveTransactor.contract.Transact(opts, method, params...)
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_Hyperdrive *HyperdriveCallerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
+	return _Hyperdrive.Contract.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_Hyperdrive *HyperdriveTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Hyperdrive.Contract.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_Hyperdrive *HyperdriveTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _Hyperdrive.Contract.contract.Transact(opts, method, params...)
+}
+
+// ConfirmedOrders is a free data retrieval call binding the contract method 0xe58d7511.
+//
+// Solidity: function confirmedOrders( bytes32) constant returns(uint256)
+func (_Hyperdrive *HyperdriveCaller) ConfirmedOrders(opts *bind.CallOpts, arg0 [32]byte) (*big.Int, error) {
+	var (
+		ret0 = new(*big.Int)
+	)
+	out := ret0
+	err := _Hyperdrive.contract.Call(opts, out, "confirmedOrders", arg0)
+	return *ret0, err
+}
+
+// ConfirmedOrders is a free data retrieval call binding the contract method 0xe58d7511.
+//
+// Solidity: function confirmedOrders( bytes32) constant returns(uint256)
+func (_Hyperdrive *HyperdriveSession) ConfirmedOrders(arg0 [32]byte) (*big.Int, error) {
+	return _Hyperdrive.Contract.ConfirmedOrders(&_Hyperdrive.CallOpts, arg0)
+}
+
+// ConfirmedOrders is a free data retrieval call binding the contract method 0xe58d7511.
+//
+// Solidity: function confirmedOrders( bytes32) constant returns(uint256)
+func (_Hyperdrive *HyperdriveCallerSession) ConfirmedOrders(arg0 [32]byte) (*big.Int, error) {
+	return _Hyperdrive.Contract.ConfirmedOrders(&_Hyperdrive.CallOpts, arg0)
+}
+
+// Depth is a free data retrieval call binding the contract method 0x9e77a298.
+//
+// Solidity: function depth(orderHash bytes32) constant returns(uint256)
+func (_Hyperdrive *HyperdriveCaller) Depth(opts *bind.CallOpts, orderHash [32]byte) (*big.Int, error) {
+	var (
+		ret0 = new(*big.Int)
+	)
+	out := ret0
+	err := _Hyperdrive.contract.Call(opts, out, "depth", orderHash)
+	return *ret0, err
+}
+
+// Depth is a free data retrieval call binding the contract method 0x9e77a298.
+//
+// Solidity: function depth(orderHash bytes32) constant returns(uint256)
+func (_Hyperdrive *HyperdriveSession) Depth(orderHash [32]byte) (*big.Int, error) {
+	return _Hyperdrive.Contract.Depth(&_Hyperdrive.CallOpts, orderHash)
+}
+
+// Depth is a free data retrieval call binding the contract method 0x9e77a298.
+//
+// Solidity: function depth(orderHash bytes32) constant returns(uint256)
+func (_Hyperdrive *HyperdriveCallerSession) Depth(orderHash [32]byte) (*big.Int, error) {
+	return _Hyperdrive.Contract.Depth(&_Hyperdrive.CallOpts, orderHash)
+}
+
+// GetOrderMatch is a free data retrieval call binding the contract method 0x6a5ba3ce.
+//
+// Solidity: function getOrderMatch(hash bytes32) constant returns(bytes32, bytes32[])
+func (_Hyperdrive *HyperdriveCaller) GetOrderMatch(opts *bind.CallOpts, hash [32]byte) ([32]byte, [][32]byte, error) {
+	var (
+		ret0 = new([32]byte)
+		ret1 = new([][32]byte)
+	)
+	out := &[]interface{}{
+		ret0,
+		ret1,
+	}
+	err := _Hyperdrive.contract.Call(opts, out, "getOrderMatch", hash)
+	return *ret0, *ret1, err
+}
+
+// GetOrderMatch is a free data retrieval call binding the contract method 0x6a5ba3ce.
+//
+// Solidity: function getOrderMatch(hash bytes32) constant returns(bytes32, bytes32[])
+func (_Hyperdrive *HyperdriveSession) GetOrderMatch(hash [32]byte) ([32]byte, [][32]byte, error) {
+	return _Hyperdrive.Contract.GetOrderMatch(&_Hyperdrive.CallOpts, hash)
+}
+
+// GetOrderMatch is a free data retrieval call binding the contract method 0x6a5ba3ce.
+//
+// Solidity: function getOrderMatch(hash bytes32) constant returns(bytes32, bytes32[])
+func (_Hyperdrive *HyperdriveCallerSession) GetOrderMatch(hash [32]byte) ([32]byte, [][32]byte, error) {
+	return _Hyperdrive.Contract.GetOrderMatch(&_Hyperdrive.CallOpts, hash)
+}
+
+// SendOrderMatch is a paid mutator transaction binding the contract method 0x2e7c8ba5.
+//
+// Solidity: function sendOrderMatch(hash bytes32, orderHashes bytes32[]) returns()
+func (_Hyperdrive *HyperdriveTransactor) SendOrderMatch(opts *bind.TransactOpts, hash [32]byte, orderHashes [][32]byte) (*types.Transaction, error) {
+	return _Hyperdrive.contract.Transact(opts, "sendOrderMatch", hash, orderHashes)
+}
+
+// SendOrderMatch is a paid mutator transaction binding the contract method 0x2e7c8ba5.
+//
+// Solidity: function sendOrderMatch(hash bytes32, orderHashes bytes32[]) returns()
+func (_Hyperdrive *HyperdriveSession) SendOrderMatch(hash [32]byte, orderHashes [][32]byte) (*types.Transaction, error) {
+	return _Hyperdrive.Contract.SendOrderMatch(&_Hyperdrive.TransactOpts, hash, orderHashes)
+}
+
+// SendOrderMatch is a paid mutator transaction binding the contract method 0x2e7c8ba5.
+//
+// Solidity: function sendOrderMatch(hash bytes32, orderHashes bytes32[]) returns()
+func (_Hyperdrive *HyperdriveTransactorSession) SendOrderMatch(hash [32]byte, orderHashes [][32]byte) (*types.Transaction, error) {
+	return _Hyperdrive.Contract.SendOrderMatch(&_Hyperdrive.TransactOpts, hash, orderHashes)
+}
+
+// HyperdriveConfirmIterator is returned from FilterConfirm and is used to iterate over the raw logs and unpacked data for Confirm events raised by the Hyperdrive contract.
+type HyperdriveConfirmIterator struct {
+	Event *HyperdriveConfirm // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *HyperdriveConfirmIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(HyperdriveConfirm)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(HyperdriveConfirm)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *HyperdriveConfirmIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *HyperdriveConfirmIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// HyperdriveConfirm represents a Confirm event raised by the Hyperdrive contract.
+type HyperdriveConfirm struct {
+	OrderHash [32]byte
+	Raw       types.Log // Blockchain specific contextual infos
+}
+
+// FilterConfirm is a free log retrieval operation binding the contract event 0x94d94affe11eeecd469f8d64826f21e58723e70a2d6f0a69d3475ec3f6ff6f68.
+//
+// Solidity: event Confirm(orderHash bytes32)
+func (_Hyperdrive *HyperdriveFilterer) FilterConfirm(opts *bind.FilterOpts) (*HyperdriveConfirmIterator, error) {
+
+	logs, sub, err := _Hyperdrive.contract.FilterLogs(opts, "Confirm")
+	if err != nil {
+		return nil, err
+	}
+	return &HyperdriveConfirmIterator{contract: _Hyperdrive.contract, event: "Confirm", logs: logs, sub: sub}, nil
+}
+
+// WatchConfirm is a free log subscription operation binding the contract event 0x94d94affe11eeecd469f8d64826f21e58723e70a2d6f0a69d3475ec3f6ff6f68.
+//
+// Solidity: event Confirm(orderHash bytes32)
+func (_Hyperdrive *HyperdriveFilterer) WatchConfirm(opts *bind.WatchOpts, sink chan<- *HyperdriveConfirm) (event.Subscription, error) {
+
+	logs, sub, err := _Hyperdrive.contract.WatchLogs(opts, "Confirm")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(HyperdriveConfirm)
+				if err := _Hyperdrive.contract.UnpackLog(event, "Confirm", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
 // LinkedListABI is the input ABI used to generate the binding from.
 const LinkedListABI = "[{\"constant\":true,\"inputs\":[],\"name\":\"NULL\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes20\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}]"
 
 // LinkedListBin is the compiled bytecode used for deploying new contracts.
-const LinkedListBin = `0x60b361002f600b82828239805160001a6073146000811461001f57610021565bfe5b5030600052607381538281f300730000000000000000000000000000000000000000301460806040526004361060555763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663f26be3fc8114605a575b600080fd5b60606082565b604080516bffffffffffffffffffffffff199092168252519081900360200190f35b6000815600a165627a7a723058202c6ef008fac80160248888c2f9a11ea516528c11ff4b3124215f7aa182ccb6fb0029`
+const LinkedListBin = `0x60b361002f600b82828239805160001a6073146000811461001f57610021565bfe5b5030600052607381538281f300730000000000000000000000000000000000000000301460806040526004361060555763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663f26be3fc8114605a575b600080fd5b60606082565b604080516bffffffffffffffffffffffff199092168252519081900360200190f35b6000815600a165627a7a7230582096c34e560139ff66ffc8733d23c8c2ae5603e583096f517fa7ba57cc04b1d8980029`
 
 // DeployLinkedList deploys a new Ethereum contract, binding an instance of LinkedList to it.
 func DeployLinkedList(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *LinkedList, error) {

@@ -15,7 +15,7 @@ import (
 var _ = Describe("Smpc Computer", func() {
 	Context("when performing secure multiparty computations", func() {
 
-		It("should produce obscure residue fragments", func(done Done) {
+		PIt("should produce obscure residue fragments", func(done Done) {
 			defer close(done)
 
 			var wg sync.WaitGroup

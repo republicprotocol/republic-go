@@ -32,7 +32,7 @@ func randomBytes32() [32]byte {
 var _ = Describe("Bitcoin", func() {
 
 	// Don't run on CI
-	test.SkipCiContext("arc swap", func() {
+	test.SkipCIContext("arc swap", func() {
 
 		var conn bitcoin.Conn
 

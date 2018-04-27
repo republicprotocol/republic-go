@@ -3,6 +3,7 @@ package dnr
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -26,14 +27,14 @@ type DarknodeRegistry struct {
 	conn                    ethereum.Conn
 	transactOpts            *bind.TransactOpts
 	callOpts                *bind.CallOpts
-	binding                 *bindings.DarkNodeRegistry
+	binding                 *bindings.DarknodeRegistry
 	tokenBinding            *bindings.RepublicToken
-	darkNodeRegistryAddress common.Address
+	DarknodeRegistryAddress common.Address
 }
 
 // NewDarknodeRegistry returns a Dark node registrar
 func NewDarknodeRegistry(context context.Context, conn ethereum.Conn, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (DarknodeRegistry, error) {
-	contract, err := bindings.NewDarkNodeRegistry(conn.DarknodeRegistryAddress, bind.ContractBackend(conn.Client))
+	contract, err := bindings.NewDarknodeRegistry(conn.DarknodeRegistryAddress, bind.ContractBackend(conn.Client))
 	if err != nil {
 		return DarknodeRegistry{}, err
 	}
@@ -49,7 +50,7 @@ func NewDarknodeRegistry(context context.Context, conn ethereum.Conn, transactOp
 		callOpts:                callOpts,
 		binding:                 contract,
 		tokenBinding:            renContract,
-		darkNodeRegistryAddress: conn.DarknodeRegistryAddress,
+		DarknodeRegistryAddress: conn.DarknodeRegistryAddress,
 	}, nil
 }
 
@@ -62,7 +63,8 @@ func (darkNodeRegistry *DarknodeRegistry) Register(darkNodeID []byte, publicKey 
 
 	txn, err := darkNodeRegistry.binding.Register(darkNodeRegistry.transactOpts, darkNodeIDByte, publicKey, bond.ToBigInt())
 	if err != nil {
-		return nil, err
+		fmt.Println(darkNodeRegistry.transactOpts.GasLimit)
+		panic(err)
 	}
 	_, err = darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, txn)
 	return txn, err
@@ -76,7 +78,8 @@ func (darkNodeRegistry *DarknodeRegistry) Deregister(darkNodeID []byte) (*types.
 	}
 	tx, err := darkNodeRegistry.binding.Deregister(darkNodeRegistry.transactOpts, darkNodeIDByte)
 	if err != nil {
-		return tx, err
+		fmt.Println(darkNodeRegistry.transactOpts.GasLimit)
+		panic(err)
 	}
 	_, err = darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, tx)
 	return tx, err
@@ -90,7 +93,8 @@ func (darkNodeRegistry *DarknodeRegistry) Refund(darkNodeID []byte) (*types.Tran
 	}
 	tx, err := darkNodeRegistry.binding.Refund(darkNodeRegistry.transactOpts, darkNodeIDByte)
 	if err != nil {
-		return tx, err
+		fmt.Println(darkNodeRegistry.transactOpts.GasLimit)
+		panic(err)
 	}
 	_, err = darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, tx)
 	return tx, err
@@ -128,13 +132,13 @@ func (darkNodeRegistry *DarknodeRegistry) IsDeregistered(darkNodeID []byte) (boo
 }
 
 // ApproveRen doesn't actually talk to the DNR - instead it approved Ren to it
-func (darkNodeRegistry *DarknodeRegistry) ApproveRen(value *stackint.Int1024) error {
+func (darkNodeRegistry *DarknodeRegistry) ApproveRen(value *stackint.Int1024) (*types.Transaction, error) {
 	txn, err := darkNodeRegistry.tokenBinding.Approve(darkNodeRegistry.transactOpts, darkNodeRegistry.conn.DarknodeRegistryAddress, value.ToBigInt())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, err = darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, txn)
-	return err
+	return txn, err
 }
 
 // CurrentEpoch returns the current epoch
@@ -149,7 +153,7 @@ func (darkNodeRegistry *DarknodeRegistry) CurrentEpoch() (Epoch, error) {
 	}
 
 	var blockhash [32]byte
-	for i, b := range epoch.Blockhash.Bytes() {
+	for i, b := range epoch.Epochhash.Bytes() {
 		blockhash[i] = b
 	}
 
@@ -224,9 +228,7 @@ func (darkNodeRegistry *DarknodeRegistry) WaitForEpoch() error {
 
 		// If on Ganache, have to call epoch manually
 		if darkNodeRegistry.network == ethereum.NetworkGanache {
-			darkNodeRegistry.SetGasLimit(300000)
 			tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
-			darkNodeRegistry.SetGasLimit(0)
 			if err != nil {
 				return err
 			}
