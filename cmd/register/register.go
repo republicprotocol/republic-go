@@ -2,16 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
+	"math/big"
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/darknode"
-	"github.com/republicprotocol/republic-go/stackint"
 )
 
 const RepublicTokenAddress = "0x65d54eda5f032f2275caa557e50c029cfbccbb54"
@@ -60,41 +62,57 @@ func RegisterAll(configs []*darknode.Config) {
 	*/
 
 	do.ForAll(configs, func(i int) {
-		keypair := configs[i].EcdsaKey
-		var decimalMultiplier = stackint.FromUint(1000000000000000000)
-		var bondTokenCount = stackint.Zero()
-		var bond = decimalMultiplier.Mul(&bondTokenCount)
-		clientDetails, err := ethereum.Connect("https://ropsten.infura.io/",
+		key := new(keystore.Key)
+		file, err := os.Open("key.json")
+		if err != nil {
+			log.Fatal("cannot read key file")
+		}
+
+		err = json.NewDecoder(file).Decode(key)
+		if err != nil {
+			log.Fatal("fail to parse the ethereum key")
+		}
+
+		auth := bind.NewKeyedTransactor(key.PrivateKey)
+		auth.GasPrice = big.NewInt(6000000000)
+
+		// Create the eth-client so we can interact with the Registrar contract
+		client, err := ethereum.Connect("https://ropsten.infura.io",
 			ethereum.NetworkRopsten, ethereum.RepublicTokenAddressOnRopsten.Hex(),
 			ethereum.DarknodeRegistryAddressOnRopsten.Hex(),
 			ethereum.HyperdriveAddressOnRopsten.Hex())
+		registrar, err := dnr.NewDarknodeRegistry(context.Background(), client, auth, &bind.CallOpts{})
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		auth := bind.NewKeyedTransactor(configs[i].EcdsaKey.PrivateKey)
+		isRegistered, err := registrar.IsRegistered([]byte(configs[i].EcdsaKey.Id))
 
-		registrar, err := dnr.NewDarknodeRegistry(context.Background(), clientDetails, auth, &bind.CallOpts{})
 		if err != nil {
-			log.Printf("[%v] %sCouldn't connect to registrar%s: %v\n", base58.Encode(keypair.Id), red, reset, err)
+			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", base58.Encode(configs[i].EcdsaKey.Id), red, reset, err)
 			return
 		}
 
-		isRegistered, err := registrar.IsRegistered([]byte(keypair.Id))
-		if err != nil {
-			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", base58.Encode(keypair.Id), red, reset, err)
-			return
-		}
 
 		if !isRegistered {
-			_, err = registrar.Register(keypair.Id, []byte(""), &bond)
+			minimumBond, err := registrar.MinimumBond()
 			if err != nil {
-				log.Printf("[%v] %sCouldn't register node%s: %v\n", base58.Encode(keypair.Id), red, reset, err)
+				log.Fatal(err)
+			}
+
+			_, err = registrar.ApproveRen(&minimumBond)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			_, err = registrar.Register(configs[i].EcdsaKey.Id, []byte{}, &minimumBond)
+			if err != nil {
+				log.Printf("[%v] %sCouldn't register node%s: %v\n", base58.Encode(configs[i].EcdsaKey.Id), red, reset, err)
 			} else {
-				log.Printf("[%v] %sNode will be registered next epoch%s\n", base58.Encode(keypair.Id), green, reset)
+				log.Printf("[%v] %sNode will be registered next epoch%s\n", base58.Encode(configs[i].EcdsaKey.Id), green, reset)
 			}
 		} else if isRegistered {
-			log.Printf("[%v] %sNode already registered%s\n", base58.Encode(keypair.Id), yellow, reset)
+			log.Printf("[%v] %sNode already registered%s\n", base58.Encode(configs[i].EcdsaKey.Id), yellow, reset)
 		}
 	})
 }
