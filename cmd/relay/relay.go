@@ -116,13 +116,6 @@ func main() {
 		log.Printf("error while bootstrapping the relay: %v", err)
 	}
 
-	//fixme : testing
-	multis :=  swarmerClient.DHT().MultiAddresses()
-	for _, m := range multis {
-		log.Printf("we have %s in the dht", m.String())
-	}
-	log.Println(swarmerClient.DHT().MultiAddresses())
-
 	entries := make(chan orderbook.Entry)
 	defer close(entries)
 	go func() {
@@ -175,7 +168,7 @@ func processOrderbookEntries(hyperdrive hd.HyperdriveContract, entryInCh <-chan 
 		if err != nil {
 			log.Fatalf("failed to get depth: %v", err)
 		}
-		return depth >= 16
+		return depth >= 5
 	}
 
 	go func() {
@@ -183,6 +176,7 @@ func processOrderbookEntries(hyperdrive hd.HyperdriveContract, entryInCh <-chan 
 		for {
 			select {
 			case entry, ok := <-entryInCh:
+				log.Println("we get order from the orderbook", entry.Order.ID.String(), entry.Status)
 				if !ok {
 					return
 				}

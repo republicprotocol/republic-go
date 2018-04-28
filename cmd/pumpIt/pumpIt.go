@@ -18,8 +18,8 @@ var numberOfOrders = 10
 
 func main() {
 	// Generate orders
-	ethToRen := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(100) , stackint.FromUint(100) ,stackint.FromUint(100) ,stackint.FromUint(100))
-	renToEth := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(100) , stackint.FromUint(100) ,stackint.FromUint(100) ,stackint.FromUint(100))
+	ethToRen := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(90) , stackint.FromUint(100) ,stackint.FromUint(100) ,stackint.FromUint(100))
+	renToEth := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(90) , stackint.FromUint(100) ,stackint.FromUint(100) ,stackint.FromUint(100))
 
 	// Send sell order
 	sellReq := relay.OpenOrderRequest{Order:*ethToRen, OrderFragments:relay.OrderFragments{}}

@@ -117,7 +117,7 @@ func (node *Darknode) Run(done <-chan struct{}) <-chan error {
 	errs := make(chan error, 1)
 
 	go func() {
-		hyperdriveErrs := node.WatchForHyperdriveContract(done, 16)
+		hyperdriveErrs := node.WatchForHyperdriveContract(done, 5)
 		for err := range hyperdriveErrs {
 			node.Logger.Error(err.Error())
 		}
