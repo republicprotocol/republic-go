@@ -48,6 +48,7 @@ func (relayer *Relayer) Sync(request *SyncRequest, stream Relay_SyncServer) erro
 
 	entries := make(chan orderbook.Entry)
 	defer close(entries)
+	defer log.Println("there must be some error in the relayer!!!")
 
 	errs := make(chan error, 1)
 	go func() {
@@ -65,6 +66,7 @@ func (relayer *Relayer) Sync(request *SyncRequest, stream Relay_SyncServer) erro
 			return stream.Context().Err()
 		case err, ok := <-errs:
 			if !ok {
+				log.Println("have errors here", err)
 				return nil
 			}
 			return err
@@ -102,6 +104,7 @@ func (relayer *Relayer) Sync(request *SyncRequest, stream Relay_SyncServer) erro
 			}
 			if err := stream.Send(syncResponse); err != nil {
 				if err == io.EOF {
+					log.Println("stream close eof")
 					return nil
 				}
 				return err

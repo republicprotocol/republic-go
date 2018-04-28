@@ -99,7 +99,6 @@ func (client *Client) Sync(ctx context.Context, orderbook *orderbook.Orderbook, 
 						if !ok {
 							return
 						}
-						log.Println(val)
 						MergeEntry(orderbook, val)
 					case err, ok := <-syncErrs:
 						if !ok {
@@ -153,9 +152,9 @@ func (client *Client) SyncFrom(ctx context.Context, multiAddr identity.MultiAddr
 
 		for {
 			message, err := stream.Recv()
+			log.Println( "message , err : " , message , err)
 			if err != nil {
 				if err == io.EOF {
-					log.Println("why you show here eof?")
 					return
 				}
 				errs <- err
