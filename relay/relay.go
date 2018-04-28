@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -219,24 +220,18 @@ func (relay *Relay) sendSharesToDarkPool(pool darkocean.Pool, shares []*order.Fr
 				go func(nodeAddress identity.Address, share *order.Fragment) {
 					defer wg.Done()
 
-					shareSignature, err := relay.Config.KeyPair.Sign(share)
-					if err != nil {
-						errCh <- err
-						return
-					}
-					share.Signature = shareSignature
-
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer cancel()
 
-					nodeMultiAddr, err := relay.swarmerClient.Query(ctx, nodeAddress, 1)
+					nodeMultiAddr, err := relay.swarmerClient.Query(ctx, nodeAddress, -1)
 					if err != nil {
+						log.Printf("fail to query peers %s", err.Error())
 						errCh <- err
 						return
 					}
 
-					// FIXME: Encryption
 					if err := relay.smpcerClient.OpenOrder(ctx, nodeMultiAddr, *share); err != nil {
+						log.Printf("fail to open order %s", err.Error())
 						errCh <- err
 						return
 					}
@@ -251,6 +246,7 @@ func (relay *Relay) sendSharesToDarkPool(pool darkocean.Pool, shares []*order.Fr
 	var err error
 	for errLocal := range errCh {
 		if errLocal != nil {
+			log.Println(errLocal)
 			errNum++
 			if err == nil {
 				err = errLocal
@@ -259,7 +255,7 @@ func (relay *Relay) sendSharesToDarkPool(pool darkocean.Pool, shares []*order.Fr
 	}
 	// Check if at least 2/3 of the nodes in the specified pool have recieved
 	// the order fragments.
-	if pool.Size() > 0 && errNum > ((1/3)*pool.Size()) {
+	if pool.Size() > 0 && errNum > pool.Size()/3 {
 		return fmt.Errorf("could not send orders to %v nodes (out of %v nodes) in pool %v", errNum, pool.Size(), GeneratePoolID(pool))
 	}
 	return nil
