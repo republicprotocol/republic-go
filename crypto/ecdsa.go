@@ -8,8 +8,8 @@ import (
 
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 	ethSecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
-	base58 "github.com/jbenet/go-base58"
-	multihash "github.com/multiformats/go-multihash"
+	"github.com/jbenet/go-base58"
+	"github.com/multiformats/go-multihash"
 )
 
 // EcdsaKey for signing and verifying hashes.
@@ -36,62 +36,58 @@ func NewEcdsaKey(privateKey *ecdsa.PrivateKey) EcdsaKey {
 	}
 }
 
-// Address of the EcdsaKey. This is the last 20 bytes of the ecdsa.PublicKey
-// after a keccak256 hash and then encoded as a base58 string.
+// Address of the EcdsaKey. An Address is generated in the same way as an
+// Ethereum address, but instead of a hex encoding, it uses a base58 encoding
+// of a Keccak256 multihash.
 func (key *EcdsaKey) Address() string {
 	bytes := elliptic.Marshal(s256, key.PublicKey.X, key.PublicKey.Y)
-	hash := ethCrypto.Keccak256(bytes)
-	bytes = hash[(len(hash) - 20):]
-
-	hash = make([]byte, 2, 22)
-	hash[0], hash[1] = multihash.KECCAK_256, 20
-	hash = append(hash, bytes...)
+	hash := ethCrypto.Keccak256(bytes[1:]) // Keccak256 hash
+	hash = hash[(len(hash) - 20):]         // Take the last 20 bytes
+	addr := make([]byte, 2, 22)            // Create the multihash address
+	addr[0] = multihash.KECCAK_256         // Set the keccak256 byte
+	addr[1] = 20                           // Set the length byte
+	addr = append(addr, hash...)           // Append the data
 	return base58.EncodeAlphabet(hash, base58.BTCAlphabet)
 }
 
-// // RecoverSigner calculates the signing public key given signable data and its signature
-// func RecoverSigner(hasher Hasher, signature []byte) (ID, error) {
-// 	hash := hasher.Hash()
+// VerifySignature of a hash matches an address.
+func VerifySignature(hasher Hasher, signature []byte, addr string) error {
+	if signature == nil {
+		return ErrInvalidSignature
+	}
+	addrRecovered, err := RecoverAddress(hasher, signature)
+	if err != nil {
+		return err
+	}
+	if addr != addrRecovered {
+		return ErrInvalidSignature
+	}
+	return nil
+}
 
-// 	publicKey, err := c
-// 	if err != nil {
-// 		return publicKey, err
-// 	}
+// RecoverAddress used to produce a signature.
+func RecoverAddress(hasher Hasher, signature []byte) (string, error) {
 
-// 	// Returns 65-byte uncompress pubkey (0x04 | X | Y)
-// 	pubkey, err := ethcrypto.Ecrecover(hash, signature)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	// Returns 65-byte uncompress pubkey (0x04 | X | Y)
+	publicKey, err := ethCrypto.Ecrecover(hasher.Hash(), signature)
+	if err != nil {
+		return "", err
+	}
 
-// 	// Convert to KeyPair before calculating ID
-// 	id := KeyPair{
-// 		nil, &ecdsa.PublicKey{
-// 			Curve: secp256k1.S256(),
-// 			X:     big.NewInt(0).SetBytes(pubkey[1:33]),
-// 			Y:     big.NewInt(0).SetBytes(pubkey[33:65]),
-// 		},
-// 	}.ID()
+	// Address from an EcdsaKey
+	key := EcdsaKey{
+		PrivateKey: &ecdsa.PrivateKey{
+			PublicKey: ecdsa.PublicKey{
+				Curve: ethSecp256k1.S256(),
+				X:     big.NewInt(0).SetBytes(publicKey[1:33]),
+				Y:     big.NewInt(0).SetBytes(publicKey[33:65]),
+			},
+		},
+	}
+	return key.Address(), nil
+}
 
-// 	return id, nil
-// }
-
-// // VerifySignature verifies that the data's signature has been signed by the provided
-// // ID's private key
-// func VerifySignature(hasher crypto.Hasher, signature []byte, id ID) error {
-// 	if signature == nil {
-// 		return crypto.ErrInvalidSignature
-// 	}
-// 	signer, err := RecoverSigner(hasher, signature)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if !bytes.Equal(signer, id) {
-// 		return crypto.ErrInvalidSignature
-// 	}
-// 	return nil
-// }
-
+// s256 is unused
 var s256 *elliptic.CurveParams
 
 func init() {
