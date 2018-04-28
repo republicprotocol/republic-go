@@ -1,8 +1,6 @@
 package orderbook
 
 import (
-	"log"
-
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 )
