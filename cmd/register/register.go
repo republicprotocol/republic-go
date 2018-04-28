@@ -56,6 +56,7 @@ func main() {
 	}
 
 	RegisterAll(addresess)
+	//DeregisterAll(addresess)
 }
 
 // RegisterAll takes a slice of republic private keys and registers them
@@ -121,6 +122,59 @@ func RegisterAll(addresses [][]byte) {
 			}
 		} else if isRegistered {
 			log.Printf("[%v] %sNode already registered%s\n", addresses[i], yellow, reset)
+		}
+	}
+}
+
+// RegisterAll takes a slice of republic private keys and registers them
+func DeregisterAll(addresses [][]byte) {
+
+	/*
+		0x3ccB53DBB5f801C28856b3396B01941ecD21Ac1d
+		0xFd99C99825781AD6795025b055e063c8e8863e7c
+		0x22846b4d7962806c1B450e354B91f9bF33697244
+		0x1629de08ec625d2452a564e5e1990f6890f85a5e
+	*/
+
+	for i := range addresses {
+		key := new(keystore.Key)
+		file, err := os.Open("key.json")
+		if err != nil {
+			log.Fatal("cannot read key file")
+		}
+
+		err = json.NewDecoder(file).Decode(key)
+		if err != nil {
+			log.Fatal("fail to parse the ethereum key")
+		}
+
+		auth := bind.NewKeyedTransactor(key.PrivateKey)
+		auth.GasPrice = big.NewInt(60000000000)
+
+		// Create the eth-client so we can interact with the Registrar contract
+		client, err := ethereum.Connect("https://ropsten.infura.io",
+			ethereum.NetworkRopsten, ethereum.RepublicTokenAddressOnRopsten.Hex(),
+			ethereum.DarknodeRegistryAddressOnRopsten.Hex(),
+			ethereum.HyperdriveAddressOnRopsten.Hex())
+		registrar, err := dnr.NewDarknodeRegistry(context.Background(), client, auth, &bind.CallOpts{})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println(addresses[i])
+		isRegistered, err := registrar.IsRegistered([]byte(addresses[i]))
+		if err != nil {
+			log.Printf("[%v] %sCouldn't check node's registration%s: %v\n", []byte(addresses[i]), red, reset, err)
+			return
+		}
+
+		if isRegistered {
+			_, err = registrar.Deregister([]byte(addresses[i]))
+			if err != nil {
+				log.Printf("[%v] %sCouldn't register node%s: %v\n", addresses[i], red, reset, err)
+			} else {
+				log.Printf("[%v] %sNode will be registered next epoch%s\n", addresses[i], green, reset)
+			}
 		}
 	}
 }
