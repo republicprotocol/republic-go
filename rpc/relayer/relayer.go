@@ -3,7 +3,6 @@ package relayer
 import (
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
@@ -48,31 +47,19 @@ func (relayer *Relayer) Sync(request *SyncRequest, stream Relay_SyncServer) erro
 
 	entries := make(chan orderbook.Entry)
 	defer close(entries)
-	defer log.Println("there must be some error in the relayer!!!")
 
-	errs := make(chan error, 1)
-	go func() {
-		defer close(errs)
-		defer relayer.orderbook.Unsubscribe(entries)
-		if err := relayer.orderbook.Subscribe(entries); err != nil {
-			errs <- fmt.Errorf("cannot subscribe to orderbook: %v", err)
-			return
-		}
-	}()
+	if err := relayer.orderbook.Subscribe(entries); err != nil {
+		return fmt.Errorf("cannot subscribe to orderbook: %v", err)
+	}
+	defer relayer.orderbook.Unsubscribe(entries)
+
 
 	for {
 		select {
 		case <-stream.Context().Done():
 			return stream.Context().Err()
-		case err, ok := <-errs:
-			if !ok {
-				log.Println("have errors here", err)
-				return nil
-			}
-			return err
 		case entry, ok := <-entries:
 			if !ok {
-				log.Println("entries channel close ?")
 				return nil
 			}
 
@@ -104,7 +91,6 @@ func (relayer *Relayer) Sync(request *SyncRequest, stream Relay_SyncServer) erro
 			}
 			if err := stream.Send(syncResponse); err != nil {
 				if err == io.EOF {
-					log.Println("stream close eof")
 					return nil
 				}
 				return err
