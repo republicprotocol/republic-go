@@ -20,8 +20,8 @@ type Verifier interface {
 }
 
 type Encrypter interface {
-	Encrypt([]byte) ([]byte, error)
-	Decrypt([]byte) ([]byte, error)
+	Encrypt(string, []byte) ([]byte, error)
+	Decrypt(string, []byte) ([]byte, error)
 }
 
 type Crypter interface {
@@ -44,12 +44,12 @@ func (crypter *WeakCrypter) Verify(hasher Hasher, signature []byte) error {
 	return nil
 }
 
-func (crypter *WeakCrypter) Encrypt(plaintext []byte) ([]byte, error) {
-	return plaintext, nil
+func (crypter *WeakCrypter) Encrypt(addr string, plainText []byte) ([]byte, error) {
+	return plainText, nil
 }
 
-func (crypter *WeakCrypter) Decrypt(ciphertext []byte) ([]byte, error) {
-	return ciphertext, nil
+func (crypter *WeakCrypter) Decrypt(addr string, cipherText []byte) ([]byte, error) {
+	return cipherText, nil
 }
 
 type ErrCrypter struct{}
@@ -66,10 +66,10 @@ func (crypter *ErrCrypter) Verifier(hasher Hasher, signature []byte) error {
 	return ErrUnimplemented
 }
 
-func (crypter *ErrCrypter) Encrypt(plaintext []byte) ([]byte, error) {
+func (crypter *ErrCrypter) Encrypt(addr string, plainText []byte) ([]byte, error) {
 	return []byte{}, ErrUnimplemented
 }
 
-func (crypter *ErrCrypter) Decrypt(ciphertext []byte) ([]byte, error) {
+func (crypter *ErrCrypter) Decrypt(addr string, cipherText []byte) ([]byte, error) {
 	return []byte{}, ErrUnimplemented
 }
