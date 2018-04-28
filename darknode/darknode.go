@@ -132,6 +132,7 @@ func (node *Darknode) Run(done <-chan struct{}) <-chan error {
 		defer close(errs)
 
 		// Wait until registration is approved
+		node.Logger.Info("waiting for registration...")
 		if err := node.darknodeRegistry.WaitUntilRegistration(node.ID()[:]); err != nil {
 			errs <- err
 			return
@@ -140,6 +141,7 @@ func (node *Darknode) Run(done <-chan struct{}) <-chan error {
 		// Start serving
 		go func() {
 
+			node.Logger.Info("serving gRPC services...")
 			if err := node.Serve(done); err != nil {
 				errs <- err
 				return
@@ -181,7 +183,7 @@ func (node *Darknode) Serve(done <-chan struct{}) error {
 	node.rpc.Swarmer().Register(server)
 
 	go func() {
-		node.Logger.Info("darknode start listening in port " + node.Config.Port)
+		node.Logger.Info("listening at " + node.Config.Host + " " + node.Config.Port)
 		if err = server.Serve(listener); err != nil {
 			return
 		}

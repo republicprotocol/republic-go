@@ -316,6 +316,9 @@ func (darkNodeRegistry *DarknodeRegistry) WaitUntilRegistration(darkNodeID []byt
 		if err != nil {
 			return err
 		}
+		if isRegistered {
+			return nil
+		}
 		darkNodeRegistry.WaitForEpoch()
 
 	}
