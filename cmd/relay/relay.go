@@ -168,7 +168,7 @@ func processOrderbookEntries(hyperdrive hd.HyperdriveContract, entryInCh <-chan 
 		if err != nil {
 			log.Fatalf("failed to get depth: %v", err)
 		}
-		return depth >= 5
+		return depth >= 1
 	}
 
 	go func() {

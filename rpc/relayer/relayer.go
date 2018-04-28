@@ -3,6 +3,7 @@ package relayer
 import (
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
@@ -69,6 +70,7 @@ func (relayer *Relayer) Sync(request *SyncRequest, stream Relay_SyncServer) erro
 			return err
 		case entry, ok := <-entries:
 			if !ok {
+				log.Println("entries channel close ?")
 				return nil
 			}
 

@@ -117,7 +117,7 @@ func (node *Darknode) Run(done <-chan struct{}) <-chan error {
 	errs := make(chan error, 1)
 
 	go func() {
-		hyperdriveErrs := node.WatchForHyperdriveContract(done, 5)
+		hyperdriveErrs := node.WatchForHyperdriveContract(done, 1)
 		for err := range hyperdriveErrs {
 			node.Logger.Error(err.Error())
 		}
@@ -366,7 +366,7 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 							err := node.orderbook.Confirm(entry)
 							if err != nil {
 								errs <- err
-								return 
+								return
 							}
 							delete(watchingList, key)
 						}
