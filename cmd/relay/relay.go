@@ -229,6 +229,8 @@ func executeConfirmedOrders(ctx context.Context, conn ethereum.Conn, auth *abiBi
 					log.Fatalf("failed to get order match: %v", err)
 					continue
 				}
+				log.Printf("we get confirmed order %s", entry.Order.ID.String())
+
 				if orderID == orderIDs[0] {
 					swaps <- initSwap(ctx, conn, auth, entry, orderIDs[0], orderIDs[1])
 				} else {

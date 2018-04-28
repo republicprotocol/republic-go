@@ -366,7 +366,7 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 							err := node.orderbook.Confirm(entry)
 							if err != nil {
 								errs <- err
-								return
+								return 
 							}
 							delete(watchingList, key)
 						}

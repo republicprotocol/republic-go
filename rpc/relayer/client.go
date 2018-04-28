@@ -81,12 +81,14 @@ func (client *Client) Sync(ctx context.Context, orderbook *orderbook.Orderbook, 
 			}
 			i := rand.Intn(len(multiAddrs))
 
+			atomic.AddInt64(&conns, 1)
 			go func() {
+				defer atomic.AddInt64(&conns, -1)
+
 				// Connect to the peer and begin synchronizing the
 				// orderbook.Orderbook
 				syncVals, syncErrs := client.SyncFrom(ctx, multiAddrs[i])
-				atomic.AddInt64(&conns, 1)
-				defer atomic.AddInt64(&conns, -1)
+
 
 				for {
 					select {
@@ -155,6 +157,9 @@ func (client *Client) SyncFrom(ctx context.Context, multiAddr identity.MultiAddr
 				}
 				errs <- err
 				return
+			}
+			if message == nil {
+				continue
 			}
 			select {
 			case <-ctx.Done():

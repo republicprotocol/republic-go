@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/json"
 	"io/ioutil"
 	"log"
@@ -17,9 +18,15 @@ import (
 var numberOfOrders = 10
 
 func main() {
+	m := stackint.FromUint(1000000000)
+	n, err := stackint.Random(rand.Reader, &m)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Generate orders
-	ethToRen := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(90) , stackint.FromUint(100) ,stackint.FromUint(100) ,stackint.FromUint(100))
-	renToEth := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(90) , stackint.FromUint(100) ,stackint.FromUint(100) ,stackint.FromUint(100))
+	ethToRen := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(1) , stackint.FromUint(1) ,stackint.FromUint(1) ,n)
+	renToEth := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(1) , stackint.FromUint(1) ,stackint.FromUint(1) ,n)
 
 	// Send sell order
 	sellReq := relay.OpenOrderRequest{Order:*ethToRen, OrderFragments:relay.OrderFragments{}}
