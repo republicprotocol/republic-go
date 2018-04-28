@@ -3,8 +3,9 @@
   "ethereumAddress": "0x1a459f0dF58cF0B9a4246Bd193a00125B45492Df",
   "keypair": "Esqw6FPnxwegkaaw98DYue9uq23aPxGC6Aa6F6CFt3eU",
   "multiAddress":
-    "/ip4/0.0.0.0/tcp/18515/republic/8MGR5xXsk2aiQf7LWchYY2p2i7zQTQ",
-  "bootstrapMultiAddresses": [],
+    "/ip4/119.225.50.242/tcp/18517/republic/8MGR5xXsk2aiQf7LWchYY2p2i7zQTQ",
+  "bootstrapMultiAddresses": [
+    "/ip4/54.187.138.229/tcp/18514/republic/8MG45FDLpKnBMPSbYU7RobYZCgeNYf"],
   "ethereum": {
     "network": "ropsten",
     "uri": "https://ropsten.infura.io",

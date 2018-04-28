@@ -45,7 +45,7 @@ func main() {
 	// keystore := flag.String("keystore", "", "Encrypted keystore file")
 	// passphrase := flag.String("passphrase", "", "Passphrase for the encrypted keystore file")
 	bind := flag.String("bind", "127.0.0.1", "Binding address for the gRPC and HTTP API")
-	port := flag.String("port", "18515", "Binding port for the HTTP API")
+	port := flag.Int("port", 18515, "Binding port for the HTTP API")
 	// token := flag.String("token", "", "Bearer token for restricting access")
 	configLocation := flag.String("config", "", "Relay configuration file location")
 	maxConnections := flag.Int("maxConnections", 4, "Maximum number of connections to peers during synchronization")
@@ -70,9 +70,14 @@ func main() {
 	// 	return
 	// }
 
+	config, err := LoadConfig(*configLocation)
+	if err != nil {
+		log.Fatalf("cannot load config: %v", err)
+	}
+
 	// Create gRPC server and TCP listener always using port 18514
 	server := grpc.NewServer()
-	listener, err := net.Listen("tcp", fmt.Sprintf("%v:18514", *bind))
+	listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", *bind, *port))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -83,11 +88,6 @@ func main() {
 	// 	MultiAddress: multiAddr,
 	// 	Token:        *token,
 	// }
-
-	config, err := LoadConfig(*configLocation)
-	if err != nil {
-		log.Fatalf("cannot load config: %v", err)
-	}
 
 	registrar, err := getRegistry(config)
 	if err != nil {
@@ -134,9 +134,9 @@ func main() {
 	processAtomicSwaps(swaps)
 
 	// Server gRPC and RESTful API
-	fmt.Println(fmt.Sprintf("Relay API available at %s:%s", *bind, *port))
+	fmt.Println(fmt.Sprintf("Relay API available at %s:%v", *bind, *port+1))
 	dispatch.CoBegin(func() {
-		if err := relay.ListenAndServe(*bind, *port); err != nil {
+		if err := relay.ListenAndServe(*bind, fmt.Sprintf("%d", *port+1)); err != nil {
 			log.Fatalf("error serving http: %v", err)
 		}
 	}, func() {
