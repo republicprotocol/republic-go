@@ -1,0 +1,16 @@
+{
+  "token": "",
+  "ethereumAddress": "0xad560E16C7f474281A31c5F38F903382EaBAc107",
+  "keypair": "CH9m5GRtZiKtCtmVrMzVFG7FfJxaeSVvNEQ4Yv3XBhnK",
+  "multiAddress":
+    "/ip4/119.225.50.242/tcp/18515/republic/8MJTvJ2e5ZKdRrTqs9UJqEhZku1m4A",
+  "bootstrapMultiAddresses": ["/ip4/54.187.138.229/tcp/18514/republic/8MHXRr47PxLLKNJQPg5EuaSp6oSBqB"],
+  "ethereum": {
+    "network": "ropsten",
+    "uri": "https://ropsten.infura.io",
+    "republicTokenAddress": "0x65d54EDa5f032F2275Caa557E50c029cFbCCBB54",
+    "darknodeRegistryAddress": "0x69eb8d26157b9e12f959ea9f189A5D75991b59e3",
+    "hyperdriveAddress": "0x348496Ad820f2EE256268f9f9D0b9f5bacdc26Cd",
+    "arcAddress": "0x2940089833b688a1A46c150085EF004f85fCEE87"
+  }
+}

@@ -32,7 +32,8 @@ func main() {
 		log.Fatal("response fail,", err)
 	}
 	// Read the response status
-	if resp.StatusCode != http.StatusOK {
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated{
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Fatal("cannot readall: " + err.Error())
@@ -54,7 +55,8 @@ func main() {
 		log.Fatal( "response fail ", err)
 	}
 	// Read the response status
-	if resp.StatusCode != http.StatusOK {
+
+	if resp.StatusCode != http.StatusOK  && resp.StatusCode != http.StatusCreated{
 		r := map[string]interface{}{}
 		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 			log.Fatal(err)

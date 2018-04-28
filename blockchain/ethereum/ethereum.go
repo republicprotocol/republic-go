@@ -38,73 +38,82 @@ var (
 	RepublicTokenAddressOnRopsten    = common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54")
 	DarknodeRegistryAddressOnRopsten = common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3")
 	HyperdriveAddressOnRopsten       = common.HexToAddress("0x4Af263d0C667FefD3B3b1893E24B57AAd796570b")
+<<<<<<< HEAD
+=======
+	ArcAddressOnRopsten              = common.HexToAddress("0x2940089833b688a1a46c150085ef004f85fcee87")
+>>>>>>> arc
 )
+
+// Config defines the different settings for connecting the Darknode
+// to an Ethereum network, and the Republic Protocol smart contracts deployed
+// on Ethereum.
+type Config struct {
+	Network                 Network `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
+	URI                     string  `json:"uri"`
+	RepublicTokenAddress    string  `json:"republicTokenAddress"`
+	DarknodeRegistryAddress string  `json:"darknodeRegistryAddress"`
+	HyperdriveAddress       string  `json:"hyperdriveAddress"`
+	ArcAddress              string  `json:"arcAddress"`
+}
 
 // Conn contains the client and the contracts deployed to it
 type Conn struct {
-	RawClient               *ethrpc.Client
-	Client                  *ethclient.Client
-	Network                 Network
-	RepublicTokenAddress    common.Address
-	DarknodeRegistryAddress common.Address
-	TraderRegistryAddress   common.Address
-	HyperdriveAddress       common.Address
+	RawClient *ethrpc.Client
+	Client    *ethclient.Client
+	Config    Config
 }
 
 // Connect to a URI.
-func Connect(uri string, network Network, republicTokenAddress, darknodeRegistryAddr, hyperdriveAddr string) (Conn, error) {
-	if uri == "" {
-		switch network {
+func Connect(config Config) (Conn, error) {
+	if config.URI == "" {
+		switch config.Network {
 		case NetworkGanache:
-			uri = "http://localhost:8545"
+			config.URI = "http://localhost:8545"
 		case NetworkRopsten:
-			uri = "https://ropsten.infura.io"
+			config.URI = "https://ropsten.infura.io"
 		default:
-			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", network)
+			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}
 	}
-	if republicTokenAddress == "" {
-		switch network {
+	if config.RepublicTokenAddress == "" {
+		switch config.Network {
 		case NetworkGanache:
-			republicTokenAddress = RepublicTokenAddressOnGanache.String()
+			config.RepublicTokenAddress = RepublicTokenAddressOnGanache.String()
 		case NetworkRopsten:
-			republicTokenAddress = RepublicTokenAddressOnRopsten.String()
+			config.RepublicTokenAddress = RepublicTokenAddressOnRopsten.String()
 		default:
-			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", network)
+			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}
 	}
-	if darknodeRegistryAddr == "" {
-		switch network {
+	if config.DarknodeRegistryAddress == "" {
+		switch config.Network {
 		case NetworkGanache:
-			darknodeRegistryAddr = DarknodeRegistryAddressOnGanache.String()
+			config.DarknodeRegistryAddress = DarknodeRegistryAddressOnGanache.String()
 		case NetworkRopsten:
-			darknodeRegistryAddr = DarknodeRegistryAddressOnRopsten.String()
+			config.DarknodeRegistryAddress = DarknodeRegistryAddressOnRopsten.String()
 		default:
-			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", network)
+			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}
 	}
-	if hyperdriveAddr == "" {
-		switch network {
+	if config.HyperdriveAddress == "" {
+		switch config.Network {
 		case NetworkGanache:
-			hyperdriveAddr = HyperdriveAddressOnGanache.String()
+			config.HyperdriveAddress = HyperdriveAddressOnGanache.String()
 		case NetworkRopsten:
-			hyperdriveAddr = HyperdriveAddressOnRopsten.String()
+			config.HyperdriveAddress = HyperdriveAddressOnRopsten.String()
 		default:
-			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", network)
+			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}
 	}
 
-	ethclient, err := ethclient.Dial(uri)
+	ethclient, err := ethclient.Dial(config.URI)
 	if err != nil {
 		return Conn{}, err
 	}
 
 	return Conn{
-		Client:                  ethclient,
-		RepublicTokenAddress:    common.HexToAddress(republicTokenAddress),
-		DarknodeRegistryAddress: common.HexToAddress(darknodeRegistryAddr),
-		HyperdriveAddress:       common.HexToAddress(hyperdriveAddr),
-		Network:                 network,
+		Client: ethclient,
+		Config: config,
 	}, nil
 }
 
@@ -114,7 +123,7 @@ func Connect(uri string, network Network, republicTokenAddress, darknodeRegistry
 // TODO: THIS DOES NOT WORK WITH PARITY, WHICH SENDS A TRANSACTION RECEIPT UPON
 // RECEIVING A TX, NOT AFTER IT'S MINED
 func (conn *Conn) PatchedWaitMined(ctx context.Context, tx *types.Transaction) (*types.Receipt, error) {
-	switch conn.Network {
+	switch conn.Config.Network {
 	case NetworkGanache:
 		time.Sleep(100 * time.Millisecond)
 		return nil, nil
@@ -129,7 +138,7 @@ func (conn *Conn) PatchedWaitMined(ctx context.Context, tx *types.Transaction) (
 // TODO: THIS DOES NOT WORK WITH PARITY, WHICH SENDS A TRANSACTION RECEIPT UPON
 // RECEIVING A TX, NOT AFTER IT'S MINED
 func (conn *Conn) PatchedWaitDeployed(ctx context.Context, tx *types.Transaction) (common.Address, error) {
-	switch conn.Network {
+	switch conn.Config.Network {
 	case NetworkGanache:
 		time.Sleep(100 * time.Millisecond)
 		return common.Address{}, nil

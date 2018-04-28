@@ -34,23 +34,23 @@ type DarknodeRegistry struct {
 
 // NewDarknodeRegistry returns a Dark node registrar
 func NewDarknodeRegistry(context context.Context, conn ethereum.Conn, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (DarknodeRegistry, error) {
-	contract, err := bindings.NewDarknodeRegistry(conn.DarknodeRegistryAddress, bind.ContractBackend(conn.Client))
+	contract, err := bindings.NewDarknodeRegistry(common.HexToAddress(conn.Config.DarknodeRegistryAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		return DarknodeRegistry{}, err
 	}
-	renContract, err := bindings.NewRepublicToken(conn.RepublicTokenAddress, bind.ContractBackend(conn.Client))
+	renContract, err := bindings.NewRepublicToken(common.HexToAddress(conn.Config.RepublicTokenAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		return DarknodeRegistry{}, err
 	}
 	return DarknodeRegistry{
-		network:                 conn.Network,
+		network:                 conn.Config.Network,
 		context:                 context,
 		conn:                    conn,
 		transactOpts:            transactOpts,
 		callOpts:                callOpts,
 		binding:                 contract,
 		tokenBinding:            renContract,
-		DarknodeRegistryAddress: conn.DarknodeRegistryAddress,
+		DarknodeRegistryAddress: common.HexToAddress(conn.Config.DarknodeRegistryAddress),
 	}, nil
 }
 
@@ -133,7 +133,7 @@ func (darkNodeRegistry *DarknodeRegistry) IsDeregistered(darkNodeID []byte) (boo
 
 // ApproveRen doesn't actually talk to the DNR - instead it approved Ren to it
 func (darkNodeRegistry *DarknodeRegistry) ApproveRen(value *stackint.Int1024) (*types.Transaction, error) {
-	txn, err := darkNodeRegistry.tokenBinding.Approve(darkNodeRegistry.transactOpts, darkNodeRegistry.conn.DarknodeRegistryAddress, value.ToBigInt())
+	txn, err := darkNodeRegistry.tokenBinding.Approve(darkNodeRegistry.transactOpts, darkNodeRegistry.DarknodeRegistryAddress, value.ToBigInt())
 	if err != nil {
 		return nil, err
 	}

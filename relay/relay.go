@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -22,12 +23,6 @@ import (
 )
 
 var prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-
-type Config struct {
-	KeyPair      identity.KeyPair
-	MultiAddress identity.MultiAddress
-	Token        string
-}
 
 type Relay struct {
 	Config
@@ -105,7 +100,9 @@ func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
 			go func(darkPool darkocean.Pool) {
 				defer wg.Done()
 				// Split order into (number of nodes in each pool) * 2/3 fragments
-				shares, err := openOrder.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
+				// todo : change back to
+				// shares, err := openOrder.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
+				shares, err := openOrder.Split(int64(darkPool.Size()), 1, &prime)
 				if err != nil {
 					errCh <- err
 					return
@@ -225,24 +222,20 @@ func (relay *Relay) sendSharesToDarkPool(pool darkocean.Pool, shares []*order.Fr
 				go func(nodeAddress identity.Address, share *order.Fragment) {
 					defer wg.Done()
 
-					shareSignature, err := relay.Config.KeyPair.Sign(share)
-					if err != nil {
-						errCh <- err
-						return
-					}
-					share.Signature = shareSignature
+					relay.swarmerClient.Address()
 
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer cancel()
 
-					nodeMultiAddr, err := relay.swarmerClient.Query(ctx, nodeAddress, 1)
+					nodeMultiAddr, err := relay.swarmerClient.Query(ctx, nodeAddress, -1)
 					if err != nil {
+						log.Printf("fail to query peers %s", err.Error())
 						errCh <- err
 						return
 					}
 
-					// FIXME: Encryption
 					if err := relay.smpcerClient.OpenOrder(ctx, nodeMultiAddr, *share); err != nil {
+						log.Printf("fail to open order %s", err.Error())
 						errCh <- err
 						return
 					}
@@ -257,6 +250,7 @@ func (relay *Relay) sendSharesToDarkPool(pool darkocean.Pool, shares []*order.Fr
 	var err error
 	for errLocal := range errCh {
 		if errLocal != nil {
+			log.Println(errLocal)
 			errNum++
 			if err == nil {
 				err = errLocal
@@ -265,7 +259,7 @@ func (relay *Relay) sendSharesToDarkPool(pool darkocean.Pool, shares []*order.Fr
 	}
 	// Check if at least 2/3 of the nodes in the specified pool have recieved
 	// the order fragments.
-	if pool.Size() > 0 && errNum > ((1/3)*pool.Size()) {
+	if pool.Size() > 0 && errNum > pool.Size()/3 {
 		return fmt.Errorf("could not send orders to %v nodes (out of %v nodes) in pool %v", errNum, pool.Size(), GeneratePoolID(pool))
 	}
 	return nil

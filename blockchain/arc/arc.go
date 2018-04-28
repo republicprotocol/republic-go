@@ -20,10 +20,10 @@ import (
 // Arc is the interface defining the Atomic Swap Interface
 type Arc interface {
 	Initiate(hash [32]byte, from, to []byte, value *big.Int, expiry int64) error
-	Redeem(secret [32]byte) error
-	Refund() error
-	Audit() (hash [32]byte, from, to []byte, value *big.Int, expiry int64, err error)
-	AuditSecret() (secret [32]byte, err error)
+	Redeem(orderID, secret [32]byte) error
+	Refund(orderID [32]byte) error
+	Audit(orderID [32]byte) (hash [32]byte, from, to []byte, value *big.Int, expiry int64, err error)
+	AuditSecret(orderID [32]byte) (secret [32]byte, err error)
 	Serialize() ([]byte, error)
 	Deserialize([]byte) error
 }
