@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"time"
@@ -72,8 +71,6 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 
 	// Open a connection to the Ethereum network
 	transactOpts := bind.NewKeyedTransactor(config.EcdsaKey.PrivateKey)
-	log.Println("priavte key is ", config.EcdsaKey.PrivateKey)
-	log.Println("transactor from  ", transactOpts.From.String())
 
 	ethclient, err := ethereum.Connect(config.Ethereum)
 	if err != nil {
@@ -120,7 +117,7 @@ func (node *Darknode) Run(done <-chan struct{}) <-chan error {
 	errs := make(chan error, 1)
 
 	go func() {
-		hyperdriveErrs := node.WatchForHyperdriveContract(done, 3)
+		hyperdriveErrs := node.WatchForHyperdriveContract(done, 16)
 		for err := range hyperdriveErrs {
 			node.Logger.Error(err.Error())
 		}
@@ -355,8 +352,6 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 					if time.Now().Before(value.Timestamp.Add(5 * time.Minute)) {
 						dep, err := node.hyperdriveContract.GetDepth(value.Nonce)
 						if err != nil {
-							log.Println("3" )
-
 							errs <- err
 							return
 						}
@@ -368,7 +363,11 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 								Status: order.Confirmed,
 							}
 							node.Logger.Info( "Confirmed by hyperdrive. Let's go home !")
-							node.orderbook.Confirm(entry)
+							err := node.orderbook.Confirm(entry)
+							if err != nil {
+								errs <- err
+								return
+							}
 							delete(watchingList, key)
 						}
 					} else {
@@ -378,7 +377,11 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 							},
 							Status: order.Unconfirmed,
 						}
-						node.orderbook.Release(entry)
+						err := node.orderbook.Release(entry)
+						if err != nil {
+							errs <- err
+							return
+						}
 						delete(watchingList, key)
 					}
 				}
@@ -403,7 +406,6 @@ func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
 	// Check the order status from the hyperdrive contract.
 	buyBlock, err := node.hyperdriveContract.CheckOrders([]byte(delta.BuyOrderID))
 	if err != nil {
-		log.Println("1" )
 		return err
 	}
 	sellBlock, err := node.hyperdriveContract.CheckOrders([]byte(delta.SellOrderID))
@@ -417,7 +419,6 @@ func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
 		tx := hyperdrive.NewTx([]byte(delta.SellOrderID), []byte(delta.BuyOrderID))
 		_, err := node.hyperdriveContract.SendTx(tx)
 		if err != nil {
-			log.Println("2" )
 			time.Sleep(5 * time.Second)
 			return node.checkOrderConsensus(delta)
 		}
