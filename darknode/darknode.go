@@ -398,17 +398,17 @@ func (node *Darknode) RPC() *rpc.RPC {
 	return node.rpc
 }
 
-func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
+func (node *Darknode) checkOrderConsensus(dlt delta.Delta) error {
 
 	// Wait a number of seconds and check hyperdrive contract.
 	time.Sleep(time.Duration(rand.Intn(10)) * time.Second)
 
 	// Check the order status from the hyperdrive contract.
-	buyBlock, err := node.hyperdriveContract.CheckOrders([]byte(delta.BuyOrderID))
+	buyBlock, err := node.hyperdriveContract.CheckOrders([]byte(dlt.BuyOrderID))
 	if err != nil {
 		return err
 	}
-	sellBlock, err := node.hyperdriveContract.CheckOrders([]byte(delta.SellOrderID))
+	sellBlock, err := node.hyperdriveContract.CheckOrders([]byte(dlt.SellOrderID))
 	if err != nil {
 		return err
 	}
@@ -416,18 +416,18 @@ func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
 	// todo : this part can be simplified by simplifying the orderbook.
 	if buyBlock == 0 && sellBlock == 0 {
 		// Convert an order match into a Tx
-		tx := hyperdrive.NewTx([]byte(delta.SellOrderID), []byte(delta.BuyOrderID))
+		tx := hyperdrive.NewTx([]byte(dlt.SellOrderID), []byte(dlt.BuyOrderID))
 		_, err := node.hyperdriveContract.SendTx(tx)
 		if err != nil {
 			time.Sleep(5 * time.Second)
-			return node.checkOrderConsensus(delta)
+			return node.checkOrderConsensus(dlt)
 		}
-		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.BuyOrderID), time.Now())
-		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.SellOrderID), time.Now())
+		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.BuyOrderID), time.Now())
+		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.SellOrderID), time.Now())
 	} else if buyBlock == 0 {
 		buyOrderEntry := orderbook.Entry{
 			Order: order.Order{
-				ID: order.ID(delta.BuyOrderID),
+				ID: order.ID(dlt.BuyOrderID),
 			},
 			Status: order.Open,
 		}
@@ -435,16 +435,16 @@ func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
 
 		sellOrderEntry := orderbook.Entry{
 			Order: order.Order{
-				ID: order.ID(delta.SellOrderID),
+				ID: order.ID(dlt.SellOrderID),
 			},
 			Status: order.Confirmed,
 		}
 		node.orderbook.Confirm(sellOrderEntry)
-		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.SellOrderID), time.Now())
+		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.SellOrderID), time.Now())
 	} else if sellBlock == 0 {
 		buyOrderEntry := orderbook.Entry{
 			Order: order.Order{
-				ID: order.ID(delta.BuyOrderID),
+				ID: order.ID(dlt.BuyOrderID),
 			},
 			Status: order.Confirmed,
 		}
@@ -452,16 +452,16 @@ func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
 
 		sellOrderEntry := orderbook.Entry{
 			Order: order.Order{
-				ID: order.ID(delta.SellOrderID),
+				ID: order.ID(dlt.SellOrderID),
 			},
 			Status: order.Open,
 		}
 		node.orderbook.Release(sellOrderEntry)
-		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.BuyOrderID), time.Now())
+		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.BuyOrderID), time.Now())
 	} else {
 		buyOrderEntry := orderbook.Entry{
 			Order: order.Order{
-				ID: order.ID(delta.BuyOrderID),
+				ID: order.ID(dlt.BuyOrderID),
 			},
 			Status: order.Confirmed,
 		}
@@ -469,14 +469,14 @@ func (node *Darknode) checkOrderConsensus(delta delta.Delta) error {
 
 		sellOrderEntry := orderbook.Entry{
 			Order: order.Order{
-				ID: order.ID(delta.SellOrderID),
+				ID: order.ID(dlt.SellOrderID),
 			},
 			Status: order.Confirmed,
 		}
 		node.orderbook.Confirm(sellOrderEntry)
 
-		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.BuyOrderID), time.Now())
-		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(delta.SellOrderID), time.Now())
+		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.BuyOrderID), time.Now())
+		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.SellOrderID), time.Now())
 	}
 	return nil
 }

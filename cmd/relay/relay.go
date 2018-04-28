@@ -82,13 +82,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Create Relay
-	// config := Config{
-	// 	KeyPair:      keyPair,
-	// 	MultiAddress: multiAddr,
-	// 	Token:        *token,
-	// }
-
 	registrar, err := getRegistry(config)
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot obtain registrar: %s", err))
@@ -118,12 +111,12 @@ func main() {
 
 	entries := make(chan orderbook.Entry)
 	defer close(entries)
-	go func() {
-		defer book.Unsubscribe(entries)
-		if err := book.Subscribe(entries); err != nil {
-			log.Fatalf("cannot subscribe to orderbook: %v", err)
-		}
-	}()
+	if err := book.Subscribe(entries); err != nil {
+		log.Fatalf("cannot subscribe to orderbook: %v", err)
+	}
+	defer book.Unsubscribe(entries)
+
+
 	confirmedOrders := processOrderbookEntries(hyperdrive, entries)
 	conn, err := ethereum.Connect(config.Ethereum)
 	auth := abiBind.NewKeyedTransactor(config.KeyPair.PrivateKey)
@@ -169,6 +162,8 @@ func processOrderbookEntries(hyperdrive hd.HyperdriveContract, entryInCh <-chan 
 			log.Fatalf("failed to get depth: %v", err)
 		}
 		return depth >= 1
+
+		return true
 	}
 
 	go func() {
@@ -176,7 +171,6 @@ func processOrderbookEntries(hyperdrive hd.HyperdriveContract, entryInCh <-chan 
 		for {
 			select {
 			case entry, ok := <-entryInCh:
-				log.Println("we get order from the orderbook", entry.Order.ID.String(), entry.Status)
 				if !ok {
 					return
 				}
@@ -224,12 +218,12 @@ func executeConfirmedOrders(ctx context.Context, conn ethereum.Conn, auth *abiBi
 				}
 				orderID := [32]byte{}
 				copy(orderID[:], entry.Order.ID)
+
 				_, orderIDs, err := hyperdrive.GetOrderMatch(orderID)
 				if err != nil {
 					log.Fatalf("failed to get order match: %v", err)
 					continue
 				}
-				log.Printf("we get confirmed order %s", entry.Order.ID.String())
 
 				if orderID == orderIDs[0] {
 					swaps <- initSwap(ctx, conn, auth, entry, orderIDs[0], orderIDs[1])
@@ -317,6 +311,7 @@ func getHyperdrive(config *Config) (hd.HyperdriveContract, error) {
 func initSwap(ctx context.Context, conn ethereum.Conn, auth *abiBind.TransactOpts, entry orderbook.Entry, fstOrderID, sndOrderID [32]byte) swap.Swap {
 	fstTokenAddress := getTokenAddress(entry.FstCode)
 	sndTokenAddress := getTokenAddress(entry.SndCode)
+
 	goesFirst := entry.Parity == order.ParitySell
 
 	expiry := time.Now().Unix() + 24*60*60

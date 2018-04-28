@@ -27,6 +27,10 @@ func main() {
 	// Generate orders
 	ethToRen := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(1) , stackint.FromUint(1) ,stackint.FromUint(1) ,n)
 	renToEth := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(1) , stackint.FromUint(1) ,stackint.FromUint(1) ,n)
+	log.Println("eth to ren order id ", ethToRen.ID.String())
+	log.Println("ren to eth order id ", renToEth.ID.String())
+
+
 
 	// Send sell order
 	sellReq := relay.OpenOrderRequest{Order:*ethToRen, OrderFragments:relay.OrderFragments{}}
