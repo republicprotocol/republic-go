@@ -5,7 +5,7 @@
   "multiAddress":
     "/ip4/119.225.50.242/tcp/18517/republic/8MGR5xXsk2aiQf7LWchYY2p2i7zQTQ",
   "bootstrapMultiAddresses": [
-    "/ip4/54.187.138.229/tcp/18514/republic/8MG45FDLpKnBMPSbYU7RobYZCgeNYf"],
+    "/ip4/54.187.138.229/tcp/18514/republic/8MHXRr47PxLLKNJQPg5EuaSp6oSBqB"],
   "ethereum": {
     "network": "ropsten",
     "uri": "https://ropsten.infura.io",

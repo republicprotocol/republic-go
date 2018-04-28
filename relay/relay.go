@@ -100,7 +100,9 @@ func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
 			go func(darkPool darkocean.Pool) {
 				defer wg.Done()
 				// Split order into (number of nodes in each pool) * 2/3 fragments
-				shares, err := openOrder.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
+				// todo : change back to
+				// shares, err := openOrder.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
+				shares, err := openOrder.Split(int64(darkPool.Size()), 1, &prime)
 				if err != nil {
 					errCh <- err
 					return
@@ -219,6 +221,8 @@ func (relay *Relay) sendSharesToDarkPool(pool darkocean.Pool, shares []*order.Fr
 			if shareIndex < len(shares) {
 				go func(nodeAddress identity.Address, share *order.Fragment) {
 					defer wg.Done()
+
+					relay.swarmerClient.Address()
 
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer cancel()

@@ -213,6 +213,7 @@ func (client *Client) query(ctx context.Context, query identity.Address, depth i
 	// than the Swarm service
 	multiAddrs := client.dht.MultiAddresses()
 	for _, multiAddr := range multiAddrs {
+		log.Printf("target multiaddress is:%s , we have : %s  ", query, multiAddr.String() )
 		// Short circuit if the Swarm service is directly connected to the
 		// query
 		if query == multiAddr.Address() && !ignoreResponse {
