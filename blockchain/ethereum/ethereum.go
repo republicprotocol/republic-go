@@ -38,10 +38,7 @@ var (
 	RepublicTokenAddressOnRopsten    = common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54")
 	DarknodeRegistryAddressOnRopsten = common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3")
 	HyperdriveAddressOnRopsten       = common.HexToAddress("0x4Af263d0C667FefD3B3b1893E24B57AAd796570b")
-<<<<<<< HEAD
-=======
 	ArcAddressOnRopsten              = common.HexToAddress("0x2940089833b688a1a46c150085ef004f85fcee87")
->>>>>>> arc
 )
 
 // Config defines the different settings for connecting the Darknode
