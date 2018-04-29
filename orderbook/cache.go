@@ -183,6 +183,9 @@ func (cache *Cache) Blocks() []Entry {
 
 // Order retrieves information regarding an order.
 func (cache *Cache) Order(id order.ID) Entry {
+	cache.ordersMu.RLock()
+	defer cache.ordersMu.RLock()
+
 	return cache.orders[string(id)]
 }
 
