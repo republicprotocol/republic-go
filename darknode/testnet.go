@@ -1,16 +1,28 @@
 package darknode
 
 import (
+	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 )
 
+// The TestnetEnv will use the ethConn to handle Ethereum and the
+// darknodeRegistry to acccess the darknodeRegistry of the local
+// testnet. TestnetEnv also stores all darknodes of the testnet in
+// an exported Darknodes field and the bootstrapMultiAddrs field to
+// store the multiaddresses of the bootstrap nodes.
 type TestnetEnv struct {
 	// Ethereum
 	ethConn          ethereum.Conn
@@ -18,31 +30,102 @@ type TestnetEnv struct {
 
 	// Darknodes
 	bootstrapMultiAddrs identity.MultiAddresses
-	darknodes           Darknodes
+	Darknodes           Darknodes
 }
 
-func NewTestnet(done <-chan struct{}, numberOfDarknodes, numberOfBootstrapDarknodes int) (TestnetEnv, error) {
-	// TODO:
-	// 1. Call NewDarknodes
-	// 2. Call ganache.StartAndConnect
-	// 3. Call dnr.NewDarknodeRegistry
-	// 4. Collect all bootstrap Darknode multi-addresses
+// NewTestnet will create a testnet that will register newly created darknodes
+// to a darknode registry and bootstrap them to the bootstrap nodes. It will
+// connect to a local ganache server and start their RPCs. A call to this method
+// must always be folllowed by a call to TearDown after the use of the testnet
+// is completed. This method will ignore all errors that have occured while
+// bootstrapping.
+func NewTestnet(numberOfDarknodes, numberOfBootstrapDarknodes int) (TestnetEnv, error) {
 
-	panic("unimplemented")
+	darknodes, bootstrapMultiAddrs, err := NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes)
+	if err != nil {
+		return TestnetEnv{}, fmt.Errorf("cannot create new darknodes: %v", err)
+	}
+
+	conn, err := ganache.StartAndConnect()
+	if err != nil {
+		return TestnetEnv{}, fmt.Errorf("cannot connect to ganache: %v", err)
+	}
+
+	// Connect to Ganache
+	transactor := ganache.GenesisTransactor()
+	darknodeRegistry, err := dnr.NewDarknodeRegistry(context.Background(), conn, &transactor, &bind.CallOpts{})
+	if err != nil {
+		return TestnetEnv{}, fmt.Errorf("cannot create a new darknode registry: %v", err)
+	}
+
+	darknodeRegistry.SetGasLimit(3000000)
+
+	// Register the Darknodes and trigger an epoch to accept their
+	// registrations
+	err = RegisterDarknodes(darknodes, conn, darknodeRegistry)
+	if err != nil {
+		return TestnetEnv{}, fmt.Errorf("cannot register darknodes: %v", err)
+	}
+
+	// Distribute eth to each node
+	for _, node := range darknodes {
+		err = ganache.DistributeEth(conn, common.HexToAddress("0x"+hex.EncodeToString(node.ID())))
+		if err != nil {
+			return TestnetEnv{}, fmt.Errorf("cannot distribute ether to darknode %v: %v", node.ID(), err)
+		}
+	}
+
+	// Bootstrapping all darknodes
+	dispatch.CoForAll(darknodes, func(i int) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+
+		// Igmores all errors during bootstrapping because this is a local testnet
+		_ = darknodes[i].Bootstrap(ctx)
+	})
+
+	return TestnetEnv{
+		ethConn:             conn,
+		darknodeRegistry:    darknodeRegistry,
+		bootstrapMultiAddrs: bootstrapMultiAddrs,
+		Darknodes:           darknodes,
+	}, nil
 }
 
-// NewDarknodes configured for a local test environment.
-func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (Darknodes, error) {
+// Teardown must be called in all tests that call NewTestnet to ensure that
+// the ganache server is stopped and the darknodes are deregistered and refunded.
+func (env *TestnetEnv) Teardown() error {
+	defer ganache.Stop()
+
+	// Deregister the DarkNodes
+	err := DeregisterDarknodes(env.Darknodes, env.ethConn, env.darknodeRegistry)
+	if err != nil {
+		return fmt.Errorf("could not deregister darknodes: %v", err)
+	}
+
+	// Refund the DarkNodes
+	err = RefundDarknodes(env.Darknodes, env.ethConn, env.darknodeRegistry)
+	if err != nil {
+		return fmt.Errorf("could not refund darknodes: %v", err)
+	}
+
+	return nil
+}
+
+// NewDarknodes configured for a local test environment. This method will also return
+// multiaddresses of bootstrap nodes in the testnet.
+func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (Darknodes, identity.MultiAddresses, error) {
 	var err error
 
 	darknodes := make(Darknodes, numberOfDarknodes)
+	bootstrapMultiAddrs := make(identity.MultiAddresses, numberOfBootstrapDarknodes)
 	multiAddrs := make([]identity.MultiAddress, numberOfDarknodes)
 	configs := make([]Config, numberOfDarknodes)
 	for i := 0; i < numberOfDarknodes; i++ {
 		key := keystore.NewKeyForDirectICAP(rand.Reader)
 		multiAddrs[i], configs[i], err = NewLocalConfig(*key, "127.0.0.1", fmt.Sprintf("%d", 3000+i))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	for i := 0; i < numberOfDarknodes; i++ {
@@ -53,14 +136,19 @@ func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (Darknodes,
 			configs[i].BootstrapMultiAddresses = append(configs[i].BootstrapMultiAddresses, multiAddrs[j])
 		}
 	}
+
+	for j := 0; j < numberOfBootstrapDarknodes; j++ {
+		bootstrapMultiAddrs = append(bootstrapMultiAddrs, multiAddrs[j])
+	}
+
 	for i := 0; i < numberOfDarknodes; i++ {
 		darknodes[i], err = NewDarknode(multiAddrs[i], &configs[i])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
-	return darknodes, nil
+	return darknodes, bootstrapMultiAddrs, nil
 }
 
 // RegisterDarknodes using the minimum required bond and wait until the next
@@ -115,6 +203,9 @@ func RefundDarknodes(darknodes Darknodes, conn ethereum.Conn, darknodeRegistry d
 	return nil
 }
 
+// NewLocalConfig will return newly generated multiaddress and config that are
+// constructed from an EcdsaKey, host and port that are passed as arguments to
+// the method.
 func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAddress, Config, error) {
 	keyPair, err := identity.NewKeyPairFromPrivateKey(ecdsaKey.PrivateKey)
 	if err != nil {

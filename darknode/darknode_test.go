@@ -3,7 +3,6 @@ package darknode_test
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"time"
@@ -11,15 +10,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/darknode"
-	. "github.com/republicprotocol/republic-go/darknodetest"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/go-do"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/blockchain/test"
-	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
@@ -39,49 +32,16 @@ const (
 
 var _ = Describe("Darknode", func() {
 
-	var conn ethereum.Conn
-	var darknodeRegistry dnr.DarknodeRegistry
-	var darknodes Darknodes
+	var env TestnetEnv
 
 	BeforeEach(func() {
 		var err error
-
-		conn, err = ganache.StartAndConnect()
+		env, err = NewTestnet(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
 		Expect(err).ShouldNot(HaveOccurred())
-
-		// Connect to Ganache
-		transactor := ganache.GenesisTransactor()
-		darknodeRegistry, err = dnr.NewDarknodeRegistry(context.Background(), conn, &transactor, &bind.CallOpts{})
-		Expect(err).ShouldNot(HaveOccurred())
-		darknodeRegistry.SetGasLimit(3000000)
-
-		// Create DarkNodes and contexts/cancels for running them
-		darknodes, err = NewDarknodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		// Register the Darknodes and trigger an epoch to accept their
-		// registrations
-		err = RegisterDarknodes(darknodes, conn, darknodeRegistry)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		// Distribute eth to each node
-		for _, node := range darknodes {
-			err = ganache.DistributeEth(conn, common.HexToAddress("0x"+hex.EncodeToString(node.ID())))
-			Expect(err).ShouldNot(HaveOccurred())
-		}
 	})
 
 	AfterEach(func() {
-		defer ganache.Stop()
-
-		// Deregister the DarkNodes
-		err := DeregisterDarknodes(darknodes, conn, darknodeRegistry)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		// Refund the DarkNodes
-		err = RefundDarknodes(darknodes, conn, darknodeRegistry)
-		Expect(err).ShouldNot(HaveOccurred())
-
+		env.Teardown()
 	})
 
 	test.SkipCIContext("when watching the ocean", func() {
@@ -155,20 +115,20 @@ var _ = Describe("Darknode", func() {
 			By("booting darknodes...")
 			done := make(chan struct{})
 			defer close(done)
-			go dispatch.CoForAll(darknodes, func(i int) {
+			go dispatch.CoForAll(env.Darknodes, func(i int) {
 				defer GinkgoRecover()
-				/* err := */ darknodes[i].Run(done)
+				/* err := */ env.Darknodes[i].Run(done)
 				// Expect(err).ShouldNot(HaveOccurred())
 			})
 			time.Sleep(10 * time.Second)
-			for _, node := range darknodes {
+			for _, node := range env.Darknodes {
 				log.Printf("%v has %v peers", node.Address(), len(node.RPC().SwarmerClient().DHT().MultiAddresses()))
 			}
 
 			By("sending orders...")
 			// for {
 			time.Sleep(time.Second)
-			err := sendOrders(darknodes, NumberOfOrdersPerSecond)
+			err := sendOrders(env.Darknodes, NumberOfOrdersPerSecond)
 			Ω(err).ShouldNot(HaveOccurred())
 			// }
 		}, 30) // Timeout is set to 30 seconds
