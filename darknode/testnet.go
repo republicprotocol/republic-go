@@ -8,19 +8,20 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/identity"
 )
 
-type Env struct {
-	ethConn             ethereum.Conn
-	darknodes           darknode.Darknodes
-	bootstrapMultiAddrs identity.MultiAddresses
-
+type TestnetEnv struct {
+	// Ethereum
+	ethConn          ethereum.Conn
 	darknodeRegistry dnr.DarknodeRegistry
+
+	// Darknodes
+	bootstrapMultiAddrs identity.MultiAddresses
+	darknodes           Darknodes
 }
 
-func NewEnv(numberOfDarknodes, numberOfBootstrapDarknodes int) (Env, error) {
+func NewTestnet(done <-chan struct{}, numberOfDarknodes, numberOfBootstrapDarknodes int) (TestnetEnv, error) {
 	// TODO:
 	// 1. Call NewDarknodes
 	// 2. Call ganache.StartAndConnect
@@ -31,12 +32,12 @@ func NewEnv(numberOfDarknodes, numberOfBootstrapDarknodes int) (Env, error) {
 }
 
 // NewDarknodes configured for a local test environment.
-func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (darknode.Darknodes, error) {
+func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (Darknodes, error) {
 	var err error
 
-	darknodes := make(darknode.Darknodes, numberOfDarknodes)
+	darknodes := make(Darknodes, numberOfDarknodes)
 	multiAddrs := make([]identity.MultiAddress, numberOfDarknodes)
-	configs := make([]darknode.Config, numberOfDarknodes)
+	configs := make([]Config, numberOfDarknodes)
 	for i := 0; i < numberOfDarknodes; i++ {
 		key := keystore.NewKeyForDirectICAP(rand.Reader)
 		multiAddrs[i], configs[i], err = NewLocalConfig(*key, "127.0.0.1", fmt.Sprintf("%d", 3000+i))
@@ -53,7 +54,7 @@ func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (darknode.D
 		}
 	}
 	for i := 0; i < numberOfDarknodes; i++ {
-		darknodes[i], err = darknode.NewDarknode(multiAddrs[i], &configs[i])
+		darknodes[i], err = NewDarknode(multiAddrs[i], &configs[i])
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +65,7 @@ func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (darknode.D
 
 // RegisterDarknodes using the minimum required bond and wait until the next
 // epoch. This must only be used in local test environments.
-func RegisterDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darknodeRegistry dnr.DarknodeRegistry) error {
+func RegisterDarknodes(darknodes Darknodes, conn ethereum.Conn, darknodeRegistry dnr.DarknodeRegistry) error {
 
 	minimumBond, err := darknodeRegistry.MinimumBond()
 	if err != nil {
@@ -90,7 +91,7 @@ func RegisterDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darknod
 
 // DeregisterDarknodes and wait until the next epoch. This must only be used
 // in local test environments.
-func DeregisterDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darknodeRegistry dnr.DarknodeRegistry) error {
+func DeregisterDarknodes(darknodes Darknodes, conn ethereum.Conn, darknodeRegistry dnr.DarknodeRegistry) error {
 	for i := range darknodes {
 		darknode := darknodes[i]
 		_, err := darknodeRegistry.Deregister(darknode.ID())
@@ -103,7 +104,7 @@ func DeregisterDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darkn
 
 // RefundDarknodes after they have been deregistered. This must only be used
 // in local test environments.
-func RefundDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darknodeRegistry dnr.DarknodeRegistry) error {
+func RefundDarknodes(darknodes Darknodes, conn ethereum.Conn, darknodeRegistry dnr.DarknodeRegistry) error {
 	for i := range darknodes {
 		darknodeID := darknodes[i].ID()
 		_, err := darknodeRegistry.Refund(darknodeID)
@@ -114,22 +115,22 @@ func RefundDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darknodeR
 	return nil
 }
 
-func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAddress, darknode.Config, error) {
+func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAddress, Config, error) {
 	keyPair, err := identity.NewKeyPairFromPrivateKey(ecdsaKey.PrivateKey)
 	if err != nil {
-		return identity.MultiAddress{}, darknode.Config{}, err
+		return identity.MultiAddress{}, Config{}, err
 	}
 
 	rsaKey, err := crypto.NewRsaKeyPair()
 	if err != nil {
-		return identity.MultiAddress{}, darknode.Config{}, err
+		return identity.MultiAddress{}, Config{}, err
 	}
 
 	multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", host, port, keyPair.Address()))
 	if err != nil {
-		return identity.MultiAddress{}, darknode.Config{}, err
+		return identity.MultiAddress{}, Config{}, err
 	}
-	return multiAddr, darknode.Config{
+	return multiAddr, Config{
 		EcdsaKey: ecdsaKey,
 		RsaKey:   rsaKey,
 		Host:     host,
