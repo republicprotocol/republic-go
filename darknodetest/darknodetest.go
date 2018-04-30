@@ -12,6 +12,24 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 )
 
+type Env struct {
+	ethConn             ethereum.Conn
+	darknodes           darknode.Darknodes
+	bootstrapMultiAddrs identity.MultiAddresses
+
+	darknodeRegistry dnr.DarknodeRegistry
+}
+
+func NewEnv(numberOfDarknodes, numberOfBootstrapDarknodes int) (Env, error) {
+	// TODO:
+	// 1. Call NewDarknodes
+	// 2. Call ganache.StartAndConnect
+	// 3. Call dnr.NewDarknodeRegistry
+	// 4. Collect all bootstrap Darknode multi-addresses
+
+	panic("unimplemented")
+}
+
 // NewDarknodes configured for a local test environment.
 func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (darknode.Darknodes, error) {
 	var err error
@@ -123,16 +141,4 @@ func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAdd
 			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
 		},
 	}, nil
-}
-
-func NewFalconConfig() darknode.Config {
-	return darknode.Config{}
-}
-
-var FalconBootstrapMultis = []string{
-	"/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",
-	"/ip4/52.21.44.236/tcp/18514/republic/8MGzXN7M1ucxvtumVjQ7Ybb7xQ8TUw",
-	"/ip4/52.41.118.171/tcp/18514/republic/8MHmrykz65HimBPYaVgm8bTSpRUoXA",
-	"/ip4/52.59.176.141/tcp/18514/republic/8MKFT9CDQQru1hYqnaojXqCQU2Mmuk",
-	"/ip4/52.77.88.84/tcp/18514/republic/8MGb8k337pp2GSh6yG8iv2GK6FbNHN",
 }
