@@ -29,7 +29,7 @@ npm install -g ganache-cli
 
 ## Darknode Local Testnet
 
-The _testnet.go_ file inside the darknode package provides the _NewTestnet_ function which will set up a local testnet with a user specified number of dark nodes and bootstrap nodes. 
+The [testnet.go](https://github.com/republicprotocol/republic-go/blob/darknodetest/darknode/testnet.go) file inside the darknode package provides the _NewTestnet_ function which will set up a local testnet with a user specified number of dark nodes and bootstrap nodes. 
 
 
 The following is an example of how you can use it for your tests.
@@ -53,8 +53,8 @@ NewTestnet will create dark nodes, register them to a darknode registry and conn
 
 
 To use the local tesnet, you must first import the _darknode_ package in your test file and pass the following arguments to NewTestnet function:
-    * Number of darknodes that your test will require in the local testnet
-    * Number of bootstrap nodes in the local testnet
+* Number of darknodes that your test will require in the local testnet
+* Number of bootstrap nodes in the local testnet
 
 
 NewTestnet currently *does not* support a Bitcoin connection and cannot control smart contract variables.
