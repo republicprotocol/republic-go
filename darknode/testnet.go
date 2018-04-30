@@ -1,4 +1,4 @@
-package darknodetest
+package darknode
 
 import (
 	"crypto/rand"
