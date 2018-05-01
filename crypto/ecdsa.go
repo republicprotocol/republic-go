@@ -4,6 +4,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/json"
+	"fmt"
 	"math/big"
 
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
@@ -36,11 +38,17 @@ func NewEcdsaKey(privateKey *ecdsa.PrivateKey) EcdsaKey {
 	}
 }
 
+// Sign implements the Signer interface. It uses the ecdsa.PrivateKey to sign
+// the hash produced by a Hasher.
+func (key *EcdsaKey) Sign(hasher Hasher) ([]byte, error) {
+	return ethCrypto.Sign(hasher.Hash(), key.PrivateKey)
+}
+
 // Address of the EcdsaKey. An Address is generated in the same way as an
 // Ethereum address, but instead of a hex encoding, it uses a base58 encoding
 // of a Keccak256 multihash.
 func (key *EcdsaKey) Address() string {
-	bytes := elliptic.Marshal(s256, key.PublicKey.X, key.PublicKey.Y)
+	bytes := elliptic.Marshal(ethSecp256k1.S256(), key.PublicKey.X, key.PublicKey.Y)
 	hash := ethCrypto.Keccak256(bytes[1:]) // Keccak256 hash
 	hash = hash[(len(hash) - 20):]         // Take the last 20 bytes
 	addr := make([]byte, 2, 22)            // Create the multihash address
@@ -48,6 +56,101 @@ func (key *EcdsaKey) Address() string {
 	addr[1] = 20                           // Set the length byte
 	addr = append(addr, hash...)           // Append the data
 	return base58.EncodeAlphabet(hash, base58.BTCAlphabet)
+}
+
+// MarshalJSON implements the json.Marshaler interface. The EcdsaKey is
+// formatted according to the Republic Protocol Keystore specification.
+func (key *EcdsaKey) MarshalJSON() ([]byte, error) {
+	jsonKey := map[string]interface{}{}
+	// Private key
+	jsonKey["d"] = key.D.Bytes()
+
+	// Public key
+	jsonKey["x"] = key.X.Bytes()
+	jsonKey["y"] = key.Y.Bytes()
+
+	// Curve
+	jsonKey["curveParams"] = map[string]interface{}{
+		"p":    ethSecp256k1.S256().P.Bytes(),  // the order of the underlying field
+		"n":    ethSecp256k1.S256().N.Bytes(),  // the order of the base point
+		"b":    ethSecp256k1.S256().B.Bytes(),  // the constant of the curve equation
+		"x":    ethSecp256k1.S256().Gx.Bytes(), // (x,y) of the base point
+		"y":    ethSecp256k1.S256().Gy.Bytes(),
+		"bits": ethSecp256k1.S256().BitSize, // the size of the underlying field
+		"name": "s256",                      // the canonical name of the curve
+	}
+	return json.Marshal(jsonKey)
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface. An EcdsaKey is
+// created from data that is assumed to be compliant with the Republic Protocol
+// Keystore specification. The use of secp256k1 s256 curve is not checked.
+func (key *EcdsaKey) UnmarshalJSON(data []byte) error {
+	jsonKey := map[string]json.RawMessage{}
+	if err := json.Unmarshal(data, &jsonKey); err != nil {
+		return err
+	}
+
+	var err error
+
+	// Private key
+	key.PrivateKey = new(ecdsa.PrivateKey)
+	key.PrivateKey.D, err = unmarshalBigIntFromMap(jsonKey, "d")
+	if err != nil {
+		return err
+	}
+
+	// Public key
+	key.PrivateKey.PublicKey = ecdsa.PublicKey{}
+	key.PrivateKey.PublicKey.X, err = unmarshalBigIntFromMap(jsonKey, "x")
+	if err != nil {
+		return err
+	}
+	key.PrivateKey.PublicKey.Y, err = unmarshalBigIntFromMap(jsonKey, "y")
+	if err != nil {
+		return err
+	}
+
+	// Curve
+	if jsonVal, ok := jsonKey["curveParams"]; ok {
+		curveParams := elliptic.CurveParams{}
+		jsonCurveParams := map[string]json.RawMessage{}
+		if err := json.Unmarshal(jsonVal, &jsonCurveParams); err != nil {
+			return err
+		}
+		curveParams.P, err = unmarshalBigIntFromMap(jsonCurveParams, "p")
+		if err != nil {
+			return err
+		}
+		curveParams.N, err = unmarshalBigIntFromMap(jsonCurveParams, "n")
+		if err != nil {
+			return err
+		}
+		curveParams.B, err = unmarshalBigIntFromMap(jsonCurveParams, "b")
+		if err != nil {
+			return err
+		}
+		curveParams.Gx, err = unmarshalBigIntFromMap(jsonCurveParams, "x")
+		if err != nil {
+			return err
+		}
+		curveParams.Gy, err = unmarshalBigIntFromMap(jsonCurveParams, "y")
+		if err != nil {
+			return err
+		}
+		curveParams.BitSize, err = unmarshalIntFromMap(jsonCurveParams, "bits")
+		if err != nil {
+			return err
+		}
+		curveParams.Name, err = unmarshalStringFromMap(jsonCurveParams, "name")
+		if err != nil {
+			return err
+		}
+		key.PrivateKey.Curve = &curveParams
+	} else {
+		return fmt.Errorf("curveParams is nil")
+	}
+	return nil
 }
 
 // VerifySignature of a hash matches an address.
@@ -88,7 +191,7 @@ func RecoverAddress(hasher Hasher, signature []byte) (string, error) {
 }
 
 // s256 is unused
-var s256 *elliptic.CurveParams
+var s256 elliptic.CurveParams
 
 func init() {
 	// See SEC 2 section 2.7.1

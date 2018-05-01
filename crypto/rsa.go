@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"math/big"
 )
 
@@ -74,53 +73,28 @@ func (key *RsaKey) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
+	var err error
+
 	// Private key
 	key.PrivateKey = new(rsa.PrivateKey)
-	if jsonVal, ok := jsonKey["d"]; ok {
-		d := []byte{}
-		if err := json.Unmarshal(jsonVal, &d); err != nil {
-			return err
-		}
-		key.PrivateKey.D = big.NewInt(0).SetBytes([]byte(d))
-	} else {
-		return fmt.Errorf("d is nil")
+	key.PrivateKey.D, err = unmarshalBigIntFromMap(jsonKey, "d")
+	if err != nil {
+		return err
 	}
-	key.PrivateKey.Primes = []*big.Int{}
-	if jsonVal, ok := jsonKey["primes"]; ok {
-		primes := []json.RawMessage{}
-		if err := json.Unmarshal(jsonVal, &primes); err != nil {
-			return err
-		}
-		for _, jsonVal := range primes {
-			p := []byte{}
-			if err := json.Unmarshal(jsonVal, &p); err != nil {
-				return err
-			}
-			key.Primes = append(key.Primes, big.NewInt(0).SetBytes(p))
-		}
-	} else {
-		return fmt.Errorf("primes is nil")
+	key.PrivateKey.Primes, err = unmarshalBigIntsFromMap(jsonKey, "primes")
+	if err != nil {
+		return err
 	}
 
 	// Public key
 	key.PrivateKey.PublicKey = rsa.PublicKey{}
-	if jsonVal, ok := jsonKey["n"]; ok {
-		n := []byte{}
-		if err := json.Unmarshal(jsonVal, &n); err != nil {
-			return err
-		}
-		key.PrivateKey.PublicKey.N = big.NewInt(0).SetBytes(n)
-	} else {
-		return fmt.Errorf("n is nil")
+	key.PrivateKey.PublicKey.N, err = unmarshalBigIntFromMap(jsonKey, "n")
+	if err != nil {
+		return err
 	}
-	if jsonVal, ok := jsonKey["e"]; ok {
-		e := 0
-		if err := json.Unmarshal(jsonVal, &e); err != nil {
-			return err
-		}
-		key.PrivateKey.PublicKey.E = e
-	} else {
-		return fmt.Errorf("e is nil")
+	key.PrivateKey.PublicKey.E, err = unmarshalIntFromMap(jsonKey, "e")
+	if err != nil {
+		return err
 	}
 
 	key.Precompute()
