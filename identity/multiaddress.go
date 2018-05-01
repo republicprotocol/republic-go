@@ -30,6 +30,8 @@ func init() {
 	multiaddr.AddProtocol(republic)
 }
 
+type Signature []byte
+
 // MultiAddress is an alias.
 type MultiAddress struct {
 	address          Address
