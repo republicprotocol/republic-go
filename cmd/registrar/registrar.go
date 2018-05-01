@@ -183,15 +183,14 @@ func DeregisterAll(addresses []string, registrar dnr.DarknodeRegistry) error {
 		if isRegistered {
 			_, err = registrar.Deregister(address.Bytes())
 			if err != nil {
-				log.Printf("[%v] %sCouldn't deregister node%s: %v\n", address.Hex(), red, reset, err)
+				return fmt.Errorf("[%v] %sCouldn't deregister node%s: %v\n", address.Hex(), red, reset, err)
 			} else {
 				log.Printf("[%v] %sNode will be deregistered next epoch%s\n", address.Hex(), green, reset)
 			}
 		} else {
-			log.Printf("[%v] %sNode hasn't been registered yet.%s\n", address.Hex(), red, reset, err)
+			return fmt.Errorf("[%v] %sNode hasn't been registered yet.%s\n", address.Hex(), red, reset)
 		}
 	}
-	log.Println("Successfully deregister all node. Run 'registrar epoch' to trigger epoch")
 
 	return nil
 }
