@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+
+	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 )
 
 var ErrUnimplemented = errors.New("unimplemented")
@@ -28,18 +30,8 @@ func (hash32 Hash32) Hash() []byte {
 	return hash32[:]
 }
 
-type Hash65 [65]byte
-
-func NewHash65(data []byte) Hash65 {
-	hash65 := Hash65{}
-	for i := 0; i < 65 && i < len(data); i++ {
-		hash65[i] = data[i]
-	}
-	return hash65
-}
-
-func (hash65 Hash65) Hash() []byte {
-	return hash65[:]
+func Keccak256(data []byte) []byte {
+	return ethCrypto.Keccak256(data)
 }
 
 type Signer interface {
@@ -52,7 +44,7 @@ type Verifier interface {
 
 type Encrypter interface {
 	Encrypt(string, []byte) ([]byte, error)
-	Decrypt(string, []byte) ([]byte, error)
+	Decrypt([]byte) ([]byte, error)
 }
 
 type Crypter interface {
@@ -93,7 +85,7 @@ func (crypter *WeakCrypter) Encrypt(addr string, plainText []byte) ([]byte, erro
 
 // Decrypt implements the Crypter interface. It returns the cipher text and no
 // error.
-func (crypter *WeakCrypter) Decrypt(addr string, cipherText []byte) ([]byte, error) {
+func (crypter *WeakCrypter) Decrypt(cipherText []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
@@ -127,7 +119,7 @@ func (crypter *ErrCrypter) Encrypt(addr string, plainText []byte) ([]byte, error
 
 // Decrypt implements the Crypter interface. It returns an empty byte slice and
 // ErrUnimplemented.
-func (crypter *ErrCrypter) Decrypt(addr string, cipherText []byte) ([]byte, error) {
+func (crypter *ErrCrypter) Decrypt(cipherText []byte) ([]byte, error) {
 	return []byte{}, ErrUnimplemented
 }
 

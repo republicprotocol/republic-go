@@ -55,7 +55,7 @@ func (key *EcdsaKey) Address() string {
 	addr[0] = multihash.KECCAK_256         // Set the keccak256 byte
 	addr[1] = 20                           // Set the length byte
 	addr = append(addr, hash...)           // Append the data
-	return base58.EncodeAlphabet(hash, base58.BTCAlphabet)
+	return base58.EncodeAlphabet(addr, base58.BTCAlphabet)
 }
 
 // MarshalJSON implements the json.Marshaler interface. The EcdsaKey is

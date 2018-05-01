@@ -7,10 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/republicprotocol/republic-go/identity"
-
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stackint"
 )
@@ -200,16 +199,16 @@ func (order *Order) Hash() []byte {
 
 // Sign signs the order using the provided keypair, and assigns it the the order's
 // Signature field.
-func (order *Order) Sign(keyPair identity.KeyPair) error {
+func (order *Order) Sign(signer crypto.Signer) error {
 	var err error
-	order.Signature, err = keyPair.Sign(order)
+	order.Signature, err = signer.Sign(order)
 	return err
 }
 
 // VerifySignature verifies that the Signature field has been signed by the provided
 // ID's private key, returning an error if the signature is invalid
-func (order *Order) VerifySignature(ID identity.ID) error {
-	return identity.VerifySignature(order, order.Signature, ID)
+func (order *Order) VerifySignature(addr string) error {
+	return crypto.VerifySignature(order, order.Signature, addr)
 }
 
 // Bytes returns an Order serialized into a bytes.
