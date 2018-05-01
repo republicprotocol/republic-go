@@ -16,8 +16,9 @@ Both keys are marshaled into JSON, and the resulting bytes are encrypted using a
 
 ```json
 {
+    "id": "0b6e5b62-404f-8d43-a45f-68cbcd984607",
+    "version": 3,
     "ecdsa": {
-        "id": "5b60b6e2-408d-434f-9a48-460bcd768c5f",
         "address": "8MHXRr47PxLLKNJQPg5EuaSp6oSBqB",
         "crypto": {
             "cipher": "aes-128-ctr",
@@ -37,7 +38,6 @@ Both keys are marshaled into JSON, and the resulting bytes are encrypted using a
         }
     },
     "rsa": {
-        "id": "0b6e5b62-404f-8d43-a45f-68cbcd984607",
         "publicKey": "XIYFjElJbj4p0w5Yy4bg7vtu+l46TwNcMvulLxFK8hMs7AnRgC0D6zRC7RQgMWQQ==",
         "crypto": {
             "cipher": "aes-128-ctr",
