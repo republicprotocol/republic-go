@@ -14,10 +14,10 @@ import (
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/blockchain/test"
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/rpc/client"
+	"github.com/republicprotocol/republic-go/rpc/relayer"
 	"github.com/republicprotocol/republic-go/rpc/smpcer"
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/stackint"
@@ -25,8 +25,8 @@ import (
 
 const (
 	GanacheRPC                 = "http://localhost:8545"
-	NumberOfDarkNodes          = 3
-	NumberOfBootstrapDarkNodes = 3
+	NumberOfDarkNodes          = 10
+	NumberOfBootstrapDarkNodes = 5
 	NumberOfOrdersPerSecond    = 10
 )
 
@@ -34,14 +34,71 @@ var _ = Describe("Darknode", func() {
 
 	var env TestnetEnv
 
-	BeforeEach(func() {
+	BeforeSuite(func() {
 		var err error
 		env, err = NewTestnet(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
-	AfterEach(func() {
+	AfterSuite(func() {
 		env.Teardown()
+	})
+
+	Context("on opening new orders", func() {
+
+		It("should update orderbook with an open order", func() {
+
+			// Run darknode services and bootstrap all nodes
+			done := make(chan struct{})
+			defer close(done)
+			env.StartServicesAndBootstrapNodes(done)
+
+			// Sleep for 10 seconds to give time to nodes to complete bootstrapping
+			// and to start all services
+			time.Sleep(10 * time.Second)
+
+			// Create a relayer client to sync with the orderbook
+			crypter := crypto.NewWeakCrypter()
+
+			conn, err := client.Dial(context.Background(), env.Darknodes[0].MultiAddress())
+			Expect(err).ShouldNot(HaveOccurred())
+
+			defer conn.Close()
+
+			traderAddr, _, err := identity.NewAddress()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			relayClient := relayer.NewRelayClient(conn.ClientConn)
+			requestSignature, err := crypter.Sign(traderAddr)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			request := &relayer.SyncRequest{
+				Signature: requestSignature,
+				Address:   traderAddr.String(),
+			}
+
+			stream, err := relayClient.Sync(context.Background(), request)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// Create order fragment to send
+			n := int64(17)
+			k := int64(12)
+			primeVal, _ := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+			prime := &primeVal
+			price := stackint.FromUint(10)
+			minVolume := stackint.FromUint(100)
+			maxVolume := stackint.FromUint(1000)
+			nonce := stackint.One()
+
+			fragments, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, price, maxVolume, minVolume, nonce).Split(n, k, prime)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			env.Darknodes[0].OnOpenOrder(env.Darknodes[0].MultiAddress(), fragments[0])
+			syncResp, err := stream.Recv()
+			Expect(syncResp.Entry.Order.OrderId).Should(Equal([]byte(fragments[0].OrderID)))
+			Expect(syncResp.Entry.OrderStatus).Should(Equal(relayer.OrderStatus_Open))
+
+		})
 	})
 
 	test.SkipCIContext("when watching the ocean", func() {
@@ -115,11 +172,8 @@ var _ = Describe("Darknode", func() {
 			By("booting darknodes...")
 			done := make(chan struct{})
 			defer close(done)
-			go dispatch.CoForAll(env.Darknodes, func(i int) {
-				defer GinkgoRecover()
-				/* err := */ env.Darknodes[i].Run(done)
-				// Expect(err).ShouldNot(HaveOccurred())
-			})
+			env.StartServicesAndBootstrapNodes(done)
+
 			time.Sleep(10 * time.Second)
 			for _, node := range env.Darknodes {
 				log.Printf("%v has %v peers", node.Address(), len(node.RPC().SwarmerClient().DHT().MultiAddresses()))

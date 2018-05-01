@@ -13,7 +13,7 @@ import (
 
 // A Config defines the different settings for a Darknode.
 type Config struct {
-	EcdsaKey keystore.Key      `json:"ecdsaKey"`
+	EcdsaKey *keystore.Key      `json:"ecdsaKey"`
 	RsaKey   crypto.RsaKeyPair `json:"rsaKey"`
 	Ethereum ethereum.Config   `json:"ethereum"`
 	Logs     logger.Options    `json:"logs"`

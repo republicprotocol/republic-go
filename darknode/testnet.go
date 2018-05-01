@@ -5,7 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"time"
+
+	. "github.com/onsi/ginkgo"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -34,11 +35,9 @@ type TestnetEnv struct {
 }
 
 // NewTestnet will create a testnet that will register newly created darknodes
-// to a darknode registry and bootstrap them to the bootstrap nodes. It will
-// connect to a local ganache server and start their RPCs. A call to this method
-// must always be folllowed by a call to TearDown after the use of the testnet
-// is completed. This method will ignore all errors that have occured while
-// bootstrapping.
+// to a darknode registry. It will connect to a local ganache server. A call to
+// this method must always be folllowed by a call to TearDown after the use of
+// the testnet is completed.
 func NewTestnet(numberOfDarknodes, numberOfBootstrapDarknodes int) (TestnetEnv, error) {
 
 	darknodes, bootstrapMultiAddrs, err := NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes)
@@ -75,15 +74,6 @@ func NewTestnet(numberOfDarknodes, numberOfBootstrapDarknodes int) (TestnetEnv, 
 		}
 	}
 
-	// Bootstrapping all darknodes
-	dispatch.CoForAll(darknodes, func(i int) {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-		defer cancel()
-
-		// Igmores all errors during bootstrapping because this is a local testnet
-		_ = darknodes[i].Bootstrap(ctx)
-	})
-
 	return TestnetEnv{
 		ethConn:             conn,
 		darknodeRegistry:    darknodeRegistry,
@@ -110,6 +100,18 @@ func (env *TestnetEnv) Teardown() error {
 	}
 
 	return nil
+}
+
+// StartServicesAndBootstrapNodes will start running all the gRPC services and
+// bootstrap nodes once the swarmer client has started running. Errors are ignored
+// since this is a local testnet. When the done channel closes, the server will
+// be stopped.
+func (env *TestnetEnv) StartServicesAndBootstrapNodes(done <-chan struct{}) {
+	go dispatch.CoForAll(env.Darknodes, func(i int) {
+		defer GinkgoRecover()
+		// Ignoring errors as this is a local testnet
+		_ = env.Darknodes[i].Run(done)
+	})
 }
 
 // NewDarknodes configured for a local test environment. This method will also return
@@ -222,7 +224,7 @@ func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAdd
 		return identity.MultiAddress{}, Config{}, err
 	}
 	return multiAddr, Config{
-		EcdsaKey: ecdsaKey,
+		EcdsaKey: &ecdsaKey,
 		RsaKey:   rsaKey,
 		Host:     host,
 		Port:     port,

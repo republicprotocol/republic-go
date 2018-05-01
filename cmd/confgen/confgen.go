@@ -28,7 +28,7 @@ func main() {
 	}
 
 	conf := darknode.Config{
-		EcdsaKey:                *ecdsaKey,
+		EcdsaKey:                ecdsaKey,
 		RsaKey:                  rsaKey,
 		Host:                    "0.0.0.0",
 		Port:                    "18514",
