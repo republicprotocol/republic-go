@@ -116,7 +116,6 @@ func main() {
 	}
 	defer book.Unsubscribe(entries)
 
-
 	confirmedOrders := processOrderbookEntries(hyperdrive, entries)
 	conn, err := ethereum.Connect(config.Ethereum)
 	auth := abiBind.NewKeyedTransactor(config.KeyPair.PrivateKey)

@@ -84,15 +84,14 @@ var _ = Describe("hyperdrive", func() {
 		FIt("should be able to send txs with no conflicts", func() {
 
 			config := ethereum.Config{
-				Network: ethereum.NetworkRopsten,
-				URI:  "https://ropsten.infura.io",
-				RepublicTokenAddress: ethereum.RepublicTokenAddressOnRopsten.Hex(),
-				DarknodeRegistryAddress:  ethereum.DarknodeRegistryAddressOnRopsten.Hex(),
-				HyperdriveAddress:  ethereum.HyperdriveAddressOnRopsten.Hex(),
-				ArcAddress: ethereum.ArcAddressOnRopsten.Hex(),
-
+				Network:                 ethereum.NetworkRopsten,
+				URI:                     "https://ropsten.infura.io",
+				RepublicTokenAddress:    ethereum.RepublicTokenAddressOnRopsten.Hex(),
+				DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnRopsten.Hex(),
+				HyperdriveAddress:       ethereum.HyperdriveAddressOnRopsten.Hex(),
+				ArcAddress:              ethereum.ArcAddressOnRopsten.Hex(),
 			}
-			conn, err  := ethereum.Connect(config)
+			conn, err := ethereum.Connect(config)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			//conn, err := ethereum.Connect("https://ropsten.infura.io", ethereum.NetworkRopsten, renContractAddress, dnrContractAddress, hyperdriveAddress)
@@ -107,7 +106,7 @@ var _ = Describe("hyperdrive", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			nonce := base58.Decode("FEMmnsQwwNsmV1MArbFgdSwQqQq6VwJMdqc9VaRgLjUA")
-			blockNumber, err  := hyper.CheckOrders(nonce)
+			blockNumber, err := hyper.CheckOrders(nonce)
 			Ω(blockNumber).Should(BeZero())
 
 			tx := hyperdrive.Tx{
