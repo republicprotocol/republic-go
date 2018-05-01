@@ -48,25 +48,16 @@ func (relayer *Relayer) Sync(request *SyncRequest, stream Relay_SyncServer) erro
 	entries := make(chan orderbook.Entry)
 	defer close(entries)
 
-	errs := make(chan error, 1)
-	go func() {
-		defer close(errs)
-		defer relayer.orderbook.Unsubscribe(entries)
-		if err := relayer.orderbook.Subscribe(entries); err != nil {
-			errs <- fmt.Errorf("cannot subscribe to orderbook: %v", err)
-			return
-		}
-	}()
+	if err := relayer.orderbook.Subscribe(entries); err != nil {
+		return fmt.Errorf("cannot subscribe to orderbook: %v", err)
+	}
+	defer relayer.orderbook.Unsubscribe(entries)
+
 
 	for {
 		select {
 		case <-stream.Context().Done():
 			return stream.Context().Err()
-		case err, ok := <-errs:
-			if !ok {
-				return nil
-			}
-			return err
 		case entry, ok := <-entries:
 			if !ok {
 				return nil

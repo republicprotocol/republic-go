@@ -1,40 +1,19 @@
 package orderbook_test
 
 import (
-	"log"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/rpc"
-	"google.golang.org/grpc"
 )
-
-type MockStream struct {
-	grpc.ServerStream
-}
-
-func NewMockStream() MockStream {
-	return MockStream{}
-}
-
-func (mockStream MockStream) Send(block *rpc.SyncBlock) error {
-	log.Println(block)
-	return nil
-}
 
 const maxConnections = 3
 
 var _ = Describe("order book", func() {
 	Context("creating new orderbook", func() {
-		var syncer orderbook.Syncer
 		var book orderbook.Orderbook
 
 		BeforeEach(func() {
 			book = orderbook.NewOrderbook(10)
-
-			// Test that Orderbook implements Syncer interface
-			syncer = orderbook.Syncer(book)
 		})
 
 		AfterEach(func() {

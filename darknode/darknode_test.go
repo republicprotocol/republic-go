@@ -3,12 +3,10 @@ package darknode_test
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log"
-	"os/exec"
 	"time"
-
-	"github.com/republicprotocol/republic-go/smpc"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -16,9 +14,11 @@ import (
 	. "github.com/republicprotocol/republic-go/darknodetest"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/blockchain/test"
 	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -26,6 +26,7 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/rpc/client"
 	"github.com/republicprotocol/republic-go/rpc/smpcer"
+	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -33,12 +34,11 @@ const (
 	GanacheRPC                 = "http://localhost:8545"
 	NumberOfDarkNodes          = 3
 	NumberOfBootstrapDarkNodes = 3
-	NumberOfOrdersPerSecond    = 5
+	NumberOfOrdersPerSecond    = 10
 )
 
 var _ = Describe("Darknode", func() {
 
-	var cmd *exec.Cmd
 	var conn ethereum.Conn
 	var darknodeRegistry dnr.DarknodeRegistry
 	var darknodes Darknodes
@@ -46,13 +46,14 @@ var _ = Describe("Darknode", func() {
 	BeforeEach(func() {
 		var err error
 
-		cmd, conn, err = ganache.StartAndConnect()
+		conn, err = ganache.StartAndConnect()
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Connect to Ganache
-		darknodeRegistry, err = dnr.NewDarknodeRegistry(context.Background(), conn, ganache.GenesisTransactor(), &bind.CallOpts{})
+		transactor := ganache.GenesisTransactor()
+		darknodeRegistry, err = dnr.NewDarknodeRegistry(context.Background(), conn, &transactor, &bind.CallOpts{})
 		Expect(err).ShouldNot(HaveOccurred())
-		darknodeRegistry.SetGasLimit(1000000)
+		darknodeRegistry.SetGasLimit(3000000)
 
 		// Create DarkNodes and contexts/cancels for running them
 		darknodes, err = NewDarknodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
@@ -62,24 +63,28 @@ var _ = Describe("Darknode", func() {
 		// registrations
 		err = RegisterDarknodes(darknodes, conn, darknodeRegistry)
 		Expect(err).ShouldNot(HaveOccurred())
+
+		// Distribute eth to each node
+		for _, node := range darknodes {
+			err = ganache.DistributeEth(conn, common.HexToAddress("0x"+hex.EncodeToString(node.ID())))
+			Expect(err).ShouldNot(HaveOccurred())
+		}
 	})
 
 	AfterEach(func() {
-		var err error
+		defer ganache.Stop()
 
 		// Deregister the DarkNodes
-		err = DeregisterDarknodes(darknodes, conn, darknodeRegistry)
+		err := DeregisterDarknodes(darknodes, conn, darknodeRegistry)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Refund the DarkNodes
 		err = RefundDarknodes(darknodes, conn, darknodeRegistry)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		cmd.Process.Kill()
-		cmd.Wait()
 	})
 
-	Context("when watching the ocean", func() {
+	test.SkipCIContext("when watching the ocean", func() {
 
 		// It("should update local views of the ocean", func() {
 		// 	numberOfEpochs := 2
@@ -142,9 +147,9 @@ var _ = Describe("Darknode", func() {
 		})
 	})
 
-	FContext("when computing order matches", func() {
+	test.SkipCIContext("when computing order matches", func() {
 
-		FIt("should process the distribute order table in parallel with other pools", func(d Done) {
+		It("should process the distribute order table in parallel with other pools", func(d Done) {
 			defer close(d)
 
 			By("booting darknodes...")
@@ -152,8 +157,8 @@ var _ = Describe("Darknode", func() {
 			defer close(done)
 			go dispatch.CoForAll(darknodes, func(i int) {
 				defer GinkgoRecover()
-				err := darknodes[i].Serve(done)
-				Expect(err).ShouldNot(HaveOccurred())
+				/* err := */ darknodes[i].Run(done)
+				// Expect(err).ShouldNot(HaveOccurred())
 			})
 			time.Sleep(10 * time.Second)
 			for _, node := range darknodes {
@@ -161,12 +166,12 @@ var _ = Describe("Darknode", func() {
 			}
 
 			By("sending orders...")
-			for {
-				time.Sleep(time.Second)
-				err := sendOrders(darknodes, NumberOfOrdersPerSecond)
-				Ω(err).ShouldNot(HaveOccurred())
-			}
-		}, 24*60*60) // Timeout is set to 24 hours
+			// for {
+			time.Sleep(time.Second)
+			err := sendOrders(darknodes, NumberOfOrdersPerSecond)
+			Ω(err).ShouldNot(HaveOccurred())
+			// }
+		}, 30) // Timeout is set to 30 seconds
 
 		It("should update the order book after computing an order match", func() {
 
@@ -174,7 +179,7 @@ var _ = Describe("Darknode", func() {
 
 	})
 
-	Context("when confirming order matches", func() {
+	test.SkipCIContext("when confirming order matches", func() {
 
 		It("should update the order book after confirming an order match", func() {
 

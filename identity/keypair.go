@@ -47,7 +47,11 @@ func NewKeyPairFromPrivateKey(key *ecdsa.PrivateKey) (KeyPair, error) {
 // ID returns the Republic ID of the KeyPair.
 func (keyPair KeyPair) ID() ID {
 	bytes := elliptic.Marshal(secp256k1.S256(), keyPair.PublicKey.X, keyPair.PublicKey.Y)
+<<<<<<< HEAD
 	hash := ethcrypto.Keccak256(bytes[1:]) // Skip the first byte
+=======
+	hash := crypto.Keccak256(bytes[1:])
+>>>>>>> develop
 	return hash[(len(hash) - IDLength):]
 }
 

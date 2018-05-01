@@ -9,7 +9,7 @@ import (
 const IDLength = 20
 
 // An ID is a slice of 20 bytes that can be converted into an Address.
-// It must always be example 20 bytes.
+// It must always be exact 20 bytes.
 type ID []byte
 
 // NewID generates a new ID by generating a random KeyPair. It returns the ID,

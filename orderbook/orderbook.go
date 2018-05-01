@@ -1,6 +1,8 @@
 package orderbook
 
 import (
+	"log"
+
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 )
@@ -44,7 +46,7 @@ func NewOrderbook(maxConnections int) Orderbook {
 
 // Subscribe will start listening to the orderbook for updates. The channel
 // must not be closed until after the Unsubscribe method is called.
-func (orderbook Orderbook) Subscribe(ch chan Entry) error {
+func (orderbook *Orderbook) Subscribe(ch chan Entry) error {
 	if err := orderbook.splitter.Subscribe(ch); err != nil {
 		return err
 	}
@@ -58,17 +60,17 @@ func (orderbook Orderbook) Subscribe(ch chan Entry) error {
 }
 
 // Unsubscribe will stop listening to the orderbook for updates
-func (orderbook Orderbook) Unsubscribe(ch interface{}) {
+func (orderbook *Orderbook) Unsubscribe(ch interface{}) {
 	orderbook.splitter.Unsubscribe(ch)
 }
 
 // Close will close the splitCh
-func (orderbook Orderbook) Close() {
+func (orderbook *Orderbook) Close() {
 	close(orderbook.splitCh)
 }
 
 // Open is called when we first receive the order fragment.
-func (orderbook Orderbook) Open(entry Entry) error {
+func (orderbook *Orderbook) Open(entry Entry) error {
 	if err := orderbook.cache.Open(entry); err != nil {
 		return err
 	}
@@ -78,7 +80,7 @@ func (orderbook Orderbook) Open(entry Entry) error {
 }
 
 // Match is called when we discover a match for the order.
-func (orderbook Orderbook) Match(entry Entry) error {
+func (orderbook *Orderbook) Match(entry Entry) error {
 	if err := orderbook.cache.Match(entry); err != nil {
 		return err
 	}
@@ -88,17 +90,20 @@ func (orderbook Orderbook) Match(entry Entry) error {
 }
 
 // Confirm is called when the order has been confirmed by the hyperdrive.
-func (orderbook Orderbook) Confirm(entry Entry) error {
+func (orderbook *Orderbook) Confirm(entry Entry) error {
 	if err := orderbook.cache.Confirm(entry); err != nil {
 		return err
 	}
 	// orderbook.database.Confirm(entry)
+	log.Println("receive confirm  ")
+
 	orderbook.splitCh <- entry
+	log.Println("receive confirm order and split it to subscribers ")
 	return nil
 }
 
 // Release is called when the order has been denied by the hyperdrive.
-func (orderbook Orderbook) Release(entry Entry) error {
+func (orderbook *Orderbook) Release(entry Entry) error {
 	if err := orderbook.cache.Release(entry); err != nil {
 		return err
 	}
@@ -108,7 +113,7 @@ func (orderbook Orderbook) Release(entry Entry) error {
 }
 
 // Settle is called when the order is settled.
-func (orderbook Orderbook) Settle(entry Entry) error {
+func (orderbook *Orderbook) Settle(entry Entry) error {
 	if err := orderbook.cache.Settle(entry); err != nil {
 		return err
 	}
@@ -118,7 +123,7 @@ func (orderbook Orderbook) Settle(entry Entry) error {
 }
 
 // Cancel is called when the order is canceled.
-func (orderbook Orderbook) Cancel(id order.ID) error {
+func (orderbook *Orderbook) Cancel(id order.ID) error {
 	if err := orderbook.cache.Cancel(id); err != nil {
 		return err
 	}
@@ -134,11 +139,11 @@ func (orderbook Orderbook) Cancel(id order.ID) error {
 
 // Blocks will gather all the order records and returns them in
 // the format of orderbook.Entry
-func (orderbook Orderbook) Blocks() []Entry {
+func (orderbook *Orderbook) Blocks() []Entry {
 	return orderbook.cache.Blocks()
 }
 
 // Order retrieves information regarding an order.
-func (orderbook Orderbook) Order(id order.ID) Entry {
+func (orderbook *Orderbook) Order(id order.ID) Entry {
 	return orderbook.cache.Order(id)
 }

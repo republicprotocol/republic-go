@@ -15,25 +15,13 @@ import (
 type Config struct {
 	EcdsaKey keystore.Key      `json:"ecdsaKey"`
 	RsaKey   crypto.RsaKeyPair `json:"rsaKey"`
-	Ethereum EthereumConfig    `json:"ethereum"`
+	Ethereum ethereum.Config   `json:"ethereum"`
 	Logs     logger.Options    `json:"logs"`
 
 	Address                 identity.Address        `json:"address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
 	Host                    string                  `json:"host"`
 	Port                    string                  `json:"port"`
-}
-
-// An EthereumConfig defines the different settings for connecting the Darknode
-// to an Ethereum network, and the Republic Protocol smart contracts deployed
-// on Ethereum.
-type EthereumConfig struct {
-	Network                 ethereum.Network `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
-	URI                     string           `json:"uri"`
-	RepublicTokenAddress    string           `json:"republicTokenAddress"`
-	DarknodeRegistryAddress string           `json:"darknodeRegistryAddress"`
-	TraderRegistryAddress   string           `json:"traderRegistryAddress"`
-	HyperdriveAddress       string           `json:"hyperdriveAddress"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config

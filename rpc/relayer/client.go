@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"sync/atomic"
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
-
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/rpc/client"
@@ -81,12 +81,14 @@ func (client *Client) Sync(ctx context.Context, orderbook *orderbook.Orderbook, 
 			}
 			i := rand.Intn(len(multiAddrs))
 
+			atomic.AddInt64(&conns, 1)
 			go func() {
+				defer atomic.AddInt64(&conns, -1)
+
 				// Connect to the peer and begin synchronizing the
 				// orderbook.Orderbook
 				syncVals, syncErrs := client.SyncFrom(ctx, multiAddrs[i])
-				atomic.AddInt64(&conns, 1)
-				defer atomic.AddInt64(&conns, -1)
+
 
 				for {
 					select {
@@ -96,6 +98,7 @@ func (client *Client) Sync(ctx context.Context, orderbook *orderbook.Orderbook, 
 						if !ok {
 							return
 						}
+						log.Println("RECV VAL")
 						MergeEntry(orderbook, val)
 					case err, ok := <-syncErrs:
 						if !ok {
@@ -156,6 +159,10 @@ func (client *Client) SyncFrom(ctx context.Context, multiAddr identity.MultiAddr
 				errs <- err
 				return
 			}
+			if message == nil {
+				continue
+			}
+			log.Println("RECV message")
 			select {
 			case <-ctx.Done():
 				errs <- ctx.Err()
@@ -183,6 +190,7 @@ func MergeEntry(book *orderbook.Orderbook, val *SyncResponse) error {
 	case OrderStatus_Unconfirmed:
 		err = book.Match(orderbook.NewEntry(ord, order.Unconfirmed))
 	case OrderStatus_Confirmed:
+		log.Println("CONFIRM")
 		err = book.Confirm(orderbook.NewEntry(ord, order.Confirmed))
 	case OrderStatus_Settled:
 		err = book.Settle(orderbook.NewEntry(ord, order.Settled))

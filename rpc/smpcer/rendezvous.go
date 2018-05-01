@@ -91,6 +91,7 @@ func (rendezvous *Rendezvous) releaseConn(addr identity.Address) {
 		close(rendezvous.senders[addr])
 		delete(rendezvous.senders, addr)
 		delete(rendezvous.receivers, addr)
+		delete(rendezvous.rcs, addr)
 	}
 }
 

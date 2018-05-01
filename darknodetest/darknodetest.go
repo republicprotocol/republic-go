@@ -1,10 +1,8 @@
 package darknodetest
 
 import (
-	"context"
 	"crypto/rand"
 	"fmt"
-	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
@@ -57,41 +55,32 @@ func RegisterDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darknod
 
 	for i := range darknodes {
 		darknodeID := darknodes[i].ID()
-		tx, err := darknodeRegistry.Register(darknodeID, []byte{}, &minimumBond)
+
+		_, err := darknodeRegistry.ApproveRen(&minimumBond)
 		if err != nil {
 			return err
 		}
-		if _, err := conn.PatchedWaitMined(context.Background(), tx); err != nil {
+		_, err = darknodeRegistry.Register(darknodeID, []byte{}, &minimumBond)
+		if err != nil {
 			return err
 		}
 	}
 
 	// Turn the epoch to approve registrations
-	time.Sleep(time.Second)
-	tx, err := darknodeRegistry.Epoch()
-	if err != nil {
-		return err
-	}
-	if _, err := conn.PatchedWaitMined(context.Background(), tx); err != nil {
-		return err
-	}
-	return nil
+	return darknodeRegistry.WaitForEpoch()
 }
 
 // DeregisterDarknodes and wait until the next epoch. This must only be used
 // in local test environments.
 func DeregisterDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darknodeRegistry dnr.DarknodeRegistry) error {
 	for i := range darknodes {
-		darknodeID := darknodes[i].ID()
-		tx, err := darknodeRegistry.Deregister(darknodeID)
+		darknode := darknodes[i]
+		_, err := darknodeRegistry.Deregister(darknode.ID())
 		if err != nil {
 			return err
 		}
-		if _, err := conn.PatchedWaitMined(context.Background(), tx); err != nil {
-			return err
-		}
 	}
-	return nil
+	return darknodeRegistry.WaitForEpoch()
 }
 
 // RefundDarknodes after they have been deregistered. This must only be used
@@ -99,11 +88,8 @@ func DeregisterDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darkn
 func RefundDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darknodeRegistry dnr.DarknodeRegistry) error {
 	for i := range darknodes {
 		darknodeID := darknodes[i].ID()
-		tx, err := darknodeRegistry.Refund(darknodeID)
+		_, err := darknodeRegistry.Refund(darknodeID)
 		if err != nil {
-			return err
-		}
-		if _, err := conn.PatchedWaitMined(context.Background(), tx); err != nil {
 			return err
 		}
 	}
@@ -130,7 +116,7 @@ func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAdd
 		RsaKey:   rsaKey,
 		Host:     host,
 		Port:     port,
-		Ethereum: darknode.EthereumConfig{
+		Ethereum: ethereum.Config{
 			Network:                 ethereum.NetworkGanache,
 			URI:                     "http://localhost:8545",
 			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),

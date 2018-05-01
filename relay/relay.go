@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -23,16 +24,10 @@ import (
 
 var prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 
-type Config struct {
-	KeyPair      identity.KeyPair
-	MultiAddress identity.MultiAddress
-	Token        string
-}
-
 type Relay struct {
 	Config
-	DarkPools darkocean.Pools
-	Registrar dnr.DarknodeRegistry
+
+	registry dnr.DarknodeRegistry
 
 	relayer   relayer.Relayer
 	orderbook *orderbook.Orderbook
@@ -43,11 +38,11 @@ type Relay struct {
 }
 
 // NewRelay returns a new Relay object
-func NewRelay(config Config, pools darkocean.Pools, registrar dnr.DarknodeRegistry, orderbook *orderbook.Orderbook, relayerClient *relayer.Client, smpcerClient *smpcer.Client, swarmerClient *swarmer.Client) Relay {
+func NewRelay(config Config, registry dnr.DarknodeRegistry, orderbook *orderbook.Orderbook, relayerClient *relayer.Client, smpcerClient *smpcer.Client, swarmerClient *swarmer.Client) Relay {
 	return Relay{
-		Config:    config,
-		DarkPools: pools,
-		Registrar: registrar,
+		Config: config,
+
+		registry: registry,
 
 		relayer:   relayer.NewRelayer(relayerClient, orderbook),
 		orderbook: orderbook,
@@ -83,7 +78,11 @@ func (relay *Relay) Sync(ctx context.Context, peers int) {
 
 // SendOrderToDarkOcean will fragment and send orders to the dark ocean
 func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
-	errCh := make(chan error, len(relay.DarkPools))
+	darkPools, err := getPools(&relay.registry)
+	if err != nil {
+		return err
+	}
+	errCh := make(chan error, len(darkPools))
 
 	multiSignature, err := relay.Config.KeyPair.Sign(&openOrder)
 	if err != nil {
@@ -95,13 +94,15 @@ func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
 		defer close(errCh)
 
 		var wg sync.WaitGroup
-		wg.Add(len(relay.DarkPools))
+		wg.Add(len(darkPools))
 
-		for i := range relay.DarkPools {
+		for i := range darkPools {
 			go func(darkPool darkocean.Pool) {
 				defer wg.Done()
 				// Split order into (number of nodes in each pool) * 2/3 fragments
-				shares, err := openOrder.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
+				// todo : change back to
+				// shares, err := openOrder.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
+				shares, err := openOrder.Split(int64(darkPool.Size()), 1, &prime)
 				if err != nil {
 					errCh <- err
 					return
@@ -110,14 +111,13 @@ func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
 					errCh <- err
 					return
 				}
-			}(relay.DarkPools[i])
+			}(darkPools[i])
 		}
 
 		wg.Wait()
 	}()
 
 	var errNum int
-	// var err error
 	for errLocal := range errCh {
 		if errLocal != nil {
 			errNum++
@@ -127,7 +127,7 @@ func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
 		}
 	}
 
-	if len(relay.DarkPools) > 0 && errNum == len(relay.DarkPools) {
+	if len(darkPools) > 0 && errNum == len(darkPools) {
 		return fmt.Errorf("could not send order to any dark pool: %v", err)
 	}
 	return nil
@@ -135,16 +135,20 @@ func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
 
 // SendOrderFragmentsToDarkOcean will send order fragments to the dark ocean
 func (relay *Relay) SendOrderFragmentsToDarkOcean(order OrderFragments) error {
+	darkPools, err := getPools(&relay.registry)
+	if err != nil {
+		return err
+	}
 	valid := false
-	for poolIndex := range relay.DarkPools {
-		fragments := order.DarkPools[GeneratePoolID(relay.DarkPools[poolIndex])]
-		if fragments != nil && isSafeToSend(len(fragments), relay.DarkPools[poolIndex].Size()) {
-			if err := relay.sendSharesToDarkPool(relay.DarkPools[poolIndex], fragments); err == nil {
+	for poolIndex := range darkPools {
+		fragments := order.DarkPools[GeneratePoolID(darkPools[poolIndex])]
+		if fragments != nil && isSafeToSend(len(fragments), darkPools[poolIndex].Size()) {
+			if err := relay.sendSharesToDarkPool(darkPools[poolIndex], fragments); err == nil {
 				valid = true
 			}
 		}
 	}
-	if !valid && len(relay.DarkPools) > 0 {
+	if !valid && len(darkPools) > 0 {
 		return fmt.Errorf("cannot send fragments to pools: number of fragments do not match pool size")
 	}
 	return nil
@@ -152,12 +156,16 @@ func (relay *Relay) SendOrderFragmentsToDarkOcean(order OrderFragments) error {
 
 // CancelOrder will cancel orders that aren't confirmed or settled in the dark ocean
 func (relay *Relay) CancelOrder(cancelOrder order.ID) error {
-	errs := make(chan error, len(relay.DarkPools))
+	darkPools, err := getPools(&relay.registry)
+	if err != nil {
+		return err
+	}
+	errs := make(chan error, len(darkPools))
 	go func() {
 		defer close(errs)
 
-		dispatch.CoForAll(relay.DarkPools, func(i int) {
-			addrs := relay.DarkPools[i].Addresses()
+		dispatch.CoForAll(darkPools, func(i int) {
+			addrs := darkPools[i].Addresses()
 
 			dispatch.CoForAll(addrs, func(j int) {
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -179,7 +187,6 @@ func (relay *Relay) CancelOrder(cancelOrder order.ID) error {
 	}()
 
 	// Store the first error that occurred, if any
-	var err error
 	var errNum int
 	for errLocal := range errs {
 		if errLocal != nil {
@@ -191,7 +198,7 @@ func (relay *Relay) CancelOrder(cancelOrder order.ID) error {
 	}
 
 	// FIXME: Error if at least one dark pool could not cancel the order
-	if len(relay.DarkPools) > 0 && errNum == len(relay.DarkPools) {
+	if len(darkPools) > 0 && errNum == len(darkPools) {
 		return fmt.Errorf("could not cancel order to any dark pool: %v", err)
 	}
 	return nil
@@ -215,24 +222,20 @@ func (relay *Relay) sendSharesToDarkPool(pool darkocean.Pool, shares []*order.Fr
 				go func(nodeAddress identity.Address, share *order.Fragment) {
 					defer wg.Done()
 
-					shareSignature, err := relay.Config.KeyPair.Sign(share)
-					if err != nil {
-						errCh <- err
-						return
-					}
-					share.Signature = shareSignature
+					relay.swarmerClient.Address()
 
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer cancel()
 
-					nodeMultiAddr, err := relay.swarmerClient.Query(ctx, nodeAddress, 1)
+					nodeMultiAddr, err := relay.swarmerClient.Query(ctx, nodeAddress, -1)
 					if err != nil {
+						log.Printf("fail to query peers %s", err.Error())
 						errCh <- err
 						return
 					}
 
-					// FIXME: Encryption
 					if err := relay.smpcerClient.OpenOrder(ctx, nodeMultiAddr, *share); err != nil {
+						log.Printf("fail to open order %s", err.Error())
 						errCh <- err
 						return
 					}
@@ -247,14 +250,16 @@ func (relay *Relay) sendSharesToDarkPool(pool darkocean.Pool, shares []*order.Fr
 	var err error
 	for errLocal := range errCh {
 		if errLocal != nil {
+			log.Println(errLocal)
 			errNum++
 			if err == nil {
 				err = errLocal
 			}
 		}
 	}
-	// check if atleast 2/3 nodes of the pool has recieved the order fragments
-	if pool.Size() > 0 && errNum > ((1/3)*pool.Size()) {
+	// Check if at least 2/3 of the nodes in the specified pool have recieved
+	// the order fragments.
+	if pool.Size() > 0 && errNum > pool.Size()/3 {
 		return fmt.Errorf("could not send orders to %v nodes (out of %v nodes) in pool %v", errNum, pool.Size(), GeneratePoolID(pool))
 	}
 	return nil
@@ -269,4 +274,19 @@ func GeneratePoolID(pool darkocean.Pool) string {
 // isSafeToSend checks if there are enough fragments to successfully complete sending an order
 func isSafeToSend(fragmentCount, poolSize int) bool {
 	return fragmentCount >= 2/3*poolSize && fragmentCount <= poolSize
+}
+
+func getPools(registry *dnr.DarknodeRegistry) (darkocean.Pools, error) {
+	// Construct a new DarkOcean using the registry and use it to retrieve the
+	// current pool layout.
+	epoch, err := registry.CurrentEpoch()
+	if err != nil {
+		return darkocean.Pools{}, err
+	}
+	darknodeIDs, err := registry.GetAllNodes()
+	if err != nil {
+		return darkocean.Pools{}, err
+	}
+	darkOcean := darkocean.NewDarkOcean(epoch.Blockhash, darknodeIDs)
+	return darkOcean.Pools(), nil
 }

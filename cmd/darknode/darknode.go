@@ -11,9 +11,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/republicprotocol/republic-go/identity"
-
 	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 var configFile *string
@@ -41,6 +40,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot get multiaddress: %v", err)
 	}
+	log.Println("multiaddress is %v", multiAddr)
 
 	// Create the Darknode
 	node, err := darknode.NewDarknode(multiAddr, config)

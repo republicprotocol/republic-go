@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -16,77 +17,171 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/bindings"
+	"github.com/republicprotocol/republic-go/blockchain/test"
 )
 
 var genesisPrivateKey, genesisTransactor = genesis()
 
 // GenesisPrivateKey used by Ganache.
-func GenesisPrivateKey() *ecdsa.PrivateKey {
-	return genesisPrivateKey
+func GenesisPrivateKey() ecdsa.PrivateKey {
+	return *genesisPrivateKey
 }
 
 // GenesisTransactor used by Ganache.
-func GenesisTransactor() *bind.TransactOpts {
-	return genesisTransactor
+func GenesisTransactor() bind.TransactOpts {
+	return *genesisTransactor
 }
 
+// WatchForInterrupt will stop Ganache upon receiving receiving a interrupt signal
+func WatchForInterrupt() {
+	cmd := globalGanacheCmd
+	signals := make(chan os.Signal, 1)
+	defer close(signals)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	<-signals
+	fmt.Println("ganache is shutting down...")
+	if err := cmd.Process.Kill(); err != nil {
+		fmt.Printf("ganache cannot shutdown: %v", err)
+		return
+	}
+	if err := cmd.Wait(); err != nil {
+		fmt.Printf("ganache cannot shutdown: %v", err)
+		return
+	}
+	fmt.Printf("ganache shutdown")
+}
+
+var globalGanacheMu = &sync.Mutex{}
+var globalGanacheCounter uint64
+var globalGanacheCmd *exec.Cmd
+var globalGanacheSnapshot string
+var globalGanacheStopSchedule time.Time
+
 // Start a local Ganache instance.
-func Start() *exec.Cmd {
+func Start() bool {
+	globalGanacheMu.Lock()
+	defer globalGanacheMu.Unlock()
+
+	if globalGanacheCounter > 0 {
+		globalGanacheCounter++
+		return false
+	}
+
 	cmd := exec.Command("ganache-cli", fmt.Sprintf("--account=0x%x,1000000000000000000000", crypto.FromECDSA(genesisPrivateKey)))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Start()
 
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
-	go func() {
-		<-signals
-		fmt.Printf("ganache is shutting down...\n")
-		if err := cmd.Process.Kill(); err != nil {
-			fmt.Printf("ganache cannot shutdown: %v", err)
-			return
-		}
-		if err := cmd.Wait(); err != nil {
-			fmt.Printf("ganache cannot shutdown: %v", err)
-			return
-		}
-		fmt.Printf("ganache shutdown")
-	}()
+	go WatchForInterrupt()
 
 	// Wait for ganache to boot
-	time.Sleep(2 * time.Second)
+	var delay time.Duration
+	if test.GetCIEnv() {
+		delay = 10 * time.Second
+	} else {
+		delay = 4 * time.Second
+	}
+	time.Sleep(delay)
 
-	return cmd
+	globalGanacheCounter++
+	globalGanacheCmd = cmd
+
+	return true
+}
+
+func Wait() error {
+	return globalGanacheCmd.Wait()
+}
+
+// Stop will kill the local Ganache instance
+func Stop() {
+	globalGanacheMu.Lock()
+	defer globalGanacheMu.Unlock()
+	if globalGanacheCounter > 1 {
+		globalGanacheCounter--
+		return
+	}
+
+	globalGanacheCounter--
+
+	// Stop ganache
+	if err := globalGanacheCmd.Process.Kill(); err != nil {
+		panic(err)
+	}
+	globalGanacheCmd.Wait()
 }
 
 // Connect to a local Ganache instance.
 func Connect(ganacheRPC string) (ethereum.Conn, error) {
-	ethclient, err := ethclient.Dial(ganacheRPC)
+	raw, err := rpc.DialContext(context.Background(), ganacheRPC)
 	if err != nil {
 		return ethereum.Conn{}, err
 	}
+	ethclient := ethclient.NewClient(raw)
+
 	return ethereum.Conn{
-		Client:                  ethclient,
-		Network:                 ethereum.NetworkGanache,
-		DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache,
-		RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache,
+		RawClient: raw,
+		Client:    ethclient,
+		Config: ethereum.Config{
+			Network:                 ethereum.NetworkGanache,
+			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
+			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
+			HyperdriveAddress:       ethereum.HyperdriveAddressOnGanache.String(),
+		},
 	}, nil
 }
 
 // StartAndConnect to a local Ganache instance and deploy all smart contracts.
-func StartAndConnect() (*exec.Cmd, ethereum.Conn, error) {
-	cmd := Start()
-	time.Sleep(time.Second)
+func StartAndConnect() (ethereum.Conn, error) {
+	firstConnection := Start()
+
 	conn, err := Connect("http://localhost:8545")
 	if err != nil {
-		return cmd, conn, err
+		return conn, err
 	}
-	if err := DeployContracts(conn); err != nil {
-		return cmd, conn, err
+
+	if firstConnection {
+		// Deploy contracts and take snapshot
+
+		if err := DeployContracts(conn); err != nil {
+			return conn, err
+		}
+		snapshot, err := snapshot(conn)
+		if err != nil {
+			return conn, err
+		}
+		globalGanacheSnapshot = snapshot
+	} else {
+		// Roll back to snapshot
+		if err := revertToSnapshot(conn, globalGanacheSnapshot); err != nil {
+			return conn, err
+		}
+
+		// Take snapshot again -- avoid problem with Ganache freezing
+		snapshot, err := snapshot(conn)
+		if err != nil {
+			return conn, err
+		}
+		globalGanacheSnapshot = snapshot
 	}
-	return cmd, conn, nil
+	return conn, nil
+}
+
+// Snapshot current Ganache state
+func snapshot(conn ethereum.Conn) (string, error) {
+	var result string
+	err := conn.RawClient.CallContext(context.Background(), &result, "evm_snapshot")
+	return result, err
+}
+
+// RevertToSnapshot resets Ganache state to most recent snapshot
+func revertToSnapshot(conn ethereum.Conn, snaptshotID string) error {
+	var result bool
+	err := conn.RawClient.CallContext(context.Background(), &result, "evm_revert", snaptshotID)
+	return err
 }
 
 // DeployContracts to Ganache deploys REN and DNR contracts using the genesis private key
@@ -110,7 +205,7 @@ func DistributeEth(conn ethereum.Conn, addresses ...common.Address) error {
 // DistributeREN transfers REN to each of the addresses
 func DistributeREN(conn ethereum.Conn, addresses ...common.Address) error {
 
-	republicTokenContract, err := bindings.NewRepublicToken(conn.RepublicTokenAddress, bind.ContractBackend(conn.Client))
+	republicTokenContract, err := bindings.NewRepublicToken(common.HexToAddress(conn.Config.RepublicTokenAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		return err
 	}
@@ -154,10 +249,15 @@ func deployContracts(conn ethereum.Conn, transactor *bind.TransactOpts) error {
 
 	_, republicTokenAddress, err := deployRepublicToken(context.Background(), conn, transactor)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	_, darkNodeRegistryAddress, err := deployDarkNodeRegistry(context.Background(), conn, transactor, republicTokenAddress)
+	if err != nil {
+		panic(err)
+	}
+
+	_, hyperdriveAddress, err := deployHyperdrive(context.Background(), conn, transactor, darkNodeRegistryAddress)
 	if err != nil {
 		return err
 	}
@@ -167,6 +267,9 @@ func deployContracts(conn ethereum.Conn, transactor *bind.TransactOpts) error {
 	}
 	if darkNodeRegistryAddress != ethereum.DarknodeRegistryAddressOnGanache {
 		return fmt.Errorf("DarknodeRegistry address has changed: expected: %s, got: %s", ethereum.DarknodeRegistryAddressOnGanache.Hex(), darkNodeRegistryAddress.Hex())
+	}
+	if hyperdriveAddress != ethereum.HyperdriveAddressOnGanache {
+		return fmt.Errorf("HyperdriveContract address has changed: expected: %s, got: %s", ethereum.HyperdriveAddressOnGanache.Hex(), hyperdriveAddress.Hex())
 	}
 
 	return nil
@@ -181,18 +284,27 @@ func deployRepublicToken(ctx context.Context, conn ethereum.Conn, auth *bind.Tra
 	return ren, address, nil
 }
 
-func deployDarkNodeRegistry(ctx context.Context, conn ethereum.Conn, auth *bind.TransactOpts, republicTokenAddress common.Address) (*bindings.DarkNodeRegistry, common.Address, error) {
-	// 0 REN
-	minimumBond := big.NewInt(0)
+func deployDarkNodeRegistry(ctx context.Context, conn ethereum.Conn, auth *bind.TransactOpts, republicTokenAddress common.Address) (*bindings.DarknodeRegistry, common.Address, error) {
+	// 1 aiREN
+	minimumBond := big.NewInt(1)
 	// 1 second
 	minimumEpochInterval := big.NewInt(1)
 	// 24 Darknode in a pool
 	minimumPoolSize := big.NewInt(24)
 
-	address, tx, dnr, err := bindings.DeployDarkNodeRegistry(auth, conn.Client, republicTokenAddress, minimumBond, minimumPoolSize, minimumEpochInterval)
+	address, tx, dnr, err := bindings.DeployDarknodeRegistry(auth, conn.Client, republicTokenAddress, minimumBond, minimumPoolSize, minimumEpochInterval)
 	if err != nil {
 		return nil, common.Address{}, fmt.Errorf("cannot deploy DarkNodeRegistry: %v", err)
 	}
 	conn.PatchedWaitDeployed(ctx, tx)
 	return dnr, address, nil
+}
+
+func deployHyperdrive(ctx context.Context, conn ethereum.Conn, auth *bind.TransactOpts, dnrAddress common.Address) (*bindings.Hyperdrive, common.Address, error) {
+	address, tx, hyper, err := bindings.DeployHyperdrive(auth, conn.Client, dnrAddress)
+	if err != nil {
+		return nil, common.Address{}, fmt.Errorf("cannot deploy Hyperdriver contract: %v", err)
+	}
+	conn.PatchedWaitDeployed(ctx, tx)
+	return hyper, address, nil
 }
