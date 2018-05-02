@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -13,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/randentropy"
 	"github.com/pborman/uuid"
-	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/scrypt"
 )
 
@@ -21,8 +19,12 @@ import (
 // is unsupported. Currently, only version 3 is supported.
 var ErrUnsupportedKeystoreVersion = errors.New("unsupported keystore version")
 
-// ErrPassphraseCannotDecryptKey is returned when the given passphrase canno
-// be used to decrypted a key.
+// ErrUnsupportedKDF is returned when the KDF of an encrypted Keystore is
+// unsupported. Currently, only scrypt is supported.
+var ErrUnsupportedKDF = errors.New("unsupported kdf")
+
+// ErrPassphraseCannotDecryptKey is returned when the given passphrase cannot
+// be used to decrypted a Keystore.
 var ErrPassphraseCannotDecryptKey = errors.New("passphrase cannot decrypt key")
 
 // A Keystore stores an EcdsaKey and an RsaKey. It exists primarily to couple
@@ -337,17 +339,8 @@ func getKDFKey(cryptoJSON cryptoJSON, auth string) ([]byte, error) {
 		p := ensureInt(cryptoJSON.KDFParams["p"])
 		return scrypt.Key(authArray, salt, n, r, p, dkLen)
 
-	} else if cryptoJSON.KDF == "pbkdf2" {
-		c := ensureInt(cryptoJSON.KDFParams["c"])
-		prf := cryptoJSON.KDFParams["prf"].(string)
-		if prf != "hmac-sha256" {
-			return nil, fmt.Errorf("Unsupported PBKDF2 PRF: %s", prf)
-		}
-		key := pbkdf2.Key(authArray, salt, c, dkLen, sha256.New)
-		return key, nil
 	}
-
-	return nil, fmt.Errorf("unsupported kfd %s", cryptoJSON.KDF)
+	return nil, ErrUnsupportedKDF
 }
 
 // From https://github.com/ethereum/go-ethereum/accounts/keystore
@@ -361,44 +354,6 @@ func aesCTRXOR(key, inText, iv []byte) ([]byte, error) {
 	outText := make([]byte, len(inText))
 	stream.XORKeyStream(outText, inText)
 	return outText, err
-}
-
-// From https://github.com/ethereum/go-ethereum/accounts/keystore
-func aesCBCDecrypt(key, cipherText, iv []byte) ([]byte, error) {
-	aesBlock, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	decrypter := cipher.NewCBCDecrypter(aesBlock, iv)
-	paddedPlaintext := make([]byte, len(cipherText))
-	decrypter.CryptBlocks(paddedPlaintext, cipherText)
-	plaintext := pkcs7Unpad(paddedPlaintext)
-	if plaintext == nil {
-		return nil, ErrPassphraseCannotDecryptKey
-	}
-	return plaintext, err
-}
-
-// From https://github.com/ethereum/go-ethereum/accounts/keystore
-// From https://leanpub.com/gocrypto/read#leanpub-auto-block-cipher-modes
-func pkcs7Unpad(in []byte) []byte {
-	if len(in) == 0 {
-		return nil
-	}
-
-	padding := in[len(in)-1]
-	if int(padding) > len(in) || padding > aes.BlockSize {
-		return nil
-	} else if padding == 0 {
-		return nil
-	}
-
-	for i := len(in) - 1; i > len(in)-int(padding)-1; i-- {
-		if in[i] != padding {
-			return nil
-		}
-	}
-	return in[:len(in)-int(padding)]
 }
 
 // From https://github.com/ethereum/go-ethereum/accounts/keystore

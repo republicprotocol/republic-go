@@ -11,9 +11,24 @@ import (
 var _ = Describe("EcdsaKey", func() {
 
 	Context("when generating", func() {
+
 		It("should be able to generate a random EcdsaKey without returning an error", func() {
 			_, err := RandomEcdsaKey()
 			Expect(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should equal itself", func() {
+			key, err := RandomEcdsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(key.Equal(&key)).Should(BeTrue())
+		})
+
+		It("should not equal another randomly generated EcdsaKey", func() {
+			key1, err := RandomEcdsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+			key2, err := RandomEcdsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(key1.Equal(&key2)).Should(BeFalse())
 		})
 	})
 
@@ -69,19 +84,10 @@ var _ = Describe("EcdsaKey", func() {
 			data, err := key.MarshalJSON()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			keyDecoded := new(EcdsaKey)
+			keyDecoded := EcdsaKey{}
 			err = keyDecoded.UnmarshalJSON(data)
 			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(key.D).Should(Equal(keyDecoded.D))
-			Expect(key.X).Should(Equal(keyDecoded.X))
-			Expect(key.Y).Should(Equal(keyDecoded.Y))
-			Expect(key.Curve.Params().P).Should(Equal(keyDecoded.Curve.Params().P))
-			Expect(key.Curve.Params().N).Should(Equal(keyDecoded.Curve.Params().N))
-			Expect(key.Curve.Params().B).Should(Equal(keyDecoded.Curve.Params().B))
-			Expect(key.Curve.Params().Gx).Should(Equal(keyDecoded.Curve.Params().Gx))
-			Expect(key.Curve.Params().Gy).Should(Equal(keyDecoded.Curve.Params().Gy))
-			Expect(key.Curve.Params().BitSize).Should(Equal(keyDecoded.Curve.Params().BitSize))
+			Expect(key.Equal(&keyDecoded)).Should(BeTrue())
 			Expect("s256").Should(Equal(keyDecoded.Curve.Params().Name)) // We explicitly name the curve here because the ethSecp256k1.S256() curve implementation does not include a name
 		})
 

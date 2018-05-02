@@ -58,6 +58,20 @@ func (key *EcdsaKey) Address() string {
 	return base58.EncodeAlphabet(addr, base58.BTCAlphabet)
 }
 
+// Equal returns true if two EcdsaKeys are exactly equal. The name of the
+// elliptic.Curve is not checked.
+func (key *EcdsaKey) Equal(rhs *EcdsaKey) bool {
+	return key.D.Cmp(rhs.D) == 0 &&
+		key.X.Cmp(rhs.X) == 0 &&
+		key.Y.Cmp(rhs.Y) == 0 &&
+		key.Curve.Params().P.Cmp(rhs.Curve.Params().P) == 0 &&
+		key.Curve.Params().N.Cmp(rhs.Curve.Params().N) == 0 &&
+		key.Curve.Params().B.Cmp(rhs.Curve.Params().B) == 0 &&
+		key.Curve.Params().Gx.Cmp(rhs.Curve.Params().Gx) == 0 &&
+		key.Curve.Params().Gy.Cmp(rhs.Curve.Params().Gy) == 0 &&
+		key.Curve.Params().BitSize == rhs.Curve.Params().BitSize
+}
+
 // MarshalJSON implements the json.Marshaler interface. The EcdsaKey is
 // formatted according to the Republic Protocol Keystore specification.
 func (key EcdsaKey) MarshalJSON() ([]byte, error) {

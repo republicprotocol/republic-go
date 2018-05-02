@@ -48,6 +48,21 @@ func (key *RsaKey) Decrypt(cipherText []byte) ([]byte, error) {
 	return rsa.DecryptPKCS1v15(rand.Reader, key.PrivateKey, cipherText)
 }
 
+// Equal returns true if two RsaKeys are exactly equal.
+func (key *RsaKey) Equal(rhs *RsaKey) bool {
+	if len(key.Primes) != len(rhs.Primes) {
+		return false
+	}
+	for i := range key.Primes {
+		if key.Primes[i].Cmp(rhs.Primes[i]) != 0 {
+			return false
+		}
+	}
+	return key.D.Cmp(rhs.D) == 0 &&
+		key.N.Cmp(rhs.N) == 0 &&
+		key.E == rhs.E
+}
+
 // MarshalJSON implements the json.Marshaler interface. The RsaKey is formatted
 // according to the Republic Protocol Keystore specification.
 func (key RsaKey) MarshalJSON() ([]byte, error) {

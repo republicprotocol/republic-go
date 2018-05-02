@@ -2,7 +2,6 @@ package crypto_test
 
 import (
 	"encoding/json"
-	"log"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -41,6 +40,20 @@ var _ = Describe("Keystore", func() {
 
 			Expect(keystore.ID).Should(Equal(keystoreDecrypted.ID))
 			Expect(keystore.Version).Should(Equal(keystoreDecrypted.Version))
+			Expect(keystore.EcdsaKey.Equal(&keystoreDecrypted.EcdsaKey)).Should(BeTrue())
+			Expect(keystore.RsaKey.Equal(&keystoreDecrypted.RsaKey)).Should(BeTrue())
+		})
+
+		It("should not be able to decrypt from JSON using an incorrect passphrase", func() {
+			keystore, err := RandomKeystore()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			data, err := keystore.Encrypt("password", StandardScryptN, StandardScryptP)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			keystoreDecrypted := new(Keystore)
+			err = keystoreDecrypted.Decrypt(data, "badpassword")
+			Expect(err).Should(Equal(ErrPassphraseCannotDecryptKey))
 		})
 
 	})
@@ -54,14 +67,14 @@ var _ = Describe("Keystore", func() {
 			data, err := json.Marshal(keystore)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			log.Println(string(data))
-
 			keystoreDecoded := Keystore{}
 			err = json.Unmarshal(data, &keystoreDecoded)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(keystore.ID).Should(Equal(keystoreDecoded.ID))
 			Expect(keystore.Version).Should(Equal(keystoreDecoded.Version))
+			Expect(keystore.EcdsaKey.Equal(&keystoreDecoded.EcdsaKey)).Should(BeTrue())
+			Expect(keystore.RsaKey.Equal(&keystoreDecoded.RsaKey)).Should(BeTrue())
 		})
 
 	})
