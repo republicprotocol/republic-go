@@ -53,7 +53,6 @@ func (relayer *Relayer) Sync(request *SyncRequest, stream Relay_SyncServer) erro
 	}
 	defer relayer.orderbook.Unsubscribe(entries)
 
-
 	for {
 		select {
 		case <-stream.Context().Done():

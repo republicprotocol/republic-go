@@ -6,29 +6,78 @@ import (
 	. "github.com/republicprotocol/republic-go/crypto"
 )
 
-var _ = Describe("RSA Test package", func() {
+var _ = Describe("RsaKey", func() {
 
-	Context("Testing type conversions", func() {
+	Context("when generating", func() {
 
-		It("should be able to encode and decode a publicKey", func() {
-			keyPair, err := NewRsaKeyPair()
-			Ω(err).Should(BeNil())
-			pubKeyBytes, err := PublicKeyToBytes(keyPair.PublicKey)
-			Ω(err).Should(BeNil())
-			pubKey, err := BytesToPublicKey(pubKeyBytes)
-			Ω(err).Should(BeNil())
-			Ω(*pubKey).Should(Equal(*keyPair.PublicKey))
+		It("should be able to generate a random RsaKey without returning an error", func() {
+			_, err := RandomRsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		It("should be able to encryot and decrypt a message", func() {
-			keyPair, err := NewRsaKeyPair()
-			encryptionMsg := []byte("Message")
-			Ω(err).Should(BeNil())
-			cipherText, err := Encrypt(keyPair.PublicKey, encryptionMsg)
-			Ω(err).Should(BeNil())
-			decryptionMsg, err := Decrypt(keyPair.PrivateKey, cipherText)
-			Ω(err).Should(BeNil())
-			Ω(encryptionMsg).Should(Equal(decryptionMsg))
+		It("should equal itself", func() {
+			key, err := RandomRsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(key.Equal(&key)).Should(BeTrue())
+		})
+
+		It("should not equal another randomly generated RsaKey", func() {
+			key1, err := RandomRsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+			key2, err := RandomRsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(key1.Equal(&key2)).Should(BeFalse())
+		})
+	})
+
+	Context("when encrypting and decrypting", func() {
+
+		It("should be able to encrypt a plain text message", func() {
+			key, err := RandomRsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			plainText := []byte("REN")
+			_, err = key.Encrypt(plainText)
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should be able to decrypt an encrypted cipher text", func() {
+			key, err := RandomRsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			plainText := []byte("REN")
+			cipherText, err := key.Encrypt(plainText)
+			Expect(err).ShouldNot(HaveOccurred())
+			plainTextDecrypted, err := key.Decrypt(cipherText)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(plainText).Should(Equal(plainTextDecrypted))
+		})
+
+	})
+
+	Context("when marshaling and unmarshaling", func() {
+
+		It("should be able to marshal and unmarshal as JSON", func() {
+			key, err := RandomRsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			data, err := key.MarshalJSON()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			keyDecoded := RsaKey{}
+			err = keyDecoded.UnmarshalJSON(data)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(key.Equal(&keyDecoded)).Should(BeTrue())
+		})
+
+		It("should be able to marshal and unmarshal public keys as bytes", func() {
+			key, err := RandomRsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			data := BytesFromRsaPublicKey(&key.PublicKey)
+			publicKeyDecoded := RsaPublicKeyFromBytes(data)
+			Expect(key.N).Should(Equal(publicKeyDecoded.N))
+			Expect(key.E).Should(Equal(publicKeyDecoded.E))
 		})
 
 	})

@@ -42,7 +42,7 @@ func (arc *Arc) Initiate(hash [32]byte, from, to []byte, value *big.Int, expiry 
 	return nil
 }
 
-func (arc *Arc) Audit() (hash [32]byte, from, to []byte, value *big.Int, expiry int64, err error) {
+func (arc *Arc) Audit(orderID [32]byte) (hash [32]byte, from, to []byte, value *big.Int, expiry int64, err error) {
 	result, err := read(arc.conn, arc.ledgerData.Contract, arc.ledgerData.ContractTx)
 	if err != nil {
 		return [32]byte{}, []byte{}, []byte{}, big.NewInt(0), 0, err
@@ -50,7 +50,7 @@ func (arc *Arc) Audit() (hash [32]byte, from, to []byte, value *big.Int, expiry 
 	return result.secretHash, result.refundAddress, result.recipientAddress, big.NewInt(result.amount), result.lockTime, nil
 }
 
-func (arc *Arc) Redeem(secret [32]byte) error {
+func (arc *Arc) Redeem(orderID [32]byte, secret [32]byte) error {
 	result, err := redeem(arc.conn, arc.ledgerData.Contract, arc.ledgerData.ContractTx, secret)
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func (arc *Arc) Redeem(secret [32]byte) error {
 	return nil
 }
 
-func (arc *Arc) AuditSecret() (secret [32]byte, err error) {
+func (arc *Arc) AuditSecret(orderID [32]byte) (secret [32]byte, err error) {
 	result, err := readSecret(arc.conn, arc.ledgerData.RedeemTx, arc.ledgerData.SecretHash[:])
 	if err != nil {
 		return [32]byte{}, err
@@ -68,7 +68,7 @@ func (arc *Arc) AuditSecret() (secret [32]byte, err error) {
 	return result, nil
 }
 
-func (arc *Arc) Refund() error {
+func (arc *Arc) Refund(orderID [32]byte) error {
 	return refund(arc.conn, arc.ledgerData.Contract, arc.ledgerData.ContractTx)
 }
 

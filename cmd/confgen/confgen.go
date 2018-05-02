@@ -1,12 +1,10 @@
 package main
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"log"
 	"os"
 
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
@@ -15,24 +13,16 @@ import (
 )
 
 func main() {
-	ecdsaKey := keystore.NewKeyForDirectICAP(rand.Reader)
-
-	keyPair, err := identity.NewKeyPairFromPrivateKey(ecdsaKey.PrivateKey)
+	keystore, err := crypto.RandomKeystore()
 	if err != nil {
-		log.Fatalf("cannot create ecdsa key: %v", err)
-	}
-
-	rsaKey, err := crypto.NewRsaKeyPair()
-	if err != nil {
-		log.Fatalf("cannot create rsa key: %v", err)
+		log.Fatalf("cannot create keystore: %v", err)
 	}
 
 	conf := darknode.Config{
-		EcdsaKey:                ecdsaKey,
-		RsaKey:                  rsaKey,
+		Keystore:                keystore,
 		Host:                    "0.0.0.0",
 		Port:                    "18514",
-		Address:                 keyPair.Address(),
+		Address:                 identity.Address(keystore.Address()),
 		BootstrapMultiAddresses: []identity.MultiAddress{},
 		Logs: logger.Options{
 			Plugins: []logger.PluginOptions{

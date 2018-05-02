@@ -89,7 +89,6 @@ func (client *Client) Sync(ctx context.Context, orderbook *orderbook.Orderbook, 
 				// orderbook.Orderbook
 				syncVals, syncErrs := client.SyncFrom(ctx, multiAddrs[i])
 
-
 				for {
 					select {
 					case <-ctx.Done():

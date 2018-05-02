@@ -25,15 +25,13 @@ func main() {
 	}
 
 	// Generate orders
-	ethToRen := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(1) , stackint.FromUint(1) ,stackint.FromUint(1) ,n)
-	renToEth := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(1) , stackint.FromUint(1) ,stackint.FromUint(1) ,n)
+	ethToRen := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(1), stackint.FromUint(1), stackint.FromUint(1), n)
+	renToEth := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeREN, stackint.FromUint(1), stackint.FromUint(1), stackint.FromUint(1), n)
 	log.Println("eth to ren order id ", ethToRen.ID.String())
 	log.Println("ren to eth order id ", renToEth.ID.String())
 
-
-
 	// Send sell order
-	sellReq := relay.OpenOrderRequest{Order:*ethToRen, OrderFragments:relay.OrderFragments{}}
+	sellReq := relay.OpenOrderRequest{Order: *ethToRen, OrderFragments: relay.OrderFragments{}}
 	bufferSell := new(bytes.Buffer)
 	if err := json.NewEncoder(bufferSell).Encode(sellReq); err != nil {
 		log.Fatal(" fail to marshal order", err)
@@ -44,7 +42,7 @@ func main() {
 	}
 	// Read the response status
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated{
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Fatal("cannot readall: " + err.Error())
@@ -54,7 +52,7 @@ func main() {
 	}
 
 	// Send buy order
-	buyReq := relay.OpenOrderRequest{Order:*renToEth, OrderFragments:relay.OrderFragments{}}
+	buyReq := relay.OpenOrderRequest{Order: *renToEth, OrderFragments: relay.OrderFragments{}}
 
 	bufferBuy := new(bytes.Buffer)
 	if err := json.NewEncoder(bufferBuy).Encode(buyReq); err != nil {
@@ -63,11 +61,11 @@ func main() {
 
 	resp, err = http.Post("http://localhost:18518/orders", "application/json", bufferBuy)
 	if err != nil {
-		log.Fatal( "response fail ", err)
+		log.Fatal("response fail ", err)
 	}
 	// Read the response status
 
-	if resp.StatusCode != http.StatusOK  && resp.StatusCode != http.StatusCreated{
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		r := map[string]interface{}{}
 		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 			log.Fatal(err)
@@ -75,9 +73,6 @@ func main() {
 		log.Println(r)
 		log.Fatalf("reponse fail with status code %v", resp.StatusCode)
 	}
-
-
-
 
 	//for {
 	//	// Generate buy-sell order pairs

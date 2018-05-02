@@ -26,7 +26,7 @@ var _ = Describe("Marshal", func() {
 			orderFragment, _, err := createNewOrderFragment()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			marshalledFragment, err := MarshalOrderFragment(&crypter, &orderFragment)
+			marshalledFragment, err := MarshalOrderFragment("", &crypter, &orderFragment)
 
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(marshalledFragment).ToNot(BeNil())
@@ -42,7 +42,7 @@ var _ = Describe("Marshal", func() {
 			orderFragment, _, err := createNewOrderFragment()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			marshalledFragment, err := MarshalOrderFragment(&crypter, &orderFragment)
+			marshalledFragment, err := MarshalOrderFragment("", &crypter, &orderFragment)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			unmarshalledFragment, err := UnmarshalOrderFragment(&crypter, marshalledFragment)

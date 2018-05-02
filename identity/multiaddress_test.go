@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
 
@@ -23,7 +24,8 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 
 	Context("Creating new multiAddress", func() {
 		It("should be able to get new multiAddress from a valid string", func() {
-			addr, _, err := identity.NewAddress()
+			key, err := crypto.RandomEcdsaKey()
+			addr := identity.Address(key.Address())
 			Ω(err).ShouldNot(HaveOccurred())
 			_, err = identity.NewMultiAddressFromString("/republic/" + addr.String())
 			Ω(err).ShouldNot(HaveOccurred())
@@ -32,7 +34,8 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 		It("should error when trying getting multiAddress from a bad address", func() {
 			_, err := identity.NewMultiAddressFromString("bad address")
 			Ω(err).Should(HaveOccurred())
-			addr, _, err := identity.NewAddress()
+			key, err := crypto.RandomEcdsaKey()
+			addr := identity.Address(key.Address())
 			Ω(err).ShouldNot(HaveOccurred())
 			_, err = identity.NewMultiAddressFromString("/republic/" + addr.String() + "bad")
 			Ω(err).Should(HaveOccurred())
@@ -53,7 +56,8 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 
 	Context("marshaling to JSON", func() {
 		It("should encode and then decode to the same value", func() {
-			addr, _, err := identity.NewAddress()
+			key, err := crypto.RandomEcdsaKey()
+			addr := identity.Address(key.Address())
 			Ω(err).ShouldNot(HaveOccurred())
 			multi, err := identity.NewMultiAddressFromString("/republic/" + addr.String())
 			Ω(err).ShouldNot(HaveOccurred())

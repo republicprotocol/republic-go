@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
 
@@ -12,7 +13,7 @@ import (
 type Config struct {
 	Token                   string                  `json:"token"`
 	EthereumAddress         string                  `json:"ethereumAddress"`
-	KeyPair                 identity.KeyPair        `json:"keypair"`
+	Keystore                crypto.Keystore         `json:"keystore"`
 	MultiAddress            identity.MultiAddress   `json:"multiAddress"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
 	Ethereum                ethereum.Config         `json:"ethereum"`

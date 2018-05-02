@@ -18,9 +18,9 @@ before_install:
   - dep ensure
 
 script:
-  - go vet ./...
-    #  - golint -set_exit_status `go list ./... | grep -Ev "(stackint/asm|vendor)"`
-  - golint `go list ./... | grep -Ev "(stackint/asm|vendor)"`
+  # - go vet ./...
+  # - golint -set_exit_status `go list ./... | grep -Ev "(stackint/asm|vendor)"`
+  # - golint `go list ./... | grep -Ev "(stackint/asm|vendor)"`
   - goverage -v -coverprofile=coverprofile.out ./...
 
 after_success:
