@@ -34,9 +34,9 @@ type Darknode struct {
 	Config *Config
 	Logger *logger.Logger
 
-	id           identity.ID
-	address      identity.Address
 	multiAddress identity.MultiAddress
+	address      identity.Address
+	id           identity.ID
 	orderbook    orderbook.Orderbook
 	crypter      crypto.Crypter
 
@@ -60,17 +60,13 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 	}
 
 	// Get identity information from the Config
-	key, err := identity.NewKeyPairFromPrivateKey(node.Config.EcdsaKey.PrivateKey)
-	if err != nil {
-		return node, fmt.Errorf("cannot get ID from private key: %v", err)
-	}
-	node.id = key.ID()
-	node.address = key.Address()
 	node.multiAddress = multiAddr
+	node.address = identity.Address(node.Config.Keystore.Address())
+	node.id = node.address.ID()
 	node.orderbook = orderbook.NewOrderbook(4)
 
 	// Open a connection to the Ethereum network
-	transactOpts := bind.NewKeyedTransactor(config.EcdsaKey.PrivateKey)
+	transactOpts := bind.NewKeyedTransactor(config.Keystore.EcdsaKey.PrivateKey)
 
 	ethclient, err := ethereum.Connect(config.Ethereum)
 	if err != nil {
@@ -362,7 +358,7 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 								},
 								Status: order.Confirmed,
 							}
-							node.Logger.Info( "Confirmed by hyperdrive. Let's go home !")
+							node.Logger.Info("Confirmed by hyperdrive. Let's go home !")
 							err := node.orderbook.Confirm(entry)
 							if err != nil {
 								errs <- err

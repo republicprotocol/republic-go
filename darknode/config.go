@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -13,10 +12,9 @@ import (
 
 // A Config defines the different settings for a Darknode.
 type Config struct {
-	EcdsaKey keystore.Key      `json:"ecdsaKey"`
-	RsaKey   crypto.RsaKeyPair `json:"rsaKey"`
-	Ethereum ethereum.Config   `json:"ethereum"`
-	Logs     logger.Options    `json:"logs"`
+	Keystore crypto.Keystore `json:"keystore"`
+	Ethereum ethereum.Config `json:"ethereum"`
+	Logs     logger.Options  `json:"logs"`
 
 	Address                 identity.Address        `json:"address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`

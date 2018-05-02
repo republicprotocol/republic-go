@@ -1,10 +1,8 @@
 package darknodetest
 
 import (
-	"crypto/rand"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/crypto"
@@ -20,8 +18,11 @@ func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (darknode.D
 	multiAddrs := make([]identity.MultiAddress, numberOfDarknodes)
 	configs := make([]darknode.Config, numberOfDarknodes)
 	for i := 0; i < numberOfDarknodes; i++ {
-		key := keystore.NewKeyForDirectICAP(rand.Reader)
-		multiAddrs[i], configs[i], err = NewLocalConfig(*key, "127.0.0.1", fmt.Sprintf("%d", 3000+i))
+		keystore, err := crypto.RandomKeystore()
+		if err != nil {
+			return nil, err
+		}
+		multiAddrs[i], configs[i], err = NewLocalConfig(keystore, "127.0.0.1", fmt.Sprintf("%d", 3000+i))
 		if err != nil {
 			return nil, err
 		}
@@ -96,24 +97,13 @@ func RefundDarknodes(darknodes darknode.Darknodes, conn ethereum.Conn, darknodeR
 	return nil
 }
 
-func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAddress, darknode.Config, error) {
-	keyPair, err := identity.NewKeyPairFromPrivateKey(ecdsaKey.PrivateKey)
-	if err != nil {
-		return identity.MultiAddress{}, darknode.Config{}, err
-	}
-
-	rsaKey, err := crypto.NewRsaKeyPair()
-	if err != nil {
-		return identity.MultiAddress{}, darknode.Config{}, err
-	}
-
-	multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", host, port, keyPair.Address()))
+func NewLocalConfig(keystore crypto.Keystore, host, port string) (identity.MultiAddress, darknode.Config, error) {
+	multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", host, port, keystore.Address()))
 	if err != nil {
 		return identity.MultiAddress{}, darknode.Config{}, err
 	}
 	return multiAddr, darknode.Config{
-		EcdsaKey: ecdsaKey,
-		RsaKey:   rsaKey,
+		Keystore: keystore,
 		Host:     host,
 		Port:     port,
 		Ethereum: ethereum.Config{
