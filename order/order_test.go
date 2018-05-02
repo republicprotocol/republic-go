@@ -5,8 +5,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/identity"
 	. "github.com/republicprotocol/republic-go/order"
+
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -106,31 +107,36 @@ var _ = Describe("Orders", func() {
 
 	Context("when being signed", func() {
 
-		keyPair, err := identity.NewKeyPair()
-		if err != nil {
-			panic(err)
-		}
+		var keystore crypto.Keystore
+		var order *Order
 
-		nonce := stackint.Zero()
-		order := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
+		BeforeEach(func() {
+			var err error
+
+			keystore, err = crypto.RandomKeystore()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			nonce := stackint.FromUint(0)
+			order = NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
+		})
 
 		It("can be signed and verified", func() {
-			err = order.Sign(keyPair)
+			err := order.Sign(&keystore)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = order.VerifySignature(keyPair.ID())
+			err = order.VerifySignature(keystore.Address())
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should error for invalid ID", func() {
-			keyPair2, err := identity.NewKeyPair()
+			keystore2, err := crypto.RandomKeystore()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = order.Sign(&keystore)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = order.Sign(keyPair)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			err = order.VerifySignature(keyPair2.ID())
-			Ω(err).Should(Equal(identity.ErrInvalidSignature))
+			err = order.VerifySignature(keystore2.Address())
+			Ω(err).Should(Equal(crypto.ErrInvalidSignature))
 		})
 
 		It("should error for invalid data", func() {
@@ -138,13 +144,13 @@ var _ = Describe("Orders", func() {
 			nonce2 := stackint.One()
 			order2 := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce2)
 
-			err = order.Sign(keyPair)
+			err := order.Sign(&keystore)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			order2.Signature = order.Signature
 
-			err = order2.VerifySignature(keyPair.ID())
-			Ω(err).Should(Equal(identity.ErrInvalidSignature))
+			err = order2.VerifySignature(keystore.Address())
+			Ω(err).Should(Equal(crypto.ErrInvalidSignature))
 		})
 	})
 })

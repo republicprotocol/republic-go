@@ -43,7 +43,7 @@ func (client *Client) OpenOrder(ctx context.Context, multiAddr identity.MultiAdd
 	if err != nil {
 		return err
 	}
-	orderFragmentData, err := MarshalOrderFragment(client.crypter, &orderFragment)
+	orderFragmentData, err := MarshalOrderFragment(multiAddr.Address().String(), client.crypter, &orderFragment)
 	if err != nil {
 		return err
 	}

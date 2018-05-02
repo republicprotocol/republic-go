@@ -187,11 +187,11 @@ var _ = Describe("rpc", func() {
 
 func createNewRPC() (RPC, error) {
 	crypter := crypto.NewWeakCrypter()
-	addr, _, err := identity.NewAddress()
+	keystore, err := crypto.RandomKeystore()
 	if err != nil {
 		return RPC{}, err
 	}
-	multiaddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/80/republic/%v", addr))
+	multiaddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/80/republic/%s", keystore.Address()))
 	if err != nil {
 		return RPC{}, err
 	}

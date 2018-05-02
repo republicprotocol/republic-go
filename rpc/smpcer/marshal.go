@@ -11,7 +11,7 @@ import (
 
 // MarshalOrderFragment converts an order.Fragment into its network
 // representation.
-func MarshalOrderFragment(crypter crypto.Crypter, orderFragment *order.Fragment) (*OrderFragment, error) {
+func MarshalOrderFragment(addr string, crypter crypto.Crypter, orderFragment *order.Fragment) (*OrderFragment, error) {
 	val := &OrderFragment{
 		OrderFragmentId: orderFragment.ID,
 		OrderId:         orderFragment.OrderID,
@@ -21,23 +21,23 @@ func MarshalOrderFragment(crypter crypto.Crypter, orderFragment *order.Fragment)
 	}
 
 	var err error
-	val.FstCodeShare, err = crypter.Encrypt(shamir.ToBytes(orderFragment.FstCodeShare))
+	val.FstCodeShare, err = crypter.Encrypt(addr, shamir.ToBytes(orderFragment.FstCodeShare))
 	if err != nil {
 		return nil, err
 	}
-	val.SndCodeShare, err = crypter.Encrypt(shamir.ToBytes(orderFragment.SndCodeShare))
+	val.SndCodeShare, err = crypter.Encrypt(addr, shamir.ToBytes(orderFragment.SndCodeShare))
 	if err != nil {
 		return nil, err
 	}
-	val.PriceShare, err = crypter.Encrypt(shamir.ToBytes(orderFragment.PriceShare))
+	val.PriceShare, err = crypter.Encrypt(addr, shamir.ToBytes(orderFragment.PriceShare))
 	if err != nil {
 		return nil, err
 	}
-	val.MaxVolumeShare, err = crypter.Encrypt(shamir.ToBytes(orderFragment.MaxVolumeShare)) // FIXME: Unify volumes
+	val.MaxVolumeShare, err = crypter.Encrypt(addr, shamir.ToBytes(orderFragment.MaxVolumeShare)) // FIXME: Unify volumes
 	if err != nil {
 		return nil, err
 	}
-	val.MinVolumeShare, err = crypter.Encrypt(shamir.ToBytes(orderFragment.MinVolumeShare)) // FIXME: Unify volumes
+	val.MinVolumeShare, err = crypter.Encrypt(addr, shamir.ToBytes(orderFragment.MinVolumeShare)) // FIXME: Unify volumes
 	if err != nil {
 		return nil, err
 	}

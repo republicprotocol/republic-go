@@ -30,6 +30,8 @@ func init() {
 	multiaddr.AddProtocol(republic)
 }
 
+type Signature []byte
+
 // MultiAddress is an alias.
 type MultiAddress struct {
 	address          Address
@@ -86,12 +88,6 @@ func (multiAddress MultiAddress) String() string {
 // signatures for a multiaddress.
 func (multiAddress MultiAddress) Hash() []byte {
 	return crypto.Keccak256([]byte(multiAddress.String()))
-}
-
-// VerifySignature verifies that the multiAddresses's signature has been signed
-// by its corresponding private key
-func (multiAddress MultiAddress) VerifySignature(signature Signature) error {
-	return VerifySignature(multiAddress, signature, multiAddress.ID())
 }
 
 // MarshalJSON implements the json.Marshaler interface.

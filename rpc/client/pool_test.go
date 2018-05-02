@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/crypto"
 	. "github.com/republicprotocol/republic-go/rpc/client"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -27,9 +28,9 @@ var _ = Describe("Client connection pools", func() {
 		Context("when it is not present in cache", func() {
 			connPool = NewConnPool(5)
 			It("should return new connection", func() {
-				addr, _, err := identity.NewAddress()
+				keystore, err := crypto.RandomKeystore()
 				Expect(err).ShouldNot(HaveOccurred())
-				multiaddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/80/republic/%v", addr))
+				multiaddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/80/republic/%s", keystore.Address()))
 				Expect(err).ShouldNot(HaveOccurred())
 				conn, err := connPool.Dial(context.Background(), multiaddress)
 				Expect(err).ShouldNot(HaveOccurred())

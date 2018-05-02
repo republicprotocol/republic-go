@@ -9,23 +9,24 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/relay"
 )
 
 func main() {
 
-	keyPair, err := identity.NewKeyPair()
+	keystore, err := crypto.RandomKeystore()
 	if err != nil {
 		log.Fatalf("cannot create ecdsa key: %v", err)
 	}
-	auth := bind.NewKeyedTransactor(keyPair.PrivateKey)
-	multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/18515/republic/%s", keyPair.ID()))
+	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
+	multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/18515/republic/%s", keystore.Address()))
 	if err != nil {
 		log.Fatalf("cannot create multiAddress: %v", err)
 	}
 	conf := relay.Config{
-		KeyPair:                 keyPair,
+		Keystore:                keystore,
 		MultiAddress:            multiAddress,
 		BootstrapMultiAddresses: identity.MultiAddresses{},
 		Token:           "",

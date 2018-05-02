@@ -40,7 +40,6 @@ func NewArc(context context.Context, conn ethereum.Conn, auth *bind.TransactOpts
 	}
 
 	var tokenBinding *bindings.ERC20
-
 	if tokenAddress != ETHEREUM {
 		tokenBinding, err = bindings.NewERC20(tokenAddress, conn.Client)
 		if err != nil {

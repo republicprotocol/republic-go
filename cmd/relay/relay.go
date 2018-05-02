@@ -118,7 +118,7 @@ func main() {
 
 	confirmedOrders := processOrderbookEntries(hyperdrive, entries)
 	conn, err := ethereum.Connect(config.Ethereum)
-	auth := abiBind.NewKeyedTransactor(config.KeyPair.PrivateKey)
+	auth := abiBind.NewKeyedTransactor(config.Keystore.EcdsaKey.PrivateKey)
 	if err != nil {
 		log.Fatalf("cannot fetch dark node registry: %s", err)
 	}
@@ -251,33 +251,23 @@ func getKey(filename, passphrase string) (*keystore.Key, error) {
 	return key, nil
 }
 
-func getKeyPair(key *keystore.Key) (identity.KeyPair, error) {
-	id, err := identity.NewKeyPairFromPrivateKey(key.PrivateKey)
-	if err != nil {
-		return identity.KeyPair{}, fmt.Errorf("cannot generate id from key %v", err)
-	}
-	return id, nil
-}
-
-func getMultiaddress(id identity.KeyPair, port string) (identity.MultiAddress, error) {
+func getMultiaddress(keystore crypto.Keystore, port string) (identity.MultiAddress, error) {
 	// Get our IP address
 	ipInfoOut, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
 	if err != nil {
 		return identity.MultiAddress{}, err
 	}
 	ipAddress := strings.Trim(string(ipInfoOut), "\n ")
-
-	relayMultiaddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", ipAddress, port, id.Address().String()))
+	relayMultiaddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", ipAddress, port, keystore.Address()))
 	if err != nil {
 		return identity.MultiAddress{}, fmt.Errorf("cannot obtain trader multi address %v", err)
 	}
-
 	return relayMultiaddress, nil
 }
 
 func getRegistry(config *Config) (dnr.DarknodeRegistry, error) {
 	conn, err := ethereum.Connect(config.Ethereum)
-	auth := abiBind.NewKeyedTransactor(config.KeyPair.PrivateKey)
+	auth := abiBind.NewKeyedTransactor(config.Keystore.EcdsaKey.PrivateKey)
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot fetch dark node registry: %s", err))
 		return dnr.DarknodeRegistry{}, err
@@ -293,7 +283,7 @@ func getRegistry(config *Config) (dnr.DarknodeRegistry, error) {
 
 func getHyperdrive(config *Config) (hd.HyperdriveContract, error) {
 	conn, err := ethereum.Connect(config.Ethereum)
-	auth := abiBind.NewKeyedTransactor(config.KeyPair.PrivateKey)
+	auth := abiBind.NewKeyedTransactor(config.Keystore.EcdsaKey.PrivateKey)
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot fetch hyperdrive: %s", err))
 		return hd.HyperdriveContract{}, err

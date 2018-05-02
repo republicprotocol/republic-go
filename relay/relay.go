@@ -84,11 +84,11 @@ func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
 	}
 	errCh := make(chan error, len(darkPools))
 
-	multiSignature, err := relay.Config.KeyPair.Sign(&openOrder)
+	openOrderSignature, err := relay.Config.Keystore.Sign(&openOrder)
 	if err != nil {
 		return err
 	}
-	openOrder.Signature = multiSignature
+	openOrder.Signature = openOrderSignature
 
 	go func() {
 		defer close(errCh)

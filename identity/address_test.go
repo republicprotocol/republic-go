@@ -4,6 +4,7 @@ import (
 	"github.com/jbenet/go-base58"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
 
@@ -11,7 +12,8 @@ var _ = Describe("", func() {
 
 	Describe("Republic addresses", func() {
 		Context("generated from random key pairs", func() {
-			address, _, err := identity.NewAddress()
+			key, err := crypto.RandomEcdsaKey()
+			address := identity.Address(key.Address())
 
 			It("should not error", func() {
 				Ω(err).ShouldNot(HaveOccurred())
@@ -130,14 +132,18 @@ var _ = Describe("", func() {
 			})
 
 			It("should not be possible to be closer to the target than the target", func() {
-				randomAddress, _, err := identity.NewAddress()
+				key, err := crypto.RandomEcdsaKey()
+				randomAddress := identity.Address(key.Address())
+
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(identity.Closer(address1, randomAddress, address1)).Should(BeTrue())
 				Ω(identity.Closer(randomAddress, address1, randomAddress)).Should(BeTrue())
 			})
 
 			It("should be asymmetrical", func() {
-				randomAddress, _, err := identity.NewAddress()
+				key, err := crypto.RandomEcdsaKey()
+				randomAddress := identity.Address(key.Address())
+
 				Ω(err).ShouldNot(HaveOccurred())
 				isAddress1Closer, err := identity.Closer(address1, randomAddress, target)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -147,7 +153,9 @@ var _ = Describe("", func() {
 			})
 
 			It("should not return being closer when comparing with itself", func() {
-				randomAddress, _, err := identity.NewAddress()
+				key, err := crypto.RandomEcdsaKey()
+				randomAddress := identity.Address(key.Address())
+
 				Ω(err).ShouldNot(HaveOccurred())
 				isCloser, err := identity.Closer(randomAddress, randomAddress, target)
 				Ω(err).ShouldNot(HaveOccurred())

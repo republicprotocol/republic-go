@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/shamir"
 )
@@ -66,16 +66,16 @@ func (fragment *Fragment) Hash() []byte {
 
 // Sign signs the fragment using the provided keypair, and assigns it the the fragments's
 // Signature field.
-func (fragment *Fragment) Sign(keyPair identity.KeyPair) error {
+func (fragment *Fragment) Sign(signer crypto.Signer) error {
 	var err error
-	fragment.Signature, err = keyPair.Sign(fragment)
+	fragment.Signature, err = signer.Sign(fragment)
 	return err
 }
 
 // SignFragments maps over an array of fragments, calling Sign on each one
-func SignFragments(keyPair identity.KeyPair, fragments []*Fragment) error {
+func SignFragments(signer crypto.Signer, fragments []*Fragment) error {
 	for _, fragment := range fragments {
-		if err := fragment.Sign(keyPair); err != nil {
+		if err := fragment.Sign(signer); err != nil {
 			return err
 		}
 	}
@@ -84,15 +84,15 @@ func SignFragments(keyPair identity.KeyPair, fragments []*Fragment) error {
 
 // VerifySignature verifies that the Signature field has been signed by the provided
 // ID's private key, returning an error if the signature is invalid
-func (fragment *Fragment) VerifySignature(ID identity.ID) error {
-	return identity.VerifySignature(fragment, fragment.Signature, ID)
+func VerifySignature(fragment *Fragment, addr string) error {
+	return crypto.VerifySignature(fragment, fragment.Signature, addr)
 }
 
 // VerifyFragmentSignatures maps over an array of fragments,
 // calling VerifySignature on each one
-func VerifyFragmentSignatures(ID identity.ID, fragments []*Fragment) error {
+func VerifyFragmentSignatures(fragments []*Fragment, addr string) error {
 	for _, fragment := range fragments {
-		if err := fragment.VerifySignature(ID); err != nil {
+		if err := VerifySignature(fragment, addr); err != nil {
 			return err
 		}
 	}

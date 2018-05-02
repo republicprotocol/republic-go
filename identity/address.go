@@ -15,17 +15,6 @@ type Address string
 // Addresses is an alias.
 type Addresses []Address
 
-// NewAddress generates a new Address by generating a random KeyPair. It
-// returns the Address, and the KeyPair, or an error.  It is most commonly used
-// for testing.
-func NewAddress() (Address, KeyPair, error) {
-	keyPair, err := NewKeyPair()
-	if err != nil {
-		return "", keyPair, err
-	}
-	return keyPair.Address(), keyPair, nil
-}
-
 // Distance uses a bitwise XOR to calculate distance between two Addresses.
 func (address Address) Distance(other Address) ([]byte, error) {
 	// Check the length of both Addresses.
