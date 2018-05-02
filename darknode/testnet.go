@@ -5,8 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	. "github.com/onsi/ginkgo"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
@@ -112,9 +110,11 @@ func (env *TestnetEnv) Teardown() error {
 // FIXME: Store the errors in a buffer that can be inspected after the test.
 func (env *TestnetEnv) Run() {
 	dispatch.CoForAll(env.Darknodes, func(i int) {
-		defer GinkgoRecover()
+		env.Darknodes[i].Run(env.done)
 		// Ignoring errors as this is a local testnet
-		_ = env.Darknodes[i].Run(env.done)
+		// for err := range env.Darknodes[i].Run(env.done) {
+		// 	log.Printf("darknode run-time error: %v", err)
+		// }
 	})
 }
 
