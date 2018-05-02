@@ -99,6 +99,7 @@ An Ecdsa key can be encoded as JSON. By itself, an Ecdsa key does not provide su
 
 ```json
 {
+    "address": "8MKaREsC8WsWt6quzDPrifQuz3bi8v",
     "curveParams": {
         "b": "Bw==",
         "bits": 256,
@@ -113,6 +114,12 @@ An Ecdsa key can be encoded as JSON. By itself, an Ecdsa key does not provide su
     "y": "hddhN4yU+r6flKfxZ0hPAOQWjS6TA5eJOn6W0cgFFR0="
 }
 ```
+
+- `curveParams` — An object defining the parameters of the elliptic curve. Currently, an s256 secp256k1 is the only curve supported.
+- `address` — Republic Protocol address generated from the public key.
+- `d` — Big integer encoded as big-endian bytes, used for the private key.
+- `x` — Big integer encoded as big-endian bytes, used for the public key.
+- `y` — Big integer encoded as big-endian bytes, used for the public key.
 
 ### Rsa
 
@@ -131,3 +138,8 @@ An Rsa key can be encoded as JSON. By itself, an Rsa key does not provide suppor
     ]
 }
 ```
+
+- `e` — An integer, used for the private key.
+- `n` — Big integer encoded as big-endian bytes, used for the private key.
+- `d` — Big integer encoded as big-endian bytes, used for the public key.
+- `primes` — An array of big integer encoded as big-endian bytes, used for the private key.

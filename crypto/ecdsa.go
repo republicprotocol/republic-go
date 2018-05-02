@@ -17,7 +17,6 @@ import (
 // EcdsaKey for signing and verifying hashes.
 type EcdsaKey struct {
 	*ecdsa.PrivateKey
-
 	address string
 }
 
