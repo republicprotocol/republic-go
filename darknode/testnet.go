@@ -2,14 +2,12 @@ package darknode
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 
 	. "github.com/onsi/ginkgo"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
@@ -32,6 +30,8 @@ type TestnetEnv struct {
 	// Darknodes
 	bootstrapMultiAddrs identity.MultiAddresses
 	Darknodes           Darknodes
+
+	done chan struct{}
 }
 
 // NewTestnet will create a testnet that will register newly created darknodes
@@ -79,6 +79,7 @@ func NewTestnet(numberOfDarknodes, numberOfBootstrapDarknodes int) (TestnetEnv, 
 		darknodeRegistry:    darknodeRegistry,
 		bootstrapMultiAddrs: bootstrapMultiAddrs,
 		Darknodes:           darknodes,
+		done:                make(chan struct{}),
 	}, nil
 }
 
@@ -86,6 +87,8 @@ func NewTestnet(numberOfDarknodes, numberOfBootstrapDarknodes int) (TestnetEnv, 
 // the ganache server is stopped and the darknodes are deregistered and refunded.
 func (env *TestnetEnv) Teardown() error {
 	defer ganache.Stop()
+
+	close(env.done)
 
 	// Deregister the DarkNodes
 	err := DeregisterDarknodes(env.Darknodes, env.ethConn, env.darknodeRegistry)
@@ -102,15 +105,16 @@ func (env *TestnetEnv) Teardown() error {
 	return nil
 }
 
-// StartServicesAndBootstrapNodes will start running all the gRPC services and
-// bootstrap nodes once the swarmer client has started running. Errors are ignored
-// since this is a local testnet. When the done channel closes, the server will
-// be stopped.
-func (env *TestnetEnv) StartServicesAndBootstrapNodes(done <-chan struct{}) {
-	go dispatch.CoForAll(env.Darknodes, func(i int) {
+// Run all Darknodes. This will start the gRPC services and bootstrap the
+// Darknodes. Calls to TestnetEnv.Run are blocking, until a call to
+// TestnetEnv.Teardown is made. Errors returned by the Darknodes while running
+// are ignored.
+// FIXME: Store the errors in a buffer that can be inspected after the test.
+func (env *TestnetEnv) Run() {
+	dispatch.CoForAll(env.Darknodes, func(i int) {
 		defer GinkgoRecover()
 		// Ignoring errors as this is a local testnet
-		_ = env.Darknodes[i].Run(done)
+		_ = env.Darknodes[i].Run(env.done)
 	})
 }
 
@@ -124,8 +128,7 @@ func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (Darknodes,
 	multiAddrs := make([]identity.MultiAddress, numberOfDarknodes)
 	configs := make([]Config, numberOfDarknodes)
 	for i := 0; i < numberOfDarknodes; i++ {
-		key := keystore.NewKeyForDirectICAP(rand.Reader)
-		multiAddrs[i], configs[i], err = NewLocalConfig(*key, "127.0.0.1", fmt.Sprintf("%d", 3000+i))
+		multiAddrs[i], configs[i], err = NewLocalConfig("127.0.0.1", fmt.Sprintf("%d", 3000+i))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -208,24 +211,17 @@ func RefundDarknodes(darknodes Darknodes, conn ethereum.Conn, darknodeRegistry d
 // NewLocalConfig will return newly generated multiaddress and config that are
 // constructed from an EcdsaKey, host and port that are passed as arguments to
 // the method.
-func NewLocalConfig(ecdsaKey keystore.Key, host, port string) (identity.MultiAddress, Config, error) {
-	keyPair, err := identity.NewKeyPairFromPrivateKey(ecdsaKey.PrivateKey)
+func NewLocalConfig(host, port string) (identity.MultiAddress, Config, error) {
+	keystore, err := crypto.RandomKeystore()
 	if err != nil {
 		return identity.MultiAddress{}, Config{}, err
 	}
-
-	rsaKey, err := crypto.NewRsaKeyPair()
-	if err != nil {
-		return identity.MultiAddress{}, Config{}, err
-	}
-
-	multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", host, port, keyPair.Address()))
+	multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", host, port, keystore.Address()))
 	if err != nil {
 		return identity.MultiAddress{}, Config{}, err
 	}
 	return multiAddr, Config{
-		EcdsaKey: &ecdsaKey,
-		RsaKey:   rsaKey,
+		Keystore: keystore,
 		Host:     host,
 		Port:     port,
 		Ethereum: ethereum.Config{
