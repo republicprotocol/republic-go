@@ -3,12 +3,12 @@ package order_test
 import (
 	"time"
 
-	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/stackint"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/order"
+
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
 var _ = Describe("Order fragments", func() {
@@ -158,34 +158,37 @@ var _ = Describe("Order fragments", func() {
 
 	Context("when being signed", func() {
 
-		keyPair, err := identity.NewKeyPair()
-		if err != nil {
-			panic(err)
-		}
+		var keystore crypto.Keystore
+		var fragments []*Fragment
 
-		nonce := stackint.FromUint(0)
-		fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce).Split(n, k, prime)
-		if err != nil {
-			panic(err)
-		}
+		BeforeEach(func() {
+			var err error
+
+			keystore, err = crypto.RandomKeystore()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			nonce := stackint.FromUint(0)
+			fragments, err = NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce).Split(n, k, prime)
+			Expect(err).ShouldNot(HaveOccurred())
+		})
 
 		It("can be signed and verified", func() {
-			err = SignFragments(keyPair, fragments)
+			err := SignFragments(&keystore, fragments)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = VerifyFragmentSignatures(keyPair.ID(), fragments)
+			err = VerifyFragmentSignatures(fragments, keystore.Address())
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should error for invalid ID", func() {
-			keyPair2, err := identity.NewKeyPair()
+			keystore2, err := crypto.RandomKeystore()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = SignFragments(&keystore, fragments)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = SignFragments(keyPair, fragments)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			err = VerifyFragmentSignatures(keyPair2.ID(), fragments)
-			Ω(err).Should(Equal(identity.ErrInvalidSignature))
+			err = VerifyFragmentSignatures(fragments, keystore2.Address())
+			Ω(err).Should(Equal(crypto.ErrInvalidSignature))
 		})
 
 		It("should error for invalid data", func() {
@@ -194,15 +197,15 @@ var _ = Describe("Order fragments", func() {
 			fragments2, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce2).Split(n, k, prime)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = SignFragments(keyPair, fragments)
+			err = SignFragments(&keystore, fragments)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := range fragments2 {
 				fragments2[i].Signature = fragments[i].Signature
 			}
 
-			err = VerifyFragmentSignatures(keyPair.ID(), fragments2)
-			Ω(err).Should(Equal(identity.ErrInvalidSignature))
+			err = VerifyFragmentSignatures(fragments2, keystore.Address())
+			Ω(err).Should(Equal(crypto.ErrInvalidSignature))
 		})
 	})
 

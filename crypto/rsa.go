@@ -17,9 +17,11 @@ type RsaKey struct {
 
 // RandomRsaKey using 2048 bits, with precomputed values for improved
 // performance.
-func RandomRsaKey() (RsaKey, error) {
+func RandomRsaKey(precompute ...bool) (RsaKey, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	privateKey.Precompute()
+	if len(precompute) == 0 || precompute[0] {
+		privateKey.Precompute()
+	}
 	if err != nil {
 		return RsaKey{}, err
 	}
@@ -31,8 +33,10 @@ func RandomRsaKey() (RsaKey, error) {
 // NewRsaKey returns an RsaKey from an existing private key. It does not verify
 // that the private key was generated correctly. It precomputes values for
 // improved performance
-func NewRsaKey(privateKey *rsa.PrivateKey) RsaKey {
-	privateKey.Precompute()
+func NewRsaKey(privateKey *rsa.PrivateKey, precompute ...bool) RsaKey {
+	if len(precompute) == 0 || precompute[0] {
+		privateKey.Precompute()
+	}
 	return RsaKey{
 		PrivateKey: privateKey,
 	}

@@ -42,14 +42,14 @@ type Keystore struct {
 
 // RandomKeystore returns a new Keystore that stores a randomly generated
 // EcdsaKey, RsaKey, and UUID.
-func RandomKeystore() (Keystore, error) {
+func RandomKeystore(precompute ...bool) (Keystore, error) {
 	var err error
 	keystore := Keystore{}
 	keystore.EcdsaKey, err = RandomEcdsaKey()
 	if err != nil {
 		return keystore, err
 	}
-	keystore.RsaKey, err = RandomRsaKey()
+	keystore.RsaKey, err = RandomRsaKey(precompute...)
 	if err != nil {
 		return keystore, err
 	}

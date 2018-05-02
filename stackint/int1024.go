@@ -330,7 +330,7 @@ func (x Int1024) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (x Int1024) UnmarshalJSON(data []byte) error {
+func (x *Int1024) UnmarshalJSON(data []byte) error {
 	var bytes []byte
 	if err := json.Unmarshal(data, &bytes); err != nil {
 		return err

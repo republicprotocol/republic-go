@@ -217,9 +217,10 @@ func sendOrders(nodes Darknodes, numberOfOrders int) error {
 
 	// Send order fragment to the nodes
 	totalNodes := len(nodes)
-	traderAddr, _, err := identity.NewAddress()
+	traderKeystore, err := crypto.RandomKeystore()
 	Expect(err).ShouldNot(HaveOccurred())
-	trader, _ := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/80/republic/%v", traderAddr))
+	traderAddr := traderKeystore.Address()
+	trader, _ := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/80/republic/%s", traderAddr))
 	prime, _ := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 
 	crypter := crypto.NewWeakCrypter()

@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/crypto"
 	. "github.com/republicprotocol/republic-go/rpc/client"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -85,9 +86,9 @@ func createConn() *Conn {
 }
 
 func createConnMultiAddress(host, port string) (identity.MultiAddress, error) {
-	addr, _, err := identity.NewAddress()
+	keystore, err := crypto.RandomKeystore()
 	if err != nil {
 		return identity.MultiAddress{}, err
 	}
-	return identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%v", host, port, addr))
+	return identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", host, port, keystore.Address()))
 }

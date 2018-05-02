@@ -32,7 +32,7 @@ var _ = Describe("EcdsaKey", func() {
 		})
 	})
 
-	Context("when signing and verifyinh", func() {
+	Context("when signing and verifying", func() {
 
 		It("should be able to sign a hash", func() {
 			key, err := RandomEcdsaKey()

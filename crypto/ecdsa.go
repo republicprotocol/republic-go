@@ -17,6 +17,8 @@ import (
 // EcdsaKey for signing and verifying hashes.
 type EcdsaKey struct {
 	*ecdsa.PrivateKey
+
+	address string
 }
 
 // RandomEcdsaKey using a secp256k1 s256 curve.
@@ -27,6 +29,7 @@ func RandomEcdsaKey() (EcdsaKey, error) {
 	}
 	return EcdsaKey{
 		PrivateKey: privateKey,
+		address:    addressFromPublickey(&privateKey.PublicKey),
 	}, nil
 }
 
@@ -35,6 +38,7 @@ func RandomEcdsaKey() (EcdsaKey, error) {
 func NewEcdsaKey(privateKey *ecdsa.PrivateKey) EcdsaKey {
 	return EcdsaKey{
 		PrivateKey: privateKey,
+		address:    addressFromPublickey(&privateKey.PublicKey),
 	}
 }
 
@@ -48,20 +52,14 @@ func (key *EcdsaKey) Sign(hasher Hasher) ([]byte, error) {
 // Ethereum address, but instead of a hex encoding, it uses a base58 encoding
 // of a Keccak256 multihash.
 func (key *EcdsaKey) Address() string {
-	bytes := elliptic.Marshal(ethSecp256k1.S256(), key.PublicKey.X, key.PublicKey.Y)
-	hash := ethCrypto.Keccak256(bytes[1:]) // Keccak256 hash
-	hash = hash[(len(hash) - 20):]         // Take the last 20 bytes
-	addr := make([]byte, 2, 22)            // Create the multihash address
-	addr[0] = multihash.KECCAK_256         // Set the keccak256 byte
-	addr[1] = 20                           // Set the length byte
-	addr = append(addr, hash...)           // Append the data
-	return base58.EncodeAlphabet(addr, base58.BTCAlphabet)
+	return key.address
 }
 
 // Equal returns true if two EcdsaKeys are exactly equal. The name of the
 // elliptic.Curve is not checked.
 func (key *EcdsaKey) Equal(rhs *EcdsaKey) bool {
-	return key.D.Cmp(rhs.D) == 0 &&
+	return key.address == rhs.address &&
+		key.D.Cmp(rhs.D) == 0 &&
 		key.X.Cmp(rhs.X) == 0 &&
 		key.Y.Cmp(rhs.Y) == 0 &&
 		key.Curve.Params().P.Cmp(rhs.Curve.Params().P) == 0 &&
@@ -80,6 +78,7 @@ func (key EcdsaKey) MarshalJSON() ([]byte, error) {
 	jsonKey["d"] = key.D.Bytes()
 
 	// Public key
+	jsonKey["address"] = key.address
 	jsonKey["x"] = key.X.Bytes()
 	jsonKey["y"] = key.Y.Bytes()
 
@@ -164,6 +163,8 @@ func (key *EcdsaKey) UnmarshalJSON(data []byte) error {
 	} else {
 		return fmt.Errorf("curveParams is nil")
 	}
+
+	key.address = addressFromPublickey(&key.PublicKey)
 	return nil
 }
 
@@ -192,16 +193,29 @@ func RecoverAddress(hasher Hasher, signature []byte) (string, error) {
 	}
 
 	// Address from an EcdsaKey
-	key := EcdsaKey{
-		PrivateKey: &ecdsa.PrivateKey{
-			PublicKey: ecdsa.PublicKey{
-				Curve: ethSecp256k1.S256(),
-				X:     big.NewInt(0).SetBytes(publicKey[1:33]),
-				Y:     big.NewInt(0).SetBytes(publicKey[33:65]),
-			},
+	privateKey := &ecdsa.PrivateKey{
+		PublicKey: ecdsa.PublicKey{
+			Curve: ethSecp256k1.S256(),
+			X:     big.NewInt(0).SetBytes(publicKey[1:33]),
+			Y:     big.NewInt(0).SetBytes(publicKey[33:65]),
 		},
 	}
+	key := EcdsaKey{
+		PrivateKey: privateKey,
+		address:    addressFromPublickey(&privateKey.PublicKey),
+	}
 	return key.Address(), nil
+}
+
+func addressFromPublickey(publicKey *ecdsa.PublicKey) string {
+	bytes := elliptic.Marshal(ethSecp256k1.S256(), publicKey.X, publicKey.Y)
+	hash := ethCrypto.Keccak256(bytes[1:]) // Keccak256 hash
+	hash = hash[(len(hash) - 20):]         // Take the last 20 bytes
+	addr := make([]byte, 2, 22)            // Create the multihash address
+	addr[0] = multihash.KECCAK_256         // Set the keccak256 byte
+	addr[1] = 20                           // Set the length byte
+	addr = append(addr, hash...)           // Append the data
+	return base58.EncodeAlphabet(addr, base58.BTCAlphabet)
 }
 
 // s256 is unused

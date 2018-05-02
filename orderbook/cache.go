@@ -55,7 +55,7 @@ func (cache *Cache) Match(entry Entry) error {
 	if previousStatus == order.Unconfirmed {
 		return nil
 	}
-	if previousStatus != order.Open {
+	if previousStatus != order.Nil && previousStatus != order.Open {
 		return fmt.Errorf("cannot matched order with status %v", previousStatus)
 	}
 
@@ -75,7 +75,7 @@ func (cache *Cache) Confirm(entry Entry) error {
 	if previousStatus == order.Confirmed {
 		return nil
 	}
-	if previousStatus != order.Open && previousStatus != order.Unconfirmed {
+	if previousStatus != order.Nil && previousStatus != order.Open && previousStatus != order.Unconfirmed {
 		return fmt.Errorf("cannot confirm order with status %v", previousStatus)
 	}
 
@@ -101,7 +101,7 @@ func (cache *Cache) Release(entry Entry) error {
 	defer cache.cancelMu.RUnlock()
 
 	previousStatus := cache.orders[string(entry.Order.ID)].Status
-	if previousStatus != order.Open && previousStatus != order.Unconfirmed {
+	if previousStatus != order.Nil && previousStatus != order.Open && previousStatus != order.Unconfirmed {
 		return fmt.Errorf("cannot release order with status %v", previousStatus)
 	}
 
@@ -124,7 +124,7 @@ func (cache *Cache) Settle(entry Entry) error {
 	defer cache.ordersMu.Unlock()
 
 	previousStatus := cache.orders[string(entry.Order.ID)].Status
-	if previousStatus != order.Open && previousStatus != order.Unconfirmed && previousStatus != order.Confirmed {
+	if previousStatus != order.Nil && previousStatus != order.Open && previousStatus != order.Unconfirmed && previousStatus != order.Confirmed {
 		return fmt.Errorf("cannot settled order with status %v", previousStatus)
 	}
 

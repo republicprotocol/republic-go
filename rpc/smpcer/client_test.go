@@ -25,10 +25,11 @@ var _ = Describe("Smpcer Client", func() {
 })
 
 func createMultiAddrAndConnPool(bind, port string) (identity.MultiAddress, client.ConnPool, error) {
-	addr, _, err := identity.NewAddress()
+	key, err := crypto.RandomEcdsaKey()
 	if err != nil {
 		return identity.MultiAddress{}, client.ConnPool{}, err
 	}
+	addr := identity.Address(key.Address())
 	multiaddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%v", bind, port, addr))
 	if err != nil {
 		return identity.MultiAddress{}, client.ConnPool{}, err
