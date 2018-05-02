@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/randentropy"
 	"github.com/pborman/uuid"
@@ -22,6 +21,10 @@ import (
 // is unsupported. Currently, only version 3 is supported.
 var ErrUnsupportedKeystoreVersion = errors.New("unsupported keystore version")
 
+// ErrPassphraseCannotDecryptKey is returned when the given passphrase canno
+// be used to decrypted a key.
+var ErrPassphraseCannotDecryptKey = errors.New("passphrase cannot decrypt key")
+
 // A Keystore stores an EcdsaKey and an RsaKey. It exists primarily to couple
 // the keys together to form one unified identity, capable of signing,
 // verifying, encrypting, and decrypting. It also exists to expose an easy
@@ -29,10 +32,28 @@ var ErrUnsupportedKeystoreVersion = errors.New("unsupported keystore version")
 // encrypted.
 type Keystore struct {
 	ID      uuid.UUID `json:"id"`
-	Version int       `json:"version"`
+	Version string    `json:"version"`
 
 	EcdsaKey `json:"ecdsa"`
 	RsaKey   `json:"rsa"`
+}
+
+// RandomKeystore returns a new Keystore that stores a randomly generated
+// EcdsaKey, RsaKey, and UUID.
+func RandomKeystore() (Keystore, error) {
+	var err error
+	keystore := Keystore{}
+	keystore.EcdsaKey, err = RandomEcdsaKey()
+	if err != nil {
+		return keystore, err
+	}
+	keystore.RsaKey, err = RandomRsaKey()
+	if err != nil {
+		return keystore, err
+	}
+	keystore.ID = uuid.NewRandom()
+	keystore.Version = "3"
+	return keystore, nil
 }
 
 // NewKeystore returns a new Keystore that stores an EcdsaKey and an RsaKey and
@@ -40,7 +61,7 @@ type Keystore struct {
 func (keystore *Keystore) NewKeystore(ecdsaKey EcdsaKey, rsaKey RsaKey) Keystore {
 	return Keystore{
 		ID:       uuid.NewRandom(),
-		Version:  3,
+		Version:  "3",
 		EcdsaKey: ecdsaKey,
 		RsaKey:   rsaKey,
 	}
@@ -53,7 +74,7 @@ func (keystore *Keystore) Encrypt(passphrase string, scryptN, scryptP int) ([]by
 	if err != nil {
 		return nil, err
 	}
-	rsaKeyEncrypted, err := []byte{}, nil // keystore.encryptRsaKey(passphrase, scryptN, scryptP)
+	rsaKeyEncrypted, err := keystore.encryptRsaKey(passphrase, scryptN, scryptP)
 	if err != nil {
 		return nil, err
 	}
@@ -66,24 +87,108 @@ func (keystore *Keystore) Encrypt(passphrase string, scryptN, scryptP int) ([]by
 	return json.Marshal(keystoreEncrypted)
 }
 
-// From: https://github.com/ethereum/go-ethereum/accounts/keystore
+// Decrypt the EcdsaKey and RsaKey from the JSON object into a Keystore.
+func (keystore *Keystore) Decrypt(data []byte, passphrase string) error {
+	// Parse the json into a map to fetch the key version
+	val := make(map[string]interface{})
+	if err := json.Unmarshal(data, &val); err != nil {
+		return err
+	}
+	if version, ok := val["version"].(string); !ok || version != "3" {
+		return ErrUnsupportedKeystoreVersion
+	}
+
+	keystoreEncrypted := encryptedKeystoreJSONV3{}
+	if err := json.Unmarshal(data, &keystoreEncrypted); err != nil {
+		return err
+	}
+	ecdsaDecrypted, err := decryptEcdsaKeyV3(&keystoreEncrypted.EcdsaKey, passphrase)
+	if err != nil {
+		return err
+	}
+	rsaDecrypted, err := decryptRsaKeyV3(&keystoreEncrypted.RsaKey, passphrase)
+	if err != nil {
+		return err
+	}
+
+	keystore.ID = uuid.Parse(keystoreEncrypted.ID)
+	keystore.Version = "3"
+	keystore.EcdsaKey = ecdsaDecrypted
+	keystore.RsaKey = rsaDecrypted
+	return nil
+}
+
+// From https://github.com/ethereum/go-ethereum/accounts/keystore
+const (
+	// StandardScryptN is the N parameter of Scrypt encryption algorithm, using 256MB
+	// memory and taking approximately 1s CPU time on a modern processor.
+	StandardScryptN = 1 << 18
+
+	// StandardScryptP is the P parameter of Scrypt encryption algorithm, using 256MB
+	// memory and taking approximately 1s CPU time on a modern processor.
+	StandardScryptP = 1
+
+	// LightScryptN is the N parameter of Scrypt encryption algorithm, using 4MB
+	// memory and taking approximately 100ms CPU time on a modern processor.
+	LightScryptN = 1 << 12
+
+	// LightScryptP is the P parameter of Scrypt encryption algorithm, using 4MB
+	// memory and taking approximately 100ms CPU time on a modern processor.
+	LightScryptP = 6
+
+	keyHeaderKDF = "scrypt"
+	scryptR      = 8
+	scryptDKLen  = 32
+)
+
+type encryptedKeystoreJSONV3 struct {
+	ID       string             `json:"id"`
+	Version  string             `json:"version"`
+	EcdsaKey encryptedKeyJSONV3 `json:"ecdsa"`
+	RsaKey   encryptedKeyJSONV3 `json:"rsa"`
+}
+
+// Adapted from https://github.com/ethereum/go-ethereum/accounts/keystore
+type encryptedKeyJSONV3 struct {
+	Address   *string    `json:"address,omitempty"`
+	PublicKey []byte     `json:"publicKey,omitempty"`
+	Crypto    cryptoJSON `json:"crypto"`
+}
+
+// Adapted from https://github.com/ethereum/go-ethereum/accounts/keystore
+type cryptoJSON struct {
+	Cipher       string                 `json:"cipher"`
+	CipherText   string                 `json:"cipherText"`
+	CipherParams cipherparamsJSON       `json:"cipherParams"`
+	KDF          string                 `json:"kdf"`
+	KDFParams    map[string]interface{} `json:"kdfParams"`
+	MAC          string                 `json:"mac"`
+}
+
+// From https://github.com/ethereum/go-ethereum/accounts/keystore
+type cipherparamsJSON struct {
+	IV string `json:"iv"`
+}
+
+// Adapted from https://github.com/ethereum/go-ethereum/accounts/keystore
 func (keystore *Keystore) encryptEcdsaKey(passphrase string, scryptN, scryptP int) (encryptedKeyJSONV3, error) {
+
 	salt := randentropy.GetEntropyCSPRNG(32)
-	derivedKey, err := scrypt.Key([]byte(passphrase), salt, scryptN, scryptR, scryptP, scryptDKLen)
+	keyDerived, err := scrypt.Key([]byte(passphrase), salt, scryptN, scryptR, scryptP, scryptDKLen)
 	if err != nil {
 		return encryptedKeyJSONV3{}, err
 	}
-	encryptKey := derivedKey[:16]
-
-	// FIXME: Marshal into JSON data
-	keyBytes := math.PaddedBigBytes(keystore.EcdsaKey.PrivateKey.D, 32)
-
+	keyEncrypted := keyDerived[:16]
+	keyBytes, err := keystore.EcdsaKey.MarshalJSON()
+	if err != nil {
+		return encryptedKeyJSONV3{}, err
+	}
 	iv := randentropy.GetEntropyCSPRNG(aes.BlockSize) // 16
-	cipherText, err := aesCTRXOR(encryptKey, keyBytes, iv)
+	cipherText, err := aesCTRXOR(keyEncrypted, keyBytes, iv)
 	if err != nil {
 		return encryptedKeyJSONV3{}, err
 	}
-	mac := crypto.Keccak256(derivedKey[16:32], cipherText)
+	mac := crypto.Keccak256(keyDerived[16:32], cipherText)
 
 	scryptParamsJSON := make(map[string]interface{}, 5)
 	scryptParamsJSON["n"] = scryptN
@@ -91,11 +196,11 @@ func (keystore *Keystore) encryptEcdsaKey(passphrase string, scryptN, scryptP in
 	scryptParamsJSON["p"] = scryptP
 	scryptParamsJSON["dkLength"] = scryptDKLen
 	scryptParamsJSON["salt"] = hex.EncodeToString(salt)
-
 	cipherParamsJSON := cipherparamsJSON{
 		IV: hex.EncodeToString(iv),
 	}
 
+	addr := keystore.EcdsaKey.Address()
 	cryptoStruct := cryptoJSON{
 		Cipher:       "aes-128-ctr",
 		CipherText:   hex.EncodeToString(cipherText),
@@ -105,58 +210,30 @@ func (keystore *Keystore) encryptEcdsaKey(passphrase string, scryptN, scryptP in
 		MAC:          hex.EncodeToString(mac),
 	}
 	return encryptedKeyJSONV3{
-		Address: hex.EncodeToString([]byte(keystore.EcdsaKey.Address())),
+		Address: &addr,
 		Crypto:  cryptoStruct,
 	}, nil
-}
-
-// From: https://github.com/ethereum/go-ethereum/accounts/keystore
-func decryptEcdsaKey(keyjson []byte, auth string) (EcdsaKey, error) {
-	// Parse the json into a simple map to fetch the key version
-	m := make(map[string]interface{})
-	if err := json.Unmarshal(keyjson, &m); err != nil {
-		return EcdsaKey{}, err
-	}
-	// Depending on the version try to parse one way or another
-	var (
-		keyBytes, keyID []byte
-		err             error
-	)
-	if version, ok := m["version"].(string); ok && version == "3" {
-		k := new(encryptedKeyJSONV3)
-		if err := json.Unmarshal(keyjson, k); err != nil {
-			return EcdsaKey{}, err
-		}
-		keyBytes, keyID, err = decryptKeyV3(k, auth)
-	} else {
-		return EcdsaKey{}, ErrUnsupportedKeystoreVersion
-	}
-	// Handle any decryption errors and return the key
-	if err != nil {
-		return EcdsaKey{}, err
-	}
-	key := crypto.ToECDSAUnsafe(keyBytes)
-
-	return NewEcdsaKey(key), nil
 }
 
 // Adapted from https://github.com/ethereum/go-ethereum/accounts/keystore
 func (keystore *Keystore) encryptRsaKey(passphrase string, scryptN, scryptP int) (encryptedKeyJSONV3, error) {
-	salt := randentropy.GetEntropyCSPRNG(32)
-	derivedKey, err := scrypt.Key([]byte(passphrase), salt, scryptN, scryptR, scryptP, scryptDKLen)
-	if err != nil {
-		return encryptedKeyJSONV3{}, err
-	}
-	encryptKey := derivedKey[:16]
-	// FIXME: Marshal into JSON data
-	keyBytes := math.PaddedBigBytes(keystore.RsaKey.PrivateKey.D, 32)
 
-	iv := randentropy.GetEntropyCSPRNG(aes.BlockSize) // 16
-	cipherText, err := aesCTRXOR(encryptKey, keyBytes, iv)
+	salt := randentropy.GetEntropyCSPRNG(32)
+	keyDerived, err := scrypt.Key([]byte(passphrase), salt, scryptN, scryptR, scryptP, scryptDKLen)
 	if err != nil {
 		return encryptedKeyJSONV3{}, err
 	}
-	mac := crypto.Keccak256(derivedKey[16:32], cipherText)
+	keyEncrypted := keyDerived[:16]
+	keyBytes, err := keystore.RsaKey.MarshalJSON()
+	if err != nil {
+		return encryptedKeyJSONV3{}, err
+	}
+	iv := randentropy.GetEntropyCSPRNG(aes.BlockSize) // 16
+	cipherText, err := aesCTRXOR(keyEncrypted, keyBytes, iv)
+	if err != nil {
+		return encryptedKeyJSONV3{}, err
+	}
+	mac := crypto.Keccak256(keyDerived[16:32], cipherText)
 
 	scryptParamsJSON := make(map[string]interface{}, 5)
 	scryptParamsJSON["n"] = scryptN
@@ -164,11 +241,11 @@ func (keystore *Keystore) encryptRsaKey(passphrase string, scryptN, scryptP int)
 	scryptParamsJSON["p"] = scryptP
 	scryptParamsJSON["dkLength"] = scryptDKLen
 	scryptParamsJSON["salt"] = hex.EncodeToString(salt)
-
 	cipherParamsJSON := cipherparamsJSON{
 		IV: hex.EncodeToString(iv),
 	}
 
+	publicKey := BytesFromRsaPublicKey(&keystore.RsaKey.PublicKey)
 	cryptoStruct := cryptoJSON{
 		Cipher:       "aes-128-ctr",
 		CipherText:   hex.EncodeToString(cipherText),
@@ -178,92 +255,81 @@ func (keystore *Keystore) encryptRsaKey(passphrase string, scryptN, scryptP int)
 		MAC:          hex.EncodeToString(mac),
 	}
 	return encryptedKeyJSONV3{
-		Address: hex.EncodeToString([]byte(keystore.EcdsaKey.Address())),
-		Crypto:  cryptoStruct,
+		PublicKey: publicKey,
+		Crypto:    cryptoStruct,
 	}, nil
 }
 
-// Adapted from https://github.com/ethereum/go-ethereum/accounts/keystore
-func decryptRsaKey(keyjson []byte, auth string) (EcdsaKey, error) {
-	// Parse the json into a simple map to fetch the key version
-	m := make(map[string]interface{})
-	if err := json.Unmarshal(keyjson, &m); err != nil {
-		return EcdsaKey{}, err
-	}
-	// Depending on the version try to parse one way or another
-	var (
-		keyBytes, keyID []byte
-		err             error
-	)
-	if version, ok := m["version"].(string); ok && version == "3" {
-		k := new(encryptedKeyJSONV3)
-		if err := json.Unmarshal(keyjson, k); err != nil {
-			return EcdsaKey{}, err
-		}
-		keyBytes, keyID, err = decryptKeyV3(k, auth)
-	} else {
-		return EcdsaKey{}, ErrUnsupportedKeystoreVersion
-	}
-	// Handle any decryption errors and return the key
+func decryptEcdsaKeyV3(ecdsaKeyEncrypted *encryptedKeyJSONV3, passphrase string) (EcdsaKey, error) {
+	ecdsaKeyBytes, err := decryptKeyV3(ecdsaKeyEncrypted, passphrase)
 	if err != nil {
 		return EcdsaKey{}, err
 	}
-	key := crypto.ToECDSAUnsafe(keyBytes)
-
-	return NewEcdsaKey(key), nil
+	ecdsaKey := EcdsaKey{}
+	if err := ecdsaKey.UnmarshalJSON(ecdsaKeyBytes); err != nil {
+		return ecdsaKey, err
+	}
+	return ecdsaKey, nil
 }
 
-// From: https://github.com/ethereum/go-ethereum/accounts/keystore
-func decryptKeyV3(keyProtected *encryptedKeyJSONV3, auth string) (keyBytes []byte, keyId []byte, err error) {
-	if keyProtected.Version != 3 {
-		return nil, nil, fmt.Errorf("Version not supported: %v", keyProtected.Version)
-	}
-
-	if keyProtected.Crypto.Cipher != "aes-128-ctr" {
-		return nil, nil, fmt.Errorf("Cipher not supported: %v", keyProtected.Crypto.Cipher)
-	}
-
-	keyId = uuid.Parse(keyProtected.Id)
-	mac, err := hex.DecodeString(keyProtected.Crypto.MAC)
+func decryptRsaKeyV3(esaKeyEncrypted *encryptedKeyJSONV3, passphrase string) (RsaKey, error) {
+	rsaKeyBytes, err := decryptKeyV3(esaKeyEncrypted, passphrase)
 	if err != nil {
-		return nil, nil, err
+		return RsaKey{}, err
+	}
+	rsaKey := RsaKey{}
+	if err := rsaKey.UnmarshalJSON(rsaKeyBytes); err != nil {
+		return rsaKey, err
+	}
+	return rsaKey, nil
+}
+
+// Adapted from https://github.com/ethereum/go-ethereum/accounts/keystore
+func decryptKeyV3(keyEncrypted *encryptedKeyJSONV3, auth string) (keyBytes []byte, err error) {
+	if keyEncrypted.Crypto.Cipher != "aes-128-ctr" {
+		return nil, fmt.Errorf("Cipher not supported: %v", keyEncrypted.Crypto.Cipher)
 	}
 
-	iv, err := hex.DecodeString(keyProtected.Crypto.CipherParams.IV)
+	mac, err := hex.DecodeString(keyEncrypted.Crypto.MAC)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	cipherText, err := hex.DecodeString(keyProtected.Crypto.CipherText)
+	iv, err := hex.DecodeString(keyEncrypted.Crypto.CipherParams.IV)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	derivedKey, err := getKDFKey(keyProtected.Crypto, auth)
+	cipherText, err := hex.DecodeString(keyEncrypted.Crypto.CipherText)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+
+	derivedKey, err := getKDFKey(keyEncrypted.Crypto, auth)
+	if err != nil {
+		return nil, err
 	}
 
 	calculatedMAC := crypto.Keccak256(derivedKey[16:32], cipherText)
 	if !bytes.Equal(calculatedMAC, mac) {
-		return nil, nil, ErrDecrypt
+		return nil, ErrPassphraseCannotDecryptKey
 	}
 
 	plainText, err := aesCTRXOR(derivedKey[:16], cipherText, iv)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return plainText, keyId, err
+	return plainText, err
 }
 
-// From: https://github.com/ethereum/go-ethereum/accounts/keystore
+// From https://github.com/ethereum/go-ethereum/accounts/keystore
 func getKDFKey(cryptoJSON cryptoJSON, auth string) ([]byte, error) {
 	authArray := []byte(auth)
 	salt, err := hex.DecodeString(cryptoJSON.KDFParams["salt"].(string))
 	if err != nil {
 		return nil, err
 	}
-	dkLen := ensureInt(cryptoJSON.KDFParams["dklen"])
+	dkLen := ensureInt(cryptoJSON.KDFParams["dkLength"])
 
 	if cryptoJSON.KDF == keyHeaderKDF {
 		n := ensureInt(cryptoJSON.KDFParams["n"])
@@ -281,10 +347,10 @@ func getKDFKey(cryptoJSON cryptoJSON, auth string) ([]byte, error) {
 		return key, nil
 	}
 
-	return nil, fmt.Errorf("Unsupported KDF: %s", cryptoJSON.KDF)
+	return nil, fmt.Errorf("unsupported kfd %s", cryptoJSON.KDF)
 }
 
-// From: https://github.com/ethereum/go-ethereum/accounts/keystore
+// From https://github.com/ethereum/go-ethereum/accounts/keystore
 func aesCTRXOR(key, inText, iv []byte) ([]byte, error) {
 	// AES-128 is selected due to size of encryptKey.
 	aesBlock, err := aes.NewCipher(key)
@@ -297,7 +363,7 @@ func aesCTRXOR(key, inText, iv []byte) ([]byte, error) {
 	return outText, err
 }
 
-// From: https://github.com/ethereum/go-ethereum/accounts/keystore
+// From https://github.com/ethereum/go-ethereum/accounts/keystore
 func aesCBCDecrypt(key, cipherText, iv []byte) ([]byte, error) {
 	aesBlock, err := aes.NewCipher(key)
 	if err != nil {
@@ -308,7 +374,7 @@ func aesCBCDecrypt(key, cipherText, iv []byte) ([]byte, error) {
 	decrypter.CryptBlocks(paddedPlaintext, cipherText)
 	plaintext := pkcs7Unpad(paddedPlaintext)
 	if plaintext == nil {
-		return nil, ErrDecrypt
+		return nil, ErrPassphraseCannotDecryptKey
 	}
 	return plaintext, err
 }
@@ -335,53 +401,11 @@ func pkcs7Unpad(in []byte) []byte {
 	return in[:len(in)-int(padding)]
 }
 
-// From: https://github.com/ethereum/go-ethereum/accounts/keystore
+// From https://github.com/ethereum/go-ethereum/accounts/keystore
 func ensureInt(x interface{}) int {
 	res, ok := x.(int)
 	if !ok {
 		res = int(x.(float64))
 	}
 	return res
-}
-
-const (
-	keyHeaderKDF = "scrypt"
-
-	// StandardScryptN is the N parameter of Scrypt encryption algorithm, using 256MB
-	// memory and taking approximately 1s CPU time on a modern processor.
-	StandardScryptN = 1 << 18
-
-	// StandardScryptP is the P parameter of Scrypt encryption algorithm, using 256MB
-	// memory and taking approximately 1s CPU time on a modern processor.
-	StandardScryptP = 1
-
-	// LightScryptN is the N parameter of Scrypt encryption algorithm, using 4MB
-	// memory and taking approximately 100ms CPU time on a modern processor.
-	LightScryptN = 1 << 12
-
-	// LightScryptP is the P parameter of Scrypt encryption algorithm, using 4MB
-	// memory and taking approximately 100ms CPU time on a modern processor.
-	LightScryptP = 6
-
-	scryptR     = 8
-	scryptDKLen = 32
-)
-
-type encryptedKeyJSONV3 struct {
-	Address   *string    `json:"address,omitempty"`
-	PublicKey *string    `json:"publicKey,omitempty"`
-	Crypto    cryptoJSON `json:"crypto"`
-}
-
-type cryptoJSON struct {
-	Cipher       string                 `json:"cipher"`
-	CipherText   string                 `json:"cipherText"`
-	CipherParams cipherparamsJSON       `json:"cipherParams"`
-	KDF          string                 `json:"kdf"`
-	KDFParams    map[string]interface{} `json:"kdfParams"`
-	MAC          string                 `json:"mac"`
-}
-
-type cipherparamsJSON struct {
-	IV string `json:"iv"`
 }

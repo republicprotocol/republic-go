@@ -50,7 +50,7 @@ func (key *RsaKey) Decrypt(cipherText []byte) ([]byte, error) {
 
 // MarshalJSON implements the json.Marshaler interface. The RsaKey is formatted
 // according to the Republic Protocol Keystore specification.
-func (key *RsaKey) MarshalJSON() ([]byte, error) {
+func (key RsaKey) MarshalJSON() ([]byte, error) {
 	jsonKey := map[string]interface{}{}
 	// Private key
 	jsonKey["d"] = key.D.Bytes()
@@ -101,19 +101,19 @@ func (key *RsaKey) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// BytesFromPublicKey by using the Republic Protocol Keystore specification for
-// binary marshaling.
-func BytesFromPublicKey(publicKey *rsa.PublicKey) []byte {
+// BytesFromRsaPublicKey by using the Republic Protocol Keystore specification
+// for binary marshaling.
+func BytesFromRsaPublicKey(publicKey *rsa.PublicKey) []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, int64(publicKey.E))
 	binary.Write(buf, binary.BigEndian, publicKey.N.Bytes())
 	return buf.Bytes()
 }
 
-// PublicKeyFromBytes decodes a slice of bytes into an rsa.PublicKey. It
+// RsaPublicKeyFromBytes decodes a slice of bytes into an rsa.PublicKey. It
 // assumes that the bytes slice is compliant with the Republic Protocol
 // Keystore specification.
-func PublicKeyFromBytes(data []byte) rsa.PublicKey {
+func RsaPublicKeyFromBytes(data []byte) rsa.PublicKey {
 	reader := bytes.NewReader(data)
 	e := int64(0)
 	binary.Read(reader, binary.BigEndian, &e)

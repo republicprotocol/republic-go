@@ -60,7 +60,7 @@ func (key *EcdsaKey) Address() string {
 
 // MarshalJSON implements the json.Marshaler interface. The EcdsaKey is
 // formatted according to the Republic Protocol Keystore specification.
-func (key *EcdsaKey) MarshalJSON() ([]byte, error) {
+func (key EcdsaKey) MarshalJSON() ([]byte, error) {
 	jsonKey := map[string]interface{}{}
 	// Private key
 	jsonKey["d"] = key.D.Bytes()
