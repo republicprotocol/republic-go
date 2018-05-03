@@ -49,7 +49,7 @@ Get index of the pool
 $ registrar pool 8MGfbzAMS59Gb4cSjpm34soGNYsM2ft
 1 
 
-$ registrar pool dsahfjdshjfdsjhfjsahd
+$ registrar pool 8MGfbzAMS59Gb4cSjpm34soGNYsM3as
 -1
 ```
 
