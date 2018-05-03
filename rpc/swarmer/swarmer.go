@@ -16,14 +16,16 @@ var ErrNotFound = errors.New("multiaddress not found")
 
 // Swarmer implements the gRPC Swarm service.
 type Swarmer struct {
-	client *Client
+	client       *Client
+	bootstrapped bool
 }
 
 // NewSwarmer that will use the a Client to call RPCs on other Swarmer services
 // and to identify itself.
 func NewSwarmer(client *Client) Swarmer {
 	return Swarmer{
-		client: client,
+		client:       client,
+		bootstrapped: false,
 	}
 }
 

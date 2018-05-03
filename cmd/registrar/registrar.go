@@ -12,6 +12,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/darkocean"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/urfave/cli"
 )
 
@@ -97,6 +99,18 @@ func main() {
 					return err
 				}
 				return DeregisterAll(c.Args(), registrar)
+			},
+		},
+		{
+			Name:    "pool",
+			Aliases: []string{"p"},
+			Usage:   "get the hash of the pool the node is in",
+			Action: func(c *cli.Context) error {
+				registrar, err := NewRegistrar(c, key)
+				if err != nil {
+					return err
+				}
+				return GetPool(c.Args(), registrar)
 			},
 		},
 	}
@@ -191,6 +205,30 @@ func DeregisterAll(addresses []string, registrar dnr.DarknodeRegistry) error {
 			return fmt.Errorf("[%v] %sNode hasn't been registered yet.%s\n", address.Hex(), red, reset)
 		}
 	}
+
+	return nil
+}
+
+// GetPool will get the index of the pool the node is in.
+// The address should be the republic address of the node.
+func GetPool(address []string, registrar dnr.DarknodeRegistry) error {
+	if len(address) != 1 {
+		return fmt.Errorf("%sPlease provide one node address.%s\n", red, reset)
+	}
+	id := identity.Address(address[0]).ID()
+
+	currentEpoch, err := registrar.CurrentEpoch()
+	if err != nil {
+		return err
+	}
+	nodes, err := registrar.GetAllNodes()
+	if err != nil {
+		return err
+	}
+
+	ocean := darkocean.NewDarkOcean(currentEpoch.Blockhash, nodes)
+	poolIndex := ocean.PoolIndex(id)
+	log.Println(poolIndex)
 
 	return nil
 }

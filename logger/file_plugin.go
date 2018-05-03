@@ -68,6 +68,7 @@ func (plugin *FilePlugin) Log(l Log) error {
 		return fmt.Errorf("cannot write log to file plugin: nil file")
 	}
 	if plugin.file == os.Stdout || plugin.file == os.Stderr {
+		//todo : format the tags in the output log
 		_, err := plugin.file.WriteString(fmt.Sprintf("%s [%s] (%s) %s\n", l.Timestamp.Format("2006/01/02 15:04:05"), l.Type, l.EventType, l.Event.String()))
 		return err
 	}

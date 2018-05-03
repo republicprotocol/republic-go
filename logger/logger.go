@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	base58 "github.com/jbenet/go-base58"
+	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 )
 
@@ -26,11 +26,13 @@ var StdoutLogger = func() *Logger {
 type Logger struct {
 	do.GuardedObject
 	Plugins []Plugin
+	Tags    map[string]string
 }
 
 // Options are used to Unmarshal a Logger from JSON.
 type Options struct {
-	Plugins []PluginOptions `json:"plugins"`
+	Plugins []PluginOptions   `json:"plugins"`
+	Tags    map[string]string `json:"tags"`
 }
 
 // The Plugin interface describes a worker that consumes logs
@@ -238,10 +240,11 @@ const (
 
 // A Log is logged by the Logger using all available Plugins.
 type Log struct {
-	Timestamp time.Time `json:"timestamp"`
-	Type      Type      `json:"type"`
-	EventType EventType `json:"eventType"`
-	Event     Event     `json:"event"`
+	Timestamp time.Time         `json:"timestamp"`
+	Type      Type              `json:"type"`
+	EventType EventType         `json:"eventType"`
+	Event     Event             `json:"event"`
+	Tags      map[string]string `json:"tags"`
 }
 
 // The Event interface describes a log event

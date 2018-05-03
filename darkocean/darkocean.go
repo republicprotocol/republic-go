@@ -52,6 +52,19 @@ func (darkOcean *DarkOcean) Pool(id identity.ID) (Pool, error) {
 	return Pool{}, ErrPoolNotFound
 }
 
+// PoolIndex returns the index of the Pool that contains the a Darknode with
+// the given ID. Returns -1 if no such Pool can be found.
+func (darkOcean *DarkOcean) PoolIndex(id identity.ID) int {
+	for i := range darkOcean.pools {
+		for j := range darkOcean.pools[i].addresses {
+			if bytes.Equal(id[:], darkOcean.pools[i].addresses[j].ID()[:]) {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
 // Pools returns all Pools in the DarkOcean.
 func (darkOcean *DarkOcean) Pools() Pools {
 	return darkOcean.pools
