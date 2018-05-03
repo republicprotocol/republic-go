@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/darknode"
 
-	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -96,57 +95,73 @@ var _ = Describe("Darknode", func() {
 		})
 	})
 
-	Context("when computing order matches", func() {
+	Context("when synchronizing the orderbook", func() {
 
-		It("should process the distribute order table in parallel with other pools", func() {
-			for _, node := range env.Darknodes {
-				log.Printf("%v has %v peers", node.Address(), len(node.RPC().SwarmerClient().DHT().MultiAddresses()))
-			}
+		It("should not deadlock when the sync starts before the updates", func() {
 
-			By("sending orders...")
-			err := sendOrders(env.Darknodes, NumberOfOrdersPerSecond)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			By("verifying that nodes found matches...")
-
-			crypter := crypto.NewWeakCrypter()
-			conn, err := client.Dial(context.Background(), env.Darknodes[0].MultiAddress())
-			Expect(err).ShouldNot(HaveOccurred())
-			defer conn.Close()
-
-			traderKeystore, err := crypto.RandomKeystore()
-			Expect(err).ShouldNot(HaveOccurred())
-			traderAddr := identity.Address(traderKeystore.Address())
-
-			relayClient := relayer.NewRelayClient(conn.ClientConn)
-			requestSignature, err := crypter.Sign(traderAddr)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			request := &relayer.SyncRequest{
-				Signature: requestSignature,
-				Address:   traderAddr.String(),
-			}
-			stream, err := relayClient.Sync(context.Background(), request)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			confirmed := map[string]struct{}{}
-			for len(confirmed) < NumberOfOrdersPerSecond {
-				syncResp, err := stream.Recv()
-				Expect(err).ShouldNot(HaveOccurred())
-				log.Printf("synchronizing entry %v => %v", base58.Encode(syncResp.Entry.Order.OrderId), syncResp.Entry.OrderStatus)
-				if syncResp.Entry.OrderStatus == relayer.OrderStatus_Confirmed {
-					confirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-				}
-			}
-
-			log.Println("PASSED!")
 		})
 
-		It("should update the order book after computing an order match", func() {
+		It("should not deadlock when the sync starts during the updates", func() {
+
+		})
+
+		It("should not deadlock when the sync starts after the updates", func() {
 
 		})
 
 	})
+
+	// Context("when computing order matches", func() {
+
+	// 	It("should process the distribute order table in parallel with other pools", func() {
+	// 		for _, node := range env.Darknodes {
+	// 			log.Printf("%v has %v peers", node.Address(), len(node.RPC().SwarmerClient().DHT().MultiAddresses()))
+	// 		}
+
+	// 		By("sending orders...")
+	// 		err := sendOrders(env.Darknodes, NumberOfOrdersPerSecond)
+	// 		Expect(err).ShouldNot(HaveOccurred())
+
+	// 		By("verifying that nodes found matches...")
+
+	// 		crypter := crypto.NewWeakCrypter()
+	// 		conn, err := client.Dial(context.Background(), env.Darknodes[0].MultiAddress())
+	// 		Expect(err).ShouldNot(HaveOccurred())
+	// 		defer conn.Close()
+
+	// 		traderKeystore, err := crypto.RandomKeystore()
+	// 		Expect(err).ShouldNot(HaveOccurred())
+	// 		traderAddr := identity.Address(traderKeystore.Address())
+
+	// 		relayClient := relayer.NewRelayClient(conn.ClientConn)
+	// 		requestSignature, err := crypter.Sign(traderAddr)
+	// 		Expect(err).ShouldNot(HaveOccurred())
+
+	// 		request := &relayer.SyncRequest{
+	// 			Signature: requestSignature,
+	// 			Address:   traderAddr.String(),
+	// 		}
+	// 		stream, err := relayClient.Sync(context.Background(), request)
+	// 		Expect(err).ShouldNot(HaveOccurred())
+
+	// 		confirmed := map[string]struct{}{}
+	// 		for len(confirmed) < NumberOfOrdersPerSecond {
+	// 			syncResp, err := stream.Recv()
+	// 			Expect(err).ShouldNot(HaveOccurred())
+	// 			log.Printf("synchronizing entry %v => %v", base58.Encode(syncResp.Entry.Order.OrderId), syncResp.Entry.OrderStatus)
+	// 			if syncResp.Entry.OrderStatus == relayer.OrderStatus_Confirmed {
+	// 				confirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+	// 			}
+	// 		}
+
+	// 		log.Println("PASSED!")
+	// 	})
+
+	// 	It("should update the order book after computing an order match", func() {
+
+	// 	})
+
+	// })
 })
 
 func sendOrders(nodes Darknodes, numberOfOrders int) error {
