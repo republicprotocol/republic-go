@@ -1,6 +1,6 @@
 # Registrar Command-line tool
 
-The registrar is the command-line tool for interacting with the darknode registry smart contract on ropsten.
+The **registrar** is the command-line tool for interacting with the darknode registry smart contract on ropsten.
 It supports registering/deregistering nodes, checking registration , calling epoch and getting pool index.
 
 # Install
@@ -25,15 +25,19 @@ $ registrar [global options] command [command options] [arguments...]
 
 **COMMANDS**
 
-- `epoch` 
+- `epoch`
    Calling epoch
-- `checkreg {address}`    
+- `checkreg {address}`
+   It takes one argument which is the nods's ethereum address.
    Check if the node with given `address` is registered or not
-- `register {address1, address2 ...}`    
+- `register {address1, address2 ...}`
+   It takes a list of ethereum address.
    Register nodes with given address in the dark node registry
-- `deregister {address1, address2 ...}`  
+- `deregister {address1, address2 ...}`
+   It takes a list of ethereum address.
    Deregister nodes with given address in the dark node registry
-- `pool {address}`        
+- `pool {address}`
+   It takes one argument which is the node's ethereum address.
    Get the index of the pool the node is in, return -1 if no pool found
 - `help`        
    Shows a list of commands or help for one command
