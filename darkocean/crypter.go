@@ -41,6 +41,8 @@ func NewCrypter(keystore crypto.Keystore, darknodeRegistry dnr.DarknodeRegistry,
 	return Crypter{
 		keystore:          keystore,
 		darknodeRegistry:  darknodeRegistry,
+		registryCache:     map[string]registryCacheEntry{},
+		publicKeyCache:    map[string]publicKeyCacheEntry{},
 		cacheLimit:        cacheLimit,
 		cacheUpdatePeriod: cacheUpdatePeriod,
 	}
@@ -79,6 +81,11 @@ func (crypter *Crypter) Encrypt(addr string, plainText []byte) ([]byte, error) {
 // crypto.Keystore in the Crypter. Returns the plain text, or an error.
 func (crypter *Crypter) Decrypt(cipherText []byte) ([]byte, error) {
 	return crypter.keystore.Decrypt(cipherText)
+}
+
+// Keystore used to identify the Crypter.
+func (crypter *Crypter) Keystore() *crypto.Keystore {
+	return &crypter.keystore
 }
 
 type registryCacheEntry struct {
