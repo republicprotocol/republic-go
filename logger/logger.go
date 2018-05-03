@@ -31,8 +31,7 @@ type Logger struct {
 
 // Options are used to Unmarshal a Logger from JSON.
 type Options struct {
-	Plugins []PluginOptions   `json:"plugins"`
-	Tags    map[string]string `json:"tags"`
+	Plugins []PluginOptions `json:"plugins"`
 }
 
 // The Plugin interface describes a worker that consumes logs
@@ -46,6 +45,7 @@ type Plugin interface {
 type PluginOptions struct {
 	File      *FilePluginOptions      `json:"file,omitempty"`
 	WebSocket *WebSocketPluginOptions `json:"websocket,omitempty"`
+	Tags      map[string]string       `json:"tags"`
 }
 
 // NewLogger returns a new Logger that will start and stop a set of plugins.
@@ -90,6 +90,7 @@ func (logger Logger) Stop() {
 
 // Log an Event.
 func (logger *Logger) Log(l Log) {
+	l.Tags = logger.Tags
 	for _, plugin := range logger.Plugins {
 		if err := plugin.Log(l); err != nil {
 			log.Println(err)
