@@ -13,6 +13,7 @@ import (
 	"github.com/republicprotocol/republic-go/rpc/smpcer"
 	"github.com/republicprotocol/republic-go/rpc/status"
 	"github.com/republicprotocol/republic-go/rpc/swarmer"
+	"google.golang.org/grpc"
 )
 
 type RPC struct {
@@ -108,6 +109,7 @@ func (rpc *RPC) Swarmer() *swarmer.Swarmer {
 	return &rpc.swarmer
 }
 
+// Status will return the status needed by the falconry tool
 func (rpc *RPC) Status(ctx context.Context, request *status.StatusRequest) (*status.StatusResponse, error) {
 	select {
 	case <-ctx.Done():
@@ -119,4 +121,9 @@ func (rpc *RPC) Status(ctx context.Context, request *status.StatusRequest) (*sta
 			Peers:        int64(len(rpc.dht.MultiAddresses())),
 		}, nil
 	}
+}
+
+// RegisterStatus will register the rpc with a grpc server
+func (rpc *RPC) RegisterStatus(server *grpc.Server) {
+	status.RegisterStatusServer(server, rpc)
 }

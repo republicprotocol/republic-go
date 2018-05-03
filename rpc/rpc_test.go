@@ -1,12 +1,17 @@
 package rpc_test
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"net"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/rpc"
+	"github.com/republicprotocol/republic-go/rpc/status"
+	"google.golang.org/grpc"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -181,6 +186,44 @@ var _ = Describe("rpc", func() {
 
 			Expect(rpc.Swarmer()).ShouldNot(BeNil())
 
+		})
+	})
+
+	Context("Status service", func() {
+		It("should be able to return status of the node", func() {
+			rpc, err := createNewRPC()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// Create rpc server
+			server := grpc.NewServer()
+			listener, err := net.Listen("tcp", "0.0.0.0:8080")
+			Expect(err).ShouldNot(HaveOccurred())
+
+			rpc.Relayer().Register(server)
+			rpc.Smpcer().Register(server)
+			rpc.Swarmer().Register(server)
+			rpc.RegisterStatus(server)
+
+			go func() {
+				log.Println("listening at 0.0.0.0:8080...")
+				if err = server.Serve(listener); err != nil {
+					return
+				}
+			}()
+
+			// Create rpc client
+			conn, err := grpc.Dial("0.0.0.0:8080", grpc.WithInsecure())
+			Expect(err).ShouldNot(HaveOccurred())
+			statusClient := status.NewStatusClient(conn)
+			status, err := statusClient.Status(context.Background(), &status.StatusRequest{})
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(status.Peers).Should(Equal(int64(0)))
+			Expect(status.Bootstrapped).Should(BeFalse())
+			Expect(len(status.Address)).Should(Equal(30))
+
+			time.Sleep(1 * time.Second)
+			server.Stop()
 		})
 	})
 })

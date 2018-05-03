@@ -4,7 +4,7 @@ The rpc command-line tool is used for making grpc call to the nodes.
 For now, it only supports `status` service which has a single function
 for getting status of the node. It's mainly used by the falconry deveOp 
 tool. We'll add support for other rpc services if needede. 
-
+                            
 # Install
 
 Make you have included `$GOROOT` in the `$PATH` variable.
