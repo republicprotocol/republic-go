@@ -5,7 +5,6 @@ package swarmer;
 service Swarm {
   rpc Ping (PingRequest) returns (PingResponse);
   rpc Query (QueryRequest) returns (stream QueryResponse);
-  rpc Status (StatusRequest) returns (StatusResponse);
 }
 
 message PingRequest {
@@ -24,16 +23,4 @@ message QueryRequest {
 message QueryResponse {
   bytes signature = 1;
   string multiAddress = 2;
-}
-
-message StatusRequest {
-    bytes signature =1 ;
-    string multiAddresss = 2;
-}
-
-message StatusResponse {
-    string address = 1;
-    bool bootstrap = 2 ;
-    bool registered = 3;
-    int64 connectPeers = 4;
 }
