@@ -10,28 +10,23 @@ import (
 // TODO: Make this constant configurable.
 const MaxListeners = int32(32)
 
-type Listener struct {
-	done <-chan struct{}
-	ch   chan interface{}
-}
-
 type Broadcaster struct {
-	done         <-chan struct{}
+	done         chan struct{}
 	ch           chan interface{}
-	listeners    chan Listener
+	listeners    chan listener
 	numListeners int32
 }
 
-func NewBroadcaster(done <-chan struct{}) *Broadcaster {
+func NewBroadcaster() *Broadcaster {
 	broadcaster := &Broadcaster{
-		done:         done,
+		done:         make(chan struct{}),
 		ch:           make(chan interface{}, MaxListeners),
-		listeners:    make(chan Listener, MaxListeners),
+		listeners:    make(chan listener, MaxListeners),
 		numListeners: 0,
 	}
 
 	go func() {
-		listeners := [MaxListeners]Listener{}
+		listeners := [MaxListeners]listener{}
 		defer func() {
 			for _, listener := range listeners {
 				close(listener.ch)
@@ -40,7 +35,7 @@ func NewBroadcaster(done <-chan struct{}) *Broadcaster {
 
 		for {
 			select {
-			case <-done:
+			case <-broadcaster.done:
 				return
 			case msg, ok := <-broadcaster.ch:
 				if !ok {
@@ -52,7 +47,7 @@ func NewBroadcaster(done <-chan struct{}) *Broadcaster {
 				for i := int32(0); i < broadcaster.numListeners; i++ {
 					listener := listeners[i]
 					select {
-					case <-done:
+					case <-broadcaster.done:
 						// All listeners will be cleaned up during the defer
 						// phase and the closure of broadcaster signals that we
 						// should return
@@ -89,6 +84,10 @@ func NewBroadcaster(done <-chan struct{}) *Broadcaster {
 	return broadcaster
 }
 
+func (broadcaster *Broadcaster) Close() {
+	close(broadcaster.done)
+}
+
 func (broadcaster *Broadcaster) Broadcast(done <-chan struct{}, ch <-chan interface{}) {
 	for {
 		select {
@@ -113,20 +112,25 @@ func (broadcaster *Broadcaster) Broadcast(done <-chan struct{}, ch <-chan interf
 }
 
 func (broadcaster *Broadcaster) Listen(done <-chan struct{}) <-chan interface{} {
-	listener := Listener{
+	lis := listener{
 		done: done,
 		ch:   make(chan interface{}),
 	}
 	if atomic.LoadInt32(&broadcaster.numListeners) >= MaxListeners {
-		close(listener.ch)
-		return listener.ch
+		close(lis.ch)
+		return lis.ch
 	}
 	select {
 	case <-done:
-		close(listener.ch)
+		close(lis.ch)
 	case <-broadcaster.done:
-		close(listener.ch)
-	case broadcaster.listeners <- listener:
+		close(lis.ch)
+	case broadcaster.listeners <- lis:
 	}
-	return listener.ch
+	return lis.ch
+}
+
+type listener struct {
+	done <-chan struct{}
+	ch   chan interface{}
 }
