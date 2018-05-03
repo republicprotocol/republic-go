@@ -1,6 +1,7 @@
 package darkocean_test
 
 import (
+	"bytes"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -17,7 +18,7 @@ var _ = Describe("Crypter", func() {
 	BeforeEach(func() {
 		keystore, err := crypto.RandomKeystore()
 		Expect(err).ShouldNot(HaveOccurred())
-		crypter = NewCrypter(keystore, testnetEnv.DarknodeRegistry, NumberOfBootstrapDarkNodes, time.Second)
+		crypter = NewCrypter(keystore, testnetEnv.DarknodeRegistry, NumberOfDarkNodes/2, time.Second)
 		message = crypto.NewHash32([]byte("REN"))
 	})
 
@@ -35,16 +36,24 @@ var _ = Describe("Crypter", func() {
 	Context("when verifying signatures", func() {
 
 		It("should return an error for unregistered addresses", func() {
-			keystore, err := crypto.RandomKeystore()
-			Expect(err).ShouldNot(HaveOccurred())
+			for i := 0; i < 100; i++ {
+				keystore, err := crypto.RandomKeystore()
+				Expect(err).ShouldNot(HaveOccurred())
 
-			signature, err := keystore.Sign(message)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = crypter.Verify(message, signature)
-			Expect(err).Should(HaveOccurred())
+				signature, err := keystore.Sign(message)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = crypter.Verify(message, signature)
+				Expect(err).Should(HaveOccurred())
+			}
 		})
 
 		It("should not return an error for registered addresses", func() {
+			for _, darknode := range testnetEnv.Darknodes {
+				signature, err := darknode.Config.Keystore.Sign(message)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = crypter.Verify(message, signature)
+				Expect(err).ShouldNot(HaveOccurred())
+			}
 		})
 
 	})
@@ -52,9 +61,24 @@ var _ = Describe("Crypter", func() {
 	Context("when encrypting", func() {
 
 		It("should encrypt messages for registered addresses", func() {
+			for _, darknode := range testnetEnv.Darknodes {
+				cipherText, err := crypter.Encrypt(darknode.Address().String(), message[:])
+				Expect(err).ShouldNot(HaveOccurred())
+
+				plainText, err := darknode.Config.Keystore.Decrypt(cipherText)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(bytes.Equal(plainText, message[:])).Should(BeTrue())
+			}
 		})
 
 		It("should not encrypt messages for unregistered addresses", func() {
+			for i := 0; i < 100; i++ {
+				keystore, err := crypto.RandomKeystore()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				_, err = crypter.Encrypt(keystore.Address(), message[:])
+				Expect(err).Should(HaveOccurred())
+			}
 		})
 
 	})
@@ -62,6 +86,11 @@ var _ = Describe("Crypter", func() {
 	Context("when decrypting", func() {
 
 		It("should produce the original plain text", func() {
+			cipherText, err := crypter.Keystore().Encrypt(message[:])
+			Expect(err).ShouldNot(HaveOccurred())
+			plainText, err := crypter.Decrypt(cipherText)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(bytes.Equal(plainText, message[:])).Should(BeTrue())
 		})
 
 	})

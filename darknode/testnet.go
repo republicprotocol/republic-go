@@ -167,12 +167,16 @@ func RegisterDarknodes(darknodes Darknodes, conn ethereum.Conn, darknodeRegistry
 
 	for i := range darknodes {
 		darknodeID := darknodes[i].ID()
-
-		_, err := darknodeRegistry.ApproveRen(&minimumBond)
+		darknodePublicKey, err := crypto.BytesFromRsaPublicKey(&darknodes[i].Config.Keystore.RsaKey.PublicKey)
 		if err != nil {
 			return err
 		}
-		_, err = darknodeRegistry.Register(darknodeID, []byte{}, &minimumBond)
+
+		_, err = darknodeRegistry.ApproveRen(&minimumBond)
+		if err != nil {
+			return err
+		}
+		_, err = darknodeRegistry.Register(darknodeID, darknodePublicKey, &minimumBond)
 		if err != nil {
 			return err
 		}

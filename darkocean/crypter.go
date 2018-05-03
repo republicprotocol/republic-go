@@ -1,6 +1,7 @@
 package darkocean
 
 import (
+	"crypto/rand"
 	"crypto/rsa"
 	"errors"
 	"time"
@@ -141,9 +142,8 @@ func (crypter *Crypter) encryptToAddress(addr string, plainText []byte) ([]byte,
 	if err := crypter.updatePublicKeyCache(addr); err != nil {
 		return nil, err
 	}
-	rsaKey := crypto.RsaKey{}
-	rsaKey.PublicKey = crypter.publicKeyCache[addr].publicKey
-	return rsaKey.Encrypt(plainText)
+	publicKey := crypter.publicKeyCache[addr].publicKey
+	return rsa.EncryptPKCS1v15(rand.Reader, &publicKey, plainText)
 }
 
 func (crypter *Crypter) updatePublicKeyCache(addr string) error {

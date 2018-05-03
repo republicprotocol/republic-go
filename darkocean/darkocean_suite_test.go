@@ -15,19 +15,17 @@ func TestDarkocean(t *testing.T) {
 }
 
 const (
-	GanacheRPC                 = "http://localhost:8545"
-	NumberOfDarkNodes          = 10
-	NumberOfBootstrapDarkNodes = 5
-	NumberOfOrdersPerSecond    = 10
+	GanacheRPC        = "http://localhost:8545"
+	NumberOfDarkNodes = 8
 )
 
 var testnetEnv darknode.TestnetEnv
 
 var _ = BeforeSuite(func() {
 	var err error
-	testnetEnv, err = darknode.NewTestnet(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
+	testnetEnv, err = darknode.NewTestnet(NumberOfDarkNodes, NumberOfDarkNodes)
 	go testnetEnv.Run()
-	time.Sleep(10 * time.Second)
+	time.Sleep(2 * time.Second)
 	Expect(err).ShouldNot(HaveOccurred())
 })
 
