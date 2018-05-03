@@ -2,23 +2,35 @@ package darknode_test
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/blockchain/test"
-	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
+	. "github.com/republicprotocol/republic-go/darknode"
 )
 
-func TestGoMiner(t *testing.T) {
+func TestDarknode(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Darknode Suite")
 }
 
-var _ = test.SkipCIBeforeSuite(func() {
-	_, err := ganache.StartAndConnect()
+const (
+	GanacheRPC                 = "http://localhost:8545"
+	NumberOfDarkNodes          = 10
+	NumberOfBootstrapDarkNodes = 5
+	NumberOfOrdersPerSecond    = 10
+)
+
+var env TestnetEnv
+
+var _ = BeforeSuite(func() {
+	var err error
+	env, err = NewTestnet(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
+	go env.Run()
+	time.Sleep(10 * time.Second)
 	Expect(err).ShouldNot(HaveOccurred())
 })
 
-var _ = test.SkipCIAfterSuite(func() {
-	ganache.Stop()
+var _ = AfterSuite(func() {
+	env.Teardown()
 })
