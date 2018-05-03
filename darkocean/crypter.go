@@ -10,19 +10,6 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 )
 
-const cacheLimit = 256
-const cacheUpdatePeriod = time.Minute
-
-type registryCacheEntry struct {
-	timestamp    time.Time
-	isRegistered bool
-}
-
-type publicKeyCacheEntry struct {
-	timestamp time.Time
-	publicKey rsa.PublicKey
-}
-
 // ErrInvalidRegistration is returned when an address is not registerd in the
 // DarknodeRegsitry. It is possible that the address recently registered, but
 // the Crypter has already cached it as unregistered. In these cases, the cache
@@ -42,15 +29,20 @@ type Crypter struct {
 
 	registryCache  map[string]registryCacheEntry
 	publicKeyCache map[string]publicKeyCacheEntry
+
+	cacheLimit        int
+	cacheUpdatePeriod time.Duration
 }
 
 // NewCrypter returns a new Crypter that uses a crypto.Keystore to identify
 // itself when signing and decrypting messages. It uses a dnr.DarknodeRegistry
 // to identify others when verifying and encrypting messages.
-func NewCrypter(keystore crypto.Keystore, darknodeRegistry dnr.DarknodeRegistry) Crypter {
+func NewCrypter(keystore crypto.Keystore, darknodeRegistry dnr.DarknodeRegistry, cacheLimit int, cacheUpdatePeriod time.Duration) Crypter {
 	return Crypter{
-		keystore:         keystore,
-		darknodeRegistry: darknodeRegistry,
+		keystore:          keystore,
+		darknodeRegistry:  darknodeRegistry,
+		cacheLimit:        cacheLimit,
+		cacheUpdatePeriod: cacheUpdatePeriod,
 	}
 }
 
@@ -89,6 +81,16 @@ func (crypter *Crypter) Decrypt(cipherText []byte) ([]byte, error) {
 	return crypter.keystore.Decrypt(cipherText)
 }
 
+type registryCacheEntry struct {
+	timestamp    time.Time
+	isRegistered bool
+}
+
+type publicKeyCacheEntry struct {
+	timestamp time.Time
+	publicKey rsa.PublicKey
+}
+
 func (crypter *Crypter) verifyAddress(addr string) error {
 	if err := crypter.updateRegistryCache(addr); err != nil {
 		return err
@@ -103,7 +105,7 @@ func (crypter *Crypter) updateRegistryCache(addr string) error {
 
 	// Update the entry in the cache
 	entry, ok := crypter.registryCache[addr]
-	if !ok || entry.timestamp.Add(cacheUpdatePeriod).Before(time.Now()) {
+	if !ok || entry.timestamp.Add(crypter.cacheUpdatePeriod).Before(time.Now()) {
 		isRegistered, err := crypter.darknodeRegistry.IsRegistered(identity.Address(addr).ID())
 		if err != nil {
 			return err
@@ -114,7 +116,7 @@ func (crypter *Crypter) updateRegistryCache(addr string) error {
 	crypter.registryCache[addr] = entry
 
 	// Ensure the cache has not exceeded its limit
-	if len(crypter.registryCache) > cacheLimit {
+	if len(crypter.registryCache) > crypter.cacheLimit {
 		var oldest time.Time
 		var oldestK string
 		for k := range crypter.registryCache {
@@ -141,7 +143,7 @@ func (crypter *Crypter) updatePublicKeyCache(addr string) error {
 
 	// Update the entry in the cache
 	entry, ok := crypter.publicKeyCache[addr]
-	if !ok || entry.timestamp.Add(cacheUpdatePeriod).Before(time.Now()) {
+	if !ok || entry.timestamp.Add(crypter.cacheUpdatePeriod).Before(time.Now()) {
 		publicKeyBytes, err := crypter.darknodeRegistry.GetPublicKey(identity.Address(addr).ID())
 		if err != nil {
 			return err
@@ -156,7 +158,7 @@ func (crypter *Crypter) updatePublicKeyCache(addr string) error {
 	crypter.publicKeyCache[addr] = entry
 
 	// Ensure the cache has not exceeded its limit
-	if len(crypter.publicKeyCache) > cacheLimit {
+	if len(crypter.publicKeyCache) > crypter.cacheLimit {
 		var oldest time.Time
 		var oldestK string
 		for k := range crypter.publicKeyCache {
