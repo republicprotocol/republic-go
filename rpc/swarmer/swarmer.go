@@ -48,7 +48,14 @@ func (swarmer *Swarmer) Ping(ctx context.Context, request *PingRequest) (*PingRe
 	if err := swarmer.client.UpdateDHT(multiAddress); err != nil {
 		return nil, fmt.Errorf("cannot update dht: %v", err)
 	}
-	return &PingResponse{}, nil
+	multiAddressSignature, err := swarmer.client.crypter.Sign(swarmer.client.MultiAddress())
+	if err != nil {
+		return &PingResponse{}, err
+	}
+	return &PingResponse{
+		Signature:    multiAddressSignature,
+		MultiAddress: swarmer.client.MultiAddress().String(),
+	}, nil
 }
 
 // Query is an RPC used to find identity.MultiAddresses. In the QueryRequest,
@@ -70,11 +77,8 @@ func (swarmer *Swarmer) Query(request *QueryRequest, stream Swarm_QueryServer) e
 			return err
 		}
 		if isPeerCloser {
-			// FIXME: Send the peer signature for this identity.MultiAddress so
-			// that the client can verify it
-
 			response := &QueryResponse{
-				Signature:    []byte{},
+				Signature:    multiAddr.Signature,
 				MultiAddress: multiAddr.String(),
 			}
 			if err := stream.Send(response); err != nil {

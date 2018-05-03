@@ -49,11 +49,6 @@ func (client *Client) Bootstrap(ctx context.Context, bootstrapMultiAddrs identit
 	errs := make(chan error, 2*len(bootstrapMultiAddrs)+1)
 	go func() {
 		defer close(errs)
-		for _, bootstrapMultiAddr := range bootstrapMultiAddrs {
-			if err := client.dht.UpdateMultiAddress(bootstrapMultiAddr); err != nil {
-				errs <- fmt.Errorf("cannot store bootstrap node %v in dht: %v", bootstrapMultiAddr, err)
-			}
-		}
 		dispatch.CoForAll(bootstrapMultiAddrs, func(i int) {
 			if err := client.Ping(ctx, bootstrapMultiAddrs[i]); err != nil {
 				errs <- fmt.Errorf("cannot ping bootstrap node %v: %v", bootstrapMultiAddrs[i], err)
@@ -87,9 +82,20 @@ func (client *Client) Ping(ctx context.Context, peer identity.MultiAddress) erro
 		MultiAddress: client.MultiAddress().String(),
 	}
 
-	_, err = swarmClient.Ping(ctx, request)
+	response, err := swarmClient.Ping(ctx, request)
 	if err != nil && err != io.EOF {
 		return err
+	}
+	multiAddr, err := identity.NewMultiAddressFromString(response.GetMultiAddress())
+	if err != nil {
+		return fmt.Errorf("cannot parse %v: %v", response.GetMultiAddress(), err)
+	}
+	multiAddr.Signature = response.GetSignature()
+	if err := client.crypter.Verify(multiAddr, multiAddr.Signature); err != nil {
+		return fmt.Errorf("cannot verify signature of %v: %v", response.GetMultiAddress(), err)
+	}
+	if err := client.UpdateDHT(multiAddr); err != nil {
+		return fmt.Errorf("cannot store %v in dht: %v", response.GetMultiAddress(), err)
 	}
 	return nil
 }
@@ -158,7 +164,6 @@ func (client *Client) QueryTo(ctx context.Context, peer identity.MultiAddress, q
 			continue
 		}
 		multiAddr.Signature = message.GetSignature()
-		log.Println("verifying signature %v (%v)", multiAddr.String(), multiAddr.Signature)
 		if err := client.crypter.Verify(multiAddr, multiAddr.Signature); err != nil {
 			log.Printf("cannot verify signature of %v: %v", message.GetMultiAddress(), err)
 			continue
