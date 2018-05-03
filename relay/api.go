@@ -23,9 +23,20 @@ type API struct {
 	Token string
 }
 
-// Filter objects are constructed to filter updates when retrieving data
+// Order objects are construct for opening orders using the OpenOrder function.
+type Order struct {
+	Type      order.Type
+	Parity    order.Parity
+	Expiry    time.Time
+	FstCode   order.CurrencyCode
+	SndCode   order.CurrencyCode
+	Price     uint // TODO: Accept int64 instead of uint
+	MaxVolume uint
+	MinVolume uint
+}
+
+// Filter objects are constructed to filter updates when retrieving updates
 // regarding an order using the GetOrders function.
-// TODO: Check if this is necessary
 type Filter struct {
 	ID     string
 	Status string
@@ -40,14 +51,12 @@ func NewAPI(url string, token string) API {
 }
 
 // OpenOrder opens a new order using the Relay API.
-// TODO: Simplify parameter types?
-// TODO: Accept int64 instead of uint
-func (api *API) OpenOrder(ty order.Type, parity order.Parity, expiry time.Time, fstCode, sndCode order.CurrencyCode, price, maxVolume, minVolume uint) (order.ID, error) {
+func (api *API) OpenOrder(ord Order) (order.ID, error) {
 	// Construct order request using parameters
 	nonce := stackint.Zero() // TODO: Set nonce
-	ord := order.NewOrder(ty, parity, expiry, fstCode, sndCode, stackint.FromUint(price), stackint.FromUint(maxVolume), stackint.FromUint(minVolume), nonce)
+	newOrder := order.NewOrder(ord.Type, ord.Parity, ord.Expiry, ord.FstCode, ord.SndCode, stackint.FromUint(ord.Price), stackint.FromUint(ord.MaxVolume), stackint.FromUint(ord.MinVolume), nonce)
 	orderRequest := OpenOrderRequest{
-		Order:          *ord,
+		Order:          *newOrder,
 		OrderFragments: OrderFragments{},
 	}
 	json, err := json.Marshal(orderRequest)
@@ -72,7 +81,7 @@ func (api *API) OpenOrder(ty order.Type, parity order.Parity, expiry time.Time, 
 		return nil, fmt.Errorf(fmt.Sprintf("invalid response status code: %d", resp.StatusCode))
 	}
 
-	return ord.ID, nil
+	return newOrder.ID, nil
 }
 
 // CancelOrder cancels an existing order using the Relay API.

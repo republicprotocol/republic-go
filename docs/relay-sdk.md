@@ -26,13 +26,23 @@ api := relay.NewAPI(url, token)
 **Opening orders**
 
 ```go
-orderID, err := api.OpenOrder(ty, parity, expiry, fstCode, sndCode, price, maxVolume, minVolume)
+order := relay.Order{
+    Type:      1,
+    Parity:    1,
+    Expiry:    time.Now().AddDate(0, 0, 7),
+    FstCode:   1,
+    SndCode:   2,
+    Price:     100,
+    MaxVolume: 100,
+    MinVolume: 100,
+}
+orderID, err := api.OpenOrder(order)
 if err != nil {
     // Handle error
 }
 ```
 
-> Note: For information regarding the parameters, please refer to [...]
+> Note: For information regarding the `relay.Order` fields, please refer to [...]
 
 **Closing orders**
 
@@ -58,8 +68,8 @@ if err != nil {
 
 ```go
 filter := relay.Filter{
-    ID: "vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM",
-    Status: "confirmed, settled"
+    ID:     "vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM",
+    Status: "confirmed, settled",
 }
 updates, errs := GetOrderbookUpdates(filter)
 go func() {
