@@ -10,9 +10,8 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 )
 
-var ErrInvalidRegistration = errors.New("invalid registration")
-
-const maxCacheSize = 256
+const cacheLimit = 256
+const cacheUpdatePeriod = time.Minute
 
 type registryCacheEntry struct {
 	timestamp    time.Time
@@ -24,11 +23,19 @@ type publicKeyCacheEntry struct {
 	publicKey rsa.PublicKey
 }
 
+// ErrInvalidRegistration is returned when an address is not registerd in the
+// DarknodeRegsitry. It is possible that the address recently registered, but
+// the Crypter has already cached it as unregistered. In these cases, the cache
+// will be updated periodically, so a secondary attempt can be made slightly
+// later.
+var ErrInvalidRegistration = errors.New("invalid registration")
+
 // Crypter is an implementation of the crypto.Crypter interface. In addition to
 // standard signature verification, the Crypter uses a dnr.DarknodeRegister to
 // verify that the signatory is correctly registered to the network. It also
 // uses the dnr.DarknodeRegister to lazily acquire the necessary rsa.PublicKeys
-// for encryption.
+// for encryption. The cache will be updated periodically, to ensure up-to-date
+// information.
 type Crypter struct {
 	keystore         crypto.Keystore
 	darknodeRegistry dnr.DarknodeRegistry
@@ -52,6 +59,8 @@ func (crypter *Crypter) Sign(hasher crypto.Hasher) ([]byte, error) {
 	return crypter.keystore.Sign(hasher)
 }
 
+// Verify a signature and ensure that the signatory is a registered Darknode.
+// TODO: Support registered traders.
 func (crypter *Crypter) Verify(hasher crypto.Hasher, signature []byte) error {
 	addr, err := crypto.RecoverAddress(hasher, signature)
 	if err != nil {
@@ -63,10 +72,19 @@ func (crypter *Crypter) Verify(hasher crypto.Hasher, signature []byte) error {
 	return nil
 }
 
+// Encrypt plain text so that is can be securely sent to a specific address.
+// The address will be used to lookup the required rsa.PublicKey in the
+// DarknodeRegistry. The address registration is verified before encryption is
+// attempted. Returns the cipher text, or an error.
 func (crypter *Crypter) Encrypt(addr string, plainText []byte) ([]byte, error) {
+	if err := crypter.verifyAddress(addr); err != nil {
+		return nil, err
+	}
 	return crypter.encryptToAddress(addr, plainText)
 }
 
+// Decrypt a cipher text that was sent to the identity defined by the
+// crypto.Keystore in the Crypter. Returns the plain text, or an error.
 func (crypter *Crypter) Decrypt(cipherText []byte) ([]byte, error) {
 	return crypter.keystore.Decrypt(cipherText)
 }
@@ -85,7 +103,7 @@ func (crypter *Crypter) updateRegistryCache(addr string) error {
 
 	// Update the entry in the cache
 	entry, ok := crypter.registryCache[addr]
-	if !ok || entry.timestamp.Add(time.Minute).Before(time.Now()) {
+	if !ok || entry.timestamp.Add(cacheUpdatePeriod).Before(time.Now()) {
 		isRegistered, err := crypter.darknodeRegistry.IsRegistered(identity.Address(addr).ID())
 		if err != nil {
 			return err
@@ -96,7 +114,7 @@ func (crypter *Crypter) updateRegistryCache(addr string) error {
 	crypter.registryCache[addr] = entry
 
 	// Ensure the cache has not exceeded its limit
-	if len(crypter.registryCache) > maxCacheSize {
+	if len(crypter.registryCache) > cacheLimit {
 		var oldest time.Time
 		var oldestK string
 		for k := range crypter.registryCache {
@@ -123,7 +141,7 @@ func (crypter *Crypter) updatePublicKeyCache(addr string) error {
 
 	// Update the entry in the cache
 	entry, ok := crypter.publicKeyCache[addr]
-	if !ok || entry.timestamp.Add(time.Minute).Before(time.Now()) {
+	if !ok || entry.timestamp.Add(cacheUpdatePeriod).Before(time.Now()) {
 		publicKeyBytes, err := crypter.darknodeRegistry.GetPublicKey(identity.Address(addr).ID())
 		if err != nil {
 			return err
@@ -138,7 +156,7 @@ func (crypter *Crypter) updatePublicKeyCache(addr string) error {
 	crypter.publicKeyCache[addr] = entry
 
 	// Ensure the cache has not exceeded its limit
-	if len(crypter.publicKeyCache) > maxCacheSize {
+	if len(crypter.publicKeyCache) > cacheLimit {
 		var oldest time.Time
 		var oldestK string
 		for k := range crypter.publicKeyCache {
