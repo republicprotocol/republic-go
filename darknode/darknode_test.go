@@ -27,9 +27,9 @@ import (
 
 var _ = Describe("Darknode", func() {
 
-	Context("on opening new orders", func() {
+	Context("when opening orders", func() {
 
-		It("should update orderbook with an open order", func() {
+		It("should update the orderbook with an open order", func() {
 
 			// Create a relayer client to sync with the orderbook
 			crypter := crypto.NewWeakCrypter()
@@ -73,6 +73,26 @@ var _ = Describe("Darknode", func() {
 			env.Darknodes[0].OnOpenOrder(env.Darknodes[0].MultiAddress(), fragments[0])
 
 			stream.Recv()
+		})
+
+		It("should not match orders that are incompatible", func() {
+
+		})
+
+		It("should match orders that are compatible", func() {
+
+		})
+
+		It("should confirm orders that are compatible", func() {
+
+		})
+
+		It("should release orders that conflict with a confirmed order", func() {
+
+		})
+
+		It("should reject orders from unregistered addresses", func() {
+			// FIXME: Implement
 		})
 	})
 
