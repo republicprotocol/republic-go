@@ -9,7 +9,6 @@ import (
 
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stackint"
 )
@@ -77,8 +76,8 @@ const (
 
 // An Order represents the want to perform a trade of assets.
 type Order struct {
-	Signature identity.Signature `json:"signature"`
-	ID        ID                 `json:"id"`
+	Signature []byte `json:"signature"`
+	ID        ID     `json:"id"`
 
 	Type   Type      `json:"type"`
 	Parity Parity    `json:"parity"`

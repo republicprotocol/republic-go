@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
@@ -28,8 +29,11 @@ type Crypter struct {
 	keystore         crypto.Keystore
 	darknodeRegistry dnr.DarknodeRegistry
 
-	registryCache  map[string]registryCacheEntry
-	publicKeyCache map[string]publicKeyCacheEntry
+	registryCacheMu *sync.Mutex
+	registryCache   map[string]registryCacheEntry
+
+	publicKeyCacheMu *sync.Mutex
+	publicKeyCache   map[string]publicKeyCacheEntry
 
 	cacheLimit        int
 	cacheUpdatePeriod time.Duration
@@ -42,7 +46,9 @@ func NewCrypter(keystore crypto.Keystore, darknodeRegistry dnr.DarknodeRegistry,
 	return Crypter{
 		keystore:          keystore,
 		darknodeRegistry:  darknodeRegistry,
+		registryCacheMu:   new(sync.Mutex),
 		registryCache:     map[string]registryCacheEntry{},
+		publicKeyCacheMu:  new(sync.Mutex),
 		publicKeyCache:    map[string]publicKeyCacheEntry{},
 		cacheLimit:        cacheLimit,
 		cacheUpdatePeriod: cacheUpdatePeriod,
@@ -100,6 +106,9 @@ type publicKeyCacheEntry struct {
 }
 
 func (crypter *Crypter) verifyAddress(addr string) error {
+	crypter.registryCacheMu.Lock()
+	defer crypter.registryCacheMu.Unlock()
+
 	if err := crypter.updateRegistryCache(addr); err != nil {
 		return err
 	}
@@ -110,6 +119,8 @@ func (crypter *Crypter) verifyAddress(addr string) error {
 }
 
 func (crypter *Crypter) updateRegistryCache(addr string) error {
+	crypter.publicKeyCacheMu.Lock()
+	defer crypter.publicKeyCacheMu.Unlock()
 
 	// Update the entry in the cache
 	entry, ok := crypter.registryCache[addr]

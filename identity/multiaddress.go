@@ -30,10 +30,10 @@ func init() {
 	multiaddr.AddProtocol(republic)
 }
 
-type Signature []byte
-
 // MultiAddress is an alias.
 type MultiAddress struct {
+	Signature []byte
+
 	address          Address
 	baseMultiAddress multiaddr.Multiaddr
 }
@@ -58,7 +58,7 @@ func NewMultiAddressFromString(s string) (MultiAddress, error) {
 	}
 	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
 
-	return MultiAddress{Address(address), baseMultiAddress}, err
+	return MultiAddress{[]byte{}, Address(address), baseMultiAddress}, err
 }
 
 // ValueForProtocol returns the value of the specific protocol in the MultiAddress

@@ -64,7 +64,11 @@ func (rendezvous *Rendezvous) wait(addr identity.Address, done <-chan struct{}, 
 			errs <- err
 			return
 		}
-		defer rendezvous.receivers[addr].Unsubscribe(receiver)
+		defer func() {
+			rendezvous.mu.Lock()
+			defer rendezvous.mu.Unlock()
+			rendezvous.receivers[addr].Unsubscribe(receiver)
+		}()
 
 		dispatch.Pipe(done, sender, rendezvous.senders[addr])
 	}()

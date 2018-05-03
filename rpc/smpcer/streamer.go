@@ -54,28 +54,21 @@ func (streamer *Streamer) connect(multiAddr identity.MultiAddress, done <-chan s
 			errs <- err
 			return
 		}
-		defer streamer.receivers[addr].Unsubscribe(receiver)
+		defer func() {
+			streamer.mu.Lock()
+			defer streamer.mu.Unlock()
+			streamer.receivers[addr].Unsubscribe(receiver)
+		}()
 
 		if err := streamer.errs[addr].Subscribe(errs); err != nil {
 			errs <- err
 			return
 		}
-		defer streamer.errs[addr].Unsubscribe(errs)
-		// defer func() {
-		// 	streamer.mu.Lock()
-		// 	defer streamer.mu.Unlock()
-		// 	streamer.receivers[addr].Unsubscribe(receiver)
-		// }()
-
-		// if err := streamer.errs[addr].Subscribe(errs); err != nil {
-		// 	errs <- err
-		// 	return
-		// }
-		// defer func() {
-		// 	streamer.mu.Lock()
-		// 	defer streamer.mu.Unlock()
-		// 	streamer.errs[addr].Unsubscribe(errs)
-		// }()
+		defer func() {
+			streamer.mu.Lock()
+			defer streamer.mu.Unlock()
+			streamer.errs[addr].Unsubscribe(errs)
+		}()
 
 		dispatch.Pipe(done, sender, streamer.senders[addr])
 	}()

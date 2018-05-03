@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"google.golang.org/grpc"
@@ -39,11 +38,8 @@ func (relayer *Relayer) Register(server *grpc.Server) {
 // waiting for the existing entries to finish. The client must manage the
 // merging of conflicting entries.
 func (relayer *Relayer) Sync(request *SyncRequest, stream Relay_SyncServer) error {
-	addrSignature := request.GetSignature()
-	addr := identity.Address(request.GetAddress())
-	if err := relayer.client.crypter.Verify(addr, addrSignature); err != nil {
-		return err
-	}
+	// TODO: Addresses and signatures do not need to be registered during a
+	// sync. We should explicitly remove these fields from the SyncRequest.
 
 	entries := make(chan orderbook.Entry)
 	defer close(entries)

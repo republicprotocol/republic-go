@@ -37,12 +37,12 @@ func (swarmer *Swarmer) Register(server *grpc.Server) {
 // that the Swarm service will add to its dht.DHT. If successfuly, the Swarm
 // service will respond with an empty PingResponse.
 func (swarmer *Swarmer) Ping(ctx context.Context, request *PingRequest) (*PingResponse, error) {
-	multiAddressSignature := request.GetSignature()
 	multiAddress, err := identity.NewMultiAddressFromString(request.GetMultiAddress())
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal multiaddress: %v", err)
 	}
-	if err := swarmer.client.crypter.Verify(multiAddress, multiAddressSignature); err != nil {
+	multiAddress.Signature = request.GetSignature()
+	if err := swarmer.client.crypter.Verify(multiAddress, multiAddress.Signature); err != nil {
 		return nil, fmt.Errorf("cannot verify multiaddress: %v", err)
 	}
 	if err := swarmer.client.UpdateDHT(multiAddress); err != nil {

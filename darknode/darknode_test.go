@@ -7,6 +7,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/republicprotocol/republic-go/darkocean"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/darknode"
@@ -90,14 +92,14 @@ var _ = Describe("Darknode", func() {
 
 			By("verifying that nodes found matches...")
 
-			crypter := crypto.NewWeakCrypter()
-			conn, err := client.Dial(context.Background(), env.Darknodes[0].MultiAddress())
-			Expect(err).ShouldNot(HaveOccurred())
-			defer conn.Close()
-
 			traderKeystore, err := crypto.RandomKeystore()
 			Expect(err).ShouldNot(HaveOccurred())
 			traderAddr := identity.Address(traderKeystore.Address())
+
+			crypter := darkocean.NewCrypter(traderKeystore, env.DarknodeRegistry, 128, time.Minute)
+			conn, err := client.Dial(context.Background(), env.Darknodes[0].MultiAddress())
+			Expect(err).ShouldNot(HaveOccurred())
+			defer conn.Close()
 
 			relayClient := relayer.NewRelayClient(conn.ClientConn)
 			requestSignature, err := crypter.Sign(traderAddr)
@@ -156,13 +158,12 @@ func sendOrders(nodes Darknodes, numberOfOrders int) error {
 
 	// Send order fragment to the nodes
 	totalNodes := len(nodes)
-	traderKeystore, err := crypto.RandomKeystore()
-	Expect(err).ShouldNot(HaveOccurred())
+	traderKeystore := env.Darknodes[0].Config.Keystore
 	traderAddr := traderKeystore.Address()
 	trader, _ := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/80/republic/%s", traderAddr))
 	prime, _ := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 
-	crypter := crypto.NewWeakCrypter()
+	crypter := darkocean.NewCrypter(traderKeystore, env.DarknodeRegistry, 128, time.Minute)
 	connPool := client.NewConnPool(256)
 	defer connPool.Close()
 	smpcerClient := smpcer.NewClient(&crypter, trader, &connPool)

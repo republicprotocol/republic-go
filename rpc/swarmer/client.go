@@ -152,14 +152,14 @@ func (client *Client) QueryTo(ctx context.Context, peer identity.MultiAddress, q
 			return multiAddrs, err
 		}
 
-		// FIXME: Verify the message signature
-		signature := message.GetSignature()
 		multiAddr, err := identity.NewMultiAddressFromString(message.GetMultiAddress())
 		if err != nil {
 			log.Printf("cannot parse %v: %v", message.GetMultiAddress(), err)
 			continue
 		}
-		if err := client.crypter.Verify(multiAddr, signature); err != nil {
+		multiAddr.Signature = message.GetSignature()
+		log.Println("verifying signature %v (%v)", multiAddr.String(), multiAddr.Signature)
+		if err := client.crypter.Verify(multiAddr, multiAddr.Signature); err != nil {
 			log.Printf("cannot verify signature of %v: %v", message.GetMultiAddress(), err)
 			continue
 		}
