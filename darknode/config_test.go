@@ -17,4 +17,15 @@ var _ = Describe("Configs", func() {
 
 	})
 
+	Context("when loading well-constructed config files", func() {
+
+		It("should unmarshal and load config from the file", func() {
+
+			decodedConfig, err := LoadConfig("../cmd/confgen/config.json")
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(decodedConfig.Address).ShouldNot(BeNil())
+		})
+
+	})
+
 })
