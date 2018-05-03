@@ -24,8 +24,7 @@ message StatusRequest {
 message StatusResponse {
     string address = 1;
     bool bootstrapped = 2;
-    bool registered = 3;
-    int64 peers = 4;
+    int64 peers = 3;
 }
 ```
 

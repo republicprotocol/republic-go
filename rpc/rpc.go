@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"context"
+
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
@@ -9,6 +11,7 @@ import (
 	"github.com/republicprotocol/republic-go/rpc/dht"
 	"github.com/republicprotocol/republic-go/rpc/relayer"
 	"github.com/republicprotocol/republic-go/rpc/smpcer"
+	"github.com/republicprotocol/republic-go/rpc/status"
 	"github.com/republicprotocol/republic-go/rpc/swarmer"
 )
 
@@ -103,4 +106,17 @@ func (rpc *RPC) SwarmerClient() *swarmer.Client {
 // Swarmer used by the RPC.
 func (rpc *RPC) Swarmer() *swarmer.Swarmer {
 	return &rpc.swarmer
+}
+
+func (rpc *RPC) Status(ctx context.Context, request *status.StatusRequest) (*status.StatusResponse, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+		return &status.StatusResponse{
+			Address:      string(rpc.dht.Address),
+			Bootstrapped: rpc.swarmerClient.Bootstrapped(),
+			Peers:        int64(len(rpc.dht.MultiAddresses())),
+		}, nil
+	}
 }

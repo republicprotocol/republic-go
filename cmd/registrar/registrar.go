@@ -78,6 +78,18 @@ func main() {
 			},
 		},
 		{
+			Name:    "checkreg",
+			Aliases: []string{"c"},
+			Usage:   "check if the node is registered or not",
+			Action: func(c *cli.Context) error {
+				registrar, err := NewRegistrar(c, key)
+				if err != nil {
+					return err
+				}
+				return CheckRegistration(c.Args(), registrar)
+			},
+		},
+		{
 			Name:    "register",
 			Aliases: []string{"r"},
 			Usage:   "register nodes in the dark node registry",
@@ -229,6 +241,23 @@ func GetPool(address []string, registrar dnr.DarknodeRegistry) error {
 	ocean := darkocean.NewDarkOcean(currentEpoch.Blockhash, nodes)
 	poolIndex := ocean.PoolIndex(id)
 	log.Println(poolIndex)
+
+	return nil
+}
+
+// CheckRegistration will check if the node with given address is registered with
+// the darknode registry. The address will be the ethereum address.
+func CheckRegistration(addresses []string, registrar dnr.DarknodeRegistry) error {
+	if len(addresses) != 1 {
+		return fmt.Errorf("%sPlease provide one node address.%s\n", red, reset)
+	}
+	address := common.HexToAddress(addresses[0])
+	isRegistered, err := registrar.IsRegistered(address.Bytes())
+	if err != nil {
+		return err
+	}
+
+	log.Println(isRegistered)
 
 	return nil
 }
