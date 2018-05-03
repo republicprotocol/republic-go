@@ -1,4 +1,4 @@
-package rpc
+package main
 
 import (
 	"context"
@@ -57,12 +57,7 @@ func GetStatus(args []string) error {
 		return err
 	}
 
-	// Output the result as a json string
-	output, err := json.Marshal(rsp)
-	if err != nil {
-		return err
-	}
-	log.Println(string(output))
+	log.Println(rsp.Address, rsp.Bootstrapped, rsp.Peers)
 
 	return nil
 }

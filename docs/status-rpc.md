@@ -31,20 +31,40 @@ message StatusResponse {
 ## Command-line tool for rpc calls 
 
 Since `status` endpoint is created for the need of falconry devOp tools, we also 
-need to provide a command-line tool to make this rpc call. For now , it will only 
-support `status`, but will support all rpc calls in the future if needed.
+need to provide a command-line tool to call this rpc. For now, it should only 
+support `status`, and will support all rpc calls in the future if needed.
 
-todo : details of the cmd
+```bash
+$ rpc status 192.168.0.1:8080
+8MGfbzAMS59Gb4cSjpm34soGNYsM2ft true 32
+```
 
 ## Add command for getting pool hash in the registrar Command-line tool
 
 We also want to know which pool the node is in. Since the data can be get from the 
 darknode registry smart contract, we'll add a sub-command in the `registrar` cmd.
 
+Get index of the pool
+```bash
+$ registrar pool 8MGfbzAMS59Gb4cSjpm34soGNYsM2ft
+1 
+
+$ registrar pool dsahfjdshjfdsjhfjsahd
+-1
+```
+
+Check registration of node
+```bash
+$ registrar checkreg 0x009FbB7Aafee69081EF24c14A55A19c3cDd25eF4
+true
+```
+
 ## Configurable tags for the logger
 
 In order to filter the logs for falconry tests easily, we want to have configurable tags 
-in the logger. 
+in the logger. Tags are a list of key-value pairs which be stored as a map inside the logger.
+Logger and logger option will have an extra filed which contains all the tags.
+All logs will have tags attached to it for quick filtering and all plugins show support tags.
  
 
 

@@ -116,7 +116,7 @@ func main() {
 		{
 			Name:    "pool",
 			Aliases: []string{"p"},
-			Usage:   "get the hash of the pool the node is in",
+			Usage:   "get the index of the pool the node is in, return -1 if no pool found",
 			Action: func(c *cli.Context) error {
 				registrar, err := NewRegistrar(c, key)
 				if err != nil {
@@ -256,7 +256,6 @@ func CheckRegistration(addresses []string, registrar dnr.DarknodeRegistry) error
 	if err != nil {
 		return err
 	}
-
 	log.Println(isRegistered)
 
 	return nil
