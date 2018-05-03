@@ -13,7 +13,6 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/darkocean"
-	"github.com/republicprotocol/republic-go/identity"
 	"github.com/urfave/cli"
 )
 
@@ -207,12 +206,20 @@ func DeregisterAll(addresses []string, registrar dnr.DarknodeRegistry) error {
 		}
 
 		if isRegistered {
+			registrar.SetGasLimit(4000000)
+			_, err = registrar.Refund(address.Bytes())
+			if err != nil {
+				return fmt.Errorf("[%v] %sCouldn't refund node%s: %v\n", address.Hex(), red, reset, err)
+			}
+
 			_, err = registrar.Deregister(address.Bytes())
 			if err != nil {
 				return fmt.Errorf("[%v] %sCouldn't deregister node%s: %v\n", address.Hex(), red, reset, err)
 			} else {
 				log.Printf("[%v] %sNode will be deregistered next epoch%s\n", address.Hex(), green, reset)
 			}
+			registrar.SetGasLimit(0)
+
 		} else {
 			return fmt.Errorf("[%v] %sNode hasn't been registered yet.%s\n", address.Hex(), red, reset)
 		}
@@ -222,12 +229,12 @@ func DeregisterAll(addresses []string, registrar dnr.DarknodeRegistry) error {
 }
 
 // GetPool will get the index of the pool the node is in.
-// The address should be the republic address of the node.
-func GetPool(address []string, registrar dnr.DarknodeRegistry) error {
-	if len(address) != 1 {
+// The address should be the ethereum address
+func GetPool(addresses []string, registrar dnr.DarknodeRegistry) error {
+	if len(addresses) != 1 {
 		return fmt.Errorf("%sPlease provide one node address.%s\n", red, reset)
 	}
-	id := identity.Address(address[0]).ID()
+	address := common.HexToAddress(addresses[0])
 
 	currentEpoch, err := registrar.CurrentEpoch()
 	if err != nil {
@@ -239,7 +246,7 @@ func GetPool(address []string, registrar dnr.DarknodeRegistry) error {
 	}
 
 	ocean := darkocean.NewDarkOcean(currentEpoch.Blockhash, nodes)
-	poolIndex := ocean.PoolIndex(id)
+	poolIndex := ocean.PoolIndex(address.Bytes())
 	log.Println(poolIndex)
 
 	return nil
