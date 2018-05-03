@@ -7,7 +7,7 @@ A software development kit (SDK) for providing an abstraction over the Relay RES
 ### Import the Relay package
 
 ```go
-import github.com/republicprotocol/republic-go/relay
+import "github.com/republicprotocol/republic-go/relay"
 ```
 
 ### Construct a new Relay API object
@@ -16,11 +16,12 @@ import github.com/republicprotocol/republic-go/relay
 api := relay.NewAPI(url, token)
 ```
 
-`url` – The address your Relay is serving from.
-`token` – The authentication token used to verify your Relay.
+- `url` – The address your Relay is serving from.
+- `token` – The authentication token used to verify your Relay.
+
 > Note: If your Relay does not require an authentication token use `relay.Insecure()`.
 
-### Interact with the Relay API
+### Interacting with the Relay API
 
 **Opening orders**
 
@@ -53,7 +54,7 @@ if err != nil {
 }
 ```
 
-**Getting updates on an order**
+**Getting updates on the status of an order**
 
 ```go
 filter := relay.Filter{
