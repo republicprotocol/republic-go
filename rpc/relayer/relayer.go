@@ -40,19 +40,25 @@ func (relayer *Relayer) Register(server *grpc.Server) {
 func (relayer *Relayer) Sync(request *SyncRequest, stream Relay_SyncServer) error {
 	// TODO: Addresses and signatures do not need to be registered during a
 	// sync. We should explicitly remove these fields from the SyncRequest.
-
 	entries := make(chan orderbook.Entry)
 	defer close(entries)
 
-	if err := relayer.orderbook.Subscribe(entries); err != nil {
-		return fmt.Errorf("cannot subscribe to orderbook: %v", err)
-	}
+	errs := make(chan error, 1) // We do not need to close this channel
+	go func() {
+		if err := relayer.orderbook.Subscribe(entries); err != nil {
+			errs <- fmt.Errorf("cannot subscribe to orderbook: %v", err)
+		}
+	}()
 	defer relayer.orderbook.Unsubscribe(entries)
 
 	for {
 		select {
 		case <-stream.Context().Done():
 			return stream.Context().Err()
+		case err := <-errs:
+			// This channel is never closed but other channels will eventually
+			// let this goroutine exit the loop
+			return err
 		case entry, ok := <-entries:
 			if !ok {
 				return nil

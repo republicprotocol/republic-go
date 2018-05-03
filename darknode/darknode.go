@@ -357,7 +357,7 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 								},
 								Status: order.Confirmed,
 							}
-							node.Logger.Info("Confirmed by hyperdrive. Let's go home !")
+							node.Logger.Info("confirmed " + entry.Order.ID.String())
 							err := node.orderbook.Confirm(entry)
 							if err != nil {
 								errs <- err

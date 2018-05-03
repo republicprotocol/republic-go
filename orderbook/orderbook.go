@@ -1,8 +1,6 @@
 package orderbook
 
 import (
-	"log"
-
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 )
@@ -95,10 +93,7 @@ func (orderbook *Orderbook) Confirm(entry Entry) error {
 		return err
 	}
 	// orderbook.database.Confirm(entry)
-	log.Println("receive confirm  ")
-
 	orderbook.splitCh <- entry
-	log.Println("receive confirm order and split it to subscribers ")
 	return nil
 }
 
