@@ -63,7 +63,7 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 	node.multiAddress = multiAddr
 	node.address = identity.Address(node.Config.Keystore.Address())
 	node.id = node.address.ID()
-	node.orderbook = orderbook.NewOrderbook(4)
+	node.orderbook = orderbook.NewOrderbook()
 
 	// Open a connection to the Ethereum network
 	transactOpts := bind.NewKeyedTransactor(config.Keystore.EcdsaKey.PrivateKey)

@@ -97,7 +97,6 @@ func (broadcaster *Broadcaster) Broadcast(done <-chan struct{}, ch <-chan interf
 			return
 		case msg, ok := <-ch:
 			if !ok {
-				<-done
 				return
 			}
 			select {

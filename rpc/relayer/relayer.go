@@ -1,7 +1,6 @@
 package relayer
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -45,13 +44,9 @@ func (relayer *Relayer) Sync(request *SyncRequest, stream Relay_SyncServer) erro
 		return err
 	}
 
-	entries := make(chan orderbook.Entry)
-	defer close(entries)
-
-	if err := relayer.orderbook.Subscribe(entries); err != nil {
-		return fmt.Errorf("cannot subscribe to orderbook: %v", err)
-	}
-	defer relayer.orderbook.Unsubscribe(entries)
+	done := make(chan struct{})
+	entries := relayer.orderbook.Listen(done)
+	defer close(done)
 
 	for {
 		select {

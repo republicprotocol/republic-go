@@ -72,12 +72,12 @@ func (client *Client) CloseOrder(ctx context.Context, multiAddr identity.MultiAd
 	return err
 }
 
-func (client *Client) Compute(ctx context.Context, multiAddress identity.MultiAddress, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {
+func (client *Client) Compute(ctx context.Context, multiAddress identity.MultiAddress, sender <-chan interface{}) (<-chan interface{}, <-chan interface{}) {
 	if client.Address() == multiAddress.Address() {
 		// The Client is attempting to connect to itself
-		receiver := make(chan *ComputeMessage)
+		receiver := make(chan interface{})
 		defer close(receiver)
-		errs := make(chan error, 1)
+		errs := make(chan interface{}, 1)
 		defer close(errs)
 		errs <- ErrConnectToSelf
 		return receiver, errs
@@ -90,7 +90,7 @@ func (client *Client) Compute(ctx context.Context, multiAddress identity.MultiAd
 
 	// The Client must wait for the Smpc service to accept a gRPC stream from
 	// a Client on another machine
-	return client.wait(ctx, multiAddress, sender)
+	return client.wait(ctx, multiAddress, sender), nil
 }
 
 // Address of the Client.
@@ -103,10 +103,10 @@ func (client *Client) MultiAddress() identity.MultiAddress {
 	return client.multiAddress
 }
 
-func (client *Client) connect(ctx context.Context, multiAddress identity.MultiAddress, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {
+func (client *Client) connect(ctx context.Context, multiAddress identity.MultiAddress, sender <-chan interface{}) (<-chan interface{}, <-chan interface{}) {
 	return client.streamer.connect(multiAddress, ctx.Done(), sender)
 }
 
-func (client *Client) wait(ctx context.Context, multiAddress identity.MultiAddress, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {
+func (client *Client) wait(ctx context.Context, multiAddress identity.MultiAddress, sender <-chan interface{}) <-chan interface{} {
 	return client.rendezvous.wait(multiAddress.Address(), ctx.Done(), sender)
 }

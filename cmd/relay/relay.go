@@ -94,7 +94,7 @@ func main() {
 		return
 	}
 
-	book := orderbook.NewOrderbook(100)
+	book := orderbook.NewOrderbook()
 	crypter := crypto.NewWeakCrypter()
 	dht := dht.NewDHT(config.MultiAddress.Address(), 100)
 	connPool := client.NewConnPool(100)
@@ -109,12 +109,9 @@ func main() {
 		log.Printf("error while bootstrapping the relay: %v", err)
 	}
 
-	entries := make(chan orderbook.Entry)
-	defer close(entries)
-	if err := book.Subscribe(entries); err != nil {
-		log.Fatalf("cannot subscribe to orderbook: %v", err)
-	}
-	defer book.Unsubscribe(entries)
+	done := make(chan struct{})
+	entries := book.Listen(done)
+	defer close(done)
 
 	confirmedOrders := processOrderbookEntries(hyperdrive, entries)
 	conn, err := ethereum.Connect(config.Ethereum)

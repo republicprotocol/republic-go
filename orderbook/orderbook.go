@@ -29,8 +29,8 @@ type Orderbook struct {
 	database Syncer
 
 	broadcaster       *dispatch.Broadcaster
-	broadcasterCh     chan interface{}
 	broadcasterChDone chan struct{}
+	broadcasterCh     chan interface{}
 }
 
 // NewOrderbook creates a new Orderbook with the given logger and splitter
@@ -39,9 +39,9 @@ func NewOrderbook() Orderbook {
 	database := Database{}
 
 	broadcaster := dispatch.NewBroadcaster()
-	broadcasterCh := make(chan interface{})
 	broadcasterChDone := make(chan struct{})
-	broadcaster.Broadcast(broadcasterChDone, broadcasterCh)
+	broadcasterCh := make(chan interface{})
+	go broadcaster.Broadcast(broadcasterChDone, broadcasterCh)
 
 	return Orderbook{
 		cache:    &cache,
@@ -75,6 +75,8 @@ func (orderbook *Orderbook) Listen(done <-chan struct{}) <-chan Entry {
 				select {
 				case <-done:
 					return
+				case <-orderbook.broadcasterChDone:
+					return
 				case msg, ok := <-listener:
 					if !ok {
 						return
@@ -82,6 +84,8 @@ func (orderbook *Orderbook) Listen(done <-chan struct{}) <-chan Entry {
 					if msg, ok := msg.(Entry); ok {
 						select {
 						case <-done:
+							return
+						case <-orderbook.broadcasterChDone:
 							return
 						case subscriber <- msg:
 							return
@@ -94,6 +98,8 @@ func (orderbook *Orderbook) Listen(done <-chan struct{}) <-chan Entry {
 			for _, block := range blocks {
 				select {
 				case <-done:
+					return
+				case <-orderbook.broadcasterChDone:
 					return
 				case subscriber <- block:
 				}
