@@ -10,7 +10,7 @@ import (
 type Rendezvous struct {
 	mu        *sync.Mutex
 	rcs       map[identity.Address]int
-	senders   map[identity.Address]chan *ComputeMessage
+	senders   map[identity.Address]chan interface{}
 	receivers map[identity.Address]*dispatch.Broadcaster
 }
 
@@ -18,7 +18,7 @@ func NewRendezvous() Rendezvous {
 	return Rendezvous{
 		mu:        new(sync.Mutex),
 		rcs:       map[identity.Address]int{},
-		senders:   map[identity.Address]chan *ComputeMessage{},
+		senders:   map[identity.Address]chan interface{}{},
 		receivers: map[identity.Address]*dispatch.Broadcaster{},
 	}
 }
@@ -29,8 +29,8 @@ func NewRendezvous() Rendezvous {
 // stream are split and written to all receiver channels created in calls to
 // Rendezvous.waitForClient and Rendezvous.waitForService. Calls to
 // Rendezvous.connect must only be made by an Smpc service.
-func (rendezvous *Rendezvous) connect(addr identity.Address, done <-chan struct{}, receiver <-chan interface{}) <-chan *ComputeMessage {
-	sender := make(chan *ComputeMessage)
+func (rendezvous *Rendezvous) connect(addr identity.Address, done <-chan struct{}, receiver <-chan interface{}) <-chan interface{} {
+	sender := make(chan interface{})
 	go func() {
 		defer close(sender)
 		defer rendezvous.releaseConn(addr)
@@ -65,7 +65,7 @@ func (rendezvous *Rendezvous) acquireConn(addr identity.Address) {
 
 	rendezvous.rcs[addr]++
 	if rendezvous.rcs[addr] == 1 {
-		rendezvous.senders[addr] = make(chan *ComputeMessage)
+		rendezvous.senders[addr] = make(chan interface{})
 		rendezvous.receivers[addr] = dispatch.NewBroadcaster()
 	}
 }
