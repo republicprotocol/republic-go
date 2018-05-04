@@ -195,7 +195,7 @@ func createNewRPC() (RPC, error) {
 	if err != nil {
 		return RPC{}, err
 	}
-	orderbook := orderbook.NewOrderbook(5)
+	orderbook := orderbook.NewOrderbook()
 	rpc := NewRPC(&crypter, multiaddress, &orderbook)
 	return *rpc, nil
 }

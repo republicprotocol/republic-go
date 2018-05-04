@@ -37,14 +37,14 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 		// Open connections with all Darknodes in the Pool
 		mu := new(sync.Mutex)
 		ctxs, cancels := map[identity.Address]context.Context{}, map[identity.Address]context.CancelFunc{}
-		senders := map[identity.Address]chan<- *smpcer.ComputeMessage{}
+		senders := map[identity.Address]chan<- interface{}{}
 		defer func() {
 			for key := range senders {
 				close(senders[key])
 			}
 		}()
-		receivers := map[identity.Address]<-chan *smpcer.ComputeMessage{}
-		errors := map[identity.Address]<-chan error{}
+		receivers := map[identity.Address]<-chan interface{}{}
+		errors := map[identity.Address]<-chan interface{}{}
 
 		addresses := pool.Addresses()
 		dispatch.CoForAll(addresses, func(i int) {
@@ -59,7 +59,7 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 			ctxs[addr], cancels[addr] = ctx, cancel
 			mu.Unlock()
 
-			sender := make(chan *smpcer.ComputeMessage)
+			sender := make(chan interface{})
 			multiAddr, err := node.rpc.SwarmerClient().Query(ctx, addr, 3)
 			if err != nil {
 				log.Printf("cannot query smpc peer %v: %v", addr, err)
@@ -112,17 +112,19 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 						if !ok {
 							return
 						}
-						if computation.GetDeltaFragment() != nil {
-							deltaFragment, err := smpcer.UnmarshalDeltaFragment(computation.GetDeltaFragment())
-							if err != nil {
-								errs <- err
-								continue
-							}
+						if computation, ok := computation.(*smpcer.ComputeMessage); ok {
+							if computation.GetDeltaFragment() != nil {
+								deltaFragment, err := smpcer.UnmarshalDeltaFragment(computation.GetDeltaFragment())
+								if err != nil {
+									errs <- err
+									continue
+								}
 
-							select {
-							case <-done:
-								return
-							case deltaFragments <- deltaFragment:
+								select {
+								case <-done:
+									return
+								case deltaFragments <- deltaFragment:
+								}
 							}
 						}
 					}

@@ -181,8 +181,7 @@ var _ = Describe("HTTP handlers", func() {
 
 	PContext("when getting orders", func() {
 		It("should return the correct information when given a valid ID", func() {
-			maxConnections := 3
-			book := orderbook.NewOrderbook(maxConnections)
+			book := orderbook.NewOrderbook()
 
 			defaultStackVal, _ := stackint.FromString("179761232312312")
 			ord := order.Order{}
@@ -217,8 +216,7 @@ var _ = Describe("HTTP handlers", func() {
 		})
 
 		It("should error when when given an invalid ID", func() {
-			maxConnections := 3
-			book := orderbook.NewOrderbook(maxConnections)
+			book := orderbook.NewOrderbook()
 
 			r := httptest.NewRequest("GET", "http://localhost/orders/test", nil)
 			w := httptest.NewRecorder()

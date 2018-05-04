@@ -28,8 +28,8 @@ func NewBroadcaster() *Broadcaster {
 	go func() {
 		listeners := [MaxListeners]listener{}
 		defer func() {
-			for _, listener := range listeners {
-				close(listener.ch)
+			for i := int32(0); i < broadcaster.numListeners; i++ {
+				close(listeners[i].ch)
 			}
 		}()
 
@@ -97,7 +97,6 @@ func (broadcaster *Broadcaster) Broadcast(done <-chan struct{}, ch <-chan interf
 			return
 		case msg, ok := <-ch:
 			if !ok {
-				<-done
 				return
 			}
 			select {

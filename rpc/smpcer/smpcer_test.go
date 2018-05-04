@@ -2,7 +2,6 @@ package smpcer_test
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"sync"
 
@@ -39,9 +38,9 @@ var _ = Describe("Smpcer", func() {
 			smpc2 := NewSmpcer(&client2, rpc)
 
 			// Create sender channels
-			ch1 := make(chan *ComputeMessage)
+			ch1 := make(chan interface{})
 			defer close(ch1)
-			ch2 := make(chan *ComputeMessage)
+			ch2 := make(chan interface{})
 			defer close(ch2)
 
 			server1 := grpc.NewServer()
@@ -76,15 +75,29 @@ var _ = Describe("Smpcer", func() {
 				go func() {
 					defer wg.Done()
 					select {
-					case <-msgs1:
+					case _, ok := <-msgs1:
+						if !ok {
+							return
+						}
 						messageCount++
-					case err = <-errs1:
-						fmt.Println(err)
+					case _, ok := <-msgs2:
+						if !ok {
+							return
+						}
+						messageCount++
+					case val, ok := <-errs1:
+						if !ok {
+							return
+						}
+						_, ok = val.(error)
+						Expect(ok).To(BeTrue())
 						errCount++
-					case <-msgs2:
-						messageCount++
-					case err = <-errs2:
-						fmt.Println(err)
+					case val, ok := <-errs2:
+						if !ok {
+							return
+						}
+						_, ok = val.(error)
+						Expect(ok).To(BeTrue())
 						errCount++
 					}
 				}()

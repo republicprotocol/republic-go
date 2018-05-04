@@ -14,13 +14,12 @@ type Streamer struct {
 	multiAddress identity.MultiAddress
 	connPool     *client.ConnPool
 
-	mu          *sync.Mutex
-	senders     map[identity.Address]chan *ComputeMessage
-	receivers   map[identity.Address]*dispatch.Splitter
-	receiverChs map[identity.Address]chan *ComputeMessage
-	errs        map[identity.Address]*dispatch.Splitter
-	errChs      map[identity.Address]chan error
-	rcs         map[identity.Address]int
+	mu        *sync.Mutex
+	rcs       map[identity.Address]int
+	dones     map[identity.Address]chan struct{}
+	senders   map[identity.Address]*dispatch.Broadcaster
+	receivers map[identity.Address]*dispatch.Broadcaster
+	errs      map[identity.Address]*dispatch.Broadcaster
 }
 
 func NewStreamer(multiAddress identity.MultiAddress, connPool *client.ConnPool) Streamer {
@@ -28,77 +27,48 @@ func NewStreamer(multiAddress identity.MultiAddress, connPool *client.ConnPool) 
 		multiAddress: multiAddress,
 		connPool:     connPool,
 
-		mu:          new(sync.Mutex),
-		senders:     map[identity.Address]chan *ComputeMessage{},
-		receivers:   map[identity.Address]*dispatch.Splitter{},
-		receiverChs: map[identity.Address]chan *ComputeMessage{},
-		errs:        map[identity.Address]*dispatch.Splitter{},
-		errChs:      map[identity.Address]chan error{},
-		rcs:         map[identity.Address]int{},
+		mu:        new(sync.Mutex),
+		rcs:       map[identity.Address]int{},
+		dones:     map[identity.Address]chan struct{}{},
+		senders:   map[identity.Address]*dispatch.Broadcaster{},
+		receivers: map[identity.Address]*dispatch.Broadcaster{},
+		errs:      map[identity.Address]*dispatch.Broadcaster{},
 	}
 }
 
-func (streamer *Streamer) connect(multiAddr identity.MultiAddress, done <-chan struct{}, sender <-chan *ComputeMessage) (<-chan *ComputeMessage, <-chan error) {
-	receiver := make(chan *ComputeMessage)
-	errs := make(chan error, 1)
+func (streamer *Streamer) connect(multiAddr identity.MultiAddress, done <-chan struct{}, sender <-chan interface{}) (<-chan interface{}, <-chan interface{}) {
+	receiver, errs := streamer.acquireConn(multiAddr, sender)
 	go func() {
-		defer close(receiver)
-		defer close(errs)
-
-		addr := multiAddr.Address()
-
-		streamer.acquireConn(multiAddr)
-		defer streamer.releaseConn(addr)
-
-		if err := streamer.receivers[addr].Subscribe(receiver); err != nil {
-			errs <- err
-			return
-		}
-		defer streamer.receivers[addr].Unsubscribe(receiver)
-
-		if err := streamer.errs[addr].Subscribe(errs); err != nil {
-			errs <- err
-			return
-		}
-		defer streamer.errs[addr].Unsubscribe(errs)
-		// defer func() {
-		// 	streamer.mu.Lock()
-		// 	defer streamer.mu.Unlock()
-		// 	streamer.receivers[addr].Unsubscribe(receiver)
-		// }()
-
-		// if err := streamer.errs[addr].Subscribe(errs); err != nil {
-		// 	errs <- err
-		// 	return
-		// }
-		// defer func() {
-		// 	streamer.mu.Lock()
-		// 	defer streamer.mu.Unlock()
-		// 	streamer.errs[addr].Unsubscribe(errs)
-		// }()
-
-		dispatch.Pipe(done, sender, streamer.senders[addr])
+		defer streamer.releaseConn(multiAddr.Address())
+		<-done
 	}()
 	return receiver, errs
 }
 
-func (streamer *Streamer) acquireConn(multiAddr identity.MultiAddress) {
+func (streamer *Streamer) acquireConn(multiAddr identity.MultiAddress, sender <-chan interface{}) (<-chan interface{}, <-chan interface{}) {
 	streamer.mu.Lock()
 	defer streamer.mu.Unlock()
 
 	addr := multiAddr.Address()
 
-	if streamer.rcs[addr] == 0 {
-		streamer.rcs[addr]++
-		streamer.senders[addr] = make(chan *ComputeMessage)
-		streamer.receivers[addr] = dispatch.NewSplitter(MaxConnections)
-		streamer.receiverChs[addr] = make(chan *ComputeMessage)
-		go streamer.receivers[addr].Split(streamer.receiverChs[addr])
-		streamer.errs[addr] = dispatch.NewSplitter(MaxConnections)
-		streamer.errChs[addr] = make(chan error)
-		go streamer.errs[addr].Split(streamer.stream(multiAddr))
-	}
 	streamer.rcs[addr]++
+	if streamer.rcs[addr] == 1 {
+		streamer.dones[addr] = make(chan struct{})
+		streamer.senders[addr] = dispatch.NewBroadcaster()
+		streamer.receivers[addr] = dispatch.NewBroadcaster()
+		streamer.errs[addr] = dispatch.NewBroadcaster()
+
+		sender := streamer.senders[addr].Listen(streamer.dones[addr])
+		receiver, errs := streamer.openGrpcStream(multiAddr, streamer.dones[addr], sender)
+		go streamer.receivers[addr].Broadcast(streamer.dones[addr], receiver)
+		go streamer.errs[addr].Broadcast(streamer.dones[addr], errs)
+	}
+
+	go streamer.senders[addr].Broadcast(streamer.dones[addr], sender)
+	receiver := streamer.receivers[addr].Listen(streamer.dones[addr])
+	errs := streamer.errs[addr].Listen(streamer.dones[addr])
+
+	return receiver, errs
 }
 
 func (streamer *Streamer) releaseConn(addr identity.Address) {
@@ -107,87 +77,76 @@ func (streamer *Streamer) releaseConn(addr identity.Address) {
 
 	streamer.rcs[addr]--
 	if streamer.rcs[addr] == 0 {
-		close(streamer.senders[addr])
+		close(streamer.dones[addr])
+		streamer.senders[addr].Close()
+		streamer.receivers[addr].Close()
+		streamer.errs[addr].Close()
+		delete(streamer.dones, addr)
 		delete(streamer.senders, addr)
 		delete(streamer.receivers, addr)
-		delete(streamer.receiverChs, addr)
-		delete(streamer.rcs, addr)
 		delete(streamer.errs, addr)
-		delete(streamer.errChs, addr)
 	}
 }
 
-func (streamer *Streamer) stream(multiAddress identity.MultiAddress) <-chan error {
-	errs := make(chan error, 1)
+func (streamer *Streamer) openGrpcStream(multiAddr identity.MultiAddress, done <-chan struct{}, sender <-chan interface{}) (<-chan interface{}, <-chan interface{}) {
+	receiver := make(chan interface{})
+	errs := make(chan interface{}, 2)
+
 	go func() {
+		defer close(receiver)
 		defer close(errs)
 
-		stream, err := streamer.compute(context.Background(), multiAddress)
+		grpcStream, err := streamer.openGrpcCompute(context.Background(), multiAddr)
 		if err != nil {
 			errs <- err
 			return
 		}
 
-		addr := multiAddress.Address()
-
-		done := make(chan struct{})
-		defer close(done)
-
-		// Read all messages from the sender channel and write them to the gRPC
-		// stream
-		senderErrs := make(chan error, 1)
-		go func() {
-			defer close(senderErrs)
+		dispatch.CoBegin(func() {
+			// Writing messages from the senders to the grpc client
 			for {
 				select {
 				case <-done:
-					// The receiver has terminated
 					return
-				case <-stream.Context().Done():
-					// Writing to the error channel will cause the receiver to
-					// terminate
-					senderErrs <- stream.Context().Err()
+				case <-grpcStream.Context().Done():
+					errs <- grpcStream.Context().Err()
 					return
-				case message, ok := <-streamer.senders[addr]:
+				case msg, ok := <-sender:
 					if !ok {
 						return
 					}
-					if err := stream.Send(message); err != nil {
-						senderErrs <- err
-						return
+					if msg, ok := msg.(*ComputeMessage); ok {
+						if err := grpcStream.Send(msg); err != nil {
+							errs <- err
+							return
+						}
 					}
 				}
 			}
-		}()
-
-		// Read all messages from the gRPC stream and write them to the receiver
-		// channel
-		for {
-			message, err := stream.Recv()
-			if err != nil {
-				errs <- err
-				return
-			}
-			select {
-			case <-stream.Context().Done():
-				errs <- stream.Context().Err()
-				return
-			case err, ok := <-errs:
-				// The sender has terminated, possibly with an error that should be
-				// returned
-				if !ok {
+		}, func() {
+			// Writing messages from the grpc client to the receivers
+			for {
+				msg, err := grpcStream.Recv()
+				if err != nil {
+					errs <- err
 					return
 				}
-				errs <- err
-				return
-			case streamer.receiverChs[addr] <- message:
+				select {
+				case <-done:
+					return
+				case <-grpcStream.Context().Done():
+					errs <- grpcStream.Context().Err()
+					return
+				case receiver <- msg:
+				}
 			}
-		}
+		})
 	}()
-	return errs
+
+	return receiver, errs
 }
 
-func (streamer *Streamer) compute(ctx context.Context, multiAddress identity.MultiAddress) (Smpc_ComputeClient, error) {
+func (streamer *Streamer) openGrpcCompute(ctx context.Context, multiAddress identity.MultiAddress) (Smpc_ComputeClient, error) {
 
 	// Dial the client.ConnPool for a client.Conn
 	conn, err := streamer.connPool.Dial(ctx, multiAddress)

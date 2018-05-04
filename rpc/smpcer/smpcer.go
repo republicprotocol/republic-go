@@ -148,7 +148,7 @@ func (smpcer *Smpcer) Compute(stream Smpc_ComputeServer) error {
 	done := make(chan struct{})
 	defer close(done)
 
-	receiver := make(chan *ComputeMessage)
+	receiver := make(chan interface{})
 	defer close(receiver)
 
 	sender := smpcer.client.rendezvous.connect(identity.Address(addr), done, receiver)
