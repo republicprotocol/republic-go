@@ -176,7 +176,6 @@ var _ = FDescribe("Broadcaster", func() {
 				defer broadcaster.Close()
 
 				CoForAll(int(100), func(i int) {
-					println(i)
 					done := make(chan struct{})
 					ch := make(chan interface{})
 					defer close(ch)
