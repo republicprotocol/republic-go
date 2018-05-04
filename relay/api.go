@@ -66,6 +66,9 @@ func (api *API) OpenOrder(ord Order) (order.ID, error) {
 
 	// Create a request and set the authorization header
 	req, err := http.NewRequest("POST", api.URL+"/orders", bytes.NewBuffer(json))
+	if err != nil {
+		return nil, fmt.Errorf("cannot create request: %s", err)
+	}
 	req.Header.Set("Authorization", "Bearer "+api.Token)
 
 	// Create a client and fetch request
@@ -88,6 +91,9 @@ func (api *API) OpenOrder(ord Order) (order.ID, error) {
 func (api *API) CancelOrder(orderID string) error {
 	// Create a request and set the authorization header
 	req, err := http.NewRequest("DELETE", api.URL+"/orders/"+orderID, nil)
+	if err != nil {
+		return fmt.Errorf("cannot create request: %s", err)
+	}
 	req.Header.Set("Authorization", "Bearer "+api.Token)
 
 	// Create a client and fetch request
@@ -110,6 +116,9 @@ func (api *API) CancelOrder(orderID string) error {
 func (api *API) GetOrder(orderID string) (order.Order, error) {
 	// Create a request and set the authorization header
 	req, err := http.NewRequest("GET", api.URL+"/orders/"+orderID, nil)
+	if err != nil {
+		return order.Order{}, fmt.Errorf("cannot create request: %s", err)
+	}
 	req.Header.Set("Authorization", "Bearer "+api.Token)
 
 	// Create a client and fetch request
