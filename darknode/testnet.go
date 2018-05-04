@@ -30,11 +30,11 @@ import (
 // store the multiaddresses of the bootstrap nodes.
 type TestnetEnv struct {
 	// Ethereum
-	ethConn          ethereum.Conn
-	darknodeRegistry dnr.DarknodeRegistry
+	EthConn          ethereum.Conn
+	DarknodeRegistry dnr.DarknodeRegistry
 
 	// Darknodes
-	bootstrapMultiAddrs identity.MultiAddresses
+	BootstrapMultiAddrs identity.MultiAddresses
 	Darknodes           Darknodes
 
 	done chan struct{}
@@ -81,9 +81,9 @@ func NewTestnet(numberOfDarknodes, numberOfBootstrapDarknodes int) (TestnetEnv, 
 	}
 
 	return TestnetEnv{
-		ethConn:             conn,
-		darknodeRegistry:    darknodeRegistry,
-		bootstrapMultiAddrs: bootstrapMultiAddrs,
+		EthConn:             conn,
+		DarknodeRegistry:    darknodeRegistry,
+		BootstrapMultiAddrs: bootstrapMultiAddrs,
 		Darknodes:           darknodes,
 		done:                make(chan struct{}),
 	}, nil
@@ -97,13 +97,13 @@ func (env *TestnetEnv) Teardown() error {
 	close(env.done)
 
 	// Deregister the DarkNodes
-	err := DeregisterDarknodes(env.Darknodes, env.ethConn, env.darknodeRegistry)
+	err := DeregisterDarknodes(env.Darknodes, env.EthConn, env.DarknodeRegistry)
 	if err != nil {
 		return fmt.Errorf("could not deregister darknodes: %v", err)
 	}
 
 	// Refund the DarkNodes
-	err = RefundDarknodes(env.Darknodes, env.ethConn, env.darknodeRegistry)
+	err = RefundDarknodes(env.Darknodes, env.EthConn, env.DarknodeRegistry)
 	if err != nil {
 		return fmt.Errorf("could not refund darknodes: %v", err)
 	}
