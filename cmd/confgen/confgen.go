@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"log"
 	"os"
 
@@ -13,6 +14,10 @@ import (
 )
 
 func main() {
+	fileName := flag.String("host", "0.0.0.0", "ip address of the node")
+
+	flag.Parse()
+
 	keystore, err := crypto.RandomKeystore()
 	if err != nil {
 		log.Fatalf("cannot create keystore: %v", err)
@@ -20,13 +25,13 @@ func main() {
 
 	conf := darknode.Config{
 		Keystore:                keystore,
-		Host:                    "0.0.0.0",
+		Host:                    *fileName,
 		Port:                    "18514",
 		Address:                 identity.Address(keystore.Address()),
 		BootstrapMultiAddresses: []identity.MultiAddress{},
 		Logs: logger.Options{
 			Plugins: []logger.PluginOptions{
-				logger.PluginOptions{
+				{
 					File: &logger.FilePluginOptions{
 						Path: "stdout",
 					},
@@ -36,8 +41,8 @@ func main() {
 		Ethereum: ethereum.Config{
 			Network:                 ethereum.NetworkRopsten,
 			URI:                     "https://ropsten.infura.io",
-			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
-			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
+			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnRopsten.String(),
+			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnRopsten.String(),
 		},
 	}
 
