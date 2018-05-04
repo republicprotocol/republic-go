@@ -2,7 +2,7 @@ package orderbook_test
 
 import (
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	// . "github.com/onsi/gomega"
 	"github.com/republicprotocol/republic-go/orderbook"
 )
 
@@ -13,29 +13,21 @@ var _ = Describe("order book", func() {
 		var book orderbook.Orderbook
 
 		BeforeEach(func() {
-			book = orderbook.NewOrderbook(10)
+			book = orderbook.NewOrderbook()
 		})
 
 		AfterEach(func() {
 			book.Close()
 		})
 
-		It("subscribe and unsubscribe", func() {
-
-			var chans [maxConnections]chan orderbook.Entry
-
+		It("listen and stop listening", func() {
+			dones := [maxConnections]chan struct{}{}
 			for i := 0; i < maxConnections; i++ {
 				// stream := NewMockStream()
-				chans[i] = make(chan orderbook.Entry)
-				defer close(chans[i])
-				err := book.Subscribe(chans[i])
-				Ω(err).ShouldNot(HaveOccurred())
+				dones[i] = make(chan struct{})
+				defer close(dones[i])
+				book.Listen(dones[i])
 			}
-
-			for i := 0; i < maxConnections; i++ {
-				book.Unsubscribe(chans[i])
-			}
-
 		})
 	})
 })
