@@ -2,23 +2,19 @@ package darknode_test
 
 import (
 	"context"
-	"crypto/rand"
-	"fmt"
+	"io"
 	"log"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/republic-go/darknode"
 
-	"github.com/republicprotocol/go-do"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/rpc/client"
 	"github.com/republicprotocol/republic-go/rpc/relayer"
-	"github.com/republicprotocol/republic-go/rpc/smpcer"
-	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -26,69 +22,219 @@ import (
 
 var _ = Describe("Darknode", func() {
 
+	mu := new(sync.Mutex)
+
+	BeforeEach(func() {
+		mu.Lock()
+	})
+
+	AfterEach(func() {
+		mu.Unlock()
+	})
+
 	Context("when opening orders", func() {
 
-		It("should update the orderbook with an open order", func() {
-
-			// Create a relayer client to sync with the orderbook
-			crypter := crypto.NewWeakCrypter()
-
-			conn, err := client.Dial(context.Background(), env.Darknodes[0].MultiAddress())
+		It("should update the orderbook with an open order", func(done Done) {
+			stream, conn, cancel, err := createTestRelayClient()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			defer conn.Close()
+			go func() {
+				defer close(done)
+				defer GinkgoRecover()
+				defer cancel()
+				defer conn.Close()
 
-			traderKeystore, err := crypto.RandomKeystore()
+				// time.Sleep(1*time.Second)
+				matched := map[string]struct{}{}
+				for len(matched) < 30 {
+					syncResp, err := stream.Recv()
+					if err != nil {
+						if err == io.EOF {
+							log.Println("EOF")
+							break
+						}
+						Expect(err).ShouldNot(HaveOccurred())
+					}
+					log.Printf("received message: %v", syncResp.Entry.OrderStatus)
+					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Open {
+						matched[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					}
+				}
+				Expect(len(matched)).Should(Equal(30))
+			}()
+
+			err = env.SendOrders(30)
 			Expect(err).ShouldNot(HaveOccurred())
-			traderAddr := identity.Address(traderKeystore.Address())
+		}, 60)
 
-			relayClient := relayer.NewRelayClient(conn.ClientConn)
-			requestSignature, err := crypter.Sign(traderAddr)
+		FIt("should not match orders that are incompatible", func(done Done) {
+
+			stream, conn, cancel, err := createTestRelayClient()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			request := &relayer.SyncRequest{
-				Signature: requestSignature,
-				Address:   traderAddr.String(),
+			go func() {
+				defer GinkgoRecover()
+				defer close(done)
+				defer cancel()
+				defer conn.Close()
+
+				opened := map[string]struct{}{}
+				unconfirmed := map[string]struct{}{}
+				confirmed := map[string]struct{}{}
+				settled := map[string]struct{}{}
+				canceled := map[string]struct{}{}
+				for len(opened) < 30 {
+					syncResp, err := stream.Recv()
+					if err != nil {
+						if err == io.EOF {
+							break
+						}
+						Expect(err).ShouldNot(HaveOccurred())
+					}
+					switch syncResp.Entry.OrderStatus {
+					case relayer.OrderStatus_Open:
+						opened[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Unconfirmed:
+						unconfirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Confirmed:
+						confirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Settled:
+						settled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Canceled:
+						canceled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					default:
+					}
+				}
+				Expect(len(opened)).Should(Equal(30))
+				Expect(len(unconfirmed)).Should(Equal(0))
+				Expect(len(confirmed)).Should(Equal(0))
+				Expect(len(settled)).Should(Equal(0))
+				Expect(len(canceled)).Should(Equal(0))
+			}()
+
+			for i := 0; i < 30; i++ {
+				fragments, err := createNewOrderFragments(true)
+				Expect(err).ShouldNot(HaveOccurred())
+				env.Darknodes[0].OnOpenOrder(env.Darknodes[0].MultiAddress(), fragments[0])
+			}
+		}, 60)
+
+		It("should match orders that are compatible", func(done Done) {
+			stream, conn, cancel, err := createTestRelayClient()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			go func() {
+				defer close(done)
+				defer GinkgoRecover()
+				defer cancel()
+				defer conn.Close()
+
+				// time.Sleep(1*time.Second)
+				matched := map[string]struct{}{}
+				for len(matched) < 30 {
+					syncResp, err := stream.Recv()
+					if err != nil {
+						if err == io.EOF {
+							log.Println("EOF")
+							break
+						}
+						Expect(err).ShouldNot(HaveOccurred())
+					}
+					log.Printf("received message: %v", syncResp.Entry.OrderStatus)
+					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Unconfirmed {
+						matched[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					}
+				}
+				Expect(len(matched)).Should(Equal(30))
+			}()
+
+			err = env.SendOrders(30)
+			Expect(err).ShouldNot(HaveOccurred())
+			time.Sleep(30 * time.Second)
+
+		}, 60 /* 1 minute timeout */)
+
+		It("should confirm orders that are compatible", func(done Done) {
+			stream, conn, cancel, err := createTestRelayClient()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			go func() {
+				defer close(done)
+				defer GinkgoRecover()
+				defer cancel()
+				defer conn.Close()
+
+				// time.Sleep(1*time.Second)
+				matched := map[string]struct{}{}
+				for len(matched) < 30 {
+					syncResp, err := stream.Recv()
+					if err != nil {
+						if err == io.EOF {
+							log.Println("EOF")
+							break
+						}
+						Expect(err).ShouldNot(HaveOccurred())
+					}
+					log.Printf("received message: %v", syncResp.Entry.OrderStatus)
+					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Confirmed {
+						matched[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					}
+				}
+				Expect(len(matched)).Should(Equal(30))
+			}()
+
+			err = env.SendOrders(30)
+			Expect(err).ShouldNot(HaveOccurred())
+			time.Sleep(30 * time.Second)
+
+		}, 60 /* 1 minute timeout */)
+
+		It("should release orders that conflict with a confirmed order", func(done Done) {
+			stream, conn, cancel, err := createTestRelayClient()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			go func() {
+				defer close(done)
+				defer GinkgoRecover()
+				defer cancel()
+				defer conn.Close()
+
+				// time.Sleep(1*time.Second)
+				matched := map[string]struct{}{}
+				openOrders := map[string]struct{}{}
+				for len(matched) < 30 {
+					syncResp, err := stream.Recv()
+					if err != nil {
+						if err == io.EOF {
+							log.Println("EOF")
+							break
+						}
+						Expect(err).ShouldNot(HaveOccurred())
+					}
+					log.Printf("received message: %v", syncResp.Entry.OrderStatus)
+					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Open {
+						openOrders[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					}
+					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Confirmed {
+						matched[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					}
+
+				}
+				Expect(len(matched)).Should(Equal(20))
+			}()
+
+			for i := 0; i < 10; i++ {
+				fragments, err := createNewOrderFragments(true)
+				Expect(err).ShouldNot(HaveOccurred())
+				env.Darknodes[0].OnOpenOrder(env.Darknodes[0].MultiAddress(), fragments[0])
+			}
+			for i := 0; i < 20; i++ {
+				fragments, err := createNewOrderFragments(false)
+				Expect(err).ShouldNot(HaveOccurred())
+				env.Darknodes[0].OnOpenOrder(env.Darknodes[0].MultiAddress(), fragments[0])
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			stream, err := relayClient.Sync(ctx, request)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			// Create order fragment to send
-			n := int64(17)
-			k := int64(12)
-			primeVal, _ := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-			prime := &primeVal
-			price := stackint.FromUint(10)
-			minVolume := stackint.FromUint(100)
-			maxVolume := stackint.FromUint(1000)
-			nonce := stackint.One()
-
-			fragments, err := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, price, maxVolume, minVolume, nonce).Split(n, k, prime)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			env.Darknodes[0].OnOpenOrder(env.Darknodes[0].MultiAddress(), fragments[0])
-
-			stream.Recv()
-		})
-
-		It("should not match orders that are incompatible", func() {
-
-		})
-
-		It("should match orders that are compatible", func() {
-
-		})
-
-		It("should confirm orders that are compatible", func() {
-
-		})
-
-		It("should release orders that conflict with a confirmed order", func() {
-
-		})
+		}, 60 /* 1 minute timeout */)
 
 		It("should reject orders from unregistered addresses", func() {
 			// FIXME: Implement
@@ -98,15 +244,137 @@ var _ = Describe("Darknode", func() {
 	Context("when synchronizing the orderbook", func() {
 
 		It("should not deadlock when the sync starts before the updates", func() {
+			stream1, conn1, cancel1, err := createTestRelayClient()
+			defer conn1.Close()
+			defer cancel1()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			stream2, conn2, cancel2, err := createTestRelayClient()
+			defer conn2.Close()
+			defer cancel2()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			isDeadlocked := true
+			go func() {
+				defer GinkgoRecover()
+				status1 := map[string]struct{}{}
+				status2 := map[string]struct{}{}
+				for len(status1) < 20 && len(status2) < 20 {
+					resp1, err := stream1.Recv()
+					if err != nil {
+						if err == io.EOF {
+							break
+						}
+						Expect(err).ShouldNot(HaveOccurred())
+					}
+					status1[string(resp1.Entry.Order.OrderId)] = struct{}{}
+					resp2, err := stream2.Recv()
+					if err != nil {
+						if err == io.EOF {
+							break
+						}
+						Expect(err).ShouldNot(HaveOccurred())
+					}
+					status2[string(resp2.Entry.Order.OrderId)] = struct{}{}
+				}
+				isDeadlocked = false
+			}()
+
+			err = env.SendOrders(20)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			time.Sleep(10 * time.Second)
+			Expect(isDeadlocked).To(Equal(false))
 
 		})
 
 		It("should not deadlock when the sync starts during the updates", func() {
+			err := env.SendOrders(5)
+			Expect(err).ShouldNot(HaveOccurred())
+			stream1, conn1, cancel1, err := createTestRelayClient()
+			defer conn1.Close()
+			defer cancel1()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = env.SendOrders(10)
+			Expect(err).ShouldNot(HaveOccurred())
+			stream2, conn2, cancel2, err := createTestRelayClient()
+			defer conn2.Close()
+			defer cancel2()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = env.SendOrders(5)
+			Expect(err).ShouldNot(HaveOccurred())
 
+			isDeadlocked := true
+			go func() {
+				defer GinkgoRecover()
+				status1 := map[string]struct{}{}
+				status2 := map[string]struct{}{}
+				for len(status1) < 20 && len(status2) < 20 {
+					resp1, err := stream1.Recv()
+					if err != nil {
+						if err == io.EOF {
+							break
+						}
+						Expect(err).ShouldNot(HaveOccurred())
+					}
+					status1[string(resp1.Entry.Order.OrderId)] = struct{}{}
+					resp2, err := stream2.Recv()
+					if err != nil {
+						if err == io.EOF {
+							break
+						}
+						Expect(err).ShouldNot(HaveOccurred())
+					}
+					status2[string(resp2.Entry.Order.OrderId)] = struct{}{}
+				}
+				isDeadlocked = false
+			}()
+
+			time.Sleep(10 * time.Second)
+			Expect(isDeadlocked).To(Equal(false))
 		})
 
 		It("should not deadlock when the sync starts after the updates", func() {
+			err := env.SendOrders(20)
+			Expect(err).ShouldNot(HaveOccurred())
 
+			stream1, conn1, cancel1, err := createTestRelayClient()
+			defer conn1.Close()
+			defer cancel1()
+			Expect(err).ShouldNot(HaveOccurred())
+			stream2, conn2, cancel2, err := createTestRelayClient()
+			defer conn2.Close()
+			defer cancel2()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			isDeadlocked := true
+			go func() {
+				defer GinkgoRecover()
+				status1 := map[string]struct{}{}
+				status2 := map[string]struct{}{}
+				for len(status1) < 20 && len(status2) < 20 {
+					resp1, err := stream1.Recv()
+					if err != nil {
+						if err == io.EOF {
+							break
+						}
+						Expect(err).ShouldNot(HaveOccurred())
+					}
+					status1[string(resp1.Entry.Order.OrderId)] = struct{}{}
+					resp2, err := stream2.Recv()
+					if err != nil {
+						if err == io.EOF {
+							break
+						}
+						Expect(err).ShouldNot(HaveOccurred())
+					}
+					status2[string(resp2.Entry.Order.OrderId)] = struct{}{}
+				}
+				isDeadlocked = false
+			}()
+
+			time.Sleep(10 * time.Second)
+			Expect(isDeadlocked).To(Equal(false))
 		})
 
 	})
@@ -164,66 +432,59 @@ var _ = Describe("Darknode", func() {
 	// })
 })
 
-func sendOrders(nodes Darknodes, numberOfOrders int) error {
-
-	// Generate buy-sell order pairs
-	buyOrders, sellOrders := make([]*order.Order, numberOfOrders), make([]*order.Order, numberOfOrders)
-	for i := 0; i < numberOfOrders; i++ {
-		price := i * 1000000000000
-		amount := i * 1000000000000
-
-		nonce, err := stackint.Random(rand.Reader, &smpc.Prime)
-		if err != nil {
-			return err
-		}
-
-		sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour),
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, stackint.FromUint(uint(price)), stackint.FromUint(uint(amount)),
-			stackint.FromUint(uint(amount)), nonce)
-		sellOrders[i] = sellOrder
-
-		buyOrder := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour),
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, stackint.FromUint(uint(price)), stackint.FromUint(uint(amount)),
-			stackint.FromUint(uint(amount)), nonce)
-		buyOrders[i] = buyOrder
-	}
-
-	// Send order fragment to the nodes
-	totalNodes := len(nodes)
-	traderKeystore, err := crypto.RandomKeystore()
-	Expect(err).ShouldNot(HaveOccurred())
-	traderAddr := traderKeystore.Address()
-	trader, _ := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/80/republic/%s", traderAddr))
-	prime, _ := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-
+func createTestRelayClient() (relayer.Relay_SyncClient, *client.Conn, context.CancelFunc, error) {
+	// Create a relayer client to sync with the orderbook
 	crypter := crypto.NewWeakCrypter()
-	connPool := client.NewConnPool(256)
-	defer connPool.Close()
-	smpcerClient := smpcer.NewClient(&crypter, trader, &connPool)
 
-	for i := 0; i < numberOfOrders; i++ {
-		buyOrder, sellOrder := buyOrders[i], sellOrders[i]
-		log.Printf("sending buy/sell pair (%s, %s)", buyOrder.ID, sellOrder.ID)
-		buyShares, err := buyOrder.Split(int64(totalNodes), int64((totalNodes+1)*2/3), &prime)
-		if err != nil {
-			return err
-		}
-		sellShares, err := sellOrder.Split(int64(totalNodes), int64((totalNodes+1)*2/3), &prime)
-		if err != nil {
-			return err
-		}
-
-		for _, shares := range [][]*order.Fragment{buyShares, sellShares} {
-			do.CoForAll(shares, func(j int) {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-
-				if err := smpcerClient.OpenOrder(ctx, nodes[j].MultiAddress(), *shares[j]); err != nil {
-					log.Printf("cannot send order fragment to %s: %v", nodes[j].Address(), err)
-				}
-			})
-		}
+	conn, err := client.Dial(context.Background(), env.Darknodes[0].MultiAddress())
+	if err != nil {
+		return nil, &(client.Conn{}), nil, err
 	}
 
-	return nil
+	traderKeystore, err := crypto.RandomKeystore()
+	if err != nil {
+		return nil, conn, nil, err
+	}
+	traderAddr := identity.Address(traderKeystore.Address())
+
+	relayClient := relayer.NewRelayClient(conn.ClientConn)
+	requestSignature, err := crypter.Sign(traderAddr)
+	if err != nil {
+		return nil, conn, nil, err
+	}
+
+	request := &relayer.SyncRequest{
+		Signature: requestSignature,
+		Address:   traderAddr.String(),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	stream, err := relayClient.Sync(ctx, request)
+	if err != nil {
+		return nil, conn, nil, err
+	}
+	return stream, conn, cancel, nil
+}
+
+func createNewOrderFragments(buy bool) ([]*order.Fragment, error) {
+	// Create order fragment to send
+	n := int64(17)
+	k := int64(12)
+	primeVal, _ := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+	prime := &primeVal
+	price := stackint.FromUint(10)
+	minVolume := stackint.FromUint(100)
+	maxVolume := stackint.FromUint(1000)
+	nonce := stackint.One()
+	parity := order.ParityBuy
+	if !buy {
+		parity = order.ParitySell
+	}
+
+	fragments, err := order.NewOrder(order.TypeLimit, parity, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, price, maxVolume, minVolume, nonce).Split(n, k, prime)
+	if err != nil {
+		return nil, err
+	}
+
+	return fragments, nil
 }
