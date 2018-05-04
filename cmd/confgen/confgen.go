@@ -3,8 +3,9 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
-	"os"
+
 
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/crypto"
@@ -15,8 +16,6 @@ import (
 
 func main() {
 	host := flag.String("host", "0.0.0.0", "ip address of the node")
-	fileName := flag.String("name", "config.json", "config file name")
-
 
 	flag.Parse()
 
@@ -48,13 +47,10 @@ func main() {
 		},
 	}
 
-	file, err := os.Create(*fileName)
+	bytes, err := json.Marshal(conf)
 	if err != nil {
-		log.Fatalf("cannot create file: %v", err)
+		log.Fatal(err)
 	}
-	defer file.Close()
 
-	if err := json.NewEncoder(file).Encode(conf); err != nil {
-		log.Fatalf("cannot write conf to file: %v", err)
-	}
+	fmt.Println(string(bytes))
 }
