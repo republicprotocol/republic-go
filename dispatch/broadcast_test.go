@@ -2,8 +2,8 @@ package dispatch_test
 
 import (
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/republic-go/dispatch"
+	// . "github.com/onsi/gomega"
+	// . "github.com/republicprotocol/republic-go/dispatch"
 )
 
 var _ = Describe("Broadcaster", func() {
