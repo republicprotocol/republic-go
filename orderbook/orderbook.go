@@ -88,7 +88,6 @@ func (orderbook *Orderbook) Listen(done <-chan struct{}) <-chan Entry {
 						case <-orderbook.broadcasterChDone:
 							return
 						case subscriber <- msg:
-							return
 						}
 					}
 				}

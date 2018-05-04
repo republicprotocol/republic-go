@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -20,6 +21,16 @@ import (
 // TODO: Regression testing for deadlocks when synchronizing the orderbook.
 
 var _ = Describe("Darknode", func() {
+
+	mu := new(sync.Mutex)
+
+	BeforeEach(func() {
+		mu.Lock()
+	})
+
+	AfterEach(func() {
+		mu.Unlock()
+	})
 
 	Context("when opening orders", func() {
 
@@ -56,33 +67,49 @@ var _ = Describe("Darknode", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		}, 60)
 
-		It("should not match orders that are incompatible", func(done Done) {
+		FIt("should not match orders that are incompatible", func(done Done) {
+
 			stream, conn, cancel, err := createTestRelayClient()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			go func() {
-				defer close(done)
 				defer GinkgoRecover()
+				defer close(done)
 				defer cancel()
 				defer conn.Close()
 
-				// time.Sleep(1*time.Second)
-				matched := map[string]struct{}{}
-				for len(matched) < 30 {
+				opened := map[string]struct{}{}
+				unconfirmed := map[string]struct{}{}
+				confirmed := map[string]struct{}{}
+				settled := map[string]struct{}{}
+				canceled := map[string]struct{}{}
+				for len(opened) < 30 {
 					syncResp, err := stream.Recv()
 					if err != nil {
 						if err == io.EOF {
-							log.Println("EOF")
 							break
 						}
 						Expect(err).ShouldNot(HaveOccurred())
 					}
-					log.Printf("received message: %v", syncResp.Entry.OrderStatus)
-					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Unconfirmed {
-						matched[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					switch syncResp.Entry.OrderStatus {
+					case relayer.OrderStatus_Open:
+						opened[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Unconfirmed:
+						unconfirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Confirmed:
+						confirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Settled:
+						settled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Canceled:
+						canceled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					default:
 					}
 				}
-				Expect(len(matched)).Should(Equal(30))
+				Expect(len(opened)).Should(Equal(30))
+				Expect(len(unconfirmed)).Should(Equal(0))
+				Expect(len(confirmed)).Should(Equal(0))
+				Expect(len(settled)).Should(Equal(0))
+				Expect(len(canceled)).Should(Equal(0))
 			}()
 
 			for i := 0; i < 30; i++ {
