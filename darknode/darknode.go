@@ -62,7 +62,7 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 
 	// Get identity information from the Config
 	node.multiAddress = multiAddr
-	node.address = identity.Address(node.Config.Keystore.Address())
+	node.address = node.Config.Address
 	node.id = node.address.ID()
 	node.orderbook = orderbook.NewOrderbook(4)
 
