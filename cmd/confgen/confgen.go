@@ -14,7 +14,9 @@ import (
 )
 
 func main() {
-	fileName := flag.String("host", "0.0.0.0", "ip address of the node")
+	host := flag.String("host", "0.0.0.0", "ip address of the node")
+	fileName := flag.String("name", "config.json", "config file name")
+
 
 	flag.Parse()
 
@@ -25,7 +27,7 @@ func main() {
 
 	conf := darknode.Config{
 		Keystore:                keystore,
-		Host:                    *fileName,
+		Host:                    *host,
 		Port:                    "18514",
 		Address:                 identity.Address(keystore.Address()),
 		BootstrapMultiAddresses: []identity.MultiAddress{},
@@ -46,7 +48,7 @@ func main() {
 		},
 	}
 
-	file, err := os.Create("config.json")
+	file, err := os.Create(*fileName)
 	if err != nil {
 		log.Fatalf("cannot create file: %v", err)
 	}
