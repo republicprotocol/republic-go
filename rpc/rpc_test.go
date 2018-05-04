@@ -10,15 +10,15 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/rpc"
-	"github.com/republicprotocol/republic-go/rpc/status"
-	"google.golang.org/grpc"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/rpc/status"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stackint"
+	"google.golang.org/grpc"
 )
 
 var _ = Describe("rpc", func() {

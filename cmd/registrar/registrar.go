@@ -247,7 +247,7 @@ func GetPool(addresses []string, registrar dnr.DarknodeRegistry) error {
 
 	ocean := darkocean.NewDarkOcean(currentEpoch.Blockhash, nodes)
 	poolIndex := ocean.PoolIndex(address.Bytes())
-	log.Println(poolIndex)
+	fmt.Println(poolIndex)
 
 	return nil
 }
@@ -263,7 +263,7 @@ func CheckRegistration(addresses []string, registrar dnr.DarknodeRegistry) error
 	if err != nil {
 		return err
 	}
-	log.Println(isRegistered)
+	fmt.Println(isRegistered)
 
 	return nil
 }

@@ -56,7 +56,7 @@ func GetStatus(args []string) error {
 		return err
 	}
 
-	log.Println(rsp.Address, rsp.Bootstrapped, rsp.Peers)
+	fmt.Println(rsp.Address, rsp.Bootstrapped, rsp.Peers)
 
 	return nil
 }
