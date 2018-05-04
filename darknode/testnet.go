@@ -240,16 +240,16 @@ func NewLocalConfig(host, port string) (identity.MultiAddress, Config, error) {
 	}, nil
 }
 
-// SendMatchingOrders will send a user specified number of matching buy and sell
-// orders to the TestNet
-func (env *TestnetEnv) SendMatchingOrders(numberOfOrders int) error {
+// SendMatchingOrderPairs will send pairs of matching buys and sells to the
+// Darknodes.
+func (env *TestnetEnv) SendMatchingOrderPairs(numberOfOrderPairs int) error {
 
 	// Generate buy-sell order pairs
-	buyOrders, err := CreateOrders(numberOfOrders, true)
+	buyOrders, err := CreateOrders(numberOfOrderPairs, true)
 	if err != nil {
 		return err
 	}
-	sellOrders, err := CreateOrders(numberOfOrders, false)
+	sellOrders, err := CreateOrders(numberOfOrderPairs, false)
 	if err != nil {
 		return err
 	}
@@ -257,29 +257,6 @@ func (env *TestnetEnv) SendMatchingOrders(numberOfOrders int) error {
 	env.SendOrders(buyOrders)
 	env.SendOrders(sellOrders)
 	return nil
-}
-
-func CreateOrders(numberOfOrders int, isBuyOrder bool) ([]*order.Order, error) {
-	orders := make([]*order.Order, numberOfOrders)
-	for i := 0; i < numberOfOrders; i++ {
-		price := i * 1000000000000
-		amount := i * 1000000000000
-
-		nonce, err := stackint.Random(rand.Reader, &smpc.Prime)
-		if err != nil {
-			return []*order.Order{}, err
-		}
-
-		parity := order.ParityBuy
-		if !isBuyOrder {
-			parity = order.ParitySell
-		}
-		ord := order.NewOrder(order.TypeLimit, parity, time.Now().Add(time.Hour),
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, stackint.FromUint(uint(price)), stackint.FromUint(uint(amount)),
-			stackint.FromUint(uint(amount)), nonce)
-		orders[i] = ord
-	}
-	return orders, nil
 }
 
 // SendOrders will send a list of orders to the TestNet
@@ -313,4 +290,27 @@ func (env *TestnetEnv) SendOrders(orders []*order.Order) error {
 		})
 	}
 	return nil
+}
+
+func CreateOrders(numberOfOrders int, isBuyOrder bool) ([]*order.Order, error) {
+	orders := make([]*order.Order, numberOfOrders)
+	for i := 0; i < numberOfOrders; i++ {
+		price := i * 1000000000000
+		amount := i * 1000000000000
+
+		nonce, err := stackint.Random(rand.Reader, &smpc.Prime)
+		if err != nil {
+			return []*order.Order{}, err
+		}
+
+		parity := order.ParityBuy
+		if !isBuyOrder {
+			parity = order.ParitySell
+		}
+		ord := order.NewOrder(order.TypeLimit, parity, time.Now().Add(time.Hour),
+			order.CurrencyCodeETH, order.CurrencyCodeBTC, stackint.FromUint(uint(price)), stackint.FromUint(uint(amount)),
+			stackint.FromUint(uint(amount)), nonce)
+		orders[i] = ord
+	}
+	return orders, nil
 }

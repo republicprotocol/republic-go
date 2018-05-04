@@ -94,11 +94,20 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 	node.orderFragmentsCanceled = make(chan order.ID, 1)
 	node.rpc = rpc.NewRPC(node.crypter, node.multiAddress, &node.orderbook)
 	node.rpc.OnOpenOrder(func(sig []byte, orderFragment order.Fragment) error {
+		entry := orderbook.NewEntry(order.Order{
+			ID: orderFragment.OrderID,
+		}, order.Open)
+		if err := node.orderbook.Open(entry); err != nil {
+			return err
+		}
 		node.orderFragments <- orderFragment
 		return nil
 	})
 
 	node.rpc.OnCancelOrder(func(sig []byte, orderID order.ID) error {
+		if err := node.orderbook.Cancel(orderID); err != nil {
+			return err
+		}
 		node.orderFragmentsCanceled <- orderID
 		return nil
 	})
