@@ -76,6 +76,7 @@ func (relay *Relay) writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Reque
 	for {
 		select {
 		case message, ok := <-messages:
+			fmt.Println(fmt.Sprintf("received message with status: %d", message.Status))
 			if !ok {
 				return
 			}
@@ -85,6 +86,7 @@ func (relay *Relay) writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Reque
 			// Loop through specified statuses.
 			for _, status := range orderStatuses {
 				if status == message.Status {
+					fmt.Println(fmt.Sprintf("sending message for %d", status))
 					conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 					if err := conn.WriteJSON(message); err != nil {
 						fmt.Printf("cannot send json: %v", err) // FIXME: Use a logger

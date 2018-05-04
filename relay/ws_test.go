@@ -20,7 +20,7 @@ import (
 
 var _ = Describe("WebSocket streaming", func() {
 
-	FContext("when connecting to the socket", func() {
+	Context("when connecting to the socket", func() {
 		It("should error for missing parameters", func() {
 			book := orderbook.NewOrderbook()
 			relay := NewRelay(Config{}, dnr.DarknodeRegistry{}, &book, nil, nil, nil)
@@ -187,7 +187,7 @@ var _ = Describe("WebSocket streaming", func() {
 			u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ&status=unconfirmed,confirmed"
 			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
 
-			// We should be able to read the initial message.
+			// Open an order with the specified ID.
 			err := book.Open(ord)
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -207,6 +207,7 @@ var _ = Describe("WebSocket streaming", func() {
 			err = json.Unmarshal(message, &socketMessage)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(socketMessage.Status).Should(Equal(order.Confirmed))
+
 			Ω(messageType).Should(Equal(websocket.TextMessage))
 			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
 
@@ -232,12 +233,9 @@ var _ = Describe("WebSocket streaming", func() {
 			ord.MinVolume = defaultStackVal
 			ord.Nonce = defaultStackVal
 
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				// Open an order with the specified ID.
-				book.Open(ord)
-			}()
+			// Open an order with the specified ID.
+			err := book.Open(ord)
+			Ω(err).ShouldNot(HaveOccurred())
 
 			// Connect to the socket.
 			server := httptest.NewServer(RecoveryHandler(relay.GetOrdersHandler()))
@@ -247,20 +245,13 @@ var _ = Describe("WebSocket streaming", func() {
 			u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ&status=unconfirmed,confirmed"
 			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
 
-			// We should be able to read the initial message.
-			_, message, err := conn.ReadMessage()
-			var socketMessage orderbook.Entry
-			err = json.Unmarshal(message, &socketMessage)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(socketMessage.Order.ID).Should(Equal(ord.ID))
-
 			// We should not receive the following message, as we have not
 			// included the status as a parameter.
 			book.Settle(ord)
+			conn.SetReadDeadline(time.Now().Add(time.Second))
 			messageType, _, err := conn.ReadMessage()
 			Ω(messageType).Should(Equal(-1))
-			// TODO: Check for websocket error responses.
-			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(true))
+			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
 
 			wg.Wait()
 		})

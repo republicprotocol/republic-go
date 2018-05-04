@@ -2,7 +2,6 @@ package orderbook
 
 import (
 	"errors"
-	"log"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
@@ -146,7 +145,6 @@ func (orderbook *Orderbook) Match(ord order.Order) error {
 
 // Confirm is called when the order has been confirmed by the hyperdrive.
 func (orderbook *Orderbook) Confirm(ord order.Order) error {
-	log.Println("confirming")
 	if err := orderbook.cache.Confirm(ord); err != nil {
 		return err
 	}
