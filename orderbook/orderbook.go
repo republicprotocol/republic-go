@@ -2,6 +2,7 @@ package orderbook
 
 import (
 	"errors"
+	"log"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
@@ -12,12 +13,12 @@ import (
 var ErrWriteToClosedOrderbook = errors.New("write to closed orderbook")
 
 type Syncer interface {
-	Open(entry Entry) error
-	Match(entry Entry) error
-	Confirm(entry Entry) error
-	Release(entry Entry) error
-	Settle(entry Entry) error
-	Cancel(id order.ID) error
+	Open(order order.Order) error
+	Match(order order.Order) error
+	Confirm(order order.Order) error
+	Release(order order.Order) error
+	Settle(order order.Order) error
+	Cancel(order order.Order) error
 	Blocks() []Entry
 	Order(id order.ID) Entry
 }
@@ -88,7 +89,6 @@ func (orderbook *Orderbook) Listen(done <-chan struct{}) <-chan Entry {
 						case <-orderbook.broadcasterChDone:
 							return
 						case subscriber <- msg:
-							return
 						}
 					}
 				}
@@ -111,11 +111,13 @@ func (orderbook *Orderbook) Listen(done <-chan struct{}) <-chan Entry {
 }
 
 // Open is called when we first receive the order fragment.
-func (orderbook *Orderbook) Open(entry Entry) error {
-	if err := orderbook.cache.Open(entry); err != nil {
+func (orderbook *Orderbook) Open(ord order.Order) error {
+	if err := orderbook.cache.Open(ord); err != nil {
 		return err
 	}
-	// orderbook.database.Open(entry)
+	// orderbook.database.Open(ord)
+
+	entry := NewEntry(order.Order{ID: ord.ID}, order.Open)
 
 	select {
 	case <-orderbook.broadcasterChDone:
@@ -126,11 +128,13 @@ func (orderbook *Orderbook) Open(entry Entry) error {
 }
 
 // Match is called when we discover a match for the order.
-func (orderbook *Orderbook) Match(entry Entry) error {
-	if err := orderbook.cache.Match(entry); err != nil {
+func (orderbook *Orderbook) Match(ord order.Order) error {
+	if err := orderbook.cache.Match(ord); err != nil {
 		return err
 	}
-	// orderbook.database.Match(entry)
+	// orderbook.database.Match(ord)
+
+	entry := NewEntry(order.Order{ID: ord.ID}, order.Unconfirmed)
 
 	select {
 	case <-orderbook.broadcasterChDone:
@@ -141,11 +145,14 @@ func (orderbook *Orderbook) Match(entry Entry) error {
 }
 
 // Confirm is called when the order has been confirmed by the hyperdrive.
-func (orderbook *Orderbook) Confirm(entry Entry) error {
-	if err := orderbook.cache.Confirm(entry); err != nil {
+func (orderbook *Orderbook) Confirm(ord order.Order) error {
+	log.Println("confirming")
+	if err := orderbook.cache.Confirm(ord); err != nil {
 		return err
 	}
-	// orderbook.database.Confirm(entry)
+	// orderbook.database.Confirm(ord)
+
+	entry := NewEntry(order.Order{ID: ord.ID}, order.Confirmed)
 
 	select {
 	case <-orderbook.broadcasterChDone:
@@ -156,11 +163,13 @@ func (orderbook *Orderbook) Confirm(entry Entry) error {
 }
 
 // Release is called when the order has been denied by the hyperdrive.
-func (orderbook *Orderbook) Release(entry Entry) error {
-	if err := orderbook.cache.Release(entry); err != nil {
+func (orderbook *Orderbook) Release(ord order.Order) error {
+	if err := orderbook.cache.Release(ord); err != nil {
 		return err
 	}
-	// orderbook.database.Release(entry)
+	// orderbook.database.Release(ord)
+
+	entry := NewEntry(order.Order{ID: ord.ID}, order.Canceled)
 
 	select {
 	case <-orderbook.broadcasterChDone:
@@ -171,11 +180,13 @@ func (orderbook *Orderbook) Release(entry Entry) error {
 }
 
 // Settle is called when the order is settled.
-func (orderbook *Orderbook) Settle(entry Entry) error {
-	if err := orderbook.cache.Settle(entry); err != nil {
+func (orderbook *Orderbook) Settle(ord order.Order) error {
+	if err := orderbook.cache.Settle(ord); err != nil {
 		return err
 	}
-	// orderbook.database.Settle(entry)
+	// orderbook.database.Settle(ord)
+
+	entry := NewEntry(order.Order{ID: ord.ID}, order.Settled)
 
 	select {
 	case <-orderbook.broadcasterChDone:
@@ -186,8 +197,8 @@ func (orderbook *Orderbook) Settle(entry Entry) error {
 }
 
 // Cancel is called when the order is canceled.
-func (orderbook *Orderbook) Cancel(id order.ID) error {
-	if err := orderbook.cache.Cancel(id); err != nil {
+func (orderbook *Orderbook) Cancel(ord order.Order) error {
+	if err := orderbook.cache.Cancel(ord); err != nil {
 		return err
 	}
 	// err = orderbook.database.Cancel(id)
@@ -195,7 +206,7 @@ func (orderbook *Orderbook) Cancel(id order.ID) error {
 	// 	return err
 	// }
 
-	entry := NewEntry(order.Order{ID: id}, order.Canceled)
+	entry := NewEntry(order.Order{ID: ord.ID}, order.Canceled)
 
 	select {
 	case <-orderbook.broadcasterChDone:

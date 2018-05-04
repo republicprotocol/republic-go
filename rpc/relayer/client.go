@@ -12,7 +12,6 @@ import (
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/rpc/client"
 	"github.com/republicprotocol/republic-go/rpc/dht"
@@ -183,16 +182,16 @@ func MergeEntry(book *orderbook.Orderbook, val *SyncResponse) error {
 	var err error
 	switch val.GetEntry().GetOrderStatus() {
 	case OrderStatus_Open:
-		err = book.Open(orderbook.NewEntry(ord, order.Open))
+		err = book.Open(ord)
 	case OrderStatus_Canceled:
-		err = book.Cancel(ord.ID)
+		err = book.Cancel(ord)
 	case OrderStatus_Unconfirmed:
-		err = book.Match(orderbook.NewEntry(ord, order.Unconfirmed))
+		err = book.Match(ord)
 	case OrderStatus_Confirmed:
 		log.Println("CONFIRM")
-		err = book.Confirm(orderbook.NewEntry(ord, order.Confirmed))
+		err = book.Confirm(ord)
 	case OrderStatus_Settled:
-		err = book.Settle(orderbook.NewEntry(ord, order.Settled))
+		err = book.Settle(ord)
 	default:
 		return fmt.Errorf("cannot merge entry: status %v", val.GetEntry().GetOrderStatus())
 	}
