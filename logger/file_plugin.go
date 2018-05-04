@@ -51,10 +51,7 @@ func (plugin *FilePlugin) Start() error {
 func (plugin *FilePlugin) Stop() error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
-	if plugin.file == os.Stdout {
-		return nil
-	}
-	if plugin.file == os.Stderr {
+	if plugin.file == os.Stdout || plugin.file == os.Stderr {
 		return nil
 	}
 	return plugin.file.Close()
