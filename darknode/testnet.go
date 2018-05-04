@@ -118,11 +118,10 @@ func (env *TestnetEnv) Teardown() error {
 // FIXME: Store the errors in a buffer that can be inspected after the test.
 func (env *TestnetEnv) Run() {
 	dispatch.CoForAll(env.Darknodes, func(i int) {
-		env.Darknodes[i].Run(env.done)
 		// Ignoring errors as this is a local testnet
-		// for err := range env.Darknodes[i].Run(env.done) {
-		// 	log.Printf("darknode run-time error: %v", err)
-		// }
+		for err := range env.Darknodes[i].Run(env.done) {
+			log.Printf("darknode run-time error: %v", err)
+		}
 	})
 }
 
@@ -241,9 +240,9 @@ func NewLocalConfig(host, port string) (identity.MultiAddress, Config, error) {
 	}, nil
 }
 
-// SendBuyAndSellOrders will send a user specified number of buy and sell
+// SendMatchingOrders will send a user specified number of matching buy and sell
 // orders to the TestNet
-func (env *TestnetEnv) SendBuyAndSellOrders(numberOfOrders int) error {
+func (env *TestnetEnv) SendMatchingOrders(numberOfOrders int) error {
 
 	// Generate buy-sell order pairs
 	buyOrders, err := CreateOrders(numberOfOrders, true)
@@ -254,43 +253,9 @@ func (env *TestnetEnv) SendBuyAndSellOrders(numberOfOrders int) error {
 	if err != nil {
 		return err
 	}
-	// Send order fragment to the nodes
+	// Send order fragments to the nodes
 	env.SendOrders(buyOrders)
 	env.SendOrders(sellOrders)
-	// totalNodes := len(env.Darknodes)
-
-	// trader := env.Darknodes[0].MultiAddress()
-	// prime, _ := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-
-	// crypter := crypto.NewWeakCrypter()
-	// connPool := client.NewConnPool(256)
-	// defer connPool.Close()
-	// smpcerClient := smpcer.NewClient(&crypter, trader, &connPool)
-
-	// for i := 0; i < numberOfOrders*2; i++ {
-	// 	buyOrder, sellOrder := buyOrders[i], sellOrders[i]
-	// 	log.Printf("sending buy/sell pair (%s, %s)", buyOrder.ID, sellOrder.ID)
-	// 	buyShares, err := buyOrder.Split(int64(totalNodes), int64((totalNodes+1)*2/3), &prime)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	sellShares, err := sellOrder.Split(int64(totalNodes), int64((totalNodes+1)*2/3), &prime)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	for _, shares := range [][]*order.Fragment{buyShares, sellShares} {
-	// 		dispatch.CoForAll(shares, func(j int) {
-	// 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	// 			defer cancel()
-
-	// 			if err := smpcerClient.OpenOrder(ctx, env.Darknodes[j].MultiAddress(), *shares[j]); err != nil {
-	// 				log.Printf("cannot send order fragment to %s: %v", env.Darknodes[j].Address(), err)
-	// 			}
-	// 		})
-	// 	}
-	// }
-
 	return nil
 }
 
@@ -347,6 +312,5 @@ func (env *TestnetEnv) SendOrders(orders []*order.Order) error {
 			}
 		})
 	}
-
 	return nil
 }

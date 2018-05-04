@@ -22,7 +22,7 @@ var _ = Describe("Darknode", func() {
 
 	Context("when opening orders", func() {
 
-		FIt("should update the orderbook with an open order", func(done Done) {
+		It("should update the orderbook with an open order", func(done Done) {
 			stream, conn, cancel, err := createTestRelayClient()
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -57,6 +57,7 @@ var _ = Describe("Darknode", func() {
 					case relayer.OrderStatus_Canceled:
 						canceled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
 					default:
+						break
 					}
 				}
 				Expect(len(opened)).Should(Equal(30))
@@ -66,7 +67,7 @@ var _ = Describe("Darknode", func() {
 				Expect(len(canceled)).Should(Equal(0))
 			}()
 
-			err = env.SendBuyAndSellOrders(30)
+			err = env.SendMatchingOrders(30)
 			Expect(err).ShouldNot(HaveOccurred())
 		}, 60)
 
@@ -125,31 +126,46 @@ var _ = Describe("Darknode", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			go func() {
-				defer close(done)
 				defer GinkgoRecover()
+				defer close(done)
 				defer cancel()
 				defer conn.Close()
 
-				// time.Sleep(1*time.Second)
-				matched := map[string]struct{}{}
-				for len(matched) < 30 {
+				opened := map[string]struct{}{}
+				unconfirmed := map[string]struct{}{}
+				confirmed := map[string]struct{}{}
+				settled := map[string]struct{}{}
+				canceled := map[string]struct{}{}
+				for len(unconfirmed) < 30 {
 					syncResp, err := stream.Recv()
 					if err != nil {
 						if err == io.EOF {
-							log.Println("EOF")
 							break
 						}
 						Expect(err).ShouldNot(HaveOccurred())
 					}
-					log.Printf("received message: %v", syncResp.Entry.OrderStatus)
-					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Unconfirmed {
-						matched[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					switch syncResp.Entry.OrderStatus {
+					case relayer.OrderStatus_Open:
+						opened[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Unconfirmed:
+						unconfirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Confirmed:
+						confirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Settled:
+						settled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Canceled:
+						canceled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					default:
 					}
 				}
-				Expect(len(matched)).Should(Equal(30))
+				Expect(len(opened)).Should(Equal(30))
+				Expect(len(unconfirmed)).Should(Equal(30))
+				Expect(len(confirmed)).Should(Equal(0))
+				Expect(len(settled)).Should(Equal(0))
+				Expect(len(canceled)).Should(Equal(0))
 			}()
 
-			err = env.SendBuyAndSellOrders(30)
+			err = env.SendMatchingOrders(30)
 			Expect(err).ShouldNot(HaveOccurred())
 			time.Sleep(30 * time.Second)
 
@@ -160,33 +176,47 @@ var _ = Describe("Darknode", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			go func() {
-				defer close(done)
 				defer GinkgoRecover()
+				defer close(done)
 				defer cancel()
 				defer conn.Close()
 
-				// time.Sleep(1*time.Second)
-				matched := map[string]struct{}{}
-				for len(matched) < 30 {
+				opened := map[string]struct{}{}
+				unconfirmed := map[string]struct{}{}
+				confirmed := map[string]struct{}{}
+				settled := map[string]struct{}{}
+				canceled := map[string]struct{}{}
+				for len(confirmed) < 30 {
 					syncResp, err := stream.Recv()
 					if err != nil {
 						if err == io.EOF {
-							log.Println("EOF")
 							break
 						}
 						Expect(err).ShouldNot(HaveOccurred())
 					}
-					log.Printf("received message: %v", syncResp.Entry.OrderStatus)
-					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Confirmed {
-						matched[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					switch syncResp.Entry.OrderStatus {
+					case relayer.OrderStatus_Open:
+						opened[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Unconfirmed:
+						unconfirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Confirmed:
+						confirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Settled:
+						settled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Canceled:
+						canceled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					default:
 					}
 				}
-				Expect(len(matched)).Should(Equal(30))
+				Expect(len(opened)).Should(Equal(0))
+				Expect(len(unconfirmed)).Should(Equal(0))
+				Expect(len(confirmed)).Should(Equal(30))
+				Expect(len(settled)).Should(Equal(0))
+				Expect(len(canceled)).Should(Equal(0))
 			}()
 
-			err = env.SendBuyAndSellOrders(30)
+			err = env.SendMatchingOrders(30)
 			Expect(err).ShouldNot(HaveOccurred())
-			time.Sleep(30 * time.Second)
 
 		}, 60 /* 1 minute timeout */)
 
@@ -195,33 +225,43 @@ var _ = Describe("Darknode", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			go func() {
-				defer close(done)
 				defer GinkgoRecover()
+				defer close(done)
 				defer cancel()
 				defer conn.Close()
 
-				// time.Sleep(1*time.Second)
-				matched := map[string]struct{}{}
-				openOrders := map[string]struct{}{}
-				for len(matched) < 30 {
+				opened := map[string]struct{}{}
+				unconfirmed := map[string]struct{}{}
+				confirmed := map[string]struct{}{}
+				settled := map[string]struct{}{}
+				canceled := map[string]struct{}{}
+				for len(confirmed) < 20 {
 					syncResp, err := stream.Recv()
 					if err != nil {
 						if err == io.EOF {
-							log.Println("EOF")
 							break
 						}
 						Expect(err).ShouldNot(HaveOccurred())
 					}
-					log.Printf("received message: %v", syncResp.Entry.OrderStatus)
-					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Open {
-						openOrders[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					switch syncResp.Entry.OrderStatus {
+					case relayer.OrderStatus_Open:
+						opened[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Unconfirmed:
+						unconfirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Confirmed:
+						confirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Settled:
+						settled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Canceled:
+						canceled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					default:
 					}
-					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Confirmed {
-						matched[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-					}
-
 				}
-				Expect(len(matched)).Should(Equal(20))
+				Expect(len(opened)).Should(Equal(30))
+				Expect(len(unconfirmed)).Should(Equal(0))
+				Expect(len(confirmed)).Should(Equal(20))
+				Expect(len(settled)).Should(Equal(0))
+				Expect(len(canceled)).Should(Equal(0))
 			}()
 
 			// Send 10 buy orders
@@ -280,7 +320,7 @@ var _ = Describe("Darknode", func() {
 				isDeadlocked = false
 			}()
 
-			err = env.SendBuyAndSellOrders(20)
+			err = env.SendMatchingOrders(20)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			time.Sleep(10 * time.Second)
@@ -289,19 +329,19 @@ var _ = Describe("Darknode", func() {
 		})
 
 		It("should not deadlock when the sync starts during the updates", func() {
-			err := env.SendBuyAndSellOrders(5)
+			err := env.SendMatchingOrders(5)
 			Expect(err).ShouldNot(HaveOccurred())
 			stream1, conn1, cancel1, err := createTestRelayClient()
 			defer conn1.Close()
 			defer cancel1()
 			Expect(err).ShouldNot(HaveOccurred())
-			err = env.SendBuyAndSellOrders(10)
+			err = env.SendMatchingOrders(10)
 			Expect(err).ShouldNot(HaveOccurred())
 			stream2, conn2, cancel2, err := createTestRelayClient()
 			defer conn2.Close()
 			defer cancel2()
 			Expect(err).ShouldNot(HaveOccurred())
-			err = env.SendBuyAndSellOrders(5)
+			err = env.SendMatchingOrders(5)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			isDeadlocked := true
@@ -335,7 +375,7 @@ var _ = Describe("Darknode", func() {
 		})
 
 		It("should not deadlock when the sync starts after the updates", func() {
-			err := env.SendBuyAndSellOrders(20)
+			err := env.SendMatchingOrders(20)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			stream1, conn1, cancel1, err := createTestRelayClient()
@@ -387,7 +427,7 @@ var _ = Describe("Darknode", func() {
 	// 		}
 
 	// 		By("sending orders...")
-	// 		err := SendBuyAndSellOrders(env.Darknodes, NumberOfOrdersPerSecond)
+	// 		err := SendMatchingOrders(env.Darknodes, NumberOfOrdersPerSecond)
 	// 		Expect(err).ShouldNot(HaveOccurred())
 
 	// 		By("verifying that nodes found matches...")
