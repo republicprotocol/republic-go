@@ -291,10 +291,10 @@ func (node *Darknode) MultiAddress() identity.MultiAddress {
 // OnOpenOrder implements the rpc.RelayDelegate interface.
 func (node *Darknode) OnOpenOrder(from identity.MultiAddress, orderFragment *order.Fragment) {
 	node.orderFragments <- *orderFragment
-	entry := orderbook.NewEntry(order.Order{
+	ord := order.Order{
 		ID: orderFragment.OrderID,
-	}, order.Open)
-	err := node.orderbook.Open(entry)
+	}
+	err := node.orderbook.Open(ord)
 	if err != nil {
 		node.Logger.Compute(logger.Error, err.Error())
 	}
@@ -310,16 +310,16 @@ func (node *Darknode) OrderMatchToHyperdrive(delta delta.Delta) error {
 	}
 
 	// Update the buy/sell orders in the orderbook
-	entryBuy := orderbook.NewEntry(order.Order{
+	orderBuy := order.Order{
 		ID: delta.BuyOrderID,
-	}, order.Unconfirmed)
-	if err := node.orderbook.Match(entryBuy); err != nil {
+	}
+	if err := node.orderbook.Match(orderBuy); err != nil {
 		return err
 	}
-	entrySell := orderbook.NewEntry(order.Order{
+	orderSell := order.Order{
 		ID: delta.SellOrderID,
-	}, order.Unconfirmed)
-	if err := node.orderbook.Match(entrySell); err != nil {
+	}
+	if err := node.orderbook.Match(orderSell); err != nil {
 		return err
 	}
 
@@ -352,14 +352,11 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 							return
 						}
 						if dep > depth {
-							entry := orderbook.Entry{
-								Order: order.Order{
-									ID: order.ID(value.Nonce),
-								},
-								Status: order.Confirmed,
+							ord := order.Order{
+								ID: order.ID(value.Nonce),
 							}
 							node.Logger.Info("Confirmed by hyperdrive. Let's go home !")
-							err := node.orderbook.Confirm(entry)
+							err := node.orderbook.Confirm(ord)
 							if err != nil {
 								errs <- err
 								return
@@ -367,13 +364,10 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 							delete(watchingList, key)
 						}
 					} else {
-						entry := orderbook.Entry{
-							Order: order.Order{
-								ID: order.ID(value.Nonce),
-							},
-							Status: order.Unconfirmed,
+						ord := order.Order{
+							ID: order.ID(value.Nonce),
 						}
-						err := node.orderbook.Release(entry)
+						err := node.orderbook.Release(ord)
 						if err != nil {
 							errs <- err
 							return
@@ -421,55 +415,37 @@ func (node *Darknode) checkOrderConsensus(dlt delta.Delta) error {
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.BuyOrderID), time.Now())
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.SellOrderID), time.Now())
 	} else if buyBlock == 0 {
-		buyOrderEntry := orderbook.Entry{
-			Order: order.Order{
-				ID: order.ID(dlt.BuyOrderID),
-			},
-			Status: order.Open,
+		buyOrder := order.Order{
+			ID: order.ID(dlt.BuyOrderID),
 		}
-		node.orderbook.Release(buyOrderEntry)
+		node.orderbook.Release(buyOrder)
 
-		sellOrderEntry := orderbook.Entry{
-			Order: order.Order{
-				ID: order.ID(dlt.SellOrderID),
-			},
-			Status: order.Confirmed,
+		sellOrder := order.Order{
+			ID: order.ID(dlt.SellOrderID),
 		}
-		node.orderbook.Confirm(sellOrderEntry)
+		node.orderbook.Confirm(sellOrder)
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.SellOrderID), time.Now())
 	} else if sellBlock == 0 {
-		buyOrderEntry := orderbook.Entry{
-			Order: order.Order{
-				ID: order.ID(dlt.BuyOrderID),
-			},
-			Status: order.Confirmed,
+		buyOrder := order.Order{
+			ID: order.ID(dlt.BuyOrderID),
 		}
-		node.orderbook.Confirm(buyOrderEntry)
+		node.orderbook.Confirm(buyOrder)
 
-		sellOrderEntry := orderbook.Entry{
-			Order: order.Order{
-				ID: order.ID(dlt.SellOrderID),
-			},
-			Status: order.Open,
+		sellOrder := order.Order{
+			ID: order.ID(dlt.SellOrderID),
 		}
-		node.orderbook.Release(sellOrderEntry)
+		node.orderbook.Release(sellOrder)
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.BuyOrderID), time.Now())
 	} else {
-		buyOrderEntry := orderbook.Entry{
-			Order: order.Order{
-				ID: order.ID(dlt.BuyOrderID),
-			},
-			Status: order.Confirmed,
+		buyOrder := order.Order{
+			ID: order.ID(dlt.BuyOrderID),
 		}
-		node.orderbook.Confirm(buyOrderEntry)
+		node.orderbook.Confirm(buyOrder)
 
-		sellOrderEntry := orderbook.Entry{
-			Order: order.Order{
-				ID: order.ID(dlt.SellOrderID),
-			},
-			Status: order.Confirmed,
+		sellOrder := order.Order{
+			ID: order.ID(dlt.SellOrderID),
 		}
-		node.orderbook.Confirm(sellOrderEntry)
+		node.orderbook.Confirm(sellOrder)
 
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.BuyOrderID), time.Now())
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.SellOrderID), time.Now())

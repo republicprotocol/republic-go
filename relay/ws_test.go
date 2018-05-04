@@ -160,7 +160,7 @@ var _ = Describe("WebSocket streaming", func() {
 			wg.Wait()
 		})
 
-		FIt("should provide information about specified statuses", func() {
+		It("should provide information about specified statuses", func() {
 			var wg sync.WaitGroup
 
 			book := orderbook.NewOrderbook()
