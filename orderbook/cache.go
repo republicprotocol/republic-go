@@ -13,6 +13,9 @@ type Cache struct {
 	ordersMu *sync.RWMutex
 	orders   map[string]Entry
 
+	orderFragmentsMu *sync.RWMutex
+	orderFragments   map[string]order.Fragment
+
 	cancelMu *sync.RWMutex
 	cancels  map[string]struct{}
 }
@@ -22,6 +25,9 @@ func NewCache() Cache {
 	return Cache{
 		ordersMu: new(sync.RWMutex),
 		orders:   map[string]Entry{},
+
+		orderFragmentsMu: new(sync.RWMutex),
+		orderFragments:   map[string]order.Fragment{},
 
 		cancelMu: new(sync.RWMutex),
 		cancels:  map[string]struct{}{},
@@ -187,6 +193,16 @@ func (cache *Cache) Order(id order.ID) Entry {
 	defer cache.ordersMu.RLock()
 
 	return cache.orders[string(id)]
+}
+
+func (cache *Cache) Clear() {
+	cache.ordersMu.Lock()
+	cache.cancelMu.Lock()
+	defer cache.ordersMu.Unlock()
+	defer cache.cancelMu.Unlock()
+
+	cache.orders = map[string]Entry{}
+	cache.cancels = map[string]struct{}{}
 }
 
 func (cache *Cache) storeOrderMessage(entry Entry) {

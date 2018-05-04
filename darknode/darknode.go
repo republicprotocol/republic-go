@@ -358,7 +358,7 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 						dep, err := node.hyperdriveContract.GetDepth(value.Nonce)
 						if err != nil {
 							errs <- err
-							return
+							continue
 						}
 						if dep > depth {
 							entry := orderbook.Entry{
@@ -367,11 +367,10 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 								},
 								Status: order.Confirmed,
 							}
-							node.Logger.Info("Confirmed by hyperdrive. Let's go home !")
-							err := node.orderbook.Confirm(entry)
-							if err != nil {
+							node.Logger.OrderConfirmed(logger.Info, order.ID(value.Nonce).String())
+							if err := node.orderbook.Confirm(entry); err != nil {
 								errs <- err
-								return
+								continue
 							}
 							delete(watchingList, key)
 						}
@@ -382,10 +381,10 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 							},
 							Status: order.Unconfirmed,
 						}
-						err := node.orderbook.Release(entry)
-						if err != nil {
+
+						if err := node.orderbook.Release(entry); err != nil {
 							errs <- err
-							return
+							continue
 						}
 						delete(watchingList, key)
 					}
@@ -401,6 +400,12 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 // RPC used by the Darknode.
 func (node *Darknode) RPC() *rpc.RPC {
 	return node.rpc
+}
+
+// ClearOrderbook of all entries. This is useful for testing, rebooting after a
+// long shutdown, or cleaning out corrupted state.
+func (node *Darknode) ClearOrderbook() {
+	node.orderbook.Clear()
 }
 
 func (node *Darknode) checkOrderConsensus(dlt delta.Delta) error {

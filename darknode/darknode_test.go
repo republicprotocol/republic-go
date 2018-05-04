@@ -3,6 +3,9 @@ package darknode_test
 import (
 	"context"
 	"io"
+	"log"
+	mathRnd "math/rand"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -20,6 +23,16 @@ import (
 var _ = Describe("Darknode", func() {
 
 	Context("when opening orders", func() {
+
+		// Serialize tests to prevent bleeding the orderbook.
+		testMu := new(sync.Mutex)
+		BeforeEach(func() {
+			testMu.Lock()
+			env.ClearOrderbooks()
+		})
+		AfterEach(func() {
+			testMu.Unlock()
+		})
 
 		It("should update the orderbook with an open order", func(done Done) {
 			stream, conn, cancel, err := createTestRelayClient()
@@ -84,14 +97,13 @@ var _ = Describe("Darknode", func() {
 				opened := map[string]struct{}{}
 				unconfirmed := map[string]struct{}{}
 				confirmed := map[string]struct{}{}
-				settled := map[string]struct{}{}
-				canceled := map[string]struct{}{}
 				for len(opened) < 30 {
 					syncResp, err := stream.Recv()
 					if err != nil {
 						if err == io.EOF {
 							break
 						}
+						log.Printf("opened = %d; unconfirmed = %d; confirmed = %d", len(opened), len(unconfirmed), len(confirmed))
 						Expect(err).ShouldNot(HaveOccurred())
 					}
 					switch syncResp.Entry.OrderStatus {
@@ -101,28 +113,20 @@ var _ = Describe("Darknode", func() {
 						unconfirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
 					case relayer.OrderStatus_Confirmed:
 						confirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-					case relayer.OrderStatus_Settled:
-						settled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-					case relayer.OrderStatus_Canceled:
-						canceled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
 					default:
 					}
 				}
 				Expect(len(opened)).Should(Equal(30))
-				// NOTE: Darknodes are likely to progress orders through beyond
-				// the opened state.
-				// Expect(len(unconfirmed)).Should(Equal(0))
-				// Expect(len(confirmed)).Should(Equal(0))
-				// Expect(len(settled)).Should(Equal(0))
-				Expect(len(canceled)).Should(Equal(0))
+				Expect(len(unconfirmed)).Should(Equal(0))
+				Expect(len(confirmed)).Should(Equal(0))
 			}()
 
 			orders, err := CreateOrders(30, true)
 			Expect(err).ShouldNot(HaveOccurred())
 			env.SendOrders(orders)
-		}, 60)
+		}, 30)
 
-		It("should confirm orders that are compatible", func(done Done) {
+		FIt("should confirm orders that are compatible", func(done Done) {
 			stream, conn, cancel, err := createTestRelayClient()
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -135,12 +139,13 @@ var _ = Describe("Darknode", func() {
 				opened := map[string]struct{}{}
 				unconfirmed := map[string]struct{}{}
 				confirmed := map[string]struct{}{}
-				for len(confirmed) < 60 {
+				for len(confirmed) < 200 {
 					syncResp, err := stream.Recv()
 					if err != nil {
 						if err == io.EOF {
 							break
 						}
+						log.Printf("opened = %d; unconfirmed = %d; confirmed = %d", len(opened), len(unconfirmed), len(confirmed))
 						Expect(err).ShouldNot(HaveOccurred())
 					}
 					switch syncResp.Entry.OrderStatus {
@@ -153,15 +158,15 @@ var _ = Describe("Darknode", func() {
 					default:
 					}
 				}
-				Expect(len(opened)).Should(Equal(60))
-				Expect(len(unconfirmed)).Should(Equal(60))
-				Expect(len(confirmed)).Should(Equal(60))
+				Expect(len(opened)).Should(Equal(200))
+				Expect(len(unconfirmed)).Should(Equal(200))
+				Expect(len(confirmed)).Should(Equal(200))
 			}()
 
-			err = env.SendMatchingOrderPairs(30) // Send 30 buys and 30 matching sells
+			err = env.SendMatchingOrderPairs(100) // Send 30 buys and 30 matching sells
 			Expect(err).ShouldNot(HaveOccurred())
 
-		}, 60 /* 1 minute timeout */)
+		}, 120 /* 2 minute timeout */)
 
 		It("should release orders that conflict with a confirmed order", func(done Done) {
 			stream, conn, cancel, err := createTestRelayClient()
@@ -181,6 +186,7 @@ var _ = Describe("Darknode", func() {
 						if err == io.EOF {
 							break
 						}
+						log.Printf("opened = %d; confirmed = %d", len(opened), len(confirmed))
 						Expect(err).ShouldNot(HaveOccurred())
 					}
 					switch syncResp.Entry.OrderStatus {
@@ -218,6 +224,16 @@ var _ = Describe("Darknode", func() {
 	})
 
 	Context("when synchronizing the orderbook", func() {
+
+		// Serialize tests to prevent bleeding the orderbook.
+		testMu := new(sync.Mutex)
+		BeforeEach(func() {
+			testMu.Lock()
+			env.ClearOrderbooks()
+		})
+		AfterEach(func() {
+			testMu.Unlock()
+		})
 
 		It("should not deadlock when the sync starts before the updates", func() {
 			stream1, conn1, cancel1, err := createTestRelayClient()
@@ -360,7 +376,8 @@ func createTestRelayClient() (relayer.Relay_SyncClient, *client.Conn, context.Ca
 	// Create a relayer client to sync with the orderbook
 	crypter := crypto.NewWeakCrypter()
 
-	conn, err := client.Dial(context.Background(), env.Darknodes[0].MultiAddress())
+	n := mathRnd.Intn(len(env.Darknodes))
+	conn, err := client.Dial(context.Background(), env.Darknodes[n].MultiAddress())
 	if err != nil {
 		return nil, &(client.Conn{}), nil, err
 	}
@@ -385,7 +402,7 @@ func createTestRelayClient() (relayer.Relay_SyncClient, *client.Conn, context.Ca
 	ctx, cancel := context.WithCancel(context.Background())
 	stream, err := relayClient.Sync(ctx, request)
 	if err != nil {
-		return nil, conn, nil, err
+		return nil, conn, cancel, err
 	}
 	return stream, conn, cancel, nil
 }

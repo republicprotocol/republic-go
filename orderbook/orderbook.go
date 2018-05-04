@@ -20,6 +20,7 @@ type Syncer interface {
 	Cancel(id order.ID) error
 	Blocks() []Entry
 	Order(id order.ID) Entry
+	Clear()
 }
 
 // An Orderbook is responsible for store the historical orders both in cache
@@ -213,4 +214,8 @@ func (orderbook *Orderbook) Blocks() []Entry {
 // Order retrieves information regarding an order.
 func (orderbook *Orderbook) Order(id order.ID) Entry {
 	return orderbook.cache.Order(id)
+}
+
+func (orderbook *Orderbook) Clear() {
+	orderbook.cache.Clear()
 }
