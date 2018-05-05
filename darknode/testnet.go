@@ -293,6 +293,7 @@ func NewLocalConfig(host, port string) (identity.MultiAddress, Config, error) {
 		return identity.MultiAddress{}, Config{}, err
 	}
 	return multiAddr, Config{
+		Address:  identity.Address(keystore.Address()),
 		Keystore: keystore,
 		Host:     host,
 		Port:     port,
