@@ -10,7 +10,7 @@ import (
 
 var _ = Describe("Broadcaster", func() {
 
-	FContext("when shutting down", func() {
+	Context("when shutting down", func() {
 
 		It("should not block existing broadcasts after shutting down", func(done Done) {
 			signal := make(chan struct{})
