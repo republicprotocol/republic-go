@@ -37,7 +37,7 @@ var _ = Describe("Darknode", func() {
 	Context("when opening orders", func() {
 
 		It("should not match orders that are incompatible", func(done Done) {
-			numberOfOrders := 32
+			numberOfOrders := 8
 			stream, conn, cancel, err := createTestRelayClient()
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -81,7 +81,7 @@ var _ = Describe("Darknode", func() {
 		}, 60 /* 1 minute timeout */)
 
 		It("should confirm orders that are compatible", func(done Done) {
-			numberOfOrderPairs := 32
+			numberOfOrderPairs := 8
 			stream, conn, cancel, err := createTestRelayClient()
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -124,8 +124,8 @@ var _ = Describe("Darknode", func() {
 		}, 120 /* 2 minute timeout */)
 
 		It("should release orders that conflict with a confirmed order", func(done Done) {
-			numberOfOrderPairs := 16
-			numberOfExcessSellOrders := 16
+			numberOfOrderPairs := 8
+			numberOfExcessSellOrders := 8
 			stream, conn, cancel, err := createTestRelayClient()
 			Expect(err).ShouldNot(HaveOccurred())
 
