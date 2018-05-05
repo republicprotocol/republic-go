@@ -309,6 +309,16 @@ func (node *Darknode) OnOpenOrder(from identity.MultiAddress, orderFragment *ord
 	}
 }
 
+// OnReleaseOrder re-opens an order that was previously in a different state.
+func (node *Darknode) OnReleaseOrder(orderID order.ID) {
+	entry := orderbook.NewEntry(order.Order{
+		ID: orderID,
+	}, order.Open)
+	if err := node.orderbook.Release(entry); err != nil {
+		node.Logger.Compute(logger.Error, err.Error())
+	}
+}
+
 // OrderMatchToHyperdrive converts an order match into a hyperdrive.Tx and
 // forwards it to the Hyperdrive.
 func (node *Darknode) OrderMatchToHyperdrive(delta delta.Delta) error {
@@ -375,17 +385,7 @@ func (node *Darknode) WatchForHyperdriveContract(done <-chan struct{}, depth uin
 							delete(watchingList, key)
 						}
 					} else {
-						entry := orderbook.Entry{
-							Order: order.Order{
-								ID: order.ID(value.Nonce),
-							},
-							Status: order.Unconfirmed,
-						}
-
-						if err := node.orderbook.Release(entry); err != nil {
-							errs <- err
-							continue
-						}
+						node.OnReleaseOrder(order.ID(value.Nonce))
 						delete(watchingList, key)
 					}
 				}
@@ -435,14 +435,6 @@ func (node *Darknode) checkOrderConsensus(dlt delta.Delta) error {
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.BuyOrderID), time.Now())
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.SellOrderID), time.Now())
 	} else if buyBlock == 0 {
-		buyOrderEntry := orderbook.Entry{
-			Order: order.Order{
-				ID: order.ID(dlt.BuyOrderID),
-			},
-			Status: order.Open,
-		}
-		node.orderbook.Release(buyOrderEntry)
-
 		sellOrderEntry := orderbook.Entry{
 			Order: order.Order{
 				ID: order.ID(dlt.SellOrderID),
@@ -450,6 +442,7 @@ func (node *Darknode) checkOrderConsensus(dlt delta.Delta) error {
 			Status: order.Confirmed,
 		}
 		node.orderbook.Confirm(sellOrderEntry)
+		node.OnReleaseOrder(order.ID(dlt.BuyOrderID))
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.SellOrderID), time.Now())
 	} else if sellBlock == 0 {
 		buyOrderEntry := orderbook.Entry{
@@ -459,14 +452,7 @@ func (node *Darknode) checkOrderConsensus(dlt delta.Delta) error {
 			Status: order.Confirmed,
 		}
 		node.orderbook.Confirm(buyOrderEntry)
-
-		sellOrderEntry := orderbook.Entry{
-			Order: order.Order{
-				ID: order.ID(dlt.SellOrderID),
-			},
-			Status: order.Open,
-		}
-		node.orderbook.Release(sellOrderEntry)
+		node.OnReleaseOrder(order.ID(dlt.SellOrderID))
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.BuyOrderID), time.Now())
 	} else {
 		buyOrderEntry := orderbook.Entry{
@@ -475,16 +461,14 @@ func (node *Darknode) checkOrderConsensus(dlt delta.Delta) error {
 			},
 			Status: order.Confirmed,
 		}
-		node.orderbook.Confirm(buyOrderEntry)
-
 		sellOrderEntry := orderbook.Entry{
 			Order: order.Order{
 				ID: order.ID(dlt.SellOrderID),
 			},
 			Status: order.Confirmed,
 		}
+		node.orderbook.Confirm(buyOrderEntry)
 		node.orderbook.Confirm(sellOrderEntry)
-
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.BuyOrderID), time.Now())
 		node.hyperdriveNonces <- hyperdrive.NewNonceWithTimestamp([]byte(dlt.SellOrderID), time.Now())
 	}

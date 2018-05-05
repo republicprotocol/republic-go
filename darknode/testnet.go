@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	mathRand "math/rand"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -134,19 +135,25 @@ func (env *TestnetEnv) ClearOrderbooks() {
 // SendMatchingOrderPairs will send pairs of matching buys and sells to the
 // Darknodes.
 func (env *TestnetEnv) SendMatchingOrderPairs(numberOfOrderPairs int) error {
-
-	// Generate buy-sell order pairs
 	buyOrders, err := CreateOrders(numberOfOrderPairs, true)
 	if err != nil {
 		return err
 	}
-	sellOrders, err := CreateOrders(numberOfOrderPairs, false)
-	if err != nil {
-		return err
+	orders := make([]*order.Order, 0, 2*len(buyOrders))
+	for _, buyOrder := range buyOrders {
+		orders = append(orders, buyOrder)
+
+		var err error
+		sellOrder := *buyOrder
+		sellOrder.Parity = order.ParitySell
+		sellOrder.Nonce, err = stackint.Random(rand.Reader, &smpc.Prime)
+		if err != nil {
+			return err
+		}
+		sellOrder.ID = order.ID(sellOrder.Hash())
+		orders = append(orders, &sellOrder)
 	}
-	// Send order fragments to the nodes
-	env.SendOrders(buyOrders)
-	env.SendOrders(sellOrders)
+	env.SendOrders(orders)
 	return nil
 }
 
@@ -174,11 +181,11 @@ func (env *TestnetEnv) SendOrders(orders []*order.Order) error {
 		dispatch.CoForAll(shares, func(j int) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-
 			if err := smpcerClient.OpenOrder(ctx, env.Darknodes[j].MultiAddress(), *shares[j]); err != nil {
 				log.Printf("cannot send order fragment to %s: %v", env.Darknodes[j].Address(), err)
 			}
 		})
+		time.Sleep(time.Second)
 	}
 	return nil
 }
@@ -301,8 +308,8 @@ func NewLocalConfig(host, port string) (identity.MultiAddress, Config, error) {
 func CreateOrders(numberOfOrders int, isBuyOrder bool) ([]*order.Order, error) {
 	orders := make([]*order.Order, numberOfOrders)
 	for i := 0; i < numberOfOrders; i++ {
-		price := i * 1000000000000
-		amount := i * 1000000000000
+		price := mathRand.Intn(1000000000)
+		amount := mathRand.Intn(1000000000)
 
 		nonce, err := stackint.Random(rand.Reader, &smpc.Prime)
 		if err != nil {
@@ -313,8 +320,7 @@ func CreateOrders(numberOfOrders int, isBuyOrder bool) ([]*order.Order, error) {
 		if !isBuyOrder {
 			parity = order.ParitySell
 		}
-		ord := order.NewOrder(order.TypeLimit, parity, time.Now().Add(time.Hour),
-			order.CurrencyCodeETH, order.CurrencyCodeBTC, stackint.FromUint(uint(price)), stackint.FromUint(uint(amount)),
+		ord := order.NewOrder(order.TypeLimit, parity, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeBTC, stackint.FromUint(uint(price)), stackint.FromUint(uint(amount)),
 			stackint.FromUint(uint(amount)), nonce)
 		orders[i] = ord
 	}

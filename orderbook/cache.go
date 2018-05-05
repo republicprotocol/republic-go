@@ -129,14 +129,8 @@ func (cache *Cache) Settle(entry Entry) error {
 	cache.ordersMu.Lock()
 	defer cache.ordersMu.Unlock()
 
-	previousStatus := cache.orders[string(entry.Order.ID)].Status
-	if previousStatus != order.Nil && previousStatus != order.Open && previousStatus != order.Unconfirmed && previousStatus != order.Confirmed {
-		return fmt.Errorf("cannot settled order with status %v", previousStatus)
-	}
-
 	entry.Status = order.Settled
 	cache.storeOrderMessage(entry)
-
 	return nil
 }
 
