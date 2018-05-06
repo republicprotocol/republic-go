@@ -88,9 +88,11 @@ var _ = Describe("Concurrency", func() {
 		It("should iterate over ints", func(done Done) {
 			defer close(done)
 
+			n := int64(0)
 			xs := make(chan int, 10)
 			CoForAll(10, func(i int) {
 				xs <- (i + 1)
+				atomic.AddInt64(&n, 1)
 			})
 			close(xs)
 
@@ -98,6 +100,7 @@ var _ = Describe("Concurrency", func() {
 				Expect(i).Should(BeNumerically(">=", 1))
 				Expect(i).Should(BeNumerically("<=", 10))
 			}
+			Expect(n).Should(Equal(int64(10)))
 		})
 
 	})

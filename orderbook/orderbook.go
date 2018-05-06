@@ -1,11 +1,15 @@
 package orderbook
 
 import (
-	"log"
+	"errors"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 )
+
+// ErrWriteToClosedOrderbook is returned when an attempt to updated the
+// Orderbook is made after a call to Orderbook.Close.
+var ErrWriteToClosedOrderbook = errors.New("write to closed orderbook")
 
 type Syncer interface {
 	Open(entry Entry) error
@@ -16,6 +20,7 @@ type Syncer interface {
 	Cancel(id order.ID) error
 	Blocks() []Entry
 	Order(id order.ID) Entry
+	Clear()
 }
 
 // An Orderbook is responsible for store the historical orders both in cache
@@ -23,50 +28,86 @@ type Syncer interface {
 type Orderbook struct {
 	cache    Syncer
 	database Syncer
-	splitter *dispatch.Splitter
-	splitCh  chan Entry
+
+	broadcaster       *dispatch.Broadcaster
+	broadcasterChDone chan struct{}
+	broadcasterCh     chan interface{}
 }
 
 // NewOrderbook creates a new Orderbook with the given logger and splitter
-func NewOrderbook(maxConnections int) Orderbook {
-	splitter := dispatch.NewSplitter(maxConnections)
-	splitCh := make(chan Entry)
-	go splitter.Split(splitCh)
-
+func NewOrderbook() Orderbook {
 	cache := NewCache()
 	database := Database{}
+
+	broadcaster := dispatch.NewBroadcaster()
+	broadcasterChDone := make(chan struct{})
+	broadcasterCh := make(chan interface{})
+	go broadcaster.Broadcast(broadcasterChDone, broadcasterCh)
 
 	return Orderbook{
 		cache:    &cache,
 		database: &database,
-		splitter: splitter,
-		splitCh:  splitCh,
+
+		broadcaster:       broadcaster,
+		broadcasterCh:     broadcasterCh,
+		broadcasterChDone: broadcasterChDone,
 	}
 }
 
-// Subscribe will start listening to the orderbook for updates. The channel
-// must not be closed until after the Unsubscribe method is called.
-func (orderbook *Orderbook) Subscribe(ch chan Entry) error {
-	if err := orderbook.splitter.Subscribe(ch); err != nil {
-		return err
-	}
-
-	blocks := orderbook.cache.Blocks()
-	for _, block := range blocks {
-		ch <- block
-	}
-
-	return nil
-}
-
-// Unsubscribe will stop listening to the orderbook for updates
-func (orderbook *Orderbook) Unsubscribe(ch interface{}) {
-	orderbook.splitter.Unsubscribe(ch)
-}
-
-// Close will close the splitCh
+// Close the Orderbook. All listeners will eventually be closed and no more
+// listeners will be accepted.
 func (orderbook *Orderbook) Close() {
-	close(orderbook.splitCh)
+	orderbook.broadcaster.Close()
+	close(orderbook.broadcasterChDone)
+}
+
+// Listen to the orderbook for updates. Calls to Orderbook.Listen are
+// non-blocking, and the background worker is terminated when the done
+// channel is closed. A read-only channel of entries is returned, and will be
+// closed when no more data will be written to it.
+func (orderbook *Orderbook) Listen(done <-chan struct{}) <-chan Entry {
+	listener := orderbook.broadcaster.Listen(done)
+	subscriber := make(chan Entry)
+
+	go func() {
+		defer close(subscriber)
+		dispatch.CoBegin(func() {
+			for {
+				select {
+				case <-done:
+					return
+				case <-orderbook.broadcasterChDone:
+					return
+				case msg, ok := <-listener:
+					if !ok {
+						return
+					}
+					if msg, ok := msg.(Entry); ok {
+						select {
+						case <-done:
+							return
+						case <-orderbook.broadcasterChDone:
+							return
+						case subscriber <- msg:
+						}
+					}
+				}
+			}
+		}, func() {
+			blocks := orderbook.cache.Blocks()
+			for _, block := range blocks {
+				select {
+				case <-done:
+					return
+				case <-orderbook.broadcasterChDone:
+					return
+				case subscriber <- block:
+				}
+			}
+		})
+	}()
+
+	return subscriber
 }
 
 // Open is called when we first receive the order fragment.
@@ -75,8 +116,13 @@ func (orderbook *Orderbook) Open(entry Entry) error {
 		return err
 	}
 	// orderbook.database.Open(entry)
-	orderbook.splitCh <- entry
-	return nil
+
+	select {
+	case <-orderbook.broadcasterChDone:
+		return ErrWriteToClosedOrderbook
+	case orderbook.broadcasterCh <- entry:
+		return nil
+	}
 }
 
 // Match is called when we discover a match for the order.
@@ -85,8 +131,13 @@ func (orderbook *Orderbook) Match(entry Entry) error {
 		return err
 	}
 	// orderbook.database.Match(entry)
-	orderbook.splitCh <- entry
-	return nil
+
+	select {
+	case <-orderbook.broadcasterChDone:
+		return ErrWriteToClosedOrderbook
+	case orderbook.broadcasterCh <- entry:
+		return nil
+	}
 }
 
 // Confirm is called when the order has been confirmed by the hyperdrive.
@@ -95,11 +146,13 @@ func (orderbook *Orderbook) Confirm(entry Entry) error {
 		return err
 	}
 	// orderbook.database.Confirm(entry)
-	log.Println("receive confirm  ")
 
-	orderbook.splitCh <- entry
-	log.Println("receive confirm order and split it to subscribers ")
-	return nil
+	select {
+	case <-orderbook.broadcasterChDone:
+		return ErrWriteToClosedOrderbook
+	case orderbook.broadcasterCh <- entry:
+		return nil
+	}
 }
 
 // Release is called when the order has been denied by the hyperdrive.
@@ -108,8 +161,13 @@ func (orderbook *Orderbook) Release(entry Entry) error {
 		return err
 	}
 	// orderbook.database.Release(entry)
-	orderbook.splitCh <- entry
-	return nil
+
+	select {
+	case <-orderbook.broadcasterChDone:
+		return ErrWriteToClosedOrderbook
+	case orderbook.broadcasterCh <- entry:
+		return nil
+	}
 }
 
 // Settle is called when the order is settled.
@@ -118,8 +176,13 @@ func (orderbook *Orderbook) Settle(entry Entry) error {
 		return err
 	}
 	// orderbook.database.Settle(entry)
-	orderbook.splitCh <- entry
-	return nil
+
+	select {
+	case <-orderbook.broadcasterChDone:
+		return ErrWriteToClosedOrderbook
+	case orderbook.broadcasterCh <- entry:
+		return nil
+	}
 }
 
 // Cancel is called when the order is canceled.
@@ -133,8 +196,13 @@ func (orderbook *Orderbook) Cancel(id order.ID) error {
 	// }
 
 	entry := NewEntry(order.Order{ID: id}, order.Canceled)
-	orderbook.splitCh <- entry
-	return nil
+
+	select {
+	case <-orderbook.broadcasterChDone:
+		return ErrWriteToClosedOrderbook
+	case orderbook.broadcasterCh <- entry:
+		return nil
+	}
 }
 
 // Blocks will gather all the order records and returns them in
@@ -146,4 +214,8 @@ func (orderbook *Orderbook) Blocks() []Entry {
 // Order retrieves information regarding an order.
 func (orderbook *Orderbook) Order(id order.ID) Entry {
 	return orderbook.cache.Order(id)
+}
+
+func (orderbook *Orderbook) Clear() {
+	orderbook.cache.Clear()
 }

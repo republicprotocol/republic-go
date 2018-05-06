@@ -79,67 +79,6 @@ func Send(chOut interface{}, msgValue reflect.Value) {
 	}
 }
 
-// Splitter is a protected map
-type Splitter struct {
-	mu          *sync.RWMutex
-	subscribers map[interface{}]struct{}
-
-	maxConnections int
-}
-
-// NewSplitter creates and returns a new Splitter object
-func NewSplitter(maxConnections int) *Splitter {
-	return &Splitter{
-		mu:          &sync.RWMutex{},
-		subscribers: make(map[interface{}]struct{}),
-
-		maxConnections: maxConnections,
-	}
-}
-
-// Subscribe subscribes a channel to get messages from another channel.
-// returns an error if it fails
-func (splitter *Splitter) Subscribe(ch interface{}) error {
-	splitter.mu.Lock()
-	defer splitter.mu.Unlock()
-
-	if len(splitter.subscribers) >= splitter.maxConnections {
-		return fmt.Errorf("cannot subscribe: max connections reached")
-	}
-
-	splitter.subscribers[ch] = struct{}{}
-	return nil
-}
-
-// Unsubscribe unsubscribes a channel from getting messages from
-// another channel.
-func (splitter *Splitter) Unsubscribe(ch interface{}) {
-	splitter.mu.Lock()
-	defer splitter.mu.Unlock()
-	delete(splitter.subscribers, ch)
-}
-
-// Split multicasts the channel to all the subscribed channels.
-func (splitter *Splitter) Split(chIn interface{}) {
-	if reflect.TypeOf(chIn).Kind() != reflect.Chan {
-		panic(fmt.Sprintf("cannot split from value of type %T", chIn))
-	}
-
-	for {
-		msg, ok := reflect.ValueOf(chIn).Recv()
-		if !ok {
-			return
-		}
-		func() {
-			splitter.mu.RLock()
-			defer splitter.mu.RUnlock()
-			for chOut := range splitter.subscribers {
-				Send(chOut, msg)
-			}
-		}()
-	}
-}
-
 // Merge merges multiple channels of into a channel
 // The input and output channels should be of the same type
 func Merge(chOut interface{}, chsIn ...interface{}) {

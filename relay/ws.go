@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/republicprotocol/republic-go/orderbook"
 )
 
 var upgrader = websocket.Upgrader{
@@ -69,15 +68,9 @@ func (relay *Relay) writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Reque
 		return nil
 	})
 
-	messages := make(chan orderbook.Entry, 100)
-	defer close(messages)
-
-	go func() {
-		defer relay.orderbook.Unsubscribe(messages)
-		if err := relay.orderbook.Subscribe(messages); err != nil {
-			fmt.Printf("unable to subscribe to order book: %v", err)
-		}
-	}()
+	done := make(chan struct{})
+	messages := relay.orderbook.Listen(done)
+	defer close(done)
 
 	for {
 		select {

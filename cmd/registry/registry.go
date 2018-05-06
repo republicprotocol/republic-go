@@ -22,18 +22,18 @@ const (
 	red    = "\x1b[31;1m"
 )
 
-// Registrar command-line tool for interacting with the darknodeRegister contract
+// Registry command-line tool for interacting with the darknodeRegister contract
 // on Ropsten testnet.
 // Set up ren contract address:
-//   $ registrar --ren 0xContractAddress
+//   $ registry --ren 0xContractAddress
 // Set up dnr contract address:
-//   $ registrar --dnr 0xContractAddress
+//   $ registry --dnr 0xContractAddress
 // Register nodes:
-//   $ registrar register 0xaddress1 0xaddress2 0xaddress3
+//   $ registry register 0xaddress1 0xaddress2 0xaddress3
 // Deregister nodes:
-//   $ registrar deregister 0xaddress1 0xaddress2 0xaddress3
+//   $ registry deregister 0xaddress1 0xaddress2 0xaddress3
 // Calling epoch:
-//   $ registrar epoch
+//   $ registry epoch
 
 func main() {
 
@@ -67,11 +67,11 @@ func main() {
 			Aliases: []string{"e"},
 			Usage:   "calling epoch",
 			Action: func(c *cli.Context) error {
-				registrar, err := NewRegistrar(c, key)
+				registry, err := NewRegistry(c, key)
 				if err != nil {
 					return err
 				}
-				_, err = registrar.Epoch()
+				_, err = registry.Epoch()
 				return err
 			},
 		},
@@ -80,11 +80,11 @@ func main() {
 			Aliases: []string{"r"},
 			Usage:   "register nodes in the dark node registry",
 			Action: func(c *cli.Context) error {
-				registrar, err := NewRegistrar(c, key)
+				registry, err := NewRegistry(c, key)
 				if err != nil {
 					return err
 				}
-				return RegisterAll(c.Args(), registrar)
+				return RegisterAll(c.Args(), registry)
 			},
 		},
 		{
@@ -92,11 +92,11 @@ func main() {
 			Aliases: []string{"d"},
 			Usage:   "deregister nodes in the dark node registry",
 			Action: func(c *cli.Context) error {
-				registrar, err := NewRegistrar(c, key)
+				registry, err := NewRegistry(c, key)
 				if err != nil {
 					return err
 				}
-				return DeregisterAll(c.Args(), registrar)
+				return DeregisterAll(c.Args(), registry)
 			},
 		},
 	}
@@ -117,7 +117,7 @@ func LoadKey() (*keystore.Key, error) {
 	return key, err
 }
 
-func NewRegistrar(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error) {
+func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error) {
 	config := ethereum.Config{
 		Network:                 ethereum.NetworkRopsten,
 		URI:                     "https://ropsten.infura.io",
@@ -135,27 +135,27 @@ func NewRegistrar(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, erro
 	return dnr.NewDarknodeRegistry(context.Background(), client, auth, &bind.CallOpts{})
 }
 
-func RegisterAll(addresses []string, registrar dnr.DarknodeRegistry) error {
+func RegisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 	for i := range addresses {
 		address := common.HexToAddress(addresses[i])
 		// Check if node has already been registered
-		isRegistered, err := registrar.IsRegistered(address.Bytes())
+		isRegistered, err := registry.IsRegistered(address.Bytes())
 		if err != nil {
 			return fmt.Errorf("[%v] %sCouldn't check node's registration%s: %v\n", []byte(addresses[i]), red, reset, err)
 		}
 
 		// Register the node if not registered
 		if !isRegistered {
-			minimumBond, err := registrar.MinimumBond()
+			minimumBond, err := registry.MinimumBond()
 			if err != nil {
 				return err
 			}
-			_, err = registrar.ApproveRen(&minimumBond)
+			_, err = registry.ApproveRen(&minimumBond)
 			if err != nil {
 				return err
 			}
 
-			_, err = registrar.Register(address.Bytes(), []byte{}, &minimumBond)
+			_, err = registry.Register(address.Bytes(), []byte{}, &minimumBond)
 			if err != nil {
 				return fmt.Errorf("[%v] %sCouldn't register node%s: %v\n", address.Hex(), red, reset, err)
 			} else {
@@ -165,23 +165,23 @@ func RegisterAll(addresses []string, registrar dnr.DarknodeRegistry) error {
 			log.Printf("[%v] %sNode already registered%s\n", address.Hex(), yellow, reset)
 		}
 	}
-	log.Println("Successfully register all node. Run 'registrar epoch' to trigger epoch")
+	log.Println("Successfully register all node. Run 'registry epoch' to trigger epoch")
 
 	return nil
 }
 
 // DeregisterAll takes a slice of republic private keys and registers them
-func DeregisterAll(addresses []string, registrar dnr.DarknodeRegistry) error {
+func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 	for i := range addresses {
 		address := common.HexToAddress(addresses[i])
 		// Check if node has already been registered
-		isRegistered, err := registrar.IsRegistered(address.Bytes())
+		isRegistered, err := registry.IsRegistered(address.Bytes())
 		if err != nil {
 			return fmt.Errorf("[%v] %sCouldn't check node's registration%s: %v\n", address.Hex(), red, reset, err)
 		}
 
 		if isRegistered {
-			_, err = registrar.Deregister(address.Bytes())
+			_, err = registry.Deregister(address.Bytes())
 			if err != nil {
 				return fmt.Errorf("[%v] %sCouldn't deregister node%s: %v\n", address.Hex(), red, reset, err)
 			} else {
