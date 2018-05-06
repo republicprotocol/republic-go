@@ -102,3 +102,127 @@ go func() {
     }
 }()
 ```
+
+## RESTful API
+
+The Relay RESTful API provides HTTP POST, GET and DELETE commands to communicate with a relay. These methods will allow users to send orders and order fragments, retrieve orders and get real-time updates regarding order statuses, and cancel orders that are have not been matched.
+
+The following sections will describe ways to connect to the Relay and use these commands to handle orders using the relay.
+
+### Starting a new Relay
+
+```go
+relay := relay.NewRelay(configurations, darknodeRegistry, orderbook, relayerClient, smpcerClient, swarmerClient)
+port := 18515 //Specify the port address. 
+bind := 127.0.0.1 // Specify the bind address. 
+if err := relay.ListenAndServe(bind, fmt.Sprintf("%d", port+1)); err != nil {
+    log.Fatalf("error serving http: %v", err)
+}
+```
+
+### Opening orders
+
+The OpenOrdersHandler method can send full orders or fragmented orders to specific dark pools.
+
+**Full orders**
+
+```go
+sendOrder := relay.OpenOrderRequest{}
+order := relay.Order{
+    Type:      1,
+    Parity:    1,
+    Expiry:    time.Now().AddDate(0, 0, 7),
+    FstCode:   1,
+    SndCode:   2,
+    Price:     100,
+    MaxVolume: 100,
+    MinVolume: 100,
+}
+sendOrder.Order = order
+sendOrder.OrderFragments = relay.OrderFragments{}
+s, _ := json.Marshal(sendOrder)
+body := bytes.NewBuffer(s)
+r := httptest.NewRequest("POST", "http://127.0.0.1:18515/orders", body)
+w := httptest.NewRecorder()
+relayNode := relay.Relay{}
+relayNode.Config.Token = ""
+handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.OpenOrdersHandler()))
+handler.ServeHTTP(w, r)
+```
+
+**Order Fragments**
+
+```go
+sendOrder := relay.OpenOrderRequest{}
+n := int64(17)
+k := int64(12)
+prime, err := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+if err != nil {
+    log.Fatal(err)
+}
+order := relay.Order{
+    Type:      1,
+    Parity:    1,
+    Expiry:    time.Now().AddDate(0, 0, 7),
+    FstCode:   1,
+    SndCode:   2,
+    Price:     100,
+    MaxVolume: 100,
+    MinVolume: 100,
+}
+fragments, err := order.Split(n, k, &prime)
+if err != nil {
+    log.Fatal(err)
+}
+// Create an OrderFragments object that stores details of the order
+// along with the fragments for specific dark pools
+fragmentedOrder := OrderFragments{}
+fragmentsForPool := map[string][]*order.Fragment{}
+fragmentsForPool["vrZhWU3VV9LRIM="] = fragments
+fragmentedOrder.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
+fragmentedOrder.Type = 2
+fragmentedOrder.Parity = 1
+fragmentedOrder.Expiry = time.Time{}
+fragmentedOrder.DarkPools = fragmentsForPool
+sendOrder.Order = relay.Order{}
+sendOrder.OrderFragments = fragmentedOrder
+s, _ := json.Marshal(sendOrder)
+body := bytes.NewBuffer(s)
+r := httptest.NewRequest("POST", "http://127.0.0.1:18515/orders", body)
+w := httptest.NewRecorder()
+relayNode := relay.Relay{}
+relayNode.Config.Token = "test"
+handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.OpenOrdersHandler()))
+handler.ServeHTTP(w, r)
+```
+
+## Canceling orders
+
+```go
+cancelRequest := relay.CancelOrderRequest{}
+cancelRequest.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
+s, _ := json.Marshal(cancelRequest)
+body := bytes.NewBuffer(s)
+r := httptest.NewRequest("POST", "http://127.0.0.1:18515/orders", body)
+w := httptest.NewRecorder()
+relayNode := relay.Relay{}
+relayNode.Config.Token = "test"
+handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.CancelOrderHandler()))
+handler.ServeHTTP(w, r)
+```
+
+## Getting an order
+
+```go
+// Retrieve an order with id vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM
+r := httptest.NewRequest("GET", "http://127.0.0.1:18515/orders/vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM", nil)
+w := httptest.NewRecorder()
+relayNode := relay.Relay{}
+relayNode.Config.Token = "test"
+handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.CancelOrderHandler()))
+handler.ServeHTTP(w, r)
+order := new(order.Order)
+if err := json.Unmarshal(w.Body.Bytes(), order); err != nil {
+    log.Fatal(err)
+}
+```
