@@ -6,6 +6,7 @@ go:
 cache:
   directories:
     - vendor
+    - $GOPATH/pkg/dep
 
 before_install:
   - npm install -g ganache-cli

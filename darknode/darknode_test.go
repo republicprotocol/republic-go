@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/darknode"
 
+	"github.com/republicprotocol/republic-go/blockchain/test"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/rpc/client"
@@ -34,7 +35,7 @@ var _ = Describe("Darknode", func() {
 		testMu.Unlock()
 	})
 
-	Context("when opening orders", func() {
+	test.SkipCIContext("when opening orders", func() {
 
 		It("should not match orders that are incompatible", func(done Done) {
 			numberOfOrders := 8
@@ -157,7 +158,7 @@ var _ = Describe("Darknode", func() {
 
 				// Wait some time, in case the Darknodes try to find more
 				// confirmations
-				time.Sleep(30 * time.Second)
+				time.Sleep(10 * time.Second)
 
 				Expect(len(opened)).Should(Equal(2*numberOfOrderPairs + numberOfExcessSellOrders))
 				Expect(len(confirmed)).Should(Equal(2 * numberOfOrderPairs))
