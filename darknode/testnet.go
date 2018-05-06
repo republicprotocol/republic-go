@@ -185,7 +185,7 @@ func (env *TestnetEnv) SendOrders(orders []*order.Order) error {
 				log.Printf("cannot send order fragment to %s: %v", env.Darknodes[j].Address(), err)
 			}
 		})
-		time.Sleep(time.Second)
+		time.Sleep(2 * time.Second)
 	}
 	return nil
 }
