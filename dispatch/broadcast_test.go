@@ -10,7 +10,7 @@ import (
 	. "github.com/republicprotocol/republic-go/dispatch"
 )
 
-var _ = FDescribe("Broadcaster", func() {
+var _ = Describe("Broadcaster", func() {
 
 	Context("when shutting down", func() {
 
