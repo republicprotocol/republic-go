@@ -16,9 +16,8 @@ func TestDarknode(t *testing.T) {
 
 const (
 	GanacheRPC                 = "http://localhost:8545"
-	NumberOfDarkNodes          = 10
-	NumberOfBootstrapDarkNodes = 5
-	NumberOfOrdersPerSecond    = 10
+	NumberOfDarkNodes          = 6
+	NumberOfBootstrapDarkNodes = 6
 )
 
 var env TestnetEnv
