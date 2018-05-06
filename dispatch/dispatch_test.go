@@ -286,69 +286,6 @@ var _ = Describe("Dispatch Package", func() {
 
 	})
 
-	Context("Splitter", func() {
-		It("should be able to create a new splitter", func() {
-			Ω(NewSplitter(10)).Should(Not(BeNil()))
-		})
-
-		It("should be able to subscribe to a splitter", func() {
-			splitter := NewSplitter(10)
-			chan1 := make(chan int, 1)
-			splitter.Subscribe(chan1)
-		})
-
-		It("should panic if the subscriptions cross the max number of connections", func() {
-			splitter := NewSplitter(10)
-
-			var err error
-			for i := 0; i < 11; i++ {
-				err = splitter.Subscribe(make(chan int))
-			}
-
-			Ω(err).Should(Not(BeNil()))
-		})
-
-		It("should be able to unsubscribe from a splitter", func() {
-			splitter := NewSplitter(10)
-			chan1 := make(chan int, 1)
-			splitter.Subscribe(chan1)
-			splitter.Unsubscribe(chan1)
-		})
-
-		It("should be able to multi cast the messages across subscribers", func() {
-			splitter := NewSplitter(10)
-			chIn := make(chan int, 1)
-			chsOut := make([]chan int, 10)
-
-			var err error
-			for i := 0; i < 10; i++ {
-				chsOut[i] = make(chan int, 2)
-				err = splitter.Subscribe(chsOut[i])
-			}
-
-			Ω(err).Should(BeNil())
-
-			go splitter.Split(chIn)
-
-			chIn <- 1
-			close(chIn)
-
-			for i := 0; i < 10; i++ {
-				Ω(<-chsOut[i]).Should(Equal(1))
-			}
-
-			Close(chsOut)
-		})
-
-		It("should panic for invalid arguments", func() {
-			splitter := NewSplitter(10)
-			Ω(func() {
-				splitter.Split(1)
-			}).Should(Panic())
-		})
-
-	})
-
 	Context("Pipe", func() {
 		It("should be able to pipe from one channel to another", func() {
 			doneCh := make(chan struct{})

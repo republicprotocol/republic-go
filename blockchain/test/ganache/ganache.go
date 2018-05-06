@@ -71,8 +71,11 @@ func Start() bool {
 	}
 
 	cmd := exec.Command("ganache-cli", fmt.Sprintf("--account=0x%x,1000000000000000000000", crypto.FromECDSA(genesisPrivateKey)))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// TODO: Do something better with the output than printing it to Stdout and
+	// Stderr, it gets so noisy. Disabled for now. Configurable output file
+	// could be nice.
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
 	cmd.Start()
 
 	go WatchForInterrupt()

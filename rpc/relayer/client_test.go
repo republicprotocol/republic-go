@@ -25,7 +25,7 @@ var _ = Describe("Relayer", func() {
 
 	Context("when merging entries", func() {
 		It("should update the orderbook with a valid response", func() {
-			orderbook := orderbook.NewOrderbook(100)
+			orderbook := orderbook.NewOrderbook()
 			syncResponse := getSyncResponse(OrderStatus_Open)
 			err := MergeEntry(&orderbook, &syncResponse)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -33,7 +33,7 @@ var _ = Describe("Relayer", func() {
 		})
 
 		It("should not update the orderbook with a nil entry", func() {
-			orderbook := orderbook.NewOrderbook(100)
+			orderbook := orderbook.NewOrderbook()
 			syncResponse := SyncResponse{
 				Signature: []byte{},
 				Entry:     nil,
@@ -44,7 +44,7 @@ var _ = Describe("Relayer", func() {
 		})
 
 		It("should not update the orderbook with an invalid order status", func() {
-			orderbook := orderbook.NewOrderbook(100)
+			orderbook := orderbook.NewOrderbook()
 			syncResponse := getSyncResponse(-1)
 			err := MergeEntry(&orderbook, &syncResponse)
 			Ω(err).Should(HaveOccurred())
@@ -69,7 +69,7 @@ var _ = Describe("Relayer", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Create a relay and register it with the server
-			book := orderbook.NewOrderbook(100)
+			book := orderbook.NewOrderbook()
 			relayer := NewRelayer(&client, &book)
 			relayer.Register(server)
 
@@ -138,7 +138,7 @@ var _ = Describe("Relayer", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Create a relay and register it with the server
-			relayBook := orderbook.NewOrderbook(100)
+			relayBook := orderbook.NewOrderbook()
 			relayer := NewRelayer(&client, &relayBook)
 			relayer.Register(server)
 
@@ -165,7 +165,7 @@ var _ = Describe("Relayer", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			ctx, cancel := context.WithCancel(context.Background())
-			book := orderbook.NewOrderbook(100)
+			book := orderbook.NewOrderbook()
 			errs := client.Sync(context.Background(), &book, 1)
 
 			// Check for any responses or errors

@@ -148,7 +148,7 @@ func (smpcer *Smpcer) Compute(stream Smpc_ComputeServer) error {
 	done := make(chan struct{})
 	defer close(done)
 
-	receiver := make(chan *ComputeMessage)
+	receiver := make(chan interface{})
 	defer close(receiver)
 
 	sender := smpcer.client.rendezvous.connect(identity.Address(addr), done, receiver)
@@ -168,13 +168,15 @@ func (smpcer *Smpcer) Compute(stream Smpc_ComputeServer) error {
 				// terminate
 				errs <- stream.Context().Err()
 				return
-			case message, ok := <-sender:
+			case msg, ok := <-sender:
 				if !ok {
 					return
 				}
-				if err := stream.Send(message); err != nil {
-					errs <- err
-					return
+				if msg, ok := msg.(*ComputeMessage); ok {
+					if err := stream.Send(msg); err != nil {
+						errs <- err
+						return
+					}
 				}
 			}
 		}
@@ -183,7 +185,7 @@ func (smpcer *Smpcer) Compute(stream Smpc_ComputeServer) error {
 	// Read all messages from the gRPC stream and write them to the receiver
 	// channel
 	for {
-		message, err := stream.Recv()
+		msg, err := stream.Recv()
 		if err != nil {
 			return err
 		}
@@ -197,7 +199,7 @@ func (smpcer *Smpcer) Compute(stream Smpc_ComputeServer) error {
 				return nil
 			}
 			return err
-		case receiver <- message:
+		case receiver <- msg:
 		}
 	}
 }
