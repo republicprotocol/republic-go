@@ -15,6 +15,7 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/darkocean"
+	"github.com/republicprotocol/republic-go/stackint"
 	"github.com/urfave/cli"
 )
 
@@ -75,6 +76,7 @@ func main() {
 					return err
 				}
 				_, err = registry.Epoch()
+				log.Println("Epoch called.")
 				return err
 			},
 		},
@@ -103,6 +105,18 @@ func main() {
 			},
 		},
 		{
+			Name:    "approve",
+			Aliases: []string{"a"},
+			Usage:   "approve nodes with enough REN token",
+			Action: func(c *cli.Context) error {
+				registry, err := NewRegistry(c, key)
+				if err != nil {
+					return err
+				}
+				return Approve(registry)
+			},
+		},
+		{
 			Name:    "deregister",
 			Aliases: []string{"d"},
 			Usage:   "deregister nodes in the dark node registry",
@@ -112,6 +126,17 @@ func main() {
 					return err
 				}
 				return DeregisterAll(c.Args(), registry)
+			},
+		},
+		{
+			Name:    "refund",
+			Usage:   "refund ren",
+			Action: func(c *cli.Context) error {
+				registry, err := NewRegistry(c, key)
+				if err != nil {
+					return err
+				}
+				return Refund(c.Args(), registry)
 			},
 		},
 		{
@@ -183,10 +208,6 @@ func RegisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 			if err != nil {
 				return err
 			}
-			_, err = registry.ApproveRen(&minimumBond)
-			if err != nil {
-				return err
-			}
 
 			_, err = registry.Register(address.Bytes(), []byte{}, &minimumBond)
 			if err != nil {
@@ -225,14 +246,23 @@ func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 			} else {
 				log.Printf("[%v] %sNode will be deregistered next epoch%s\n", address.Hex(), green, reset)
 			}
-
-			_, err = registry.Refund(address.Bytes())
-			if err != nil {
-				return fmt.Errorf("[%v] %sCouldn't refund node%s: %v\n", address.Hex(), red, reset, err)
-			}
 		} else {
-			return fmt.Errorf("[%v] %sNode hasn't been registered yet.%s\n", address.Hex(), red, reset)
+			fmt.Println(fmt.Errorf("[%v] %sNode hasn't been registered yet.%s\n", address.Hex(), red, reset))
 		}
+	}
+
+	return nil
+}
+
+func Approve(registry dnr.DarknodeRegistry) error {
+
+	bond , err := stackint.FromString( "100000000000000000000000")
+	if err != nil {
+		return err
+	}
+	_, err = registry.ApproveRen(&bond)
+	if err != nil{
+		return err
 	}
 
 	return nil
@@ -280,6 +310,24 @@ func CheckRegistration(addresses []string, registrar dnr.DarknodeRegistry) error
 		return err
 	}
 	fmt.Println(isRegistered)
+
+	return nil
+}
+
+func Refund( addresses []string,  registry dnr.DarknodeRegistry) error {
+	for i := range addresses{
+		// Convert republic address to ethereum address
+		addByte := base58.DecodeAlphabet(addresses[i], base58.BTCAlphabet)[2:]
+		if len(addByte) == 0 {
+			return errors.New("fail to decode the address")
+		}
+		address := common.BytesToAddress(addByte)
+
+		_, err := registry.Refund(address.Bytes())
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
