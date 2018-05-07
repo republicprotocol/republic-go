@@ -9,6 +9,8 @@ import (
 	mathRand "math/rand"
 	"time"
 
+	"github.com/republicprotocol/republic-go/darkocean"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
@@ -166,7 +168,7 @@ func (env *TestnetEnv) SendOrders(orders []*order.Order) error {
 	trader := env.Darknodes[0].MultiAddress()
 	prime, _ := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 
-	crypter := crypto.NewWeakCrypter()
+	crypter := darkocean.NewCrypter(env.Darknodes[0].Config.Keystore, env.DarknodeRegistry, 128, time.Minute)
 	connPool := client.NewConnPool(256)
 	defer connPool.Close()
 	smpcerClient := smpcer.NewClient(&crypter, trader, &connPool)
@@ -239,12 +241,16 @@ func RegisterDarknodes(darknodes Darknodes, conn ethereum.Conn, darknodeRegistry
 
 	for i := range darknodes {
 		darknodeID := darknodes[i].ID()
-
-		_, err := darknodeRegistry.ApproveRen(&minimumBond)
+		darknodePublicKey, err := crypto.BytesFromRsaPublicKey(&darknodes[i].Config.Keystore.RsaKey.PublicKey)
 		if err != nil {
 			return err
 		}
-		_, err = darknodeRegistry.Register(darknodeID, []byte{}, &minimumBond)
+
+		_, err = darknodeRegistry.ApproveRen(&minimumBond)
+		if err != nil {
+			return err
+		}
+		_, err = darknodeRegistry.Register(darknodeID, darknodePublicKey, &minimumBond)
 		if err != nil {
 			return err
 		}

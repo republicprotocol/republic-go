@@ -7,7 +7,6 @@ import (
 
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
@@ -27,8 +26,8 @@ func (id FragmentID) String() string {
 // A Fragment is a secret share of an Order, created using Shamir's secret
 // sharing on the secure fields in an Order.
 type Fragment struct {
-	Signature identity.Signature `json:"signature"`
-	ID        FragmentID         `json:"id"`
+	Signature []byte     `json:"signature"`
+	ID        FragmentID `json:"id"`
 
 	OrderID     ID        `json:"orderID"`
 	OrderType   Type      `json:"orderType"`

@@ -86,9 +86,8 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 	node.hyperdriveContract = hyperdriveContract
 	node.hyperdriveNonces = make(chan hyperdrive.NonceWithTimestamp)
 
-	// FIXME: Use a production Crypter implementation
-	weakCrypter := crypto.NewWeakCrypter()
-	node.crypter = &weakCrypter
+	crypter := darkocean.NewCrypter(node.Config.Keystore, node.darknodeRegistry, 256, time.Minute)
+	node.crypter = &crypter
 
 	node.orderFragments = make(chan order.Fragment, 1)
 	node.orderFragmentsCanceled = make(chan order.ID, 1)

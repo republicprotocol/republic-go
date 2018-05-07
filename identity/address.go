@@ -3,6 +3,7 @@ package identity
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
 )
 
@@ -84,7 +85,7 @@ func (address Address) ID() ID {
 
 // Hash implements the crypto.Hasher interface for signing.
 func (address Address) Hash() []byte {
-	return []byte(address)
+	return crypto.Keccak256([]byte(address))
 }
 
 // Closer returns true if the left Address is closer to the target than the
