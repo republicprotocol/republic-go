@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -28,8 +30,8 @@ type TestnetEnv struct {
 }
 
 // NewTestnet will create a testnet that sets up new Relays.
-func NewTestnet(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry, port int) (TestnetEnv, error) {
-	relays, err := NewRelays(numberOfRelays, darknodeRegistry, port)
+func NewTestnet(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry, port int, bootstrapAddresses identity.MultiAddresses) (TestnetEnv, error) {
+	relays, err := NewRelays(numberOfRelays, darknodeRegistry, port, bootstrapAddresses)
 	if err != nil {
 		return TestnetEnv{}, fmt.Errorf("cannot create new relays: %v", err)
 	}
@@ -55,14 +57,6 @@ func (env *TestnetEnv) Run(port int) {
 		relay := env.Relays[i]
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
-		for err := range relay.swarmerClient.Bootstrap(ctx, relay.Config.BootstrapMultiAddresses, -1) {
-			log.Printf("error while bootstrapping the relay: %v", err)
-		}
-
-		// done := make(chan struct{})
-		// entries := relay.orderbook.Listen(done)
-		// defer close(done)
-
 		if err := relay.ListenAndServe("127.0.0.1", fmt.Sprintf("%d", port+i)); err != nil {
 			log.Fatalf("error serving http: %v", err)
 		}
@@ -73,17 +67,34 @@ func (env *TestnetEnv) Run(port int) {
 		}
 
 		relay.Sync(context.Background(), 100)
+
+		for err := range relay.swarmerClient.Bootstrap(ctx, relay.Config.BootstrapMultiAddresses, -1) {
+			if strings.Contains(err.Error(), darkocean.ErrInvalidRegistration.Error()) {
+				// try again
+				log.Printf("error while bootstrapping the relay: %v trying again ..", err)
+				time.Sleep(1 * time.Second)
+				for errs := range relay.swarmerClient.Bootstrap(ctx, relay.Config.BootstrapMultiAddresses, -1) {
+					log.Printf("error while bootstrapping the relay: %v", errs)
+				}
+			}
+			log.Printf("error while bootstrapping the relay: %v", err)
+		}
+
+		// done := make(chan struct{})
+		// entries := relay.orderbook.Listen(done)
+		// defer close(done)
+
 	})
 }
 
 // NewRelays configured for a local test environment.
-func NewRelays(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry, port int) (Relays, error) {
+func NewRelays(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry, port int, bootstrapAddresses identity.MultiAddresses) (Relays, error) {
 	var err error
 
 	relays := make(Relays, numberOfRelays)
 	configs := make([]Config, numberOfRelays)
 	for i := 0; i < numberOfRelays; i++ {
-		configs[i], err = NewLocalConfig("127.0.0.1", fmt.Sprintf("%d", port+i))
+		configs[i], err = NewLocalConfig("127.0.0.1", fmt.Sprintf("%d", port+i), bootstrapAddresses)
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +102,7 @@ func NewRelays(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry, port i
 
 	for i := 0; i < numberOfRelays; i++ {
 		book := orderbook.NewOrderbook()
-		crypter := crypto.NewWeakCrypter()
+		crypter := darkocean.NewCrypter(configs[i].Keystore, darknodeRegistry, 128, time.Minute)
 		dht := dht.NewDHT(configs[i].MultiAddress.Address(), 100)
 		connPool := client.NewConnPool(100)
 		relayerClient := relayer.NewClient(&crypter, &dht, &connPool)
@@ -106,7 +117,7 @@ func NewRelays(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry, port i
 // NewLocalConfig will return newly generated multiaddress and config that are
 // constructed using the host and port that are passed as arguments to the
 // method.
-func NewLocalConfig(host, port string) (Config, error) {
+func NewLocalConfig(host, port string, bootstrapAddresses identity.MultiAddresses) (Config, error) {
 	keystore, err := crypto.RandomKeystore()
 	if err != nil {
 		return Config{}, err
@@ -117,11 +128,11 @@ func NewLocalConfig(host, port string) (Config, error) {
 		return Config{}, err
 	}
 	return Config{
-		Token:                   "",
+		Token:                   "token",
 		EthereumAddress:         auth.From.String(),
 		Keystore:                keystore,
 		MultiAddress:            multiAddr,
-		BootstrapMultiAddresses: identity.MultiAddresses{},
+		BootstrapMultiAddresses: bootstrapAddresses,
 		Ethereum: ethereum.Config{
 			Network:                 ethereum.NetworkGanache,
 			URI:                     "http://localhost:8545",

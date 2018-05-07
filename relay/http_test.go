@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"time"
 
+	"github.com/republicprotocol/republic-go/darknode"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -23,55 +25,39 @@ var _ = Describe("HTTP handlers", func() {
 	Context("when handling authentication", func() {
 
 		It("should return 401 for unauthorized tokens", func() {
-
 			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
-			r.Header.Set("Authorization", "Bearer token test")
+			r.Header.Set("Authorization", "Bearer token-test")
 			w := httptest.NewRecorder()
-
-			relayNode := relay.Relay{}
-			relayNode.Config.Token = "test"
-			handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.OpenOrdersHandler()))
+			handler := relay.RecoveryHandler(relayTestNetEnv.Relays[0].AuthorizationHandler(relayTestNetEnv.Relays[0].OpenOrdersHandler()))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusUnauthorized))
 		})
 
 		It("should return 401 for authorization headers that are not Bearer type", func() {
-
 			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
 			r.Header.Set("Authorization", "Not-Bearer token")
 			w := httptest.NewRecorder()
-
-			relayNode := relay.Relay{}
-			relayNode.Config.Token = "test"
-			handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.OpenOrdersHandler()))
+			handler := relay.RecoveryHandler(relayTestNetEnv.Relays[0].AuthorizationHandler(relayTestNetEnv.Relays[0].OpenOrdersHandler()))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusUnauthorized))
 		})
 
 		It("should return 401 for requests without headers", func() {
-
 			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
 			w := httptest.NewRecorder()
-
-			relayNode := relay.Relay{}
-			relayNode.Config.Token = "test"
-			handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.OpenOrdersHandler()))
+			handler := relay.RecoveryHandler(relayTestNetEnv.Relays[0].AuthorizationHandler(relayTestNetEnv.Relays[0].OpenOrdersHandler()))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusUnauthorized))
 		})
 
 		It("should not return 401 for authorized tokens", func() {
-
 			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
 			r.Header.Set("Authorization", "Bearer token")
 			w := httptest.NewRecorder()
-
-			relayNode := relay.Relay{}
-			relayNode.Config.Token = "token"
-			handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.OpenOrdersHandler()))
+			handler := relay.RecoveryHandler(relayTestNetEnv.Relays[0].AuthorizationHandler(relayTestNetEnv.Relays[0].OpenOrdersHandler()))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).ShouldNot(Equal(http.StatusUnauthorized))
@@ -81,39 +67,33 @@ var _ = Describe("HTTP handlers", func() {
 	Context("when posting orders", func() {
 
 		It("should return 400 for empty request bodies", func() {
-			// pools, trader := getPoolsAndTrader()
-
 			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
+			r.Header.Set("Authorization", "Bearer token")
 			w := httptest.NewRecorder()
-
-			relayNode := relay.Relay{}
-			handler := relay.RecoveryHandler(relayNode.OpenOrdersHandler())
+			handler := relay.RecoveryHandler(relayTestNetEnv.Relays[0].AuthorizationHandler(relayTestNetEnv.Relays[0].OpenOrdersHandler()))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusBadRequest))
 			Expect(w.Body.String()).To(ContainSubstring("cannot decode json into an order or a list of order fragments:"))
 		})
 
-		// It("should return 201 for full orders", func() {
-		// 	// pools, trader := getPoolsAndTrader()
+		PIt("should return 201 for full orders", func() {
+			fullOrder, err := darknode.CreateOrders(1, true)
+			Ω(err).ShouldNot(HaveOccurred())
+			sendOrder := relay.OpenOrderRequest{}
+			sendOrder.Order = *fullOrder[0]
+			sendOrder.OrderFragments = relay.OrderFragments{}
+			s, _ := json.Marshal(sendOrder)
+			body := bytes.NewBuffer(s)
+			r := httptest.NewRequest("POST", "http://localhost/orders", body)
+			w := httptest.NewRecorder()
+			r.Header.Set("Authorization", "Bearer token")
 
-		// 	fullOrder := getFullOrder()
+			handler := relay.RecoveryHandler(relayTestNetEnv.Relays[0].AuthorizationHandler(relayTestNetEnv.Relays[0].OpenOrdersHandler()))
+			handler.ServeHTTP(w, r)
 
-		// 	sendOrder := relay.OpenOrderRequest{}
-		// 	sendOrder.Order = fullOrder
-		// 	sendOrder.OrderFragments = relay.OrderFragments{}
-
-		// 	s, _ := json.Marshal(sendOrder)
-		// 	body := bytes.NewBuffer(s)
-		// 	r := httptest.NewRequest("POST", "http://localhost/orders", body)
-		// 	w := httptest.NewRecorder()
-
-		// 	relayNode := relay.Relay{}
-		// 	handler := relay.RecoveryHandler(relay.OpenOrdersHandler(relayNode))
-		// 	handler.ServeHTTP(w, r)
-
-		// 	Ω(w.Code).Should(Equal(http.StatusCreated))
-		// })
+			Ω(w.Code).Should(Equal(http.StatusCreated))
+		})
 
 		// It("should return 201 for fragmented orders", func() {
 		// 	pools, trader := getPoolsAndTrader()
@@ -270,3 +250,4 @@ var _ = Describe("HTTP handlers", func() {
 		})
 	})
 })
+

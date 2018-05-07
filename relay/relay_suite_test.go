@@ -1,6 +1,7 @@
 package relay_test
 
 import (
+	"log"
 	"testing"
 	"time"
 
@@ -29,11 +30,10 @@ var _ = BeforeSuite(func() {
 	var err error
 	darknodeTestnetEnv, err = darknode.NewTestnet(NumberOfDarkNodes, NumberOfBootstrapNodes)
 	go darknodeTestnetEnv.Run()
-	time.Sleep(10 * time.Second)
 	Expect(err).ShouldNot(HaveOccurred())
-	relayTestNetEnv, err = relay.NewTestnet(1, darknodeTestnetEnv.DarknodeRegistry, 3000+NumberOfDarkNodes)
-	go relayTestNetEnv.Run(3000+NumberOfDarkNodes)
 	time.Sleep(10 * time.Second)
+	relayTestNetEnv, err = relay.NewTestnet(1, darknodeTestnetEnv.DarknodeRegistry, 3000+NumberOfDarkNodes, darknodeTestnetEnv.BootstrapMultiAddrs)
+	go relayTestNetEnv.Run(3000 + NumberOfDarkNodes)
 	Expect(err).ShouldNot(HaveOccurred())
 })
 
