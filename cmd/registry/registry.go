@@ -327,6 +327,7 @@ func Refund( addresses []string,  registry dnr.DarknodeRegistry) error {
 		if err != nil {
 			return err
 		}
+		log.Printf("[%v] %sNode has been refunded%s\n", address.Hex(), green, reset)
 	}
 
 	return nil
