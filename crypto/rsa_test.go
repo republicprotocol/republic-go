@@ -74,8 +74,11 @@ var _ = Describe("RsaKey", func() {
 			key, err := RandomRsaKey()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			data := BytesFromRsaPublicKey(&key.PublicKey)
-			publicKeyDecoded := RsaPublicKeyFromBytes(data)
+			data, err := BytesFromRsaPublicKey(&key.PublicKey)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			publicKeyDecoded, err := RsaPublicKeyFromBytes(data)
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(key.N).Should(Equal(publicKeyDecoded.N))
 			Expect(key.E).Should(Equal(publicKeyDecoded.E))
 		})

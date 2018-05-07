@@ -118,24 +118,32 @@ func (key *RsaKey) UnmarshalJSON(data []byte) error {
 
 // BytesFromRsaPublicKey by using the Republic Protocol Keystore specification
 // for binary marshaling.
-func BytesFromRsaPublicKey(publicKey *rsa.PublicKey) []byte {
+func BytesFromRsaPublicKey(publicKey *rsa.PublicKey) ([]byte, error) {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, int64(publicKey.E))
-	binary.Write(buf, binary.BigEndian, publicKey.N.Bytes())
-	return buf.Bytes()
+	if err := binary.Write(buf, binary.BigEndian, int64(publicKey.E)); err != nil {
+		return []byte{}, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, publicKey.N.Bytes()); err != nil {
+		return []byte{}, err
+	}
+	return buf.Bytes(), nil
 }
 
 // RsaPublicKeyFromBytes decodes a slice of bytes into an rsa.PublicKey. It
 // assumes that the bytes slice is compliant with the Republic Protocol
 // Keystore specification.
-func RsaPublicKeyFromBytes(data []byte) rsa.PublicKey {
+func RsaPublicKeyFromBytes(data []byte) (rsa.PublicKey, error) {
 	reader := bytes.NewReader(data)
 	e := int64(0)
-	binary.Read(reader, binary.BigEndian, &e)
+	if err := binary.Read(reader, binary.BigEndian, &e); err != nil {
+		return rsa.PublicKey{}, err
+	}
 	n := make([]byte, reader.Len())
-	binary.Read(reader, binary.BigEndian, n)
+	if err := binary.Read(reader, binary.BigEndian, n); err != nil {
+		return rsa.PublicKey{}, err
+	}
 	return rsa.PublicKey{
 		E: int(e),
 		N: big.NewInt(0).SetBytes(n),
-	}
+	}, nil
 }

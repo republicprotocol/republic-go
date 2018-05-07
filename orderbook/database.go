@@ -26,27 +26,27 @@ func (database Database) Close() {
 	database.Close()
 }
 
-func (database Database) Open(entry Entry) error {
+func (database Database) Open(ord order.Order) error {
 	panic("unimplemented")
 }
 
-func (database Database) Match(entry Entry) error {
+func (database Database) Match(ord order.Order) error {
 	panic("unimplemented")
 }
 
-func (database Database) Confirm(entry Entry) error {
+func (database Database) Confirm(ord order.Order) error {
 	panic("unimplemented")
 }
 
-func (database Database) Release(entry Entry) error {
+func (database Database) Release(ord order.Order) error {
 	panic("unimplemented")
 }
 
-func (database Database) Settle(entry Entry) error {
+func (database Database) Settle(ord order.Order) error {
 	panic("unimplemented")
 }
 
-func (database Database) Cancel(id order.ID) error {
+func (database Database) Cancel(ord order.Order) error {
 	panic("unimplemented")
 }
 

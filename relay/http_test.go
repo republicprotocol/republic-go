@@ -197,7 +197,7 @@ var _ = Describe("HTTP handlers", func() {
 			ord.Nonce = defaultStackVal
 
 			orderMessage := orderbook.NewEntry(ord, order.Open)
-			book.Open(orderMessage)
+			book.Open(orderMessage.Order)
 
 			r := httptest.NewRequest("GET", "http://localhost/orders/vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ", nil)
 			w := httptest.NewRecorder()

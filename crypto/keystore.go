@@ -69,9 +69,9 @@ func (keystore *Keystore) NewKeystore(ecdsaKey EcdsaKey, rsaKey RsaKey) Keystore
 	}
 }
 
-// Encrypt the EcdsaKey and RsaKey in the Keystore. Return the encrypted
-// Keystore marshaled as a JSON object.
-func (keystore *Keystore) Encrypt(passphrase string, scryptN, scryptP int) ([]byte, error) {
+// EncryptToJSON will encrypt the EcdsaKey and RsaKey in the Keystore. It
+// returns the encrypted Keystore, marshaled as a JSON object.
+func (keystore *Keystore) EncryptToJSON(passphrase string, scryptN, scryptP int) ([]byte, error) {
 	ecdsaKeyEncrypted, err := keystore.encryptEcdsaKey(passphrase, scryptN, scryptP)
 	if err != nil {
 		return nil, err
@@ -89,8 +89,9 @@ func (keystore *Keystore) Encrypt(passphrase string, scryptN, scryptP int) ([]by
 	return json.Marshal(keystoreEncrypted)
 }
 
-// Decrypt the EcdsaKey and RsaKey from the JSON object into a Keystore.
-func (keystore *Keystore) Decrypt(data []byte, passphrase string) error {
+// DecryptFromJSON will decrypt the EcdsaKey and RsaKey from the JSON object
+// into a Keystore.
+func (keystore *Keystore) DecryptFromJSON(data []byte, passphrase string) error {
 	// Parse the json into a map to fetch the key version
 	val := make(map[string]interface{})
 	if err := json.Unmarshal(data, &val); err != nil {
@@ -247,7 +248,10 @@ func (keystore *Keystore) encryptRsaKey(passphrase string, scryptN, scryptP int)
 		IV: hex.EncodeToString(iv),
 	}
 
-	publicKey := BytesFromRsaPublicKey(&keystore.RsaKey.PublicKey)
+	publicKey, err := BytesFromRsaPublicKey(&keystore.RsaKey.PublicKey)
+	if err != nil {
+		return encryptedKeyJSONV3{}, fmt.Errorf("cannot read rsa.PublicKey from bytes: %v", err)
+	}
 	cryptoStruct := cryptoJSON{
 		Cipher:       "aes-128-ctr",
 		CipherText:   hex.EncodeToString(cipherText),

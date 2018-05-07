@@ -15,14 +15,14 @@ const NumberOfTestOrders = 100
 var _ = Describe("order book cache", func() {
 	Context("order status change event ", func() {
 		var cache orderbook.Cache
-		var orders [NumberOfTestOrders]orderbook.Entry
+		var orders [NumberOfTestOrders]order.Order
 
 		BeforeEach(func() {
 			cache = orderbook.NewCache()
 			Ω(len(cache.Blocks())).Should(Equal(0))
 
 			for i := 0; i < NumberOfTestOrders; i++ {
-				orders[i] = newEntry(order.ID([]byte{uint8(i)}))
+				orders[i] = order.Order{ID: order.ID([]byte{uint8(i)})}
 			}
 			Ω(len(cache.Blocks())).Should(Equal(0))
 		})
@@ -49,9 +49,9 @@ var _ = Describe("order book cache", func() {
 		})
 
 		It("should be able to store data and its status", func() {
-			var orders [NumberOfTestOrders]orderbook.Entry
+			var orders [NumberOfTestOrders]order.Order
 			for i := 0; i < NumberOfTestOrders; i++ {
-				orders[i] = newEntry(order.ID([]byte{uint8(i)}))
+				orders[i] = order.Order{ID: order.ID([]byte{uint8(i)})}
 			}
 
 			for i := 0; i < NumberOfTestOrders; i++ {
@@ -114,14 +114,14 @@ var _ = Describe("order book cache", func() {
 
 	Context("negative tests", func() {
 		var cache orderbook.Cache
-		var orders [NumberOfTestOrders]orderbook.Entry
+		var orders [NumberOfTestOrders]order.Order
 
 		BeforeEach(func() {
 			cache = orderbook.NewCache()
 			Ω(len(cache.Blocks())).Should(Equal(0))
 
 			for i := 0; i < NumberOfTestOrders; i++ {
-				orders[i] = newEntry(order.ID([]byte{uint8(i)}))
+				orders[i] = order.Order{ID: order.ID([]byte{uint8(i)})}
 			}
 			Ω(len(cache.Blocks())).Should(Equal(0))
 		})
@@ -145,7 +145,7 @@ var _ = Describe("order book cache", func() {
 
 		It("should not cancel orders that haven't been opened", func() {
 			for _, order := range orders {
-				err := cache.Cancel(order.ID)
+				err := cache.Cancel(order)
 				Ω(err).Should(HaveOccurred())
 			}
 			Ω(len(cache.Blocks())).Should(Equal(0))
@@ -155,14 +155,14 @@ var _ = Describe("order book cache", func() {
 
 	Context("canceling orders", func() {
 		var cache orderbook.Cache
-		var orders [NumberOfTestOrders]orderbook.Entry
+		var orders [NumberOfTestOrders]order.Order
 
 		BeforeEach(func() {
 			cache = orderbook.NewCache()
 			Ω(len(cache.Blocks())).Should(Equal(0))
 
 			for i := 0; i < NumberOfTestOrders; i++ {
-				orders[i] = newEntry(order.ID([]byte{uint8(i)}))
+				orders[i] = order.Order{ID: order.ID([]byte{uint8(i)})}
 			}
 
 			for i := 0; i < NumberOfTestOrders; i++ {
@@ -174,7 +174,7 @@ var _ = Describe("order book cache", func() {
 
 		It("can cancel open orders", func() {
 			for i := 0; i < NumberOfTestOrders; i++ {
-				err := cache.Cancel(orders[i].ID)
+				err := cache.Cancel(orders[i])
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 			Ω(len(cache.Blocks())).Should(Equal(0))
@@ -192,7 +192,7 @@ var _ = Describe("order book cache", func() {
 			Ω(len(cache.Blocks())).Should(Equal(NumberOfTestOrders))
 
 			for i := 0; i < NumberOfTestOrders; i++ {
-				err := cache.Cancel(orders[i].ID)
+				err := cache.Cancel(orders[i])
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 			Ω(len(cache.Blocks())).Should(Equal(0))
@@ -209,7 +209,7 @@ var _ = Describe("order book cache", func() {
 			for i := 0; i < NumberOfTestOrders; i++ {
 				err := cache.Match(orders[i])
 				Ω(err).ShouldNot(HaveOccurred())
-				err = cache.Cancel(orders[i].ID)
+				err = cache.Cancel(orders[i])
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 			Ω(len(cache.Blocks())).Should(Equal(0))
@@ -236,7 +236,7 @@ var _ = Describe("order book cache", func() {
 			Ω(len(cache.Blocks())).Should(Equal(NumberOfTestOrders))
 
 			for i := 0; i < NumberOfTestOrders; i++ {
-				err := cache.Cancel(orders[i].ID)
+				err := cache.Cancel(orders[i])
 				Ω(err).Should(HaveOccurred())
 			}
 			Ω(len(cache.Blocks())).Should(Equal(NumberOfTestOrders))

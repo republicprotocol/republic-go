@@ -23,7 +23,7 @@ func main() {
 	if *passphrase == "" {
 		keystoreJSON, err = json.MarshalIndent(keystore, "", "  ")
 	} else {
-		keystoreJSON, err = keystore.Encrypt(*passphrase, crypto.StandardScryptN, crypto.StandardScryptP)
+		keystoreJSON, err = keystore.EncryptToJSON(*passphrase, crypto.StandardScryptN, crypto.StandardScryptP)
 	}
 	if err != nil {
 		log.Fatalf("cannot marshal keystore: %v", err)
