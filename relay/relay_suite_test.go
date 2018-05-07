@@ -1,7 +1,6 @@
 package relay_test
 
 import (
-	"log"
 	"testing"
 	"time"
 
