@@ -185,10 +185,12 @@ var _ = Describe("WebSocket streaming", func() {
 			u.Scheme = "ws"
 			u.Path = "orders"
 			u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ&status=unconfirmed,confirmed"
-			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
+			conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+			Ω(err).ShouldNot(HaveOccurred())
+			time.Sleep(2 * time.Second)
 
 			// Open an order with the specified ID.
-			err := book.Open(ord)
+			err = book.Open(ord)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Update the status of the order and check if there is another
