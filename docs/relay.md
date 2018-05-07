@@ -105,124 +105,82 @@ go func() {
 
 ## RESTful API
 
-The Relay RESTful API provides HTTP POST, GET and DELETE commands to communicate with a relay. These methods will allow users to send orders and order fragments, retrieve orders and get real-time updates regarding order statuses, and cancel orders that are have not been matched.
+The Relay RESTful API supports the POST, GET and DELETE verbs to communicate with a Relay over HTTP. These methods will allow users to send orders and order fragments, retrieve orders and get real-time updates regarding order statuses, and cancel orders that are have not been matched.
 
 The following sections will describe ways to connect to the Relay and use these commands to handle orders using the relay.
 
-### Starting a new Relay
+### Certificates
 
-```go
-relay := relay.NewRelay(configurations, darknodeRegistry, orderbook, relayerClient, smpcerClient, swarmerClient)
-port := 18515 //Specify the port address. 
-bind := 127.0.0.1 // Specify the bind address. 
-if err := relay.ListenAndServe(bind, fmt.Sprintf("%d", port+1)); err != nil {
-    log.Fatalf("error serving http: %v", err)
+SSL certificates are not supported. TLS is not needed when transporting pre-signed, and pre-encrypted, orders to the Relay since the security of Republic Protocol assumes that all communication is easily observed by an adversary. In future, when Relays are self-hosted and can themselves sign and encrypt orders, self-signed certificates will be supported.
+
+### Creating an Order
+
+**Request**
+
+```sh
+HTTP/1.1 POST /orders
+```
+
+```json
+{
 }
 ```
 
-### Opening orders
+**Response**
 
-The OpenOrdersHandler method can send full orders or fragmented orders to specific dark pools.
-
-**Full orders**
-
-```go
-sendOrder := relay.OpenOrderRequest{}
-order := relay.Order{
-    Type:      1,
-    Parity:    1,
-    Expiry:    time.Now().AddDate(0, 0, 7),
-    FstCode:   1,
-    SndCode:   2,
-    Price:     100,
-    MaxVolume: 100,
-    MinVolume: 100,
+```json
+{
 }
-sendOrder.Order = order
-sendOrder.OrderFragments = relay.OrderFragments{}
-s, _ := json.Marshal(sendOrder)
-body := bytes.NewBuffer(s)
-r := httptest.NewRequest("POST", "http://127.0.0.1:18515/orders", body)
-w := httptest.NewRecorder()
-relayNode := relay.Relay{}
-relayNode.Config.Token = ""
-handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.OpenOrdersHandler()))
-handler.ServeHTTP(w, r)
 ```
 
-**Order Fragments**
+### Canceling an order
 
-```go
-sendOrder := relay.OpenOrderRequest{}
-n := int64(17)
-k := int64(12)
-prime, err := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-if err != nil {
-    log.Fatal(err)
-}
-order := relay.Order{
-    Type:      1,
-    Parity:    1,
-    Expiry:    time.Now().AddDate(0, 0, 7),
-    FstCode:   1,
-    SndCode:   2,
-    Price:     100,
-    MaxVolume: 100,
-    MinVolume: 100,
-}
-fragments, err := order.Split(n, k, &prime)
-if err != nil {
-    log.Fatal(err)
-}
-// Create an OrderFragments object that stores details of the order
-// along with the fragments for specific dark pools
-fragmentedOrder := OrderFragments{}
-fragmentsForPool := map[string][]*order.Fragment{}
-fragmentsForPool["vrZhWU3VV9LRIM="] = fragments
-fragmentedOrder.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
-fragmentedOrder.Type = 2
-fragmentedOrder.Parity = 1
-fragmentedOrder.Expiry = time.Time{}
-fragmentedOrder.DarkPools = fragmentsForPool
-sendOrder.Order = relay.Order{}
-sendOrder.OrderFragments = fragmentedOrder
-s, _ := json.Marshal(sendOrder)
-body := bytes.NewBuffer(s)
-r := httptest.NewRequest("POST", "http://127.0.0.1:18515/orders", body)
-w := httptest.NewRecorder()
-relayNode := relay.Relay{}
-relayNode.Config.Token = "test"
-handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.OpenOrdersHandler()))
-handler.ServeHTTP(w, r)
+**Request**
+
+```sh
+HTTP/1.1 DELETE /orders/{id}
 ```
 
-## Canceling orders
+**Response**
 
-```go
-cancelRequest := relay.CancelOrderRequest{}
-cancelRequest.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
-s, _ := json.Marshal(cancelRequest)
-body := bytes.NewBuffer(s)
-r := httptest.NewRequest("POST", "http://127.0.0.1:18515/orders", body)
-w := httptest.NewRecorder()
-relayNode := relay.Relay{}
-relayNode.Config.Token = "test"
-handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.CancelOrderHandler()))
-handler.ServeHTTP(w, r)
+```json
+{
+}
 ```
 
-## Getting an order
+### Getting an orders
 
-```go
-// Retrieve an order with id vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM
-r := httptest.NewRequest("GET", "http://127.0.0.1:18515/orders/vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM", nil)
-w := httptest.NewRecorder()
-relayNode := relay.Relay{}
-relayNode.Config.Token = "test"
-handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.CancelOrderHandler()))
-handler.ServeHTTP(w, r)
-order := new(order.Order)
-if err := json.Unmarshal(w.Body.Bytes(), order); err != nil {
-    log.Fatal(err)
+
+**Request**
+
+```sh
+HTTP/1.1 GET /orders/{id}
+```
+
+**Response**
+
+```json
+{
+}
+```
+
+### Getting updates for orders
+
+**Request**
+
+Open a WebSocket with the Relay. Updates are streamed over the WebSocket from the server to the client. Using optional query paramters, the client can filter the stream.
+
+```sh
+HTTP/1.1 GET /orders?id={string}&status={string}&trader={string}
+```
+
+- `id` A base64 encoding of the order hash that will filter the stream for updates to this order only. Optional. No default. 
+- `status` One or more of 'open', 'unconfirmed', 'confirmed', 'settled', 'canceled' , comma separated, will filter the stream for updates on these statuses only. Optional. No default.
+- `trader` A Republic Protocol address that will filter the stream for updates for this trader only. Optional. No default.
+
+**Response**
+
+```json
+{
 }
 ```
