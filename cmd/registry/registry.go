@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -10,8 +11,11 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/darkocean"
+	"github.com/republicprotocol/republic-go/stackint"
 	"github.com/urfave/cli"
 )
 
@@ -72,7 +76,20 @@ func main() {
 					return err
 				}
 				_, err = registry.Epoch()
+				log.Println("Epoch called.")
 				return err
+			},
+		},
+		{
+			Name:    "checkreg",
+			Aliases: []string{"c"},
+			Usage:   "check if the node is registered or not",
+			Action: func(c *cli.Context) error {
+				registrar, err := NewRegistry(c, key)
+				if err != nil {
+					return err
+				}
+				return CheckRegistration(c.Args(), registrar)
 			},
 		},
 		{
@@ -88,6 +105,18 @@ func main() {
 			},
 		},
 		{
+			Name:    "approve",
+			Aliases: []string{"a"},
+			Usage:   "approve nodes with enough REN token",
+			Action: func(c *cli.Context) error {
+				registry, err := NewRegistry(c, key)
+				if err != nil {
+					return err
+				}
+				return Approve(registry)
+			},
+		},
+		{
 			Name:    "deregister",
 			Aliases: []string{"d"},
 			Usage:   "deregister nodes in the dark node registry",
@@ -97,6 +126,29 @@ func main() {
 					return err
 				}
 				return DeregisterAll(c.Args(), registry)
+			},
+		},
+		{
+			Name:    "refund",
+			Usage:   "refund ren",
+			Action: func(c *cli.Context) error {
+				registry, err := NewRegistry(c, key)
+				if err != nil {
+					return err
+				}
+				return Refund(c.Args(), registry)
+			},
+		},
+		{
+			Name:    "pool",
+			Aliases: []string{"p"},
+			Usage:   "get the index of the pool the node is in, return -1 if no pool found",
+			Action: func(c *cli.Context) error {
+				registrar, err := NewRegistry(c, key)
+				if err != nil {
+					return err
+				}
+				return GetPool(c.Args(), registrar)
 			},
 		},
 	}
@@ -137,7 +189,11 @@ func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error
 
 func RegisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 	for i := range addresses {
-		address := common.HexToAddress(addresses[i])
+		address, err := republicAddressToEthAddress(addresses[i])
+		if err != nil {
+			return err
+		}
+
 		// Check if node has already been registered
 		isRegistered, err := registry.IsRegistered(address.Bytes())
 		if err != nil {
@@ -147,10 +203,6 @@ func RegisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 		// Register the node if not registered
 		if !isRegistered {
 			minimumBond, err := registry.MinimumBond()
-			if err != nil {
-				return err
-			}
-			_, err = registry.ApproveRen(&minimumBond)
 			if err != nil {
 				return err
 			}
@@ -165,7 +217,6 @@ func RegisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 			log.Printf("[%v] %sNode already registered%s\n", address.Hex(), yellow, reset)
 		}
 	}
-	log.Println("Successfully register all node. Run 'registry epoch' to trigger epoch")
 
 	return nil
 }
@@ -173,7 +224,11 @@ func RegisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 // DeregisterAll takes a slice of republic private keys and registers them
 func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 	for i := range addresses {
-		address := common.HexToAddress(addresses[i])
+		address, err := republicAddressToEthAddress(addresses[i])
+		if err != nil {
+			return err
+		}
+
 		// Check if node has already been registered
 		isRegistered, err := registry.IsRegistered(address.Bytes())
 		if err != nil {
@@ -188,9 +243,96 @@ func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 				log.Printf("[%v] %sNode will be deregistered next epoch%s\n", address.Hex(), green, reset)
 			}
 		} else {
-			return fmt.Errorf("[%v] %sNode hasn't been registered yet.%s\n", address.Hex(), red, reset)
+			fmt.Println(fmt.Errorf("[%v] %sNode hasn't been registered yet.%s\n", address.Hex(), red, reset))
 		}
 	}
 
 	return nil
+}
+
+func Approve(registry dnr.DarknodeRegistry) error {
+
+	bond , err := stackint.FromString( "100000000000000000000000")
+	if err != nil {
+		return err
+	}
+	_, err = registry.ApproveRen(&bond)
+	if err != nil{
+		return err
+	}
+
+	return nil
+}
+
+// GetPool will get the index of the pool the node is in.
+// The address should be the ethereum address
+func GetPool(addresses []string, registry dnr.DarknodeRegistry) error {
+	if len(addresses) != 1 {
+		return fmt.Errorf("%sPlease provide one node address.%s\n", red, reset)
+	}
+	address, err := republicAddressToEthAddress(addresses[0])
+	if err != nil {
+		return err
+	}
+
+	currentEpoch, err := registry.CurrentEpoch()
+	if err != nil {
+		return err
+	}
+	nodes, err := registry.GetAllNodes()
+	if err != nil {
+		return err
+	}
+
+	ocean := darkocean.NewDarkOcean(currentEpoch.Blockhash, nodes)
+	poolIndex := ocean.PoolIndex(address.Bytes())
+	fmt.Println(poolIndex)
+
+	return nil
+}
+
+// CheckRegistration will check if the node with given address is registered with
+// the darknode registry. The address will be the ethereum address.
+func CheckRegistration(addresses []string, registrar dnr.DarknodeRegistry) error {
+	if len(addresses) != 1 {
+		return fmt.Errorf("%sPlease provide one node address.%s\n", red, reset)
+	}
+	address, err := republicAddressToEthAddress(addresses[0])
+	if err != nil {
+		return err
+	}
+
+	isRegistered, err := registrar.IsRegistered(address.Bytes())
+	if err != nil {
+		return err
+	}
+	fmt.Println(isRegistered)
+
+	return nil
+}
+
+func Refund( addresses []string,  registry dnr.DarknodeRegistry) error {
+	for i := range addresses{
+		address, err := republicAddressToEthAddress(addresses[i])
+		if err != nil {
+			return err
+		}
+		_, err = registry.Refund(address.Bytes())
+		if err != nil {
+			return err
+		}
+		log.Printf("[%v] %sNode has been refunded%s\n", address.Hex(), green, reset)
+	}
+
+	return nil
+}
+
+// Convert republic address to ethereum address
+func republicAddressToEthAddress(repAddress string) (common.Address, error)  {
+	addByte := base58.DecodeAlphabet(repAddress, base58.BTCAlphabet)[2:]
+	if len(addByte) == 0 {
+		return common.Address{}, errors.New("fail to decode the address")
+	}
+	address := common.BytesToAddress(addByte)
+	return address, nil
 }

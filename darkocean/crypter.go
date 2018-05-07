@@ -67,6 +67,8 @@ func (crypter *Crypter) Verify(hasher crypto.Hasher, signature []byte) error {
 	if err != nil {
 		return err
 	}
+	crypter.registryCacheMu.Lock()
+	defer crypter.registryCacheMu.Unlock()
 	if err := crypter.verifyAddress(addr); err != nil {
 		return err
 	}
@@ -78,6 +80,10 @@ func (crypter *Crypter) Verify(hasher crypto.Hasher, signature []byte) error {
 // DarknodeRegistry. The address registration is verified before encryption is
 // attempted. Returns the cipher text, or an error.
 func (crypter *Crypter) Encrypt(addr string, plainText []byte) ([]byte, error) {
+	crypter.registryCacheMu.Lock()
+	crypter.publicKeyCacheMu.Lock()
+	defer crypter.registryCacheMu.Unlock()
+	defer crypter.publicKeyCacheMu.Unlock()
 	if err := crypter.verifyAddress(addr); err != nil {
 		return nil, err
 	}
@@ -106,9 +112,6 @@ type publicKeyCacheEntry struct {
 }
 
 func (crypter *Crypter) verifyAddress(addr string) error {
-	crypter.registryCacheMu.Lock()
-	defer crypter.registryCacheMu.Unlock()
-
 	if err := crypter.updateRegistryCache(addr); err != nil {
 		return err
 	}
@@ -119,9 +122,6 @@ func (crypter *Crypter) verifyAddress(addr string) error {
 }
 
 func (crypter *Crypter) updateRegistryCache(addr string) error {
-	crypter.publicKeyCacheMu.Lock()
-	defer crypter.publicKeyCacheMu.Unlock()
-
 	// Update the entry in the cache
 	entry, ok := crypter.registryCache[addr]
 	if !ok || entry.timestamp.Add(crypter.cacheUpdatePeriod).Before(time.Now()) {

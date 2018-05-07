@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	base58 "github.com/jbenet/go-base58"
+	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 )
 
@@ -26,11 +26,13 @@ var StdoutLogger = func() *Logger {
 type Logger struct {
 	do.GuardedObject
 	Plugins []Plugin
+	Tags    map[string]string
 }
 
 // Options are used to Unmarshal a Logger from JSON.
 type Options struct {
-	Plugins []PluginOptions `json:"plugins"`
+	Plugins []PluginOptions   `json:"plugins"`
+	Tags    map[string]string `json:"tags"`
 }
 
 // The Plugin interface describes a worker that consumes logs
@@ -51,6 +53,7 @@ func NewLogger(options Options) (*Logger, error) {
 	logger := &Logger{
 		GuardedObject: do.NewGuardedObject(),
 		Plugins:       make([]Plugin, 0, len(options.Plugins)),
+		Tags:          options.Tags,
 	}
 	for i := range options.Plugins {
 		if options.Plugins[i].File != nil {
@@ -88,6 +91,7 @@ func (logger Logger) Stop() {
 
 // Log an Event.
 func (logger *Logger) Log(l Log) {
+	l.Tags = logger.Tags
 	for _, plugin := range logger.Plugins {
 		if err := plugin.Log(l); err != nil {
 			log.Println(err)
@@ -251,10 +255,11 @@ const (
 
 // A Log is logged by the Logger using all available Plugins.
 type Log struct {
-	Timestamp time.Time `json:"timestamp"`
-	Type      Type      `json:"type"`
-	EventType EventType `json:"eventType"`
-	Event     Event     `json:"event"`
+	Timestamp time.Time         `json:"timestamp"`
+	Type      Type              `json:"type"`
+	EventType EventType         `json:"eventType"`
+	Event     Event             `json:"event"`
+	Tags      map[string]string `json:"tags"`
 }
 
 // The Event interface describes a log event

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/republicprotocol/go-do"
 )
@@ -51,10 +52,7 @@ func (plugin *FilePlugin) Start() error {
 func (plugin *FilePlugin) Stop() error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
-	if plugin.file == os.Stdout {
-		return nil
-	}
-	if plugin.file == os.Stderr {
+	if plugin.file == os.Stdout || plugin.file == os.Stderr {
 		return nil
 	}
 	return plugin.file.Close()
@@ -68,7 +66,17 @@ func (plugin *FilePlugin) Log(l Log) error {
 		return fmt.Errorf("cannot write log to file plugin: nil file")
 	}
 	if plugin.file == os.Stdout || plugin.file == os.Stderr {
-		_, err := plugin.file.WriteString(fmt.Sprintf("%s [%s] (%s) %s\n", l.Timestamp.Format("2006/01/02 15:04:05"), l.Type, l.EventType, l.Event.String()))
+		// format the tags to a string
+		tags := []string{}
+		for key, value := range l.Tags {
+			tags = append(tags, fmt.Sprintf("%s:%s,", key, value))
+		}
+		tag := ""
+		if len(tags) > 0 {
+			tag = "{" + strings.Join(tags, ",") + "} "
+		}
+
+		_, err := plugin.file.WriteString(fmt.Sprintf("%s [%s] (%s) %s%s\n", l.Timestamp.Format("2006/01/02 15:04:05"), l.Type, l.EventType, tag, l.Event.String()))
 		return err
 	}
 	return json.NewEncoder(plugin.file).Encode(l)

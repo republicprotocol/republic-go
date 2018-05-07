@@ -31,8 +31,8 @@ func (hash32 Hash32) Hash() []byte {
 	return hash32[:]
 }
 
-func Keccak256(data []byte) []byte {
-	return ethCrypto.Keccak256(data)
+func Keccak256(data ...[]byte) []byte {
+	return ethCrypto.Keccak256(data...)
 }
 
 type Signer interface {
