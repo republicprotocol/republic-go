@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
 	"os"
-	"errors"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -198,7 +198,6 @@ func RegisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 			log.Printf("[%v] %sNode already registered%s\n", address.Hex(), yellow, reset)
 		}
 	}
-	log.Println("Successfully register all node. Run 'registry epoch' to trigger epoch")
 
 	return nil
 }
