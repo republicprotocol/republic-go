@@ -13,6 +13,9 @@ type Cache struct {
 	ordersMu *sync.RWMutex
 	orders   map[string]Entry
 
+	orderFragmentsMu *sync.RWMutex
+	orderFragments   map[string]order.Fragment
+
 	cancelMu *sync.RWMutex
 	cancels  map[string]struct{}
 }
@@ -22,6 +25,9 @@ func NewCache() Cache {
 	return Cache{
 		ordersMu: new(sync.RWMutex),
 		orders:   map[string]Entry{},
+
+		orderFragmentsMu: new(sync.RWMutex),
+		orderFragments:   map[string]order.Fragment{},
 
 		cancelMu: new(sync.RWMutex),
 		cancels:  map[string]struct{}{},
@@ -123,14 +129,8 @@ func (cache *Cache) Settle(entry Entry) error {
 	cache.ordersMu.Lock()
 	defer cache.ordersMu.Unlock()
 
-	previousStatus := cache.orders[string(entry.Order.ID)].Status
-	if previousStatus != order.Nil && previousStatus != order.Open && previousStatus != order.Unconfirmed && previousStatus != order.Confirmed {
-		return fmt.Errorf("cannot settled order with status %v", previousStatus)
-	}
-
 	entry.Status = order.Settled
 	cache.storeOrderMessage(entry)
-
 	return nil
 }
 
@@ -187,6 +187,16 @@ func (cache *Cache) Order(id order.ID) Entry {
 	defer cache.ordersMu.RLock()
 
 	return cache.orders[string(id)]
+}
+
+func (cache *Cache) Clear() {
+	cache.ordersMu.Lock()
+	cache.cancelMu.Lock()
+	defer cache.ordersMu.Unlock()
+	defer cache.cancelMu.Unlock()
+
+	cache.orders = map[string]Entry{}
+	cache.cancels = map[string]struct{}{}
 }
 
 func (cache *Cache) storeOrderMessage(entry Entry) {

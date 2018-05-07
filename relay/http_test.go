@@ -8,17 +8,17 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
-var _ = PDescribe("HTTP handlers", func() {
+var _ = Describe("HTTP handlers", func() {
 
 	Context("when handling authentication", func() {
 
@@ -29,6 +29,7 @@ var _ = PDescribe("HTTP handlers", func() {
 			w := httptest.NewRecorder()
 
 			relayNode := relay.Relay{}
+			relayNode.Config.Token = "test"
 			handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.OpenOrdersHandler()))
 			handler.ServeHTTP(w, r)
 
@@ -42,6 +43,7 @@ var _ = PDescribe("HTTP handlers", func() {
 			w := httptest.NewRecorder()
 
 			relayNode := relay.Relay{}
+			relayNode.Config.Token = "test"
 			handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.OpenOrdersHandler()))
 			handler.ServeHTTP(w, r)
 
@@ -54,23 +56,26 @@ var _ = PDescribe("HTTP handlers", func() {
 			w := httptest.NewRecorder()
 
 			relayNode := relay.Relay{}
+			relayNode.Config.Token = "test"
 			handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.OpenOrdersHandler()))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusUnauthorized))
 		})
 
-		// It("should return 200 for authorized tokens", func() {
+		It("should not return 401 for authorized tokens", func() {
 
-		// 	r := httptest.NewRequest("POST", "http://localhost/orders", nil)
-		// 	r.Header.Set("Authorization", "Bearer token")
-		// 	w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "http://localhost/orders", nil)
+			r.Header.Set("Authorization", "Bearer token")
+			w := httptest.NewRecorder()
 
-		// 	handler := relay.RecoveryHandler(relay.AuthorizationHandler(relay.OpenOrdersHandler((relay.Relay{})), "token"))
-		// 	handler.ServeHTTP(w, r)
+			relayNode := relay.Relay{}
+			relayNode.Config.Token = "token"
+			handler := relay.RecoveryHandler(relayNode.AuthorizationHandler(relayNode.OpenOrdersHandler()))
+			handler.ServeHTTP(w, r)
 
-		// 	Ω(w.Code).Should(Equal(http.StatusOK))
-		// })
+			Ω(w.Code).ShouldNot(Equal(http.StatusUnauthorized))
+		})
 	})
 
 	Context("when posting orders", func() {
@@ -174,10 +179,9 @@ var _ = PDescribe("HTTP handlers", func() {
 		})
 	})
 
-	Context("when getting orders", func() {
+	PContext("when getting orders", func() {
 		It("should return the correct information when given a valid ID", func() {
-			maxConnections := 3
-			book := orderbook.NewOrderbook(maxConnections)
+			book := orderbook.NewOrderbook()
 
 			defaultStackVal, _ := stackint.FromString("179761232312312")
 			ord := order.Order{}
@@ -212,8 +216,7 @@ var _ = PDescribe("HTTP handlers", func() {
 		})
 
 		It("should error when when given an invalid ID", func() {
-			maxConnections := 3
-			book := orderbook.NewOrderbook(maxConnections)
+			book := orderbook.NewOrderbook()
 
 			r := httptest.NewRequest("GET", "http://localhost/orders/test", nil)
 			w := httptest.NewRecorder()

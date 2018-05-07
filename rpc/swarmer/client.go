@@ -216,7 +216,7 @@ func (client *Client) UpdateDHT(multiAddress identity.MultiAddress) error {
 	return nil
 }
 
-func (client *Client) query(ctx context.Context, query identity.Address, depth int, ignoreResponse bool) (identity.MultiAddress, error) {
+func (client *Client) query(ctx context.Context, query identity.Address, depth int, isBootstrapping bool) (identity.MultiAddress, error) {
 	whitelist := identity.MultiAddresses{}
 	blacklist := map[identity.Address]struct{}{}
 
@@ -226,7 +226,7 @@ func (client *Client) query(ctx context.Context, query identity.Address, depth i
 	for _, multiAddr := range multiAddrs {
 		// Short circuit if the Swarm service is directly connected to the
 		// query
-		if query == multiAddr.Address() && !ignoreResponse {
+		if query == multiAddr.Address() && !isBootstrapping {
 			return multiAddr, nil
 		}
 
@@ -234,7 +234,7 @@ func (client *Client) query(ctx context.Context, query identity.Address, depth i
 		if err != nil {
 			return identity.MultiAddress{}, fmt.Errorf("cannot compare address distances %v and %v: %v", multiAddr.Address(), client.Address(), err)
 		}
-		if isPeerCloser && !ignoreResponse {
+		if (isPeerCloser || isBootstrapping) && query != client.Address() {
 			whitelist = append(whitelist, multiAddr)
 		}
 	}
@@ -264,7 +264,7 @@ func (client *Client) query(ctx context.Context, query identity.Address, depth i
 		// Add the peer to the DHT after a successful query and ignore the
 		// error
 		for _, multiAddr := range multiAddrs {
-			if multiAddr.Address() == query && !ignoreResponse {
+			if multiAddr.Address() == query && !isBootstrapping {
 				return multiAddr, nil
 			}
 			if _, ok := blacklist[multiAddr.Address()]; ok {

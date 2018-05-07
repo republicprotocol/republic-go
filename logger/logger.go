@@ -150,6 +150,18 @@ func (logger *Logger) Usage(cpu, memory float64, network uint64) {
 	})
 }
 
+// OrderConfirmed logs an OrderConfirmedEvent.
+func (logger *Logger) OrderConfirmed(ty Type, orderID string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      ty,
+		EventType: OrderConfirmed,
+		Event: OrderConfirmedEvent{
+			OrderID: orderID,
+		},
+	})
+}
+
 // OrderMatch logs an OrderMatchEvent.
 func (logger *Logger) OrderMatch(ty Type, id, buyID, sellID string) {
 	logger.Log(Log{
@@ -230,14 +242,15 @@ type EventType string
 
 // Values for the EventType.
 const (
-	Generic       = EventType("generic")
-	Epoch         = EventType("epoch")
-	Usage         = EventType("usage")
-	Ethereum      = EventType("ethereum")
-	OrderMatch    = EventType("orderMatch")
-	OrderReceived = EventType("orderReceived")
-	Network       = EventType("network")
-	Compute       = EventType("compute")
+	Generic        = EventType("generic")
+	Epoch          = EventType("epoch")
+	Usage          = EventType("usage")
+	Ethereum       = EventType("ethereum")
+	OrderConfirmed = EventType("orderConfirmed")
+	OrderMatch     = EventType("orderMatch")
+	OrderReceived  = EventType("orderReceived")
+	Network        = EventType("network")
+	Compute        = EventType("compute")
 )
 
 // A Log is logged by the Logger using all available Plugins.
@@ -281,6 +294,15 @@ type UsageEvent struct {
 
 func (event UsageEvent) String() string {
 	return fmt.Sprintf("cpu = %v; memory = %v; network = %v", event.CPU, event.Memory, event.Network)
+}
+
+// OrderConfirmedEvent logs two confirmed orders
+type OrderConfirmedEvent struct {
+	OrderID string `json:"orderId"`
+}
+
+func (event OrderConfirmedEvent) String() string {
+	return fmt.Sprintf("confirmation = %s", event.OrderID)
 }
 
 // OrderMatchEvent logs two matched orders
