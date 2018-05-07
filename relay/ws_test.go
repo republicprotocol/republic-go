@@ -187,7 +187,7 @@ var _ = Describe("WebSocket streaming", func() {
 			u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ&status=unconfirmed,confirmed"
 			conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 			Ω(err).ShouldNot(HaveOccurred())
-			time.Sleep(2 * time.Second)
+			time.Sleep(time.Millisecond)
 
 			// Open an order with the specified ID.
 			err = book.Open(ord)
