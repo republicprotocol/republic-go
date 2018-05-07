@@ -6,8 +6,8 @@
 *.test
 
 # Dep vendors
-vendor
-Gopkg.lock
+# vendor
+# Gopkg.lock
 
 # Secrets
 cmd/secrets

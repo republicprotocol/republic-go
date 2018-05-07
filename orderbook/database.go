@@ -57,3 +57,7 @@ func (database Database) Blocks() []Entry {
 func (database Database) Order(id order.ID) Entry {
 	panic("unimplemented")
 }
+
+func (database Database) Clear() {
+	panic("unimplemented")
+}

@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
+	"fmt"
 	"log"
-	"os"
+
 
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/crypto"
@@ -13,6 +15,10 @@ import (
 )
 
 func main() {
+	host := flag.String("host", "0.0.0.0", "ip address of the node")
+
+	flag.Parse()
+
 	keystore, err := crypto.RandomKeystore()
 	if err != nil {
 		log.Fatalf("cannot create keystore: %v", err)
@@ -20,13 +26,13 @@ func main() {
 
 	conf := darknode.Config{
 		Keystore:                keystore,
-		Host:                    "0.0.0.0",
+		Host:                    *host,
 		Port:                    "18514",
 		Address:                 identity.Address(keystore.Address()),
 		BootstrapMultiAddresses: []identity.MultiAddress{},
 		Logs: logger.Options{
 			Plugins: []logger.PluginOptions{
-				logger.PluginOptions{
+				{
 					File: &logger.FilePluginOptions{
 						Path: "stdout",
 					},
@@ -36,18 +42,15 @@ func main() {
 		Ethereum: ethereum.Config{
 			Network:                 ethereum.NetworkRopsten,
 			URI:                     "https://ropsten.infura.io",
-			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
-			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
+			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnRopsten.String(),
+			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnRopsten.String(),
 		},
 	}
 
-	file, err := os.Create("config.json")
+	bytes, err := json.Marshal(conf)
 	if err != nil {
-		log.Fatalf("cannot create file: %v", err)
+		log.Fatal(err)
 	}
-	defer file.Close()
 
-	if err := json.NewEncoder(file).Encode(conf); err != nil {
-		log.Fatalf("cannot write conf to file: %v", err)
-	}
+	fmt.Println(string(bytes))
 }

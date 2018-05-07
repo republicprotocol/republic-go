@@ -6,6 +6,7 @@ go:
 cache:
   directories:
     - vendor
+    - $GOPATH/pkg/dep
 
 before_install:
   - npm install -g ganache-cli
@@ -14,17 +15,18 @@ before_install:
   - go get github.com/mattn/goveralls
   - go get github.com/golang/dep/cmd/dep
   - go get golang.org/x/lint/golint
-  - go get github.com/haya14busa/goverage
+  - go get github.com/loongy/covermerge
   - dep ensure
 
 script:
   # - go vet ./...
   # - golint -set_exit_status `go list ./... | grep -Ev "(stackint/asm|vendor)"`
   # - golint `go list ./... | grep -Ev "(stackint/asm|vendor)"`
-  - goverage -v -coverprofile=coverprofile.out ./...
-
-after_success:
-  - sed -i '/rpc.pb.go/d' coverprofile.out
+  - ginkgo -v --cover --coverprofile coverprofile.out ./...
+  - covermerge crypto/coverprofile.out darknode/coverprofile.out darkocean/coverprofile.out delta/coverprofile.out dispatch/coverprofile.out identity/coverprofile.out logger/coverprofile.out order/coverprofile.out orderbook/coverprofile.out relay/coverprofile.out rpc/coverprofile.out shamir/coverprofile.out smpc/coverprofile.out stackint/coverprofile.out > coverprofile.out
+  - sed -i '/.pb.go/d' coverprofile.out
   - sed -i '/bindings/d' coverprofile.out
   - sed -i '/cmd/d' coverprofile.out
+
+after_success:
   - goveralls -coverprofile=coverprofile.out -service=travis-ci -repotoken $COVERALLS_TOKEN

@@ -23,7 +23,7 @@ var _ = Describe("Keystore", func() {
 			keystore, err := RandomKeystore()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			_, err = keystore.Encrypt("password", StandardScryptN, StandardScryptP)
+			_, err = keystore.EncryptToJSON("password", StandardScryptN, StandardScryptP)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -31,11 +31,11 @@ var _ = Describe("Keystore", func() {
 			keystore, err := RandomKeystore()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			data, err := keystore.Encrypt("password", StandardScryptN, StandardScryptP)
+			data, err := keystore.EncryptToJSON("password", StandardScryptN, StandardScryptP)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			keystoreDecrypted := new(Keystore)
-			err = keystoreDecrypted.Decrypt(data, "password")
+			err = keystoreDecrypted.DecryptFromJSON(data, "password")
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(keystore.ID).Should(Equal(keystoreDecrypted.ID))
@@ -48,11 +48,11 @@ var _ = Describe("Keystore", func() {
 			keystore, err := RandomKeystore()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			data, err := keystore.Encrypt("password", StandardScryptN, StandardScryptP)
+			data, err := keystore.EncryptToJSON("password", StandardScryptN, StandardScryptP)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			keystoreDecrypted := new(Keystore)
-			err = keystoreDecrypted.Decrypt(data, "badpassword")
+			err = keystoreDecrypted.DecryptFromJSON(data, "badpassword")
 			Expect(err).Should(Equal(ErrPassphraseCannotDecryptKey))
 		})
 

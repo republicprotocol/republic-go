@@ -8,7 +8,7 @@ import (
 // to a Broadcaster. At this limit, the Broadcaster will return errors when a
 // Listener attempts to subscribe.
 // TODO: Make this constant configurable.
-const MaxListeners = int32(32)
+const MaxListeners = int32(128)
 
 type Broadcaster struct {
 	done         chan struct{}

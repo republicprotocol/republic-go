@@ -35,7 +35,7 @@ func NewFilePlugin(filePluginOptions FilePluginOptions) (Plugin, error) {
 	case "stderr":
 		plugin.file = os.Stderr
 	default:
-		plugin.file, err = os.OpenFile(filePluginOptions.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		plugin.file, err = os.OpenFile(filePluginOptions.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0640)
 	}
 	return plugin, err
 }

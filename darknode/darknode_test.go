@@ -4,12 +4,15 @@ import (
 	"context"
 	"io"
 	"log"
+	mathRnd "math/rand"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/darknode"
 
+	"github.com/republicprotocol/republic-go/blockchain/test"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/rpc/client"
@@ -20,58 +23,22 @@ import (
 
 var _ = Describe("Darknode", func() {
 
-	Context("when opening orders", func() {
+	// Serialize tests to prevent bleeding the orderbook.
+	testMu := new(sync.Mutex)
 
-		FIt("should update the orderbook with an open order", func(done Done) {
-			stream, conn, cancel, err := createTestRelayClient()
-			Expect(err).ShouldNot(HaveOccurred())
+	BeforeEach(func() {
+		testMu.Lock()
+	})
 
-			go func() {
-				defer GinkgoRecover()
-				defer close(done)
-				defer cancel()
-				defer conn.Close()
+	AfterEach(func() {
+		env.ClearOrderbooks()
+		testMu.Unlock()
+	})
 
-				opened := map[string]struct{}{}
-				unconfirmed := map[string]struct{}{}
-				confirmed := map[string]struct{}{}
-				settled := map[string]struct{}{}
-				canceled := map[string]struct{}{}
-				for len(opened) < 30 {
-					syncResp, err := stream.Recv()
-					if err != nil {
-						if err == io.EOF {
-							break
-						}
-						Expect(err).ShouldNot(HaveOccurred())
-					}
-					switch syncResp.Entry.OrderStatus {
-					case relayer.OrderStatus_Open:
-						opened[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-					case relayer.OrderStatus_Unconfirmed:
-						unconfirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-					case relayer.OrderStatus_Confirmed:
-						confirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-					case relayer.OrderStatus_Settled:
-						settled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-					case relayer.OrderStatus_Canceled:
-						canceled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-					default:
-					}
-				}
-				Expect(len(opened)).Should(Equal(30))
-				Expect(len(unconfirmed)).Should(Equal(0))
-				Expect(len(confirmed)).Should(Equal(0))
-				Expect(len(settled)).Should(Equal(0))
-				Expect(len(canceled)).Should(Equal(0))
-			}()
-
-			err = env.SendBuyAndSellOrders(30)
-			Expect(err).ShouldNot(HaveOccurred())
-		}, 60)
+	test.SkipCIContext("when opening orders", func() {
 
 		It("should not match orders that are incompatible", func(done Done) {
-
+			numberOfOrders := 8
 			stream, conn, cancel, err := createTestRelayClient()
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -84,14 +51,13 @@ var _ = Describe("Darknode", func() {
 				opened := map[string]struct{}{}
 				unconfirmed := map[string]struct{}{}
 				confirmed := map[string]struct{}{}
-				settled := map[string]struct{}{}
-				canceled := map[string]struct{}{}
-				for len(opened) < 30 {
+				for len(opened) < numberOfOrders {
 					syncResp, err := stream.Recv()
 					if err != nil {
 						if err == io.EOF {
 							break
 						}
+						log.Printf("opened = %d; unconfirmed = %d; confirmed = %d", len(opened), len(unconfirmed), len(confirmed))
 						Expect(err).ShouldNot(HaveOccurred())
 					}
 					switch syncResp.Entry.OrderStatus {
@@ -101,140 +67,111 @@ var _ = Describe("Darknode", func() {
 						unconfirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
 					case relayer.OrderStatus_Confirmed:
 						confirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-					case relayer.OrderStatus_Settled:
-						settled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-					case relayer.OrderStatus_Canceled:
-						canceled[string(syncResp.Entry.Order.OrderId)] = struct{}{}
 					default:
 					}
 				}
-				Expect(len(opened)).Should(Equal(30))
+				Expect(len(opened)).Should(Equal(numberOfOrders))
 				Expect(len(unconfirmed)).Should(Equal(0))
 				Expect(len(confirmed)).Should(Equal(0))
-				Expect(len(settled)).Should(Equal(0))
-				Expect(len(canceled)).Should(Equal(0))
 			}()
 
-			orders, err := CreateOrders(30, true)
+			orders, err := CreateOrders(numberOfOrders, true)
 			Expect(err).ShouldNot(HaveOccurred())
 			env.SendOrders(orders)
-		}, 60)
-
-		It("should match orders that are compatible", func(done Done) {
-			stream, conn, cancel, err := createTestRelayClient()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			go func() {
-				defer close(done)
-				defer GinkgoRecover()
-				defer cancel()
-				defer conn.Close()
-
-				// time.Sleep(1*time.Second)
-				matched := map[string]struct{}{}
-				for len(matched) < 30 {
-					syncResp, err := stream.Recv()
-					if err != nil {
-						if err == io.EOF {
-							log.Println("EOF")
-							break
-						}
-						Expect(err).ShouldNot(HaveOccurred())
-					}
-					log.Printf("received message: %v", syncResp.Entry.OrderStatus)
-					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Unconfirmed {
-						matched[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-					}
-				}
-				Expect(len(matched)).Should(Equal(30))
-			}()
-
-			err = env.SendBuyAndSellOrders(30)
-			Expect(err).ShouldNot(HaveOccurred())
-			time.Sleep(30 * time.Second)
 
 		}, 60 /* 1 minute timeout */)
 
 		It("should confirm orders that are compatible", func(done Done) {
+			numberOfOrderPairs := 8
 			stream, conn, cancel, err := createTestRelayClient()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			go func() {
-				defer close(done)
 				defer GinkgoRecover()
+				defer close(done)
 				defer cancel()
 				defer conn.Close()
 
-				// time.Sleep(1*time.Second)
-				matched := map[string]struct{}{}
-				for len(matched) < 30 {
+				opened := map[string]struct{}{}
+				unconfirmed := map[string]struct{}{}
+				confirmed := map[string]struct{}{}
+				for len(confirmed) < numberOfOrderPairs*2 {
 					syncResp, err := stream.Recv()
 					if err != nil {
 						if err == io.EOF {
-							log.Println("EOF")
 							break
 						}
+						log.Printf("opened = %d; unconfirmed = %d; confirmed = %d", len(opened), len(unconfirmed), len(confirmed))
 						Expect(err).ShouldNot(HaveOccurred())
 					}
-					log.Printf("received message: %v", syncResp.Entry.OrderStatus)
-					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Confirmed {
-						matched[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					switch syncResp.Entry.OrderStatus {
+					case relayer.OrderStatus_Open:
+						opened[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Unconfirmed:
+						unconfirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Confirmed:
+						confirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					default:
 					}
 				}
-				Expect(len(matched)).Should(Equal(30))
+				Expect(len(opened)).Should(Equal(numberOfOrderPairs * 2))
+				Expect(len(unconfirmed)).Should(Equal(numberOfOrderPairs * 2))
+				Expect(len(confirmed)).Should(Equal(numberOfOrderPairs * 2))
 			}()
 
-			err = env.SendBuyAndSellOrders(30)
+			err = env.SendMatchingOrderPairs(numberOfOrderPairs)
 			Expect(err).ShouldNot(HaveOccurred())
-			time.Sleep(30 * time.Second)
 
-		}, 60 /* 1 minute timeout */)
+		}, 120 /* 2 minute timeout */)
 
 		It("should release orders that conflict with a confirmed order", func(done Done) {
+			numberOfOrderPairs := 8
+			numberOfExcessSellOrders := 8
 			stream, conn, cancel, err := createTestRelayClient()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			go func() {
-				defer close(done)
 				defer GinkgoRecover()
+				defer close(done)
 				defer cancel()
 				defer conn.Close()
 
-				// time.Sleep(1*time.Second)
-				matched := map[string]struct{}{}
-				openOrders := map[string]struct{}{}
-				for len(matched) < 30 {
+				opened := map[string]struct{}{}
+				confirmed := map[string]struct{}{}
+				for len(confirmed) < 2*numberOfOrderPairs {
 					syncResp, err := stream.Recv()
 					if err != nil {
 						if err == io.EOF {
-							log.Println("EOF")
 							break
 						}
+						log.Printf("opened = %d; confirmed = %d", len(opened), len(confirmed))
 						Expect(err).ShouldNot(HaveOccurred())
 					}
-					log.Printf("received message: %v", syncResp.Entry.OrderStatus)
-					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Open {
-						openOrders[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					switch syncResp.Entry.OrderStatus {
+					case relayer.OrderStatus_Open:
+						opened[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					case relayer.OrderStatus_Confirmed:
+						confirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
+					default:
 					}
-					if syncResp.Entry.OrderStatus == relayer.OrderStatus_Confirmed {
-						matched[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-					}
-
 				}
-				Expect(len(matched)).Should(Equal(20))
+
+				// Wait some time, in case the Darknodes try to find more
+				// confirmations
+				time.Sleep(10 * time.Second)
+
+				Expect(len(opened)).Should(Equal(2*numberOfOrderPairs + numberOfExcessSellOrders))
+				Expect(len(confirmed)).Should(Equal(2 * numberOfOrderPairs))
 			}()
 
-			// Send 10 buy orders
-			buyOrders, err := CreateOrders(10, true)
-			Expect(err).ShouldNot(HaveOccurred())
-			env.SendOrders(buyOrders)
-
-			// Send 20 sell orders
-			sellOrders, err := CreateOrders(20, false)
+			sellOrders, err := CreateOrders(numberOfExcessSellOrders, false)
 			Expect(err).ShouldNot(HaveOccurred())
 			env.SendOrders(sellOrders)
 
-		}, 60 /* 1 minute timeout */)
+			err = env.SendMatchingOrderPairs(numberOfOrderPairs)
+			Expect(err).ShouldNot(HaveOccurred())
+
+		}, 180 /* 3 minute timeout */)
 
 		It("should reject orders from unregistered addresses", func() {
 			// FIXME: Implement
@@ -280,7 +217,7 @@ var _ = Describe("Darknode", func() {
 				isDeadlocked = false
 			}()
 
-			err = env.SendBuyAndSellOrders(20)
+			err = env.SendMatchingOrderPairs(20)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			time.Sleep(10 * time.Second)
@@ -289,19 +226,19 @@ var _ = Describe("Darknode", func() {
 		})
 
 		It("should not deadlock when the sync starts during the updates", func() {
-			err := env.SendBuyAndSellOrders(5)
+			err := env.SendMatchingOrderPairs(5)
 			Expect(err).ShouldNot(HaveOccurred())
 			stream1, conn1, cancel1, err := createTestRelayClient()
 			defer conn1.Close()
 			defer cancel1()
 			Expect(err).ShouldNot(HaveOccurred())
-			err = env.SendBuyAndSellOrders(10)
+			err = env.SendMatchingOrderPairs(10)
 			Expect(err).ShouldNot(HaveOccurred())
 			stream2, conn2, cancel2, err := createTestRelayClient()
 			defer conn2.Close()
 			defer cancel2()
 			Expect(err).ShouldNot(HaveOccurred())
-			err = env.SendBuyAndSellOrders(5)
+			err = env.SendMatchingOrderPairs(5)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			isDeadlocked := true
@@ -335,7 +272,7 @@ var _ = Describe("Darknode", func() {
 		})
 
 		It("should not deadlock when the sync starts after the updates", func() {
-			err := env.SendBuyAndSellOrders(20)
+			err := env.SendMatchingOrderPairs(20)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			stream1, conn1, cancel1, err := createTestRelayClient()
@@ -378,65 +315,14 @@ var _ = Describe("Darknode", func() {
 		})
 
 	})
-
-	// Context("when computing order matches", func() {
-
-	// 	It("should process the distribute order table in parallel with other pools", func() {
-	// 		for _, node := range env.Darknodes {
-	// 			log.Printf("%v has %v peers", node.Address(), len(node.RPC().SwarmerClient().DHT().MultiAddresses()))
-	// 		}
-
-	// 		By("sending orders...")
-	// 		err := SendBuyAndSellOrders(env.Darknodes, NumberOfOrdersPerSecond)
-	// 		Expect(err).ShouldNot(HaveOccurred())
-
-	// 		By("verifying that nodes found matches...")
-
-	// 		crypter := crypto.NewWeakCrypter()
-	// 		conn, err := client.Dial(context.Background(), env.Darknodes[0].MultiAddress())
-	// 		Expect(err).ShouldNot(HaveOccurred())
-	// 		defer conn.Close()
-
-	// 		traderKeystore, err := crypto.RandomKeystore()
-	// 		Expect(err).ShouldNot(HaveOccurred())
-	// 		traderAddr := identity.Address(traderKeystore.Address())
-
-	// 		relayClient := relayer.NewRelayClient(conn.ClientConn)
-	// 		requestSignature, err := crypter.Sign(traderAddr)
-	// 		Expect(err).ShouldNot(HaveOccurred())
-
-	// 		request := &relayer.SyncRequest{
-	// 			Signature: requestSignature,
-	// 			Address:   traderAddr.String(),
-	// 		}
-	// 		stream, err := relayClient.Sync(context.Background(), request)
-	// 		Expect(err).ShouldNot(HaveOccurred())
-
-	// 		confirmed := map[string]struct{}{}
-	// 		for len(confirmed) < NumberOfOrdersPerSecond {
-	// 			syncResp, err := stream.Recv()
-	// 			Expect(err).ShouldNot(HaveOccurred())
-	// 			log.Printf("synchronizing entry %v => %v", base58.Encode(syncResp.Entry.Order.OrderId), syncResp.Entry.OrderStatus)
-	// 			if syncResp.Entry.OrderStatus == relayer.OrderStatus_Confirmed {
-	// 				confirmed[string(syncResp.Entry.Order.OrderId)] = struct{}{}
-	// 			}
-	// 		}
-
-	// 		log.Println("PASSED!")
-	// 	})
-
-	// 	It("should update the order book after computing an order match", func() {
-
-	// 	})
-
-	// })
 })
 
 func createTestRelayClient() (relayer.Relay_SyncClient, *client.Conn, context.CancelFunc, error) {
 	// Create a relayer client to sync with the orderbook
 	crypter := crypto.NewWeakCrypter()
 
-	conn, err := client.Dial(context.Background(), env.Darknodes[0].MultiAddress())
+	n := mathRnd.Intn(len(env.Darknodes))
+	conn, err := client.Dial(context.Background(), env.Darknodes[n].MultiAddress())
 	if err != nil {
 		return nil, &(client.Conn{}), nil, err
 	}
@@ -461,7 +347,7 @@ func createTestRelayClient() (relayer.Relay_SyncClient, *client.Conn, context.Ca
 	ctx, cancel := context.WithCancel(context.Background())
 	stream, err := relayClient.Sync(ctx, request)
 	if err != nil {
-		return nil, conn, nil, err
+		return nil, conn, cancel, err
 	}
 	return stream, conn, cancel, nil
 }

@@ -1,12 +1,12 @@
 package main
 
 import (
-	"crypto/rand"
+	"encoding/json"
 	"flag"
 	"io/ioutil"
 	"log"
 
-	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/republicprotocol/republic-go/crypto"
 )
 
 func main() {
@@ -14,17 +14,22 @@ func main() {
 	passphrase := flag.String("passphrase", "", "Passphrase used to encrypt the keystore file")
 	flag.Parse()
 
-	if *passphrase == "" {
-		log.Fatal("cannot encrypt key: empty passphrase")
-	}
-
-	key := keystore.NewKeyForDirectICAP(rand.Reader)
-	keyJSON, err := keystore.EncryptKey(key, *passphrase, keystore.StandardScryptN, keystore.StandardScryptP)
+	keystore, err := crypto.RandomKeystore()
 	if err != nil {
-		log.Fatal("cannot encrypt key:", err)
+		log.Fatalf("cannot generate random keystore: %v", err)
 	}
 
-	if err := ioutil.WriteFile(*fileName, keyJSON, 0600); err != nil {
-		log.Fatal("cannot create keystore file:", err)
+	var keystoreJSON []byte
+	if *passphrase == "" {
+		keystoreJSON, err = json.MarshalIndent(keystore, "", "  ")
+	} else {
+		keystoreJSON, err = keystore.EncryptToJSON(*passphrase, crypto.StandardScryptN, crypto.StandardScryptP)
+	}
+	if err != nil {
+		log.Fatalf("cannot marshal keystore: %v", err)
+	}
+
+	if err := ioutil.WriteFile(*fileName, keystoreJSON, 0640); err != nil {
+		log.Fatal("cannot write to keystore file:", err)
 	}
 }
