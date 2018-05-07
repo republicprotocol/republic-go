@@ -83,8 +83,7 @@ var _ = Describe("Relayer", func() {
 			}()
 
 			// Add a new entry to the orderbook
-			entry := orderbook.NewEntry(order.Order{}, order.Open)
-			book.Open(entry)
+			book.Open(order.Order{})
 
 			// Synchronise the orderbook through the peer
 			key, err := crypto.RandomEcdsaKey()
@@ -152,8 +151,7 @@ var _ = Describe("Relayer", func() {
 			}()
 
 			// Add a new entry to the orderbook
-			entry := orderbook.NewEntry(order.Order{}, order.Open)
-			relayBook.Open(entry)
+			relayBook.Open(order.Order{})
 
 			// Synchronise the orderbook through any peers
 			key, err := crypto.RandomEcdsaKey()

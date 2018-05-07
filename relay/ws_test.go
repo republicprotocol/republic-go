@@ -1,272 +1,261 @@
 package relay_test
 
-// import (
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// 	. "github.com/republicprotocol/republic-go/relay"
-// )
+import (
+	"encoding/json"
+	"net/http/httptest"
+	"net/url"
+	"sync"
+	"time"
 
-// var _ = Describe("WebSocket streaming", func() {
-// 	Context("when connecting to the socket", func() {
-// 		It("should error for missing parameters", func() {
-// 			book := orderbook.NewOrderbook(100)
-// 			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(&book)))
-// 			u, _ := url.Parse(server.URL)
-// 			u.Scheme = "ws"
-// 			u.Path = "orders"
-// 			// Note that we don't specify any query parameters.
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	. "github.com/republicprotocol/republic-go/relay"
 
-// 			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
-// 			messageType, _, err := conn.ReadMessage()
+	"github.com/gorilla/websocket"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/stackint"
+)
 
-// 			// In this case when we attempt to read, the server is already closed, so
-// 			// we should have an unexpected close error.
-// 			Ω(messageType).Should(Equal(-1))
-// 			// TODO: Check for websocket error responses.
-// 			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(true))
-// 		})
+var _ = Describe("WebSocket streaming", func() {
 
-// 		It("should be able to successfully connect to the socket with valid parameters", func() {
-// 			book := orderbook.NewOrderbook(100)
-// 			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(&book)))
-// 			u, _ := url.Parse(server.URL)
-// 			u.Scheme = "ws"
-// 			u.Path = "orders"
-// 			u.RawQuery = "id=test"
+	Context("when connecting to the socket", func() {
+		It("should error for missing parameters", func() {
+			book := orderbook.NewOrderbook()
+			relay := NewRelay(Config{}, dnr.DarknodeRegistry{}, &book, nil, nil, nil)
 
-// 			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
-// 			conn.SetReadDeadline(time.Now().Add(time.Second))
-// 			messageType, _, err := conn.ReadMessage()
+			server := httptest.NewServer(RecoveryHandler(relay.GetOrdersHandler()))
+			u, _ := url.Parse(server.URL)
+			u.Scheme = "ws"
+			u.Path = "orders"
+			// Note that we don't specify any query parameters.
 
-// 			// In this case the server is still open when we read, but the deadline
-// 			// times out due to not receiving a message, so we should not not have an
-// 			// unexpected close error.
-// 			Ω(messageType).Should(Equal(-1))
-// 			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
-// 		})
+			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
+			messageType, _, err := conn.ReadMessage()
 
-// 		It("should retrieve information about an order", func() {
-// 			var wg sync.WaitGroup
+			// In this case when we attempt to read, the server is already closed, so
+			// we should have an unexpected close error.
+			Ω(messageType).Should(Equal(-1))
+			// TODO: Check for websocket error responses.
+			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(true))
+		})
 
-// 			book := orderbook.NewOrderbook(100)
+		It("should be able to successfully connect to the socket with valid parameters", func() {
+			book := orderbook.NewOrderbook()
+			relay := NewRelay(Config{}, dnr.DarknodeRegistry{}, &book, nil, nil, nil)
 
-// 			defaultStackVal, _ := stackint.FromString("179761232312312")
-// 			ord := order.Order{}
-// 			ord.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ")
-// 			ord.Type = 2
-// 			ord.Parity = 1
-// 			ord.Expiry = time.Time{}
-// 			ord.FstCode = order.CurrencyCodeETH
-// 			ord.SndCode = order.CurrencyCodeBTC
-// 			ord.Price = defaultStackVal
-// 			ord.MaxVolume = defaultStackVal
-// 			ord.MinVolume = defaultStackVal
-// 			ord.Nonce = defaultStackVal
+			server := httptest.NewServer(RecoveryHandler(relay.GetOrdersHandler()))
+			u, _ := url.Parse(server.URL)
+			u.Scheme = "ws"
+			u.Path = "orders"
+			u.RawQuery = "id=test"
 
-// 			var hash [32]byte
-// 			orderMessage := orderbook.NewEntry(ord, order.Open, hash)
+			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
+			conn.SetReadDeadline(time.Now().Add(time.Second))
+			messageType, _, err := conn.ReadMessage()
 
-// 			wg.Add(1)
-// 			go func() {
-// 				defer wg.Done()
-// 				// Open an order with the specified ID.
-// 				book.Open(orderMessage)
-// 			}()
+			// In this case the server is still open when we read, but the deadline
+			// times out due to not receiving a message, so we should not not have an
+			// unexpected close error.
+			Ω(messageType).Should(Equal(-1))
+			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
+		})
 
-// 			// Connect to the socket.
-// 			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(&book)))
-// 			u, _ := url.Parse(server.URL)
-// 			u.Scheme = "ws"
-// 			u.Path = "orders"
-// 			u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ"
-// 			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
+		It("should retrieve information about an order", func() {
+			var wg sync.WaitGroup
 
-// 			// We should be able to read the initial message.
-// 			_, message, err := conn.ReadMessage()
-// 			socketMessage := new(orderbook.Entry)
-// 			if err := json.Unmarshal(message, socketMessage); err != nil {
-// 				fmt.Println(err)
-// 			}
-// 			Ω(socketMessage.Order.ID).Should(Equal(orderMessage.Order.ID))
+			book := orderbook.NewOrderbook()
+			relay := NewRelay(Config{}, dnr.DarknodeRegistry{}, &book, nil, nil, nil)
 
-// 			// Update the status of the order and check if there is another
-// 			// message to be read.
-// 			book.Settle(orderMessage)
-// 			messageType, message, err := conn.ReadMessage()
-// 			if err := json.Unmarshal(message, socketMessage); err != nil {
-// 				fmt.Println(err)
-// 			}
-// 			// fmt.Printf("\n%s", string(message))
+			defaultStackVal, _ := stackint.FromString("179761232312312")
+			ord := order.Order{}
+			ord.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ")
+			ord.Type = 2
+			ord.Parity = 1
+			ord.Expiry = time.Time{}
+			ord.FstCode = order.CurrencyCodeETH
+			ord.SndCode = order.CurrencyCodeBTC
+			ord.Price = defaultStackVal
+			ord.MaxVolume = defaultStackVal
+			ord.MinVolume = defaultStackVal
+			ord.Nonce = defaultStackVal
 
-// 			// Ω(socketMessage.Status).Should(Equal(4))
-// 			Ω(messageType).ShouldNot(Equal(-1))
-// 			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				// Open an order with the specified ID.
+				book.Open(ord)
+			}()
 
-// 			wg.Wait()
-// 		})
+			// Connect to the socket.
+			server := httptest.NewServer(RecoveryHandler(relay.GetOrdersHandler()))
+			u, _ := url.Parse(server.URL)
+			u.Scheme = "ws"
+			u.Path = "orders"
+			u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ"
+			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
 
-// 		It("should not retrieve information about unspecified orders", func() {
-// 			var wg sync.WaitGroup
+			// We should be able to read the initial message.
+			messageType, message, err := conn.ReadMessage()
+			var socketMessage orderbook.Entry
+			err = json.Unmarshal(message, &socketMessage)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(socketMessage.Order.ID).Should(Equal(ord.ID))
+			Ω(messageType).Should(Equal(websocket.TextMessage))
 
-// 			book := orderbook.NewOrderbook(100)
+			// Update the status of the order and check if there is another
+			// message to be read.
+			book.Settle(ord)
+			messageType, message, err = conn.ReadMessage()
+			err = json.Unmarshal(message, &socketMessage)
+			Ω(err).ShouldNot(HaveOccurred())
 
-// 			defaultStackVal, _ := stackint.FromString("179761232312312")
-// 			ord := order.Order{}
-// 			ord.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ")
-// 			ord.Type = 2
-// 			ord.Parity = 1
-// 			ord.Expiry = time.Time{}
-// 			ord.FstCode = order.CurrencyCodeETH
-// 			ord.SndCode = order.CurrencyCodeBTC
-// 			ord.Price = defaultStackVal
-// 			ord.MaxVolume = defaultStackVal
-// 			ord.MinVolume = defaultStackVal
-// 			ord.Nonce = defaultStackVal
+			Ω(socketMessage.Status).Should(Equal(order.Settled))
+			Ω(messageType).Should(Equal(websocket.TextMessage))
+			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
 
-// 			var hash [32]byte
-// 			orderMessage := orderbook.NewEntry(ord, order.Open, hash)
+			wg.Wait()
+		})
 
-// 			wg.Add(1)
-// 			go func() {
-// 				defer wg.Done()
-// 				book.Open(orderMessage)
-// 			}()
+		It("should not retrieve information about unspecified orders", func() {
+			var wg sync.WaitGroup
 
-// 			// Connect to the socket.
-// 			server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(&book)))
-// 			u, _ := url.Parse(server.URL)
-// 			u.Scheme = "ws"
-// 			u.Path = "orders"
-// 			u.RawQuery = "id=test"
-// 			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
+			book := orderbook.NewOrderbook()
+			relay := NewRelay(Config{}, dnr.DarknodeRegistry{}, &book, nil, nil, nil)
 
-// 			// We should not receive any messages.
-// 			conn.SetReadDeadline(time.Now().Add(time.Second))
-// 			messageType, _, err := conn.ReadMessage()
-// 			Ω(messageType).Should(Equal(-1))
-// 			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
+			defaultStackVal, _ := stackint.FromString("179761232312312")
+			ord := order.Order{}
+			ord.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ")
+			ord.Type = 2
+			ord.Parity = 1
+			ord.Expiry = time.Time{}
+			ord.FstCode = order.CurrencyCodeETH
+			ord.SndCode = order.CurrencyCodeBTC
+			ord.Price = defaultStackVal
+			ord.MaxVolume = defaultStackVal
+			ord.MinVolume = defaultStackVal
+			ord.Nonce = defaultStackVal
 
-// 			wg.Wait()
-// 		})
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				book.Open(ord)
+			}()
 
-// 		// It("should provide information about specified statuses", func() {
-// 		// 	var wg sync.WaitGroup
+			// Connect to the socket.
+			server := httptest.NewServer(RecoveryHandler(relay.GetOrdersHandler()))
+			u, _ := url.Parse(server.URL)
+			u.Scheme = "ws"
+			u.Path = "orders"
+			u.RawQuery = "id=test"
+			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
 
-// 		// 	book := orderbook.NewOrderbook(100)
+			// We should not receive any messages.
+			conn.SetReadDeadline(time.Now().Add(time.Second))
+			messageType, _, err := conn.ReadMessage()
+			Ω(messageType).Should(Equal(-1))
+			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
 
-// 		// 	defaultStackVal, _ := stackint.FromString("179761232312312")
-// 		// 	ord := order.Order{}
-// 		// 	ord.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ")
-// 		// 	ord.Type = 2
-// 		// 	ord.Parity = 1
-// 		// 	ord.Expiry = time.Time{}
-// 		// 	ord.FstCode = order.CurrencyCodeETH
-// 		// 	ord.SndCode = order.CurrencyCodeBTC
-// 		// 	ord.Price = defaultStackVal
-// 		// 	ord.MaxVolume = defaultStackVal
-// 		// 	ord.MinVolume = defaultStackVal
-// 		// 	ord.Nonce = defaultStackVal
+			wg.Wait()
+		})
 
-// 		// 	var hash [32]byte
-// 		// 	orderMessage := orderbook.NewEntry(ord, order.Open, hash)
+		It("should provide information about specified statuses", func() {
+			var wg sync.WaitGroup
 
-// 		// 	wg.Add(1)
-// 		// 	go func() {
-// 		// 		defer wg.Done()
-// 		// 		// Open an order with the specified ID.
-// 		// 		book.Open(orderMessage)
-// 		// 	}()
+			book := orderbook.NewOrderbook()
+			relay := NewRelay(Config{}, dnr.DarknodeRegistry{}, &book, nil, nil, nil)
 
-// 		// 	// Connect to the socket.
-// 		// 	server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(&book)))
-// 		// 	u, _ := url.Parse(server.URL)
-// 		// 	u.Scheme = "ws"
-// 		// 	u.Path = "orders"
-// 		// 	u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ&status=unconfirmed,confirmed"
-// 		// 	conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
+			defaultStackVal, _ := stackint.FromString("179761232312312")
+			ord := order.Order{}
+			ord.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ")
+			ord.Type = 2
+			ord.Parity = 1
+			ord.Expiry = time.Time{}
+			ord.FstCode = order.CurrencyCodeETH
+			ord.SndCode = order.CurrencyCodeBTC
+			ord.Price = defaultStackVal
+			ord.MaxVolume = defaultStackVal
+			ord.MinVolume = defaultStackVal
+			ord.Nonce = defaultStackVal
 
-// 		// 	// We should be able to read the initial message.
-// 		// 	_, message, err := conn.ReadMessage()
-// 		// 	socketMessage := new(orderbook.Entry)
-// 		// 	if err := json.Unmarshal(message, socketMessage); err != nil {
-// 		// 		fmt.Println(err)
-// 		// 	}
-// 		// 	Ω(socketMessage.Order.ID).Should(Equal(orderMessage.Order.ID))
+			// Connect to the socket.
+			server := httptest.NewServer(RecoveryHandler(relay.GetOrdersHandler()))
+			u, _ := url.Parse(server.URL)
+			u.Scheme = "ws"
+			u.Path = "orders"
+			u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ&status=unconfirmed,confirmed"
+			conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+			Ω(err).ShouldNot(HaveOccurred())
+			time.Sleep(time.Millisecond)
 
-// 		// 	// Update the status of the order and check if there is another
-// 		// 	// message to be read.
-// 		// 	book.Match(orderMessage)
-// 		// 	messageType, message, err := conn.ReadMessage()
-// 		// 	if err := json.Unmarshal(message, socketMessage); err != nil {
-// 		// 		fmt.Println(err)
-// 		// 	}
-// 		// 	Ω(socketMessage.Status).Should(Equal(1))
+			// Open an order with the specified ID.
+			err = book.Open(ord)
+			Ω(err).ShouldNot(HaveOccurred())
 
-// 		// 	book.Confirm(orderMessage)
-// 		// 	messageType, message, err = conn.ReadMessage()
-// 		// 	if err := json.Unmarshal(message, socketMessage); err != nil {
-// 		// 		fmt.Println(err)
-// 		// 	}
-// 		// 	Ω(socketMessage.Status).Should(Equal(3))
-// 		// 	Ω(messageType).ShouldNot(Equal(-1))
-// 		// 	Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
+			// Update the status of the order and check if there is another
+			// message to be read.
+			err = book.Match(ord)
+			Ω(err).ShouldNot(HaveOccurred())
+			messageType, message, err := conn.ReadMessage()
+			var socketMessage orderbook.Entry
+			err = json.Unmarshal(message, &socketMessage)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(socketMessage.Status).Should(Equal(order.Unconfirmed))
 
-// 		// 	wg.Wait()
-// 		// })
+			err = book.Confirm(ord)
+			Ω(err).ShouldNot(HaveOccurred())
+			messageType, message, err = conn.ReadMessage()
+			err = json.Unmarshal(message, &socketMessage)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(socketMessage.Status).Should(Equal(order.Confirmed))
 
-// 		// It("should not provide information about unspecified statuses", func() {
-// 		// 	var wg sync.WaitGroup
+			Ω(messageType).Should(Equal(websocket.TextMessage))
+			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
 
-// 		// 	book := orderbook.NewOrderbook(100)
+			wg.Wait()
+		})
 
-// 		// 	defaultStackVal, _ := stackint.FromString("179761232312312")
-// 		// 	ord := order.Order{}
-// 		// 	ord.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ")
-// 		// 	ord.Type = 2
-// 		// 	ord.Parity = 1
-// 		// 	ord.Expiry = time.Time{}
-// 		// 	ord.FstCode = order.CurrencyCodeETH
-// 		// 	ord.SndCode = order.CurrencyCodeBTC
-// 		// 	ord.Price = defaultStackVal
-// 		// 	ord.MaxVolume = defaultStackVal
-// 		// 	ord.MinVolume = defaultStackVal
-// 		// 	ord.Nonce = defaultStackVal
+		It("should not provide information about unspecified statuses", func() {
+			var wg sync.WaitGroup
 
-// 		// 	var hash [32]byte
-// 		// 	orderMessage := orderbook.NewEntry(ord, order.Open, hash)
+			book := orderbook.NewOrderbook()
+			relay := NewRelay(Config{}, dnr.DarknodeRegistry{}, &book, nil, nil, nil)
 
-// 		// 	wg.Add(1)
-// 		// 	go func() {
-// 		// 		defer wg.Done()
-// 		// 		// Open an order with the specified ID.
-// 		// 		book.Open(orderMessage)
-// 		// 	}()
+			defaultStackVal, _ := stackint.FromString("179761232312312")
+			ord := order.Order{}
+			ord.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ")
+			ord.Type = 2
+			ord.Parity = 1
+			ord.Expiry = time.Time{}
+			ord.FstCode = order.CurrencyCodeETH
+			ord.SndCode = order.CurrencyCodeBTC
+			ord.Price = defaultStackVal
+			ord.MaxVolume = defaultStackVal
+			ord.MinVolume = defaultStackVal
+			ord.Nonce = defaultStackVal
 
-// 		// 	// Connect to the socket.
-// 		// 	server := httptest.NewServer(RecoveryHandler(GetOrdersHandler(&book)))
-// 		// 	u, _ := url.Parse(server.URL)
-// 		// 	u.Scheme = "ws"
-// 		// 	u.Path = "orders"
-// 		// 	u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ&status=unconfirmed,confirmed"
-// 		// 	conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
+			// Open an order with the specified ID.
+			err := book.Open(ord)
+			Ω(err).ShouldNot(HaveOccurred())
 
-// 		// 	// We should be able to read the initial message.
-// 		// 	_, message, err := conn.ReadMessage()
-// 		// 	socketMessage := new(orderbook.Entry)
-// 		// 	if err := json.Unmarshal(message, socketMessage); err != nil {
-// 		// 		fmt.Println(err)
-// 		// 	}
-// 		// 	Ω(socketMessage.Order.ID).Should(Equal(orderMessage.Order.ID))
+			// Connect to the socket.
+			server := httptest.NewServer(RecoveryHandler(relay.GetOrdersHandler()))
+			u, _ := url.Parse(server.URL)
+			u.Scheme = "ws"
+			u.Path = "orders"
+			u.RawQuery = "id=vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ&status=unconfirmed,confirmed"
+			conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
 
-// 		// 	// We should not receive the following message, as we have not
-// 		// 	// included the status as a parameter.
-// 		// 	book.Settle(orderMessage)
-// 		// 	conn.SetReadDeadline(time.Now().Add(time.Second))
-// 		// 	messageType, _, err := conn.ReadMessage()
-// 		// 	Ω(messageType).Should(Equal(-1))
-// 		// 	Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
+			// We should not receive the following message, as we have not
+			// included the status as a parameter.
+			book.Settle(ord)
+			conn.SetReadDeadline(time.Now().Add(time.Second))
+			messageType, _, err := conn.ReadMessage()
+			Ω(messageType).Should(Equal(-1))
+			Ω(websocket.IsUnexpectedCloseError(err)).Should(Equal(false))
 
-// 		// 	wg.Wait()
-// 		// })
-// 	})
-// })
+			wg.Wait()
+		})
+	})
+})

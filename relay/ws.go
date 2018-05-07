@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/republicprotocol/republic-go/order"
 )
 
 var upgrader = websocket.Upgrader{
@@ -35,7 +36,7 @@ func (relay *Relay) writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Reque
 	// Retrieve ID and statuses from URL.
 	orderID := r.FormValue("id")
 	statuses := strings.Split(r.FormValue("status"), ",")
-	orderStatuses := []int{}
+	orderStatuses := []order.Status{}
 
 	if orderID == "" {
 		return
@@ -44,15 +45,15 @@ func (relay *Relay) writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Reque
 	for _, item := range statuses {
 		switch item {
 		case "open":
-			orderStatuses = append(orderStatuses, 0)
+			orderStatuses = append(orderStatuses, order.Open)
 		case "unconfirmed":
-			orderStatuses = append(orderStatuses, 1)
+			orderStatuses = append(orderStatuses, order.Unconfirmed)
 		case "canceled":
-			orderStatuses = append(orderStatuses, 2)
+			orderStatuses = append(orderStatuses, order.Canceled)
 		case "confirmed":
-			orderStatuses = append(orderStatuses, 3)
+			orderStatuses = append(orderStatuses, order.Confirmed)
 		case "settled":
-			orderStatuses = append(orderStatuses, 4)
+			orderStatuses = append(orderStatuses, order.Settled)
 		}
 	}
 
@@ -75,6 +76,7 @@ func (relay *Relay) writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Reque
 	for {
 		select {
 		case message, ok := <-messages:
+			fmt.Println(fmt.Sprintf("received message with status: %d", message.Status))
 			if !ok {
 				return
 			}
@@ -83,7 +85,8 @@ func (relay *Relay) writeUpdatesToWebSocket(w http.ResponseWriter, r *http.Reque
 			}
 			// Loop through specified statuses.
 			for _, status := range orderStatuses {
-				if status == int(message.Status) {
+				if status == message.Status {
+					fmt.Println(fmt.Sprintf("sending message for %d", status))
 					conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 					if err := conn.WriteJSON(message); err != nil {
 						fmt.Printf("cannot send json: %v", err) // FIXME: Use a logger
