@@ -189,12 +189,10 @@ func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error
 
 func RegisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 	for i := range addresses {
-		// Convert republic address to ethereum address
-		addByte := base58.DecodeAlphabet(addresses[i], base58.BTCAlphabet)[2:]
-		if len(addByte) == 0 {
-			return errors.New("fail to decode the address")
+		address, err := republicAddressToEthAddress(addresses[i])
+		if err != nil {
+			return err
 		}
-		address := common.BytesToAddress(addByte)
 
 		// Check if node has already been registered
 		isRegistered, err := registry.IsRegistered(address.Bytes())
@@ -226,12 +224,10 @@ func RegisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 // DeregisterAll takes a slice of republic private keys and registers them
 func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 	for i := range addresses {
-		// Convert republic address to ethereum address
-		addByte := base58.DecodeAlphabet(addresses[i], base58.BTCAlphabet)[2:]
-		if len(addByte) == 0 {
-			return errors.New("fail to decode the address")
+		address, err := republicAddressToEthAddress(addresses[i])
+		if err != nil {
+			return err
 		}
-		address := common.BytesToAddress(addByte)
 
 		// Check if node has already been registered
 		isRegistered, err := registry.IsRegistered(address.Bytes())
@@ -274,7 +270,10 @@ func GetPool(addresses []string, registry dnr.DarknodeRegistry) error {
 	if len(addresses) != 1 {
 		return fmt.Errorf("%sPlease provide one node address.%s\n", red, reset)
 	}
-	address := common.HexToAddress(addresses[0])
+	address, err := republicAddressToEthAddress(addresses[0])
+	if err != nil {
+		return err
+	}
 
 	currentEpoch, err := registry.CurrentEpoch()
 	if err != nil {
@@ -298,13 +297,11 @@ func CheckRegistration(addresses []string, registrar dnr.DarknodeRegistry) error
 	if len(addresses) != 1 {
 		return fmt.Errorf("%sPlease provide one node address.%s\n", red, reset)
 	}
-
-	// Convert republic address to ethereum address
-	addByte := base58.DecodeAlphabet(addresses[0], base58.BTCAlphabet)[2:]
-	if len(addByte) == 0 {
-		return errors.New("fail to decode the address")
+	address, err := republicAddressToEthAddress(addresses[0])
+	if err != nil {
+		return err
 	}
-	address := common.BytesToAddress(addByte)
+
 	isRegistered, err := registrar.IsRegistered(address.Bytes())
 	if err != nil {
 		return err
@@ -316,14 +313,11 @@ func CheckRegistration(addresses []string, registrar dnr.DarknodeRegistry) error
 
 func Refund( addresses []string,  registry dnr.DarknodeRegistry) error {
 	for i := range addresses{
-		// Convert republic address to ethereum address
-		addByte := base58.DecodeAlphabet(addresses[i], base58.BTCAlphabet)[2:]
-		if len(addByte) == 0 {
-			return errors.New("fail to decode the address")
+		address, err := republicAddressToEthAddress(addresses[i])
+		if err != nil {
+			return err
 		}
-		address := common.BytesToAddress(addByte)
-
-		_, err := registry.Refund(address.Bytes())
+		_, err = registry.Refund(address.Bytes())
 		if err != nil {
 			return err
 		}
@@ -331,4 +325,14 @@ func Refund( addresses []string,  registry dnr.DarknodeRegistry) error {
 	}
 
 	return nil
+}
+
+// Convert republic address to ethereum address
+func republicAddressToEthAddress(repAddress string) (common.Address, error)  {
+	addByte := base58.DecodeAlphabet(repAddress, base58.BTCAlphabet)[2:]
+	if len(addByte) == 0 {
+		return common.Address{}, errors.New("fail to decode the address")
+	}
+	address := common.BytesToAddress(addByte)
+	return address, nil
 }
