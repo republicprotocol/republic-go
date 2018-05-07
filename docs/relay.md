@@ -148,8 +148,7 @@ HTTP/1.1 DELETE /orders/{id}
 }
 ```
 
-### Getting an orders
-
+### Getting an order
 
 **Request**
 

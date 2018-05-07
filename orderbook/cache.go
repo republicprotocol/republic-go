@@ -128,7 +128,7 @@ func (cache *Cache) Settle(ord order.Order) error {
 	cache.ordersMu.Lock()
 	defer cache.ordersMu.Unlock()
 
-	entry.Status = order.Settled
+	entry := NewEntry(order.Order{ID: ord.ID}, order.Settled)
 	cache.storeOrderMessage(entry)
 	return nil
 }
