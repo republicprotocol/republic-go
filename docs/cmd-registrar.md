@@ -1,27 +1,22 @@
-# Registrar Command-line tool
+# Registry Command-line tool
 
-The **registrar** is the command-line tool for interacting with the darknode registry smart contract on ropsten.
-It supports registering/deregistering nodes, checking registration , calling epoch and getting pool index.
+The **registry** is the command-line tool for interacting with the Farknode Registry smart contract on the Ethereum Ropsten network. It supports  the registration/deregistration of Darknodes, checking registration status of Darknodes, triggering the epoch, and getting the pool index of a Darknode.
 
 # Install
 
-Make you have included `$GOROOT` in the `$PATH` variable.
-```bash
-$ cd cmd/registrar
-$ go install
+Ensure that you have `$GOBIN` configured and included in your `$PATH` environment variable.
+
+```sh
+$ go get -u github.com/republicprotocol/republic-go/cmd/registry
 ```
 
-Alternatively, after we merge this into master, you can run 
-```bash
-$ go get github.com/republicprotocol/republic-go/cmd/registrar
-```
+> Note: This will not work until the current `develop` branch has been merged into `master`.
 
 # Usage
 
 ```bash
-$ registrar [global options] command [command options] [arguments...]
+$ registry [global options] command [command options] [arguments...]
 ```
-
 
 **COMMANDS**
 
@@ -42,7 +37,7 @@ $ registrar [global options] command [command options] [arguments...]
 - `help`        
    Shows a list of commands or help for one command
 
-> You can use first letter of each command for quick access. e.g. `registrar e` has same effect with `registrar epoch`  
+The `registry` supports shorthand subcommands for quick access. You can use the first letter of the subcommand instead of the entire subcommand. For example, `registry e` has same effect as `registry epoch`.
 
 **GLOBAL OPTIONS**
 
