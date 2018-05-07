@@ -10,6 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/jbenet/go-base58"
+	"github.com/pkg/errors"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/darkocean"
@@ -162,7 +164,13 @@ func NewRegistrar(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, erro
 
 func RegisterAll(addresses []string, registrar dnr.DarknodeRegistry) error {
 	for i := range addresses {
-		address := common.HexToAddress(addresses[i])
+		// Convert republic address to ethereum address
+		addByte := base58.DecodeAlphabet(addresses[i], base58.BTCAlphabet)[2:]
+		if len(addByte) == 0 {
+			return errors.New("fail to decode the address")
+		}
+		address := common.BytesToAddress(addByte)
+
 		// Check if node has already been registered
 		isRegistered, err := registrar.IsRegistered(address.Bytes())
 		if err != nil {
@@ -198,7 +206,13 @@ func RegisterAll(addresses []string, registrar dnr.DarknodeRegistry) error {
 // DeregisterAll takes a slice of republic private keys and registers them
 func DeregisterAll(addresses []string, registrar dnr.DarknodeRegistry) error {
 	for i := range addresses {
-		address := common.HexToAddress(addresses[i])
+		// Convert republic address to ethereum address
+		addByte := base58.DecodeAlphabet(addresses[i], base58.BTCAlphabet)[2:]
+		if len(addByte) == 0 {
+			return errors.New("fail to decode the address")
+		}
+		address := common.BytesToAddress(addByte)
+
 		// Check if node has already been registered
 		isRegistered, err := registrar.IsRegistered(address.Bytes())
 		if err != nil {
