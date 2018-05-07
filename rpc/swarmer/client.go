@@ -24,6 +24,7 @@ type Client struct {
 	multiAddress identity.MultiAddress
 	dht          *dht.DHT
 	connPool     *client.ConnPool
+	bootstrapped bool
 }
 
 // NewClient returns a Client that identifies itself using an
@@ -35,6 +36,7 @@ func NewClient(crypter crypto.Crypter, multiAddress identity.MultiAddress, dht *
 		multiAddress: multiAddress,
 		dht:          dht,
 		connPool:     connPool,
+		bootstrapped: false,
 	}
 }
 
@@ -49,6 +51,9 @@ func (client *Client) Bootstrap(ctx context.Context, bootstrapMultiAddrs identit
 	errs := make(chan error, 2*len(bootstrapMultiAddrs)+1)
 	go func() {
 		defer close(errs)
+		defer func() {
+			client.bootstrapped = true
+		}()
 		dispatch.CoForAll(bootstrapMultiAddrs, func(i int) {
 			if err := client.Ping(ctx, bootstrapMultiAddrs[i]); err != nil {
 				errs <- fmt.Errorf("cannot ping bootstrap node %v: %v", bootstrapMultiAddrs[i], err)
@@ -179,6 +184,11 @@ func (client *Client) QueryTo(ctx context.Context, peer identity.MultiAddress, q
 // Address of the Client.
 func (client *Client) Address() identity.Address {
 	return client.multiAddress.Address()
+}
+
+// Bootstrapped shows whether the node has finished bootstrapping.
+func (client *Client) Bootstrapped() bool {
+	return client.bootstrapped
 }
 
 // MultiAddress of the Client.

@@ -23,6 +23,7 @@ import (
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"
 	"github.com/republicprotocol/republic-go/rpc"
+	"github.com/republicprotocol/republic-go/rpc/status"
 	"github.com/republicprotocol/republic-go/smpc"
 	"google.golang.org/grpc"
 )
@@ -181,6 +182,7 @@ func (node *Darknode) Serve(done <-chan struct{}) error {
 	node.rpc.Relayer().Register(server)
 	node.rpc.Smpcer().Register(server)
 	node.rpc.Swarmer().Register(server)
+	status.RegisterStatusServer(server, node.rpc)
 
 	go func() {
 		node.Logger.Info("listening at " + node.Config.Host + " " + node.Config.Port)
