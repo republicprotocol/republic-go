@@ -16,7 +16,6 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
-	"github.com/republicprotocol/republic-go/hyperdrive"
 )
 
 var _ = Describe("hyperdrive", func() {
@@ -66,7 +65,7 @@ var _ = Describe("hyperdrive", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			hyper.SetGasLimit(1000000)
 
-			tx := hyperdrive.Tx{
+			tx := Tx{
 				Nonces: [][]byte{
 					{0, 1},
 				},
@@ -111,7 +110,7 @@ var _ = Describe("hyperdrive", func() {
 			blockNumber, err := hyper.CheckOrders(nonce)
 			Ω(blockNumber).Should(BeZero())
 
-			tx := hyperdrive.Tx{
+			tx := Tx{
 				Nonces: [][]byte{
 					{7}, // Make sure you increment this number before running the test
 				},

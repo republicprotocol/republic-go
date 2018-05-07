@@ -9,13 +9,14 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/bindings"
-	"github.com/republicprotocol/republic-go/hyperdrive"
+	"github.com/republicprotocol/republic-go/crypto"
 )
 
 // HyperdriveContract defines the golang interface for interacting with the
@@ -51,7 +52,7 @@ func NewHyperdriveContract(ctx context.Context, conn ethereum.Conn, transactOpts
 // SendTx sends an tx to the contract. It will block until the transaction has
 // been mined. It returns an error if there is an conflict with previous txs.
 // You need to register with the darkNodeRegistry to send the tx.
-func (hyper HyperdriveContract) SendTx(tx hyperdrive.Tx) (*types.Transaction, error) {
+func (hyper HyperdriveContract) SendTx(tx Tx) (*types.Transaction, error) {
 	var hash [32]byte
 	copy(hash[:], tx.Hash)
 
@@ -73,7 +74,7 @@ func (hyper HyperdriveContract) SendTx(tx hyperdrive.Tx) (*types.Transaction, er
 	return transaction, nil
 }
 
-func (hyper *HyperdriveContract) CheckOrders(nonce hyperdrive.Nonce) (uint64, error) {
+func (hyper *HyperdriveContract) CheckOrders(nonce Nonce) (uint64, error) {
 	var nonceIn32Bytes [32]byte
 	copy(nonceIn32Bytes[:], nonce)
 	bn, err := hyper.binding.ConfirmedOrders(hyper.callOpts, nonceIn32Bytes)
@@ -84,7 +85,7 @@ func (hyper *HyperdriveContract) CheckOrders(nonce hyperdrive.Nonce) (uint64, er
 }
 
 // GetDepth read the depth of the nonce from the hyperdrive contract.
-func (hyper *HyperdriveContract) GetDepth(nonce hyperdrive.Nonce) (uint64, error) {
+func (hyper *HyperdriveContract) GetDepth(nonce Nonce) (uint64, error) {
 	var nonceIn32Bytes [32]byte
 	copy(nonceIn32Bytes[:], nonce)
 	depth, err := hyper.binding.Depth(hyper.callOpts, nonceIn32Bytes)
@@ -148,3 +149,39 @@ func (hyper *HyperdriveContract) BlockByNumber(blockNumber *big.Int) (*types.Blo
 func (hyper *HyperdriveContract) SetGasLimit(limit uint64) {
 	hyper.transactOpts.GasLimit = limit
 }
+
+// Txs must not store any Nonce more than once within any Tx.
+type Txs []Tx
+
+// A Tx stores Nonces alongside a Keccak256 Hash of the Nonces. A valid Tx must
+// not store any Nonce more than once.
+type Tx struct {
+	Hash   []byte
+	Nonces [][]byte
+}
+
+func NewTx(nonces ...Nonce) Tx {
+	return Tx{
+		Hash:   crypto.Keccak256(nonces...),
+		Nonces: nonces,
+	}
+}
+
+type NonceWithTimestamp struct {
+	Nonce     Nonce
+	Timestamp time.Time
+}
+
+func NewNonceWithTimestamp(nonce Nonce, t time.Time) NonceWithTimestamp {
+	return NonceWithTimestamp{
+		Nonce:     nonce,
+		Timestamp: t,
+	}
+}
+
+// Nonces must not store any Nonce more than once.
+type Nonces []Nonce
+
+// A Nonce is a unique 256-bit value that makes up a Tx. It must be unique
+// within the entire Hyperdrive blockchain.
+type Nonce = []byte
