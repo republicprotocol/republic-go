@@ -28,8 +28,8 @@ type TestnetEnv struct {
 }
 
 // NewTestnet will create a testnet that sets up new Relays.
-func NewTestnet(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry) (TestnetEnv, error) {
-	relays, err := NewRelays(numberOfRelays, darknodeRegistry)
+func NewTestnet(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry, port int) (TestnetEnv, error) {
+	relays, err := NewRelays(numberOfRelays, darknodeRegistry, port)
 	if err != nil {
 		return TestnetEnv{}, fmt.Errorf("cannot create new relays: %v", err)
 	}
@@ -43,11 +43,11 @@ func NewTestnet(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry) (Test
 // TestnetEnv.Teardown is made. Errors returned by the Relays while running
 // are ignored.
 // FIXME: Store the errors in a buffer that can be inspected after the test.
-func (env *TestnetEnv) Run() {
+func (env *TestnetEnv) Run(port int) {
 	dispatch.CoForAll(env.Relays, func(i int) {
 		// Create gRPC server and TCP listener
 		server := grpc.NewServer()
-		listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", "127.0.0.1", fmt.Sprintf("%d", 4000+i)))
+		listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", "127.0.0.1", fmt.Sprintf("%d", port+len(env.Relays)+i)))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -63,7 +63,7 @@ func (env *TestnetEnv) Run() {
 		// entries := relay.orderbook.Listen(done)
 		// defer close(done)
 
-		if err := relay.ListenAndServe("127.0.0.1", fmt.Sprintf("%d", 4000+i)); err != nil {
+		if err := relay.ListenAndServe("127.0.0.1", fmt.Sprintf("%d", port+i)); err != nil {
 			log.Fatalf("error serving http: %v", err)
 		}
 
@@ -77,13 +77,13 @@ func (env *TestnetEnv) Run() {
 }
 
 // NewRelays configured for a local test environment.
-func NewRelays(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry) (Relays, error) {
+func NewRelays(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry, port int) (Relays, error) {
 	var err error
 
 	relays := make(Relays, numberOfRelays)
 	configs := make([]Config, numberOfRelays)
 	for i := 0; i < numberOfRelays; i++ {
-		configs[i], err = NewLocalConfig("127.0.0.1", fmt.Sprintf("%d", 4000+i))
+		configs[i], err = NewLocalConfig("127.0.0.1", fmt.Sprintf("%d", port+i))
 		if err != nil {
 			return nil, err
 		}
