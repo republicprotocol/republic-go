@@ -219,21 +219,17 @@ func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 		}
 
 		if isRegistered {
-			registry.SetGasLimit(4000000)
-			_, err = registry.Refund(address.Bytes())
-			if err != nil {
-				return fmt.Errorf("[%v] %sCouldn't refund node%s: %v\n", address.Hex(), red, reset, err)
-			}
-
 			_, err = registry.Deregister(address.Bytes())
-
 			if err != nil {
 				return fmt.Errorf("[%v] %sCouldn't deregister node%s: %v\n", address.Hex(), red, reset, err)
 			} else {
 				log.Printf("[%v] %sNode will be deregistered next epoch%s\n", address.Hex(), green, reset)
 			}
-			registry.SetGasLimit(0)
 
+			_, err = registry.Refund(address.Bytes())
+			if err != nil {
+				return fmt.Errorf("[%v] %sCouldn't refund node%s: %v\n", address.Hex(), red, reset, err)
+			}
 		} else {
 			return fmt.Errorf("[%v] %sNode hasn't been registered yet.%s\n", address.Hex(), red, reset)
 		}
