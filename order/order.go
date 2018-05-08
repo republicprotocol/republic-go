@@ -15,7 +15,7 @@ import (
 
 // A CurrencyCode is a numerical representation of the currencies supported by
 // Republic Protocol.
-type CurrencyCode int64
+type CurrencyCode = int64
 
 // CurrencyCode values.
 const (
@@ -62,7 +62,7 @@ func (id ID) Hash() []byte {
 }
 
 // The Status shows what status the order is in.
-type Status uint8
+type Status = uint8
 
 // Status values.
 const (
