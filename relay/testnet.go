@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -30,8 +29,8 @@ type TestnetEnv struct {
 }
 
 // NewTestnet will create a testnet that sets up new Relays.
-func NewTestnet(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry, port int, bootstrapAddresses identity.MultiAddresses) (TestnetEnv, error) {
-	relays, err := NewRelays(numberOfRelays, darknodeRegistry, port, bootstrapAddresses)
+func NewTestnet(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry, port int, bootstrapAddresses identity.MultiAddresses, keystore crypto.Keystore) (TestnetEnv, error) {
+	relays, err := NewRelays(numberOfRelays, darknodeRegistry, port, bootstrapAddresses, keystore)
 	if err != nil {
 		return TestnetEnv{}, fmt.Errorf("cannot create new relays: %v", err)
 	}
@@ -49,36 +48,34 @@ func (env *TestnetEnv) Run(port int) {
 	dispatch.CoForAll(env.Relays, func(i int) {
 		// Create gRPC server and TCP listener
 		server := grpc.NewServer()
-		listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", "127.0.0.1", fmt.Sprintf("%d", port+len(env.Relays)+i)))
+		listener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", "127.0.0.1", fmt.Sprintf("%d", port+i)))
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		relay := env.Relays[i]
+		go func() {
+			relay.Register(server)
+			if err := server.Serve(listener); err != nil {
+				log.Fatalf("error serving grpc: %v", err)
+			}
+		}()
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
-		if err := relay.ListenAndServe("127.0.0.1", fmt.Sprintf("%d", port+i)); err != nil {
-			log.Fatalf("error serving http: %v", err)
-		}
-
-		relay.Register(server)
-		if err := server.Serve(listener); err != nil {
-			log.Fatalf("error serving grpc: %v", err)
-		}
-
-		relay.Sync(context.Background(), 100)
 
 		for err := range relay.swarmerClient.Bootstrap(ctx, relay.Config.BootstrapMultiAddresses, -1) {
-			if strings.Contains(err.Error(), darkocean.ErrInvalidRegistration.Error()) {
-				// try again
-				log.Printf("error while bootstrapping the relay: %v trying again ..", err)
-				time.Sleep(1 * time.Second)
-				for errs := range relay.swarmerClient.Bootstrap(ctx, relay.Config.BootstrapMultiAddresses, -1) {
-					log.Printf("error while bootstrapping the relay: %v", errs)
-				}
-			}
 			log.Printf("error while bootstrapping the relay: %v", err)
 		}
+
+		dispatch.CoBegin(func() {
+			if err := relay.ListenAndServe("127.0.0.1", fmt.Sprintf("%d", port+len(env.Relays)+i)); err != nil {
+				log.Fatalf("error serving http: %v", err)
+			}
+		}, func() {
+			relay.Sync(context.Background(), 100)
+		})
+
+		// time.Sleep(time.Second)
 
 		// done := make(chan struct{})
 		// entries := relay.orderbook.Listen(done)
@@ -88,7 +85,7 @@ func (env *TestnetEnv) Run(port int) {
 }
 
 // NewRelays configured for a local test environment.
-func NewRelays(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry, port int, bootstrapAddresses identity.MultiAddresses) (Relays, error) {
+func NewRelays(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry, port int, bootstrapAddresses identity.MultiAddresses, keystore crypto.Keystore) (Relays, error) {
 	var err error
 
 	relays := make(Relays, numberOfRelays)
@@ -102,7 +99,9 @@ func NewRelays(numberOfRelays int, darknodeRegistry dnr.DarknodeRegistry, port i
 
 	for i := 0; i < numberOfRelays; i++ {
 		book := orderbook.NewOrderbook()
-		crypter := darkocean.NewCrypter(configs[i].Keystore, darknodeRegistry, 128, time.Minute)
+		// FIXME: verified relay keystore must be used for crypter instead of the darknode's keystore
+		// crypter := darkocean.NewCrypter(configs[i].Keystore, darknodeRegistry, 128, time.Minute)
+		crypter := darkocean.NewCrypter(keystore, darknodeRegistry, 128, time.Minute)
 		dht := dht.NewDHT(configs[i].MultiAddress.Address(), 100)
 		connPool := client.NewConnPool(100)
 		relayerClient := relayer.NewClient(&crypter, &dht, &connPool)

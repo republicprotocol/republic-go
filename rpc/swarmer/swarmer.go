@@ -42,11 +42,10 @@ func (swarmer *Swarmer) Ping(ctx context.Context, request *PingRequest) (*PingRe
 		return nil, fmt.Errorf("cannot unmarshal multiaddress: %v", err)
 	}
 	multiAddress.Signature = request.GetSignature()
-	if err := swarmer.client.crypter.Verify(multiAddress, multiAddress.Signature); err != nil {
-		return nil, fmt.Errorf("cannot verify multiaddress: %v", err)
-	}
-	if err := swarmer.client.UpdateDHT(multiAddress); err != nil {
-		return nil, fmt.Errorf("cannot update dht: %v", err)
+	if err := swarmer.client.crypter.Verify(multiAddress, multiAddress.Signature); err == nil {
+		if err := swarmer.client.UpdateDHT(multiAddress); err != nil {
+			return nil, fmt.Errorf("cannot update dht: %v", err)
+		}
 	}
 	multiAddressSignature, err := swarmer.client.crypter.Sign(swarmer.client.MultiAddress())
 	if err != nil {
@@ -64,11 +63,12 @@ func (swarmer *Swarmer) Ping(ctx context.Context, request *PingRequest) (*PingRe
 // identity.MultiAddresses that are closer to the queried identity.Address than
 // the Swarm service itself.
 func (swarmer *Swarmer) Query(request *QueryRequest, stream Swarm_QueryServer) error {
-	querySignature := request.GetSignature()
+	// querySignature := request.GetSignature()
 	query := identity.Address(request.GetAddress())
-	if err := swarmer.client.crypter.Verify(query, querySignature); err != nil {
-		return fmt.Errorf("cannot verify multiaddress: %v", err)
-	}
+	// FIXME: requests from unverified addresses
+	// if err := swarmer.client.crypter.Verify(query, querySignature); err == nil {
+	// 	return fmt.Errorf("cannot verify multiaddress: %v", err)
+	// }
 
 	multiAddrs := swarmer.client.DHT().MultiAddresses()
 	for _, multiAddr := range multiAddrs {

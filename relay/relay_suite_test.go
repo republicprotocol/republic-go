@@ -20,6 +20,7 @@ const (
 	GanacheRPC             = "http://localhost:8545"
 	NumberOfDarkNodes      = 10
 	NumberOfBootstrapNodes = 5
+	NumberOfRelays         = 1
 )
 
 var darknodeTestnetEnv darknode.TestnetEnv
@@ -31,8 +32,9 @@ var _ = BeforeSuite(func() {
 	go darknodeTestnetEnv.Run()
 	Expect(err).ShouldNot(HaveOccurred())
 	time.Sleep(10 * time.Second)
-	relayTestNetEnv, err = relay.NewTestnet(1, darknodeTestnetEnv.DarknodeRegistry, 3000+NumberOfDarkNodes, darknodeTestnetEnv.BootstrapMultiAddrs)
+	relayTestNetEnv, err = relay.NewTestnet(NumberOfRelays, darknodeTestnetEnv.DarknodeRegistry, 3000+NumberOfDarkNodes, darknodeTestnetEnv.BootstrapMultiAddrs, darknodeTestnetEnv.Darknodes[0].Config.Keystore)
 	go relayTestNetEnv.Run(3000 + NumberOfDarkNodes)
+	time.Sleep(5 * time.Second)
 	Expect(err).ShouldNot(HaveOccurred())
 })
 

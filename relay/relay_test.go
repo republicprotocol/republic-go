@@ -1,13 +1,16 @@
 package relay_test
 
-// import (
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// 	. "github.com/republicprotocol/republic-go/darknodetest"
-// 	. "github.com/republicprotocol/republic-go/relay"
-// )
+import (
+	"time"
 
-// var Prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+	// . "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/order"
+	. "github.com/republicprotocol/republic-go/relay"
+	"github.com/republicprotocol/republic-go/stackint"
+)
+
+var Prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
 // var darknodeRegistry dnr.DarkNodeRegistry
 // var traderMulti string
 
@@ -552,27 +555,26 @@ package relay_test
 // 	return fullOrder
 // }
 
-// func getFragmentedOrder() OrderFragments {
-// 	defaultStackVal, _ := stackint.FromString("179761232312312")
+func getFragmentedOrder() OrderFragments {
+	defaultStackVal, _ := stackint.FromString("179761232312312")
 
-// 	fragmentedOrder := OrderFragments{}
-// 	fragmentSet := map[string][]*order.Fragment{}
-// 	fragments := []*order.Fragment{}
+	fragmentedOrder := OrderFragments{}
+	fragmentSet := map[string][]*order.Fragment{}
+	fragments := []*order.Fragment{}
 
-// 	var err error
-// 	fragments, err = order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, defaultStackVal, defaultStackVal, defaultStackVal, defaultStackVal).Split(2, 1, &Prime)
-// 	Ω(err).ShouldNot(HaveOccurred())
+	var err error
+	fragments, err = order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, defaultStackVal, defaultStackVal, defaultStackVal, defaultStackVal).Split(2, 1, &Prime)
+	Ω(err).ShouldNot(HaveOccurred())
+	fragmentSet["vrZhWU3VV9LRIM="] = fragments
 
-// 	fragmentSet["vrZhWU3VV9LRIM="] = fragments
+	fragmentedOrder.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
+	fragmentedOrder.Type = 2
+	fragmentedOrder.Parity = 1
+	fragmentedOrder.Expiry = time.Time{}
+	fragmentedOrder.DarkPools = fragmentSet
 
-// 	fragmentedOrder.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
-// 	fragmentedOrder.Type = 2
-// 	fragmentedOrder.Parity = 1
-// 	fragmentedOrder.Expiry = time.Time{}
-// 	fragmentedOrder.DarkPools = fragmentSet
-
-// 	return fragmentedOrder
-// }
+	return fragmentedOrder
+}
 
 // func generateFragmentedOrderForDarkPool(pool darkocean.Pool) (OrderFragments, error) {
 // 	sendOrder := getFullOrder()

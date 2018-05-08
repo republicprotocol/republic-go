@@ -8,12 +8,12 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/republicprotocol/republic-go/darknode"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/relay"
@@ -77,7 +77,7 @@ var _ = Describe("HTTP handlers", func() {
 			Expect(w.Body.String()).To(ContainSubstring("cannot decode json into an order or a list of order fragments:"))
 		})
 
-		PIt("should return 201 for full orders", func() {
+		It("should return 201 for full orders", func() {
 			fullOrder, err := darknode.CreateOrders(1, true)
 			Ω(err).ShouldNot(HaveOccurred())
 			sendOrder := relay.OpenOrderRequest{}
@@ -88,46 +88,38 @@ var _ = Describe("HTTP handlers", func() {
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
 			r.Header.Set("Authorization", "Bearer token")
-
 			handler := relay.RecoveryHandler(relayTestNetEnv.Relays[0].AuthorizationHandler(relayTestNetEnv.Relays[0].OpenOrdersHandler()))
 			handler.ServeHTTP(w, r)
 
 			Ω(w.Code).Should(Equal(http.StatusCreated))
 		})
 
-		// It("should return 201 for fragmented orders", func() {
-		// 	pools, trader := getPoolsAndTrader()
+		It("should return 201 for fragmented orders", func() {
+			pools, err := getPools(darknodeTestnetEnv.DarknodeRegistry)
+			Ω(err).ShouldNot(HaveOccurred())
+			fragmentedOrder, err := generateFragmentedOrderForDarkPool(pools[0])
+			Ω(err).ShouldNot(HaveOccurred())
+			sendOrder := relay.OpenOrderRequest{}
+			sendOrder.Order = order.Order{}
+			sendOrder.OrderFragments = fragmentedOrder
+			data, err := json.Marshal(sendOrder)
+			Ω(err).ShouldNot(HaveOccurred())
+			body := bytes.NewBuffer(data)
+			r := httptest.NewRequest("POST", "http://localhost/orders", body)
+			w := httptest.NewRecorder()
+			r.Header.Set("Authorization", "Bearer token")
+			handler := relay.RecoveryHandler(relayTestNetEnv.Relays[0].AuthorizationHandler(relayTestNetEnv.Relays[0].OpenOrdersHandler()))
+			handler.ServeHTTP(w, r)
 
-		// 	fragmentedOrder, err := generateFragmentedOrderForDarkPool(pools[0])
-		// 	Ω(err).ShouldNot(HaveOccurred())
-
-		// 	sendOrder := relay.OpenOrderRequest{}
-		// 	sendOrder.Order = order.Order{}
-		// 	sendOrder.OrderFragments = fragmentedOrder
-
-		// 	data, err := json.Marshal(sendOrder)
-		// 	Ω(err).ShouldNot(HaveOccurred())
-		// 	body := bytes.NewBuffer(data)
-
-		// 	r := httptest.NewRequest("POST", "http://localhost/orders", body)
-		// 	w := httptest.NewRecorder()
-
-		// 	handler := relay.RecoveryHandler(relay.OpenOrdersHandler(trader, pools))
-		// 	handler.ServeHTTP(w, r)
-
-		// 	Ω(w.Code).Should(Equal(http.StatusCreated))
-		// })
+			Ω(w.Code).Should(Equal(http.StatusCreated))
+		})
 
 		It("should return 400 for malformed orders", func() {
-			// pools, trader := getPoolsAndTrader()
-
 			incorrectOrder := []byte("this is not an order or an order fragment")
 			s, _ := json.Marshal(incorrectOrder)
 			body := bytes.NewBuffer(s)
-
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
-
 			relayNode := relay.Relay{}
 			handler := relay.RecoveryHandler(relayNode.OpenOrdersHandler())
 			handler.ServeHTTP(w, r)
@@ -137,19 +129,14 @@ var _ = Describe("HTTP handlers", func() {
 		})
 
 		It("should return 400 for empty order constructs", func() {
-			// pools, trader := getPoolsAndTrader()
-
 			sendOrder := relay.OpenOrderRequest{}
 			sendOrder.Order = order.Order{}
 			sendOrder.OrderFragments = relay.OrderFragments{}
-
 			s, err := json.Marshal(sendOrder)
 			Ω(err).ShouldNot(HaveOccurred())
 			body := bytes.NewBuffer(s)
-
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
 			w := httptest.NewRecorder()
-
 			relayNode := relay.Relay{}
 			handler := relay.RecoveryHandler(relayNode.OpenOrdersHandler())
 			handler.ServeHTTP(w, r)
@@ -231,16 +218,11 @@ var _ = Describe("HTTP handlers", func() {
 		// })
 
 		It("should return 400 for malformed cancel order requests", func() {
-			// pools, trader := getPoolsAndTrader()
-
 			cancelRequest := []byte("this is not an order or an order fragment")
-
 			s, _ := json.Marshal(cancelRequest)
 			body := bytes.NewBuffer(s)
-
 			r := httptest.NewRequest("POST", "http://localhost/orders/23213", body)
 			w := httptest.NewRecorder()
-
 			relayNode := relay.Relay{}
 			handler := relay.RecoveryHandler(relayNode.CancelOrderHandler())
 			handler.ServeHTTP(w, r)
@@ -251,3 +233,35 @@ var _ = Describe("HTTP handlers", func() {
 	})
 })
 
+func getPools(dnr dnr.DarknodeRegistry) (darkocean.Pools, error) {
+	darknodeIDs, err := dnr.GetAllNodes()
+	if err != nil {
+		return darkocean.Pools{}, err
+	}
+	epoch, err := dnr.CurrentEpoch()
+	if err != nil {
+		return darkocean.Pools{}, err
+	}
+	darkOcean := darkocean.NewDarkOcean(epoch.Blockhash, darknodeIDs)
+	return darkOcean.Pools(), nil
+}
+
+func generateFragmentedOrderForDarkPool(pool darkocean.Pool) (relay.OrderFragments, error) {
+	var Prime, err = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+	if err != nil {
+		return relay.OrderFragments{}, err
+	}
+	fullOrder, err := darknode.CreateOrders(1, true)
+	if err != nil {
+		return relay.OrderFragments{}, err
+	}
+	fragments, err := fullOrder[0].Split(int64(pool.Size()), int64(pool.Size()*2/3), &Prime)
+	if err != nil {
+		return relay.OrderFragments{}, err
+	}
+	fragmentSet := map[string][]*order.Fragment{}
+	fragmentOrder := getFragmentedOrder()
+	fragmentSet[relay.GeneratePoolID(pool)] = fragments
+	fragmentOrder.DarkPools = fragmentSet
+	return fragmentOrder, nil
+}
