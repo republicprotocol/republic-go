@@ -104,8 +104,7 @@ func (relay *Relay) SendOrderToDarkOcean(openOrder order.Order) error {
 				defer wg.Done()
 				// Split order into (number of nodes in each pool) * 2/3 fragments
 				// todo : change back to
-				// shares, err := openOrder.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
-				shares, err := openOrder.Split(int64(darkPool.Size()), 1, &prime)
+				shares, err := openOrder.Split(int64(darkPool.Size()), int64(darkPool.Size()*2/3), &prime)
 				if err != nil {
 					errCh <- err
 					return
