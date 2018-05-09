@@ -40,7 +40,7 @@ func main() {
 	fstCode := order.CurrencyCodeREN
 	sndCode := order.CurrencyCodeETH
 
-	url := "localhost:18515"
+	url := "http://localhost:18515"
 	api := relay.NewAPI(url, relay.Insecure())
 	order := relay.Order{
 		Type:      ty,
