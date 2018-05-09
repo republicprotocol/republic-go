@@ -15,29 +15,28 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/arc"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/hd"
-	"github.com/republicprotocol/republic-go/blockchain/swap"
-	"github.com/republicprotocol/republic-go/stackint"
-
-	"github.com/republicprotocol/republic-go/order"
-
 	. "github.com/republicprotocol/republic-go/relay"
 
 	abiBind "github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/arc"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/hd"
+	"github.com/republicprotocol/republic-go/blockchain/swap"
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/rpc/client"
 	"github.com/republicprotocol/republic-go/rpc/dht"
 	"github.com/republicprotocol/republic-go/rpc/relayer"
 	"github.com/republicprotocol/republic-go/rpc/smpcer"
 	"github.com/republicprotocol/republic-go/rpc/swarmer"
+	"github.com/republicprotocol/republic-go/stackint"
 	"google.golang.org/grpc"
 )
 
@@ -95,9 +94,9 @@ func main() {
 	}
 
 	book := orderbook.NewOrderbook()
-	crypter := crypto.NewWeakCrypter()
 	dht := dht.NewDHT(config.MultiAddress.Address(), 100)
 	connPool := client.NewConnPool(100)
+	crypter := darkocean.NewCrypter(config.Keystore, registrar, 128, time.Minute)
 	relayerClient := relayer.NewClient(&crypter, &dht, &connPool)
 	smpcerClient := smpcer.NewClient(&crypter, config.MultiAddress, &connPool)
 	swarmerClient := swarmer.NewClient(&crypter, config.MultiAddress, &dht, &connPool)

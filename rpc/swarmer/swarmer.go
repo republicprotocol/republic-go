@@ -63,10 +63,11 @@ func (swarmer *Swarmer) Ping(ctx context.Context, request *PingRequest) (*PingRe
 // identity.MultiAddresses that are closer to the queried identity.Address than
 // the Swarm service itself.
 func (swarmer *Swarmer) Query(request *QueryRequest, stream Swarm_QueryServer) error {
-	// querySignature := request.GetSignature()
 	query := identity.Address(request.GetAddress())
-	// FIXME: requests from unverified addresses
-	// if err := swarmer.client.crypter.Verify(query, querySignature); err == nil {
+
+	// TODO: Rate limit unregistered clients
+	// querySignature := request.GetSignature()
+	// if err := swarmer.client.crypter.Verify(query, querySignature); err != nil {
 	// 	return fmt.Errorf("cannot verify multiaddress: %v", err)
 	// }
 

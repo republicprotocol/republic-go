@@ -117,16 +117,40 @@ SSL certificates are not supported. TLS is not needed when transporting pre-sign
 
 **Request**
 
-```sh
+```
 HTTP/1.1 POST /orders
 ```
 
 ```json
 {
+    "orderSignature": "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq=",
+    "orderId": "h1uHs+egr5xWYpwSdIPeyt36PKpKthROcoCMEe2cp4u=",
+    "orderType": 0,
+    "orderParity": 0,
+    "orderExpiry": 1523238476,
+    "pools": {
+        "d2YDsRUlMhPBMMRYIhTy+nNPTQKqqBwqq+duPYWm0yS=": [{
+            "signature": "RmDYPYqqBTd2YBsInNPWySQUlMhPBMKduTqqhMRy0+w=",
+            "id": "KthRO2cp4hwS+egr5xWYpdIPeyMEe1uHsPKp6Cut3co=",
+            "orderSignature": "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq=",
+            "orderId": "h1uHs+egr5xWYpwSdIPeyt36PKpKthROcoCMEe2cp4u=",
+            "orderType": 0,
+            "orderParity": 0,
+            "orderExpiry": 1523238476,
+            "tokens": "qQUhRMuTqlRmYqqPBMKdP0+whYMDIynNPWySBTd2YBs=",
+            "price": "YqqMDYP0+wBTd2YBsIqhMRynNPWySQUhPBMKduTqlRm=",
+            "volume": "MhPRmDYPYWySQUlBsInNPduTqqqBTBMKqhMRy0+wd2Y=",
+            "minimumVolume": "hMRlMdBsInNPWyS2y0+mDYPYqKduTqqRqYQUBwhPBMT="
+        }]
+    }
 }
 ```
 
 **Response**
+
+- `201` The order was succecssfully opened.
+- `400` The JSON was malformed.
+- `401` The Authorization token was invalid.
 
 ```json
 {
@@ -137,11 +161,17 @@ HTTP/1.1 POST /orders
 
 **Request**
 
-```sh
-HTTP/1.1 DELETE /orders/{id}
+```
+HTTP/1.1 DELETE /orders/{id}/{signature}
 ```
 
+- `id` An order ID (e.g. `h1uHs+egr5xWYpwSdIPeyt36PKpKthROcoCMEe2cp4u=`) of an open order.
+- `signature` A signature from the trader that opened the order. The signed message must be `Republic Protocol: cancel order: ` prefixed to the `id`.
+
 **Response**
+
+- `200` The order was successfully canceled.
+- `401` The Authorization token was invalid.
 
 ```json
 {
@@ -156,10 +186,22 @@ HTTP/1.1 DELETE /orders/{id}
 HTTP/1.1 GET /orders/{id}
 ```
 
+- `id` An order ID (e.g. `h1uHs+egr5xWYpwSdIPeyt36PKpKthROcoCMEe2cp4u=`).
+
 **Response**
+
+- `200` The order is known to the Relay.
+- `401` The Authorization token was invalid.
+- `404` The order is unknown to the Relay.
 
 ```json
 {
+    "signature": "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq=",
+    "id": "h1uHs+egr5xWYpwSdIPeyt36PKpKthROcoCMEe2cp4u=",
+    "type": 0,
+    "parity": 0,
+    "expiry": 1523238476,
+    "status": 1
 }
 ```
 
@@ -178,6 +220,8 @@ HTTP/1.1 GET /orders?id={string}&status={string}&trader={string}
 - `trader` A Republic Protocol address that will filter the stream for updates for this trader only. Optional. No default.
 
 **Response**
+
+- `401` — The Authorization token was invalid.
 
 ```json
 {
