@@ -16,7 +16,7 @@ func TestDarkocean(t *testing.T) {
 
 const (
 	GanacheRPC        = "http://localhost:8545"
-	NumberOfDarkNodes = 8
+	NumberOfDarkNodes = 24
 )
 
 var testnetEnv darknode.TestnetEnv

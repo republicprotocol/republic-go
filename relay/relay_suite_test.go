@@ -18,7 +18,7 @@ func TestRelay(t *testing.T) {
 
 const (
 	GanacheRPC             = "http://localhost:8545"
-	NumberOfDarkNodes      = 10
+	NumberOfDarkNodes      = 24
 	NumberOfBootstrapNodes = 5
 	NumberOfRelays         = 1
 )
