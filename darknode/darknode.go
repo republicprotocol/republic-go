@@ -259,7 +259,13 @@ func (node *Darknode) RunEpochs(done <-chan struct{}) <-chan error {
 						continue
 					}
 
-					darkOcean := darkocean.NewDarkOcean(epoch.Blockhash, darknodeIDs)
+					darkOcean, err := darkocean.NewDarkOcean(&node.darknodeRegistry, epoch.Blockhash, darknodeIDs)
+					if err != nil {
+						// FIXME: Do not skip the epoch. Retry with a backoff.
+						errs <- err
+						continue
+					}
+
 					deltas, deltaErrs := node.RunEpochProcess(currDone, darkOcean)
 					go dispatch.Pipe(done, deltaErrs, errs)
 					go func() {

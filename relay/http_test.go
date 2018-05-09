@@ -242,7 +242,10 @@ func getPools(dnr dnr.DarknodeRegistry) (darkocean.Pools, error) {
 	if err != nil {
 		return darkocean.Pools{}, err
 	}
-	darkOcean := darkocean.NewDarkOcean(epoch.Blockhash, darknodeIDs)
+	darkOcean, err := darkocean.NewDarkOcean(&dnr, epoch.Blockhash, darknodeIDs)
+	if err != nil {
+		return darkocean.Pools{}, err
+	}
 	return darkOcean.Pools(), nil
 }
 
