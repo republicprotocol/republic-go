@@ -1,0 +1,46 @@
+{
+    "token": "",
+    "ethereumAddress": "0x4eC3a46892540677Ee2CCa6aB1b5B222e10211a2",
+    "keystore": {
+        "id": "0b0898ab-9079-43ca-9385-f0c5b09b8b7b",
+        "version": "3",
+        "ecdsa": {
+            "address": "8MH9W524tkLqy6C3ZS1yY4aH4xvLXK",
+            "curveParams": {
+                "b": "Bw==",
+                "bits": 256,
+                "n": "/////////////////////rqu3OavSKA7v9JejNA2QUE=",
+                "name": "s256",
+                "p": "/////////////////////////////////////v///C8=",
+                "x": "eb5mfvncu6xVoGKVzocLBwKb/NstzijZWfKBWxb4F5g=",
+                "y": "SDradyajxGVdpPv8DhEIqP0XtEimhVQZnEfQj/sQ1Lg="
+            },
+            "d": "5bDZ2wfqlT70q8Fa6VY5QYTyYQVXQBnL4d+DO8zOuGg=",
+            "x": "js8I0QOs1W/duvOarI/hRce5+LJ9RR8m81YjtNjWMvM=",
+            "y": "VtxWnu8HNCxfFVoWDq9hKXgh3UiOpLKGuEa1/s4PVw8="
+        },
+        "rsa": {
+            "d": "jGpRL9fJy/FgLMY4L3EbAYHnUuQTRrRKmKZZxagN5hUeDSY93YI8Ecfr3vmNYGl+PtzK2L0c4XRKIDy4e53CrcnkUlRpYNy0FWWNyaoggwSaT5YnZJnVxd+FRustA3nQw6o36PnA5CuXiTzcKgoXgGUj+grEFVEHcmpNUDuWXrT4BZ7+yucOPCdFL1d5utKNZo1xAe6hbjeJ3p1shrvWdN7jdr8eGEWJU61PsNSFeYyUn9fSJnMzkwxGuGiWIyXlkgpABhfcMjeJj9nWvzeCex+mwJL9huoustGDJm/j0oBBgqoIo10ZqZA9snE8MOUcFpYk/4WxfBgsJVFeBI8FgQ==",
+            "e": 65537,
+            "n": "yqR1rGS2qzXwKPw3l8kKAQUUBzCVPuMTqwpRj2ZqYE07P9DMli13x+uaNQVeYQuD2LyQtMxqsb0YLPTXnc+wsTd1zDs8H4NJRh1JZJdRF9FxjvD/xHovN1fBntDfOoIh2sQEWPFr1zYdvzf5i3TV6jLZrzjV8kYcBoEGQqkFLTyc1q5yL3wE+vOLE6n5sX2fwESCZ+asyqH9A4sstGvWGNqQt4fNDsIpKWt8pLOX6SjPAuJGHeskMKGqd7twXQwsR4s5Oe2cECeCtrPhWuP93rZtfeiehOgPwTN1DHTafXMptWB4fpC/GJ573IwBq0XBsXreLPj+Pwu2P8U0Pf3iUw==",
+            "primes": [
+                "zRbsxdjKiHcfBrKyluQrIYdqrDL1Q6YrGYDe5C56tdMPEeHE328suwDiIbN3OfCaqm7G9qYS0PyhjWZuhljwkLs5xi9q6bpH0uZg/mucyiYx+QkCD14myyauBzJd71sJkASP9n1SrMJ5sC2ZUZtScgqolpeAWXmImNn9JzzLq8M=",
+                "/PIGJwpJWSPOvKtOmY+UyUJfiGp6BExNn5SUuWz6XU8fZhbkKS3TV1Txg1xdi96FoS65MCJ3a4shiz0YP2Nx/Tsv/1bz4Vav4kg4gwzIPbH3VP/WoK8Q4TlbHarmT/usNdltkPg2iNEpMmbo3TGQVmsH+KzW6nAtUGr1jwMP1jE="
+            ]
+        }
+    },
+    "multiAddress": "/ip4/0.0.0.0/tcp/18515/republic/8MH9W524tkLqy6C3ZS1yY4aH4xvLXK",
+    "bootstrapMultiAddresses": [
+        "/ip4/18.231.119.113/tcp/18514/republic/8MGxw5z4Fm8TS4h3nJ535yynHgTw4H",
+        "/ip4/184.72.82.73/tcp/18514/republic/8MJjW5KTkoDwVpqenjBHGQBhww86qT",
+        "/ip4/52.47.111.145/tcp/18514/republic/8MHkxMUmDAP5Y5fKDGDAp24sT2qY9y"
+    ],
+    "ethereum": {
+        "network": "ropsten",
+        "uri": "https://ropsten.infura.io",
+        "republicTokenAddress": "0x65d54EDa5f032F2275Caa557E50c029cFbCCBB54",
+        "darknodeRegistryAddress": "0x69eb8d26157b9e12f959ea9f189A5D75991b59e3",
+        "hyperdriveAddress": "0x4Af263d0C667FefD3B3b1893E24B57AAd796570b",
+        "arcAddress": "0x2940089833b688a1A46c150085EF004f85fCEE87"
+    }
+}
