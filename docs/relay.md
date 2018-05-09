@@ -123,44 +123,28 @@ HTTP/1.1 POST /orders
 
 ```json
 {
-    "order": {
-        "id": "KthRO2cp4hwS+egr5xWYpdIPeyMEe1uHsPKp6Cut3co=",
-        "type": 0,
-        "parity": 0,
-        "expiry": 1523238476,
-        "tokens": 1,
-        "price": [95, 31],
-        "volume": [5, 13],
-        "minimumVolume": [5, 12],
-        "nonce": 1
-    },
-    "orderFragments": {
-        "orderSignature": "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq=",
-        "orderId": "h1uHs+egr5xWYpwSdIPeyt36PKpKthROcoCMEe2cp4u=",
-        "orderType": 0,
-        "orderParity": 0,
-        "orderExpiry": 1523238476,
-        "pools": {
-            "d2YDsRUlMhPBMMRYIhTy+nNPTQKqqBwqq+duPYWm0yS=": [{
-                "signature": "RmDYPYqqBTd2YBsInNPWySQUlMhPBMKduTqqhMRy0+w=",
-                "id": "KthRO2cp4hwS+egr5xWYpdIPeyMEe1uHsPKp6Cut3co=",
-                "orderSignature": "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq=",
-                "orderId": "h1uHs+egr5xWYpwSdIPeyt36PKpKthROcoCMEe2cp4u=",
-                "orderType": 0,
-                "orderParity": 0,
-                "orderExpiry": 1523238476,
-                "tokens": "qQUhRMuTqlRmYqqPBMKdP0+whYMDIynNPWySBTd2YBs=",
-                "price": "YqqMDYP0+wBTd2YBsIqhMRynNPWySQUhPBMKduTqlRm=",
-                "volume": "MhPRmDYPYWySQUlBsInNPduTqqqBTBMKqhMRy0+wd2Y=",
-                "minimumVolume": "hMRlMdBsInNPWyS2y0+mDYPYqKduTqqRqYQUBwhPBMT="
-            }]
-        }
+    "orderSignature": "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq=",
+    "orderId": "h1uHs+egr5xWYpwSdIPeyt36PKpKthROcoCMEe2cp4u=",
+    "orderType": 0,
+    "orderParity": 0,
+    "orderExpiry": 1523238476,
+    "pools": {
+        "d2YDsRUlMhPBMMRYIhTy+nNPTQKqqBwqq+duPYWm0yS=": [{
+            "signature": "RmDYPYqqBTd2YBsInNPWySQUlMhPBMKduTqqhMRy0+w=",
+            "id": "KthRO2cp4hwS+egr5xWYpdIPeyMEe1uHsPKp6Cut3co=",
+            "orderSignature": "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq=",
+            "orderId": "h1uHs+egr5xWYpwSdIPeyt36PKpKthROcoCMEe2cp4u=",
+            "orderType": 0,
+            "orderParity": 0,
+            "orderExpiry": 1523238476,
+            "tokens": "qQUhRMuTqlRmYqqPBMKdP0+whYMDIynNPWySBTd2YBs=",
+            "price": "YqqMDYP0+wBTd2YBsIqhMRynNPWySQUhPBMKduTqlRm=",
+            "volume": "MhPRmDYPYWySQUlBsInNPduTqqqBTBMKqhMRy0+wd2Y=",
+            "minimumVolume": "hMRlMdBsInNPWyS2y0+mDYPYqKduTqqRqYQUBwhPBMT="
+        }]
     }
 }
 ```
-
-- `order` An order that has not been signed, or fragmented. It is insecure to send an `order` to a Relay since orders are not encrypted (the Relay needs to be trusted by the trader). An `order` cannot be defined when `orderFragments` are defined.
-- `orderFragments` An order that has been signed, fragmented, and encrypted. It is secure to send `orderFragments` to a Relay since order fragments are encrypted for the respective Darknodes (the Relay does not need to be trusted by the trader). The `orderFragments` cannot be defined when `order` is defined.
 
 **Response**
 
