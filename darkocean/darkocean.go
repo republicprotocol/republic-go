@@ -9,8 +9,8 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 )
 
-// ErrAccessDenied will be returned when number of dark nodes are lesser than
-// minimum number of dark nodes required to run a dark pool
+// ErrAccessDenied is returned when the number of dark nodes are lesser than
+// the minimum number of dark nodes required to run a dark pool
 var ErrAccessDenied = errors.New("error while trying to connect to the dark ocean")
 
 // A DarkOcean of Darknodes non-deterministically shuffled into Pools by the
