@@ -1,4 +1,5 @@
-# Docs
+# Documentation
 
-- [Architecture](architecture/index.md)
-- [Testing](testing/index.md)
+Welcome to the Republic Protocol documentation!
+
+**[Architecture](docs/architecture/index.md)**
