@@ -13,14 +13,11 @@ var ErrInvalidSignatureLength = errors.New("invalid signature length")
 var ErrInvalidPoolHashLength = errors.New("invalid pool hash length")
 var ErrEmptyOrderFragmentMapping = errors.New("empty order fragment mapping")
 
-type OrderFragmentMapping map[string][]order.Fragment
-
 type RelayAdapter struct {
-	relay.Relay
+	relay.Relayer
 }
 
 func (adapter *RelayAdapter) OpenOrder(signatureIn string, orderFragmentMappingIn OrderFragmentMapping) error {
-
 	orderFragment, err := adapter.firstOrderFragmentInMapping(orderFragmentMappingIn)
 	if err != nil {
 		return err
@@ -36,7 +33,7 @@ func (adapter *RelayAdapter) OpenOrder(signatureIn string, orderFragmentMappingI
 		return err
 	}
 
-	return adapter.Relay.OpenOrder(
+	return adapter.Relayer.OpenOrder(
 		signature,
 		orderFragment.OrderID,
 		orderFragment.OrderType,
@@ -44,6 +41,15 @@ func (adapter *RelayAdapter) OpenOrder(signatureIn string, orderFragmentMappingI
 		orderFragment.OrderExpiry.Unix(),
 		orderFragmentMapping,
 	)
+}
+
+func (adapter *RelayAdapter) CancelOrder(signatureIn string, orderID order.ID) error {
+	signature, err := adapter.adaptSignature(signatureIn)
+	if err != nil {
+		return err
+	}
+
+	return adapter.Relayer.CancelOrder(signature, orderID)
 }
 
 func (adapter *RelayAdapter) firstOrderFragmentInMapping(orderFragmentMapping OrderFragmentMapping) (*order.Fragment, error) {

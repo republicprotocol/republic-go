@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/republicprotocol/republic-go/http/adapter"
 	"github.com/republicprotocol/republic-go/order"
 )
@@ -36,7 +35,7 @@ func RecoveryHandler(h http.Handler) http.Handler {
 }
 
 // AuthorizationHandler handles errors while processing the requests and populates the errors in the response
-func AuthorizationHandler(authProvider *adapter.AuthProvider, h http.Handler) http.Handler {
+func AuthorizationHandler(authProvider adapter.AuthProvider, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if authProvider.RequireAuth() {
 			authHeader := r.Header.Get("Authorization")
@@ -61,15 +60,15 @@ func AuthorizationHandler(authProvider *adapter.AuthProvider, h http.Handler) ht
 }
 
 // OpenOrderHandler handles all HTTP open order requests
-func OpenOrderHandler(relayAdapter adapter.RelayAdapter) http.Handler {
+func OpenOrderHandler(adapter adapter.OpenOrderAdapter) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		openOrderRequest := OpenOrderRequest{}
 		if err := json.NewDecoder(r.Body).Decode(&openOrderRequest); err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot decode json into an order or a list of order fragments: %v", err))
 			return
 		}
-		if err := relayAdapter.OpenOrder(openOrderRequest.Signature, openOrderRequest.OrderFragmentMapping); err != nil {
-			writeError(w, http.StatusBadRequest, err)
+		if err := adapter.OpenOrder(openOrderRequest.Signature, openOrderRequest.OrderFragmentMapping); err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot open order: %v", err))
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
@@ -77,17 +76,17 @@ func OpenOrderHandler(relayAdapter adapter.RelayAdapter) http.Handler {
 }
 
 // CancelOrderHandler handles HTTP Delete Requests
-func (relay *Relay) CancelOrderHandler() http.Handler {
+func CancelOrderHandler(adapter adapter.CancelOrderAdapter) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// FIXME: Check that cancelOrder.ID matches mux.Vars(r)["orderID"]
 
-		cancelOrder := CancelOrderRequest{}
-		if err := json.NewDecoder(r.Body).Decode(&cancelOrder); err != nil {
+		cancelOrderRequest := CancelOrderRequest{}
+		if err := json.NewDecoder(r.Body).Decode(&cancelOrderRequest); err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot decode json: %v", err))
 			return
 		}
-		if err := relay.CancelOrder(cancelOrder.ID); err != nil {
-			writeError(w, http.StatusInternalServerError, fmt.Sprintf("error canceling orders : %v", err))
+		if err := adapter.CancelOrder(cancelOrderRequest.Signature, cancelOrderRequest.ID); err != nil {
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("cannot cancel order: %v", err))
 			return
 		}
 		w.WriteHeader(http.StatusGone)
@@ -95,7 +94,7 @@ func (relay *Relay) CancelOrderHandler() http.Handler {
 }
 
 // GetOrderHandler handles all HTTP GET requests.
-func (relay *Relay) GetOrderHandler() http.Handler {
+/* func (relay *Relay) GetOrderHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		orderID := vars["orderID"]
@@ -115,7 +114,7 @@ func (relay *Relay) GetOrderHandler() http.Handler {
 			fmt.Printf("cannot encode object as json: %v", err)
 		}
 	})
-}
+} */
 
 func writeError(w http.ResponseWriter, statusCode int, err string) {
 	w.WriteHeader(statusCode)

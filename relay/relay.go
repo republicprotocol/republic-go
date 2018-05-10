@@ -13,6 +13,11 @@ import (
 
 type OrderFragmentMapping map[[32]byte][]order.Fragment
 
+type Relayer interface {
+	OpenOrder(signature [65]byte, orderID order.ID, orderType order.Type, orderParity order.Parity, orderExpiry int64, orderFragmentMapping OrderFragmentMapping) error
+	CancelOrder(signature [65]byte, orderID order.ID) error
+}
+
 type Relay struct {
 	darkpool    cal.Darkpool
 	renLedger   cal.RenLedger

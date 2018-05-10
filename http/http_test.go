@@ -1,26 +1,43 @@
 package http_test
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"net/http/httptest"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
-	"github.com/republicprotocol/republic-go/darknode"
-	"github.com/republicprotocol/republic-go/darkocean"
+	. "github.com/republicprotocol/republic-go/http"
+	"github.com/republicprotocol/republic-go/http/adapter"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/relay"
-	"github.com/republicprotocol/republic-go/stackint"
 )
 
+type mockAdapter struct {
+}
+
+func (adapter *mockAdapter) OpenOrder(signature string, orderFragmentMapping adapter.OrderFragmentMapping) error {
+	return nil
+}
+
+func (adapter *mockAdapter) CloseOrder(signature string, orderID order.ID) error {
+	return nil
+}
+
 var _ = Describe("HTTP handlers", func() {
+
+	Context("when opening orders", func() {
+
+		It("should error for ...", func() {
+			adapter := mockAdapter{}
+			handler := OpenOrderHandler(&adapter)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "http://localhost/orders", nil)
+			handler.ServeHTTP(w, r)
+
+			Expect("implemented").To(Equal("unimplemented"))
+		})
+	})
+})
+
+/* var _ = Describe("HTTP handlers", func() {
 
 	Context("when handling authentication", func() {
 
@@ -267,4 +284,4 @@ func generateFragmentedOrderForDarkPool(pool darkocean.Pool) (relay.OrderFragmen
 	fragmentSet[relay.GeneratePoolID(pool)] = fragments
 	fragmentOrder.DarkPools = fragmentSet
 	return fragmentOrder, nil
-}
+} */
