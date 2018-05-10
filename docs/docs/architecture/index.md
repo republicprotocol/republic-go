@@ -1,6 +1,6 @@
 # Architecture
 
-The official Go implementation of Republic Protocol uses two core design principles.
+Development of the official Go implementation of Republic Protocol is inspired by two core design principles.
 
 **[Dependency Inversion Principle](https://en.wikipedia.org/wiki/Dependency_inversion_principle)** encourages a layered design and a uni-direction flow of dependencies that is decoupled from the flow of control.
 
