@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/republicprotocol/republic-go/order"
@@ -16,8 +15,7 @@ const reset = "\x1b[0m"
 // OpenOrderRequest is a JSON request to open an order in the Darkpool that is
 // optionally split into order fragments, and optionally signed.
 type OpenOrderRequest struct {
-	Order          order.Order    `json:"order"`
-	OrderFragments OrderFragments `json:"orderFragments"`
+	PoolsToOrderFragments map[string][]*order.Fragment `json:"poolsToOrderFragments"`
 }
 
 // CancelOrderRequest is a JSON request to cancel an order that is optionally
@@ -30,14 +28,6 @@ type CancelOrderRequest struct {
 // OrderFragments is a JSON representation of order fragments that have been
 // split for the different pools.
 type OrderFragments struct {
-	Signature []byte   `json:"signature"`
-	ID        order.ID `json:"id"`
-
-	Type   order.Type   `json:"type"`
-	Parity order.Parity `json:"parity"`
-	Expiry time.Time    `json:"expiry"`
-
-	DarkPools map[string][]*order.Fragment `json:"darkPools"`
 }
 
 // RecoveryHandler handles errors while processing the requests and populates the errors in the response

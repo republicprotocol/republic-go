@@ -59,13 +59,13 @@ func (api *API) OpenOrder(ord Order) (order.ID, error) {
 		Order:          *newOrder,
 		OrderFragments: OrderFragments{},
 	}
-	json, err := json.Marshal(orderRequest)
+	jsonBody, err := json.Marshal(orderRequest)
 	if err != nil {
 		return nil, fmt.Errorf("cannot marshal open order request: %s", err)
 	}
 
 	// Create a request and set the authorization header
-	req, err := http.NewRequest("POST", api.URL+"/orders", bytes.NewBuffer(json))
+	req, err := http.NewRequest("POST", api.URL+"/orders", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("cannot create request: %s", err)
 	}
@@ -79,9 +79,14 @@ func (api *API) OpenOrder(ord Order) (order.ID, error) {
 	}
 	defer resp.Body.Close()
 
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
 	// Verify response
 	if resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf(fmt.Sprintf("invalid response status code: %d", resp.StatusCode))
+		return nil, fmt.Errorf("error opening order: status = %v; body = %v", resp.StatusCode, string(respBody))
 	}
 
 	return newOrder.ID, nil
