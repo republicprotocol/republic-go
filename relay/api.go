@@ -10,10 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/republicprotocol/republic-go/orderbook"
-
 	"github.com/gorilla/websocket"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 

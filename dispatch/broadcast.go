@@ -7,26 +7,28 @@ import (
 // MaxListeners defines the maximum number of Listeners that can be subscribed
 // to a Broadcaster. At this limit, the Broadcaster will return errors when a
 // Listener attempts to subscribe.
-// TODO: Make this constant configurable.
 const MaxListeners = int32(128)
+
 
 type Broadcaster struct {
 	done         chan struct{}
 	ch           chan interface{}
 	listeners    chan listener
 	numListeners int32
+	maxListeners int32
 }
 
-func NewBroadcaster() *Broadcaster {
+func NewBroadcaster(maxListener int32) *Broadcaster {
 	broadcaster := &Broadcaster{
 		done:         make(chan struct{}),
-		ch:           make(chan interface{}, MaxListeners),
-		listeners:    make(chan listener, MaxListeners),
+		ch:           make(chan interface{}, maxListener),
+		listeners:    make(chan listener, maxListener),
 		numListeners: 0,
+		maxListeners: maxListener,
 	}
 
 	go func() {
-		listeners := [MaxListeners]listener{}
+		listeners := make ([]listener, maxListener)
 		defer func() {
 			for i := int32(0); i < broadcaster.numListeners; i++ {
 				close(listeners[i].ch)
@@ -71,7 +73,7 @@ func NewBroadcaster() *Broadcaster {
 					// to prevent writes panicking
 					panic("broadcasting listeners closed")
 				}
-				if atomic.LoadInt32(&broadcaster.numListeners) >= MaxListeners {
+				if atomic.LoadInt32(&broadcaster.numListeners) >= maxListener {
 					close(listener.ch)
 					continue
 				}
@@ -115,7 +117,7 @@ func (broadcaster *Broadcaster) Listen(done <-chan struct{}) <-chan interface{} 
 		done: done,
 		ch:   make(chan interface{}),
 	}
-	if atomic.LoadInt32(&broadcaster.numListeners) >= MaxListeners {
+	if atomic.LoadInt32(&broadcaster.numListeners) >= broadcaster.maxListeners {
 		close(lis.ch)
 		return lis.ch
 	}

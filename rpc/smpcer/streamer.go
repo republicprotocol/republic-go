@@ -54,9 +54,9 @@ func (streamer *Streamer) acquireConn(multiAddr identity.MultiAddress, sender <-
 	streamer.rcs[addr]++
 	if streamer.rcs[addr] == 1 {
 		streamer.dones[addr] = make(chan struct{})
-		streamer.senders[addr] = dispatch.NewBroadcaster()
-		streamer.receivers[addr] = dispatch.NewBroadcaster()
-		streamer.errs[addr] = dispatch.NewBroadcaster()
+		streamer.senders[addr] = dispatch.NewBroadcaster(dispatch.MaxListeners)
+		streamer.receivers[addr] = dispatch.NewBroadcaster(dispatch.MaxListeners)
+		streamer.errs[addr] = dispatch.NewBroadcaster(dispatch.MaxListeners)
 
 		sender := streamer.senders[addr].Listen(streamer.dones[addr])
 		receiver, errs := streamer.openGrpcStream(multiAddr, streamer.dones[addr], sender)

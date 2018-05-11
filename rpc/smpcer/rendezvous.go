@@ -66,7 +66,7 @@ func (rendezvous *Rendezvous) acquireConn(addr identity.Address) {
 	rendezvous.rcs[addr]++
 	if rendezvous.rcs[addr] == 1 {
 		rendezvous.senders[addr] = make(chan interface{})
-		rendezvous.receivers[addr] = dispatch.NewBroadcaster()
+		rendezvous.receivers[addr] = dispatch.NewBroadcaster(dispatch.MaxListeners)
 	}
 }
 
