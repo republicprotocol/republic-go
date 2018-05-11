@@ -1,22 +1,21 @@
 package ledger
 
 import (
-	"context"
-
-	"math/big"
-
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"net/http"
+	"strconv"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/bindings"
 	"github.com/republicprotocol/republic-go/order"
-	"net/http"
-	"strconv"
 )
 
 const BlocksForConfirmation = 1

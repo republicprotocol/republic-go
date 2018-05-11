@@ -1,4 +1,5 @@
 package main
+
 //
 //import (
 //	"context"
@@ -539,4 +540,3 @@ func loadKeystore(keystoreFile, passphrase string) (crypto.Keystore, error) {
 	}
 	return *keystore, nil
 }
-

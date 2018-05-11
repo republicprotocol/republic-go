@@ -132,7 +132,7 @@ func Connect(ganacheRPC string) (ethereum.Conn, error) {
 			Network:                 ethereum.NetworkGanache,
 			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
 			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
-			RenLedgerAddress:       ethereum.RenAddressOnRopsten.String(),
+			RenLedgerAddress:        ethereum.RenAddressOnRopsten.String(),
 		},
 	}, nil
 }
@@ -294,4 +294,3 @@ func deployDarkNodeRegistry(ctx context.Context, conn ethereum.Conn, auth *bind.
 	conn.PatchedWaitDeployed(ctx, tx)
 	return dnr, address, nil
 }
-

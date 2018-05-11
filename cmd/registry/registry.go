@@ -129,8 +129,8 @@ func main() {
 			},
 		},
 		{
-			Name:    "refund",
-			Usage:   "refund ren",
+			Name:  "refund",
+			Usage: "refund ren",
 			Action: func(c *cli.Context) error {
 				registry, err := NewRegistry(c, key)
 				if err != nil {
@@ -252,12 +252,12 @@ func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 
 func Approve(registry dnr.DarknodeRegistry) error {
 
-	bond , err := stackint.FromString( "100000000000000000000000")
+	bond, err := stackint.FromString("100000000000000000000000")
 	if err != nil {
 		return err
 	}
 	_, err = registry.ApproveRen(&bond)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
@@ -314,8 +314,8 @@ func CheckRegistration(addresses []string, registrar dnr.DarknodeRegistry) error
 	return nil
 }
 
-func Refund( addresses []string,  registry dnr.DarknodeRegistry) error {
-	for i := range addresses{
+func Refund(addresses []string, registry dnr.DarknodeRegistry) error {
+	for i := range addresses {
 		address, err := republicAddressToEthAddress(addresses[i])
 		if err != nil {
 			return err
@@ -331,7 +331,7 @@ func Refund( addresses []string,  registry dnr.DarknodeRegistry) error {
 }
 
 // Convert republic address to ethereum address
-func republicAddressToEthAddress(repAddress string) (common.Address, error)  {
+func republicAddressToEthAddress(repAddress string) (common.Address, error) {
 	addByte := base58.DecodeAlphabet(repAddress, base58.BTCAlphabet)[2:]
 	if len(addByte) == 0 {
 		return common.Address{}, errors.New("fail to decode the address")

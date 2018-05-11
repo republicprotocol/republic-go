@@ -37,7 +37,7 @@ var (
 var (
 	RepublicTokenAddressOnRopsten    = common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54")
 	DarknodeRegistryAddressOnRopsten = common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3")
-	RenAddressOnRopsten       		 = common.HexToAddress("0x2c5800e65Dc91DBdc4Fb7C0aE8A2c609561B7679")
+	RenAddressOnRopsten              = common.HexToAddress("0x2c5800e65Dc91DBdc4Fb7C0aE8A2c609561B7679")
 	ArcAddressOnRopsten              = common.HexToAddress("0x2940089833b688a1a46c150085ef004f85fcee87")
 )
 

@@ -1,7 +1,6 @@
 package ledger_test
 
 import (
-
 	. "github.com/onsi/ginkgo"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 )
