@@ -2,8 +2,10 @@ package relay
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/cal"
@@ -42,6 +44,7 @@ func (relay *Relay) OpenOrder(signature [65]byte, orderID order.ID, orderFragmen
 	// TODO: Verify that the signature is valid before sending it to the
 	// RenLedger. This is not strictly necessary but it can save the Relay some
 	// gas.
+	// FIXME: Re-enable this interaction once signatures have been figured out.
 	if err := relay.renLedger.OpenOrder(signature, orderID); err != nil {
 		return err
 	}
@@ -67,12 +70,14 @@ func (relay *Relay) openOrderFragments(orderFragmentMapping OrderFragmentMapping
 	errs := make([]error, 0, len(pods))
 	podDidReceiveFragments := false
 	for _, pod := range pods {
+		log.Printf("pod %v", base64.StdEncoding.EncodeToString(pod.Hash[:]))
 		orderFragments := orderFragmentMapping[pod.Hash]
 		if orderFragments != nil && len(orderFragments) > 0 {
-			if err := relay.sendOrderFragmentsToPod(pod, orderFragments); err == nil {
+			if err := relay.sendOrderFragmentsToPod(pod, orderFragments); err != nil {
 				errs = append(errs, err)
-				podDidReceiveFragments = true
+				continue
 			}
+			podDidReceiveFragments = true
 		}
 	}
 	if !podDidReceiveFragments {
@@ -138,7 +143,7 @@ func (relay *Relay) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []order.
 	// the order fragments.
 	errNumMax := len(orderFragments) - threshold
 	if len(pod.Darknodes) > 0 && errNum > errNumMax {
-		return fmt.Errorf("cannot send order fragments to %v nodes (out of %v nodes) in pod %v", errNum, len(pod.Darknodes), pod.Hash)
+		return fmt.Errorf("cannot send order fragments to %v nodes (out of %v nodes) in pod %v: %v", errNum, len(pod.Darknodes), base64.StdEncoding.EncodeToString(pod.Hash[:]), err)
 	}
 	return nil
 }
