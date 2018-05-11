@@ -17,6 +17,12 @@ type RelayAdapter struct {
 	relay.Relayer
 }
 
+func NewRelayAdapter(relayer relay.Relayer) RelayAdapter {
+	return RelayAdapter{
+		Relayer: relayer,
+	}
+}
+
 func (adapter *RelayAdapter) OpenOrder(signatureIn string, orderFragmentMappingIn OrderFragmentMapping) error {
 	signature, err := adapter.adaptSignature(signatureIn)
 	if err != nil {
