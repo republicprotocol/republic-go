@@ -2,16 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/relay"
 )
 
 func main() {
@@ -20,18 +16,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot create ecdsa key: %v", err)
 	}
-	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
-	multiAddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/18515/republic/%s", keystore.Address()))
-	if err != nil {
-		log.Fatalf("cannot create multiAddress: %v", err)
-	}
-	conf := relay.Config{
-		Keystore:                keystore,
-		MultiAddress:            multiAddress,
-		BootstrapMultiAddresses: identity.MultiAddresses{},
-		Token:           "",
-		EthereumAddress: auth.From.String(),
-		Ethereum: ethereum.Config{
+
+	conf := map[string]interface{}{
+		"keystore":                keystore,
+		"bootstrapMultiAddresses": identity.MultiAddresses{},
+		"ethereum": ethereum.Config{
 			Network:                 ethereum.NetworkRopsten,
 			URI:                     "https://ropsten.infura.io",
 			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnRopsten.String(),
