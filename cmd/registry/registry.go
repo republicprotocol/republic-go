@@ -8,15 +8,19 @@ import (
 	"math/big"
 	"os"
 
+	"encoding/json"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/stackint"
 	"github.com/urfave/cli"
+	"io/ioutil"
+	"github.com/republicprotocol/republic-go/crypto"
 )
 
 const (
@@ -62,6 +66,11 @@ func main() {
 			Value: "0x69eb8d26157b9e12f959ea9f189A5D75991b59e3",
 			Usage: "dark node registry address",
 		},
+		cli.StringFlag{
+			Name:  "config",
+			Value: "./deployment.json",
+			Usage: "deployment config",
+		},
 	}
 
 	// Define subcommands
@@ -89,6 +98,7 @@ func main() {
 				if err != nil {
 					return err
 				}
+
 				return CheckRegistration(c.Args(), registrar)
 			},
 		},
@@ -101,7 +111,7 @@ func main() {
 				if err != nil {
 					return err
 				}
-				return RegisterAll(c.Args(), registry)
+				return RegisterAll(registry)
 			},
 		},
 		{
@@ -129,8 +139,8 @@ func main() {
 			},
 		},
 		{
-			Name:    "refund",
-			Usage:   "refund ren",
+			Name:  "refund",
+			Usage: "refund ren",
 			Action: func(c *cli.Context) error {
 				registry, err := NewRegistry(c, key)
 				if err != nil {
@@ -187,17 +197,32 @@ func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error
 	return dnr.NewDarknodeRegistry(context.Background(), client, auth, &bind.CallOpts{})
 }
 
-func RegisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
-	for i := range addresses {
-		address, err := republicAddressToEthAddress(addresses[i])
+func RegisterAll(registry dnr.DarknodeRegistry) error {
+
+	file, err := os.Open("./deployment.json")
+	if err != nil {
+		log.Fatal("can't open config file", err)
+	}
+	defer file.Close()
+
+	data, err := ioutil.ReadAll(file)
+
+	conf := FalconryConfigs{}
+	if err := json.Unmarshal(data, &conf); err != nil {
+		log.Fatal("can't open config file", err)
+	}
+
+	for i := range conf.Configs {
+		address := conf.Configs[i].Config.Address
+		pk, err := crypto.BytesFromRsaPublicKey(&conf.Configs[i].Config.Keystore.RsaKey.PublicKey)
 		if err != nil {
-			return err
+			log.Fatal("cannot get rsa public key ", err)
 		}
 
 		// Check if node has already been registered
-		isRegistered, err := registry.IsRegistered(address.Bytes())
+		isRegistered, err := registry.IsRegistered(address.ID())
 		if err != nil {
-			return fmt.Errorf("[%v] %sCouldn't check node's registration%s: %v\n", []byte(addresses[i]), red, reset, err)
+			return fmt.Errorf("[%v] %sCouldn't check node's registration%s: %v\n", address, red, reset, err)
 		}
 
 		// Register the node if not registered
@@ -207,18 +232,19 @@ func RegisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 				return err
 			}
 
-			_, err = registry.Register(address.Bytes(), []byte{}, &minimumBond)
+			_, err = registry.Register(conf.Configs[i].Config.Address.ID(), pk, &minimumBond)
 			if err != nil {
-				return fmt.Errorf("[%v] %sCouldn't register node%s: %v\n", address.Hex(), red, reset, err)
+				return fmt.Errorf("[%v] %sCouldn't register node%s: %v\n", address, red, reset, err)
 			} else {
-				return fmt.Errorf("[%v] %sNode will be registered next epoch%s\n", address.Hex(), green, reset)
+				log.Printf("[%v] %sNode will be registered next epoch%s\n", address, green, reset)
 			}
 		} else if isRegistered {
-			log.Printf("[%v] %sNode already registered%s\n", address.Hex(), yellow, reset)
+			log.Printf("[%v] %sNode already registered%s\n", address, yellow, reset)
 		}
 	}
 
 	return nil
+
 }
 
 // DeregisterAll takes a slice of republic private keys and registers them
@@ -252,12 +278,12 @@ func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 
 func Approve(registry dnr.DarknodeRegistry) error {
 
-	bond , err := stackint.FromString( "100000000000000000000000")
+	bond, err := stackint.FromString("100000000000000000000000")
 	if err != nil {
 		return err
 	}
 	_, err = registry.ApproveRen(&bond)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
@@ -311,8 +337,8 @@ func CheckRegistration(addresses []string, registrar dnr.DarknodeRegistry) error
 	return nil
 }
 
-func Refund( addresses []string,  registry dnr.DarknodeRegistry) error {
-	for i := range addresses{
+func Refund(addresses []string, registry dnr.DarknodeRegistry) error {
+	for i := range addresses {
 		address, err := republicAddressToEthAddress(addresses[i])
 		if err != nil {
 			return err
@@ -328,11 +354,25 @@ func Refund( addresses []string,  registry dnr.DarknodeRegistry) error {
 }
 
 // Convert republic address to ethereum address
-func republicAddressToEthAddress(repAddress string) (common.Address, error)  {
+func republicAddressToEthAddress(repAddress string) (common.Address, error) {
 	addByte := base58.DecodeAlphabet(repAddress, base58.BTCAlphabet)[2:]
 	if len(addByte) == 0 {
 		return common.Address{}, errors.New("fail to decode the address")
 	}
 	address := common.BytesToAddress(addByte)
 	return address, nil
+}
+
+type FalconryConfigs struct {
+	Configs []FalconryConfig `json:"configs"`
+	Blockchain interface{} `json:"blockchain"`
+}
+
+type FalconryConfig struct {
+	Config       darknode.Config `json:"config"`
+	Ami          string          `json:"ami"`
+	Avz          string          `json:"avz"`
+	Instance     string          `json:"instance"`
+	Ip           string          `json:"ip"`
+	Is_bootstrap bool            `json:"is_bootstrap"`
 }
