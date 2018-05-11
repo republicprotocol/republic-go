@@ -8,17 +8,17 @@ import (
 	"io/ioutil"
 	"log"
 	"math/big"
+	netHttp "net/http"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 
-	"github.com/republicprotocol/republic-go/cal"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
+	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/grpc/client"
@@ -87,7 +87,7 @@ func main() {
 		log.Printf("  %v", multiAddr)
 	}
 	log.Printf("listening at %v:%v...", *bindParam, *portParam)
-	if err := http.ListenAndServe(*bindParam, *portParam, &relayAdapter, &relayAdapter); err != nil {
+	if err := netHttp.ListenAndServe(fmt.Sprintf("%v:%v", *bindParam, *portParam), http.NewServer(&relayAdapter, &relayAdapter)); err != nil {
 		log.Fatalf("error listening and serving: %v", err)
 	}
 }
