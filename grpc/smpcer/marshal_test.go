@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/republic-go/rpc/smpcer"
+	. "github.com/republicprotocol/republic-go/grpc/smpcer"
 
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/crypto"

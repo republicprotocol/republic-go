@@ -5,11 +5,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/republic-go/rpc/smpcer"
+	. "github.com/republicprotocol/republic-go/grpc/smpcer"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/grpc/client"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/rpc/client"
 )
 
 var _ = Describe("Smpcer Client", func() {

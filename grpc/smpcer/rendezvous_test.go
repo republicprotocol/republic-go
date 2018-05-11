@@ -3,7 +3,7 @@ package smpcer_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/republic-go/rpc/smpcer"
+	. "github.com/republicprotocol/republic-go/grpc/smpcer"
 )
 
 var _ = Describe("Rendezvous", func() {

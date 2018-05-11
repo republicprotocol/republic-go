@@ -10,14 +10,14 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/republic-go/rpc/relayer"
+	. "github.com/republicprotocol/republic-go/grpc/relayer"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/grpc/client"
+	"github.com/republicprotocol/republic-go/grpc/dht"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/rpc/client"
-	"github.com/republicprotocol/republic-go/rpc/dht"
 	"google.golang.org/grpc"
 )
 

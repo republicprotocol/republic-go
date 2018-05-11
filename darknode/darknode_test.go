@@ -14,9 +14,9 @@ import (
 
 	"github.com/republicprotocol/republic-go/blockchain/test"
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/grpc/client"
+	"github.com/republicprotocol/republic-go/grpc/relayer"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/rpc/client"
-	"github.com/republicprotocol/republic-go/rpc/relayer"
 )
 
 // TODO: Regression testing for deadlocks when synchronizing the orderbook.

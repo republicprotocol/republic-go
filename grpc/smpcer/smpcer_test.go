@@ -7,7 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/republic-go/rpc/smpcer"
+	. "github.com/republicprotocol/republic-go/grpc/smpcer"
 
 	"github.com/republicprotocol/republic-go/rpc"
 	"google.golang.org/grpc"
