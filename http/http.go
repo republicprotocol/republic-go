@@ -27,9 +27,7 @@ func NewServer(openOrderAdapter adapter.OpenOrderAdapter, cancelOrderAdapter ada
 
 	origins := handlers.AllowedOrigins([]string{"*"})
 	methods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
-	r.Use(handlers.CORS(origins, methods))
-
-	return r
+	return handlers.CORS(origins, methods)(r)
 }
 
 // RecoveryHandler handles errors while processing the requests and populates the errors in the response
