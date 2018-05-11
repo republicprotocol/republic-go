@@ -10,6 +10,7 @@ import (
 )
 
 var ErrInvalidSignatureLength = errors.New("invalid signature length")
+var ErrInvalidOrderIDLength = errors.New("invalid order id length")
 var ErrInvalidPoolHashLength = errors.New("invalid pool hash length")
 var ErrEmptyOrderFragmentMapping = errors.New("empty order fragment mapping")
 
@@ -41,8 +42,13 @@ func (adapter *RelayAdapter) OpenOrder(signatureIn string, orderFragmentMappingI
 	)
 }
 
-func (adapter *RelayAdapter) CancelOrder(signatureIn string, orderID order.ID) error {
+func (adapter *RelayAdapter) CancelOrder(signatureIn string, orderIDIn string) error {
 	signature, err := adapter.adaptSignature(signatureIn)
+	if err != nil {
+		return err
+	}
+
+	orderID, err := adapter.adaptOrderID(orderIDIn)
 	if err != nil {
 		return err
 	}
@@ -61,6 +67,17 @@ func (adapter *RelayAdapter) adaptSignature(signatureIn string) ([65]byte, error
 	}
 	copy(signature[:], signatureBytes)
 	return signature, nil
+}
+
+func (adapter *RelayAdapter) adaptOrderID(orderIDIn string) (order.ID, error) {
+	orderIDBytes, err := base64.StdEncoding.DecodeString(orderIDIn)
+	if err != nil {
+		return order.ID{}, fmt.Errorf("cannot decode order id %v: %v", orderIDIn, err)
+	}
+	if len(orderIDBytes) != 32 {
+		return order.ID{}, ErrInvalidOrderIDLength
+	}
+	return order.ID(orderIDBytes), nil
 }
 
 func (adapter *RelayAdapter) adaptOrderFragmentMapping(orderFragmentMappingIn OrderFragmentMapping) (order.ID, relay.OrderFragmentMapping, error) {
