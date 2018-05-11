@@ -37,7 +37,7 @@ var (
 var (
 	RepublicTokenAddressOnRopsten    = common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54")
 	DarknodeRegistryAddressOnRopsten = common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3")
-	HyperdriveAddressOnRopsten       = common.HexToAddress("0x4Af263d0C667FefD3B3b1893E24B57AAd796570b")
+	RenAddressOnRopsten       		 = common.HexToAddress("0x2c5800e65Dc91DBdc4Fb7C0aE8A2c609561B7679")
 	ArcAddressOnRopsten              = common.HexToAddress("0x2940089833b688a1a46c150085ef004f85fcee87")
 )
 
@@ -49,7 +49,7 @@ type Config struct {
 	URI                     string  `json:"uri"`
 	RepublicTokenAddress    string  `json:"republicTokenAddress"`
 	DarknodeRegistryAddress string  `json:"darknodeRegistryAddress"`
-	HyperdriveAddress       string  `json:"hyperdriveAddress"`
+	RenLedgerAddress        string  `json:"renLedgerAddress"`
 	ArcAddress              string  `json:"arcAddress"`
 }
 
@@ -92,12 +92,13 @@ func Connect(config Config) (Conn, error) {
 			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}
 	}
-	if config.HyperdriveAddress == "" {
+	if config.RenLedgerAddress == "" {
 		switch config.Network {
 		case NetworkGanache:
-			config.HyperdriveAddress = HyperdriveAddressOnGanache.String()
+			// FIXME : check the ren ledger contract address on ganache
+			config.RenLedgerAddress = HyperdriveAddressOnGanache.String()
 		case NetworkRopsten:
-			config.HyperdriveAddress = HyperdriveAddressOnRopsten.String()
+			config.RenLedgerAddress = RenAddressOnRopsten.String()
 		default:
 			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}

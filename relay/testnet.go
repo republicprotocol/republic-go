@@ -127,7 +127,7 @@ func NewLocalConfig(host, port string) (Config, error) {
 			URI:                     "http://localhost:8545",
 			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
 			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
-			HyperdriveAddress:       ethereum.HyperdriveAddressOnRopsten.String(),
+			RenLedgerAddress:       ethereum.RenAddressOnRopsten.String(),
 			ArcAddress:              ethereum.ArcAddressOnRopsten.String(),
 		},
 	}, nil

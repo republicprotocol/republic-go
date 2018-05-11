@@ -128,12 +128,6 @@ func (env *TestnetEnv) Run() {
 	})
 }
 
-func (env *TestnetEnv) ClearOrderbooks() {
-	for i := range env.Darknodes {
-		env.Darknodes[i].ClearOrderbook()
-	}
-}
-
 // SendMatchingOrderPairs will send pairs of matching buys and sells to the
 // Darknodes.
 func (env *TestnetEnv) SendMatchingOrderPairs(numberOfOrderPairs int) error {

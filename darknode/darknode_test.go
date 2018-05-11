@@ -31,7 +31,6 @@ var _ = Describe("Darknode", func() {
 	})
 
 	AfterEach(func() {
-		env.ClearOrderbooks()
 		testMu.Unlock()
 	})
 

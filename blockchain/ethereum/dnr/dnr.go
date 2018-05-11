@@ -153,7 +153,7 @@ func (darkNodeRegistry *DarknodeRegistry) CurrentEpoch() (Epoch, error) {
 	}
 
 	var blockhash [32]byte
-	for i, b := range epoch.Epochhash.Bytes() {
+	for i, b := range epoch.Blockhash.Bytes() {
 		blockhash[i] = b
 	}
 

@@ -132,7 +132,7 @@ func Connect(ganacheRPC string) (ethereum.Conn, error) {
 			Network:                 ethereum.NetworkGanache,
 			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
 			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
-			HyperdriveAddress:       ethereum.HyperdriveAddressOnGanache.String(),
+			RenLedgerAddress:       ethereum.RenAddressOnRopsten.String(),
 		},
 	}, nil
 }
@@ -260,19 +260,11 @@ func deployContracts(conn ethereum.Conn, transactor *bind.TransactOpts) error {
 		panic(err)
 	}
 
-	_, hyperdriveAddress, err := deployHyperdrive(context.Background(), conn, transactor, darkNodeRegistryAddress)
-	if err != nil {
-		return err
-	}
-
 	if republicTokenAddress != ethereum.RepublicTokenAddressOnGanache {
 		return fmt.Errorf("RepublicToken address has changed: expected: %s, got: %s", ethereum.RepublicTokenAddressOnGanache.Hex(), republicTokenAddress.Hex())
 	}
 	if darkNodeRegistryAddress != ethereum.DarknodeRegistryAddressOnGanache {
 		return fmt.Errorf("DarknodeRegistry address has changed: expected: %s, got: %s", ethereum.DarknodeRegistryAddressOnGanache.Hex(), darkNodeRegistryAddress.Hex())
-	}
-	if hyperdriveAddress != ethereum.HyperdriveAddressOnGanache {
-		return fmt.Errorf("HyperdriveContract address has changed: expected: %s, got: %s", ethereum.HyperdriveAddressOnGanache.Hex(), hyperdriveAddress.Hex())
 	}
 
 	return nil
@@ -303,11 +295,3 @@ func deployDarkNodeRegistry(ctx context.Context, conn ethereum.Conn, auth *bind.
 	return dnr, address, nil
 }
 
-func deployHyperdrive(ctx context.Context, conn ethereum.Conn, auth *bind.TransactOpts, dnrAddress common.Address) (*bindings.Hyperdrive, common.Address, error) {
-	address, tx, hyper, err := bindings.DeployHyperdrive(auth, conn.Client, dnrAddress)
-	if err != nil {
-		return nil, common.Address{}, fmt.Errorf("cannot deploy Hyperdriver contract: %v", err)
-	}
-	conn.PatchedWaitDeployed(ctx, tx)
-	return hyper, address, nil
-}

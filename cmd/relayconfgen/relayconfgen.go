@@ -36,7 +36,7 @@ func main() {
 			URI:                     "https://ropsten.infura.io",
 			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnRopsten.String(),
 			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnRopsten.String(),
-			HyperdriveAddress:       ethereum.HyperdriveAddressOnRopsten.String(),
+			RenLedgerAddress:       ethereum.RenAddressOnRopsten.String(),
 			ArcAddress:              ethereum.ArcAddressOnRopsten.String(),
 		},
 	}
