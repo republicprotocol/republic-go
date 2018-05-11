@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/republicprotocol/republic-go/rpc/status"
+	"github.com/republicprotocol/republic-go/grpc/status"
 	"github.com/urfave/cli"
 	"google.golang.org/grpc"
 )

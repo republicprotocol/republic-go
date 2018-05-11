@@ -14,9 +14,9 @@ import (
 
 	"github.com/republicprotocol/republic-go/blockchain/test"
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/grpc/client"
+	"github.com/republicprotocol/republic-go/grpc/relayer"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/rpc/client"
-	"github.com/republicprotocol/republic-go/rpc/relayer"
 )
 
 // TODO: Regression testing for deadlocks when synchronizing the orderbook.
@@ -177,143 +177,6 @@ var _ = Describe("Darknode", func() {
 		})
 	})
 
-	Context("when synchronizing the orderbook", func() {
-
-		It("should not deadlock when the sync starts before the updates", func() {
-			stream1, conn1, cancel1, err := createTestRelayClient()
-			defer conn1.Close()
-			defer cancel1()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			stream2, conn2, cancel2, err := createTestRelayClient()
-			defer conn2.Close()
-			defer cancel2()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			isDeadlocked := true
-			go func() {
-				defer GinkgoRecover()
-				status1 := map[string]struct{}{}
-				status2 := map[string]struct{}{}
-				for len(status1) < 20 && len(status2) < 20 {
-					resp1, err := stream1.Recv()
-					if err != nil {
-						if err == io.EOF {
-							break
-						}
-						Expect(err).ShouldNot(HaveOccurred())
-					}
-					status1[string(resp1.Entry.Order.OrderId)] = struct{}{}
-					resp2, err := stream2.Recv()
-					if err != nil {
-						if err == io.EOF {
-							break
-						}
-						Expect(err).ShouldNot(HaveOccurred())
-					}
-					status2[string(resp2.Entry.Order.OrderId)] = struct{}{}
-				}
-				isDeadlocked = false
-			}()
-
-			err = env.SendMatchingOrderPairs(20)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			time.Sleep(10 * time.Second)
-			Expect(isDeadlocked).To(Equal(false))
-
-		})
-
-		It("should not deadlock when the sync starts during the updates", func() {
-			err := env.SendMatchingOrderPairs(5)
-			Expect(err).ShouldNot(HaveOccurred())
-			stream1, conn1, cancel1, err := createTestRelayClient()
-			defer conn1.Close()
-			defer cancel1()
-			Expect(err).ShouldNot(HaveOccurred())
-			err = env.SendMatchingOrderPairs(10)
-			Expect(err).ShouldNot(HaveOccurred())
-			stream2, conn2, cancel2, err := createTestRelayClient()
-			defer conn2.Close()
-			defer cancel2()
-			Expect(err).ShouldNot(HaveOccurred())
-			err = env.SendMatchingOrderPairs(5)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			isDeadlocked := true
-			go func() {
-				defer GinkgoRecover()
-				status1 := map[string]struct{}{}
-				status2 := map[string]struct{}{}
-				for len(status1) < 20 && len(status2) < 20 {
-					resp1, err := stream1.Recv()
-					if err != nil {
-						if err == io.EOF {
-							break
-						}
-						Expect(err).ShouldNot(HaveOccurred())
-					}
-					status1[string(resp1.Entry.Order.OrderId)] = struct{}{}
-					resp2, err := stream2.Recv()
-					if err != nil {
-						if err == io.EOF {
-							break
-						}
-						Expect(err).ShouldNot(HaveOccurred())
-					}
-					status2[string(resp2.Entry.Order.OrderId)] = struct{}{}
-				}
-				isDeadlocked = false
-			}()
-
-			time.Sleep(10 * time.Second)
-			Expect(isDeadlocked).To(Equal(false))
-		})
-
-		It("should not deadlock when the sync starts after the updates", func() {
-			err := env.SendMatchingOrderPairs(20)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			stream1, conn1, cancel1, err := createTestRelayClient()
-			defer conn1.Close()
-			defer cancel1()
-			Expect(err).ShouldNot(HaveOccurred())
-			stream2, conn2, cancel2, err := createTestRelayClient()
-			defer conn2.Close()
-			defer cancel2()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			isDeadlocked := true
-			go func() {
-				defer GinkgoRecover()
-				status1 := map[string]struct{}{}
-				status2 := map[string]struct{}{}
-				for len(status1) < 20 && len(status2) < 20 {
-					resp1, err := stream1.Recv()
-					if err != nil {
-						if err == io.EOF {
-							break
-						}
-						Expect(err).ShouldNot(HaveOccurred())
-					}
-					status1[string(resp1.Entry.Order.OrderId)] = struct{}{}
-					resp2, err := stream2.Recv()
-					if err != nil {
-						if err == io.EOF {
-							break
-						}
-						Expect(err).ShouldNot(HaveOccurred())
-					}
-					status2[string(resp2.Entry.Order.OrderId)] = struct{}{}
-				}
-				isDeadlocked = false
-			}()
-
-			time.Sleep(10 * time.Second)
-			Expect(isDeadlocked).To(Equal(false))
-		})
-
-	})
 })
 
 func createTestRelayClient() (relayer.Relay_SyncClient, *client.Conn, context.CancelFunc, error) {

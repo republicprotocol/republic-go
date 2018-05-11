@@ -1,4 +1,4 @@
-package relay_test
+package adapter_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestRelay(t *testing.T) {
+func TestAdapter(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Relay Suite")
+	RunSpecs(t, "Adapter Suite")
 }
