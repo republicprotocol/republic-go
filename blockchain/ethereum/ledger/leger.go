@@ -3,12 +3,13 @@ package ledger
 import (
 	"context"
 
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/bindings"
 	"github.com/republicprotocol/republic-go/order"
-	"math/big"
 )
 
 // RenLedgerContract
@@ -41,11 +42,11 @@ func NewRenLedgerContract(ctx context.Context, conn ethereum.Conn, transactOpts 
 	}, nil
 }
 
-func (ledger *RenLedgerContract) OpenOrder(signature []byte, id order.ID) error {
+func (ledger *RenLedgerContract) OpenOrder(signature [65]byte, id order.ID) error {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
 
-	tx, err := ledger.binding.OpenOrder(ledger.transactOpts, signature, orderID)
+	tx, err := ledger.binding.OpenOrder(ledger.transactOpts, signature[:], orderID)
 	if err != nil {
 		return err
 	}
@@ -53,22 +54,32 @@ func (ledger *RenLedgerContract) OpenOrder(signature []byte, id order.ID) error 
 	return err
 }
 
-func (ledger *RenLedgerContract) CancelOrder(signature []byte, id order.ID) error {
+func (ledger *RenLedgerContract) WaitForOpenOrder(orderID order.ID) error {
+	// FIXME: Wait for a depth.
+	panic("unimplemented")
+}
+
+func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) error {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
 
-	tx, err := ledger.binding.CancelOrder(ledger.transactOpts, signature, orderID)
+	tx, err := ledger.binding.CancelOrder(ledger.transactOpts, signature[:], orderID)
 	if err != nil {
 		return err
 	}
 	_, err = ledger.conn.PatchedWaitMined(ledger.context, tx)
 	return err
+}
+
+func (ledger *RenLedgerContract) WaitForCancelOrder(orderID order.ID) error {
+	// FIXME: Wait for a depth.
+	panic("unimplemented")
 }
 
 func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, matches []order.ID) error {
-	orderMatches := make ([][32]byte, len(matches))
+	orderMatches := make([][32]byte, len(matches))
 	for i := range orderMatches {
-		copy (orderMatches[i][:], matches[i][:])
+		copy(orderMatches[i][:], matches[i][:])
 	}
 	var orderID [32]byte
 	copy(orderID[:], id[:])
@@ -84,7 +95,7 @@ func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, matches []order.ID) e
 func (ledger *RenLedgerContract) Priority(id order.ID) (uint64, error) {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
-	priority , err := ledger.binding.OrderPriority(ledger.callOpts, orderID)
+	priority, err := ledger.binding.OrderPriority(ledger.callOpts, orderID)
 	if err != nil {
 		return 0, err
 	}
@@ -95,7 +106,7 @@ func (ledger *RenLedgerContract) Priority(id order.ID) (uint64, error) {
 func (ledger *RenLedgerContract) Status(id order.ID) (order.Status, error) {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
-	state , err := ledger.binding.OrderState(ledger.callOpts, orderID)
+	state, err := ledger.binding.OrderState(ledger.callOpts, orderID)
 	if err != nil {
 		return order.Nil, err
 	}
@@ -106,12 +117,12 @@ func (ledger *RenLedgerContract) Status(id order.ID) (order.Status, error) {
 func (ledger *RenLedgerContract) Matches(id order.ID) ([]order.ID, error) {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
-	matches , err := ledger.binding.OrderMatch(ledger.callOpts, orderID)
+	matches, err := ledger.binding.OrderMatch(ledger.callOpts, orderID)
 	if err != nil {
 		return nil, err
 	}
-	orderIDs := make ([]order.ID, len(matches))
-	for i := range matches{
+	orderIDs := make([]order.ID, len(matches))
+	for i := range matches {
 		orderIDs[i] = matches[i][:]
 	}
 
@@ -120,7 +131,7 @@ func (ledger *RenLedgerContract) Matches(id order.ID) ([]order.ID, error) {
 
 func (ledger *RenLedgerContract) Orderbook(index int) (order.ID, error) {
 	i := big.NewInt(int64(index))
-	id , err := ledger.binding.Orderbook(ledger.callOpts, i)
+	id, err := ledger.binding.Orderbook(ledger.callOpts, i)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +142,7 @@ func (ledger *RenLedgerContract) Orderbook(index int) (order.ID, error) {
 func (ledger *RenLedgerContract) Trader(id order.ID) (common.Address, error) {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
-	address , err := ledger.binding.OrderTrader(ledger.callOpts, orderID)
+	address, err := ledger.binding.OrderTrader(ledger.callOpts, orderID)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -142,7 +153,7 @@ func (ledger *RenLedgerContract) Trader(id order.ID) (common.Address, error) {
 func (ledger *RenLedgerContract) Broker(id order.ID) (common.Address, error) {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
-	address , err := ledger.binding.OrderBroker(ledger.callOpts, orderID)
+	address, err := ledger.binding.OrderBroker(ledger.callOpts, orderID)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -153,7 +164,7 @@ func (ledger *RenLedgerContract) Broker(id order.ID) (common.Address, error) {
 func (ledger *RenLedgerContract) Confirmer(id order.ID) (common.Address, error) {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
-	address , err := ledger.binding.OrderConfirmer(ledger.callOpts, orderID)
+	address, err := ledger.binding.OrderConfirmer(ledger.callOpts, orderID)
 	if err != nil {
 		return common.Address{}, err
 	}
