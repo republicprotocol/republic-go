@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/republicprotocol/republic-go/http/adapter"
@@ -19,6 +18,14 @@ type OpenOrderRequest struct {
 	OrderFragmentMapping adapter.OrderFragmentMapping `json:"orderFragmentMapping"`
 }
 
+func NewServer(openOrderAdapter adapter.OpenOrderAdapter, cancelOrderAdapter adapter.CancelOrderAdapter) http.Handler {
+	r := mux.NewRouter().StrictSlash(true)
+	r.HandleFunc("/orders", OpenOrderHandler(openOrderAdapter)).Methods("POST")
+	r.HandleFunc("/orders/{id}", CancelOrderHandler(cancelOrderAdapter)).Methods("DELETE")
+	r.Use(RecoveryHandler)
+	return r
+}
+
 // RecoveryHandler handles errors while processing the requests and populates the errors in the response
 func RecoveryHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -31,14 +38,6 @@ func RecoveryHandler(h http.Handler) http.Handler {
 	})
 }
 
-func ListenAndServe(bind, port string, openOrderAdapter adapter.OpenOrderAdapter, cancelOrderAdapter adapter.CancelOrderAdapter) error {
-	r := mux.NewRouter().StrictSlash(true)
-	r.HandleFunc("/orders", OpenOrderHandler(openOrderAdapter)).Methods("POST")
-	r.HandleFunc("/orders/{id}", CancelOrderHandler(cancelOrderAdapter)).Methods("DELETE")
-	r.Use(RecoveryHandler)
-	return http.ListenAndServe(fmt.Sprintf("%v:%v", bind, port), r)
-}
-
 // OpenOrderHandler handles all HTTP open order requests
 func OpenOrderHandler(adapter adapter.OpenOrderAdapter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +47,7 @@ func OpenOrderHandler(adapter adapter.OpenOrderAdapter) http.HandlerFunc {
 			return
 		}
 		if err := adapter.OpenOrder(openOrderRequest.Signature, openOrderRequest.OrderFragmentMapping); err != nil {
-			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot open order: %v", err))
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("cannot open order: %v", err))
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
@@ -58,12 +57,11 @@ func OpenOrderHandler(adapter adapter.OpenOrderAdapter) http.HandlerFunc {
 // CancelOrderHandler handles HTTP Delete Requests
 func CancelOrderHandler(adapter adapter.CancelOrderAdapter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		paths := strings.Split(r.URL.Path, "/")
-		if len(paths) < 2 || paths[len(paths)-2] != "orders" || paths[len(paths)-1] == "" {
+		orderID := mux.Vars(r)["id"]
+		if orderID == "" {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot cancel order: nil id"))
 			return
 		}
-		orderID := paths[len(paths)-1]
 		signature := r.URL.Query().Get("signature")
 		if signature == "" {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot cancel order: nil signature"))
@@ -73,7 +71,7 @@ func CancelOrderHandler(adapter adapter.CancelOrderAdapter) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, fmt.Sprintf("cannot cancel order: %v", err))
 			return
 		}
-		w.WriteHeader(http.StatusGone)
+		w.WriteHeader(http.StatusOK)
 	}
 }
 

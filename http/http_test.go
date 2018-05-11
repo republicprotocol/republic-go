@@ -37,110 +37,111 @@ func (adapter *errAdapter) OpenOrder(signature string, orderFragmentMapping adap
 }
 
 func (adapter *errAdapter) CancelOrder(signature string, orderID string) error {
-	return errors.New("cannot close order")
+	return errors.New("cannot cancel order")
 }
 
 var _ = Describe("HTTP handlers", func() {
 
 	Context("when opening orders", func() {
 
-		It("should return a StatusCreated response for a valid request", func() {
-			openAdapter := weakAdapter{}
-			handler := OpenOrderHandler(&openAdapter)
+		It("should return status 201 for a valid request", func() {
+
 			mockOrder := new(OpenOrderRequest)
-			s, _ := json.Marshal(mockOrder)
-			body := bytes.NewBuffer(s)
+			data, err := json.Marshal(mockOrder)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			body := bytes.NewBuffer(data)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
-			handler.ServeHTTP(w, r)
+
+			adapter := weakAdapter{}
+			server := NewServer(&adapter, &adapter)
+			server.ServeHTTP(w, r)
 
 			Expect(w.Code).To(Equal(http.StatusCreated))
-			Expect(atomic.LoadInt64(&openAdapter.numOpened)).To(Equal(int64(1)))
+			Expect(atomic.LoadInt64(&adapter.numOpened)).To(Equal(int64(1)))
 		})
 
-		It("should return a StatusBadRequest response for an invalid request", func() {
-			openAdapter := weakAdapter{}
-			handler := OpenOrderHandler(&openAdapter)
+		It("should return status 400 for an invalid request", func() {
+
 			mockOrder := ""
-			s, _ := json.Marshal(mockOrder)
-			body := bytes.NewBuffer(s)
+			data, err := json.Marshal(mockOrder)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			body := bytes.NewBuffer(data)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
-			handler.ServeHTTP(w, r)
+
+			adapter := weakAdapter{}
+			server := NewServer(&adapter, &adapter)
+			server.ServeHTTP(w, r)
 
 			Expect(w.Code).To(Equal(http.StatusBadRequest))
-			Expect(w.Body.String()).To(ContainSubstring("cannot decode json into an order or a list of order fragments:"))
-			Expect(atomic.LoadInt64(&openAdapter.numOpened)).To(Equal(int64(0)))
+			Expect(atomic.LoadInt64(&adapter.numOpened)).To(Equal(int64(0)))
 		})
 
-		It("should return a StatusBadRequest response for an error in opening orders", func() {
-			openAdapter := errAdapter{}
-			handler := OpenOrderHandler(&openAdapter)
+		It("should return status 500 for adapter errors", func() {
+
 			mockOrder := new(OpenOrderRequest)
-			s, _ := json.Marshal(mockOrder)
-			body := bytes.NewBuffer(s)
+			data, err := json.Marshal(mockOrder)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			body := bytes.NewBuffer(data)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "http://localhost/orders", body)
-			handler.ServeHTTP(w, r)
 
-			Expect(w.Code).To(Equal(http.StatusBadRequest))
+			adapter := errAdapter{}
+			server := NewServer(&adapter, &adapter)
+			server.ServeHTTP(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 			Expect(w.Body.String()).To(ContainSubstring("cannot open order"))
 		})
 	})
 
 	Context("when canceling orders", func() {
 
-		It("should return a StatusGone response for a valid request", func() {
-			cancelAdapter := weakAdapter{}
-			handler := CancelOrderHandler(&cancelAdapter)
-			cancelOrderID := "vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ"
+		It("should return status 200 for a valid request", func() {
+
+			orderID := "vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ"
 			signature := "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq="
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "http://localhost/orders/"+cancelOrderID+"?signature="+signature, nil)
-			handler.ServeHTTP(w, r)
+			r := httptest.NewRequest("DELETE", "http://localhost/orders/"+orderID+"?signature="+signature, nil)
 
-			Expect(w.Code).To(Equal(http.StatusGone))
-			Expect(atomic.LoadInt64(&cancelAdapter.numCanceled)).To(Equal(int64(1)))
+			adapter := weakAdapter{}
+			server := NewServer(&adapter, &adapter)
+			server.ServeHTTP(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(atomic.LoadInt64(&adapter.numCanceled)).To(Equal(int64(1)))
 		})
 
-		It("should return a StatusBadRequest response for an invalid signature", func() {
-			cancelAdapter := weakAdapter{}
-			handler := CancelOrderHandler(&cancelAdapter)
-			cancelOrderID := "vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ"
+		It("should return status 400 for an invalid signature", func() {
+
+			orderID := "vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ"
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "http://localhost/orders/"+cancelOrderID, nil)
-			handler.ServeHTTP(w, r)
+			r := httptest.NewRequest("DELETE", "http://localhost/orders/"+orderID, nil)
+
+			adapter := weakAdapter{}
+			server := NewServer(&adapter, &adapter)
+			server.ServeHTTP(w, r)
 
 			Expect(w.Code).To(Equal(http.StatusBadRequest))
-			Expect(w.Body.String()).To(ContainSubstring("nil signature"))
-			Expect(atomic.LoadInt64(&cancelAdapter.numOpened)).To(Equal(int64(0)))
+			Expect(atomic.LoadInt64(&adapter.numOpened)).To(Equal(int64(0)))
 		})
 
-		It("should return a StatusBadRequest response for an empty order id", func() {
-			cancelAdapter := weakAdapter{}
-			handler := CancelOrderHandler(&cancelAdapter)
+		It("should return status 500 for adapter errors", func() {
+
+			orderID := "vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ"
 			signature := "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq="
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "http://localhost/orders/?signature="+signature, nil)
-			handler.ServeHTTP(w, r)
+			r := httptest.NewRequest("DELETE", "http://localhost/orders/"+orderID+"?signature="+signature, nil)
 
-			Expect(w.Code).To(Equal(http.StatusBadRequest))
-			Expect(w.Body.String()).To(ContainSubstring("nil id"))
-			Expect(atomic.LoadInt64(&cancelAdapter.numOpened)).To(Equal(int64(0)))
-		})
+			adapter := errAdapter{}
+			server := NewServer(&adapter, &adapter)
+			server.ServeHTTP(w, r)
 
-		It("should return a StatusBadRequest response for an error in canceling orders", func() {
-			cancelAdapter := errAdapter{}
-			handler := CancelOrderHandler(&cancelAdapter)
-			mockOrder := new(OpenOrderRequest)
-			s, _ := json.Marshal(mockOrder)
-			body := bytes.NewBuffer(s)
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "http://localhost/orders", body)
-			handler.ServeHTTP(w, r)
-
-			Expect(w.Code).To(Equal(http.StatusBadRequest))
-			Expect(w.Body.String()).To(ContainSubstring("cannot cancel order"))
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})
 	})
 })
