@@ -365,7 +365,7 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 	if err != nil {
 		return []cal.Pod{}, err
 	}
-	epochVal := epoch.Epochhash
+	epochVal := epoch.Blockhash
 	numberOfDarkNodes := big.NewInt(int64(len(darknodeAddrs)))
 	x := big.NewInt(0).Mod(epochVal, numberOfDarkNodes)
 	positionInOcean := make([]int, len(darknodeAddrs))
