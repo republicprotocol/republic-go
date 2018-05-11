@@ -116,6 +116,21 @@ func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, matches []order.ID) e
 		return err
 	}
 	_, err = ledger.conn.PatchedWaitMined(ledger.context, tx)
+
+	blockNumber, err := ledger.GetBlockNumberOfTx(tx.Hash())
+	if err != nil {
+		return err
+	}
+	for {
+		currentBlock, err := ledger.CurrentBlock()
+		if err != nil {
+			return err
+		}
+		if currentBlock.NumberU64()-blockNumber >= BlocksForConfirmation {
+			return nil
+		}
+	}
+
 	return err
 }
 
