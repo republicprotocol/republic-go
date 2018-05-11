@@ -11,6 +11,10 @@ import (
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
+type Smpcer interface {
+	OpenOrder(ctx context.Context, to identity.MultiAddress, orderFragment order.Fragment) error
+}
+
 // Prime used to define the finite field for all computations.
 var Prime = func() stackint.Int1024 {
 	prime, err := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
@@ -72,7 +76,7 @@ type OrderMatchComputeOutput struct {
 	Deltas         <-chan delta.Delta
 }
 
-type Smpc struct {
+type SmpcComputer struct {
 	id identity.ID
 
 	n, k                      int64
@@ -81,10 +85,10 @@ type Smpc struct {
 	sharedDeltaBuilder        SharedDeltaBuilder
 }
 
-// NewSmpc returns a new Smpc with the given ComputerID and N-K
+// NewSmpcComputer returns a new SmpcComputer with the given ComputerID and N-K
 // threshold.
-func NewSmpc(id identity.ID, n, k int64) Smpc {
-	return Smpc{
+func NewSmpcComputer(id identity.ID, n, k int64) SmpcComputer {
+	return SmpcComputer{
 		id:                        id,
 		n:                         n,
 		k:                         k,
@@ -96,7 +100,7 @@ func NewSmpc(id identity.ID, n, k int64) Smpc {
 
 // ComputeObscure residues that will be used during order matching to obscure
 // Deltas.
-func (computer *Smpc) ComputeObscure(
+func (computer *SmpcComputer) ComputeObscure(
 	ctx context.Context,
 	obscureComputeChs ObscureComputeInput,
 ) (
@@ -106,32 +110,32 @@ func (computer *Smpc) ComputeObscure(
 	errChs := make([]<-chan error, 6)
 
 	// ProduceObscureRngs to initiate the creation of an obscure residue that
-	// will be owned by this Smpc
+	// will be owned by this SmpcComputer
 	obscureRngCh, errCh := ProduceObscureRngs(ctx, computer.n, computer.k, &computer.sharedObscureResidueTable, int(computer.n))
 	errChs[0] = errCh
 
 	// ProcessObscureRngs that were initiated by other Computers and broadcast
-	// to this Smpc
+	// to this SmpcComputer
 	obscureRngSharesCh, errCh := ProcessObscureRngs(ctx, obscureComputeChs.Rng, &computer.sharedObscureResidueTable, int(computer.n))
 	errChs[1] = errCh
 
-	// ProcessObscureRngShares broadcast to this Smpc in response to an
-	// ObscureRng that was produced by this Smpc
+	// ProcessObscureRngShares broadcast to this SmpcComputer in response to an
+	// ObscureRng that was produced by this SmpcComputer
 	obscureRngSharesIndexedCh, errCh := ProcessObscureRngShares(ctx, obscureComputeChs.RngShares, int(computer.n))
 	errChs[2] = errCh
 
-	// ProcessObscureRngSharesIndexed broadcast to this Smpc by another
-	// Smpc that is progressing through the creation of its obscure residue
+	// ProcessObscureRngSharesIndexed broadcast to this SmpcComputer by another
+	// SmpcComputer that is progressing through the creation of its obscure residue
 	obscureMulShares, errCh := ProcessObscureRngSharesIndexed(ctx, obscureComputeChs.RngSharesIndexed, int(computer.n))
 	errChs[3] = errCh
 
-	// ProcessObscureMulShares broadcast to this Smpc in response to
-	// ObscureRngSharesIndexed that were produced by this Smpc
+	// ProcessObscureMulShares broadcast to this SmpcComputer in response to
+	// ObscureRngSharesIndexed that were produced by this SmpcComputer
 	obscureMulSharesIndexedCh, errCh := ProcessObscureMulShares(ctx, obscureComputeChs.MulShares, int(computer.n))
 	errChs[4] = errCh
 
-	// ProcessObscureMulSharesIndexed broadcast to this Smpc by another
-	// Smpc that is progressing through the creation of its obscure residue
+	// ProcessObscureMulSharesIndexed broadcast to this SmpcComputer by another
+	// SmpcComputer that is progressing through the creation of its obscure residue
 	obscureResidueFragmentCh, errCh := ProcessObscureMulSharesIndexed(ctx, obscureComputeChs.MulSharesIndexed, int(computer.n))
 	errChs[5] = errCh
 
@@ -163,7 +167,7 @@ func (computer *Smpc) ComputeObscure(
 }
 
 // ComputeOrderMatches using order fragments and delta fragments.
-func (computer *Smpc) ComputeOrderMatches(done <-chan struct{}, orderFragmentsIn <-chan order.Fragment, deltaFragmentsIn <-chan delta.Fragment) (<-chan delta.Fragment, <-chan delta.Delta) {
+func (computer *SmpcComputer) ComputeOrderMatches(done <-chan struct{}, orderFragmentsIn <-chan order.Fragment, deltaFragmentsIn <-chan delta.Fragment) (<-chan delta.Fragment, <-chan delta.Delta) {
 	deltaFragmentsOut := make(chan delta.Fragment)
 	deltasOut := make(chan delta.Delta)
 
@@ -197,14 +201,14 @@ func (computer *Smpc) ComputeOrderMatches(done <-chan struct{}, orderFragmentsIn
 	return deltaFragmentsOut, deltasOut
 }
 
-func (computer *Smpc) SharedOrderTable() *SharedOrderTable {
+func (computer *SmpcComputer) SharedOrderTable() *SharedOrderTable {
 	return &computer.sharedOrderTable
 }
 
-func (computer *Smpc) SharedObscureResidueTable() *SharedObscureResidueTable {
+func (computer *SmpcComputer) SharedObscureResidueTable() *SharedObscureResidueTable {
 	return &computer.sharedObscureResidueTable
 }
 
-func (computer *Smpc) Prime() stackint.Int1024 {
+func (computer *SmpcComputer) Prime() stackint.Int1024 {
 	return Prime
 }

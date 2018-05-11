@@ -16,13 +16,12 @@ import (
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/grpc"
+	"github.com/republicprotocol/republic-go/grpc/status"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/relay"
-	"github.com/republicprotocol/republic-go/rpc"
-	"github.com/republicprotocol/republic-go/rpc/status"
 	"github.com/republicprotocol/republic-go/smpc"
 	"google.golang.org/grpc"
 )
@@ -47,9 +46,8 @@ type Darknode struct {
 	orderFragments         chan order.Fragment
 	orderFragmentsCanceled chan order.ID
 
-	rpc   *rpc.RPC
-	smpc  smpc.Smpc
-	relay relay.Relay
+	rpc  *rpc.RPC
+	smpc smpc.SmpcComputer
 }
 
 // NewDarknode returns a new Darknode.
@@ -111,8 +109,6 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 		node.orderFragmentsCanceled <- orderID
 		return nil
 	})
-
-	node.relay = relay.NewRelay(relay.Config{}, darknodeRegistry, &node.orderbook, node.rpc.RelayerClient(), node.rpc.SmpcerClient(), node.rpc.SwarmerClient())
 
 	return node, nil
 }

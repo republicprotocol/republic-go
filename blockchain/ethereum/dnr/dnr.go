@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -11,8 +12,15 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/bindings"
+	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/stackint"
 )
+
+// ErrAccessDenied is returned when the number of dark nodes are lesser than
+// the minimum number of dark nodes required to run a dark pool
+var ErrConnectionDenied = errors.New("error while trying to connect to the dark ocean")
 
 // Epoch contains a blockhash and a timestamp
 type Epoch struct {
@@ -334,4 +342,62 @@ func toByte(id []byte) ([20]byte, error) {
 		twentyByte[i] = id[i]
 	}
 	return twentyByte, nil
+}
+
+func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
+	darknodeIDs, err := darkNodeRegistry.binding.GetDarkNodes(darkNodeRegistry.callOpts)
+	if err != nil {
+		return nil, err
+	}
+	darknodeAddrs := make([]identity.Address, len(darknodeIDs))
+	for i := range darknodeIDs {
+		darknodeAddrs[i] = identity.ID(darknodeIDs[i][:]).Address()
+	}
+
+	numberOfNodesInPool, err := darkNodeRegistry.MinimumDarkPoolSize()
+	if err != nil {
+		return []cal.Pod{}, err
+	}
+	if len(darknodeAddrs) < int(numberOfNodesInPool.ToBigInt().Int64()) {
+		return []cal.Pod{}, ErrConnectionDenied
+	}
+	epoch, err := darkNodeRegistry.binding.CurrentEpoch(darkNodeRegistry.callOpts)
+	if err != nil {
+		return []cal.Pod{}, err
+	}
+	epochVal := epoch.Epochhash
+	numberOfDarkNodes := big.NewInt(int64(len(darknodeAddrs)))
+	x := big.NewInt(0).Mod(epochVal, numberOfDarkNodes)
+	positionInOcean := make([]int, len(darknodeAddrs))
+	for i := 0; i < len(darknodeAddrs); i++ {
+		positionInOcean[i] = -1
+	}
+	pods := make([]cal.Pod, (len(darknodeAddrs) / int(numberOfNodesInPool.ToBigInt().Int64())))
+	for i := 0; i < len(darknodeAddrs); i++ {
+		isRegistered, err := darkNodeRegistry.IsRegistered(darknodeAddrs[x.Int64()].ID())
+		if err != nil {
+			return []cal.Pod{}, err
+		}
+		for !isRegistered || positionInOcean[x.Int64()] != -1 {
+			x.Add(x, big.NewInt(1))
+			x.Mod(x, numberOfDarkNodes)
+			isRegistered, err = darkNodeRegistry.IsRegistered(darknodeAddrs[x.Int64()].ID())
+			if err != nil {
+				return []cal.Pod{}, err
+			}
+		}
+		positionInOcean[x.Int64()] = i
+		poolID := i % len(darknodeAddrs) / int(numberOfNodesInPool.ToBigInt().Int64())
+		pods[poolID].Darknodes = append(pods[poolID].Darknodes, darknodeAddrs[x.Int64()])
+		x.Mod(x.Add(x, epochVal), numberOfDarkNodes)
+	}
+
+	for i := range pods {
+		hashData := [][]byte{}
+		for _, darknodeAddr := range pods[i].Darknodes {
+			hashData = append(hashData, darknodeAddr.ID())
+		}
+		copy(pods[i].Hash[:], crypto.Keccak256(hashData...))
+	}
+	return pods, nil
 }

@@ -4,15 +4,15 @@ import (
 	"context"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/grpc/client"
+	"github.com/republicprotocol/republic-go/grpc/dht"
+	"github.com/republicprotocol/republic-go/grpc/relayer"
+	"github.com/republicprotocol/republic-go/grpc/smpcer"
+	"github.com/republicprotocol/republic-go/grpc/status"
+	"github.com/republicprotocol/republic-go/grpc/swarmer"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/rpc/client"
-	"github.com/republicprotocol/republic-go/rpc/dht"
-	"github.com/republicprotocol/republic-go/rpc/relayer"
-	"github.com/republicprotocol/republic-go/rpc/smpcer"
-	"github.com/republicprotocol/republic-go/rpc/status"
-	"github.com/republicprotocol/republic-go/rpc/swarmer"
 	"google.golang.org/grpc"
 )
 

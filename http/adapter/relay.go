@@ -18,27 +18,19 @@ type RelayAdapter struct {
 }
 
 func (adapter *RelayAdapter) OpenOrder(signatureIn string, orderFragmentMappingIn OrderFragmentMapping) error {
-	orderFragment, err := adapter.firstOrderFragmentInMapping(orderFragmentMappingIn)
-	if err != nil {
-		return err
-	}
-
 	signature, err := adapter.adaptSignature(signatureIn)
 	if err != nil {
 		return err
 	}
 
-	orderFragmentMapping, err := adapter.adaptOrderFragmentMapping(orderFragmentMappingIn)
+	orderID, orderFragmentMapping, err := adapter.adaptOrderFragmentMapping(orderFragmentMappingIn)
 	if err != nil {
 		return err
 	}
 
 	return adapter.Relayer.OpenOrder(
 		signature,
-		orderFragment.OrderID,
-		orderFragment.OrderType,
-		orderFragment.OrderParity,
-		orderFragment.OrderExpiry.Unix(),
+		orderID,
 		orderFragmentMapping,
 	)
 }
@@ -50,21 +42,6 @@ func (adapter *RelayAdapter) CancelOrder(signatureIn string, orderID order.ID) e
 	}
 
 	return adapter.Relayer.CancelOrder(signature, orderID)
-}
-
-func (adapter *RelayAdapter) firstOrderFragmentInMapping(orderFragmentMapping OrderFragmentMapping) (*order.Fragment, error) {
-	// Adapt the order data
-	var orderFragment *order.Fragment
-	for _, orderFragments := range orderFragmentMapping {
-		if len(orderFragments) > 0 {
-			orderFragment = &orderFragments[0]
-			break
-		}
-	}
-	if orderFragment == nil {
-		return nil, ErrEmptyOrderFragmentMapping
-	}
-	return orderFragment, nil
 }
 
 func (adapter *RelayAdapter) adaptSignature(signatureIn string) ([65]byte, error) {
@@ -80,19 +57,23 @@ func (adapter *RelayAdapter) adaptSignature(signatureIn string) ([65]byte, error
 	return signature, nil
 }
 
-func (adapter *RelayAdapter) adaptOrderFragmentMapping(orderFragmentMappingIn OrderFragmentMapping) (relay.OrderFragmentMapping, error) {
+func (adapter *RelayAdapter) adaptOrderFragmentMapping(orderFragmentMappingIn OrderFragmentMapping) (order.ID, relay.OrderFragmentMapping, error) {
+	orderID := order.ID{}
 	orderFragmentMapping := relay.OrderFragmentMapping{}
 	for key, value := range orderFragmentMappingIn {
+		if len(orderID) == 0 && len(value) > 0 {
+			orderID = value[0].OrderID
+		}
 		hashBytes, err := base64.StdEncoding.DecodeString(key)
 		if err != nil {
-			return orderFragmentMapping, fmt.Errorf("cannot decode pool hash %v: %v", key, err)
+			return orderID, orderFragmentMapping, fmt.Errorf("cannot decode pool hash %v: %v", key, err)
 		}
 		hash := [32]byte{}
 		if len(hashBytes) != 32 {
-			return orderFragmentMapping, ErrInvalidPoolHashLength
+			return orderID, orderFragmentMapping, ErrInvalidPoolHashLength
 		}
 		copy(hash[:], hashBytes)
 		orderFragmentMapping[hash] = value
 	}
-	return orderFragmentMapping, nil
+	return orderID, orderFragmentMapping, nil
 }

@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/grpc/client"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/rpc/client"
 	"golang.org/x/net/context"
 )
 

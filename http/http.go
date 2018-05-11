@@ -1,22 +1,28 @@
 package http
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/republicprotocol/republic-go/http/adapter"
 	"github.com/republicprotocol/republic-go/order"
 )
 
 const reset = "\x1b[0m"
 
+// OpenOrderRequest is an JSON object sent to the HTTP handlers to request the
+// opening of an order.
 type OpenOrderRequest struct {
 	Signature            string                       `json:"signature"`
 	OrderFragmentMapping adapter.OrderFragmentMapping `json:"orderFragmentMapping"`
 }
 
+// CancelOrderRequest is an JSON object sent to the HTTP handlers to request
+// the cancelation of an order.
 type CancelOrderRequest struct {
 	Signature string   `json:"signature"`
 	ID        order.ID `json:"id"`
@@ -34,29 +40,11 @@ func RecoveryHandler(h http.Handler) http.Handler {
 	})
 }
 
-// AuthorizationHandler handles errors while processing the requests and populates the errors in the response
-func AuthorizationHandler(authProvider adapter.AuthProvider, h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if authProvider.RequireAuth() {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				writeError(w, http.StatusUnauthorized, "")
-				return
-			}
-			coms := strings.Split(authHeader, " ")
-			if len(coms) != 2 {
-				writeError(w, http.StatusUnauthorized, "")
-				return
-			}
-			if coms[0] != "Bearer" {
-				if err := authProvider.Verify(coms[1]); err != nil {
-					writeError(w, http.StatusUnauthorized, err.Error())
-					return
-				}
-			}
-		}
-		h.ServeHTTP(w, r)
-	})
+func ListenAndServe(bind, port string, openOrderAdapter adapter.OpenOrderAdapter, cancelOrderAdapter adapter.CancelOrderAdapter) error {
+	r := mux.NewRouter().StrictSlash(true)
+	r.Methods("POST").Path("/orders").Handler(RecoveryHandler(OpenOrderHandler(openOrderAdapter)))
+	r.Methods("DELETE").Path("/orders/{orderID}").Handler(RecoveryHandler(CancelOrderHandler(cancelOrderAdapter)))
+	return http.ListenAndServe(fmt.Sprintf("%v:%v", bind, port), r)
 }
 
 // OpenOrderHandler handles all HTTP open order requests
@@ -78,11 +66,24 @@ func OpenOrderHandler(adapter adapter.OpenOrderAdapter) http.Handler {
 // CancelOrderHandler handles HTTP Delete Requests
 func CancelOrderHandler(adapter adapter.CancelOrderAdapter) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// FIXME: Check that cancelOrder.ID matches mux.Vars(r)["orderID"]
+		orderIDString, ok := mux.Vars(r)["orderID"]
+		if !ok {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot cancel order: nil id"))
+			return
+		}
+		orderID, err := base64.StdEncoding.DecodeString(orderIDString)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot decode order id: %v", err))
+			return
+		}
 
 		cancelOrderRequest := CancelOrderRequest{}
 		if err := json.NewDecoder(r.Body).Decode(&cancelOrderRequest); err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot decode json: %v", err))
+			return
+		}
+		if !bytes.Equal(cancelOrderRequest.ID, orderID) {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot cancel order: invalid id"))
 			return
 		}
 		if err := adapter.CancelOrder(cancelOrderRequest.Signature, cancelOrderRequest.ID); err != nil {
@@ -92,29 +93,6 @@ func CancelOrderHandler(adapter adapter.CancelOrderAdapter) http.Handler {
 		w.WriteHeader(http.StatusGone)
 	})
 }
-
-// GetOrderHandler handles all HTTP GET requests.
-/* func (relay *Relay) GetOrderHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		orderID := vars["orderID"]
-		if orderID == "" {
-			writeError(w, http.StatusBadRequest, "order id is invalid")
-			return
-		}
-
-		// Check if there exists an item in the order book with the given ID.
-		message := relay.orderbook.Order([]byte(orderID))
-		if message.Order.ID == nil {
-			writeError(w, http.StatusBadRequest, "order id is invalid")
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(message.Order); err != nil {
-			fmt.Printf("cannot encode object as json: %v", err)
-		}
-	})
-} */
 
 func writeError(w http.ResponseWriter, statusCode int, err string) {
 	w.WriteHeader(statusCode)

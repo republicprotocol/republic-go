@@ -12,8 +12,8 @@ import (
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/grpc/smpcer"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/rpc/smpcer"
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
@@ -76,7 +76,7 @@ func (node *Darknode) RunEpochProcess(done <-chan struct{}, ocean darkocean.Dark
 
 		n := int64(pool.Size())
 		k := (n + 1) * 2 / 3
-		smpc := smpc.NewSmpc(node.ID(), n, k)
+		smpc := smpc.NewSmpcComputer(node.ID(), n, k)
 
 		orderFragments := node.orderFragments                 // TODO: Splitter for multiple epochs
 		orderFragmentsCanceled := node.orderFragmentsCanceled // TODO: Splitter for multiple epochs

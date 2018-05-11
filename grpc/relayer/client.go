@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/grpc/client"
+	"github.com/republicprotocol/republic-go/grpc/dht"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/rpc/client"
-	"github.com/republicprotocol/republic-go/rpc/dht"
 )
 
 // Client is an abstraction over the gRPC RelayClient RPCs that implements high

@@ -2,18 +2,14 @@ package rpc
 
 import (
 	"context"
+	"errors"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 )
 
-type Smpc interface {
-}
+var ErrUnexpectedMessageType = errors.New("unexpected message type")
 
-type SmpcClient struct {
-	smpc Smpc
-}
-
-func (client *SmpcClient) OpenOrder(ctx context.Context, multiAddr identity.MultiAddress, orderFragment order.Fragment) error {
-	panic("unimplemented")
+type SmpcClient interface {
+	OpenOrder(ctx context.Context, multiAddr identity.MultiAddress, orderFragment order.Fragment) error
 }

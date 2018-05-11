@@ -5,9 +5,9 @@ import (
 	fmt "fmt"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/grpc/client"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/rpc/client"
 	"golang.org/x/net/context"
 )
 
