@@ -1,6 +1,7 @@
 package smpcer
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -23,23 +24,23 @@ func MarshalOrderFragment(addr string, crypter crypto.Crypter, orderFragment *or
 	var err error
 	val.FstCodeShare, err = crypter.Encrypt(addr, shamir.ToBytes(orderFragment.FstCodeShare))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot encrypt fst code: %v", err)
 	}
 	val.SndCodeShare, err = crypter.Encrypt(addr, shamir.ToBytes(orderFragment.SndCodeShare))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot encrypt snd code: %v", err)
 	}
 	val.PriceShare, err = crypter.Encrypt(addr, shamir.ToBytes(orderFragment.PriceShare))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot encrypt price share: %v", err)
 	}
 	val.MaxVolumeShare, err = crypter.Encrypt(addr, shamir.ToBytes(orderFragment.MaxVolumeShare)) // FIXME: Unify volumes
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot encrypt max volume share: %v", err)
 	}
 	val.MinVolumeShare, err = crypter.Encrypt(addr, shamir.ToBytes(orderFragment.MinVolumeShare)) // FIXME: Unify volumes
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot encrypt min volume: %v", err)
 	}
 
 	return val, nil

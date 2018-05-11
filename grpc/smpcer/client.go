@@ -39,16 +39,12 @@ func (client *Client) OpenOrder(ctx context.Context, multiAddr identity.MultiAdd
 	defer conn.Close()
 
 	smpcerClient := NewSmpcClient(conn.ClientConn)
-	orderFragmentSignature, err := client.crypter.Sign(&orderFragment)
-	if err != nil {
-		return err
-	}
 	orderFragmentData, err := MarshalOrderFragment(multiAddr.Address().String(), client.crypter, &orderFragment)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot marshal order fragment: %v", err)
 	}
 	request := &OpenOrderRequest{
-		Signature:     orderFragmentSignature,
+		Signature:     []byte{},
 		OrderFragment: orderFragmentData,
 	}
 	_, err = smpcerClient.OpenOrder(ctx, request)
