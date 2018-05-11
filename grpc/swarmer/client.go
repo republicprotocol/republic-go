@@ -228,17 +228,23 @@ func (client *Client) query(ctx context.Context, query identity.Address, depth i
 	// than the Swarm service
 	multiAddrs := client.dht.MultiAddresses()
 	for _, multiAddr := range multiAddrs {
-		// Short circuit if the Swarm service is directly connected to the
-		// query
-		if query == multiAddr.Address() && !isBootstrapping {
-			return multiAddr, nil
+		if isBootstrapping {
+			if query != multiAddr.Address() {
+				whitelist = append(whitelist, multiAddr)
+			}
+			continue
 		}
 
+		// Short circuit if the Swarm service is directly connected to the
+		// query
+		if query == multiAddr.Address() {
+			return multiAddr, nil
+		}
 		isPeerCloser, err := identity.Closer(multiAddr.Address(), client.Address(), query)
 		if err != nil {
 			return identity.MultiAddress{}, fmt.Errorf("cannot compare address distances %v and %v: %v", multiAddr.Address(), client.Address(), err)
 		}
-		if (isPeerCloser || isBootstrapping) && query != client.Address() {
+		if isPeerCloser {
 			whitelist = append(whitelist, multiAddr)
 		}
 	}
