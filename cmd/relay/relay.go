@@ -113,7 +113,7 @@ func getSmartContracts(ethereumConfig ethereum.Config, keystore crypto.Keystore)
 		return nil, dnr.DarknodeRegistry{}, nil, err
 	}
 	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
-	auth.GasPrice = big.NewInt(10)
+	auth.GasPrice = big.NewInt(1000000000)
 
 	registry, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
 	if err != nil {
