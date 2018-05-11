@@ -11,5 +11,5 @@ type OpenOrderAdapter interface {
 }
 
 type CancelOrderAdapter interface {
-	CancelOrder(signature string, orderID order.ID) error
+	CancelOrder(signature string, orderID string) error
 }
