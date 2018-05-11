@@ -387,7 +387,7 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 			}
 		}
 		positionInOcean[x.Int64()] = i
-		poolID := i % len(darknodeAddrs) / int(numberOfNodesInPool.ToBigInt().Int64())
+		poolID := i % (len(darknodeAddrs) / int(numberOfNodesInPool.ToBigInt().Int64()))
 		pods[poolID].Darknodes = append(pods[poolID].Darknodes, darknodeAddrs[x.Int64()])
 		x.Mod(x.Add(x, epochVal), numberOfDarkNodes)
 	}
