@@ -1,4 +1,5 @@
 package main
+
 //
 //import (
 //	"context"
@@ -458,6 +459,11 @@ func main() {
 
 	relayAdapter := adapter.NewRelayAdapter(&relay)
 
+	log.Printf("Peers %v", len(dht.MultiAddresses()))
+	for _, multiAddr := range dht.MultiAddresses() {
+		log.Printf("  %v", multiAddr)
+	}
+	log.Printf("Multiaddress %v", multiAddr)
 	log.Printf("Listening at %v:%v", *bindParam, *portParam)
 	if err := http.ListenAndServe(*bindParam, *portParam, &relayAdapter, &relayAdapter); err != nil {
 		log.Fatalf("error listening and serving: %v", err)
@@ -528,15 +534,22 @@ func loadKeystore(keystoreFile, passphrase string) (crypto.Keystore, error) {
 		return crypto.Keystore{}, err
 	}
 	defer file.Close()
-	keystore := new(crypto.Keystore)
-	data, err := ioutil.ReadFile(keystoreFile)
-	if err := json.NewDecoder(file).Decode(keystore); err != nil {
-		return crypto.Keystore{}, err
-	}
-	err = keystore.DecryptFromJSON(data, passphrase)
-	if err := json.NewDecoder(file).Decode(keystore); err != nil {
-		return crypto.Keystore{}, err
-	}
-	return *keystore, nil
-}
 
+	if passphrase == "" {
+		keystore := crypto.Keystore{}
+		if err := json.NewDecoder(file).Decode(&keystore); err != nil {
+			return keystore, err
+		}
+		return keystore, nil
+	}
+
+	keystore := crypto.Keystore{}
+	keystoreData, err := ioutil.ReadAll(file)
+	if err != nil {
+		return keystore, err
+	}
+	if err := keystore.DecryptFromJSON(keystoreData, passphrase); err != nil {
+		return keystore, err
+	}
+	return keystore, nil
+}

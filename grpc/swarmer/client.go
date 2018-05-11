@@ -277,6 +277,9 @@ func (client *Client) query(ctx context.Context, query identity.Address, depth i
 			whitelist = append(whitelist, multiAddr)
 		}
 	}
+	if isBootstrapping {
+		return identity.MultiAddress{}, nil
+	}
 	return identity.MultiAddress{}, ErrNotFound
 }
 
