@@ -10,44 +10,8 @@
 [[projects]]
   branch = "master"
   name = "github.com/btcsuite/btcd"
-  packages = [
-    "btcec",
-    "btcjson",
-    "chaincfg",
-    "chaincfg/chainhash",
-    "rpcclient",
-    "txscript",
-    "wire"
-  ]
+  packages = ["btcec"]
   revision = "675abc5df3c5531bc741b56a765e35623459da6d"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/btcsuite/btclog"
-  packages = ["."]
-  revision = "84c8d2346e9fc8c7b947e243b9c24e6df9fd206a"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/btcsuite/btcutil"
-  packages = [
-    ".",
-    "base58",
-    "bech32"
-  ]
-  revision = "501929d3d046174c3d39f0ea54ece471aa17238c"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/btcsuite/go-socks"
-  packages = ["socks"]
-  revision = "4720035b7bfd2a9bb130b1c184f8bbe41b6f0d0f"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/btcsuite/websocket"
-  packages = ["."]
-  revision = "31079b6807923eb23992c421b114992b95131b55"
 
 [[projects]]
   name = "github.com/ethereum/go-ethereum"
@@ -109,6 +73,12 @@
   packages = ["."]
   revision = "1ea25387ff6f684839d82767c1733ff4d4d15d0a"
   version = "v1.1"
+
+[[projects]]
+  name = "github.com/gorilla/handlers"
+  packages = ["."]
+  revision = "90663712d74cb411cbef281bc1e08c19d1a76145"
+  version = "v1.3.0"
 
 [[projects]]
   name = "github.com/gorilla/mux"
@@ -269,7 +239,6 @@
   packages = [
     "blake2s",
     "pbkdf2",
-    "ripemd160",
     "scrypt",
     "sha3"
   ]
@@ -349,7 +318,7 @@
 [[projects]]
   branch = "master"
   name = "google.golang.org/genproto"
-  packages = ["googleapis/grpc/status"]
+  packages = ["googleapis/rpc/status"]
   revision = "86e600f69ee4704c6efbf6a2a40a5c10700e76c2"
 
 [[projects]]
@@ -409,6 +378,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "43036cb9a928894d9d7703f6a3f7cdd5ff8d95b5b4cada8dbb5c6e35096f82b7"
+  inputs-digest = "3bc5618dab37562498f4d4cfee932de0f944d4071b83c9ce326e699e4f1939cc"
   solver-name = "gps-cdcl"
   solver-version = 1

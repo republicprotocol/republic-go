@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/republicprotocol/republic-go/http/adapter"
+	"github.com/rs/cors"
 )
 
 const reset = "\x1b[0m"
@@ -25,9 +25,12 @@ func NewServer(openOrderAdapter adapter.OpenOrderAdapter, cancelOrderAdapter ada
 	r.HandleFunc("/orders/{id}", CancelOrderHandler(cancelOrderAdapter)).Methods("DELETE")
 	r.Use(RecoveryHandler)
 
-	origins := handlers.AllowedOrigins([]string{"*"})
-	methods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
-	return handlers.CORS(origins, methods)(r)
+	handler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+	}).Handler(r)
+
+	return handler
 }
 
 // RecoveryHandler handles errors while processing the requests and populates the errors in the response
