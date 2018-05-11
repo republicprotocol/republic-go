@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/republicprotocol/republic-go/http/adapter"
 )
@@ -23,6 +24,11 @@ func NewServer(openOrderAdapter adapter.OpenOrderAdapter, cancelOrderAdapter ada
 	r.HandleFunc("/orders", OpenOrderHandler(openOrderAdapter)).Methods("POST")
 	r.HandleFunc("/orders/{id}", CancelOrderHandler(cancelOrderAdapter)).Methods("DELETE")
 	r.Use(RecoveryHandler)
+
+	origins := handlers.AllowedOrigins([]string{"*"})
+	methods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+	r.Use(handlers.CORS(origins, methods))
+
 	return r
 }
 
