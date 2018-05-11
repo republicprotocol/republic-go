@@ -54,11 +54,6 @@ func (ledger *RenLedgerContract) OpenOrder(signature [65]byte, id order.ID) erro
 	return err
 }
 
-func (ledger *RenLedgerContract) WaitForOpenOrder(orderID order.ID) error {
-	// FIXME: Wait for a depth.
-	panic("unimplemented")
-}
-
 func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) error {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
@@ -69,11 +64,6 @@ func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) er
 	}
 	_, err = ledger.conn.PatchedWaitMined(ledger.context, tx)
 	return err
-}
-
-func (ledger *RenLedgerContract) WaitForCancelOrder(orderID order.ID) error {
-	// FIXME: Wait for a depth.
-	panic("unimplemented")
 }
 
 func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, matches []order.ID) error {

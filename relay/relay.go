@@ -45,9 +45,6 @@ func (relay *Relay) OpenOrder(signature [65]byte, orderID order.ID, orderFragmen
 	if err := relay.renLedger.OpenOrder(signature, orderID); err != nil {
 		return err
 	}
-	if err := relay.renLedger.WaitForOpenOrder(orderID); err != nil {
-		return err
-	}
 	return relay.openOrderFragments(orderFragmentMapping)
 }
 
@@ -56,9 +53,6 @@ func (relay *Relay) CancelOrder(signature [65]byte, orderID order.ID) error {
 	// RenLedger. This is not strictly necessary but it can save the Relay some
 	// gas.
 	if err := relay.renLedger.CancelOrder(signature, orderID); err != nil {
-		return err
-	}
-	if err := relay.renLedger.WaitForCancelOrder(orderID); err != nil {
 		return err
 	}
 	return nil
