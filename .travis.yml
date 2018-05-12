@@ -23,7 +23,7 @@ script:
   # - golint -set_exit_status `go list ./... | grep -Ev "(stackint/asm|vendor)"`
   # - golint `go list ./... | grep -Ev "(stackint/asm|vendor)"`
   - ginkgo -v --cover --coverprofile coverprofile.out ./...
-  - covermerge crypto/coverprofile.out darknode/coverprofile.out darkocean/coverprofile.out delta/coverprofile.out dispatch/coverprofile.out identity/coverprofile.out logger/coverprofile.out order/coverprofile.out orderbook/coverprofile.out relay/coverprofile.out rpc/coverprofile.out shamir/coverprofile.out smpc/coverprofile.out stackint/coverprofile.out > coverprofile.out
+  - covermerge crypto/coverprofile.out darknode/coverprofile.out darkocean/coverprofile.out delta/coverprofile.out dispatch/coverprofile.out identity/coverprofile.out logger/coverprofile.out order/coverprofile.out orderbook/coverprofile.out relay/coverprofile.out grpc/coverprofile.out shamir/coverprofile.out smpc/coverprofile.out stackint/coverprofile.out > coverprofile.out
   - sed -i '/.pb.go/d' coverprofile.out
   - sed -i '/bindings/d' coverprofile.out
   - sed -i '/cmd/d' coverprofile.out
