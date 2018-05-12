@@ -123,14 +123,9 @@ HTTP/1.1 POST /orders
 
 ```json
 {
-    "orderSignature": "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq=",
-    "orderId": "h1uHs+egr5xWYpwSdIPeyt36PKpKthROcoCMEe2cp4u=",
-    "orderType": 0,
-    "orderParity": 0,
-    "orderExpiry": 1523238476,
-    "pools": {
+    "poolsToOrderFragments": {
         "d2YDsRUlMhPBMMRYIhTy+nNPTQKqqBwqq+duPYWm0yS=": [{
-            "signature": "RmDYPYqqBTd2YBsInNPWySQUlMhPBMKduTqqhMRy0+w=",
+            "merkleProof": "yxz",
             "id": "KthRO2cp4hwS+egr5xWYpdIPeyMEe1uHsPKp6Cut3co=",
             "orderSignature": "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq=",
             "orderId": "h1uHs+egr5xWYpwSdIPeyt36PKpKthROcoCMEe2cp4u=",

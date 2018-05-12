@@ -18,10 +18,10 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/grpc/client"
+	"github.com/republicprotocol/republic-go/grpc/smpcer"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/rpc/client"
-	"github.com/republicprotocol/republic-go/rpc/smpcer"
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/stackint"
 )
@@ -128,12 +128,6 @@ func (env *TestnetEnv) Run() {
 	})
 }
 
-func (env *TestnetEnv) ClearOrderbooks() {
-	for i := range env.Darknodes {
-		env.Darknodes[i].ClearOrderbook()
-	}
-}
-
 // SendMatchingOrderPairs will send pairs of matching buys and sells to the
 // Darknodes.
 func (env *TestnetEnv) SendMatchingOrderPairs(numberOfOrderPairs int) error {
@@ -215,9 +209,8 @@ func NewDarknodes(numberOfDarknodes, numberOfBootstrapDarknodes int) (Darknodes,
 			configs[i].BootstrapMultiAddresses = append(configs[i].BootstrapMultiAddresses, multiAddrs[j])
 		}
 	}
-
 	for j := 0; j < numberOfBootstrapDarknodes; j++ {
-		bootstrapMultiAddrs = append(bootstrapMultiAddrs, multiAddrs[j])
+		bootstrapMultiAddrs[j] = multiAddrs[j]
 	}
 
 	for i := 0; i < numberOfDarknodes; i++ {

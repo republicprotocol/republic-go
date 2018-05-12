@@ -16,7 +16,7 @@ func TestDarknode(t *testing.T) {
 
 const (
 	GanacheRPC                 = "http://localhost:8545"
-	NumberOfDarkNodes          = 6
+	NumberOfDarkNodes          = 24
 	NumberOfBootstrapDarkNodes = 6
 )
 

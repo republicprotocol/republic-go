@@ -310,7 +310,10 @@ func GetPool(addresses []string, registry dnr.DarknodeRegistry) error {
 		return err
 	}
 
-	ocean := darkocean.NewDarkOcean(currentEpoch.Blockhash, nodes)
+	ocean, err := darkocean.NewDarkOcean(&registry, currentEpoch.Blockhash, nodes)
+	if err != nil {
+		return err
+	}
 	poolIndex := ocean.PoolIndex(address.Bytes())
 	fmt.Println(poolIndex)
 

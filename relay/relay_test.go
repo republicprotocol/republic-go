@@ -1,588 +1,236 @@
 package relay_test
 
-// import (
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// 	. "github.com/republicprotocol/republic-go/darknodetest"
-// 	. "github.com/republicprotocol/republic-go/relay"
-// )
-
-// var Prime, _ = stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-// var darknodeRegistry dnr.DarkNodeRegistry
-// var traderMulti string
-
-// const (
-// 	GanacheRPC                 = "http://localhost:8545"
-// 	NumberOfDarkNodes          = 5
-// 	NumberOfBootstrapDarkNodes = 5
-// 	NumberOfOrders             = 1
-// )
-
-// var _ = Describe("Relay", func() {
-
-// 	var conn ethereum.Conn
-// 	var darknodes darknode.Darknodes
-// 	var bootstrapNodes []string
-
-// 	BeforeSuite(func() {
-// 		var err error
-
-// 		// Connect to Ganache
-// 		conn, err = ganache.Connect("http://localhost:8545")
-// 		Expect(err).ShouldNot(HaveOccurred())
-// 		transactor := ganache.GenesisTransactor()
-// 		darknodeRegistry, err = contracts.NewDarkNodeRegistry(context.Background(), conn, &transactor, &bind.CallOpts{})
-// 		Expect(err).ShouldNot(HaveOccurred())
-// 		darknodeRegistry.SetGasLimit(1000000)
-
-// 		// Create DarkNodes and contexts/cancels for running them
-// 		darknodes, err = NewDarknodes(NumberOfDarkNodes, NumberOfBootstrapDarkNodes)
-// 		Expect(err).ShouldNot(HaveOccurred())
-
-// 		// Populate bootstrap nodes
-// 		bootstrapNodes = make([]string, 5)
-// 		for i := 0; i < NumberOfBootstrapDarkNodes; i++ {
-// 			bootstrapNodes[i] = darknodes[i].MultiAddress().String()
-// 		}
-
-// 		// Assign trader address with the first dark node multiaddress
-// 		traderMulti = darknodes[0].MultiAddress().String()
-
-// 		// Register the Darknodes and trigger an epoch to accept their
-// 		// registrations
-// 		err = RegisterDarknodes(darknodes, conn, darknodeRegistry)
-// 		Expect(err).ShouldNot(HaveOccurred())
-// 	})
-
-// 	AfterSuite(func() {
-// 		var err error
-
-// 		// Deregister the DarkNodes
-// 		err = DeregisterDarknodes(darknodes, conn, darknodeRegistry)
-// 		Expect(err).ShouldNot(HaveOccurred())
-
-// 		// Refund the DarkNodes
-// 		err = RefundDarknodes(darknodes, conn, darknodeRegistry)
-// 		Expect(err).ShouldNot(HaveOccurred())
-// 	})
-
-// 	Context("running the relay", func() {
-// 		It("should", func() {
-// 			config := Config{
-// 				KeyPair:      identity.KeyPair{},
-// 				MultiAddress: identity.MultiAddress{},
-// 				Token:        "",
-// 			}
-// 			pools := getPools(darknodeRegistry)
-// 			book := orderbook.NewOrderbook(100)
-
-// 			// Initialise DHT using registered nodes
-// 			address, _, _ := identity.NewAddress()
-// 			dht := dht.NewDHT(address, 100)
-// 			for i := 0; i < len(darknodes); i++ {
-// 				dht.UpdateMultiAddress(darknodes[i].MultiAddress())
-// 			}
-
-// 			crypter := crypto.NewWeakCrypter()
-// 			connPool := client.NewConnPool(100)
-// 			relayerClient := relayer.NewClient(&crypter, &dht, &connPool)
-// 			swarmerClient := swarmer.NewClient(&crypter, config.MultiAddress, &dht, &connPool)
-// 			smpcerClient := smpcer.NewClient(&crypter, config.MultiAddress, &connPool)
-
-// 			relay := NewRelay(config, darknodeRegistry, &book, &relayerClient, &smpcerClient, &swarmerClient)
-
-// 			server := grpc.NewServer()
-// 			relay.Register(server)
-// 			relay.Sync(context.Background(), 3)
-
-// 			// TODO: Send orders to selected nodes
-// 		})
-// 	})
-
-// 	Context("storing and updating orders", func() {
-// 		It("should store entry in local orderbook", func() {
-// 			book := orderbook.NewOrderbook(100)
-// 			block := rpc.SyncBlock{
-// 				Signature: []byte{},
-// 				Timestamp: 0,
-// 				EpochHash: []byte{},
-// 				OrderBlock: &rpc.SyncBlock_Open{
-// 					Open: &rpc.Order{
-// 						Id: &rpc.OrderId{
-// 							OrderId: []byte("ID"),
-// 						},
-// 						Type:   0,
-// 						Parity: 0,
-// 						Expiry: 0,
-// 					},
-// 				},
-// 			}
-
-// 			err := StoreEntryInOrderbook(&block, &book)
-// 			Ω(err).ShouldNot(HaveOccurred())
-
-// 			// Check to see if orderbook is as expected
-// 			blocks := book.Blocks()
-// 			Ω(len(blocks)).Should(Equal(1))
-// 			Ω(blocks[0].Status).Should(Equal(order.Open))
-// 		})
-
-// 		It("should store multiple entries in local orderbook", func() {
-// 			book := orderbook.NewOrderbook(100)
-// 			fstBlock := rpc.SyncBlock{
-// 				Signature: []byte{},
-// 				Timestamp: 0,
-// 				EpochHash: []byte{},
-// 				OrderBlock: &rpc.SyncBlock_Open{
-// 					Open: &rpc.Order{
-// 						Id: &rpc.OrderId{
-// 							OrderId: []byte("fstID"),
-// 						},
-// 						Type:   0,
-// 						Parity: 0,
-// 						Expiry: 0,
-// 					},
-// 				},
-// 			}
-// 			sndBlock := rpc.SyncBlock{
-// 				Signature: []byte{},
-// 				Timestamp: 0,
-// 				EpochHash: []byte{},
-// 				OrderBlock: &rpc.SyncBlock_Open{
-// 					Open: &rpc.Order{
-// 						Id: &rpc.OrderId{
-// 							OrderId: []byte("sndID"),
-// 						},
-// 						Type:   0,
-// 						Parity: 0,
-// 						Expiry: 0,
-// 					},
-// 				},
-// 			}
-
-// 			err := StoreEntryInOrderbook(&fstBlock, &book)
-// 			Ω(err).ShouldNot(HaveOccurred())
-// 			err = StoreEntryInOrderbook(&sndBlock, &book)
-// 			Ω(err).ShouldNot(HaveOccurred())
-
-// 			// Check to see if orderbook is as expected
-// 			blocks := book.Blocks()
-// 			Ω(len(blocks)).Should(Equal(2))
-// 			Ω(blocks[0].Status).Should(Equal(order.Open))
-// 			Ω(blocks[1].Status).Should(Equal(order.Open))
-// 		})
-
-// 		It("should update entries with a higher status", func() {
-// 			book := orderbook.NewOrderbook(100)
-// 			openBlock := rpc.SyncBlock{
-// 				Signature: []byte{},
-// 				Timestamp: 0,
-// 				EpochHash: []byte{},
-// 				OrderBlock: &rpc.SyncBlock_Open{
-// 					Open: &rpc.Order{
-// 						Id: &rpc.OrderId{
-// 							OrderId: []byte("ID"),
-// 						},
-// 						Type:   0,
-// 						Parity: 0,
-// 						Expiry: 0,
-// 					},
-// 				},
-// 			}
-// 			confirmedBlock := rpc.SyncBlock{
-// 				Signature: []byte{},
-// 				Timestamp: 0,
-// 				EpochHash: []byte{},
-// 				OrderBlock: &rpc.SyncBlock_Confirmed{
-// 					Confirmed: &rpc.Order{
-// 						Id: &rpc.OrderId{
-// 							OrderId: []byte("ID"),
-// 						},
-// 						Type:   0,
-// 						Parity: 0,
-// 						Expiry: 0,
-// 					},
-// 				},
-// 			}
-
-// 			err := StoreEntryInOrderbook(&openBlock, &book)
-// 			Ω(err).ShouldNot(HaveOccurred())
-// 			err = StoreEntryInOrderbook(&confirmedBlock, &book)
-// 			Ω(err).ShouldNot(HaveOccurred())
-
-// 			// Check to see if orderbook is as expected
-// 			blocks := book.Blocks()
-// 			Ω(len(blocks)).Should(Equal(1))
-// 			Ω(blocks[0].Status).Should(Equal(order.Confirmed))
-// 		})
-
-// 		It("should not update entries with a lesser status", func() {
-// 			book := orderbook.NewOrderbook(100)
-// 			confirmedBlock := rpc.SyncBlock{
-// 				Signature: []byte{},
-// 				Timestamp: 0,
-// 				EpochHash: []byte{},
-// 				OrderBlock: &rpc.SyncBlock_Confirmed{
-// 					Confirmed: &rpc.Order{
-// 						Id: &rpc.OrderId{
-// 							OrderId: []byte("ID"),
-// 						},
-// 						Type:   0,
-// 						Parity: 0,
-// 						Expiry: 0,
-// 					},
-// 				},
-// 			}
-// 			openBlock := rpc.SyncBlock{
-// 				Signature: []byte{},
-// 				Timestamp: 0,
-// 				EpochHash: []byte{},
-// 				OrderBlock: &rpc.SyncBlock_Open{
-// 					Open: &rpc.Order{
-// 						Id: &rpc.OrderId{
-// 							OrderId: []byte("ID"),
-// 						},
-// 						Type:   0,
-// 						Parity: 0,
-// 						Expiry: 0,
-// 					},
-// 				},
-// 			}
-
-// 			err := StoreEntryInOrderbook(&confirmedBlock, [32]byte{}, &book)
-// 			Ω(err).ShouldNot(HaveOccurred())
-// 			err = StoreEntryInOrderbook(&openBlock, [32]byte{}, &book)
-// 			Ω(err).Should(HaveOccurred())
-
-// 			// Check to see if orderbook is as expected
-// 			blocks := book.Blocks()
-// 			Ω(len(blocks)).Should(Equal(1))
-// 			Ω(blocks[0].Status).Should(Equal(order.Confirmed))
-// 		})
-// 	})
-
-// 	Context("forwarding orders", func() {
-// 		It("should forward orders read from the connection", func() {
-// 			// Construct channels
-// 			blocks, errs := make(chan *rpc.SyncBlock), make(chan error)
-// 			defer close(blocks)
-// 			defer close(errs)
-
-// 			connections := int32(1)
-// 			book := orderbook.NewOrderbook(100)
-// 			fstBlock := rpc.SyncBlock{
-// 				Signature: []byte{},
-// 				Timestamp: 0,
-// 				EpochHash: make([]byte, 32),
-// 				OrderBlock: &rpc.SyncBlock_Open{
-// 					Open: &rpc.Order{
-// 						Id: &rpc.OrderId{
-// 							OrderId: []byte("fstID"),
-// 						},
-// 						Type:   0,
-// 						Parity: 0,
-// 						Expiry: 0,
-// 					},
-// 				},
-// 			}
-// 			sndBlock := rpc.SyncBlock{
-// 				Signature: []byte{},
-// 				Timestamp: 0,
-// 				EpochHash: make([]byte, 32),
-// 				OrderBlock: &rpc.SyncBlock_Open{
-// 					Open: &rpc.Order{
-// 						Id: &rpc.OrderId{
-// 							OrderId: []byte("sndID"),
-// 						},
-// 						Type:   0,
-// 						Parity: 0,
-// 						Expiry: 0,
-// 					},
-// 				},
-// 			}
-
-// 			var wg sync.WaitGroup
-// 			wg.Add(1)
-// 			go func() {
-// 				defer wg.Done()
-// 				blocks <- &fstBlock
-// 				blocks <- &sndBlock
-// 				errs <- errors.New("connection lost")
-// 			}()
-
-// 			Ω(len(book.Blocks())).Should(Equal(0))
-// 			err := ForwardMessagesToOrderbook(blocks, errs, &connections, &book)
-// 			Ω(err).Should(HaveOccurred())
-// 			Ω(len(book.Blocks())).Should(Equal(2))
-// 			wg.Wait()
-// 		})
-
-// 		It("should forward orders from multiple connections", func() {
-// 			// Construct channels
-// 			fstBlocks, fstErrs := make(chan *rpc.SyncBlock), make(chan error)
-// 			sndBlocks, sndErrs := make(chan *rpc.SyncBlock), make(chan error)
-// 			defer close(fstBlocks)
-// 			defer close(fstErrs)
-// 			defer close(sndBlocks)
-// 			defer close(sndErrs)
-
-// 			connections := int32(2)
-// 			book := orderbook.NewOrderbook(100)
-// 			fstBlock := rpc.SyncBlock{
-// 				Signature: []byte{},
-// 				Timestamp: 0,
-// 				EpochHash: make([]byte, 32),
-// 				OrderBlock: &rpc.SyncBlock_Open{
-// 					Open: &rpc.Order{
-// 						Id: &rpc.OrderId{
-// 							OrderId: []byte("fstID"),
-// 						},
-// 						Type:   0,
-// 						Parity: 0,
-// 						Expiry: 0,
-// 					},
-// 				},
-// 			}
-// 			sndBlock := rpc.SyncBlock{
-// 				Signature: []byte{},
-// 				Timestamp: 0,
-// 				EpochHash: make([]byte, 32),
-// 				OrderBlock: &rpc.SyncBlock_Open{
-// 					Open: &rpc.Order{
-// 						Id: &rpc.OrderId{
-// 							OrderId: []byte("sndID"),
-// 						},
-// 						Type:   0,
-// 						Parity: 0,
-// 						Expiry: 0,
-// 					},
-// 				},
-// 			}
-
-// 			var wg sync.WaitGroup
-// 			wg.Add(1)
-// 			go func() {
-// 				defer wg.Done()
-// 				fstBlocks <- &fstBlock
-// 				fstErrs <- errors.New("connection lost")
-// 			}()
-
-// 			wg.Add(1)
-// 			go func() {
-// 				defer wg.Done()
-// 				sndBlocks <- &sndBlock
-// 				sndErrs <- errors.New("connection lost")
-// 			}()
-
-// 			Ω(len(book.Blocks())).Should(Equal(0))
-// 			err := ForwardMessagesToOrderbook(fstBlocks, fstErrs, &connections, &book)
-// 			Ω(err).Should(HaveOccurred())
-// 			err = ForwardMessagesToOrderbook(sndBlocks, sndErrs, &connections, &book)
-// 			Ω(err).Should(HaveOccurred())
-// 			Ω(len(book.Blocks())).Should(Equal(2))
-// 			wg.Wait()
-// 		})
-
-// 		It("should not forward orders with an invalid epoch hash", func() {
-// 			// Construct channels
-// 			blocks, errs := make(chan *rpc.SyncBlock), make(chan error)
-// 			defer close(blocks)
-// 			defer close(errs)
-
-// 			connections := int32(1)
-// 			book := orderbook.NewOrderbook(100)
-// 			block := rpc.SyncBlock{
-// 				Signature: []byte{},
-// 				Timestamp: 0,
-// 				EpochHash: []byte{},
-// 				OrderBlock: &rpc.SyncBlock_Open{
-// 					Open: &rpc.Order{
-// 						Id: &rpc.OrderId{
-// 							OrderId: []byte("fstID"),
-// 						},
-// 						Type:   0,
-// 						Parity: 0,
-// 						Expiry: 0,
-// 					},
-// 				},
-// 			}
-
-// 			var wg sync.WaitGroup
-// 			wg.Add(1)
-// 			go func() {
-// 				defer wg.Done()
-// 				blocks <- &block
-// 			}()
-
-// 			Ω(len(book.Blocks())).Should(Equal(0))
-// 			err := ForwardMessagesToOrderbook(blocks, errs, &connections, &book)
-// 			Ω(err).Should(HaveOccurred())
-// 			Ω(len(book.Blocks())).Should(Equal(0))
-// 			wg.Wait()
-// 		})
-// 	})
-
-// 	Context("when sending full orders", func() {
-
-// 		It("should not return an error", func() {
-// 			pools := getPools(darknodeRegistry)
-// 			trader := identity.MultiAddress{}
-
-// 			keyPair, err := identity.NewKeyPair()
-// 			Expect(err).ShouldNot(HaveOccurred())
-// 			config := Config{
-// 				KeyPair:        keyPair,
-// 				MultiAddress:   trader,
-// 				Token:          "",
-// 				BootstrapNodes: bootstrapNodes,
-// 				BindAddress:    "127.0.0.1:8000",
-// 			}
-
-// 			relayNode := NewRelay(config, orderbook.NewOrderbook(100), darknodeRegistry)
-// 			sendOrder := getFullOrder()
-
-// 			err = SendOrderToDarkOcean(sendOrder, relayNode)
-// 			Ω(err).ShouldNot(HaveOccurred())
-// 		})
-// 	})
-
-// 	Context("when sending fragmented orders that do not have sufficient fragments", func() {
-
-// 		It("should return an error", func() {
-// 			pools := getPools(darknodeRegistry)
-// 			trader := identity.MultiAddress{}
-
-// 			keyPair, err := identity.NewKeyPair()
-// 			Expect(err).ShouldNot(HaveOccurred())
-// 			config := Config{
-// 				KeyPair:        keyPair,
-// 				MultiAddress:   trader,
-// 				Token:          "",
-// 				BootstrapNodes: bootstrapNodes,
-// 				BindAddress:    "127.0.0.1:8000",
-// 			}
-
-// 			relayNode := NewRelay(config, orderbook.NewOrderbook(100), darknodeRegistry)
-// 			sendOrder := getFragmentedOrder()
-
-// 			err = SendOrderFragmentsToDarkOcean(sendOrder, relayNode)
-// 			Ω(err).Should(HaveOccurred())
-// 			Expect(err.Error()).To(ContainSubstring("number of fragments do not match pool size"))
-// 		})
-// 	})
-
-// 	Context("when sending fragmented orders that have sufficient fragments for atleast one dark pool", func() {
-
-// 		It("should not return an error", func() {
-// 			pools := getPools(darknodeRegistry)
-// 			trader := identity.MultiAddress{}
-
-// 			keyPair, err := identity.NewKeyPair()
-// 			Expect(err).ShouldNot(HaveOccurred())
-// 			config := Config{
-// 				KeyPair:        keyPair,
-// 				MultiAddress:   trader,
-// 				Token:          "",
-// 				BootstrapNodes: bootstrapNodes,
-// 				BindAddress:    "127.0.0.1:8000",
-// 			}
-
-// 			relayNode := NewRelay(config, orderbook.NewOrderbook(100), darknodeRegistry)
-
-// 			sendOrder, err := generateFragmentedOrderForDarkPool(pools[0])
-// 			Ω(err).ShouldNot(HaveOccurred())
-
-// 			err = SendOrderFragmentsToDarkOcean(sendOrder, relayNode)
-// 			Ω(err).ShouldNot(HaveOccurred())
-// 		})
-// 	})
-
-// 	Context("when canceling orders", func() {
-
-// 		It("should not return an error", func() {
-// 			pools := getPools(darknodeRegistry)
-// 			trader := identity.MultiAddress{}
-
-// 			keyPair, err := identity.NewKeyPair()
-// 			Expect(err).ShouldNot(HaveOccurred())
-// 			config := Config{
-// 				KeyPair:        keyPair,
-// 				MultiAddress:   trader,
-// 				Token:          "",
-// 				BootstrapNodes: bootstrapNodes,
-// 				BindAddress:    "127.0.0.1:8000",
-// 			}
-
-// 			relayNode := NewRelay(config, orderbook.NewOrderbook(100), darknodeRegistry)
-// 			orderID := []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
-
-// 			err = CancelOrder(orderID, relayNode)
-// 			Ω(err).ShouldNot(HaveOccurred())
-// 		})
-// 	})
-// })
-
-// func getPools(dnr dnr.DarknodeRegistry) darkocean.Pools {
-// 	darknodeIDs, err := dnr.GetAllNodes()
-// 	Ω(err).ShouldNot(HaveOccurred())
-
-// 	epoch, err := dnr.CurrentEpoch()
-// 	Ω(err).ShouldNot(HaveOccurred())
-// 	darkOcean := darkocean.NewDarkOcean(epoch.Blockhash, darknodeIDs)
-
-// 	return darkOcean.Pools()
-// }
-
-// func getFullOrder() order.Order {
-// 	fullOrder := order.Order{}
-
-// 	defaultStackVal, err := stackint.FromString("179761232312312")
-// 	Expect(err).ShouldNot(HaveOccurred())
-
-// 	fullOrder.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
-// 	fullOrder.Type = 2
-// 	fullOrder.Parity = 1
-// 	fullOrder.Expiry = time.Time{}
-// 	fullOrder.FstCode = order.CurrencyCodeETH
-// 	fullOrder.SndCode = order.CurrencyCodeBTC
-// 	fullOrder.Price = defaultStackVal
-// 	fullOrder.MaxVolume = defaultStackVal
-// 	fullOrder.MinVolume = defaultStackVal
-// 	fullOrder.Nonce = defaultStackVal
-// 	return fullOrder
-// }
-
-// func getFragmentedOrder() OrderFragments {
-// 	defaultStackVal, _ := stackint.FromString("179761232312312")
-
-// 	fragmentedOrder := OrderFragments{}
-// 	fragmentSet := map[string][]*order.Fragment{}
-// 	fragments := []*order.Fragment{}
-
-// 	var err error
-// 	fragments, err = order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, defaultStackVal, defaultStackVal, defaultStackVal, defaultStackVal).Split(2, 1, &Prime)
-// 	Ω(err).ShouldNot(HaveOccurred())
-
-// 	fragmentSet["vrZhWU3VV9LRIM="] = fragments
-
-// 	fragmentedOrder.ID = []byte("vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQyV6ryi1wDSM=")
-// 	fragmentedOrder.Type = 2
-// 	fragmentedOrder.Parity = 1
-// 	fragmentedOrder.Expiry = time.Time{}
-// 	fragmentedOrder.DarkPools = fragmentSet
-
-// 	return fragmentedOrder
-// }
-
-// func generateFragmentedOrderForDarkPool(pool darkocean.Pool) (OrderFragments, error) {
-// 	sendOrder := getFullOrder()
-// 	fragments, err := sendOrder.Split(int64(pool.Size()), int64(pool.Size()*2/3), &Prime)
-// 	if err != nil {
-// 		return OrderFragments{}, err
-// 	}
-// 	fragmentSet := map[string][]*order.Fragment{}
-// 	fragmentOrder := getFragmentedOrder()
-// 	fragmentSet[GeneratePoolID(pool)] = fragments
-// 	fragmentOrder.DarkPools = fragmentSet
-// 	return fragmentOrder, nil
-// }
+import (
+	"context"
+	"crypto/rand"
+	"errors"
+	"fmt"
+	"math/big"
+	mathrand "math/rand"
+	"time"
+
+	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/stackint"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/order"
+	. "github.com/republicprotocol/republic-go/relay"
+	"github.com/republicprotocol/republic-go/smpc"
+)
+
+var _ = Describe("Relay", func() {
+	var relay Relay
+	var darkpool mockDarkpool
+
+	BeforeEach(func() {
+		darkpool = newMockDarkpool()
+		renLedger := newMockRenLedger()
+		swarmer := mockSwarmer{}
+		smpcer := mockSmpcer{}
+		relay = NewRelay(&darkpool, &renLedger, &swarmer, &smpcer)
+		err := relay.SyncDarkpool()
+		Expect(err).ShouldNot(HaveOccurred())
+	})
+
+	Context("when opening orders", func() {
+
+		It("should open orders with a sufficient number of order fragments", func() {
+			ord, err := createOrder()
+			Expect(err).ShouldNot(HaveOccurred())
+			fragments, err := ord.Split(5, 4, &smpc.Prime)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			orderFragmentMappingIn := make(map[[32]byte][]order.Fragment)
+			orderFragments := make([]order.Fragment, len(fragments))
+			for i, orderFragment := range fragments {
+				orderFragments[i] = *orderFragment
+			}
+			pods, err := darkpool.Pods()
+			Expect(err).ShouldNot(HaveOccurred())
+			orderFragmentMappingIn[pods[0].Hash] = orderFragments
+
+			signature := [65]byte{}
+			_, err = rand.Read(signature[:])
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = relay.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should not open orders with an insufficient number of order fragments", func() {
+			ord, err := createOrder()
+			Expect(err).ShouldNot(HaveOccurred())
+			fragments, err := ord.Split(int64(1), int64(4/3), &smpc.Prime)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			orderFragmentMappingIn := make(map[[32]byte][]order.Fragment)
+			orderFragments := make([]order.Fragment, len(fragments))
+			for i, orderFragment := range fragments {
+				orderFragments[i] = *orderFragment
+			}
+			pod, err := darkpool.Pods()
+			Expect(err).ShouldNot(HaveOccurred())
+			orderFragmentMappingIn[pod[0].Hash] = orderFragments
+
+			signature := [65]byte{}
+			_, err = rand.Read(signature[:])
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = relay.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
+			Expect(err).Should(HaveOccurred())
+		})
+
+		It("should not open orders with malformed order fragments", func() {
+			ord, err := createOrder()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			orderFragmentMappingIn := make(map[[32]byte][]order.Fragment)
+			orderFragments := make([]order.Fragment, 3)
+			pod, err := darkpool.Pods()
+			Expect(err).ShouldNot(HaveOccurred())
+			orderFragmentMappingIn[pod[0].Hash] = orderFragments
+
+			signature := [65]byte{}
+			_, err = rand.Read(signature[:])
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = relay.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
+			Expect(err).Should(HaveOccurred())
+		})
+
+	})
+
+	Context("when canceling orders", func() {
+
+		It("should cancel orders that are open", func() {
+			ord, err := createOrder()
+			Expect(err).ShouldNot(HaveOccurred())
+			fragments, err := ord.Split(5, 4, &smpc.Prime)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			orderFragmentMappingIn := make(map[[32]byte][]order.Fragment)
+			orderFragments := make([]order.Fragment, len(fragments))
+			for i, orderFragment := range fragments {
+				orderFragments[i] = *orderFragment
+			}
+			pods, err := darkpool.Pods()
+			Expect(err).ShouldNot(HaveOccurred())
+			orderFragmentMappingIn[pods[0].Hash] = orderFragments
+
+			signature := [65]byte{}
+			_, err = rand.Read(signature[:])
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = relay.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = relay.CancelOrder(signature, ord.ID)
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should not cancel orders that are not open", func() {
+			ord, err := createOrder()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			signature := [65]byte{}
+			_, err = rand.Read(signature[:])
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = relay.CancelOrder(signature, ord.ID)
+			Expect(err).Should(HaveOccurred())
+		})
+	})
+})
+
+func createOrder() (order.Order, error) {
+	price := mathrand.Intn(1000000000)
+	amount := mathrand.Intn(1000000000)
+
+	nonce, err := stackint.Random(rand.Reader, &smpc.Prime)
+	if err != nil {
+		return order.Order{}, err
+	}
+
+	parity := order.ParityBuy
+
+	return *order.NewOrder(order.TypeLimit, parity, time.Now().Add(time.Hour), order.CurrencyCodeETH, order.CurrencyCodeBTC, stackint.FromUint(uint(price)), stackint.FromUint(uint(amount)), stackint.FromUint(uint(amount)), nonce), nil
+}
+
+type mockDarkpool struct {
+	pods []cal.Pod
+}
+
+func newMockDarkpool() mockDarkpool {
+	pod := cal.Pod{
+		Hash:      [32]byte{},
+		Darknodes: []identity.Address{},
+	}
+	rand.Read(pod.Hash[:])
+	for i := 0; i < 5; i++ {
+		ecdsaKey, err := crypto.RandomEcdsaKey()
+		if err != nil {
+			panic(fmt.Sprintf("cannot create mock darkpool %v", err))
+		}
+		pod.Darknodes = append(pod.Darknodes, identity.Address(ecdsaKey.Address()))
+	}
+	return mockDarkpool{
+		pods: []cal.Pod{pod},
+	}
+}
+
+func (darkpool *mockDarkpool) Pods() ([]cal.Pod, error) {
+	return darkpool.pods, nil
+}
+
+type mockRenLedger struct {
+	orderStates map[string]struct{}
+}
+
+func newMockRenLedger() mockRenLedger {
+	return mockRenLedger{
+		orderStates: map[string]struct{}{},
+	}
+}
+
+func (renLedger *mockRenLedger) OpenOrder(signature [65]byte, orderID order.ID) error {
+	if _, ok := renLedger.orderStates[string(orderID)]; !ok {
+		renLedger.orderStates[string(orderID)] = struct{}{}
+		return nil
+	}
+	return errors.New("cannot open order that is already open")
+}
+
+func (renLedger *mockRenLedger) CancelOrder(signature [65]byte, orderID order.ID) error {
+	if _, ok := renLedger.orderStates[string(orderID)]; ok {
+		delete(renLedger.orderStates, string(orderID))
+		return nil
+	}
+	return errors.New("cannot cancel order that is not open")
+}
+
+func (renLedger *mockRenLedger) Fee() (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+
+type mockSwarmer struct {
+}
+
+func (swarmer *mockSwarmer) Bootstrap(ctx context.Context, multiAddrs identity.MultiAddresses, depth int) <-chan error {
+	errs := make(chan error)
+	defer close(errs)
+	return errs
+}
+
+func (swarmer *mockSwarmer) Query(ctx context.Context, query identity.Address, depth int) (identity.MultiAddress, error) {
+	return identity.MultiAddress{}, nil
+}
+
+type mockSmpcer struct {
+}
+
+func (smpcer *mockSmpcer) OpenOrder(ctx context.Context, to identity.MultiAddress, orderFragment order.Fragment) error {
+	return nil
+}

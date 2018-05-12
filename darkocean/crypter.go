@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -85,7 +86,7 @@ func (crypter *Crypter) Encrypt(addr string, plainText []byte) ([]byte, error) {
 	defer crypter.registryCacheMu.Unlock()
 	defer crypter.publicKeyCacheMu.Unlock()
 	if err := crypter.verifyAddress(addr); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot verify address %v", err)
 	}
 	return crypter.encryptToAddress(addr, plainText)
 }
