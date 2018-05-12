@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/grpc/smpcer"
 
-	"github.com/republicprotocol/republic-go/rpc"
+	"github.com/republicprotocol/republic-go/grpc"
 	"google.golang.org/grpc"
 )
 
