@@ -161,3 +161,7 @@ func (ledger *RenLedgerContract) Confirmer(id order.ID) (common.Address, error) 
 
 	return address, nil
 }
+
+func (ledger *RenLedgerContract) Fee() (*big.Int, error) {
+	return big.NewInt(0), nil
+}
