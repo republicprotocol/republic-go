@@ -1,6 +1,10 @@
 package cal
 
-import "github.com/republicprotocol/republic-go/order"
+import (
+	"math/big"
+
+	"github.com/republicprotocol/republic-go/order"
+)
 
 type RenLedger interface {
 
@@ -15,5 +19,5 @@ type RenLedger interface {
 	CancelOrder(signature [65]byte, orderID order.ID) error
 
 	// Fee required to open an order.
-	Fee() error
+	Fee() (*big.Int, error)
 }

@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/cal"
@@ -15,8 +14,15 @@ import (
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
+// ErrUnknownPod is returned when an unknown pod is mapped.
+var ErrUnknownPod = errors.New("invalid number of pods")
+
+// ErrInvalidNumberOfPods is returned when an insufficient number of pods are
+// mapped.
+var ErrInvalidNumberOfPods = errors.New("invalid number of pods")
+
 // ErrInvalidNumberOfOrderFragments is returned when a pod is mapped to an
-// invalid number of order fragments.
+// insufficient number of order fragments, or too many order fragments.
 var ErrInvalidNumberOfOrderFragments = errors.New("invalid number of order fragments")
 
 // An OrderFragmentMapping maps pods to order fragments. The order fragments
@@ -35,6 +41,9 @@ type Relayer interface {
 	// CancelOrder on the Ren Ledger. A signature from the trader is needed to
 	// verify the cancelation.
 	CancelOrder(signature [65]byte, orderID order.ID) error
+
+	// SyncDarkpool to ensure an up-to-date state.
+	SyncDarkpool() error
 }
 
 type Relay struct {
@@ -42,6 +51,7 @@ type Relay struct {
 	renLedger cal.RenLedger
 	swarmer   swarm.Swarmer
 	smpcer    smpc.Smpcer
+	pods      map[[32]byte]cal.Pod
 }
 
 func NewRelay(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Swarmer, smpcer smpc.Smpcer) Relay {
@@ -57,6 +67,9 @@ func (relay *Relay) OpenOrder(signature [65]byte, orderID order.ID, orderFragmen
 	// TODO: Verify that the signature is valid before sending it to the
 	// RenLedger. This is not strictly necessary but it can save the Relay some
 	// gas.
+	if err := relay.verifyOrderFragments(orderFragmentMapping); err != nil {
+		return err
+	}
 	if err := relay.renLedger.OpenOrder(signature, orderID); err != nil {
 		return err
 	}
@@ -73,17 +86,39 @@ func (relay *Relay) CancelOrder(signature [65]byte, orderID order.ID) error {
 	return nil
 }
 
-func (relay *Relay) openOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
+func (relay *Relay) SyncDarkpool() error {
 	pods, err := relay.darkpool.Pods()
 	if err != nil {
 		return fmt.Errorf("cannot get pods from darkpool: %v", err)
 	}
-
-	errs := make([]error, 0, len(pods))
-	podDidReceiveFragments := false
+	relay.pods = map[[32]byte]cal.Pod{}
 	for _, pod := range pods {
-		log.Printf("pod %v", base64.StdEncoding.EncodeToString(pod.Hash[:]))
-		orderFragments := orderFragmentMapping[pod.Hash]
+		relay.pods[pod.Hash] = pod
+	}
+	return nil
+}
+
+func (relay *Relay) verifyOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
+	if len(orderFragmentMapping) == 0 || len(orderFragmentMapping) > len(relay.pods) {
+		return ErrInvalidNumberOfPods
+	}
+	for hash, orderFragments := range orderFragmentMapping {
+		pod, ok := relay.pods[hash]
+		if !ok {
+			return ErrUnknownPod
+		}
+		if len(orderFragments) > len(pod.Darknodes) || len(orderFragments) < pod.Threshold() {
+			return ErrInvalidNumberOfOrderFragments
+		}
+	}
+	return nil
+}
+
+func (relay *Relay) openOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
+	errs := make([]error, 0, len(relay.pods))
+	podDidReceiveFragments := false
+	for hash, pod := range relay.pods {
+		orderFragments := orderFragmentMapping[hash]
 		if orderFragments != nil && len(orderFragments) > 0 {
 			if err := relay.sendOrderFragmentsToPod(pod, orderFragments); err != nil {
 				errs = append(errs, err)
@@ -102,8 +137,7 @@ func (relay *Relay) openOrderFragments(orderFragmentMapping OrderFragmentMapping
 }
 
 func (relay *Relay) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []order.Fragment) error {
-	threshold := 2 * (len(pod.Darknodes) + 1) / 3
-	if len(orderFragments) < threshold || len(orderFragments) > len(pod.Darknodes) {
+	if len(orderFragments) < pod.Threshold() || len(orderFragments) > len(pod.Darknodes) {
 		return ErrInvalidNumberOfOrderFragments
 	}
 
@@ -153,7 +187,7 @@ func (relay *Relay) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []order.
 
 	// Check if at least 2/3 of the nodes in the specified pod have recieved
 	// the order fragments.
-	errNumMax := len(orderFragments) - threshold
+	errNumMax := len(orderFragments) - pod.Threshold()
 	if len(pod.Darknodes) > 0 && errNum > errNumMax {
 		return fmt.Errorf("cannot send order fragments to %v nodes (out of %v nodes) in pod %v: %v", errNum, len(pod.Darknodes), base64.StdEncoding.EncodeToString(pod.Hash[:]), err)
 	}

@@ -22,8 +22,13 @@ func (relayer *mockRelayer) OpenOrder(signature [65]byte, orderID order.ID, orde
 	atomic.AddInt64(&relayer.numOpened, 1)
 	return nil
 }
+
 func (relayer *mockRelayer) CancelOrder(signature [65]byte, orderID order.ID) error {
 	atomic.AddInt64(&relayer.numCanceled, 1)
+	return nil
+}
+
+func (relayer *mockRelayer) SyncDarkpool() error {
 	return nil
 }
 
