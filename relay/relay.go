@@ -15,12 +15,25 @@ import (
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
+// ErrInvalidNumberOfOrderFragments is returned when a pod is mapped to an
+// invalid number of order fragments.
 var ErrInvalidNumberOfOrderFragments = errors.New("invalid number of order fragments")
 
+// An OrderFragmentMapping maps pods to order fragments. The order fragments
+// are expected to be encrypted.
 type OrderFragmentMapping map[[32]byte][]order.Fragment
 
+// Relayer interface can open and cancel orders on behalf of a trader.
 type Relayer interface {
+
+	// OpenOrder on the Ren Ledger and on the Darkpool. A signature from the
+	// trader identifies them as the owner, the order ID is submitted to the
+	// Ren Ledger along with the necessary fee, and the order fragment mapping
+	// is used to send order fragments to pods in the Darkpool.
 	OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMapping OrderFragmentMapping) error
+
+	// CancelOrder on the Ren Ledger. A signature from the trader is needed to
+	// verify the cancelation.
 	CancelOrder(signature [65]byte, orderID order.ID) error
 }
 
@@ -44,7 +57,6 @@ func (relay *Relay) OpenOrder(signature [65]byte, orderID order.ID, orderFragmen
 	// TODO: Verify that the signature is valid before sending it to the
 	// RenLedger. This is not strictly necessary but it can save the Relay some
 	// gas.
-	// FIXME: Re-enable this interaction once signatures have been figured out.
 	if err := relay.renLedger.OpenOrder(signature, orderID); err != nil {
 		return err
 	}
