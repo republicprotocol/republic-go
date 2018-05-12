@@ -22,10 +22,10 @@ var _ = Describe("Smpc Computer", func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			n, k, numResidues := int64(3), int64(2), 100
 
-			computers := make([]smpc.Smpc, n)
+			computers := make([]smpc.SmpcComputer, n)
 			obscureComputeChsIn := make([]smpc.ObscureComputeInput, n)
 			for i := int64(0); i < n; i++ {
-				computers[i] = smpc.NewSmpc(identity.ID([]byte{byte(i)}), n, k)
+				computers[i] = smpc.NewSmpcComputer(identity.ID([]byte{byte(i)}), n, k)
 				obscureComputeChsIn[i] = smpc.ObscureComputeInput{
 					Rng:              make(chan smpc.ObscureRng, n),
 					RngShares:        make(chan smpc.ObscureRngShares, n),
