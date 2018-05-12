@@ -1,16 +1,24 @@
 package ledger
 
 import (
+	"bytes"
 	"context"
-
+	"encoding/json"
+	"errors"
+	"fmt"
 	"math/big"
+	"net/http"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/bindings"
 	"github.com/republicprotocol/republic-go/order"
 )
+
+const BlocksForConfirmation = 1
 
 // RenLedgerContract
 type RenLedgerContract struct {
@@ -51,7 +59,21 @@ func (ledger *RenLedgerContract) OpenOrder(signature [65]byte, id order.ID) erro
 		return err
 	}
 	_, err = ledger.conn.PatchedWaitMined(ledger.context, tx)
-	return err
+
+	blockNumber, err := ledger.GetBlockNumberOfTx(tx.Hash())
+	if err != nil {
+		return err
+	}
+
+	for {
+		currentBlock, err := ledger.CurrentBlock()
+		if err != nil {
+			return err
+		}
+		if currentBlock.NumberU64()-blockNumber >= BlocksForConfirmation {
+			return nil
+		}
+	}
 }
 
 func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) error {
@@ -63,7 +85,21 @@ func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) er
 		return err
 	}
 	_, err = ledger.conn.PatchedWaitMined(ledger.context, tx)
-	return err
+
+	blockNumber, err := ledger.GetBlockNumberOfTx(tx.Hash())
+	if err != nil {
+		return err
+	}
+
+	for {
+		currentBlock, err := ledger.CurrentBlock()
+		if err != nil {
+			return err
+		}
+		if currentBlock.NumberU64()-blockNumber >= BlocksForConfirmation {
+			return nil
+		}
+	}
 }
 
 func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, matches []order.ID) error {
@@ -79,6 +115,21 @@ func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, matches []order.ID) e
 		return err
 	}
 	_, err = ledger.conn.PatchedWaitMined(ledger.context, tx)
+
+	blockNumber, err := ledger.GetBlockNumberOfTx(tx.Hash())
+	if err != nil {
+		return err
+	}
+	for {
+		currentBlock, err := ledger.CurrentBlock()
+		if err != nil {
+			return err
+		}
+		if currentBlock.NumberU64()-blockNumber >= BlocksForConfirmation {
+			return nil
+		}
+	}
+
 	return err
 }
 
@@ -164,4 +215,44 @@ func (ledger *RenLedgerContract) Confirmer(id order.ID) (common.Address, error) 
 
 func (ledger *RenLedgerContract) Fee() (*big.Int, error) {
 	return big.NewInt(0), nil
+}
+
+// GetBlockNumberOfTx gets the block number of the transaction hash.
+// It calls infura using json-RPC.
+func (ledger *RenLedgerContract) GetBlockNumberOfTx(transaction common.Hash) (uint64, error) {
+	switch ledger.conn.Config.Network {
+	// According to this https://github.com/ethereum/go-ethereum/issues/15210
+	// we have to use json-rpc to get the block number.
+	case ethereum.NetworkRopsten:
+		hash := []byte(`{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["` + transaction.Hex() + `"],"id":1}`)
+		resp, err := http.Post("https://ropsten.infura.io", "application/json", bytes.NewBuffer(hash))
+		if err != nil {
+			return 0, err
+		}
+
+		// Read the response status
+		if resp.StatusCode != http.StatusOK {
+			return 0, fmt.Errorf("request failed with status code %d", resp.StatusCode)
+		}
+		// Get the result
+		var data map[string]interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			return 0, err
+		}
+		if result, ok := data["result"]; ok {
+			if blockNumber, ok := result.(map[string]interface{})["blockNumber"]; ok {
+				if blockNumberStr, ok := blockNumber.(string); ok {
+					return strconv.ParseUint(blockNumberStr[2:], 16, 64)
+				}
+			}
+		}
+		return 0, errors.New("fail to unmarshal the json response")
+	}
+
+	return 0, nil
+}
+
+// CurrentBlock gets the latest block.
+func (ledger *RenLedgerContract) CurrentBlock() (*types.Block, error) {
+	return ledger.conn.Client.BlockByNumber(ledger.context, nil)
 }

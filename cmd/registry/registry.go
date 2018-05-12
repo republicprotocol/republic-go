@@ -9,18 +9,19 @@ import (
 	"os"
 
 	"encoding/json"
+	"io/ioutil"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/stackint"
 	"github.com/urfave/cli"
-	"io/ioutil"
-	"github.com/republicprotocol/republic-go/crypto"
 )
 
 const (
@@ -367,8 +368,8 @@ func republicAddressToEthAddress(repAddress string) (common.Address, error) {
 }
 
 type FalconryConfigs struct {
-	Configs []FalconryConfig `json:"configs"`
-	Blockchain interface{} `json:"blockchain"`
+	Configs    []FalconryConfig `json:"configs"`
+	Blockchain interface{}      `json:"blockchain"`
 }
 
 type FalconryConfig struct {

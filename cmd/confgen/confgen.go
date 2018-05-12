@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 
-
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"

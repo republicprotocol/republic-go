@@ -9,8 +9,10 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darkocean"
+	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/grpc/status"
@@ -35,7 +37,8 @@ type Darknode struct {
 	orderbook    orderbook.Orderbook
 	crypter      crypto.Crypter
 
-	darknodeRegistry   dnr.DarknodeRegistry
+	darknodeRegistry dnr.DarknodeRegistry
+	renLedger        ledger.RenLedgerContract
 
 	orderFragments         chan order.Fragment
 	orderFragmentsCanceled chan order.ID
@@ -71,6 +74,11 @@ func NewDarknode(multiAddr identity.MultiAddress, config *Config) (Darknode, err
 		return Darknode{}, err
 	}
 	node.darknodeRegistry = darknodeRegistry
+	renLedger, err := ledger.NewRenLedgerContract(context.Background(), ethclient, transactOpts, &bind.CallOpts{})
+	if err != nil {
+		return Darknode{}, err
+	}
+	node.renLedger = renLedger
 
 	crypter := darkocean.NewCrypter(node.Config.Keystore, node.darknodeRegistry, 256, time.Minute)
 	node.crypter = &crypter
@@ -249,6 +257,7 @@ func (node *Darknode) RunEpochs(done <-chan struct{}) <-chan error {
 						for dlt := range deltas {
 							if dlt.IsMatch(smpc.Prime) {
 								node.Logger.OrderMatch(logger.Info, dlt.ID.String(), dlt.BuyOrderID.String(), dlt.SellOrderID.String())
+								node.confirmMatches(dlt)
 							}
 						}
 					}()
@@ -294,4 +303,40 @@ func (node *Darknode) OnReleaseOrder(orderID order.ID) {
 	}); err != nil {
 		node.Logger.Compute(logger.Error, err.Error())
 	}
+}
+
+func (node *Darknode) confirmMatches(dlt delta.Delta) error {
+	buyStatus, err := node.renLedger.Status(dlt.BuyOrderID)
+	if err != nil {
+		return err
+	}
+	sellStatus, err := node.renLedger.Status(dlt.SellOrderID)
+	if err != nil {
+		return err
+	}
+	if buyStatus == order.Open && sellStatus == order.Open {
+		return node.renLedger.ConfirmOrder(dlt.BuyOrderID, []order.ID{dlt.SellOrderID})
+	}
+
+	switch buyStatus {
+	case order.Nil:
+
+	case order.Open:
+		break
+	case order.Confirmed:
+		//todo : remove the order from the order engine
+	case order.Canceled:
+		// todo : cancel the order
+	}
+
+	switch sellStatus {
+	case order.Open:
+		break
+	case order.Confirmed:
+		//todo : remove the order from the order engine
+	case order.Canceled:
+		// todo : cancel the order
+	}
+
+	return node.renLedger.ConfirmOrder(dlt.BuyOrderID, []order.ID{dlt.SellOrderID})
 }
