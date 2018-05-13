@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/republicprotocol/republic-go/ingress"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/relay"
 )
 
 var ErrInvalidSignatureLength = errors.New("invalid signature length")
@@ -14,17 +14,17 @@ var ErrInvalidOrderIDLength = errors.New("invalid order id length")
 var ErrInvalidPoolHashLength = errors.New("invalid pool hash length")
 var ErrEmptyOrderFragmentMapping = errors.New("empty order fragment mapping")
 
-type RelayAdapter struct {
-	relay.Relayer
+type IngressAdapter struct {
+	ingress.Ingresser
 }
 
-func NewRelayAdapter(relayer relay.Relayer) RelayAdapter {
-	return RelayAdapter{
-		Relayer: relayer,
+func NewIngressAdapter(ingresser ingress.Ingresser) IngressAdapter {
+	return IngressAdapter{
+		Ingresser: ingresser,
 	}
 }
 
-func (adapter *RelayAdapter) OpenOrder(signatureIn string, orderFragmentMappingIn OrderFragmentMapping) error {
+func (adapter *IngressAdapter) OpenOrder(signatureIn string, orderFragmentMappingIn OrderFragmentMapping) error {
 	signature, err := adapter.adaptSignature(signatureIn)
 	if err != nil {
 		return err
@@ -35,14 +35,14 @@ func (adapter *RelayAdapter) OpenOrder(signatureIn string, orderFragmentMappingI
 		return err
 	}
 
-	return adapter.Relayer.OpenOrder(
+	return adapter.Ingresser.OpenOrder(
 		signature,
 		orderID,
 		orderFragmentMapping,
 	)
 }
 
-func (adapter *RelayAdapter) CancelOrder(signatureIn string, orderIDIn string) error {
+func (adapter *IngressAdapter) CancelOrder(signatureIn string, orderIDIn string) error {
 	signature, err := adapter.adaptSignature(signatureIn)
 	if err != nil {
 		return err
@@ -53,10 +53,10 @@ func (adapter *RelayAdapter) CancelOrder(signatureIn string, orderIDIn string) e
 		return err
 	}
 
-	return adapter.Relayer.CancelOrder(signature, orderID)
+	return adapter.Ingresser.CancelOrder(signature, orderID)
 }
 
-func (adapter *RelayAdapter) adaptSignature(signatureIn string) ([65]byte, error) {
+func (adapter *IngressAdapter) adaptSignature(signatureIn string) ([65]byte, error) {
 	signature := [65]byte{}
 	signatureBytes, err := base64.StdEncoding.DecodeString(signatureIn)
 	if err != nil {
@@ -69,7 +69,7 @@ func (adapter *RelayAdapter) adaptSignature(signatureIn string) ([65]byte, error
 	return signature, nil
 }
 
-func (adapter *RelayAdapter) adaptOrderID(orderIDIn string) (order.ID, error) {
+func (adapter *IngressAdapter) adaptOrderID(orderIDIn string) (order.ID, error) {
 	orderIDBytes, err := base64.StdEncoding.DecodeString(orderIDIn)
 	if err != nil {
 		return order.ID{}, fmt.Errorf("cannot decode order id %v: %v", orderIDIn, err)
@@ -80,9 +80,9 @@ func (adapter *RelayAdapter) adaptOrderID(orderIDIn string) (order.ID, error) {
 	return order.ID(orderIDBytes), nil
 }
 
-func (adapter *RelayAdapter) adaptOrderFragmentMapping(orderFragmentMappingIn OrderFragmentMapping) (order.ID, relay.OrderFragmentMapping, error) {
+func (adapter *IngressAdapter) adaptOrderFragmentMapping(orderFragmentMappingIn OrderFragmentMapping) (order.ID, ingress.OrderFragmentMapping, error) {
 	orderID := order.ID{}
-	orderFragmentMapping := relay.OrderFragmentMapping{}
+	orderFragmentMapping := ingress.OrderFragmentMapping{}
 	for key, value := range orderFragmentMappingIn {
 		if len(orderID) == 0 && len(value) > 0 {
 			orderID = value[0].OrderID
