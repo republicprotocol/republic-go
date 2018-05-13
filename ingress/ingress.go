@@ -1,4 +1,4 @@
-package relay
+package ingress
 
 import (
 	"context"
@@ -29,8 +29,8 @@ var ErrInvalidNumberOfOrderFragments = errors.New("invalid number of order fragm
 // are expected to be encrypted.
 type OrderFragmentMapping map[[32]byte][]order.Fragment
 
-// Relayer interface can open and cancel orders on behalf of a trader.
-type Relayer interface {
+// Ingresser interface can open and cancel orders on behalf of a user.
+type Ingresser interface {
 
 	// OpenOrder on the Ren Ledger and on the Darkpool. A signature from the
 	// trader identifies them as the owner, the order ID is submitted to the
@@ -46,7 +46,7 @@ type Relayer interface {
 	SyncDarkpool() error
 }
 
-type Relay struct {
+type Ingress struct {
 	darkpool  cal.Darkpool
 	renLedger cal.RenLedger
 	swarmer   swarm.Swarmer
@@ -54,8 +54,8 @@ type Relay struct {
 	pods      map[[32]byte]cal.Pod
 }
 
-func NewRelay(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Swarmer, smpcer smpc.Smpcer) Relay {
-	return Relay{
+func NewIngress(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Swarmer, smpcer smpc.Smpcer) Ingresser {
+	return &Ingress{
 		darkpool:  darkpool,
 		renLedger: renLedger,
 		swarmer:   swarmer,
@@ -63,47 +63,47 @@ func NewRelay(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Swar
 	}
 }
 
-func (relay *Relay) OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMapping OrderFragmentMapping) error {
+func (ingress *Ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMapping OrderFragmentMapping) error {
 	// TODO: Verify that the signature is valid before sending it to the
-	// RenLedger. This is not strictly necessary but it can save the Relay some
-	// gas.
-	if err := relay.verifyOrderFragments(orderFragmentMapping); err != nil {
+	// RenLedger. This is not strictly necessary but it can save the Ingress
+	// some gas.
+	if err := ingress.verifyOrderFragments(orderFragmentMapping); err != nil {
 		return err
 	}
-	if err := relay.renLedger.OpenOrder(signature, orderID); err != nil {
+	if err := ingress.renLedger.OpenOrder(signature, orderID); err != nil {
 		return err
 	}
-	return relay.openOrderFragments(orderFragmentMapping)
+	return ingress.openOrderFragments(orderFragmentMapping)
 }
 
-func (relay *Relay) CancelOrder(signature [65]byte, orderID order.ID) error {
+func (ingress *Ingress) CancelOrder(signature [65]byte, orderID order.ID) error {
 	// TODO: Verify that the signature is valid before sending it to the
-	// RenLedger. This is not strictly necessary but it can save the Relay some
-	// gas.
-	if err := relay.renLedger.CancelOrder(signature, orderID); err != nil {
+	// RenLedger. This is not strictly necessary but it can save the Ingress
+	// some gas.
+	if err := ingress.renLedger.CancelOrder(signature, orderID); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (relay *Relay) SyncDarkpool() error {
-	pods, err := relay.darkpool.Pods()
+func (ingress *Ingress) SyncDarkpool() error {
+	pods, err := ingress.darkpool.Pods()
 	if err != nil {
 		return fmt.Errorf("cannot get pods from darkpool: %v", err)
 	}
-	relay.pods = map[[32]byte]cal.Pod{}
+	ingress.pods = map[[32]byte]cal.Pod{}
 	for _, pod := range pods {
-		relay.pods[pod.Hash] = pod
+		ingress.pods[pod.Hash] = pod
 	}
 	return nil
 }
 
-func (relay *Relay) verifyOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
-	if len(orderFragmentMapping) == 0 || len(orderFragmentMapping) > len(relay.pods) {
+func (ingress *Ingress) verifyOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
+	if len(orderFragmentMapping) == 0 || len(orderFragmentMapping) > len(ingress.pods) {
 		return ErrInvalidNumberOfPods
 	}
 	for hash, orderFragments := range orderFragmentMapping {
-		pod, ok := relay.pods[hash]
+		pod, ok := ingress.pods[hash]
 		if !ok {
 			return ErrUnknownPod
 		}
@@ -114,13 +114,13 @@ func (relay *Relay) verifyOrderFragments(orderFragmentMapping OrderFragmentMappi
 	return nil
 }
 
-func (relay *Relay) openOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
-	errs := make([]error, 0, len(relay.pods))
+func (ingress *Ingress) openOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
+	errs := make([]error, 0, len(ingress.pods))
 	podDidReceiveFragments := false
-	for hash, pod := range relay.pods {
+	for hash, pod := range ingress.pods {
 		orderFragments := orderFragmentMapping[hash]
 		if orderFragments != nil && len(orderFragments) > 0 {
-			if err := relay.sendOrderFragmentsToPod(pod, orderFragments); err != nil {
+			if err := ingress.sendOrderFragmentsToPod(pod, orderFragments); err != nil {
 				errs = append(errs, err)
 				continue
 			}
@@ -136,7 +136,7 @@ func (relay *Relay) openOrderFragments(orderFragmentMapping OrderFragmentMapping
 	return nil
 }
 
-func (relay *Relay) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []order.Fragment) error {
+func (ingress *Ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []order.Fragment) error {
 	if len(orderFragments) < pod.Threshold() || len(orderFragments) > len(pod.Darknodes) {
 		return ErrInvalidNumberOfOrderFragments
 	}
@@ -161,12 +161,12 @@ func (relay *Relay) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []order.
 			// Send the order fragment to the Darknode
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 			defer cancel()
-			darknodeMultiAddr, err := relay.swarmer.Query(ctx, darknode, -1)
+			darknodeMultiAddr, err := ingress.swarmer.Query(ctx, darknode, -1)
 			if err != nil {
 				errs <- fmt.Errorf("cannot send query to %v: %v", darknode, err)
 				return
 			}
-			if err := relay.smpcer.OpenOrder(ctx, darknodeMultiAddr, orderFragment); err != nil {
+			if err := ingress.smpcer.OpenOrder(ctx, darknodeMultiAddr, orderFragment); err != nil {
 				errs <- fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
 				return
 			}

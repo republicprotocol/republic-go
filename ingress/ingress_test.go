@@ -1,4 +1,4 @@
-package relay_test
+package ingress_test
 
 import (
 	"context"
@@ -9,20 +9,20 @@ import (
 	mathrand "math/rand"
 	"time"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	. "github.com/republicprotocol/republic-go/ingress"
+
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/stackint"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/republic-go/order"
-	. "github.com/republicprotocol/republic-go/relay"
 	"github.com/republicprotocol/republic-go/smpc"
+	"github.com/republicprotocol/republic-go/stackint"
 )
 
-var _ = Describe("Relay", func() {
-	var relay Relay
+var _ = Describe("Ingress", func() {
+	var ingress Ingresser
 	var darkpool mockDarkpool
 
 	BeforeEach(func() {
@@ -30,8 +30,8 @@ var _ = Describe("Relay", func() {
 		renLedger := newMockRenLedger()
 		swarmer := mockSwarmer{}
 		smpcer := mockSmpcer{}
-		relay = NewRelay(&darkpool, &renLedger, &swarmer, &smpcer)
-		err := relay.SyncDarkpool()
+		ingress = NewIngress(&darkpool, &renLedger, &swarmer, &smpcer)
+		err := ingress.SyncDarkpool()
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -56,7 +56,7 @@ var _ = Describe("Relay", func() {
 			_, err = rand.Read(signature[:])
 			Expect(err).ShouldNot(HaveOccurred())
 
-			err = relay.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
+			err = ingress.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -79,7 +79,7 @@ var _ = Describe("Relay", func() {
 			_, err = rand.Read(signature[:])
 			Expect(err).ShouldNot(HaveOccurred())
 
-			err = relay.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
+			err = ingress.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
 			Expect(err).Should(HaveOccurred())
 		})
 
@@ -97,7 +97,7 @@ var _ = Describe("Relay", func() {
 			_, err = rand.Read(signature[:])
 			Expect(err).ShouldNot(HaveOccurred())
 
-			err = relay.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
+			err = ingress.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
 			Expect(err).Should(HaveOccurred())
 		})
 
@@ -124,10 +124,10 @@ var _ = Describe("Relay", func() {
 			_, err = rand.Read(signature[:])
 			Expect(err).ShouldNot(HaveOccurred())
 
-			err = relay.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
+			err = ingress.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			err = relay.CancelOrder(signature, ord.ID)
+			err = ingress.CancelOrder(signature, ord.ID)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -139,7 +139,7 @@ var _ = Describe("Relay", func() {
 			_, err = rand.Read(signature[:])
 			Expect(err).ShouldNot(HaveOccurred())
 
-			err = relay.CancelOrder(signature, ord.ID)
+			err = ingress.CancelOrder(signature, ord.ID)
 			Expect(err).Should(HaveOccurred())
 		})
 	})
