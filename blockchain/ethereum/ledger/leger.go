@@ -164,7 +164,7 @@ func (ledger *RenLedgerContract) Matches(id order.ID) ([]order.ID, error) {
 	}
 	orderIDs := make([]order.ID, len(matches))
 	for i := range matches {
-		orderIDs[i] = matches[i][:]
+		orderIDs[i] = matches[i]
 	}
 
 	return orderIDs, nil
@@ -174,10 +174,10 @@ func (ledger *RenLedgerContract) Orderbook(index int) (order.ID, error) {
 	i := big.NewInt(int64(index))
 	id, err := ledger.binding.Orderbook(ledger.callOpts, i)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
-	return order.ID(id[:]), nil
+	return order.ID(id), nil
 }
 
 func (ledger *RenLedgerContract) Trader(id order.ID) (common.Address, error) {
