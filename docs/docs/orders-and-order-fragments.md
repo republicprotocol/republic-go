@@ -38,7 +38,7 @@ Unix time, in seconds, after which the order will be automatically canceled.
 
 ### Tokens
 
-The tokens are a 64-bit unsigned integer. It is the concatenation of two of 32-bit unsigned integers. The smaller token value is always listed before the larger value, and is referred to as the priority token.
+The tokens are a 64-bit unsigned integer. It is the concatenation of two of 32-bit unsigned integers. The lesser token value is always listed before the greater token value. The greater token value is referred to as the priority token.
 
 **Values**
 
@@ -51,20 +51,20 @@ The tokens are a 64-bit unsigned integer. It is the concatenation of two of 32-b
 
 The price is a 32-bit unsigned integer. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.005*c*10^(q-26.0)_. The value of _c_ must be an integer in the range 1 to 1999 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
 
-The price is interpreted as the cost, in 10e-12 units of the priority token, for 1 standard unit of the non-priority token. For example, if the price of REN is 0.000009555BTC, then the price should be listed as 9.5*10e6, where _c = 1911_ and _q = 32_. 
+The price is interpreted as the cost for 1 standard unit of the priority token, in _1e-12_ units of the non-priority token. For example, if the price of REN is _0.000009555BTC_, then the price should be listed as _9.5*10e6_, where _c = 1911_ and _q = 32_. 
 
 ### Volume
 
 The volume is a 32-bit unsigned integer. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.2*c*10^q_. The value of _c_ must be an integer in the range 1 to 49 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
 
-The volume is interpreted as the maximum number of 10e-12 units of the priority token that can be traded by this order.
+The volume is interpreted as the maximum number of _1e-12_ units of the priority token that can be traded by this order.
 
 ### Minimum Volume
 
 
 The minimum volume is a 32-bit unsigned integer. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.2*c*10^q_. The value of _c_ must be an integer in the range 1 to 49 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
 
-The minimum volume is interpreted as the minimum number of 10e-12 units of the priority token that can be traded by this order.
+The minimum volume is interpreted as the minimum number of _1e-12_ units of the priority token that can be traded by this order.
 
 ### Nonce
 
