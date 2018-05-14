@@ -12,6 +12,7 @@ import (
 var ErrUnimplemented = errors.New("unimplemented")
 var ErrInvalidSignature = errors.New("invalid signature")
 var ErrInvalidSignatureAddress = errors.New("invalid signature address")
+var ErrUnexpectedHashLength = errors.New("unexpected hash length")
 
 type Hasher interface {
 	Hash() []byte

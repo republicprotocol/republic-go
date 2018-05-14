@@ -38,37 +38,37 @@ Unix time, in seconds, after which the order will be automatically canceled.
 
 ### Tokens
 
-The tokens are a 64-bit unsigned integer. It is the concatenation of two of 32-bit unsigned integers. The smaller value is always listed before the larger value, and is referred to as the higher token.
+The tokens are a 64-bit unsigned integer. It is the concatenation of two of 32-bit unsigned integers. The smaller token value is always listed before the larger value, and is referred to as the priority token.
 
 **Values**
 
-* REN — 0
+* BTC — 0
 * ETH — 1
-* BTC — 2
-* DGX — 3
+* DGX — 256
+* REN — 65536
 
 ### Price
 
-The price is a 16-bit unsigned integer. The first 8-bits are the co-efficient, _c_, and the second 8-bits are the exponent, _q_. The price is encoded as _0.1*c*10^(q-25.0)_. The value of _c_ must be an integer in the range 1 to 99 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
+The price is a 32-bit unsigned integer. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.005*c*10^(q-26.0)_. The value of _c_ must be an integer in the range 1 to 1999 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
 
-The price is interpreted as the cost of 1 standard unit of the higher token, in 10e-12 units of the lower token. For example, if the price of REN is 0.0000095BTC, then the price should be listed as 9.5*10e6, where _c = 95_ and _q = 31_. 
+The price is interpreted as the cost, in 10e-12 units of the priority token, for 1 standard unit of the non-priority token. For example, if the price of REN is 0.000009555BTC, then the price should be listed as 9.5*10e6, where _c = 1911_ and _q = 32_. 
 
 ### Volume
 
-The volume is a 16-bit unsigned integer. The first 8-bits are the co-efficient, _c_, and the second 8-bits are the exponent, _q_. The price is encoded as _0.2*c*10^q_. The value of _c_ must be an integer in the range 1 to 49 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
+The volume is a 32-bit unsigned integer. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.2*c*10^q_. The value of _c_ must be an integer in the range 1 to 49 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
 
-The price is interpreted as the maximum number of 10e-12 units of the higher token that can be traded by this order.
+The volume is interpreted as the maximum number of 10e-12 units of the priority token that can be traded by this order.
 
 ### Minimum Volume
 
 
-The volume is a 16-bit unsigned integer. The first 8-bits are the co-efficient, _c_, and the second 8-bits are the exponent, _q_. The price is encoded as _0.2*c*10^q_. The value of _c_ must be an integer in the range 1 to 49 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
+The minimum volume is a 32-bit unsigned integer. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.2*c*10^q_. The value of _c_ must be an integer in the range 1 to 49 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
 
-The price is interpreted as the minimum number of 10e-12 units of the higher token that can be traded by this order.
+The minimum volume is interpreted as the minimum number of 10e-12 units of the priority token that can be traded by this order.
 
 ### Nonce
 
-The nonce is a 64-bit unsigned integer.
+The nonce is a random 64-bit unsigned integer.
 
 ### Protobuf
 
@@ -91,7 +91,6 @@ message Order {
     OrderType type = 3;
     OrderParity parity = 4;
     int64 expiry = 5;
-
     int64 tokens = 6;
     int16 price = 7;
     int16 volume = 8;
@@ -112,7 +111,7 @@ The JSON format encodes an order, using definitions from the specification with 
     "parity": 0,
     "expiry": 1523238476,
     "tokens": 1,
-    "price": [95, 31],
+    "price": [1911, 32],
     "volume": [5, 13],
     "minimumVolume": [5, 12],
     "nonce": 1
@@ -127,17 +126,9 @@ The JSON format encodes an order, using definitions from the specification with 
 
 ## OrderFragments
 
-### Signature
-
-The signature is an ECDSA secp256k1 s256 signature of the order fragment ID, stored as bytes. The Republic Protocol address of the trader can be recover from this signature.
-
 ### ID
 
 The ID is the keccak256 hash of the order fragment, stored as bytes.
-
-### Order Signature
-
-The signature of the associated order. See definitions in Order.
 
 ### Order ID
 
@@ -187,18 +178,17 @@ enum OrderParity {
 }
 
 message OrderFragment {
-    bytes signature = 1;
-    bytes id = 2;
-    bytes orderSignature = 3;
-    bytes orderId = 4;
-    OrderType orderType = 5;
-    OrderParity orderParity = 6;
-    int64 orderExpiry = 7;
+    bytes orderSignature = 1;
+    bytes orderId = 2;
+    OrderType orderType = 3;
+    OrderParity orderParity = 4;
+    int64 orderExpiry = 5;
 
-    bytes tokens = 8;
-    bytes price = 9;
-    bytes volume = 10;
-    bytes minimumVolume = 11;
+    bytes id = 6;
+    bytes tokens = 7;
+    repeated bytes price = 8;
+    repeated bytes volume = 9;
+    repeated bytes minimumVolume = 10;
 }
 ```
 
@@ -208,13 +198,11 @@ The JSON format encodes an order fragment, using definitions from the specificat
 
 ```json
 {
-    "signature": "RmDYPYqqBTd2YBsInNPWySQUlMhPBMKduTqqhMRy0+w=",
-    "id": "KthRO2cp4hwS+egr5xWYpdIPeyMEe1uHsPKp6Cut3co=",
-    "orderSignature": "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq=",
     "orderId": "h1uHs+egr5xWYpwSdIPeyt36PKpKthROcoCMEe2cp4u=",
     "orderType": 0,
     "orderParity": 0,
     "orderExpiry": 1523238476,
+    "id": "KthRO2cp4hwS+egr5xWYpdIPeyMEe1uHsPKp6Cut3co=",
     "tokens": "qQUhRMuTqlRmYqqPBMKdP0+whYMDIynNPWySBTd2YBs=",
     "price": ["YqqMDYP0+wBTd2YBsIqhMRynNPWySQUhPBMKduTqlRm=", "YqqMDYP0+wBTd2YBsIqhMRynNPWySQUhPBMKduTqlRm="],
     "volume": ["MhPRmDYPYWySQUlBsInNPduTqqqBTBMKqhMRy0+wd2Y=", "MhPRmDYPYWySQUlBsInNPduTqqqBTBMKqhMRy0+wd2Y="],
@@ -222,9 +210,7 @@ The JSON format encodes an order fragment, using definitions from the specificat
 }
 ```
 
-- `signature` is encoded as a base64 string.
 - `id` is encoded as a base64 string.
-- `orderSignature` is encoded as a base64 string.
 - `orderId` is encoded as a base64 string.
 - `tokens` is an RSA encrypted number encoded as a base64 string.
 - `price` is an RSA encrypted tuple of the co-efficient and exponent encoded as base64 strings.
