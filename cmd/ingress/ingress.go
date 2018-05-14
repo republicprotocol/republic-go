@@ -28,7 +28,7 @@ import (
 	"github.com/republicprotocol/republic-go/http"
 	"github.com/republicprotocol/republic-go/http/adapter"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/relay"
+	"github.com/republicprotocol/republic-go/ingress"
 )
 
 type Config struct {
@@ -70,7 +70,7 @@ func main() {
 	crypter := darkocean.NewCrypter(keystore, registry, 128, time.Minute)
 	smpcerClient := smpcer.NewClient(&crypter, multiAddr, &connPool)
 	swarmerClient := swarmer.NewClient(&crypter, multiAddr, &dht, &connPool)
-	relayer := relay.NewRelay(&registry, renLedger, &swarmerClient, &smpcerClient)
+	ingresser := ingress.NewIngress(&registry, renLedger, &swarmerClient, &smpcerClient)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -78,7 +78,7 @@ func main() {
 		log.Printf("error bootstrapping: %v", err)
 	}
 
-	relayAdapter := adapter.NewRelayAdapter(&relayer)
+	ingressAdapter := adapter.NewIngressAdapter(&ingresser)
 
 	log.Printf("address %v", multiAddr)
 	log.Printf("ethereum %v", auth.From.Hex())
@@ -87,7 +87,7 @@ func main() {
 		log.Printf("  %v", multiAddr)
 	}
 	log.Printf("listening at %v:%v...", *bindParam, *portParam)
-	if err := netHttp.ListenAndServe(fmt.Sprintf("%v:%v", *bindParam, *portParam), http.NewServer(&relayAdapter, &relayAdapter)); err != nil {
+	if err := netHttp.ListenAndServe(fmt.Sprintf("%v:%v", *bindParam, *portParam), http.NewServer(&ingressAdapter, &ingressAdapter)); err != nil {
 		log.Fatalf("error listening and serving: %v", err)
 	}
 }
@@ -99,11 +99,11 @@ func getMultiaddress(keystore crypto.Keystore, port string) (identity.MultiAddre
 		return identity.MultiAddress{}, err
 	}
 	ipAddress := strings.Trim(string(ipInfoOut), "\n ")
-	relayMultiaddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", ipAddress, port, keystore.Address()))
+	ingressMultiaddress, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", ipAddress, port, keystore.Address()))
 	if err != nil {
 		return identity.MultiAddress{}, fmt.Errorf("cannot obtain trader multi address %v", err)
 	}
-	return relayMultiaddress, nil
+	return ingressMultiaddress, nil
 }
 
 func getSmartContracts(ethereumConfig ethereum.Config, keystore crypto.Keystore) (*bind.TransactOpts, dnr.DarknodeRegistry, cal.RenLedger, error) {
