@@ -11,38 +11,25 @@ import (
 
 var _ = Describe("Shamir's secret sharing", func() {
 
-	primeStr := "179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111"
-
-	It("should correctly encode integers (less than 2^1024)", func() {
-		// The maximum 1024 bit integer.
-
-		max, err := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137215")
-		Ω(err).Should(BeNil())
-		// The first prime above 1024 bits.
-		prime, err := stackint.FromString(primeStr)
-		Ω(err).Should(BeNil())
-		Ω(prime.Cmp(&max) < 0).Should(Equal(true))
-	})
-
 	Context("serialization", func() {
 		It("should be able to serialize and deserialize shares", func() {
-
-			prime, err := stackint.FromString(primeStr)
-			Ω(err).Should(BeNil())
-			for i := int64(0); i < 1000; i++ {
-				bytes := ToBytes(Share{
-					Key:   i,
-					Value: prime,
-				})
-				share, err := FromBytes(bytes)
+			for i := uint64(0); i < 1000; i++ {
+				bytes, err := Share{
+					Index: i,
+					Value: Prime - i,
+				}.MarshalBinary()
+				Expect(err).ShouldNot(HaveOccurred())
+				share := Share{}
+				err = share.UnmarshalBinary(bytes)
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(share.Key).Should(Equal(i))
-				Ω(share.Value.Cmp(&prime)).Should(Equal(0))
+				Ω(share.Index).Should(Equal(i))
+				Ω(share.Value).Should(Equal(Prime - i))
 			}
 		})
 		It("should return an error when deserializing an empty byte slice", func() {
-			_, err := FromBytes([]byte{})
-			Ω(err).Should(HaveOccurred())
+			share := Share{}
+			err := share.UnmarshalBinary([]byte{})
+			Expect(err).Should(HaveOccurred())
 		})
 	})
 
