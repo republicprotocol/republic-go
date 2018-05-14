@@ -25,21 +25,8 @@ var ErrInvalidNumberOfPods = errors.New("invalid number of pods")
 // insufficient number of order fragments, or too many order fragments.
 var ErrInvalidNumberOfOrderFragments = errors.New("invalid number of order fragments")
 
-// An OrderFragmentMapping maps pods to order fragments. The order fragments
-// are expected to be encrypted.
-type OrderFragmentMapping map[[32]byte][]OrderFragment
-
-type OrderFragment struct {
-	OrderID       [32]byte     `json:"orderId"`
-	OrderType     order.Type   `json:"orderType"`
-	OrderParity   order.Parity `json:"orderParity"`
-	OrderExpiry   int64        `json:"orderExpiry"`
-	ID            [32]byte     `json:"id"`
-	Tokens        []byte       `json:"tokens"`
-	Price         [][]byte     `json:"price"`
-	Volume        [][]byte     `json:"volume"`
-	MinimumVolume [][]byte     `json:"minimumVolume"`
-}
+// An OrderFragmentMapping maps pods to encrypted order fragments.
+type OrderFragmentMapping map[[32]byte][]order.EncryptedFragment
 
 // Ingresser interface can open and cancel orders on behalf of a user.
 type Ingresser interface {

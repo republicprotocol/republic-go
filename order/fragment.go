@@ -95,3 +95,17 @@ func (fragment *Fragment) IsCompatible(other *Fragment) bool {
 		fragment.MinimumVolume.Co.Index == other.MinimumVolume.Co.Index &&
 		fragment.MinimumVolume.Exp.Index == other.MinimumVolume.Exp.Index
 }
+
+// An EncryptedFragment is a Fragment that has been encrypted by an RSA public
+// key.
+type EncryptedFragment struct {
+	OrderID       ID                     `json:"orderID"`
+	OrderType     Type                   `json:"orderType"`
+	OrderParity   Parity                 `json:"orderParity"`
+	OrderExpiry   time.Time              `json:"orderExpiry"`
+	ID            FragmentID             `json:"id"`
+	Tokens        []byte                 `json:"tokens"`
+	Price         EncryptedFragmentValue `json:"price"`
+	Volume        EncryptedFragmentValue `json:"volume"`
+	MinimumVolume EncryptedFragmentValue `json:"minimumVolume"`
+}
