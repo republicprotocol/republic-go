@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/shamir"
+
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -38,11 +39,9 @@ var _ = Describe("Shamir's secret sharing", func() {
 			// Shamir parameters.
 			n := int64(100)
 			k := int64(50)
-			secret := stackint.FromUint(1234)
-			prime, err := stackint.FromString(primeStr)
-			Ω(err).Should(BeNil())
+			secret := uint64(1234)
 			// Split the secret.
-			shares, err := Split(n, k, &prime, &secret)
+			shares, err := Split(n, k, secret)
 			Ω(err).Should(BeNil())
 			Ω(int64(len(shares))).Should(Equal(n))
 		})
@@ -53,11 +52,9 @@ var _ = Describe("Shamir's secret sharing", func() {
 			// Shamir parameters.
 			N := int64(100)
 			K := int64(50)
-			secret := stackint.FromUint(1234)
-			prime, err := stackint.FromString(primeStr)
-			Ω(err).Should(BeNil())
+			secret := uint64(1234)
 			// Split the secret.
-			shares, err := Split(N, K, &prime, &secret)
+			shares, err := Split(N, K, secret)
 			Ω(err).Should(BeNil())
 			Ω(int64(len(shares))).Should(Equal(N))
 			// For all K greater than, or equal to, 50 attempt to decode the secret.
@@ -78,8 +75,9 @@ var _ = Describe("Shamir's secret sharing", func() {
 				for index := range indices {
 					kShares[index] = shares[index]
 				}
-				decodedSecret := Join(&prime, kShares)
-				Ω(decodedSecret.Cmp(&secret)).Should(Equal(0))
+				decodedSecret := stackint.FromUint(uint(Join(kShares)))
+				secretStackInt := stackint.FromUint(uint(secret))
+				Ω(decodedSecret.Cmp(&secretStackInt)).Should(Equal(0))
 			}
 		})
 
@@ -87,11 +85,9 @@ var _ = Describe("Shamir's secret sharing", func() {
 			// Shamir parameters.
 			N := int64(100)
 			K := int64(50)
-			secret := stackint.FromUint(1234)
-			prime, err := stackint.FromString(primeStr)
-			Ω(err).Should(BeNil())
+			secret := uint64(1234)
 			// Split the secret.
-			shares, err := Split(N, K, &prime, &secret)
+			shares, err := Split(N, K, secret)
 			Ω(err).Should(BeNil())
 			Ω(int64(len(shares))).Should(Equal(N))
 			// For all K less than 50 attempt to decode the secret.
@@ -112,7 +108,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 				for index := range indices {
 					kShares[index] = shares[index]
 				}
-				decodedSecret := Join(&prime, kShares)
+				decodedSecret := Join(kShares)
 				Ω(decodedSecret).Should(Not(Equal(&secret)))
 			}
 		})
