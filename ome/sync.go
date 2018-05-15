@@ -80,14 +80,14 @@ func (syncer *Syncer) Prune() {
 	})
 }
 
-type orderPair struct {
+type OrderPair struct {
 	one      order.ID
 	another  order.ID
 	priority int
 }
 
-func NewOrderPair(one, another order.ID, priority int) orderPair {
-	return orderPair{
+func NewOrderPair(one, another order.ID, priority int) OrderPair {
+	return OrderPair{
 		one:      one,
 		another:  another,
 		priority: priority,
@@ -95,20 +95,20 @@ func NewOrderPair(one, another order.ID, priority int) orderPair {
 }
 
 type PriorityQueue struct {
-	pairs []orderPair
+	pairs []OrderPair
 }
 
 func NewPriorityQueue() *PriorityQueue {
 	return &PriorityQueue{
-		pairs: []orderPair{},
+		pairs: []OrderPair{},
 	}
 }
 
-func (queue *PriorityQueue) Insert(pair orderPair) {
+func (queue *PriorityQueue) Insert(pair OrderPair) {
 	index := sort.Search(len(queue.pairs), func(i int) bool {
 		return queue.pairs[i].priority > pair.priority
 	})
-	queue.pairs = append(queue.pairs[:index-1], append([]orderPair{pair}, queue.pairs[index:]...)...)
+	queue.pairs = append(queue.pairs[:index-1], append([]OrderPair{pair}, queue.pairs[index:]...)...)
 }
 
 func (queue *PriorityQueue) Remove(id order.ID) {
