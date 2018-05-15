@@ -1,4 +1,4 @@
-package rpc
+package stream
 
 import (
 	"context"
@@ -9,11 +9,14 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 )
 
+// ErrDisconnectedClosedStream is returned when a call to
+// StreamClient.Disconnect happens for an identity.MultiAddress that is not
+// connected.
 var ErrDisconnectedClosedStream = errors.New("disconnected closed stream")
 
-// StreamMessage is an interface for messages sent over a bidirectional
-// connection between a client and a server.
-type StreamMessage interface {
+// Message is an interface for data that can be sent over a bidirectional
+// stream between nodes.
+type Message interface {
 	encoding.BinaryMarshaler
 	encoding.BinaryUnmarshaler
 
@@ -23,34 +26,45 @@ type StreamMessage interface {
 	IsMessage()
 }
 
-// Stream is an interface for bidirectional streaming of StreamMessages between
-// nodes. It abstracts over the client/server architecture.
+// Stream is an interface for sending and receiving Messages over a
+// bidirectional stream. It abstracts over the client and server architecture.
 type Stream interface {
-	Send(StreamMessage) error
-	Recv(StreamMessage) error
+	Send(Message) error
+	Recv(Message) error
 }
 
-// StreamClient is an interface for connecting to other computational node.
-type StreamClient interface {
+// Client is an interface for connecting to a Server.
+type Client interface {
 	Connect(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error)
 	Disconnect(multiAddr identity.MultiAddress) error
 }
 
-// StreamServer is an interface for accepting connections from other
-// computational nodes.
-type StreamServer interface {
-	ConnectFrom(ctx context.Context, stream Stream) error
+// Server is an interface for accepting connections from a Client.
+type Server interface {
+	Listen(ctx context.Context) (Stream, error)
 }
 
-type RecycleStreamClient struct {
-	client StreamClient
+// clientRecycler encapsulates a Client and reuses a Stream that has been
+// connected to Server when multiple connections are needed for the same
+// identity.MultiAddress. It does not protect the Stream from concurrent use.
+type clientRecycler struct {
+	client Client
 
 	connsMu *sync.Mutex
 	connsRc map[string]int64
 	conns   map[string]Stream
 }
 
-func (client *RecycleStreamClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
+func NewClientRecycler(client Client) Client {
+	return &clientRecycler{
+		client:  client,
+		connsMu: new(sync.Mutex),
+		connsRc: map[string]int64{},
+		conns:   map[string]Stream{},
+	}
+}
+
+func (client *clientRecycler) Connect(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
 	client.connsMu.Lock()
 	defer client.connsMu.Unlock()
 
@@ -66,7 +80,7 @@ func (client *RecycleStreamClient) Connect(ctx context.Context, multiAddr identi
 	return client.conns[multiAddr.String()], nil
 }
 
-func (client *RecycleStreamClient) Disconnect(multiAddr identity.MultiAddress) error {
+func (client *clientRecycler) Disconnect(multiAddr identity.MultiAddress) error {
 	client.connsMu.Lock()
 	defer client.connsMu.Unlock()
 
