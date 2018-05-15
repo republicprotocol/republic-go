@@ -22,7 +22,7 @@ type RenLedger interface {
 	Fee() (*big.Int, error)
 
 	// CheckStatus will return the status of the order
-	CheckStatus(orderID order.ID) order.Status
+	CheckStatus(orderID order.ID) (order.Status,error )
 
 	// Orders in the Ren Ledger starting at an offset and returning limited
 	// numbers of orders.
