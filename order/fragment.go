@@ -79,7 +79,7 @@ func (fragment *Fragment) Equal(other *Fragment) bool {
 
 // IsCompatible returns true when two Fragments are compatible for a
 // computation, otherwise it returns false. For a Fragment to be compatible
-// with another Fragment it must have a diferrent ID, it must have a different
+// with another Fragment it must have a different ID, it must have a different
 // order ID, it must have a different parity, it must have a different owner,
 // and all secret sharing fields must have the same secret sharing index.
 func (fragment *Fragment) IsCompatible(other *Fragment) bool {

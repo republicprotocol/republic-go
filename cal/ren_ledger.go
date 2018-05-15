@@ -21,6 +21,9 @@ type RenLedger interface {
 	// Fee required to open an order.
 	Fee() (*big.Int, error)
 
+	// CheckStatus will return the status of the order
+	CheckStatus(orderID order.ID) order.Status
+
 	// Orders in the Ren Ledger starting at an offset and returning limited
 	// numbers of orders.
 	Orders(offset, limit int) ([]order.ID, error)
