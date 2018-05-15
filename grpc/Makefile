@@ -5,5 +5,5 @@ all: clean build
 clean:
 	rm -f ./*.pb.go
 
-build: ./smpc.proto
+build: ./grpc.proto
 	protoc -I ./ ./*.proto --go_out=plugins=grpc:.

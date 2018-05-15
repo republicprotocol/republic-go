@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package grpc;
+
+service StreamService {
+    rpc Connect(stream StreamMessage) returns (stream StreamMessage);
+}
+
+message StreamMessage {
+    bytes data = 1;
+}

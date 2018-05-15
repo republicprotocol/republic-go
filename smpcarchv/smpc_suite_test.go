@@ -1,4 +1,4 @@
-package rpc_test
+package smpc_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestRpc(t *testing.T) {
+func TestSmpc(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Rpc Suite")
+	RunSpecs(t, "Smpc Suite")
 }
