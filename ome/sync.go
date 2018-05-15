@@ -39,6 +39,8 @@ func (syncer *Syncer) SyncRenLedger(done <-chan struct{}) <-chan error {
 		defer close(errs)
 
 		for {
+			syncer.Prune()
+
 			orderIDs, err := syncer.renLedger.Orders(syncer.renLedgerSyncedPointer, syncer.renLedgerLimit)
 			if err != nil {
 				errs <- err
@@ -56,7 +58,6 @@ func (syncer *Syncer) SyncRenLedger(done <-chan struct{}) <-chan error {
 				syncer.orders[syncer.renLedgerSyncedPointer+i] = orderIDs[i]
 			}
 			syncer.renLedgerSyncedPointer += len(orderIDs)
-			syncer.Prune()
 
 			time.Sleep(time.Duration(syncer.renLedgerSyncedInterval) * time.Second)
 		}

@@ -16,10 +16,10 @@ type Ome struct {
 	delegate Delegate
 	ranker   Ranker
 	storer   Storer
-	syncer   *Syncer
+	syncer   Syncer
 }
 
-func NewOme(delegate Delegate, ranker Ranker, storer Storer, syncer *Syncer) Ome {
+func NewOme(delegate Delegate, ranker Ranker, storer Storer, syncer Syncer) Ome {
 	return Ome{
 		delegate: delegate,
 		ranker:   ranker,
