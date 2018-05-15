@@ -3,6 +3,7 @@ package darkocean
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"errors"
 	"fmt"
 	"sync"
@@ -155,7 +156,7 @@ func (crypter *Crypter) encryptToAddress(addr string, plainText []byte) ([]byte,
 		return nil, err
 	}
 	publicKey := crypter.publicKeyCache[addr].publicKey
-	return rsa.EncryptPKCS1v15(rand.Reader, &publicKey, plainText)
+	return rsa.EncryptOAEP(sha1.New(), rand.Reader, &publicKey, plainText, []byte{})
 }
 
 func (crypter *Crypter) updatePublicKeyCache(addr string) error {
