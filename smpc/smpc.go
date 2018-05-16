@@ -4,18 +4,18 @@ import (
 	"context"
 	"time"
 
-	"github.com/republicprotocol/republic-go/delta"
+	"github.com/republicprotocol/republic-go/shamir"
+
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/smpc/delta"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
 type Smpcer interface {
-	Connect(addr identity.Address) (stream.Stream, error)
-	LessThan(lhs, rhs order.Fragment) (delta.Fragment, error)
-	Join(deltaFragments ...delta.Fragment) (*delta.Delta, error)
-	Address() identity.Address
+	Input() chan<- Inst
+	Output() <-chan Compute
 }
 
 type Smpc struct {
@@ -51,18 +51,3 @@ func (smpc *Smpc) Connect(addr identity.Address) (stream.Stream, error) {
 
 	return stream, nil
 }
-
-func (smpc *Smpc) Address() identity.Address {
-	// TODO : Swarmer should have an Address function
-	return smpc.swarmer.Address()
-}
-
-func (smpc *Smpc) LessThan(lhs, rhs order.Fragment) (delta.Fragment, error){
-	panic("unimplemented")
-}
-
-func (smpc *Smpc)Join(deltaFragments ...delta.Fragment) (*delta.Delta, error) {
-	panic("unimplemented")
-}
-
-
