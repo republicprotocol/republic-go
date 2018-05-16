@@ -1,7 +1,6 @@
 package grpc
 
 import (
-	"errors"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -10,16 +9,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
-
-// ErrClosedConnectionWhileListening is returned when a channel, notifying
-// listeners about new client connections, is closed while a listener is
-// listening.
-var ErrClosedConnectionWhileListening = errors.New("closed connection while listening")
-
-// ErrAddressOutOfRange is returned whenever an address is invalid, for example
-// it is empty, or it is outside the accepted range of addresses of the
-// StreamService.
-var ErrAddressOutOfRange = errors.New("address out of range")
 
 // StreamService implements the rpc.SmpcServer interface using a gRPC service.
 type StreamService struct {
@@ -102,9 +91,6 @@ func (service *StreamService) verifyStreamAddress(message *StreamMessage) (ident
 	}
 	if message.GetStreamAddress() != nil && message.GetStreamAddress().GetAddress() != "" {
 		addr = message.GetStreamAddress().GetAddress()
-	}
-	if addr >= service.addr.String() {
-		return identity.Address(addr), ErrAddressOutOfRange
 	}
 	if err := service.crypter.Verify(identity.Address(addr), signature); err != nil {
 		return identity.Address(addr), err
