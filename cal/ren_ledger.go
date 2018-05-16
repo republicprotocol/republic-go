@@ -31,7 +31,11 @@ type RenLedger interface {
 	// Depth will return depth of confirmation blocks
 	Depth(orderID order.ID) (uint, error)
 
-	// Orders in the Ren Ledger starting at an offset and returning limited
-	// numbers of orders.
-	Orders(offset, limit int) ([]order.ID, error)
+	// BuyOrders in the Ren Ledger starting at an offset and returning limited
+	// numbers of  buy orders.
+	BuyOrders(offset , limit int ) ([]order.ID, error)
+
+	// SellOrders in the Ren Ledger starting at an offset and returning limited
+	// numbers of  sell orders.
+	SellOrders(offset , limit int ) ([]order.ID, error)
 }

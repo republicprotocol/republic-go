@@ -2,27 +2,32 @@ package ome
 
 import (
 	"errors"
-	"log"
 
+	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/shamir"
+	"github.com/republicprotocol/republic-go/smpc"
 )
 
 var ErrNotFoundInStore = errors.New("not found in store")
 
 type Omer interface {
 	SyncRenLedger() error
-	ConfirmOrder(id order.ID, matches []order.ID) error
-	//todo : connect with smpc
 }
 
 type Ome struct {
+	delegate Delegate
 	storer Storer
 	syncer Syncer
 	ranker Ranker
+	smpcer smpc.Smpcer
+
+	deltas map[delta.ID][]delta.Fragment
 }
 
-func NewOme(ranker Ranker, storer Storer, syncer Syncer) Ome {
+func NewOme(delegate Delegate, ranker Ranker, storer Storer, syncer Syncer) Ome {
 	return Ome{
+		delegate: delegate,
 		ranker: ranker,
 		storer: storer,
 		syncer: syncer,
@@ -43,19 +48,76 @@ func (engine *Ome) SyncRenLedger() error {
 	}()
 
 	go func() {
+		pairs := []OrderPair{}
 		for {
 			select {
 			case <-done:
 				return
 			default:
-				// todo : pass the order the orderPairs to smpc and get result
+				// todo : check if we have the order Fragments
+				// if so, call smpc to generate the delta fragment
+				// store the delta fragemtn , check if we have enough thredshold
+				// if so check if its a match or not ,
+				// confirm order if it's a match .
+
 				orderPairs := engine.ranker.Get(50)
-				log.Print(orderPairs)
+				for _, pair := range orderPairs{
+					fragment ,err := engine.storer.Get(pair.orderID)
+					if err != nil {
+						pairs = append(pairs, pair)
+						continue
+					}
+					// We'll support 1 to multi matches in the future
+					if len(pair.matches) != 1 {
+						return
+					}
+					matchFragment,err := engine.storer.Get(pair.matches[0])
+					if err != nil {
+						pairs = append(pairs, pair)
+						continue
+					}
+
+					delta, err  := engine.smpcer.LessThan(fragment, matchFragment)
+					if err != nil {
+						return
+					}
+
+					engine.deltas[delta.DeltaID] = append(engine.deltas[delta.DeltaID], delta)
+					threshold := engine.syncer.Threshold()
+					if threshold == -1 {
+						return
+					}
+
+					if len(engine.deltas[delta.DeltaID]) > threshold{
+						delta, err :=engine.smpcer.Join(engine.deltas[delta.DeltaID]...)
+						if err != nil {
+							return
+						}
+						// Fixme : delta.IsMatch shoudl take an uint64
+						if delta.IsMatch(shamir.Prime){
+							err = engine.ConfirmOrder(delta.BuyOrderID, []order.ID{delta.SellOrderID})
+							if err != nil {
+								return
+							}
+							err = engine.delegate.ConfirmOrder(delta.BuyOrderID, []order.ID{delta.SellOrderID})
+							if err!= nil {
+								return
+							}
+
+							engine.ranker.Remove(delta.BuyOrderID)
+							engine.ranker.Remove(delta.SellOrderID)
+						}
+					}
+				}
 			}
 		}
 	}()
 
 	return nil
+}
+
+func (engine *Ome) StartStream(done <- chan struct{}) error {
+
 }
 
 func (engine *Ome) ConfirmOrder(id order.ID, matches []order.ID) error {
@@ -71,3 +133,8 @@ func (engine *Ome) ConfirmOrder(id order.ID, matches []order.ID) error {
 
 	return nil
 }
+
+type Delegate interface {
+	ConfirmOrder(id order.ID, matches []order.ID) error
+}
+

@@ -12,7 +12,7 @@ import (
 
 // A ID is the Keccak256 hash of the order IDs that were used to compute
 // the associated Delta.
-type ID []byte
+type ID [32]byte
 
 // Equal returns an equality check between two DeltaIDs.
 func (id ID) Equal(other ID) bool {

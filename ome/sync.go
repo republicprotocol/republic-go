@@ -6,12 +6,15 @@ import (
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 )
 
 type Syncer interface {
+	ID() identity.ID
 	SyncRenLedger(done <-chan struct{}, ranker Ranker) <-chan error
 	ConfirmOrder(id order.ID, matches []order.ID) error
+	Threshold() int
 }
 
 type OrderWithPriority struct {
@@ -20,21 +23,42 @@ type OrderWithPriority struct {
 }
 
 type syncer struct {
+	id                      identity.ID
+	pool                    cal.Darkpool
 	renLedger               cal.RenLedger
-	renLedgerSyncedPointer  int
 	renLedgerLimit          int
 	renLedgerSyncedInterval int
-	orders                  map[int]order.ID
+	buyOrderPointer         int
+	sellOrderPointer        int
+	buyOrders               map[int]order.ID
+	sellOrders              map[int]order.ID
 }
 
-func NewSyncer(renLedger cal.RenLedger, limit, interval int) syncer {
+func NewSyncer(id identity.ID, renLedger cal.RenLedger, limit, interval int) syncer {
 	return syncer{
+		id:                      id,
 		renLedger:               renLedger,
-		renLedgerSyncedPointer:  0,
 		renLedgerLimit:          limit,
 		renLedgerSyncedInterval: interval,
-		orders:                  map[int]order.ID{},
+		buyOrderPointer:         0,
+		sellOrderPointer:        0,
+		buyOrders:               map[int]order.ID{},
+		sellOrders:              map[int]order.ID{},
 	}
+}
+
+func (syncer *syncer) ID() identity.ID {
+	return syncer.id
+}
+
+func (syncer *syncer) Threshold() int {
+	_, pod, err := syncer.pool.Pool(syncer.ID())
+	if err != nil {
+		return -1
+	}
+	n := len(pod.Darknodes)
+
+	return 2 * n / 3
 }
 
 func (syncer *syncer) SyncRenLedger(done <-chan struct{}, ranker Ranker) <-chan error {
@@ -43,26 +67,52 @@ func (syncer *syncer) SyncRenLedger(done <-chan struct{}, ranker Ranker) <-chan 
 	go func() {
 		defer close(errs)
 
+		pods, err := syncer.pool.Pods()
+		if err != nil {
+			errs <- err
+			return
+		}
+		poolIndex, _, err := syncer.pool.Pool(syncer.ID())
+		if err != nil {
+			errs <- err
+			return
+		}
 		for {
 			syncer.Prune(ranker)
 
-			orderIDs, err := syncer.renLedger.Orders(syncer.renLedgerSyncedPointer, syncer.renLedgerLimit)
+			// For each new buy order, create order pairs with the sell order
+			orderIDs, err := syncer.renLedger.BuyOrders(syncer.buyOrderPointer, syncer.renLedgerLimit)
 			if err != nil {
 				errs <- err
 				return
 			}
+			syncer.buyOrderPointer += len(orderIDs)
 
-			for i, j := range orderIDs {
-				for m, n := range syncer.orders {
-					if i == m {
-						continue
+			for index, id := range orderIDs {
+				for m, n := range syncer.sellOrders {
+					if (index+syncer.buyOrderPointer+m)%len(pods) == poolIndex {
+						orderPair := NewOrderPair(id, []order.ID{n}, index+syncer.buyOrderPointer+m)
+						ranker.Insert(orderPair)
 					}
-					orderPair := NewOrderPair(j, []order.ID{n}, syncer.renLedgerSyncedPointer+i+m)
-					ranker.Insert(orderPair)
 				}
-				syncer.orders[syncer.renLedgerSyncedPointer+i] = orderIDs[i]
 			}
-			syncer.renLedgerSyncedPointer += len(orderIDs)
+
+			// For each new sell order, create order pairs with the buy order
+			orderIDs, err = syncer.renLedger.SellOrders(syncer.sellOrderPointer, syncer.renLedgerLimit)
+			if err != nil {
+				errs <- err
+				return
+			}
+			syncer.sellOrderPointer += len(orderIDs)
+
+			for index, id := range orderIDs {
+				for m, n := range syncer.buyOrders {
+					if (index+syncer.sellOrderPointer+m)%len(pods) == poolIndex {
+						orderPair := NewOrderPair(id, []order.ID{n}, index+syncer.sellOrderPointer+m)
+						ranker.Insert(orderPair)
+					}
+				}
+			}
 
 			time.Sleep(time.Duration(syncer.renLedgerSyncedInterval) * time.Second)
 		}
@@ -76,18 +126,36 @@ func (syncer *syncer) ConfirmOrder(id order.ID, matches []order.ID) error {
 }
 
 func (syncer *syncer) Prune(ranker Ranker) {
-	dispatch.CoForAll(syncer.orders, func(key int) {
-		status, err := syncer.renLedger.Status(syncer.orders[key])
-		if err != nil {
-			log.Println("fail to check order status", err)
-			return
-		}
+	dispatch.Dispatch(
+		func() {
+			dispatch.CoForAll(syncer.sellOrders, func(key int) {
+				status, err := syncer.renLedger.Status(syncer.buyOrders[key])
+				if err != nil {
+					log.Println("fail to check order status", err)
+					return
+				}
 
-		if status == order.Canceled || status == order.Confirmed || status == order.Settled {
-			delete(syncer.orders, key)
-			ranker.Remove(syncer.orders[key])
-		}
-	})
+				if status == order.Canceled || status == order.Confirmed || status == order.Settled {
+					delete(syncer.buyOrders, key)
+					ranker.Remove(syncer.buyOrders[key])
+				}
+			})
+		},
+		func() {
+			dispatch.CoForAll(syncer.sellOrders, func(key int) {
+				status, err := syncer.renLedger.Status(syncer.sellOrders[key])
+				if err != nil {
+					log.Println("fail to check order status", err)
+					return
+				}
+
+				if status == order.Canceled || status == order.Confirmed || status == order.Settled {
+					delete(syncer.sellOrders, key)
+					ranker.Remove(syncer.sellOrders[key])
+				}
+			})
+		},
+	)
 }
 
 type OrderPair struct {

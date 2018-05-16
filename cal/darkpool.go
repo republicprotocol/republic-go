@@ -13,4 +13,5 @@ func (pod *Pod) Threshold() int {
 
 type Darkpool interface {
 	Pods() ([]Pod, error)
+	Pool(id identity.ID) (int, Pod, error)
 }

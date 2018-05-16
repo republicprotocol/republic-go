@@ -176,15 +176,38 @@ func (ledger *RenLedgerContract) Matches(id order.ID) ([]order.ID, error) {
 	return orderIDs, nil
 }
 
-func (ledger *RenLedgerContract) Orderbook(index int) (order.ID, error) {
-	i := big.NewInt(int64(index))
-	id, err := ledger.binding.Orderbook(ledger.callOpts, i)
-	if err != nil {
-		return [32]byte{}, err
+func (ledger *RenLedgerContract) BuyOrders(offset , limit int) ([]order.ID, error) {
+	orders := make ([]order.ID, limit)
+	for i := offset; i < offset + limit; i ++ {
+		ordId, ok ,  err  := ledger.binding.BuyOrder(ledger.callOpts, big.NewInt(int64(i)))
+		if err != nil {
+			return nil , err
+		}
+		if !ok {
+			return orders, nil
+		}
+		orders[i-offset] = ordId
 	}
 
-	return order.ID(id), nil
+	return orders, nil
 }
+
+func (ledger *RenLedgerContract) SellOrders(offset , limit int) ([]order.ID, error) {
+	orders := make ([]order.ID, limit)
+	for i := offset; i < offset + limit; i ++ {
+		ordId, ok ,  err  := ledger.binding.SellOrder(ledger.callOpts, big.NewInt(int64(i)))
+		if err != nil {
+			return nil , err
+		}
+		if !ok {
+			return orders, nil
+		}
+		orders[i-offset] = ordId
+	}
+
+	return orders, nil
+}
+
 
 func (ledger *RenLedgerContract) Trader(id order.ID) (common.Address, error) {
 	var orderID [32]byte

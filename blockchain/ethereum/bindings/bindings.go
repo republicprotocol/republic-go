@@ -5778,10 +5778,10 @@ func (_PausableToken *PausableTokenFilterer) WatchUnpause(opts *bind.WatchOpts, 
 }
 
 // RenLedgerABI is the input ABI used to generate the binding from.
-const RenLedgerABI = "[{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderConfirmer\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"uint256\"}],\"name\":\"order\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"cancelOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"orderbook\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"},{\"name\":\"_orderMatches\",\"type\":\"bytes32[]\"}],\"name\":\"confirmOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"orderBlockNumber\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderDepth\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderBroker\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderState\",\"outputs\":[{\"name\":\"\",\"type\":\"uint8\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderMatch\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderTrader\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderPriority\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"fee\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"openOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_fee\",\"type\":\"uint256\"},{\"name\":\"_token\",\"type\":\"address\"},{\"name\":\"_registry\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"}]"
+const RenLedgerABI = "[{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderConfirmer\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"uint256\"}],\"name\":\"buyOrder\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"buyOrders\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"openSellOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"sellOrders\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"openBuyOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"cancelOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"},{\"name\":\"_orderMatches\",\"type\":\"bytes32[]\"}],\"name\":\"confirmOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"uint256\"}],\"name\":\"sellOrder\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderDepth\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderBroker\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderState\",\"outputs\":[{\"name\":\"\",\"type\":\"uint8\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderMatch\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderTrader\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderPriority\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"fee\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"openOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_fee\",\"type\":\"uint256\"},{\"name\":\"_token\",\"type\":\"address\"},{\"name\":\"_registry\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"}]"
 
 // RenLedgerBin is the compiled bytecode used for deploying new contracts.
-const RenLedgerBin = `0x608060405234801561001057600080fd5b50604051606080610d6d83398101604090815281516020830151919092015160089290925560098054600160a060020a03928316600160a060020a031991821617909155600a8054929093169116179055610cfd806100706000396000f3006080604052600436106100cf5763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416631107c3f781146100d457806321603f4314610108578063574ed6c1146101395780636b597cb7146101965780637008b996146101c057806389895d531461021a578063a188fcb814610232578063a51816611461024a578063aab14d0414610262578063af3e8a4014610290578063b1a08010146102f8578063b248e4e114610310578063ddca3f4314610328578063f5784fe91461033d575b600080fd5b3480156100e057600080fd5b506100ec600435610398565b60408051600160a060020a039092168252519081900360200190f35b34801561011457600080fd5b506101206004356103b6565b6040805192835290151560208301528051918290030190f35b34801561014557600080fd5b506040805160206004803580820135601f810184900484028501840190955284845261019494369492936024939284019190819084018382808284375094975050933594506103f39350505050565b005b3480156101a257600080fd5b506101ae6004356104ab565b60408051918252519081900360200190f35b3480156101cc57600080fd5b50604080516020600460248035828101358481028087018601909752808652610194968435963696604495919490910192918291850190849080828437509497506104ca9650505050505050565b34801561022657600080fd5b506101ae60043561071c565b34801561023e57600080fd5b506101ae60043561072e565b34801561025657600080fd5b506100ec600435610760565b34801561026e57600080fd5b5061027a60043561077b565b6040805160ff9092168252519081900360200190f35b34801561029c57600080fd5b506102a860043561079e565b60408051602080825283518183015283519192839290830191858101910280838360005b838110156102e45781810151838201526020016102cc565b505050509050019250505060405180910390f35b34801561030457600080fd5b506100ec600435610801565b34801561031c57600080fd5b506101ae60043561081c565b34801561033457600080fd5b506101ae61082e565b34801561034957600080fd5b506040805160206004803580820135601f810184900484028501840190955284845261019494369492936024939284019190819084018382808284375094975050933594506108349350505050565b600081815260066020526040902054600160a060020a03165b919050565b6000805481908311156103ce575060009050806103ee565b60008054849081106103dc57fe5b90600052602060002001546001915091505b915091565b600080600160008481526001602052604090205460ff16600381111561041557fe5b1461041f57600080fd5b604080517f52657075626c69632050726f746f636f6c3a2063616e63656c3a2000000000008152601b8101859052905190819003603b01902091506104648285610abd565b600084815260046020526040902054909150600160a060020a0380831691161461048d57600080fd5b50506000908152600160205260409020805460ff1916600317905550565b60008054829081106104b957fe5b600091825260209091200154905081565b600a54604080517f4f5550fc000000000000000000000000000000000000000000000000000000008152336c0100000000000000000000000081026bffffffffffffffffffffffff191660048301529151600093600160a060020a031691634f5550fc91602480830192602092919082900301818887803b15801561054e57600080fd5b505af1158015610562573d6000803e3d6000fd5b505050506040513d602081101561057857600080fd5b5051151561058557600080fd5b600160008581526001602052604090205460ff1660038111156105a457fe5b146105ae57600080fd5b600091505b825182101561060c57600180600085858151811015156105cf57fe5b602090810290910181015182528101919091526040016000205460ff1660038111156105f757fe5b1461060157600080fd5b6001909101906105b3565b6000848152600160205260408120805460ff1916600217905591505b82518210156106c957600260016000858581518110151561064557fe5b60209081029091018101518252810191909152604001600020805460ff1916600183600381111561067257fe5b02179055506040805160208101909152848152835160029060009086908690811061069957fe5b602090810290910181015182528101919091526040016000206106bd916001610c67565b50600190910190610628565b6000848152600660209081526040808320805473ffffffffffffffffffffffffffffffffffffffff191633600160a060020a031617905560028252909120845161071592860190610c67565b5050505050565b60076020526000908152604090205481565b600081815260076020526040812054151561074b575060006103b1565b50600090815260076020526040902054430390565b600090815260056020526040902054600160a060020a031690565b60008181526001602052604081205460ff16600381111561079857fe5b92915050565b6000818152600260209081526040918290208054835181840281018401909452808452606093928301828280156107f557602002820191906000526020600020905b815481526001909101906020018083116107e0575b50505050509050919050565b600090815260046020526040902054600160a060020a031690565b60009081526003602052604090205490565b60085481565b600854600954604080517fdd62ed3e000000000000000000000000000000000000000000000000000000008152600160a060020a0333811660048301523081166024830152915160009485949093169163dd62ed3e91604480830192602092919082900301818887803b1580156108aa57600080fd5b505af11580156108be573d6000803e3d6000fd5b505050506040513d60208110156108d457600080fd5b505110156108e157600080fd5b600954600854604080517f23b872dd000000000000000000000000000000000000000000000000000000008152600160a060020a03338116600483015230811660248301526044820193909352905191909216916323b872dd9160648083019260209291908290030181600087803b15801561095c57600080fd5b505af1158015610970573d6000803e3d6000fd5b505050506040513d602081101561098657600080fd5b5051151561099357600080fd5b60008381526001602052604081205460ff1660038111156109b057fe5b146109ba57600080fd5b60008054600181810183557f290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e56390910185905584825260208190526040909120805460ff1916828002179055506000805484825260036020526040918290205580517f52657075626c69632050726f746f636f6c3a206f70656e3a200000000000000081526019810185905290519081900360390190209150610a5c8285610abd565b6000938452600460209081526040808620805473ffffffffffffffffffffffffffffffffffffffff19908116600160a060020a0395861617909155600583528187208054909116339094169390931790925560079052909220439055505050565b604080518082018252601c8082527f19457468657265756d205369676e6564204d6573736167653a0a33320000000060208301908152925160009384928492889290918291908083835b60208310610b265780518252601f199092019160209182019101610b07565b51815160209384036101000a600019018019909216911617905292019384525060408051938490039091019092208751909450600193508492889250908110610b6b57fe5b90602001015160f860020a900460f860020a0260f860020a9004601b01610b93876000610c0a565b610b9e886020610c0a565b60408051600080825260208083018085529790975260ff90951681830152606081019390935260808301919091525160a08083019493601f198301938390039091019190865af1158015610bf6573d6000803e3d6000fd5b5050604051601f1901519695505050505050565b600080805b6020811015610c5f5780600802858286601f0103815181101515610c2f57fe5b90602001015160f860020a900460f860020a0260f860020a90049060020a02820191508080600101915050610c0f565b509392505050565b828054828255906000526020600020908101928215610ca4579160200282015b82811115610ca45782518255602090920191600190910190610c87565b50610cb0929150610cb4565b5090565b610cce91905b80821115610cb05760008155600101610cba565b905600a165627a7a723058201119acc1acdae2f6a634157237949365039aa2c96e95d74250210341ddcfc8440029`
+const RenLedgerBin = `0x608060405234801561001057600080fd5b50604051606080610f1c83398101604090815281516020830151919092015160039290925560048054600160a060020a03928316600160a060020a03199182161790915560058054929093169116179055610eac806100706000396000f3006080604052600436106100f05763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416631107c3f781146100f557806322f85eaa1461012957806335cea2881461015a57806339b0d677146101845780634a8393f3146101e15780635060340b146101f9578063574ed6c1146102545780637008b996146102af57806397514d9014610309578063a188fcb814610321578063a518166114610339578063aab14d0414610351578063af3e8a401461037f578063b1a08010146103e7578063b248e4e1146103ff578063ddca3f4314610417578063f5784fe91461042c575b600080fd5b34801561010157600080fd5b5061010d600435610487565b60408051600160a060020a039092168252519081900360200190f35b34801561013557600080fd5b506101416004356104a9565b6040805192835290151560208301528051918290030190f35b34801561016657600080fd5b506101726004356104e6565b60408051918252519081900360200190f35b34801561019057600080fd5b506040805160206004803580820135601f81018490048402850184019095528484526101df94369492936024939284019190819084018382808284375094975050933594506105059350505050565b005b3480156101ed57600080fd5b50610172600435610555565b34801561020557600080fd5b506040805160206004803580820135601f81018490048402850184019095528484526101df94369492936024939284019190819084018382808284375094975050933594506105639350505050565b34801561026057600080fd5b506040805160206004803580820135601f81018490048402850184019095528484526101df94369492936024939284019190819084018382808284375094975050933594506105b19350505050565b3480156102bb57600080fd5b506040805160206004602480358281013584810280870186019097528086526101df968435963696604495919490910192918291850190849080828437509497506106769650505050505050565b34801561031557600080fd5b506101416004356108d3565b34801561032d57600080fd5b506101726004356108fb565b34801561034557600080fd5b5061010d600435610933565b34801561035d57600080fd5b50610369600435610951565b6040805160ff9092168252519081900360200190f35b34801561038b57600080fd5b50610397600435610979565b60408051602080825283518183015283519192839290830191858101910280838360005b838110156103d35781810151838201526020016103bb565b505050509050019250505060405180910390f35b3480156103f357600080fd5b5061010d6004356109df565b34801561040b57600080fd5b50610172600435610a00565b34801561042357600080fd5b50610172610a15565b34801561043857600080fd5b506040805160206004803580820135601f81018490048402850184019095528484526101df9436949293602493928401919081908401838280828437509497505093359450610a1b9350505050565b60008181526002602081905260409091200154600160a060020a03165b919050565b6000805481908311156104c1575060009050806104e1565b60008054849081106104cf57fe5b90600052602060002001546001915091505b915091565b60008054829081106104f457fe5b600091825260209091200154905081565b61050f8282610a1b565b600180548082019091557fb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf601819055600080549181526002602052604090206003015550565b60018054829081106104f457fe5b61056d8282610a1b565b600080546001810182557f290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e5630182905580549181526002602052604090206003015550565b6000806001600084815260026020526040902054610100900460ff1660038111156105d857fe5b146105e257600080fd5b604080517f52657075626c69632050726f746f636f6c3a2063616e63656c3a2000000000008152601b8101859052905190819003603b01902091506106278285610c6c565b600084815260026020526040902054909150600160a060020a0380831662010000909204161461065657600080fd5b50506000908152600260205260409020805461ff00191661030017905550565b600554604080517f4f5550fc000000000000000000000000000000000000000000000000000000008152336c0100000000000000000000000081026bffffffffffffffffffffffff191660048301529151600093600160a060020a031691634f5550fc91602480830192602092919082900301818887803b1580156106fa57600080fd5b505af115801561070e573d6000803e3d6000fd5b505050506040513d602081101561072457600080fd5b5051151561073157600080fd5b6001600085815260026020526040902054610100900460ff16600381111561075557fe5b1461075f57600080fd5b600091505b82518210156107c457600160026000858581518110151561078157fe5b602090810290910181015182528101919091526040016000205460ff6101009091041660038111156107af57fe5b146107b957600080fd5b600190910190610764565b600091505b825182101561087157600280600085858151811015156107e557fe5b60209081029091018101518252810191909152604001600020805461ff00191661010083600381111561081457fe5b02179055506040805160208101909152848152835160029060009086908690811061083b57fe5b60209081029091018101518252810191909152604001600020610865916005909101906001610e16565b506001909101906107c9565b6000848152600260208181526040909220805461ff001916610200178155908101805473ffffffffffffffffffffffffffffffffffffffff191633600160a060020a031617905584516108cc92600590920191860190610e16565b5050505050565b60015460009081908311156108ed575060009050806104e1565b60018054849081106104cf57fe5b600081815260026020526040812060040154151561091b575060006104a4565b50600090815260026020526040902060040154430390565b600090815260026020526040902060010154600160a060020a031690565b600081815260026020526040812054610100900460ff16600381111561097357fe5b92915050565b6000818152600260209081526040918290206005018054835181840281018401909452808452606093928301828280156109d357602002820191906000526020600020905b815481526001909101906020018083116109be575b50505050509050919050565b600090815260026020526040902054620100009004600160a060020a031690565b60009081526002602052604090206003015490565b60035481565b60035460048054604080517fdd62ed3e000000000000000000000000000000000000000000000000000000008152600160a060020a03338116948201949094523084166024820152905160009485949093169163dd62ed3e91604480830192602092919082900301818887803b158015610a9457600080fd5b505af1158015610aa8573d6000803e3d6000fd5b505050506040513d6020811015610abe57600080fd5b50511015610acb57600080fd5b60048054600354604080517f23b872dd000000000000000000000000000000000000000000000000000000008152600160a060020a0333811695820195909552308516602482015260448101929092525192909116916323b872dd916064808201926020929091908290030181600087803b158015610b4957600080fd5b505af1158015610b5d573d6000803e3d6000fd5b505050506040513d6020811015610b7357600080fd5b50511515610b8057600080fd5b60008084815260026020526040902054610100900460ff166003811115610ba357fe5b14610bad57600080fd5b604080517f52657075626c69632050726f746f636f6c3a206f70656e3a200000000000000081526019810185905290519081900360390190209150610bf28285610c6c565b600093845260026020526040909320805461ff0019166101001775ffffffffffffffffffffffffffffffffffffffff0000191662010000600160a060020a039586160217815560018101805473ffffffffffffffffffffffffffffffffffffffff1916339095169490941790935550504360049091015550565b604080518082018252601c8082527f19457468657265756d205369676e6564204d6573736167653a0a33320000000060208301908152925160009384928492889290918291908083835b60208310610cd55780518252601f199092019160209182019101610cb6565b51815160209384036101000a600019018019909216911617905292019384525060408051938490039091019092208751909450600193508492889250908110610d1a57fe5b90602001015160f860020a900460f860020a0260f860020a9004601b01610d42876000610db9565b610d4d886020610db9565b60408051600080825260208083018085529790975260ff90951681830152606081019390935260808301919091525160a08083019493601f198301938390039091019190865af1158015610da5573d6000803e3d6000fd5b5050604051601f1901519695505050505050565b600080805b6020811015610e0e5780600802858286601f0103815181101515610dde57fe5b90602001015160f860020a900460f860020a0260f860020a90049060020a02820191508080600101915050610dbe565b509392505050565b828054828255906000526020600020908101928215610e53579160200282015b82811115610e535782518255602090920191600190910190610e36565b50610e5f929150610e63565b5090565b610e7d91905b80821115610e5f5760008155600101610e69565b905600a165627a7a723058201ab943c37f205eb0045a92d5cab7bf0967377bdb2f1614c7723fe450bb4301860029`
 
 // DeployRenLedger deploys a new Ethereum contract, binding an instance of RenLedger to it.
 func DeployRenLedger(auth *bind.TransactOpts, backend bind.ContractBackend, _fee *big.Int, _token common.Address, _registry common.Address) (common.Address, *types.Transaction, *RenLedger, error) {
@@ -5938,6 +5938,62 @@ func (_RenLedger *RenLedgerTransactorRaw) Transact(opts *bind.TransactOpts, meth
 	return _RenLedger.Contract.contract.Transact(opts, method, params...)
 }
 
+// BuyOrder is a free data retrieval call binding the contract method 0x22f85eaa.
+//
+// Solidity: function buyOrder(index uint256) constant returns(bytes32, bool)
+func (_RenLedger *RenLedgerCaller) BuyOrder(opts *bind.CallOpts, index *big.Int) ([32]byte, bool, error) {
+	var (
+		ret0 = new([32]byte)
+		ret1 = new(bool)
+	)
+	out := &[]interface{}{
+		ret0,
+		ret1,
+	}
+	err := _RenLedger.contract.Call(opts, out, "buyOrder", index)
+	return *ret0, *ret1, err
+}
+
+// BuyOrder is a free data retrieval call binding the contract method 0x22f85eaa.
+//
+// Solidity: function buyOrder(index uint256) constant returns(bytes32, bool)
+func (_RenLedger *RenLedgerSession) BuyOrder(index *big.Int) ([32]byte, bool, error) {
+	return _RenLedger.Contract.BuyOrder(&_RenLedger.CallOpts, index)
+}
+
+// BuyOrder is a free data retrieval call binding the contract method 0x22f85eaa.
+//
+// Solidity: function buyOrder(index uint256) constant returns(bytes32, bool)
+func (_RenLedger *RenLedgerCallerSession) BuyOrder(index *big.Int) ([32]byte, bool, error) {
+	return _RenLedger.Contract.BuyOrder(&_RenLedger.CallOpts, index)
+}
+
+// BuyOrders is a free data retrieval call binding the contract method 0x35cea288.
+//
+// Solidity: function buyOrders( uint256) constant returns(bytes32)
+func (_RenLedger *RenLedgerCaller) BuyOrders(opts *bind.CallOpts, arg0 *big.Int) ([32]byte, error) {
+	var (
+		ret0 = new([32]byte)
+	)
+	out := ret0
+	err := _RenLedger.contract.Call(opts, out, "buyOrders", arg0)
+	return *ret0, err
+}
+
+// BuyOrders is a free data retrieval call binding the contract method 0x35cea288.
+//
+// Solidity: function buyOrders( uint256) constant returns(bytes32)
+func (_RenLedger *RenLedgerSession) BuyOrders(arg0 *big.Int) ([32]byte, error) {
+	return _RenLedger.Contract.BuyOrders(&_RenLedger.CallOpts, arg0)
+}
+
+// BuyOrders is a free data retrieval call binding the contract method 0x35cea288.
+//
+// Solidity: function buyOrders( uint256) constant returns(bytes32)
+func (_RenLedger *RenLedgerCallerSession) BuyOrders(arg0 *big.Int) ([32]byte, error) {
+	return _RenLedger.Contract.BuyOrders(&_RenLedger.CallOpts, arg0)
+}
+
 // Fee is a free data retrieval call binding the contract method 0xddca3f43.
 //
 // Solidity: function fee() constant returns(uint256)
@@ -5962,62 +6018,6 @@ func (_RenLedger *RenLedgerSession) Fee() (*big.Int, error) {
 // Solidity: function fee() constant returns(uint256)
 func (_RenLedger *RenLedgerCallerSession) Fee() (*big.Int, error) {
 	return _RenLedger.Contract.Fee(&_RenLedger.CallOpts)
-}
-
-// Order is a free data retrieval call binding the contract method 0x21603f43.
-//
-// Solidity: function order(index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCaller) Order(opts *bind.CallOpts, index *big.Int) ([32]byte, bool, error) {
-	var (
-		ret0 = new([32]byte)
-		ret1 = new(bool)
-	)
-	out := &[]interface{}{
-		ret0,
-		ret1,
-	}
-	err := _RenLedger.contract.Call(opts, out, "order", index)
-	return *ret0, *ret1, err
-}
-
-// Order is a free data retrieval call binding the contract method 0x21603f43.
-//
-// Solidity: function order(index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerSession) Order(index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.Order(&_RenLedger.CallOpts, index)
-}
-
-// Order is a free data retrieval call binding the contract method 0x21603f43.
-//
-// Solidity: function order(index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCallerSession) Order(index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.Order(&_RenLedger.CallOpts, index)
-}
-
-// OrderBlockNumber is a free data retrieval call binding the contract method 0x89895d53.
-//
-// Solidity: function orderBlockNumber( bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerCaller) OrderBlockNumber(opts *bind.CallOpts, arg0 [32]byte) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderBlockNumber", arg0)
-	return *ret0, err
-}
-
-// OrderBlockNumber is a free data retrieval call binding the contract method 0x89895d53.
-//
-// Solidity: function orderBlockNumber( bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerSession) OrderBlockNumber(arg0 [32]byte) (*big.Int, error) {
-	return _RenLedger.Contract.OrderBlockNumber(&_RenLedger.CallOpts, arg0)
-}
-
-// OrderBlockNumber is a free data retrieval call binding the contract method 0x89895d53.
-//
-// Solidity: function orderBlockNumber( bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerCallerSession) OrderBlockNumber(arg0 [32]byte) (*big.Int, error) {
-	return _RenLedger.Contract.OrderBlockNumber(&_RenLedger.CallOpts, arg0)
 }
 
 // OrderBroker is a free data retrieval call binding the contract method 0xa5181661.
@@ -6202,30 +6202,60 @@ func (_RenLedger *RenLedgerCallerSession) OrderTrader(_orderId [32]byte) (common
 	return _RenLedger.Contract.OrderTrader(&_RenLedger.CallOpts, _orderId)
 }
 
-// Orderbook is a free data retrieval call binding the contract method 0x6b597cb7.
+// SellOrder is a free data retrieval call binding the contract method 0x97514d90.
 //
-// Solidity: function orderbook( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerCaller) Orderbook(opts *bind.CallOpts, arg0 *big.Int) ([32]byte, error) {
+// Solidity: function sellOrder(index uint256) constant returns(bytes32, bool)
+func (_RenLedger *RenLedgerCaller) SellOrder(opts *bind.CallOpts, index *big.Int) ([32]byte, bool, error) {
+	var (
+		ret0 = new([32]byte)
+		ret1 = new(bool)
+	)
+	out := &[]interface{}{
+		ret0,
+		ret1,
+	}
+	err := _RenLedger.contract.Call(opts, out, "sellOrder", index)
+	return *ret0, *ret1, err
+}
+
+// SellOrder is a free data retrieval call binding the contract method 0x97514d90.
+//
+// Solidity: function sellOrder(index uint256) constant returns(bytes32, bool)
+func (_RenLedger *RenLedgerSession) SellOrder(index *big.Int) ([32]byte, bool, error) {
+	return _RenLedger.Contract.SellOrder(&_RenLedger.CallOpts, index)
+}
+
+// SellOrder is a free data retrieval call binding the contract method 0x97514d90.
+//
+// Solidity: function sellOrder(index uint256) constant returns(bytes32, bool)
+func (_RenLedger *RenLedgerCallerSession) SellOrder(index *big.Int) ([32]byte, bool, error) {
+	return _RenLedger.Contract.SellOrder(&_RenLedger.CallOpts, index)
+}
+
+// SellOrders is a free data retrieval call binding the contract method 0x4a8393f3.
+//
+// Solidity: function sellOrders( uint256) constant returns(bytes32)
+func (_RenLedger *RenLedgerCaller) SellOrders(opts *bind.CallOpts, arg0 *big.Int) ([32]byte, error) {
 	var (
 		ret0 = new([32]byte)
 	)
 	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderbook", arg0)
+	err := _RenLedger.contract.Call(opts, out, "sellOrders", arg0)
 	return *ret0, err
 }
 
-// Orderbook is a free data retrieval call binding the contract method 0x6b597cb7.
+// SellOrders is a free data retrieval call binding the contract method 0x4a8393f3.
 //
-// Solidity: function orderbook( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerSession) Orderbook(arg0 *big.Int) ([32]byte, error) {
-	return _RenLedger.Contract.Orderbook(&_RenLedger.CallOpts, arg0)
+// Solidity: function sellOrders( uint256) constant returns(bytes32)
+func (_RenLedger *RenLedgerSession) SellOrders(arg0 *big.Int) ([32]byte, error) {
+	return _RenLedger.Contract.SellOrders(&_RenLedger.CallOpts, arg0)
 }
 
-// Orderbook is a free data retrieval call binding the contract method 0x6b597cb7.
+// SellOrders is a free data retrieval call binding the contract method 0x4a8393f3.
 //
-// Solidity: function orderbook( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerCallerSession) Orderbook(arg0 *big.Int) ([32]byte, error) {
-	return _RenLedger.Contract.Orderbook(&_RenLedger.CallOpts, arg0)
+// Solidity: function sellOrders( uint256) constant returns(bytes32)
+func (_RenLedger *RenLedgerCallerSession) SellOrders(arg0 *big.Int) ([32]byte, error) {
+	return _RenLedger.Contract.SellOrders(&_RenLedger.CallOpts, arg0)
 }
 
 // CancelOrder is a paid mutator transaction binding the contract method 0x574ed6c1.
@@ -6270,6 +6300,27 @@ func (_RenLedger *RenLedgerTransactorSession) ConfirmOrder(_orderId [32]byte, _o
 	return _RenLedger.Contract.ConfirmOrder(&_RenLedger.TransactOpts, _orderId, _orderMatches)
 }
 
+// OpenBuyOrder is a paid mutator transaction binding the contract method 0x5060340b.
+//
+// Solidity: function openBuyOrder(_signature bytes, _orderId bytes32) returns()
+func (_RenLedger *RenLedgerTransactor) OpenBuyOrder(opts *bind.TransactOpts, _signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _RenLedger.contract.Transact(opts, "openBuyOrder", _signature, _orderId)
+}
+
+// OpenBuyOrder is a paid mutator transaction binding the contract method 0x5060340b.
+//
+// Solidity: function openBuyOrder(_signature bytes, _orderId bytes32) returns()
+func (_RenLedger *RenLedgerSession) OpenBuyOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _RenLedger.Contract.OpenBuyOrder(&_RenLedger.TransactOpts, _signature, _orderId)
+}
+
+// OpenBuyOrder is a paid mutator transaction binding the contract method 0x5060340b.
+//
+// Solidity: function openBuyOrder(_signature bytes, _orderId bytes32) returns()
+func (_RenLedger *RenLedgerTransactorSession) OpenBuyOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _RenLedger.Contract.OpenBuyOrder(&_RenLedger.TransactOpts, _signature, _orderId)
+}
+
 // OpenOrder is a paid mutator transaction binding the contract method 0xf5784fe9.
 //
 // Solidity: function openOrder(_signature bytes, _orderId bytes32) returns()
@@ -6289,6 +6340,27 @@ func (_RenLedger *RenLedgerSession) OpenOrder(_signature []byte, _orderId [32]by
 // Solidity: function openOrder(_signature bytes, _orderId bytes32) returns()
 func (_RenLedger *RenLedgerTransactorSession) OpenOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
 	return _RenLedger.Contract.OpenOrder(&_RenLedger.TransactOpts, _signature, _orderId)
+}
+
+// OpenSellOrder is a paid mutator transaction binding the contract method 0x39b0d677.
+//
+// Solidity: function openSellOrder(_signature bytes, _orderId bytes32) returns()
+func (_RenLedger *RenLedgerTransactor) OpenSellOrder(opts *bind.TransactOpts, _signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _RenLedger.contract.Transact(opts, "openSellOrder", _signature, _orderId)
+}
+
+// OpenSellOrder is a paid mutator transaction binding the contract method 0x39b0d677.
+//
+// Solidity: function openSellOrder(_signature bytes, _orderId bytes32) returns()
+func (_RenLedger *RenLedgerSession) OpenSellOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _RenLedger.Contract.OpenSellOrder(&_RenLedger.TransactOpts, _signature, _orderId)
+}
+
+// OpenSellOrder is a paid mutator transaction binding the contract method 0x39b0d677.
+//
+// Solidity: function openSellOrder(_signature bytes, _orderId bytes32) returns()
+func (_RenLedger *RenLedgerTransactorSession) OpenSellOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _RenLedger.Contract.OpenSellOrder(&_RenLedger.TransactOpts, _signature, _orderId)
 }
 
 // RepublicTokenABI is the input ABI used to generate the binding from.
