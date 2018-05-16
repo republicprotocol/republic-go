@@ -35,18 +35,33 @@ type Stream interface {
 
 // Client is an interface for connecting to a Server.
 type Client interface {
+
+	// Connect to a Server identified by an identity.MultiAddress. Returns a
+	// Stream for sending and receiving Messages to and from the Server. To be
+	// used with a ClientRecycler, the Stream must be safe for concurrent use.
+	// A call to Client.Connect for an identity.MultiAddress must eventually be
+	// followed by a call to Client.Disconnect for the same
+	// identity.MultiAddress.
 	Connect(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error)
+
+	// Disconnect from a Server identified by an identity.MultiAddress. A call
+	// to Client.Connect for an identity.MultiAddress must eventually be
+	// followed by a call to Client.Disconnect for the same
+	// identity.MultiAddress. Returns an ErrDisconnectedClosedStream when there
+	// is no previous call to Client.Connect.
 	Disconnect(multiAddr identity.MultiAddress) error
 }
 
 // Server is an interface for accepting connections from a Client.
 type Server interface {
-	Listen(ctx context.Context) (Stream, error)
+
+	// Listen for a connection from a Client identified by an identity.Address.
+	Listen(ctx context.Context, addr identity.Address) (Stream, error)
 }
 
 // clientRecycler encapsulates a Client and reuses a Stream that has been
-// connected to Server when multiple connections are needed for the same
-// identity.MultiAddress. It does not protect the Stream from concurrent use.
+// connected to Server when multiple connections to the Server are needd. It
+// does not protect the Stream from concurrent use.
 type clientRecycler struct {
 	client Client
 
@@ -55,6 +70,10 @@ type clientRecycler struct {
 	conns   map[string]Stream
 }
 
+// NewClientRecycler returns a Client that wraps another Client. It will
+// use the Client to create Stream, but will recycle connected Streams when
+// multiple connections to the same Server are needed. The wrapped Client must
+// ensure that the Stream is safe for concurrent use.
 func NewClientRecycler(client Client) Client {
 	return &clientRecycler{
 		client:  client,
@@ -64,6 +83,7 @@ func NewClientRecycler(client Client) Client {
 	}
 }
 
+// Connect implements the Client interface.
 func (client *clientRecycler) Connect(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
 	client.connsMu.Lock()
 	defer client.connsMu.Unlock()
@@ -80,6 +100,7 @@ func (client *clientRecycler) Connect(ctx context.Context, multiAddr identity.Mu
 	return client.conns[multiAddr.String()], nil
 }
 
+// Disconnect implements the Client interface.
 func (client *clientRecycler) Disconnect(multiAddr identity.MultiAddress) error {
 	client.connsMu.Lock()
 	defer client.connsMu.Unlock()
