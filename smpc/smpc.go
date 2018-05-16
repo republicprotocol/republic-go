@@ -5,34 +5,38 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/rpc"
+	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
 type Smpcer interface {
-	Connect(addr identity.Address) (rpc.Stream, error)
+	Connect(addr identity.Address) (stream.Stream, error)
 }
 
 type Smpc struct {
-	streamer rpc.Streamer
-	swarmer  swarm.Swarmer
+	client  stream.Client
+	swarmer swarm.Swarmer
 }
 
-func NewSmpc(streamer rpc.Streamer, swarmer swarm.Swarmer) Smpc {
+func NewSmpc(client stream.Client, swarmer swarm.Swarmer) Smpc {
 	return Smpc{
-		streamer: streamer,
-		swarmer:  swarmer,
+		client:  client,
+		swarmer: swarmer,
 	}
 }
 
-func (smpc *Smpc) Connect(addr identity.Address) (rpc.Stream, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+func (smpc *Smpc) Connect(addr identity.Address) (stream.Stream, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	multiAddr, err := smpc.swarmer.Query(ctx, addr)
+	multiAddr, err := smpc.swarmer.Query(ctx, addr, 3)
+	if err != nil {
+		return nil, err
+	}
+	stream, err := smpc.client.Connect(ctx, multiAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	return smpc.streamer.Connect(ctx, multiAddr)
+	return stream, nil
 }

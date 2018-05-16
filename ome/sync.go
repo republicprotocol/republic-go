@@ -2,7 +2,6 @@ package ome
 
 import (
 	"log"
-	"sort"
 	"time"
 
 	"github.com/republicprotocol/republic-go/cal"
@@ -10,36 +9,42 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
-type Syncer struct {
+type Syncer interface {
+	SyncRenLedger(done <-chan struct{}, ranker Ranker) <-chan error
+	ConfirmOrder(id order.ID, matches []order.ID) error
+}
+
+type OrderWithPriority struct {
+	ID       order.ID
+	Priority uint64
+}
+
+type syncer struct {
 	renLedger               cal.RenLedger
-	renLedgerSettledPointer int
 	renLedgerSyncedPointer  int
 	renLedgerLimit          int
 	renLedgerSyncedInterval int
 	orders                  map[int]order.ID
-	queue                   *PriorityQueue
 }
 
-func NewSyncer(renLedger cal.RenLedger, limit, interval int) Syncer {
-	return Syncer{
+func NewSyncer(renLedger cal.RenLedger, limit, interval int) syncer {
+	return syncer{
 		renLedger:               renLedger,
-		renLedgerSettledPointer: 0,
 		renLedgerSyncedPointer:  0,
 		renLedgerLimit:          limit,
 		renLedgerSyncedInterval: interval,
 		orders:                  map[int]order.ID{},
-		queue:                   NewPriorityQueue(),
 	}
 }
 
-func (syncer *Syncer) SyncRenLedger(done <-chan struct{}) <-chan error {
+func (syncer *syncer) SyncRenLedger(done <-chan struct{}, ranker Ranker) <-chan error {
 	errs := make(chan error, 1)
 
 	go func() {
 		defer close(errs)
 
 		for {
-			syncer.Prune()
+			syncer.Prune(ranker)
 
 			orderIDs, err := syncer.renLedger.Orders(syncer.renLedgerSyncedPointer, syncer.renLedgerLimit)
 			if err != nil {
@@ -52,8 +57,8 @@ func (syncer *Syncer) SyncRenLedger(done <-chan struct{}) <-chan error {
 					if i == m {
 						continue
 					}
-					orderPair := NewOrderPair(j, n, syncer.renLedgerSyncedPointer+i+m)
-					syncer.queue.Insert(orderPair)
+					orderPair := NewOrderPair(j, []order.ID{n}, syncer.renLedgerSyncedPointer+i+m)
+					ranker.Insert(orderPair)
 				}
 				syncer.orders[syncer.renLedgerSyncedPointer+i] = orderIDs[i]
 			}
@@ -66,9 +71,13 @@ func (syncer *Syncer) SyncRenLedger(done <-chan struct{}) <-chan error {
 	return errs
 }
 
-func (syncer *Syncer) Prune() {
+func (syncer *syncer) ConfirmOrder(id order.ID, matches []order.ID) error {
+	return syncer.renLedger.ConfirmOrder(id, matches)
+}
+
+func (syncer *syncer) Prune(ranker Ranker) {
 	dispatch.CoForAll(syncer.orders, func(key int) {
-		status, err := syncer.renLedger.CheckStatus(syncer.orders[key])
+		status, err := syncer.renLedger.Status(syncer.orders[key])
 		if err != nil {
 			log.Println("fail to check order status", err)
 			return
@@ -76,49 +85,21 @@ func (syncer *Syncer) Prune() {
 
 		if status == order.Canceled || status == order.Confirmed || status == order.Settled {
 			delete(syncer.orders, key)
-			syncer.queue.Remove(syncer.orders[key])
+			ranker.Remove(syncer.orders[key])
 		}
 	})
 }
 
 type OrderPair struct {
-	one      order.ID
-	another  order.ID
+	orderID  order.ID
+	matches  []order.ID
 	priority int
 }
 
-func NewOrderPair(one, another order.ID, priority int) OrderPair {
+func NewOrderPair(id order.ID, matches []order.ID, priority int) OrderPair {
 	return OrderPair{
-		one:      one,
-		another:  another,
+		orderID:  id,
+		matches:  matches,
 		priority: priority,
-	}
-}
-
-type PriorityQueue struct {
-	pairs []OrderPair
-}
-
-func NewPriorityQueue() *PriorityQueue {
-	return &PriorityQueue{
-		pairs: []OrderPair{},
-	}
-}
-
-func (queue *PriorityQueue) Insert(pair OrderPair) {
-	index := sort.Search(len(queue.pairs), func(i int) bool {
-		return queue.pairs[i].priority > pair.priority
-	})
-	queue.pairs = append(queue.pairs[:index-1], append([]OrderPair{pair}, queue.pairs[index:]...)...)
-}
-
-func (queue *PriorityQueue) Remove(id order.ID) {
-	for i := 0; i < len(queue.pairs); i++ {
-		if queue.pairs[i].one == id || queue.pairs[i].another == id {
-			// a:= []{1,2,3}
-			// log.Println(a[3])   # this will panic
-			// log.Println(a[3:])  # this will not panic ,amazing!
-			queue.pairs = append(queue.pairs[:i], queue.pairs[i+1:]...)
-		}
 	}
 }

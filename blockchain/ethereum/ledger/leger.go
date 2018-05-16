@@ -59,18 +59,17 @@ func (ledger *RenLedgerContract) OpenOrder(signature [65]byte, id order.ID) erro
 		return err
 	}
 	_, err = ledger.conn.PatchedWaitMined(ledger.context, tx)
-
-	blockNumber, err := ledger.GetBlockNumberOfTx(tx.Hash())
 	if err != nil {
 		return err
 	}
 
 	for {
-		currentBlock, err := ledger.CurrentBlock()
+		depth, err := ledger.binding.OrderDepth(ledger.callOpts, id)
 		if err != nil {
 			return err
 		}
-		if currentBlock.NumberU64()-blockNumber >= BlocksForConfirmation {
+
+		if depth.Uint64() >= BlocksForConfirmation {
 			return nil
 		}
 	}
@@ -80,23 +79,26 @@ func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) er
 	var orderID [32]byte
 	copy(orderID[:], id[:])
 
+	before, err := ledger.binding.OrderDepth(ledger.callOpts, id)
+	if err != nil {
+		return err
+	}
 	tx, err := ledger.binding.CancelOrder(ledger.transactOpts, signature[:], orderID)
 	if err != nil {
 		return err
 	}
 	_, err = ledger.conn.PatchedWaitMined(ledger.context, tx)
-
-	blockNumber, err := ledger.GetBlockNumberOfTx(tx.Hash())
 	if err != nil {
 		return err
 	}
 
 	for {
-		currentBlock, err := ledger.CurrentBlock()
+		depth, err := ledger.binding.OrderDepth(ledger.callOpts, id)
 		if err != nil {
 			return err
 		}
-		if currentBlock.NumberU64()-blockNumber >= BlocksForConfirmation {
+
+		if depth.Uint64()-before.Uint64() >= BlocksForConfirmation {
 			return nil
 		}
 	}
@@ -110,22 +112,26 @@ func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, matches []order.ID) e
 	var orderID [32]byte
 	copy(orderID[:], id[:])
 
+	before, err := ledger.binding.OrderDepth(ledger.callOpts, id)
+	if err != nil {
+		return err
+	}
 	tx, err := ledger.binding.ConfirmOrder(ledger.transactOpts, orderID, orderMatches)
 	if err != nil {
 		return err
 	}
 	_, err = ledger.conn.PatchedWaitMined(ledger.context, tx)
-
-	blockNumber, err := ledger.GetBlockNumberOfTx(tx.Hash())
 	if err != nil {
 		return err
 	}
+
 	for {
-		currentBlock, err := ledger.CurrentBlock()
+		depth, err := ledger.binding.OrderDepth(ledger.callOpts, id)
 		if err != nil {
 			return err
 		}
-		if currentBlock.NumberU64()-blockNumber >= BlocksForConfirmation {
+
+		if depth.Uint64()-before.Uint64() >= BlocksForConfirmation {
 			return nil
 		}
 	}
