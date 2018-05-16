@@ -18,6 +18,12 @@ type Hasher interface {
 	Hash() []byte
 }
 
+type Bytes []byte
+
+func (bytes Bytes) Hash() []byte {
+	return Keccak256(bytes)
+}
+
 type Hash32 [32]byte
 
 func NewHash32(data []byte) Hash32 {

@@ -29,6 +29,7 @@ type Message interface {
 // Stream is an interface for sending and receiving Messages over a
 // bidirectional stream. It abstracts over the client and server architecture.
 type Stream interface {
+	Close() error
 	Send(Message) error
 	Recv(Message) error
 }

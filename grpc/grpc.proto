@@ -6,6 +6,12 @@ service StreamService {
     rpc Connect(stream StreamMessage) returns (stream StreamMessage);
 }
 
+message StreamAddress {
+    bytes signature = 1;
+    string address = 2;
+}
+
 message StreamMessage {
-    bytes data = 1;
+    StreamAddress streamAddress = 1;
+    bytes data = 2;
 }
