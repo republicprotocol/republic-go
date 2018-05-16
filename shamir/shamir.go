@@ -31,6 +31,13 @@ type Share struct {
 	Value uint64
 }
 
+func (share *Share) Sub(arg *Share) Share {
+	return Share{
+		Index: share.Index,
+		Value: subMod(share.Value, arg.Value, Prime),
+	}
+}
+
 // MarshalJSON implements the json.Marshaler interface.
 func (share Share) MarshalJSON() ([]byte, error) {
 	bytes, err := share.MarshalBinary()
