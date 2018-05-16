@@ -1,14 +1,27 @@
 package ome
 
 import (
+	"context"
+	"errors"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/smpc/delta"
 )
+
+var ErrNotFoundInStore = errors.New("not found in store")
+
+type OmeClient interface {
+	OpenOrder(ctx context.Context, multiAddr identity.MultiAddress, orderFragment order.Fragment) error
+}
+
+type OmeServer interface {
+	OpenOrder(ctx context.Context, orderFragment order.Fragment) error
+}
 
 type Omer interface {
 	OnChangeEpoch(ξ cal.Epoch) error
@@ -53,15 +66,12 @@ func NewOme(done <-chan struct{}, pod <-chan cal.Epoch, delegate Delegate, store
 				ome.pod = pod
 				ome.mu.Unlock()
 
-
 			}
 		}
 	}()
 
 	return ome
 }
-
-
 
 func (engine *Ome) OpenOrder(fragment order.Fragment) error {
 	return engine.storer.Insert(fragment)
@@ -152,7 +162,6 @@ func (engine *Ome) SyncRenLedger() error {
 
 	return nil
 }
-
 
 func (engine *Ome) Compute(done <-chan struct{}) error {
 

@@ -30,11 +30,7 @@ type Delta struct {
 	ID          ID
 	BuyOrderID  order.ID
 	SellOrderID order.ID
-	FstCode     stackint.Int1024
-	SndCode     stackint.Int1024
-	Price       stackint.Int1024
-	MaxVolume   stackint.Int1024
-	MinVolume   stackint.Int1024
+	Tokens      uint64
 }
 
 func NewDeltaFromShares(buyOrderID, sellOrderID order.ID, fstCodeShares, sndCodeShares, priceShares, maxVolumeShares, minVolumeShares shamir.Shares, k int64, prime stackint.Int1024) Delta {
@@ -43,7 +39,7 @@ func NewDeltaFromShares(buyOrderID, sellOrderID order.ID, fstCodeShares, sndCode
 		BuyOrderID:  buyOrderID,
 		SellOrderID: sellOrderID,
 	}
-	delta.FstCode = shamir.Join(&prime, fstCodeShares)
+	delta.Tokens = shamir.Join(tokens)
 	delta.SndCode = shamir.Join(&prime, sndCodeShares)
 	delta.Price = shamir.Join(&prime, priceShares)
 	delta.MaxVolume = shamir.Join(&prime, maxVolumeShares)
