@@ -19,7 +19,7 @@ var ErrFiniteField = errors.New("expected secret to be in the finite field")
 
 // ErrCannotDeserializeEmptyByteSlice is returned when trying to unmarshal an
 // empty byte slice.
-var ErrCannotDeserializeEmptyByteSlice = errors.New("cannot deserialize empty byte slice")
+var ErrUnmarshalNilBytes = errors.New("cannot deserialize empty byte slice")
 
 // Prime is the prime number used to define the finite field.
 const Prime uint64 = 17012364981921935471
@@ -164,8 +164,8 @@ func (share Share) MarshalBinary() ([]byte, error) {
 // uint64 index is decoded using binary.BigEndian and then the uint64 value is
 // decoded using binary.BigEndian.
 func (share *Share) UnmarshalBinary(data []byte) error {
-	if len(data) == 0 {
-		return ErrCannotDeserializeEmptyByteSlice
+	if data == nil || len(data) == 0 {
+		return ErrUnmarshalNilBytes
 	}
 	buf := bytes.NewBuffer(data)
 	binary.Read(buf, binary.BigEndian, &share.Index)
