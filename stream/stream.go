@@ -67,8 +67,8 @@ type clientRecycler struct {
 	client Client
 
 	connsMu *sync.Mutex
-	connsRc map[string]int64
-	conns   map[string]Stream
+	connsRc map[identity.Address]int64
+	conns   map[identity.Address]Stream
 }
 
 // NewClientRecycler returns a Client that wraps another Client. It will
@@ -79,8 +79,8 @@ func NewClientRecycler(client Client) Client {
 	return &clientRecycler{
 		client:  client,
 		connsMu: new(sync.Mutex),
-		connsRc: map[string]int64{},
-		conns:   map[string]Stream{},
+		connsRc: map[identity.Address]int64{},
+		conns:   map[identity.Address]Stream{},
 	}
 }
 
@@ -89,16 +89,17 @@ func (client *clientRecycler) Connect(ctx context.Context, multiAddr identity.Mu
 	client.connsMu.Lock()
 	defer client.connsMu.Unlock()
 
-	if _, ok := client.conns[multiAddr.String()]; !ok {
+	addr := multiAddr.Address()
+	if _, ok := client.conns[addr]; !ok {
 		conn, err := client.client.Connect(ctx, multiAddr)
 		if err != nil {
 			return nil, err
 		}
-		client.conns[multiAddr.String()] = conn
-		client.connsRc[multiAddr.String()] = 0
+		client.conns[addr] = conn
+		client.connsRc[addr] = 0
 	}
-	client.connsRc[multiAddr.String()]++
-	return client.conns[multiAddr.String()], nil
+	client.connsRc[addr]++
+	return client.conns[addr], nil
 }
 
 // Disconnect implements the Client interface.
@@ -106,17 +107,18 @@ func (client *clientRecycler) Disconnect(multiAddr identity.MultiAddress) error 
 	client.connsMu.Lock()
 	defer client.connsMu.Unlock()
 
-	if client.connsRc[multiAddr.String()] == 0 {
+	addr := multiAddr.Address()
+	if client.connsRc[addr] == 0 {
 		return ErrDisconnectedClosedStream
 	}
 
-	client.connsRc[multiAddr.String()]--
-	if client.connsRc[multiAddr.String()] == 0 {
+	client.connsRc[addr]--
+	if client.connsRc[addr] == 0 {
 		if err := client.client.Disconnect(multiAddr); err != nil {
 			return err
 		}
-		delete(client.conns, multiAddr.String())
-		delete(client.connsRc, multiAddr.String())
+		delete(client.conns, addr)
+		delete(client.connsRc, addr)
 	}
 	return nil
 }
