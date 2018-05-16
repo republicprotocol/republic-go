@@ -2,37 +2,42 @@ package ome
 
 import (
 	"encoding/json"
-	"os"
-	"path"
+	"errors"
 
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
+var ErrNotFoundInStore = errors.New("not found in store")
+
 type Storer interface {
 	Insert(orderFragment order.Fragment) error
 	Get(id order.ID) (order.Fragment, error)
+	Delete(id order.ID) error
+	Stop() error
 }
 
-// storer is an levelDB implementation of the Storer interface
-type storer struct {
+// LevelDBStorer is an levelDB implementation of the Storer interface
+type LevelDBStorer struct {
 	orderFragments *leveldb.DB
 }
 
-func NewStore() (storer, error) {
-	dbPath := path.Join(os.Getenv("HOME"), ".darknode", "fragments")
-
-	orderFragments, err := leveldb.OpenFile(path.Join(dbPath, "fragments"), nil)
+func NewLevelDBStorer(dbPath string) (LevelDBStorer, error) {
+	orderFragments, err := leveldb.OpenFile(dbPath, nil)
 	if err != nil {
-		return storer{}, err
+		return LevelDBStorer{}, err
 	}
 
-	return storer{
+	return LevelDBStorer{
 		orderFragments: orderFragments,
 	}, nil
 }
 
-func (storer storer) Insert(fragment order.Fragment) error {
+func (storer LevelDBStorer) Stop() error {
+	return storer.orderFragments.Close()
+}
+
+func (storer LevelDBStorer) Insert(fragment order.Fragment) error {
 	encoded, err := json.Marshal(fragment)
 	if err != nil {
 		return err
@@ -41,7 +46,7 @@ func (storer storer) Insert(fragment order.Fragment) error {
 	return storer.orderFragments.Put(fragment.OrderID[:], encoded, nil)
 }
 
-func (storer storer) Get(id order.ID) (order.Fragment, error) {
+func (storer LevelDBStorer) Get(id order.ID) (order.Fragment, error) {
 	data, err := storer.orderFragments.Get(id[:], nil)
 	if err != nil {
 		return order.Fragment{}, err
@@ -54,4 +59,8 @@ func (storer storer) Get(id order.ID) (order.Fragment, error) {
 	}
 
 	return fragment, nil
+}
+
+func (storer LevelDBStorer) Delete(id order.ID) error  {
+	return storer.orderFragments.Delete(id[:], nil)
 }

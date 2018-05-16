@@ -1,6 +1,7 @@
 package ome
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -8,11 +9,12 @@ import (
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/smpc"
 )
 
 type Syncer interface {
-	ID() identity.ID
-	SyncRenLedger(done <-chan struct{}, ranker Ranker) <-chan error
+	Address() identity.Address
+	SyncRenLedger(done <-chan struct{}, pod <-smpc.InstConnect,  ranker Ranker) error
 	ConfirmOrder(id order.ID, matches []order.ID) error
 	Threshold() int
 }
@@ -23,7 +25,7 @@ type OrderWithPriority struct {
 }
 
 type syncer struct {
-	id                      identity.ID
+	address                 identity.Address
 	pool                    cal.Darkpool
 	renLedger               cal.RenLedger
 	renLedgerLimit          int
@@ -34,9 +36,9 @@ type syncer struct {
 	sellOrders              map[int]order.ID
 }
 
-func NewSyncer(id identity.ID, renLedger cal.RenLedger, limit, interval int) syncer {
+func NewSyncer(address identity.Address, renLedger cal.RenLedger, limit, interval int) syncer {
 	return syncer{
-		id:                      id,
+		address:                 address,
 		renLedger:               renLedger,
 		renLedgerLimit:          limit,
 		renLedgerSyncedInterval: interval,
@@ -47,76 +49,65 @@ func NewSyncer(id identity.ID, renLedger cal.RenLedger, limit, interval int) syn
 	}
 }
 
-func (syncer *syncer) ID() identity.ID {
-	return syncer.id
+func (syncer *syncer) Address() identity.Address {
+	return syncer.address
 }
 
-func (syncer *syncer) Threshold() int {
-	_, pod, err := syncer.pool.Pool(syncer.ID())
+func (syncer *syncer) SyncRenLedger(done <-chan struct{}, ranker Ranker) error {
+
+	pods, err := syncer.pool.Pods()
 	if err != nil {
-		return -1
+		return
 	}
-	n := len(pod.Darknodes)
-
-	return 2 * n / 3
-}
-
-func (syncer *syncer) SyncRenLedger(done <-chan struct{}, ranker Ranker) <-chan error {
-	errs := make(chan error, 1)
-
-	go func() {
-		defer close(errs)
-
-		pods, err := syncer.pool.Pods()
-		if err != nil {
-			errs <- err
+	poolIndex, _, err := syncer.pool.Pool(syncer.address.ID())
+	if err != nil {
+		return
+	}
+	for {
+		select {
+		case <- ctx.Done():
 			return
-		}
-		poolIndex, _, err := syncer.pool.Pool(syncer.ID())
-		if err != nil {
-			errs <- err
-			return
-		}
-		for {
+		default:
 			syncer.Prune(ranker)
-
-			// For each new buy order, create order pairs with the sell order
-			orderIDs, err := syncer.renLedger.BuyOrders(syncer.buyOrderPointer, syncer.renLedgerLimit)
-			if err != nil {
-				errs <- err
-				return
-			}
-			syncer.buyOrderPointer += len(orderIDs)
-
-			for index, id := range orderIDs {
-				for m, n := range syncer.sellOrders {
-					if (index+syncer.buyOrderPointer+m)%len(pods) == poolIndex {
-						orderPair := NewOrderPair(id, []order.ID{n}, index+syncer.buyOrderPointer+m)
-						ranker.Insert(orderPair)
-					}
-				}
-			}
-
-			// For each new sell order, create order pairs with the buy order
-			orderIDs, err = syncer.renLedger.SellOrders(syncer.sellOrderPointer, syncer.renLedgerLimit)
-			if err != nil {
-				errs <- err
-				return
-			}
-			syncer.sellOrderPointer += len(orderIDs)
-
-			for index, id := range orderIDs {
-				for m, n := range syncer.buyOrders {
-					if (index+syncer.sellOrderPointer+m)%len(pods) == poolIndex {
-						orderPair := NewOrderPair(id, []order.ID{n}, index+syncer.sellOrderPointer+m)
-						ranker.Insert(orderPair)
-					}
-				}
-			}
-
-			time.Sleep(time.Duration(syncer.renLedgerSyncedInterval) * time.Second)
 		}
-	}()
+
+		// For each new buy order, create order pairs with the sell order
+		orderIDs, err := syncer.renLedger.BuyOrders(syncer.buyOrderPointer, syncer.renLedgerLimit)
+		if err != nil {
+			errs <- err
+			return
+		}
+		syncer.buyOrderPointer += len(orderIDs)
+
+		for index, id := range orderIDs {
+			for m, n := range syncer.sellOrders {
+				if (index+syncer.buyOrderPointer+m)%len(pods) == poolIndex {
+					orderPair := NewOrderPair(id, []order.ID{n}, index+syncer.buyOrderPointer+m)
+					ranker.Insert(orderPair)
+				}
+			}
+		}
+
+		// For each new sell order, create order pairs with the buy order
+		orderIDs, err = syncer.renLedger.SellOrders(syncer.sellOrderPointer, syncer.renLedgerLimit)
+		if err != nil {
+			errs <- err
+			return
+		}
+		syncer.sellOrderPointer += len(orderIDs)
+
+		for index, id := range orderIDs {
+			for m, n := range syncer.buyOrders {
+				if (index+syncer.sellOrderPointer+m)%len(pods) == poolIndex {
+					orderPair := NewOrderPair(id, []order.ID{n}, index+syncer.sellOrderPointer+m)
+					ranker.Insert(orderPair)
+				}
+			}
+		}
+
+		time.Sleep(time.Duration(syncer.renLedgerSyncedInterval) * time.Second)
+	}
+
 
 	return errs
 }

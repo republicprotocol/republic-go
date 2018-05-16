@@ -16,12 +16,12 @@ type ID [32]byte
 
 // Equal returns an equality check between two DeltaIDs.
 func (id ID) Equal(other ID) bool {
-	return bytes.Equal(id, other)
+	return bytes.Equal(id[:], other[:])
 }
 
 // String returns a ID as a Base58 encoded string.
 func (id ID) String() string {
-	return base58.Encode(id)
+	return base58.Encode(id[:])
 }
 
 type Deltas []Delta

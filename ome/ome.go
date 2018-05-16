@@ -1,42 +1,78 @@
 package ome
 
 import (
-	"errors"
+	"sync"
 
 	"github.com/republicprotocol/republic-go/cal"
-	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/smpc"
+	"github.com/republicprotocol/republic-go/smpc/delta"
 )
-
-var ErrNotFoundInStore = errors.New("not found in store")
 
 type Omer interface {
 	OnChangeEpoch(ξ cal.Epoch) error
 }
 
 type Ome struct {
+	done     <-chan struct{}
+	mu       *sync.Mutex
+	epoch    cal.Epoch
 	delegate Delegate
 	storer   Storer
 	syncer   Syncer
 	ranker   Ranker
 	smpcer   smpc.Smpcer
-
-	deltas map[delta.ID][]delta.Fragment
+	deltas   map[delta.ID][]delta.Fragment
 }
 
-func NewOme(delegate Delegate, ranker Ranker, storer Storer, syncer Syncer) Ome {
-	return Ome{
-		delegate: delegate,
-		ranker:   ranker,
-		storer:   storer,
-		syncer:   syncer,
-	}
+func NewOme(done <-chan struct{}, pod <-chan cal.Epoch, delegate Delegate, storer Storer, syncer Syncer, ranker Ranker, smpcer smpc.Smpcer) Ome {
+	ome := Ome{}
+	ome.done = done
+	ome.mu = new(sync.Mutex)
+	ome.delegate = delegate
+	ome.storer = storer
+	ome.syncer = syncer
+	ome.ranker = ranker
+	ome.smpcer = smpcer
+	ome.deltas = map[delta.ID][]delta.Fragment{}
+	subChan := make(chan smpc.InstConnect)
+
+	// Listen for network change and update the pod infor
+	go func() {
+		defer close(subchan)
+		for {
+			select {
+			case <-done:
+				return
+			case pod, ok := <-pod:
+				if !ok {
+					return
+				}
+				ome.mu.Lock()
+				ome.pod = pod
+				ome.mu.Unlock()
+
+
+			}
+		}
+	}()
+
+	return ome
 }
 
-func (engine *Ome) OpenOrder(orderFragment order.Fragment) error {
-	return engine.storer.Insert(orderFragment)
+
+
+func (engine *Ome) OpenOrder(fragment order.Fragment) error {
+	return engine.storer.Insert(fragment)
+}
+
+func (engine *Ome) CancelOrder(fragment order.Fragment) error {
+	return engine.storer.Delete(fragment.OrderID)
+}
+
+func (engine *Ome) SyncRenLedger() error {
+	return engine.syncer.SyncRenLedger(engine.done, engine.ranker)
 }
 
 func (engine *Ome) SyncRenLedger() error {
@@ -45,7 +81,7 @@ func (engine *Ome) SyncRenLedger() error {
 
 	go func() {
 		// todo : handle error
-		engine.syncer.SyncRenLedger(done, engine.ranker)
+
 	}()
 
 	go func() {
@@ -117,7 +153,8 @@ func (engine *Ome) SyncRenLedger() error {
 	return nil
 }
 
-func (engine *Ome) StartStream(done <-chan struct{}) error {
+
+func (engine *Ome) Compute(done <-chan struct{}) error {
 
 }
 
