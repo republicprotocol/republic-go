@@ -34,6 +34,62 @@ type Stream interface {
 	Recv(Message) error
 }
 
+type Streamer interface {
+	Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error)
+	Close(multiAddr identity.MultiAddress) error
+}
+
+type streamer struct {
+	addr   identity.Address
+	client Client
+	server Server
+
+	streamsMu *sync.Mutex
+	streams   map[identity.Address]Stream
+}
+
+func NewStreamer(addr identity.Address, client Client, server Server) Streamer {
+	return &streamer{
+		addr:   addr,
+		client: client,
+		server: server,
+	}
+}
+
+func (streamer streamer) Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
+	if streamer.addr < multiAddr.Address() {
+		return streamer.client.Connect(ctx, multiAddr)
+	}
+
+	stream, err := streamer.server.Listen(ctx, multiAddr.Address())
+	if err != nil {
+		return nil, err
+	}
+
+	streamer.streamsMu.Lock()
+	defer streamer.streamsMu.Unlock()
+	streamer.streams[multiAddr.Address()] = stream
+
+	return stream, nil
+}
+
+func (streamer streamer) Close(multiAddr identity.MultiAddress) error {
+	if streamer.addr < multiAddr.Address() {
+		return streamer.client.Disconnect(multiAddr)
+	}
+
+	streamer.streamsMu.Lock()
+	defer streamer.streamsMu.Unlock()
+
+	if stream, ok := streamer.streams[multiAddr.Address()]; ok {
+		err := stream.Close()
+		delete(streamer.streams, multiAddr.Address())
+		return err
+	}
+
+	return nil
+}
+
 // Client is an interface for connecting to a Server.
 type Client interface {
 
