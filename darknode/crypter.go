@@ -2,6 +2,7 @@ package darknode
 
 import (
 	"crypto/rsa"
+	"crypto/sha1"
 	"errors"
 	"fmt"
 	"sync"
