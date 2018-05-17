@@ -2,12 +2,36 @@ package grpc
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
+
+type OrderbookService struct {
+	server orderbook.Server
+}
+
+// NewOrderbookService returns a gRPC service that unmarshals
+// EncryptedOrderFragments and delegates control to an orderbook.Service.
+func NewOrderbookService(server orderbook.Server) OrderbookService {
+	return OrderbookService{
+		server: server,
+	}
+}
+
+// Register the OrderbookService to a grpc.Server.
+func (service *OrderbookService) Register(server *grpc.Server) {
+	RegisterOrderbookServiceServer(server, service)
+}
+
+// OpenOrder implements the gRPC service for receiving EncryptedOrderFragments.
+func (service *OrderbookService) OpenOrder(ctx context.Context, orderFragment *EncryptedOrderFragment) (*Nothing, error) {
+	return &Nothing{}, service.server.OpenOrder(ctx, unmarshalEncryptedOrderFragment(orderFragment))
+}
 
 type orderbookClient struct {
 	connPool *ConnPool
@@ -30,11 +54,11 @@ func (client *orderbookClient) OpenOrder(ctx context.Context, multiAddr identity
 	defer conn.Close()
 
 	orderbookServiceClient := NewOrderbookServiceClient(conn.ClientConn)
-	_, err = orderbookServiceClient.OpenOrder(ctx, adaptEncryptedOrderFragment(orderFragmentIn))
+	_, err = orderbookServiceClient.OpenOrder(ctx, marshalEncryptedOrderFragment(orderFragmentIn))
 	return err
 }
 
-func adaptEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *EncryptedOrderFragment {
+func marshalEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *EncryptedOrderFragment {
 	return &EncryptedOrderFragment{
 		OrderId:     orderFragmentIn.OrderID[:],
 		OrderType:   OrderType(orderFragmentIn.OrderType),
@@ -43,14 +67,37 @@ func adaptEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *Encry
 
 		Id:            orderFragmentIn.ID[:],
 		Tokens:        orderFragmentIn.Tokens,
-		Price:         adapterEncryptedCoExpShare(orderFragmentIn.Price),
-		Volume:        adapterEncryptedCoExpShare(orderFragmentIn.Volume),
-		MinimumVolume: adapterEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
+		Price:         marshalEncryptedCoExpShare(orderFragmentIn.Price),
+		Volume:        marshalEncryptedCoExpShare(orderFragmentIn.Volume),
+		MinimumVolume: marshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
 	}
 }
 
-func adapterEncryptedCoExpShare(value order.EncryptedCoExpShare) *EncryptedCoExpShare {
+func unmarshalEncryptedOrderFragment(orderFragmentIn *EncryptedOrderFragment) order.EncryptedFragment {
+	orderFragment := order.EncryptedFragment{
+		OrderType:   order.Type(orderFragmentIn.OrderType),
+		OrderParity: order.Parity(orderFragmentIn.OrderParity),
+		OrderExpiry: time.Unix(orderFragmentIn.OrderExpiry, 0),
+
+		Tokens:        orderFragmentIn.Tokens,
+		Price:         unmarshalEncryptedCoExpShare(orderFragmentIn.Price),
+		Volume:        unmarshalEncryptedCoExpShare(orderFragmentIn.Volume),
+		MinimumVolume: unmarshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
+	}
+	copy(orderFragment.OrderID[:], orderFragmentIn.OrderId)
+	copy(orderFragment.ID[:], orderFragmentIn.Id)
+	return orderFragment
+}
+
+func marshalEncryptedCoExpShare(value order.EncryptedCoExpShare) *EncryptedCoExpShare {
 	return &EncryptedCoExpShare{
+		Co:  value.Co,
+		Exp: value.Exp,
+	}
+}
+
+func unmarshalEncryptedCoExpShare(value *EncryptedCoExpShare) order.EncryptedCoExpShare {
+	return order.EncryptedCoExpShare{
 		Co:  value.Co,
 		Exp: value.Exp,
 	}

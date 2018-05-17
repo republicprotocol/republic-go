@@ -9,7 +9,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/grpc/client"
+	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/grpc/dht"
 	"github.com/republicprotocol/republic-go/identity"
 )
@@ -17,20 +17,20 @@ import (
 // Client is an abstraction over the gRPC SwarmClient RPCs that implements high
 // level client functionality. The Client uses a dht.DHT to store all
 // identity.MultiAddresses during its interactions with Swarm services, and a
-// client.ConnPool to reuse gRPC connections. The Client is used by Swarm
+// grpc.ConnPool to reuse gRPC connections. The Client is used by Swarm
 // services to interact with other Swarm services in the network.
 type Client struct {
 	crypter      crypto.Crypter
 	multiAddress identity.MultiAddress
 	dht          *dht.DHT
-	connPool     *client.ConnPool
+	connPool     *grpc.ConnPool
 	bootstrapped bool
 }
 
 // NewClient returns a Client that identifies itself using an
-// identity.MultiAddress and uses a dht.DHT and client.ConnPool when
+// identity.MultiAddress and uses a dht.DHT and grpc.ConnPool when
 // interacting with the swarm network.
-func NewClient(crypter crypto.Crypter, multiAddress identity.MultiAddress, dht *dht.DHT, connPool *client.ConnPool) Client {
+func NewClient(crypter crypto.Crypter, multiAddress identity.MultiAddress, dht *dht.DHT, connPool *grpc.ConnPool) Client {
 	return Client{
 		crypter:      crypter,
 		multiAddress: multiAddress,

@@ -2,8 +2,8 @@ package orderbook
 
 import (
 	"context"
+	"errors"
 
-	"github.com/pkg/errors"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 )
@@ -16,7 +16,7 @@ type Client interface {
 }
 
 type Server interface {
-	OpenOrder(context.Context, order.Fragment) error
+	OpenOrder(context.Context, order.EncryptedFragment) error
 }
 
 type Orderbooker interface {

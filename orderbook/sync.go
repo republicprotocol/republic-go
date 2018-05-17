@@ -21,8 +21,8 @@ type syncer struct {
 	sellOrders       map[int]order.ID
 }
 
-func NewSyncer(renLedger cal.RenLedger, limit int) syncer {
-	return syncer{
+func NewSyncer(renLedger cal.RenLedger, limit int) Syncer {
+	return &syncer{
 		renLedger:        renLedger,
 		renLedgerLimit:   limit,
 		buyOrderPointer:  0,
@@ -80,6 +80,7 @@ func (syncer *syncer) Prune() []OrderUpdate {
 					}
 					if status != order.Open {
 						update := NewOrderChange(syncer.buyOrders[key], order.ParityBuy, status, priority)
+
 						orderChanges <- update
 					}
 				})

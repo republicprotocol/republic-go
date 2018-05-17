@@ -284,3 +284,8 @@ func (ledger *RenLedgerContract) GetBlockNumberOfTx(transaction common.Hash) (ui
 func (ledger *RenLedgerContract) CurrentBlock() (*types.Block, error) {
 	return ledger.conn.Client.BlockByNumber(ledger.context, nil)
 }
+
+// Depth will return depth of confirmation blocks
+func (ledger *RenLedgerContract) Depth(orderID order.ID) (uint, error) {
+	panic("unimplemented")
+}
