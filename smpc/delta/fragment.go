@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	base58 "github.com/jbenet/go-base58"
+	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stackint"
@@ -12,16 +12,16 @@ import (
 
 // A FragmentID is the Keccak256 hash of the order IDs that were used to
 // compute the associated Fragment.
-type FragmentID []byte
+type FragmentID [32]byte
 
 // Equal returns an equality check between two DeltaFragmentIDs.
 func (id FragmentID) Equal(other FragmentID) bool {
-	return bytes.Equal(id, other)
+	return bytes.Equal(id[:], other[:])
 }
 
 // String returns a FragmentID as a Base58 encoded string.
 func (id FragmentID) String() string {
-	return base58.Encode(id)
+	return base58.Encode(id[:])
 }
 
 type Fragments []Fragment
@@ -36,11 +36,10 @@ type Fragment struct {
 	BuyOrderFragmentID  order.FragmentID
 	SellOrderFragmentID order.FragmentID
 
-	FstCodeShare   shamir.Share
-	SndCodeShare   shamir.Share
-	PriceShare     shamir.Share
-	MaxVolumeShare shamir.Share
-	MinVolumeShare shamir.Share
+	TokenShare     shamir.Share
+	PriceShare     order.CoExpShare
+	VolumeShare    order.CoExpShare
+	MinVolumeShare order.CoExpShare
 }
 
 func NewDeltaFragment(left, right *order.Fragment, prime *stackint.Int1024) Fragment {
@@ -53,39 +52,37 @@ func NewDeltaFragment(left, right *order.Fragment, prime *stackint.Int1024) Frag
 		sellOrderFragment = left
 	}
 
-	fstCodeShare := shamir.Share{
-		Key:   buyOrderFragment.FstCodeShare.Key,
-		Value: buyOrderFragment.FstCodeShare.Value.SubModulo(&sellOrderFragment.FstCodeShare.Value, prime),
-	}
-	sndCodeShare := shamir.Share{
-		Key:   buyOrderFragment.SndCodeShare.Key,
-		Value: buyOrderFragment.SndCodeShare.Value.SubModulo(&sellOrderFragment.SndCodeShare.Value, prime),
-	}
-	priceShare := shamir.Share{
-		Key:   buyOrderFragment.PriceShare.Key,
-		Value: buyOrderFragment.PriceShare.Value.SubModulo(&sellOrderFragment.PriceShare.Value, prime),
-	}
-	maxVolumeShare := shamir.Share{
-		Key:   buyOrderFragment.MaxVolumeShare.Key,
-		Value: buyOrderFragment.MaxVolumeShare.Value.SubModulo(&sellOrderFragment.MinVolumeShare.Value, prime),
-	}
-	minVolumeShare := shamir.Share{
-		Key:   buyOrderFragment.MinVolumeShare.Key,
-		Value: sellOrderFragment.MaxVolumeShare.Value.SubModulo(&buyOrderFragment.MinVolumeShare.Value, prime),
-	}
+	token := buyOrderFragment.Tokens.Sub(&sellOrderFragment.Tokens)
+	priceCo := buyOrderFragment.Price.Co.Sub(&sellOrderFragment.Price.Co)
+	priceExp := buyOrderFragment.Price.Exp.Sub(&sellOrderFragment.Price.Exp)
+	volumeCo := buyOrderFragment.Volume.Co.Sub(&sellOrderFragment.Volume.Co)
+	volumeExp := buyOrderFragment.Volume.Exp.Sub(&sellOrderFragment.Volume.Exp)
+	minVolumeCo := buyOrderFragment.MinimumVolume.Co.Sub(&sellOrderFragment.MinimumVolume.Co)
+	minVolumeExp := buyOrderFragment.MinimumVolume.Exp.Sub(&sellOrderFragment.MinimumVolume.Exp)
+	var fragmentID, deltaID [32]byte
+	copy(fragmentID[:], crypto.Keccak256(buyOrderFragment.ID[:], sellOrderFragment.ID[:]))
+	copy(deltaID[:], crypto.Keccak256(buyOrderFragment.OrderID[:], sellOrderFragment.OrderID[:]))
 
 	return Fragment{
-		ID:                  FragmentID(crypto.Keccak256([]byte(buyOrderFragment.ID), []byte(sellOrderFragment.ID))),
-		DeltaID:             ID(crypto.Keccak256([]byte(buyOrderFragment.OrderID), []byte(sellOrderFragment.OrderID))),
+		ID: fragmentID,
+		DeltaID:             deltaID,
 		BuyOrderID:          buyOrderFragment.OrderID,
 		SellOrderID:         sellOrderFragment.OrderID,
 		BuyOrderFragmentID:  buyOrderFragment.ID,
 		SellOrderFragmentID: sellOrderFragment.ID,
-		FstCodeShare:        fstCodeShare,
-		SndCodeShare:        sndCodeShare,
-		PriceShare:          priceShare,
-		MaxVolumeShare:      maxVolumeShare,
-		MinVolumeShare:      minVolumeShare,
+		TokenShare:        token,
+		PriceShare :  order.CoExpShare{
+			Co:priceCo,
+			Exp:priceExp,
+		},
+		VolumeShare:        order.CoExpShare{
+			Co:volumeCo,
+			Exp:volumeExp,
+		},
+		MinVolumeShare:       order.CoExpShare{
+			Co:minVolumeCo,
+			Exp:minVolumeExp,
+		},
 	}
 }
 
@@ -97,16 +94,10 @@ func (deltaFragment *Fragment) Equals(other *Fragment) bool {
 		deltaFragment.SellOrderID.Equal(other.SellOrderID) &&
 		deltaFragment.BuyOrderFragmentID.Equal(other.BuyOrderFragmentID) &&
 		deltaFragment.SellOrderFragmentID.Equal(other.SellOrderFragmentID) &&
-		deltaFragment.FstCodeShare.Key == other.FstCodeShare.Key &&
-		deltaFragment.FstCodeShare.Value.Cmp(&other.FstCodeShare.Value) == 0 &&
-		deltaFragment.SndCodeShare.Key == other.SndCodeShare.Key &&
-		deltaFragment.SndCodeShare.Value.Cmp(&other.SndCodeShare.Value) == 0 &&
-		deltaFragment.PriceShare.Key == other.PriceShare.Key &&
-		deltaFragment.PriceShare.Value.Cmp(&other.PriceShare.Value) == 0 &&
-		deltaFragment.MaxVolumeShare.Key == other.MaxVolumeShare.Key &&
-		deltaFragment.MaxVolumeShare.Value.Cmp(&other.MaxVolumeShare.Value) == 0 &&
-		deltaFragment.MinVolumeShare.Key == other.MinVolumeShare.Key &&
-		deltaFragment.MinVolumeShare.Value.Cmp(&other.MinVolumeShare.Value) == 0
+		deltaFragment.TokenShare.Equal(&other.TokenShare) &&
+		deltaFragment.PriceShare.Equal(&other.PriceShare) &&
+		deltaFragment.VolumeShare.Equal(&other.VolumeShare) &&
+		deltaFragment.MinVolumeShare.Equal(&other.MinVolumeShare)
 }
 
 // IsCompatible returns true if all Fragments are fragments of the same

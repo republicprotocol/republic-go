@@ -10,6 +10,7 @@ import (
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/smpc/delta"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
@@ -246,33 +247,74 @@ func LessThan(lhs, rhs order.Fragment) delta.Fragment{
 	//}
 }
 
-func Join(deltaFragments ...delta.Fragment) (*delta.Delta, error) {
-		panic("unimplemented")
-}
 
 type deltaBuilder struct {
 	PeersID   []byte
-	N   int
-	K  int
+	n   int
+	k  int
 	mu *sync.Mutex
-	Deltas  map[delta.ID][]delta.Fragment
+
+	deltas             map[delta.ID][]delta.Fragment
+	tokenSharesCache   []shamir.Share
+	priceCoShareCache  []shamir.Share
+	priceExpShareCache []shamir.Share
+	volumeCoShareCache  []shamir.Share
+	volumeExpShareCache []shamir.Share
+	minVolumeCoShareCache []shamir.Share
+	minVolumeExpShareCache []shamir.Share
+
 }
 
 func (builder *deltaBuilder) InsertDeltaFragment( fragment delta.Fragment) (*delta.Delta, error) {
 	builder.mu.Lock()
 	defer builder.mu.Unlock()
 
-	builder.Deltas[fragment.DeltaID] = append(builder.Deltas[fragment.DeltaID] , fragment)
-	if len(builder.Deltas[fragment.DeltaID]) > builder.K {
+	builder.deltas[fragment.DeltaID] = append(builder.deltas[fragment.DeltaID] , fragment)
+	if len(builder.deltas[fragment.DeltaID]) > builder.k {
 		// join the shares to a delta
-		dlt, err := Join(builder.Deltas[fragment.DeltaID]...)
+		dlt, err := builder.Join(builder.deltas[fragment.DeltaID]...)
 		if err != nil {
 			return nil, err
 		}
-		delete(builder.Deltas ,fragment.DeltaID )
+		delete(builder.deltas,fragment.DeltaID )
 
 		return dlt , nil
 	}
 
 	return nil , nil
+}
+
+
+func (builder *deltaBuilder) Join(deltaFragments ...delta.Fragment) (*delta.Delta, error) {
+	// Build the Delta
+	if len(deltaFragments) >= builder.k{
+		if !delta.IsCompatible(deltaFragments) {
+			return nil , errors.New("delta fragment are not compatible with each other ")
+		}
+
+		for i := 0; i < builder.k; i++ {
+			builder.tokenSharesCache[i] = deltaFragments[i].
+			builder.sndCodeSharesCache[i] = deltaFragments[i].SndCodeShare
+			builder.priceSharesCache[i] = deltaFragments[i].PriceShare
+			builder.maxVolumeSharesCache[i] = deltaFragments[i].MaxVolumeShare
+			builder.minVolumeSharesCache[i] = deltaFragments[i].MinVolumeShare
+		}
+
+		CoExp{
+			Co: shamir.Join(coExpShare.Co, ...),
+		}
+
+		delta := delta.NewDeltaFromShares(
+			deltaFragments[0].BuyOrderID,
+			deltaFragments[0].SellOrderID,
+			builder.fstCodeSharesCache,
+			builder.sndCodeSharesCache,
+			builder.priceSharesCache,
+			builder.minVolumeSharesCache,
+			builder.maxVolumeSharesCache,
+			builder.k,
+			builder.prime)
+		builder.deltas[string(delta.ID)] = delta
+		builder.deltasQueue = append(builder.deltasQueue, delta)
+	}
 }

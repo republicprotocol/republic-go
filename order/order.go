@@ -17,6 +17,11 @@ type Signature [65]byte
 // An ID is the keccak256 hash of an Order.
 type ID [32]byte
 
+// Equal returns an equality check between two DeltaFragmentIDs.
+func (id ID) Equal(other ID) bool {
+	return bytes.Equal(id[:], other[:])
+}
+
 // Token is a numerical representation of a token supported by Republic
 // Protocol.
 type Token uint32

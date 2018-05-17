@@ -7,14 +7,13 @@ import (
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
-	"github.com/republicprotocol/republic-go/stackint"
 )
 
 // A ID is the Keccak256 hash of the order IDs that were used to compute
 // the associated Delta.
 type ID [32]byte
 
-// Equal returns an equality check between two DeltaIDs.
+// Equal returns an equality check between two delta ID .
 func (id ID) Equal(other ID) bool {
 	return bytes.Equal(id[:], other[:])
 }
@@ -31,44 +30,77 @@ type Delta struct {
 	BuyOrderID  order.ID
 	SellOrderID order.ID
 	Tokens      uint64
+	Price       order.CoExp
+	Volumn      order.CoExp
+	MinVolume   order.CoExp
 }
 
-func NewDeltaFromShares(buyOrderID, sellOrderID order.ID, fstCodeShares, sndCodeShares, priceShares, maxVolumeShares, minVolumeShares shamir.Shares, k int64, prime stackint.Int1024) Delta {
-	// Join the Shares into a Result.
+func NewDeltaFromShares(buyOrderID, sellOrderID order.ID, tokenShares shamir.Shares, priceShares, volumeShares, minVolumeShares []order.CoExpShare) Delta {
 	delta := Delta{
 		BuyOrderID:  buyOrderID,
 		SellOrderID: sellOrderID,
 	}
-	delta.Tokens = shamir.Join(tokens)
-	delta.SndCode = shamir.Join(&prime, sndCodeShares)
-	delta.Price = shamir.Join(&prime, priceShares)
-	delta.MaxVolume = shamir.Join(&prime, maxVolumeShares)
-	delta.MinVolume = shamir.Join(&prime, minVolumeShares)
+	delta.Tokens = shamir.Join(tokenShares)
 
+	priceCos := make ([]shamir.Share, len(priceShares))
+	priceExps := make ([]shamir.Share, len(priceShares))
+	for i := range priceShares{
+		priceCos[i] = priceShares[i].Co
+		priceExps[i] = priceShares[i].Exp
+	}
+	delta.Price.Co = uint32(shamir.Join(priceCos))
+	delta.Price.Exp = uint32(shamir.Join(priceExps))
+
+	volumeCos := make ([]shamir.Share, len(volumeShares))
+	volumeExps := make ([]shamir.Share, len(volumeShares))
+	for i := range volumeShares{
+		volumeCos[i] = volumeShares[i].Co
+		volumeExps[i] = volumeShares[i].Exp
+	}
+	delta.Volumn.Co = uint32(shamir.Join(volumeCos))
+	delta.Volumn.Exp = uint32(shamir.Join(volumeExps))
+
+	minVolumeCos := make ([]shamir.Share, len(minVolumeShares))
+	minVolumeExps := make ([]shamir.Share, len(minVolumeShares))
+	for i := range minVolumeShares{
+		minVolumeCos[i] = minVolumeShares[i].Co
+		minVolumeExps[i] = minVolumeShares[i].Exp
+	}
+	delta.MinVolume.Co = uint32(shamir.Join(minVolumeCos))
+	delta.MinVolume.Exp = uint32(shamir.Join(minVolumeExps))
+
+	var ID [32]byte
 	// Compute the ResultID and return the Result.
-	delta.ID = ID(crypto.Keccak256(delta.BuyOrderID[:], delta.SellOrderID[:]))
+	copy(ID[:], crypto.Keccak256(delta.BuyOrderID[:], delta.SellOrderID[:]))
+	delta.ID = ID
+
 	return delta
 }
 
-func (delta *Delta) IsMatch(prime stackint.Int1024) bool {
-	zero := stackint.Zero()
-	two := stackint.Two()
-	zeroThreshold := prime.Div(&two)
+func (delta *Delta) IsMatch() bool {
+	zeroThreshold := shamir.Prime / 2
 
-	if delta.FstCode.Cmp(&zero) != 0 {
+	if delta.Tokens != 0 {
 		return false
 	}
-	if delta.SndCode.Cmp(&zero) != 0 {
+	if uint64(delta.Price.Exp) >= zeroThreshold {
 		return false
 	}
-	if delta.Price.Cmp(&zeroThreshold) == 1 {
+	if uint64(delta.Price.Co) >= zeroThreshold{
 		return false
 	}
-	if delta.MaxVolume.Cmp(&zeroThreshold) == 1 {
+	if uint64(delta.Volumn.Exp) >= zeroThreshold {
 		return false
 	}
-	if delta.MinVolume.Cmp(&zeroThreshold) == 1 {
+	if uint64(delta.Volumn.Co) >= zeroThreshold{
 		return false
 	}
+	if uint64(delta.MinVolume.Exp) >= zeroThreshold {
+		return false
+	}
+	if uint64(delta.MinVolume.Co) >= zeroThreshold{
+		return false
+	}
+
 	return true
 }
