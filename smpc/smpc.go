@@ -1,49 +1,111 @@
 package smpc
 
 import (
-	"context"
-	"time"
-
-	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/stream"
-	"github.com/republicprotocol/republic-go/swarm"
+	"errors"
+	"sync"
 )
 
+// ErrSmpcerIsAlreadyRunning is returned when a call to Smpcer.Start happens
+// on an Smpcer that has already been started.
+var ErrSmpcerIsAlreadyRunning = errors.New("smpcer is already running")
+
+// ErrSmpcerIsNotRunning is returned when a call to Smpcer.Shutdown happens on
+// an Smpcer that has not been started yet.
+var ErrSmpcerIsNotRunning = errors.New("smpcer is not running")
+
+// Smpcer is an interface for a secure multi-party computer. It asynchronously
+// consumes computation instructions and produces computation results.
 type Smpcer interface {
-	Input() chan<- Inst
-	Output() <-chan Result
+
+	// Start the Smpcer. Until a call to Smpcer.Start, no computation
+	// instruction will be processed.
+	Start() error
+
+	// Shutdown the Smpcer. After a call to Smpcer.Shutdown, no computation
+	// instruction will be processed.
+	Shutdown() error
+
+	// Instructions channel for sending computation instructions to the Smpcer.
+	Instructions() chan<- Inst
+
+	// Results channel for receiving computation results from the Smpcer.
+	Results() <-chan Result
 }
 
 type smpc struct {
-	client  stream.Client
-	server  stream.Server
-	swarmer swarm.Swarmer
+	instructions chan Inst
+	results      chan Result
+
+	shutdownMu        *sync.Mutex
+	shutdown          chan struct{}
+	shutdownDone      chan struct{}
+	shutdownInitiated bool
 }
 
-func NewSmpc(client stream.Client, server stream.Server, swarmer swarm.Swarmer) Smpcer {
+func NewSmpc(buffer int) Smpcer {
 	return &smpc{
-		client:  client,
-		server:  server,
-		swarmer: swarmer,
+		instructions: make(chan Inst, buffer),
+		results:      make(chan Result, buffer),
+
+		shutdownMu:        new(sync.Mutex),
+		shutdown:          nil,
+		shutdownDone:      nil,
+		shutdownInitiated: true,
 	}
 }
 
-func (smpc *smpc) Connect(addr identity.Address) (stream.Stream, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
 
-	multiAddr, err := smpc.swarmer.Query(ctx, addr, 3)
-	if err != nil {
-		return nil, err
+// Start implements the Smpcer interface.
+func (smpc *smpc) Start() error {
+	smpc.shutdownMu.Lock()
+	defer smpc.shutdownMu.Unlock()
+
+	if smpc.shutdown != nil {
+		return ErrSmpcerIsAlreadyRunning
 	}
+	smpc.shutdown = make(chan struct{})
+	smpc.shutdownDone = make(chan struct{})
+	smpc.shutdownInitiated = false
 
-	// Compare address and decide to connect to or listen for connection.
-	var stream stream.Stream
-	if multiAddr.Address() > smpc.Address() {
-		stream, err = smpc.client.Connect(ctx, multiAddr)
-	} else {
-		stream, err = smpc.server.Listen(ctx, multiAddr.Address())
+	go smpc.run()
+	return nil
+}
+
+// Shutdown implements the Smpcer interface.
+func (smpc *smpc) Shutdown() error {
+	smpc.shutdownMu.Lock()
+	defer smpc.shutdownMu.Unlock()
+
+	if smpc.shutdownInitiated {
+		return ErrSmpcerIsNotRunning
 	}
+	smpc.shutdownInitiated = true
 
-	return stream, nil
+	close(smpc.shutdown)
+	<-smpc.shutdownDone
+
+	smpc.shutdown = nil
+	smpc.shutdownDone = nil
+
+	return nil
+}
+
+// Instructions implements the Smpcer interface.
+func (smpc *smpc) Instructions() chan<- Inst {
+	return smpc.instructions
+}
+
+// Results implements the Smpcer interface.
+func (smpc *smpc) Results() <-chan Result {
+	return smpc.results
+}
+
+func (smpc *smpc) run() {
+	for {
+		select {
+		case <-smpc.shutdown:
+			close(smpc.shutdownDone)
+			return
+		}
+	}
 }

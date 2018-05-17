@@ -1,4 +1,4 @@
-package client_test
+package grpc_test
 
 import (
 	"context"
@@ -6,9 +6,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/crypto"
-	. "github.com/republicprotocol/republic-go/grpc/client"
+	. "github.com/republicprotocol/republic-go/grpc"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
 

@@ -8,7 +8,16 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+var ErrOrderNotFound = errors.New("order not found")
 var ErrOrderFragmentNotFound = errors.New("order fragment not found")
+
+type Client interface {
+	OpenOrder(context.Context, identity.MultiAddress, order.EncryptedFragment) error
+}
+
+type Server interface {
+	OpenOrder(context.Context, order.Fragment) error
+}
 
 type Orderbooker interface {
 
@@ -33,21 +42,13 @@ type Orderbooker interface {
 	Order(order.ID) (order.Order, error)
 }
 
-type OrderbookClient interface {
-	OpenOrder(context.Context, identity.MultiAddress, order.EncryptedFragment) error
-}
-
-type OrderbookServer interface {
-	OpenOrder(context.Context, order.Fragment) error
-}
-
 type orderbook struct {
-	client OrderbookClient
+	client Client
 	storer Storer
 	syncer Syncer
 }
 
-func NewOrderbook(client OrderbookClient, storer Storer, syncer Syncer) Orderbooker {
+func NewOrderbook(client Client, storer Storer, syncer Syncer) Orderbooker {
 	return &orderbook{
 		client: client,
 		storer: storer,

@@ -83,14 +83,14 @@ type Order struct {
 	Parity        Parity    `json:"parity"`
 	Expiry        time.Time `json:"expiry"`
 	Tokens        Tokens    `json:"tokens"`
-	Price         Value     `json:"price"`
-	Volume        Value     `json:"volume"`
-	MinimumVolume Value     `json:"minimumVolume"`
+	Price         CoExp     `json:"price"`
+	Volume        CoExp     `json:"volume"`
+	MinimumVolume CoExp     `json:"minimumVolume"`
 	Nonce         int64     `json:"nonce"`
 }
 
 // NewOrder returns a new Order and computes the ID.
-func NewOrder(ty Type, parity Parity, expiry time.Time, tokens Tokens, price, volume, minimumVolume Value, nonce int64) Order {
+func NewOrder(ty Type, parity Parity, expiry time.Time, tokens Tokens, price, volume, minimumVolume CoExp, nonce int64) Order {
 	order := Order{
 		Type:          ty,
 		Parity:        parity,
@@ -184,9 +184,9 @@ func (order *Order) Split(n, k int64) ([]Fragment, error) {
 			order.Type,
 			order.Parity,
 			tokens[i],
-			FragmentValue{Co: priceCos[i], Exp: priceExps[i]},
-			FragmentValue{Co: volumeCos[i], Exp: volumeExps[i]},
-			FragmentValue{Co: minimumVolumeCos[i], Exp: minimumVolumeExps[i]},
+			CoExpShare{Co: priceCos[i], Exp: priceExps[i]},
+			CoExpShare{Co: volumeCos[i], Exp: volumeExps[i]},
+			CoExpShare{Co: minimumVolumeCos[i], Exp: minimumVolumeExps[i]},
 		)
 	}
 	return fragments, nil
