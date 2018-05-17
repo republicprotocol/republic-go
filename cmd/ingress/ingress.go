@@ -84,6 +84,8 @@ func main() {
 		log.Printf("error bootstrapping: %v", err)
 	}
 
+	ingresser.SyncDarkpool()
+
 	ingressAdapter := adapter.NewIngressAdapter(ingresser)
 
 	log.Printf("address %v", multiAddr)
