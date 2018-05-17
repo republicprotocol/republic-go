@@ -3,17 +3,21 @@ package ome
 import (
 	"context"
 	"errors"
-	"sync"
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/smpc/delta"
 )
 
 var ErrNotFoundInStore = errors.New("not found in store")
+
+type Delegate interface {
+	OnConfirmOrder(order order.Order, matches []order.Order) error
+}
 
 type OmeClient interface {
 	OpenOrder(ctx context.Context, multiAddr identity.MultiAddress, orderFragment order.Fragment) error
@@ -24,163 +28,137 @@ type OmeServer interface {
 }
 
 type Omer interface {
-	OnChangeEpoch(ξ cal.Epoch) error
+	OnChangeEpoch(ξ cal.Epoch)
 }
 
 type Ome struct {
-	done     <-chan struct{}
-	mu       *sync.Mutex
-	epoch    cal.Epoch
-	delegate Delegate
-	storer   Storer
-	syncer   Syncer
-	ranker   Ranker
-	smpcer   smpc.Smpcer
-	deltas   map[delta.ID][]delta.Fragment
+	done      <-chan struct{}
+	epoch     <-chan cal.Epoch
+	delegate  Delegate
+	orderbook orderbook.Orderbooker
+	ranker    Ranker
+	smpcer    smpc.Smpcer
+	deltas    map[delta.ID][]delta.Fragment
 }
 
-func NewOme(done <-chan struct{}, pod <-chan cal.Epoch, delegate Delegate, storer Storer, syncer Syncer, ranker Ranker, smpcer smpc.Smpcer) Ome {
+func NewOme(done <-chan struct{}, delegate Delegate, orderbook orderbook.Orderbooker, ranker Ranker, smpcer smpc.Smpcer) Ome {
 	ome := Ome{}
 	ome.done = done
-	ome.mu = new(sync.Mutex)
+	ome.epoch = make(chan cal.Epoch)
 	ome.delegate = delegate
-	ome.storer = storer
-	ome.syncer = syncer
+	ome.orderbook = orderbook
 	ome.ranker = ranker
 	ome.smpcer = smpcer
 	ome.deltas = map[delta.ID][]delta.Fragment{}
-	subChan := make(chan smpc.InstConnect)
-
-	// Listen for network change and update the pod infor
-	go func() {
-		defer close(subchan)
-		for {
-			select {
-			case <-done:
-				return
-			case pod, ok := <-pod:
-				if !ok {
-					return
-				}
-				ome.mu.Lock()
-				ome.pod = pod
-				ome.mu.Unlock()
-
-			}
-		}
-	}()
-
 	return ome
 }
 
-func (engine *Ome) OpenOrder(fragment order.Fragment) error {
-	return engine.storer.Insert(fragment)
+func (ome *Ome) OnChangeEpoch(ξ cal.Epoch) {
+	ome.epoch <- ξ
 }
 
-func (engine *Ome) CancelOrder(fragment order.Fragment) error {
-	return engine.storer.Delete(fragment.OrderID)
+func (ome *Ome) Sync() error {
+	updates, err := ome.orderbook.Sync()
+	if err != nil {
+		return err
+	}
+	for _, update := range updates {
+		switch update.Status {
+		case order.Open:
+			ome.ranker.Insert(update.ID, update.Parity, update.Priority)
+		case order.Canceled, order.Settled, order.Confirmed:
+			ome.ranker.Remove(update.ID)
+		}
+	}
+
+	return nil
 }
 
-func (engine *Ome) SyncRenLedger() error {
-	return engine.syncer.SyncRenLedger(engine.done, engine.ranker)
-}
+func (ome *Ome) Compute() chan error {
+	errs := make(chan error)
+	var currentEpoch cal.Epoch
 
-func (engine *Ome) SyncRenLedger() error {
-	done := make(chan struct{})
-	defer close(done)
+	orderPairs := ome.ranker.OrderPairs(ome.done)
+	input, output := ome.smpcer.Input(), ome.smpcer.Output()
 
 	go func() {
-		// todo : handle error
+		defer close(errs)
 
-	}()
-
-	go func() {
-		pairs := []OrderPair{}
+		waitingList := []OrderPair{}
 		for {
 			select {
-			case <-done:
+			case <-ome.done:
 				return
-			default:
-				// todo : check if we have the order Fragments
-				// if so, call smpc to generate the delta fragment
-				// store the delta fragemtn , check if we have enough thredshold
-				// if so check if its a match or not ,
-				// confirm order if it's a match .
+			case epoch, ok := <-ome.epoch:
+				if !ok {
+					return
+				}
+				currentEpoch = epoch
+				input <- smpc.Inst{
+					InstConnect: &smpc.InstConnect{
+						PeersID: epoch.Hash[:],
+						Peers:   epoch.Darknodes,
+						N:       len(epoch.Darknodes),
+						K:       (len(epoch.Darknodes) + 1) * 2 / 3,
+					},
+				}
+			case pair, ok := <-orderPairs:
+				// Try again
+				if !ok {
+					orderPairs = ome.ranker.OrderPairs(ome.done)
+					continue
+				}
 
-				orderPairs := engine.ranker.Get(50)
-				for _, pair := range orderPairs {
-					fragment, err := engine.storer.Get(pair.orderID)
+				for i := 0; i < len(waitingList); i++ {
+					//todo : need to have a way for element to expire
+					inst, err := generateInstruction(waitingList[i], ome.orderbook, currentEpoch)
 					if err != nil {
-						pairs = append(pairs, pair)
 						continue
 					}
-					// We'll support 1 to multi matches in the future
-					if len(pair.matches) != 1 {
-						return
-					}
-					matchFragment, err := engine.storer.Get(pair.matches[0])
+
+					input <- inst
+					waitingList = append(waitingList[:i], waitingList[i+1:]...)
+					i--
+				}
+
+				inst, err := generateInstruction(pair, ome.orderbook, currentEpoch)
+				if err != nil {
+					waitingList = append(waitingList, pair)
+					continue
+				}
+				input <- inst
+			case result := <-output:
+				if result.Delta.IsMatch(shamir.Prime) {
+					// todo :talk to the orderbook ?
+					err := ome.delegate.OnConfirmOrder()
 					if err != nil {
-						pairs = append(pairs, pair)
-						continue
-					}
 
-					delta, err := engine.smpcer.LessThan(fragment, matchFragment)
-					if err != nil {
-						return
-					}
-
-					engine.deltas[delta.DeltaID] = append(engine.deltas[delta.DeltaID], delta)
-					threshold := engine.syncer.Threshold()
-					if threshold == -1 {
-						return
-					}
-
-					if len(engine.deltas[delta.DeltaID]) > threshold {
-						delta, err := engine.smpcer.Join(engine.deltas[delta.DeltaID]...)
-						if err != nil {
-							return
-						}
-						// Fixme : delta.IsMatch shoudl take an uint64
-						if delta.IsMatch(shamir.Prime) {
-							err = engine.ConfirmOrder(delta.BuyOrderID, []order.ID{delta.SellOrderID})
-							if err != nil {
-								return
-							}
-							err = engine.delegate.ConfirmOrder(delta.BuyOrderID, []order.ID{delta.SellOrderID})
-							if err != nil {
-								return
-							}
-
-							engine.ranker.Remove(delta.BuyOrderID)
-							engine.ranker.Remove(delta.SellOrderID)
-						}
 					}
 				}
 			}
 		}
 	}()
 
-	return nil
+	return errs
 }
 
-func (engine *Ome) Compute(done <-chan struct{}) error {
-
-}
-
-func (engine *Ome) ConfirmOrder(id order.ID, matches []order.ID) error {
-	if err := engine.syncer.ConfirmOrder(id, matches); err != nil {
-		return err
+func generateInstruction(pair OrderPair, orderbook orderbook.Orderbooker, epoch cal.Epoch) (smpc.Inst, error) {
+	// Get orderFragment from the orderbook
+	buyOrderFragment, err := orderbook.OrderFragment(pair.BuyOrder)
+	if err != nil {
+		return smpc.Inst{}, err
+	}
+	sellOrderFragment, err := orderbook.OrderFragment(pair.SellOrder)
+	if err != nil {
+		return smpc.Inst{}, err
 	}
 
-	// Remove the order from the ranker
-	engine.ranker.Remove(id)
-	for _, match := range matches {
-		engine.ranker.Remove(match)
-	}
-
-	return nil
-}
-
-type Delegate interface {
-	OnConfirmOrder(order order.Order, matches []order.Order) error
+	// generate instruction message for smpc
+	return smpc.Inst{
+		InstCompute: &smpc.InstCompute{
+			PeersID: epoch.Hash[:],
+			Buy:     buyOrderFragment,
+			Sell:    sellOrderFragment,
+		},
+	}, nil
 }

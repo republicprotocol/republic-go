@@ -176,12 +176,12 @@ func (ledger *RenLedgerContract) Matches(id order.ID) ([]order.ID, error) {
 	return orderIDs, nil
 }
 
-func (ledger *RenLedgerContract) BuyOrders(offset , limit int) ([]order.ID, error) {
-	orders := make ([]order.ID, limit)
-	for i := offset; i < offset + limit; i ++ {
-		ordId, ok ,  err  := ledger.binding.BuyOrder(ledger.callOpts, big.NewInt(int64(i)))
+func (ledger *RenLedgerContract) BuyOrders(offset, limit int) ([]order.ID, error) {
+	orders := make([]order.ID, limit)
+	for i := offset; i < offset+limit; i++ {
+		ordId, ok, err := ledger.binding.BuyOrder(ledger.callOpts, big.NewInt(int64(i)))
 		if err != nil {
-			return nil , err
+			return nil, err
 		}
 		if !ok {
 			return orders, nil
@@ -192,12 +192,12 @@ func (ledger *RenLedgerContract) BuyOrders(offset , limit int) ([]order.ID, erro
 	return orders, nil
 }
 
-func (ledger *RenLedgerContract) SellOrders(offset , limit int) ([]order.ID, error) {
-	orders := make ([]order.ID, limit)
-	for i := offset; i < offset + limit; i ++ {
-		ordId, ok ,  err  := ledger.binding.SellOrder(ledger.callOpts, big.NewInt(int64(i)))
+func (ledger *RenLedgerContract) SellOrders(offset, limit int) ([]order.ID, error) {
+	orders := make([]order.ID, limit)
+	for i := offset; i < offset+limit; i++ {
+		ordId, ok, err := ledger.binding.SellOrder(ledger.callOpts, big.NewInt(int64(i)))
 		if err != nil {
-			return nil , err
+			return nil, err
 		}
 		if !ok {
 			return orders, nil
@@ -207,7 +207,6 @@ func (ledger *RenLedgerContract) SellOrders(offset , limit int) ([]order.ID, err
 
 	return orders, nil
 }
-
 
 func (ledger *RenLedgerContract) Trader(id order.ID) (common.Address, error) {
 	var orderID [32]byte

@@ -42,8 +42,8 @@ func (syncer *syncer) Sync() ([]OrderUpdate, error) {
 		return nil, err
 	}
 	syncer.buyOrderPointer += len(buyOrderIDs)
-	for _, ord := range buyOrderIDs {
-		update := NewOrderChange(ord, order.Open)
+	for i, ord := range buyOrderIDs {
+		update := NewOrderChange(ord, order.ParityBuy, order.Open, uint64(syncer.buyOrderPointer+i))
 		updates = append(updates, update)
 	}
 	// Get new sell orders from the ledger
@@ -52,8 +52,8 @@ func (syncer *syncer) Sync() ([]OrderUpdate, error) {
 		return nil, err
 	}
 	syncer.sellOrderPointer += len(sellOrderIDs)
-	for _, ord := range sellOrderIDs {
-		update := NewOrderChange(ord, order.Open)
+	for i, ord := range sellOrderIDs {
+		update := NewOrderChange(ord, order.ParitySell, order.Open, uint64(syncer.sellOrderPointer+i))
 		updates = append(updates, update)
 	}
 
@@ -73,8 +73,13 @@ func (syncer *syncer) Prune() []OrderUpdate {
 						log.Println("fail to check order status", err)
 						return
 					}
-					if status != order.Open{
-						update := NewOrderChange(syncer.buyOrders[key], status)
+					priority, err := syncer.renLedger.Priority(syncer.buyOrders[key])
+					if err != nil {
+						log.Println("fail to check order priority", err)
+						return
+					}
+					if status != order.Open {
+						update := NewOrderChange(syncer.buyOrders[key], order.ParityBuy, status, priority)
 						orderChanges <- update
 					}
 				})
@@ -86,9 +91,13 @@ func (syncer *syncer) Prune() []OrderUpdate {
 						log.Println("fail to check order status", err)
 						return
 					}
-
-					if status != order.Open{
-						update := NewOrderChange(syncer.sellOrders[key], status)
+					priority, err := syncer.renLedger.Priority(syncer.sellOrders[key])
+					if err != nil {
+						log.Println("fail to check order priority", err)
+						return
+					}
+					if status != order.Open {
+						update := NewOrderChange(syncer.sellOrders[key], order.ParitySell, status, priority)
 						orderChanges <- update
 					}
 				})
@@ -105,13 +114,17 @@ func (syncer *syncer) Prune() []OrderUpdate {
 }
 
 type OrderUpdate struct {
-	ID     order.ID
-	Status order.Status
+	ID       order.ID
+	Parity   order.Parity
+	Status   order.Status
+	Priority uint64
 }
 
-func NewOrderChange(id order.ID, status order.Status) OrderUpdate {
+func NewOrderChange(id order.ID, parity order.Parity, status order.Status, priority uint64) OrderUpdate {
 	return OrderUpdate{
-		ID:     id,
-		Status: status,
+		ID:       id,
+		Parity:   parity,
+		Status:   status,
+		Priority: priority,
 	}
 }

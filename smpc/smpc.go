@@ -28,7 +28,7 @@ func NewSmpc(client stream.Client, server stream.Server, swarmer swarm.Swarmer) 
 	}
 }
 
-func (smpc *Smpc) Connect(addr identity.Address) (stream.Stream, error) {
+func (smpc *smpc) Connect(addr identity.Address) (stream.Stream, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 

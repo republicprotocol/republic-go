@@ -23,7 +23,7 @@ type Storer interface {
 // LevelDBStorer is an levelDB implementation of the Storer interface
 type LevelDBStorer struct {
 	orderFragments *leveldb.DB
-	orders  *leveldb.DB
+	orders         *leveldb.DB
 }
 
 func NewLevelDBStorer(dbPath string) (LevelDBStorer, error) {
@@ -65,6 +65,6 @@ func (storer LevelDBStorer) Get(id order.ID) (order.Fragment, error) {
 	return fragment, nil
 }
 
-func (storer LevelDBStorer) Delete(id order.ID) error  {
+func (storer LevelDBStorer) Delete(id order.ID) error {
 	return storer.orderFragments.Delete(id[:], nil)
 }
