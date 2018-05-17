@@ -12,16 +12,16 @@ type Inst struct {
 }
 
 type InstConnect struct {
-	Epoch []byte
-	Peers []identity.Address
-	N     int
-	K     int
+	PeersID []byte
+	Peers   []identity.Address
+	N       int
+	K       int
 }
 
 type InstCompute struct {
-	Epoch []byte
-	Buy   order.Fragment
-	Sell  order.Fragment
+	PeersID []byte
+	Buy     order.Fragment
+	Sell    order.Fragment
 }
 
 type Result struct {

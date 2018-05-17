@@ -4,28 +4,24 @@ import (
 	"context"
 	"time"
 
-	"github.com/republicprotocol/republic-go/shamir"
-
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/smpc/delta"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
 type Smpcer interface {
 	Input() chan<- Inst
-	Output() <-chan Compute
+	Output() <-chan Result
 }
 
-type Smpc struct {
+type smpc struct {
 	client  stream.Client
 	server  stream.Server
 	swarmer swarm.Swarmer
 }
 
-func NewSmpc(client stream.Client, server stream.Server, swarmer swarm.Swarmer) Smpc {
-	return Smpc{
+func NewSmpc(client stream.Client, server stream.Server, swarmer swarm.Swarmer) Smpcer {
+	return &smpc{
 		client:  client,
 		server:  server,
 		swarmer: swarmer,
