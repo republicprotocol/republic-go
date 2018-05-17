@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"encoding/binary"
 	"encoding/json"
 	"math/big"
@@ -40,12 +41,14 @@ func NewRsaKey(privateKey *rsa.PrivateKey) RsaKey {
 
 // Encrypt a plain text message and return the cipher text.
 func (key *RsaKey) Encrypt(plainText []byte) ([]byte, error) {
-	return rsa.EncryptPKCS1v15(rand.Reader, &key.PublicKey, plainText)
+	hash := sha1.New()
+	return rsa.EncryptOAEP(hash, rand.Reader, &key.PublicKey, plainText, []byte{})
 }
 
 // Decrypt a cipher text and return the plain text message.
 func (key *RsaKey) Decrypt(cipherText []byte) ([]byte, error) {
-	return rsa.DecryptPKCS1v15(rand.Reader, key.PrivateKey, cipherText)
+	hash := sha1.New()
+	return rsa.DecryptOAEP(hash, rand.Reader, key.PrivateKey, cipherText, []byte{})
 }
 
 // Equal returns true if two RsaKeys are exactly equal.

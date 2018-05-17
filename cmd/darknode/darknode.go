@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot get multiaddress: %v", err)
 	}
-	log.Println("multiaddress is %v", multiAddr)
+	log.Printf("multiaddress is %v\n", multiAddr)
 
 	// Create the Darknode
 	node, err := darknode.NewDarknode(multiAddr, config)
