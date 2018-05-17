@@ -16,7 +16,7 @@ type Client interface {
 }
 
 type Server interface {
-	OpenOrder(context.Context, order.Fragment) error
+	OpenOrder(context.Context, order.EncryptedFragment) error
 }
 
 type Orderbooker interface {

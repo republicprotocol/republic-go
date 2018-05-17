@@ -19,7 +19,8 @@ type StreamService struct {
 	connsStream map[identity.Address]chan safeStream
 }
 
-// NewStreamService returns a gRP
+// NewStreamService returns an implementation of the stream.Server interface
+// that uses gRPC for bidirectional streaming.
 func NewStreamService(addr identity.Address, crypter crypto.Crypter) StreamService {
 	return StreamService{
 		addr:    addr,
