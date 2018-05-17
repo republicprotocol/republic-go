@@ -2,8 +2,8 @@ package orderbook
 
 import (
 	"context"
+	"errors"
 
-	"github.com/pkg/errors"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 )
