@@ -19,7 +19,6 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
-	"github.com/republicprotocol/republic-go/darkocean"
 	"github.com/republicprotocol/republic-go/stackint"
 	"github.com/urfave/cli"
 )
