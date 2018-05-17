@@ -1,8 +1,7 @@
-package darknode
+package crypter
 
 import (
 	"crypto/rsa"
-	"crypto/sha1"
 	"errors"
 	"fmt"
 	"sync"
@@ -153,8 +152,8 @@ func (crypter *Crypter) encryptToAddress(addr string, plainText []byte) ([]byte,
 		return nil, err
 	}
 
-	rsaKey := crypto.RsaKey{PrivateKey: rsa.PrivateKey{}}
-	rsaKey.PublicKey := crypter.publicKeyCache[addr].publicKey
+	rsaKey := crypto.RsaKey{PrivateKey: &rsa.PrivateKey{}}
+	rsaKey.PublicKey = crypter.publicKeyCache[addr].publicKey
 	return rsaKey.Encrypt(plainText)
 }
 
@@ -163,11 +162,7 @@ func (crypter *Crypter) updatePublicKeyCache(addr string) error {
 	// Update the entry in the cache
 	entry, ok := crypter.publicKeyCache[addr]
 	if !ok || entry.timestamp.Add(crypter.cacheUpdatePeriod).Before(time.Now()) {
-		publicKeyBytes, err := crypter.darkpool.PublicKey(identity.Address(addr))
-		if err != nil {
-			return err
-		}
-		publicKey, err := crypto.RsaPublicKeyFromBytes(publicKeyBytes)
+		publicKey, err := crypter.darkpool.PublicKey(identity.Address(addr))
 		if err != nil {
 			return err
 		}

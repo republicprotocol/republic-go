@@ -51,20 +51,20 @@ type Ingresser interface {
 }
 
 type Ingress struct {
-	darkpool    cal.Darkpool
-	renLedger   cal.RenLedger
-	swarmer     swarm.Swarmer
-	orderbooker orderbook.Orderbooker
-	pods        map[[32]byte]cal.Pod
+	darkpool        cal.Darkpool
+	renLedger       cal.RenLedger
+	swarmer         swarm.Swarmer
+	orderbookClient orderbook.Client
+	pods            map[[32]byte]cal.Pod
 }
 
-func NewIngress(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Swarmer, orderbooker orderbook.Orderbooker) Ingresser {
+func NewIngress(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Swarmer, orderbookClient orderbook.Client) Ingresser {
 	return &Ingress{
-		darkpool:    darkpool,
-		renLedger:   renLedger,
-		swarmer:     swarmer,
-		orderbooker: orderbooker,
-		pods:        map[[32]byte]cal.Pod{},
+		darkpool:        darkpool,
+		renLedger:       renLedger,
+		swarmer:         swarmer,
+		orderbookClient: orderbookClient,
+		pods:            map[[32]byte]cal.Pod{},
 	}
 }
 
@@ -171,7 +171,7 @@ func (ingress *Ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 				errs <- fmt.Errorf("cannot send query to %v: %v", darknode, err)
 				return
 			}
-			if err := ingress.orderbooker.OpenOrder(ctx, darknodeMultiAddr, orderFragment.EncryptedFragment); err != nil {
+			if err := ingress.orderbookClient.OpenOrder(ctx, darknodeMultiAddr, orderFragment.EncryptedFragment); err != nil {
 				errs <- fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
 				return
 			}

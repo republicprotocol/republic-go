@@ -12,7 +12,7 @@ The ID is the keccak256 hash of the order, stored as bytes.
 
 ### Type
 
-The order type is an enumerated value.
+The order type is an enumerated value. It is an 8-bit unsigned integer.
 
 **Values**
 
@@ -21,7 +21,7 @@ The order type is an enumerated value.
 
 ### Parity
 
-The order partity is an enumerated value.
+The order partity is an enumerated value. It is an 8-bit unsigned integer.
 
 **Values**
 
@@ -30,7 +30,7 @@ The order partity is an enumerated value.
 
 ### Expiry
 
-The order expiry is a 64-bit unsigned integer.
+The order expiry is a 64-bit signed integer.
 
 **Values**
 
@@ -49,20 +49,20 @@ The tokens are a 64-bit unsigned integer. It is the concatenation of two of 32-b
 
 ### Price
 
-The price is a 32-bit unsigned integer. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.005*c*10^(q-26.0)_. The value of _c_ must be an integer in the range 1 to 1999 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
+The price is two 16-bit unsigned integers. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.005*c*10^(q-26.0)_. The value of _c_ must be an integer in the range 1 to 1999 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
 
 The price is interpreted as the cost for 1 standard unit of the priority token, in _1e-12_ units of the non-priority token. For example, if the price of REN is _0.000009555BTC_, then the price should be listed as _9.5*10e6_, where _c = 1911_ and _q = 32_. 
 
 ### Volume
 
-The volume is a 32-bit unsigned integer. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.2*c*10^q_. The value of _c_ must be an integer in the range 1 to 49 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
+The volume is two 16-bit unsigned integers. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.2*c*10^q_. The value of _c_ must be an integer in the range 1 to 49 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
 
 The volume is interpreted as the maximum number of _1e-12_ units of the priority token that can be traded by this order.
 
 ### Minimum Volume
 
 
-The minimum volume is a 32-bit unsigned integer. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.2*c*10^q_. The value of _c_ must be an integer in the range 1 to 49 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
+The minimum volume is two 16-bit unsigned integers. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.2*c*10^q_. The value of _c_ must be an integer in the range 1 to 49 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively.
 
 The minimum volume is interpreted as the minimum number of _1e-12_ units of the priority token that can be traded by this order.
 

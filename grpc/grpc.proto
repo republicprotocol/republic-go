@@ -2,16 +2,33 @@ syntax = "proto3";
 
 package grpc;
 
-message Nothing {
+service SwarmService {
+    rpc Ping (PingRequest) returns (PingResponse);
+    rpc Query (QueryRequest) returns (stream QueryResponse);
+}
+
+message PingRequest {
+    bytes signature = 1;
+    string multiAddress = 2;
+}
+
+message PingResponse {
+    bytes signature = 1;
+    string multiAddress = 2;
+}
+
+message QueryRequest {
+    bytes signature = 1;
+    string address = 2;
+}
+
+message QueryResponse {
+    bytes signature = 1;
+    string multiAddress = 2;
 }
 
 service StreamService {
     rpc Connect(stream StreamMessage) returns (stream StreamMessage);
-}
-
-message StreamAddress {
-    bytes signature = 1;
-    string address = 2;
 }
 
 message StreamMessage {
@@ -19,18 +36,20 @@ message StreamMessage {
     bytes data = 2;
 }
 
+message StreamAddress {
+    bytes signature = 1;
+    string address = 2;
+}
+
 service OrderbookService {
-    rpc OpenOrder(EncryptedOrderFragment) returns (Nothing);
+    rpc OpenOrder(OpenOrderRequest) returns (OpenOrderResponse);
 }
 
-enum OrderType {
-    Midpoint = 0;
-    Limit    = 1;
+message OpenOrderRequest {
+    EncryptedOrderFragment orderFragment = 1;
 }
 
-enum OrderParity {
-    BUY  = 0;
-    SELL = 1;
+message OpenOrderResponse {
 }
 
 message EncryptedOrderFragment {
@@ -44,6 +63,16 @@ message EncryptedOrderFragment {
     EncryptedCoExpShare price         = 7;
     EncryptedCoExpShare volume        = 8;
     EncryptedCoExpShare minimumVolume = 9;
+}
+
+enum OrderType {
+    Midpoint = 0;
+    Limit    = 1;
+}
+
+enum OrderParity {
+    Buy  = 0;
+    Sell = 1;
 }
 
 message EncryptedCoExpShare {

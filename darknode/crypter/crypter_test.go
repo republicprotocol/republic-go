@@ -1,4 +1,4 @@
-package darknode_test
+package crypter_test
 
 import (
 	"bytes"

@@ -29,8 +29,8 @@ func (service *OrderbookService) Register(server *grpc.Server) {
 }
 
 // OpenOrder implements the gRPC service for receiving EncryptedOrderFragments.
-func (service *OrderbookService) OpenOrder(ctx context.Context, orderFragment *EncryptedOrderFragment) (*Nothing, error) {
-	return &Nothing{}, service.server.OpenOrder(ctx, unmarshalEncryptedOrderFragment(orderFragment))
+func (service *OrderbookService) OpenOrder(ctx context.Context, request *OpenOrderRequest) (*OpenOrderResponse, error) {
+	return &OpenOrderResponse{}, service.server.OpenOrder(ctx, unmarshalEncryptedOrderFragment(request.OrderFragment))
 }
 
 type orderbookClient struct {
@@ -46,15 +46,18 @@ func NewOrderbookClient(connPool *ConnPool) orderbook.Client {
 }
 
 // OpenOrder implements the orderbook.Client interface.
-func (client *orderbookClient) OpenOrder(ctx context.Context, multiAddr identity.MultiAddress, orderFragmentIn order.EncryptedFragment) error {
+func (client *orderbookClient) OpenOrder(ctx context.Context, multiAddr identity.MultiAddress, orderFragment order.EncryptedFragment) error {
 	conn, err := client.connPool.Dial(ctx, multiAddr)
 	if err != nil {
 		return fmt.Errorf("cannot dial %v: %v", multiAddr, err)
 	}
 	defer conn.Close()
 
-	orderbookServiceClient := NewOrderbookServiceClient(conn.ClientConn)
-	_, err = orderbookServiceClient.OpenOrder(ctx, marshalEncryptedOrderFragment(orderFragmentIn))
+	request := &OpenOrderRequest{
+		OrderFragment: marshalEncryptedOrderFragment(orderFragment),
+	}
+	_, err = NewOrderbookServiceClient(conn.ClientConn).OpenOrder(ctx, request)
+
 	return err
 }
 

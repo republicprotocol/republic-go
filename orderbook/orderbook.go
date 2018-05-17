@@ -12,6 +12,10 @@ var ErrOrderNotFound = errors.New("order not found")
 var ErrOrderFragmentNotFound = errors.New("order fragment not found")
 
 type Client interface {
+
+	// OpenOrder by sending an order.EncryptedFragment to an
+	// identity.MultiAddress. The order.EncryptedFragment will be stored by the
+	// Server hosted at the identity.MultiAddress.
 	OpenOrder(context.Context, identity.MultiAddress, order.EncryptedFragment) error
 }
 
@@ -26,12 +30,6 @@ type Orderbooker interface {
 	// Orderbooker during the synchronization.
 	Sync() ([]OrderUpdate, error)
 
-	// OpenOrder by sending an order.EncryptedFragment to an
-	// identity.MultiAddress. The order.EncryptedFragment should not be stored
-	// in the local Orderbooker, it will be stored by the Orderbook hosted at
-	// the identity.MultiAddress.
-	OpenOrder(context.Context, identity.MultiAddress, order.EncryptedFragment) error
-
 	// OrderFragment stored in this local Orderbooker. These are received from
 	// other Orderbookers calling Orderbooker.OpenOrder to send an
 	// order.EncryptedFragment to this local Orderbooker.
@@ -43,25 +41,23 @@ type Orderbooker interface {
 }
 
 type orderbook struct {
-	client Client
 	storer Storer
 	syncer Syncer
 }
 
-func NewOrderbook(client Client, storer Storer, syncer Syncer) Orderbooker {
+func NewOrderbook(storer Storer, syncer Syncer) Orderbooker {
 	return &orderbook{
-		client: client,
 		storer: storer,
 		syncer: syncer,
 	}
 }
 
-func (book *orderbook) Sync() ([]OrderUpdate, error) {
-	return book.syncer.Sync()
+func (book *orderbook) OpenOrder(ctx context.Context, orderFragment order.EncryptedFragment) error {
+	panic("unimplemented")
 }
 
-func (book *orderbook) OpenOrder(ctx context.Context, multiAddr identity.MultiAddress, orderFragment order.EncryptedFragment) error {
-	return book.client.OpenOrder(ctx, multiAddr, orderFragment)
+func (book *orderbook) Sync() ([]OrderUpdate, error) {
+	return book.syncer.Sync()
 }
 
 func (book *orderbook) OrderFragment(id order.ID) (order.Fragment, error) {
