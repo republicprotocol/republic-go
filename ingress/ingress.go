@@ -10,6 +10,7 @@ import (
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
@@ -25,7 +26,12 @@ var ErrInvalidNumberOfPods = errors.New("invalid number of pods")
 var ErrInvalidNumberOfOrderFragments = errors.New("invalid number of order fragments")
 
 // An OrderFragmentMapping maps pods to encrypted order fragments.
-type OrderFragmentMapping map[[32]byte][]order.EncryptedFragment
+type OrderFragmentMapping map[[32]byte][]OrderFragment
+
+type OrderFragment struct {
+	order.EncryptedFragment
+	Index int64
+}
 
 // Ingresser interface can open and cancel orders on behalf of a user.
 type Ingresser interface {
@@ -52,7 +58,7 @@ type Ingress struct {
 	pods        map[[32]byte]cal.Pod
 }
 
-func NewIngress(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Swarmer, orderbook orderbook.Orderbooker) Ingresser {
+func NewIngress(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Swarmer, orderbooker orderbook.Orderbooker) Ingresser {
 	return &Ingress{
 		darkpool:    darkpool,
 		renLedger:   renLedger,
@@ -135,15 +141,15 @@ func (ingress *Ingress) openOrderFragments(orderFragmentMapping OrderFragmentMap
 	return nil
 }
 
-func (ingress *Ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []order.Fragment) error {
+func (ingress *Ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []OrderFragment) error {
 	if len(orderFragments) < pod.Threshold() || len(orderFragments) > len(pod.Darknodes) {
 		return ErrInvalidNumberOfOrderFragments
 	}
 
 	// Map order fragments to their respective Darknodes
-	orderFragmentIndexMapping := map[int64]order.Fragment{}
+	orderFragmentIndexMapping := map[int64]OrderFragment{}
 	for _, orderFragment := range orderFragments {
-		orderFragmentIndexMapping[orderFragment.PriceShare.Key] = orderFragment
+		orderFragmentIndexMapping[orderFragment.Index] = orderFragment
 	}
 
 	errs := make(chan error, len(pod.Darknodes))
@@ -165,7 +171,7 @@ func (ingress *Ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []or
 				errs <- fmt.Errorf("cannot send query to %v: %v", darknode, err)
 				return
 			}
-			if err := ingress.orderbooker.OpenOrder(ctx, darknodeMultiAddr, orderFragment); err != nil {
+			if err := ingress.orderbooker.OpenOrder(ctx, darknodeMultiAddr, orderFragment.EncryptedFragment); err != nil {
 				errs <- fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
 				return
 			}

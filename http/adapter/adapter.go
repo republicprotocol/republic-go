@@ -12,6 +12,7 @@ type OrderFragment struct {
 	OrderType      order.Type   `json:"orderType"`
 	OrderParity    order.Parity `json:"orderParity"`
 	OrderExpiry    int64        `json:"orderExpiry"`
+	Index          int64        `json:"index"`
 	ID             string       `json:"id"`
 	Tokens         string       `json:"tokens"`
 	Price          []string     `json:"price"`
