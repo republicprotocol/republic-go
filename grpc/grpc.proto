@@ -2,6 +2,9 @@ syntax = "proto3";
 
 package grpc;
 
+message Nothing {
+}
+
 service StreamService {
     rpc Connect(stream StreamMessage) returns (stream StreamMessage);
 }
@@ -14,4 +17,36 @@ message StreamAddress {
 message StreamMessage {
     StreamAddress streamAddress = 1;
     bytes data = 2;
+}
+
+service OrderbookService {
+    rpc OpenOrder(EncryptedOrderFragment) returns (Nothing);
+}
+
+enum OrderType {
+    Midpoint = 0;
+    Limit    = 1;
+}
+
+enum OrderParity {
+    BUY  = 0;
+    SELL = 1;
+}
+
+message EncryptedOrderFragment {
+    bytes       orderId     = 1;
+	OrderType   orderType   = 2;
+	OrderParity orderParity = 3;
+    int64       orderExpiry = 4;
+    
+    bytes          id            = 5;
+    bytes          tokens        = 6;
+    EncryptedCoExpShare price         = 7;
+    EncryptedCoExpShare volume        = 8;
+    EncryptedCoExpShare minimumVolume = 9;
+}
+
+message EncryptedCoExpShare {
+    bytes co = 1;
+    bytes exp = 2;
 }

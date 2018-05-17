@@ -8,8 +8,11 @@ It is generated from these files:
 	grpc.proto
 
 It has these top-level messages:
+	Nothing
 	StreamAddress
 	StreamMessage
+	EncryptedOrderFragment
+	EncryptedCoExpShare
 */
 package grpc
 
@@ -33,6 +36,56 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+type OrderType int32
+
+const (
+	OrderType_Midpoint OrderType = 0
+	OrderType_Limit    OrderType = 1
+)
+
+var OrderType_name = map[int32]string{
+	0: "Midpoint",
+	1: "Limit",
+}
+var OrderType_value = map[string]int32{
+	"Midpoint": 0,
+	"Limit":    1,
+}
+
+func (x OrderType) String() string {
+	return proto.EnumName(OrderType_name, int32(x))
+}
+func (OrderType) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+
+type OrderParity int32
+
+const (
+	OrderParity_BUY  OrderParity = 0
+	OrderParity_SELL OrderParity = 1
+)
+
+var OrderParity_name = map[int32]string{
+	0: "BUY",
+	1: "SELL",
+}
+var OrderParity_value = map[string]int32{
+	"BUY":  0,
+	"SELL": 1,
+}
+
+func (x OrderParity) String() string {
+	return proto.EnumName(OrderParity_name, int32(x))
+}
+func (OrderParity) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+
+type Nothing struct {
+}
+
+func (m *Nothing) Reset()                    { *m = Nothing{} }
+func (m *Nothing) String() string            { return proto.CompactTextString(m) }
+func (*Nothing) ProtoMessage()               {}
+func (*Nothing) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+
 type StreamAddress struct {
 	Signature []byte `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
 	Address   string `protobuf:"bytes,2,opt,name=address" json:"address,omitempty"`
@@ -41,7 +94,7 @@ type StreamAddress struct {
 func (m *StreamAddress) Reset()                    { *m = StreamAddress{} }
 func (m *StreamAddress) String() string            { return proto.CompactTextString(m) }
 func (*StreamAddress) ProtoMessage()               {}
-func (*StreamAddress) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (*StreamAddress) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 func (m *StreamAddress) GetSignature() []byte {
 	if m != nil {
@@ -65,7 +118,7 @@ type StreamMessage struct {
 func (m *StreamMessage) Reset()                    { *m = StreamMessage{} }
 func (m *StreamMessage) String() string            { return proto.CompactTextString(m) }
 func (*StreamMessage) ProtoMessage()               {}
-func (*StreamMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (*StreamMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 func (m *StreamMessage) GetStreamAddress() *StreamAddress {
 	if m != nil {
@@ -81,9 +134,118 @@ func (m *StreamMessage) GetData() []byte {
 	return nil
 }
 
+type EncryptedOrderFragment struct {
+	OrderId       []byte               `protobuf:"bytes,1,opt,name=orderId,proto3" json:"orderId,omitempty"`
+	OrderType     OrderType            `protobuf:"varint,2,opt,name=orderType,enum=grpc.OrderType" json:"orderType,omitempty"`
+	OrderParity   OrderParity          `protobuf:"varint,3,opt,name=orderParity,enum=grpc.OrderParity" json:"orderParity,omitempty"`
+	OrderExpiry   int64                `protobuf:"varint,4,opt,name=orderExpiry" json:"orderExpiry,omitempty"`
+	Id            []byte               `protobuf:"bytes,5,opt,name=id,proto3" json:"id,omitempty"`
+	Tokens        []byte               `protobuf:"bytes,6,opt,name=tokens,proto3" json:"tokens,omitempty"`
+	Price         *EncryptedCoExpShare `protobuf:"bytes,7,opt,name=price" json:"price,omitempty"`
+	Volume        *EncryptedCoExpShare `protobuf:"bytes,8,opt,name=volume" json:"volume,omitempty"`
+	MinimumVolume *EncryptedCoExpShare `protobuf:"bytes,9,opt,name=minimumVolume" json:"minimumVolume,omitempty"`
+}
+
+func (m *EncryptedOrderFragment) Reset()                    { *m = EncryptedOrderFragment{} }
+func (m *EncryptedOrderFragment) String() string            { return proto.CompactTextString(m) }
+func (*EncryptedOrderFragment) ProtoMessage()               {}
+func (*EncryptedOrderFragment) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+
+func (m *EncryptedOrderFragment) GetOrderId() []byte {
+	if m != nil {
+		return m.OrderId
+	}
+	return nil
+}
+
+func (m *EncryptedOrderFragment) GetOrderType() OrderType {
+	if m != nil {
+		return m.OrderType
+	}
+	return OrderType_Midpoint
+}
+
+func (m *EncryptedOrderFragment) GetOrderParity() OrderParity {
+	if m != nil {
+		return m.OrderParity
+	}
+	return OrderParity_BUY
+}
+
+func (m *EncryptedOrderFragment) GetOrderExpiry() int64 {
+	if m != nil {
+		return m.OrderExpiry
+	}
+	return 0
+}
+
+func (m *EncryptedOrderFragment) GetId() []byte {
+	if m != nil {
+		return m.Id
+	}
+	return nil
+}
+
+func (m *EncryptedOrderFragment) GetTokens() []byte {
+	if m != nil {
+		return m.Tokens
+	}
+	return nil
+}
+
+func (m *EncryptedOrderFragment) GetPrice() *EncryptedCoExpShare {
+	if m != nil {
+		return m.Price
+	}
+	return nil
+}
+
+func (m *EncryptedOrderFragment) GetVolume() *EncryptedCoExpShare {
+	if m != nil {
+		return m.Volume
+	}
+	return nil
+}
+
+func (m *EncryptedOrderFragment) GetMinimumVolume() *EncryptedCoExpShare {
+	if m != nil {
+		return m.MinimumVolume
+	}
+	return nil
+}
+
+type EncryptedCoExpShare struct {
+	Co  []byte `protobuf:"bytes,1,opt,name=co,proto3" json:"co,omitempty"`
+	Exp []byte `protobuf:"bytes,2,opt,name=exp,proto3" json:"exp,omitempty"`
+}
+
+func (m *EncryptedCoExpShare) Reset()                    { *m = EncryptedCoExpShare{} }
+func (m *EncryptedCoExpShare) String() string            { return proto.CompactTextString(m) }
+func (*EncryptedCoExpShare) ProtoMessage()               {}
+func (*EncryptedCoExpShare) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+
+func (m *EncryptedCoExpShare) GetCo() []byte {
+	if m != nil {
+		return m.Co
+	}
+	return nil
+}
+
+func (m *EncryptedCoExpShare) GetExp() []byte {
+	if m != nil {
+		return m.Exp
+	}
+	return nil
+}
+
 func init() {
+	proto.RegisterType((*Nothing)(nil), "grpc.Nothing")
 	proto.RegisterType((*StreamAddress)(nil), "grpc.StreamAddress")
 	proto.RegisterType((*StreamMessage)(nil), "grpc.StreamMessage")
+	proto.RegisterType((*EncryptedOrderFragment)(nil), "grpc.EncryptedOrderFragment")
+	proto.RegisterType((*EncryptedCoExpShare)(nil), "grpc.EncryptedCoExpShare")
+	proto.RegisterEnum("grpc.OrderType", OrderType_name, OrderType_value)
+	proto.RegisterEnum("grpc.OrderParity", OrderParity_name, OrderParity_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -190,20 +352,102 @@ var _StreamService_serviceDesc = grpc1.ServiceDesc{
 	Metadata: "grpc.proto",
 }
 
+// Client API for OrderbookService service
+
+type OrderbookServiceClient interface {
+	OpenOrder(ctx context.Context, in *EncryptedOrderFragment, opts ...grpc1.CallOption) (*Nothing, error)
+}
+
+type orderbookServiceClient struct {
+	cc *grpc1.ClientConn
+}
+
+func NewOrderbookServiceClient(cc *grpc1.ClientConn) OrderbookServiceClient {
+	return &orderbookServiceClient{cc}
+}
+
+func (c *orderbookServiceClient) OpenOrder(ctx context.Context, in *EncryptedOrderFragment, opts ...grpc1.CallOption) (*Nothing, error) {
+	out := new(Nothing)
+	err := grpc1.Invoke(ctx, "/grpc.OrderbookService/OpenOrder", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for OrderbookService service
+
+type OrderbookServiceServer interface {
+	OpenOrder(context.Context, *EncryptedOrderFragment) (*Nothing, error)
+}
+
+func RegisterOrderbookServiceServer(s *grpc1.Server, srv OrderbookServiceServer) {
+	s.RegisterService(&_OrderbookService_serviceDesc, srv)
+}
+
+func _OrderbookService_OpenOrder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EncryptedOrderFragment)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderbookServiceServer).OpenOrder(ctx, in)
+	}
+	info := &grpc1.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.OrderbookService/OpenOrder",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderbookServiceServer).OpenOrder(ctx, req.(*EncryptedOrderFragment))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _OrderbookService_serviceDesc = grpc1.ServiceDesc{
+	ServiceName: "grpc.OrderbookService",
+	HandlerType: (*OrderbookServiceServer)(nil),
+	Methods: []grpc1.MethodDesc{
+		{
+			MethodName: "OpenOrder",
+			Handler:    _OrderbookService_OpenOrder_Handler,
+		},
+	},
+	Streams:  []grpc1.StreamDesc{},
+	Metadata: "grpc.proto",
+}
+
 func init() { proto.RegisterFile("grpc.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 180 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x4a, 0x2f, 0x2a, 0x48,
-	0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x01, 0xb1, 0x95, 0xdc, 0xb9, 0x78, 0x83, 0x4b,
-	0x8a, 0x52, 0x13, 0x73, 0x1d, 0x53, 0x52, 0x8a, 0x52, 0x8b, 0x8b, 0x85, 0x64, 0xb8, 0x38, 0x8b,
-	0x33, 0xd3, 0xf3, 0x12, 0x4b, 0x4a, 0x8b, 0x52, 0x25, 0x18, 0x15, 0x18, 0x35, 0x78, 0x82, 0x10,
-	0x02, 0x42, 0x12, 0x5c, 0xec, 0x89, 0x10, 0x85, 0x12, 0x4c, 0x0a, 0x8c, 0x1a, 0x9c, 0x41, 0x30,
-	0xae, 0x52, 0x1c, 0xcc, 0x20, 0xdf, 0xd4, 0xe2, 0xe2, 0xc4, 0xf4, 0x54, 0x21, 0x4b, 0x2e, 0xde,
-	0x62, 0x64, 0x93, 0xc1, 0x86, 0x71, 0x1b, 0x09, 0xeb, 0x81, 0xdd, 0x80, 0x62, 0x69, 0x10, 0xaa,
-	0x4a, 0x21, 0x21, 0x2e, 0x96, 0x94, 0xc4, 0x92, 0x44, 0xb0, 0x15, 0x3c, 0x41, 0x60, 0xb6, 0x91,
-	0x07, 0xcc, 0xfc, 0xe0, 0xd4, 0xa2, 0xb2, 0xcc, 0xe4, 0x54, 0x21, 0x73, 0x2e, 0x76, 0xe7, 0xfc,
-	0xbc, 0xbc, 0xd4, 0xe4, 0x12, 0x21, 0x14, 0x33, 0xa1, 0xf6, 0x4b, 0x61, 0x13, 0xd4, 0x60, 0x34,
-	0x60, 0x4c, 0x62, 0x03, 0xfb, 0xdf, 0x18, 0x10, 0x00, 0x00, 0xff, 0xff, 0x17, 0xb9, 0x9c, 0x7c,
-	0x0d, 0x01, 0x00, 0x00,
+	// 470 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x53, 0xdf, 0x6b, 0xdb, 0x30,
+	0x10, 0xae, 0xe3, 0x24, 0x8e, 0x2f, 0x49, 0xe7, 0x5d, 0xa1, 0x78, 0xa5, 0x0f, 0xc6, 0xec, 0x21,
+	0x14, 0xd6, 0x6d, 0xe9, 0x43, 0xb7, 0xa7, 0xb1, 0x95, 0xec, 0x07, 0xa4, 0xcb, 0x70, 0xb6, 0xc1,
+	0x5e, 0x06, 0xaa, 0x25, 0x5c, 0xd1, 0x59, 0x12, 0xb2, 0x52, 0x92, 0x3f, 0x60, 0xff, 0xf7, 0xb0,
+	0x6c, 0xb7, 0xf6, 0x28, 0xf4, 0xed, 0xee, 0xd3, 0xf7, 0xdd, 0x9d, 0x3e, 0x9d, 0x00, 0x32, 0xad,
+	0xd2, 0x53, 0xa5, 0xa5, 0x91, 0xd8, 0x2f, 0xe3, 0xd8, 0x07, 0xef, 0xab, 0x34, 0xd7, 0x5c, 0x64,
+	0xf1, 0x27, 0x98, 0xae, 0x8d, 0x66, 0x24, 0x7f, 0x4f, 0xa9, 0x66, 0x45, 0x81, 0xc7, 0xe0, 0x17,
+	0x3c, 0x13, 0xc4, 0x6c, 0x34, 0x0b, 0x9d, 0xc8, 0x99, 0x4d, 0x92, 0x7b, 0x00, 0x43, 0xf0, 0x48,
+	0x45, 0x0c, 0x7b, 0x91, 0x33, 0xf3, 0x93, 0x26, 0x8d, 0x7f, 0x37, 0x85, 0x2e, 0x59, 0x51, 0x90,
+	0x8c, 0xe1, 0x5b, 0x98, 0x16, 0xed, 0xca, 0xb6, 0xd8, 0x78, 0x7e, 0x70, 0x6a, 0xc7, 0xe9, 0x34,
+	0x4d, 0xba, 0x4c, 0x44, 0xe8, 0x53, 0x62, 0x88, 0x6d, 0x31, 0x49, 0x6c, 0x1c, 0xff, 0x75, 0xe1,
+	0x70, 0x21, 0x52, 0xbd, 0x53, 0x86, 0xd1, 0x95, 0xa6, 0x4c, 0x7f, 0xd4, 0x24, 0xcb, 0x99, 0x30,
+	0xe5, 0x50, 0xb2, 0x04, 0xbe, 0xd0, 0x7a, 0xe0, 0x26, 0xc5, 0x17, 0xe0, 0xdb, 0xf0, 0xfb, 0x4e,
+	0x31, 0x5b, 0x6d, 0x7f, 0xfe, 0xa4, 0xea, 0xbf, 0x6a, 0xe0, 0xe4, 0x9e, 0x81, 0x67, 0x30, 0xb6,
+	0xc9, 0x37, 0xa2, 0xb9, 0xd9, 0x85, 0xae, 0x15, 0x3c, 0x6d, 0x09, 0xaa, 0x83, 0xa4, 0xcd, 0xc2,
+	0xa8, 0x16, 0x2d, 0xb6, 0x8a, 0xeb, 0x5d, 0xd8, 0x8f, 0x9c, 0x99, 0x9b, 0xb4, 0x21, 0xdc, 0x87,
+	0x1e, 0xa7, 0xe1, 0xc0, 0x8e, 0xd6, 0xe3, 0x14, 0x0f, 0x61, 0x68, 0xe4, 0x0d, 0x13, 0x45, 0x38,
+	0xb4, 0x58, 0x9d, 0xe1, 0x4b, 0x18, 0x28, 0xcd, 0x53, 0x16, 0x7a, 0xd6, 0xa9, 0x67, 0x55, 0xe3,
+	0xbb, 0x4b, 0x5f, 0xc8, 0xc5, 0x56, 0xad, 0xaf, 0x89, 0x66, 0x49, 0xc5, 0xc3, 0xd7, 0x30, 0xbc,
+	0x95, 0x7f, 0x36, 0x39, 0x0b, 0x47, 0x8f, 0x29, 0x6a, 0x22, 0xbe, 0x83, 0x69, 0xce, 0x05, 0xcf,
+	0x37, 0xf9, 0xcf, 0x4a, 0xe9, 0x3f, 0xa6, 0xec, 0xf2, 0xe3, 0x73, 0x38, 0x78, 0x80, 0x55, 0xde,
+	0x31, 0x95, 0xb5, 0xfd, 0xbd, 0x54, 0x62, 0x00, 0x2e, 0xdb, 0xaa, 0xfa, 0x05, 0xcb, 0xf0, 0xe4,
+	0x39, 0xf8, 0x77, 0xa6, 0xe3, 0x04, 0x46, 0x97, 0x9c, 0x2a, 0xc9, 0x85, 0x09, 0xf6, 0xd0, 0x87,
+	0xc1, 0x92, 0xe7, 0xdc, 0x04, 0xce, 0x49, 0x04, 0xe3, 0x96, 0xd3, 0xe8, 0x81, 0xfb, 0xe1, 0xc7,
+	0xaf, 0x60, 0x0f, 0x47, 0xd0, 0x5f, 0x2f, 0x96, 0xcb, 0xc0, 0x99, 0x7f, 0x6e, 0x16, 0x6d, 0xcd,
+	0xf4, 0x6d, 0xe9, 0xc2, 0x39, 0x78, 0x17, 0x52, 0x08, 0x96, 0x1a, 0xec, 0x2c, 0x57, 0xbd, 0x88,
+	0x47, 0x0f, 0x81, 0x33, 0xe7, 0x95, 0x33, 0x5f, 0x42, 0x60, 0x7b, 0x5d, 0x49, 0x79, 0xd3, 0x14,
+	0x7b, 0x03, 0xfe, 0x4a, 0x31, 0x61, 0x71, 0x3c, 0xfe, 0xcf, 0x95, 0xce, 0xda, 0x1d, 0x4d, 0xab,
+	0xd3, 0xfa, 0x27, 0x5d, 0x0d, 0xed, 0x0f, 0x3b, 0xfb, 0x17, 0x00, 0x00, 0xff, 0xff, 0x50, 0x0f,
+	0xf0, 0xd9, 0x6f, 0x03, 0x00, 0x00,
 }

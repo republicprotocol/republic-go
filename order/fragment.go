@@ -15,19 +15,19 @@ type FragmentID [32]byte
 // A Fragment is a secret share of an Order, created using Shamir's secret
 // sharing on the secure fields in an Order.
 type Fragment struct {
-	OrderID       ID            `json:"orderID"`
-	OrderType     Type          `json:"orderType"`
-	OrderParity   Parity        `json:"orderParity"`
-	OrderExpiry   time.Time     `json:"orderExpiry"`
-	ID            FragmentID    `json:"id"`
-	Tokens        shamir.Share  `json:"tokens"`
-	Price         FragmentValue `json:"price"`
-	Volume        FragmentValue `json:"volume"`
-	MinimumVolume FragmentValue `json:"minimumVolume"`
+	OrderID       ID           `json:"orderID"`
+	OrderType     Type         `json:"orderType"`
+	OrderParity   Parity       `json:"orderParity"`
+	OrderExpiry   time.Time    `json:"orderExpiry"`
+	ID            FragmentID   `json:"id"`
+	Tokens        shamir.Share `json:"tokens"`
+	Price         CoExpShare   `json:"price"`
+	Volume        CoExpShare   `json:"volume"`
+	MinimumVolume CoExpShare   `json:"minimumVolume"`
 }
 
 // NewFragment returns a new Fragment and computes the FragmentID.
-func NewFragment(orderID ID, orderType Type, orderParity Parity, tokens shamir.Share, price, volume, minimumVolume FragmentValue) Fragment {
+func NewFragment(orderID ID, orderType Type, orderParity Parity, tokens shamir.Share, price, volume, minimumVolume CoExpShare) Fragment {
 	fragment := Fragment{
 		OrderID:       orderID,
 		OrderType:     orderType,
@@ -99,13 +99,13 @@ func (fragment *Fragment) IsCompatible(other *Fragment) bool {
 // An EncryptedFragment is a Fragment that has been encrypted by an RSA public
 // key.
 type EncryptedFragment struct {
-	OrderID       ID                     `json:"orderId"`
-	OrderType     Type                   `json:"orderType"`
-	OrderParity   Parity                 `json:"orderParity"`
-	OrderExpiry   time.Time              `json:"orderExpiry"`
-	ID            FragmentID             `json:"id"`
-	Tokens        []byte                 `json:"tokens"`
-	Price         EncryptedFragmentValue `json:"price"`
-	Volume        EncryptedFragmentValue `json:"volume"`
-	MinimumVolume EncryptedFragmentValue `json:"minimumVolume"`
+	OrderID       ID                  `json:"orderId"`
+	OrderType     Type                `json:"orderType"`
+	OrderParity   Parity              `json:"orderParity"`
+	OrderExpiry   time.Time           `json:"orderExpiry"`
+	ID            FragmentID          `json:"id"`
+	Tokens        []byte              `json:"tokens"`
+	Price         EncryptedCoExpShare `json:"price"`
+	Volume        EncryptedCoExpShare `json:"volume"`
+	MinimumVolume EncryptedCoExpShare `json:"minimumVolume"`
 }
