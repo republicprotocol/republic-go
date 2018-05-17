@@ -8,7 +8,6 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/smpc/delta"
 )
@@ -35,16 +34,18 @@ type Ome struct {
 	done      <-chan struct{}
 	epoch     <-chan cal.Epoch
 	delegate  Delegate
+	ledger    cal.RenLedger
 	orderbook orderbook.Orderbooker
 	ranker    Ranker
 	smpcer    smpc.Smpcer
 	deltas    map[delta.ID][]delta.Fragment
 }
 
-func NewOme(done <-chan struct{}, delegate Delegate, orderbook orderbook.Orderbooker, ranker Ranker, smpcer smpc.Smpcer) Ome {
+func NewOme(done <-chan struct{}, delegate Delegate, ledger cal.RenLedger,  orderbook orderbook.Orderbooker, ranker Ranker, smpcer smpc.Smpcer) Ome {
 	ome := Ome{}
 	ome.done = done
 	ome.epoch = make(chan cal.Epoch)
+	ome.ledger = ledger
 	ome.delegate = delegate
 	ome.orderbook = orderbook
 	ome.ranker = ranker
@@ -79,12 +80,22 @@ func (ome *Ome) Compute() chan error {
 	var currentEpoch cal.Epoch
 
 	orderPairs := ome.ranker.OrderPairs(ome.done)
-	input, output := ome.smpcer.Input(), ome.smpcer.Output()
+	err :=ome.smpcer.Start()
+	if err != nil {
+		errs <- err
+		close(errs)
+		return errs
+	}
+
+	input, output := ome.smpcer.Instructions(), ome.smpcer.Results()
 
 	go func() {
 		defer close(errs)
+		defer ome.smpcer.Shutdown()
 
-		waitingList := []OrderPair{}
+		orderPairWaitingList := []OrderPair{}
+		deltaWaitingList := []delta.Delta{}
+
 		for {
 			select {
 			case <-ome.done:
@@ -109,30 +120,61 @@ func (ome *Ome) Compute() chan error {
 					continue
 				}
 
-				for i := 0; i < len(waitingList); i++ {
+				for i := 0; i < len(orderPairWaitingList); i++ {
 					//todo : need to have a way for element to expire
-					inst, err := generateInstruction(waitingList[i], ome.orderbook, currentEpoch)
+					inst, err := generateInstruction(orderPairWaitingList[i], ome.orderbook, currentEpoch)
 					if err != nil {
 						continue
 					}
 
 					input <- inst
-					waitingList = append(waitingList[:i], waitingList[i+1:]...)
+					orderPairWaitingList = append(orderPairWaitingList[:i], orderPairWaitingList[i+1:]...)
 					i--
 				}
 
 				inst, err := generateInstruction(pair, ome.orderbook, currentEpoch)
 				if err != nil {
-					waitingList = append(waitingList, pair)
+					orderPairWaitingList = append(orderPairWaitingList, pair)
 					continue
 				}
 				input <- inst
-			case result := <-output:
-				if result.Delta.IsMatch(shamir.Prime) {
-					// todo :talk to the orderbook ?
-					err := ome.delegate.OnConfirmOrder()
-					if err != nil {
+			case result, ok  := <-output:
+				if !ok {
+					return
+				}
 
+				for i := 0; i < len(deltaWaitingList); i++ {
+					buyOrd, sellOrd, err := getOrderDetails(deltaWaitingList[i], ome.orderbook)
+					if err != nil {
+						continue
+					}
+					err = ome.ledger.ConfirmOrder(result.Delta.BuyOrderID, []order.ID{result.Delta.SellOrderID})
+					if err != nil {
+						continue
+					}
+					err = ome.delegate.OnConfirmOrder(buyOrd, []order.Order{sellOrd})
+					if err != nil {
+						continue
+					}
+					deltaWaitingList = append(deltaWaitingList[:i], deltaWaitingList[i+1:]...)
+					i--
+				}
+
+				if result.Delta.IsMatch() {
+					buyOrd, sellOrd, err := getOrderDetails(result.Delta, ome.orderbook)
+					if err != nil {
+						deltaWaitingList = append(deltaWaitingList, result.Delta)
+						continue
+					}
+					err = ome.ledger.ConfirmOrder(result.Delta.BuyOrderID, []order.ID{result.Delta.SellOrderID})
+					if err != nil {
+						deltaWaitingList = append(deltaWaitingList, result.Delta)
+						continue
+					}
+					err = ome.delegate.OnConfirmOrder(buyOrd, []order.Order{sellOrd})
+					if err != nil {
+						deltaWaitingList = append(deltaWaitingList, result.Delta)
+						continue
 					}
 				}
 			}
@@ -161,4 +203,17 @@ func generateInstruction(pair OrderPair, orderbook orderbook.Orderbooker, epoch 
 			Sell:    sellOrderFragment,
 		},
 	}, nil
+}
+
+func getOrderDetails(delta delta.Delta, orderbooker orderbook.Orderbooker) (order.Order, order.Order, error ){
+	buyOrd ,err  := orderbooker.Order(delta.BuyOrderID)
+	if err != nil {
+		return order.Order{} , order.Order{} ,err
+	}
+	sellOrd ,err  := orderbooker.Order(delta.SellOrderID)
+	if err != nil {
+		return order.Order{} , order.Order{} ,err
+	}
+
+	return buyOrd, sellOrd, nil
 }

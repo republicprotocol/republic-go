@@ -33,6 +33,7 @@ type Smpcer interface {
 }
 
 type smpc struct {
+	buffer       int
 	instructions chan Inst
 	results      chan Result
 
@@ -44,6 +45,7 @@ type smpc struct {
 
 func NewSmpc(buffer int) Smpcer {
 	return &smpc{
+		buffer:       buffer,
 		instructions: make(chan Inst, buffer),
 		results:      make(chan Result, buffer),
 
@@ -53,7 +55,6 @@ func NewSmpc(buffer int) Smpcer {
 		shutdownInitiated: true,
 	}
 }
-
 
 // Start implements the Smpcer interface.
 func (smpc *smpc) Start() error {
@@ -86,6 +87,11 @@ func (smpc *smpc) Shutdown() error {
 
 	smpc.shutdown = nil
 	smpc.shutdownDone = nil
+
+	close(smpc.instructions)
+	close(smpc.results)
+	smpc.instructions = make(chan Inst, smpc.buffer)
+	smpc.results = make(chan Result, smpc.buffer)
 
 	return nil
 }
