@@ -28,7 +28,7 @@ func (service *OrderbookService) Register(server *grpc.Server) {
 	RegisterOrderbookServiceServer(server, service)
 }
 
-// OpenOrder implements a gRPC OrderbookServiceServer.
+// OpenOrder implements the gRPC service for receiving EncryptedOrderFragments.
 func (service *OrderbookService) OpenOrder(ctx context.Context, orderFragment *EncryptedOrderFragment) (*Nothing, error) {
 	return &Nothing{}, service.server.OpenOrder(ctx, unmarshalEncryptedOrderFragment(orderFragment))
 }
@@ -45,7 +45,7 @@ func NewOrderbookClient(connPool *ConnPool) orderbook.Client {
 	}
 }
 
-// OpenOrder implements the gRPC service for receiving EncryptedOrderFragments.
+// OpenOrder implements the orderbook.Client interface.
 func (client *orderbookClient) OpenOrder(ctx context.Context, multiAddr identity.MultiAddress, orderFragmentIn order.EncryptedFragment) error {
 	conn, err := client.connPool.Dial(ctx, multiAddr)
 	if err != nil {

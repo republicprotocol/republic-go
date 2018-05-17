@@ -21,8 +21,8 @@ type syncer struct {
 	sellOrders       map[int]order.ID
 }
 
-func NewSyncer(renLedger cal.RenLedger, limit int) syncer {
-	return syncer{
+func NewSyncer(renLedger cal.RenLedger, limit int) Syncer {
+	return &syncer{
 		renLedger:        renLedger,
 		renLedgerLimit:   limit,
 		buyOrderPointer:  0,
@@ -73,7 +73,7 @@ func (syncer *syncer) Prune() []OrderUpdate {
 						log.Println("fail to check order status", err)
 						return
 					}
-					if status != order.Open{
+					if status != order.Open {
 						update := NewOrderChange(syncer.buyOrders[key], status)
 						orderChanges <- update
 					}
@@ -87,7 +87,7 @@ func (syncer *syncer) Prune() []OrderUpdate {
 						return
 					}
 
-					if status != order.Open{
+					if status != order.Open {
 						update := NewOrderChange(syncer.sellOrders[key], status)
 						orderChanges <- update
 					}

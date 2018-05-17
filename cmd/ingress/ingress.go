@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/republicprotocol/republic-go/orderbook"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
@@ -21,9 +23,8 @@ import (
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darkocean"
-	"github.com/republicprotocol/republic-go/grpc/client"
+	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/grpc/dht"
-	"github.com/republicprotocol/republic-go/grpc/smpcer"
 	"github.com/republicprotocol/republic-go/grpc/swarmer"
 	"github.com/republicprotocol/republic-go/http"
 	"github.com/republicprotocol/republic-go/http/adapter"
@@ -66,11 +67,16 @@ func main() {
 	}
 
 	dht := dht.NewDHT(multiAddr.Address(), 100)
-	connPool := client.NewConnPool(100)
+	connPool := grpc.NewConnPool(100)
 	crypter := darkocean.NewCrypter(keystore, registry, 128, time.Minute)
-	smpcerClient := smpcer.NewClient(&crypter, multiAddr, &connPool)
 	swarmerClient := swarmer.NewClient(&crypter, multiAddr, &dht, &connPool)
-	ingresser := ingress.NewIngress(&registry, renLedger, &swarmerClient, &smpcerClient)
+
+	orderbookClient := grpc.NewOrderbookClient(&connPool)
+	orderbookSyncer := orderbook.NewSyncer(renLedger, 10)
+	orderbookStorer := orderbook.NewNilStore()
+	orderbooker := orderbook.NewOrderbook(orderbookClient, orderbookStorer, orderbookSyncer)
+
+	ingresser := ingress.NewIngress(&registry, renLedger, &swarmerClient, orderbooker)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -78,7 +84,7 @@ func main() {
 		log.Printf("error bootstrapping: %v", err)
 	}
 
-	ingressAdapter := adapter.NewIngressAdapter(&ingresser)
+	ingressAdapter := adapter.NewIngressAdapter(ingresser)
 
 	log.Printf("address %v", multiAddr)
 	log.Printf("ethereum %v", auth.From.Hex())

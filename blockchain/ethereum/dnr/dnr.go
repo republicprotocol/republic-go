@@ -172,7 +172,7 @@ func (darkNodeRegistry *DarknodeRegistry) CurrentEpoch() (Epoch, error) {
 }
 
 // Epoch updates the current Epoch if the Minimum Epoch Interval has passed since the previous Epoch
-func (darkNodeRegistry *DarknodeRegistry) Epoch() (*types.Transaction, error) {
+func (darkNodeRegistry *DarknodeRegistry) TriggerEpoch() (*types.Transaction, error) {
 	tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
 	if err != nil {
 		return nil, err
@@ -400,4 +400,16 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 		copy(pods[i].Hash[:], crypto.Keccak256(hashData...))
 	}
 	return pods, nil
+}
+
+// Epoch returns the current Epoch which includes the Pod configuration.
+func (darkNodeRegistry *DarknodeRegistry) Epoch() (cal.Epoch, error) {
+	panic("unimplemented")
+}
+
+// Pod returns the Pod that contains the given identity.Address in the
+// current Epoch. It returns ErrPodNotFound if the identity.Address is not
+// registered in the current Epoch.
+func (darkNodeRegistry *DarknodeRegistry) Pod(id identity.ID) (cal.Pod, error) {
+	panic("unimplemented")
 }

@@ -20,10 +20,47 @@ type Storer interface {
 	Stop() error
 }
 
+type nilStore struct {
+}
+
+// NewNilStore returns an implementation of the Storer interface that does not
+// store any data.
+func NewNilStore() Storer {
+	return &nilStore{}
+}
+
+func (store *nilStore) InsertOrderFragment(orderFragment order.Fragment) error {
+	return nil
+}
+
+func (store *nilStore) InsertOrder(order order.Order) error {
+	return nil
+}
+
+func (store *nilStore) OrderFragment(id order.ID) (order.Fragment, error) {
+	return order.Fragment{}, ErrOrderFragmentNotFound
+}
+
+func (store *nilStore) Order(id order.ID) (order.Order, error) {
+	return order.Order{}, ErrOrderNotFound
+}
+
+func (store *nilStore) RemoveOrderFragment(id order.ID) error {
+	return nil
+}
+
+func (store *nilStore) RemoveOrder(id order.ID) error {
+	return nil
+}
+
+func (store *nilStore) Stop() error {
+	return nil
+}
+
 // LevelDBStorer is an levelDB implementation of the Storer interface
 type LevelDBStorer struct {
 	orderFragments *leveldb.DB
-	orders  *leveldb.DB
+	orders         *leveldb.DB
 }
 
 func NewLevelDBStorer(dbPath string) (LevelDBStorer, error) {
@@ -65,6 +102,6 @@ func (storer LevelDBStorer) Get(id order.ID) (order.Fragment, error) {
 	return fragment, nil
 }
 
-func (storer LevelDBStorer) Delete(id order.ID) error  {
+func (storer LevelDBStorer) Delete(id order.ID) error {
 	return storer.orderFragments.Delete(id[:], nil)
 }
