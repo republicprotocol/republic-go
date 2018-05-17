@@ -78,6 +78,7 @@ func main() {
 	if err := swarmer.Bootstrap(ctx, config.BootstrapMultiAddrs); err != nil {
 		log.Printf("error bootstrapping: %v", err)
 	}
+	ingresser.SyncDarkpool()
 
 	log.Printf("address %v", multiAddr)
 	log.Printf("ethereum %v", auth.From.Hex())

@@ -12,6 +12,11 @@ import (
 // An FragmentID is the Keccak256 hash of a Fragment.
 type FragmentID [32]byte
 
+// Equal returns an equality check between two orderFragment ID.
+func (id FragmentID) Equal(other FragmentID) bool {
+	return bytes.Equal(id[:], other[:])
+}
+
 // A Fragment is a secret share of an Order, created using Shamir's secret
 // sharing on the secure fields in an Order.
 type Fragment struct {

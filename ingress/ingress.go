@@ -15,7 +15,7 @@ import (
 )
 
 // ErrUnknownPod is returned when an unknown pod is mapped.
-var ErrUnknownPod = errors.New("invalid number of pods")
+var ErrUnknownPod = errors.New("unknown pod id")
 
 // ErrInvalidNumberOfPods is returned when an insufficient number of pods are
 // mapped.
