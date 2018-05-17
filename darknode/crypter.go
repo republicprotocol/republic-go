@@ -1,14 +1,14 @@
-package darkocean
+package darknode
 
 import (
-	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
@@ -21,14 +21,13 @@ import (
 var ErrInvalidRegistration = errors.New("invalid registration")
 
 // Crypter is an implementation of the crypto.Crypter interface. In addition to
-// standard signature verification, the Crypter uses a dnr.DarknodeRegister to
-// verify that the signatory is correctly registered to the network. It also
-// uses the dnr.DarknodeRegister to lazily acquire the necessary rsa.PublicKeys
-// for encryption. The cache will be updated periodically, to ensure up-to-date
-// information.
+// standard signature verification, the Crypter uses a cal.Darkpool to verify
+// that the signatory is correctly registered to the network. It also uses the
+// cal.Darkpool to lazily acquire the necessary rsa.PublicKeys for encryption.
+// The cache will be updated periodically, to ensure up-to-date information.
 type Crypter struct {
-	keystore         crypto.Keystore
-	darknodeRegistry dnr.DarknodeRegistry
+	keystore crypto.Keystore
+	darkpool cal.Darkpool
 
 	registryCacheMu *sync.Mutex
 	registryCache   map[string]registryCacheEntry
@@ -41,12 +40,12 @@ type Crypter struct {
 }
 
 // NewCrypter returns a new Crypter that uses a crypto.Keystore to identify
-// itself when signing and decrypting messages. It uses a dnr.DarknodeRegistry
-// to identify others when verifying and encrypting messages.
-func NewCrypter(keystore crypto.Keystore, darknodeRegistry dnr.DarknodeRegistry, cacheLimit int, cacheUpdatePeriod time.Duration) Crypter {
+// itself when signing and decrypting messages. It uses a cal.Darkpool to
+// identify others when verifying and encrypting messages.
+func NewCrypter(keystore crypto.Keystore, darkpool cal.Darkpool, cacheLimit int, cacheUpdatePeriod time.Duration) Crypter {
 	return Crypter{
 		keystore:          keystore,
-		darknodeRegistry:  darknodeRegistry,
+		darkpool:          darkpool,
 		registryCacheMu:   new(sync.Mutex),
 		registryCache:     map[string]registryCacheEntry{},
 		publicKeyCacheMu:  new(sync.Mutex),
@@ -62,7 +61,6 @@ func (crypter *Crypter) Sign(hasher crypto.Hasher) ([]byte, error) {
 }
 
 // Verify a signature and ensure that the signatory is a registered Darknode.
-// TODO: Support registered traders.
 func (crypter *Crypter) Verify(hasher crypto.Hasher, signature []byte) error {
 	addr, err := crypto.RecoverAddress(hasher, signature)
 	if err != nil {
@@ -126,7 +124,7 @@ func (crypter *Crypter) updateRegistryCache(addr string) error {
 	// Update the entry in the cache
 	entry, ok := crypter.registryCache[addr]
 	if !ok || entry.timestamp.Add(crypter.cacheUpdatePeriod).Before(time.Now()) {
-		isRegistered, err := crypter.darknodeRegistry.IsRegistered(identity.Address(addr).ID())
+		isRegistered, err := crypter.darkpool.IsRegistered(identity.Address(addr))
 		if err != nil {
 			return err
 		}
@@ -154,8 +152,10 @@ func (crypter *Crypter) encryptToAddress(addr string, plainText []byte) ([]byte,
 	if err := crypter.updatePublicKeyCache(addr); err != nil {
 		return nil, err
 	}
-	publicKey := crypter.publicKeyCache[addr].publicKey
-	return rsa.EncryptPKCS1v15(rand.Reader, &publicKey, plainText)
+
+	rsaKey := crypto.RsaKey{PrivateKey: rsa.PrivateKey{}}
+	rsaKey.PublicKey := crypter.publicKeyCache[addr].publicKey
+	return rsaKey.Encrypt(plainText)
 }
 
 func (crypter *Crypter) updatePublicKeyCache(addr string) error {
@@ -163,7 +163,7 @@ func (crypter *Crypter) updatePublicKeyCache(addr string) error {
 	// Update the entry in the cache
 	entry, ok := crypter.publicKeyCache[addr]
 	if !ok || entry.timestamp.Add(crypter.cacheUpdatePeriod).Before(time.Now()) {
-		publicKeyBytes, err := crypter.darknodeRegistry.GetPublicKey(identity.Address(addr).ID())
+		publicKeyBytes, err := crypter.darkpool.PublicKey(identity.Address(addr))
 		if err != nil {
 			return err
 		}

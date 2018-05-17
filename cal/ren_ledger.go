@@ -28,14 +28,17 @@ type RenLedger interface {
 	// Status will return the status of the order
 	Status(orderID order.ID) (order.Status, error)
 
+	// Priority will return the priority of the order
+	Priority(orderID order.ID) (uint64, error)
+
 	// Depth will return depth of confirmation blocks
 	Depth(orderID order.ID) (uint, error)
 
 	// BuyOrders in the Ren Ledger starting at an offset and returning limited
 	// numbers of  buy orders.
-	BuyOrders(offset , limit int ) ([]order.ID, error)
+	BuyOrders(offset, limit int) ([]order.ID, error)
 
 	// SellOrders in the Ren Ledger starting at an offset and returning limited
 	// numbers of  sell orders.
-	SellOrders(offset , limit int ) ([]order.ID, error)
+	SellOrders(offset, limit int) ([]order.ID, error)
 }

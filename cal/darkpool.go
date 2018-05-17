@@ -2,6 +2,7 @@ package cal
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"errors"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -26,7 +27,15 @@ type Darkpool interface {
 	// Pod returns the Pod that contains the given identity.Address in the
 	// current Epoch. It returns ErrPodNotFound if the identity.Address is not
 	// registered in the current Epoch.
-	Pod(id identity.ID) (Pod, error)
+	Pod(addr identity.Address) (Pod, error)
+
+	// PublicKey returns the RSA public key of the Darknode registered with the
+	// given identity.Address.
+	PublicKey(addr identity.Address) (rsa.PublicKey, error)
+
+	// IsRegistered returns true if the identity.Address is a current
+	// registered Darknode. Otherwise, it returns false.
+	IsRegistered(addr identity.Address) (bool, error)
 }
 
 // An Epoch represents the state of an epoch in the Darkpool. It stores the

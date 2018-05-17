@@ -1,4 +1,4 @@
-package darkocean_test
+package darknode_test
 
 import (
 	"bytes"
@@ -6,8 +6,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/republicprotocol/republic-go/darknode"
+
 	"github.com/republicprotocol/republic-go/crypto"
-	. "github.com/republicprotocol/republic-go/darkocean"
 )
 
 var _ = Describe("Crypter", func() {
