@@ -35,46 +35,25 @@ type Delta struct {
 	MinVolume   order.CoExp
 }
 
-func NewDeltaFromShares(buyOrderID, sellOrderID order.ID, tokenShares shamir.Shares, priceShares, volumeShares, minVolumeShares []order.CoExpShare) Delta {
+func NewDeltaFromShares(buyOrderID, sellOrderID order.ID, tokenShares, priceCoshares, priceExpShares, volumeCoShares, volumeExpShare, minVolumeCoShare, minVolumeExpShare []shamir.Share) *Delta {
 	delta := Delta{
 		BuyOrderID:  buyOrderID,
 		SellOrderID: sellOrderID,
 	}
 	delta.Tokens = shamir.Join(tokenShares)
-
-	priceCos := make ([]shamir.Share, len(priceShares))
-	priceExps := make ([]shamir.Share, len(priceShares))
-	for i := range priceShares{
-		priceCos[i] = priceShares[i].Co
-		priceExps[i] = priceShares[i].Exp
-	}
-	delta.Price.Co = uint32(shamir.Join(priceCos))
-	delta.Price.Exp = uint32(shamir.Join(priceExps))
-
-	volumeCos := make ([]shamir.Share, len(volumeShares))
-	volumeExps := make ([]shamir.Share, len(volumeShares))
-	for i := range volumeShares{
-		volumeCos[i] = volumeShares[i].Co
-		volumeExps[i] = volumeShares[i].Exp
-	}
-	delta.Volumn.Co = uint32(shamir.Join(volumeCos))
-	delta.Volumn.Exp = uint32(shamir.Join(volumeExps))
-
-	minVolumeCos := make ([]shamir.Share, len(minVolumeShares))
-	minVolumeExps := make ([]shamir.Share, len(minVolumeShares))
-	for i := range minVolumeShares{
-		minVolumeCos[i] = minVolumeShares[i].Co
-		minVolumeExps[i] = minVolumeShares[i].Exp
-	}
-	delta.MinVolume.Co = uint32(shamir.Join(minVolumeCos))
-	delta.MinVolume.Exp = uint32(shamir.Join(minVolumeExps))
+	delta.Price.Co = uint32(shamir.Join(priceCoshares))
+	delta.Price.Exp = uint32(shamir.Join(priceExpShares))
+	delta.Volumn.Co = uint32(shamir.Join(volumeCoShares))
+	delta.Volumn.Exp = uint32(shamir.Join(volumeExpShare))
+	delta.MinVolume.Co = uint32(shamir.Join(minVolumeCoShare))
+	delta.MinVolume.Exp = uint32(shamir.Join(minVolumeExpShare))
 
 	var ID [32]byte
 	// Compute the ResultID and return the Result.
 	copy(ID[:], crypto.Keccak256(delta.BuyOrderID[:], delta.SellOrderID[:]))
 	delta.ID = ID
 
-	return delta
+	return &delta
 }
 
 func (delta *Delta) IsMatch() bool {
@@ -86,19 +65,19 @@ func (delta *Delta) IsMatch() bool {
 	if uint64(delta.Price.Exp) >= zeroThreshold {
 		return false
 	}
-	if uint64(delta.Price.Co) >= zeroThreshold{
+	if uint64(delta.Price.Co) >= zeroThreshold {
 		return false
 	}
 	if uint64(delta.Volumn.Exp) >= zeroThreshold {
 		return false
 	}
-	if uint64(delta.Volumn.Co) >= zeroThreshold{
+	if uint64(delta.Volumn.Co) >= zeroThreshold {
 		return false
 	}
 	if uint64(delta.MinVolume.Exp) >= zeroThreshold {
 		return false
 	}
-	if uint64(delta.MinVolume.Co) >= zeroThreshold{
+	if uint64(delta.MinVolume.Co) >= zeroThreshold {
 		return false
 	}
 

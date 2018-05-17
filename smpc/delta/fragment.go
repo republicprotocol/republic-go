@@ -7,7 +7,6 @@ import (
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
-	"github.com/republicprotocol/republic-go/stackint"
 )
 
 // A FragmentID is the Keccak256 hash of the order IDs that were used to
@@ -42,7 +41,7 @@ type Fragment struct {
 	MinVolumeShare order.CoExpShare
 }
 
-func NewDeltaFragment(left, right *order.Fragment, prime *stackint.Int1024) Fragment {
+func NewDeltaFragment(left, right *order.Fragment) Fragment {
 	var buyOrderFragment, sellOrderFragment *order.Fragment
 	if left.OrderParity == order.ParityBuy {
 		buyOrderFragment = left
@@ -64,24 +63,24 @@ func NewDeltaFragment(left, right *order.Fragment, prime *stackint.Int1024) Frag
 	copy(deltaID[:], crypto.Keccak256(buyOrderFragment.OrderID[:], sellOrderFragment.OrderID[:]))
 
 	return Fragment{
-		ID: fragmentID,
+		ID:                  fragmentID,
 		DeltaID:             deltaID,
 		BuyOrderID:          buyOrderFragment.OrderID,
 		SellOrderID:         sellOrderFragment.OrderID,
 		BuyOrderFragmentID:  buyOrderFragment.ID,
 		SellOrderFragmentID: sellOrderFragment.ID,
-		TokenShare:        token,
-		PriceShare :  order.CoExpShare{
-			Co:priceCo,
-			Exp:priceExp,
+		TokenShare:          token,
+		PriceShare: order.CoExpShare{
+			Co:  priceCo,
+			Exp: priceExp,
 		},
-		VolumeShare:        order.CoExpShare{
-			Co:volumeCo,
-			Exp:volumeExp,
+		VolumeShare: order.CoExpShare{
+			Co:  volumeCo,
+			Exp: volumeExp,
 		},
-		MinVolumeShare:       order.CoExpShare{
-			Co:minVolumeCo,
-			Exp:minVolumeExp,
+		MinVolumeShare: order.CoExpShare{
+			Co:  minVolumeCo,
+			Exp: minVolumeExp,
 		},
 	}
 }
@@ -107,6 +106,12 @@ func IsCompatible(deltaFragments Fragments) bool {
 		return false
 	}
 	for i := range deltaFragments {
+		if !deltaFragments[i].BuyOrderID.Equal(deltaFragments[0].BuyOrderID) {
+			return false
+		}
+		if !deltaFragments[i].SellOrderID.Equal(deltaFragments[0].SellOrderID) {
+			return false
+		}
 		if !deltaFragments[i].DeltaID.Equal(deltaFragments[0].DeltaID) {
 			return false
 		}

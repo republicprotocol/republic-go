@@ -41,7 +41,7 @@ type Ome struct {
 	deltas    map[delta.ID][]delta.Fragment
 }
 
-func NewOme(done <-chan struct{}, delegate Delegate, ledger cal.RenLedger,  orderbook orderbook.Orderbooker, ranker Ranker, smpcer smpc.Smpcer) Ome {
+func NewOme(done <-chan struct{}, delegate Delegate, ledger cal.RenLedger, orderbook orderbook.Orderbooker, ranker Ranker, smpcer smpc.Smpcer) Ome {
 	ome := Ome{}
 	ome.done = done
 	ome.epoch = make(chan cal.Epoch)
@@ -80,7 +80,7 @@ func (ome *Ome) Compute() chan error {
 	var currentEpoch cal.Epoch
 
 	orderPairs := ome.ranker.OrderPairs(ome.done)
-	err :=ome.smpcer.Start()
+	err := ome.smpcer.Start()
 	if err != nil {
 		errs <- err
 		close(errs)
@@ -138,7 +138,7 @@ func (ome *Ome) Compute() chan error {
 					continue
 				}
 				input <- inst
-			case result, ok  := <-output:
+			case result, ok := <-output:
 				if !ok {
 					return
 				}
@@ -205,14 +205,14 @@ func generateInstruction(pair OrderPair, orderbook orderbook.Orderbooker, epoch 
 	}, nil
 }
 
-func getOrderDetails(delta delta.Delta, orderbooker orderbook.Orderbooker) (order.Order, order.Order, error ){
-	buyOrd ,err  := orderbooker.Order(delta.BuyOrderID)
+func getOrderDetails(delta delta.Delta, orderbooker orderbook.Orderbooker) (order.Order, order.Order, error) {
+	buyOrd, err := orderbooker.Order(delta.BuyOrderID)
 	if err != nil {
-		return order.Order{} , order.Order{} ,err
+		return order.Order{}, order.Order{}, err
 	}
-	sellOrd ,err  := orderbooker.Order(delta.SellOrderID)
+	sellOrd, err := orderbooker.Order(delta.SellOrderID)
 	if err != nil {
-		return order.Order{} , order.Order{} ,err
+		return order.Order{}, order.Order{}, err
 	}
 
 	return buyOrd, sellOrd, nil
