@@ -12,7 +12,7 @@ import (
 var ErrOrderFragmentNotFound = errors.New("order fragment not found")
 
 type Orderbooker interface {
-	OpenOrder(context.Context, identity.MultiAddress, order.Fragment) error
+	OpenOrder(context.Context, identity.MultiAddress, order.EncryptedFragment) error
 	Sync() ([]order.ID, []order.ID, error)
 	OrderFragment(order.ID) (order.Fragment, error)
 	Order(order.ID) (order.Order, error)
@@ -28,10 +28,10 @@ type OrderbookServer interface {
 
 type orderbook struct {
 	client OrderbookClient
-	storer  Storer
+	storer Storer
 }
 
-func NewOrderbook(client OrderbookClient, ledger cal.RenLedger, storer Storer) orderbook{
+func NewOrderbook(client OrderbookClient, ledger cal.RenLedger, storer Storer) orderbook {
 	return orderbook{
 		client: client,
 		storer: storer,
@@ -42,6 +42,6 @@ func (book *orderbook) OpenOrder(ctx context.Context, multiAddr identity.MultiAd
 	return book.client.OpenOrder(ctx, multiAddr, orderFragment)
 }
 
-func (book *orderbook) Sync() ([]order.ID, []order.ID, error){
-
+func (book *orderbook) Sync() ([]order.ID, []order.ID, error) {
+	panic("unimplemented")
 }
