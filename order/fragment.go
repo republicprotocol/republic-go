@@ -99,7 +99,7 @@ func (fragment *Fragment) IsCompatible(other *Fragment) bool {
 // An EncryptedFragment is a Fragment that has been encrypted by an RSA public
 // key.
 type EncryptedFragment struct {
-	OrderID       ID                     `json:"orderID"`
+	OrderID       ID                     `json:"orderId"`
 	OrderType     Type                   `json:"orderType"`
 	OrderParity   Parity                 `json:"orderParity"`
 	OrderExpiry   time.Time              `json:"orderExpiry"`

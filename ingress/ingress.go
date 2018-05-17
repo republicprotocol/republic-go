@@ -9,9 +9,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
@@ -47,21 +45,20 @@ type Ingresser interface {
 }
 
 type Ingress struct {
-	darkpool  cal.Darkpool
-	renLedger cal.RenLedger
-	swarmer   swarm.Swarmer
-	omeClient ome.OmeClient
-	pods      map[[32]byte]cal.Pod
+	darkpool    cal.Darkpool
+	renLedger   cal.RenLedger
+	swarmer     swarm.Swarmer
+	orderbooker orderbook.Orderbooker
+	pods        map[[32]byte]cal.Pod
 }
 
-func NewIngress(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Swarmer, smpcer smpc.Smpcer, omeClient ome.OmeClient) Ingresser {
+func NewIngress(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Swarmer, orderbook orderbook.Orderbooker) Ingresser {
 	return &Ingress{
-		darkpool:  darkpool,
-		renLedger: renLedger,
-		swarmer:   swarmer,
-		smpcer:    smpcer,
-		omeClient: omeClient,
-		pods:      map[[32]byte]cal.Pod{},
+		darkpool:    darkpool,
+		renLedger:   renLedger,
+		swarmer:     swarmer,
+		orderbooker: orderbooker,
+		pods:        map[[32]byte]cal.Pod{},
 	}
 }
 
@@ -168,7 +165,7 @@ func (ingress *Ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []or
 				errs <- fmt.Errorf("cannot send query to %v: %v", darknode, err)
 				return
 			}
-			if err := ingress.omeClient.OpenOrder(ctx, darknodeMultiAddr, orderFragment); err != nil {
+			if err := ingress.orderbooker.OpenOrder(ctx, darknodeMultiAddr, orderFragment); err != nil {
 				errs <- fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
 				return
 			}
