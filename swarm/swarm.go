@@ -19,7 +19,7 @@ var ErrMultiAddressNotFound = errors.New("multiaddress not found")
 
 type Server interface {
 	Ping(ctx context.Context, from identity.MultiAddress) (identity.MultiAddress, error)
-	Query(ctx context.Context, query identity.Address) (identity.MultiAddresses, error)
+	Query(ctx context.Context, query identity.Address, querySig [65]byte) (identity.MultiAddresses, error)
 }
 
 type server struct {
@@ -39,7 +39,7 @@ func (server *server) Ping(ctx context.Context, from identity.MultiAddress) (ide
 	return server.dhtManager.client.MultiAddress(), server.dhtManager.updateDHT(from)
 }
 
-func (server *server) Query(ctx context.Context, query identity.Address) (identity.MultiAddresses, error) {
+func (server *server) Query(ctx context.Context, query identity.Address, querySig [65]byte) (identity.MultiAddresses, error) {
 	addr := server.dhtManager.client.MultiAddress().Address()
 	multiAddrs := server.dhtManager.dht.MultiAddresses()
 	multiAddrsCloser := make(identity.MultiAddresses, 0, len(multiAddrs)/2)
@@ -65,7 +65,7 @@ type Client interface {
 	// Query a node for the identity.MultiAddress of an identity.Address.
 	// Returns a list of identity.MultiAddresses that are closer to the query
 	// than the node that was queried.
-	Query(ctx context.Context, to identity.MultiAddress, query identity.Address) (identity.MultiAddresses, error)
+	Query(ctx context.Context, to identity.MultiAddress, query identity.Address, querySig [65]byte) (identity.MultiAddresses, error)
 
 	// MultiAddress of the Client.
 	MultiAddress() identity.MultiAddress
@@ -181,7 +181,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address, depth
 
 		// Query for identity.MultiAddresses that are closer to the query
 		// target than the peer itself, and add them to the whitelist
-		multiAddrs, err := swarmer.client.Query(ctx, peer, query)
+		multiAddrs, err := swarmer.client.Query(ctx, peer, query, [65]byte{})
 		if err != nil && err != io.EOF {
 			return identity.MultiAddress{}, fmt.Errorf("cannot send query to %v: %v", peer, err)
 		}

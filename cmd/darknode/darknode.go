@@ -71,13 +71,12 @@ func main() {
 		log.Fatalf("cannot create leveldb: %v", err)
 	}
 	server := grpc.NewServer()
-	crypter := crypto.NewWeakCrypter()
 	dht := dht.NewDHT(conf.Address, 32)
 	connPool := grpc.NewConnPool(128)
 
 	newStatus(&dht, server)
 	newOrderbooker(&store, renLedger, server)
-	swarmer := newSwarmer(&crypter, multiAddr, &dht, &connPool, server)
+	swarmer := newSwarmer(multiAddr, &dht, &connPool, server)
 
 	go func() {
 		time.Sleep(time.Second)
@@ -109,9 +108,9 @@ func newStatus(dht *dht.DHT, server *grpc.Server) {
 	service.Register(server)
 }
 
-func newSwarmer(crypter crypto.Crypter, multiAddr identity.MultiAddress, dht *dht.DHT, connPool *grpc.ConnPool, server *grpc.Server) swarm.Swarmer {
-	client := grpc.NewSwarmClient(crypter, multiAddr, connPool)
-	service := grpc.NewSwarmService(crypter, swarm.NewServer(client, dht))
+func newSwarmer(multiAddr identity.MultiAddress, dht *dht.DHT, connPool *grpc.ConnPool, server *grpc.Server) swarm.Swarmer {
+	client := grpc.NewSwarmClient(multiAddr, connPool)
+	service := grpc.NewSwarmService(swarm.NewServer(client, dht))
 	service.Register(server)
 	return swarm.NewSwarmer(client, dht)
 }

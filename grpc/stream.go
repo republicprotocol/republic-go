@@ -12,8 +12,8 @@ import (
 
 // StreamService implements the rpc.SmpcServer interface using a gRPC service.
 type StreamService struct {
-	addr    identity.Address
-	crypter crypto.Crypter
+	verifier crypto.Verifier
+	addr     identity.Address
 
 	connsMu     *sync.Mutex
 	connsStream map[identity.Address]chan safeStream
@@ -21,10 +21,10 @@ type StreamService struct {
 
 // NewStreamService returns an implementation of the stream.Server interface
 // that uses gRPC for bidirectional streaming.
-func NewStreamService(addr identity.Address, crypter crypto.Crypter) StreamService {
+func NewStreamService(verifier crypto.Verifier, addr identity.Address) StreamService {
 	return StreamService{
-		addr:    addr,
-		crypter: crypter,
+		verifier: verifier,
+		addr:     addr,
 
 		connsMu:     new(sync.Mutex),
 		connsStream: map[identity.Address]chan safeStream{},
@@ -85,17 +85,15 @@ func (service *StreamService) Listen(ctx context.Context, addr identity.Address)
 }
 
 func (service *StreamService) verifyStreamAddress(message *StreamMessage) (identity.Address, error) {
-	var signature []byte
 	var addr string
-	if message.GetStreamAddress() != nil && message.GetStreamAddress().GetSignature() != nil {
-		signature = message.GetStreamAddress().GetSignature()
-	}
 	if message.GetStreamAddress() != nil && message.GetStreamAddress().GetAddress() != "" {
 		addr = message.GetStreamAddress().GetAddress()
 	}
-	if err := service.crypter.Verify(identity.Address(addr), signature); err != nil {
-		return identity.Address(addr), err
-	}
+
+	// FIXME: Verify that this message was signed by the sender.
+	data := []byte("Republic Protocol: connect: from " + addr + " to " + service.addr.String())
+	data = crypto.Keccak256(data)
+
 	return identity.Address(addr), nil
 }
 

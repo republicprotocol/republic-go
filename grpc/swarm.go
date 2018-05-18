@@ -6,21 +6,18 @@ import (
 	"io"
 	"log"
 
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/swarm"
 	"google.golang.org/grpc"
 )
 
 type SwarmService struct {
-	crypter crypto.Crypter
-	server  swarm.Server
+	server swarm.Server
 }
 
-func NewSwarmService(crypter crypto.Crypter, server swarm.Server) SwarmService {
+func NewSwarmService(server swarm.Server) SwarmService {
 	return SwarmService{
-		crypter: crypter,
-		server:  server,
+		server: server,
 	}
 }
 
@@ -39,19 +36,12 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 		return nil, fmt.Errorf("cannot unmarshal multiaddress: %v", err)
 	}
 	from.Signature = request.GetSignature()
-	if err := service.crypter.Verify(from, from.Signature); err != nil {
-		return &PingResponse{}, fmt.Errorf("cannot verify multiaddress: %v", err)
-	}
 	multiAddr, err := service.server.Ping(ctx, from)
 	if err != nil {
 		return &PingResponse{}, fmt.Errorf("cannot update dht: %v", err)
 	}
-	multiAddrSignature, err := service.crypter.Sign(multiAddr)
-	if err != nil {
-		return &PingResponse{}, err
-	}
 	return &PingResponse{
-		Signature:    multiAddrSignature,
+		Signature:    multiAddr.Signature,
 		MultiAddress: multiAddr.String(),
 	}, nil
 }
@@ -63,15 +53,14 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 // the Swarm service itself.
 func (service *SwarmService) Query(request *QueryRequest, stream SwarmService_QueryServer) error {
 	query := identity.Address(request.GetAddress())
-	querySignature := request.GetSignature()
-	if err := service.crypter.Verify(query, querySignature); err != nil {
-		return fmt.Errorf("cannot verify multiaddress: %v", err)
-	}
+	querySig := [65]byte{}
+	copy(querySig[:], request.GetSignature())
 
-	multiAddrs, err := service.server.Query(stream.Context(), query)
+	multiAddrs, err := service.server.Query(stream.Context(), query, querySig)
 	if err != nil {
 		return err
 	}
+
 	for _, multiAddr := range multiAddrs {
 		response := &QueryResponse{
 			Signature:    multiAddr.Signature,
@@ -84,21 +73,18 @@ func (service *SwarmService) Query(request *QueryRequest, stream SwarmService_Qu
 			return err
 		}
 	}
-
 	return nil
 }
 
 type swarmClient struct {
-	crypter   crypto.Crypter
 	multiAddr identity.MultiAddress
 	connPool  *ConnPool
 }
 
 // NewSwarmClient returns an implementation of the swarm.Client interface that
 // uses gRPC and a recycled connection pool.
-func NewSwarmClient(crypter crypto.Crypter, multiAddr identity.MultiAddress, connPool *ConnPool) swarm.Client {
+func NewSwarmClient(multiAddr identity.MultiAddress, connPool *ConnPool) swarm.Client {
 	return &swarmClient{
-		crypter:   crypter,
 		multiAddr: multiAddr,
 		connPool:  connPool,
 	}
@@ -112,13 +98,8 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress) (
 	}
 	defer conn.Close()
 
-	multiAddrSignature, err := client.crypter.Sign(client.multiAddr)
-	if err != nil {
-		return identity.MultiAddress{}, fmt.Errorf("cannot sign request: %v", err)
-	}
-
 	request := &PingRequest{
-		Signature:    multiAddrSignature,
+		Signature:    client.multiAddr.Signature,
 		MultiAddress: client.multiAddr.String(),
 	}
 	response, err := NewSwarmServiceClient(conn.ClientConn).Ping(ctx, request)
@@ -131,14 +112,11 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress) (
 		return identity.MultiAddress{}, fmt.Errorf("cannot parse %v: %v", response.GetMultiAddress(), err)
 	}
 	multiAddr.Signature = response.GetSignature()
-	if err := client.crypter.Verify(multiAddr, multiAddr.Signature); err != nil {
-		return identity.MultiAddress{}, fmt.Errorf("cannot verify signature of %v: %v", response.GetMultiAddress(), err)
-	}
 	return multiAddr, nil
 }
 
 // Query implements the swarm.Client interface.
-func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address) (identity.MultiAddresses, error) {
+func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address, querySignature [65]byte) (identity.MultiAddresses, error) {
 	if _, err := client.Ping(ctx, to); err != nil {
 		return identity.MultiAddresses{}, fmt.Errorf("cannot ping before query: %v", err)
 	}
@@ -149,12 +127,8 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 	}
 	defer conn.Close()
 
-	querySignature, err := client.crypter.Sign(query)
-	if err != nil {
-		return identity.MultiAddresses{}, fmt.Errorf("cannot sign request: %v", err)
-	}
 	request := &QueryRequest{
-		Signature: querySignature,
+		Signature: querySignature[:],
 		Address:   query.String(),
 	}
 	stream, err := NewSwarmServiceClient(conn.ClientConn).Query(ctx, request)
@@ -177,10 +151,6 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 			continue
 		}
 		multiAddr.Signature = message.GetSignature()
-		if err := client.crypter.Verify(multiAddr, multiAddr.Signature); err != nil {
-			log.Printf("cannot verify signature of %v: %v", message.GetMultiAddress(), err)
-			continue
-		}
 		multiAddrs = append(multiAddrs, multiAddr)
 	}
 }
