@@ -28,6 +28,7 @@ type Listener interface {
 }
 
 type Orderbooker interface {
+	Server
 
 	// Sync orders and order states from the Ren Ledger to this local
 	// Orderbooker. Returns a list of changes that were made to this local

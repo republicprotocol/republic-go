@@ -13,6 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/republicprotocol/republic-go/dispatch"
+
+	"github.com/republicprotocol/republic-go/leveldb"
+	"github.com/republicprotocol/republic-go/orderbook"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
@@ -31,6 +36,7 @@ func main() {
 
 	// Parse command-line arguments
 	configParam := flag.String("config", path.Join(os.Getenv("HOME"), ".darknode/config.json"), "JSON configuration file")
+	dataParam := flag.String("data", path.Join(os.Getenv("HOME"), ".darknode/data"), "Data directory")
 	flag.Parse()
 
 	// Load configuration file
@@ -53,31 +59,38 @@ func main() {
 	log.Printf("address %v", multiAddr)
 
 	// Get ethereum bindings
-	auth, _, _, _, _, err := getEthereumBindings(conf.Keystore, conf.Ethereum)
+	auth, _, _, _, renLedger, err := getEthereumBindings(conf.Keystore, conf.Ethereum)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
 	log.Printf("ethereum %v", auth.From.Hex())
 
 	// Build services
+	store, err := leveldb.NewStore(*dataParam)
+	if err != nil {
+		log.Fatalf("cannot create leveldb: %v", err)
+	}
 	server := grpc.NewServer()
 	crypter := crypto.NewWeakCrypter()
 	dht := dht.NewDHT(conf.Address, 32)
 	connPool := grpc.NewConnPool(128)
+
 	newStatus(&dht, server)
+	newOrderbooker(&store, renLedger, server)
 	swarmer := newSwarmer(&crypter, multiAddr, &dht, &connPool, server)
 
 	go func() {
 		time.Sleep(time.Second)
-
-		// Bootstrap into the network
-		if err := swarmer.Bootstrap(context.Background(), conf.BootstrapMultiAddresses); err != nil {
-			log.Printf("error during bootstrap: %v", err)
-		}
-		log.Printf("peers %v", len(dht.MultiAddresses()))
-		for _, multiAddr := range dht.MultiAddresses() {
-			log.Printf("  %v", multiAddr)
-		}
+		dispatch.CoBegin(func() {
+			// Bootstrap into the network
+			if err := swarmer.Bootstrap(context.Background(), conf.BootstrapMultiAddresses); err != nil {
+				log.Printf("error during bootstrap: %v", err)
+			}
+			log.Printf("peers %v", len(dht.MultiAddresses()))
+			for _, multiAddr := range dht.MultiAddresses() {
+				log.Printf("  %v", multiAddr)
+			}
+		})
 	}()
 
 	// Start gRPC
@@ -101,6 +114,13 @@ func newSwarmer(crypter crypto.Crypter, multiAddr identity.MultiAddress, dht *dh
 	service := grpc.NewSwarmService(crypter, swarm.NewServer(client, dht))
 	service.Register(server)
 	return swarm.NewSwarmer(client, dht)
+}
+
+func newOrderbooker(store *leveldb.Store, renLedger cal.RenLedger, server *grpc.Server) orderbook.Orderbooker {
+	orderbooker := orderbook.NewOrderbook(store, orderbook.NewSyncer(renLedger, 32))
+	service := grpc.NewOrderbookService(orderbooker)
+	service.Register(server)
+	return orderbooker
 }
 
 func getIPAddress() (string, error) {
