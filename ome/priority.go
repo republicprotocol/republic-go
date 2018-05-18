@@ -116,7 +116,9 @@ func (queue *PriorityQueue) Remove(ids ...order.ID) {
 func (queue *PriorityQueue) OrderPairs(n int) []OrderPair {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
-
+	if n >= len(queue.pairs) {
+		return queue.pairs[:]
+	}
 	return queue.pairs[:n]
 }
 

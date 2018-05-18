@@ -15,6 +15,8 @@ type Omer interface {
 	// orders, purge confirmed orders, and reprioritize order matching
 	// computations.
 	Sync() error
+
+	Compute(done <-chan struct{}) chan error
 }
 
 type ome struct {
