@@ -161,5 +161,5 @@ func (book *orderbook) Order(id order.ID) (order.Order, error) {
 }
 
 func (book *orderbook) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
-	panic("uimplemented")
+	return book.syncer.ConfirmOrderMatch(buy, sell)
 }

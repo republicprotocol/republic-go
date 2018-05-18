@@ -10,6 +10,7 @@ import (
 
 type Syncer interface {
 	Sync() ([]OrderUpdate, error)
+	ConfirmOrderMatch(order.ID, order.ID) error
 }
 
 type syncer struct {
@@ -112,6 +113,10 @@ func (syncer *syncer) Prune() []OrderUpdate {
 	}
 
 	return updates
+}
+
+func (syncer *syncer) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
+	return syncer.renLedger.ConfirmOrder(buy, []order.ID{sell})
 }
 
 type OrderUpdate struct {

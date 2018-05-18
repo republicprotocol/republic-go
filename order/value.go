@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
@@ -124,15 +123,13 @@ func (val CoExpShare) MarshalBinary() ([]byte, error) {
 
 // Encrypt a CoExpShare using an rsa.PublicKey.
 func (val *CoExpShare) Encrypt(pubKey rsa.PublicKey) (EncryptedCoExpShare, error) {
-	rsaKey := crypto.RsaKey{PrivateKey: &rsa.PrivateKey{PublicKey: pubKey}}
-
 	var err error
 	encryptedVal := EncryptedCoExpShare{}
-	encryptedVal.Co, err = shamir.EncryptShare(rsaKey, val.Co)
+	encryptedVal.Co, err = val.Co.Encrypt(pubKey)
 	if err != nil {
 		return encryptedVal, err
 	}
-	encryptedVal.Exp, err = shamir.EncryptShare(rsaKey, val.Exp)
+	encryptedVal.Exp, err = val.Exp.Encrypt(pubKey)
 	if err != nil {
 		return encryptedVal, err
 	}
