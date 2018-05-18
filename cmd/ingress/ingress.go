@@ -20,7 +20,6 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/darknode/crypter"
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/http"
@@ -66,7 +65,7 @@ func main() {
 
 	dht := dht.NewDHT(multiAddr.Address(), 100)
 	connPool := grpc.NewConnPool(100)
-	crypter := crypter.NewCrypter(keystore, &registry, 128, time.Minute)
+	crypter := crypto.NewWeakCrypter() // FIXME: Re-enable strong crypter.
 	swarmClient := grpc.NewSwarmClient(&crypter, multiAddr, &connPool)
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	orderbookClient := grpc.NewOrderbookClient(&connPool)

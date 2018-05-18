@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/dht"
@@ -41,7 +42,7 @@ func (server *server) Ping(ctx context.Context, from identity.MultiAddress) (ide
 func (server *server) Query(ctx context.Context, query identity.Address) (identity.MultiAddresses, error) {
 	addr := server.dhtManager.client.MultiAddress().Address()
 	multiAddrs := server.dhtManager.dht.MultiAddresses()
-	multiAddrsCloser := make(identity.MultiAddresses, len(multiAddrs)/2)
+	multiAddrsCloser := make(identity.MultiAddresses, 0, len(multiAddrs)/2)
 	for _, multiAddr := range multiAddrs {
 		isPeerCloser, err := identity.Closer(multiAddr.Address(), addr, query)
 		if err != nil {
@@ -112,7 +113,10 @@ func (swarmer *swarmer) Bootstrap(ctx context.Context, multiAddrs identity.Multi
 				errs <- fmt.Errorf("cannot ping bootstrap node %v: %v", multiAddrs[i], err)
 				return
 			}
-			swarmer.dhtManager.updateDHT(multiAddr)
+			if err := swarmer.dhtManager.updateDHT(multiAddr); err != nil {
+				errs <- fmt.Errorf("cannot update dht with bootstrap node %v: %v", multiAddrs[i], err)
+				return
+			}
 		})
 		if _, err := swarmer.query(ctx, swarmer.client.MultiAddress().Address(), -1, true); err != nil {
 			errs <- fmt.Errorf("error while bootstrapping: %v", err)
@@ -190,6 +194,9 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address, depth
 			}
 			if _, ok := blacklist[multiAddr.Address()]; ok {
 				continue
+			}
+			if err := swarmer.dhtManager.updateDHT(multiAddr); err != nil {
+				log.Printf("cannot update dht with %v: %v", multiAddr, err)
 			}
 			whitelist = append(whitelist, multiAddr)
 		}

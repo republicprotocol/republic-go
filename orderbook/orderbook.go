@@ -23,6 +23,10 @@ type Server interface {
 	OpenOrder(context.Context, order.EncryptedFragment) error
 }
 
+type Listener interface {
+	OnConfirmOrderMatch(order.Order, order.Order)
+}
+
 type Orderbooker interface {
 
 	// Sync orders and order states from the Ren Ledger to this local
@@ -38,6 +42,9 @@ type Orderbooker interface {
 	// Order that has been reconstructed and stored in this local Orderbooker.
 	// This only happens for orders that have been matched and confirmed.
 	Order(order.ID) (order.Order, error)
+
+	// Confirm an order match.
+	ConfirmOrderMatch(order.ID, order.ID) error
 }
 
 type orderbook struct {
@@ -66,4 +73,8 @@ func (book *orderbook) OrderFragment(id order.ID) (order.Fragment, error) {
 
 func (book *orderbook) Order(id order.ID) (order.Order, error) {
 	return book.storer.Order(id)
+}
+
+func (book *orderbook) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
+	panic("uimplemented")
 }

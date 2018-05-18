@@ -4,6 +4,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -11,6 +12,7 @@ type Ranker interface {
 	Insert(order order.ID, parity order.Parity, priority uint64)
 	Remove(ids ...order.ID)
 	OrderPairs(n int) []OrderPair
+	OnEpochChange(epoch cal.Epoch)
 }
 
 type OrderPair struct {
@@ -118,10 +120,10 @@ func (queue *PriorityQueue) OrderPairs(n int) []OrderPair {
 	return queue.pairs[:n]
 }
 
-func (queue *PriorityQueue) OnEpochChange(poolSize, poolIndex int) {
+func (queue *PriorityQueue) OnEpochChange(epoch cal.Epoch) {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 
-	queue.poolSize = poolSize
-	queue.poolIndex = poolIndex
+	queue.poolSize = len(epoch.Pods)
+	queue.poolIndex = 0  // FIXME: get which pool the node is in
 }
