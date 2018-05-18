@@ -26,7 +26,7 @@ type ome struct {
 	orderbooker       orderbook.Orderbooker
 	orderbookListener orderbook.Listener
 	smpcer            smpc.Smpcer
-	ranker Ranker
+	ranker            Ranker
 }
 
 func NewOme(orderbooker orderbook.Orderbooker, orderbookListener orderbook.Listener, smpcer smpc.Smpcer) Omer {
@@ -35,7 +35,7 @@ func NewOme(orderbooker orderbook.Orderbooker, orderbookListener orderbook.Liste
 		orderbooker:       orderbooker,
 		orderbookListener: orderbookListener,
 		smpcer:            smpcer,
-		ranker: NewPriorityQueue(1, 0),
+		ranker:            NewPriorityQueue(1, 0),
 	}
 }
 
@@ -127,7 +127,7 @@ func (ome *ome) Compute(done <-chan struct{}) chan error {
 					}
 				}
 			default:
-				orderPairs := ome.ranker.OrderPairs(50 )
+				orderPairs := ome.ranker.OrderPairs(50)
 
 				for _, pair := range orderPairs {
 					inst, err := generateInstruction(pair, ome.orderbooker, currentEpoch)
@@ -135,7 +135,7 @@ func (ome *ome) Compute(done <-chan struct{}) chan error {
 						continue
 					}
 					input <- inst
-					ome.ranker.Remove(pair.SellOrder , pair.BuyOrder)
+					ome.ranker.Remove(pair.SellOrder, pair.BuyOrder)
 				}
 			}
 		}
