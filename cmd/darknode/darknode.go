@@ -61,6 +61,7 @@ func main() {
 	crypter := crypto.NewWeakCrypter()
 	dht := dht.NewDHT(conf.Address, 32)
 	connPool := grpc.NewConnPool(128)
+	newStatus(&dht, server)
 	_ = newSwarmer(&crypter, multiAddr, &dht, &connPool, server)
 
 	log.Printf("listening on %v:%v...", conf.Host, conf.Port)
@@ -71,6 +72,11 @@ func main() {
 	if err := server.Serve(lis); err != nil {
 		log.Fatalf("cannot serve on %v:%v: %v", conf.Host, conf.Port, err)
 	}
+}
+
+func newStatus(dht *dht.DHT, server *grpc.Server) {
+	service := grpc.NewStatusService(dht)
+	service.Register(server)
 }
 
 func newSwarmer(crypter crypto.Crypter, multiAddr identity.MultiAddress, dht *dht.DHT, connPool *grpc.ConnPool, server *grpc.Server) swarm.Swarmer {
