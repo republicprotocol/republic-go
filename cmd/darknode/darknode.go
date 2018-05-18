@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/stream"
 
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -73,10 +74,12 @@ func main() {
 	server := grpc.NewServer()
 	dht := dht.NewDHT(conf.Address, 32)
 	connPool := grpc.NewConnPool(128)
+	crypter := crypto.NewWeakCrypter()
 
 	newStatus(&dht, server)
 	newOrderbooker(&store, renLedger, server)
 	swarmer := newSwarmer(multiAddr, &dht, &connPool, server)
+	newStreamer(&crypter, conf.Address, &connPool, server)
 
 	go func() {
 		time.Sleep(time.Second)
@@ -120,6 +123,13 @@ func newOrderbooker(store *leveldb.Store, renLedger cal.RenLedger, server *grpc.
 	service := grpc.NewOrderbookService(orderbooker)
 	service.Register(server)
 	return orderbooker
+}
+
+func newStreamer(verifier crypto.Verifier, addr identity.Address, connPool *grpc.ConnPool, server *grpc.Server) stream.Streamer {
+	client := grpc.NewStreamClient(addr, connPool)
+	service := grpc.NewStreamService(verifier, addr)
+	service.Register(server)
+	return stream.NewStreamer(addr, stream.NewClientRecycler(client), &service)
 }
 
 func getIPAddress() (string, error) {

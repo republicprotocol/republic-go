@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -114,6 +115,64 @@ func (service *StreamService) teardownConn(addr identity.Address) {
 	delete(service.connsStream, addr)
 }
 
+type streamClient struct {
+	addr     identity.Address
+	connPool *ConnPool
+
+	streamsMu *sync.Mutex
+	streams   map[identity.Address]StreamService_ConnectClient
+}
+
+func NewStreamClient(addr identity.Address, connPool *ConnPool) stream.Client {
+	return &streamClient{
+		addr:     addr,
+		connPool: connPool,
+
+		streamsMu: new(sync.Mutex),
+		streams:   map[identity.Address]StreamService_ConnectClient{},
+	}
+}
+
+func (client *streamClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (stream.Stream, error) {
+	conn, err := client.connPool.Dial(ctx, multiAddr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot dial %v: %v", multiAddr, err)
+	}
+	defer conn.Close()
+
+	stream, err := NewStreamServiceClient(conn.ClientConn).Connect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot open stream: %v", err)
+	}
+	if err := stream.Send(&StreamMessage{
+		StreamAddress: &StreamAddress{
+			Signature: []byte{},
+			Address:   client.addr.String(),
+		},
+		Data: []byte{},
+	}); err != nil {
+		return nil, fmt.Errorf("cannot send stream address: %v", err)
+	}
+
+	client.streamsMu.Lock()
+	defer client.streamsMu.Unlock()
+
+	client.streams[multiAddr.Address()] = stream
+	return newSafeStream(stream), err
+}
+
+func (client *streamClient) Disconnect(multiAddr identity.MultiAddress) error {
+	client.streamsMu.Lock()
+	defer client.streamsMu.Unlock()
+
+	if stream, ok := client.streams[multiAddr.Address()]; ok {
+		err := stream.CloseSend()
+		delete(client.streams, multiAddr.Address())
+		return err
+	}
+	return nil
+}
+
 // safeStream wraps a gRPC stream and ensures that it is safe for concurrent
 // use. It prevents multiple goroutines from concurrent writing, and from
 // concurrent reading, but it allows one goroutine to write while another
@@ -122,10 +181,10 @@ type safeStream struct {
 	done   chan struct{}
 	sendMu *sync.Mutex
 	recvMu *sync.Mutex
-	stream StreamService_ConnectServer
+	stream grpc.Stream
 }
 
-func newSafeStream(stream StreamService_ConnectServer) safeStream {
+func newSafeStream(stream grpc.Stream) safeStream {
 	return safeStream{
 		done:   make(chan struct{}),
 		sendMu: new(sync.Mutex),
@@ -154,7 +213,7 @@ func (stream safeStream) Send(message stream.Message) error {
 	if err != nil {
 		return err
 	}
-	return stream.stream.Send(&StreamMessage{
+	return stream.stream.SendMsg(&StreamMessage{
 		Data: data,
 	})
 }
@@ -164,9 +223,9 @@ func (stream safeStream) Recv(message stream.Message) error {
 	stream.recvMu.Lock()
 	defer stream.recvMu.Unlock()
 
-	data, err := stream.stream.Recv()
-	if err != nil {
+	streamMessage := StreamMessage{}
+	if err := stream.stream.RecvMsg(&streamMessage); err != nil {
 		return err
 	}
-	return message.UnmarshalBinary(data.Data)
+	return message.UnmarshalBinary(streamMessage.Data)
 }
