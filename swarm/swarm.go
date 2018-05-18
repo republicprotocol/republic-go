@@ -112,7 +112,7 @@ func (swarmer *swarmer) Bootstrap(ctx context.Context, multiAddrs identity.Multi
 				errs <- fmt.Errorf("cannot ping bootstrap node %v: %v", multiAddrs[i], err)
 				return
 			}
-			swarmer.dhtManager.updateDHT(multiAddr)
+			_ = swarmer.dhtManager.updateDHT(multiAddr) // TODO: Anything meaningful for the error?
 		})
 		if _, err := swarmer.query(ctx, swarmer.client.MultiAddress().Address(), -1, true); err != nil {
 			errs <- fmt.Errorf("error while bootstrapping: %v", err)
@@ -191,6 +191,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address, depth
 			if _, ok := blacklist[multiAddr.Address()]; ok {
 				continue
 			}
+			_ = swarmer.dhtManager.updateDHT(multiAddr) // TODO: Anything meaningful for the error?
 			whitelist = append(whitelist, multiAddr)
 		}
 	}
