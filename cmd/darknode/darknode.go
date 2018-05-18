@@ -1,30 +1,38 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
+	"net"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path"
 	"strings"
-	"syscall"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
+	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/dht"
+	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/swarm"
 )
-
-var configFile *string
 
 func main() {
 
 	// Parse command-line arguments
-	configFile = flag.String("config", path.Join(os.Getenv("HOME"), ".darknode/config.json"), "JSON configuration file")
+	configParam := flag.String("config", path.Join(os.Getenv("HOME"), ".darknode/config.json"), "JSON configuration file")
 	flag.Parse()
 
 	// Load configuration file
-	config, err := darknode.LoadConfig(*configFile)
+	conf, err := darknode.NewConfigFromJSONFile(*configParam)
 	if err != nil {
 		log.Fatalf("cannot load config: %v", err)
 	}
@@ -36,29 +44,40 @@ func main() {
 	}
 
 	// Get multi-address
-	multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/18514/republic/%s", ipAddr, config.Address))
+	multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/18514/republic/%s", ipAddr, conf.Address))
 	if err != nil {
 		log.Fatalf("cannot get multiaddress: %v", err)
 	}
-	log.Printf("multiaddress is %v\n", multiAddr)
+	log.Printf("address %v", multiAddr)
 
-	// Create the Darknode
-	node, err := darknode.NewDarknode(multiAddr, config)
+	// Get ethereum bindings
+	auth, _, _, _, _, err := getEthereumBindings(conf.Keystore, conf.Ethereum)
 	if err != nil {
-		log.Fatalf("cannot create darknode: %v", err)
+		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
+	log.Printf("ethereum %v", auth.From.Hex())
 
-	// Run the Darknode until the process is terminated
-	done := make(chan struct{})
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
-	go func() {
-		defer close(done)
-		<-sig
-	}()
-	for err := range node.Run(done) {
-		log.Println(err)
+	server := grpc.NewServer()
+	crypter := crypto.NewWeakCrypter()
+	dht := dht.NewDHT(conf.Address, 32)
+	connPool := grpc.NewConnPool(128)
+	_ = newSwarmer(&crypter, multiAddr, &dht, &connPool, server)
+
+	log.Printf("listening on %v:%v...", conf.Host, conf.Port)
+	lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
+	if err != nil {
+		log.Fatalf("cannot listen on %v:%v: %v", conf.Host, conf.Port, err)
 	}
+	if err := server.Serve(lis); err != nil {
+		log.Fatalf("cannot serve on %v:%v: %v", conf.Host, conf.Port, err)
+	}
+}
+
+func newSwarmer(crypter crypto.Crypter, multiAddr identity.MultiAddress, dht *dht.DHT, connPool *grpc.ConnPool, server *grpc.Server) swarm.Swarmer {
+	client := grpc.NewSwarmClient(crypter, multiAddr, connPool)
+	service := grpc.NewSwarmService(crypter, swarm.NewServer(client, dht))
+	service.Register(server)
+	return swarm.NewSwarmer(client, dht)
 }
 
 func getIPAddress() (string, error) {
@@ -73,4 +92,27 @@ func getIPAddress() (string, error) {
 	}
 
 	return string(out), nil
+}
+
+func getEthereumBindings(keystore crypto.Keystore, conf ethereum.Config) (*bind.TransactOpts, cal.Darkpool, cal.DarkpoolAccounts, cal.DarkpoolFees, cal.RenLedger, error) {
+	conn, err := ethereum.Connect(conf)
+	if err != nil {
+		return nil, nil, nil, nil, nil, fmt.Errorf("cannot connect to ethereum: %v", err)
+	}
+	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
+	auth.GasPrice = big.NewInt(1000000000)
+
+	darkpool, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
+		return auth, nil, nil, nil, nil, err
+	}
+
+	renLedger, err := ledger.NewRenLedgerContract(context.Background(), conn, auth, &bind.CallOpts{})
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to ren ledger: %v", err))
+		return auth, nil, nil, nil, nil, err
+	}
+
+	return auth, &darkpool, nil, nil, &renLedger, nil
 }

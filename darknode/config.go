@@ -10,7 +10,6 @@ import (
 	"github.com/republicprotocol/republic-go/logger"
 )
 
-// A Config defines the different settings for a Darknode.
 type Config struct {
 	Keystore crypto.Keystore `json:"keystore"`
 	Ethereum ethereum.Config `json:"ethereum"`
@@ -22,17 +21,16 @@ type Config struct {
 	Port                    string                  `json:"port"`
 }
 
-// LoadConfig loads a Config object from the given filename. Returns the Config
-// object, or an error.
-func LoadConfig(filename string) (*Config, error) {
+func NewConfigFromJSONFile(filename string) (Config, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 	defer file.Close()
-	config := new(Config)
-	if err := json.NewDecoder(file).Decode(config); err != nil {
-		return nil, err
+
+	conf := Config{}
+	if err := json.NewDecoder(file).Decode(&conf); err != nil {
+		return Config{}, err
 	}
-	return config, nil
+	return conf, nil
 }

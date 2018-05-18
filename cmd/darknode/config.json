@@ -1,0 +1,52 @@
+{
+    "keystore": {
+        "id": "a61d8259-e5ae-475e-b9e1-4757abd1f4bb",
+        "version": "3",
+        "ecdsa": {
+            "address": "8MKLCF3VGbQkPV5ZFMQpcxtWu6at3w",
+            "curveParams": {
+                "b": "Bw==",
+                "bits": 256,
+                "n": "/////////////////////rqu3OavSKA7v9JejNA2QUE=",
+                "name": "s256",
+                "p": "/////////////////////////////////////v///C8=",
+                "x": "eb5mfvncu6xVoGKVzocLBwKb/NstzijZWfKBWxb4F5g=",
+                "y": "SDradyajxGVdpPv8DhEIqP0XtEimhVQZnEfQj/sQ1Lg="
+            },
+            "d": "EAjL78f8uNV7BmeCg4QIhZt5K8ip3W2zPmHreIekzrc=",
+            "x": "MsPocln4HwZPq0cy8leQ41jfjKfPBNxesK1JGPiOm84=",
+            "y": "1BkKl0LWXWTeyEHc0ycs9GSr76OLJDGuVWD0FHVz6Hs="
+        },
+        "rsa": {
+            "d": "Sbs/CmoBt06vJzrc5UEmgtmO9vCc+o5yy84m5y65FIZGkJs3/gBvPd74e3moOCpuG7pD27DkYl4VNKM/r5QMXACZoPGzDWaSo6e1Bhmzig3I4sZrpQYQ3ygwojR7K17QaEh7XyrCx450SaD/U97rM6sLDyW60BA1Bd/AzzGk5Em5Tm2Y5CwGhQQNpipLXFO+6eTqRrh/uR5lzGQkCuPgX3Uf8HWici59aYqMuLQslyGxlj45crEVF/n0NGQS+AFX1z6YdoJFwScJzyZxxxSIBm/wclddwuQZxcGtrJYYA/xWbo0i7R0d5bjjvuOt7d67Z6y6zmmht8ZBHoJPauFpQQ==",
+            "e": 65537,
+            "n": "uuajrDOwPpVDfVEYvFoGQgaNmZyV54RmXerqkOYKSlYEdur+kQFrGbUB8fXv0ZtXag0vXpvauPMaizki5ugEb72spHs3qKSbcKVTkaRnunaSq5xA/VftMuK/hg+eaCWBclWggQVs9knnuMJ63p0cpEXGZLp9QVJz6SeI2gV3dEJqqg6ue1lBGA2psNiRY+Tt5V38ftaT5vm6FLY9sxzOVMFyHzFClhiXd2FsHziVgwRzBh0pbM8Bwq+7p0vXT9WvI/y0r6E4XUS3k3f5ejqeEc17NCVA3j0JXRaNg9FUU56k7UhC79BzWWCZax6nFcWQdrck40BDpKzKVfvfnWXwww==",
+            "primes": [
+                "wLxfY40mTSj1BHqE4YMTd8JUgIiB7fqS1jpDFJ/ifsJY/7L8XnBp7hSUwjFI372mNrbWnBlxMHnJs2zaDzoBEU3MlwKWZuAqVEw7y075NS1vc953/3Frnrl+SaFqKrJ5HpMQqO1AZ82UYG8mC8KWdrD/XsCnNfuAAc8cGIg3oTE=",
+                "+D/1mhZfDGaa07p/AIMOs5In/++6eTDrviO+RVglEaclsf7+lLynrM/HUHHbxl+JH3TiY5IeWXF3MKnlV2cKqW+Kwm4jlwO9Qx2Q4/1eIjk5x4t3CFQ5M0ACI/BOrfSsnsf49+BNW05rOvJueBlU1WMEDWWMmH1FVLBE5ScJFDM="
+            ]
+        }
+    },
+    "ethereum": {
+        "network": "ropsten",
+        "uri": "https://ropsten.infura.io",
+        "republicTokenAddress": "0x65d54EDa5f032F2275Caa557E50c029cFbCCBB54",
+        "darknodeRegistryAddress": "0x69eb8d26157b9e12f959ea9f189A5D75991b59e3",
+        "renLedgerAddress": "",
+        "arcAddress": ""
+    },
+    "logs": {
+        "plugins": [
+            {
+                "file": {
+                    "path": "stdout"
+                }
+            }
+        ],
+        "tags": null
+    },
+    "address": "8MKLCF3VGbQkPV5ZFMQpcxtWu6at3w",
+    "bootstrapMultiAddresses": [],
+    "host": "0.0.0.0",
+    "port": "18514"
+}
