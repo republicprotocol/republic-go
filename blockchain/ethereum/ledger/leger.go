@@ -54,7 +54,10 @@ func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) e
 	var orderID [32]byte
 	copy(orderID[:], id[:])
 
+	ledger.transactOpts.GasLimit = 3000000
 	tx, err := ledger.binding.OpenBuyOrder(ledger.transactOpts, signature[:], orderID)
+	ledger.transactOpts.GasLimit = 0
+
 	if err != nil {
 		return err
 	}
@@ -79,7 +82,10 @@ func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) 
 	var orderID [32]byte
 	copy(orderID[:], id[:])
 
+	ledger.transactOpts.GasLimit = 3000000
 	tx, err := ledger.binding.OpenSellOrder(ledger.transactOpts, signature[:], orderID)
+	ledger.transactOpts.GasLimit = 0
+
 	if err != nil {
 		return err
 	}
