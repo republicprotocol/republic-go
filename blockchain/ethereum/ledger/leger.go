@@ -50,11 +50,36 @@ func NewRenLedgerContract(ctx context.Context, conn ethereum.Conn, transactOpts 
 	}, nil
 }
 
-func (ledger *RenLedgerContract) OpenOrder(signature [65]byte, id order.ID) error {
+func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) error {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
 
-	tx, err := ledger.binding.OpenOrder(ledger.transactOpts, signature[:], orderID)
+	tx, err := ledger.binding.OpenBuyOrder(ledger.transactOpts, signature[:], orderID)
+	if err != nil {
+		return err
+	}
+	_, err = ledger.conn.PatchedWaitMined(ledger.context, tx)
+	if err != nil {
+		return err
+	}
+
+	for {
+		depth, err := ledger.binding.OrderDepth(ledger.callOpts, id)
+		if err != nil {
+			return err
+		}
+
+		if depth.Uint64() >= BlocksForConfirmation {
+			return nil
+		}
+	}
+}
+
+func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) error {
+	var orderID [32]byte
+	copy(orderID[:], id[:])
+
+	tx, err := ledger.binding.OpenSellOrder(ledger.transactOpts, signature[:], orderID)
 	if err != nil {
 		return err
 	}
@@ -135,8 +160,6 @@ func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, matches []order.ID) e
 			return nil
 		}
 	}
-
-	return err
 }
 
 func (ledger *RenLedgerContract) Priority(id order.ID) (uint64, error) {
