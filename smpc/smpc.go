@@ -7,9 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/republicprotocol/republic-go/cal"
-	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/smpc/delta"
 	"github.com/republicprotocol/republic-go/stream"
@@ -23,6 +21,10 @@ var ErrSmpcerIsAlreadyRunning = errors.New("smpcer is already running")
 // ErrSmpcerIsNotRunning is returned when a call to Smpcer.Shutdown happens on
 // an Smpcer that has not been started yet.
 var ErrSmpcerIsNotRunning = errors.New("smpcer is not running")
+
+// ErrUnmarshalNilBytes is returned when a call to UnmarshalBinary happens on
+// an empty list of bytes.
+var ErrUnmarshalNilBytes = errors.New("unmarshall nil bytes")
 
 // Smpcer is an interface for a secure multi-party computer. It asynchronously
 // consumes computation instructions and produces computation results.
@@ -44,14 +46,14 @@ type Smpcer interface {
 }
 
 type smpc struct {
-	mu           *sync.Mutex
-	buffer       int
-	epoch        cal.Epoch
-	instructions chan Inst
-	results      chan Result
-	layers       map[string]deltaBuilder
-	swarmer      swarm.Swarmer
-	client       stream.Client
+	mu             *sync.Mutex
+	buffer         int
+	swarmer        swarm.Swarmer
+	streamer       stream.Streamer
+	instructions   chan Inst
+	results        chan Result
+	router         map[string]*deltaBuilder
+	multiAddresses map[identity.Address]identity.MultiAddress
 
 	shutdownMu        *sync.Mutex
 	shutdown          chan struct{}
@@ -59,15 +61,16 @@ type smpc struct {
 	shutdownInitiated bool
 }
 
-func NewSmpc(buffer int, swarmer swarm.Swarmer, client stream.Client) Smpcer {
+func NewSmpc(buffer int, swarmer swarm.Swarmer, streamer stream.Streamer) Smpcer {
 	return &smpc{
-		mu:           new(sync.Mutex),
-		buffer:       buffer,
-		instructions: make(chan Inst, buffer),
-		results:      make(chan Result, buffer),
-		layers:       map[string]deltaBuilder{},
-		swarmer:      swarmer,
-		client:       client,
+		mu:             new(sync.Mutex),
+		buffer:         buffer,
+		swarmer:        swarmer,
+		streamer:       streamer,
+		instructions:   make(chan Inst, buffer),
+		results:        make(chan Result, buffer),
+		router:         map[string]*deltaBuilder{},
+		multiAddresses: map[identity.Address]identity.MultiAddress{},
 
 		shutdownMu:        new(sync.Mutex),
 		shutdown:          nil,
@@ -127,25 +130,38 @@ func (smpc *smpc) Results() <-chan Result {
 }
 
 func (smpc *smpc) run() {
+	peers := [][]identity.Address{}
+
 	for {
 		select {
 		case <-smpc.shutdown:
 			close(smpc.shutdownDone)
+			//todo : shall we clean up the stream connections ?
 			return
 		case inst := <-smpc.instructions:
 			if inst.InstConnect != nil {
-				// todo :epoch happens , update connections
-
+				peers = append(peers, inst.Peers)
+				if len(peers) >= 3 {
+					smpc.receivingMessages(inst, peers[0])
+				}
+				peers = peers[1:]
 			}
 
 			if inst.InstCompute != nil {
 				deltaFragment := delta.NewDeltaFragment(&inst.InstCompute.Buy, &inst.InstCompute.Sell)
-				// spread the deltafragments
-				err := smpc.sendDeltaFragment(deltaFragment)
+				smpc.sendDeltaFragment(deltaFragment, inst)
 
-				builder := smpc.layers[string(inst.InstCompute.PeersID)]
+				smpc.mu.Lock()
+				builder, ok := smpc.router[string(inst.InstCompute.PeersID)]
+				if !ok {
+					builder = NewDeltaBuilder(inst.InstCompute.PeersID, (len(inst.Peers)+1)*2/3)
+					smpc.router[string(inst.InstCompute.PeersID)] = builder
+				}
+				smpc.mu.Unlock()
+
 				dlt, err := builder.InsertDeltaFragment(deltaFragment)
 				if err != nil {
+					log.Println("can't insert delta to deltabuilder")
 					continue
 				}
 				if dlt != nil {
@@ -161,43 +177,107 @@ func (smpc *smpc) run() {
 	}
 }
 
-func (smpc *smpc) sendDeltaFragment(fragment delta.Fragment) error {
-	smpc.mu.Lock()
-	defer smpc.mu.Unlock()
-
-	dispatch.CoForAll(smpc.epoch.Darknodes, func(i int) {
-		queryCtx, queryCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer queryCancel()
-
-		multi, err := smpc.swarmer.Query(queryCtx, smpc.epoch.Darknodes[i], 3)
+// receivingMessages handles received deltaFragments
+func (smpc *smpc) receivingMessages(inst Inst, peers []identity.Address) {
+	for _, node := range inst.InstConnect.Peers {
+		multi, err := smpc.findMultiaddress(node)
 		if err != nil {
-			log.Printf("can't find node %v", smpc.epoch.Darknodes[i])
-			return
+			log.Printf("can't find node %v", node)
+			continue
 		}
 
-		computeCtx, computeCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer computeCancel()
-		client := stream.NewClientRecycler(smpc.client)
-		stm, err := client.Connect(computeCtx, multi)
+		stm, err := smpc.streamer.Open(context.Background(), multi)
+		go func(stm stream.Stream, multi identity.MultiAddress, inst Inst) {
+			var message *DeltaFragmentMessage
+			for {
+				err := stm.Recv(message)
+				if err != nil {
+					stm.Close()
+					return
+				}
+
+				smpc.mu.Lock()
+				builder, ok := smpc.router[string(message.PeersID)]
+				if !ok {
+					builder = NewDeltaBuilder(message.PeersID, (len(inst.Peers)+1)*2/3)
+					smpc.router[string(message.PeersID)] = builder
+				}
+				smpc.mu.Unlock()
+
+				dlt, err := builder.InsertDeltaFragment(message.DeltaFragment)
+				if err != nil {
+					log.Println("can't insert node to delta builder")
+					return
+				}
+				if dlt != nil {
+					smpc.results <- Result{
+						ResultCompute: &ResultCompute{
+							Delta: *dlt,
+							Err:   nil,
+						},
+					}
+				}
+			}
+		}(stm, multi, inst)
+	}
+
+	// Close node which are two epochs ago
+	for _, node := range peers {
+		multi, err := smpc.findMultiaddress(node)
 		if err != nil {
-			log.Printf("can't connect to node %v", smpc.epoch.Darknodes[i])
-			return
+			log.Printf("can't find node %v", node)
+			continue
+		}
+		err = smpc.streamer.Close(multi)
+		if err != nil {
+			log.Printf("can't close stream with node %v", node)
+			continue
+		}
+	}
+}
+
+// sendDeltaFragment to nodes in the same pod.
+func (smpc *smpc) sendDeltaFragment(fragment delta.Fragment, inst Inst) {
+	for _, node := range inst.Peers {
+		multi, err := smpc.findMultiaddress(node)
+		if err != nil {
+			log.Printf("can't find node %v", node)
+			continue
 		}
 
-		//  todo : define the type we want to send
-		err = stm.Send(fragment)
-		if err != nil {
-			log.Printf("can't send fragmetn to node %v", smpc.epoch.Darknodes[i])
-			return
+		stream, err := smpc.streamer.Open(context.Background(), multi)
+		msg := &DeltaFragmentMessage{
+			PeersID:       inst.InstCompute.PeersID,
+			DeltaFragment: fragment,
 		}
-	})
+		err = stream.Send(msg)
+		if err != nil {
+			log.Printf("can't send message to %v", node)
+			continue
+		}
+	}
+}
 
-	return nil
+// findMultiaddress returns the multiaddress of the address. It will look up the mapping first.
+// If it's not there, it will start a query for the target address.
+func (smpc *smpc) findMultiaddress(addr identity.Address) (identity.MultiAddress, error) {
+	if multi, ok := smpc.multiAddresses[addr]; ok {
+		return multi, nil
+	}
+
+	queryCtx, queryCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer queryCancel()
+	multi, err := smpc.swarmer.Query(queryCtx, addr, 3)
+	if err != nil {
+		return identity.MultiAddress{}, err
+	}
+	smpc.multiAddresses[addr] = multi
+
+	return multi, nil
 }
 
 type deltaBuilder struct {
 	PeersID []byte
-	n       int
 	k       int
 	mu      *sync.Mutex
 
@@ -209,6 +289,23 @@ type deltaBuilder struct {
 	volumeExpShareCache    []shamir.Share
 	minVolumeCoShareCache  []shamir.Share
 	minVolumeExpShareCache []shamir.Share
+}
+
+func NewDeltaBuilder(peersID []byte, k int) *deltaBuilder {
+	builder := new(deltaBuilder)
+	builder.PeersID = peersID
+	builder.k = k
+	builder.mu = new(sync.Mutex)
+	builder.deltas = map[delta.ID][]delta.Fragment{}
+	builder.tokenSharesCache = make([]shamir.Share, k)
+	builder.priceCoShareCache = make([]shamir.Share, k)
+	builder.priceExpShareCache = make([]shamir.Share, k)
+	builder.volumeCoShareCache = make([]shamir.Share, k)
+	builder.volumeExpShareCache = make([]shamir.Share, k)
+	builder.minVolumeCoShareCache = make([]shamir.Share, k)
+	builder.minVolumeCoShareCache = make([]shamir.Share, k)
+
+	return builder
 }
 
 func (builder *deltaBuilder) InsertDeltaFragment(fragment delta.Fragment) (*delta.Delta, error) {
