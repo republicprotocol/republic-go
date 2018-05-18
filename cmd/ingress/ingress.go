@@ -65,8 +65,7 @@ func main() {
 
 	dht := dht.NewDHT(multiAddr.Address(), 100)
 	connPool := grpc.NewConnPool(100)
-	crypter := crypto.NewWeakCrypter() // FIXME: Re-enable strong crypter.
-	swarmClient := grpc.NewSwarmClient(&crypter, multiAddr, &connPool)
+	swarmClient := grpc.NewSwarmClient(multiAddr, &connPool)
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	orderbookClient := grpc.NewOrderbookClient(&connPool)
 	ingresser := ingress.NewIngress(&registry, renLedger, swarmer, orderbookClient)
