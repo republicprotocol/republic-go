@@ -2,6 +2,7 @@ package dnr
 
 import (
 	"context"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"math/big"
@@ -122,8 +123,8 @@ func (darkNodeRegistry *DarknodeRegistry) GetBond(darkNodeID []byte) (stackint.I
 }
 
 // IsRegistered returns true if the node is registered
-func (darkNodeRegistry *DarknodeRegistry) IsRegistered(darkNodeID []byte) (bool, error) {
-	darkNodeIDByte, err := toByte(darkNodeID)
+func (darkNodeRegistry *DarknodeRegistry) IsRegistered(darknodeAddr identity.Address) (bool, error) {
+	darkNodeIDByte, err := toByte(darknodeAddr.ID())
 	if err != nil {
 		return false, err
 	}
@@ -261,13 +262,17 @@ func (darkNodeRegistry *DarknodeRegistry) GetOwner(darkNodeID []byte) (common.Ad
 	return darkNodeRegistry.binding.GetOwner(darkNodeRegistry.callOpts, darkNodeIDByte)
 }
 
-// GetPublicKey gets the public key of the goven dark node
-func (darkNodeRegistry *DarknodeRegistry) GetPublicKey(darkNodeID []byte) ([]byte, error) {
-	darkNodeIDByte, err := toByte(darkNodeID)
+// PublicKey gets the public key of the goven dark node
+func (darkNodeRegistry *DarknodeRegistry) PublicKey(darknodeAddr identity.Address) (rsa.PublicKey, error) {
+	darkNodeIDByte, err := toByte(darknodeAddr.ID())
 	if err != nil {
-		return []byte{}, err
+		return rsa.PublicKey{}, err
 	}
-	return darkNodeRegistry.binding.GetPublicKey(darkNodeRegistry.callOpts, darkNodeIDByte)
+	pubKeyBytes, err := darkNodeRegistry.binding.GetPublicKey(darkNodeRegistry.callOpts, darkNodeIDByte)
+	if err != nil {
+		return rsa.PublicKey{}, err
+	}
+	return crypto.RsaPublicKeyFromBytes(pubKeyBytes)
 }
 
 // GetAllNodes gets all dark nodes
@@ -320,7 +325,7 @@ func (darkNodeRegistry *DarknodeRegistry) WaitUntilRegistration(darkNodeID []byt
 	isRegistered := false
 	for !isRegistered {
 		var err error
-		isRegistered, err = darkNodeRegistry.IsRegistered(darkNodeID)
+		isRegistered, err = darkNodeRegistry.IsRegistered(identity.ID(darkNodeID).Address())
 		if err != nil {
 			return err
 		}
@@ -374,14 +379,14 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 	}
 	pods := make([]cal.Pod, (len(darknodeAddrs) / int(numberOfNodesInPool.ToBigInt().Int64())))
 	for i := 0; i < len(darknodeAddrs); i++ {
-		isRegistered, err := darkNodeRegistry.IsRegistered(darknodeAddrs[x.Int64()].ID())
+		isRegistered, err := darkNodeRegistry.IsRegistered(darknodeAddrs[x.Int64()])
 		if err != nil {
 			return []cal.Pod{}, err
 		}
 		for !isRegistered || positionInOcean[x.Int64()] != -1 {
 			x.Add(x, big.NewInt(1))
 			x.Mod(x, numberOfDarkNodes)
-			isRegistered, err = darkNodeRegistry.IsRegistered(darknodeAddrs[x.Int64()].ID())
+			isRegistered, err = darkNodeRegistry.IsRegistered(darknodeAddrs[x.Int64()])
 			if err != nil {
 				return []cal.Pod{}, err
 			}
@@ -410,6 +415,6 @@ func (darkNodeRegistry *DarknodeRegistry) Epoch() (cal.Epoch, error) {
 // Pod returns the Pod that contains the given identity.Address in the
 // current Epoch. It returns ErrPodNotFound if the identity.Address is not
 // registered in the current Epoch.
-func (darkNodeRegistry *DarknodeRegistry) Pod(id identity.ID) (cal.Pod, error) {
+func (darkNodeRegistry *DarknodeRegistry) Pod(addr identity.Address) (cal.Pod, error) {
 	panic("unimplemented")
 }

@@ -79,3 +79,16 @@ message EncryptedCoExpShare {
     bytes co = 1;
     bytes exp = 2;
 }
+
+service StatusService {
+    rpc Status (StatusRequest) returns (StatusResponse);
+}
+
+message StatusRequest {
+}
+
+message StatusResponse {
+    string address = 1;
+    bool bootstrapped = 2;
+    int64 peers = 3;
+}
