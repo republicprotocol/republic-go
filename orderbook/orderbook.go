@@ -2,7 +2,6 @@ package orderbook
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -69,12 +68,12 @@ func NewOrderbook(key crypto.RsaKey, storer Storer, syncer Syncer) Orderbooker {
 func (book *orderbook) OpenOrder(ctx context.Context, orderFragment order.EncryptedFragment) error {
 	tokens, err := book.RsaKey.Decrypt(orderFragment.Tokens)
 	if err != nil {
-		return err
-	}
-	var tokenShare shamir.Share
-	err = json.Unmarshal(tokens, tokenShare)
-	if err != nil {
 		return fmt.Errorf("cannot decrypt tokens: %v", err)
+	}
+
+	tokenShare := shamir.Share{}
+	if err := tokenShare.UnmarshalBinary(tokens); err != nil {
+		return fmt.Errorf("cannot unmarshal tokens: %v", err)
 	}
 
 	// Decrypt price
