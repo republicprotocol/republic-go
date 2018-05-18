@@ -22,24 +22,20 @@ type Omer interface {
 }
 
 type ome struct {
-	ranker Ranker
-	deltas map[delta.ID][]delta.Fragment
-
 	ξs                chan cal.Epoch
 	orderbooker       orderbook.Orderbooker
 	orderbookListener orderbook.Listener
 	smpcer            smpc.Smpcer
+	ranker            Ranker
 }
 
 func NewOme(orderbooker orderbook.Orderbooker, orderbookListener orderbook.Listener, smpcer smpc.Smpcer) Omer {
 	return &ome{
-		ranker: NewPriorityQueue(),
-		deltas: map[delta.ID][]delta.Fragment{},
-
 		ξs:                make(chan cal.Epoch, 1),
 		orderbooker:       orderbooker,
 		orderbookListener: orderbookListener,
 		smpcer:            smpcer,
+		ranker:            NewPriorityQueue(1, 0),
 	}
 }
 
@@ -60,24 +56,22 @@ func (ome *ome) Sync() error {
 	return nil
 }
 
-func (ome *ome) Compute(done <-chan struct{}) <-chan error {
-	errs := make(chan error, 1)
+func (ome *ome) Compute(done <-chan struct{}) chan error {
 	var currentEpoch cal.Epoch
+	errs := make(chan error)
+	input, output := ome.smpcer.Instructions(), ome.smpcer.Results()
 
-	if err := ome.smpcer.Start(); err != nil {
+	err := ome.smpcer.Start()
+	if err != nil {
 		errs <- err
 		close(errs)
 		return errs
 	}
 
-	orderPairs := ome.ranker.OrderPairs(done)
-	input, output := ome.smpcer.Instructions(), ome.smpcer.Results()
-
 	go func() {
 		defer close(errs)
 		defer ome.smpcer.Shutdown()
 
-		orderPairWaitingList := []OrderPair{}
 		deltaWaitingList := []delta.Delta{}
 
 		for {
@@ -98,43 +92,7 @@ func (ome *ome) Compute(done <-chan struct{}) <-chan error {
 						K:       (len(ξ.Darknodes) + 1) * 2 / 3,
 					},
 				}
-
-			case pair, ok := <-orderPairs:
-				if !ok {
-					return
-				}
-				for i := 0; i < len(orderPairWaitingList); i++ {
-					//todo : need to have a way for element to expire
-					inst, err := generateInstruction(orderPairWaitingList[i], ome.orderbooker, currentEpoch)
-					if err != nil {
-						select {
-						case <-done:
-							return
-						case errs <- err:
-						}
-						continue
-					}
-
-					input <- inst
-					orderPairWaitingList = append(orderPairWaitingList[:i], orderPairWaitingList[i+1:]...)
-					i--
-				}
-				inst, err := generateInstruction(pair, ome.orderbooker, currentEpoch)
-				if err != nil {
-					orderPairWaitingList = append(orderPairWaitingList, pair)
-					select {
-					case <-done:
-						return
-					case errs <- err:
-					}
-					continue
-				}
-				select {
-				case <-done:
-					return
-				case input <- inst:
-				}
-
+				ome.ranker.OnEpochChange(ξ)
 			case result, ok := <-output:
 				if !ok {
 					return
@@ -148,6 +106,7 @@ func (ome *ome) Compute(done <-chan struct{}) <-chan error {
 					if err := ome.orderbooker.ConfirmOrderMatch(result.Delta.BuyOrderID, result.Delta.SellOrderID); err != nil {
 						continue
 					}
+
 					// FIXME: Reconstruct orders after the confirmation has been accepted
 					ome.orderbookListener.OnConfirmOrderMatch(buyOrd, sellOrd)
 					deltaWaitingList = append(deltaWaitingList[:i], deltaWaitingList[i+1:]...)
@@ -155,21 +114,28 @@ func (ome *ome) Compute(done <-chan struct{}) <-chan error {
 				}
 
 				if result.Delta.IsMatch() {
-					buyOrd, sellOrd, err := getOrderDetails(result.Delta, ome.orderbook)
+					buyOrd, sellOrd, err := getOrderDetails(result.Delta, ome.orderbooker)
 					if err != nil {
 						deltaWaitingList = append(deltaWaitingList, result.Delta)
 						continue
 					}
-					err = ome.ledger.ConfirmOrder(result.Delta.BuyOrderID, []order.ID{result.Delta.SellOrderID})
+
+					ome.orderbookListener.OnConfirmOrderMatch(buyOrd, sellOrd)
 					if err != nil {
 						deltaWaitingList = append(deltaWaitingList, result.Delta)
 						continue
 					}
-					err = ome.delegate.OnConfirmOrder(buyOrd, []order.Order{sellOrd})
+				}
+			default:
+				orderPairs := ome.ranker.OrderPairs(50)
+
+				for _, pair := range orderPairs {
+					inst, err := generateInstruction(pair, ome.orderbooker, currentEpoch)
 					if err != nil {
-						deltaWaitingList = append(deltaWaitingList, result.Delta)
 						continue
 					}
+					input <- inst
+					ome.ranker.Remove(pair.SellOrder, pair.BuyOrder)
 				}
 			}
 		}

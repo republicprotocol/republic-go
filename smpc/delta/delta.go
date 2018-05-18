@@ -31,7 +31,7 @@ type Delta struct {
 	SellOrderID order.ID
 	Tokens      uint64
 	Price       order.CoExp
-	Volumn      order.CoExp
+	Volume      order.CoExp
 	MinVolume   order.CoExp
 }
 
@@ -43,8 +43,8 @@ func NewDeltaFromShares(buyOrderID, sellOrderID order.ID, tokenShares, priceCosh
 	delta.Tokens = shamir.Join(tokenShares)
 	delta.Price.Co = uint32(shamir.Join(priceCoshares))
 	delta.Price.Exp = uint32(shamir.Join(priceExpShares))
-	delta.Volumn.Co = uint32(shamir.Join(volumeCoShares))
-	delta.Volumn.Exp = uint32(shamir.Join(volumeExpShare))
+	delta.Volume.Co = uint32(shamir.Join(volumeCoShares))
+	delta.Volume.Exp = uint32(shamir.Join(volumeExpShare))
 	delta.MinVolume.Co = uint32(shamir.Join(minVolumeCoShare))
 	delta.MinVolume.Exp = uint32(shamir.Join(minVolumeExpShare))
 
@@ -68,10 +68,10 @@ func (delta *Delta) IsMatch() bool {
 	if uint64(delta.Price.Co) >= zeroThreshold {
 		return false
 	}
-	if uint64(delta.Volumn.Exp) >= zeroThreshold {
+	if uint64(delta.Volume.Exp) >= zeroThreshold {
 		return false
 	}
-	if uint64(delta.Volumn.Co) >= zeroThreshold {
+	if uint64(delta.Volume.Co) >= zeroThreshold {
 		return false
 	}
 	if uint64(delta.MinVolume.Exp) >= zeroThreshold {
