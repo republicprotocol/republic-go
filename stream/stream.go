@@ -131,6 +131,9 @@ type clientRecycler struct {
 // use the Client to create Stream, but will recycle connected Streams when
 // multiple connections to the same Server are needed. The wrapped Client must
 // ensure that the Stream is safe for concurrent use.
+// FIXME: There are some serious resource leaks by having the ClientRecycler
+// wrap the Client. Instead, we need to replace this with a StreamerRecycler
+// that wraps a Streamer.
 func NewClientRecycler(client Client) Client {
 	return &clientRecycler{
 		client:  client,
