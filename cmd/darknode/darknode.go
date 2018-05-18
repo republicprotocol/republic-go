@@ -27,6 +27,7 @@ import (
 )
 
 func main() {
+	defer log.Print("shutdown!")
 
 	// Parse command-line arguments
 	configParam := flag.String("config", path.Join(os.Getenv("HOME"), ".darknode/config.json"), "JSON configuration file")
@@ -66,26 +67,27 @@ func main() {
 	newStatus(&dht, server)
 	swarmer := newSwarmer(&crypter, multiAddr, &dht, &connPool, server)
 
-	// Start gRPC
 	go func() {
-		log.Printf("listening on %v:%v...", conf.Host, conf.Port)
-		lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
-		if err != nil {
-			log.Fatalf("cannot listen on %v:%v: %v", conf.Host, conf.Port, err)
+		time.Sleep(time.Second)
+
+		// Bootstrap into the network
+		if err := swarmer.Bootstrap(context.Background(), conf.BootstrapMultiAddresses); err != nil {
+			log.Printf("error during bootstrap: %v", err)
 		}
-		if err := server.Serve(lis); err != nil {
-			log.Fatalf("cannot serve on %v:%v: %v", conf.Host, conf.Port, err)
+		log.Printf("peers %v", len(dht.MultiAddresses()))
+		for _, multiAddr := range dht.MultiAddresses() {
+			log.Printf("  %v", multiAddr)
 		}
 	}()
-	time.Sleep(time.Second)
 
-	// Bootstrap into the network
-	if err := swarmer.Bootstrap(context.Background(), conf.BootstrapMultiAddresses); err != nil {
-		log.Printf("error during bootstrap: %v", err)
+	// Start gRPC
+	log.Printf("listening on %v:%v...", conf.Host, conf.Port)
+	lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
+	if err != nil {
+		log.Fatalf("cannot listen on %v:%v: %v", conf.Host, conf.Port, err)
 	}
-	log.Printf("peers %v", len(dht.MultiAddresses()))
-	for _, multiAddr := range dht.MultiAddresses() {
-		log.Printf("  %v", multiAddr)
+	if err := server.Serve(lis); err != nil {
+		log.Fatalf("cannot serve on %v:%v: %v", conf.Host, conf.Port, err)
 	}
 }
 
