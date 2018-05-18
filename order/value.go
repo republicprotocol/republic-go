@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
@@ -173,4 +174,18 @@ func (val EncryptedCoExpShare) MarshalBinary() ([]byte, error) {
 	binary.Write(buf, binary.BigEndian, val.Co)
 	binary.Write(buf, binary.BigEndian, val.Exp)
 	return buf.Bytes(), nil
+}
+
+func EncryptCoExpShare(rsaKey crypto.RsaKey, val CoExpShare) (EncryptedCoExpShare, error) {
+	var err error
+	encryptedVal := EncryptedCoExpShare{}
+	encryptedVal.Co, err = shamir.EncryptShare(rsaKey, val.Co)
+	if err != nil {
+		return encryptedVal, err
+	}
+	encryptedVal.Exp, err = shamir.EncryptShare(rsaKey, val.Exp)
+	if err != nil {
+		return encryptedVal, err
+	}
+	return encryptedVal, nil
 }

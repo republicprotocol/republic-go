@@ -7,6 +7,7 @@ import (
 	"errors"
 	"math/rand"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -54,6 +55,53 @@ func (share *Share) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return share.UnmarshalBinary(bytes)
+}
+
+// Equal returns true when both Shares are equal. Otherwise, it returns false.
+func (share *Share) Equal(other *Share) bool {
+	return share.Index == other.Index &&
+		share.Value == other.Value
+}
+
+// MarshalBinary implements the encoding.BinaryMarshaler interface. The uint64
+// index is encoded using binary.BigEndian and then the uint64 value is encoded
+// using binary.BigEndian.
+func (share Share) MarshalBinary() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.BigEndian, share.Index)
+	binary.Write(buf, binary.BigEndian, share.Value)
+	return buf.Bytes(), nil
+}
+
+// UnmarshalBinary implements the encoding.BinaryUnmarshaler interface. The
+// uint64 index is decoded using binary.BigEndian and then the uint64 value is
+// decoded using binary.BigEndian.
+func (share *Share) UnmarshalBinary(data []byte) error {
+	if data == nil || len(data) == 0 {
+		return ErrUnmarshalNilBytes
+	}
+	buf := bytes.NewBuffer(data)
+	binary.Read(buf, binary.BigEndian, &share.Index)
+	binary.Read(buf, binary.BigEndian, &share.Value)
+	return nil
+}
+
+func EncryptShare(rsaKey crypto.RsaKey, share Share) ([]byte, error) {
+	data, err := share.MarshalBinary()
+	if err != nil {
+		return []byte{}, err
+	}
+	return rsaKey.Encrypt(data)
+}
+
+func DecryptShare(rsa crypto.RsaKey, cipherText []byte) (Share, error) {
+	plainText, err := rsa.Decrypt(cipherText)
+	if err != nil {
+		return Share{}, err
+	}
+	share := Share{}
+	err = share.UnmarshalBinary(plainText)
+	return share, err
 }
 
 // Shares are a slice of Share structs.
@@ -149,35 +197,6 @@ func Join(shares Shares) uint64 {
 	}
 
 	return secret
-}
-
-// Equal returns true when both Shares are equal. Otherwise, it returns false.
-func (share *Share) Equal(other *Share) bool {
-	return share.Index == other.Index &&
-		share.Value == other.Value
-}
-
-// MarshalBinary implements the encoding.BinaryMarshaler interface. The uint64
-// index is encoded using binary.BigEndian and then the uint64 value is encoded
-// using binary.BigEndian.
-func (share Share) MarshalBinary() ([]byte, error) {
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, share.Index)
-	binary.Write(buf, binary.BigEndian, share.Value)
-	return buf.Bytes(), nil
-}
-
-// UnmarshalBinary implements the encoding.BinaryUnmarshaler interface. The
-// uint64 index is decoded using binary.BigEndian and then the uint64 value is
-// decoded using binary.BigEndian.
-func (share *Share) UnmarshalBinary(data []byte) error {
-	if data == nil || len(data) == 0 {
-		return ErrUnmarshalNilBytes
-	}
-	buf := bytes.NewBuffer(data)
-	binary.Read(buf, binary.BigEndian, &share.Index)
-	binary.Read(buf, binary.BigEndian, &share.Value)
-	return nil
 }
 
 func addMod(x uint64, y uint64, mod uint64) uint64 {

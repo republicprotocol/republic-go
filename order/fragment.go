@@ -114,3 +114,31 @@ type EncryptedFragment struct {
 	Volume        EncryptedCoExpShare `json:"volume"`
 	MinimumVolume EncryptedCoExpShare `json:"minimumVolume"`
 }
+
+func EncryptFragment(rsaKey crypto.RsaKey, fragment Fragment) (EncryptedFragment, error) {
+	var err error
+	encryptedFragment := EncryptedFragment{
+		OrderID:     fragment.OrderID,
+		OrderType:   fragment.OrderType,
+		OrderParity: fragment.OrderParity,
+		OrderExpiry: fragment.OrderExpiry,
+		ID:          fragment.ID,
+	}
+	encryptedFragment.Tokens, err = shamir.EncryptShare(rsaKey, fragment.Tokens)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	encryptedFragment.Price, err = EncryptCoExpShare(rsaKey, fragment.Price)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	encryptedFragment.Volume, err = EncryptCoExpShare(rsaKey, fragment.Volume)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	encryptedFragment.MinimumVolume, err = EncryptCoExpShare(rsaKey, fragment.MinimumVolume)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	return encryptedFragment, nil
+}
