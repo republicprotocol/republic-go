@@ -9,10 +9,10 @@ import (
 )
 
 type Ranker interface {
+	cal.EpochListener
 	Insert(order order.ID, parity order.Parity, priority uint64)
 	Remove(ids ...order.ID)
 	OrderPairs(n int) []OrderPair
-	OnEpochChange(epoch cal.Epoch)
 }
 
 type OrderPair struct {
@@ -120,10 +120,10 @@ func (queue *PriorityQueue) OrderPairs(n int) []OrderPair {
 	return queue.pairs[:n]
 }
 
-func (queue *PriorityQueue) OnEpochChange(epoch cal.Epoch) {
+func (queue *PriorityQueue) OnChangeEpoch(epoch cal.Epoch) {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 
 	queue.poolSize = len(epoch.Pods)
-	queue.poolIndex = 0  // FIXME: get which pool the node is in
+	queue.poolIndex = 0 // FIXME: get which pool the node is in
 }

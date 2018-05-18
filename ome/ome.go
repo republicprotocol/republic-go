@@ -1,16 +1,12 @@
 package ome
 
 import (
-	"errors"
-
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/smpc/delta"
 )
-
-var ErrNotFoundInStore = errors.New("not found in store")
 
 type Omer interface {
 	cal.EpochListener
@@ -92,39 +88,44 @@ func (ome *ome) Compute(done <-chan struct{}) chan error {
 						K:       (len(ξ.Darknodes) + 1) * 2 / 3,
 					},
 				}
-				ome.ranker.OnEpochChange(ξ)
+				ome.ranker.OnChangeEpoch(ξ)
 			case result, ok := <-output:
 				if !ok {
 					return
 				}
 
 				for i := 0; i < len(deltaWaitingList); i++ {
-					buyOrd, sellOrd, err := getOrderDetails(deltaWaitingList[i], ome.orderbooker)
-					if err != nil {
-						continue
-					}
 					if err := ome.orderbooker.ConfirmOrderMatch(result.Delta.BuyOrderID, result.Delta.SellOrderID); err != nil {
 						continue
 					}
 
-					// FIXME: Reconstruct orders after the confirmation has been accepted
-					ome.orderbookListener.OnConfirmOrderMatch(buyOrd, sellOrd)
+					// todo : tell the orderbook Listener there is an confirmed order.
+					//buyOrd, sellOrd, err := getOrderDetails(deltaWaitingList[i], ome.orderbooker)
+					//if err != nil {
+					//	continue
+					//}
+					//ome.orderbookListener.OnConfirmOrderMatch(buyOrd, sellOrd)
 					deltaWaitingList = append(deltaWaitingList[:i], deltaWaitingList[i+1:]...)
 					i--
 				}
 
 				if result.Delta.IsMatch() {
-					buyOrd, sellOrd, err := getOrderDetails(result.Delta, ome.orderbooker)
-					if err != nil {
-						deltaWaitingList = append(deltaWaitingList, result.Delta)
+					if err := ome.orderbooker.ConfirmOrderMatch(result.Delta.BuyOrderID, result.Delta.SellOrderID); err != nil {
 						continue
 					}
 
-					ome.orderbookListener.OnConfirmOrderMatch(buyOrd, sellOrd)
-					if err != nil {
-						deltaWaitingList = append(deltaWaitingList, result.Delta)
-						continue
-					}
+					// todo : tell the orderbookListener there is an confirmed order.
+					//buyOrd, sellOrd, err := getOrderDetails(result.Delta, ome.orderbooker)
+					//if err != nil {
+					//	deltaWaitingList = append(deltaWaitingList, result.Delta)
+					//	continue
+					//}
+					//
+					//ome.orderbookListener.OnConfirmOrderMatch(buyOrd, sellOrd)
+					//if err != nil {
+					//	deltaWaitingList = append(deltaWaitingList, result.Delta)
+					//	continue
+					//}
 				}
 			default:
 				orderPairs := ome.ranker.OrderPairs(50)
