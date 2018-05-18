@@ -76,10 +76,10 @@ func (ome *Ome) Sync() error {
 }
 
 func (ome *Ome) Compute() chan error {
-	errs := make(chan error)
 	var currentEpoch cal.Epoch
+	errs := make(chan error)
+	input, output := ome.smpcer.Instructions(), ome.smpcer.Results()
 
-	orderPairs := ome.ranker.OrderPairs(ome.done)
 	err := ome.smpcer.Start()
 	if err != nil {
 		errs <- err
@@ -87,13 +87,10 @@ func (ome *Ome) Compute() chan error {
 		return errs
 	}
 
-	input, output := ome.smpcer.Instructions(), ome.smpcer.Results()
-
 	go func() {
 		defer close(errs)
 		defer ome.smpcer.Shutdown()
 
-		orderPairWaitingList := []OrderPair{}
 		deltaWaitingList := []delta.Delta{}
 
 		for {
@@ -113,31 +110,6 @@ func (ome *Ome) Compute() chan error {
 						K:       (len(epoch.Darknodes) + 1) * 2 / 3,
 					},
 				}
-			case pair, ok := <-orderPairs:
-				// Try again
-				if !ok {
-					orderPairs = ome.ranker.OrderPairs(ome.done)
-					continue
-				}
-
-				for i := 0; i < len(orderPairWaitingList); i++ {
-					//todo : need to have a way for element to expire
-					inst, err := generateInstruction(orderPairWaitingList[i], ome.orderbook, currentEpoch)
-					if err != nil {
-						continue
-					}
-
-					input <- inst
-					orderPairWaitingList = append(orderPairWaitingList[:i], orderPairWaitingList[i+1:]...)
-					i--
-				}
-
-				inst, err := generateInstruction(pair, ome.orderbook, currentEpoch)
-				if err != nil {
-					orderPairWaitingList = append(orderPairWaitingList, pair)
-					continue
-				}
-				input <- inst
 			case result, ok := <-output:
 				if !ok {
 					return
@@ -176,6 +148,17 @@ func (ome *Ome) Compute() chan error {
 						deltaWaitingList = append(deltaWaitingList, result.Delta)
 						continue
 					}
+				}
+			default:
+				orderPairs := ome.ranker.OrderPairs(50 )
+
+				for _, pair := range orderPairs {
+					inst, err := generateInstruction(pair, ome.orderbook, currentEpoch)
+					if err != nil {
+						continue
+					}
+					input <- inst
+					ome.ranker.Remove(pair.SellOrder , pair.BuyOrder)
 				}
 			}
 		}

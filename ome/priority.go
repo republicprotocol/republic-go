@@ -9,8 +9,8 @@ import (
 
 type Ranker interface {
 	Insert(order order.ID, parity order.Parity, priority uint64)
-	Remove(id order.ID)
-	OrderPairs(done <-chan struct{}) <-chan OrderPair
+	Remove(ids ...order.ID)
+	OrderPairs(n int) []OrderPair
 }
 
 type OrderPair struct {
@@ -19,67 +19,109 @@ type OrderPair struct {
 	Priority  uint64
 }
 
-type PriorityQueue struct {
-	mu       *sync.Mutex
-	pairs    []OrderPair
-	newPairs chan OrderPair
+type OrderWithPriority struct {
+	ID       order.ID
+	Priority uint64
 }
 
-func NewPriorityQueue() *PriorityQueue {
+type PriorityQueue struct {
+	mu         *sync.Mutex
+	poolSize   int
+	poolIndex  int
+	buyOrders  map[order.ID]uint64
+	sellOrders map[order.ID]uint64
+	pairs      []OrderPair
+}
+
+func NewPriorityQueue(poolSize, poolIndex int) *PriorityQueue {
 	return &PriorityQueue{
-		mu:       new(sync.Mutex),
-		pairs:    []OrderPair{},
-		newPairs: make(chan OrderPair),
+		mu:         new(sync.Mutex),
+		poolSize:   poolSize,
+		poolIndex:  poolIndex,
+		pairs:      []OrderPair{},
+		buyOrders:  map[order.ID]uint64{},
+		sellOrders: map[order.ID]uint64{},
 	}
 }
 
-func (queue *PriorityQueue) Insert(pair OrderPair) {
+func (queue *PriorityQueue) Insert(ord order.ID, parity order.Parity, priority uint64) {
 	queue.mu.Lock()
-	defer queue.mu.Unlock()
+	if parity == order.ParityBuy {
+		queue.buyOrders[ord] = priority
+		for sellOrder, sellOrderPriority := range queue.sellOrders {
+			if int(priority+sellOrderPriority)%queue.poolSize != queue.poolIndex {
+				continue
+			}
 
-	index := sort.Search(len(queue.pairs), func(i int) bool {
-		return queue.pairs[i].Priority > pair.Priority
-	})
-	queue.pairs = append(queue.pairs[:index-1], append([]OrderPair{pair}, queue.pairs[index:]...)...)
+			orderPair := OrderPair{
+				BuyOrder:  ord,
+				SellOrder: sellOrder,
+				Priority:  priority + sellOrderPriority,
+			}
+
+			index := sort.Search(len(queue.pairs), func(i int) bool {
+				return queue.pairs[i].Priority > orderPair.Priority
+			})
+			queue.pairs = append(queue.pairs[:index-1], append([]OrderPair{orderPair}, queue.pairs[index:]...)...)
+		}
+	} else {
+		queue.sellOrders[ord] = priority
+		for buyOrder, buyOrderPriority := range queue.buyOrders {
+			if int(priority+buyOrderPriority)%queue.poolSize != queue.poolIndex {
+				continue
+			}
+			orderPair := OrderPair{
+				BuyOrder:  buyOrder,
+				SellOrder: ord,
+				Priority:  priority + buyOrderPriority,
+			}
+
+			index := sort.Search(len(queue.pairs), func(i int) bool {
+				return queue.pairs[i].Priority > orderPair.Priority
+			})
+			queue.pairs = append(queue.pairs[:index-1], append([]OrderPair{orderPair}, queue.pairs[index:]...)...)
+		}
+	}
+	queue.mu.Unlock()
+
 }
 
-func (queue *PriorityQueue) Remove(id order.ID) {
+func (queue *PriorityQueue) Remove(ids ...order.ID) {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 
+	idMaps := map[order.ID]struct{}{}
+	for _, id := range ids {
+		idMaps[id] = struct{}{}
+		delete(queue.sellOrders, id)
+		delete(queue.buyOrders, id)
+	}
+
 	for i := 0; i < len(queue.pairs); i++ {
-		remove := false
-		if queue.pairs[i].ID == id {
-			remove = true
-		}
-		for _, match := range queue.pairs[i].Matches {
-			if match == id {
-				remove = true
-				break
-			}
+		if _, ok := idMaps[queue.pairs[i].BuyOrder]; ok {
+			queue.pairs = append(queue.pairs[:i], queue.pairs[i+1:]...)
+			i--
+			continue
 		}
 
-		if remove == true {
-			// a:= []{1,2,3}
-			// log.Println(a[3])   # this will panic
-			// log.Println(a[3:])  # this will not panic ,amazing!
+		if _, ok := idMaps[queue.pairs[i].SellOrder]; ok {
 			queue.pairs = append(queue.pairs[:i], queue.pairs[i+1:]...)
 			i--
 		}
 	}
 }
 
-func (queue *PriorityQueue) OrderPairs() <-chan OrderPair {
-	orderPairs := make(chan OrderPair)
-
+func (queue *PriorityQueue) OrderPairs(n int) []OrderPair {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 
-	defer func() {
-		queue.pairs = queue.pairs[number:]
-	}()
+	return queue.pairs[:n]
+}
 
-	return queue.pairs[:number]
+func (queue *PriorityQueue) OnEpochChange(poolSize, poolIndex int) {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
 
-	return orderPairs
+	queue.poolSize = poolSize
+	queue.poolIndex = poolIndex
 }
