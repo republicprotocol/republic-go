@@ -136,15 +136,16 @@ func (smpc *smpc) run() {
 		select {
 		case <-smpc.shutdown:
 			close(smpc.shutdownDone)
-			//todo : shall we clean up the stream connections ?
 			return
 		case inst := <-smpc.instructions:
 			if inst.InstConnect != nil {
 				peers = append(peers, inst.Peers)
 				if len(peers) >= 3 {
 					smpc.receivingMessages(inst, peers[0])
+					peers = peers[1:]
+				} else {
+					smpc.receivingMessages(inst, nil)
 				}
-				peers = peers[1:]
 			}
 
 			if inst.InstCompute != nil {
@@ -188,11 +189,12 @@ func (smpc *smpc) receivingMessages(inst Inst, peers []identity.Address) {
 
 		stm, err := smpc.streamer.Open(context.Background(), multi)
 		go func(stm stream.Stream, multi identity.MultiAddress, inst Inst) {
+			defer stm.Close()
+
 			var message *DeltaFragmentMessage
 			for {
 				err := stm.Recv(message)
 				if err != nil {
-					stm.Close()
 					return
 				}
 
@@ -222,16 +224,18 @@ func (smpc *smpc) receivingMessages(inst Inst, peers []identity.Address) {
 	}
 
 	// Close node which are two epochs ago
-	for _, node := range peers {
-		multi, err := smpc.findMultiaddress(node)
-		if err != nil {
-			log.Printf("can't find node %v", node)
-			continue
-		}
-		err = smpc.streamer.Close(multi)
-		if err != nil {
-			log.Printf("can't close stream with node %v", node)
-			continue
+	if peers != nil {
+		for _, node := range peers {
+			multi, err := smpc.findMultiaddress(node)
+			if err != nil {
+				log.Printf("can't find node %v", node)
+				continue
+			}
+			err = smpc.streamer.Close(multi)
+			if err != nil {
+				log.Printf("can't close stream with node %v", node)
+				continue
+			}
 		}
 	}
 }
