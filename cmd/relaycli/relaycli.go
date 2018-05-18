@@ -87,10 +87,12 @@ func main() {
 		for i, ordFragment := range ordFragments {
 			marshaledOrdFragment := adapter.OrderFragment{}
 
+			log.Println(pod.Darknodes[i])
 			pubKey, err := darkpool.PublicKey(pod.Darknodes[i])
 			if err != nil {
 				log.Fatalf("cannot get public key of %v: %v", pod.Darknodes[i], err)
 			}
+			log.Println(pubKey)
 
 			encryptedFragment, err := ordFragment.Encrypt(pubKey)
 			marshaledOrdFragment.ID = base64.StdEncoding.EncodeToString(encryptedFragment.ID[:])
@@ -119,7 +121,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot marshal request: %v", err)
 	}
-	fmt.Println(string(data))
 	buf := bytes.NewBuffer(data)
 
 	res, err := netHttp.DefaultClient.Post(fmt.Sprintf("%v/orders", *relayParam), "application/json", buf)

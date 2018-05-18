@@ -76,6 +76,12 @@ func main() {
 	connPool := grpc.NewConnPool(128)
 	crypter := crypto.NewWeakCrypter()
 
+	pubKey, err := crypto.BytesFromRsaPublicKey(&conf.Keystore.RsaKey.PublicKey)
+	if err != nil {
+		log.Printf("cannot read pubKey: %v", err)
+	}
+	log.Printf("pubKey:\n%v", pubKey)
+
 	newStatus(&dht, server)
 	orderbooker := newOrderbooker(conf.Keystore.RsaKey, &store, renLedger, server)
 	swarmer := newSwarmer(multiAddr, &dht, &connPool, server)

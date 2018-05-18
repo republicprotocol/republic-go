@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/cal"
-	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/swarm"
@@ -177,12 +176,13 @@ func (ingress *Ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 	go func() {
 		defer close(errs)
 
-		dispatch.CoForAll(pod.Darknodes, func(i int) {
+		for i := range pod.Darknodes {
 			orderFragment, ok := orderFragmentIndexMapping[int64(i)]
 			if !ok {
 				return
 			}
 			darknode := pod.Darknodes[i]
+			log.Println(pod.Darknodes[i])
 
 			// Send the order fragment to the Darknode
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
@@ -199,7 +199,7 @@ func (ingress *Ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 				errs <- fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
 				return
 			}
-		})
+		}
 	}()
 
 	// Capture all errors and keep the first error that occurred.
