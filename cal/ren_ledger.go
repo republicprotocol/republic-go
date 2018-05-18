@@ -8,10 +8,15 @@ import (
 
 type RenLedger interface {
 
-	// OpenOrder on the Ren Ledger. The signature will be used to identify the
-	// trader that owns the order. The order must be in an undefined state to
-	// be opened.
-	OpenOrder(signature [65]byte, orderID order.ID) error
+	// OpenBuyOrder on the Ren Ledger. The signature will be used to identify
+	// the trader that owns the order. The order must be in an undefined state
+	// to be opened.
+	OpenBuyOrder(signature [65]byte, orderID order.ID) error
+
+	// OpenSellOrder on the Ren Ledger. The signature will be used to identify
+	// the trader that owns the order. The order must be in an undefined state
+	// to be opened.
+	OpenSellOrder(signature [65]byte, orderID order.ID) error
 
 	// CancelOrder on the Ren Ledger. The signature will be used to verify that
 	// the request was created by the trader that owns the order. The order

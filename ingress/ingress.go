@@ -75,7 +75,27 @@ func (ingress *Ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFra
 	if err := ingress.verifyOrderFragments(orderFragmentMapping); err != nil {
 		return err
 	}
-	if err := ingress.renLedger.OpenOrder(signature, orderID); err != nil {
+
+	orderParity := order.ParityBuy
+	for _, orderFragments := range orderFragmentMapping {
+		orderParityDidChange := false
+		for _, orderFragment := range orderFragments {
+			orderParity = orderFragment.OrderParity
+			orderParityDidChange = true
+			break
+		}
+		if orderParityDidChange {
+			break
+		}
+	}
+
+	var err error
+	if orderParity == order.ParityBuy {
+		err = ingress.renLedger.OpenBuyOrder(signature, orderID)
+	} else {
+		err = ingress.renLedger.OpenSellOrder(signature, orderID)
+	}
+	if err != nil {
 		return err
 	}
 	return ingress.openOrderFragments(orderFragmentMapping)
