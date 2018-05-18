@@ -2,6 +2,7 @@ package shamir
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -86,22 +87,14 @@ func (share *Share) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-func EncryptShare(rsaKey crypto.RsaKey, share Share) ([]byte, error) {
+// Encrypt a Share using an rsa.PublicKey.
+func (share *Share) Encrypt(pubKey rsa.PublicKey) ([]byte, error) {
+	rsaKey := crypto.RsaKey{PrivateKey: &rsa.PrivateKey{PublicKey: pubKey}}
 	data, err := share.MarshalBinary()
 	if err != nil {
 		return []byte{}, err
 	}
 	return rsaKey.Encrypt(data)
-}
-
-func DecryptShare(rsa crypto.RsaKey, cipherText []byte) (Share, error) {
-	plainText, err := rsa.Decrypt(cipherText)
-	if err != nil {
-		return Share{}, err
-	}
-	share := Share{}
-	err = share.UnmarshalBinary(plainText)
-	return share, err
 }
 
 // Shares are a slice of Share structs.

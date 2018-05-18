@@ -2,6 +2,7 @@ package order
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -121,6 +122,23 @@ func (val CoExpShare) MarshalBinary() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// Encrypt a CoExpShare using an rsa.PublicKey.
+func (val *CoExpShare) Encrypt(pubKey rsa.PublicKey) (EncryptedCoExpShare, error) {
+	rsaKey := crypto.RsaKey{PrivateKey: &rsa.PrivateKey{PublicKey: pubKey}}
+
+	var err error
+	encryptedVal := EncryptedCoExpShare{}
+	encryptedVal.Co, err = shamir.EncryptShare(rsaKey, val.Co)
+	if err != nil {
+		return encryptedVal, err
+	}
+	encryptedVal.Exp, err = shamir.EncryptShare(rsaKey, val.Exp)
+	if err != nil {
+		return encryptedVal, err
+	}
+	return encryptedVal, nil
+}
+
 // An EncryptedCoExpShare is a CoExpShare that has been encrypted using an RSA
 // public key.
 type EncryptedCoExpShare struct {
@@ -174,18 +192,4 @@ func (val EncryptedCoExpShare) MarshalBinary() ([]byte, error) {
 	binary.Write(buf, binary.BigEndian, val.Co)
 	binary.Write(buf, binary.BigEndian, val.Exp)
 	return buf.Bytes(), nil
-}
-
-func EncryptCoExpShare(rsaKey crypto.RsaKey, val CoExpShare) (EncryptedCoExpShare, error) {
-	var err error
-	encryptedVal := EncryptedCoExpShare{}
-	encryptedVal.Co, err = shamir.EncryptShare(rsaKey, val.Co)
-	if err != nil {
-		return encryptedVal, err
-	}
-	encryptedVal.Exp, err = shamir.EncryptShare(rsaKey, val.Exp)
-	if err != nil {
-		return encryptedVal, err
-	}
-	return encryptedVal, nil
 }

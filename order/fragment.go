@@ -2,6 +2,7 @@ package order
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"encoding/binary"
 	"time"
 
@@ -101,6 +102,35 @@ func (fragment *Fragment) IsCompatible(other *Fragment) bool {
 		fragment.MinimumVolume.Exp.Index == other.MinimumVolume.Exp.Index
 }
 
+// Encrypt a Fragment using an rsa.PublicKey.
+func (fragment *Fragment) Encrypt(pubKey rsa.PublicKey) (EncryptedFragment, error) {
+	var err error
+	encryptedFragment := EncryptedFragment{
+		OrderID:     fragment.OrderID,
+		OrderType:   fragment.OrderType,
+		OrderParity: fragment.OrderParity,
+		OrderExpiry: fragment.OrderExpiry,
+		ID:          fragment.ID,
+	}
+	encryptedFragment.Tokens, err = fragment.Tokens.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	encryptedFragment.Price, err = fragment.Price.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	encryptedFragment.Volume, err = fragment.Volume.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	encryptedFragment.MinimumVolume, err = fragment.MinimumVolume.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	return encryptedFragment, nil
+}
+
 // An EncryptedFragment is a Fragment that has been encrypted by an RSA public
 // key.
 type EncryptedFragment struct {
@@ -113,32 +143,4 @@ type EncryptedFragment struct {
 	Price         EncryptedCoExpShare `json:"price"`
 	Volume        EncryptedCoExpShare `json:"volume"`
 	MinimumVolume EncryptedCoExpShare `json:"minimumVolume"`
-}
-
-func EncryptFragment(rsaKey crypto.RsaKey, fragment Fragment) (EncryptedFragment, error) {
-	var err error
-	encryptedFragment := EncryptedFragment{
-		OrderID:     fragment.OrderID,
-		OrderType:   fragment.OrderType,
-		OrderParity: fragment.OrderParity,
-		OrderExpiry: fragment.OrderExpiry,
-		ID:          fragment.ID,
-	}
-	encryptedFragment.Tokens, err = shamir.EncryptShare(rsaKey, fragment.Tokens)
-	if err != nil {
-		return encryptedFragment, err
-	}
-	encryptedFragment.Price, err = EncryptCoExpShare(rsaKey, fragment.Price)
-	if err != nil {
-		return encryptedFragment, err
-	}
-	encryptedFragment.Volume, err = EncryptCoExpShare(rsaKey, fragment.Volume)
-	if err != nil {
-		return encryptedFragment, err
-	}
-	encryptedFragment.MinimumVolume, err = EncryptCoExpShare(rsaKey, fragment.MinimumVolume)
-	if err != nil {
-		return encryptedFragment, err
-	}
-	return encryptedFragment, nil
 }
