@@ -63,10 +63,11 @@ func (syncer *syncer) Sync() ([]OrderUpdate, error) {
 
 func (syncer *syncer) Prune() []OrderUpdate {
 	orderChanges := make(chan OrderUpdate, 100)
-	defer close(orderChanges)
 
 	go func() {
-		dispatch.Dispatch(
+		defer close(orderChanges)
+
+		dispatch.CoBegin(
 			func() {
 				dispatch.CoForAll(syncer.sellOrders, func(key int) {
 					status, err := syncer.renLedger.Status(syncer.buyOrders[key])

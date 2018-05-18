@@ -85,14 +85,15 @@ func main() {
 		}
 		request.OrderFragmentMapping[hash] = []adapter.OrderFragment{}
 		for i, ordFragment := range ordFragments {
-			marshaledOrdFragment := adapter.OrderFragment{}
+			marshaledOrdFragment := adapter.OrderFragment{
+				Index: int64(i),
+			}
 
 			log.Println(pod.Darknodes[i])
 			pubKey, err := darkpool.PublicKey(pod.Darknodes[i])
 			if err != nil {
 				log.Fatalf("cannot get public key of %v: %v", pod.Darknodes[i], err)
 			}
-			log.Println(pubKey)
 
 			encryptedFragment, err := ordFragment.Encrypt(pubKey)
 			marshaledOrdFragment.ID = base64.StdEncoding.EncodeToString(encryptedFragment.ID[:])
@@ -101,6 +102,7 @@ func main() {
 			marshaledOrdFragment.OrderType = encryptedFragment.OrderType
 			marshaledOrdFragment.OrderExpiry = encryptedFragment.OrderExpiry.Unix()
 			marshaledOrdFragment.Tokens = base64.StdEncoding.EncodeToString(encryptedFragment.Tokens)
+			log.Printf("TOKENS: %v", marshaledOrdFragment.Tokens)
 			marshaledOrdFragment.Price = []string{
 				base64.StdEncoding.EncodeToString(encryptedFragment.Price.Co),
 				base64.StdEncoding.EncodeToString(encryptedFragment.Price.Exp),
