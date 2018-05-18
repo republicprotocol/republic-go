@@ -12,7 +12,7 @@ import (
 
 type Config struct {
 	Keystore crypto.Keystore `json:"keystore"`
-	Ethereum ethereum.Config `json:"ethereum"`
+	Ethereum ethereum.Config `json:"ethereum"` // TODO: Darknode package should not be dependent on blockchain/ethereum
 	Logs     logger.Options  `json:"logs"`
 
 	Address                 identity.Address        `json:"address"`

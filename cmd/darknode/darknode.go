@@ -62,7 +62,10 @@ func main() {
 	dht := dht.NewDHT(conf.Address, 32)
 	connPool := grpc.NewConnPool(128)
 	newStatus(&dht, server)
-	_ = newSwarmer(&crypter, multiAddr, &dht, &connPool, server)
+	swarmer := newSwarmer(&crypter, multiAddr, &dht, &connPool, server)
+	if err := swarmer.Bootstrap(context.Background(), conf.BootstrapMultiAddresses); err != nil {
+		log.Printf("error during bootstrap: %v", err)
+	}
 
 	log.Printf("listening on %v:%v...", conf.Host, conf.Port)
 	lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
