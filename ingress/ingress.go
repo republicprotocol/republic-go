@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/cal"
@@ -76,28 +77,28 @@ func (ingress *Ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFra
 		return err
 	}
 
-	orderParity := order.ParityBuy
-	for _, orderFragments := range orderFragmentMapping {
-		orderParityDidChange := false
-		for _, orderFragment := range orderFragments {
-			orderParity = orderFragment.OrderParity
-			orderParityDidChange = true
-			break
-		}
-		if orderParityDidChange {
-			break
-		}
-	}
+	// orderParity := order.ParityBuy
+	// for _, orderFragments := range orderFragmentMapping {
+	// 	orderParityDidChange := false
+	// 	for _, orderFragment := range orderFragments {
+	// 		orderParity = orderFragment.OrderParity
+	// 		orderParityDidChange = true
+	// 		break
+	// 	}
+	// 	if orderParityDidChange {
+	// 		break
+	// 	}
+	// }
 
-	var err error
-	if orderParity == order.ParityBuy {
-		err = ingress.renLedger.OpenBuyOrder(signature, orderID)
-	} else {
-		err = ingress.renLedger.OpenSellOrder(signature, orderID)
-	}
-	if err != nil {
-		return err
-	}
+	// var err error
+	// if orderParity == order.ParityBuy {
+	// 	err = ingress.renLedger.OpenBuyOrder(signature, orderID)
+	// } else {
+	// 	err = ingress.renLedger.OpenSellOrder(signature, orderID)
+	// }
+	// if err != nil {
+	// 	return err
+	// }
 	return ingress.openOrderFragments(orderFragmentMapping)
 }
 
@@ -191,7 +192,10 @@ func (ingress *Ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 				errs <- fmt.Errorf("cannot send query to %v: %v", darknode, err)
 				return
 			}
+
+			log.Printf("sending order fragment to %v", darknode)
 			if err := ingress.orderbookClient.OpenOrder(ctx, darknodeMultiAddr, orderFragment.EncryptedFragment); err != nil {
+				log.Printf("cannot send order fragment to %v: %v", darknode, err)
 				errs <- fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
 				return
 			}

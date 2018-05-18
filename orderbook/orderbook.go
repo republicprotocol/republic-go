@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -73,17 +74,17 @@ func (book *orderbook) OpenOrder(ctx context.Context, orderFragment order.Encryp
 	var tokenShare shamir.Share
 	err = json.Unmarshal(tokens, tokenShare)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot decrypt tokens: %v", err)
 	}
 
 	// Decrypt price
 	decryptedPriceCo, err := book.RsaKey.Decrypt(orderFragment.Price.Co)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot decrypt price co: %v", err)
 	}
 	decryptedPriceExp, err := book.RsaKey.Decrypt(orderFragment.Price.Exp)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot decrypt price exp: %v", err)
 	}
 	price := order.CoExpShare{
 		Co: shamir.Share{}, Exp: shamir.Share{},
