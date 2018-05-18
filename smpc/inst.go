@@ -9,6 +9,7 @@ import (
 type Inst struct {
 	*InstConnect
 	*InstCompute
+	*InstJoin
 }
 
 type InstConnect struct {
@@ -24,11 +25,24 @@ type InstCompute struct {
 	Sell    order.Fragment
 }
 
+type InstJoin struct {
+	PeersID []byte
+	Buy     order.ID
+	Sell    order.ID
+}
+
 type Result struct {
 	*ResultCompute
+	*ResultJoin
 }
 
 type ResultCompute struct {
 	Delta delta.Delta
 	Err   error
+}
+
+type ResultJoin struct {
+	Buy  order.Order
+	Sell order.Order
+	Err  error
 }

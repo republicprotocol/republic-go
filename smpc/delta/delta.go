@@ -48,8 +48,8 @@ func NewDeltaFromShares(buyOrderID, sellOrderID order.ID, tokenShares, priceCosh
 	delta.MinVolume.Co = uint32(shamir.Join(minVolumeCoShare))
 	delta.MinVolume.Exp = uint32(shamir.Join(minVolumeExpShare))
 
-	var ID [32]byte
 	// Compute the ResultID and return the Result.
+	var ID [32]byte
 	copy(ID[:], crypto.Keccak256(delta.BuyOrderID[:], delta.SellOrderID[:]))
 	delta.ID = ID
 
