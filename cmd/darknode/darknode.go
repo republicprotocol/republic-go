@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
@@ -57,23 +58,34 @@ func main() {
 	}
 	log.Printf("ethereum %v", auth.From.Hex())
 
+	// Build services
 	server := grpc.NewServer()
 	crypter := crypto.NewWeakCrypter()
 	dht := dht.NewDHT(conf.Address, 32)
 	connPool := grpc.NewConnPool(128)
 	newStatus(&dht, server)
 	swarmer := newSwarmer(&crypter, multiAddr, &dht, &connPool, server)
+
+	// Start gRPC
+	go func() {
+		log.Printf("listening on %v:%v...", conf.Host, conf.Port)
+		lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
+		if err != nil {
+			log.Fatalf("cannot listen on %v:%v: %v", conf.Host, conf.Port, err)
+		}
+		if err := server.Serve(lis); err != nil {
+			log.Fatalf("cannot serve on %v:%v: %v", conf.Host, conf.Port, err)
+		}
+	}()
+	time.Sleep(time.Second)
+
+	// Bootstrap into the network
 	if err := swarmer.Bootstrap(context.Background(), conf.BootstrapMultiAddresses); err != nil {
 		log.Printf("error during bootstrap: %v", err)
 	}
-
-	log.Printf("listening on %v:%v...", conf.Host, conf.Port)
-	lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
-	if err != nil {
-		log.Fatalf("cannot listen on %v:%v: %v", conf.Host, conf.Port, err)
-	}
-	if err := server.Serve(lis); err != nil {
-		log.Fatalf("cannot serve on %v:%v: %v", conf.Host, conf.Port, err)
+	log.Printf("peers %v", len(dht.MultiAddresses()))
+	for _, multiAddr := range dht.MultiAddresses() {
+		log.Printf("  %v", multiAddr)
 	}
 }
 
