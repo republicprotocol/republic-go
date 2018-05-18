@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding"
 	"errors"
+	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -147,6 +148,8 @@ func NewClientRecycler(client Client) Client {
 func (client *clientRecycler) Connect(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
 	client.connsMu.Lock()
 	defer client.connsMu.Unlock()
+
+	log.Printf("stream connecting to %v", multiAddr)
 
 	addr := multiAddr.Address()
 	if _, ok := client.conns[addr]; !ok {

@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -209,6 +210,8 @@ func (stream safeStream) Send(message stream.Message) error {
 	stream.sendMu.Lock()
 	defer stream.sendMu.Unlock()
 
+	log.Printf("sending message...")
+
 	data, err := message.MarshalBinary()
 	if err != nil {
 		return err
@@ -222,6 +225,8 @@ func (stream safeStream) Send(message stream.Message) error {
 func (stream safeStream) Recv(message stream.Message) error {
 	stream.recvMu.Lock()
 	defer stream.recvMu.Unlock()
+
+	log.Printf("receiving message...")
 
 	streamMessage := StreamMessage{}
 	if err := stream.stream.RecvMsg(&streamMessage); err != nil {

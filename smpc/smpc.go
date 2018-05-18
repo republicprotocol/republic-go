@@ -160,6 +160,7 @@ func (smpc *smpc) run() {
 				}
 				smpc.mu.Unlock()
 
+				log.Printf("inserting delta fragment from self...")
 				dlt, err := builder.InsertDeltaFragment(deltaFragment)
 				if err != nil {
 					log.Println("can't insert delta to deltabuilder")
@@ -180,6 +181,8 @@ func (smpc *smpc) run() {
 
 // receivingMessages handles received deltaFragments
 func (smpc *smpc) receivingMessages(inst Inst, peers []identity.Address) {
+	log.Printf("connecting to peers...")
+
 	for _, node := range inst.InstConnect.Peers {
 		multi, err := smpc.findMultiaddress(node)
 		if err != nil {
@@ -206,6 +209,7 @@ func (smpc *smpc) receivingMessages(inst Inst, peers []identity.Address) {
 				}
 				smpc.mu.Unlock()
 
+				log.Printf("inserting delta fragment from peer...")
 				dlt, err := builder.InsertDeltaFragment(message.DeltaFragment)
 				if err != nil {
 					log.Println("can't insert node to delta builder")
@@ -242,6 +246,8 @@ func (smpc *smpc) receivingMessages(inst Inst, peers []identity.Address) {
 
 // sendDeltaFragment to nodes in the same pod.
 func (smpc *smpc) sendDeltaFragment(fragment delta.Fragment, inst Inst) {
+	log.Printf("sending delta fragments...")
+
 	for _, node := range inst.Peers {
 		multi, err := smpc.findMultiaddress(node)
 		if err != nil {
