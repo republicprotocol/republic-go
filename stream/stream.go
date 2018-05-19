@@ -4,16 +4,22 @@ import (
 	"context"
 	"encoding"
 	"errors"
-	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/identity"
 )
 
-// ErrDisconnectedClosedStream is returned when a call to
-// StreamClient.Disconnect happens for an identity.MultiAddress that is not
-// connected.
-var ErrDisconnectedClosedStream = errors.New("disconnected closed stream")
+// ErrSendOnClosedStream is returned when a call to Stream.Send happens on a
+// closed Stream.
+var ErrSendOnClosedStream = errors.New("send on closed stream")
+
+// ErrRecvOnClosedStream is returned when a call to Stream.Recv happens on a
+// closed Stream.
+var ErrRecvOnClosedStream = errors.New("receive on closed stream")
+
+// ErrCloseOnClosedStream is returned when a call to CloseStream.Close happens
+// on a closed Stream.
+var ErrCloseOnClosedStream = errors.New("close on closed stream")
 
 // Message is an interface for data that can be sent over a bidirectional
 // stream between nodes.
@@ -30,14 +36,37 @@ type Message interface {
 // Stream is an interface for sending and receiving Messages over a
 // bidirectional stream. It abstracts over the client and server architecture.
 type Stream interface {
-	Close() error
+	// Send a Message on the Stream. Calls to Stream.Send might be blocking
+	// depending on the underlying implementation.
 	Send(Message) error
+
+	// Recv a Message from the Stream. Calls to Stream.Recv will block until
+	// a Message is received.
 	Recv(Message) error
 }
 
+// A CloseStream is a Stream that needs to be explicitly closed.
+type CloseStream interface {
+	Stream
+
+	// Close the Stream and signal that it is no longer needed.
+	Close() error
+}
+
+// Streamer abstracts over the Client and Server architecture. By comparing
+// identity.Addresses it determines whether opening a Stream should be done by
+// listening for a connection as a Server, or connecting to a Server as a
+// Client.
 type Streamer interface {
+
+	// Open a Stream to an identity.MultiAddress by listening for a Client
+	// connection, or actively connecting to a Server. Calls to Streamer.Open
+	// are blocking and must be accompanied by a call to Streamer.Close.
 	Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error)
-	Close(multiAddr identity.MultiAddress) error
+
+	// Close a Stream with an identity.Address. Calls to Streamer.Open must be
+	// accompanied by a call to Streamer.Close.
+	Close(addr identity.Address) error
 }
 
 type streamer struct {
@@ -46,48 +75,57 @@ type streamer struct {
 	server Server
 
 	streamsMu *sync.Mutex
-	streams   map[identity.Address]Stream
+	streams   map[identity.Address]CloseStream
 }
 
+// NewStreamer returns a Streamer that uses an identity.Address to identify
+// itself. It will use the Client to connect streams when opening streams to an
+// identity.Address greater than its own, and it will use the Server to listen
+// for connections when opening streams to an identity.Address lower than its
+// own.
 func NewStreamer(addr identity.Address, client Client, server Server) Streamer {
 	return &streamer{
 		addr:   addr,
 		client: client,
 		server: server,
+
+		streamsMu: new(sync.Mutex),
+		streams:   map[identity.Address]CloseStream{},
 	}
 }
 
+// Open implements the Streamer interface.
 func (streamer streamer) Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
-	if streamer.addr < multiAddr.Address() {
-		return streamer.client.Connect(ctx, multiAddr)
-	}
+	var stream CloseStream
+	var err error
 
-	stream, err := streamer.server.Listen(ctx, multiAddr.Address())
+	addr := multiAddr.Address()
+	if addr < streamer.addr {
+		stream, err = streamer.client.Connect(ctx, multiAddr)
+	} else {
+		stream, err = streamer.server.Listen(ctx, addr)
+	}
 	if err != nil {
-		return nil, err
+		return stream, err
 	}
 
 	streamer.streamsMu.Lock()
 	defer streamer.streamsMu.Unlock()
-	streamer.streams[multiAddr.Address()] = stream
 
+	streamer.streams[addr] = stream
 	return stream, nil
 }
 
-func (streamer streamer) Close(multiAddr identity.MultiAddress) error {
-	if streamer.addr < multiAddr.Address() {
-		return streamer.client.Disconnect(multiAddr)
-	}
-
+// Close implements the Streamer interface.
+func (streamer streamer) Close(addr identity.Address) error {
 	streamer.streamsMu.Lock()
 	defer streamer.streamsMu.Unlock()
 
-	if stream, ok := streamer.streams[multiAddr.Address()]; ok {
+	if stream, ok := streamer.streams[addr]; ok {
 		err := stream.Close()
-		delete(streamer.streams, multiAddr.Address())
+		delete(streamer.streams, addr)
 		return err
 	}
-
 	return nil
 }
 
@@ -95,92 +133,78 @@ func (streamer streamer) Close(multiAddr identity.MultiAddress) error {
 type Client interface {
 
 	// Connect to a Server identified by an identity.MultiAddress. Returns a
-	// Stream for sending and receiving Messages to and from the Server. To be
-	// used with a ClientRecycler, the Stream must be safe for concurrent use.
-	// A call to Client.Connect for an identity.MultiAddress must eventually be
-	// followed by a call to Client.Disconnect for the same
-	// identity.MultiAddress.
-	Connect(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error)
-
-	// Disconnect from a Server identified by an identity.MultiAddress. A call
-	// to Client.Connect for an identity.MultiAddress must eventually be
-	// followed by a call to Client.Disconnect for the same
-	// identity.MultiAddress. Returns an ErrDisconnectedClosedStream when there
-	// is no previous call to Client.Connect.
-	Disconnect(multiAddr identity.MultiAddress) error
+	// CloseStream for sending and receiving Messages to and from the Server.
+	// The CloseStream that must be closed when the CloseStream is no longer
+	// needed, otherwise resources will leak.
+	Connect(ctx context.Context, multiAddr identity.MultiAddress) (CloseStream, error)
 }
 
 // Server is an interface for accepting connections from a Client.
 type Server interface {
 
 	// Listen for a connection from a Client identified by an identity.Address.
-	Listen(ctx context.Context, addr identity.Address) (Stream, error)
+	// Returns a CloseStream that must be closed when the CloseStream is no
+	// longer needed, otherwise resources will leak.
+	Listen(ctx context.Context, addr identity.Address) (CloseStream, error)
 }
 
-// clientRecycler encapsulates a Client and reuses a Stream that has been
-// connected to Server when multiple connections to the Server are needd. It
-// does not protect the Stream from concurrent use.
-type clientRecycler struct {
-	client Client
+type streamRecycler struct {
+	streamer Streamer
 
-	connsMu *sync.Mutex
-	connsRc map[identity.Address]int64
-	conns   map[identity.Address]Stream
+	streamsMu *sync.Mutex
+	streamsRc map[identity.Address]int64
+	streams   map[identity.Address]Stream
 }
 
-// NewClientRecycler returns a Client that wraps another Client. It will
-// use the Client to create Stream, but will recycle connected Streams when
-// multiple connections to the same Server are needed. The wrapped Client must
-// ensure that the Stream is safe for concurrent use.
-// FIXME: There are some serious resource leaks by having the ClientRecycler
-// wrap the Client. Instead, we need to replace this with a StreamerRecycler
-// that wraps a Streamer.
-func NewClientRecycler(client Client) Client {
-	return &clientRecycler{
-		client:  client,
-		connsMu: new(sync.Mutex),
-		connsRc: map[identity.Address]int64{},
-		conns:   map[identity.Address]Stream{},
+// NewStreamRecycler returns a Streamer that wraps another Streamer. It will
+// use the Streamer to open and close Streams, but will recycle existing
+// Streams when multiple connections to the same identity.Address are needed.
+// Streams opened will be safe for concurrent use whenever the inner Streamer
+// can open Streams that are safe for concurrent use.
+func NewStreamRecycler(streamer Streamer) Streamer {
+	return &streamRecycler{
+		streamer: streamer,
+
+		streamsMu: new(sync.Mutex),
+		streamsRc: map[identity.Address]int64{},
+		streams:   map[identity.Address]Stream{},
 	}
 }
 
-// Connect implements the Client interface.
-func (client *clientRecycler) Connect(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
-	client.connsMu.Lock()
-	defer client.connsMu.Unlock()
-
-	log.Printf("stream connecting to %v", multiAddr)
+// Open implements the Streamer interface.
+func (recycler *streamRecycler) Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
+	recycler.streamsMu.Lock()
+	defer recycler.streamsMu.Unlock()
 
 	addr := multiAddr.Address()
-	if _, ok := client.conns[addr]; !ok {
-		conn, err := client.client.Connect(ctx, multiAddr)
+	if _, ok := recycler.streams[addr]; !ok {
+		conn, err := recycler.streamer.Open(ctx, multiAddr)
 		if err != nil {
 			return nil, err
 		}
-		client.conns[addr] = conn
-		client.connsRc[addr] = 0
+		recycler.streams[addr] = conn
+		recycler.streamsRc[addr] = 0
 	}
-	client.connsRc[addr]++
-	return client.conns[addr], nil
+	recycler.streamsRc[addr]++
+	return recycler.streams[addr], nil
 }
 
-// Disconnect implements the Client interface.
-func (client *clientRecycler) Disconnect(multiAddr identity.MultiAddress) error {
-	client.connsMu.Lock()
-	defer client.connsMu.Unlock()
+// Close implements the Streamer interface.
+func (recycler *streamRecycler) Close(addr identity.Address) error {
+	recycler.streamsMu.Lock()
+	defer recycler.streamsMu.Unlock()
 
-	addr := multiAddr.Address()
-	if client.connsRc[addr] == 0 {
-		return ErrDisconnectedClosedStream
+	if recycler.streamsRc[addr] == 0 {
+		return ErrCloseOnClosedStream
 	}
 
-	client.connsRc[addr]--
-	if client.connsRc[addr] == 0 {
-		if err := client.client.Disconnect(multiAddr); err != nil {
+	recycler.streamsRc[addr]--
+	if recycler.streamsRc[addr] == 0 {
+		if err := recycler.streamer.Close(addr); err != nil {
 			return err
 		}
-		delete(client.conns, addr)
-		delete(client.connsRc, addr)
+		delete(recycler.streams, addr)
+		delete(recycler.streamsRc, addr)
 	}
 	return nil
 }

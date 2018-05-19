@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -74,7 +73,7 @@ func (service *StreamService) Connect(stream StreamService_ConnectServer) error 
 }
 
 // Listen implements the stream.Server interface.
-func (service *StreamService) Listen(ctx context.Context, addr identity.Address) (stream.Stream, error) {
+func (service *StreamService) Listen(ctx context.Context, addr identity.Address) (stream.CloseStream, error) {
 	streams := service.setupConn(addr)
 	defer service.teardownConn(addr)
 
@@ -119,22 +118,16 @@ func (service *StreamService) teardownConn(addr identity.Address) {
 type streamClient struct {
 	addr     identity.Address
 	connPool *ConnPool
-
-	streamsMu *sync.Mutex
-	streams   map[identity.Address]StreamService_ConnectClient
 }
 
 func NewStreamClient(addr identity.Address, connPool *ConnPool) stream.Client {
 	return &streamClient{
 		addr:     addr,
 		connPool: connPool,
-
-		streamsMu: new(sync.Mutex),
-		streams:   map[identity.Address]StreamService_ConnectClient{},
 	}
 }
 
-func (client *streamClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (stream.Stream, error) {
+func (client *streamClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (stream.CloseStream, error) {
 	conn, err := client.connPool.Dial(ctx, multiAddr)
 	if err != nil {
 		return nil, fmt.Errorf("cannot dial %v: %v", multiAddr, err)
@@ -155,23 +148,7 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 		return nil, fmt.Errorf("cannot send stream address: %v", err)
 	}
 
-	client.streamsMu.Lock()
-	defer client.streamsMu.Unlock()
-
-	client.streams[multiAddr.Address()] = stream
 	return newSafeStream(stream), err
-}
-
-func (client *streamClient) Disconnect(multiAddr identity.MultiAddress) error {
-	client.streamsMu.Lock()
-	defer client.streamsMu.Unlock()
-
-	if stream, ok := client.streams[multiAddr.Address()]; ok {
-		err := stream.CloseSend()
-		delete(client.streams, multiAddr.Address())
-		return err
-	}
-	return nil
 }
 
 // safeStream wraps a gRPC stream and ensures that it is safe for concurrent
@@ -195,42 +172,55 @@ func newSafeStream(stream grpc.Stream) safeStream {
 }
 
 // Close implements the stream.Stream interface.
-func (stream safeStream) Close() error {
-	stream.sendMu.Lock()
-	stream.recvMu.Lock()
-	defer stream.sendMu.Unlock()
-	defer stream.recvMu.Unlock()
+func (safeStream safeStream) Close() error {
+	safeStream.sendMu.Lock()
+	safeStream.recvMu.Lock()
+	defer safeStream.sendMu.Unlock()
+	defer safeStream.recvMu.Unlock()
 
-	close(stream.done)
+	if safeStream.done == nil {
+		return stream.ErrCloseOnClosedStream
+	}
+
+	close(safeStream.done)
+	safeStream.done = nil
+
+	if stream, ok := safeStream.stream.(StreamService_ConnectClient); ok {
+		return stream.CloseSend()
+	}
 	return nil
 }
 
 // Send implements the stream.Stream interface.
-func (stream safeStream) Send(message stream.Message) error {
-	stream.sendMu.Lock()
-	defer stream.sendMu.Unlock()
+func (safeStream safeStream) Send(message stream.Message) error {
+	safeStream.sendMu.Lock()
+	defer safeStream.sendMu.Unlock()
 
-	log.Printf("sending message...")
+	if safeStream.done == nil {
+		return stream.ErrSendOnClosedStream
+	}
 
 	data, err := message.MarshalBinary()
 	if err != nil {
 		return err
 	}
-	return stream.stream.SendMsg(&StreamMessage{
+	return safeStream.stream.SendMsg(&StreamMessage{
 		Data: data,
 	})
 }
 
 // Recv implements the stream.Stream interface.
-func (stream safeStream) Recv(message stream.Message) error {
-	stream.recvMu.Lock()
-	defer stream.recvMu.Unlock()
+func (safeStream safeStream) Recv(message stream.Message) error {
+	safeStream.recvMu.Lock()
+	defer safeStream.recvMu.Unlock()
 
-	log.Printf("receiving message...")
+	if safeStream.done == nil {
+		return stream.ErrRecvOnClosedStream
+	}
 
-	streamMessage := StreamMessage{}
-	if err := stream.stream.RecvMsg(&streamMessage); err != nil {
+	data := StreamMessage{}
+	if err := safeStream.stream.RecvMsg(&data); err != nil {
 		return err
 	}
-	return message.UnmarshalBinary(streamMessage.Data)
+	return message.UnmarshalBinary(data.Data)
 }
