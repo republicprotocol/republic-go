@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -10,6 +11,15 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
+
+// ErrUnverifiedConnection is returned when a StreamClient does not produce a
+// verifiable connection signature as its first StreamMessage to a
+// StreamServer.
+var ErrUnverifiedConnection = errors.New("unverified connection")
+
+// ErrNilAuthentication is returned when no authentication message is provided
+// for a connection.
+var ErrNilAuthentication = errors.New("nil authentication")
 
 // StreamService implements the rpc.SmpcServer interface using a gRPC service.
 type StreamService struct {
@@ -46,7 +56,7 @@ func (service *StreamService) Connect(stream StreamService_ConnectServer) error 
 	if err != nil {
 		return err
 	}
-	addr, err := service.verifyStreamAddress(message)
+	addr, err := service.verifyAuthentication(message.GetAuthentication())
 	if err != nil {
 		return err
 	}
@@ -85,17 +95,17 @@ func (service *StreamService) Listen(ctx context.Context, addr identity.Address)
 	}
 }
 
-func (service *StreamService) verifyStreamAddress(message *StreamMessage) (identity.Address, error) {
-	var addr string
-	if message.GetStreamAddress() != nil && message.GetStreamAddress().GetAddress() != "" {
-		addr = message.GetStreamAddress().GetAddress()
+func (service *StreamService) verifyAuthentication(auth *StreamAuthentication) (identity.Address, error) {
+	if auth == nil || auth.GetAddress() == "" || auth.GetSignature() == nil {
+		return identity.Address(""), ErrNilAuthentication
 	}
 
-	// FIXME: Verify that this message was signed by the sender.
-	data := []byte("Republic Protocol: connect: from " + addr + " to " + service.addr.String())
+	addr := auth.GetAddress()
+	data := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", addr, service.addr))
 	data = crypto.Keccak256(data)
+	signature := auth.GetSignature()
 
-	return identity.Address(addr), nil
+	return identity.Address(addr), crypto.NewEcdsaVerifier(addr).Verify(data, signature)
 }
 
 func (service *StreamService) setupConn(addr identity.Address) chan safeStream {
@@ -116,13 +126,17 @@ func (service *StreamService) teardownConn(addr identity.Address) {
 }
 
 type streamClient struct {
-	addr     identity.Address
+	signer crypto.Signer
+	addr   identity.Address
+
 	connPool *ConnPool
 }
 
-func NewStreamClient(addr identity.Address, connPool *ConnPool) stream.Client {
+func NewStreamClient(signer crypto.Signer, addr identity.Address, connPool *ConnPool) stream.Client {
 	return &streamClient{
-		addr:     addr,
+		signer: signer,
+		addr:   addr,
+
 		connPool: connPool,
 	}
 }
@@ -134,20 +148,25 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 	}
 	defer conn.Close()
 
+	data := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", client.addr, multiAddr.Address()))
+	dataSignature, err := client.signer.Sign(data)
+	if err != nil {
+		return nil, fmt.Errorf("cannot sign stream authentication: %v", err)
+	}
+
 	stream, err := NewStreamServiceClient(conn.ClientConn).Connect(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open stream: %v", err)
 	}
 	if err := stream.Send(&StreamMessage{
-		StreamAddress: &StreamAddress{
-			Signature: []byte{},
+		Authentication: &StreamAuthentication{
+			Signature: dataSignature,
 			Address:   client.addr.String(),
 		},
 		Data: []byte{},
 	}); err != nil {
 		return nil, fmt.Errorf("cannot send stream address: %v", err)
 	}
-
 	return newSafeStream(stream), err
 }
 
