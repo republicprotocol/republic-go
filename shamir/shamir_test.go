@@ -5,9 +5,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/crypto"
 	. "github.com/republicprotocol/republic-go/shamir"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
@@ -187,6 +187,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 	})
 
 	Context("when joining", func() {
+
 		It("should return the required secret from the threshold of shares", func() {
 			// Shamir parameters.
 			N := int64(100)
