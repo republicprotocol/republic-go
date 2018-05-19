@@ -2,7 +2,6 @@ package orderbook
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -10,9 +9,6 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 )
-
-var ErrOrderNotFound = errors.New("order not found")
-var ErrOrderFragmentNotFound = errors.New("order fragment not found")
 
 type Client interface {
 

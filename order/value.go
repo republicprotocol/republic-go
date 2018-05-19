@@ -23,6 +23,14 @@ type CoExp struct {
 	Exp uint32
 }
 
+// NewCoExp returns a CoExp with the given coefficient and exponent.
+func NewCoExp(co uint32, exp uint32) CoExp {
+	return CoExp{
+		Co:  co,
+		Exp: exp,
+	}
+}
+
 // MarshalJSON implements the json.Marshaler interface and marshals the CoExp
 // into a tuple of numbers.
 func (val CoExp) MarshalJSON() ([]byte, error) {

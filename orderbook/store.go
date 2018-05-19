@@ -6,7 +6,13 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
-var ErrNotFoundInStore = errors.New("not found in store")
+// ErrOrderFragmentNotFound is return when attempting to load an order that
+// cannot be found.
+var ErrOrderFragmentNotFound = errors.New("order fragment not found")
+
+// ErrOrderNotFound is return when attempting to load an order that cannot be
+// found.
+var ErrOrderNotFound = errors.New("order not found")
 
 type Storer interface {
 	InsertOrderFragment(orderFragment order.Fragment) error
