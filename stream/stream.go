@@ -53,6 +53,25 @@ type CloseStream interface {
 	Close() error
 }
 
+// Client is an interface for connecting to a Server.
+type Client interface {
+
+	// Connect to a Server identified by an identity.MultiAddress. Returns a
+	// CloseStream for sending and receiving Messages to and from the Server.
+	// The CloseStream that must be closed when the CloseStream is no longer
+	// needed, otherwise resources will leak.
+	Connect(ctx context.Context, multiAddr identity.MultiAddress) (CloseStream, error)
+}
+
+// Server is an interface for accepting connections from a Client.
+type Server interface {
+
+	// Listen for a connection from a Client identified by an identity.Address.
+	// Returns a CloseStream that must be closed when the CloseStream is no
+	// longer needed, otherwise resources will leak.
+	Listen(ctx context.Context, addr identity.Address) (CloseStream, error)
+}
+
 // Streamer abstracts over the Client and Server architecture. By comparing
 // identity.Addresses it determines whether opening a Stream should be done by
 // listening for a connection as a Server, or connecting to a Server as a
@@ -127,25 +146,6 @@ func (streamer streamer) Close(addr identity.Address) error {
 		return err
 	}
 	return nil
-}
-
-// Client is an interface for connecting to a Server.
-type Client interface {
-
-	// Connect to a Server identified by an identity.MultiAddress. Returns a
-	// CloseStream for sending and receiving Messages to and from the Server.
-	// The CloseStream that must be closed when the CloseStream is no longer
-	// needed, otherwise resources will leak.
-	Connect(ctx context.Context, multiAddr identity.MultiAddress) (CloseStream, error)
-}
-
-// Server is an interface for accepting connections from a Client.
-type Server interface {
-
-	// Listen for a connection from a Client identified by an identity.Address.
-	// Returns a CloseStream that must be closed when the CloseStream is no
-	// longer needed, otherwise resources will leak.
-	Listen(ctx context.Context, addr identity.Address) (CloseStream, error)
 }
 
 type streamRecycler struct {
