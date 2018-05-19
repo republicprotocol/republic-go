@@ -36,7 +36,7 @@ type Share struct {
 func (share *Share) Sub(arg *Share) Share {
 	return Share{
 		Index: share.Index,
-		Value: subMod(share.Value, arg.Value, Prime),
+		Value: addMod(share.Value, subMod(Prime, arg.Value, Prime), Prime),
 	}
 }
 
@@ -95,6 +95,15 @@ func (share *Share) Encrypt(pubKey rsa.PublicKey) ([]byte, error) {
 		return []byte{}, err
 	}
 	return rsaKey.Encrypt(data)
+}
+
+// Decrypt cipher text into Share using an crypto.RsaKey.
+func (share *Share) Decrypt(rsaKey crypto.RsaKey, cipherText []byte) error {
+	plainText, err := rsaKey.Decrypt(cipherText)
+	if err != nil {
+		return err
+	}
+	return share.UnmarshalBinary(plainText)
 }
 
 // Shares are a slice of Share structs.
