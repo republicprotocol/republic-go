@@ -8,7 +8,7 @@ import (
 	. "github.com/republicprotocol/republic-go/crypto"
 )
 
-var _ = Describe("EcdsaKey", func() {
+var _ = Describe("Ecdsa keys", func() {
 
 	Context("when generating", func() {
 
@@ -38,8 +38,7 @@ var _ = Describe("EcdsaKey", func() {
 			key, err := RandomEcdsaKey()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			hash32 := NewHash32([]byte("REN"))
-			_, err = key.Sign(hash32)
+			_, err = key.Sign(Keccak256([]byte("REN")))
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -48,11 +47,11 @@ var _ = Describe("EcdsaKey", func() {
 				key, err := RandomEcdsaKey()
 				Expect(err).ShouldNot(HaveOccurred())
 
-				hash32 := NewHash32([]byte("REN"))
-				sigHash32, err := key.Sign(hash32)
+				data := Keccak256([]byte("REN"))
+				signature, err := key.Sign(data)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				err = VerifySignature(hash32, sigHash32, key.Address())
+				err = key.Verify(data, signature)
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 		})
@@ -68,7 +67,7 @@ var _ = Describe("EcdsaKey", func() {
 				sigRandom := make([]byte, 65)
 				rand.Read(sigRandom)
 
-				err = VerifySignature(NewHash32(random), sigRandom, key.Address())
+				err = key.Verify(random, sigRandom)
 				Expect(err).Should(HaveOccurred())
 			}
 		})
