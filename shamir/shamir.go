@@ -19,9 +19,9 @@ var ErrNKError = errors.New("expected n to be greater than or equal to k")
 // ErrFiniteField is returned when a secret is not in the finite field.
 var ErrFiniteField = errors.New("expected secret to be in the finite field")
 
-// ErrCannotDeserializeEmptyByteSlice is returned when trying to unmarshal an
-// empty byte slice.
-var ErrUnmarshalNilBytes = errors.New("cannot deserialize empty byte slice")
+// ErrUnmarshalNilBytes is returned when trying to unmarshal a nil, or empty,
+// byte slice.
+var ErrUnmarshalNilBytes = errors.New("unmarshal nil bytes")
 
 // Prime is the prime number used to define the finite field.
 const Prime uint64 = 17012364981921935471
@@ -33,6 +33,8 @@ type Share struct {
 	Value uint64
 }
 
+// Sub one share from another within the finite field and return the result.
+// The index of the result will always be set to the receiver index.
 func (share *Share) Sub(arg *Share) Share {
 	return Share{
 		Index: share.Index,
