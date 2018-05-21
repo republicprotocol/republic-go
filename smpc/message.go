@@ -60,17 +60,21 @@ func (msg *message) UnmarshalBinary(data []byte) error {
 func (msg *message) IsMessage() {}
 
 type messageJ struct {
-	Share   shamir.Share
-	ValueID []byte
+	InstID    [32]byte
+	NetworkID [32]byte
+	Share     shamir.Share
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface.
 func (msg *messageJ) MarshalBinary() ([]byte, error) {
 	buf := new(bytes.Buffer)
-	if err := binary.Write(buf, binary.BigEndian, msg.Share); err != nil {
+	if err := binary.Write(buf, binary.BigEndian, msg.InstID); err != nil {
 		return []byte{}, err
 	}
-	if err := binary.Write(buf, binary.BigEndian, msg.ValueID); err != nil {
+	if err := binary.Write(buf, binary.BigEndian, msg.NetworkID); err != nil {
+		return []byte{}, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, msg.Share); err != nil {
 		return []byte{}, err
 	}
 	return buf.Bytes(), nil
@@ -79,10 +83,13 @@ func (msg *messageJ) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface.
 func (msg *messageJ) UnmarshalBinary(data []byte) error {
 	buf := bytes.NewBuffer(data)
-	if err := binary.Read(buf, binary.BigEndian, &msg.Share); err != nil {
+	if err := binary.Read(buf, binary.BigEndian, &msg.InstID); err != nil {
 		return err
 	}
-	if err := binary.Read(buf, binary.BigEndian, &msg.ValueID); err != nil {
+	if err := binary.Read(buf, binary.BigEndian, &msg.NetworkID); err != nil {
+		return err
+	}
+	if err := binary.Read(buf, binary.BigEndian, &msg.Share); err != nil {
 		return err
 	}
 	return nil

@@ -8,6 +8,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 	"golang.org/x/net/context"
@@ -24,6 +25,10 @@ var ErrSmpcerIsNotRunning = errors.New("smpcer is not running")
 // ErrUnmarshalNilBytes is returned when a call to UnmarshalBinary happens on
 // an empty list of bytes.
 var ErrUnmarshalNilBytes = errors.New("unmarshall nil bytes")
+
+// ErrInsufficientSharesToJoin is returned when a share is inserted into a
+// shareBuilder and there are fewer than k total shares.
+var ErrInsufficientSharesToJoin = errors.New("insufficient shares to join")
 
 // Smpcer is an interface for a secure multi-party computer. It asynchronously
 // consumes computation instructions and produces computation results.
@@ -57,8 +62,9 @@ type smpc struct {
 	shutdownDone      chan struct{}
 	shutdownInitiated bool
 
-	routesMu *sync.RWMutex
-	routes   map[string]map[identity.Address]stream.Stream
+	routesMu             *sync.RWMutex
+	routes               map[[32]byte]map[identity.Address]stream.Stream
+	routesToShareBuilder map[[32]byte]*shareBuilder
 }
 
 func NewSmpc(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpcer {
@@ -75,8 +81,9 @@ func NewSmpc(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpcer
 		shutdownDone:      nil,
 		shutdownInitiated: true,
 
-		routesMu: new(sync.RWMutex),
-		routes:   map[string]map[identity.Address]stream.Stream{},
+		routesMu:             new(sync.RWMutex),
+		routes:               map[[32]byte]map[identity.Address]stream.Stream{},
+		routesToShareBuilder: map[[32]byte]*shareBuilder{},
 	}
 }
 
@@ -146,16 +153,16 @@ func (smpc *smpc) run() {
 				smpc.instConnect(inst.NetworkID, *inst.InstConnect)
 			}
 			if inst.InstDisconnect != nil {
-				smpc.instDisconnect(inst.NetworkID, *inst.InstConnect)
+				smpc.instDisconnect(inst.NetworkID, *inst.InstDisconnect)
 			}
 			if inst.InstJ != nil {
-				smpc.instJ(inst.ID, inst.NetworkID, *inst.InstJoin)
+				smpc.instJ(inst.InstID, inst.NetworkID, *inst.InstJ)
 			}
 		}
 	}
 }
 
-func (smpc *smpc) instConnect(networkID []byte, inst InstConnect) {
+func (smpc *smpc) instConnect(networkID [32]byte, inst InstConnect) {
 	go dispatch.CoForAll(inst.Nodes, func(i int) {
 		queryCtx, queryCancel := context.WithTimeout(context.Background(), time.Minute)
 		defer queryCancel()
@@ -179,7 +186,8 @@ func (smpc *smpc) instConnect(networkID []byte, inst InstConnect) {
 		}
 
 		smpc.routesMu.Lock()
-		smpc.routes[string(networkID)][addr] = s
+		smpc.routes[networkID][addr] = s
+		smpc.routesToShareBuilder[networkID] = newShareBuilder(inst.K)
 		smpc.routesMu.Unlock()
 
 		for {
@@ -192,13 +200,93 @@ func (smpc *smpc) instConnect(networkID []byte, inst InstConnect) {
 				continue
 			}
 
+			switch msg.messageType {
+			case messageTypeJ:
+				smpc.storeShareForJoining(msg.InstID, msg.NetworkID, msg.Share)
+			default:
+				log.Println("cannot recv message from %v: %v", addr, ErrUnexpectedMessageType)
+			}
 		}
 	})
 }
 
-func (smpc *smpc) instDisconnect(networkID []byte, inst InstDisconnect) {
+func (smpc *smpc) instDisconnect(networkID [32]byte, inst InstDisconnect) {
 	panic("unimplemented")
 }
 
-func (smpc *smpc) instJ(instID []byte, networkID []byte, inst InstJ) {
+func (smpc *smpc) instJ(instID, networkID [32]byte, inst InstJ) {
+	msg := message{
+		messageType: messageTypeJ,
+		messageJ: &messageJ{
+			InstID:    instID,
+			NetworkID: networkID,
+			Share:     inst.Share,
+		},
+	}
+
+	smpc.storeShareForJoining(instID, networkID, inst.Share)
+
+	smpc.routesMu.RLock()
+	defer smpc.routesMu.RUnlock()
+
+	for addr, stream := range smpc.routes[networkID] {
+		if err := stream.Send(&msg); err != nil {
+			log.Printf("cannot send messageTypeJ to %v: %v", addr, err)
+		}
+	}
+}
+
+func (smpc *smpc) storeShareForJoining(instID, networkID [32]byte, share shamir.Share) {
+	smpc.routesMu.Lock()
+	defer smpc.routesMu.Unlock()
+
+	if val, err := smpc.routesToShareBuilder[networkID].insertShare(instID, share); err == nil {
+		select {
+		case <-smpc.shutdown:
+		case smpc.results <- Result{
+			InstID:    instID,
+			NetworkID: networkID,
+			ResultJ: &ResultJ{
+				Value: val,
+			},
+		}:
+		}
+		return
+	} else if err != ErrInsufficientSharesToJoin {
+		log.Printf("could not insert share locally: %v", err)
+		return
+	}
+}
+
+type shareBuilder struct {
+	k int64
+
+	sharesMu *sync.Mutex
+	shares   map[[32]byte]shamir.Shares
+}
+
+func newShareBuilder(k int64) *shareBuilder {
+	return &shareBuilder{
+		k:        k,
+		sharesMu: new(sync.Mutex),
+		shares:   map[[32]byte]shamir.Shares{},
+	}
+}
+
+func (builder *shareBuilder) insertShare(id [32]byte, share shamir.Share) (uint64, error) {
+	builder.sharesMu.Lock()
+	defer builder.sharesMu.Unlock()
+
+	if _, ok := builder.shares[id]; !ok {
+		builder.shares[id] = shamir.Shares{}
+	}
+
+	builder.shares[id] = append(builder.shares[id], share)
+	if int64(len(builder.shares[id])) >= builder.k {
+		val := shamir.Join(builder.shares[id])
+		delete(builder.shares, id)
+		return val, nil
+	}
+
+	return 0, ErrInsufficientSharesToJoin
 }

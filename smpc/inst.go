@@ -9,8 +9,8 @@ import (
 // asynchronously. All instructions involve a network of nodes that the Smpcer
 // will communicate with, identified by the network ID.
 type Inst struct {
-	InstID    []byte
-	NetworkID []byte
+	InstID    [32]byte
+	NetworkID [32]byte
 
 	*InstConnect
 	*InstDisconnect
@@ -34,7 +34,7 @@ type InstDisconnect struct {
 // InstJ instructs the Smpcer to join shares into a value. The Smpcer will
 // will eventually output a respective ResultValue.
 type InstJ struct {
-	ValueShare
+	shamir.Share
 }
 
 // Result stores the results of an Inst after it has been executed to
@@ -42,8 +42,8 @@ type InstJ struct {
 // NetworkID associates it with the network of Smpcer nodes that executed the
 // Inst.
 type Result struct {
-	InstID    []byte
-	NetworkID []byte
+	InstID    [32]byte
+	NetworkID [32]byte
 
 	*ResultJ
 }
@@ -52,11 +52,4 @@ type Result struct {
 type ResultJ struct {
 	Value uint64
 	Err   error
-}
-
-// ValueShare is a share of a uint64 paired with a ValueID. The ValueID relates
-// the ValueShare to the concrete value of which it is a share.
-type ValueShare struct {
-	shamir.Share
-	ValueID []byte
 }
