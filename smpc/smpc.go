@@ -190,6 +190,11 @@ func (smpc *smpc) instConnect(networkID [32]byte, inst InstConnect) {
 		smpc.routesToShareBuilder[networkID] = newShareBuilder(inst.K)
 		smpc.routesMu.Unlock()
 
+		// TODO: First, we should check if we have opened this stream before
+		// and if so, we should not bother opening a new one. All messages
+		// received from the stream should be written to a channel. A
+		// background goroutine (or multiple) should read of this channel and
+		// process each message as required.
 		for {
 			msg := message{}
 			if err := s.Recv(&msg); err != nil {
@@ -204,7 +209,7 @@ func (smpc *smpc) instConnect(networkID [32]byte, inst InstConnect) {
 			case messageTypeJ:
 				smpc.storeShareForJoining(msg.InstID, msg.NetworkID, msg.Share)
 			default:
-				log.Println("cannot recv message from %v: %v", addr, ErrUnexpectedMessageType)
+				log.Printf("cannot recv message from %v: %v", addr, ErrUnexpectedMessageType)
 			}
 		}
 	})
@@ -256,37 +261,4 @@ func (smpc *smpc) storeShareForJoining(instID, networkID [32]byte, share shamir.
 		log.Printf("could not insert share locally: %v", err)
 		return
 	}
-}
-
-type shareBuilder struct {
-	k int64
-
-	sharesMu *sync.Mutex
-	shares   map[[32]byte]shamir.Shares
-}
-
-func newShareBuilder(k int64) *shareBuilder {
-	return &shareBuilder{
-		k:        k,
-		sharesMu: new(sync.Mutex),
-		shares:   map[[32]byte]shamir.Shares{},
-	}
-}
-
-func (builder *shareBuilder) insertShare(id [32]byte, share shamir.Share) (uint64, error) {
-	builder.sharesMu.Lock()
-	defer builder.sharesMu.Unlock()
-
-	if _, ok := builder.shares[id]; !ok {
-		builder.shares[id] = shamir.Shares{}
-	}
-
-	builder.shares[id] = append(builder.shares[id], share)
-	if int64(len(builder.shares[id])) >= builder.k {
-		val := shamir.Join(builder.shares[id])
-		delete(builder.shares, id)
-		return val, nil
-	}
-
-	return 0, ErrInsufficientSharesToJoin
 }
