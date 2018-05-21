@@ -48,6 +48,8 @@ func NewPriorityQueue(poolSize, poolIndex int) *PriorityQueue {
 
 func (queue *PriorityQueue) Insert(ord order.ID, parity order.Parity, priority uint64) {
 	queue.mu.Lock()
+	defer queue.mu.Unlock()
+
 	if parity == order.ParityBuy {
 		queue.buyOrders[ord] = priority
 		for sellOrder, sellOrderPriority := range queue.sellOrders {
@@ -84,8 +86,6 @@ func (queue *PriorityQueue) Insert(ord order.ID, parity order.Parity, priority u
 			queue.pairs = append(queue.pairs[:index-1], append([]OrderPair{orderPair}, queue.pairs[index:]...)...)
 		}
 	}
-	queue.mu.Unlock()
-
 }
 
 func (queue *PriorityQueue) Remove(ids ...order.ID) {

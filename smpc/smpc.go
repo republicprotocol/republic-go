@@ -1,17 +1,16 @@
 package smpc
 
 import (
-	"context"
 	"errors"
 	"log"
 	"sync"
 	"time"
 
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/shamir"
-	"github.com/republicprotocol/republic-go/smpc/delta"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
+	"golang.org/x/net/context"
 )
 
 // ErrSmpcerIsAlreadyRunning is returned when a call to Smpcer.Start happens
@@ -46,36 +45,38 @@ type Smpcer interface {
 }
 
 type smpc struct {
-	mu             *sync.Mutex
-	buffer         int
-	swarmer        swarm.Swarmer
-	streamer       stream.Streamer
-	instructions   chan Inst
-	results        chan Result
-	router         map[string]*deltaBuilder
-	multiAddresses map[identity.Address]identity.MultiAddress
+	swarmer  swarm.Swarmer
+	streamer stream.Streamer
+
+	buffer       int
+	instructions chan Inst
+	results      chan Result
 
 	shutdownMu        *sync.Mutex
 	shutdown          chan struct{}
 	shutdownDone      chan struct{}
 	shutdownInitiated bool
+
+	routesMu *sync.RWMutex
+	routes   map[string]map[identity.Address]stream.Stream
 }
 
-func NewSmpc(buffer int, swarmer swarm.Swarmer, streamer stream.Streamer) Smpcer {
+func NewSmpc(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpcer {
 	return &smpc{
-		mu:             new(sync.Mutex),
-		buffer:         buffer,
-		swarmer:        swarmer,
-		streamer:       streamer,
-		instructions:   make(chan Inst, buffer),
-		results:        make(chan Result, buffer),
-		router:         map[string]*deltaBuilder{},
-		multiAddresses: map[identity.Address]identity.MultiAddress{},
+		swarmer:  swarmer,
+		streamer: streamer,
+
+		buffer:       buffer,
+		instructions: make(chan Inst, buffer),
+		results:      make(chan Result, buffer),
 
 		shutdownMu:        new(sync.Mutex),
 		shutdown:          nil,
 		shutdownDone:      nil,
 		shutdownInitiated: true,
+
+		routesMu: new(sync.RWMutex),
+		routes:   map[string]map[identity.Address]stream.Stream{},
 	}
 }
 
@@ -130,237 +131,74 @@ func (smpc *smpc) Results() <-chan Result {
 }
 
 func (smpc *smpc) run() {
-	peers := [][]identity.Address{}
+	defer close(smpc.shutdownDone)
 
 	for {
 		select {
 		case <-smpc.shutdown:
-			close(smpc.shutdownDone)
 			return
-		case inst := <-smpc.instructions:
+
+		case inst, ok := <-smpc.instructions:
+			if !ok {
+				return
+			}
 			if inst.InstConnect != nil {
-				peers = append(peers, inst.Peers)
-				if len(peers) >= 3 {
-					smpc.receivingMessages(inst, peers[0])
-					peers = peers[1:]
-				} else {
-					smpc.receivingMessages(inst, nil)
-				}
+				smpc.instConnect(inst.NetworkID, *inst.InstConnect)
 			}
-
-			if inst.InstCompute != nil {
-				deltaFragment := delta.NewDeltaFragment(&inst.InstCompute.Buy, &inst.InstCompute.Sell)
-				smpc.sendDeltaFragment(deltaFragment, inst)
-
-				smpc.mu.Lock()
-				builder, ok := smpc.router[string(inst.InstCompute.PeersID)]
-				if !ok {
-					builder = NewDeltaBuilder(inst.InstCompute.PeersID, (len(inst.Peers)+1)*2/3)
-					smpc.router[string(inst.InstCompute.PeersID)] = builder
-				}
-				smpc.mu.Unlock()
-
-				log.Printf("inserting delta fragment from self...")
-				dlt, err := builder.InsertDeltaFragment(deltaFragment)
-				if err != nil {
-					log.Println("can't insert delta to deltabuilder")
-					continue
-				}
-				if dlt != nil {
-					smpc.results <- Result{
-						ResultCompute: &ResultCompute{
-							Delta: *dlt,
-							Err:   nil,
-						},
-					}
-				}
+			if inst.InstDisconnect != nil {
+				smpc.instDisconnect(inst.NetworkID, *inst.InstConnect)
+			}
+			if inst.InstJ != nil {
+				smpc.instJ(inst.ID, inst.NetworkID, *inst.InstJoin)
 			}
 		}
 	}
 }
 
-// receivingMessages handles received deltaFragments
-func (smpc *smpc) receivingMessages(inst Inst, peers []identity.Address) {
-	log.Printf("connecting to peers...")
+func (smpc *smpc) instConnect(networkID []byte, inst InstConnect) {
+	go dispatch.CoForAll(inst.Nodes, func(i int) {
+		queryCtx, queryCancel := context.WithTimeout(context.Background(), time.Minute)
+		defer queryCancel()
 
-	for _, node := range inst.InstConnect.Peers {
-		multi, err := smpc.findMultiaddress(node)
+		addr := inst.Nodes[i]
+		multiAddr, err := smpc.swarmer.Query(queryCtx, addr, -1)
 		if err != nil {
-			log.Printf("can't find node %v", node)
-			continue
+			log.Printf("cannot query smpcer node %v: %v", addr, err)
+			return
 		}
 
-		stm, err := smpc.streamer.Open(context.Background(), multi)
-		go func(stm stream.Stream, multi identity.MultiAddress, inst Inst) {
-			defer stm.Close()
+		openCtx, openCancel := context.WithCancel(context.Background())
+		defer openCancel()
 
-			var message *DeltaFragmentMessage
-			for {
-				err := stm.Recv(message)
-				if err != nil {
+		// TODO: Store openCancel so that it can be called by the
+		// smpc.instDisconnect method
+
+		s, err := smpc.streamer.Open(openCtx, multiAddr)
+		if err != nil {
+			log.Printf("cannot connect to smpcer node %v: %v", addr, err)
+		}
+
+		smpc.routesMu.Lock()
+		smpc.routes[string(networkID)][addr] = s
+		smpc.routesMu.Unlock()
+
+		for {
+			msg := message{}
+			if err := s.Recv(&msg); err != nil {
+				if err == stream.ErrRecvOnClosedStream {
 					return
 				}
-
-				smpc.mu.Lock()
-				builder, ok := smpc.router[string(message.PeersID)]
-				if !ok {
-					builder = NewDeltaBuilder(message.PeersID, (len(inst.Peers)+1)*2/3)
-					smpc.router[string(message.PeersID)] = builder
-				}
-				smpc.mu.Unlock()
-
-				log.Printf("inserting delta fragment from peer...")
-				dlt, err := builder.InsertDeltaFragment(message.DeltaFragment)
-				if err != nil {
-					log.Println("can't insert node to delta builder")
-					return
-				}
-				if dlt != nil {
-					smpc.results <- Result{
-						ResultCompute: &ResultCompute{
-							Delta: *dlt,
-							Err:   nil,
-						},
-					}
-				}
-			}
-		}(stm, multi, inst)
-	}
-
-	// Close node which are two epochs ago
-	if peers != nil {
-		for _, node := range peers {
-			multi, err := smpc.findMultiaddress(node)
-			if err != nil {
-				log.Printf("can't find node %v", node)
+				log.Printf("cannot recv message from %v: %v", addr, err)
 				continue
 			}
-			err = smpc.streamer.Close(multi)
-			if err != nil {
-				log.Printf("can't close stream with node %v", node)
-				continue
-			}
+
 		}
-	}
+	})
 }
 
-// sendDeltaFragment to nodes in the same pod.
-func (smpc *smpc) sendDeltaFragment(fragment delta.Fragment, inst Inst) {
-	log.Printf("sending delta fragments...")
-
-	for _, node := range inst.Peers {
-		multi, err := smpc.findMultiaddress(node)
-		if err != nil {
-			log.Printf("can't find node %v", node)
-			continue
-		}
-
-		stream, err := smpc.streamer.Open(context.Background(), multi)
-		msg := &DeltaFragmentMessage{
-			PeersID:       inst.InstCompute.PeersID,
-			DeltaFragment: fragment,
-		}
-		err = stream.Send(msg)
-		if err != nil {
-			log.Printf("can't send message to %v", node)
-			continue
-		}
-	}
+func (smpc *smpc) instDisconnect(networkID []byte, inst InstDisconnect) {
+	panic("unimplemented")
 }
 
-// findMultiaddress returns the multiaddress of the address. It will look up the mapping first.
-// If it's not there, it will start a query for the target address.
-func (smpc *smpc) findMultiaddress(addr identity.Address) (identity.MultiAddress, error) {
-	if multi, ok := smpc.multiAddresses[addr]; ok {
-		return multi, nil
-	}
-
-	queryCtx, queryCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer queryCancel()
-	multi, err := smpc.swarmer.Query(queryCtx, addr, 3)
-	if err != nil {
-		return identity.MultiAddress{}, err
-	}
-	smpc.multiAddresses[addr] = multi
-
-	return multi, nil
-}
-
-type deltaBuilder struct {
-	PeersID []byte
-	k       int
-	mu      *sync.Mutex
-
-	deltas                 map[delta.ID][]delta.Fragment
-	tokenSharesCache       []shamir.Share
-	priceCoShareCache      []shamir.Share
-	priceExpShareCache     []shamir.Share
-	volumeCoShareCache     []shamir.Share
-	volumeExpShareCache    []shamir.Share
-	minVolumeCoShareCache  []shamir.Share
-	minVolumeExpShareCache []shamir.Share
-}
-
-func NewDeltaBuilder(peersID []byte, k int) *deltaBuilder {
-	builder := new(deltaBuilder)
-	builder.PeersID = peersID
-	builder.k = k
-	builder.mu = new(sync.Mutex)
-	builder.deltas = map[delta.ID][]delta.Fragment{}
-	builder.tokenSharesCache = make([]shamir.Share, k)
-	builder.priceCoShareCache = make([]shamir.Share, k)
-	builder.priceExpShareCache = make([]shamir.Share, k)
-	builder.volumeCoShareCache = make([]shamir.Share, k)
-	builder.volumeExpShareCache = make([]shamir.Share, k)
-	builder.minVolumeCoShareCache = make([]shamir.Share, k)
-	builder.minVolumeCoShareCache = make([]shamir.Share, k)
-
-	return builder
-}
-
-func (builder *deltaBuilder) InsertDeltaFragment(fragment delta.Fragment) (*delta.Delta, error) {
-	builder.mu.Lock()
-	defer builder.mu.Unlock()
-
-	builder.deltas[fragment.DeltaID] = append(builder.deltas[fragment.DeltaID], fragment)
-	if len(builder.deltas[fragment.DeltaID]) > builder.k {
-		// join the shares to a delta
-		dlt, err := builder.Join(builder.deltas[fragment.DeltaID]...)
-		if err != nil {
-			return nil, err
-		}
-		delete(builder.deltas, fragment.DeltaID)
-
-		return dlt, nil
-	}
-
-	return nil, nil
-}
-
-func (builder *deltaBuilder) Join(deltaFragments ...delta.Fragment) (*delta.Delta, error) {
-	if !delta.IsCompatible(deltaFragments) {
-		return nil, errors.New("delta fragment are not compatible with each other ")
-	}
-
-	for i := 0; i < builder.k; i++ {
-		builder.tokenSharesCache[i] = deltaFragments[i].TokenShare
-		builder.priceCoShareCache[i] = deltaFragments[i].PriceShare.Co
-		builder.priceExpShareCache[i] = deltaFragments[i].PriceShare.Exp
-		builder.volumeCoShareCache[i] = deltaFragments[i].VolumeShare.Co
-		builder.volumeExpShareCache[i] = deltaFragments[i].VolumeShare.Exp
-		builder.minVolumeCoShareCache[i] = deltaFragments[i].MinVolumeShare.Co
-		builder.minVolumeExpShareCache[i] = deltaFragments[i].MinVolumeShare.Exp
-	}
-
-	return delta.NewDeltaFromShares(
-		deltaFragments[0].BuyOrderID,
-		deltaFragments[0].SellOrderID,
-		builder.tokenSharesCache,
-		builder.priceCoShareCache,
-		builder.priceExpShareCache,
-		builder.volumeCoShareCache,
-		builder.volumeExpShareCache,
-		builder.minVolumeCoShareCache,
-		builder.minVolumeExpShareCache,
-	), nil
+func (smpc *smpc) instJ(instID []byte, networkID []byte, inst InstJ) {
 }

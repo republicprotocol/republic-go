@@ -33,7 +33,7 @@ func NewOme(orderbooker orderbook.Orderbooker, orderbookListener orderbook.Liste
 		orderbooker:       orderbooker,
 		orderbookListener: orderbookListener,
 		smpcer:            smpcer,
-		ranker:            NewPriorityQueue(1, 0),
+		ranker:            NewPriorityQueue(1, 0), // FIXME: Why god?
 	}
 }
 
