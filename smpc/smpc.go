@@ -196,7 +196,7 @@ func (smpc *smpc) instConnect(networkID [32]byte, inst InstConnect) {
 		// background goroutine (or multiple) should read of this channel and
 		// process each message as required.
 		for {
-			msg := message{}
+			msg := Message{}
 			if err := s.Recv(&msg); err != nil {
 				if err == stream.ErrRecvOnClosedStream {
 					return
@@ -205,7 +205,7 @@ func (smpc *smpc) instConnect(networkID [32]byte, inst InstConnect) {
 				continue
 			}
 
-			switch msg.messageType {
+			switch msg.MessageType {
 			case messageTypeJ:
 				smpc.storeShareForJoining(msg.InstID, msg.NetworkID, msg.Share)
 			default:
@@ -220,9 +220,9 @@ func (smpc *smpc) instDisconnect(networkID [32]byte, inst InstDisconnect) {
 }
 
 func (smpc *smpc) instJ(instID, networkID [32]byte, inst InstJ) {
-	msg := message{
-		messageType: messageTypeJ,
-		messageJ: &messageJ{
+	msg := Message{
+		MessageType: messageTypeJ,
+		MessageJ: &MessageJ{
 			InstID:    instID,
 			NetworkID: networkID,
 			Share:     inst.Share,
