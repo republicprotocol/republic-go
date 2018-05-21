@@ -97,7 +97,7 @@ func (ome *ome) Compute(done <-chan struct{}) chan error {
 				}
 
 				for i := 0; i < len(deltaWaitingList); i++ {
-					if err := ome.orderbooker.ConfirmOrderMatch(result.Delta.BuyOrderID, result.Delta.SellOrderID); err != nil {
+					if err := ome.orderbooker.ConfirmOrderMatch(deltaWaitingList[i].BuyOrderID, deltaWaitingList[i].SellOrderID); err != nil {
 						continue
 					}
 
