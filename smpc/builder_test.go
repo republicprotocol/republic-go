@@ -10,31 +10,45 @@ import (
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
-var _ = Describe("share builder", func() {
+var _ = Describe("Share builder", func() {
 
-	Context("insert shares", func() {
+	Context("when inserting shares", func() {
 
-		It("should return the secret after atleast k shares have joined", func() {
+		It("should return the value after at least k shares have joined", func() {
 			n := int64(24)
 			k := int64(16)
+			shareBuilderObserver := mockShareBuilderObserver{}
 			shareBuilder := NewShareBuilder(k)
 
 			for i := 0; i < 100; i++ {
+				shareBuilderObserver.value = 0
+				shareBuilder.Observe([32]byte{byte(i)}, [32]byte{byte(i)}, &shareBuilderObserver)
+
 				secret := uint64(rand.Intn(100))
 				shares, err := shamir.Split(n, k, secret)
 				Expect(err).ShouldNot(HaveOccurred())
 				for j := int64(0); j < n; j++ {
-					val, err := shareBuilder.InsertShare([32]byte{byte(i)}, shares[j])
+					err := shareBuilder.Insert([32]byte{byte(i)}, shares[j])
 					if j < k-1 {
 						Expect(err).Should(HaveOccurred())
 						Expect(err).To(Equal(ErrInsufficientSharesToJoin))
-						Expect(val).To(Equal(uint64(0)))
+						Expect(shareBuilderObserver.value).To(Equal(uint64(0)))
 					} else {
 						Expect(err).ShouldNot(HaveOccurred())
-						Expect(val).To(Equal(secret))
+						Expect(shareBuilderObserver.value).To(Equal(secret))
 					}
 				}
+
+				shareBuilder.Observe([32]byte{byte(i)}, [32]byte{byte(i)}, nil)
 			}
 		})
 	})
 })
+
+type mockShareBuilderObserver struct {
+	value uint64
+}
+
+func (observer *mockShareBuilderObserver) OnNotifyBuild(id, networkID [32]byte, value uint64) {
+	observer.value = value
+}
