@@ -10,24 +10,27 @@ import (
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
-var _ = Describe("smpc messages ", func() {
+var _ = Describe("Messages", func() {
 
-	Context("when marshaling and unmarshaling standard messages", func() {
+	Context("when marshaling and unmarshaling messages", func() {
 
 		It("should equal itself after marshaling and unmarshaling in binary", func() {
 			for i := uint64(0); i < 100; i++ {
 				messageJ := MessageJ{
-					InstID:    [32]byte{byte(i)},
-					NetworkID: [32]byte{byte(i)},
 					Share: shamir.Share{
 						Index: uint64(rand.Int63()),
 						Value: uint64(rand.Int63()),
 					},
 				}
 				message := Message{
-					MessageType: 1,
+					MessageType: MessageTypeJ,
 					MessageJ:    &messageJ,
 				}
+				_, err := rand.Read(messageJ.InstID[:])
+				Expect(err).ShouldNot(HaveOccurred())
+				_, err = rand.Read(messageJ.NetworkID[:])
+				Expect(err).ShouldNot(HaveOccurred())
+
 				data, err := message.MarshalBinary()
 				Expect(err).ShouldNot(HaveOccurred())
 				unmarshaledMessage := Message{MessageJ: &MessageJ{}}
@@ -37,38 +40,58 @@ var _ = Describe("smpc messages ", func() {
 			}
 		})
 
+		It("should return an error when marshaling an unknown message", func() {
+			message := Message{
+				MessageType: -69,
+			}
+			_, err := message.MarshalBinary()
+			Expect(err).Should(Equal(ErrUnexpectedMessageType))
+		})
+
+		It("should return an error when marshaling an unknown message", func() {
+			message := Message{}
+			err := message.UnmarshalBinary([]byte{byte(255)})
+			Expect(err).Should(Equal(ErrUnexpectedMessageType))
+		})
+
 		It("should return an error when unmarshaling an empty data as binary", func() {
 			message := Message{}
 			err := message.UnmarshalBinary([]byte{})
 			Expect(err).Should(HaveOccurred())
 		})
+
 	})
 
-	Context("when marshaling and unmarshaling join messages to the SMPC", func() {
+	Context("when marshaling and unmarshaling messageJs", func() {
 
 		It("should equal itself after marshaling and unmarshaling in binary", func() {
 			for i := uint64(0); i < 100; i++ {
 				messageJ := MessageJ{
-					InstID:    [32]byte{byte(i)},
-					NetworkID: [32]byte{byte(i)},
 					Share: shamir.Share{
 						Index: uint64(rand.Int63()),
 						Value: uint64(rand.Int63()),
 					},
 				}
+				_, err := rand.Read(messageJ.InstID[:])
+				Expect(err).ShouldNot(HaveOccurred())
+				_, err = rand.Read(messageJ.NetworkID[:])
+				Expect(err).ShouldNot(HaveOccurred())
+
 				data, err := messageJ.MarshalBinary()
 				Expect(err).ShouldNot(HaveOccurred())
-				unmarshaledMessage := MessageJ{}
-				err = unmarshaledMessage.UnmarshalBinary(data)
+				unmarshaledMessageJ := MessageJ{}
+				err = unmarshaledMessageJ.UnmarshalBinary(data)
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(messageJ).To(Equal(unmarshaledMessage))
+				Expect(messageJ).To(Equal(unmarshaledMessageJ))
 			}
 		})
 
 		It("should return an error when unmarshaling an empty data as binary", func() {
-			message := MessageJ{}
+			message := Message{}
 			err := message.UnmarshalBinary([]byte{})
 			Expect(err).Should(HaveOccurred())
 		})
+
 	})
+
 })

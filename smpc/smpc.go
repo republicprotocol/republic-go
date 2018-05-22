@@ -236,7 +236,7 @@ func (smpc *smpcer) instDisconnect(networkID [32]byte, inst InstDisconnect) {
 
 func (smpc *smpcer) instJ(instID, networkID [32]byte, inst InstJ) {
 	msg := Message{
-		MessageType: messageTypeJ,
+		MessageType: MessageTypeJ,
 		MessageJ: &MessageJ{
 			InstID:    instID,
 			NetworkID: networkID,
@@ -314,7 +314,7 @@ func (smpc *smpcer) processRemoteStream(remoteAddr identity.Address, remoteStrea
 		}
 
 		switch msg.MessageType {
-		case messageTypeJ:
+		case MessageTypeJ:
 			smpc.processMessageJ(*msg.MessageJ)
 		default:
 			log.Printf("cannot recv message from %v: %v", remoteAddr, ErrUnexpectedMessageType)

@@ -15,7 +15,7 @@ var ErrUnexpectedMessageType = errors.New("unexpected message type")
 type MessageType int8
 
 const (
-	messageTypeJ = 1
+	MessageTypeJ = 1
 )
 
 type Message struct {
@@ -33,7 +33,7 @@ func (msg *Message) MarshalBinary() ([]byte, error) {
 
 	var err error
 	switch msg.MessageType {
-	case messageTypeJ:
+	case MessageTypeJ:
 		err = binary.Write(buf, binary.BigEndian, msg.MessageJ)
 	default:
 		return []byte{}, ErrUnexpectedMessageType
@@ -49,7 +49,7 @@ func (msg *Message) UnmarshalBinary(data []byte) error {
 	}
 
 	switch msg.MessageType {
-	case messageTypeJ:
+	case MessageTypeJ:
 		return binary.Read(buf, binary.BigEndian, msg.MessageJ)
 	default:
 		return ErrUnexpectedMessageType
