@@ -17,6 +17,48 @@ import (
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
+var _ = Describe("smpc ", func() {
+
+	Context("on starting an smpcer", func() {
+
+		It("should return error if smpcer has already been started", func() {
+			swarmer := &mockSwarmer{}
+			streamer := &mockStreamer{}
+			smpcer := NewSmpcer(swarmer, streamer, 10)
+
+			err := smpcer.Start()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = smpcer.Start()
+			Expect(err).Should(HaveOccurred())
+			Expect(err).To(Equal(ErrSmpcerIsAlreadyRunning))
+		})
+	})
+
+	Context("on shutting down an smpcer", func() {
+
+		It("should return error if smpcer is not running", func() {
+			swarmer := &mockSwarmer{}
+			streamer := &mockStreamer{}
+			smpcer := NewSmpcer(swarmer, streamer, 10)
+
+			err := smpcer.Shutdown()
+			Expect(err).Should(HaveOccurred())
+			Expect(err).To(Equal(ErrSmpcerIsNotRunning))
+		})
+
+		It("should not return error if smpcer is running", func() {
+			swarmer := &mockSwarmer{}
+			streamer := &mockStreamer{}
+			smpcer := NewSmpcer(swarmer, streamer, 10)
+
+			err := smpcer.Start()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = smpcer.Shutdown()
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+	})
+})
+
 type mockSwarmer struct {
 }
 
@@ -78,45 +120,3 @@ func createSMPCer() (Smpcer, identity.MultiAddress) {
 	streamer := stream.NewStreamer(multiaddr.Address(), client, server)
 	return NewSmpcer(swarmer, streamer, 10), multiaddr
 }
-
-var _ = Describe("smpc ", func() {
-
-	Context("on starting an smpcer", func() {
-
-		It("should return error if smpcer has already been started", func() {
-			swarmer := &mockSwarmer{}
-			streamer := &mockStreamer{}
-			smpcer := NewSmpcer(swarmer, streamer, 10)
-
-			err := smpcer.Start()
-			Expect(err).ShouldNot(HaveOccurred())
-			err = smpcer.Start()
-			Expect(err).Should(HaveOccurred())
-			Expect(err).To(Equal(ErrSmpcerIsAlreadyRunning))
-		})
-	})
-
-	Context("on shutting down an smpcer", func() {
-
-		It("should return error if smpcer is not running", func() {
-			swarmer := &mockSwarmer{}
-			streamer := &mockStreamer{}
-			smpcer := NewSmpcer(swarmer, streamer, 10)
-
-			err := smpcer.Shutdown()
-			Expect(err).Should(HaveOccurred())
-			Expect(err).To(Equal(ErrSmpcerIsNotRunning))
-		})
-
-		It("should not return error if smpcer is running", func() {
-			swarmer := &mockSwarmer{}
-			streamer := &mockStreamer{}
-			smpcer := NewSmpcer(swarmer, streamer, 10)
-
-			err := smpcer.Start()
-			Expect(err).ShouldNot(HaveOccurred())
-			err = smpcer.Shutdown()
-			Expect(err).ShouldNot(HaveOccurred())
-		})
-	})
-})
