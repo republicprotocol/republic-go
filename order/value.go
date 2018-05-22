@@ -19,12 +19,12 @@ var ErrUnexpectedCoExpRange = errors.New("unexpected value range")
 // restricted to the range 1-1999, for values 0.005 to 9.995. The exponent is
 // restricted to the range 0-52, for values -26 to 25.
 type CoExp struct {
-	Co  uint32
-	Exp uint32
+	Co  uint64
+	Exp uint64
 }
 
 // NewCoExp returns a CoExp with the given coefficient and exponent.
-func NewCoExp(co uint32, exp uint32) CoExp {
+func NewCoExp(co uint64, exp uint64) CoExp {
 	return CoExp{
 		Co:  co,
 		Exp: exp,
@@ -34,13 +34,13 @@ func NewCoExp(co uint32, exp uint32) CoExp {
 // MarshalJSON implements the json.Marshaler interface and marshals the CoExp
 // into a tuple of numbers.
 func (val CoExp) MarshalJSON() ([]byte, error) {
-	return json.Marshal([]uint32{val.Co, val.Exp})
+	return json.Marshal([]uint64{val.Co, val.Exp})
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface and unmarshals the
 // CoExp from a tuple of numbers.
 func (val *CoExp) UnmarshalJSON(data []byte) error {
-	tuple := [2]uint32{0, 0}
+	tuple := [2]uint64{0, 0}
 	if err := json.Unmarshal(data, &tuple); err != nil {
 		return err
 	}

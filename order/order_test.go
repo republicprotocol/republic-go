@@ -16,9 +16,9 @@ var _ = Describe("Orders", func() {
 	n := int64(17)
 	k := int64(12)
 
-	price := createValue(uint32(1), uint32(2))
-	minVolume := createValue(uint32(1), uint32(3))
-	maxVolume := createValue(uint32(1), uint32(3))
+	price := NewCoExp(uint64(1), uint64(2))
+	minVolume := NewCoExp(uint64(1), uint64(3))
+	maxVolume := NewCoExp(uint64(1), uint64(3))
 
 	Context("when testing for equality", func() {
 
@@ -99,13 +99,6 @@ var _ = Describe("Orders", func() {
 		})
 	})
 })
-
-func createValue(coeff, exp uint32) Value {
-	return Value{
-		Co:  coeff,
-		Exp: exp,
-	}
-}
 
 // Write a single order into a JSON file.
 func writeOrderToJSONFile(fileName string, order *Order) error {

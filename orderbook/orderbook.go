@@ -26,38 +26,31 @@ type Listener interface {
 	OnConfirmOrderMatch(order.Order, order.Order)
 }
 
-type Orderbooker interface {
+type Orderbook interface {
 	Server
+	Syncer
 
-	// Sync orders and order states from the Ren Ledger to this local
-	// Orderbooker. Returns a list of changes that were made to this local
-	// Orderbooker during the synchronization.
-	Sync() ([]OrderUpdate, error)
-
-	// OrderFragment stored in this local Orderbooker. These are received from
-	// other Orderbookers calling Orderbooker.OpenOrder to send an
-	// order.EncryptedFragment to this local Orderbooker.
+	// OrderFragment stored in this local Orderbook. These are received from
+	// other Orderbooks calling Orderbook.OpenOrder to send an
+	// order.EncryptedFragment to this local Orderbook.
 	OrderFragment(order.ID) (order.Fragment, error)
 
-	// Order that has been reconstructed and stored in this local Orderbooker.
+	// Order that has been reconstructed and stored in this local Orderbook.
 	// This only happens for orders that have been matched and confirmed.
 	Order(order.ID) (order.Order, error)
-
-	// Confirm an order match.
-	ConfirmOrderMatch(order.ID, order.ID) error
 }
 
 type orderbook struct {
 	crypto.RsaKey
-	storer Storer
 	syncer Syncer
+	storer Storer
 }
 
-func NewOrderbook(key crypto.RsaKey, storer Storer, syncer Syncer) Orderbooker {
+func NewOrderbook(key crypto.RsaKey, syncer Syncer, storer Storer) Orderbook {
 	return &orderbook{
 		RsaKey: key,
-		storer: storer,
 		syncer: syncer,
+		storer: storer,
 	}
 }
 
@@ -144,8 +137,12 @@ func (book *orderbook) OpenOrder(ctx context.Context, orderFragment order.Encryp
 	return book.storer.InsertOrderFragment(fragment)
 }
 
-func (book *orderbook) Sync() ([]OrderUpdate, error) {
+func (book *orderbook) Sync() (ChangeSet, error) {
 	return book.syncer.Sync()
+}
+
+func (book *orderbook) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
+	return book.syncer.ConfirmOrderMatch(buy, sell)
 }
 
 func (book *orderbook) OrderFragment(id order.ID) (order.Fragment, error) {
@@ -154,8 +151,4 @@ func (book *orderbook) OrderFragment(id order.ID) (order.Fragment, error) {
 
 func (book *orderbook) Order(id order.ID) (order.Order, error) {
 	return book.storer.Order(id)
-}
-
-func (book *orderbook) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
-	return book.syncer.ConfirmOrderMatch(buy, sell)
 }

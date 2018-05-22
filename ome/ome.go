@@ -5,7 +5,6 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/smpc"
-	"github.com/republicprotocol/republic-go/smpc/delta"
 )
 
 type Omer interface {
@@ -21,16 +20,16 @@ type Omer interface {
 
 type ome struct {
 	ξs                chan cal.Epoch
-	orderbooker       orderbook.Orderbooker
+	orderbook         orderbook.Orderbook
 	orderbookListener orderbook.Listener
 	smpcer            smpc.Smpcer
 	ranker            Ranker
 }
 
-func NewOme(orderbooker orderbook.Orderbooker, orderbookListener orderbook.Listener, smpcer smpc.Smpcer) Omer {
+func NewOme(orderbook orderbook.Orderbook, orderbookListener orderbook.Listener, smpcer smpc.Smpcer) Omer {
 	return &ome{
 		ξs:                make(chan cal.Epoch, 1),
-		orderbooker:       orderbooker,
+		orderbook:         orderbook,
 		orderbookListener: orderbookListener,
 		smpcer:            smpcer,
 		ranker:            NewPriorityQueue(1, 0), // FIXME: Why god?
@@ -39,12 +38,12 @@ func NewOme(orderbooker orderbook.Orderbooker, orderbookListener orderbook.Liste
 
 // Sync implements the Omer interface.
 func (ome *ome) Sync() error {
-	updates, err := ome.orderbooker.Sync()
+	changeset, err := ome.orderbook.Sync()
 	if err != nil {
 		return err
 	}
-	for _, update := range updates {
-		switch update.Status {
+	for _, change := range changeset {
+		switch change.Status {
 		case order.Open:
 			ome.ranker.Insert(update.ID, update.Parity, update.Priority)
 		case order.Canceled, order.Settled, order.Confirmed:

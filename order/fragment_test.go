@@ -16,9 +16,9 @@ var _ = Describe("Order fragments", func() {
 	orderID := [32]byte{}
 	tokens := shamir.Share{}
 
-	price := FragmentValue{}
-	minVolume := FragmentValue{}
-	maxVolume := FragmentValue{}
+	price := CoExpShare{}
+	minVolume := CoExpShare{}
+	maxVolume := CoExpShare{}
 
 	Context("when creating new fragments", func() {
 

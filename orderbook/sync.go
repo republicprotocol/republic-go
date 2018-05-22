@@ -8,8 +8,32 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+type ChangeSet []Change
+
+type Change struct {
+	OrderID       order.ID
+	OrderParity   order.Parity
+	OrderStatus   order.Status
+	OrderPriority uint64
+}
+
+func NewChange(id order.ID, parity order.Parity, status order.Status, priority uint64) Change {
+	return Change{
+		OrderID:       id,
+		OrderParity:   parity,
+		OrderStatus:   status,
+		OrderPriority: priority,
+	}
+}
+
 type Syncer interface {
-	Sync() ([]OrderUpdate, error)
+
+	// Sync orders and order states from the Ren Ledger to this local
+	// Orderbooker. Returns a list of changes that were made to this local
+	// Orderbooker during the synchronization.
+	Sync() (ChangeSet, error)
+
+	// Confirm an order match.
 	ConfirmOrderMatch(order.ID, order.ID) error
 }
 
@@ -33,9 +57,8 @@ func NewSyncer(renLedger cal.RenLedger, limit int) Syncer {
 	}
 }
 
-func (syncer *syncer) Sync() ([]OrderUpdate, error) {
-	// Prune the orders first
-	updates := syncer.Prune()
+func (syncer *syncer) Sync() (ChangeSet, error) {
+	changset := syncer.purge()
 
 	// Get new buy orders from the ledger
 	buyOrderIDs, err := syncer.renLedger.BuyOrders(syncer.buyOrderPointer, syncer.renLedgerLimit)
@@ -44,9 +67,10 @@ func (syncer *syncer) Sync() ([]OrderUpdate, error) {
 	}
 	syncer.buyOrderPointer += len(buyOrderIDs)
 	for i, ord := range buyOrderIDs {
-		update := NewOrderChange(ord, order.ParityBuy, order.Open, uint64(syncer.buyOrderPointer+i))
-		updates = append(updates, update)
+		change := NewChange(ord, order.ParityBuy, order.Open, uint64(syncer.buyOrderPointer+i))
+		changset = append(changset, change)
 	}
+
 	// Get new sell orders from the ledger
 	sellOrderIDs, err := syncer.renLedger.SellOrders(syncer.sellOrderPointer, syncer.renLedgerLimit)
 	if err != nil {
@@ -54,22 +78,24 @@ func (syncer *syncer) Sync() ([]OrderUpdate, error) {
 	}
 	syncer.sellOrderPointer += len(sellOrderIDs)
 	for i, ord := range sellOrderIDs {
-		update := NewOrderChange(ord, order.ParitySell, order.Open, uint64(syncer.sellOrderPointer+i))
-		updates = append(updates, update)
+		change := NewChange(ord, order.ParitySell, order.Open, uint64(syncer.sellOrderPointer+i))
+		changset = append(changset, change)
 	}
 
-	return updates, nil
+	return changset, nil
 }
 
-func (syncer *syncer) Prune() []OrderUpdate {
-	orderChanges := make(chan OrderUpdate, 100)
+func (syncer *syncer) purge() ChangeSet {
+	changes := make(chan Change, 100)
 
 	go func() {
-		defer close(orderChanges)
+		defer close(changes)
 
 		dispatch.CoBegin(
 			func() {
-				dispatch.CoForAll(syncer.sellOrders, func(key int) {
+				// Purge all buy orders by iterating over them and reading
+				// their status and priority from the Ren Ledger
+				dispatch.CoForAll(syncer.buyOrders, func(key int) {
 					status, err := syncer.renLedger.Status(syncer.buyOrders[key])
 					if err != nil {
 						log.Println("fail to check order status", err)
@@ -81,13 +107,13 @@ func (syncer *syncer) Prune() []OrderUpdate {
 						return
 					}
 					if status != order.Open {
-						update := NewOrderChange(syncer.buyOrders[key], order.ParityBuy, status, priority)
-
-						orderChanges <- update
+						changes <- NewChange(syncer.buyOrders[key], order.ParityBuy, status, priority)
+						delete(syncer.buyOrders, key)
 					}
 				})
 			},
 			func() {
+				// Purge all sell orders
 				dispatch.CoForAll(syncer.sellOrders, func(key int) {
 					status, err := syncer.renLedger.Status(syncer.sellOrders[key])
 					if err != nil {
@@ -100,38 +126,21 @@ func (syncer *syncer) Prune() []OrderUpdate {
 						return
 					}
 					if status != order.Open {
-						update := NewOrderChange(syncer.sellOrders[key], order.ParitySell, status, priority)
-						orderChanges <- update
+						changes <- NewChange(syncer.sellOrders[key], order.ParitySell, status, priority)
+						delete(syncer.sellOrders, key)
 					}
 				})
 			},
 		)
 	}()
 
-	updates := make([]OrderUpdate, 0)
-	for update := range orderChanges {
-		updates = append(updates, update)
+	changeset := make([]Change, 0, 100)
+	for change := range changes {
+		changeset = append(changeset, change)
 	}
-
-	return updates
+	return changeset
 }
 
 func (syncer *syncer) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
 	return syncer.renLedger.ConfirmOrder(buy, []order.ID{sell})
-}
-
-type OrderUpdate struct {
-	ID       order.ID
-	Parity   order.Parity
-	Status   order.Status
-	Priority uint64
-}
-
-func NewOrderChange(id order.ID, parity order.Parity, status order.Status, priority uint64) OrderUpdate {
-	return OrderUpdate{
-		ID:       id,
-		Parity:   parity,
-		Status:   status,
-		Priority: priority,
-	}
 }
