@@ -155,7 +155,7 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 	}
 
 	var stream StreamService_ConnectClient
-	if err := Backoff(func() error {
+	if err := Backoff(ctx, func() error {
 		stream, err = NewStreamServiceClient(conn.ClientConn).Connect(ctx)
 		return err
 	}); err != nil {

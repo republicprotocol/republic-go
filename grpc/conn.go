@@ -70,16 +70,20 @@ func (conn *Conn) Close() error {
 	return nil
 }
 
-// Backoff a function call using the default backoff configuration.
-func Backoff(f func() error) (err error) {
-	timeoutMsMax := time.Duration(120000)
+// Backoff a function call until the context.Context is done, or the function
+// returns nil.
+func Backoff(ctx context.Context, f func() error) (err error) {
 	timeoutMs := time.Duration(1000)
-	for timeoutMs < timeoutMsMax {
+	for {
 		if err = f(); err == nil {
 			return
 		}
-		time.Sleep(timeoutMs * time.Millisecond)
-		timeoutMs = time.Duration(float64(timeoutMs) * 1.6)
+		timer := time.NewTimer(time.Millisecond * timeoutMs)
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			timeoutMs = time.Duration(float64(timeoutMs) * 1.6)
+		}
 	}
-	return
 }
