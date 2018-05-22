@@ -50,7 +50,7 @@ const (
 
 // A Type is a publicly bit of information that determines the type of
 // trade that an Order is representing.
-type Type int64
+type Type int8
 
 // Type values.
 const (
@@ -59,7 +59,7 @@ const (
 )
 
 // The Parity of an Order determines whether it is buy or a sell.
-type Parity int64
+type Parity int8
 
 // Parity values.
 const (
