@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"google.golang.org/grpc"
@@ -67,4 +68,18 @@ func (conn *Conn) Close() error {
 		return conn.ClientConn.Close()
 	}
 	return nil
+}
+
+// Backoff a function call using the default backoff configuration.
+func Backoff(f func() error) (err error) {
+	timeoutMsMax := time.Duration(120000)
+	timeoutMs := time.Duration(1000)
+	for timeoutMs < timeoutMsMax {
+		if err = f(); err == nil {
+			return
+		}
+		time.Sleep(timeoutMs * time.Millisecond)
+		timeoutMs = time.Duration(float64(timeoutMs) * 1.6)
+	}
+	return
 }
