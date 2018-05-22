@@ -62,7 +62,7 @@ func (fragment *Fragment) Bytes() []byte {
 	binary.Write(buf, binary.BigEndian, fragment.OrderID)
 	binary.Write(buf, binary.BigEndian, fragment.OrderType)
 	binary.Write(buf, binary.BigEndian, fragment.OrderParity)
-	binary.Write(buf, binary.BigEndian, fragment.OrderExpiry)
+	binary.Write(buf, binary.BigEndian, fragment.OrderExpiry.Unix())
 	binary.Write(buf, binary.BigEndian, fragment.Tokens)
 	binary.Write(buf, binary.BigEndian, fragment.Price)
 	binary.Write(buf, binary.BigEndian, fragment.Volume)

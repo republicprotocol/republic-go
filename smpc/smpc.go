@@ -163,6 +163,7 @@ func (smpc *smpcer) OnNotifyBuild(id, networkID [32]byte, value uint64) {
 	case <-smpc.shutdown:
 	case smpc.results <- result:
 	}
+
 }
 
 func (smpc *smpcer) run() {
@@ -256,14 +257,20 @@ func (smpc *smpcer) instJ(instID, networkID [32]byte, inst InstJ) {
 	smpc.processMessageJ(*msg.MessageJ)
 
 	for _, addr := range smpc.network[networkID] {
-		if multiAddr, ok := smpc.lookup[addr]; ok {
-			stream, err := smpc.streamer.Open(context.Background(), multiAddr)
-			if err != nil {
-				log.Printf("cannot open stream for messageTypeJ to %v: %v", addr, err)
-			}
-			if err := stream.Send(&msg); err != nil {
-				log.Printf("cannot send messageTypeJ to %v: %v", addr, err)
-			}
+		smpc.sendMessage(addr, &msg)
+	}
+}
+
+func (smpc *smpcer) sendMessage(addr identity.Address, msg *Message) {
+	if multiAddr, ok := smpc.lookup[addr]; ok {
+		stream, err := smpc.streamer.Open(context.Background(), multiAddr)
+		if err != nil {
+			log.Printf("cannot open stream for messageTypeJ to %v: %v", addr, err)
+			return
+		}
+		defer smpc.streamer.Close(addr)
+		if err := stream.Send(msg); err != nil {
+			log.Printf("cannot send messageTypeJ to %v: %v", addr, err)
 		}
 	}
 }
