@@ -43,8 +43,8 @@ func NewStreamService(verifier crypto.Verifier, addr identity.Address) StreamSer
 }
 
 // Register the StreamService to a grpc.Server.
-func (service *StreamService) Register(server *grpc.Server) {
-	RegisterStreamServiceServer(server, service)
+func (service *StreamService) Register(server *Server) {
+	RegisterStreamServiceServer(server.Server, service)
 }
 
 // Connect implements the gRPC service for an abstract bidirectional stream of
@@ -105,7 +105,7 @@ func (service *StreamService) verifyAuthentication(auth *StreamAuthentication) (
 	data = crypto.Keccak256(data)
 	signature := auth.GetSignature()
 
-	return identity.Address(addr), crypto.NewEcdsaVerifier(addr).Verify(data, signature)
+	return identity.Address(addr), service.verifier.Verify(data, signature)
 }
 
 func (service *StreamService) setupConn(addr identity.Address) chan safeStream {
@@ -154,8 +154,11 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 		return nil, fmt.Errorf("cannot sign stream authentication: %v", err)
 	}
 
-	stream, err := NewStreamServiceClient(conn.ClientConn).Connect(ctx)
-	if err != nil {
+	var stream StreamService_ConnectClient
+	if err := Backoff(func() error {
+		stream, err = NewStreamServiceClient(conn.ClientConn).Connect(ctx)
+		return err
+	}); err != nil {
 		return nil, fmt.Errorf("cannot open stream: %v", err)
 	}
 	if err := stream.Send(&StreamMessage{
