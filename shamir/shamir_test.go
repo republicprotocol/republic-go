@@ -7,56 +7,196 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/shamir"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
 var _ = Describe("Shamir's secret sharing", func() {
 
-	Context("serialization", func() {
-		It("should be able to serialize and deserialize shares", func() {
-			for i := uint64(0); i < 1000; i++ {
-				bytes, err := Share{
-					Index: i,
-					Value: Prime - i,
-				}.MarshalBinary()
-				Expect(err).ShouldNot(HaveOccurred())
-				share := Share{}
-				err = share.UnmarshalBinary(bytes)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(share.Index).Should(Equal(i))
-				Ω(share.Value).Should(Equal(Prime - i))
+	Context("when checking equality", func() {
+
+		It("should return true for equal shares", func() {
+			for i := uint64(0); i < 100; i++ {
+				index := uint64(rand.Int63())
+				value := uint64(rand.Int63()) % Prime
+				share := Share{
+					Index: index,
+					Value: value,
+				}
+				shareOther := Share{
+					Index: index,
+					Value: value,
+				}
+				Expect(share.Equal(&shareOther)).Should(BeTrue())
 			}
 		})
-		It("should return an error when deserializing an empty byte slice", func() {
+
+		It("should return false for unequal shares", func() {
+			for i := uint64(0); i < 100; i++ {
+				share := Share{
+					Index: uint64(rand.Int63()),
+					Value: uint64(rand.Int63()) % Prime,
+				}
+				shareOther := Share{
+					Index: uint64(rand.Int63()),
+					Value: uint64(rand.Int63()) % Prime,
+				}
+				Expect(share.Equal(&shareOther)).Should(BeFalse())
+			}
+		})
+
+	})
+
+	Context("when performing arithmetic", func() {
+
+		It("should equal subtraction on the secrets when done on shares", func() {
+			for i := uint64(0); i < 100; i++ {
+
+				secret := ((uint64(rand.Int63()) % Prime) / 2) + (Prime / 2)
+				secretOther := (uint64(rand.Int63()) % Prime) / 2
+
+				shares, err := Split(72, 48, secret)
+				Expect(err).ShouldNot(HaveOccurred())
+				sharesOther, err := Split(72, 48, secretOther)
+				Expect(err).ShouldNot(HaveOccurred())
+				sharesResult := make(Shares, 72)
+				for j := 0; j < 72; j++ {
+					sharesResult[j] = shares[j].Sub(&sharesOther[j])
+				}
+
+				secretResult := Join(sharesResult)
+				Expect(secretResult).Should(Equal(secret - secretOther))
+			}
+		})
+
+	})
+
+	Context("when marshaling and unmarshaling", func() {
+
+		It("should equal itself after marshaling them unmarshaling in binary", func() {
+			for i := uint64(0); i < 100; i++ {
+				share := Share{
+					Index: uint64(rand.Int63()),
+					Value: uint64(rand.Int63()) % Prime,
+				}
+				data, err := share.MarshalBinary()
+				Expect(err).ShouldNot(HaveOccurred())
+				unmarshaledShare := Share{}
+				err = unmarshaledShare.UnmarshalBinary(data)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(share.Index).Should(Equal(unmarshaledShare.Index))
+				Expect(share.Value).Should(Equal(unmarshaledShare.Value))
+			}
+		})
+
+		It("should equal itself after marshaling them unmarshaling in JSON", func() {
+			for i := uint64(0); i < 100; i++ {
+				share := Share{
+					Index: uint64(rand.Int63()),
+					Value: uint64(rand.Int63()) % Prime,
+				}
+				data, err := share.MarshalJSON()
+				Expect(err).ShouldNot(HaveOccurred())
+				unmarshaledShare := Share{}
+				err = unmarshaledShare.UnmarshalJSON(data)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(share.Index).Should(Equal(unmarshaledShare.Index))
+				Expect(share.Value).Should(Equal(unmarshaledShare.Value))
+			}
+		})
+
+		It("should return an error when unmarshaling an empty data as binary", func() {
 			share := Share{}
 			err := share.UnmarshalBinary([]byte{})
 			Expect(err).Should(HaveOccurred())
 		})
-	})
 
-	Context("splitting", func() {
-		It("should return the correct number of shares", func() {
-			// Shamir parameters.
-			n := int64(100)
-			k := int64(50)
-			secret := uint64(1234)
-			// Split the secret.
-			shares, err := Split(n, k, secret)
-			Ω(err).Should(BeNil())
-			Ω(int64(len(shares))).Should(Equal(n))
+		It("should return an error when unmarshaling an empty data as JSON", func() {
+			share := Share{}
+			err := share.UnmarshalJSON([]byte{})
+			Expect(err).Should(HaveOccurred())
 		})
 	})
 
-	Context("joining", func() {
-		It("should return the correct secret from K shares", func() {
+	Context("when encrypting and decrypting", func() {
+
+		It("should equal itself after an encryption then decryption", func() {
+			rsaKey, err := crypto.RandomRsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+			for i := uint64(0); i < 100; i++ {
+				share := Share{
+					Index: uint64(rand.Int63()),
+					Value: uint64(rand.Int63()) % Prime,
+				}
+				cipherText, err := share.Encrypt(rsaKey.PublicKey)
+				Expect(err).ShouldNot(HaveOccurred())
+				decryptedShare := Share{}
+				err = decryptedShare.Decrypt(rsaKey, cipherText)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(share.Index).Should(Equal(decryptedShare.Index))
+				Expect(share.Value).Should(Equal(decryptedShare.Value))
+			}
+		})
+
+		It("should return an error after encryption then decryption with different keys", func() {
+			rsaKey, err := crypto.RandomRsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+			rsaKeyOther, err := crypto.RandomRsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+			for i := uint64(0); i < 100; i++ {
+				share := Share{
+					Index: uint64(rand.Int63()),
+					Value: uint64(rand.Int63()) % Prime,
+				}
+				cipherText, err := share.Encrypt(rsaKey.PublicKey)
+				Expect(err).ShouldNot(HaveOccurred())
+				decryptedShare := Share{}
+				err = decryptedShare.Decrypt(rsaKeyOther, cipherText)
+				Expect(err).Should(HaveOccurred())
+			}
+		})
+	})
+
+	Context("when splitting", func() {
+
+		It("should return the required number of shares", func() {
+			n := int64(100)
+			k := int64(50)
+			secret := uint64(1234)
+			shares, err := Split(n, k, secret)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(int64(len(shares))).Should(Equal(n))
+		})
+
+		It("should return an error when k is greater than n", func() {
+			n := int64(50)
+			k := int64(100)
+			secret := uint64(1234)
+			_, err := Split(n, k, secret)
+			Expect(err).Should(Equal(ErrNKError))
+		})
+
+		It("should return an error when the secret is greater than the prime", func() {
+			n := int64(100)
+			k := int64(50)
+			secret := Prime + 1
+			_, err := Split(n, k, secret)
+			Expect(err).Should(Equal(ErrFiniteField))
+		})
+
+	})
+
+	Context("when joining", func() {
+
+		It("should return the required secret from the threshold of shares", func() {
 			// Shamir parameters.
 			N := int64(100)
 			K := int64(50)
 			secret := uint64(1234)
 			// Split the secret.
 			shares, err := Split(N, K, secret)
-			Ω(err).Should(BeNil())
-			Ω(int64(len(shares))).Should(Equal(N))
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(int64(len(shares))).Should(Equal(N))
 			// For all K greater than, or equal to, 50 attempt to decode the secret.
 			for k := int64(50); k < 101; k++ {
 				// Pick K unique indices in the range [0, k).
@@ -77,19 +217,19 @@ var _ = Describe("Shamir's secret sharing", func() {
 				}
 				decodedSecret := stackint.FromUint(uint(Join(kShares)))
 				secretStackInt := stackint.FromUint(uint(secret))
-				Ω(decodedSecret.Cmp(&secretStackInt)).Should(Equal(0))
+				Expect(decodedSecret.Cmp(&secretStackInt)).Should(Equal(0))
 			}
 		})
 
-		It("should return an incorrect secret from less than K shares", func() {
+		It("should not return the required secret from less than the threshold of shares", func() {
 			// Shamir parameters.
 			N := int64(100)
 			K := int64(50)
 			secret := uint64(1234)
 			// Split the secret.
 			shares, err := Split(N, K, secret)
-			Ω(err).Should(BeNil())
-			Ω(int64(len(shares))).Should(Equal(N))
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(int64(len(shares))).Should(Equal(N))
 			// For all K less than 50 attempt to decode the secret.
 			for k := int64(1); k < 50; k++ {
 				// Pick K unique indices in the range [0, k).
@@ -109,7 +249,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 					kShares[index] = shares[index]
 				}
 				decodedSecret := Join(kShares)
-				Ω(decodedSecret).Should(Not(Equal(&secret)))
+				Expect(decodedSecret).Should(Not(Equal(&secret)))
 			}
 		})
 	})

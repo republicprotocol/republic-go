@@ -10,6 +10,7 @@ import (
 
 type Syncer interface {
 	Sync() ([]OrderUpdate, error)
+	ConfirmOrderMatch(order.ID, order.ID) error
 }
 
 type syncer struct {
@@ -62,10 +63,11 @@ func (syncer *syncer) Sync() ([]OrderUpdate, error) {
 
 func (syncer *syncer) Prune() []OrderUpdate {
 	orderChanges := make(chan OrderUpdate, 100)
-	defer close(orderChanges)
 
 	go func() {
-		dispatch.Dispatch(
+		defer close(orderChanges)
+
+		dispatch.CoBegin(
 			func() {
 				dispatch.CoForAll(syncer.sellOrders, func(key int) {
 					status, err := syncer.renLedger.Status(syncer.buyOrders[key])
@@ -112,6 +114,10 @@ func (syncer *syncer) Prune() []OrderUpdate {
 	}
 
 	return updates
+}
+
+func (syncer *syncer) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
+	return syncer.renLedger.ConfirmOrder(buy, []order.ID{sell})
 }
 
 type OrderUpdate struct {

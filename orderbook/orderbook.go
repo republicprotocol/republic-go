@@ -2,14 +2,13 @@ package orderbook
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/shamir"
 )
-
-var ErrOrderNotFound = errors.New("order not found")
-var ErrOrderFragmentNotFound = errors.New("order fragment not found")
 
 type Client interface {
 
@@ -49,19 +48,100 @@ type Orderbooker interface {
 }
 
 type orderbook struct {
+	crypto.RsaKey
 	storer Storer
 	syncer Syncer
 }
 
-func NewOrderbook(storer Storer, syncer Syncer) Orderbooker {
+func NewOrderbook(key crypto.RsaKey, storer Storer, syncer Syncer) Orderbooker {
 	return &orderbook{
+		RsaKey: key,
 		storer: storer,
 		syncer: syncer,
 	}
 }
 
 func (book *orderbook) OpenOrder(ctx context.Context, orderFragment order.EncryptedFragment) error {
-	panic("unimplemented")
+	tokens, err := book.RsaKey.Decrypt(orderFragment.Tokens)
+	if err != nil {
+		return fmt.Errorf("cannot decrypt tokens: %v", err)
+	}
+
+	tokenShare := shamir.Share{}
+	if err := tokenShare.UnmarshalBinary(tokens); err != nil {
+		return fmt.Errorf("cannot unmarshal tokens: %v", err)
+	}
+
+	// Decrypt price
+	decryptedPriceCo, err := book.RsaKey.Decrypt(orderFragment.Price.Co)
+	if err != nil {
+		return fmt.Errorf("cannot decrypt price co: %v", err)
+	}
+	decryptedPriceExp, err := book.RsaKey.Decrypt(orderFragment.Price.Exp)
+	if err != nil {
+		return fmt.Errorf("cannot decrypt price exp: %v", err)
+	}
+	price := order.CoExpShare{
+		Co: shamir.Share{}, Exp: shamir.Share{},
+	}
+	if err := price.Co.UnmarshalBinary(decryptedPriceCo); err != nil {
+		return err
+	}
+	if err := price.Exp.UnmarshalBinary(decryptedPriceExp); err != nil {
+		return err
+	}
+
+	// Decrypt volume
+	decryptedVolumeCo, err := book.RsaKey.Decrypt(orderFragment.Volume.Co)
+	if err != nil {
+		return err
+	}
+	decryptedVolumeExp, err := book.RsaKey.Decrypt(orderFragment.Volume.Exp)
+	if err != nil {
+		return err
+	}
+	volume := order.CoExpShare{
+		Co: shamir.Share{}, Exp: shamir.Share{},
+	}
+	if err := volume.Co.UnmarshalBinary(decryptedVolumeCo); err != nil {
+		return err
+	}
+	if err := volume.Exp.UnmarshalBinary(decryptedVolumeExp); err != nil {
+		return err
+	}
+
+	// Decrypt minVolume
+	decryptedMinVolumeCo, err := book.RsaKey.Decrypt(orderFragment.Volume.Co)
+	if err != nil {
+		return err
+	}
+	decryptedMinVolumeExp, err := book.RsaKey.Decrypt(orderFragment.Volume.Exp)
+	if err != nil {
+		return err
+	}
+	minVolume := order.CoExpShare{
+		Co: shamir.Share{}, Exp: shamir.Share{},
+	}
+	if err := minVolume.Co.UnmarshalBinary(decryptedMinVolumeCo); err != nil {
+		return err
+	}
+	if err := minVolume.Exp.UnmarshalBinary(decryptedMinVolumeExp); err != nil {
+		return err
+	}
+
+	fragment := order.Fragment{
+		OrderID:       orderFragment.OrderID,
+		OrderType:     orderFragment.OrderType,
+		OrderParity:   orderFragment.OrderParity,
+		OrderExpiry:   orderFragment.OrderExpiry,
+		ID:            orderFragment.ID,
+		Tokens:        tokenShare,
+		Price:         price,
+		Volume:        volume,
+		MinimumVolume: minVolume,
+	}
+
+	return book.storer.InsertOrderFragment(fragment)
 }
 
 func (book *orderbook) Sync() ([]OrderUpdate, error) {
@@ -77,5 +157,5 @@ func (book *orderbook) Order(id order.ID) (order.Order, error) {
 }
 
 func (book *orderbook) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
-	panic("uimplemented")
+	return book.syncer.ConfirmOrderMatch(buy, sell)
 }

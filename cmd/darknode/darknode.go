@@ -13,12 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/stream"
-
-	"github.com/republicprotocol/republic-go/leveldb"
-	"github.com/republicprotocol/republic-go/orderbook"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
@@ -27,8 +21,14 @@ import (
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/dht"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/leveldb"
+	"github.com/republicprotocol/republic-go/ome"
+	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/smpc"
+	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
@@ -76,11 +76,26 @@ func main() {
 	connPool := grpc.NewConnPool(128)
 	crypter := crypto.NewWeakCrypter()
 
-	newStatus(&dht, server)
-	newOrderbooker(&store, renLedger, server)
-	swarmer := newSwarmer(multiAddr, &dht, &connPool, server)
-	newStreamer(&crypter, conf.Address, &connPool, server)
+	pubKey, err := crypto.BytesFromRsaPublicKey(&conf.Keystore.RsaKey.PublicKey)
+	if err != nil {
+		log.Printf("cannot read pubKey: %v", err)
+	}
+	log.Printf("pubKey:\n%v", pubKey)
 
+	newStatus(&dht, server)
+	orderbooker := newOrderbooker(conf.Keystore.RsaKey, &store, renLedger, server)
+	swarmer := newSwarmer(multiAddr, &dht, &connPool, server)
+	streamer := newStreamer(&crypter, conf.Address, &connPool, server)
+
+	done := make(chan struct{})
+	smpcer := smpc.NewSmpc(20, swarmer, streamer)
+	ome := ome.NewOme(orderbooker, nil, smpcer)
+	go func() {
+		errs := ome.Compute(done)
+		for err := range errs {
+			log.Println(err)
+		}
+	}()
 	go func() {
 		time.Sleep(time.Second)
 		dispatch.CoBegin(func() {
@@ -93,6 +108,14 @@ func main() {
 				log.Printf("  %v", multiAddr)
 			}
 		})
+		for {
+			err = ome.Sync()
+			if err != nil {
+				return
+			}
+
+			time.Sleep(1 * time.Second)
+		}
 	}()
 
 	// Start gRPC
@@ -118,8 +141,8 @@ func newSwarmer(multiAddr identity.MultiAddress, dht *dht.DHT, connPool *grpc.Co
 	return swarm.NewSwarmer(client, dht)
 }
 
-func newOrderbooker(store *leveldb.Store, renLedger cal.RenLedger, server *grpc.Server) orderbook.Orderbooker {
-	orderbooker := orderbook.NewOrderbook(store, orderbook.NewSyncer(renLedger, 32))
+func newOrderbooker(key crypto.RsaKey, store *leveldb.Store, renLedger cal.RenLedger, server *grpc.Server) orderbook.Orderbooker {
+	orderbooker := orderbook.NewOrderbook(key, store, orderbook.NewSyncer(renLedger, 32))
 	service := grpc.NewOrderbookService(orderbooker)
 	service.Register(server)
 	return orderbooker

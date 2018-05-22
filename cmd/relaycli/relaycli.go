@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -11,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/big"
+	"math/rand"
 	netHttp "net/http"
 	"os"
 	"time"
@@ -19,12 +19,10 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/cal"
-	"github.com/republicprotocol/republic-go/http"
-	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/smpc"
-	"github.com/republicprotocol/republic-go/stackint"
-
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/http"
+	"github.com/republicprotocol/republic-go/http/adapter"
+	"github.com/republicprotocol/republic-go/order"
 )
 
 func main() {
@@ -50,17 +48,18 @@ func main() {
 	}
 	log.Printf("ethereum %v", auth.From.Hex())
 
-	nonce, err := stackint.Random(rand.Reader, &smpc.Prime)
-	if err != nil {
-		log.Fatalf("cannot generate nonce: %v", err)
+	nonce := rand.Int63()
+	one := order.CoExp{
+		Co:  200,
+		Exp: 26,
 	}
-	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.CurrencyCodeBTC, order.CurrencyCodeETH, stackint.One(), stackint.One(), stackint.One(), nonce)
+	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.TokensETHREN, one, one, one, nonce)
 
-	signatureData := crypto.Keccak256([]byte("Republic Protocol: open: "), ord.ID)
+	signatureData := crypto.Keccak256([]byte("Republic Protocol: open: "), ord.ID[:])
 	signatureData = crypto.Keccak256([]byte("\x19Ethereum Signed Message:\n32"), signatureData)
 	signature, err := keystore.Sign(crypto.NewHash32(signatureData))
 
-	log.Printf("id = %v; sig = %v", base64.StdEncoding.EncodeToString(ord.ID), base64.StdEncoding.EncodeToString(signature))
+	log.Printf("id = %v; sig = %v", base64.StdEncoding.EncodeToString(ord.ID[:]), base64.StdEncoding.EncodeToString(signature))
 
 	if err != nil {
 		log.Fatalf("cannot sign order: %v", err)
@@ -68,7 +67,7 @@ func main() {
 
 	request := http.OpenOrderRequest{
 		Signature:            base64.StdEncoding.EncodeToString(signature),
-		OrderFragmentMapping: map[string][]order.Fragment{},
+		OrderFragmentMapping: map[string][]adapter.OrderFragment{},
 	}
 	log.Printf("order signature %v", request.Signature)
 
@@ -80,13 +79,43 @@ func main() {
 		n := int64(len(pod.Darknodes))
 		k := int64(2 * (len(pod.Darknodes) + 1) / 3)
 		hash := base64.StdEncoding.EncodeToString(pod.Hash[:])
-		ordFragments, err := ord.Split(n, k, &smpc.Prime)
+		ordFragments, err := ord.Split(n, k)
 		if err != nil {
 			log.Fatalf("cannot split order to %v: %v", hash, err)
 		}
-		request.OrderFragmentMapping[hash] = []order.Fragment{}
-		for _, ordFragment := range ordFragments {
-			request.OrderFragmentMapping[hash] = append(request.OrderFragmentMapping[hash], *ordFragment)
+		request.OrderFragmentMapping[hash] = []adapter.OrderFragment{}
+		for i, ordFragment := range ordFragments {
+			marshaledOrdFragment := adapter.OrderFragment{
+				Index: int64(i),
+			}
+
+			log.Println(pod.Darknodes[i])
+			pubKey, err := darkpool.PublicKey(pod.Darknodes[i])
+			if err != nil {
+				log.Fatalf("cannot get public key of %v: %v", pod.Darknodes[i], err)
+			}
+
+			encryptedFragment, err := ordFragment.Encrypt(pubKey)
+			marshaledOrdFragment.ID = base64.StdEncoding.EncodeToString(encryptedFragment.ID[:])
+			marshaledOrdFragment.OrderID = base64.StdEncoding.EncodeToString(encryptedFragment.OrderID[:])
+			marshaledOrdFragment.OrderParity = encryptedFragment.OrderParity
+			marshaledOrdFragment.OrderType = encryptedFragment.OrderType
+			marshaledOrdFragment.OrderExpiry = encryptedFragment.OrderExpiry.Unix()
+			marshaledOrdFragment.Tokens = base64.StdEncoding.EncodeToString(encryptedFragment.Tokens)
+			log.Printf("TOKENS: %v", marshaledOrdFragment.Tokens)
+			marshaledOrdFragment.Price = []string{
+				base64.StdEncoding.EncodeToString(encryptedFragment.Price.Co),
+				base64.StdEncoding.EncodeToString(encryptedFragment.Price.Exp),
+			}
+			marshaledOrdFragment.Volume = []string{
+				base64.StdEncoding.EncodeToString(encryptedFragment.Volume.Co),
+				base64.StdEncoding.EncodeToString(encryptedFragment.Volume.Exp),
+			}
+			marshaledOrdFragment.MinimumVolume = []string{
+				base64.StdEncoding.EncodeToString(encryptedFragment.MinimumVolume.Co),
+				base64.StdEncoding.EncodeToString(encryptedFragment.MinimumVolume.Exp),
+			}
+			request.OrderFragmentMapping[hash] = append(request.OrderFragmentMapping[hash], marshaledOrdFragment)
 		}
 	}
 
@@ -94,7 +123,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot marshal request: %v", err)
 	}
-	fmt.Println(string(data))
 	buf := bytes.NewBuffer(data)
 
 	res, err := netHttp.DefaultClient.Post(fmt.Sprintf("%v/orders", *relayParam), "application/json", buf)

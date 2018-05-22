@@ -5,10 +5,10 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/cal"
-	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/swarm"
@@ -75,7 +75,27 @@ func (ingress *Ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFra
 	if err := ingress.verifyOrderFragments(orderFragmentMapping); err != nil {
 		return err
 	}
-	if err := ingress.renLedger.OpenOrder(signature, orderID); err != nil {
+
+	orderParity := order.ParityBuy
+	for _, orderFragments := range orderFragmentMapping {
+		orderParityDidChange := false
+		for _, orderFragment := range orderFragments {
+			orderParity = orderFragment.OrderParity
+			orderParityDidChange = true
+			break
+		}
+		if orderParityDidChange {
+			break
+		}
+	}
+
+	var err error
+	if orderParity == order.ParityBuy {
+		err = ingress.renLedger.OpenBuyOrder(signature, orderID)
+	} else {
+		err = ingress.renLedger.OpenSellOrder(signature, orderID)
+	}
+	if err != nil {
 		return err
 	}
 	return ingress.openOrderFragments(orderFragmentMapping)
@@ -156,12 +176,13 @@ func (ingress *Ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 	go func() {
 		defer close(errs)
 
-		dispatch.CoForAll(pod.Darknodes, func(i int) {
+		for i := range pod.Darknodes {
 			orderFragment, ok := orderFragmentIndexMapping[int64(i)]
 			if !ok {
 				return
 			}
 			darknode := pod.Darknodes[i]
+			log.Println(pod.Darknodes[i])
 
 			// Send the order fragment to the Darknode
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
@@ -171,11 +192,14 @@ func (ingress *Ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 				errs <- fmt.Errorf("cannot send query to %v: %v", darknode, err)
 				return
 			}
+
+			log.Printf("sending order fragment to %v", darknode)
 			if err := ingress.orderbookClient.OpenOrder(ctx, darknodeMultiAddr, orderFragment.EncryptedFragment); err != nil {
+				log.Printf("cannot send order fragment to %v: %v", darknode, err)
 				errs <- fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
 				return
 			}
-		})
+		}
 	}()
 
 	// Capture all errors and keep the first error that occurred.

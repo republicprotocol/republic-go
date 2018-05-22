@@ -102,8 +102,11 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress) (
 		Signature:    client.multiAddr.Signature,
 		MultiAddress: client.multiAddr.String(),
 	}
-	response, err := NewSwarmServiceClient(conn.ClientConn).Ping(ctx, request)
-	if err != nil && err != io.EOF {
+	response := &PingResponse{}
+	if err := Backoff(ctx, func() error {
+		response, err = NewSwarmServiceClient(conn.ClientConn).Ping(ctx, request)
+		return err
+	}); err != nil {
 		return identity.MultiAddress{}, err
 	}
 
@@ -131,8 +134,12 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 		Signature: querySignature[:],
 		Address:   query.String(),
 	}
-	stream, err := NewSwarmServiceClient(conn.ClientConn).Query(ctx, request)
-	if err != nil && err != io.EOF {
+
+	var stream SwarmService_QueryClient
+	if err := Backoff(ctx, func() error {
+		stream, err = NewSwarmServiceClient(conn.ClientConn).Query(ctx, request)
+		return err
+	}); err != nil {
 		return identity.MultiAddresses{}, err
 	}
 

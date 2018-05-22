@@ -176,7 +176,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address, depth
 		}
 		blacklist[peer.Address()] = struct{}{}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 
 		// Query for identity.MultiAddresses that are closer to the query

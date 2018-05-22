@@ -1,48 +1,96 @@
 package smpc
 
 import (
-	"encoding/json"
+	"bytes"
+	"encoding/binary"
+	"errors"
 
-	"github.com/republicprotocol/republic-go/smpc/delta"
+	"github.com/republicprotocol/republic-go/shamir"
 )
 
-type DeltaFragmentMessage struct {
-	PeersID       []byte
-	DeltaFragment delta.Fragment
+// ErrUnexpectedMessageType is returned when a message has an unexpected
+// message type that cannot be marshaled/unmarshaled to/from binary.
+var ErrUnexpectedMessageType = errors.New("unexpected message type")
+
+type MessageType int8
+
+const (
+	messageTypeJ = 1
+)
+
+type Message struct {
+	MessageType
+
+	*MessageJ
 }
 
-func (message *DeltaFragmentMessage) IsMessage() {
+// MarshalBinary implements the stream.Message interface.
+func (msg *Message) MarshalBinary() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := binary.Write(buf, binary.BigEndian, msg.MessageType); err != nil {
+		return []byte{}, err
+	}
+
+	var err error
+	switch msg.MessageType {
+	case messageTypeJ:
+		err = binary.Write(buf, binary.BigEndian, msg.MessageJ)
+	default:
+		return []byte{}, ErrUnexpectedMessageType
+	}
+	return buf.Bytes(), err
 }
 
-func (message *DeltaFragmentMessage) MarshalBinary() ([]byte, error) {
-	return json.Marshal(message)
+// UnmarshalBinary implements the stream.Message interface.
+func (msg *Message) UnmarshalBinary(data []byte) error {
+	buf := bytes.NewBuffer(data)
+	if err := binary.Read(buf, binary.BigEndian, &msg.MessageType); err != nil {
+		return err
+	}
+
+	switch msg.MessageType {
+	case messageTypeJ:
+		return binary.Read(buf, binary.BigEndian, msg.MessageJ)
+	default:
+		return ErrUnexpectedMessageType
+	}
 }
 
-func (message *DeltaFragmentMessage) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, message)
+// IsMessage implements the stream.Message interface.
+func (msg *Message) IsMessage() {}
+
+type MessageJ struct {
+	InstID    [32]byte
+	NetworkID [32]byte
+	Share     shamir.Share
 }
 
-//type DeltaFragmentMessage struct {
-//	DeltaFragment delta.Fragment
-//	PeersID       [32]byte
-//}
-//
-//func (message DeltaFragmentMessage) MarshalBinary() (data []byte, err error) {
-//	buf := new(bytes.Buffer)
-//	binary.Write(buf, binary.BigEndian, message.DeltaFragment)
-//	binary.Write(buf, binary.BigEndian, message.PeersID)
-//	return buf.Bytes(), nil
-//}
-//
-//func (message DeltaFragmentMessage) UnmarshalBinary(data []byte) error {
-//	if data == nil || len(data) == 0 {
-//		return ErrUnmarshalNilBytes
-//	}
-//	buf := bytes.NewBuffer(data)
-//	binary.Read(buf, binary.BigEndian, &message.DeltaFragment)
-//	binary.Read(buf, binary.BigEndian, &message.PeersID)
-//	return nil
-//}
-//
-//func (message DeltaFragmentMessage) IsMessage() {
-//}
+// MarshalBinary implements the encoding.BinaryMarshaler interface.
+func (msg *MessageJ) MarshalBinary() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := binary.Write(buf, binary.BigEndian, msg.InstID); err != nil {
+		return []byte{}, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, msg.NetworkID); err != nil {
+		return []byte{}, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, msg.Share); err != nil {
+		return []byte{}, err
+	}
+	return buf.Bytes(), nil
+}
+
+// UnmarshalBinary implements the encoding.BinaryUnmarshaler interface.
+func (msg *MessageJ) UnmarshalBinary(data []byte) error {
+	buf := bytes.NewBuffer(data)
+	if err := binary.Read(buf, binary.BigEndian, &msg.InstID); err != nil {
+		return err
+	}
+	if err := binary.Read(buf, binary.BigEndian, &msg.NetworkID); err != nil {
+		return err
+	}
+	if err := binary.Read(buf, binary.BigEndian, &msg.Share); err != nil {
+		return err
+	}
+	return nil
+}

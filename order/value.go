@@ -2,6 +2,7 @@ package order
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -20,6 +21,14 @@ var ErrUnexpectedCoExpRange = errors.New("unexpected value range")
 type CoExp struct {
 	Co  uint32
 	Exp uint32
+}
+
+// NewCoExp returns a CoExp with the given coefficient and exponent.
+func NewCoExp(co uint32, exp uint32) CoExp {
+	return CoExp{
+		Co:  co,
+		Exp: exp,
+	}
 }
 
 // MarshalJSON implements the json.Marshaler interface and marshals the CoExp
@@ -118,6 +127,21 @@ func (val CoExpShare) MarshalBinary() ([]byte, error) {
 	binary.Write(buf, binary.BigEndian, val.Exp.Index)
 	binary.Write(buf, binary.BigEndian, val.Exp.Value)
 	return buf.Bytes(), nil
+}
+
+// Encrypt a CoExpShare using an rsa.PublicKey.
+func (val *CoExpShare) Encrypt(pubKey rsa.PublicKey) (EncryptedCoExpShare, error) {
+	var err error
+	encryptedVal := EncryptedCoExpShare{}
+	encryptedVal.Co, err = val.Co.Encrypt(pubKey)
+	if err != nil {
+		return encryptedVal, err
+	}
+	encryptedVal.Exp, err = val.Exp.Encrypt(pubKey)
+	if err != nil {
+		return encryptedVal, err
+	}
+	return encryptedVal, nil
 }
 
 // An EncryptedCoExpShare is a CoExpShare that has been encrypted using an RSA

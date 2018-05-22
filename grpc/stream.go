@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -10,6 +11,15 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
+
+// ErrUnverifiedConnection is returned when a StreamClient does not produce a
+// verifiable connection signature as its first StreamMessage to a
+// StreamServer.
+var ErrUnverifiedConnection = errors.New("unverified connection")
+
+// ErrNilAuthentication is returned when no authentication message is provided
+// for a connection.
+var ErrNilAuthentication = errors.New("nil authentication")
 
 // StreamService implements the rpc.SmpcServer interface using a gRPC service.
 type StreamService struct {
@@ -33,8 +43,8 @@ func NewStreamService(verifier crypto.Verifier, addr identity.Address) StreamSer
 }
 
 // Register the StreamService to a grpc.Server.
-func (service *StreamService) Register(server *grpc.Server) {
-	RegisterStreamServiceServer(server, service)
+func (service *StreamService) Register(server *Server) {
+	RegisterStreamServiceServer(server.Server, service)
 }
 
 // Connect implements the gRPC service for an abstract bidirectional stream of
@@ -46,7 +56,7 @@ func (service *StreamService) Connect(stream StreamService_ConnectServer) error 
 	if err != nil {
 		return err
 	}
-	addr, err := service.verifyStreamAddress(message)
+	addr, err := service.verifyAuthentication(message.GetAuthentication())
 	if err != nil {
 		return err
 	}
@@ -73,7 +83,7 @@ func (service *StreamService) Connect(stream StreamService_ConnectServer) error 
 }
 
 // Listen implements the stream.Server interface.
-func (service *StreamService) Listen(ctx context.Context, addr identity.Address) (stream.Stream, error) {
+func (service *StreamService) Listen(ctx context.Context, addr identity.Address) (stream.CloseStream, error) {
 	streams := service.setupConn(addr)
 	defer service.teardownConn(addr)
 
@@ -85,17 +95,17 @@ func (service *StreamService) Listen(ctx context.Context, addr identity.Address)
 	}
 }
 
-func (service *StreamService) verifyStreamAddress(message *StreamMessage) (identity.Address, error) {
-	var addr string
-	if message.GetStreamAddress() != nil && message.GetStreamAddress().GetAddress() != "" {
-		addr = message.GetStreamAddress().GetAddress()
+func (service *StreamService) verifyAuthentication(auth *StreamAuthentication) (identity.Address, error) {
+	if auth == nil || auth.GetAddress() == "" || auth.GetSignature() == nil {
+		return identity.Address(""), ErrNilAuthentication
 	}
 
-	// FIXME: Verify that this message was signed by the sender.
-	data := []byte("Republic Protocol: connect: from " + addr + " to " + service.addr.String())
+	addr := auth.GetAddress()
+	data := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", addr, service.addr))
 	data = crypto.Keccak256(data)
+	signature := auth.GetSignature()
 
-	return identity.Address(addr), nil
+	return identity.Address(addr), service.verifier.Verify(data, signature)
 }
 
 func (service *StreamService) setupConn(addr identity.Address) chan safeStream {
@@ -116,61 +126,51 @@ func (service *StreamService) teardownConn(addr identity.Address) {
 }
 
 type streamClient struct {
-	addr     identity.Address
-	connPool *ConnPool
+	signer crypto.Signer
+	addr   identity.Address
 
-	streamsMu *sync.Mutex
-	streams   map[identity.Address]StreamService_ConnectClient
+	connPool *ConnPool
 }
 
-func NewStreamClient(addr identity.Address, connPool *ConnPool) stream.Client {
+func NewStreamClient(signer crypto.Signer, addr identity.Address, connPool *ConnPool) stream.Client {
 	return &streamClient{
-		addr:     addr,
-		connPool: connPool,
+		signer: signer,
+		addr:   addr,
 
-		streamsMu: new(sync.Mutex),
-		streams:   map[identity.Address]StreamService_ConnectClient{},
+		connPool: connPool,
 	}
 }
 
-func (client *streamClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (stream.Stream, error) {
+func (client *streamClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (stream.CloseStream, error) {
 	conn, err := client.connPool.Dial(ctx, multiAddr)
 	if err != nil {
 		return nil, fmt.Errorf("cannot dial %v: %v", multiAddr, err)
 	}
 	defer conn.Close()
 
-	stream, err := NewStreamServiceClient(conn.ClientConn).Connect(ctx)
+	data := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", client.addr, multiAddr.Address()))
+	dataSignature, err := client.signer.Sign(data)
 	if err != nil {
+		return nil, fmt.Errorf("cannot sign stream authentication: %v", err)
+	}
+
+	var stream StreamService_ConnectClient
+	if err := Backoff(ctx, func() error {
+		stream, err = NewStreamServiceClient(conn.ClientConn).Connect(ctx)
+		return err
+	}); err != nil {
 		return nil, fmt.Errorf("cannot open stream: %v", err)
 	}
 	if err := stream.Send(&StreamMessage{
-		StreamAddress: &StreamAddress{
-			Signature: []byte{},
+		Authentication: &StreamAuthentication{
+			Signature: dataSignature,
 			Address:   client.addr.String(),
 		},
 		Data: []byte{},
 	}); err != nil {
 		return nil, fmt.Errorf("cannot send stream address: %v", err)
 	}
-
-	client.streamsMu.Lock()
-	defer client.streamsMu.Unlock()
-
-	client.streams[multiAddr.Address()] = stream
 	return newSafeStream(stream), err
-}
-
-func (client *streamClient) Disconnect(multiAddr identity.MultiAddress) error {
-	client.streamsMu.Lock()
-	defer client.streamsMu.Unlock()
-
-	if stream, ok := client.streams[multiAddr.Address()]; ok {
-		err := stream.CloseSend()
-		delete(client.streams, multiAddr.Address())
-		return err
-	}
-	return nil
 }
 
 // safeStream wraps a gRPC stream and ensures that it is safe for concurrent
@@ -194,38 +194,55 @@ func newSafeStream(stream grpc.Stream) safeStream {
 }
 
 // Close implements the stream.Stream interface.
-func (stream safeStream) Close() error {
-	stream.sendMu.Lock()
-	stream.recvMu.Lock()
-	defer stream.sendMu.Unlock()
-	defer stream.recvMu.Unlock()
+func (safeStream safeStream) Close() error {
+	safeStream.sendMu.Lock()
+	safeStream.recvMu.Lock()
+	defer safeStream.sendMu.Unlock()
+	defer safeStream.recvMu.Unlock()
 
-	close(stream.done)
+	if safeStream.done == nil {
+		return stream.ErrCloseOnClosedStream
+	}
+
+	close(safeStream.done)
+	safeStream.done = nil
+
+	if stream, ok := safeStream.stream.(StreamService_ConnectClient); ok {
+		return stream.CloseSend()
+	}
 	return nil
 }
 
 // Send implements the stream.Stream interface.
-func (stream safeStream) Send(message stream.Message) error {
-	stream.sendMu.Lock()
-	defer stream.sendMu.Unlock()
+func (safeStream safeStream) Send(message stream.Message) error {
+	safeStream.sendMu.Lock()
+	defer safeStream.sendMu.Unlock()
+
+	if safeStream.done == nil {
+		return stream.ErrSendOnClosedStream
+	}
 
 	data, err := message.MarshalBinary()
 	if err != nil {
 		return err
 	}
-	return stream.stream.SendMsg(&StreamMessage{
+	return safeStream.stream.SendMsg(&StreamMessage{
 		Data: data,
 	})
 }
 
 // Recv implements the stream.Stream interface.
-func (stream safeStream) Recv(message stream.Message) error {
-	stream.recvMu.Lock()
-	defer stream.recvMu.Unlock()
+func (safeStream safeStream) Recv(message stream.Message) error {
+	safeStream.recvMu.Lock()
+	defer safeStream.recvMu.Unlock()
 
-	streamMessage := StreamMessage{}
-	if err := stream.stream.RecvMsg(&streamMessage); err != nil {
+	if safeStream.done == nil {
+		return stream.ErrRecvOnClosedStream
+	}
+
+	data := StreamMessage{}
+	if err := safeStream.stream.RecvMsg(&data); err != nil {
 		return err
 	}
-	return message.UnmarshalBinary(streamMessage.Data)
+	return message.UnmarshalBinary(data.Data)
 }

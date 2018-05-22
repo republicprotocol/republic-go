@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"google.golang.org/grpc"
@@ -67,4 +68,22 @@ func (conn *Conn) Close() error {
 		return conn.ClientConn.Close()
 	}
 	return nil
+}
+
+// Backoff a function call until the context.Context is done, or the function
+// returns nil.
+func Backoff(ctx context.Context, f func() error) (err error) {
+	timeoutMs := time.Duration(1000)
+	for {
+		if err = f(); err == nil {
+			return
+		}
+		timer := time.NewTimer(time.Millisecond * timeoutMs)
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			timeoutMs = time.Duration(float64(timeoutMs) * 1.6)
+		}
+	}
 }

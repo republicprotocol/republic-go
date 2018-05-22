@@ -32,7 +32,7 @@
         "uri": "https://ropsten.infura.io",
         "republicTokenAddress": "0x65d54EDa5f032F2275Caa557E50c029cFbCCBB54",
         "darknodeRegistryAddress": "0x69eb8d26157b9e12f959ea9f189A5D75991b59e3",
-        "renLedgerAddress": ""
+        "renLedgerAddress": "0x6235E09103bC7f205837237e4eAD855bC196E4D3"
     },
     "logs": {
         "plugins": [

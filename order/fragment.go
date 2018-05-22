@@ -2,6 +2,7 @@ package order
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"encoding/binary"
 	"time"
 
@@ -99,6 +100,35 @@ func (fragment *Fragment) IsCompatible(other *Fragment) bool {
 		fragment.Volume.Exp.Index == other.Volume.Exp.Index &&
 		fragment.MinimumVolume.Co.Index == other.MinimumVolume.Co.Index &&
 		fragment.MinimumVolume.Exp.Index == other.MinimumVolume.Exp.Index
+}
+
+// Encrypt a Fragment using an rsa.PublicKey.
+func (fragment *Fragment) Encrypt(pubKey rsa.PublicKey) (EncryptedFragment, error) {
+	var err error
+	encryptedFragment := EncryptedFragment{
+		OrderID:     fragment.OrderID,
+		OrderType:   fragment.OrderType,
+		OrderParity: fragment.OrderParity,
+		OrderExpiry: fragment.OrderExpiry,
+		ID:          fragment.ID,
+	}
+	encryptedFragment.Tokens, err = fragment.Tokens.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	encryptedFragment.Price, err = fragment.Price.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	encryptedFragment.Volume, err = fragment.Volume.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	encryptedFragment.MinimumVolume, err = fragment.MinimumVolume.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	return encryptedFragment, nil
 }
 
 // An EncryptedFragment is a Fragment that has been encrypted by an RSA public

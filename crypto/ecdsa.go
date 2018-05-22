@@ -42,9 +42,16 @@ func NewEcdsaKey(privateKey *ecdsa.PrivateKey) EcdsaKey {
 }
 
 // Sign implements the Signer interface. It uses the ecdsa.PrivateKey to sign
-// the hash produced by a Hasher.
-func (key *EcdsaKey) Sign(hasher Hasher) ([]byte, error) {
-	return ethCrypto.Sign(hasher.Hash(), key.PrivateKey)
+// the data without performing any kind of preprocessing of the data. If the
+// data is not exactly 32 bytes, an error is returned.
+func (key *EcdsaKey) Sign(data []byte) ([]byte, error) {
+	return ethCrypto.Sign(data, key.PrivateKey)
+}
+
+// Verify implements the Verifier interface. It uses its own address as the
+// expected signatory.
+func (key *EcdsaKey) Verify(data []byte, signature []byte) error {
+	return NewEcdsaVerifier(key.address).Verify(data, signature)
 }
 
 // Address of the EcdsaKey. An Address is generated in the same way as an
@@ -167,26 +174,42 @@ func (key *EcdsaKey) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// VerifySignature of a hash matches an address.
-func VerifySignature(hasher Hasher, signature []byte, addr string) error {
-	if signature == nil {
-		return ErrInvalidSignature
+// EcdsaVerifier is used to verify signatures produced by an EcdsaKey.
+type EcdsaVerifier struct {
+	addr string
+}
+
+// NewEcdsaVerifier returns an EcdsaVerifier that expects the signatory of all
+// signatures that it checks to equal the given address.
+func NewEcdsaVerifier(addr string) EcdsaVerifier {
+	return EcdsaVerifier{
+		addr: addr,
 	}
-	addrRecovered, err := RecoverAddress(hasher, signature)
+}
+
+// Verify implements the Verifier interface.
+func (verifier EcdsaVerifier) Verify(data []byte, signature []byte) error {
+	if data == nil || len(data) == 0 {
+		return ErrNilData
+	}
+	if signature == nil || len(signature) == 0 {
+		return ErrNilSignature
+	}
+	addrRecovered, err := RecoverAddress(data, signature)
 	if err != nil {
 		return err
 	}
-	if addr != addrRecovered {
+	if addrRecovered != verifier.addr {
 		return ErrInvalidSignature
 	}
 	return nil
 }
 
 // RecoverAddress used to produce a signature.
-func RecoverAddress(hasher Hasher, signature []byte) (string, error) {
+func RecoverAddress(data []byte, signature []byte) (string, error) {
 
 	// Returns 65-byte uncompress pubkey (0x04 | X | Y)
-	publicKey, err := ethCrypto.Ecrecover(hasher.Hash(), signature)
+	publicKey, err := ethCrypto.Ecrecover(data, signature)
 	if err != nil {
 		return "", err
 	}
