@@ -64,7 +64,7 @@ type smpc struct {
 
 	routesMu             *sync.RWMutex
 	routes               map[[32]byte]map[identity.Address]stream.Stream
-	routesToShareBuilder map[[32]byte]*shareBuilder
+	routesToShareBuilder map[[32]byte]*ShareBuilder
 }
 
 func NewSmpc(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpcer {
@@ -83,7 +83,7 @@ func NewSmpc(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpcer
 
 		routesMu:             new(sync.RWMutex),
 		routes:               map[[32]byte]map[identity.Address]stream.Stream{},
-		routesToShareBuilder: map[[32]byte]*shareBuilder{},
+		routesToShareBuilder: map[[32]byte]*ShareBuilder{},
 	}
 }
 
@@ -187,7 +187,7 @@ func (smpc *smpc) instConnect(networkID [32]byte, inst InstConnect) {
 
 		smpc.routesMu.Lock()
 		smpc.routes[networkID][addr] = s
-		smpc.routesToShareBuilder[networkID] = newShareBuilder(inst.K)
+		smpc.routesToShareBuilder[networkID] = NewShareBuilder(inst.K)
 		smpc.routesMu.Unlock()
 
 		// TODO: First, we should check if we have opened this stream before
@@ -196,7 +196,7 @@ func (smpc *smpc) instConnect(networkID [32]byte, inst InstConnect) {
 		// background goroutine (or multiple) should read of this channel and
 		// process each message as required.
 		for {
-			msg := message{}
+			msg := Message{}
 			if err := s.Recv(&msg); err != nil {
 				if err == stream.ErrRecvOnClosedStream {
 					return
@@ -205,7 +205,7 @@ func (smpc *smpc) instConnect(networkID [32]byte, inst InstConnect) {
 				continue
 			}
 
-			switch msg.messageType {
+			switch msg.MessageType {
 			case messageTypeJ:
 				smpc.storeShareForJoining(msg.InstID, msg.NetworkID, msg.Share)
 			default:
@@ -220,9 +220,9 @@ func (smpc *smpc) instDisconnect(networkID [32]byte, inst InstDisconnect) {
 }
 
 func (smpc *smpc) instJ(instID, networkID [32]byte, inst InstJ) {
-	msg := message{
-		messageType: messageTypeJ,
-		messageJ: &messageJ{
+	msg := Message{
+		MessageType: messageTypeJ,
+		MessageJ: &MessageJ{
 			InstID:    instID,
 			NetworkID: networkID,
 			Share:     inst.Share,
@@ -245,7 +245,7 @@ func (smpc *smpc) storeShareForJoining(instID, networkID [32]byte, share shamir.
 	smpc.routesMu.Lock()
 	defer smpc.routesMu.Unlock()
 
-	if val, err := smpc.routesToShareBuilder[networkID].insertShare(instID, share); err == nil {
+	if val, err := smpc.routesToShareBuilder[networkID].InsertShare(instID, share); err == nil {
 		select {
 		case <-smpc.shutdown:
 		case smpc.results <- Result{
