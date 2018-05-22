@@ -119,7 +119,7 @@ func (streamer streamer) Open(ctx context.Context, multiAddr identity.MultiAddre
 	var err error
 
 	addr := multiAddr.Address()
-	if addr < streamer.addr {
+	if streamer.addr < addr {
 		stream, err = streamer.client.Connect(ctx, multiAddr)
 	} else {
 		stream, err = streamer.server.Listen(ctx, addr)
