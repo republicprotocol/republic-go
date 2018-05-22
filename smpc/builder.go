@@ -6,24 +6,35 @@ import (
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
+type ShareBuilderObserver interface {
+	OnNotifyBuild(id, networkID [32]byte, value uint64)
+}
+
 type ShareBuilder struct {
 	k int64
 
 	sharesMu    *sync.Mutex
-	shares      map[[32]byte]map[uint64]shamir.Share
 	sharesCache shamir.Shares
+	shares      map[[32]byte]map[uint64]shamir.Share
+
+	observersMu *sync.Mutex
+	observers   map[[32]byte]map[[32]byte]ShareBuilderObserver
 }
 
 func NewShareBuilder(k int64) *ShareBuilder {
 	return &ShareBuilder{
-		k:           k,
+		k: k,
+
 		sharesMu:    new(sync.Mutex),
 		shares:      map[[32]byte]map[uint64]shamir.Share{},
 		sharesCache: make(shamir.Shares, 0, k),
+
+		observersMu: new(sync.Mutex),
+		observers:   map[[32]byte]map[[32]byte]ShareBuilderObserver{},
 	}
 }
 
-func (builder *ShareBuilder) InsertShare(id [32]byte, share shamir.Share) (uint64, error) {
+func (builder *ShareBuilder) Insert(id [32]byte, share shamir.Share) error {
 	builder.sharesMu.Lock()
 	defer builder.sharesMu.Unlock()
 
@@ -42,8 +53,39 @@ func (builder *ShareBuilder) InsertShare(id [32]byte, share shamir.Share) (uint6
 			}
 		}
 		val := shamir.Join(builder.sharesCache)
-		return val, nil
+		builder.notify(id, val)
+		return nil
 	}
 
-	return 0, ErrInsufficientSharesToJoin
+	return ErrInsufficientSharesToJoin
+}
+
+func (builder *ShareBuilder) Observe(id, networkID [32]byte, observer ShareBuilderObserver) {
+	builder.observersMu.Lock()
+	defer builder.observersMu.Unlock()
+
+	if _, ok := builder.observers[id]; !ok {
+		builder.observers[id] = map[[32]byte]ShareBuilderObserver{}
+	}
+
+	if observer == nil {
+		delete(builder.observers[id], networkID)
+		if len(builder.observers[id]) == 0 {
+			delete(builder.observers, id)
+		}
+		return
+	}
+
+	builder.observers[id][networkID] = observer
+}
+
+func (builder *ShareBuilder) notify(id [32]byte, val uint64) {
+	builder.observersMu.Lock()
+	defer builder.observersMu.Unlock()
+
+	if observers, ok := builder.observers[id]; ok {
+		for networkID, observer := range observers {
+			observer.OnNotifyBuild(id, networkID, val)
+		}
+	}
 }

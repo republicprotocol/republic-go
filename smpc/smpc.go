@@ -2,13 +2,14 @@ package smpc
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 	"golang.org/x/net/context"
@@ -49,7 +50,7 @@ type Smpcer interface {
 	Results() <-chan Result
 }
 
-type smpc struct {
+type smpcer struct {
 	swarmer  swarm.Swarmer
 	streamer stream.Streamer
 
@@ -62,13 +63,18 @@ type smpc struct {
 	shutdownDone      chan struct{}
 	shutdownInitiated bool
 
-	routesMu             *sync.RWMutex
-	routes               map[[32]byte]map[identity.Address]stream.Stream
-	routesToShareBuilder map[[32]byte]*ShareBuilder
+	networkMu *sync.RWMutex
+	network   map[[32]byte]identity.Addresses
+
+	lookupMu *sync.RWMutex
+	lookup   map[identity.Address]identity.MultiAddress
+
+	shareBuildersMu *sync.RWMutex
+	shareBuilders   map[[32]byte]*ShareBuilder
 }
 
-func NewSmpc(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpcer {
-	return &smpc{
+func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpcer {
+	return &smpcer{
 		swarmer:  swarmer,
 		streamer: streamer,
 
@@ -81,14 +87,19 @@ func NewSmpc(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpcer
 		shutdownDone:      nil,
 		shutdownInitiated: true,
 
-		routesMu:             new(sync.RWMutex),
-		routes:               map[[32]byte]map[identity.Address]stream.Stream{},
-		routesToShareBuilder: map[[32]byte]*ShareBuilder{},
+		networkMu: new(sync.RWMutex),
+		network:   map[[32]byte]identity.Addresses{},
+
+		lookupMu: new(sync.RWMutex),
+		lookup:   map[identity.Address]identity.MultiAddress{},
+
+		shareBuildersMu: new(sync.RWMutex),
+		shareBuilders:   map[[32]byte]*ShareBuilder{},
 	}
 }
 
 // Start implements the Smpcer interface.
-func (smpc *smpc) Start() error {
+func (smpc *smpcer) Start() error {
 	smpc.shutdownMu.Lock()
 	defer smpc.shutdownMu.Unlock()
 
@@ -104,7 +115,7 @@ func (smpc *smpc) Start() error {
 }
 
 // Shutdown implements the Smpcer interface.
-func (smpc *smpc) Shutdown() error {
+func (smpc *smpcer) Shutdown() error {
 	smpc.shutdownMu.Lock()
 	defer smpc.shutdownMu.Unlock()
 
@@ -128,16 +139,33 @@ func (smpc *smpc) Shutdown() error {
 }
 
 // Instructions implements the Smpcer interface.
-func (smpc *smpc) Instructions() chan<- Inst {
+func (smpc *smpcer) Instructions() chan<- Inst {
 	return smpc.instructions
 }
 
 // Results implements the Smpcer interface.
-func (smpc *smpc) Results() <-chan Result {
+func (smpc *smpcer) Results() <-chan Result {
 	return smpc.results
 }
 
-func (smpc *smpc) run() {
+// OnNotifyBuild implements the ShareBuilderObserver interface. It is used to
+// notify the Smpcer that a value of interest has been reconstructed by the
+// ShareBuilder.
+func (smpc *smpcer) OnNotifyBuild(id, networkID [32]byte, value uint64) {
+	result := Result{
+		InstID:    id,
+		NetworkID: networkID,
+		ResultJ: &ResultJ{
+			Value: value,
+		},
+	}
+	select {
+	case <-smpc.shutdown:
+	case smpc.results <- result:
+	}
+}
+
+func (smpc *smpcer) run() {
 	defer close(smpc.shutdownDone)
 
 	for {
@@ -162,64 +190,50 @@ func (smpc *smpc) run() {
 	}
 }
 
-func (smpc *smpc) instConnect(networkID [32]byte, inst InstConnect) {
-	go dispatch.CoForAll(inst.Nodes, func(i int) {
-		queryCtx, queryCancel := context.WithTimeout(context.Background(), time.Minute)
-		defer queryCancel()
+func (smpc *smpcer) instConnect(networkID [32]byte, inst InstConnect) {
+	smpc.networkMu.Lock()
+	smpc.shareBuildersMu.Lock()
+	defer smpc.networkMu.Unlock()
+	defer smpc.shareBuildersMu.Unlock()
 
+	smpc.network[networkID] = inst.Nodes
+	smpc.shareBuilders[networkID] = NewShareBuilder(inst.K)
+
+	go dispatch.CoForAll(inst.Nodes, func(i int) {
 		addr := inst.Nodes[i]
-		multiAddr, err := smpc.swarmer.Query(queryCtx, addr, -1)
+		multiAddr, err := smpc.query(addr)
 		if err != nil {
-			log.Printf("cannot query smpcer node %v: %v", addr, err)
+			log.Println(err)
 			return
 		}
 
-		openCtx, openCancel := context.WithCancel(context.Background())
-		defer openCancel()
+		smpc.lookupMu.Lock()
+		smpc.lookup[addr] = multiAddr
+		smpc.lookupMu.Unlock()
 
-		// TODO: Store openCancel so that it can be called by the
-		// smpc.instDisconnect method
-
-		s, err := smpc.streamer.Open(openCtx, multiAddr)
-		if err != nil {
-			log.Printf("cannot connect to smpcer node %v: %v", addr, err)
-		}
-
-		smpc.routesMu.Lock()
-		smpc.routes[networkID][addr] = s
-		smpc.routesToShareBuilder[networkID] = NewShareBuilder(inst.K)
-		smpc.routesMu.Unlock()
-
-		// TODO: First, we should check if we have opened this stream before
-		// and if so, we should not bother opening a new one. All messages
-		// received from the stream should be written to a channel. A
-		// background goroutine (or multiple) should read of this channel and
-		// process each message as required.
-		for {
-			msg := Message{}
-			if err := s.Recv(&msg); err != nil {
-				if err == stream.ErrRecvOnClosedStream {
-					return
-				}
-				log.Printf("cannot recv message from %v: %v", addr, err)
-				continue
-			}
-
-			switch msg.MessageType {
-			case messageTypeJ:
-				smpc.storeShareForJoining(msg.InstID, msg.NetworkID, msg.Share)
-			default:
-				log.Printf("cannot recv message from %v: %v", addr, ErrUnexpectedMessageType)
-			}
+		if err := smpc.connect(networkID, inst, addr, multiAddr); err != nil {
+			log.Println(err)
+			return
 		}
 	})
 }
 
-func (smpc *smpc) instDisconnect(networkID [32]byte, inst InstDisconnect) {
-	panic("unimplemented")
+func (smpc *smpcer) instDisconnect(networkID [32]byte, inst InstDisconnect) {
+	smpc.networkMu.Lock()
+	defer smpc.networkMu.Unlock()
+	smpc.shareBuildersMu.Lock()
+	defer smpc.shareBuildersMu.Unlock()
+
+	for _, addr := range smpc.network[networkID] {
+		if err := smpc.streamer.Close(addr); err != nil {
+			log.Printf("cannot close stream to %v: %v", addr, err)
+		}
+	}
+	delete(smpc.network, networkID)
+	delete(smpc.shareBuilders, networkID)
 }
 
-func (smpc *smpc) instJ(instID, networkID [32]byte, inst InstJ) {
+func (smpc *smpcer) instJ(instID, networkID [32]byte, inst InstJ) {
 	msg := Message{
 		MessageType: messageTypeJ,
 		MessageJ: &MessageJ{
@@ -229,36 +243,88 @@ func (smpc *smpc) instJ(instID, networkID [32]byte, inst InstJ) {
 		},
 	}
 
-	smpc.storeShareForJoining(instID, networkID, inst.Share)
+	smpc.networkMu.RLock()
+	smpc.lookupMu.RLock()
+	smpc.shareBuildersMu.RLock()
+	defer smpc.networkMu.RUnlock()
+	defer smpc.lookupMu.RUnlock()
+	defer smpc.shareBuildersMu.RUnlock()
 
-	smpc.routesMu.RLock()
-	defer smpc.routesMu.RUnlock()
+	if shareBuilder, ok := smpc.shareBuilders[networkID]; ok {
+		shareBuilder.Observe(instID, networkID, smpc)
+	}
+	smpc.processMessageJ(*msg.MessageJ)
 
-	for addr, stream := range smpc.routes[networkID] {
-		if err := stream.Send(&msg); err != nil {
-			log.Printf("cannot send messageTypeJ to %v: %v", addr, err)
+	for _, addr := range smpc.network[networkID] {
+		if multiAddr, ok := smpc.lookup[addr]; ok {
+			stream, err := smpc.streamer.Open(context.Background(), multiAddr)
+			if err != nil {
+				log.Printf("cannot open stream for messageTypeJ to %v: %v", addr, err)
+			}
+			if err := stream.Send(&msg); err != nil {
+				log.Printf("cannot send messageTypeJ to %v: %v", addr, err)
+			}
 		}
 	}
 }
 
-func (smpc *smpc) storeShareForJoining(instID, networkID [32]byte, share shamir.Share) {
-	smpc.routesMu.Lock()
-	defer smpc.routesMu.Unlock()
+func (smpc *smpcer) query(addr identity.Address) (identity.MultiAddress, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 
-	if val, err := smpc.routesToShareBuilder[networkID].InsertShare(instID, share); err == nil {
-		select {
-		case <-smpc.shutdown:
-		case smpc.results <- Result{
-			InstID:    instID,
-			NetworkID: networkID,
-			ResultJ: &ResultJ{
-				Value: val,
-			},
-		}:
+	multiAddr, err := smpc.swarmer.Query(ctx, addr, -1)
+	if err != nil {
+		return multiAddr, fmt.Errorf("cannot query smpcer node %v: %v", addr, err)
+	}
+	return multiAddr, nil
+}
+
+func (smpc *smpcer) connect(networkID [32]byte, inst InstConnect, addr identity.Address, multiAddr identity.MultiAddress) error {
+	// TODO: Instead of using a timeout, we should store the context.CancelFunc
+	// so that the connection attempt can remain active indefinitely, or until
+	// a disconnect instruction is received.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	stream, err := smpc.streamer.Open(ctx, multiAddr)
+	if err != nil {
+		log.Printf("cannot connect to smpcer node %v: %v", addr, err)
+	}
+
+	go smpc.processRemoteStream(addr, stream)
+	return nil
+}
+
+func (smpc *smpcer) processRemoteStream(remoteAddr identity.Address, remoteStream stream.Stream) {
+	for {
+		msg := Message{}
+		if err := remoteStream.Recv(&msg); err != nil {
+			if err == io.EOF || err == stream.ErrRecvOnClosedStream {
+				return
+			}
+			log.Printf("cannot recv message from %v: %v", remoteAddr, err)
+			continue
 		}
-		return
-	} else if err != ErrInsufficientSharesToJoin {
-		log.Printf("could not insert share locally: %v", err)
-		return
+
+		switch msg.MessageType {
+		case messageTypeJ:
+			smpc.processMessageJ(*msg.MessageJ)
+		default:
+			log.Printf("cannot recv message from %v: %v", remoteAddr, ErrUnexpectedMessageType)
+		}
+	}
+}
+
+func (smpc *smpcer) processMessageJ(message MessageJ) {
+	smpc.shareBuildersMu.RLock()
+	defer smpc.shareBuildersMu.RUnlock()
+
+	if shareBuilder, ok := smpc.shareBuilders[message.NetworkID]; ok {
+		if err := shareBuilder.Insert(message.InstID, message.Share); err != nil {
+			if err == ErrInsufficientSharesToJoin {
+				return
+			}
+			log.Printf("could not insert share: %v", err)
+		}
 	}
 }
