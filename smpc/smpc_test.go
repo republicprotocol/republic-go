@@ -73,7 +73,7 @@ var _ = Describe("smpc ", func() {
 
 		It("should combine shares even if one-third of the nodes are not active", func() {
 			// Create 24 smpcers and issue 5 random secrets
-			// Do not start 1/3 of the smpcers (i.e. 7)
+			// Do not start 1/3 of the smpcers (for example: 7)
 			count, err := runSmpcers(24, 5, 7)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(count).To(Equal(5))
@@ -85,6 +85,7 @@ var _ = Describe("smpc ", func() {
 
 			go func() {
 				defer GinkgoRecover()
+
 				// Create 24 smpcers and do not start 10 smpcers
 				c, err := runSmpcers(24, 5, 10)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -223,6 +224,7 @@ func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int) (int, err
 		}
 		count++
 	}
+
 	return count, nil
 }
 
@@ -243,6 +245,7 @@ func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int) (int, 
 		}
 	}
 
+	// Create 2 lists that will store the smpcer addresses of each network
 	addrsNetwork1 := addrs[:minimumNumberOfSmpcers]
 	addrsNetwork2 := addrs[numberOfSmpcers-minimumNumberOfSmpcers:]
 
@@ -285,6 +288,7 @@ func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int) (int, 
 		}
 		smpcers[i].Instructions() <- message
 	}
+
 	time.Sleep(2 * time.Second)
 
 	go func() {
@@ -308,6 +312,7 @@ func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int) (int, 
 			}
 			smpcers[i].Instructions() <- message
 		}
+
 		// Create a new random secret for network2 and split it
 		secret = uint64(rand.Intn(100))
 		shares, err = shamir.Split(int64(minimumNumberOfSmpcers), int64(2*(minimumNumberOfSmpcers+1)/3), secret)
@@ -315,6 +320,8 @@ func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int) (int, 
 			log.Printf("cannot split secret: %v", err)
 			return
 		}
+
+		// Send instJ instructions to Network 2 join all the secret shares
 		for i := numberOfSmpcers - minimumNumberOfSmpcers; i < numberOfSmpcers; i++ {
 			instJ := InstJ{
 				Share: shares[i-numberOfSmpcers+minimumNumberOfSmpcers],
