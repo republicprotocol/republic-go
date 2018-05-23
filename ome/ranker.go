@@ -55,6 +55,7 @@ type ranker struct {
 
 // NewRanker returns a Ranker that only produces Computations based on the
 // total number of Rankers processing orders, and the position of this Ranker.
+// TODO: Update num and pos
 func NewRanker(num, pos int) Ranker {
 	return &ranker{
 		num: num,
