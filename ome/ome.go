@@ -22,21 +22,19 @@ type ome struct {
 	ranker   Ranker
 	computer Computer
 
-	ξ                 cal.Epoch
-	orderbook         orderbook.Orderbook
-	orderbookListener orderbook.Listener
-	smpcer            smpc.Smpcer
+	ξ         cal.Epoch
+	orderbook orderbook.Orderbook
+	smpcer    smpc.Smpcer
 }
 
-func NewOme(ranker Ranker, computer Computer, orderbook orderbook.Orderbook, orderbookListener orderbook.Listener, smpcer smpc.Smpcer) Ome {
+func NewOme(ranker Ranker, computer Computer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer) Ome {
 	return &ome{
 		ranker:   ranker,
 		computer: computer,
 
-		ξ:                 cal.Epoch{},
-		orderbook:         orderbook,
-		orderbookListener: orderbookListener,
-		smpcer:            smpcer,
+		ξ:         cal.Epoch{},
+		orderbook: orderbook,
+		smpcer:    smpcer,
 	}
 }
 

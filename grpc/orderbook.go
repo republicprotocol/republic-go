@@ -9,7 +9,6 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 type OrderbookService struct {
@@ -24,9 +23,9 @@ func NewOrderbookService(server orderbook.Server) OrderbookService {
 	}
 }
 
-// Register the OrderbookService to a grpc.Server.
-func (service *OrderbookService) Register(server *grpc.Server) {
-	RegisterOrderbookServiceServer(server, service)
+// Register the OrderbookService to a Server.
+func (service *OrderbookService) Register(server *Server) {
+	RegisterOrderbookServiceServer(server.Server, service)
 }
 
 // OpenOrder implements the gRPC service for receiving EncryptedOrderFragments.

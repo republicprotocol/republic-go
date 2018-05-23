@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/republicprotocol/republic-go/dht"
-	"google.golang.org/grpc"
 )
 
 type StatusService struct {
@@ -25,7 +24,7 @@ func (service *StatusService) Status(ctx context.Context, request *StatusRequest
 	}, nil
 }
 
-// Register the gRPC service to a grpc.Server.
-func (service *StatusService) Register(server *grpc.Server) {
-	RegisterStatusServiceServer(server, service)
+// Register the gRPC service to a Server.
+func (service *StatusService) Register(server *Server) {
+	RegisterStatusServiceServer(server.Server, service)
 }

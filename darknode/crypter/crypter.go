@@ -55,13 +55,13 @@ func NewCrypter(keystore crypto.Keystore, darkpool cal.Darkpool, cacheLimit int,
 }
 
 // Sign using the crypto.Keystore that identifies the Crypter.
-func (crypter *Crypter) Sign(hasher crypto.Hasher) ([]byte, error) {
-	return crypter.keystore.Sign(hasher)
+func (crypter *Crypter) Sign(data []byte) ([]byte, error) {
+	return crypter.keystore.Sign(data)
 }
 
 // Verify a signature and ensure that the signatory is a registered Darknode.
-func (crypter *Crypter) Verify(hasher crypto.Hasher, signature []byte) error {
-	addr, err := crypto.RecoverAddress(hasher, signature)
+func (crypter *Crypter) Verify(data []byte, signature []byte) error {
+	addr, err := crypto.RecoverAddress(data, signature)
 	if err != nil {
 		return err
 	}
