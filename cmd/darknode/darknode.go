@@ -61,7 +61,7 @@ func main() {
 	log.Printf("address %v", multiAddr)
 
 	// Get ethereum bindings
-	auth, _, _, _, renLedger, err := getEthereumBindings(conf.Keystore, conf.Ethereum)
+	auth, darkpool, _, _, renLedger, err := getEthereumBindings(conf.Keystore, conf.Ethereum)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
@@ -75,7 +75,7 @@ func main() {
 	server := grpc.NewServer()
 	dht := dht.NewDHT(conf.Address, 32)
 	connPool := grpc.NewConnPool(128)
-	crypter := crypter.NewCrypter(keystore, darkpool, 128, time.Minute)
+	crypter := crypter.NewCrypter(conf.Keystore, darkpool, 128, time.Minute)
 
 	// Build services
 	newStatus(&dht, server)
@@ -83,18 +83,13 @@ func main() {
 	swarmer := newSwarmer(multiAddr, &dht, &connPool, server)
 	streamer := newStreamer(&crypter, &crypter, conf.Address, &connPool, server)
 
-	done := make(chan struct{})
+	// Build smpc
 	smpcer := smpc.NewSmpcer(swarmer, streamer, 20)
+	smpcer.Start()
+	defer smpcer.Shutdown()
+
+	// Build OME
 	ome := ome.NewOme(ome.NewRanker(1, 0), ome.NewComputer(orderbook, smpcer), orderbook, smpcer)
-	go func() {
-		for {
-			if err := ome.Sync(); err != nil {
-				log.Println(err)
-				continue
-			}
-			time.Sleep(time.Second * 5) // There is not much point synchronizing faster than Ethereum can mine blocks
-		}
-	}()
 	go func() {
 		time.Sleep(time.Second)
 		dispatch.CoBegin(func() {
@@ -108,11 +103,9 @@ func main() {
 			}
 		})
 		for {
-			err = ome.Sync()
-			if err != nil {
+			if err := ome.Sync(); err != nil {
 				return
 			}
-
 			time.Sleep(1 * time.Second)
 		}
 	}()
