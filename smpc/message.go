@@ -50,6 +50,7 @@ func (msg *Message) UnmarshalBinary(data []byte) error {
 
 	switch msg.MessageType {
 	case MessageTypeJ:
+		msg.MessageJ = &MessageJ{}
 		return binary.Read(buf, binary.BigEndian, msg.MessageJ)
 	default:
 		return ErrUnexpectedMessageType
