@@ -2,14 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
-	"math/big"
-	"os"
-
-	"encoding/json"
 	"io/ioutil"
+	"log"
+	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -19,6 +17,7 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/stackint"
 	"github.com/urfave/cli"
 )
@@ -37,9 +36,9 @@ const (
 // Set up dnr contract address:
 //   $ registry --dnr 0xContractAddress
 // Register nodes:
-//   $ registry register 0xaddress1 0xaddress2 0xaddress3
+//   $ registry register
 // Deregister nodes:
-//   $ registry deregister 0xaddress1 0xaddress2 0xaddress3
+//   $ registry deregister
 // Calling epoch:
 //   $ registry epoch
 
@@ -169,10 +168,9 @@ func main() {
 }
 
 func LoadKey() (*keystore.Key, error) {
-	var keyJSON string = `{"address":"0066ed1af055a568e49e5a20f5b63e9741c81967",
-  					"privatekey":"f5ec4b010d7cc3fbf75d71f3ea4700a64bb091e05531ef65424415207c661a39",
-  					"id":"06a15d42-1d52-42dd-b714-82582a13782a",
-  					"version":3}`
+	var keyJSON string = `{"address":"90e6572ef66a11690b09dd594a18f36cf76055c8",
+  					"privatekey":"dc3f937b4aa1fc7bbf7643f1dead1faf37594ad2f1edcd6b56bf6719f85fa406",
+  					"id":"ddd54c1c-6c2e-42a9-a224-6532a90fd4e9", "version":3}`
 	key := new(keystore.Key)
 	err := key.UnmarshalJSON([]byte(keyJSON))
 
@@ -188,7 +186,6 @@ func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error
 	}
 
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
-	auth.GasPrice = big.NewInt(40000000000)
 	client, err := ethereum.Connect(config)
 	if err != nil {
 		log.Fatal("fail to connect to ethereum")
@@ -199,17 +196,9 @@ func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error
 
 func RegisterAll(registry dnr.DarknodeRegistry) error {
 
-	file, err := os.Open("./deployment.json")
+	conf, err := loadConfig("./deployment.json")
 	if err != nil {
-		log.Fatal("can't open config file", err)
-	}
-	defer file.Close()
-
-	data, err := ioutil.ReadAll(file)
-
-	conf := FalconryConfigs{}
-	if err := json.Unmarshal(data, &conf); err != nil {
-		log.Fatal("can't open config file", err)
+		return errors.New("could not read file deployment.json")
 	}
 
 	for i := range conf.Configs {
@@ -220,7 +209,7 @@ func RegisterAll(registry dnr.DarknodeRegistry) error {
 		}
 
 		// Check if node has already been registered
-		isRegistered, err := registry.IsRegistered(address.ID())
+		isRegistered, err := registry.IsRegistered(address)
 		if err != nil {
 			return fmt.Errorf("[%v] %sCouldn't check node's registration%s: %v\n", address, red, reset, err)
 		}
@@ -232,7 +221,7 @@ func RegisterAll(registry dnr.DarknodeRegistry) error {
 				return err
 			}
 
-			_, err = registry.Register(conf.Configs[i].Config.Address.ID(), pk, &minimumBond)
+			_, err = registry.Register(address.ID(), pk, &minimumBond)
 			if err != nil {
 				return fmt.Errorf("[%v] %sCouldn't register node%s: %v\n", address, red, reset, err)
 			} else {
@@ -249,27 +238,30 @@ func RegisterAll(registry dnr.DarknodeRegistry) error {
 
 // DeregisterAll takes a slice of republic private keys and registers them
 func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
-	for i := range addresses {
-		address, err := republicAddressToEthAddress(addresses[i])
-		if err != nil {
-			return err
-		}
+	conf, err := loadConfig("./deployment.json")
+	if err != nil {
+		return errors.New("could not read file deployment.json")
+	}
+
+	for i := range conf.Configs {
+		address := conf.Configs[i].Config.Address
 
 		// Check if node has already been registered
-		isRegistered, err := registry.IsRegistered(address.Bytes())
+		isRegistered, err := registry.IsRegistered(address)
 		if err != nil {
-			return fmt.Errorf("[%v] %sCouldn't check node's registration%s: %v\n", address.Hex(), red, reset, err)
+			return fmt.Errorf("[%v] %sCouldn't check node's registration%s: %v\n", address, red, reset, err)
 		}
 
+		// Register the node if not registered
 		if isRegistered {
-			_, err = registry.Deregister(address.Bytes())
+			_, err = registry.Deregister(address.ID())
 			if err != nil {
-				return fmt.Errorf("[%v] %sCouldn't deregister node%s: %v\n", address.Hex(), red, reset, err)
+				return fmt.Errorf("[%v] %sCouldn't deregister node%s: %v\n", address, red, reset, err)
 			} else {
-				log.Printf("[%v] %sNode will be deregistered next epoch%s\n", address.Hex(), green, reset)
+				log.Printf("[%v] %sNode will be deregistered next epoch%s\n", address, green, reset)
 			}
-		} else {
-			fmt.Println(fmt.Errorf("[%v] %sNode hasn't been registered yet.%s\n", address.Hex(), red, reset))
+		} else if isRegistered {
+			log.Printf("[%v] %sNode already registered%s\n", address, yellow, reset)
 		}
 	}
 
@@ -296,26 +288,13 @@ func GetPool(addresses []string, registry dnr.DarknodeRegistry) error {
 	if len(addresses) != 1 {
 		return fmt.Errorf("%sPlease provide one node address.%s\n", red, reset)
 	}
-	address, err := republicAddressToEthAddress(addresses[0])
-	if err != nil {
-		return err
-	}
 
-	currentEpoch, err := registry.CurrentEpoch()
+	pod, err := registry.Pod(identity.Address(addresses[0]))
 	if err != nil {
+		fmt.Println(-1)
 		return err
 	}
-	nodes, err := registry.GetAllNodes()
-	if err != nil {
-		return err
-	}
-
-	ocean, err := darkocean.NewDarkOcean(&registry, currentEpoch.Blockhash, nodes)
-	if err != nil {
-		return err
-	}
-	poolIndex := ocean.PoolIndex(address.Bytes())
-	fmt.Println(poolIndex)
+	fmt.Println(pod.Position)
 
 	return nil
 }
@@ -326,12 +305,8 @@ func CheckRegistration(addresses []string, registrar dnr.DarknodeRegistry) error
 	if len(addresses) != 1 {
 		return fmt.Errorf("%sPlease provide one node address.%s\n", red, reset)
 	}
-	address, err := republicAddressToEthAddress(addresses[0])
-	if err != nil {
-		return err
-	}
 
-	isRegistered, err := registrar.IsRegistered(address.Bytes())
+	isRegistered, err := registrar.IsRegistered(identity.Address(addresses[0]))
 	if err != nil {
 		return err
 	}
@@ -364,6 +339,23 @@ func republicAddressToEthAddress(repAddress string) (common.Address, error) {
 	}
 	address := common.BytesToAddress(addByte)
 	return address, nil
+}
+
+func loadConfig(filename string) (FalconryConfigs, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return FalconryConfigs{}, err
+	}
+	defer file.Close()
+
+	data, err := ioutil.ReadAll(file)
+
+	conf := FalconryConfigs{}
+	if err := json.Unmarshal(data, &conf); err != nil {
+		return FalconryConfigs{}, err
+	}
+
+	return conf, nil
 }
 
 type FalconryConfigs struct {
