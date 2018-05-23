@@ -1,186 +1,90 @@
 package ome
 
 import (
+	"fmt"
+
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
-type Omer interface {
+type Ome interface {
 	cal.EpochListener
 
 	// Sync the Omer with the orderbook.Orderbooker so that it can discover new
 	// orders, purge confirmed orders, and reprioritize order matching
 	// computations.
 	Sync() error
-
-	Compute(done <-chan struct{}) chan error
 }
 
 type ome struct {
-	ξs                chan cal.Epoch
+	ranker   Ranker
+	computer Computer
+
+	ξ                 cal.Epoch
 	orderbook         orderbook.Orderbook
 	orderbookListener orderbook.Listener
 	smpcer            smpc.Smpcer
-	ranker            Ranker
 }
 
-func NewOme(orderbook orderbook.Orderbook, orderbookListener orderbook.Listener, smpcer smpc.Smpcer) Omer {
+func NewOme(ranker Ranker, computer Computer, orderbook orderbook.Orderbook, orderbookListener orderbook.Listener, smpcer smpc.Smpcer) Ome {
 	return &ome{
-		ξs:                make(chan cal.Epoch, 1),
+		ranker:   ranker,
+		computer: computer,
+
+		ξ:                 cal.Epoch{},
 		orderbook:         orderbook,
 		orderbookListener: orderbookListener,
 		smpcer:            smpcer,
-		ranker:            NewPriorityQueue(1, 0), // FIXME: Why god?
 	}
+}
+
+// OnChangeEpoch implements the cal.EpochListener interface.
+func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
+	ome.ξ = ξ
 }
 
 // Sync implements the Omer interface.
 func (ome *ome) Sync() error {
 	changeset, err := ome.orderbook.Sync()
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot sync orderbook: %v", err)
 	}
+	if err := ome.syncRanker(changeset); err != nil {
+		return fmt.Errorf("cannot sync ranker: %v", err)
+	}
+	if err := ome.syncComputer(changeset); err != nil {
+		return fmt.Errorf("cannot sync computer: %v", err)
+	}
+	return nil
+}
+
+func (ome *ome) syncRanker(changeset orderbook.ChangeSet) error {
 	for _, change := range changeset {
-		switch change.Status {
+		switch change.OrderStatus {
 		case order.Open:
-			ome.ranker.Insert(update.ID, update.Parity, update.Priority)
+			if change.OrderParity == order.ParityBuy {
+				ome.ranker.InsertBuy(PriorityOrder{
+					ID:       change.OrderID,
+					Priority: Priority(change.OrderPriority),
+				})
+			} else {
+				ome.ranker.InsertSell(PriorityOrder{
+					ID:       change.OrderID,
+					Priority: Priority(change.OrderPriority),
+				})
+			}
 		case order.Canceled, order.Settled, order.Confirmed:
-			ome.ranker.Remove(update.ID)
+			ome.ranker.Remove(change.OrderID)
 		}
 	}
 	return nil
 }
 
-func (ome *ome) Compute(done <-chan struct{}) chan error {
-	var currentEpoch cal.Epoch
-	errs := make(chan error)
-	input, output := ome.smpcer.Instructions(), ome.smpcer.Results()
-
-	err := ome.smpcer.Start()
-	if err != nil {
-		errs <- err
-		close(errs)
-		return errs
-	}
-
-	go func() {
-		defer close(errs)
-		defer ome.smpcer.Shutdown()
-
-		deltaWaitingList := []delta.Delta{}
-
-		for {
-			select {
-			case <-done:
-				return
-
-			case ξ, ok := <-ome.ξs:
-				if !ok {
-					return
-				}
-				currentEpoch = ξ
-				input <- smpc.Inst{
-					InstConnect: &smpc.InstConnect{
-						PeersID: ξ.Hash[:],
-						Peers:   ξ.Darknodes,
-						N:       len(ξ.Darknodes),
-						K:       (len(ξ.Darknodes) + 1) * 2 / 3,
-					},
-				}
-				ome.ranker.OnChangeEpoch(ξ)
-			case result, ok := <-output:
-				if !ok {
-					return
-				}
-
-				for i := 0; i < len(deltaWaitingList); i++ {
-					if err := ome.orderbooker.ConfirmOrderMatch(deltaWaitingList[i].BuyOrderID, deltaWaitingList[i].SellOrderID); err != nil {
-						continue
-					}
-
-					// todo : tell the orderbook Listener there is an confirmed order.
-					//buyOrd, sellOrd, err := getOrderDetails(deltaWaitingList[i], ome.orderbooker)
-					//if err != nil {
-					//	continue
-					//}
-					//ome.orderbookListener.OnConfirmOrderMatch(buyOrd, sellOrd)
-					deltaWaitingList = append(deltaWaitingList[:i], deltaWaitingList[i+1:]...)
-					i--
-				}
-
-				if result.Delta.IsMatch() {
-					if err := ome.orderbooker.ConfirmOrderMatch(result.Delta.BuyOrderID, result.Delta.SellOrderID); err != nil {
-						continue
-					}
-
-					// todo : tell the orderbookListener there is an confirmed order.
-					//buyOrd, sellOrd, err := getOrderDetails(result.Delta, ome.orderbooker)
-					//if err != nil {
-					//	deltaWaitingList = append(deltaWaitingList, result.Delta)
-					//	continue
-					//}
-					//
-					//ome.orderbookListener.OnConfirmOrderMatch(buyOrd, sellOrd)
-					//if err != nil {
-					//	deltaWaitingList = append(deltaWaitingList, result.Delta)
-					//	continue
-					//}
-				}
-			default:
-				orderPairs := ome.ranker.OrderPairs(50)
-
-				for _, pair := range orderPairs {
-					inst, err := generateInstruction(pair, ome.orderbooker, currentEpoch)
-					if err != nil {
-						continue
-					}
-					input <- inst
-					ome.ranker.Remove(pair.SellOrder, pair.BuyOrder)
-				}
-			}
-		}
-	}()
-
-	return errs
-}
-
-// OnChangeEpoch implements the cal.EpochListener interface.
-func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
-	ome.ξs <- ξ
-}
-
-func generateInstruction(pair OrderPair, orderbook orderbook.Orderbooker, epoch cal.Epoch) (smpc.Inst, error) {
-	// Get orderFragment from the orderbook
-	buyOrderFragment, err := orderbook.OrderFragment(pair.BuyOrder)
-	if err != nil {
-		return smpc.Inst{}, err
-	}
-	sellOrderFragment, err := orderbook.OrderFragment(pair.SellOrder)
-	if err != nil {
-		return smpc.Inst{}, err
-	}
-
-	// generate instruction message for smpc
-	return smpc.Inst{
-		InstCompute: &smpc.InstCompute{
-			PeersID: epoch.Hash[:],
-			Buy:     buyOrderFragment,
-			Sell:    sellOrderFragment,
-		},
-	}, nil
-}
-
-func getOrderDetails(delta delta.Delta, orderbooker orderbook.Orderbooker) (order.Order, order.Order, error) {
-	buyOrd, err := orderbooker.Order(delta.BuyOrderID)
-	if err != nil {
-		return order.Order{}, order.Order{}, err
-	}
-	sellOrd, err := orderbooker.Order(delta.SellOrderID)
-	if err != nil {
-		return order.Order{}, order.Order{}, err
-	}
-
-	return buyOrd, sellOrd, nil
+func (ome *ome) syncComputer(changeset orderbook.ChangeSet) error {
+	buffer := [128]Computation{}
+	n := ome.ranker.Computations(buffer[:])
+	ome.computer.Compute(ome.ξ.Hash, buffer[:n])
+	return nil
 }

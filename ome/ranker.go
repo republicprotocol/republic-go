@@ -7,17 +7,6 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
-// Computations is an alias type.
-type Computations []Computation
-
-// A Computation involving a buy order, and a sell order, with a combined
-// Priority.
-type Computation struct {
-	Buy      order.ID
-	Sell     order.ID
-	Priority Priority
-}
-
 // A Priority is an unsigned integer representing logical time prioritization.
 // The lower the number, the higher the priority.
 type Priority uint64
@@ -60,8 +49,8 @@ type ranker struct {
 
 	computationsMu *sync.Mutex
 	computations   Computations
-	buys           []order.ID
-	sells          []order.ID
+	buys           map[order.ID]Priority
+	sells          map[order.ID]Priority
 }
 
 // NewRanker returns a Ranker that only produces Computations based on the
@@ -73,8 +62,8 @@ func NewRanker(num, pos int) Ranker {
 
 		computationsMu: new(sync.Mutex),
 		computations:   Computations{},
-		buys:           map[order.ID]uint64{},
-		sells:          map[order.ID]uint64{},
+		buys:           map[order.ID]Priority{},
+		sells:          map[order.ID]Priority{},
 	}
 }
 
@@ -82,10 +71,10 @@ func (ranker *ranker) InsertBuy(order PriorityOrder) {
 	ranker.computationsMu.Lock()
 	defer ranker.computationsMu.Unlock()
 
-	sells.buys[order.ID] = order.Priority
+	ranker.buys[order.ID] = order.Priority
 	for sell, sellPriority := range ranker.sells {
 		computationPriority := order.Priority + sellPriority
-		if computationPriority%ranker.num != ranker.pos {
+		if int(computationPriority)%ranker.num != ranker.pos {
 			continue
 		}
 
@@ -112,10 +101,10 @@ func (ranker *ranker) InsertSell(order PriorityOrder) {
 	ranker.computationsMu.Lock()
 	defer ranker.computationsMu.Unlock()
 
-	sells.sells[order.ID] = order.Priority
+	ranker.sells[order.ID] = order.Priority
 	for buy, buyPriority := range ranker.buys {
 		computationPriority := order.Priority + buyPriority
-		if computationPriority%ranker.num != ranker.pos {
+		if int(computationPriority)%ranker.num != ranker.pos {
 			continue
 		}
 
@@ -144,7 +133,7 @@ func (ranker *ranker) Remove(orders ...order.ID) {
 
 	mapping := map[order.ID]struct{}{}
 	for _, order := range orders {
-		mapping[id] = struct{}{}
+		mapping[order] = struct{}{}
 		delete(ranker.buys, order)
 		delete(ranker.sells, order)
 	}
