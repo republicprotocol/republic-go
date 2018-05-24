@@ -3,13 +3,7 @@ language: go
 go:
   - 1.9.x
 
-cache:
-  directories:
-    - vendor
-    - $GOPATH/pkg/dep
-
 before_install:
-  - npm install -g ganache-cli
   - go get github.com/onsi/gomega
   - go get github.com/onsi/ginkgo/ginkgo
   - go get github.com/mattn/goveralls
