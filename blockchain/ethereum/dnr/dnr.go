@@ -416,5 +416,18 @@ func (darkNodeRegistry *DarknodeRegistry) Epoch() (cal.Epoch, error) {
 // current Epoch. It returns ErrPodNotFound if the identity.Address is not
 // registered in the current Epoch.
 func (darkNodeRegistry *DarknodeRegistry) Pod(addr identity.Address) (cal.Pod, error) {
-	panic("unimplemented")
+	pods, err := darkNodeRegistry.Pods()
+	if err != nil {
+		return cal.Pod{}, err
+	}
+
+	for i := range pods {
+		for j := range pods[i].Darknodes {
+			if pods[i].Darknodes[j] == addr {
+				return pods[i], nil
+			}
+		}
+	}
+
+	return cal.Pod{}, errors.New("cannot find node in any pod")
 }
