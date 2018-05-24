@@ -1,4 +1,4 @@
-package crypter
+package darknode
 
 import (
 	"crypto/rsa"

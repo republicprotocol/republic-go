@@ -288,6 +288,18 @@ func (darkNodeRegistry *DarknodeRegistry) GetAllNodes() ([][]byte, error) {
 	return arr, nil
 }
 
+func (darkNodeRegistry *DarknodeRegistry) Darknodes() (identity.Addresses, error) {
+	ret, err := darkNodeRegistry.binding.GetDarkNodes(darkNodeRegistry.callOpts)
+	if err != nil {
+		return nil, err
+	}
+	arr := make(identity.Addresses, len(ret))
+	for i := range ret {
+		arr[i] = identity.ID(ret[i][:]).Address()
+	}
+	return arr, nil
+}
+
 // MinimumBond gets the minimum viable bond amount
 func (darkNodeRegistry *DarknodeRegistry) MinimumBond() (stackint.Int1024, error) {
 	bond, err := darkNodeRegistry.binding.MinimumBond(darkNodeRegistry.callOpts)

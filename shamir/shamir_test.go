@@ -131,7 +131,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 				cipherText, err := share.Encrypt(rsaKey.PublicKey)
 				Expect(err).ShouldNot(HaveOccurred())
 				decryptedShare := Share{}
-				err = decryptedShare.Decrypt(rsaKey, cipherText)
+				err = decryptedShare.Decrypt(*rsaKey.PrivateKey, cipherText)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(share.Index).Should(Equal(decryptedShare.Index))
 				Expect(share.Value).Should(Equal(decryptedShare.Value))
@@ -151,7 +151,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 				cipherText, err := share.Encrypt(rsaKey.PublicKey)
 				Expect(err).ShouldNot(HaveOccurred())
 				decryptedShare := Share{}
-				err = decryptedShare.Decrypt(rsaKeyOther, cipherText)
+				err = decryptedShare.Decrypt(*rsaKeyOther.PrivateKey, cipherText)
 				Expect(err).Should(HaveOccurred())
 			}
 		})

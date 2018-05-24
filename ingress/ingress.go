@@ -33,8 +33,8 @@ type OrderFragment struct {
 	Index int64
 }
 
-// Ingresser interface can open and cancel orders on behalf of a user.
-type Ingresser interface {
+// Ingress interface can open and cancel orders on behalf of a user.
+type Ingress interface {
 
 	// OpenOrder on the Ren Ledger and on the Darkpool. A signature from the
 	// trader identifies them as the owner, the order ID is submitted to the
@@ -46,11 +46,11 @@ type Ingresser interface {
 	// verify the cancelation.
 	CancelOrder(signature [65]byte, orderID order.ID) error
 
-	// SyncDarkpool to ensure an up-to-date state.
-	SyncDarkpool() error
+	// Sync Darkpool to ensure an up-to-date state.
+	Sync() error
 }
 
-type Ingress struct {
+type ingress struct {
 	darkpool        cal.Darkpool
 	renLedger       cal.RenLedger
 	swarmer         swarm.Swarmer
@@ -58,8 +58,8 @@ type Ingress struct {
 	pods            map[[32]byte]cal.Pod
 }
 
-func NewIngress(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Swarmer, orderbookClient orderbook.Client) Ingresser {
-	return &Ingress{
+func NewIngress(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Swarmer, orderbookClient orderbook.Client) Ingress {
+	return &ingress{
 		darkpool:        darkpool,
 		renLedger:       renLedger,
 		swarmer:         swarmer,
@@ -68,7 +68,7 @@ func NewIngress(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Sw
 	}
 }
 
-func (ingress *Ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMapping OrderFragmentMapping) error {
+func (ingress *ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMapping OrderFragmentMapping) error {
 	// TODO: Verify that the signature is valid before sending it to the
 	// RenLedger. This is not strictly necessary but it can save the Ingress
 	// some gas.
@@ -101,7 +101,7 @@ func (ingress *Ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFra
 	return ingress.openOrderFragments(orderFragmentMapping)
 }
 
-func (ingress *Ingress) CancelOrder(signature [65]byte, orderID order.ID) error {
+func (ingress *ingress) CancelOrder(signature [65]byte, orderID order.ID) error {
 	// TODO: Verify that the signature is valid before sending it to the
 	// RenLedger. This is not strictly necessary but it can save the Ingress
 	// some gas.
@@ -111,7 +111,7 @@ func (ingress *Ingress) CancelOrder(signature [65]byte, orderID order.ID) error 
 	return nil
 }
 
-func (ingress *Ingress) SyncDarkpool() error {
+func (ingress *ingress) Sync() error {
 	pods, err := ingress.darkpool.Pods()
 	if err != nil {
 		return fmt.Errorf("cannot get pods from darkpool: %v", err)
@@ -123,7 +123,7 @@ func (ingress *Ingress) SyncDarkpool() error {
 	return nil
 }
 
-func (ingress *Ingress) verifyOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
+func (ingress *ingress) verifyOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
 	if len(orderFragmentMapping) == 0 || len(orderFragmentMapping) > len(ingress.pods) {
 		return ErrInvalidNumberOfPods
 	}
@@ -139,7 +139,7 @@ func (ingress *Ingress) verifyOrderFragments(orderFragmentMapping OrderFragmentM
 	return nil
 }
 
-func (ingress *Ingress) openOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
+func (ingress *ingress) openOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
 	errs := make([]error, 0, len(ingress.pods))
 	podDidReceiveFragments := false
 	for hash, pod := range ingress.pods {
@@ -161,7 +161,7 @@ func (ingress *Ingress) openOrderFragments(orderFragmentMapping OrderFragmentMap
 	return nil
 }
 
-func (ingress *Ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []OrderFragment) error {
+func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []OrderFragment) error {
 	if len(orderFragments) < pod.Threshold() || len(orderFragments) > len(pod.Darknodes) {
 		return ErrInvalidNumberOfOrderFragments
 	}

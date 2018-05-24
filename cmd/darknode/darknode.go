@@ -20,7 +20,6 @@ import (
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
-	"github.com/republicprotocol/republic-go/darknode/crypter"
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
@@ -75,7 +74,7 @@ func main() {
 	server := grpc.NewServer()
 	dht := dht.NewDHT(conf.Address, 32)
 	connPool := grpc.NewConnPool(128)
-	crypter := crypter.NewCrypter(conf.Keystore, darkpool, 128, time.Minute)
+	crypter := darknode.NewCrypter(conf.Keystore, darkpool, 128, time.Minute)
 
 	// Build services
 	newStatus(&dht, server)

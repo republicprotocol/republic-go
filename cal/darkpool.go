@@ -13,10 +13,18 @@ import (
 // the current Epoch.
 var ErrPodNotFound = errors.New("pod not found")
 
+// ErrPublicKeyNotFound is returned when an rsa.PublicKey cannot be found for a
+// given identity.Address. This happens when an identity.Address is not registered in
+// the current Epoch.
+var ErrPublicKeyNotFound = errors.New("public key not found")
+
 // Darkpool is an interface for interacting with the Darkpool. Its core purpose
 // is to expose to configuration of Darknodes into Pods for the different
 // Epochs.
 type Darkpool interface {
+
+	// Darknodes registered in the Darkpool.
+	Darknodes() (identity.Addresses, error)
 
 	// Epoch returns the current Epoch which includes the Pod configuration.
 	Epoch() (Epoch, error)
