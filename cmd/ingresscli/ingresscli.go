@@ -57,7 +57,7 @@ func main() {
 
 	signatureData := crypto.Keccak256([]byte("Republic Protocol: open: "), ord.ID[:])
 	signatureData = crypto.Keccak256([]byte("\x19Ethereum Signed Message:\n32"), signatureData)
-	signature, err := keystore.Sign(crypto.NewHash32(signatureData))
+	signature, err := keystore.Sign(signatureData)
 
 	log.Printf("id = %v; sig = %v", base64.StdEncoding.EncodeToString(ord.ID[:]), base64.StdEncoding.EncodeToString(signature))
 

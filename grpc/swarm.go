@@ -8,7 +8,6 @@ import (
 
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/swarm"
-	"google.golang.org/grpc"
 )
 
 type SwarmService struct {
@@ -21,9 +20,9 @@ func NewSwarmService(server swarm.Server) SwarmService {
 	}
 }
 
-// Register the gRPC service to a grpc.Server.
-func (service *SwarmService) Register(server *grpc.Server) {
-	RegisterSwarmServiceServer(server, service)
+// Register the gRPC service to a Server.
+func (service *SwarmService) Register(server *Server) {
+	RegisterSwarmServiceServer(server.Server, service)
 }
 
 // Ping is an RPC used to notify a Swarm service about the existence of a

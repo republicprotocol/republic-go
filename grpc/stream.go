@@ -42,7 +42,7 @@ func NewStreamService(verifier crypto.Verifier, addr identity.Address) StreamSer
 	}
 }
 
-// Register the StreamService to a grpc.Server.
+// Register the StreamService to a Server.
 func (service *StreamService) Register(server *Server) {
 	RegisterStreamServiceServer(server.Server, service)
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/darknode/crypter"
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
@@ -60,13 +61,13 @@ func main() {
 	log.Printf("address %v", multiAddr)
 
 	// Get ethereum bindings
-	auth, _, _, _, renLedger, err := getEthereumBindings(conf.Keystore, conf.Ethereum)
+	auth, darkpool, _, _, renLedger, err := getEthereumBindings(conf.Keystore, conf.Ethereum)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
 	log.Printf("ethereum %v", auth.From.Hex())
 
-	// Build services
+	// Build service components
 	store, err := leveldb.NewStore(*dataParam)
 	if err != nil {
 		log.Fatalf("cannot create leveldb: %v", err)
@@ -74,28 +75,21 @@ func main() {
 	server := grpc.NewServer()
 	dht := dht.NewDHT(conf.Address, 32)
 	connPool := grpc.NewConnPool(128)
-	crypter := crypto.NewWeakCrypter()
+	crypter := crypter.NewCrypter(conf.Keystore, darkpool, 128, time.Minute)
 
-	pubKey, err := crypto.BytesFromRsaPublicKey(&conf.Keystore.RsaKey.PublicKey)
-	if err != nil {
-		log.Printf("cannot read pubKey: %v", err)
-	}
-	log.Printf("pubKey:\n%v", pubKey)
-
+	// Build services
 	newStatus(&dht, server)
-	orderbooker := newOrderbooker(conf.Keystore.RsaKey, &store, renLedger, server)
+	orderbook := newOrderbook(conf.Keystore.RsaKey, &store, renLedger, server)
 	swarmer := newSwarmer(multiAddr, &dht, &connPool, server)
-	streamer := newStreamer(&crypter, conf.Address, &connPool, server)
+	streamer := newStreamer(&crypter, &crypter, conf.Address, &connPool, server)
 
-	done := make(chan struct{})
-	smpcer := smpc.NewSmpc(20, swarmer, streamer)
-	ome := ome.NewOme(orderbooker, nil, smpcer)
-	go func() {
-		errs := ome.Compute(done)
-		for err := range errs {
-			log.Println(err)
-		}
-	}()
+	// Build smpc
+	smpcer := smpc.NewSmpcer(swarmer, streamer, 20)
+	smpcer.Start()
+	defer smpcer.Shutdown()
+
+	// Build OME
+	ome := ome.NewOme(ome.NewRanker(1, 0), ome.NewComputer(orderbook, smpcer), orderbook, smpcer)
 	go func() {
 		time.Sleep(time.Second)
 		dispatch.CoBegin(func() {
@@ -109,11 +103,9 @@ func main() {
 			}
 		})
 		for {
-			err = ome.Sync()
-			if err != nil {
+			if err := ome.Sync(); err != nil {
 				return
 			}
-
 			time.Sleep(1 * time.Second)
 		}
 	}()
@@ -141,18 +133,18 @@ func newSwarmer(multiAddr identity.MultiAddress, dht *dht.DHT, connPool *grpc.Co
 	return swarm.NewSwarmer(client, dht)
 }
 
-func newOrderbooker(key crypto.RsaKey, store *leveldb.Store, renLedger cal.RenLedger, server *grpc.Server) orderbook.Orderbooker {
-	orderbooker := orderbook.NewOrderbook(key, store, orderbook.NewSyncer(renLedger, 32))
+func newOrderbook(key crypto.RsaKey, store *leveldb.Store, renLedger cal.RenLedger, server *grpc.Server) orderbook.Orderbook {
+	orderbooker := orderbook.NewOrderbook(key, orderbook.NewSyncer(renLedger, 32), store)
 	service := grpc.NewOrderbookService(orderbooker)
 	service.Register(server)
 	return orderbooker
 }
 
-func newStreamer(verifier crypto.Verifier, addr identity.Address, connPool *grpc.ConnPool, server *grpc.Server) stream.Streamer {
-	client := grpc.NewStreamClient(addr, connPool)
+func newStreamer(signer crypto.Signer, verifier crypto.Verifier, addr identity.Address, connPool *grpc.ConnPool, server *grpc.Server) stream.Streamer {
+	client := grpc.NewStreamClient(signer, addr, connPool)
 	service := grpc.NewStreamService(verifier, addr)
 	service.Register(server)
-	return stream.NewStreamer(addr, stream.NewClientRecycler(client), &service)
+	return stream.NewStreamRecycler(stream.NewStreamer(addr, client, &service))
 }
 
 func getIPAddress() (string, error) {

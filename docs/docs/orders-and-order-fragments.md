@@ -8,7 +8,7 @@ The signature is an ECDSA secp256k1 s256 signature of the order ID, stored as by
 
 ### ID
 
-The ID is the keccak256 hash of the order, stored as bytes.
+The ID is the keccak256 hash of the order, stored as bytes. Hashing the order includes all components except the signature, and the id itself. All values are serialized using a big-endian encoding. The nonce is considered specially, being hashed prior to its inclusion in the order ID.
 
 ### Type
 

@@ -144,3 +144,31 @@ type EncryptedFragment struct {
 	Volume        EncryptedCoExpShare `json:"volume"`
 	MinimumVolume EncryptedCoExpShare `json:"minimumVolume"`
 }
+
+// Decrypt an EncryptedFragment using an rsa.PrivateKey.
+func (fragment *EncryptedFragment) Decrypt(privKey rsa.PrivateKey) (Fragment, error) {
+	var err error
+	decryptedFragment := Fragment{
+		OrderID:     fragment.OrderID,
+		OrderType:   fragment.OrderType,
+		OrderParity: fragment.OrderParity,
+		OrderExpiry: fragment.OrderExpiry,
+		ID:          fragment.ID,
+	}
+	if err := decryptedFragment.Tokens.Decrypt(privKey, fragment.Tokens); err != nil {
+		return decryptedFragment, err
+	}
+	decryptedFragment.Price, err = fragment.Price.Decrypt(privKey)
+	if err != nil {
+		return decryptedFragment, err
+	}
+	decryptedFragment.Volume, err = fragment.Volume.Decrypt(privKey)
+	if err != nil {
+		return decryptedFragment, err
+	}
+	decryptedFragment.MinimumVolume, err = fragment.MinimumVolume.Decrypt(privKey)
+	if err != nil {
+		return decryptedFragment, err
+	}
+	return decryptedFragment, nil
+}

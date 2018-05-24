@@ -172,6 +172,7 @@ func (smpc *smpcer) run() {
 	for {
 		select {
 		case <-smpc.shutdown:
+			// FIXME: Close all open streams so that resources do not leak.
 			return
 
 		case inst, ok := <-smpc.instructions:
