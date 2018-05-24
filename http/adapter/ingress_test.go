@@ -27,7 +27,7 @@ var _ = Describe("Ingress Adapter", func() {
 			orderFragmentMappingIn := OrderFragmentMapping{}
 			orderFragmentMappingIn["Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq="] = []OrderFragment{}
 			err = ingressAdapter.OpenOrder(signature, orderFragmentMappingIn)
-			Expect(err).To(BeNil())
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(atomic.LoadInt64(&ingress.numOpened)).To(Equal(int64(1)))
 		})
 
@@ -39,7 +39,7 @@ var _ = Describe("Ingress Adapter", func() {
 			orderFragmentMappingIn := OrderFragmentMapping{}
 			orderFragmentMappingIn["Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq="] = []OrderFragment{}
 			err := ingressAdapter.OpenOrder(string(signatureBytes), orderFragmentMappingIn)
-			Expect(err.Error()).To(ContainSubstring("invalid signature length"))
+			Expect(err).Should(HaveOccurred())
 			Expect(atomic.LoadInt64(&ingress.numOpened)).To(Equal(int64(0)))
 		})
 
@@ -51,9 +51,9 @@ var _ = Describe("Ingress Adapter", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			signature := base64.StdEncoding.EncodeToString(signatureBytes[:])
 			orderFragmentMappingIn := OrderFragmentMapping{}
-			orderFragmentMappingIn["some invalid hash"] = []OrderFragment{}
+			orderFragmentMappingIn["some invalid hash"] = []OrderFragment{OrderFragment{OrderID: "thisisanorderid"}}
 			err = ingressAdapter.OpenOrder(signature, orderFragmentMappingIn)
-			Expect(err.Error()).To(ContainSubstring("cannot decode pool hash"))
+			Expect(err).Should(HaveOccurred())
 			Expect(atomic.LoadInt64(&ingress.numOpened)).To(Equal(int64(0)))
 		})
 	})

@@ -156,12 +156,19 @@ func (adapter *IngressAdapter) unmarshalOrderFragmentMapping(orderFragmentMappin
 	orderFragmentMapping := ingress.OrderFragmentMapping{}
 
 	// Decode order ID
-	for _, value := range orderFragmentMappingIn {
+	for _, values := range orderFragmentMappingIn {
 		var err error
-		if orderID, err = adapter.unmarshalOrderID(value[0].OrderID); err != nil {
-			return orderID, orderFragmentMapping, err
+		foundOrderID := false
+		for _, value := range values {
+			if orderID, err = adapter.unmarshalOrderID(value.OrderID); err != nil {
+				return orderID, orderFragmentMapping, err
+			}
+			foundOrderID = true
+			break
 		}
-		break
+		if foundOrderID {
+			break
+		}
 	}
 
 	// Decode order fragments
