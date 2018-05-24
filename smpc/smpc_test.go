@@ -63,7 +63,7 @@ var _ = Describe("Smpc", func() {
 
 	Context("when joining shares", func() {
 
-		FIt("should join shares to obtain final values", func() {
+		It("should join shares to obtain final values", func() {
 			// Create 16 smpcers and issue 5 random secrets
 			count, err := runSmpcers(24, 5, 0)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -216,8 +216,6 @@ func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int) (int, err
 			}
 		}
 	}()
-
-	log.Println("waiting for results...")
 
 	count := 0
 	for count < numberOfJoins {
