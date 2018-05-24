@@ -12,9 +12,9 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 )
 
-var _ = Describe("swarm ", func() {
+var _ = Describe("Swarm", func() {
 
-	Context("a completely functioning swarmer", func() {
+	Context("when using a fully connected swarmer", func() {
 
 		It("should not error on bootstrap or query", func() {
 			var err error

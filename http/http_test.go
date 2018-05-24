@@ -95,7 +95,6 @@ var _ = Describe("HTTP handlers", func() {
 			server.ServeHTTP(w, r)
 
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
-			Expect(w.Body.String()).To(ContainSubstring("cannot open order"))
 		})
 	})
 
