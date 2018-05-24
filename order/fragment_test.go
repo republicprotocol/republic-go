@@ -2,6 +2,8 @@ package order_test
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -16,9 +18,27 @@ var _ = Describe("Order fragments", func() {
 	orderID := [32]byte{}
 	tokens := shamir.Share{}
 
-	price := CoExpShare{}
-	minVolume := CoExpShare{}
-	maxVolume := CoExpShare{}
+	price := CoExpShare{
+		Co: shamir.Share{
+			Index: uint64(5),
+			Value: uint64(4),
+		},
+		Exp: shamir.Share{
+			Index: uint64(5),
+			Value: uint64(4),
+		},
+	}
+	minVolume := CoExpShare{
+		Co: shamir.Share{
+			Index: uint64(10),
+			Value: uint64(20),
+		},
+		Exp: shamir.Share{
+			Index: uint64(50),
+			Value: uint64(40),
+		},
+	}
+	maxVolume := minVolume
 
 	Context("when creating new fragments", func() {
 
@@ -106,6 +126,36 @@ var _ = Describe("Order fragments", func() {
 			lhs := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
 
 			Ω(lhs.IsCompatible(&lhs)).Should(Equal(false))
+		})
+	})
+
+	Context("when encrypting and decrypting fragments", func() {
+
+		It("should return the same fragment after decrypting it's encrypted form", func() {
+			copy(orderID[:], "orderID")
+			fragment := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
+
+			// Generate new RSA key
+			rsaKey, err := crypto.RandomRsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// Encrypting the fragment must not return an error
+			encryptedFragment, err := fragment.Encrypt(rsaKey.PublicKey)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(encryptedFragment).ToNot(Equal(fragment))
+
+			// Decrypting an encrypted fragment must return the original fragment
+			decryptedFragment, err := encryptedFragment.Decrypt(*rsaKey.PrivateKey)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(decryptedFragment).To(Equal(fragment))
+
+			// Decrypting with incorrect private key must return an error
+			newRsaKey, err := rsa.GenerateKey(rand.Reader, 512)
+			Expect(err).ShouldNot(HaveOccurred())
+			decryptedFragment, err = encryptedFragment.Decrypt(*newRsaKey)
+
+			Expect(err).Should(HaveOccurred())
+			Expect(decryptedFragment).ToNot(Equal(fragment))
 		})
 	})
 })
