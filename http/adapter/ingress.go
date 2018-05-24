@@ -19,12 +19,12 @@ var ErrInvalidPoolHashLength = errors.New("invalid pool hash length")
 var ErrEmptyOrderFragmentMapping = errors.New("empty order fragment mapping")
 
 type IngressAdapter struct {
-	ingress.Ingresser
+	ingress.Ingress
 }
 
-func NewIngressAdapter(ingresser ingress.Ingresser) IngressAdapter {
+func NewIngressAdapter(ingress ingress.Ingress) IngressAdapter {
 	return IngressAdapter{
-		Ingresser: ingresser,
+		Ingress: ingress,
 	}
 }
 
@@ -39,7 +39,7 @@ func (adapter *IngressAdapter) OpenOrder(signatureIn string, orderFragmentMappin
 		return err
 	}
 
-	return adapter.Ingresser.OpenOrder(
+	return adapter.Ingress.OpenOrder(
 		signature,
 		orderID,
 		orderFragmentMapping,
@@ -57,7 +57,7 @@ func (adapter *IngressAdapter) CancelOrder(signatureIn string, orderIDIn string)
 		return err
 	}
 
-	return adapter.Ingresser.CancelOrder(signature, orderID)
+	return adapter.Ingress.CancelOrder(signature, orderID)
 }
 
 func (adapter *IngressAdapter) unmarshalSignature(signatureIn string) ([65]byte, error) {
