@@ -51,7 +51,7 @@ var _ = Describe("Crypter", func() {
 	Context("when verifying signatures", func() {
 
 		It("should return an error for unregistered addresses", func() {
-			for i := 0; i < 100; i++ {
+			for i := 0; i < 10; i++ {
 				keystore, err := crypto.RandomKeystore()
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -93,7 +93,7 @@ var _ = Describe("Crypter", func() {
 		})
 
 		It("should not encrypt messages for unregistered addresses", func() {
-			for i := 0; i < 100; i++ {
+			for i := 0; i < 10; i++ {
 				keystore, err := crypto.RandomKeystore()
 				Expect(err).ShouldNot(HaveOccurred())
 
