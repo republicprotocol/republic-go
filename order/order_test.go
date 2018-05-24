@@ -78,10 +78,10 @@ var _ = Describe("Orders", func() {
 			nonce = int64(20)
 			ord2 := NewOrder(TypeLimit, ParitySell, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
-			err := WriteOrdersToJSONFile("testOrdersFile.json", []*Order{&ord1, &ord2})
+			err := WriteOrdersToJSONFile("orders.out", []*Order{&ord1, &ord2})
 			Ω(err).ShouldNot(HaveOccurred())
 
-			orders, err := NewOrdersFromJSONFile("testOrdersFile.json")
+			orders, err := NewOrdersFromJSONFile("orders.out")
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(orders)).Should(Equal(int(2)))
 		})
@@ -90,10 +90,10 @@ var _ = Describe("Orders", func() {
 			nonce := int64(10)
 			ord1 := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
-			err := writeOrderToJSONFile("testOrdersFile.json", &ord1)
+			err := writeOrderToJSONFile("orders.out", &ord1)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			order, err := NewOrderFromJSONFile("testOrdersFile.json")
+			order, err := NewOrderFromJSONFile("orders.out")
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(order.Nonce).Should(Equal(int64(10)))
 		})

@@ -132,7 +132,7 @@ func Connect(ganacheRPC string) (ethereum.Conn, error) {
 			Network:                 ethereum.NetworkGanache,
 			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
 			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
-			RenLedgerAddress:        ethereum.RenAddressOnRopsten.String(),
+			RenLedgerAddress:        ethereum.LedgerAddressOnGanache.String(),
 		},
 	}, nil
 }

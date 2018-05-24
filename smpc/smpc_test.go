@@ -19,12 +19,12 @@ import (
 
 var channelHub stream.ChannelHub
 
-var _ = Describe("smpc ", func() {
+var _ = Describe("Smpc", func() {
 	BeforeEach(func() {
 		channelHub = stream.NewChannelHub()
 	})
 
-	Context("on starting an smpcer", func() {
+	Context("when starting", func() {
 
 		It("should return error if smpcer has already been started", func() {
 			smpcer, _, err := createSMPCer()
@@ -39,7 +39,7 @@ var _ = Describe("smpc ", func() {
 		})
 	})
 
-	Context("on shutting down an smpcer", func() {
+	Context("when shutting down", func() {
 
 		It("should return error if smpcer is not running", func() {
 			smpcer, _, err := createSMPCer()
@@ -61,9 +61,9 @@ var _ = Describe("smpc ", func() {
 		})
 	})
 
-	Context("a complete smpcer implementation", func() {
+	Context("when joining shares", func() {
 
-		It("should join shares to obtain final values", func() {
+		FIt("should join shares to obtain final values", func() {
 			// Create 16 smpcers and issue 5 random secrets
 			count, err := runSmpcers(24, 5, 0)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -71,7 +71,7 @@ var _ = Describe("smpc ", func() {
 
 		})
 
-		It("should combine shares even if one-third of the nodes are not active", func() {
+		It("should join shares when faults are below the threshold", func() {
 			// Create 24 smpcers and issue 5 random secrets
 			// Do not start 1/3 of the smpcers (for example: 7)
 			count, err := runSmpcers(24, 5, 7)
@@ -79,7 +79,7 @@ var _ = Describe("smpc ", func() {
 			Expect(count).To(Equal(5))
 		})
 
-		It("should not combine shares if more than one-third of the nodes are not active", func() {
+		It("should not join shares when faults are above the threshold", func() {
 			timer := time.NewTimer(time.Second * 4)
 			count := int32(0)
 
@@ -97,7 +97,7 @@ var _ = Describe("smpc ", func() {
 			Expect(atomic.LoadInt32(&count)).To(Equal(int32(0)))
 		})
 
-		It("should run nodes in multiple networks", func() {
+		It("should join when nodes are in multiple non-overlapping networks", func() {
 			// Run 12 smpcers in 2 networks such that each network has 6 smpcers which
 			// in such a way the that each network has seperate smpcers.
 			count, err := runSmpcersInTwoNetworks(12, 6)
@@ -105,7 +105,7 @@ var _ = Describe("smpc ", func() {
 			Expect(count).To(Equal(2))
 		})
 
-		It("should run nodes overlapped in multiple networks", func() {
+		It("should join when nodes are in multiple overlapping networks", func() {
 			// Run 9 smpcers in 2 networks such that each network has 6 smpcers
 			// (with replacement) and issue unique random secrets to each of the networks
 			count, err := runSmpcersInTwoNetworks(9, 6)
@@ -216,6 +216,8 @@ func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int) (int, err
 			}
 		}
 	}()
+
+	log.Println("waiting for results...")
 
 	count := 0
 	for count < numberOfJoins {
