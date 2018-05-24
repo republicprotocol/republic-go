@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/big"
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -186,6 +187,9 @@ func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error
 	}
 
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
+	auth.GasPrice = big.NewInt(40000000000)
+	//auth.GasLimit = 150000
+
 	client, err := ethereum.Connect(config)
 	if err != nil {
 		log.Fatal("fail to connect to ethereum")
