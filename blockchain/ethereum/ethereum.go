@@ -51,7 +51,6 @@ type Config struct {
 	RepublicTokenAddress    string  `json:"republicTokenAddress"`
 	DarknodeRegistryAddress string  `json:"darknodeRegistryAddress"`
 	RenLedgerAddress        string  `json:"renLedgerAddress"`
-	ArcAddress              string  `json:"arcAddress"`
 }
 
 // Conn contains the client and the contracts deployed to it

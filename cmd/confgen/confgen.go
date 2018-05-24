@@ -33,7 +33,7 @@ func main() {
 			Plugins: []logger.PluginOptions{
 				{
 					File: &logger.FilePluginOptions{
-						Path: "stdout",
+						Path: "/home/ubuntu/.darknode/darknode.out",
 					},
 				},
 			},
@@ -43,6 +43,7 @@ func main() {
 			URI:                     "https://ropsten.infura.io",
 			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnRopsten.String(),
 			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnRopsten.String(),
+			RenLedgerAddress:        ethereum.LedgerAddressOnRopsten.String(),
 		},
 	}
 
