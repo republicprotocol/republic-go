@@ -84,7 +84,7 @@ func main() {
 				if err != nil {
 					return err
 				}
-				_, err = registry.Epoch()
+				_, err = registry.TriggerEpoch()
 				log.Println("Epoch called.")
 				return err
 			},

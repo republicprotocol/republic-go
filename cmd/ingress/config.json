@@ -1,15 +1,14 @@
 {
     "bootstrapMultiAddresses": [
-        "/ip4/18.231.119.113/tcp/18514/republic/8MGxw5z4Fm8TS4h3nJ535yynHgTw4H",
-        "/ip4/184.72.82.73/tcp/18514/republic/8MJjW5KTkoDwVpqenjBHGQBhww86qT",
-        "/ip4/52.47.111.145/tcp/18514/republic/8MHkxMUmDAP5Y5fKDGDAp24sT2qY9y"
+        "/ip4/35.183.18.20/tcp/18514/republic/8MHSYJd6XVKofL4o8MzkydvNZHv5b5",
+        "/ip4/18.231.115.239/tcp/18514/republic/8MHagooNSWmRGE3odnK5RJkbGkVWoz",
+        "/ip4/34.240.156.49/tcp/18514/republic/8MHY9jvqdVzUdDpFqT3FedhdLzbRMQ"
     ],
     "ethereum": {
         "network": "ropsten",
         "uri": "https://ropsten.infura.io",
         "republicTokenAddress": "0x65d54EDa5f032F2275Caa557E50c029cFbCCBB54",
         "darknodeRegistryAddress": "0x69eb8d26157b9e12f959ea9f189A5D75991b59e3",
-        "renLedgerAddress": "0x6235E09103bC7f205837237e4eAD855bC196E4D3",
-        "arcAddress": "0x2940089833b688a1A46c150085EF004f85fCEE87"
+        "renLedgerAddress": "0x6235E09103bC7f205837237e4eAD855bC196E4D3"
     }
 }

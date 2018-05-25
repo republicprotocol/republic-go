@@ -31,16 +31,16 @@ const (
 )
 
 func main() {
-	key , err := LoadKey()
-	if err != nil{
+	key, err := LoadKey()
+	if err != nil {
 		log.Fatal(err)
 	}
-	registry ,err  := NewRegistry(key)
+	registry, err := NewRegistry(key)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, address := range addresses{
+	for _, address := range addresses {
 		addr := identity.Address(address)
 
 		// Check if node has already been registered
@@ -64,7 +64,7 @@ func main() {
 
 	log.Println("triggering epoch ")
 	_, err = registry.TriggerEpoch()
-	if err!= nil {
+	if err != nil {
 		log.Fatalf("failt to trigger epoch ")
 	}
 	log.Println("epoch  called ")
@@ -80,7 +80,7 @@ func LoadKey() (*keystore.Key, error) {
 	return key, err
 }
 
-func NewRegistry( key *keystore.Key) (dnr.DarknodeRegistry, error) {
+func NewRegistry(key *keystore.Key) (dnr.DarknodeRegistry, error) {
 	config := ethereum.Config{
 		Network:                 ethereum.NetworkRopsten,
 		URI:                     "https://ropsten.infura.io",
