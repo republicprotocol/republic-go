@@ -22,12 +22,13 @@ type OpenOrderRequest struct {
 func NewServer(openOrderAdapter adapter.OpenOrderAdapter, cancelOrderAdapter adapter.CancelOrderAdapter) http.Handler {
 	r := mux.NewRouter().StrictSlash(true)
 	r.HandleFunc("/orders", OpenOrderHandler(openOrderAdapter)).Methods("POST")
-	r.HandleFunc("/orders/{id}", CancelOrderHandler(cancelOrderAdapter)).Methods("DELETE")
+	r.HandleFunc("/orders", CancelOrderHandler(cancelOrderAdapter)).Methods("DELETE")
 	r.Use(RecoveryHandler)
 
 	handler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
 	}).Handler(r)
 
 	return handler
@@ -64,7 +65,7 @@ func OpenOrderHandler(adapter adapter.OpenOrderAdapter) http.HandlerFunc {
 // CancelOrderHandler handles HTTP Delete Requests
 func CancelOrderHandler(adapter adapter.CancelOrderAdapter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orderID := mux.Vars(r)["id"]
+		orderID := r.URL.Query().Get("id")
 		if orderID == "" {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot cancel order: nil id"))
 			return
