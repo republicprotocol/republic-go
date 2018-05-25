@@ -105,7 +105,7 @@ var _ = Describe("HTTP handlers", func() {
 			orderID := "vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ"
 			signature := "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq="
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "http://localhost/orders/"+orderID+"?signature="+signature, nil)
+			r := httptest.NewRequest("DELETE", "http://localhost/orders?id="+orderID+"&signature="+signature, nil)
 
 			adapter := weakAdapter{}
 			server := NewServer(&adapter, &adapter)
@@ -119,7 +119,7 @@ var _ = Describe("HTTP handlers", func() {
 
 			orderID := "vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ"
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "http://localhost/orders/"+orderID, nil)
+			r := httptest.NewRequest("DELETE", "http://localhost/orders?id="+orderID, nil)
 
 			adapter := weakAdapter{}
 			server := NewServer(&adapter, &adapter)
@@ -134,7 +134,7 @@ var _ = Describe("HTTP handlers", func() {
 			orderID := "vrZhWU3VV9LRIriRvuzT9CbVc57wQhbQ"
 			signature := "Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq="
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "http://localhost/orders/"+orderID+"?signature="+signature, nil)
+			r := httptest.NewRequest("DELETE", "http://localhost/orders?id="+orderID+"&signature="+signature, nil)
 
 			adapter := errAdapter{}
 			server := NewServer(&adapter, &adapter)

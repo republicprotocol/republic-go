@@ -59,7 +59,7 @@ HTTP/1.1 POST /orders
 **Request**
 
 ```
-HTTP/1.1 DELETE /orders/{id}?signature={signature}
+HTTP/1.1 DELETE /orders/?id={id}&signature={signature}
 ```
 
 - `id` A base64 encoded keccak256 hash of the order.
