@@ -3,6 +3,7 @@ package ome_test
 import (
 	"context"
 	"math/rand"
+	"sync/atomic"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -18,18 +19,22 @@ import (
 
 var _ = Describe("Computer", func() {
 
-	Context("when opening new orders", func() {
+	Context("when given computations", func() {
 
-		It("should not return an error", func(done Done) {
+		It("should successfully complete all computations", func(done Done) {
 			defer close(done)
 
 			numberOfComputations := 10
 
+			// Start mockSmpcer
 			smpcer := newMockSmpcer(PassAll)
 			err := smpcer.Start()
 			Expect(err).ShouldNot(HaveOccurred())
 
+			// Create mockOrderbook
 			orderbook := newMockOrderbook()
+
+			// Create Computer
 			computer := NewComputer(&orderbook, &smpcer)
 
 			quit := make(chan struct{})
@@ -40,14 +45,10 @@ var _ = Describe("Computer", func() {
 			computations := make(Computations, numberOfComputations)
 			for i := 0; i < numberOfComputations; i++ {
 				buyOrder := newOrder(true)
-				fragments, err := buyOrder.Split(5, 4)
-				Expect(err).ShouldNot(HaveOccurred())
-				orderbook.orderFragments[buyOrder.ID] = fragments[0]
+				orderbook.AddOrder(buyOrder)
 
 				sellOrder := newOrder(false)
-				fragments, err = sellOrder.Split(5, 4)
-				Expect(err).ShouldNot(HaveOccurred())
-				orderbook.orderFragments[sellOrder.ID] = fragments[0]
+				orderbook.AddOrder(sellOrder)
 
 				computations[i] = Computation{
 					Buy:      buyOrder.ID,
@@ -57,18 +58,26 @@ var _ = Describe("Computer", func() {
 			}
 
 			computer.Compute([32]byte{1}, computations)
+
+			// Constantly call Compute() until all orders have been matched
+			computations = Computations{}
 			for {
-				time.Sleep(10 * time.Millisecond)
-				Expect(orderbook.numberOfOrderMatches).Should(Equal(numberOfComputations))
-				return
+				time.Sleep(20 * time.Millisecond)
+				computer.Compute([32]byte{1}, computations)
+
+				if atomic.LoadInt64(&orderbook.numberOfOrderMatches) == int64(numberOfComputations) {
+					break
+				}
 			}
+
+			Expect(atomic.LoadInt64(&orderbook.numberOfOrderMatches)).Should(Equal(int64(numberOfComputations)))
 		}, 2 /* 2 second timeout */)
 	})
 })
 
 type mockOrderbook struct {
-	numberOfOrderMatches int
-	synced               bool
+	numberOfOrderMatches int64
+	hasSynced            bool
 	rsaKey               crypto.RsaKey
 	orderFragments       map[order.ID]order.Fragment
 	orders               map[order.ID]order.Order
@@ -83,7 +92,7 @@ func (book *mockOrderbook) Order(orderID order.ID) (order.Order, error) {
 }
 
 func (book *mockOrderbook) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
-	book.numberOfOrderMatches++
+	atomic.AddInt64(&book.numberOfOrderMatches, 1)
 	return nil
 }
 
@@ -94,7 +103,7 @@ func (book *mockOrderbook) OpenOrder(ctx context.Context, orderFragment order.En
 }
 
 func (book *mockOrderbook) Sync() (orderbook.ChangeSet, error) {
-	if !book.synced {
+	if !book.hasSynced {
 		changes := make(orderbook.ChangeSet, 5)
 		i := 0
 		for _, orderFragment := range book.orderFragments {
@@ -106,10 +115,16 @@ func (book *mockOrderbook) Sync() (orderbook.ChangeSet, error) {
 			}
 			i++
 		}
-		book.synced = true
+		book.hasSynced = true
 		return changes, nil
 	}
 	return orderbook.ChangeSet{}, nil
+}
+
+func (book *mockOrderbook) AddOrder(ord order.Order) {
+	if _, ok := book.orders[ord.ID]; !ok {
+		book.orders[ord.ID] = ord
+	}
 }
 
 func newMockOrderbook() mockOrderbook {
@@ -118,8 +133,8 @@ func newMockOrderbook() mockOrderbook {
 	Expect(err).ShouldNot(HaveOccurred())
 
 	return mockOrderbook{
-		numberOfOrderMatches: 0,
-		synced:               false,
+		numberOfOrderMatches: int64(0),
+		hasSynced:            false,
 		rsaKey:               rsaKey,
 		orderFragments:       make(map[order.ID]order.Fragment),
 		orders:               make(map[order.ID]order.Order),
