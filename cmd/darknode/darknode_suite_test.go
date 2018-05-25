@@ -1,4 +1,4 @@
-package darknode_test
+package main_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestDarknode(t *testing.T) {
+func TestDarknodeCmd(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Darknode Suite")
+	RunSpecs(t, "Darknode Cmd Suite")
 }

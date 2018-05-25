@@ -198,3 +198,15 @@ func (val EncryptedCoExpShare) MarshalBinary() ([]byte, error) {
 	binary.Write(buf, binary.BigEndian, val.Exp)
 	return buf.Bytes(), nil
 }
+
+// Decrypt an EncryptedCoExpShare using an rsa.PrivateKey.
+func (val *EncryptedCoExpShare) Decrypt(privKey rsa.PrivateKey) (CoExpShare, error) {
+	decryptedVal := CoExpShare{Co: shamir.Share{}, Exp: shamir.Share{}}
+	if err := decryptedVal.Co.Decrypt(privKey, val.Co); err != nil {
+		return decryptedVal, err
+	}
+	if err := decryptedVal.Exp.Decrypt(privKey, val.Exp); err != nil {
+		return decryptedVal, err
+	}
+	return decryptedVal, nil
+}

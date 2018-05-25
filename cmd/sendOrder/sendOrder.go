@@ -10,10 +10,8 @@ import (
 	"io/ioutil"
 	"log"
 	"math/big"
-	"math/rand"
 	netHttp "net/http"
 	"os"
-	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
@@ -29,7 +27,9 @@ func main() {
 	relayParam := flag.String("relay", "http://127.0.0.1:18515", "Binding and port of the relay")
 	keystoreParam := flag.String("keystore", "", "Optionally encrypted keystore file")
 	configParam := flag.String("config", "", "Ethereum configuration file")
+	orderFile := flag.String("order", "", "order needs to be sent")
 	passphraseParam := flag.String("passphrase", "", "Optional passphrase to decrypt the keystore file")
+
 	flag.Parse()
 
 	keystore, err := loadKeystore(*keystoreParam, *passphraseParam)
@@ -48,16 +48,14 @@ func main() {
 	}
 	log.Printf("ethereum %v", auth.From.Hex())
 
-	nonce := rand.Int63()
-	one := order.CoExp{
-		Co:  200,
-		Exp: 26,
+	ord, err := order.NewOrderFromJSONFile(*orderFile)
+	if err != nil {
+		log.Fatalf("cannot load order from file")
 	}
-	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.TokensETHREN, one, one, one, nonce)
 
 	signatureData := crypto.Keccak256([]byte("Republic Protocol: open: "), ord.ID[:])
 	signatureData = crypto.Keccak256([]byte("\x19Ethereum Signed Message:\n32"), signatureData)
-	signature, err := keystore.Sign(crypto.NewHash32(signatureData))
+	signature, err := keystore.Sign(signatureData)
 
 	log.Printf("id = %v; sig = %v", base64.StdEncoding.EncodeToString(ord.ID[:]), base64.StdEncoding.EncodeToString(signature))
 
@@ -137,6 +135,7 @@ func main() {
 		log.Fatalf("cannot read response body: %v", err)
 	}
 	log.Printf("body: %v", string(resText))
+
 }
 
 func loadKeystore(keystoreFile, passphrase string) (crypto.Keystore, error) {

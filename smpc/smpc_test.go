@@ -19,12 +19,12 @@ import (
 
 var channelHub stream.ChannelHub
 
-var _ = Describe("smpc ", func() {
+var _ = Describe("Smpc", func() {
 	BeforeEach(func() {
 		channelHub = stream.NewChannelHub()
 	})
 
-	Context("on starting an smpcer", func() {
+	Context("when starting", func() {
 
 		It("should return error if smpcer has already been started", func() {
 			smpcer, _, err := createSMPCer()
@@ -39,7 +39,7 @@ var _ = Describe("smpc ", func() {
 		})
 	})
 
-	Context("on shutting down an smpcer", func() {
+	Context("when shutting down", func() {
 
 		It("should return error if smpcer is not running", func() {
 			smpcer, _, err := createSMPCer()
@@ -61,7 +61,7 @@ var _ = Describe("smpc ", func() {
 		})
 	})
 
-	Context("a complete smpcer implementation", func() {
+	Context("when joining shares", func() {
 
 		It("should join shares to obtain final values", func() {
 			// Create 16 smpcers and issue 5 random secrets
@@ -71,7 +71,7 @@ var _ = Describe("smpc ", func() {
 
 		})
 
-		It("should combine shares even if one-third of the nodes are not active", func() {
+		It("should join shares when faults are below the threshold", func() {
 			// Create 24 smpcers and issue 5 random secrets
 			// Do not start 1/3 of the smpcers (for example: 7)
 			count, err := runSmpcers(24, 5, 7)
@@ -79,7 +79,7 @@ var _ = Describe("smpc ", func() {
 			Expect(count).To(Equal(5))
 		})
 
-		It("should not combine shares if more than one-third of the nodes are not active", func() {
+		It("should not join shares when faults are above the threshold", func() {
 			timer := time.NewTimer(time.Second * 4)
 			count := int32(0)
 
@@ -97,7 +97,7 @@ var _ = Describe("smpc ", func() {
 			Expect(atomic.LoadInt32(&count)).To(Equal(int32(0)))
 		})
 
-		It("should run nodes in multiple networks", func() {
+		It("should join when nodes are in multiple non-overlapping networks", func() {
 			// Run 12 smpcers in 2 networks such that each network has 6 smpcers which
 			// in such a way the that each network has seperate smpcers.
 			count, err := runSmpcersInTwoNetworks(12, 6)
@@ -105,7 +105,7 @@ var _ = Describe("smpc ", func() {
 			Expect(count).To(Equal(2))
 		})
 
-		It("should run nodes overlapped in multiple networks", func() {
+		It("should join when nodes are in multiple overlapping networks", func() {
 			// Run 9 smpcers in 2 networks such that each network has 6 smpcers
 			// (with replacement) and issue unique random secrets to each of the networks
 			count, err := runSmpcersInTwoNetworks(9, 6)
@@ -151,40 +151,16 @@ func createSMPCer() (Smpcer, identity.Address, error) {
 }
 
 func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int) (int, error) {
-	var err error
-	smpcers := make(map[int]Smpcer, numberOfSmpcers)
-	addrs := make(identity.Addresses, numberOfSmpcers)
 
-	// Generate Smpcers with addresses
-	for i := numberOfDeadNodes; i < numberOfSmpcers; i++ {
-		smpcers[i], addrs[i], err = createSMPCer()
-		if err != nil {
-			return 0, err
-		}
-		err = smpcers[i].Start()
-		if err != nil {
-			return 0, err
-		}
+	smpcers, addrs, err := createAddressesAndStartSmpcers(numberOfSmpcers, numberOfDeadNodes)
+	if err != nil {
+		return 0, err
 	}
 
 	// Send connect instructions to all smpcers
 	for i := numberOfDeadNodes; i < numberOfSmpcers; i++ {
-		// Make a list of addresses after removing the current smpcer's address
-		addresses := make(identity.Addresses, numberOfSmpcers)
-		copy(addresses, addrs)
-		addresses = append(addresses[:i], addresses[i+1:]...)
-
-		instConnect := InstConnect{
-			K:     int64(2 * (numberOfSmpcers + 1) / 3),
-			N:     int64(numberOfSmpcers),
-			Nodes: addresses,
-		}
-		message := Inst{
-			InstID:      [32]byte{1},
-			NetworkID:   [32]byte{1},
-			InstConnect: &instConnect,
-		}
-		smpcers[i].Instructions() <- message
+		addresses := filterAddresses(numberOfSmpcers, i, addrs)
+		sendConnectInstruction(numberOfSmpcers, 1, smpcers[i], addresses)
 	}
 
 	time.Sleep(2 * time.Second)
@@ -194,9 +170,7 @@ func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int) (int, err
 		// Send shares of multiple instructions
 		for j := 0; j < numberOfJoins; j++ {
 
-			// Create a secret and split it
-			secret := uint64(rand.Intn(100))
-			shares, err := shamir.Split(int64(numberOfSmpcers), int64(2*(numberOfSmpcers+1)/3), secret)
+			shares, err := createSecretShares(numberOfSmpcers)
 			if err != nil {
 				log.Printf("cannot split secret: %v", err)
 				return
@@ -204,45 +178,20 @@ func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int) (int, err
 
 			// Send instJ instructions to join all the secret shares
 			for i := numberOfDeadNodes; i < numberOfSmpcers; i++ {
-				instJ := InstJ{
-					Share: shares[i],
-				}
-				message := Inst{
-					InstID:    [32]byte{byte(2 + j)},
-					NetworkID: [32]byte{1},
-					InstJ:     &instJ,
-				}
-				smpcers[i].Instructions() <- message
+				sendJoinInstruction(shares[i], j, 1, smpcers[i])
 			}
 		}
 	}()
 
-	count := 0
-	for count < numberOfJoins {
-		for i := numberOfDeadNodes; i < numberOfSmpcers; i++ {
-			<-smpcers[i].Results()
-		}
-		count++
-	}
-
-	return count, nil
+	return waitForResults(numberOfJoins, numberOfDeadNodes, numberOfSmpcers, smpcers), nil
 }
 
+// Runs smpcers in two networks (either overlapped or not) and sends different secrets to both
 func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int) (int, error) {
-	var err error
-	smpcers := make(map[int]Smpcer, numberOfSmpcers)
-	addrs := make(identity.Addresses, numberOfSmpcers)
 
-	// Generate Smpcers with addresses
-	for i := 0; i < numberOfSmpcers; i++ {
-		smpcers[i], addrs[i], err = createSMPCer()
-		if err != nil {
-			return 0, err
-		}
-		err = smpcers[i].Start()
-		if err != nil {
-			return 0, err
-		}
+	smpcers, addrs, err := createAddressesAndStartSmpcers(numberOfSmpcers, 0)
+	if err != nil {
+		return 0, err
 	}
 
 	// Create 2 lists that will store the smpcer addresses of each network
@@ -251,50 +200,22 @@ func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int) (int, 
 
 	// Send connect instructions to all smpcers in Network 1
 	for i := 0; i < minimumNumberOfSmpcers; i++ {
-		// Make a list of addresses after removing the current smpcer's address
-		addresses := make(identity.Addresses, minimumNumberOfSmpcers)
-		copy(addresses, addrsNetwork1)
-		addresses = append(addresses[:i], addresses[i+1:]...)
-
-		instConnect := InstConnect{
-			K:     int64(2 * (minimumNumberOfSmpcers + 1) / 3),
-			N:     int64(minimumNumberOfSmpcers),
-			Nodes: addresses,
-		}
-		message := Inst{
-			InstID:      [32]byte{1},
-			NetworkID:   [32]byte{1},
-			InstConnect: &instConnect,
-		}
-		smpcers[i].Instructions() <- message
+		addresses := filterAddresses(minimumNumberOfSmpcers, i, addrsNetwork1)
+		sendConnectInstruction(minimumNumberOfSmpcers, 1, smpcers[i], addresses)
 	}
 
 	// Send connect instructions to all smpcers in Network 2
 	for i := numberOfSmpcers - minimumNumberOfSmpcers; i < numberOfSmpcers; i++ {
-		// Make a list of addresses after removing the current smpcer's address
-		addresses := make(identity.Addresses, minimumNumberOfSmpcers)
-		copy(addresses, addrsNetwork2)
-		addresses = append(addresses[:i-numberOfSmpcers+minimumNumberOfSmpcers], addresses[i-numberOfSmpcers+minimumNumberOfSmpcers+1:]...)
-
-		instConnect := InstConnect{
-			K:     int64(2 * (minimumNumberOfSmpcers + 1) / 3),
-			N:     int64(minimumNumberOfSmpcers),
-			Nodes: addresses,
-		}
-		message := Inst{
-			InstID:      [32]byte{1},
-			NetworkID:   [32]byte{2},
-			InstConnect: &instConnect,
-		}
-		smpcers[i].Instructions() <- message
+		addresses := filterAddresses(minimumNumberOfSmpcers, i-numberOfSmpcers+minimumNumberOfSmpcers, addrsNetwork2)
+		sendConnectInstruction(minimumNumberOfSmpcers, 2, smpcers[i], addresses)
 	}
 
 	time.Sleep(2 * time.Second)
 
 	go func() {
-		// Create a secret and split it
-		secret := uint64(rand.Intn(100))
-		shares, err := shamir.Split(int64(minimumNumberOfSmpcers), int64(2*(minimumNumberOfSmpcers+1)/3), secret)
+
+		// Create a new random secret for network1 and split it
+		shares, err := createSecretShares(minimumNumberOfSmpcers)
 		if err != nil {
 			log.Printf("cannot split secret: %v", err)
 			return
@@ -302,20 +223,11 @@ func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int) (int, 
 
 		// Send instJ instructions to Network 1 join all the secret shares
 		for i := 0; i < minimumNumberOfSmpcers; i++ {
-			instJ := InstJ{
-				Share: shares[i],
-			}
-			message := Inst{
-				InstID:    [32]byte{byte(2)},
-				NetworkID: [32]byte{byte(1)},
-				InstJ:     &instJ,
-			}
-			smpcers[i].Instructions() <- message
+			sendJoinInstruction(shares[i], 0, 1, smpcers[i])
 		}
 
 		// Create a new random secret for network2 and split it
-		secret = uint64(rand.Intn(100))
-		shares, err = shamir.Split(int64(minimumNumberOfSmpcers), int64(2*(minimumNumberOfSmpcers+1)/3), secret)
+		shares, err = createSecretShares(minimumNumberOfSmpcers)
 		if err != nil {
 			log.Printf("cannot split secret: %v", err)
 			return
@@ -323,30 +235,88 @@ func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int) (int, 
 
 		// Send instJ instructions to Network 2 join all the secret shares
 		for i := numberOfSmpcers - minimumNumberOfSmpcers; i < numberOfSmpcers; i++ {
-			instJ := InstJ{
-				Share: shares[i-numberOfSmpcers+minimumNumberOfSmpcers],
-			}
-			message := Inst{
-				InstID:    [32]byte{byte(2)},
-				NetworkID: [32]byte{byte(2)},
-				InstJ:     &instJ,
-			}
-			smpcers[i].Instructions() <- message
+			sendJoinInstruction(shares[i-numberOfSmpcers+minimumNumberOfSmpcers], 0, 2, smpcers[i])
 		}
 	}()
 
+	// Ensure results from both networks have arrived
 	count := 0
-	// Ensure results from network1 has arrived
-	for i := 0; i < minimumNumberOfSmpcers; i++ {
-		<-smpcers[i].Results()
-	}
-	count++
-
-	// Ensure results from network2 has arrived
-	for i := numberOfSmpcers - minimumNumberOfSmpcers; i < numberOfSmpcers; i++ {
-		<-smpcers[i].Results()
-	}
-	count++
+	count += waitForResults(1, 0, minimumNumberOfSmpcers, smpcers)
+	count += waitForResults(1, numberOfSmpcers-minimumNumberOfSmpcers, numberOfSmpcers, smpcers)
 
 	return count, nil
+}
+
+func createAddressesAndStartSmpcers(numberOfSmpcers, numberOfDeadNodes int) (map[int]Smpcer, identity.Addresses, error) {
+	var err error
+	smpcers := make(map[int]Smpcer, numberOfSmpcers)
+	addrs := make(identity.Addresses, numberOfSmpcers)
+
+	// Generate Smpcers with addresses and start them
+	for i := numberOfDeadNodes; i < numberOfSmpcers; i++ {
+		smpcers[i], addrs[i], err = createSMPCer()
+		if err != nil {
+			return smpcers, addrs, err
+		}
+		err = smpcers[i].Start()
+		if err != nil {
+			return smpcers, addrs, err
+		}
+	}
+	return smpcers, addrs, err
+}
+
+func filterAddresses(numberOfSmpcers, removeIndex int, addrs identity.Addresses) identity.Addresses {
+	// Make a list of addresses after removing the current smpcer's address
+	addresses := make(identity.Addresses, numberOfSmpcers)
+	copy(addresses, addrs)
+	return append(addresses[:removeIndex], addresses[removeIndex+1:]...)
+}
+
+func sendConnectInstruction(numberOfSmpcers, networkID int, smpcer Smpcer, addresses identity.Addresses) {
+	instConnect := InstConnect{
+		K:     int64(2 * (numberOfSmpcers + 1) / 3),
+		N:     int64(numberOfSmpcers),
+		Nodes: addresses,
+	}
+	message := Inst{
+		InstID:      [32]byte{1},
+		NetworkID:   [32]byte{byte(networkID)},
+		InstConnect: &instConnect,
+	}
+	smpcer.Instructions() <- message
+}
+
+func sendJoinInstruction(share shamir.Share, joinIndex, networkID int, smpcer Smpcer) {
+	instJ := InstJ{
+		Share: share,
+	}
+	message := Inst{
+		InstID:    [32]byte{byte(2 + joinIndex)},
+		NetworkID: [32]byte{byte(networkID)},
+		InstJ:     &instJ,
+	}
+	smpcer.Instructions() <- message
+}
+
+func createSecretShares(numberOfSmpcers int) (shamir.Shares, error) {
+	// Create a secret and split it
+	secret := uint64(rand.Intn(100))
+	shares, err := shamir.Split(int64(numberOfSmpcers), int64(2*(numberOfSmpcers+1)/3), secret)
+	if err != nil {
+		return shamir.Shares{}, err
+	}
+	return shares, nil
+}
+
+func waitForResults(numberOfJoins, startIndex, endIndex int, smpcers map[int]Smpcer) int {
+	count := 0
+	for count < numberOfJoins {
+		for i := startIndex; i < endIndex; i++ {
+			<-smpcers[i].Results()
+		}
+		count++
+	}
+
+	return count
 }

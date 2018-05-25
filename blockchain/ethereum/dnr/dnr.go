@@ -288,6 +288,18 @@ func (darkNodeRegistry *DarknodeRegistry) GetAllNodes() ([][]byte, error) {
 	return arr, nil
 }
 
+func (darkNodeRegistry *DarknodeRegistry) Darknodes() (identity.Addresses, error) {
+	ret, err := darkNodeRegistry.binding.GetDarkNodes(darkNodeRegistry.callOpts)
+	if err != nil {
+		return nil, err
+	}
+	arr := make(identity.Addresses, len(ret))
+	for i := range ret {
+		arr[i] = identity.ID(ret[i][:]).Address()
+	}
+	return arr, nil
+}
+
 // MinimumBond gets the minimum viable bond amount
 func (darkNodeRegistry *DarknodeRegistry) MinimumBond() (stackint.Int1024, error) {
 	bond, err := darkNodeRegistry.binding.MinimumBond(darkNodeRegistry.callOpts)
@@ -416,5 +428,18 @@ func (darkNodeRegistry *DarknodeRegistry) Epoch() (cal.Epoch, error) {
 // current Epoch. It returns ErrPodNotFound if the identity.Address is not
 // registered in the current Epoch.
 func (darkNodeRegistry *DarknodeRegistry) Pod(addr identity.Address) (cal.Pod, error) {
-	panic("unimplemented")
+	pods, err := darkNodeRegistry.Pods()
+	if err != nil {
+		return cal.Pod{}, err
+	}
+
+	for i := range pods {
+		for j := range pods[i].Darknodes {
+			if pods[i].Darknodes[j] == addr {
+				return pods[i], nil
+			}
+		}
+	}
+
+	return cal.Pod{}, errors.New("cannot find node in any pod")
 }

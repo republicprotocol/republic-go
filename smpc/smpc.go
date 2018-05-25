@@ -258,7 +258,7 @@ func (smpc *smpcer) instJ(instID, networkID [32]byte, inst InstJ) {
 	smpc.processMessageJ(*msg.MessageJ)
 
 	for _, addr := range smpc.network[networkID] {
-		smpc.sendMessage(addr, &msg)
+		go smpc.sendMessage(addr, &msg)
 	}
 }
 
@@ -308,6 +308,7 @@ func (smpc *smpcer) processRemoteStream(remoteAddr identity.Address, remoteStrea
 		msg := Message{}
 		if err := remoteStream.Recv(&msg); err != nil {
 			if err == io.EOF || err == stream.ErrRecvOnClosedStream {
+				log.Printf("closing stream with %v: %v", remoteAddr, err)
 				return
 			}
 			log.Printf("cannot recv message from %v: %v", remoteAddr, err)

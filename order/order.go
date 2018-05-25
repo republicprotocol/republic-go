@@ -216,7 +216,7 @@ func (order *Order) Bytes() []byte {
 	binary.Write(buf, binary.BigEndian, order.Price)
 	binary.Write(buf, binary.BigEndian, order.Volume)
 	binary.Write(buf, binary.BigEndian, order.MinimumVolume)
-	binary.Write(buf, binary.BigEndian, order.Nonce)
+	binary.Write(buf, binary.BigEndian, order.bytesFromNonce())
 	return buf.Bytes()
 }
 
@@ -231,4 +231,10 @@ func (order *Order) Equal(other *Order) bool {
 		order.Volume == other.Volume &&
 		order.MinimumVolume == other.MinimumVolume &&
 		order.Nonce == other.Nonce
+}
+
+func (order *Order) bytesFromNonce() []byte {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.BigEndian, order.Nonce)
+	return crypto.Keccak256(buf.Bytes())
 }

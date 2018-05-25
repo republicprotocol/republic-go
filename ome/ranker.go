@@ -90,7 +90,7 @@ func (ranker *ranker) InsertBuy(order PriorityOrder) {
 		})
 		ranker.computations = append(
 			append(
-				ranker.computations[:index-1],
+				ranker.computations[:index],
 				computation,
 			),
 			ranker.computations[index:]...,
@@ -120,7 +120,7 @@ func (ranker *ranker) InsertSell(order PriorityOrder) {
 		})
 		ranker.computations = append(
 			append(
-				ranker.computations[:index-1],
+				ranker.computations[:index],
 				computation,
 			),
 			ranker.computations[index:]...,

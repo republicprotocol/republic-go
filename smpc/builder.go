@@ -41,23 +41,17 @@ func (builder *ShareBuilder) Insert(id [32]byte, share shamir.Share) error {
 	if _, ok := builder.shares[id]; !ok {
 		builder.shares[id] = map[uint64]shamir.Share{}
 	}
-
 	builder.shares[id][share.Index] = share
-	if int64(len(builder.shares[id])) >= builder.k {
-		builder.sharesCache = builder.sharesCache[0:0]
-		k := int64(0)
-		for _, share := range builder.shares[id] {
-			builder.sharesCache = append(builder.sharesCache, share)
-			if k++; k >= builder.k {
-				break
-			}
-		}
-		val := shamir.Join(builder.sharesCache)
-		builder.notify(id, val)
-		return nil
+	val, err := builder.tryJoin(id)
+	if err != nil {
+		return err
 	}
 
-	return ErrInsufficientSharesToJoin
+	builder.observersMu.Lock()
+	defer builder.observersMu.Unlock()
+
+	builder.notify(id, val)
+	return nil
 }
 
 func (builder *ShareBuilder) Observe(id, networkID [32]byte, observer ShareBuilderObserver) {
@@ -77,15 +71,32 @@ func (builder *ShareBuilder) Observe(id, networkID [32]byte, observer ShareBuild
 	}
 
 	builder.observers[id][networkID] = observer
+	val, err := builder.tryJoin(id)
+	if err != nil {
+		return
+	}
+	builder.notify(id, val)
 }
 
 func (builder *ShareBuilder) notify(id [32]byte, val uint64) {
-	builder.observersMu.Lock()
-	defer builder.observersMu.Unlock()
-
 	if observers, ok := builder.observers[id]; ok {
 		for networkID, observer := range observers {
 			observer.OnNotifyBuild(id, networkID, val)
 		}
 	}
+}
+
+func (builder *ShareBuilder) tryJoin(id [32]byte) (uint64, error) {
+	if int64(len(builder.shares[id])) >= builder.k {
+		builder.sharesCache = builder.sharesCache[0:0]
+		k := int64(0)
+		for _, share := range builder.shares[id] {
+			builder.sharesCache = append(builder.sharesCache, share)
+			if k++; k >= builder.k {
+				break
+			}
+		}
+		return shamir.Join(builder.sharesCache), nil
+	}
+	return 0, ErrInsufficientSharesToJoin
 }
