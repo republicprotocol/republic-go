@@ -116,9 +116,9 @@ var _ = Describe("Swarm", func() {
 				// Bootstrap the client with all available multiaddresses
 				// temp code.
 				// To further ensure that all bootstrap nodes are connected to
-				// all other clients in the network, giving only bootstrap 
+				// all other clients in the network, giving only bootstrap
 				// nodes all the multiaddresses
-				// 
+				//
 				multiaddresses := bootstrapMultiaddrs
 				if i < numberOfBootstrapClients {
 					multiaddresses = multiaddrs

@@ -61,7 +61,7 @@ var _ = Describe("streamer channel", func() {
 
 			// Send 5 messages to client from server
 			var receivedMessage, message *mockByteMessage
-			
+
 			go func() {
 				for i := 0; i < 5; i++ {
 					message = &mockByteMessage{
