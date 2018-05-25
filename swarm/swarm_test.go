@@ -77,6 +77,7 @@ var _ = Describe("Swarm", func() {
 			// Creating clients
 			clients := make([]Client, numberOfClients)
 			multiaddrs := make(identity.MultiAddresses, numberOfClients)
+			dhts := make([]dht.DHT, numberOfClients)
 			bootstrapMultiaddrs := make(identity.MultiAddresses, numberOfBootstrapClients)
 
 			// Creating a common server hub for all clients to use
@@ -97,8 +98,8 @@ var _ = Describe("Swarm", func() {
 				}
 
 				// TODO: (Please confirm) Creating a server for each client (??)
-				clientDht := dht.NewDHT(multiaddrs[i].Address(), 100)
-				server := NewServer(clients[i], &clientDht)
+				dhts[i] = dht.NewDHT(multiaddrs[i].Address(), 100)
+				server := NewServer(clients[i], &dhts[i])
 				serverHub.Register(multiaddrs[i].Address(), server)
 			}
 
@@ -109,27 +110,15 @@ var _ = Describe("Swarm", func() {
 			// Bootstrapping created clients
 			for i := 0; i < numberOfClients; i++ {
 				// Creating swarmer for the client
-				clientDht := dht.NewDHT(multiaddrs[i].Address(), 100)
-				swarmer = NewSwarmer(clients[i], &clientDht)
+				swarmer = NewSwarmer(clients[i], &dhts[i])
 
-				// TODO: Please check this part
-				// Bootstrap the client with all available multiaddresses
-				// temp code.
-				// To further ensure that all bootstrap nodes are connected to
-				// all other clients in the network, giving only bootstrap 
-				// nodes all the multiaddresses
-				// 
-				multiaddresses := bootstrapMultiaddrs
-				if i < numberOfBootstrapClients {
-					multiaddresses = multiaddrs
-				}
-				err := swarmer.Bootstrap(ctx, multiaddresses)
+				err := swarmer.Bootstrap(ctx, bootstrapMultiaddrs)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				// Only bootstrap nodes seem to get 49 nodes here
-				// all other nodes only print 5
-				log.Println(len(clientDht.MultiAddresses()))
-				// Expect(len(clientDht.MultiAddresses())).To(Equal(numberOfClients - 1))
+				log.Println(len(dhts[i].MultiAddresses()))
+				if i > numberOfBootstrapClients {
+					Expect(len(dhts[i].MultiAddresses()) > numberOfBootstrapClients).To(Equal(true))
+				}
 			}
 
 			// Query for the last created client
