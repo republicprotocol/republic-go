@@ -421,7 +421,26 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 
 // Epoch returns the current Epoch which includes the Pod configuration.
 func (darkNodeRegistry *DarknodeRegistry) Epoch() (cal.Epoch, error) {
-	panic("unimplemented")
+	epoch, err := darkNodeRegistry.CurrentEpoch()
+	if err != nil {
+		return cal.Epoch{}, err
+	}
+
+	pods, err := darkNodeRegistry.Pods()
+	if err != nil {
+		return cal.Epoch{}, err
+	}
+
+	darknodes, err := darkNodeRegistry.Darknodes()
+	if err != nil {
+		return cal.Epoch{}, err
+	}
+
+	return cal.Epoch{
+		Hash:      epoch.Blockhash,
+		Pods:      pods,
+		Darknodes: darknodes,
+	}, nil
 }
 
 // Pod returns the Pod that contains the given identity.Address in the

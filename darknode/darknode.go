@@ -26,11 +26,11 @@ func NewDarknode(addr identity.Address, darkpool cal.Darkpool, darkpoolAccounts 
 	}
 }
 
-// SyncDarkpool updates the Epoch and the Pod configuration to the Darknode
-// using a cal.Darkpool. If the Epoch has changes, an event will be emitted to
-// the ome.Omer so that it can update its internal configuration (specifically,
-// the smpc.Smpcer configuration).
-func (node *Darknode) SyncDarkpool() error {
+// Sync updates the Epoch and the Pod configuration to the Darknode using a
+// cal.Darkpool. If the Epoch has changes, an event will be emitted to the
+// ome.Omer so that it can update its internal configuration (specifically, the
+// smpc.Smpcer configuration).
+func (node *Darknode) Sync() error {
 	// Sync ξ from the Darkpool
 	ξ, err := node.darkpool.Epoch()
 	if err != nil {

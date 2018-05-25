@@ -30,16 +30,14 @@ const (
 var (
 	RepublicTokenAddressOnGanache    = common.HexToAddress("0x8DE2a0D285cd6fDB47ABAe34024a6EED79ef0E92")
 	DarknodeRegistryAddressOnGanache = common.HexToAddress("0xbF195E17802736Ff4E19275b961bb1c2D45f2c8D")
-	HyperdriveAddressOnGanache       = common.HexToAddress("0x01cbe20EA5A49649F5615A59FaA30E88584634a2")
-	LedgerAddressOnGanache           = common.HexToAddress("0x6235E09103bC7f205837237e4eAD855bC196E4D3")
+	RenLedgerAddressOnGanache        = common.HexToAddress("0x01cbe20EA5A49649F5615A59FaA30E88584634a2")
 )
 
 // Contract addresses on Ropsten
 var (
 	RepublicTokenAddressOnRopsten    = common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54")
 	DarknodeRegistryAddressOnRopsten = common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3")
-	LedgerAddressOnRopsten           = common.HexToAddress("0x6235E09103bC7f205837237e4eAD855bC196E4D3")
-	ArcAddressOnRopsten              = common.HexToAddress("0x2940089833b688a1a46c150085ef004f85fcee87")
+	RenLedgerAddressOnRopsten        = common.HexToAddress("0x6235E09103bC7f205837237e4eAD855bC196E4D3")
 )
 
 // Config defines the different settings for connecting the Darknode
@@ -95,14 +93,14 @@ func Connect(config Config) (Conn, error) {
 	if config.RenLedgerAddress == "" {
 		switch config.Network {
 		case NetworkGanache:
-			config.RenLedgerAddress = HyperdriveAddressOnGanache.String()
+			config.RenLedgerAddress = RenLedgerAddressOnGanache.String()
 		case NetworkRopsten:
-			config.RenLedgerAddress = LedgerAddressOnRopsten.String()
+			config.RenLedgerAddress = RenLedgerAddressOnRopsten.String()
 		default:
 			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}
 	}
-	config.RenLedgerAddress = LedgerAddressOnRopsten.String() // fixme : update the ledger address in config
+	config.RenLedgerAddress = RenLedgerAddressOnRopsten.String() // fixme : update the ledger address in config
 
 	ethclient, err := ethclient.Dial(config.URI)
 	if err != nil {
