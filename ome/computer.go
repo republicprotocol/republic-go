@@ -64,6 +64,8 @@ type Computer interface {
 	// there will need to be done by the orderbook.Server (which knows the
 	// epoch at which an order fragment was received).
 	Compute(networkID [32]byte, computations Computations)
+
+	ComputeResults(done chan struct{})
 }
 
 type computer struct {
@@ -96,7 +98,6 @@ func NewComputer(orderbook orderbook.Orderbook, smpcer smpc.Smpcer) Computer {
 
 func (computer *computer) Compute(networkID [32]byte, computations Computations) {
 	instructions := computer.smpcer.Instructions()
-	results := computer.smpcer.Results()
 
 	for _, computation := range computations {
 		id := computeID(computation)
@@ -119,7 +120,7 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
 					instructions <- smpc.Inst{
@@ -145,7 +146,7 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
 					instructions <- smpc.Inst{
@@ -171,7 +172,7 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
 					instructions <- smpc.Inst{
@@ -197,7 +198,7 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
 					instructions <- smpc.Inst{
@@ -223,7 +224,7 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
 					instructions <- smpc.Inst{
@@ -249,7 +250,7 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
 					instructions <- smpc.Inst{
@@ -275,7 +276,7 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
 					instructions <- smpc.Inst{
@@ -291,10 +292,14 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 			}
 		},
 	)
+}
 
-	nMax := 128
-	for n := 0; n < nMax; n++ {
+func (computer *computer) ComputeResults(done chan struct{}) {
+	results := computer.smpcer.Results()
+	for {
 		select {
+		case <-done:
+			return
 		case result, ok := <-results:
 			if !ok {
 				return
@@ -302,11 +307,8 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 			if result.ResultJ != nil {
 				computer.processResultJ(result.InstID, result.NetworkID, *result.ResultJ)
 			}
-		default:
-			return
 		}
 	}
-	return
 }
 
 func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smpc.ResultJ) {

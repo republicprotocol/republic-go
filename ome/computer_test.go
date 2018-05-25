@@ -16,20 +16,25 @@ import (
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
-var _ = Describe("OME Computer", func() {
+var _ = Describe("Computer", func() {
 
 	Context("when opening new orders", func() {
 
-		It("should not return an error", func() {
-			numberOfComputations := 1
+		It("should not return an error", func(done Done) {
+			defer close(done)
+
+			numberOfComputations := 10
 
 			smpcer := newMockSmpcer(PassAll)
 			err := smpcer.Start()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			orderbook := newMockOrderbook()
-
 			computer := NewComputer(&orderbook, &smpcer)
+
+			quit := make(chan struct{})
+			defer close(quit)
+			go computer.ComputeResults(quit)
 
 			// Generate computations for newly created buy and sell orders
 			computations := make(Computations, numberOfComputations)
@@ -52,7 +57,12 @@ var _ = Describe("OME Computer", func() {
 			}
 
 			computer.Compute([32]byte{1}, computations)
-		})
+			for {
+				time.Sleep(10 * time.Millisecond)
+				Expect(orderbook.numberOfOrderMatches).Should(Equal(numberOfComputations))
+				return
+			}
+		}, 2 /* 2 second timeout */)
 	})
 })
 
@@ -135,6 +145,8 @@ func (smpcer *mockSmpcer) Start() error {
 				}
 				if inst.InstJ != nil {
 					smpcer.results <- smpc.Result{
+						InstID:    inst.InstID,
+						NetworkID: inst.NetworkID,
 						ResultJ: &smpc.ResultJ{
 							Value: smpcer.result,
 						},
