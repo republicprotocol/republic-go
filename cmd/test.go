@@ -13,14 +13,14 @@ import (
 )
 
 var addresses = []string{
-	"8MGxw5z4Fm8TS4h3nJ535yynHgTw4H",
-	"8MJjW5KTkoDwVpqenjBHGQBhww86qT",
-	"8MHkxMUmDAP5Y5fKDGDAp24sT2qY9y",
-	"8MJSxE3VXcpnWdTR4Q688jAgoYRSDU",
-	"8MGFa6sJDmHAztawDai19SoYgQyDZe",
-	"8MJpfZfu32Ss3mgRUjshTSe3UM1mF4",
-	"8MGuXYKJVVrgTrcKvrCN7ar5LLkeHi",
-	"8MGjykjQ2qrosJ3mQkxDPhAmAubDdh",
+	"8MGay2425nRaKjmDbHVvyWaK4zqNPi",
+	"8MJNrvkBSEQzf7McWLM2Z2SpCcD7hV",
+	"8MJ2S36qM7UyQUynxTRvy7SxsExCSk",
+	"8MGFibRRZMVoVjjXZwFsrS9C7yWCQG",
+	"8MGNu5scrFkquTYMFHvUujxca2GCk9",
+	"8MJcWZNoaQu8bnwtLTeM53hopigLBB",
+	"8MHHkFspRkaGEkKHvaHXH7DRhR69K5",
+	"8MJGUdPCKTWdHojnjJXGjYyB8YiTuk",
 }
 
 const (

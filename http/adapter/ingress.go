@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/ingress"
@@ -131,7 +130,6 @@ func (adapter *IngressAdapter) unmarshalOrderFragment(orderFragmentIn OrderFragm
 	orderFragment.OrderType = orderFragmentIn.OrderType
 	orderFragment.OrderParity = orderFragmentIn.OrderParity
 	orderFragment.OrderExpiry = time.Unix(orderFragmentIn.OrderExpiry, 0)
-	log.Printf("TOKENS: %v", orderFragmentIn.Tokens)
 	orderFragment.Tokens, err = base64.StdEncoding.DecodeString(orderFragmentIn.Tokens)
 	if err != nil {
 		return orderFragment, err
