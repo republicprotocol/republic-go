@@ -55,6 +55,7 @@ func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) e
 	copy(orderID[:], id[:])
 
 	ledger.transactOpts.GasLimit = 3000000
+	ledger.transactOpts.GasPrice = big.NewInt(int64(40000000000))
 	tx, err := ledger.binding.OpenBuyOrder(ledger.transactOpts, signature[:], orderID)
 	ledger.transactOpts.GasLimit = 0
 
@@ -83,6 +84,7 @@ func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) 
 	copy(orderID[:], id[:])
 
 	ledger.transactOpts.GasLimit = 3000000
+	ledger.transactOpts.GasPrice = big.NewInt(int64(40000000000))
 	tx, err := ledger.binding.OpenSellOrder(ledger.transactOpts, signature[:], orderID)
 	ledger.transactOpts.GasLimit = 0
 

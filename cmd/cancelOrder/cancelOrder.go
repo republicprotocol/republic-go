@@ -119,7 +119,7 @@ func main() {
 	client := &netHttp.Client{}
 	orderId := base64.StdEncoding.EncodeToString(ord.ID[:])
 	encodedSignature := base64.StdEncoding.EncodeToString(signature)
-	req, err := netHttp.NewRequest("DELETE", fmt.Sprintf("%v/orders/%v?signature=%v", *relayParam, orderId, encodedSignature), nil)
+	req, err := netHttp.NewRequest("DELETE", fmt.Sprintf("%v/orders/?id=%v&signature=%v", *relayParam, orderId, encodedSignature), nil)
 	if err != nil {
 		log.Fatal(err)
 	}

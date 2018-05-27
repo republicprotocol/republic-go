@@ -81,7 +81,7 @@ var _ = Describe("Ingress Adapter", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			signature := base64.StdEncoding.EncodeToString(signatureBytes[:])
 			err = ingressAdapter.CancelOrder(signature, "")
-			Expect(err.Error()).To(ContainSubstring("invalid order id length"))
+			Expect(err).Should(Equal(ErrInvalidOrderIDLength))
 			Expect(atomic.LoadInt64(&ingress.numCanceled)).To(Equal(int64(0)))
 		})
 	})

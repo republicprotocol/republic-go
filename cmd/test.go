@@ -13,14 +13,14 @@ import (
 )
 
 var addresses = []string{
-	"8MGxw5z4Fm8TS4h3nJ535yynHgTw4H",
-	"8MJjW5KTkoDwVpqenjBHGQBhww86qT",
-	"8MHkxMUmDAP5Y5fKDGDAp24sT2qY9y",
-	"8MJSxE3VXcpnWdTR4Q688jAgoYRSDU",
-	"8MGFa6sJDmHAztawDai19SoYgQyDZe",
-	"8MJpfZfu32Ss3mgRUjshTSe3UM1mF4",
-	"8MGuXYKJVVrgTrcKvrCN7ar5LLkeHi",
-	"8MGjykjQ2qrosJ3mQkxDPhAmAubDdh",
+	"8MGay2425nRaKjmDbHVvyWaK4zqNPi",
+	"8MJNrvkBSEQzf7McWLM2Z2SpCcD7hV",
+	"8MJ2S36qM7UyQUynxTRvy7SxsExCSk",
+	"8MGFibRRZMVoVjjXZwFsrS9C7yWCQG",
+	"8MGNu5scrFkquTYMFHvUujxca2GCk9",
+	"8MJcWZNoaQu8bnwtLTeM53hopigLBB",
+	"8MHHkFspRkaGEkKHvaHXH7DRhR69K5",
+	"8MJGUdPCKTWdHojnjJXGjYyB8YiTuk",
 }
 
 const (
@@ -31,16 +31,16 @@ const (
 )
 
 func main() {
-	key , err := LoadKey()
-	if err != nil{
+	key, err := LoadKey()
+	if err != nil {
 		log.Fatal(err)
 	}
-	registry ,err  := NewRegistry(key)
+	registry, err := NewRegistry(key)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, address := range addresses{
+	for _, address := range addresses {
 		addr := identity.Address(address)
 
 		// Check if node has already been registered
@@ -64,7 +64,7 @@ func main() {
 
 	log.Println("triggering epoch ")
 	_, err = registry.TriggerEpoch()
-	if err!= nil {
+	if err != nil {
 		log.Fatalf("failt to trigger epoch ")
 	}
 	log.Println("epoch  called ")
@@ -80,7 +80,7 @@ func LoadKey() (*keystore.Key, error) {
 	return key, err
 }
 
-func NewRegistry( key *keystore.Key) (dnr.DarknodeRegistry, error) {
+func NewRegistry(key *keystore.Key) (dnr.DarknodeRegistry, error) {
 	config := ethereum.Config{
 		Network:                 ethereum.NetworkRopsten,
 		URI:                     "https://ropsten.infura.io",

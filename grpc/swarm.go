@@ -119,6 +119,7 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress) (
 
 // Query implements the swarm.Client interface.
 func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address, querySignature [65]byte) (identity.MultiAddresses, error) {
+
 	if _, err := client.Ping(ctx, to); err != nil {
 		return identity.MultiAddresses{}, fmt.Errorf("cannot ping before query: %v", err)
 	}

@@ -109,6 +109,9 @@ func (swarmer *swarmer) Bootstrap(ctx context.Context, multiAddrs identity.Multi
 		defer close(errs)
 		dispatch.CoForAll(multiAddrs, func(i int) {
 			log.Printf("bootstrapping %v...", multiAddrs[i])
+			if multiAddrs[i].Address() == swarmer.client.MultiAddress().Address() {
+				return
+			}
 			multiAddr, err := swarmer.client.Ping(ctx, multiAddrs[i])
 			if err != nil {
 				errs <- fmt.Errorf("cannot ping bootstrap node %v: %v", multiAddrs[i], err)
@@ -139,6 +142,7 @@ func (swarmer *swarmer) Query(ctx context.Context, query identity.Address, depth
 func (swarmer *swarmer) query(ctx context.Context, query identity.Address, depth int, isBootstrapping bool) (identity.MultiAddress, error) {
 	whitelist := identity.MultiAddresses{}
 	blacklist := map[identity.Address]struct{}{}
+	blacklist[swarmer.client.MultiAddress().Address()] = struct{}{}
 
 	// Build a list of identity.MultiAddresses that are closer to the query
 	// than the Swarm service
