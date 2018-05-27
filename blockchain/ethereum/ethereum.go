@@ -46,7 +46,7 @@ var (
 var (
 	RepublicTokenAddressOnKovan    = common.HexToAddress("0x596F8c39aEc9fb72D0F591DEe4408516f4C9DdA4")
 	DarknodeRegistryAddressOnKovan = common.HexToAddress("0xE75D707713905470421b6BDdb5dafd120d057b05")
-	LedgerAddressOnKovan           = common.HexToAddress("0xe6661ae76f0CE8e70723Db4c0e2d3332910Ed83b")
+	RenLedgerAddressOnKovan        = common.HexToAddress("0xe6661ae76f0CE8e70723Db4c0e2d3332910Ed83b")
 )
 
 // Config defines the different settings for connecting the Darknode
@@ -110,7 +110,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkGanache:
 			config.RenLedgerAddress = RenLedgerAddressOnGanache.String()
 		case NetworkKovan:
-			config.RenLedgerAddress = LedgerAddressOnKovan.String()
+			config.RenLedgerAddress = RenLedgerAddressOnKovan.String()
 		case NetworkRopsten:
 			config.RenLedgerAddress = RenLedgerAddressOnRopsten.String()
 		default:
