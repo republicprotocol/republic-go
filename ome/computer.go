@@ -119,7 +119,7 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 				if computation.State == StatePending {
 					buy, err := computer.orderbook.OrderFragment(computation.Buy)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						//log.Printf("cannot get buy order fragment from orderbook: %v", err)
 						continue
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
@@ -338,8 +338,6 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 
 	computer.cmpMu.Lock()
 	defer computer.cmpMu.Unlock()
-
-	log.Printf("processing result!")
 
 	switch instID[31] {
 
