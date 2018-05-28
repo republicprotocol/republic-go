@@ -39,7 +39,7 @@ import (
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
-var _ = Describe("Darknode integration", func() {
+var _ = test.SkipCIDescribe("Darknode integration", func() {
 
 	mu := new(sync.Mutex)
 
@@ -89,7 +89,7 @@ var _ = Describe("Darknode integration", func() {
 		os.RemoveAll("./db.out/")
 	})
 
-	test.SkipCIContext("when bootstrapping into a network", func() {
+	Context("when bootstrapping into a network", func() {
 
 		It("should be able to query the super majority of nodes", func() {
 			Expect(nil).To(BeNil())
@@ -117,7 +117,7 @@ var _ = Describe("Darknode integration", func() {
 
 	})
 
-	Context("when orders are opened", func() {
+	test.SkipCIContext("when orders are opened", func() {
 
 		It("should confirm matching orders", func(done Done) {
 			defer close(done)

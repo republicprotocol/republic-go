@@ -45,3 +45,10 @@ func SkipCIAfterSuite(f func()) bool {
 	}
 	return false
 }
+
+func SkipCIDescribe(d string, f func()) bool {
+	if !GetCIEnv() {
+		return ginkgo.Describe(d,f)
+	}
+	return false
+}
