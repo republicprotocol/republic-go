@@ -57,19 +57,14 @@ func main() {
 	// Define flags
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "ren",
-			Value: "0x65d54eda5f032f2275caa557e50c029cfbccbb54",
-			Usage: "republic token contract address",
-		},
-		cli.StringFlag{
-			Name:  "dnr",
-			Value: "0x69eb8d26157b9e12f959ea9f189A5D75991b59e3",
-			Usage: "dark node registry address",
-		},
-		cli.StringFlag{
 			Name:  "config",
 			Value: "./deployment.json",
 			Usage: "deployment config",
+		},
+		cli.StringFlag{
+			Name: "network",
+			Value: "kovan",
+			Usage : "Ethereum testnet name",
 		},
 	}
 
@@ -179,11 +174,33 @@ func LoadKey() (*keystore.Key, error) {
 }
 
 func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error) {
+	//Fixme:
+	//var config ethereum.Config
+	//switch c.String("network"){
+	//case "ropsten":
+	//	config = ethereum.Config{
+	//		Network:                 ethereum.NetworkRopsten,
+	//		URI:                     "https://ropsten.infura.io",
+	//		RepublicTokenAddress:    ethereum.RepublicTokenAddressOnRopsten.String(),
+	//		DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnRopsten.String(),
+	//	}
+	//case "kovan":
+	//	config = ethereum.Config{
+	//		Network:                 ethereum.NetworkKovan,
+	//		URI:                     "https://kovan.infura.io",
+	//		RepublicTokenAddress:    ethereum.RepublicTokenAddressOnKovan.String(),
+	//		DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnKovan.String(),
+	//	}
+	//default:
+	//	log.Println("network string is ", c.String("network"))
+	//	log.Fatal("unrecognized network name")
+	//}
+
 	config := ethereum.Config{
-		Network:                 ethereum.NetworkRopsten,
-		URI:                     "https://ropsten.infura.io",
-		RepublicTokenAddress:    c.String("ren"),
-		DarknodeRegistryAddress: c.String("dnr"),
+		Network:                 ethereum.NetworkKovan,
+		URI:                     "https://kovan.infura.io",
+		RepublicTokenAddress:    ethereum.RepublicTokenAddressOnKovan.String(),
+		DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnKovan.String(),
 	}
 
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
