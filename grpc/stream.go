@@ -3,6 +3,7 @@ package grpc
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -76,8 +77,10 @@ func (service *StreamService) Connect(stream StreamService_ConnectServer) error 
 	// done
 	select {
 	case <-stream.Context().Done():
+		log.Printf("CONNECTION IS BEING CLOSED: CONTEXT DONE")
 		return stream.Context().Err()
 	case <-s.done:
+		log.Printf("CONNECTION IS BEING CLOSED: STREAM CLOSED")
 		return nil
 	}
 }
@@ -146,9 +149,11 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 	if err != nil {
 		return nil, fmt.Errorf("cannot dial %v: %v", multiAddr, err)
 	}
-	defer conn.Close()
+	// FIXME: We cannot close this at defer time. Where can we close this?
+	// defer conn.Close()
 
 	data := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", client.addr, multiAddr.Address()))
+	data = crypto.Keccak256(data)
 	dataSignature, err := client.signer.Sign(data)
 	if err != nil {
 		return nil, fmt.Errorf("cannot sign stream authentication: %v", err)

@@ -208,32 +208,31 @@ func (ledger *RenLedgerContract) Matches(id order.ID) ([]order.ID, error) {
 }
 
 func (ledger *RenLedgerContract) BuyOrders(offset, limit int) ([]order.ID, error) {
-	orders := make([]order.ID, limit)
-	for i := offset; i < offset+limit; i++ {
-		ordId, ok, err := ledger.binding.BuyOrder(ledger.callOpts, big.NewInt(int64(i)))
+	orders := make([]order.ID, 0, limit)
+	for i := 0; i < limit; i++ {
+		ordId, ok, err := ledger.binding.BuyOrder(ledger.callOpts, big.NewInt(int64(offset+i)))
 		if err != nil {
 			return nil, err
 		}
 		if !ok {
 			return orders, nil
 		}
-		orders[i-offset] = ordId
+		orders = append(orders, ordId)
 	}
-
 	return orders, nil
 }
 
 func (ledger *RenLedgerContract) SellOrders(offset, limit int) ([]order.ID, error) {
-	orders := make([]order.ID, limit)
-	for i := offset; i < offset+limit; i++ {
-		ordId, ok, err := ledger.binding.SellOrder(ledger.callOpts, big.NewInt(int64(i)))
+	orders := make([]order.ID, 0, limit)
+	for i := 0; i < limit; i++ {
+		ordId, ok, err := ledger.binding.SellOrder(ledger.callOpts, big.NewInt(int64(offset+i)))
 		if err != nil {
 			return nil, err
 		}
 		if !ok {
 			return orders, nil
 		}
-		orders[i-offset] = ordId
+		orders = append(orders, ordId)
 	}
 
 	return orders, nil

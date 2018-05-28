@@ -42,6 +42,15 @@ func NewOme(ranker Ranker, computer Computer, orderbook orderbook.Orderbook, smp
 // OnChangeEpoch implements the cal.EpochListener interface.
 func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
 	ome.ξ = ξ
+	ome.smpcer.Instructions() <- smpc.Inst{
+		InstID:    ξ.Hash,
+		NetworkID: ξ.Hash,
+		InstConnect: &smpc.InstConnect{
+			Nodes: ξ.Darknodes,
+			N:     int64(len(ξ.Darknodes)),
+			K:     int64(2 * (len(ξ.Darknodes) + 1) / 3),
+		},
+	}
 }
 
 // Sync implements the Omer interface.

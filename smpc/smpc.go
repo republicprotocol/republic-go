@@ -3,7 +3,6 @@ package smpc
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"sync"
 	"time"
@@ -152,6 +151,8 @@ func (smpc *smpcer) Results() <-chan Result {
 // notify the Smpcer that a value of interest has been reconstructed by the
 // ShareBuilder.
 func (smpc *smpcer) OnNotifyBuild(id, networkID [32]byte, value uint64) {
+	log.Println("NOTIFY!!!!")
+
 	result := Result{
 		InstID:    id,
 		NetworkID: networkID,
@@ -217,6 +218,7 @@ func (smpc *smpcer) instConnect(networkID [32]byte, inst InstConnect) {
 			log.Println(err)
 			return
 		}
+		log.Printf("connected to %v", addr)
 	})
 }
 
@@ -251,6 +253,8 @@ func (smpc *smpcer) instJ(instID, networkID [32]byte, inst InstJ) {
 	defer smpc.networkMu.RUnlock()
 	defer smpc.lookupMu.RUnlock()
 	defer smpc.shareBuildersMu.RUnlock()
+
+	println("INFO => INSTJ RECEIVED FROM SELF")
 
 	if shareBuilder, ok := smpc.shareBuilders[networkID]; ok {
 		shareBuilder.Observe(instID, networkID, smpc)
@@ -288,15 +292,13 @@ func (smpc *smpcer) query(addr identity.Address) (identity.MultiAddress, error) 
 }
 
 func (smpc *smpcer) connect(networkID [32]byte, inst InstConnect, addr identity.Address, multiAddr identity.MultiAddress) error {
-	// TODO: Instead of using a timeout, we should store the context.CancelFunc
-	// so that the connection attempt can remain active indefinitely, or until
-	// a disconnect instruction is received.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
-	stream, err := smpc.streamer.Open(ctx, multiAddr)
+	// TODO: Instead of using a background context, we should store the
+	// context.CancelFunc from a context.WithCancel so that the connection
+	// attempt can remain active indefinitely, or until a disconnect
+	// instruction is received.
+	stream, err := smpc.streamer.Open(context.Background(), multiAddr)
 	if err != nil {
-		log.Printf("cannot connect to smpcer node %v: %v", addr, err)
+		return fmt.Errorf("cannot connect to smpcer node %v: %v", addr, err)
 	}
 
 	go smpc.processRemoteStream(addr, stream)
@@ -307,12 +309,8 @@ func (smpc *smpcer) processRemoteStream(remoteAddr identity.Address, remoteStrea
 	for {
 		msg := Message{}
 		if err := remoteStream.Recv(&msg); err != nil {
-			if err == io.EOF || err == stream.ErrRecvOnClosedStream {
-				log.Printf("closing stream with %v: %v", remoteAddr, err)
-				return
-			}
-			log.Printf("cannot recv message from %v: %v", remoteAddr, err)
-			continue
+			log.Printf("closing stream with %v: %v", remoteAddr, err)
+			return
 		}
 
 		switch msg.MessageType {
@@ -331,9 +329,12 @@ func (smpc *smpcer) processMessageJ(message MessageJ) {
 	if shareBuilder, ok := smpc.shareBuilders[message.NetworkID]; ok {
 		if err := shareBuilder.Insert(message.InstID, message.Share); err != nil {
 			if err == ErrInsufficientSharesToJoin {
+				log.Printf("DEBUG => RECEIVED MESSAGE J FOR PROCESSING")
 				return
 			}
 			log.Printf("could not insert share: %v", err)
+			return
 		}
+		log.Printf("DEBUG => RECEIVED MESSAGE J FOR PROCESSING")
 	}
 }

@@ -1,6 +1,7 @@
 package ome
 
 import (
+	"encoding/base64"
 	"log"
 	"sync"
 
@@ -103,8 +104,6 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 	instructions := computer.smpcer.Instructions()
 
 	for _, computation := range computations {
-		log.Printf("DEBUG => computation started: %v, %v", computation.Buy, computation.Sell)
-
 		id := computeID(computation)
 		id[31] = StageCmpPriceExp
 		computer.cmpPriceExp[id] = ComputationState{
@@ -128,6 +127,10 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
+					computer.cmpMu.Lock()
+					computation.State = StateComputing
+					computer.cmpPriceExp[id] = computation
+					computer.cmpMu.Unlock()
 					instructions <- smpc.Inst{
 						InstID:    id,
 						NetworkID: networkID,
@@ -135,10 +138,6 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 							Share: buy.Price.Exp.Sub(&sell.Price.Exp),
 						},
 					}
-					computation.State = StateComputing
-					computer.cmpMu.Lock()
-					computer.cmpPriceExp[id] = computation
-					computer.cmpMu.Unlock()
 				}
 			}
 		},
@@ -146,6 +145,8 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 			// Compute price cos
 			for id, computation := range computer.cmpPriceCo {
 				if computation.State == StatePending {
+					log.Printf("DEBUG => computing price co: %v, %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
+
 					buy, err := computer.orderbook.OrderFragment(computation.Buy)
 					if err != nil {
 						log.Printf("cannot get buy order fragment from orderbook: %v", err)
@@ -156,6 +157,10 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
+					computer.cmpMu.Lock()
+					computation.State = StateComputing
+					computer.cmpPriceCo[id] = computation
+					computer.cmpMu.Unlock()
 					instructions <- smpc.Inst{
 						InstID:    id,
 						NetworkID: networkID,
@@ -163,10 +168,6 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 							Share: buy.Price.Co.Sub(&sell.Price.Co),
 						},
 					}
-					computation.State = StateComputing
-					computer.cmpMu.Lock()
-					computer.cmpPriceCo[id] = computation
-					computer.cmpMu.Unlock()
 				}
 			}
 		},
@@ -174,6 +175,8 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 			// Compute buy volume exponenets
 			for id, computation := range computer.cmpBuyVolExp {
 				if computation.State == StatePending {
+					log.Printf("DEBUG => computing vol exp: %v, %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
+
 					buy, err := computer.orderbook.OrderFragment(computation.Buy)
 					if err != nil {
 						log.Printf("cannot get buy order fragment from orderbook: %v", err)
@@ -184,6 +187,10 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
+					computer.cmpMu.Lock()
+					computation.State = StateComputing
+					computer.cmpBuyVolExp[id] = computation
+					computer.cmpMu.Unlock()
 					instructions <- smpc.Inst{
 						InstID:    id,
 						NetworkID: networkID,
@@ -191,10 +198,6 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 							Share: buy.Volume.Exp.Sub(&sell.MinimumVolume.Exp),
 						},
 					}
-					computation.State = StateComputing
-					computer.cmpMu.Lock()
-					computer.cmpBuyVolExp[id] = computation
-					computer.cmpMu.Unlock()
 				}
 			}
 		},
@@ -212,6 +215,10 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
+					computer.cmpMu.Lock()
+					computation.State = StateComputing
+					computer.cmpBuyVolCo[id] = computation
+					computer.cmpMu.Unlock()
 					instructions <- smpc.Inst{
 						InstID:    id,
 						NetworkID: networkID,
@@ -219,10 +226,6 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 							Share: buy.Volume.Co.Sub(&sell.MinimumVolume.Co),
 						},
 					}
-					computation.State = StateComputing
-					computer.cmpMu.Lock()
-					computer.cmpBuyVolCo[id] = computation
-					computer.cmpMu.Unlock()
 				}
 			}
 		},
@@ -240,6 +243,10 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
+					computer.cmpMu.Lock()
+					computation.State = StateComputing
+					computer.cmpSellVolExp[id] = computation
+					computer.cmpMu.Unlock()
 					instructions <- smpc.Inst{
 						InstID:    id,
 						NetworkID: networkID,
@@ -247,10 +254,6 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 							Share: sell.Volume.Exp.Sub(&buy.MinimumVolume.Exp),
 						},
 					}
-					computation.State = StateComputing
-					computer.cmpMu.Lock()
-					computer.cmpSellVolExp[id] = computation
-					computer.cmpMu.Unlock()
 				}
 			}
 		},
@@ -268,6 +271,10 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
+					computer.cmpMu.Lock()
+					computation.State = StateComputing
+					computer.cmpSellVolCo[id] = computation
+					computer.cmpMu.Unlock()
 					instructions <- smpc.Inst{
 						InstID:    id,
 						NetworkID: networkID,
@@ -275,10 +282,6 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 							Share: sell.Volume.Co.Sub(&buy.MinimumVolume.Co),
 						},
 					}
-					computation.State = StateComputing
-					computer.cmpMu.Lock()
-					computer.cmpSellVolCo[id] = computation
-					computer.cmpMu.Unlock()
 				}
 			}
 		},
@@ -296,6 +299,10 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 						log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
+					computer.cmpMu.Lock()
+					computation.State = StateComputing
+					computer.cmpTokens[id] = computation
+					computer.cmpMu.Unlock()
 					instructions <- smpc.Inst{
 						InstID:    id,
 						NetworkID: networkID,
@@ -303,10 +310,6 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 							Share: sell.Tokens.Sub(&buy.Tokens),
 						},
 					}
-					computation.State = StateComputing
-					computer.cmpMu.Lock()
-					computer.cmpTokens[id] = computation
-					computer.cmpMu.Unlock()
 				}
 			}
 		},
@@ -335,6 +338,8 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 
 	computer.cmpMu.Lock()
 	defer computer.cmpMu.Unlock()
+
+	log.Printf("processing result!")
 
 	switch instID[31] {
 

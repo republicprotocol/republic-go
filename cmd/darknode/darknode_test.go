@@ -53,6 +53,7 @@ var _ = Describe("Darknode integration", func() {
 	var swarmers []swarm.Swarmer
 	var smpcers []smpc.Smpcer
 	var omes []ome.Ome
+	var computers []ome.Computer
 	var stores []leveldb.Store
 
 	BeforeEach(func() {
@@ -64,7 +65,7 @@ var _ = Describe("Darknode integration", func() {
 
 		configs, err = newDarknodeConfigs(n, bootstraps)
 		Expect(err).ShouldNot(HaveOccurred())
-		darknodes, servers, swarmers, smpcers, omes, stores, err = newDarknodes(genesis, configs)
+		darknodes, servers, swarmers, smpcers, omes, computers, stores, err = newDarknodes(genesis, configs)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -121,18 +122,46 @@ var _ = Describe("Darknode integration", func() {
 		FIt("should confirm matching orders", func(done Done) {
 			defer close(done)
 
-			By("booting darknodes")
+			By("starting grpc services")
+			go func() {
+				defer GinkgoRecover()
+
+				dispatch.CoForAll(configs, func(i int) {
+					log.Printf("listening on %v:%v...", configs[i].Host, configs[i].Port)
+					lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", configs[i].Host, configs[i].Port))
+					if err != nil {
+						log.Fatalf("cannot listen on %v:%v: %v", configs[i].Host, configs[i].Port, err)
+					}
+					if err := servers[i].Serve(lis); err != nil {
+						log.Fatalf("cannot serve on %v:%v: %v", configs[i].Host, configs[i].Port, err)
+					}
+				})
+			}()
+
+			By("bootstrapping")
+			dispatch.CoForAll(configs, func(i int) {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
+				defer cancel()
+
+				// Bootstrap into the network
+				if err := swarmers[i].Bootstrap(ctx, configs[i].BootstrapMultiAddresses); err != nil {
+					log.Printf("bootstrap: %v", err)
+				}
+			})
+
+			By("starting secure order matching engine")
 			go func() {
 				dispatch.CoForAll(configs, func(i int) {
+
+					// FIXME: This should be driven in the same way that the
+					// driving of ome.Sync and computer.Compute are driven,
+					// instead of using a done channel
+					done := make(chan struct{})
+					go computers[i].ComputeResults(done)
+
 					dispatch.CoBegin(func() {
 						// Start the SMPC
 						smpcers[i].Start()
-					}, func() {
-						defer GinkgoRecover()
-
-						// Bootstrap into the network
-						err := swarmers[i].Bootstrap(context.Background(), configs[i].BootstrapMultiAddresses)
-						Expect(err).ShouldNot(HaveOccurred())
 					}, func() {
 						// Synchronizing the OME
 						for {
@@ -155,27 +184,11 @@ var _ = Describe("Darknode integration", func() {
 				})
 			}()
 
-			// Start gRPC server
-			go func() {
-				defer GinkgoRecover()
-
-				dispatch.CoForAll(configs, func(i int) {
-					log.Printf("listening on %v:%v...", configs[i].Host, configs[i].Port)
-					lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", configs[i].Host, configs[i].Port))
-					if err != nil {
-						log.Fatalf("cannot listen on %v:%v: %v", configs[i].Host, configs[i].Port, err)
-					}
-					if err := servers[i].Serve(lis); err != nil {
-						log.Fatalf("cannot serve on %v:%v: %v", configs[i].Host, configs[i].Port, err)
-					}
-				})
-			}()
-
 			err := openOrderPairs(genesis, configs)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			<-time.NewTimer(time.Minute).C
-		}, 60 /* 60 second timeout */)
+		}, 120 /* 120 second timeout */)
 
 		It("should not confirm mismatching orders", func() {
 			Expect(nil).To(BeNil())
@@ -280,13 +293,14 @@ func newDarknodeConfigs(n int, bootstraps int) ([]darknode.Config, error) {
 
 }
 
-func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.Darknode, []*grpc.Server, []swarm.Swarmer, []smpc.Smpcer, []ome.Ome, []leveldb.Store, error) {
+func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.Darknode, []*grpc.Server, []swarm.Swarmer, []smpc.Smpcer, []ome.Ome, []ome.Computer, []leveldb.Store, error) {
 
 	darknodes := []darknode.Darknode{}
 	servers := []*grpc.Server{}
 	swarmers := []swarm.Swarmer{}
 	smpcers := []smpc.Smpcer{}
 	omes := []ome.Ome{}
+	computers := []ome.Computer{}
 	stores := []leveldb.Store{}
 
 	var wg sync.WaitGroup
@@ -295,13 +309,13 @@ func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.
 		addr := config.Address
 		multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", config.Host, config.Port, addr))
 		if err != nil {
-			return nil, nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, nil, nil, err
 		}
 
 		// New Ethereum bindings
 		auth, darkPool, darkPoolAccounts, darkPoolFees, renLedger, err := newEthereumBindings(config.Keystore, config.Ethereum)
 		if err != nil {
-			return nil, nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, nil, nil, err
 		}
 
 		// New crypter for signing and verification
@@ -310,7 +324,7 @@ func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.
 		// New database for persistent storage
 		store, err := leveldb.NewStore(fmt.Sprintf("./db.out/%v", addr))
 		if err != nil {
-			return nil, nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, nil, nil, err
 		}
 		stores = append(stores, store)
 
@@ -342,7 +356,8 @@ func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.
 		smpcers = append(smpcers, smpc.NewSmpcer(swarmers[i], streamer, 1))
 
 		// New OME
-		omes = append(omes, ome.NewOme(ome.NewRanker(1, 0), ome.NewComputer(orderbook, smpcers[i]), orderbook, smpcers[i]))
+		computers = append(computers, ome.NewComputer(orderbook, smpcers[i]))
+		omes = append(omes, ome.NewOme(ome.NewRanker(1, 0), computers[i], orderbook, smpcers[i]))
 
 		// New Darknode
 		darknodes = append(darknodes, darknode.NewDarknode(config.Address, darkPool, darkPoolAccounts, darkPoolFees))
@@ -376,7 +391,7 @@ func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.
 	}
 	wg.Wait()
 
-	return darknodes, servers, swarmers, smpcers, omes, stores, nil
+	return darknodes, servers, swarmers, smpcers, omes, computers, stores, nil
 
 }
 
@@ -452,8 +467,14 @@ func openOrderPairs(genesis ethereum.Conn, configs []darknode.Config) error {
 
 			signature65 := [65]byte{}
 			copy(signature65[:], signature)
-			if err := renLedger.OpenBuyOrder(signature65, ord.ID); err != nil {
-				return fmt.Errorf("cannot open order on ren ledger: %v", err)
+			if ord.Parity == order.ParityBuy {
+				if err := renLedger.OpenBuyOrder(signature65, ord.ID); err != nil {
+					return fmt.Errorf("cannot open order on ren ledger: %v", err)
+				}
+			} else {
+				if err := renLedger.OpenSellOrder(signature65, ord.ID); err != nil {
+					return fmt.Errorf("cannot open order on ren ledger: %v", err)
+				}
 			}
 
 			pods, err := darkPool.Pods()
@@ -481,9 +502,15 @@ func openOrderPairs(genesis ethereum.Conn, configs []darknode.Config) error {
 						return fmt.Errorf("cannot encrypt: %v", err)
 					}
 
-					darknodeMultiAddr, err := swarmer.Query(context.Background(), pod.Darknodes[i], -1)
-					if err != nil {
-						return fmt.Errorf("cannot query: %v", err)
+					var darknodeMultiAddr identity.MultiAddress
+					for _, config := range configs {
+						if config.Address == pod.Darknodes[i] {
+							darknodeMultiAddr, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", config.Host, config.Port, config.Address))
+							if err != nil {
+								return err
+							}
+							break
+						}
 					}
 
 					if err := orderbookClient.OpenOrder(context.Background(), darknodeMultiAddr, encryptedFragment); err != nil {
