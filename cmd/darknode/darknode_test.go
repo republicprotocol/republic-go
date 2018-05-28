@@ -19,6 +19,7 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
+	"github.com/republicprotocol/republic-go/blockchain/test"
 	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
@@ -117,9 +118,9 @@ var _ = Describe("Darknode integration", func() {
 
 	})
 
-	Context("when orders are opened", func() {
+	test.SkipCIContext("when orders are opened", func() {
 
-		FIt("should confirm matching orders", func(done Done) {
+		It("should confirm matching orders", func(done Done) {
 			defer close(done)
 
 			By("starting grpc services")
