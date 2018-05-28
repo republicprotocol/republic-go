@@ -31,18 +31,7 @@ const (
 )
 
 // Registry command-line tool for interacting with the darknodeRegister contract
-// on Ropsten testnet.
-// Set up ren contract address:
-//   $ registry --ren 0xContractAddress
-// Set up dnr contract address:
-//   $ registry --dnr 0xContractAddress
-// Register nodes:
-//   $ registry register
-// Deregister nodes:
-//   $ registry deregister
-// Calling epoch:
-//   $ registry epoch
-
+// on Kovan(default) or Ropsten testnet.
 func main() {
 
 	// Load ethereum key
@@ -56,11 +45,6 @@ func main() {
 
 	// Define flags
 	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:  "config",
-			Value: "./deployment.json",
-			Usage: "deployment config",
-		},
 		cli.StringFlag{
 			Name:  "network",
 			Value: "kovan",
@@ -175,32 +159,24 @@ func LoadKey() (*keystore.Key, error) {
 
 func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error) {
 	//Fixme:
-	//var config ethereum.Config
-	//switch c.String("network"){
-	//case "ropsten":
-	//	config = ethereum.Config{
-	//		Network:                 ethereum.NetworkRopsten,
-	//		URI:                     "https://ropsten.infura.io",
-	//		RepublicTokenAddress:    ethereum.RepublicTokenAddressOnRopsten.String(),
-	//		DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnRopsten.String(),
-	//	}
-	//case "kovan":
-	//	config = ethereum.Config{
-	//		Network:                 ethereum.NetworkKovan,
-	//		URI:                     "https://kovan.infura.io",
-	//		RepublicTokenAddress:    ethereum.RepublicTokenAddressOnKovan.String(),
-	//		DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnKovan.String(),
-	//	}
-	//default:
-	//	log.Println("network string is ", c.String("network"))
-	//	log.Fatal("unrecognized network name")
-	//}
-
-	config := ethereum.Config{
-		Network:                 ethereum.NetworkKovan,
-		URI:                     "https://kovan.infura.io",
-		RepublicTokenAddress:    ethereum.RepublicTokenAddressOnKovan.String(),
-		DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnKovan.String(),
+	var config ethereum.Config
+	switch c.GlobalString("network") {
+	case "ropsten":
+		config = ethereum.Config{
+			Network:                 ethereum.NetworkRopsten,
+			URI:                     "https://ropsten.infura.io",
+			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnRopsten.String(),
+			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnRopsten.String(),
+		}
+	case "kovan":
+		config = ethereum.Config{
+			Network:                 ethereum.NetworkKovan,
+			URI:                     "https://kovan.infura.io",
+			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnKovan.String(),
+			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnKovan.String(),
+		}
+	default:
+		log.Fatal("unrecognized network name")
 	}
 
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
