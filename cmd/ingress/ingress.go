@@ -40,6 +40,7 @@ func main() {
 	configParam := flag.String("config", "", "Ethereum configuration file")
 	keystoreParam := flag.String("keystore", "", "Optionally encrypted keystore file")
 	passphraseParam := flag.String("passphrase", "", "Optional passphrase to decrypt the keystore file")
+
 	flag.Parse()
 
 	config, err := loadConfig(*configParam)
