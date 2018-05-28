@@ -62,9 +62,9 @@ func main() {
 			Usage: "deployment config",
 		},
 		cli.StringFlag{
-			Name: "network",
+			Name:  "network",
 			Value: "kovan",
-			Usage : "Ethereum testnet name",
+			Usage: "Ethereum testnet name",
 		},
 	}
 

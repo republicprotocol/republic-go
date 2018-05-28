@@ -114,7 +114,7 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 
 	dispatch.CoBegin(
 		func() {
-			// Compute price exponenets
+			// Compute price exponents
 			for id, computation := range computer.cmpPriceExp {
 				if computation.State == StatePending {
 					buy, err := computer.orderbook.OrderFragment(computation.Buy)
@@ -124,7 +124,7 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get sell order fragment from orderbook: %v", err)
+						//log.Printf("cannot get sell order fragment from orderbook: %v", err)
 						continue
 					}
 					computer.cmpMu.Lock()
@@ -172,7 +172,7 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 			}
 		},
 		func() {
-			// Compute buy volume exponenets
+			// Compute buy volume exponents
 			for id, computation := range computer.cmpBuyVolExp {
 				if computation.State == StatePending {
 					log.Printf("DEBUG => computing vol exp: %v, %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
@@ -230,7 +230,7 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 			}
 		},
 		func() {
-			// Compute sell volume exponenets
+			// Compute sell volume exponents
 			for id, computation := range computer.cmpSellVolExp {
 				if computation.State == StatePending {
 					buy, err := computer.orderbook.OrderFragment(computation.Buy)
@@ -345,6 +345,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		computation := computer.cmpPriceExp[instID]
 		delete(computer.cmpPriceExp, instID)
 		if resultJ.Value <= half {
+			log.Println("price exp -> price co ")
 			computation.State = StatePending
 			instID[31] = StageCmpPriceCo
 			computer.cmpPriceCo[instID] = computation
@@ -354,6 +355,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		computation := computer.cmpPriceCo[instID]
 		delete(computer.cmpPriceCo, instID)
 		if resultJ.Value <= half {
+			log.Println("price co -> buy volume exp ")
 			computation.State = StatePending
 			instID[31] = StageCmpBuyVolExp
 			computer.cmpBuyVolExp[instID] = computation
@@ -363,6 +365,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		computation := computer.cmpBuyVolExp[instID]
 		delete(computer.cmpBuyVolExp, instID)
 		if resultJ.Value <= half {
+			log.Println("buy volume exp -> buy volume co")
 			computation.State = StatePending
 			instID[31] = StageCmpBuyVolCo
 			computer.cmpBuyVolCo[instID] = computation
@@ -372,6 +375,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		computation := computer.cmpBuyVolCo[instID]
 		delete(computer.cmpBuyVolCo, instID)
 		if resultJ.Value <= half {
+			log.Println("buy volume co -> sell volumn exp")
 			computation.State = StatePending
 			instID[31] = StageCmpSellVolExp
 			computer.cmpSellVolExp[instID] = computation
@@ -381,6 +385,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		computation := computer.cmpSellVolExp[instID]
 		delete(computer.cmpSellVolExp, instID)
 		if resultJ.Value <= half {
+			log.Println("sell volume exp -> sell volumn co ")
 			computation.State = StatePending
 			instID[31] = StageCmpSellVolCo
 			computer.cmpSellVolCo[instID] = computation
@@ -390,6 +395,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		computation := computer.cmpSellVolCo[instID]
 		delete(computer.cmpSellVolCo, instID)
 		if resultJ.Value <= half {
+			log.Println("sell volume co -> tokens")
 			computation.State = StatePending
 			instID[31] = StageCmpTokens
 			computer.cmpTokens[instID] = computation
