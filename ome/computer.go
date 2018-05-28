@@ -99,6 +99,7 @@ func NewComputer(orderbook orderbook.Orderbook, smpcer smpc.Smpcer) Computer {
 		cmpSellVolExp: map[[32]byte]ComputationState{},
 		cmpSellVolCo:  map[[32]byte]ComputationState{},
 		cmpTokens:     map[[32]byte]ComputationState{},
+		join:          map[[32]byte]ComputationState{},
 	}
 }
 
@@ -433,9 +434,6 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 				log.Printf("cannot confirm order match: %v", err)
 				return
 			}
-			computation.State = StatePending
-			instID[31] = StageJoin
-			computer.join[instID] = computation
 		}
 	}
 }
