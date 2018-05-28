@@ -41,6 +41,7 @@ const (
 	StageCmpSellVolExp = 5
 	StageCmpSellVolCo  = 6
 	StageCmpTokens     = 7
+	StageJoin          = 8
 )
 
 type ComputationState struct {
@@ -82,6 +83,7 @@ type computer struct {
 	cmpSellVolExp map[[32]byte]ComputationState
 	cmpSellVolCo  map[[32]byte]ComputationState
 	cmpTokens     map[[32]byte]ComputationState
+	join          map[[32]byte]ComputationState
 }
 
 func NewComputer(orderbook orderbook.Orderbook, smpcer smpc.Smpcer) Computer {
@@ -131,6 +133,7 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 					computation.State = StateComputing
 					computer.cmpPriceExp[id] = computation
 					computer.cmpMu.Unlock()
+
 					instructions <- smpc.Inst{
 						InstID:    id,
 						NetworkID: networkID,
@@ -339,12 +342,13 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	computer.cmpMu.Lock()
 	defer computer.cmpMu.Unlock()
 
-	log.Printf("processing result!")
-
 	switch instID[31] {
 
 	case StageCmpPriceExp:
-		computation := computer.cmpPriceExp[instID]
+		computation, ok := computer.cmpPriceExp[instID]
+		if !ok {
+			return
+		}
 		delete(computer.cmpPriceExp, instID)
 		if resultJ.Value <= half {
 			computation.State = StatePending
@@ -353,7 +357,10 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 
 	case StageCmpPriceCo:
-		computation := computer.cmpPriceCo[instID]
+		computation, ok := computer.cmpPriceCo[instID]
+		if !ok {
+			return
+		}
 		delete(computer.cmpPriceCo, instID)
 		if resultJ.Value <= half {
 			computation.State = StatePending
@@ -362,7 +369,10 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 
 	case StageCmpBuyVolExp:
-		computation := computer.cmpBuyVolExp[instID]
+		computation, ok := computer.cmpBuyVolExp[instID]
+		if !ok {
+			return
+		}
 		delete(computer.cmpBuyVolExp, instID)
 		if resultJ.Value <= half {
 			computation.State = StatePending
@@ -371,7 +381,10 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 
 	case StageCmpBuyVolCo:
-		computation := computer.cmpBuyVolCo[instID]
+		computation, ok := computer.cmpBuyVolCo[instID]
+		if !ok {
+			return
+		}
 		delete(computer.cmpBuyVolCo, instID)
 		if resultJ.Value <= half {
 			computation.State = StatePending
@@ -380,7 +393,10 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 
 	case StageCmpSellVolExp:
-		computation := computer.cmpSellVolExp[instID]
+		computation, ok := computer.cmpSellVolExp[instID]
+		if !ok {
+			return
+		}
 		delete(computer.cmpSellVolExp, instID)
 		if resultJ.Value <= half {
 			computation.State = StatePending
@@ -389,7 +405,10 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 
 	case StageCmpSellVolCo:
-		computation := computer.cmpSellVolCo[instID]
+		computation, ok := computer.cmpSellVolCo[instID]
+		if !ok {
+			return
+		}
 		delete(computer.cmpSellVolCo, instID)
 		if resultJ.Value <= half {
 			computation.State = StatePending
@@ -398,11 +417,19 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 
 	case StageCmpTokens:
-		computation := computer.cmpTokens[instID]
+		computation, ok := computer.cmpTokens[instID]
+		if !ok {
+			return
+		}
 		delete(computer.cmpTokens, instID)
 		if resultJ.Value == 0 {
-			log.Printf("DEBUG => order match: %v, %v", computation.Buy, computation.Sell)
-			computer.orderbook.ConfirmOrderMatch(computation.Buy, computation.Sell)
+			if err := computer.orderbook.ConfirmOrderMatch(computation.Buy, computation.Sell); err != nil {
+				log.Printf("cannot confirm order match: %v", err)
+				return
+			}
+			computation.State = StatePending
+			instID[31] = StageJoin
+			computer.join[instID] = computation
 		}
 	}
 }

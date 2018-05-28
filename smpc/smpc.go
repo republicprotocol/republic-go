@@ -254,8 +254,6 @@ func (smpc *smpcer) instJ(instID, networkID [32]byte, inst InstJ) {
 	defer smpc.lookupMu.RUnlock()
 	defer smpc.shareBuildersMu.RUnlock()
 
-	println("INFO => INSTJ RECEIVED FROM SELF")
-
 	if shareBuilder, ok := smpc.shareBuilders[networkID]; ok {
 		shareBuilder.Observe(instID, networkID, smpc)
 	}
@@ -329,12 +327,10 @@ func (smpc *smpcer) processMessageJ(message MessageJ) {
 	if shareBuilder, ok := smpc.shareBuilders[message.NetworkID]; ok {
 		if err := shareBuilder.Insert(message.InstID, message.Share); err != nil {
 			if err == ErrInsufficientSharesToJoin {
-				log.Printf("DEBUG => RECEIVED MESSAGE J FOR PROCESSING")
 				return
 			}
 			log.Printf("could not insert share: %v", err)
 			return
 		}
-		log.Printf("DEBUG => RECEIVED MESSAGE J FOR PROCESSING")
 	}
 }
