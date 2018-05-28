@@ -48,7 +48,6 @@ var _ = Describe("Darknode integration", func() {
 
 	var genesis ethereum.Conn
 	var configs []darknode.Config
-
 	var darknodes []darknode.Darknode
 	var servers []*grpc.Server
 	var swarmers []swarm.Swarmer
@@ -57,7 +56,7 @@ var _ = Describe("Darknode integration", func() {
 	var computers []ome.Computer
 	var stores []leveldb.Store
 
-	BeforeEach(func() {
+	test.SkipCIBeforeSuite(func() {
 		var err error
 		mu.Lock()
 
@@ -70,7 +69,7 @@ var _ = Describe("Darknode integration", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
-	AfterEach(func() {
+	test.SkipCIAfterSuite(func() {
 		defer mu.Unlock()
 
 		for _, server := range servers {
@@ -102,7 +101,7 @@ var _ = Describe("Darknode integration", func() {
 
 	})
 
-	test.SkipCIContext("when the epoch changes", func() {
+	Context("when the epoch changes", func() {
 
 		It("should reach consensus on the configuration of the pods", func() {
 			Expect(nil).To(BeNil())
@@ -118,7 +117,7 @@ var _ = Describe("Darknode integration", func() {
 
 	})
 
-	test.SkipCIContext("when orders are opened", func() {
+	Context("when orders are opened", func() {
 
 		It("should confirm matching orders", func(done Done) {
 			defer close(done)
@@ -197,7 +196,7 @@ var _ = Describe("Darknode integration", func() {
 
 	})
 
-	test.SkipCIContext("when orders are canceled", func() {
+	Context("when orders are canceled", func() {
 
 		It("should not confirm canceled orders", func() {
 			Expect(nil).To(BeNil())
@@ -205,7 +204,7 @@ var _ = Describe("Darknode integration", func() {
 
 	})
 
-	test.SkipCIContext("when orders are confirmed", func() {
+	Context("when orders are confirmed", func() {
 
 		It("should not reconfirm orders", func() {
 			Expect(nil).To(BeNil())
