@@ -207,7 +207,6 @@ func (logger *Logger) Warn(message string) {
 }
 
 // Error logs an error Log using a GenericEvent.
-
 func (logger *Logger) Error(message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
