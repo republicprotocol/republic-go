@@ -122,6 +122,8 @@ func main() {
 
 	// Start the secure order matching engine
 	go func() {
+		// Sleep for enough time that the bootstrap process can complete
+		time.Sleep(time.Second * 10)
 
 		// FIXME: This should be driven in the same way that the
 		// driving of ome.Sync and computer.Compute are driven,
