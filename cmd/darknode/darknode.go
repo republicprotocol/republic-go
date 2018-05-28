@@ -41,7 +41,7 @@ func main() {
 	flag.Parse()
 
 	// Load configuration file
-	conf, err := darknode.NewConfigFromJSONFile(*configParam)
+	config, err := darknode.NewConfigFromJSONFile(*configParam)
 	if err != nil {
 		log.Fatalf("cannot load config: %v", err)
 	}
@@ -53,97 +53,115 @@ func main() {
 	}
 
 	// Get multi-address
-	multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/18514/republic/%s", ipAddr, conf.Address))
+	multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/18514/republic/%s", ipAddr, config.Address))
 	if err != nil {
 		log.Fatalf("cannot get multiaddress: %v", err)
 	}
 	log.Printf("address %v", multiAddr)
 
 	// Get ethereum bindings
-	auth, darkpool, _, _, renLedger, err := getEthereumBindings(conf.Keystore, conf.Ethereum)
+	auth, darkPool, darkPoolAccounts, darkPoolFees, renLedger, err := getEthereumBindings(config.Keystore, config.Ethereum)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
 	log.Printf("ethereum %v", auth.From.Hex())
 
-	// Build service components
+	// New crypter for signing and verification
+	crypter := darknode.NewCrypter(config.Keystore, darkPool, 256, time.Minute)
+
+	// New database for persistent storage
 	store, err := leveldb.NewStore(*dataParam)
 	if err != nil {
-		log.Fatalf("cannot create leveldb: %v", err)
+		log.Fatalf("cannot open leveldb: %v", err)
 	}
+
+	// New DHT
+	dht := dht.NewDHT(config.Address, 64)
+
+	// New gRPC components
 	server := grpc.NewServer()
-	dht := dht.NewDHT(conf.Address, 32)
-	connPool := grpc.NewConnPool(128)
-	crypter := darknode.NewCrypter(conf.Keystore, darkpool, 128, time.Minute)
+	connPool := grpc.NewConnPool(32)
 
-	// Build services
-	newStatus(&dht, server)
-	orderbook := newOrderbook(conf.Keystore.RsaKey, &store, renLedger, server)
-	swarmer := newSwarmer(multiAddr, &dht, &connPool, server)
-	streamer := newStreamer(&crypter, &crypter, conf.Address, &connPool, server)
+	statusService := grpc.NewStatusService(&dht)
+	statusService.Register(server)
 
-	// Build smpc
-	smpcer := smpc.NewSmpcer(swarmer, streamer, 20)
-	smpcer.Start()
-	defer smpcer.Shutdown()
+	swarmClient := grpc.NewSwarmClient(multiAddr, &connPool)
+	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmClient, &dht))
+	swarmService.Register(server)
+	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 
-	// Build OME
-	ome := ome.NewOme(ome.NewRanker(1, 0), ome.NewComputer(orderbook, smpcer), orderbook, smpcer)
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(renLedger, 32), &store)
+	orderbookService := grpc.NewOrderbookService(orderbook)
+	orderbookService.Register(server)
+
+	streamClient := grpc.NewStreamClient(&crypter, config.Address, &connPool)
+	streamService := grpc.NewStreamService(&crypter, config.Address)
+	streamService.Register(server)
+	streamer := stream.NewStreamRecycler(stream.NewStreamer(config.Address, streamClient, &streamService))
+
+	// New secure multi-party computer
+	smpcer := smpc.NewSmpcer(swarmer, streamer, 1)
+
+	// New OME
+	computer := ome.NewComputer(orderbook, smpcer)
+	ome := ome.NewOme(ome.NewRanker(1, 0), computer, orderbook, smpcer)
+
+	// New Darknode
+	darknode := darknode.NewDarknode(config.Address, darkPool, darkPoolAccounts, darkPoolFees)
+	darknode.SetEpochListener(ome)
+
+	// Bootstrap
 	go func() {
 		time.Sleep(time.Second)
-		dispatch.CoBegin(func() {
-			// Bootstrap into the network
-			if err := swarmer.Bootstrap(context.Background(), conf.BootstrapMultiAddresses); err != nil {
-				log.Printf("error during bootstrap: %v", err)
-			}
-			log.Printf("peers %v", len(dht.MultiAddresses()))
-			for _, multiAddr := range dht.MultiAddresses() {
-				log.Printf("  %v", multiAddr)
-			}
-		})
-		for {
-			if err := ome.Sync(); err != nil {
-				return
-			}
-			time.Sleep(1 * time.Second)
+
+		// Bootstrap into the network
+		if err := swarmer.Bootstrap(context.Background(), config.BootstrapMultiAddresses); err != nil {
+			log.Printf("bootstrap: %v", err)
 		}
 	}()
 
-	// Start gRPC
-	log.Printf("listening on %v:%v...", conf.Host, conf.Port)
-	lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
+	// Start the secure order matching engine
+	go func() {
+
+		// FIXME: This should be driven in the same way that the
+		// driving of ome.Sync and computer.Compute are driven,
+		// instead of using a done channel
+		done := make(chan struct{})
+		go computer.ComputeResults(done)
+
+		dispatch.CoBegin(func() {
+			// Start the SMPC
+			smpcer.Start()
+		}, func() {
+			// Synchronizing the OME
+			for {
+				if err := ome.Sync(); err != nil {
+					log.Printf("cannot sync ome: %v", err)
+					continue
+				}
+				time.Sleep(time.Second * 2)
+			}
+		}, func() {
+			// Synchronizing the Darknode
+			for {
+				if err := darknode.Sync(); err != nil {
+					log.Printf("cannot sync darknode: %v", err)
+					continue
+				}
+				time.Sleep(time.Second * 2)
+			}
+		})
+	}()
+
+	// Start gRPC server and run until the server is stopped
+	log.Printf("listening on %v:%v...", config.Host, config.Port)
+	lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", config.Host, config.Port))
 	if err != nil {
-		log.Fatalf("cannot listen on %v:%v: %v", conf.Host, conf.Port, err)
+		log.Fatalf("cannot listen on %v:%v: %v", config.Host, config.Port, err)
 	}
 	if err := server.Serve(lis); err != nil {
-		log.Fatalf("cannot serve on %v:%v: %v", conf.Host, conf.Port, err)
+		log.Fatalf("cannot serve on %v:%v: %v", config.Host, config.Port, err)
 	}
-}
-
-func newStatus(dht *dht.DHT, server *grpc.Server) {
-	service := grpc.NewStatusService(dht)
-	service.Register(server)
-}
-
-func newSwarmer(multiAddr identity.MultiAddress, dht *dht.DHT, connPool *grpc.ConnPool, server *grpc.Server) swarm.Swarmer {
-	client := grpc.NewSwarmClient(multiAddr, connPool)
-	service := grpc.NewSwarmService(swarm.NewServer(client, dht))
-	service.Register(server)
-	return swarm.NewSwarmer(client, dht)
-}
-
-func newOrderbook(key crypto.RsaKey, store *leveldb.Store, renLedger cal.RenLedger, server *grpc.Server) orderbook.Orderbook {
-	orderbooker := orderbook.NewOrderbook(key, orderbook.NewSyncer(renLedger, 32), store)
-	service := grpc.NewOrderbookService(orderbooker)
-	service.Register(server)
-	return orderbooker
-}
-
-func newStreamer(signer crypto.Signer, verifier crypto.Verifier, addr identity.Address, connPool *grpc.ConnPool, server *grpc.Server) stream.Streamer {
-	client := grpc.NewStreamClient(signer, addr, connPool)
-	service := grpc.NewStreamService(verifier, addr)
-	service.Register(server)
-	return stream.NewStreamRecycler(stream.NewStreamer(addr, client, &service))
 }
 
 func getIPAddress() (string, error) {
