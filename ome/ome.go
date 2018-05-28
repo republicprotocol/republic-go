@@ -2,6 +2,7 @@ package ome
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/order"
@@ -46,6 +47,9 @@ func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
 // Sync implements the Omer interface.
 func (ome *ome) Sync() error {
 	changeset, err := ome.orderbook.Sync()
+	if len(changeset) > 0 {
+		log.Printf("DEBUG => changeset sync: %v", len(changeset))
+	}
 	if err != nil {
 		return fmt.Errorf("cannot sync orderbook: %v", err)
 	}
@@ -83,6 +87,10 @@ func (ome *ome) syncRanker(changeset orderbook.ChangeSet) error {
 func (ome *ome) syncComputer(changeset orderbook.ChangeSet) error {
 	buffer := [128]Computation{}
 	n := ome.ranker.Computations(buffer[:])
+	if n > 0 {
+		log.Printf("DEBUG => computations sync: %v", n)
+	}
+
 	ome.computer.Compute(ome.ξ.Hash, buffer[:n])
 	return nil
 }

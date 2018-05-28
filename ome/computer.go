@@ -103,6 +103,8 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 	instructions := computer.smpcer.Instructions()
 
 	for _, computation := range computations {
+		log.Printf("DEBUG => computation started: %v, %v", computation.Buy, computation.Sell)
+
 		id := computeID(computation)
 		id[31] = StageCmpPriceExp
 		computer.cmpPriceExp[id] = ComputationState{
@@ -394,6 +396,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		computation := computer.cmpTokens[instID]
 		delete(computer.cmpTokens, instID)
 		if resultJ.Value == 0 {
+			log.Printf("DEBUG => order match: %v, %v", computation.Buy, computation.Sell)
 			computer.orderbook.ConfirmOrderMatch(computation.Buy, computation.Sell)
 		}
 	}

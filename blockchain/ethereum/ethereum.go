@@ -100,7 +100,6 @@ func Connect(config Config) (Conn, error) {
 			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}
 	}
-	config.RenLedgerAddress = RenLedgerAddressOnRopsten.String() // fixme : update the ledger address in config
 
 	ethclient, err := ethclient.Dial(config.URI)
 	if err != nil {

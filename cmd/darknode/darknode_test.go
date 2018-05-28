@@ -12,11 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
-	"github.com/republicprotocol/republic-go/order"
-
-	"github.com/republicprotocol/republic-go/dispatch"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -24,17 +19,21 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
+	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/dht"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/ome"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/smpc"
+	"github.com/republicprotocol/republic-go/stackint"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 )
@@ -46,6 +45,7 @@ var _ = Describe("Darknode integration", func() {
 	n := 24
 	bootstraps := 5
 
+	var genesis ethereum.Conn
 	var configs []darknode.Config
 
 	var darknodes []darknode.Darknode
@@ -59,12 +59,12 @@ var _ = Describe("Darknode integration", func() {
 		var err error
 		mu.Lock()
 
-		ok := ganache.Start()
-		Expect(ok).Should(BeTrue())
+		genesis, err = ganache.StartAndConnect()
+		Expect(err).ShouldNot(HaveOccurred())
 
 		configs, err = newDarknodeConfigs(n, bootstraps)
 		Expect(err).ShouldNot(HaveOccurred())
-		darknodes, servers, swarmers, smpcers, omes, stores, err = newDarknodes(configs)
+		darknodes, servers, swarmers, smpcers, omes, stores, err = newDarknodes(genesis, configs)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -137,17 +137,19 @@ var _ = Describe("Darknode integration", func() {
 						// Synchronizing the OME
 						for {
 							if err := omes[i].Sync(); err != nil {
-								return
+								log.Printf("cannot sync ome: %v", err)
+								continue
 							}
-							time.Sleep(1 * time.Second)
+							time.Sleep(time.Second * 2)
 						}
 					}, func() {
 						// Synchronizing the Darknode
 						for {
 							if err := darknodes[i].Sync(); err != nil {
-								return
+								log.Printf("cannot sync darknode: %v", err)
+								continue
 							}
-							time.Sleep(1 * time.Second)
+							time.Sleep(time.Second * 2)
 						}
 					})
 				})
@@ -169,11 +171,11 @@ var _ = Describe("Darknode integration", func() {
 				})
 			}()
 
-			err := openOrderPairs(configs)
+			err := openOrderPairs(genesis, configs)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			<-time.NewTimer(time.Minute).C
-		}, 30 /* 30 second timeout */)
+		}, 60 /* 60 second timeout */)
 
 		It("should not confirm mismatching orders", func() {
 			Expect(nil).To(BeNil())
@@ -278,7 +280,7 @@ func newDarknodeConfigs(n int, bootstraps int) ([]darknode.Config, error) {
 
 }
 
-func newDarknodes(configs []darknode.Config) ([]darknode.Darknode, []*grpc.Server, []swarm.Swarmer, []smpc.Smpcer, []ome.Ome, []leveldb.Store, error) {
+func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.Darknode, []*grpc.Server, []swarm.Swarmer, []smpc.Smpcer, []ome.Ome, []leveldb.Store, error) {
 
 	darknodes := []darknode.Darknode{}
 	servers := []*grpc.Server{}
@@ -286,6 +288,8 @@ func newDarknodes(configs []darknode.Config) ([]darknode.Darknode, []*grpc.Serve
 	smpcers := []smpc.Smpcer{}
 	omes := []ome.Ome{}
 	stores := []leveldb.Store{}
+
+	var wg sync.WaitGroup
 
 	for i, config := range configs {
 		addr := config.Address
@@ -295,7 +299,7 @@ func newDarknodes(configs []darknode.Config) ([]darknode.Darknode, []*grpc.Serve
 		}
 
 		// New Ethereum bindings
-		_, darkPool, darkPoolAccounts, darkPoolFees, renLedger, err := newEthereumBindings(config.Keystore, config.Ethereum)
+		auth, darkPool, darkPoolAccounts, darkPoolFees, renLedger, err := newEthereumBindings(config.Keystore, config.Ethereum)
 		if err != nil {
 			return nil, nil, nil, nil, nil, nil, err
 		}
@@ -342,7 +346,36 @@ func newDarknodes(configs []darknode.Config) ([]darknode.Darknode, []*grpc.Serve
 
 		// New Darknode
 		darknodes = append(darknodes, darknode.NewDarknode(config.Address, darkPool, darkPoolAccounts, darkPoolFees))
+		darknodes[i].SetEpochListener(omes[i])
+
+		// Distribute ETH to the Darknode
+		ganache.DistributeEth(genesis, auth.From)
+
+		wg.Add(1)
+		go func(config darknode.Config) {
+			defer wg.Done()
+
+			// Register the Darknode
+			pubKeyBytes, err := crypto.BytesFromRsaPublicKey(&config.Keystore.RsaKey.PublicKey)
+			if err != nil {
+				panic(fmt.Sprintf("cannot get bytes from rsa public key: %v", err))
+			}
+			zero := stackint.Zero()
+			tx, err := darkPool.(*dnr.DarknodeRegistry).Register(addr.ID(), pubKeyBytes, &zero)
+			if err != nil {
+				panic(fmt.Sprintf("cannot register darknode: %v", err))
+			}
+			if _, err := genesis.PatchedWaitMined(context.Background(), tx); err != nil {
+				panic(fmt.Sprintf("cannot wait for register: %v", err))
+			}
+
+			// Call the epoch and ignore errors
+			time.Sleep(time.Second)
+			_, _ = darkPool.(*dnr.DarknodeRegistry).TriggerEpoch()
+		}(config)
 	}
+	wg.Wait()
+
 	return darknodes, servers, swarmers, smpcers, omes, stores, nil
 
 }
@@ -371,7 +404,7 @@ func newEthereumBindings(keystore crypto.Keystore, config ethereum.Config) (*bin
 
 }
 
-func openOrderPairs(configs []darknode.Config) error {
+func openOrderPairs(genesis ethereum.Conn, configs []darknode.Config) error {
 
 	keystore, err := crypto.RandomKeystore()
 	if err != nil {
@@ -388,63 +421,75 @@ func openOrderPairs(configs []darknode.Config) error {
 	orderbookClient := grpc.NewOrderbookClient(&connPool)
 	swarmClient := grpc.NewSwarmClient(multiAddr, &connPool)
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
+	swarmer.Bootstrap(context.Background(), configs[0].BootstrapMultiAddresses)
 
-	_, darkPool, _, _, renLedger, err := newEthereumBindings(keystore, configs[0].Ethereum)
+	auth, darkPool, _, _, renLedger, err := newEthereumBindings(keystore, configs[0].Ethereum)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get ethereum binding: %v", err)
 	}
 
-	nonce := rand.Int63()
-	one := order.CoExp{
-		Co:  200,
-		Exp: 26,
-	}
-	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.TokensETHREN, one, one, one, nonce)
+	ganache.DistributeEth(genesis, auth.From)
 
-	signatureData := crypto.Keccak256([]byte("Republic Protocol: open: "), ord.ID[:])
-	signatureData = crypto.Keccak256([]byte("\x19Ethereum Signed Message:\n32"), signatureData)
-	signature, err := keystore.Sign(signatureData)
-	if err != nil {
-		return err
-	}
-
-	signature65 := [65]byte{}
-	copy(signature65[:], signature)
-	if err := renLedger.OpenBuyOrder(signature65, ord.ID); err != nil {
-		return err
-	}
-
-	pods, err := darkPool.Pods()
-	if err != nil {
-		return err
-	}
-	for _, pod := range pods {
-		n := int64(len(pod.Darknodes))
-		k := int64(2 * (len(pod.Darknodes) + 1) / 3)
-		hash := base64.StdEncoding.EncodeToString(pod.Hash[:])
-		ordFragments, err := ord.Split(n, k)
-		if err != nil {
-			log.Fatalf("cannot split order to %v: %v", hash, err)
+	numberOfOrderPairs := 1
+	for n := 0; n < numberOfOrderPairs; n++ {
+		one := order.CoExp{
+			Co:  200,
+			Exp: 26,
 		}
 
-		for i, ordFragment := range ordFragments {
-			pubKey, err := darkPool.PublicKey(pod.Darknodes[i])
+		buyOrder := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.TokensETHREN, one, one, one, rand.Int63())
+		sellOrder := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(time.Hour), order.TokensETHREN, one, one, one, rand.Int63())
+
+		orders := []order.Order{buyOrder, sellOrder}
+
+		for _, ord := range orders {
+			signatureData := crypto.Keccak256([]byte("Republic Protocol: open: "), ord.ID[:])
+			signatureData = crypto.Keccak256([]byte("\x19Ethereum Signed Message:\n32"), signatureData)
+			signature, err := keystore.Sign(signatureData)
 			if err != nil {
-				return err
+				return fmt.Errorf("cannot sign: %v", err)
 			}
 
-			encryptedFragment, err := ordFragment.Encrypt(pubKey)
-			if err != nil {
-				return err
+			signature65 := [65]byte{}
+			copy(signature65[:], signature)
+			if err := renLedger.OpenBuyOrder(signature65, ord.ID); err != nil {
+				return fmt.Errorf("cannot open order on ren ledger: %v", err)
 			}
 
-			darknodeMultiAddr, err := swarmer.Query(context.Background(), pod.Darknodes[i], -1)
+			pods, err := darkPool.Pods()
 			if err != nil {
-				return err
+				return fmt.Errorf("cannot get pods: %v", err)
 			}
 
-			if err := orderbookClient.OpenOrder(context.Background(), darknodeMultiAddr, encryptedFragment); err != nil {
-				return err
+			for _, pod := range pods {
+				n := int64(len(pod.Darknodes))
+				k := int64(2 * (len(pod.Darknodes) + 1) / 3)
+				hash := base64.StdEncoding.EncodeToString(pod.Hash[:])
+				ordFragments, err := ord.Split(n, k)
+				if err != nil {
+					return fmt.Errorf("cannot split order to %v: %v", hash, err)
+				}
+
+				for i, ordFragment := range ordFragments {
+					pubKey, err := darkPool.PublicKey(pod.Darknodes[i])
+					if err != nil {
+						return fmt.Errorf("cannot get public key: %v", err)
+					}
+
+					encryptedFragment, err := ordFragment.Encrypt(pubKey)
+					if err != nil {
+						return fmt.Errorf("cannot encrypt: %v", err)
+					}
+
+					darknodeMultiAddr, err := swarmer.Query(context.Background(), pod.Darknodes[i], -1)
+					if err != nil {
+						return fmt.Errorf("cannot query: %v", err)
+					}
+
+					if err := orderbookClient.OpenOrder(context.Background(), darknodeMultiAddr, encryptedFragment); err != nil {
+						return fmt.Errorf("cannot open order fragment: %v", err)
+					}
+				}
 			}
 		}
 	}

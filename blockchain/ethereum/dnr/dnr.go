@@ -19,9 +19,9 @@ import (
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
-// ErrAccessDenied is returned when the number of dark nodes are lesser than
+// ErrConnectionDenied is returned when the number of dark nodes are lesser than
 // the minimum number of dark nodes required to run a dark pool
-var ErrConnectionDenied = errors.New("error while trying to connect to the dark ocean")
+var ErrConnectionDenied = errors.New("connection denied")
 
 // Epoch contains a blockhash and a timestamp
 type Epoch struct {
@@ -376,7 +376,7 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 		return []cal.Pod{}, err
 	}
 	if len(darknodeAddrs) < int(numberOfNodesInPool.ToBigInt().Int64()) {
-		return []cal.Pod{}, ErrConnectionDenied
+		return []cal.Pod{}, fmt.Errorf("degraded dark pool: expected at least %v addresses, got %v", int(numberOfNodesInPool.ToBigInt().Int64()), len(darknodeAddrs))
 	}
 	epoch, err := darkNodeRegistry.binding.CurrentEpoch(darkNodeRegistry.callOpts)
 	if err != nil {

@@ -1,6 +1,7 @@
 package orderbook
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/republicprotocol/republic-go/cal"
@@ -58,31 +59,30 @@ func NewSyncer(renLedger cal.RenLedger, limit int) Syncer {
 }
 
 func (syncer *syncer) Sync() (ChangeSet, error) {
-	changset := syncer.purge()
+	changeset := syncer.purge()
 
-	// Get new buy orders from the ledger
-	buyOrderIDs, err := syncer.renLedger.BuyOrders(syncer.buyOrderPointer, syncer.renLedgerLimit)
-	if err != nil {
-		return nil, err
-	}
-	syncer.buyOrderPointer += len(buyOrderIDs)
-	for i, ord := range buyOrderIDs {
-		change := NewChange(ord, order.ParityBuy, order.Open, uint64(syncer.buyOrderPointer+i))
-		changset = append(changset, change)
+	buyOrderIDs, buyErr := syncer.renLedger.BuyOrders(syncer.buyOrderPointer, syncer.renLedgerLimit)
+	if buyErr == nil {
+		syncer.buyOrderPointer += len(buyOrderIDs)
+		for i, ord := range buyOrderIDs {
+			change := NewChange(ord, order.ParityBuy, order.Open, uint64(syncer.buyOrderPointer+i))
+			changeset = append(changeset, change)
+		}
 	}
 
 	// Get new sell orders from the ledger
-	sellOrderIDs, err := syncer.renLedger.SellOrders(syncer.sellOrderPointer, syncer.renLedgerLimit)
-	if err != nil {
-		return nil, err
+	sellOrderIDs, sellErr := syncer.renLedger.SellOrders(syncer.sellOrderPointer, syncer.renLedgerLimit)
+	if sellErr == nil {
+		syncer.sellOrderPointer += len(sellOrderIDs)
+		for i, ord := range sellOrderIDs {
+			change := NewChange(ord, order.ParitySell, order.Open, uint64(syncer.sellOrderPointer+i))
+			changeset = append(changeset, change)
+		}
 	}
-	syncer.sellOrderPointer += len(sellOrderIDs)
-	for i, ord := range sellOrderIDs {
-		change := NewChange(ord, order.ParitySell, order.Open, uint64(syncer.sellOrderPointer+i))
-		changset = append(changset, change)
+	if buyErr != nil && sellErr != nil {
+		return changeset, fmt.Errorf("buy err = %v, sell err = %v", buyErr, sellErr)
 	}
-
-	return changset, nil
+	return changeset, nil
 }
 
 func (syncer *syncer) purge() ChangeSet {
