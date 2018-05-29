@@ -142,6 +142,7 @@ var _ = Describe("Ingress", func() {
 			err = ingress.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
 			Expect(err).ShouldNot(HaveOccurred())
 
+			time.Sleep(time.Second)
 			err = ingress.CancelOrder(signature, ord.ID)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
