@@ -180,8 +180,7 @@ func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error
 	}
 
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
-	auth.GasPrice = big.NewInt(40000000000)
-	auth.GasLimit = 2000000
+	auth.GasPrice = big.NewInt(5000000000)
 
 	client, err := ethereum.Connect(config)
 	if err != nil {

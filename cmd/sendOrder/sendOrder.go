@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/big"
 	"math/rand"
 	netHttp "net/http"
 	"os"
@@ -52,8 +51,7 @@ func main() {
 	randomOrder := newRandomOrder()
 	ords := []order.Order{randomOrder}
 	if *matched {
-		matchedOrder := randomOrder
-		matchedOrder.Parity = 1 - randomOrder.Parity
+		matchedOrder := order.NewOrder(randomOrder.Type, 1-randomOrder.Parity, randomOrder.Expiry, randomOrder.Tokens, randomOrder.Price, randomOrder.Volume, randomOrder.MinimumVolume, randomOrder.Nonce)
 		ords = append(ords, matchedOrder)
 	}
 
@@ -92,7 +90,6 @@ func main() {
 					Index: int64(i),
 				}
 
-				//log.Println(pod.Darknodes[i])
 				pubKey, err := darkpool.PublicKey(pod.Darknodes[i])
 				if err != nil {
 					log.Fatalf("cannot get public key of %v: %v", pod.Darknodes[i], err)
@@ -105,7 +102,6 @@ func main() {
 				marshaledOrdFragment.OrderType = encryptedFragment.OrderType
 				marshaledOrdFragment.OrderExpiry = encryptedFragment.OrderExpiry.Unix()
 				marshaledOrdFragment.Tokens = base64.StdEncoding.EncodeToString(encryptedFragment.Tokens)
-				//log.Printf("TOKENS: %v", marshaledOrdFragment.Tokens)
 				marshaledOrdFragment.Price = []string{
 					base64.StdEncoding.EncodeToString(encryptedFragment.Price.Co),
 					base64.StdEncoding.EncodeToString(encryptedFragment.Price.Exp),
@@ -189,7 +185,6 @@ func loadSmartContracts(ethereumConfig ethereum.Config, keystore crypto.Keystore
 		return nil, nil, err
 	}
 	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
-	auth.GasPrice = big.NewInt(10)
 
 	registry, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
 	if err != nil {
