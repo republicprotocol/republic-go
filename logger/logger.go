@@ -182,11 +182,11 @@ func (logger *Logger) Log(l Log) {
 	}
 }
 
-// Info logs an info Log using a GenericEvent.
-func (logger *Logger) Info(message string) {
+// Error logs an error Log using a GenericEvent.
+func (logger *Logger) Error(message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      LevelInfo,
+		Type:      LevelError,
 		EventType: TypeGeneric,
 		Event: GenericEvent{
 			Message: message,
@@ -206,6 +206,30 @@ func (logger *Logger) Warn(message string) {
 	})
 }
 
+// Info logs an info Log using a GenericEvent.
+func (logger *Logger) Info(message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      LevelInfo,
+		EventType: TypeGeneric,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
+}
+
+// DebugHigh logs a debug Log using a GenericEvent.
+func (logger *Logger) DebugHigh(message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      LevelDebugHigh,
+		EventType: TypeGeneric,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
+}
+
 // Debug logs a debug Log using a GenericEvent.
 func (logger *Logger) Debug(message string) {
 	logger.Log(Log{
@@ -218,11 +242,11 @@ func (logger *Logger) Debug(message string) {
 	})
 }
 
-// Error logs an error Log using a GenericEvent.
-func (logger *Logger) Error(message string) {
+// DebugLow logs a debug Log using a GenericEvent.
+func (logger *Logger) DebugLow(message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      LevelError,
+		Type:      LevelDebugLow,
 		EventType: TypeGeneric,
 		Event: GenericEvent{
 			Message: message,
@@ -325,10 +349,12 @@ type Level string
 
 // Values for the LogType.
 const (
-	LevelInfo  = Level("info")
-	LevelDebug = Level("debug")
-	LevelWarn  = Level("warn")
-	LevelError = Level("error")
+	LevelError     = Level("error")
+	LevelWarn      = Level("warn")
+	LevelInfo      = Level("info")
+	LevelDebugHigh = Level("debugHigh")
+	LevelDebug     = Level("debug")
+	LevelDebugLow  = Level("debugLow")
 )
 
 // EventType defines the different types of Event messages that can be sent in a
