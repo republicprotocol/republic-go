@@ -72,7 +72,7 @@ func (confirmer *confirmer) ConfirmOrderMatches(done <-chan struct{}, orderMatch
 					return
 				}
 
-				if err := confirmer.confirmOrderMatch(orderMatch); err != nil {
+				if err := confirmer.beginConfirmOrder(orderMatch); err != nil {
 					select {
 					case <-done:
 						return
@@ -116,8 +116,8 @@ func (confirmer *confirmer) ConfirmOrderMatches(done <-chan struct{}, orderMatch
 					confirmer.confirmingMu.Lock()
 					defer confirmer.confirmingMu.Unlock()
 
-					confirmer.confirmOrders(order.ParityBuy, done, confirmedOrderMatches, errs)
-					confirmer.confirmOrders(order.ParitySell, done, confirmedOrderMatches, errs)
+					confirmer.checkOrdersForConfirmationFinality(order.ParityBuy, done, confirmedOrderMatches, errs)
+					confirmer.checkOrdersForConfirmationFinality(order.ParitySell, done, confirmedOrderMatches, errs)
 				}()
 			}
 		}
@@ -133,13 +133,13 @@ func (confirmer *confirmer) ConfirmOrderMatches(done <-chan struct{}, orderMatch
 	return confirmedOrderMatches, errs
 }
 
-func (confirmer *confirmer) confirmOrderMatch(orderMatch Computation) error {
+func (confirmer *confirmer) beginConfirmOrder(orderMatch Computation) error {
 	// TODO: Check the error and if it failed due to an ephemeral error then
 	// try again.
 	return confirmer.renLedger.ConfirmOrder(orderMatch.Buy, orderMatch.Sell)
 }
 
-func (confirmer *confirmer) confirmOrders(orderParity order.Parity, done <-chan struct{}, confirmedOrderMatches chan<- Computation, errs chan<- error) {
+func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order.Parity, done <-chan struct{}, confirmedOrderMatches chan<- Computation, errs chan<- error) {
 
 	var confirmingOrders map[order.ID]struct{}
 	if orderParity == order.ParityBuy {
@@ -149,7 +149,7 @@ func (confirmer *confirmer) confirmOrders(orderParity order.Parity, done <-chan 
 	}
 
 	for ord := range confirmingOrders {
-		matchingOrd, err := confirmer.confirmOrder(ord, order.ParityBuy)
+		matchingOrd, err := confirmer.checkOrderForConfirmationFinality(ord, order.ParityBuy)
 		if err != nil {
 			select {
 			case <-done:
@@ -186,7 +186,7 @@ func (confirmer *confirmer) confirmOrders(orderParity order.Parity, done <-chan 
 	}
 }
 
-func (confirmer *confirmer) confirmOrder(ord order.ID, orderParity order.Parity) (*order.ID, error) {
+func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orderParity order.Parity) (*order.ID, error) {
 	// Ignore orders that are not pass the depth limit
 	depth, err := confirmer.renLedger.Depth(ord)
 	if err != nil {

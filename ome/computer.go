@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -31,6 +32,8 @@ const (
 	StateComputing = 1
 )
 
+// TODO: Stage bytes are a really ugly way of tracking our computations. We
+// need a proper SMPC VM.
 type Stage byte
 
 const (
@@ -41,7 +44,22 @@ const (
 	StageCmpSellVolExp = 5
 	StageCmpSellVolCo  = 6
 	StageCmpTokens     = 7
-	StageJoin          = 8
+
+	StageJoinBuyPriceExp  = 8
+	StageJoinBuyPriceCo   = 9
+	StageJoinBuyVolExp    = 10
+	StageJoinBuyVolCo     = 11
+	StageJoinBuyMinVolExp = 12
+	StageJoinBuyMinVolCo  = 13
+	StageJoinBuyTokens    = 14
+
+	StageJoinSellPriceExp  = 15
+	StageJoinSellPriceCo   = 16
+	StageJoinSellVolExp    = 17
+	StageJoinSellVolCo     = 18
+	StageJoinSellMinVolExp = 19
+	StageJoinSellMinVolCo  = 20
+	StageJoinSellTokens    = 21
 )
 
 type ComputationState struct {
@@ -59,21 +77,24 @@ type Result struct {
 	IsMatch bool
 }
 
+// A Computer consumes Computations that need to be procesed and outputs
+// Computations that result in an order match.
 type Computer interface {
 
-	// Compute drives the Computer. It accepts new Computations into its
-	// pipeline.
+	// Compute order comparisons, component by component. If all components
+	// match, then an order match has been found. Computations are consumed
+	// from an input channel, and Computations that resulted in an order match
+	// are produced to the output channel. A call to Computer.Compute should
+	// use a background goroutine to avoid blocking the caller.
 	// TODO: NetworkID should be constructed as part of the computation, and
 	// there will need to be done by the orderbook.Server (which knows the
 	// epoch at which an order fragment was received).
-	Compute(networkID [32]byte, computations Computations)
-
-	ComputeResults(done chan struct{})
+	Compute(networkID [32]byte, done <-chan struct{}, computations <-chan Computation) (<-chan Computation, <-chan error)
 }
 
 type computer struct {
-	orderbook orderbook.Orderbook
-	smpcer    smpc.Smpcer
+	storer orderbook.Storer
+	smpcer smpc.Smpcer
 
 	cmpMu         *sync.Mutex
 	cmpPriceExp   map[[32]byte]ComputationState
@@ -83,13 +104,12 @@ type computer struct {
 	cmpSellVolExp map[[32]byte]ComputationState
 	cmpSellVolCo  map[[32]byte]ComputationState
 	cmpTokens     map[[32]byte]ComputationState
-	join          map[[32]byte]ComputationState
 }
 
-func NewComputer(orderbook orderbook.Orderbook, smpcer smpc.Smpcer) Computer {
+func NewComputer(storer orderbook.Storer, smpcer smpc.Smpcer) Computer {
 	return &computer{
-		orderbook: orderbook,
-		smpcer:    smpcer,
+		storer: storer,
+		smpcer: smpcer,
 
 		cmpMu:         new(sync.Mutex),
 		cmpPriceExp:   map[[32]byte]ComputationState{},
@@ -99,245 +119,326 @@ func NewComputer(orderbook orderbook.Orderbook, smpcer smpc.Smpcer) Computer {
 		cmpSellVolExp: map[[32]byte]ComputationState{},
 		cmpSellVolCo:  map[[32]byte]ComputationState{},
 		cmpTokens:     map[[32]byte]ComputationState{},
-		join:          map[[32]byte]ComputationState{},
 	}
 }
 
-func (computer *computer) Compute(networkID [32]byte, computations Computations) {
+func (computer *computer) Compute(networkID [32]byte, done <-chan struct{}, computations <-chan Computation) (<-chan Computation, <-chan error) {
 	instructions := computer.smpcer.Instructions()
-
-	for _, computation := range computations {
-		id := computeID(computation)
-		id[31] = StageCmpPriceExp
-		computer.cmpPriceExp[id] = ComputationState{
-			Computation: computation,
-			State:       StatePending,
-		}
-	}
-
-	dispatch.CoBegin(
-		func() {
-			// Compute price exponents
-			for id, computation := range computer.cmpPriceExp {
-				if computation.State == StatePending {
-					buy, err := computer.orderbook.OrderFragment(computation.Buy)
-					if err != nil {
-						//log.Printf("cannot get buy order fragment from orderbook: %v", err)
-						continue
-					}
-					sell, err := computer.orderbook.OrderFragment(computation.Sell)
-					if err != nil {
-						//log.Printf("cannot get sell order fragment from orderbook: %v", err)
-						continue
-					}
-					computer.cmpMu.Lock()
-					computation.State = StateComputing
-					computer.cmpPriceExp[id] = computation
-					computer.cmpMu.Unlock()
-
-					instructions <- smpc.Inst{
-						InstID:    id,
-						NetworkID: networkID,
-						InstJ: &smpc.InstJ{
-							Share: buy.Price.Exp.Sub(&sell.Price.Exp),
-						},
-					}
-				}
-			}
-		},
-		func() {
-			// Compute price cos
-			for id, computation := range computer.cmpPriceCo {
-				if computation.State == StatePending {
-					log.Printf("DEBUG => computing price co: %v, %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
-
-					buy, err := computer.orderbook.OrderFragment(computation.Buy)
-					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
-						continue
-					}
-					sell, err := computer.orderbook.OrderFragment(computation.Sell)
-					if err != nil {
-						log.Printf("cannot get sell order fragment from orderbook: %v", err)
-						continue
-					}
-					computer.cmpMu.Lock()
-					computation.State = StateComputing
-					computer.cmpPriceCo[id] = computation
-					computer.cmpMu.Unlock()
-					instructions <- smpc.Inst{
-						InstID:    id,
-						NetworkID: networkID,
-						InstJ: &smpc.InstJ{
-							Share: buy.Price.Co.Sub(&sell.Price.Co),
-						},
-					}
-				}
-			}
-		},
-		func() {
-			// Compute buy volume exponents
-			for id, computation := range computer.cmpBuyVolExp {
-				if computation.State == StatePending {
-					log.Printf("DEBUG => computing vol exp: %v, %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
-
-					buy, err := computer.orderbook.OrderFragment(computation.Buy)
-					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
-						continue
-					}
-					sell, err := computer.orderbook.OrderFragment(computation.Sell)
-					if err != nil {
-						log.Printf("cannot get sell order fragment from orderbook: %v", err)
-						continue
-					}
-					computer.cmpMu.Lock()
-					computation.State = StateComputing
-					computer.cmpBuyVolExp[id] = computation
-					computer.cmpMu.Unlock()
-					instructions <- smpc.Inst{
-						InstID:    id,
-						NetworkID: networkID,
-						InstJ: &smpc.InstJ{
-							Share: buy.Volume.Exp.Sub(&sell.MinimumVolume.Exp),
-						},
-					}
-				}
-			}
-		},
-		func() {
-			// Compute buy volume cos
-			for id, computation := range computer.cmpBuyVolCo {
-				if computation.State == StatePending {
-					buy, err := computer.orderbook.OrderFragment(computation.Buy)
-					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
-						continue
-					}
-					sell, err := computer.orderbook.OrderFragment(computation.Sell)
-					if err != nil {
-						log.Printf("cannot get sell order fragment from orderbook: %v", err)
-						continue
-					}
-					computer.cmpMu.Lock()
-					computation.State = StateComputing
-					computer.cmpBuyVolCo[id] = computation
-					computer.cmpMu.Unlock()
-					instructions <- smpc.Inst{
-						InstID:    id,
-						NetworkID: networkID,
-						InstJ: &smpc.InstJ{
-							Share: buy.Volume.Co.Sub(&sell.MinimumVolume.Co),
-						},
-					}
-				}
-			}
-		},
-		func() {
-			// Compute sell volume exponents
-			for id, computation := range computer.cmpSellVolExp {
-				if computation.State == StatePending {
-					buy, err := computer.orderbook.OrderFragment(computation.Buy)
-					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
-						continue
-					}
-					sell, err := computer.orderbook.OrderFragment(computation.Sell)
-					if err != nil {
-						log.Printf("cannot get sell order fragment from orderbook: %v", err)
-						continue
-					}
-					computer.cmpMu.Lock()
-					computation.State = StateComputing
-					computer.cmpSellVolExp[id] = computation
-					computer.cmpMu.Unlock()
-					instructions <- smpc.Inst{
-						InstID:    id,
-						NetworkID: networkID,
-						InstJ: &smpc.InstJ{
-							Share: sell.Volume.Exp.Sub(&buy.MinimumVolume.Exp),
-						},
-					}
-				}
-			}
-		},
-		func() {
-			// Compute sell volume cos
-			for id, computation := range computer.cmpSellVolCo {
-				if computation.State == StatePending {
-					buy, err := computer.orderbook.OrderFragment(computation.Buy)
-					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
-						continue
-					}
-					sell, err := computer.orderbook.OrderFragment(computation.Sell)
-					if err != nil {
-						log.Printf("cannot get sell order fragment from orderbook: %v", err)
-						continue
-					}
-					computer.cmpMu.Lock()
-					computation.State = StateComputing
-					computer.cmpSellVolCo[id] = computation
-					computer.cmpMu.Unlock()
-					instructions <- smpc.Inst{
-						InstID:    id,
-						NetworkID: networkID,
-						InstJ: &smpc.InstJ{
-							Share: sell.Volume.Co.Sub(&buy.MinimumVolume.Co),
-						},
-					}
-				}
-			}
-		},
-		func() {
-			// Compute tokens
-			for id, computation := range computer.cmpTokens {
-				if computation.State == StatePending {
-					buy, err := computer.orderbook.OrderFragment(computation.Buy)
-					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
-						continue
-					}
-					sell, err := computer.orderbook.OrderFragment(computation.Sell)
-					if err != nil {
-						log.Printf("cannot get sell order fragment from orderbook: %v", err)
-						continue
-					}
-					computer.cmpMu.Lock()
-					computation.State = StateComputing
-					computer.cmpTokens[id] = computation
-					computer.cmpMu.Unlock()
-					instructions <- smpc.Inst{
-						InstID:    id,
-						NetworkID: networkID,
-						InstJ: &smpc.InstJ{
-							Share: sell.Tokens.Sub(&buy.Tokens),
-						},
-					}
-				}
-			}
-		},
-	)
-}
-
-func (computer *computer) ComputeResults(done chan struct{}) {
 	results := computer.smpcer.Results()
-	for {
-		select {
-		case <-done:
-			return
-		case result, ok := <-results:
-			if !ok {
-				return
-			}
-			if result.ResultJ != nil {
-				computer.processResultJ(result.InstID, result.NetworkID, *result.ResultJ)
-			}
-		}
-	}
+
+	orderMatches := make(chan Computation)
+	errs := make(chan error, 1)
+
+	go func() {
+		defer close(orderMatches)
+		defer close(errs)
+
+		dispatch.CoBegin(
+			func() {
+				for {
+					select {
+					case <-done:
+						return
+					case computation, ok := <-computations:
+						if !ok {
+							return
+						}
+						id := computeID(computation)
+						id[31] = StageCmpPriceExp
+						computer.cmpPriceExp[id] = ComputationState{
+							Computation: computation,
+							State:       StatePending,
+						}
+					}
+				}
+			},
+			func() {
+				for {
+					select {
+					case <-done:
+						return
+					default:
+					}
+					for id, computation := range computer.cmpPriceExp {
+						if computation.State == StatePending {
+							buy, err := computer.storer.OrderFragment(computation.Buy)
+							if err != nil {
+								continue
+							}
+							sell, err := computer.storer.OrderFragment(computation.Sell)
+							if err != nil {
+								continue
+							}
+							computer.cmpMu.Lock()
+							computation.State = StateComputing
+							computer.cmpPriceExp[id] = computation
+							computer.cmpMu.Unlock()
+
+							instructions <- smpc.Inst{
+								InstID:    id,
+								NetworkID: networkID,
+								InstJ: &smpc.InstJ{
+									Share: buy.Price.Exp.Sub(&sell.Price.Exp),
+								},
+							}
+						}
+					}
+					time.Sleep(time.Millisecond)
+				}
+			},
+			func() {
+				for {
+					select {
+					case <-done:
+						return
+					default:
+					}
+					for id, computation := range computer.cmpPriceCo {
+						if computation.State == StatePending {
+							log.Printf("DEBUG => computing price co: %v, %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
+
+							buy, err := computer.storer.OrderFragment(computation.Buy)
+							if err != nil {
+								log.Printf("cannot get buy order fragment from orderbook: %v", err)
+								continue
+							}
+							sell, err := computer.storer.OrderFragment(computation.Sell)
+							if err != nil {
+								log.Printf("cannot get sell order fragment from orderbook: %v", err)
+								continue
+							}
+							computer.cmpMu.Lock()
+							computation.State = StateComputing
+							computer.cmpPriceCo[id] = computation
+							computer.cmpMu.Unlock()
+							instructions <- smpc.Inst{
+								InstID:    id,
+								NetworkID: networkID,
+								InstJ: &smpc.InstJ{
+									Share: buy.Price.Co.Sub(&sell.Price.Co),
+								},
+							}
+						}
+					}
+					time.Sleep(time.Millisecond)
+				}
+			},
+			func() {
+				for {
+					select {
+					case <-done:
+						return
+					default:
+					}
+					for id, computation := range computer.cmpBuyVolExp {
+						if computation.State == StatePending {
+							log.Printf("DEBUG => computing vol exp: %v, %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
+
+							buy, err := computer.storer.OrderFragment(computation.Buy)
+							if err != nil {
+								log.Printf("cannot get buy order fragment from orderbook: %v", err)
+								continue
+							}
+							sell, err := computer.storer.OrderFragment(computation.Sell)
+							if err != nil {
+								log.Printf("cannot get sell order fragment from orderbook: %v", err)
+								continue
+							}
+							computer.cmpMu.Lock()
+							computation.State = StateComputing
+							computer.cmpBuyVolExp[id] = computation
+							computer.cmpMu.Unlock()
+							instructions <- smpc.Inst{
+								InstID:    id,
+								NetworkID: networkID,
+								InstJ: &smpc.InstJ{
+									Share: buy.Volume.Exp.Sub(&sell.MinimumVolume.Exp),
+								},
+							}
+						}
+					}
+					time.Sleep(time.Millisecond)
+				}
+			},
+			func() {
+				for {
+					select {
+					case <-done:
+						return
+					default:
+					}
+					for id, computation := range computer.cmpBuyVolCo {
+						if computation.State == StatePending {
+							buy, err := computer.storer.OrderFragment(computation.Buy)
+							if err != nil {
+								log.Printf("cannot get buy order fragment from orderbook: %v", err)
+								continue
+							}
+							sell, err := computer.storer.OrderFragment(computation.Sell)
+							if err != nil {
+								log.Printf("cannot get sell order fragment from orderbook: %v", err)
+								continue
+							}
+							computer.cmpMu.Lock()
+							computation.State = StateComputing
+							computer.cmpBuyVolCo[id] = computation
+							computer.cmpMu.Unlock()
+							instructions <- smpc.Inst{
+								InstID:    id,
+								NetworkID: networkID,
+								InstJ: &smpc.InstJ{
+									Share: buy.Volume.Co.Sub(&sell.MinimumVolume.Co),
+								},
+							}
+						}
+					}
+					time.Sleep(time.Millisecond)
+				}
+			},
+			func() {
+				for {
+					select {
+					case <-done:
+						return
+					default:
+					}
+					for id, computation := range computer.cmpSellVolExp {
+						if computation.State == StatePending {
+							buy, err := computer.storer.OrderFragment(computation.Buy)
+							if err != nil {
+								log.Printf("cannot get buy order fragment from orderbook: %v", err)
+								continue
+							}
+							sell, err := computer.storer.OrderFragment(computation.Sell)
+							if err != nil {
+								log.Printf("cannot get sell order fragment from orderbook: %v", err)
+								continue
+							}
+							computer.cmpMu.Lock()
+							computation.State = StateComputing
+							computer.cmpSellVolExp[id] = computation
+							computer.cmpMu.Unlock()
+							instructions <- smpc.Inst{
+								InstID:    id,
+								NetworkID: networkID,
+								InstJ: &smpc.InstJ{
+									Share: sell.Volume.Exp.Sub(&buy.MinimumVolume.Exp),
+								},
+							}
+						}
+					}
+					time.Sleep(time.Millisecond)
+				}
+			},
+			func() {
+				for {
+					select {
+					case <-done:
+						return
+					default:
+					}
+					for id, computation := range computer.cmpSellVolCo {
+						if computation.State == StatePending {
+							buy, err := computer.storer.OrderFragment(computation.Buy)
+							if err != nil {
+								log.Printf("cannot get buy order fragment from orderbook: %v", err)
+								continue
+							}
+							sell, err := computer.storer.OrderFragment(computation.Sell)
+							if err != nil {
+								log.Printf("cannot get sell order fragment from orderbook: %v", err)
+								continue
+							}
+							computer.cmpMu.Lock()
+							computation.State = StateComputing
+							computer.cmpSellVolCo[id] = computation
+							computer.cmpMu.Unlock()
+							instructions <- smpc.Inst{
+								InstID:    id,
+								NetworkID: networkID,
+								InstJ: &smpc.InstJ{
+									Share: sell.Volume.Co.Sub(&buy.MinimumVolume.Co),
+								},
+							}
+						}
+					}
+					time.Sleep(time.Millisecond)
+				}
+			},
+			func() {
+				for {
+					select {
+					case <-done:
+						return
+					default:
+					}
+					for id, computation := range computer.cmpTokens {
+						if computation.State == StatePending {
+							buy, err := computer.storer.OrderFragment(computation.Buy)
+							if err != nil {
+								log.Printf("cannot get buy order fragment from orderbook: %v", err)
+								continue
+							}
+							sell, err := computer.storer.OrderFragment(computation.Sell)
+							if err != nil {
+								log.Printf("cannot get sell order fragment from orderbook: %v", err)
+								continue
+							}
+							computer.cmpMu.Lock()
+							computation.State = StateComputing
+							computer.cmpTokens[id] = computation
+							computer.cmpMu.Unlock()
+							instructions <- smpc.Inst{
+								InstID:    id,
+								NetworkID: networkID,
+								InstJ: &smpc.InstJ{
+									Share: sell.Tokens.Sub(&buy.Tokens),
+								},
+							}
+						}
+					}
+					time.Sleep(time.Millisecond)
+				}
+			},
+			func() {
+				for {
+					select {
+					case <-done:
+						return
+					case result, ok := <-results:
+						if !ok {
+							return
+						}
+						if result.ResultJ != nil {
+							orderMatch, err := computer.processResultJ(result.InstID, result.NetworkID, *result.ResultJ)
+							if err != nil {
+								select {
+								case <-done:
+									return
+								case errs <- err:
+									continue
+								}
+							}
+							if orderMatch == nil {
+								continue
+							}
+							select {
+							case <-done:
+								return
+							case orderMatches <- *orderMatch:
+								// FIXME: We should write this to a confirmer
+							}
+						}
+					}
+				}
+			},
+		)
+	}()
+
+	return orderMatches, errs
 }
 
-func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smpc.ResultJ) {
+func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smpc.ResultJ) (*Computation, error) {
 	half := shamir.Prime / 2
 
 	computer.cmpMu.Lock()
@@ -348,7 +449,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	case StageCmpPriceExp:
 		computation, ok := computer.cmpPriceExp[instID]
 		if !ok {
-			return
+			return nil, nil
 		}
 		delete(computer.cmpPriceExp, instID)
 		if resultJ.Value <= half {
@@ -361,7 +462,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	case StageCmpPriceCo:
 		computation, ok := computer.cmpPriceCo[instID]
 		if !ok {
-			return
+			return nil, nil
 		}
 		delete(computer.cmpPriceCo, instID)
 		if resultJ.Value <= half {
@@ -374,7 +475,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	case StageCmpBuyVolExp:
 		computation, ok := computer.cmpBuyVolExp[instID]
 		if !ok {
-			return
+			return nil, nil
 		}
 		delete(computer.cmpBuyVolExp, instID)
 		if resultJ.Value <= half {
@@ -387,7 +488,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	case StageCmpBuyVolCo:
 		computation, ok := computer.cmpBuyVolCo[instID]
 		if !ok {
-			return
+			return nil, nil
 		}
 		delete(computer.cmpBuyVolCo, instID)
 		if resultJ.Value <= half {
@@ -400,7 +501,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	case StageCmpSellVolExp:
 		computation, ok := computer.cmpSellVolExp[instID]
 		if !ok {
-			return
+			return nil, nil
 		}
 		delete(computer.cmpSellVolExp, instID)
 		if resultJ.Value <= half {
@@ -413,7 +514,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	case StageCmpSellVolCo:
 		computation, ok := computer.cmpSellVolCo[instID]
 		if !ok {
-			return
+			return nil, nil
 		}
 		delete(computer.cmpSellVolCo, instID)
 		if resultJ.Value <= half {
@@ -426,16 +527,14 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	case StageCmpTokens:
 		computation, ok := computer.cmpTokens[instID]
 		if !ok {
-			return
+			return nil, nil
 		}
 		delete(computer.cmpTokens, instID)
 		if resultJ.Value == 0 {
-			if err := computer.orderbook.ConfirmOrderMatch(computation.Buy, computation.Sell); err != nil {
-				log.Printf("cannot confirm order match: %v", err)
-				return
-			}
+			return &computation.Computation, nil
 		}
 	}
+	return nil, nil
 }
 
 func computeID(computation Computation) [32]byte {
