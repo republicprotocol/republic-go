@@ -186,7 +186,7 @@ func (logger *Logger) Log(l Log) {
 func (logger *Logger) Error(message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      LevelError,
+		Level:     LevelError,
 		EventType: TypeGeneric,
 		Event: GenericEvent{
 			Message: message,
@@ -198,7 +198,7 @@ func (logger *Logger) Error(message string) {
 func (logger *Logger) Warn(message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      LevelWarn,
+		Level:     LevelWarn,
 		EventType: TypeGeneric,
 		Event: GenericEvent{
 			Message: message,
@@ -210,7 +210,7 @@ func (logger *Logger) Warn(message string) {
 func (logger *Logger) Info(message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      LevelInfo,
+		Level:     LevelInfo,
 		EventType: TypeGeneric,
 		Event: GenericEvent{
 			Message: message,
@@ -222,7 +222,7 @@ func (logger *Logger) Info(message string) {
 func (logger *Logger) DebugHigh(message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      LevelDebugHigh,
+		Level:     LevelDebugHigh,
 		EventType: TypeGeneric,
 		Event: GenericEvent{
 			Message: message,
@@ -234,7 +234,7 @@ func (logger *Logger) DebugHigh(message string) {
 func (logger *Logger) Debug(message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      LevelDebug,
+		Level:     LevelDebug,
 		EventType: TypeGeneric,
 		Event: GenericEvent{
 			Message: message,
@@ -246,7 +246,7 @@ func (logger *Logger) Debug(message string) {
 func (logger *Logger) DebugLow(message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      LevelDebugLow,
+		Level:     LevelDebugLow,
 		EventType: TypeGeneric,
 		Event: GenericEvent{
 			Message: message,
@@ -258,7 +258,7 @@ func (logger *Logger) DebugLow(message string) {
 func (logger *Logger) Usage(cpu, memory float64, network uint64) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      LevelInfo,
+		Level:     LevelInfo,
 		EventType: TypeUsage,
 		Event: UsageEvent{
 			CPU:     cpu,
@@ -272,7 +272,7 @@ func (logger *Logger) Usage(cpu, memory float64, network uint64) {
 func (logger *Logger) OrderConfirmed(ty Level, orderID string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      ty,
+		Level:     ty,
 		EventType: TypeOrderConfirmed,
 		Event: OrderConfirmedEvent{
 			OrderID: orderID,
@@ -284,7 +284,7 @@ func (logger *Logger) OrderConfirmed(ty Level, orderID string) {
 func (logger *Logger) OrderMatch(ty Level, id, buyID, sellID string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      ty,
+		Level:     ty,
 		EventType: TypeOrderMatch,
 		Event: OrderMatchEvent{
 			ID:     id,
@@ -298,7 +298,7 @@ func (logger *Logger) OrderMatch(ty Level, id, buyID, sellID string) {
 func (logger *Logger) BuyOrderReceived(ty Level, id, fragmentID string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      ty,
+		Level:     ty,
 		EventType: TypeOrderReceived,
 		Event: OrderReceivedEvent{
 			BuyID:      &id,
@@ -311,7 +311,7 @@ func (logger *Logger) BuyOrderReceived(ty Level, id, fragmentID string) {
 func (logger *Logger) SellOrderReceived(ty Level, id, fragmentID string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      ty,
+		Level:     ty,
 		EventType: TypeOrderReceived,
 		Event: OrderReceivedEvent{
 			SellID:     &id,
@@ -324,7 +324,7 @@ func (logger *Logger) SellOrderReceived(ty Level, id, fragmentID string) {
 func (logger *Logger) Network(ty Level, message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      ty,
+		Level:     ty,
 		EventType: TypeNetwork,
 		Event: NetworkEvent{
 			Message: message,
@@ -336,7 +336,7 @@ func (logger *Logger) Network(ty Level, message string) {
 func (logger *Logger) Compute(ty Level, message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      ty,
+		Level:     ty,
 		EventType: TypeCompute,
 		Event: ComputeEvent{
 			Message: message,
@@ -390,7 +390,7 @@ const (
 // A Log is logged by the Logger using all available Plugins.
 type Log struct {
 	Timestamp time.Time         `json:"timestamp"`
-	Type      Level             `json:"type"`
+	Level     Level             `json:"type"`
 	EventType EventType         `json:"eventType"`
 	Event     Event             `json:"event"`
 	Tags      map[string]string `json:"tags"`
