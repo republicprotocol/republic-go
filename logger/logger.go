@@ -11,9 +11,7 @@ import (
 )
 
 var defaultLoggerMu = new(sync.RWMutex)
-
-// DefaultLogger is used when no Logger object is used to log events.
-var DefaultLogger = func() *Logger {
+var defaultLogger = func() *Logger {
 	logger, err := NewLogger(Options{
 		Plugins: []PluginOptions{
 			PluginOptions{File: &FilePluginOptions{Path: "stdout"}, WebSocket: nil},
@@ -32,78 +30,78 @@ var DefaultLogger = func() *Logger {
 func SetDefaultLogger(logger *Logger) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.Stop()
-	DefaultLogger = logger
+	defaultLogger.Stop()
+	defaultLogger = logger
 }
 
 // Info logs an info Log using a GenericEvent using the DefaultLogger.
 func Info(message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.Info(message)
+	defaultLogger.Info(message)
 }
 
 // Warn logs a warn Log using a GenericEvent using the DefaultLogger.
 func Warn(message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.Warn(message)
+	defaultLogger.Warn(message)
 }
 
 // Error logs an error Log using a GenericEvent using the DefaultLogger.
 func Error(message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.Error(message)
+	defaultLogger.Error(message)
 }
 
 // Usage logs an info Log using a UsageEvent using the DefaultLogger.
 func Usage(cpu, memory float64, network uint64) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.Usage(cpu, memory, network)
+	defaultLogger.Usage(cpu, memory, network)
 }
 
 // OrderConfirmed logs an OrderConfirmedEvent using the DefaultLogger.
 func OrderConfirmed(ty Level, orderID string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.OrderConfirmed(ty, orderID)
+	defaultLogger.OrderConfirmed(ty, orderID)
 }
 
 // OrderMatch logs an OrderMatchEvent using the DefaultLogger.
 func OrderMatch(ty Level, id, buyID, sellID string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.OrderMatch(ty, id, buyID, sellID)
+	defaultLogger.OrderMatch(ty, id, buyID, sellID)
 }
 
 // BuyOrderReceived logs an OrderReceivedEvent using the DefaultLogger.
 func BuyOrderReceived(ty Level, id, fragmentID string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.BuyOrderReceived(ty, id, fragmentID)
+	defaultLogger.BuyOrderReceived(ty, id, fragmentID)
 }
 
 // SellOrderReceived logs an OrderReceivedEvent using the DefaultLogger.
 func SellOrderReceived(ty Level, id, fragmentID string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.SellOrderReceived(ty, id, fragmentID)
+	defaultLogger.SellOrderReceived(ty, id, fragmentID)
 }
 
 // Network logs a NetworkEvent using the DefaultLogger.
 func Network(ty Level, message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.Network(ty, message)
+	defaultLogger.Network(ty, message)
 }
 
 // Compute logs a ComputeEvent using the DefaultLogger.
 func Compute(ty Level, message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.Compute(ty, message)
+	defaultLogger.Compute(ty, message)
 }
 
 // Logger handles distributing logs to plugins registered with it
