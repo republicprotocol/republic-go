@@ -235,7 +235,6 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 			if err := ingress.orderbookClient.OpenOrder(ctx, darknodeMultiAddr, orderFragment.EncryptedFragment); err != nil {
 				log.Printf("cannot send order fragment to %v: %v", darknode, err)
 				errs <- fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
-				return
 			}
 		}
 	}()
