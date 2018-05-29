@@ -141,10 +141,6 @@ func (book *orderbook) Sync() (ChangeSet, error) {
 	return book.syncer.Sync()
 }
 
-func (book *orderbook) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
-	return book.syncer.ConfirmOrderMatch(buy, sell)
-}
-
 func (book *orderbook) OrderFragment(id order.ID) (order.Fragment, error) {
 	return book.storer.OrderFragment(id)
 }
