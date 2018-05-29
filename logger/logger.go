@@ -31,7 +31,7 @@ var DefaultLogger = func() *Logger {
 // will be stopped, and the new DefaultLogger will be started.
 func SetDefaultLogger(logger *Logger) {
 	defaultLoggerMu.Lock()
-	defer defaultLoggerMu.Lock()
+	defer defaultLoggerMu.Unlock()
 	DefaultLogger.Stop()
 	DefaultLogger = logger
 }
