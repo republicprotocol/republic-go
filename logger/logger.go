@@ -206,6 +206,18 @@ func (logger *Logger) Warn(message string) {
 	})
 }
 
+// Debug logs a debug Log using a GenericEvent.
+func (logger *Logger) Debug(message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Type:      LevelDebug,
+		EventType: TypeGeneric,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
+}
+
 // Error logs an error Log using a GenericEvent.
 func (logger *Logger) Error(message string) {
 	logger.Log(Log{
@@ -314,6 +326,7 @@ type Level string
 // Values for the LogType.
 const (
 	LevelInfo  = Level("info")
+	LevelDebug = Level("debug")
 	LevelWarn  = Level("warn")
 	LevelError = Level("error")
 )
