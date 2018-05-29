@@ -345,17 +345,30 @@ func (logger *Logger) Compute(ty Level, message string) {
 }
 
 // Level defines the different levels of Log messages that can be sent.
-type Level string
+type Level uint8
 
 // Values for the LogType.
 const (
-	LevelError     = Level("error")
-	LevelWarn      = Level("warn")
-	LevelInfo      = Level("info")
-	LevelDebugHigh = Level("debugHigh")
-	LevelDebug     = Level("debug")
-	LevelDebugLow  = Level("debugLow")
+	LevelError     = Level(0)
+	LevelWarn      = Level(1)
+	LevelInfo      = Level(2)
+	LevelDebugHigh = Level(3)
+	LevelDebug     = Level(4)
+	LevelDebugLow  = Level(5)
 )
+
+func (level Level) String() string {
+	switch level {
+	case LevelError:
+		return "error"
+	case LevelWarn:
+		return "warn"
+	case LevelInfo:
+		return "info"
+	default:
+		return "debug"
+	}
+}
 
 // EventType defines the different types of Event messages that can be sent in a
 // Log.
