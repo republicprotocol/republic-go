@@ -2,160 +2,321 @@ package smpc_test
 
 import (
 	"context"
-	"sync"
+	"log"
+	"math/rand"
+	"sync/atomic"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/dispatch"
+	. "github.com/republicprotocol/republic-go/smpc"
+
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/smpc"
+	"github.com/republicprotocol/republic-go/shamir"
+	"github.com/republicprotocol/republic-go/stream"
 )
 
-var _ = Describe("Smpc Computer", func() {
-	Context("when performing secure multiparty computations", func() {
+var channelHub stream.ChannelHub
 
-		PIt("should produce obscure residue fragments", func(done Done) {
-			defer close(done)
+var _ = Describe("Smpc", func() {
+	BeforeEach(func() {
+		channelHub = stream.NewChannelHub()
+	})
 
-			var wg sync.WaitGroup
-			ctx, cancel := context.WithCancel(context.Background())
-			n, k, numResidues := int64(3), int64(2), 100
+	Context("when starting", func() {
 
-			computers := make([]smpc.SmpcComputer, n)
-			obscureComputeChsIn := make([]smpc.ObscureComputeInput, n)
-			for i := int64(0); i < n; i++ {
-				computers[i] = smpc.NewSmpcComputer(identity.ID([]byte{byte(i)}), n, k)
-				obscureComputeChsIn[i] = smpc.ObscureComputeInput{
-					Rng:              make(chan smpc.ObscureRng, n),
-					RngShares:        make(chan smpc.ObscureRngShares, n),
-					RngSharesIndexed: make(chan smpc.ObscureRngSharesIndexed, n),
-					MulShares:        make(chan smpc.ObscureMulShares, n),
-					MulSharesIndexed: make(chan smpc.ObscureMulSharesIndexed, n),
-				}
-			}
+		It("should return error if smpcer has already been started", func() {
+			smpcer, _, err := createSMPCer()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = smpcer.Start()
+			Expect(err).ShouldNot(HaveOccurred())
 
-			obscureComputeChsOut := make([]smpc.ObscureComputeOutput, n)
-			errChs := make([]<-chan error, n)
-			for i := int64(0); i < n; i++ {
-				obscureComputeChsOut[i], errChs[i] = computers[i].ComputeObscure(ctx, obscureComputeChsIn[i])
-			}
+			// On starting Smpcer again, should throw an error
+			err = smpcer.Start()
+			Expect(err).Should(HaveOccurred())
+			Expect(err).To(Equal(ErrSmpcerIsAlreadyRunning))
+		})
+	})
 
-			for i := int64(0); i < n; i++ {
+	Context("when shutting down", func() {
 
-				wg.Add(1)
-				go func(i int64) {
-					defer GinkgoRecover()
-					defer wg.Done()
+		It("should return error if smpcer is not running", func() {
+			smpcer, _, err := createSMPCer()
+			Expect(err).ShouldNot(HaveOccurred())
 
-					for v := range obscureComputeChsOut[i].Rng {
-						for j := int64(0); j < n; j++ {
-							select {
-							case <-ctx.Done():
-							case obscureComputeChsIn[j].Rng <- v:
-							}
-						}
-					}
-				}(i)
+			err = smpcer.Shutdown()
+			Expect(err).Should(HaveOccurred())
+			Expect(err).To(Equal(ErrSmpcerIsNotRunning))
+		})
 
-				wg.Add(1)
-				go func(i int64) {
-					defer GinkgoRecover()
-					defer wg.Done()
+		It("should not return error if smpcer is running", func() {
+			smpcer, _, err := createSMPCer()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = smpcer.Start()
+			Expect(err).ShouldNot(HaveOccurred())
 
-					for v := range obscureComputeChsOut[i].RngShares {
-						// NOTE: In a production deployment a lookup table to
-						// associate owners with a sending channel would be
-						// used. Here, the test suite acts as this lookup table
-						// directly by creating computers with simple IDs.
-						owner := computers[i].SharedObscureResidueTable().ObscureResidueOwner(v.ObscureResidueID)
-						select {
-						case <-ctx.Done():
-						case obscureComputeChsIn[owner[i]].RngShares <- v:
-						}
-					}
-				}(i)
+			err = smpcer.Shutdown()
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+	})
 
-				wg.Add(1)
-				go func(i int64) {
-					defer GinkgoRecover()
-					defer wg.Done()
+	Context("when joining shares", func() {
 
-					for v := range obscureComputeChsOut[i].RngSharesIndexed {
-						select {
-						case <-ctx.Done():
-						case obscureComputeChsIn[v.A[0].Key-1].RngSharesIndexed <- v:
-						}
-					}
-				}(i)
+		It("should join shares to obtain final values", func() {
+			// Create 16 smpcers and issue 5 random secrets
+			count, err := runSmpcers(24, 5, 0)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(count).To(Equal(5))
 
-				wg.Add(1)
-				go func(i int64) {
-					defer GinkgoRecover()
-					defer wg.Done()
+		})
 
-					for v := range obscureComputeChsOut[i].MulShares {
-						// NOTE: In a production deployment a lookup table to
-						// associate owners with a sending channel would be
-						// used. Here, the test suite acts as this lookup table
-						// directly by creating computers with simple IDs.
-						owner := computers[i].SharedObscureResidueTable().ObscureResidueOwner(v.ObscureResidueID)
-						select {
-						case <-ctx.Done():
-						case obscureComputeChsIn[owner[i]].MulShares <- v:
-						}
-					}
-				}(i)
+		It("should join shares when faults are below the threshold", func() {
+			// Create 24 smpcers and issue 5 random secrets
+			// Do not start 1/3 of the smpcers (for example: 7)
+			count, err := runSmpcers(24, 5, 7)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(count).To(Equal(5))
+		})
 
-				wg.Add(1)
-				go func(i int64) {
-					defer GinkgoRecover()
-					defer wg.Done()
+		It("should not join shares when faults are above the threshold", func() {
+			timer := time.NewTimer(time.Second * 4)
+			count := int32(0)
 
-					for v := range obscureComputeChsOut[i].MulSharesIndexed {
-						for j := int64(0); j < n; j++ {
-							select {
-							case <-ctx.Done():
-							case obscureComputeChsIn[v.AB[0].Key-1].MulSharesIndexed <- v:
-							}
-						}
-					}
-				}(i)
-			}
-
-			errCh := dispatch.MergeErrors(errChs...)
-			wg.Add(1)
 			go func() {
 				defer GinkgoRecover()
-				defer wg.Done()
 
-				for err := range errCh {
-					Ω(err).Should(Equal(context.Canceled))
-				}
+				// Create 24 smpcers and do not start 10 smpcers
+				c, err := runSmpcers(24, 5, 10)
+				Expect(err).ShouldNot(HaveOccurred())
+				atomic.StoreInt32(&count, int32(c))
 			}()
 
-			p := 0
-			for {
-				time.Sleep(time.Millisecond)
-				for i := int64(0); i < n; i++ {
-					pLocal := computers[i].SharedObscureResidueTable().NumObscureResidues()
-					if pLocal > p {
-						p = pLocal
-					}
-				}
-				if p >= numResidues {
-					cancel()
-					break
-				}
-			}
+			// Wait until the timer goes off
+			<-timer.C
+			Expect(atomic.LoadInt32(&count)).To(Equal(int32(0)))
+		})
 
-			wg.Wait()
+		It("should join when nodes are in multiple non-overlapping networks", func() {
+			// Run 12 smpcers in 2 networks such that each network has 6 smpcers which
+			// in such a way the that each network has seperate smpcers.
+			count, err := runSmpcersInTwoNetworks(12, 6)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(count).To(Equal(2))
+		})
 
-			// Cleanup
-			for i := int64(0); i < n; i++ {
-				obscureComputeChsIn[i].Close()
-			}
+		It("should join when nodes are in multiple overlapping networks", func() {
+			// Run 9 smpcers in 2 networks such that each network has 6 smpcers
+			// (with replacement) and issue unique random secrets to each of the networks
+			count, err := runSmpcersInTwoNetworks(9, 6)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(count).To(Equal(2))
 		})
 
 	})
 })
+
+type mockSwarmer struct {
+}
+
+func (swarmer mockSwarmer) Bootstrap(ctx context.Context, multiAddrs identity.MultiAddresses) error {
+	return nil
+}
+
+func (swarmer mockSwarmer) Query(ctx context.Context, query identity.Address, depth int) (identity.MultiAddress, error) {
+	return query.MultiAddress()
+}
+
+func createSMPCer() (Smpcer, identity.Address, error) {
+	swarmer := &mockSwarmer{}
+
+	// Generate multiaddress
+	ecdsaKey, err := crypto.RandomEcdsaKey()
+	if err != nil {
+		return nil, "", err
+	}
+	multiaddr, err := identity.Address(ecdsaKey.Address()).MultiAddress()
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Create client and server channels
+	client := stream.NewChannelClient(multiaddr.Address(), &channelHub)
+	server := stream.NewChannelServer(multiaddr.Address(), &channelHub)
+
+	// Create a new channel streamer
+	streamer := stream.NewStreamRecycler(stream.NewStreamer(multiaddr.Address(), client, server))
+
+	return NewSmpcer(swarmer, streamer, 10), multiaddr.Address(), nil
+}
+
+func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int) (int, error) {
+
+	smpcers, addrs, err := createAddressesAndStartSmpcers(numberOfSmpcers, numberOfDeadNodes)
+	if err != nil {
+		return 0, err
+	}
+
+	// Send connect instructions to all smpcers
+	for i := numberOfDeadNodes; i < numberOfSmpcers; i++ {
+		addresses := filterAddresses(numberOfSmpcers, i, addrs)
+		sendConnectInstruction(numberOfSmpcers, 1, smpcers[i], addresses)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	go func() {
+
+		// Send shares of multiple instructions
+		for j := 0; j < numberOfJoins; j++ {
+
+			shares, err := createSecretShares(numberOfSmpcers)
+			if err != nil {
+				log.Printf("cannot split secret: %v", err)
+				return
+			}
+
+			// Send instJ instructions to join all the secret shares
+			for i := numberOfDeadNodes; i < numberOfSmpcers; i++ {
+				sendJoinInstruction(shares[i], j, 1, smpcers[i])
+			}
+		}
+	}()
+
+	return waitForResults(numberOfJoins, numberOfDeadNodes, numberOfSmpcers, smpcers), nil
+}
+
+// Runs smpcers in two networks (either overlapped or not) and sends different secrets to both
+func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int) (int, error) {
+
+	smpcers, addrs, err := createAddressesAndStartSmpcers(numberOfSmpcers, 0)
+	if err != nil {
+		return 0, err
+	}
+
+	// Create 2 lists that will store the smpcer addresses of each network
+	addrsNetwork1 := addrs[:minimumNumberOfSmpcers]
+	addrsNetwork2 := addrs[numberOfSmpcers-minimumNumberOfSmpcers:]
+
+	// Send connect instructions to all smpcers in Network 1
+	for i := 0; i < minimumNumberOfSmpcers; i++ {
+		addresses := filterAddresses(minimumNumberOfSmpcers, i, addrsNetwork1)
+		sendConnectInstruction(minimumNumberOfSmpcers, 1, smpcers[i], addresses)
+	}
+
+	// Send connect instructions to all smpcers in Network 2
+	for i := numberOfSmpcers - minimumNumberOfSmpcers; i < numberOfSmpcers; i++ {
+		addresses := filterAddresses(minimumNumberOfSmpcers, i-numberOfSmpcers+minimumNumberOfSmpcers, addrsNetwork2)
+		sendConnectInstruction(minimumNumberOfSmpcers, 2, smpcers[i], addresses)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	go func() {
+
+		// Create a new random secret for network1 and split it
+		shares, err := createSecretShares(minimumNumberOfSmpcers)
+		if err != nil {
+			log.Printf("cannot split secret: %v", err)
+			return
+		}
+
+		// Send instJ instructions to Network 1 join all the secret shares
+		for i := 0; i < minimumNumberOfSmpcers; i++ {
+			sendJoinInstruction(shares[i], 0, 1, smpcers[i])
+		}
+
+		// Create a new random secret for network2 and split it
+		shares, err = createSecretShares(minimumNumberOfSmpcers)
+		if err != nil {
+			log.Printf("cannot split secret: %v", err)
+			return
+		}
+
+		// Send instJ instructions to Network 2 join all the secret shares
+		for i := numberOfSmpcers - minimumNumberOfSmpcers; i < numberOfSmpcers; i++ {
+			sendJoinInstruction(shares[i-numberOfSmpcers+minimumNumberOfSmpcers], 0, 2, smpcers[i])
+		}
+	}()
+
+	// Ensure results from both networks have arrived
+	count := 0
+	count += waitForResults(1, 0, minimumNumberOfSmpcers, smpcers)
+	count += waitForResults(1, numberOfSmpcers-minimumNumberOfSmpcers, numberOfSmpcers, smpcers)
+
+	return count, nil
+}
+
+func createAddressesAndStartSmpcers(numberOfSmpcers, numberOfDeadNodes int) (map[int]Smpcer, identity.Addresses, error) {
+	var err error
+	smpcers := make(map[int]Smpcer, numberOfSmpcers)
+	addrs := make(identity.Addresses, numberOfSmpcers)
+
+	// Generate Smpcers with addresses and start them
+	for i := numberOfDeadNodes; i < numberOfSmpcers; i++ {
+		smpcers[i], addrs[i], err = createSMPCer()
+		if err != nil {
+			return smpcers, addrs, err
+		}
+		err = smpcers[i].Start()
+		if err != nil {
+			return smpcers, addrs, err
+		}
+	}
+	return smpcers, addrs, err
+}
+
+func filterAddresses(numberOfSmpcers, removeIndex int, addrs identity.Addresses) identity.Addresses {
+	// Make a list of addresses after removing the current smpcer's address
+	addresses := make(identity.Addresses, numberOfSmpcers)
+	copy(addresses, addrs)
+	return append(addresses[:removeIndex], addresses[removeIndex+1:]...)
+}
+
+func sendConnectInstruction(numberOfSmpcers, networkID int, smpcer Smpcer, addresses identity.Addresses) {
+	instConnect := InstConnect{
+		K:     int64(2 * (numberOfSmpcers + 1) / 3),
+		N:     int64(numberOfSmpcers),
+		Nodes: addresses,
+	}
+	message := Inst{
+		InstID:      [32]byte{1},
+		NetworkID:   [32]byte{byte(networkID)},
+		InstConnect: &instConnect,
+	}
+	smpcer.Instructions() <- message
+}
+
+func sendJoinInstruction(share shamir.Share, joinIndex, networkID int, smpcer Smpcer) {
+	instJ := InstJ{
+		Share: share,
+	}
+	message := Inst{
+		InstID:    [32]byte{byte(2 + joinIndex)},
+		NetworkID: [32]byte{byte(networkID)},
+		InstJ:     &instJ,
+	}
+	smpcer.Instructions() <- message
+}
+
+func createSecretShares(numberOfSmpcers int) (shamir.Shares, error) {
+	// Create a secret and split it
+	secret := uint64(rand.Intn(100))
+	shares, err := shamir.Split(int64(numberOfSmpcers), int64(2*(numberOfSmpcers+1)/3), secret)
+	if err != nil {
+		return shamir.Shares{}, err
+	}
+	return shares, nil
+}
+
+func waitForResults(numberOfJoins, startIndex, endIndex int, smpcers map[int]Smpcer) int {
+	count := 0
+	for count < numberOfJoins {
+		for i := startIndex; i < endIndex; i++ {
+			<-smpcers[i].Results()
+		}
+		count++
+	}
+
+	return count
+}

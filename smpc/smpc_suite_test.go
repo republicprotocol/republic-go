@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestSmpc(t *testing.T) {
+func TestSMPC(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Smpc Suite")
+	RunSpecs(t, "sMPC's Test Suite")
 }

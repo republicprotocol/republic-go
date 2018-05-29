@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package grpc;
+
+service SwarmService {
+    rpc Ping (PingRequest) returns (PingResponse);
+    rpc Query (QueryRequest) returns (stream QueryResponse);
+}
+
+message PingRequest {
+    bytes signature = 1;
+    string multiAddress = 2;
+}
+
+message PingResponse {
+    bytes signature = 1;
+    string multiAddress = 2;
+}
+
+message QueryRequest {
+    bytes signature = 1;
+    string address = 2;
+}
+
+message QueryResponse {
+    bytes signature = 1;
+    string multiAddress = 2;
+}
+
+service StreamService {
+    rpc Connect(stream StreamMessage) returns (stream StreamMessage);
+}
+
+message StreamMessage {
+    StreamAuthentication authentication = 1;
+    bytes data = 2;
+}
+
+message StreamAuthentication {
+    bytes signature = 1;
+    string address = 2;
+}
+
+service OrderbookService {
+    rpc OpenOrder(OpenOrderRequest) returns (OpenOrderResponse);
+}
+
+message OpenOrderRequest {
+    EncryptedOrderFragment orderFragment = 1;
+}
+
+message OpenOrderResponse {
+}
+
+message EncryptedOrderFragment {
+    bytes       orderId     = 1;
+	OrderType   orderType   = 2;
+	OrderParity orderParity = 3;
+    int64       orderExpiry = 4;
+    
+    bytes          id            = 5;
+    bytes          tokens        = 6;
+    EncryptedCoExpShare price         = 7;
+    EncryptedCoExpShare volume        = 8;
+    EncryptedCoExpShare minimumVolume = 9;
+}
+
+enum OrderType {
+    Midpoint = 0;
+    Limit    = 1;
+}
+
+enum OrderParity {
+    Buy  = 0;
+    Sell = 1;
+}
+
+message EncryptedCoExpShare {
+    bytes co = 1;
+    bytes exp = 2;
+}
+
+service StatusService {
+    rpc Status (StatusRequest) returns (StatusResponse);
+}
+
+message StatusRequest {
+}
+
+message StatusResponse {
+    string address = 1;
+    bool bootstrapped = 2;
+    int64 peers = 3;
+}

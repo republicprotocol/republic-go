@@ -1,14 +1,14 @@
 package order_test
 
 import (
+	"bytes"
+	"encoding/json"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/order"
-
-	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/stackint"
 )
 
 var _ = Describe("Orders", func() {
@@ -16,141 +16,99 @@ var _ = Describe("Orders", func() {
 	n := int64(17)
 	k := int64(12)
 
-	price := stackint.FromUint(10)
-	minVolume := stackint.FromUint(100)
-	maxVolume := stackint.FromUint(1000)
-
-	Context("when representing IDs as strings", func() {
-
-		It("should return the same string for the same orders", func() {
-			nonce := stackint.Zero()
-			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			Ω(lhs.ID.String()).Should(Equal(rhs.ID.String()))
-		})
-
-		It("should return different strings for different orders", func() {
-			nonce := stackint.Zero()
-			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			nonce = stackint.One()
-			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			Ω(lhs.ID.String()).ShouldNot(Equal(rhs.ID.String()))
-		})
-	})
+	price := NewCoExp(uint64(1), uint64(2))
+	minVolume := NewCoExp(uint64(1), uint64(3))
+	maxVolume := NewCoExp(uint64(1), uint64(3))
 
 	Context("when testing for equality", func() {
 
-		It("should return true for order IDs that are equal", func() {
-			nonce := stackint.Zero()
-			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			Ω(lhs.ID.Equal(rhs.ID)).Should(Equal(true))
-		})
-
-		It("should return false for order IDs that are not equal", func() {
-			nonce := stackint.Zero()
-			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			nonce = stackint.One()
-			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			Ω(lhs.ID.Equal(rhs.ID)).Should(Equal(false))
-		})
-
 		It("should return true for orders that are equal", func() {
 			expiry := time.Now().Add(time.Hour)
-			nonce := stackint.Zero()
-			lhs := NewOrder(TypeLimit, ParityBuy, expiry, CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			rhs := NewOrder(TypeLimit, ParityBuy, expiry, CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			println(lhs)
-			println(rhs)
-			Ω(lhs.Equal(rhs)).Should(Equal(true))
+			nonce := int64(10)
+			lhs := NewOrder(TypeLimit, ParityBuy, expiry, TokensBTCETH, price, maxVolume, minVolume, nonce)
+			rhs := NewOrder(TypeLimit, ParityBuy, expiry, TokensBTCETH, price, maxVolume, minVolume, nonce)
+
+			Ω(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(true))
+			Ω(lhs.Equal(&rhs)).Should(Equal(true))
 		})
 
-		It("should return true for orders that are not equal", func() {
-			nonce := stackint.Zero()
-			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			nonce = stackint.One()
-			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			Ω(lhs.Equal(rhs)).Should(Equal(false))
+		It("should return false for orders that are not equal", func() {
+			nonce := int64(10)
+			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			nonce = int64(20)
+			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+
+			Ω(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(false))
+			Ω(lhs.Equal(&rhs)).Should(Equal(false))
 		})
 	})
 
 	Context("when splitting orders", func() {
 
 		It("should return the correct number of order fragments", func() {
+			nonce := int64(10)
+			ord := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
-			prime, err := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+			fragments, err := ord.Split(n, k)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			nonce := stackint.Zero()
-			order := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			fragments, err := order.Split(n, k, &prime)
-			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(fragments)).Should(Equal(int(n)))
 		})
 
 		It("should return different order fragments", func() {
+			nonce := int64(10)
+			ord := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
-			prime, err := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
+			fragments, err := ord.Split(n, k)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			nonce := stackint.Zero()
-			order := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
-			fragments, err := order.Split(n, k, &prime)
-			Ω(err).ShouldNot(HaveOccurred())
 			for i := range fragments {
 				for j := i + 1; j < len(fragments); j++ {
-					Ω(fragments[i].Equal(fragments[j])).Should(Equal(false))
+					Ω(fragments[i].Equal(&fragments[j])).Should(Equal(false))
 				}
 			}
 		})
 	})
 
-	Context("when being signed", func() {
+	Context("when reading and writing orders from files", func() {
 
-		var keystore crypto.Keystore
-		var order *Order
+		It("should unmarshal and load orders from file", func() {
+			nonce := int64(10)
+			ord1 := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			nonce = int64(20)
+			ord2 := NewOrder(TypeLimit, ParitySell, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
-		BeforeEach(func() {
-			var err error
+			err := WriteOrdersToJSONFile("orders.out", []*Order{&ord1, &ord2})
+			Ω(err).ShouldNot(HaveOccurred())
 
-			keystore, err = crypto.RandomKeystore()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			nonce := stackint.FromUint(0)
-			order = NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce)
+			orders, err := NewOrdersFromJSONFile("orders.out")
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(len(orders)).Should(Equal(int(2)))
 		})
 
-		It("can be signed and verified", func() {
-			err := order.Sign(&keystore)
+		It("should unmarshal and load a single order from file", func() {
+			nonce := int64(10)
+			ord1 := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+
+			err := writeOrderToJSONFile("orders.out", &ord1)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = order.VerifySignature(keystore.Address())
+			order, err := NewOrderFromJSONFile("orders.out")
 			Ω(err).ShouldNot(HaveOccurred())
-		})
-
-		It("should error for invalid ID", func() {
-			keystore2, err := crypto.RandomKeystore()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			err = order.Sign(&keystore)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			err = order.VerifySignature(keystore2.Address())
-			Ω(err).Should(Equal(crypto.ErrInvalidSignature))
-		})
-
-		It("should error for invalid data", func() {
-
-			nonce2 := stackint.One()
-			order2 := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, price, maxVolume, minVolume, nonce2)
-
-			err := order.Sign(&keystore)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			order2.Signature = order.Signature
-
-			err = order2.VerifySignature(keystore.Address())
-			Ω(err).Should(Equal(crypto.ErrInvalidSignature))
+			Ω(order.Nonce).Should(Equal(int64(10)))
 		})
 	})
 })
+
+// Write a single order into a JSON file.
+func writeOrderToJSONFile(fileName string, order *Order) error {
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	if err := json.NewEncoder(file).Encode(&order); err != nil {
+		return err
+	}
+	return nil
+}

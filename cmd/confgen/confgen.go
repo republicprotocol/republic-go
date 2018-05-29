@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 
-
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
@@ -16,12 +15,36 @@ import (
 
 func main() {
 	host := flag.String("host", "0.0.0.0", "ip address of the node")
+	network := flag.String("network", "kovan", "ethereum network")
 
 	flag.Parse()
 
 	keystore, err := crypto.RandomKeystore()
 	if err != nil {
 		log.Fatalf("cannot create keystore: %v", err)
+	}
+
+	var ethereumConfig ethereum.Config
+
+	switch *network {
+	case "ropsten":
+		ethereumConfig = ethereum.Config{
+			Network:                 ethereum.NetworkRopsten,
+			URI:                     "https://ropsten.infura.io",
+			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnRopsten.String(),
+			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnRopsten.String(),
+			RenLedgerAddress:        ethereum.RenLedgerAddressOnRopsten.String(),
+		}
+	case "kovan":
+		ethereumConfig = ethereum.Config{
+			Network:                 ethereum.NetworkKovan,
+			URI:                     "https://kovan.infura.io",
+			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnKovan.String(),
+			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnKovan.String(),
+			RenLedgerAddress:        ethereum.RenLedgerAddressOnKovan.String(),
+		}
+	default:
+		log.Fatal("unrecognized network name")
 	}
 
 	conf := darknode.Config{
@@ -34,17 +57,12 @@ func main() {
 			Plugins: []logger.PluginOptions{
 				{
 					File: &logger.FilePluginOptions{
-						Path: "stdout",
+						Path: "/home/ubuntu/.darknode/darknode.out",
 					},
 				},
 			},
 		},
-		Ethereum: ethereum.Config{
-			Network:                 ethereum.NetworkRopsten,
-			URI:                     "https://ropsten.infura.io",
-			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnRopsten.String(),
-			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnRopsten.String(),
-		},
+		Ethereum: ethereumConfig,
 	}
 
 	bytes, err := json.Marshal(conf)

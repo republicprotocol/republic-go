@@ -1,214 +1,336 @@
 package smpc
 
 import (
-	"context"
+	"errors"
+	"fmt"
+	"log"
 	"sync"
+	"time"
 
-	"github.com/republicprotocol/republic-go/delta"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/stackint"
+	"github.com/republicprotocol/republic-go/stream"
+	"github.com/republicprotocol/republic-go/swarm"
+	"golang.org/x/net/context"
 )
 
+// ErrSmpcerIsAlreadyRunning is returned when a call to Smpcer.Start happens
+// on an Smpcer that has already been started.
+var ErrSmpcerIsAlreadyRunning = errors.New("smpcer is already running")
+
+// ErrSmpcerIsNotRunning is returned when a call to Smpcer.Shutdown happens on
+// an Smpcer that has not been started yet.
+var ErrSmpcerIsNotRunning = errors.New("smpcer is not running")
+
+// ErrUnmarshalNilBytes is returned when a call to UnmarshalBinary happens on
+// an empty list of bytes.
+var ErrUnmarshalNilBytes = errors.New("unmarshall nil bytes")
+
+// ErrInsufficientSharesToJoin is returned when a share is inserted into a
+// shareBuilder and there are fewer than k total shares.
+var ErrInsufficientSharesToJoin = errors.New("insufficient shares to join")
+
+// Smpcer is an interface for a secure multi-party computer. It asynchronously
+// consumes computation instructions and produces computation results.
 type Smpcer interface {
-	OpenOrder(ctx context.Context, to identity.MultiAddress, orderFragment order.Fragment) error
+
+	// Start the Smpcer. Until a call to Smpcer.Start, no computation
+	// instruction will be processed.
+	Start() error
+
+	// Shutdown the Smpcer. After a call to Smpcer.Shutdown, no computation
+	// instruction will be processed.
+	Shutdown() error
+
+	// Instructions channel for sending computation instructions to the Smpcer.
+	Instructions() chan<- Inst
+
+	// Results channel for receiving computation results from the Smpcer.
+	Results() <-chan Result
 }
 
-// Prime used to define the finite field for all computations.
-var Prime = func() stackint.Int1024 {
-	prime, err := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-	if err != nil {
-		panic(err)
-	}
-	return prime
-}()
+type smpcer struct {
+	swarmer  swarm.Swarmer
+	streamer stream.Streamer
 
-// ComputerID uniquely identifies the Smpc.
-type ComputerID [32]byte
+	buffer       int
+	instructions chan Inst
+	results      chan Result
 
-// ObscureComputeInput accepted by obscure computations. It stores a set of
-// read-write channels.
-type ObscureComputeInput struct {
-	Rng              chan ObscureRng
-	RngShares        chan ObscureRngShares
-	RngSharesIndexed chan ObscureRngSharesIndexed
-	MulShares        chan ObscureMulShares
-	MulSharesIndexed chan ObscureMulSharesIndexed
+	shutdownMu        *sync.Mutex
+	shutdown          chan struct{}
+	shutdownDone      chan struct{}
+	shutdownInitiated bool
+
+	networkMu *sync.RWMutex
+	network   map[[32]byte]identity.Addresses
+
+	lookupMu *sync.RWMutex
+	lookup   map[identity.Address]identity.MultiAddress
+
+	shareBuildersMu *sync.RWMutex
+	shareBuilders   map[[32]byte]*ShareBuilder
 }
 
-// Close all channels. Calling this function more than once will cause a panic.
-func (chs *ObscureComputeInput) Close() {
-	close(chs.Rng)
-	close(chs.RngShares)
-	close(chs.RngSharesIndexed)
-	close(chs.MulShares)
-	close(chs.MulSharesIndexed)
-}
+func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpcer {
+	return &smpcer{
+		swarmer:  swarmer,
+		streamer: streamer,
 
-// ObscureComputeOutput returned by obscure computations. It stores a set of
-// read-only channels.
-type ObscureComputeOutput struct {
-	Rng              <-chan ObscureRng
-	RngShares        <-chan ObscureRngShares
-	RngSharesIndexed <-chan ObscureRngSharesIndexed
-	MulShares        <-chan ObscureMulShares
-	MulSharesIndexed <-chan ObscureMulSharesIndexed
-}
+		buffer:       buffer,
+		instructions: make(chan Inst, buffer),
+		results:      make(chan Result, buffer),
 
-// OrderMatchComputeInput accepted by order matching computations. It stores a
-// set of read-write channels.
-type OrderMatchComputeInput struct {
-	OrderFragments chan order.Fragment
-	DeltaFragments chan delta.Fragment
-}
+		shutdownMu:        new(sync.Mutex),
+		shutdown:          nil,
+		shutdownDone:      nil,
+		shutdownInitiated: true,
 
-// Close all channels. Calling this function more than once will cause a panic.
-func (chs *OrderMatchComputeInput) Close() {
-	close(chs.OrderFragments)
-	close(chs.DeltaFragments)
-}
+		networkMu: new(sync.RWMutex),
+		network:   map[[32]byte]identity.Addresses{},
 
-// OrderMatchComputeOutput returned by obscure computations. It stores a set of
-// read-only channels.
-type OrderMatchComputeOutput struct {
-	DeltaFragments <-chan delta.Fragment
-	Deltas         <-chan delta.Delta
-}
+		lookupMu: new(sync.RWMutex),
+		lookup:   map[identity.Address]identity.MultiAddress{},
 
-type SmpcComputer struct {
-	id identity.ID
-
-	n, k                      int64
-	sharedOrderTable          SharedOrderTable
-	sharedObscureResidueTable SharedObscureResidueTable
-	sharedDeltaBuilder        SharedDeltaBuilder
-}
-
-// NewSmpcComputer returns a new SmpcComputer with the given ComputerID and N-K
-// threshold.
-func NewSmpcComputer(id identity.ID, n, k int64) SmpcComputer {
-	return SmpcComputer{
-		id:                        id,
-		n:                         n,
-		k:                         k,
-		sharedOrderTable:          NewSharedOrderTable(),
-		sharedObscureResidueTable: NewSharedObscureResidueTable(id),
-		sharedDeltaBuilder:        NewSharedDeltaBuilder(k, Prime),
+		shareBuildersMu: new(sync.RWMutex),
+		shareBuilders:   map[[32]byte]*ShareBuilder{},
 	}
 }
 
-// ComputeObscure residues that will be used during order matching to obscure
-// Deltas.
-func (computer *SmpcComputer) ComputeObscure(
-	ctx context.Context,
-	obscureComputeChs ObscureComputeInput,
-) (
-	ObscureComputeOutput,
-	<-chan error,
-) {
-	errChs := make([]<-chan error, 6)
+// Start implements the Smpcer interface.
+func (smpc *smpcer) Start() error {
+	smpc.shutdownMu.Lock()
+	defer smpc.shutdownMu.Unlock()
 
-	// ProduceObscureRngs to initiate the creation of an obscure residue that
-	// will be owned by this SmpcComputer
-	obscureRngCh, errCh := ProduceObscureRngs(ctx, computer.n, computer.k, &computer.sharedObscureResidueTable, int(computer.n))
-	errChs[0] = errCh
+	if smpc.shutdown != nil {
+		return ErrSmpcerIsAlreadyRunning
+	}
+	smpc.shutdown = make(chan struct{})
+	smpc.shutdownDone = make(chan struct{})
+	smpc.shutdownInitiated = false
 
-	// ProcessObscureRngs that were initiated by other Computers and broadcast
-	// to this SmpcComputer
-	obscureRngSharesCh, errCh := ProcessObscureRngs(ctx, obscureComputeChs.Rng, &computer.sharedObscureResidueTable, int(computer.n))
-	errChs[1] = errCh
+	go smpc.run()
+	return nil
+}
 
-	// ProcessObscureRngShares broadcast to this SmpcComputer in response to an
-	// ObscureRng that was produced by this SmpcComputer
-	obscureRngSharesIndexedCh, errCh := ProcessObscureRngShares(ctx, obscureComputeChs.RngShares, int(computer.n))
-	errChs[2] = errCh
+// Shutdown implements the Smpcer interface.
+func (smpc *smpcer) Shutdown() error {
+	smpc.shutdownMu.Lock()
+	defer smpc.shutdownMu.Unlock()
 
-	// ProcessObscureRngSharesIndexed broadcast to this SmpcComputer by another
-	// SmpcComputer that is progressing through the creation of its obscure residue
-	obscureMulShares, errCh := ProcessObscureRngSharesIndexed(ctx, obscureComputeChs.RngSharesIndexed, int(computer.n))
-	errChs[3] = errCh
+	if smpc.shutdownInitiated {
+		return ErrSmpcerIsNotRunning
+	}
+	smpc.shutdownInitiated = true
 
-	// ProcessObscureMulShares broadcast to this SmpcComputer in response to
-	// ObscureRngSharesIndexed that were produced by this SmpcComputer
-	obscureMulSharesIndexedCh, errCh := ProcessObscureMulShares(ctx, obscureComputeChs.MulShares, int(computer.n))
-	errChs[4] = errCh
+	close(smpc.shutdown)
+	<-smpc.shutdownDone
 
-	// ProcessObscureMulSharesIndexed broadcast to this SmpcComputer by another
-	// SmpcComputer that is progressing through the creation of its obscure residue
-	obscureResidueFragmentCh, errCh := ProcessObscureMulSharesIndexed(ctx, obscureComputeChs.MulSharesIndexed, int(computer.n))
-	errChs[5] = errCh
+	smpc.shutdown = nil
+	smpc.shutdownDone = nil
 
-	// Consume all ObscureResidueFragments and store them in the
-	// SharedObscureResidueTable, assuming that the owner has already been
-	// stored
-	go func() {
-		for obscureResidueFragment := range obscureResidueFragmentCh {
-			computer.sharedObscureResidueTable.InsertObscureResidue(obscureResidueFragment)
+	close(smpc.instructions)
+	close(smpc.results)
+	smpc.instructions = make(chan Inst, smpc.buffer)
+	smpc.results = make(chan Result, smpc.buffer)
+
+	return nil
+}
+
+// Instructions implements the Smpcer interface.
+func (smpc *smpcer) Instructions() chan<- Inst {
+	return smpc.instructions
+}
+
+// Results implements the Smpcer interface.
+func (smpc *smpcer) Results() <-chan Result {
+	return smpc.results
+}
+
+// OnNotifyBuild implements the ShareBuilderObserver interface. It is used to
+// notify the Smpcer that a value of interest has been reconstructed by the
+// ShareBuilder.
+func (smpc *smpcer) OnNotifyBuild(id, networkID [32]byte, value uint64) {
+	log.Println("NOTIFY!!!!")
+
+	result := Result{
+		InstID:    id,
+		NetworkID: networkID,
+		ResultJ: &ResultJ{
+			Value: value,
+		},
+	}
+	select {
+	case <-smpc.shutdown:
+	case smpc.results <- result:
+	}
+
+}
+
+func (smpc *smpcer) run() {
+	defer close(smpc.shutdownDone)
+
+	for {
+		select {
+		case <-smpc.shutdown:
+			// FIXME: Close all open streams so that resources do not leak.
+			return
+
+		case inst, ok := <-smpc.instructions:
+			if !ok {
+				return
+			}
+			if inst.InstConnect != nil {
+				smpc.instConnect(inst.NetworkID, *inst.InstConnect)
+			}
+			if inst.InstDisconnect != nil {
+				smpc.instDisconnect(inst.NetworkID, *inst.InstDisconnect)
+			}
+			if inst.InstJ != nil {
+				smpc.instJ(inst.InstID, inst.NetworkID, *inst.InstJ)
+			}
 		}
-	}()
+	}
+}
 
-	allowErrCanceled := true
-	errCh = dispatch.FilterErrors(dispatch.MergeErrors(errChs...), func(err error) bool {
-		if err == context.Canceled && allowErrCanceled {
-			allowErrCanceled = false
-			return true
+func (smpc *smpcer) instConnect(networkID [32]byte, inst InstConnect) {
+	smpc.networkMu.Lock()
+	smpc.shareBuildersMu.Lock()
+	defer smpc.networkMu.Unlock()
+	defer smpc.shareBuildersMu.Unlock()
+
+	smpc.network[networkID] = inst.Nodes
+	smpc.shareBuilders[networkID] = NewShareBuilder(inst.K)
+
+	go dispatch.CoForAll(inst.Nodes, func(i int) {
+		addr := inst.Nodes[i]
+		multiAddr, err := smpc.query(addr)
+		if err != nil {
+			log.Println(err)
+			return
 		}
-		return false
+
+		smpc.lookupMu.Lock()
+		smpc.lookup[addr] = multiAddr
+		smpc.lookupMu.Unlock()
+
+		if err := smpc.connect(networkID, inst, addr, multiAddr); err != nil {
+			log.Println(err)
+			return
+		}
+		log.Printf("connected to %v", addr)
 	})
-
-	return ObscureComputeOutput{
-		obscureRngCh,
-		obscureRngSharesCh,
-		obscureRngSharesIndexedCh,
-		obscureMulShares,
-		obscureMulSharesIndexedCh,
-	}, errCh
 }
 
-// ComputeOrderMatches using order fragments and delta fragments.
-func (computer *SmpcComputer) ComputeOrderMatches(done <-chan struct{}, orderFragmentsIn <-chan order.Fragment, deltaFragmentsIn <-chan delta.Fragment) (<-chan delta.Fragment, <-chan delta.Delta) {
-	deltaFragmentsOut := make(chan delta.Fragment)
-	deltasOut := make(chan delta.Delta)
+func (smpc *smpcer) instDisconnect(networkID [32]byte, inst InstDisconnect) {
+	smpc.networkMu.Lock()
+	defer smpc.networkMu.Unlock()
+	smpc.shareBuildersMu.Lock()
+	defer smpc.shareBuildersMu.Unlock()
 
-	go func() {
-		defer close(deltaFragmentsOut)
-		defer close(deltasOut)
-
-		orderTuples := OrderFragmentsToOrderTuples(done, orderFragmentsIn, &computer.sharedOrderTable, 100)
-		deltaFragmentsComputed := OrderTuplesToDeltaFragments(done, orderTuples, 100)
-
-		deltaFragments := make(chan delta.Fragment)
-
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			defer close(deltaFragments)
-			dispatch.CoBegin(func() {
-				dispatch.Split(deltaFragmentsComputed, deltaFragments, deltaFragmentsOut)
-			}, func() {
-				dispatch.Pipe(done, deltaFragmentsIn, deltaFragments)
-			})
-		}()
-
-		deltas := BuildDeltas(done, deltaFragments, &computer.sharedDeltaBuilder, 100)
-		dispatch.Pipe(done, deltas, deltasOut)
-
-		wg.Wait()
-	}()
-
-	return deltaFragmentsOut, deltasOut
+	for _, addr := range smpc.network[networkID] {
+		if err := smpc.streamer.Close(addr); err != nil {
+			log.Printf("cannot close stream to %v: %v", addr, err)
+		}
+	}
+	delete(smpc.network, networkID)
+	delete(smpc.shareBuilders, networkID)
 }
 
-func (computer *SmpcComputer) SharedOrderTable() *SharedOrderTable {
-	return &computer.sharedOrderTable
+func (smpc *smpcer) instJ(instID, networkID [32]byte, inst InstJ) {
+	msg := Message{
+		MessageType: MessageTypeJ,
+		MessageJ: &MessageJ{
+			InstID:    instID,
+			NetworkID: networkID,
+			Share:     inst.Share,
+		},
+	}
+
+	smpc.networkMu.RLock()
+	smpc.lookupMu.RLock()
+	smpc.shareBuildersMu.RLock()
+	defer smpc.networkMu.RUnlock()
+	defer smpc.lookupMu.RUnlock()
+	defer smpc.shareBuildersMu.RUnlock()
+
+	if shareBuilder, ok := smpc.shareBuilders[networkID]; ok {
+		shareBuilder.Observe(instID, networkID, smpc)
+	}
+	smpc.processMessageJ(*msg.MessageJ)
+
+	for _, addr := range smpc.network[networkID] {
+		go smpc.sendMessage(addr, &msg)
+	}
 }
 
-func (computer *SmpcComputer) SharedObscureResidueTable() *SharedObscureResidueTable {
-	return &computer.sharedObscureResidueTable
+func (smpc *smpcer) sendMessage(addr identity.Address, msg *Message) {
+	if multiAddr, ok := smpc.lookup[addr]; ok {
+		stream, err := smpc.streamer.Open(context.Background(), multiAddr)
+		if err != nil {
+			log.Printf("cannot open stream for messageTypeJ to %v: %v", addr, err)
+			return
+		}
+		defer smpc.streamer.Close(addr)
+		if err := stream.Send(msg); err != nil {
+			log.Printf("cannot send messageTypeJ to %v: %v", addr, err)
+		}
+	}
 }
 
-func (computer *SmpcComputer) Prime() stackint.Int1024 {
-	return Prime
+func (smpc *smpcer) query(addr identity.Address) (identity.MultiAddress, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	multiAddr, err := smpc.swarmer.Query(ctx, addr, -1)
+	if err != nil {
+		return multiAddr, fmt.Errorf("cannot query smpcer node %v: %v", addr, err)
+	}
+	return multiAddr, nil
+}
+
+func (smpc *smpcer) connect(networkID [32]byte, inst InstConnect, addr identity.Address, multiAddr identity.MultiAddress) error {
+	// TODO: Instead of using a background context, we should store the
+	// context.CancelFunc from a context.WithCancel so that the connection
+	// attempt can remain active indefinitely, or until a disconnect
+	// instruction is received.
+	stream, err := smpc.streamer.Open(context.Background(), multiAddr)
+	if err != nil {
+		return fmt.Errorf("cannot connect to smpcer node %v: %v", addr, err)
+	}
+
+	go smpc.processRemoteStream(addr, stream)
+	return nil
+}
+
+func (smpc *smpcer) processRemoteStream(remoteAddr identity.Address, remoteStream stream.Stream) {
+	for {
+		msg := Message{}
+		if err := remoteStream.Recv(&msg); err != nil {
+			log.Printf("closing stream with %v: %v", remoteAddr, err)
+			return
+		}
+
+		switch msg.MessageType {
+		case MessageTypeJ:
+			smpc.processMessageJ(*msg.MessageJ)
+		default:
+			log.Printf("cannot recv message from %v: %v", remoteAddr, ErrUnexpectedMessageType)
+		}
+	}
+}
+
+func (smpc *smpcer) processMessageJ(message MessageJ) {
+	smpc.shareBuildersMu.RLock()
+	defer smpc.shareBuildersMu.RUnlock()
+
+	if shareBuilder, ok := smpc.shareBuilders[message.NetworkID]; ok {
+		if err := shareBuilder.Insert(message.InstID, message.Share); err != nil {
+			if err == ErrInsufficientSharesToJoin {
+				return
+			}
+			log.Printf("could not insert share: %v", err)
+			return
+		}
+	}
 }

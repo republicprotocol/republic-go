@@ -22,6 +22,8 @@ const (
 	NetworkMainnet Network = "mainnet"
 	// NetworkRopsten represents the Ethereum Ropsten testnet
 	NetworkRopsten Network = "ropsten"
+	// NetworkKovan represents the Ethereum Kovan testnet
+	NetworkKovan Network = "kovan"
 	// NetworkGanache represents a Ganache testrpc server
 	NetworkGanache Network = "ganache"
 )
@@ -30,15 +32,21 @@ const (
 var (
 	RepublicTokenAddressOnGanache    = common.HexToAddress("0x8DE2a0D285cd6fDB47ABAe34024a6EED79ef0E92")
 	DarknodeRegistryAddressOnGanache = common.HexToAddress("0xbF195E17802736Ff4E19275b961bb1c2D45f2c8D")
-	HyperdriveAddressOnGanache       = common.HexToAddress("0x01cbe20EA5A49649F5615A59FaA30E88584634a2")
+	RenLedgerAddressOnGanache        = common.HexToAddress("0x01cbe20EA5A49649F5615A59FaA30E88584634a2")
 )
 
 // Contract addresses on Ropsten
 var (
 	RepublicTokenAddressOnRopsten    = common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54")
 	DarknodeRegistryAddressOnRopsten = common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3")
-	RenAddressOnRopsten       		 = common.HexToAddress("0x2c5800e65Dc91DBdc4Fb7C0aE8A2c609561B7679")
-	ArcAddressOnRopsten              = common.HexToAddress("0x2940089833b688a1a46c150085ef004f85fcee87")
+	RenLedgerAddressOnRopsten        = common.HexToAddress("0x6235E09103bC7f205837237e4eAD855bC196E4D3")
+)
+
+// Contract addresses on Kovan
+var (
+	RepublicTokenAddressOnKovan    = common.HexToAddress("0x596F8c39aEc9fb72D0F591DEe4408516f4C9DdA4")
+	DarknodeRegistryAddressOnKovan = common.HexToAddress("0xE75D707713905470421b6BDdb5dafd120d057b05")
+	RenLedgerAddressOnKovan        = common.HexToAddress("0xe6661ae76f0CE8e70723Db4c0e2d3332910Ed83b")
 )
 
 // Config defines the different settings for connecting the Darknode
@@ -50,7 +58,6 @@ type Config struct {
 	RepublicTokenAddress    string  `json:"republicTokenAddress"`
 	DarknodeRegistryAddress string  `json:"darknodeRegistryAddress"`
 	RenLedgerAddress        string  `json:"renLedgerAddress"`
-	ArcAddress              string  `json:"arcAddress"`
 }
 
 // Conn contains the client and the contracts deployed to it
@@ -66,6 +73,8 @@ func Connect(config Config) (Conn, error) {
 		switch config.Network {
 		case NetworkGanache:
 			config.URI = "http://localhost:8545"
+		case NetworkKovan:
+			config.URI = "https://kovan.infura.io"
 		case NetworkRopsten:
 			config.URI = "https://ropsten.infura.io"
 		default:
@@ -76,6 +85,8 @@ func Connect(config Config) (Conn, error) {
 		switch config.Network {
 		case NetworkGanache:
 			config.RepublicTokenAddress = RepublicTokenAddressOnGanache.String()
+		case NetworkKovan:
+			config.RepublicTokenAddress = RepublicTokenAddressOnKovan.String()
 		case NetworkRopsten:
 			config.RepublicTokenAddress = RepublicTokenAddressOnRopsten.String()
 		default:
@@ -86,6 +97,8 @@ func Connect(config Config) (Conn, error) {
 		switch config.Network {
 		case NetworkGanache:
 			config.DarknodeRegistryAddress = DarknodeRegistryAddressOnGanache.String()
+		case NetworkKovan:
+			config.DarknodeRegistryAddress = DarknodeRegistryAddressOnKovan.String()
 		case NetworkRopsten:
 			config.DarknodeRegistryAddress = DarknodeRegistryAddressOnRopsten.String()
 		default:
@@ -95,10 +108,11 @@ func Connect(config Config) (Conn, error) {
 	if config.RenLedgerAddress == "" {
 		switch config.Network {
 		case NetworkGanache:
-			// FIXME : check the ren ledger contract address on ganache
-			config.RenLedgerAddress = HyperdriveAddressOnGanache.String()
+			config.RenLedgerAddress = RenLedgerAddressOnGanache.String()
+		case NetworkKovan:
+			config.RenLedgerAddress = RenLedgerAddressOnKovan.String()
 		case NetworkRopsten:
-			config.RenLedgerAddress = RenAddressOnRopsten.String()
+			config.RenLedgerAddress = RenLedgerAddressOnRopsten.String()
 		default:
 			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}

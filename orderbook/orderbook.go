@@ -1,231 +1,154 @@
 package orderbook
 
 import (
-	"errors"
+	"context"
+	"fmt"
 
-	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/shamir"
 )
 
-// ErrWriteToClosedOrderbook is returned when an attempt to updated the
-// Orderbook is made after a call to Orderbook.Close.
-var ErrWriteToClosedOrderbook = errors.New("write to closed orderbook")
+type Client interface {
 
-type Syncer interface {
-	Open(order order.Order) error
-	Match(order order.Order) error
-	Confirm(order order.Order) error
-	Release(order order.Order) error
-	Settle(order order.Order) error
-	Cancel(order order.Order) error
-	Blocks() []Entry
-	Order(id order.ID) Entry
-	Clear()
+	// OpenOrder by sending an order.EncryptedFragment to an
+	// identity.MultiAddress. The order.EncryptedFragment will be stored by the
+	// Server hosted at the identity.MultiAddress.
+	OpenOrder(context.Context, identity.MultiAddress, order.EncryptedFragment) error
 }
 
-// An Orderbook is responsible for store the historical orders both in cache
-// and in disk. It also streams the newly received orders to its subscriber.
-type Orderbook struct {
-	cache    Syncer
-	database Syncer
-
-	broadcaster       *dispatch.Broadcaster
-	broadcasterChDone chan struct{}
-	broadcasterCh     chan interface{}
+type Server interface {
+	OpenOrder(context.Context, order.EncryptedFragment) error
 }
 
-// NewOrderbook creates a new Orderbook with the given logger and splitter
-func NewOrderbook() Orderbook {
-	cache := NewCache()
-	database := Database{}
+type Listener interface {
+	OnConfirmOrderMatch(order.Order, order.Order)
+}
 
-	broadcaster := dispatch.NewBroadcaster()
-	broadcasterChDone := make(chan struct{})
-	broadcasterCh := make(chan interface{})
-	go broadcaster.Broadcast(broadcasterChDone, broadcasterCh)
+type Orderbook interface {
+	Server
+	Syncer
 
-	return Orderbook{
-		cache:    &cache,
-		database: &database,
+	// OrderFragment stored in this local Orderbook. These are received from
+	// other Orderbooks calling Orderbook.OpenOrder to send an
+	// order.EncryptedFragment to this local Orderbook.
+	OrderFragment(order.ID) (order.Fragment, error)
 
-		broadcaster:       broadcaster,
-		broadcasterCh:     broadcasterCh,
-		broadcasterChDone: broadcasterChDone,
+	// Order that has been reconstructed and stored in this local Orderbook.
+	// This only happens for orders that have been matched and confirmed.
+	Order(order.ID) (order.Order, error)
+}
+
+type orderbook struct {
+	crypto.RsaKey
+	syncer Syncer
+	storer Storer
+}
+
+func NewOrderbook(key crypto.RsaKey, syncer Syncer, storer Storer) Orderbook {
+	return &orderbook{
+		RsaKey: key,
+		syncer: syncer,
+		storer: storer,
 	}
 }
 
-// Close the Orderbook. All listeners will eventually be closed and no more
-// listeners will be accepted.
-func (orderbook *Orderbook) Close() {
-	orderbook.broadcaster.Close()
-	close(orderbook.broadcasterChDone)
-}
+func (book *orderbook) OpenOrder(ctx context.Context, orderFragment order.EncryptedFragment) error {
+	tokens, err := book.RsaKey.Decrypt(orderFragment.Tokens)
+	if err != nil {
+		return fmt.Errorf("cannot decrypt tokens: %v", err)
+	}
 
-// Listen to the orderbook for updates. Calls to Orderbook.Listen are
-// non-blocking, and the background worker is terminated when the done
-// channel is closed. A read-only channel of entries is returned, and will be
-// closed when no more data will be written to it.
-func (orderbook *Orderbook) Listen(done <-chan struct{}) <-chan Entry {
-	listener := orderbook.broadcaster.Listen(done)
-	subscriber := make(chan Entry)
+	tokenShare := shamir.Share{}
+	if err := tokenShare.UnmarshalBinary(tokens); err != nil {
+		return fmt.Errorf("cannot unmarshal tokens: %v", err)
+	}
 
-	go func() {
-		defer close(subscriber)
-		dispatch.CoBegin(func() {
-			for {
-				select {
-				case <-done:
-					return
-				case <-orderbook.broadcasterChDone:
-					return
-				case msg, ok := <-listener:
-					if !ok {
-						return
-					}
-					if msg, ok := msg.(Entry); ok {
-						select {
-						case <-done:
-							return
-						case <-orderbook.broadcasterChDone:
-							return
-						case subscriber <- msg:
-						}
-					}
-				}
-			}
-		}, func() {
-			blocks := orderbook.cache.Blocks()
-			for _, block := range blocks {
-				select {
-				case <-done:
-					return
-				case <-orderbook.broadcasterChDone:
-					return
-				case subscriber <- block:
-				}
-			}
-		})
-	}()
-
-	return subscriber
-}
-
-// Open is called when we first receive the order fragment.
-func (orderbook *Orderbook) Open(ord order.Order) error {
-	if err := orderbook.cache.Open(ord); err != nil {
+	// Decrypt price
+	decryptedPriceCo, err := book.RsaKey.Decrypt(orderFragment.Price.Co)
+	if err != nil {
+		return fmt.Errorf("cannot decrypt price co: %v", err)
+	}
+	decryptedPriceExp, err := book.RsaKey.Decrypt(orderFragment.Price.Exp)
+	if err != nil {
+		return fmt.Errorf("cannot decrypt price exp: %v", err)
+	}
+	price := order.CoExpShare{
+		Co: shamir.Share{}, Exp: shamir.Share{},
+	}
+	if err := price.Co.UnmarshalBinary(decryptedPriceCo); err != nil {
 		return err
 	}
-	// orderbook.database.Open(ord)
-
-	entry := NewEntry(order.Order{ID: ord.ID}, order.Open)
-
-	select {
-	case <-orderbook.broadcasterChDone:
-		return ErrWriteToClosedOrderbook
-	case orderbook.broadcasterCh <- entry:
-		return nil
-	}
-}
-
-// Match is called when we discover a match for the order.
-func (orderbook *Orderbook) Match(ord order.Order) error {
-	if err := orderbook.cache.Match(ord); err != nil {
+	if err := price.Exp.UnmarshalBinary(decryptedPriceExp); err != nil {
 		return err
 	}
-	// orderbook.database.Match(ord)
 
-	entry := NewEntry(order.Order{ID: ord.ID}, order.Unconfirmed)
-
-	select {
-	case <-orderbook.broadcasterChDone:
-		return ErrWriteToClosedOrderbook
-	case orderbook.broadcasterCh <- entry:
-		return nil
-	}
-}
-
-// Confirm is called when the order has been confirmed by the hyperdrive.
-func (orderbook *Orderbook) Confirm(ord order.Order) error {
-	if err := orderbook.cache.Confirm(ord); err != nil {
+	// Decrypt volume
+	decryptedVolumeCo, err := book.RsaKey.Decrypt(orderFragment.Volume.Co)
+	if err != nil {
 		return err
 	}
-	// orderbook.database.Confirm(ord)
-
-	entry := NewEntry(order.Order{ID: ord.ID}, order.Confirmed)
-
-	select {
-	case <-orderbook.broadcasterChDone:
-		return ErrWriteToClosedOrderbook
-	case orderbook.broadcasterCh <- entry:
-		return nil
-	}
-}
-
-// Release is called when the order has been denied by the hyperdrive.
-func (orderbook *Orderbook) Release(ord order.Order) error {
-	if err := orderbook.cache.Release(ord); err != nil {
+	decryptedVolumeExp, err := book.RsaKey.Decrypt(orderFragment.Volume.Exp)
+	if err != nil {
 		return err
 	}
-	// orderbook.database.Release(ord)
-
-	entry := NewEntry(order.Order{ID: ord.ID}, order.Canceled)
-
-	select {
-	case <-orderbook.broadcasterChDone:
-		return ErrWriteToClosedOrderbook
-	case orderbook.broadcasterCh <- entry:
-		return nil
+	volume := order.CoExpShare{
+		Co: shamir.Share{}, Exp: shamir.Share{},
 	}
-}
-
-// Settle is called when the order is settled.
-func (orderbook *Orderbook) Settle(ord order.Order) error {
-	if err := orderbook.cache.Settle(ord); err != nil {
+	if err := volume.Co.UnmarshalBinary(decryptedVolumeCo); err != nil {
 		return err
 	}
-	// orderbook.database.Settle(ord)
-
-	entry := NewEntry(order.Order{ID: ord.ID}, order.Settled)
-
-	select {
-	case <-orderbook.broadcasterChDone:
-		return ErrWriteToClosedOrderbook
-	case orderbook.broadcasterCh <- entry:
-		return nil
-	}
-}
-
-// Cancel is called when the order is canceled.
-func (orderbook *Orderbook) Cancel(ord order.Order) error {
-	if err := orderbook.cache.Cancel(ord); err != nil {
+	if err := volume.Exp.UnmarshalBinary(decryptedVolumeExp); err != nil {
 		return err
 	}
-	// err = orderbook.database.Cancel(id)
-	// if err != nil {
-	// 	return err
-	// }
 
-	entry := NewEntry(order.Order{ID: ord.ID}, order.Canceled)
-
-	select {
-	case <-orderbook.broadcasterChDone:
-		return ErrWriteToClosedOrderbook
-	case orderbook.broadcasterCh <- entry:
-		return nil
+	// Decrypt minVolume
+	decryptedMinVolumeCo, err := book.RsaKey.Decrypt(orderFragment.Volume.Co)
+	if err != nil {
+		return err
 	}
+	decryptedMinVolumeExp, err := book.RsaKey.Decrypt(orderFragment.Volume.Exp)
+	if err != nil {
+		return err
+	}
+	minVolume := order.CoExpShare{
+		Co: shamir.Share{}, Exp: shamir.Share{},
+	}
+	if err := minVolume.Co.UnmarshalBinary(decryptedMinVolumeCo); err != nil {
+		return err
+	}
+	if err := minVolume.Exp.UnmarshalBinary(decryptedMinVolumeExp); err != nil {
+		return err
+	}
+
+	fragment := order.Fragment{
+		OrderID:       orderFragment.OrderID,
+		OrderType:     orderFragment.OrderType,
+		OrderParity:   orderFragment.OrderParity,
+		OrderExpiry:   orderFragment.OrderExpiry,
+		ID:            orderFragment.ID,
+		Tokens:        tokenShare,
+		Price:         price,
+		Volume:        volume,
+		MinimumVolume: minVolume,
+	}
+
+	return book.storer.InsertOrderFragment(fragment)
 }
 
-// Blocks will gather all the order records and returns them in
-// the format of orderbook.Entry
-func (orderbook *Orderbook) Blocks() []Entry {
-	return orderbook.cache.Blocks()
+func (book *orderbook) Sync() (ChangeSet, error) {
+	return book.syncer.Sync()
 }
 
-// Order retrieves information regarding an order.
-func (orderbook *Orderbook) Order(id order.ID) Entry {
-	return orderbook.cache.Order(id)
+func (book *orderbook) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
+	return book.syncer.ConfirmOrderMatch(buy, sell)
 }
 
-func (orderbook *Orderbook) Clear() {
-	orderbook.cache.Clear()
+func (book *orderbook) OrderFragment(id order.ID) (order.Fragment, error) {
+	return book.storer.OrderFragment(id)
+}
+
+func (book *orderbook) Order(id order.ID) (order.Order, error) {
+	return book.storer.Order(id)
 }

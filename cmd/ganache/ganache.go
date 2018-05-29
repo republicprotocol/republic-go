@@ -23,6 +23,7 @@ func main() {
 	ganache.Start()
 	go func() {
 		ganache.WatchForInterrupt()
+		log.Println("ganache interrupted!")
 		os.Exit(0)
 	}()
 
@@ -37,5 +38,7 @@ func main() {
 		log.Fatalf("cannot deploy contracts to ganache: %v", err)
 	}
 
-	ganache.Wait()
+	if err := ganache.Wait(); err != nil {
+		log.Fatalf("cannot wait for ganache: %v", err)
+	}
 }

@@ -1,0 +1,14 @@
+{
+    "bootstrapMultiAddresses": [
+        "/ip4/35.183.18.20/tcp/18514/republic/8MHSYJd6XVKofL4o8MzkydvNZHv5b5",
+        "/ip4/18.231.115.239/tcp/18514/republic/8MHagooNSWmRGE3odnK5RJkbGkVWoz",
+        "/ip4/34.240.156.49/tcp/18514/republic/8MHY9jvqdVzUdDpFqT3FedhdLzbRMQ"
+    ],
+    "ethereum": {
+        "network": "kovan",
+        "uri": "https://kovan.infura.io",
+        "republicTokenAddress": "0x596F8c39aEc9fb72D0F591DEe4408516f4C9DdA4",
+        "darknodeRegistryAddress": "0xE75D707713905470421b6BDdb5dafd120d057b05",
+        "renLedgerAddress": "0xe6661ae76f0CE8e70723Db4c0e2d3332910Ed83b"
+    }
+}

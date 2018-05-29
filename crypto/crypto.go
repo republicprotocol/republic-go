@@ -9,119 +9,46 @@ import (
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 )
 
-var ErrUnimplemented = errors.New("unimplemented")
+// ErrNilData is returned when a Verifier encounters a nil, or empty, data.
+// Signing nil data is not in itself erroneous but it is rarely a reasonable
+// action to take.
+var ErrNilData = errors.New("nil signature")
+
+// ErrNilSignature is returned when a Verifier encounters a nil, or empty,
+// signature.
+var ErrNilSignature = errors.New("nil signature")
+
+// ErrInvalidSignature is returned when a signature is invalid, or the
+// recovered signatory does not match the required signatory.
 var ErrInvalidSignature = errors.New("invalid signature")
-var ErrInvalidSignatureAddress = errors.New("invalid signature address")
 
-type Hasher interface {
-	Hash() []byte
+// A Signer can consume bytes and produce a unique signature for those bytes.
+// This is usually done using the private key of an asymmetrical cryptography
+// scheme.
+type Signer interface {
+	Sign(data []byte) ([]byte, error)
 }
 
-type Hash32 [32]byte
-
-func NewHash32(data []byte) Hash32 {
-	hash32 := Hash32{}
-	for i := 0; i < 32 && i < len(data); i++ {
-		hash32[i] = data[i]
-	}
-	return hash32
+// A Verifier can consume bytes and a signature for those bytes, and extract
+// signatory.
+type Verifier interface {
+	Verify(data []byte, signature []byte) error
 }
 
-func (hash32 Hash32) Hash() []byte {
-	return hash32[:]
+// An Encrypter can consume a plain text, and produce a cipher text for that
+// can only be decrypted by a specific recipient.
+type Encrypter interface {
+	Encrypt(plainText []byte, recipient []byte) ([]byte, error)
 }
 
+// A Decrypter can consume a cipher text and produce a plain text.
+type Decrypter interface {
+	Decrypt(cipherText []byte) ([]byte, error)
+}
+
+// Keccak256 of all bytes concatenated together.
 func Keccak256(data ...[]byte) []byte {
 	return ethCrypto.Keccak256(data...)
-}
-
-type Signer interface {
-	Sign(Hasher) ([]byte, error)
-}
-
-type Verifier interface {
-	Verify(Hasher, []byte) error
-}
-
-type Encrypter interface {
-	Encrypt(string, []byte) ([]byte, error)
-	Decrypt([]byte) ([]byte, error)
-}
-
-type Crypter interface {
-	Signer
-	Verifier
-	Encrypter
-}
-
-// WeakCrypter implements the Crypter interface. It signs hashes by
-// immediately returning the hash, and verifies all signatures as correct. It
-// returns the plain text immediately when encrypting, and returns the cipher
-// text immediately when decrypting. A WeakCrypter must only be used during
-// testing.
-type WeakCrypter struct{}
-
-// NewWeakCrypter returns a new WeakCrypter. A WeakCrypter must only be used
-// during testing.
-func NewWeakCrypter() WeakCrypter {
-	return WeakCrypter{}
-}
-
-// Sign implements the Crypter interface. It returns the hash of the Hasher and
-// no error.
-func (crypter *WeakCrypter) Sign(hasher Hasher) ([]byte, error) {
-	return hasher.Hash(), nil
-}
-
-// Verify implements the Crypter interface. It returns no error.
-func (crypter *WeakCrypter) Verify(hasher Hasher, signature []byte) error {
-	return nil
-}
-
-// Encrypt implements the Crypter interface. It returns the plain text and no
-// error.
-func (crypter *WeakCrypter) Encrypt(addr string, plainText []byte) ([]byte, error) {
-	return plainText, nil
-}
-
-// Decrypt implements the Crypter interface. It returns the cipher text and no
-// error.
-func (crypter *WeakCrypter) Decrypt(cipherText []byte) ([]byte, error) {
-	return cipherText, nil
-}
-
-// ErrCrypter implements the Crypter interface and immediately returns an error
-// from all method. An ErrCrypter must only be used during testing.
-type ErrCrypter struct{}
-
-// NewErrCrypter returns a new ErrCrypter. An ErrCrypter must only be used
-// during testing.
-func NewErrCrypter() ErrCrypter {
-	return ErrCrypter{}
-}
-
-// Signer implements the Crypter interface. It returns an empty byte slice and
-// ErrUnimplemented.
-func (crypter *ErrCrypter) Signer(hasher Hasher) ([]byte, error) {
-	return []byte{}, ErrUnimplemented
-}
-
-// Verify implements the Crypter interface. It returns an empty byte slice and
-// ErrUnimplemented.
-func (crypter *ErrCrypter) Verify(hasher Hasher, signature []byte) error {
-	return ErrUnimplemented
-}
-
-// Encrypt implements the Crypter interface. It returns an empty byte slice and
-// ErrUnimplemented.
-func (crypter *ErrCrypter) Encrypt(addr string, plainText []byte) ([]byte, error) {
-	return []byte{}, ErrUnimplemented
-}
-
-// Decrypt implements the Crypter interface. It returns an empty byte slice and
-// ErrUnimplemented.
-func (crypter *ErrCrypter) Decrypt(cipherText []byte) ([]byte, error) {
-	return []byte{}, ErrUnimplemented
 }
 
 func unmarshalStringFromMap(m map[string]json.RawMessage, k string) (string, error) {

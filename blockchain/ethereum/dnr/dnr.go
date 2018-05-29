@@ -2,6 +2,7 @@ package dnr
 
 import (
 	"context"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"math/big"
@@ -18,9 +19,9 @@ import (
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
-// ErrAccessDenied is returned when the number of dark nodes are lesser than
+// ErrConnectionDenied is returned when the number of dark nodes are lesser than
 // the minimum number of dark nodes required to run a dark pool
-var ErrConnectionDenied = errors.New("error while trying to connect to the dark ocean")
+var ErrConnectionDenied = errors.New("connection denied")
 
 // Epoch contains a blockhash and a timestamp
 type Epoch struct {
@@ -122,8 +123,8 @@ func (darkNodeRegistry *DarknodeRegistry) GetBond(darkNodeID []byte) (stackint.I
 }
 
 // IsRegistered returns true if the node is registered
-func (darkNodeRegistry *DarknodeRegistry) IsRegistered(darkNodeID []byte) (bool, error) {
-	darkNodeIDByte, err := toByte(darkNodeID)
+func (darkNodeRegistry *DarknodeRegistry) IsRegistered(darknodeAddr identity.Address) (bool, error) {
+	darkNodeIDByte, err := toByte(darknodeAddr.ID())
 	if err != nil {
 		return false, err
 	}
@@ -172,7 +173,7 @@ func (darkNodeRegistry *DarknodeRegistry) CurrentEpoch() (Epoch, error) {
 }
 
 // Epoch updates the current Epoch if the Minimum Epoch Interval has passed since the previous Epoch
-func (darkNodeRegistry *DarknodeRegistry) Epoch() (*types.Transaction, error) {
+func (darkNodeRegistry *DarknodeRegistry) TriggerEpoch() (*types.Transaction, error) {
 	tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
 	if err != nil {
 		return nil, err
@@ -261,13 +262,17 @@ func (darkNodeRegistry *DarknodeRegistry) GetOwner(darkNodeID []byte) (common.Ad
 	return darkNodeRegistry.binding.GetOwner(darkNodeRegistry.callOpts, darkNodeIDByte)
 }
 
-// GetPublicKey gets the public key of the goven dark node
-func (darkNodeRegistry *DarknodeRegistry) GetPublicKey(darkNodeID []byte) ([]byte, error) {
-	darkNodeIDByte, err := toByte(darkNodeID)
+// PublicKey gets the public key of the goven dark node
+func (darkNodeRegistry *DarknodeRegistry) PublicKey(darknodeAddr identity.Address) (rsa.PublicKey, error) {
+	darkNodeIDByte, err := toByte(darknodeAddr.ID())
 	if err != nil {
-		return []byte{}, err
+		return rsa.PublicKey{}, err
 	}
-	return darkNodeRegistry.binding.GetPublicKey(darkNodeRegistry.callOpts, darkNodeIDByte)
+	pubKeyBytes, err := darkNodeRegistry.binding.GetPublicKey(darkNodeRegistry.callOpts, darkNodeIDByte)
+	if err != nil {
+		return rsa.PublicKey{}, err
+	}
+	return crypto.RsaPublicKeyFromBytes(pubKeyBytes)
 }
 
 // GetAllNodes gets all dark nodes
@@ -279,6 +284,18 @@ func (darkNodeRegistry *DarknodeRegistry) GetAllNodes() ([][]byte, error) {
 	arr := make([][]byte, len(ret))
 	for i := range ret {
 		arr[i] = ret[i][:]
+	}
+	return arr, nil
+}
+
+func (darkNodeRegistry *DarknodeRegistry) Darknodes() (identity.Addresses, error) {
+	ret, err := darkNodeRegistry.binding.GetDarkNodes(darkNodeRegistry.callOpts)
+	if err != nil {
+		return nil, err
+	}
+	arr := make(identity.Addresses, len(ret))
+	for i := range ret {
+		arr[i] = identity.ID(ret[i][:]).Address()
 	}
 	return arr, nil
 }
@@ -320,7 +337,7 @@ func (darkNodeRegistry *DarknodeRegistry) WaitUntilRegistration(darkNodeID []byt
 	isRegistered := false
 	for !isRegistered {
 		var err error
-		isRegistered, err = darkNodeRegistry.IsRegistered(darkNodeID)
+		isRegistered, err = darkNodeRegistry.IsRegistered(identity.ID(darkNodeID).Address())
 		if err != nil {
 			return err
 		}
@@ -359,7 +376,7 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 		return []cal.Pod{}, err
 	}
 	if len(darknodeAddrs) < int(numberOfNodesInPool.ToBigInt().Int64()) {
-		return []cal.Pod{}, ErrConnectionDenied
+		return []cal.Pod{}, fmt.Errorf("degraded dark pool: expected at least %v addresses, got %v", int(numberOfNodesInPool.ToBigInt().Int64()), len(darknodeAddrs))
 	}
 	epoch, err := darkNodeRegistry.binding.CurrentEpoch(darkNodeRegistry.callOpts)
 	if err != nil {
@@ -374,14 +391,14 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 	}
 	pods := make([]cal.Pod, (len(darknodeAddrs) / int(numberOfNodesInPool.ToBigInt().Int64())))
 	for i := 0; i < len(darknodeAddrs); i++ {
-		isRegistered, err := darkNodeRegistry.IsRegistered(darknodeAddrs[x.Int64()].ID())
+		isRegistered, err := darkNodeRegistry.IsRegistered(darknodeAddrs[x.Int64()])
 		if err != nil {
 			return []cal.Pod{}, err
 		}
 		for !isRegistered || positionInOcean[x.Int64()] != -1 {
 			x.Add(x, big.NewInt(1))
 			x.Mod(x, numberOfDarkNodes)
-			isRegistered, err = darkNodeRegistry.IsRegistered(darknodeAddrs[x.Int64()].ID())
+			isRegistered, err = darkNodeRegistry.IsRegistered(darknodeAddrs[x.Int64()])
 			if err != nil {
 				return []cal.Pod{}, err
 			}
@@ -400,4 +417,48 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 		copy(pods[i].Hash[:], crypto.Keccak256(hashData...))
 	}
 	return pods, nil
+}
+
+// Epoch returns the current Epoch which includes the Pod configuration.
+func (darkNodeRegistry *DarknodeRegistry) Epoch() (cal.Epoch, error) {
+	epoch, err := darkNodeRegistry.CurrentEpoch()
+	if err != nil {
+		return cal.Epoch{}, err
+	}
+
+	pods, err := darkNodeRegistry.Pods()
+	if err != nil {
+		return cal.Epoch{}, err
+	}
+
+	darknodes, err := darkNodeRegistry.Darknodes()
+	if err != nil {
+		return cal.Epoch{}, err
+	}
+
+	return cal.Epoch{
+		Hash:      epoch.Blockhash,
+		Pods:      pods,
+		Darknodes: darknodes,
+	}, nil
+}
+
+// Pod returns the Pod that contains the given identity.Address in the
+// current Epoch. It returns ErrPodNotFound if the identity.Address is not
+// registered in the current Epoch.
+func (darkNodeRegistry *DarknodeRegistry) Pod(addr identity.Address) (cal.Pod, error) {
+	pods, err := darkNodeRegistry.Pods()
+	if err != nil {
+		return cal.Pod{}, err
+	}
+
+	for i := range pods {
+		for j := range pods[i].Darknodes {
+			if pods[i].Darknodes[j] == addr {
+				return pods[i], nil
+			}
+		}
+	}
+
+	return cal.Pod{}, errors.New("cannot find node in any pod")
 }

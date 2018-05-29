@@ -132,7 +132,7 @@ func Connect(ganacheRPC string) (ethereum.Conn, error) {
 			Network:                 ethereum.NetworkGanache,
 			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
 			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
-			RenLedgerAddress:       ethereum.RenAddressOnRopsten.String(),
+			RenLedgerAddress:        ethereum.RenLedgerAddressOnGanache.String(),
 		},
 	}, nil
 }
@@ -260,11 +260,19 @@ func deployContracts(conn ethereum.Conn, transactor *bind.TransactOpts) error {
 		panic(err)
 	}
 
+	_, renLedgerAddress, err := deployRenLedger(context.Background(), conn, transactor, republicTokenAddress, darkNodeRegistryAddress)
+	if err != nil {
+		panic(err)
+	}
+
 	if republicTokenAddress != ethereum.RepublicTokenAddressOnGanache {
 		return fmt.Errorf("RepublicToken address has changed: expected: %s, got: %s", ethereum.RepublicTokenAddressOnGanache.Hex(), republicTokenAddress.Hex())
 	}
 	if darkNodeRegistryAddress != ethereum.DarknodeRegistryAddressOnGanache {
 		return fmt.Errorf("DarknodeRegistry address has changed: expected: %s, got: %s", ethereum.DarknodeRegistryAddressOnGanache.Hex(), darkNodeRegistryAddress.Hex())
+	}
+	if renLedgerAddress != ethereum.RenLedgerAddressOnGanache {
+		return fmt.Errorf("RenLedger address has changed: expected: %s, got: %s", ethereum.RenLedgerAddressOnGanache.Hex(), renLedgerAddress.Hex())
 	}
 
 	return nil
@@ -280,8 +288,8 @@ func deployRepublicToken(ctx context.Context, conn ethereum.Conn, auth *bind.Tra
 }
 
 func deployDarkNodeRegistry(ctx context.Context, conn ethereum.Conn, auth *bind.TransactOpts, republicTokenAddress common.Address) (*bindings.DarknodeRegistry, common.Address, error) {
-	// 1 aiREN
-	minimumBond := big.NewInt(1)
+	// 0 aiREN
+	minimumBond := big.NewInt(0)
 	// 1 second
 	minimumEpochInterval := big.NewInt(1)
 	// 24 Darknode in a pool
@@ -295,3 +303,14 @@ func deployDarkNodeRegistry(ctx context.Context, conn ethereum.Conn, auth *bind.
 	return dnr, address, nil
 }
 
+func deployRenLedger(ctx context.Context, conn ethereum.Conn, auth *bind.TransactOpts, republicTokenAddress, registryAddress common.Address) (*bindings.RenLedger, common.Address, error) {
+	// 0 REN
+	minimumFee := big.NewInt(0)
+
+	address, tx, ren, err := bindings.DeployRenLedger(auth, conn.Client, minimumFee, republicTokenAddress, registryAddress)
+	if err != nil {
+		return nil, common.Address{}, fmt.Errorf("cannot deploy RenLedger: %v", err)
+	}
+	conn.PatchedWaitDeployed(ctx, tx)
+	return ren, address, nil
+}

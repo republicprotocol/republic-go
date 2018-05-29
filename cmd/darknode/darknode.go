@@ -1,30 +1,47 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
+	"net"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path"
 	"strings"
-	"syscall"
+	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
+	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/darknode"
+	"github.com/republicprotocol/republic-go/dht"
+	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/leveldb"
+	"github.com/republicprotocol/republic-go/ome"
+	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/smpc"
+	"github.com/republicprotocol/republic-go/stream"
+	"github.com/republicprotocol/republic-go/swarm"
 )
 
-var configFile *string
-
 func main() {
+	defer log.Print("shutdown!")
 
 	// Parse command-line arguments
-	configFile = flag.String("config", path.Join(os.Getenv("HOME"), ".darknode/config.json"), "JSON configuration file")
+	configParam := flag.String("config", path.Join(os.Getenv("HOME"), ".darknode/config.json"), "JSON configuration file")
+	dataParam := flag.String("data", path.Join(os.Getenv("HOME"), ".darknode/data"), "Data directory")
 	flag.Parse()
 
 	// Load configuration file
-	config, err := darknode.LoadConfig(*configFile)
+	config, err := darknode.NewConfigFromJSONFile(*configParam)
 	if err != nil {
 		log.Fatalf("cannot load config: %v", err)
 	}
@@ -40,24 +57,112 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot get multiaddress: %v", err)
 	}
-	log.Printf("multiaddress is %v\n", multiAddr)
+	log.Printf("address %v", multiAddr)
 
-	// Create the Darknode
-	node, err := darknode.NewDarknode(multiAddr, config)
+	// Get ethereum bindings
+	auth, darkPool, darkPoolAccounts, darkPoolFees, renLedger, err := getEthereumBindings(config.Keystore, config.Ethereum)
 	if err != nil {
-		log.Fatalf("cannot create darknode: %v", err)
+		log.Fatalf("cannot get ethereum bindings: %v", err)
+	}
+	log.Printf("ethereum %v", auth.From.Hex())
+
+	// New crypter for signing and verification
+	crypter := darknode.NewCrypter(config.Keystore, darkPool, 256, time.Minute)
+
+	// New database for persistent storage
+	store, err := leveldb.NewStore(*dataParam)
+	if err != nil {
+		log.Fatalf("cannot open leveldb: %v", err)
 	}
 
-	// Run the Darknode until the process is terminated
-	done := make(chan struct{})
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	// New DHT
+	dht := dht.NewDHT(config.Address, 64)
+
+	// New gRPC components
+	server := grpc.NewServer()
+	connPool := grpc.NewConnPool(32)
+
+	statusService := grpc.NewStatusService(&dht)
+	statusService.Register(server)
+
+	swarmClient := grpc.NewSwarmClient(multiAddr, &connPool)
+	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmClient, &dht))
+	swarmService.Register(server)
+	swarmer := swarm.NewSwarmer(swarmClient, &dht)
+
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(renLedger, 32), &store)
+	orderbookService := grpc.NewOrderbookService(orderbook)
+	orderbookService.Register(server)
+
+	streamClient := grpc.NewStreamClient(&crypter, config.Address, &connPool)
+	streamService := grpc.NewStreamService(&crypter, config.Address)
+	streamService.Register(server)
+	streamer := stream.NewStreamRecycler(stream.NewStreamer(config.Address, streamClient, &streamService))
+
+	// New secure multi-party computer
+	smpcer := smpc.NewSmpcer(swarmer, streamer, 1)
+
+	// New OME
+	computer := ome.NewComputer(orderbook, smpcer)
+	ome := ome.NewOme(ome.NewRanker(1, 0), computer, orderbook, smpcer)
+
+	// New Darknode
+	darknode := darknode.NewDarknode(config.Address, darkPool, darkPoolAccounts, darkPoolFees)
+	darknode.SetEpochListener(ome)
+
+	// Bootstrap
 	go func() {
-		defer close(done)
-		<-sig
+		time.Sleep(time.Second)
+
+		// Bootstrap into the network
+		if err := swarmer.Bootstrap(context.Background(), config.BootstrapMultiAddresses); err != nil {
+			log.Printf("bootstrap: %v", err)
+		}
 	}()
-	for err := range node.Run(done) {
-		log.Println(err)
+
+	// Start the secure order matching engine
+	go func() {
+		// Sleep for enough time that the bootstrap process can complete
+		time.Sleep(time.Second * 10)
+
+		// FIXME: This should be driven in the same way that the
+		// driving of ome.Sync and computer.Compute are driven,
+		// instead of using a done channel
+		done := make(chan struct{})
+		go computer.ComputeResults(done)
+
+		dispatch.CoBegin(func() {
+			// Start the SMPC
+			smpcer.Start()
+		}, func() {
+			// Synchronizing the OME
+			for {
+				if err := ome.Sync(); err != nil {
+					log.Printf("cannot sync ome: %v", err)
+					continue
+				}
+				time.Sleep(time.Second * 2)
+			}
+		}, func() {
+			// Synchronizing the Darknode
+			for {
+				if err := darknode.Sync(); err != nil {
+					log.Printf("cannot sync darknode: %v", err)
+					continue
+				}
+				time.Sleep(time.Second * 2)
+			}
+		})
+	}()
+
+	// Start gRPC server and run until the server is stopped
+	log.Printf("listening on %v:%v...", config.Host, config.Port)
+	lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", config.Host, config.Port))
+	if err != nil {
+		log.Fatalf("cannot listen on %v:%v: %v", config.Host, config.Port, err)
+	}
+	if err := server.Serve(lis); err != nil {
+		log.Fatalf("cannot serve on %v:%v: %v", config.Host, config.Port, err)
 	}
 }
 
@@ -73,4 +178,27 @@ func getIPAddress() (string, error) {
 	}
 
 	return string(out), nil
+}
+
+func getEthereumBindings(keystore crypto.Keystore, conf ethereum.Config) (*bind.TransactOpts, cal.Darkpool, cal.DarkpoolAccounts, cal.DarkpoolFees, cal.RenLedger, error) {
+	conn, err := ethereum.Connect(conf)
+	if err != nil {
+		return nil, nil, nil, nil, nil, fmt.Errorf("cannot connect to ethereum: %v", err)
+	}
+	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
+	auth.GasPrice = big.NewInt(1000000000)
+
+	darkpool, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
+		return auth, nil, nil, nil, nil, err
+	}
+
+	renLedger, err := ledger.NewRenLedgerContract(context.Background(), conn, auth, &bind.CallOpts{})
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to ren ledger: %v", err))
+		return auth, nil, nil, nil, nil, err
+	}
+
+	return auth, &darkpool, nil, nil, &renLedger, nil
 }
