@@ -355,12 +355,12 @@ type Level uint8
 
 // Values for the LogType.
 const (
-	LevelError     = Level(0)
-	LevelWarn      = Level(1)
-	LevelInfo      = Level(2)
-	LevelDebugHigh = Level(3)
-	LevelDebug     = Level(4)
-	LevelDebugLow  = Level(5)
+	LevelError     = Level(1)
+	LevelWarn      = Level(2)
+	LevelInfo      = Level(3)
+	LevelDebugHigh = Level(4)
+	LevelDebug     = Level(5)
+	LevelDebugLow  = Level(6)
 )
 
 func (level Level) String() string {
