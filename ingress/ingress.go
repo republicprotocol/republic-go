@@ -178,28 +178,6 @@ func (ingress *ingress) verifyOrderFragments(orderFragmentMapping OrderFragmentM
 	return nil
 }
 
-func (ingress *ingress) openOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
-	errs := make([]error, 0, len(ingress.pods))
-	podDidReceiveFragments := false
-	for hash, pod := range ingress.pods {
-		orderFragments := orderFragmentMapping[hash]
-		if orderFragments != nil && len(orderFragments) > 0 {
-			if err := ingress.sendOrderFragmentsToPod(pod, orderFragments); err != nil {
-				errs = append(errs, err)
-				continue
-			}
-			podDidReceiveFragments = true
-		}
-	}
-	if !podDidReceiveFragments {
-		if len(errs) == 0 {
-			return fmt.Errorf("cannot open order fragments: no pod received an order fragments")
-		}
-		return fmt.Errorf("cannot open order fragments: no pod received an order fragments: %v", errs[0])
-	}
-	return nil
-}
-
 func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []OrderFragment) error {
 	if len(orderFragments) < pod.Threshold() || len(orderFragments) > len(pod.Darknodes) {
 		return ErrInvalidNumberOfOrderFragments
