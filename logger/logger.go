@@ -16,7 +16,7 @@ var defaultLogger = func() *Logger {
 		Plugins: []PluginOptions{
 			PluginOptions{File: &FilePluginOptions{Path: "stdout"}, WebSocket: nil},
 		},
-		Level: LevelWarn,
+		FilterLevel: LevelWarn,
 	})
 	if err != nil {
 		panic(fmt.Sprintf("cannot init default logger: %v", err))
@@ -109,14 +109,14 @@ type Logger struct {
 	do.GuardedObject
 	Plugins      []Plugin
 	Tags         map[string]string
-	Level        Level
+	FilterLevel  Level
 }
 
 // Options are used to Unmarshal a Logger from JSON.
 type Options struct {
 	Plugins      []PluginOptions   `json:"plugins"`
 	Tags         map[string]string `json:"tags"`
-	Level        Level             `json:"level"`
+	FilterLevel  Level             `json:"level"`
 }
 
 // The Plugin interface describes a worker that consumes logs
@@ -138,7 +138,7 @@ func NewLogger(options Options) (*Logger, error) {
 		GuardedObject: do.NewGuardedObject(),
 		Plugins:       make([]Plugin, 0, len(options.Plugins)),
 		Tags:          options.Tags,
-		Level:         options.Level,
+		FilterLevel:   options.FilterLevel,
 	}
 	for i := range options.Plugins {
 		if options.Plugins[i].File != nil {
@@ -176,7 +176,7 @@ func (logger Logger) Stop() {
 
 // Log an Event.
 func (logger *Logger) Log(l Log) {
-	if l.Level <= logger.Level {
+	if l.Level <= logger.FilterLevel {
 		l.Tags = logger.Tags
 		for _, plugin := range logger.Plugins {
 			if err := plugin.Log(l); err != nil {
