@@ -3,6 +3,7 @@ package order_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 
@@ -96,6 +97,35 @@ var _ = Describe("Orders", func() {
 			order, err := NewOrderFromJSONFile("orders.out")
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(order.Nonce).Should(Equal(int64(10)))
+		})
+	})
+
+	Context("token  and tokens ", func() {
+		It("should able to to show token name when format printing", func() {
+			Ω(fmt.Sprintf("%s", TokenBTC)).Should(Equal("BTC"))
+			Ω(fmt.Sprintf("%s", TokenETH)).Should(Equal("ETH"))
+			Ω(fmt.Sprintf("%s", TokenDGX)).Should(Equal("DGX"))
+			Ω(fmt.Sprintf("%s", TokenREN)).Should(Equal("REN"))
+		})
+
+		It("should be able to extract the first and second token from a token pair", func() {
+			Ω(TokensBTCETH.PriorityToken()).Should(Equal(TokenETH))
+			Ω(TokensBTCETH.NonPriorityToken()).Should(Equal(TokenBTC))
+
+			Ω(TokensBTCDGX.PriorityToken()).Should(Equal(TokenDGX))
+			Ω(TokensBTCDGX.NonPriorityToken()).Should(Equal(TokenBTC))
+
+			Ω(TokensBTCREN.PriorityToken()).Should(Equal(TokenREN))
+			Ω(TokensBTCREN.NonPriorityToken()).Should(Equal(TokenBTC))
+
+			Ω(TokensETHDGX.PriorityToken()).Should(Equal(TokenDGX))
+			Ω(TokensETHDGX.NonPriorityToken()).Should(Equal(TokenETH))
+
+			Ω(TokensETHREN.PriorityToken()).Should(Equal(TokenREN))
+			Ω(TokensETHREN.NonPriorityToken()).Should(Equal(TokenETH))
+
+			Ω(TokensDGXREN.PriorityToken()).Should(Equal(TokenREN))
+			Ω(TokensDGXREN.NonPriorityToken()).Should(Equal(TokenDGX))
 		})
 	})
 })
