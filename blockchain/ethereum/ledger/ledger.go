@@ -187,7 +187,7 @@ func (ledger *RenLedgerContract) Status(id order.ID) (order.Status, error) {
 	return order.Status(state), nil
 }
 
-func (ledger *RenLedgerContract) OrderMatch(id order.ID) (order.ID, error){
+func (ledger *RenLedgerContract) OrderMatch(id order.ID) (order.ID, error) {
 
 	matches, err := ledger.binding.OrderMatch(ledger.callOpts, [32]byte(id))
 	if err != nil {
@@ -252,15 +252,15 @@ func (ledger *RenLedgerContract) SellOrders(offset, limit int) ([]order.ID, erro
 	return orders, nil
 }
 
-func (ledger *RenLedgerContract) Trader(id order.ID) (common.Address, error) {
+func (ledger *RenLedgerContract) Trader(id order.ID) (string, error) {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
 	address, err := ledger.binding.OrderTrader(ledger.callOpts, orderID)
 	if err != nil {
-		return common.Address{}, err
+		return "", err
 	}
 
-	return address, nil
+	return address.String(), nil
 }
 
 func (ledger *RenLedgerContract) Broker(id order.ID) (common.Address, error) {

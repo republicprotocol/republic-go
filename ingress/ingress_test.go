@@ -306,6 +306,10 @@ func (renLedger *mockRenLedger) OrderMatch(order order.ID) (order.ID, error) {
 	panic("unimplemented")
 }
 
+func (renLedger *mockRenLedger) Trader(order order.ID) (string, error) {
+	panic("unimplemented")
+}
+
 type mockSwarmer struct {
 }
 
