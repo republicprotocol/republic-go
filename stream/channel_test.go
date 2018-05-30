@@ -62,15 +62,15 @@ var _ = Describe("Channel streams", func() {
 		It("should receive messages sent by the client", func() {
 			dispatch.CoBegin(func() {
 				for i := 0; i < 256; i++ {
-					err := clientStream.Send(&mockByteMessage{value: []byte{byte(i)}})
+					err := clientStream.Send(mockMessage([]byte{byte(i)}))
 					Expect(err).ShouldNot(HaveOccurred())
 				}
 			}, func() {
 				for i := 0; i < 256; i++ {
-					message := mockByteMessage{}
+					message := mockMessage{}
 					err := serverStream.Recv(&message)
 					Expect(err).ShouldNot(HaveOccurred())
-					Expect(message.value).Should(Equal([]byte{byte(i)}))
+					Expect(message).Should(Equal(mockMessage([]byte{byte(i)})))
 				}
 			})
 		})
@@ -78,14 +78,14 @@ var _ = Describe("Channel streams", func() {
 		It("should receive messages sent by the server", func() {
 			dispatch.CoBegin(func() {
 				for i := 0; i < 256; i++ {
-					message := mockByteMessage{}
+					message := mockMessage{}
 					err := clientStream.Recv(&message)
 					Expect(err).ShouldNot(HaveOccurred())
-					Expect(message.value).Should(Equal([]byte{byte(i)}))
+					Expect(message).Should(Equal(mockMessage([]byte{byte(i)})))
 				}
 			}, func() {
 				for i := 0; i < 256; i++ {
-					err := serverStream.Send(&mockByteMessage{value: []byte{byte(i)}})
+					err := serverStream.Send(mockMessage([]byte{byte(i)}))
 					Expect(err).ShouldNot(HaveOccurred())
 				}
 			})
@@ -93,23 +93,6 @@ var _ = Describe("Channel streams", func() {
 
 	})
 })
-
-type mockByteMessage struct {
-	value []byte
-}
-
-func (message *mockByteMessage) IsMessage() {
-	return
-}
-
-func (message *mockByteMessage) MarshalBinary() (data []byte, err error) {
-	return message.value, nil
-}
-
-func (message *mockByteMessage) UnmarshalBinary(data []byte) error {
-	message.value = data
-	return nil
-}
 
 func createNewMultiAddress() (identity.MultiAddress, error) {
 	ecdsaKey, err := crypto.RandomEcdsaKey()
