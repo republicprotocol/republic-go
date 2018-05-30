@@ -97,6 +97,14 @@ func (ingress *mockIngress) OpenOrder(signature [65]byte, orderID order.ID, orde
 	return nil
 }
 
+func (ingress *mockIngress) OpenOrderFragmentsProcess(done chan struct{}) <-chan error {
+	return nil
+}
+
+func (ingress *mockIngress) OpenOrderProcess(done chan struct{}) <-chan error {
+	return nil
+}
+
 func (ingress *mockIngress) CancelOrder(signature [65]byte, orderID order.ID) error {
 	atomic.AddInt64(&ingress.numCanceled, 1)
 	return nil
