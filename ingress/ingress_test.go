@@ -25,6 +25,7 @@ var _ = Describe("Ingress", func() {
 	var rsaKey crypto.RsaKey
 	var darkpool mockDarkpool
 	var ingress Ingress
+	var done chan struct{}
 
 	BeforeEach(func() {
 		var err error
@@ -37,6 +38,14 @@ var _ = Describe("Ingress", func() {
 		ingress = NewIngress(&darkpool, &renLedger, &swarmer, &orderbookClient)
 		err = ingress.Sync()
 		Expect(err).ShouldNot(HaveOccurred())
+
+		done = make(chan struct{})
+		ingress.OpenOrderProcess(done)
+		ingress.OpenOrderFragmentsProcess(done)
+	})
+
+	AfterEach(func() {
+		close(done)
 	})
 
 	Context("when opening orders", func() {
