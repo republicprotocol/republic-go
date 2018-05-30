@@ -69,7 +69,6 @@ var _ = Describe("Computer", func() {
 					break
 				}
 			}
-
 			Expect(atomic.LoadInt64(&orderbook.numberOfOrderMatches)).Should(Equal(int64(numberOfComputations)))
 		}, 2 /* 2 second timeout */)
 	})
