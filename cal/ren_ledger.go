@@ -53,4 +53,7 @@ type RenLedger interface {
 	// SellOrders in the Ren Ledger starting at an offset and returning limited
 	// numbers of  sell orders.
 	SellOrders(offset, limit int) ([]order.ID, error)
+
+	// Trader returns the trader who submit the order
+	Trader(orderID order.ID) (string, error)
 }
