@@ -95,7 +95,7 @@ type Computer interface {
 type computer struct {
 	storer    orderbook.Storer
 	smpcer    smpc.Smpcer
-	confirmer confirmer
+	confirmer Confirmer
 
 	cmpMu         *sync.Mutex
 	cmpPriceExp   map[[32]byte]ComputationState
@@ -127,7 +127,7 @@ type computer struct {
 	joinSellTokens      map[[32]byte]ComputationState
 }
 
-func NewComputer(storer orderbook.Storer, smpcer smpc.Smpcer, confirmer confirmer) Computer {
+func NewComputer(storer orderbook.Storer, smpcer smpc.Smpcer, confirmer Confirmer) Computer {
 	return &computer{
 		storer:    storer,
 		smpcer:    smpcer,
@@ -1065,7 +1065,9 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 			return nil, nil
 		}
 		delete(computer.joinBuyPriceCo, instID)
-		computer.orders[computation.Buy].Price.Co = resultJ.Value
+		ord := computer.orders[computation.Buy]
+		ord.Price.Co = resultJ.Value
+		computer.orders[computation.Buy] = ord
 		computation.State = StatePending
 		instID[31] = StageJoinBuyVolExp
 		computer.joinBuyVolExp[instID] = computation
@@ -1087,7 +1089,9 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 			return nil, nil
 		}
 		delete(computer.joinBuyVolCo, instID)
-		computer.orders[computation.Buy].Volume.Co = resultJ.Value
+		ord := computer.orders[computation.Buy]
+		ord.Volume.Co= resultJ.Value
+		computer.orders[computation.Buy] = ord
 		computation.State = StatePending
 		instID[31] = StageJoinBuyTokens
 		computer.joinBuyMinVolExp[instID] = computation
@@ -1109,7 +1113,9 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 			return nil, nil
 		}
 		delete(computer.joinBuyMinVolCo, instID)
-		computer.orders[computation.Buy].MinimumVolume.Co = resultJ.Value
+		ord := computer.orders[computation.Buy]
+		ord.MinimumVolume.Co= resultJ.Value
+		computer.orders[computation.Buy] = ord
 		computation.State = StatePending
 		instID[31] = StageJoinBuyTokens
 		computer.joinBuyTokens[instID] = computation
@@ -1144,7 +1150,9 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 			return nil, nil
 		}
 		delete(computer.joinSellPriceCo, instID)
-		computer.orders[computation.Sell].Price.Co = resultJ.Value
+		ord := computer.orders[computation.Sell]
+		ord.Price.Co= resultJ.Value
+		computer.orders[computation.Sell] = ord
 		computation.State = StatePending
 		instID[31] = StageJoinSellVolExp
 		computer.joinSellVolExp[instID] = computation
@@ -1166,7 +1174,9 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 			return nil, nil
 		}
 		delete(computer.joinSellVolCo, instID)
-		computer.orders[computation.Sell].Volume.Co = resultJ.Value
+		ord := computer.orders[computation.Sell]
+		ord.Volume.Co= resultJ.Value
+		computer.orders[computation.Sell] = ord
 		computation.State = StatePending
 		instID[31] = StageJoinSellTokens
 		computer.joinSellMinVolExp[instID] = computation
@@ -1188,7 +1198,9 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 			return nil, nil
 		}
 		delete(computer.joinSellMinVolCo, instID)
-		computer.orders[computation.Sell].MinimumVolume.Co = resultJ.Value
+		ord := computer.orders[computation.Sell]
+		ord.MinimumVolume.Co= resultJ.Value
+		computer.orders[computation.Sell] = ord
 		computation.State = StatePending
 		instID[31] = StageJoinSellTokens
 		computer.joinBuyTokens[instID] = computation

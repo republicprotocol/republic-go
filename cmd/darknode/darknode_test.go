@@ -153,23 +153,16 @@ var _ = test.SkipCIDescribe("Darknode integration", func() {
 			go func() {
 				dispatch.CoForAll(configs, func(i int) {
 
-					// FIXME: This should be driven in the same way that the
-					// driving of ome.Sync and computer.Compute are driven,
-					// instead of using a done channel
 					done := make(chan struct{})
-					go computers[i].ComputeResults(done)
 
 					dispatch.CoBegin(func() {
 						// Start the SMPC
 						smpcers[i].Start()
 					}, func() {
 						// Synchronizing the OME
-						for {
-							if err := omes[i].Sync(); err != nil {
-								log.Printf("cannot sync ome: %v", err)
-								continue
-							}
-							time.Sleep(time.Second * 2)
+						errs :=omes[i].Run(done)
+						for err := range errs{
+							log.Printf("error in running the ome: %v", err)
 						}
 					}, func() {
 						// Synchronizing the Darknode
@@ -356,7 +349,8 @@ func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.
 		smpcers = append(smpcers, smpc.NewSmpcer(swarmers[i], streamer, 1))
 
 		// New OME
-		computers = append(computers, ome.NewComputer(orderbook, smpcers[i]))
+		confirmer := ome.NewConfirmer(6, 4 * time.Second, renLedger)
+		computers = append(computers, ome.NewComputer(&store, smpcers[i], confirmer))
 		omes = append(omes, ome.NewOme(ome.NewRanker(1, 0), computers[i], orderbook, smpcers[i]))
 
 		// New Darknode

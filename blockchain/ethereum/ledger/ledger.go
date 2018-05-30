@@ -187,6 +187,23 @@ func (ledger *RenLedgerContract) Status(id order.ID) (order.Status, error) {
 	return order.Status(state), nil
 }
 
+func (ledger *RenLedgerContract) OrderMatch(id order.ID) (order.ID, error){
+
+	matches, err := ledger.binding.OrderMatch(ledger.callOpts, [32]byte(id))
+	if err != nil {
+		return order.ID{}, err
+	}
+	orderIDs := make([]order.ID, len(matches))
+	for i := range matches {
+		orderIDs[i] = matches[i]
+	}
+	if len(orderIDs) != 1 {
+		return order.ID{}, errors.New("no matches found for the order")
+	}
+
+	return orderIDs[0], nil
+}
+
 func (ledger *RenLedgerContract) Matches(id order.ID) ([]order.ID, error) {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
