@@ -67,6 +67,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 		for i, ord := range buyOrderIDs {
 			change := NewChange(ord, order.ParityBuy, order.Open, uint64(syncer.buyOrderPointer+i))
 			changeset = append(changeset, change)
+			syncer.buyOrders[syncer.buyOrderPointer+i] = ord
 		}
 	}
 
@@ -77,6 +78,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 		for i, ord := range sellOrderIDs {
 			change := NewChange(ord, order.ParitySell, order.Open, uint64(syncer.sellOrderPointer+i))
 			changeset = append(changeset, change)
+			syncer.sellOrders[syncer.sellOrderPointer+i] = ord
 		}
 	}
 	if buyErr != nil && sellErr != nil {
