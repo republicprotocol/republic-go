@@ -137,19 +137,14 @@ func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) er
 	}
 }
 
-func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, matches []order.ID) error {
-	orderMatches := make([][32]byte, len(matches))
-	for i := range orderMatches {
-		copy(orderMatches[i][:], matches[i][:])
-	}
-	var orderID [32]byte
-	copy(orderID[:], id[:])
+func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, match order.ID) error {
+	orderMatches := [][32]byte{match}
 
 	before, err := ledger.binding.OrderDepth(ledger.callOpts, id)
 	if err != nil {
 		return err
 	}
-	tx, err := ledger.binding.ConfirmOrder(ledger.transactOpts, orderID, orderMatches)
+	tx, err := ledger.binding.ConfirmOrder(ledger.transactOpts, [32]byte(id), orderMatches)
 	if err != nil {
 		return err
 	}
