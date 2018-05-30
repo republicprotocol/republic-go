@@ -132,7 +132,7 @@ type Logger struct {
 type Options struct {
 	Plugins      []PluginOptions   `json:"plugins"`
 	Tags         map[string]string `json:"tags"`
-	FilterLevel  Level             `json:"level"`
+	FilterLevel  Level             `json:"filterLevel"`
 	FilterEvents []EventType       `json:"filterEvents"`
 }
 
