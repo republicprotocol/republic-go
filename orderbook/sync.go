@@ -103,24 +103,25 @@ func (syncer *syncer) purge() ChangeSet {
 				// their status and priority from the Ren Ledger
 				dispatch.CoForAll(syncer.buyOrders, func(key int) {
 					syncer.ordersMu.RLock()
-					status, err := syncer.renLedger.Status(syncer.buyOrders[key])
+					buyOrder := syncer.buyOrders[key]
 					syncer.ordersMu.RUnlock()
 
+					status, err := syncer.renLedger.Status(buyOrder)
 					if err != nil {
 						log.Println("fail to check order status", err)
 						return
 					}
-					syncer.ordersMu.RLock()
-					priority, err := syncer.renLedger.Priority(syncer.buyOrders[key])
-					syncer.ordersMu.RUnlock()
 
+					priority, err := syncer.renLedger.Priority(buyOrder)
 					if err != nil {
 						log.Println("fail to check order priority", err)
 						return
 					}
+
 					if status != order.Open {
+						changes <- NewChange(buyOrder, order.ParityBuy, status, priority)
+
 						syncer.ordersMu.Lock()
-						changes <- NewChange(syncer.buyOrders[key], order.ParityBuy, status, priority)
 						delete(syncer.buyOrders, key)
 						syncer.ordersMu.Unlock()
 					}
@@ -130,23 +131,25 @@ func (syncer *syncer) purge() ChangeSet {
 				// Purge all sell orders
 				dispatch.CoForAll(syncer.sellOrders, func(key int) {
 					syncer.ordersMu.RLock()
-					status, err := syncer.renLedger.Status(syncer.sellOrders[key])
+					sellOrder := syncer.sellOrders[key]
 					syncer.ordersMu.RUnlock()
 
+					status, err := syncer.renLedger.Status(sellOrder)
 					if err != nil {
 						log.Println("fail to check order status", err)
 						return
 					}
-					syncer.ordersMu.RLock()
-					priority, err := syncer.renLedger.Priority(syncer.sellOrders[key])
-					syncer.ordersMu.RUnlock()
+
+					priority, err := syncer.renLedger.Priority(sellOrder)
 					if err != nil {
 						log.Println("fail to check order priority", err)
 						return
 					}
+
 					if status != order.Open {
+						changes <- NewChange(sellOrder, order.ParitySell, status, priority)
+
 						syncer.ordersMu.Lock()
-						changes <- NewChange(syncer.sellOrders[key], order.ParitySell, status, priority)
 						delete(syncer.sellOrders, key)
 						syncer.ordersMu.Unlock()
 					}
