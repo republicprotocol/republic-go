@@ -27,34 +27,55 @@ Here's an example of the `StdoutLogger` with a pair of tags.
     ] , 
     "tags" : {
       "falconry": "true"
-    }
+    },
+    "filterLevel": 2,
+    "filterEvents": [
+      "network",
+      "ethereum",
+    ]
   },
 ```
 
 #### Tags
 
 You can define a set of tags as key-value pairs in the logger so that each message 
-generate by the logger will have all the tags attached. In this case, you can easily 
-filter the logs by using the tags.
+generate by the logger will have all the tags attached. In this case, you can
+easily filter the logs by using the tags.
 
 
-#### Log type and event type
+#### Log Levels
+
+We define 6 different logging levels, in order from most critical to least:
+
+1. `LevelError`       something critically wrong occurred
+2. `LevelWarn`        something bad occurred but it was not critical
+3. `LevelInfo`        some helpful information 
+4. `LevelDebugHigh`   important debugging information
+5. `LevelDebug`       general debugging information
+6. `LevelDebugLow`    unimportant debugging information
+
+The logs levels can be filtered using `SetFilterLevel(Level)`, which defines the
+highest possible level message that will be logged. The `FilterLevel` by default is
+set to 2 which will only show `LevelError` and `LevelWarn` messages.
+`SetFilterLevel(0)` will disable all log messages (not recommended), and
+`SetFilterLevel(6)` will show all messages.
 
 
-Log type shows the type of the log message.
+#### Event Types
 
-- `info` normal information or message
-- `warn`  warning 
-- `error` something wrong happens
+Each log message can also be classified into Event Types. The Event Types we define
+are:
 
-Event type shows the event relating to the message which have below categories.
+- `TypeGeneric` 
+- `TypeEpoch`   
+- `TypeUsage` 
+- `TypeEthereum`
+- `TypeOrderMatch`
+- `TypeOrderReceived`
+- `TypeNetwork`
+- `TypeCompute`
 
-- `generic` 
-- `epoch`   
-- `usage` 
-- `ethereum`
-- `orderMatch`
-- `orderReceived`
-- `network`
-- `compute`
- 
+The `SetFilterEvents([]EventType)` acts as a whitelist for specific types of events.
+For example, if you were only interested in viewing network and Ethereum logs, you
+could use `SetFilterEvents([]EventType{TypeNetwork, TypeEthereum})` which would
+hide all other types of events.
