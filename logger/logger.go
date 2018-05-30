@@ -110,6 +110,7 @@ type Logger struct {
 	Plugins      []Plugin
 	Tags         map[string]string
 	FilterLevel  Level
+	FilterEvents map[EventType]struct{}
 }
 
 // Options are used to Unmarshal a Logger from JSON.
@@ -117,6 +118,7 @@ type Options struct {
 	Plugins      []PluginOptions   `json:"plugins"`
 	Tags         map[string]string `json:"tags"`
 	FilterLevel  Level             `json:"level"`
+	FilterEvents []EventType       `json:"filterEvents"`
 }
 
 // The Plugin interface describes a worker that consumes logs
@@ -132,6 +134,15 @@ type PluginOptions struct {
 	WebSocket *WebSocketPluginOptions `json:"websocket,omitempty"`
 }
 
+func eventListToMap(events []EventType) map[EventType]struct{} {
+	// Convert the events from an array into a map for O(1) lookup
+	eventMap := make(map[EventType]struct{})
+	for _, event := range events {
+		eventMap[event] = struct{}{}
+	}
+	return eventMap
+}
+
 // NewLogger returns a new Logger that will start and stop a set of plugins.
 func NewLogger(options Options) (*Logger, error) {
 	logger := &Logger{
@@ -139,6 +150,7 @@ func NewLogger(options Options) (*Logger, error) {
 		Plugins:       make([]Plugin, 0, len(options.Plugins)),
 		Tags:          options.Tags,
 		FilterLevel:   options.FilterLevel,
+		FilterEvents:  eventListToMap(options.FilterEvents),
 	}
 	for i := range options.Plugins {
 		if options.Plugins[i].File != nil {
@@ -176,6 +188,9 @@ func (logger Logger) Stop() {
 
 // Log an Event.
 func (logger *Logger) Log(l Log) {
+	if _, ok := logger.FilterEvents[l.EventType]; !ok && len(logger.FilterEvents) > 0 {
+		return
+	}
 	if l.Level <= logger.FilterLevel {
 		l.Tags = logger.Tags
 		for _, plugin := range logger.Plugins {
