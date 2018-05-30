@@ -3,7 +3,6 @@ package grpc
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -22,13 +21,177 @@ var ErrUnverifiedConnection = errors.New("unverified connection")
 // for a connection.
 var ErrNilAuthentication = errors.New("nil authentication")
 
-// StreamService implements the rpc.SmpcServer interface using a gRPC service.
+// safeStream wraps a grpc.Stream and ensures that it is safe for concurrent
+// use. It prevents multiple concurrent writes, and multiple concurrent reads.
+// It allows a concurrent writer and reader.
+type safeStream struct {
+	grpc.Stream
+
+	done   chan struct{}
+	sendMu *sync.Mutex
+	recvMu *sync.Mutex
+}
+
+func newSafeStream(stream grpc.Stream) safeStream {
+	return safeStream{
+		Stream: stream,
+
+		done:   make(chan struct{}),
+		sendMu: new(sync.Mutex),
+		recvMu: new(sync.Mutex),
+	}
+}
+
+// Send implements the stream.Stream interface.
+func (str safeStream) Send(message stream.Message) error {
+	str.sendMu.Lock()
+	defer str.sendMu.Unlock()
+
+	if str.done == nil {
+		return stream.ErrSendOnClosedStream
+	}
+
+	data, err := message.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	return str.SendMsg(&StreamMessage{
+		Data: data,
+	})
+}
+
+// Recv implements the stream.Stream interface.
+func (str safeStream) Recv(message stream.Message) error {
+	str.recvMu.Lock()
+	defer str.recvMu.Unlock()
+
+	if str.done == nil {
+		return stream.ErrRecvOnClosedStream
+	}
+
+	data := StreamMessage{}
+	if err := str.RecvMsg(&data); err != nil {
+		return err
+	}
+	return message.UnmarshalBinary(data.Data)
+}
+
+// Close the stream.
+func (str safeStream) Close() error {
+	str.sendMu.Lock()
+	str.recvMu.Lock()
+	defer str.sendMu.Unlock()
+	defer str.recvMu.Unlock()
+
+	if str.done == nil {
+		return nil
+	}
+	close(str.done)
+	str.done = nil
+
+	if grpcClientStream, ok := str.Stream.(grpc.ClientStream); ok {
+		return grpcClientStream.CloseSend()
+	}
+	return nil
+}
+
+// clientStream wraps a safeStream and exposes a method to close the associated
+// grpc.ClientConn that is needed when creating a grpc.ClientStream.
+type clientStream struct {
+	safeStream
+
+	conn *Conn
+}
+
+func newClientStream(stream grpc.ClientStream, conn *Conn) clientStream {
+	return clientStream{
+		safeStream: newSafeStream(stream),
+
+		conn: conn,
+	}
+}
+
+// Close the stream.
+func (str clientStream) Close() error {
+	if err := str.safeStream.Close(); err != nil {
+		return err
+	}
+	return str.conn.Close()
+}
+
+type streamClient struct {
+	signer crypto.Signer
+	addr   identity.Address
+}
+
+// NewStreamClient implements the stream.Client interface using a gRPC
+// bidirectional stream. It accepts a crypto.Signer used to authenticate
+// connections requests with the StreamService, and an identity.Address to
+// identify itself.
+func NewStreamClient(signer crypto.Signer, addr identity.Address) stream.Client {
+	return &streamClient{
+		signer: signer,
+		addr:   addr,
+	}
+}
+
+func (client *streamClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (stream.Stream, error) {
+	// Establish a connection to the identity.MultiAddress
+	conn, err := Dial(ctx, multiAddr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot dial %v: %v", multiAddr, err)
+	}
+
+	// Open a bidirectional stream and continue to backoff the connection
+	// until the context.Context is canceled
+	var stream StreamService_ConnectClient
+	if err := Backoff(ctx, func() error {
+		stream, err = NewStreamServiceClient(conn.ClientConn).Connect(ctx)
+		return err
+	}); err != nil {
+		return nil, fmt.Errorf("cannot open stream: %v", err)
+	}
+
+	// Sign an authentication message so that the StreamService can verify that
+	// the identity.Address of the StreamClient
+	data := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", client.addr, multiAddr.Address()))
+	data = crypto.Keccak256(data)
+	dataSignature, err := client.signer.Sign(data)
+	if err != nil {
+		return nil, fmt.Errorf("cannot sign stream authentication: %v", err)
+	}
+
+	// Send the authentication message
+	if err := stream.Send(&StreamMessage{
+		Authentication: &StreamAuthentication{
+			Signature: dataSignature,
+			Address:   client.addr.String(),
+		},
+		Data: []byte{},
+	}); err != nil {
+		return nil, fmt.Errorf("cannot send stream address: %v", err)
+	}
+
+	// Return a grpc.ClientStream that implements the stream.Stream interface
+	// and is safe for concurrent use and will clean the grpc.ClientConn when
+	// it is no longer needed
+	clientStream := newClientStream(stream, conn)
+	go func() {
+		<-ctx.Done()
+		clientStream.Close()
+	}()
+	return clientStream, err
+}
+
+// StreamService implements the gRPC StreamService. It implements the
+// stream.Server interface by forwarding connections from the
+// StreamService.Connect RPC when calls to StreamService.Listen happen.
 type StreamService struct {
 	verifier crypto.Verifier
 	addr     identity.Address
 
-	connsMu     *sync.Mutex
-	connsStream map[identity.Address]chan safeStream
+	connsMu *sync.Mutex
+	conns   map[identity.Address]chan safeStream
 }
 
 // NewStreamService returns an implementation of the stream.Server interface
@@ -38,8 +201,8 @@ func NewStreamService(verifier crypto.Verifier, addr identity.Address) StreamSer
 		verifier: verifier,
 		addr:     addr,
 
-		connsMu:     new(sync.Mutex),
-		connsStream: map[identity.Address]chan safeStream{},
+		connsMu: new(sync.Mutex),
+		conns:   map[identity.Address]chan safeStream{},
 	}
 }
 
@@ -77,16 +240,14 @@ func (service *StreamService) Connect(stream StreamService_ConnectServer) error 
 	// done
 	select {
 	case <-stream.Context().Done():
-		log.Printf("CONNECTION IS BEING CLOSED: CONTEXT DONE")
 		return stream.Context().Err()
 	case <-s.done:
-		log.Printf("CONNECTION IS BEING CLOSED: STREAM CLOSED")
 		return nil
 	}
 }
 
 // Listen implements the stream.Server interface.
-func (service *StreamService) Listen(ctx context.Context, addr identity.Address) (stream.CloseStream, error) {
+func (service *StreamService) Listen(ctx context.Context, addr identity.Address) (stream.Stream, error) {
 	streams := service.setupConn(addr)
 	defer service.teardownConn(addr)
 
@@ -94,6 +255,10 @@ func (service *StreamService) Listen(ctx context.Context, addr identity.Address)
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case stream := <-streams:
+		go func() {
+			<-ctx.Done()
+			stream.Close()
+		}()
 		return stream, nil
 	}
 }
@@ -115,139 +280,15 @@ func (service *StreamService) setupConn(addr identity.Address) chan safeStream {
 	service.connsMu.Lock()
 	defer service.connsMu.Unlock()
 
-	if _, ok := service.connsStream[addr]; !ok {
-		service.connsStream[addr] = make(chan safeStream, 1)
+	if _, ok := service.conns[addr]; !ok {
+		service.conns[addr] = make(chan safeStream, 1)
 	}
-	return service.connsStream[addr]
+	return service.conns[addr]
 }
 
 func (service *StreamService) teardownConn(addr identity.Address) {
 	service.connsMu.Lock()
 	defer service.connsMu.Unlock()
 
-	delete(service.connsStream, addr)
-}
-
-type streamClient struct {
-	signer crypto.Signer
-	addr   identity.Address
-
-	connPool *ConnPool
-}
-
-func NewStreamClient(signer crypto.Signer, addr identity.Address, connPool *ConnPool) stream.Client {
-	return &streamClient{
-		signer: signer,
-		addr:   addr,
-
-		connPool: connPool,
-	}
-}
-
-func (client *streamClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (stream.CloseStream, error) {
-	conn, err := client.connPool.Dial(ctx, multiAddr)
-	if err != nil {
-		return nil, fmt.Errorf("cannot dial %v: %v", multiAddr, err)
-	}
-	// FIXME: We cannot close this at defer time. Where can we close this?
-	// defer conn.Close()
-
-	data := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", client.addr, multiAddr.Address()))
-	data = crypto.Keccak256(data)
-	dataSignature, err := client.signer.Sign(data)
-	if err != nil {
-		return nil, fmt.Errorf("cannot sign stream authentication: %v", err)
-	}
-
-	var stream StreamService_ConnectClient
-	if err := Backoff(ctx, func() error {
-		stream, err = NewStreamServiceClient(conn.ClientConn).Connect(ctx)
-		return err
-	}); err != nil {
-		return nil, fmt.Errorf("cannot open stream: %v", err)
-	}
-	if err := stream.Send(&StreamMessage{
-		Authentication: &StreamAuthentication{
-			Signature: dataSignature,
-			Address:   client.addr.String(),
-		},
-		Data: []byte{},
-	}); err != nil {
-		return nil, fmt.Errorf("cannot send stream address: %v", err)
-	}
-	return newSafeStream(stream), err
-}
-
-// safeStream wraps a gRPC stream and ensures that it is safe for concurrent
-// use. It prevents multiple goroutines from concurrent writing, and from
-// concurrent reading, but it allows one goroutine to write while another
-// goroutine is reading.
-type safeStream struct {
-	done   chan struct{}
-	sendMu *sync.Mutex
-	recvMu *sync.Mutex
-	stream grpc.Stream
-}
-
-func newSafeStream(stream grpc.Stream) safeStream {
-	return safeStream{
-		done:   make(chan struct{}),
-		sendMu: new(sync.Mutex),
-		recvMu: new(sync.Mutex),
-		stream: stream,
-	}
-}
-
-// Close implements the stream.Stream interface.
-func (safeStream safeStream) Close() error {
-	safeStream.sendMu.Lock()
-	safeStream.recvMu.Lock()
-	defer safeStream.sendMu.Unlock()
-	defer safeStream.recvMu.Unlock()
-
-	if safeStream.done == nil {
-		return stream.ErrCloseOnClosedStream
-	}
-
-	close(safeStream.done)
-	safeStream.done = nil
-
-	if stream, ok := safeStream.stream.(StreamService_ConnectClient); ok {
-		return stream.CloseSend()
-	}
-	return nil
-}
-
-// Send implements the stream.Stream interface.
-func (safeStream safeStream) Send(message stream.Message) error {
-	safeStream.sendMu.Lock()
-	defer safeStream.sendMu.Unlock()
-
-	if safeStream.done == nil {
-		return stream.ErrSendOnClosedStream
-	}
-
-	data, err := message.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	return safeStream.stream.SendMsg(&StreamMessage{
-		Data: data,
-	})
-}
-
-// Recv implements the stream.Stream interface.
-func (safeStream safeStream) Recv(message stream.Message) error {
-	safeStream.recvMu.Lock()
-	defer safeStream.recvMu.Unlock()
-
-	if safeStream.done == nil {
-		return stream.ErrRecvOnClosedStream
-	}
-
-	data := StreamMessage{}
-	if err := safeStream.stream.RecvMsg(&data); err != nil {
-		return err
-	}
-	return message.UnmarshalBinary(data.Data)
+	delete(service.conns, addr)
 }
