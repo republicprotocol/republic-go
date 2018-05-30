@@ -25,6 +25,20 @@ var defaultLogger = func() *Logger {
 	return logger
 }()
 
+// SetFilterLevel changes the logging level of the defaultLogger.
+func SetFilterLevel(l Level) {
+	defaultLoggerMu.Lock()
+	defer defaultLoggerMu.Unlock()
+	defaultLogger.FilterLevel = l
+}
+
+// SetFilterEvents sets the defaultLogger to filter specific EventTypes.
+func SetFilterEvents(events []EventType) {
+	defaultLoggerMu.Lock()
+	defer defaultLoggerMu.Unlock()
+	defaultLogger.FilterEvents = eventListToMap(events)
+}
+
 // SetDefaultLogger to a specific Logger object. The previous DefaultLogger
 // will be stopped, and the new DefaultLogger will be started.
 func SetDefaultLogger(logger *Logger) {
