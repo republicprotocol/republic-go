@@ -7,6 +7,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/stream"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -240,8 +241,10 @@ func (service *StreamService) Connect(stream StreamService_ConnectServer) error 
 	// done
 	select {
 	case <-stream.Context().Done():
+		logger.Network(logger.LevelDebugLow, "grpc connection closed by client")
 		return stream.Context().Err()
 	case <-s.done:
+		logger.Network(logger.LevelDebugLow, "grpc connection closed by service")
 		return nil
 	}
 }

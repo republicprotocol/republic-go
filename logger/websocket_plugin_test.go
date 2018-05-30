@@ -1,1 +1,1 @@
-package logger
+package logger_test
