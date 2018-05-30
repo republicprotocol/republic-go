@@ -32,6 +32,7 @@ func SetDefaultLogger(logger *Logger) {
 	defer defaultLoggerMu.Unlock()
 	defaultLogger.Stop()
 	defaultLogger = logger
+	defaultLogger.Start()
 }
 
 // Info logs an info Log using a GenericEvent using the DefaultLogger.
