@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math/big"
 	"math/rand"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -94,20 +95,35 @@ type mockOrder struct {
 }
 
 type mockRenLedger struct {
-	buyOrders  []order.ID
-	sellOrders []order.ID
-	orders     map[order.ID]mockOrder
+	buyOrdersMu *sync.Mutex
+	buyOrders   []order.ID
+
+	sellOrdersMu *sync.Mutex
+	sellOrders   []order.ID
+
+	ordersMu *sync.Mutex
+	orders   map[order.ID]mockOrder
 }
 
 func newMockRenLedger() mockRenLedger {
 	return mockRenLedger{
-		buyOrders:  []order.ID{},
-		sellOrders: []order.ID{},
-		orders:     map[order.ID]mockOrder{},
+		buyOrdersMu: new(sync.Mutex),
+		buyOrders:   []order.ID{},
+
+		sellOrdersMu: new(sync.Mutex),
+		sellOrders:   []order.ID{},
+
+		ordersMu: new(sync.Mutex),
+		orders:   map[order.ID]mockOrder{},
 	}
 }
 
 func (renLedger *mockRenLedger) OpenBuyOrder(signature [65]byte, orderID order.ID) error {
+	renLedger.ordersMu.Lock()
+	renLedger.buyOrdersMu.Lock()
+	defer renLedger.ordersMu.Unlock()
+	defer renLedger.buyOrdersMu.Unlock()
+
 	if _, ok := renLedger.orders[orderID]; !ok {
 		renLedger.orders[orderID] = mockOrder{
 			status:   order.Open,
@@ -121,6 +137,11 @@ func (renLedger *mockRenLedger) OpenBuyOrder(signature [65]byte, orderID order.I
 }
 
 func (renLedger *mockRenLedger) OpenSellOrder(signature [65]byte, orderID order.ID) error {
+	renLedger.ordersMu.Lock()
+	renLedger.sellOrdersMu.Lock()
+	defer renLedger.ordersMu.Unlock()
+	defer renLedger.sellOrdersMu.Unlock()
+
 	if _, ok := renLedger.orders[orderID]; !ok {
 		renLedger.orders[orderID] = mockOrder{
 			status:   order.Open,
@@ -152,6 +173,9 @@ func (renLedger *mockRenLedger) Fee() (*big.Int, error) {
 }
 
 func (renLedger *mockRenLedger) Status(orderID order.ID) (order.Status, error) {
+	renLedger.ordersMu.Lock()
+	defer renLedger.ordersMu.Unlock()
+
 	if ord, ok := renLedger.orders[orderID]; ok {
 		return ord.status, nil
 	}
@@ -159,6 +183,9 @@ func (renLedger *mockRenLedger) Status(orderID order.ID) (order.Status, error) {
 }
 
 func (renLedger *mockRenLedger) Priority(orderID order.ID) (uint64, error) {
+	renLedger.ordersMu.Lock()
+	defer renLedger.ordersMu.Unlock()
+
 	if ord, ok := renLedger.orders[orderID]; ok {
 		return ord.priority, nil
 	}
@@ -170,6 +197,11 @@ func (renLedger *mockRenLedger) Depth(orderID order.ID) (uint, error) {
 }
 
 func (renLedger *mockRenLedger) BuyOrders(offset, limit int) ([]order.ID, error) {
+	renLedger.ordersMu.Lock()
+	renLedger.buyOrdersMu.Lock()
+	defer renLedger.ordersMu.Unlock()
+	defer renLedger.buyOrdersMu.Unlock()
+
 	orders := []order.ID{}
 	end := offset + limit
 	if end > len(renLedger.buyOrders) {
@@ -188,6 +220,11 @@ func (renLedger *mockRenLedger) BuyOrders(offset, limit int) ([]order.ID, error)
 }
 
 func (renLedger *mockRenLedger) SellOrders(offset, limit int) ([]order.ID, error) {
+	renLedger.ordersMu.Lock()
+	renLedger.buyOrdersMu.Lock()
+	defer renLedger.ordersMu.Unlock()
+	defer renLedger.buyOrdersMu.Unlock()
+
 	orders := []order.ID{}
 	end := offset + limit
 	if end > len(renLedger.sellOrders) {
@@ -205,6 +242,9 @@ func (renLedger *mockRenLedger) SellOrders(offset, limit int) ([]order.ID, error
 }
 
 func (renLedger *mockRenLedger) setOrderStatus(orderID order.ID, status order.Status) error {
+	renLedger.ordersMu.Lock()
+	defer renLedger.ordersMu.Unlock()
+
 	if _, ok := renLedger.orders[orderID]; ok {
 		ord := renLedger.orders[orderID]
 		ord.status = status

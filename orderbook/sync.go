@@ -3,6 +3,7 @@ package orderbook
 import (
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -43,8 +44,10 @@ type syncer struct {
 	renLedgerLimit   int
 	buyOrderPointer  int
 	sellOrderPointer int
-	buyOrders        map[int]order.ID
-	sellOrders       map[int]order.ID
+
+	ordersMu   *sync.RWMutex
+	buyOrders  map[int]order.ID
+	sellOrders map[int]order.ID
 }
 
 func NewSyncer(renLedger cal.RenLedger, limit int) Syncer {
@@ -53,6 +56,7 @@ func NewSyncer(renLedger cal.RenLedger, limit int) Syncer {
 		renLedgerLimit:   limit,
 		buyOrderPointer:  0,
 		sellOrderPointer: 0,
+		ordersMu:         new(sync.RWMutex),
 		buyOrders:        map[int]order.ID{},
 		sellOrders:       map[int]order.ID{},
 	}
@@ -98,38 +102,53 @@ func (syncer *syncer) purge() ChangeSet {
 				// Purge all buy orders by iterating over them and reading
 				// their status and priority from the Ren Ledger
 				dispatch.CoForAll(syncer.buyOrders, func(key int) {
+					syncer.ordersMu.RLock()
 					status, err := syncer.renLedger.Status(syncer.buyOrders[key])
+					syncer.ordersMu.RUnlock()
+
 					if err != nil {
 						log.Println("fail to check order status", err)
 						return
 					}
+					syncer.ordersMu.RLock()
 					priority, err := syncer.renLedger.Priority(syncer.buyOrders[key])
+					syncer.ordersMu.RUnlock()
+
 					if err != nil {
 						log.Println("fail to check order priority", err)
 						return
 					}
 					if status != order.Open {
+						syncer.ordersMu.Lock()
 						changes <- NewChange(syncer.buyOrders[key], order.ParityBuy, status, priority)
 						delete(syncer.buyOrders, key)
+						syncer.ordersMu.Unlock()
 					}
 				})
 			},
 			func() {
 				// Purge all sell orders
 				dispatch.CoForAll(syncer.sellOrders, func(key int) {
+					syncer.ordersMu.RLock()
 					status, err := syncer.renLedger.Status(syncer.sellOrders[key])
+					syncer.ordersMu.RUnlock()
+
 					if err != nil {
 						log.Println("fail to check order status", err)
 						return
 					}
+					syncer.ordersMu.RLock()
 					priority, err := syncer.renLedger.Priority(syncer.sellOrders[key])
+					syncer.ordersMu.RUnlock()
 					if err != nil {
 						log.Println("fail to check order priority", err)
 						return
 					}
 					if status != order.Open {
+						syncer.ordersMu.Lock()
 						changes <- NewChange(syncer.sellOrders[key], order.ParitySell, status, priority)
 						delete(syncer.sellOrders, key)
+						syncer.ordersMu.Unlock()
 					}
 				})
 			},
