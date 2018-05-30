@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -27,6 +28,10 @@ var ErrInvalidNumberOfPods = errors.New("invalid number of pods")
 // ErrInvalidNumberOfOrderFragments is returned when a pod is mapped to an
 // insufficient number of order fragments, or too many order fragments.
 var ErrInvalidNumberOfOrderFragments = errors.New("invalid number of order fragments")
+
+// ErrCannotOpenOrderFragments is returned when none of the pods were available
+// to receive order fragments
+var ErrCannotOpenOrderFragments = errors.New("cannot open order fragments: no pod received an order fragment")
 
 // An OrderFragmentMapping maps pods to encrypted order fragments.
 type OrderFragmentMapping map[[32]byte][]OrderFragment
@@ -54,13 +59,13 @@ type Ingress interface {
 	// OpenOrderProcess starts reading from the openOrderQueue to process
 	// new open order requests. A done channel must be passed and when this
 	// done channel is closed by the user, the openOrderQueue will be closed.
-	OpenOrderProcess(done chan struct{})
+	OpenOrderProcess(done chan struct{}) <-chan error
 
 	// OpenOrderFragmentsProcess starts reading from the openOrderFragmentsQueue
 	// to process order fragments. A done channel must be passed and when this
 	// done channel is closed by the user, the openOrderFragmentsQueue will be
 	// closed.
-	OpenOrderFragmentsProcess(done chan struct{})
+	OpenOrderFragmentsProcess(done chan struct{}) <-chan error
 
 	// CancelOrder on the Ren Ledger. A signature from the trader is needed to
 	// verify the cancelation.
@@ -114,8 +119,10 @@ func (ingress *ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFra
 	return nil
 }
 
-func (ingress *ingress) OpenOrderProcess(done chan struct{}) {
+func (ingress *ingress) OpenOrderProcess(done chan struct{}) <-chan error {
+	errs := make(chan error, 1)
 	go func() {
+		defer close(errs)
 		for {
 			select {
 			case <-done:
@@ -125,15 +132,28 @@ func (ingress *ingress) OpenOrderProcess(done chan struct{}) {
 				if !ok {
 					return
 				}
-				ingress.processOpenOrderRequest(request)
+				if err := ingress.processOpenOrderRequest(request); err != nil {
+					select {
+					case <-done:
+						return
+					case errs <- err:
+					}
+				}
 			}
 		}
 	}()
+	return errs
 }
 
-func (ingress *ingress) OpenOrderFragmentsProcess(done chan struct{}) {
+func (ingress *ingress) OpenOrderFragmentsProcess(done chan struct{}) <-chan error {
+	errs := make(chan error, runtime.NumCPU())
+
+	var wg sync.WaitGroup
+	wg.Add(runtime.NumCPU())
+
 	for i := 0; i < runtime.NumCPU(); i++ {
 		go func(i int) {
+			defer wg.Done()
 			for {
 				select {
 				case <-done:
@@ -142,11 +162,23 @@ func (ingress *ingress) OpenOrderFragmentsProcess(done chan struct{}) {
 					if !ok {
 						return
 					}
-					ingress.processOpenOrderFragmentsRequest(request, ingress.pods)
+					if err := ingress.processOpenOrderFragmentsRequest(request, ingress.pods); err != nil {
+						select {
+						case <-done:
+						case errs <- err:
+						}
+					}
 				}
 			}
 		}(i)
 	}
+
+	go func() {
+		defer close(errs)
+		wg.Wait()
+	}()
+
+	return errs
 }
 
 func (ingress *ingress) CancelOrder(signature [65]byte, orderID order.ID) error {
@@ -248,7 +280,7 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 	return nil
 }
 
-func (ingress *ingress) processOpenOrderFragmentsRequest(request OpenOrderRequest, pods map[[32]byte]cal.Pod) {
+func (ingress *ingress) processOpenOrderFragmentsRequest(request OpenOrderRequest, pods map[[32]byte]cal.Pod) error {
 	errs := make([]error, 0, len(pods))
 	podDidReceiveFragments := int64(0)
 
@@ -267,14 +299,15 @@ func (ingress *ingress) processOpenOrderFragmentsRequest(request OpenOrderReques
 
 	if atomic.LoadInt64(&podDidReceiveFragments) == int64(0) {
 		if len(errs) == 0 {
-			log.Printf("cannot open order fragments: no pod received an order fragments")
+			return ErrCannotOpenOrderFragments
 		} else {
-			log.Printf("cannot open order fragments: no pod received an order fragments: %v", errs[0])
+			return fmt.Errorf("%v %v", ErrCannotOpenOrderFragments.Error(), errs[0])
 		}
 	}
+	return nil
 }
 
-func (ingress *ingress) processOpenOrderRequest(request OpenOrderRequest) {
+func (ingress *ingress) processOpenOrderRequest(request OpenOrderRequest) error {
 	var orderParity order.Parity
 	for _, orderFragments := range request.orderFragmentMapping {
 		if len(orderFragments) > 1 {
@@ -290,7 +323,9 @@ func (ingress *ingress) processOpenOrderRequest(request OpenOrderRequest) {
 		err = ingress.renLedger.OpenSellOrder(request.signature, request.ID)
 	}
 	if err != nil {
-		log.Println(err)
+		return err
 	}
 	ingress.openOrderFragmentsQueue <- request
+
+	return nil
 }

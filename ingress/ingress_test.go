@@ -26,6 +26,8 @@ var _ = Describe("Ingress", func() {
 	var darkpool mockDarkpool
 	var ingress Ingress
 	var done chan struct{}
+	var errChOpenOrders <-chan error
+	var errChOpenOrderFragments <-chan error
 
 	BeforeEach(func() {
 		var err error
@@ -40,8 +42,14 @@ var _ = Describe("Ingress", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		done = make(chan struct{})
-		ingress.OpenOrderProcess(done)
-		ingress.OpenOrderFragmentsProcess(done)
+		errChOpenOrders = ingress.OpenOrderProcess(done)
+		errChOpenOrderFragments = ingress.OpenOrderFragmentsProcess(done)
+
+		err = captureErrorsFromErrorChannel(errChOpenOrderFragments, done)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		err = captureErrorsFromErrorChannel(errChOpenOrders, done)
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -112,6 +120,35 @@ var _ = Describe("Ingress", func() {
 			pods, err := darkpool.Pods()
 			Expect(err).ShouldNot(HaveOccurred())
 			orderFragmentMappingIn[pods[0].Hash] = make([]OrderFragment, 3)
+
+			signature := [65]byte{}
+			_, err = rand.Read(signature[:])
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = ingress.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
+			Expect(err).Should(HaveOccurred())
+		})
+
+		It("should not open orders with empty orderFragmentMappings", func() {
+			ord, err := createOrder()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			orderFragmentMappingIn := OrderFragmentMapping{}
+
+			signature := [65]byte{}
+			_, err = rand.Read(signature[:])
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = ingress.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
+			Expect(err).Should(HaveOccurred())
+		})
+
+		It("should not open orders with unknown pod hashes", func() {
+			ord, err := createOrder()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			orderFragmentMappingIn := OrderFragmentMapping{}
+			orderFragmentMappingIn[[32]byte{byte(1)}] = make([]OrderFragment, 3)
 
 			signature := [65]byte{}
 			_, err = rand.Read(signature[:])
@@ -327,4 +364,25 @@ type mockOrderbookClient struct {
 
 func (client *mockOrderbookClient) OpenOrder(ctx context.Context, to identity.MultiAddress, orderFragment order.EncryptedFragment) error {
 	return nil
+}
+
+func captureErrorsFromErrorChannel(errChOpenOrderFragments <-chan error, done chan struct{}) error {
+	// Capture all errors
+	var finalErr error
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case err, ok := <-errChOpenOrderFragments:
+				if !ok {
+					return
+				}
+				if err != nil {
+					finalErr = err
+				}
+			}
+		}
+	}()
+	return finalErr
 }
