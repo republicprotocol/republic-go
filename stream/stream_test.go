@@ -14,18 +14,20 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 )
 
+const numberOfNodes = 128
+
 var _ = Describe("Streaming", func() {
 
 	Context("when using streamers", func() {
 
 		It("should abstract connecting to servers and listening for client", func() {
 
-			multiAddrs := [128]identity.MultiAddress{}
-			clients := [128]mockClient{}
-			servers := [128]mockServer{}
-			streamers := [128]Streamer{}
+			multiAddrs := [numberOfNodes]identity.MultiAddress{}
+			clients := [numberOfNodes]mockClient{}
+			servers := [numberOfNodes]mockServer{}
+			streamers := [numberOfNodes]Streamer{}
 
-			for i := 0; i < 128; i++ {
+			for i := 0; i < numberOfNodes; i++ {
 				ecdsaKey, err := crypto.RandomEcdsaKey()
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -37,8 +39,8 @@ var _ = Describe("Streaming", func() {
 				streamers[i] = NewStreamer(multiAddrs[i].Address(), &clients[i], &servers[i])
 			}
 
-			for i := 0; i < 128; i++ {
-				for j := 0; j < 128; j++ {
+			for i := 0; i < numberOfNodes; i++ {
+				for j := 0; j < numberOfNodes; j++ {
 					if i == j {
 						continue
 					}
@@ -49,8 +51,8 @@ var _ = Describe("Streaming", func() {
 				}
 			}
 
-			for i := 0; i < 128; i++ {
-				Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(127))
+			for i := 0; i < numberOfNodes; i++ {
+				Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(numberOfNodes - 1))
 			}
 		})
 
@@ -60,12 +62,12 @@ var _ = Describe("Streaming", func() {
 
 		It("should recycle streams for multiple connections", func() {
 
-			multiAddrs := [128]identity.MultiAddress{}
-			clients := [128]mockClient{}
-			servers := [128]mockServer{}
-			streamers := [128]Streamer{}
+			multiAddrs := [numberOfNodes]identity.MultiAddress{}
+			clients := [numberOfNodes]mockClient{}
+			servers := [numberOfNodes]mockServer{}
+			streamers := [numberOfNodes]Streamer{}
 
-			for i := 0; i < 128; i++ {
+			for i := 0; i < numberOfNodes; i++ {
 				ecdsaKey, err := crypto.RandomEcdsaKey()
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -78,8 +80,8 @@ var _ = Describe("Streaming", func() {
 			}
 
 			for conns := 0; conns < 4; conns++ {
-				for i := 0; i < 128; i++ {
-					for j := 0; j < 128; j++ {
+				for i := 0; i < numberOfNodes; i++ {
+					for j := 0; j < numberOfNodes; j++ {
 						if i == j {
 							continue
 						}
@@ -91,20 +93,20 @@ var _ = Describe("Streaming", func() {
 				}
 			}
 
-			for i := 0; i < 128; i++ {
-				Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(127))
+			for i := 0; i < numberOfNodes; i++ {
+				Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(numberOfNodes - 1))
 			}
 
 		})
 
 		It("should not close streams until all references have closed", func() {
 
-			multiAddrs := [128]identity.MultiAddress{}
-			clients := [128]mockClient{}
-			servers := [128]mockServer{}
-			streamers := [128]Streamer{}
+			multiAddrs := [numberOfNodes]identity.MultiAddress{}
+			clients := [numberOfNodes]mockClient{}
+			servers := [numberOfNodes]mockServer{}
+			streamers := [numberOfNodes]Streamer{}
 
-			for i := 0; i < 128; i++ {
+			for i := 0; i < numberOfNodes; i++ {
 				ecdsaKey, err := crypto.RandomEcdsaKey()
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -117,9 +119,9 @@ var _ = Describe("Streaming", func() {
 			}
 
 			cancelConns := map[int]map[int]map[int]context.CancelFunc{}
-			for i := 0; i < 128; i++ {
+			for i := 0; i < numberOfNodes; i++ {
 				cancelConns[i] = map[int]map[int]context.CancelFunc{}
-				for j := 0; j < 128; j++ {
+				for j := 0; j < numberOfNodes; j++ {
 					if i == j {
 						continue
 					}
@@ -134,21 +136,21 @@ var _ = Describe("Streaming", func() {
 			}
 
 			// Cancel all but the last connection
-			for i := 0; i < 128; i++ {
-				for j := 0; j < 128; j++ {
+			for i := 0; i < numberOfNodes; i++ {
+				for j := 0; j < numberOfNodes; j++ {
 					if i == j {
 						continue
 					}
 					for k := 0; k < 3; k++ {
 						cancelConns[i][j][k]()
-						Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(127))
+						Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(numberOfNodes - 1))
 					}
 				}
 			}
 
 			// Cancel the last connection
-			for i := 0; i < 128; i++ {
-				for j := 0; j < 128; j++ {
+			for i := 0; i < numberOfNodes; i++ {
+				for j := 0; j < numberOfNodes; j++ {
 					if i == j {
 						continue
 					}
@@ -158,8 +160,8 @@ var _ = Describe("Streaming", func() {
 
 			// Expect shutdown of streams
 			time.Sleep(time.Millisecond)
-			for i := 0; i < 128; i++ {
-				for j := 0; j < 128; j++ {
+			for i := 0; i < numberOfNodes; i++ {
+				for j := 0; j < numberOfNodes; j++ {
 					if i == j {
 						continue
 					}
