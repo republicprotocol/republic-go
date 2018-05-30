@@ -61,11 +61,14 @@ var _ = Describe("Channel streams", func() {
 
 		It("should receive messages sent by the client", func() {
 			dispatch.CoBegin(func() {
+				defer GinkgoRecover()
 				for i := 0; i < 256; i++ {
-					err := clientStream.Send(mockMessage([]byte{byte(i)}))
+					message := mockMessage([]byte{byte(i)})
+					err := clientStream.Send(&message)
 					Expect(err).ShouldNot(HaveOccurred())
 				}
 			}, func() {
+				defer GinkgoRecover()
 				for i := 0; i < 256; i++ {
 					message := mockMessage{}
 					err := serverStream.Recv(&message)
@@ -77,6 +80,7 @@ var _ = Describe("Channel streams", func() {
 
 		It("should receive messages sent by the server", func() {
 			dispatch.CoBegin(func() {
+				defer GinkgoRecover()
 				for i := 0; i < 256; i++ {
 					message := mockMessage{}
 					err := clientStream.Recv(&message)
@@ -84,8 +88,10 @@ var _ = Describe("Channel streams", func() {
 					Expect(message).Should(Equal(mockMessage([]byte{byte(i)})))
 				}
 			}, func() {
+				defer GinkgoRecover()
 				for i := 0; i < 256; i++ {
-					err := serverStream.Send(mockMessage([]byte{byte(i)}))
+					message := mockMessage([]byte{byte(i)})
+					err := serverStream.Send(&message)
 					Expect(err).ShouldNot(HaveOccurred())
 				}
 			})

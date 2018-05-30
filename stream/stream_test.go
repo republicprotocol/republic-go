@@ -172,12 +172,12 @@ var _ = Describe("Streaming", func() {
 
 type mockMessage []byte
 
-func (message mockMessage) MarshalBinary() ([]byte, error) {
-	return message, nil
+func (message *mockMessage) MarshalBinary() ([]byte, error) {
+	return *message, nil
 }
 
-func (message mockMessage) UnmarshalBinary(data []byte) error {
-	copy(message, data)
+func (message *mockMessage) UnmarshalBinary(data []byte) error {
+	copy(*message, data)
 	return nil
 }
 
