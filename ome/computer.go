@@ -1216,12 +1216,21 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 
 		buyOrder, sellOrder := computer.orders[computation.Buy], computer.orders[computation.Sell]
 		if computer.notNil(buyOrder) {
-			computer.storer.InsertOrder(buyOrder)
+			err := computer.storer.InsertOrder(buyOrder)
+			if err != nil {
+				return nil, err
+			}
+			delete(computer.orders, buyOrder.ID)
 		} else {
 			return nil, errors.New("buy order reconstruction fails, some fields are nil")
 		}
 		if computer.notNil(sellOrder) {
-			computer.storer.InsertOrder(sellOrder)
+			err := computer.storer.InsertOrder(sellOrder)
+			if err != nil{
+				return nil, err
+			}
+
+			delete(computer.orders, sellOrder.ID)
 		} else {
 			return nil, errors.New(" sell order reconstruction fails, some fields are nil")
 		}
