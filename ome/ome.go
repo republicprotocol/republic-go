@@ -2,7 +2,6 @@ package ome
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -138,18 +137,10 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 		ome.ξMu.Lock()
 		defer ome.ξMu.Unlock()
 		networkID := ome.ξ.Hash
-		computationResult, computationErrs := ome.computer.Compute(networkID, done, computations)
-		go func() {
-			for err := range computationErrs {
-				errs <- err
-			}
-		}()
-
-		for computation := range computationResult {
-			//todo : handle the matched order
-			log.Println(computation)
+		computationErrs := ome.computer.Compute(networkID, done, computations)
+		for err := range computationErrs {
+			errs <- err
 		}
-
 	}()
 
 	go func() {

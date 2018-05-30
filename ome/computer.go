@@ -2,11 +2,14 @@ package ome
 
 import (
 	"bytes"
+	"fmt"
 	"log"
+	"math"
 	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
@@ -89,13 +92,15 @@ type Computer interface {
 	// TODO: NetworkID should be constructed as part of the computation, and
 	// there will need to be done by the orderbook.Server (which knows the
 	// epoch at which an order fragment was received).
-	Compute(networkID [32]byte, done <-chan struct{}, computations <-chan Computation) (<-chan Computation, <-chan error)
+	Compute(networkID [32]byte, done <-chan struct{}, computations <-chan Computation) <-chan error
 }
 
 type computer struct {
 	storer    orderbook.Storer
 	smpcer    smpc.Smpcer
 	confirmer Confirmer
+	accounts  cal.DarkpoolAccounts
+	ledger    cal.RenLedger
 
 	cmpMu         *sync.Mutex
 	cmpPriceExp   map[[32]byte]ComputationState
@@ -127,11 +132,13 @@ type computer struct {
 	joinSellTokens      map[[32]byte]ComputationState
 }
 
-func NewComputer(storer orderbook.Storer, smpcer smpc.Smpcer, confirmer Confirmer) Computer {
+func NewComputer(storer orderbook.Storer, smpcer smpc.Smpcer, confirmer Confirmer, accounts cal.DarkpoolAccounts, ledger cal.RenLedger) Computer {
 	return &computer{
 		storer:    storer,
 		smpcer:    smpcer,
 		confirmer: confirmer,
+		accounts:  accounts,
+		ledger:    ledger,
 
 		cmpMu:         new(sync.Mutex),
 		cmpPriceExp:   map[[32]byte]ComputationState{},
@@ -165,7 +172,7 @@ func NewComputer(storer orderbook.Storer, smpcer smpc.Smpcer, confirmer Confirme
 	}
 }
 
-func (computer *computer) Compute(networkID [32]byte, done <-chan struct{}, computations <-chan Computation) (<-chan Computation, <-chan error) {
+func (computer *computer) Compute(networkID [32]byte, done <-chan struct{}, computations <-chan Computation) <-chan error {
 	instructions := computer.smpcer.Instructions()
 	results := computer.smpcer.Results()
 
@@ -954,7 +961,7 @@ func (computer *computer) Compute(networkID [32]byte, done <-chan struct{}, comp
 		)
 	}()
 
-	return orderMatches, errs
+	return errs
 }
 
 func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smpc.ResultJ) (*Computation, error) {
@@ -1090,7 +1097,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 		delete(computer.joinBuyVolCo, instID)
 		ord := computer.orders[computation.Buy]
-		ord.Volume.Co= resultJ.Value
+		ord.Volume.Co = resultJ.Value
 		computer.orders[computation.Buy] = ord
 		computation.State = StatePending
 		instID[31] = StageJoinBuyTokens
@@ -1114,7 +1121,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 		delete(computer.joinBuyMinVolCo, instID)
 		ord := computer.orders[computation.Buy]
-		ord.MinimumVolume.Co= resultJ.Value
+		ord.MinimumVolume.Co = resultJ.Value
 		computer.orders[computation.Buy] = ord
 		computation.State = StatePending
 		instID[31] = StageJoinBuyTokens
@@ -1151,7 +1158,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 		delete(computer.joinSellPriceCo, instID)
 		ord := computer.orders[computation.Sell]
-		ord.Price.Co= resultJ.Value
+		ord.Price.Co = resultJ.Value
 		computer.orders[computation.Sell] = ord
 		computation.State = StatePending
 		instID[31] = StageJoinSellVolExp
@@ -1175,7 +1182,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 		delete(computer.joinSellVolCo, instID)
 		ord := computer.orders[computation.Sell]
-		ord.Volume.Co= resultJ.Value
+		ord.Volume.Co = resultJ.Value
 		computer.orders[computation.Sell] = ord
 		computation.State = StatePending
 		instID[31] = StageJoinSellTokens
@@ -1199,11 +1206,11 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 		delete(computer.joinSellMinVolCo, instID)
 		ord := computer.orders[computation.Sell]
-		ord.MinimumVolume.Co= resultJ.Value
+		ord.MinimumVolume.Co = resultJ.Value
 		computer.orders[computation.Sell] = ord
 		computation.State = StatePending
 		instID[31] = StageJoinSellTokens
-		computer.joinBuyTokens[instID] = computation
+		computer.joinSellTokens[instID] = computation
 
 	case StageJoinSellTokens:
 		computation, ok := computer.joinSellTokens[instID]
@@ -1215,34 +1222,30 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		ord.Tokens = order.Tokens(resultJ.Value)
 
 		buyOrder, sellOrder := computer.orders[computation.Buy], computer.orders[computation.Sell]
-		if computer.notNil(buyOrder) {
+		if computer.notNil(buyOrder) && computer.notNil(sellOrder) {
 			err := computer.storer.InsertOrder(buyOrder)
 			if err != nil {
 				return nil, err
 			}
 			delete(computer.orders, buyOrder.ID)
-		} else {
-			return nil, errors.New("buy order reconstruction fails, some fields are nil")
-		}
-		if computer.notNil(sellOrder) {
-			err := computer.storer.InsertOrder(sellOrder)
-			if err != nil{
+
+			err = computer.storer.InsertOrder(sellOrder)
+			if err != nil {
 				return nil, err
 			}
-
 			delete(computer.orders, sellOrder.ID)
+
+			if err := computer.checkBalance(buyOrder, sellOrder); err != nil {
+				return nil, err
+			}
+			return nil, computer.accounts.Settle(buyOrder, sellOrder)
+
 		} else {
-			return nil, errors.New(" sell order reconstruction fails, some fields are nil")
+			return nil, errors.New("order reconstruction fails, some fields are nil")
 		}
 	}
 
 	return nil, nil
-}
-
-func computeID(computation Computation) [32]byte {
-	id := [32]byte{}
-	copy(id[:], crypto.Keccak256(computation.Buy[:], computation.Sell[:]))
-	return id
 }
 
 func (computer *computer) notNil(ord order.Order) bool {
@@ -1264,4 +1267,44 @@ func (computer *computer) notNil(ord order.Order) bool {
 	}
 
 	return true
+}
+
+func (computer *computer) checkBalance(buy, sell order.Order) error {
+	volume := math.Min(buy.Volume.ToFloat(), sell.Volume.ToFloat())
+	buyToken := buy.Tokens.NonPriorityToken()
+	sellToken := sell.Tokens.PriorityToken() // todo : get the sell token
+
+	// Get trader address from the ledger
+	buyTrader, err := computer.ledger.Trader(buy.ID)
+	if err != nil {
+		return err
+	}
+	sellTrader, err := computer.ledger.Trader(sell.ID)
+	if err != nil {
+		return err
+	}
+
+	// Check the buyer/seller balance to make sure they have enough balance
+	buyBalance, err := computer.accounts.Balance(buyTrader, buyToken)
+	if err != nil {
+		return err
+	}
+	if buyBalance < buy.Price.ToFloat()*volume {
+		return fmt.Errorf("buyer only have %f %s, need %f", buyBalance, buyToken, buy.Price.ToFloat()*volume)
+	}
+	sellBalance, err := computer.accounts.Balance(sellTrader, sellToken)
+	if err != nil {
+		return err
+	}
+	if sellBalance < sell.Price.ToFloat()*volume {
+		return fmt.Errorf("buyer only have %f %s, need %f", sellBalance, sellToken, sell.Price.ToFloat()*volume)
+	}
+
+	return nil
+}
+
+func computeID(computation Computation) [32]byte {
+	id := [32]byte{}
+	copy(id[:], crypto.Keccak256(computation.Buy[:], computation.Sell[:]))
+	return id
 }
