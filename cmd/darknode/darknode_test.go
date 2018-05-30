@@ -160,8 +160,8 @@ var _ = test.SkipCIDescribe("Darknode integration", func() {
 						smpcers[i].Start()
 					}, func() {
 						// Synchronizing the OME
-						errs :=omes[i].Run(done)
-						for err := range errs{
+						errs := omes[i].Run(done)
+						for err := range errs {
 							log.Printf("error in running the ome: %v", err)
 						}
 					}, func() {
@@ -349,8 +349,8 @@ func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.
 		smpcers = append(smpcers, smpc.NewSmpcer(swarmers[i], streamer, 1))
 
 		// New OME
-		confirmer := ome.NewConfirmer(6, 4 * time.Second, renLedger)
-		computers = append(computers, ome.NewComputer(&store, smpcers[i], confirmer))
+		confirmer := ome.NewConfirmer(6, 4*time.Second, renLedger)
+		computers = append(computers, ome.NewComputer(&store, smpcers[i], confirmer, darkPoolAccounts, renLedger))
 		omes = append(omes, ome.NewOme(ome.NewRanker(1, 0), computers[i], orderbook, smpcers[i]))
 
 		// New Darknode
