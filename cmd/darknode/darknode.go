@@ -94,7 +94,7 @@ func main() {
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
-	streamClient := grpc.NewStreamClient(&crypter, config.Address, &connPool)
+	streamClient := grpc.NewStreamClient(&crypter, config.Address)
 	streamService := grpc.NewStreamService(&crypter, config.Address)
 	streamService.Register(server)
 	streamer := stream.NewStreamRecycler(stream.NewStreamer(config.Address, streamClient, &streamService))
