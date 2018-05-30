@@ -3,11 +3,11 @@ package grpc
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/stream"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -77,10 +77,10 @@ func (service *StreamService) Connect(stream StreamService_ConnectServer) error 
 	// done
 	select {
 	case <-stream.Context().Done():
-		log.Printf("CONNECTION IS BEING CLOSED: CONTEXT DONE")
+		logger.Network(logger.LevelInfo, "CONNECTION IS BEING CLOSED: CONTEXT DONE")
 		return stream.Context().Err()
 	case <-s.done:
-		log.Printf("CONNECTION IS BEING CLOSED: STREAM CLOSED")
+		logger.Network(logger.LevelInfo, "CONNECTION IS BEING CLOSED: STREAM CLOSED")
 		return nil
 	}
 }
