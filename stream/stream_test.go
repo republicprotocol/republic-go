@@ -177,7 +177,7 @@ func (message *mockMessage) MarshalBinary() ([]byte, error) {
 }
 
 func (message *mockMessage) UnmarshalBinary(data []byte) error {
-	copy(*message, data)
+	*message = data
 	return nil
 }
 
