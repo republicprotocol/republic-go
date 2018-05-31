@@ -44,7 +44,7 @@ var _ = test.SkipCIDescribe("Darknode integration", func() {
 	mu := new(sync.Mutex)
 
 	n := 24
-	bootstraps := 5
+	bootstraps := 16
 
 	var genesis ethereum.Conn
 	var configs []darknode.Config
@@ -201,6 +201,8 @@ var _ = test.SkipCIDescribe("Darknode integration", func() {
 					}
 				}
 			}
+
+			<-(chan int)(nil)
 
 		}, 120 /* 120 second timeout */)
 
