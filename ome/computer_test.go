@@ -18,7 +18,7 @@ import (
 )
 
 var _ = Describe("Computer", func() {
-	FContext("when given computations", func() {
+	Context("when given computations", func() {
 		var confirmer Confirmer
 		var renLedger cal.RenLedger
 
