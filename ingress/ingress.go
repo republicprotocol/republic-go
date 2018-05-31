@@ -218,7 +218,8 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 		for i := range pod.Darknodes {
 			orderFragment, ok := orderFragmentIndexMapping[int64(i)]
 			if !ok {
-				return
+				errs <- fmt.Errorf("no fragment found at index %v", i)
+				continue
 			}
 			darknode := pod.Darknodes[i]
 
@@ -228,14 +229,14 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 			darknodeMultiAddr, err := ingress.swarmer.Query(ctx, darknode, -1)
 			if err != nil {
 				errs <- fmt.Errorf("cannot send query to %v: %v", darknode, err)
-				return
+				continue
 			}
 
 			log.Printf("sending order fragment to %v", darknode)
 			if err := ingress.orderbookClient.OpenOrder(ctx, darknodeMultiAddr, orderFragment.EncryptedFragment); err != nil {
 				log.Printf("cannot send order fragment to %v: %v", darknode, err)
 				errs <- fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
-				return
+				continue
 			}
 		}
 	}()
