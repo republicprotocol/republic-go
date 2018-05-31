@@ -55,7 +55,7 @@ var _ = Describe("Swarm", func() {
 			newClient, err := newMockClient(multiaddrs)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			// Creating swarmer for the newly crsated client
+			// Creating swarmer for the newly created client
 			newDht := dht.NewDHT(newClient.MultiAddress().Address(), 100)
 			newSwarmer := NewSwarmer(newClient, &newDht)
 

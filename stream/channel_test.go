@@ -5,98 +5,100 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/dispatch"
 	. "github.com/republicprotocol/republic-go/stream"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
 
-var _ = Describe("streamer channel", func() {
+var _ = Describe("Channel streams", func() {
 
-	channelHub := ChannelHub{}
-	clientMultiAddr := identity.MultiAddress{}
-	serverMultiAddr := identity.MultiAddress{}
+	var hub ChannelHub
 
 	BeforeEach(func() {
-		var err error
-
-		// Create a new channel hub
-		channelHub = NewChannelHub()
-
-		//Create client and server multiaddresses
-		clientMultiAddr, err = createNewMultiAddress()
-		Expect(err).ShouldNot(HaveOccurred())
-		serverMultiAddr, err = createNewMultiAddress()
-		Expect(err).ShouldNot(HaveOccurred())
+		hub = NewChannelHub()
 	})
 
-	Context("on registering a client - server pair with a channel hub", func() {
+	Context("when sending and receiving messages", func() {
 
-		It("should register a new stream with channel hub", func() {
-			// Create a new channel client with the client address
-			channelClient := NewChannelClient(clientMultiAddr.Address(), &channelHub)
+		var clientMultiAddr identity.MultiAddress
+		var client Streamer
+		var clientStream Stream
+		var clientCancel context.CancelFunc
 
-			//Connect client to the server
-			ctx, cancelCtx := context.WithCancel(context.Background())
-			defer cancelCtx()
-			closeStream, err := channelClient.Connect(ctx, serverMultiAddr)
+		var serverMultiAddr identity.MultiAddress
+		var server Streamer
+		var serverStream Stream
+		var serverCancel context.CancelFunc
+
+		BeforeEach(func() {
+			var err error
+
+			clientMultiAddr, err = createNewMultiAddress()
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(closeStream).ToNot(BeNil())
+			serverMultiAddr, err = createNewMultiAddress()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			client = NewChannelStreamer(clientMultiAddr.Address(), &hub)
+			server = NewChannelStreamer(serverMultiAddr.Address(), &hub)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			clientStream, err = client.Open(ctx, serverMultiAddr)
+			clientCancel = cancel
+			Expect(err).ShouldNot(HaveOccurred())
+
+			ctx, cancel = context.WithCancel(context.Background())
+			serverStream, err = server.Open(ctx, clientMultiAddr)
+			serverCancel = cancel
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		It("should send and receive messages", func() {
-			// Create a new channel client with the client address and connect it to a server
-			channelClient := NewChannelClient(clientMultiAddr.Address(), &channelHub)
-			ctx, cancelCtx := context.WithCancel(context.Background())
-			defer cancelCtx()
-			clientStream, err := channelClient.Connect(ctx, serverMultiAddr)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(clientStream).ToNot(BeNil())
+		AfterEach(func() {
+			clientCancel()
+			serverCancel()
+		})
 
-			// Create a new server channel and start listening to client
-			channelServer := NewChannelServer(serverMultiAddr.Address(), &channelHub)
-			serverStream, err := channelServer.Listen(ctx, clientMultiAddr.Address())
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(serverStream).ToNot(BeNil())
-
-			// Send 5 messages to client from server
-			var receivedMessage, message *mockByteMessage
-
-			go func() {
-				for i := 0; i < 5; i++ {
-					message = &mockByteMessage{
-						value: []byte{byte(i)},
-					}
-					err = serverStream.Send(message)
+		It("should receive messages sent by the client", func() {
+			dispatch.CoBegin(func() {
+				defer GinkgoRecover()
+				for i := 0; i < 256; i++ {
+					message := mockMessage([]byte{byte(i)})
+					err := clientStream.Send(&message)
 					Expect(err).ShouldNot(HaveOccurred())
 				}
-			}()
-			for i := 0; i < 5; i++ {
-				receivedMessage = &mockByteMessage{}
-				err = clientStream.Recv(receivedMessage)
-				Expect(err).ShouldNot(HaveOccurred())
-			}
-			Expect(receivedMessage).To(Equal(message))
+			}, func() {
+				defer GinkgoRecover()
+				for i := 0; i < 256; i++ {
+					message := mockMessage{}
+					err := serverStream.Recv(&message)
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(message).Should(Equal(mockMessage([]byte{byte(i)})))
+				}
+			})
 		})
+
+		It("should receive messages sent by the server", func() {
+			dispatch.CoBegin(func() {
+				defer GinkgoRecover()
+				for i := 0; i < 256; i++ {
+					message := mockMessage{}
+					err := clientStream.Recv(&message)
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(message).Should(Equal(mockMessage([]byte{byte(i)})))
+				}
+			}, func() {
+				defer GinkgoRecover()
+				for i := 0; i < 256; i++ {
+					message := mockMessage([]byte{byte(i)})
+					err := serverStream.Send(&message)
+					Expect(err).ShouldNot(HaveOccurred())
+				}
+			})
+		})
+
 	})
 })
-
-type mockByteMessage struct {
-	value []byte
-}
-
-func (message *mockByteMessage) IsMessage() {
-	return
-}
-
-func (message *mockByteMessage) MarshalBinary() (data []byte, err error) {
-	return message.value, nil
-}
-
-func (message *mockByteMessage) UnmarshalBinary(data []byte) error {
-	message.value = data
-	return nil
-}
 
 func createNewMultiAddress() (identity.MultiAddress, error) {
 	ecdsaKey, err := crypto.RandomEcdsaKey()
