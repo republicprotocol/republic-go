@@ -183,7 +183,6 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 		case <-done:
 			return
 		case confirmedOrderMatches <- confirmedOrderMatch:
-			log.Println()
 		}
 	}
 }
@@ -204,6 +203,7 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 		return nil, err
 	}
 	if status != cal.StatusConfirmed {
+		log.Println("order status is ", status)
 		if orderParity == order.ParityBuy {
 			delete(confirmer.confirmingBuyOrders, ord)
 		} else {

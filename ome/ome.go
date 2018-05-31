@@ -177,7 +177,7 @@ func (ome *ome) syncRanker(changeset orderbook.ChangeSet) error {
 					Priority: Priority(change.OrderPriority),
 				})
 			}
-		case order.Canceled, order.Settled, order.Confirmed:
+		case order.Canceled, order.Confirmed:
 			ome.ranker.Remove(change.OrderID)
 		}
 	}

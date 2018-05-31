@@ -1,7 +1,6 @@
 package ome_test
 
 import (
-	"bytes"
 	"errors"
 	"math/big"
 	"math/rand"
@@ -35,25 +34,30 @@ var _ = Describe("Confirmer", func() {
 
 		done := make(chan struct{})
 		orderMatches := make(chan Computation)
+		orderIDs := map[[32]byte]struct{}{}
 		computations := make([]Computation, numberOfComputationsToTest)
 		for i := 0; i < numberOfComputationsToTest; i++ {
 			computations[i] = randomComputaion()
+			orderIDs[computations[i].Buy] = struct{}{}
+			orderIDs[computations[i].Sell] = struct{}{}
 		}
 
+		// Open all the orders
 		for i := 0; i < numberOfComputationsToTest; i++ {
 			err := renLedger.OpenBuyOrder([65]byte{}, computations[i].Buy)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = renLedger.OpenSellOrder([65]byte{}, computations[i].Sell)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
+
 		go func() {
 			defer GinkgoRecover()
+			defer close(done)
 
 			for i := 0; i < numberOfComputationsToTest; i++ {
 				orderMatches <- computations[i]
 			}
-			time.Sleep(time.Second * 10)
-			close(done)
+			time.Sleep(5 * time.Second)
 		}()
 
 		confirmedMatches, errs := confirmer.ConfirmOrderMatches(done, orderMatches)
@@ -66,24 +70,19 @@ var _ = Describe("Confirmer", func() {
 			}
 		}()
 
-		index := 0
 		for match := range confirmedMatches {
-			Ω(bytes.Equal(match.Buy[:], computations[index].Buy[:])).Should(BeTrue())
-			Ω(bytes.Equal(match.Sell[:], computations[index].Sell[:])).Should(BeTrue())
-			index++
+			_, ok := orderIDs[match.Buy]
+			Ω(ok).Should(BeTrue())
+			delete(orderIDs, match.Buy)
+
+			_, ok = orderIDs[match.Sell]
+			Ω(ok).Should(BeTrue())
+			delete(orderIDs, match.Sell)
 		}
 
-		time.Sleep(time.Second)
+		Ω(len(orderIDs)).Should(Equal(0))
 	}, 100)
 })
-
-type mockState uint8
-
-const (
-	Open = mockState(iota) // orders are open by default
-	Confirmed
-	Canceled
-)
 
 const (
 	GenesisBuyer  = "0x90e6572eF66a11690b09dd594a18f36Cf76055C8"
@@ -95,7 +94,7 @@ type mockRenLedger struct {
 	buyOrders  map[[32]byte]struct{}
 	sellOrders map[[32]byte]struct{}
 	matches    map[[32]byte][32]byte
-	states     map[[32]byte]mockState
+	states     map[[32]byte]order.Status
 }
 
 func newMockRenLedger() *mockRenLedger {
@@ -104,7 +103,7 @@ func newMockRenLedger() *mockRenLedger {
 		buyOrders:  map[[32]byte]struct{}{},
 		sellOrders: map[[32]byte]struct{}{},
 		matches:    map[[32]byte][32]byte{},
-		states:     map[[32]byte]mockState{},
+		states:     map[[32]byte]order.Status{},
 	}
 }
 
@@ -113,7 +112,7 @@ func (renLedger *mockRenLedger) OpenBuyOrder(signature [65]byte, orderID order.I
 	defer renLedger.mu.Unlock()
 
 	renLedger.buyOrders[orderID] = struct{}{}
-	renLedger.states[orderID] = Open
+	renLedger.states[orderID] = order.Open
 
 	return nil
 }
@@ -123,7 +122,7 @@ func (renLedger *mockRenLedger) OpenSellOrder(signature [65]byte, orderID order.
 	defer renLedger.mu.Unlock()
 
 	renLedger.sellOrders[orderID] = struct{}{}
-	renLedger.states[orderID] = Open
+	renLedger.states[orderID] = order.Open
 
 	return nil
 }
@@ -132,7 +131,7 @@ func (renLedger *mockRenLedger) CancelOrder(signature [65]byte, orderID order.ID
 	renLedger.mu.Lock()
 	defer renLedger.mu.Unlock()
 
-	renLedger.states[orderID] = Canceled
+	renLedger.states[orderID] = order.Canceled
 
 	return nil
 }
@@ -141,15 +140,15 @@ func (renLedger *mockRenLedger) ConfirmOrder(id order.ID, match order.ID) error 
 	renLedger.mu.Lock()
 	defer renLedger.mu.Unlock()
 
-	if _, ok := renLedger.matches[id]; renLedger.states[id] != Open || ok {
+	if _, ok := renLedger.matches[id]; renLedger.states[id] != order.Open || ok {
 		return errors.New("you can only confirm open order ")
 	}
-	if _, ok := renLedger.matches[match]; renLedger.states[match] != Open || ok {
+	if _, ok := renLedger.matches[match]; renLedger.states[match] != order.Open || ok {
 		return errors.New("you can only confirm open order ")
 	}
 
-	renLedger.states[id] = Confirmed
-	renLedger.states[match] = Confirmed
+	renLedger.states[id] = order.Confirmed
+	renLedger.states[match] = order.Confirmed
 
 	renLedger.matches[id] = match
 	renLedger.matches[match] = id

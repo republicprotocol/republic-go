@@ -99,10 +99,8 @@ type Status uint8
 const (
 	Nil = Status(iota)
 	Open
-	Unconfirmed
-	Canceled
 	Confirmed
-	Settled
+	Canceled
 )
 
 // An Order represents the want to perform a trade of assets.
