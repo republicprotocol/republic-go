@@ -2,53 +2,30 @@ package ome_test
 
 import (
 	"bytes"
-	"context"
 	"errors"
-	"log"
 	"math/big"
 	"math/rand"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
-	"github.com/republicprotocol/republic-go/blockchain/test"
-	"github.com/republicprotocol/republic-go/blockchain/test/ganache"
-	"github.com/republicprotocol/republic-go/crypto"
 	. "github.com/republicprotocol/republic-go/ome"
+
+	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/order"
 )
 
 var _ = Describe("Confirmer", func() {
 	var confirmer Confirmer
-	var genesis ethereum.Conn
-	var renLedger ledger.RenLedgerContract
-
-	test.SkipCIBeforeSuite(func() {
-		var err error
-
-		genesis, err = ganache.StartAndConnect()
-		Expect(err).ShouldNot(HaveOccurred())
-
-	})
+	var renLedger cal.RenLedger
 
 	BeforeEach(func() {
 		depth, pollInterval := uint(0), time.Second
-		config := ganacheConfig()
-		keystore, err := crypto.RandomKeystore()
-		Expect(err).ShouldNot(HaveOccurred())
+		renLedger = newMockRenLedger()
 
-		conn, err := ethereum.Connect(config)
-		Expect(err).ShouldNot(HaveOccurred())
-		auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
-		auth.GasPrice = big.NewInt(1000000000)
-
-		ganache.DistributeEth(conn, auth.From)
-		renLedger, err = ledger.NewRenLedgerContract(context.Background(), conn, auth, &bind.CallOpts{})
-		confirmer = NewConfirmer(depth, pollInterval, &renLedger)
+		confirmer = NewConfirmer(depth, pollInterval, renLedger)
 	})
 
 	It("should be able to confirm order on the ren ledger", func(d Done) {
@@ -68,14 +45,12 @@ var _ = Describe("Confirmer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = renLedger.OpenSellOrder([65]byte{}, computations[i].Sell)
 			Expect(err).ShouldNot(HaveOccurred())
-			log.Println("open order pair", i)
 		}
 		go func() {
 			defer GinkgoRecover()
 
 			for i := 0; i < numberOfComputationsToTest; i++ {
 				orderMatches <- computations[i]
-				log.Println(i)
 			}
 			time.Sleep(time.Second * 10)
 			close(done)

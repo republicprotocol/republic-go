@@ -1,6 +1,7 @@
 package ome
 
 import (
+	"log"
 	"sync"
 	"time"
 
@@ -94,7 +95,6 @@ type computer struct {
 	storer    orderbook.Storer
 	smpcer    smpc.Smpcer
 	confirmer Confirmer
-	accounts  cal.DarkpoolAccounts
 	ledger    cal.RenLedger
 
 	computationsMu    *sync.Mutex
@@ -114,12 +114,11 @@ type computer struct {
 	tokensPointer    map[[32]byte]*order.Tokens
 }
 
-func NewComputer(storer orderbook.Storer, smpcer smpc.Smpcer, confirmer Confirmer, accounts cal.DarkpoolAccounts, ledger cal.RenLedger) Computer {
+func NewComputer(storer orderbook.Storer, smpcer smpc.Smpcer, confirmer Confirmer, ledger cal.RenLedger) Computer {
 	return &computer{
 		storer:    storer,
 		smpcer:    smpcer,
 		confirmer: confirmer,
-		accounts:  accounts,
 		ledger:    ledger,
 
 		computationsMu:    new(sync.Mutex),
@@ -377,6 +376,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 			select {
 			case <-done:
 			case computer.matchingComputations <- computation.Computation:
+				log.Print("match found")
 			}
 			return
 		}
