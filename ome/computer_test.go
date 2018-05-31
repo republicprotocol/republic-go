@@ -23,10 +23,8 @@ var _ = Describe("Computer", func() {
 		var renLedger cal.RenLedger
 
 		BeforeEach(func() {
-			depth, pollInterval := uint(0), time.Second
 			renLedger = newMockRenLedger()
-
-			confirmer = NewConfirmer(depth, pollInterval, renLedger)
+			confirmer = newMockConfirmer()
 		})
 
 		It("should successfully complete all computations", func(d Done) {
@@ -39,7 +37,6 @@ var _ = Describe("Computer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			storer := NewMockStorer()
-			confirmer := NewConfirmer(0, 2*time.Second, renLedger)
 			computer := NewComputer(storer, &smpcer, confirmer, renLedger)
 
 			done := make(chan struct{})
@@ -216,6 +213,38 @@ func newMockSmpcer(resultStatus ResultStatus) mockSmpcer {
 	return mockSmpcer{
 		result: result,
 	}
+}
+
+type mockConfirmer struct {
+}
+
+func newMockConfirmer() Confirmer {
+	return &mockConfirmer{}
+}
+
+func (confirmer *mockConfirmer) ConfirmOrderMatches(done <-chan struct{}, orderMatches <-chan Computation) (<-chan Computation, <-chan error) {
+	confirmedMatches := make(chan Computation)
+	errs := make(chan error)
+
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case computation, ok := <-orderMatches:
+				if !ok {
+					return
+				}
+				select {
+				case <-done:
+					return
+				case confirmedMatches <- computation:
+				}
+			}
+		}
+	}()
+
+	return confirmedMatches, errs
 }
 
 func newOrder(isBuy bool) order.Order {
