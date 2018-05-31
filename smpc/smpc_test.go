@@ -17,17 +17,18 @@ import (
 	"github.com/republicprotocol/republic-go/stream"
 )
 
-var channelHub stream.ChannelHub
-
 var _ = Describe("Smpc", func() {
+
+	var hub stream.ChannelHub
+
 	BeforeEach(func() {
-		channelHub = stream.NewChannelHub()
+		hub = stream.NewChannelHub()
 	})
 
 	Context("when starting", func() {
 
 		It("should return error if smpcer has already been started", func() {
-			smpcer, _, err := createSMPCer()
+			smpcer, _, err := createSMPCer(&hub)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = smpcer.Start()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -42,7 +43,7 @@ var _ = Describe("Smpc", func() {
 	Context("when shutting down", func() {
 
 		It("should return error if smpcer is not running", func() {
-			smpcer, _, err := createSMPCer()
+			smpcer, _, err := createSMPCer(&hub)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			err = smpcer.Shutdown()
@@ -51,7 +52,7 @@ var _ = Describe("Smpc", func() {
 		})
 
 		It("should not return error if smpcer is running", func() {
-			smpcer, _, err := createSMPCer()
+			smpcer, _, err := createSMPCer(&hub)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = smpcer.Start()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -65,7 +66,7 @@ var _ = Describe("Smpc", func() {
 
 		It("should join shares to obtain final values", func() {
 			// Create 16 smpcers and issue 5 random secrets
-			count, err := runSmpcers(24, 5, 0)
+			count, err := runSmpcers(24, 5, 0, &hub)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(count).To(Equal(5))
 
@@ -74,7 +75,7 @@ var _ = Describe("Smpc", func() {
 		It("should join shares when faults are below the threshold", func() {
 			// Create 24 smpcers and issue 5 random secrets
 			// Do not start 1/3 of the smpcers (for example: 7)
-			count, err := runSmpcers(24, 5, 7)
+			count, err := runSmpcers(24, 5, 7, &hub)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(count).To(Equal(5))
 		})
@@ -87,7 +88,7 @@ var _ = Describe("Smpc", func() {
 				defer GinkgoRecover()
 
 				// Create 24 smpcers and do not start 10 smpcers
-				c, err := runSmpcers(24, 5, 10)
+				c, err := runSmpcers(24, 5, 10, &hub)
 				Expect(err).ShouldNot(HaveOccurred())
 				atomic.StoreInt32(&count, int32(c))
 			}()
@@ -100,7 +101,7 @@ var _ = Describe("Smpc", func() {
 		It("should join when nodes are in multiple non-overlapping networks", func() {
 			// Run 12 smpcers in 2 networks such that each network has 6 smpcers which
 			// in such a way the that each network has seperate smpcers.
-			count, err := runSmpcersInTwoNetworks(12, 6)
+			count, err := runSmpcersInTwoNetworks(12, 6, &hub)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(count).To(Equal(2))
 		})
@@ -108,7 +109,7 @@ var _ = Describe("Smpc", func() {
 		It("should join when nodes are in multiple overlapping networks", func() {
 			// Run 9 smpcers in 2 networks such that each network has 6 smpcers
 			// (with replacement) and issue unique random secrets to each of the networks
-			count, err := runSmpcersInTwoNetworks(9, 6)
+			count, err := runSmpcersInTwoNetworks(9, 6, &hub)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(count).To(Equal(2))
 		})
@@ -127,7 +128,7 @@ func (swarmer mockSwarmer) Query(ctx context.Context, query identity.Address, de
 	return query.MultiAddress()
 }
 
-func createSMPCer() (Smpcer, identity.Address, error) {
+func createSMPCer(hub *stream.ChannelHub) (Smpcer, identity.Address, error) {
 	swarmer := &mockSwarmer{}
 
 	// Generate multiaddress
@@ -140,19 +141,15 @@ func createSMPCer() (Smpcer, identity.Address, error) {
 		return nil, "", err
 	}
 
-	// Create client and server channels
-	client := stream.NewChannelClient(multiaddr.Address(), &channelHub)
-	server := stream.NewChannelServer(multiaddr.Address(), &channelHub)
-
 	// Create a new channel streamer
-	streamer := stream.NewStreamRecycler(stream.NewStreamer(multiaddr.Address(), client, server))
+	streamer := stream.NewChannelStreamer(multiaddr.Address(), hub)
 
 	return NewSmpcer(swarmer, streamer, 10), multiaddr.Address(), nil
 }
 
-func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int) (int, error) {
+func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int, hub *stream.ChannelHub) (int, error) {
 
-	smpcers, addrs, err := createAddressesAndStartSmpcers(numberOfSmpcers, numberOfDeadNodes)
+	smpcers, addrs, err := createAddressesAndStartSmpcers(numberOfSmpcers, numberOfDeadNodes, hub)
 	if err != nil {
 		return 0, err
 	}
@@ -187,9 +184,9 @@ func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int) (int, err
 }
 
 // Runs smpcers in two networks (either overlapped or not) and sends different secrets to both
-func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int) (int, error) {
+func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int, hub *stream.ChannelHub) (int, error) {
 
-	smpcers, addrs, err := createAddressesAndStartSmpcers(numberOfSmpcers, 0)
+	smpcers, addrs, err := createAddressesAndStartSmpcers(numberOfSmpcers, 0, hub)
 	if err != nil {
 		return 0, err
 	}
@@ -247,14 +244,14 @@ func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int) (int, 
 	return count, nil
 }
 
-func createAddressesAndStartSmpcers(numberOfSmpcers, numberOfDeadNodes int) (map[int]Smpcer, identity.Addresses, error) {
+func createAddressesAndStartSmpcers(numberOfSmpcers, numberOfDeadNodes int, hub *stream.ChannelHub) (map[int]Smpcer, identity.Addresses, error) {
 	var err error
 	smpcers := make(map[int]Smpcer, numberOfSmpcers)
 	addrs := make(identity.Addresses, numberOfSmpcers)
 
 	// Generate Smpcers with addresses and start them
 	for i := numberOfDeadNodes; i < numberOfSmpcers; i++ {
-		smpcers[i], addrs[i], err = createSMPCer()
+		smpcers[i], addrs[i], err = createSMPCer(hub)
 		if err != nil {
 			return smpcers, addrs, err
 		}

@@ -70,6 +70,9 @@ type smpcer struct {
 
 	shareBuildersMu *sync.RWMutex
 	shareBuilders   map[[32]byte]*ShareBuilder
+
+	ctxCancelsMu *sync.Mutex
+	ctxCancels   map[[32]byte]map[identity.Address]context.CancelFunc
 }
 
 func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpcer {
@@ -94,6 +97,9 @@ func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpc
 
 		shareBuildersMu: new(sync.RWMutex),
 		shareBuilders:   map[[32]byte]*ShareBuilder{},
+
+		ctxCancelsMu: new(sync.Mutex),
+		ctxCancels:   map[[32]byte]map[identity.Address]context.CancelFunc{},
 	}
 }
 
@@ -216,27 +222,42 @@ func (smpc *smpcer) instConnect(networkID [32]byte, inst InstConnect) {
 		smpc.lookup[addr] = multiAddr
 		smpc.lookupMu.Unlock()
 
-		if err := smpc.connect(networkID, inst, addr, multiAddr); err != nil {
-			log.Println(err)
+		ctx, cancel := context.WithCancel(context.Background())
+		stream, err := smpc.streamer.Open(ctx, multiAddr)
+		if err != nil {
+			log.Println(fmt.Errorf("cannot connect to smpcer node %v: %v", addr, err))
 			return
 		}
+		go smpc.stream(addr, stream)
+
+		smpc.ctxCancelsMu.Lock()
+		if _, ok := smpc.ctxCancels[networkID]; !ok {
+			smpc.ctxCancels[networkID] = map[identity.Address]context.CancelFunc{}
+		}
+		smpc.ctxCancels[networkID][addr] = cancel
+		smpc.ctxCancelsMu.Unlock()
+
 		log.Printf("connected to %v", addr)
 	})
 }
 
 func (smpc *smpcer) instDisconnect(networkID [32]byte, inst InstDisconnect) {
 	smpc.networkMu.Lock()
-	defer smpc.networkMu.Unlock()
 	smpc.shareBuildersMu.Lock()
+	smpc.ctxCancelsMu.Lock()
+	defer smpc.networkMu.Unlock()
 	defer smpc.shareBuildersMu.Unlock()
+	defer smpc.ctxCancelsMu.Unlock()
 
-	for _, addr := range smpc.network[networkID] {
-		if err := smpc.streamer.Close(addr); err != nil {
-			log.Printf("cannot close stream to %v: %v", addr, err)
+	if _, ok := smpc.ctxCancels[networkID]; ok {
+		for _, addr := range smpc.network[networkID] {
+			smpc.ctxCancels[networkID][addr]()
 		}
 	}
+
 	delete(smpc.network, networkID)
 	delete(smpc.shareBuilders, networkID)
+	delete(smpc.ctxCancels, networkID)
 }
 
 func (smpc *smpcer) instJ(instID, networkID [32]byte, inst InstJ) {
@@ -267,13 +288,15 @@ func (smpc *smpcer) instJ(instID, networkID [32]byte, inst InstJ) {
 }
 
 func (smpc *smpcer) sendMessage(addr identity.Address, msg *Message) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	if multiAddr, ok := smpc.lookup[addr]; ok {
-		stream, err := smpc.streamer.Open(context.Background(), multiAddr)
+		stream, err := smpc.streamer.Open(ctx, multiAddr)
 		if err != nil {
 			log.Printf("cannot open stream for messageTypeJ to %v: %v", addr, err)
 			return
 		}
-		defer smpc.streamer.Close(addr)
 		if err := stream.Send(msg); err != nil {
 			log.Printf("cannot send messageTypeJ to %v: %v", addr, err)
 		}
@@ -291,21 +314,7 @@ func (smpc *smpcer) query(addr identity.Address) (identity.MultiAddress, error) 
 	return multiAddr, nil
 }
 
-func (smpc *smpcer) connect(networkID [32]byte, inst InstConnect, addr identity.Address, multiAddr identity.MultiAddress) error {
-	// TODO: Instead of using a background context, we should store the
-	// context.CancelFunc from a context.WithCancel so that the connection
-	// attempt can remain active indefinitely, or until a disconnect
-	// instruction is received.
-	stream, err := smpc.streamer.Open(context.Background(), multiAddr)
-	if err != nil {
-		return fmt.Errorf("cannot connect to smpcer node %v: %v", addr, err)
-	}
-
-	go smpc.processRemoteStream(addr, stream)
-	return nil
-}
-
-func (smpc *smpcer) processRemoteStream(remoteAddr identity.Address, remoteStream stream.Stream) {
+func (smpc *smpcer) stream(remoteAddr identity.Address, remoteStream stream.Stream) {
 	for {
 		msg := Message{}
 		if err := remoteStream.Recv(&msg); err != nil {

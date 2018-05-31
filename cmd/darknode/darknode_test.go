@@ -363,7 +363,7 @@ func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.
 		orderbookService := grpc.NewOrderbookService(orderbook)
 		orderbookService.Register(servers[i])
 
-		streamClient := grpc.NewStreamClient(&crypter, addr, &connPool)
+		streamClient := grpc.NewStreamClient(&crypter, addr)
 		streamService := grpc.NewStreamService(&crypter, addr)
 		streamService.Register(servers[i])
 		streamer := stream.NewStreamRecycler(stream.NewStreamer(addr, streamClient, &streamService))

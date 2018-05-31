@@ -52,10 +52,8 @@ func NewRenLedgerContract(ctx context.Context, conn ethereum.Conn, transactOpts 
 
 func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) error {
 
-	ledger.transactOpts.GasLimit = 3000000
-	ledger.transactOpts.GasPrice = big.NewInt(int64(40000000000))
+	ledger.transactOpts.GasPrice = big.NewInt(int64(5000000000))
 	tx, err := ledger.binding.OpenBuyOrder(ledger.transactOpts, signature[:], id)
-	ledger.transactOpts.GasLimit = 0
 
 	if err != nil {
 		return err
@@ -79,10 +77,8 @@ func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) e
 
 func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) error {
 
-	ledger.transactOpts.GasLimit = 3000000
-	ledger.transactOpts.GasPrice = big.NewInt(int64(40000000000))
+	ledger.transactOpts.GasPrice = big.NewInt(int64(5000000000))
 	tx, err := ledger.binding.OpenSellOrder(ledger.transactOpts, signature[:], id)
-	ledger.transactOpts.GasLimit = 0
 
 	if err != nil {
 		return err
