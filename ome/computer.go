@@ -1,7 +1,6 @@
 package ome
 
 import (
-	"log"
 	"sync"
 	"time"
 
@@ -106,7 +105,6 @@ type computer struct {
 	matchingComputationsState map[[32]byte]ComputationEpoch
 	matchingComputations      chan Computation
 
-	orders           map[[32]byte]order.Order
 	priceExpPointer  map[[32]byte]*uint64
 	priceCoPointer   map[[32]byte]*uint64
 	volExpPointer    map[[32]byte]*uint64
@@ -132,7 +130,6 @@ func NewComputer(storer orderbook.Storer, smpcer smpc.Smpcer, confirmer Confirme
 		matchingComputationsState: map[[32]byte]ComputationEpoch{},
 		matchingComputations:      make(chan Computation),
 
-		orders:           map[[32]byte]order.Order{},
 		priceExpPointer:  map[[32]byte]*uint64{},
 		priceCoPointer:   map[[32]byte]*uint64{},
 		volExpPointer:    map[[32]byte]*uint64{},
@@ -185,6 +182,7 @@ func (computer *computer) Compute(done <-chan struct{}, computations <-chan Comp
 				confirmedMatchingComputationID := computeID(confirmedMatchingComputation)
 				computer.matchingComputationsMu.Lock()
 				computation := computer.matchingComputationsState[confirmedMatchingComputationID]
+				delete(computer.matchingComputationsState, confirmedMatchingComputationID)
 				computer.matchingComputationsMu.Unlock()
 				computation.ID[31] = StageJoinBuyPriceExp
 
@@ -428,9 +426,10 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		tokens := order.Tokens(resultJ.Value)
 		computer.tokensPointer[computation.Sell] = &tokens
 
-		log.Println("======= MATCHING ORDER PRICE =======")
-		log.Printf("======= buy: %v =======", order.NewCoExp(*computer.priceCoPointer[computation.Buy], *computer.priceExpPointer[computation.Buy]).ToFloat())
-		log.Printf("======= sell: %v =======", order.NewCoExp(*computer.priceCoPointer[computation.Sell], *computer.priceExpPointer[computation.Sell]).ToFloat())
+		// TODO:
+		// 1. Settle buy order and sell order
+		// 2. Delete orders from pointer maps
+
 		return
 	}
 

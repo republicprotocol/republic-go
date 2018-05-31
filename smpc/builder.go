@@ -82,7 +82,6 @@ func (builder *ShareBuilder) Observe(id, networkID [32]byte, observer ShareBuild
 }
 
 func (builder *ShareBuilder) notify(id [32]byte, val uint64) {
-	println("NOTIFY!!!!")
 	if observers, ok := builder.observers[id]; ok {
 		for networkID, observer := range observers {
 			observer.OnNotifyBuild(id, networkID, val)

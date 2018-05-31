@@ -313,8 +313,6 @@ func (smpc *smpcer) processRemoteStream(remoteAddr identity.Address, remoteStrea
 			return
 		}
 
-		log.Println("received message from remote stream")
-
 		switch msg.MessageType {
 		case MessageTypeJ:
 			smpc.processMessageJ(*msg.MessageJ)
