@@ -18,17 +18,25 @@ import (
 
 var _ = Describe("Ome", func() {
 	Context("ome should manage everything about order matching ", func() {
-		var ranker Ranker
 		var computer Computer
+		var confirmer Confirmer
+		var ranker Ranker
+
 		var book orderbook.Orderbook
+		var ledger cal.RenLedger
 		var smpcer smpc.Smpcer
+		var storer orderbook.Storer
 
 		BeforeEach(func() {
 			// Generate mock instance for all the parts we need
-			ranker = NewRanker(1, 0)
-			computer = newMockComputer()
-			smpcer = newMockSmpcer(PassAll)
 			book = newMockOrderbook()
+			ledger = newMockRenLedger()
+			smpcer = newMockSmpcer(PassAll)
+			storer = NewMockStorer()
+
+			confirmer = NewConfirmer(0, 2*time.Second, ledger)
+			computer = NewComputer(storer, smpcer, confirmer, ledger)
+			ranker = NewRanker(1, 0)
 
 			err := smpcer.Start()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -38,7 +46,7 @@ var _ = Describe("Ome", func() {
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
-				time.Sleep(5 * time.Second)
+				time.Sleep(10 * time.Second)
 			}()
 			ome := NewOme(ranker, computer, book, smpcer)
 			errs := ome.Run(done)
@@ -131,31 +139,4 @@ func newMockOrderbook() *mockOrderbook {
 		orderFragments:       make(map[order.ID]order.Fragment),
 		orders:               make(map[order.ID]order.Order),
 	}
-}
-
-type mockComputer struct {
-}
-
-func newMockComputer() Computer {
-	return &mockComputer{}
-}
-
-func (computer *mockComputer) Compute(done <-chan struct{}, computations <-chan ComputationEpoch) <-chan error {
-	errs := make(chan error)
-	go func() {
-		defer close(errs)
-
-		for {
-			select {
-			case <-done:
-				return
-			case _, ok := <-computations:
-				if !ok {
-					return
-				}
-			}
-		}
-	}()
-
-	return errs
 }
