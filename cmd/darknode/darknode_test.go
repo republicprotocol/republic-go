@@ -373,7 +373,7 @@ func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.
 
 		// New OME
 		confirmer := ome.NewConfirmer(0, 4*time.Second, renLedger)
-		computers = append(computers, ome.NewComputer(&store, smpcers[i], confirmer, darkPoolAccounts, renLedger))
+		computers = append(computers, ome.NewComputer(&store, smpcers[i], confirmer, renLedger))
 		omes = append(omes, ome.NewOme(ome.NewRanker(1, 0), computers[i], orderbook, smpcers[i]))
 
 		// New Darknode

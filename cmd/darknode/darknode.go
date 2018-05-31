@@ -104,7 +104,7 @@ func main() {
 
 	// New OME
 	confirmer := ome.NewConfirmer(6, 4*time.Second, renLedger)
-	computer := ome.NewComputer(&store, smpcer, confirmer, darkPoolAccounts, renLedger)
+	computer := ome.NewComputer(&store, smpcer, confirmer, renLedger)
 	ome := ome.NewOme(ome.NewRanker(1, 0), computer, orderbook, smpcer)
 
 	// New Darknode
