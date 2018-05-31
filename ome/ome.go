@@ -20,24 +20,24 @@ type Ome interface {
 }
 
 type ome struct {
-	ranker   Ranker
-	computer Computer
-
-	ξMu       *sync.RWMutex
-	ξ         cal.Epoch
+	ranker    Ranker
+	computer  Computer
 	orderbook orderbook.Orderbook
 	smpcer    smpc.Smpcer
+
+	ξMu *sync.RWMutex
+	ξ   cal.Epoch
 }
 
 func NewOme(ranker Ranker, computer Computer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer) Ome {
 	return &ome{
-		ranker:   ranker,
-		computer: computer,
-
-		ξMu:       new(sync.RWMutex),
-		ξ:         cal.Epoch{},
+		ranker:    ranker,
+		computer:  computer,
 		orderbook: orderbook,
 		smpcer:    smpcer,
+
+		ξMu: new(sync.RWMutex),
+		ξ:   cal.Epoch{},
 	}
 }
 
@@ -46,20 +46,27 @@ func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
 	ome.ξMu.Lock()
 	defer ome.ξMu.Unlock()
 
-	ome.ξ = ξ
 	ome.smpcer.Instructions() <- smpc.Inst{
-		InstID:    ξ.Hash,
-		NetworkID: ξ.Hash,
+		InstID:         ome.ξ.Hash,
+		NetworkID:      ome.ξ.Hash,
+		InstDisconnect: &smpc.InstDisconnect{},
+	}
+
+	ome.ξ = ξ
+
+	ome.smpcer.Instructions() <- smpc.Inst{
+		InstID:    ome.ξ.Hash,
+		NetworkID: ome.ξ.Hash,
 		InstConnect: &smpc.InstConnect{
-			Nodes: ξ.Darknodes,
-			N:     int64(len(ξ.Darknodes)),
-			K:     int64(2 * (len(ξ.Darknodes) + 1) / 3),
+			Nodes: ome.ξ.Darknodes,
+			N:     int64(len(ome.ξ.Darknodes)),
+			K:     int64(2 * (len(ome.ξ.Darknodes) + 1) / 3),
 		},
 	}
 }
 
 func (ome *ome) Run(done <-chan struct{}) <-chan error {
-	computations := make(chan Computation, 128)
+	computations := make(chan ComputationEpoch)
 	errs := make(chan error, 3)
 	wg := new(sync.WaitGroup)
 
@@ -112,10 +119,16 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 			buffer := [128]Computation{}
 			n := ome.ranker.Computations(buffer[:])
 			for i := 0; i < n; i++ {
+				ome.ξMu.RLock()
+				computation := ComputationEpoch{
+					Computation: buffer[i],
+					Epoch:       ome.ξ.Hash,
+				}
+				ome.ξMu.RUnlock()
 				select {
 				case <-done:
 					return
-				case computations <- buffer[i]:
+				case computations <- computation:
 				}
 			}
 			if n == 128 {
@@ -134,11 +147,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 	go func() {
 		defer wg.Done()
 
-		ome.ξMu.Lock()
-		networkID := ome.ξ.Hash
-		ome.ξMu.Unlock()
-
-		computationErrs := ome.computer.Compute(networkID, done, computations)
+		computationErrs := ome.computer.Compute(done, computations)
 		for err := range computationErrs {
 			errs <- err
 		}
