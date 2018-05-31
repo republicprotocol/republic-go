@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestOrderbook(t *testing.T) {
+func TestOrderMatchingEngine(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Order Matching Engine Suite")
 }
