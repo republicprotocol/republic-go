@@ -71,6 +71,8 @@ var _ = test.SkipCIDescribe("Darknode integration", func() {
 
 	test.SkipCIAfterSuite(func() {
 		defer mu.Unlock()
+		defer os.RemoveAll("./db.out/")
+		defer ganache.Stop()
 
 		for _, server := range servers {
 			server.Stop()
@@ -86,7 +88,6 @@ var _ = test.SkipCIDescribe("Darknode integration", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 
-		os.RemoveAll("./db.out/")
 	})
 
 	Context("when bootstrapping into a network", func() {

@@ -71,8 +71,12 @@ func (share *Share) Equal(other *Share) bool {
 // using binary.BigEndian.
 func (share Share) MarshalBinary() ([]byte, error) {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, share.Index)
-	binary.Write(buf, binary.BigEndian, share.Value)
+	if err := binary.Write(buf, binary.BigEndian, share.Index); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, share.Value); err != nil {
+		return nil, err
+	}
 	return buf.Bytes(), nil
 }
 
@@ -84,8 +88,12 @@ func (share *Share) UnmarshalBinary(data []byte) error {
 		return ErrUnmarshalNilBytes
 	}
 	buf := bytes.NewBuffer(data)
-	binary.Read(buf, binary.BigEndian, &share.Index)
-	binary.Read(buf, binary.BigEndian, &share.Value)
+	if err := binary.Read(buf, binary.BigEndian, &share.Index); err != nil {
+		return err
+	}
+	if err := binary.Read(buf, binary.BigEndian, &share.Value); err != nil {
+		return err
+	}
 	return nil
 }
 

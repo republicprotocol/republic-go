@@ -43,7 +43,7 @@ var _ = Describe("Ecdsa keys", func() {
 		})
 
 		It("should be able to verify a signature", func() {
-			for i := 0; i < 1000; i++ {
+			for i := 0; i < 100; i++ {
 				key, err := RandomEcdsaKey()
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -57,7 +57,7 @@ var _ = Describe("Ecdsa keys", func() {
 		})
 
 		It("should be able to return an error when verifying random data", func() {
-			for i := 0; i < 1000; i++ {
+			for i := 0; i < 100; i++ {
 				key, err := RandomEcdsaKey()
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -69,6 +69,44 @@ var _ = Describe("Ecdsa keys", func() {
 
 				err = key.Verify(random, sigRandom)
 				Expect(err).Should(HaveOccurred())
+			}
+		})
+
+		It("should be able to return an error when verifying nil data", func() {
+			for i := 0; i < 100; i++ {
+				key, err := RandomEcdsaKey()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				random := make([]byte, 32)
+				rand.Read(random)
+
+				sigRandom := make([]byte, 65)
+				rand.Read(sigRandom)
+
+				err = key.Verify([]byte{}, sigRandom)
+				Expect(err).Should(Equal(ErrNilData))
+
+				err = key.Verify(nil, sigRandom)
+				Expect(err).Should(Equal(ErrNilData))
+			}
+		})
+
+		It("should be able to return an error when verifying nil signatures", func() {
+			for i := 0; i < 100; i++ {
+				key, err := RandomEcdsaKey()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				random := make([]byte, 32)
+				rand.Read(random)
+
+				sigRandom := make([]byte, 65)
+				rand.Read(sigRandom)
+
+				err = key.Verify(random, []byte{})
+				Expect(err).Should(Equal(ErrNilSignature))
+
+				err = key.Verify(random, nil)
+				Expect(err).Should(Equal(ErrNilSignature))
 			}
 		})
 
