@@ -63,6 +63,7 @@ func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
 			K:     int64(2 * (len(ome.ξ.Darknodes) + 1) / 3),
 		},
 	}
+
 }
 
 func (ome *ome) Run(done <-chan struct{}) <-chan error {

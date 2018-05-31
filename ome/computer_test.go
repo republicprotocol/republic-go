@@ -37,7 +37,7 @@ var _ = Describe("Computer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			storer := NewMockStorer()
-			computer := NewComputer(storer, &smpcer, confirmer, renLedger)
+			computer := NewComputer(storer, smpcer, confirmer, renLedger)
 
 			done := make(chan struct{})
 			computationsCh := make(chan ComputationEpoch)
@@ -198,7 +198,7 @@ const (
 	PassPartial ResultStatus = 2
 )
 
-func newMockSmpcer(resultStatus ResultStatus) mockSmpcer {
+func newMockSmpcer(resultStatus ResultStatus) *mockSmpcer {
 	result := uint64(0)
 
 	switch resultStatus {
@@ -210,7 +210,7 @@ func newMockSmpcer(resultStatus ResultStatus) mockSmpcer {
 		result = uint64(1)
 	}
 
-	return mockSmpcer{
+	return &mockSmpcer{
 		result: result,
 	}
 }
