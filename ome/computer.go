@@ -231,6 +231,7 @@ func (computer *computer) Compute(networkID [32]byte, done <-chan struct{}, comp
 									Share: buy.Price.Exp.Sub(&sell.Price.Exp),
 								},
 							}
+							log.Println("starting checking price exp")
 						}
 					}
 					time.Sleep(time.Millisecond)
@@ -266,6 +267,7 @@ func (computer *computer) Compute(networkID [32]byte, done <-chan struct{}, comp
 									Share: buy.Price.Co.Sub(&sell.Price.Co),
 								},
 							}
+							log.Println("starting checking price co")
 						}
 					}
 					time.Sleep(time.Millisecond)
@@ -301,6 +303,8 @@ func (computer *computer) Compute(networkID [32]byte, done <-chan struct{}, comp
 									Share: buy.Volume.Exp.Sub(&sell.MinimumVolume.Exp),
 								},
 							}
+							log.Println("starting checking buy volumn exp")
+
 						}
 					}
 					time.Sleep(time.Millisecond)
@@ -336,6 +340,8 @@ func (computer *computer) Compute(networkID [32]byte, done <-chan struct{}, comp
 									Share: buy.Volume.Co.Sub(&sell.MinimumVolume.Co),
 								},
 							}
+							log.Println("starting checking buy volumn co")
+
 						}
 					}
 					time.Sleep(time.Millisecond)
@@ -371,6 +377,8 @@ func (computer *computer) Compute(networkID [32]byte, done <-chan struct{}, comp
 									Share: sell.Volume.Exp.Sub(&buy.MinimumVolume.Exp),
 								},
 							}
+							log.Println("starting checking sell volumn exp")
+
 						}
 					}
 					time.Sleep(time.Millisecond)
@@ -406,6 +414,8 @@ func (computer *computer) Compute(networkID [32]byte, done <-chan struct{}, comp
 									Share: sell.Volume.Co.Sub(&buy.MinimumVolume.Co),
 								},
 							}
+							log.Println("starting checking sell volumn co")
+
 						}
 					}
 					time.Sleep(time.Millisecond)
@@ -452,6 +462,7 @@ func (computer *computer) Compute(networkID [32]byte, done <-chan struct{}, comp
 					case <-done:
 						return
 					case result, ok := <-results:
+						log.Println("result from smpcer")
 						if !ok {
 							return
 						}
@@ -472,6 +483,7 @@ func (computer *computer) Compute(networkID [32]byte, done <-chan struct{}, comp
 							case <-done:
 								return
 							case orderMatches <- *orderMatch:
+								log.Println("found matched , send to the confirmer")
 							}
 						}
 					}
@@ -965,6 +977,7 @@ func (computer *computer) Compute(networkID [32]byte, done <-chan struct{}, comp
 }
 
 func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smpc.ResultJ) (*Computation, error) {
+
 	half := shamir.Prime / 2
 
 	computer.cmpMu.Lock()
@@ -985,6 +998,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 			instID[31] = StageCmpPriceCo
 			computer.cmpPriceCo[instID] = computation
 		}
+		log.Println("get result from smpc and move to price co ")
 
 	case StageCmpPriceCo:
 		computation, ok := computer.cmpPriceCo[instID]

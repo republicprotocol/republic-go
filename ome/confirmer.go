@@ -1,6 +1,7 @@
 package ome
 
 import (
+	"log"
 	"sync"
 	"time"
 
@@ -72,6 +73,7 @@ func (confirmer *confirmer) ConfirmOrderMatches(done <-chan struct{}, orderMatch
 					return
 				}
 
+				log.Println("beging confirming order")
 				if err := confirmer.beginConfirmOrder(orderMatch); err != nil {
 					select {
 					case <-done:
@@ -80,6 +82,7 @@ func (confirmer *confirmer) ConfirmOrderMatches(done <-chan struct{}, orderMatch
 					}
 				}
 
+				log.Println("order gets confirmed , wait certain depth for finality")
 				// Wait for the confirmation of these orders to pass the depth
 				// limit
 				func() {
@@ -182,6 +185,7 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 		case <-done:
 			return
 		case confirmedOrderMatches <- confirmedOrderMatch:
+			log.Println()
 		}
 	}
 }

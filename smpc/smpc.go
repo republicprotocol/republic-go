@@ -99,6 +99,8 @@ func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpc
 
 // Start implements the Smpcer interface.
 func (smpc *smpcer) Start() error {
+	log.Println("starting smpc")
+
 	smpc.shutdownMu.Lock()
 	defer smpc.shutdownMu.Unlock()
 
@@ -115,6 +117,7 @@ func (smpc *smpcer) Start() error {
 
 // Shutdown implements the Smpcer interface.
 func (smpc *smpcer) Shutdown() error {
+	log.Println("closing smpc")
 	smpc.shutdownMu.Lock()
 	defer smpc.shutdownMu.Unlock()
 
@@ -151,8 +154,6 @@ func (smpc *smpcer) Results() <-chan Result {
 // notify the Smpcer that a value of interest has been reconstructed by the
 // ShareBuilder.
 func (smpc *smpcer) OnNotifyBuild(id, networkID [32]byte, value uint64) {
-	log.Println("NOTIFY!!!!")
-
 	result := Result{
 		InstID:    id,
 		NetworkID: networkID,
@@ -177,6 +178,7 @@ func (smpc *smpcer) run() {
 			return
 
 		case inst, ok := <-smpc.instructions:
+			log.Println("receive instruction")
 			if !ok {
 				return
 			}
@@ -310,6 +312,8 @@ func (smpc *smpcer) processRemoteStream(remoteAddr identity.Address, remoteStrea
 			log.Printf("closing stream with %v: %v", remoteAddr, err)
 			return
 		}
+
+		log.Println("received message from remote stream")
 
 		switch msg.MessageType {
 		case MessageTypeJ:

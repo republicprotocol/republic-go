@@ -177,10 +177,31 @@ var _ = test.SkipCIDescribe("Darknode integration", func() {
 				})
 			}()
 
-			err := openOrderPairs(genesis, configs)
+			orderIDs, err := openOrderPairs(genesis, configs)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			<-time.NewTimer(time.Minute).C
+			keystore, err := crypto.RandomKeystore()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			_, _, _, _, renLedger, err := newEthereumBindings(keystore, configs[0].Ethereum)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			n := 0
+			for n < len(orderIDs) {
+				time.Sleep(time.Second)
+				for _, orderID := range orderIDs {
+					status, err := renLedger.Status(orderID)
+					Expect(err).ShouldNot(HaveOccurred())
+
+					if status == cal.StatusConfirmed {
+						n++
+						log.Printf("%v confirmed", orderID)
+					} else {
+						log.Printf("%v status = %v", orderID, status)
+					}
+				}
+			}
+
 		}, 120 /* 120 second timeout */)
 
 		It("should not confirm mismatching orders", func() {
@@ -349,7 +370,7 @@ func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.
 		smpcers = append(smpcers, smpc.NewSmpcer(swarmers[i], streamer, 1))
 
 		// New OME
-		confirmer := ome.NewConfirmer(6, 4*time.Second, renLedger)
+		confirmer := ome.NewConfirmer(0, 4*time.Second, renLedger)
 		computers = append(computers, ome.NewComputer(&store, smpcers[i], confirmer, darkPoolAccounts, renLedger))
 		omes = append(omes, ome.NewOme(ome.NewRanker(1, 0), computers[i], orderbook, smpcers[i]))
 
@@ -386,7 +407,6 @@ func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.
 	wg.Wait()
 
 	return darknodes, servers, swarmers, smpcers, omes, computers, stores, nil
-
 }
 
 func newEthereumBindings(keystore crypto.Keystore, config ethereum.Config) (*bind.TransactOpts, cal.Darkpool, cal.DarkpoolAccounts, cal.DarkpoolFees, cal.RenLedger, error) {
@@ -413,16 +433,16 @@ func newEthereumBindings(keystore crypto.Keystore, config ethereum.Config) (*bin
 
 }
 
-func openOrderPairs(genesis ethereum.Conn, configs []darknode.Config) error {
+func openOrderPairs(genesis ethereum.Conn, configs []darknode.Config) ([]order.ID, error) {
 
 	keystore, err := crypto.RandomKeystore()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/3000/republic/%v", keystore.Address()))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	dht := dht.NewDHT(multiAddr.Address(), len(configs))
@@ -434,10 +454,12 @@ func openOrderPairs(genesis ethereum.Conn, configs []darknode.Config) error {
 
 	auth, darkPool, _, _, renLedger, err := newEthereumBindings(keystore, configs[0].Ethereum)
 	if err != nil {
-		return fmt.Errorf("cannot get ethereum binding: %v", err)
+		return nil, fmt.Errorf("cannot get ethereum binding: %v", err)
 	}
 
 	ganache.DistributeEth(genesis, auth.From)
+
+	orderIDs := []order.ID{}
 
 	numberOfOrderPairs := 1
 	for n := 0; n < numberOfOrderPairs; n++ {
@@ -456,24 +478,24 @@ func openOrderPairs(genesis ethereum.Conn, configs []darknode.Config) error {
 			signatureData = crypto.Keccak256([]byte("\x19Ethereum Signed Message:\n32"), signatureData)
 			signature, err := keystore.Sign(signatureData)
 			if err != nil {
-				return fmt.Errorf("cannot sign: %v", err)
+				return nil, fmt.Errorf("cannot sign: %v", err)
 			}
 
 			signature65 := [65]byte{}
 			copy(signature65[:], signature)
 			if ord.Parity == order.ParityBuy {
 				if err := renLedger.OpenBuyOrder(signature65, ord.ID); err != nil {
-					return fmt.Errorf("cannot open order on ren ledger: %v", err)
+					return nil, fmt.Errorf("cannot open order on ren ledger: %v", err)
 				}
 			} else {
 				if err := renLedger.OpenSellOrder(signature65, ord.ID); err != nil {
-					return fmt.Errorf("cannot open order on ren ledger: %v", err)
+					return nil, fmt.Errorf("cannot open order on ren ledger: %v", err)
 				}
 			}
 
 			pods, err := darkPool.Pods()
 			if err != nil {
-				return fmt.Errorf("cannot get pods: %v", err)
+				return nil, fmt.Errorf("cannot get pods: %v", err)
 			}
 
 			for _, pod := range pods {
@@ -482,18 +504,18 @@ func openOrderPairs(genesis ethereum.Conn, configs []darknode.Config) error {
 				hash := base64.StdEncoding.EncodeToString(pod.Hash[:])
 				ordFragments, err := ord.Split(n, k)
 				if err != nil {
-					return fmt.Errorf("cannot split order to %v: %v", hash, err)
+					return nil, fmt.Errorf("cannot split order to %v: %v", hash, err)
 				}
 
 				for i, ordFragment := range ordFragments {
 					pubKey, err := darkPool.PublicKey(pod.Darknodes[i])
 					if err != nil {
-						return fmt.Errorf("cannot get public key: %v", err)
+						return nil, fmt.Errorf("cannot get public key: %v", err)
 					}
 
 					encryptedFragment, err := ordFragment.Encrypt(pubKey)
 					if err != nil {
-						return fmt.Errorf("cannot encrypt: %v", err)
+						return nil, fmt.Errorf("cannot encrypt: %v", err)
 					}
 
 					var darknodeMultiAddr identity.MultiAddress
@@ -501,18 +523,20 @@ func openOrderPairs(genesis ethereum.Conn, configs []darknode.Config) error {
 						if config.Address == pod.Darknodes[i] {
 							darknodeMultiAddr, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", config.Host, config.Port, config.Address))
 							if err != nil {
-								return err
+								return nil, err
 							}
 							break
 						}
 					}
 
 					if err := orderbookClient.OpenOrder(context.Background(), darknodeMultiAddr, encryptedFragment); err != nil {
-						return fmt.Errorf("cannot open order fragment: %v", err)
+						return nil, fmt.Errorf("cannot open order fragment: %v", err)
 					}
 				}
 			}
+
+			orderIDs = append(orderIDs, ord.ID)
 		}
 	}
-	return nil
+	return orderIDs, nil
 }

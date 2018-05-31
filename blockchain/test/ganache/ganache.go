@@ -189,7 +189,7 @@ func DeployContracts(conn ethereum.Conn) error {
 func DistributeEth(conn ethereum.Conn, addresses ...common.Address) error {
 
 	for _, address := range addresses {
-		err := conn.TransferEth(context.Background(), genesisTransactor, address, big.NewInt(1000000000000000000))
+		err := conn.TransferEth(context.Background(), genesisTransactor, address, big.NewInt(9000000000000000000))
 		if err != nil {
 			return err
 		}

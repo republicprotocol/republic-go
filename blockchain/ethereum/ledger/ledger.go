@@ -51,12 +51,10 @@ func NewRenLedgerContract(ctx context.Context, conn ethereum.Conn, transactOpts 
 }
 
 func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) error {
-	var orderID [32]byte
-	copy(orderID[:], id[:])
 
 	ledger.transactOpts.GasLimit = 3000000
 	ledger.transactOpts.GasPrice = big.NewInt(int64(40000000000))
-	tx, err := ledger.binding.OpenBuyOrder(ledger.transactOpts, signature[:], orderID)
+	tx, err := ledger.binding.OpenBuyOrder(ledger.transactOpts, signature[:], id)
 	ledger.transactOpts.GasLimit = 0
 
 	if err != nil {
@@ -80,12 +78,10 @@ func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) e
 }
 
 func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) error {
-	var orderID [32]byte
-	copy(orderID[:], id[:])
 
 	ledger.transactOpts.GasLimit = 3000000
 	ledger.transactOpts.GasPrice = big.NewInt(int64(40000000000))
-	tx, err := ledger.binding.OpenSellOrder(ledger.transactOpts, signature[:], orderID)
+	tx, err := ledger.binding.OpenSellOrder(ledger.transactOpts, signature[:], id)
 	ledger.transactOpts.GasLimit = 0
 
 	if err != nil {
@@ -109,14 +105,12 @@ func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) 
 }
 
 func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) error {
-	var orderID [32]byte
-	copy(orderID[:], id[:])
 
 	before, err := ledger.binding.OrderDepth(ledger.callOpts, id)
 	if err != nil {
 		return err
 	}
-	tx, err := ledger.binding.CancelOrder(ledger.transactOpts, signature[:], orderID)
+	tx, err := ledger.binding.CancelOrder(ledger.transactOpts, signature[:], id)
 	if err != nil {
 		return err
 	}
@@ -166,9 +160,7 @@ func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, match order.ID) error
 }
 
 func (ledger *RenLedgerContract) Priority(id order.ID) (uint64, error) {
-	var orderID [32]byte
-	copy(orderID[:], id[:])
-	priority, err := ledger.binding.OrderPriority(ledger.callOpts, orderID)
+	priority, err := ledger.binding.OrderPriority(ledger.callOpts, id)
 	if err != nil {
 		return 0, err
 	}
@@ -205,9 +197,7 @@ func (ledger *RenLedgerContract) OrderMatch(id order.ID) (order.ID, error) {
 }
 
 func (ledger *RenLedgerContract) Matches(id order.ID) ([]order.ID, error) {
-	var orderID [32]byte
-	copy(orderID[:], id[:])
-	matches, err := ledger.binding.OrderMatch(ledger.callOpts, orderID)
+	matches, err := ledger.binding.OrderMatch(ledger.callOpts, id)
 	if err != nil {
 		return nil, err
 	}
@@ -253,9 +243,7 @@ func (ledger *RenLedgerContract) SellOrders(offset, limit int) ([]order.ID, erro
 }
 
 func (ledger *RenLedgerContract) Trader(id order.ID) (string, error) {
-	var orderID [32]byte
-	copy(orderID[:], id[:])
-	address, err := ledger.binding.OrderTrader(ledger.callOpts, orderID)
+	address, err := ledger.binding.OrderTrader(ledger.callOpts, id)
 	if err != nil {
 		return "", err
 	}
@@ -264,9 +252,7 @@ func (ledger *RenLedgerContract) Trader(id order.ID) (string, error) {
 }
 
 func (ledger *RenLedgerContract) Broker(id order.ID) (common.Address, error) {
-	var orderID [32]byte
-	copy(orderID[:], id[:])
-	address, err := ledger.binding.OrderBroker(ledger.callOpts, orderID)
+	address, err := ledger.binding.OrderBroker(ledger.callOpts, id)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -275,9 +261,7 @@ func (ledger *RenLedgerContract) Broker(id order.ID) (common.Address, error) {
 }
 
 func (ledger *RenLedgerContract) Confirmer(id order.ID) (common.Address, error) {
-	var orderID [32]byte
-	copy(orderID[:], id[:])
-	address, err := ledger.binding.OrderConfirmer(ledger.callOpts, orderID)
+	address, err := ledger.binding.OrderConfirmer(ledger.callOpts, id)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -331,5 +315,11 @@ func (ledger *RenLedgerContract) CurrentBlock() (*types.Block, error) {
 
 // Depth will return depth of confirmation blocks
 func (ledger *RenLedgerContract) Depth(orderID order.ID) (uint, error) {
-	panic("unimplemented")
+
+	depth, err := ledger.binding.OrderDepth(ledger.callOpts, orderID)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint(depth.Uint64()), nil
 }

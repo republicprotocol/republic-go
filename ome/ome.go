@@ -135,8 +135,9 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 		defer wg.Done()
 
 		ome.ξMu.Lock()
-		defer ome.ξMu.Unlock()
 		networkID := ome.ξ.Hash
+		ome.ξMu.Unlock()
+
 		computationErrs := ome.computer.Compute(networkID, done, computations)
 		for err := range computationErrs {
 			errs <- err
