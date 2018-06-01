@@ -215,8 +215,6 @@ func (smpc *smpcer) instConnect(networkID [32]byte, inst InstConnect) {
 			return
 		}
 
-		log.Println("finished query")
-
 		smpc.lookupMu.Lock()
 		smpc.lookup[addr] = multiAddr
 		smpc.lookupMu.Unlock()
@@ -228,8 +226,6 @@ func (smpc *smpcer) instConnect(networkID [32]byte, inst InstConnect) {
 			return
 		}
 		go smpc.stream(addr, stream)
-
-		log.Println("connected!")
 
 		smpc.ctxCancelsMu.Lock()
 		if _, ok := smpc.ctxCancels[networkID]; !ok {
@@ -290,8 +286,6 @@ func (smpc *smpcer) sendMessage(addr identity.Address, msg *Message) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	log.Println("sending message...")
-
 	if multiAddr, ok := smpc.lookup[addr]; ok {
 		stream, err := smpc.streamer.Open(ctx, multiAddr)
 		if err != nil {
@@ -322,8 +316,6 @@ func (smpc *smpcer) stream(remoteAddr identity.Address, remoteStream stream.Stre
 			log.Printf("closing stream with %v: %v", remoteAddr, err)
 			return
 		}
-
-		log.Println("receiving message...")
 
 		switch msg.MessageType {
 		case MessageTypeJ:
