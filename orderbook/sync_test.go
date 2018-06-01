@@ -3,6 +3,7 @@ package orderbook_test
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"sync"
@@ -56,34 +57,13 @@ var _ = Describe("Syncer", func() {
 			for i := 0; i < numberOfOrderPairs/2; i++ {
 				id := generateRandomOrderID(2 * numberOfOrderPairs)
 				matchID := [32]byte{byte(id + 1)}
-				err = renLedger.ConfirmOrder([32]byte{byte(id)}, []order.ID{matchID})
+				err = renLedger.ConfirmOrder([32]byte{byte(id)}, matchID)
 			}
 
 			// Sync and expect confirmed orders to have purged
 			changeSet, err = syncer.Sync()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(len(changeSet) < renLimit*8).Should(BeTrue())
-		})
-	})
-
-	Context("when confirming an order match", func() {
-
-		It("should update the Ren Ledger with an order match", func() {
-			numberOfOrderPairs := 2
-			renLimit := 10
-
-			renLedger := newMockRenLedger()
-			syncer := NewSyncer(&renLedger, renLimit)
-
-			err := renLedger.openBuyAndSellOrders(numberOfOrderPairs)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(renLedger.Status([32]byte{byte(0)})).Should(Equal(order.Open))
-			Expect(renLedger.Status([32]byte{byte(1)})).Should(Equal(order.Open))
-			err = syncer.ConfirmOrderMatch([32]byte{byte(0)}, [32]byte{byte(1)})
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(renLedger.Status([32]byte{byte(0)})).Should(Equal(order.Confirmed))
-			Expect(renLedger.Status([32]byte{byte(1)})).Should(Equal(order.Confirmed))
 		})
 	})
 })
@@ -158,14 +138,12 @@ func (renLedger *mockRenLedger) CancelOrder(signature [65]byte, orderID order.ID
 	return renLedger.setOrderStatus(orderID, order.Canceled)
 }
 
-func (renLedger *mockRenLedger) ConfirmOrder(id order.ID, matches []order.ID) error {
-	if err := renLedger.setOrderStatus(id, order.Confirmed); err == nil {
-		for _, matchID := range matches {
-			return renLedger.setOrderStatus(matchID, order.Confirmed)
-		}
-		return nil
+func (renLedger *mockRenLedger) ConfirmOrder(id order.ID, match order.ID) error {
+	if err := renLedger.setOrderStatus(id, order.Confirmed); err != nil {
+		return fmt.Errorf("cannot confirm order that is not open: %v", err)
 	}
-	return errors.New("cannot confirm order that is not open")
+	renLedger.setOrderStatus(match, order.Confirmed)
+	return nil
 }
 
 func (renLedger *mockRenLedger) Fee() (*big.Int, error) {
@@ -190,6 +168,14 @@ func (renLedger *mockRenLedger) Priority(orderID order.ID) (uint64, error) {
 		return ord.priority, nil
 	}
 	return uint64(0), ErrCannotFindOrder
+}
+
+func (renLedger *mockRenLedger) Trader(orderID order.ID) (string, error) {
+	panic("unimplemented")
+}
+
+func (renLedger *mockRenLedger) OrderMatch(orderID order.ID) (order.ID, error) {
+	panic("unimplemented")
 }
 
 func (renLedger *mockRenLedger) Depth(orderID order.ID) (uint, error) {
