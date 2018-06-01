@@ -248,7 +248,6 @@ func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 			return fmt.Errorf("[%v] %sCouldn't check node's registration%s: %v\n", address, red, reset, err)
 		}
 
-		// Register the node if not registered
 		if isRegistered {
 			_, err = registry.Deregister(address.ID())
 			if err != nil {
