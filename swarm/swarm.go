@@ -108,7 +108,6 @@ func (swarmer *swarmer) Bootstrap(ctx context.Context, multiAddrs identity.Multi
 	go func() {
 		defer close(errs)
 		dispatch.CoForAll(multiAddrs, func(i int) {
-			log.Printf("bootstrapping %v...", multiAddrs[i])
 			if multiAddrs[i].Address() == swarmer.client.MultiAddress().Address() {
 				return
 			}

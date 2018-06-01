@@ -105,8 +105,6 @@ func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpc
 
 // Start implements the Smpcer interface.
 func (smpc *smpcer) Start() error {
-	log.Println("starting smpc")
-
 	smpc.shutdownMu.Lock()
 	defer smpc.shutdownMu.Unlock()
 
@@ -123,7 +121,6 @@ func (smpc *smpcer) Start() error {
 
 // Shutdown implements the Smpcer interface.
 func (smpc *smpcer) Shutdown() error {
-	log.Println("closing smpc")
 	smpc.shutdownMu.Lock()
 	defer smpc.shutdownMu.Unlock()
 
@@ -184,7 +181,6 @@ func (smpc *smpcer) run() {
 			return
 
 		case inst, ok := <-smpc.instructions:
-			log.Println("receive instruction")
 			if !ok {
 				return
 			}
@@ -236,8 +232,6 @@ func (smpc *smpcer) instConnect(networkID [32]byte, inst InstConnect) {
 		}
 		smpc.ctxCancels[networkID][addr] = cancel
 		smpc.ctxCancelsMu.Unlock()
-
-		log.Printf("connected to %v", addr)
 	})
 }
 
