@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"math"
 
 	"github.com/republicprotocol/republic-go/shamir"
 )
@@ -29,6 +30,10 @@ func NewCoExp(co uint64, exp uint64) CoExp {
 		Co:  co,
 		Exp: exp,
 	}
+}
+
+func (val CoExp) ToFloat() float64 {
+	return float64(val.Co) * math.Pow10(int(val.Exp))
 }
 
 // MarshalJSON implements the json.Marshaler interface and marshals the CoExp

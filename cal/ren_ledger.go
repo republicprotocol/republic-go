@@ -6,6 +6,11 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+const StatusUndefined = 0
+const StatusOpen = 1
+const StatusConfirmed = 2
+const StatusCanceled = 3
+
 type RenLedger interface {
 
 	// OpenBuyOrder on the Ren Ledger. The signature will be used to identify
@@ -23,9 +28,11 @@ type RenLedger interface {
 	// must be in the opened state to be canceled.
 	CancelOrder(signature [65]byte, orderID order.ID) error
 
-	// ConfirmOrder match on the Ren Ledger. Both the id and the matches should
-	// be in the opened state to be confirmed.
-	ConfirmOrder(id order.ID, matches []order.ID) error
+	// ConfirmOrder match on the Ren Ledger.
+	ConfirmOrder(buy order.ID, sell order.ID) error
+
+	// OrderMatch of an order, if any.
+	OrderMatch(order order.ID) (order.ID, error)
 
 	// Fee required to open an order.
 	Fee() (*big.Int, error)
@@ -46,4 +53,7 @@ type RenLedger interface {
 	// SellOrders in the Ren Ledger starting at an offset and returning limited
 	// numbers of  sell orders.
 	SellOrders(offset, limit int) ([]order.ID, error)
+
+	// Trader returns the trader who submit the order
+	Trader(orderID order.ID) (string, error)
 }

@@ -34,9 +34,6 @@ type Syncer interface {
 	// Orderbooker. Returns a list of changes that were made to this local
 	// Orderbooker during the synchronization.
 	Sync() (ChangeSet, error)
-
-	// Confirm an order match.
-	ConfirmOrderMatch(order.ID, order.ID) error
 }
 
 type syncer struct {
@@ -163,8 +160,4 @@ func (syncer *syncer) purge() ChangeSet {
 		changeset = append(changeset, change)
 	}
 	return changeset
-}
-
-func (syncer *syncer) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
-	return syncer.renLedger.ConfirmOrder(buy, []order.ID{sell})
 }

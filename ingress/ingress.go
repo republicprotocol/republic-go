@@ -237,6 +237,7 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 		dispatch.CoForAll(pod.Darknodes, func(i int) {
 			orderFragment, ok := orderFragmentIndexMapping[int64(i)]
 			if !ok {
+				errs <- fmt.Errorf("no fragment found at index %v", i)
 				return
 			}
 			darknode := pod.Darknodes[i]
@@ -254,6 +255,7 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 			if err := ingress.orderbookClient.OpenOrder(ctx, darknodeMultiAddr, orderFragment.EncryptedFragment); err != nil {
 				log.Printf("cannot send order fragment to %v: %v", darknode, err)
 				errs <- fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
+				return
 			}
 		})
 	}()

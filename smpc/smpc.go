@@ -232,8 +232,6 @@ func (smpc *smpcer) instConnect(networkID [32]byte, inst InstConnect) {
 		}
 		smpc.ctxCancels[networkID][addr] = cancel
 		smpc.ctxCancelsMu.Unlock()
-
-		log.Printf("connected to %v", addr)
 	})
 }
 

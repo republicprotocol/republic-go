@@ -103,7 +103,8 @@ func main() {
 	smpcer := smpc.NewSmpcer(swarmer, streamer, 1)
 
 	// New OME
-	computer := ome.NewComputer(orderbook, smpcer)
+	confirmer := ome.NewConfirmer(6, 4*time.Second, renLedger)
+	computer := ome.NewComputer(&store, smpcer, confirmer, renLedger)
 	ome := ome.NewOme(ome.NewRanker(1, 0), computer, orderbook, smpcer)
 
 	// New Darknode
@@ -125,23 +126,16 @@ func main() {
 		// Sleep for enough time that the bootstrap process can complete
 		time.Sleep(time.Second * 10)
 
-		// FIXME: This should be driven in the same way that the
-		// driving of ome.Sync and computer.Compute are driven,
-		// instead of using a done channel
 		done := make(chan struct{})
-		go computer.ComputeResults(done)
 
 		dispatch.CoBegin(func() {
 			// Start the SMPC
 			smpcer.Start()
 		}, func() {
 			// Synchronizing the OME
-			for {
-				if err := ome.Sync(); err != nil {
-					log.Printf("cannot sync ome: %v", err)
-					continue
-				}
-				time.Sleep(time.Second * 2)
+			errs := ome.Run(done)
+			for err := range errs {
+				log.Printf("error in running the ome: %v", err)
 			}
 		}, func() {
 			// Synchronizing the Darknode
