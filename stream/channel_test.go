@@ -2,6 +2,7 @@ package stream_test
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -95,6 +96,22 @@ var _ = Describe("Channel streams", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				}
 			})
+		})
+
+		It("should return an error when sending on a closed stream", func() {
+			clientCancel()
+			time.Sleep(time.Second)
+			message := mockMessage([]byte{0})
+			err := clientStream.Send(&message)
+			Expect(err).Should(Equal(ErrSendOnClosedStream))
+		})
+
+		It("should return an error when receiving on a closed stream", func() {
+			clientCancel()
+			time.Sleep(time.Second)
+			message := mockMessage{}
+			err := clientStream.Recv(&message)
+			Expect(err).Should(Equal(ErrRecvOnClosedStream))
 		})
 
 	})
