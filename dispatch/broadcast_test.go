@@ -116,8 +116,9 @@ var _ = Describe("Broadcaster", func() {
 
 				CoForAll(int(MaxListeners), func(i int) {
 					done := make(chan struct{})
-					for range broadcaster.Listen(done) {
-					}
+					lis := broadcaster.Listen(done)
+					close(done)
+					<-lis
 				})
 			}()
 			time.Sleep(time.Second)

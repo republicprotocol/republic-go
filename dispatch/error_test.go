@@ -12,7 +12,7 @@ import (
 
 var _ = Describe("Error channels", func() {
 
-	Context("Merge errors", func() {
+	Context("when merging errors", func() {
 
 		It("should merge multiple error channels", func() {
 			errCh1 := make(chan error, 1)
@@ -66,7 +66,7 @@ var _ = Describe("Error channels", func() {
 
 	})
 
-	Context("Filter errors", func() {
+	Context("when filtering errors", func() {
 		It("should filter errors using a predicate", func() {
 			errCh := make(chan error, 3)
 
@@ -97,7 +97,7 @@ var _ = Describe("Error channels", func() {
 		})
 	})
 
-	Context("Consume errors", func() {
+	Context("when consuming errors", func() {
 		It("should be able to process an error", func() {
 			errCh := make(chan error, 3)
 			defer close(errCh)
