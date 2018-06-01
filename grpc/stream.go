@@ -3,6 +3,7 @@ package grpc
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -142,6 +143,8 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 		return nil, fmt.Errorf("cannot dial %v: %v", multiAddr, err)
 	}
 
+	log.Println("about to connect..")
+
 	// Open a bidirectional stream and continue to backoff the connection
 	// until the context.Context is canceled
 	var stream StreamService_ConnectClient
@@ -151,6 +154,8 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 	}); err != nil {
 		return nil, fmt.Errorf("cannot open stream: %v", err)
 	}
+
+	log.Println("connected!")
 
 	// Sign an authentication message so that the StreamService can verify that
 	// the identity.Address of the StreamClient
@@ -171,6 +176,8 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 	}); err != nil {
 		return nil, fmt.Errorf("cannot send stream address: %v", err)
 	}
+
+	log.Println("authenticated!")
 
 	// Return a grpc.ClientStream that implements the stream.Stream interface
 	// and is safe for concurrent use and will clean the grpc.ClientConn when
