@@ -136,7 +136,9 @@ func (recycler *streamRecycler) Open(ctx context.Context, multiAddr identity.Mul
 
 	if _, ok := recycler.streams[addr]; !ok {
 		ctx, cancel := context.WithCancel(context.Background())
+		recycler.streamsMu.Unlock()
 		stream, err := recycler.streamer.Open(ctx, multiAddr)
+		recycler.streamsMu.Lock()
 		if err != nil {
 			cancel()
 			return stream, err
