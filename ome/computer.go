@@ -176,7 +176,6 @@ func (computer *computer) Compute(done <-chan struct{}, computations <-chan Comp
 				case <-done:
 				case computer.computations <- computation:
 				}
-
 			case confirmedMatchingComputation, ok := <-confirmedMatchingComputations:
 				if !ok {
 					return
@@ -252,7 +251,6 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 		return
 	}
 	delete(pendingComputations, computation.ID)
-
 	var share shamir.Share
 	switch computation.ID[31] {
 	case StageCmpPriceExp:
@@ -354,6 +352,8 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	if !ok {
 		return
 	}
+	log.Printf("last byte is %v", computation.ID[31])
+
 	switch instID[31] {
 	case StageCmpPriceExp:
 		if resultJ.Value <= half {
