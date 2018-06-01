@@ -216,7 +216,7 @@ func (computer *computer) processComputations(done <-chan struct{}, insts chan<-
 	go func() {
 
 		pendingComputations := map[[32]byte]ComputationEpoch{}
-		ticker := time.NewTicker(time.Millisecond)
+		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 
 		for {
