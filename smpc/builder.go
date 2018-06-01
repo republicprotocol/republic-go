@@ -42,7 +42,7 @@ func (builder *ShareBuilder) Insert(id [32]byte, share shamir.Share) error {
 	if _, ok := builder.shares[id]; !ok {
 		builder.shares[id] = map[uint64]shamir.Share{}
 	}
-	builder.shares[id][share.Index] = share
+	builder.shares[id][share.Value] = share
 	val, err := builder.tryJoin(id)
 	if err != nil {
 		return err
