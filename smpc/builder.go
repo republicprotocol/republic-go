@@ -43,8 +43,8 @@ func (builder *ShareBuilder) Insert(id [32]byte, share shamir.Share) error {
 	if _, ok := builder.shares[id]; !ok {
 		builder.shares[id] = map[uint64]shamir.Share{}
 	}
-	log.Println("insert value", base64.StdEncoding.EncodeToString(id[:]), "with value", share.Value)
-	builder.shares[id][share.Value] = share
+	log.Println("insert value", base64.StdEncoding.EncodeToString(id[:]), "with index", share.Index)
+	builder.shares[id][share.Index] = share
 	val, err := builder.tryJoin(id)
 	if err != nil {
 		return err
