@@ -114,21 +114,20 @@ func main() {
 
 	// Bootstrap
 	go func() {
+
+	}()
+
+	// Start the secure order matching engine
+	go func() {
+		// Wait for the gRPC server to boot
 		time.Sleep(time.Second)
 
 		// Bootstrap into the network
 		if err := swarmer.Bootstrap(context.Background(), config.BootstrapMultiAddresses); err != nil {
 			log.Printf("bootstrap: %v", err)
 		}
-	}()
-
-	// Start the secure order matching engine
-	go func() {
-		// Sleep for enough time that the bootstrap process can complete
-		time.Sleep(time.Second * 10)
 
 		done := make(chan struct{})
-
 		dispatch.CoBegin(func() {
 			// Start the SMPC
 			smpcer.Start()
