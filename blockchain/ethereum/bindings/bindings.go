@@ -8441,7 +8441,7 @@ func (_Utils *UtilsCallerRaw) Call(opts *bind.CallOpts, result interface{}, meth
 // Transfer initiates a plain transaction to move funds to the contract, calling
 // its default method if one is available.
 func (_Utils *UtilsTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _Utils.Contract.contraact.Transfer(opts)
+	return _Utils.Contract.contract.Transfer(opts)
 }
 
 // Transact invokes the (paid) contract method with params as input values.
