@@ -207,6 +207,7 @@ func (order *Order) Hash() [32]byte {
 }
 
 // Bytes returns an Order serialized into a bytes.
+// TODO: This function should return an error.
 func (order *Order) Bytes() []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, order.Type)
