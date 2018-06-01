@@ -237,7 +237,7 @@ var _ = Describe("Broadcaster", func() {
 					go broadcaster.Broadcast(done, ch)
 					ch <- struct{}{}
 				})
-				time.Sleep(time.Second * 2)
+				time.Sleep(time.Second * 3)
 			}()
 
 			wg.Wait()
