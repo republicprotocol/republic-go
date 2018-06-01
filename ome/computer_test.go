@@ -1,7 +1,6 @@
 package ome_test
 
 import (
-	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -40,6 +39,11 @@ var _ = Describe("Computer", func() {
 			computer := NewComputer(storer, smpcer, confirmer, renLedger)
 
 			done := make(chan struct{})
+			go func() {
+				defer close(done)
+
+				time.Sleep(3 * time.Second)
+			}()
 			computationsCh := make(chan ComputationEpoch)
 			defer close(computationsCh)
 
@@ -65,13 +69,9 @@ var _ = Describe("Computer", func() {
 				computationsCh <- ComputationEpoch{
 					Computation: computations[i],
 					ID:          computeID(computations[i]),
-					Epoch:       [32]byte{},
+					Epoch:       [32]byte{1},
 				}
-				log.Print(i)
 			}
-
-			time.Sleep(2 * time.Second)
-			close(done)
 
 			err, ok := <-errs
 			Expect(err).To(BeNil())
