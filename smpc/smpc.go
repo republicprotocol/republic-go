@@ -207,6 +207,7 @@ func (smpc *smpcer) instConnect(networkID [32]byte, inst InstConnect) {
 	smpc.shareBuilders[networkID] = NewShareBuilder(inst.K)
 
 	go dispatch.CoForAll(inst.Nodes, func(i int) {
+
 		addr := inst.Nodes[i]
 		multiAddr, err := smpc.query(addr)
 		if err != nil {
