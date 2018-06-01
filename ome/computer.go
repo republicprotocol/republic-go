@@ -240,11 +240,13 @@ func (computer *computer) processComputations(done <-chan struct{}, insts chan<-
 func (computer *computer) processComputation(computation ComputationEpoch, pendingComputations map[[32]byte]ComputationEpoch, done <-chan struct{}, insts chan<- smpc.Inst) {
 	buy, err := computer.storer.OrderFragment(computation.Buy)
 	if err != nil {
+		log.Println(err)
 		pendingComputations[computation.ID] = computation
 		return
 	}
 	sell, err := computer.storer.OrderFragment(computation.Sell)
 	if err != nil {
+		log.Println(err)
 		pendingComputations[computation.ID] = computation
 		return
 	}
@@ -304,9 +306,21 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 			Share: share,
 		},
 	}
-	select {
-	case <-done:
-	case insts <- inst:
+
+	invertingFlow := true
+	for invertingFlow {
+		select {
+		case <-done:
+			invertingFlow = false
+		case insts <- inst:
+			invertingFlow = false
+		case computation, ok := <-computer.computations:
+			if !ok {
+				invertingFlow = false
+				break
+			}
+			pendingComputations[computation.ID] = computation
+		}
 	}
 }
 
@@ -332,7 +346,6 @@ func (computer *computer) processResults(done <-chan struct{}, results <-chan sm
 
 func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smpc.ResultJ, done <-chan struct{}) {
 	half := shamir.Prime / 2
-
 	computer.computationsMu.Lock()
 	computation, ok := computer.computationsState[instID]
 	delete(computer.computationsState, instID)
@@ -340,7 +353,6 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	if !ok {
 		return
 	}
-
 	switch instID[31] {
 	case StageCmpPriceExp:
 		if resultJ.Value <= half {
@@ -376,7 +388,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 			select {
 			case <-done:
 			case computer.matchingComputations <- computation.Computation:
-				log.Print("match found")
+				log.Print("------------match found--------------")
 			}
 			return
 		}
@@ -439,6 +451,12 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	select {
 	case <-done:
 	case computer.computations <- computation:
+		// FIXME: Removing the buffered channel from the mockSMPC causes a
+		// deadlock. This is because there is a cyclic hold-and-wait between
+		// reading a result, and writing an instruction. This can be solved
+		// using very careful prioritization of channels (but first, we will
+		// need to create more channels and merge them cleverly). It will also
+		// involve fine-tuned buffering of the channels.
 	}
 }
 

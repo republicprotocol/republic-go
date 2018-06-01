@@ -1,6 +1,8 @@
 package ome_test
 
 import (
+	"errors"
+	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -26,10 +28,10 @@ var _ = Describe("Computer", func() {
 			confirmer = newMockConfirmer()
 		})
 
-		It("should successfully complete all computations", func(d Done) {
+		FIt("should successfully complete all computations", func(d Done) {
 			defer close(d)
 
-			numberOfComputations := 10
+			numberOfComputations := 20
 
 			smpcer := newMockSmpcer(PassAll)
 			err := smpcer.Start()
@@ -71,13 +73,14 @@ var _ = Describe("Computer", func() {
 					ID:          computeID(computations[i]),
 					Epoch:       [32]byte{1},
 				}
+				log.Print(i)
 			}
 
 			err, ok := <-errs
 			Expect(err).To(BeNil())
 			Expect(ok).Should(BeFalse())
 
-		}, 120 /* 2 second timeout */)
+		}, 300 /* 5 minute timeout */)
 	})
 })
 
@@ -117,6 +120,9 @@ func (storer mockStorer) OrderFragment(id order.ID) (order.Fragment, error) {
 	storer.mu.Lock()
 	defer storer.mu.Unlock()
 
+	if _, ok := storer.orderFragments[id]; !ok {
+		return order.Fragment{}, errors.New("no such fragment")
+	}
 	return storer.orderFragments[id], nil
 }
 

@@ -463,7 +463,7 @@ func openOrderPairs(genesis ethereum.Conn, configs []darknode.Config) ([]order.I
 
 	orderIDs := []order.ID{}
 
-	numberOfOrderPairs := 1
+	numberOfOrderPairs := 10
 	for n := 0; n < numberOfOrderPairs; n++ {
 		one := order.CoExp{
 			Co:  200,
