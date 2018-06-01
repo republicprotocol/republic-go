@@ -1,6 +1,7 @@
 package smpc
 
 import (
+	"encoding/base64"
 	"log"
 	"sync"
 
@@ -42,6 +43,7 @@ func (builder *ShareBuilder) Insert(id [32]byte, share shamir.Share) error {
 	if _, ok := builder.shares[id]; !ok {
 		builder.shares[id] = map[uint64]shamir.Share{}
 	}
+	log.Println("insert value", base64.StdEncoding.EncodeToString(id[:]), "with value", share.Value)
 	builder.shares[id][share.Value] = share
 	val, err := builder.tryJoin(id)
 	if err != nil {
@@ -92,7 +94,7 @@ func (builder *ShareBuilder) notify(id [32]byte, val uint64) {
 }
 
 func (builder *ShareBuilder) tryJoin(id [32]byte) (uint64, error) {
-	log.Println("trying to join value with", len(builder.shares[id]), "shares for", id)
+	log.Println("trying to join value with", len(builder.shares[id]), "shares for", base64.StdEncoding.EncodeToString(id[:]))
 	if int64(len(builder.shares[id])) >= builder.k {
 		builder.sharesCache = builder.sharesCache[0:0]
 		k := int64(0)
