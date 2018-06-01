@@ -137,6 +137,8 @@ func NewStreamClient(signer crypto.Signer, addr identity.Address) stream.Client 
 }
 
 func (client *streamClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (stream.Stream, error) {
+	log.Println("dialing", multiAddr)
+
 	// Establish a connection to the identity.MultiAddress
 	conn, err := Dial(ctx, multiAddr)
 	if err != nil {
