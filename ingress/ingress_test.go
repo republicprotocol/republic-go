@@ -309,9 +309,10 @@ func (renLedger *mockRenLedger) CancelOrder(signature [65]byte, orderID order.ID
 	return errors.New("cannot cancel order that is not open")
 }
 
-func (renLedger *mockRenLedger) ConfirmOrder(id order.ID, matches []order.ID) error {
+func (renLedger *mockRenLedger) ConfirmOrder(id order.ID, match order.ID) error {
 	if _, ok := renLedger.orderStates[string(id[:])]; ok {
 		delete(renLedger.orderStates, string(id[:]))
+		matches := []order.ID{match}
 		for _, matchID := range matches {
 			if _, ok := renLedger.orderStates[string(matchID[:])]; ok {
 				delete(renLedger.orderStates, string(matchID[:]))
@@ -345,6 +346,14 @@ func (renLedger *mockRenLedger) BuyOrders(offset, limit int) ([]order.ID, error)
 }
 
 func (renLedger *mockRenLedger) SellOrders(offset, limit int) ([]order.ID, error) {
+	panic("unimplemented")
+}
+
+func (renLedger *mockRenLedger) OrderMatch(order order.ID) (order.ID, error) {
+	panic("unimplemented")
+}
+
+func (renLedger *mockRenLedger) Trader(order order.ID) (string, error) {
 	panic("unimplemented")
 }
 

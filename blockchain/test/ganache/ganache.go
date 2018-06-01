@@ -35,25 +35,6 @@ func GenesisTransactor() bind.TransactOpts {
 	return *genesisTransactor
 }
 
-// WatchForInterrupt will stop Ganache upon receiving receiving a interrupt signal
-func WatchForInterrupt() {
-	cmd := globalGanacheCmd
-	signals := make(chan os.Signal, 1)
-	defer close(signals)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
-	<-signals
-	fmt.Println("ganache is shutting down...")
-	if err := cmd.Process.Kill(); err != nil {
-		fmt.Printf("ganache cannot shutdown: %v", err)
-		return
-	}
-	if err := cmd.Wait(); err != nil {
-		fmt.Printf("ganache cannot shutdown: %v", err)
-		return
-	}
-	fmt.Printf("ganache shutdown")
-}
-
 var globalGanacheMu = &sync.Mutex{}
 var globalGanacheCounter uint64
 var globalGanacheCmd *exec.Cmd
@@ -65,55 +46,68 @@ func Start() bool {
 	globalGanacheMu.Lock()
 	defer globalGanacheMu.Unlock()
 
-	if globalGanacheCounter > 0 {
-		globalGanacheCounter++
+	globalGanacheCounter++
+	if globalGanacheCounter > 1 {
 		return false
 	}
 
-	cmd := exec.Command("ganache-cli", fmt.Sprintf("--account=0x%x,1000000000000000000000", crypto.FromECDSA(genesisPrivateKey)))
+	globalGanacheCmd = exec.Command("ganache-cli", fmt.Sprintf("--account=0x%x,1000000000000000000000", crypto.FromECDSA(genesisPrivateKey)))
 	// TODO: Do something better with the output than printing it to Stdout and
 	// Stderr, it gets so noisy. Disabled for now. Configurable output file
 	// could be nice.
 	// cmd.Stdout = os.Stdout
 	// cmd.Stderr = os.Stderr
-	cmd.Start()
-
-	go WatchForInterrupt()
+	globalGanacheCmd.Start()
+	go StopOnInterrupt()
 
 	// Wait for ganache to boot
-	var delay time.Duration
 	if test.GetCIEnv() {
-		delay = 10 * time.Second
+		time.Sleep(10 * time.Second)
 	} else {
-		delay = 4 * time.Second
+		time.Sleep(4 * time.Second)
 	}
-	time.Sleep(delay)
-
-	globalGanacheCounter++
-	globalGanacheCmd = cmd
 
 	return true
-}
-
-func Wait() error {
-	return globalGanacheCmd.Wait()
 }
 
 // Stop will kill the local Ganache instance
 func Stop() {
 	globalGanacheMu.Lock()
 	defer globalGanacheMu.Unlock()
-	if globalGanacheCounter > 1 {
-		globalGanacheCounter--
+
+	// Reference count ganache
+	if globalGanacheCounter == 0 {
+		return
+	}
+	globalGanacheCounter--
+	if globalGanacheCounter > 0 {
 		return
 	}
 
-	globalGanacheCounter--
+	// Graceful shutdown of ganache
+	globalGanacheCmd.Process.Signal(syscall.SIGTERM)
+	globalGanacheCmd.Wait()
+}
 
-	// Stop ganache
-	if err := globalGanacheCmd.Process.Kill(); err != nil {
-		panic(err)
+// StopOnInterrupt will stop Ganache upon receiving receiving a interrupt signal
+func StopOnInterrupt() {
+	signals := make(chan os.Signal, 1)
+	defer close(signals)
+
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	<-signals
+
+	globalGanacheMu.Lock()
+	defer globalGanacheMu.Unlock()
+
+	// Reference count ganache
+	if globalGanacheCounter == 0 {
+		return
 	}
+	globalGanacheCounter = 0
+
+	// Graceful shutdown of ganache
+	globalGanacheCmd.Process.Signal(syscall.SIGTERM)
 	globalGanacheCmd.Wait()
 }
 
@@ -148,7 +142,6 @@ func StartAndConnect() (ethereum.Conn, error) {
 
 	if firstConnection {
 		// Deploy contracts and take snapshot
-
 		if err := DeployContracts(conn); err != nil {
 			return conn, err
 		}
@@ -196,7 +189,7 @@ func DeployContracts(conn ethereum.Conn) error {
 func DistributeEth(conn ethereum.Conn, addresses ...common.Address) error {
 
 	for _, address := range addresses {
-		err := conn.TransferEth(context.Background(), genesisTransactor, address, big.NewInt(1000000000000000000))
+		err := conn.TransferEth(context.Background(), genesisTransactor, address, big.NewInt(9000000000000000000))
 		if err != nil {
 			return err
 		}

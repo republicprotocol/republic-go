@@ -1,144 +1,152 @@
 package ome_test
 
 import (
-	"context"
+	"errors"
+	"log"
 	"math/rand"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ome"
 
+	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
 var _ = Describe("Computer", func() {
-
 	Context("when given computations", func() {
+		var confirmer Confirmer
+		var renLedger cal.RenLedger
 
-		It("should successfully complete all computations", func(done Done) {
-			defer close(done)
+		BeforeEach(func() {
+			renLedger = newMockRenLedger()
+			confirmer = newMockConfirmer()
+		})
 
-			numberOfComputations := 10
+		It("should successfully complete all computations", func(d Done) {
+			defer close(d)
 
-			// Start mockSmpcer
+			numberOfComputations := 20
+
 			smpcer := newMockSmpcer(PassAll)
 			err := smpcer.Start()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			// Create mockOrderbook
-			orderbook := newMockOrderbook()
+			storer := NewMockStorer()
+			computer := NewComputer(storer, smpcer, confirmer, renLedger)
 
-			// Create Computer
-			computer := NewComputer(&orderbook, &smpcer)
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
 
-			quit := make(chan struct{})
-			defer close(quit)
-			go computer.ComputeResults(quit)
+				time.Sleep(3 * time.Second)
+			}()
+			computationsCh := make(chan ComputationEpoch)
+			defer close(computationsCh)
+
+			errs := computer.Compute(done, computationsCh)
 
 			// Generate computations for newly created buy and sell orders
 			computations := make(Computations, numberOfComputations)
 			for i := 0; i < numberOfComputations; i++ {
-				buyOrder := newOrder(true)
-				orderbook.AddOrder(buyOrder)
-
-				sellOrder := newOrder(false)
-				orderbook.AddOrder(sellOrder)
+				buyOrderFragment, sellOrderFragment, err := randomOrderFragment()
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(storer.InsertOrderFragment(buyOrderFragment)).ShouldNot(HaveOccurred())
+				Expect(storer.InsertOrderFragment(sellOrderFragment)).ShouldNot(HaveOccurred())
 
 				computations[i] = Computation{
-					Buy:      buyOrder.ID,
-					Sell:     sellOrder.ID,
+					Buy:      buyOrderFragment.OrderID,
+					Sell:     sellOrderFragment.OrderID,
 					Priority: Priority(i),
 				}
-			}
 
-			computer.Compute([32]byte{1}, computations)
+				Expect(renLedger.OpenBuyOrder([65]byte{}, computations[i].Buy)).ShouldNot(HaveOccurred())
+				Expect(renLedger.OpenBuyOrder([65]byte{}, computations[i].Sell)).ShouldNot(HaveOccurred())
 
-			// Constantly call Compute() until all orders have been matched
-			computations = Computations{}
-			for {
-				time.Sleep(20 * time.Millisecond)
-				computer.Compute([32]byte{1}, computations)
-
-				if atomic.LoadInt64(&orderbook.numberOfOrderMatches) == int64(numberOfComputations) {
-					break
+				computationsCh <- ComputationEpoch{
+					Computation: computations[i],
+					ID:          computeID(computations[i]),
+					Epoch:       [32]byte{1},
 				}
+				log.Print(i)
 			}
 
-			Expect(atomic.LoadInt64(&orderbook.numberOfOrderMatches)).Should(Equal(int64(numberOfComputations)))
-		}, 2 /* 2 second timeout */)
+			err, ok := <-errs
+			Expect(err).To(BeNil())
+			Expect(ok).Should(BeFalse())
+
+		}, 300 /* 5 minute timeout */)
 	})
 })
 
-type mockOrderbook struct {
-	numberOfOrderMatches int64
-	hasSynced            bool
-	rsaKey               crypto.RsaKey
-	orderFragments       map[order.ID]order.Fragment
-	orders               map[order.ID]order.Order
+// mockStorer is a mock implementation of the storer it stores the order and
+// orderFragments in the cache.
+type mockStorer struct {
+	mu             *sync.Mutex
+	orders         map[[32]byte]order.Order
+	orderFragments map[[32]byte]order.Fragment
 }
 
-func (book *mockOrderbook) OrderFragment(orderID order.ID) (order.Fragment, error) {
-	return book.orderFragments[orderID], nil
+func NewMockStorer() *mockStorer {
+	return &mockStorer{
+		mu:             new(sync.Mutex),
+		orders:         map[[32]byte]order.Order{},
+		orderFragments: map[[32]byte]order.Fragment{},
+	}
 }
 
-func (book *mockOrderbook) Order(orderID order.ID) (order.Order, error) {
-	return book.orders[orderID], nil
-}
+func (storer mockStorer) InsertOrderFragment(fragment order.Fragment) error {
+	storer.mu.Lock()
+	defer storer.mu.Unlock()
 
-func (book *mockOrderbook) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
-	atomic.AddInt64(&book.numberOfOrderMatches, 1)
+	storer.orderFragments[fragment.OrderID] = fragment
 	return nil
 }
 
-func (book *mockOrderbook) OpenOrder(ctx context.Context, orderFragment order.EncryptedFragment) error {
-	var err error
-	book.orderFragments[orderFragment.OrderID], err = orderFragment.Decrypt(*book.rsaKey.PrivateKey)
-	return err
+func (storer mockStorer) InsertOrder(order order.Order) error {
+	storer.mu.Lock()
+	defer storer.mu.Unlock()
+
+	storer.orders[order.ID] = order
+	return nil
 }
 
-func (book *mockOrderbook) Sync() (orderbook.ChangeSet, error) {
-	if !book.hasSynced {
-		changes := make(orderbook.ChangeSet, 5)
-		i := 0
-		for _, orderFragment := range book.orderFragments {
-			changes[i] = orderbook.Change{
-				OrderID:       orderFragment.OrderID,
-				OrderParity:   orderFragment.OrderParity,
-				OrderPriority: uint64(i),
-				OrderStatus:   order.Open,
-			}
-			i++
-		}
-		book.hasSynced = true
-		return changes, nil
+func (storer mockStorer) OrderFragment(id order.ID) (order.Fragment, error) {
+	storer.mu.Lock()
+	defer storer.mu.Unlock()
+
+	if _, ok := storer.orderFragments[id]; !ok {
+		return order.Fragment{}, errors.New("no such fragment")
 	}
-	return orderbook.ChangeSet{}, nil
+	return storer.orderFragments[id], nil
 }
 
-func (book *mockOrderbook) AddOrder(ord order.Order) {
-	if _, ok := book.orders[ord.ID]; !ok {
-		book.orders[ord.ID] = ord
-	}
+func (storer mockStorer) Order(id order.ID) (order.Order, error) {
+	storer.mu.Lock()
+	defer storer.mu.Unlock()
+
+	return storer.orders[id], nil
 }
 
-func newMockOrderbook() mockOrderbook {
-	// Generate new RSA key
-	rsaKey, err := crypto.RandomRsaKey()
-	Expect(err).ShouldNot(HaveOccurred())
+func (storer mockStorer) RemoveOrderFragment(id order.ID) error {
+	storer.mu.Lock()
+	defer storer.mu.Unlock()
 
-	return mockOrderbook{
-		numberOfOrderMatches: int64(0),
-		hasSynced:            false,
-		rsaKey:               rsaKey,
-		orderFragments:       make(map[order.ID]order.Fragment),
-		orders:               make(map[order.ID]order.Order),
-	}
+	delete(storer.orderFragments, id)
+	return nil
+}
+
+func (storer mockStorer) RemoveOrder(id order.ID) error {
+	storer.mu.Lock()
+	defer storer.mu.Unlock()
+
+	delete(storer.orders, id)
+	return nil
 }
 
 type mockSmpcer struct {
@@ -196,7 +204,7 @@ const (
 	PassPartial ResultStatus = 2
 )
 
-func newMockSmpcer(resultStatus ResultStatus) mockSmpcer {
+func newMockSmpcer(resultStatus ResultStatus) *mockSmpcer {
 	result := uint64(0)
 
 	switch resultStatus {
@@ -208,9 +216,41 @@ func newMockSmpcer(resultStatus ResultStatus) mockSmpcer {
 		result = uint64(1)
 	}
 
-	return mockSmpcer{
+	return &mockSmpcer{
 		result: result,
 	}
+}
+
+type mockConfirmer struct {
+}
+
+func newMockConfirmer() Confirmer {
+	return &mockConfirmer{}
+}
+
+func (confirmer *mockConfirmer) ConfirmOrderMatches(done <-chan struct{}, orderMatches <-chan Computation) (<-chan Computation, <-chan error) {
+	confirmedMatches := make(chan Computation)
+	errs := make(chan error)
+
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case computation, ok := <-orderMatches:
+				if !ok {
+					return
+				}
+				select {
+				case <-done:
+					return
+				case confirmedMatches <- computation:
+				}
+			}
+		}
+	}()
+
+	return confirmedMatches, errs
 }
 
 func newOrder(isBuy bool) order.Order {
@@ -222,4 +262,26 @@ func newOrder(isBuy bool) order.Order {
 		parity = order.ParitySell
 	}
 	return order.NewOrder(order.TypeLimit, parity, time.Now().Add(time.Hour), order.TokensETHREN, order.NewCoExp(price, 26), order.NewCoExp(volume, 26), order.NewCoExp(volume, 26), nonce)
+}
+
+func computeID(computation Computation) [32]byte {
+	id := [32]byte{}
+	copy(id[:], crypto.Keccak256(computation.Buy[:], computation.Sell[:]))
+	return id
+}
+
+func randomOrderFragment() (order.Fragment, order.Fragment, error) {
+	buyOrder := newRandomOrder()
+	sellOrder := order.NewOrder(buyOrder.Type, 1-buyOrder.Parity, buyOrder.Expiry, buyOrder.Tokens, buyOrder.Price, buyOrder.Volume, buyOrder.MinimumVolume, buyOrder.Nonce)
+
+	buyShares, err := buyOrder.Split(10, 7)
+	if err != nil {
+		return order.Fragment{}, order.Fragment{}, err
+	}
+	sellShares, err := sellOrder.Split(10, 7)
+	if err != nil {
+		return order.Fragment{}, order.Fragment{}, err
+	}
+
+	return buyShares[0], sellShares[0], nil
 }
