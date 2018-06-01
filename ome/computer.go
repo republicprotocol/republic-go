@@ -252,6 +252,10 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 		pendingComputations[computation.ID] = computation
 		return
 	}
+
+	log.Println(buy)
+	log.Println(sell)
+
 	delete(pendingComputations, computation.ID)
 	var share shamir.Share
 	switch computation.ID[31] {
