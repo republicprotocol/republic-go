@@ -285,6 +285,8 @@ func (smpc *smpcer) sendMessage(addr identity.Address, msg *Message) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	log.Println("sending message...")
+
 	if multiAddr, ok := smpc.lookup[addr]; ok {
 		stream, err := smpc.streamer.Open(ctx, multiAddr)
 		if err != nil {
@@ -315,6 +317,8 @@ func (smpc *smpcer) stream(remoteAddr identity.Address, remoteStream stream.Stre
 			log.Printf("closing stream with %v: %v", remoteAddr, err)
 			return
 		}
+
+		log.Println("receiving message...")
 
 		switch msg.MessageType {
 		case MessageTypeJ:
