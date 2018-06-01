@@ -35,6 +35,9 @@ type Config struct {
 }
 
 func main() {
+	done := make(chan struct{})
+	defer close(done)
+
 	bindParam := flag.String("bind", "127.0.0.1", "Binding address for the gRPC and HTTP API")
 	portParam := flag.String("port", "18515", "Binding port for the HTTP API")
 	configParam := flag.String("config", "", "Ethereum configuration file")
@@ -71,6 +74,20 @@ func main() {
 	orderbookClient := grpc.NewOrderbookClient(&connPool)
 	ingresser := ingress.NewIngress(&registry, renLedger, swarmer, orderbookClient)
 	ingressAdapter := adapter.NewIngressAdapter(ingresser)
+	openOrderErrors := ingresser.OpenOrderProcess(done)
+	openOrderFragmentErrors := ingresser.OpenOrderFragmentsProcess(done)
+
+	go func() {
+		for err := range openOrderErrors {
+			log.Printf("error processing order: %v", err)
+		}
+	}()
+
+	go func() {
+		for err := range openOrderFragmentErrors {
+			log.Printf("error processing order fragment: %v", err)
+		}
+	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
