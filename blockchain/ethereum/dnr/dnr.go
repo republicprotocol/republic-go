@@ -159,7 +159,7 @@ func (darkNodeRegistry *DarknodeRegistry) CurrentEpoch() (Epoch, error) {
 	}
 
 	var blockhash [32]byte
-	for i, b := range epoch.Blockhash.Bytes() {
+	for i, b := range epoch.Epochhash.Bytes() {
 		blockhash[i] = b
 	}
 
@@ -274,7 +274,7 @@ func (darkNodeRegistry *DarknodeRegistry) PublicKey(darknodeAddr identity.Addres
 
 // GetAllNodes gets all dark nodes
 func (darkNodeRegistry *DarknodeRegistry) GetAllNodes() ([][]byte, error) {
-	ret, err := darkNodeRegistry.binding.GetDarkNodes(darkNodeRegistry.callOpts)
+	ret, err := darkNodeRegistry.binding.GetDarknodes(darkNodeRegistry.callOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +286,7 @@ func (darkNodeRegistry *DarknodeRegistry) GetAllNodes() ([][]byte, error) {
 }
 
 func (darkNodeRegistry *DarknodeRegistry) Darknodes() (identity.Addresses, error) {
-	ret, err := darkNodeRegistry.binding.GetDarkNodes(darkNodeRegistry.callOpts)
+	ret, err := darkNodeRegistry.binding.GetDarknodes(darkNodeRegistry.callOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +359,7 @@ func toByte(id []byte) ([20]byte, error) {
 }
 
 func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
-	darknodeIDs, err := darkNodeRegistry.binding.GetDarkNodes(darkNodeRegistry.callOpts)
+	darknodeIDs, err := darkNodeRegistry.binding.GetDarknodes(darkNodeRegistry.callOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +379,7 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 	if err != nil {
 		return []cal.Pod{}, err
 	}
-	epochVal := epoch.Blockhash
+	epochVal := epoch.Epochhash
 	numberOfDarkNodes := big.NewInt(int64(len(darknodeAddrs)))
 	x := big.NewInt(0).Mod(epochVal, numberOfDarkNodes)
 	positionInOcean := make([]int, len(darknodeAddrs))
