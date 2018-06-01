@@ -88,10 +88,6 @@ var _ = Describe("Broadcaster", func() {
 			close(signal)
 		}, 10 /* 10 second timeout */)
 
-		It("should not block existing listeners after shutting down", func() {
-
-		})
-
 		It("should not block new listeners after shutting down", func() {
 			broadcaster := NewBroadcaster()
 			broadcaster.Close()
@@ -101,6 +97,7 @@ var _ = Describe("Broadcaster", func() {
 			select {
 			case _, ok := <-lis:
 				Expect(ok).Should(BeFalse())
+			default:
 			}
 		})
 
