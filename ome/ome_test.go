@@ -24,6 +24,7 @@ var _ = Describe("Ome", func() {
 
 		var book orderbook.Orderbook
 		var ledger cal.RenLedger
+		var accounts cal.DarkpoolAccounts
 		var smpcer smpc.Smpcer
 		var storer orderbook.Storer
 
@@ -33,9 +34,10 @@ var _ = Describe("Ome", func() {
 			ledger = newMockRenLedger()
 			smpcer = newMockSmpcer(PassAll)
 			storer = NewMockStorer()
+			accounts = newMockAccounts()
 
 			confirmer = NewConfirmer(0, 2*time.Second, ledger)
-			computer = NewComputer(storer, smpcer, confirmer, ledger)
+			computer = NewComputer(storer, smpcer, confirmer, ledger, accounts)
 			ranker = NewRanker(1, 0)
 
 			err := smpcer.Start()

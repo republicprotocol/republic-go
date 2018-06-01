@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/accounts"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/bindings"
 	"github.com/republicprotocol/republic-go/blockchain/test"
 )
@@ -247,13 +248,15 @@ func deployContracts(conn ethereum.Conn, transactor *bind.TransactOpts) error {
 	if err != nil {
 		panic(err)
 	}
-
 	_, darkNodeRegistryAddress, err := deployDarkNodeRegistry(context.Background(), conn, transactor, republicTokenAddress)
 	if err != nil {
 		panic(err)
 	}
-
 	_, renLedgerAddress, err := deployRenLedger(context.Background(), conn, transactor, republicTokenAddress, darkNodeRegistryAddress)
+	if err != nil {
+		panic(err)
+	}
+	_, renAccounts, err := deployRenExAccounts(context.Background(), conn, transactor, renLedgerAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -266,6 +269,9 @@ func deployContracts(conn ethereum.Conn, transactor *bind.TransactOpts) error {
 	}
 	if renLedgerAddress != ethereum.RenLedgerAddressOnGanache {
 		return fmt.Errorf("RenLedger address has changed: expected: %s, got: %s", ethereum.RenLedgerAddressOnGanache.Hex(), renLedgerAddress.Hex())
+	}
+	if renAccounts != ethereum.RenExAccountsAddressOnGanache {
+		return fmt.Errorf("RenEx address has changed: expected: %s, got: %s", ethereum.RenExAccountsAddressOnGanache.Hex(), renAccounts.Hex())
 	}
 
 	return nil
@@ -306,4 +312,14 @@ func deployRenLedger(ctx context.Context, conn ethereum.Conn, auth *bind.Transac
 	}
 	conn.PatchedWaitDeployed(ctx, tx)
 	return ren, address, nil
+}
+
+func deployRenExAccounts(ctx context.Context, conn ethereum.Conn, auth *bind.TransactOpts, renLedgerAddress common.Address) (*accounts.TraderAccounts, common.Address, error) {
+
+	address, tx, accounts, err := accounts.DeployTraderAccounts(auth, conn.Client, renLedgerAddress)
+	if err != nil {
+		return nil, common.Address{}, fmt.Errorf("cannot deploy RenLedger: %v", err)
+	}
+	conn.PatchedWaitDeployed(ctx, tx)
+	return accounts, address, nil
 }

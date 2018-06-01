@@ -33,6 +33,7 @@ var (
 	RepublicTokenAddressOnGanache    = common.HexToAddress("0x8DE2a0D285cd6fDB47ABAe34024a6EED79ef0E92")
 	DarknodeRegistryAddressOnGanache = common.HexToAddress("0xbF195E17802736Ff4E19275b961bb1c2D45f2c8D")
 	RenLedgerAddressOnGanache        = common.HexToAddress("0x01cbe20EA5A49649F5615A59FaA30E88584634a2")
+	RenExAccountsAddressOnGanache    = common.HexToAddress("0x9D174894dEa6470d25C0F6D847B94801EaE17Bc3")
 )
 
 // Contract addresses on Ropsten
@@ -40,6 +41,7 @@ var (
 	RepublicTokenAddressOnRopsten    = common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54")
 	DarknodeRegistryAddressOnRopsten = common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3")
 	RenLedgerAddressOnRopsten        = common.HexToAddress("0x6235E09103bC7f205837237e4eAD855bC196E4D3")
+	RenExAccountsAddressOnRopsten    = common.HexToAddress("0x0111111111111111111111111111111111111111") //fixme
 )
 
 // Contract addresses on Kovan
@@ -47,6 +49,7 @@ var (
 	RepublicTokenAddressOnKovan    = common.HexToAddress("0x596F8c39aEc9fb72D0F591DEe4408516f4C9DdA4")
 	DarknodeRegistryAddressOnKovan = common.HexToAddress("0xE75D707713905470421b6BDdb5dafd120d057b05")
 	RenLedgerAddressOnKovan        = common.HexToAddress("0xe6661ae76f0CE8e70723Db4c0e2d3332910Ed83b")
+	RenExAccountsAddressOnKovan    = common.HexToAddress("0x66d9f2dac9f61fcbb84c4bac0cc601ed9947a71c")
 )
 
 // Config defines the different settings for connecting the Darknode
@@ -58,6 +61,7 @@ type Config struct {
 	RepublicTokenAddress    string  `json:"republicTokenAddress"`
 	DarknodeRegistryAddress string  `json:"darknodeRegistryAddress"`
 	RenLedgerAddress        string  `json:"renLedgerAddress"`
+	RenExAccountsAddress    string  `json:"renExAccountsAddress"`
 }
 
 // Conn contains the client and the contracts deployed to it
@@ -113,6 +117,19 @@ func Connect(config Config) (Conn, error) {
 			config.RenLedgerAddress = RenLedgerAddressOnKovan.String()
 		case NetworkRopsten:
 			config.RenLedgerAddress = RenLedgerAddressOnRopsten.String()
+		default:
+			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
+		}
+	}
+
+	if config.RenExAccountsAddress == "" {
+		switch config.Network {
+		case NetworkGanache:
+			config.RenLedgerAddress = RenLedgerAddressOnGanache.String()
+		case NetworkKovan:
+			config.RenLedgerAddress = RenLedgerAddressOnKovan.String()
+		case NetworkRopsten:
+			panic("not deployed yet")
 		default:
 			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}

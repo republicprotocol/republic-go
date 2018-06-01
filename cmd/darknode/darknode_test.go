@@ -14,6 +14,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	accounts "github.com/republicprotocol/republic-go/blockchain/ethereum/accounts"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
@@ -288,6 +289,7 @@ func newDarknodeConfigs(n int, bootstraps int) ([]darknode.Config, error) {
 				RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
 				DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
 				RenLedgerAddress:        ethereum.RenLedgerAddressOnGanache.String(),
+				RenExAccountsAddress:    ethereum.RenExAccountsAddressOnGanache.String(),
 			},
 		})
 	}
@@ -373,7 +375,7 @@ func newDarknodes(genesis ethereum.Conn, configs []darknode.Config) ([]darknode.
 
 		// New OME
 		confirmer := ome.NewConfirmer(0, 4*time.Second, renLedger)
-		computers = append(computers, ome.NewComputer(&store, smpcers[i], confirmer, renLedger))
+		computers = append(computers, ome.NewComputer(&store, smpcers[i], confirmer, renLedger, darkPoolAccounts))
 		omes = append(omes, ome.NewOme(ome.NewRanker(1, 0), computers[i], orderbook, smpcers[i]))
 
 		// New Darknode
@@ -431,7 +433,13 @@ func newEthereumBindings(keystore crypto.Keystore, config ethereum.Config) (*bin
 		return auth, nil, nil, nil, nil, err
 	}
 
-	return auth, &darkpool, nil, nil, &renLedger, nil
+	acts, err := accounts.NewRenExAccounts(context.Background(), conn, auth, &bind.CallOpts{})
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to RenEx accounts: %v", err))
+		return auth, nil, nil, nil, nil, err
+	}
+
+	return auth, &darkpool, &acts, nil, &renLedger, nil
 
 }
 

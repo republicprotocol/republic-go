@@ -1,6 +1,7 @@
 package ome
 
 import (
+	"encoding/base64"
 	"log"
 	"sync"
 	"time"
@@ -96,6 +97,7 @@ type computer struct {
 	smpcer    smpc.Smpcer
 	confirmer Confirmer
 	ledger    cal.RenLedger
+	accounts  cal.DarkpoolAccounts
 
 	computationsMu    *sync.Mutex
 	computationsState map[[32]byte]ComputationEpoch
@@ -114,12 +116,13 @@ type computer struct {
 	tokensPointer    map[[32]byte]*order.Tokens
 }
 
-func NewComputer(storer orderbook.Storer, smpcer smpc.Smpcer, confirmer Confirmer, ledger cal.RenLedger) Computer {
+func NewComputer(storer orderbook.Storer, smpcer smpc.Smpcer, confirmer Confirmer, ledger cal.RenLedger, accounts cal.DarkpoolAccounts) Computer {
 	return &computer{
 		storer:    storer,
 		smpcer:    smpcer,
 		confirmer: confirmer,
 		ledger:    ledger,
+		accounts:  accounts,
 
 		computationsMu:    new(sync.Mutex),
 		computationsState: map[[32]byte]ComputationEpoch{},
@@ -441,7 +444,22 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		// TODO:
 		// 1. Settle buy order and sell order
 		// 2. Delete orders from pointer maps
-
+		buy, err := computer.reconstructOrder(computation.Buy)
+		if err != nil {
+			log.Printf("cannot reconstruct buy order %v : %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), err)
+			return
+		}
+		sell, err := computer.reconstructOrder(computation.Sell)
+		if err != nil {
+			log.Printf("cannot reconstruct sell order %v : %v", base64.StdEncoding.EncodeToString(computation.Sell[:]), err)
+			return
+		}
+		err = computer.accounts.Settle(buy, sell)
+		if err != nil {
+			log.Printf("cannot settle orders: %v", err)
+			return
+		}
+		log.Printf("-------Order Settled (Buy:%v , Sell: %v)-------", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
 		return
 	}
 
@@ -464,4 +482,25 @@ func computeID(computation Computation) [32]byte {
 	id := [32]byte{}
 	copy(id[:], crypto.Keccak256(computation.Buy[:], computation.Sell[:]))
 	return id
+}
+
+func (computer *computer) reconstructOrder(id order.ID) (order.Order, error) {
+	fragment, err := computer.storer.OrderFragment(id)
+	if err != nil {
+		return order.Order{}, err
+	}
+	price := order.CoExp{
+		Co:  *computer.priceCoPointer[id],
+		Exp: *computer.priceExpPointer[id],
+	}
+	volume := order.CoExp{
+		Co:  *computer.volCoPointer[id],
+		Exp: *computer.volExpPointer[id],
+	}
+	minVolume := order.CoExp{
+		Co:  *computer.minVolCoPointer[id],
+		Exp: *computer.minVolExpPointer[id],
+	}
+
+	return order.NewOrder(order.TypeLimit, order.ParityBuy, fragment.OrderExpiry, *computer.tokensPointer[fragment.OrderID], price, volume, minVolume, 1), nil
 }

@@ -28,7 +28,6 @@ type RenLedgerContract struct {
 	transactOpts *bind.TransactOpts
 	callOpts     *bind.CallOpts
 	binding      *bindings.RenLedger
-	tokenBinding *bindings.RepublicToken
 	address      common.Address
 }
 

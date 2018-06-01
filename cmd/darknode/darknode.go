@@ -15,6 +15,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/accounts"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
 	"github.com/republicprotocol/republic-go/cal"
@@ -104,7 +105,7 @@ func main() {
 
 	// New OME
 	confirmer := ome.NewConfirmer(6, 4*time.Second, renLedger)
-	computer := ome.NewComputer(&store, smpcer, confirmer, renLedger)
+	computer := ome.NewComputer(&store, smpcer, confirmer, renLedger, darkPoolAccounts)
 	ome := ome.NewOme(ome.NewRanker(1, 0), computer, orderbook, smpcer)
 
 	// New Darknode
@@ -194,5 +195,11 @@ func getEthereumBindings(keystore crypto.Keystore, conf ethereum.Config) (*bind.
 		return auth, nil, nil, nil, nil, err
 	}
 
-	return auth, &darkpool, nil, nil, &renLedger, nil
+	acts, err := accounts.NewRenExAccounts(context.Background(), conn, auth, &bind.CallOpts{})
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to RenEx accounts: %v", err))
+		return auth, nil, nil, nil, nil, err
+	}
+
+	return auth, &darkpool, &acts, nil, &renLedger, nil
 }

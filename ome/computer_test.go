@@ -37,8 +37,10 @@ var _ = Describe("Computer", func() {
 			err := smpcer.Start()
 			Expect(err).ShouldNot(HaveOccurred())
 
+			accounts := newMockAccounts()
+
 			storer := NewMockStorer()
-			computer := NewComputer(storer, smpcer, confirmer, renLedger)
+			computer := NewComputer(storer, smpcer, confirmer, renLedger, accounts)
 
 			done := make(chan struct{})
 			go func() {
@@ -284,4 +286,19 @@ func randomOrderFragment() (order.Fragment, order.Fragment, error) {
 	}
 
 	return buyShares[0], sellShares[0], nil
+}
+
+type mockAccounts struct {
+}
+
+func newMockAccounts() cal.DarkpoolAccounts {
+	return &mockAccounts{}
+}
+
+func (accounts *mockAccounts) Settle(buy order.Order, sell order.Order) error {
+	return nil
+}
+
+func (accounts *mockAccounts) Balance(trader string, token order.Token) (float64, error) {
+	return 0, nil
 }
