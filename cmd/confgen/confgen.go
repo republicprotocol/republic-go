@@ -42,6 +42,7 @@ func main() {
 			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnKovan.String(),
 			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnKovan.String(),
 			RenLedgerAddress:        ethereum.RenLedgerAddressOnKovan.String(),
+			RenExAccountsAddress:    ethereum.RenExAccountsAddressOnGanache.String(),
 		}
 	default:
 		log.Fatal("unrecognized network name")
