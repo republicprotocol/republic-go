@@ -94,7 +94,6 @@ func (builder *ShareBuilder) notify(id [32]byte, val uint64) {
 }
 
 func (builder *ShareBuilder) tryJoin(id [32]byte) (uint64, error) {
-	log.Println("trying to join value with", len(builder.shares[id]), "shares for", base64.StdEncoding.EncodeToString(id[:]))
 	if int64(len(builder.shares[id])) >= builder.k {
 		builder.sharesCache = builder.sharesCache[0:0]
 		k := int64(0)
