@@ -243,13 +243,11 @@ func (computer *computer) processComputations(done <-chan struct{}, insts chan<-
 func (computer *computer) processComputation(computation ComputationEpoch, pendingComputations map[[32]byte]ComputationEpoch, done <-chan struct{}, insts chan<- smpc.Inst) {
 	buy, err := computer.storer.OrderFragment(computation.Buy)
 	if err != nil {
-		log.Println(err)
 		pendingComputations[computation.ID] = computation
 		return
 	}
 	sell, err := computer.storer.OrderFragment(computation.Sell)
 	if err != nil {
-		log.Println(err)
 		pendingComputations[computation.ID] = computation
 		return
 	}
