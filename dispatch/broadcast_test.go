@@ -142,7 +142,7 @@ var _ = Describe("Broadcaster", func() {
 			}()
 
 			wg.Wait()
-		}, 10 /* 10 second timeout */)
+		}, 30 /* 30 second timeout */)
 
 		It("should send messages from many broadcasts to one listener", func() {
 
@@ -188,7 +188,7 @@ var _ = Describe("Broadcaster", func() {
 			}()
 
 			wg.Wait()
-		}, 120 /* 30 second timeout */)
+		}, 300 /* 5 minute timeout */)
 
 	})
 
