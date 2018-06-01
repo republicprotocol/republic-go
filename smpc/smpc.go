@@ -226,6 +226,8 @@ func (smpc *smpcer) instConnect(networkID [32]byte, inst InstConnect) {
 		}
 		go smpc.stream(addr, stream)
 
+		log.Println("connected!")
+
 		smpc.ctxCancelsMu.Lock()
 		if _, ok := smpc.ctxCancels[networkID]; !ok {
 			smpc.ctxCancels[networkID] = map[identity.Address]context.CancelFunc{}
