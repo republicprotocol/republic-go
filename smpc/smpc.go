@@ -330,7 +330,6 @@ func (smpc *smpcer) processMessageJ(message MessageJ) {
 	defer smpc.shareBuildersMu.RUnlock()
 
 	if shareBuilder, ok := smpc.shareBuilders[message.NetworkID]; ok {
-		log.Println("inserting value into share builder")
 		if err := shareBuilder.Insert(message.InstID, message.Share); err != nil {
 			if err == ErrInsufficientSharesToJoin {
 				return
