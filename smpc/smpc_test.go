@@ -62,19 +62,19 @@ var _ = Describe("Smpc", func() {
 	Context("when joining shares", func() {
 
 		It("should join shares to obtain final values", func() {
-			// Create 16 smpcers and issue 5 random secrets
+			// Create 6 smpcers and issue 5 random secrets
 			hub := stream.NewChannelHub()
-			count, err := runSmpcers(24, 5, 0, &hub)
+			count, err := runSmpcers(6, 5, 0, &hub)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(count).To(Equal(5))
 
 		})
 
 		It("should join shares when faults are below the threshold", func() {
-			// Create 24 smpcers and issue 5 random secrets
+			// Create 6 smpcers and issue 5 random secrets
 			// Do not start 1/3 of the smpcers (for example: 7)
 			hub := stream.NewChannelHub()
-			count, err := runSmpcers(24, 5, 8, &hub)
+			count, err := runSmpcers(6, 5, 2, &hub)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(count).To(Equal(5))
 		})
@@ -87,8 +87,8 @@ var _ = Describe("Smpc", func() {
 			go func() {
 				defer GinkgoRecover()
 
-				// Create 24 smpcers and do not start 16 smpcers
-				c, err := runSmpcers(24, 5, 16, &hub)
+				// Create 6 smpcers and do not start 4 smpcers
+				c, err := runSmpcers(6, 5, 4, &hub)
 				Expect(err).ShouldNot(HaveOccurred())
 				atomic.StoreInt32(&count, int32(c))
 			}()
