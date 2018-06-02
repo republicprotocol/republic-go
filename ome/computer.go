@@ -302,20 +302,21 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 
 	log.Printf("[stage => %v] processing computation: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 
-	invertingFlow := true
-	for invertingFlow {
-		select {
-		case <-done:
-			invertingFlow = false
-		case insts <- inst:
-			invertingFlow = false
-		case computation, ok := <-computer.computations:
-			if !ok {
-				invertingFlow = false
-				break
-			}
-			pendingComputations[computation.ID] = computation
+	// Write instruction
+	select {
+	case insts <- inst:
+	default:
+	}
+
+	// Invert flow if necessary
+	select {
+	case <-done:
+	case insts <- inst:
+	case computation, ok := <-computer.computations:
+		if !ok {
+			break
 		}
+		pendingComputations[computation.ID] = computation
 	}
 }
 
