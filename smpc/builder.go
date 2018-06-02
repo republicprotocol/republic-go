@@ -1,8 +1,6 @@
 package smpc
 
 import (
-	"encoding/base64"
-	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/shamir"
@@ -99,7 +97,6 @@ func (builder *ShareBuilder) Observe(id, networkID [32]byte, observer ShareBuild
 }
 
 func (builder *ShareBuilder) notify(id [32]byte, val uint64) {
-	log.Println("notifiying!")
 	if observers, ok := builder.observers[id]; ok {
 		for networkID, observer := range observers {
 			observer.OnNotifyBuild(id, networkID, val)
@@ -108,8 +105,6 @@ func (builder *ShareBuilder) notify(id [32]byte, val uint64) {
 }
 
 func (builder *ShareBuilder) tryJoin(id [32]byte) (uint64, error) {
-	log.Println("joining value", base64.StdEncoding.EncodeToString(id[:]), "with len", len(builder.shares[id]), "vs", builder.k)
-
 	if int64(len(builder.shares[id])) >= builder.k {
 		builder.sharesCache = builder.sharesCache[0:0]
 		k := int64(0)
