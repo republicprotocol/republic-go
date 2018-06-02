@@ -1,6 +1,8 @@
 package smpc
 
 import (
+	"encoding/base64"
+	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/shamir"
@@ -105,6 +107,7 @@ func (builder *ShareBuilder) notify(id [32]byte, val uint64) {
 }
 
 func (builder *ShareBuilder) tryJoin(id [32]byte) (uint64, error) {
+	log.Printf("[join => %v] value = %v", len(builder.shares[id]), base64.StdEncoding.EncodeToString(id[:8]))
 	if int64(len(builder.shares[id])) >= builder.k {
 		builder.sharesCache = builder.sharesCache[0:0]
 		k := int64(0)
