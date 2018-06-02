@@ -89,6 +89,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 			default:
 			}
 
+			log.Println("orderbook sync")
 			changeset, err := ome.orderbook.Sync()
 			if err != nil {
 				errs <- fmt.Errorf("cannot sync orderbook: %v", err)
@@ -99,10 +100,10 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 				continue
 			}
 
-			if time.Now().After(syncStart.Add(4 * time.Second)) {
+			if time.Now().After(syncStart.Add(14 * time.Second)) {
 				continue
 			}
-			time.Sleep(syncStart.Add(4 * time.Second).Sub(time.Now()))
+			time.Sleep(syncStart.Add(14 * time.Second).Sub(time.Now()))
 		}
 	}()
 

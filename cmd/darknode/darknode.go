@@ -123,9 +123,15 @@ func main() {
 		time.Sleep(time.Second)
 
 		// Bootstrap into the network
+		fmtStr := "bootstrapping\n"
+		for _, multiAddr := range config.BootstrapMultiAddresses {
+			fmtStr += "  " + multiAddr.String() + "\n"
+		}
+		log.Printf(fmtStr)
 		if err := swarmer.Bootstrap(context.Background(), config.BootstrapMultiAddresses); err != nil {
 			log.Printf("bootstrap: %v", err)
 		}
+		log.Printf("connected to %v peers", len(dht.MultiAddresses()))
 
 		done := make(chan struct{})
 		dispatch.CoBegin(func() {
@@ -140,6 +146,7 @@ func main() {
 		}, func() {
 			// Synchronizing the Darknode
 			for {
+				log.Println("sync ξ")
 				if err := darknode.Sync(); err != nil {
 					log.Printf("cannot sync darknode: %v", err)
 				}
