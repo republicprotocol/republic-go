@@ -9,6 +9,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 	"golang.org/x/net/context"
@@ -68,8 +69,9 @@ type smpcer struct {
 	lookupMu *sync.RWMutex
 	lookup   map[identity.Address]identity.MultiAddress
 
-	shareBuildersMu *sync.RWMutex
-	shareBuilders   map[[32]byte]*ShareBuilder
+	shareBuildersMu       *sync.RWMutex
+	shareBuilders         map[[32]byte]*ShareBuilder
+	shareBuildersJoinable map[[32]byte]bool
 
 	ctxCancelsMu *sync.Mutex
 	ctxCancels   map[[32]byte]map[identity.Address]context.CancelFunc
@@ -95,8 +97,9 @@ func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpc
 		lookupMu: new(sync.RWMutex),
 		lookup:   map[identity.Address]identity.MultiAddress{},
 
-		shareBuildersMu: new(sync.RWMutex),
-		shareBuilders:   map[[32]byte]*ShareBuilder{},
+		shareBuildersMu:       new(sync.RWMutex),
+		shareBuilders:         map[[32]byte]*ShareBuilder{},
+		shareBuildersJoinable: map[[32]byte]bool{},
 
 		ctxCancelsMu: new(sync.Mutex),
 		ctxCancels:   map[[32]byte]map[identity.Address]context.CancelFunc{},
@@ -274,7 +277,7 @@ func (smpc *smpcer) instJ(instID, networkID [32]byte, inst InstJ) {
 	if shareBuilder, ok := smpc.shareBuilders[networkID]; ok {
 		shareBuilder.Observe(instID, networkID, smpc)
 	}
-	smpc.processMessageJ(*msg.MessageJ)
+	smpc.processMessageJ(nil, *msg.MessageJ)
 
 	for _, addr := range smpc.network[networkID] {
 		go smpc.sendMessage(addr, &msg)
@@ -318,24 +321,44 @@ func (smpc *smpcer) stream(remoteAddr identity.Address, remoteStream stream.Stre
 
 		switch msg.MessageType {
 		case MessageTypeJ:
-			smpc.processMessageJ(*msg.MessageJ)
+			smpc.processMessageJ(&remoteAddr, *msg.MessageJ)
 		default:
 			log.Printf("cannot recv message from %v: %v", remoteAddr, ErrUnexpectedMessageType)
 		}
 	}
 }
 
-func (smpc *smpcer) processMessageJ(message MessageJ) {
+func (smpc *smpcer) processMessageJ(remoteAddr *identity.Address, message MessageJ) {
 	smpc.shareBuildersMu.RLock()
 	defer smpc.shareBuildersMu.RUnlock()
 
+	if remoteAddr == nil {
+		// we sent this message to ourselves
+		smpc.shareBuildersJoinable[message.InstID] = true
+	}
+
 	if shareBuilder, ok := smpc.shareBuilders[message.NetworkID]; ok {
+		if remoteAddr != nil {
+			shares := [16]shamir.Share{}
+			n := shareBuilder.Shares(message.InstID, shares[:])
+
+			for i := 0; i < n; i++ {
+				msg := Message{
+					MessageType: MessageTypeJ,
+					MessageJ: &MessageJ{
+						InstID:    message.InstID,
+						NetworkID: message.NetworkID,
+						Share:     shares[i],
+					},
+				}
+				go smpc.sendMessage(*remoteAddr, &msg)
+			}
+		}
 		if err := shareBuilder.Insert(message.InstID, message.Share); err != nil {
-			if err == ErrInsufficientSharesToJoin {
+			if err != ErrInsufficientSharesToJoin {
+				log.Printf("could not insert share: %v", err)
 				return
 			}
-			log.Printf("could not insert share: %v", err)
-			return
 		}
 	}
 }

@@ -36,6 +36,21 @@ func NewShareBuilder(k int64) *ShareBuilder {
 	}
 }
 
+func (builder *ShareBuilder) Shares(id [32]byte, buffer []shamir.Share) int {
+	builder.sharesMu.Lock()
+	defer builder.sharesMu.Unlock()
+
+	i := int64(0)
+	for _, share := range builder.shares[id] {
+		if i >= builder.k || i >= int64(len(buffer)) {
+			break
+		}
+		buffer[i] = share
+		i++
+	}
+	return int(i)
+}
+
 func (builder *ShareBuilder) Insert(id [32]byte, share shamir.Share) error {
 	builder.sharesMu.Lock()
 	defer builder.sharesMu.Unlock()
