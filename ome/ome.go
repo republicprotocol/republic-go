@@ -141,10 +141,10 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 				continue
 			}
 
-			if time.Now().After(syncStart.Add(4 * time.Second)) {
+			if time.Now().After(syncStart.Add(14 * time.Second)) {
 				continue
 			}
-			time.Sleep(syncStart.Add(4 * time.Second).Sub(time.Now()))
+			time.Sleep(syncStart.Add(14 * time.Second).Sub(time.Now()))
 		}
 	}()
 
