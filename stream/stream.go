@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding"
 	"errors"
-	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -95,10 +94,8 @@ func NewStreamer(addr identity.Address, client Client, server Server) Streamer {
 func (streamer streamer) Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
 	addr := multiAddr.Address()
 	if streamer.addr < addr {
-		log.Println("client connecting to server")
 		return streamer.client.Connect(ctx, multiAddr)
 	}
-	log.Println("server listening to client")
 	return streamer.server.Listen(ctx, addr)
 }
 

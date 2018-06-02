@@ -243,12 +243,10 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 	buy, err := computer.storer.OrderFragment(computation.Buy)
 	if err != nil {
 		pendingComputations[computation.ID] = computation
-		log.Printf("cannot find buy order %v", base64.StdEncoding.EncodeToString(computation.Buy[:]))
 		return
 	}
 	sell, err := computer.storer.OrderFragment(computation.Sell)
 	if err != nil {
-		log.Printf("cannot find sell order %v", base64.StdEncoding.EncodeToString(computation.Buy[:]))
 		pendingComputations[computation.ID] = computation
 		return
 	}
@@ -312,7 +310,7 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 		},
 	}
 
-	log.Printf("sending computation: buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
+	log.Printf("[=> %v] sending computation: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
 
 	invertingFlow := true
 	for invertingFlow {

@@ -157,7 +157,6 @@ func (smpc *smpcer) Results() <-chan Result {
 // notify the Smpcer that a value of interest has been reconstructed by the
 // ShareBuilder.
 func (smpc *smpcer) OnNotifyBuild(id, networkID [32]byte, value uint64) {
-	log.Println("notified successfully!")
 	result := Result{
 		InstID:    id,
 		NetworkID: networkID,
