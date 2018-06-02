@@ -71,7 +71,8 @@ type smpcer struct {
 
 	shareBuildersMu       *sync.RWMutex
 	shareBuilders         map[[32]byte]*ShareBuilder
-	shareBuildersJoinable map[[32]byte]bool
+	shareBuildersJoinable map[[32]byte]shamir.Share
+	shareBuildersRoutes   map[[32]byte]map[identity.Address]struct{}
 
 	ctxCancelsMu *sync.Mutex
 	ctxCancels   map[[32]byte]map[identity.Address]context.CancelFunc
@@ -99,7 +100,8 @@ func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpc
 
 		shareBuildersMu:       new(sync.RWMutex),
 		shareBuilders:         map[[32]byte]*ShareBuilder{},
-		shareBuildersJoinable: map[[32]byte]bool{},
+		shareBuildersJoinable: map[[32]byte]shamir.Share{},
+		shareBuildersRoutes:   map[[32]byte]map[identity.Address]struct{}{},
 
 		ctxCancelsMu: new(sync.Mutex),
 		ctxCancels:   map[[32]byte]map[identity.Address]context.CancelFunc{},
@@ -332,29 +334,32 @@ func (smpc *smpcer) processMessageJ(remoteAddr *identity.Address, message Messag
 	smpc.shareBuildersMu.RLock()
 	defer smpc.shareBuildersMu.RUnlock()
 
+	if _, ok := smpc.shareBuildersRoutes[message.InstID]; !ok {
+		smpc.shareBuildersRoutes[message.InstID] = map[identity.Address]struct{}{}
+	}
+
 	if remoteAddr == nil {
-		// we sent this message to ourselves
-		smpc.shareBuildersJoinable[message.InstID] = true
+		// we sent this message to ourselves so we store the share for
+		// forwarding to senders
+		smpc.shareBuildersJoinable[message.InstID] = message.Share
 	}
 
 	if shareBuilder, ok := smpc.shareBuilders[message.NetworkID]; ok {
 		if remoteAddr != nil {
-			go func() {
-				shares := [16]shamir.Share{}
-				n := shareBuilder.Shares(message.InstID, shares[:])
 
-				for i := 0; i < n; i++ {
-					msg := Message{
-						MessageType: MessageTypeJ,
-						MessageJ: &MessageJ{
-							InstID:    message.InstID,
-							NetworkID: message.NetworkID,
-							Share:     shares[i],
-						},
-					}
-					smpc.sendMessage(*remoteAddr, &msg)
+			if _, ok := smpc.shareBuildersRoutes[message.InstID][*remoteAddr]; !ok {
+				msg := Message{
+					MessageType: MessageTypeJ,
+					MessageJ: &MessageJ{
+						InstID:    message.InstID,
+						NetworkID: message.NetworkID,
+						Share:     smpc.shareBuildersJoinable[message.InstID],
+					},
 				}
-			}()
+				go smpc.sendMessage(*remoteAddr, &msg)
+				smpc.shareBuildersRoutes[message.InstID][*remoteAddr] = struct{}{}
+			}
+
 		}
 		if err := shareBuilder.Insert(message.InstID, message.Share); err != nil {
 			if err != ErrInsufficientSharesToJoin {
