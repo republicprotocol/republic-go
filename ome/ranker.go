@@ -88,9 +88,9 @@ func (ranker *ranker) InsertBuy(order PriorityOrder) {
 		index := sort.Search(len(ranker.computations), func(i int) bool {
 			return ranker.computations[i].Priority > computation.Priority
 		})
-		ranker.computations = append(ranker.computations, Computation{})
-		copy(ranker.computations[index+1:], ranker.computations[index:])
-		ranker.computations[index] = computation
+		ranker.computations = append(
+			ranker.computations[:index],
+			append([]Computation{computation}, ranker.computations[index:]...)...)
 	}
 }
 
@@ -115,9 +115,9 @@ func (ranker *ranker) InsertSell(order PriorityOrder) {
 		index := sort.Search(len(ranker.computations), func(i int) bool {
 			return ranker.computations[i].Priority > computation.Priority
 		})
-		ranker.computations = append(ranker.computations, Computation{})
-		copy(ranker.computations[index+1:], ranker.computations[index:])
-		ranker.computations[index] = computation
+		ranker.computations = append(
+			ranker.computations[:index],
+			append([]Computation{computation}, ranker.computations[index:]...)...)
 	}
 }
 
