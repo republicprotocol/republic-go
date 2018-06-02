@@ -313,6 +313,7 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 	case <-done:
 	case insts <- inst:
 	case computation, ok := <-computer.computations:
+		log.Printf("compute inversion: buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 		if !ok {
 			break
 		}
