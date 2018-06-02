@@ -339,20 +339,22 @@ func (smpc *smpcer) processMessageJ(remoteAddr *identity.Address, message Messag
 
 	if shareBuilder, ok := smpc.shareBuilders[message.NetworkID]; ok {
 		if remoteAddr != nil {
-			shares := [16]shamir.Share{}
-			n := shareBuilder.Shares(message.InstID, shares[:])
+			go func() {
+				shares := [16]shamir.Share{}
+				n := shareBuilder.Shares(message.InstID, shares[:])
 
-			for i := 0; i < n; i++ {
-				msg := Message{
-					MessageType: MessageTypeJ,
-					MessageJ: &MessageJ{
-						InstID:    message.InstID,
-						NetworkID: message.NetworkID,
-						Share:     shares[i],
-					},
+				for i := 0; i < n; i++ {
+					msg := Message{
+						MessageType: MessageTypeJ,
+						MessageJ: &MessageJ{
+							InstID:    message.InstID,
+							NetworkID: message.NetworkID,
+							Share:     shares[i],
+						},
+					}
+					smpc.sendMessage(*remoteAddr, &msg)
 				}
-				go smpc.sendMessage(*remoteAddr, &msg)
-			}
+			}()
 		}
 		if err := shareBuilder.Insert(message.InstID, message.Share); err != nil {
 			if err != ErrInsufficientSharesToJoin {
