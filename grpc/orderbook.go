@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -10,29 +9,6 @@ import (
 	"github.com/republicprotocol/republic-go/orderbook"
 	"golang.org/x/net/context"
 )
-
-type OrderbookService struct {
-	server orderbook.Server
-}
-
-// NewOrderbookService returns a gRPC service that unmarshals
-// EncryptedOrderFragments and delegates control to an orderbook.Service.
-func NewOrderbookService(server orderbook.Server) OrderbookService {
-	return OrderbookService{
-		server: server,
-	}
-}
-
-// Register the OrderbookService to a Server.
-func (service *OrderbookService) Register(server *Server) {
-	RegisterOrderbookServiceServer(server.Server, service)
-}
-
-// OpenOrder implements the gRPC service for receiving EncryptedOrderFragments.
-func (service *OrderbookService) OpenOrder(ctx context.Context, request *OpenOrderRequest) (*OpenOrderResponse, error) {
-	log.Printf("opening order using order fragment...")
-	return &OpenOrderResponse{}, service.server.OpenOrder(ctx, unmarshalEncryptedOrderFragment(request.OrderFragment))
-}
 
 type orderbookClient struct {
 	connPool *ConnPool
@@ -60,6 +36,28 @@ func (client *orderbookClient) OpenOrder(ctx context.Context, multiAddr identity
 	_, err = NewOrderbookServiceClient(conn.ClientConn).OpenOrder(ctx, request)
 
 	return err
+}
+
+type OrderbookService struct {
+	server orderbook.Server
+}
+
+// NewOrderbookService returns a gRPC service that unmarshals
+// EncryptedOrderFragments and delegates control to an orderbook.Service.
+func NewOrderbookService(server orderbook.Server) OrderbookService {
+	return OrderbookService{
+		server: server,
+	}
+}
+
+// Register the OrderbookService to a Server.
+func (service *OrderbookService) Register(server *Server) {
+	RegisterOrderbookServiceServer(server.Server, service)
+}
+
+// OpenOrder implements the gRPC service for receiving EncryptedOrderFragments.
+func (service *OrderbookService) OpenOrder(ctx context.Context, request *OpenOrderRequest) (*OpenOrderResponse, error) {
+	return &OpenOrderResponse{}, service.server.OpenOrder(ctx, unmarshalEncryptedOrderFragment(request.OrderFragment))
 }
 
 func marshalEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *EncryptedOrderFragment {

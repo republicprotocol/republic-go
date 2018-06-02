@@ -17,29 +17,59 @@ var ErrAlreadyRegistered = errors.New("client has already been registered with t
 // channelStream must not be used unless it was returned from a call to
 // channelStreamer.Open.
 type channelStream struct {
-	send chan []byte
-	recv chan []byte
+	sendMu *sync.RWMutex
+	send   chan []byte
+	recvMu *sync.RWMutex
+	recv   chan []byte
+	closed *bool
 }
 
 // Send implements the Stream interface by marshaling the Message to binary and
 // writing it to the sending channel.
 func (stream channelStream) Send(message Message) error {
+	stream.sendMu.RLock()
+	defer stream.sendMu.RUnlock()
+
+	if *stream.closed {
+		return ErrSendOnClosedStream
+	}
 	data, err := message.MarshalBinary()
 	if err != nil {
 		return err
 	}
 	stream.send <- data
-	return nil
+	return err
 }
 
 // Recv implements the Stream interface by reading from the receiving channel
 // and unmarshaling the data into a Message.
 func (stream channelStream) Recv(message Message) error {
+	stream.recvMu.RLock()
+	defer stream.recvMu.RUnlock()
+
+	if *stream.closed {
+		return ErrRecvOnClosedStream
+	}
 	data, ok := <-stream.recv
 	if !ok {
 		return ErrRecvOnClosedStream
 	}
 	return message.UnmarshalBinary(data)
+}
+
+func (stream channelStream) Close() {
+	stream.sendMu.Lock()
+	stream.recvMu.Lock()
+	defer stream.sendMu.Unlock()
+	defer stream.recvMu.Unlock()
+
+	if *stream.closed {
+		return
+	}
+
+	close(stream.send)
+	close(stream.recv)
+	*stream.closed = true
 }
 
 // A ChannelHub will store a map of all active channelStreams between
@@ -57,7 +87,7 @@ func NewChannelHub() ChannelHub {
 	}
 }
 
-func (hub *ChannelHub) register(clientAddr, serverAddr identity.Address) Stream {
+func (hub *ChannelHub) register(clientAddr, serverAddr identity.Address) channelStream {
 	hub.connsMu.Lock()
 	defer hub.connsMu.Unlock()
 
@@ -73,11 +103,8 @@ func (hub *ChannelHub) register(clientAddr, serverAddr identity.Address) Stream 
 	// and panic for clarity and easier debugging
 	_, clientOk := hub.conns[clientAddr][serverAddr]
 	_, serverOk := hub.conns[serverAddr][clientAddr]
-	if clientOk && !serverOk {
+	if (clientOk && !serverOk) || serverOk && !clientOk {
 		panic("assymetric connection from client to server")
-	}
-	if serverOk && !clientOk {
-		panic("assymetric connection from server to client")
 	}
 
 	// A symmetric connection has already been established
@@ -86,13 +113,20 @@ func (hub *ChannelHub) register(clientAddr, serverAddr identity.Address) Stream 
 	}
 
 	// Build a symmetric connection between the client and the server
+	closed := false
 	hub.conns[clientAddr][serverAddr] = channelStream{
-		send: make(chan []byte),
-		recv: make(chan []byte),
+		sendMu: new(sync.RWMutex),
+		send:   make(chan []byte),
+		recvMu: new(sync.RWMutex),
+		recv:   make(chan []byte),
+		closed: &closed,
 	}
 	hub.conns[serverAddr][clientAddr] = channelStream{
-		send: hub.conns[clientAddr][serverAddr].recv,
-		recv: hub.conns[clientAddr][serverAddr].send,
+		sendMu: hub.conns[clientAddr][serverAddr].recvMu,
+		send:   hub.conns[clientAddr][serverAddr].recv,
+		recvMu: hub.conns[clientAddr][serverAddr].sendMu,
+		recv:   hub.conns[clientAddr][serverAddr].send,
+		closed: &closed,
 	}
 	return hub.conns[clientAddr][serverAddr]
 }
@@ -116,5 +150,10 @@ func NewChannelStreamer(addr identity.Address, hub *ChannelHub) Streamer {
 // Open implements the Streamer interface by using the ChannelHub to register
 // connections between two identity.Addresses.
 func (streamer *channelStreamer) Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
-	return streamer.hub.register(streamer.addr, multiAddr.Address()), nil
+	stream := streamer.hub.register(streamer.addr, multiAddr.Address())
+	go func() {
+		<-ctx.Done()
+		stream.Close()
+	}()
+	return stream, nil
 }

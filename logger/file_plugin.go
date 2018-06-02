@@ -76,7 +76,7 @@ func (plugin *FilePlugin) Log(l Log) error {
 			tag = "{" + strings.Join(tags, ",") + "} "
 		}
 
-		_, err := plugin.file.WriteString(fmt.Sprintf("%s [%s] (%s) %s%s\n", l.Timestamp.Format("2006/01/02 15:04:05"), l.Type, l.EventType, tag, l.Event.String()))
+		_, err := plugin.file.WriteString(fmt.Sprintf("%s [%s] (%s) %s%s\n", l.Timestamp.Format("2006/01/02 15:04:05"), l.Level, l.EventType, tag, l.Event.String()))
 		return err
 	}
 	return json.NewEncoder(plugin.file).Encode(l)

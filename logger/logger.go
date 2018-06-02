@@ -11,13 +11,12 @@ import (
 )
 
 var defaultLoggerMu = new(sync.RWMutex)
-
-// DefaultLogger is used when no Logger object is used to log events.
-var DefaultLogger = func() *Logger {
+var defaultLogger = func() *Logger {
 	logger, err := NewLogger(Options{
 		Plugins: []PluginOptions{
 			PluginOptions{File: &FilePluginOptions{Path: "stdout"}, WebSocket: nil},
 		},
+		FilterLevel: LevelWarn,
 	})
 	if err != nil {
 		panic(fmt.Sprintf("cannot init default logger: %v", err))
@@ -26,96 +25,115 @@ var DefaultLogger = func() *Logger {
 	return logger
 }()
 
+// SetFilterLevel changes the logging level of the defaultLogger.
+func SetFilterLevel(l Level) {
+	defaultLoggerMu.Lock()
+	defer defaultLoggerMu.Unlock()
+	defaultLogger.FilterLevel = l
+}
+
+// SetFilterEvents sets the defaultLogger to filter specific EventTypes.
+func SetFilterEvents(events []EventType) {
+	defaultLoggerMu.Lock()
+	defer defaultLoggerMu.Unlock()
+	defaultLogger.FilterEvents = eventListToMap(events)
+}
+
 // SetDefaultLogger to a specific Logger object. The previous DefaultLogger
 // will be stopped, and the new DefaultLogger will be started.
 func SetDefaultLogger(logger *Logger) {
 	defaultLoggerMu.Lock()
-	defer defaultLoggerMu.Lock()
-	DefaultLogger.Stop()
-	DefaultLogger = logger
+	defer defaultLoggerMu.Unlock()
+	defaultLogger.Stop()
+	defaultLogger = logger
+	defaultLogger.Start()
 }
 
-// LogInfo logs an info Log using a GenericEvent using the DefaultLogger.
-func LogInfo(message string) {
+// Info logs an info Log using a GenericEvent using the DefaultLogger.
+func Info(message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.Info(message)
+	defaultLogger.Info(message)
 }
 
-// LogWarn logs a warn Log using a GenericEvent using the DefaultLogger.
-func LogWarn(message string) {
+// Warn logs a warn Log using a GenericEvent using the DefaultLogger.
+func Warn(message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.Warn(message)
+	defaultLogger.Warn(message)
 }
 
-// LogError logs an error Log using a GenericEvent using the DefaultLogger.
-func LogError(message string) {
+// Error logs an error Log using a GenericEvent using the DefaultLogger.
+func Error(message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.Error(message)
+	defaultLogger.Error(message)
 }
 
-// LogUsage logs an info Log using a UsageEvent using the DefaultLogger.
-func LogUsage(cpu, memory float64, network uint64) {
+// Usage logs an info Log using a UsageEvent using the DefaultLogger.
+func Usage(cpu, memory float64, network uint64) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.Usage(cpu, memory, network)
+	defaultLogger.Usage(cpu, memory, network)
 }
 
-// LogOrderConfirmed logs an OrderConfirmedEvent using the DefaultLogger.
-func LogOrderConfirmed(ty Level, orderID string) {
+// OrderConfirmed logs an OrderConfirmedEvent using the DefaultLogger.
+func OrderConfirmed(ty Level, orderID string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.OrderConfirmed(ty, orderID)
+	defaultLogger.OrderConfirmed(ty, orderID)
 }
 
-// LogOrderMatch logs an OrderMatchEvent using the DefaultLogger.
-func LogOrderMatch(ty Level, id, buyID, sellID string) {
+// OrderMatch logs an OrderMatchEvent using the DefaultLogger.
+func OrderMatch(ty Level, id, buyID, sellID string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.OrderMatch(ty, id, buyID, sellID)
+	defaultLogger.OrderMatch(ty, id, buyID, sellID)
 }
 
-// LogBuyOrderReceived logs an OrderReceivedEvent using the DefaultLogger.
-func LogBuyOrderReceived(ty Level, id, fragmentID string) {
+// BuyOrderReceived logs an OrderReceivedEvent using the DefaultLogger.
+func BuyOrderReceived(ty Level, id, fragmentID string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.BuyOrderReceived(ty, id, fragmentID)
+	defaultLogger.BuyOrderReceived(ty, id, fragmentID)
 }
 
-// LogSellOrderReceived logs an OrderReceivedEvent using the DefaultLogger.
-func LogSellOrderReceived(ty Level, id, fragmentID string) {
+// SellOrderReceived logs an OrderReceivedEvent using the DefaultLogger.
+func SellOrderReceived(ty Level, id, fragmentID string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.SellOrderReceived(ty, id, fragmentID)
+	defaultLogger.SellOrderReceived(ty, id, fragmentID)
 }
 
-// LogNetwork logs a NetworkEvent using the DefaultLogger.
-func LogNetwork(ty Level, message string) {
+// Network logs a NetworkEvent using the DefaultLogger.
+func Network(ty Level, message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.Network(ty, message)
+	defaultLogger.Network(ty, message)
 }
 
-// LogCompute logs a ComputeEvent using the DefaultLogger.
-func LogCompute(ty Level, message string) {
+// Compute logs a ComputeEvent using the DefaultLogger.
+func Compute(ty Level, message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	DefaultLogger.Compute(ty, message)
+	defaultLogger.Compute(ty, message)
 }
 
 // Logger handles distributing logs to plugins registered with it
 type Logger struct {
 	do.GuardedObject
-	Plugins []Plugin
-	Tags    map[string]string
+	Plugins      []Plugin
+	Tags         map[string]string
+	FilterLevel  Level
+	FilterEvents map[EventType]struct{}
 }
 
 // Options are used to Unmarshal a Logger from JSON.
 type Options struct {
-	Plugins []PluginOptions   `json:"plugins"`
-	Tags    map[string]string `json:"tags"`
+	Plugins      []PluginOptions   `json:"plugins"`
+	Tags         map[string]string `json:"tags"`
+	FilterLevel  Level             `json:"filterLevel"`
+	FilterEvents []EventType       `json:"filterEvents"`
 }
 
 // The Plugin interface describes a worker that consumes logs
@@ -131,12 +149,23 @@ type PluginOptions struct {
 	WebSocket *WebSocketPluginOptions `json:"websocket,omitempty"`
 }
 
+func eventListToMap(events []EventType) map[EventType]struct{} {
+	// Convert the events from an array into a map for O(1) lookup
+	eventMap := make(map[EventType]struct{})
+	for _, event := range events {
+		eventMap[event] = struct{}{}
+	}
+	return eventMap
+}
+
 // NewLogger returns a new Logger that will start and stop a set of plugins.
 func NewLogger(options Options) (*Logger, error) {
 	logger := &Logger{
 		GuardedObject: do.NewGuardedObject(),
 		Plugins:       make([]Plugin, 0, len(options.Plugins)),
 		Tags:          options.Tags,
+		FilterLevel:   options.FilterLevel,
+		FilterEvents:  eventListToMap(options.FilterEvents),
 	}
 	for i := range options.Plugins {
 		if options.Plugins[i].File != nil {
@@ -174,20 +203,25 @@ func (logger Logger) Stop() {
 
 // Log an Event.
 func (logger *Logger) Log(l Log) {
-	l.Tags = logger.Tags
-	for _, plugin := range logger.Plugins {
-		if err := plugin.Log(l); err != nil {
-			log.Println(err)
+	if _, ok := logger.FilterEvents[l.EventType]; !ok && len(logger.FilterEvents) > 0 {
+		return
+	}
+	if l.Level <= logger.FilterLevel {
+		l.Tags = logger.Tags
+		for _, plugin := range logger.Plugins {
+			if err := plugin.Log(l); err != nil {
+				log.Println(err)
+			}
 		}
 	}
 }
 
-// Info logs an info Log using a GenericEvent.
-func (logger *Logger) Info(message string) {
+// Error logs an error Log using a GenericEvent.
+func (logger *Logger) Error(message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      LevelInfo,
-		EventType: Generic,
+		Level:     LevelError,
+		EventType: TypeGeneric,
 		Event: GenericEvent{
 			Message: message,
 		},
@@ -198,20 +232,56 @@ func (logger *Logger) Info(message string) {
 func (logger *Logger) Warn(message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      Warn,
-		EventType: Generic,
+		Level:     LevelWarn,
+		EventType: TypeGeneric,
 		Event: GenericEvent{
 			Message: message,
 		},
 	})
 }
 
-// Error logs an error Log using a GenericEvent.
-func (logger *Logger) Error(message string) {
+// Info logs an info Log using a GenericEvent.
+func (logger *Logger) Info(message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      Error,
-		EventType: Generic,
+		Level:     LevelInfo,
+		EventType: TypeGeneric,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
+}
+
+// DebugHigh logs a debug Log using a GenericEvent.
+func (logger *Logger) DebugHigh(message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Level:     LevelDebugHigh,
+		EventType: TypeGeneric,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
+}
+
+// Debug logs a debug Log using a GenericEvent.
+func (logger *Logger) Debug(message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Level:     LevelDebug,
+		EventType: TypeGeneric,
+		Event: GenericEvent{
+			Message: message,
+		},
+	})
+}
+
+// DebugLow logs a debug Log using a GenericEvent.
+func (logger *Logger) DebugLow(message string) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Level:     LevelDebugLow,
+		EventType: TypeGeneric,
 		Event: GenericEvent{
 			Message: message,
 		},
@@ -222,8 +292,8 @@ func (logger *Logger) Error(message string) {
 func (logger *Logger) Usage(cpu, memory float64, network uint64) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      LevelInfo,
-		EventType: Usage,
+		Level:     LevelInfo,
+		EventType: TypeUsage,
 		Event: UsageEvent{
 			CPU:     cpu,
 			Memory:  memory,
@@ -236,8 +306,8 @@ func (logger *Logger) Usage(cpu, memory float64, network uint64) {
 func (logger *Logger) OrderConfirmed(ty Level, orderID string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      ty,
-		EventType: OrderConfirmed,
+		Level:     ty,
+		EventType: TypeOrderConfirmed,
 		Event: OrderConfirmedEvent{
 			OrderID: orderID,
 		},
@@ -248,8 +318,8 @@ func (logger *Logger) OrderConfirmed(ty Level, orderID string) {
 func (logger *Logger) OrderMatch(ty Level, id, buyID, sellID string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      ty,
-		EventType: OrderMatch,
+		Level:     ty,
+		EventType: TypeOrderMatch,
 		Event: OrderMatchEvent{
 			ID:     id,
 			BuyID:  buyID,
@@ -262,8 +332,8 @@ func (logger *Logger) OrderMatch(ty Level, id, buyID, sellID string) {
 func (logger *Logger) BuyOrderReceived(ty Level, id, fragmentID string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      ty,
-		EventType: OrderReceived,
+		Level:     ty,
+		EventType: TypeOrderReceived,
 		Event: OrderReceivedEvent{
 			BuyID:      &id,
 			FragmentID: fragmentID,
@@ -275,8 +345,8 @@ func (logger *Logger) BuyOrderReceived(ty Level, id, fragmentID string) {
 func (logger *Logger) SellOrderReceived(ty Level, id, fragmentID string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      ty,
-		EventType: OrderReceived,
+		Level:     ty,
+		EventType: TypeOrderReceived,
 		Event: OrderReceivedEvent{
 			SellID:     &id,
 			FragmentID: fragmentID,
@@ -288,8 +358,8 @@ func (logger *Logger) SellOrderReceived(ty Level, id, fragmentID string) {
 func (logger *Logger) Network(ty Level, message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      ty,
-		EventType: Network,
+		Level:     ty,
+		EventType: TypeNetwork,
 		Event: NetworkEvent{
 			Message: message,
 		},
@@ -300,8 +370,8 @@ func (logger *Logger) Network(ty Level, message string) {
 func (logger *Logger) Compute(ty Level, message string) {
 	logger.Log(Log{
 		Timestamp: time.Now(),
-		Type:      ty,
-		EventType: Compute,
+		Level:     ty,
+		EventType: TypeCompute,
 		Event: ComputeEvent{
 			Message: message,
 		},
@@ -309,14 +379,30 @@ func (logger *Logger) Compute(ty Level, message string) {
 }
 
 // Level defines the different levels of Log messages that can be sent.
-type Level string
+type Level uint8
 
 // Values for the LogType.
 const (
-	LevelInfo = Level("info")
-	Warn      = Level("warn")
-	Error     = Level("error")
+	LevelError     = Level(1)
+	LevelWarn      = Level(2)
+	LevelInfo      = Level(3)
+	LevelDebugHigh = Level(4)
+	LevelDebug     = Level(5)
+	LevelDebugLow  = Level(6)
 )
+
+func (level Level) String() string {
+	switch level {
+	case LevelError:
+		return "error"
+	case LevelWarn:
+		return "warn"
+	case LevelInfo:
+		return "info"
+	default:
+		return "debug"
+	}
+}
 
 // EventType defines the different types of Event messages that can be sent in a
 // Log.
@@ -324,21 +410,21 @@ type EventType string
 
 // Values for the EventType.
 const (
-	Generic        = EventType("generic")
-	Epoch          = EventType("epoch")
-	Usage          = EventType("usage")
-	Ethereum       = EventType("ethereum")
-	OrderConfirmed = EventType("orderConfirmed")
-	OrderMatch     = EventType("orderMatch")
-	OrderReceived  = EventType("orderReceived")
-	Network        = EventType("network")
-	Compute        = EventType("compute")
+	TypeGeneric        = EventType("generic")
+	TypeEpoch          = EventType("epoch")
+	TypeUsage          = EventType("usage")
+	TypeEthereum       = EventType("ethereum")
+	TypeOrderConfirmed = EventType("orderConfirmed")
+	TypeOrderMatch     = EventType("orderMatch")
+	TypeOrderReceived  = EventType("orderReceived")
+	TypeNetwork        = EventType("network")
+	TypeCompute        = EventType("compute")
 )
 
 // A Log is logged by the Logger using all available Plugins.
 type Log struct {
 	Timestamp time.Time         `json:"timestamp"`
-	Type      Level             `json:"type"`
+	Level     Level             `json:"type"`
 	EventType EventType         `json:"eventType"`
 	Event     Event             `json:"event"`
 	Tags      map[string]string `json:"tags"`

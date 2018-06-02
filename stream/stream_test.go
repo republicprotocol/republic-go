@@ -14,7 +14,7 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 )
 
-const numberOfNodes = 128
+const numberOfNodes = 32
 
 var _ = Describe("Streaming", func() {
 
@@ -137,6 +137,8 @@ var _ = Describe("Streaming", func() {
 
 			// Cancel all but the last connection
 			for i := 0; i < numberOfNodes; i++ {
+				clients[i].streamsMu.Lock()
+				servers[i].streamsMu.Lock()
 				for j := 0; j < numberOfNodes; j++ {
 					if i == j {
 						continue
@@ -146,6 +148,8 @@ var _ = Describe("Streaming", func() {
 						Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(numberOfNodes - 1))
 					}
 				}
+				clients[i].streamsMu.Unlock()
+				servers[i].streamsMu.Unlock()
 			}
 
 			// Cancel the last connection
@@ -159,14 +163,18 @@ var _ = Describe("Streaming", func() {
 			}
 
 			// Expect shutdown of streams
-			time.Sleep(time.Millisecond)
+			time.Sleep(time.Second)
 			for i := 0; i < numberOfNodes; i++ {
+				clients[i].streamsMu.Lock()
+				servers[i].streamsMu.Lock()
 				for j := 0; j < numberOfNodes; j++ {
 					if i == j {
 						continue
 					}
 					Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(0))
 				}
+				clients[i].streamsMu.Unlock()
+				servers[i].streamsMu.Unlock()
 			}
 		})
 	})

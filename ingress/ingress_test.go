@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	mathRand "math/rand"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -276,16 +277,21 @@ func (darkpool *mockDarkpool) IsRegistered(addr identity.Address) (bool, error) 
 }
 
 type mockRenLedger struct {
+	mu          *sync.Mutex
 	orderStates map[string]struct{}
 }
 
 func newMockRenLedger() mockRenLedger {
 	return mockRenLedger{
+		mu:          new(sync.Mutex),
 		orderStates: map[string]struct{}{},
 	}
 }
 
 func (renLedger *mockRenLedger) OpenBuyOrder(signature [65]byte, orderID order.ID) error {
+	renLedger.mu.Lock()
+	defer renLedger.mu.Unlock()
+
 	if _, ok := renLedger.orderStates[string(orderID[:])]; !ok {
 		renLedger.orderStates[string(orderID[:])] = struct{}{}
 		return nil
@@ -294,6 +300,9 @@ func (renLedger *mockRenLedger) OpenBuyOrder(signature [65]byte, orderID order.I
 }
 
 func (renLedger *mockRenLedger) OpenSellOrder(signature [65]byte, orderID order.ID) error {
+	renLedger.mu.Lock()
+	defer renLedger.mu.Unlock()
+
 	if _, ok := renLedger.orderStates[string(orderID[:])]; !ok {
 		renLedger.orderStates[string(orderID[:])] = struct{}{}
 		return nil
@@ -302,6 +311,9 @@ func (renLedger *mockRenLedger) OpenSellOrder(signature [65]byte, orderID order.
 }
 
 func (renLedger *mockRenLedger) CancelOrder(signature [65]byte, orderID order.ID) error {
+	renLedger.mu.Lock()
+	defer renLedger.mu.Unlock()
+
 	if _, ok := renLedger.orderStates[string(orderID[:])]; ok {
 		delete(renLedger.orderStates, string(orderID[:]))
 		return nil
@@ -310,6 +322,9 @@ func (renLedger *mockRenLedger) CancelOrder(signature [65]byte, orderID order.ID
 }
 
 func (renLedger *mockRenLedger) ConfirmOrder(id order.ID, match order.ID) error {
+	renLedger.mu.Lock()
+	defer renLedger.mu.Unlock()
+
 	if _, ok := renLedger.orderStates[string(id[:])]; ok {
 		delete(renLedger.orderStates, string(id[:]))
 		matches := []order.ID{match}
@@ -326,6 +341,9 @@ func (renLedger *mockRenLedger) ConfirmOrder(id order.ID, match order.ID) error 
 }
 
 func (renLedger *mockRenLedger) Fee() (*big.Int, error) {
+	renLedger.mu.Lock()
+	defer renLedger.mu.Unlock()
+
 	return big.NewInt(0), nil
 }
 

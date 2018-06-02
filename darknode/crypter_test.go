@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
+	"runtime"
 	"time"
 
 	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 
 	. "github.com/onsi/ginkgo"
@@ -51,7 +53,7 @@ var _ = Describe("Crypter", func() {
 	Context("when verifying signatures", func() {
 
 		It("should return an error for unregistered addresses", func() {
-			for i := 0; i < 10; i++ {
+			dispatch.CoForAll(runtime.NumCPU(), func(i int) {
 				keystore, err := crypto.RandomKeystore()
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -59,7 +61,7 @@ var _ = Describe("Crypter", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				err = crypter.Verify(crypto.Keccak256(message), signature)
 				Expect(err).Should(HaveOccurred())
-			}
+			})
 		})
 
 		It("should not return an error for registered addresses", func() {
@@ -93,13 +95,13 @@ var _ = Describe("Crypter", func() {
 		})
 
 		It("should not encrypt messages for unregistered addresses", func() {
-			for i := 0; i < 10; i++ {
+			dispatch.CoForAll(runtime.NumCPU(), func(i int) {
 				keystore, err := crypto.RandomKeystore()
 				Expect(err).ShouldNot(HaveOccurred())
 
 				_, err = crypter.Encrypt(keystore.Address(), message[:])
 				Expect(err).Should(HaveOccurred())
-			}
+			})
 		})
 
 	})

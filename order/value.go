@@ -57,8 +57,12 @@ func (val *CoExp) UnmarshalJSON(data []byte) error {
 // MarshalBinary implements the encoding.BinaryMarshaler interface.
 func (val CoExp) MarshalBinary() (data []byte, err error) {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, val.Co)
-	binary.Write(buf, binary.BigEndian, val.Exp)
+	if err := binary.Write(buf, binary.BigEndian, val.Co); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, val.Exp); err != nil {
+		return nil, err
+	}
 	return buf.Bytes(), nil
 }
 
@@ -199,8 +203,12 @@ func (val *EncryptedCoExpShare) UnmarshalJSON(data []byte) error {
 // marshals the EncryptedCoExpShare using encoding.BigEndian.
 func (val EncryptedCoExpShare) MarshalBinary() ([]byte, error) {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, val.Co)
-	binary.Write(buf, binary.BigEndian, val.Exp)
+	if err := binary.Write(buf, binary.BigEndian, val.Co); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, val.Exp); err != nil {
+		return nil, err
+	}
 	return buf.Bytes(), nil
 }
 
