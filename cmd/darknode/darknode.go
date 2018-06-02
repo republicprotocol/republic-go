@@ -142,9 +142,8 @@ func main() {
 			for {
 				if err := darknode.Sync(); err != nil {
 					log.Printf("cannot sync darknode: %v", err)
-					continue
 				}
-				time.Sleep(time.Second * 2)
+				time.Sleep(time.Second * 14)
 			}
 		})
 	}()
