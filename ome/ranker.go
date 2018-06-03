@@ -1,10 +1,10 @@
 package ome
 
 import (
-	"log"
 	"sort"
 	"sync"
 
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -73,11 +73,11 @@ func (ranker *ranker) InsertBuy(order PriorityOrder) {
 	ranker.computationsMu.Lock()
 	defer ranker.computationsMu.Unlock()
 
-	log.Printf("inserting buy order")
+	logger.Info("inserting buy order")
 
 	ranker.buys[order.ID] = order.Priority
 	for sell, sellPriority := range ranker.sells {
-		log.Printf("inserting computation")
+		logger.Info("inserting computation")
 
 		computationPriority := order.Priority + sellPriority
 		if int(computationPriority)%ranker.num != ranker.pos {
@@ -107,11 +107,11 @@ func (ranker *ranker) InsertSell(order PriorityOrder) {
 	ranker.computationsMu.Lock()
 	defer ranker.computationsMu.Unlock()
 
-	log.Printf("inserting sell order")
+	logger.Info("inserting sell order")
 
 	ranker.sells[order.ID] = order.Priority
 	for buy, buyPriority := range ranker.buys {
-		log.Printf("inserting computation")
+		logger.Info("inserting computation")
 
 		computationPriority := order.Priority + buyPriority
 		if int(computationPriority)%ranker.num != ranker.pos {

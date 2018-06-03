@@ -2,11 +2,12 @@ package ome
 
 import (
 	"encoding/base64"
-	"log"
+	"fmt"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/shamir"
@@ -122,12 +123,12 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 				if computation.State == StatePending {
 					buy, err := computer.orderbook.OrderFragment(computation.Buy)
 					if err != nil {
-						//log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelDebugLow, fmt.Sprintf("cannot get buy order fragment from orderbook: %v", err))
 						continue
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						//log.Printf("cannot get sell order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelDebugLow, fmt.Sprintf("cannot get sell order fragment from orderbook: %v", err))
 						continue
 					}
 					computer.cmpMu.Lock()
@@ -149,16 +150,16 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 			// Compute price cos
 			for id, computation := range computer.cmpPriceCo {
 				if computation.State == StatePending {
-					log.Printf("DEBUG => computing price co: %v, %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
+					logger.Compute(logger.LevelDebug, fmt.Sprintf("DEBUG => computing price co: %v, %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:])))
 
 					buy, err := computer.orderbook.OrderFragment(computation.Buy)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelWarn, fmt.Sprintf("cannot get buy order fragment from orderbook: %v", err))
 						continue
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get sell order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelWarn, fmt.Sprintf("cannot get sell order fragment from orderbook: %v", err))
 						continue
 					}
 					computer.cmpMu.Lock()
@@ -179,16 +180,16 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 			// Compute buy volume exponents
 			for id, computation := range computer.cmpBuyVolExp {
 				if computation.State == StatePending {
-					log.Printf("DEBUG => computing vol exp: %v, %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
+					logger.Compute(logger.LevelDebug, fmt.Sprintf("DEBUG => computing vol exp: %v, %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:])))
 
 					buy, err := computer.orderbook.OrderFragment(computation.Buy)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelWarn, fmt.Sprintf("cannot get buy order fragment from orderbook: %v", err))
 						continue
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get sell order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelWarn, fmt.Sprintf("cannot get sell order fragment from orderbook: %v", err))
 						continue
 					}
 					computer.cmpMu.Lock()
@@ -211,12 +212,12 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 				if computation.State == StatePending {
 					buy, err := computer.orderbook.OrderFragment(computation.Buy)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelWarn, fmt.Sprintf("cannot get buy order fragment from orderbook: %v", err))
 						continue
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get sell order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelWarn, fmt.Sprintf("cannot get sell order fragment from orderbook: %v", err))
 						continue
 					}
 					computer.cmpMu.Lock()
@@ -239,12 +240,12 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 				if computation.State == StatePending {
 					buy, err := computer.orderbook.OrderFragment(computation.Buy)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelWarn, fmt.Sprintf("cannot get buy order fragment from orderbook: %v", err))
 						continue
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get sell order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelWarn, fmt.Sprintf("cannot get sell order fragment from orderbook: %v", err))
 						continue
 					}
 					computer.cmpMu.Lock()
@@ -267,12 +268,12 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 				if computation.State == StatePending {
 					buy, err := computer.orderbook.OrderFragment(computation.Buy)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelWarn, fmt.Sprintf("cannot get buy order fragment from orderbook: %v", err))
 						continue
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get sell order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelWarn, fmt.Sprintf("cannot get sell order fragment from orderbook: %v", err))
 						continue
 					}
 					computer.cmpMu.Lock()
@@ -295,12 +296,12 @@ func (computer *computer) Compute(networkID [32]byte, computations Computations)
 				if computation.State == StatePending {
 					buy, err := computer.orderbook.OrderFragment(computation.Buy)
 					if err != nil {
-						log.Printf("cannot get buy order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelWarn, fmt.Sprintf("cannot get buy order fragment from orderbook: %v", err))
 						continue
 					}
 					sell, err := computer.orderbook.OrderFragment(computation.Sell)
 					if err != nil {
-						log.Printf("cannot get sell order fragment from orderbook: %v", err)
+						logger.Compute(logger.LevelWarn, fmt.Sprintf("cannot get sell order fragment from orderbook: %v", err))
 						continue
 					}
 					computer.cmpMu.Lock()
@@ -352,7 +353,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 		delete(computer.cmpPriceExp, instID)
 		if resultJ.Value <= half {
-			log.Println("price exp -> price co ")
+			logger.Compute(logger.LevelDebugLow, "price exp -> price co ")
 			computation.State = StatePending
 			instID[31] = StageCmpPriceCo
 			computer.cmpPriceCo[instID] = computation
@@ -365,7 +366,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 		delete(computer.cmpPriceCo, instID)
 		if resultJ.Value <= half {
-			log.Println("price co -> buy volume exp ")
+			logger.Compute(logger.LevelDebugLow, "price co -> buy volume exp ")
 			computation.State = StatePending
 			instID[31] = StageCmpBuyVolExp
 			computer.cmpBuyVolExp[instID] = computation
@@ -378,7 +379,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 		delete(computer.cmpBuyVolExp, instID)
 		if resultJ.Value <= half {
-			log.Println("buy volume exp -> buy volume co")
+			logger.Compute(logger.LevelDebugLow, "buy volume exp -> buy volume co")
 			computation.State = StatePending
 			instID[31] = StageCmpBuyVolCo
 			computer.cmpBuyVolCo[instID] = computation
@@ -391,7 +392,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 		delete(computer.cmpBuyVolCo, instID)
 		if resultJ.Value <= half {
-			log.Println("buy volume co -> sell volumn exp")
+			logger.Compute(logger.LevelDebugLow, "buy volume co -> sell volumn exp")
 			computation.State = StatePending
 			instID[31] = StageCmpSellVolExp
 			computer.cmpSellVolExp[instID] = computation
@@ -404,7 +405,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 		delete(computer.cmpSellVolExp, instID)
 		if resultJ.Value <= half {
-			log.Println("sell volume exp -> sell volumn co ")
+			logger.Compute(logger.LevelDebugLow, "sell volume exp -> sell volumn co ")
 			computation.State = StatePending
 			instID[31] = StageCmpSellVolCo
 			computer.cmpSellVolCo[instID] = computation
@@ -417,7 +418,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 		delete(computer.cmpSellVolCo, instID)
 		if resultJ.Value <= half {
-			log.Println("sell volume co -> tokens")
+			logger.Compute(logger.LevelDebugLow, "sell volume co -> tokens")
 			computation.State = StatePending
 			instID[31] = StageCmpTokens
 			computer.cmpTokens[instID] = computation
@@ -431,7 +432,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		delete(computer.cmpTokens, instID)
 		if resultJ.Value == 0 {
 			if err := computer.orderbook.ConfirmOrderMatch(computation.Buy, computation.Sell); err != nil {
-				log.Printf("cannot confirm order match: %v", err)
+				logger.Compute(logger.LevelWarn, fmt.Sprintf("cannot confirm order match: %v", err))
 				return
 			}
 		}

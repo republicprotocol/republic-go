@@ -2,9 +2,9 @@ package ome
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/smpc"
@@ -57,15 +57,18 @@ func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
 func (ome *ome) Sync() error {
 	changeset, err := ome.orderbook.Sync()
 	if len(changeset) > 0 {
-		log.Printf("DEBUG => changeset sync: %v", len(changeset))
+		logger.Debug(fmt.Sprintf("DEBUG => changeset sync: %v", len(changeset)))
 	}
 	if err != nil {
+		logger.Error(fmt.Sprintf("cannot sync orderbook: %v", err))
 		return fmt.Errorf("cannot sync orderbook: %v", err)
 	}
 	if err := ome.syncRanker(changeset); err != nil {
+		logger.Error(fmt.Sprintf("cannot sync ranker: %v", err))
 		return fmt.Errorf("cannot sync ranker: %v", err)
 	}
 	if err := ome.syncComputer(changeset); err != nil {
+		logger.Error(fmt.Sprintf("cannot sync computer: %v", err))
 		return fmt.Errorf("cannot sync computer: %v", err)
 	}
 	return nil
@@ -97,7 +100,7 @@ func (ome *ome) syncComputer(changeset orderbook.ChangeSet) error {
 	buffer := [128]Computation{}
 	n := ome.ranker.Computations(buffer[:])
 	if n > 0 {
-		log.Printf("DEBUG => computations sync: %v", n)
+		logger.Debug(fmt.Sprintf("DEBUG => computations sync: %v", n))
 	}
 
 	ome.computer.Compute(ome.ξ.Hash, buffer[:n])
