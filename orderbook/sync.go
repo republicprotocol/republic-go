@@ -2,10 +2,10 @@ package orderbook
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -98,12 +98,12 @@ func (syncer *syncer) purge() ChangeSet {
 				dispatch.CoForAll(syncer.buyOrders, func(key int) {
 					status, err := syncer.renLedger.Status(syncer.buyOrders[key])
 					if err != nil {
-						log.Println("fail to check order status", err)
+						logger.Error(fmt.Sprintf("Failed to check order status %v", err))
 						return
 					}
 					priority, err := syncer.renLedger.Priority(syncer.buyOrders[key])
 					if err != nil {
-						log.Println("fail to check order priority", err)
+						logger.Error(fmt.Sprintf("Failed to check order priority %v", err))
 						return
 					}
 					if status != order.Open {
@@ -117,12 +117,12 @@ func (syncer *syncer) purge() ChangeSet {
 				dispatch.CoForAll(syncer.sellOrders, func(key int) {
 					status, err := syncer.renLedger.Status(syncer.sellOrders[key])
 					if err != nil {
-						log.Println("fail to check order status", err)
+						logger.Error(fmt.Sprintf("Failed to check order status: %v", err))
 						return
 					}
 					priority, err := syncer.renLedger.Priority(syncer.sellOrders[key])
 					if err != nil {
-						log.Println("fail to check order priority", err)
+						logger.Error(fmt.Sprintf("Failed to check order priority: %v", err))
 						return
 					}
 					if status != order.Open {
