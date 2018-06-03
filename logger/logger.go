@@ -10,6 +10,51 @@ import (
 	"github.com/republicprotocol/go-do"
 )
 
+// Level defines the different levels of Log messages that can be sent.
+type Level uint8
+
+// Values for the LogType.
+const (
+	LevelError     = Level(1)
+	LevelWarn      = Level(2)
+	LevelInfo      = Level(3)
+	LevelDebugHigh = Level(4)
+	LevelDebug     = Level(5)
+	LevelDebugLow  = Level(6)
+)
+
+// EventType defines the different types of Event messages that can be sent in a
+// Log.
+type EventType string
+
+// Values for the EventType.
+const (
+	TypeGeneric        = EventType("generic")
+	TypeEpoch          = EventType("epoch")
+	TypeUsage          = EventType("usage")
+	TypeEthereum       = EventType("ethereum")
+	TypeOrderConfirmed = EventType("orderConfirmed")
+	TypeOrderMatch     = EventType("orderMatch")
+	TypeOrderReceived  = EventType("orderReceived")
+	TypeNetwork        = EventType("network")
+	TypeCompute        = EventType("compute")
+)
+
+// Log an Event.
+func (logger *Logger) Log(l Log) {
+	if _, ok := logger.FilterEvents[l.EventType]; !ok && len(logger.FilterEvents) > 0 {
+		return
+	}
+	if l.Level <= logger.FilterLevel {
+		l.Tags = logger.Tags
+		for _, plugin := range logger.Plugins {
+			if err := plugin.Log(l); err != nil {
+				log.Println(err)
+			}
+		}
+	}
+}
+
 var defaultLoggerMu = new(sync.RWMutex)
 var defaultLogger = func() *Logger {
 	logger, err := NewLogger(Options{
@@ -201,21 +246,6 @@ func (logger Logger) Stop() {
 	}
 }
 
-// Log an Event.
-func (logger *Logger) Log(l Log) {
-	if _, ok := logger.FilterEvents[l.EventType]; !ok && len(logger.FilterEvents) > 0 {
-		return
-	}
-	if l.Level <= logger.FilterLevel {
-		l.Tags = logger.Tags
-		for _, plugin := range logger.Plugins {
-			if err := plugin.Log(l); err != nil {
-				log.Println(err)
-			}
-		}
-	}
-}
-
 // Error logs an error Log using a GenericEvent.
 func (logger *Logger) Error(message string) {
 	logger.Log(Log{
@@ -378,19 +408,6 @@ func (logger *Logger) Compute(ty Level, message string) {
 	})
 }
 
-// Level defines the different levels of Log messages that can be sent.
-type Level uint8
-
-// Values for the LogType.
-const (
-	LevelError     = Level(1)
-	LevelWarn      = Level(2)
-	LevelInfo      = Level(3)
-	LevelDebugHigh = Level(4)
-	LevelDebug     = Level(5)
-	LevelDebugLow  = Level(6)
-)
-
 func (level Level) String() string {
 	switch level {
 	case LevelError:
@@ -403,23 +420,6 @@ func (level Level) String() string {
 		return "debug"
 	}
 }
-
-// EventType defines the different types of Event messages that can be sent in a
-// Log.
-type EventType string
-
-// Values for the EventType.
-const (
-	TypeGeneric        = EventType("generic")
-	TypeEpoch          = EventType("epoch")
-	TypeUsage          = EventType("usage")
-	TypeEthereum       = EventType("ethereum")
-	TypeOrderConfirmed = EventType("orderConfirmed")
-	TypeOrderMatch     = EventType("orderMatch")
-	TypeOrderReceived  = EventType("orderReceived")
-	TypeNetwork        = EventType("network")
-	TypeCompute        = EventType("compute")
-)
 
 // A Log is logged by the Logger using all available Plugins.
 type Log struct {
