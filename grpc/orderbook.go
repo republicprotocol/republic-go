@@ -2,10 +2,10 @@ package grpc
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"golang.org/x/net/context"
@@ -30,7 +30,7 @@ func (service *OrderbookService) Register(server *Server) {
 
 // OpenOrder implements the gRPC service for receiving EncryptedOrderFragments.
 func (service *OrderbookService) OpenOrder(ctx context.Context, request *OpenOrderRequest) (*OpenOrderResponse, error) {
-	log.Printf("opening order using order fragment...")
+	logger.Network(logger.LevelDebug, "opening order using order fragment...")
 	return &OpenOrderResponse{}, service.server.OpenOrder(ctx, unmarshalEncryptedOrderFragment(request.OrderFragment))
 }
 
