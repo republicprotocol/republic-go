@@ -3,12 +3,12 @@ package smpc
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 	"golang.org/x/net/context"
@@ -151,7 +151,7 @@ func (smpc *smpcer) Results() <-chan Result {
 // notify the Smpcer that a value of interest has been reconstructed by the
 // ShareBuilder.
 func (smpc *smpcer) OnNotifyBuild(id, networkID [32]byte, value uint64) {
-	log.Println("NOTIFY!!!!")
+	logger.DebugLow("NOTIFY!!!!")
 
 	result := Result{
 		InstID:    id,
@@ -206,7 +206,7 @@ func (smpc *smpcer) instConnect(networkID [32]byte, inst InstConnect) {
 		addr := inst.Nodes[i]
 		multiAddr, err := smpc.query(addr)
 		if err != nil {
-			log.Println(err)
+			logger.Network(logger.LevelError, fmt.Sprintf("%v", err))
 			return
 		}
 
@@ -215,10 +215,10 @@ func (smpc *smpcer) instConnect(networkID [32]byte, inst InstConnect) {
 		smpc.lookupMu.Unlock()
 
 		if err := smpc.connect(networkID, inst, addr, multiAddr); err != nil {
-			log.Println(err)
+			logger.Network(logger.LevelError, fmt.Sprintf("%v", err))
 			return
 		}
-		log.Printf("connected to %v", addr)
+		logger.Network(logger.LevelInfo, fmt.Sprintf("connected to %v", addr))
 	})
 }
 
@@ -230,7 +230,7 @@ func (smpc *smpcer) instDisconnect(networkID [32]byte, inst InstDisconnect) {
 
 	for _, addr := range smpc.network[networkID] {
 		if err := smpc.streamer.Close(addr); err != nil {
-			log.Printf("cannot close stream to %v: %v", addr, err)
+			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot close stream to %v: %v", addr, err))
 		}
 	}
 	delete(smpc.network, networkID)
@@ -268,12 +268,12 @@ func (smpc *smpcer) sendMessage(addr identity.Address, msg *Message) {
 	if multiAddr, ok := smpc.lookup[addr]; ok {
 		stream, err := smpc.streamer.Open(context.Background(), multiAddr)
 		if err != nil {
-			log.Printf("cannot open stream for messageTypeJ to %v: %v", addr, err)
+			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot open stream for messageTypeJ to %v: %v", addr, err))
 			return
 		}
 		defer smpc.streamer.Close(addr)
 		if err := stream.Send(msg); err != nil {
-			log.Printf("cannot send messageTypeJ to %v: %v", addr, err)
+			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot send messageTypeJ to %v: %v", addr, err))
 		}
 	}
 }
@@ -307,7 +307,7 @@ func (smpc *smpcer) processRemoteStream(remoteAddr identity.Address, remoteStrea
 	for {
 		msg := Message{}
 		if err := remoteStream.Recv(&msg); err != nil {
-			log.Printf("closing stream with %v: %v", remoteAddr, err)
+			logger.Network(logger.LevelDebug, fmt.Sprintf("closing stream with %v: %v", remoteAddr, err))
 			return
 		}
 
@@ -315,7 +315,7 @@ func (smpc *smpcer) processRemoteStream(remoteAddr identity.Address, remoteStrea
 		case MessageTypeJ:
 			smpc.processMessageJ(*msg.MessageJ)
 		default:
-			log.Printf("cannot recv message from %v: %v", remoteAddr, ErrUnexpectedMessageType)
+			logger.Network(logger.LevelDebug, fmt.Sprintf("cannot recv message from %v: %v", remoteAddr, ErrUnexpectedMessageType))
 		}
 	}
 }
@@ -329,7 +329,7 @@ func (smpc *smpcer) processMessageJ(message MessageJ) {
 			if err == ErrInsufficientSharesToJoin {
 				return
 			}
-			log.Printf("could not insert share: %v", err)
+			logger.Network(logger.LevelWarn, fmt.Sprintf("could not insert share: %v", err))
 			return
 		}
 	}
