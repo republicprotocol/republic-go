@@ -94,11 +94,11 @@ func SetDefaultLogger(logger *Logger) {
 	defaultLogger.Start()
 }
 
-// Info logs an info Log using a GenericEvent using the DefaultLogger.
-func Info(message string) {
+// Error logs an error Log using a GenericEvent using the DefaultLogger.
+func Error(message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	defaultLogger.Info(message)
+	defaultLogger.Error(message)
 }
 
 // Warn logs a warn Log using a GenericEvent using the DefaultLogger.
@@ -108,11 +108,32 @@ func Warn(message string) {
 	defaultLogger.Warn(message)
 }
 
-// Error logs an error Log using a GenericEvent using the DefaultLogger.
-func Error(message string) {
+// Info logs an info Log using a GenericEvent using the DefaultLogger.
+func Info(message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	defaultLogger.Error(message)
+	defaultLogger.Info(message)
+}
+
+// DebugHigh logs an info Log using a GenericEvent using the DefaultLogger.
+func DebugHigh(message string) {
+	defaultLoggerMu.Lock()
+	defer defaultLoggerMu.Unlock()
+	defaultLogger.DebugHigh(message)
+}
+
+// Debug logs an info Log using a GenericEvent using the DefaultLogger.
+func Debug(message string) {
+	defaultLoggerMu.Lock()
+	defer defaultLoggerMu.Unlock()
+	defaultLogger.Debug(message)
+}
+
+// DebugLow logs an info Log using a GenericEvent using the DefaultLogger.
+func DebugLow(message string) {
+	defaultLoggerMu.Lock()
+	defer defaultLoggerMu.Unlock()
+	defaultLogger.DebugLow(message)
 }
 
 // Usage logs an info Log using a UsageEvent using the DefaultLogger.
