@@ -56,8 +56,8 @@ func (logger *Logger) Log(l Log) {
 	}
 }
 
-var defaultLoggerMu = new(sync.RWMutex)
-var defaultLogger = func() *Logger {
+// StdoutLogger logs to standard output and is used as the logger by default
+var StdoutLogger = func() *Logger {
 	logger, err := NewLogger(Options{
 		Plugins: []PluginOptions{
 			PluginOptions{File: &FilePluginOptions{Path: "stdout"}, WebSocket: nil},
@@ -65,11 +65,14 @@ var defaultLogger = func() *Logger {
 		FilterLevel: LevelWarn,
 	})
 	if err != nil {
-		panic(fmt.Sprintf("cannot init default logger: %v", err))
+		panic(fmt.Sprintf("cannot init StdoutLogger: %v", err))
 	}
 	logger.Start()
 	return logger
 }()
+
+var defaultLoggerMu = new(sync.RWMutex)
+var defaultLogger = StdoutLogger
 
 // SetFilterLevel changes the logging level of the defaultLogger.
 func SetFilterLevel(l Level) {
@@ -93,6 +96,11 @@ func SetDefaultLogger(logger *Logger) {
 	defaultLogger.Stop()
 	defaultLogger = logger
 	defaultLogger.Start()
+}
+
+// ResetDefaultLogger stops the existing logger and resets the defaultLogger.
+func ResetDefaultLogger() {
+	SetDefaultLogger(StdoutLogger)
 }
 
 // Error logs an error Log using a GenericEvent using the DefaultLogger.
