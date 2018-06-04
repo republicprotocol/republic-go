@@ -269,24 +269,26 @@ func (smpc *smpcer) instJ(instID, networkID [32]byte, inst InstJ) {
 		},
 	}
 
-	smpc.networkMu.RLock()
-	smpc.lookupMu.RLock()
-	smpc.shareBuildersMu.RLock()
-	defer smpc.networkMu.RUnlock()
-	defer smpc.lookupMu.RUnlock()
-	defer smpc.shareBuildersMu.RUnlock()
-
-	if shareBuilder, ok := smpc.shareBuilders[networkID]; ok {
-		shareBuilder.Observe(instID, networkID, smpc)
-	}
+	func() {
+		smpc.shareBuildersMu.RLock()
+		defer smpc.shareBuildersMu.RUnlock()
+		if shareBuilder, ok := smpc.shareBuilders[networkID]; ok {
+			shareBuilder.Observe(instID, networkID, smpc)
+		}
+	}()
 	smpc.processMessageJ(nil, *msg.MessageJ)
 
+	smpc.networkMu.RLock()
+	defer smpc.networkMu.RUnlock()
 	for _, addr := range smpc.network[networkID] {
 		go smpc.sendMessage(addr, &msg)
 	}
 }
 
 func (smpc *smpcer) sendMessage(addr identity.Address, msg *Message) {
+	smpc.lookupMu.RLock()
+	defer smpc.lookupMu.RUnlock()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -331,8 +333,8 @@ func (smpc *smpcer) stream(remoteAddr identity.Address, remoteStream stream.Stre
 }
 
 func (smpc *smpcer) processMessageJ(remoteAddr *identity.Address, message MessageJ) {
-	smpc.shareBuildersMu.RLock()
-	defer smpc.shareBuildersMu.RUnlock()
+	smpc.shareBuildersMu.Lock()
+	defer smpc.shareBuildersMu.Unlock()
 
 	if _, ok := smpc.shareBuildersRoutes[message.InstID]; !ok {
 		smpc.shareBuildersRoutes[message.InstID] = map[identity.Address]struct{}{}
