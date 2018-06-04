@@ -8,36 +8,66 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+// WARNING: The expected number of computations is only
+// (numberOfOrderPairs^2) / numberOfRankers when the numberOfRankers divides
+// the numberOfOrderPairs^2 perfectly.
+const numberOfRankers = 5
+const numberOfOrderPairs = 10
+
 var _ = Describe("OME Ranker", func() {
 
 	Context("when processing buy and sell orders", func() {
 
 		It("should append orders to ranker computations", func() {
-			numberOfOrderPairs := 10
-			ranker, computations := sendCorrectOrdersToRanker(numberOfOrderPairs)
-			Expect(ranker.Computations(computations)).Should(Equal(numberOfOrderPairs * 2))
+			ranker, computations := sendCorrectOrdersToRanker(numberOfRankers, numberOfOrderPairs)
+			Expect(ranker.Computations(computations)).Should(Equal((numberOfOrderPairs * numberOfOrderPairs) / numberOfRankers))
 		})
 
-		It("should remove orders", func() {
-			numberOfOrderPairs := 10
-			ranker, computations := sendCorrectOrdersToRanker(numberOfOrderPairs)
+		It("should remove all computations if all buy orders are removed", func() {
+			ranker, computations := sendCorrectOrdersToRanker(numberOfRankers, numberOfOrderPairs)
 
 			// Remove half of the orders
-			removeOrderIDs := make([]order.ID, numberOfOrderPairs)
+			removeOrderIDs := make([]order.ID, 0, numberOfOrderPairs)
 			for i := 0; i < numberOfOrderPairs; i++ {
-				removeOrderIDs[i] = [32]byte{byte(i)}
+				removeOrderIDs = append(removeOrderIDs, [32]byte{byte(i)})
 			}
 			ranker.Remove(removeOrderIDs...)
 
-			Expect(ranker.Computations(computations)).Should(Equal(numberOfOrderPairs))
+			Expect(ranker.Computations(computations)).Should(Equal(0))
 		})
 
-		It("should deny a buy-sell order pair that is not meant for the ranker", func() {
-			ranker := NewRanker(5, 4)
+		It("should remove all computations if all sell orders are removed", func() {
+			ranker, computations := sendCorrectOrdersToRanker(numberOfRankers, numberOfOrderPairs)
 
-			// (5+5) => 10 mod 5 != 4
-			insertSellOrder([32]byte{byte(1)}, Priority(5), ranker)
-			insertBuyOrder([32]byte{byte(2)}, Priority(5), ranker)
+			// Remove half of the orders
+			removeOrderIDs := make([]order.ID, 0, numberOfOrderPairs)
+			for i := numberOfOrderPairs; i < 2*numberOfOrderPairs; i++ {
+				removeOrderIDs = append(removeOrderIDs, [32]byte{byte(i)})
+			}
+			ranker.Remove(removeOrderIDs...)
+
+			Expect(ranker.Computations(computations)).Should(Equal(0))
+		})
+
+		It("should quarter the number of computations when halving the number of orders", func() {
+			ranker, computations := sendCorrectOrdersToRanker(numberOfRankers, numberOfOrderPairs)
+
+			// Remove half of the orders
+			removeOrderIDs := make([]order.ID, 0, numberOfOrderPairs)
+			for i := numberOfOrderPairs; i < 2*numberOfOrderPairs; i += 2 {
+				removeOrderIDs = append(removeOrderIDs, [32]byte{byte(i)})
+			}
+			ranker.Remove(removeOrderIDs...)
+
+			Expect(ranker.Computations(computations)).Should(Equal(((numberOfOrderPairs / 2) * (numberOfOrderPairs / 2)) / numberOfRankers))
+		})
+
+		It("should not return computations that are not meant for the ranker", func() {
+			ranker := NewRanker(numberOfRankers, 0)
+
+			// (1+1) => 2 mod 5 != 0
+			insertSellOrder([32]byte{byte(1)}, Priority(numberOfRankers+1), ranker)
+			insertBuyOrder([32]byte{byte(2)}, Priority(numberOfRankers+1), ranker)
 
 			// Check that the order-pair was not added
 			computations := make([]Computation, 5)
@@ -66,15 +96,14 @@ func insertBuyOrder(orderID order.ID, priority Priority, ranker Ranker) {
 	ranker.InsertBuy(buyOrder)
 }
 
-func sendCorrectOrdersToRanker(numberOfOrderPairs int) (Ranker, Computations) {
-	ranker := NewRanker(5, 4)
+func sendCorrectOrdersToRanker(numberOfRankers, numberOfOrderPairs int) (Ranker, Computations) {
+	ranker := NewRanker(numberOfRankers, 0)
 
-	orderID := 0
 	for i := 0; i < numberOfOrderPairs; i++ {
-		insertSellOrder([32]byte{byte(orderID)}, Priority(i), ranker)
-		orderID++
-		insertBuyOrder([32]byte{byte(orderID)}, Priority(9-i), ranker)
-		orderID++
+		insertBuyOrder([32]byte{byte(i)}, Priority(i), ranker)
+	}
+	for i := 0; i < numberOfOrderPairs; i++ {
+		insertSellOrder([32]byte{byte(numberOfOrderPairs + i)}, Priority(i), ranker)
 	}
 
 	computations := make([]Computation, numberOfOrderPairs*numberOfOrderPairs)
