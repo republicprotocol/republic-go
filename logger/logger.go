@@ -445,8 +445,14 @@ func (level Level) String() string {
 		return "warn"
 	case LevelInfo:
 		return "info"
-	default:
+	case LevelDebugHigh:
+		fallthrough
+	case LevelDebug:
+		fallthrough
+	case LevelDebugLow:
 		return "debug"
+	default:
+		return ""
 	}
 }
 
