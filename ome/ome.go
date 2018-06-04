@@ -1,7 +1,6 @@
 package ome
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log"
 	"sync"
@@ -135,9 +134,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 				case <-done:
 					return
 				case computations <- computation:
-					if n%8 == 0 {
-						log.Printf("new computation: buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
-					}
+					// log.Printf("new computation: buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 				}
 			}
 			if n == 128 {

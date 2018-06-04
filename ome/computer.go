@@ -239,6 +239,10 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 	if strings.HasPrefix(buyID, "dcF") {
 		log.Println(computation.Buy)
 	}
+	sellID := base64.StdEncoding.EncodeToString(computation.Sell[:])
+	if strings.HasPrefix(sellID, "dcF") {
+		log.Println(computation.Sell)
+	}
 
 	buy, err := computer.storer.OrderFragment(computation.Buy)
 	if err != nil {
