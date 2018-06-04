@@ -25,13 +25,6 @@ type Computation struct {
 	Priority Priority
 }
 
-type State uint64
-
-const (
-	StatePending   = 0
-	StateComputing = 1
-)
-
 // TODO: Stage bytes are a really ugly way of tracking our computations. We
 // need a proper SMPC VM.
 type Stage byte
@@ -243,18 +236,13 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 	buy, err := computer.storer.OrderFragment(computation.Buy)
 	if err != nil {
 		pendingComputations[computation.ID] = computation
-		log.Printf("cannot find buy order %v", base64.StdEncoding.EncodeToString(computation.Buy[:]))
 		return
 	}
 	sell, err := computer.storer.OrderFragment(computation.Sell)
 	if err != nil {
-		log.Printf("cannot find sell order %v", base64.StdEncoding.EncodeToString(computation.Buy[:]))
 		pendingComputations[computation.ID] = computation
 		return
 	}
-
-	log.Println(buy)
-	log.Println(sell)
 
 	delete(pendingComputations, computation.ID)
 	var share shamir.Share
@@ -312,22 +300,24 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 		},
 	}
 
-	log.Printf("sending computation: buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
+	log.Printf("[stage => %v] processing computation: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 
-	invertingFlow := true
-	for invertingFlow {
-		select {
-		case <-done:
-			invertingFlow = false
-		case insts <- inst:
-			invertingFlow = false
-		case computation, ok := <-computer.computations:
-			if !ok {
-				invertingFlow = false
-				break
-			}
-			pendingComputations[computation.ID] = computation
+	// Write instruction
+	select {
+	case insts <- inst:
+	default:
+	}
+
+	// Invert flow if necessary
+	select {
+	case <-done:
+	case insts <- inst:
+	case computation, ok := <-computer.computations:
+		log.Printf("compute inversion: buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+		if !ok {
+			break
 		}
+		pendingComputations[computation.ID] = computation
 	}
 }
 
@@ -360,47 +350,74 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	if !ok {
 		return
 	}
-	log.Printf("last byte is %v", computation.ID[31])
+
+	log.Printf("[stage => %v] received result: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
 
 	switch instID[31] {
+
 	case StageCmpPriceExp:
-		if resultJ.Value <= half {
-			computation.ID[31] = StageCmpPriceCo
+		if resultJ.Value > half {
+			log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+			return
 		}
+		log.Printf("[stage => %v] ok: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+		computation.ID[31] = StageCmpPriceCo
+
 	case StageCmpPriceCo:
-		if resultJ.Value <= half {
-			computation.ID[31] = StageCmpBuyVolExp
+		if resultJ.Value > half {
+			log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+			return
 		}
+		log.Printf("[stage => %v] ok: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+		computation.ID[31] = StageCmpBuyVolExp
+
 	case StageCmpBuyVolExp:
-		if resultJ.Value <= half {
-			computation.ID[31] = StageCmpBuyVolCo
+		if resultJ.Value > half {
+			log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+			return
 		}
+		log.Printf("[stage => %v] ok: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+		computation.ID[31] = StageCmpBuyVolCo
+
 	case StageCmpBuyVolCo:
-		if resultJ.Value <= half {
-			computation.ID[31] = StageCmpSellVolExp
+		if resultJ.Value > half {
+			log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+			return
 		}
+		log.Printf("[stage => %v] ok: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+		computation.ID[31] = StageCmpSellVolExp
+
 	case StageCmpSellVolExp:
-		if resultJ.Value <= half {
-			computation.ID[31] = StageCmpSellVolCo
+		if resultJ.Value > half {
+			log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+			return
 		}
+		log.Printf("[stage => %v] ok: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+		computation.ID[31] = StageCmpSellVolCo
+
 	case StageCmpSellVolCo:
-		if resultJ.Value <= half {
-			computation.ID[31] = StageCmpTokens
+		if resultJ.Value > half {
+			log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+			return
 		}
+		log.Printf("[stage => %v] ok: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+		computation.ID[31] = StageCmpTokens
+
 	case StageCmpTokens:
 		if resultJ.Value == 0 {
 			computation.ID = computeID(computation.Computation)
-
 			computer.matchingComputationsMu.Lock()
 			computer.matchingComputationsState[computation.ID] = computation
 			computer.matchingComputationsMu.Unlock()
 			select {
 			case <-done:
 			case computer.matchingComputations <- computation.Computation:
-				log.Print("------------match found--------------")
+				log.Printf("✔ [stage => %v] matched: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 			}
-			return
+		} else {
+			log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 		}
+		return
 
 	case StageJoinBuyPriceExp:
 		computer.priceExpPointer[computation.Buy] = &resultJ.Value

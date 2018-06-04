@@ -183,6 +183,12 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address, depth
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 
+		if isBootstrapping {
+			if _, err := swarmer.client.Ping(ctx, peer); err != nil {
+				continue
+			}
+		}
+
 		// Query for identity.MultiAddresses that are closer to the query
 		// target than the peer itself, and add them to the whitelist
 		multiAddrs, err := swarmer.client.Query(ctx, peer, query, [65]byte{})

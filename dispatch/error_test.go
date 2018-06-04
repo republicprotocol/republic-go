@@ -12,7 +12,7 @@ import (
 
 var _ = Describe("Error channels", func() {
 
-	Context("Merge errors", func() {
+	Context("when merging errors", func() {
 
 		It("should merge multiple error channels", func() {
 			errCh1 := make(chan error, 1)
@@ -30,7 +30,9 @@ var _ = Describe("Error channels", func() {
 			errCh := MergeErrors(errCh1, errCh2, errCh3)
 			time.Sleep(time.Second)
 
-			Close(errCh1, errCh2, errCh3)
+			close(errCh1)
+			close(errCh2)
+			close(errCh3)
 			Ω(len(errCh)).Should(Equal(3))
 		})
 
@@ -52,7 +54,9 @@ var _ = Describe("Error channels", func() {
 			time.Sleep(time.Second)
 			Ω(len(errCh)).Should(Equal(3))
 
-			Close(errCh1, errCh2, errCh3)
+			close(errCh1)
+			close(errCh2)
+			close(errCh3)
 
 			for err := range errCh {
 				Ω(err == err1 || err == err2 || err == err3).Should(BeTrue())
@@ -62,7 +66,7 @@ var _ = Describe("Error channels", func() {
 
 	})
 
-	Context("Filter errors", func() {
+	Context("when filtering errors", func() {
 		It("should filter errors using a predicate", func() {
 			errCh := make(chan error, 3)
 
@@ -89,12 +93,11 @@ var _ = Describe("Error channels", func() {
 			err := <-filteredErrCh
 
 			Ω(err.Error()).Should(Equal("20"))
-
-			Close(errCh)
+			close(errCh)
 		})
 	})
 
-	Context("Consume errors", func() {
+	Context("when consuming errors", func() {
 		It("should be able to process an error", func() {
 			errCh := make(chan error, 3)
 			defer close(errCh)

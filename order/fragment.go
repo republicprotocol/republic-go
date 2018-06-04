@@ -57,10 +57,11 @@ func (fragment *Fragment) Hash() [32]byte {
 }
 
 // Bytes returns a Fragment serialized into a bytes.
+// TODO: This function should return an error.
 func (fragment *Fragment) Bytes() []byte {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, fragment.OrderID)
 	binary.Write(buf, binary.BigEndian, fragment.OrderType)
+	binary.Write(buf, binary.BigEndian, fragment.OrderID)
 	binary.Write(buf, binary.BigEndian, fragment.OrderParity)
 	binary.Write(buf, binary.BigEndian, fragment.OrderExpiry.Unix())
 	binary.Write(buf, binary.BigEndian, fragment.Tokens)

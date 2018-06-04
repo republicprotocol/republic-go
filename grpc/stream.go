@@ -3,11 +3,11 @@ package grpc
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/stream"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -137,15 +137,11 @@ func NewStreamClient(signer crypto.Signer, addr identity.Address) stream.Client 
 }
 
 func (client *streamClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (stream.Stream, error) {
-	log.Println("dialing", multiAddr)
-
 	// Establish a connection to the identity.MultiAddress
 	conn, err := Dial(ctx, multiAddr)
 	if err != nil {
 		return nil, fmt.Errorf("cannot dial %v: %v", multiAddr, err)
 	}
-
-	log.Println("about to connect..")
 
 	// Open a bidirectional stream and continue to backoff the connection
 	// until the context.Context is canceled
@@ -156,8 +152,6 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 	}); err != nil {
 		return nil, fmt.Errorf("cannot open stream: %v", err)
 	}
-
-	log.Println("connected!")
 
 	// Sign an authentication message so that the StreamService can verify that
 	// the identity.Address of the StreamClient
@@ -178,8 +172,6 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 	}); err != nil {
 		return nil, fmt.Errorf("cannot send stream address: %v", err)
 	}
-
-	log.Println("authenticated!")
 
 	// Return a grpc.ClientStream that implements the stream.Stream interface
 	// and is safe for concurrent use and will clean the grpc.ClientConn when
@@ -249,8 +241,10 @@ func (service *StreamService) Connect(stream StreamService_ConnectServer) error 
 	// done
 	select {
 	case <-stream.Context().Done():
+		logger.Network(logger.LevelDebugLow, "grpc connection closed by client")
 		return stream.Context().Err()
 	case <-s.done:
+		logger.Network(logger.LevelDebugLow, "grpc connection closed by service")
 		return nil
 	}
 }

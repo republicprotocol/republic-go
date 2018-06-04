@@ -103,7 +103,6 @@ func main() {
 			marshaledOrdFragment.OrderType = encryptedFragment.OrderType
 			marshaledOrdFragment.OrderExpiry = encryptedFragment.OrderExpiry.Unix()
 			marshaledOrdFragment.Tokens = base64.StdEncoding.EncodeToString(encryptedFragment.Tokens)
-			log.Printf("TOKENS: %v", marshaledOrdFragment.Tokens)
 			marshaledOrdFragment.Price = []string{
 				base64.StdEncoding.EncodeToString(encryptedFragment.Price.Co),
 				base64.StdEncoding.EncodeToString(encryptedFragment.Price.Exp),

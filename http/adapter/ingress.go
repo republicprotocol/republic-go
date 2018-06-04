@@ -28,12 +28,12 @@ func NewIngressAdapter(ingress ingress.Ingress) IngressAdapter {
 }
 
 func (adapter *IngressAdapter) OpenOrder(signatureIn string, orderFragmentMappingIn OrderFragmentMapping) error {
-	signature, err := adapter.unmarshalSignature(signatureIn)
+	signature, err := UnmarshalSignature(signatureIn)
 	if err != nil {
 		return err
 	}
 
-	orderID, orderFragmentMapping, err := adapter.unmarshalOrderFragmentMapping(orderFragmentMappingIn)
+	orderID, orderFragmentMapping, err := UnmarshalOrderFragmentMapping(orderFragmentMappingIn)
 	if err != nil {
 		return err
 	}
@@ -46,12 +46,12 @@ func (adapter *IngressAdapter) OpenOrder(signatureIn string, orderFragmentMappin
 }
 
 func (adapter *IngressAdapter) CancelOrder(signatureIn string, orderIDIn string) error {
-	signature, err := adapter.unmarshalSignature(signatureIn)
+	signature, err := UnmarshalSignature(signatureIn)
 	if err != nil {
 		return err
 	}
 
-	orderID, err := adapter.unmarshalOrderID(orderIDIn)
+	orderID, err := UnmarshalOrderID(orderIDIn)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,11 @@ func (adapter *IngressAdapter) CancelOrder(signatureIn string, orderIDIn string)
 	return adapter.Ingress.CancelOrder(signature, orderID)
 }
 
-func (adapter *IngressAdapter) unmarshalSignature(signatureIn string) ([65]byte, error) {
+func MarshalSignature(signatureIn [65]byte) string {
+	return base64.StdEncoding.EncodeToString(signatureIn[:])
+}
+
+func UnmarshalSignature(signatureIn string) ([65]byte, error) {
 	signature := [65]byte{}
 	signatureBytes, err := base64.StdEncoding.DecodeString(signatureIn)
 	if err != nil {
@@ -72,7 +76,11 @@ func (adapter *IngressAdapter) unmarshalSignature(signatureIn string) ([65]byte,
 	return signature, nil
 }
 
-func (adapter *IngressAdapter) unmarshalOrderID(orderIDIn string) (order.ID, error) {
+func MarshalOrderID(orderIDIn order.ID) string {
+	return base64.StdEncoding.EncodeToString(orderIDIn[:])
+}
+
+func UnmarshalOrderID(orderIDIn string) (order.ID, error) {
 	orderID := order.ID{}
 	orderIDBytes, err := base64.StdEncoding.DecodeString(orderIDIn)
 	if err != nil {
@@ -85,7 +93,11 @@ func (adapter *IngressAdapter) unmarshalOrderID(orderIDIn string) (order.ID, err
 	return orderID, nil
 }
 
-func (adapter *IngressAdapter) unmarshalOrderFragmentID(orderFragmentIDIn string) (order.FragmentID, error) {
+func MarshalOrderFragmentID(orderFragmentIDIn order.FragmentID) string {
+	return base64.StdEncoding.EncodeToString(orderFragmentIDIn[:])
+}
+
+func UnmarshalOrderFragmentID(orderFragmentIDIn string) (order.FragmentID, error) {
 	orderFragmentID := order.FragmentID{}
 	orderFragmentIDBytes, err := base64.StdEncoding.DecodeString(orderFragmentIDIn)
 	if err != nil {
@@ -98,7 +110,14 @@ func (adapter *IngressAdapter) unmarshalOrderFragmentID(orderFragmentIDIn string
 	return orderFragmentID, nil
 }
 
-func (adapter *IngressAdapter) unmarshalEncryptedCoExpShare(valueIn []string) (order.EncryptedCoExpShare, error) {
+func MarshalEncryptedCoExpShare(valueIn order.EncryptedCoExpShare) []string {
+	return []string{
+		base64.StdEncoding.EncodeToString(valueIn.Co),
+		base64.StdEncoding.EncodeToString(valueIn.Exp),
+	}
+}
+
+func UnmarshalEncryptedCoExpShare(valueIn []string) (order.EncryptedCoExpShare, error) {
 	var err error
 	value := order.EncryptedCoExpShare{}
 	if len(valueIn) != 2 {
@@ -115,15 +134,30 @@ func (adapter *IngressAdapter) unmarshalEncryptedCoExpShare(valueIn []string) (o
 	return value, nil
 }
 
-func (adapter *IngressAdapter) unmarshalOrderFragment(orderFragmentIn OrderFragment) (ingress.OrderFragment, error) {
+func MarshalOrderFragment(orderFragmentIn ingress.OrderFragment) OrderFragment {
+	orderFragment := OrderFragment{}
+	orderFragment.Index = orderFragmentIn.Index
+	orderFragment.OrderID = MarshalOrderID(orderFragmentIn.OrderID)
+	orderFragment.OrderType = orderFragmentIn.OrderType
+	orderFragment.OrderParity = orderFragmentIn.OrderParity
+	orderFragment.OrderExpiry = orderFragmentIn.OrderExpiry.Unix()
+	orderFragment.ID = MarshalOrderFragmentID(orderFragmentIn.ID)
+	orderFragment.Tokens = base64.StdEncoding.EncodeToString(orderFragmentIn.Tokens)
+	orderFragment.Price = MarshalEncryptedCoExpShare(orderFragmentIn.Price)
+	orderFragment.Volume = MarshalEncryptedCoExpShare(orderFragmentIn.Volume)
+	orderFragment.MinimumVolume = MarshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume)
+	return orderFragment
+}
+
+func UnmarshalOrderFragment(orderFragmentIn OrderFragment) (ingress.OrderFragment, error) {
 	var err error
 	orderFragment := ingress.OrderFragment{EncryptedFragment: order.EncryptedFragment{}}
 	orderFragment.Index = orderFragmentIn.Index
-	orderFragment.EncryptedFragment.ID, err = adapter.unmarshalOrderFragmentID(orderFragmentIn.ID)
+	orderFragment.EncryptedFragment.ID, err = UnmarshalOrderFragmentID(orderFragmentIn.ID)
 	if err != nil {
 		return orderFragment, err
 	}
-	orderFragment.OrderID, err = adapter.unmarshalOrderID(orderFragmentIn.OrderID)
+	orderFragment.OrderID, err = UnmarshalOrderID(orderFragmentIn.OrderID)
 	if err != nil {
 		return orderFragment, err
 	}
@@ -134,22 +168,22 @@ func (adapter *IngressAdapter) unmarshalOrderFragment(orderFragmentIn OrderFragm
 	if err != nil {
 		return orderFragment, err
 	}
-	orderFragment.Price, err = adapter.unmarshalEncryptedCoExpShare(orderFragmentIn.Price)
+	orderFragment.Price, err = UnmarshalEncryptedCoExpShare(orderFragmentIn.Price)
 	if err != nil {
 		return orderFragment, err
 	}
-	orderFragment.Volume, err = adapter.unmarshalEncryptedCoExpShare(orderFragmentIn.Volume)
+	orderFragment.Volume, err = UnmarshalEncryptedCoExpShare(orderFragmentIn.Volume)
 	if err != nil {
 		return orderFragment, err
 	}
-	orderFragment.MinimumVolume, err = adapter.unmarshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume)
+	orderFragment.MinimumVolume, err = UnmarshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume)
 	if err != nil {
 		return orderFragment, err
 	}
 	return orderFragment, nil
 }
 
-func (adapter *IngressAdapter) unmarshalOrderFragmentMapping(orderFragmentMappingIn OrderFragmentMapping) (order.ID, ingress.OrderFragmentMapping, error) {
+func UnmarshalOrderFragmentMapping(orderFragmentMappingIn OrderFragmentMapping) (order.ID, ingress.OrderFragmentMapping, error) {
 	orderID := order.ID{}
 	orderFragmentMapping := ingress.OrderFragmentMapping{}
 
@@ -158,7 +192,7 @@ func (adapter *IngressAdapter) unmarshalOrderFragmentMapping(orderFragmentMappin
 		var err error
 		foundOrderID := false
 		for _, value := range values {
-			if orderID, err = adapter.unmarshalOrderID(value.OrderID); err != nil {
+			if orderID, err = UnmarshalOrderID(value.OrderID); err != nil {
 				return orderID, orderFragmentMapping, err
 			}
 			foundOrderID = true
@@ -182,7 +216,7 @@ func (adapter *IngressAdapter) unmarshalOrderFragmentMapping(orderFragmentMappin
 		copy(hash[:], hashBytes)
 		orderFragmentMapping[hash] = make([]ingress.OrderFragment, 0, len(orderFragmentsIn))
 		for _, orderFragmentIn := range orderFragmentsIn {
-			orderFragment, err := adapter.unmarshalOrderFragment(orderFragmentIn)
+			orderFragment, err := UnmarshalOrderFragment(orderFragmentIn)
 			if err != nil {
 				return orderID, orderFragmentMapping, err
 			}

@@ -296,6 +296,12 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 	go func() {
 		defer close(errs)
 
+		fmtStr := "[pod = %v] sending order = " + base64.StdEncoding.EncodeToString(pod.Hash[:]) + "\n"
+		for _, darknode := range pod.Darknodes {
+			fmtStr += "  sending order fragment to " + darknode.String() + "\n"
+		}
+		log.Printf(fmtStr)
+
 		dispatch.CoForAll(pod.Darknodes, func(i int) {
 			orderFragment, ok := orderFragmentIndexMapping[int64(i)]
 			if !ok {
@@ -313,7 +319,6 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 				return
 			}
 
-			log.Printf("sending order fragment to %v", darknode)
 			if err := ingress.orderbookClient.OpenOrder(ctx, darknodeMultiAddr, orderFragment.EncryptedFragment); err != nil {
 				log.Printf("cannot send order fragment to %v: %v", darknode, err)
 				errs <- fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)

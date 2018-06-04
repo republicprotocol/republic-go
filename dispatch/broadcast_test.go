@@ -88,21 +88,79 @@ var _ = Describe("Broadcaster", func() {
 			close(signal)
 		}, 10 /* 10 second timeout */)
 
-		It("should not block existing listeners after shutting down", func() {
-
-		})
-
 		It("should not block new listeners after shutting down", func() {
+			broadcaster := NewBroadcaster()
+			broadcaster.Close()
 
+			done := make(chan struct{})
+			lis := broadcaster.Listen(done)
+			select {
+			case _, ok := <-lis:
+				Expect(ok).Should(BeFalse())
+			default:
+			}
 		})
 
 		It("should not block when shutting down under heavy usage", func() {
+			broadcaster := NewBroadcaster()
 
+			var wg sync.WaitGroup
+			wg.Add(2)
+
+			go func() {
+				defer GinkgoRecover()
+				defer wg.Done()
+
+				CoForAll(int(MaxListeners), func(i int) {
+					done := make(chan struct{})
+					lis := broadcaster.Listen(done)
+					close(done)
+					<-lis
+				})
+			}()
+			time.Sleep(time.Second)
+
+			go func() {
+				defer GinkgoRecover()
+				defer wg.Done()
+				defer broadcaster.Close()
+
+				CoForAll(int(MaxListeners), func(i int) {
+					done := make(chan struct{})
+					ch := make(chan interface{})
+					defer close(ch)
+					go broadcaster.Broadcast(done, ch)
+					ch <- struct{}{}
+				})
+			}()
+
+			wg.Wait()
 		})
 
 	})
 
 	Context("when broadcasting", func() {
+
+		It("should restrict the maximum number of listeners", func() {
+			broadcaster := NewBroadcaster()
+			listeners := make([]<-chan interface{}, 2*MaxListeners)
+			closed := int32(0)
+			CoForAll(int(2*MaxListeners), func(i int) {
+				done := make(chan struct{})
+				lis := broadcaster.Listen(done)
+				listeners[i] = lis
+			})
+			CoForAll(int(2*MaxListeners), func(i int) {
+				select {
+				case _, ok := <-listeners[i]:
+					if !ok {
+						atomic.AddInt32(&closed, 1)
+					}
+				default:
+				}
+			})
+			Expect(closed).Should(Equal(MaxListeners))
+		})
 
 		It("should send message from one broadcast to many listeners", func(done Done) {
 			defer close(done)
@@ -122,9 +180,9 @@ var _ = Describe("Broadcaster", func() {
 						atomic.AddInt64(&n, 1)
 					}
 				})
-				Expect(n).Should(Equal(int64(MaxListeners * 1000)))
+				Expect(n).Should(Equal(int64(MaxListeners)))
 			}()
-			time.Sleep(2 * time.Second)
+			time.Sleep(time.Second)
 
 			go func() {
 				defer GinkgoRecover()
@@ -135,18 +193,12 @@ var _ = Describe("Broadcaster", func() {
 				ch := make(chan interface{})
 				defer close(ch)
 				go broadcaster.Broadcast(done, ch)
-				for i := 0; i < 1000; i++ {
-					ch <- i
-				}
-				time.Sleep(2 * time.Second)
+				ch <- struct{}{}
+				time.Sleep(time.Second)
 			}()
 
 			wg.Wait()
-		}, 10 /* 10 second timeout */)
-
-		It("should send messages from many broadcasts to one listener", func() {
-
-		})
+		}, 30 /* 30 second timeout */)
 
 		It("should send messages from many broadcasts to many listeners", func(done Done) {
 			defer close(done)
@@ -166,29 +218,27 @@ var _ = Describe("Broadcaster", func() {
 						atomic.AddInt64(&n, 1)
 					}
 				})
-				Expect(n).Should(Equal(int64(MaxListeners * 100 * 1000)))
+				Expect(n).Should(Equal(int64(MaxListeners * MaxListeners)))
 			}()
-			time.Sleep(2 * time.Second)
+			time.Sleep(time.Second)
 
 			go func() {
 				defer GinkgoRecover()
 				defer wg.Done()
 				defer broadcaster.Close()
 
-				CoForAll(int(100), func(i int) {
+				CoForAll(int(MaxListeners), func(i int) {
 					done := make(chan struct{})
 					ch := make(chan interface{})
 					defer close(ch)
 					go broadcaster.Broadcast(done, ch)
-					for j := 0; j < 1000; j++ {
-						ch <- j
-					}
+					ch <- struct{}{}
 				})
-				time.Sleep(10 * time.Second)
+				time.Sleep(time.Second * 3)
 			}()
 
 			wg.Wait()
-		}, 120 /* 30 second timeout */)
+		}, 60 /* 1 minute timeout */)
 
 	})
 

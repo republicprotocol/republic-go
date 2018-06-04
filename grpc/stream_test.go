@@ -9,9 +9,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/republicprotocol/republic-go/grpc"
+
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
-	. "github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/stream"
 )
@@ -28,13 +29,13 @@ var _ = Describe("Streaming", func() {
 	BeforeEach(func() {
 		var err error
 
-		server = NewServer()
-		service, serviceAddr, err = newStreamService()
-		Expect(err).ShouldNot(HaveOccurred())
-		service.Register(server)
-
 		client, clientAddr, err = newStreamClient()
 		Expect(err).ShouldNot(HaveOccurred())
+
+		server = NewServer()
+		service, serviceAddr, err = newStreamService(clientAddr)
+		Expect(err).ShouldNot(HaveOccurred())
+		service.Register(server)
 
 		serviceMultiAddr, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/18514/republic/%v", serviceAddr))
 		Expect(err).ShouldNot(HaveOccurred())
@@ -203,17 +204,17 @@ func newStreamClient() (stream.Client, identity.Address, error) {
 		return nil, identity.Address(""), err
 	}
 	addr := identity.Address(ecdsaKey.Address())
-	client := NewStreamClient(mockSigner{}, addr)
+	client := NewStreamClient(&ecdsaKey, addr)
 	return client, addr, nil
 }
 
-func newStreamService() (*StreamService, identity.Address, error) {
+func newStreamService(clientAddr identity.Address) (*StreamService, identity.Address, error) {
 	ecdsaKey, err := crypto.RandomEcdsaKey()
 	if err != nil {
 		return nil, identity.Address(""), err
 	}
 	addr := identity.Address(ecdsaKey.Address())
-	service := NewStreamService(mockVerifier{}, addr)
+	service := NewStreamService(crypto.NewEcdsaVerifier(clientAddr.String()), addr)
 	return &service, addr, nil
 }
 
