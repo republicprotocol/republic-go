@@ -17,14 +17,16 @@ type Change struct {
 	OrderParity   order.Parity
 	OrderStatus   order.Status
 	OrderPriority uint64
+	OrderTrader   string
 }
 
-func NewChange(id order.ID, parity order.Parity, status order.Status, priority uint64) Change {
+func NewChange(id order.ID, parity order.Parity, status order.Status, priority uint64, trader string) Change {
 	return Change{
 		OrderID:       id,
 		OrderParity:   parity,
 		OrderStatus:   status,
 		OrderPriority: priority,
+		OrderTrader:   trader,
 	}
 }
 
