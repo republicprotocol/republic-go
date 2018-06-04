@@ -14,7 +14,8 @@ import (
 type FilePlugin struct {
 	do.GuardedObject
 
-	file *os.File
+	file     *os.File
+	filePath string
 }
 
 // FilePluginOptions are used to Unmarshal a FilePlugin from JSON. If the Path
@@ -24,31 +25,34 @@ type FilePluginOptions struct {
 	Path string `json:"path"`
 }
 
-// NewFilePlugin uses the give File to create a new FilePlugin. The file will
-// be opened as appendable and will be closed when the plugin is stopped.
+// NewFilePlugin uses the FilePluginOptions to create a new FilePlugin.
 func NewFilePlugin(filePluginOptions FilePluginOptions) (Plugin, error) {
-	var err error
 	plugin := new(FilePlugin)
 	plugin.GuardedObject = do.NewGuardedObject()
-	switch filePluginOptions.Path {
+	plugin.filePath = filePluginOptions.Path
+	return plugin, nil
+}
+
+// Start implements the Plugin interface. It opens the log file which will
+// be opened as appendable and will be closed when the plugin is stopped.
+func (plugin *FilePlugin) Start() error {
+	var err error
+	plugin.Enter(nil)
+	defer plugin.Exit()
+	// Initialise the file based on path
+	switch plugin.filePath {
 	case "stdout":
 		plugin.file = os.Stdout
 	case "stderr":
 		plugin.file = os.Stderr
 	default:
-		plugin.file, err = os.OpenFile(filePluginOptions.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0640)
+		plugin.file, err = os.OpenFile(plugin.filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0640)
 	}
-	return plugin, err
+	return err
 }
 
-// Start implements the Plugin interface. It does nothing.
-func (plugin *FilePlugin) Start() error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-	return nil
-}
-
-// Stop implements the Plugin interface. It does nothing.
+// Stop implements the Plugin interface. If the filePath is stdout or stderr
+// it does nothing, otherwise it closes the open log file.
 func (plugin *FilePlugin) Stop() error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
