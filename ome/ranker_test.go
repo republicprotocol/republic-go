@@ -49,7 +49,7 @@ var _ = Describe("OME Ranker", func() {
 			Expect(ranker.Computations(computations)).Should(Equal(0))
 		})
 
-		FIt("should quarter the number of computations when halving the number of orders", func() {
+		It("should quarter the number of computations when halving the number of orders", func() {
 			ranker, computations := sendCorrectOrdersToRanker(numberOfRankers, numberOfOrderPairs)
 
 			// Remove the last half of buy orders and the last half of sell orders
