@@ -33,7 +33,6 @@ const (
 	TypeGeneric        = EventType("generic")
 	TypeEpoch          = EventType("epoch")
 	TypeUsage          = EventType("usage")
-	TypeEthereum       = EventType("ethereum")
 	TypeOrderConfirmed = EventType("orderConfirmed")
 	TypeOrderMatch     = EventType("orderMatch")
 	TypeOrderReceived  = EventType("orderReceived")
