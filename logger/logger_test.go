@@ -43,6 +43,48 @@ var _ = Describe("Logger", func() {
 			Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
 		})
 
+		It("should show errors by default", func() {
+			start := time.Now()
+			msg := "Some information"
+			Error(msg)
+			end := time.Now()
+			log, err := readTmp()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(start.Before(log.Timestamp)).Should(BeTrue())
+			Expect(log.Timestamp.Before(end)).Should(BeTrue())
+			Expect(log.Level).Should(Equal(LevelError))
+			Expect(log.EventType).Should(Equal(TypeGeneric))
+			Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
+		})
+
+		It("should not show info or debug messages by default", func() {
+			msg := "Some information"
+			// Check Info doesn't show
+			Info(msg)
+			log, err := readTmp()
+			Expect(err).ShouldNot(HaveOccurred())
+			checkNilLog(log)
+
+			// Check DebugHigh doesn't show
+			DebugHigh(msg)
+			log, err = readTmp()
+			Expect(err).ShouldNot(HaveOccurred())
+			checkNilLog(log)
+
+			// Check Debug doesn't show
+			Debug(msg)
+			log, err = readTmp()
+			Expect(err).ShouldNot(HaveOccurred())
+			checkNilLog(log)
+
+			// Check DebugLow doesn't show
+			DebugLow(msg)
+			log, err = readTmp()
+			Expect(err).ShouldNot(HaveOccurred())
+			checkNilLog(log)
+		})
+
 	})
 
 })
@@ -82,4 +124,11 @@ func initFileLogger() (*Logger, error) {
 	}
 	SetDefaultLogger(logger)
 	return logger, nil
+}
+
+func checkNilLog(l Log) {
+	Expect(l.Timestamp.IsZero()).Should(BeTrue())
+	Expect(l.EventType).Should(Equal(EventType("")))
+	Expect(l.Level).Should(Equal(Level(0)))
+	Expect(l.Event).Should(BeNil())
 }
