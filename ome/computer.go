@@ -3,6 +3,7 @@ package ome
 import (
 	"encoding/base64"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -233,6 +234,12 @@ func (computer *computer) processComputations(done <-chan struct{}, insts chan<-
 }
 
 func (computer *computer) processComputation(computation ComputationEpoch, pendingComputations map[[32]byte]ComputationEpoch, done <-chan struct{}, insts chan<- smpc.Inst) {
+
+	buyID := base64.StdEncoding.EncodeToString(computation.Buy[:])
+	if strings.HasPrefix(buyID, "dcF") {
+		log.Println(computation.Buy)
+	}
+
 	buy, err := computer.storer.OrderFragment(computation.Buy)
 	if err != nil {
 		pendingComputations[computation.ID] = computation
