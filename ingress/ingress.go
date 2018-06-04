@@ -72,7 +72,7 @@ type Ingress interface {
 	CancelOrder(signature [65]byte, orderID order.ID) error
 
 	// Sync Darkpool to ensure an up-to-date state.
-	Sync() error
+	Sync(<-chan struct{}) <-chan error
 }
 
 type ingress struct {
@@ -80,6 +80,7 @@ type ingress struct {
 	renLedger               cal.RenLedger
 	swarmer                 swarm.Swarmer
 	orderbookClient         orderbook.Client
+	podsMu                  sync.RWMutex
 	pods                    map[[32]byte]cal.Pod
 	openOrderQueue          chan OpenOrderRequest
 	openOrderFragmentsQueue chan OpenOrderRequest
@@ -162,12 +163,14 @@ func (ingress *ingress) OpenOrderFragmentsProcess(done chan struct{}) <-chan err
 					if !ok {
 						return
 					}
+					ingress.podsMu.RLock()
 					if err := ingress.processOpenOrderFragmentsRequest(request, ingress.pods); err != nil {
 						select {
 						case <-done:
 						case errs <- err:
 						}
 					}
+					ingress.podsMu.RUnlock()
 				}
 			}
 		}(i)
@@ -191,19 +194,76 @@ func (ingress *ingress) CancelOrder(signature [65]byte, orderID order.ID) error 
 	return nil
 }
 
-func (ingress *ingress) Sync() error {
+func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
+	errs := make(chan error, 1)
+
+	epoch, err := ingress.darkpool.Epoch()
+	if err != nil {
+		errs <- err
+		return errs
+	}
+
 	pods, err := ingress.darkpool.Pods()
 	if err != nil {
-		return fmt.Errorf("cannot get pods from darkpool: %v", err)
+		errs <- err
+	} else {
+		ingress.podsMu.Lock()
+		ingress.pods = map[[32]byte]cal.Pod{}
+		for _, pod := range pods {
+			ingress.pods[pod.Hash] = pod
+		}
+		ingress.podsMu.Unlock()
 	}
-	ingress.pods = map[[32]byte]cal.Pod{}
-	for _, pod := range pods {
-		ingress.pods[pod.Hash] = pod
-	}
-	return nil
+
+	currentEpochHash := epoch.Hash
+
+	go func() {
+		defer close(errs)
+		for {
+			// Sync with the approximate block time
+			time.Sleep(14 * time.Second)
+
+			select {
+			case <-done:
+				return
+			default:
+			}
+
+			currentEpoch, err := ingress.darkpool.Epoch()
+			if err != nil {
+				select {
+				case <-done:
+					return
+				case errs <- err:
+				}
+			}
+
+			if currentEpochHash != currentEpoch.Hash {
+				pods, err := ingress.darkpool.Pods()
+				if err != nil {
+					select {
+					case <-done:
+						return
+					case errs <- err:
+						continue
+					}
+				}
+				ingress.podsMu.Lock()
+				ingress.pods = map[[32]byte]cal.Pod{}
+				for _, pod := range pods {
+					ingress.pods[pod.Hash] = pod
+				}
+				ingress.podsMu.Unlock()
+			}
+		}
+	}()
+	return errs
 }
 
 func (ingress *ingress) verifyOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
+	ingress.podsMu.RLock()
+	defer ingress.podsMu.RUnlock()
+
 	if len(orderFragmentMapping) == 0 || len(orderFragmentMapping) > len(ingress.pods) {
 		return ErrInvalidNumberOfPods
 	}
