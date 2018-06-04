@@ -206,6 +206,7 @@ func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
 	pods, err := ingress.darkpool.Pods()
 	if err != nil {
 		errs <- err
+		return errs
 	} else {
 		ingress.podsMu.Lock()
 		ingress.pods = map[[32]byte]cal.Pod{}
@@ -267,6 +268,7 @@ func (ingress *ingress) verifyOrderFragments(orderFragmentMapping OrderFragmentM
 	if len(orderFragmentMapping) == 0 || len(orderFragmentMapping) > len(ingress.pods) {
 		return ErrInvalidNumberOfPods
 	}
+
 	for hash, orderFragments := range orderFragmentMapping {
 		pod, ok := ingress.pods[hash]
 		if !ok {
