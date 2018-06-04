@@ -70,6 +70,7 @@ are:
 - `TypeEpoch`   
 - `TypeUsage` 
 - `TypeEthereum`
+- `TypeOrderConfirmed`
 - `TypeOrderMatch`
 - `TypeOrderReceived`
 - `TypeNetwork`
