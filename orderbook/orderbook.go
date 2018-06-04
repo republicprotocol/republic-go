@@ -2,6 +2,7 @@ package orderbook
 
 import (
 	"context"
+	"log"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -53,10 +54,13 @@ func NewOrderbook(key crypto.RsaKey, syncer Syncer, storer Storer) Orderbook {
 }
 
 func (book *orderbook) OpenOrder(ctx context.Context, orderFragment order.EncryptedFragment) error {
+	log.Println("RECEIVED ORDER!")
+	log.Println(orderFragment)
 	fragment, err := orderFragment.Decrypt(*book.RsaKey.PrivateKey)
 	if err != nil {
 		return err
 	}
+	log.Println(fragment)
 	return book.storer.InsertOrderFragment(fragment)
 }
 
