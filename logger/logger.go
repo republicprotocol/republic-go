@@ -445,7 +445,7 @@ func (level Level) String() string {
 // A Log is logged by the Logger using all available Plugins.
 type Log struct {
 	Timestamp time.Time         `json:"timestamp"`
-	Level     Level             `json:"type"`
+	Level     Level             `json:"level"`
 	EventType EventType         `json:"eventType"`
 	Event     Event             `json:"event"`
 	Tags      map[string]string `json:"tags"`
