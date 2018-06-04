@@ -49,13 +49,16 @@ var _ = Describe("OME Ranker", func() {
 			Expect(ranker.Computations(computations)).Should(Equal(0))
 		})
 
-		It("should quarter the number of computations when halving the number of orders", func() {
+		FIt("should quarter the number of computations when halving the number of orders", func() {
 			ranker, computations := sendCorrectOrdersToRanker(numberOfRankers, numberOfOrderPairs)
 
-			// Remove half of the orders
+			// Remove the last half of buy orders and the last half of sell orders
 			removeOrderIDs := make([]order.ID, 0, numberOfOrderPairs)
-			for i := numberOfOrderPairs; i < 2*numberOfOrderPairs; i += 2 {
-				removeOrderIDs = append(removeOrderIDs, [32]byte{byte(i)})
+			for i := 0; i < numberOfOrderPairs/2; i++ {
+				removeOrderIDs = append(removeOrderIDs, [32]byte{byte(numberOfOrderPairs/2 + i)})
+			}
+			for i := 0; i < numberOfOrderPairs/2; i++ {
+				removeOrderIDs = append(removeOrderIDs, [32]byte{byte(numberOfOrderPairs + numberOfOrderPairs/2 + i)})
 			}
 			ranker.Remove(removeOrderIDs...)
 
