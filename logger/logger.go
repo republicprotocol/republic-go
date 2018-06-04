@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -449,6 +450,77 @@ type Log struct {
 	EventType EventType         `json:"eventType"`
 	Event     Event             `json:"event"`
 	Tags      map[string]string `json:"tags"`
+}
+
+type rawLog struct {
+	Timestamp time.Time         `json:"timestamp"`
+	Level     Level             `json:"level"`
+	EventType EventType         `json:"eventType"`
+	Event     json.RawMessage   `json:"event"`
+	Tags      map[string]string `json:"tags"`
+}
+
+func (log *Log) UnmarshalJSON(data []byte) error {
+	rawLog := rawLog{}
+	if err := json.Unmarshal(data, &rawLog); err != nil {
+		return err
+	}
+
+	switch rawLog.EventType {
+	case TypeGeneric:
+		ev := GenericEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeEpoch:
+		ev := EpochEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeUsage:
+		ev := UsageEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeOrderConfirmed:
+		ev := OrderConfirmedEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeOrderMatch:
+		ev := OrderMatchEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeOrderReceived:
+		ev := OrderReceivedEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeNetwork:
+		ev := NetworkEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeCompute:
+		ev := ComputeEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	}
+
+	log.Timestamp = rawLog.Timestamp
+	log.Level = rawLog.Level
+	log.EventType = rawLog.EventType
+	return nil
 }
 
 // The Event interface describes a log event
