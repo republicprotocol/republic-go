@@ -112,11 +112,6 @@ func main() {
 	darknode := darknode.NewDarknode(config.Address, darkPool, darkPoolAccounts, darkPoolFees)
 	darknode.SetEpochListener(ome)
 
-	// Bootstrap
-	go func() {
-
-	}()
-
 	// Start the secure order matching engine
 	go func() {
 		// Wait for the gRPC server to boot

@@ -155,7 +155,11 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 
 		computationErrs := ome.computer.Compute(done, computations)
 		for err := range computationErrs {
-			errs <- err
+			select {
+			case <-done:
+				return
+			case errs <- err:
+			}
 		}
 	}()
 
