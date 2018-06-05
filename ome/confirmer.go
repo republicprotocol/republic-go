@@ -9,7 +9,7 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
-// A Confirmer consumers Computations that have resulted in an order match and
+// A Confirmer consumes Computations that have resulted in an order match and
 // reaches consensus with other Darknodes on this order match. This prevents
 // the occurrence of conflicting order matches.
 type Confirmer interface {
@@ -68,9 +68,7 @@ func (confirmer *confirmer) ConfirmOrderMatches(done <-chan struct{}, orderMatch
 			// Graceful shutdown when the done channel is closed
 			case <-done:
 				return
-
 			case orderMatch, ok := <-orderMatches:
-				// Graceful shutdown when the input channel is closed
 				if !ok {
 					return
 				}
