@@ -29,10 +29,10 @@ type Computations []Computation
 // A Computation involving a buy order, and a sell order, with a combined
 // Priority.
 type Computation struct {
-	Buy      order.ID
-	Sell     order.ID
-	Priority Priority
-	Result   ComputationResult
+	Buy      order.ID          `json:"buy"`
+	Sell     order.ID          `json:"sell"`
+	Priority Priority          `json:"priority"`
+	Result   ComputationResult `json:"result"`
 }
 
 func (computation Computation) ID() [32]byte {
@@ -71,10 +71,10 @@ const (
 )
 
 type ComputationEpoch struct {
-	Computation
+	Computation `json:"computation"`
 
-	ID    [32]byte // Used for SMPC InstID
-	Epoch [32]byte // Used for SMPC NetworkID
+	ID    [32]byte `json:"id"`    // Used for SMPC InstID
+	Epoch [32]byte `json:"epoch"` // Used for SMPC NetworkID
 }
 
 // A Computer consumes Computations that need to be processed and outputs
@@ -199,6 +199,10 @@ func (computer *computer) Compute(done <-chan struct{}, computations <-chan Comp
 				confirmedMatchingComputationID := computeID(confirmedMatchingComputation)
 				computer.matchingComputationsMu.Lock()
 				computation, ok := computer.matchingComputationsState[confirmedMatchingComputationID]
+				if !ok {
+					log.Println("COMPUTATION CONFIRMED doesn't exist in the state map")
+					continue
+				}
 				log.Println("COMPUTATION CONFIRMED:", computation)
 				delete(computer.matchingComputationsState, confirmedMatchingComputationID)
 				computer.matchingComputationsMu.Unlock()
@@ -492,60 +496,60 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		return
 
 	case StageJoinBuyPriceExp:
-		log.Printf("[stage => %v] join buy price exp : result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join buy price exp : result = %v", computation.ID[31], resultJ.Value)
 		computer.priceExpPointer[computation.Buy] = &resultJ.Value
 		computation.ID[31] = StageJoinBuyPriceCo
 	case StageJoinBuyPriceCo:
-		log.Printf("[stage => %v] join buy price co : result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join buy price co : result = %v", computation.ID[31], resultJ.Value)
 		computer.priceCoPointer[computation.Buy] = &resultJ.Value
 		computation.ID[31] = StageJoinBuyVolExp
 	case StageJoinBuyVolExp:
-		log.Printf("[stage => %v] join buy vol exp: result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join buy vol exp: result = %v", computation.ID[31], resultJ.Value)
 		computer.volExpPointer[computation.Buy] = &resultJ.Value
 		computation.ID[31] = StageJoinBuyVolCo
 	case StageJoinBuyVolCo:
-		log.Printf("[stage => %v] join buy vol co: result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join buy vol co: result = %v", computation.ID[31], resultJ.Value)
 		computer.volCoPointer[computation.Buy] = &resultJ.Value
 		computation.ID[31] = StageJoinBuyMinVolExp
 	case StageJoinBuyMinVolExp:
-		log.Printf("[stage => %v] join buy min vol exp: result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join buy min vol exp: result = %v", computation.ID[31], resultJ.Value)
 		computer.minVolExpPointer[computation.Buy] = &resultJ.Value
 		computation.ID[31] = StageJoinBuyMinVolCo
 	case StageJoinBuyMinVolCo:
-		log.Printf("[stage => %v] join buy min vol co: result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join buy min vol co: result = %v", computation.ID[31], resultJ.Value)
 		computer.minVolCoPointer[computation.Buy] = &resultJ.Value
 		computation.ID[31] = StageJoinBuyTokens
 	case StageJoinBuyTokens:
-		log.Printf("[stage => %v] join buy token: result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join buy token: result = %v", computation.ID[31], resultJ.Value)
 		tokens := order.Tokens(resultJ.Value)
 		computer.tokensPointer[computation.Buy] = &tokens
 		computation.ID[31] = StageJoinSellPriceExp
 	case StageJoinSellPriceExp:
-		log.Printf("[stage => %v] join sell price exp: result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join sell price exp: result = %v", computation.ID[31], resultJ.Value)
 		computer.priceExpPointer[computation.Sell] = &resultJ.Value
 		computation.ID[31] = StageJoinSellPriceCo
 	case StageJoinSellPriceCo:
-		log.Printf("[stage => %v] join sell price co: result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join sell price co: result = %v", computation.ID[31], resultJ.Value)
 		computer.priceCoPointer[computation.Sell] = &resultJ.Value
 		computation.ID[31] = StageJoinSellVolExp
 	case StageJoinSellVolExp:
-		log.Printf("[stage => %v] join sell vol exp: result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join sell vol exp: result = %v", computation.ID[31], resultJ.Value)
 		computer.volExpPointer[computation.Sell] = &resultJ.Value
 		computation.ID[31] = StageJoinSellVolCo
 	case StageJoinSellVolCo:
-		log.Printf("[stage => %v] join sell vol co: result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join sell vol co: result = %v", computation.ID[31], resultJ.Value)
 		computer.volCoPointer[computation.Sell] = &resultJ.Value
 		computation.ID[31] = StageJoinSellMinVolExp
 	case StageJoinSellMinVolExp:
-		log.Printf("[stage => %v] join sell min vol exp: result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join sell min vol exp: result = %v", computation.ID[31], resultJ.Value)
 		computer.minVolExpPointer[computation.Sell] = &resultJ.Value
 		computation.ID[31] = StageJoinSellMinVolCo
 	case StageJoinSellMinVolCo:
-		log.Printf("[stage => %v] join sell min vol co: result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join sell min vol co: result = %v", computation.ID[31], resultJ.Value)
 		computer.minVolCoPointer[computation.Sell] = &resultJ.Value
 		computation.ID[31] = StageJoinSellTokens
 	case StageJoinSellTokens:
-		log.Printf("[stage => %v] join sell token: result = %v", computation.ID[31], &resultJ.Value)
+		log.Printf("[stage => %v] join sell token: result = %v", computation.ID[31], resultJ.Value)
 		tokens := order.Tokens(resultJ.Value)
 		computer.tokensPointer[computation.Sell] = &tokens
 		log.Printf(" start settl orders (Buy:%v , Sell: %v)-------", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
