@@ -1,6 +1,7 @@
 package ingress
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -72,7 +73,7 @@ type Ingress interface {
 	CancelOrder(signature [65]byte, orderID order.ID) error
 
 	// Sync Darkpool to ensure an up-to-date state.
-	Sync() error
+	Sync(<-chan struct{}) <-chan error
 }
 
 type ingress struct {
@@ -80,13 +81,15 @@ type ingress struct {
 	renLedger               cal.RenLedger
 	swarmer                 swarm.Swarmer
 	orderbookClient         orderbook.Client
-	pods                    map[[32]byte]cal.Pod
 	openOrderQueue          chan OpenOrderRequest
 	openOrderFragmentsQueue chan OpenOrderRequest
+
+	podsMu *sync.RWMutex
+	pods   map[[32]byte]cal.Pod
+	epoch  cal.Epoch
 }
 
-// NewIngress creates an ingress and starts reading from openOrderQueue
-// and openOrderFragmentsQueue. A call to NewIngress must be completed
+// NewIngress creates an ingress.A call to NewIngress must be completed
 // with a call to the StopIngress function which will close all the channels.
 func NewIngress(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Swarmer, orderbookClient orderbook.Client) Ingress {
 	ingress := &ingress{
@@ -94,7 +97,10 @@ func NewIngress(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Sw
 		renLedger:       renLedger,
 		swarmer:         swarmer,
 		orderbookClient: orderbookClient,
-		pods:            map[[32]byte]cal.Pod{},
+
+		podsMu: new(sync.RWMutex),
+		pods:   map[[32]byte]cal.Pod{},
+		epoch:  cal.Epoch{},
 
 		openOrderQueue:          make(chan OpenOrderRequest),
 		openOrderFragmentsQueue: make(chan OpenOrderRequest),
@@ -162,12 +168,14 @@ func (ingress *ingress) OpenOrderFragmentsProcess(done chan struct{}) <-chan err
 					if !ok {
 						return
 					}
+					ingress.podsMu.RLock()
 					if err := ingress.processOpenOrderFragmentsRequest(request, ingress.pods); err != nil {
 						select {
 						case <-done:
 						case errs <- err:
 						}
 					}
+					ingress.podsMu.RUnlock()
 				}
 			}
 		}(i)
@@ -191,19 +199,59 @@ func (ingress *ingress) CancelOrder(signature [65]byte, orderID order.ID) error 
 	return nil
 }
 
-func (ingress *ingress) Sync() error {
-	pods, err := ingress.darkpool.Pods()
-	if err != nil {
-		return fmt.Errorf("cannot get pods from darkpool: %v", err)
-	}
-	ingress.pods = map[[32]byte]cal.Pod{}
-	for _, pod := range pods {
-		ingress.pods[pod.Hash] = pod
-	}
-	return nil
+func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
+	errs := make(chan error, 1)
+
+	go func() {
+		defer close(errs)
+
+		for {
+			select {
+			case <-done:
+				return
+			default:
+			}
+
+			currentEpoch, err := ingress.darkpool.Epoch()
+			if err != nil {
+				select {
+				case <-done:
+					return
+				case errs <- err:
+				}
+			}
+
+			if bytes.Compare(ingress.epoch.Hash[:], currentEpoch.Hash[:]) != 0 {
+				log.Printf("epoch change: epoch hash %v , number of nodes: %v ", base64.StdEncoding.EncodeToString(currentEpoch.Hash[:]), len(currentEpoch.Darknodes))
+				pods, err := ingress.darkpool.Pods()
+				if err != nil {
+					select {
+					case <-done:
+						return
+					case errs <- err:
+						continue
+					}
+				}
+				ingress.podsMu.Lock()
+				ingress.pods = map[[32]byte]cal.Pod{}
+				for _, pod := range pods {
+					ingress.pods[pod.Hash] = pod
+				}
+				ingress.podsMu.Unlock()
+				ingress.epoch = currentEpoch
+			}
+
+			time.Sleep(4 * time.Second)
+		}
+	}()
+
+	return errs
 }
 
 func (ingress *ingress) verifyOrderFragments(orderFragmentMapping OrderFragmentMapping) error {
+	ingress.podsMu.RLock()
+	defer ingress.podsMu.RUnlock()
+
 	if len(orderFragmentMapping) == 0 || len(orderFragmentMapping) > len(ingress.pods) {
 		return ErrInvalidNumberOfPods
 	}
@@ -234,7 +282,7 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 	go func() {
 		defer close(errs)
 
-		fmtStr := "[pod = %v] sending order = " + base64.StdEncoding.EncodeToString(pod.Hash[:]) + "\n"
+		fmtStr := fmt.Sprintf("[pod = %v] sending order = \n", base64.StdEncoding.EncodeToString(pod.Hash[:]))
 		for _, darknode := range pod.Darknodes {
 			fmtStr += "  sending order fragment to " + darknode.String() + "\n"
 		}
