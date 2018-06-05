@@ -635,7 +635,9 @@ func (computer *computer) reconstructOrder(id order.ID) (order.Order, error) {
 		Exp: *computer.minVolExpPointer[id],
 	}
 
-	return order.NewOrder(order.TypeLimit, order.ParityBuy, fragment.OrderExpiry, *computer.tokensPointer[fragment.OrderID], price, volume, minVolume, 1), nil
+	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, fragment.OrderExpiry, *computer.tokensPointer[fragment.OrderID], price, volume, minVolume, 1)
+	ord.ID = id
+	return ord, nil
 }
 
 func storeComputationResult(store Storer, computation ComputationEpoch, result ComputationResult) error {
