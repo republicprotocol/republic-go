@@ -1,13 +1,13 @@
 package logger
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 )
 
@@ -552,11 +552,11 @@ func (event GenericEvent) String() string {
 
 // An EpochEvent logs that an epoch transition has been observed
 type EpochEvent struct {
-	Hash []byte `json:"hash"`
+	Hash [32]byte `json:"hash"`
 }
 
 func (event EpochEvent) String() string {
-	return base58.Encode(event.Hash)
+	return base64.StdEncoding.EncodeToString(event.Hash[:])
 }
 
 // UsageEvent logs CPU, Memory and Network usage
