@@ -468,6 +468,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		// 1. Settle buy order and sell order
 		// 2. Delete orders from pointer maps
 		buy, err := computer.reconstructOrder(computation.Buy)
+		log.Printf("<buy order> price<Co: %v, Exp: %v>, volumn<Co: %v, Exp: %v>,", buy.Price.Co, buy.Price.Exp, buy.Volume.Co, buy.Volume.Exp)
 		if err != nil {
 			log.Printf("cannot reconstruct buy order %v : %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), err)
 			return
