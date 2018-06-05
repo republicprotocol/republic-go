@@ -104,7 +104,7 @@ func main() {
 	smpcer := smpc.NewSmpcer(swarmer, streamer, 1)
 
 	// New OME
-	confirmer := ome.NewConfirmer(6, 4*time.Second, renLedger)
+	confirmer := ome.NewConfirmer(6, 4*time.Second, renLedger, store)
 	computer := ome.NewComputer(&store, smpcer, confirmer, renLedger, darkPoolAccounts)
 	ome := ome.NewOme(ome.NewRanker(1, 0), computer, orderbook, smpcer)
 
