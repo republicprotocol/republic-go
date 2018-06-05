@@ -27,11 +27,14 @@ var _ = Describe("Ingress", func() {
 	var darkpool mockDarkpool
 	var ingress Ingress
 	var done chan struct{}
+	var errChSync <-chan error
 	var errChOpenOrders <-chan error
 	var errChOpenOrderFragments <-chan error
 
 	BeforeEach(func() {
 		var err error
+		done = make(chan struct{})
+
 		rsaKey, err = crypto.RandomRsaKey()
 		Expect(err).ShouldNot(HaveOccurred())
 		darkpool = newMockDarkpool()
@@ -39,12 +42,12 @@ var _ = Describe("Ingress", func() {
 		swarmer := mockSwarmer{}
 		orderbookClient := mockOrderbookClient{}
 		ingress = NewIngress(&darkpool, &renLedger, &swarmer, &orderbookClient)
-		err = ingress.Sync()
-		Expect(err).ShouldNot(HaveOccurred())
-
-		done = make(chan struct{})
+		errChSync = ingress.Sync(done)
 		errChOpenOrders = ingress.OpenOrderProcess(done)
 		errChOpenOrderFragments = ingress.OpenOrderFragmentsProcess(done)
+
+		err = captureErrorsFromErrorChannel(errChSync, done)
+		Expect(err).ShouldNot(HaveOccurred())
 
 		err = captureErrorsFromErrorChannel(errChOpenOrderFragments, done)
 		Expect(err).ShouldNot(HaveOccurred())

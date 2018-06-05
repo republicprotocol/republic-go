@@ -37,11 +37,16 @@ var ErrCannotOpenOrderFragments = errors.New("cannot open order fragments: no po
 // An OrderFragmentMapping maps pods to encrypted order fragments.
 type OrderFragmentMapping map[[32]byte][]OrderFragment
 
+// OrderFragment has an order.EncryptedFragment, encrypted by the trader before
+// being sent to the Ingress, and the required index that identifies which set
+// shares are held by the order.EncryptedFragment.
 type OrderFragment struct {
 	order.EncryptedFragment
 	Index int64
 }
 
+// OpenOrderRequest has the required data for opening an order on behalf of a
+// trader.
 type OpenOrderRequest struct {
 	order.ID
 	signature            [65]byte
@@ -60,13 +65,13 @@ type Ingress interface {
 	// OpenOrderProcess starts reading from the openOrderQueue to process
 	// new open order requests. A done channel must be passed and when this
 	// done channel is closed by the user, the openOrderQueue will be closed.
-	OpenOrderProcess(done chan struct{}) <-chan error
+	OpenOrderProcess(done <-chan struct{}) <-chan error
 
 	// OpenOrderFragmentsProcess starts reading from the openOrderFragmentsQueue
 	// to process order fragments. A done channel must be passed and when this
 	// done channel is closed by the user, the openOrderFragmentsQueue will be
 	// closed.
-	OpenOrderFragmentsProcess(done chan struct{}) <-chan error
+	OpenOrderFragmentsProcess(done <-chan struct{}) <-chan error
 
 	// CancelOrder on the Ren Ledger. A signature from the trader is needed to
 	// verify the cancelation.
@@ -125,7 +130,7 @@ func (ingress *ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFra
 	return nil
 }
 
-func (ingress *ingress) OpenOrderProcess(done chan struct{}) <-chan error {
+func (ingress *ingress) OpenOrderProcess(done <-chan struct{}) <-chan error {
 	errs := make(chan error, 1)
 	go func() {
 		defer close(errs)
@@ -151,7 +156,7 @@ func (ingress *ingress) OpenOrderProcess(done chan struct{}) <-chan error {
 	return errs
 }
 
-func (ingress *ingress) OpenOrderFragmentsProcess(done chan struct{}) <-chan error {
+func (ingress *ingress) OpenOrderFragmentsProcess(done <-chan struct{}) <-chan error {
 	errs := make(chan error, runtime.NumCPU())
 
 	var wg sync.WaitGroup
@@ -354,9 +359,8 @@ func (ingress *ingress) processOpenOrderFragmentsRequest(request OpenOrderReques
 	if atomic.LoadInt64(&podDidReceiveFragments) == int64(0) {
 		if len(errs) == 0 {
 			return ErrCannotOpenOrderFragments
-		} else {
-			return fmt.Errorf("%v %v", ErrCannotOpenOrderFragments.Error(), errs[0])
 		}
+		return fmt.Errorf("%v %v", ErrCannotOpenOrderFragments.Error(), errs[0])
 	}
 	return nil
 }
