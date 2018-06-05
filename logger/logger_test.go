@@ -71,32 +71,27 @@ var _ = Describe("Logger", func() {
 			})
 
 			It("should show error messages", func() {
-				testGenericError()
+				testGenericError(true)
 			})
 
 			It("should filter warn messages", func() {
-				Warn(msg)
-				checkNilLog()
+				testGenericWarn(false)
 			})
 
 			It("should filter info messages", func() {
-				Info(msg)
-				checkNilLog()
+				testGenericInfo(false)
 			})
 
 			It("should filter high-level debug messages", func() {
-				DebugHigh(msg)
-				checkNilLog()
+				testGenericDebugHigh(false)
 			})
 
 			It("should filter regular debug messages", func() {
-				Debug(msg)
-				checkNilLog()
+				testGenericDebug(false)
 			})
 
 			It("should filter low-level debug messages", func() {
-				DebugLow(msg)
-				checkNilLog()
+				testGenericDebugLow(false)
 			})
 		})
 
@@ -106,31 +101,27 @@ var _ = Describe("Logger", func() {
 			})
 
 			It("should show error messages", func() {
-				testGenericError()
+				testGenericError(true)
 			})
 
 			It("should show warn messages", func() {
-				testGenericWarn()
+				testGenericWarn(true)
 			})
 
 			It("should filter info messages", func() {
-				Info(msg)
-				checkNilLog()
+				testGenericInfo(false)
 			})
 
 			It("should filter high-level debug messages", func() {
-				DebugHigh(msg)
-				checkNilLog()
+				testGenericDebugHigh(false)
 			})
 
 			It("should filter regular debug messages", func() {
-				Debug(msg)
-				checkNilLog()
+				testGenericDebug(false)
 			})
 
 			It("should filter low-level debug messages", func() {
-				DebugLow(msg)
-				checkNilLog()
+				testGenericDebugLow(false)
 			})
 		})
 
@@ -140,30 +131,27 @@ var _ = Describe("Logger", func() {
 			})
 
 			It("should show error messages", func() {
-				testGenericError()
+				testGenericError(true)
 			})
 
 			It("should show warn messages", func() {
-				testGenericWarn()
+				testGenericWarn(true)
 			})
 
 			It("should show info messages", func() {
-				testGenericInfo()
+				testGenericInfo(true)
 			})
 
 			It("should filter high-level debug messages", func() {
-				DebugHigh(msg)
-				checkNilLog()
+				testGenericDebugHigh(false)
 			})
 
 			It("should filter regular debug messages", func() {
-				Debug(msg)
-				checkNilLog()
+				testGenericDebug(false)
 			})
 
 			It("should filter low-level debug messages", func() {
-				DebugLow(msg)
-				checkNilLog()
+				testGenericDebugLow(false)
 			})
 		})
 
@@ -173,29 +161,27 @@ var _ = Describe("Logger", func() {
 			})
 
 			It("should show error messages", func() {
-				testGenericError()
+				testGenericError(true)
 			})
 
 			It("should show warn messages", func() {
-				testGenericWarn()
+				testGenericWarn(true)
 			})
 
 			It("should show info messages", func() {
-				testGenericInfo()
+				testGenericInfo(true)
 			})
 
 			It("should show high-level debug messages", func() {
-				testGenericDebugHigh()
+				testGenericDebugHigh(true)
 			})
 
 			It("should filter regular debug messages", func() {
-				Debug(msg)
-				checkNilLog()
+				testGenericDebug(false)
 			})
 
 			It("should filter low-level debug messages", func() {
-				DebugLow(msg)
-				checkNilLog()
+				testGenericDebugLow(false)
 			})
 
 		})
@@ -206,28 +192,27 @@ var _ = Describe("Logger", func() {
 			})
 
 			It("should show error messages", func() {
-				testGenericError()
+				testGenericError(true)
 			})
 
 			It("should show warn messages", func() {
-				testGenericWarn()
+				testGenericWarn(true)
 			})
 
 			It("should show info messages", func() {
-				testGenericInfo()
+				testGenericInfo(true)
 			})
 
 			It("should show high-level debug messages", func() {
-				testGenericDebugHigh()
+				testGenericDebugHigh(true)
 			})
 
 			It("should show debug messages", func() {
-				testGenericDebug()
+				testGenericDebug(true)
 			})
 
 			It("should filter low-level debug messages", func() {
-				DebugLow(msg)
-				checkNilLog()
+				testGenericDebugLow(false)
 			})
 
 		})
@@ -238,27 +223,240 @@ var _ = Describe("Logger", func() {
 			})
 
 			It("should show error messages", func() {
-				testGenericError()
+				testGenericError(true)
 			})
 
 			It("should show warn messages", func() {
-				testGenericWarn()
+				testGenericWarn(true)
 			})
 
 			It("should show info messages", func() {
-				testGenericInfo()
+				testGenericInfo(true)
 			})
 
 			It("should show high-level debug messages", func() {
-				testGenericDebugHigh()
+				testGenericDebugHigh(true)
 			})
 
 			It("should show regular debug messages", func() {
-				testGenericDebug()
+				testGenericDebug(true)
 			})
 
 			It("should show low-level debug messages", func() {
-				testGenericDebugLow()
+				testGenericDebugLow(true)
+			})
+
+		})
+
+		Context("when we set event filter to whitelist generic events", func() {
+			BeforeEach(func() {
+				SetFilterEvents([]EventType{TypeGeneric})
+				SetFilterLevel(6)
+			})
+
+			It("should filter non-generic messages", func() {
+				testUsage(false)
+				testOrderConfirmed(LevelError, false)
+				testOrderMatch(LevelWarn, false)
+				testBuyOrderReceived(LevelInfo, false)
+				testSellOrderReceived(LevelDebugHigh, false)
+				testNetwork(LevelDebug, false)
+				testCompute(LevelDebugLow, false)
+			})
+
+			It("should show all generic messages", func() {
+				testGenericError(true)
+			})
+
+			It("should show generic warn messages", func() {
+				testGenericWarn(true)
+			})
+
+			It("should show generic info messages", func() {
+				testGenericInfo(true)
+			})
+
+			It("should show generic high-level debug messages", func() {
+				testGenericDebugHigh(true)
+			})
+
+			It("should show generic regular debug messages", func() {
+				testGenericDebug(true)
+			})
+
+			It("should show generic low-level debug messages", func() {
+				testGenericDebugLow(true)
+			})
+
+		})
+
+		Context("when we set event filter to whitelist usage events", func() {
+			BeforeEach(func() {
+				SetFilterEvents([]EventType{TypeUsage})
+				SetFilterLevel(6)
+			})
+
+			It("should show usage messages", func() {
+				testUsage(true)
+			})
+
+			It("should filter non-usage messages", func() {
+				testGenericError(false)
+				testGenericWarn(false)
+				testGenericInfo(false)
+				testGenericDebugHigh(false)
+				testGenericDebug(false)
+				testGenericDebugLow(false)
+
+				testOrderConfirmed(LevelError, false)
+				testOrderMatch(LevelWarn, false)
+				testBuyOrderReceived(LevelInfo, false)
+				testSellOrderReceived(LevelDebugHigh, false)
+				testNetwork(LevelDebug, false)
+				testCompute(LevelDebugLow, false)
+			})
+
+		})
+
+		Context("when we set event filter to whitelist order confirmed events", func() {
+			BeforeEach(func() {
+				SetFilterEvents([]EventType{TypeOrderConfirmed})
+				SetFilterLevel(6)
+			})
+
+			It("should show order confirmed messages", func() {
+				testOrderConfirmed(LevelError, true)
+			})
+
+			It("should filter non-usage messages", func() {
+				testGenericError(false)
+				testGenericWarn(false)
+				testGenericInfo(false)
+				testGenericDebugHigh(false)
+				testGenericDebug(false)
+				testGenericDebugLow(false)
+
+				testUsage(false)
+				testOrderMatch(LevelWarn, false)
+				testBuyOrderReceived(LevelInfo, false)
+				testSellOrderReceived(LevelDebugHigh, false)
+				testNetwork(LevelDebug, false)
+				testCompute(LevelDebugLow, false)
+			})
+
+		})
+
+		Context("when we set event filter to whitelist order matched events", func() {
+			BeforeEach(func() {
+				SetFilterEvents([]EventType{TypeOrderMatch})
+				SetFilterLevel(6)
+			})
+
+			It("should show order confirmed messages", func() {
+				testOrderMatch(LevelWarn, true)
+			})
+
+			It("should filter non-usage messages", func() {
+				testGenericError(false)
+				testGenericWarn(false)
+				testGenericInfo(false)
+				testGenericDebugHigh(false)
+				testGenericDebug(false)
+				testGenericDebugLow(false)
+
+				testUsage(false)
+				testOrderConfirmed(LevelError, false)
+				testBuyOrderReceived(LevelInfo, false)
+				testSellOrderReceived(LevelDebugHigh, false)
+				testNetwork(LevelDebug, false)
+				testCompute(LevelDebugLow, false)
+			})
+
+		})
+
+		Context("when we set event filter to whitelist order received events", func() {
+			BeforeEach(func() {
+				SetFilterEvents([]EventType{TypeOrderReceived})
+				SetFilterLevel(6)
+			})
+
+			It("should show buy order confirmed messages", func() {
+				testBuyOrderReceived(LevelInfo, true)
+			})
+
+			It("should show sell order confirmed messages", func() {
+				testSellOrderReceived(LevelDebugHigh, true)
+			})
+
+			It("should filter non-usage messages", func() {
+				testGenericError(false)
+				testGenericWarn(false)
+				testGenericInfo(false)
+				testGenericDebugHigh(false)
+				testGenericDebug(false)
+				testGenericDebugLow(false)
+
+				testUsage(false)
+				testOrderConfirmed(LevelError, false)
+				testOrderMatch(LevelWarn, false)
+				testNetwork(LevelDebug, false)
+				testCompute(LevelDebugLow, false)
+			})
+
+		})
+
+		Context("when we set event filter to whitelist network events", func() {
+			BeforeEach(func() {
+				SetFilterEvents([]EventType{TypeNetwork})
+				SetFilterLevel(6)
+			})
+
+			It("should show network messages", func() {
+				testNetwork(LevelDebug, true)
+			})
+
+			It("should filter non-usage messages", func() {
+				testGenericError(false)
+				testGenericWarn(false)
+				testGenericInfo(false)
+				testGenericDebugHigh(false)
+				testGenericDebug(false)
+				testGenericDebugLow(false)
+
+				testUsage(false)
+				testOrderConfirmed(LevelError, false)
+				testOrderMatch(LevelWarn, false)
+				testBuyOrderReceived(LevelInfo, false)
+				testSellOrderReceived(LevelDebugHigh, false)
+				testCompute(LevelDebugLow, false)
+			})
+
+		})
+
+		Context("when we set event filter to whitelist compute events", func() {
+			BeforeEach(func() {
+				SetFilterEvents([]EventType{TypeCompute})
+				SetFilterLevel(6)
+			})
+
+			It("should show compute messages", func() {
+				testCompute(LevelDebugLow, true)
+			})
+
+			It("should filter non-usage messages", func() {
+				testGenericError(false)
+				testGenericWarn(false)
+				testGenericInfo(false)
+				testGenericDebugHigh(false)
+				testGenericDebug(false)
+				testGenericDebugLow(false)
+
+				testUsage(false)
+				testOrderConfirmed(LevelError, false)
+				testOrderMatch(LevelWarn, false)
+				testBuyOrderReceived(LevelInfo, false)
+				testSellOrderReceived(LevelDebugHigh, false)
+				testNetwork(LevelDebug, false)
 			})
 
 		})
@@ -330,11 +528,17 @@ func checkNilLog() {
 	Expect(log.Event).Should(BeNil())
 }
 
-func testGenericError() {
+func testGenericError(shouldLog bool) {
 	start := time.Now()
 	msg := "Some information"
 	Error(msg)
 	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
 	log, err := readTmp()
 	Expect(err).ShouldNot(HaveOccurred())
 	Expect(start.Before(log.Timestamp)).Should(BeTrue())
@@ -345,11 +549,17 @@ func testGenericError() {
 	Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
 }
 
-func testGenericWarn() {
+func testGenericWarn(shouldLog bool) {
 	start := time.Now()
 	msg := "Some information"
 	Warn(msg)
 	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
 	log, err := readTmp()
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -361,11 +571,17 @@ func testGenericWarn() {
 	Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
 }
 
-func testGenericInfo() {
+func testGenericInfo(shouldLog bool) {
 	start := time.Now()
 	msg := "Some information"
 	Info(msg)
 	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
 	log, err := readTmp()
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -377,11 +593,17 @@ func testGenericInfo() {
 	Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
 }
 
-func testGenericDebugHigh() {
+func testGenericDebugHigh(shouldLog bool) {
 	start := time.Now()
 	msg := "Some information"
 	DebugHigh(msg)
 	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
 	log, err := readTmp()
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -393,11 +615,17 @@ func testGenericDebugHigh() {
 	Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
 }
 
-func testGenericDebug() {
+func testGenericDebug(shouldLog bool) {
 	start := time.Now()
 	msg := "Some information"
 	Debug(msg)
 	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
 	log, err := readTmp()
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -409,11 +637,17 @@ func testGenericDebug() {
 	Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
 }
 
-func testGenericDebugLow() {
+func testGenericDebugLow(shouldLog bool) {
 	start := time.Now()
 	msg := "Some information"
 	DebugLow(msg)
 	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
 	log, err := readTmp()
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -423,4 +657,159 @@ func testGenericDebugLow() {
 	Expect(log.Level.String()).Should(BeEquivalentTo("debug"))
 	Expect(log.EventType).Should(Equal(TypeGeneric))
 	Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
+}
+
+func testUsage(shouldLog bool) {
+	cpu := 3.14
+	memory := 1.23
+	var network uint64
+	network = 37
+	start := time.Now()
+	Usage(cpu, memory, network)
+	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(LevelInfo))
+	Expect(log.Level.String()).Should(BeEquivalentTo("info"))
+	Expect(log.EventType).Should(Equal(TypeUsage))
+	Expect(log.Event.(UsageEvent).CPU).Should(Equal(cpu))
+	Expect(log.Event.(UsageEvent).Memory).Should(Equal(memory))
+	Expect(log.Event.(UsageEvent).Network).Should(Equal(network))
+}
+
+func testOrderConfirmed(l Level, shouldLog bool) {
+	orderID := "someOrderId"
+	start := time.Now()
+	OrderConfirmed(l, orderID)
+	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(l))
+	Expect(log.EventType).Should(Equal(TypeOrderConfirmed))
+	Expect(log.Event.(OrderConfirmedEvent).OrderID).Should(Equal(orderID))
+}
+
+func testOrderMatch(l Level, shouldLog bool) {
+	id := "someid"
+	buyID := "someBuyId"
+	sellID := "someSellId"
+
+	start := time.Now()
+	OrderMatch(l, id, buyID, sellID)
+	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(l))
+	Expect(log.EventType).Should(Equal(TypeOrderMatch))
+	Expect(log.Event.(OrderMatchEvent).ID).Should(Equal(id))
+	Expect(log.Event.(OrderMatchEvent).BuyID).Should(Equal(buyID))
+	Expect(log.Event.(OrderMatchEvent).SellID).Should(Equal(sellID))
+}
+
+func testBuyOrderReceived(l Level, shouldLog bool) {
+	buyID := "someid"
+	fragmentID := "someFragId"
+	start := time.Now()
+	BuyOrderReceived(l, buyID, fragmentID)
+	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(l))
+	Expect(log.EventType).Should(Equal(TypeOrderReceived))
+	Expect(*log.Event.(OrderReceivedEvent).BuyID).Should(Equal(buyID))
+	Expect(log.Event.(OrderReceivedEvent).FragmentID).Should(Equal(fragmentID))
+}
+
+func testSellOrderReceived(l Level, shouldLog bool) {
+	sellID := "someid"
+	fragmentID := "someFragId"
+	start := time.Now()
+	SellOrderReceived(l, sellID, fragmentID)
+	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(l))
+	Expect(log.EventType).Should(Equal(TypeOrderReceived))
+	Expect(*log.Event.(OrderReceivedEvent).SellID).Should(Equal(sellID))
+	Expect(log.Event.(OrderReceivedEvent).FragmentID).Should(Equal(fragmentID))
+}
+
+func testNetwork(l Level, shouldLog bool) {
+	start := time.Now()
+	msg := "Some information"
+	Network(l, msg)
+	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(l))
+	Expect(log.EventType).Should(Equal(TypeNetwork))
+	Expect(log.Event.(NetworkEvent).Message).Should(Equal(msg))
+}
+
+func testCompute(l Level, shouldLog bool) {
+	start := time.Now()
+	msg := "Some information"
+	Compute(l, msg)
+	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(l))
+	Expect(log.EventType).Should(Equal(TypeCompute))
+	Expect(log.Event.(ComputeEvent).Message).Should(Equal(msg))
 }
