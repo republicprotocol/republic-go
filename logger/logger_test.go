@@ -11,6 +11,7 @@ import (
 )
 
 var _ = Describe("Logger", func() {
+	msg := "Some information"
 
 	Context("When using a file plugin", func() {
 
@@ -28,172 +29,238 @@ var _ = Describe("Logger", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		It("by default it should show errors", func() {
-			testGenericError()
+		Context("and when FilterLevel is set to 0", func() {
+			BeforeEach(func() {
+				SetFilterLevel(0)
+			})
+
+			It("should filter Errors", func() {
+				Error(msg)
+				checkNilLog()
+			})
+
+			It("should filter Warns", func() {
+				Warn(msg)
+				checkNilLog()
+			})
+
+			It("should filter Info", func() {
+				Info(msg)
+				checkNilLog()
+			})
+
+			It("should filter DebugHigh", func() {
+				DebugHigh(msg)
+				checkNilLog()
+			})
+
+			It("should filter Debug", func() {
+				Debug(msg)
+				checkNilLog()
+			})
+
+			It("should filter DebugLow", func() {
+				DebugLow(msg)
+				checkNilLog()
+			})
 		})
 
-		It("by default it should show warnings", func() {
-			testGenericWarn()
+		Context("and when FilterLevel is set to Error", func() {
+			BeforeEach(func() {
+				SetFilterLevel(LevelError)
+			})
+
+			It("should show Errors", func() {
+				testGenericError()
+			})
+
+			It("should filter Warns", func() {
+				Warn(msg)
+				checkNilLog()
+			})
+
+			It("should filter Info", func() {
+				Info(msg)
+				checkNilLog()
+			})
+
+			It("should filter DebugHigh", func() {
+				DebugHigh(msg)
+				checkNilLog()
+			})
+
+			It("should filter Debug", func() {
+				Debug(msg)
+				checkNilLog()
+			})
+
+			It("should filter DebugLow", func() {
+				DebugLow(msg)
+				checkNilLog()
+			})
 		})
 
-		It("by default it should not show Info or Debug messages", func() {
-			msg := "Some information"
-			// Check Info doesn't show
-			Info(msg)
-			checkNilLog()
-			// Check DebugHigh doesn't show
-			DebugHigh(msg)
-			checkNilLog()
-			// Check Debug doesn't show
-			Debug(msg)
-			checkNilLog()
-			// Check DebugLow doesn't show
-			DebugLow(msg)
-			checkNilLog()
+		Context("and when FilterLevel is set to Warn", func() {
+			BeforeEach(func() {
+				SetFilterLevel(LevelWarn)
+			})
+
+			It("should show Errors", func() {
+				testGenericError()
+			})
+
+			It("should show Warns", func() {
+				testGenericWarn()
+			})
+
+			It("should filter Info", func() {
+				Info(msg)
+				checkNilLog()
+			})
+
+			It("should filter DebugHigh", func() {
+				DebugHigh(msg)
+				checkNilLog()
+			})
+
+			It("should filter Debug", func() {
+				Debug(msg)
+				checkNilLog()
+			})
+
+			It("should filter DebugLow", func() {
+				DebugLow(msg)
+				checkNilLog()
+			})
 		})
 
-		It("SetFilterLevel(0) should filter all messages", func() {
-			msg := "Some information"
-			// Filter everything
-			SetFilterLevel(0)
-			Error(msg)
-			checkNilLog()
-			Warn(msg)
-			checkNilLog()
-			Info(msg)
-			checkNilLog()
-			DebugHigh(msg)
-			checkNilLog()
-			Debug(msg)
-			checkNilLog()
-			DebugLow(msg)
-			checkNilLog()
-		})
-
-		It("SetFilterLevel(LevelError) should only show Error logs", func() {
-			msg := "Some information"
-			// Filter all but Error
-			SetFilterLevel(LevelError)
-			Warn(msg)
-			checkNilLog()
-			Info(msg)
-			checkNilLog()
-			DebugHigh(msg)
-			checkNilLog()
-			Debug(msg)
-			checkNilLog()
-			DebugLow(msg)
-			checkNilLog()
-			// We should get these logs
-			testGenericError()
-		})
-
-		It("SetFilterLevel(LevelWarn) should only show Error and Warn logs", func() {
-			msg := "Some information"
-			// Filter all but Error and Warn
-			SetFilterLevel(LevelWarn)
-			Info(msg)
-			checkNilLog()
-			DebugHigh(msg)
-			checkNilLog()
-			Debug(msg)
-			checkNilLog()
-			DebugLow(msg)
-			checkNilLog()
-			// We should get these logs
-			testGenericError()
-			resetTmp()
-			testGenericWarn()
-		})
-
-		It("SetFilterLevel(LevelInfo) should only show Error, Warn, and Info logs", func() {
-			setup := func() {
-				err := resetTmp()
-				Expect(err).ShouldNot(HaveOccurred())
+		Context("and when FilterLevel is set to Info", func() {
+			BeforeEach(func() {
 				SetFilterLevel(LevelInfo)
-			}
-			setup()
-			msg := "Some information"
-			// Filter all but Error, Warn, and Info
-			DebugHigh(msg)
-			checkNilLog()
-			Debug(msg)
-			checkNilLog()
-			DebugLow(msg)
-			checkNilLog()
-			// We should get these logs
-			testGenericError()
-			setup()
-			testGenericWarn()
-			setup()
-			testGenericInfo()
+			})
+
+			It("should show Errors", func() {
+				testGenericError()
+			})
+
+			It("should show Warns", func() {
+				testGenericWarn()
+			})
+
+			It("should show Info", func() {
+				testGenericInfo()
+			})
+
+			It("should filter DebugHigh", func() {
+				DebugHigh(msg)
+				checkNilLog()
+			})
+
+			It("should filter Debug", func() {
+				Debug(msg)
+				checkNilLog()
+			})
+
+			It("should filter DebugLow", func() {
+				DebugLow(msg)
+				checkNilLog()
+			})
 		})
 
-		It("SetFilterLevel(LevelDebugHigh) should filter Debug and DebugLow logs", func() {
-			setup := func() {
-				err := resetTmp()
-				Expect(err).ShouldNot(HaveOccurred())
+		Context("and when FilterLevel is set to DebugHigh", func() {
+			BeforeEach(func() {
 				SetFilterLevel(LevelDebugHigh)
-			}
-			setup()
-			msg := "Some information"
-			// Filter all but Error, Warn, Info, and DebugHigh
-			Debug(msg)
-			checkNilLog()
-			DebugLow(msg)
-			checkNilLog()
-			// We should get these logs
-			testGenericError()
-			setup()
-			testGenericWarn()
-			setup()
-			testGenericInfo()
-			setup()
-			testGenericDebugHigh()
+			})
+
+			It("should show Errors", func() {
+				testGenericError()
+			})
+
+			It("should show Warns", func() {
+				testGenericWarn()
+			})
+
+			It("should show Info", func() {
+				testGenericInfo()
+			})
+
+			It("should show DebugHigh", func() {
+				testGenericDebugHigh()
+			})
+
+			It("should filter Debug", func() {
+				Debug(msg)
+				checkNilLog()
+			})
+
+			It("should filter DebugLow", func() {
+				DebugLow(msg)
+				checkNilLog()
+			})
+
 		})
 
-		It("SetFilterLevel(LevelDebug) should filter DebugLow logs", func() {
-			setup := func() {
-				err := resetTmp()
-				Expect(err).ShouldNot(HaveOccurred())
+		Context("and when FilterLevel is set to Debug", func() {
+			BeforeEach(func() {
 				SetFilterLevel(LevelDebug)
-			}
-			setup()
-			msg := "Some information"
-			// Filter DebugLow
-			DebugLow(msg)
-			checkNilLog()
-			// We should get these logs
-			testGenericError()
-			setup()
-			testGenericWarn()
-			setup()
-			testGenericInfo()
-			setup()
-			testGenericDebugHigh()
-			setup()
-			testGenericDebug()
+			})
+
+			It("should show Errors", func() {
+				testGenericError()
+			})
+
+			It("should show Warns", func() {
+				testGenericWarn()
+			})
+
+			It("should show Info", func() {
+				testGenericInfo()
+			})
+
+			It("should show DebugHigh", func() {
+				testGenericDebugHigh()
+			})
+
+			It("should show Debug", func() {
+				testGenericDebug()
+			})
+
+			It("should filter DebugLow", func() {
+				DebugLow(msg)
+				checkNilLog()
+			})
+
 		})
 
-		It("SetFilterLevel(LevelDebugLow) should show all logs", func() {
-			setup := func() {
-				err := resetTmp()
-				Expect(err).ShouldNot(HaveOccurred())
+		Context("and when FilterLevel is set to DebugLow", func() {
+			BeforeEach(func() {
 				SetFilterLevel(LevelDebugLow)
-			}
-			setup()
-			// We should get these logs
-			testGenericError()
-			setup()
-			testGenericWarn()
-			setup()
-			testGenericInfo()
-			setup()
-			testGenericDebugHigh()
-			setup()
-			testGenericDebug()
-			setup()
-			testGenericDebugLow()
+			})
+
+			It("should show Errors", func() {
+				testGenericError()
+			})
+
+			It("should show Warns", func() {
+				testGenericWarn()
+			})
+
+			It("should show Info", func() {
+				testGenericInfo()
+			})
+
+			It("should show DebugHigh", func() {
+				testGenericDebugHigh()
+			})
+
+			It("should show Debug", func() {
+				testGenericDebug()
+			})
+
+			It("should show DebugLow", func() {
+				testGenericDebugLow()
+			})
+
 		})
 
 	})
