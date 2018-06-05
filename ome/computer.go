@@ -182,7 +182,6 @@ func (computer *computer) Compute(done <-chan struct{}, computations <-chan Comp
 						continue
 					}
 				} else {
-					log.Println("err getting computation from leveldb", err)
 					computation.ID[31] = StageCmpPriceExp
 				}
 
