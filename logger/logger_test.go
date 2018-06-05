@@ -255,6 +255,7 @@ var _ = Describe("Logger", func() {
 			})
 
 			It("should filter non-generic messages", func() {
+				testEpoch(false)
 				testUsage(false)
 				testOrderConfirmed(LevelError, false)
 				testOrderMatch(LevelWarn, false)
@@ -290,6 +291,35 @@ var _ = Describe("Logger", func() {
 
 		})
 
+		Context("when we set event filter to whitelist epoch events", func() {
+			BeforeEach(func() {
+				SetFilterEvents([]EventType{TypeEpoch})
+				SetFilterLevel(6)
+			})
+
+			It("should show epoch messages", func() {
+				testEpoch(true)
+			})
+
+			It("should filter non-usage messages", func() {
+				testGenericError(false)
+				testGenericWarn(false)
+				testGenericInfo(false)
+				testGenericDebugHigh(false)
+				testGenericDebug(false)
+				testGenericDebugLow(false)
+
+				testUsage(false)
+				testOrderConfirmed(LevelError, false)
+				testOrderMatch(LevelWarn, false)
+				testBuyOrderReceived(LevelInfo, false)
+				testSellOrderReceived(LevelDebugHigh, false)
+				testNetwork(LevelDebug, false)
+				testCompute(LevelDebugLow, false)
+			})
+
+		})
+
 		Context("when we set event filter to whitelist usage events", func() {
 			BeforeEach(func() {
 				SetFilterEvents([]EventType{TypeUsage})
@@ -308,6 +338,7 @@ var _ = Describe("Logger", func() {
 				testGenericDebug(false)
 				testGenericDebugLow(false)
 
+				testEpoch(false)
 				testOrderConfirmed(LevelError, false)
 				testOrderMatch(LevelWarn, false)
 				testBuyOrderReceived(LevelInfo, false)
@@ -336,6 +367,7 @@ var _ = Describe("Logger", func() {
 				testGenericDebug(false)
 				testGenericDebugLow(false)
 
+				testEpoch(false)
 				testUsage(false)
 				testOrderMatch(LevelWarn, false)
 				testBuyOrderReceived(LevelInfo, false)
@@ -364,6 +396,7 @@ var _ = Describe("Logger", func() {
 				testGenericDebug(false)
 				testGenericDebugLow(false)
 
+				testEpoch(false)
 				testUsage(false)
 				testOrderConfirmed(LevelError, false)
 				testBuyOrderReceived(LevelInfo, false)
@@ -396,6 +429,7 @@ var _ = Describe("Logger", func() {
 				testGenericDebug(false)
 				testGenericDebugLow(false)
 
+				testEpoch(false)
 				testUsage(false)
 				testOrderConfirmed(LevelError, false)
 				testOrderMatch(LevelWarn, false)
@@ -423,6 +457,7 @@ var _ = Describe("Logger", func() {
 				testGenericDebug(false)
 				testGenericDebugLow(false)
 
+				testEpoch(false)
 				testUsage(false)
 				testOrderConfirmed(LevelError, false)
 				testOrderMatch(LevelWarn, false)
@@ -451,6 +486,7 @@ var _ = Describe("Logger", func() {
 				testGenericDebug(false)
 				testGenericDebugLow(false)
 
+				testEpoch(false)
 				testUsage(false)
 				testOrderConfirmed(LevelError, false)
 				testOrderMatch(LevelWarn, false)
@@ -657,6 +693,30 @@ func testGenericDebugLow(shouldLog bool) {
 	Expect(log.Level.String()).Should(BeEquivalentTo("debug"))
 	Expect(log.EventType).Should(Equal(TypeGeneric))
 	Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
+}
+
+func testEpoch(shouldLog bool) {
+	var hash [32]byte
+	testHash := []byte("Here is a string....")
+	copy(hash[:], testHash)
+
+	start := time.Now()
+	Epoch(hash)
+	end := time.Now()
+
+	if !shouldLog {
+		checkNilLog()
+		return
+	}
+
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(LevelInfo))
+	Expect(log.Level.String()).Should(BeEquivalentTo("info"))
+	Expect(log.EventType).Should(Equal(TypeEpoch))
+	Expect(log.Event.(EpochEvent).Hash).Should(Equal(hash))
 }
 
 func testUsage(shouldLog bool) {

@@ -145,6 +145,13 @@ func DebugLow(message string) {
 }
 
 // Usage logs an info Log using a UsageEvent using the DefaultLogger.
+func Epoch(hash [32]byte) {
+	defaultLoggerMu.Lock()
+	defer defaultLoggerMu.Unlock()
+	defaultLogger.Epoch(hash)
+}
+
+// Usage logs an info Log using a UsageEvent using the DefaultLogger.
 func Usage(cpu, memory float64, network uint64) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
@@ -343,6 +350,18 @@ func (logger *Logger) DebugLow(message string) {
 		EventType: TypeGeneric,
 		Event: GenericEvent{
 			Message: message,
+		},
+	})
+}
+
+// Epoch logs a EpochEvent.
+func (logger *Logger) Epoch(hash [32]byte) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Level:     LevelInfo,
+		EventType: TypeEpoch,
+		Event: EpochEvent{
+			Hash: hash,
 		},
 	})
 }
