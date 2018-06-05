@@ -9,16 +9,16 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/republicprotocol/republic-go/grpc"
+
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
-	. "github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/stream"
 )
 
 var _ = Describe("Streaming", func() {
 
-	var connPool ConnPool
 	var server *Server
 	var service *StreamService
 	var serviceAddr identity.Address
@@ -29,26 +29,19 @@ var _ = Describe("Streaming", func() {
 	BeforeEach(func() {
 		var err error
 
-		connPool = NewConnPool(8)
+		client, clientAddr, err = newStreamClient()
+		Expect(err).ShouldNot(HaveOccurred())
 
 		server = NewServer()
-		service, serviceAddr, err = newStreamService()
+		service, serviceAddr, err = newStreamService(clientAddr)
 		Expect(err).ShouldNot(HaveOccurred())
 		service.Register(server)
-
-		client, clientAddr, err = newStreamClient(&connPool)
-		Expect(err).ShouldNot(HaveOccurred())
 
 		serviceMultiAddr, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/18514/republic/%v", serviceAddr))
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
-		var err error
-
-		err = connPool.Close()
-		Expect(err).ShouldNot(HaveOccurred())
-
 		server.Stop()
 	})
 
@@ -130,8 +123,11 @@ var _ = Describe("Streaming", func() {
 
 	Context("when sending and receiving messages", func() {
 
-		var serviceStream stream.CloseStream
-		var clientStream stream.CloseStream
+		var serviceStream stream.Stream
+		var serviceStreamCancel context.CancelFunc
+
+		var clientStream stream.Stream
+		var clientStreamCancel context.CancelFunc
 
 		BeforeEach(func() {
 			var err error
@@ -144,20 +140,20 @@ var _ = Describe("Streaming", func() {
 			}()
 			time.Sleep(time.Millisecond)
 
-			clientStream, err = client.Connect(context.Background(), serviceMultiAddr)
+			ctx, cancel := context.WithCancel(context.Background())
+			clientStream, err = client.Connect(ctx, serviceMultiAddr)
+			clientStreamCancel = cancel
 			Expect(err).ShouldNot(HaveOccurred())
 
+			ctx, cancel = context.WithCancel(context.Background())
 			serviceStream, err = service.Listen(context.Background(), clientAddr)
+			serviceStreamCancel = cancel
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
-			var err error
-
-			err = clientStream.Close()
-			Expect(err).ShouldNot(HaveOccurred())
-			err = serviceStream.Close()
-			Expect(err).ShouldNot(HaveOccurred())
+			clientStreamCancel()
+			serviceStreamCancel()
 		})
 
 		It("should receive messages sent by the client", func() {
@@ -202,23 +198,23 @@ var _ = Describe("Streaming", func() {
 	})
 })
 
-func newStreamClient(connPool *ConnPool) (stream.Client, identity.Address, error) {
+func newStreamClient() (stream.Client, identity.Address, error) {
 	ecdsaKey, err := crypto.RandomEcdsaKey()
 	if err != nil {
 		return nil, identity.Address(""), err
 	}
 	addr := identity.Address(ecdsaKey.Address())
-	client := NewStreamClient(mockSigner{}, addr, connPool)
+	client := NewStreamClient(&ecdsaKey, addr)
 	return client, addr, nil
 }
 
-func newStreamService() (*StreamService, identity.Address, error) {
+func newStreamService(clientAddr identity.Address) (*StreamService, identity.Address, error) {
 	ecdsaKey, err := crypto.RandomEcdsaKey()
 	if err != nil {
 		return nil, identity.Address(""), err
 	}
 	addr := identity.Address(ecdsaKey.Address())
-	service := NewStreamService(mockVerifier{}, addr)
+	service := NewStreamService(crypto.NewEcdsaVerifier(clientAddr.String()), addr)
 	return &service, addr, nil
 }
 

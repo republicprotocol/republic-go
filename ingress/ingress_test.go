@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	mathRand "math/rand"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -25,6 +26,9 @@ var _ = Describe("Ingress", func() {
 	var rsaKey crypto.RsaKey
 	var darkpool mockDarkpool
 	var ingress Ingress
+	var done chan struct{}
+	var errChOpenOrders <-chan error
+	var errChOpenOrderFragments <-chan error
 
 	BeforeEach(func() {
 		var err error
@@ -37,6 +41,20 @@ var _ = Describe("Ingress", func() {
 		ingress = NewIngress(&darkpool, &renLedger, &swarmer, &orderbookClient)
 		err = ingress.Sync()
 		Expect(err).ShouldNot(HaveOccurred())
+
+		done = make(chan struct{})
+		errChOpenOrders = ingress.OpenOrderProcess(done)
+		errChOpenOrderFragments = ingress.OpenOrderFragmentsProcess(done)
+
+		err = captureErrorsFromErrorChannel(errChOpenOrderFragments, done)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		err = captureErrorsFromErrorChannel(errChOpenOrders, done)
+		Expect(err).ShouldNot(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		close(done)
 	})
 
 	Context("when opening orders", func() {
@@ -112,6 +130,35 @@ var _ = Describe("Ingress", func() {
 			Expect(err).Should(HaveOccurred())
 		})
 
+		It("should not open orders with empty orderFragmentMappings", func() {
+			ord, err := createOrder()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			orderFragmentMappingIn := OrderFragmentMapping{}
+
+			signature := [65]byte{}
+			_, err = rand.Read(signature[:])
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = ingress.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
+			Expect(err).Should(HaveOccurred())
+		})
+
+		It("should not open orders with unknown pod hashes", func() {
+			ord, err := createOrder()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			orderFragmentMappingIn := OrderFragmentMapping{}
+			orderFragmentMappingIn[[32]byte{byte(1)}] = make([]OrderFragment, 3)
+
+			signature := [65]byte{}
+			_, err = rand.Read(signature[:])
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = ingress.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
+			Expect(err).Should(HaveOccurred())
+		})
+
 	})
 
 	Context("when canceling orders", func() {
@@ -142,6 +189,7 @@ var _ = Describe("Ingress", func() {
 			err = ingress.OpenOrder(signature, ord.ID, orderFragmentMappingIn)
 			Expect(err).ShouldNot(HaveOccurred())
 
+			time.Sleep(time.Second)
 			err = ingress.CancelOrder(signature, ord.ID)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
@@ -229,16 +277,21 @@ func (darkpool *mockDarkpool) IsRegistered(addr identity.Address) (bool, error) 
 }
 
 type mockRenLedger struct {
+	mu          *sync.Mutex
 	orderStates map[string]struct{}
 }
 
 func newMockRenLedger() mockRenLedger {
 	return mockRenLedger{
+		mu:          new(sync.Mutex),
 		orderStates: map[string]struct{}{},
 	}
 }
 
 func (renLedger *mockRenLedger) OpenBuyOrder(signature [65]byte, orderID order.ID) error {
+	renLedger.mu.Lock()
+	defer renLedger.mu.Unlock()
+
 	if _, ok := renLedger.orderStates[string(orderID[:])]; !ok {
 		renLedger.orderStates[string(orderID[:])] = struct{}{}
 		return nil
@@ -247,6 +300,9 @@ func (renLedger *mockRenLedger) OpenBuyOrder(signature [65]byte, orderID order.I
 }
 
 func (renLedger *mockRenLedger) OpenSellOrder(signature [65]byte, orderID order.ID) error {
+	renLedger.mu.Lock()
+	defer renLedger.mu.Unlock()
+
 	if _, ok := renLedger.orderStates[string(orderID[:])]; !ok {
 		renLedger.orderStates[string(orderID[:])] = struct{}{}
 		return nil
@@ -255,6 +311,9 @@ func (renLedger *mockRenLedger) OpenSellOrder(signature [65]byte, orderID order.
 }
 
 func (renLedger *mockRenLedger) CancelOrder(signature [65]byte, orderID order.ID) error {
+	renLedger.mu.Lock()
+	defer renLedger.mu.Unlock()
+
 	if _, ok := renLedger.orderStates[string(orderID[:])]; ok {
 		delete(renLedger.orderStates, string(orderID[:]))
 		return nil
@@ -262,9 +321,13 @@ func (renLedger *mockRenLedger) CancelOrder(signature [65]byte, orderID order.ID
 	return errors.New("cannot cancel order that is not open")
 }
 
-func (renLedger *mockRenLedger) ConfirmOrder(id order.ID, matches []order.ID) error {
+func (renLedger *mockRenLedger) ConfirmOrder(id order.ID, match order.ID) error {
+	renLedger.mu.Lock()
+	defer renLedger.mu.Unlock()
+
 	if _, ok := renLedger.orderStates[string(id[:])]; ok {
 		delete(renLedger.orderStates, string(id[:]))
+		matches := []order.ID{match}
 		for _, matchID := range matches {
 			if _, ok := renLedger.orderStates[string(matchID[:])]; ok {
 				delete(renLedger.orderStates, string(matchID[:]))
@@ -278,6 +341,9 @@ func (renLedger *mockRenLedger) ConfirmOrder(id order.ID, matches []order.ID) er
 }
 
 func (renLedger *mockRenLedger) Fee() (*big.Int, error) {
+	renLedger.mu.Lock()
+	defer renLedger.mu.Unlock()
+
 	return big.NewInt(0), nil
 }
 
@@ -301,6 +367,14 @@ func (renLedger *mockRenLedger) SellOrders(offset, limit int) ([]order.ID, error
 	panic("unimplemented")
 }
 
+func (renLedger *mockRenLedger) OrderMatch(order order.ID) (order.ID, error) {
+	panic("unimplemented")
+}
+
+func (renLedger *mockRenLedger) Trader(order order.ID) (string, error) {
+	panic("unimplemented")
+}
+
 type mockSwarmer struct {
 }
 
@@ -317,4 +391,25 @@ type mockOrderbookClient struct {
 
 func (client *mockOrderbookClient) OpenOrder(ctx context.Context, to identity.MultiAddress, orderFragment order.EncryptedFragment) error {
 	return nil
+}
+
+func captureErrorsFromErrorChannel(errChOpenOrderFragments <-chan error, done chan struct{}) error {
+	// Capture all errors
+	var finalErr error
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case err, ok := <-errChOpenOrderFragments:
+				if !ok {
+					return
+				}
+				if err != nil {
+					finalErr = err
+				}
+			}
+		}
+	}()
+	return finalErr
 }

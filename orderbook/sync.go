@@ -2,6 +2,7 @@ package orderbook
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -33,9 +34,6 @@ type Syncer interface {
 	// Orderbooker. Returns a list of changes that were made to this local
 	// Orderbooker during the synchronization.
 	Sync() (ChangeSet, error)
-
-	// Confirm an order match.
-	ConfirmOrderMatch(order.ID, order.ID) error
 }
 
 type syncer struct {
@@ -43,8 +41,10 @@ type syncer struct {
 	renLedgerLimit   int
 	buyOrderPointer  int
 	sellOrderPointer int
-	buyOrders        map[int]order.ID
-	sellOrders       map[int]order.ID
+
+	ordersMu   *sync.RWMutex
+	buyOrders  map[int]order.ID
+	sellOrders map[int]order.ID
 }
 
 func NewSyncer(renLedger cal.RenLedger, limit int) Syncer {
@@ -53,6 +53,7 @@ func NewSyncer(renLedger cal.RenLedger, limit int) Syncer {
 		renLedgerLimit:   limit,
 		buyOrderPointer:  0,
 		sellOrderPointer: 0,
+		ordersMu:         new(sync.RWMutex),
 		buyOrders:        map[int]order.ID{},
 		sellOrders:       map[int]order.ID{},
 	}
@@ -67,6 +68,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 		for i, ord := range buyOrderIDs {
 			change := NewChange(ord, order.ParityBuy, order.Open, uint64(syncer.buyOrderPointer+i))
 			changeset = append(changeset, change)
+			syncer.buyOrders[syncer.buyOrderPointer+i] = ord
 		}
 	}
 
@@ -77,6 +79,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 		for i, ord := range sellOrderIDs {
 			change := NewChange(ord, order.ParitySell, order.Open, uint64(syncer.sellOrderPointer+i))
 			changeset = append(changeset, change)
+			syncer.sellOrders[syncer.sellOrderPointer+i] = ord
 		}
 	}
 	if buyErr != nil && sellErr != nil {
@@ -96,38 +99,56 @@ func (syncer *syncer) purge() ChangeSet {
 				// Purge all buy orders by iterating over them and reading
 				// their status and priority from the Ren Ledger
 				dispatch.CoForAll(syncer.buyOrders, func(key int) {
-					status, err := syncer.renLedger.Status(syncer.buyOrders[key])
+					syncer.ordersMu.RLock()
+					buyOrder := syncer.buyOrders[key]
+					syncer.ordersMu.RUnlock()
+
+					status, err := syncer.renLedger.Status(buyOrder)
 					if err != nil {
 						logger.Error(fmt.Sprintf("Failed to check order status %v", err))
 						return
 					}
-					priority, err := syncer.renLedger.Priority(syncer.buyOrders[key])
+
+					priority, err := syncer.renLedger.Priority(buyOrder)
 					if err != nil {
 						logger.Error(fmt.Sprintf("Failed to check order priority %v", err))
 						return
 					}
+
 					if status != order.Open {
-						changes <- NewChange(syncer.buyOrders[key], order.ParityBuy, status, priority)
+						changes <- NewChange(buyOrder, order.ParityBuy, status, priority)
+
+						syncer.ordersMu.Lock()
 						delete(syncer.buyOrders, key)
+						syncer.ordersMu.Unlock()
 					}
 				})
 			},
 			func() {
 				// Purge all sell orders
 				dispatch.CoForAll(syncer.sellOrders, func(key int) {
-					status, err := syncer.renLedger.Status(syncer.sellOrders[key])
+					syncer.ordersMu.RLock()
+					sellOrder := syncer.sellOrders[key]
+					syncer.ordersMu.RUnlock()
+
+					status, err := syncer.renLedger.Status(sellOrder)
 					if err != nil {
 						logger.Error(fmt.Sprintf("Failed to check order status: %v", err))
 						return
 					}
-					priority, err := syncer.renLedger.Priority(syncer.sellOrders[key])
+
+					priority, err := syncer.renLedger.Priority(sellOrder)
 					if err != nil {
 						logger.Error(fmt.Sprintf("Failed to check order priority: %v", err))
 						return
 					}
+
 					if status != order.Open {
-						changes <- NewChange(syncer.sellOrders[key], order.ParitySell, status, priority)
+						changes <- NewChange(sellOrder, order.ParitySell, status, priority)
+
+						syncer.ordersMu.Lock()
 						delete(syncer.sellOrders, key)
+						syncer.ordersMu.Unlock()
 					}
 				})
 			},
@@ -139,8 +160,4 @@ func (syncer *syncer) purge() ChangeSet {
 		changeset = append(changeset, change)
 	}
 	return changeset
-}
-
-func (syncer *syncer) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
-	return syncer.renLedger.ConfirmOrder(buy, []order.ID{sell})
 }

@@ -131,7 +131,7 @@ var _ = Describe("Order fragments", func() {
 
 	Context("when encrypting and decrypting fragments", func() {
 
-		It("should return the same fragment after decrypting it's encrypted form", func() {
+		It("should return the same fragment after decrypting its encrypted form", func() {
 			copy(orderID[:], "orderID")
 			fragment := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
 

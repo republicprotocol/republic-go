@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"math"
 
 	"github.com/republicprotocol/republic-go/shamir"
 )
@@ -31,6 +32,10 @@ func NewCoExp(co uint64, exp uint64) CoExp {
 	}
 }
 
+func (val CoExp) ToFloat() float64 {
+	return float64(val.Co) * math.Pow10(int(val.Exp))
+}
+
 // MarshalJSON implements the json.Marshaler interface and marshals the CoExp
 // into a tuple of numbers.
 func (val CoExp) MarshalJSON() ([]byte, error) {
@@ -52,8 +57,12 @@ func (val *CoExp) UnmarshalJSON(data []byte) error {
 // MarshalBinary implements the encoding.BinaryMarshaler interface.
 func (val CoExp) MarshalBinary() (data []byte, err error) {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, val.Co)
-	binary.Write(buf, binary.BigEndian, val.Exp)
+	if err := binary.Write(buf, binary.BigEndian, val.Co); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, val.Exp); err != nil {
+		return nil, err
+	}
 	return buf.Bytes(), nil
 }
 
@@ -194,8 +203,12 @@ func (val *EncryptedCoExpShare) UnmarshalJSON(data []byte) error {
 // marshals the EncryptedCoExpShare using encoding.BigEndian.
 func (val EncryptedCoExpShare) MarshalBinary() ([]byte, error) {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, val.Co)
-	binary.Write(buf, binary.BigEndian, val.Exp)
+	if err := binary.Write(buf, binary.BigEndian, val.Co); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, val.Exp); err != nil {
+		return nil, err
+	}
 	return buf.Bytes(), nil
 }
 

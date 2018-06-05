@@ -180,8 +180,7 @@ func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error
 	}
 
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
-	auth.GasPrice = big.NewInt(40000000000)
-	auth.GasLimit = 2000000
+	auth.GasPrice = big.NewInt(5000000000)
 
 	client, err := ethereum.Connect(config)
 	if err != nil {
@@ -249,7 +248,6 @@ func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 			return fmt.Errorf("[%v] %sCouldn't check node's registration%s: %v\n", address, red, reset, err)
 		}
 
-		// Register the node if not registered
 		if isRegistered {
 			_, err = registry.Deregister(address.ID())
 			if err != nil {

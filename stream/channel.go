@@ -12,24 +12,44 @@ import (
 // again with the same server
 var ErrAlreadyRegistered = errors.New("client has already been registered with the server")
 
-// ChannelStream implements a Stream Interface for local send and recv channels
-type ChannelStream struct {
-	send chan []byte
-	recv chan []byte
+// channelStream implements a Stream interface using channels. It stores one
+// channel for sending Messages, and another channel for receiving Messages. A
+// channelStream must not be used unless it was returned from a call to
+// channelStreamer.Open.
+type channelStream struct {
+	sendMu *sync.RWMutex
+	send   chan []byte
+	recvMu *sync.RWMutex
+	recv   chan []byte
+	closed *bool
 }
 
-// Send will send Message to the send channel
-func (stream *ChannelStream) Send(message Message) error {
+// Send implements the Stream interface by marshaling the Message to binary and
+// writing it to the sending channel.
+func (stream channelStream) Send(message Message) error {
+	stream.sendMu.RLock()
+	defer stream.sendMu.RUnlock()
+
+	if *stream.closed {
+		return ErrSendOnClosedStream
+	}
 	data, err := message.MarshalBinary()
 	if err != nil {
 		return err
 	}
 	stream.send <- data
-	return nil
+	return err
 }
 
-// Recv will receive Message from the recv channel
-func (stream *ChannelStream) Recv(message Message) error {
+// Recv implements the Stream interface by reading from the receiving channel
+// and unmarshaling the data into a Message.
+func (stream channelStream) Recv(message Message) error {
+	stream.recvMu.RLock()
+	defer stream.recvMu.RUnlock()
+
+	if *stream.closed {
+		return ErrRecvOnClosedStream
+	}
 	data, ok := <-stream.recv
 	if !ok {
 		return ErrRecvOnClosedStream
@@ -37,112 +57,103 @@ func (stream *ChannelStream) Recv(message Message) error {
 	return message.UnmarshalBinary(data)
 }
 
-// Close wil close both send and recv channels
-func (stream *ChannelStream) Close() error {
+func (stream channelStream) Close() {
+	stream.sendMu.Lock()
+	stream.recvMu.Lock()
+	defer stream.sendMu.Unlock()
+	defer stream.recvMu.Unlock()
+
+	if *stream.closed {
+		return
+	}
+
 	close(stream.send)
 	close(stream.recv)
-	return nil
+	*stream.closed = true
 }
 
-// ChannelHub will store a map of all active streams
-// between clients and servers. The map will always be
-// symmetric over a client-server pair
+// A ChannelHub will store a map of all active channelStreams between
+// identity.Addresses and ensures that the mapping is symmetrical.
 type ChannelHub struct {
 	connsMu *sync.Mutex
-	conns   map[identity.Address]map[identity.Address]ChannelStream
+	conns   map[identity.Address]map[identity.Address]channelStream
 }
 
-// NewChannelHub will initialize and return a ChannelHub
+// NewChannelHub returns a ChannelHub with no connections in the map.
 func NewChannelHub() ChannelHub {
 	return ChannelHub{
 		connsMu: new(sync.Mutex),
-		conns:   map[identity.Address]map[identity.Address]ChannelStream{},
+		conns:   map[identity.Address]map[identity.Address]channelStream{},
 	}
 }
 
-func (hub *ChannelHub) RegisterClient(clientAddr, serverAddr identity.Address) CloseStream {
+func (hub *ChannelHub) register(clientAddr, serverAddr identity.Address) channelStream {
 	hub.connsMu.Lock()
 	defer hub.connsMu.Unlock()
-
-	hub.register(clientAddr, serverAddr)
-	closeStream := hub.conns[clientAddr][serverAddr]
-	return &(closeStream)
-}
-
-func (hub *ChannelHub) RegisterServer(serverAddr, clientAddr identity.Address) CloseStream {
-	hub.connsMu.Lock()
-	defer hub.connsMu.Unlock()
-
-	hub.register(clientAddr, serverAddr)
-	closeStream := hub.conns[serverAddr][clientAddr]
-	return &closeStream
-}
-
-func (hub *ChannelHub) register(clientAddr, serverAddr identity.Address) {
 
 	// Ensure that both mappings are initialized before using them
 	if _, ok := hub.conns[clientAddr]; !ok {
-		hub.conns[clientAddr] = map[identity.Address]ChannelStream{}
+		hub.conns[clientAddr] = map[identity.Address]channelStream{}
 	}
 	if _, ok := hub.conns[serverAddr]; !ok {
-		hub.conns[serverAddr] = map[identity.Address]ChannelStream{}
+		hub.conns[serverAddr] = map[identity.Address]channelStream{}
 	}
 
 	// An assymetric connection should be unreachable so we explicitly check
 	// and panic for clarity and easier debugging
 	_, clientOk := hub.conns[clientAddr][serverAddr]
 	_, serverOk := hub.conns[serverAddr][clientAddr]
-	if clientOk && !serverOk {
+	if (clientOk && !serverOk) || serverOk && !clientOk {
 		panic("assymetric connection from client to server")
-	}
-	if serverOk && !clientOk {
-		panic("assymetric connection from server to client")
 	}
 
 	// A symmetric connection has already been established
 	if clientOk && serverOk {
-		return
+		return hub.conns[clientAddr][serverAddr]
 	}
 
 	// Build a symmetric connection between the client and the server
-	hub.conns[clientAddr][serverAddr] = ChannelStream{
-		send: make(chan []byte),
-		recv: make(chan []byte),
+	closed := false
+	hub.conns[clientAddr][serverAddr] = channelStream{
+		sendMu: new(sync.RWMutex),
+		send:   make(chan []byte),
+		recvMu: new(sync.RWMutex),
+		recv:   make(chan []byte),
+		closed: &closed,
 	}
-	hub.conns[serverAddr][clientAddr] = ChannelStream{
-		send: hub.conns[clientAddr][serverAddr].recv,
-		recv: hub.conns[clientAddr][serverAddr].send,
+	hub.conns[serverAddr][clientAddr] = channelStream{
+		sendMu: hub.conns[clientAddr][serverAddr].recvMu,
+		send:   hub.conns[clientAddr][serverAddr].recv,
+		recvMu: hub.conns[clientAddr][serverAddr].sendMu,
+		recv:   hub.conns[clientAddr][serverAddr].send,
+		closed: &closed,
 	}
+	return hub.conns[clientAddr][serverAddr]
 }
 
-type channelClient struct {
+type channelStreamer struct {
 	addr identity.Address
 	hub  *ChannelHub
 }
 
-func NewChannelClient(addr identity.Address, hub *ChannelHub) Client {
-	return &channelClient{
+// NewChannelStreamer returns a Streamer that uses channel to implement the
+// Stream interface. Streams are recycled whenever multiple connections between
+// two identity.Addresses is needed.
+func NewChannelStreamer(addr identity.Address, hub *ChannelHub) Streamer {
+	streamer := channelStreamer{
 		addr: addr,
 		hub:  hub,
 	}
+	return NewStreamRecycler(&streamer)
 }
 
-func (client *channelClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (CloseStream, error) {
-	return client.hub.RegisterClient(client.addr, multiAddr.Address()), nil
-}
-
-type channelServer struct {
-	addr identity.Address
-	hub  *ChannelHub
-}
-
-func NewChannelServer(addr identity.Address, hub *ChannelHub) Server {
-	return &channelServer{
-		addr: addr,
-		hub:  hub,
-	}
-}
-
-func (server *channelServer) Listen(ctx context.Context, addr identity.Address) (CloseStream, error) {
-	return server.hub.RegisterServer(server.addr, addr), nil
+// Open implements the Streamer interface by using the ChannelHub to register
+// connections between two identity.Addresses.
+func (streamer *channelStreamer) Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
+	stream := streamer.hub.register(streamer.addr, multiAddr.Address())
+	go func() {
+		<-ctx.Done()
+		stream.Close()
+	}()
+	return stream, nil
 }

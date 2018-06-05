@@ -75,6 +75,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot get pods from darkpool: %v", err)
 	}
+
 	for _, pod := range pods {
 		n := int64(len(pod.Darknodes))
 		k := int64(2 * (len(pod.Darknodes) + 1) / 3)
@@ -102,7 +103,6 @@ func main() {
 			marshaledOrdFragment.OrderType = encryptedFragment.OrderType
 			marshaledOrdFragment.OrderExpiry = encryptedFragment.OrderExpiry.Unix()
 			marshaledOrdFragment.Tokens = base64.StdEncoding.EncodeToString(encryptedFragment.Tokens)
-			log.Printf("TOKENS: %v", marshaledOrdFragment.Tokens)
 			marshaledOrdFragment.Price = []string{
 				base64.StdEncoding.EncodeToString(encryptedFragment.Price.Co),
 				base64.StdEncoding.EncodeToString(encryptedFragment.Price.Exp),

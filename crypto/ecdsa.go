@@ -5,13 +5,16 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 	ethSecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/jbenet/go-base58"
 	"github.com/multiformats/go-multihash"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 // EcdsaKey for signing and verifying hashes.
@@ -84,7 +87,12 @@ func (key EcdsaKey) MarshalJSON() ([]byte, error) {
 	jsonKey["d"] = key.D.Bytes()
 
 	// Public key
-	jsonKey["address"] = key.address
+	ethAddress, err := republicAddressToEthAddress(key.address)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	jsonKey["address"] = ethAddress.Hex()
 	jsonKey["x"] = key.X.Bytes()
 	jsonKey["y"] = key.Y.Bytes()
 
@@ -253,4 +261,24 @@ func init() {
 	s256.Gx, _ = new(big.Int).SetString("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 16)
 	s256.Gy, _ = new(big.Int).SetString("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8", 16)
 	s256.BitSize = 256
+}
+
+// Convert republic address to ethereum address
+func republicAddressToEthAddress(repAddress string) (common.Address, error) {
+	addByte := base58.DecodeAlphabet(repAddress, base58.BTCAlphabet)[2:]
+	if len(addByte) == 0 {
+		return common.Address{}, errors.New("fail to decode the address")
+	}
+	address := common.BytesToAddress(addByte)
+	return address, nil
+}
+
+// Convert republic address to ethereum address
+func ethAddressToRepublicAddress(ethAddress string) identity.Address {
+	address := common.HexToAddress(ethAddress)
+	addr := make([]byte, 2, 22)
+	addr[0] = multihash.KECCAK_256
+	addr[1] = 20
+	addr = append(addr, address.Bytes()...)
+	return identity.Address(base58.EncodeAlphabet(addr, base58.BTCAlphabet))
 }

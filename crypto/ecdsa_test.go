@@ -2,6 +2,9 @@ package crypto_test
 
 import (
 	"crypto/rand"
+	"runtime"
+
+	"github.com/republicprotocol/republic-go/dispatch"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -43,7 +46,7 @@ var _ = Describe("Ecdsa keys", func() {
 		})
 
 		It("should be able to verify a signature", func() {
-			for i := 0; i < 1000; i++ {
+			dispatch.CoForAll(runtime.NumCPU(), func(i int) {
 				key, err := RandomEcdsaKey()
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -53,11 +56,11 @@ var _ = Describe("Ecdsa keys", func() {
 
 				err = key.Verify(data, signature)
 				Expect(err).ShouldNot(HaveOccurred())
-			}
+			})
 		})
 
 		It("should be able to return an error when verifying random data", func() {
-			for i := 0; i < 1000; i++ {
+			dispatch.CoForAll(runtime.NumCPU(), func(i int) {
 				key, err := RandomEcdsaKey()
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -69,7 +72,45 @@ var _ = Describe("Ecdsa keys", func() {
 
 				err = key.Verify(random, sigRandom)
 				Expect(err).Should(HaveOccurred())
-			}
+			})
+		})
+
+		It("should be able to return an error when verifying nil data", func() {
+			dispatch.CoForAll(runtime.NumCPU(), func(i int) {
+				key, err := RandomEcdsaKey()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				random := make([]byte, 32)
+				rand.Read(random)
+
+				sigRandom := make([]byte, 65)
+				rand.Read(sigRandom)
+
+				err = key.Verify([]byte{}, sigRandom)
+				Expect(err).Should(Equal(ErrNilData))
+
+				err = key.Verify(nil, sigRandom)
+				Expect(err).Should(Equal(ErrNilData))
+			})
+		})
+
+		It("should be able to return an error when verifying nil signatures", func() {
+			dispatch.CoForAll(runtime.NumCPU(), func(i int) {
+				key, err := RandomEcdsaKey()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				random := make([]byte, 32)
+				rand.Read(random)
+
+				sigRandom := make([]byte, 65)
+				rand.Read(sigRandom)
+
+				err = key.Verify(random, []byte{})
+				Expect(err).Should(Equal(ErrNilSignature))
+
+				err = key.Verify(random, nil)
+				Expect(err).Should(Equal(ErrNilSignature))
+			})
 		})
 
 	})

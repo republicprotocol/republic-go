@@ -108,7 +108,6 @@ func (swarmer *swarmer) Bootstrap(ctx context.Context, multiAddrs identity.Multi
 	go func() {
 		defer close(errs)
 		dispatch.CoForAll(multiAddrs, func(i int) {
-			log.Printf("bootstrapping %v...", multiAddrs[i])
 			if multiAddrs[i].Address() == swarmer.client.MultiAddress().Address() {
 				return
 			}
@@ -183,6 +182,12 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address, depth
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
+
+		if isBootstrapping {
+			if _, err := swarmer.client.Ping(ctx, peer); err != nil {
+				continue
+			}
+		}
 
 		// Query for identity.MultiAddresses that are closer to the query
 		// target than the peer itself, and add them to the whitelist

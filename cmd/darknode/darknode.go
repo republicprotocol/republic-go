@@ -15,6 +15,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/blockchain/ethereum/accounts"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
 	"github.com/republicprotocol/republic-go/cal"
@@ -94,7 +95,7 @@ func main() {
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
-	streamClient := grpc.NewStreamClient(&crypter, config.Address, &connPool)
+	streamClient := grpc.NewStreamClient(&crypter, config.Address)
 	streamService := grpc.NewStreamService(&crypter, config.Address)
 	streamService.Register(server)
 	streamer := stream.NewStreamRecycler(stream.NewStreamer(config.Address, streamClient, &streamService))
@@ -103,7 +104,8 @@ func main() {
 	smpcer := smpc.NewSmpcer(swarmer, streamer, 1)
 
 	// New OME
-	computer := ome.NewComputer(orderbook, smpcer)
+	confirmer := ome.NewConfirmer(6, 4*time.Second, renLedger)
+	computer := ome.NewComputer(&store, smpcer, confirmer, renLedger, darkPoolAccounts)
 	ome := ome.NewOme(ome.NewRanker(1, 0), computer, orderbook, smpcer)
 
 	// New Darknode
@@ -112,45 +114,43 @@ func main() {
 
 	// Bootstrap
 	go func() {
-		time.Sleep(time.Second)
 
-		// Bootstrap into the network
-		if err := swarmer.Bootstrap(context.Background(), config.BootstrapMultiAddresses); err != nil {
-			log.Printf("bootstrap: %v", err)
-		}
 	}()
 
 	// Start the secure order matching engine
 	go func() {
-		// Sleep for enough time that the bootstrap process can complete
-		time.Sleep(time.Second * 10)
+		// Wait for the gRPC server to boot
+		time.Sleep(time.Second)
 
-		// FIXME: This should be driven in the same way that the
-		// driving of ome.Sync and computer.Compute are driven,
-		// instead of using a done channel
+		// Bootstrap into the network
+		fmtStr := "bootstrapping\n"
+		for _, multiAddr := range config.BootstrapMultiAddresses {
+			fmtStr += "  " + multiAddr.String() + "\n"
+		}
+		log.Printf(fmtStr)
+		if err := swarmer.Bootstrap(context.Background(), config.BootstrapMultiAddresses); err != nil {
+			log.Printf("bootstrap: %v", err)
+		}
+		log.Printf("connected to %v peers", len(dht.MultiAddresses()))
+
 		done := make(chan struct{})
-		go computer.ComputeResults(done)
-
 		dispatch.CoBegin(func() {
 			// Start the SMPC
 			smpcer.Start()
 		}, func() {
 			// Synchronizing the OME
-			for {
-				if err := ome.Sync(); err != nil {
-					log.Printf("cannot sync ome: %v", err)
-					continue
-				}
-				time.Sleep(time.Second * 2)
+			errs := ome.Run(done)
+			for err := range errs {
+				log.Printf("error in running the ome: %v", err)
 			}
 		}, func() {
 			// Synchronizing the Darknode
 			for {
+				log.Println("sync ξ")
 				if err := darknode.Sync(); err != nil {
 					log.Printf("cannot sync darknode: %v", err)
-					continue
 				}
-				time.Sleep(time.Second * 2)
+				time.Sleep(time.Second * 14)
 			}
 		})
 	}()
@@ -200,5 +200,11 @@ func getEthereumBindings(keystore crypto.Keystore, conf ethereum.Config) (*bind.
 		return auth, nil, nil, nil, nil, err
 	}
 
-	return auth, &darkpool, nil, nil, &renLedger, nil
+	acts, err := accounts.NewRenExAccounts(context.Background(), conn, auth, &bind.CallOpts{})
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to RenEx accounts: %v", err))
+		return auth, nil, nil, nil, nil, err
+	}
+
+	return auth, &darkpool, &acts, nil, &renLedger, nil
 }

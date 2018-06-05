@@ -1,14 +1,14 @@
 {
     "bootstrapMultiAddresses": [
-        "/ip4/35.183.18.20/tcp/18514/republic/8MHSYJd6XVKofL4o8MzkydvNZHv5b5",
-        "/ip4/18.231.115.239/tcp/18514/republic/8MHagooNSWmRGE3odnK5RJkbGkVWoz",
-        "/ip4/34.240.156.49/tcp/18514/republic/8MHY9jvqdVzUdDpFqT3FedhdLzbRMQ"
+        "/ip4/35.183.0.47/tcp/18514/republic/8MG8CjSSXNnojNCPQRusLZ8rUxVKaa",
+        "/ip4/35.172.199.20/tcp/18514/republic/8MJQChPBvNDKmYLCHk1PWpgd1RFjgR",
+        "/ip4/34.242.249.47/tcp/18514/republic/8MKG4qaPG1WpUFivwXb5RyH2o49f1h"
     ],
     "ethereum": {
         "network": "kovan",
         "uri": "https://kovan.infura.io",
         "republicTokenAddress": "0x596F8c39aEc9fb72D0F591DEe4408516f4C9DdA4",
-        "darknodeRegistryAddress": "0xE75D707713905470421b6BDdb5dafd120d057b05",
-        "renLedgerAddress": "0xe6661ae76f0CE8e70723Db4c0e2d3332910Ed83b"
+        "darknodeRegistryAddress": "0x7b0e5c2945020996408fdf73ef1846d7c0dcac78",
+        "renLedgerAddress": "0x9ac38a5f17aae6d473b0f87bd6e42e8958043c70"
     }
 }

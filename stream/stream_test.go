@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,18 +14,20 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 )
 
+const numberOfNodes = 32
+
 var _ = Describe("Streaming", func() {
 
 	Context("when using streamers", func() {
 
 		It("should abstract connecting to servers and listening for client", func() {
 
-			multiAddrs := [128]identity.MultiAddress{}
-			clients := [128]mockClient{}
-			servers := [128]mockServer{}
-			streamers := [128]Streamer{}
+			multiAddrs := [numberOfNodes]identity.MultiAddress{}
+			clients := [numberOfNodes]mockClient{}
+			servers := [numberOfNodes]mockServer{}
+			streamers := [numberOfNodes]Streamer{}
 
-			for i := 0; i < 128; i++ {
+			for i := 0; i < numberOfNodes; i++ {
 				ecdsaKey, err := crypto.RandomEcdsaKey()
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -36,18 +39,20 @@ var _ = Describe("Streaming", func() {
 				streamers[i] = NewStreamer(multiAddrs[i].Address(), &clients[i], &servers[i])
 			}
 
-			for i := 0; i < 128; i++ {
-				for j := 0; j < 128; j++ {
+			for i := 0; i < numberOfNodes; i++ {
+				for j := 0; j < numberOfNodes; j++ {
 					if i == j {
 						continue
 					}
-					_, err := streamers[i].Open(context.Background(), multiAddrs[j])
+					ctx, cancel := context.WithCancel(context.Background())
+					defer cancel()
+					_, err := streamers[i].Open(ctx, multiAddrs[j])
 					Expect(err).ShouldNot(HaveOccurred())
 				}
 			}
 
-			for i := 0; i < 128; i++ {
-				Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(127))
+			for i := 0; i < numberOfNodes; i++ {
+				Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(numberOfNodes - 1))
 			}
 		})
 
@@ -57,12 +62,12 @@ var _ = Describe("Streaming", func() {
 
 		It("should recycle streams for multiple connections", func() {
 
-			multiAddrs := [128]identity.MultiAddress{}
-			clients := [128]mockClient{}
-			servers := [128]mockServer{}
-			streamers := [128]Streamer{}
+			multiAddrs := [numberOfNodes]identity.MultiAddress{}
+			clients := [numberOfNodes]mockClient{}
+			servers := [numberOfNodes]mockServer{}
+			streamers := [numberOfNodes]Streamer{}
 
-			for i := 0; i < 128; i++ {
+			for i := 0; i < numberOfNodes; i++ {
 				ecdsaKey, err := crypto.RandomEcdsaKey()
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -75,31 +80,33 @@ var _ = Describe("Streaming", func() {
 			}
 
 			for conns := 0; conns < 4; conns++ {
-				for i := 0; i < 128; i++ {
-					for j := 0; j < 128; j++ {
+				for i := 0; i < numberOfNodes; i++ {
+					for j := 0; j < numberOfNodes; j++ {
 						if i == j {
 							continue
 						}
-						_, err := streamers[i].Open(context.Background(), multiAddrs[j])
+						ctx, cancel := context.WithCancel(context.Background())
+						defer cancel()
+						_, err := streamers[i].Open(ctx, multiAddrs[j])
 						Expect(err).ShouldNot(HaveOccurred())
 					}
 				}
 			}
 
-			for i := 0; i < 128; i++ {
-				Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(127))
+			for i := 0; i < numberOfNodes; i++ {
+				Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(numberOfNodes - 1))
 			}
 
 		})
 
 		It("should not close streams until all references have closed", func() {
 
-			multiAddrs := [128]identity.MultiAddress{}
-			clients := [128]mockClient{}
-			servers := [128]mockServer{}
-			streamers := [128]Streamer{}
+			multiAddrs := [numberOfNodes]identity.MultiAddress{}
+			clients := [numberOfNodes]mockClient{}
+			servers := [numberOfNodes]mockServer{}
+			streamers := [numberOfNodes]Streamer{}
 
-			for i := 0; i < 128; i++ {
+			for i := 0; i < numberOfNodes; i++ {
 				ecdsaKey, err := crypto.RandomEcdsaKey()
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -111,56 +118,63 @@ var _ = Describe("Streaming", func() {
 				streamers[i] = NewStreamRecycler(NewStreamer(multiAddrs[i].Address(), &clients[i], &servers[i]))
 			}
 
-			for conns := 0; conns < 4; conns++ {
-				for i := 0; i < 128; i++ {
-					for j := 0; j < 128; j++ {
-						if i == j {
-							continue
-						}
-						_, err := streamers[i].Open(context.Background(), multiAddrs[j])
+			cancelConns := map[int]map[int]map[int]context.CancelFunc{}
+			for i := 0; i < numberOfNodes; i++ {
+				cancelConns[i] = map[int]map[int]context.CancelFunc{}
+				for j := 0; j < numberOfNodes; j++ {
+					if i == j {
+						continue
+					}
+					cancelConns[i][j] = map[int]context.CancelFunc{}
+					for k := 0; k < 4; k++ {
+						ctx, cancel := context.WithCancel(context.Background())
+						cancelConns[i][j][k] = cancel
+						_, err := streamers[i].Open(ctx, multiAddrs[j])
 						Expect(err).ShouldNot(HaveOccurred())
 					}
 				}
 			}
 
-			for conns := 0; conns < 4; conns++ {
-				for i := 0; i < 128; i++ {
-					for j := 0; j < 128; j++ {
-						if i == j {
-							continue
-						}
-						err := streamers[i].Close(multiAddrs[j].Address())
-						Expect(err).ShouldNot(HaveOccurred())
+			// Cancel all but the last connection
+			for i := 0; i < numberOfNodes; i++ {
+				clients[i].streamsMu.Lock()
+				servers[i].streamsMu.Lock()
+				for j := 0; j < numberOfNodes; j++ {
+					if i == j {
+						continue
+					}
+					for k := 0; k < 3; k++ {
+						cancelConns[i][j][k]()
+						Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(numberOfNodes - 1))
 					}
 				}
-				for i := 0; i < 128; i++ {
-					if conns == 3 {
-						Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(0))
-					} else {
-						Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(127))
+				clients[i].streamsMu.Unlock()
+				servers[i].streamsMu.Unlock()
+			}
+
+			// Cancel the last connection
+			for i := 0; i < numberOfNodes; i++ {
+				for j := 0; j < numberOfNodes; j++ {
+					if i == j {
+						continue
 					}
+					cancelConns[i][j][3]()
 				}
 			}
-		})
 
-		It("should return an error when closing streams that are not open", func() {
-
-			ecdsaKey, err := crypto.RandomEcdsaKey()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			multiAddr, err := identity.Address(ecdsaKey.Address()).MultiAddress()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			client := newMockClient()
-			server := newMockServer()
-			streamer := NewStreamRecycler(NewStreamer(multiAddr.Address(), &client, &server))
-
-			for i := 0; i < 100; i++ {
-				ecdsaKeyOther, err := crypto.RandomEcdsaKey()
-				Expect(err).ShouldNot(HaveOccurred())
-
-				err = streamer.Close(identity.Address(ecdsaKeyOther.Address()))
-				Expect(err).Should(Equal(ErrCloseOnClosedStream))
+			// Expect shutdown of streams
+			time.Sleep(time.Second)
+			for i := 0; i < numberOfNodes; i++ {
+				clients[i].streamsMu.Lock()
+				servers[i].streamsMu.Lock()
+				for j := 0; j < numberOfNodes; j++ {
+					if i == j {
+						continue
+					}
+					Expect(len(clients[i].streams) + len(servers[i].streams)).Should(Equal(0))
+				}
+				clients[i].streamsMu.Unlock()
+				servers[i].streamsMu.Unlock()
 			}
 		})
 	})
@@ -168,22 +182,21 @@ var _ = Describe("Streaming", func() {
 
 type mockMessage []byte
 
-func (message mockMessage) MarshalBinary() ([]byte, error) {
-	return message, nil
+func (message *mockMessage) MarshalBinary() ([]byte, error) {
+	return *message, nil
 }
 
-func (message mockMessage) UnmarshalBinary(data []byte) error {
-	copy(message, data)
+func (message *mockMessage) UnmarshalBinary(data []byte) error {
+	*message = data
 	return nil
 }
 
 func (message mockMessage) IsMessage() {}
 
 type mockStream struct {
-	addr   identity.Address
-	sends  *int64
-	recvs  *int64
-	closer func()
+	addr  identity.Address
+	sends *int64
+	recvs *int64
 }
 
 func (stream mockStream) Send(message Message) error {
@@ -193,11 +206,6 @@ func (stream mockStream) Send(message Message) error {
 
 func (stream mockStream) Recv(message Message) error {
 	atomic.AddInt64(stream.recvs, 1)
-	return nil
-}
-
-func (stream mockStream) Close() error {
-	stream.closer()
 	return nil
 }
 
@@ -217,7 +225,7 @@ func newMockClient() mockClient {
 	}
 }
 
-func (client *mockClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (CloseStream, error) {
+func (client *mockClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
 	client.streamsMu.Lock()
 	defer client.streamsMu.Unlock()
 
@@ -228,12 +236,15 @@ func (client *mockClient) Connect(ctx context.Context, multiAddr identity.MultiA
 		addr:  multiAddr.Address(),
 		sends: &client.sends,
 		recvs: &client.recvs,
-		closer: func() {
-			client.streamsMu.Lock()
-			defer client.streamsMu.Unlock()
-			delete(client.streams, i)
-		},
 	}
+
+	go func() {
+		<-ctx.Done()
+		client.streamsMu.Lock()
+		delete(client.streams, i)
+		client.streamsMu.Unlock()
+	}()
+
 	return client.streams[i], nil
 }
 
@@ -253,7 +264,7 @@ func newMockServer() mockServer {
 	}
 }
 
-func (server *mockServer) Listen(ctx context.Context, addr identity.Address) (CloseStream, error) {
+func (server *mockServer) Listen(ctx context.Context, addr identity.Address) (Stream, error) {
 	server.streamsMu.Lock()
 	defer server.streamsMu.Unlock()
 
@@ -264,11 +275,14 @@ func (server *mockServer) Listen(ctx context.Context, addr identity.Address) (Cl
 		addr:  addr,
 		sends: &server.sends,
 		recvs: &server.recvs,
-		closer: func() {
-			server.streamsMu.Lock()
-			defer server.streamsMu.Unlock()
-			delete(server.streams, i)
-		},
 	}
+
+	go func() {
+		<-ctx.Done()
+		server.streamsMu.Lock()
+		delete(server.streams, i)
+		server.streamsMu.Unlock()
+	}()
+
 	return server.streams[i], nil
 }

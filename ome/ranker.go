@@ -4,7 +4,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -73,12 +72,8 @@ func (ranker *ranker) InsertBuy(order PriorityOrder) {
 	ranker.computationsMu.Lock()
 	defer ranker.computationsMu.Unlock()
 
-	logger.Info("inserting buy order")
-
 	ranker.buys[order.ID] = order.Priority
 	for sell, sellPriority := range ranker.sells {
-		logger.Info("inserting computation")
-
 		computationPriority := order.Priority + sellPriority
 		if int(computationPriority)%ranker.num != ranker.pos {
 			continue
@@ -94,12 +89,8 @@ func (ranker *ranker) InsertBuy(order PriorityOrder) {
 			return ranker.computations[i].Priority > computation.Priority
 		})
 		ranker.computations = append(
-			append(
-				ranker.computations[:index],
-				computation,
-			),
-			ranker.computations[index:]...,
-		)
+			ranker.computations[:index],
+			append([]Computation{computation}, ranker.computations[index:]...)...)
 	}
 }
 
@@ -107,11 +98,8 @@ func (ranker *ranker) InsertSell(order PriorityOrder) {
 	ranker.computationsMu.Lock()
 	defer ranker.computationsMu.Unlock()
 
-	logger.Info("inserting sell order")
-
 	ranker.sells[order.ID] = order.Priority
 	for buy, buyPriority := range ranker.buys {
-		logger.Info("inserting computation")
 
 		computationPriority := order.Priority + buyPriority
 		if int(computationPriority)%ranker.num != ranker.pos {
@@ -128,12 +116,8 @@ func (ranker *ranker) InsertSell(order PriorityOrder) {
 			return ranker.computations[i].Priority > computation.Priority
 		})
 		ranker.computations = append(
-			append(
-				ranker.computations[:index],
-				computation,
-			),
-			ranker.computations[index:]...,
-		)
+			ranker.computations[:index],
+			append([]Computation{computation}, ranker.computations[index:]...)...)
 	}
 }
 

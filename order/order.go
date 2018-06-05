@@ -34,19 +34,44 @@ const (
 	TokenREN Token = 65536
 )
 
+func (token Token) String() string {
+	switch token {
+	case TokenBTC:
+		return "BTC"
+	case TokenETH:
+		return "ETH"
+	case TokenDGX:
+		return "DGX"
+	case TokenREN:
+		return "REN"
+	default:
+		return "unrecognized token "
+	}
+}
+
 // Tokens are a numerical representation of the token pairings supported by
 // Republic Protocol.
 type Tokens uint64
 
 // Tokens values.
 const (
-	TokensBTCETH Tokens = Tokens((uint64(TokenBTC) << 31) | uint64(TokenETH))
-	TokensBTCDGX Tokens = Tokens((uint64(TokenBTC) << 31) | uint64(TokenDGX))
-	TokensBTCREN Tokens = Tokens((uint64(TokenBTC) << 31) | uint64(TokenREN))
-	TokensETHDGX Tokens = Tokens((uint64(TokenETH) << 31) | uint64(TokenDGX))
-	TokensETHREN Tokens = Tokens((uint64(TokenETH) << 31) | uint64(TokenREN))
-	TokensDGXREN Tokens = Tokens((uint64(TokenDGX) << 31) | uint64(TokenREN))
+	TokensBTCETH Tokens = Tokens((uint64(TokenBTC) << 32) | uint64(TokenETH))
+	TokensBTCDGX Tokens = Tokens((uint64(TokenBTC) << 32) | uint64(TokenDGX))
+	TokensBTCREN Tokens = Tokens((uint64(TokenBTC) << 32) | uint64(TokenREN))
+	TokensETHDGX Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenDGX))
+	TokensETHREN Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenREN))
+	TokensDGXREN Tokens = Tokens((uint64(TokenDGX) << 32) | uint64(TokenREN))
 )
+
+// PriorityToken returns the priority token of a token pair.
+func (tokens Tokens) PriorityToken() Token {
+	return Token(tokens & 0x00000000FFFFFFFF)
+}
+
+// NonPriorityToken returns the non-priority token of a token pair.
+func (tokens Tokens) NonPriorityToken() Token {
+	return Token(tokens >> 32)
+}
 
 // A Type is a publicly bit of information that determines the type of
 // trade that an Order is representing.
@@ -74,10 +99,8 @@ type Status uint8
 const (
 	Nil = Status(iota)
 	Open
-	Unconfirmed
-	Canceled
 	Confirmed
-	Settled
+	Canceled
 )
 
 // An Order represents the want to perform a trade of assets.
@@ -207,6 +230,7 @@ func (order *Order) Hash() [32]byte {
 }
 
 // Bytes returns an Order serialized into a bytes.
+// TODO: This function should return an error.
 func (order *Order) Bytes() []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, order.Type)
