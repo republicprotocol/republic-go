@@ -170,14 +170,6 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			continue
 		}
 
-		if orderParity == order.ParityBuy {
-			delete(confirmer.confirmingBuyOrders, ord)
-			delete(confirmer.confirmingSellOrders, *matchingOrd)
-		} else {
-			delete(confirmer.confirmingSellOrders, ord)
-			delete(confirmer.confirmingBuyOrders, *matchingOrd)
-		}
-
 		confirmedOrderMatch := Computation{}
 		if orderParity == order.ParityBuy {
 			confirmedOrderMatch.Buy = ord
@@ -186,6 +178,7 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			confirmedOrderMatch.Sell = ord
 			confirmedOrderMatch.Buy = *matchingOrd
 		}
+
 		select {
 		case <-done:
 			return
@@ -195,6 +188,14 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			if err != nil {
 				log.Println(err)
 			}
+		}
+
+		if orderParity == order.ParityBuy {
+			delete(confirmer.confirmingBuyOrders, ord)
+			delete(confirmer.confirmingSellOrders, *matchingOrd)
+		} else {
+			delete(confirmer.confirmingSellOrders, ord)
+			delete(confirmer.confirmingBuyOrders, *matchingOrd)
 		}
 	}
 }
