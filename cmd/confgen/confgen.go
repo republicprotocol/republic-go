@@ -52,7 +52,8 @@ func main() {
 		Keystore:                keystore,
 		Host:                    *host,
 		Port:                    "18514",
-		Address:                 identity.Address(keystore.Address()),
+		RenAddress:              identity.Address(keystore.Address()),
+		EthAddress:              keystore.EthAddress(),
 		BootstrapMultiAddresses: []identity.MultiAddress{},
 		Logs: logger.Options{
 			Plugins: []logger.PluginOptions{

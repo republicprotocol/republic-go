@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 	ethSecp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/jbenet/go-base58"
@@ -59,6 +60,13 @@ func (key *EcdsaKey) Verify(data []byte, signature []byte) error {
 // of a Keccak256 multihash.
 func (key *EcdsaKey) Address() string {
 	return key.address
+}
+
+// EthAddress returns the ethereum address of the key
+func (key *EcdsaKey) EthAddress() string {
+	addByte := base58.DecodeAlphabet(key.address, base58.BTCAlphabet)[2:]
+	address := common.BytesToAddress(addByte)
+	return address.Hex()
 }
 
 // Equal returns true if two EcdsaKeys are exactly equal. The name of the
