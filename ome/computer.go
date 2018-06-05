@@ -409,13 +409,24 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 			computer.matchingComputationsMu.Lock()
 			computer.matchingComputationsState[computation.ID] = computation
 			computer.matchingComputationsMu.Unlock()
+			buy, err := computer.storer.OrderFragment(computation.Buy)
+			if err != nil {
+				log.Println("failed to matched order fragment buy: ", base64.StdEncoding.EncodeToString(computation.Buy[:]))
+			}
+			sell, err := computer.storer.OrderFragment(computation.Sell)
+			if err != nil {
+				log.Println("failed to matched order fragment sell: ", base64.StdEncoding.EncodeToString(computation.Sell[:]))
+			}
+			log.Printf("matched<buy> ID: %v, ", base64.StdEncoding.EncodeToString(buy.OrderID[:]))
+			log.Printf("matched<sell> ID: %v, ", base64.StdEncoding.EncodeToString(sell.OrderID[:]))
+
 			select {
 			case <-done:
 			case computer.matchingComputations <- computation.Computation:
-				log.Printf("✔ [stage => %v] matched: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+				log.Printf("✔ [stage => matched] buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 			}
 		} else {
-			log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+			log.Printf("[stage => %v] halt: buy = %v; sell = %v", StageCmpTokens, base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 		}
 		return
 
