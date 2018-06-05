@@ -47,28 +47,18 @@ var _ = Describe("Ingress", func() {
 		errChOpenOrderFragments = ingress.OpenOrderFragmentsProcess(done)
 
 		// Consume errors in the background to allow progress when an event occurs
-		err = captureErrorsFromErrorChannel(errChSync)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		err = captureErrorsFromErrorChannel(errChOpenOrderFragments)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		err = captureErrorsFromErrorChannel(errChOpenOrders)
-		Expect(err).ShouldNot(HaveOccurred())
+		go captureErrorsFromErrorChannel(errChSync)
+		go captureErrorsFromErrorChannel(errChOpenOrderFragments)
+		go captureErrorsFromErrorChannel(errChOpenOrders)
 	})
 
 	AfterEach(func() {
 		close(done)
 
-		for err := range errChSync {
-			Expect(err).ShouldNot(HaveOccurred())
-		}
-		for err := range errChOpenOrderFragments {
-			Expect(err).ShouldNot(HaveOccurred())
-		}
-		for err := range errChOpenOrders {
-			Expect(err).ShouldNot(HaveOccurred())
-		}
+		// Wait for all errors to close
+		captureErrorsFromErrorChannel(errChSync)
+		captureErrorsFromErrorChannel(errChOpenOrderFragments)
+		captureErrorsFromErrorChannel(errChOpenOrders)
 
 		time.Sleep(time.Second)
 	})
@@ -409,21 +399,7 @@ func (client *mockOrderbookClient) OpenOrder(ctx context.Context, to identity.Mu
 	return nil
 }
 
-func captureErrorsFromErrorChannel(errChOpenOrderFragments <-chan error) error {
-	// Capture all errors
-	var finalErr error
-	go func() {
-		for {
-			select {
-			case err, ok := <-errChOpenOrderFragments:
-				if !ok {
-					return
-				}
-				if err != nil {
-					finalErr = err
-				}
-			}
-		}
-	}()
-	return finalErr
+func captureErrorsFromErrorChannel(errs <-chan error) {
+	for range errs {
+	}
 }

@@ -137,7 +137,6 @@ func (ingress *ingress) OpenOrderProcess(done <-chan struct{}) <-chan error {
 		for {
 			select {
 			case <-done:
-				close(ingress.openOrderQueue)
 				return
 			case request, ok := <-ingress.openOrderQueue:
 				if !ok {
@@ -177,6 +176,7 @@ func (ingress *ingress) OpenOrderFragmentsProcess(done <-chan struct{}) <-chan e
 					if err := ingress.processOpenOrderFragmentsRequest(request, ingress.pods); err != nil {
 						select {
 						case <-done:
+							return
 						case errs <- err:
 						}
 					}
