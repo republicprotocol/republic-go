@@ -76,6 +76,8 @@ func main() {
 		if err != nil {
 			log.Fatalf("cannot get pods from darkpool: %v", err)
 		}
+		epoch, _ := darkpool.Epoch()
+		log.Printf("sending order hash %v", base64.StdEncoding.EncodeToString(epoch.Hash[:]))
 		for _, pod := range pods {
 			n := int64(len(pod.Darknodes))
 			k := int64(2 * (len(pod.Darknodes) + 1) / 3)
