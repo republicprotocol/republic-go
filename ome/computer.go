@@ -251,7 +251,7 @@ func (computer *computer) processComputations(done <-chan struct{}, insts chan<-
 				}
 				computer.processComputation(computation, pendingComputations, done, insts)
 			case <-ticker.C:
-				log.Printf("there are %d computations in the pending list ")
+				log.Printf("there are %d computations in the pending list ", len(pendingComputations))
 				if len(pendingComputations) == 0 {
 					continue
 				}
