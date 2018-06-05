@@ -144,7 +144,7 @@ func DebugLow(message string) {
 	defaultLogger.DebugLow(message)
 }
 
-// Usage logs an info Log using a UsageEvent using the DefaultLogger.
+// Epoch logs an info Log using a UsageEvent using the DefaultLogger.
 func Epoch(hash [32]byte) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
