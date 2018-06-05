@@ -1,17 +1,62 @@
 package logger
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/go-do"
 )
 
-var defaultLoggerMu = new(sync.RWMutex)
-var defaultLogger = func() *Logger {
+// Level defines the different levels of Log messages that can be sent.
+type Level uint8
+
+// Values for the LogType.
+const (
+	LevelError     = Level(1)
+	LevelWarn      = Level(2)
+	LevelInfo      = Level(3)
+	LevelDebugHigh = Level(4)
+	LevelDebug     = Level(5)
+	LevelDebugLow  = Level(6)
+)
+
+// EventType defines the different types of Event messages that can be sent in a
+// Log.
+type EventType string
+
+// Values for the EventType.
+const (
+	TypeGeneric        = EventType("generic")
+	TypeEpoch          = EventType("epoch")
+	TypeUsage          = EventType("usage")
+	TypeOrderConfirmed = EventType("orderConfirmed")
+	TypeOrderMatch     = EventType("orderMatch")
+	TypeOrderReceived  = EventType("orderReceived")
+	TypeNetwork        = EventType("network")
+	TypeCompute        = EventType("compute")
+)
+
+// Log an Event.
+func (logger *Logger) Log(l Log) {
+	if _, ok := logger.FilterEvents[l.EventType]; !ok && len(logger.FilterEvents) > 0 {
+		return
+	}
+	if l.Level <= logger.FilterLevel {
+		l.Tags = logger.Tags
+		for _, plugin := range logger.Plugins {
+			if err := plugin.Log(l); err != nil {
+				log.Println(err)
+			}
+		}
+	}
+}
+
+// StdoutLogger logs to standard output and is used as the logger by default
+var StdoutLogger = func() *Logger {
 	logger, err := NewLogger(Options{
 		Plugins: []PluginOptions{
 			PluginOptions{File: &FilePluginOptions{Path: "stdout"}, WebSocket: nil},
@@ -19,11 +64,14 @@ var defaultLogger = func() *Logger {
 		FilterLevel: LevelWarn,
 	})
 	if err != nil {
-		panic(fmt.Sprintf("cannot init default logger: %v", err))
+		panic(fmt.Sprintf("cannot init StdoutLogger: %v", err))
 	}
 	logger.Start()
 	return logger
 }()
+
+var defaultLoggerMu = new(sync.RWMutex)
+var defaultLogger = StdoutLogger
 
 // SetFilterLevel changes the logging level of the defaultLogger.
 func SetFilterLevel(l Level) {
@@ -49,11 +97,16 @@ func SetDefaultLogger(logger *Logger) {
 	defaultLogger.Start()
 }
 
-// Info logs an info Log using a GenericEvent using the DefaultLogger.
-func Info(message string) {
+// ResetDefaultLogger stops the existing logger and resets the defaultLogger.
+func ResetDefaultLogger() {
+	SetDefaultLogger(StdoutLogger)
+}
+
+// Error logs an error Log using a GenericEvent using the DefaultLogger.
+func Error(message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	defaultLogger.Info(message)
+	defaultLogger.Error(message)
 }
 
 // Warn logs a warn Log using a GenericEvent using the DefaultLogger.
@@ -63,11 +116,39 @@ func Warn(message string) {
 	defaultLogger.Warn(message)
 }
 
-// Error logs an error Log using a GenericEvent using the DefaultLogger.
-func Error(message string) {
+// Info logs an info Log using a GenericEvent using the DefaultLogger.
+func Info(message string) {
 	defaultLoggerMu.Lock()
 	defer defaultLoggerMu.Unlock()
-	defaultLogger.Error(message)
+	defaultLogger.Info(message)
+}
+
+// DebugHigh logs an info Log using a GenericEvent using the DefaultLogger.
+func DebugHigh(message string) {
+	defaultLoggerMu.Lock()
+	defer defaultLoggerMu.Unlock()
+	defaultLogger.DebugHigh(message)
+}
+
+// Debug logs an info Log using a GenericEvent using the DefaultLogger.
+func Debug(message string) {
+	defaultLoggerMu.Lock()
+	defer defaultLoggerMu.Unlock()
+	defaultLogger.Debug(message)
+}
+
+// DebugLow logs an info Log using a GenericEvent using the DefaultLogger.
+func DebugLow(message string) {
+	defaultLoggerMu.Lock()
+	defer defaultLoggerMu.Unlock()
+	defaultLogger.DebugLow(message)
+}
+
+// Epoch logs an info Log using a UsageEvent using the DefaultLogger.
+func Epoch(hash [32]byte) {
+	defaultLoggerMu.Lock()
+	defer defaultLoggerMu.Unlock()
+	defaultLogger.Epoch(hash)
 }
 
 // Usage logs an info Log using a UsageEvent using the DefaultLogger.
@@ -201,21 +282,6 @@ func (logger Logger) Stop() {
 	}
 }
 
-// Log an Event.
-func (logger *Logger) Log(l Log) {
-	if _, ok := logger.FilterEvents[l.EventType]; !ok && len(logger.FilterEvents) > 0 {
-		return
-	}
-	if l.Level <= logger.FilterLevel {
-		l.Tags = logger.Tags
-		for _, plugin := range logger.Plugins {
-			if err := plugin.Log(l); err != nil {
-				log.Println(err)
-			}
-		}
-	}
-}
-
 // Error logs an error Log using a GenericEvent.
 func (logger *Logger) Error(message string) {
 	logger.Log(Log{
@@ -284,6 +350,18 @@ func (logger *Logger) DebugLow(message string) {
 		EventType: TypeGeneric,
 		Event: GenericEvent{
 			Message: message,
+		},
+	})
+}
+
+// Epoch logs a EpochEvent.
+func (logger *Logger) Epoch(hash [32]byte) {
+	logger.Log(Log{
+		Timestamp: time.Now(),
+		Level:     LevelInfo,
+		EventType: TypeEpoch,
+		Event: EpochEvent{
+			Hash: hash,
 		},
 	})
 }
@@ -378,19 +456,6 @@ func (logger *Logger) Compute(ty Level, message string) {
 	})
 }
 
-// Level defines the different levels of Log messages that can be sent.
-type Level uint8
-
-// Values for the LogType.
-const (
-	LevelError     = Level(1)
-	LevelWarn      = Level(2)
-	LevelInfo      = Level(3)
-	LevelDebugHigh = Level(4)
-	LevelDebug     = Level(5)
-	LevelDebugLow  = Level(6)
-)
-
 func (level Level) String() string {
 	switch level {
 	case LevelError:
@@ -399,35 +464,95 @@ func (level Level) String() string {
 		return "warn"
 	case LevelInfo:
 		return "info"
-	default:
+	case LevelDebugHigh:
+		fallthrough
+	case LevelDebug:
+		fallthrough
+	case LevelDebugLow:
 		return "debug"
+	default:
+		return ""
 	}
 }
-
-// EventType defines the different types of Event messages that can be sent in a
-// Log.
-type EventType string
-
-// Values for the EventType.
-const (
-	TypeGeneric        = EventType("generic")
-	TypeEpoch          = EventType("epoch")
-	TypeUsage          = EventType("usage")
-	TypeEthereum       = EventType("ethereum")
-	TypeOrderConfirmed = EventType("orderConfirmed")
-	TypeOrderMatch     = EventType("orderMatch")
-	TypeOrderReceived  = EventType("orderReceived")
-	TypeNetwork        = EventType("network")
-	TypeCompute        = EventType("compute")
-)
 
 // A Log is logged by the Logger using all available Plugins.
 type Log struct {
 	Timestamp time.Time         `json:"timestamp"`
-	Level     Level             `json:"type"`
+	Level     Level             `json:"level"`
 	EventType EventType         `json:"eventType"`
 	Event     Event             `json:"event"`
 	Tags      map[string]string `json:"tags"`
+}
+
+type rawLog struct {
+	Timestamp time.Time         `json:"timestamp"`
+	Level     Level             `json:"level"`
+	EventType EventType         `json:"eventType"`
+	Event     json.RawMessage   `json:"event"`
+	Tags      map[string]string `json:"tags"`
+}
+
+func (log *Log) UnmarshalJSON(data []byte) error {
+	rawLog := rawLog{}
+	if err := json.Unmarshal(data, &rawLog); err != nil {
+		return err
+	}
+
+	switch rawLog.EventType {
+	case TypeGeneric:
+		ev := GenericEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeEpoch:
+		ev := EpochEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeUsage:
+		ev := UsageEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeOrderConfirmed:
+		ev := OrderConfirmedEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeOrderMatch:
+		ev := OrderMatchEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeOrderReceived:
+		ev := OrderReceivedEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeNetwork:
+		ev := NetworkEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	case TypeCompute:
+		ev := ComputeEvent{}
+		if err := json.Unmarshal(rawLog.Event, &ev); err != nil {
+			return err
+		}
+		log.Event = ev
+	}
+
+	log.Timestamp = rawLog.Timestamp
+	log.Level = rawLog.Level
+	log.EventType = rawLog.EventType
+	return nil
 }
 
 // The Event interface describes a log event
@@ -446,11 +571,11 @@ func (event GenericEvent) String() string {
 
 // An EpochEvent logs that an epoch transition has been observed
 type EpochEvent struct {
-	Hash []byte `json:"hash"`
+	Hash [32]byte `json:"hash"`
 }
 
 func (event EpochEvent) String() string {
-	return base58.Encode(event.Hash)
+	return base64.StdEncoding.EncodeToString(event.Hash[:])
 }
 
 // UsageEvent logs CPU, Memory and Network usage

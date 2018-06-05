@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
@@ -32,11 +32,13 @@ func (service *SwarmService) Register(server *Server) {
 func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*PingResponse, error) {
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress())
 	if err != nil {
+		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
 		return nil, fmt.Errorf("cannot unmarshal multiaddress: %v", err)
 	}
 	from.Signature = request.GetSignature()
 	multiAddr, err := service.server.Ping(ctx, from)
 	if err != nil {
+		logger.Network(logger.LevelError, fmt.Sprintf("cannot update dht: %v", err))
 		return &PingResponse{}, fmt.Errorf("cannot update dht: %v", err)
 	}
 	return &PingResponse{
@@ -93,6 +95,7 @@ func NewSwarmClient(multiAddr identity.MultiAddress, connPool *ConnPool) swarm.C
 func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress) (identity.MultiAddress, error) {
 	conn, err := client.connPool.Dial(ctx, to)
 	if err != nil {
+		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
 		return identity.MultiAddress{}, fmt.Errorf("cannot dial %v: %v", to, err)
 	}
 	defer conn.Close()
@@ -111,6 +114,7 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress) (
 
 	multiAddr, err := identity.NewMultiAddressFromString(response.GetMultiAddress())
 	if err != nil {
+		logger.Network(logger.LevelError, fmt.Sprintf("cannot parse %v: %v", response.GetMultiAddress(), err))
 		return identity.MultiAddress{}, fmt.Errorf("cannot parse %v: %v", response.GetMultiAddress(), err)
 	}
 	multiAddr.Signature = response.GetSignature()
@@ -121,11 +125,13 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress) (
 func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address, querySignature [65]byte) (identity.MultiAddresses, error) {
 
 	if _, err := client.Ping(ctx, to); err != nil {
+		logger.Network(logger.LevelError, fmt.Sprintf("cannot ping before query: %v", err))
 		return identity.MultiAddresses{}, fmt.Errorf("cannot ping before query: %v", err)
 	}
 
 	conn, err := client.connPool.Dial(ctx, to)
 	if err != nil {
+		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
 		return identity.MultiAddresses{}, fmt.Errorf("cannot dial %v: %v", to, err)
 	}
 	defer conn.Close()
@@ -154,7 +160,7 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 		}
 		multiAddr, err := identity.NewMultiAddressFromString(message.GetMultiAddress())
 		if err != nil {
-			log.Printf("cannot parse %v: %v", message.GetMultiAddress(), err)
+			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot parse %v: %v", message.GetMultiAddress(), err))
 			continue
 		}
 		multiAddr.Signature = message.GetSignature()
