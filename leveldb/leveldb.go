@@ -30,7 +30,7 @@ func NewStore(dir string) (Store, error) {
 	if err != nil {
 		return Store{}, err
 	}
-	computaions, err := leveldb.OpenFile(path.Join(dir, "computations"), nil)
+	computations, err := leveldb.OpenFile(path.Join(dir, "computations"), nil)
 	if err != nil {
 		return Store{}, err
 	}
@@ -38,7 +38,7 @@ func NewStore(dir string) (Store, error) {
 	return Store{
 		orderFragments: orderFragments,
 		orders:         orders,
-		computations:   computaions,
+		computations:   computations,
 	}, nil
 }
 

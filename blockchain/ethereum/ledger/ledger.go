@@ -318,3 +318,25 @@ func (ledger *RenLedgerContract) Depth(orderID order.ID) (uint, error) {
 
 	return uint(depth.Uint64()), nil
 }
+
+func (ledger *RenLedgerContract) OrderCounts() (uint64, error) {
+	counts, err := ledger.binding.GetOrdersCount(ledger.callOpts)
+	if err != nil {
+		return 0, err
+	}
+
+	return counts.Uint64(), nil
+}
+
+func (ledger *RenLedgerContract) OrderID(index int) ([32]byte, error) {
+	i := big.NewInt(int64(index))
+	id, exist, err := ledger.binding.GetOrder(ledger.callOpts, i)
+	if !exist {
+		return [32]byte{}, errors.New("order not exist")
+	}
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	return id, nil
+}
