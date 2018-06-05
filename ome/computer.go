@@ -266,14 +266,21 @@ func (computer *computer) processComputations(done <-chan struct{}, insts chan<-
 func (computer *computer) processComputation(computation ComputationEpoch, pendingComputations map[[32]byte]ComputationEpoch, done <-chan struct{}, insts chan<- smpc.Inst) {
 	buy, err := computer.storer.OrderFragment(computation.Buy)
 	if err != nil {
-		log.Printf("no fragment for buy order %v", base64.StdEncoding.EncodeToString(computation.Buy[:]))
-		pendingComputations[computation.ID] = computation
+		err := storeComputationResult(computer.storer, computation, ComputationResultMismatched)
+		if err != nil {
+			log.Printf("fail to store the computaion result: %v", err)
+		}
+		//pendingComputations[computation.ID] = computation
 		return
 	}
 	sell, err := computer.storer.OrderFragment(computation.Sell)
 	if err != nil {
-		log.Printf("no fragment for sell order %v", base64.StdEncoding.EncodeToString(computation.Sell[:]))
-		pendingComputations[computation.ID] = computation
+		err := storeComputationResult(computer.storer, computation, ComputationResultMismatched)
+		if err != nil {
+			log.Printf("fail to store the computaion result: %v", err)
+		}
+		return
+		//pendingComputations[computation.ID] = computation
 		return
 	}
 
