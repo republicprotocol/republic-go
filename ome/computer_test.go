@@ -28,7 +28,7 @@ var _ = Describe("Computer", func() {
 			confirmer = newMockConfirmer()
 		})
 
-		It("should successfully complete all computations", func(d Done) {
+		FIt("should successfully complete all computations", func(d Done) {
 			defer close(d)
 
 			numberOfComputations := 20
@@ -149,6 +149,14 @@ func (storer mockStorer) RemoveOrder(id order.ID) error {
 
 	delete(storer.orders, id)
 	return nil
+}
+
+func (store *mockStorer) InsertComputation(computations Computation) error {
+	return nil
+}
+
+func (store *mockStorer) Computation(id [32]byte) (Computation, error) {
+	return Computation{}, ErrComputationNotFound
 }
 
 type mockSmpcer struct {

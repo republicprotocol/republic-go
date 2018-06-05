@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"path"
 
+	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/orderbook"
 
 	"github.com/republicprotocol/republic-go/order"
@@ -15,6 +16,7 @@ import (
 type Store struct {
 	orderFragments *leveldb.DB
 	orders         *leveldb.DB
+	computations   *leveldb.DB
 }
 
 // NewStore returns a LevelDB implemntation of an orderbooker.Storer. It stores
@@ -28,10 +30,15 @@ func NewStore(dir string) (Store, error) {
 	if err != nil {
 		return Store{}, err
 	}
+	computaions, err := leveldb.OpenFile(path.Join(dir, "computations"), nil)
+	if err != nil {
+		return Store{}, err
+	}
 
 	return Store{
 		orderFragments: orderFragments,
 		orders:         orders,
+		computations:   computaions,
 	}, nil
 }
 
@@ -41,7 +48,11 @@ func (store *Store) Close() error {
 	if err := store.orderFragments.Close(); err != nil {
 		return err
 	}
-	return store.orders.Close()
+	if err := store.orders.Close(); err != nil {
+		return err
+	}
+
+	return store.computations.Close()
 }
 
 // InsertOrderFragment implements the orderbook.Storer interface.
@@ -102,4 +113,28 @@ func (store *Store) RemoveOrderFragment(id order.ID) error {
 // RemoveOrder implements the orderbook.Storer interface.
 func (store *Store) RemoveOrder(id order.ID) error {
 	return store.orders.Delete(id[:], nil)
+}
+
+func (store *Store) InsertComputation(computations ome.Computation) error {
+	data, err := json.Marshal(computations)
+	if err != nil {
+		return err
+	}
+
+	return store.computations.Put(computations.ID()[:], data, nil)
+}
+
+func (store *Store) Computation(id [32]byte) (ome.Computation, error) {
+	computation := ome.Computation{}
+	data, err := store.computations.Get(id[:], nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			err = orderbook.ErrOrderNotFound
+		}
+		return computation, err
+	}
+	if err := json.Unmarshal(data, &computation); err != nil {
+		return computation, err
+	}
+	return computation, nil
 }

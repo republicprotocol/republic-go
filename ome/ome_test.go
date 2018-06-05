@@ -26,7 +26,7 @@ var _ = Describe("Ome", func() {
 		var ledger cal.RenLedger
 		var accounts cal.DarkpoolAccounts
 		var smpcer smpc.Smpcer
-		var storer orderbook.Storer
+		var storer Storer
 
 		BeforeEach(func() {
 			// Generate mock instance for all the parts we need
@@ -36,7 +36,7 @@ var _ = Describe("Ome", func() {
 			storer = NewMockStorer()
 			accounts = newMockAccounts()
 
-			confirmer = NewConfirmer(0, 2*time.Second, ledger)
+			confirmer = NewConfirmer(0, 2*time.Second, ledger, storer)
 			computer = NewComputer(storer, smpcer, confirmer, ledger, accounts)
 			ranker = NewRanker(1, 0)
 

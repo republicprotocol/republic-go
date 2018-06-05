@@ -1,6 +1,7 @@
 package ome
 
 import (
+	"log"
 	"sync"
 	"time"
 
@@ -24,6 +25,7 @@ type confirmer struct {
 	renLedgerDepth        uint
 	renLedgerPollInterval time.Duration
 	renLedger             cal.RenLedger
+	storer                Storer
 
 	confirmingMu         *sync.Mutex
 	confirmingBuyOrders  map[order.ID]struct{}
@@ -34,11 +36,12 @@ type confirmer struct {
 // interval and checks for confirmed order matches that have passed the block
 // depth limit. These confirmations will not be reshuffle (with high
 // probability), depending on the block depth limit.
-func NewConfirmer(renLedgerDepth uint, renLedgerPollInterval time.Duration, renLedger cal.RenLedger) Confirmer {
+func NewConfirmer(renLedgerDepth uint, renLedgerPollInterval time.Duration, renLedger cal.RenLedger, storer Storer) Confirmer {
 	return &confirmer{
 		renLedgerDepth:        renLedgerDepth,
 		renLedgerPollInterval: renLedgerPollInterval,
 		renLedger:             renLedger,
+		storer:                storer,
 
 		confirmingMu:         new(sync.Mutex),
 		confirmingBuyOrders:  map[order.ID]struct{}{},
@@ -77,6 +80,11 @@ func (confirmer *confirmer) ConfirmOrderMatches(done <-chan struct{}, orderMatch
 					case <-done:
 						return
 					case errs <- err:
+						orderMatch.Result = ComputationResultConfirmRejected
+						err := confirmer.storer.InsertComputation(orderMatch)
+						if err != nil {
+							log.Println(err)
+						}
 					}
 				}
 
@@ -182,6 +190,11 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 		case <-done:
 			return
 		case confirmedOrderMatches <- confirmedOrderMatch:
+			confirmedOrderMatch.Result = ComputationResultConfirmAccepted
+			err := confirmer.storer.InsertComputation(confirmedOrderMatch)
+			if err != nil {
+				log.Println(err)
+			}
 		}
 	}
 }

@@ -19,12 +19,13 @@ import (
 var _ = Describe("Confirmer", func() {
 	var confirmer Confirmer
 	var renLedger cal.RenLedger
+	var storer Storer
 
 	BeforeEach(func() {
 		depth, pollInterval := uint(0), time.Second
 		renLedger = newMockRenLedger()
-
-		confirmer = NewConfirmer(depth, pollInterval, renLedger)
+		storer = NewMockStorer()
+		confirmer = NewConfirmer(depth, pollInterval, renLedger, storer)
 	})
 
 	It("should be able to confirm order on the ren ledger", func(d Done) {
