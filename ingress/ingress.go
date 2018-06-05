@@ -255,10 +255,8 @@ func (ingress *ingress) verifyOrderFragments(orderFragmentMapping OrderFragmentM
 	if len(orderFragmentMapping) == 0 || len(orderFragmentMapping) > len(ingress.pods) {
 		return ErrInvalidNumberOfPods
 	}
-
 	for hash, orderFragments := range orderFragmentMapping {
 		pod, ok := ingress.pods[hash]
-
 		if !ok {
 			return ErrUnknownPod
 		}
@@ -274,7 +272,7 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 		return ErrInvalidNumberOfOrderFragments
 	}
 
-	// Map order fragments to their respective Darknonodes
+	// Map order fragments to their respective Darknodes
 	orderFragmentIndexMapping := map[int64]OrderFragment{}
 	for _, orderFragment := range orderFragments {
 		orderFragmentIndexMapping[orderFragment.Index] = orderFragment
@@ -339,10 +337,6 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 func (ingress *ingress) processOpenOrderFragmentsRequest(request OpenOrderRequest, pods map[[32]byte]cal.Pod) error {
 	errs := make([]error, 0, len(pods))
 	podDidReceiveFragments := int64(0)
-
-	for i, j := range pods {
-		log.Printf("pods: %v, %v", base64.StdEncoding.EncodeToString(i[:]), base64.StdEncoding.EncodeToString(j.Hash[:]))
-	}
 
 	dispatch.CoForAll(pods, func(hash [32]byte) {
 		orderFragments := request.orderFragmentMapping[hash]
