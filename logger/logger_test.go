@@ -28,61 +28,172 @@ var _ = Describe("Logger", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		It("should show warnings by default", func() {
-			start := time.Now()
-			msg := "Some information"
-			Warn(msg)
-			end := time.Now()
-			log, err := readTmp()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(start.Before(log.Timestamp)).Should(BeTrue())
-			Expect(log.Timestamp.Before(end)).Should(BeTrue())
-			Expect(log.Level).Should(Equal(LevelWarn))
-			Expect(log.EventType).Should(Equal(TypeGeneric))
-			Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
+		It("by default it should show errors", func() {
+			testGenericError()
 		})
 
-		It("should show errors by default", func() {
-			start := time.Now()
-			msg := "Some information"
-			Error(msg)
-			end := time.Now()
-			log, err := readTmp()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(start.Before(log.Timestamp)).Should(BeTrue())
-			Expect(log.Timestamp.Before(end)).Should(BeTrue())
-			Expect(log.Level).Should(Equal(LevelError))
-			Expect(log.EventType).Should(Equal(TypeGeneric))
-			Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
+		It("by default it should show warnings", func() {
+			testGenericWarn()
 		})
 
-		It("should not show info or debug messages by default", func() {
+		It("by default it should not show Info or Debug messages", func() {
 			msg := "Some information"
 			// Check Info doesn't show
 			Info(msg)
-			log, err := readTmp()
-			Expect(err).ShouldNot(HaveOccurred())
-			checkNilLog(log)
-
+			checkNilLog()
 			// Check DebugHigh doesn't show
 			DebugHigh(msg)
-			log, err = readTmp()
-			Expect(err).ShouldNot(HaveOccurred())
-			checkNilLog(log)
-
+			checkNilLog()
 			// Check Debug doesn't show
 			Debug(msg)
-			log, err = readTmp()
-			Expect(err).ShouldNot(HaveOccurred())
-			checkNilLog(log)
-
+			checkNilLog()
 			// Check DebugLow doesn't show
 			DebugLow(msg)
-			log, err = readTmp()
-			Expect(err).ShouldNot(HaveOccurred())
-			checkNilLog(log)
+			checkNilLog()
+		})
+
+		It("SetFilterLevel(0) should filter all messages", func() {
+			msg := "Some information"
+			// Filter everything
+			SetFilterLevel(0)
+			Error(msg)
+			checkNilLog()
+			Warn(msg)
+			checkNilLog()
+			Info(msg)
+			checkNilLog()
+			DebugHigh(msg)
+			checkNilLog()
+			Debug(msg)
+			checkNilLog()
+			DebugLow(msg)
+			checkNilLog()
+		})
+
+		It("SetFilterLevel(LevelError) should only show Error logs", func() {
+			msg := "Some information"
+			// Filter all but Error
+			SetFilterLevel(LevelError)
+			Warn(msg)
+			checkNilLog()
+			Info(msg)
+			checkNilLog()
+			DebugHigh(msg)
+			checkNilLog()
+			Debug(msg)
+			checkNilLog()
+			DebugLow(msg)
+			checkNilLog()
+			// We should get these logs
+			testGenericError()
+		})
+
+		It("SetFilterLevel(LevelWarn) should only show Error and Warn logs", func() {
+			msg := "Some information"
+			// Filter all but Error and Warn
+			SetFilterLevel(LevelWarn)
+			Info(msg)
+			checkNilLog()
+			DebugHigh(msg)
+			checkNilLog()
+			Debug(msg)
+			checkNilLog()
+			DebugLow(msg)
+			checkNilLog()
+			// We should get these logs
+			testGenericError()
+			resetTmp()
+			testGenericWarn()
+		})
+
+		It("SetFilterLevel(LevelInfo) should only show Error, Warn, and Info logs", func() {
+			setup := func() {
+				err := resetTmp()
+				Expect(err).ShouldNot(HaveOccurred())
+				SetFilterLevel(LevelInfo)
+			}
+			setup()
+			msg := "Some information"
+			// Filter all but Error, Warn, and Info
+			DebugHigh(msg)
+			checkNilLog()
+			Debug(msg)
+			checkNilLog()
+			DebugLow(msg)
+			checkNilLog()
+			// We should get these logs
+			testGenericError()
+			setup()
+			testGenericWarn()
+			setup()
+			testGenericInfo()
+		})
+
+		It("SetFilterLevel(LevelDebugHigh) should filter Debug and DebugLow logs", func() {
+			setup := func() {
+				err := resetTmp()
+				Expect(err).ShouldNot(HaveOccurred())
+				SetFilterLevel(LevelDebugHigh)
+			}
+			setup()
+			msg := "Some information"
+			// Filter all but Error, Warn, Info, and DebugHigh
+			Debug(msg)
+			checkNilLog()
+			DebugLow(msg)
+			checkNilLog()
+			// We should get these logs
+			testGenericError()
+			setup()
+			testGenericWarn()
+			setup()
+			testGenericInfo()
+			setup()
+			testGenericDebugHigh()
+		})
+
+		It("SetFilterLevel(LevelDebug) should filter DebugLow logs", func() {
+			setup := func() {
+				err := resetTmp()
+				Expect(err).ShouldNot(HaveOccurred())
+				SetFilterLevel(LevelDebug)
+			}
+			setup()
+			msg := "Some information"
+			// Filter DebugLow
+			DebugLow(msg)
+			checkNilLog()
+			// We should get these logs
+			testGenericError()
+			setup()
+			testGenericWarn()
+			setup()
+			testGenericInfo()
+			setup()
+			testGenericDebugHigh()
+			setup()
+			testGenericDebug()
+		})
+
+		It("SetFilterLevel(LevelDebugLow) should show all logs", func() {
+			setup := func() {
+				err := resetTmp()
+				Expect(err).ShouldNot(HaveOccurred())
+				SetFilterLevel(LevelDebugLow)
+			}
+			setup()
+			// We should get these logs
+			testGenericError()
+			setup()
+			testGenericWarn()
+			setup()
+			testGenericInfo()
+			setup()
+			testGenericDebugHigh()
+			setup()
+			testGenericDebug()
+			setup()
+			testGenericDebugLow()
 		})
 
 	})
@@ -112,6 +223,23 @@ func readTmp() (Log, error) {
 	return log, nil
 }
 
+func resetTmp() error {
+	ResetDefaultLogger()
+	err := removeTmp()
+	if err != nil {
+		return err
+	}
+	err = makeTmp()
+	if err != nil {
+		return err
+	}
+	_, err = initFileLogger()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func initFileLogger() (*Logger, error) {
 	logger, err := NewLogger(Options{
 		Plugins: []PluginOptions{
@@ -126,9 +254,106 @@ func initFileLogger() (*Logger, error) {
 	return logger, nil
 }
 
-func checkNilLog(l Log) {
-	Expect(l.Timestamp.IsZero()).Should(BeTrue())
-	Expect(l.EventType).Should(Equal(EventType("")))
-	Expect(l.Level).Should(Equal(Level(0)))
-	Expect(l.Event).Should(BeNil())
+func checkNilLog() {
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(log.Timestamp.IsZero()).Should(BeTrue())
+	Expect(log.EventType).Should(Equal(EventType("")))
+	Expect(log.Level).Should(Equal(Level(0)))
+	Expect(log.Event).Should(BeNil())
+}
+
+func testGenericError() {
+	start := time.Now()
+	msg := "Some information"
+	Error(msg)
+	end := time.Now()
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(LevelError))
+	Expect(log.Level.String()).Should(BeEquivalentTo("error"))
+	Expect(log.EventType).Should(Equal(TypeGeneric))
+	Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
+}
+
+func testGenericWarn() {
+	start := time.Now()
+	msg := "Some information"
+	Warn(msg)
+	end := time.Now()
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(LevelWarn))
+	Expect(log.Level.String()).Should(BeEquivalentTo("warn"))
+	Expect(log.EventType).Should(Equal(TypeGeneric))
+	Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
+}
+
+func testGenericInfo() {
+	start := time.Now()
+	msg := "Some information"
+	Info(msg)
+	end := time.Now()
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(LevelInfo))
+	Expect(log.Level.String()).Should(BeEquivalentTo("info"))
+	Expect(log.EventType).Should(Equal(TypeGeneric))
+	Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
+}
+
+func testGenericDebugHigh() {
+	start := time.Now()
+	msg := "Some information"
+	DebugHigh(msg)
+	end := time.Now()
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(LevelDebugHigh))
+	Expect(log.Level.String()).Should(BeEquivalentTo("debug"))
+	Expect(log.EventType).Should(Equal(TypeGeneric))
+	Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
+}
+
+func testGenericDebug() {
+	start := time.Now()
+	msg := "Some information"
+	Debug(msg)
+	end := time.Now()
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(LevelDebug))
+	Expect(log.Level.String()).Should(BeEquivalentTo("debug"))
+	Expect(log.EventType).Should(Equal(TypeGeneric))
+	Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
+}
+
+func testGenericDebugLow() {
+	start := time.Now()
+	msg := "Some information"
+	DebugLow(msg)
+	end := time.Now()
+	log, err := readTmp()
+	Expect(err).ShouldNot(HaveOccurred())
+
+	Expect(start.Before(log.Timestamp)).Should(BeTrue())
+	Expect(log.Timestamp.Before(end)).Should(BeTrue())
+	Expect(log.Level).Should(Equal(LevelDebugLow))
+	Expect(log.Level.String()).Should(BeEquivalentTo("debug"))
+	Expect(log.EventType).Should(Equal(TypeGeneric))
+	Expect(log.Event.(GenericEvent).Message).Should(Equal(msg))
 }
