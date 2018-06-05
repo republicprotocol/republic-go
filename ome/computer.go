@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/order"
@@ -538,7 +539,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		log.Printf("[stage => %v] join sell token: result = %v", computation.ID[31], resultJ.Value)
 		tokens := order.Tokens(resultJ.Value)
 		computer.tokensPointer[computation.Sell] = &tokens
-		log.Printf(" start settl orders (Buy:%v , Sell: %v)-------", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
+		log.Printf(" start settl orders (Buy:%v , Sell: %v)-------", common.ToHex(computation.Buy[:]), common.ToHex(computation.Sell[:]))
 
 		// TODO:
 		// 1. Settle buy order and sell order
@@ -550,6 +551,8 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 			return
 		}
 		sell, err := computer.reconstructOrder(computation.Sell)
+		log.Printf("<sell order> price<Co: %v, Exp: %v>, volumn<Co: %v, Exp: %v>,", buy.Price.Co, buy.Price.Exp, buy.Volume.Co, buy.Volume.Exp)
+
 		if err != nil {
 			log.Printf("cannot reconstruct sell order %v : %v", base64.StdEncoding.EncodeToString(computation.Sell[:]), err)
 			return
