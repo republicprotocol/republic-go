@@ -125,9 +125,9 @@ func Connect(config Config) (Conn, error) {
 	if config.RenExAccountsAddress == "" {
 		switch config.Network {
 		case NetworkGanache:
-			config.RenLedgerAddress = RenLedgerAddressOnGanache.String()
+			config.RenExAccountsAddress = RenExAccountsAddressOnGanache.String()
 		case NetworkKovan:
-			config.RenLedgerAddress = RenLedgerAddressOnKovan.String()
+			config.RenExAccountsAddress = RenExAccountsAddressOnKovan.String()
 		case NetworkRopsten:
 			panic("not deployed yet")
 		default:
