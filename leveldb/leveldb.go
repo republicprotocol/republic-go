@@ -121,7 +121,8 @@ func (store *Store) InsertComputation(computations ome.Computation) error {
 		return err
 	}
 
-	return store.computations.Put(computations.ID()[:], data, nil)
+	id := computations.ID()
+	return store.computations.Put(id[:], data, nil)
 }
 
 func (store *Store) Computation(id [32]byte) (ome.Computation, error) {
