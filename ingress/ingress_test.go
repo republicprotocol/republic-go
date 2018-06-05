@@ -39,8 +39,7 @@ var _ = Describe("Ingress", func() {
 		swarmer := mockSwarmer{}
 		orderbookClient := mockOrderbookClient{}
 		ingress = NewIngress(&darkpool, &renLedger, &swarmer, &orderbookClient)
-		err = ingress.Sync()
-		Expect(err).ShouldNot(HaveOccurred())
+		ingress.Sync(done)
 
 		done = make(chan struct{})
 		errChOpenOrders = ingress.OpenOrderProcess(done)

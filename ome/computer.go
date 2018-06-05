@@ -463,6 +463,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	case StageJoinSellTokens:
 		tokens := order.Tokens(resultJ.Value)
 		computer.tokensPointer[computation.Sell] = &tokens
+		log.Printf(" start settl orders (Buy:%v , Sell: %v)-------", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
 
 		// TODO:
 		// 1. Settle buy order and sell order

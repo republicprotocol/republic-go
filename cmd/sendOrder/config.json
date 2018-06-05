@@ -1,7 +1,7 @@
 {
-        "network": "ropsten",
-        "uri": "https://ropsten.infura.io",
-        "republicTokenAddress": "0x65d54EDa5f032F2275Caa557E50c029cFbCCBB54",
-        "darknodeRegistryAddress": "0x69eb8d26157b9e12f959ea9f189A5D75991b59e3",
-        "renLedgerAddress": "0x6235E09103bC7f205837237e4eAD855bC196E4D3"
+        "network": "kovan",
+        "uri": "https://kovan.infura.io",
+        "republicTokenAddress": "0x596F8c39aEc9fb72D0F591DEe4408516f4C9DdA4",
+        "darknodeRegistryAddress": "0x7b0e5c2945020996408fdf73ef1846d7c0dcac78",
+        "renLedgerAddress": "0x9ac38a5f17aae6d473b0f87bd6e42e8958043c70"
 }

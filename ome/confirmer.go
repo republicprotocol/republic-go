@@ -1,7 +1,6 @@
 package ome
 
 import (
-	"log"
 	"sync"
 	"time"
 
@@ -203,7 +202,6 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 		return nil, err
 	}
 	if status != cal.StatusConfirmed {
-		log.Println("order status is ", status)
 		if orderParity == order.ParityBuy {
 			delete(confirmer.confirmingBuyOrders, ord)
 		} else {
