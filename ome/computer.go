@@ -329,7 +329,7 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 		},
 	}
 
-	log.Printf("[stage => %v] processing computation: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+	//log.Printf("[stage => %v] processing computation: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 
 	// Write instruction
 	select {
