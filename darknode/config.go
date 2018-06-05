@@ -15,8 +15,7 @@ type Config struct {
 	Ethereum ethereum.Config `json:"ethereum"` // TODO: Darknode package should not be dependent on blockchain/ethereum
 	Logs     logger.Options  `json:"logs"`
 
-	RenAddress              identity.Address        `json:"renAddress"`
-	EthAddress              string                  `json:"ethAddress"`
+	Address                 identity.Address        `json:"address"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
 	Host                    string                  `json:"host"`
 	Port                    string                  `json:"port"`
