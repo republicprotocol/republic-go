@@ -223,6 +223,8 @@ func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
 				case <-done:
 					return
 				case errs <- err:
+					time.Sleep(4 * time.Second)
+					continue
 				}
 			}
 
@@ -234,6 +236,7 @@ func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
 					case <-done:
 						return
 					case errs <- err:
+						time.Sleep(4 * time.Second)
 						continue
 					}
 				}

@@ -46,18 +46,31 @@ var _ = Describe("Ingress", func() {
 		errChOpenOrders = ingress.OpenOrderProcess(done)
 		errChOpenOrderFragments = ingress.OpenOrderFragmentsProcess(done)
 
-		err = captureErrorsFromErrorChannel(errChSync, done)
+		// Consume errors in the background to allow progress when an event occurs
+		err = captureErrorsFromErrorChannel(errChSync)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = captureErrorsFromErrorChannel(errChOpenOrderFragments, done)
+		err = captureErrorsFromErrorChannel(errChOpenOrderFragments)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = captureErrorsFromErrorChannel(errChOpenOrders, done)
+		err = captureErrorsFromErrorChannel(errChOpenOrders)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		close(done)
+
+		for err := range errChSync {
+			Expect(err).ShouldNot(HaveOccurred())
+		}
+		for err := range errChOpenOrderFragments {
+			Expect(err).ShouldNot(HaveOccurred())
+		}
+		for err := range errChOpenOrders {
+			Expect(err).ShouldNot(HaveOccurred())
+		}
+
+		time.Sleep(time.Second)
 	})
 
 	Context("when opening orders", func() {
@@ -257,7 +270,7 @@ func (darkpool *mockDarkpool) Epoch() (cal.Epoch, error) {
 		return cal.Epoch{}, err
 	}
 	return cal.Epoch{
-		Hash:      [32]byte{},
+		Hash:      [32]byte{1},
 		Pods:      darkpool.pods,
 		Darknodes: darknodes,
 	}, nil
@@ -396,14 +409,12 @@ func (client *mockOrderbookClient) OpenOrder(ctx context.Context, to identity.Mu
 	return nil
 }
 
-func captureErrorsFromErrorChannel(errChOpenOrderFragments <-chan error, done chan struct{}) error {
+func captureErrorsFromErrorChannel(errChOpenOrderFragments <-chan error) error {
 	// Capture all errors
 	var finalErr error
 	go func() {
 		for {
 			select {
-			case <-done:
-				return
 			case err, ok := <-errChOpenOrderFragments:
 				if !ok {
 					return
