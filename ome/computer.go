@@ -182,6 +182,7 @@ func (computer *computer) Compute(done <-chan struct{}, computations <-chan Comp
 						continue
 					}
 				} else {
+					log.Println("err getting computation from leveldb", err)
 					computation.ID[31] = StageCmpPriceExp
 				}
 
@@ -250,6 +251,7 @@ func (computer *computer) processComputations(done <-chan struct{}, insts chan<-
 				}
 				computer.processComputation(computation, pendingComputations, done, insts)
 			case <-ticker.C:
+				log.Printf("there are %d computations in the pending list ")
 				if len(pendingComputations) == 0 {
 					continue
 				}
@@ -264,11 +266,13 @@ func (computer *computer) processComputations(done <-chan struct{}, insts chan<-
 func (computer *computer) processComputation(computation ComputationEpoch, pendingComputations map[[32]byte]ComputationEpoch, done <-chan struct{}, insts chan<- smpc.Inst) {
 	buy, err := computer.storer.OrderFragment(computation.Buy)
 	if err != nil {
+		log.Printf("no fragment for buy order %v", base64.StdEncoding.EncodeToString(computation.Buy[:]))
 		pendingComputations[computation.ID] = computation
 		return
 	}
 	sell, err := computer.storer.OrderFragment(computation.Sell)
 	if err != nil {
+		log.Printf("no fragment for sell order %v", base64.StdEncoding.EncodeToString(computation.Sell[:]))
 		pendingComputations[computation.ID] = computation
 		return
 	}
@@ -290,7 +294,6 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 		share = sell.Volume.Co.Sub(&buy.MinimumVolume.Co)
 	case StageCmpTokens:
 		share = buy.Tokens.Sub(&sell.Tokens)
-
 	case StageJoinBuyPriceExp:
 		share = buy.Price.Exp
 	case StageJoinBuyPriceCo:
