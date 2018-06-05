@@ -29,235 +29,235 @@ var _ = Describe("Logger", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		Context("and when FilterLevel is set to 0", func() {
+		Context("when the filter level is set to 0", func() {
 			BeforeEach(func() {
 				SetFilterLevel(0)
 			})
 
-			It("should filter Errors", func() {
+			It("should filter error messages", func() {
 				Error(msg)
 				checkNilLog()
 			})
 
-			It("should filter Warns", func() {
+			It("should filter warn messages", func() {
 				Warn(msg)
 				checkNilLog()
 			})
 
-			It("should filter Info", func() {
+			It("should filter info messages", func() {
 				Info(msg)
 				checkNilLog()
 			})
 
-			It("should filter DebugHigh", func() {
+			It("should filter high-level debug messages", func() {
 				DebugHigh(msg)
 				checkNilLog()
 			})
 
-			It("should filter Debug", func() {
+			It("should filter regular debug messages", func() {
 				Debug(msg)
 				checkNilLog()
 			})
 
-			It("should filter DebugLow", func() {
+			It("should filter low-level debug messages", func() {
 				DebugLow(msg)
 				checkNilLog()
 			})
 		})
 
-		Context("and when FilterLevel is set to Error", func() {
+		Context("when the filter level is set to 1", func() {
 			BeforeEach(func() {
 				SetFilterLevel(LevelError)
 			})
 
-			It("should show Errors", func() {
+			It("should show error messages", func() {
 				testGenericError()
 			})
 
-			It("should filter Warns", func() {
+			It("should filter warn messages", func() {
 				Warn(msg)
 				checkNilLog()
 			})
 
-			It("should filter Info", func() {
+			It("should filter info messages", func() {
 				Info(msg)
 				checkNilLog()
 			})
 
-			It("should filter DebugHigh", func() {
+			It("should filter high-level debug messages", func() {
 				DebugHigh(msg)
 				checkNilLog()
 			})
 
-			It("should filter Debug", func() {
+			It("should filter regular debug messages", func() {
 				Debug(msg)
 				checkNilLog()
 			})
 
-			It("should filter DebugLow", func() {
+			It("should filter low-level debug messages", func() {
 				DebugLow(msg)
 				checkNilLog()
 			})
 		})
 
-		Context("and when FilterLevel is set to Warn", func() {
+		Context("when the filter level is set to 2", func() {
 			BeforeEach(func() {
 				SetFilterLevel(LevelWarn)
 			})
 
-			It("should show Errors", func() {
+			It("should show error messages", func() {
 				testGenericError()
 			})
 
-			It("should show Warns", func() {
+			It("should show warn messages", func() {
 				testGenericWarn()
 			})
 
-			It("should filter Info", func() {
+			It("should filter info messages", func() {
 				Info(msg)
 				checkNilLog()
 			})
 
-			It("should filter DebugHigh", func() {
+			It("should filter high-level debug messages", func() {
 				DebugHigh(msg)
 				checkNilLog()
 			})
 
-			It("should filter Debug", func() {
+			It("should filter regular debug messages", func() {
 				Debug(msg)
 				checkNilLog()
 			})
 
-			It("should filter DebugLow", func() {
+			It("should filter low-level debug messages", func() {
 				DebugLow(msg)
 				checkNilLog()
 			})
 		})
 
-		Context("and when FilterLevel is set to Info", func() {
+		Context("when the filter level is set to 3", func() {
 			BeforeEach(func() {
 				SetFilterLevel(LevelInfo)
 			})
 
-			It("should show Errors", func() {
+			It("should show error messages", func() {
 				testGenericError()
 			})
 
-			It("should show Warns", func() {
+			It("should show warn messages", func() {
 				testGenericWarn()
 			})
 
-			It("should show Info", func() {
+			It("should show info messages", func() {
 				testGenericInfo()
 			})
 
-			It("should filter DebugHigh", func() {
+			It("should filter high-level debug messages", func() {
 				DebugHigh(msg)
 				checkNilLog()
 			})
 
-			It("should filter Debug", func() {
+			It("should filter regular debug messages", func() {
 				Debug(msg)
 				checkNilLog()
 			})
 
-			It("should filter DebugLow", func() {
+			It("should filter low-level debug messages", func() {
 				DebugLow(msg)
 				checkNilLog()
 			})
 		})
 
-		Context("and when FilterLevel is set to DebugHigh", func() {
+		Context("when the filter level is set to 4", func() {
 			BeforeEach(func() {
 				SetFilterLevel(LevelDebugHigh)
 			})
 
-			It("should show Errors", func() {
+			It("should show error messages", func() {
 				testGenericError()
 			})
 
-			It("should show Warns", func() {
+			It("should show warn messages", func() {
 				testGenericWarn()
 			})
 
-			It("should show Info", func() {
+			It("should show info messages", func() {
 				testGenericInfo()
 			})
 
-			It("should show DebugHigh", func() {
+			It("should show high-level debug messages", func() {
 				testGenericDebugHigh()
 			})
 
-			It("should filter Debug", func() {
+			It("should filter regular debug messages", func() {
 				Debug(msg)
 				checkNilLog()
 			})
 
-			It("should filter DebugLow", func() {
+			It("should filter low-level debug messages", func() {
 				DebugLow(msg)
 				checkNilLog()
 			})
 
 		})
 
-		Context("and when FilterLevel is set to Debug", func() {
+		Context("when the filter level is set to 5", func() {
 			BeforeEach(func() {
 				SetFilterLevel(LevelDebug)
 			})
 
-			It("should show Errors", func() {
+			It("should show error messages", func() {
 				testGenericError()
 			})
 
-			It("should show Warns", func() {
+			It("should show warn messages", func() {
 				testGenericWarn()
 			})
 
-			It("should show Info", func() {
+			It("should show info messages", func() {
 				testGenericInfo()
 			})
 
-			It("should show DebugHigh", func() {
+			It("should show high-level debug messages", func() {
 				testGenericDebugHigh()
 			})
 
-			It("should show Debug", func() {
+			It("should show debug messages", func() {
 				testGenericDebug()
 			})
 
-			It("should filter DebugLow", func() {
+			It("should filter low-level debug messages", func() {
 				DebugLow(msg)
 				checkNilLog()
 			})
 
 		})
 
-		Context("and when FilterLevel is set to DebugLow", func() {
+		Context("when the filter level is set to 6", func() {
 			BeforeEach(func() {
 				SetFilterLevel(LevelDebugLow)
 			})
 
-			It("should show Errors", func() {
+			It("should show error messages", func() {
 				testGenericError()
 			})
 
-			It("should show Warns", func() {
+			It("should show warn messages", func() {
 				testGenericWarn()
 			})
 
-			It("should show Info", func() {
+			It("should show info messages", func() {
 				testGenericInfo()
 			})
 
-			It("should show DebugHigh", func() {
+			It("should show high-level debug messages", func() {
 				testGenericDebugHigh()
 			})
 
-			It("should show Debug", func() {
+			It("should show regular debug messages", func() {
 				testGenericDebug()
 			})
 
-			It("should show DebugLow", func() {
+			It("should show low-level debug messages", func() {
 				testGenericDebugLow()
 			})
 
