@@ -6,7 +6,6 @@ go:
 before_install:
   - go get github.com/onsi/gomega
   - go get github.com/onsi/ginkgo/ginkgo
-  - go get github.com/mattn/goveralls
   - go get github.com/golang/dep/cmd/dep
   - go get golang.org/x/lint/golint
   - go get github.com/loongy/covermerge

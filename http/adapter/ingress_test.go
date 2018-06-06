@@ -9,9 +9,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/crypto"
 	. "github.com/republicprotocol/republic-go/http/adapter"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/ingress"
 	"github.com/republicprotocol/republic-go/order"
 )
@@ -243,11 +243,11 @@ func (ingress *mockIngress) OpenOrder(signature [65]byte, orderID order.ID, orde
 	return nil
 }
 
-func (ingress *mockIngress) OpenOrderFragmentsProcess(done chan struct{}) <-chan error {
+func (ingress *mockIngress) OpenOrderFragmentsProcess(done <-chan struct{}) <-chan error {
 	return nil
 }
 
-func (ingress *mockIngress) OpenOrderProcess(done chan struct{}) <-chan error {
+func (ingress *mockIngress) OpenOrderProcess(done <-chan struct{}) <-chan error {
 	return nil
 }
 
@@ -256,7 +256,7 @@ func (ingress *mockIngress) CancelOrder(signature [65]byte, orderID order.ID) er
 	return nil
 }
 
-func (ingress *mockIngress) Sync() error {
+func (ingress *mockIngress) Sync(done <-chan struct{}) <-chan error {
 	return nil
 }
 

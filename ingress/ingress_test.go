@@ -27,11 +27,14 @@ var _ = Describe("Ingress", func() {
 	var darkpool mockDarkpool
 	var ingress Ingress
 	var done chan struct{}
+	var errChSync <-chan error
 	var errChOpenOrders <-chan error
 	var errChOpenOrderFragments <-chan error
 
 	BeforeEach(func() {
 		var err error
+		done = make(chan struct{})
+
 		rsaKey, err = crypto.RandomRsaKey()
 		Expect(err).ShouldNot(HaveOccurred())
 		darkpool = newMockDarkpool()
@@ -39,21 +42,25 @@ var _ = Describe("Ingress", func() {
 		swarmer := mockSwarmer{}
 		orderbookClient := mockOrderbookClient{}
 		ingress = NewIngress(&darkpool, &renLedger, &swarmer, &orderbookClient)
-		ingress.Sync(done)
-
-		done = make(chan struct{})
+		errChSync = ingress.Sync(done)
 		errChOpenOrders = ingress.OpenOrderProcess(done)
 		errChOpenOrderFragments = ingress.OpenOrderFragmentsProcess(done)
 
-		err = captureErrorsFromErrorChannel(errChOpenOrderFragments, done)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		err = captureErrorsFromErrorChannel(errChOpenOrders, done)
-		Expect(err).ShouldNot(HaveOccurred())
+		// Consume errors in the background to allow progress when an event occurs
+		go captureErrorsFromErrorChannel(errChSync)
+		go captureErrorsFromErrorChannel(errChOpenOrderFragments)
+		go captureErrorsFromErrorChannel(errChOpenOrders)
 	})
 
 	AfterEach(func() {
 		close(done)
+
+		// Wait for all errors to close
+		captureErrorsFromErrorChannel(errChSync)
+		captureErrorsFromErrorChannel(errChOpenOrderFragments)
+		captureErrorsFromErrorChannel(errChOpenOrders)
+
+		time.Sleep(time.Second)
 	})
 
 	Context("when opening orders", func() {
@@ -253,7 +260,7 @@ func (darkpool *mockDarkpool) Epoch() (cal.Epoch, error) {
 		return cal.Epoch{}, err
 	}
 	return cal.Epoch{
-		Hash:      [32]byte{},
+		Hash:      [32]byte{1},
 		Pods:      darkpool.pods,
 		Darknodes: darknodes,
 	}, nil
@@ -392,23 +399,7 @@ func (client *mockOrderbookClient) OpenOrder(ctx context.Context, to identity.Mu
 	return nil
 }
 
-func captureErrorsFromErrorChannel(errChOpenOrderFragments <-chan error, done chan struct{}) error {
-	// Capture all errors
-	var finalErr error
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			case err, ok := <-errChOpenOrderFragments:
-				if !ok {
-					return
-				}
-				if err != nil {
-					finalErr = err
-				}
-			}
-		}
-	}()
-	return finalErr
+func captureErrorsFromErrorChannel(errs <-chan error) {
+	for range errs {
+	}
 }
