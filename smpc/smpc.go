@@ -148,6 +148,12 @@ func (smpc *smpcer) Shutdown() error {
 	return nil
 }
 
+func (smpc *smpcer) Connect() {
+}
+
+func (smpc *smpcer) Disconnect() {
+}
+
 // Instructions implements the Smpcer interface.
 func (smpc *smpcer) Instructions() chan<- Inst {
 	return smpc.instructions
