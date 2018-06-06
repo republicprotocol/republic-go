@@ -166,23 +166,24 @@ func (computer *computer) Compute(done <-chan struct{}, computations <-chan Comp
 				}
 				computation.ID = computeID(computation.Computation)
 
-				storedComputation, err := computer.storer.Computation(computation.ID)
-				if err == nil {
-					switch storedComputation.Result {
-					case ComputationResultMatched:
-						continue // FIXME: Skip matching and send to the confirmer
-					case ComputationResultMismatched:
-						continue
-					case ComputationResultConfirmAccepted:
-						computation.ID[31] = StageJoin
-					case ComputationResultConfirmRejected:
-						continue
-					case ComputationResultSettled:
-						continue
-					}
-				} else {
-					computation.ID[31] = StageCmpPriceExp
-				}
+				// storedComputation, err := computer.storer.Computation(computation.ID)
+				// if err == nil {
+				// 	switch storedComputation.Result {
+				// 	case ComputationResultMatched:
+				// 		continue // FIXME: Skip matching and send to the confirmer
+				// 	case ComputationResultMismatched:
+				// 		continue
+				// 	case ComputationResultConfirmAccepted:
+				// 		computation.ID[31] = StageJoin
+				// 	case ComputationResultConfirmRejected:
+				// 		continue
+				// 	case ComputationResultSettled:
+				// 		continue
+				// 	}
+				// } else {
+				// 	computation.ID[31] = StageCmpPriceExp
+				// }
+				computation.ID[31] = StageCmpPriceExp
 
 				computer.computationsMu.Lock()
 				computer.computationsState[computation.ID] = computation
