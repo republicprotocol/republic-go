@@ -1,6 +1,8 @@
 package smpc
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"sync"
 
@@ -32,6 +34,52 @@ type Join struct {
 	ID     JoinID
 	Index  JoinIndex
 	Shares shamir.Shares
+}
+
+// MarshalBinary implements the encoding.Marshaler interface.
+func (join *Join) MarshalBinary() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := binary.Write(buf, binary.BigEndian, join.ID); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, join.Index); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, int64(len(join.Shares))); err != nil {
+		return nil, err
+	}
+	for _, share := range join.Shares {
+		shareData, err := share.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		if err := binary.Write(buf, binary.BigEndian, shareData); err != nil {
+			return nil, err
+		}
+	}
+	return buf.Bytes(), nil
+}
+
+// UnmarshalBinary implements the encoding.Unmarshaler interface.
+func (join *Join) UnmarshalBinary(data []byte) error {
+	buf := bytes.NewBuffer(data)
+	if err := binary.Read(buf, binary.BigEndian, &join.ID); err != nil {
+		return err
+	}
+	if err := binary.Read(buf, binary.BigEndian, &join.Index); err != nil {
+		return err
+	}
+	numShares := int64(0)
+	if err := binary.Read(buf, binary.BigEndian, &numShares); err != nil {
+		return err
+	}
+	join.Shares = make(shamir.Shares, numShares)
+	for i := int64(0); i < numShares; i++ {
+		if err := join.Shares[i].UnmarshalBinary(data); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // JoinIndex is the index of all shamir.Shares in a Join.

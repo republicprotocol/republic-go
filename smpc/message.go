@@ -5,16 +5,16 @@ import (
 	"encoding/binary"
 	"errors"
 	"io/ioutil"
-
-	"github.com/republicprotocol/republic-go/shamir"
 )
 
 // ErrUnexpectedMessageType is returned when a message has an unexpected
 // message type that cannot be marshaled/unmarshaled to/from binary.
 var ErrUnexpectedMessageType = errors.New("unexpected message type")
 
-// MessageID is used to associate asynchronous messages with each other. The
-// value used usually correlates to an InstructionID.
+// MessageID is an abstract identity that is used to associate asynchronous
+// messages with each other. The value of of the MessageID is dependent on the
+// context of the Message. For example, when sending a MessageJoin the
+// MessageID is set to the JoinID.
 type MessageID [32]byte
 
 // MessageType distinguishes between the different messages that can be sent
@@ -23,17 +23,17 @@ type MessageType byte
 
 // MessageType values for messages passed between SMPC nodes.
 const (
-	MessageTypeJoinComponents         = MessageType(1)
-	MessageTypeJoinComponentsResponse = MessageType(2)
+	MessageTypeJoin         = MessageType(1)
+	MessageTypeJoinResponse = MessageType(2)
 )
 
-// Message sent between SMPC nodes. These are for internal use by the SMPCs and
-// are not needed by the users of an SMPC node.
+// A Message is sent internally between nodes. It is not intended for direct
+// use when interacting with an Smpcer.
 type Message struct {
 	MessageType
 
-	MessageJoinComponents         *MessageJoinComponents
-	MessageJoinComponentsResponse *MessageJoinComponentsResponse
+	MessageJoin         *MessageJoin
+	MessageJoinResponse *MessageJoinResponse
 }
 
 // MarshalBinary implements the stream.Message interface.
@@ -43,18 +43,17 @@ func (message *Message) MarshalBinary() ([]byte, error) {
 		return nil, err
 	}
 
-	var err error
 	switch message.MessageType {
-	case MessageTypeJoinComponents:
-		bytes, err := message.MessageJoinComponents.MarshalBinary()
+	case MessageTypeJoin:
+		bytes, err := message.MessageJoin.MarshalBinary()
 		if err != nil {
 			return nil, err
 		}
 		if err := binary.Write(buf, binary.BigEndian, bytes); err != nil {
 			return nil, err
 		}
-	case MessageTypeJoinComponentsResponse:
-		bytes, err := message.MessageJoinComponentsResponse.MarshalBinary()
+	case MessageTypeJoinResponse:
+		bytes, err := message.MessageJoinResponse.MarshalBinary()
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +64,7 @@ func (message *Message) MarshalBinary() ([]byte, error) {
 		return nil, ErrUnexpectedMessageType
 	}
 
-	return buf.Bytes(), err
+	return buf.Bytes(), nil
 }
 
 // UnmarshalBinary implements the stream.Message interface.
@@ -76,20 +75,20 @@ func (message *Message) UnmarshalBinary(data []byte) error {
 	}
 
 	switch message.MessageType {
-	case MessageTypeJoinComponents:
+	case MessageTypeJoin:
 		bytes, err := ioutil.ReadAll(buf)
 		if err != nil {
 			return err
 		}
-		message.MessageJoinComponents = new(MessageJoinComponents)
-		return message.MessageJoinComponents.UnmarshalBinary(bytes)
-	case MessageTypeJoinComponentsResponse:
+		message.MessageJoin = new(MessageJoin)
+		return message.MessageJoin.UnmarshalBinary(bytes)
+	case MessageTypeJoinResponse:
 		bytes, err := ioutil.ReadAll(buf)
 		if err != nil {
 			return err
 		}
-		message.MessageJoinComponentsResponse = new(MessageJoinComponentsResponse)
-		return message.MessageJoinComponentsResponse.UnmarshalBinary(bytes)
+		message.MessageJoinResponse = new(MessageJoinResponse)
+		return message.MessageJoinResponse.UnmarshalBinary(bytes)
 	default:
 		return ErrUnexpectedMessageType
 	}
@@ -98,115 +97,73 @@ func (message *Message) UnmarshalBinary(data []byte) error {
 // IsMessage implements the stream.Message interface.
 func (message *Message) IsMessage() {}
 
-// MessageJoinComponents declares the intent to reconstruct components by
-// joining the shamir.Shares of those components. Support for multiple
-// components in a single message reduces the number of messages, but each
-// component should be handled separately and are not necessarily related.
-type MessageJoinComponents struct {
+// A MessageJoin is used to broadcast a Join between nodes in the same network.
+type MessageJoin struct {
 	NetworkID
-	Components
+	Join Join
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface.
-func (message *MessageJoinComponents) MarshalBinary() ([]byte, error) {
+func (message *MessageJoin) MarshalBinary() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	if err := binary.Write(buf, binary.BigEndian, message.NetworkID); err != nil {
 		return nil, err
 	}
-	if err := binary.Write(buf, binary.BigEndian, uint64(len(message.Components))); err != nil {
+	joinData, err := message.Join.MarshalBinary()
+	if err != nil {
 		return nil, err
 	}
-	for _, component := range message.Components {
-		if err := binary.Write(buf, binary.BigEndian, component.ComponentID); err != nil {
-			return nil, err
-		}
-		if err := binary.Write(buf, binary.BigEndian, component.Share); err != nil {
-			return nil, err
-		}
+	if err := binary.Write(buf, binary.BigEndian, joinData); err != nil {
+		return nil, err
 	}
 	return buf.Bytes(), nil
 }
 
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface.
-func (message *MessageJoinComponents) UnmarshalBinary(data []byte) error {
+func (message *MessageJoin) UnmarshalBinary(data []byte) error {
 	buf := bytes.NewBuffer(data)
 	if err := binary.Read(buf, binary.BigEndian, &message.NetworkID); err != nil {
 		return err
 	}
-	numComponents := uint64(0)
-	if err := binary.Read(buf, binary.BigEndian, &numComponents); err != nil {
+	joinData, err := ioutil.ReadAll(buf)
+	if err != nil {
 		return err
 	}
-	message.Components = make(Components, numComponents)
-	for i := uint64(0); i < numComponents; i++ {
-		if err := binary.Read(buf, binary.BigEndian, &message.Components[i].ComponentID); err != nil {
-			return err
-		}
-		if err := binary.Read(buf, binary.BigEndian, &message.Components[i].Share); err != nil {
-			return err
-		}
-	}
-	return nil
+	return message.Join.UnmarshalBinary(joinData)
 }
 
-// MessageJoinComponentsResponse is sent in response to a MessageJoinComponents
-// assuming that responding SMPC node agrees that the join should happen.
-type MessageJoinComponentsResponse struct {
+// A MessageJoinResponse is sent in response to a MessageJoin to return the
+// Join owned by the responder, if such a Join exists.
+type MessageJoinResponse struct {
 	NetworkID
-	Components
+	Join Join
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface.
-func (message *MessageJoinComponentsResponse) MarshalBinary() ([]byte, error) {
+func (message *MessageJoinResponse) MarshalBinary() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	if err := binary.Write(buf, binary.BigEndian, message.NetworkID); err != nil {
 		return nil, err
 	}
-	if err := binary.Write(buf, binary.BigEndian, uint64(len(message.Components))); err != nil {
+	joinData, err := message.Join.MarshalBinary()
+	if err != nil {
 		return nil, err
 	}
-	for _, component := range message.Components {
-		if err := binary.Write(buf, binary.BigEndian, component.ComponentID); err != nil {
-			return nil, err
-		}
-		if err := binary.Write(buf, binary.BigEndian, component.Share); err != nil {
-			return nil, err
-		}
+	if err := binary.Write(buf, binary.BigEndian, joinData); err != nil {
+		return nil, err
 	}
 	return buf.Bytes(), nil
 }
 
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface.
-func (message *MessageJoinComponentsResponse) UnmarshalBinary(data []byte) error {
+func (message *MessageJoinResponse) UnmarshalBinary(data []byte) error {
 	buf := bytes.NewBuffer(data)
 	if err := binary.Read(buf, binary.BigEndian, &message.NetworkID); err != nil {
 		return err
 	}
-	numComponents := uint64(0)
-	if err := binary.Read(buf, binary.BigEndian, &numComponents); err != nil {
+	joinData, err := ioutil.ReadAll(buf)
+	if err != nil {
 		return err
 	}
-	message.Components = make(Components, numComponents)
-	for i := uint64(0); i < numComponents; i++ {
-		if err := binary.Read(buf, binary.BigEndian, &message.Components[i].ComponentID); err != nil {
-			return err
-		}
-		if err := binary.Read(buf, binary.BigEndian, &message.Components[i].Share); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ComponentID for a shamir.Share to identify the component of which this
-// shamir.Share is a part.
-type ComponentID [32]byte
-
-// Components is a set of distinct components.
-type Components []Component
-
-// Component is an ID associated with a shamir.Share.
-type Component struct {
-	ComponentID
-	shamir.Share
+	return message.Join.UnmarshalBinary(joinData)
 }
