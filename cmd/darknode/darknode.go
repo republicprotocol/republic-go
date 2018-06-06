@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/republicprotocol/republic-go/logger"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/accounts"
@@ -28,6 +26,7 @@ import (
 	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/smpc"
@@ -36,7 +35,7 @@ import (
 )
 
 func main() {
-	logger.SetFilterLevel(logger.LevelDebugHigh)
+	logger.SetFilterLevel(logger.LevelDebugLow)
 
 	// Parse command-line arguments
 	configParam := flag.String("config", path.Join(os.Getenv("HOME"), ".darknode/config.json"), "JSON configuration file")

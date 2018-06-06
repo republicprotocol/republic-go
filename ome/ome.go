@@ -1,9 +1,7 @@
 package ome
 
 import (
-	"encoding/base64"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -169,9 +167,6 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 }
 
 func (ome *ome) syncOrderbook(done <-chan struct{}, errs chan<- error) {
-	// FIXME: use logger.
-	log.Println("orderbook sync")
-
 	changeset, err := ome.orderbook.Sync()
 	if err != nil {
 		select {
@@ -180,6 +175,11 @@ func (ome *ome) syncOrderbook(done <-chan struct{}, errs chan<- error) {
 		case errs <- fmt.Errorf("cannot sync orderbook: %v", err):
 			return
 		}
+	}
+	logger.Network(logger.LevelDebug, fmt.Sprintf("sync orderbook: %v changes in changeset", len(changeset)))
+
+	if len(changeset) == 0 {
+		return
 	}
 	if err := ome.syncRanker(changeset); err != nil {
 		select {
@@ -222,7 +222,7 @@ func (ome *ome) syncMatcher(done <-chan struct{}, matches chan<- Computation, er
 	n := ome.ranker.Computations(buffer[:])
 
 	for i := 0; i < n; i++ {
-		logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v", base64.StdEncoding.EncodeToString(buffer[i].Buy[:8]), base64.StdEncoding.EncodeToString(buffer[i].Sell[:8])))
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v", buffer[i].Buy, buffer[i].Sell))
 		err := ome.matcher.Resolve(ξ, buffer[i], func(com Computation) {
 			select {
 			case <-done:
@@ -254,8 +254,7 @@ func (ome *ome) syncConfirmer(done <-chan struct{}, matches <-chan Computation, 
 			ξ := ome.ξ.Hash
 			ome.ξMu.RUnlock()
 			if err := ome.settler.Settle(ξ, confirmation); err != nil {
-				// FIXME: use logger.
-				log.Printf("cannot settle: %v", err)
+				logger.Network(logger.LevelError, fmt.Sprintf("cannot settle: %v", err))
 			}
 		case err, ok := <-confirmationErrs:
 			if !ok {
