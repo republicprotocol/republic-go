@@ -75,7 +75,7 @@ func (join *Join) UnmarshalBinary(data []byte) error {
 	}
 	join.Shares = make(shamir.Shares, numShares)
 	for i := int64(0); i < numShares; i++ {
-		shareData := [32]byte{}
+		shareData := [16]byte{}
 		if _, err := buf.Read(shareData[:]); err != nil {
 			return err
 		}
