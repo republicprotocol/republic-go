@@ -1,7 +1,6 @@
 package ome
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log"
 	"sync"
@@ -11,6 +10,7 @@ import (
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/smpc"
 )
 
 // ComputationID is used to distinguish between different combinations of
@@ -55,11 +55,11 @@ func NewComputation(buy, sell order.ID) Computation {
 	return com
 }
 
+// An Ome runs the logic for a single node in the secure order matching engine.
 type Ome interface {
 	cal.EpochListener
 
-	// Run starts running the ome, it syncs with the orderbook to discover new
-	// orders, purge confirmed orders and reprioritize order matching computations.
+	// Run the Ome in the background. Stop the Ome by closing the done channel.
 	Run(done <-chan struct{}) <-chan error
 }
 
@@ -69,17 +69,19 @@ type ome struct {
 	confirmer Confirmer
 	settler   Settler
 	orderbook orderbook.Orderbook
+	smpcer    smpc.Smpcer
 
 	ξMu *sync.RWMutex
 	ξ   cal.Epoch
 }
 
-func NewOme(ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler, orderbook orderbook.Orderbook) Ome {
+func NewOme(ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler, orderbook orderbook.Orderbook, smpcer smpc.Smpcer) Ome {
 	return &ome{
 		ranker:    ranker,
 		matcher:   matcher,
 		confirmer: confirmer,
 		settler:   settler,
+		orderbook: orderbook,
 		smpcer:    smpcer,
 
 		ξMu: new(sync.RWMutex),
@@ -93,114 +95,97 @@ func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
 	defer ome.ξMu.Unlock()
 
 	ome.smpcer.Disconnect(ome.ξ.Hash)
-
 	ome.ξ = ξ
-	log.Printf("connecting to peers:\n  %v", ome.ξ.Darknodes)
-
-	ome.smpcer.Connect(ome.ξ.Hash, ome.ξ.Darknodes, int64(2*(len(ome.ξ.Darknodes)+1)/3))
+	ome.smpcer.Connect(ome.ξ.Hash, ome.ξ.Darknodes)
 }
 
+// Run implements the Ome interface.
 func (ome *ome) Run(done <-chan struct{}) <-chan error {
-	computations := make(chan ComputationEpoch)
-	errs := make(chan error, 3)
-	wg := new(sync.WaitGroup)
+	matches := make(chan Computation, 64)
+	errs := make(chan error, 64)
 
-	// Sync with the orderbook
+	var wg sync.WaitGroup
+
+	// Sync the orderbook
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-
 		for {
-			syncStart := time.Now()
-
 			select {
 			case <-done:
 				return
 			default:
 			}
-
-			log.Println("orderbook sync")
-			changeset, err := ome.orderbook.Sync()
-			if err != nil {
-				errs <- fmt.Errorf("cannot sync orderbook: %v", err)
+			timeBeginSync := time.Now()
+			ome.syncOrderbook(done, errs)
+			timeNextSync := timeBeginSync.Add(14 * time.Second)
+			if time.Now().After(timeNextSync) {
 				continue
 			}
-			if err := ome.syncRanker(changeset); err != nil {
-				errs <- fmt.Errorf("cannot sync ranker: %v", err)
-				continue
-			}
-
-			if time.Now().After(syncStart.Add(14 * time.Second)) {
-				continue
-			}
-			time.Sleep(syncStart.Add(14 * time.Second).Sub(time.Now()))
+			time.Sleep(timeNextSync.Sub(time.Now()))
 		}
 	}()
 
-	// Sync with the ranker
+	// Sync the matcher
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer close(computations)
 
 		for {
-			syncStart := time.Now()
-
 			select {
 			case <-done:
 				return
 			default:
 			}
-
-			buffer := [128]Computation{}
-			n := ome.ranker.Computations(buffer[:])
-			for i := 0; i < n; i++ {
-				ome.ξMu.RLock()
-				computation := ComputationEpoch{
-					Computation: buffer[i],
-					Epoch:       ome.ξ.Hash,
-				}
-				ome.ξMu.RUnlock()
-				select {
-				case <-done:
-					return
-				case computations <- computation:
-					log.Printf("new computation: buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
-				}
-			}
-			if n == 128 {
+			timeBeginSync := time.Now()
+			if wait := ome.syncMatcher(done, matches, errs); !wait {
 				continue
 			}
-
-			if time.Now().After(syncStart.Add(14 * time.Second)) {
+			timeNextSync := timeBeginSync.Add(14 * time.Second)
+			if time.Now().After(timeNextSync) {
 				continue
 			}
-			time.Sleep(syncStart.Add(14 * time.Second).Sub(time.Now()))
+			time.Sleep(timeNextSync.Sub(time.Now()))
 		}
 	}()
 
-	// Sync with the computer
+	// Sync the confirmer
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-
-		computationErrs := ome.computer.Compute(done, computations)
-		for err := range computationErrs {
-			select {
-			case <-done:
-				return
-			case errs <- err:
-			}
-		}
+		ome.syncConfirmer(done, matches, errs)
 	}()
 
+	// Cleanup
 	go func() {
 		defer close(errs)
-
 		wg.Wait()
 	}()
 
 	return errs
+}
+
+func (ome *ome) syncOrderbook(done <-chan struct{}, errs chan<- error) {
+	// FIXME: use logger.
+	log.Println("orderbook sync")
+
+	changeset, err := ome.orderbook.Sync()
+	if err != nil {
+		select {
+		case <-done:
+			return
+		case errs <- fmt.Errorf("cannot sync orderbook: %v", err):
+			return
+		}
+	}
+	if err := ome.syncRanker(changeset); err != nil {
+		select {
+		case <-done:
+			return
+		case errs <- fmt.Errorf("cannot sync ranker: %v", err):
+			return
+		}
+	}
 }
 
 func (ome *ome) syncRanker(changeset orderbook.ChangeSet) error {
@@ -209,13 +194,13 @@ func (ome *ome) syncRanker(changeset orderbook.ChangeSet) error {
 		case order.Open:
 			if change.OrderParity == order.ParityBuy {
 				ome.ranker.InsertBuy(PriorityOrder{
-					ID:       change.OrderID,
 					Priority: Priority(change.OrderPriority),
+					Order:    change.OrderID,
 				})
 			} else {
 				ome.ranker.InsertSell(PriorityOrder{
-					ID:       change.OrderID,
 					Priority: Priority(change.OrderPriority),
+					Order:    change.OrderID,
 				})
 			}
 		case order.Canceled, order.Confirmed:
@@ -223,4 +208,59 @@ func (ome *ome) syncRanker(changeset orderbook.ChangeSet) error {
 		}
 	}
 	return nil
+}
+
+func (ome *ome) syncMatcher(done <-chan struct{}, matches chan<- Computation, errs chan<- error) bool {
+	ome.ξMu.RLock()
+	ξ := ome.ξ.Hash
+	ome.ξMu.RUnlock()
+
+	buffer := [128]Computation{}
+	n := ome.ranker.Computations(buffer[:])
+
+	for i := 0; i < n; i++ {
+		err := ome.matcher.Resolve(ξ, buffer[i], func(com Computation) {
+			select {
+			case <-done:
+			case matches <- com:
+			}
+		})
+		if err != nil {
+			select {
+			case <-done:
+				return false
+			case errs <- err:
+			}
+		}
+	}
+	return n != 128
+}
+
+func (ome *ome) syncConfirmer(done <-chan struct{}, matches <-chan Computation, errs chan<- error) {
+	confirmations, confirmationErrs := ome.confirmer.Confirm(done, matches)
+	for {
+		select {
+		case <-done:
+			return
+		case confirmation, ok := <-confirmations:
+			if !ok {
+				return
+			}
+			ome.ξMu.RLock()
+			ξ := ome.ξ.Hash
+			ome.ξMu.RUnlock()
+			if err := ome.settler.Settle(ξ, confirmation); err != nil {
+				// FIXME: use logger.
+				log.Println("cannot settle: %v", err)
+			}
+		case err, ok := <-confirmationErrs:
+			if !ok {
+				return
+			}
+			select {
+			case <-done:
+			case errs <- err:
+			}
+		}
+	}
 }
