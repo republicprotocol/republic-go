@@ -31,7 +31,7 @@ Here's an example of the `StdoutLogger` with a pair of tags.
     "filterLevel": 2,
     "filterEvents": [
       "network",
-      "ethereum",
+      "usage",
     ]
   },
 ```
@@ -69,13 +69,13 @@ are:
 - `TypeGeneric` 
 - `TypeEpoch`   
 - `TypeUsage` 
-- `TypeEthereum`
+- `TypeOrderConfirmed`
 - `TypeOrderMatch`
 - `TypeOrderReceived`
 - `TypeNetwork`
 - `TypeCompute`
 
 The `SetFilterEvents([]EventType)` acts as a whitelist for specific types of events.
-For example, if you were only interested in viewing network and Ethereum logs, you
-could use `SetFilterEvents([]EventType{TypeNetwork, TypeEthereum})` which would
+For example, if you were only interested in viewing Network and Usage logs, you
+could use `SetFilterEvents([]EventType{TypeNetwork, TypeUsage})` which would
 hide all other types of events.

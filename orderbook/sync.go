@@ -2,11 +2,11 @@ package orderbook
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -119,13 +119,13 @@ func (syncer *syncer) purge() ChangeSet {
 
 					status, err := syncer.renLedger.Status(buyOrder)
 					if err != nil {
-						log.Println("fail to check order status", err)
+						logger.Error(fmt.Sprintf("Failed to check order status %v", err))
 						return
 					}
 
 					priority, err := syncer.renLedger.Priority(buyOrder)
 					if err != nil {
-						log.Println("fail to check order priority", err)
+						logger.Error(fmt.Sprintf("Failed to check order priority %v", err))
 						return
 					}
 
@@ -147,13 +147,13 @@ func (syncer *syncer) purge() ChangeSet {
 
 					status, err := syncer.renLedger.Status(sellOrder)
 					if err != nil {
-						log.Println("fail to check order status", err)
+						logger.Error(fmt.Sprintf("Failed to check order status: %v", err))
 						return
 					}
 
 					priority, err := syncer.renLedger.Priority(sellOrder)
 					if err != nil {
-						log.Println("fail to check order priority", err)
+						logger.Error(fmt.Sprintf("Failed to check order priority: %v", err))
 						return
 					}
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 	"golang.org/x/net/context"
@@ -145,7 +146,7 @@ func (smpc *smpcer) instConnect(networkID NetworkID, nodes identity.Addresses, k
 		addr := nodes[i]
 		multiAddr, err := smpc.query(addr)
 		if err != nil {
-			log.Println(err)
+			logger.Network(logger.LevelError, fmt.Sprintf("%v", err))
 			return
 		}
 
@@ -199,11 +200,11 @@ func (smpc *smpcer) sendMessage(addr identity.Address, msg *Message) {
 	if multiAddr, ok := smpc.lookup[addr]; ok {
 		stream, err := smpc.streamer.Open(ctx, multiAddr)
 		if err != nil {
-			log.Printf("cannot open stream for messageTypeJ to %v: %v", addr, err)
+			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot open stream for messageTypeJ to %v: %v", addr, err))
 			return
 		}
 		if err := stream.Send(msg); err != nil {
-			log.Printf("cannot send messageTypeJ to %v: %v", addr, err)
+			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot send messageTypeJ to %v: %v", addr, err))
 		}
 	}
 }
@@ -223,7 +224,7 @@ func (smpc *smpcer) stream(remoteAddr identity.Address, remoteStream stream.Stre
 	for {
 		msg := Message{}
 		if err := remoteStream.Recv(&msg); err != nil {
-			log.Printf("closing stream with %v: %v", remoteAddr, err)
+			logger.Network(logger.LevelDebug, fmt.Sprintf("closing stream with %v: %v", remoteAddr, err))
 			return
 		}
 
@@ -233,7 +234,7 @@ func (smpc *smpcer) stream(remoteAddr identity.Address, remoteStream stream.Stre
 		case MessageTypeJoinComponentsResponse:
 			smpc.processMessageJoinComponentsResponse(*msg.MessageJoinComponentsResponse)
 		default:
-			log.Printf("cannot receive message from %v: %v", remoteAddr, ErrUnexpectedMessageType)
+			logger.Network(logger.LevelDebug, fmt.Sprintf("cannot recv message from %v: %v", remoteAddr, ErrUnexpectedMessageType))
 		}
 	}
 }
