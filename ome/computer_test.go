@@ -29,7 +29,7 @@ var _ = Describe("Computer", func() {
 			confirmer = newMockConfirmer()
 		})
 
-		FIt("should successfully complete all computations", func(d Done) {
+		It("should successfully complete all computations", func(d Done) {
 			defer close(d)
 
 			numberOfComputations := 20
