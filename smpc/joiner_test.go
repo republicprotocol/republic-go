@@ -1,16 +1,16 @@
 package smpc_test
 
 import (
-	"math/rand"
+	"bytes"
 	"sync/atomic"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/order"
 	. "github.com/republicprotocol/republic-go/smpc"
 
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
+	"github.com/republicprotocol/republic-go/testutils"
 )
 
 var k = int64(24)
@@ -62,10 +62,33 @@ var _ = Describe("Joiner", func() {
 			}
 		})
 	})
+
+	Context("marshal and unmarshal join", func() {
+		var joinId = JoinID{2}
+
+		It("should get the same join after marshal and unmarshal", func() {
+			_, joins := generateJoins(joinId)
+			for i := range joins {
+				data, err := joins[i].MarshalBinary()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				newJoin := new(Join)
+				err = newJoin.UnmarshalBinary(data)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(bytes.Compare(joins[i].ID[:], newJoin.ID[:])).Should(Equal(0))
+				Ω(joins[i].Index).Should(Equal(newJoin.Index))
+				Ω(len(joins[i].Shares)).Should(Equal(len(newJoin.Shares)))
+				for j := range joins[i].Shares {
+					Ω(joins[i].Shares[j].Equal(&newJoin.Shares[j]))
+				}
+			}
+		})
+	})
 })
 
 func generateJoins(id JoinID) (order.Order, []Join) {
-	ord := newRandomOrder()
+	ord := testutils.RandomOrder()
 	fragments, err := ord.Split(k, k)
 	Ω(err).ShouldNot(HaveOccurred())
 	joins := make([]Join, k)
@@ -100,28 +123,5 @@ func generateCallback(getsCalled *int64, ord order.Order) func(id JoinID, values
 		Ω(values[4]).Should(Equal(ord.MinimumVolume.Co))
 		Ω(values[5]).Should(Equal(ord.MinimumVolume.Exp))
 		Ω(values[6]).Should(Equal(uint64(ord.Tokens)))
-	}
-}
-
-func newRandomOrder() order.Order {
-	parity := []order.Parity{order.ParityBuy, order.ParitySell}[rand.Intn(2)]
-	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensBTCDGX,
-		order.TokensBTCREN,
-		order.TokensETHDGX,
-		order.TokensETHREN,
-		order.TokensDGXREN,
-	}[rand.Intn(6)]
-
-	ord := order.NewOrder(order.TypeLimit, parity, time.Now().Add(1*time.Hour), tokens, randomCoExp(), randomCoExp(), randomCoExp(), rand.Int63())
-	return ord
-}
-
-func randomCoExp() order.CoExp {
-	co := uint64(rand.Intn(1999) + 1)
-	exp := uint64(rand.Intn(25))
-	return order.CoExp{
-		Co:  co,
-		Exp: exp,
 	}
 }
