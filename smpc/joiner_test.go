@@ -14,110 +14,111 @@ import (
 )
 
 var k = int64(24)
+var joiner = NewJoiner(k)
 
 var _ = Describe("Joiner", func() {
-	var joiner *Joiner
 
-	Context("Insert join and set callback", func() {
+	BeforeEach(func() {
+		joiner = NewJoiner(k)
+	})
 
-		BeforeEach(func() {
-			joiner = NewJoiner(k)
+	Context("when joining", func() {
+
+		Context("when setting the callback at the first insertion", func() {
+			It("should call the callback after inserting k joins", func() {
+				ord, joins := generateJoins()
+				called := int64(0)
+				callback := generateCallback(&called, ord)
+
+				for i := int64(0); i < k; i++ {
+					if i == 0 {
+						Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
+					} else {
+						Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+					}
+					if i == k-1 {
+						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(1)))
+					} else {
+						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(0)))
+					}
+				}
+			})
 		})
 
-		It("should call the callback when have enough shares ", func() {
-			ord, joins := generateJoins()
-			var getsCalled = int64(0)
-			callback := generateCallback(&getsCalled, ord)
+		Context("when setting the callback at the last insertion", func() {
+			It("should call the callback after inserting joins", func() {
+				ord, joins := generateJoins()
+				called := int64(0)
+				callback := generateCallback(&called, ord)
 
-			for i := int64(0); i < k; i++ {
-				if i == 0 {
-					Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
-				} else {
-					Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+				for i := int64(0); i < k; i++ {
+					if i == k-1 {
+						Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
+						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(1)))
+					} else {
+						Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(0)))
+					}
 				}
-
-				if i == k-1 {
-					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(1)))
-				} else {
-					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(0)))
-				}
-			}
+			})
 		})
 
-		It("the insertion order should not matter", func() {
-			ord, joins := generateJoins()
-			var getsCalled = int64(0)
-			callback := generateCallback(&getsCalled, ord)
-
-			for i := int64(0); i < k; i++ {
-				if i == k-1 {
-					Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
-					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(1)))
-				} else {
-					Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
-					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(0)))
+		Context("when the callback is set multiple times", func() {
+			It("should call the latest callback after inserting k joins", func() {
+				ord, joins := generateJoins()
+				var called = int64(0)
+				callback := generateCallback(&called, ord)
+				callbackOverride := func(id JoinID, values []uint64) {
+					atomic.AddInt64(&called, 2)
 				}
-			}
+
+				for i := int64(0); i < k; i++ {
+					if i == 0 {
+						Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
+					} else if i == 2 {
+						Ω(joiner.InsertJoinAndSetCallback(joins[i], callbackOverride)).ShouldNot(HaveOccurred())
+					} else {
+						Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+					}
+					if i == k-1 {
+						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(2)))
+					} else {
+						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(0)))
+					}
+				}
+			})
 		})
 
-		It("should override the callback if we set the callback more than once", func() {
-			ord, joins := generateJoins()
-			var getsCalled = int64(0)
-			callback := generateCallback(&getsCalled, ord)
-			callbackOverride := func(id JoinID, values []uint64) {
-				atomic.AddInt64(&getsCalled, 2)
-			}
-
-			for i := int64(0); i < k; i++ {
-				if i == 0 {
-					Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
-				} else if i == 2 {
-					Ω(joiner.InsertJoinAndSetCallback(joins[i], callbackOverride)).ShouldNot(HaveOccurred())
-				} else {
-					Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+		Context("when inserting computed joins", func() {
+			It("should pass the computed values to the callback", func() {
+				joins := generateMatchedJoins()
+				called := int64(0)
+				callback := func(id JoinID, values []uint64) {
+					atomic.AddInt64(&called, 1)
+					Ω(len(values)).Should(Equal(7))
+					Ω(values[0]).Should(BeNumerically("<=", shamir.Prime/2))
+					Ω(values[1]).Should(BeNumerically("<=", shamir.Prime/2))
+					Ω(values[2]).Should(BeNumerically("<=", shamir.Prime/2))
+					Ω(values[3]).Should(BeNumerically("<=", shamir.Prime/2))
+					Ω(values[4]).Should(BeNumerically("<=", shamir.Prime/2))
+					Ω(values[5]).Should(BeNumerically("<=", shamir.Prime/2))
+					Ω(values[6]).Should(BeZero())
 				}
 
-				if i == k-1 {
-					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(2)))
-				} else {
-					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(0)))
+				for i := int64(0); i < k; i++ {
+					if i == k-1 {
+						Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
+						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(1)))
+					} else {
+						Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(0)))
+					}
 				}
-			}
-		})
-
-		It("should be able to join share subtraction", func() {
-			joins := generateMatchedJoins()
-			var getsCalled = int64(0)
-			callback := func(id JoinID, values []uint64) {
-				atomic.AddInt64(&getsCalled, 1)
-				Ω(len(values)).Should(Equal(7))
-				Ω(values[0]).Should(BeNumerically("<=", shamir.Prime/2))
-				Ω(values[1]).Should(BeNumerically("<=", shamir.Prime/2))
-				Ω(values[2]).Should(BeNumerically("<=", shamir.Prime/2))
-				Ω(values[3]).Should(BeNumerically("<=", shamir.Prime/2))
-				Ω(values[4]).Should(BeNumerically("<=", shamir.Prime/2))
-				Ω(values[5]).Should(BeNumerically("<=", shamir.Prime/2))
-				Ω(values[6]).Should(BeZero())
-			}
-
-			for i := int64(0); i < k; i++ {
-				if i == k-1 {
-					Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
-					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(1)))
-				} else {
-					Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
-					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(0)))
-				}
-			}
+			})
 		})
 	})
 
-	Context("marshal and unmarshal join", func() {
-
-		BeforeEach(func() {
-			joiner = NewJoiner(k)
-		})
-
+	Context("when marshaling and unmarshaling joins", func() {
 		It("should get the same join after marshal and unmarshal", func() {
 			_, joins := generateJoins()
 			for i := range joins {
@@ -138,13 +139,8 @@ var _ = Describe("Joiner", func() {
 		})
 	})
 
-	Context("negative tests", func() {
-
-		BeforeEach(func() {
-			joiner = NewJoiner(k)
-		})
-
-		It("should error when we trying to join more shares than limits", func() {
+	Context("when inserting joins with shares that exceed the maximum", func() {
+		It("should return an error", func() {
 			_, joins := generateJoins()
 			for i := range joins {
 				shares := make([]shamir.Share, MaxJoinLength+1)
@@ -157,8 +153,10 @@ var _ = Describe("Joiner", func() {
 				Ω(joiner.InsertJoin(joins[i])).Should(Equal(ErrJoinLengthExceedsMax))
 			}
 		})
+	})
 
-		It("should error when joining join set with different share length", func() {
+	Context("when inserting joins with different numbers of shares", func() {
+		It("should return an error", func() {
 			_, joins := generateJoins()
 
 			for i := int64(0); i < k; i++ {
@@ -226,9 +224,9 @@ func generateMatchedJoins() []Join {
 	return joins
 }
 
-func generateCallback(getsCalled *int64, ord order.Order) func(id JoinID, values []uint64) {
+func generateCallback(called *int64, ord order.Order) func(id JoinID, values []uint64) {
 	return func(id JoinID, values []uint64) {
-		atomic.AddInt64(getsCalled, 1)
+		atomic.AddInt64(called, 1)
 		Ω(len(values)).Should(Equal(7))
 		Ω(values[0]).Should(Equal(ord.Price.Co))
 		Ω(values[1]).Should(Equal(ord.Price.Exp))
