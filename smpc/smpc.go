@@ -128,6 +128,7 @@ func (smpc *smpcer) JoinComponents(networkID NetworkID, components Components, o
 	smpc.networkMu.RLock()
 	defer smpc.networkMu.RUnlock()
 	for _, addr := range smpc.network[networkID] {
+		log.Println("sending message")
 		go smpc.sendMessage(addr, &message)
 	}
 }
