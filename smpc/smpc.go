@@ -223,12 +223,9 @@ func (smpc *smpcer) stream(remoteAddr identity.Address, remoteStream stream.Stre
 	for {
 		msg := Message{}
 		if err := remoteStream.Recv(&msg); err != nil {
-			log.Println("CLOSING STREAM", err)
 			logger.Network(logger.LevelDebug, fmt.Sprintf("closing stream with %v: %v", remoteAddr, err))
 			return
 		}
-
-		log.Println("recved message")
 
 		switch msg.MessageType {
 		case MessageTypeJoinComponents:
@@ -244,8 +241,6 @@ func (smpc *smpcer) stream(remoteAddr identity.Address, remoteStream stream.Stre
 func (smpc *smpcer) processMessageJoinComponents(remoteAddr *identity.Address, message MessageJoinComponents) {
 	smpc.shareBuildersMu.Lock()
 	defer smpc.shareBuildersMu.Unlock()
-
-	log.Println("processMessageJoinComponents")
 
 	shareBuilder, shareBuilderOk := smpc.shareBuilders[message.NetworkID]
 	for _, component := range message.Components {
@@ -279,7 +274,6 @@ func (smpc *smpcer) processMessageJoinComponents(remoteAddr *identity.Address, m
 			}
 		}
 
-		log.Println("sending response message:", response)
 		go smpc.sendMessage(*remoteAddr, &response)
 	}
 }
@@ -287,8 +281,6 @@ func (smpc *smpcer) processMessageJoinComponents(remoteAddr *identity.Address, m
 func (smpc *smpcer) processMessageJoinComponentsResponse(message MessageJoinComponentsResponse) {
 	smpc.shareBuildersMu.Lock()
 	defer smpc.shareBuildersMu.Unlock()
-
-	log.Println("processMessageJoinComponentsResponse")
 
 	shareBuilder, shareBuilderOk := smpc.shareBuilders[message.NetworkID]
 	for _, component := range message.Components {
