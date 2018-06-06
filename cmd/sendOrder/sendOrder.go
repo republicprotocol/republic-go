@@ -25,7 +25,7 @@ import (
 )
 
 func main() {
-	relayParam := flag.String("relay", "http://127.0.0.1:18515", "Binding and port of the relay")
+	relayParam := flag.String("relay", "https://kovan-renexchange.herokuapp.com", "Binding and port of the relay")
 	keystoreParam := flag.String("keystore", "", "Optionally encrypted keystore file")
 	configParam := flag.String("config", "", "Ethereum configuration file")
 	passphraseParam := flag.String("passphrase", "", "Optional passphrase to decrypt the keystore file")
