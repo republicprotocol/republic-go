@@ -83,11 +83,22 @@ func NewJoiner(k int64) *Joiner {
 	}
 }
 
-// InsertJoinAndSetCallback for a JoinID. Previously callbacks for the same
-// JoinID will be replaced.
-func (joiner *Joiner) InsertJoinAndSetCallback(join Join, callback Callback) ([]uint64, error) {
+// InsertJoinAndSetCallback for a JoinID. If a Callback has been set for this
+// JoinID it will be replaced. A nil Callback will remove any existing
+// Callback.
+func (joiner *Joiner) InsertJoinAndSetCallback(join Join, callback Callback) error {
+	return joiner.insertJoin(join, callback, true)
+}
+
+// InsertJoin for a JoinID. If a Callback has been set for this JoinID it will
+// be called if the insertion results in a successful reconstruction of values.
+func (joiner *Joiner) InsertJoin(join Join) error {
+	return joiner.insertJoin(join, nil, false)
+}
+
+func (joiner *Joiner) insertJoin(join Join, callback Callback, overrideCallback bool) error {
 	if len(join.Shares) > MaxJoinLength {
-		return nil, ErrJoinLengthExceedsMax
+		return ErrJoinLengthExceedsMax
 	}
 
 	maybeCallback := Callback(nil)
@@ -120,7 +131,9 @@ func (joiner *Joiner) InsertJoinAndSetCallback(join Join, callback Callback) ([]
 		if !joinSet.ValuesOk {
 			joinSet.Set[join.Index] = join
 		}
-		joinSet.Callback = callback
+		if overrideCallback {
+			joinSet.Callback = callback
+		}
 
 		// Short circuit if there are not enough Joins to successfully perform a
 		// reconstruction
@@ -153,12 +166,12 @@ func (joiner *Joiner) InsertJoinAndSetCallback(join Join, callback Callback) ([]
 		return nil
 	}()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if maybeCallback != nil {
 		maybeCallback(join.ID, maybeValues[:maybeValuesLen])
-		return maybeValues[:maybeValuesLen], nil
+		return nil
 	}
-	return nil, nil
+	return nil
 }
