@@ -101,12 +101,14 @@ func main() {
 	streamer := stream.NewStreamRecycler(stream.NewStreamer(config.Address, streamClient, &streamService))
 
 	// New secure multi-party computer
-	smpcer := smpc.NewSmpcer(swarmer, streamer, 1)
+	smpcer := smpc.NewSmpcer(swarmer, streamer)
 
 	// New OME
-	confirmer := ome.NewConfirmer(6, 4*time.Second, renLedger, &store)
-	computer := ome.NewComputer(&store, smpcer, confirmer, renLedger, darkPoolAccounts)
-	ome := ome.NewOme(ome.NewRanker(1, 0), computer, orderbook, smpcer)
+	ranker := ome.NewRanker(1, 0)
+	matcher := ome.NewMatcher(&store, smpcer)
+	confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
+	settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
+	ome := ome.NewOme(ranker, matcher, confirmer, settler, orderbook, smpcer)
 
 	// New Darknode
 	darknode := darknode.NewDarknode(config.Address, darkPool, darkPoolAccounts, darkPoolFees)

@@ -43,7 +43,7 @@ type confirmer struct {
 // and checks for consensus on confirmations by waiting until a submitted
 // Computation has been confirmed has the confirmation has passed the block
 // depth limit.
-func NewConfirmer(done <-chan struct{}, renLedgerBlockDepth uint, renLedgerPollInterval time.Duration, storer Storer, renLedger cal.RenLedger) Confirmer {
+func NewConfirmer(storer Storer, renLedger cal.RenLedger, renLedgerPollInterval time.Duration, renLedgerBlockDepth uint) Confirmer {
 	return &confirmer{
 		storer: storer,
 

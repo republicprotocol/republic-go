@@ -12,5 +12,5 @@ type Storer interface {
 	orderbook.Storer
 
 	InsertComputation(Computation) error
-	Computation([32]byte) (Computation, error)
+	Computation(ComputationID) (Computation, error)
 }
