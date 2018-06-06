@@ -19,14 +19,13 @@ var _ = Describe("Joiner", func() {
 	var joiner *Joiner
 
 	Context("Insert join and set callback", func() {
-		var joinId = JoinID{1}
 
 		BeforeEach(func() {
 			joiner = NewJoiner(k)
 		})
 
 		It("should call the callback when have enough shares ", func() {
-			ord, joins := generateJoins(joinId)
+			ord, joins := generateJoins()
 			var getsCalled = int64(0)
 			callback := generateCallback(&getsCalled, ord)
 
@@ -41,13 +40,12 @@ var _ = Describe("Joiner", func() {
 					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(1)))
 				} else {
 					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(0)))
-
 				}
 			}
 		})
 
 		It("the insertion order should not matter", func() {
-			ord, joins := generateJoins(joinId)
+			ord, joins := generateJoins()
 			var getsCalled = int64(0)
 			callback := generateCallback(&getsCalled, ord)
 
@@ -61,13 +59,36 @@ var _ = Describe("Joiner", func() {
 				}
 			}
 		})
+
+		It("should override the callback if we set the callback more than once", func() {
+			ord, joins := generateJoins()
+			var getsCalled = int64(0)
+			callback := generateCallback(&getsCalled, ord)
+			callbackOverride := func(id JoinID, values []uint64) {
+				atomic.AddInt64(&getsCalled, 2)
+			}
+
+			for i := int64(0); i < k; i++ {
+				if i == 0 {
+					Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
+				} else if i == 2 {
+					Ω(joiner.InsertJoinAndSetCallback(joins[i], callbackOverride)).ShouldNot(HaveOccurred())
+				} else {
+					Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+				}
+
+				if i == k-1 {
+					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(2)))
+				} else {
+					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(0)))
+				}
+			}
+		})
 	})
 
 	Context("marshal and unmarshal join", func() {
-		var joinId = JoinID{2}
-
 		It("should get the same join after marshal and unmarshal", func() {
-			_, joins := generateJoins(joinId)
+			_, joins := generateJoins()
 			for i := range joins {
 				data, err := joins[i].MarshalBinary()
 				Ω(err).ShouldNot(HaveOccurred())
@@ -87,7 +108,7 @@ var _ = Describe("Joiner", func() {
 	})
 })
 
-func generateJoins(id JoinID) (order.Order, []Join) {
+func generateJoins() (order.Order, []Join) {
 	ord := testutils.RandomOrder()
 	fragments, err := ord.Split(k, k)
 	Ω(err).ShouldNot(HaveOccurred())
@@ -103,7 +124,7 @@ func generateJoins(id JoinID) (order.Order, []Join) {
 			fragments[i].Tokens,
 		}
 		joins[i] = Join{
-			ID:     id,
+			ID:     JoinID(ord.ID),
 			Index:  JoinIndex(i),
 			Shares: shares,
 		}
