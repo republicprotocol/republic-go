@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/republicprotocol/republic-go/logger"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/accounts"
@@ -34,7 +36,7 @@ import (
 )
 
 func main() {
-	defer log.Print("shutdown!")
+	logger.SetFilterLevel(logger.LevelDebugHigh)
 
 	// Parse command-line arguments
 	configParam := flag.String("config", path.Join(os.Getenv("HOME"), ".darknode/config.json"), "JSON configuration file")
