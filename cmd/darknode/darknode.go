@@ -75,7 +75,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Println("user is %s", user)
+	log.Printf("user is %s", user)
 	// New database for persistent storage
 	store, err := leveldb.NewStore(*dataParam)
 	if err != nil {
