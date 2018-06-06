@@ -56,7 +56,7 @@ type ranker struct {
 	pos             int
 
 	computationsMu *sync.Mutex
-	computations   PriorityComputation
+	computations   []PriorityComputation
 	buys           map[order.ID]Priority
 	sells          map[order.ID]Priority
 }
@@ -68,11 +68,11 @@ type ranker struct {
 // the number of Rankers, are filtered.
 func NewRanker(numberOfRankers, pos int) Ranker {
 	return &ranker{
-		numberOfRanker: numberOfRankers,
-		pos:            pos,
+		numberOfRankers: numberOfRankers,
+		pos:             pos,
 
 		computationsMu: new(sync.Mutex),
-		computations:   PriorityComputation{},
+		computations:   []PriorityComputation{},
 		buys:           map[order.ID]Priority{},
 		sells:          map[order.ID]Priority{},
 	}
@@ -91,17 +91,17 @@ func (ranker *ranker) InsertBuy(priorityOrder PriorityOrder) {
 			continue
 		}
 
-		comPriority := PriorityComputation{
+		priorityCom := PriorityComputation{
 			Priority:    priority,
 			Computation: NewComputation(priorityOrder.Order, sell),
 		}
 
 		index := sort.Search(len(ranker.computations), func(i int) bool {
-			return ranker.computations[i].Priority > comPriority.Priority
+			return ranker.computations[i].Priority > priorityCom.Priority
 		})
 		ranker.computations = append(
 			ranker.computations[:index],
-			append([]Computation{comPriority}, ranker.computations[index:]...)...)
+			append([]PriorityComputation{priorityCom}, ranker.computations[index:]...)...)
 	}
 }
 
@@ -114,21 +114,21 @@ func (ranker *ranker) InsertSell(priorityOrder PriorityOrder) {
 	for buy, buyPriority := range ranker.buys {
 
 		priority := priorityOrder.Priority + buyPriority
-		if int(priority)%ranker.num != ranker.pos {
+		if int(priority)%ranker.numberOfRankers != ranker.pos {
 			continue
 		}
 
-		comPriority := Computation{
+		priorityCom := PriorityComputation{
 			Priority:    priority,
 			Computation: NewComputation(buy, priorityOrder.Order),
 		}
 
 		index := sort.Search(len(ranker.computations), func(i int) bool {
-			return ranker.computations[i].Priority > comPriority.Priority
+			return ranker.computations[i].Priority > priorityCom.Priority
 		})
 		ranker.computations = append(
 			ranker.computations[:index],
-			append([]Computation{comPriority}, ranker.computations[index:]...)...)
+			append([]PriorityComputation{priorityCom}, ranker.computations[index:]...)...)
 	}
 }
 
@@ -145,12 +145,12 @@ func (ranker *ranker) Remove(orders ...order.ID) {
 	}
 
 	for i := 0; i < len(ranker.computations); i++ {
-		if _, ok := mapping[ranker.computations[i].Buy]; ok {
+		if _, ok := mapping[ranker.computations[i].Computation.Buy]; ok {
 			ranker.computations = append(ranker.computations[:i], ranker.computations[i+1:]...)
 			i--
 			continue
 		}
-		if _, ok := mapping[ranker.computations[i].Sell]; ok {
+		if _, ok := mapping[ranker.computations[i].Computation.Sell]; ok {
 			ranker.computations = append(ranker.computations[:i], ranker.computations[i+1:]...)
 			i--
 			continue

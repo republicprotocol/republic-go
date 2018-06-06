@@ -8,9 +8,52 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 )
+
+// ComputationID is used to distinguish between different combinations of
+// orders that are being matched against each other.
+type ComputationID [32]byte
+
+// ComputationState is used to track the state of a Computation as it changes
+// over its lifetime. This prevents duplicated work in the system.
+type ComputationState int
+
+// Values for a ComputationState
+const (
+	ComputationStateNil = iota
+	ComputationStateMatched
+	ComputationStateAccepted
+	ComputationStateRejected
+	ComputationStateSettled
+)
+
+// Computations is an alias type.
+type Computations []Computation
+
+// A Computation is a combination of a buy order.Order and a sell order.Order.
+type Computation struct {
+	ID    ComputationID
+	State ComputationState
+
+	Buy     order.ID
+	Sell    order.ID
+	IsMatch bool
+}
+
+// NewComputation returns a pending Computation between a buy order.Order and a
+// sell order.Order. It initialized the ComputationID to the Keccak256 hash of
+// the buy order.ID and the sell order.ID.
+func NewComputation(buy, sell order.ID) Computation {
+	com := Computation{
+		Buy:  buy,
+		Sell: sell,
+	}
+	copy(com.ID[:], crypto.Keccak256(buy[:], sell[:]))
+	return com
+}
 
 type Ome interface {
 	cal.EpochListener
