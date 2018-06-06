@@ -34,36 +34,32 @@ var ErrInsufficientSharesToJoin = errors.New("insufficient shares to join")
 // Smpcer is an interface for a secure multi-party computer. It asynchronously
 // consumes computation instructions and produces computation results.
 type Smpcer interface {
-	Connect(networkID NetworkID, nodes identity.Addresses, k int64)
+
+	// Connect to a network of nodes and assign this network to a NetworkID.
+	Connect(networkID NetworkID, nodes identity.Addresses)
+
+	// Discoonnect from a network of nodes.
 	Disconnect(networkID NetworkID)
-	JoinComponents(networkID NetworkID, components Components, observer ComponentBuilderObserver)
+
+	// Join a set of shamir.Shares for distinct values. This involves broadcast
+	// communication with the nodes in the network. On a success, the Callback
+	// is called.
+	Join(networkID NetworkID, join Join, callback Callback)
 }
 
 type smpcer struct {
 	swarmer  swarm.Swarmer
 	streamer stream.Streamer
 
-	buffer       int
-	instructions chan Inst
-	results      chan Result
-
-	shutdownMu        *sync.Mutex
-	shutdown          chan struct{}
-	shutdownDone      chan struct{}
-	shutdownInitiated bool
-
-	networkMu *sync.RWMutex
-	network   map[[32]byte]identity.Addresses
+	networkMu      *sync.RWMutex
+	network        map[[32]byte][]identity.Address
+	networkCancels map[[32]byte][]context.CancelFunc
 
 	lookupMu *sync.RWMutex
 	lookup   map[identity.Address]identity.MultiAddress
 
-	shareBuildersMu       *sync.RWMutex
-	shareBuilders         map[[32]byte]*ShareBuilder
-	shareBuildersJoinable map[[32]byte]Component
-
-	ctxCancelsMu *sync.Mutex
-	ctxCancels   map[[32]byte]map[identity.Address]context.CancelFunc
+	joinersMu *sync.RWMutex
+	joiners   map[[32]byte]*Joiner
 }
 
 func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpcer {

@@ -79,15 +79,15 @@ func NewJoiner(k int64) Joiner {
 		cache: make(shamir.Shares, k),
 
 		joinSetsMu: new(sync.Mutex),
-		joinSets:   map[JoinID]Joins{},
+		joinSets:   map[JoinID]JoinSet{},
 	}
 }
 
 // InsertJoinAndSetCallback for a JoinID. Previously callbacks for the same
 // JoinID will be replaced.
-func (joiner *Joiner) InsertJoinAndSetCallback(join Join, callback func(id JoinID, values []uint64)) error {
+func (joiner *Joiner) InsertJoinAndSetCallback(join Join, callback Callback) ([]uint64, error) {
 	if len(join.Shares) > MaxJoinLength {
-		return ErrJoinLengthExceedsMax
+		return nil, ErrJoinLengthExceedsMax
 	}
 
 	maybeCallback := Callback(nil)
@@ -98,9 +98,15 @@ func (joiner *Joiner) InsertJoinAndSetCallback(join Join, callback func(id JoinI
 		joiner.joinSetsMu.Lock()
 		defer joiner.joinSetsMu.Unlock()
 
+		// Load the JoinSet and store any mutations when this function returns
+		joinSet, ok := joiner.joinSets[join.ID]
+		defer func() {
+			joiner.joinSets[join.ID] = joinSet
+		}()
+
 		// Initialize the JoinSet for this JoinID if it has not been initialized
-		if _, ok := joiner.joinSets[join.ID]; !ok {
-			joiner.joinSets[join.ID] = JoinSet{
+		if !ok {
+			joinSet = JoinSet{
 				Set:       map[JoinIndex]Join{},
 				Values:    [MaxJoinLength]uint64{},
 				ValuesLen: len(join.Shares),
@@ -108,50 +114,51 @@ func (joiner *Joiner) InsertJoinAndSetCallback(join Join, callback func(id JoinI
 		}
 
 		// Insert this join, if it is needed, and set the callback
-		if len(join.Shares) != joiner.joinSets[join.ID].ValuesLen {
+		if len(join.Shares) != joinSet.ValuesLen {
 			return ErrJoinLengthUnequal
 		}
-		if !joiner.joins[join.ID].ValueOk {
-			joiner.joins[join.ID].Set[join.Index] = join
+		if !joinSet.ValuesOk {
+			joinSet.Set[join.Index] = join
 		}
-		joiner.joins[join.ID].Callback = callback
+		joinSet.Callback = callback
 
 		// Short circuit if there are not enough Joins to successfully perform a
 		// reconstruction
-		if len(joiner.joins[join.ID].Set) < joiner.k {
+		if int64(len(joinSet.Set)) < joiner.k {
 			return nil
 		}
 
 		// If the reconstruction has not happened, perform the reconstruction
-		if !joiner.joins[join.ID].ValueOk {
-			for i := 0; i < joiner.joins[join.ID].ValuesLen; i++ {
-				k := 0
-				for _, join := range joiner.joins[join.ID].Set {
+		if !joinSet.ValuesOk {
+			for i := 0; i < joinSet.ValuesLen; i++ {
+				k := int64(0)
+				for _, join := range joinSet.Set {
 					joiner.cache[k] = join.Shares[i]
 					k++
 					if k >= joiner.k {
 						break
 					}
 				}
-				joiner.joins[join.ID].Values[i] = shamir.Join(joiner.kCache)
+				joinSet.Values[i] = shamir.Join(joiner.cache)
 			}
-			joiner.joins[join.ID].ValuesOk = true
+			joinSet.ValuesOk = true
 		}
 
 		// Copy values to ensure that future mutations do not interfere
 		// with the callback (which happens outside of the mutex to
 		// encourage liveness)
-		maybeCallback = joiner.joins[join.ID].Callback
-		maybeValues = joiner.joins[join.ID].Values
-		maybeValuesLen = joiner.joins[join.ID].ValuesLen
+		maybeCallback = joinSet.Callback
+		maybeValues = joinSet.Values
+		maybeValuesLen = joinSet.ValuesLen
 		return nil
 	}()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if maybeCallback != nil {
 		maybeCallback(join.ID, maybeValues[:maybeValuesLen])
+		return maybeValues[:maybeValuesLen], nil
 	}
-	return nil
+	return nil, nil
 }
