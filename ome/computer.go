@@ -166,6 +166,8 @@ func (computer *computer) Compute(done <-chan struct{}, computations <-chan Comp
 				}
 				computation.ID = computeID(computation.Computation)
 
+				log.Println("received computation")
+
 				// storedComputation, err := computer.storer.Computation(computation.ID)
 				// if err == nil {
 				// 	switch storedComputation.Result {
