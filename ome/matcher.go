@@ -11,6 +11,22 @@ import (
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
+// ResolveStage defines the various stages that resolving can be in for any
+// given Computation.
+type ResolveStage = byte
+
+// Values for ResolveStage.
+const (
+	ResolveStageNil ResolveStage = iota
+	ResolveStagePriceExp
+	ResolveStagePriceCo
+	ResolveStageBuyVolumeExp
+	ResolveStageBuyVolumeCo
+	ResolveStageSellVolumeExp
+	ResolveStageSellVolumeCo
+	ResolveStageTokens
+)
+
 // A MatchCallback is called when a Computation is finished. The Computation
 // can then be inspected to determine if the result is a match.
 type MatchCallback func(Computation)
@@ -63,6 +79,7 @@ func (matcher *matcher) resolvePriceExp(networkID smpc.NetworkID, buyFragment, s
 		Index:  smpc.JoinIndex(priceExpShare.Index),
 		Shares: shamir.Shares{priceExpShare},
 	}
+	priceExpJoin.ID[31] = ResolveStagePriceExp
 
 	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing priceExp buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, priceExpJoin, func(joinID smpc.JoinID, values []uint64) {
@@ -89,6 +106,7 @@ func (matcher *matcher) resolvePriceCo(networkID smpc.NetworkID, buyFragment, se
 		Index:  smpc.JoinIndex(priceCoShare.Index),
 		Shares: shamir.Shares{priceCoShare},
 	}
+	priceCoJoin.ID[31] = ResolveStagePriceCo
 
 	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing priceCo buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, priceCoJoin, func(joinID smpc.JoinID, values []uint64) {
@@ -115,6 +133,7 @@ func (matcher *matcher) resolveBuyVolumeExp(networkID smpc.NetworkID, buyFragmen
 		Index:  smpc.JoinIndex(buyVolumeExpShare.Index),
 		Shares: shamir.Shares{buyVolumeExpShare},
 	}
+	buyVolumeExpJoin.ID[31] = ResolveStageBuyVolumeExp
 
 	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing buyVolumeExp buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, buyVolumeExpJoin, func(joinID smpc.JoinID, values []uint64) {
@@ -141,6 +160,7 @@ func (matcher *matcher) resolveBuyVolumeCo(networkID smpc.NetworkID, buyFragment
 		Index:  smpc.JoinIndex(buyVolumeCoShare.Index),
 		Shares: shamir.Shares{buyVolumeCoShare},
 	}
+	buyVolumeCoJoin.ID[31] = ResolveStageBuyVolumeCo
 
 	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing buyVolumeCo buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, buyVolumeCoJoin, func(joinID smpc.JoinID, values []uint64) {
@@ -167,6 +187,7 @@ func (matcher *matcher) resolveSellVolumeExp(networkID smpc.NetworkID, buyFragme
 		Index:  smpc.JoinIndex(sellVolumeExpShare.Index),
 		Shares: shamir.Shares{sellVolumeExpShare},
 	}
+	sellVolumeExpJoin.ID[31] = ResolveStageSellVolumeExp
 
 	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing sellVolumeExp buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, sellVolumeExpJoin, func(joinID smpc.JoinID, values []uint64) {
@@ -193,6 +214,7 @@ func (matcher *matcher) resolveSellVolumeCo(networkID smpc.NetworkID, buyFragmen
 		Index:  smpc.JoinIndex(sellVolumeCoShare.Index),
 		Shares: shamir.Shares{sellVolumeCoShare},
 	}
+	sellVolumeCoJoin.ID[31] = ResolveStageSellVolumeCo
 
 	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing sellVolumeCo buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, sellVolumeCoJoin, func(joinID smpc.JoinID, values []uint64) {
@@ -219,6 +241,7 @@ func (matcher *matcher) resolveTokens(networkID smpc.NetworkID, buyFragment, sel
 		Index:  smpc.JoinIndex(tokensShare.Index),
 		Shares: shamir.Shares{tokensShare},
 	}
+	tokensJoin.ID[31] = ResolveStageTokens
 
 	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing tokens buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, tokensJoin, func(joinID smpc.JoinID, values []uint64) {
