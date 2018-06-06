@@ -166,8 +166,6 @@ func (computer *computer) Compute(done <-chan struct{}, computations <-chan Comp
 				}
 				computation.ID = computeID(computation.Computation)
 
-				log.Println("received computation")
-
 				// storedComputation, err := computer.storer.Computation(computation.ID)
 				// if err == nil {
 				// 	switch storedComputation.Result {
@@ -279,6 +277,8 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 		return
 	}
 	delete(pendingComputations, computation.ID)
+
+	log.Printf("processing computation: buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
 
 	var components smpc.Components
 	switch computation.ID[31] {
