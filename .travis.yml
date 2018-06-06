@@ -20,6 +20,7 @@ script:
   - sed -i '/.pb.go/d' coverprofile.out
   - sed -i '/bindings/d' coverprofile.out
   - sed -i '/cmd/d' coverprofile.out
+  - sed -i '/testutils/d' coverprofile.out
 
 after_success:
   - goveralls -coverprofile=coverprofile.out -service=travis-ci -repotoken $COVERALLS_TOKEN
