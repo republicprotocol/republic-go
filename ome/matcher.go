@@ -5,36 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/smpc"
 )
-
-// ComputationID is used to distinguish between different combinations of
-// orders that are being matched against each other.
-type ComputationID [32]byte
-
-// A Computation is a combination of a buy order.Order and a sell order.Order.
-type Computation struct {
-	ID      ComputationID
-	Buy     order.ID
-	Sell    order.ID
-	IsMatch bool
-}
-
-// NewComputation returns a pending Computation between a buy order.Order and a
-// sell order.Order. It initialized the ComputationID to the Keccak256 hash of
-// the buy order.ID and the sell order.ID.
-func NewComputation(buy, sell order.ID) Computation {
-	com := Computation{
-		Buy:  buy,
-		Sell: sell,
-	}
-	copy(com.ID[:], crypto.Keccak256(buy[:], sell[:]))
-	return com
-}
 
 // A MatchCallback is called when a Computation is finished. The Computation
 // can then be inspected to determine if the result is a match.
@@ -84,8 +59,8 @@ func (matcher *matcher) Resolve(ξ [32]byte, com Computation, callback MatchCall
 func (matcher *matcher) resolvePriceExp(networkID smpc.NetworkID, buyFragment, sellFragment order.Fragment, com Computation, callback MatchCallback) {
 	priceExpShare := buyFragment.Price.Exp.Sub(&sellFragment.Price.Exp)
 	priceExpJoin := smpc.Join{
-		ID:     com.ID,
-		Index:  priceExpShare.Index,
+		ID:     smpc.JoinID(com.ID),
+		Index:  smpc.JoinIndex(priceExpShare.Index),
 		Shares: shamir.Shares{priceExpShare},
 	}
 
@@ -109,8 +84,8 @@ func (matcher *matcher) resolvePriceExp(networkID smpc.NetworkID, buyFragment, s
 func (matcher *matcher) resolvePriceCo(networkID smpc.NetworkID, buyFragment, sellFragment order.Fragment, com Computation, callback MatchCallback) {
 	priceCoShare := buyFragment.Price.Co.Sub(&sellFragment.Price.Co)
 	priceCoJoin := smpc.Join{
-		ID:     com.ID,
-		Index:  priceCoShare.Index,
+		ID:     smpc.JoinID(com.ID),
+		Index:  smpc.JoinIndex(priceCoShare.Index),
 		Shares: shamir.Shares{priceCoShare},
 	}
 
@@ -134,8 +109,8 @@ func (matcher *matcher) resolvePriceCo(networkID smpc.NetworkID, buyFragment, se
 func (matcher *matcher) resolveBuyVolumeExp(networkID smpc.NetworkID, buyFragment, sellFragment order.Fragment, com Computation, callback MatchCallback) {
 	buyVolumeExpShare := buyFragment.Volume.Co.Sub(&sellFragment.MinimumVolume.Exp)
 	buyVolumeExpJoin := smpc.Join{
-		ID:     com.ID,
-		Index:  buyVolumeExpShare.Index,
+		ID:     smpc.JoinID(com.ID),
+		Index:  smpc.JoinIndex(buyVolumeExpShare.Index),
 		Shares: shamir.Shares{buyVolumeExpShare},
 	}
 
@@ -159,8 +134,8 @@ func (matcher *matcher) resolveBuyVolumeExp(networkID smpc.NetworkID, buyFragmen
 func (matcher *matcher) resolveBuyVolumeCo(networkID smpc.NetworkID, buyFragment, sellFragment order.Fragment, com Computation, callback MatchCallback) {
 	buyVolumeCoShare := buyFragment.Volume.Co.Sub(&sellFragment.MinimumVolume.Co)
 	buyVolumeCoJoin := smpc.Join{
-		ID:     com.ID,
-		Index:  buyVolumeCoShare.Index,
+		ID:     smpc.JoinID(com.ID),
+		Index:  smpc.JoinIndex(buyVolumeCoShare.Index),
 		Shares: shamir.Shares{buyVolumeCoShare},
 	}
 
@@ -184,8 +159,8 @@ func (matcher *matcher) resolveBuyVolumeCo(networkID smpc.NetworkID, buyFragment
 func (matcher *matcher) resolveSellVolumeExp(networkID smpc.NetworkID, buyFragment, sellFragment order.Fragment, com Computation, callback MatchCallback) {
 	sellVolumeExpShare := sellFragment.Volume.Exp.Sub(&buyFragment.MinimumVolume.Exp)
 	sellVolumeExpJoin := smpc.Join{
-		ID:     com.ID,
-		Index:  sellVolumeExpShare.Index,
+		ID:     smpc.JoinID(com.ID),
+		Index:  smpc.JoinIndex(sellVolumeExpShare.Index),
 		Shares: shamir.Shares{sellVolumeExpShare},
 	}
 
@@ -209,8 +184,8 @@ func (matcher *matcher) resolveSellVolumeExp(networkID smpc.NetworkID, buyFragme
 func (matcher *matcher) resolveSellVolumeCo(networkID smpc.NetworkID, buyFragment, sellFragment order.Fragment, com Computation, callback MatchCallback) {
 	sellVolumeCoShare := sellFragment.Volume.Co.Sub(&buyFragment.MinimumVolume.Co)
 	sellVolumeCoJoin := smpc.Join{
-		ID:     com.ID,
-		Index:  sellVolumeCoShare.Index,
+		ID:     smpc.JoinID(com.ID),
+		Index:  smpc.JoinIndex(sellVolumeCoShare.Index),
 		Shares: shamir.Shares{sellVolumeCoShare},
 	}
 
@@ -234,8 +209,8 @@ func (matcher *matcher) resolveSellVolumeCo(networkID smpc.NetworkID, buyFragmen
 func (matcher *matcher) resolveTokens(networkID smpc.NetworkID, buyFragment, sellFragment order.Fragment, com Computation, callback MatchCallback) {
 	tokensShare := buyFragment.Tokens.Sub(&sellFragment.Tokens)
 	tokensJoin := smpc.Join{
-		ID:     com.ID,
-		Index:  tokensShare.Index,
+		ID:     smpc.JoinID(com.ID),
+		Index:  smpc.JoinIndex(tokensShare.Index),
 		Shares: shamir.Shares{tokensShare},
 	}
 
@@ -260,7 +235,7 @@ func (matcher *matcher) resolveTokens(networkID smpc.NetworkID, buyFragment, sel
 func isGreaterThanOrEqualToZero(value uint64, com Computation, stages ...string) bool {
 	stage := ""
 	if stages != nil && len(stages) > 0 {
-		stage = "[" + strings.Join(stage, " => ") + "]"
+		stage = "[" + strings.Join(stages, " => ") + "]"
 	}
 	if value > shamir.Prime/2 {
 		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v: mismatch: %v, buy = %v, sell = %v", stage, base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
@@ -273,7 +248,7 @@ func isGreaterThanOrEqualToZero(value uint64, com Computation, stages ...string)
 func isEqualToZero(value uint64, com Computation, stages ...string) bool {
 	stage := ""
 	if stages != nil && len(stages) > 0 {
-		stage = "[" + strings.Join(stage, " => ") + "]"
+		stage = "[" + strings.Join(stages, " => ") + "]"
 	}
 	if value == 0 || value == shamir.Prime {
 		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v: mismatch: %v, buy = %v, sell = %v", stage, base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
