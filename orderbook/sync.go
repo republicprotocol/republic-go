@@ -104,7 +104,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 }
 
 func (syncer *syncer) purge() ChangeSet {
-	changes := make(chan Change, 100)
+	changes := make(chan Change, 128)
 
 	go func() {
 		defer close(changes)
@@ -170,7 +170,7 @@ func (syncer *syncer) purge() ChangeSet {
 		)
 	}()
 
-	changeset := make([]Change, 0, 100)
+	changeset := make([]Change, 0, 128)
 	for change := range changes {
 		changeset = append(changeset, change)
 	}
