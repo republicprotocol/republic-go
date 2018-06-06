@@ -1,10 +1,13 @@
 package ome
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/republicprotocol/republic-go/logger"
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
@@ -219,6 +222,7 @@ func (ome *ome) syncMatcher(done <-chan struct{}, matches chan<- Computation, er
 	n := ome.ranker.Computations(buffer[:])
 
 	for i := 0; i < n; i++ {
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v", base64.StdEncoding.EncodeToString(buffer[i].Buy[:8]), base64.StdEncoding.EncodeToString(buffer[i].Sell[:8])))
 		err := ome.matcher.Resolve(ξ, buffer[i], func(com Computation) {
 			select {
 			case <-done:
