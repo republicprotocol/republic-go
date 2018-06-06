@@ -31,6 +31,10 @@ var ErrUnmarshalNilBytes = errors.New("unmarshall nil bytes")
 // shareBuilder and there are fewer than k total shares.
 var ErrInsufficientSharesToJoin = errors.New("insufficient shares to join")
 
+// NetworkID for a network of Smpcer nodes. Using a NetworkID allows nodes to
+// be involved in multiple distinct computation networks in parallel.
+type NetworkID [32]byte
+
 // Smpcer is an interface for a secure multi-party computer. It asynchronously
 // consumes computation instructions and produces computation results.
 type Smpcer interface {
@@ -65,7 +69,8 @@ type smpcer struct {
 	selfJoins   map[JoinID]Join
 }
 
-func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpcer {
+// NewSmpcer returns an Smpcer node that is not connected to a network.
+func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer) Smpcer {
 	return &smpcer{
 		swarmer:  swarmer,
 		streamer: streamer,
@@ -85,6 +90,7 @@ func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpc
 	}
 }
 
+// Connect implements the Smpcer interface.
 func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 	k := int64(2 * (len(nodes) + 1) / 3)
 
@@ -126,6 +132,7 @@ func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 	})
 }
 
+// Disconnect implements the Smpcer interface.
 func (smpc *smpcer) Disconnect(networkID NetworkID) {
 	smpc.networkMu.Lock()
 	if _, ok := smpc.networkCancels[networkID]; ok {
@@ -142,6 +149,7 @@ func (smpc *smpcer) Disconnect(networkID NetworkID) {
 	smpc.joinersMu.Unlock()
 }
 
+// Join implements the Smpcer interface.
 func (smpc *smpcer) Join(networkID NetworkID, join Join, callback Callback) error {
 	smpc.selfJoinsMu.Lock()
 	smpc.selfJoins[join.ID] = join
@@ -175,25 +183,6 @@ func (smpc *smpcer) Join(networkID NetworkID, join Join, callback Callback) erro
 	}()
 
 	return nil
-}
-
-func (smpc *smpcer) sendMessage(addr identity.Address, msg *Message) {
-	smpc.lookupMu.RLock()
-	defer smpc.lookupMu.RUnlock()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	if multiAddr, ok := smpc.lookup[addr]; ok {
-		stream, err := smpc.streamer.Open(ctx, multiAddr)
-		if err != nil {
-			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot open messaging stream to smpc node %v: %v", addr, err))
-			return
-		}
-		if err := stream.Send(msg); err != nil {
-			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot send message to smpc node %v: %v", addr, err))
-		}
-	}
 }
 
 func (smpc *smpcer) query(addr identity.Address) (identity.MultiAddress, error) {
@@ -273,4 +262,23 @@ func (smpc *smpcer) handleMessageJoinResponse(message *MessageJoinResponse) erro
 		return err
 	}
 	return nil
+}
+
+func (smpc *smpcer) sendMessage(addr identity.Address, msg *Message) {
+	smpc.lookupMu.RLock()
+	defer smpc.lookupMu.RUnlock()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if multiAddr, ok := smpc.lookup[addr]; ok {
+		stream, err := smpc.streamer.Open(ctx, multiAddr)
+		if err != nil {
+			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot open messaging stream to smpc node %v: %v", addr, err))
+			return
+		}
+		if err := stream.Send(msg); err != nil {
+			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot send message to smpc node %v: %v", addr, err))
+		}
+	}
 }
