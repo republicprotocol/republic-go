@@ -242,6 +242,8 @@ func (smpc *smpcer) processMessageJoinComponents(remoteAddr *identity.Address, m
 	smpc.shareBuildersMu.Lock()
 	defer smpc.shareBuildersMu.Unlock()
 
+	log.Println("processMessageJoinComponents")
+
 	shareBuilder, shareBuilderOk := smpc.shareBuilders[message.NetworkID]
 	for _, component := range message.Components {
 		if remoteAddr == nil {
@@ -281,6 +283,8 @@ func (smpc *smpcer) processMessageJoinComponents(remoteAddr *identity.Address, m
 func (smpc *smpcer) processMessageJoinComponentsResponse(message MessageJoinComponentsResponse) {
 	smpc.shareBuildersMu.Lock()
 	defer smpc.shareBuildersMu.Unlock()
+
+	log.Println("processMessageJoinComponentsResponse")
 
 	shareBuilder, shareBuilderOk := smpc.shareBuilders[message.NetworkID]
 	for _, component := range message.Components {
