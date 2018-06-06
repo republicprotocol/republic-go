@@ -332,7 +332,7 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 		components[13].ComponentID[31] = StageJoinSellTokens
 	}
 
-	computer.smpcer.JoinComponents(computation.Epoch, components, computer)
+	go computer.smpcer.JoinComponents(computation.Epoch, components, computer)
 }
 
 func (computer *computer) OnNotifyBuild(componentID smpc.ComponentID, networkID smpc.NetworkID, value uint64) {
