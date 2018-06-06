@@ -45,7 +45,11 @@ func (message *Message) MarshalBinary() ([]byte, error) {
 	var err error
 	switch message.MessageType {
 	case MessageTypeJoinComponents:
-		if err := binary.Write(buf, binary.BigEndian, message.MessageJoinComponents); err != nil {
+		bytes, err := message.MessageJoinComponents.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		if err := binary.Write(buf, binary.BigEndian, bytes); err != nil {
 			return nil, err
 		}
 	case MessageTypeJoinComponentsResponse:

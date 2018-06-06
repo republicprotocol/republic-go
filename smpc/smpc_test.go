@@ -257,10 +257,6 @@ func createAddressesAndStartSmpcers(numberOfSmpcers int, hub *stream.ChannelHub)
 		if err != nil {
 			return smpcers, addrs, err
 		}
-		err = smpcers[i].Start()
-		if err != nil {
-			return smpcers, addrs, err
-		}
 	}
 	return smpcers, addrs, err
 }
@@ -273,20 +269,10 @@ func filterAddresses(numberOfSmpcers, removeIndex int, addrs identity.Addresses)
 }
 
 func sendConnectInstruction(numberOfSmpcers, networkID int, smpcer Smpcer, addresses identity.Addresses) {
-	instConnect := InstConnect{
-		K:     int64(2 * (numberOfSmpcers + 1) / 3),
-		N:     int64(numberOfSmpcers),
-		Nodes: addresses,
-	}
-	message := Inst{
-		InstID:      [32]byte{1},
-		NetworkID:   [32]byte{byte(networkID)},
-		InstConnect: &instConnect,
-	}
-	smpcer.Instructions() <- message
+	smpcer.Connect([32]byte{byte(networkID)}, addresses, int64(2*(numberOfSmpcers+1)/3))
 }
 
-func sendJoinInstruction(share shamir.Share, joinIndex, networkID int, smpcer Smpcer) {
+func sendJoinInstruction(share shamir.Share, joinIndex, networkID int, smpcer Smpcer, observer ComponentBuilderObserver) {
 	instJ := InstJ{
 		Share: share,
 	}
@@ -295,7 +281,7 @@ func sendJoinInstruction(share shamir.Share, joinIndex, networkID int, smpcer Sm
 		NetworkID: [32]byte{byte(networkID)},
 		InstJ:     &instJ,
 	}
-	smpcer.Instructions() <- message
+	smpcer.JoinComponents([32]byte{byte(networkID)}, Components{Component{ComponentID: ComponentID{byte(2 + joinIndex)}, Share: share}}, observer)
 }
 
 func createSecretShares(numberOfSmpcers int) (shamir.Shares, error) {
@@ -306,16 +292,4 @@ func createSecretShares(numberOfSmpcers int) (shamir.Shares, error) {
 		return shamir.Shares{}, err
 	}
 	return shares, nil
-}
-
-func waitForResults(numberOfJoins, startIndex, endIndex int, smpcers map[int]Smpcer) int {
-	count := 0
-	for count < numberOfJoins {
-		for i := startIndex; i < endIndex; i++ {
-			<-smpcers[i].Results()
-		}
-		count++
-	}
-
-	return count
 }
