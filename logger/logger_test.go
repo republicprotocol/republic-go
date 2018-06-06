@@ -13,7 +13,7 @@ import (
 var _ = Describe("Logger", func() {
 	msg := "Some information"
 
-	Context("When using a file plugin", func() {
+	Context("when using a file plugin", func() {
 
 		BeforeEach(func() {
 			// Make the temp directory and initialise the logger
