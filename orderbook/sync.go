@@ -2,6 +2,7 @@ package orderbook
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/cal"

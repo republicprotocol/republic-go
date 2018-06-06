@@ -130,9 +130,6 @@ func main() {
 
 		done := make(chan struct{})
 		dispatch.CoBegin(func() {
-			// Start the SMPC
-			smpcer.Start()
-		}, func() {
 			// Synchronizing the OME
 			errs := ome.Run(done)
 			for err := range errs {
