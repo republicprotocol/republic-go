@@ -106,6 +106,41 @@ var _ = Describe("Joiner", func() {
 			}
 		})
 	})
+
+	Context("negative tests", func() {
+
+		BeforeEach(func() {
+			joiner = NewJoiner(k)
+		})
+
+		It("should error when we trying to join more shares than limits", func() {
+			_, joins := generateJoins()
+			for i := range joins {
+				shares := make([]shamir.Share, MaxJoinLength+1)
+				for j := range shares {
+					shares[j] = joins[i].Shares[i%(len(joins[i].Shares))]
+				}
+				joins[i].Shares = shares
+			}
+			for i := range joins {
+				Ω(joiner.InsertJoin(joins[i])).Should(Equal(ErrJoinLengthExceedsMax))
+			}
+		})
+
+		It("should error when joining join set with differernt share length", func() {
+			_, joins := generateJoins()
+
+			for i := int64(0); i < k; i++ {
+				if i > k/2 {
+					joins[i].Shares = joins[i].Shares[:3]
+					Ω(joiner.InsertJoin(joins[i])).Should(Equal(ErrJoinLengthUnequal))
+				} else {
+					Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+				}
+			}
+
+		})
+	})
 })
 
 func generateJoins() (order.Order, []Join) {
