@@ -115,22 +115,20 @@ func (store *Store) RemoveOrder(id order.ID) error {
 	return store.orders.Delete(id[:], nil)
 }
 
-func (store *Store) InsertComputation(computations ome.Computation) error {
-	data, err := json.Marshal(computations)
+func (store *Store) InsertComputation(computation ome.Computation) error {
+	data, err := json.Marshal(computation)
 	if err != nil {
 		return err
 	}
-
-	id := computations.ID()
-	return store.computations.Put(id[:], data, nil)
+	return store.computations.Put(computation.ID[:], data, nil)
 }
 
-func (store *Store) Computation(id [32]byte) (ome.Computation, error) {
+func (store *Store) Computation(id ome.ComputationID) (ome.Computation, error) {
 	computation := ome.Computation{}
 	data, err := store.computations.Get(id[:], nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
-			err = orderbook.ErrOrderNotFound
+			err = ome.ErrComputationNotFound
 		}
 		return computation, err
 	}
