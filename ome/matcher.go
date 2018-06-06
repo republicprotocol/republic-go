@@ -64,7 +64,7 @@ func (matcher *matcher) resolvePriceExp(networkID smpc.NetworkID, buyFragment, s
 		Shares: shamir.Shares{priceExpShare},
 	}
 
-	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("[priceExp] processing buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
+	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing priceExp buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, priceExpJoin, func(joinID smpc.JoinID, values []uint64) {
 		if len(values) != 1 {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve priceExp: unexpected number of values: %v", len(values)))
@@ -90,7 +90,7 @@ func (matcher *matcher) resolvePriceCo(networkID smpc.NetworkID, buyFragment, se
 		Shares: shamir.Shares{priceCoShare},
 	}
 
-	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("[priceCo] processing buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
+	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing priceCo buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, priceCoJoin, func(joinID smpc.JoinID, values []uint64) {
 		if len(values) != 1 {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve priceCo: unexpected number of values: %v", len(values)))
@@ -116,7 +116,7 @@ func (matcher *matcher) resolveBuyVolumeExp(networkID smpc.NetworkID, buyFragmen
 		Shares: shamir.Shares{buyVolumeExpShare},
 	}
 
-	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("[buyVolumeExp] processing buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
+	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing buyVolumeExp buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, buyVolumeExpJoin, func(joinID smpc.JoinID, values []uint64) {
 		if len(values) != 1 {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve buyVolumeExp: unexpected number of values: %v", len(values)))
@@ -142,7 +142,7 @@ func (matcher *matcher) resolveBuyVolumeCo(networkID smpc.NetworkID, buyFragment
 		Shares: shamir.Shares{buyVolumeCoShare},
 	}
 
-	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("[buyVolumeCo] processing buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
+	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing buyVolumeCo buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, buyVolumeCoJoin, func(joinID smpc.JoinID, values []uint64) {
 		if len(values) != 1 {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve buyVolumeCo: unexpected number of values: %v", len(values)))
@@ -168,7 +168,7 @@ func (matcher *matcher) resolveSellVolumeExp(networkID smpc.NetworkID, buyFragme
 		Shares: shamir.Shares{sellVolumeExpShare},
 	}
 
-	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("[sellVolumeExp] processing buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
+	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing sellVolumeExp buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, sellVolumeExpJoin, func(joinID smpc.JoinID, values []uint64) {
 		if len(values) != 1 {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve sellVolumeExp: unexpected number of values: %v", len(values)))
@@ -194,7 +194,7 @@ func (matcher *matcher) resolveSellVolumeCo(networkID smpc.NetworkID, buyFragmen
 		Shares: shamir.Shares{sellVolumeCoShare},
 	}
 
-	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("[sellVolumeCo] processing buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
+	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing sellVolumeCo buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, sellVolumeCoJoin, func(joinID smpc.JoinID, values []uint64) {
 		if len(values) != 1 {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve sellVolumeCo: unexpected number of values: %v", len(values)))
@@ -220,7 +220,7 @@ func (matcher *matcher) resolveTokens(networkID smpc.NetworkID, buyFragment, sel
 		Shares: shamir.Shares{tokensShare},
 	}
 
-	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("[tokens] processing buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
+	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("processing tokens buy = %v, sell = %v", base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	err := matcher.smpcer.Join(networkID, tokensJoin, func(joinID smpc.JoinID, values []uint64) {
 		if len(values) != 1 {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve tokens: unexpected number of values: %v", len(values)))
