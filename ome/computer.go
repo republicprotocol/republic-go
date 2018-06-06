@@ -385,7 +385,7 @@ func (computer *computer) OnNotifyBuild(componentID smpc.ComponentID, networkID 
 
 	case StageCmpBuyVolCo:
 		if value > half {
-			log.Printf("[halt => %v]: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+			log.Printf("[halt => %v]: buy = %v; sell = %v; value = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]), value)
 			err := storeComputationResult(computer.storer, computation, ComputationResultMismatched)
 			if err != nil {
 				log.Printf("fail to store the computaion result: %v", err)
@@ -397,26 +397,26 @@ func (computer *computer) OnNotifyBuild(componentID smpc.ComponentID, networkID 
 
 	case StageCmpSellVolExp:
 		if value > half {
-			log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+			log.Printf("[halt => %v]: buy = %v; sell = %v; value = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]), value)
 			err := storeComputationResult(computer.storer, computation, ComputationResultMismatched)
 			if err != nil {
 				log.Printf("fail to store the computaion result: %v", err)
 			}
 			return
 		}
-		log.Printf("[stage => %v] ok: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+		log.Printf("[ok => %v]: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 		computation.ID[31] = StageCmpSellVolCo
 
 	case StageCmpSellVolCo:
 		if value > half {
-			log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+			log.Printf("[halt => %v]: buy = %v; sell = %v; value = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]), value)
 			err := storeComputationResult(computer.storer, computation, ComputationResultMismatched)
 			if err != nil {
 				log.Printf("fail to store the computaion result: %v", err)
 			}
 			return
 		}
-		log.Printf("[stage => %v] ok: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+		log.Printf("[ok => %v]: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 		computation.ID[31] = StageCmpTokens
 
 	case StageCmpTokens:
@@ -434,14 +434,14 @@ func (computer *computer) OnNotifyBuild(componentID smpc.ComponentID, networkID 
 
 			// FIXME: This cannot be escaped when the done channel is closed
 			computer.matchingComputations <- computation.Computation
-			log.Printf("✔ [stage => matched] buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+			log.Printf("✔ [matched] buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 			return
 		}
 		err := storeComputationResult(computer.storer, computation, ComputationResultMismatched)
 		if err != nil {
 			log.Printf("fail to store the computaion result: %v", err)
 		}
-		log.Printf("[stage => %v] halt: buy = %v; sell = %v", StageCmpTokens, base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
+		log.Printf("[halt => %v]: buy = %v; sell = %v", StageCmpTokens, base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 		return
 
 	case StageJoinBuyPriceExp:
