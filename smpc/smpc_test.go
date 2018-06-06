@@ -21,7 +21,7 @@ var _ = Describe("Smpc", func() {
 
 	Context("when joining shares", func() {
 
-		It("should join shares to obtain final values", func() {
+		FIt("should join shares to obtain final values", func() {
 			// Create 6 smpcers and issue 5 random secrets
 			hub := stream.NewChannelHub()
 			count, err := runSmpcers(6, 5, 0, &hub)
@@ -129,7 +129,6 @@ func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int, hub *stre
 	go func() {
 		// Send shares of multiple instructions
 		for j := 0; j < numberOfJoins; j++ {
-
 			shares, err := createSecretShares(numberOfSmpcers)
 			if err != nil {
 				log.Printf("cannot split secret: %v", err)
@@ -143,7 +142,8 @@ func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int, hub *stre
 		}
 	}()
 
-	for atomic.LoadUint64(&observer.numNotifications) != uint64(numberOfJoins) {
+	for atomic.LoadUint64(&observer.numNotifications) < uint64((numberOfSmpcers-numberOfDeadNodes)*numberOfJoins) {
+		log.Println(atomic.LoadUint64(&observer.numNotifications), "vs", uint64((numberOfSmpcers-numberOfDeadNodes)*numberOfJoins))
 		time.Sleep(time.Millisecond)
 	}
 
