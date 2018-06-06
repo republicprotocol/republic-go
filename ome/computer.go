@@ -250,7 +250,6 @@ func (computer *computer) processComputations(done <-chan struct{}, insts chan<-
 				}
 				computer.processComputation(computation, pendingComputations, done, insts)
 			case <-ticker.C:
-				log.Printf("there are %d computations in the pending list ", len(pendingComputations))
 				if len(pendingComputations) == 0 {
 					continue
 				}
@@ -552,7 +551,6 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		}
 		sell, err := computer.reconstructOrder(computation.Sell)
 		log.Printf("<sell order> price<Co: %v, Exp: %v>, volumn<Co: %v, Exp: %v>,", buy.Price.Co, buy.Price.Exp, buy.Volume.Co, buy.Volume.Exp)
-
 		if err != nil {
 			log.Printf("cannot reconstruct sell order %v : %v", base64.StdEncoding.EncodeToString(computation.Sell[:]), err)
 			return
