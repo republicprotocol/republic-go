@@ -10,7 +10,6 @@ import (
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/smpc"
 )
 
 type Ome interface {
@@ -23,19 +22,21 @@ type Ome interface {
 
 type ome struct {
 	ranker    Ranker
-	computer  Computer
+	matcher   Matcher
+	confirmer Confirmer
+	settler   Settler
 	orderbook orderbook.Orderbook
-	smpcer    smpc.Smpcer
 
 	ξMu *sync.RWMutex
 	ξ   cal.Epoch
 }
 
-func NewOme(ranker Ranker, computer Computer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer) Ome {
+func NewOme(ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler, orderbook orderbook.Orderbook) Ome {
 	return &ome{
 		ranker:    ranker,
-		computer:  computer,
-		orderbook: orderbook,
+		matcher:   matcher,
+		confirmer: confirmer,
+		settler:   settler,
 		smpcer:    smpcer,
 
 		ξMu: new(sync.RWMutex),
