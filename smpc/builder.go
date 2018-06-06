@@ -6,8 +6,8 @@ import (
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
-type ShareBuilderObserver interface {
-	OnNotifyBuild(id, networkID [32]byte, value uint64)
+type ComponentBuilderObserver interface {
+	OnNotifyBuild(componentID ComponentID, networkID NetworkID, value uint64)
 }
 
 type ShareBuilder struct {
@@ -18,7 +18,7 @@ type ShareBuilder struct {
 	shares      map[[32]byte]map[uint64]shamir.Share
 
 	observersMu *sync.Mutex
-	observers   map[[32]byte]map[[32]byte]ShareBuilderObserver
+	observers   map[[32]byte]map[[32]byte]ComponentBuilderObserver
 }
 
 func NewShareBuilder(k int64) *ShareBuilder {
@@ -30,7 +30,7 @@ func NewShareBuilder(k int64) *ShareBuilder {
 		sharesCache: make(shamir.Shares, 0, k),
 
 		observersMu: new(sync.Mutex),
-		observers:   map[[32]byte]map[[32]byte]ShareBuilderObserver{},
+		observers:   map[[32]byte]map[[32]byte]ComponentBuilderObserver{},
 	}
 }
 
@@ -69,7 +69,7 @@ func (builder *ShareBuilder) Insert(id [32]byte, share shamir.Share) error {
 	return nil
 }
 
-func (builder *ShareBuilder) Observe(id, networkID [32]byte, observer ShareBuilderObserver) {
+func (builder *ShareBuilder) Observe(id, networkID [32]byte, observer ComponentBuilderObserver) {
 	builder.sharesMu.Lock()
 	defer builder.sharesMu.Unlock()
 
@@ -77,7 +77,7 @@ func (builder *ShareBuilder) Observe(id, networkID [32]byte, observer ShareBuild
 	defer builder.observersMu.Unlock()
 
 	if _, ok := builder.observers[id]; !ok {
-		builder.observers[id] = map[[32]byte]ShareBuilderObserver{}
+		builder.observers[id] = map[[32]byte]ComponentBuilderObserver{}
 	}
 
 	if observer == nil {
