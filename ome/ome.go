@@ -47,26 +47,12 @@ func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
 	ome.ξMu.Lock()
 	defer ome.ξMu.Unlock()
 
-	//ome.smpcer.Instructions() <- smpc.Inst{
-	//	InstID:         ome.ξ.Hash,
-	//	NetworkID:      ome.ξ.Hash,
-	//	InstDisconnect: &smpc.InstDisconnect{},
-	//}
+	ome.smpcer.Disconnect(ome.ξ.Hash)
 
 	ome.ξ = ξ
-
 	log.Printf("connecting to peers:\n  %v", ome.ξ.Darknodes)
 
-	ome.smpcer.Instructions() <- smpc.Inst{
-		InstID:    ome.ξ.Hash,
-		NetworkID: ome.ξ.Hash,
-		InstConnect: &smpc.InstConnect{
-			Nodes: ome.ξ.Darknodes,
-			N:     int64(len(ome.ξ.Darknodes)),
-			K:     int64(2 * (len(ome.ξ.Darknodes) + 1) / 3),
-		},
-	}
-
+	ome.smpcer.Connect(ome.ξ.Hash, ome.ξ.Darknodes, int64(2*(len(ome.ξ.Darknodes)+1)/3))
 }
 
 func (ome *ome) Run(done <-chan struct{}) <-chan error {

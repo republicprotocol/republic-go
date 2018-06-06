@@ -39,9 +39,6 @@ var _ = Describe("Ome", func() {
 			confirmer = NewConfirmer(0, 2*time.Second, ledger, storer)
 			computer = NewComputer(storer, smpcer, confirmer, ledger, accounts)
 			ranker = NewRanker(1, 0)
-
-			err := smpcer.Start()
-			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should be able to sync with the order book ", func() {

@@ -47,28 +47,31 @@ func (computation Computation) ID() [32]byte {
 type Stage byte
 
 const (
-	StageCmpPriceExp   = 1
-	StageCmpPriceCo    = 2
-	StageCmpBuyVolExp  = 3
-	StageCmpBuyVolCo   = 4
-	StageCmpSellVolExp = 5
-	StageCmpSellVolCo  = 6
-	StageCmpTokens     = 7
+	StageNil = iota
+	StageCmpPriceExp
+	StageCmpPriceCo
+	StageCmpBuyVolExp
+	StageCmpBuyVolCo
+	StageCmpSellVolExp
+	StageCmpSellVolCo
+	StageCmpTokens
 
-	StageJoinBuyPriceExp   = 8
-	StageJoinBuyPriceCo    = 9
-	StageJoinBuyVolExp     = 10
-	StageJoinBuyVolCo      = 11
-	StageJoinBuyMinVolExp  = 12
-	StageJoinBuyMinVolCo   = 13
-	StageJoinBuyTokens     = 14
-	StageJoinSellPriceExp  = 15
-	StageJoinSellPriceCo   = 16
-	StageJoinSellVolExp    = 17
-	StageJoinSellVolCo     = 18
-	StageJoinSellMinVolExp = 19
-	StageJoinSellMinVolCo  = 20
-	StageJoinSellTokens    = 21
+	StageJoin
+
+	StageJoinBuyPriceExp
+	StageJoinBuyPriceCo
+	StageJoinBuyVolExp
+	StageJoinBuyVolCo
+	StageJoinBuyMinVolExp
+	StageJoinBuyMinVolCo
+	StageJoinBuyTokens
+	StageJoinSellPriceExp
+	StageJoinSellPriceCo
+	StageJoinSellVolExp
+	StageJoinSellVolCo
+	StageJoinSellMinVolExp
+	StageJoinSellMinVolCo
+	StageJoinSellTokens
 )
 
 type ComputationEpoch struct {
@@ -148,11 +151,7 @@ func (computer *computer) Compute(done <-chan struct{}, computations <-chan Comp
 	go func() {
 		defer close(errs)
 
-		instructions := computer.smpcer.Instructions()
-		results := computer.smpcer.Results()
-
-		computer.processComputations(done, instructions)
-		computer.processResults(done, results)
+		computer.processComputations(done)
 
 		confirmedMatchingComputations, confirmedErrs := computer.confirmer.ConfirmOrderMatches(done, computer.matchingComputations)
 
@@ -175,7 +174,7 @@ func (computer *computer) Compute(done <-chan struct{}, computations <-chan Comp
 					case ComputationResultMismatched:
 						continue
 					case ComputationResultConfirmAccepted:
-						computation.ID[31] = StageJoinBuyPriceExp
+						computation.ID[31] = StageJoin
 					case ComputationResultConfirmRejected:
 						continue
 					case ComputationResultSettled:
@@ -207,12 +206,15 @@ func (computer *computer) Compute(done <-chan struct{}, computations <-chan Comp
 				log.Println("COMPUTATION CONFIRMED:", computation)
 				delete(computer.matchingComputationsState, confirmedMatchingComputationID)
 				computer.matchingComputationsMu.Unlock()
-				computation.ID[31] = StageJoinBuyPriceExp
 
 				computer.computationsMu.Lock()
-				computer.computationsState[computation.ID] = computation
+				for i := StageJoinBuyPriceExp; i <= StageJoinSellTokens; i++ {
+					computation.ID[31] = byte(i)
+					computer.computationsState[computation.ID] = computation
+				}
 				computer.computationsMu.Unlock()
 
+				computation.ID[31] = StageJoin
 				select {
 				case <-done:
 				case computer.computations <- computation:
@@ -233,7 +235,7 @@ func (computer *computer) Compute(done <-chan struct{}, computations <-chan Comp
 	return errs
 }
 
-func (computer *computer) processComputations(done <-chan struct{}, insts chan<- smpc.Inst) {
+func (computer *computer) processComputations(done <-chan struct{}) {
 	go func() {
 
 		pendingComputations := map[[32]byte]ComputationEpoch{}
@@ -248,21 +250,21 @@ func (computer *computer) processComputations(done <-chan struct{}, insts chan<-
 				if !ok {
 					return
 				}
-				computer.processComputation(computation, pendingComputations, done, insts)
+				computer.processComputation(computation, pendingComputations)
 			case <-ticker.C:
 				log.Printf("there are %d computations in the pending list ", len(pendingComputations))
 				if len(pendingComputations) == 0 {
 					continue
 				}
 				for _, computation := range pendingComputations {
-					computer.processComputation(computation, pendingComputations, done, insts)
+					computer.processComputation(computation, pendingComputations)
 				}
 			}
 		}
 	}()
 }
 
-func (computer *computer) processComputation(computation ComputationEpoch, pendingComputations map[[32]byte]ComputationEpoch, done <-chan struct{}, insts chan<- smpc.Inst) {
+func (computer *computer) processComputation(computation ComputationEpoch, pendingComputations map[[32]byte]ComputationEpoch) {
 	buy, err := computer.storer.OrderFragment(computation.Buy)
 	if err != nil {
 		pendingComputations[computation.ID] = computation
@@ -273,108 +275,68 @@ func (computer *computer) processComputation(computation ComputationEpoch, pendi
 		pendingComputations[computation.ID] = computation
 		return
 	}
-
 	delete(pendingComputations, computation.ID)
-	var share shamir.Share
+
+	var components smpc.Components
 	switch computation.ID[31] {
 	case StageCmpPriceExp:
-		share = buy.Price.Exp.Sub(&sell.Price.Exp)
+		components = smpc.Components{smpc.Component{ComponentID: smpc.ComponentID(computation.ID), Share: buy.Price.Exp.Sub(&sell.Price.Exp)}}
 	case StageCmpPriceCo:
-		share = buy.Price.Co.Sub(&sell.Price.Co)
+		components = smpc.Components{smpc.Component{ComponentID: smpc.ComponentID(computation.ID), Share: buy.Price.Co.Sub(&sell.Price.Co)}}
 	case StageCmpBuyVolExp:
-		share = buy.Volume.Exp.Sub(&sell.MinimumVolume.Exp)
+		components = smpc.Components{smpc.Component{ComponentID: smpc.ComponentID(computation.ID), Share: buy.Volume.Exp.Sub(&sell.MinimumVolume.Exp)}}
 	case StageCmpBuyVolCo:
-		share = buy.Volume.Co.Sub(&sell.MinimumVolume.Co)
+		components = smpc.Components{smpc.Component{ComponentID: smpc.ComponentID(computation.ID), Share: buy.Volume.Co.Sub(&sell.MinimumVolume.Co)}}
 	case StageCmpSellVolExp:
-		share = sell.Volume.Exp.Sub(&buy.MinimumVolume.Exp)
+		components = smpc.Components{smpc.Component{ComponentID: smpc.ComponentID(computation.ID), Share: sell.Volume.Exp.Sub(&buy.MinimumVolume.Exp)}}
 	case StageCmpSellVolCo:
-		share = sell.Volume.Co.Sub(&buy.MinimumVolume.Co)
+		components = smpc.Components{smpc.Component{ComponentID: smpc.ComponentID(computation.ID), Share: sell.Volume.Co.Sub(&buy.MinimumVolume.Co)}}
 	case StageCmpTokens:
-		share = buy.Tokens.Sub(&sell.Tokens)
-	case StageJoinBuyPriceExp:
-		share = buy.Price.Exp
-	case StageJoinBuyPriceCo:
-		share = buy.Price.Co
-	case StageJoinBuyVolExp:
-		share = buy.Volume.Exp
-	case StageJoinBuyVolCo:
-		share = buy.Volume.Co
-	case StageJoinBuyMinVolExp:
-		share = buy.MinimumVolume.Exp
-	case StageJoinBuyMinVolCo:
-		share = buy.MinimumVolume.Co
-	case StageJoinBuyTokens:
-		share = buy.Tokens
-	case StageJoinSellPriceExp:
-		share = sell.Price.Exp
-	case StageJoinSellPriceCo:
-		share = sell.Price.Co
-	case StageJoinSellVolExp:
-		share = sell.Volume.Exp
-	case StageJoinSellVolCo:
-		share = sell.Volume.Co
-	case StageJoinSellMinVolExp:
-		share = sell.MinimumVolume.Exp
-	case StageJoinSellMinVolCo:
-		share = sell.MinimumVolume.Co
-	case StageJoinSellTokens:
-		share = sell.Tokens
-	}
+		components = smpc.Components{smpc.Component{ComponentID: smpc.ComponentID(computation.ID), Share: buy.Tokens.Sub(&sell.Tokens)}}
+	case StageJoin:
+		log.Println("JOIN COMPUTATION")
+		components = smpc.Components{
+			smpc.Component{ComponentID: computation.ID, Share: buy.Price.Exp},
+			smpc.Component{ComponentID: computation.ID, Share: buy.Price.Co},
+			smpc.Component{ComponentID: computation.ID, Share: buy.Volume.Exp},
+			smpc.Component{ComponentID: computation.ID, Share: buy.Volume.Co},
+			smpc.Component{ComponentID: computation.ID, Share: buy.MinimumVolume.Exp},
+			smpc.Component{ComponentID: computation.ID, Share: buy.MinimumVolume.Co},
+			smpc.Component{ComponentID: computation.ID, Share: buy.Tokens},
 
-	inst := smpc.Inst{
-		InstID:    computation.ID,
-		NetworkID: computation.Epoch,
-		InstJ: &smpc.InstJ{
-			Share: share,
-		},
-	}
-
-	//log.Printf("[stage => %v] processing computation: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
-
-	// Write instruction
-	select {
-	case insts <- inst:
-	default:
-	}
-
-	// Invert flow if necessary
-	select {
-	case <-done:
-	case insts <- inst:
-	case computation, ok := <-computer.computations:
-		log.Printf("compute inversion: buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
-		if !ok {
-			break
+			smpc.Component{ComponentID: computation.ID, Share: sell.Price.Exp},
+			smpc.Component{ComponentID: computation.ID, Share: sell.Price.Co},
+			smpc.Component{ComponentID: computation.ID, Share: sell.Volume.Exp},
+			smpc.Component{ComponentID: computation.ID, Share: sell.Volume.Co},
+			smpc.Component{ComponentID: computation.ID, Share: sell.MinimumVolume.Exp},
+			smpc.Component{ComponentID: computation.ID, Share: sell.MinimumVolume.Co},
+			smpc.Component{ComponentID: computation.ID, Share: sell.Tokens},
 		}
-		pendingComputations[computation.ID] = computation
+		components[0].ComponentID[31] = StageJoinBuyPriceExp
+		components[1].ComponentID[31] = StageJoinBuyPriceCo
+		components[2].ComponentID[31] = StageJoinBuyVolExp
+		components[3].ComponentID[31] = StageJoinBuyVolCo
+		components[4].ComponentID[31] = StageJoinBuyMinVolExp
+		components[5].ComponentID[31] = StageJoinBuyMinVolCo
+		components[6].ComponentID[31] = StageJoinBuyTokens
+
+		components[7].ComponentID[31] = StageJoinSellPriceExp
+		components[8].ComponentID[31] = StageJoinSellPriceCo
+		components[9].ComponentID[31] = StageJoinSellVolExp
+		components[10].ComponentID[31] = StageJoinSellVolCo
+		components[11].ComponentID[31] = StageJoinSellMinVolExp
+		components[12].ComponentID[31] = StageJoinSellMinVolCo
+		components[13].ComponentID[31] = StageJoinSellTokens
 	}
+
+	computer.smpcer.JoinComponents(computation.Epoch, components, computer)
 }
 
-func (computer *computer) processResults(done <-chan struct{}, results <-chan smpc.Result) {
-	go func() {
-
-		for {
-			select {
-			case <-done:
-				return
-			case result, ok := <-results:
-				if !ok {
-					return
-				}
-				if result.ResultJ != nil {
-					computer.processResultJ(result.InstID, result.NetworkID, *result.ResultJ, done)
-				}
-			}
-		}
-
-	}()
-}
-
-func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smpc.ResultJ, done <-chan struct{}) {
+func (computer *computer) OnNotifyBuild(componentID smpc.ComponentID, networkID smpc.NetworkID, value uint64) {
 	half := shamir.Prime / 2
 	computer.computationsMu.Lock()
-	computation, ok := computer.computationsState[instID]
-	delete(computer.computationsState, instID)
+	computation, ok := computer.computationsState[componentID]
+	delete(computer.computationsState, componentID)
 	computer.computationsMu.Unlock()
 	if !ok {
 		return
@@ -382,10 +344,10 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 
 	log.Printf("[stage => %v] received result: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
 
-	switch instID[31] {
+	switch componentID[31] {
 
 	case StageCmpPriceExp:
-		if resultJ.Value > half {
+		if value > half {
 			//log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 			err := storeComputationResult(computer.storer, computation, ComputationResultMismatched)
 			if err != nil {
@@ -397,7 +359,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		computation.ID[31] = StageCmpPriceCo
 
 	case StageCmpPriceCo:
-		if resultJ.Value > half {
+		if value > half {
 			//log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 			err := storeComputationResult(computer.storer, computation, ComputationResultMismatched)
 			if err != nil {
@@ -409,7 +371,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		computation.ID[31] = StageCmpBuyVolExp
 
 	case StageCmpBuyVolExp:
-		if resultJ.Value > half {
+		if value > half {
 			//log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 			err := storeComputationResult(computer.storer, computation, ComputationResultMismatched)
 			if err != nil {
@@ -421,7 +383,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		computation.ID[31] = StageCmpBuyVolCo
 
 	case StageCmpBuyVolCo:
-		if resultJ.Value > half {
+		if value > half {
 			//log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 			err := storeComputationResult(computer.storer, computation, ComputationResultMismatched)
 			if err != nil {
@@ -433,7 +395,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		computation.ID[31] = StageCmpSellVolExp
 
 	case StageCmpSellVolExp:
-		if resultJ.Value > half {
+		if value > half {
 			//log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 			err := storeComputationResult(computer.storer, computation, ComputationResultMismatched)
 			if err != nil {
@@ -445,7 +407,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		computation.ID[31] = StageCmpSellVolCo
 
 	case StageCmpSellVolCo:
-		if resultJ.Value > half {
+		if value > half {
 			//log.Printf("[stage => %v] halt: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 			err := storeComputationResult(computer.storer, computation, ComputationResultMismatched)
 			if err != nil {
@@ -457,7 +419,7 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		computation.ID[31] = StageCmpTokens
 
 	case StageCmpTokens:
-		if resultJ.Value == 0 {
+		if value == 0 {
 			computation.ID = computeID(computation.Computation)
 			computer.matchingComputationsMu.Lock()
 			computer.matchingComputationsState[computation.ID] = computation
@@ -468,11 +430,10 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 				log.Printf("fail to store the computaion result: %v", err)
 				return
 			}
-			select {
-			case <-done:
-			case computer.matchingComputations <- computation.Computation:
-				log.Printf("✔ [stage => matched] buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
-			}
+
+			// FIXME: This cannot be escaped when the done channel is closed
+			computer.matchingComputations <- computation.Computation
+			log.Printf("✔ [stage => matched] buy = %v; sell = %v", base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 			return
 		}
 		err := storeComputationResult(computer.storer, computation, ComputationResultMismatched)
@@ -483,61 +444,61 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 		return
 
 	case StageJoinBuyPriceExp:
-		log.Printf("[stage => %v] join buy price exp : result = %v", computation.ID[31], resultJ.Value)
-		computer.priceExpPointer[computation.Buy] = &resultJ.Value
+		log.Printf("[stage => %v] join buy price exp : result = %v", computation.ID[31], value)
+		computer.priceExpPointer[computation.Buy] = &value
 		computation.ID[31] = StageJoinBuyPriceCo
 	case StageJoinBuyPriceCo:
-		log.Printf("[stage => %v] join buy price co : result = %v", computation.ID[31], resultJ.Value)
-		computer.priceCoPointer[computation.Buy] = &resultJ.Value
+		log.Printf("[stage => %v] join buy price co : result = %v", computation.ID[31], value)
+		computer.priceCoPointer[computation.Buy] = &value
 		computation.ID[31] = StageJoinBuyVolExp
 	case StageJoinBuyVolExp:
-		log.Printf("[stage => %v] join buy vol exp: result = %v", computation.ID[31], resultJ.Value)
-		computer.volExpPointer[computation.Buy] = &resultJ.Value
+		log.Printf("[stage => %v] join buy vol exp: result = %v", computation.ID[31], value)
+		computer.volExpPointer[computation.Buy] = &value
 		computation.ID[31] = StageJoinBuyVolCo
 	case StageJoinBuyVolCo:
-		log.Printf("[stage => %v] join buy vol co: result = %v", computation.ID[31], resultJ.Value)
-		computer.volCoPointer[computation.Buy] = &resultJ.Value
+		log.Printf("[stage => %v] join buy vol co: result = %v", computation.ID[31], value)
+		computer.volCoPointer[computation.Buy] = &value
 		computation.ID[31] = StageJoinBuyMinVolExp
 	case StageJoinBuyMinVolExp:
-		log.Printf("[stage => %v] join buy min vol exp: result = %v", computation.ID[31], resultJ.Value)
-		computer.minVolExpPointer[computation.Buy] = &resultJ.Value
+		log.Printf("[stage => %v] join buy min vol exp: result = %v", computation.ID[31], value)
+		computer.minVolExpPointer[computation.Buy] = &value
 		computation.ID[31] = StageJoinBuyMinVolCo
 	case StageJoinBuyMinVolCo:
-		log.Printf("[stage => %v] join buy min vol co: result = %v", computation.ID[31], resultJ.Value)
-		computer.minVolCoPointer[computation.Buy] = &resultJ.Value
+		log.Printf("[stage => %v] join buy min vol co: result = %v", computation.ID[31], value)
+		computer.minVolCoPointer[computation.Buy] = &value
 		computation.ID[31] = StageJoinBuyTokens
 	case StageJoinBuyTokens:
-		log.Printf("[stage => %v] join buy token: result = %v", computation.ID[31], resultJ.Value)
-		tokens := order.Tokens(resultJ.Value)
+		log.Printf("[stage => %v] join buy token: result = %v", computation.ID[31], value)
+		tokens := order.Tokens(value)
 		computer.tokensPointer[computation.Buy] = &tokens
 		computation.ID[31] = StageJoinSellPriceExp
 	case StageJoinSellPriceExp:
-		log.Printf("[stage => %v] join sell price exp: result = %v", computation.ID[31], resultJ.Value)
-		computer.priceExpPointer[computation.Sell] = &resultJ.Value
+		log.Printf("[stage => %v] join sell price exp: result = %v", computation.ID[31], value)
+		computer.priceExpPointer[computation.Sell] = &value
 		computation.ID[31] = StageJoinSellPriceCo
 	case StageJoinSellPriceCo:
-		log.Printf("[stage => %v] join sell price co: result = %v", computation.ID[31], resultJ.Value)
-		computer.priceCoPointer[computation.Sell] = &resultJ.Value
+		log.Printf("[stage => %v] join sell price co: result = %v", computation.ID[31], value)
+		computer.priceCoPointer[computation.Sell] = &value
 		computation.ID[31] = StageJoinSellVolExp
 	case StageJoinSellVolExp:
-		log.Printf("[stage => %v] join sell vol exp: result = %v", computation.ID[31], resultJ.Value)
-		computer.volExpPointer[computation.Sell] = &resultJ.Value
+		log.Printf("[stage => %v] join sell vol exp: result = %v", computation.ID[31], value)
+		computer.volExpPointer[computation.Sell] = &value
 		computation.ID[31] = StageJoinSellVolCo
 	case StageJoinSellVolCo:
-		log.Printf("[stage => %v] join sell vol co: result = %v", computation.ID[31], resultJ.Value)
-		computer.volCoPointer[computation.Sell] = &resultJ.Value
+		log.Printf("[stage => %v] join sell vol co: result = %v", computation.ID[31], value)
+		computer.volCoPointer[computation.Sell] = &value
 		computation.ID[31] = StageJoinSellMinVolExp
 	case StageJoinSellMinVolExp:
-		log.Printf("[stage => %v] join sell min vol exp: result = %v", computation.ID[31], resultJ.Value)
-		computer.minVolExpPointer[computation.Sell] = &resultJ.Value
+		log.Printf("[stage => %v] join sell min vol exp: result = %v", computation.ID[31], value)
+		computer.minVolExpPointer[computation.Sell] = &value
 		computation.ID[31] = StageJoinSellMinVolCo
 	case StageJoinSellMinVolCo:
-		log.Printf("[stage => %v] join sell min vol co: result = %v", computation.ID[31], resultJ.Value)
-		computer.minVolCoPointer[computation.Sell] = &resultJ.Value
+		log.Printf("[stage => %v] join sell min vol co: result = %v", computation.ID[31], value)
+		computer.minVolCoPointer[computation.Sell] = &value
 		computation.ID[31] = StageJoinSellTokens
 	case StageJoinSellTokens:
-		log.Printf("[stage => %v] join sell token: result = %v", computation.ID[31], resultJ.Value)
-		tokens := order.Tokens(resultJ.Value)
+		log.Printf("[stage => %v] join sell token: result = %v", computation.ID[31], value)
+		tokens := order.Tokens(value)
 		computer.tokensPointer[computation.Sell] = &tokens
 		log.Printf(" start settl orders (Buy:%v , Sell: %v)-------", common.ToHex(computation.Buy[:]), common.ToHex(computation.Sell[:]))
 
@@ -569,16 +530,13 @@ func (computer *computer) processResultJ(instID, networkID [32]byte, resultJ smp
 	computer.computationsMu.Lock()
 	computer.computationsState[computation.ID] = computation
 	computer.computationsMu.Unlock()
-	select {
-	case <-done:
-	case computer.computations <- computation:
-		// FIXME: Removing the buffered channel from the mockSMPC causes a
-		// deadlock. This is because there is a cyclic hold-and-wait between
-		// reading a result, and writing an instruction. This can be solved
-		// using very careful prioritization of channels (but first, we will
-		// need to create more channels and merge them cleverly). It will also
-		// involve fine-tuned buffering of the channels.
-	}
+
+	// FIXME: This cannot be escaped when the done channel is closed and will
+	// deadlock if the notification does not come through on a different
+	// goroutine from the goroutine that emits computations.
+	log.Println("writing computation")
+	computer.computations <- computation
+	log.Println("computation written")
 }
 
 func computeID(computation Computation) [32]byte {
