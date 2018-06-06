@@ -160,7 +160,7 @@ func (smpc *smpcer) Join(networkID NetworkID, join Join, callback Callback) erro
 		defer smpc.networkMu.RUnlock()
 
 		for _, addr := range smpc.network[networkID] {
-			smpc.sendMessage(addr, &message)
+			go smpc.sendMessage(addr, &message)
 		}
 
 	}()
