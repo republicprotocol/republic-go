@@ -2,6 +2,9 @@ package smpc_test
 
 import (
 	"math/rand"
+	"sync/atomic"
+
+	"github.com/republicprotocol/republic-go/smpc"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -46,9 +49,11 @@ var _ = Describe("Share builder", func() {
 })
 
 type mockShareBuilderObserver struct {
-	value uint64
+	value            uint64
+	numNotifications uint64
 }
 
-func (observer *mockShareBuilderObserver) OnNotifyBuild(id, networkID [32]byte, value uint64) {
-	observer.value = value
+func (observer *mockShareBuilderObserver) OnNotifyBuild(id smpc.ComponentID, networkID smpc.NetworkID, value uint64) {
+	atomic.StoreUint64(&observer.value, value)
+	atomic.AddUint64(&observer.numNotifications, 1)
 }

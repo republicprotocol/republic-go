@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"io/ioutil"
 
 	"github.com/republicprotocol/republic-go/shamir"
 )
@@ -76,11 +77,19 @@ func (message *Message) UnmarshalBinary(data []byte) error {
 
 	switch message.MessageType {
 	case MessageTypeJoinComponents:
+		bytes, err := ioutil.ReadAll(buf)
+		if err != nil {
+			return err
+		}
 		message.MessageJoinComponents = new(MessageJoinComponents)
-		return binary.Read(buf, binary.BigEndian, message.MessageJoinComponents)
+		return message.MessageJoinComponents.UnmarshalBinary(bytes)
 	case MessageTypeJoinComponentsResponse:
+		bytes, err := ioutil.ReadAll(buf)
+		if err != nil {
+			return err
+		}
 		message.MessageJoinComponentsResponse = new(MessageJoinComponentsResponse)
-		return binary.Read(buf, binary.BigEndian, message.MessageJoinComponentsResponse)
+		return message.MessageJoinComponentsResponse.UnmarshalBinary(bytes)
 	default:
 		return ErrUnexpectedMessageType
 	}

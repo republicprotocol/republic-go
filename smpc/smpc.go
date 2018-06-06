@@ -126,7 +126,7 @@ func (smpc *smpcer) JoinComponents(networkID NetworkID, components Components, o
 	smpc.networkMu.RLock()
 	defer smpc.networkMu.RUnlock()
 	for _, addr := range smpc.network[networkID] {
-		log.Println("sending message")
+		log.Println("sending message to", addr)
 		go smpc.sendMessage(addr, &message)
 	}
 }
@@ -223,9 +223,12 @@ func (smpc *smpcer) stream(remoteAddr identity.Address, remoteStream stream.Stre
 	for {
 		msg := Message{}
 		if err := remoteStream.Recv(&msg); err != nil {
+			log.Println("CLOSING STREAM", err)
 			logger.Network(logger.LevelDebug, fmt.Sprintf("closing stream with %v: %v", remoteAddr, err))
 			return
 		}
+
+		log.Println("recved message")
 
 		switch msg.MessageType {
 		case MessageTypeJoinComponents:

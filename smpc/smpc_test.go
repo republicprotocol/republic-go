@@ -19,46 +19,6 @@ import (
 
 var _ = Describe("Smpc", func() {
 
-	Context("when starting", func() {
-
-		It("should return error if smpcer has already been started", func() {
-			hub := stream.NewChannelHub()
-			smpcer, _, err := createSMPCer(&hub)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = smpcer.Start()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			// On starting Smpcer again, should throw an error
-			err = smpcer.Start()
-			Expect(err).Should(HaveOccurred())
-			Expect(err).To(Equal(ErrSmpcerIsAlreadyRunning))
-		})
-	})
-
-	Context("when shutting down", func() {
-
-		It("should return error if smpcer is not running", func() {
-			hub := stream.NewChannelHub()
-			smpcer, _, err := createSMPCer(&hub)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			err = smpcer.Shutdown()
-			Expect(err).Should(HaveOccurred())
-			Expect(err).To(Equal(ErrSmpcerIsNotRunning))
-		})
-
-		It("should not return error if smpcer is running", func() {
-			hub := stream.NewChannelHub()
-			smpcer, _, err := createSMPCer(&hub)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = smpcer.Start()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			err = smpcer.Shutdown()
-			Expect(err).ShouldNot(HaveOccurred())
-		})
-	})
-
 	Context("when joining shares", func() {
 
 		It("should join shares to obtain final values", func() {
@@ -164,8 +124,9 @@ func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int, hub *stre
 
 	time.Sleep(2 * time.Second)
 
-	go func() {
+	observer := mockShareBuilderObserver{}
 
+	go func() {
 		// Send shares of multiple instructions
 		for j := 0; j < numberOfJoins; j++ {
 
@@ -177,12 +138,16 @@ func runSmpcers(numberOfSmpcers, numberOfJoins, numberOfDeadNodes int, hub *stre
 
 			// Send instJ instructions to join all the secret shares
 			for i := numberOfDeadNodes; i < numberOfSmpcers; i++ {
-				sendJoinInstruction(shares[i], j, 1, smpcers[i])
+				sendJoinInstruction(shares[i], j, 1, smpcers[i], &observer)
 			}
 		}
 	}()
 
-	return waitForResults(numberOfJoins, numberOfDeadNodes, numberOfSmpcers, smpcers), nil
+	for atomic.LoadUint64(&observer.numNotifications) != uint64(numberOfJoins) {
+		time.Sleep(time.Millisecond)
+	}
+
+	return numberOfJoins, nil
 }
 
 // Runs smpcers in two networks (either overlapped or not) and sends different secrets to both
@@ -211,6 +176,8 @@ func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int, hub *s
 
 	time.Sleep(2 * time.Second)
 
+	observer := mockShareBuilderObserver{}
+
 	go func() {
 
 		// Create a new random secret for network1 and split it
@@ -222,7 +189,7 @@ func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int, hub *s
 
 		// Send instJ instructions to Network 1 join all the secret shares
 		for i := 0; i < minimumNumberOfSmpcers; i++ {
-			sendJoinInstruction(shares[i], 0, 1, smpcers[i])
+			sendJoinInstruction(shares[i], 0, 1, smpcers[i], &observer)
 		}
 
 		// Create a new random secret for network2 and split it
@@ -234,16 +201,16 @@ func runSmpcersInTwoNetworks(numberOfSmpcers, minimumNumberOfSmpcers int, hub *s
 
 		// Send instJ instructions to Network 2 join all the secret shares
 		for i := numberOfSmpcers - minimumNumberOfSmpcers; i < numberOfSmpcers; i++ {
-			sendJoinInstruction(shares[i-numberOfSmpcers+minimumNumberOfSmpcers], 0, 2, smpcers[i])
+			sendJoinInstruction(shares[i-numberOfSmpcers+minimumNumberOfSmpcers], 0, 2, smpcers[i], &observer)
 		}
 	}()
 
 	// Ensure results from both networks have arrived
-	count := 0
-	count += waitForResults(1, 0, minimumNumberOfSmpcers, smpcers)
-	count += waitForResults(1, numberOfSmpcers-minimumNumberOfSmpcers, numberOfSmpcers, smpcers)
+	for atomic.LoadUint64(&observer.numNotifications) != uint64(2*minimumNumberOfSmpcers) {
+		time.Sleep(time.Millisecond)
+	}
 
-	return count, nil
+	return 2 * minimumNumberOfSmpcers, nil
 }
 
 func createAddressesAndStartSmpcers(numberOfSmpcers int, hub *stream.ChannelHub) (map[int]Smpcer, identity.Addresses, error) {
@@ -273,14 +240,6 @@ func sendConnectInstruction(numberOfSmpcers, networkID int, smpcer Smpcer, addre
 }
 
 func sendJoinInstruction(share shamir.Share, joinIndex, networkID int, smpcer Smpcer, observer ComponentBuilderObserver) {
-	instJ := InstJ{
-		Share: share,
-	}
-	message := Inst{
-		InstID:    [32]byte{byte(2 + joinIndex)},
-		NetworkID: [32]byte{byte(networkID)},
-		InstJ:     &instJ,
-	}
 	smpcer.JoinComponents([32]byte{byte(networkID)}, Components{Component{ComponentID: ComponentID{byte(2 + joinIndex)}, Share: share}}, observer)
 }
 
