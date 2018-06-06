@@ -29,9 +29,9 @@ type Confirmer interface {
 type confirmer struct {
 	storer Storer
 
-	renLedgerBlockDepth   uint
-	renLedgerPollInterval time.Duration
 	renLedger             cal.RenLedger
+	renLedgerPollInterval time.Duration
+	renLedgerBlockDepth   uint
 
 	confirmingMu         *sync.Mutex
 	confirmingBuyOrders  map[order.ID]struct{}
@@ -47,9 +47,9 @@ func NewConfirmer(storer Storer, renLedger cal.RenLedger, renLedgerPollInterval 
 	return &confirmer{
 		storer: storer,
 
-		renLedgerBlockDepth:   renLedgerBlockDepth,
-		renLedgerPollInterval: renLedgerPollInterval,
 		renLedger:             renLedger,
+		renLedgerPollInterval: renLedgerPollInterval,
+		renLedgerBlockDepth:   renLedgerBlockDepth,
 
 		confirmingMu:         new(sync.Mutex),
 		confirmingBuyOrders:  map[order.ID]struct{}{},
