@@ -131,10 +131,18 @@ func (val *CoExpShare) UnmarshalJSON(data []byte) error {
 // marshals the CoExpShare using encoding.BigEndian.
 func (val CoExpShare) MarshalBinary() ([]byte, error) {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, val.Co.Index)
-	binary.Write(buf, binary.BigEndian, val.Co.Value)
-	binary.Write(buf, binary.BigEndian, val.Exp.Index)
-	binary.Write(buf, binary.BigEndian, val.Exp.Value)
+	if err := binary.Write(buf, binary.BigEndian, val.Co.Index); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, val.Co.Value); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, val.Exp.Index); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, val.Exp.Value); err != nil {
+		return nil, err
+	}
 	return buf.Bytes(), nil
 }
 
