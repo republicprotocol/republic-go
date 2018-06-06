@@ -250,9 +250,9 @@ func isEqualToZero(value uint64, com Computation, stages ...string) bool {
 	if stages != nil && len(stages) > 0 {
 		stage = "[" + strings.Join(stages, " => ") + "]"
 	}
-	if value == 0 || value == shamir.Prime {
+	if value != 0 && value != shamir.Prime {
 		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v: mismatch: %v, buy = %v, sell = %v", stage, base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
-		return false
+		return true
 	}
 	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v: buy = %v, sell = %v", stage, base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
 	return true
