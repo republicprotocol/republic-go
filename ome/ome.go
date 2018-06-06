@@ -251,7 +251,7 @@ func (ome *ome) syncConfirmer(done <-chan struct{}, matches <-chan Computation, 
 			ome.ξMu.RUnlock()
 			if err := ome.settler.Settle(ξ, confirmation); err != nil {
 				// FIXME: use logger.
-				log.Println("cannot settle: %v", err)
+				log.Printf("cannot settle: %v", err)
 			}
 		case err, ok := <-confirmationErrs:
 			if !ok {
