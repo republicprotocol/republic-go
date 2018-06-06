@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"log"
 
 	"github.com/republicprotocol/republic-go/shamir"
 )
@@ -45,6 +46,7 @@ func (message *Message) MarshalBinary() ([]byte, error) {
 	var err error
 	switch message.MessageType {
 	case MessageTypeJoinComponents:
+		log.Println("message writing:", message.MessageJoinComponents)
 		if err := binary.Write(buf, binary.BigEndian, message.MessageJoinComponents); err != nil {
 			return nil, err
 		}
@@ -92,6 +94,8 @@ type MessageJoinComponents struct {
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface.
 func (message *MessageJoinComponents) MarshalBinary() ([]byte, error) {
+	log.Println("messageJoinCompontents writing:", message)
+
 	buf := new(bytes.Buffer)
 	if err := binary.Write(buf, binary.BigEndian, message.NetworkID); err != nil {
 		return nil, err
