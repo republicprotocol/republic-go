@@ -1,7 +1,6 @@
 package smpc
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -14,22 +13,6 @@ import (
 	"github.com/republicprotocol/republic-go/swarm"
 	"golang.org/x/net/context"
 )
-
-// ErrSmpcerIsAlreadyRunning is returned when a call to Smpcer.Start happens
-// on an Smpcer that has already been started.
-var ErrSmpcerIsAlreadyRunning = errors.New("smpcer is already running")
-
-// ErrSmpcerIsNotRunning is returned when a call to Smpcer.Shutdown happens on
-// an Smpcer that has not been started yet.
-var ErrSmpcerIsNotRunning = errors.New("smpcer is not running")
-
-// ErrUnmarshalNilBytes is returned when a call to UnmarshalBinary happens on
-// an empty list of bytes.
-var ErrUnmarshalNilBytes = errors.New("unmarshall nil bytes")
-
-// ErrInsufficientSharesToJoin is returned when a share is inserted into a
-// shareBuilder and there are fewer than k total shares.
-var ErrInsufficientSharesToJoin = errors.New("insufficient shares to join")
 
 // NetworkID for a network of Smpcer nodes. Using a NetworkID allows nodes to
 // be involved in multiple distinct computation networks in parallel.
