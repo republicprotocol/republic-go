@@ -84,9 +84,40 @@ var _ = Describe("Joiner", func() {
 				}
 			}
 		})
+
+		It("should be able to join share subtraction", func() {
+			joins := generateMatchedJoins()
+			var getsCalled = int64(0)
+			callback := func(id JoinID, values []uint64) {
+				atomic.AddInt64(&getsCalled, 1)
+				Ω(len(values)).Should(Equal(7))
+				Ω(values[0]).Should(BeNumerically("<=", shamir.Prime/2))
+				Ω(values[1]).Should(BeNumerically("<=", shamir.Prime/2))
+				Ω(values[2]).Should(BeNumerically("<=", shamir.Prime/2))
+				Ω(values[3]).Should(BeNumerically("<=", shamir.Prime/2))
+				Ω(values[4]).Should(BeNumerically("<=", shamir.Prime/2))
+				Ω(values[5]).Should(BeNumerically("<=", shamir.Prime/2))
+				Ω(values[6]).Should(BeZero())
+			}
+
+			for i := int64(0); i < k; i++ {
+				if i == k-1 {
+					Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
+					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(1)))
+				} else {
+					Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+					Ω(atomic.LoadInt64(&getsCalled)).Should(Equal(int64(0)))
+				}
+			}
+		})
 	})
 
 	Context("marshal and unmarshal join", func() {
+
+		BeforeEach(func() {
+			joiner = NewJoiner(k)
+		})
+
 		It("should get the same join after marshal and unmarshal", func() {
 			_, joins := generateJoins()
 			for i := range joins {
@@ -138,7 +169,6 @@ var _ = Describe("Joiner", func() {
 					Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
 				}
 			}
-
 		})
 	})
 })
@@ -166,6 +196,34 @@ func generateJoins() (order.Order, []Join) {
 	}
 
 	return ord, joins
+}
+
+func generateMatchedJoins() []Join {
+	buy, sell := testutils.RandomOrderMatch()
+	buyFragments, err := buy.Split(k, k)
+	Ω(err).ShouldNot(HaveOccurred())
+	sellFragments, err := sell.Split(k, k)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	joins := make([]Join, k)
+	for i := range joins {
+		shares := []shamir.Share{
+			buyFragments[i].Price.Co.Sub(&sellFragments[i].Price.Co),
+			buyFragments[i].Price.Exp.Sub(&sellFragments[i].Price.Exp),
+			buyFragments[i].Volume.Co.Sub(&sellFragments[i].MinimumVolume.Co),
+			buyFragments[i].Volume.Exp.Sub(&sellFragments[i].MinimumVolume.Exp),
+			buyFragments[i].MinimumVolume.Co.Sub(&sellFragments[i].Volume.Co),
+			buyFragments[i].MinimumVolume.Exp.Sub(&sellFragments[i].Volume.Exp),
+			buyFragments[i].Tokens.Sub(&sellFragments[i].Tokens),
+		}
+		joins[i] = Join{
+			ID:     testutils.ComputationID(buy.ID, sell.ID),
+			Index:  JoinIndex(i),
+			Shares: shares,
+		}
+	}
+
+	return joins
 }
 
 func generateCallback(getsCalled *int64, ord order.Order) func(id JoinID, values []uint64) {
