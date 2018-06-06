@@ -158,7 +158,7 @@ var _ = Describe("Joiner", func() {
 			}
 		})
 
-		It("should error when joining join set with differernt share length", func() {
+		It("should error when joining join set with different share length", func() {
 			_, joins := generateJoins()
 
 			for i := int64(0); i < k; i++ {
@@ -212,8 +212,8 @@ func generateMatchedJoins() []Join {
 			buyFragments[i].Price.Exp.Sub(&sellFragments[i].Price.Exp),
 			buyFragments[i].Volume.Co.Sub(&sellFragments[i].MinimumVolume.Co),
 			buyFragments[i].Volume.Exp.Sub(&sellFragments[i].MinimumVolume.Exp),
-			buyFragments[i].MinimumVolume.Co.Sub(&sellFragments[i].Volume.Co),
-			buyFragments[i].MinimumVolume.Exp.Sub(&sellFragments[i].Volume.Exp),
+			sellFragments[i].Volume.Co.Sub(&buyFragments[i].MinimumVolume.Co),
+			sellFragments[i].Volume.Exp.Sub(&buyFragments[i].MinimumVolume.Exp),
 			buyFragments[i].Tokens.Sub(&sellFragments[i].Tokens),
 		}
 		joins[i] = Join{
