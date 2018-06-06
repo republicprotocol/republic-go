@@ -61,7 +61,6 @@ type smpcer struct {
 	shareBuildersMu       *sync.RWMutex
 	shareBuilders         map[[32]byte]*ShareBuilder
 	shareBuildersJoinable map[[32]byte]Component
-	shareBuildersRoutes   map[[32]byte]map[identity.Address]struct{}
 
 	ctxCancelsMu *sync.Mutex
 	ctxCancels   map[[32]byte]map[identity.Address]context.CancelFunc
@@ -90,7 +89,6 @@ func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer, buffer int) Smpc
 		shareBuildersMu:       new(sync.RWMutex),
 		shareBuilders:         map[[32]byte]*ShareBuilder{},
 		shareBuildersJoinable: map[[32]byte]Component{},
-		shareBuildersRoutes:   map[[32]byte]map[identity.Address]struct{}{},
 
 		ctxCancelsMu: new(sync.Mutex),
 		ctxCancels:   map[[32]byte]map[identity.Address]context.CancelFunc{},
@@ -246,10 +244,6 @@ func (smpc *smpcer) processMessageJoinComponents(remoteAddr *identity.Address, m
 
 	shareBuilder, shareBuilderOk := smpc.shareBuilders[message.NetworkID]
 	for _, component := range message.Components {
-		if _, ok := smpc.shareBuildersRoutes[component.ComponentID]; !ok {
-			smpc.shareBuildersRoutes[component.ComponentID] = map[identity.Address]struct{}{}
-		}
-
 		if remoteAddr == nil {
 			// we sent this message to ourselves so we store the component for
 			// forwarding to senders
@@ -290,10 +284,6 @@ func (smpc *smpcer) processMessageJoinComponentsResponse(message MessageJoinComp
 
 	shareBuilder, shareBuilderOk := smpc.shareBuilders[message.NetworkID]
 	for _, component := range message.Components {
-		if _, ok := smpc.shareBuildersRoutes[component.ComponentID]; !ok {
-			smpc.shareBuildersRoutes[component.ComponentID] = map[identity.Address]struct{}{}
-		}
-
 		if shareBuilderOk {
 			if err := shareBuilder.Insert(component.ComponentID, component.Share); err != nil {
 				if err != ErrInsufficientSharesToJoin {
