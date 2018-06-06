@@ -345,7 +345,7 @@ func (computer *computer) OnNotifyBuild(componentID smpc.ComponentID, networkID 
 		return
 	}
 
-	log.Printf("[stage => %v] received result: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:]), base64.StdEncoding.EncodeToString(computation.Sell[:]))
+	log.Printf("[stage => %v] received result: buy = %v; sell = %v", computation.ID[31], base64.StdEncoding.EncodeToString(computation.Buy[:8]), base64.StdEncoding.EncodeToString(computation.Sell[:8]))
 
 	switch componentID[31] {
 

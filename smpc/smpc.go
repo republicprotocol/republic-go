@@ -276,6 +276,7 @@ func (smpc *smpcer) processMessageJoinComponents(remoteAddr *identity.Address, m
 			}
 		}
 
+		log.Println("sending response message:", response)
 		go smpc.sendMessage(*remoteAddr, &response)
 	}
 }
