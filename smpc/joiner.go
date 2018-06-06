@@ -73,8 +73,8 @@ type Joiner struct {
 
 // NewJoiner returns an empty Joiner that needs k shamir.Shares before it can
 // reconstruct a value.
-func NewJoiner(k int64) Joiner {
-	return Joiner{
+func NewJoiner(k int64) *Joiner {
+	return &Joiner{
 		k:     k,
 		cache: make(shamir.Shares, k),
 
