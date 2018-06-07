@@ -48,12 +48,16 @@ func main() {
 		log.Fatalf("cannot load smart contracts: %v", err)
 	}
 	log.Println(*matched)
-	one := order.CoExp{
-		Co:  200,
-		Exp: 26,
+	onePrice := order.CoExp{
+		Co:  2,
+		Exp: 40,
 	}
-	buy := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(1*time.Hour), order.TokensDGXREN, one, one, one, rand.Int63())
-	sell := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(1*time.Hour), order.TokensDGXREN, one, one, one, rand.Int63())
+	oneVol := order.CoExp{
+		Co:  5,
+		Exp: 12,
+	}
+	buy := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(1*time.Hour), order.TokensDGXREN, onePrice, oneVol, oneVol, rand.Int63())
+	sell := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(1*time.Hour), order.TokensDGXREN, onePrice, oneVol, oneVol, rand.Int63())
 	ords := []order.Order{buy, sell}
 
 	for _, ord := range ords {
