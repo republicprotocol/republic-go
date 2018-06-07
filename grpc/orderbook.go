@@ -11,20 +11,17 @@ import (
 )
 
 type orderbookClient struct {
-	connPool *ConnPool
 }
 
 // NewOrderbookClient returns an implementation of the orderbook.Client
-// interface that uses gRPC and a recycled connection pool.
-func NewOrderbookClient(connPool *ConnPool) orderbook.Client {
-	return &orderbookClient{
-		connPool: connPool,
-	}
+// interface that uses gRPC.
+func NewOrderbookClient() orderbook.Client {
+	return &orderbookClient{}
 }
 
 // OpenOrder implements the orderbook.Client interface.
 func (client *orderbookClient) OpenOrder(ctx context.Context, multiAddr identity.MultiAddress, orderFragment order.EncryptedFragment) error {
-	conn, err := client.connPool.Dial(ctx, multiAddr)
+	conn, err := Dial(ctx, multiAddr)
 	if err != nil {
 		return fmt.Errorf("cannot dial %v: %v", multiAddr, err)
 	}
@@ -38,24 +35,29 @@ func (client *orderbookClient) OpenOrder(ctx context.Context, multiAddr identity
 	return err
 }
 
+// OrderbookService is a Service that implements the gRPC OrderbookService
+// defined in protobuf. It exposes an RPC that accepts OpenOrderRequests and
+// delegates control to an orderbook.Server.
 type OrderbookService struct {
 	server orderbook.Server
 }
 
-// NewOrderbookService returns a gRPC service that unmarshals
-// EncryptedOrderFragments and delegates control to an orderbook.Service.
+// NewOrderbookService returns a gRPC service that unmarshals OpenOrderRequests
+// defined in protobuf, and delegates control of the RPC to an
+// orderbook.Server.
 func NewOrderbookService(server orderbook.Server) OrderbookService {
 	return OrderbookService{
 		server: server,
 	}
 }
 
-// Register the OrderbookService to a Server.
+// Register implements the Service interface.
 func (service *OrderbookService) Register(server *Server) {
 	RegisterOrderbookServiceServer(server.Server, service)
 }
 
-// OpenOrder implements the gRPC service for receiving EncryptedOrderFragments.
+// OpenOrder implements the gRPC service for receiving EncryptedOrderFragments
+// defined in protobuf.
 func (service *OrderbookService) OpenOrder(ctx context.Context, request *OpenOrderRequest) (*OpenOrderResponse, error) {
 	return &OpenOrderResponse{}, service.server.OpenOrder(ctx, unmarshalEncryptedOrderFragment(request.OrderFragment))
 }
