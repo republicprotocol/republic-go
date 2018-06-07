@@ -176,6 +176,10 @@ func (ranker *ranker) insertStoredComputations() {
 		logger.Error(fmt.Sprintf("cannot load existing computations into ranker: %v", err))
 	}
 	for _, com := range coms {
+		// FIXME: The Ranker should be willing to accept all Computations that
+		// are not already settled. It is up to the Ome to check the state of
+		// the Computation and then decided which stage of the pipeline to
+		// forward the Computation to.
 		if com.State == ComputationStateNil {
 			ranker.insertComputation(com)
 		}
