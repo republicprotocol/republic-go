@@ -9,6 +9,7 @@ before_install:
   - go get github.com/golang/dep/cmd/dep
   - go get golang.org/x/lint/golint
   - go get github.com/loongy/covermerge
+  - go get github.com/mattn/goveralls
   - dep ensure
 
 script:
@@ -20,6 +21,7 @@ script:
   - sed -i '/.pb.go/d' coverprofile.out
   - sed -i '/bindings/d' coverprofile.out
   - sed -i '/cmd/d' coverprofile.out
+  - sed -i '/testutils/d' coverprofile.out
 
 after_success:
   - goveralls -coverprofile=coverprofile.out -service=travis-ci -repotoken $COVERALLS_TOKEN

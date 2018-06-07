@@ -25,7 +25,7 @@ import (
 )
 
 func main() {
-	relayParam := flag.String("relay", "http://127.0.0.1:18515", "Binding and port of the relay")
+	relayParam := flag.String("relay", "https://kovan-renexchange.herokuapp.com", "Binding and port of the relay")
 	keystoreParam := flag.String("keystore", "", "Optionally encrypted keystore file")
 	configParam := flag.String("config", "", "Ethereum configuration file")
 	passphraseParam := flag.String("passphrase", "", "Optional passphrase to decrypt the keystore file")
@@ -47,13 +47,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot load smart contracts: %v", err)
 	}
-
-	randomOrder := newRandomOrder()
-	ords := []order.Order{randomOrder}
-	if *matched {
-		matchedOrder := order.NewOrder(randomOrder.Type, 1-randomOrder.Parity, randomOrder.Expiry, randomOrder.Tokens, randomOrder.Price, randomOrder.Volume, randomOrder.MinimumVolume, randomOrder.Nonce)
-		ords = append(ords, matchedOrder)
+	log.Println(*matched)
+	onePrice := order.CoExp{
+		Co:  2,
+		Exp: 40,
 	}
+	oneVol := order.CoExp{
+		Co:  5,
+		Exp: 12,
+	}
+	buy := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(1*time.Hour), order.TokensDGXREN, onePrice, oneVol, oneVol, rand.Int63())
+	sell := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(1*time.Hour), order.TokensDGXREN, onePrice, oneVol, oneVol, rand.Int63())
+	ords := []order.Order{buy, sell}
 
 	for _, ord := range ords {
 		signatureData := crypto.Keccak256([]byte("Republic Protocol: open: "), ord.ID[:])
@@ -192,27 +197,4 @@ func loadSmartContracts(ethereumConfig ethereum.Config, keystore crypto.Keystore
 		return auth, nil, err
 	}
 	return auth, &registry, nil
-}
-
-func newRandomOrder() order.Order {
-	parity := []order.Parity{order.ParityBuy, order.ParitySell}[rand.Intn(2)]
-	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensBTCDGX,
-		order.TokensBTCREN,
-		order.TokensETHDGX,
-		order.TokensETHREN,
-		order.TokensDGXREN,
-	}[rand.Intn(6)]
-
-	ord := order.NewOrder(order.TypeLimit, parity, time.Now().Add(1*time.Hour), tokens, randomCoExp(), randomCoExp(), randomCoExp(), rand.Int63())
-	return ord
-}
-
-func randomCoExp() order.CoExp {
-	co := uint64(rand.Intn(1999) + 1)
-	exp := uint64(rand.Intn(25))
-	return order.CoExp{
-		Co:  co,
-		Exp: exp,
-	}
 }

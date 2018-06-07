@@ -1,6 +1,8 @@
 package leveldb
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"path"
 
@@ -17,6 +19,7 @@ type Store struct {
 	orderFragments *leveldb.DB
 	orders         *leveldb.DB
 	computations   *leveldb.DB
+	sync           *leveldb.DB
 }
 
 // NewStore returns a LevelDB implemntation of an orderbooker.Storer. It stores
@@ -34,11 +37,16 @@ func NewStore(dir string) (Store, error) {
 	if err != nil {
 		return Store{}, err
 	}
+	sync, err := leveldb.OpenFile(path.Join(dir, "sync"), nil)
+	if err != nil {
+		return Store{}, err
+	}
 
 	return Store{
 		orderFragments: orderFragments,
 		orders:         orders,
 		computations:   computations,
+		sync:           sync,
 	}, nil
 }
 
@@ -105,6 +113,23 @@ func (store *Store) Order(id order.ID) (order.Order, error) {
 	return order, nil
 }
 
+// Orders implements the orderbook.Storer interface.
+func (store *Store) Orders() ([]order.Order, error) {
+	ords := []order.Order{}
+	iter := store.orders.NewIterator(nil, nil)
+	defer iter.Release()
+	for iter.Next() {
+		data := iter.Value()
+
+		ord := order.Order{}
+		if err := json.Unmarshal(data, &ord); err != nil {
+			return ords, err
+		}
+		ords = append(ords, ord)
+	}
+	return ords, iter.Error()
+}
+
 // RemoveOrderFragment implements the orderbook.Storer interface.
 func (store *Store) RemoveOrderFragment(id order.ID) error {
 	return store.orderFragments.Delete(id[:], nil)
@@ -115,22 +140,22 @@ func (store *Store) RemoveOrder(id order.ID) error {
 	return store.orders.Delete(id[:], nil)
 }
 
-func (store *Store) InsertComputation(computations ome.Computation) error {
-	data, err := json.Marshal(computations)
+// InsertComputation implements the ome.Storer interface.
+func (store *Store) InsertComputation(computation ome.Computation) error {
+	data, err := json.Marshal(computation)
 	if err != nil {
 		return err
 	}
-
-	id := computations.ID()
-	return store.computations.Put(id[:], data, nil)
+	return store.computations.Put(computation.ID[:], data, nil)
 }
 
-func (store *Store) Computation(id [32]byte) (ome.Computation, error) {
+// Computation implements the ome.Storer interface.
+func (store *Store) Computation(id ome.ComputationID) (ome.Computation, error) {
 	computation := ome.Computation{}
 	data, err := store.computations.Get(id[:], nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
-			err = orderbook.ErrOrderNotFound
+			err = ome.ErrComputationNotFound
 		}
 		return computation, err
 	}
@@ -138,4 +163,61 @@ func (store *Store) Computation(id [32]byte) (ome.Computation, error) {
 		return computation, err
 	}
 	return computation, nil
+}
+
+// Computations implements the ome.Storer interface.
+func (store *Store) Computations() (ome.Computations, error) {
+	coms := ome.Computations{}
+	iter := store.computations.NewIterator(nil, nil)
+	defer iter.Release()
+	for iter.Next() {
+		data := iter.Value()
+
+		com := ome.Computation{}
+		if err := json.Unmarshal(data, &com); err != nil {
+			return coms, err
+		}
+		coms = append(coms, com)
+	}
+	return coms, iter.Error()
+}
+
+// InsertBuyPointer implements the orderbook.SyncStorer interface.
+func (store *Store) InsertBuyPointer(pointer orderbook.SyncPointer) error {
+	data := [4]byte{}
+	binary.PutVarint(data[:], int64(pointer))
+	return store.sync.Put([]byte("buy"), data[:], nil)
+}
+
+// InsertSellPointer implements the orderbook.SyncStorer interface.
+func (store *Store) InsertSellPointer(pointer orderbook.SyncPointer) error {
+	data := [4]byte{}
+	binary.PutVarint(data[:], int64(pointer))
+	return store.sync.Put([]byte("sell"), data[:], nil)
+}
+
+// BuyPointer implements the orderbook.SyncStorer interface.
+func (store *Store) BuyPointer() (orderbook.SyncPointer, error) {
+	data, err := store.sync.Get([]byte("buy"), nil)
+	if err != nil {
+		return 0, err
+	}
+	pointer, err := binary.ReadVarint(bytes.NewBuffer(data))
+	if err != nil {
+		return 0, err
+	}
+	return orderbook.SyncPointer(pointer), nil
+}
+
+// SellPointer implements the orderbook.SyncStorer interface.
+func (store *Store) SellPointer() (orderbook.SyncPointer, error) {
+	data, err := store.sync.Get([]byte("sell"), nil)
+	if err != nil {
+		return 0, err
+	}
+	pointer, err := binary.ReadVarint(bytes.NewBuffer(data))
+	if err != nil {
+		return 0, err
+	}
+	return orderbook.SyncPointer(pointer), nil
 }

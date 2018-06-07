@@ -2,6 +2,8 @@ package accounts
 
 import (
 	"context"
+	"encoding/base64"
+	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -97,6 +99,7 @@ func (accounts *RenExAccounts) Balance(trader string, tokenCode order.Token) (fl
 // SubmitOrder to the RenEx accounts
 func (accounts *RenExAccounts) SubmitOrder(ord order.Order) error {
 	nonce := big.NewInt(int64(ord.Nonce))
+	log.Printf("[submit order] id: %v,tokens:%d, priceCo:%v, priceExp:%v, volumeCo:%v, volumeExp:%v, minVol:%v, minVolExp:%v", base64.StdEncoding.EncodeToString(ord.ID[:]), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp))
 	tx, err := accounts.binding.SubmitOrder(accounts.transactOpts, ord.ID, uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonce)
 	if err != nil {
 		return err
@@ -107,7 +110,7 @@ func (accounts *RenExAccounts) SubmitOrder(ord order.Order) error {
 
 // Submit order to the RenEx accounts
 func (accounts *RenExAccounts) SubmitMatch(buy, sell order.ID) error {
-	accounts.transactOpts.GasLimit = 30000
+	accounts.transactOpts.GasLimit = 200000
 	tx, err := accounts.binding.SubmitMatch(accounts.transactOpts, buy, sell)
 	if err != nil {
 		return err

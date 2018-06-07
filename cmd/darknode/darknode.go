@@ -19,22 +19,24 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
 	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
 func main() {
-	defer log.Print("shutdown!")
+	logger.SetFilterLevel(logger.LevelDebugLow)
 
 	// Parse command-line arguments
 	configParam := flag.String("config", path.Join(os.Getenv("HOME"), ".darknode/config.json"), "JSON configuration file")
@@ -42,7 +44,7 @@ func main() {
 	flag.Parse()
 
 	// Load configuration file
-	config, err := darknode.NewConfigFromJSONFile(*configParam)
+	config, err := config.NewConfigFromJSONFile(*configParam)
 	if err != nil {
 		log.Fatalf("cannot load config: %v", err)
 	}
@@ -61,14 +63,14 @@ func main() {
 	log.Printf("address %v", multiAddr)
 
 	// Get ethereum bindings
-	auth, darkPool, darkPoolAccounts, darkPoolFees, renLedger, err := getEthereumBindings(config.Keystore, config.Ethereum)
+	auth, darkPool, darkPoolAccounts, _, renLedger, err := getEthereumBindings(config.Keystore, config.Ethereum)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
 	log.Printf("ethereum %v", auth.From.Hex())
 
 	// New crypter for signing and verification
-	crypter := darknode.NewCrypter(config.Keystore, darkPool, 256, time.Minute)
+	crypter := registry.NewCrypter(config.Keystore, darkPool, 256, time.Minute)
 
 	user, err := exec.Command("whoami").Output()
 	if err != nil {
@@ -98,7 +100,7 @@ func main() {
 	swarmService.Register(server)
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 
-	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(renLedger, 32), &store)
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(&store, renLedger, 32), &store)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
@@ -108,16 +110,14 @@ func main() {
 	streamer := stream.NewStreamRecycler(stream.NewStreamer(config.Address, streamClient, &streamService))
 
 	// New secure multi-party computer
-	smpcer := smpc.NewSmpcer(swarmer, streamer, 1)
+	smpcer := smpc.NewSmpcer(swarmer, streamer)
 
 	// New OME
-	confirmer := ome.NewConfirmer(6, 4*time.Second, renLedger, &store)
-	computer := ome.NewComputer(&store, smpcer, confirmer, renLedger, darkPoolAccounts)
-	ome := ome.NewOme(ome.NewRanker(1, 0), computer, orderbook, smpcer)
-
-	// New Darknode
-	darknode := darknode.NewDarknode(config.Address, darkPool, darkPoolAccounts, darkPoolFees)
-	darknode.SetEpochListener(ome)
+	ranker := ome.NewRanker(1, 0, &store)
+	matcher := ome.NewMatcher(&store, smpcer)
+	confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
+	settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
+	ome := ome.NewOme(ranker, matcher, confirmer, settler, &store, orderbook, smpcer)
 
 	// Start the secure order matching engine
 	go func() {
@@ -137,22 +137,39 @@ func main() {
 
 		done := make(chan struct{})
 		dispatch.CoBegin(func() {
-			// Start the SMPC
-			smpcer.Start()
-		}, func() {
 			// Synchronizing the OME
 			errs := ome.Run(done)
 			for err := range errs {
-				log.Printf("error in running the ome: %v", err)
+				logger.Error(fmt.Sprintf("error in running the ome: %v", err))
 			}
 		}, func() {
-			// Synchronizing the Darknode
+			// Get the starting ξ
+			ξ, err := darkPool.Epoch()
+			if err != nil {
+				log.Fatalf("cannot sync epoch: %v", err)
+			}
+			ome.OnChangeEpoch(ξ)
+
+			// Periodically sync the next ξ
 			for {
-				log.Println("sync ξ")
-				if err := darknode.Sync(); err != nil {
-					log.Printf("cannot sync darknode: %v", err)
+				time.Sleep(14 * time.Second)
+
+				// Get the epoch
+				nextξ, err := darkPool.Epoch()
+				if err != nil {
+					logger.Error(fmt.Sprintf("cannot sync epoch: %v", err))
+					continue
 				}
-				time.Sleep(time.Second * 14)
+
+				// Check whether or not ξ has changed
+				if ξ.Equal(&nextξ) {
+					continue
+				}
+				ξ = nextξ
+				logger.Epoch(ξ.Hash)
+
+				// Notify the Ome
+				ome.OnChangeEpoch(ξ)
 			}
 		})
 	}()

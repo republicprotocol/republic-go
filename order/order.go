@@ -2,6 +2,7 @@ package order
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"os"
@@ -20,6 +21,11 @@ type ID [32]byte
 // Equal returns an equality check between two DeltaFragmentIDs.
 func (id ID) Equal(other ID) bool {
 	return bytes.Equal(id[:], other[:])
+}
+
+// String returns a truncated base64 encoding of the ID.
+func (id ID) String() string {
+	return base64.StdEncoding.EncodeToString(id[:8])
 }
 
 // Token is a numerical representation of a token supported by Republic

@@ -2,10 +2,11 @@ package orderbook
 
 import (
 	"context"
-	"log"
+	"encoding/base64"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -19,10 +20,6 @@ type Client interface {
 
 type Server interface {
 	OpenOrder(context.Context, order.EncryptedFragment) error
-}
-
-type Listener interface {
-	OnConfirmOrderMatch(order.Order, order.Order)
 }
 
 type Orderbook interface {
@@ -41,6 +38,7 @@ type Orderbook interface {
 
 type orderbook struct {
 	crypto.RsaKey
+
 	syncer Syncer
 	storer Storer
 }
@@ -48,19 +46,23 @@ type orderbook struct {
 func NewOrderbook(key crypto.RsaKey, syncer Syncer, storer Storer) Orderbook {
 	return &orderbook{
 		RsaKey: key,
+
 		syncer: syncer,
 		storer: storer,
 	}
 }
 
 func (book *orderbook) OpenOrder(ctx context.Context, orderFragment order.EncryptedFragment) error {
-	log.Println("RECEIVED ORDER!")
-	log.Println(orderFragment)
 	fragment, err := orderFragment.Decrypt(*book.RsaKey.PrivateKey)
 	if err != nil {
 		return err
 	}
-	log.Println(fragment)
+	if fragment.OrderParity == order.ParityBuy {
+		logger.BuyOrderReceived(logger.LevelDebugLow, base64.StdEncoding.EncodeToString(fragment.OrderID[:8]), base64.StdEncoding.EncodeToString(fragment.ID[:8]))
+	} else {
+		logger.SellOrderReceived(logger.LevelDebugLow, base64.StdEncoding.EncodeToString(fragment.OrderID[:8]), base64.StdEncoding.EncodeToString(fragment.ID[:8]))
+	}
+
 	return book.storer.InsertOrderFragment(fragment)
 }
 

@@ -1,4 +1,4 @@
-package darknode
+package config
 
 import (
 	"encoding/json"

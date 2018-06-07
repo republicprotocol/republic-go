@@ -1,126 +1,134 @@
 package ome
 
 import (
+	"fmt"
 	"sort"
 	"sync"
+	"time"
+
+	"github.com/republicprotocol/republic-go/logger"
 
 	"github.com/republicprotocol/republic-go/order"
 )
 
-// A Priority is an unsigned integer representing logical time prioritization.
-// The lower the number, the higher the priority.
-type Priority uint64
-
-// A PriorityOrder is an order.Order coupled with a Priority.
+// A PriorityOrder is Priority coupled with an order.Order.
 type PriorityOrder struct {
-	Priority
-	order.ID
+	Priority Priority
+	Order    order.ID
 }
 
-// A Ranker consumes orders and produces computations that are prioritized
-// based on the combined priorities of the orders.
+// A Ranker consumes orders and produces Computations that are prioritized
+// based on the combined priorities of the involved orders.
 type Ranker interface {
 
-	// InsertBuy order into the Ranker. A call to Ranker.InsertBuy will produce
-	// all new Computations which can be read from the Ranker using a call to
+	// InsertBuy order.Order into the Ranker. A call to Ranker.InsertBuy will
+	// combine the newly inserted order.Order with others to create pending
+	// Computations. These can be read from the Ranker using a call to
 	// Ranker.Computations.
-	InsertBuy(order PriorityOrder)
+	InsertBuy(PriorityOrder)
 
-	// InsertSell order into the Ranker. A call to Ranker.InsertSell will
-	// produce all new Computations which can be read from the Ranker using a
-	// call to Ranker.Computations.
-	InsertSell(order PriorityOrder)
+	// InsertSell order.Order into the Ranker. A call to Ranker.InsertBuy will
+	// combine the newly inserted order.Order with others to create pending
+	// Computations. These can be read from the Ranker using a call to
+	// Ranker.Computations.
+	InsertSell(PriorityOrder)
 
 	// Remove orders from the Ranker. This will also remove all Computations
-	// that involve the orders.
-	Remove(orders ...order.ID)
+	// that involve these orders.
+	Remove(...order.ID)
 
-	// Computations stores in the Ranker are used to fill the buffer. The
-	// Computations are then removed from the Ranker to prevent duplication in
-	// future calls. Returns the number of Computations written to the buffer,
+	// Computations stored in the Ranker are written to the input buffer. The
+	// written Computations are removed from the Ranker to prevent duplicate
+	// Computations. Returns the number of Computations written to the buffer,
 	// which is guaranteed to be less than, or equal to, the size of the
 	// buffer.
-	Computations(buffer Computations) int
+	Computations(Computations) int
 }
 
 type ranker struct {
-	num int
-	pos int
+	numberOfRankers int
+	pos             int
 
 	computationsMu *sync.Mutex
-	computations   Computations
+	computations   []Computation
 	buys           map[order.ID]Priority
 	sells          map[order.ID]Priority
+
+	storer Storer
 }
 
-// NewRanker returns a Ranker that only produces Computations based on the
-// total number of Rankers processing orders, and the position of this Ranker.
-// TODO: Update num and pos
-func NewRanker(num, pos int) Ranker {
-	return &ranker{
-		num: num,
-		pos: pos,
+// NewRanker returns a Ranker that first filters the Computations it produces
+// by checking the Priority. The filter assumes that there are a certain number
+// of Rankers, and that each Ranker has a unique position relative to others.
+// Priorities that do not match the position of the Ranker, after a modulo of
+// the number of Rankers, are filtered. A Storer is used to load existing
+// Computations that have not been processed completely, and to store new
+// Computations.
+func NewRanker(numberOfRankers, pos int, storer Storer) Ranker {
+	ranker := &ranker{
+		numberOfRankers: numberOfRankers,
+		pos:             pos,
 
 		computationsMu: new(sync.Mutex),
-		computations:   Computations{},
+		computations:   []Computation{},
 		buys:           map[order.ID]Priority{},
 		sells:          map[order.ID]Priority{},
+
+		storer: storer,
 	}
+	ranker.insertStoredComputationsInBackground()
+	return ranker
 }
 
-func (ranker *ranker) InsertBuy(order PriorityOrder) {
+// InsertBuy implements the Ranker interface.
+func (ranker *ranker) InsertBuy(priorityOrder PriorityOrder) {
 	ranker.computationsMu.Lock()
 	defer ranker.computationsMu.Unlock()
 
-	ranker.buys[order.ID] = order.Priority
+	ranker.buys[priorityOrder.Order] = priorityOrder.Priority
 	for sell, sellPriority := range ranker.sells {
-		computationPriority := order.Priority + sellPriority
-		if int(computationPriority)%ranker.num != ranker.pos {
+
+		priority := priorityOrder.Priority + sellPriority
+		if int(priority)%ranker.numberOfRankers != ranker.pos {
 			continue
 		}
 
-		computation := Computation{
-			Buy:      order.ID,
-			Sell:     sell,
-			Priority: computationPriority,
-		}
+		priorityCom := NewComputation(priorityOrder.Order, sell)
+		priorityCom.Priority = priority
+		priorityCom.Timestamp = time.Now()
 
-		index := sort.Search(len(ranker.computations), func(i int) bool {
-			return ranker.computations[i].Priority > computation.Priority
-		})
-		ranker.computations = append(
-			ranker.computations[:index],
-			append([]Computation{computation}, ranker.computations[index:]...)...)
+		ranker.insertComputation(priorityCom)
+		if err := ranker.storer.InsertComputation(priorityCom); err != nil {
+			logger.Error(fmt.Sprintf("cannot store computation buy = %v, sell = %v", priorityCom.Buy, priorityCom.Sell))
+		}
 	}
 }
 
-func (ranker *ranker) InsertSell(order PriorityOrder) {
+// InsertSell implements the Ranker interface.
+func (ranker *ranker) InsertSell(priorityOrder PriorityOrder) {
 	ranker.computationsMu.Lock()
 	defer ranker.computationsMu.Unlock()
 
-	ranker.sells[order.ID] = order.Priority
+	ranker.sells[priorityOrder.Order] = priorityOrder.Priority
 	for buy, buyPriority := range ranker.buys {
 
-		computationPriority := order.Priority + buyPriority
-		if int(computationPriority)%ranker.num != ranker.pos {
+		priority := priorityOrder.Priority + buyPriority
+		if int(priority)%ranker.numberOfRankers != ranker.pos {
 			continue
 		}
 
-		computation := Computation{
-			Buy:      buy,
-			Sell:     order.ID,
-			Priority: computationPriority,
-		}
+		priorityCom := NewComputation(buy, priorityOrder.Order)
+		priorityCom.Priority = priority
+		priorityCom.Timestamp = time.Now()
 
-		index := sort.Search(len(ranker.computations), func(i int) bool {
-			return ranker.computations[i].Priority > computation.Priority
-		})
-		ranker.computations = append(
-			ranker.computations[:index],
-			append([]Computation{computation}, ranker.computations[index:]...)...)
+		ranker.insertComputation(priorityCom)
+		if err := ranker.storer.InsertComputation(priorityCom); err != nil {
+			logger.Error(fmt.Sprintf("cannot store computation buy = %v, sell = %v", priorityCom.Buy, priorityCom.Sell))
+		}
 	}
 }
 
+// Remove implements the Ranker interface.
 func (ranker *ranker) Remove(orders ...order.ID) {
 	ranker.computationsMu.Lock()
 	defer ranker.computationsMu.Unlock()
@@ -146,6 +154,7 @@ func (ranker *ranker) Remove(orders ...order.ID) {
 	}
 }
 
+// Computations implements the Ranker interface.
 func (ranker *ranker) Computations(buffer Computations) int {
 	ranker.computationsMu.Lock()
 	defer ranker.computationsMu.Unlock()
@@ -162,4 +171,33 @@ func (ranker *ranker) Computations(buffer Computations) int {
 		ranker.computations = ranker.computations[n:]
 	}
 	return n
+}
+
+func (ranker *ranker) insertStoredComputationsInBackground() {
+	go func() {
+		// Wait for long enough that the Ome has time to connect to the network
+		// for the current epoch before loading computations
+		timer := time.NewTimer(14 * time.Second)
+
+		coms, err := ranker.storer.Computations()
+		if err != nil {
+			logger.Error(fmt.Sprintf("cannot load existing computations into ranker: %v", err))
+		}
+
+		<-timer.C
+		for _, com := range coms {
+			if com.State != ComputationStateMismatched && com.State != ComputationStateRejected && com.State != ComputationStateSettled {
+				ranker.insertComputation(com)
+			}
+		}
+	}()
+}
+
+func (ranker *ranker) insertComputation(com Computation) {
+	index := sort.Search(len(ranker.computations), func(i int) bool {
+		return ranker.computations[i].Priority > com.Priority
+	})
+	ranker.computations = append(
+		ranker.computations[:index],
+		append([]Computation{com}, ranker.computations[index:]...)...)
 }
