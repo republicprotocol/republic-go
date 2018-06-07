@@ -21,6 +21,7 @@ type Storer interface {
 	InsertOrder(order order.Order) error
 	OrderFragment(id order.ID) (order.Fragment, error)
 	Order(id order.ID) (order.Order, error)
+	Orders() ([]order.Order, error)
 	RemoveOrderFragment(id order.ID) error
 	RemoveOrder(id order.ID) error
 }

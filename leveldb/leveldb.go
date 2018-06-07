@@ -113,6 +113,23 @@ func (store *Store) Order(id order.ID) (order.Order, error) {
 	return order, nil
 }
 
+// Orders implements the orderbook.Storer interface.
+func (store *Store) Orders() ([]order.Order, error) {
+	ords := []order.Order{}
+	iter := store.orders.NewIterator(nil, nil)
+	defer iter.Release()
+	for iter.Next() {
+		data := iter.Value()
+
+		ord := order.Order{}
+		if err := json.Unmarshal(data, &ord); err != nil {
+			return ords, err
+		}
+		ords = append(ords, ord)
+	}
+	return ords, iter.Error()
+}
+
 // RemoveOrderFragment implements the orderbook.Storer interface.
 func (store *Store) RemoveOrderFragment(id order.ID) error {
 	return store.orderFragments.Delete(id[:], nil)
