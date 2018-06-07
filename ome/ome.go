@@ -145,7 +145,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 			default:
 			}
 			timeBeginSync := time.Now()
-			if wait := ome.syncRankerToMatcher(done, matches, errs); !wait {
+			if wait := ome.syncRanker(done, matches, errs); !wait {
 				continue
 			}
 			timeNextSync := timeBeginSync.Add(14 * time.Second)
@@ -204,32 +204,29 @@ func (ome *ome) syncOrderbookToRanker(done <-chan struct{}, errs chan<- error) {
 	}
 }
 
-func (ome *ome) syncRankerToMatcher(done <-chan struct{}, matches chan<- Computation, errs chan<- error) bool {
+func (ome *ome) syncRanker(done <-chan struct{}, matches chan<- Computation, errs chan<- error) bool {
+	buffer := [128]Computation{}
+	n := ome.ranker.Computations(buffer[:])
+
 	ome.ξMu.RLock()
 	ξ := ome.ξ.Hash
 	ome.ξMu.RUnlock()
 
-	buffer := [128]Computation{}
-	n := ome.ranker.Computations(buffer[:])
-
 	for i := 0; i < n; i++ {
-		logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v", buffer[i].Buy, buffer[i].Sell))
-		err := ome.matcher.Resolve(ξ, buffer[i], func(com Computation) {
-			if !com.Match {
-				return
-			}
-			select {
-			case <-done:
-			case matches <- com:
-			}
-		})
-		if err != nil {
-			select {
-			case <-done:
-				return false
-			case errs <- err:
-			}
+		switch buffer[i].State {
+		case ComputationStateNil:
+			ome.sendComputationToMatcher(ξ, buffer[i], done, matches, errs)
+
+		case ComputationStateMatched:
+			ome.sendComputationToConfirmer(buffer[i], done, matches)
+
+		case ComputationStateAccepted:
+			ome.sendComputationToSettler(ξ, buffer[i])
+
+		default:
+			logger.Error(fmt.Sprintf("unexpected state for computation buy = %v, sell = %v: %v", buffer[i].Buy, buffer[i].Sell, buffer[i].State))
 		}
+
 	}
 	return n != 128
 }
@@ -249,11 +246,7 @@ func (ome *ome) syncConfirmerToSettler(done <-chan struct{}, matches <-chan Comp
 			ome.ξMu.RLock()
 			ξ := ome.ξ.Hash
 			ome.ξMu.RUnlock()
-
-			logger.Compute(logger.LevelDebug, fmt.Sprintf("settling buy = %v, sell = %v", confirmation.Buy, confirmation.Sell))
-			if err := ome.settler.Settle(ξ, confirmation); err != nil {
-				logger.Network(logger.LevelError, fmt.Sprintf("cannot settle: %v", err))
-			}
+			ome.sendComputationToSettler(ξ, confirmation)
 
 		case err, ok := <-confirmationErrs:
 			if !ok {
@@ -264,5 +257,35 @@ func (ome *ome) syncConfirmerToSettler(done <-chan struct{}, matches <-chan Comp
 			case errs <- err:
 			}
 		}
+	}
+}
+
+func (ome *ome) sendComputationToMatcher(ξ [32]byte, com Computation, done <-chan struct{}, matches chan<- Computation, errs chan<- error) {
+	logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v", com.Buy, com.Sell))
+	err := ome.matcher.Resolve(ξ, com, func(com Computation) {
+		if !com.Match {
+			return
+		}
+		ome.sendComputationToConfirmer(com, done, matches)
+	})
+	if err != nil {
+		select {
+		case <-done:
+		case errs <- err:
+		}
+	}
+}
+
+func (ome *ome) sendComputationToConfirmer(com Computation, done <-chan struct{}, matches chan<- Computation) {
+	select {
+	case <-done:
+	case matches <- com:
+	}
+}
+
+func (ome *ome) sendComputationToSettler(ξ [32]byte, com Computation) {
+	logger.Compute(logger.LevelDebug, fmt.Sprintf("settling buy = %v, sell = %v", com.Buy, com.Sell))
+	if err := ome.settler.Settle(ξ, com); err != nil {
+		logger.Network(logger.LevelError, fmt.Sprintf("cannot settle: %v", err))
 	}
 }
