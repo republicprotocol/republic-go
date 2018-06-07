@@ -16,7 +16,7 @@ import (
 
 // ComputationBacklogExpiry defines how long the Ome will wait for an
 // order.Fragment before rejecting a Computation.
-const ComputationBacklogExpiry = time.Minute
+const ComputationBacklogExpiry = 5 * time.Minute
 
 // ComputationID is used to distinguish between different combinations of
 // orders that are being matched against each other.
