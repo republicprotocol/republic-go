@@ -2,7 +2,6 @@ package ome
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -286,28 +285,20 @@ func (matcher *matcher) resolveTokens(networkID smpc.NetworkID, buyFragment, sel
 	}
 }
 
-func isGreaterThanOrEqualToZero(value uint64, com Computation, stages ...string) bool {
-	stage := ""
-	if stages != nil && len(stages) > 0 {
-		stage = "[" + strings.Join(stages, " => ") + "]"
-	}
+func isGreaterThanOrEqualToZero(value uint64, com Computation, stage string) bool {
 	if value > shamir.Prime/2 {
-		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v: mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v => mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
 		return false
 	}
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v: buy = %v, sell = %v", stage, com.Buy, com.Sell))
+	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
 	return true
 }
 
-func isEqualToZero(value uint64, com Computation, stages ...string) bool {
-	stage := ""
-	if stages != nil && len(stages) > 0 {
-		stage = "[" + strings.Join(stages, " => ") + "]"
-	}
+func isEqualToZero(value uint64, com Computation, stage string) bool {
 	if value != 0 && value != shamir.Prime {
-		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v: mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
-		return true
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v => mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
+		return false
 	}
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v: buy = %v, sell = %v", stage, com.Buy, com.Sell))
+	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
 	return true
 }
