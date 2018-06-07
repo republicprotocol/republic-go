@@ -49,7 +49,7 @@ var (
 	RepublicTokenAddressOnKovan    = common.HexToAddress("0xDB5a619B65feDD4171fB05671C62d188a1650496")
 	DarknodeRegistryAddressOnKovan = common.HexToAddress("0x693574a651641939d0E7A54AdbE99FAE537eFeB8")
 	RenLedgerAddressOnKovan        = common.HexToAddress("0xEc78FdA0D84164a0BaEF48F622163213340e1d2d")
-	RenExAccountsAddressOnKovan    = common.HexToAddress("0x4363fd764746f45028f0290Ddfd35cd572C70682")
+	RenExAccountsAddressOnKovan    = common.HexToAddress("0xdf45c7076d02c7fcbbbbb7b59117d75441d6a253")
 )
 
 // Config defines the different settings for connecting the Darknode
