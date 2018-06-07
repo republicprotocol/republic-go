@@ -105,7 +105,7 @@ func main() {
 	smpcer := smpc.NewSmpcer(swarmer, streamer)
 
 	// New OME
-	ranker := ome.NewRanker(1, 0)
+	ranker := ome.NewRanker(1, 0, &store)
 	matcher := ome.NewMatcher(&store, smpcer)
 	confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
 	settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
