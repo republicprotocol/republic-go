@@ -107,8 +107,8 @@ func NewIngress(darkpool cal.Darkpool, renLedger cal.RenLedger, swarmer swarm.Sw
 		pods:   map[[32]byte]cal.Pod{},
 		epoch:  cal.Epoch{},
 
-		openOrderQueue:          make(chan OpenOrderRequest),
-		openOrderFragmentsQueue: make(chan OpenOrderRequest),
+		openOrderQueue:          make(chan OpenOrderRequest, 1024),
+		openOrderFragmentsQueue: make(chan OpenOrderRequest, 1024),
 	}
 	return ingress
 }
@@ -121,12 +121,13 @@ func (ingress *ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFra
 		return err
 	}
 
-	ingress.openOrderQueue <- OpenOrderRequest{
-		ID:                   orderID,
-		signature:            signature,
-		orderFragmentMapping: orderFragmentMapping,
-	}
-
+	go func() {
+		ingress.openOrderQueue <- OpenOrderRequest{
+			ID:                   orderID,
+			signature:            signature,
+			orderFragmentMapping: orderFragmentMapping,
+		}
+	}()
 	return nil
 }
 
