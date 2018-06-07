@@ -157,6 +157,7 @@ func (confirmer *confirmer) checkBuyOrdersForConfirmationFinality(done <-chan st
 
 		com := NewComputation(buy, sell)
 		com.State = ComputationStateAccepted
+		com.Timestamp = time.Now()
 
 		select {
 		case <-done:
@@ -193,6 +194,7 @@ func (confirmer *confirmer) checkSellOrdersForConfirmationFinality(done <-chan s
 
 		com := NewComputation(buy, sell)
 		com.State = ComputationStateAccepted
+		com.Timestamp = time.Now()
 
 		select {
 		case <-done:
