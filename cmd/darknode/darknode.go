@@ -33,6 +33,7 @@ import (
 	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/smpc"
+	"github.com/republicprotocol/republic-go/status"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 )
@@ -124,7 +125,8 @@ func main() {
 		portParam := "18516"
 		log.Printf("starting status server at %v:%v...", bindParam, portParam)
 
-		statusAdapter := adapter.NewStatusAdapter()
+		statusProvider := status.NewProvider()
+		statusAdapter := adapter.NewStatusAdapter(statusProvider)
 		if err := netHttp.ListenAndServe(fmt.Sprintf("%v:%v", bindParam, portParam), http.NewStatusServer(statusAdapter)); err != nil {
 			log.Fatalf("error listening and serving: %v", err)
 		}
