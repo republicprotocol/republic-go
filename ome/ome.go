@@ -5,10 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/republicprotocol/republic-go/logger"
-
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/smpc"

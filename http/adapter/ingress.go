@@ -10,11 +10,29 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+// ErrInvalidSignatureLength is returned when a signature does not have the
+// required length of 65 bytes.
 var ErrInvalidSignatureLength = errors.New("invalid signature length")
+
+// ErrInvalidOrderIDLength is returned when an order ID does not have the
+// required length of 32 bytes.
 var ErrInvalidOrderIDLength = errors.New("invalid order id length")
+
+// ErrInvalidOrderFragmentIDLength is returned when an order fragment ID does
+// not have the required length of 32 bytes.
 var ErrInvalidOrderFragmentIDLength = errors.New("invalid order fragment id length")
+
+// ErrInvalidEncryptedCoExpShareLength is returned when an encrypted co-exp
+// share does not contain exactly 2 encrypted values, an encrypted co and an
+// encrypted exp.
 var ErrInvalidEncryptedCoExpShareLength = errors.New("invalid encrypted co-exp share length")
-var ErrInvalidPoolHashLength = errors.New("invalid pool hash length")
+
+// ErrInvalidPodHashLength is returned when a pod hash does not have the
+// required length of 32 bytes.
+var ErrInvalidPodHashLength = errors.New("invalid pod hash length")
+
+// ErrEmptyOrderFragmentMapping is returned when an OrderFragmentMapping does
+// not store any OrderFragments.
 var ErrEmptyOrderFragmentMapping = errors.New("empty order fragment mapping")
 
 type IngressAdapter struct {
@@ -211,7 +229,7 @@ func UnmarshalOrderFragmentMapping(orderFragmentMappingIn OrderFragmentMapping) 
 		}
 		hash := [32]byte{}
 		if len(hashBytes) != 32 {
-			return orderID, orderFragmentMapping, ErrInvalidPoolHashLength
+			return orderID, orderFragmentMapping, ErrInvalidPodHashLength
 		}
 		copy(hash[:], hashBytes)
 		orderFragmentMapping[hash] = make([]ingress.OrderFragment, 0, len(orderFragmentsIn))
