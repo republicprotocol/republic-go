@@ -1,6 +1,8 @@
 package leveldb
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"path"
 
@@ -17,6 +19,7 @@ type Store struct {
 	orderFragments *leveldb.DB
 	orders         *leveldb.DB
 	computations   *leveldb.DB
+	sync           *leveldb.DB
 }
 
 // NewStore returns a LevelDB implemntation of an orderbooker.Storer. It stores
@@ -34,11 +37,16 @@ func NewStore(dir string) (Store, error) {
 	if err != nil {
 		return Store{}, err
 	}
+	sync, err := leveldb.OpenFile(path.Join(dir, "sync"), nil)
+	if err != nil {
+		return Store{}, err
+	}
 
 	return Store{
 		orderFragments: orderFragments,
 		orders:         orders,
 		computations:   computations,
+		sync:           sync,
 	}, nil
 }
 
@@ -136,4 +144,44 @@ func (store *Store) Computation(id ome.ComputationID) (ome.Computation, error) {
 		return computation, err
 	}
 	return computation, nil
+}
+
+// InsertBuyPointer implements the orderbook.SyncStorer interface.
+func (store *Store) InsertBuyPointer(pointer orderbook.SyncPointer) error {
+	data := [4]byte{}
+	binary.PutVarint(data[:], int64(pointer))
+	return store.sync.Put([]byte("buy"), data[:], nil)
+}
+
+// InsertSellPointer implements the orderbook.SyncStorer interface.
+func (store *Store) InsertSellPointer(pointer orderbook.SyncPointer) error {
+	data := [4]byte{}
+	binary.PutVarint(data[:], int64(pointer))
+	return store.sync.Put([]byte("sell"), data[:], nil)
+}
+
+// BuyPointer implements the orderbook.SyncStorer interface.
+func (store *Store) BuyPointer() (orderbook.SyncPointer, error) {
+	data, err := store.computations.Get([]byte("buy"), nil)
+	if err != nil {
+		return 0, err
+	}
+	pointer, err := binary.ReadVarint(bytes.NewBuffer(data))
+	if err != nil {
+		return 0, err
+	}
+	return orderbook.SyncPointer(pointer), nil
+}
+
+// SellPointer implements the orderbook.SyncStorer interface.
+func (store *Store) SellPointer() (orderbook.SyncPointer, error) {
+	data, err := store.computations.Get([]byte("sell"), nil)
+	if err != nil {
+		return 0, err
+	}
+	pointer, err := binary.ReadVarint(bytes.NewBuffer(data))
+	if err != nil {
+		return 0, err
+	}
+	return orderbook.SyncPointer(pointer), nil
 }
