@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/shamir"
@@ -228,6 +229,7 @@ func (joiner *Joiner) insertJoin(join Join, callback Callback, overrideCallback 
 	}
 
 	if maybeCallback != nil {
+		log.Println("calling the callback")
 		maybeCallback(join.ID, maybeValues[:maybeValuesLen])
 		return nil
 	}

@@ -70,7 +70,7 @@ func (pool *ConnPool) Dial(ctx context.Context, multiAddress identity.MultiAddre
 	}
 
 	// Create the new connection and store it in the cache
-	// FIXME: The context of the connection should be the combined cnotext of
+	// FIXME: The context of the connection should be the combined context of
 	// all users... somehow...
 	conn, err := Dial(context.Background(), multiAddress)
 	if err != nil {
