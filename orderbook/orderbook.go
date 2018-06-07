@@ -10,10 +10,6 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
-type Listener interface {
-	OnOrderFragmentReceived(order.Fragment)
-}
-
 type Client interface {
 
 	// OpenOrder by sending an order.EncryptedFragment to an
@@ -43,18 +39,16 @@ type Orderbook interface {
 type orderbook struct {
 	crypto.RsaKey
 
-	syncer   Syncer
-	storer   Storer
-	listener Listener
+	syncer Syncer
+	storer Storer
 }
 
-func NewOrderbook(key crypto.RsaKey, syncer Syncer, storer Storer, listener Listener) Orderbook {
+func NewOrderbook(key crypto.RsaKey, syncer Syncer, storer Storer) Orderbook {
 	return &orderbook{
 		RsaKey: key,
 
-		syncer:   syncer,
-		storer:   storer,
-		listener: listener,
+		syncer: syncer,
+		storer: storer,
 	}
 }
 
@@ -69,7 +63,6 @@ func (book *orderbook) OpenOrder(ctx context.Context, orderFragment order.Encryp
 		logger.SellOrderReceived(logger.LevelDebugLow, base64.StdEncoding.EncodeToString(fragment.OrderID[:8]), base64.StdEncoding.EncodeToString(fragment.ID[:8]))
 	}
 
-	book.listener.OnOrderFragmentReceived(fragment)
 	return book.storer.InsertOrderFragment(fragment)
 }
 
