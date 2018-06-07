@@ -1,7 +1,6 @@
 package ome
 
 import (
-	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -90,7 +89,11 @@ func (matcher *matcher) resolvePriceExp(networkID smpc.NetworkID, buyFragment, s
 			matcher.resolvePriceCo(networkID, buyFragment, sellFragment, com, callback)
 			return
 		}
-		com.IsMatch = false
+		com.State = ComputationStateMismatched
+		com.Match = false
+		if err := matcher.storer.InsertComputation(com); err != nil {
+			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
+		}
 		callback(com)
 	})
 	if err != nil {
@@ -116,7 +119,11 @@ func (matcher *matcher) resolvePriceCo(networkID smpc.NetworkID, buyFragment, se
 			matcher.resolveBuyVolumeExp(networkID, buyFragment, sellFragment, com, callback)
 			return
 		}
-		com.IsMatch = false
+		com.State = ComputationStateMismatched
+		com.Match = false
+		if err := matcher.storer.InsertComputation(com); err != nil {
+			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
+		}
 		callback(com)
 	})
 	if err != nil {
@@ -142,7 +149,11 @@ func (matcher *matcher) resolveBuyVolumeExp(networkID smpc.NetworkID, buyFragmen
 			matcher.resolveBuyVolumeCo(networkID, buyFragment, sellFragment, com, callback)
 			return
 		}
-		com.IsMatch = false
+		com.State = ComputationStateMismatched
+		com.Match = false
+		if err := matcher.storer.InsertComputation(com); err != nil {
+			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
+		}
 		callback(com)
 	})
 	if err != nil {
@@ -168,7 +179,11 @@ func (matcher *matcher) resolveBuyVolumeCo(networkID smpc.NetworkID, buyFragment
 			matcher.resolveSellVolumeExp(networkID, buyFragment, sellFragment, com, callback)
 			return
 		}
-		com.IsMatch = false
+		com.State = ComputationStateMismatched
+		com.Match = false
+		if err := matcher.storer.InsertComputation(com); err != nil {
+			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
+		}
 		callback(com)
 	})
 	if err != nil {
@@ -194,7 +209,11 @@ func (matcher *matcher) resolveSellVolumeExp(networkID smpc.NetworkID, buyFragme
 			matcher.resolveSellVolumeCo(networkID, sellFragment, sellFragment, com, callback)
 			return
 		}
-		com.IsMatch = false
+		com.State = ComputationStateMismatched
+		com.Match = false
+		if err := matcher.storer.InsertComputation(com); err != nil {
+			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
+		}
 		callback(com)
 	})
 	if err != nil {
@@ -220,7 +239,11 @@ func (matcher *matcher) resolveSellVolumeCo(networkID smpc.NetworkID, buyFragmen
 			matcher.resolveTokens(networkID, sellFragment, sellFragment, com, callback)
 			return
 		}
-		com.IsMatch = false
+		com.State = ComputationStateMismatched
+		com.Match = false
+		if err := matcher.storer.InsertComputation(com); err != nil {
+			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
+		}
 		callback(com)
 	})
 	if err != nil {
@@ -243,11 +266,19 @@ func (matcher *matcher) resolveTokens(networkID smpc.NetworkID, buyFragment, sel
 			return
 		}
 		if isEqualToZero(values[0], com, "tokens") {
-			com.IsMatch = true
+			com.State = ComputationStateMatched
+			com.Match = true
+			if err := matcher.storer.InsertComputation(com); err != nil {
+				logger.Compute(logger.LevelError, fmt.Sprintf("cannot store matched computation buy = %v, sell = %v", com.Buy, com.Sell))
+			}
 			callback(com)
 			return
 		}
-		com.IsMatch = false
+		com.State = ComputationStateMismatched
+		com.Match = false
+		if err := matcher.storer.InsertComputation(com); err != nil {
+			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
+		}
 		callback(com)
 	})
 	if err != nil {
@@ -261,10 +292,10 @@ func isGreaterThanOrEqualToZero(value uint64, com Computation, stages ...string)
 		stage = "[" + strings.Join(stages, " => ") + "]"
 	}
 	if value > shamir.Prime/2 {
-		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v: mismatch buy = %v, sell = %v", stage, base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v: mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
 		return false
 	}
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v: buy = %v, sell = %v", stage, base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
+	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v: buy = %v, sell = %v", stage, com.Buy, com.Sell))
 	return true
 }
 
@@ -274,9 +305,9 @@ func isEqualToZero(value uint64, com Computation, stages ...string) bool {
 		stage = "[" + strings.Join(stages, " => ") + "]"
 	}
 	if value != 0 && value != shamir.Prime {
-		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v: mismatch buy = %v, sell = %v", stage, base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v: mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
 		return true
 	}
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v: buy = %v, sell = %v", stage, base64.StdEncoding.EncodeToString(com.Buy[:8]), base64.StdEncoding.EncodeToString(com.Sell[:8])))
+	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v: buy = %v, sell = %v", stage, com.Buy, com.Sell))
 	return true
 }

@@ -26,22 +26,28 @@ type ComputationState int
 const (
 	ComputationStateNil = iota
 	ComputationStateMatched
+	ComputationStateMismatched
 	ComputationStateAccepted
 	ComputationStateRejected
 	ComputationStateSettled
 )
+
+// A Priority is an unsigned integer representing logical time priority. The
+// lower the number, the higher the priority.
+type Priority uint64
 
 // Computations is an alias type.
 type Computations []Computation
 
 // A Computation is a combination of a buy order.Order and a sell order.Order.
 type Computation struct {
-	ID    ComputationID
-	State ComputationState
+	ID       ComputationID
+	State    ComputationState
+	Priority Priority
+	Match    bool
 
-	Buy     order.ID
-	Sell    order.ID
-	IsMatch bool
+	Buy  order.ID
+	Sell order.ID
 }
 
 // NewComputation returns a pending Computation between a buy order.Order and a
@@ -209,6 +215,9 @@ func (ome *ome) syncRankerToMatcher(done <-chan struct{}, matches chan<- Computa
 	for i := 0; i < n; i++ {
 		logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v", buffer[i].Buy, buffer[i].Sell))
 		err := ome.matcher.Resolve(ξ, buffer[i], func(com Computation) {
+			if !com.Match {
+				return
+			}
 			select {
 			case <-done:
 			case matches <- com:
