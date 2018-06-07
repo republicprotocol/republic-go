@@ -234,7 +234,7 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 		} else {
 			delete(confirmer.confirmingSellOrders, ord)
 		}
-		return order.ID{}, nil
+		return order.ID{}, ErrOrderNotConfirmed
 	}
 
 	match, err := confirmer.renLedger.OrderMatch(ord)
