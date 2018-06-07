@@ -1,9 +1,15 @@
 package testutils
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 
+	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/cmd/darknode/config"
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -49,11 +55,65 @@ func RandomCoExp() order.CoExp {
 	}
 }
 
-func LessRandomCoExp(coexp order.CoExp) order.CoExp {
-	co := uint64(rand.Intn(int(coexp.Co)) + 1)
-	exp := uint64(rand.Intn(int(coexp.Exp + 1)))
+// LessRandomCoExp will generate a random CoExp that is no more than the given CoExp.
+func LessRandomCoExp(coExp order.CoExp) order.CoExp {
+	co := uint64(rand.Intn(int(coExp.Co)) + 1)
+	exp := uint64(rand.Intn(int(coExp.Exp + 1)))
 	return order.CoExp{
 		Co:  co,
 		Exp: exp,
 	}
+}
+
+// RandomConfigs will generate n configs and b of them are bootstrap node.
+func RandomConfigs(n int, b int) ([]config.Config, error) {
+	configs := []config.Config{}
+
+	for i := 0; i < n; i++ {
+		keystore, err := crypto.RandomKeystore()
+		if err != nil {
+			return configs, err
+		}
+
+		addr := identity.Address(keystore.Address())
+		configs = append(configs, config.Config{
+			Keystore:                keystore,
+			Host:                    "0.0.0.0",
+			Port:                    fmt.Sprintf("%d", 18514+i),
+			Address:                 addr,
+			BootstrapMultiAddresses: identity.MultiAddresses{},
+			Logs: logger.Options{
+				Plugins: []logger.PluginOptions{
+					{
+						File: &logger.FilePluginOptions{
+							Path: fmt.Sprintf("%v.out", addr),
+						},
+					},
+				},
+			},
+			Ethereum: ethereum.Config{
+				Network:                 ethereum.NetworkGanache,
+				URI:                     "http://localhost:8545",
+				RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
+				DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
+				RenLedgerAddress:        ethereum.RenLedgerAddressOnGanache.String(),
+				RenExAccountsAddress:    ethereum.RenExAccountsAddressOnGanache.String(),
+			},
+		})
+	}
+
+	for i := 0; i < n; i++ {
+		for j := 0; j < b; j++ {
+			if i == j {
+				continue
+			}
+			bootstrapMultiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", configs[j].Host, configs[j].Port, configs[j].Address))
+			if err != nil {
+				return configs, err
+			}
+			configs[i].BootstrapMultiAddresses = append(configs[i].BootstrapMultiAddresses, bootstrapMultiAddr)
+		}
+	}
+
+	return configs, nil
 }
