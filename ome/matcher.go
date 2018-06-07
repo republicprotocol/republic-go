@@ -36,7 +36,7 @@ type Matcher interface {
 	// are a match. The ξ hash is used to define the ξ in which this
 	// Computation exists, and the MatchCallback is called when a result has
 	// be determined.
-	Resolve(ξ [32]byte, com Computation, callback MatchCallback) error
+	Resolve(ξ [32]byte, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback)
 }
 
 type matcher struct {
@@ -56,18 +56,8 @@ func NewMatcher(storer Storer, smpcer smpc.Smpcer) Matcher {
 }
 
 // Resolve implements the Matcher interface.
-func (matcher *matcher) Resolve(ξ [32]byte, com Computation, callback MatchCallback) error {
-	buyFragment, err := matcher.storer.OrderFragment(com.Buy)
-	if err != nil {
-		return err
-	}
-	sellFragment, err := matcher.storer.OrderFragment(com.Sell)
-	if err != nil {
-		return err
-	}
-
+func (matcher *matcher) Resolve(ξ [32]byte, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback) {
 	matcher.resolvePriceExp(smpc.NetworkID(ξ), buyFragment, sellFragment, com, callback)
-	return nil
 }
 
 func (matcher *matcher) resolvePriceExp(networkID smpc.NetworkID, buyFragment, sellFragment order.Fragment, com Computation, callback MatchCallback) {
@@ -288,7 +278,7 @@ func (matcher *matcher) resolveTokens(networkID smpc.NetworkID, buyFragment, sel
 func isGreaterThanOrEqualToZero(value uint64, com Computation, stage string) bool {
 	if value > shamir.Prime/2 {
 		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v => mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
-		return false
+		return true // FIXME: Stop assuming everything is a match
 	}
 	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
 	return true
@@ -297,7 +287,7 @@ func isGreaterThanOrEqualToZero(value uint64, com Computation, stage string) boo
 func isEqualToZero(value uint64, com Computation, stage string) bool {
 	if value != 0 && value != shamir.Prime {
 		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v => mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
-		return false
+		return true // FIXME: Stop assuming everything is a match
 	}
 	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
 	return true
