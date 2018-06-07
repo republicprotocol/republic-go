@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"github.com/republicprotocol/republic-go/cal"
-
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -85,8 +84,9 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 
 		sell := order.NewOrder(sellFragment.OrderType, sellFragment.OrderParity, sellFragment.OrderExpiry, order.Tokens(values[7]), order.NewCoExp(values[8], values[9]), order.NewCoExp(values[10], values[11]), order.NewCoExp(values[12], values[13]), 0)
 		sell.ID = sellFragment.OrderID
+		log.Printf("sell order reconstructed from smpcer: %v, %d, %d, %d, %d ,%d, %d, %d", base64.StdEncoding.EncodeToString(sell.ID[:]), values[7], values[8], values[9], values[10], values[11], values[12], values[13])
+
 		settler.settleOrderMatch(com, buy, sell)
-		log.Printf("sell order reconstructed from smpcer: %v, %d, %d, %d, %d ,%d, %d, %d", base64.StdEncoding.EncodeToString(buy.ID[:]), values[7], values[8], values[9], values[10], values[11], values[12], values[13])
 
 	})
 	if err != nil {
@@ -97,12 +97,12 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order) {
 	if err := settler.accounts.Settle(buy, sell); err != nil {
 		// FIXME: use logger.
-		log.Println("cannot settle buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buy.ID[:8]), base64.StdEncoding.EncodeToString(sell.ID[:8]), err)
+		log.Printf("cannot settle buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buy.ID[:8]), base64.StdEncoding.EncodeToString(sell.ID[:8]), err)
 	}
 
 	com.State = ComputationStateSettled
 	if err := settler.storer.InsertComputation(com); err != nil {
 		// FIXME: use logger.
-		log.Println("cannot store settled buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buy.ID[:8]), base64.StdEncoding.EncodeToString(sell.ID[:8]), err)
+		log.Printf("cannot store settled buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buy.ID[:8]), base64.StdEncoding.EncodeToString(sell.ID[:8]), err)
 	}
 }
