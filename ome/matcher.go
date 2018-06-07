@@ -278,7 +278,7 @@ func (matcher *matcher) resolveTokens(networkID smpc.NetworkID, buyFragment, sel
 func isGreaterThanOrEqualToZero(value uint64, com Computation, stage string) bool {
 	if value > shamir.Prime/2 {
 		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v => mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
-		return false
+		return true // FIXME: Stop assuming everything is a match
 	}
 	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
 	return true
@@ -287,7 +287,7 @@ func isGreaterThanOrEqualToZero(value uint64, com Computation, stage string) boo
 func isEqualToZero(value uint64, com Computation, stage string) bool {
 	if value != 0 && value != shamir.Prime {
 		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v => mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
-		return false
+		return true // FIXME: Stop assuming everything is a match
 	}
 	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
 	return true
