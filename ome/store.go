@@ -24,4 +24,7 @@ type Storer interface {
 	// Returns ErrComputationNotFound if the Computation does not exist in the
 	// Storer.
 	Computation(ComputationID) (Computation, error)
+
+	// Computations returns all Computations stored in the Storer.
+	Computations() (Computations, error)
 }

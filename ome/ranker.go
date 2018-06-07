@@ -171,7 +171,15 @@ func (ranker *ranker) Computations(buffer Computations) int {
 }
 
 func (ranker *ranker) insertStoredComputations() {
-	// FIXME: Load all stored computations and insert them
+	coms, err := ranker.storer.Computations()
+	if err != nil {
+		logger.Error(fmt.Sprintf("cannot load existing computations into ranker: %v", err))
+	}
+	for _, com := range coms {
+		if com.State == ComputationStateNil {
+			ranker.insertComputation(com)
+		}
+	}
 }
 
 func (ranker *ranker) insertComputation(com Computation) {

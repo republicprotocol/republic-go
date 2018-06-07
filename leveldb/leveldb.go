@@ -123,6 +123,7 @@ func (store *Store) RemoveOrder(id order.ID) error {
 	return store.orders.Delete(id[:], nil)
 }
 
+// InsertComputation implements the ome.Storer interface.
 func (store *Store) InsertComputation(computation ome.Computation) error {
 	data, err := json.Marshal(computation)
 	if err != nil {
@@ -131,6 +132,7 @@ func (store *Store) InsertComputation(computation ome.Computation) error {
 	return store.computations.Put(computation.ID[:], data, nil)
 }
 
+// Computation implements the ome.Storer interface.
 func (store *Store) Computation(id ome.ComputationID) (ome.Computation, error) {
 	computation := ome.Computation{}
 	data, err := store.computations.Get(id[:], nil)
@@ -144,6 +146,23 @@ func (store *Store) Computation(id ome.ComputationID) (ome.Computation, error) {
 		return computation, err
 	}
 	return computation, nil
+}
+
+// Computations implements the ome.Storer interface.
+func (store *Store) Computations() (ome.Computations, error) {
+	coms := ome.Computations{}
+	iter := store.computations.NewIterator(nil, nil)
+	defer iter.Release()
+	for iter.Next() {
+		data := iter.Value()
+
+		com := ome.Computation{}
+		if err := json.Unmarshal(data, &com); err != nil {
+			return coms, err
+		}
+		coms = append(coms, com)
+	}
+	return coms, iter.Error()
 }
 
 // InsertBuyPointer implements the orderbook.SyncStorer interface.
