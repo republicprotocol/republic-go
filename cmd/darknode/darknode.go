@@ -19,8 +19,8 @@ import (
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
 	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
@@ -29,6 +29,7 @@ import (
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
@@ -43,7 +44,7 @@ func main() {
 	flag.Parse()
 
 	// Load configuration file
-	config, err := darknode.NewConfigFromJSONFile(*configParam)
+	config, err := config.NewConfigFromJSONFile(*configParam)
 	if err != nil {
 		log.Fatalf("cannot load config: %v", err)
 	}
@@ -62,14 +63,14 @@ func main() {
 	log.Printf("address %v", multiAddr)
 
 	// Get ethereum bindings
-	auth, darkPool, darkPoolAccounts, darkPoolFees, renLedger, err := getEthereumBindings(config.Keystore, config.Ethereum)
+	auth, darkPool, darkPoolAccounts, _, renLedger, err := getEthereumBindings(config.Keystore, config.Ethereum)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
 	log.Printf("ethereum %v", auth.From.Hex())
 
 	// New crypter for signing and verification
-	crypter := darknode.NewCrypter(config.Keystore, darkPool, 256, time.Minute)
+	crypter := registry.NewCrypter(config.Keystore, darkPool, 256, time.Minute)
 
 	// New database for persistent storage
 	store, err := leveldb.NewStore(*dataParam)
@@ -111,10 +112,6 @@ func main() {
 	settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
 	ome := ome.NewOme(ranker, matcher, confirmer, settler, orderbook, smpcer)
 
-	// New Darknode
-	darknode := darknode.NewDarknode(config.Address, darkPool, darkPoolAccounts, darkPoolFees)
-	darknode.SetEpochListener(ome)
-
 	// Start the secure order matching engine
 	go func() {
 		// Wait for the gRPC server to boot
@@ -136,16 +133,36 @@ func main() {
 			// Synchronizing the OME
 			errs := ome.Run(done)
 			for err := range errs {
-				log.Printf("error in running the ome: %v", err)
+				logger.Error(fmt.Sprintf("error in running the ome: %v", err))
 			}
 		}, func() {
-			// Synchronizing the Darknode
+			// Get the starting ξ
+			ξ, err := darkPool.Epoch()
+			if err != nil {
+				log.Fatalf("cannot sync epoch: %v", err)
+			}
+			ome.OnChangeEpoch(ξ)
+
+			// Periodically sync the next ξ
 			for {
-				log.Println("sync ξ")
-				if err := darknode.Sync(); err != nil {
-					log.Printf("cannot sync darknode: %v", err)
+				time.Sleep(14 * time.Second)
+
+				// Get the epoch
+				nextξ, err := darkPool.Epoch()
+				if err != nil {
+					logger.Error(fmt.Sprintf("cannot sync epoch: %v", err))
+					continue
 				}
-				time.Sleep(time.Second * 14)
+
+				// Check whether or not ξ has changed
+				if ξ.Equal(&nextξ) {
+					continue
+				}
+				ξ = nextξ
+				logger.Epoch(ξ.Hash)
+
+				// Notify the Ome
+				ome.OnChangeEpoch(ξ)
 			}
 		})
 	}()

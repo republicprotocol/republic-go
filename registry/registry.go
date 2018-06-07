@@ -1,4 +1,4 @@
-package darknode
+package registry
 
 import (
 	"crypto/rsa"
