@@ -24,8 +24,8 @@ var _ = Describe("Confirmer", func() {
 	BeforeEach(func() {
 		depth, pollInterval := uint(0), time.Second
 		renLedger = newMockRenLedger()
-		storer = NewMockStorer()
-		confirmer = NewConfirmer(depth, pollInterval, renLedger, storer)
+		storer = newMockStorer()
+		confirmer = NewConfirmer(storer, renLedger, pollInterval, depth)
 	})
 
 	It("should be able to confirm order on the ren ledger", func(d Done) {
@@ -61,7 +61,7 @@ var _ = Describe("Confirmer", func() {
 			time.Sleep(5 * time.Second)
 		}()
 
-		confirmedMatches, errs := confirmer.ConfirmOrderMatches(done, orderMatches)
+		confirmedMatches, errs := confirmer.Confirm(done, orderMatches)
 
 		go func() {
 			defer GinkgoRecover()

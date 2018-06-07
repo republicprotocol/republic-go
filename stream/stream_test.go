@@ -9,8 +9,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/stream"
+	"github.com/republicprotocol/republic-go/testutils"
 
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
 
@@ -27,11 +27,10 @@ var _ = Describe("Streaming", func() {
 			servers := [numberOfNodes]mockServer{}
 			streamers := [numberOfNodes]Streamer{}
 
-			for i := 0; i < numberOfNodes; i++ {
-				ecdsaKey, err := crypto.RandomEcdsaKey()
-				Expect(err).ShouldNot(HaveOccurred())
+			var err error
 
-				multiAddrs[i], err = identity.Address(ecdsaKey.Address()).MultiAddress()
+			for i := 0; i < numberOfNodes; i++ {
+				multiAddrs[i], err = testutils.CreateMultiaddress()
 				Expect(err).ShouldNot(HaveOccurred())
 
 				clients[i] = newMockClient()
@@ -67,11 +66,10 @@ var _ = Describe("Streaming", func() {
 			servers := [numberOfNodes]mockServer{}
 			streamers := [numberOfNodes]Streamer{}
 
-			for i := 0; i < numberOfNodes; i++ {
-				ecdsaKey, err := crypto.RandomEcdsaKey()
-				Expect(err).ShouldNot(HaveOccurred())
+			var err error
 
-				multiAddrs[i], err = identity.Address(ecdsaKey.Address()).MultiAddress()
+			for i := 0; i < numberOfNodes; i++ {
+				multiAddrs[i], err = testutils.CreateMultiaddress()
 				Expect(err).ShouldNot(HaveOccurred())
 
 				clients[i] = newMockClient()
@@ -106,11 +104,10 @@ var _ = Describe("Streaming", func() {
 			servers := [numberOfNodes]mockServer{}
 			streamers := [numberOfNodes]Streamer{}
 
-			for i := 0; i < numberOfNodes; i++ {
-				ecdsaKey, err := crypto.RandomEcdsaKey()
-				Expect(err).ShouldNot(HaveOccurred())
+			var err error
 
-				multiAddrs[i], err = identity.Address(ecdsaKey.Address()).MultiAddress()
+			for i := 0; i < numberOfNodes; i++ {
+				multiAddrs[i], err = testutils.CreateMultiaddress()
 				Expect(err).ShouldNot(HaveOccurred())
 
 				clients[i] = newMockClient()

@@ -66,7 +66,8 @@ var _ = Describe("OME Ranker", func() {
 		})
 
 		It("should not return computations that are not meant for the ranker", func() {
-			ranker := NewRanker(numberOfRankers, 0)
+			storer := newMockStorer()
+			ranker := NewRanker(numberOfRankers, 0, storer)
 
 			// (1+1) => 2 mod 5 != 0
 			insertSellOrder([32]byte{byte(1)}, Priority(numberOfRankers+1), ranker)
@@ -81,7 +82,7 @@ var _ = Describe("OME Ranker", func() {
 
 func insertSellOrder(orderID order.ID, priority Priority, ranker Ranker) {
 	sellOrder := PriorityOrder{
-		ID:       orderID,
+		Order:    orderID,
 		Priority: priority,
 	}
 
@@ -91,7 +92,7 @@ func insertSellOrder(orderID order.ID, priority Priority, ranker Ranker) {
 
 func insertBuyOrder(orderID order.ID, priority Priority, ranker Ranker) {
 	buyOrder := PriorityOrder{
-		ID:       orderID,
+		Order:    orderID,
 		Priority: priority,
 	}
 
@@ -100,7 +101,8 @@ func insertBuyOrder(orderID order.ID, priority Priority, ranker Ranker) {
 }
 
 func sendCorrectOrdersToRanker(numberOfRankers, numberOfOrderPairs int) (Ranker, Computations) {
-	ranker := NewRanker(numberOfRankers, 0)
+	storer := newMockStorer()
+	ranker := NewRanker(numberOfRankers, 0, storer)
 
 	for i := 0; i < numberOfOrderPairs; i++ {
 		insertBuyOrder([32]byte{byte(i)}, Priority(i), ranker)
