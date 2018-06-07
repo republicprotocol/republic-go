@@ -312,6 +312,7 @@ func (ome *ome) syncOrderFragmentBacklog(ξ [32]byte, done <-chan struct{}, matc
 		delete(ome.computationBacklog, com.ID)
 		// Check for expiry of the Computation
 		if com.Timestamp.Add(ComputationBacklogExpiry).Before(time.Now()) {
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("expiring computation buy = %v, sell = %v", com.Buy, com.Sell))
 			continue
 		}
 		// Add this Computation to the buffer
@@ -326,6 +327,7 @@ func (ome *ome) syncOrderFragmentBacklog(ξ [32]byte, done <-chan struct{}, matc
 	// not have access to the computation backlog mutex when it calls
 	// sendComputationToMatcher.
 	for i := 0; i < bufferN; i++ {
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("retrying computation buy = %v, sell = %v", buffer[i].Buy, buffer[i].Sell))
 		ome.sendComputationToMatcher(ξ, buffer[i], done, matches, errs)
 	}
 }
