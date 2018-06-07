@@ -25,7 +25,7 @@ type Smpcer interface {
 	// Connect to a network of nodes and assign this network to a NetworkID.
 	Connect(networkID NetworkID, nodes identity.Addresses)
 
-	// Discoonnect from a network of nodes.
+	// Disconnect from a network of nodes.
 	Disconnect(networkID NetworkID)
 
 	// Join a set of shamir.Shares for distinct values. This involves broadcast
@@ -108,7 +108,7 @@ func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 
 		smpc.networkMu.Lock()
 		if _, ok := smpc.networkCancels[networkID]; !ok {
-			smpc.networkCancels[networkID] = make([]context.CancelFunc, len(nodes))
+			smpc.networkCancels[networkID] = make([]context.CancelFunc, 0, len(nodes))
 		}
 		smpc.networkCancels[networkID] = append(smpc.networkCancels[networkID], cancel)
 		smpc.networkMu.Unlock()

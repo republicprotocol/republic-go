@@ -125,6 +125,7 @@ func (swarmer *swarmer) Bootstrap(ctx context.Context, multiAddrs identity.Multi
 			errs <- fmt.Errorf("error while bootstrapping: %v", err)
 			return
 		}
+		log.Println(len(swarmer.dhtManager.dht.MultiAddresses()), "nodes after boostrapping")
 	}()
 
 	for err := range errs {

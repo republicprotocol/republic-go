@@ -7,6 +7,7 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+// RandomOrder will generate a random order.
 func RandomOrder() order.Order {
 	parity := []order.Parity{order.ParityBuy, order.ParitySell}[rand.Intn(2)]
 	tokens := []order.Tokens{order.TokensBTCETH,
@@ -22,6 +23,7 @@ func RandomOrder() order.Order {
 	return ord
 }
 
+// RandomOrder will generate a random order and its match.
 func RandomOrderMatch() (order.Order, order.Order) {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensBTCDGX,
@@ -37,6 +39,7 @@ func RandomOrderMatch() (order.Order, order.Order) {
 	return buy, sell
 }
 
+// RandomCoExp will generate a random number represented in CoExp format.
 func RandomCoExp() order.CoExp {
 	co := uint64(rand.Intn(1999) + 1)
 	exp := uint64(rand.Intn(25))

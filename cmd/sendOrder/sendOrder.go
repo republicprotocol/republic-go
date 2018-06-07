@@ -92,7 +92,7 @@ func main() {
 			request.OrderFragmentMapping[hash] = []adapter.OrderFragment{}
 			for i, ordFragment := range ordFragments {
 				marshaledOrdFragment := adapter.OrderFragment{
-					Index: int64(i),
+					Index: int64(i + 1),
 				}
 
 				pubKey, err := darkpool.PublicKey(pod.Darknodes[i])
