@@ -136,7 +136,9 @@ func NewJoiner(k int64) *Joiner {
 }
 
 // InsertJoinAndSetCallback for a JoinID. If a Callback has been set for this
-// JoinID it will be replaced. A nil Callback will remove any existing
+// JoinID it will be replaced. The Callback will only be called once per call
+// to Joiner.InsertJoinAndSetCallback; it will be automatically set to nil
+// after it is called. Passing a nil Callback will remove any existing
 // Callback.
 func (joiner *Joiner) InsertJoinAndSetCallback(join Join, callback Callback) error {
 	return joiner.insertJoin(join, callback, true)
@@ -215,6 +217,10 @@ func (joiner *Joiner) insertJoin(join Join, callback Callback, overrideCallback 
 		maybeCallback = joinSet.Callback
 		maybeValues = joinSet.Values
 		maybeValuesLen = joinSet.ValuesLen
+
+		// Ensure that the Callback is only ever called once
+		joinSet.Callback = nil
+
 		return nil
 	}()
 	if err != nil {
