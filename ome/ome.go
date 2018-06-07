@@ -185,7 +185,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTicker(time.Second)
+		ticker := time.NewTicker(14 * time.Second)
 		defer ticker.Stop()
 
 		for {
@@ -327,9 +327,9 @@ func (ome *ome) syncOrderFragmentBacklog(ξ [32]byte, done <-chan struct{}, matc
 
 	// Retry each of the Computations in the buffer
 	for i := 0; i < bufferN; i++ {
-		logger.Compute(logger.LevelDebug, fmt.Sprintf("retrying computation buy = %v, sell = %v", buffer[i].Buy, buffer[i].Sell))
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("retrying computation buy = %v, sell = %v", buffer[i].Buy, buffer[i].Sell))
 		if err := ome.sendComputationToMatcher(ξ, buffer[i], done, matches); err != nil {
-			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve computation buy = %v, sell = %v: %v", buffer[i].Buy, buffer[i].Sell, err))
+			logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("cannot resolve computation buy = %v, sell = %v: %v", buffer[i].Buy, buffer[i].Sell, err))
 			ome.computationBacklog[buffer[i].ID] = buffer[i]
 		}
 	}
