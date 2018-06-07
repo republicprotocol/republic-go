@@ -1,4 +1,4 @@
-package darknode_test
+package registry_test
 
 import (
 	"bytes"
@@ -7,15 +7,14 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/republicprotocol/republic-go/cal"
-	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/identity"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/republicprotocol/republic-go/darknode"
+	. "github.com/republicprotocol/republic-go/registry"
 
+	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 var _ = Describe("Crypter", func() {

@@ -56,6 +56,9 @@ type syncer struct {
 	sellOrders map[int]order.ID
 }
 
+// NewSyncer returns a new Syncer that will sync a bounded number of orders
+// from a cal.RenLedger. It uses a SyncStorer to prevent re-syncing the entire
+// cal.RenLedger when it reboots.
 func NewSyncer(syncStorer SyncStorer, renLedger cal.RenLedger, renLedgerLimit int) Syncer {
 	syncer := &syncer{
 		renLedger:      renLedger,
@@ -81,6 +84,7 @@ func NewSyncer(syncStorer SyncStorer, renLedger cal.RenLedger, renLedgerLimit in
 	return syncer
 }
 
+// Sync implements the Syncer interface.
 func (syncer *syncer) Sync() (ChangeSet, error) {
 	changeset := syncer.purge()
 

@@ -131,7 +131,7 @@ func (matcher *matcher) resolvePriceCo(networkID smpc.NetworkID, buyFragment, se
 }
 
 func (matcher *matcher) resolveBuyVolumeExp(networkID smpc.NetworkID, buyFragment, sellFragment order.Fragment, com Computation, callback MatchCallback) {
-	buyVolumeExpShare := buyFragment.Volume.Co.Sub(&sellFragment.MinimumVolume.Exp)
+	buyVolumeExpShare := buyFragment.Volume.Exp.Sub(&sellFragment.MinimumVolume.Exp)
 	buyVolumeExpJoin := smpc.Join{
 		ID:     smpc.JoinID(com.ID),
 		Index:  smpc.JoinIndex(buyVolumeExpShare.Index),

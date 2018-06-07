@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/republicprotocol/republic-go/logger"
 
@@ -75,7 +76,7 @@ func NewRanker(numberOfRankers, pos int, storer Storer) Ranker {
 
 		storer: storer,
 	}
-	ranker.insertStoredComputations()
+	ranker.insertStoredComputationsInBackground()
 	return ranker
 }
 
@@ -170,16 +171,24 @@ func (ranker *ranker) Computations(buffer Computations) int {
 	return n
 }
 
-func (ranker *ranker) insertStoredComputations() {
-	coms, err := ranker.storer.Computations()
-	if err != nil {
-		logger.Error(fmt.Sprintf("cannot load existing computations into ranker: %v", err))
-	}
-	for _, com := range coms {
-		if com.State != ComputationStateMismatched && com.State != ComputationStateRejected && com.State != ComputationStateSettled {
-			ranker.insertComputation(com)
+func (ranker *ranker) insertStoredComputationsInBackground() {
+	go func() {
+		// Wait for long enough that the Ome has time to connect to the network
+		// for the current epoch before loading computations
+		timer := time.NewTimer(14 * time.Second)
+
+		coms, err := ranker.storer.Computations()
+		if err != nil {
+			logger.Error(fmt.Sprintf("cannot load existing computations into ranker: %v", err))
 		}
-	}
+
+		<-timer.C
+		for _, com := range coms {
+			if com.State != ComputationStateMismatched && com.State != ComputationStateRejected && com.State != ComputationStateSettled {
+				ranker.insertComputation(com)
+			}
+		}
+	}()
 }
 
 func (ranker *ranker) insertComputation(com Computation) {

@@ -1,4 +1,4 @@
-package darknode_test
+package registry_test
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestDarknode(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Darknode Suite")
+	RunSpecs(t, "Registry Suite")
 }
