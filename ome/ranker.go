@@ -175,7 +175,7 @@ func (ranker *ranker) insertStoredComputationsInBackground() {
 	go func() {
 		// Wait for long enough that the Ome has time to connect to the network
 		// for the current epoch before loading computations
-		timer := time.NewTimer(28 * time.Second)
+		timer := time.NewTimer(14 * time.Second)
 
 		coms, err := ranker.storer.Computations()
 		if err != nil {
