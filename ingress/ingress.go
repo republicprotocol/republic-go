@@ -297,7 +297,7 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 		log.Printf(fmtStr)
 
 		dispatch.CoForAll(pod.Darknodes, func(i int) {
-			orderFragment, ok := orderFragmentIndexMapping[int64(i)]
+			orderFragment, ok := orderFragmentIndexMapping[int64(i+1)] // Indices for fragments start at 1
 			if !ok {
 				errs <- fmt.Errorf("no fragment found at index %v", i)
 				return

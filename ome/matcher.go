@@ -36,7 +36,7 @@ type Matcher interface {
 	// are a match. The ξ hash is used to define the ξ in which this
 	// Computation exists, and the MatchCallback is called when a result has
 	// be determined.
-	Resolve(ξ [32]byte, com Computation, callback MatchCallback) error
+	Resolve(ξ [32]byte, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback)
 }
 
 type matcher struct {
@@ -56,18 +56,8 @@ func NewMatcher(storer Storer, smpcer smpc.Smpcer) Matcher {
 }
 
 // Resolve implements the Matcher interface.
-func (matcher *matcher) Resolve(ξ [32]byte, com Computation, callback MatchCallback) error {
-	buyFragment, err := matcher.storer.OrderFragment(com.Buy)
-	if err != nil {
-		return err
-	}
-	sellFragment, err := matcher.storer.OrderFragment(com.Sell)
-	if err != nil {
-		return err
-	}
-
+func (matcher *matcher) Resolve(ξ [32]byte, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback) {
 	matcher.resolvePriceExp(smpc.NetworkID(ξ), buyFragment, sellFragment, com, callback)
-	return nil
 }
 
 func (matcher *matcher) resolvePriceExp(networkID smpc.NetworkID, buyFragment, sellFragment order.Fragment, com Computation, callback MatchCallback) {

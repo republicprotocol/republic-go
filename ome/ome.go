@@ -13,6 +13,10 @@ import (
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
+// ComputationBacklogExpiry defines how long the Ome will wait for an
+// order.Fragment before rejecting a Computation.
+const ComputationBacklogExpiry = 5 * time.Minute
+
 // ComputationID is used to distinguish between different combinations of
 // orders that are being matched against each other.
 type ComputationID [32]byte
@@ -40,10 +44,11 @@ type Computations []Computation
 
 // A Computation is a combination of a buy order.Order and a sell order.Order.
 type Computation struct {
-	ID       ComputationID    `json:"id"`
-	State    ComputationState `json:"state"`
-	Priority Priority         `json:"priority"`
-	Match    bool             `json:"match"`
+	ID        ComputationID    `json:"id"`
+	State     ComputationState `json:"state"`
+	Priority  Priority         `json:"priority"`
+	Match     bool             `json:"match"`
+	Timestamp time.Time        `json:"timestamp"`
 
 	Buy  order.ID `json:"buy"`
 	Sell order.ID `json:"sell"`
@@ -63,10 +68,8 @@ func NewComputation(buy, sell order.ID) Computation {
 
 // An Ome runs the logic for a single node in the secure order matching engine.
 type Ome interface {
-	cal.EpochListener
-
-	// Run the Ome in the background. Stop the Ome by closing the done channel.
 	Run(done <-chan struct{}) <-chan error
+	OnChangeEpoch(cal.Epoch)
 }
 
 type ome struct {
@@ -74,28 +77,38 @@ type ome struct {
 	matcher   Matcher
 	confirmer Confirmer
 	settler   Settler
+	storer    Storer
 	orderbook orderbook.Orderbook
 	smpcer    smpc.Smpcer
 
 	ξMu *sync.RWMutex
 	ξ   cal.Epoch
+
+	computationBacklogMu *sync.RWMutex
+	computationBacklog   map[ComputationID]Computation
 }
 
-func NewOme(ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler, orderbook orderbook.Orderbook, smpcer smpc.Smpcer) Ome {
+func NewOme(ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler, storer Storer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer) Ome {
 	return &ome{
 		ranker:    ranker,
 		matcher:   matcher,
 		confirmer: confirmer,
 		settler:   settler,
+		storer:    storer,
 		orderbook: orderbook,
 		smpcer:    smpcer,
 
 		ξMu: new(sync.RWMutex),
 		ξ:   cal.Epoch{},
+
+		computationBacklogMu: new(sync.RWMutex),
+		computationBacklog:   map[ComputationID]Computation{},
 	}
 }
 
-// OnChangeEpoch implements the cal.EpochListener interface.
+// OnChangeEpoch updates the Ome to the next cal.Epoch. This will cause
+// cascading changes throughout the Ome, most notably it will connect to a new
+// Smpc network that will handle future Computations.
 func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
 	ome.ξMu.Lock()
 	defer ome.ξMu.Unlock()
@@ -123,7 +136,9 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 			default:
 			}
 			timeBeginSync := time.Now()
+
 			ome.syncOrderbookToRanker(done, errs)
+
 			timeNextSync := timeBeginSync.Add(14 * time.Second)
 			if time.Now().After(timeNextSync) {
 				continue
@@ -132,7 +147,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 		}
 	}()
 
-	// Sync the Ranker to the Matcher
+	// Sync the Ranker
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -144,9 +159,11 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 			default:
 			}
 			timeBeginSync := time.Now()
+
 			if wait := ome.syncRanker(done, matches, errs); !wait {
 				continue
 			}
+
 			timeNextSync := timeBeginSync.Add(14 * time.Second)
 			if time.Now().After(timeNextSync) {
 				continue
@@ -160,6 +177,28 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 	go func() {
 		defer wg.Done()
 		ome.syncConfirmerToSettler(done, matches, errs)
+	}()
+
+	// Retry Computations that failed due to a missing order.Fragment
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		ticker := time.NewTicker(14 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-done:
+			case <-ticker.C:
+			}
+
+			ome.ξMu.RLock()
+			ξ := ome.ξ.Hash
+			ome.ξMu.RUnlock()
+
+			ome.syncOrderFragmentBacklog(ξ, done, matches)
+		}
 	}()
 
 	// Cleanup
@@ -214,7 +253,11 @@ func (ome *ome) syncRanker(done <-chan struct{}, matches chan<- Computation, err
 	for i := 0; i < n; i++ {
 		switch buffer[i].State {
 		case ComputationStateNil:
-			ome.sendComputationToMatcher(ξ, buffer[i], done, matches, errs)
+			if err := ome.sendComputationToMatcher(ξ, buffer[i], done, matches); err != nil {
+				ome.computationBacklogMu.Lock()
+				ome.computationBacklog[buffer[i].ID] = buffer[i]
+				ome.computationBacklogMu.Unlock()
+			}
 
 		case ComputationStateMatched:
 			ome.sendComputationToConfirmer(buffer[i], done, matches)
@@ -259,20 +302,56 @@ func (ome *ome) syncConfirmerToSettler(done <-chan struct{}, matches <-chan Comp
 	}
 }
 
-func (ome *ome) sendComputationToMatcher(ξ [32]byte, com Computation, done <-chan struct{}, matches chan<- Computation, errs chan<- error) {
+func (ome *ome) syncOrderFragmentBacklog(ξ [32]byte, done <-chan struct{}, matches chan<- Computation) {
+	ome.computationBacklogMu.Lock()
+	defer ome.computationBacklogMu.Unlock()
+
+	buffer := [128]Computation{}
+	bufferN := 0
+
+	// Build a buffer of Computations that will be retried
+	for _, com := range ome.computationBacklog {
+		delete(ome.computationBacklog, com.ID)
+		// Check for expiry of the Computation
+		if com.Timestamp.Add(ComputationBacklogExpiry).Before(time.Now()) {
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("expiring computation buy = %v, sell = %v", com.Buy, com.Sell))
+			continue
+		}
+		// Add this Computation to the buffer
+		buffer[bufferN] = com
+		if bufferN++; bufferN >= 128 {
+			break
+		}
+	}
+
+	// Retry each of the Computations in the buffer
+	for i := 0; i < bufferN; i++ {
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("retrying computation buy = %v, sell = %v", buffer[i].Buy, buffer[i].Sell))
+		if err := ome.sendComputationToMatcher(ξ, buffer[i], done, matches); err != nil {
+			logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("cannot resolve computation buy = %v, sell = %v: %v", buffer[i].Buy, buffer[i].Sell, err))
+			ome.computationBacklog[buffer[i].ID] = buffer[i]
+		}
+	}
+}
+
+func (ome *ome) sendComputationToMatcher(ξ [32]byte, com Computation, done <-chan struct{}, matches chan<- Computation) error {
+	buyFragment, err := ome.storer.OrderFragment(com.Buy)
+	if err != nil {
+		return err
+	}
+	sellFragment, err := ome.storer.OrderFragment(com.Sell)
+	if err != nil {
+		return err
+	}
+
 	logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v", com.Buy, com.Sell))
-	err := ome.matcher.Resolve(ξ, com, func(com Computation) {
+	ome.matcher.Resolve(ξ, com, buyFragment, sellFragment, func(com Computation) {
 		if !com.Match {
 			return
 		}
 		ome.sendComputationToConfirmer(com, done, matches)
 	})
-	if err != nil {
-		select {
-		case <-done:
-		case errs <- err:
-		}
-	}
+	return nil
 }
 
 func (ome *ome) sendComputationToConfirmer(com Computation, done <-chan struct{}, matches chan<- Computation) {

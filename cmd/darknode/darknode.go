@@ -110,7 +110,7 @@ func main() {
 	matcher := ome.NewMatcher(&store, smpcer)
 	confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
 	settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
-	ome := ome.NewOme(ranker, matcher, confirmer, settler, orderbook, smpcer)
+	ome := ome.NewOme(ranker, matcher, confirmer, settler, &store, orderbook, smpcer)
 
 	// Start the secure order matching engine
 	go func() {
