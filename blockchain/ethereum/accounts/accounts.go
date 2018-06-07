@@ -107,6 +107,7 @@ func (accounts *RenExAccounts) SubmitOrder(ord order.Order) error {
 
 // Submit order to the RenEx accounts
 func (accounts *RenExAccounts) SubmitMatch(buy, sell order.ID) error {
+	accounts.transactOpts.GasLimit = 200000
 	tx, err := accounts.binding.SubmitMatch(accounts.transactOpts, buy, sell)
 	if err != nil {
 		return err
