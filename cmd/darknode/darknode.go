@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/big"
 	"net"
+	netHttp "net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -24,6 +25,8 @@ import (
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
+	"github.com/republicprotocol/republic-go/http"
+	"github.com/republicprotocol/republic-go/http/adapter"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/logger"
@@ -114,6 +117,18 @@ func main() {
 	// New Darknode
 	darknode := darknode.NewDarknode(config.Address, darkPool, darkPoolAccounts, darkPoolFees)
 	darknode.SetEpochListener(ome)
+
+	// Start the status server
+	go func() {
+		bindParam := "0.0.0.0"
+		portParam := "18516"
+		log.Printf("starting status server at %v:%v...", bindParam, portParam)
+
+		statusAdapter := adapter.NewStatusAdapter()
+		if err := netHttp.ListenAndServe(fmt.Sprintf("%v:%v", bindParam, portParam), http.NewStatusServer(statusAdapter)); err != nil {
+			log.Fatalf("error listening and serving: %v", err)
+		}
+	}()
 
 	// Start the secure order matching engine
 	go func() {
