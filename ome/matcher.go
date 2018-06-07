@@ -74,7 +74,11 @@ func (matcher *matcher) resolvePriceExp(networkID smpc.NetworkID, buyFragment, s
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve priceExp: unexpected number of values: %v", len(values)))
 			return
 		}
-		if isGreaterThanOrEqualToZero(values[0], com, "priceExp") {
+		if isGreaterThanZero(values[0], com, "priceExp") {
+			matcher.resolveBuyVolumeExp(networkID, buyFragment, sellFragment, com, callback)
+			return
+		}
+		if isEqualToZero(values[0], com, "priceExp") {
 			matcher.resolvePriceCo(networkID, buyFragment, sellFragment, com, callback)
 			return
 		}
@@ -134,7 +138,11 @@ func (matcher *matcher) resolveBuyVolumeExp(networkID smpc.NetworkID, buyFragmen
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve buyVolumeExp: unexpected number of values: %v", len(values)))
 			return
 		}
-		if isGreaterThanOrEqualToZero(values[0], com, "buyVolumeExp") {
+		if isGreaterThanZero(values[0], com, "buyVolumeExp") {
+			matcher.resolveSellVolumeExp(networkID, buyFragment, sellFragment, com, callback)
+			return
+		}
+		if isEqualToZero(values[0], com, "buyVolumeExp") {
 			matcher.resolveBuyVolumeCo(networkID, buyFragment, sellFragment, com, callback)
 			return
 		}
@@ -194,7 +202,11 @@ func (matcher *matcher) resolveSellVolumeExp(networkID smpc.NetworkID, buyFragme
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve sellVolumeExp: unexpected number of values: %v", len(values)))
 			return
 		}
-		if isGreaterThanOrEqualToZero(values[0], com, "sellVolumeExp") {
+		if isGreaterThanZero(values[0], com, "sellVolumeExp") {
+			matcher.resolveTokens(networkID, sellFragment, sellFragment, com, callback)
+			return
+		}
+		if isEqualToZero(values[0], com, "sellVolumeExp") {
 			matcher.resolveSellVolumeCo(networkID, sellFragment, sellFragment, com, callback)
 			return
 		}
@@ -276,19 +288,28 @@ func (matcher *matcher) resolveTokens(networkID smpc.NetworkID, buyFragment, sel
 }
 
 func isGreaterThanOrEqualToZero(value uint64, com Computation, stage string) bool {
-	if value > shamir.Prime/2 {
-		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v => mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
-		return false
+	if value >= 0 && value < shamir.Prime/2 {
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
+		return true
 	}
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
-	return true
+	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v => mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
+	return false
+}
+
+func isGreaterThanZero(value uint64, com Computation, stage string) bool {
+	if value > 0 && value < shamir.Prime/2 {
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
+		return true
+	}
+	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v => mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
+	return false
 }
 
 func isEqualToZero(value uint64, com Computation, stage string) bool {
-	if value != 0 && value != shamir.Prime {
-		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v => mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
-		return false
+	if value == 0 || value == shamir.Prime {
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
+		return true
 	}
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
-	return true
+	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v => mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
+	return false
 }
