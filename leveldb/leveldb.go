@@ -162,7 +162,7 @@ func (store *Store) InsertSellPointer(pointer orderbook.SyncPointer) error {
 
 // BuyPointer implements the orderbook.SyncStorer interface.
 func (store *Store) BuyPointer() (orderbook.SyncPointer, error) {
-	data, err := store.computations.Get([]byte("buy"), nil)
+	data, err := store.sync.Get([]byte("buy"), nil)
 	if err != nil {
 		return 0, err
 	}
@@ -175,7 +175,7 @@ func (store *Store) BuyPointer() (orderbook.SyncPointer, error) {
 
 // SellPointer implements the orderbook.SyncStorer interface.
 func (store *Store) SellPointer() (orderbook.SyncPointer, error) {
-	data, err := store.computations.Get([]byte("sell"), nil)
+	data, err := store.sync.Get([]byte("sell"), nil)
 	if err != nil {
 		return 0, err
 	}
