@@ -26,7 +26,7 @@ func (server *Server) Start(addr string) error {
 }
 
 // A Service can register to a Server. Registration must happen before the
-// Server is started.
+// Server is started. The Service will be available when the Server is started.
 type Service interface {
 	Register(server *Server)
 }

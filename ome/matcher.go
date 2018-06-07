@@ -74,7 +74,13 @@ func (matcher *matcher) resolvePriceExp(networkID smpc.NetworkID, buyFragment, s
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve priceExp: unexpected number of values: %v", len(values)))
 			return
 		}
-		if isGreaterThanOrEqualToZero(values[0], com, "priceExp") {
+		if isGreaterThanZero(values[0]) {
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ priceExp => buy = %v, sell = %v", com.Buy, com.Sell))
+			matcher.resolveBuyVolumeExp(networkID, buyFragment, sellFragment, com, callback)
+			return
+		}
+		if isEqualToZero(values[0]) {
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ priceExp => buy = %v, sell = %v", com.Buy, com.Sell))
 			matcher.resolvePriceCo(networkID, buyFragment, sellFragment, com, callback)
 			return
 		}
@@ -83,6 +89,7 @@ func (matcher *matcher) resolvePriceExp(networkID smpc.NetworkID, buyFragment, s
 		if err := matcher.storer.InsertComputation(com); err != nil {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
 		}
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ priceExp => mismatch buy = %v, sell = %v", com.Buy, com.Sell))
 		callback(com)
 	})
 	if err != nil {
@@ -104,7 +111,8 @@ func (matcher *matcher) resolvePriceCo(networkID smpc.NetworkID, buyFragment, se
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve priceCo: unexpected number of values: %v", len(values)))
 			return
 		}
-		if isGreaterThanOrEqualToZero(values[0], com, "priceCo") {
+		if isGreaterThanOrEqualToZero(values[0]) {
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ priceCo => buy = %v, sell = %v", com.Buy, com.Sell))
 			matcher.resolveBuyVolumeExp(networkID, buyFragment, sellFragment, com, callback)
 			return
 		}
@@ -113,6 +121,7 @@ func (matcher *matcher) resolvePriceCo(networkID smpc.NetworkID, buyFragment, se
 		if err := matcher.storer.InsertComputation(com); err != nil {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
 		}
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ priceCo => mismatch buy = %v, sell = %v", com.Buy, com.Sell))
 		callback(com)
 	})
 	if err != nil {
@@ -134,7 +143,13 @@ func (matcher *matcher) resolveBuyVolumeExp(networkID smpc.NetworkID, buyFragmen
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve buyVolumeExp: unexpected number of values: %v", len(values)))
 			return
 		}
-		if isGreaterThanOrEqualToZero(values[0], com, "buyVolumeExp") {
+		if isGreaterThanZero(values[0]) {
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ buyVolumeExp => buy = %v, sell = %v", com.Buy, com.Sell))
+			matcher.resolveSellVolumeExp(networkID, buyFragment, sellFragment, com, callback)
+			return
+		}
+		if isEqualToZero(values[0]) {
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ buyVolumeExp => buy = %v, sell = %v", com.Buy, com.Sell))
 			matcher.resolveBuyVolumeCo(networkID, buyFragment, sellFragment, com, callback)
 			return
 		}
@@ -143,6 +158,7 @@ func (matcher *matcher) resolveBuyVolumeExp(networkID smpc.NetworkID, buyFragmen
 		if err := matcher.storer.InsertComputation(com); err != nil {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
 		}
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ buyVolumeExp => mismatch buy = %v, sell = %v", com.Buy, com.Sell))
 		callback(com)
 	})
 	if err != nil {
@@ -164,7 +180,8 @@ func (matcher *matcher) resolveBuyVolumeCo(networkID smpc.NetworkID, buyFragment
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve buyVolumeCo: unexpected number of values: %v", len(values)))
 			return
 		}
-		if isGreaterThanOrEqualToZero(values[0], com, "buyVolumeCo") {
+		if isGreaterThanOrEqualToZero(values[0]) {
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ buyVolumeCo => buy = %v, sell = %v", com.Buy, com.Sell))
 			matcher.resolveSellVolumeExp(networkID, buyFragment, sellFragment, com, callback)
 			return
 		}
@@ -173,6 +190,7 @@ func (matcher *matcher) resolveBuyVolumeCo(networkID smpc.NetworkID, buyFragment
 		if err := matcher.storer.InsertComputation(com); err != nil {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
 		}
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ buyVolumeCo => mismatch buy = %v, sell = %v", com.Buy, com.Sell))
 		callback(com)
 	})
 	if err != nil {
@@ -194,7 +212,13 @@ func (matcher *matcher) resolveSellVolumeExp(networkID smpc.NetworkID, buyFragme
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve sellVolumeExp: unexpected number of values: %v", len(values)))
 			return
 		}
-		if isGreaterThanOrEqualToZero(values[0], com, "sellVolumeExp") {
+		if isGreaterThanZero(values[0]) {
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ sellVolumeExp => buy = %v, sell = %v", com.Buy, com.Sell))
+			matcher.resolveTokens(networkID, sellFragment, sellFragment, com, callback)
+			return
+		}
+		if isEqualToZero(values[0]) {
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ sellVolumeExp => buy = %v, sell = %v", com.Buy, com.Sell))
 			matcher.resolveSellVolumeCo(networkID, sellFragment, sellFragment, com, callback)
 			return
 		}
@@ -203,6 +227,7 @@ func (matcher *matcher) resolveSellVolumeExp(networkID smpc.NetworkID, buyFragme
 		if err := matcher.storer.InsertComputation(com); err != nil {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
 		}
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ sellVolumeExp => mismatch buy = %v, sell = %v", com.Buy, com.Sell))
 		callback(com)
 	})
 	if err != nil {
@@ -224,7 +249,8 @@ func (matcher *matcher) resolveSellVolumeCo(networkID smpc.NetworkID, buyFragmen
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve sellVolumeCo: unexpected number of values: %v", len(values)))
 			return
 		}
-		if isGreaterThanOrEqualToZero(values[0], com, "sellVolumeCo") {
+		if isGreaterThanOrEqualToZero(values[0]) {
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ sellVolumeCo => buy = %v, sell = %v", com.Buy, com.Sell))
 			matcher.resolveTokens(networkID, sellFragment, sellFragment, com, callback)
 			return
 		}
@@ -233,6 +259,7 @@ func (matcher *matcher) resolveSellVolumeCo(networkID smpc.NetworkID, buyFragmen
 		if err := matcher.storer.InsertComputation(com); err != nil {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
 		}
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ sellVolumeCo => mismatch buy = %v, sell = %v", com.Buy, com.Sell))
 		callback(com)
 	})
 	if err != nil {
@@ -254,12 +281,13 @@ func (matcher *matcher) resolveTokens(networkID smpc.NetworkID, buyFragment, sel
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve tokens: unexpected number of values: %v", len(values)))
 			return
 		}
-		if isEqualToZero(values[0], com, "tokens") {
+		if isEqualToZero(values[0]) {
 			com.State = ComputationStateMatched
 			com.Match = true
 			if err := matcher.storer.InsertComputation(com); err != nil {
 				logger.Compute(logger.LevelError, fmt.Sprintf("cannot store matched computation buy = %v, sell = %v", com.Buy, com.Sell))
 			}
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ tokens => buy = %v, sell = %v", com.Buy, com.Sell))
 			callback(com)
 			return
 		}
@@ -268,6 +296,7 @@ func (matcher *matcher) resolveTokens(networkID smpc.NetworkID, buyFragment, sel
 		if err := matcher.storer.InsertComputation(com); err != nil {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
 		}
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ tokens => mismatch buy = %v, sell = %v", com.Buy, com.Sell))
 		callback(com)
 	})
 	if err != nil {
@@ -275,20 +304,14 @@ func (matcher *matcher) resolveTokens(networkID smpc.NetworkID, buyFragment, sel
 	}
 }
 
-func isGreaterThanOrEqualToZero(value uint64, com Computation, stage string) bool {
-	if value > shamir.Prime/2 {
-		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v => mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
-		return false
-	}
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
-	return true
+func isGreaterThanOrEqualToZero(value uint64) bool {
+	return value >= 0 && value < shamir.Prime/2
 }
 
-func isEqualToZero(value uint64, com Computation, stage string) bool {
-	if value != 0 && value != shamir.Prime {
-		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("✗ %v => mismatch buy = %v, sell = %v", stage, com.Buy, com.Sell))
-		return false
-	}
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
-	return true
+func isGreaterThanZero(value uint64) bool {
+	return value > 0 && value < shamir.Prime/2
+}
+
+func isEqualToZero(value uint64) bool {
+	return value == 0 || value == shamir.Prime
 }
