@@ -11,8 +11,11 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+// ChangeSet is an alias type.
 type ChangeSet []Change
 
+// Change represents a change found by the Syncer. It stores all the relevant
+// information for the order.Order that was changed.
 type Change struct {
 	OrderID       order.ID
 	OrderParity   order.Parity
@@ -20,6 +23,7 @@ type Change struct {
 	OrderPriority uint64
 }
 
+// NewChange returns a Change object with the respective data stored inside it.
 func NewChange(id order.ID, parity order.Parity, status order.Status, priority uint64) Change {
 	return Change{
 		OrderID:       id,
@@ -29,6 +33,8 @@ func NewChange(id order.ID, parity order.Parity, status order.Status, priority u
 	}
 }
 
+// A Syncer is used to synchronize orders, and changes to orders, to local
+// storage.
 type Syncer interface {
 
 	// Sync orders and order states from the Ren Ledger to this local
@@ -38,34 +44,49 @@ type Syncer interface {
 }
 
 type syncer struct {
-	renLedger        cal.RenLedger
-	renLedgerLimit   int
-	buyOrderPointer  int
-	sellOrderPointer int
+	renLedger      cal.RenLedger
+	renLedgerLimit int
+
+	syncStorer      SyncStorer
+	syncBuyPointer  int
+	syncSellPointer int
 
 	ordersMu   *sync.RWMutex
 	buyOrders  map[int]order.ID
 	sellOrders map[int]order.ID
 }
 
-func NewSyncer(renLedger cal.RenLedger, limit int) Syncer {
-	return &syncer{
-		renLedger:        renLedger,
-		renLedgerLimit:   limit,
-		buyOrderPointer:  0,
-		sellOrderPointer: 0,
-		ordersMu:         new(sync.RWMutex),
-		buyOrders:        map[int]order.ID{},
-		sellOrders:       map[int]order.ID{},
+func NewSyncer(syncStorer SyncStorer, renLedger cal.RenLedger, renLedgerLimit int) Syncer {
+	syncer := &syncer{
+		renLedger:      renLedger,
+		renLedgerLimit: renLedgerLimit,
+
+		syncStorer:      syncStorer,
+		syncBuyPointer:  0,
+		syncSellPointer: 0,
+
+		ordersMu:   new(sync.RWMutex),
+		buyOrders:  map[int]order.ID{},
+		sellOrders: map[int]order.ID{},
 	}
+
+	var err error
+	if syncer.syncBuyPointer, err = syncer.syncStorer.BuyPointer(); err != nil {
+		logger.Error(fmt.Sprintf("cannot load buy pointer: %v", err))
+	}
+	if syncer.syncSellPointer, err = syncer.syncStorer.SellPointer(); err != nil {
+		logger.Error(fmt.Sprintf("cannot load sell pointer: %v", err))
+	}
+
+	return syncer
 }
 
 func (syncer *syncer) Sync() (ChangeSet, error) {
 	changeset := syncer.purge()
 
-	buyOrderIDs, buyErr := syncer.renLedger.BuyOrders(syncer.buyOrderPointer, syncer.renLedgerLimit)
+	buyOrderIDs, buyErr := syncer.renLedger.BuyOrders(syncer.syncBuyPointer, syncer.renLedgerLimit)
 	if buyErr == nil {
-		syncer.buyOrderPointer += len(buyOrderIDs)
+		syncer.syncBuyPointer += len(buyOrderIDs)
 		for i, ord := range buyOrderIDs {
 
 			status, err := syncer.renLedger.Status(ord)
@@ -74,16 +95,19 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 				continue
 			}
 
-			change := NewChange(ord, order.ParityBuy, status, uint64(syncer.buyOrderPointer+i))
+			change := NewChange(ord, order.ParityBuy, status, uint64(syncer.syncBuyPointer+i))
 			changeset = append(changeset, change)
-			syncer.buyOrders[syncer.buyOrderPointer+i] = ord
+			syncer.buyOrders[syncer.syncBuyPointer+i] = ord
+		}
+		if err := syncer.syncStorer.InsertBuyPointer(syncer.syncBuyPointer); err != nil {
+			logger.Error("cannot insert buy pointer")
 		}
 	}
 
 	// Get new sell orders from the ledger
-	sellOrderIDs, sellErr := syncer.renLedger.SellOrders(syncer.sellOrderPointer, syncer.renLedgerLimit)
+	sellOrderIDs, sellErr := syncer.renLedger.SellOrders(syncer.syncSellPointer, syncer.renLedgerLimit)
 	if sellErr == nil {
-		syncer.sellOrderPointer += len(sellOrderIDs)
+		syncer.syncSellPointer += len(sellOrderIDs)
 		for i, ord := range sellOrderIDs {
 
 			status, err := syncer.renLedger.Status(ord)
@@ -92,9 +116,12 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 				continue
 			}
 
-			change := NewChange(ord, order.ParitySell, status, uint64(syncer.sellOrderPointer+i))
+			change := NewChange(ord, order.ParitySell, status, uint64(syncer.syncSellPointer+i))
 			changeset = append(changeset, change)
-			syncer.sellOrders[syncer.sellOrderPointer+i] = ord
+			syncer.sellOrders[syncer.syncSellPointer+i] = ord
+		}
+		if err := syncer.syncStorer.InsertSellPointer(syncer.syncSellPointer); err != nil {
+			logger.Error("cannot insert sell pointer")
 		}
 	}
 	if buyErr != nil && sellErr != nil {

@@ -107,7 +107,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 
 	var wg sync.WaitGroup
 
-	// Sync the orderbook
+	// Sync the orderbook.Orderbook to the Ranker
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -118,7 +118,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 			default:
 			}
 			timeBeginSync := time.Now()
-			ome.syncOrderbook(done, errs)
+			ome.syncOrderbookToRanker(done, errs)
 			timeNextSync := timeBeginSync.Add(14 * time.Second)
 			if time.Now().After(timeNextSync) {
 				continue
@@ -127,7 +127,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 		}
 	}()
 
-	// Sync the matcher
+	// Sync the Ranker to the Matcher
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -139,7 +139,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 			default:
 			}
 			timeBeginSync := time.Now()
-			if wait := ome.syncMatcher(done, matches, errs); !wait {
+			if wait := ome.syncRankerToMatcher(done, matches, errs); !wait {
 				continue
 			}
 			timeNextSync := timeBeginSync.Add(14 * time.Second)
@@ -150,11 +150,11 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 		}
 	}()
 
-	// Sync the confirmer
+	// Sync the Confirmer to the Settler
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		ome.syncConfirmer(done, matches, errs)
+		ome.syncConfirmerToSettler(done, matches, errs)
 	}()
 
 	// Cleanup
@@ -166,7 +166,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 	return errs
 }
 
-func (ome *ome) syncOrderbook(done <-chan struct{}, errs chan<- error) {
+func (ome *ome) syncOrderbookToRanker(done <-chan struct{}, errs chan<- error) {
 	changeset, err := ome.orderbook.Sync()
 	if err != nil {
 		select {
@@ -178,20 +178,6 @@ func (ome *ome) syncOrderbook(done <-chan struct{}, errs chan<- error) {
 	}
 	logger.Network(logger.LevelDebug, fmt.Sprintf("sync orderbook: %v changes in changeset", len(changeset)))
 
-	if len(changeset) == 0 {
-		return
-	}
-	if err := ome.syncRanker(changeset); err != nil {
-		select {
-		case <-done:
-			return
-		case errs <- fmt.Errorf("cannot sync ranker: %v", err):
-			return
-		}
-	}
-}
-
-func (ome *ome) syncRanker(changeset orderbook.ChangeSet) error {
 	for _, change := range changeset {
 		switch change.OrderStatus {
 		case order.Open:
@@ -210,10 +196,9 @@ func (ome *ome) syncRanker(changeset orderbook.ChangeSet) error {
 			ome.ranker.Remove(change.OrderID)
 		}
 	}
-	return nil
 }
 
-func (ome *ome) syncMatcher(done <-chan struct{}, matches chan<- Computation, errs chan<- error) bool {
+func (ome *ome) syncRankerToMatcher(done <-chan struct{}, matches chan<- Computation, errs chan<- error) bool {
 	ome.ξMu.RLock()
 	ξ := ome.ξ.Hash
 	ome.ξMu.RUnlock()
@@ -240,22 +225,27 @@ func (ome *ome) syncMatcher(done <-chan struct{}, matches chan<- Computation, er
 	return n != 128
 }
 
-func (ome *ome) syncConfirmer(done <-chan struct{}, matches <-chan Computation, errs chan<- error) {
+func (ome *ome) syncConfirmerToSettler(done <-chan struct{}, matches <-chan Computation, errs chan<- error) {
 	confirmations, confirmationErrs := ome.confirmer.Confirm(done, matches)
 	for {
 		select {
 		case <-done:
 			return
+
 		case confirmation, ok := <-confirmations:
 			if !ok {
 				return
 			}
+
 			ome.ξMu.RLock()
 			ξ := ome.ξ.Hash
 			ome.ξMu.RUnlock()
+
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("settling buy = %v, sell = %v", confirmation.Buy, confirmation.Sell))
 			if err := ome.settler.Settle(ξ, confirmation); err != nil {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot settle: %v", err))
 			}
+
 		case err, ok := <-confirmationErrs:
 			if !ok {
 				return
