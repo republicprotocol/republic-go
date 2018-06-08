@@ -3,6 +3,7 @@ package ome
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -89,6 +90,10 @@ func (matcher *matcher) Resolve(ξ [32]byte, com Computation, buyFragment, sellF
 }
 
 func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback, stage ResolveStage) {
+	if isExpired(com, buyFragment, sellFragment) {
+		return
+	}
+
 	join, err := buildJoin(com, buyFragment, sellFragment, stage)
 	if err != nil {
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot build %v join: %v", stage, err))
@@ -201,4 +206,12 @@ func isGreaterThanZero(value uint64) bool {
 
 func isEqualToZero(value uint64) bool {
 	return value == 0 || value == shamir.Prime
+}
+
+func isExpired(com Computation, buyFragment, sellFragment order.Fragment) bool {
+	if time.Now().After(buyFragment.OrderExpiry) || time.Now().After(sellFragment.OrderExpiry) {
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("⧖ expired => buy = %v, sell = %v", com.Buy, com.Sell))
+		return true
+	}
+	return false
 }
