@@ -77,6 +77,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot open leveldb: %v", err)
 	}
+	defer store.Close()
 
 	// New DHT
 	dht := dht.NewDHT(config.Address, 64)
