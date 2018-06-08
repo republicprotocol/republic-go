@@ -1,24 +1,30 @@
 package mock
 
-type MockCrypter struct {
+// Crypter is a mock implementation of the Crypter interface
+type Crypter struct {
 }
 
-func NewMockCrypter() *MockCrypter {
-	return &MockCrypter{}
+// NewCrypter returns a new mock Crypter
+func NewCrypter() *Crypter {
+	return &Crypter{}
 }
 
-func (crypter *MockCrypter) Sign(data []byte) ([]byte, error) {
+// Sing will not do nothing and return the data directly.
+func (crypter *Crypter) Sign(data []byte) ([]byte, error) {
 	return data, nil
 }
 
-func (crypter *MockCrypter) Verify(data []byte, signature []byte) error {
+// Verify always returns nil.
+func (crypter *Crypter) Verify(data []byte, signature []byte) error {
 	return nil
 }
 
-func (crypter *MockCrypter) Encrypt(addr string, plainText []byte) ([]byte, error) {
+// Encrypt will not do nothing and return the plain text directly.
+func (crypter *Crypter) Encrypt(plainText []byte, recipient []byte) ([]byte, error) {
 	return plainText, nil
 }
 
-func (crypter *MockCrypter) Decrypt(cipherText []byte) ([]byte, error) {
+// Decrypt will do nothing and return cipher text directly.
+func (crypter *Crypter) Decrypt(cipherText []byte) ([]byte, error) {
 	return cipherText, nil
 }

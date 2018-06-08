@@ -28,8 +28,7 @@ var _ = Describe("Orderbook", func() {
 	BeforeEach(func() {
 		var err error
 
-		connPool := NewConnPool(128)
-		client = NewOrderbookClient(&connPool)
+		client = NewOrderbookClient()
 
 		serverMock = &mockOrderbookServer{}
 		server = NewServer()

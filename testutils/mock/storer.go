@@ -8,11 +8,13 @@ import (
 	"github.com/republicprotocol/republic-go/orderbook"
 )
 
-// ErrOrderNotExist indicates the order isn't in the Storer.
-var ErrOrderNotExist = errors.New("order does not exist in the storer")
+// ErrOrderFragmentNotFound is return when attempting to load an order that
+// cannot be found.
+var ErrOrderFragmentNotFound = errors.New("order fragment not found")
 
-// ErrOrderFragmentNotExist indicates the orderFragment isn't in the Storer.
-var ErrOrderFragmentNotExist = errors.New("order fragment does not exist in the storer")
+// ErrOrderNotFound is return when attempting to load an order that cannot be
+// found.
+var ErrOrderNotFound = errors.New("order not found")
 
 // Storer is a mock implementation of the orderbook.Storer interface.
 type Storer struct {
@@ -55,7 +57,7 @@ func (storer *Storer) OrderFragment(id order.ID) (order.Fragment, error) {
 
 	fragment, ok := storer.orderFragments[id]
 	if !ok {
-		return order.Fragment{}, ErrOrderFragmentNotExist
+		return order.Fragment{}, ErrOrderFragmentNotFound
 	}
 	return fragment, nil
 }
@@ -67,7 +69,7 @@ func (storer *Storer) Order(id order.ID) (order.Order, error) {
 
 	ord, ok := storer.orders[id]
 	if !ok {
-		return order.Order{}, ErrOrderNotExist
+		return order.Order{}, ErrOrderNotFound
 	}
 	return ord, nil
 }

@@ -59,7 +59,6 @@ func (store *Store) Close() error {
 	if err := store.orders.Close(); err != nil {
 		return err
 	}
-
 	if err := store.computations.Close(); err != nil {
 		return err
 	}

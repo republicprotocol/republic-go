@@ -117,3 +117,13 @@ func RandomConfigs(n int, b int) ([]config.Config, error) {
 
 	return configs, nil
 }
+
+// RandomNetworkID will generate a random [32]byte array
+func RandomNetworkID() [32]byte {
+	var networkID [32]byte
+	i := fmt.Sprintf("%d", rand.Int())
+	hash := crypto.Keccak256([]byte(i))
+	copy(networkID[:], hash)
+
+	return networkID
+}
