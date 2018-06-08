@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ome"
+	"github.com/republicprotocol/republic-go/testutils/mock"
 
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/cal"
@@ -24,7 +25,7 @@ var _ = Describe("Confirmer", func() {
 	BeforeEach(func() {
 		depth, pollInterval := uint(0), time.Second
 		renLedger = newMockRenLedger()
-		storer = newMockStorer()
+		storer = mock.NewStorer()
 		confirmer = NewConfirmer(storer, renLedger, pollInterval, depth)
 	})
 

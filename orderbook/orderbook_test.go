@@ -93,50 +93,6 @@ func newMockSyncer(numberOfOrders int) mockSyncer {
 	}
 }
 
-type mockStorer struct {
-	orderFragments map[order.ID]order.Fragment
-	orders         map[order.ID]order.Order
-}
-
-func (storer *mockStorer) InsertOrderFragment(orderFragment order.Fragment) error {
-	if _, ok := storer.orderFragments[orderFragment.OrderID]; !ok {
-		storer.orderFragments[orderFragment.OrderID] = orderFragment
-	}
-	return nil
-}
-
-func (storer *mockStorer) InsertOrder(order order.Order) error {
-	if _, ok := storer.orders[order.ID]; !ok {
-		storer.orders[order.ID] = order
-	}
-	return nil
-}
-
-func (storer *mockStorer) OrderFragment(id order.ID) (order.Fragment, error) {
-	return storer.orderFragments[id], nil
-}
-
-func (storer *mockStorer) Order(id order.ID) (order.Order, error) {
-	return storer.orders[id], nil
-}
-
-func (storer *mockStorer) RemoveOrderFragment(id order.ID) error {
-	delete(storer.orderFragments, id)
-	return nil
-}
-
-func (storer *mockStorer) RemoveOrder(id order.ID) error {
-	delete(storer.orders, id)
-	return nil
-}
-
-func newMockStorer(numberOfOrders int) mockStorer {
-	return mockStorer{
-		orderFragments: make(map[order.ID]order.Fragment, numberOfOrders),
-		orders:         make(map[order.ID]order.Order, numberOfOrders),
-	}
-}
-
 func newOrder(isBuy bool) order.Order {
 	price := uint64(rand.Intn(2000))
 	volume := uint64(rand.Intn(2000))

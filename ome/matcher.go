@@ -214,12 +214,12 @@ func (matcher *matcher) resolveSellVolumeExp(networkID smpc.NetworkID, buyFragme
 		}
 		if isGreaterThanZero(values[0]) {
 			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ sellVolumeExp => buy = %v, sell = %v", com.Buy, com.Sell))
-			matcher.resolveTokens(networkID, sellFragment, sellFragment, com, callback)
+			matcher.resolveTokens(networkID, buyFragment, sellFragment, com, callback)
 			return
 		}
 		if isEqualToZero(values[0]) {
 			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ sellVolumeExp => buy = %v, sell = %v", com.Buy, com.Sell))
-			matcher.resolveSellVolumeCo(networkID, sellFragment, sellFragment, com, callback)
+			matcher.resolveSellVolumeCo(networkID, buyFragment, sellFragment, com, callback)
 			return
 		}
 		com.State = ComputationStateMismatched
@@ -251,7 +251,7 @@ func (matcher *matcher) resolveSellVolumeCo(networkID smpc.NetworkID, buyFragmen
 		}
 		if isGreaterThanOrEqualToZero(values[0]) {
 			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ sellVolumeCo => buy = %v, sell = %v", com.Buy, com.Sell))
-			matcher.resolveTokens(networkID, sellFragment, sellFragment, com, callback)
+			matcher.resolveTokens(networkID, buyFragment, sellFragment, com, callback)
 			return
 		}
 		com.State = ComputationStateMismatched

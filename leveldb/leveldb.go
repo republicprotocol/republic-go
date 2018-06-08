@@ -14,7 +14,7 @@ import (
 )
 
 // Store is an implementation of the orderbook.Storer interface that uses
-// LevelDB to load and store data to persitent storage.
+// LevelDB to load and store data to persistent storage.
 type Store struct {
 	orderFragments *leveldb.DB
 	orders         *leveldb.DB
@@ -22,7 +22,7 @@ type Store struct {
 	sync           *leveldb.DB
 }
 
-// NewStore returns a LevelDB implemntation of an orderbooker.Storer. It stores
+// NewStore returns a LevelDB implementation of an orderbooker.Storer. It stores
 // and loads order fragments, and orders, using the specified directory.
 func NewStore(dir string) (Store, error) {
 	orderFragments, err := leveldb.OpenFile(path.Join(dir, "orderFragments"), nil)
@@ -59,8 +59,11 @@ func (store *Store) Close() error {
 	if err := store.orders.Close(); err != nil {
 		return err
 	}
+	if err := store.computations.Close(); err != nil {
+		return err
+	}
 
-	return store.computations.Close()
+	return store.sync.Close()
 }
 
 // InsertOrderFragment implements the orderbook.Storer interface.

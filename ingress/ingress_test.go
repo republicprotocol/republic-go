@@ -50,6 +50,8 @@ var _ = Describe("Ingress", func() {
 		go captureErrorsFromErrorChannel(errChSync)
 		go captureErrorsFromErrorChannel(errChOpenOrderFragments)
 		go captureErrorsFromErrorChannel(errChOpenOrders)
+
+		time.Sleep(time.Millisecond)
 	})
 
 	AfterEach(func() {
@@ -68,7 +70,7 @@ var _ = Describe("Ingress", func() {
 		It("should open orders with a sufficient number of order fragments", func() {
 			ord, err := createOrder()
 			Expect(err).ShouldNot(HaveOccurred())
-			fragments, err := ord.Split(5, 4)
+			fragments, err := ord.Split(6, 4)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			orderFragmentMappingIn := OrderFragmentMapping{}
