@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/orderbook"
 )
 
 // ErrOrderFragmentNotFound is return when attempting to load an order that
@@ -30,7 +29,7 @@ type Storer struct {
 }
 
 // NewStorer creates a new mock Storer.
-func NewStorer() orderbook.Storer {
+func NewStorer() ome.Storer {
 	return &Storer{
 		mu:             new(sync.Mutex),
 		orderFragments: map[order.ID]order.Fragment{},

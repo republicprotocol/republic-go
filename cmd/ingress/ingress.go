@@ -71,7 +71,7 @@ func main() {
 	connPool := grpc.NewConnPool(100)
 	swarmClient := grpc.NewSwarmClient(multiAddr, &connPool)
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
-	orderbookClient := grpc.NewOrderbookClient(&connPool)
+	orderbookClient := grpc.NewOrderbookClient()
 	ingresser := ingress.NewIngress(&registry, renLedger, swarmer, orderbookClient)
 	ingressAdapter := adapter.NewIngressAdapter(ingresser)
 	openOrderErrors := ingresser.OpenOrderProcess(done)
