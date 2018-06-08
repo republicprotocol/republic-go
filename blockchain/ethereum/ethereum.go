@@ -134,6 +134,9 @@ func Connect(config Config) (Conn, error) {
 			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}
 	}
+	// Fixme: hardcode the renex contract for now,
+	// need to update the address in therir config files
+	config.RenExAccountsAddress = RenExAccountsAddressOnKovan.String()
 
 	ethclient, err := ethclient.Dial(config.URI)
 	if err != nil {
