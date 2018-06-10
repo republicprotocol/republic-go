@@ -2,7 +2,6 @@ package swarm_test
 
 import (
 	"context"
-	"log"
 	"sync"
 
 	. "github.com/onsi/ginkgo"
@@ -63,10 +62,6 @@ var _ = Describe("Swarm", func() {
 				err := swarmer.Bootstrap(ctx, bootstrapMultiaddrs)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
-
-			for i := 0; i < numberOfClients; i++ {
-				log.Println(len(dhts[i].MultiAddresses()))
-			}
 
 			// Query for clients
 			for i := 0; i < numberOfClients; i++ {
