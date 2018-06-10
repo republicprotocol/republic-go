@@ -86,32 +86,39 @@ func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 	smpc.joinersMu.Unlock()
 
 	go dispatch.CoForAll(nodes, func(i int) {
-
 		addr := nodes[i]
+		if addr == smpc.swarmer.MultiAddress().Address() {
+			// Skip trying to connect to ourself
+			return
+		}
 		multiAddr, err := smpc.query(addr)
 		if err != nil {
 			logger.Network(logger.LevelError, fmt.Sprintf("cannot connect to smpc node %v: %v", addr, err))
 			return
 		}
 
+		// Store the identity.Identity to identity.MultiAddress mapping
 		smpc.lookupMu.Lock()
 		smpc.lookup[addr] = multiAddr
 		smpc.lookupMu.Unlock()
 
+		// Open a stream to the node and store the context.CancelFunc so that
+		// we can call it when we need to disconnect
 		ctx, cancel := context.WithCancel(context.Background())
 		stream, err := smpc.streamer.Open(ctx, multiAddr)
 		if err != nil {
 			log.Println(fmt.Errorf("cannot open stream to smpc node %v: %v", addr, err))
 			return
 		}
-		go smpc.handleStream(addr, stream)
-
 		smpc.networkMu.Lock()
 		if _, ok := smpc.networkCancels[networkID]; !ok {
 			smpc.networkCancels[networkID] = make([]context.CancelFunc, 0, len(nodes))
 		}
 		smpc.networkCancels[networkID] = append(smpc.networkCancels[networkID], cancel)
 		smpc.networkMu.Unlock()
+
+		// A background goroutine will handle the stream
+		go smpc.handleStream(addr, stream)
 	})
 }
 

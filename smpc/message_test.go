@@ -11,13 +11,14 @@ import (
 	"github.com/republicprotocol/republic-go/crypto"
 )
 
-var numberOfMessages = 24
-
 var _ = Describe("Messages", func() {
+
+	var n = int64(24)
+	var k = 2 * (n + 1) / 3
 
 	Context("when marshaling and unmarshaling message of type MessageTypeJoin", func() {
 		It("should equal itself after marshaling and unmarshaling to binary", func() {
-			messageJoins := generateMessageJoin(numberOfMessages)
+			messageJoins := generateMessageJoin(n, k)
 			messages := make([]Message, len(messageJoins))
 			for i := range messages {
 				messages[i] = Message{
@@ -48,7 +49,7 @@ var _ = Describe("Messages", func() {
 
 	Context("when marshaling and unmarshaling message of type MessageJoinResponse", func() {
 		It("should equal itself after marshaling and unmarshaling to binary", func() {
-			messageJoinResponses := generateMessageJoinResponse(numberOfMessages)
+			messageJoinResponses := generateMessageJoinResponse(n, k)
 			messages := make([]Message, len(messageJoinResponses))
 			for i := range messages {
 				messages[i] = Message{
@@ -79,9 +80,9 @@ var _ = Describe("Messages", func() {
 
 })
 
-func generateMessageJoin(k int) []MessageJoin {
-	messages := make([]MessageJoin, k)
-	_, joins := generateJoins()
+func generateMessageJoin(n, k int64) []MessageJoin {
+	messages := make([]MessageJoin, n)
+	_, joins := generateJoins(n, k)
 	var networkID [32]byte
 	copy(networkID[:], crypto.Keccak256([]byte{uint8(math.MaxUint8)}))
 	for i := range messages {
@@ -94,9 +95,9 @@ func generateMessageJoin(k int) []MessageJoin {
 	return messages
 }
 
-func generateMessageJoinResponse(k int) []MessageJoinResponse {
-	messages := make([]MessageJoinResponse, k)
-	_, joins := generateJoins()
+func generateMessageJoinResponse(n, k int64) []MessageJoinResponse {
+	messages := make([]MessageJoinResponse, n)
+	_, joins := generateJoins(n, k)
 	var networkID [32]byte
 	copy(networkID[:], crypto.Keccak256([]byte{uint8(math.MaxUint8)}))
 	for i := range messages {

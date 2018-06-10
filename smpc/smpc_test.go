@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync/atomic"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -22,43 +23,52 @@ import (
 )
 
 var (
-	NumberOfdarknodes      = 24
-	NumberOfBootstrapNodes = 6
-	BuckSize               = 50
+	numDarknodes = 6
+	numBootstrap = 2
 )
 
 var _ = Describe("Smpcer", func() {
+
 	var nodes []*mockNode
 	var addresses []identity.Address
 
-	Context("Connect and disconnect", func() {
+	Context("when connecting and disconnecting", func() {
 		BeforeEach(func() {
-			By("Setting up test environment")
-			nodes, addresses = generateMocknodes(NumberOfdarknodes)
-			bootstraps := make([]identity.MultiAddress, NumberOfBootstrapNodes)
-			for i := 0; i < NumberOfBootstrapNodes; i++ {
+			var err error
+
+			By("generating nodes")
+			nodes, addresses, err = generateMocknodes(numDarknodes)
+			Expect(err).ShouldNot(HaveOccurred())
+			bootstraps := make(identity.MultiAddresses, numBootstrap)
+			for i := 0; i < numBootstrap; i++ {
 				bootstraps[i] = nodes[i].Multiaddress
 			}
 
-			By("Start serving and bootstrapping")
-			for i := 0; i < NumberOfdarknodes; i++ {
+			By("serving")
+			for i := 0; i < numDarknodes; i++ {
 				go func(i int) {
 					Ω(nodes[i].Start()).ShouldNot(HaveOccurred())
 				}(i)
 			}
+			time.Sleep(time.Second)
 
+			By("bootstrapping")
 			dispatch.CoForAll(nodes, func(i int) {
-				Ω(nodes[i].Swarmer.Bootstrap(context.Background(), bootstraps)).ShouldNot(HaveOccurred())
-
+				defer GinkgoRecover()
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				if err := nodes[i].Swarmer.Bootstrap(ctx, bootstraps); err != nil {
+					log.Println(err)
+				}
 			})
-
-			time.Sleep(3 * time.Second)
+			time.Sleep(time.Second)
 		})
 
 		AfterEach(func() {
-			for i := 0; i < NumberOfdarknodes; i++ {
+			dispatch.CoForAll(nodes, func(i int) {
 				nodes[i].Stop()
-			}
+			})
+			time.Sleep(time.Second)
 		})
 
 		It("should be able to connect and disconnect to the smpcer", func() {
@@ -71,28 +81,42 @@ var _ = Describe("Smpcer", func() {
 			}
 		})
 
-		It("should be able to join Joins and call the callback ", func() {
-			var networkID [32]byte
-			copy(networkID[:], crypto.Keccak256([]byte{1}))
-			ord, joins := generateJoins()
-			var called int64
-			callback := generateCallback(&called, ord)
+		Context("when connecting before joining", func() {
+			It("should be able to join values", func() {
+				networkID := NetworkID{0}
+				for i := range nodes {
+					nodes[i].Smpcer.Connect(networkID, addresses)
+				}
+				time.Sleep(time.Second)
 
-			for i := range nodes {
-				nodes[i].Smpcer.Connect(networkID, addresses)
-			}
+				var called int64
+				ord, joins := generateJoins(int64(numDarknodes), int64(2*(numDarknodes+1)/3))
+				callback := generateCallback(&called, ord)
 
-			dispatch.CoForAll(nodes, func(i int) {
-				err := nodes[i].Smpcer.Join(networkID, joins[i], callback)
-				Ω(err).ShouldNot(HaveOccurred())
+				dispatch.CoForAll(nodes, func(i int) {
+					err := nodes[i].Smpcer.Join(networkID, joins[i], callback)
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+				for atomic.LoadInt64(&called) < int64(numDarknodes) {
+					log.Println(atomic.LoadInt64(&called))
+					time.Sleep(time.Second)
+				}
+
+				for i := range nodes {
+					nodes[i].Smpcer.Disconnect(networkID)
+				}
 			})
 
-			//Ω(atomic.LoadInt64(&called)).Should(Equal(NumberOfdarknodes))
-
-			for i := range nodes {
-				nodes[i].Smpcer.Disconnect(networkID)
-			}
+			// It("should be able to join values in multiple networks", func() {
+			// })
 		})
+
+		// Context("when connecting after joining", func() {
+		// 	It("should be able to join values", func() {
+		// 	})
+		// 	It("should be able to join values in multiple networks", func() {
+		// 	})
+		// })
 
 	})
 })
@@ -120,24 +144,31 @@ func (node *mockNode) Start() error {
 
 func (node *mockNode) Stop() {
 	node.Server.Stop()
+	node.Listener.Close()
 }
 
-func generateMocknodes(n int) ([]*mockNode, []identity.Address) {
+func generateMocknodes(n int) ([]*mockNode, []identity.Address, error) {
 	nodes := make([]*mockNode, n)
 	addresses := make([]identity.Address, n)
 
 	for i := range nodes {
 		nodes[i] = new(mockNode)
 		keystore, err := crypto.RandomKeystore()
-		Ω(err).ShouldNot(HaveOccurred())
+		if err != nil {
+			return nil, nil, err
+		}
 
 		addr := identity.Address(keystore.Address())
-		dht := dht.NewDHT(addr, BuckSize)
-		multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d/republic/%v", 4000+i, addr))
-		Ω(err).ShouldNot(HaveOccurred())
+		dht := dht.NewDHT(addr, n/2)
+		multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d/republic/%v", 3000+i, addr))
+		if err != nil {
+			return nil, nil, err
+		}
 		connPool := grpc.NewConnPool(n)
-		listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", 4000+i))
-		Ω(err).ShouldNot(HaveOccurred())
+		listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", 3000+i))
+		if err != nil {
+			return nil, nil, err
+		}
 
 		swarmClient := grpc.NewSwarmClient(multiAddr, &connPool)
 		swarmer := swarm.NewSwarmer(swarmClient, &dht)
@@ -166,5 +197,5 @@ func generateMocknodes(n int) ([]*mockNode, []identity.Address) {
 		streamService.Register(nodes[i].Server)
 	}
 
-	return nodes, addresses
+	return nodes, addresses, nil
 }

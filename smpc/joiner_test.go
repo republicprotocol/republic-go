@@ -14,11 +14,11 @@ import (
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
-var n = int64(24)
-var k = 2 * (n + 1) / 3
-var joiner *Joiner
-
 var _ = Describe("Joiner", func() {
+
+	var n = int64(24)
+	var k = 2 * (n + 1) / 3
+	var joiner *Joiner
 
 	BeforeEach(func() {
 		joiner = NewJoiner(n)
@@ -28,7 +28,7 @@ var _ = Describe("Joiner", func() {
 
 		Context("when setting the callback at the first insertion", func() {
 			It("should call the callback after inserting n joins", func() {
-				ord, joins := generateJoins()
+				ord, joins := generateJoins(n, k)
 				called := int64(0)
 				callback := generateCallback(&called, ord)
 
@@ -49,7 +49,7 @@ var _ = Describe("Joiner", func() {
 
 		Context("when setting the callback at the last insertion", func() {
 			It("should call the callback after inserting joins", func() {
-				ord, joins := generateJoins()
+				ord, joins := generateJoins(n, k)
 				called := int64(0)
 				callback := generateCallback(&called, ord)
 
@@ -67,7 +67,7 @@ var _ = Describe("Joiner", func() {
 
 		Context("when the callback is set multiple times", func() {
 			It("should call the latest callback after inserting n joins", func() {
-				ord, joins := generateJoins()
+				ord, joins := generateJoins(n, k)
 				var called = int64(0)
 				callback := generateCallback(&called, ord)
 				callbackOverride := func(id JoinID, values []uint64) {
@@ -93,7 +93,7 @@ var _ = Describe("Joiner", func() {
 
 		Context("when inserting computed joins", func() {
 			It("should pass the computed values to the callback", func() {
-				joins := generateMatchedJoins()
+				joins := generateMatchedJoins(n, k)
 				called := int64(0)
 				callback := func(id JoinID, values []uint64) {
 					atomic.AddInt64(&called, 1)
@@ -122,7 +122,7 @@ var _ = Describe("Joiner", func() {
 
 	Context("when marshaling and unmarshaling joins", func() {
 		It("should get the same join after marshal and unmarshal", func() {
-			_, joins := generateJoins()
+			_, joins := generateJoins(n, k)
 			for i := range joins {
 				data, err := joins[i].MarshalBinary()
 				Ω(err).ShouldNot(HaveOccurred())
@@ -143,7 +143,7 @@ var _ = Describe("Joiner", func() {
 
 	Context("when inserting joins with shares that exceed the maximum", func() {
 		It("should return an error", func() {
-			_, joins := generateJoins()
+			_, joins := generateJoins(n, k)
 			for i := range joins {
 				shares := make([]shamir.Share, MaxJoinLength+1)
 				for j := range shares {
@@ -159,7 +159,7 @@ var _ = Describe("Joiner", func() {
 
 	Context("when inserting joins with different numbers of shares", func() {
 		It("should return an error", func() {
-			_, joins := generateJoins()
+			_, joins := generateJoins(n, k)
 
 			for i := int64(0); i < n; i++ {
 				if i > n/2 {
@@ -172,7 +172,7 @@ var _ = Describe("Joiner", func() {
 		})
 
 		It("should not call the callback more than once", func() {
-			ord, joins := generateJoins()
+			ord, joins := generateJoins(n, k)
 			called := int64(0)
 			callback := generateCallback(&called, ord)
 
@@ -188,7 +188,7 @@ var _ = Describe("Joiner", func() {
 	})
 })
 
-func generateJoins() (order.Order, []Join) {
+func generateJoins(n, k int64) (order.Order, []Join) {
 	ord := testutils.RandomOrder()
 	fragments, err := ord.Split(n, k)
 	Ω(err).ShouldNot(HaveOccurred())
@@ -205,7 +205,7 @@ func generateJoins() (order.Order, []Join) {
 		}
 		joins[i] = Join{
 			ID:     JoinID(ord.ID),
-			Index:  JoinIndex(i),
+			Index:  JoinIndex(i + 1),
 			Shares: shares,
 		}
 	}
@@ -213,7 +213,7 @@ func generateJoins() (order.Order, []Join) {
 	return ord, joins
 }
 
-func generateMatchedJoins() []Join {
+func generateMatchedJoins(n, k int64) []Join {
 	buy, sell := testutils.RandomOrderMatch()
 	buyFragments, err := buy.Split(n, k)
 	Ω(err).ShouldNot(HaveOccurred())
