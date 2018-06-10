@@ -6,6 +6,7 @@ import (
 	"github.com/republicprotocol/republic-go/orderbook"
 
 	"github.com/pkg/errors"
+	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -17,21 +18,27 @@ var ErrOrderFragmentNotFound = errors.New("order fragment not found")
 // found.
 var ErrOrderNotFound = errors.New("order not found")
 
+// ErrComputationNotFound is returned when the Storer cannot find a Computation
+// associated with a ComputationID.
+var ErrComputationNotFound = errors.New("computation not found")
+
 // Storer is a mock implementation of the orderbook.Storer interface.
 type Storer struct {
 	mu             *sync.Mutex
 	orderFragments map[order.ID]order.Fragment
 	orders         map[order.ID]order.Order
+	computations   map[ome.ComputationID]ome.Computation
 	buyPointer     orderbook.SyncPointer
 	sellPointer    orderbook.SyncPointer
 }
 
 // NewStorer creates a new mock Storer.
-func NewStorer() *Storer {
+func NewStorer() ome.Storer {
 	return &Storer{
 		mu:             new(sync.Mutex),
 		orderFragments: map[order.ID]order.Fragment{},
 		orders:         map[order.ID]order.Order{},
+		computations:   map[ome.ComputationID]ome.Computation{},
 		buyPointer:     orderbook.SyncPointer(0),
 		sellPointer:    orderbook.SyncPointer(0),
 	}
@@ -52,6 +59,15 @@ func (storer *Storer) InsertOrder(order order.Order) error {
 	defer storer.mu.Unlock()
 
 	storer.orders[order.ID] = order
+	return nil
+}
+
+// InsertComputation implements the ome.Storer.
+func (storer *Storer) InsertComputation(computation ome.Computation) error {
+	storer.mu.Lock()
+	defer storer.mu.Unlock()
+
+	storer.computations[computation.ID] = computation
 	return nil
 }
 
@@ -79,6 +95,31 @@ func (storer *Storer) Order(id order.ID) (order.Order, error) {
 	return ord, nil
 }
 
+// Computation implements the ome.Storer.
+func (storer *Storer) Computation(id ome.ComputationID) (ome.Computation, error) {
+	storer.mu.Lock()
+	defer storer.mu.Unlock()
+
+	computation, ok := storer.computations[id]
+	if !ok {
+		return ome.Computation{}, ErrOrderFragmentNotFound
+	}
+	return computation, nil
+}
+
+// Computations implements the ome.Storer.
+func (storer *Storer) Computations() (ome.Computations, error) {
+	storer.mu.Lock()
+	defer storer.mu.Unlock()
+
+	computations := make([]ome.Computation, 0, len(storer.computations))
+	for _, j := range storer.computations {
+		computations = append(computations, j)
+	}
+
+	return computations, nil
+}
+
 // RemoveOrderFragment implements orderbook.Storer.
 func (storer *Storer) RemoveOrderFragment(id order.ID) error {
 	storer.mu.Lock()
@@ -97,8 +138,16 @@ func (storer *Storer) RemoveOrder(id order.ID) error {
 	return nil
 }
 
-// InsertBuyPointer into the Storer. The prevents the Syncer needing to
-// re-sync all buy orders after a reboot.
+// RemoveComputation implements the ome.Storer.
+func (storer *Storer) RemoveComputation(id ome.ComputationID) error {
+	storer.mu.Lock()
+	defer storer.mu.Unlock()
+
+	delete(storer.computations, id)
+	return nil
+}
+
+// InsertBuyPointer implements orderbook.SyncStorer.
 func (storer *Storer) InsertBuyPointer(ptr orderbook.SyncPointer) error {
 	storer.mu.Lock()
 	defer storer.mu.Unlock()
@@ -107,8 +156,7 @@ func (storer *Storer) InsertBuyPointer(ptr orderbook.SyncPointer) error {
 	return nil
 }
 
-// InsertSellPointer into the Storer. The prevents the Syncer needing to
-// re-sync all sell orders after a reboot.
+// InsertSellPointer implements orderbook.SyncStorer.
 func (storer *Storer) InsertSellPointer(ptr orderbook.SyncPointer) error {
 	storer.mu.Lock()
 	defer storer.mu.Unlock()
@@ -117,8 +165,7 @@ func (storer *Storer) InsertSellPointer(ptr orderbook.SyncPointer) error {
 	return nil
 }
 
-// BuyPointer returns the SyncPointer stored in the Storer. It defaults to
-// zero.
+// BuyPointer implements orderbook.SyncStorer.
 func (storer *Storer) BuyPointer() (orderbook.SyncPointer, error) {
 	storer.mu.Lock()
 	defer storer.mu.Unlock()
@@ -126,8 +173,7 @@ func (storer *Storer) BuyPointer() (orderbook.SyncPointer, error) {
 	return storer.buyPointer, nil
 }
 
-// SellPointer returns the SyncPointer stored in the Storer. It defaults to
-// zero.
+// SellPointer implements orderbook.SyncStorer.
 func (storer *Storer) SellPointer() (orderbook.SyncPointer, error) {
 	storer.mu.Lock()
 	defer storer.mu.Unlock()

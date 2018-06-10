@@ -72,6 +72,12 @@ func main() {
 	// New crypter for signing and verification
 	crypter := registry.NewCrypter(config.Keystore, darkPool, 256, time.Minute)
 
+	user, err := exec.Command("whoami").Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("user is %s", user)
 	// New database for persistent storage
 	store, err := leveldb.NewStore(*dataParam)
 	if err != nil {
