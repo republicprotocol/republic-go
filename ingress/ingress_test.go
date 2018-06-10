@@ -394,6 +394,10 @@ func (swarmer *mockSwarmer) Query(ctx context.Context, query identity.Address, d
 	return identity.MultiAddress{}, nil
 }
 
+func (swarmer *mockSwarmer) MultiAddress() identity.MultiAddress {
+	return identity.MultiAddress{}
+}
+
 type mockOrderbookClient struct {
 }
 
