@@ -120,13 +120,13 @@
   branch = "master"
   name = "github.com/multiformats/go-multiaddr"
   packages = ["."]
-  revision = "123a717755e0559ec8fda308019cd24e0a37bb07"
+  revision = "f36800afeb9c141e1adb7da099e6f010dfd4c419"
 
 [[projects]]
   branch = "master"
   name = "github.com/multiformats/go-multihash"
   packages = ["."]
-  revision = "a0545ef43e32af9716b989178ecaefb8dda4a1bc"
+  revision = "8be2a682ab9f254311de1375145a2f78a809b07d"
 
 [[projects]]
   name = "github.com/onsi/ginkgo"
@@ -225,7 +225,7 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "5d6fca44a948d2be89a9702de7717f0168403d3d"
+  revision = "e2150783cd35f5b607daca48afd8c57ec54cc995"
 
 [[projects]]
   name = "github.com/urfave/cli"
@@ -242,7 +242,7 @@
     "scrypt",
     "sha3"
   ]
-  revision = "b47b1587369238182299fe4dad77d05b8b461e06"
+  revision = "8ac0e0d97ce45cd83d1d7243c060cb8461dda5e9"
 
 [[projects]]
   branch = "master"
@@ -312,13 +312,13 @@
     "imports",
     "internal/fastwalk"
   ]
-  revision = "4e38c85762ef97af128e1043dea2059b9f0ae206"
+  revision = "c65208ee29128450a4a024e3b7710f3a8d14028d"
 
 [[projects]]
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "81158efcc9f219c511e4d3c0d61a0e6e49c01a24"
+  revision = "32ee49c4dd805befd833990acba36cb75042378c"
 
 [[projects]]
   name = "google.golang.org/grpc"

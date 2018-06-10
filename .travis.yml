@@ -10,7 +10,7 @@ before_install:
   - go get golang.org/x/lint/golint
   - go get github.com/loongy/covermerge
   - go get github.com/mattn/goveralls
-  - dep ensure
+  # - dep ensure
 
 script:
   # - go vet ./...
