@@ -2,7 +2,6 @@ package dispatch_test
 
 import (
 	"errors"
-	"log"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -111,7 +110,6 @@ var _ = Describe("Error channels", func() {
 			errCh <- err3
 
 			consumeFn := func(err error) {
-				log.Println("Processing the error", err.Error())
 			}
 
 			go ConsumeErrors(errCh, consumeFn)
