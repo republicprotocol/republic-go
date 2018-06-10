@@ -98,7 +98,6 @@ var _ = Describe("Smpcer", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 				for atomic.LoadInt64(&called) < int64(numDarknodes) {
-					log.Println(atomic.LoadInt64(&called))
 					time.Sleep(time.Second)
 				}
 

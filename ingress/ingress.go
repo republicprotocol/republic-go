@@ -300,11 +300,10 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 	go func() {
 		defer close(errs)
 
-		fmtStr := fmt.Sprintf("[pod = %v] sending order = \n", base64.StdEncoding.EncodeToString(pod.Hash[:]))
+		log.Printf("[pod = %v] sending order", base64.StdEncoding.EncodeToString(pod.Hash[:]))
 		for _, darknode := range pod.Darknodes {
-			fmtStr += "  sending order fragment to " + darknode.String() + "\n"
+			log.Printf("  sending order fragment to %v", darknode)
 		}
-		log.Printf(fmtStr)
 
 		dispatch.CoForAll(pod.Darknodes, func(i int) {
 			orderFragment, ok := orderFragmentIndexMapping[int64(i+1)] // Indices for fragments start at 1
