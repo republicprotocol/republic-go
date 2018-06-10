@@ -33,7 +33,7 @@ type Storer struct {
 }
 
 // NewStorer creates a new mock Storer.
-func NewStorer() ome.Storer {
+func NewStorer() *Storer {
 	return &Storer{
 		mu:             new(sync.Mutex),
 		orderFragments: map[order.ID]order.Fragment{},
