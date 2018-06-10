@@ -15,9 +15,8 @@ var numberOfMessages = 24
 
 var _ = Describe("Messages", func() {
 
-	Context("Marshal and unmarshal Message", func() {
-
-		It("should equal itself after marshaling and unmarshaling in binary if the message is of type MessageTypeJoin", func() {
+	Context("when marshaling and unmarshaling message of type MessageTypeJoin", func() {
+		It("should equal itself after marshaling and unmarshaling to binary", func() {
 			messageJoins := generateMessageJoin(numberOfMessages)
 			messages := make([]Message, len(messageJoins))
 			for i := range messages {
@@ -45,8 +44,10 @@ var _ = Describe("Messages", func() {
 				}
 			}
 		})
+	})
 
-		It("should equal itself after marshaling and unmarshaling in binary if the message is of type MessageJoinResponse", func() {
+	Context("when marshaling and unmarshaling message of type MessageJoinResponse", func() {
+		It("should equal itself after marshaling and unmarshaling to binary", func() {
 			messageJoinResponses := generateMessageJoinResponse(numberOfMessages)
 			messages := make([]Message, len(messageJoinResponses))
 			for i := range messages {
@@ -71,52 +72,6 @@ var _ = Describe("Messages", func() {
 				Ω(len(messages[i].MessageJoinResponse.Join.Shares)).Should(Equal(len(message.MessageJoinResponse.Join.Shares)))
 				for j := range messages[i].MessageJoinResponse.Join.Shares {
 					Ω(messages[i].MessageJoinResponse.Join.Shares[j].Equal(&message.MessageJoinResponse.Join.Shares[j]))
-				}
-			}
-		})
-	})
-
-	Context("Marshal and unmarshal MessageJoin", func() {
-
-		It("should equal itself after marshaling and unmarshaling in binary", func() {
-			messages := generateMessageJoin(numberOfMessages)
-
-			for i := range messages {
-				data, err := messages[i].MarshalBinary()
-				Ω(err).ShouldNot(HaveOccurred())
-
-				var message MessageJoin
-				Ω(message.UnmarshalBinary(data)).ShouldNot(HaveOccurred())
-
-				Ω(bytes.Compare(messages[i].NetworkID[:], message.NetworkID[:])).Should(Equal(0))
-				Ω(bytes.Compare(messages[i].Join.ID[:], message.Join.ID[:])).Should(Equal(0))
-				Ω(messages[i].Join.Index).Should(Equal(message.Join.Index))
-				Ω(len(messages[i].Join.Shares)).Should(Equal(len(message.Join.Shares)))
-				for j := range messages[i].Join.Shares {
-					Ω(messages[i].Join.Shares[j].Equal(&message.Join.Shares[j]))
-				}
-			}
-		})
-	})
-
-	Context("Marshal and unmarshal MessageJoinResponse", func() {
-
-		It("should equal itself after marshaling and unmarshaling in binary", func() {
-			messages := generateMessageJoinResponse(numberOfMessages)
-
-			for i := range messages {
-				data, err := messages[i].MarshalBinary()
-				Ω(err).ShouldNot(HaveOccurred())
-
-				var message MessageJoinResponse
-				Ω(message.UnmarshalBinary(data)).ShouldNot(HaveOccurred())
-
-				Ω(bytes.Compare(messages[i].NetworkID[:], message.NetworkID[:])).Should(Equal(0))
-				Ω(bytes.Compare(messages[i].Join.ID[:], message.Join.ID[:])).Should(Equal(0))
-				Ω(messages[i].Join.Index).Should(Equal(message.Join.Index))
-				Ω(len(messages[i].Join.Shares)).Should(Equal(len(message.Join.Shares)))
-				for j := range messages[i].Join.Shares {
-					Ω(messages[i].Join.Shares[j].Equal(&message.Join.Shares[j]))
 				}
 			}
 		})
