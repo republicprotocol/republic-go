@@ -4,9 +4,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ome"
-	"github.com/republicprotocol/republic-go/testutils/mock"
 
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/testutils"
 )
 
 // WARNING: The expected number of computations is only
@@ -67,7 +67,7 @@ var _ = Describe("OME Ranker", func() {
 		})
 
 		It("should not return computations that are not meant for the ranker", func() {
-			storer := mock.NewStorer()
+			storer := testutils.NewStorer()
 			ranker := NewRanker(numberOfRankers, 0, storer)
 
 			// (1+1) => 2 mod 5 != 0
@@ -102,7 +102,7 @@ func insertBuyOrder(orderID order.ID, priority Priority, ranker Ranker) {
 }
 
 func sendCorrectOrdersToRanker(numberOfRankers, numberOfOrderPairs int) (Ranker, Computations) {
-	storer := mock.NewStorer()
+	storer := testutils.NewStorer()
 	ranker := NewRanker(numberOfRankers, 0, storer)
 
 	for i := 0; i < numberOfOrderPairs; i++ {

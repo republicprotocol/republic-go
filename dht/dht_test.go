@@ -14,7 +14,7 @@ import (
 const maxBucketLength = 20
 
 func randomAddress() (*identity.Address, *identity.MultiAddress, error) {
-	randomAddress, randomMultiAddress, err := testutils.CreateAddressAndMultiaddress()
+	randomAddress, randomMultiAddress, err := testutils.RandomAddressAndMultiAddress()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -22,7 +22,7 @@ func randomAddress() (*identity.Address, *identity.MultiAddress, error) {
 }
 
 func randomDHTAndAddress() (*DHT, *identity.Address, *identity.MultiAddress, error) {
-	dhtAddress, _, err := testutils.CreateAddressAndMultiaddress()
+	dhtAddress, _, err := testutils.RandomAddressAndMultiAddress()
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -84,7 +84,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < maxBucketLength; i++ {
-				multiAddress, err := testutils.CreateMultiaddress()
+				multiAddress, err := testutils.RandomMultiAddress()
 				Ω(err).ShouldNot(HaveOccurred())
 				err = dht.UpdateMultiAddress(multiAddress)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -100,7 +100,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < IDLengthInBits*maxBucketLength; i++ {
-				multiAddress, err := testutils.CreateMultiaddress()
+				multiAddress, err := testutils.RandomMultiAddress()
 				Ω(err).ShouldNot(HaveOccurred())
 				dht.UpdateMultiAddress(multiAddress)
 			}
@@ -142,7 +142,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < IDLengthInBits*maxBucketLength+1; i++ {
-				multiAddress, e := testutils.CreateMultiaddress()
+				multiAddress, e := testutils.RandomMultiAddress()
 				Ω(e).ShouldNot(HaveOccurred())
 				e = dht.UpdateMultiAddress(multiAddress)
 				if err == nil && e != nil {
@@ -188,7 +188,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < IDLengthInBits*maxBucketLength+1; i++ {
-				multiAddress, e := testutils.CreateMultiaddress()
+				multiAddress, e := testutils.RandomMultiAddress()
 				Ω(e).ShouldNot(HaveOccurred())
 				e = dht.UpdateMultiAddress(multiAddress)
 				if err == nil && e != nil {
@@ -214,7 +214,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 3; i++ {
-				multiAddress, err := testutils.CreateMultiaddress()
+				multiAddress, err := testutils.RandomMultiAddress()
 				Ω(err).ShouldNot(HaveOccurred())
 				err = dht.UpdateMultiAddress(multiAddress)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -235,7 +235,7 @@ var _ = Describe("Distributed Hash Table", func() {
 
 			for i := 0; i < 100; i++ {
 				for j := 0; j < 4; j++ {
-					multiAddress, err := testutils.CreateMultiaddress()
+					multiAddress, err := testutils.RandomMultiAddress()
 					Ω(err).ShouldNot(HaveOccurred())
 					err = dht.UpdateMultiAddress(multiAddress)
 					Ω(err).ShouldNot(HaveOccurred())
