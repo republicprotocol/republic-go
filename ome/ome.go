@@ -68,7 +68,11 @@ func NewComputation(buy, sell order.ID) Computation {
 
 // An Ome runs the logic for a single node in the secure order matching engine.
 type Ome interface {
+
+	// Run the secure order matching engine until the done channel is closed.
 	Run(done <-chan struct{}) <-chan error
+
+	// OnChangeEpoch should be called whenever a new cal.Epoch is observed.
 	OnChangeEpoch(cal.Epoch)
 }
 
@@ -81,13 +85,16 @@ type ome struct {
 	orderbook orderbook.Orderbook
 	smpcer    smpc.Smpcer
 
-	ξMu *sync.RWMutex
-	ξ   cal.Epoch
-
 	computationBacklogMu *sync.RWMutex
 	computationBacklog   map[ComputationID]Computation
+
+	ξMu *sync.RWMutex
+	ξ   cal.Epoch
 }
 
+// NewOme returns an Ome that uses an order.Orderbook to synchronize changes
+// from the Ethereum blockchain, and an smpc.Smpcer to run the secure
+// multi-party computations necessary for the secure order matching engine.
 func NewOme(ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler, storer Storer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer) Ome {
 	return &ome{
 		ranker:    ranker,
@@ -98,24 +105,12 @@ func NewOme(ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler
 		orderbook: orderbook,
 		smpcer:    smpcer,
 
-		ξMu: new(sync.RWMutex),
-		ξ:   cal.Epoch{},
-
 		computationBacklogMu: new(sync.RWMutex),
 		computationBacklog:   map[ComputationID]Computation{},
+
+		ξMu: new(sync.RWMutex),
+		ξ:   cal.Epoch{},
 	}
-}
-
-// OnChangeEpoch updates the Ome to the next cal.Epoch. This will cause
-// cascading changes throughout the Ome, most notably it will connect to a new
-// Smpc network that will handle future Computations.
-func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
-	ome.ξMu.Lock()
-	defer ome.ξMu.Unlock()
-
-	ome.smpcer.Disconnect(ome.ξ.Hash)
-	ome.ξ = ξ
-	ome.smpcer.Connect(ome.ξ.Hash, ome.ξ.Darknodes)
 }
 
 // Run implements the Ome interface.
@@ -208,6 +203,18 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 	}()
 
 	return errs
+}
+
+// OnChangeEpoch updates the Ome to the next cal.Epoch. This will cause
+// cascading changes throughout the Ome, most notably it will connect to a new
+// Smpc network that will handle future Computations.
+func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
+	ome.ξMu.Lock()
+	defer ome.ξMu.Unlock()
+
+	ome.smpcer.Disconnect(ome.ξ.Hash)
+	ome.ξ = ξ
+	ome.smpcer.Connect(ome.ξ.Hash, ome.ξ.Darknodes)
 }
 
 func (ome *ome) syncOrderbookToRanker(done <-chan struct{}, errs chan<- error) {
