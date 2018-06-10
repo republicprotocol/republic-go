@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"time"
+
+	"github.com/republicprotocol/republic-go/logger"
 
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -128,7 +129,7 @@ func (swarmer *swarmer) Bootstrap(ctx context.Context, multiAddrs identity.Multi
 			errs <- fmt.Errorf("error while bootstrapping: %v", err)
 			return
 		}
-		log.Println(len(swarmer.dhtManager.dht.MultiAddresses()), "nodes after boostrapping")
+		logger.Network(logger.LevelInfo, fmt.Sprintf("connected to %v peers after bootstrapping", len(swarmer.dhtManager.dht.MultiAddresses())))
 	}()
 
 	for err := range errs {
@@ -215,7 +216,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address, depth
 				continue
 			}
 			if err := swarmer.dhtManager.updateDHT(multiAddr); err != nil {
-				log.Printf("cannot update dht with %v: %v", multiAddr, err)
+				logger.Network(logger.LevelInfo, fmt.Sprintf("cannot update dht with %v: %v", multiAddr, err))
 			}
 			whitelist = append(whitelist, multiAddr)
 		}
