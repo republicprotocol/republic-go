@@ -141,7 +141,7 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 	from.Signature = request.GetSignature()
 	multiAddr, err := service.server.Ping(ctx, from)
 	if err != nil {
-		logger.Network(logger.LevelError, fmt.Sprintf("cannot update dht: %v", err))
+		logger.Network(logger.LevelInfo, fmt.Sprintf("cannot update dht with %v: %v", multiAddr, err))
 		return &PingResponse{}, fmt.Errorf("cannot update dht: %v", err)
 	}
 	return &PingResponse{
