@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/crypto"
 	. "github.com/republicprotocol/republic-go/smpc"
 
 	"github.com/republicprotocol/republic-go/order"
@@ -231,10 +232,10 @@ func generateMatchedJoins() []Join {
 			buyFragments[i].Tokens.Sub(&sellFragments[i].Tokens),
 		}
 		joins[i] = Join{
-			ID:     testutils.ComputationID(buy.ID, sell.ID),
 			Index:  JoinIndex(i),
 			Shares: shares,
 		}
+		copy(joins[i].ID[:], crypto.Keccak256(buy.ID[:], sell.ID[:]))
 	}
 
 	return joins

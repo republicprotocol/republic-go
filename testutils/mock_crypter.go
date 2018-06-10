@@ -1,4 +1,4 @@
-package mock
+package testutils
 
 // Crypter is a mock implementation of the Crypter interface
 type Crypter struct {

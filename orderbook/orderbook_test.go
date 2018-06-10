@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/testutils"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/order"
@@ -27,10 +28,10 @@ var _ = Describe("Orderbook", func() {
 
 			// Create mock syncer and storer
 			syncer := newMockSyncer(numberOfOrders)
-			storer := newMockStorer(numberOfOrders)
+			storer := testutils.NewStorer()
 
 			// Create orderbook
-			orderbook := NewOrderbook(rsaKey, &syncer, &storer)
+			orderbook := NewOrderbook(rsaKey, &syncer, storer)
 
 			// Create encryptedOrderFragments
 			encryptedOrderFragments := make([]order.EncryptedFragment, numberOfOrders)
@@ -49,7 +50,7 @@ var _ = Describe("Orderbook", func() {
 				err = orderbook.OpenOrder(ctx, encryptedOrderFragments[i])
 				Expect(err).ShouldNot(HaveOccurred())
 			}
-			Expect(len(storer.orderFragments)).Should(Equal(numberOfOrders))
+			Expect(storer.NumOrderFragments()).Should(Equal(numberOfOrders))
 		})
 	})
 })

@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/republicprotocol/republic-go/testutils"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/orderbook"
@@ -24,12 +26,13 @@ var _ = Describe("Syncer", func() {
 
 		It("should sync with renledger by updating memory and returning a ChangeSet", func() {
 			numberOfOrderPairs := 40
+
+			store := testutils.NewStorer()
+			renLedger := newMockRenLedger()
 			renLimit := 10
 
-			renLedger := newMockRenLedger()
-
 			// Initial sync with an empty Ren Ledger should return an empty changeset
-			syncer := NewSyncer(&renLedger, renLimit)
+			syncer := NewSyncer(store, &renLedger, renLimit)
 			changeSet, err := syncer.Sync()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(len(changeSet)).Should(Equal(0))
