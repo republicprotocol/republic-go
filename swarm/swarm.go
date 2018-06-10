@@ -84,6 +84,9 @@ type Swarmer interface {
 	// zero will perform an exhaustive search. Returns ErrMultiAddressNotFound
 	// if no matching results are found.
 	Query(ctx context.Context, query identity.Address, depth int) (identity.MultiAddress, error)
+
+	// MultiAddress of the Swarmer.
+	MultiAddress() identity.MultiAddress
 }
 
 type swarmer struct {
@@ -137,6 +140,11 @@ func (swarmer *swarmer) Bootstrap(ctx context.Context, multiAddrs identity.Multi
 // Query implements the Swarmer interface.
 func (swarmer *swarmer) Query(ctx context.Context, query identity.Address, depth int) (identity.MultiAddress, error) {
 	return swarmer.query(ctx, query, depth, false)
+}
+
+// MultiAddress implements the Swarmer interface.
+func (swarmer *swarmer) MultiAddress() identity.MultiAddress {
+	return swarmer.client.MultiAddress()
 }
 
 func (swarmer *swarmer) query(ctx context.Context, query identity.Address, depth int, isBootstrapping bool) (identity.MultiAddress, error) {
