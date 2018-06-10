@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/republicprotocol/republic-go/logger"
+
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
@@ -237,7 +239,7 @@ func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
 			}
 
 			if bytes.Compare(ingress.epoch.Hash[:], currentEpoch.Hash[:]) != 0 {
-				log.Printf("epoch change: epoch hash %v , number of nodes: %v ", base64.StdEncoding.EncodeToString(currentEpoch.Hash[:]), len(currentEpoch.Darknodes))
+				logger.Epoch(currentEpoch.Hash)
 				pods, err := ingress.darkpool.Pods()
 				if err != nil {
 					select {
