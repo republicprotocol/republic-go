@@ -74,7 +74,7 @@ type matcher struct {
 }
 
 // NewMatcher returns a Matcher that will resolve Computations by resolving
-// each component in a pipeline. If a mismatch is encounterd at any stage of
+// each component in a pipeline. If a mismatch is encountered at any stage of
 // the pipeline, the Computation is short circuited and the MatchCallback will
 // be called immediately.
 func NewMatcher(storer Storer, smpcer smpc.Smpcer) Matcher {

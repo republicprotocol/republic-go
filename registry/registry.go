@@ -12,7 +12,7 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 )
 
-// ErrInvalidRegistration is returned when an address is not registerd in the
+// ErrInvalidRegistration is returned when an address is not registered in the
 // DarknodeRegsitry. It is possible that the address recently registered, but
 // the Crypter has already cached it as unregistered. In these cases, the cache
 // will be updated periodically, so a secondary attempt can be made slightly

@@ -23,7 +23,7 @@ $  rpc [global options] command [command options] [arguments...]
 
 - `status {ipAddress}` 
    It take one argument which is the network address in the format of `0.0.0.0:8080`.
-   The values are seperated by space and in the order of *address*, *isBootstrapped*, *connectNodes*  
+   The values are separated by space and in the order of *address*, *isBootstrapped*, *connectNodes*  
 - `help`        
    Shows a list of commands or help for one command
 

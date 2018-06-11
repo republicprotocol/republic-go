@@ -315,7 +315,7 @@ func (darkNodeRegistry *DarknodeRegistry) MinimumEpochInterval() (stackint.Int10
 	return stackint.FromBigInt(interval)
 }
 
-// MinimumDarkPoolSize gets the minumum dark pool size
+// MinimumDarkPoolSize gets the minimum dark pool size
 func (darkNodeRegistry *DarknodeRegistry) MinimumDarkPoolSize() (stackint.Int1024, error) {
 	interval, err := darkNodeRegistry.binding.MinimumDarkPoolSize(darkNodeRegistry.callOpts)
 	if err != nil {
