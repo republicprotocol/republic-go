@@ -40,11 +40,11 @@ type Computations []Computation
 
 // A Computation is a combination of a buy order.Order and a sell order.Order.
 type Computation struct {
-	ID        ComputationID    `json:"id"`
-	State     ComputationState `json:"state"`
-	Priority  uint64           `json:"priority"`
-	Match     bool             `json:"match"`
-	Timestamp time.Time        `json:"timestamp"`
+	ID        ComputationID      `json:"id"`
+	State     ComputationState   `json:"state"`
+	Priority  orderbook.Priority `json:"priority"`
+	Match     bool               `json:"match"`
+	Timestamp time.Time          `json:"timestamp"`
 
 	Buy  order.ID `json:"buy"`
 	Sell order.ID `json:"sell"`

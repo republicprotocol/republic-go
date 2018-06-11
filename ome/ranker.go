@@ -206,16 +206,16 @@ func (ranker *delegateRanker) getPosFromEpoch(epoch cal.Epoch) (int, int, error)
 type epochRanker struct {
 	numberOfRankers int
 	pos             int
-	buys            map[order.ID]uint64
-	sells           map[order.ID]uint64
+	buys            map[order.ID]orderbook.Priority
+	sells           map[order.ID]orderbook.Priority
 }
 
 func newEpochRanker(numberOfRankers, pos int) *epochRanker {
 	return &epochRanker{
 		numberOfRankers: numberOfRankers,
 		pos:             pos,
-		buys:            map[order.ID]uint64{},
-		sells:           map[order.ID]uint64{},
+		buys:            map[order.ID]orderbook.Priority{},
+		sells:           map[order.ID]orderbook.Priority{},
 	}
 }
 
@@ -250,8 +250,8 @@ func (ranker *epochRanker) run(changes <-chan orderbook.Change) <-chan Computati
 }
 
 func (ranker *epochRanker) cleanup() {
-	ranker.buys = map[order.ID]uint64{}
-	ranker.sells = map[order.ID]uint64{}
+	ranker.buys = map[order.ID]orderbook.Priority{}
+	ranker.sells = map[order.ID]orderbook.Priority{}
 }
 
 func (ranker *epochRanker) insertBuy(change orderbook.Change) []Computation {
