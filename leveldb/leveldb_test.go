@@ -4,6 +4,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/republicprotocol/republic-go/ome"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/leveldb"
@@ -16,6 +18,7 @@ var _ = Describe("LevelDB storage", func() {
 
 	orders := make([]order.Order, 100)
 	orderFragments := make([]order.Fragment, 100)
+	computations := make([]ome.Computation, 100)
 
 	BeforeEach(func() {
 		for i := 0; i < 100; i++ {
@@ -24,6 +27,7 @@ var _ = Describe("LevelDB storage", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			orders[i] = ord
 			orderFragments[i] = ordFragments[0]
+			computations[i] = ome.NewComputation(ord.ID, ord.ID)
 		}
 	})
 
@@ -41,6 +45,8 @@ var _ = Describe("LevelDB storage", func() {
 				Expect(err).Should(Equal(orderbook.ErrOrderFragmentNotFound))
 				_, err = db.Order(orders[i].ID)
 				Expect(err).Should(Equal(orderbook.ErrOrderNotFound))
+				_, err = db.Computation(computations[i].ID)
+				Expect(err).Should(Equal(ome.ErrComputationNotFound))
 			}
 			err = db.Close()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -53,6 +59,8 @@ var _ = Describe("LevelDB storage", func() {
 				err = db.RemoveOrderFragment(orders[i].ID)
 				Expect(err).ShouldNot(HaveOccurred())
 				err = db.RemoveOrder(orders[i].ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = db.RemoveComputation(computations[i].ID)
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 			err = db.Close()
@@ -67,14 +75,56 @@ var _ = Describe("LevelDB storage", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				err = db.InsertOrder(orders[i])
 				Expect(err).ShouldNot(HaveOccurred())
+				err = db.InsertComputation(computations[i])
+				Expect(err).ShouldNot(HaveOccurred())
 			}
 			for i := 0; i < 100; i++ {
 				orderFragment, err := db.OrderFragment(orders[i].ID)
 				Expect(err).ShouldNot(HaveOccurred())
 				order, err := db.Order(orders[i].ID)
 				Expect(err).ShouldNot(HaveOccurred())
+				com, err := db.Computation(computations[i].ID)
+				Expect(err).ShouldNot(HaveOccurred())
 				Expect(orderFragment.Equal(&orderFragments[i])).Should(BeTrue())
 				Expect(order.Equal(&orders[i])).Should(BeTrue())
+				Expect(com.Equal(&computations[i])).Should(BeTrue())
+			}
+			err = db.Close()
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should load all data that was stored", func() {
+			db, err := NewStore("./tmp")
+			Expect(err).ShouldNot(HaveOccurred())
+			for i := 0; i < 100; i++ {
+				err = db.InsertOrder(orders[i])
+				Expect(err).ShouldNot(HaveOccurred())
+				err = db.InsertComputation(computations[i])
+				Expect(err).ShouldNot(HaveOccurred())
+			}
+
+			ords, err := db.Orders()
+			Expect(err).ShouldNot(HaveOccurred())
+			coms, err := db.Computations()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(ords).Should(HaveLen(len(orders)))
+			Expect(coms).Should(HaveLen(len(computations)))
+			for i := 0; i < 100; i++ {
+				foundOrd := false
+				foundCom := false
+				for j := 0; j < 100; j++ {
+					if foundOrd || ords[i].Equal(&orders[j]) {
+						foundOrd = true
+					}
+					if foundCom || coms[i].Equal(&computations[j]) {
+						foundCom = true
+					}
+					if foundOrd && foundCom {
+						break
+					}
+				}
+				Expect(foundOrd).Should(BeTrue())
+				Expect(foundCom).Should(BeTrue())
 			}
 			err = db.Close()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -88,11 +138,15 @@ var _ = Describe("LevelDB storage", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				err = db.InsertOrder(orders[i])
 				Expect(err).ShouldNot(HaveOccurred())
+				err = db.InsertComputation(computations[i])
+				Expect(err).ShouldNot(HaveOccurred())
 			}
 			for i := 0; i < 100; i++ {
 				err = db.RemoveOrderFragment(orders[i].ID)
 				Expect(err).ShouldNot(HaveOccurred())
 				err = db.RemoveOrder(orders[i].ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = db.RemoveComputation(computations[i].ID)
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 			for i := 0; i < 100; i++ {
@@ -100,6 +154,8 @@ var _ = Describe("LevelDB storage", func() {
 				Expect(err).Should(Equal(orderbook.ErrOrderFragmentNotFound))
 				_, err = db.Order(orders[i].ID)
 				Expect(err).Should(Equal(orderbook.ErrOrderNotFound))
+				_, err = db.Computation(computations[i].ID)
+				Expect(err).Should(Equal(ome.ErrComputationNotFound))
 			}
 			err = db.Close()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -117,6 +173,8 @@ var _ = Describe("LevelDB storage", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				err = db.InsertOrder(orders[i])
 				Expect(err).ShouldNot(HaveOccurred())
+				err = db.InsertComputation(computations[i])
+				Expect(err).ShouldNot(HaveOccurred())
 			}
 			err = db.Close()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -129,8 +187,11 @@ var _ = Describe("LevelDB storage", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 					order, err := nextDb.Order(orders[i].ID)
 					Expect(err).ShouldNot(HaveOccurred())
+					com, err := nextDb.Computation(computations[i].ID)
+					Expect(err).ShouldNot(HaveOccurred())
 					Expect(orderFragment.Equal(&orderFragments[i])).Should(BeTrue())
 					Expect(order.Equal(&orders[i])).Should(BeTrue())
+					Expect(com.Equal(&computations[i])).Should(BeTrue())
 				}
 				err = nextDb.Close()
 				Expect(err).ShouldNot(HaveOccurred())

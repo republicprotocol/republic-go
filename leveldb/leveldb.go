@@ -84,6 +84,15 @@ func (store *Store) InsertOrder(order order.Order) error {
 	return store.orders.Put(order.ID[:], data, nil)
 }
 
+// InsertComputation implements the ome.Storer interface.
+func (store *Store) InsertComputation(computation ome.Computation) error {
+	data, err := json.Marshal(computation)
+	if err != nil {
+		return err
+	}
+	return store.computations.Put(computation.ID[:], data, nil)
+}
+
 // OrderFragment implements the orderbook.Storer interface.
 func (store *Store) OrderFragment(id order.ID) (order.Fragment, error) {
 	orderFragment := order.Fragment{}
@@ -133,25 +142,6 @@ func (store *Store) Orders() ([]order.Order, error) {
 	return ords, iter.Error()
 }
 
-// RemoveOrderFragment implements the orderbook.Storer interface.
-func (store *Store) RemoveOrderFragment(id order.ID) error {
-	return store.orderFragments.Delete(id[:], nil)
-}
-
-// RemoveOrder implements the orderbook.Storer interface.
-func (store *Store) RemoveOrder(id order.ID) error {
-	return store.orders.Delete(id[:], nil)
-}
-
-// InsertComputation implements the ome.Storer interface.
-func (store *Store) InsertComputation(computation ome.Computation) error {
-	data, err := json.Marshal(computation)
-	if err != nil {
-		return err
-	}
-	return store.computations.Put(computation.ID[:], data, nil)
-}
-
 // Computation implements the ome.Storer interface.
 func (store *Store) Computation(id ome.ComputationID) (ome.Computation, error) {
 	computation := ome.Computation{}
@@ -183,6 +173,21 @@ func (store *Store) Computations() (ome.Computations, error) {
 		coms = append(coms, com)
 	}
 	return coms, iter.Error()
+}
+
+// RemoveOrderFragment implements the orderbook.Storer interface.
+func (store *Store) RemoveOrderFragment(id order.ID) error {
+	return store.orderFragments.Delete(id[:], nil)
+}
+
+// RemoveOrder implements the orderbook.Storer interface.
+func (store *Store) RemoveOrder(id order.ID) error {
+	return store.orders.Delete(id[:], nil)
+}
+
+// RemoveComputation implements the ome.Storer interface.
+func (store *Store) RemoveComputation(id ome.ComputationID) error {
+	return store.computations.Delete(id[:], nil)
 }
 
 // InsertBuyPointer implements the orderbook.SyncStorer interface.
