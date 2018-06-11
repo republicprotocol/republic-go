@@ -52,12 +52,14 @@ var _ = Describe("Order fragments", func() {
 
 		It("should return a new Fragment with a keccak256 encrypted 32 byte ID", func() {
 			copy(orderID[:], "orderID")
-			fragment := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
+			expiry := time.Now()
+			fragment := NewFragment(orderID, TypeLimit, ParityBuy, expiry, tokens, price, maxVolume, minVolume)
 
 			expectedFragment := Fragment{
 				OrderID:       orderID,
 				OrderType:     TypeLimit,
 				OrderParity:   ParityBuy,
+				OrderExpiry:   expiry,
 				Tokens:        tokens,
 				Price:         price,
 				Volume:        maxVolume,
@@ -75,8 +77,9 @@ var _ = Describe("Order fragments", func() {
 
 		It("should return true if order fragments are equal", func() {
 			copy(orderID[:], "orderID")
-			lhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
-			rhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
+			expiry := time.Now()
+			lhs := NewFragment(orderID, TypeLimit, ParityBuy, expiry, tokens, price, maxVolume, minVolume)
+			rhs := NewFragment(orderID, TypeLimit, ParityBuy, expiry, tokens, price, maxVolume, minVolume)
 
 			Ω(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(true))
 			Ω(lhs.Equal(&rhs)).Should(Equal(true))
