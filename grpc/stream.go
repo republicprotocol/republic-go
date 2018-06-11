@@ -31,6 +31,7 @@ type safeStream struct {
 	done   chan struct{}
 	sendMu *sync.Mutex
 	recvMu *sync.Mutex
+	closed bool
 }
 
 func newSafeStream(stream grpc.Stream) *safeStream {
@@ -40,6 +41,7 @@ func newSafeStream(stream grpc.Stream) *safeStream {
 		done:   make(chan struct{}),
 		sendMu: new(sync.Mutex),
 		recvMu: new(sync.Mutex),
+		closed: false,
 	}
 }
 
@@ -48,7 +50,7 @@ func (str *safeStream) Send(message stream.Message) error {
 	str.sendMu.Lock()
 	defer str.sendMu.Unlock()
 
-	if str.done == nil {
+	if str.closed {
 		return stream.ErrSendOnClosedStream
 	}
 
@@ -66,7 +68,7 @@ func (str *safeStream) Recv(message stream.Message) error {
 	str.recvMu.Lock()
 	defer str.recvMu.Unlock()
 
-	if str.done == nil {
+	if str.closed {
 		return stream.ErrRecvOnClosedStream
 	}
 
@@ -84,11 +86,11 @@ func (str *safeStream) Close() error {
 	defer str.sendMu.Unlock()
 	defer str.recvMu.Unlock()
 
-	if str.done == nil {
+	if str.closed {
 		return nil
 	}
+	str.closed = true
 	close(str.done)
-	str.done = nil
 
 	if grpcClientStream, ok := str.Stream.(grpc.ClientStream); ok {
 		return grpcClientStream.CloseSend()
