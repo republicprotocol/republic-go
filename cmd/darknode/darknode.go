@@ -187,10 +187,10 @@ func main() {
 func getIPAddress() (string, error) {
 
 	out, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
-	out = []byte(strings.Trim(string(out), "\n "))
 	if err != nil {
 		return "", err
 	}
+	out = []byte(strings.Trim(string(out), "\n "))
 	if err != nil {
 		return "", err
 	}
