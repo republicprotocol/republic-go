@@ -2,7 +2,7 @@
 
 ## Overview
 
-Writing instructions in and asynchronously receive result back. Correlate results to instructions by providing a unique ID (generating a unique ID that is the same one across the decentralized network of SMPCers is the responsibility of the user for most instructions, some high level functions will generate them for you, and is usually best done by making it dependent on the semantics of the operation so that all SMPCers will generate the same InstID without needing to communicate). Results for an InstID are *never* returned unless the local user has sent the revelant instruction.
+Writing instructions in and asynchronously receive result back. Correlate results to instructions by providing a unique ID (generating a unique ID that is the same one across the decentralized network of SMPCers is the responsibility of the user for most instructions, some high level functions will generate them for you, and is usually best done by making it dependent on the semantics of the operation so that all SMPCers will generate the same InstID without needing to communicate). Results for an InstID are *never* returned unless the local user has sent the revalent instruction.
 
 Can maintain connections to different networks identified by ID. Separate state is kept for each network.
 
