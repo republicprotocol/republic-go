@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -44,19 +45,21 @@ var _ = Describe("Order fragments", func() {
 
 		It("should return a new Fragment with order details initialized", func() {
 			copy(orderID[:], "orderID")
-			fragment := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
+			fragment := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
 
 			Expect(bytes.Equal(fragment.OrderID[:], orderID[:])).Should(Equal(true))
 		})
 
 		It("should return a new Fragment with a keccak256 encrypted 32 byte ID", func() {
 			copy(orderID[:], "orderID")
-			fragment := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
+			expiry := time.Now()
+			fragment := NewFragment(orderID, TypeLimit, ParityBuy, expiry, tokens, price, maxVolume, minVolume)
 
 			expectedFragment := Fragment{
 				OrderID:       orderID,
 				OrderType:     TypeLimit,
 				OrderParity:   ParityBuy,
+				OrderExpiry:   expiry,
 				Tokens:        tokens,
 				Price:         price,
 				Volume:        maxVolume,
@@ -74,8 +77,9 @@ var _ = Describe("Order fragments", func() {
 
 		It("should return true if order fragments are equal", func() {
 			copy(orderID[:], "orderID")
-			lhs := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
-			rhs := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
+			expiry := time.Now()
+			lhs := NewFragment(orderID, TypeLimit, ParityBuy, expiry, tokens, price, maxVolume, minVolume)
+			rhs := NewFragment(orderID, TypeLimit, ParityBuy, expiry, tokens, price, maxVolume, minVolume)
 
 			Ω(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(true))
 			Ω(lhs.Equal(&rhs)).Should(Equal(true))
@@ -84,9 +88,9 @@ var _ = Describe("Order fragments", func() {
 
 		It("should return false if order fragments are not equal", func() {
 			copy(orderID[:], "orderID")
-			lhs := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
+			lhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
 			copy(orderID[:], "newOrderID")
-			rhs := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
+			rhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
 
 			Ω(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(false))
 			Ω(lhs.Equal(&rhs)).Should(Equal(false))
@@ -97,33 +101,33 @@ var _ = Describe("Order fragments", func() {
 
 		It("should return true for pairwise order fragments from orders with different parity", func() {
 			copy(orderID[:], "orderID")
-			lhs := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
+			lhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
 			copy(orderID[:], "newOrderID")
-			rhs := NewFragment(orderID, TypeLimit, ParitySell, tokens, price, maxVolume, minVolume)
+			rhs := NewFragment(orderID, TypeLimit, ParitySell, time.Now(), tokens, price, maxVolume, minVolume)
 
 			Ω(lhs.IsCompatible(&rhs)).Should(Equal(true))
 		})
 
 		It("should return false for pairwise order fragments from orders with equal parity", func() {
 			copy(orderID[:], "orderID")
-			lhs := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
+			lhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
 			copy(orderID[:], "newOrderID")
-			rhs := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
+			rhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
 
 			Ω(lhs.IsCompatible(&rhs)).Should(Equal(false))
 		})
 
 		It("should return false for pairwise order fragments from same orders", func() {
 			copy(orderID[:], "orderID")
-			lhs := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
-			rhs := NewFragment(orderID, TypeLimit, ParitySell, tokens, price, maxVolume, minVolume)
+			lhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
+			rhs := NewFragment(orderID, TypeLimit, ParitySell, time.Now(), tokens, price, maxVolume, minVolume)
 
 			Ω(lhs.IsCompatible(&rhs)).Should(Equal(false))
 		})
 
 		It("should return false for pairwise order fragments that are the same", func() {
 			copy(orderID[:], "orderID")
-			lhs := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
+			lhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
 
 			Ω(lhs.IsCompatible(&lhs)).Should(Equal(false))
 		})
@@ -133,7 +137,7 @@ var _ = Describe("Order fragments", func() {
 
 		It("should return the same fragment after decrypting its encrypted form", func() {
 			copy(orderID[:], "orderID")
-			fragment := NewFragment(orderID, TypeLimit, ParityBuy, tokens, price, maxVolume, minVolume)
+			fragment := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
 
 			// Generate new RSA key
 			rsaKey, err := crypto.RandomRsaKey()

@@ -37,9 +37,9 @@ var _ = Describe("Channel streams", func() {
 		BeforeEach(func() {
 			var err error
 
-			clientMultiAddr, err = testutils.CreateMultiaddress()
+			clientMultiAddr, err = testutils.RandomMultiAddress()
 			Expect(err).ShouldNot(HaveOccurred())
-			serverMultiAddr, err = testutils.CreateMultiaddress()
+			serverMultiAddr, err = testutils.RandomMultiAddress()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			client = NewChannelStreamer(clientMultiAddr.Address(), &hub)

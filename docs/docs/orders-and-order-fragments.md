@@ -62,7 +62,7 @@ The volume is interpreted as the maximum number of _1e-12_ units of the sell tok
 ### Minimum Volume
 
 
-The minimum volume is two 16-bit unsigned integers. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.2*c*10^q_. The value of _c_ must be an integer in the range 1 to 49 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively. If the minumum volume can be represented by multiple pairs _c_ and _q_, the pair with the lowest _q_ is used.
+The minimum volume is two 16-bit unsigned integers. The first 16-bits are the co-efficient, _c_, and the second 16-bits are the exponent, _q_. The price is encoded as _0.2*c*10^q_. The value of _c_ must be an integer in the range 1 to 49 inclusively. The value of _q_ must be an integer in the range 0 to 52 inclusively. If the minimum volume can be represented by multiple pairs _c_ and _q_, the pair with the lowest _q_ is used.
 
 The minimum volume is interpreted as the minimum number of _1e-12_ units of the buy token that can be traded by this order.
 

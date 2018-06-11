@@ -6,7 +6,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -24,7 +24,7 @@ func main() {
 		// Remember that the contents of the returned slice should not be modified, and
 		// only valid until the next call to Next.
 		key := iter.Key()
-		orderID := common.ToHex(key)
+		orderID := hexutil.Encode(key)
 		log.Println(orderID)
 		fragmentsCount++
 	}
@@ -43,7 +43,7 @@ func main() {
 		// Remember that the contents of the returned slice should not be modified, and
 		// only valid until the next call to Next.
 		key := iter.Key()
-		computeID := common.ToHex(key)
+		computeID := hexutil.Encode(key)
 		log.Println(computeID)
 		computationCount++
 	}

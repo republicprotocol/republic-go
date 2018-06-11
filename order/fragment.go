@@ -33,11 +33,12 @@ type Fragment struct {
 }
 
 // NewFragment returns a new Fragment and computes the FragmentID.
-func NewFragment(orderID ID, orderType Type, orderParity Parity, tokens shamir.Share, price, volume, minimumVolume CoExpShare) Fragment {
+func NewFragment(orderID ID, orderType Type, orderParity Parity, orderExpiry time.Time, tokens shamir.Share, price, volume, minimumVolume CoExpShare) Fragment {
 	fragment := Fragment{
 		OrderID:       orderID,
 		OrderType:     orderType,
 		OrderParity:   orderParity,
+		OrderExpiry:   orderExpiry,
 		Tokens:        tokens,
 		Price:         price,
 		Volume:        volume,

@@ -524,23 +524,6 @@ func readTmp() (Log, error) {
 	return log, nil
 }
 
-func resetTmp() error {
-	ResetDefaultLogger()
-	err := removeTmp()
-	if err != nil {
-		return err
-	}
-	err = makeTmp()
-	if err != nil {
-		return err
-	}
-	_, err = initFileLogger()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func initFileLogger() (*Logger, error) {
 	logger, err := NewLogger(Options{
 		Plugins: []PluginOptions{

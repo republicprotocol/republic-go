@@ -1,6 +1,7 @@
 package ome
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 	"time"
@@ -60,6 +61,18 @@ func NewComputation(buy, sell order.ID) Computation {
 	}
 	copy(com.ID[:], crypto.Keccak256(buy[:], sell[:]))
 	return com
+}
+
+// Equal returns true when Computations are equal in value and state, and
+// returns false otherwise.
+func (com *Computation) Equal(arg *Computation) bool {
+	return bytes.Equal(com.ID[:], arg.ID[:]) &&
+		com.State == arg.State &&
+		com.Priority == arg.Priority &&
+		com.Match == arg.Match &&
+		com.Timestamp.Equal(arg.Timestamp) &&
+		com.Buy.Equal(arg.Buy) &&
+		com.Sell.Equal(arg.Sell)
 }
 
 // An Ome runs the logic for a single node in the secure order matching engine.

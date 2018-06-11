@@ -95,7 +95,7 @@ func StopOnInterrupt() {
 	signals := make(chan os.Signal, 1)
 	defer close(signals)
 
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	<-signals
 
 	globalGanacheMu.Lock()

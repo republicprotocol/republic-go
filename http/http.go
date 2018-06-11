@@ -10,8 +10,6 @@ import (
 	"github.com/rs/cors"
 )
 
-const reset = "\x1b[0m"
-
 // OpenOrderRequest is an JSON object sent to the HTTP handlers to request the
 // opening of an order.
 type OpenOrderRequest struct {

@@ -255,7 +255,7 @@ func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 			} else {
 				log.Printf("[%v] %sNode will be deregistered next epoch%s\n", address, green, reset)
 			}
-		} else if isRegistered {
+		} else {
 			log.Printf("[%v] %sNode already registered%s\n", address, yellow, reset)
 		}
 	}

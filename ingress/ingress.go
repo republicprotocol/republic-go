@@ -342,7 +342,7 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 		}
 	}
 
-	// Check if at least 2/3 of the nodes in the specified pod have recieved
+	// Check if at least 2/3 of the nodes in the specified pod have received
 	// the order fragments.
 	errNumMax := len(orderFragments) - pod.Threshold()
 	if len(pod.Darknodes) > 0 && errNum > errNumMax {

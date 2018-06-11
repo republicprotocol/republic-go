@@ -100,7 +100,7 @@ type mockClientToServer struct {
 }
 
 func newMockClientToServer(mockServerHub *mockServerHub) (mockClientToServer, error) {
-	multiAddr, err := testutils.CreateMultiaddress()
+	multiAddr, err := testutils.RandomMultiAddress()
 	if err != nil {
 		return mockClientToServer{}, err
 	}
@@ -129,7 +129,7 @@ type mockClient struct {
 }
 
 func newMockClient(multiAddrs identity.MultiAddresses) (Client, error) {
-	multiAddr, err := testutils.CreateMultiaddress()
+	multiAddr, err := testutils.RandomMultiAddress()
 	if err != nil {
 		return nil, err
 	}
