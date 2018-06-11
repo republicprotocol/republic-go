@@ -211,6 +211,7 @@ func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
 	ome.smpcer.Disconnect(ome.ξ.Hash)
 	ome.ξ = ξ
 	ome.smpcer.Connect(ome.ξ.Hash, ome.ξ.Darknodes)
+	ome.ranker.OnChangeEpoch(ξ)
 }
 
 func (ome *ome) syncOrderbookToRanker(done <-chan struct{}, errs chan<- error) {
@@ -228,7 +229,6 @@ func (ome *ome) syncOrderbookToRanker(done <-chan struct{}, errs chan<- error) {
 	for _, change := range changeset {
 		ome.ranker.InsertChange(change)
 	}
-
 }
 
 func (ome *ome) syncRanker(done <-chan struct{}, matches chan<- Computation, errs chan<- error) bool {

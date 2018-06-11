@@ -55,7 +55,7 @@ type delegateRanker struct {
 // the number of Rankers, are filtered. A Storer is used to load existing
 // Computations that have not been processed completely, and to store new
 // Computations.
-func NewRanker(storer Storer, addres identity.Address, epoch cal.Epoch) (Ranker, error) {
+func NewRanker(storer Storer, address identity.Address, epoch cal.Epoch) (Ranker, error) {
 	ranker := &delegateRanker{
 		computationsMu: new(sync.Mutex),
 		computations:   []Computation{},
