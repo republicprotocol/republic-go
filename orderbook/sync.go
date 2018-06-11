@@ -103,7 +103,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 			}
 			blockNumber, err := syncer.renLedger.BlockNumber(ord)
 			if err != nil {
-				log.Println("cannot sync order status", err)
+				log.Println("cannot sync order blocknumber", err)
 				continue
 			}
 
@@ -129,7 +129,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 			}
 			blockNumber, err := syncer.renLedger.BlockNumber(ord)
 			if err != nil {
-				log.Println("cannot sync order status", err)
+				log.Println("cannot sync order blocknumber", err)
 				continue
 			}
 
