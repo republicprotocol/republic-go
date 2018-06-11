@@ -37,6 +37,19 @@ var _ = Describe("LevelDB storage", func() {
 
 	Context("when storing, loading, and removing data", func() {
 
+		It("should return a default value when loading pointers before storing them", func() {
+			db, err := NewStore("./tmp")
+			Expect(err).ShouldNot(HaveOccurred())
+			buyPointer, err := db.BuyPointer()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(buyPointer).Should(Equal(0))
+			sellPointer, err := db.BuyPointer()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(sellPointer).Should(Equal(0))
+			err = db.Close()
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
 		It("should return an error when loading data before storing it", func() {
 			db, err := NewStore("./tmp")
 			Expect(err).ShouldNot(HaveOccurred())
@@ -89,6 +102,16 @@ var _ = Describe("LevelDB storage", func() {
 				Expect(order.Equal(&orders[i])).Should(BeTrue())
 				Expect(com.Equal(&computations[i])).Should(BeTrue())
 			}
+			err = db.InsertBuyPointer(42)
+			Expect(err).ShouldNot(HaveOccurred())
+			buyPointer, err := db.BuyPointer()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(buyPointer).Should(Equal(42))
+			err = db.InsertSellPointer(420)
+			Expect(err).ShouldNot(HaveOccurred())
+			sellPointer, err := db.SellPointer()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(sellPointer).Should(Equal(420))
 			err = db.Close()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
@@ -176,6 +199,10 @@ var _ = Describe("LevelDB storage", func() {
 				err = db.InsertComputation(computations[i])
 				Expect(err).ShouldNot(HaveOccurred())
 			}
+			err = db.InsertBuyPointer(42)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = db.InsertSellPointer(420)
+			Expect(err).ShouldNot(HaveOccurred())
 			err = db.Close()
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -193,6 +220,12 @@ var _ = Describe("LevelDB storage", func() {
 					Expect(order.Equal(&orders[i])).Should(BeTrue())
 					Expect(com.Equal(&computations[i])).Should(BeTrue())
 				}
+				buyPointer, err := nextDb.BuyPointer()
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(buyPointer).Should(Equal(42))
+				sellPointer, err := nextDb.SellPointer()
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(sellPointer).Should(Equal(420))
 				err = nextDb.Close()
 				Expect(err).ShouldNot(HaveOccurred())
 			}

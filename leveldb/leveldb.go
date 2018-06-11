@@ -62,7 +62,6 @@ func (store *Store) Close() error {
 	if err := store.computations.Close(); err != nil {
 		return err
 	}
-
 	return store.sync.Close()
 }
 
@@ -208,6 +207,9 @@ func (store *Store) InsertSellPointer(pointer orderbook.SyncPointer) error {
 func (store *Store) BuyPointer() (orderbook.SyncPointer, error) {
 	data, err := store.sync.Get([]byte("buy"), nil)
 	if err != nil {
+		if err == leveldb.ErrNotFound {
+			return 0, nil
+		}
 		return 0, err
 	}
 	pointer, err := binary.ReadVarint(bytes.NewBuffer(data))
@@ -221,6 +223,9 @@ func (store *Store) BuyPointer() (orderbook.SyncPointer, error) {
 func (store *Store) SellPointer() (orderbook.SyncPointer, error) {
 	data, err := store.sync.Get([]byte("sell"), nil)
 	if err != nil {
+		if err == leveldb.ErrNotFound {
+			return 0, nil
+		}
 		return 0, err
 	}
 	pointer, err := binary.ReadVarint(bytes.NewBuffer(data))
