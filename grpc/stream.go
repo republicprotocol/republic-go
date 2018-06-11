@@ -33,8 +33,8 @@ type safeStream struct {
 	recvMu *sync.Mutex
 }
 
-func newSafeStream(stream grpc.Stream) safeStream {
-	return safeStream{
+func newSafeStream(stream grpc.Stream) *safeStream {
+	return &safeStream{
 		Stream: stream,
 
 		done:   make(chan struct{}),
@@ -44,7 +44,7 @@ func newSafeStream(stream grpc.Stream) safeStream {
 }
 
 // Send implements the stream.Stream interface.
-func (str safeStream) Send(message stream.Message) error {
+func (str *safeStream) Send(message stream.Message) error {
 	str.sendMu.Lock()
 	defer str.sendMu.Unlock()
 
@@ -62,7 +62,7 @@ func (str safeStream) Send(message stream.Message) error {
 }
 
 // Recv implements the stream.Stream interface.
-func (str safeStream) Recv(message stream.Message) error {
+func (str *safeStream) Recv(message stream.Message) error {
 	str.recvMu.Lock()
 	defer str.recvMu.Unlock()
 
@@ -78,7 +78,7 @@ func (str safeStream) Recv(message stream.Message) error {
 }
 
 // Close the stream.
-func (str safeStream) Close() error {
+func (str *safeStream) Close() error {
 	str.sendMu.Lock()
 	str.recvMu.Lock()
 	defer str.sendMu.Unlock()
@@ -99,7 +99,7 @@ func (str safeStream) Close() error {
 // clientStream wraps a safeStream and exposes a method to close the associated
 // grpc.ClientConn that is needed when creating a grpc.ClientStream.
 type clientStream struct {
-	safeStream
+	*safeStream
 
 	conn *Conn
 }
@@ -192,7 +192,7 @@ type StreamService struct {
 	addr     identity.Address
 
 	connsMu *sync.Mutex
-	conns   map[identity.Address]chan safeStream
+	conns   map[identity.Address]chan *safeStream
 }
 
 // NewStreamService returns an implementation of the stream.Server interface
@@ -203,7 +203,7 @@ func NewStreamService(verifier crypto.Verifier, addr identity.Address) StreamSer
 		addr:     addr,
 
 		connsMu: new(sync.Mutex),
-		conns:   map[identity.Address]chan safeStream{},
+		conns:   map[identity.Address]chan *safeStream{},
 	}
 }
 
@@ -279,12 +279,12 @@ func (service *StreamService) verifyAuthentication(auth *StreamAuthentication) (
 	return identity.Address(addr), service.verifier.Verify(data, signature)
 }
 
-func (service *StreamService) setupConn(addr identity.Address) chan safeStream {
+func (service *StreamService) setupConn(addr identity.Address) chan *safeStream {
 	service.connsMu.Lock()
 	defer service.connsMu.Unlock()
 
 	if _, ok := service.conns[addr]; !ok {
-		service.conns[addr] = make(chan safeStream, 1)
+		service.conns[addr] = make(chan *safeStream, 1)
 	}
 	return service.conns[addr]
 }
