@@ -1,6 +1,6 @@
 # Bidirectional Streaming
 
-The **Stream service** defines abstract interfaces for bidirectional streaming between a client and a server. It exposes simple and efficent API for opening bidirectional streams, and recycling streams when opening multiple connections.
+The **Stream service** defines abstract interfaces for bidirectional streaming between a client and a server. It exposes simple and efficient API for opening bidirectional streams, and recycling streams when opening multiple connections.
 
 Streams are an efficient way to send multiple messages back and forth between two nodes. This is extremely useful in decentralized network where communication overhead can massively reduce performance, and communication happens at scale.
 

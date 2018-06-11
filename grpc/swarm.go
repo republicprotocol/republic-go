@@ -12,21 +12,19 @@ import (
 
 type swarmClient struct {
 	multiAddr identity.MultiAddress
-	connPool  *ConnPool
 }
 
 // NewSwarmClient returns an implementation of the swarm.Client interface that
 // uses gRPC and a recycled connection pool.
-func NewSwarmClient(multiAddr identity.MultiAddress, connPool *ConnPool) swarm.Client {
+func NewSwarmClient(multiAddr identity.MultiAddress) swarm.Client {
 	return &swarmClient{
 		multiAddr: multiAddr,
-		connPool:  connPool,
 	}
 }
 
 // Ping implements the swarm.Client interface.
 func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress) (identity.MultiAddress, error) {
-	conn, err := client.connPool.Dial(ctx, to)
+	conn, err := Dial(ctx, to)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
 		return identity.MultiAddress{}, fmt.Errorf("cannot dial %v: %v", to, err)
@@ -62,7 +60,7 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 		return identity.MultiAddresses{}, fmt.Errorf("cannot ping before query: %v", err)
 	}
 
-	conn, err := client.connPool.Dial(ctx, to)
+	conn, err := Dial(ctx, to)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
 		return identity.MultiAddresses{}, fmt.Errorf("cannot dial %v: %v", to, err)

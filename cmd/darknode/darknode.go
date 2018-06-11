@@ -90,12 +90,11 @@ func main() {
 
 	// New gRPC components
 	server := grpc.NewServer()
-	connPool := grpc.NewConnPool(32)
 
 	statusService := grpc.NewStatusService(&dht)
 	statusService.Register(server)
 
-	swarmClient := grpc.NewSwarmClient(multiAddr, &connPool)
+	swarmClient := grpc.NewSwarmClient(multiAddr)
 	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmClient, &dht))
 	swarmService.Register(server)
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
@@ -195,10 +194,10 @@ func main() {
 func getIPAddress() (string, error) {
 
 	out, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
-	out = []byte(strings.Trim(string(out), "\n "))
 	if err != nil {
 		return "", err
 	}
+	out = []byte(strings.Trim(string(out), "\n "))
 	if err != nil {
 		return "", err
 	}

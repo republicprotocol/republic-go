@@ -114,7 +114,6 @@ func newSwarmClient() (swarm.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	connPool := NewConnPool(128)
-	client := NewSwarmClient(multiAddr, &connPool)
+	client := NewSwarmClient(multiAddr)
 	return client, nil
 }

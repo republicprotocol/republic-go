@@ -1,6 +1,6 @@
 # Registry Command-line tool
 
-The **registry** is the command-line tool for interacting with the Farknode Registry smart contract on the Ethereum Ropsten network. It supports  the registration/deregistration of Darknodes, checking registration status of Darknodes, triggering the epoch, and getting the pool index of a Darknode.
+The **registry** is the command-line tool for interacting with the Farknode Registry smart contract on the Ethereum Ropsten network. It supports the registration/deregistration of Darknodes, checking registration status of Darknodes, triggering the epoch, and getting the pool index of a Darknode.
 
 # Install
 
