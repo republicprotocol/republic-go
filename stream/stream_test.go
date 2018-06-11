@@ -30,7 +30,7 @@ var _ = Describe("Streaming", func() {
 			var err error
 
 			for i := 0; i < numberOfNodes; i++ {
-				multiAddrs[i], err = testutils.CreateMultiaddress()
+				multiAddrs[i], err = testutils.RandomMultiAddress()
 				Expect(err).ShouldNot(HaveOccurred())
 
 				clients[i] = newMockClient()
@@ -69,7 +69,7 @@ var _ = Describe("Streaming", func() {
 			var err error
 
 			for i := 0; i < numberOfNodes; i++ {
-				multiAddrs[i], err = testutils.CreateMultiaddress()
+				multiAddrs[i], err = testutils.RandomMultiAddress()
 				Expect(err).ShouldNot(HaveOccurred())
 
 				clients[i] = newMockClient()
@@ -107,7 +107,7 @@ var _ = Describe("Streaming", func() {
 			var err error
 
 			for i := 0; i < numberOfNodes; i++ {
-				multiAddrs[i], err = testutils.CreateMultiaddress()
+				multiAddrs[i], err = testutils.RandomMultiAddress()
 				Expect(err).ShouldNot(HaveOccurred())
 
 				clients[i] = newMockClient()

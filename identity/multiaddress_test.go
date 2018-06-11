@@ -1,17 +1,21 @@
 package identity_test
 
 import (
+	"bytes"
 	"fmt"
+
+	"github.com/republicprotocol/republic-go/testutils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
 
 var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 
-	Context("after importing the package", func() {
+	Context("when importing the package", func() {
 		It("should expose a protocol called republic", func() {
 			Ω(identity.ProtocolWithName("republic").Name).Should(Equal("republic"))
 		})
@@ -22,7 +26,7 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 		})
 	})
 
-	Context("Creating new multiAddress", func() {
+	Context("when creating new multi-addresses", func() {
 		It("should be able to get new multiAddress from a valid string", func() {
 			key, err := crypto.RandomEcdsaKey()
 			addr := identity.Address(key.Address())
@@ -42,7 +46,7 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 		})
 	})
 
-	Context("retrieving values", func() {
+	Context("when retrieving values", func() {
 		It("should give the right value of specific protocol", func() {
 			ip4, tcp, republicAddress := "127.0.0.1", "80", "8MGfbzAMS59Gb4cSjpm34soGNYsM2f"
 			addresses := fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", ip4, tcp, republicAddress)
@@ -54,7 +58,7 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 		})
 	})
 
-	Context("marshaling to JSON", func() {
+	Context("when marshaling to JSON", func() {
 		It("should encode and then decode to the same value", func() {
 			key, err := crypto.RandomEcdsaKey()
 			addr := identity.Address(key.Address())
@@ -90,7 +94,7 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 		})
 	})
 
-	Context("converting to Address or ID", func() {
+	Context("when converting to an address or ID", func() {
 		ip4, tcp, republicAddress := "127.0.0.1", "80", "8MGfbzAMS59Gb4cSjpm34soGNYsM2f"
 		addresses := fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", ip4, tcp, republicAddress)
 
@@ -104,6 +108,15 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 			multiAddress, err := identity.NewMultiAddressFromString(addresses)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(multiAddress.ID()).Should(Equal(multiAddress.Address().ID()))
+		})
+	})
+
+	Context("when hashing", func() {
+		It("should produce the same hash from the same multi-addresses", func() {
+			multiAddress, err := testutils.RandomMultiAddress()
+			Ω(err).ShouldNot(HaveOccurred())
+			multiAddressOther := multiAddress
+			Ω(bytes.Equal(multiAddress.Hash(), multiAddressOther.Hash())).Should(BeTrue())
 		})
 	})
 })
