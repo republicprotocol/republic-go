@@ -163,13 +163,12 @@ func generateMocknodes(n int) ([]*mockNode, []identity.Address, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		connPool := grpc.NewConnPool(n)
 		listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", 3000+i))
 		if err != nil {
 			return nil, nil, err
 		}
 
-		swarmClient := grpc.NewSwarmClient(multiAddr, &connPool)
+		swarmClient := grpc.NewSwarmClient(multiAddr)
 		swarmer := swarm.NewSwarmer(swarmClient, &dht)
 		swarmServices := grpc.NewSwarmService(swarm.NewServer(swarmClient, &dht))
 
