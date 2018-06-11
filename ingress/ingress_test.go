@@ -383,6 +383,10 @@ func (renLedger *mockRenLedger) Trader(order order.ID) (string, error) {
 	panic("unimplemented")
 }
 
+func (renLedger *mockRenLedger) BlockNumber(order order.ID) (uint, error) {
+	panic("unimplemented")
+}
+
 type mockSwarmer struct {
 }
 
