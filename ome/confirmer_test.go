@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ome"
 
-	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/testutils"
@@ -244,15 +243,5 @@ func randomCoExp() order.CoExp {
 	return order.CoExp{
 		Co:  co,
 		Exp: exp,
-	}
-}
-
-func ganacheConfig() ethereum.Config {
-	return ethereum.Config{
-		Network:                 ethereum.NetworkGanache,
-		URI:                     "http://localhost:8545",
-		RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
-		DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
-		RenLedgerAddress:        ethereum.RenLedgerAddressOnGanache.String(),
 	}
 }

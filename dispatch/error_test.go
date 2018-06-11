@@ -78,10 +78,7 @@ var _ = Describe("Error channels", func() {
 			errCh <- err3
 
 			predicate := func(err error) bool {
-				if len(err.Error()) == 2 {
-					return true
-				}
-				return false
+				return len(err.Error()) == 2
 			}
 
 			filteredErrCh := FilterErrors(errCh, predicate)
