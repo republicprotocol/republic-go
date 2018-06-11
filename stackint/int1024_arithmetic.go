@@ -138,14 +138,14 @@ func (x *Int1024) BasicMul(y *Int1024) Int1024 {
 		}
 	}
 	var highest uint16
-	for i := x.length + y.length - 1; i > 0; i-- {
+	for i := int(x.length + y.length - 1); i >= 0; i-- {
 		if words[i] > 0 {
-			highest = i
+			highest = uint16(i) + 1
 			break
 		}
 	}
 	return Int1024{
-		words, highest + 1,
+		words, highest,
 	}
 }
 
@@ -188,10 +188,10 @@ func (x *Int1024) Mul(y *Int1024) Int1024 {
 	for i = 0; i < INT1024WORDS; i++ {
 		words2[i] = words[i]
 		if words2[i] > 0 {
-			highest = i
+			highest = i + 1
 		}
 	}
-	return Int1024{words2, highest + 1}
+	return Int1024{words2, highest}
 }
 
 // Div returns the quotient of x/y. If y is 0, a run-time panic occurs.

@@ -2,57 +2,47 @@ package order
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"encoding/binary"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/jbenet/go-base58"
-	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
 // An FragmentID is the Keccak256 hash of a Fragment.
-type FragmentID []byte
+type FragmentID [32]byte
 
-// Equal returns an equality check between two FragmentIDs.
+// Equal returns an equality check between two orderFragment ID.
 func (id FragmentID) Equal(other FragmentID) bool {
-	return bytes.Equal(id, other)
-}
-
-// String returns a FragmentID as a Base58 encoded string.
-func (id FragmentID) String() string {
-	return base58.Encode(id)
+	return bytes.Equal(id[:], other[:])
 }
 
 // A Fragment is a secret share of an Order, created using Shamir's secret
 // sharing on the secure fields in an Order.
 type Fragment struct {
-	Signature identity.Signature
-	ID        FragmentID
-
-	OrderID     ID
-	OrderType   Type
-	OrderParity Parity
-	OrderExpiry time.Time
-
-	FstCodeShare   shamir.Share
-	SndCodeShare   shamir.Share
-	PriceShare     shamir.Share
-	MaxVolumeShare shamir.Share
-	MinVolumeShare shamir.Share
+	OrderID       ID           `json:"orderID"`
+	OrderType     Type         `json:"orderType"`
+	OrderParity   Parity       `json:"orderParity"`
+	OrderExpiry   time.Time    `json:"orderExpiry"`
+	ID            FragmentID   `json:"id"`
+	Tokens        shamir.Share `json:"tokens"`
+	Price         CoExpShare   `json:"price"`
+	Volume        CoExpShare   `json:"volume"`
+	MinimumVolume CoExpShare   `json:"minimumVolume"`
 }
 
 // NewFragment returns a new Fragment and computes the FragmentID.
-func NewFragment(orderID ID, orderType Type, orderParity Parity, fstCodeShare, sndCodeShare, priceShare, maxVolumeShare, minVolumeShare shamir.Share) *Fragment {
-	fragment := &Fragment{
-		OrderID:        orderID,
-		OrderType:      orderType,
-		OrderParity:    orderParity,
-		FstCodeShare:   fstCodeShare,
-		SndCodeShare:   sndCodeShare,
-		PriceShare:     priceShare,
-		MaxVolumeShare: maxVolumeShare,
-		MinVolumeShare: minVolumeShare,
+func NewFragment(orderID ID, orderType Type, orderParity Parity, orderExpiry time.Time, tokens shamir.Share, price, volume, minimumVolume CoExpShare) Fragment {
+	fragment := Fragment{
+		OrderID:       orderID,
+		OrderType:     orderType,
+		OrderParity:   orderParity,
+		OrderExpiry:   orderExpiry,
+		Tokens:        tokens,
+		Price:         price,
+		Volume:        volume,
+		MinimumVolume: minimumVolume,
 	}
 	fragment.ID = FragmentID(fragment.Hash())
 	return fragment
@@ -60,95 +50,127 @@ func NewFragment(orderID ID, orderType Type, orderParity Parity, fstCodeShare, s
 
 // Hash returns the Keccak256 hash of a Fragment. This hash is used to create
 // the FragmentID and signature for a Fragment.
-func (fragment *Fragment) Hash() []byte {
-	return crypto.Keccak256(fragment.Bytes())
-}
-
-// Sign signs the fragment using the provided keypair, and assigns it the the fragments's
-// Signature field.
-func (fragment *Fragment) Sign(keyPair identity.KeyPair) error {
-	var err error
-	fragment.Signature, err = keyPair.Sign(fragment)
-	return err
-}
-
-// SignFragments maps over an array of fragments, calling Sign on each one
-func SignFragments(keyPair identity.KeyPair, fragments []*Fragment) error {
-	for _, fragment := range fragments {
-		if err := fragment.Sign(keyPair); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// VerifySignature verifies that the Signature field has been signed by the provided
-// ID's private key, returning an error if the signature is invalid
-func (fragment *Fragment) VerifySignature(ID identity.ID) error {
-	return identity.VerifySignature(fragment, fragment.Signature, ID)
-}
-
-// VerifyFragmentSignatures maps over an array of fragments,
-// calling VerifySignature on each one
-func VerifyFragmentSignatures(ID identity.ID, fragments []*Fragment) error {
-	for _, fragment := range fragments {
-		if err := fragment.VerifySignature(ID); err != nil {
-			return err
-		}
-	}
-	return nil
+func (fragment *Fragment) Hash() [32]byte {
+	hash := crypto.Keccak256(fragment.Bytes())
+	hash32 := [32]byte{}
+	copy(hash32[:], hash)
+	return hash32
 }
 
 // Bytes returns a Fragment serialized into a bytes.
+// TODO: This function should return an error.
 func (fragment *Fragment) Bytes() []byte {
 	buf := new(bytes.Buffer)
-
-	binary.Write(buf, binary.LittleEndian, fragment.OrderID)
-	binary.Write(buf, binary.LittleEndian, fragment.OrderType)
-	binary.Write(buf, binary.LittleEndian, fragment.OrderParity)
-	binary.Write(buf, binary.LittleEndian, fragment.OrderExpiry)
-
-	binary.Write(buf, binary.LittleEndian, fragment.FstCodeShare.Key)
-	binary.Write(buf, binary.LittleEndian, fragment.FstCodeShare.Value.Bytes())
-	binary.Write(buf, binary.LittleEndian, fragment.SndCodeShare.Key)
-	binary.Write(buf, binary.LittleEndian, fragment.SndCodeShare.Value.Bytes())
-	binary.Write(buf, binary.LittleEndian, fragment.PriceShare.Key)
-	binary.Write(buf, binary.LittleEndian, fragment.PriceShare.Value.Bytes())
-	binary.Write(buf, binary.LittleEndian, fragment.MaxVolumeShare.Key)
-	binary.Write(buf, binary.LittleEndian, fragment.MaxVolumeShare.Value.Bytes())
-	binary.Write(buf, binary.LittleEndian, fragment.MinVolumeShare.Key)
-	binary.Write(buf, binary.LittleEndian, fragment.MinVolumeShare.Value.Bytes())
-
+	binary.Write(buf, binary.BigEndian, fragment.OrderType)
+	binary.Write(buf, binary.BigEndian, fragment.OrderID)
+	binary.Write(buf, binary.BigEndian, fragment.OrderParity)
+	binary.Write(buf, binary.BigEndian, fragment.OrderExpiry.Unix())
+	binary.Write(buf, binary.BigEndian, fragment.Tokens)
+	binary.Write(buf, binary.BigEndian, fragment.Price)
+	binary.Write(buf, binary.BigEndian, fragment.Volume)
+	binary.Write(buf, binary.BigEndian, fragment.MinimumVolume)
 	return buf.Bytes()
 }
 
 // Equal returns an equality check between two Orders.
 func (fragment *Fragment) Equal(other *Fragment) bool {
-	return fragment.ID.Equal(other.ID) &&
-		fragment.OrderID.Equal(other.OrderID) &&
+	return bytes.Equal(fragment.OrderID[:], other.OrderID[:]) &&
 		fragment.OrderType == other.OrderType &&
 		fragment.OrderParity == other.OrderParity &&
 		fragment.OrderExpiry.Equal(other.OrderExpiry) &&
-		fragment.FstCodeShare.Value.Cmp(&other.FstCodeShare.Value) == 0 &&
-		fragment.SndCodeShare.Value.Cmp(&other.SndCodeShare.Value) == 0 &&
-		fragment.PriceShare.Value.Cmp(&other.PriceShare.Value) == 0 &&
-		fragment.MaxVolumeShare.Value.Cmp(&other.MaxVolumeShare.Value) == 0 &&
-		fragment.MinVolumeShare.Value.Cmp(&other.MinVolumeShare.Value) == 0
+		bytes.Equal(fragment.ID[:], other.ID[:]) &&
+		fragment.Tokens.Equal(&other.Tokens) &&
+		fragment.Price.Equal(&other.Price) &&
+		fragment.Volume.Equal(&other.Volume) &&
+		fragment.MinimumVolume.Equal(&other.MinimumVolume)
 }
 
 // IsCompatible returns true when two Fragments are compatible for a
 // computation, otherwise it returns false. For a Fragment to be compatible
-// with another Fragment it must have a diferrent ID, it must have a different
+// with another Fragment it must have a different ID, it must have a different
 // order ID, it must have a different parity, it must have a different owner,
 // and all secret sharing fields must have the same secret sharing index.
 func (fragment *Fragment) IsCompatible(other *Fragment) bool {
 	// TODO: Check that signatories are different
-	return !fragment.ID.Equal(other.ID) &&
-		!fragment.OrderID.Equal(other.OrderID) &&
+	return !bytes.Equal(fragment.ID[:], other.ID[:]) &&
+		!bytes.Equal(fragment.OrderID[:], other.OrderID[:]) &&
 		fragment.OrderParity != other.OrderParity &&
-		fragment.FstCodeShare.Key == other.FstCodeShare.Key &&
-		fragment.SndCodeShare.Key == other.SndCodeShare.Key &&
-		fragment.PriceShare.Key == other.PriceShare.Key &&
-		fragment.MaxVolumeShare.Key == other.MaxVolumeShare.Key &&
-		fragment.MinVolumeShare.Key == other.MinVolumeShare.Key
+		fragment.Tokens.Index == other.Tokens.Index &&
+		fragment.Price.Co.Index == other.Price.Co.Index &&
+		fragment.Price.Exp.Index == other.Price.Exp.Index &&
+		fragment.Volume.Co.Index == other.Volume.Co.Index &&
+		fragment.Volume.Exp.Index == other.Volume.Exp.Index &&
+		fragment.MinimumVolume.Co.Index == other.MinimumVolume.Co.Index &&
+		fragment.MinimumVolume.Exp.Index == other.MinimumVolume.Exp.Index
+}
+
+// Encrypt a Fragment using an rsa.PublicKey.
+func (fragment *Fragment) Encrypt(pubKey rsa.PublicKey) (EncryptedFragment, error) {
+	var err error
+	encryptedFragment := EncryptedFragment{
+		OrderID:     fragment.OrderID,
+		OrderType:   fragment.OrderType,
+		OrderParity: fragment.OrderParity,
+		OrderExpiry: fragment.OrderExpiry,
+		ID:          fragment.ID,
+	}
+	encryptedFragment.Tokens, err = fragment.Tokens.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	encryptedFragment.Price, err = fragment.Price.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	encryptedFragment.Volume, err = fragment.Volume.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	encryptedFragment.MinimumVolume, err = fragment.MinimumVolume.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	return encryptedFragment, nil
+}
+
+// An EncryptedFragment is a Fragment that has been encrypted by an RSA public
+// key.
+type EncryptedFragment struct {
+	OrderID       ID                  `json:"orderId"`
+	OrderType     Type                `json:"orderType"`
+	OrderParity   Parity              `json:"orderParity"`
+	OrderExpiry   time.Time           `json:"orderExpiry"`
+	ID            FragmentID          `json:"id"`
+	Tokens        []byte              `json:"tokens"`
+	Price         EncryptedCoExpShare `json:"price"`
+	Volume        EncryptedCoExpShare `json:"volume"`
+	MinimumVolume EncryptedCoExpShare `json:"minimumVolume"`
+}
+
+// Decrypt an EncryptedFragment using an rsa.PrivateKey.
+func (fragment *EncryptedFragment) Decrypt(privKey rsa.PrivateKey) (Fragment, error) {
+	var err error
+	decryptedFragment := Fragment{
+		OrderID:     fragment.OrderID,
+		OrderType:   fragment.OrderType,
+		OrderParity: fragment.OrderParity,
+		OrderExpiry: fragment.OrderExpiry,
+		ID:          fragment.ID,
+	}
+	if err := decryptedFragment.Tokens.Decrypt(privKey, fragment.Tokens); err != nil {
+		return decryptedFragment, err
+	}
+	decryptedFragment.Price, err = fragment.Price.Decrypt(privKey)
+	if err != nil {
+		return decryptedFragment, err
+	}
+	decryptedFragment.Volume, err = fragment.Volume.Decrypt(privKey)
+	if err != nil {
+		return decryptedFragment, err
+	}
+	decryptedFragment.MinimumVolume, err = fragment.MinimumVolume.Decrypt(privKey)
+	if err != nil {
+		return decryptedFragment, err
+	}
+	return decryptedFragment, nil
 }

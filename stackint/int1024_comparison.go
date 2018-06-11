@@ -4,11 +4,14 @@ import "github.com/republicprotocol/republic-go/stackint/asm"
 
 // IsZero returns true of x == 0
 func (x *Int1024) IsZero() bool {
-	return x.length == 1 && x.words[0] == 0
+	return x.length == 0
 }
 
 // EqualsWord returns true of x represents the Word n
 func (x *Int1024) EqualsWord(n asm.Word) bool {
+	if n == 0 {
+		return x.length == 0
+	}
 	return x.length == 1 && x.words[0] == n
 }
 

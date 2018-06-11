@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/republicprotocol/go-do"
 )
@@ -13,7 +14,8 @@ import (
 type FilePlugin struct {
 	do.GuardedObject
 
-	file *os.File
+	file     *os.File
+	filePath string
 }
 
 // FilePluginOptions are used to Unmarshal a FilePlugin from JSON. If the Path
@@ -23,38 +25,38 @@ type FilePluginOptions struct {
 	Path string `json:"path"`
 }
 
-// NewFilePlugin uses the give File to create a new FilePlugin. The file will
-// be opened as appendable and will be closed when the plugin is stopped.
+// NewFilePlugin uses the FilePluginOptions to create a new FilePlugin.
 func NewFilePlugin(filePluginOptions FilePluginOptions) (Plugin, error) {
-	var err error
 	plugin := new(FilePlugin)
 	plugin.GuardedObject = do.NewGuardedObject()
-	switch filePluginOptions.Path {
+	plugin.filePath = filePluginOptions.Path
+	return plugin, nil
+}
+
+// Start implements the Plugin interface. It opens the log file which will
+// be opened as appendable and will be closed when the plugin is stopped.
+func (plugin *FilePlugin) Start() error {
+	var err error
+	plugin.Enter(nil)
+	defer plugin.Exit()
+	// Initialise the file based on path
+	switch plugin.filePath {
 	case "stdout":
 		plugin.file = os.Stdout
 	case "stderr":
 		plugin.file = os.Stderr
 	default:
-		plugin.file, err = os.OpenFile(filePluginOptions.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		plugin.file, err = os.OpenFile(plugin.filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0640)
 	}
-	return plugin, err
+	return err
 }
 
-// Start implements the Plugin interface. It does nothing.
-func (plugin *FilePlugin) Start() error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
-	return nil
-}
-
-// Stop implements the Plugin interface. It does nothing.
+// Stop implements the Plugin interface. If the filePath is stdout or stderr
+// it does nothing, otherwise it closes the open log file.
 func (plugin *FilePlugin) Stop() error {
 	plugin.Enter(nil)
 	defer plugin.Exit()
-	if plugin.file == os.Stdout {
-		return nil
-	}
-	if plugin.file == os.Stderr {
+	if plugin.file == os.Stdout || plugin.file == os.Stderr {
 		return nil
 	}
 	return plugin.file.Close()
@@ -68,7 +70,17 @@ func (plugin *FilePlugin) Log(l Log) error {
 		return fmt.Errorf("cannot write log to file plugin: nil file")
 	}
 	if plugin.file == os.Stdout || plugin.file == os.Stderr {
-		_, err := plugin.file.WriteString(fmt.Sprintf("%s [%s] (%s) %s\n", l.Timestamp.Format("2006/01/02 15:04:05"), l.Type, l.EventType, l.Event.String()))
+		// format the tags to a string
+		tags := []string{}
+		for key, value := range l.Tags {
+			tags = append(tags, fmt.Sprintf("%s:%s,", key, value))
+		}
+		tag := ""
+		if len(tags) > 0 {
+			tag = "{" + strings.Join(tags, ",") + "} "
+		}
+
+		_, err := plugin.file.WriteString(fmt.Sprintf("%s [%s] (%s) %s%s\n", l.Timestamp.Format("2006/01/02 15:04:05"), l.Level, l.EventType, tag, l.Event.String()))
 		return err
 	}
 	return json.NewEncoder(plugin.file).Encode(l)

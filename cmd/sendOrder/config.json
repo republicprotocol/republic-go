@@ -1,0 +1,7 @@
+{
+        "network": "kovan",
+        "uri": "https://kovan.infura.io",
+        "republicTokenAddress": "0xDB5a619B65feDD4171fB05671C62d188a1650496",
+        "darknodeRegistryAddress": "0x693574a651641939d0E7A54AdbE99FAE537eFeB8",
+        "renLedgerAddress": "0xEc78FdA0D84164a0BaEF48F622163213340e1d2d"
+}

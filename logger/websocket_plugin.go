@@ -54,9 +54,9 @@ func NewWebSocketPlugin(logger *Logger, webSocketPluginOptions WebSocketPluginOp
 
 func (plugin *WebSocketPlugin) handler(w http.ResponseWriter, r *http.Request) {
 	defer func() {
-		go plugin.logger.Network(Info, "WebSocket logger connection released")
+		go plugin.logger.Network(LevelInfo, "WebSocket logger connection released")
 	}()
-	go plugin.logger.Network(Info, "WebSocket logger connection acquired")
+	go plugin.logger.Network(LevelInfo, "WebSocket logger connection acquired")
 
 	upgrader := websocket.Upgrader{
 		CheckOrigin:     func(r *http.Request) bool { return true },
@@ -94,6 +94,12 @@ func (plugin *WebSocketPlugin) handler(w http.ResponseWriter, r *http.Request) {
 	plugin.logs[id] = logs
 	plugin.logsMu.Unlock()
 
+	defer func() {
+		plugin.logsMu.Lock()
+		delete(plugin.logs, id)
+		plugin.logsMu.Unlock()
+	}()
+
 	// Broadcast logs to the WebSocket
 	for {
 		select {
@@ -122,7 +128,7 @@ func (plugin *WebSocketPlugin) Start() error {
 			log.Println(err)
 		}
 	}()
-	go plugin.logger.Network(Info, fmt.Sprintf("WebSocket logger listening on %s:%s", plugin.host, plugin.port))
+	go plugin.logger.Network(LevelInfo, fmt.Sprintf("WebSocket logger listening on %s:%s", plugin.host, plugin.port))
 	return nil
 }
 

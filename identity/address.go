@@ -3,6 +3,7 @@ package identity
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jbenet/go-base58"
 )
 
@@ -14,17 +15,6 @@ type Address string
 
 // Addresses is an alias.
 type Addresses []Address
-
-// NewAddress generates a new Address by generating a random KeyPair. It
-// returns the Address, and the KeyPair, or an error.  It is most commonly used
-// for testing.
-func NewAddress() (Address, KeyPair, error) {
-	keyPair, err := NewKeyPair()
-	if err != nil {
-		return "", keyPair, err
-	}
-	return keyPair.Address(), keyPair, nil
-}
 
 // Distance uses a bitwise XOR to calculate distance between two Addresses.
 func (address Address) Distance(other Address) ([]byte, error) {
@@ -91,6 +81,11 @@ func (address Address) ID() ID {
 	bytes := base58.DecodeAlphabet(string(address), base58.BTCAlphabet)
 	bytes = bytes[2:]
 	return ID(bytes)
+}
+
+// Hash implements the crypto.Hasher interface for signing.
+func (address Address) Hash() []byte {
+	return crypto.Keccak256([]byte(address))
 }
 
 // Closer returns true if the left Address is closer to the target than the

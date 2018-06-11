@@ -1,13 +1,13 @@
 # Output of the go coverage tool
 *.out
 
-# Output of the go profiler
+# Output of the go profiler and test
 *.pdf
-cpu.prof
 *.test
 
 # Dep vendors
-vendor
+# vendor
+# Gopkg.lock
 
 # Secrets
 cmd/secrets
@@ -17,9 +17,11 @@ cmd/secrets
 .idea
 
 # Binaries
-cmd/register/register
+cmd/darknode/darknode
 cmd/deregister/deregister
 cmd/epoch/epoch
-
-# Config files
-*.json
+cmd/ganacher/ganacher
+cmd/keygen/keygen
+cmd/register/register
+cmd/relay/relay
+cmd/trader/trader

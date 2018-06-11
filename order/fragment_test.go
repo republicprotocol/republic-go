@@ -1,209 +1,165 @@
 package order_test
 
 import (
+	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
 	"time"
-
-	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/stackint"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/order"
+
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/shamir"
 )
 
 var _ = Describe("Order fragments", func() {
 
-	n := int64(17)
-	k := int64(12)
-	primeVal, _ := stackint.FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137111")
-	prime := &primeVal
+	orderID := [32]byte{}
+	tokens := shamir.Share{}
 
-	price := stackint.FromUint(10)
-	minVolume := stackint.FromUint(100)
-	maxVolume := stackint.FromUint(1000)
+	price := CoExpShare{
+		Co: shamir.Share{
+			Index: uint64(5),
+			Value: uint64(4),
+		},
+		Exp: shamir.Share{
+			Index: uint64(5),
+			Value: uint64(4),
+		},
+	}
+	minVolume := CoExpShare{
+		Co: shamir.Share{
+			Index: uint64(10),
+			Value: uint64(20),
+		},
+		Exp: shamir.Share{
+			Index: uint64(50),
+			Value: uint64(40),
+		},
+	}
+	maxVolume := minVolume
 
-	Context("when representing IDs as strings", func() {
+	Context("when creating new fragments", func() {
 
-		It("should return the same string for the same order fragments", func() {
-			nonce := stackint.FromUint(0)
+		It("should return a new Fragment with order details initialized", func() {
+			copy(orderID[:], "orderID")
+			fragment := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
 
-			fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			for i := range fragments {
-				Ω(fragments[i].ID.String()).Should(Equal(fragments[i].ID.String()))
-			}
+			Expect(bytes.Equal(fragment.OrderID[:], orderID[:])).Should(Equal(true))
 		})
 
-		It("should return different strings for the different order fragments", func() {
-			nonce := stackint.FromUint(0)
+		It("should return a new Fragment with a keccak256 encrypted 32 byte ID", func() {
+			copy(orderID[:], "orderID")
+			expiry := time.Now()
+			fragment := NewFragment(orderID, TypeLimit, ParityBuy, expiry, tokens, price, maxVolume, minVolume)
 
-			fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			for i := range fragments {
-				for j := i + 1; j < len(fragments); j++ {
-					Ω(fragments[i].ID.String()).ShouldNot(Equal(Equal(fragments[j].ID.String())))
-				}
+			expectedFragment := Fragment{
+				OrderID:       orderID,
+				OrderType:     TypeLimit,
+				OrderParity:   ParityBuy,
+				OrderExpiry:   expiry,
+				Tokens:        tokens,
+				Price:         price,
+				Volume:        maxVolume,
+				MinimumVolume: minVolume,
 			}
+			hash := crypto.Keccak256(expectedFragment.Bytes())
+			expectedFragmentID := [32]byte{}
+			copy(expectedFragmentID[:], hash)
+
+			Expect(bytes.Equal(expectedFragmentID[:], fragment.ID[:])).Should(Equal(true))
 		})
 	})
 
 	Context("when testing for equality", func() {
 
-		It("should return true for order fragments IDs that are equal", func() {
-			nonce := stackint.FromUint(0)
+		It("should return true if order fragments are equal", func() {
+			copy(orderID[:], "orderID")
+			expiry := time.Now()
+			lhs := NewFragment(orderID, TypeLimit, ParityBuy, expiry, tokens, price, maxVolume, minVolume)
+			rhs := NewFragment(orderID, TypeLimit, ParityBuy, expiry, tokens, price, maxVolume, minVolume)
 
-			fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			for i := range fragments {
-				Ω(fragments[i].ID.Equal(fragments[i].ID)).Should(Equal(true))
-			}
+			Ω(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(true))
+			Ω(lhs.Equal(&rhs)).Should(Equal(true))
+
 		})
 
-		It("should return false for order fragments IDs that are not equal", func() {
-			nonce := stackint.FromUint(0)
+		It("should return false if order fragments are not equal", func() {
+			copy(orderID[:], "orderID")
+			lhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
+			copy(orderID[:], "newOrderID")
+			rhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
 
-			fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			for i := range fragments {
-				for j := i + 1; j < len(fragments); j++ {
-					Ω(fragments[i].ID.Equal(fragments[j].ID)).Should(Equal(false))
-				}
-			}
-		})
-
-		It("should return true for orders fragments that are equal", func() {
-			nonce := stackint.FromUint(0)
-
-			fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			for i := range fragments {
-				Ω(fragments[i].Equal(fragments[i])).Should(Equal(true))
-			}
-		})
-
-		It("should return false for orders fragments that are not equal", func() {
-			nonce := stackint.FromUint(0)
-
-			fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			for i := range fragments {
-				for j := i + 1; j < len(fragments); j++ {
-					Ω(fragments[i].Equal(fragments[j])).Should(Equal(false))
-				}
-			}
+			Ω(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(false))
+			Ω(lhs.Equal(&rhs)).Should(Equal(false))
 		})
 	})
+
 	Context("when testing for compatibility", func() {
 
 		It("should return true for pairwise order fragments from orders with different parity", func() {
-			nonce := stackint.FromUint(0)
+			copy(orderID[:], "orderID")
+			lhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
+			copy(orderID[:], "newOrderID")
+			rhs := NewFragment(orderID, TypeLimit, ParitySell, time.Now(), tokens, price, maxVolume, minVolume)
 
-			lhs, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			nonce = stackint.FromUint(1)
-			rhs, err := NewOrder(TypeLimit, ParitySell, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			for i := int64(0); i < n; i++ {
-				Ω(lhs[i].IsCompatible(rhs[i])).Should(Equal(true))
-			}
+			Ω(lhs.IsCompatible(&rhs)).Should(Equal(true))
 		})
 
 		It("should return false for pairwise order fragments from orders with equal parity", func() {
-			nonce := stackint.FromUint(0)
+			copy(orderID[:], "orderID")
+			lhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
+			copy(orderID[:], "newOrderID")
+			rhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
 
-			lhs, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			nonce = stackint.FromUint(1)
-			rhs, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			for i := int64(0); i < n; i++ {
-				Ω(lhs[i].IsCompatible(rhs[i])).Should(Equal(false))
-			}
+			Ω(lhs.IsCompatible(&rhs)).Should(Equal(false))
 		})
 
-		It("should return false for non-pairwise order fragments from orders with different parity", func() {
-			nonce := stackint.FromUint(0)
+		It("should return false for pairwise order fragments from same orders", func() {
+			copy(orderID[:], "orderID")
+			lhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
+			rhs := NewFragment(orderID, TypeLimit, ParitySell, time.Now(), tokens, price, maxVolume, minVolume)
 
-			lhs, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			nonce = stackint.FromUint(0)
-			rhs, err := NewOrder(TypeLimit, ParitySell, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			for i := int64(0); i < n; i++ {
-				for j := i + 1; j < n; j++ {
-					Ω(lhs[i].IsCompatible(rhs[j])).Should(Equal(false))
-				}
-			}
+			Ω(lhs.IsCompatible(&rhs)).Should(Equal(false))
 		})
 
-		It("should return false for non-pairwise order fragments from orders with equal parity", func() {
-			nonce := stackint.FromUint(0)
+		It("should return false for pairwise order fragments that are the same", func() {
+			copy(orderID[:], "orderID")
+			lhs := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
 
-			lhs, err := NewOrder(TypeLimit, ParitySell, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			nonce = stackint.FromUint(1)
-			rhs, err := NewOrder(TypeLimit, ParitySell, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-			for i := int64(0); i < n; i++ {
-				for j := i + 1; j < n; j++ {
-					Ω(lhs[i].IsCompatible(rhs[j])).Should(Equal(false))
-				}
-			}
+			Ω(lhs.IsCompatible(&lhs)).Should(Equal(false))
 		})
 	})
 
-	Context("when being signed", func() {
+	Context("when encrypting and decrypting fragments", func() {
 
-		keyPair, err := identity.NewKeyPair()
-		if err != nil {
-			panic(err)
-		}
+		It("should return the same fragment after decrypting its encrypted form", func() {
+			copy(orderID[:], "orderID")
+			fragment := NewFragment(orderID, TypeLimit, ParityBuy, time.Now(), tokens, price, maxVolume, minVolume)
 
-		nonce := stackint.FromUint(0)
-		fragments, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce).Split(n, k, prime)
-		if err != nil {
-			panic(err)
-		}
+			// Generate new RSA key
+			rsaKey, err := crypto.RandomRsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
 
-		It("can be signed and verified", func() {
-			err = SignFragments(keyPair, fragments)
-			Ω(err).ShouldNot(HaveOccurred())
+			// Encrypting the fragment must not return an error
+			encryptedFragment, err := fragment.Encrypt(rsaKey.PublicKey)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(encryptedFragment).ToNot(Equal(fragment))
 
-			err = VerifyFragmentSignatures(keyPair.ID(), fragments)
-			Ω(err).ShouldNot(HaveOccurred())
-		})
+			// Decrypting an encrypted fragment must return the original fragment
+			decryptedFragment, err := encryptedFragment.Decrypt(*rsaKey.PrivateKey)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(decryptedFragment).To(Equal(fragment))
 
-		It("should error for invalid ID", func() {
-			keyPair2, err := identity.NewKeyPair()
-			Ω(err).ShouldNot(HaveOccurred())
+			// Decrypting with incorrect private key must return an error
+			newRsaKey, err := rsa.GenerateKey(rand.Reader, 512)
+			Expect(err).ShouldNot(HaveOccurred())
+			decryptedFragment, err = encryptedFragment.Decrypt(*newRsaKey)
 
-			err = SignFragments(keyPair, fragments)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			err = VerifyFragmentSignatures(keyPair2.ID(), fragments)
-			Ω(err).Should(Equal(identity.ErrInvalidSignature))
-		})
-
-		It("should error for invalid data", func() {
-
-			nonce2 := stackint.One()
-			fragments2, err := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), CurrencyCodeBTC, CurrencyCodeETH, &price, &maxVolume, &minVolume, &nonce2).Split(n, k, prime)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			err = SignFragments(keyPair, fragments)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			for i := range fragments2 {
-				fragments2[i].Signature = fragments[i].Signature
-			}
-
-			err = VerifyFragmentSignatures(keyPair.ID(), fragments2)
-			Ω(err).Should(Equal(identity.ErrInvalidSignature))
+			Expect(err).Should(HaveOccurred())
+			Expect(decryptedFragment).ToNot(Equal(fragment))
 		})
 	})
-
 })
