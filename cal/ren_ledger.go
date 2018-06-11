@@ -43,6 +43,10 @@ type RenLedger interface {
 	// Priority will return the priority of the order
 	Priority(orderID order.ID) (uint64, error)
 
+	// BlockNumber will return the block number when the order status
+	// last mode modified
+	BlockNumber(orderID order.ID) (int, error)
+
 	// Depth will return depth of confirmation blocks
 	Depth(orderID order.ID) (uint, error)
 

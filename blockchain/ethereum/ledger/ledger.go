@@ -319,6 +319,16 @@ func (ledger *RenLedgerContract) Depth(orderID order.ID) (uint, error) {
 	return uint(depth.Uint64()), nil
 }
 
+// BlockNumber returns the block number in which the order is last modified.
+func (ledger *RenLedgerContract) BlockNumber(orderID order.ID) (uint, error) {
+	blockNumber, err := ledger.binding.OrderBlockNumber(ledger.callOpts, orderID)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint(blockNumber.Uint64()), nil
+}
+
 func (ledger *RenLedgerContract) OrderCounts() (uint64, error) {
 	counts, err := ledger.binding.GetOrdersCount(ledger.callOpts)
 	if err != nil {

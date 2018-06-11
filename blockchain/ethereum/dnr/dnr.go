@@ -352,7 +352,7 @@ func (darkNodeRegistry *DarknodeRegistry) Epoch() (cal.Epoch, error) {
 		Hash:        epoch.Blockhash,
 		Pods:        pods,
 		Darknodes:   darknodes,
-		Blocknumber: blocknumber,
+		BlockNumber: blocknumber,
 	}, nil
 }
 
