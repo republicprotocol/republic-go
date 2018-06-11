@@ -21,15 +21,17 @@ type Change struct {
 	OrderParity   order.Parity
 	OrderStatus   order.Status
 	OrderPriority uint64
+	BlockNumber   int
 }
 
 // NewChange returns a Change object with the respective data stored inside it.
-func NewChange(id order.ID, parity order.Parity, status order.Status, priority uint64) Change {
+func NewChange(id order.ID, parity order.Parity, status order.Status, priority uint64, blockNumber int) Change {
 	return Change{
 		OrderID:       id,
 		OrderParity:   parity,
 		OrderStatus:   status,
 		OrderPriority: priority,
+		BlockNumber:   blockNumber,
 	}
 }
 
@@ -44,8 +46,10 @@ type Syncer interface {
 }
 
 type syncer struct {
+	darkpool       cal.Darkpool
 	renLedger      cal.RenLedger
 	renLedgerLimit int
+	epochs         []cal.Epoch
 
 	syncStorer      SyncStorer
 	syncBuyPointer  int
@@ -59,10 +63,13 @@ type syncer struct {
 // NewSyncer returns a new Syncer that will sync a bounded number of orders
 // from a cal.RenLedger. It uses a SyncStorer to prevent re-syncing the entire
 // cal.RenLedger when it reboots.
-func NewSyncer(syncStorer SyncStorer, renLedger cal.RenLedger, renLedgerLimit int) Syncer {
+func NewSyncer(syncStorer SyncStorer, darkpool cal.Darkpool, renLedger cal.RenLedger, renLedgerLimit int) Syncer {
+
 	syncer := &syncer{
+		darkpool:       darkpool,
 		renLedger:      renLedger,
 		renLedgerLimit: renLedgerLimit,
+		epochs:         make([]cal.Epoch, 0),
 
 		syncStorer:      syncStorer,
 		syncBuyPointer:  0,
@@ -80,6 +87,11 @@ func NewSyncer(syncStorer SyncStorer, renLedger cal.RenLedger, renLedgerLimit in
 	if syncer.syncSellPointer, err = syncer.syncStorer.SellPointer(); err != nil {
 		logger.Error(fmt.Sprintf("cannot load sell pointer: %v", err))
 	}
+	epoch, err := syncer.darkpool.Epoch()
+	if err != nil {
+		logger.Error(fmt.Sprintf("cannot sync current epoch: %v", err))
+	}
+	syncer.epochs = []cal.Epoch{epoch}
 
 	return syncer
 }
@@ -98,8 +110,13 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 				log.Println("cannot sync order status", err)
 				continue
 			}
+			blockNumber, err := syncer.renLedger.BlockNumber(ord)
+			if err != nil {
+				log.Println("cannot sync order status", err)
+				continue
+			}
 
-			change := NewChange(ord, order.ParityBuy, status, uint64(syncer.syncBuyPointer+i))
+			change := NewChange(ord, order.ParityBuy, status, uint64(syncer.syncBuyPointer+i), blockNumber)
 			changeset = append(changeset, change)
 			syncer.buyOrders[syncer.syncBuyPointer+i] = ord
 		}
@@ -119,8 +136,13 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 				log.Println("cannot sync order status", err)
 				continue
 			}
+			blockNumber, err := syncer.renLedger.BlockNumber(ord)
+			if err != nil {
+				log.Println("cannot sync order status", err)
+				continue
+			}
 
-			change := NewChange(ord, order.ParitySell, status, uint64(syncer.syncSellPointer+i))
+			change := NewChange(ord, order.ParitySell, status, uint64(syncer.syncSellPointer+i), blockNumber)
 			changeset = append(changeset, change)
 			syncer.sellOrders[syncer.syncSellPointer+i] = ord
 		}
@@ -154,7 +176,11 @@ func (syncer *syncer) purge() ChangeSet {
 						logger.Error(fmt.Sprintf("Failed to check order status %v", err))
 						return
 					}
-
+					blockNumber, err := syncer.renLedger.BlockNumber(buyOrder)
+					if err != nil {
+						log.Println("cannot sync order status", err)
+						return
+					}
 					priority, err := syncer.renLedger.Priority(buyOrder)
 					if err != nil {
 						logger.Error(fmt.Sprintf("Failed to check order priority %v", err))
@@ -162,7 +188,7 @@ func (syncer *syncer) purge() ChangeSet {
 					}
 
 					if status != order.Open {
-						changes <- NewChange(buyOrder, order.ParityBuy, status, priority)
+						changes <- NewChange(buyOrder, order.ParityBuy, status, priority, blockNumber)
 
 						syncer.ordersMu.Lock()
 						delete(syncer.buyOrders, key)
@@ -182,7 +208,11 @@ func (syncer *syncer) purge() ChangeSet {
 						logger.Error(fmt.Sprintf("Failed to check order status: %v", err))
 						return
 					}
-
+					blockNumber, err := syncer.renLedger.BlockNumber(sellOrder)
+					if err != nil {
+						log.Println("cannot sync order status", err)
+						return
+					}
 					priority, err := syncer.renLedger.Priority(sellOrder)
 					if err != nil {
 						logger.Error(fmt.Sprintf("Failed to check order priority: %v", err))
@@ -190,7 +220,7 @@ func (syncer *syncer) purge() ChangeSet {
 					}
 
 					if status != order.Open {
-						changes <- NewChange(sellOrder, order.ParitySell, status, priority)
+						changes <- NewChange(sellOrder, order.ParitySell, status, priority, blockNumber)
 
 						syncer.ordersMu.Lock()
 						delete(syncer.sellOrders, key)
