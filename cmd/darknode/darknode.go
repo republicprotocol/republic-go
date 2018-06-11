@@ -113,7 +113,14 @@ func main() {
 	smpcer := smpc.NewSmpcer(swarmer, streamer)
 
 	// New OME
-	ranker := ome.NewRanker(1, 0, &store)
+	epoch, err := darkPool.Epoch()
+	if err != nil {
+		log.Fatalf("cannot get current epoch: %v", err)
+	}
+	ranker, err := ome.NewRanker(&store, config.Address, epoch)
+	if err != nil {
+		log.Fatalf("cannot create new ranker: %v", err)
+	}
 	matcher := ome.NewMatcher(&store, smpcer)
 	confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
 	settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)

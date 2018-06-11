@@ -35,10 +35,6 @@ const (
 	ComputationStateSettled
 )
 
-// A Priority is an unsigned integer representing logical time priority. The
-// lower the number, the higher the priority.
-type Priority uint64
-
 // Computations is an alias type.
 type Computations []Computation
 
@@ -46,7 +42,7 @@ type Computations []Computation
 type Computation struct {
 	ID        ComputationID    `json:"id"`
 	State     ComputationState `json:"state"`
-	Priority  Priority         `json:"priority"`
+	Priority  uint64           `json:"priority"`
 	Match     bool             `json:"match"`
 	Timestamp time.Time        `json:"timestamp"`
 
@@ -230,23 +226,9 @@ func (ome *ome) syncOrderbookToRanker(done <-chan struct{}, errs chan<- error) {
 	logger.Network(logger.LevelDebug, fmt.Sprintf("sync orderbook: %v changes in changeset", len(changeset)))
 
 	for _, change := range changeset {
-		switch change.OrderStatus {
-		case order.Open:
-			if change.OrderParity == order.ParityBuy {
-				ome.ranker.InsertBuy(PriorityOrder{
-					Priority: Priority(change.OrderPriority),
-					Order:    change.OrderID,
-				})
-			} else {
-				ome.ranker.InsertSell(PriorityOrder{
-					Priority: Priority(change.OrderPriority),
-					Order:    change.OrderID,
-				})
-			}
-		case order.Canceled, order.Confirmed:
-			ome.ranker.Remove(change.OrderID)
-		}
+		ome.ranker.InsertChange(change)
 	}
+
 }
 
 func (ome *ome) syncRanker(done <-chan struct{}, matches chan<- Computation, errs chan<- error) bool {

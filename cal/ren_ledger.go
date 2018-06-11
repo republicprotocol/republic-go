@@ -45,7 +45,7 @@ type RenLedger interface {
 
 	// BlockNumber will return the block number when the order status
 	// last mode modified
-	BlockNumber(orderID order.ID) (int, error)
+	BlockNumber(orderID order.ID) (uint, error)
 
 	// Depth will return depth of confirmation blocks
 	Depth(orderID order.ID) (uint, error)

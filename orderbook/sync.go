@@ -21,11 +21,11 @@ type Change struct {
 	OrderParity   order.Parity
 	OrderStatus   order.Status
 	OrderPriority uint64
-	BlockNumber   int
+	BlockNumber   uint
 }
 
 // NewChange returns a Change object with the respective data stored inside it.
-func NewChange(id order.ID, parity order.Parity, status order.Status, priority uint64, blockNumber int) Change {
+func NewChange(id order.ID, parity order.Parity, status order.Status, priority uint64, blockNumber uint) Change {
 	return Change{
 		OrderID:       id,
 		OrderParity:   parity,
@@ -46,10 +46,8 @@ type Syncer interface {
 }
 
 type syncer struct {
-	darkpool       cal.Darkpool
 	renLedger      cal.RenLedger
 	renLedgerLimit int
-	epochs         []cal.Epoch
 
 	syncStorer      SyncStorer
 	syncBuyPointer  int
@@ -63,13 +61,11 @@ type syncer struct {
 // NewSyncer returns a new Syncer that will sync a bounded number of orders
 // from a cal.RenLedger. It uses a SyncStorer to prevent re-syncing the entire
 // cal.RenLedger when it reboots.
-func NewSyncer(syncStorer SyncStorer, darkpool cal.Darkpool, renLedger cal.RenLedger, renLedgerLimit int) Syncer {
+func NewSyncer(syncStorer SyncStorer, renLedger cal.RenLedger, renLedgerLimit int) Syncer {
 
 	syncer := &syncer{
-		darkpool:       darkpool,
 		renLedger:      renLedger,
 		renLedgerLimit: renLedgerLimit,
-		epochs:         make([]cal.Epoch, 0),
 
 		syncStorer:      syncStorer,
 		syncBuyPointer:  0,
@@ -87,11 +83,6 @@ func NewSyncer(syncStorer SyncStorer, darkpool cal.Darkpool, renLedger cal.RenLe
 	if syncer.syncSellPointer, err = syncer.syncStorer.SellPointer(); err != nil {
 		logger.Error(fmt.Sprintf("cannot load sell pointer: %v", err))
 	}
-	epoch, err := syncer.darkpool.Epoch()
-	if err != nil {
-		logger.Error(fmt.Sprintf("cannot sync current epoch: %v", err))
-	}
-	syncer.epochs = []cal.Epoch{epoch}
 
 	return syncer
 }
