@@ -112,7 +112,6 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 		select {
 		case <-ranker.done:
 		case ranker.rankerCurrEpochIn <- change:
-			log.Println("pumping change to current epochRanker")
 		}
 		return
 	}
@@ -186,19 +185,23 @@ func (ranker *delegateRanker) run(done <-chan struct{}) {
 			case <-done:
 				return
 			case coms, ok := <-currEpochRankerCh:
+				log.Printf("gets %d computations from the current EpochRanker", len(coms))
 				if !ok {
 					return
 				}
 				for _, com := range coms {
 					ranker.insertComputation(com)
 				}
+				log.Println("finish inserting computations from current EpochRanker")
 			case coms, ok := <-prevEpochRankerCh:
+				log.Printf("gets %d computations from the previous EpochRanker", len(coms))
 				if !ok {
 					return
 				}
 				for _, com := range coms {
 					ranker.insertComputation(com)
 				}
+				log.Println("finish inserting computations from previous EpochRanker")
 			}
 		}
 	}()
@@ -274,7 +277,6 @@ func (ranker *epochRanker) run(done <-chan struct{}, changes <-chan orderbook.Ch
 
 	go func() {
 		defer close(computations)
-		defer log.Println("closing???")
 
 		for {
 			select {
@@ -284,7 +286,6 @@ func (ranker *epochRanker) run(done <-chan struct{}, changes <-chan orderbook.Ch
 				if !ok {
 					return
 				}
-				log.Println("new change to the epochRanker")
 				switch change.OrderStatus {
 				case order.Open:
 					if change.OrderParity == order.ParityBuy {
