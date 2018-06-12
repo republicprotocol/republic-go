@@ -1,6 +1,7 @@
 package ome
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -45,13 +46,13 @@ type delegateRanker struct {
 	computationsMu *sync.Mutex
 	computations   Computations
 
-	rankerMu           *sync.Mutex
-	rankerCurrEpoch    *epochRanker
-	rankerPrevEpoch    *epochRanker
-	rankerCurrEpochIn  chan orderbook.Change
-	rankerPrevEpochIn  chan orderbook.Change
-	rankerCurrBlockNum uint
-	rankerPrevBlockNum uint
+	epochMu           *sync.Mutex
+	currEpoch         cal.Epoch
+	prevEpoch         cal.Epoch
+	rankerCurrEpoch   *epochRanker
+	rankerPrevEpoch   *epochRanker
+	rankerCurrEpochIn chan orderbook.Change
+	rankerPrevEpochIn chan orderbook.Change
 
 	outMu              *sync.Mutex
 	rankerCurrEpochOut <-chan Computations
@@ -76,13 +77,13 @@ func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, ep
 		computationsMu: new(sync.Mutex),
 		computations:   Computations{},
 
-		rankerMu:           new(sync.Mutex),
-		rankerCurrEpoch:    nil,
-		rankerCurrEpochIn:  nil,
-		rankerCurrBlockNum: 0,
-		rankerPrevEpoch:    nil,
-		rankerPrevEpochIn:  nil,
-		rankerPrevBlockNum: 0,
+		epochMu:           new(sync.Mutex),
+		rankerCurrEpoch:   nil,
+		rankerCurrEpochIn: nil,
+		currEpoch:         epoch,
+		rankerPrevEpoch:   nil,
+		rankerPrevEpochIn: nil,
+		prevEpoch:         cal.Epoch{},
 
 		outMu:              new(sync.Mutex),
 		rankerCurrEpochOut: nil,
@@ -93,10 +94,9 @@ func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, ep
 	if err != nil {
 		return &delegateRanker{}, err
 	}
-	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos)
+	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos, epoch)
 	ranker.rankerCurrEpochIn = make(chan orderbook.Change)
 	ranker.rankerCurrEpochOut = ranker.rankerCurrEpoch.run(ranker.done, ranker.rankerCurrEpochIn)
-	ranker.rankerCurrBlockNum = epoch.BlockNumber
 	log.Printf("rankers: %d, pos : %d, blockNumber: %d", numberOfRankers, pos, epoch.BlockNumber)
 
 	ranker.run(done)
@@ -107,19 +107,19 @@ func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, ep
 
 // InsertChange implements the Ranker interface.
 func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
-	ranker.rankerMu.Lock()
-	defer ranker.rankerMu.Unlock()
+	ranker.epochMu.Lock()
+	defer ranker.epochMu.Unlock()
 
 	log.Printf("[change detected] order %v status change to %v at block %d", base64.StdEncoding.EncodeToString(change.OrderID[:]), change.OrderStatus, change.BlockNumber)
 	// FIXME : Change.BlockNumber can be different from the epoch blockNumber
-	if change.BlockNumber >= ranker.rankerCurrBlockNum {
+	if change.BlockNumber >= ranker.currEpoch.BlockNumber {
 		select {
 		case <-ranker.done:
 		case ranker.rankerCurrEpochIn <- change:
 		}
 		return
 	}
-	if change.BlockNumber >= ranker.rankerPrevBlockNum {
+	if change.BlockNumber >= ranker.prevEpoch.BlockNumber {
 		select {
 		case <-ranker.done:
 		case ranker.rankerPrevEpochIn <- change:
@@ -149,12 +149,12 @@ func (ranker *delegateRanker) Computations(buffer Computations) int {
 
 // OnChangeEpoch implements the Ranker interface.
 func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
-	ranker.rankerMu.Lock()
+	ranker.epochMu.Lock()
 	ranker.outMu.Lock()
-	defer ranker.rankerMu.Unlock()
+	defer ranker.epochMu.Unlock()
 	defer ranker.outMu.Unlock()
 
-	if epoch.BlockNumber == ranker.rankerCurrBlockNum {
+	if bytes.Compare(epoch.Hash[:], epoch.Hash[:]) == 0 {
 		return
 	}
 	if ranker.rankerPrevEpoch != nil {
@@ -163,17 +163,17 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 	ranker.rankerPrevEpoch = ranker.rankerCurrEpoch
 	ranker.rankerPrevEpochIn = ranker.rankerCurrEpochIn
 	ranker.rankerPrevEpochOut = ranker.rankerCurrEpochOut
-	ranker.rankerPrevBlockNum = ranker.rankerCurrBlockNum
+	ranker.prevEpoch = ranker.currEpoch
 
 	numberOfRankers, pos, err := ranker.getPosFromEpoch(epoch)
 	if err != nil {
 		logger.Error(fmt.Sprintf("cannot get ranker position from epoch: %v", err))
 		return
 	}
-	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos)
+	ranker.currEpoch = epoch
+	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos, ranker.currEpoch)
 	ranker.rankerCurrEpochIn = make(chan orderbook.Change)
 	ranker.rankerCurrEpochOut = ranker.rankerCurrEpoch.run(ranker.done, ranker.rankerCurrEpochIn)
-	ranker.rankerCurrBlockNum = epoch.BlockNumber
 	log.Printf("[epoch change] rankers: %d, pos : %d, blockNumber: %d", numberOfRankers, pos, epoch.BlockNumber)
 }
 
@@ -199,7 +199,7 @@ func (ranker *delegateRanker) run(done <-chan struct{}) {
 			case coms, ok := <-prevEpochRankerCh:
 				// fixme : the previous channel might be closed here
 				if !ok {
-					return
+					continue
 				}
 				for _, com := range coms {
 					ranker.insertComputation(com)
@@ -260,14 +260,16 @@ func (ranker *delegateRanker) getPosFromEpoch(epoch cal.Epoch) (int, int, error)
 // It only cares about orders from one dedicated epoch, so that we won't
 // cross match orders from different epoch.
 type epochRanker struct {
+	epoch           cal.Epoch
 	numberOfRankers int
 	pos             int
 	buys            map[order.ID]orderbook.Priority
 	sells           map[order.ID]orderbook.Priority
 }
 
-func newEpochRanker(numberOfRankers, pos int) *epochRanker {
+func newEpochRanker(numberOfRankers, pos int, epoch cal.Epoch) *epochRanker {
 	return &epochRanker{
+		epoch:           epoch,
 		numberOfRankers: numberOfRankers,
 		pos:             pos,
 		buys:            map[order.ID]orderbook.Priority{},
@@ -323,7 +325,7 @@ func (ranker *epochRanker) insertBuy(change orderbook.Change) []Computation {
 			continue
 		}
 
-		priorityCom := NewComputation(change.OrderID, sell)
+		priorityCom := NewComputation(change.OrderID, sell, ranker.epoch.Hash)
 		priorityCom.Priority = priority
 		priorityCom.Timestamp = time.Now()
 
@@ -343,7 +345,7 @@ func (ranker *epochRanker) insertSell(change orderbook.Change) []Computation {
 			continue
 		}
 
-		priorityCom := NewComputation(buy, change.OrderID)
+		priorityCom := NewComputation(buy, change.OrderID, ranker.epoch.Hash)
 		priorityCom.Priority = priority
 		priorityCom.Timestamp = time.Now()
 
