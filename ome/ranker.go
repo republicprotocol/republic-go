@@ -181,6 +181,7 @@ func (ranker *delegateRanker) run(done <-chan struct{}) {
 	go func() {
 		for {
 			ticker := time.Tick(14 * time.Second)
+
 			ranker.outMu.Lock()
 			currEpochRankerCh := ranker.rankerCurrEpochOut
 			prevEpochRankerCh := ranker.rankerPrevEpochOut
@@ -195,6 +196,9 @@ func (ranker *delegateRanker) run(done <-chan struct{}) {
 				}
 				for _, com := range coms {
 					ranker.insertComputation(com)
+					if err := ranker.storer.InsertComputation(com); err != nil {
+						logger.Error(fmt.Sprintf("cannot insert ranked computation = %v: %v", com.ID, err))
+					}
 				}
 			case coms, ok := <-prevEpochRankerCh:
 				// fixme : the previous channel might be closed here
@@ -203,6 +207,9 @@ func (ranker *delegateRanker) run(done <-chan struct{}) {
 				}
 				for _, com := range coms {
 					ranker.insertComputation(com)
+					if err := ranker.storer.InsertComputation(com); err != nil {
+						logger.Error(fmt.Sprintf("cannot insert ranked computation = %v: %v", com.ID, err))
+					}
 				}
 			case <-ticker:
 			}
