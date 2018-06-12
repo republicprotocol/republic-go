@@ -7,8 +7,8 @@ import (
 	"log"
 
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 )
@@ -48,7 +48,7 @@ func main() {
 		log.Fatal("unrecognized network name")
 	}
 
-	conf := darknode.Config{
+	conf := config.Config{
 		Keystore:                keystore,
 		Host:                    *host,
 		Port:                    "18514",

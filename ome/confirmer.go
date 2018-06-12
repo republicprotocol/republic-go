@@ -157,6 +157,7 @@ func (confirmer *confirmer) checkBuyOrdersForConfirmationFinality(done <-chan st
 
 		com := NewComputation(buy, sell)
 		com.State = ComputationStateAccepted
+		com.Timestamp = time.Now()
 
 		select {
 		case <-done:
@@ -193,6 +194,7 @@ func (confirmer *confirmer) checkSellOrdersForConfirmationFinality(done <-chan s
 
 		com := NewComputation(buy, sell)
 		com.State = ComputationStateAccepted
+		com.Timestamp = time.Now()
 
 		select {
 		case <-done:
@@ -232,7 +234,7 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 		} else {
 			delete(confirmer.confirmingSellOrders, ord)
 		}
-		return order.ID{}, nil
+		return order.ID{}, ErrOrderNotConfirmed
 	}
 
 	match, err := confirmer.renLedger.OrderMatch(ord)

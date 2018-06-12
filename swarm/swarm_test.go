@@ -2,17 +2,16 @@ package swarm_test
 
 import (
 	"context"
-	"log"
 	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/dispatch"
 	. "github.com/republicprotocol/republic-go/swarm"
 
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dht"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/testutils"
 )
 
 var _ = Describe("Swarm", func() {
@@ -64,10 +63,6 @@ var _ = Describe("Swarm", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			for i := 0; i < numberOfClients; i++ {
-				log.Println(len(dhts[i].MultiAddresses()))
-			}
-
 			// Query for clients
 			for i := 0; i < numberOfClients; i++ {
 				for j := 0; j < numberOfClients; j++ {
@@ -105,7 +100,7 @@ type mockClientToServer struct {
 }
 
 func newMockClientToServer(mockServerHub *mockServerHub) (mockClientToServer, error) {
-	multiAddr, err := createNewMultiAddress()
+	multiAddr, err := testutils.RandomMultiAddress()
 	if err != nil {
 		return mockClientToServer{}, err
 	}
@@ -134,7 +129,7 @@ type mockClient struct {
 }
 
 func newMockClient(multiAddrs identity.MultiAddresses) (Client, error) {
-	multiAddr, err := createNewMultiAddress()
+	multiAddr, err := testutils.RandomMultiAddress()
 	if err != nil {
 		return nil, err
 	}
@@ -155,17 +150,4 @@ func (client *mockClient) Query(ctx context.Context, to identity.MultiAddress, q
 
 func (client *mockClient) MultiAddress() identity.MultiAddress {
 	return client.multiAddr
-}
-
-func createNewMultiAddress() (identity.MultiAddress, error) {
-	// Generate multiAddress
-	ecdsaKey, err := crypto.RandomEcdsaKey()
-	if err != nil {
-		return identity.MultiAddress{}, err
-	}
-	multiAddr, err := identity.Address(ecdsaKey.Address()).MultiAddress()
-	if err != nil {
-		return identity.MultiAddress{}, err
-	}
-	return multiAddr, nil
 }

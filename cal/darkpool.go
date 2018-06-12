@@ -93,9 +93,3 @@ func (pod *Pod) Size() int {
 func (pod *Pod) Threshold() int {
 	return (2 * (len(pod.Darknodes) + 1)) / 3
 }
-
-// EpochListener is an interface that can receive updates whenever the Epoch is
-// changed in the Darkpool.
-type EpochListener interface {
-	OnChangeEpoch(ξ Epoch)
-}

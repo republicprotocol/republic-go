@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 )
 
 // ErrMultiAddressNotFound is returned from a query when no
@@ -84,6 +84,9 @@ type Swarmer interface {
 	// zero will perform an exhaustive search. Returns ErrMultiAddressNotFound
 	// if no matching results are found.
 	Query(ctx context.Context, query identity.Address, depth int) (identity.MultiAddress, error)
+
+	// MultiAddress of the Swarmer.
+	MultiAddress() identity.MultiAddress
 }
 
 type swarmer struct {
@@ -125,6 +128,7 @@ func (swarmer *swarmer) Bootstrap(ctx context.Context, multiAddrs identity.Multi
 			errs <- fmt.Errorf("error while bootstrapping: %v", err)
 			return
 		}
+		logger.Network(logger.LevelInfo, fmt.Sprintf("connected to %v peers after bootstrapping", len(swarmer.dhtManager.dht.MultiAddresses())))
 	}()
 
 	for err := range errs {
@@ -136,6 +140,11 @@ func (swarmer *swarmer) Bootstrap(ctx context.Context, multiAddrs identity.Multi
 // Query implements the Swarmer interface.
 func (swarmer *swarmer) Query(ctx context.Context, query identity.Address, depth int) (identity.MultiAddress, error) {
 	return swarmer.query(ctx, query, depth, false)
+}
+
+// MultiAddress implements the Swarmer interface.
+func (swarmer *swarmer) MultiAddress() identity.MultiAddress {
+	return swarmer.client.MultiAddress()
 }
 
 func (swarmer *swarmer) query(ctx context.Context, query identity.Address, depth int, isBootstrapping bool) (identity.MultiAddress, error) {
@@ -206,7 +215,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address, depth
 				continue
 			}
 			if err := swarmer.dhtManager.updateDHT(multiAddr); err != nil {
-				log.Printf("cannot update dht with %v: %v", multiAddr, err)
+				logger.Network(logger.LevelInfo, fmt.Sprintf("cannot update dht with %v: %v", multiAddr, err))
 			}
 			whitelist = append(whitelist, multiAddr)
 		}

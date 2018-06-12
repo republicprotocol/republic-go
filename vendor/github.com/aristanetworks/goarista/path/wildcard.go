@@ -6,7 +6,7 @@ package path
 
 import "github.com/aristanetworks/goarista/key"
 
-// Wildcard is a special element in a Path that is used by Map
+// Wildcard is a special element in a path that is used by Map
 // and the Match* functions to match any other element.
 var Wildcard = key.New(WildcardType{})
 
@@ -19,7 +19,7 @@ func (w WildcardType) String() string {
 	return "*"
 }
 
-// Equal implements the value.Value interface.
+// Equal implements the key.Comparable interface.
 func (w WildcardType) Equal(other interface{}) bool {
 	_, ok := other.(WildcardType)
 	return ok

@@ -69,7 +69,14 @@ func StringifyInterface(key interface{}) (string, error) {
 			keys[i] = stringify(k) + "=" + stringify(m[k])
 		}
 		str = strings.Join(keys, "_")
-
+	case []interface{}:
+		elements := make([]string, len(key))
+		for i, element := range key {
+			elements[i] = stringify(element)
+		}
+		str = strings.Join(elements, ",")
+	case Pointer:
+		return "{" + key.Pointer().String() + "}", nil
 	case value.Value:
 		return key.String(), nil
 

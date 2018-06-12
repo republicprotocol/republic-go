@@ -27,4 +27,7 @@ type Storer interface {
 
 	// Computations returns all Computations stored in the Storer.
 	Computations() (Computations, error)
+
+	// RemoveComputation from the Storer.
+	RemoveComputation(ComputationID) error
 }

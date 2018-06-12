@@ -16,8 +16,8 @@ import (
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
+	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/darknode"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/stackint"
 	"github.com/urfave/cli"
@@ -255,7 +255,7 @@ func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 			} else {
 				log.Printf("[%v] %sNode will be deregistered next epoch%s\n", address, green, reset)
 			}
-		} else if isRegistered {
+		} else {
 			log.Printf("[%v] %sNode already registered%s\n", address, yellow, reset)
 		}
 	}
@@ -359,10 +359,10 @@ type FalconryConfigs struct {
 }
 
 type FalconryConfig struct {
-	Config       darknode.Config `json:"config"`
-	Ami          string          `json:"ami"`
-	Avz          string          `json:"avz"`
-	Instance     string          `json:"instance"`
-	Ip           string          `json:"ip"`
-	Is_bootstrap bool            `json:"is_bootstrap"`
+	Config       config.Config `json:"config"`
+	Ami          string        `json:"ami"`
+	Avz          string        `json:"avz"`
+	Instance     string        `json:"instance"`
+	Ip           string        `json:"ip"`
+	Is_bootstrap bool          `json:"is_bootstrap"`
 }

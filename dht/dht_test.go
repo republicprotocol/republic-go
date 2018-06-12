@@ -7,36 +7,30 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/dht"
 
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/testutils"
 )
 
 const maxBucketLength = 20
 
 func randomAddress() (*identity.Address, *identity.MultiAddress, error) {
-	randomKey, err := crypto.RandomEcdsaKey()
+	randomAddress, randomMultiAddress, err := testutils.RandomAddressAndMultiAddress()
 	if err != nil {
 		return nil, nil, err
 	}
-	randomAddress := identity.Address(randomKey.Address())
-	randomMultiAddress, err := randomAddress.MultiAddress()
-	if err != nil {
-		return nil, nil, err
-	}
-	return &randomAddress, &randomMultiAddress, nil
+	return randomAddress, &randomMultiAddress, nil
 }
 
 func randomDHTAndAddress() (*DHT, *identity.Address, *identity.MultiAddress, error) {
-	dhtKey, err := crypto.RandomEcdsaKey()
+	dhtAddress, _, err := testutils.RandomAddressAndMultiAddress()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	dhtAddress := identity.Address(dhtKey.Address())
 	randomAddress, randomMultiAddress, err := randomAddress()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	dht := NewDHT(dhtAddress, maxBucketLength)
+	dht := NewDHT(*dhtAddress, maxBucketLength)
 	return &dht, randomAddress, randomMultiAddress, nil
 }
 
@@ -90,10 +84,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < maxBucketLength; i++ {
-				key, err := crypto.RandomEcdsaKey()
-				Ω(err).ShouldNot(HaveOccurred())
-				address := identity.Address(key.Address())
-				multiAddress, err := address.MultiAddress()
+				multiAddress, err := testutils.RandomMultiAddress()
 				Ω(err).ShouldNot(HaveOccurred())
 				err = dht.UpdateMultiAddress(multiAddress)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -109,10 +100,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < IDLengthInBits*maxBucketLength; i++ {
-				key, err := crypto.RandomEcdsaKey()
-				Ω(err).ShouldNot(HaveOccurred())
-				address := identity.Address(key.Address())
-				multiAddress, err := address.MultiAddress()
+				multiAddress, err := testutils.RandomMultiAddress()
 				Ω(err).ShouldNot(HaveOccurred())
 				dht.UpdateMultiAddress(multiAddress)
 			}
@@ -154,10 +142,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < IDLengthInBits*maxBucketLength+1; i++ {
-				key, e := crypto.RandomEcdsaKey()
-				Ω(e).ShouldNot(HaveOccurred())
-				address := identity.Address(key.Address())
-				multiAddress, e := address.MultiAddress()
+				multiAddress, e := testutils.RandomMultiAddress()
 				Ω(e).ShouldNot(HaveOccurred())
 				e = dht.UpdateMultiAddress(multiAddress)
 				if err == nil && e != nil {
@@ -203,10 +188,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < IDLengthInBits*maxBucketLength+1; i++ {
-				key, e := crypto.RandomEcdsaKey()
-				Ω(e).ShouldNot(HaveOccurred())
-				address := identity.Address(key.Address())
-				multiAddress, e := address.MultiAddress()
+				multiAddress, e := testutils.RandomMultiAddress()
 				Ω(e).ShouldNot(HaveOccurred())
 				e = dht.UpdateMultiAddress(multiAddress)
 				if err == nil && e != nil {
@@ -232,10 +214,7 @@ var _ = Describe("Distributed Hash Table", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 3; i++ {
-				key, err := crypto.RandomEcdsaKey()
-				Ω(err).ShouldNot(HaveOccurred())
-				address := identity.Address(key.Address())
-				multiAddress, err := address.MultiAddress()
+				multiAddress, err := testutils.RandomMultiAddress()
 				Ω(err).ShouldNot(HaveOccurred())
 				err = dht.UpdateMultiAddress(multiAddress)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -256,10 +235,7 @@ var _ = Describe("Distributed Hash Table", func() {
 
 			for i := 0; i < 100; i++ {
 				for j := 0; j < 4; j++ {
-					key, err := crypto.RandomEcdsaKey()
-					Ω(err).ShouldNot(HaveOccurred())
-					address := identity.Address(key.Address())
-					multiAddress, err := address.MultiAddress()
+					multiAddress, err := testutils.RandomMultiAddress()
 					Ω(err).ShouldNot(HaveOccurred())
 					err = dht.UpdateMultiAddress(multiAddress)
 					Ω(err).ShouldNot(HaveOccurred())

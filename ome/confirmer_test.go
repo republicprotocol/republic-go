@@ -11,9 +11,9 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ome"
 
-	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/testutils"
 )
 
 var _ = Describe("Confirmer", func() {
@@ -24,8 +24,8 @@ var _ = Describe("Confirmer", func() {
 	BeforeEach(func() {
 		depth, pollInterval := uint(0), time.Second
 		renLedger = newMockRenLedger()
-		storer = NewMockStorer()
-		confirmer = NewConfirmer(depth, pollInterval, renLedger, storer)
+		storer = testutils.NewStorer()
+		confirmer = NewConfirmer(storer, renLedger, pollInterval, depth)
 	})
 
 	It("should be able to confirm order on the ren ledger", func(d Done) {
@@ -61,7 +61,7 @@ var _ = Describe("Confirmer", func() {
 			time.Sleep(5 * time.Second)
 		}()
 
-		confirmedMatches, errs := confirmer.ConfirmOrderMatches(done, orderMatches)
+		confirmedMatches, errs := confirmer.Confirm(done, orderMatches)
 
 		go func() {
 			defer GinkgoRecover()
@@ -243,15 +243,5 @@ func randomCoExp() order.CoExp {
 	return order.CoExp{
 		Co:  co,
 		Exp: exp,
-	}
-}
-
-func ganacheConfig() ethereum.Config {
-	return ethereum.Config{
-		Network:                 ethereum.NetworkGanache,
-		URI:                     "http://localhost:8545",
-		RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
-		DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
-		RenLedgerAddress:        ethereum.RenLedgerAddressOnGanache.String(),
 	}
 }

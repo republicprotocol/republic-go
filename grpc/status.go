@@ -6,6 +6,7 @@ import (
 	"github.com/republicprotocol/republic-go/dht"
 )
 
+// FIXME: Replace StatusService with the HTTP status endpoint.
 type StatusService struct {
 	dht *dht.DHT
 }

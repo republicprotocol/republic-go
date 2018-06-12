@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
 	"github.com/republicprotocol/republic-go/order"
@@ -42,7 +42,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		hexID := common.ToHex(orderID[:])
+		hexID := hexutil.Encode(orderID[:])
 		status, err := renLedger.Status(orderID)
 		switch status {
 		case order.Open:

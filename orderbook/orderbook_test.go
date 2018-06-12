@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/testutils"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/order"
@@ -27,10 +28,10 @@ var _ = Describe("Orderbook", func() {
 
 			// Create mock syncer and storer
 			syncer := newMockSyncer(numberOfOrders)
-			storer := newMockStorer(numberOfOrders)
+			storer := testutils.NewStorer()
 
 			// Create orderbook
-			orderbook := NewOrderbook(rsaKey, &syncer, &storer)
+			orderbook := NewOrderbook(rsaKey, &syncer, storer)
 
 			// Create encryptedOrderFragments
 			encryptedOrderFragments := make([]order.EncryptedFragment, numberOfOrders)
@@ -49,7 +50,7 @@ var _ = Describe("Orderbook", func() {
 				err = orderbook.OpenOrder(ctx, encryptedOrderFragments[i])
 				Expect(err).ShouldNot(HaveOccurred())
 			}
-			Expect(len(storer.orderFragments)).Should(Equal(numberOfOrders))
+			Expect(storer.NumOrderFragments()).Should(Equal(numberOfOrders))
 		})
 	})
 })
@@ -90,50 +91,6 @@ func newMockSyncer(numberOfOrders int) mockSyncer {
 		hasSynced:       false,
 		numberOfMatches: 0,
 		orders:          make([]order.Order, numberOfOrders),
-	}
-}
-
-type mockStorer struct {
-	orderFragments map[order.ID]order.Fragment
-	orders         map[order.ID]order.Order
-}
-
-func (storer *mockStorer) InsertOrderFragment(orderFragment order.Fragment) error {
-	if _, ok := storer.orderFragments[orderFragment.OrderID]; !ok {
-		storer.orderFragments[orderFragment.OrderID] = orderFragment
-	}
-	return nil
-}
-
-func (storer *mockStorer) InsertOrder(order order.Order) error {
-	if _, ok := storer.orders[order.ID]; !ok {
-		storer.orders[order.ID] = order
-	}
-	return nil
-}
-
-func (storer *mockStorer) OrderFragment(id order.ID) (order.Fragment, error) {
-	return storer.orderFragments[id], nil
-}
-
-func (storer *mockStorer) Order(id order.ID) (order.Order, error) {
-	return storer.orders[id], nil
-}
-
-func (storer *mockStorer) RemoveOrderFragment(id order.ID) error {
-	delete(storer.orderFragments, id)
-	return nil
-}
-
-func (storer *mockStorer) RemoveOrder(id order.ID) error {
-	delete(storer.orders, id)
-	return nil
-}
-
-func newMockStorer(numberOfOrders int) mockStorer {
-	return mockStorer{
-		orderFragments: make(map[order.ID]order.Fragment, numberOfOrders),
-		orders:         make(map[order.ID]order.Order, numberOfOrders),
 	}
 }
 

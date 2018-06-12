@@ -4,12 +4,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/republicprotocol/republic-go/testutils"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/republic-go/dispatch"
 	. "github.com/republicprotocol/republic-go/stream"
 
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
 
@@ -36,9 +37,9 @@ var _ = Describe("Channel streams", func() {
 		BeforeEach(func() {
 			var err error
 
-			clientMultiAddr, err = createNewMultiAddress()
+			clientMultiAddr, err = testutils.RandomMultiAddress()
 			Expect(err).ShouldNot(HaveOccurred())
-			serverMultiAddr, err = createNewMultiAddress()
+			serverMultiAddr, err = testutils.RandomMultiAddress()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			client = NewChannelStreamer(clientMultiAddr.Address(), &hub)
@@ -116,11 +117,3 @@ var _ = Describe("Channel streams", func() {
 
 	})
 })
-
-func createNewMultiAddress() (identity.MultiAddress, error) {
-	ecdsaKey, err := crypto.RandomEcdsaKey()
-	if err != nil {
-		return identity.MultiAddress{}, err
-	}
-	return identity.Address(ecdsaKey.Address()).MultiAddress()
-}

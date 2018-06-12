@@ -99,12 +99,12 @@ func (hub *ChannelHub) register(clientAddr, serverAddr identity.Address) channel
 		hub.conns[serverAddr] = map[identity.Address]channelStream{}
 	}
 
-	// An assymetric connection should be unreachable so we explicitly check
+	// An asymmetric connection should be unreachable so we explicitly check
 	// and panic for clarity and easier debugging
 	_, clientOk := hub.conns[clientAddr][serverAddr]
 	_, serverOk := hub.conns[serverAddr][clientAddr]
 	if (clientOk && !serverOk) || serverOk && !clientOk {
-		panic("assymetric connection from client to server")
+		panic("asymmetric connection from client to server")
 	}
 
 	// A symmetric connection has already been established

@@ -217,6 +217,7 @@ func (order *Order) Split(n, k int64) ([]Fragment, error) {
 			order.ID,
 			order.Type,
 			order.Parity,
+			order.Expiry,
 			tokens[i],
 			CoExpShare{Co: priceCos[i], Exp: priceExps[i]},
 			CoExpShare{Co: volumeCos[i], Exp: volumeExps[i]},

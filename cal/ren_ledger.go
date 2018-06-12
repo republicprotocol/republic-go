@@ -47,11 +47,11 @@ type RenLedger interface {
 	Depth(orderID order.ID) (uint, error)
 
 	// BuyOrders in the Ren Ledger starting at an offset and returning limited
-	// numbers of  buy orders.
+	// numbers of buy orders.
 	BuyOrders(offset, limit int) ([]order.ID, error)
 
 	// SellOrders in the Ren Ledger starting at an offset and returning limited
-	// numbers of  sell orders.
+	// numbers of sell orders.
 	SellOrders(offset, limit int) ([]order.ID, error)
 
 	// Trader returns the trader who submit the order

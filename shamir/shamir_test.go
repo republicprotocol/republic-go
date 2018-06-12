@@ -1,6 +1,7 @@
 package shamir_test
 
 import (
+	"encoding/json"
 	"math/rand"
 
 	. "github.com/onsi/ginkgo"
@@ -187,6 +188,43 @@ var _ = Describe("Shamir's secret sharing", func() {
 	})
 
 	Context("when joining", func() {
+
+		It("should rejoin shares unmarshalled by json", func() {
+			// Shamir parameters.
+			N := int64(8)
+			K := int64(6)
+
+			js := []byte(
+				"[[0,0,0,0,0,0,0,1,92,83,98,143,101,106,148,77],[0,0,0,0,0,0,0,2,226,79,128,237,26,163,39,111],[0,0,0,0,0,0,0,3,176,18,63,8,204,25,116,185],[0,0,0,0,0,0,0,4,88,16,175,44,168,0,238,177],[0,0,0,0,0,0,0,5,19,183,191,129,190,183,148,255],[0,0,0,0,0,0,0,6,186,85,23,6,213,110,27,129],[0,0,0,0,0,0,0,7,27,135,163,115,37,13,223,52],[0,0,0,0,0,0,0,8,106,208,228,226,226,36,32,81]]",
+			)
+			secretStackInt := stackint.FromUint(40)
+
+			var shares Shares
+			err := json.Unmarshal(js, &shares)
+			Expect(err).Should(BeNil())
+
+			Expect(int64(len(shares))).Should(Equal(N))
+
+			// For all K greater than, or equal to, 50 attempt to decode the secret.
+			// Pick K unique indices in the range [0, k).
+			indices := map[int]struct{}{}
+			for i := 0; i < int(K); i++ {
+				for {
+					index := rand.Intn(int(K))
+					if _, ok := indices[index]; !ok {
+						indices[index] = struct{}{}
+						break
+					}
+				}
+			}
+			// Use K shares to reconstruct the secret.
+			kShares := make(Shares, K)
+			for index := range indices {
+				kShares[index] = shares[index]
+			}
+			decodedSecret := stackint.FromUint(uint(Join(kShares)))
+			Expect(decodedSecret.Cmp(&secretStackInt)).Should(Equal(0))
+		})
 
 		It("should return the required secret from the threshold of shares", func() {
 			// Shamir parameters.
