@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -25,8 +24,8 @@ var ErrConnectionDenied = errors.New("connection denied")
 
 // Epoch contains a blockhash and a timestamp
 type Epoch struct {
-	Blockhash [32]byte
-	Timestamp stackint.Int1024
+	Blockhash   [32]byte
+	BlockNumber stackint.Int1024
 }
 
 // DarknodeRegistry is the dark node interface
@@ -153,7 +152,7 @@ func (darkNodeRegistry *DarknodeRegistry) CurrentEpoch() (Epoch, error) {
 	if err != nil {
 		return Epoch{}, err
 	}
-	timestamp, err := stackint.FromBigInt(epoch.Timestamp)
+	blocknumber, err := stackint.FromBigInt(epoch.Blocknumber)
 	if err != nil {
 		return Epoch{}, err
 	}
@@ -164,8 +163,8 @@ func (darkNodeRegistry *DarknodeRegistry) CurrentEpoch() (Epoch, error) {
 	}
 
 	return Epoch{
-		Blockhash: blockhash,
-		Timestamp: timestamp,
+		Blockhash:   blockhash,
+		BlockNumber: blocknumber,
 	}, nil
 }
 
@@ -177,77 +176,6 @@ func (darkNodeRegistry *DarknodeRegistry) TriggerEpoch() (*types.Transaction, er
 	}
 	_, err = darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, tx)
 	return tx, err
-}
-
-// TimeUntilEpoch calculates the time remaining until the next Epoch can be called
-func (darkNodeRegistry *DarknodeRegistry) TimeUntilEpoch() (time.Duration, error) {
-	epoch, err := darkNodeRegistry.CurrentEpoch()
-	if err != nil {
-		return 0, err
-	}
-
-	minInterval, err := darkNodeRegistry.MinimumEpochInterval()
-
-	nextTime := epoch.Timestamp.Add(&minInterval)
-	unix, err := nextTime.ToUint()
-	if err != nil {
-		// Either minInterval is really big, or unix epoch time has overflowed uint64s.
-		return 0, err
-	}
-
-	toWait := time.Second * time.Duration(int64(unix)-time.Now().Unix())
-
-	// Ensure toWait is at least 1
-	if toWait < 1*time.Second {
-		toWait = 1 * time.Second
-	}
-
-	// Try again within a minute
-	if toWait > time.Minute {
-		toWait = time.Minute
-	}
-
-	return toWait, nil
-
-}
-
-// WaitForEpoch guarantees that an Epoch as passed (and calls Epoch if connected to Ganache)
-func (darkNodeRegistry *DarknodeRegistry) WaitForEpoch() error {
-
-	previousEpoch, err := darkNodeRegistry.CurrentEpoch()
-	if err != nil {
-		return err
-	}
-
-	currentEpoch := previousEpoch
-
-	for currentEpoch.Blockhash == previousEpoch.Blockhash {
-
-		// Calculate how much time to sleep for
-		// If epoch can already be called, returns 1 second
-		toWait, err := darkNodeRegistry.TimeUntilEpoch()
-		if err != nil {
-			return err
-		}
-
-		time.Sleep(toWait)
-
-		// If on Ganache, have to call epoch manually
-		if darkNodeRegistry.network == ethereum.NetworkGanache {
-			tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
-			if err != nil {
-				return err
-			}
-			darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, tx)
-		}
-
-		currentEpoch, err = darkNodeRegistry.CurrentEpoch()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // GetOwner gets the owner of the given dark node
@@ -327,24 +255,6 @@ func (darkNodeRegistry *DarknodeRegistry) MinimumDarkPoolSize() (stackint.Int102
 // SetGasLimit sets the gas limit to use for transactions
 func (darkNodeRegistry *DarknodeRegistry) SetGasLimit(limit uint64) {
 	darkNodeRegistry.transactOpts.GasLimit = limit
-}
-
-// WaitUntilRegistration waits until the registration is successful
-func (darkNodeRegistry *DarknodeRegistry) WaitUntilRegistration(darkNodeID []byte) error {
-	isRegistered := false
-	for !isRegistered {
-		var err error
-		isRegistered, err = darkNodeRegistry.IsRegistered(identity.ID(darkNodeID).Address())
-		if err != nil {
-			return err
-		}
-		if isRegistered {
-			return nil
-		}
-		darkNodeRegistry.WaitForEpoch()
-
-	}
-	return nil
 }
 
 func toByte(id []byte) ([20]byte, error) {
