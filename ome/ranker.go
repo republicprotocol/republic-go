@@ -256,7 +256,6 @@ func (ranker *epochRanker) run(done <-chan struct{}, changes <-chan orderbook.Ch
 	computations := make(chan Computations)
 
 	go func() {
-		defer ranker.cleanup()
 		defer close(computations)
 
 		for change := range changes {
@@ -282,11 +281,6 @@ func (ranker *epochRanker) run(done <-chan struct{}, changes <-chan orderbook.Ch
 	}()
 
 	return computations
-}
-
-func (ranker *epochRanker) cleanup() {
-	ranker.buys = map[order.ID]orderbook.Priority{}
-	ranker.sells = map[order.ID]orderbook.Priority{}
 }
 
 func (ranker *epochRanker) insertBuy(change orderbook.Change) []Computation {
