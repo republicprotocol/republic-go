@@ -319,7 +319,7 @@ func (ome *ome) syncOrderFragmentBacklog(ξ [32]byte, done <-chan struct{}, matc
 		delete(ome.computationBacklog, com.ID)
 		// Check for expiry of the Computation
 		if com.Timestamp.Add(ComputationBacklogExpiry).Before(time.Now()) {
-			logger.Compute(logger.LevelDebug, fmt.Sprintf("⧖ expired => buy = %v, sell = %v", com.Buy, com.Sell))
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("⧖ expired backlog computation buy = %v, sell = %v", com.Buy, com.Sell))
 			com.State = ComputationStateRejected
 			if err := ome.storer.InsertComputation(com); err != nil {
 				logger.Error(fmt.Sprintf("cannot store expired computation buy = %v, sell = %v: %v", com.Buy, com.Sell, err))
