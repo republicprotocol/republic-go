@@ -140,7 +140,6 @@ func (confirmer *confirmer) beginConfirmation(orderMatch Computation) error {
 }
 
 func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order.Parity, done <-chan struct{}, confirmations chan<- Computation, errs chan<- error) {
-	// Check order.Parity and select the right set of orders to iterate over
 	var confirmingOrders map[order.ID]struct{}
 	if orderParity == order.ParityBuy {
 		confirmingOrders = confirmer.confirmingBuyOrders
@@ -149,7 +148,6 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 	}
 
 	for ord := range confirmingOrders {
-		// Check for finality of the order and get its matched order
 		ordMatch, err := confirmer.checkOrderForConfirmationFinality(ord, orderParity)
 		if err != nil {
 			if err == ErrOrderNotConfirmed {
@@ -163,14 +161,7 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			}
 		}
 
-		// Get the respective Computation from the Storer
-		var comID ComputationID
-		if orderParity == order.ParityBuy {
-			comID = GenerateComputationID(ord, ordMatch)
-		} else {
-			comID = GenerateComputationID(ordMatch, ord)
-		}
-		com, err := confirmer.storer.Computation(comID)
+		com, err := confirmer.computationFromOrders(orderParity, ord, ordMatch)
 		if err != nil {
 			select {
 			case <-done:
@@ -179,21 +170,13 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 				continue
 			}
 		}
-		com.State = ComputationStateAccepted
-		com.Timestamp = time.Now()
 
 		select {
 		case <-done:
 			return
 		case confirmations <- com:
-			// Delete the Computation from the mapping
-			if orderParity == order.ParityBuy {
-				delete(confirmer.confirmingBuyOrders, ord)
-				delete(confirmer.confirmingSellOrders, ordMatch)
-			} else {
-				delete(confirmer.confirmingBuyOrders, ordMatch)
-				delete(confirmer.confirmingSellOrders, ord)
-			}
+			delete(confirmer.confirmingBuyOrders, com.Buy)
+			delete(confirmer.confirmingSellOrders, com.Sell)
 			if err := confirmer.storer.InsertComputation(com); err != nil {
 				select {
 				case <-done:
@@ -234,4 +217,20 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 		return order.ID{}, err
 	}
 	return match, nil
+}
+
+func (confirmer *confirmer) computationFromOrders(orderParity order.Parity, ord, ordMatch order.ID) (Computation, error) {
+	var comID ComputationID
+	if orderParity == order.ParityBuy {
+		comID = GenerateComputationID(ord, ordMatch)
+	} else {
+		comID = GenerateComputationID(ordMatch, ord)
+	}
+	com, err := confirmer.storer.Computation(comID)
+	if err != nil {
+		return com, err
+	}
+	com.State = ComputationStateAccepted
+	com.Timestamp = time.Now()
+	return com, nil
 }
