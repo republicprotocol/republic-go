@@ -182,6 +182,7 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 func (ranker *delegateRanker) run(done <-chan struct{}) {
 	go func() {
 		for {
+			ticker := time.Tick(14 * time.Second)
 			ranker.outMu.Lock()
 			currEpochRankerCh := ranker.rankerCurrEpochOut
 			log.Println("currEpochRankerCh is nil ?", currEpochRankerCh == nil)
@@ -209,6 +210,7 @@ func (ranker *delegateRanker) run(done <-chan struct{}) {
 				for _, com := range coms {
 					ranker.insertComputation(com)
 				}
+			case <-ticker:
 			}
 		}
 	}()
