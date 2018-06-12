@@ -2,6 +2,7 @@ package ome
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"sync"
 	"time"
@@ -22,6 +23,11 @@ const ComputationBacklogExpiry = 5 * time.Minute
 // orders that are being matched against each other.
 type ComputationID [32]byte
 
+// String returns a human-readable representation of the ComputationID.
+func (id ComputationID) String() string {
+	return base64.StdEncoding.EncodeToString(id[:8])
+}
+
 // ComputationState is used to track the state of a Computation as it changes
 // over its lifetime. This prevents duplicated work in the system.
 type ComputationState int
@@ -35,6 +41,25 @@ const (
 	ComputationStateRejected
 	ComputationStateSettled
 )
+
+// String returns a human-readable representation of the ComputationState.
+func (state ComputationState) String() string {
+	switch state {
+	case ComputationStateNil:
+		return "nil"
+	case ComputationStateMatched:
+		return "matched"
+	case ComputationStateMismatched:
+		return "mismatched"
+	case ComputationStateAccepted:
+		return "accepted"
+	case ComputationStateRejected:
+		return "rejected"
+	case ComputationStateSettled:
+		return "settled"
+	}
+	panic("unexpected computation state")
+}
 
 // Computations is an alias type.
 type Computations []Computation
