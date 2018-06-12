@@ -13,6 +13,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -184,6 +185,10 @@ func (renLedger *mockRenLedger) Depth(id order.ID) (uint, error) {
 	return 100, nil
 }
 
+func (renLedger *mockRenLedger) BlockNumber(id order.ID) (uint, error) {
+	panic("unimplemented")
+}
+
 func (renLedger *mockRenLedger) BuyOrders(offset, limit int) ([]order.ID, error) {
 	panic("unimplemented")
 }
@@ -219,7 +224,7 @@ func randomComputaion() Computation {
 	return Computation{
 		Buy:      buy,
 		Sell:     sell,
-		Priority: Priority(0),
+		Priority: orderbook.Priority(0),
 	}
 }
 
