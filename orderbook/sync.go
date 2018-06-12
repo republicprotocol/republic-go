@@ -14,18 +14,20 @@ import (
 // ChangeSet is an alias type.
 type ChangeSet []Change
 
+type Priority uint64
+
 // Change represents a change found by the Syncer. It stores all the relevant
 // information for the order.Order that was changed.
 type Change struct {
 	OrderID       order.ID
 	OrderParity   order.Parity
 	OrderStatus   order.Status
-	OrderPriority uint64
+	OrderPriority Priority
 	BlockNumber   uint
 }
 
 // NewChange returns a Change object with the respective data stored inside it.
-func NewChange(id order.ID, parity order.Parity, status order.Status, priority uint64, blockNumber uint) Change {
+func NewChange(id order.ID, parity order.Parity, status order.Status, priority Priority, blockNumber uint) Change {
 	return Change{
 		OrderID:       id,
 		OrderParity:   parity,
@@ -107,7 +109,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 				continue
 			}
 
-			change := NewChange(ord, order.ParityBuy, status, uint64(syncer.syncBuyPointer+i), blockNumber)
+			change := NewChange(ord, order.ParityBuy, status, Priority(syncer.syncBuyPointer+i), blockNumber)
 			changeset = append(changeset, change)
 			syncer.buyOrders[syncer.syncBuyPointer+i] = ord
 		}
@@ -133,7 +135,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 				continue
 			}
 
-			change := NewChange(ord, order.ParitySell, status, uint64(syncer.syncSellPointer+i), blockNumber)
+			change := NewChange(ord, order.ParitySell, status, Priority(syncer.syncSellPointer+i), blockNumber)
 			changeset = append(changeset, change)
 			syncer.sellOrders[syncer.syncSellPointer+i] = ord
 		}
@@ -179,7 +181,7 @@ func (syncer *syncer) purge() ChangeSet {
 					}
 
 					if status != order.Open {
-						changes <- NewChange(buyOrder, order.ParityBuy, status, priority, blockNumber)
+						changes <- NewChange(buyOrder, order.ParityBuy, status, Priority(priority), blockNumber)
 
 						syncer.ordersMu.Lock()
 						delete(syncer.buyOrders, key)
@@ -211,7 +213,7 @@ func (syncer *syncer) purge() ChangeSet {
 					}
 
 					if status != order.Open {
-						changes <- NewChange(sellOrder, order.ParitySell, status, priority, blockNumber)
+						changes <- NewChange(sellOrder, order.ParitySell, status, Priority(priority), blockNumber)
 
 						syncer.ordersMu.Lock()
 						delete(syncer.sellOrders, key)

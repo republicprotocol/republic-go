@@ -41,11 +41,11 @@ type Computations []Computation
 
 // A Computation is a combination of a buy order.Order and a sell order.Order.
 type Computation struct {
-	ID        ComputationID    `json:"id"`
-	State     ComputationState `json:"state"`
-	Priority  uint64           `json:"priority"`
-	Match     bool             `json:"match"`
-	Timestamp time.Time        `json:"timestamp"`
+	ID        ComputationID      `json:"id"`
+	State     ComputationState   `json:"state"`
+	Priority  orderbook.Priority `json:"priority"`
+	Match     bool               `json:"match"`
+	Timestamp time.Time          `json:"timestamp"`
 
 	Buy  order.ID `json:"buy"`
 	Sell order.ID `json:"sell"`
@@ -224,6 +224,7 @@ func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
 	ome.smpcer.Disconnect(ome.ξ.Hash)
 	ome.ξ = ξ
 	ome.smpcer.Connect(ome.ξ.Hash, ome.ξ.Darknodes)
+	ome.ranker.OnChangeEpoch(ξ)
 }
 
 func (ome *ome) syncOrderbookToRanker(done <-chan struct{}, errs chan<- error) {
@@ -241,7 +242,6 @@ func (ome *ome) syncOrderbookToRanker(done <-chan struct{}, errs chan<- error) {
 	for _, change := range changeset {
 		ome.ranker.InsertChange(change)
 	}
-
 }
 
 func (ome *ome) syncRanker(done <-chan struct{}, matches chan<- Computation, errs chan<- error) bool {
