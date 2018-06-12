@@ -184,7 +184,9 @@ func (ranker *delegateRanker) run(done <-chan struct{}) {
 		for {
 			ranker.outMu.Lock()
 			currEpochRankerCh := ranker.rankerCurrEpochOut
+			log.Println("currEpochRankerCh is nil ?", currEpochRankerCh == nil)
 			prevEpochRankerCh := ranker.rankerPrevEpochOut
+			log.Println("prevEpochRankerCh is nil ?", prevEpochRankerCh == nil)
 			ranker.outMu.Unlock()
 
 			select {
