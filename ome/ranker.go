@@ -316,6 +316,7 @@ func (ranker *epochRanker) insertBuy(change orderbook.Change) []Computation {
 
 		computations = append(computations, priorityCom)
 	}
+	log.Printf("return %d computations after inserting the buy order %v", len(computations), base64.StdEncoding.EncodeToString(change.OrderID[:]))
 
 	return computations
 }
@@ -335,7 +336,7 @@ func (ranker *epochRanker) insertSell(change orderbook.Change) []Computation {
 
 		computations = append(computations, priorityCom)
 	}
-
+	log.Printf("return %d computations after inserting the sell order %v", len(computations), base64.StdEncoding.EncodeToString(change.OrderID[:]))
 	return computations
 }
 
