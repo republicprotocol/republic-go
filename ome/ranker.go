@@ -35,17 +35,18 @@ type Ranker interface {
 // delegateRanker delegates orders to specific epochRanker according to the
 // epoch Hash and collects computations back from all the epochRanker.
 type delegateRanker struct {
-	address        identity.Address
+	done    <-chan struct{}
+	address identity.Address
+	storer  Storer
+
 	computationsMu *sync.Mutex
-	computations   []Computation
+	computations   Computations
 
 	rankerMu        *sync.Mutex
 	rankers         []*epochRanker
 	changeChs       []chan orderbook.Change
-	computationsChs []<-chan Computation
+	computationsChs []<-chan Computations
 	blockNumbers    []uint
-
-	storer Storer
 }
 
 // NewRanker returns a Ranker that first filters the Computations it produces
@@ -54,19 +55,23 @@ type delegateRanker struct {
 // Priorities that do not match the position of the Ranker, after a modulo of
 // the number of Rankers, are filtered. A Storer is used to load existing
 // Computations that have not been processed completely, and to store new
-// Computations.
-func NewRanker(storer Storer, addres identity.Address, epoch cal.Epoch) (Ranker, error) {
+// Computations. The Ranker will run background processes until the done
+// channel is closed, after which the Ranker will no longer consume
+// orderbook.Changeset or produce Computation.
+func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, epoch cal.Epoch) (Ranker, error) {
 	ranker := &delegateRanker{
+		done:    done,
+		address: address,
+		storer:  storer,
+
 		computationsMu: new(sync.Mutex),
-		computations:   []Computation{},
+		computations:   Computations{},
 
 		rankerMu:        new(sync.Mutex),
 		rankers:         make([]*epochRanker, 0),
 		changeChs:       make([]chan orderbook.Change, 0),
-		computationsChs: make([]<-chan Computation, 0),
+		computationsChs: make([]<-chan Computations, 0),
 		blockNumbers:    make([]uint, 0),
-
-		storer: storer,
 	}
 
 	pods, pos, err := ranker.getPosFromEpoch(epoch)
@@ -75,9 +80,10 @@ func NewRanker(storer Storer, addres identity.Address, epoch cal.Epoch) (Ranker,
 	}
 	ranker.changeChs = append(ranker.changeChs, make(chan orderbook.Change))
 	ranker.rankers = append(ranker.rankers, newEpochRanker(pods, pos))
-	ranker.computationsChs = append(ranker.computationsChs, ranker.rankers[1].run(ranker.changeChs[1]))
+	ranker.computationsChs = append(ranker.computationsChs, ranker.rankers[1].run(ranker.done, ranker.changeChs[1]))
 	ranker.blockNumbers = append(ranker.blockNumbers, epoch.BlockNumber)
 
+	ranker.processComputations(done)
 	ranker.insertStoredComputationsInBackground()
 
 	return ranker, nil
@@ -119,7 +125,7 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 
 	pods, pos, err := ranker.getPosFromEpoch(epoch)
 	if err != nil {
-		logger.Error(fmt.Sprintf("%v", err))
+		logger.Error(fmt.Sprintf("cannot get ranker position from epoch: %v", err))
 		return
 	}
 
@@ -133,29 +139,38 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 	}
 
 	ranker.changeChs = append(ranker.changeChs, make(chan orderbook.Change))
-	computations := epochRanker.run(ranker.changeChs[1])
+	computations := epochRanker.run(ranker.done, ranker.changeChs[1])
 	ranker.rankers = append(ranker.rankers, epochRanker)
 	ranker.computationsChs = append(ranker.computationsChs, computations)
 	ranker.blockNumbers = append(ranker.blockNumbers, epoch.BlockNumber)
 }
 
-func (ranker *delegateRanker) processComputations() {
+func (ranker *delegateRanker) processComputations(done <-chan struct{}) {
 	go func() {
 		for {
 			ranker.rankerMu.Lock()
-			select {
-			case computation, ok := <-ranker.computationsChs[0]:
-				if !ok {
-					return
-				}
-				ranker.insertComputation(computation)
-			case computation, ok := <-ranker.computationsChs[1]:
-				if !ok {
-					return
-				}
-				ranker.insertComputation(computation)
-			}
+			currEpochRankerCh := ranker.computationsChs[0]
+			prevEpochRankerCh := ranker.computationsChs[1]
 			ranker.rankerMu.Unlock()
+
+			select {
+			case <-done:
+				return
+			case coms, ok := <-currEpochRankerCh:
+				if !ok {
+					return
+				}
+				for _, com := range coms {
+					ranker.insertComputation(com)
+				}
+			case coms, ok := <-prevEpochRankerCh:
+				if !ok {
+					return
+				}
+				for _, com := range coms {
+					ranker.insertComputation(com)
+				}
+			}
 		}
 	}()
 }
@@ -163,7 +178,8 @@ func (ranker *delegateRanker) processComputations() {
 func (ranker *delegateRanker) insertStoredComputationsInBackground() {
 	go func() {
 		// Wait for long enough that the Ome has time to connect to the network
-		// for the current epoch before loading computations
+		// for the current epoch before loading computations (approximately one
+		// block)
 		timer := time.NewTimer(14 * time.Second)
 
 		coms, err := ranker.storer.Computations()
@@ -219,34 +235,36 @@ func newEpochRanker(numberOfRankers, pos int) *epochRanker {
 	}
 }
 
-func (ranker *epochRanker) run(changes <-chan orderbook.Change) <-chan Computation {
-	computationsOut := make(chan Computation)
+func (ranker *epochRanker) run(done <-chan struct{}, changes <-chan orderbook.Change) <-chan Computations {
+	computations := make(chan Computations)
 
 	go func() {
 		defer ranker.cleanup()
-		defer close(computationsOut)
+		defer close(computations)
 
 		for change := range changes {
-
-			var computations []Computation
 			switch change.OrderStatus {
 			case order.Open:
 				if change.OrderParity == order.ParityBuy {
-					computations = ranker.insertBuy(change)
+					select {
+					case <-done:
+						return
+					case computations <- ranker.insertBuy(change):
+					}
 				} else {
-					computations = ranker.insertSell(change)
+					select {
+					case <-done:
+						return
+					case computations <- ranker.insertSell(change):
+					}
 				}
 			case order.Canceled, order.Confirmed:
 				ranker.remove(change)
 			}
-
-			for _, computation := range computations {
-				computationsOut <- computation
-			}
 		}
 	}()
 
-	return computationsOut
+	return computations
 }
 
 func (ranker *epochRanker) cleanup() {
