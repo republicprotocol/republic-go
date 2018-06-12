@@ -134,7 +134,7 @@ func (ranker *delegateRanker) Computations(buffer Computations) int {
 	for i := 0; i < min; i++ {
 		buffer[i] = ranker.computations[i]
 	}
-	ranker.computations = ranker.computations[:min]
+	ranker.computations = ranker.computations[min:]
 
 	return min
 }
