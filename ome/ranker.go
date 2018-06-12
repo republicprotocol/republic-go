@@ -109,6 +109,7 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 	log.Printf("[change detected] order %v status change to %v at block %d", base64.StdEncoding.EncodeToString(change.OrderID[:]), change.OrderStatus, change.BlockNumber)
 	// FIXME : Change blockNumber can be different from the epoch blockNumber
 	if change.BlockNumber >= ranker.rankerCurrBlockNum {
+		log.Println("why it's block herer")
 		select {
 		case <-ranker.done:
 		case ranker.rankerCurrEpochIn <- change:
@@ -123,6 +124,7 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 		}
 		return
 	}
+	log.Println("shouldn't reach here as well")
 }
 
 // Computations implements the Ranker interface.
