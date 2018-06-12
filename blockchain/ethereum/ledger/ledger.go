@@ -18,6 +18,11 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+// BlocksForConfirmation is the number of Ethereum blocks required to consider
+// changes to an order's status (Open, Canceled or Confirmed) in the Ledger to
+// be confirmed. The functions `OpenBuyOrder`, `OpenSellOrder`, `CancelOrder`
+// and `ConfirmOrder` return only after the required number of confirmations has
+// been reached.
 const BlocksForConfirmation = 1
 
 // RenLedgerContract
