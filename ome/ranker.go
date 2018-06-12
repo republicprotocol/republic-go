@@ -16,9 +16,10 @@ import (
 // A Ranker consumes orders and produces Computations that are prioritized
 // based on the combined priorities of the involved orders.
 type Ranker interface {
-	// InsertChange into the Ranker. Ranker will generate new computations or
-	// remove order from the ranker depending on the new status of the order.
-	// New computations can be read by using a call to Ranker.Computations.
+	// InsertChange into the Ranker. The orderbook.Change will be forwarded to
+	// be handled by the respective internal handler based on the block number
+	// of the orderbook.Change. This ensures that Computations can be filterd
+	// by their epoch.
 	InsertChange(change orderbook.Change)
 
 	// Computations stored in the Ranker are written to the input buffer. The
@@ -97,10 +98,7 @@ func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, ep
 	return ranker, nil
 }
 
-// InsertChange into the Ranker. The orderbook.Change will be forwarded to be
-// handled by the respective internal handler based on the block number of the
-// orderbook.Change. This ensures that Computations can be filterd by their
-// epoch.
+// InsertChange implements the Ranker interface.
 func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 	ranker.rankerMu.Lock()
 	defer ranker.rankerMu.Unlock()
@@ -121,6 +119,7 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 	}
 }
 
+// Computations implements the Ranker interface.
 func (ranker *delegateRanker) Computations(buffer Computations) int {
 	ranker.computationsMu.Lock()
 	defer ranker.computationsMu.Unlock()
@@ -139,6 +138,7 @@ func (ranker *delegateRanker) Computations(buffer Computations) int {
 	return min
 }
 
+// OnChangeEpoch implements the Ranker interface.
 func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 	ranker.rankerMu.Lock()
 	defer ranker.rankerMu.Unlock()
