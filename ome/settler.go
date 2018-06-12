@@ -19,9 +19,8 @@ type Settler interface {
 
 	// Settle a Computation that has been resolved to match and has been
 	// confirmed. Computations are usually settled after they have been through
-	// the Matcher and Confirmer interfaces. The ξ hash is used to define the ξ
-	// in which the Computation was done.
-	Settle(ξ [32]byte, com Computation) error
+	// the Matcher and Confirmer interfaces.
+	Settle(com Computation) error
 }
 
 type settler struct {
@@ -42,7 +41,7 @@ func NewSettler(storer Storer, smpcer smpc.Smpcer, accounts cal.DarkpoolAccounts
 }
 
 // Settle implements the Settler interface.
-func (settler *settler) Settle(ξ [32]byte, com Computation) error {
+func (settler *settler) Settle(com Computation) error {
 	buyFragment, err := settler.storer.OrderFragment(com.Buy)
 	if err != nil {
 		return err
@@ -52,7 +51,7 @@ func (settler *settler) Settle(ξ [32]byte, com Computation) error {
 		return err
 	}
 
-	networkID := smpc.NetworkID(ξ)
+	networkID := smpc.NetworkID(com.EpochHash)
 	settler.joinOrderMatch(networkID, com, buyFragment, sellFragment)
 	return nil
 }

@@ -47,17 +47,19 @@ type Computation struct {
 	Match     bool               `json:"match"`
 	Timestamp time.Time          `json:"timestamp"`
 
-	Buy  order.ID `json:"buy"`
-	Sell order.ID `json:"sell"`
+	Buy       order.ID `json:"buy"`
+	Sell      order.ID `json:"sell"`
+	EpochHash [32]byte `json:"epochHash"`
 }
 
 // NewComputation returns a pending Computation between a buy order.Order and a
 // sell order.Order. It initialized the ComputationID to the Keccak256 hash of
 // the buy order.ID and the sell order.ID.
-func NewComputation(buy, sell order.ID) Computation {
+func NewComputation(buy, sell order.ID, epochHash [32]byte) Computation {
 	com := Computation{
-		Buy:  buy,
-		Sell: sell,
+		Buy:       buy,
+		Sell:      sell,
+		EpochHash: epochHash,
 	}
 	copy(com.ID[:], crypto.Keccak256(buy[:], sell[:]))
 	return com
@@ -100,8 +102,9 @@ type ome struct {
 	computationBacklogMu *sync.RWMutex
 	computationBacklog   map[ComputationID]Computation
 
-	ξMu *sync.RWMutex
-	ξ   cal.Epoch
+	epochMu   *sync.RWMutex
+	epochCurr *cal.Epoch
+	epochPrev *cal.Epoch
 }
 
 // NewOme returns an Ome that uses an order.Orderbook to synchronize changes
@@ -120,8 +123,9 @@ func NewOme(ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler
 		computationBacklogMu: new(sync.RWMutex),
 		computationBacklog:   map[ComputationID]Computation{},
 
-		ξMu: new(sync.RWMutex),
-		ξ:   cal.Epoch{},
+		epochMu:   new(sync.RWMutex),
+		epochCurr: nil,
+		epochPrev: nil,
 	}
 }
 
@@ -200,11 +204,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 			case <-ticker.C:
 			}
 
-			ome.ξMu.RLock()
-			ξ := ome.ξ.Hash
-			ome.ξMu.RUnlock()
-
-			ome.syncOrderFragmentBacklog(ξ, done, matches)
+			ome.syncOrderFragmentBacklog(done, matches)
 		}
 	}()
 
@@ -220,14 +220,27 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 // OnChangeEpoch updates the Ome to the next cal.Epoch. This will cause
 // cascading changes throughout the Ome, most notably it will connect to a new
 // Smpc network that will handle future Computations.
-func (ome *ome) OnChangeEpoch(ξ cal.Epoch) {
-	ome.ξMu.Lock()
-	defer ome.ξMu.Unlock()
+func (ome *ome) OnChangeEpoch(epoch cal.Epoch) {
+	ome.epochMu.Lock()
+	defer ome.epochMu.Unlock()
 
-	ome.smpcer.Disconnect(ome.ξ.Hash)
-	ome.ξ = ξ
-	ome.smpcer.Connect(ome.ξ.Hash, ome.ξ.Darknodes)
-	ome.ranker.OnChangeEpoch(ξ)
+	// Do not update if the epoch has not actually changed
+	if bytes.Equal(epoch.Hash[:], ome.epochCurr.Hash[:]) {
+		return
+	}
+
+	// Replace the previous epoch
+	if ome.epochPrev != nil {
+		ome.smpcer.Disconnect(ome.epochPrev.Hash)
+	}
+	ome.epochPrev = ome.epochCurr
+
+	// Replace the current epoch
+	ome.epochCurr = &epoch
+	ome.smpcer.Connect(ome.epochCurr.Hash, ome.epochCurr.Darknodes)
+
+	// Notify the Ranker
+	ome.ranker.OnChangeEpoch(epoch)
 }
 
 func (ome *ome) syncOrderbookToRanker(done <-chan struct{}, errs chan<- error) {
@@ -251,14 +264,10 @@ func (ome *ome) syncRanker(done <-chan struct{}, matches chan<- Computation, err
 	buffer := [OmeBufferLimit]Computation{}
 	n := ome.ranker.Computations(buffer[:])
 
-	ome.ξMu.RLock()
-	ξ := ome.ξ.Hash
-	ome.ξMu.RUnlock()
-
 	for i := 0; i < n; i++ {
 		switch buffer[i].State {
 		case ComputationStateNil:
-			if err := ome.sendComputationToMatcher(ξ, buffer[i], done, matches); err != nil {
+			if err := ome.sendComputationToMatcher(buffer[i], done, matches); err != nil {
 				ome.computationBacklogMu.Lock()
 				ome.computationBacklog[buffer[i].ID] = buffer[i]
 				ome.computationBacklogMu.Unlock()
@@ -268,7 +277,7 @@ func (ome *ome) syncRanker(done <-chan struct{}, matches chan<- Computation, err
 			ome.sendComputationToConfirmer(buffer[i], done, matches)
 
 		case ComputationStateAccepted:
-			ome.sendComputationToSettler(ξ, buffer[i])
+			ome.sendComputationToSettler(buffer[i])
 
 		default:
 			logger.Error(fmt.Sprintf("unexpected state for computation buy = %v, sell = %v: %v", buffer[i].Buy, buffer[i].Sell, buffer[i].State))
@@ -289,11 +298,7 @@ func (ome *ome) syncConfirmerToSettler(done <-chan struct{}, matches <-chan Comp
 			if !ok {
 				return
 			}
-
-			ome.ξMu.RLock()
-			ξ := ome.ξ.Hash
-			ome.ξMu.RUnlock()
-			ome.sendComputationToSettler(ξ, confirmation)
+			ome.sendComputationToSettler(confirmation)
 
 		case err, ok := <-confirmationErrs:
 			if !ok {
@@ -307,7 +312,7 @@ func (ome *ome) syncConfirmerToSettler(done <-chan struct{}, matches <-chan Comp
 	}
 }
 
-func (ome *ome) syncOrderFragmentBacklog(ξ [32]byte, done <-chan struct{}, matches chan<- Computation) {
+func (ome *ome) syncOrderFragmentBacklog(done <-chan struct{}, matches chan<- Computation) {
 	ome.computationBacklogMu.Lock()
 	defer ome.computationBacklogMu.Unlock()
 
@@ -336,14 +341,14 @@ func (ome *ome) syncOrderFragmentBacklog(ξ [32]byte, done <-chan struct{}, matc
 	// Retry each of the Computations in the buffer
 	for i := 0; i < bufferN; i++ {
 		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("retrying computation buy = %v, sell = %v", buffer[i].Buy, buffer[i].Sell))
-		if err := ome.sendComputationToMatcher(ξ, buffer[i], done, matches); err != nil {
+		if err := ome.sendComputationToMatcher(buffer[i], done, matches); err != nil {
 			logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("cannot resolve computation buy = %v, sell = %v: %v", buffer[i].Buy, buffer[i].Sell, err))
 			ome.computationBacklog[buffer[i].ID] = buffer[i]
 		}
 	}
 }
 
-func (ome *ome) sendComputationToMatcher(ξ [32]byte, com Computation, done <-chan struct{}, matches chan<- Computation) error {
+func (ome *ome) sendComputationToMatcher(com Computation, done <-chan struct{}, matches chan<- Computation) error {
 	buyFragment, err := ome.storer.OrderFragment(com.Buy)
 	if err != nil {
 		return err
@@ -354,7 +359,7 @@ func (ome *ome) sendComputationToMatcher(ξ [32]byte, com Computation, done <-ch
 	}
 
 	logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v", com.Buy, com.Sell))
-	ome.matcher.Resolve(ξ, com, buyFragment, sellFragment, func(com Computation) {
+	ome.matcher.Resolve(com, buyFragment, sellFragment, func(com Computation) {
 		if !com.Match {
 			return
 		}
@@ -370,9 +375,9 @@ func (ome *ome) sendComputationToConfirmer(com Computation, done <-chan struct{}
 	}
 }
 
-func (ome *ome) sendComputationToSettler(ξ [32]byte, com Computation) {
+func (ome *ome) sendComputationToSettler(com Computation) {
 	logger.Compute(logger.LevelDebug, fmt.Sprintf("settling buy = %v, sell = %v", com.Buy, com.Sell))
-	if err := ome.settler.Settle(ξ, com); err != nil {
+	if err := ome.settler.Settle(com); err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot settle: %v", err))
 	}
 }
