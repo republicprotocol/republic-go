@@ -75,6 +75,9 @@ func (com *Computation) Equal(arg *Computation) bool {
 		com.Sell.Equal(arg.Sell)
 }
 
+// OmeBufferLimit defines the buffer size used by the Ome when reading data.
+const OmeBufferLimit = 1024
+
 // An Ome runs the logic for a single node in the secure order matching engine.
 type Ome interface {
 
@@ -124,8 +127,8 @@ func NewOme(ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler
 
 // Run implements the Ome interface.
 func (ome *ome) Run(done <-chan struct{}) <-chan error {
-	matches := make(chan Computation, 64)
-	errs := make(chan error, 64)
+	matches := make(chan Computation, OmeBufferLimit)
+	errs := make(chan error, OmeBufferLimit)
 
 	var wg sync.WaitGroup
 
@@ -245,7 +248,7 @@ func (ome *ome) syncOrderbookToRanker(done <-chan struct{}, errs chan<- error) {
 }
 
 func (ome *ome) syncRanker(done <-chan struct{}, matches chan<- Computation, errs chan<- error) bool {
-	buffer := [128]Computation{}
+	buffer := [OmeBufferLimit]Computation{}
 	n := ome.ranker.Computations(buffer[:])
 
 	ome.ξMu.RLock()
@@ -272,7 +275,7 @@ func (ome *ome) syncRanker(done <-chan struct{}, matches chan<- Computation, err
 		}
 
 	}
-	return n != 128
+	return n != OmeBufferLimit
 }
 
 func (ome *ome) syncConfirmerToSettler(done <-chan struct{}, matches <-chan Computation, errs chan<- error) {
@@ -308,7 +311,7 @@ func (ome *ome) syncOrderFragmentBacklog(ξ [32]byte, done <-chan struct{}, matc
 	ome.computationBacklogMu.Lock()
 	defer ome.computationBacklogMu.Unlock()
 
-	buffer := [128]Computation{}
+	buffer := [OmeBufferLimit]Computation{}
 	bufferN := 0
 
 	// Build a buffer of Computations that will be retried
@@ -325,7 +328,7 @@ func (ome *ome) syncOrderFragmentBacklog(ξ [32]byte, done <-chan struct{}, matc
 		}
 		// Add this Computation to the buffer
 		buffer[bufferN] = com
-		if bufferN++; bufferN >= 128 {
+		if bufferN++; bufferN >= OmeBufferLimit {
 			break
 		}
 	}
