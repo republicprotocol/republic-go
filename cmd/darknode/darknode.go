@@ -36,6 +36,9 @@ import (
 )
 
 func main() {
+	done := make(chan struct{})
+	defer close(done)
+
 	logger.SetFilterLevel(logger.LevelDebugLow)
 
 	// Parse command-line arguments
@@ -116,7 +119,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot get current epoch: %v", err)
 	}
-	ranker, err := ome.NewRanker(&store, config.Address, epoch)
+	ranker, err := ome.NewRanker(done, config.Address, &store, epoch)
 	if err != nil {
 		log.Fatalf("cannot create new ranker: %v", err)
 	}
@@ -141,7 +144,6 @@ func main() {
 		}
 		log.Printf("connected to %v peers", len(dht.MultiAddresses()))
 
-		done := make(chan struct{})
 		dispatch.CoBegin(func() {
 			// Synchronizing the OME
 			errs := ome.Run(done)
