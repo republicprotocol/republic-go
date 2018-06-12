@@ -176,7 +176,7 @@ var _ = Describe("Streaming", func() {
 			})
 		})
 
-		FIt("should receive messages sent by the server", func() {
+		It("should receive messages sent by the server", func() {
 			dispatch.CoBegin(func() {
 				defer GinkgoRecover()
 
