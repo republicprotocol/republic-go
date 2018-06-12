@@ -116,7 +116,6 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 		select {
 		case <-ranker.done:
 		case ranker.rankerCurrEpochIn <- change:
-			log.Println("pumping into current epochRanker")
 		}
 		return
 	}
@@ -124,7 +123,6 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 		select {
 		case <-ranker.done:
 		case ranker.rankerPrevEpochIn <- change:
-			log.Println("pumping into previous epochRanker")
 		}
 		return
 	}
@@ -185,16 +183,13 @@ func (ranker *delegateRanker) run(done <-chan struct{}) {
 			ticker := time.Tick(14 * time.Second)
 			ranker.outMu.Lock()
 			currEpochRankerCh := ranker.rankerCurrEpochOut
-			log.Println("currEpochRankerCh is nil ?", currEpochRankerCh == nil)
 			prevEpochRankerCh := ranker.rankerPrevEpochOut
-			log.Println("prevEpochRankerCh is nil ?", prevEpochRankerCh == nil)
 			ranker.outMu.Unlock()
 
 			select {
 			case <-done:
 				return
 			case coms, ok := <-currEpochRankerCh:
-				log.Println("read computations from current epochRanker")
 				if !ok {
 					return
 				}
@@ -202,7 +197,6 @@ func (ranker *delegateRanker) run(done <-chan struct{}) {
 					ranker.insertComputation(com)
 				}
 			case coms, ok := <-prevEpochRankerCh:
-				log.Println("read computations from previous epochRanker")
 				// fixme : the previous channel might be closed here
 				if !ok {
 					return
