@@ -1,6 +1,7 @@
 package smpc
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"sync"
@@ -17,6 +18,11 @@ import (
 // NetworkID for a network of Smpcer nodes. Using a NetworkID allows nodes to
 // be involved in multiple distinct computation networks in parallel.
 type NetworkID [32]byte
+
+// String returns a human-readable representation of a NetworkID.
+func (id NetworkID) String() string {
+	return base64.StdEncoding.EncodeToString(id[:8])
+}
 
 // Smpcer is an interface for a secure multi-party computer. It asynchronously
 // consumes computation instructions and produces computation results.
@@ -75,6 +81,8 @@ func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer) Smpcer {
 
 // Connect implements the Smpcer interface.
 func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
+	logger.Network(logger.LevelInfo, fmt.Sprintf("connecting to network = %v", networkID))
+
 	k := int64(2 * (len(nodes) + 1) / 3)
 
 	smpc.networkMu.Lock()
@@ -124,6 +132,8 @@ func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 
 // Disconnect implements the Smpcer interface.
 func (smpc *smpcer) Disconnect(networkID NetworkID) {
+	logger.Network(logger.LevelInfo, fmt.Sprintf("disconnecting from network = %v", networkID))
+
 	smpc.networkMu.Lock()
 	if _, ok := smpc.networkCancels[networkID]; ok {
 		for _, cancel := range smpc.networkCancels[networkID] {
