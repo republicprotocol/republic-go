@@ -14,6 +14,8 @@ import (
 // ChangeSet is an alias type.
 type ChangeSet []Change
 
+// A Priority is an unsigned integer representing logical time priority. The
+// lower the number, the higher the priority.
 type Priority uint64
 
 // Change represents a change found by the Syncer. It stores all the relevant
