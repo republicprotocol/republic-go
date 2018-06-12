@@ -164,7 +164,7 @@ func (ome *ome) OnChangeEpoch(epoch cal.Epoch) {
 	defer ome.epochMu.Unlock()
 
 	// Do not update if the epoch has not actually changed
-	if bytes.Equal(epoch.Hash[:], ome.epochCurr.Hash[:]) {
+	if ome.epochCurr != nil && bytes.Equal(epoch.Hash[:], ome.epochCurr.Hash[:]) {
 		return
 	}
 
