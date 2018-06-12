@@ -275,6 +275,7 @@ func (ranker *epochRanker) run(done <-chan struct{}, changes <-chan orderbook.Ch
 		defer close(computations)
 
 		for change := range changes {
+			log.Println("new change to the epochRanker")
 			switch change.OrderStatus {
 			case order.Open:
 				if change.OrderParity == order.ParityBuy {
@@ -293,9 +294,12 @@ func (ranker *epochRanker) run(done <-chan struct{}, changes <-chan orderbook.Ch
 					}
 				}
 			case order.Canceled, order.Confirmed:
+				log.Println("try to remove the order")
 				ranker.remove(change)
+				log.Println("finish removing")
 			}
 		}
+		log.Println("shouldn't reach here")
 	}()
 
 	return computations
