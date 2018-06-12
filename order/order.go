@@ -40,6 +40,7 @@ const (
 	TokenREN Token = 65536
 )
 
+// String returns a human-readable representation of a Token.
 func (token Token) String() string {
 	switch token {
 	case TokenBTC:
@@ -50,9 +51,8 @@ func (token Token) String() string {
 		return "DGX"
 	case TokenREN:
 		return "REN"
-	default:
-		return "unrecognized token "
 	}
+	panic("unexpected token")
 }
 
 // Tokens are a numerical representation of the token pairings supported by
@@ -62,8 +62,6 @@ type Tokens uint64
 // Tokens values.
 const (
 	TokensBTCETH Tokens = Tokens((uint64(TokenBTC) << 32) | uint64(TokenETH))
-	TokensBTCDGX Tokens = Tokens((uint64(TokenBTC) << 32) | uint64(TokenDGX))
-	TokensBTCREN Tokens = Tokens((uint64(TokenBTC) << 32) | uint64(TokenREN))
 	TokensETHDGX Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenDGX))
 	TokensETHREN Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenREN))
 	TokensDGXREN Tokens = Tokens((uint64(TokenDGX) << 32) | uint64(TokenREN))
@@ -77,6 +75,21 @@ func (tokens Tokens) PriorityToken() Token {
 // NonPriorityToken returns the non-priority token of a token pair.
 func (tokens Tokens) NonPriorityToken() Token {
 	return Token(tokens >> 32)
+}
+
+// String returns a human-readable representation of Tokens.
+func (tokens Tokens) String() string {
+	switch tokens {
+	case TokensBTCETH:
+		return "BTC-ETH"
+	case TokensETHDGX:
+		return "ETH-DGX"
+	case TokensETHREN:
+		return "ETH-REN"
+	case TokensDGXREN:
+		return "DGX-REN"
+	}
+	panic("unexpected tokens")
 }
 
 // A Type is a publicly bit of information that determines the type of
@@ -97,6 +110,17 @@ const (
 	ParityBuy  Parity = 0
 	ParitySell Parity = 1
 )
+
+// String returns a human-readable representation of the Parity.
+func (parity Parity) String() string {
+	switch parity {
+	case ParityBuy:
+		return "buy"
+	case ParitySell:
+		return "sell"
+	}
+	panic("unexpected parity")
+}
 
 // The Status shows what status the order is in.
 type Status uint8

@@ -12,10 +12,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/republicprotocol/republic-go/logger"
-
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/swarm"
@@ -300,7 +299,7 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 	go func() {
 		defer close(errs)
 
-		log.Printf("[pod = %v] sending order", base64.StdEncoding.EncodeToString(pod.Hash[:]))
+		log.Printf("[pod = %v] sending order %v = %v", base64.StdEncoding.EncodeToString(pod.Hash[:]), orderFragments[0].OrderParity, orderFragments[0].OrderID)
 		for _, darknode := range pod.Darknodes {
 			log.Printf("  sending order fragment to %v", darknode)
 		}
