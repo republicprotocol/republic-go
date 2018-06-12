@@ -61,7 +61,7 @@ func NewComputation(buy, sell order.ID, epochHash [32]byte) Computation {
 		Sell:      sell,
 		EpochHash: epochHash,
 	}
-	copy(com.ID[:], crypto.Keccak256(buy[:], sell[:]))
+	com.ID = GenerateComputationID(buy, sell)
 	return com
 }
 
@@ -75,6 +75,14 @@ func (com *Computation) Equal(arg *Computation) bool {
 		com.Timestamp.Equal(arg.Timestamp) &&
 		com.Buy.Equal(arg.Buy) &&
 		com.Sell.Equal(arg.Sell)
+}
+
+// GenerateComputationID from the buy order.ID and sell order.ID by
+// concatenating them and applying a crypto.Keccak256 hash.
+func GenerateComputationID(buy, sell order.ID) ComputationID {
+	comID := ComputationID{}
+	copy(comID[:], crypto.Keccak256(buy[:], sell[:]))
+	return comID
 }
 
 // OmeBufferLimit defines the buffer size used by the Ome when reading data.
