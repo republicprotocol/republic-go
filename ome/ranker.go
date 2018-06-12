@@ -109,7 +109,6 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 	log.Printf("[change detected] order %v status change to %v at block %d", base64.StdEncoding.EncodeToString(change.OrderID[:]), change.OrderStatus, change.BlockNumber)
 	// FIXME : Change blockNumber can be different from the epoch blockNumber
 	if change.BlockNumber >= ranker.rankerCurrBlockNum {
-		log.Println("why it's block herer")
 		select {
 		case <-ranker.done:
 		case ranker.rankerCurrEpochIn <- change:
@@ -124,7 +123,6 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 		}
 		return
 	}
-	log.Println("shouldn't reach here as well")
 }
 
 // Computations implements the Ranker interface.
@@ -154,6 +152,7 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 	if epoch.BlockNumber == ranker.rankerCurrBlockNum {
 		return
 	}
+	log.Println("no way to get here")
 
 	if ranker.rankerPrevEpoch != nil {
 		close(ranker.rankerPrevEpochIn)
@@ -275,33 +274,41 @@ func (ranker *epochRanker) run(done <-chan struct{}, changes <-chan orderbook.Ch
 
 	go func() {
 		defer close(computations)
+		defer log.Println("closing???")
 
-		for change := range changes {
-			log.Println("new change to the epochRanker")
-			switch change.OrderStatus {
-			case order.Open:
-				if change.OrderParity == order.ParityBuy {
-					select {
-					case <-done:
-						return
-					case computations <- ranker.insertBuy(change):
-						log.Println("inserting buy into the epochRanker")
-					}
-				} else {
-					select {
-					case <-done:
-						return
-					case computations <- ranker.insertSell(change):
-						log.Println("inserting sell into the epochRanker")
-					}
+		for {
+			select {
+			case <-done:
+				return
+			case change, ok := <-changes:
+				if !ok {
+					return
 				}
-			case order.Canceled, order.Confirmed:
-				log.Println("try to remove the order")
-				ranker.remove(change)
-				log.Println("finish removing")
+				log.Println("new change to the epochRanker")
+				switch change.OrderStatus {
+				case order.Open:
+					if change.OrderParity == order.ParityBuy {
+						select {
+						case <-done:
+							return
+						case computations <- ranker.insertBuy(change):
+							log.Println("inserting buy into the epochRanker")
+						}
+					} else {
+						select {
+						case <-done:
+							return
+						case computations <- ranker.insertSell(change):
+							log.Println("inserting sell into the epochRanker")
+						}
+					}
+				case order.Canceled, order.Confirmed:
+					log.Println("try to remove the order")
+					ranker.remove(change)
+					log.Println("finish removing")
+				}
 			}
 		}
-		log.Println("shouldn't reach here")
 	}()
 
 	return computations
