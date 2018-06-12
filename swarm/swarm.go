@@ -7,11 +7,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/republicprotocol/republic-go/logger"
-
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 )
 
 // ErrMultiAddressNotFound is returned from a query when no

@@ -27,6 +27,36 @@ func RandomOrder() order.Order {
 	return ord
 }
 
+// RandomOrder will generate a random buy order.
+func RandomBuyOrder() order.Order {
+	tokens := []order.Tokens{order.TokensBTCETH,
+		order.TokensBTCDGX,
+		order.TokensBTCREN,
+		order.TokensETHDGX,
+		order.TokensETHREN,
+		order.TokensDGXREN,
+	}[rand.Intn(6)]
+	volume := RandomCoExp()
+
+	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Int63())
+	return ord
+}
+
+// RandomSellOrder will generate a random sell order.
+func RandomSellOrder() order.Order {
+	tokens := []order.Tokens{order.TokensBTCETH,
+		order.TokensBTCDGX,
+		order.TokensBTCREN,
+		order.TokensETHDGX,
+		order.TokensETHREN,
+		order.TokensDGXREN,
+	}[rand.Intn(6)]
+	volume := RandomCoExp()
+
+	ord := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Int63())
+	return ord
+}
+
 // RandomOrderMatch will generate a random order and its match.
 func RandomOrderMatch() (order.Order, order.Order) {
 	tokens := []order.Tokens{order.TokensBTCETH,
