@@ -154,7 +154,7 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 	defer ranker.epochMu.Unlock()
 	defer ranker.outMu.Unlock()
 
-	if bytes.Compare(epoch.Hash[:], epoch.Hash[:]) == 0 {
+	if bytes.Equal(ranker.currEpoch.Hash[:], epoch.Hash[:]) {
 		return
 	}
 	if ranker.rankerPrevEpoch != nil {
