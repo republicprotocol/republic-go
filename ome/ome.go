@@ -2,6 +2,7 @@ package ome
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"sync"
 	"time"
@@ -297,7 +298,7 @@ func (ome *ome) sendComputationToMatcher(com Computation, done <-chan struct{}, 
 		return err
 	}
 
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v", com.Buy, com.Sell))
+	logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v at epoch = %v", com.Buy, com.Sell, base64.StdEncoding.EncodeToString(com.EpochHash[:8])))
 	ome.matcher.Resolve(com, buyFragment, sellFragment, func(com Computation) {
 		if !com.Match {
 			return
