@@ -1,7 +1,9 @@
 package ome
 
 import (
+	"encoding/base64"
 	"fmt"
+	"log"
 	"sort"
 	"sync"
 	"time"
@@ -18,7 +20,7 @@ import (
 type Ranker interface {
 	// InsertChange into the Ranker. The orderbook.Change will be forwarded to
 	// be handled by the respective internal handler based on the block number
-	// of the orderbook.Change. This ensures that Computations can be filterd
+	// of the orderbook.Change. This ensures that Computations can be filtered
 	// by their epoch.
 	InsertChange(change orderbook.Change)
 
@@ -34,7 +36,7 @@ type Ranker interface {
 }
 
 // delegateRanker delegates orders to specific epochRanker according to the
-// epoch Hash and collects computations back from all the epochRanker.
+// epoch Hash and collects computations back from all the epochRankers.
 type delegateRanker struct {
 	done    <-chan struct{}
 	address identity.Address
@@ -91,6 +93,7 @@ func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, ep
 	ranker.rankerCurrEpochIn = make(chan orderbook.Change)
 	ranker.rankerCurrEpochOut = ranker.rankerCurrEpoch.run(ranker.done, ranker.rankerCurrEpochIn)
 	ranker.rankerCurrBlockNum = epoch.BlockNumber
+	log.Printf("rankers: %d, pos : %d, blockNumber: %d", numberOfRankers, pos, epoch.BlockNumber)
 
 	ranker.run(done)
 	ranker.insertStoredComputationsInBackground()
@@ -103,6 +106,8 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 	ranker.rankerMu.Lock()
 	defer ranker.rankerMu.Unlock()
 
+	log.Printf("[change detected] order %v status change to %v at block %d", base64.StdEncoding.EncodeToString(change.OrderID[:]), change.OrderStatus, change.BlockNumber)
+	// FIXME : Change blockNumber can be different from the epoch blockNumber
 	if change.BlockNumber >= ranker.rankerCurrBlockNum {
 		select {
 		case <-ranker.done:
@@ -160,6 +165,7 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 	ranker.rankerCurrEpochIn = make(chan orderbook.Change)
 	ranker.rankerCurrEpochOut = ranker.rankerCurrEpoch.run(ranker.done, ranker.rankerCurrEpochIn)
 	ranker.rankerCurrBlockNum = epoch.BlockNumber
+	log.Printf("[epoch change] rankers: %d, pos : %d, blockNumber: %d", numberOfRankers, pos, epoch.BlockNumber)
 }
 
 func (ranker *delegateRanker) run(done <-chan struct{}) {
@@ -202,6 +208,11 @@ func (ranker *delegateRanker) insertStoredComputationsInBackground() {
 		coms, err := ranker.storer.Computations()
 		if err != nil {
 			logger.Error(fmt.Sprintf("cannot load existing computations into ranker: %v", err))
+		}
+
+		log.Printf("load %d computations from local storage.", len(coms))
+		for i := range coms {
+			log.Printf("computation %v with state %v", base64.StdEncoding.EncodeToString(coms[i].ID[:]), coms[i].State)
 		}
 
 		<-timer.C
