@@ -3,7 +3,6 @@ package ome
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -259,7 +258,6 @@ func (ome *ome) syncRanker(done <-chan struct{}, matches chan<- Computation, err
 	for i := 0; i < n; i++ {
 		switch buffer[i].State {
 		case ComputationStateNil:
-			log.Println("resolving from ranker")
 			if err := ome.sendComputationToMatcher(ξ, buffer[i], done, matches); err != nil {
 				ome.computationBacklogMu.Lock()
 				ome.computationBacklog[buffer[i].ID] = buffer[i]

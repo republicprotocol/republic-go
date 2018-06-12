@@ -111,7 +111,7 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 	defer ranker.rankerMu.Unlock()
 
 	log.Printf("[change detected] order %v status change to %v at block %d", base64.StdEncoding.EncodeToString(change.OrderID[:]), change.OrderStatus, change.BlockNumber)
-	// FIXME : Change blockNumber can be different from the epoch blockNumber
+	// FIXME : Change.BlockNumber can be different from the epoch blockNumber
 	if change.BlockNumber >= ranker.rankerCurrBlockNum {
 		select {
 		case <-ranker.done:
@@ -157,7 +157,6 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 	if epoch.BlockNumber == ranker.rankerCurrBlockNum {
 		return
 	}
-
 	if ranker.rankerPrevEpoch != nil {
 		close(ranker.rankerPrevEpochIn)
 	}
@@ -180,6 +179,7 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 
 func (ranker *delegateRanker) run(done <-chan struct{}) {
 	go func() {
+		defer log.Println("stop running? ")
 		for {
 			ranker.outMu.Lock()
 			currEpochRankerCh := ranker.rankerCurrEpochOut
@@ -198,7 +198,8 @@ func (ranker *delegateRanker) run(done <-chan struct{}) {
 				}
 			case coms, ok := <-prevEpochRankerCh:
 				if !ok {
-					return
+					log.Println("maybe here ?")
+					continue
 				}
 				for _, com := range coms {
 					ranker.insertComputation(com)
