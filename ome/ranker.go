@@ -47,13 +47,15 @@ type delegateRanker struct {
 
 	rankerMu           *sync.Mutex
 	rankerCurrEpoch    *epochRanker
-	rankerCurrEpochIn  chan orderbook.Change
-	rankerCurrEpochOut <-chan Computations
-	rankerCurrBlockNum uint
 	rankerPrevEpoch    *epochRanker
+	rankerCurrEpochIn  chan orderbook.Change
 	rankerPrevEpochIn  chan orderbook.Change
-	rankerPrevEpochOut <-chan Computations
+	rankerCurrBlockNum uint
 	rankerPrevBlockNum uint
+
+	outMu              *sync.Mutex
+	rankerCurrEpochOut <-chan Computations
+	rankerPrevEpochOut <-chan Computations
 }
 
 // NewRanker returns a Ranker that first filters the Computations it produces
@@ -77,12 +79,14 @@ func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, ep
 		rankerMu:           new(sync.Mutex),
 		rankerCurrEpoch:    nil,
 		rankerCurrEpochIn:  nil,
-		rankerCurrEpochOut: nil,
 		rankerCurrBlockNum: 0,
 		rankerPrevEpoch:    nil,
 		rankerPrevEpochIn:  nil,
-		rankerPrevEpochOut: nil,
 		rankerPrevBlockNum: 0,
+
+		outMu:              new(sync.Mutex),
+		rankerCurrEpochOut: nil,
+		rankerPrevEpochOut: nil,
 	}
 
 	numberOfRankers, pos, err := ranker.getPosFromEpoch(epoch)
@@ -146,7 +150,9 @@ func (ranker *delegateRanker) Computations(buffer Computations) int {
 // OnChangeEpoch implements the Ranker interface.
 func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 	ranker.rankerMu.Lock()
+	ranker.outMu.Lock()
 	defer ranker.rankerMu.Unlock()
+	defer ranker.outMu.Unlock()
 
 	if epoch.BlockNumber == ranker.rankerCurrBlockNum {
 		return
@@ -176,10 +182,10 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 func (ranker *delegateRanker) run(done <-chan struct{}) {
 	go func() {
 		for {
-			ranker.rankerMu.Lock()
+			ranker.outMu.Lock()
 			currEpochRankerCh := ranker.rankerCurrEpochOut
 			prevEpochRankerCh := ranker.rankerPrevEpochOut
-			ranker.rankerMu.Unlock()
+			ranker.outMu.Unlock()
 
 			select {
 			case <-done:
