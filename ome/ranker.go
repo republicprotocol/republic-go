@@ -42,11 +42,15 @@ type delegateRanker struct {
 	computationsMu *sync.Mutex
 	computations   Computations
 
-	rankerMu        *sync.Mutex
-	rankers         []*epochRanker
-	changeChs       []chan orderbook.Change
-	computationsChs []<-chan Computations
-	blockNumbers    []uint
+	rankerMu           *sync.Mutex
+	rankerCurrEpoch    *epochRanker
+	rankerCurrEpochIn  chan orderbook.Change
+	rankerCurrEpochOut <-chan Computations
+	rankerCurrBlockNum uint
+	rankerPrevEpoch    *epochRanker
+	rankerPrevEpochIn  chan orderbook.Change
+	rankerPrevEpochOut <-chan Computations
+	rankerPrevBlockNum uint
 }
 
 // NewRanker returns a Ranker that first filters the Computations it produces
@@ -67,37 +71,53 @@ func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, ep
 		computationsMu: new(sync.Mutex),
 		computations:   Computations{},
 
-		rankerMu:        new(sync.Mutex),
-		rankers:         make([]*epochRanker, 0),
-		changeChs:       make([]chan orderbook.Change, 0),
-		computationsChs: make([]<-chan Computations, 0),
-		blockNumbers:    make([]uint, 0),
+		rankerMu:           new(sync.Mutex),
+		rankerCurrEpoch:    nil,
+		rankerCurrEpochIn:  nil,
+		rankerCurrEpochOut: nil,
+		rankerCurrBlockNum: 0,
+		rankerPrevEpoch:    nil,
+		rankerPrevEpochIn:  nil,
+		rankerPrevEpochOut: nil,
+		rankerPrevBlockNum: 0,
 	}
 
-	pods, pos, err := ranker.getPosFromEpoch(epoch)
+	numberOfRankers, pos, err := ranker.getPosFromEpoch(epoch)
 	if err != nil {
 		return &delegateRanker{}, err
 	}
-	ranker.changeChs = append(ranker.changeChs, make(chan orderbook.Change))
-	ranker.rankers = append(ranker.rankers, newEpochRanker(pods, pos))
-	ranker.computationsChs = append(ranker.computationsChs, ranker.rankers[1].run(ranker.done, ranker.changeChs[1]))
-	ranker.blockNumbers = append(ranker.blockNumbers, epoch.BlockNumber)
+	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos)
+	ranker.rankerCurrEpochIn = make(chan orderbook.Change)
+	ranker.rankerCurrEpochOut = ranker.rankerCurrEpoch.run(ranker.done, ranker.rankerCurrEpochIn)
+	ranker.rankerCurrBlockNum = epoch.BlockNumber
 
-	ranker.processComputations(done)
+	ranker.run(done)
 	ranker.insertStoredComputationsInBackground()
 
 	return ranker, nil
 }
 
-// InsertChange
+// InsertChange into the Ranker. The orderbook.Change will be forwarded to be
+// handled by the respective internal handler based on the block number of the
+// orderbook.Change. This ensures that Computations can be filterd by their
+// epoch.
 func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 	ranker.rankerMu.Lock()
 	defer ranker.rankerMu.Unlock()
 
-	if change.BlockNumber >= ranker.blockNumbers[0] && change.BlockNumber < ranker.blockNumbers[1] {
-		ranker.changeChs[0] <- change
-	} else if change.BlockNumber >= ranker.blockNumbers[2] {
-		ranker.changeChs[1] <- change
+	if change.BlockNumber >= ranker.rankerCurrBlockNum {
+		select {
+		case <-ranker.done:
+		case ranker.rankerCurrEpochIn <- change:
+		}
+		return
+	}
+	if change.BlockNumber >= ranker.rankerPrevBlockNum {
+		select {
+		case <-ranker.done:
+		case ranker.rankerPrevEpochIn <- change:
+		}
+		return
 	}
 }
 
@@ -123,34 +143,31 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 	ranker.rankerMu.Lock()
 	defer ranker.rankerMu.Unlock()
 
-	pods, pos, err := ranker.getPosFromEpoch(epoch)
+	if ranker.rankerPrevEpoch != nil {
+		close(ranker.rankerPrevEpochIn)
+	}
+	ranker.rankerPrevEpoch = ranker.rankerCurrEpoch
+	ranker.rankerPrevEpochIn = ranker.rankerCurrEpochIn
+	ranker.rankerPrevEpochOut = ranker.rankerCurrEpochOut
+	ranker.rankerPrevBlockNum = ranker.rankerCurrBlockNum
+
+	numberOfRankers, pos, err := ranker.getPosFromEpoch(epoch)
 	if err != nil {
 		logger.Error(fmt.Sprintf("cannot get ranker position from epoch: %v", err))
 		return
 	}
-
-	epochRanker := newEpochRanker(pods, pos)
-	if len(ranker.rankers) > 1 {
-		close(ranker.changeChs[0])
-		ranker.changeChs = ranker.changeChs[1:]
-		ranker.rankers = ranker.rankers[1:]
-		ranker.computationsChs = ranker.computationsChs[1:]
-		ranker.blockNumbers = ranker.blockNumbers[1:]
-	}
-
-	ranker.changeChs = append(ranker.changeChs, make(chan orderbook.Change))
-	computations := epochRanker.run(ranker.done, ranker.changeChs[1])
-	ranker.rankers = append(ranker.rankers, epochRanker)
-	ranker.computationsChs = append(ranker.computationsChs, computations)
-	ranker.blockNumbers = append(ranker.blockNumbers, epoch.BlockNumber)
+	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos)
+	ranker.rankerCurrEpochIn = make(chan orderbook.Change)
+	ranker.rankerCurrEpochOut = ranker.rankerCurrEpoch.run(ranker.done, ranker.rankerCurrEpochIn)
+	ranker.rankerCurrBlockNum = epoch.BlockNumber
 }
 
-func (ranker *delegateRanker) processComputations(done <-chan struct{}) {
+func (ranker *delegateRanker) run(done <-chan struct{}) {
 	go func() {
 		for {
 			ranker.rankerMu.Lock()
-			currEpochRankerCh := ranker.computationsChs[0]
-			prevEpochRankerCh := ranker.computationsChs[1]
+			currEpochRankerCh := ranker.rankerCurrEpochOut
+			prevEpochRankerCh := ranker.rankerPrevEpochOut
 			ranker.rankerMu.Unlock()
 
 			select {
