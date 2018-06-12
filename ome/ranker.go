@@ -112,6 +112,7 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 		select {
 		case <-ranker.done:
 		case ranker.rankerCurrEpochIn <- change:
+			log.Println("pumping change to current epochRanker")
 		}
 		return
 	}
@@ -147,6 +148,10 @@ func (ranker *delegateRanker) Computations(buffer Computations) int {
 func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 	ranker.rankerMu.Lock()
 	defer ranker.rankerMu.Unlock()
+
+	if epoch.BlockNumber == ranker.rankerCurrBlockNum {
+		return
+	}
 
 	if ranker.rankerPrevEpoch != nil {
 		close(ranker.rankerPrevEpochIn)
@@ -277,12 +282,14 @@ func (ranker *epochRanker) run(done <-chan struct{}, changes <-chan orderbook.Ch
 					case <-done:
 						return
 					case computations <- ranker.insertBuy(change):
+						log.Println("inserting buy into the epochRanker")
 					}
 				} else {
 					select {
 					case <-done:
 						return
 					case computations <- ranker.insertSell(change):
+						log.Println("inserting sell into the epochRanker")
 					}
 				}
 			case order.Canceled, order.Confirmed:
@@ -315,7 +322,7 @@ func (ranker *epochRanker) insertBuy(change orderbook.Change) []Computation {
 
 func (ranker *epochRanker) insertSell(change orderbook.Change) []Computation {
 	computations := make([]Computation, 0)
-	ranker.buys[change.OrderID] = change.OrderPriority
+	ranker.sells[change.OrderID] = change.OrderPriority
 	for buy, buyPriority := range ranker.buys {
 		priority := change.OrderPriority + buyPriority
 		if int(priority)%ranker.numberOfRankers != ranker.pos {
