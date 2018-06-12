@@ -17,8 +17,6 @@ import (
 func RandomOrder() order.Order {
 	parity := []order.Parity{order.ParityBuy, order.ParitySell}[rand.Intn(2)]
 	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensBTCDGX,
-		order.TokensBTCREN,
 		order.TokensETHDGX,
 		order.TokensETHREN,
 		order.TokensDGXREN,
@@ -32,8 +30,6 @@ func RandomOrder() order.Order {
 // RandomOrderMatch will generate a random order and its match.
 func RandomOrderMatch() (order.Order, order.Order) {
 	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensBTCDGX,
-		order.TokensBTCREN,
 		order.TokensETHDGX,
 		order.TokensETHREN,
 		order.TokensDGXREN,

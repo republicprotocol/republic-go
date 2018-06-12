@@ -91,6 +91,10 @@ func (matcher *matcher) Resolve(ξ [32]byte, com Computation, buyFragment, sellF
 
 func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback, stage ResolveStage) {
 	if isExpired(com, buyFragment, sellFragment) {
+		com.State = ComputationStateRejected
+		if err := matcher.storer.InsertComputation(com); err != nil {
+			logger.Error(fmt.Sprintf("cannot store expired computation buy = %v, sell = %v: %v", com.Buy, com.Sell, err))
+		}
 		return
 	}
 
