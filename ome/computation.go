@@ -14,6 +14,14 @@ import (
 // orders that are being matched against each other.
 type ComputationID [32]byte
 
+// NewComputationID returns the crypto.Keccak256 of a buy order.ID concatenated
+// with a sell order.ID.
+func NewComputationID(buy, sell order.ID) ComputationID {
+	comID := ComputationID{}
+	copy(comID[:], crypto.Keccak256(buy[:], sell[:]))
+	return comID
+}
+
 // String returns a human-readable representation of the ComputationID.
 func (id ComputationID) String() string {
 	return base64.StdEncoding.EncodeToString(id[:8])
@@ -77,7 +85,7 @@ func NewComputation(buy, sell order.ID, epochHash [32]byte) Computation {
 		Sell:      sell,
 		EpochHash: epochHash,
 	}
-	com.ID = GenerateComputationID(buy, sell)
+	com.ID = NewComputationID(buy, sell)
 	return com
 }
 
@@ -91,12 +99,4 @@ func (com *Computation) Equal(arg *Computation) bool {
 		com.Timestamp.Equal(arg.Timestamp) &&
 		com.Buy.Equal(arg.Buy) &&
 		com.Sell.Equal(arg.Sell)
-}
-
-// GenerateComputationID from the buy order.ID and sell order.ID by
-// concatenating them and applying a crypto.Keccak256 hash.
-func GenerateComputationID(buy, sell order.ID) ComputationID {
-	comID := ComputationID{}
-	copy(comID[:], crypto.Keccak256(buy[:], sell[:]))
-	return comID
 }

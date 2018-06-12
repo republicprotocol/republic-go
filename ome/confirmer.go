@@ -222,9 +222,9 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 func (confirmer *confirmer) computationFromOrders(orderParity order.Parity, ord, ordMatch order.ID) (Computation, error) {
 	var comID ComputationID
 	if orderParity == order.ParityBuy {
-		comID = GenerateComputationID(ord, ordMatch)
+		comID = NewComputationID(ord, ordMatch)
 	} else {
-		comID = GenerateComputationID(ordMatch, ord)
+		comID = NewComputationID(ordMatch, ord)
 	}
 	com, err := confirmer.storer.Computation(comID)
 	if err != nil {
