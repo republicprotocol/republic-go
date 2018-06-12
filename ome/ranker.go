@@ -157,7 +157,6 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 	if epoch.BlockNumber == ranker.rankerCurrBlockNum {
 		return
 	}
-	log.Println("no way to get here")
 
 	if ranker.rankerPrevEpoch != nil {
 		close(ranker.rankerPrevEpochIn)
@@ -191,23 +190,19 @@ func (ranker *delegateRanker) run(done <-chan struct{}) {
 			case <-done:
 				return
 			case coms, ok := <-currEpochRankerCh:
-				log.Printf("gets %d computations from the current EpochRanker", len(coms))
 				if !ok {
 					return
 				}
 				for _, com := range coms {
 					ranker.insertComputation(com)
 				}
-				log.Println("finish inserting computations from current EpochRanker")
 			case coms, ok := <-prevEpochRankerCh:
-				log.Printf("gets %d computations from the previous EpochRanker", len(coms))
 				if !ok {
 					return
 				}
 				for _, com := range coms {
 					ranker.insertComputation(com)
 				}
-				log.Println("finish inserting computations from previous EpochRanker")
 			}
 		}
 	}()
@@ -299,20 +294,16 @@ func (ranker *epochRanker) run(done <-chan struct{}, changes <-chan orderbook.Ch
 						case <-done:
 							return
 						case computations <- ranker.insertBuy(change):
-							log.Println("inserting buy into the epochRanker")
 						}
 					} else {
 						select {
 						case <-done:
 							return
 						case computations <- ranker.insertSell(change):
-							log.Println("inserting sell into the epochRanker")
 						}
 					}
 				case order.Canceled, order.Confirmed:
-					log.Println("try to remove the order")
 					ranker.remove(change)
-					log.Println("finish removing")
 				}
 			}
 		}
