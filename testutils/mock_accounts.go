@@ -1,10 +1,7 @@
 package testutils
 
 import (
-	"math"
-
 	"github.com/pkg/errors"
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -24,51 +21,56 @@ var initialBalance = map[order.Token]float64{
 }
 
 // DarkpoolAccounts is a mock implementation of the cal.DarkpoolAccounts which
-// assume there are only one buyer and one seller. Each of them has 1k balance
-// for each token.
+// stores all the settled orders as references and a counter to show how many
+// times the Settle function has been called
 type DarkpoolAccounts struct {
-	buyer  map[order.Token]float64
-	seller map[order.Token]float64
+	settledBuy  []order.Order
+	settledSell []order.Order
+	counter     int
 }
 
 // NewDarkpoolAccounts creates a new mock cal.DarkpoolAccounts.
-func NewDarkpoolAccounts() cal.DarkpoolAccounts {
+func NewDarkpoolAccounts() *DarkpoolAccounts {
 	return &DarkpoolAccounts{
-		buyer:  initialBalance,
-		seller: initialBalance,
+		settledBuy:  make([]order.Order, 0),
+		settledSell: make([]order.Order, 0),
+
+		counter: 0,
 	}
 }
 
 // Settle the order pair which gets confirmed.
 func (accounts *DarkpoolAccounts) Settle(buy order.Order, sell order.Order) error {
-	// Calculate price and volume
-	price := (float64(buy.Price.Co)*0.005*math.Pow(10, float64(buy.Price.Exp-26)) + (float64(sell.Price.Co) * 0.005 * math.Pow(10, float64(sell.Price.Exp-26)))) / 2
-	buyVolume := float64(buy.Volume.Co) * 0.2 * math.Pow(10, float64(buy.Volume.Exp))    // in 10^-12  btc
-	sellVolume := float64(sell.Volume.Co) * 0.2 * math.Pow(10, float64(sell.Volume.Exp)) // in 10^-12 ren
-	volume := math.Min(buyVolume/price, sellVolume)                                      // in 10^-12 ren
-
-	// Update the balance
-	accounts.buyer[buy.Tokens.NonPriorityToken()] -= volume * math.Pow(10, 12)
-	if accounts.buyer[buy.Tokens.NonPriorityToken()] < 0 {
-		return ErrInsufficientBalance
-	}
-	accounts.buyer[buy.Tokens.PriorityToken()] += volume * math.Pow(10, 12) * price
-	accounts.seller[sell.Tokens.PriorityToken()] -= volume * math.Pow(10, 12)
-	if accounts.seller[sell.Tokens.PriorityToken()] < 0 {
-		return ErrInsufficientBalance
-	}
-	accounts.seller[sell.Tokens.NonPriorityToken()] += volume * math.Pow(10, 12) * price
+	accounts.settledBuy = append(accounts.settledBuy, buy)
+	accounts.settledSell = append(accounts.settledSell, sell)
+	accounts.counter++
 
 	return nil
 }
 
 // Balance returns the balance of a trader for a particular order.Token.
 func (accounts *DarkpoolAccounts) Balance(trader string, token order.Token) (float64, error) {
-	if trader == "buyer" {
-		return accounts.buyer[token], nil
-	} else if trader == "seller" {
-		return accounts.seller[token], nil
-	} else {
-		return 0, ErrTraderNotFound
+	panic("unimplemented")
+}
+
+// Count returns how many time the settle function being called
+func (accounts *DarkpoolAccounts) Count() int {
+	return accounts.counter
+}
+
+// IsSettle returns whether the given order id has been settled.
+func (accounts *DarkpoolAccounts) IsSettle(id order.ID) bool {
+	for _, ord := range accounts.settledBuy {
+		if ord.ID.Equal(id) {
+			return true
+		}
 	}
+
+	for _, ord := range accounts.settledSell {
+		if ord.ID.Equal(id) {
+			return true
+		}
+	}
+
+	return false
 }
