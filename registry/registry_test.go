@@ -190,3 +190,7 @@ func (darkpool *mockDarkpool) IsRegistered(addr identity.Address) (bool, error) 
 	_, ok := darkpool.darknodes[addr]
 	return ok, nil
 }
+
+func (darkpool *mockDarkpool) NextEpoch() (cal.Epoch, error) {
+	panic("unimplemented")
+}
