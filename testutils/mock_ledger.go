@@ -52,6 +52,25 @@ func NewRenLedger() *RenLedger {
 	}
 }
 
+// OpenOrders implements the ledger.
+func (renLedger *RenLedger) OpenOrders(signatures [][65]byte, orderIDs []order.ID, orderParities []order.Parity) (int, error) {
+	if len(signatures) != len(orderIDs) || len(signatures) != len(orderParities) {
+		return 0, errors.New("mismatched order lengths")
+	}
+	for i := range signatures {
+		if orderParities[i] == order.ParityBuy {
+			if err := renLedger.OpenBuyOrder(signatures[i], orderIDs[i]); err != nil {
+				return i, err
+			}
+		} else {
+			if err := renLedger.OpenSellOrder(signatures[i], orderIDs[i]); err != nil {
+				return i, err
+			}
+		}
+	}
+	return len(signatures), nil
+}
+
 // OpenBuyOrder in the ledger.
 func (renLedger *RenLedger) OpenBuyOrder(signature [65]byte, orderID order.ID) error {
 	renLedger.ordersMu.Lock()
