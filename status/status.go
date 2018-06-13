@@ -2,16 +2,20 @@ package status
 
 import (
 	"sync"
+
+	"github.com/republicprotocol/republic-go/identity"
 )
 
 // Writer will write the address
 type Writer interface {
-	WriteAddress(addr string) error
+	WriteAddress(address string) error
+	WriteMultiAddress(multiAddress identity.MultiAddress) error
 }
 
 // Reader the address
 type Reader interface {
 	Address() (string, error)
+	MultiAddress() (identity.MultiAddress, error)
 }
 
 /*
@@ -33,8 +37,9 @@ type Provider interface {
 }
 
 type provider struct {
-	mu   *sync.Mutex
-	addr string
+	mu           *sync.Mutex
+	address      string
+	multiAddress identity.MultiAddress
 }
 
 // NewProvider returns a new provider
@@ -47,10 +52,21 @@ func NewProvider() Provider {
 func (sp *provider) WriteAddress(addr string) error {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
-	sp.addr = addr
+	sp.address = addr
 	return nil
 }
 
 func (sp *provider) Address() (string, error) {
-	return sp.addr, nil
+	return sp.address, nil
+}
+
+func (sp *provider) WriteMultiAddress(multiAddr identity.MultiAddress) error {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.multiAddress = multiAddr
+	return nil
+}
+
+func (sp *provider) MultiAddress() (identity.MultiAddress, error) {
+	return sp.multiAddress, nil
 }

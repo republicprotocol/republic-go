@@ -4,7 +4,8 @@ import "github.com/republicprotocol/republic-go/status"
 
 // Status defines a structure for JSON marshalling
 type Status struct {
-	Address string `json:"address"`
+	Address      string `json:"address"`
+	MultiAddress string `json:"multiAddress"`
 }
 
 // StatusAdapter defines a struct which has status reading capability
@@ -25,7 +26,12 @@ func (adapter *StatusAdapter) Status() (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
+	multiAddr, err := adapter.MultiAddress()
+	if err != nil {
+		return Status{}, err
+	}
 	return Status{
-		Address: addr,
+		Address:      addr,
+		MultiAddress: multiAddr.String(),
 	}, nil
 }
