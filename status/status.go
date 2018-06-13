@@ -10,12 +10,14 @@ import (
 type Writer interface {
 	WriteAddress(address string) error
 	WriteMultiAddress(multiAddress identity.MultiAddress) error
+	WriteEthereumAddress(ethAddress string) error
 }
 
 // Reader the address
 type Reader interface {
 	Address() (string, error)
 	MultiAddress() (identity.MultiAddress, error)
+	EthereumAddress() (string, error)
 }
 
 /*
@@ -37,9 +39,10 @@ type Provider interface {
 }
 
 type provider struct {
-	mu           *sync.Mutex
-	address      string
-	multiAddress identity.MultiAddress
+	mu              *sync.Mutex
+	address         string
+	multiAddress    identity.MultiAddress
+	ethereumAddress string
 }
 
 // NewProvider returns a new provider
@@ -69,4 +72,17 @@ func (sp *provider) WriteMultiAddress(multiAddr identity.MultiAddress) error {
 
 func (sp *provider) MultiAddress() (identity.MultiAddress, error) {
 	return sp.multiAddress, nil
+}
+
+// WriteEthereumAddress writes ethAddr to the provider
+func (sp *provider) WriteEthereumAddress(ethAddr string) error {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.ethereumAddress = ethAddr
+	return nil
+}
+
+// EthereumAddress gets the ethereum address
+func (sp *provider) EthereumAddress() (string, error) {
+	return sp.ethereumAddress, nil
 }
