@@ -145,6 +145,7 @@ func (status Status) String() string {
 	case Canceled:
 		return "canceled"
 	}
+	panic("unexpected order status")
 }
 
 // An Order represents the want to perform a trade of assets.
