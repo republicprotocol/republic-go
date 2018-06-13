@@ -27,7 +27,12 @@ func NewStatusServer(statusAdapter adapter.StatusAdapter) http.Handler {
 // statusHandler
 func statusHandler(statusAdapter adapter.StatusAdapter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		str, err := json.Marshal(statusAdapter.Status())
+		status, err := statusAdapter.Status()
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot retrieve status object: %v", err))
+			return
+		}
+		str, err := json.Marshal(status)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot convert status object into json: %v", err))
 			return

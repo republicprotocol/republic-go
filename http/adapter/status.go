@@ -16,8 +16,9 @@ func NewStatusAdapter(provider status.Provider) StatusAdapter {
 	}
 }
 
-func (adapter *StatusAdapter) Status() Status {
+// Status returns a Status object with populated fields
+func (adapter *StatusAdapter) Status() (Status, error) {
 	return Status{
 		Address: "Hello World!",
-	}
+	}, nil
 }
