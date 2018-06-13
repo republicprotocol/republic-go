@@ -28,8 +28,7 @@ var _ = Describe("Ingress", func() {
 	var ingress Ingress
 	var done chan struct{}
 	var errChSync <-chan error
-	var errChOpenOrders <-chan error
-	var errChOpenOrderFragments <-chan error
+	var errChProcess <-chan error
 
 	BeforeEach(func() {
 		var err error
@@ -43,13 +42,11 @@ var _ = Describe("Ingress", func() {
 		orderbookClient := mockOrderbookClient{}
 		ingress = NewIngress(&darkpool, &renLedger, &swarmer, &orderbookClient)
 		errChSync = ingress.Sync(done)
-		errChOpenOrders = ingress.OpenOrderProcess(done)
-		errChOpenOrderFragments = ingress.OpenOrderFragmentsProcess(done)
+		errChProcess = ingress.ProcessRequests(done)
 
 		// Consume errors in the background to allow progress when an event occurs
 		go captureErrorsFromErrorChannel(errChSync)
-		go captureErrorsFromErrorChannel(errChOpenOrderFragments)
-		go captureErrorsFromErrorChannel(errChOpenOrders)
+		go captureErrorsFromErrorChannel(errChProcess)
 
 		time.Sleep(time.Millisecond)
 	})
@@ -59,8 +56,7 @@ var _ = Describe("Ingress", func() {
 
 		// Wait for all errors to close
 		captureErrorsFromErrorChannel(errChSync)
-		captureErrorsFromErrorChannel(errChOpenOrderFragments)
-		captureErrorsFromErrorChannel(errChOpenOrders)
+		captureErrorsFromErrorChannel(errChProcess)
 
 		time.Sleep(time.Second)
 	})
@@ -202,7 +198,7 @@ var _ = Describe("Ingress", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		It("should not cancel orders that are not open", func() {
+		It("should cancel orders that are not open", func() {
 			ord, err := createOrder()
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -211,7 +207,7 @@ var _ = Describe("Ingress", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			err = ingress.CancelOrder(signature, ord.ID)
-			Expect(err).Should(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
 })
@@ -254,6 +250,10 @@ func (darkpool *mockDarkpool) Darknodes() (identity.Addresses, error) {
 		darknodes = append(darknodes, pod.Darknodes...)
 	}
 	return darknodes, nil
+}
+
+func (darkpool *mockDarkpool) NextEpoch() (cal.Epoch, error) {
+	return darkpool.Epoch()
 }
 
 func (darkpool *mockDarkpool) Epoch() (cal.Epoch, error) {

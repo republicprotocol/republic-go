@@ -168,7 +168,14 @@ func (darkNodeRegistry *DarknodeRegistry) CurrentEpoch() (Epoch, error) {
 	}, nil
 }
 
-// Epoch updates the current Epoch if the Minimum Epoch Interval has passed since the previous Epoch
+// NextEpoch implements the cal.Darkpool interfacce.
+func (darkNodeRegistry *DarknodeRegistry) NextEpoch() (cal.Epoch, error) {
+	darkNodeRegistry.TriggerEpoch()
+	return darkNodeRegistry.Epoch()
+}
+
+// TriggerEpoch updates the current Epoch if the Minimum Epoch Interval has
+// passed since the previous Epoch
 func (darkNodeRegistry *DarknodeRegistry) TriggerEpoch() (*types.Transaction, error) {
 	tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
 	if err != nil {
