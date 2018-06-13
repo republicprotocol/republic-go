@@ -2,9 +2,7 @@ package ome
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
-	"log"
 	"sort"
 	"sync"
 	"time"
@@ -146,11 +144,6 @@ func (ranker *delegateRanker) insertStoredComputationsInBackground() {
 		coms, err := ranker.storer.Computations()
 		if err != nil {
 			logger.Error(fmt.Sprintf("cannot load existing computations into ranker: %v", err))
-		}
-
-		log.Printf("load %d computations from local storage.", len(coms))
-		for i := range coms {
-			log.Printf("computation %v with state %v", base64.StdEncoding.EncodeToString(coms[i].ID[:]), coms[i].State)
 		}
 
 		<-timer.C
