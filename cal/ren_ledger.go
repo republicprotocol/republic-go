@@ -13,6 +13,10 @@ const StatusCanceled = 3
 
 type RenLedger interface {
 
+	// OpenOrders on the Ren Ledger. Returns the number of orders successfully
+	// opened.
+	OpenOrders(signatures [][65]byte, orderIDs []order.ID, orderParities []order.Parity) (int, error)
+
 	// OpenBuyOrder on the Ren Ledger. The signature will be used to identify
 	// the trader that owns the order. The order must be in an undefined state
 	// to be opened.

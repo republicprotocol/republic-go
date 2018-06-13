@@ -25,6 +25,7 @@ import (
 // been reached.
 const BlocksForConfirmation = 1
 
+// FIXME: Protect me with a mutex!
 // RenLedgerContract
 type RenLedgerContract struct {
 	network      ethereum.Network
@@ -52,6 +53,51 @@ func NewRenLedgerContract(ctx context.Context, conn ethereum.Conn, transactOpts 
 		binding:      contract,
 		address:      common.HexToAddress(conn.Config.RenLedgerAddress),
 	}, nil
+}
+
+func (ledger *RenLedgerContract) OpenOrders(signatures [][65]byte, orderIDs []order.ID, orderParities []order.Parity) (int, error) {
+	if len(signatures) != len(orderIDs) || len(signatures) != len(orderParities) {
+		return 0, errors.New("mismatched order lengths")
+	}
+
+	nonce, err := ledger.conn.Client.PendingNonceAt(context.Background(), ledger.transactOpts.From)
+	if err != nil {
+		return 0, err
+	}
+
+	txs := make([]*types.Transaction, 0, len(signatures))
+	for i := range signatures {
+		ledger.transactOpts.GasPrice = big.NewInt(int64(5000000000))
+		ledger.transactOpts.Nonce.Add(big.NewInt(0).SetUint64(nonce), big.NewInt(int64(i)))
+
+		var tx *types.Transaction
+		if orderParities[i] == order.ParityBuy {
+			tx, err = ledger.binding.OpenBuyOrder(ledger.transactOpts, signatures[i][:], orderIDs[i])
+		} else {
+			tx, err = ledger.binding.OpenSellOrder(ledger.transactOpts, signatures[i][:], orderIDs[i])
+		}
+		if err != nil {
+			break
+		}
+		txs = append(txs, tx)
+	}
+
+	for i := range txs {
+		_, err = ledger.conn.PatchedWaitMined(ledger.context, txs[i])
+		if err != nil {
+			return i, err
+		}
+		for {
+			depth, err := ledger.binding.OrderDepth(ledger.callOpts, orderIDs[i])
+			if err != nil {
+				return i, err
+			}
+			if depth.Uint64() >= BlocksForConfirmation {
+				break
+			}
+		}
+	}
+	return len(txs), err
 }
 
 func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) error {
