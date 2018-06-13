@@ -86,11 +86,6 @@ func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer) Smpcer {
 
 // Connect implements the Smpcer interface.
 func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
-	logger.Network(logger.LevelInfo, fmt.Sprintf("connecting to network = %v", networkID))
-	for _, node := range nodes {
-		logger.Network(logger.LevelInfo, fmt.Sprintf("  connecting to %v", node))
-	}
-
 	k := int64(2 * (len(nodes) + 1) / 3)
 
 	smpc.networkMu.Lock()
@@ -100,6 +95,11 @@ func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 	smpc.joinersMu.Lock()
 	smpc.joiners[networkID] = NewJoiner(k)
 	smpc.joinersMu.Unlock()
+
+	logger.Network(logger.LevelInfo, fmt.Sprintf("connecting to network = %v, thresold = (%v, %v)", networkID, len(nodes), k))
+	for _, node := range nodes {
+		logger.Network(logger.LevelInfo, fmt.Sprintf("  connecting to %v", node))
+	}
 
 	go dispatch.CoForAll(nodes, func(i int) {
 		addr := nodes[i]
