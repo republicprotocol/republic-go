@@ -110,14 +110,14 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 	defer ranker.epochMu.Unlock()
 
 	// FIXME: change.BlockNumber can be different from the epoch blockNumber
-	if change.BlockNumber >= ranker.currEpoch.BlockNumber {
+	if change.BlockNumber >= ranker.currEpoch.BlockNumber && ranker.rankerCurrEpochIn != nil {
 		select {
 		case <-ranker.done:
 		case ranker.rankerCurrEpochIn <- change:
 		}
 		return
 	}
-	if change.BlockNumber >= ranker.prevEpoch.BlockNumber {
+	if change.BlockNumber >= ranker.prevEpoch.BlockNumber && ranker.rankerPrevEpochIn != nil {
 		select {
 		case <-ranker.done:
 		case ranker.rankerPrevEpochIn <- change:
