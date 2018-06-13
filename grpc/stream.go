@@ -264,7 +264,9 @@ func (service *StreamService) Listen(ctx context.Context, addr identity.Address)
 	case stream := <-streams:
 		go func() {
 			<-ctx.Done()
-			stream.Close()
+			if err := stream.Close(); err != nil {
+				logger.Network(logger.LevelDebugLow, fmt.Sprintf("server error closing grpc stream: %v", err))
+			}
 		}()
 		return stream, nil
 	}
@@ -288,7 +290,7 @@ func (service *StreamService) setupConn(addr identity.Address) chan *safeStream 
 	defer service.connsMu.Unlock()
 
 	if service.connsRc[addr] == 0 {
-		service.conns[addr] = make(chan *safeStream, 1)
+		service.conns[addr] = make(chan *safeStream)
 	}
 	service.connsRc[addr]++
 

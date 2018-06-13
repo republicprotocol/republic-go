@@ -97,9 +97,6 @@ func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 	smpc.joinersMu.Unlock()
 
 	logger.Network(logger.LevelInfo, fmt.Sprintf("connecting to network = %v, thresold = (%v, %v)", networkID, len(nodes), k))
-	for _, node := range nodes {
-		logger.Network(logger.LevelInfo, fmt.Sprintf("  connecting to %v", node))
-	}
 
 	go dispatch.CoForAll(nodes, func(i int) {
 		addr := nodes[i]
@@ -117,6 +114,8 @@ func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 		smpc.lookupMu.Lock()
 		smpc.lookup[addr] = multiAddr
 		smpc.lookupMu.Unlock()
+
+		logger.Network(logger.LevelInfo, fmt.Sprintf("connecting to %v", addr))
 
 		// Open a stream to the node and store the context.CancelFunc so that
 		// we can call it when we need to disconnect

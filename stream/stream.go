@@ -102,10 +102,11 @@ func (streamer streamer) Open(ctx context.Context, multiAddr identity.MultiAddre
 type streamRecycler struct {
 	streamer Streamer
 
-	streamsMu     *sync.Mutex
+	mu            *sync.Mutex
 	streams       map[identity.Address]Stream
 	streamsCancel map[identity.Address]context.CancelFunc
-	streamsRc     map[identity.Address]int32
+	streamsRc     map[identity.Address]int
+	streamsMu     map[identity.Address]*sync.Mutex
 }
 
 // NewStreamRecycler returns a Streamer that wraps another Streamer. It will
@@ -117,10 +118,11 @@ func NewStreamRecycler(streamer Streamer) Streamer {
 	return &streamRecycler{
 		streamer: streamer,
 
-		streamsMu:     new(sync.Mutex),
+		mu:            new(sync.Mutex),
 		streams:       map[identity.Address]Stream{},
 		streamsCancel: map[identity.Address]context.CancelFunc{},
-		streamsRc:     map[identity.Address]int32{},
+		streamsRc:     map[identity.Address]int{},
+		streamsMu:     map[identity.Address]*sync.Mutex{},
 	}
 }
 
@@ -128,28 +130,40 @@ func NewStreamRecycler(streamer Streamer) Streamer {
 func (recycler *streamRecycler) Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
 	addr := multiAddr.Address()
 
-	recycler.streamsMu.Lock()
-	defer recycler.streamsMu.Unlock()
+	rc, mu := func() (int, *sync.Mutex) {
+		recycler.mu.Lock()
+		defer recycler.mu.Unlock()
 
-	if _, ok := recycler.streams[addr]; !ok {
+		rc := recycler.streamsRc[addr]
+		if rc == 0 {
+			recycler.streamsMu[addr] = new(sync.Mutex)
+		}
+		recycler.streamsRc[addr]++
+		return rc, recycler.streamsMu[addr]
+	}()
+	mu.Lock()
+	defer mu.Unlock()
+
+	if rc == 0 {
 		ctx, cancel := context.WithCancel(context.Background())
-		recycler.streamsMu.Unlock()
 		stream, err := recycler.streamer.Open(ctx, multiAddr)
-		recycler.streamsMu.Lock()
 		if err != nil {
 			cancel()
 			return stream, err
 		}
+
+		recycler.mu.Lock()
+		defer recycler.mu.Unlock()
 		recycler.streams[addr] = stream
 		recycler.streamsCancel[addr] = cancel
+		return recycler.streams[addr], nil
 	}
-	recycler.streamsRc[addr]++
 
 	go func() {
 		<-ctx.Done()
 
-		recycler.streamsMu.Lock()
-		defer recycler.streamsMu.Unlock()
+		recycler.mu.Lock()
+		defer recycler.mu.Unlock()
 
 		recycler.streamsRc[addr]--
 		if recycler.streamsRc[addr] == 0 {
@@ -157,8 +171,11 @@ func (recycler *streamRecycler) Open(ctx context.Context, multiAddr identity.Mul
 			delete(recycler.streams, addr)
 			delete(recycler.streamsCancel, addr)
 			delete(recycler.streamsRc, addr)
+			delete(recycler.streamsMu, addr)
 		}
 	}()
 
+	recycler.mu.Lock()
+	defer recycler.mu.Unlock()
 	return recycler.streams[addr], nil
 }
