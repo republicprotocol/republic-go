@@ -209,11 +209,11 @@ var _ = Describe("Streaming", func() {
 			}
 			wg.Wait()
 			if multiAddrs[0].Address() < multiAddrs[1].Address() {
-				Expect(clients[0].streamsCounter).Should(Equal(0))
-				Expect(servers[1].streamsCounter).Should(Equal(0))
+				Expect(clients[0].streamsCounter).Should(Equal(1))
+				Expect(servers[1].streamsCounter).Should(Equal(1))
 			} else {
-				Expect(clients[1].streamsCounter).Should(Equal(0))
-				Expect(servers[0].streamsCounter).Should(Equal(0))
+				Expect(clients[1].streamsCounter).Should(Equal(1))
+				Expect(servers[0].streamsCounter).Should(Equal(1))
 			}
 		})
 	})
