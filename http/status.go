@@ -10,6 +10,7 @@ import (
 	"github.com/rs/cors"
 )
 
+// NewStatusServer returns a new http.Handler for serving darknode status
 func NewStatusServer(statusAdapter adapter.StatusAdapter) http.Handler {
 	r := mux.NewRouter().StrictSlash(true)
 	r.HandleFunc("/status", statusHandler(statusAdapter)).Methods("GET")
