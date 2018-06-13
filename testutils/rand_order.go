@@ -21,7 +21,7 @@ func RandomOrder() order.Order {
 		order.TokensETHDGX,
 		order.TokensETHREN,
 		order.TokensDGXREN,
-	}[rand.Intn(6)]
+	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
 	ord := order.NewOrder(order.TypeLimit, parity, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Int63())
@@ -34,7 +34,7 @@ func RandomBuyOrder() order.Order {
 		order.TokensETHDGX,
 		order.TokensETHREN,
 		order.TokensDGXREN,
-	}[rand.Intn(6)]
+	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
 	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Int63())
@@ -47,7 +47,7 @@ func RandomSellOrder() order.Order {
 		order.TokensETHDGX,
 		order.TokensETHREN,
 		order.TokensDGXREN,
-	}[rand.Intn(6)]
+	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
 	ord := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Int63())
