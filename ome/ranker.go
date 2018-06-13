@@ -92,8 +92,7 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 	coms := Computations{}
 	if ranker.rankerCurrEpoch != nil && change.BlockNumber >= ranker.rankerCurrEpoch.epoch.BlockNumber {
 		coms = ranker.rankerCurrEpoch.insertChange(change)
-	}
-	if ranker.rankerPrevEpoch != nil && change.BlockNumber >= ranker.rankerPrevEpoch.epoch.BlockNumber {
+	} else if ranker.rankerPrevEpoch != nil && change.BlockNumber >= ranker.rankerPrevEpoch.epoch.BlockNumber {
 		coms = ranker.rankerPrevEpoch.insertChange(change)
 	}
 
