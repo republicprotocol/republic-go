@@ -134,6 +134,7 @@ func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 		smpc.networkMu.Unlock()
 
 		// A background goroutine will handle the stream
+		logger.Network(logger.LevelDebug, fmt.Sprintf("connected to %v in network %v", addr, networkID))
 		go smpc.handleStream(addr, stream)
 	})
 }
