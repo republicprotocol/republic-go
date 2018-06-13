@@ -69,7 +69,7 @@ func (syncer *mockSyncer) Sync() (ChangeSet, error) {
 			changes[i] = Change{
 				OrderID:       ord.ID,
 				OrderParity:   ord.Parity,
-				OrderPriority: uint64(i),
+				OrderPriority: Priority(i),
 				OrderStatus:   order.Open,
 			}
 			i++
