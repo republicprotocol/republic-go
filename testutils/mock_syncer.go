@@ -13,11 +13,11 @@ type Syncer struct {
 }
 
 // NewSyncer returns a mock implementation of an orderbook.Syncer interface.
-func NewSyncer(numberOfMatches int) orderbook.Syncer {
+func NewSyncer(numberOfOrders int) *Syncer {
 	return &Syncer{
 		hasSynced:       false,
-		numberOfMatches: numberOfMatches,
-		orders:          []order.Order{},
+		numberOfMatches: 0,
+		orders:          make([]order.Order, numberOfOrders),
 	}
 }
 
@@ -47,4 +47,8 @@ func (syncer *Syncer) Sync() (orderbook.ChangeSet, error) {
 func (syncer *Syncer) ConfirmOrderMatch(order.ID, order.ID) error {
 	syncer.numberOfMatches++
 	return nil
+}
+
+func (syncer *Syncer) HasSynced() bool {
+	return syncer.hasSynced
 }

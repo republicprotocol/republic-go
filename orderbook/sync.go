@@ -151,13 +151,13 @@ func (syncer *syncer) purge() ChangeSet {
 
 					status, err := syncer.renLedger.Status(buyOrder)
 					if err != nil {
-						logger.Error(fmt.Sprintf("Failed to check order status %v", err))
+						logger.Error(fmt.Sprintf("failed to check order status %v", err))
 						return
 					}
 
 					priority, err := syncer.renLedger.Priority(buyOrder)
 					if err != nil {
-						logger.Error(fmt.Sprintf("Failed to check order priority %v", err))
+						logger.Error(fmt.Sprintf("failed to check order priority %v", err))
 						return
 					}
 
@@ -179,13 +179,13 @@ func (syncer *syncer) purge() ChangeSet {
 
 					status, err := syncer.renLedger.Status(sellOrder)
 					if err != nil {
-						logger.Error(fmt.Sprintf("Failed to check order status: %v", err))
+						logger.Error(fmt.Sprintf("failed to check order status: %v", err))
 						return
 					}
 
 					priority, err := syncer.renLedger.Priority(sellOrder)
 					if err != nil {
-						logger.Error(fmt.Sprintf("Failed to check order priority: %v", err))
+						logger.Error(fmt.Sprintf("failed to check order priority: %v", err))
 						return
 					}
 
