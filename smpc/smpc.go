@@ -220,6 +220,9 @@ func (smpc *smpcer) handleStream(remoteAddr identity.Address, remoteStream strea
 }
 
 func (smpc *smpcer) handleMessageJoin(remoteAddr identity.Address, message *MessageJoin) error {
+
+	log.Println("got join message", *message)
+
 	var err error
 	smpc.joinersMu.RLock()
 	if joiner, ok := smpc.joiners[message.NetworkID]; ok {
