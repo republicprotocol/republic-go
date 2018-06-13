@@ -46,17 +46,9 @@ type delegateRanker struct {
 	computationsMu *sync.Mutex
 	computations   Computations
 
-	epochMu           *sync.Mutex
-	currEpoch         cal.Epoch
-	prevEpoch         cal.Epoch
-	rankerCurrEpoch   *epochRanker
-	rankerPrevEpoch   *epochRanker
-	rankerCurrEpochIn chan orderbook.Change
-	rankerPrevEpochIn chan orderbook.Change
-
-	outMu              *sync.Mutex
-	rankerCurrEpochOut <-chan Computations
-	rankerPrevEpochOut <-chan Computations
+	rankerMu        *sync.Mutex
+	rankerCurrEpoch *epochRanker
+	rankerPrevEpoch *epochRanker
 }
 
 // NewRanker returns a Ranker that first filters the Computations it produces
@@ -77,53 +69,35 @@ func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, ep
 		computationsMu: new(sync.Mutex),
 		computations:   Computations{},
 
-		epochMu:           new(sync.Mutex),
-		rankerCurrEpoch:   nil,
-		rankerCurrEpochIn: nil,
-		currEpoch:         epoch,
-		rankerPrevEpoch:   nil,
-		rankerPrevEpochIn: nil,
-		prevEpoch:         cal.Epoch{},
-
-		outMu:              new(sync.Mutex),
-		rankerCurrEpochOut: nil,
-		rankerPrevEpochOut: nil,
+		rankerMu:        new(sync.Mutex),
+		rankerCurrEpoch: nil,
+		rankerPrevEpoch: nil,
 	}
+	ranker.insertStoredComputationsInBackground()
 
-	numberOfRankers, pos, err := ranker.getPosFromEpoch(epoch)
+	numberOfRankers, pos, err := ranker.posFromEpoch(epoch)
 	if err != nil {
-		return &delegateRanker{}, err
+		return &delegateRanker{}, fmt.Errorf("cannot get ranker position from epoch: %v", err)
 	}
 	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos, epoch)
-	ranker.rankerCurrEpochIn = make(chan orderbook.Change)
-	ranker.rankerCurrEpochOut = ranker.rankerCurrEpoch.run(ranker.done, ranker.rankerCurrEpochIn)
-
-	ranker.run(done)
-	ranker.insertStoredComputationsInBackground()
 
 	return ranker, nil
 }
 
 // InsertChange implements the Ranker interface.
 func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
-	ranker.epochMu.Lock()
-	defer ranker.epochMu.Unlock()
+	ranker.rankerMu.Lock()
+	defer ranker.rankerMu.Unlock()
 
-	// FIXME: change.BlockNumber can be different from the epoch blockNumber
-	if change.BlockNumber >= ranker.currEpoch.BlockNumber && ranker.rankerCurrEpochIn != nil {
-		select {
-		case <-ranker.done:
-		case ranker.rankerCurrEpochIn <- change:
-		}
-		return
+	coms := Computations{}
+	if ranker.rankerCurrEpoch != nil && change.BlockNumber >= ranker.rankerCurrEpoch.epoch.BlockNumber {
+		coms = ranker.rankerCurrEpoch.insertChange(change)
 	}
-	if change.BlockNumber >= ranker.prevEpoch.BlockNumber && ranker.rankerPrevEpochIn != nil {
-		select {
-		case <-ranker.done:
-		case ranker.rankerPrevEpochIn <- change:
-		}
-		return
+	if ranker.rankerPrevEpoch != nil && change.BlockNumber >= ranker.rankerPrevEpoch.epoch.BlockNumber {
+		coms = ranker.rankerPrevEpoch.insertChange(change)
 	}
+
+	ranker.insertComputations(coms)
 }
 
 // Computations implements the Ranker interface.
@@ -147,69 +121,20 @@ func (ranker *delegateRanker) Computations(buffer Computations) int {
 
 // OnChangeEpoch implements the Ranker interface.
 func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
-	ranker.epochMu.Lock()
-	ranker.outMu.Lock()
-	defer ranker.epochMu.Unlock()
-	defer ranker.outMu.Unlock()
+	ranker.rankerMu.Lock()
+	defer ranker.rankerMu.Unlock()
 
-	if bytes.Equal(ranker.currEpoch.Hash[:], epoch.Hash[:]) {
+	if ranker.rankerCurrEpoch != nil && bytes.Equal(ranker.rankerCurrEpoch.epoch.Hash[:], epoch.Hash[:]) {
 		return
 	}
-	if ranker.rankerPrevEpoch != nil {
-		close(ranker.rankerPrevEpochIn)
-	}
 	ranker.rankerPrevEpoch = ranker.rankerCurrEpoch
-	ranker.rankerPrevEpochIn = ranker.rankerCurrEpochIn
-	ranker.rankerPrevEpochOut = ranker.rankerCurrEpochOut
-	ranker.prevEpoch = ranker.currEpoch
 
-	numberOfRankers, pos, err := ranker.getPosFromEpoch(epoch)
+	numberOfRankers, pos, err := ranker.posFromEpoch(epoch)
 	if err != nil {
 		logger.Error(fmt.Sprintf("cannot get ranker position from epoch: %v", err))
 		return
 	}
-	ranker.currEpoch = epoch
-	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos, ranker.currEpoch)
-	ranker.rankerCurrEpochIn = make(chan orderbook.Change)
-	ranker.rankerCurrEpochOut = ranker.rankerCurrEpoch.run(ranker.done, ranker.rankerCurrEpochIn)
-	log.Printf("[epoch change] rankers: %d, pos : %d, blockNumber: %d", numberOfRankers, pos, epoch.BlockNumber)
-}
-
-func (ranker *delegateRanker) run(done <-chan struct{}) {
-	go func() {
-		for {
-			ranker.outMu.Lock()
-			currEpochRankerCh := ranker.rankerCurrEpochOut
-			prevEpochRankerCh := ranker.rankerPrevEpochOut
-			ranker.outMu.Unlock()
-
-			select {
-			case <-done:
-				return
-			case coms, ok := <-currEpochRankerCh:
-				if !ok {
-					return
-				}
-				for _, com := range coms {
-					ranker.insertComputation(com)
-					if err := ranker.storer.InsertComputation(com); err != nil {
-						logger.Error(fmt.Sprintf("cannot insert ranked computation = %v: %v", com.ID, err))
-					}
-				}
-			case coms, ok := <-prevEpochRankerCh:
-				// fixme : the previous channel might be closed here
-				if !ok {
-					continue
-				}
-				for _, com := range coms {
-					ranker.insertComputation(com)
-					if err := ranker.storer.InsertComputation(com); err != nil {
-						logger.Error(fmt.Sprintf("cannot insert ranked computation = %v: %v", com.ID, err))
-					}
-				}
-			}
-		}
-	}()
+	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos, epoch)
 }
 
 func (ranker *delegateRanker) insertStoredComputationsInBackground() {
@@ -238,6 +163,20 @@ func (ranker *delegateRanker) insertStoredComputationsInBackground() {
 	}()
 }
 
+func (ranker *delegateRanker) insertComputations(coms Computations) {
+	ranker.computationsMu.Lock()
+	defer ranker.computationsMu.Unlock()
+
+	for _, com := range coms {
+		index := sort.Search(len(ranker.computations), func(i int) bool {
+			return ranker.computations[i].Priority > com.Priority
+		})
+		ranker.computations = append(
+			ranker.computations[:index],
+			append([]Computation{com}, ranker.computations[index:]...)...)
+	}
+}
+
 func (ranker *delegateRanker) insertComputation(com Computation) {
 	ranker.computationsMu.Lock()
 	defer ranker.computationsMu.Unlock()
@@ -250,7 +189,7 @@ func (ranker *delegateRanker) insertComputation(com Computation) {
 		append([]Computation{com}, ranker.computations[index:]...)...)
 }
 
-func (ranker *delegateRanker) getPosFromEpoch(epoch cal.Epoch) (int, int, error) {
+func (ranker *delegateRanker) posFromEpoch(epoch cal.Epoch) (int, int, error) {
 	pod, err := epoch.Pod(ranker.address)
 	if err != nil {
 		return 0, 0, err
@@ -279,46 +218,17 @@ func newEpochRanker(numberOfRankers, pos int, epoch cal.Epoch) *epochRanker {
 	}
 }
 
-func (ranker *epochRanker) run(done <-chan struct{}, changes <-chan orderbook.Change) <-chan Computations {
-	computations := make(chan Computations)
-
-	go func() {
-		defer close(computations)
-
-		for {
-			select {
-			case <-done:
-				return
-			case change, ok := <-changes:
-				if !ok {
-					return
-				}
-				switch change.OrderStatus {
-				case order.Open:
-					if change.OrderParity == order.ParityBuy {
-						select {
-						case <-done:
-							return
-						case computations <- ranker.insertBuy(change):
-						}
-					} else {
-						select {
-						case <-done:
-							return
-						case computations <- ranker.insertSell(change):
-						}
-					}
-				case order.Canceled, order.Confirmed:
-					ranker.remove(change)
-				}
-			}
-		}
-	}()
-
-	return computations
+func (ranker *epochRanker) insertChange(change orderbook.Change) Computations {
+	if change.OrderParity == order.ParityBuy {
+		return ranker.insertBuyChange(change)
+	}
+	if change.OrderParity == order.ParitySell {
+		return ranker.insertSellChange(change)
+	}
+	return Computations{}
 }
 
-func (ranker *epochRanker) insertBuy(change orderbook.Change) []Computation {
+func (ranker *epochRanker) insertBuyChange(change orderbook.Change) Computations {
 	computations := make([]Computation, 0)
 	ranker.buys[change.OrderID] = change.OrderPriority
 	for sell, sellPriority := range ranker.sells {
@@ -326,19 +236,15 @@ func (ranker *epochRanker) insertBuy(change orderbook.Change) []Computation {
 		if int(priority)%ranker.numberOfRankers != ranker.pos {
 			continue
 		}
-
 		priorityCom := NewComputation(change.OrderID, sell, ranker.epoch.Hash)
 		priorityCom.Priority = priority
 		priorityCom.Timestamp = time.Now()
-
 		computations = append(computations, priorityCom)
 	}
-	log.Printf("return %d computations after inserting the buy order %v", len(computations), base64.StdEncoding.EncodeToString(change.OrderID[:]))
-
 	return computations
 }
 
-func (ranker *epochRanker) insertSell(change orderbook.Change) []Computation {
+func (ranker *epochRanker) insertSellChange(change orderbook.Change) Computations {
 	computations := make([]Computation, 0)
 	ranker.sells[change.OrderID] = change.OrderPriority
 	for buy, buyPriority := range ranker.buys {
@@ -346,14 +252,11 @@ func (ranker *epochRanker) insertSell(change orderbook.Change) []Computation {
 		if int(priority)%ranker.numberOfRankers != ranker.pos {
 			continue
 		}
-
 		priorityCom := NewComputation(buy, change.OrderID, ranker.epoch.Hash)
 		priorityCom.Priority = priority
 		priorityCom.Timestamp = time.Now()
-
 		computations = append(computations, priorityCom)
 	}
-	log.Printf("return %d computations after inserting the sell order %v", len(computations), base64.StdEncoding.EncodeToString(change.OrderID[:]))
 	return computations
 }
 
