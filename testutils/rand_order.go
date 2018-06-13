@@ -10,6 +10,7 @@ import (
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -156,4 +157,11 @@ func RandomNetworkID() [32]byte {
 	copy(networkID[:], hash)
 
 	return networkID
+}
+
+func RandomComputation() ome.Computation {
+	buy := RandomBuyOrder()
+	sell := RandomSellOrder()
+
+	return ome.NewComputation(buy.ID, sell.ID)
 }

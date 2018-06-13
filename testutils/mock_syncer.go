@@ -17,14 +17,14 @@ func NewSyncer(numberOfOrders int) *Syncer {
 	return &Syncer{
 		hasSynced:       false,
 		numberOfMatches: 0,
-		orders:          make([]order.Order, numberOfOrders),
+		orders:          make([]order.Order, 0, numberOfOrders),
 	}
 }
 
 // Sync returns the first 5 orders in the order list and the syncer as synced.
 func (syncer *Syncer) Sync() (orderbook.ChangeSet, error) {
 	if !syncer.hasSynced {
-		changes := make(orderbook.ChangeSet, 5)
+		changes := make(orderbook.ChangeSet, len(syncer.orders))
 		i := 0
 		for _, ord := range syncer.orders {
 			changes[i] = orderbook.Change{
