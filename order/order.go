@@ -62,6 +62,8 @@ type Tokens uint64
 // Tokens values.
 const (
 	TokensBTCETH Tokens = Tokens((uint64(TokenBTC) << 32) | uint64(TokenETH))
+	TokensBTCDGX Tokens = Tokens((uint64(TokenBTC) << 32) | uint64(TokenDGX))
+	TokensBTCREN Tokens = Tokens((uint64(TokenBTC) << 32) | uint64(TokenREN))
 	TokensETHDGX Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenDGX))
 	TokensETHREN Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenREN))
 	TokensDGXREN Tokens = Tokens((uint64(TokenDGX) << 32) | uint64(TokenREN))
@@ -82,6 +84,10 @@ func (tokens Tokens) String() string {
 	switch tokens {
 	case TokensBTCETH:
 		return "BTC-ETH"
+	case TokensBTCDGX:
+		return "BTC-DGX"
+	case TokensBTCREN:
+		return "BTC-REN"
 	case TokensETHDGX:
 		return "ETH-DGX"
 	case TokensETHREN:
