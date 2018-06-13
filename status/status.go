@@ -19,7 +19,7 @@ type Reader interface {
 	Address() (string, error)
 	MultiAddress() (identity.MultiAddress, error)
 	EthereumAddress() (string, error)
-	PeerCount() (int, error)
+	Peers() (int, error)
 }
 
 /*
@@ -91,7 +91,7 @@ func (sp *provider) EthereumAddress() (string, error) {
 	return sp.ethereumAddress, nil
 }
 
-// PeerCount returns the number peers the darknode is connected to
-func (sp *provider) PeerCount() (int, error) {
+// Peers returns the number of peers the darknode is connected to
+func (sp *provider) Peers() (int, error) {
 	return len(sp.dht.MultiAddresses()), nil
 }
