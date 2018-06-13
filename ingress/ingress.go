@@ -111,14 +111,19 @@ func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
 	go func() {
 		defer close(errs)
 
-		interval, err := ingress.darkpool.MinimumEpochInterval()
+		intervalBig, err := ingress.darkpool.MinimumEpochInterval()
 		if err != nil {
 			errs <- err
 			return
 		}
 
+		interval := intervalBig.Int64()
+		if interval < 40 {
+			interval = 40
+		}
+
 		epoch := cal.Epoch{}
-		ticker := time.NewTicker(time.Second * time.Duration(interval.Int64()))
+		ticker := time.NewTicker(time.Second * time.Duration(interval))
 		defer ticker.Stop()
 
 		for {
@@ -323,9 +328,9 @@ func (ingress *ingress) processOpenOrderRequest(req OpenOrderRequest, done <-cha
 	// 	var orderParity order.Parity
 	// 	for _, orderFragments := range reqs[i].orderFragmentMapping {
 	// 		if len(orderFragments) > 1 {
-	// 			orderParity = orderFragments[0].OrderParity
-	// 			break
-	// 		}
+	// 		5000000000ments[0].OrderParity
+	// 		5000000000
+	// 		}5000000000
 	// 	}
 	// 	signatures[i] = reqs[i].signature
 	// 	orderIDs[i] = reqs[i].orderID
@@ -333,7 +338,7 @@ func (ingress *ingress) processOpenOrderRequest(req OpenOrderRequest, done <-cha
 	// }
 
 	// n, err := ingress.renLedger.OpenOrders(signatures, orderIDs, orderParities)
-	// if err != nil {
+	// if err != nil {5000000000
 	// 	select {
 	// 	case <-done:
 	// 	case errs <- err:
