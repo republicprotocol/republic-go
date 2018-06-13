@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -100,6 +101,7 @@ func (ledger *RenLedgerContract) OpenOrders(signatures [][65]byte, orderIDs []or
 	return len(txs), err
 }
 
+// OpenBuyOrder implements the cal.RenLedger interface.
 func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) error {
 
 	ledger.transactOpts.GasPrice = big.NewInt(int64(20000000000))
@@ -125,8 +127,8 @@ func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) e
 	}
 }
 
+// OpenSellOrder implements the cal.RenLedger interface.
 func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) error {
-
 	ledger.transactOpts.GasPrice = big.NewInt(int64(20000000000))
 	tx, err := ledger.binding.OpenSellOrder(ledger.transactOpts, signature[:], id)
 
@@ -147,9 +149,11 @@ func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) 
 		if depth.Uint64() >= BlocksForConfirmation {
 			return nil
 		}
+		time.Sleep(time.Second * 14)
 	}
 }
 
+// CancelOrder implements the cal.RenLedger interface.
 func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) error {
 
 	before, err := ledger.binding.OrderDepth(ledger.callOpts, id)
