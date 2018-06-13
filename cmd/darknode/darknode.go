@@ -93,8 +93,8 @@ func main() {
 
 	swarmClient := grpc.NewSwarmClient(multiAddr)
 	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmClient, &dht))
-	swarmService.Register(server)
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
+	swarmService.Register(server)
 
 	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(&store, renLedger, 32), &store)
 	orderbookService := grpc.NewOrderbookService(orderbook)
@@ -102,8 +102,8 @@ func main() {
 
 	streamClient := grpc.NewStreamClient(&crypter, config.Address)
 	streamService := grpc.NewStreamService(&crypter, config.Address)
-	streamService.Register(server)
 	streamer := stream.NewStreamRecycler(stream.NewStreamer(config.Address, streamClient, &streamService))
+	streamService.Register(server)
 
 	// Start the secure order matching engine
 	go func() {
