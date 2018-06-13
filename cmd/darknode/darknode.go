@@ -124,6 +124,7 @@ func main() {
 
 	// Populate status information
 	statusProvider := status.NewProvider(&dht)
+	statusProvider.WriteNetwork(string(config.Ethereum.Network))
 	statusProvider.WriteMultiAddress(multiAddr)
 	statusProvider.WriteEthereumAddress(auth.From.Hex())
 
