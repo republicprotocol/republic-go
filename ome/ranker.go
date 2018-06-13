@@ -97,7 +97,6 @@ func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, ep
 	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos, epoch)
 	ranker.rankerCurrEpochIn = make(chan orderbook.Change)
 	ranker.rankerCurrEpochOut = ranker.rankerCurrEpoch.run(ranker.done, ranker.rankerCurrEpochIn)
-	log.Printf("rankers: %d, pos : %d, blockNumber: %d", numberOfRankers, pos, epoch.BlockNumber)
 
 	ranker.run(done)
 	ranker.insertStoredComputationsInBackground()
@@ -110,8 +109,7 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 	ranker.epochMu.Lock()
 	defer ranker.epochMu.Unlock()
 
-	log.Printf("[change detected] order %v status change to %v at block %d", base64.StdEncoding.EncodeToString(change.OrderID[:]), change.OrderStatus, change.BlockNumber)
-	// FIXME : Change.BlockNumber can be different from the epoch blockNumber
+	// FIXME: change.BlockNumber can be different from the epoch blockNumber
 	if change.BlockNumber >= ranker.currEpoch.BlockNumber {
 		select {
 		case <-ranker.done:
@@ -180,8 +178,6 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 func (ranker *delegateRanker) run(done <-chan struct{}) {
 	go func() {
 		for {
-			ticker := time.Tick(14 * time.Second)
-
 			ranker.outMu.Lock()
 			currEpochRankerCh := ranker.rankerCurrEpochOut
 			prevEpochRankerCh := ranker.rankerPrevEpochOut
@@ -211,7 +207,6 @@ func (ranker *delegateRanker) run(done <-chan struct{}) {
 						logger.Error(fmt.Sprintf("cannot insert ranked computation = %v: %v", com.ID, err))
 					}
 				}
-			case <-ticker:
 			}
 		}
 	}()

@@ -50,8 +50,8 @@ type ome struct {
 // NewOme returns an Ome that uses an order.Orderbook to synchronize changes
 // from the Ethereum blockchain, and an smpc.Smpcer to run the secure
 // multi-party computations necessary for the secure order matching engine.
-func NewOme(ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler, storer Storer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer) Ome {
-	return &ome{
+func NewOme(ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler, storer Storer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer, epoch cal.Epoch) Ome {
+	ome := &ome{
 		ranker:    ranker,
 		matcher:   matcher,
 		confirmer: confirmer,
@@ -67,6 +67,8 @@ func NewOme(ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler
 		epochCurr: nil,
 		epochPrev: nil,
 	}
+	ome.OnChangeEpoch(epoch)
+	return ome
 }
 
 // Run implements the Ome interface.

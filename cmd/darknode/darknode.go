@@ -120,7 +120,7 @@ func main() {
 	matcher := ome.NewMatcher(&store, smpcer)
 	confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
 	settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
-	ome := ome.NewOme(ranker, matcher, confirmer, settler, &store, orderbook, smpcer)
+	ome := ome.NewOme(ranker, matcher, confirmer, settler, &store, orderbook, smpcer, epoch)
 
 	// Start the secure order matching engine
 	go func() {
@@ -145,33 +145,27 @@ func main() {
 				logger.Error(fmt.Sprintf("error in running the ome: %v", err))
 			}
 		}, func() {
-			// Get the starting ξ
-			ξ, err := darkPool.Epoch()
-			if err != nil {
-				log.Fatalf("cannot sync epoch: %v", err)
-			}
-			ome.OnChangeEpoch(ξ)
 
 			// Periodically sync the next ξ
 			for {
 				time.Sleep(14 * time.Second)
 
 				// Get the epoch
-				nextξ, err := darkPool.Epoch()
+				nextEpoch, err := darkPool.Epoch()
 				if err != nil {
 					logger.Error(fmt.Sprintf("cannot sync epoch: %v", err))
 					continue
 				}
 
 				// Check whether or not ξ has changed
-				if ξ.Equal(&nextξ) {
+				if epoch.Equal(&nextEpoch) {
 					continue
 				}
-				ξ = nextξ
-				logger.Epoch(ξ.Hash)
+				epoch = nextEpoch
+				logger.Epoch(epoch.Hash)
 
 				// Notify the Ome
-				ome.OnChangeEpoch(ξ)
+				ome.OnChangeEpoch(epoch)
 			}
 		})
 	}()
