@@ -133,6 +133,20 @@ const (
 	Canceled
 )
 
+// String implements the Stringer interface.
+func (status Status) String() string {
+	switch status {
+	case Nil:
+		return "nil"
+	case Open:
+		return "open"
+	case Confirmed:
+		return "confirmed"
+	case Canceled:
+		return "canceled"
+	}
+}
+
 // An Order represents the want to perform a trade of assets.
 type Order struct {
 	Signature     Signature `json:"signature"`
