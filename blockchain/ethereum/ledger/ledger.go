@@ -103,7 +103,6 @@ func (ledger *RenLedgerContract) OpenOrders(signatures [][65]byte, orderIDs []or
 
 // OpenBuyOrder implements the cal.RenLedger interface.
 func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) error {
-
 	ledger.transactOpts.GasPrice = big.NewInt(int64(20000000000))
 	tx, err := ledger.binding.OpenBuyOrder(ledger.transactOpts, signature[:], id)
 
@@ -124,6 +123,7 @@ func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) e
 		if depth.Uint64() >= BlocksForConfirmation {
 			return nil
 		}
+		time.Sleep(time.Second * 14)
 	}
 }
 
