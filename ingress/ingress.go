@@ -123,7 +123,7 @@ func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
 		}
 
 		epoch := cal.Epoch{}
-		ticker := time.NewTicker(time.Second * time.Duration(interval))
+		ticker := time.NewTicker(time.Second * time.Duration(interval*14)) // 14 seconds per block
 		defer ticker.Stop()
 
 		for {
