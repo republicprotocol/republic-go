@@ -179,7 +179,7 @@ var _ = Describe("Streaming", func() {
 	Context("regression test when epoch change", func() {
 
 		BeforeEach(func() {
-			time.Sleep(1 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 			multiAddrs = [numberOfNodes]identity.MultiAddress{}
 			clients = [numberOfNodes]mockClient{}
 			servers = [numberOfNodes]mockServer{}
@@ -204,9 +204,7 @@ var _ = Describe("Streaming", func() {
 			}
 			if multiAddrs[0].Address() < multiAddrs[1].Address() {
 				Expect(clients[0].streamsCounter).Should(Equal(1))
-				Expect(servers[1].streamsCounter).Should(Equal(1))
 			} else {
-				Expect(clients[1].streamsCounter).Should(Equal(1))
 				Expect(servers[0].streamsCounter).Should(Equal(1))
 			}
 		})
@@ -226,9 +224,7 @@ var _ = Describe("Streaming", func() {
 			wg.Wait()
 			if multiAddrs[0].Address() < multiAddrs[1].Address() {
 				Expect(clients[0].streamsCounter).Should(Equal(1))
-				Expect(servers[1].streamsCounter).Should(Equal(1))
 			} else {
-				Expect(clients[1].streamsCounter).Should(Equal(1))
 				Expect(servers[0].streamsCounter).Should(Equal(1))
 			}
 		})
