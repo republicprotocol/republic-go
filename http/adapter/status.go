@@ -7,6 +7,7 @@ type Status struct {
 	Address         string `json:"address"`
 	MultiAddress    string `json:"multiAddress"`
 	EthereumAddress string `json:"ethereumAddress"`
+	PeerCount       int    `json:"peerCount"`
 }
 
 // StatusAdapter defines a struct which has status reading capability
@@ -35,9 +36,14 @@ func (adapter *StatusAdapter) Status() (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
+	peers, err := adapter.PeerCount()
+	if err != nil {
+		return Status{}, err
+	}
 	return Status{
 		Address:         addr,
 		MultiAddress:    multiAddr.String(),
 		EthereumAddress: ethAddr,
+		PeerCount:       peers,
 	}, nil
 }

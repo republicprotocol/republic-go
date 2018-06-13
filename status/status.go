@@ -3,6 +3,7 @@ package status
 import (
 	"sync"
 
+	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/identity"
 )
 
@@ -18,6 +19,7 @@ type Reader interface {
 	Address() (string, error)
 	MultiAddress() (identity.MultiAddress, error)
 	EthereumAddress() (string, error)
+	PeerCount() (int, error)
 }
 
 /*
@@ -40,15 +42,17 @@ type Provider interface {
 
 type provider struct {
 	mu              *sync.Mutex
+	dht             *dht.DHT
 	address         string
 	multiAddress    identity.MultiAddress
 	ethereumAddress string
 }
 
 // NewProvider returns a new provider
-func NewProvider() Provider {
+func NewProvider(dht *dht.DHT) Provider {
 	return &provider{
-		mu: new(sync.Mutex),
+		mu:  new(sync.Mutex),
+		dht: dht,
 	}
 }
 
@@ -85,4 +89,9 @@ func (sp *provider) WriteEthereumAddress(ethAddr string) error {
 // EthereumAddress gets the ethereum address
 func (sp *provider) EthereumAddress() (string, error) {
 	return sp.ethereumAddress, nil
+}
+
+// PeerCount returns the number peers the darknode is connected to
+func (sp *provider) PeerCount() (int, error) {
+	return len(sp.dht.MultiAddresses()), nil
 }
