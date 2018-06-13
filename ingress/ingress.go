@@ -111,8 +111,14 @@ func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
 	go func() {
 		defer close(errs)
 
+		interval, err := ingress.darkpool.MinimumEpochInterval()
+		if err != nil {
+			errs <- err
+			return
+		}
+
 		epoch := cal.Epoch{}
-		ticker := time.NewTicker(time.Second * 14)
+		ticker := time.NewTicker(time.Second * time.Duration(interval.Int64()))
 		defer ticker.Stop()
 
 		for {

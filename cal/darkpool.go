@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"errors"
+	"math/big"
 
 	"github.com/republicprotocol/republic-go/identity"
 )
@@ -32,6 +33,10 @@ type Darkpool interface {
 
 	// Epoch returns the current Epoch which includes the Pod configuration.
 	Epoch() (Epoch, error)
+
+	// MinimumEpochInterval returns the minimum number of seconds between
+	// epochs.
+	MinimumEpochInterval() (*big.Int, error)
 
 	// Pods returns the Pod configuration for the current Epoch.
 	Pods() ([]Pod, error)

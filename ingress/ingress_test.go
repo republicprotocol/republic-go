@@ -268,6 +268,10 @@ func (darkpool *mockDarkpool) Epoch() (cal.Epoch, error) {
 	}, nil
 }
 
+func (darkpool *mockDarkpool) MinimumEpochInterval() (*big.Int, error) {
+	return big.NewInt(1), nil
+}
+
 func (darkpool *mockDarkpool) Pods() ([]cal.Pod, error) {
 	return darkpool.pods, nil
 }
