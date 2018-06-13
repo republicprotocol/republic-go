@@ -37,6 +37,8 @@ func statusHandler(statusAdapter adapter.StatusAdapter) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot convert status object into json: %v", err))
 			return
 		}
+		// Set content type to JSON before StatusOK or it will be ignored
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(str)
 	}
