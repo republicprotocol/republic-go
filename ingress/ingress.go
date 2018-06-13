@@ -179,6 +179,7 @@ func (ingress *ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFra
 	}
 
 	go func() {
+		logger.Info(fmt.Sprintf("queueing opening of order %v", orderID))
 		ingress.queueRequests <- OpenOrderRequest{
 			signature:            signature,
 			orderID:              orderID,
@@ -193,6 +194,7 @@ func (ingress *ingress) CancelOrder(signature [65]byte, orderID order.ID) error 
 	// RenLedger. This is not strictly necessary but it can save the Ingress
 	// some gas.
 	go func() {
+		logger.Info(fmt.Sprintf("queueing cancelation of order %v", orderID))
 		ingress.queueRequests <- CancelOrderRequest{
 			signature: signature,
 			orderID:   orderID,
