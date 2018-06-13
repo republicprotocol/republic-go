@@ -2,17 +2,20 @@ package adapter
 
 import "github.com/republicprotocol/republic-go/status"
 
+// Status defines a structure for JSON marshalling
 type Status struct {
 	Address string `json:"address"`
 }
 
+// StatusAdapter defines a struct which has status reading capability
 type StatusAdapter struct {
-	status.Provider
+	status.Reader
 }
 
-func NewStatusAdapter(provider status.Provider) StatusAdapter {
+// NewStatusAdapter returns an adapter which contains reading statuses
+func NewStatusAdapter(reader status.Reader) StatusAdapter {
 	return StatusAdapter{
-		Provider: provider,
+		Reader: reader,
 	}
 }
 
