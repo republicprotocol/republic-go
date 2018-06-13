@@ -221,7 +221,12 @@ func (ranker *epochRanker) insertChange(change orderbook.Change) Computations {
 }
 
 func (ranker *epochRanker) insertBuyChange(change orderbook.Change) Computations {
-	computations := make([]Computation, 0)
+	if change.OrderStatus != order.Open {
+		delete(ranker.buys, change.OrderID)
+		return Computations{}
+	}
+
+	computations := make([]Computation, 0, len(ranker.sells)/2)
 	ranker.buys[change.OrderID] = change.OrderPriority
 	for sell, sellPriority := range ranker.sells {
 		priority := change.OrderPriority + sellPriority
@@ -237,7 +242,12 @@ func (ranker *epochRanker) insertBuyChange(change orderbook.Change) Computations
 }
 
 func (ranker *epochRanker) insertSellChange(change orderbook.Change) Computations {
-	computations := make([]Computation, 0)
+	if change.OrderStatus != order.Open {
+		delete(ranker.sells, change.OrderID)
+		return Computations{}
+	}
+
+	computations := make([]Computation, 0, len(ranker.buys)/2)
 	ranker.sells[change.OrderID] = change.OrderPriority
 	for buy, buyPriority := range ranker.buys {
 		priority := change.OrderPriority + buyPriority
@@ -250,12 +260,4 @@ func (ranker *epochRanker) insertSellChange(change orderbook.Change) Computation
 		computations = append(computations, priorityCom)
 	}
 	return computations
-}
-
-func (ranker *epochRanker) remove(change orderbook.Change) {
-	if change.OrderParity == order.ParityBuy {
-		delete(ranker.buys, change.OrderID)
-	} else {
-		delete(ranker.sells, change.OrderID)
-	}
 }
