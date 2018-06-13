@@ -122,13 +122,16 @@ func main() {
 	settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
 	ome := ome.NewOme(ranker, matcher, confirmer, settler, &store, orderbook, smpcer)
 
+	// Populate status information
+	statusProvider := status.NewProvider()
+	statusProvider.WriteAddress(ipAddr)
+
 	// Start the status server
 	go func() {
 		bindParam := "0.0.0.0"
 		portParam := "18516"
 		log.Printf("starting status server at %v:%v...", bindParam, portParam)
 
-		statusProvider := status.NewProvider()
 		statusAdapter := adapter.NewStatusAdapter(statusProvider)
 		if err := netHttp.ListenAndServe(fmt.Sprintf("%v:%v", bindParam, portParam), http.NewStatusServer(statusAdapter)); err != nil {
 			log.Fatalf("error listening and serving: %v", err)

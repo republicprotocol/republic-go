@@ -21,7 +21,11 @@ func NewStatusAdapter(reader status.Reader) StatusAdapter {
 
 // Status returns a Status object with populated fields
 func (adapter *StatusAdapter) Status() (Status, error) {
+	addr, err := adapter.Address()
+	if err != nil {
+		return Status{}, err
+	}
 	return Status{
-		Address: "Hello World!",
+		Address: addr,
 	}, nil
 }
