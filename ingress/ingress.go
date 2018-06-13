@@ -123,7 +123,7 @@ func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
 			case <-ticker.C:
 			}
 
-			nextEpoch, err := ingress.darkpool.Epoch()
+			nextEpoch, err := ingress.darkpool.NextEpoch()
 			if err != nil {
 				errs <- err
 				return

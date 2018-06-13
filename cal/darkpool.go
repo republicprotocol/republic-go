@@ -26,6 +26,10 @@ type Darkpool interface {
 	// Darknodes registered in the Darkpool.
 	Darknodes() (identity.Addresses, error)
 
+	// NextEpoch will try to turn the Epoch and returns the resulting Epoch. If
+	// the turning of the Epoch failed, the current Epoch is returned.
+	NextEpoch() (Epoch, error)
+
 	// Epoch returns the current Epoch which includes the Pod configuration.
 	Epoch() (Epoch, error)
 
