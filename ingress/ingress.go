@@ -35,6 +35,10 @@ var ErrInvalidNumberOfOrderFragments = errors.New("invalid number of order fragm
 // to receive order fragments
 var ErrCannotOpenOrderFragments = errors.New("cannot open order fragments: no pod received an order fragment")
 
+// NumBackgroundWorkers is the number of background workers that the Ingress
+// will use.
+var NumBackgroundWorkers = runtime.NumCPU() * 4
+
 // An OrderFragmentMapping maps pods to encrypted order fragments.
 type OrderFragmentMapping map[[32]byte][]OrderFragment
 
@@ -164,7 +168,7 @@ func (ingress *ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFra
 }
 
 func (ingress *ingress) CancelOrder(signature [65]byte, orderID order.ID) error {
-	// TODO: Verify that the signature is valid before sending it to the
+	// TODO: Verify that the signature is valid beforNumBackgroundWorkerse sending it to the
 	// RenLedger. This is not strictly necessary but it can save the Ingress
 	// some gas.
 	go func() {
@@ -216,6 +220,10 @@ func (ingress *ingress) syncFromEpoch(epoch cal.Epoch) error {
 }
 
 func (ingress *ingress) processRequests(done <-chan struct{}, errs chan<- error) {
+
+	openOrderRequests := make([]OpenOrderRequest, NumBackgroundWorkers)
+	cancelOrderRequests := make([]CancelOrderRequest, NumBackgroundWorkers)
+
 	for {
 		select {
 		case <-done:
@@ -224,13 +232,46 @@ func (ingress *ingress) processRequests(done <-chan struct{}, errs chan<- error)
 			if !ok {
 				return
 			}
+
+			openOrderRequestsN := 0
+			cancelOrderRequestsN := 0
+
 			switch req := request.(type) {
 			case OpenOrderRequest:
-				ingress.processOpenOrderRequest(req, done, errs)
+				openOrderRequests[openOrderRequestsN] = req
+				openOrderRequestsN++
 			case CancelOrderRequest:
-				ingress.processCancelOrderRequest(req, done, errs)
+				cancelOrderRequests[cancelOrderRequestsN] = req
+				cancelOrderRequestsN++
 			default:
 				logger.Error(fmt.Sprintf("unexpected request type %T", request))
+			}
+
+			for i := 1; i < NumBackgroundWorkers; i++ {
+				select {
+				case request, ok := <-ingress.queueRequests:
+					if !ok {
+						break
+					}
+					switch req := request.(type) {
+					case OpenOrderRequest:
+						openOrderRequests[openOrderRequestsN] = req
+						openOrderRequestsN++
+					case CancelOrderRequest:
+						cancelOrderRequests[cancelOrderRequestsN] = req
+						cancelOrderRequestsN++
+					default:
+						logger.Error(fmt.Sprintf("unexpected request type %T", request))
+					}
+				default:
+				}
+			}
+
+			if openOrderRequestsN > 0 {
+				ingress.processOpenOrderRequests(openOrderRequests[:openOrderRequestsN], done, errs)
+			}
+			if cancelOrderRequestsN > 0 {
+				ingress.processCancelOrderRequests(cancelOrderRequests[:cancelOrderRequestsN], done, errs)
 			}
 		}
 	}
@@ -258,21 +299,26 @@ func (ingress *ingress) processOrderFragmentMappingQueue(done <-chan struct{}, e
 	})
 }
 
-func (ingress *ingress) processOpenOrderRequest(req OpenOrderRequest, done <-chan struct{}, errs chan<- error) {
-	var orderParity order.Parity
-	for _, orderFragments := range req.orderFragmentMapping {
-		if len(orderFragments) > 1 {
-			orderParity = orderFragments[0].OrderParity
-			break
+func (ingress *ingress) processOpenOrderRequests(reqs []OpenOrderRequest, done <-chan struct{}, errs chan<- error) {
+
+	signatures := make([][65]byte, len(reqs))
+	orderIDs := make([]order.ID, len(reqs))
+	orderParities := make([]order.Parity, len(reqs))
+
+	for i := range reqs {
+		var orderParity order.Parity
+		for _, orderFragments := range reqs[i].orderFragmentMapping {
+			if len(orderFragments) > 1 {
+				orderParity = orderFragments[0].OrderParity
+				break
+			}
 		}
+		signatures[i] = reqs[i].signature
+		orderIDs[i] = reqs[i].orderID
+		orderParities[i] = orderParity
 	}
 
-	var err error
-	if orderParity == order.ParityBuy {
-		err = ingress.renLedger.OpenBuyOrder(req.signature, req.orderID)
-	} else {
-		err = ingress.renLedger.OpenSellOrder(req.signature, req.orderID)
-	}
+	n, err := ingress.renLedger.OpenOrders(signatures, orderIDs, orderParities)
 	if err != nil {
 		select {
 		case <-done:
@@ -281,14 +327,21 @@ func (ingress *ingress) processOpenOrderRequest(req OpenOrderRequest, done <-cha
 		return
 	}
 
-	select {
-	case <-done:
-	case ingress.queueOrderFragmentMappings <- req.orderFragmentMapping:
+	for i := 0; i < n; i++ {
+		select {
+		case <-done:
+		case ingress.queueOrderFragmentMappings <- reqs[i].orderFragmentMapping:
+		}
 	}
 }
 
-func (ingress *ingress) processCancelOrderRequest(req CancelOrderRequest, done <-chan struct{}, errs chan<- error) error {
-	return ingress.renLedger.CancelOrder(req.signature, req.orderID)
+func (ingress *ingress) processCancelOrderRequests(reqs []CancelOrderRequest, done <-chan struct{}, errs chan<- error) error {
+	for _, req := range reqs {
+		if err := ingress.renLedger.CancelOrder(req.signature, req.orderID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (ingress *ingress) verifyOrderFragmentMapping(orderFragmentMapping OrderFragmentMapping) error {
