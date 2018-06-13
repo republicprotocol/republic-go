@@ -123,8 +123,10 @@ func main() {
 	ome := ome.NewOme(ranker, matcher, confirmer, settler, &store, orderbook, smpcer)
 
 	// Populate status information
-	statusProvider := status.NewProvider()
+	statusProvider := status.NewProvider(&dht)
 	statusProvider.WriteAddress(ipAddr)
+	statusProvider.WriteMultiAddress(multiAddr)
+	statusProvider.WriteEthereumAddress(auth.From.Hex())
 
 	// Start the status server
 	go func() {
