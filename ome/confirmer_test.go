@@ -3,7 +3,6 @@ package ome_test
 import (
 	"errors"
 	"math/big"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -39,7 +37,7 @@ var _ = Describe("Confirmer", func() {
 		orderIDs := map[[32]byte]struct{}{}
 		computations := make([]Computation, numberOfComputationsToTest)
 		for i := 0; i < numberOfComputationsToTest; i++ {
-			computations[i] = randomComputaion()
+			computations[i] = testutils.RandomComputation()
 			orderIDs[computations[i].Buy] = struct{}{}
 			orderIDs[computations[i].Sell] = struct{}{}
 		}
@@ -217,36 +215,4 @@ func (renLedger *mockRenLedger) Trader(id order.ID) (string, error) {
 	}
 
 	return "", errors.New("order doesn't exist in the ledger ")
-}
-
-func randomComputaion() Computation {
-	buy, sell := newRandomOrder().ID, newRandomOrder().ID
-	return Computation{
-		Buy:      buy,
-		Sell:     sell,
-		Priority: orderbook.Priority(0),
-	}
-}
-
-func newRandomOrder() order.Order {
-	parity := []order.Parity{order.ParityBuy, order.ParitySell}[rand.Intn(2)]
-	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensBTCDGX,
-		order.TokensBTCREN,
-		order.TokensETHDGX,
-		order.TokensETHREN,
-		order.TokensDGXREN,
-	}[rand.Intn(6)]
-
-	ord := order.NewOrder(order.TypeLimit, parity, time.Now().Add(1*time.Hour), tokens, randomCoExp(), randomCoExp(), randomCoExp(), rand.Int63())
-	return ord
-}
-
-func randomCoExp() order.CoExp {
-	co := uint64(rand.Intn(1999) + 1)
-	exp := uint64(rand.Intn(25))
-	return order.CoExp{
-		Co:  co,
-		Exp: exp,
-	}
 }
