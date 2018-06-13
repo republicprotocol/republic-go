@@ -131,6 +131,7 @@ func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
 		for {
 			ticks++
 			if ticks%epochInterval == 0 {
+				logger.Info(fmt.Sprintf("queueing syncing of epoch"))
 				select {
 				case <-done:
 				case ingress.queueRequests <- EpochRequest{}:
@@ -375,6 +376,11 @@ func (ingress *ingress) processOpenOrderRequest(req OpenOrderRequest, done <-cha
 		case errs <- err:
 		}
 	}
+
+	select {
+	case <-done:
+	case ingress.queueOrderFragmentMappings <- req.orderFragmentMapping:
+	}
 }
 
 func (ingress *ingress) processCancelOrderRequest(req CancelOrderRequest, done <-chan struct{}, errs chan<- error) {
@@ -458,10 +464,7 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 	go func() {
 		defer close(errs)
 
-		log.Printf("[pod = %v] sending order %v = %v", base64.StdEncoding.EncodeToString(pod.Hash[:]), orderFragments[0].OrderParity, orderFragments[0].OrderID)
-		for _, darknode := range pod.Darknodes {
-			log.Printf("  sending order fragment to %v", darknode)
-		}
+		logger.Network(logger.LevelInfo, fmt.Sprintf("sending %v order = %v to pod = %v", orderFragments[0].OrderParity, orderFragments[0].OrderID, base64.StdEncoding.EncodeToString(pod.Hash[:8])))
 
 		dispatch.CoForAll(pod.Darknodes, func(i int) {
 			orderFragment, ok := orderFragmentIndexMapping[int64(i+1)] // Indices for fragments start at 1
