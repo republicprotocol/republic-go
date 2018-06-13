@@ -2,6 +2,7 @@ package smpc
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -14,6 +15,10 @@ import (
 	"github.com/republicprotocol/republic-go/swarm"
 	"golang.org/x/net/context"
 )
+
+// ErrJoinOnDisconnectedNetwork is returned when an Smpcer attempts to access a
+// Joiner for a NetworkID that has not been connected to.
+var ErrJoinOnDisconnectedNetwork = errors.New("join on disconnected network")
 
 // NetworkID for a network of Smpcer nodes. Using a NetworkID allows nodes to
 // be involved in multiple distinct computation networks in parallel.
@@ -159,9 +164,12 @@ func (smpc *smpcer) Join(networkID NetworkID, join Join, callback Callback) erro
 	smpc.selfJoinsMu.Unlock()
 
 	smpc.joinersMu.RLock()
-	err := smpc.joiners[networkID].InsertJoinAndSetCallback(join, callback)
+	joiner, joinerOk := smpc.joiners[networkID]
 	smpc.joinersMu.RUnlock()
-	if err != nil {
+	if !joinerOk {
+		return ErrJoinOnDisconnectedNetwork
+	}
+	if err := joiner.InsertJoinAndSetCallback(join, callback); err != nil {
 		return err
 	}
 
