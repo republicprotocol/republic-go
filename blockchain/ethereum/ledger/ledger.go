@@ -155,11 +155,10 @@ func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) 
 
 // CancelOrder implements the cal.RenLedger interface.
 func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) error {
-
-	before, err := ledger.binding.OrderDepth(ledger.callOpts, id)
-	if err != nil {
-		return err
-	}
+	// before, err := ledger.binding.OrderDepth(ledger.callOpts, id)
+	// if err != nil {
+	// 	return err
+	// }
 	tx, err := ledger.binding.CancelOrder(ledger.transactOpts, signature[:], id)
 	if err != nil {
 		return err
@@ -168,17 +167,18 @@ func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) er
 	if err != nil {
 		return err
 	}
+	return nil
+	// for {
+	// 	depth, err := ledger.binding.OrderDepth(ledger.callOpts, id)
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-	for {
-		depth, err := ledger.binding.OrderDepth(ledger.callOpts, id)
-		if err != nil {
-			return err
-		}
-
-		if depth.Uint64()-before.Uint64() >= BlocksForConfirmation {
-			return nil
-		}
-	}
+	// 	if depth.Uint64()-before.Uint64() >= BlocksForConfirmation {
+	// 		return nil
+	// 	}
+	// 	time.Sleep(time.Second * 14)
+	// }
 }
 
 func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, match order.ID) error {
