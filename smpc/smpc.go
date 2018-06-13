@@ -235,7 +235,6 @@ func (smpc *smpcer) handleMessageJoin(remoteAddr identity.Address, message *Mess
 	var err error
 	smpc.joinersMu.RLock()
 	if joiner, ok := smpc.joiners[message.NetworkID]; ok {
-		log.Println("INSERTING JOIN")
 		err = joiner.InsertJoin(message.Join)
 	}
 	smpc.joinersMu.RUnlock()
