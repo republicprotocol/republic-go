@@ -195,6 +195,7 @@ type StreamService struct {
 
 	connsMu *sync.Mutex
 	conns   map[identity.Address]chan *safeStream
+	connsRc map[identity.Address]int
 }
 
 // NewStreamService returns an implementation of the stream.Server interface
@@ -206,6 +207,7 @@ func NewStreamService(verifier crypto.Verifier, addr identity.Address) StreamSer
 
 		connsMu: new(sync.Mutex),
 		conns:   map[identity.Address]chan *safeStream{},
+		connsRc: map[identity.Address]int{},
 	}
 }
 
@@ -285,9 +287,11 @@ func (service *StreamService) setupConn(addr identity.Address) chan *safeStream 
 	service.connsMu.Lock()
 	defer service.connsMu.Unlock()
 
-	if _, ok := service.conns[addr]; !ok {
+	if service.connsRc[addr] == 0 {
 		service.conns[addr] = make(chan *safeStream, 1)
 	}
+	service.connsRc[addr]++
+
 	return service.conns[addr]
 }
 
@@ -295,5 +299,9 @@ func (service *StreamService) teardownConn(addr identity.Address) {
 	service.connsMu.Lock()
 	defer service.connsMu.Unlock()
 
-	delete(service.conns, addr)
+	service.connsRc[addr]--
+	if service.connsRc[addr] == 0 {
+		delete(service.conns, addr)
+		delete(service.connsRc, addr)
+	}
 }
