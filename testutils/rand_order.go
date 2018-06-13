@@ -10,6 +10,7 @@ import (
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -20,7 +21,7 @@ func RandomOrder() order.Order {
 		order.TokensETHDGX,
 		order.TokensETHREN,
 		order.TokensDGXREN,
-	}[rand.Intn(6)]
+	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
 	ord := order.NewOrder(order.TypeLimit, parity, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Int63())
@@ -30,12 +31,10 @@ func RandomOrder() order.Order {
 // RandomOrder will generate a random buy order.
 func RandomBuyOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensBTCDGX,
-		order.TokensBTCREN,
 		order.TokensETHDGX,
 		order.TokensETHREN,
 		order.TokensDGXREN,
-	}[rand.Intn(6)]
+	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
 	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Int63())
@@ -45,12 +44,10 @@ func RandomBuyOrder() order.Order {
 // RandomSellOrder will generate a random sell order.
 func RandomSellOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensBTCDGX,
-		order.TokensBTCREN,
 		order.TokensETHDGX,
 		order.TokensETHREN,
 		order.TokensDGXREN,
-	}[rand.Intn(6)]
+	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
 	ord := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Int63())
@@ -63,7 +60,7 @@ func RandomOrderMatch() (order.Order, order.Order) {
 		order.TokensETHDGX,
 		order.TokensETHREN,
 		order.TokensDGXREN,
-	}[rand.Intn(6)]
+	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
 	buy := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(24*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Int63())
@@ -144,7 +141,7 @@ func RandomConfigs(n int, b int) ([]config.Config, error) {
 	return configs, nil
 }
 
-// RandomNetworkID will generate a random [32]byte array
+// RandomNetworkID generates a random [32]byte array
 func RandomNetworkID() [32]byte {
 	var networkID [32]byte
 	i := fmt.Sprintf("%d", rand.Int())
@@ -152,4 +149,15 @@ func RandomNetworkID() [32]byte {
 	copy(networkID[:], hash)
 
 	return networkID
+}
+
+// RandomComputation generates a random computation with empty epoch hash.
+func RandomComputation() ome.Computation {
+	buy, sell := RandomBuyOrder(), RandomSellOrder()
+	comp := ome.Computation{
+		Buy:  buy.ID,
+		Sell: sell.ID,
+	}
+	copy(comp.ID[:], crypto.Keccak256(buy.ID[:], sell.ID[:]))
+	return comp
 }
