@@ -12,6 +12,14 @@ type Request interface {
 	IsRequest()
 }
 
+// An EpochRequest is a Request for the Ingress to trigger a new epoch on the
+// Ethereum blockchain.
+type EpochRequest struct {
+}
+
+// IsRequest implements the Request interface.
+func (req EpochRequest) IsRequest() {}
+
 // An OpenOrderRequest is a Request for the Ingress to open an order.Order on
 // the Ethereum blockchain and forward order.Fragments to their respective
 // Darknodes.

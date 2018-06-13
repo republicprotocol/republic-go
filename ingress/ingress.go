@@ -111,24 +111,34 @@ func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
 	go func() {
 		defer close(errs)
 
-		intervalBig, err := ingress.darkpool.MinimumEpochInterval()
+		epochIntervalBig, err := ingress.darkpool.MinimumEpochInterval()
 		if err != nil {
 			errs <- err
 			return
 		}
-
-		interval := intervalBig.Int64()
-		if interval < 40 {
-			interval = 40
+		epochInterval := epochIntervalBig.Int64()
+		if epochInterval < 100 {
+			// An Ingress will not trigger epochs faster than once every 100
+			// blocks
+			epochInterval = 100
 		}
-
 		epoch := cal.Epoch{}
-		ticker := time.NewTicker(time.Second * time.Duration(interval*14)) // 14 seconds per block
+
+		ticks := int64(0)
+		ticker := time.NewTicker(time.Second * 14)
 		defer ticker.Stop()
 
 		for {
+			ticks++
+			if ticks%epochInterval == 0 {
+				select {
+				case <-done:
+				case ingress.queueRequests <- EpochRequest{}:
+				}
+			}
+
 			func() {
-				nextEpoch, err := ingress.darkpool.NextEpoch()
+				nextEpoch, err := ingress.darkpool.Epoch()
 				if err != nil {
 					select {
 					case <-done:
@@ -244,7 +254,11 @@ func (ingress *ingress) processRequests(done <-chan struct{}, errs chan<- error)
 				return
 			}
 
+			logger.Info(fmt.Sprintf("received request of type %T", request))
+
 			switch req := request.(type) {
+			case EpochRequest:
+				ingress.processEpochRequest(req, done, errs)
 			case OpenOrderRequest:
 				ingress.processOpenOrderRequest(req, done, errs)
 			case CancelOrderRequest:
@@ -297,26 +311,13 @@ func (ingress *ingress) processRequests(done <-chan struct{}, errs chan<- error)
 	}
 }
 
-func (ingress *ingress) processOrderFragmentMappingQueue(done <-chan struct{}, errs chan<- error) {
-	dispatch.CoForAll(runtime.NumCPU(), func(i int) {
-		for {
-			select {
-			case <-done:
-				return
-			case orderFragmentMapping, ok := <-ingress.queueOrderFragmentMappings:
-				if !ok {
-					return
-				}
-				if err := ingress.processOrderFragmentMapping(orderFragmentMapping); err != nil {
-					select {
-					case <-done:
-						return
-					case errs <- err:
-					}
-				}
-			}
+func (ingress *ingress) processEpochRequest(req EpochRequest, done <-chan struct{}, errs chan<- error) {
+	if _, err := ingress.darkpool.NextEpoch(); err != nil {
+		select {
+		case <-done:
+		case errs <- err:
 		}
-	})
+	}
 }
 
 func (ingress *ingress) processOpenOrderRequest(req OpenOrderRequest, done <-chan struct{}, errs chan<- error) {
@@ -389,24 +390,26 @@ func (ingress *ingress) processCancelOrderRequest(req CancelOrderRequest, done <
 	}
 }
 
-func (ingress *ingress) verifyOrderFragmentMapping(orderFragmentMapping OrderFragmentMapping) error {
-	ingress.podsMu.RLock()
-	defer ingress.podsMu.RUnlock()
-
-	if len(orderFragmentMapping) == 0 || len(orderFragmentMapping) > len(ingress.pods) {
-		logger.Error(fmt.Sprintf("invalid number of pods: got %v, expected %v", len(orderFragmentMapping), len(ingress.pods)))
-		return ErrInvalidNumberOfPods
-	}
-	for hash, orderFragments := range orderFragmentMapping {
-		pod, ok := ingress.pods[hash]
-		if !ok {
-			return ErrUnknownPod
+func (ingress *ingress) processOrderFragmentMappingQueue(done <-chan struct{}, errs chan<- error) {
+	dispatch.CoForAll(runtime.NumCPU(), func(i int) {
+		for {
+			select {
+			case <-done:
+				return
+			case orderFragmentMapping, ok := <-ingress.queueOrderFragmentMappings:
+				if !ok {
+					return
+				}
+				if err := ingress.processOrderFragmentMapping(orderFragmentMapping); err != nil {
+					select {
+					case <-done:
+						return
+					case errs <- err:
+					}
+				}
+			}
 		}
-		if len(orderFragments) > len(pod.Darknodes) || len(orderFragments) < pod.Threshold() {
-			return ErrInvalidNumberOfOrderFragments
-		}
-	}
-	return nil
+	})
 }
 
 func (ingress *ingress) processOrderFragmentMapping(orderFragmentMapping OrderFragmentMapping) error {
@@ -500,6 +503,26 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 	errNumMax := len(orderFragments) - pod.Threshold()
 	if len(pod.Darknodes) > 0 && errNum > errNumMax {
 		return fmt.Errorf("cannot send order fragments to %v nodes (out of %v nodes) in pod %v: %v", errNum, len(pod.Darknodes), base64.StdEncoding.EncodeToString(pod.Hash[:]), err)
+	}
+	return nil
+}
+
+func (ingress *ingress) verifyOrderFragmentMapping(orderFragmentMapping OrderFragmentMapping) error {
+	ingress.podsMu.RLock()
+	defer ingress.podsMu.RUnlock()
+
+	if len(orderFragmentMapping) == 0 || len(orderFragmentMapping) > len(ingress.pods) {
+		logger.Error(fmt.Sprintf("invalid number of pods: got %v, expected %v", len(orderFragmentMapping), len(ingress.pods)))
+		return ErrInvalidNumberOfPods
+	}
+	for hash, orderFragments := range orderFragmentMapping {
+		pod, ok := ingress.pods[hash]
+		if !ok {
+			return ErrUnknownPod
+		}
+		if len(orderFragments) > len(pod.Darknodes) || len(orderFragments) < pod.Threshold() {
+			return ErrInvalidNumberOfOrderFragments
+		}
 	}
 	return nil
 }
