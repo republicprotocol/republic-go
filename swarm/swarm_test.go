@@ -7,20 +7,29 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/swarm"
-	"github.com/republicprotocol/republic-go/testutils"
 
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/testutils"
+)
+
+var (
+	numberOfClients          = 50
+	numberOfBootstrapClients = 5
 )
 
 var _ = Describe("Swarm", func() {
+	var clients = make([]Client, numberOfClients)
+	var
+
+	BeforeEach(func() {
+		clients
+	})
 
 	Context("when bootstrapping", func() {
 
 		It("should be able to query any peer after bootstrapping", func() {
-			numberOfClients := 50
-			numberOfBootstrapClients := 5
 
 			// Creating clients
 			dhts := make([]dht.DHT, numberOfClients)
@@ -76,6 +85,12 @@ var _ = Describe("Swarm", func() {
 			}
 		})
 	})
+
+	Context("negative tests for edge cases", func() {
+		It("should prune the dht if the bucket is full", func() {
+
+		})
+	})
 })
 
 // mockServerHub will store all Servers that Clients use to Query and Ping
@@ -123,31 +138,4 @@ func (client *mockClientToServer) MultiAddress() identity.MultiAddress {
 	return client.multiAddr
 }
 
-type mockClient struct {
-	multiAddr   identity.MultiAddress
-	storedAddrs identity.MultiAddresses
-}
-
-func newMockClient(multiAddrs identity.MultiAddresses) (Client, error) {
-	multiAddr, err := testutils.RandomMultiAddress()
-	if err != nil {
-		return nil, err
-	}
-
-	return &mockClient{
-		multiAddr:   multiAddr,
-		storedAddrs: multiAddrs,
-	}, nil
-}
-
-func (client *mockClient) Ping(ctx context.Context, to identity.MultiAddress) (identity.MultiAddress, error) {
-	return to, nil
-}
-
-func (client *mockClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address, querySig [65]byte) (identity.MultiAddresses, error) {
-	return client.storedAddrs, nil
-}
-
-func (client *mockClient) MultiAddress() identity.MultiAddress {
-	return client.multiAddr
-}
+func createClients(numberOfClients , numberOfBootstrapClients int )
