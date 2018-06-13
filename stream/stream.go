@@ -130,33 +130,34 @@ func NewStreamRecycler(streamer Streamer) Streamer {
 func (recycler *streamRecycler) Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
 	addr := multiAddr.Address()
 
-	rc, mu := func() (int, *sync.Mutex) {
+	mu := func() *sync.Mutex {
 		recycler.mu.Lock()
 		defer recycler.mu.Unlock()
 
-		rc := recycler.streamsRc[addr]
-		if rc == 0 {
+		if recycler.streamsMu[addr] == nil {
 			recycler.streamsMu[addr] = new(sync.Mutex)
 		}
-		recycler.streamsRc[addr]++
-		return rc, recycler.streamsMu[addr]
+		return recycler.streamsMu[addr]
 	}()
 	mu.Lock()
 	defer mu.Unlock()
 
-	if rc == 0 {
+	recycler.mu.Lock()
+	defer recycler.mu.Unlock()
+
+	if recycler.streamsRc[addr] == 0 {
+		recycler.mu.Unlock()
 		ctx, cancel := context.WithCancel(context.Background())
 		stream, err := recycler.streamer.Open(ctx, multiAddr)
+		recycler.mu.Lock()
+
 		if err != nil {
 			cancel()
 			return stream, err
 		}
 
-		recycler.mu.Lock()
-		defer recycler.mu.Unlock()
 		recycler.streams[addr] = stream
 		recycler.streamsCancel[addr] = cancel
-		return recycler.streams[addr], nil
 	}
 
 	go func() {
@@ -175,7 +176,6 @@ func (recycler *streamRecycler) Open(ctx context.Context, multiAddr identity.Mul
 		}
 	}()
 
-	recycler.mu.Lock()
-	defer recycler.mu.Unlock()
+	recycler.streamsRc[addr]++
 	return recycler.streams[addr], nil
 }
