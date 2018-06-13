@@ -107,50 +107,38 @@ func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
 	go func() {
 		defer close(errs)
 
-		epoch, err := ingress.darkpool.Epoch()
-		if err != nil {
-			errs <- err
-			return
-		}
-
+		epoch := cal.Epoch{}
 		ticker := time.NewTicker(time.Second * 14)
 		defer ticker.Stop()
 
 		for {
+			func() {
+				nextEpoch, err := ingress.darkpool.NextEpoch()
+				if err != nil {
+					select {
+					case <-done:
+					case errs <- err:
+					}
+					return
+				}
+				if bytes.Equal(epoch.Hash[:], nextEpoch.Hash[:]) {
+					return
+				}
+				epoch = nextEpoch
+				if err := ingress.syncFromEpoch(epoch); err != nil {
+					select {
+					case <-done:
+					case errs <- err:
+					}
+					return
+				}
+			}()
+
 			select {
 			case <-done:
 				return
 			case <-ticker.C:
 			}
-
-			nextEpoch, err := ingress.darkpool.NextEpoch()
-			if err != nil {
-				errs <- err
-				return
-			}
-
-			if bytes.Equal(epoch.Hash[:], nextEpoch.Hash[:]) {
-				continue
-			}
-			epoch = nextEpoch
-			logger.Epoch(epoch.Hash)
-
-			pods, err := ingress.darkpool.Pods()
-			if err != nil {
-				select {
-				case <-done:
-					return
-				case errs <- err:
-					continue
-				}
-			}
-
-			ingress.podsMu.Lock()
-			ingress.pods = map[[32]byte]cal.Pod{}
-			for _, pod := range pods {
-				ingress.pods[pod.Hash] = pod
-			}
-			ingress.podsMu.Unlock()
 		}
 	}()
 
@@ -210,6 +198,21 @@ func (ingress *ingress) ProcessRequests(done <-chan struct{}) <-chan error {
 	}()
 
 	return errs
+}
+
+func (ingress *ingress) syncFromEpoch(epoch cal.Epoch) error {
+	logger.Epoch(epoch.Hash)
+	pods, err := ingress.darkpool.Pods()
+	if err != nil {
+		return err
+	}
+	ingress.podsMu.Lock()
+	ingress.pods = map[[32]byte]cal.Pod{}
+	for _, pod := range pods {
+		ingress.pods[pod.Hash] = pod
+	}
+	ingress.podsMu.Unlock()
+	return nil
 }
 
 func (ingress *ingress) processRequests(done <-chan struct{}, errs chan<- error) {
@@ -293,6 +296,7 @@ func (ingress *ingress) verifyOrderFragmentMapping(orderFragmentMapping OrderFra
 	defer ingress.podsMu.RUnlock()
 
 	if len(orderFragmentMapping) == 0 || len(orderFragmentMapping) > len(ingress.pods) {
+		logger.Error(fmt.Sprintf("invalid number of pods: got %v, expected %v", len(orderFragmentMapping), len(ingress.pods)))
 		return ErrInvalidNumberOfPods
 	}
 	for hash, orderFragments := range orderFragmentMapping {
