@@ -82,6 +82,9 @@ func NewSmpcer(swarmer swarm.Swarmer, streamer stream.Streamer) Smpcer {
 // Connect implements the Smpcer interface.
 func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 	logger.Network(logger.LevelInfo, fmt.Sprintf("connecting to network = %v", networkID))
+	for _, node := range nodes {
+		logger.Network(logger.LevelInfo, fmt.Sprintf("  connecting to %v", node))
+	}
 
 	k := int64(2 * (len(nodes) + 1) / 3)
 
