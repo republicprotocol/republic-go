@@ -130,7 +130,7 @@ func main() {
 	// Start the status server
 	go func() {
 		bindParam := "0.0.0.0"
-		portParam := "18516"
+		portParam := "18515"
 		log.Printf("starting status server at %v:%v...", bindParam, portParam)
 
 		statusAdapter := adapter.NewStatusAdapter(statusProvider)
