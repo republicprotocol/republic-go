@@ -105,23 +105,6 @@ func main() {
 	streamService.Register(server)
 	streamer := stream.NewStreamRecycler(stream.NewStreamer(config.Address, streamClient, &streamService))
 
-	// New secure multi-party computer
-	smpcer := smpc.NewSmpcer(swarmer, streamer)
-
-	// New OME
-	epoch, err := darkPool.Epoch()
-	if err != nil {
-		log.Fatalf("cannot get current epoch: %v", err)
-	}
-	ranker, err := ome.NewRanker(done, config.Address, &store, epoch)
-	if err != nil {
-		log.Fatalf("cannot create new ranker: %v", err)
-	}
-	matcher := ome.NewMatcher(&store, smpcer)
-	confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
-	settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
-	ome := ome.NewOme(ranker, matcher, confirmer, settler, &store, orderbook, smpcer, epoch)
-
 	// Start the secure order matching engine
 	go func() {
 		// Wait for the gRPC server to boot
@@ -137,6 +120,23 @@ func main() {
 			log.Printf("bootstrap: %v", err)
 		}
 		log.Printf("connected to %v peers", len(dht.MultiAddresses()))
+
+		// New secure multi-party computer
+		smpcer := smpc.NewSmpcer(swarmer, streamer)
+
+		// New OME
+		epoch, err := darkPool.Epoch()
+		if err != nil {
+			log.Fatalf("cannot get current epoch: %v", err)
+		}
+		ranker, err := ome.NewRanker(done, config.Address, &store, epoch)
+		if err != nil {
+			log.Fatalf("cannot create new ranker: %v", err)
+		}
+		matcher := ome.NewMatcher(&store, smpcer)
+		confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
+		settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
+		ome := ome.NewOme(ranker, matcher, confirmer, settler, &store, orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
 			// Synchronizing the OME
