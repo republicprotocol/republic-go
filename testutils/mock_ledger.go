@@ -110,6 +110,9 @@ func (renLedger *RenLedger) ConfirmOrder(id order.ID, match order.ID) error {
 	if err := renLedger.setOrderStatus(id, order.Confirmed); err != nil {
 		return fmt.Errorf("cannot confirm order that is not open: %v", err)
 	}
+	if err := renLedger.setOrderStatus(match, order.Confirmed); err != nil {
+		return fmt.Errorf("cannot confirm order that is not open: %v", err)
+	}
 	return nil
 }
 
@@ -158,7 +161,7 @@ func (renLedger *RenLedger) OrderMatch(orderID order.ID) (order.ID, error) {
 	renLedger.ordersMu.Lock()
 	defer renLedger.ordersMu.Unlock()
 
-	if renLedger.orderStatus[orderID] != order.Open {
+	if renLedger.orderStatus[orderID] != order.Confirmed {
 		return order.ID{}, errors.New("order is not open ")
 	}
 	for i, id := range renLedger.buyOrders {
@@ -168,7 +171,7 @@ func (renLedger *RenLedger) OrderMatch(orderID order.ID) (order.ID, error) {
 	}
 	for i, id := range renLedger.sellOrders {
 		if orderID.Equal(id) {
-			return renLedger.sellOrders[i], nil
+			return renLedger.buyOrders[i], nil
 		}
 	}
 	return order.ID{}, ErrOrderNotFound
@@ -237,7 +240,7 @@ func (renLedger *RenLedger) setOrderStatus(orderID order.ID, status order.Status
 		renLedger.orderStatus[orderID] = order.Canceled
 	}
 
-	return ErrOrderNotFound
+	return nil
 }
 
 func (renLedger *RenLedger) openBuyAndSellOrders(n int) error {
