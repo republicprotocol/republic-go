@@ -29,20 +29,13 @@ func main() {
 	switch *network {
 	case "ropsten":
 		ethereumConfig = ethereum.Config{
-			Network:                 ethereum.NetworkRopsten,
-			URI:                     "https://ropsten.infura.io",
-			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnRopsten.String(),
-			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnRopsten.String(),
-			RenLedgerAddress:        ethereum.RenLedgerAddressOnRopsten.String(),
+			Network: ethereum.NetworkRopsten,
+			URI:     "https://ropsten.infura.io",
 		}
 	case "kovan":
 		ethereumConfig = ethereum.Config{
-			Network:                 ethereum.NetworkKovan,
-			URI:                     "https://kovan.infura.io",
-			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnKovan.String(),
-			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnKovan.String(),
-			RenLedgerAddress:        ethereum.RenLedgerAddressOnKovan.String(),
-			RenExAccountsAddress:    ethereum.RenExAccountsAddressOnGanache.String(),
+			Network: ethereum.NetworkKovan,
+			URI:     "https://kovan.infura.io",
 		}
 	default:
 		log.Fatal("unrecognized network name")
