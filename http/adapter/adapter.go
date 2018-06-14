@@ -24,6 +24,7 @@ type OrderFragment struct {
 	Price          []string     `json:"price"`
 	Volume         []string     `json:"volume"`
 	MinimumVolume  []string     `json:"minimumVolume"`
+	Nonce          string       `json:"nonce"`
 }
 
 // An OpenOrderAdapter can be used to open an order.Order by sending an

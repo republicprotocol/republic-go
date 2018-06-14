@@ -164,6 +164,7 @@ func MarshalOrderFragment(orderFragmentIn ingress.OrderFragment) OrderFragment {
 	orderFragment.Price = MarshalEncryptedCoExpShare(orderFragmentIn.Price)
 	orderFragment.Volume = MarshalEncryptedCoExpShare(orderFragmentIn.Volume)
 	orderFragment.MinimumVolume = MarshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume)
+	orderFragment.Nonce = base64.StdEncoding.EncodeToString(orderFragmentIn.Nonce)
 	return orderFragment
 }
 
@@ -198,6 +199,7 @@ func UnmarshalOrderFragment(orderFragmentIn OrderFragment) (ingress.OrderFragmen
 	if err != nil {
 		return orderFragment, err
 	}
+	orderFragment.Nonce, err = base64.StdEncoding.DecodeString(orderFragmentIn.Nonce)
 	return orderFragment, nil
 }
 
