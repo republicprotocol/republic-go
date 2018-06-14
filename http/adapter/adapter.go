@@ -13,18 +13,19 @@ type OrderFragmentMapping map[string][]OrderFragment
 // in the OrderFragment. It is represented as a JSON object. This
 // representation is useful for HTTP drivers.
 type OrderFragment struct {
-	OrderSignature string       `json:"orderSignature"`
-	OrderID        string       `json:"orderId"`
-	OrderType      order.Type   `json:"orderType"`
-	OrderParity    order.Parity `json:"orderParity"`
-	OrderExpiry    int64        `json:"orderExpiry"`
-	Index          int64        `json:"index"`
-	ID             string       `json:"id"`
-	Tokens         string       `json:"tokens"`
-	Price          []string     `json:"price"`
-	Volume         []string     `json:"volume"`
-	MinimumVolume  []string     `json:"minimumVolume"`
-	Nonce          string       `json:"nonce"`
+	OrderSignature  string           `json:"orderSignature"`
+	OrderID         string           `json:"orderId"`
+	OrderType       order.Type       `json:"orderType"`
+	OrderParity     order.Parity     `json:"orderParity"`
+	OrderSettlement order.Settlement `json:"orderSettlement"`
+	OrderExpiry     int64            `json:"orderExpiry"`
+	Index           int64            `json:"index"`
+	ID              string           `json:"id"`
+	Tokens          string           `json:"tokens"`
+	Price           []string         `json:"price"`
+	Volume          []string         `json:"volume"`
+	MinimumVolume   []string         `json:"minimumVolume"`
+	Nonce           string           `json:"nonce"`
 }
 
 // An OpenOrderAdapter can be used to open an order.Order by sending an

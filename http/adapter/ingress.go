@@ -158,6 +158,7 @@ func MarshalOrderFragment(orderFragmentIn ingress.OrderFragment) OrderFragment {
 	orderFragment.OrderID = MarshalOrderID(orderFragmentIn.OrderID)
 	orderFragment.OrderType = orderFragmentIn.OrderType
 	orderFragment.OrderParity = orderFragmentIn.OrderParity
+	orderFragment.OrderSettlement = orderFragmentIn.OrderSettlement
 	orderFragment.OrderExpiry = orderFragmentIn.OrderExpiry.Unix()
 	orderFragment.ID = MarshalOrderFragmentID(orderFragmentIn.ID)
 	orderFragment.Tokens = base64.StdEncoding.EncodeToString(orderFragmentIn.Tokens)
@@ -182,6 +183,7 @@ func UnmarshalOrderFragment(orderFragmentIn OrderFragment) (ingress.OrderFragmen
 	}
 	orderFragment.OrderType = orderFragmentIn.OrderType
 	orderFragment.OrderParity = orderFragmentIn.OrderParity
+	orderFragment.OrderSettlement = orderFragmentIn.OrderSettlement
 	orderFragment.OrderExpiry = time.Unix(orderFragmentIn.OrderExpiry, 0)
 	orderFragment.Tokens, err = base64.StdEncoding.DecodeString(orderFragmentIn.Tokens)
 	if err != nil {

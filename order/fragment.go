@@ -149,27 +149,29 @@ func (fragment *Fragment) Encrypt(pubKey rsa.PublicKey) (EncryptedFragment, erro
 // An EncryptedFragment is a Fragment that has been encrypted by an RSA public
 // key.
 type EncryptedFragment struct {
-	OrderID       ID                  `json:"orderId"`
-	OrderType     Type                `json:"orderType"`
-	OrderParity   Parity              `json:"orderParity"`
-	OrderExpiry   time.Time           `json:"orderExpiry"`
-	ID            FragmentID          `json:"id"`
-	Tokens        []byte              `json:"tokens"`
-	Price         EncryptedCoExpShare `json:"price"`
-	Volume        EncryptedCoExpShare `json:"volume"`
-	MinimumVolume EncryptedCoExpShare `json:"minimumVolume"`
-	Nonce         []byte              `json:"nonce"`
+	OrderID         ID                  `json:"orderId"`
+	OrderType       Type                `json:"orderType"`
+	OrderParity     Parity              `json:"orderParity"`
+	OrderSettlement Settlement          `json:"orderSettlement"`
+	OrderExpiry     time.Time           `json:"orderExpiry"`
+	ID              FragmentID          `json:"id"`
+	Tokens          []byte              `json:"tokens"`
+	Price           EncryptedCoExpShare `json:"price"`
+	Volume          EncryptedCoExpShare `json:"volume"`
+	MinimumVolume   EncryptedCoExpShare `json:"minimumVolume"`
+	Nonce           []byte              `json:"nonce"`
 }
 
 // Decrypt an EncryptedFragment using an rsa.PrivateKey.
 func (fragment *EncryptedFragment) Decrypt(privKey rsa.PrivateKey) (Fragment, error) {
 	var err error
 	decryptedFragment := Fragment{
-		OrderID:     fragment.OrderID,
-		OrderType:   fragment.OrderType,
-		OrderParity: fragment.OrderParity,
-		OrderExpiry: fragment.OrderExpiry,
-		ID:          fragment.ID,
+		OrderID:         fragment.OrderID,
+		OrderType:       fragment.OrderType,
+		OrderParity:     fragment.OrderParity,
+		OrderSettlement: fragment.OrderSettlement,
+		OrderExpiry:     fragment.OrderExpiry,
+		ID:              fragment.ID,
 	}
 	if err := decryptedFragment.Tokens.Decrypt(privKey, fragment.Tokens); err != nil {
 		return decryptedFragment, err
