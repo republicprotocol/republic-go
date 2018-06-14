@@ -63,6 +63,7 @@ message EncryptedOrderFragment {
     EncryptedCoExpShare price         = 7;
     EncryptedCoExpShare volume        = 8;
     EncryptedCoExpShare minimumVolume = 9;
+    bytes               nonce         = 10;
 }
 
 enum OrderType {

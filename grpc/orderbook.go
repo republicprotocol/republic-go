@@ -74,6 +74,7 @@ func marshalEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *Enc
 		Price:         marshalEncryptedCoExpShare(orderFragmentIn.Price),
 		Volume:        marshalEncryptedCoExpShare(orderFragmentIn.Volume),
 		MinimumVolume: marshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
+		Nonce:         orderFragmentIn.Nonce,
 	}
 }
 
@@ -87,6 +88,7 @@ func unmarshalEncryptedOrderFragment(orderFragmentIn *EncryptedOrderFragment) or
 		Price:         unmarshalEncryptedCoExpShare(orderFragmentIn.Price),
 		Volume:        unmarshalEncryptedCoExpShare(orderFragmentIn.Volume),
 		MinimumVolume: unmarshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
+		Nonce:         orderFragmentIn.Nonce,
 	}
 	copy(orderFragment.OrderID[:], orderFragmentIn.OrderId)
 	copy(orderFragment.ID[:], orderFragmentIn.Id)
