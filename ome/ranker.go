@@ -146,10 +146,14 @@ func (ranker *delegateRanker) insertStoredComputationsInBackground() {
 			logger.Error(fmt.Sprintf("cannot load existing computations into ranker: %v", err))
 		}
 
-		<-timer.C
-		for _, com := range coms {
-			if com.State != ComputationStateMismatched && com.State != ComputationStateRejected && com.State != ComputationStateSettled {
-				ranker.insertComputation(com)
+		select {
+		case <-ranker.done:
+			return
+		case <-timer.C:
+			for _, com := range coms {
+				if com.State != ComputationStateMismatched && com.State != ComputationStateRejected && com.State != ComputationStateSettled {
+					ranker.insertComputation(com)
+				}
 			}
 		}
 	}()

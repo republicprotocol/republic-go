@@ -141,14 +141,19 @@ func RandomConfigs(n int, b int) ([]config.Config, error) {
 	return configs, nil
 }
 
-// RandomNetworkID generates a random [32]byte array
-func RandomNetworkID() [32]byte {
-	var networkID [32]byte
+// Random32Bytes creates a random [32]byte.
+func Random32Bytes() [32]byte {
+	var res [32]byte
 	i := fmt.Sprintf("%d", rand.Int())
 	hash := crypto.Keccak256([]byte(i))
-	copy(networkID[:], hash)
+	copy(res[:], hash)
 
-	return networkID
+	return res
+}
+
+// RandomNetworkID generates a random [32]byte array
+func RandomNetworkID() [32]byte {
+	return Random32Bytes()
 }
 
 // RandomComputation generates a random computation with empty epoch hash.
