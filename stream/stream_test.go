@@ -18,31 +18,16 @@ const numberOfNodes = 32
 
 var _ = Describe("Streaming", func() {
 
-	var multiAddrs [numberOfNodes]identity.MultiAddress
-	var clients [numberOfNodes]mockClient
-	var servers [numberOfNodes]mockServer
-	var streamers [numberOfNodes]Streamer
-	var err error
-
 	Context("when using streamers", func() {
 
-		BeforeEach(func() {
-			multiAddrs = [numberOfNodes]identity.MultiAddress{}
-			clients = [numberOfNodes]mockClient{}
-			servers = [numberOfNodes]mockServer{}
-			streamers = [numberOfNodes]Streamer{}
-
-			for i := 0; i < numberOfNodes; i++ {
-				multiAddrs[i], err = testutils.RandomMultiAddress()
-				Expect(err).ShouldNot(HaveOccurred())
-
-				clients[i] = newMockClient()
-				servers[i] = newMockServer()
-				streamers[i] = NewStreamRecycler(NewStreamer(multiAddrs[i].Address(), &clients[i], &servers[i]))
-			}
-		})
-
 		It("should abstract connecting to servers and listening for client", func() {
+
+			multiAddrs := [numberOfNodes]identity.MultiAddress{}
+			clients := [numberOfNodes]mockClient{}
+			servers := [numberOfNodes]mockServer{}
+			streamers := [numberOfNodes]Streamer{}
+
+			var err error
 
 			for i := 0; i < numberOfNodes; i++ {
 				multiAddrs[i], err = testutils.RandomMultiAddress()
@@ -74,12 +59,14 @@ var _ = Describe("Streaming", func() {
 
 	Context("when using stream recyclers", func() {
 
-		BeforeEach(func() {
-			time.Sleep(1 * time.Millisecond)
-			multiAddrs = [numberOfNodes]identity.MultiAddress{}
-			clients = [numberOfNodes]mockClient{}
-			servers = [numberOfNodes]mockServer{}
-			streamers = [numberOfNodes]Streamer{}
+		It("should recycle streams for multiple connections", func() {
+
+			multiAddrs := [numberOfNodes]identity.MultiAddress{}
+			clients := [numberOfNodes]mockClient{}
+			servers := [numberOfNodes]mockServer{}
+			streamers := [numberOfNodes]Streamer{}
+
+			var err error
 
 			for i := 0; i < numberOfNodes; i++ {
 				multiAddrs[i], err = testutils.RandomMultiAddress()
@@ -89,9 +76,6 @@ var _ = Describe("Streaming", func() {
 				servers[i] = newMockServer()
 				streamers[i] = NewStreamRecycler(NewStreamer(multiAddrs[i].Address(), &clients[i], &servers[i]))
 			}
-		})
-
-		It("should recycle streams for multiple connections", func() {
 
 			for conns := 0; conns < 4; conns++ {
 				for i := 0; i < numberOfNodes; i++ {
@@ -114,6 +98,22 @@ var _ = Describe("Streaming", func() {
 		})
 
 		It("should not close streams until all references have closed", func() {
+
+			multiAddrs := [numberOfNodes]identity.MultiAddress{}
+			clients := [numberOfNodes]mockClient{}
+			servers := [numberOfNodes]mockServer{}
+			streamers := [numberOfNodes]Streamer{}
+
+			var err error
+
+			for i := 0; i < numberOfNodes; i++ {
+				multiAddrs[i], err = testutils.RandomMultiAddress()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				clients[i] = newMockClient()
+				servers[i] = newMockServer()
+				streamers[i] = NewStreamRecycler(NewStreamer(multiAddrs[i].Address(), &clients[i], &servers[i]))
+			}
 
 			cancelConns := map[int]map[int]map[int]context.CancelFunc{}
 			for i := 0; i < numberOfNodes; i++ {
@@ -176,14 +176,14 @@ var _ = Describe("Streaming", func() {
 		})
 	})
 
-	Context("regression test when epoch change", func() {
+	Context("regression test", func() {
+		It("should only have one stream for the client and server when trying connecting sequentially", func() {
+			multiAddrs := [numberOfNodes]identity.MultiAddress{}
+			clients := [numberOfNodes]mockClient{}
+			servers := [numberOfNodes]mockServer{}
+			streamers := [numberOfNodes]Streamer{}
 
-		BeforeEach(func() {
-			time.Sleep(10 * time.Millisecond)
-			multiAddrs = [numberOfNodes]identity.MultiAddress{}
-			clients = [numberOfNodes]mockClient{}
-			servers = [numberOfNodes]mockServer{}
-			streamers = [numberOfNodes]Streamer{}
+			var err error
 
 			for i := 0; i < numberOfNodes; i++ {
 				multiAddrs[i], err = testutils.RandomMultiAddress()
@@ -193,43 +193,57 @@ var _ = Describe("Streaming", func() {
 				servers[i] = newMockServer()
 				streamers[i] = NewStreamRecycler(NewStreamer(multiAddrs[i].Address(), &clients[i], &servers[i]))
 			}
+
+			for i := 0; i < 1000; i++ {
+				stream, err := streamers[0].Open(context.Background(), multiAddrs[1])
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(stream).ShouldNot(BeNil())
+				stream.Send(&mockMessage{})
+			}
+			if multiAddrs[0].Address() < multiAddrs[1].Address() {
+				Expect(clients[0].streamsCounter).Should(Equal(1))
+			} else {
+				Expect(servers[0].streamsCounter).Should(Equal(1))
+			}
 		})
 
-		//It("should only have one stream for the client and server when trying connecting sequentially", func() {
-		//	for i := 0; i < 1000; i++ {
-		//		stream, err := streamers[0].Open(context.Background(), multiAddrs[1])
-		//		Expect(err).ShouldNot(HaveOccurred())
-		//		Expect(stream).ShouldNot(BeNil())
-		//		stream.Send(&mockMessage{})
-		//	}
-		//	if multiAddrs[0].Address() < multiAddrs[1].Address() {
-		//		Expect(clients[0].streamsCounter).Should(Equal(1))
-		//	} else {
-		//		Expect(servers[0].streamsCounter).Should(Equal(1))
-		//	}
-		//})
-		//
-		//It("should only have one stream for the client and server when trying connecting concurrently", func() {
-		//	wg := new(sync.WaitGroup)
-		//	for i := 0; i < 1000; i++ {
-		//		wg.Add(1)
-		//		go func() {
-		//			defer wg.Done()
-		//			stream, err := streamers[0].Open(context.Background(), multiAddrs[1])
-		//			Expect(err).ShouldNot(HaveOccurred())
-		//			Expect(stream).ShouldNot(BeNil())
-		//			stream.Send(&mockMessage{})
-		//		}()
-		//	}
-		//	wg.Wait()
-		//	if multiAddrs[0].Address() < multiAddrs[1].Address() {
-		//		Expect(clients[0].streamsCounter).Should(Equal(1))
-		//	} else {
-		//		Expect(servers[0].streamsCounter).Should(Equal(1))
-		//	}
-		//})
-	})
+		It("should only have one stream for the client and server when trying connecting concurrently", func() {
+			multiAddrs := [numberOfNodes]identity.MultiAddress{}
+			clients := [numberOfNodes]mockClient{}
+			servers := [numberOfNodes]mockServer{}
+			streamers := [numberOfNodes]Streamer{}
 
+			var err error
+
+			for i := 0; i < numberOfNodes; i++ {
+				multiAddrs[i], err = testutils.RandomMultiAddress()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				clients[i] = newMockClient()
+				servers[i] = newMockServer()
+				streamers[i] = NewStreamRecycler(NewStreamer(multiAddrs[i].Address(), &clients[i], &servers[i]))
+			}
+
+			wg := new(sync.WaitGroup)
+			for i := 0; i < 1000; i++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					stream, err := streamers[0].Open(context.Background(), multiAddrs[1])
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(stream).ShouldNot(BeNil())
+					stream.Send(&mockMessage{})
+				}()
+			}
+			wg.Wait()
+			if multiAddrs[0].Address() < multiAddrs[1].Address() {
+				Expect(clients[0].streamsCounter).Should(Equal(1))
+			} else {
+				Expect(servers[0].streamsCounter).Should(Equal(1))
+			}
+		})
+
+	})
 })
 
 type mockMessage []byte
@@ -246,10 +260,9 @@ func (message *mockMessage) UnmarshalBinary(data []byte) error {
 func (message mockMessage) IsMessage() {}
 
 type mockStream struct {
-	addr        identity.Address
-	connections int
-	sends       *int64
-	recvs       *int64
+	addr  identity.Address
+	sends *int64
+	recvs *int64
 }
 
 func (stream mockStream) Send(message Message) error {
