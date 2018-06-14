@@ -165,11 +165,11 @@ type Order struct {
 	Price         CoExp     `json:"price"`
 	Volume        CoExp     `json:"volume"`
 	MinimumVolume CoExp     `json:"minimumVolume"`
-	Nonce         int64     `json:"nonce"`
+	Nonce         uint64    `json:"nonce"`
 }
 
 // NewOrder returns a new Order and computes the ID.
-func NewOrder(ty Type, parity Parity, expiry time.Time, tokens Tokens, price, volume, minimumVolume CoExp, nonce int64) Order {
+func NewOrder(ty Type, parity Parity, expiry time.Time, tokens Tokens, price, volume, minimumVolume CoExp, nonce uint64) Order {
 	order := Order{
 		Type:          ty,
 		Parity:        parity,
@@ -256,7 +256,7 @@ func (order *Order) Split(n, k int64) ([]Fragment, error) {
 	if err != nil {
 		return nil, err
 	}
-	nonces, err := shamir.Split(n, k, uint64(order.Nonce))
+	nonces, err := shamir.Split(n, k, order.Nonce)
 	if err != nil {
 		return nil, err
 	}

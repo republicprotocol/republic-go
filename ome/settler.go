@@ -64,10 +64,12 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 			buyFragment.Price.Co, buyFragment.Price.Exp,
 			buyFragment.Volume.Co, buyFragment.Volume.Exp,
 			buyFragment.MinimumVolume.Co, buyFragment.MinimumVolume.Exp,
+			buyFragment.Nonce,
 			sellFragment.Tokens,
 			sellFragment.Price.Co, sellFragment.Price.Exp,
 			sellFragment.Volume.Co, sellFragment.Volume.Exp,
 			sellFragment.MinimumVolume.Co, sellFragment.MinimumVolume.Exp,
+			sellFragment.Nonce,
 		},
 	}
 	copy(join.ID[:], crypto.Keccak256(buyFragment.OrderID[:], sellFragment.OrderID[:]))
@@ -77,11 +79,8 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot join buy = %v, sell = %v: unexpected number of values: %v", base64.StdEncoding.EncodeToString(buyFragment.OrderID[:8]), base64.StdEncoding.EncodeToString(sellFragment.OrderID[:8]), len(values)))
 			return
 		}
-		buy := order.NewOrder(buyFragment.OrderType, buyFragment.OrderParity, buyFragment.OrderExpiry, order.Tokens(values[0]), order.NewCoExp(values[1], values[2]), order.NewCoExp(values[3], values[4]), order.NewCoExp(values[5], values[6]), 0)
-		buy.ID = buyFragment.OrderID
-
-		sell := order.NewOrder(sellFragment.OrderType, sellFragment.OrderParity, sellFragment.OrderExpiry, order.Tokens(values[7]), order.NewCoExp(values[8], values[9]), order.NewCoExp(values[10], values[11]), order.NewCoExp(values[12], values[13]), 0)
-		sell.ID = sellFragment.OrderID
+		buy := order.NewOrder(buyFragment.OrderType, buyFragment.OrderParity, buyFragment.OrderExpiry, order.Tokens(values[0]), order.NewCoExp(values[1], values[2]), order.NewCoExp(values[3], values[4]), order.NewCoExp(values[5], values[6]), values[7])
+		sell := order.NewOrder(sellFragment.OrderType, sellFragment.OrderParity, sellFragment.OrderExpiry, order.Tokens(values[8]), order.NewCoExp(values[9], values[10]), order.NewCoExp(values[11], values[12]), order.NewCoExp(values[13], values[14]), values[15])
 
 		settler.settleOrderMatch(com, buy, sell)
 

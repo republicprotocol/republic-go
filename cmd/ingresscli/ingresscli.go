@@ -48,7 +48,7 @@ func main() {
 	}
 	log.Printf("ethereum %v", auth.From.Hex())
 
-	nonce := rand.Int63()
+	nonce := rand.Uint64()
 	one := order.CoExp{
 		Co:  200,
 		Exp: 26,

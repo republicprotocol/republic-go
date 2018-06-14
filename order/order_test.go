@@ -25,7 +25,7 @@ var _ = Describe("Orders", func() {
 
 		It("should return true for orders that are equal", func() {
 			expiry := time.Now().Add(time.Hour)
-			nonce := int64(10)
+			nonce := uint64(10)
 			lhs := NewOrder(TypeLimit, ParityBuy, expiry, TokensBTCETH, price, maxVolume, minVolume, nonce)
 			rhs := NewOrder(TypeLimit, ParityBuy, expiry, TokensBTCETH, price, maxVolume, minVolume, nonce)
 
@@ -34,9 +34,9 @@ var _ = Describe("Orders", func() {
 		})
 
 		It("should return false for orders that are not equal", func() {
-			nonce := int64(10)
+			nonce := uint64(10)
 			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
-			nonce = int64(20)
+			nonce = uint64(20)
 			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			Ω(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(false))
@@ -47,7 +47,7 @@ var _ = Describe("Orders", func() {
 	Context("when splitting orders", func() {
 
 		It("should return the correct number of order fragments", func() {
-			nonce := int64(10)
+			nonce := uint64(10)
 			ord := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			fragments, err := ord.Split(n, k)
@@ -57,7 +57,7 @@ var _ = Describe("Orders", func() {
 		})
 
 		It("should return different order fragments", func() {
-			nonce := int64(10)
+			nonce := uint64(10)
 			ord := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			fragments, err := ord.Split(n, k)
@@ -74,9 +74,9 @@ var _ = Describe("Orders", func() {
 	Context("when reading and writing orders from files", func() {
 
 		It("should unmarshal and load orders from file", func() {
-			nonce := int64(10)
+			nonce := uint64(10)
 			ord1 := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
-			nonce = int64(20)
+			nonce = uint64(20)
 			ord2 := NewOrder(TypeLimit, ParitySell, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			err := WriteOrdersToJSONFile("orders.out", []*Order{&ord1, &ord2})
@@ -88,7 +88,7 @@ var _ = Describe("Orders", func() {
 		})
 
 		It("should unmarshal and load a single order from file", func() {
-			nonce := int64(10)
+			nonce := uint64(10)
 			ord1 := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			err := writeOrderToJSONFile("orders.out", &ord1)
