@@ -194,7 +194,7 @@ func (renLedger *RenLedger) BuyOrders(offset, limit int) ([]order.ID, error) {
 	defer renLedger.ordersMu.Unlock()
 	defer renLedger.buyOrdersMu.Unlock()
 
-	if offset >= len(renLedger.buyOrders) {
+	if offset > len(renLedger.buyOrders) {
 		return []order.ID{}, errors.New("index out of range")
 	}
 	end := offset + limit
@@ -211,7 +211,7 @@ func (renLedger *RenLedger) SellOrders(offset, limit int) ([]order.ID, error) {
 	defer renLedger.ordersMu.Unlock()
 	defer renLedger.buyOrdersMu.Unlock()
 
-	if offset >= len(renLedger.sellOrders) {
+	if offset > len(renLedger.sellOrders) {
 		return []order.ID{}, errors.New("index out of range")
 	}
 	end := offset + limit
