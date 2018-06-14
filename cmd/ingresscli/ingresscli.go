@@ -100,6 +100,7 @@ func main() {
 			marshaledOrdFragment.ID = base64.StdEncoding.EncodeToString(encryptedFragment.ID[:])
 			marshaledOrdFragment.OrderID = base64.StdEncoding.EncodeToString(encryptedFragment.OrderID[:])
 			marshaledOrdFragment.OrderParity = encryptedFragment.OrderParity
+			marshaledOrdFragment.OrderSettlement = encryptedFragment.OrderSettlement
 			marshaledOrdFragment.OrderType = encryptedFragment.OrderType
 			marshaledOrdFragment.OrderExpiry = encryptedFragment.OrderExpiry.Unix()
 			marshaledOrdFragment.Tokens = base64.StdEncoding.EncodeToString(encryptedFragment.Tokens)

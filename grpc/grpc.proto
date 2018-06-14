@@ -53,17 +53,18 @@ message OpenOrderResponse {
 }
 
 message EncryptedOrderFragment {
-    bytes       orderId     = 1;
-	OrderType   orderType   = 2;
-	OrderParity orderParity = 3;
-    int64       orderExpiry = 4;
+    bytes           orderId         = 1;
+	OrderType       orderType       = 2;
+    OrderParity     orderParity     = 3;
+    OrderSettlement orderSettlement = 4;
+    int64           orderExpiry     = 5;
     
-    bytes               id            = 5;
-    bytes               tokens        = 6;
-    EncryptedCoExpShare price         = 7;
-    EncryptedCoExpShare volume        = 8;
-    EncryptedCoExpShare minimumVolume = 9;
-    bytes               nonce         = 10;
+    bytes               id            = 6;
+    bytes               tokens        = 7;
+    EncryptedCoExpShare price         = 8;
+    EncryptedCoExpShare volume        = 9;
+    EncryptedCoExpShare minimumVolume = 10;
+    bytes               nonce         = 11;
 }
 
 enum OrderType {
@@ -74,6 +75,12 @@ enum OrderType {
 enum OrderParity {
     Buy  = 0;
     Sell = 1;
+}
+
+enum OrderSettlement {
+    Nil = 0;
+    RenEx = 1;
+    RenExAtomic = 2;
 }
 
 message EncryptedCoExpShare {

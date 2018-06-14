@@ -64,10 +64,11 @@ func (service *OrderbookService) OpenOrder(ctx context.Context, request *OpenOrd
 
 func marshalEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *EncryptedOrderFragment {
 	return &EncryptedOrderFragment{
-		OrderId:     orderFragmentIn.OrderID[:],
-		OrderType:   OrderType(orderFragmentIn.OrderType),
-		OrderParity: OrderParity(orderFragmentIn.OrderParity),
-		OrderExpiry: orderFragmentIn.OrderExpiry.Unix(),
+		OrderId:         orderFragmentIn.OrderID[:],
+		OrderType:       OrderType(orderFragmentIn.OrderType),
+		OrderParity:     OrderParity(orderFragmentIn.OrderParity),
+		OrderSettlement: OrderSettlement(orderFragmentIn.OrderSettlement),
+		OrderExpiry:     orderFragmentIn.OrderExpiry.Unix(),
 
 		Id:            orderFragmentIn.ID[:],
 		Tokens:        orderFragmentIn.Tokens,
@@ -80,9 +81,10 @@ func marshalEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *Enc
 
 func unmarshalEncryptedOrderFragment(orderFragmentIn *EncryptedOrderFragment) order.EncryptedFragment {
 	orderFragment := order.EncryptedFragment{
-		OrderType:   order.Type(orderFragmentIn.OrderType),
-		OrderParity: order.Parity(orderFragmentIn.OrderParity),
-		OrderExpiry: time.Unix(orderFragmentIn.OrderExpiry, 0),
+		OrderType:       order.Type(orderFragmentIn.OrderType),
+		OrderParity:     order.Parity(orderFragmentIn.OrderParity),
+		OrderSettlement: order.Settlement(orderFragmentIn.OrderSettlement),
+		OrderExpiry:     time.Unix(orderFragmentIn.OrderExpiry, 0),
 
 		Tokens:        orderFragmentIn.Tokens,
 		Price:         unmarshalEncryptedCoExpShare(orderFragmentIn.Price),
