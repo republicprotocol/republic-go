@@ -42,7 +42,7 @@ var _ = Describe("LevelDB storage", func() {
 			buyPointer, err := db.BuyPointer()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(buyPointer).Should(Equal(0))
-			sellPointer, err := db.BuyPointer()
+			sellPointer, err := db.SellPointer()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(sellPointer).Should(Equal(0))
 			err = db.Close()
