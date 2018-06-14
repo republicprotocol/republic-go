@@ -21,11 +21,13 @@ func (id FragmentID) Equal(other FragmentID) bool {
 // A Fragment is a secret share of an Order, created using Shamir's secret
 // sharing on the secure fields in an Order.
 type Fragment struct {
-	OrderID       ID           `json:"orderID"`
-	OrderType     Type         `json:"orderType"`
-	OrderParity   Parity       `json:"orderParity"`
-	OrderExpiry   time.Time    `json:"orderExpiry"`
-	ID            FragmentID   `json:"id"`
+	OrderID         ID         `json:"orderID"`
+	OrderType       Type       `json:"orderType"`
+	OrderParity     Parity     `json:"orderParity"`
+	OrderSettlement Settlement `json:"orderSettlement"`
+	OrderExpiry     time.Time  `json:"orderExpiry"`
+	ID              FragmentID `json:"id"`
+
 	Tokens        shamir.Share `json:"tokens"`
 	Price         CoExpShare   `json:"price"`
 	Volume        CoExpShare   `json:"volume"`
@@ -34,12 +36,14 @@ type Fragment struct {
 }
 
 // NewFragment returns a new Fragment and computes the FragmentID.
-func NewFragment(orderID ID, orderType Type, orderParity Parity, orderExpiry time.Time, tokens shamir.Share, price, volume, minimumVolume CoExpShare, nonce shamir.Share) Fragment {
+func NewFragment(orderID ID, orderType Type, orderParity Parity, orderSettlement Settlement, orderExpiry time.Time, tokens shamir.Share, price, volume, minimumVolume CoExpShare, nonce shamir.Share) Fragment {
 	fragment := Fragment{
-		OrderID:       orderID,
-		OrderType:     orderType,
-		OrderParity:   orderParity,
-		OrderExpiry:   orderExpiry,
+		OrderID:         orderID,
+		OrderType:       orderType,
+		OrderParity:     orderParity,
+		OrderSettlement: orderSettlement,
+		OrderExpiry:     orderExpiry,
+
 		Tokens:        tokens,
 		Price:         price,
 		Volume:        volume,
@@ -66,6 +70,7 @@ func (fragment *Fragment) Bytes() []byte {
 	binary.Write(buf, binary.BigEndian, fragment.OrderType)
 	binary.Write(buf, binary.BigEndian, fragment.OrderID)
 	binary.Write(buf, binary.BigEndian, fragment.OrderParity)
+	binary.Write(buf, binary.BigEndian, fragment.OrderSettlement)
 	binary.Write(buf, binary.BigEndian, fragment.OrderExpiry.Unix())
 	binary.Write(buf, binary.BigEndian, fragment.Tokens)
 	binary.Write(buf, binary.BigEndian, fragment.Price)

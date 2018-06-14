@@ -26,8 +26,8 @@ var _ = Describe("Orders", func() {
 		It("should return true for orders that are equal", func() {
 			expiry := time.Now().Add(time.Hour)
 			nonce := uint64(10)
-			lhs := NewOrder(TypeLimit, ParityBuy, expiry, TokensBTCETH, price, maxVolume, minVolume, nonce)
-			rhs := NewOrder(TypeLimit, ParityBuy, expiry, TokensBTCETH, price, maxVolume, minVolume, nonce)
+			lhs := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, expiry, TokensBTCETH, price, maxVolume, minVolume, nonce)
+			rhs := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, expiry, TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			Ω(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(true))
 			Ω(lhs.Equal(&rhs)).Should(Equal(true))
@@ -35,9 +35,9 @@ var _ = Describe("Orders", func() {
 
 		It("should return false for orders that are not equal", func() {
 			nonce := uint64(10)
-			lhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			lhs := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 			nonce = uint64(20)
-			rhs := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			rhs := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			Ω(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(false))
 			Ω(lhs.Equal(&rhs)).Should(Equal(false))
@@ -48,7 +48,7 @@ var _ = Describe("Orders", func() {
 
 		It("should return the correct number of order fragments", func() {
 			nonce := uint64(10)
-			ord := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			fragments, err := ord.Split(n, k)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -58,7 +58,7 @@ var _ = Describe("Orders", func() {
 
 		It("should return different order fragments", func() {
 			nonce := uint64(10)
-			ord := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			fragments, err := ord.Split(n, k)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -75,9 +75,9 @@ var _ = Describe("Orders", func() {
 
 		It("should unmarshal and load orders from file", func() {
 			nonce := uint64(10)
-			ord1 := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord1 := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 			nonce = uint64(20)
-			ord2 := NewOrder(TypeLimit, ParitySell, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord2 := NewOrder(TypeLimit, ParitySell, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			err := WriteOrdersToJSONFile("orders.out", []*Order{&ord1, &ord2})
 			Ω(err).ShouldNot(HaveOccurred())
@@ -89,7 +89,7 @@ var _ = Describe("Orders", func() {
 
 		It("should unmarshal and load a single order from file", func() {
 			nonce := uint64(10)
-			ord1 := NewOrder(TypeLimit, ParityBuy, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord1 := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			err := writeOrderToJSONFile("orders.out", &ord1)
 			Ω(err).ShouldNot(HaveOccurred())
