@@ -30,10 +30,11 @@ type Fragment struct {
 	Price         CoExpShare   `json:"price"`
 	Volume        CoExpShare   `json:"volume"`
 	MinimumVolume CoExpShare   `json:"minimumVolume"`
+	Nonce         shamir.Share `json:"nonce"`
 }
 
 // NewFragment returns a new Fragment and computes the FragmentID.
-func NewFragment(orderID ID, orderType Type, orderParity Parity, orderExpiry time.Time, tokens shamir.Share, price, volume, minimumVolume CoExpShare) Fragment {
+func NewFragment(orderID ID, orderType Type, orderParity Parity, orderExpiry time.Time, tokens shamir.Share, price, volume, minimumVolume CoExpShare, nonce shamir.Share) Fragment {
 	fragment := Fragment{
 		OrderID:       orderID,
 		OrderType:     orderType,
@@ -43,6 +44,7 @@ func NewFragment(orderID ID, orderType Type, orderParity Parity, orderExpiry tim
 		Price:         price,
 		Volume:        volume,
 		MinimumVolume: minimumVolume,
+		Nonce:         nonce,
 	}
 	fragment.ID = FragmentID(fragment.Hash())
 	return fragment
@@ -69,6 +71,7 @@ func (fragment *Fragment) Bytes() []byte {
 	binary.Write(buf, binary.BigEndian, fragment.Price)
 	binary.Write(buf, binary.BigEndian, fragment.Volume)
 	binary.Write(buf, binary.BigEndian, fragment.MinimumVolume)
+	binary.Write(buf, binary.BigEndian, fragment.Nonce)
 	return buf.Bytes()
 }
 
@@ -82,7 +85,8 @@ func (fragment *Fragment) Equal(other *Fragment) bool {
 		fragment.Tokens.Equal(&other.Tokens) &&
 		fragment.Price.Equal(&other.Price) &&
 		fragment.Volume.Equal(&other.Volume) &&
-		fragment.MinimumVolume.Equal(&other.MinimumVolume)
+		fragment.MinimumVolume.Equal(&other.MinimumVolume) &&
+		fragment.Nonce.Equal(&other.Nonce)
 }
 
 // IsCompatible returns true when two Fragments are compatible for a
@@ -130,6 +134,10 @@ func (fragment *Fragment) Encrypt(pubKey rsa.PublicKey) (EncryptedFragment, erro
 	if err != nil {
 		return encryptedFragment, err
 	}
+	encryptedFragment.Nonce, err = fragment.Nonce.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
 	return encryptedFragment, nil
 }
 
@@ -145,6 +153,7 @@ type EncryptedFragment struct {
 	Price         EncryptedCoExpShare `json:"price"`
 	Volume        EncryptedCoExpShare `json:"volume"`
 	MinimumVolume EncryptedCoExpShare `json:"minimumVolume"`
+	Nonce         []byte              `json:"nonce"`
 }
 
 // Decrypt an EncryptedFragment using an rsa.PrivateKey.
@@ -170,6 +179,9 @@ func (fragment *EncryptedFragment) Decrypt(privKey rsa.PrivateKey) (Fragment, er
 	}
 	decryptedFragment.MinimumVolume, err = fragment.MinimumVolume.Decrypt(privKey)
 	if err != nil {
+		return decryptedFragment, err
+	}
+	if err := decryptedFragment.Nonce.Decrypt(privKey, fragment.Nonce); err != nil {
 		return decryptedFragment, err
 	}
 	return decryptedFragment, nil

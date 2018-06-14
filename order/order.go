@@ -256,6 +256,10 @@ func (order *Order) Split(n, k int64) ([]Fragment, error) {
 	if err != nil {
 		return nil, err
 	}
+	nonces, err := shamir.Split(n, k, uint64(order.Nonce))
+	if err != nil {
+		return nil, err
+	}
 	fragments := make([]Fragment, n)
 	for i := range fragments {
 		fragments[i] = NewFragment(
@@ -267,6 +271,7 @@ func (order *Order) Split(n, k int64) ([]Fragment, error) {
 			CoExpShare{Co: priceCos[i], Exp: priceExps[i]},
 			CoExpShare{Co: volumeCos[i], Exp: volumeExps[i]},
 			CoExpShare{Co: minimumVolumeCos[i], Exp: minimumVolumeExps[i]},
+			nonces[i],
 		)
 	}
 	return fragments, nil
