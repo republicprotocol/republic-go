@@ -12,7 +12,7 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
-// DarknodeRegistry is the dark node interface
+// RenExAccounts implements the cal.DarkpoolAccounts interface
 type RenExAccounts struct {
 	network      ethereum.Network
 	context      context.Context
@@ -23,7 +23,7 @@ type RenExAccounts struct {
 	address      common.Address
 }
 
-// NewRenExAccounts returns a Dark node registrar
+// NewRenExAccounts returns a new RenExAccounts
 func NewRenExAccounts(ctx context.Context, conn ethereum.Conn, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (RenExAccounts, error) {
 	contract, err := NewRenExSettlement(common.HexToAddress(conn.Config.RenExAccountsAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
@@ -53,7 +53,7 @@ func (accounts *RenExAccounts) SubmitOrder(ord order.Order) error {
 	return err
 }
 
-// Submit order to the RenEx accounts
+// SubmitMatch will submit a matched order pair to the RenEx accounts
 func (accounts *RenExAccounts) SubmitMatch(buy, sell order.ID) error {
 	accounts.transactOpts.GasLimit = 500000
 	tx, err := accounts.binding.SubmitMatch(accounts.transactOpts, buy, sell)
@@ -64,7 +64,7 @@ func (accounts *RenExAccounts) SubmitMatch(buy, sell order.ID) error {
 	return err
 }
 
-// Settle will settle the confirmed order pairs in the RenEx accounts
+// Settle implements the cal.DarkpoolAccounts interface
 func (accounts *RenExAccounts) Settle(buy order.Order, sell order.Order) error {
 	err := accounts.SubmitOrder(buy)
 	if err != nil {

@@ -1,14 +1,9 @@
 package ledger
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"math/big"
-	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -19,6 +14,10 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+// ErrMismatchedOrderLengths is returned when there isn't an equal number of order IDs,
+// signatures and order parities
+var ErrMismatchedOrderLengths = errors.New("mismatched order lengths")
+
 // BlocksForConfirmation is the number of Ethereum blocks required to consider
 // changes to an order's status (Open, Canceled or Confirmed) in the Ledger to
 // be confirmed. The functions `OpenBuyOrder`, `OpenSellOrder`, `CancelOrder`
@@ -27,7 +26,7 @@ import (
 const BlocksForConfirmation = 1
 
 // FIXME: Protect me with a mutex!
-// RenLedgerContract
+// RenLedgerContract implements the cal.RenLedger interface
 type RenLedgerContract struct {
 	network      ethereum.Network
 	context      context.Context
@@ -56,9 +55,10 @@ func NewRenLedgerContract(ctx context.Context, conn ethereum.Conn, transactOpts 
 	}, nil
 }
 
+// OpenOrders implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) OpenOrders(signatures [][65]byte, orderIDs []order.ID, orderParities []order.Parity) (int, error) {
 	if len(signatures) != len(orderIDs) || len(signatures) != len(orderParities) {
-		return 0, errors.New("mismatched order lengths")
+		return 0, ErrMismatchedOrderLengths
 	}
 
 	nonce, err := ledger.conn.Client.PendingNonceAt(context.Background(), ledger.transactOpts.From)
@@ -84,81 +84,41 @@ func (ledger *RenLedgerContract) OpenOrders(signatures [][65]byte, orderIDs []or
 	}
 
 	for i := range txs {
-		_, err = ledger.conn.PatchedWaitMined(ledger.context, txs[i])
+		err := ledger.waitForOrderDepth(txs[i], orderIDs[i])
 		if err != nil {
 			return i, err
 		}
-		for {
-			depth, err := ledger.binding.OrderDepth(ledger.callOpts, orderIDs[i])
-			if err != nil {
-				return i, err
-			}
-			if depth.Uint64() >= BlocksForConfirmation {
-				break
-			}
-		}
 	}
+
 	return len(txs), err
 }
 
 // OpenBuyOrder implements the cal.RenLedger interface.
 func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) error {
 	ledger.transactOpts.GasPrice = big.NewInt(int64(20000000000))
+
 	tx, err := ledger.binding.OpenBuyOrder(ledger.transactOpts, signature[:], id)
-
 	if err != nil {
 		return err
 	}
-	_, err = ledger.conn.PatchedWaitMined(ledger.context, tx)
-	if err != nil {
-		return err
-	}
-
-	for {
-		depth, err := ledger.binding.OrderDepth(ledger.callOpts, id)
-		if err != nil {
-			return err
-		}
-
-		if depth.Uint64() >= BlocksForConfirmation {
-			return nil
-		}
-		time.Sleep(time.Second * 14)
-	}
+	
+	return ledger.waitForOrderDepth(tx, id)
 }
 
 // OpenSellOrder implements the cal.RenLedger interface.
 func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) error {
 	ledger.transactOpts.GasPrice = big.NewInt(int64(20000000000))
+
 	tx, err := ledger.binding.OpenSellOrder(ledger.transactOpts, signature[:], id)
-
-	if err != nil {
-		return err
-	}
-	_, err = ledger.conn.PatchedWaitMined(ledger.context, tx)
 	if err != nil {
 		return err
 	}
 
-	for {
-		depth, err := ledger.binding.OrderDepth(ledger.callOpts, id)
-		if err != nil {
-			return err
-		}
-
-		if depth.Uint64() >= BlocksForConfirmation {
-			return nil
-		}
-		time.Sleep(time.Second * 14)
-	}
+	return ledger.waitForOrderDepth(tx, id)
 }
 
 // CancelOrder implements the cal.RenLedger interface.
 func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) error {
-	// before, err := ledger.binding.OrderDepth(ledger.callOpts, id)
-	// if err != nil {
-	// 	return err
-	// }
 	tx, err := ledger.binding.CancelOrder(ledger.transactOpts, signature[:], id)
 	if err != nil {
 		return err
@@ -168,19 +128,9 @@ func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) er
 		return err
 	}
 	return nil
-	// for {
-	// 	depth, err := ledger.binding.OrderDepth(ledger.callOpts, id)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	if depth.Uint64()-before.Uint64() >= BlocksForConfirmation {
-	// 		return nil
-	// 	}
-	// 	time.Sleep(time.Second * 14)
-	// }
 }
 
+// ConfirmOrder implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, match order.ID) error {
 	orderMatches := [][32]byte{match}
 
@@ -209,6 +159,7 @@ func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, match order.ID) error
 	}
 }
 
+// Priority implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) Priority(id order.ID) (uint64, error) {
 	priority, err := ledger.binding.OrderPriority(ledger.callOpts, id)
 	if err != nil {
@@ -218,6 +169,7 @@ func (ledger *RenLedgerContract) Priority(id order.ID) (uint64, error) {
 	return priority.Uint64(), nil
 }
 
+// Status implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) Status(id order.ID) (order.Status, error) {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
@@ -229,6 +181,7 @@ func (ledger *RenLedgerContract) Status(id order.ID) (order.Status, error) {
 	return order.Status(state), nil
 }
 
+// OrderMatch implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) OrderMatch(id order.ID) (order.ID, error) {
 
 	matches, err := ledger.binding.OrderMatch(ledger.callOpts, [32]byte(id))
@@ -246,23 +199,11 @@ func (ledger *RenLedgerContract) OrderMatch(id order.ID) (order.ID, error) {
 	return orderIDs[0], nil
 }
 
-func (ledger *RenLedgerContract) Matches(id order.ID) ([]order.ID, error) {
-	matches, err := ledger.binding.OrderMatch(ledger.callOpts, id)
-	if err != nil {
-		return nil, err
-	}
-	orderIDs := make([]order.ID, len(matches))
-	for i := range matches {
-		orderIDs[i] = matches[i]
-	}
-
-	return orderIDs, nil
-}
-
+// BuyOrders implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) BuyOrders(offset, limit int) ([]order.ID, error) {
 	orders := make([]order.ID, 0, limit)
 	for i := 0; i < limit; i++ {
-		ordId, ok, err := ledger.binding.BuyOrder(ledger.callOpts, big.NewInt(int64(offset+i)))
+		ordID, ok, err := ledger.binding.BuyOrder(ledger.callOpts, big.NewInt(int64(offset+i)))
 		if !ok {
 			return orders, nil
 		}
@@ -270,15 +211,16 @@ func (ledger *RenLedgerContract) BuyOrders(offset, limit int) ([]order.ID, error
 			return nil, err
 		}
 
-		orders = append(orders, ordId)
+		orders = append(orders, ordID)
 	}
 	return orders, nil
 }
 
+// SellOrders implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) SellOrders(offset, limit int) ([]order.ID, error) {
 	orders := make([]order.ID, 0, limit)
 	for i := 0; i < limit; i++ {
-		ordId, ok, err := ledger.binding.SellOrder(ledger.callOpts, big.NewInt(int64(offset+i)))
+		ordID, ok, err := ledger.binding.SellOrder(ledger.callOpts, big.NewInt(int64(offset+i)))
 		if !ok {
 			return orders, nil
 		}
@@ -286,12 +228,13 @@ func (ledger *RenLedgerContract) SellOrders(offset, limit int) ([]order.ID, erro
 			return nil, err
 		}
 
-		orders = append(orders, ordId)
+		orders = append(orders, ordID)
 	}
 
 	return orders, nil
 }
 
+// Trader implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) Trader(id order.ID) (string, error) {
 	address, err := ledger.binding.OrderTrader(ledger.callOpts, id)
 	if err != nil {
@@ -301,6 +244,7 @@ func (ledger *RenLedgerContract) Trader(id order.ID) (string, error) {
 	return address.String(), nil
 }
 
+// Broker returns the address of the broker who submitted the order
 func (ledger *RenLedgerContract) Broker(id order.ID) (common.Address, error) {
 	address, err := ledger.binding.OrderBroker(ledger.callOpts, id)
 	if err != nil {
@@ -310,6 +254,7 @@ func (ledger *RenLedgerContract) Broker(id order.ID) (common.Address, error) {
 	return address, nil
 }
 
+// Confirmer returns the address of the confirmer who submitted the order
 func (ledger *RenLedgerContract) Confirmer(id order.ID) (common.Address, error) {
 	address, err := ledger.binding.OrderConfirmer(ledger.callOpts, id)
 	if err != nil {
@@ -319,51 +264,12 @@ func (ledger *RenLedgerContract) Confirmer(id order.ID) (common.Address, error) 
 	return address, nil
 }
 
+// Fee implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) Fee() (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-// GetBlockNumberOfTx gets the block number of the transaction hash.
-// It calls infura using json-RPC.
-func (ledger *RenLedgerContract) GetBlockNumberOfTx(transaction common.Hash) (uint64, error) {
-	switch ledger.conn.Config.Network {
-	// According to this https://github.com/ethereum/go-ethereum/issues/15210
-	// we have to use json-rpc to get the block number.
-	case ethereum.NetworkRopsten:
-		hash := []byte(`{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["` + transaction.Hex() + `"],"id":1}`)
-		resp, err := http.Post("https://ropsten.infura.io", "application/json", bytes.NewBuffer(hash))
-		if err != nil {
-			return 0, err
-		}
-
-		// Read the response status
-		if resp.StatusCode != http.StatusOK {
-			return 0, fmt.Errorf("request failed with status code %d", resp.StatusCode)
-		}
-		// Get the result
-		var data map[string]interface{}
-		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-			return 0, err
-		}
-		if result, ok := data["result"]; ok {
-			if blockNumber, ok := result.(map[string]interface{})["blockNumber"]; ok {
-				if blockNumberStr, ok := blockNumber.(string); ok {
-					return strconv.ParseUint(blockNumberStr[2:], 16, 64)
-				}
-			}
-		}
-		return 0, errors.New("fail to unmarshal the json response")
-	}
-
-	return 0, nil
-}
-
-// CurrentBlock gets the latest block.
-func (ledger *RenLedgerContract) CurrentBlock() (*types.Block, error) {
-	return ledger.conn.Client.BlockByNumber(ledger.context, nil)
-}
-
-// Depth will return depth of confirmation blocks
+// Depth implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) Depth(orderID order.ID) (uint, error) {
 
 	depth, err := ledger.binding.OrderDepth(ledger.callOpts, orderID)
@@ -374,7 +280,7 @@ func (ledger *RenLedgerContract) Depth(orderID order.ID) (uint, error) {
 	return uint(depth.Uint64()), nil
 }
 
-// BlockNumber returns the block number in which the order is last modified.
+// BlockNumber implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) BlockNumber(orderID order.ID) (uint, error) {
 	blockNumber, err := ledger.binding.OrderBlockNumber(ledger.callOpts, orderID)
 	if err != nil {
@@ -384,6 +290,7 @@ func (ledger *RenLedgerContract) BlockNumber(orderID order.ID) (uint, error) {
 	return uint(blockNumber.Uint64()), nil
 }
 
+// OrderCounts returns the total number of orders in the ledger
 func (ledger *RenLedgerContract) OrderCounts() (uint64, error) {
 	counts, err := ledger.binding.GetOrdersCount(ledger.callOpts)
 	if err != nil {
@@ -393,6 +300,7 @@ func (ledger *RenLedgerContract) OrderCounts() (uint64, error) {
 	return counts.Uint64(), nil
 }
 
+// OrderID returns the order at a given index in the ledger
 func (ledger *RenLedgerContract) OrderID(index int) ([32]byte, error) {
 	i := big.NewInt(int64(index))
 	id, exist, err := ledger.binding.GetOrder(ledger.callOpts, i)
@@ -404,4 +312,23 @@ func (ledger *RenLedgerContract) OrderID(index int) ([32]byte, error) {
 	}
 
 	return id, nil
+}
+
+func (ledger *RenLedgerContract) waitForOrderDepth(tx *types.Transaction, id order.ID) error {
+	_, err := ledger.conn.PatchedWaitMined(ledger.context, tx)
+	if err != nil {
+		return err
+	}
+
+	for {
+		depth, err := ledger.binding.OrderDepth(ledger.callOpts, id)
+		if err != nil {
+			return err
+		}
+
+		if depth.Uint64() >= BlocksForConfirmation {
+			return nil
+		}
+		time.Sleep(time.Second * 14)
+	}
 }

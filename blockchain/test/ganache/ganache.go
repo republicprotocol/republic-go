@@ -167,20 +167,6 @@ func StartAndConnect() (ethereum.Conn, error) {
 	return conn, nil
 }
 
-// Snapshot current Ganache state
-func snapshot(conn ethereum.Conn) (string, error) {
-	var result string
-	err := conn.RawClient.CallContext(context.Background(), &result, "evm_snapshot")
-	return result, err
-}
-
-// RevertToSnapshot resets Ganache state to most recent snapshot
-func revertToSnapshot(conn ethereum.Conn, snaptshotID string) error {
-	var result bool
-	err := conn.RawClient.CallContext(context.Background(), &result, "evm_revert", snaptshotID)
-	return err
-}
-
 // DeployContracts to Ganache deploys REN and DNR contracts using the genesis private key
 func DeployContracts(conn ethereum.Conn) error {
 	return deployContracts(conn, genesisTransactor)
@@ -216,6 +202,7 @@ func DistributeREN(conn ethereum.Conn, addresses ...common.Address) error {
 	return nil
 }
 
+// NewAccount will return a new account along with it's associated address.
 func NewAccount(conn ethereum.Conn, eth *big.Int) (*bind.TransactOpts, common.Address, error) {
 	ethereumPair, err := crypto.GenerateKey()
 	if err != nil {
@@ -332,4 +319,18 @@ func deployRenExAccounts(ctx context.Context, conn ethereum.Conn, auth *bind.Tra
 	}
 	conn.PatchedWaitDeployed(ctx, tx)
 	return accounts, address, nil
+}
+
+// Snapshot current Ganache state
+func snapshot(conn ethereum.Conn) (string, error) {
+	var result string
+	err := conn.RawClient.CallContext(context.Background(), &result, "evm_snapshot")
+	return result, err
+}
+
+// RevertToSnapshot resets Ganache state to most recent snapshot
+func revertToSnapshot(conn ethereum.Conn, snaptshotID string) error {
+	var result bool
+	err := conn.RawClient.CallContext(context.Background(), &result, "evm_revert", snaptshotID)
+	return err
 }
