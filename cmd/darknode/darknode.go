@@ -110,6 +110,8 @@ func main() {
 		// Wait for the gRPC server to boot
 		time.Sleep(time.Second)
 
+		// FIXME: Wait until registration has been approved.
+
 		// Bootstrap into the network
 		fmtStr := "bootstrapping\n"
 		for _, multiAddr := range config.BootstrapMultiAddresses {
