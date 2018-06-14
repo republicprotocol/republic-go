@@ -1,7 +1,6 @@
 package testutils
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"math/big"
@@ -19,13 +18,6 @@ const (
 	GenesisSeller = "0x8DF05f77e8aa74D3D8b5342e6007319A470a64ce"
 )
 
-// Order is the internal struct used in the renLedger.
-type Order struct {
-	status   order.Status
-	parity   order.Parity
-	priority uint64
-}
-
 // RenLedger is a mock implementation of the cal.Ledger.
 type RenLedger struct {
 	buyOrdersMu *sync.Mutex
@@ -34,8 +26,9 @@ type RenLedger struct {
 	sellOrdersMu *sync.Mutex
 	sellOrders   []order.ID
 
-	ordersMu *sync.Mutex
-	orders   map[order.ID]Order
+	ordersMu    *sync.Mutex
+	orders      map[order.ID]int
+	orderStatus map[order.ID]order.Status
 }
 
 // NewRenLedger returns a mock RenLedger.
@@ -47,8 +40,9 @@ func NewRenLedger() *RenLedger {
 		sellOrdersMu: new(sync.Mutex),
 		sellOrders:   []order.ID{},
 
-		ordersMu: new(sync.Mutex),
-		orders:   map[order.ID]Order{},
+		ordersMu:    new(sync.Mutex),
+		orders:      map[order.ID]int{},
+		orderStatus: map[order.ID]order.Status{},
 	}
 }
 
@@ -67,6 +61,7 @@ func (renLedger *RenLedger) OpenOrders(signatures [][65]byte, orderIDs []order.I
 				return i, err
 			}
 		}
+		renLedger.orderStatus[orderIDs[i]] = order.Open
 	}
 	return len(signatures), nil
 }
@@ -79,12 +74,9 @@ func (renLedger *RenLedger) OpenBuyOrder(signature [65]byte, orderID order.ID) e
 	defer renLedger.buyOrdersMu.Unlock()
 
 	if _, ok := renLedger.orders[orderID]; !ok {
-		renLedger.orders[orderID] = Order{
-			status:   order.Open,
-			parity:   order.ParityBuy,
-			priority: binary.LittleEndian.Uint64(orderID[:]),
-		}
+		renLedger.orders[orderID] = len(renLedger.buyOrders)
 		renLedger.buyOrders = append(renLedger.buyOrders, orderID)
+		renLedger.orderStatus[orderID] = order.Open
 		return nil
 	}
 
@@ -99,12 +91,9 @@ func (renLedger *RenLedger) OpenSellOrder(signature [65]byte, orderID order.ID) 
 	defer renLedger.sellOrdersMu.Unlock()
 
 	if _, ok := renLedger.orders[orderID]; !ok {
-		renLedger.orders[orderID] = Order{
-			status:   order.Open,
-			parity:   order.ParitySell,
-			priority: binary.LittleEndian.Uint64(orderID[:]),
-		}
+		renLedger.orders[orderID] = len(renLedger.sellOrders)
 		renLedger.sellOrders = append(renLedger.sellOrders, orderID)
+		renLedger.orderStatus[orderID] = order.Open
 		return nil
 	}
 
@@ -121,7 +110,6 @@ func (renLedger *RenLedger) ConfirmOrder(id order.ID, match order.ID) error {
 	if err := renLedger.setOrderStatus(id, order.Confirmed); err != nil {
 		return fmt.Errorf("cannot confirm order that is not open: %v", err)
 	}
-	renLedger.setOrderStatus(match, order.Confirmed)
 	return nil
 }
 
@@ -135,8 +123,8 @@ func (renLedger *RenLedger) Status(orderID order.ID) (order.Status, error) {
 	renLedger.ordersMu.Lock()
 	defer renLedger.ordersMu.Unlock()
 
-	if ord, ok := renLedger.orders[orderID]; ok {
-		return ord.status, nil
+	if status, ok := renLedger.orderStatus[orderID]; ok {
+		return status, nil
 	}
 	return order.Nil, ErrOrderNotFound
 }
@@ -146,9 +134,17 @@ func (renLedger *RenLedger) Priority(orderID order.ID) (uint64, error) {
 	renLedger.ordersMu.Lock()
 	defer renLedger.ordersMu.Unlock()
 
-	if ord, ok := renLedger.orders[orderID]; ok {
-		return ord.priority, nil
+	for _, id := range renLedger.buyOrders {
+		if orderID.Equal(id) {
+			return uint64(order.ParityBuy), nil
+		}
 	}
+	for _, id := range renLedger.sellOrders {
+		if orderID.Equal(id) {
+			return uint64(order.ParitySell), nil
+		}
+	}
+
 	return uint64(0), ErrOrderNotFound
 }
 
@@ -159,7 +155,23 @@ func (renLedger *RenLedger) Trader(orderID order.ID) (string, error) {
 
 // Trader returns the matched order of the order by the order ID.
 func (renLedger *RenLedger) OrderMatch(orderID order.ID) (order.ID, error) {
-	panic("unimplemented")
+	renLedger.ordersMu.Lock()
+	defer renLedger.ordersMu.Unlock()
+
+	if renLedger.orderStatus[orderID] != order.Open {
+		return order.ID{}, errors.New("order is not open ")
+	}
+	for i, id := range renLedger.buyOrders {
+		if orderID.Equal(id) {
+			return renLedger.sellOrders[i], nil
+		}
+	}
+	for i, id := range renLedger.sellOrders {
+		if orderID.Equal(id) {
+			return renLedger.sellOrders[i], nil
+		}
+	}
+	return order.ID{}, ErrOrderNotFound
 }
 
 // Depth returns the block depth since the order been confirmed.
@@ -179,21 +191,14 @@ func (renLedger *RenLedger) BuyOrders(offset, limit int) ([]order.ID, error) {
 	defer renLedger.ordersMu.Unlock()
 	defer renLedger.buyOrdersMu.Unlock()
 
-	orders := []order.ID{}
+	if offset >= len(renLedger.buyOrders) {
+		return []order.ID{}, errors.New("index out of range")
+	}
 	end := offset + limit
 	if end > len(renLedger.buyOrders) {
 		end = len(renLedger.buyOrders)
 	}
-	for i := offset; i < end; i++ {
-		orderID := renLedger.buyOrders[i]
-		if buyOrder, ok := renLedger.orders[orderID]; ok {
-			if buyOrder.parity == order.ParityBuy && buyOrder.status == order.Open {
-				orders = append(orders, orderID)
-			}
-		}
-	}
-
-	return orders, nil
+	return renLedger.buyOrders[offset:end], nil
 }
 
 // SellOrders returns a limit sell orders starting from the offset.
@@ -203,32 +208,35 @@ func (renLedger *RenLedger) SellOrders(offset, limit int) ([]order.ID, error) {
 	defer renLedger.ordersMu.Unlock()
 	defer renLedger.buyOrdersMu.Unlock()
 
-	orders := []order.ID{}
+	if offset >= len(renLedger.sellOrders) {
+		return []order.ID{}, errors.New("index out of range")
+	}
 	end := offset + limit
 	if end > len(renLedger.sellOrders) {
 		end = len(renLedger.sellOrders)
 	}
-	for i := offset; i < end; i++ {
-		orderID := renLedger.sellOrders[i]
-		if sellOrder, ok := renLedger.orders[orderID]; ok {
-			if sellOrder.parity == order.ParitySell && sellOrder.status == order.Open {
-				orders = append(orders, orderID)
-			}
-		}
-	}
-	return orders, nil
+	return renLedger.sellOrders[offset:end], nil
 }
 
 func (renLedger *RenLedger) setOrderStatus(orderID order.ID, status order.Status) error {
 	renLedger.ordersMu.Lock()
 	defer renLedger.ordersMu.Unlock()
 
-	if _, ok := renLedger.orders[orderID]; ok {
-		ord := renLedger.orders[orderID]
-		ord.status = status
-		renLedger.orders[orderID] = ord
-		return nil
+	switch status {
+	case order.Open:
+		renLedger.orderStatus[orderID] = order.Open
+	case order.Confirmed:
+		if renLedger.orderStatus[orderID] != order.Open {
+			return errors.New("order not open")
+		}
+		renLedger.orderStatus[orderID] = order.Confirmed
+	case order.Canceled:
+		if renLedger.orderStatus[orderID] != order.Open {
+			return errors.New("order not open")
+		}
+		renLedger.orderStatus[orderID] = order.Canceled
 	}
+
 	return ErrOrderNotFound
 }
 
