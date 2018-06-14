@@ -25,16 +25,18 @@ type Change struct {
 	OrderParity   order.Parity
 	OrderStatus   order.Status
 	OrderPriority Priority
+	Trader        string
 	BlockNumber   uint
 }
 
 // NewChange returns a Change object with the respective data stored inside it.
-func NewChange(id order.ID, parity order.Parity, status order.Status, priority Priority, blockNumber uint) Change {
+func NewChange(id order.ID, parity order.Parity, status order.Status, priority Priority, trader string, blockNumber uint) Change {
 	return Change{
 		OrderID:       id,
 		OrderParity:   parity,
 		OrderStatus:   status,
 		OrderPriority: priority,
+		Trader:        trader,
 		BlockNumber:   blockNumber,
 	}
 }
@@ -110,8 +112,13 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 				log.Println("cannot sync order blocknumber", err)
 				continue
 			}
+			trader, err := syncer.renLedger.Trader(ord)
+			if err != nil {
+				log.Println("cannot sync order owner", err)
+				continue
+			}
 
-			change := NewChange(ord, order.ParityBuy, status, Priority(syncer.syncBuyPointer+i), blockNumber)
+			change := NewChange(ord, order.ParityBuy, status, Priority(syncer.syncBuyPointer+i), trader, blockNumber)
 			changeset = append(changeset, change)
 			syncer.buyOrders[syncer.syncBuyPointer+i] = ord
 		}
@@ -136,8 +143,13 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 				log.Println("cannot sync order blocknumber", err)
 				continue
 			}
+			trader, err := syncer.renLedger.Trader(ord)
+			if err != nil {
+				log.Println("cannot sync order owner", err)
+				continue
+			}
 
-			change := NewChange(ord, order.ParitySell, status, Priority(syncer.syncSellPointer+i), blockNumber)
+			change := NewChange(ord, order.ParitySell, status, Priority(syncer.syncSellPointer+i), trader, blockNumber)
 			changeset = append(changeset, change)
 			syncer.sellOrders[syncer.syncSellPointer+i] = ord
 		}
@@ -162,6 +174,8 @@ func (syncer *syncer) purge() ChangeSet {
 				// Purge all buy orders by iterating over them and reading
 				// their status and priority from the Ren Ledger
 				dispatch.CoForAll(syncer.buyOrders, func(key int) {
+					// FIXME: A CoForAll loop is likely to cause an overflow of
+					// goroutines. We should implement and use a ForAll loop.
 					syncer.ordersMu.RLock()
 					buyOrder := syncer.buyOrders[key]
 					syncer.ordersMu.RUnlock()
@@ -171,6 +185,10 @@ func (syncer *syncer) purge() ChangeSet {
 						logger.Error(fmt.Sprintf("failed to check order status %v", err))
 						return
 					}
+					if status == order.Open {
+						return
+					}
+
 					blockNumber, err := syncer.renLedger.BlockNumber(buyOrder)
 					if err != nil {
 						log.Println("cannot sync order status", err)
@@ -181,19 +199,24 @@ func (syncer *syncer) purge() ChangeSet {
 						logger.Error(fmt.Sprintf("failed to check order priority %v", err))
 						return
 					}
-
-					if status != order.Open {
-						changes <- NewChange(buyOrder, order.ParityBuy, status, Priority(priority), blockNumber)
-
-						syncer.ordersMu.Lock()
-						delete(syncer.buyOrders, key)
-						syncer.ordersMu.Unlock()
+					trader, err := syncer.renLedger.Trader(buyOrder)
+					if err != nil {
+						log.Println("cannot sync order owner", err)
+						return
 					}
+
+					changes <- NewChange(buyOrder, order.ParityBuy, status, Priority(priority), trader, blockNumber)
+
+					syncer.ordersMu.Lock()
+					delete(syncer.buyOrders, key)
+					syncer.ordersMu.Unlock()
 				})
 			},
 			func() {
 				// Purge all sell orders
 				dispatch.CoForAll(syncer.sellOrders, func(key int) {
+					// FIXME: A CoForAll loop is likely to cause an overflow of
+					// goroutines. We should implement and use a ForAll loop.
 					syncer.ordersMu.RLock()
 					sellOrder := syncer.sellOrders[key]
 					syncer.ordersMu.RUnlock()
@@ -203,6 +226,10 @@ func (syncer *syncer) purge() ChangeSet {
 						logger.Error(fmt.Sprintf("failed to check order status: %v", err))
 						return
 					}
+					if status == order.Open {
+						return
+					}
+
 					blockNumber, err := syncer.renLedger.BlockNumber(sellOrder)
 					if err != nil {
 						log.Println("cannot sync order status", err)
@@ -213,14 +240,17 @@ func (syncer *syncer) purge() ChangeSet {
 						logger.Error(fmt.Sprintf("failed to check order priority: %v", err))
 						return
 					}
-
-					if status != order.Open {
-						changes <- NewChange(sellOrder, order.ParitySell, status, Priority(priority), blockNumber)
-
-						syncer.ordersMu.Lock()
-						delete(syncer.sellOrders, key)
-						syncer.ordersMu.Unlock()
+					trader, err := syncer.renLedger.Trader(sellOrder)
+					if err != nil {
+						log.Println("cannot sync order owner", err)
+						return
 					}
+
+					changes <- NewChange(sellOrder, order.ParitySell, status, Priority(priority), trader, blockNumber)
+
+					syncer.ordersMu.Lock()
+					delete(syncer.sellOrders, key)
+					syncer.ordersMu.Unlock()
 				})
 			},
 		)

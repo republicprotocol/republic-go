@@ -94,6 +94,9 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 		coms = ranker.rankerPrevEpoch.insertChange(change)
 	}
 
+	// TODO: If the change is a remove, then we should also remove all
+	// respective Computations from ranker.computations.
+
 	ranker.insertComputations(coms)
 }
 
@@ -202,6 +205,7 @@ type epochRanker struct {
 	pos             int
 	buys            map[order.ID]orderbook.Priority
 	sells           map[order.ID]orderbook.Priority
+	traders         map[order.ID]string
 }
 
 func newEpochRanker(numberOfRankers, pos int, epoch cal.Epoch) *epochRanker {
@@ -211,6 +215,7 @@ func newEpochRanker(numberOfRankers, pos int, epoch cal.Epoch) *epochRanker {
 		pos:             pos,
 		buys:            map[order.ID]orderbook.Priority{},
 		sells:           map[order.ID]orderbook.Priority{},
+		traders:         map[order.ID]string{},
 	}
 }
 
@@ -227,12 +232,17 @@ func (ranker *epochRanker) insertChange(change orderbook.Change) Computations {
 func (ranker *epochRanker) insertBuyChange(change orderbook.Change) Computations {
 	if change.OrderStatus != order.Open {
 		delete(ranker.buys, change.OrderID)
+		delete(ranker.traders, change.OrderID)
 		return Computations{}
 	}
 
 	computations := make([]Computation, 0, len(ranker.sells)/2)
 	ranker.buys[change.OrderID] = change.OrderPriority
+	ranker.traders[change.OrderID] = change.Trader
 	for sell, sellPriority := range ranker.sells {
+		if change.Trader != "" && change.Trader == ranker.traders[sell] {
+			continue
+		}
 		priority := change.OrderPriority + sellPriority
 		if int(priority)%ranker.numberOfRankers != ranker.pos {
 			continue
@@ -248,12 +258,17 @@ func (ranker *epochRanker) insertBuyChange(change orderbook.Change) Computations
 func (ranker *epochRanker) insertSellChange(change orderbook.Change) Computations {
 	if change.OrderStatus != order.Open {
 		delete(ranker.sells, change.OrderID)
+		delete(ranker.traders, change.OrderID)
 		return Computations{}
 	}
 
 	computations := make([]Computation, 0, len(ranker.buys)/2)
 	ranker.sells[change.OrderID] = change.OrderPriority
+	ranker.traders[change.OrderID] = change.Trader
 	for buy, buyPriority := range ranker.buys {
+		if change.Trader != "" && change.Trader == ranker.traders[buy] {
+			continue
+		}
 		priority := change.OrderPriority + buyPriority
 		if int(priority)%ranker.numberOfRankers != ranker.pos {
 			continue
