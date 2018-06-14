@@ -30,7 +30,7 @@ func (syncer *Syncer) Sync() (orderbook.ChangeSet, error) {
 			changes[i] = orderbook.Change{
 				OrderID:       ord.ID,
 				OrderParity:   ord.Parity,
-				OrderPriority: uint64(i),
+				OrderPriority: orderbook.Priority(i),
 				OrderStatus:   order.Open,
 			}
 			i++

@@ -40,6 +40,7 @@ const (
 	TokenREN Token = 65536
 )
 
+// String returns a human-readable representation of a Token.
 func (token Token) String() string {
 	switch token {
 	case TokenBTC:
@@ -50,9 +51,8 @@ func (token Token) String() string {
 		return "DGX"
 	case TokenREN:
 		return "REN"
-	default:
-		return "unrecognized token "
 	}
+	panic("unexpected token")
 }
 
 // Tokens are a numerical representation of the token pairings supported by
@@ -79,6 +79,25 @@ func (tokens Tokens) NonPriorityToken() Token {
 	return Token(tokens >> 32)
 }
 
+// String returns a human-readable representation of Tokens.
+func (tokens Tokens) String() string {
+	switch tokens {
+	case TokensBTCETH:
+		return "BTC-ETH"
+	case TokensBTCDGX:
+		return "BTC-DGX"
+	case TokensBTCREN:
+		return "BTC-REN"
+	case TokensETHDGX:
+		return "ETH-DGX"
+	case TokensETHREN:
+		return "ETH-REN"
+	case TokensDGXREN:
+		return "DGX-REN"
+	}
+	panic("unexpected tokens")
+}
+
 // A Type is a publicly bit of information that determines the type of
 // trade that an Order is representing.
 type Type int8
@@ -98,6 +117,17 @@ const (
 	ParitySell Parity = 1
 )
 
+// String returns a human-readable representation of the Parity.
+func (parity Parity) String() string {
+	switch parity {
+	case ParityBuy:
+		return "buy"
+	case ParitySell:
+		return "sell"
+	}
+	panic("unexpected parity")
+}
+
 // The Status shows what status the order is in.
 type Status uint8
 
@@ -108,6 +138,21 @@ const (
 	Confirmed
 	Canceled
 )
+
+// String implements the Stringer interface.
+func (status Status) String() string {
+	switch status {
+	case Nil:
+		return "nil"
+	case Open:
+		return "open"
+	case Confirmed:
+		return "confirmed"
+	case Canceled:
+		return "canceled"
+	}
+	panic("unexpected order status")
+}
 
 // An Order represents the want to perform a trade of assets.
 type Order struct {

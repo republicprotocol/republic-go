@@ -29,7 +29,6 @@ func main() {
 	keystoreParam := flag.String("keystore", "", "Optionally encrypted keystore file")
 	configParam := flag.String("config", "", "Ethereum configuration file")
 	passphraseParam := flag.String("passphrase", "", "Optional passphrase to decrypt the keystore file")
-	matched := flag.Bool("match", false, "send a random pair of matched order instead just one random order ")
 
 	flag.Parse()
 
@@ -47,7 +46,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot load smart contracts: %v", err)
 	}
-	log.Println(*matched)
 	onePrice := order.CoExp{
 		Co:  2,
 		Exp: 40,

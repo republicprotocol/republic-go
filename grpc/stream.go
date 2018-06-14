@@ -195,6 +195,7 @@ type StreamService struct {
 
 	connsMu *sync.Mutex
 	conns   map[identity.Address]chan *safeStream
+	connsRc map[identity.Address]int
 }
 
 // NewStreamService returns an implementation of the stream.Server interface
@@ -206,6 +207,7 @@ func NewStreamService(verifier crypto.Verifier, addr identity.Address) StreamSer
 
 		connsMu: new(sync.Mutex),
 		conns:   map[identity.Address]chan *safeStream{},
+		connsRc: map[identity.Address]int{},
 	}
 }
 
@@ -262,7 +264,9 @@ func (service *StreamService) Listen(ctx context.Context, addr identity.Address)
 	case stream := <-streams:
 		go func() {
 			<-ctx.Done()
-			stream.Close()
+			if err := stream.Close(); err != nil {
+				logger.Network(logger.LevelDebugLow, fmt.Sprintf("server error closing grpc stream: %v", err))
+			}
 		}()
 		return stream, nil
 	}
@@ -285,9 +289,11 @@ func (service *StreamService) setupConn(addr identity.Address) chan *safeStream 
 	service.connsMu.Lock()
 	defer service.connsMu.Unlock()
 
-	if _, ok := service.conns[addr]; !ok {
-		service.conns[addr] = make(chan *safeStream, 1)
+	if service.connsRc[addr] == 0 {
+		service.conns[addr] = make(chan *safeStream)
 	}
+	service.connsRc[addr]++
+
 	return service.conns[addr]
 }
 
@@ -295,5 +301,9 @@ func (service *StreamService) teardownConn(addr identity.Address) {
 	service.connsMu.Lock()
 	defer service.connsMu.Unlock()
 
-	delete(service.conns, addr)
+	service.connsRc[addr]--
+	if service.connsRc[addr] == 0 {
+		delete(service.conns, addr)
+		delete(service.connsRc, addr)
+	}
 }

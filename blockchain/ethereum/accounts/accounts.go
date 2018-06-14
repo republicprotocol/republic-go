@@ -19,13 +19,13 @@ type RenExAccounts struct {
 	conn         ethereum.Conn
 	transactOpts *bind.TransactOpts
 	callOpts     *bind.CallOpts
-	binding      *TraderAccounts
+	binding      *RenExSettlement
 	address      common.Address
 }
 
 // NewRenExAccounts returns a Dark node registrar
 func NewRenExAccounts(ctx context.Context, conn ethereum.Conn, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (RenExAccounts, error) {
-	contract, err := NewTraderAccounts(common.HexToAddress(conn.Config.RenExAccountsAddress), bind.ContractBackend(conn.Client))
+	contract, err := NewRenExSettlement(common.HexToAddress(conn.Config.RenExAccountsAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		return RenExAccounts{}, err
 	}
@@ -41,63 +41,9 @@ func NewRenExAccounts(ctx context.Context, conn ethereum.Conn, transactOpts *bin
 	}, nil
 }
 
-// Register a new token in the RenEx
-func (accounts *RenExAccounts) RegisterToken(tokenCode uint32, address string, decimals uint8) error {
-	contractAddress := common.HexToAddress(address)
-	tx, err := accounts.binding.RegisterToken(accounts.transactOpts, tokenCode, contractAddress, decimals)
-	if err != nil {
-		return err
-	}
-	_, err = accounts.conn.PatchedWaitMined(accounts.context, tx)
-	return err
-}
-
-// Deregister a token from the RenEx
-func (accounts *RenExAccounts) DeregisterToken(tokenCode uint32) error {
-	tx, err := accounts.binding.DeregisterToken(accounts.transactOpts, tokenCode)
-	if err != nil {
-		return err
-	}
-	_, err = accounts.conn.PatchedWaitMined(accounts.context, tx)
-	return err
-}
-
-// Deposit money into your RenEx account
-func (accounts *RenExAccounts) Deposit(tokenCode uint32, value int) error {
-	tx, err := accounts.binding.Deposit(accounts.transactOpts, tokenCode, big.NewInt(int64(value)))
-	if err != nil {
-		return err
-	}
-	_, err = accounts.conn.PatchedWaitMined(accounts.context, tx)
-	return err
-}
-
-// Withdraw money from your RenEx account
-func (accounts *RenExAccounts) Withdraw(tokenCode uint32, value int) error {
-	tx, err := accounts.binding.Withdraw(accounts.transactOpts, tokenCode, big.NewInt(int64(value)))
-	if err != nil {
-		return err
-	}
-	_, err = accounts.conn.PatchedWaitMined(accounts.context, tx)
-	return err
-}
-
-// GetBalance of given token of specific trader in RenEx account
-func (accounts *RenExAccounts) Balance(trader string, tokenCode order.Token) (float64, error) {
-	traderAddress := common.HexToAddress(trader)
-	// Fixme : currently it will just return the value in the token;s minimum unit
-	value, err := accounts.binding.GetBalance(accounts.callOpts, traderAddress, uint32(tokenCode))
-	floatValue := new(big.Float).SetInt(value)
-	if err != nil {
-		return 0, err
-	}
-	float64Value, _ := floatValue.Float64()
-
-	return float64Value, nil
-}
-
 // SubmitOrder to the RenEx accounts
 func (accounts *RenExAccounts) SubmitOrder(ord order.Order) error {
+	accounts.transactOpts.GasLimit = 500000
 	nonce := big.NewInt(int64(ord.Nonce))
 	log.Printf("[submit order] id: %v,tokens:%d, priceCo:%v, priceExp:%v, volumeCo:%v, volumeExp:%v, minVol:%v, minVolExp:%v", base64.StdEncoding.EncodeToString(ord.ID[:]), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp))
 	tx, err := accounts.binding.SubmitOrder(accounts.transactOpts, ord.ID, uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonce)

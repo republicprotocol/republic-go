@@ -116,8 +116,8 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 
 			case <-ticker.C:
 				confirmer.confirmingMu.Lock()
-				confirmer.checkBuyOrdersForConfirmationFinality(done, confirmations, errs)
-				confirmer.checkSellOrdersForConfirmationFinality(done, confirmations, errs)
+				confirmer.checkOrdersForConfirmationFinality(order.ParityBuy, done, confirmations, errs)
+				confirmer.checkOrdersForConfirmationFinality(order.ParitySell, done, confirmations, errs)
 				confirmer.confirmingMu.Unlock()
 			}
 		}
@@ -139,47 +139,16 @@ func (confirmer *confirmer) beginConfirmation(orderMatch Computation) error {
 	return confirmer.renLedger.ConfirmOrder(orderMatch.Buy, orderMatch.Sell)
 }
 
-func (confirmer *confirmer) checkBuyOrdersForConfirmationFinality(done <-chan struct{}, confirmations chan<- Computation, errs chan<- error) {
-	for buy := range confirmer.confirmingBuyOrders {
-
-		sell, err := confirmer.checkOrderForConfirmationFinality(buy, order.ParityBuy)
-		if err != nil {
-			if err == ErrOrderNotConfirmed {
-				continue
-			}
-			select {
-			case <-done:
-				return
-			case errs <- err:
-				continue
-			}
-		}
-
-		com := NewComputation(buy, sell)
-		com.State = ComputationStateAccepted
-		com.Timestamp = time.Now()
-
-		select {
-		case <-done:
-			return
-		case confirmations <- com:
-			delete(confirmer.confirmingBuyOrders, buy)
-			delete(confirmer.confirmingSellOrders, sell)
-			if err := confirmer.storer.InsertComputation(com); err != nil {
-				select {
-				case <-done:
-					return
-				case errs <- err:
-				}
-			}
-		}
+func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order.Parity, done <-chan struct{}, confirmations chan<- Computation, errs chan<- error) {
+	var confirmingOrders map[order.ID]struct{}
+	if orderParity == order.ParityBuy {
+		confirmingOrders = confirmer.confirmingBuyOrders
+	} else {
+		confirmingOrders = confirmer.confirmingSellOrders
 	}
-}
 
-func (confirmer *confirmer) checkSellOrdersForConfirmationFinality(done <-chan struct{}, confirmations chan<- Computation, errs chan<- error) {
-	for sell := range confirmer.confirmingSellOrders {
-
-		buy, err := confirmer.checkOrderForConfirmationFinality(sell, order.ParitySell)
+	for ord := range confirmingOrders {
+		ordMatch, err := confirmer.checkOrderForConfirmationFinality(ord, orderParity)
 		if err != nil {
 			if err == ErrOrderNotConfirmed {
 				continue
@@ -192,16 +161,22 @@ func (confirmer *confirmer) checkSellOrdersForConfirmationFinality(done <-chan s
 			}
 		}
 
-		com := NewComputation(buy, sell)
-		com.State = ComputationStateAccepted
-		com.Timestamp = time.Now()
+		com, err := confirmer.computationFromOrders(orderParity, ord, ordMatch)
+		if err != nil {
+			select {
+			case <-done:
+				return
+			case errs <- err:
+				continue
+			}
+		}
 
 		select {
 		case <-done:
 			return
 		case confirmations <- com:
-			delete(confirmer.confirmingBuyOrders, buy)
-			delete(confirmer.confirmingSellOrders, sell)
+			delete(confirmer.confirmingBuyOrders, com.Buy)
+			delete(confirmer.confirmingSellOrders, com.Sell)
 			if err := confirmer.storer.InsertComputation(com); err != nil {
 				select {
 				case <-done:
@@ -242,4 +217,20 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 		return order.ID{}, err
 	}
 	return match, nil
+}
+
+func (confirmer *confirmer) computationFromOrders(orderParity order.Parity, ord, ordMatch order.ID) (Computation, error) {
+	var comID ComputationID
+	if orderParity == order.ParityBuy {
+		comID = NewComputationID(ord, ordMatch)
+	} else {
+		comID = NewComputationID(ordMatch, ord)
+	}
+	com, err := confirmer.storer.Computation(comID)
+	if err != nil {
+		return com, err
+	}
+	com.State = ComputationStateAccepted
+	com.Timestamp = time.Now()
+	return com, nil
 }

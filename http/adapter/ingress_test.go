@@ -238,16 +238,12 @@ type mockIngress struct {
 	numCanceled int64
 }
 
+func (ingress *mockIngress) Sync(done <-chan struct{}) <-chan error {
+	return nil
+}
+
 func (ingress *mockIngress) OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMapping ingress.OrderFragmentMapping) error {
 	atomic.AddInt64(&ingress.numOpened, 1)
-	return nil
-}
-
-func (ingress *mockIngress) OpenOrderFragmentsProcess(done <-chan struct{}) <-chan error {
-	return nil
-}
-
-func (ingress *mockIngress) OpenOrderProcess(done <-chan struct{}) <-chan error {
 	return nil
 }
 
@@ -256,7 +252,7 @@ func (ingress *mockIngress) CancelOrder(signature [65]byte, orderID order.ID) er
 	return nil
 }
 
-func (ingress *mockIngress) Sync(done <-chan struct{}) <-chan error {
+func (ingress *mockIngress) ProcessRequests(done <-chan struct{}) <-chan error {
 	return nil
 }
 

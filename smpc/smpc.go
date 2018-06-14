@@ -1,6 +1,8 @@
 package smpc
 
 import (
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -14,9 +16,18 @@ import (
 	"golang.org/x/net/context"
 )
 
+// ErrJoinOnDisconnectedNetwork is returned when an Smpcer attempts to access a
+// Joiner for a NetworkID that has not been connected to.
+var ErrJoinOnDisconnectedNetwork = errors.New("join on disconnected network")
+
 // NetworkID for a network of Smpcer nodes. Using a NetworkID allows nodes to
 // be involved in multiple distinct computation networks in parallel.
 type NetworkID [32]byte
+
+// String returns a human-readable representation of a NetworkID.
+func (id NetworkID) String() string {
+	return base64.StdEncoding.EncodeToString(id[:8])
+}
 
 // Smpcer is an interface for a secure multi-party computer. It asynchronously
 // consumes computation instructions and produces computation results.
@@ -85,6 +96,8 @@ func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 	smpc.joiners[networkID] = NewJoiner(k)
 	smpc.joinersMu.Unlock()
 
+	logger.Network(logger.LevelInfo, fmt.Sprintf("connecting to network = %v, thresold = (%v, %v)", networkID, len(nodes), k))
+
 	go dispatch.CoForAll(nodes, func(i int) {
 		addr := nodes[i]
 		if addr == smpc.swarmer.MultiAddress().Address() {
@@ -102,6 +115,8 @@ func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 		smpc.lookup[addr] = multiAddr
 		smpc.lookupMu.Unlock()
 
+		logger.Network(logger.LevelInfo, fmt.Sprintf("connecting to %v", addr))
+
 		// Open a stream to the node and store the context.CancelFunc so that
 		// we can call it when we need to disconnect
 		ctx, cancel := context.WithCancel(context.Background())
@@ -118,12 +133,15 @@ func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 		smpc.networkMu.Unlock()
 
 		// A background goroutine will handle the stream
+		logger.Network(logger.LevelDebug, fmt.Sprintf("connected to %v in network %v", addr, networkID))
 		go smpc.handleStream(addr, stream)
 	})
 }
 
 // Disconnect implements the Smpcer interface.
 func (smpc *smpcer) Disconnect(networkID NetworkID) {
+	logger.Network(logger.LevelInfo, fmt.Sprintf("disconnecting from network = %v", networkID))
+
 	smpc.networkMu.Lock()
 	if _, ok := smpc.networkCancels[networkID]; ok {
 		for _, cancel := range smpc.networkCancels[networkID] {
@@ -146,9 +164,12 @@ func (smpc *smpcer) Join(networkID NetworkID, join Join, callback Callback) erro
 	smpc.selfJoinsMu.Unlock()
 
 	smpc.joinersMu.RLock()
-	err := smpc.joiners[networkID].InsertJoinAndSetCallback(join, callback)
+	joiner, joinerOk := smpc.joiners[networkID]
 	smpc.joinersMu.RUnlock()
-	if err != nil {
+	if !joinerOk {
+		return ErrJoinOnDisconnectedNetwork
+	}
+	if err := joiner.InsertJoinAndSetCallback(join, callback); err != nil {
 		return err
 	}
 
