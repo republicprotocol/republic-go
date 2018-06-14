@@ -278,10 +278,10 @@ func deployDarkNodeRegistry(ctx context.Context, conn ethereum.Conn, auth *bind.
 	minimumBond := big.NewInt(0)
 	// 1 second
 	minimumEpochInterval := big.NewInt(1)
-	// 24 Darknode in a pool
-	minimumPoolSize := big.NewInt(24)
+	// 24 Darknode in a Pod
+	minimumPodSize := big.NewInt(24)
 
-	address, tx, dnr, err := bindings.DeployDarknodeRegistry(auth, conn.Client, republicTokenAddress, minimumBond, minimumPoolSize, minimumEpochInterval)
+	address, tx, dnr, err := bindings.DeployDarknodeRegistry(auth, conn.Client, republicTokenAddress, minimumBond, minimumPodSize, minimumEpochInterval)
 	if err != nil {
 		return nil, common.Address{}, fmt.Errorf("cannot deploy DarkNodeRegistry: %v", err)
 	}
