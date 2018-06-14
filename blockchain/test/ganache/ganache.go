@@ -314,9 +314,19 @@ func deployRenLedger(ctx context.Context, conn ethereum.Conn, auth *bind.Transac
 	return ren, address, nil
 }
 
-func deployRenExAccounts(ctx context.Context, conn ethereum.Conn, auth *bind.TransactOpts, renLedgerAddress common.Address) (*accounts.TraderAccounts, common.Address, error) {
+func deployRenExAccounts(ctx context.Context, conn ethereum.Conn, auth *bind.TransactOpts, renLedgerAddress common.Address) (*accounts.RenExSettlement, common.Address, error) {
 
-	address, tx, accounts, err := accounts.DeployTraderAccounts(auth, conn.Client, renLedgerAddress)
+	tokenAddress, tx, _, err := accounts.DeployRenExTokens(auth, conn.Client)
+	if err != nil {
+		return nil, common.Address{}, fmt.Errorf("cannot deploy RenLedger: %v", err)
+	}
+
+	balanceAddress, tx, _, err := accounts.DeployRenExBalances(auth, conn.Client)
+	if err != nil {
+		return nil, common.Address{}, fmt.Errorf("cannot deploy RenLedger: %v", err)
+	}
+
+	address, tx, accounts, err := accounts.DeployRenExSettlement(auth, conn.Client, renLedgerAddress, tokenAddress, balanceAddress)
 	if err != nil {
 		return nil, common.Address{}, fmt.Errorf("cannot deploy RenLedger: %v", err)
 	}
