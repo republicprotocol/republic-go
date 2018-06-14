@@ -53,7 +53,7 @@ func main() {
 		Co:  200,
 		Exp: 26,
 	}
-	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.TokensETHREN, one, one, one, nonce)
+	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, order.SettlementRenEx, time.Now().Add(time.Hour), order.TokensETHREN, one, one, one, nonce)
 
 	signatureData := crypto.Keccak256([]byte("Republic Protocol: open: "), ord.ID[:])
 	signatureData = crypto.Keccak256([]byte("\x19Ethereum Signed Message:\n32"), signatureData)

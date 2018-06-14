@@ -79,8 +79,8 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot join buy = %v, sell = %v: unexpected number of values: %v", base64.StdEncoding.EncodeToString(buyFragment.OrderID[:8]), base64.StdEncoding.EncodeToString(sellFragment.OrderID[:8]), len(values)))
 			return
 		}
-		buy := order.NewOrder(buyFragment.OrderType, buyFragment.OrderParity, buyFragment.OrderExpiry, order.Tokens(values[0]), order.NewCoExp(values[1], values[2]), order.NewCoExp(values[3], values[4]), order.NewCoExp(values[5], values[6]), values[7])
-		sell := order.NewOrder(sellFragment.OrderType, sellFragment.OrderParity, sellFragment.OrderExpiry, order.Tokens(values[8]), order.NewCoExp(values[9], values[10]), order.NewCoExp(values[11], values[12]), order.NewCoExp(values[13], values[14]), values[15])
+		buy := order.NewOrder(buyFragment.OrderType, buyFragment.OrderParity, buyFragment.OrderSettlement, buyFragment.OrderExpiry, order.Tokens(values[0]), order.NewCoExp(values[1], values[2]), order.NewCoExp(values[3], values[4]), order.NewCoExp(values[5], values[6]), values[7])
+		sell := order.NewOrder(sellFragment.OrderType, sellFragment.OrderParity, buyFragment.OrderSettlement, sellFragment.OrderExpiry, order.Tokens(values[8]), order.NewCoExp(values[9], values[10]), order.NewCoExp(values[11], values[12]), order.NewCoExp(values[13], values[14]), values[15])
 
 		settler.settleOrderMatch(com, buy, sell)
 

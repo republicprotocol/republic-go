@@ -24,7 +24,7 @@ func RandomOrder() order.Order {
 	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
-	ord := order.NewOrder(order.TypeLimit, parity, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
+	ord := order.NewOrder(order.TypeLimit, parity, order.SettlementRenEx, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
 	return ord
 }
 
@@ -37,7 +37,7 @@ func RandomBuyOrder() order.Order {
 	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
-	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
+	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, order.SettlementRenEx, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
 	return ord
 }
 
@@ -50,7 +50,7 @@ func RandomSellOrder() order.Order {
 	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
-	ord := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
+	ord := order.NewOrder(order.TypeLimit, order.ParitySell, order.SettlementRenEx, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
 	return ord
 }
 
@@ -63,8 +63,8 @@ func RandomOrderMatch() (order.Order, order.Order) {
 	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
-	buy := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(24*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
-	sell := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(24*time.Hour), tokens, buy.Price, buy.Volume, buy.MinimumVolume, buy.Nonce)
+	buy := order.NewOrder(order.TypeLimit, order.ParityBuy, order.SettlementRenEx, time.Now().Add(24*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
+	sell := order.NewOrder(order.TypeLimit, order.ParitySell, order.SettlementRenEx, time.Now().Add(24*time.Hour), tokens, buy.Price, buy.Volume, buy.MinimumVolume, buy.Nonce)
 	return buy, sell
 }
 
