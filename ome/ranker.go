@@ -94,6 +94,9 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 		coms = ranker.rankerPrevEpoch.insertChange(change)
 	}
 
+	// TODO: If the change is a remove, then we should also remove all
+	// respective Computations from ranker.computations.
+
 	ranker.insertComputations(coms)
 }
 
