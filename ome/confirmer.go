@@ -170,6 +170,13 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 				continue
 			}
 		}
+		if err := confirmer.storer.InsertComputation(com); err != nil {
+			select {
+			case <-done:
+				return
+			case errs <- err:
+			}
+		}
 
 		select {
 		case <-done:
@@ -177,13 +184,6 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 		case confirmations <- com:
 			delete(confirmer.confirmingBuyOrders, com.Buy)
 			delete(confirmer.confirmingSellOrders, com.Sell)
-			if err := confirmer.storer.InsertComputation(com); err != nil {
-				select {
-				case <-done:
-					return
-				case errs <- err:
-				}
-			}
 		}
 	}
 }

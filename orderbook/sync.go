@@ -162,6 +162,8 @@ func (syncer *syncer) purge() ChangeSet {
 				// Purge all buy orders by iterating over them and reading
 				// their status and priority from the Ren Ledger
 				dispatch.CoForAll(syncer.buyOrders, func(key int) {
+					// FIXME: A CoForAll loop is likely to cause an overflow of
+					// goroutines. We should implement and use a ForAll loop.
 					syncer.ordersMu.RLock()
 					buyOrder := syncer.buyOrders[key]
 					syncer.ordersMu.RUnlock()
@@ -171,6 +173,10 @@ func (syncer *syncer) purge() ChangeSet {
 						logger.Error(fmt.Sprintf("failed to check order status %v", err))
 						return
 					}
+					if status == order.Open {
+						return
+					}
+
 					blockNumber, err := syncer.renLedger.BlockNumber(buyOrder)
 					if err != nil {
 						log.Println("cannot sync order status", err)
@@ -182,18 +188,18 @@ func (syncer *syncer) purge() ChangeSet {
 						return
 					}
 
-					if status != order.Open {
-						changes <- NewChange(buyOrder, order.ParityBuy, status, Priority(priority), blockNumber)
+					changes <- NewChange(buyOrder, order.ParityBuy, status, Priority(priority), blockNumber)
 
-						syncer.ordersMu.Lock()
-						delete(syncer.buyOrders, key)
-						syncer.ordersMu.Unlock()
-					}
+					syncer.ordersMu.Lock()
+					delete(syncer.buyOrders, key)
+					syncer.ordersMu.Unlock()
 				})
 			},
 			func() {
 				// Purge all sell orders
 				dispatch.CoForAll(syncer.sellOrders, func(key int) {
+					// FIXME: A CoForAll loop is likely to cause an overflow of
+					// goroutines. We should implement and use a ForAll loop.
 					syncer.ordersMu.RLock()
 					sellOrder := syncer.sellOrders[key]
 					syncer.ordersMu.RUnlock()
@@ -203,6 +209,10 @@ func (syncer *syncer) purge() ChangeSet {
 						logger.Error(fmt.Sprintf("failed to check order status: %v", err))
 						return
 					}
+					if status == order.Open {
+						return
+					}
+
 					blockNumber, err := syncer.renLedger.BlockNumber(sellOrder)
 					if err != nil {
 						log.Println("cannot sync order status", err)
@@ -214,13 +224,11 @@ func (syncer *syncer) purge() ChangeSet {
 						return
 					}
 
-					if status != order.Open {
-						changes <- NewChange(sellOrder, order.ParitySell, status, Priority(priority), blockNumber)
+					changes <- NewChange(sellOrder, order.ParitySell, status, Priority(priority), blockNumber)
 
-						syncer.ordersMu.Lock()
-						delete(syncer.sellOrders, key)
-						syncer.ordersMu.Unlock()
-					}
+					syncer.ordersMu.Lock()
+					delete(syncer.sellOrders, key)
+					syncer.ordersMu.Unlock()
 				})
 			},
 		)
