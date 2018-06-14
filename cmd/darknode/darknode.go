@@ -138,7 +138,7 @@ func main() {
 		matcher := ome.NewMatcher(&store, smpcer)
 		confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
 		settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
-		ome := ome.NewOme(ranker, matcher, confirmer, settler, &store, orderbook, smpcer, epoch)
+		ome := ome.NewOme(config.Address, ranker, matcher, confirmer, settler, &store, orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
 			// Synchronizing the OME
