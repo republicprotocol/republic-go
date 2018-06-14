@@ -96,7 +96,7 @@ var _ = Describe("Orders", func() {
 
 			order, err := NewOrderFromJSONFile("orders.out")
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(order.Nonce).Should(Equal(int64(10)))
+			Ω(order.Nonce).Should(Equal(uint64(10)))
 		})
 	})
 

@@ -56,14 +56,16 @@ var _ = Describe("Order fragments", func() {
 			fragment := NewFragment(orderID, TypeLimit, ParityBuy, SettlementRenEx, expiry, tokens, price, maxVolume, minVolume, nonce)
 
 			expectedFragment := Fragment{
-				OrderID:       orderID,
-				OrderType:     TypeLimit,
-				OrderParity:   ParityBuy,
-				OrderExpiry:   expiry,
-				Tokens:        tokens,
-				Price:         price,
-				Volume:        maxVolume,
-				MinimumVolume: minVolume,
+				OrderID:         orderID,
+				OrderType:       TypeLimit,
+				OrderParity:     ParityBuy,
+				OrderSettlement: SettlementRenEx,
+				OrderExpiry:     expiry,
+				Tokens:          tokens,
+				Price:           price,
+				Volume:          maxVolume,
+				MinimumVolume:   minVolume,
+				Nonce:           nonce,
 			}
 			hash := crypto.Keccak256(expectedFragment.Bytes())
 			expectedFragmentID := [32]byte{}

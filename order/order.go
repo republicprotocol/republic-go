@@ -204,7 +204,7 @@ func NewOrder(ty Type, parity Parity, settlement Settlement, expiry time.Time, t
 		Price:         price,
 		Volume:        volume,
 		MinimumVolume: minimumVolume,
-		Nonce:         nonce,
+		Nonce:         nonce % shamir.Prime,
 	}
 	order.ID = ID(order.Hash())
 	return order

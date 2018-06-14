@@ -216,8 +216,8 @@ func createOrder() (order.Order, error) {
 	parity := order.ParityBuy
 	price := uint64(mathRand.Intn(2000))
 	volume := uint64(mathRand.Intn(2000))
-	nonce := int64(mathRand.Intn(1000000000))
-	return order.NewOrder(order.TypeLimit, parity, time.Now().Add(time.Hour), order.TokensETHREN, order.NewCoExp(price, 26), order.NewCoExp(volume, 26), order.NewCoExp(volume, 26), nonce), nil
+	nonce := uint64(mathRand.Intn(1000000000))
+	return order.NewOrder(order.TypeLimit, parity, order.SettlementRenEx, time.Now().Add(time.Hour), order.TokensETHREN, order.NewCoExp(price, 26), order.NewCoExp(volume, 26), order.NewCoExp(volume, 26), nonce), nil
 }
 
 type mockDarkpool struct {

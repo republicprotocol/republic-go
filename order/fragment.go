@@ -117,11 +117,12 @@ func (fragment *Fragment) IsCompatible(other *Fragment) bool {
 func (fragment *Fragment) Encrypt(pubKey rsa.PublicKey) (EncryptedFragment, error) {
 	var err error
 	encryptedFragment := EncryptedFragment{
-		OrderID:     fragment.OrderID,
-		OrderType:   fragment.OrderType,
-		OrderParity: fragment.OrderParity,
-		OrderExpiry: fragment.OrderExpiry,
-		ID:          fragment.ID,
+		OrderID:         fragment.OrderID,
+		OrderType:       fragment.OrderType,
+		OrderParity:     fragment.OrderParity,
+		OrderSettlement: fragment.OrderSettlement,
+		OrderExpiry:     fragment.OrderExpiry,
+		ID:              fragment.ID,
 	}
 	encryptedFragment.Tokens, err = fragment.Tokens.Encrypt(pubKey)
 	if err != nil {
