@@ -146,7 +146,6 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 	} else {
 		confirmingOrders = confirmer.confirmingSellOrders
 	}
-
 	for ord := range confirmingOrders {
 		ordMatch, err := confirmer.checkOrderForConfirmationFinality(ord, orderParity)
 		if err != nil {

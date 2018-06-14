@@ -1,7 +1,6 @@
 package ome_test
 
 import (
-	"log"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -26,7 +25,7 @@ var _ = Describe("Confirmer", func() {
 		confirmer = NewConfirmer(storer, renLedger, pollInterval, depth)
 	})
 
-	FIt("should be able to confirm order on the ren ledger", func(d Done) {
+	It("should be able to confirm order on the ren ledger", func(d Done) {
 		defer close(d)
 
 		done := make(chan struct{})
@@ -37,6 +36,7 @@ var _ = Describe("Confirmer", func() {
 			computations[i] = testutils.RandomComputation()
 			orderIDs[computations[i].Buy] = struct{}{}
 			orderIDs[computations[i].Sell] = struct{}{}
+			storer.InsertComputation(computations[i])
 		}
 
 		// Open all the orders
@@ -52,9 +52,9 @@ var _ = Describe("Confirmer", func() {
 			defer close(done)
 
 			for i := 0; i < numberOfComputationsToTest; i++ {
-				log.Println(i)
 				orderMatches <- computations[i]
 			}
+			time.Sleep(5 * time.Second)
 		}()
 
 		confirmedMatches, errs := confirmer.Confirm(done, orderMatches)
