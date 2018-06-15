@@ -3,7 +3,6 @@ package ome
 import (
 	"encoding/base64"
 	"fmt"
-	"log"
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
@@ -93,18 +92,15 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 
 func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order) {
 	if err := settler.accounts.Settle(buy, sell); err != nil {
-		// FIXME: use logger.
-		log.Printf("cannot settle buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buy.ID[:8]), base64.StdEncoding.EncodeToString(sell.ID[:8]), err)
+		logger.Error(fmt.Sprintf("cannot settle buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buy.ID[:8]), base64.StdEncoding.EncodeToString(sell.ID[:8]), err))
 		return
 	}
 
 	com.State = ComputationStateSettled
 	if err := settler.storer.InsertComputation(com); err != nil {
-		// FIXME: use logger.
-		log.Printf("cannot store settled buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buy.ID[:8]), base64.StdEncoding.EncodeToString(sell.ID[:8]), err)
+		logger.Error(fmt.Sprintf("cannot settle buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buy.ID[:8]), base64.StdEncoding.EncodeToString(sell.ID[:8]), err))
 		return
 	}
 
-	// FIXME: use looger.
-	log.Printf("$ settled buy = %v, sell = %v", buy.ID, sell.ID)
+	logger.Info(fmt.Sprintf("$ settled buy = %v, sell = %v", buy.ID, sell.ID))
 }

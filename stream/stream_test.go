@@ -242,7 +242,6 @@ var _ = Describe("Streaming", func() {
 				Expect(servers[0].streamsCounter).Should(Equal(1))
 			}
 		})
-
 	})
 })
 
