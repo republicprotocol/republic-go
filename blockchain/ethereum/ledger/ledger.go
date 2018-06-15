@@ -73,9 +73,9 @@ func (ledger *RenLedgerContract) OpenOrders(signatures [][65]byte, orderIDs []or
 
 		var tx *types.Transaction
 		if orderParities[i] == order.ParityBuy {
-			tx, err = ledger.binding.OpenBuyOrder(ledger.transactOpts, signatures[i][:], orderIDs[i])
+			tx, err = ledger.binding.OpenBuyOrder(ledger.transactOpts, signatures[i][:], orderIDs[i], common.Address{})
 		} else {
-			tx, err = ledger.binding.OpenSellOrder(ledger.transactOpts, signatures[i][:], orderIDs[i])
+			tx, err = ledger.binding.OpenSellOrder(ledger.transactOpts, signatures[i][:], orderIDs[i], common.Address{})
 		}
 		if err != nil {
 			break
@@ -97,11 +97,11 @@ func (ledger *RenLedgerContract) OpenOrders(signatures [][65]byte, orderIDs []or
 func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) error {
 	ledger.transactOpts.GasPrice = big.NewInt(int64(20000000000))
 
-	tx, err := ledger.binding.OpenBuyOrder(ledger.transactOpts, signature[:], id)
+	tx, err := ledger.binding.OpenBuyOrder(ledger.transactOpts, signature[:], id, common.Address{})
 	if err != nil {
 		return err
 	}
-	
+
 	return ledger.waitForOrderDepth(tx, id)
 }
 
@@ -109,7 +109,7 @@ func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) e
 func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) error {
 	ledger.transactOpts.GasPrice = big.NewInt(int64(20000000000))
 
-	tx, err := ledger.binding.OpenSellOrder(ledger.transactOpts, signature[:], id)
+	tx, err := ledger.binding.OpenSellOrder(ledger.transactOpts, signature[:], id, common.Address{})
 	if err != nil {
 		return err
 	}
