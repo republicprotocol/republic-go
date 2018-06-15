@@ -51,8 +51,9 @@ func (token Token) String() string {
 		return "DGX"
 	case TokenREN:
 		return "REN"
+	default:
+		return "unexpected token"
 	}
-	panic("unexpected token")
 }
 
 // Tokens are a numerical representation of the token pairings supported by
@@ -94,8 +95,9 @@ func (tokens Tokens) String() string {
 		return "ETH-REN"
 	case TokensDGXREN:
 		return "DGX-REN"
+	default:
+		return "unexpected tokens"
 	}
-	panic("unexpected tokens")
 }
 
 // A Type is a publicly bit of information that determines the type of
@@ -124,8 +126,9 @@ func (parity Parity) String() string {
 		return "buy"
 	case ParitySell:
 		return "sell"
+	default:
+		return "unexpected parity"
 	}
-	panic("unexpected parity")
 }
 
 // Settlement is a unique identifier for the settlement layer used by the
@@ -146,8 +149,9 @@ func (settlement Settlement) String() string {
 		return "RenEx"
 	case SettlementRenExAtomic:
 		return "RenEx Atomic"
+	default:
+		return "unexpected order settlement"
 	}
-	return "unexpected order settlement"
 }
 
 // The Status shows what status the order is in.
@@ -172,8 +176,9 @@ func (status Status) String() string {
 		return "confirmed"
 	case Canceled:
 		return "canceled"
+	default:
+		return "unexpected order status"
 	}
-	return "unexpected order status"
 }
 
 // An Order represents the want to perform a trade of assets.
