@@ -73,7 +73,7 @@ func (darkNodeRegistry *DarknodeRegistry) Register(darkNodeID []byte, publicKey 
 
 	txn, err := darkNodeRegistry.binding.Register(darkNodeRegistry.transactOpts, darkNodeIDByte, publicKey, bond.ToBigInt())
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	_, err = darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, txn)
 	return txn, err
@@ -87,7 +87,7 @@ func (darkNodeRegistry *DarknodeRegistry) Deregister(darkNodeID []byte) (*types.
 	}
 	tx, err := darkNodeRegistry.binding.Deregister(darkNodeRegistry.transactOpts, darkNodeIDByte)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	_, err = darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, tx)
 	return tx, err
@@ -101,7 +101,7 @@ func (darkNodeRegistry *DarknodeRegistry) Refund(darkNodeID []byte) (*types.Tran
 	}
 	tx, err := darkNodeRegistry.binding.Refund(darkNodeRegistry.transactOpts, darkNodeIDByte)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	_, err = darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, tx)
 	return tx, err
