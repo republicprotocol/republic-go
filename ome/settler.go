@@ -74,7 +74,7 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 	copy(join.ID[:], crypto.Keccak256(buyFragment.OrderID[:], sellFragment.OrderID[:]))
 
 	err := settler.smpcer.Join(networkID, join, func(joinID smpc.JoinID, values []uint64) {
-		if len(values) != 14 {
+		if len(values) != 16 {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot join buy = %v, sell = %v: unexpected number of values: %v", base64.StdEncoding.EncodeToString(buyFragment.OrderID[:8]), base64.StdEncoding.EncodeToString(sellFragment.OrderID[:8]), len(values)))
 			return
 		}
