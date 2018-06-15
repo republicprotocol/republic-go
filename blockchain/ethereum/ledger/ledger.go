@@ -108,11 +108,13 @@ func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) e
 // OpenSellOrder implements the cal.RenLedger interface.
 func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) error {
 	ledger.transactOpts.GasPrice = big.NewInt(int64(20000000000))
+	ledger.transactOpts.GasLimit = 500000
 
 	tx, err := ledger.binding.OpenSellOrder(ledger.transactOpts, signature[:], id)
 	if err != nil {
 		return err
 	}
+	ledger.transactOpts.GasLimit = 0
 
 	return ledger.waitForOrderDepth(tx, id)
 }
