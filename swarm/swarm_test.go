@@ -109,20 +109,23 @@ func (serverHub *mockServerHub) Register(serverAddr identity.Address, server Ser
 }
 
 func (serverHub *mockServerHub) Deregister(serverAddr identity.Address) bool {
-	if isActive, ok := serverHub.active[serverAddr]; ok {
-		if isActive {
-			serverHub.active[serverAddr] = false
-			return true
-		}
+	serverHub.connsMu.Lock()
+	defer serverHub.connsMu.Unlock()
+
+	isActive, _ := serverHub.active[serverAddr]
+	if isActive {
+		serverHub.active[serverAddr] = false
 	}
-	return false
+	return isActive
 }
 
 func (serverHub *mockServerHub) IsRegistered(serverAddr identity.Address) bool {
-	if isActive, ok := serverHub.active[serverAddr]; ok {
-		return isActive
-	}
-	return false
+	serverHub.connsMu.Lock()
+	defer serverHub.connsMu.Unlock()
+
+	isActive, _ := serverHub.active[serverAddr]
+	
+	return isActive
 }
 
 type mockClientToServer struct {
@@ -143,8 +146,17 @@ func newMockClientToServer(mockServerHub *mockServerHub) (mockClientToServer, er
 }
 
 func (client *mockClientToServer) Ping(ctx context.Context, to identity.MultiAddress) (identity.MultiAddress, error) {
-	if client.serverHub.active[to.Address()] {
-		return client.serverHub.conns[to.Address()].Ping(ctx, client.multiAddr)
+	var clientAddr Server
+	isActive := false
+
+	client.serverHub.connsMu.Lock()
+	if isActive, _ = client.serverHub.active[to.Address()]; isActive {
+		clientAddr = client.serverHub.conns[to.Address()]
+	}
+	client.serverHub.connsMu.Unlock()
+
+	if isActive {
+		return clientAddr.Ping(ctx, client.multiAddr)
 	}
 	return identity.MultiAddress{}, errors.New("address not active")
 }
