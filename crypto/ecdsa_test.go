@@ -1,14 +1,16 @@
 package crypto_test
 
 import (
+	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/json"
 	"runtime"
-
-	"github.com/republicprotocol/republic-go/dispatch"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/crypto"
+
+	"github.com/republicprotocol/republic-go/dispatch"
 )
 
 var _ = Describe("Ecdsa keys", func() {
@@ -129,6 +131,13 @@ var _ = Describe("Ecdsa keys", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(key.Equal(&keyDecoded)).Should(BeTrue())
 			Expect("s256").Should(Equal(keyDecoded.Curve.Params().Name)) // We explicitly name the curve here because the ethSecp256k1.S256() curve implementation does not include a name
+		})
+
+		It("should panic when marshalling a badly formatted JSON", func() {
+			key, err := RandomEcdsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+			key.PrivateKey.PublicKey = ecdsa.PublicKey{}
+			Expect(func() { json.Marshal(key) }).Should(Panic())
 		})
 
 		It("should return an error for invalid JSON", func() {
