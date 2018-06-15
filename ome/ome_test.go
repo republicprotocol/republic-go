@@ -64,7 +64,7 @@ var _ = Describe("Ome", func() {
 		})
 
 		It("should be able to sync with the order book ", func() {
-			ome := NewOme(ranker, matcher, confirmer, settler, storer, book, smpcer, epoch)
+			ome := NewOme(addr, ranker, matcher, confirmer, settler, storer, book, smpcer, epoch)
 			errs := ome.Run(done)
 			go func() {
 				defer GinkgoRecover()
