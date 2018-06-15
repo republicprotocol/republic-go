@@ -104,7 +104,7 @@ var _ = Describe("Order fragments", func() {
 			copy(orderID[:], "newOrderID")
 
 			rhs, err := NewFragment(orderID, TypeLimit, ParityBuy, SettlementRenEx, time.Now(), tokens, price, maxVolume, minVolume, nonce)
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred()) 
 
 			Ω(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(false))
 			Ω(lhs.Equal(&rhs)).Should(Equal(false))
