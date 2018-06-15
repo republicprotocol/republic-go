@@ -137,7 +137,7 @@ type Settlement uint32
 
 // Values for Settlementt.
 const (
-	SettlementNil = iota
+	SettlementNil (Settlement) = iota
 	SettlementRenEx
 	SettlementRenExAtomic
 )

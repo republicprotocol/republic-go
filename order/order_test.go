@@ -3,7 +3,6 @@ package order_test
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"os"
 	"time"
 
@@ -100,12 +99,23 @@ var _ = Describe("Orders", func() {
 		})
 	})
 
-	Context("token  and tokens ", func() {
-		It("should able to to show token name when format printing", func() {
-			Ω(fmt.Sprintf("%s", TokenBTC)).Should(Equal("BTC"))
-			Ω(fmt.Sprintf("%s", TokenETH)).Should(Equal("ETH"))
-			Ω(fmt.Sprintf("%s", TokenDGX)).Should(Equal("DGX"))
-			Ω(fmt.Sprintf("%s", TokenREN)).Should(Equal("REN"))
+	Context("when handling token and tokens", func() {
+		It("should return token name as a string", func() {
+			Ω(TokenBTC.String()).Should(Equal("BTC"))
+			Ω(TokenETH.String()).Should(Equal("ETH"))
+			Ω(TokenDGX.String()).Should(Equal("DGX"))
+			Ω(TokenREN.String()).Should(Equal("REN"))
+			Ω(Token(100).String()).Should(Equal("unexpected token"))
+		})
+
+		It("should return token pair as a string", func() {
+			Ω(TokensBTCETH.String()).Should(Equal("BTC-ETH"))
+			Ω(TokensBTCDGX.String()).Should(Equal("BTC-DGX"))
+			Ω(TokensBTCREN.String()).Should(Equal("BTC-REN"))
+			Ω(TokensETHDGX.String()).Should(Equal("ETH-DGX"))
+			Ω(TokensETHREN.String()).Should(Equal("ETH-REN"))
+			Ω(TokensDGXREN.String()).Should(Equal("DGX-REN"))
+			Ω(Tokens(100).String()).Should(Equal("unexpected tokens"))
 		})
 
 		It("should be able to extract the first and second token from a token pair", func() {
@@ -126,6 +136,33 @@ var _ = Describe("Orders", func() {
 
 			Ω(TokensDGXREN.PriorityToken()).Should(Equal(TokenREN))
 			Ω(TokensDGXREN.NonPriorityToken()).Should(Equal(TokenDGX))
+		})
+	})
+
+	Context("when handling parity", func() {
+		It("should return parity as a string", func() {
+			Ω(ParityBuy.String()).Should(Equal("buy"))
+			Ω(ParitySell.String()).Should(Equal("sell"))
+			Ω(Parity(100).String()).Should(Equal("unexpected parity"))
+		})
+	})
+
+	Context("when handling status", func() {
+		It("should return status as a string", func() {
+			Ω(Open.String()).Should(Equal("open"))
+			Ω(Confirmed.String()).Should(Equal("confirmed"))
+			Ω(Canceled.String()).Should(Equal("canceled"))
+			Ω(Nil.String()).Should(Equal("nil"))
+			Ω(Status(100).String()).Should(Equal("unexpected order status"))
+		})
+	})
+
+	Context("when handling settlement", func() {
+		It("should return settlement as a string", func() {
+			Ω(SettlementRenEx.String()).Should(Equal("RenEx"))
+			Ω(SettlementRenExAtomic.String()).Should(Equal("RenEx Atomic"))
+			Ω(SettlementNil.String()).Should(Equal("unexpected order settlement"))
+			Ω(Settlement(100).String()).Should(Equal("unexpected order settlement"))
 		})
 	})
 })
