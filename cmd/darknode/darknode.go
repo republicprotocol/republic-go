@@ -92,7 +92,7 @@ func main() {
 	statusService.Register(server)
 
 	swarmClient := grpc.NewSwarmClient(multiAddr)
-	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmClient, &dht))
+	swarmService := grpc.NewSwarmService(swarm.NewServer(crypter, swarmClient, &dht))
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
 
