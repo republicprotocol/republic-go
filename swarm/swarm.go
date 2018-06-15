@@ -11,6 +11,7 @@ import (
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/registry"
 )
 
 // ErrMultiAddressNotFound is returned from a query when no
@@ -23,11 +24,13 @@ type Server interface {
 }
 
 type server struct {
+	crypter    registry.Crypter
 	dhtManager dhtManager
 }
 
-func NewServer(client Client, dht *dht.DHT) Server {
+func NewServer(crypter registry.Crypter, client Client, dht *dht.DHT) Server {
 	return &server{
+		crypter: crypter,
 		dhtManager: dhtManager{
 			client: client,
 			dht:    dht,
@@ -36,7 +39,10 @@ func NewServer(client Client, dht *dht.DHT) Server {
 }
 
 func (server *server) Ping(ctx context.Context, from identity.MultiAddress) (identity.MultiAddress, error) {
-	return server.dhtManager.client.MultiAddress(), server.dhtManager.updateDHT(from)
+	if server.crypter.Verify(from.Hash(), from.Signature) == nil {
+		return server.dhtManager.client.MultiAddress(), server.dhtManager.updateDHT(from)
+	}
+	return server.dhtManager.client.MultiAddress(), nil
 }
 
 func (server *server) Query(ctx context.Context, query identity.Address, querySig [65]byte) (identity.MultiAddresses, error) {
