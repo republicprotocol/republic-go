@@ -38,6 +38,8 @@ const (
 	TokenETH Token = 1
 	TokenDGX Token = 256
 	TokenREN Token = 65536
+	TokenABC Token = 65537
+	TokenXYZ Token = 65538
 )
 
 // String returns a human-readable representation of a Token.
@@ -51,6 +53,10 @@ func (token Token) String() string {
 		return "DGX"
 	case TokenREN:
 		return "REN"
+	case TokenABC:
+		return "ABC"
+	case TokenXYZ:
+		return "XYZ"
 	default:
 		return "unexpected token"
 	}
@@ -67,7 +73,11 @@ const (
 	TokensBTCREN Tokens = Tokens((uint64(TokenBTC) << 32) | uint64(TokenREN))
 	TokensETHDGX Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenDGX))
 	TokensETHREN Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenREN))
+	TokensETHABC Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenABC))
+	TokensETHXYZ Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenXYZ))
 	TokensDGXREN Tokens = Tokens((uint64(TokenDGX) << 32) | uint64(TokenREN))
+	TokensDGXABC Tokens = Tokens((uint64(TokenDGX) << 32) | uint64(TokenABC))
+	TokensDGXXYZ Tokens = Tokens((uint64(TokenDGX) << 32) | uint64(TokenXYZ))
 )
 
 // PriorityToken returns the priority token of a token pair.

@@ -309,6 +309,7 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 			hashData = append(hashData, darknodeAddr.ID())
 		}
 		copy(pods[i].Hash[:], crypto.Keccak256(hashData...))
+		pods[i].Position = i
 	}
 	return pods, nil
 }

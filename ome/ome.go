@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/smpc"
@@ -31,6 +32,7 @@ type Ome interface {
 }
 
 type ome struct {
+	addr      identity.Address
 	ranker    Ranker
 	matcher   Matcher
 	confirmer Confirmer
@@ -50,8 +52,9 @@ type ome struct {
 // NewOme returns an Ome that uses an order.Orderbook to synchronize changes
 // from the Ethereum blockchain, and an smpc.Smpcer to run the secure
 // multi-party computations necessary for the secure order matching engine.
-func NewOme(ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler, storer Storer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer, epoch cal.Epoch) Ome {
+func NewOme(addr identity.Address, ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler, storer Storer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer, epoch cal.Epoch) Ome {
 	ome := &ome{
+		addr:      addr,
 		ranker:    ranker,
 		matcher:   matcher,
 		confirmer: confirmer,
@@ -179,7 +182,13 @@ func (ome *ome) OnChangeEpoch(epoch cal.Epoch) {
 
 	// Replace the current epoch
 	ome.epochCurr = &epoch
-	ome.smpcer.Connect(ome.epochCurr.Hash, ome.epochCurr.Darknodes)
+
+	pod, err := epoch.Pod(ome.addr)
+	if err != nil {
+		logger.Error(fmt.Sprintf("cannot find pod: %v", err))
+		return
+	}
+	ome.smpcer.Connect(ome.epochCurr.Hash, pod.Darknodes)
 
 	// Notify the Ranker
 	ome.ranker.OnChangeEpoch(epoch)

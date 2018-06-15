@@ -7,6 +7,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
@@ -23,11 +24,13 @@ type Server interface {
 }
 
 type server struct {
+	verifier   crypto.Verifier
 	dhtManager dhtManager
 }
 
-func NewServer(client Client, dht *dht.DHT) Server {
+func NewServer(verifier crypto.Verifier, client Client, dht *dht.DHT) Server {
 	return &server{
+		verifier: verifier,
 		dhtManager: dhtManager{
 			client: client,
 			dht:    dht,
@@ -36,7 +39,10 @@ func NewServer(client Client, dht *dht.DHT) Server {
 }
 
 func (server *server) Ping(ctx context.Context, from identity.MultiAddress) (identity.MultiAddress, error) {
-	return server.dhtManager.client.MultiAddress(), server.dhtManager.updateDHT(from)
+	if server.verifier.Verify(from.Hash(), from.Signature) == nil {
+		return server.dhtManager.client.MultiAddress(), server.dhtManager.updateDHT(from)
+	}
+	return server.dhtManager.client.MultiAddress(), nil
 }
 
 func (server *server) Query(ctx context.Context, query identity.Address, querySig [65]byte) (identity.MultiAddresses, error) {

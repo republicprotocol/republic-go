@@ -92,7 +92,7 @@ func main() {
 	statusService.Register(server)
 
 	swarmClient := grpc.NewSwarmClient(multiAddr)
-	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmClient, &dht))
+	swarmService := grpc.NewSwarmService(swarm.NewServer(&crypter, swarmClient, &dht))
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
 
@@ -138,7 +138,7 @@ func main() {
 		matcher := ome.NewMatcher(&store, smpcer)
 		confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
 		settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
-		ome := ome.NewOme(ranker, matcher, confirmer, settler, &store, orderbook, smpcer, epoch)
+		ome := ome.NewOme(config.Address, ranker, matcher, confirmer, settler, &store, orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
 			// Synchronizing the OME
