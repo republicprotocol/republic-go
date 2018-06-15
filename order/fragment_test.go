@@ -99,42 +99,6 @@ var _ = Describe("Order fragments", func() {
 		})
 	})
 
-	Context("when testing for compatibility", func() {
-
-		It("should return true for pairwise order fragments from orders with different parity", func() {
-			copy(orderID[:], "orderID")
-			lhs := NewFragment(orderID, TypeLimit, ParityBuy, SettlementRenEx, time.Now(), tokens, price, maxVolume, minVolume, nonce)
-			copy(orderID[:], "newOrderID")
-			rhs := NewFragment(orderID, TypeLimit, ParitySell, SettlementRenEx, time.Now(), tokens, price, maxVolume, minVolume, nonce)
-
-			Ω(lhs.IsCompatible(&rhs)).Should(Equal(true))
-		})
-
-		It("should return false for pairwise order fragments from orders with equal parity", func() {
-			copy(orderID[:], "orderID")
-			lhs := NewFragment(orderID, TypeLimit, ParityBuy, SettlementRenEx, time.Now(), tokens, price, maxVolume, minVolume, nonce)
-			copy(orderID[:], "newOrderID")
-			rhs := NewFragment(orderID, TypeLimit, ParityBuy, SettlementRenEx, time.Now(), tokens, price, maxVolume, minVolume, nonce)
-
-			Ω(lhs.IsCompatible(&rhs)).Should(Equal(false))
-		})
-
-		It("should return false for pairwise order fragments from same orders", func() {
-			copy(orderID[:], "orderID")
-			lhs := NewFragment(orderID, TypeLimit, ParityBuy, SettlementRenEx, time.Now(), tokens, price, maxVolume, minVolume, nonce)
-			rhs := NewFragment(orderID, TypeLimit, ParitySell, SettlementRenEx, time.Now(), tokens, price, maxVolume, minVolume, nonce)
-
-			Ω(lhs.IsCompatible(&rhs)).Should(Equal(false))
-		})
-
-		It("should return false for pairwise order fragments that are the same", func() {
-			copy(orderID[:], "orderID")
-			lhs := NewFragment(orderID, TypeLimit, ParityBuy, SettlementRenEx, time.Now(), tokens, price, maxVolume, minVolume, nonce)
-
-			Ω(lhs.IsCompatible(&lhs)).Should(Equal(false))
-		})
-	})
-
 	Context("when encrypting and decrypting fragments", func() {
 
 		It("should return the same fragment after decrypting its encrypted form", func() {
