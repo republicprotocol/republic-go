@@ -54,8 +54,8 @@ func main() {
 		Co:  5,
 		Exp: 12,
 	}
-	buy := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(1*time.Hour), order.TokensDGXREN, onePrice, oneVol, oneVol, rand.Int63())
-	sell := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(1*time.Hour), order.TokensDGXREN, onePrice, oneVol, oneVol, rand.Int63())
+	buy := order.NewOrder(order.TypeLimit, order.ParityBuy, order.SettlementRenEx, time.Now().Add(1*time.Hour), order.TokensDGXREN, onePrice, oneVol, oneVol, rand.Uint64())
+	sell := order.NewOrder(order.TypeLimit, order.ParitySell, order.SettlementRenEx, time.Now().Add(1*time.Hour), order.TokensDGXREN, onePrice, oneVol, oneVol, rand.Uint64())
 	ords := []order.Order{buy, sell}
 
 	for _, ord := range ords {
@@ -102,6 +102,7 @@ func main() {
 				marshaledOrdFragment.ID = base64.StdEncoding.EncodeToString(encryptedFragment.ID[:])
 				marshaledOrdFragment.OrderID = base64.StdEncoding.EncodeToString(encryptedFragment.OrderID[:])
 				marshaledOrdFragment.OrderParity = encryptedFragment.OrderParity
+				marshaledOrdFragment.OrderSettlement = encryptedFragment.OrderSettlement
 				marshaledOrdFragment.OrderType = encryptedFragment.OrderType
 				marshaledOrdFragment.OrderExpiry = encryptedFragment.OrderExpiry.Unix()
 				marshaledOrdFragment.Tokens = base64.StdEncoding.EncodeToString(encryptedFragment.Tokens)

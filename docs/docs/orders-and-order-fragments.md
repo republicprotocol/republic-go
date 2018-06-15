@@ -85,6 +85,12 @@ enum OrderParity {
     SELL = 1;
 }
 
+enum OrderSettlement {
+    NIL = 0;
+    RENEX = 1;
+    RENEX_ATOMIC = 2;
+}
+
 message Order {
     bytes signature = 1;
     bytes id = 2;

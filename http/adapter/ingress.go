@@ -158,12 +158,14 @@ func MarshalOrderFragment(orderFragmentIn ingress.OrderFragment) OrderFragment {
 	orderFragment.OrderID = MarshalOrderID(orderFragmentIn.OrderID)
 	orderFragment.OrderType = orderFragmentIn.OrderType
 	orderFragment.OrderParity = orderFragmentIn.OrderParity
+	orderFragment.OrderSettlement = orderFragmentIn.OrderSettlement
 	orderFragment.OrderExpiry = orderFragmentIn.OrderExpiry.Unix()
 	orderFragment.ID = MarshalOrderFragmentID(orderFragmentIn.ID)
 	orderFragment.Tokens = base64.StdEncoding.EncodeToString(orderFragmentIn.Tokens)
 	orderFragment.Price = MarshalEncryptedCoExpShare(orderFragmentIn.Price)
 	orderFragment.Volume = MarshalEncryptedCoExpShare(orderFragmentIn.Volume)
 	orderFragment.MinimumVolume = MarshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume)
+	orderFragment.Nonce = base64.StdEncoding.EncodeToString(orderFragmentIn.Nonce)
 	return orderFragment
 }
 
@@ -181,6 +183,7 @@ func UnmarshalOrderFragment(orderFragmentIn OrderFragment) (ingress.OrderFragmen
 	}
 	orderFragment.OrderType = orderFragmentIn.OrderType
 	orderFragment.OrderParity = orderFragmentIn.OrderParity
+	orderFragment.OrderSettlement = orderFragmentIn.OrderSettlement
 	orderFragment.OrderExpiry = time.Unix(orderFragmentIn.OrderExpiry, 0)
 	orderFragment.Tokens, err = base64.StdEncoding.DecodeString(orderFragmentIn.Tokens)
 	if err != nil {
@@ -198,6 +201,7 @@ func UnmarshalOrderFragment(orderFragmentIn OrderFragment) (ingress.OrderFragmen
 	if err != nil {
 		return orderFragment, err
 	}
+	orderFragment.Nonce, err = base64.StdEncoding.DecodeString(orderFragmentIn.Nonce)
 	return orderFragment, nil
 }
 
