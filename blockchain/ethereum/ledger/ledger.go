@@ -33,13 +33,13 @@ type RenLedgerContract struct {
 	conn         ethereum.Conn
 	transactOpts *bind.TransactOpts
 	callOpts     *bind.CallOpts
-	binding      *bindings.RenLedger
+	binding      *bindings.Orderbook
 	address      common.Address
 }
 
 // NewRenLedgerContract creates a new NewRenLedgerContract with given parameters.
 func NewRenLedgerContract(ctx context.Context, conn ethereum.Conn, transactOpts *bind.TransactOpts, callOpts *bind.CallOpts) (RenLedgerContract, error) {
-	contract, err := bindings.NewRenLedger(common.HexToAddress(conn.Config.RenLedgerAddress), bind.ContractBackend(conn.Client))
+	contract, err := bindings.NewOrderbook(common.HexToAddress(conn.Config.RenLedgerAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		return RenLedgerContract{}, err
 	}
@@ -73,9 +73,9 @@ func (ledger *RenLedgerContract) OpenOrders(signatures [][65]byte, orderIDs []or
 
 		var tx *types.Transaction
 		if orderParities[i] == order.ParityBuy {
-			tx, err = ledger.binding.OpenBuyOrder(ledger.transactOpts, signatures[i][:], orderIDs[i], common.Address{})
+			tx, err = ledger.binding.OpenBuyOrder(ledger.transactOpts, signatures[i][:], orderIDs[i])
 		} else {
-			tx, err = ledger.binding.OpenSellOrder(ledger.transactOpts, signatures[i][:], orderIDs[i], common.Address{})
+			tx, err = ledger.binding.OpenSellOrder(ledger.transactOpts, signatures[i][:], orderIDs[i])
 		}
 		if err != nil {
 			break
@@ -97,7 +97,7 @@ func (ledger *RenLedgerContract) OpenOrders(signatures [][65]byte, orderIDs []or
 func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) error {
 	ledger.transactOpts.GasPrice = big.NewInt(int64(20000000000))
 
-	tx, err := ledger.binding.OpenBuyOrder(ledger.transactOpts, signature[:], id, common.Address{})
+	tx, err := ledger.binding.OpenBuyOrder(ledger.transactOpts, signature[:], id)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) e
 func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) error {
 	ledger.transactOpts.GasPrice = big.NewInt(int64(20000000000))
 
-	tx, err := ledger.binding.OpenSellOrder(ledger.transactOpts, signature[:], id, common.Address{})
+	tx, err := ledger.binding.OpenSellOrder(ledger.transactOpts, signature[:], id)
 	if err != nil {
 		return err
 	}
