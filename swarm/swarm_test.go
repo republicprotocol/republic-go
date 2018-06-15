@@ -49,9 +49,8 @@ var _ = Describe("Swarm", func() {
 					bootstrapMultiaddrs[i] = multiAddrs[i]
 				}
 
-				// Setting DHT bucket length to half of the total number of clients
-				dhts[i] = dht.NewDHT(multiAddrs[i].Address(), numberOfClients/2)
-				server := NewServer(clients[i], &dhts[i])
+				dhts[i] = dht.NewDHT(multiAddrs[i].Address(), numberOfClients)
+				server := NewServer(testutils.NewCrypter(), clients[i], &dhts[i])
 				serverHub.Register(multiAddrs[i].Address(), server)
 			}
 
@@ -124,7 +123,7 @@ func (serverHub *mockServerHub) IsRegistered(serverAddr identity.Address) bool {
 	defer serverHub.connsMu.Unlock()
 
 	isActive, _ := serverHub.active[serverAddr]
-	
+
 	return isActive
 }
 
