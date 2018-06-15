@@ -131,5 +131,12 @@ var _ = Describe("Ecdsa keys", func() {
 			Expect("s256").Should(Equal(keyDecoded.Curve.Params().Name)) // We explicitly name the curve here because the ethSecp256k1.S256() curve implementation does not include a name
 		})
 
+		It("should return an error for invalid JSON", func() {
+			keyDecoded := EcdsaKey{}
+			err := keyDecoded.UnmarshalJSON([]byte{byte(1)})
+			Expect(err).Should(HaveOccurred())
+			Expect(keyDecoded.Address()).Should(Equal(""))
+		})
+
 	})
 })
