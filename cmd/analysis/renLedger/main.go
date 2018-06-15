@@ -65,7 +65,7 @@ func main() {
 }
 
 func LoadKey() (*keystore.Key, error) {
-	var keyJSON string = `{"address":"90e6572ef66a11690b09dd594a18f36cf76055c8",
+	var keyJSON = `{"address":"90e6572ef66a11690b09dd594a18f36cf76055c8",
   					"privatekey":"dc3f937b4aa1fc7bbf7643f1dead1faf37594ad2f1edcd6b56bf6719f85fa406",
   					"id":"ddd54c1c-6c2e-42a9-a224-6532a90fd4e9", "version":3}`
 	key := new(keystore.Key)

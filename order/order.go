@@ -250,10 +250,7 @@ func WriteOrdersToJSONFile(fileName string, orders []*Order) error {
 		return err
 	}
 	defer file.Close()
-	if err := json.NewEncoder(file).Encode(&orders); err != nil {
-		return err
-	}
-	return nil
+	return json.NewEncoder(file).Encode(&orders)
 }
 
 // Split the Order into n OrderFragments, where k OrderFragments are needed to

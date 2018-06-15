@@ -359,10 +359,10 @@ type FalconryConfigs struct {
 }
 
 type FalconryConfig struct {
-	Config       config.Config `json:"config"`
-	Ami          string        `json:"ami"`
-	Avz          string        `json:"avz"`
-	Instance     string        `json:"instance"`
-	Ip           string        `json:"ip"`
-	Is_bootstrap bool          `json:"is_bootstrap"`
+	Config      config.Config `json:"config"`
+	Ami         string        `json:"ami"`
+	Avz         string        `json:"avz"`
+	Instance    string        `json:"instance"`
+	Ip          string        `json:"ip"`
+	IsBootstrap bool          `json:"is_bootstrap"`
 }
