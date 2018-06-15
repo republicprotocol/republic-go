@@ -86,8 +86,6 @@ func NewMatcher(storer Storer, smpcer smpc.Smpcer) Matcher {
 
 // Resolve implements the Matcher interface.
 func (matcher *matcher) Resolve(com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback) {
-	// FIXME: This should probably be culled out when Computations are first
-	// generated.
 	if buyFragment.OrderSettlement != sellFragment.OrderSettlement {
 		// Store the computation as a mismatch
 		com.State = ComputationStateMismatched

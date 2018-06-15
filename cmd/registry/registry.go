@@ -158,7 +158,6 @@ func LoadKey() (*keystore.Key, error) {
 }
 
 func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error) {
-	//Fixme:
 	var config ethereum.Config
 	switch c.GlobalString("network") {
 	case "ropsten":

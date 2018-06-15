@@ -134,8 +134,6 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 }
 
 func (confirmer *confirmer) beginConfirmation(orderMatch Computation) error {
-	// TODO: Check the error and if it failed due to an ephemeral error then
-	// try again.
 	return confirmer.renLedger.ConfirmOrder(orderMatch.Buy, orderMatch.Sell)
 }
 

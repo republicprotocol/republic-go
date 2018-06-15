@@ -94,25 +94,6 @@ func (fragment *Fragment) Equal(other *Fragment) bool {
 		fragment.Nonce.Equal(&other.Nonce)
 }
 
-// IsCompatible returns true when two Fragments are compatible for a
-// computation, otherwise it returns false. For a Fragment to be compatible
-// with another Fragment it must have a different ID, it must have a different
-// order ID, it must have a different parity, it must have a different owner,
-// and all secret sharing fields must have the same secret sharing index.
-func (fragment *Fragment) IsCompatible(other *Fragment) bool {
-	// TODO: Check that signatories are different
-	return !bytes.Equal(fragment.ID[:], other.ID[:]) &&
-		!bytes.Equal(fragment.OrderID[:], other.OrderID[:]) &&
-		fragment.OrderParity != other.OrderParity &&
-		fragment.Tokens.Index == other.Tokens.Index &&
-		fragment.Price.Co.Index == other.Price.Co.Index &&
-		fragment.Price.Exp.Index == other.Price.Exp.Index &&
-		fragment.Volume.Co.Index == other.Volume.Co.Index &&
-		fragment.Volume.Exp.Index == other.Volume.Exp.Index &&
-		fragment.MinimumVolume.Co.Index == other.MinimumVolume.Co.Index &&
-		fragment.MinimumVolume.Exp.Index == other.MinimumVolume.Exp.Index
-}
-
 // Encrypt a Fragment using an rsa.PublicKey.
 func (fragment *Fragment) Encrypt(pubKey rsa.PublicKey) (EncryptedFragment, error) {
 	var err error
