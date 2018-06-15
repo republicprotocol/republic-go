@@ -26,6 +26,14 @@ var _ = Describe("Values", func() {
 			Expect(decodedValue.Co).Should(Equal(value.Co))
 		})
 
+		It("should return an error when unmarshalling invalid JSON", func() {
+			decodedValue := CoExp{}
+			err := decodedValue.UnmarshalJSON([]byte{byte(1)})
+			Expect(err).Should(HaveOccurred())
+
+			Expect(decodedValue.Exp).Should(Equal(uint64(0)))
+		})
+
 		It("should be able to marshal and unmarshal CoExpShare as JSON", func() {
 			coeff := shamir.Share{
 				Index: uint64(1),
