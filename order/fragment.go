@@ -36,7 +36,7 @@ type Fragment struct {
 }
 
 // NewFragment returns a new Fragment and computes the FragmentID.
-func NewFragment(orderID ID, orderType Type, orderParity Parity, orderSettlement Settlement, orderExpiry time.Time, tokens shamir.Share, price, volume, minimumVolume CoExpShare, nonce shamir.Share) Fragment {
+func NewFragment(orderID ID, orderType Type, orderParity Parity, orderSettlement Settlement, orderExpiry time.Time, tokens shamir.Share, price, volume, minimumVolume CoExpShare, nonce shamir.Share) (Fragment, error) {
 	fragment := Fragment{
 		OrderID:         orderID,
 		OrderType:       orderType,
@@ -50,34 +50,62 @@ func NewFragment(orderID ID, orderType Type, orderParity Parity, orderSettlement
 		MinimumVolume: minimumVolume,
 		Nonce:         nonce,
 	}
-	fragment.ID = FragmentID(fragment.Hash())
-	return fragment
+	fragmentHash, err := fragment.Hash()
+	if err != nil {
+		return Fragment{}, err
+	}
+	
+	fragment.ID = FragmentID(fragmentHash)
+	return fragment, nil
 }
 
 // Hash returns the Keccak256 hash of a Fragment. This hash is used to create
 // the FragmentID and signature for a Fragment.
-func (fragment *Fragment) Hash() [32]byte {
-	hash := crypto.Keccak256(fragment.Bytes())
+func (fragment *Fragment) Hash() ([32]byte, error) {
+	fragmentBytes, err := fragment.Bytes()
+	if err != nil {
+		return [32]byte{}, err
+	}
+	hash := crypto.Keccak256(fragmentBytes)
 	hash32 := [32]byte{}
 	copy(hash32[:], hash)
-	return hash32
+	return hash32, nil
 }
 
 // Bytes returns a Fragment serialized into a bytes.
-// TODO: This function should return an error.
-func (fragment *Fragment) Bytes() []byte {
+func (fragment *Fragment) Bytes() ([]byte, error) {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, fragment.OrderType)
-	binary.Write(buf, binary.BigEndian, fragment.OrderID)
-	binary.Write(buf, binary.BigEndian, fragment.OrderParity)
-	binary.Write(buf, binary.BigEndian, fragment.OrderSettlement)
-	binary.Write(buf, binary.BigEndian, fragment.OrderExpiry.Unix())
-	binary.Write(buf, binary.BigEndian, fragment.Tokens)
-	binary.Write(buf, binary.BigEndian, fragment.Price)
-	binary.Write(buf, binary.BigEndian, fragment.Volume)
-	binary.Write(buf, binary.BigEndian, fragment.MinimumVolume)
-	binary.Write(buf, binary.BigEndian, fragment.Nonce)
-	return buf.Bytes()
+	if err := binary.Write(buf, binary.BigEndian, fragment.OrderType); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, fragment.OrderID); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, fragment.OrderParity); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, fragment.OrderSettlement); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, fragment.OrderExpiry.Unix()); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, fragment.Tokens); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, fragment.Price); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, fragment.Volume); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, fragment.MinimumVolume); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, fragment.Nonce); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // Equal returns an equality check between two Orders.

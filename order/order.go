@@ -290,7 +290,7 @@ func (order *Order) Split(n, k int64) ([]Fragment, error) {
 	}
 	fragments := make([]Fragment, n)
 	for i := range fragments {
-		fragments[i] = NewFragment(
+		fragments[i], err = NewFragment(
 			order.ID,
 			order.Type,
 			order.Parity,
@@ -302,6 +302,9 @@ func (order *Order) Split(n, k int64) ([]Fragment, error) {
 			CoExpShare{Co: minimumVolumeCos[i], Exp: minimumVolumeExps[i]},
 			nonces[i],
 		)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return fragments, nil
 }
