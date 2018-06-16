@@ -115,6 +115,12 @@ func main() {
 	statusProvider.WriteMultiAddress(multiAddr)
 	statusProvider.WriteEthereumAddress(auth.From.Hex())
 
+	pk, err := crypto.BytesFromRsaPublicKey(&config.Keystore.RsaKey.PublicKey)
+	if err != nil {
+		log.Fatalf("could not determine public key: %v", err)
+	}
+	statusProvider.WritePublicKey(pk)
+
 	// Start the status server
 	go func() {
 		bindParam := "0.0.0.0"
