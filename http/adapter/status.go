@@ -1,12 +1,17 @@
 package adapter
 
-import "github.com/republicprotocol/republic-go/status"
+import (
+	"encoding/hex"
+
+	"github.com/republicprotocol/republic-go/status"
+)
 
 // Status defines a structure for JSON marshalling
 type Status struct {
 	Network         string `json:"network"`
 	MultiAddress    string `json:"multiAddress"`
 	EthereumAddress string `json:"ethereumAddress"`
+	PublicKey       string `json:"publicKey"`
 	Peers           int    `json:"peers"`
 }
 
@@ -40,10 +45,16 @@ func (adapter *StatusAdapter) Status() (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
+	pk, err := adapter.PublicKey()
+	if err != nil {
+		return Status{}, err
+	}
+	hexPk := "0x" + hex.EncodeToString(pk)
 	return Status{
 		Network:         network,
 		MultiAddress:    multiAddr.String(),
 		EthereumAddress: ethAddr,
+		PublicKey:       hexPk,
 		Peers:           peers,
 	}, nil
 }
