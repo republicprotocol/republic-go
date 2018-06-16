@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"errors"
+	"math/big"
 
 	"github.com/republicprotocol/republic-go/identity"
 )
@@ -26,8 +27,16 @@ type Darkpool interface {
 	// Darknodes registered in the Darkpool.
 	Darknodes() (identity.Addresses, error)
 
+	// NextEpoch will try to turn the Epoch and returns the resulting Epoch. If
+	// the turning of the Epoch failed, the current Epoch is returned.
+	NextEpoch() (Epoch, error)
+
 	// Epoch returns the current Epoch which includes the Pod configuration.
 	Epoch() (Epoch, error)
+
+	// MinimumEpochInterval returns the minimum number of seconds between
+	// epochs.
+	MinimumEpochInterval() (*big.Int, error)
 
 	// Pods returns the Pod configuration for the current Epoch.
 	Pods() ([]Pod, error)
@@ -50,9 +59,10 @@ type Darkpool interface {
 // epoch hash, an ordered list of Pods for the epoch, and all Darknode
 // identity.Addresses that are registered for the epoch.
 type Epoch struct {
-	Hash      [32]byte
-	Pods      []Pod
-	Darknodes []identity.Address
+	Hash        [32]byte
+	Pods        []Pod
+	Darknodes   []identity.Address
+	BlockNumber uint
 }
 
 // Equal returns true if the hash of two Epochs is equal. Otherwise it returns

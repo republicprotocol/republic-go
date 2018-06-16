@@ -168,7 +168,14 @@ func (darkNodeRegistry *DarknodeRegistry) CurrentEpoch() (Epoch, error) {
 	}, nil
 }
 
-// Epoch updates the current Epoch if the Minimum Epoch Interval has passed since the previous Epoch
+// NextEpoch implements the cal.Darkpool interfacce.
+func (darkNodeRegistry *DarknodeRegistry) NextEpoch() (cal.Epoch, error) {
+	darkNodeRegistry.TriggerEpoch()
+	return darkNodeRegistry.Epoch()
+}
+
+// TriggerEpoch updates the current Epoch if the Minimum Epoch Interval has
+// passed since the previous Epoch
 func (darkNodeRegistry *DarknodeRegistry) TriggerEpoch() (*types.Transaction, error) {
 	tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
 	if err != nil {
@@ -235,12 +242,8 @@ func (darkNodeRegistry *DarknodeRegistry) MinimumBond() (stackint.Int1024, error
 }
 
 // MinimumEpochInterval gets the minimum epoch interval
-func (darkNodeRegistry *DarknodeRegistry) MinimumEpochInterval() (stackint.Int1024, error) {
-	interval, err := darkNodeRegistry.binding.MinimumEpochInterval(darkNodeRegistry.callOpts)
-	if err != nil {
-		return stackint.Int1024{}, err
-	}
-	return stackint.FromBigInt(interval)
+func (darkNodeRegistry *DarknodeRegistry) MinimumEpochInterval() (*big.Int, error) {
+	return darkNodeRegistry.binding.MinimumEpochInterval(darkNodeRegistry.callOpts)
 }
 
 // MinimumDarkPoolSize gets the minimum dark pool size
@@ -322,6 +325,7 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 			hashData = append(hashData, darknodeAddr.ID())
 		}
 		copy(pods[i].Hash[:], crypto.Keccak256(hashData...))
+		pods[i].Position = i
 	}
 	return pods, nil
 }
@@ -343,10 +347,16 @@ func (darkNodeRegistry *DarknodeRegistry) Epoch() (cal.Epoch, error) {
 		return cal.Epoch{}, err
 	}
 
+	blocknumber, err := epoch.BlockNumber.ToUint()
+	if err != nil {
+		return cal.Epoch{}, err
+	}
+
 	return cal.Epoch{
-		Hash:      epoch.Blockhash,
-		Pods:      pods,
-		Darknodes: darknodes,
+		Hash:        epoch.Blockhash,
+		Pods:        pods,
+		Darknodes:   darknodes,
+		BlockNumber: blocknumber,
 	}, nil
 }
 

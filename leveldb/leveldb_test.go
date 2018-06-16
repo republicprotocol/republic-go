@@ -4,12 +4,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/republicprotocol/republic-go/ome"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/leveldb"
 
+	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 )
@@ -27,7 +26,7 @@ var _ = Describe("LevelDB storage", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			orders[i] = ord
 			orderFragments[i] = ordFragments[0]
-			computations[i] = ome.NewComputation(ord.ID, ord.ID)
+			computations[i] = ome.NewComputation(ord.ID, ord.ID, [32]byte{})
 		}
 	})
 

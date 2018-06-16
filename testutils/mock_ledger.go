@@ -13,6 +13,12 @@ import (
 // ErrOpenOpenedOrder is returned when trying to open an opened order.
 var ErrOpenOpenedOrder = errors.New("cannot open order that is already open")
 
+// Constant value of trader address for testing
+const (
+	GenesisBuyer  = "0x90e6572eF66a11690b09dd594a18f36Cf76055C8"
+	GenesisSeller = "0x8DF05f77e8aa74D3D8b5342e6007319A470a64ce"
+)
+
 // Order is the internal struct used in the renLedger.
 type Order struct {
 	status   order.Status
@@ -44,6 +50,25 @@ func NewRenLedger() *RenLedger {
 		ordersMu: new(sync.Mutex),
 		orders:   map[order.ID]Order{},
 	}
+}
+
+// OpenOrders implements the ledger.
+func (renLedger *RenLedger) OpenOrders(signatures [][65]byte, orderIDs []order.ID, orderParities []order.Parity) (int, error) {
+	if len(signatures) != len(orderIDs) || len(signatures) != len(orderParities) {
+		return 0, errors.New("mismatched order lengths")
+	}
+	for i := range signatures {
+		if orderParities[i] == order.ParityBuy {
+			if err := renLedger.OpenBuyOrder(signatures[i], orderIDs[i]); err != nil {
+				return i, err
+			}
+		} else {
+			if err := renLedger.OpenSellOrder(signatures[i], orderIDs[i]); err != nil {
+				return i, err
+			}
+		}
+	}
+	return len(signatures), nil
 }
 
 // OpenBuyOrder in the ledger.
@@ -129,7 +154,7 @@ func (renLedger *RenLedger) Priority(orderID order.ID) (uint64, error) {
 
 // Trader returns the trader of the order by the order ID.
 func (renLedger *RenLedger) Trader(orderID order.ID) (string, error) {
-	panic("unimplemented")
+	return GenesisBuyer, nil
 }
 
 // Trader returns the matched order of the order by the order ID.
@@ -139,12 +164,12 @@ func (renLedger *RenLedger) OrderMatch(orderID order.ID) (order.ID, error) {
 
 // Depth returns the block depth since the order been confirmed.
 func (renLedger *RenLedger) Depth(orderID order.ID) (uint, error) {
-	panic("unimplemented")
+	return 100, nil
 }
 
 // BlockNumber returns the block number when the order being last modified.
 func (renLedger *RenLedger) BlockNumber(orderID order.ID) (uint, error) {
-	panic("unimplemented")
+	return 100, nil
 }
 
 // BuyOrders returns a limit of buy orders starting from the offset.

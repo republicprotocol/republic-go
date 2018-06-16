@@ -46,7 +46,7 @@ var _ = Describe("Swarm", func() {
 				}
 
 				dhts[i] = dht.NewDHT(multiAddrs[i].Address(), numberOfClients)
-				server := NewServer(clients[i], &dhts[i])
+				server := NewServer(testutils.NewCrypter(), clients[i], &dhts[i])
 				serverHub.Register(multiAddrs[i].Address(), server)
 			}
 

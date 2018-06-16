@@ -14,22 +14,28 @@ import (
 // ChangeSet is an alias type.
 type ChangeSet []Change
 
+// A Priority is an unsigned integer representing logical time priority. The
+// lower the number, the higher the priority.
+type Priority uint64
+
 // Change represents a change found by the Syncer. It stores all the relevant
 // information for the order.Order that was changed.
 type Change struct {
 	OrderID       order.ID
 	OrderParity   order.Parity
 	OrderStatus   order.Status
-	OrderPriority uint64
+	OrderPriority Priority
+	BlockNumber   uint
 }
 
 // NewChange returns a Change object with the respective data stored inside it.
-func NewChange(id order.ID, parity order.Parity, status order.Status, priority uint64) Change {
+func NewChange(id order.ID, parity order.Parity, status order.Status, priority Priority, blockNumber uint) Change {
 	return Change{
 		OrderID:       id,
 		OrderParity:   parity,
 		OrderStatus:   status,
 		OrderPriority: priority,
+		BlockNumber:   blockNumber,
 	}
 }
 
@@ -60,6 +66,7 @@ type syncer struct {
 // from a cal.RenLedger. It uses a SyncStorer to prevent re-syncing the entire
 // cal.RenLedger when it reboots.
 func NewSyncer(syncStorer SyncStorer, renLedger cal.RenLedger, renLedgerLimit int) Syncer {
+
 	syncer := &syncer{
 		renLedger:      renLedger,
 		renLedgerLimit: renLedgerLimit,
@@ -98,8 +105,13 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 				log.Println("cannot sync order status", err)
 				continue
 			}
+			blockNumber, err := syncer.renLedger.BlockNumber(ord)
+			if err != nil {
+				log.Println("cannot sync order blocknumber", err)
+				continue
+			}
 
-			change := NewChange(ord, order.ParityBuy, status, uint64(syncer.syncBuyPointer+i))
+			change := NewChange(ord, order.ParityBuy, status, Priority(syncer.syncBuyPointer+i), blockNumber)
 			changeset = append(changeset, change)
 			syncer.buyOrders[syncer.syncBuyPointer+i] = ord
 		}
@@ -119,8 +131,13 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 				log.Println("cannot sync order status", err)
 				continue
 			}
+			blockNumber, err := syncer.renLedger.BlockNumber(ord)
+			if err != nil {
+				log.Println("cannot sync order blocknumber", err)
+				continue
+			}
 
-			change := NewChange(ord, order.ParitySell, status, uint64(syncer.syncSellPointer+i))
+			change := NewChange(ord, order.ParitySell, status, Priority(syncer.syncSellPointer+i), blockNumber)
 			changeset = append(changeset, change)
 			syncer.sellOrders[syncer.syncSellPointer+i] = ord
 		}
@@ -145,6 +162,8 @@ func (syncer *syncer) purge() ChangeSet {
 				// Purge all buy orders by iterating over them and reading
 				// their status and priority from the Ren Ledger
 				dispatch.CoForAll(syncer.buyOrders, func(key int) {
+					// FIXME: A CoForAll loop is likely to cause an overflow of
+					// goroutines. We should implement and use a ForAll loop.
 					syncer.ordersMu.RLock()
 					buyOrder := syncer.buyOrders[key]
 					syncer.ordersMu.RUnlock()
@@ -154,25 +173,33 @@ func (syncer *syncer) purge() ChangeSet {
 						logger.Error(fmt.Sprintf("Failed to check order status %v", err))
 						return
 					}
+					if status == order.Open {
+						return
+					}
 
+					blockNumber, err := syncer.renLedger.BlockNumber(buyOrder)
+					if err != nil {
+						log.Println("cannot sync order status", err)
+						return
+					}
 					priority, err := syncer.renLedger.Priority(buyOrder)
 					if err != nil {
 						logger.Error(fmt.Sprintf("Failed to check order priority %v", err))
 						return
 					}
 
-					if status != order.Open {
-						changes <- NewChange(buyOrder, order.ParityBuy, status, priority)
+					changes <- NewChange(buyOrder, order.ParityBuy, status, Priority(priority), blockNumber)
 
-						syncer.ordersMu.Lock()
-						delete(syncer.buyOrders, key)
-						syncer.ordersMu.Unlock()
-					}
+					syncer.ordersMu.Lock()
+					delete(syncer.buyOrders, key)
+					syncer.ordersMu.Unlock()
 				})
 			},
 			func() {
 				// Purge all sell orders
 				dispatch.CoForAll(syncer.sellOrders, func(key int) {
+					// FIXME: A CoForAll loop is likely to cause an overflow of
+					// goroutines. We should implement and use a ForAll loop.
 					syncer.ordersMu.RLock()
 					sellOrder := syncer.sellOrders[key]
 					syncer.ordersMu.RUnlock()
@@ -182,20 +209,26 @@ func (syncer *syncer) purge() ChangeSet {
 						logger.Error(fmt.Sprintf("Failed to check order status: %v", err))
 						return
 					}
+					if status == order.Open {
+						return
+					}
 
+					blockNumber, err := syncer.renLedger.BlockNumber(sellOrder)
+					if err != nil {
+						log.Println("cannot sync order status", err)
+						return
+					}
 					priority, err := syncer.renLedger.Priority(sellOrder)
 					if err != nil {
 						logger.Error(fmt.Sprintf("Failed to check order priority: %v", err))
 						return
 					}
 
-					if status != order.Open {
-						changes <- NewChange(sellOrder, order.ParitySell, status, priority)
+					changes <- NewChange(sellOrder, order.ParitySell, status, Priority(priority), blockNumber)
 
-						syncer.ordersMu.Lock()
-						delete(syncer.sellOrders, key)
-						syncer.ordersMu.Unlock()
-					}
+					syncer.ordersMu.Lock()
+					delete(syncer.sellOrders, key)
+					syncer.ordersMu.Unlock()
 				})
 			},
 		)

@@ -39,7 +39,7 @@ var _ = Describe("Syncer", func() {
 		})
 
 		It("should be able to sync new opened orders", func() {
-			priority := uint64(1)
+			priority := Priority(1)
 			for i := 0; i < NumberOfOrderPairs; i++ {
 				err := renLedger.OpenBuyOrder([65]byte{}, buys[i].ID)
 				Ω(err).ShouldNot(HaveOccurred())

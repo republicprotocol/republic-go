@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"log"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -56,10 +57,10 @@ func main() {
 			log.Fatal(err)
 		}
 
-		log.Printf("%d | %v | %v ", i, hexID, status)
+		log.Printf("%d | %v | %v | %v", i, hexID, status, base64.StdEncoding.EncodeToString(orderID[:]))
 	}
 
-	log.Printf("Open Orders : %v, Confirmed Orders: %v", openCounts, confirmedCount)
+	log.Printf("Open Orders : %v, Confirmed Orders: %v, base64 : ", openCounts, confirmedCount)
 
 }
 
