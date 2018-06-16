@@ -3,6 +3,7 @@ package ome
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"sort"
 	"sync"
 	"time"
@@ -261,10 +262,16 @@ func (ranker *epochRanker) insertBuyChange(change orderbook.Change) Computations
 		if change.Trader != "" && change.Trader == ranker.traders[sell] {
 			continue
 		}
+
 		priority := change.OrderPriority + sellPriority
-		if int(priority)%ranker.numberOfRankers != ranker.pos {
+		rankMod := int(math.Log2(float64(ranker.numberOfRankers)))
+		if rankMod < 1 {
+			rankMod = 1
+		}
+		if int(priority)%rankMod != ranker.pos%rankMod {
 			continue
 		}
+
 		priorityCom := NewComputation(change.OrderID, sell, ranker.epoch.Hash)
 		priorityCom.Priority = priority
 		priorityCom.Timestamp = time.Now()
@@ -287,10 +294,16 @@ func (ranker *epochRanker) insertSellChange(change orderbook.Change) Computation
 		if change.Trader != "" && change.Trader == ranker.traders[buy] {
 			continue
 		}
+
 		priority := change.OrderPriority + buyPriority
-		if int(priority)%ranker.numberOfRankers != ranker.pos {
+		rankMod := int(math.Log2(float64(ranker.numberOfRankers)))
+		if rankMod < 1 {
+			rankMod = 1
+		}
+		if int(priority)%rankMod != ranker.pos%rankMod {
 			continue
 		}
+
 		priorityCom := NewComputation(buy, change.OrderID, ranker.epoch.Hash)
 		priorityCom.Priority = priority
 		priorityCom.Timestamp = time.Now()
