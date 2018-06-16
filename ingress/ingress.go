@@ -244,10 +244,6 @@ func (ingress *ingress) syncFromEpoch(epoch cal.Epoch) error {
 }
 
 func (ingress *ingress) processRequests(done <-chan struct{}, errs chan<- error) {
-
-	// openOrderRequests := make([]OpenOrderRequest, NumBackgroundWorkers)
-	// cancelOrderRequests := make([]CancelOrderRequest, NumBackgroundWorkers)
-
 	for {
 		select {
 		case <-done:
@@ -261,7 +257,9 @@ func (ingress *ingress) processRequests(done <-chan struct{}, errs chan<- error)
 
 			switch req := request.(type) {
 			case EpochRequest:
-				ingress.processEpochRequest(req, done, errs)
+				// FIXME: Epochs are disabled until Epoch forwarding has been
+				// finalized.
+				// ingress.processEpochRequest(req, done, errs)
 			case OpenOrderRequest:
 				ingress.processOpenOrderRequest(req, done, errs)
 			case CancelOrderRequest:
@@ -269,47 +267,6 @@ func (ingress *ingress) processRequests(done <-chan struct{}, errs chan<- error)
 			default:
 				logger.Error(fmt.Sprintf("unexpected request type %T", request))
 			}
-
-			// openOrderRequestsN := 0
-			// cancelOrderRequestsN := 0
-
-			// switch req := request.(type) {
-			// case OpenOrderRequest:
-			// 	openOrderRequests[openOrderRequestsN] = req
-			// 	openOrderRequestsN++
-			// case CancelOrderRequest:
-			// 	cancelOrderRequests[cancelOrderRequestsN] = req
-			// 	cancelOrderRequestsN++
-			// default:
-			// 	logger.Error(fmt.Sprintf("unexpected request type %T", request))
-			// }
-
-			// for i := 1; i < NumBackgroundWorkers; i++ {
-			// 	select {
-			// 	case request, ok := <-ingress.queueRequests:
-			// 		if !ok {
-			// 			break
-			// 		}
-			// 		switch req := request.(type) {
-			// 		case OpenOrderRequest:
-			// 			openOrderRequests[openOrderRequestsN] = req
-			// 			openOrderRequestsN++
-			// 		case CancelOrderRequest:
-			// 			cancelOrderRequests[cancelOrderRequestsN] = req
-			// 			cancelOrderRequestsN++
-			// 		default:
-			// 			logger.Error(fmt.Sprintf("unexpected request type %T", request))
-			// 		}
-			// 	default:
-			// 	}
-			// }
-
-			// if openOrderRequestsN > 0 {
-			// 	ingress.processOpenOrderRequests(openOrderRequests[:openOrderRequestsN], done, errs)
-			// }
-			// if cancelOrderRequestsN > 0 {
-			// 	ingress.processCancelOrderRequests(cancelOrderRequests[:cancelOrderRequestsN], done, errs)
-			// }
 		}
 	}
 }
@@ -324,38 +281,6 @@ func (ingress *ingress) processEpochRequest(req EpochRequest, done <-chan struct
 }
 
 func (ingress *ingress) processOpenOrderRequest(req OpenOrderRequest, done <-chan struct{}, errs chan<- error) {
-	// signatures := make([][65]byte, len(reqs))
-	// orderIDs := make([]order.ID, len(reqs))
-	// orderParities := make([]order.Parity, len(reqs))
-
-	// for i := range reqs {
-	// 	var orderParity order.Parity
-	// 	for _, orderFragments := range reqs[i].orderFragmentMapping {
-	// 		if len(orderFragments) > 1 {
-	// 		5000000000ments[0].OrderParity
-	// 		5000000000
-	// 		}5000000000
-	// 	}
-	// 	signatures[i] = reqs[i].signature
-	// 	orderIDs[i] = reqs[i].orderID
-	// 	orderParities[i] = orderParity
-	// }
-
-	// n, err := ingress.renLedger.OpenOrders(signatures, orderIDs, orderParities)
-	// if err != nil {5000000000
-	// 	select {
-	// 	case <-done:
-	// 	case errs <- err:
-	// 	}
-	// 	return
-	// }
-
-	// for i := 0; i < n; i++ {
-	// 	select {
-	// 	case <-done:
-	// 	case ingress.queueOrderFragmentMappings <- reqs[i].orderFragmentMapping:
-	// 	}
-	// }
 	var orderParity order.Parity
 	for _, orderFragments := range req.orderFragmentMapping {
 		if len(orderFragments) > 1 {
@@ -384,12 +309,6 @@ func (ingress *ingress) processOpenOrderRequest(req OpenOrderRequest, done <-cha
 }
 
 func (ingress *ingress) processCancelOrderRequest(req CancelOrderRequest, done <-chan struct{}, errs chan<- error) {
-	// for _, req := range reqs {
-	// 	if err := ingress.renLedger.CancelOrder(req.signature, req.orderID); err != nil {
-	// 		return err
-	// 	}
-	// }
-	// return nil
 	if err := ingress.renLedger.CancelOrder(req.signature, req.orderID); err != nil {
 		select {
 		case <-done:
