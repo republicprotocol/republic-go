@@ -14,6 +14,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -399,7 +400,7 @@ func (ingress *ingress) processCancelOrderRequest(req CancelOrderRequest, done <
 }
 
 func (ingress *ingress) processOrderFragmentMappingQueue(done <-chan struct{}, errs chan<- error) {
-	dispatch.CoForAll(runtime.NumCPU(), func(i int) {
+	dispatch.CoForAll(NumBackgroundWorkers, func(i int) {
 		for {
 			select {
 			case <-done:
@@ -475,18 +476,22 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 			darknode := pod.Darknodes[i]
 
 			// Send the order fragment to the Darknode
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
-			darknodeMultiAddr, err := ingress.swarmer.Query(ctx, darknode, -1)
-			if err != nil {
-				errs <- fmt.Errorf("cannot send query to %v: %v", darknode, err)
-				return
-			}
 
-			if err := ingress.orderbookClient.OpenOrder(ctx, darknodeMultiAddr, orderFragment.EncryptedFragment); err != nil {
-				log.Printf("cannot send order fragment to %v: %v", darknode, err)
-				errs <- fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
-				return
+			err := grpc.Backoff(ctx, func() error {
+				darknodeMultiAddr, err := ingress.swarmer.Query(ctx, darknode, -1)
+				if err != nil {
+					return fmt.Errorf("cannot send query to %v: %v", darknode, err)
+				}
+				if err := ingress.orderbookClient.OpenOrder(ctx, darknodeMultiAddr, orderFragment.EncryptedFragment); err != nil {
+					log.Printf("cannot send order fragment to %v: %v", darknode, err)
+					return fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
+				}
+				return nil
+			})
+			if err != nil {
+				errs <- err
 			}
 		})
 	}()
