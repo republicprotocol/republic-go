@@ -94,8 +94,9 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 		coms = ranker.rankerPrevEpoch.insertChange(change)
 	}
 
-	// TODO: If the change is a remove, then we should also remove all
-	// respective Computations from ranker.computations.
+	if change.OrderStatus != order.Open {
+		ranker.removeComputations(change.OrderID)
+	}
 
 	ranker.insertComputations(coms)
 }
@@ -186,6 +187,23 @@ func (ranker *delegateRanker) insertComputation(com Computation) {
 	ranker.computations = append(
 		ranker.computations[:index],
 		append([]Computation{com}, ranker.computations[index:]...)...)
+}
+
+func (ranker *delegateRanker) removeComputations(orderID order.ID) {
+	ranker.computationsMu.Lock()
+	defer ranker.computationsMu.Unlock()
+
+	numComputations := len(ranker.computations)
+	for i := 0; i < numComputations; i++ {
+		if orderID.Equal(ranker.computations[i].Buy) || orderID.Equal(ranker.computations[i].Sell) {
+			if i == len(ranker.computations)-1 {
+				ranker.computations = ranker.computations[:i]
+			} else {
+				ranker.computations = append(ranker.computations[:i], ranker.computations[i+1:]...)
+			}
+			i--
+		}
+	}
 }
 
 func (ranker *delegateRanker) posFromEpoch(epoch cal.Epoch) (int, int, error) {
