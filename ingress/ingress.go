@@ -14,7 +14,6 @@ import (
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -476,22 +475,19 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod cal.Pod, orderFragments []Or
 			darknode := pod.Darknodes[i]
 
 			// Send the order fragment to the Darknode
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
 
-			err := grpc.Backoff(ctx, func() error {
-				darknodeMultiAddr, err := ingress.swarmer.Query(ctx, darknode, -1)
-				if err != nil {
-					return fmt.Errorf("cannot send query to %v: %v", darknode, err)
-				}
-				if err := ingress.orderbookClient.OpenOrder(ctx, darknodeMultiAddr, orderFragment.EncryptedFragment); err != nil {
-					log.Printf("cannot send order fragment to %v: %v", darknode, err)
-					return fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
-				}
-				return nil
-			})
+			darknodeMultiAddr, err := ingress.swarmer.Query(ctx, darknode, -1)
 			if err != nil {
-				errs <- err
+				errs <- fmt.Errorf("cannot send query to %v: %v", darknode, err)
+				return
+			}
+
+			if err := ingress.orderbookClient.OpenOrder(ctx, darknodeMultiAddr, orderFragment.EncryptedFragment); err != nil {
+				log.Printf("cannot send order fragment to %v: %v", darknode, err)
+				errs <- fmt.Errorf("cannot send order fragment to %v: %v", darknode, err)
+				return
 			}
 		})
 	}()
