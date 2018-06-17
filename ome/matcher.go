@@ -116,9 +116,12 @@ func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, buyFr
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot build %v join: %v", stage, err))
 		return
 	}
-	matcher.smpcer.Join(networkID, join, func(joinID smpc.JoinID, values []uint64) {
+	err = matcher.smpcer.Join(networkID, join, func(joinID smpc.JoinID, values []uint64) {
 		matcher.resolveValues(values, networkID, com, buyFragment, sellFragment, callback, stage)
 	})
+	if err != nil {
+		logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve %v: cannot join computation = %v: %v", stage, com.ID, err))
+	}
 }
 
 func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback, stage ResolveStage) {
