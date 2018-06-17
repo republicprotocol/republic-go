@@ -77,3 +77,11 @@ func (accounts *RenExAccounts) Settle(buy order.Order, sell order.Order) error {
 
 	return accounts.SubmitMatch(buy.ID, sell.ID)
 }
+
+func (accounts *RenExAccounts) SettlementDetail(buy, sell order.ID) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int, error) {
+	price, lowVolume, highVolume, lowFee, highFee, err := accounts.binding.GetSettlementDetails(accounts.callOpts, buy, sell)
+	if err != nil {
+		return nil, nil, nil, nil, nil, err
+	}
+	return price, lowVolume, highVolume, lowFee, highFee, nil
+}
