@@ -115,11 +115,8 @@ func (val *CoExpShare) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	if err = val.Exp.UnmarshalBinary(expBytes); err != nil {
-		return err
-	}
 
-	return nil
+	return val.Exp.UnmarshalBinary(expBytes)
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface and

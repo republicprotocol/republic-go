@@ -91,10 +91,7 @@ func (share *Share) UnmarshalBinary(data []byte) error {
 	if err := binary.Read(buf, binary.BigEndian, &share.Index); err != nil {
 		return err
 	}
-	if err := binary.Read(buf, binary.BigEndian, &share.Value); err != nil {
-		return err
-	}
-	return nil
+	return binary.Read(buf, binary.BigEndian, &share.Value)
 }
 
 // Encrypt a Share using an rsa.PublicKey.

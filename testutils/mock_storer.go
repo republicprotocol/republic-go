@@ -102,7 +102,7 @@ func (storer *Storer) Computation(id ome.ComputationID) (ome.Computation, error)
 
 	computation, ok := storer.computations[id]
 	if !ok {
-		return ome.Computation{}, ErrOrderFragmentNotFound
+		return ome.Computation{}, ErrComputationNotFound
 	}
 	return computation, nil
 }

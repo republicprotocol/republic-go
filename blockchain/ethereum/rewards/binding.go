@@ -1,7 +1,7 @@
+package rewards
+
 // Code generated - DO NOT EDIT.
 // This file is a generated binding and any manual changes will be lost.
-
-package accounts
 
 import (
 	"math/big"
@@ -2029,167 +2029,6 @@ func (_DarknodeRegistry *DarknodeRegistryFilterer) WatchOwnerRefunded(opts *bind
 	}), nil
 }
 
-// ECDSAABI is the input ABI used to generate the binding from.
-const ECDSAABI = "[]"
-
-// ECDSABin is the compiled bytecode used for deploying new contracts.
-const ECDSABin = `0x604c602c600b82828239805160001a60731460008114601c57601e565bfe5b5030600052607381538281f30073000000000000000000000000000000000000000030146080604052600080fd00a165627a7a723058207aa74cfedd19ba5d22460afa912eb3272132dd9bb943c725d439e1cb1092198a0029`
-
-// DeployECDSA deploys a new Ethereum contract, binding an instance of ECDSA to it.
-func DeployECDSA(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *ECDSA, error) {
-	parsed, err := abi.JSON(strings.NewReader(ECDSAABI))
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(ECDSABin), backend)
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	return address, tx, &ECDSA{ECDSACaller: ECDSACaller{contract: contract}, ECDSATransactor: ECDSATransactor{contract: contract}, ECDSAFilterer: ECDSAFilterer{contract: contract}}, nil
-}
-
-// ECDSA is an auto generated Go binding around an Ethereum contract.
-type ECDSA struct {
-	ECDSACaller     // Read-only binding to the contract
-	ECDSATransactor // Write-only binding to the contract
-	ECDSAFilterer   // Log filterer for contract events
-}
-
-// ECDSACaller is an auto generated read-only Go binding around an Ethereum contract.
-type ECDSACaller struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// ECDSATransactor is an auto generated write-only Go binding around an Ethereum contract.
-type ECDSATransactor struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// ECDSAFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
-type ECDSAFilterer struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// ECDSASession is an auto generated Go binding around an Ethereum contract,
-// with pre-set call and transact options.
-type ECDSASession struct {
-	Contract     *ECDSA            // Generic contract binding to set the session for
-	CallOpts     bind.CallOpts     // Call options to use throughout this session
-	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
-}
-
-// ECDSACallerSession is an auto generated read-only Go binding around an Ethereum contract,
-// with pre-set call options.
-type ECDSACallerSession struct {
-	Contract *ECDSACaller  // Generic contract caller binding to set the session for
-	CallOpts bind.CallOpts // Call options to use throughout this session
-}
-
-// ECDSATransactorSession is an auto generated write-only Go binding around an Ethereum contract,
-// with pre-set transact options.
-type ECDSATransactorSession struct {
-	Contract     *ECDSATransactor  // Generic contract transactor binding to set the session for
-	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
-}
-
-// ECDSARaw is an auto generated low-level Go binding around an Ethereum contract.
-type ECDSARaw struct {
-	Contract *ECDSA // Generic contract binding to access the raw methods on
-}
-
-// ECDSACallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
-type ECDSACallerRaw struct {
-	Contract *ECDSACaller // Generic read-only contract binding to access the raw methods on
-}
-
-// ECDSATransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
-type ECDSATransactorRaw struct {
-	Contract *ECDSATransactor // Generic write-only contract binding to access the raw methods on
-}
-
-// NewECDSA creates a new instance of ECDSA, bound to a specific deployed contract.
-func NewECDSA(address common.Address, backend bind.ContractBackend) (*ECDSA, error) {
-	contract, err := bindECDSA(address, backend, backend, backend)
-	if err != nil {
-		return nil, err
-	}
-	return &ECDSA{ECDSACaller: ECDSACaller{contract: contract}, ECDSATransactor: ECDSATransactor{contract: contract}, ECDSAFilterer: ECDSAFilterer{contract: contract}}, nil
-}
-
-// NewECDSACaller creates a new read-only instance of ECDSA, bound to a specific deployed contract.
-func NewECDSACaller(address common.Address, caller bind.ContractCaller) (*ECDSACaller, error) {
-	contract, err := bindECDSA(address, caller, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &ECDSACaller{contract: contract}, nil
-}
-
-// NewECDSATransactor creates a new write-only instance of ECDSA, bound to a specific deployed contract.
-func NewECDSATransactor(address common.Address, transactor bind.ContractTransactor) (*ECDSATransactor, error) {
-	contract, err := bindECDSA(address, nil, transactor, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &ECDSATransactor{contract: contract}, nil
-}
-
-// NewECDSAFilterer creates a new log filterer instance of ECDSA, bound to a specific deployed contract.
-func NewECDSAFilterer(address common.Address, filterer bind.ContractFilterer) (*ECDSAFilterer, error) {
-	contract, err := bindECDSA(address, nil, nil, filterer)
-	if err != nil {
-		return nil, err
-	}
-	return &ECDSAFilterer{contract: contract}, nil
-}
-
-// bindECDSA binds a generic wrapper to an already deployed contract.
-func bindECDSA(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(ECDSAABI))
-	if err != nil {
-		return nil, err
-	}
-	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_ECDSA *ECDSARaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _ECDSA.Contract.ECDSACaller.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_ECDSA *ECDSARaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _ECDSA.Contract.ECDSATransactor.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_ECDSA *ECDSARaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _ECDSA.Contract.ECDSATransactor.contract.Transact(opts, method, params...)
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_ECDSA *ECDSACallerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _ECDSA.Contract.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_ECDSA *ECDSATransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _ECDSA.Contract.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_ECDSA *ECDSATransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _ECDSA.Contract.contract.Transact(opts, method, params...)
-}
-
 // ERC20ABI is the input ABI used to generate the binding from.
 const ERC20ABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"spender\",\"type\":\"address\"},{\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"approve\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"totalSupply\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"from\",\"type\":\"address\"},{\"name\":\"to\",\"type\":\"address\"},{\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"transferFrom\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"who\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"to\",\"type\":\"address\"},{\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"transfer\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"owner\",\"type\":\"address\"},{\"name\":\"spender\",\"type\":\"address\"}],\"name\":\"allowance\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"spender\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"Approval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"to\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"Transfer\",\"type\":\"event\"}]"
 
@@ -3150,6 +2989,193 @@ func (_ERC20Basic *ERC20BasicFilterer) WatchTransfer(opts *bind.WatchOpts, sink 
 			}
 		}
 	}), nil
+}
+
+// LibRewardVaultABI is the input ABI used to generate the binding from.
+const LibRewardVaultABI = "[{\"constant\":true,\"inputs\":[],\"name\":\"ETHEREUM\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}]"
+
+// LibRewardVaultBin is the compiled bytecode used for deploying new contracts.
+const LibRewardVaultBin = `0x60cd61002f600b82828239805160001a6073146000811461001f57610021565bfe5b5030600052607381538281f300730000000000000000000000000000000000000000301460806040526004361060555763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663f7cdf47c8114605a575b600080fd5b60606089565b6040805173ffffffffffffffffffffffffffffffffffffffff9092168252519081900360200190f35b73eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee815600a165627a7a72305820f78801ee6909345c74a28f053908edcbcd10aeee8d3d87acc48818c186afabc20029`
+
+// DeployLibRewardVault deploys a new Ethereum contract, binding an instance of LibRewardVault to it.
+func DeployLibRewardVault(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *LibRewardVault, error) {
+	parsed, err := abi.JSON(strings.NewReader(LibRewardVaultABI))
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(LibRewardVaultBin), backend)
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	return address, tx, &LibRewardVault{LibRewardVaultCaller: LibRewardVaultCaller{contract: contract}, LibRewardVaultTransactor: LibRewardVaultTransactor{contract: contract}, LibRewardVaultFilterer: LibRewardVaultFilterer{contract: contract}}, nil
+}
+
+// LibRewardVault is an auto generated Go binding around an Ethereum contract.
+type LibRewardVault struct {
+	LibRewardVaultCaller     // Read-only binding to the contract
+	LibRewardVaultTransactor // Write-only binding to the contract
+	LibRewardVaultFilterer   // Log filterer for contract events
+}
+
+// LibRewardVaultCaller is an auto generated read-only Go binding around an Ethereum contract.
+type LibRewardVaultCaller struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// LibRewardVaultTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type LibRewardVaultTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// LibRewardVaultFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type LibRewardVaultFilterer struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// LibRewardVaultSession is an auto generated Go binding around an Ethereum contract,
+// with pre-set call and transact options.
+type LibRewardVaultSession struct {
+	Contract     *LibRewardVault   // Generic contract binding to set the session for
+	CallOpts     bind.CallOpts     // Call options to use throughout this session
+	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
+}
+
+// LibRewardVaultCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// with pre-set call options.
+type LibRewardVaultCallerSession struct {
+	Contract *LibRewardVaultCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts         // Call options to use throughout this session
+}
+
+// LibRewardVaultTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// with pre-set transact options.
+type LibRewardVaultTransactorSession struct {
+	Contract     *LibRewardVaultTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts         // Transaction auth options to use throughout this session
+}
+
+// LibRewardVaultRaw is an auto generated low-level Go binding around an Ethereum contract.
+type LibRewardVaultRaw struct {
+	Contract *LibRewardVault // Generic contract binding to access the raw methods on
+}
+
+// LibRewardVaultCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type LibRewardVaultCallerRaw struct {
+	Contract *LibRewardVaultCaller // Generic read-only contract binding to access the raw methods on
+}
+
+// LibRewardVaultTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type LibRewardVaultTransactorRaw struct {
+	Contract *LibRewardVaultTransactor // Generic write-only contract binding to access the raw methods on
+}
+
+// NewLibRewardVault creates a new instance of LibRewardVault, bound to a specific deployed contract.
+func NewLibRewardVault(address common.Address, backend bind.ContractBackend) (*LibRewardVault, error) {
+	contract, err := bindLibRewardVault(address, backend, backend, backend)
+	if err != nil {
+		return nil, err
+	}
+	return &LibRewardVault{LibRewardVaultCaller: LibRewardVaultCaller{contract: contract}, LibRewardVaultTransactor: LibRewardVaultTransactor{contract: contract}, LibRewardVaultFilterer: LibRewardVaultFilterer{contract: contract}}, nil
+}
+
+// NewLibRewardVaultCaller creates a new read-only instance of LibRewardVault, bound to a specific deployed contract.
+func NewLibRewardVaultCaller(address common.Address, caller bind.ContractCaller) (*LibRewardVaultCaller, error) {
+	contract, err := bindLibRewardVault(address, caller, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &LibRewardVaultCaller{contract: contract}, nil
+}
+
+// NewLibRewardVaultTransactor creates a new write-only instance of LibRewardVault, bound to a specific deployed contract.
+func NewLibRewardVaultTransactor(address common.Address, transactor bind.ContractTransactor) (*LibRewardVaultTransactor, error) {
+	contract, err := bindLibRewardVault(address, nil, transactor, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &LibRewardVaultTransactor{contract: contract}, nil
+}
+
+// NewLibRewardVaultFilterer creates a new log filterer instance of LibRewardVault, bound to a specific deployed contract.
+func NewLibRewardVaultFilterer(address common.Address, filterer bind.ContractFilterer) (*LibRewardVaultFilterer, error) {
+	contract, err := bindLibRewardVault(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &LibRewardVaultFilterer{contract: contract}, nil
+}
+
+// bindLibRewardVault binds a generic wrapper to an already deployed contract.
+func bindLibRewardVault(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := abi.JSON(strings.NewReader(LibRewardVaultABI))
+	if err != nil {
+		return nil, err
+	}
+	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_LibRewardVault *LibRewardVaultRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
+	return _LibRewardVault.Contract.LibRewardVaultCaller.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_LibRewardVault *LibRewardVaultRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _LibRewardVault.Contract.LibRewardVaultTransactor.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_LibRewardVault *LibRewardVaultRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _LibRewardVault.Contract.LibRewardVaultTransactor.contract.Transact(opts, method, params...)
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_LibRewardVault *LibRewardVaultCallerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
+	return _LibRewardVault.Contract.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_LibRewardVault *LibRewardVaultTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _LibRewardVault.Contract.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_LibRewardVault *LibRewardVaultTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _LibRewardVault.Contract.contract.Transact(opts, method, params...)
+}
+
+// ETHEREUM is a free data retrieval call binding the contract method 0xf7cdf47c.
+//
+// Solidity: function ETHEREUM() constant returns(address)
+func (_LibRewardVault *LibRewardVaultCaller) ETHEREUM(opts *bind.CallOpts) (common.Address, error) {
+	var (
+		ret0 = new(common.Address)
+	)
+	out := ret0
+	err := _LibRewardVault.contract.Call(opts, out, "ETHEREUM")
+	return *ret0, err
+}
+
+// ETHEREUM is a free data retrieval call binding the contract method 0xf7cdf47c.
+//
+// Solidity: function ETHEREUM() constant returns(address)
+func (_LibRewardVault *LibRewardVaultSession) ETHEREUM() (common.Address, error) {
+	return _LibRewardVault.Contract.ETHEREUM(&_LibRewardVault.CallOpts)
+}
+
+// ETHEREUM is a free data retrieval call binding the contract method 0xf7cdf47c.
+//
+// Solidity: function ETHEREUM() constant returns(address)
+func (_LibRewardVault *LibRewardVaultCallerSession) ETHEREUM() (common.Address, error) {
+	return _LibRewardVault.Contract.ETHEREUM(&_LibRewardVault.CallOpts)
 }
 
 // LinkedListABI is the input ABI used to generate the binding from.
@@ -5473,3404 +5499,6 @@ func (_PausableToken *PausableTokenFilterer) WatchUnpause(opts *bind.WatchOpts, 
 	}), nil
 }
 
-// RenExBalancesABI is the input ABI used to generate the binding from.
-const RenExBalancesABI = "[{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"},{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"traderTokens\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_trader\",\"type\":\"address\"},{\"name\":\"_token\",\"type\":\"address\"},{\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"incrementBalance\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_token\",\"type\":\"address\"},{\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"deposit\",\"outputs\":[],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_trader\",\"type\":\"address\"},{\"name\":\"_token\",\"type\":\"address\"},{\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"decrementBalance\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_newSettlementContract\",\"type\":\"address\"}],\"name\":\"setRenExSettlementContract\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"},{\"name\":\"\",\"type\":\"address\"}],\"name\":\"traderBalances\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_trader\",\"type\":\"address\"}],\"name\":\"getBalances\",\"outputs\":[{\"name\":\"\",\"type\":\"address[]\"},{\"name\":\"\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"settlementContract\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_token\",\"type\":\"address\"},{\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"withdraw\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"trader\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"BalanceDecreased\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"trader\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"BalanceIncreased\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"RenExSettlementContractChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"}]"
-
-// RenExBalancesBin is the compiled bytecode used for deploying new contracts.
-const RenExBalancesBin = `0x608060405260028054600160a060020a031916905534801561002057600080fd5b5060008054600160a060020a03191633179055610af9806100426000396000f3006080604052600436106100ae5763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416631a6947ce81146100b35780632b15e857146100f357806347e7ef241461011f57806352fedefa146101365780638da5cb5b1461016057806393e2448a14610175578063c43c633b14610196578063c84aae17146101cf578063ea42418b14610289578063f2fde38b1461029e578063f3fef3a3146102bf575b600080fd5b3480156100bf57600080fd5b506100d7600160a060020a03600435166024356102e3565b60408051600160a060020a039092168252519081900360200190f35b3480156100ff57600080fd5b5061011d600160a060020a036004358116906024351660443561031a565b005b61011d600160a060020a0360043516602435610341565b34801561014257600080fd5b5061011d600160a060020a036004358116906024351660443561041e565b34801561016c57600080fd5b506100d7610440565b34801561018157600080fd5b5061011d600160a060020a036004351661044f565b3480156101a257600080fd5b506101bd600160a060020a03600435811690602435166104cf565b60408051918252519081900360200190f35b3480156101db57600080fd5b506101f0600160a060020a03600435166104ec565b604051808060200180602001838103835285818151815260200191508051906020019060200280838360005b8381101561023457818101518382015260200161021c565b50505050905001838103825284818151815260200191508051906020019060200280838360005b8381101561027357818101518382015260200161025b565b5050505090500194505050505060405180910390f35b34801561029557600080fd5b506100d761062f565b3480156102aa57600080fd5b5061011d600160a060020a036004351661063e565b3480156102cb57600080fd5b5061011d600160a060020a03600435166024356106d2565b6003602052816000526040600020818154811015156102fe57fe5b600091825260209091200154600160a060020a03169150829050565b600154600160a060020a0316331461033157600080fd5b61033c8383836108c0565b505050565b6002543390600160a060020a038481169116141561036a5734821461036557600080fd5b610413565b604080517f23b872dd000000000000000000000000000000000000000000000000000000008152600160a060020a038381166004830152306024830152604482018590529151918516916323b872dd916064808201926020929091908290030181600087803b1580156103dc57600080fd5b505af11580156103f0573d6000803e3d6000fd5b505050506040513d602081101561040657600080fd5b5051151561041357600080fd5b61033c8184846108c0565b600154600160a060020a0316331461043557600080fd5b61033c8383836109ff565b600054600160a060020a031681565b600054600160a060020a0316331461046657600080fd5b600154604051600160a060020a038084169216907fed2802be9251854352f2810007e5db298089a145ee5a78a47e86446632726a2890600090a36001805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a0392909216919091179055565b600460209081526000928352604080842090915290825290205481565b60608060608060006003600087600160a060020a0316600160a060020a0316815260200190815260200160002080548060200260200160405190810160405280929190818152602001828054801561056d57602002820191906000526020600020905b8154600160a060020a0316815260019091019060200180831161054f575b50505050509250825160405190808252806020026020018201604052801561059f578160200160208202803883390190505b509150600090505b825181101561062457600160a060020a038616600090815260046020526040812084519091908590849081106105d957fe5b90602001906020020151600160a060020a0316600160a060020a0316815260200190815260200160002054828281518110151561061257fe5b602090810290910101526001016105a7565b509094909350915050565b600154600160a060020a031681565b600054600160a060020a0316331461065557600080fd5b600160a060020a038116151561066a57600080fd5b60008054604051600160a060020a03808516939216917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e091a36000805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a0392909216919091179055565b336000818152600460209081526040808320600160a060020a038716845290915290205482111561070257600080fd5b600154604080517fa3bdaedc000000000000000000000000000000000000000000000000000000008152600160a060020a0384811660048301528681166024830152604482018690529151919092169163a3bdaedc9160648083019260209291908290030181600087803b15801561077957600080fd5b505af115801561078d573d6000803e3d6000fd5b505050506040513d60208110156107a357600080fd5b505115156107b057600080fd5b6107bb8184846109ff565b600254600160a060020a038481169116141561080d57604051600160a060020a0382169083156108fc029084906000818181858888f19350505050158015610807573d6000803e3d6000fd5b5061033c565b82600160a060020a031663a9059cbb82846040518363ffffffff167c01000000000000000000000000000000000000000000000000000000000281526004018083600160a060020a0316600160a060020a0316815260200182815260200192505050602060405180830381600087803b15801561088957600080fd5b505af115801561089d573d6000803e3d6000fd5b505050506040513d60208110156108b357600080fd5b5051151561033c57600080fd5b600160a060020a0380841660009081526005602090815260408083209386168352929052205460ff16151561095957600160a060020a038084166000818152600560209081526040808320948716808452948252808320805460ff19166001908117909155938352600382528220805493840181558252902001805473ffffffffffffffffffffffffffffffffffffffff191690911790555b600160a060020a0380841660009081526004602090815260408083209386168352929052205461098f908263ffffffff610aa516565b600160a060020a038085166000818152600460209081526040808320948816808452948252918290209490945580519182529281019190915280820183905290517f0d66f59c9991adc17dd3339490c5058d2d6fe20395e7b55ceb6ca8019a31667d9181900360600190a1505050565b600160a060020a03808416600090815260046020908152604080832093861683529290522054610a35908263ffffffff610abb16565b600160a060020a038085166000818152600460209081526040808320948816808452948252918290209490945580519182529281019190915280820183905290517f6ac2cd906088d873624fa62ca95170d967629e7d964651df19a3aa2e49b44aa19181900360600190a1505050565b600082820183811015610ab457fe5b9392505050565b600082821115610ac757fe5b509003905600a165627a7a72305820764a3d540b639db5ede50c9a2570ed75f81bd5bc5128070e34d344206ffdf00e0029`
-
-// DeployRenExBalances deploys a new Ethereum contract, binding an instance of RenExBalances to it.
-func DeployRenExBalances(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *RenExBalances, error) {
-	parsed, err := abi.JSON(strings.NewReader(RenExBalancesABI))
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(RenExBalancesBin), backend)
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	return address, tx, &RenExBalances{RenExBalancesCaller: RenExBalancesCaller{contract: contract}, RenExBalancesTransactor: RenExBalancesTransactor{contract: contract}, RenExBalancesFilterer: RenExBalancesFilterer{contract: contract}}, nil
-}
-
-// RenExBalances is an auto generated Go binding around an Ethereum contract.
-type RenExBalances struct {
-	RenExBalancesCaller     // Read-only binding to the contract
-	RenExBalancesTransactor // Write-only binding to the contract
-	RenExBalancesFilterer   // Log filterer for contract events
-}
-
-// RenExBalancesCaller is an auto generated read-only Go binding around an Ethereum contract.
-type RenExBalancesCaller struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenExBalancesTransactor is an auto generated write-only Go binding around an Ethereum contract.
-type RenExBalancesTransactor struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenExBalancesFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
-type RenExBalancesFilterer struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenExBalancesSession is an auto generated Go binding around an Ethereum contract,
-// with pre-set call and transact options.
-type RenExBalancesSession struct {
-	Contract     *RenExBalances    // Generic contract binding to set the session for
-	CallOpts     bind.CallOpts     // Call options to use throughout this session
-	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
-}
-
-// RenExBalancesCallerSession is an auto generated read-only Go binding around an Ethereum contract,
-// with pre-set call options.
-type RenExBalancesCallerSession struct {
-	Contract *RenExBalancesCaller // Generic contract caller binding to set the session for
-	CallOpts bind.CallOpts        // Call options to use throughout this session
-}
-
-// RenExBalancesTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
-// with pre-set transact options.
-type RenExBalancesTransactorSession struct {
-	Contract     *RenExBalancesTransactor // Generic contract transactor binding to set the session for
-	TransactOpts bind.TransactOpts        // Transaction auth options to use throughout this session
-}
-
-// RenExBalancesRaw is an auto generated low-level Go binding around an Ethereum contract.
-type RenExBalancesRaw struct {
-	Contract *RenExBalances // Generic contract binding to access the raw methods on
-}
-
-// RenExBalancesCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
-type RenExBalancesCallerRaw struct {
-	Contract *RenExBalancesCaller // Generic read-only contract binding to access the raw methods on
-}
-
-// RenExBalancesTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
-type RenExBalancesTransactorRaw struct {
-	Contract *RenExBalancesTransactor // Generic write-only contract binding to access the raw methods on
-}
-
-// NewRenExBalances creates a new instance of RenExBalances, bound to a specific deployed contract.
-func NewRenExBalances(address common.Address, backend bind.ContractBackend) (*RenExBalances, error) {
-	contract, err := bindRenExBalances(address, backend, backend, backend)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExBalances{RenExBalancesCaller: RenExBalancesCaller{contract: contract}, RenExBalancesTransactor: RenExBalancesTransactor{contract: contract}, RenExBalancesFilterer: RenExBalancesFilterer{contract: contract}}, nil
-}
-
-// NewRenExBalancesCaller creates a new read-only instance of RenExBalances, bound to a specific deployed contract.
-func NewRenExBalancesCaller(address common.Address, caller bind.ContractCaller) (*RenExBalancesCaller, error) {
-	contract, err := bindRenExBalances(address, caller, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExBalancesCaller{contract: contract}, nil
-}
-
-// NewRenExBalancesTransactor creates a new write-only instance of RenExBalances, bound to a specific deployed contract.
-func NewRenExBalancesTransactor(address common.Address, transactor bind.ContractTransactor) (*RenExBalancesTransactor, error) {
-	contract, err := bindRenExBalances(address, nil, transactor, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExBalancesTransactor{contract: contract}, nil
-}
-
-// NewRenExBalancesFilterer creates a new log filterer instance of RenExBalances, bound to a specific deployed contract.
-func NewRenExBalancesFilterer(address common.Address, filterer bind.ContractFilterer) (*RenExBalancesFilterer, error) {
-	contract, err := bindRenExBalances(address, nil, nil, filterer)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExBalancesFilterer{contract: contract}, nil
-}
-
-// bindRenExBalances binds a generic wrapper to an already deployed contract.
-func bindRenExBalances(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(RenExBalancesABI))
-	if err != nil {
-		return nil, err
-	}
-	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_RenExBalances *RenExBalancesRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _RenExBalances.Contract.RenExBalancesCaller.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_RenExBalances *RenExBalancesRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _RenExBalances.Contract.RenExBalancesTransactor.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_RenExBalances *RenExBalancesRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _RenExBalances.Contract.RenExBalancesTransactor.contract.Transact(opts, method, params...)
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_RenExBalances *RenExBalancesCallerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _RenExBalances.Contract.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_RenExBalances *RenExBalancesTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _RenExBalances.Contract.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_RenExBalances *RenExBalancesTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _RenExBalances.Contract.contract.Transact(opts, method, params...)
-}
-
-// GetBalances is a free data retrieval call binding the contract method 0xc84aae17.
-//
-// Solidity: function getBalances(_trader address) constant returns(address[], uint256[])
-func (_RenExBalances *RenExBalancesCaller) GetBalances(opts *bind.CallOpts, _trader common.Address) ([]common.Address, []*big.Int, error) {
-	var (
-		ret0 = new([]common.Address)
-		ret1 = new([]*big.Int)
-	)
-	out := &[]interface{}{
-		ret0,
-		ret1,
-	}
-	err := _RenExBalances.contract.Call(opts, out, "getBalances", _trader)
-	return *ret0, *ret1, err
-}
-
-// GetBalances is a free data retrieval call binding the contract method 0xc84aae17.
-//
-// Solidity: function getBalances(_trader address) constant returns(address[], uint256[])
-func (_RenExBalances *RenExBalancesSession) GetBalances(_trader common.Address) ([]common.Address, []*big.Int, error) {
-	return _RenExBalances.Contract.GetBalances(&_RenExBalances.CallOpts, _trader)
-}
-
-// GetBalances is a free data retrieval call binding the contract method 0xc84aae17.
-//
-// Solidity: function getBalances(_trader address) constant returns(address[], uint256[])
-func (_RenExBalances *RenExBalancesCallerSession) GetBalances(_trader common.Address) ([]common.Address, []*big.Int, error) {
-	return _RenExBalances.Contract.GetBalances(&_RenExBalances.CallOpts, _trader)
-}
-
-// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
-//
-// Solidity: function owner() constant returns(address)
-func (_RenExBalances *RenExBalancesCaller) Owner(opts *bind.CallOpts) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _RenExBalances.contract.Call(opts, out, "owner")
-	return *ret0, err
-}
-
-// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
-//
-// Solidity: function owner() constant returns(address)
-func (_RenExBalances *RenExBalancesSession) Owner() (common.Address, error) {
-	return _RenExBalances.Contract.Owner(&_RenExBalances.CallOpts)
-}
-
-// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
-//
-// Solidity: function owner() constant returns(address)
-func (_RenExBalances *RenExBalancesCallerSession) Owner() (common.Address, error) {
-	return _RenExBalances.Contract.Owner(&_RenExBalances.CallOpts)
-}
-
-// SettlementContract is a free data retrieval call binding the contract method 0xea42418b.
-//
-// Solidity: function settlementContract() constant returns(address)
-func (_RenExBalances *RenExBalancesCaller) SettlementContract(opts *bind.CallOpts) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _RenExBalances.contract.Call(opts, out, "settlementContract")
-	return *ret0, err
-}
-
-// SettlementContract is a free data retrieval call binding the contract method 0xea42418b.
-//
-// Solidity: function settlementContract() constant returns(address)
-func (_RenExBalances *RenExBalancesSession) SettlementContract() (common.Address, error) {
-	return _RenExBalances.Contract.SettlementContract(&_RenExBalances.CallOpts)
-}
-
-// SettlementContract is a free data retrieval call binding the contract method 0xea42418b.
-//
-// Solidity: function settlementContract() constant returns(address)
-func (_RenExBalances *RenExBalancesCallerSession) SettlementContract() (common.Address, error) {
-	return _RenExBalances.Contract.SettlementContract(&_RenExBalances.CallOpts)
-}
-
-// TraderBalances is a free data retrieval call binding the contract method 0xc43c633b.
-//
-// Solidity: function traderBalances( address,  address) constant returns(uint256)
-func (_RenExBalances *RenExBalancesCaller) TraderBalances(opts *bind.CallOpts, arg0 common.Address, arg1 common.Address) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _RenExBalances.contract.Call(opts, out, "traderBalances", arg0, arg1)
-	return *ret0, err
-}
-
-// TraderBalances is a free data retrieval call binding the contract method 0xc43c633b.
-//
-// Solidity: function traderBalances( address,  address) constant returns(uint256)
-func (_RenExBalances *RenExBalancesSession) TraderBalances(arg0 common.Address, arg1 common.Address) (*big.Int, error) {
-	return _RenExBalances.Contract.TraderBalances(&_RenExBalances.CallOpts, arg0, arg1)
-}
-
-// TraderBalances is a free data retrieval call binding the contract method 0xc43c633b.
-//
-// Solidity: function traderBalances( address,  address) constant returns(uint256)
-func (_RenExBalances *RenExBalancesCallerSession) TraderBalances(arg0 common.Address, arg1 common.Address) (*big.Int, error) {
-	return _RenExBalances.Contract.TraderBalances(&_RenExBalances.CallOpts, arg0, arg1)
-}
-
-// TraderTokens is a free data retrieval call binding the contract method 0x1a6947ce.
-//
-// Solidity: function traderTokens( address,  uint256) constant returns(address)
-func (_RenExBalances *RenExBalancesCaller) TraderTokens(opts *bind.CallOpts, arg0 common.Address, arg1 *big.Int) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _RenExBalances.contract.Call(opts, out, "traderTokens", arg0, arg1)
-	return *ret0, err
-}
-
-// TraderTokens is a free data retrieval call binding the contract method 0x1a6947ce.
-//
-// Solidity: function traderTokens( address,  uint256) constant returns(address)
-func (_RenExBalances *RenExBalancesSession) TraderTokens(arg0 common.Address, arg1 *big.Int) (common.Address, error) {
-	return _RenExBalances.Contract.TraderTokens(&_RenExBalances.CallOpts, arg0, arg1)
-}
-
-// TraderTokens is a free data retrieval call binding the contract method 0x1a6947ce.
-//
-// Solidity: function traderTokens( address,  uint256) constant returns(address)
-func (_RenExBalances *RenExBalancesCallerSession) TraderTokens(arg0 common.Address, arg1 *big.Int) (common.Address, error) {
-	return _RenExBalances.Contract.TraderTokens(&_RenExBalances.CallOpts, arg0, arg1)
-}
-
-// DecrementBalance is a paid mutator transaction binding the contract method 0x52fedefa.
-//
-// Solidity: function decrementBalance(_trader address, _token address, _value uint256) returns()
-func (_RenExBalances *RenExBalancesTransactor) DecrementBalance(opts *bind.TransactOpts, _trader common.Address, _token common.Address, _value *big.Int) (*types.Transaction, error) {
-	return _RenExBalances.contract.Transact(opts, "decrementBalance", _trader, _token, _value)
-}
-
-// DecrementBalance is a paid mutator transaction binding the contract method 0x52fedefa.
-//
-// Solidity: function decrementBalance(_trader address, _token address, _value uint256) returns()
-func (_RenExBalances *RenExBalancesSession) DecrementBalance(_trader common.Address, _token common.Address, _value *big.Int) (*types.Transaction, error) {
-	return _RenExBalances.Contract.DecrementBalance(&_RenExBalances.TransactOpts, _trader, _token, _value)
-}
-
-// DecrementBalance is a paid mutator transaction binding the contract method 0x52fedefa.
-//
-// Solidity: function decrementBalance(_trader address, _token address, _value uint256) returns()
-func (_RenExBalances *RenExBalancesTransactorSession) DecrementBalance(_trader common.Address, _token common.Address, _value *big.Int) (*types.Transaction, error) {
-	return _RenExBalances.Contract.DecrementBalance(&_RenExBalances.TransactOpts, _trader, _token, _value)
-}
-
-// Deposit is a paid mutator transaction binding the contract method 0x47e7ef24.
-//
-// Solidity: function deposit(_token address, _value uint256) returns()
-func (_RenExBalances *RenExBalancesTransactor) Deposit(opts *bind.TransactOpts, _token common.Address, _value *big.Int) (*types.Transaction, error) {
-	return _RenExBalances.contract.Transact(opts, "deposit", _token, _value)
-}
-
-// Deposit is a paid mutator transaction binding the contract method 0x47e7ef24.
-//
-// Solidity: function deposit(_token address, _value uint256) returns()
-func (_RenExBalances *RenExBalancesSession) Deposit(_token common.Address, _value *big.Int) (*types.Transaction, error) {
-	return _RenExBalances.Contract.Deposit(&_RenExBalances.TransactOpts, _token, _value)
-}
-
-// Deposit is a paid mutator transaction binding the contract method 0x47e7ef24.
-//
-// Solidity: function deposit(_token address, _value uint256) returns()
-func (_RenExBalances *RenExBalancesTransactorSession) Deposit(_token common.Address, _value *big.Int) (*types.Transaction, error) {
-	return _RenExBalances.Contract.Deposit(&_RenExBalances.TransactOpts, _token, _value)
-}
-
-// IncrementBalance is a paid mutator transaction binding the contract method 0x2b15e857.
-//
-// Solidity: function incrementBalance(_trader address, _token address, _value uint256) returns()
-func (_RenExBalances *RenExBalancesTransactor) IncrementBalance(opts *bind.TransactOpts, _trader common.Address, _token common.Address, _value *big.Int) (*types.Transaction, error) {
-	return _RenExBalances.contract.Transact(opts, "incrementBalance", _trader, _token, _value)
-}
-
-// IncrementBalance is a paid mutator transaction binding the contract method 0x2b15e857.
-//
-// Solidity: function incrementBalance(_trader address, _token address, _value uint256) returns()
-func (_RenExBalances *RenExBalancesSession) IncrementBalance(_trader common.Address, _token common.Address, _value *big.Int) (*types.Transaction, error) {
-	return _RenExBalances.Contract.IncrementBalance(&_RenExBalances.TransactOpts, _trader, _token, _value)
-}
-
-// IncrementBalance is a paid mutator transaction binding the contract method 0x2b15e857.
-//
-// Solidity: function incrementBalance(_trader address, _token address, _value uint256) returns()
-func (_RenExBalances *RenExBalancesTransactorSession) IncrementBalance(_trader common.Address, _token common.Address, _value *big.Int) (*types.Transaction, error) {
-	return _RenExBalances.Contract.IncrementBalance(&_RenExBalances.TransactOpts, _trader, _token, _value)
-}
-
-// SetRenExSettlementContract is a paid mutator transaction binding the contract method 0x93e2448a.
-//
-// Solidity: function setRenExSettlementContract(_newSettlementContract address) returns()
-func (_RenExBalances *RenExBalancesTransactor) SetRenExSettlementContract(opts *bind.TransactOpts, _newSettlementContract common.Address) (*types.Transaction, error) {
-	return _RenExBalances.contract.Transact(opts, "setRenExSettlementContract", _newSettlementContract)
-}
-
-// SetRenExSettlementContract is a paid mutator transaction binding the contract method 0x93e2448a.
-//
-// Solidity: function setRenExSettlementContract(_newSettlementContract address) returns()
-func (_RenExBalances *RenExBalancesSession) SetRenExSettlementContract(_newSettlementContract common.Address) (*types.Transaction, error) {
-	return _RenExBalances.Contract.SetRenExSettlementContract(&_RenExBalances.TransactOpts, _newSettlementContract)
-}
-
-// SetRenExSettlementContract is a paid mutator transaction binding the contract method 0x93e2448a.
-//
-// Solidity: function setRenExSettlementContract(_newSettlementContract address) returns()
-func (_RenExBalances *RenExBalancesTransactorSession) SetRenExSettlementContract(_newSettlementContract common.Address) (*types.Transaction, error) {
-	return _RenExBalances.Contract.SetRenExSettlementContract(&_RenExBalances.TransactOpts, _newSettlementContract)
-}
-
-// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
-//
-// Solidity: function transferOwnership(newOwner address) returns()
-func (_RenExBalances *RenExBalancesTransactor) TransferOwnership(opts *bind.TransactOpts, newOwner common.Address) (*types.Transaction, error) {
-	return _RenExBalances.contract.Transact(opts, "transferOwnership", newOwner)
-}
-
-// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
-//
-// Solidity: function transferOwnership(newOwner address) returns()
-func (_RenExBalances *RenExBalancesSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
-	return _RenExBalances.Contract.TransferOwnership(&_RenExBalances.TransactOpts, newOwner)
-}
-
-// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
-//
-// Solidity: function transferOwnership(newOwner address) returns()
-func (_RenExBalances *RenExBalancesTransactorSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
-	return _RenExBalances.Contract.TransferOwnership(&_RenExBalances.TransactOpts, newOwner)
-}
-
-// Withdraw is a paid mutator transaction binding the contract method 0xf3fef3a3.
-//
-// Solidity: function withdraw(_token address, _value uint256) returns()
-func (_RenExBalances *RenExBalancesTransactor) Withdraw(opts *bind.TransactOpts, _token common.Address, _value *big.Int) (*types.Transaction, error) {
-	return _RenExBalances.contract.Transact(opts, "withdraw", _token, _value)
-}
-
-// Withdraw is a paid mutator transaction binding the contract method 0xf3fef3a3.
-//
-// Solidity: function withdraw(_token address, _value uint256) returns()
-func (_RenExBalances *RenExBalancesSession) Withdraw(_token common.Address, _value *big.Int) (*types.Transaction, error) {
-	return _RenExBalances.Contract.Withdraw(&_RenExBalances.TransactOpts, _token, _value)
-}
-
-// Withdraw is a paid mutator transaction binding the contract method 0xf3fef3a3.
-//
-// Solidity: function withdraw(_token address, _value uint256) returns()
-func (_RenExBalances *RenExBalancesTransactorSession) Withdraw(_token common.Address, _value *big.Int) (*types.Transaction, error) {
-	return _RenExBalances.Contract.Withdraw(&_RenExBalances.TransactOpts, _token, _value)
-}
-
-// RenExBalancesBalanceDecreasedIterator is returned from FilterBalanceDecreased and is used to iterate over the raw logs and unpacked data for BalanceDecreased events raised by the RenExBalances contract.
-type RenExBalancesBalanceDecreasedIterator struct {
-	Event *RenExBalancesBalanceDecreased // Event containing the contract specifics and raw log
-
-	contract *bind.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
-
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
-}
-
-// Next advances the iterator to the subsequent event, returning whether there
-// are any more events found. In case of a retrieval or parsing error, false is
-// returned and Error() can be queried for the exact failure.
-func (it *RenExBalancesBalanceDecreasedIterator) Next() bool {
-	// If the iterator failed, stop iterating
-	if it.fail != nil {
-		return false
-	}
-	// If the iterator completed, deliver directly whatever's available
-	if it.done {
-		select {
-		case log := <-it.logs:
-			it.Event = new(RenExBalancesBalanceDecreased)
-			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-				it.fail = err
-				return false
-			}
-			it.Event.Raw = log
-			return true
-
-		default:
-			return false
-		}
-	}
-	// Iterator still in progress, wait for either a data or an error event
-	select {
-	case log := <-it.logs:
-		it.Event = new(RenExBalancesBalanceDecreased)
-		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-			it.fail = err
-			return false
-		}
-		it.Event.Raw = log
-		return true
-
-	case err := <-it.sub.Err():
-		it.done = true
-		it.fail = err
-		return it.Next()
-	}
-}
-
-// Error returns any retrieval or parsing error occurred during filtering.
-func (it *RenExBalancesBalanceDecreasedIterator) Error() error {
-	return it.fail
-}
-
-// Close terminates the iteration process, releasing any pending underlying
-// resources.
-func (it *RenExBalancesBalanceDecreasedIterator) Close() error {
-	it.sub.Unsubscribe()
-	return nil
-}
-
-// RenExBalancesBalanceDecreased represents a BalanceDecreased event raised by the RenExBalances contract.
-type RenExBalancesBalanceDecreased struct {
-	Trader common.Address
-	Token  common.Address
-	Value  *big.Int
-	Raw    types.Log // Blockchain specific contextual infos
-}
-
-// FilterBalanceDecreased is a free log retrieval operation binding the contract event 0x6ac2cd906088d873624fa62ca95170d967629e7d964651df19a3aa2e49b44aa1.
-//
-// Solidity: event BalanceDecreased(trader address, token address, value uint256)
-func (_RenExBalances *RenExBalancesFilterer) FilterBalanceDecreased(opts *bind.FilterOpts) (*RenExBalancesBalanceDecreasedIterator, error) {
-
-	logs, sub, err := _RenExBalances.contract.FilterLogs(opts, "BalanceDecreased")
-	if err != nil {
-		return nil, err
-	}
-	return &RenExBalancesBalanceDecreasedIterator{contract: _RenExBalances.contract, event: "BalanceDecreased", logs: logs, sub: sub}, nil
-}
-
-// WatchBalanceDecreased is a free log subscription operation binding the contract event 0x6ac2cd906088d873624fa62ca95170d967629e7d964651df19a3aa2e49b44aa1.
-//
-// Solidity: event BalanceDecreased(trader address, token address, value uint256)
-func (_RenExBalances *RenExBalancesFilterer) WatchBalanceDecreased(opts *bind.WatchOpts, sink chan<- *RenExBalancesBalanceDecreased) (event.Subscription, error) {
-
-	logs, sub, err := _RenExBalances.contract.WatchLogs(opts, "BalanceDecreased")
-	if err != nil {
-		return nil, err
-	}
-	return event.NewSubscription(func(quit <-chan struct{}) error {
-		defer sub.Unsubscribe()
-		for {
-			select {
-			case log := <-logs:
-				// New log arrived, parse the event and forward to the user
-				event := new(RenExBalancesBalanceDecreased)
-				if err := _RenExBalances.contract.UnpackLog(event, "BalanceDecreased", log); err != nil {
-					return err
-				}
-				event.Raw = log
-
-				select {
-				case sink <- event:
-				case err := <-sub.Err():
-					return err
-				case <-quit:
-					return nil
-				}
-			case err := <-sub.Err():
-				return err
-			case <-quit:
-				return nil
-			}
-		}
-	}), nil
-}
-
-// RenExBalancesBalanceIncreasedIterator is returned from FilterBalanceIncreased and is used to iterate over the raw logs and unpacked data for BalanceIncreased events raised by the RenExBalances contract.
-type RenExBalancesBalanceIncreasedIterator struct {
-	Event *RenExBalancesBalanceIncreased // Event containing the contract specifics and raw log
-
-	contract *bind.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
-
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
-}
-
-// Next advances the iterator to the subsequent event, returning whether there
-// are any more events found. In case of a retrieval or parsing error, false is
-// returned and Error() can be queried for the exact failure.
-func (it *RenExBalancesBalanceIncreasedIterator) Next() bool {
-	// If the iterator failed, stop iterating
-	if it.fail != nil {
-		return false
-	}
-	// If the iterator completed, deliver directly whatever's available
-	if it.done {
-		select {
-		case log := <-it.logs:
-			it.Event = new(RenExBalancesBalanceIncreased)
-			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-				it.fail = err
-				return false
-			}
-			it.Event.Raw = log
-			return true
-
-		default:
-			return false
-		}
-	}
-	// Iterator still in progress, wait for either a data or an error event
-	select {
-	case log := <-it.logs:
-		it.Event = new(RenExBalancesBalanceIncreased)
-		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-			it.fail = err
-			return false
-		}
-		it.Event.Raw = log
-		return true
-
-	case err := <-it.sub.Err():
-		it.done = true
-		it.fail = err
-		return it.Next()
-	}
-}
-
-// Error returns any retrieval or parsing error occurred during filtering.
-func (it *RenExBalancesBalanceIncreasedIterator) Error() error {
-	return it.fail
-}
-
-// Close terminates the iteration process, releasing any pending underlying
-// resources.
-func (it *RenExBalancesBalanceIncreasedIterator) Close() error {
-	it.sub.Unsubscribe()
-	return nil
-}
-
-// RenExBalancesBalanceIncreased represents a BalanceIncreased event raised by the RenExBalances contract.
-type RenExBalancesBalanceIncreased struct {
-	Trader common.Address
-	Token  common.Address
-	Value  *big.Int
-	Raw    types.Log // Blockchain specific contextual infos
-}
-
-// FilterBalanceIncreased is a free log retrieval operation binding the contract event 0x0d66f59c9991adc17dd3339490c5058d2d6fe20395e7b55ceb6ca8019a31667d.
-//
-// Solidity: event BalanceIncreased(trader address, token address, value uint256)
-func (_RenExBalances *RenExBalancesFilterer) FilterBalanceIncreased(opts *bind.FilterOpts) (*RenExBalancesBalanceIncreasedIterator, error) {
-
-	logs, sub, err := _RenExBalances.contract.FilterLogs(opts, "BalanceIncreased")
-	if err != nil {
-		return nil, err
-	}
-	return &RenExBalancesBalanceIncreasedIterator{contract: _RenExBalances.contract, event: "BalanceIncreased", logs: logs, sub: sub}, nil
-}
-
-// WatchBalanceIncreased is a free log subscription operation binding the contract event 0x0d66f59c9991adc17dd3339490c5058d2d6fe20395e7b55ceb6ca8019a31667d.
-//
-// Solidity: event BalanceIncreased(trader address, token address, value uint256)
-func (_RenExBalances *RenExBalancesFilterer) WatchBalanceIncreased(opts *bind.WatchOpts, sink chan<- *RenExBalancesBalanceIncreased) (event.Subscription, error) {
-
-	logs, sub, err := _RenExBalances.contract.WatchLogs(opts, "BalanceIncreased")
-	if err != nil {
-		return nil, err
-	}
-	return event.NewSubscription(func(quit <-chan struct{}) error {
-		defer sub.Unsubscribe()
-		for {
-			select {
-			case log := <-logs:
-				// New log arrived, parse the event and forward to the user
-				event := new(RenExBalancesBalanceIncreased)
-				if err := _RenExBalances.contract.UnpackLog(event, "BalanceIncreased", log); err != nil {
-					return err
-				}
-				event.Raw = log
-
-				select {
-				case sink <- event:
-				case err := <-sub.Err():
-					return err
-				case <-quit:
-					return nil
-				}
-			case err := <-sub.Err():
-				return err
-			case <-quit:
-				return nil
-			}
-		}
-	}), nil
-}
-
-// RenExBalancesOwnershipTransferredIterator is returned from FilterOwnershipTransferred and is used to iterate over the raw logs and unpacked data for OwnershipTransferred events raised by the RenExBalances contract.
-type RenExBalancesOwnershipTransferredIterator struct {
-	Event *RenExBalancesOwnershipTransferred // Event containing the contract specifics and raw log
-
-	contract *bind.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
-
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
-}
-
-// Next advances the iterator to the subsequent event, returning whether there
-// are any more events found. In case of a retrieval or parsing error, false is
-// returned and Error() can be queried for the exact failure.
-func (it *RenExBalancesOwnershipTransferredIterator) Next() bool {
-	// If the iterator failed, stop iterating
-	if it.fail != nil {
-		return false
-	}
-	// If the iterator completed, deliver directly whatever's available
-	if it.done {
-		select {
-		case log := <-it.logs:
-			it.Event = new(RenExBalancesOwnershipTransferred)
-			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-				it.fail = err
-				return false
-			}
-			it.Event.Raw = log
-			return true
-
-		default:
-			return false
-		}
-	}
-	// Iterator still in progress, wait for either a data or an error event
-	select {
-	case log := <-it.logs:
-		it.Event = new(RenExBalancesOwnershipTransferred)
-		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-			it.fail = err
-			return false
-		}
-		it.Event.Raw = log
-		return true
-
-	case err := <-it.sub.Err():
-		it.done = true
-		it.fail = err
-		return it.Next()
-	}
-}
-
-// Error returns any retrieval or parsing error occurred during filtering.
-func (it *RenExBalancesOwnershipTransferredIterator) Error() error {
-	return it.fail
-}
-
-// Close terminates the iteration process, releasing any pending underlying
-// resources.
-func (it *RenExBalancesOwnershipTransferredIterator) Close() error {
-	it.sub.Unsubscribe()
-	return nil
-}
-
-// RenExBalancesOwnershipTransferred represents a OwnershipTransferred event raised by the RenExBalances contract.
-type RenExBalancesOwnershipTransferred struct {
-	PreviousOwner common.Address
-	NewOwner      common.Address
-	Raw           types.Log // Blockchain specific contextual infos
-}
-
-// FilterOwnershipTransferred is a free log retrieval operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
-//
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
-func (_RenExBalances *RenExBalancesFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*RenExBalancesOwnershipTransferredIterator, error) {
-
-	var previousOwnerRule []interface{}
-	for _, previousOwnerItem := range previousOwner {
-		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
-	}
-	var newOwnerRule []interface{}
-	for _, newOwnerItem := range newOwner {
-		newOwnerRule = append(newOwnerRule, newOwnerItem)
-	}
-
-	logs, sub, err := _RenExBalances.contract.FilterLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExBalancesOwnershipTransferredIterator{contract: _RenExBalances.contract, event: "OwnershipTransferred", logs: logs, sub: sub}, nil
-}
-
-// WatchOwnershipTransferred is a free log subscription operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
-//
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
-func (_RenExBalances *RenExBalancesFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *RenExBalancesOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
-
-	var previousOwnerRule []interface{}
-	for _, previousOwnerItem := range previousOwner {
-		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
-	}
-	var newOwnerRule []interface{}
-	for _, newOwnerItem := range newOwner {
-		newOwnerRule = append(newOwnerRule, newOwnerItem)
-	}
-
-	logs, sub, err := _RenExBalances.contract.WatchLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
-	if err != nil {
-		return nil, err
-	}
-	return event.NewSubscription(func(quit <-chan struct{}) error {
-		defer sub.Unsubscribe()
-		for {
-			select {
-			case log := <-logs:
-				// New log arrived, parse the event and forward to the user
-				event := new(RenExBalancesOwnershipTransferred)
-				if err := _RenExBalances.contract.UnpackLog(event, "OwnershipTransferred", log); err != nil {
-					return err
-				}
-				event.Raw = log
-
-				select {
-				case sink <- event:
-				case err := <-sub.Err():
-					return err
-				case <-quit:
-					return nil
-				}
-			case err := <-sub.Err():
-				return err
-			case <-quit:
-				return nil
-			}
-		}
-	}), nil
-}
-
-// RenExBalancesRenExSettlementContractChangedIterator is returned from FilterRenExSettlementContractChanged and is used to iterate over the raw logs and unpacked data for RenExSettlementContractChanged events raised by the RenExBalances contract.
-type RenExBalancesRenExSettlementContractChangedIterator struct {
-	Event *RenExBalancesRenExSettlementContractChanged // Event containing the contract specifics and raw log
-
-	contract *bind.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
-
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
-}
-
-// Next advances the iterator to the subsequent event, returning whether there
-// are any more events found. In case of a retrieval or parsing error, false is
-// returned and Error() can be queried for the exact failure.
-func (it *RenExBalancesRenExSettlementContractChangedIterator) Next() bool {
-	// If the iterator failed, stop iterating
-	if it.fail != nil {
-		return false
-	}
-	// If the iterator completed, deliver directly whatever's available
-	if it.done {
-		select {
-		case log := <-it.logs:
-			it.Event = new(RenExBalancesRenExSettlementContractChanged)
-			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-				it.fail = err
-				return false
-			}
-			it.Event.Raw = log
-			return true
-
-		default:
-			return false
-		}
-	}
-	// Iterator still in progress, wait for either a data or an error event
-	select {
-	case log := <-it.logs:
-		it.Event = new(RenExBalancesRenExSettlementContractChanged)
-		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-			it.fail = err
-			return false
-		}
-		it.Event.Raw = log
-		return true
-
-	case err := <-it.sub.Err():
-		it.done = true
-		it.fail = err
-		return it.Next()
-	}
-}
-
-// Error returns any retrieval or parsing error occurred during filtering.
-func (it *RenExBalancesRenExSettlementContractChangedIterator) Error() error {
-	return it.fail
-}
-
-// Close terminates the iteration process, releasing any pending underlying
-// resources.
-func (it *RenExBalancesRenExSettlementContractChangedIterator) Close() error {
-	it.sub.Unsubscribe()
-	return nil
-}
-
-// RenExBalancesRenExSettlementContractChanged represents a RenExSettlementContractChanged event raised by the RenExBalances contract.
-type RenExBalancesRenExSettlementContractChanged struct {
-	PreviousOwner common.Address
-	NewOwner      common.Address
-	Raw           types.Log // Blockchain specific contextual infos
-}
-
-// FilterRenExSettlementContractChanged is a free log retrieval operation binding the contract event 0xed2802be9251854352f2810007e5db298089a145ee5a78a47e86446632726a28.
-//
-// Solidity: event RenExSettlementContractChanged(previousOwner indexed address, newOwner indexed address)
-func (_RenExBalances *RenExBalancesFilterer) FilterRenExSettlementContractChanged(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*RenExBalancesRenExSettlementContractChangedIterator, error) {
-
-	var previousOwnerRule []interface{}
-	for _, previousOwnerItem := range previousOwner {
-		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
-	}
-	var newOwnerRule []interface{}
-	for _, newOwnerItem := range newOwner {
-		newOwnerRule = append(newOwnerRule, newOwnerItem)
-	}
-
-	logs, sub, err := _RenExBalances.contract.FilterLogs(opts, "RenExSettlementContractChanged", previousOwnerRule, newOwnerRule)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExBalancesRenExSettlementContractChangedIterator{contract: _RenExBalances.contract, event: "RenExSettlementContractChanged", logs: logs, sub: sub}, nil
-}
-
-// WatchRenExSettlementContractChanged is a free log subscription operation binding the contract event 0xed2802be9251854352f2810007e5db298089a145ee5a78a47e86446632726a28.
-//
-// Solidity: event RenExSettlementContractChanged(previousOwner indexed address, newOwner indexed address)
-func (_RenExBalances *RenExBalancesFilterer) WatchRenExSettlementContractChanged(opts *bind.WatchOpts, sink chan<- *RenExBalancesRenExSettlementContractChanged, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
-
-	var previousOwnerRule []interface{}
-	for _, previousOwnerItem := range previousOwner {
-		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
-	}
-	var newOwnerRule []interface{}
-	for _, newOwnerItem := range newOwner {
-		newOwnerRule = append(newOwnerRule, newOwnerItem)
-	}
-
-	logs, sub, err := _RenExBalances.contract.WatchLogs(opts, "RenExSettlementContractChanged", previousOwnerRule, newOwnerRule)
-	if err != nil {
-		return nil, err
-	}
-	return event.NewSubscription(func(quit <-chan struct{}) error {
-		defer sub.Unsubscribe()
-		for {
-			select {
-			case log := <-logs:
-				// New log arrived, parse the event and forward to the user
-				event := new(RenExBalancesRenExSettlementContractChanged)
-				if err := _RenExBalances.contract.UnpackLog(event, "RenExSettlementContractChanged", log); err != nil {
-					return err
-				}
-				event.Raw = log
-
-				select {
-				case sink <- event:
-				case err := <-sub.Err():
-					return err
-				case <-quit:
-					return nil
-				}
-			case err := <-sub.Err():
-				return err
-			case <-quit:
-				return nil
-			}
-		}
-	}), nil
-}
-
-// RenExSettlementABI is the input ABI used to generate the binding from.
-const RenExSettlementABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"_id\",\"type\":\"bytes32\"},{\"name\":\"_orderType\",\"type\":\"uint8\"},{\"name\":\"_parity\",\"type\":\"uint8\"},{\"name\":\"_expiry\",\"type\":\"uint64\"},{\"name\":\"_tokens\",\"type\":\"uint64\"},{\"name\":\"_priceC\",\"type\":\"uint16\"},{\"name\":\"_priceQ\",\"type\":\"uint16\"},{\"name\":\"_volumeC\",\"type\":\"uint16\"},{\"name\":\"_volumeQ\",\"type\":\"uint16\"},{\"name\":\"_minimumVolumeC\",\"type\":\"uint16\"},{\"name\":\"_minimumVolumeQ\",\"type\":\"uint16\"},{\"name\":\"_nonceHash\",\"type\":\"uint256\"}],\"name\":\"submitOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_buyID\",\"type\":\"bytes32\"},{\"name\":\"_sellID\",\"type\":\"bytes32\"}],\"name\":\"verifyMatch\",\"outputs\":[{\"name\":\"\",\"type\":\"uint32\"},{\"name\":\"\",\"type\":\"uint32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_buyID\",\"type\":\"bytes32\"},{\"name\":\"_sellID\",\"type\":\"bytes32\"}],\"name\":\"submitMatch\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"orders\",\"outputs\":[{\"name\":\"parity\",\"type\":\"uint8\"},{\"name\":\"orderType\",\"type\":\"uint8\"},{\"name\":\"expiry\",\"type\":\"uint64\"},{\"name\":\"tokens\",\"type\":\"uint64\"},{\"name\":\"priceC\",\"type\":\"uint256\"},{\"name\":\"priceQ\",\"type\":\"uint256\"},{\"name\":\"volumeC\",\"type\":\"uint256\"},{\"name\":\"volumeQ\",\"type\":\"uint256\"},{\"name\":\"minimumVolumeC\",\"type\":\"uint256\"},{\"name\":\"minimumVolumeQ\",\"type\":\"uint256\"},{\"name\":\"nonceHash\",\"type\":\"uint256\"},{\"name\":\"trader\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"matches\",\"outputs\":[{\"name\":\"price\",\"type\":\"uint256\"},{\"name\":\"lowVolume\",\"type\":\"uint256\"},{\"name\":\"highVolume\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_trader\",\"type\":\"address\"},{\"name\":\"_token\",\"type\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"traderCanWithdraw\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_renLedgerContract\",\"type\":\"address\"},{\"name\":\"_renExTokensContract\",\"type\":\"address\"},{\"name\":\"_renExBalancesContract\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"to\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"token\",\"type\":\"uint32\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"Transfer\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"msg\",\"type\":\"string\"},{\"indexed\":false,\"name\":\"num\",\"type\":\"uint256\"}],\"name\":\"Debug256\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"msg\",\"type\":\"string\"},{\"indexed\":false,\"name\":\"num\",\"type\":\"int256\"}],\"name\":\"Debugi256\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"msg\",\"type\":\"string\"}],\"name\":\"Debug\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"msg\",\"type\":\"string\"},{\"indexed\":false,\"name\":\"c\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"q\",\"type\":\"uint256\"}],\"name\":\"DebugTuple\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"msg\",\"type\":\"string\"},{\"indexed\":false,\"name\":\"c\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"q\",\"type\":\"int256\"}],\"name\":\"DebugTupleI\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"}]"
-
-// RenExSettlementBin is the compiled bytecode used for deploying new contracts.
-const RenExSettlementBin = `0x608060405234801561001057600080fd5b506040516060806115d98339810160409081528151602083015191909201516000805433600160a060020a0319918216178255600180548216600160a060020a0396871617905560028054821694861694909417909355600380549093169390911692909217905561155190819061008890396000f30060806040526004361061008d5763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663177d19c381146100925780631f88d9c7146100f75780632a337d30146101355780638da5cb5b146101505780639c3f1e90146101815780639fe9ada314610214578063a3bdaedc1461024a578063f2fde38b14610288575b600080fd5b34801561009e57600080fd5b506100f560043560ff6024358116906044351667ffffffffffffffff6064358116906084351661ffff60a43581169060c43581169060e43581169061010435811690610124358116906101443516610164356102a9565b005b34801561010357600080fd5b5061011260043560243561058f565b6040805163ffffffff938416815291909216602082015281519081900390910190f35b34801561014157600080fd5b506100f56004356024356109fd565b34801561015c57600080fd5b50610165610d3f565b60408051600160a060020a039092168252519081900360200190f35b34801561018d57600080fd5b50610199600435610d4e565b6040805160ff9d8e1681529b909c1660208c015267ffffffffffffffff998a168b8d01529790981660608a0152608089019590955260a088019390935260c087019190915260e0860152610100850152610120840152610140830191909152600160a060020a03166101608201529051908190036101800190f35b34801561022057600080fd5b5061022c600435610dce565b60408051938452602084019290925282820152519081900360600190f35b34801561025657600080fd5b50610274600160a060020a0360043581169060243516604435610def565b604080519115158252519081900360200190f35b34801561029457600080fd5b506100f5600160a060020a0360043516610df8565b6102b16114a0565b50604080516101808101825260ff808d1682528d16602082015267ffffffffffffffff808c1692820192909252908916606082015261ffff808916608083015287811660a083015286811660c083015285811660e0830152848116610100830152831661012082015261014081018290526000610160820181905260008e81526005602052604090205460ff16600281111561034957fe5b1461035357600080fd5b60008d815260056020526040902080546001919060ff191682800217905550600160009054906101000a9004600160a060020a0316600160a060020a031663b1a080108e6040518263ffffffff167c0100000000000000000000000000000000000000000000000000000000028152600401808260001916600019168152602001915050602060405180830381600087803b1580156103f157600080fd5b505af1158015610405573d6000803e3d6000fd5b505050506040513d602081101561041b57600080fd5b8101908080519060200190929190505050816101600190600160a060020a03169081600160a060020a03168152505080600460008f6000191660001916815260200190815260200160002060008201518160000160006101000a81548160ff021916908360ff16021790555060208201518160000160016101000a81548160ff021916908360ff16021790555060408201518160000160026101000a81548167ffffffffffffffff021916908367ffffffffffffffff160217905550606082015181600001600a6101000a81548167ffffffffffffffff021916908367ffffffffffffffff1602179055506080820151816001015560a0820151816002015560c0820151816003015560e082015181600401556101008201518160050155610120820151816006015561014082015181600701556101608201518160080160006101000a815481600160a060020a030219169083600160a060020a0316021790555090505050505050505050505050505050565b6000808080600160008781526005602052604090205460ff1660028111156105b357fe5b146105bd57600080fd5b600160008681526005602052604090205460ff1660028111156105dc57fe5b146105e657600080fd5b60008681526004602052604090205460ff161561060257600080fd5b60008581526004602052604090205460ff1660011461062057600080fd5b600154604080517faab14d04000000000000000000000000000000000000000000000000000000008152600481018990529051600160a060020a039092169163aab14d04916024808201926020929091908290030181600087803b15801561068757600080fd5b505af115801561069b573d6000803e3d6000fd5b505050506040513d60208110156106b157600080fd5b505160ff166002146106c257600080fd5b600154604080517faab14d04000000000000000000000000000000000000000000000000000000008152600481018890529051600160a060020a039092169163aab14d04916024808201926020929091908290030181600087803b15801561072957600080fd5b505af115801561073d573d6000803e3d6000fd5b505050506040513d602081101561075357600080fd5b505160ff1660021461076457600080fd5b600154604080517faf3e8a400000000000000000000000000000000000000000000000000000000081526004810189905290518792600160a060020a03169163af3e8a4091602480830192600092919082900301818387803b1580156107c957600080fd5b505af11580156107dd573d6000803e3d6000fd5b505050506040513d6000823e601f3d908101601f19168201604052602081101561080657600080fd5b81019080805164010000000081111561081e57600080fd5b8201602081018481111561083157600080fd5b815185602082028301116401000000008211171561084e57600080fd5b50508051909350600092508210905061086357fe5b602090810290910101511461087757600080fd5b505060008381526004602081815260408084205460025482517f329ed38100000000000000000000000000000000000000000000000000000000815263ffffffff6a010000000000000000000090930492831695810195909552915167ffffffffffffffff90911694640100000000860494600160a060020a039093169363329ed381936024808201949293918390030190829087803b15801561091a57600080fd5b505af115801561092e573d6000803e3d6000fd5b505050506040513d602081101561094457600080fd5b5051151561095157600080fd5b600254604080517f329ed38100000000000000000000000000000000000000000000000000000000815263ffffffff841660048201529051600160a060020a039092169163329ed381916024808201926020929091908290030181600087803b1580156109bd57600080fd5b505af11580156109d1573d6000803e3d6000fd5b505050506040513d60208110156109e757600080fd5b505115156109f457600080fd5b50509250929050565b600080600080600080600080600080610a168c8c61058f565b505060008b8152600460209081526040808320548f8452600590925290912080546a010000000000000000000090920467ffffffffffffffff169b506401000000008c049a5060029160ff1916600183021790555060008b815260056020526040902080546002919060ff19166001830217905550600254604080517fc865992b00000000000000000000000000000000000000000000000000000000815263ffffffff8d1660048201529051600160a060020a039092169163c865992b916024808201926020929091908290030181600087803b158015610af757600080fd5b505af1158015610b0b573d6000803e3d6000fd5b505050506040513d6020811015610b2157600080fd5b5051600254604080517fc865992b00000000000000000000000000000000000000000000000000000000815263ffffffff8d166004820152905160ff9093169a50600160a060020a039091169163c865992b916024808201926020929091908290030181600087803b158015610b9657600080fd5b505af1158015610baa573d6000803e3d6000fd5b505050506040513d6020811015610bc057600080fd5b505160ff169650610bd18c8c610e8c565b95509550610be18c8c8888610ecf565b93509350610bf8848488888b63ffffffff16610f9b565b9150610c0b84848a63ffffffff16610fe2565b60008d8152600460205260408082206008908101548f84529190922090910154919250610c4891600160a060020a0391821691168c8c8686611037565b606060405190810160405280610c6588888b63ffffffff1661145f565b815260200183815260200182815250600660008e8e6040516020018083600019166000191681526020018260001916600019168152602001925050506040516020818303038152906040526040518082805190602001908083835b60208310610cdf5780518252601f199092019160209182019101610cc0565b51815160001960209485036101000a01908116901991909116179052604080519490920184900390932086528583019690965250928401600020855181559285015160018401555050910151600290910155505050505050505050505050565b600054600160a060020a031681565b600460208190526000918252604090912080546001820154600283015460038401549484015460058501546006860154600787015460089097015460ff8088169961010089049091169867ffffffffffffffff620100008a048116996a0100000000000000000000900416979695919491939192600160a060020a03168c565b60066020526000908152604090208054600182015460029092015490919083565b60019392505050565b600054600160a060020a03163314610e0f57600080fd5b600160a060020a0381161515610e2457600080fd5b60008054604051600160a060020a03808516939216917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e091a36000805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a0392909216919091179055565b6000818152600460205260408082206002808201549584529183209182015460019283015494909352015490839003600a0a909102016005029160001990910190565b600084815260046020819052604082206003810154910154829182918291610ef891600c610fe2565b60008881526004602081905260409091206003810154910154919350610f21918888600c610f9b565b905080821015610f71576000888152600460205260409020600301548690614e2002811515610f4c57fe5b60008a8152600460208190526040909120015491900494508590036024019250610f90565b6000878152600460208190526040909120600381015491015490945092505b505094509492505050565b6000600a8685020260351983870185010182808212610fc15781600a0a83029050610fd6565b81600003600a0a83811515610fd257fe5b0490505b98975050505050505050565b60006002840282600d83861215610ffe57600086900301611003565b908501905b80821061101957808203600a0a8302935061102d565b818103600a0a8381151561102957fe5b0493505b5050509392505050565b600254604080517f29debc9f00000000000000000000000000000000000000000000000000000000815263ffffffff8716600482015290516000928392600160a060020a03909116916329debc9f9160248082019260209290919082900301818787803b1580156110a757600080fd5b505af11580156110bb573d6000803e3d6000fd5b505050506040513d60208110156110d157600080fd5b5051600254604080517f29debc9f00000000000000000000000000000000000000000000000000000000815263ffffffff891660048201529051929450600160a060020a03909116916329debc9f916024808201926020929091908290030181600087803b15801561114257600080fd5b505af1158015611156573d6000803e3d6000fd5b505050506040513d602081101561116c57600080fd5b5051600354604080517f52fedefa000000000000000000000000000000000000000000000000000000008152600160a060020a038c8116600483015280851660248301526044820189905291519394509116916352fedefa9160648082019260009290919082900301818387803b1580156111e657600080fd5b505af11580156111fa573d6000803e3d6000fd5b5050600354604080517f52fedefa000000000000000000000000000000000000000000000000000000008152600160a060020a038c8116600483015287811660248301526044820189905291519190921693506352fedefa9250606480830192600092919082900301818387803b15801561127457600080fd5b505af1158015611288573d6000803e3d6000fd5b5050600354604080517f2b15e857000000000000000000000000000000000000000000000000000000008152600160a060020a038c811660048301528681166024830152604482018a90529151919092169350632b15e8579250606480830192600092919082900301818387803b15801561130257600080fd5b505af1158015611316573d6000803e3d6000fd5b5050600354604080517f2b15e857000000000000000000000000000000000000000000000000000000008152600160a060020a038d811660048301528781166024830152604482018990529151919092169350632b15e8579250606480830192600092919082900301818387803b15801561139057600080fd5b505af11580156113a4573d6000803e3d6000fd5b505060408051600160a060020a03808d1682528b16602082015263ffffffff8916818301526060810188905290517fe6d64cac65c05a9715c20bfc2ed8851bfe1c155b6cd1ee42d313d0880fc48b9f9350908190036080019150a160408051600160a060020a03808a1682528a16602082015263ffffffff8816818301526060810185905290517fe6d64cac65c05a9715c20bfc2ed8851bfe1c155b6cd1ee42d313d0880fc48b9f9181900360800190a15050505050505050565b60006005840260281983850101828082126114815781600a0a83029050611496565b81600003600a0a8381151561149257fe5b0490505b9695505050505050565b61018060405190810160405280600060ff168152602001600060ff168152602001600067ffffffffffffffff168152602001600067ffffffffffffffff168152602001600081526020016000815260200160008152602001600081526020016000815260200160008152602001600081526020016000600160a060020a0316815250905600a165627a7a72305820b246a10ed645f11e4a662c3a2f2030277d70244064f7db61478fdec9aef68b1a0029`
-
-// DeployRenExSettlement deploys a new Ethereum contract, binding an instance of RenExSettlement to it.
-func DeployRenExSettlement(auth *bind.TransactOpts, backend bind.ContractBackend, _renLedgerContract common.Address, _renExTokensContract common.Address, _renExBalancesContract common.Address) (common.Address, *types.Transaction, *RenExSettlement, error) {
-	parsed, err := abi.JSON(strings.NewReader(RenExSettlementABI))
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(RenExSettlementBin), backend, _renLedgerContract, _renExTokensContract, _renExBalancesContract)
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	return address, tx, &RenExSettlement{RenExSettlementCaller: RenExSettlementCaller{contract: contract}, RenExSettlementTransactor: RenExSettlementTransactor{contract: contract}, RenExSettlementFilterer: RenExSettlementFilterer{contract: contract}}, nil
-}
-
-// RenExSettlement is an auto generated Go binding around an Ethereum contract.
-type RenExSettlement struct {
-	RenExSettlementCaller     // Read-only binding to the contract
-	RenExSettlementTransactor // Write-only binding to the contract
-	RenExSettlementFilterer   // Log filterer for contract events
-}
-
-// RenExSettlementCaller is an auto generated read-only Go binding around an Ethereum contract.
-type RenExSettlementCaller struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenExSettlementTransactor is an auto generated write-only Go binding around an Ethereum contract.
-type RenExSettlementTransactor struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenExSettlementFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
-type RenExSettlementFilterer struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenExSettlementSession is an auto generated Go binding around an Ethereum contract,
-// with pre-set call and transact options.
-type RenExSettlementSession struct {
-	Contract     *RenExSettlement  // Generic contract binding to set the session for
-	CallOpts     bind.CallOpts     // Call options to use throughout this session
-	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
-}
-
-// RenExSettlementCallerSession is an auto generated read-only Go binding around an Ethereum contract,
-// with pre-set call options.
-type RenExSettlementCallerSession struct {
-	Contract *RenExSettlementCaller // Generic contract caller binding to set the session for
-	CallOpts bind.CallOpts          // Call options to use throughout this session
-}
-
-// RenExSettlementTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
-// with pre-set transact options.
-type RenExSettlementTransactorSession struct {
-	Contract     *RenExSettlementTransactor // Generic contract transactor binding to set the session for
-	TransactOpts bind.TransactOpts          // Transaction auth options to use throughout this session
-}
-
-// RenExSettlementRaw is an auto generated low-level Go binding around an Ethereum contract.
-type RenExSettlementRaw struct {
-	Contract *RenExSettlement // Generic contract binding to access the raw methods on
-}
-
-// RenExSettlementCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
-type RenExSettlementCallerRaw struct {
-	Contract *RenExSettlementCaller // Generic read-only contract binding to access the raw methods on
-}
-
-// RenExSettlementTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
-type RenExSettlementTransactorRaw struct {
-	Contract *RenExSettlementTransactor // Generic write-only contract binding to access the raw methods on
-}
-
-// NewRenExSettlement creates a new instance of RenExSettlement, bound to a specific deployed contract.
-func NewRenExSettlement(address common.Address, backend bind.ContractBackend) (*RenExSettlement, error) {
-	contract, err := bindRenExSettlement(address, backend, backend, backend)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExSettlement{RenExSettlementCaller: RenExSettlementCaller{contract: contract}, RenExSettlementTransactor: RenExSettlementTransactor{contract: contract}, RenExSettlementFilterer: RenExSettlementFilterer{contract: contract}}, nil
-}
-
-// NewRenExSettlementCaller creates a new read-only instance of RenExSettlement, bound to a specific deployed contract.
-func NewRenExSettlementCaller(address common.Address, caller bind.ContractCaller) (*RenExSettlementCaller, error) {
-	contract, err := bindRenExSettlement(address, caller, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExSettlementCaller{contract: contract}, nil
-}
-
-// NewRenExSettlementTransactor creates a new write-only instance of RenExSettlement, bound to a specific deployed contract.
-func NewRenExSettlementTransactor(address common.Address, transactor bind.ContractTransactor) (*RenExSettlementTransactor, error) {
-	contract, err := bindRenExSettlement(address, nil, transactor, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExSettlementTransactor{contract: contract}, nil
-}
-
-// NewRenExSettlementFilterer creates a new log filterer instance of RenExSettlement, bound to a specific deployed contract.
-func NewRenExSettlementFilterer(address common.Address, filterer bind.ContractFilterer) (*RenExSettlementFilterer, error) {
-	contract, err := bindRenExSettlement(address, nil, nil, filterer)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExSettlementFilterer{contract: contract}, nil
-}
-
-// bindRenExSettlement binds a generic wrapper to an already deployed contract.
-func bindRenExSettlement(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(RenExSettlementABI))
-	if err != nil {
-		return nil, err
-	}
-	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_RenExSettlement *RenExSettlementRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _RenExSettlement.Contract.RenExSettlementCaller.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_RenExSettlement *RenExSettlementRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _RenExSettlement.Contract.RenExSettlementTransactor.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_RenExSettlement *RenExSettlementRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _RenExSettlement.Contract.RenExSettlementTransactor.contract.Transact(opts, method, params...)
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_RenExSettlement *RenExSettlementCallerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _RenExSettlement.Contract.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_RenExSettlement *RenExSettlementTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _RenExSettlement.Contract.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_RenExSettlement *RenExSettlementTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _RenExSettlement.Contract.contract.Transact(opts, method, params...)
-}
-
-// Matches is a free data retrieval call binding the contract method 0x9fe9ada3.
-//
-// Solidity: function matches( bytes32) constant returns(price uint256, lowVolume uint256, highVolume uint256)
-func (_RenExSettlement *RenExSettlementCaller) Matches(opts *bind.CallOpts, arg0 [32]byte) (struct {
-	Price      *big.Int
-	LowVolume  *big.Int
-	HighVolume *big.Int
-}, error) {
-	ret := new(struct {
-		Price      *big.Int
-		LowVolume  *big.Int
-		HighVolume *big.Int
-	})
-	out := ret
-	err := _RenExSettlement.contract.Call(opts, out, "matches", arg0)
-	return *ret, err
-}
-
-// Matches is a free data retrieval call binding the contract method 0x9fe9ada3.
-//
-// Solidity: function matches( bytes32) constant returns(price uint256, lowVolume uint256, highVolume uint256)
-func (_RenExSettlement *RenExSettlementSession) Matches(arg0 [32]byte) (struct {
-	Price      *big.Int
-	LowVolume  *big.Int
-	HighVolume *big.Int
-}, error) {
-	return _RenExSettlement.Contract.Matches(&_RenExSettlement.CallOpts, arg0)
-}
-
-// Matches is a free data retrieval call binding the contract method 0x9fe9ada3.
-//
-// Solidity: function matches( bytes32) constant returns(price uint256, lowVolume uint256, highVolume uint256)
-func (_RenExSettlement *RenExSettlementCallerSession) Matches(arg0 [32]byte) (struct {
-	Price      *big.Int
-	LowVolume  *big.Int
-	HighVolume *big.Int
-}, error) {
-	return _RenExSettlement.Contract.Matches(&_RenExSettlement.CallOpts, arg0)
-}
-
-// Orders is a free data retrieval call binding the contract method 0x9c3f1e90.
-//
-// Solidity: function orders( bytes32) constant returns(parity uint8, orderType uint8, expiry uint64, tokens uint64, priceC uint256, priceQ uint256, volumeC uint256, volumeQ uint256, minimumVolumeC uint256, minimumVolumeQ uint256, nonceHash uint256, trader address)
-func (_RenExSettlement *RenExSettlementCaller) Orders(opts *bind.CallOpts, arg0 [32]byte) (struct {
-	Parity         uint8
-	OrderType      uint8
-	Expiry         uint64
-	Tokens         uint64
-	PriceC         *big.Int
-	PriceQ         *big.Int
-	VolumeC        *big.Int
-	VolumeQ        *big.Int
-	MinimumVolumeC *big.Int
-	MinimumVolumeQ *big.Int
-	NonceHash      *big.Int
-	Trader         common.Address
-}, error) {
-	ret := new(struct {
-		Parity         uint8
-		OrderType      uint8
-		Expiry         uint64
-		Tokens         uint64
-		PriceC         *big.Int
-		PriceQ         *big.Int
-		VolumeC        *big.Int
-		VolumeQ        *big.Int
-		MinimumVolumeC *big.Int
-		MinimumVolumeQ *big.Int
-		NonceHash      *big.Int
-		Trader         common.Address
-	})
-	out := ret
-	err := _RenExSettlement.contract.Call(opts, out, "orders", arg0)
-	return *ret, err
-}
-
-// Orders is a free data retrieval call binding the contract method 0x9c3f1e90.
-//
-// Solidity: function orders( bytes32) constant returns(parity uint8, orderType uint8, expiry uint64, tokens uint64, priceC uint256, priceQ uint256, volumeC uint256, volumeQ uint256, minimumVolumeC uint256, minimumVolumeQ uint256, nonceHash uint256, trader address)
-func (_RenExSettlement *RenExSettlementSession) Orders(arg0 [32]byte) (struct {
-	Parity         uint8
-	OrderType      uint8
-	Expiry         uint64
-	Tokens         uint64
-	PriceC         *big.Int
-	PriceQ         *big.Int
-	VolumeC        *big.Int
-	VolumeQ        *big.Int
-	MinimumVolumeC *big.Int
-	MinimumVolumeQ *big.Int
-	NonceHash      *big.Int
-	Trader         common.Address
-}, error) {
-	return _RenExSettlement.Contract.Orders(&_RenExSettlement.CallOpts, arg0)
-}
-
-// Orders is a free data retrieval call binding the contract method 0x9c3f1e90.
-//
-// Solidity: function orders( bytes32) constant returns(parity uint8, orderType uint8, expiry uint64, tokens uint64, priceC uint256, priceQ uint256, volumeC uint256, volumeQ uint256, minimumVolumeC uint256, minimumVolumeQ uint256, nonceHash uint256, trader address)
-func (_RenExSettlement *RenExSettlementCallerSession) Orders(arg0 [32]byte) (struct {
-	Parity         uint8
-	OrderType      uint8
-	Expiry         uint64
-	Tokens         uint64
-	PriceC         *big.Int
-	PriceQ         *big.Int
-	VolumeC        *big.Int
-	VolumeQ        *big.Int
-	MinimumVolumeC *big.Int
-	MinimumVolumeQ *big.Int
-	NonceHash      *big.Int
-	Trader         common.Address
-}, error) {
-	return _RenExSettlement.Contract.Orders(&_RenExSettlement.CallOpts, arg0)
-}
-
-// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
-//
-// Solidity: function owner() constant returns(address)
-func (_RenExSettlement *RenExSettlementCaller) Owner(opts *bind.CallOpts) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _RenExSettlement.contract.Call(opts, out, "owner")
-	return *ret0, err
-}
-
-// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
-//
-// Solidity: function owner() constant returns(address)
-func (_RenExSettlement *RenExSettlementSession) Owner() (common.Address, error) {
-	return _RenExSettlement.Contract.Owner(&_RenExSettlement.CallOpts)
-}
-
-// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
-//
-// Solidity: function owner() constant returns(address)
-func (_RenExSettlement *RenExSettlementCallerSession) Owner() (common.Address, error) {
-	return _RenExSettlement.Contract.Owner(&_RenExSettlement.CallOpts)
-}
-
-// VerifyMatch is a free data retrieval call binding the contract method 0x1f88d9c7.
-//
-// Solidity: function verifyMatch(_buyID bytes32, _sellID bytes32) constant returns(uint32, uint32)
-func (_RenExSettlement *RenExSettlementCaller) VerifyMatch(opts *bind.CallOpts, _buyID [32]byte, _sellID [32]byte) (uint32, uint32, error) {
-	var (
-		ret0 = new(uint32)
-		ret1 = new(uint32)
-	)
-	out := &[]interface{}{
-		ret0,
-		ret1,
-	}
-	err := _RenExSettlement.contract.Call(opts, out, "verifyMatch", _buyID, _sellID)
-	return *ret0, *ret1, err
-}
-
-// VerifyMatch is a free data retrieval call binding the contract method 0x1f88d9c7.
-//
-// Solidity: function verifyMatch(_buyID bytes32, _sellID bytes32) constant returns(uint32, uint32)
-func (_RenExSettlement *RenExSettlementSession) VerifyMatch(_buyID [32]byte, _sellID [32]byte) (uint32, uint32, error) {
-	return _RenExSettlement.Contract.VerifyMatch(&_RenExSettlement.CallOpts, _buyID, _sellID)
-}
-
-// VerifyMatch is a free data retrieval call binding the contract method 0x1f88d9c7.
-//
-// Solidity: function verifyMatch(_buyID bytes32, _sellID bytes32) constant returns(uint32, uint32)
-func (_RenExSettlement *RenExSettlementCallerSession) VerifyMatch(_buyID [32]byte, _sellID [32]byte) (uint32, uint32, error) {
-	return _RenExSettlement.Contract.VerifyMatch(&_RenExSettlement.CallOpts, _buyID, _sellID)
-}
-
-// SubmitMatch is a paid mutator transaction binding the contract method 0x2a337d30.
-//
-// Solidity: function submitMatch(_buyID bytes32, _sellID bytes32) returns()
-func (_RenExSettlement *RenExSettlementTransactor) SubmitMatch(opts *bind.TransactOpts, _buyID [32]byte, _sellID [32]byte) (*types.Transaction, error) {
-	return _RenExSettlement.contract.Transact(opts, "submitMatch", _buyID, _sellID)
-}
-
-// SubmitMatch is a paid mutator transaction binding the contract method 0x2a337d30.
-//
-// Solidity: function submitMatch(_buyID bytes32, _sellID bytes32) returns()
-func (_RenExSettlement *RenExSettlementSession) SubmitMatch(_buyID [32]byte, _sellID [32]byte) (*types.Transaction, error) {
-	return _RenExSettlement.Contract.SubmitMatch(&_RenExSettlement.TransactOpts, _buyID, _sellID)
-}
-
-// SubmitMatch is a paid mutator transaction binding the contract method 0x2a337d30.
-//
-// Solidity: function submitMatch(_buyID bytes32, _sellID bytes32) returns()
-func (_RenExSettlement *RenExSettlementTransactorSession) SubmitMatch(_buyID [32]byte, _sellID [32]byte) (*types.Transaction, error) {
-	return _RenExSettlement.Contract.SubmitMatch(&_RenExSettlement.TransactOpts, _buyID, _sellID)
-}
-
-// SubmitOrder is a paid mutator transaction binding the contract method 0x177d19c3.
-//
-// Solidity: function submitOrder(_id bytes32, _orderType uint8, _parity uint8, _expiry uint64, _tokens uint64, _priceC uint16, _priceQ uint16, _volumeC uint16, _volumeQ uint16, _minimumVolumeC uint16, _minimumVolumeQ uint16, _nonceHash uint256) returns()
-func (_RenExSettlement *RenExSettlementTransactor) SubmitOrder(opts *bind.TransactOpts, _id [32]byte, _orderType uint8, _parity uint8, _expiry uint64, _tokens uint64, _priceC uint16, _priceQ uint16, _volumeC uint16, _volumeQ uint16, _minimumVolumeC uint16, _minimumVolumeQ uint16, _nonceHash *big.Int) (*types.Transaction, error) {
-	return _RenExSettlement.contract.Transact(opts, "submitOrder", _id, _orderType, _parity, _expiry, _tokens, _priceC, _priceQ, _volumeC, _volumeQ, _minimumVolumeC, _minimumVolumeQ, _nonceHash)
-}
-
-// SubmitOrder is a paid mutator transaction binding the contract method 0x177d19c3.
-//
-// Solidity: function submitOrder(_id bytes32, _orderType uint8, _parity uint8, _expiry uint64, _tokens uint64, _priceC uint16, _priceQ uint16, _volumeC uint16, _volumeQ uint16, _minimumVolumeC uint16, _minimumVolumeQ uint16, _nonceHash uint256) returns()
-func (_RenExSettlement *RenExSettlementSession) SubmitOrder(_id [32]byte, _orderType uint8, _parity uint8, _expiry uint64, _tokens uint64, _priceC uint16, _priceQ uint16, _volumeC uint16, _volumeQ uint16, _minimumVolumeC uint16, _minimumVolumeQ uint16, _nonceHash *big.Int) (*types.Transaction, error) {
-	return _RenExSettlement.Contract.SubmitOrder(&_RenExSettlement.TransactOpts, _id, _orderType, _parity, _expiry, _tokens, _priceC, _priceQ, _volumeC, _volumeQ, _minimumVolumeC, _minimumVolumeQ, _nonceHash)
-}
-
-// SubmitOrder is a paid mutator transaction binding the contract method 0x177d19c3.
-//
-// Solidity: function submitOrder(_id bytes32, _orderType uint8, _parity uint8, _expiry uint64, _tokens uint64, _priceC uint16, _priceQ uint16, _volumeC uint16, _volumeQ uint16, _minimumVolumeC uint16, _minimumVolumeQ uint16, _nonceHash uint256) returns()
-func (_RenExSettlement *RenExSettlementTransactorSession) SubmitOrder(_id [32]byte, _orderType uint8, _parity uint8, _expiry uint64, _tokens uint64, _priceC uint16, _priceQ uint16, _volumeC uint16, _volumeQ uint16, _minimumVolumeC uint16, _minimumVolumeQ uint16, _nonceHash *big.Int) (*types.Transaction, error) {
-	return _RenExSettlement.Contract.SubmitOrder(&_RenExSettlement.TransactOpts, _id, _orderType, _parity, _expiry, _tokens, _priceC, _priceQ, _volumeC, _volumeQ, _minimumVolumeC, _minimumVolumeQ, _nonceHash)
-}
-
-// TraderCanWithdraw is a paid mutator transaction binding the contract method 0xa3bdaedc.
-//
-// Solidity: function traderCanWithdraw(_trader address, _token address, amount uint256) returns(bool)
-func (_RenExSettlement *RenExSettlementTransactor) TraderCanWithdraw(opts *bind.TransactOpts, _trader common.Address, _token common.Address, amount *big.Int) (*types.Transaction, error) {
-	return _RenExSettlement.contract.Transact(opts, "traderCanWithdraw", _trader, _token, amount)
-}
-
-// TraderCanWithdraw is a paid mutator transaction binding the contract method 0xa3bdaedc.
-//
-// Solidity: function traderCanWithdraw(_trader address, _token address, amount uint256) returns(bool)
-func (_RenExSettlement *RenExSettlementSession) TraderCanWithdraw(_trader common.Address, _token common.Address, amount *big.Int) (*types.Transaction, error) {
-	return _RenExSettlement.Contract.TraderCanWithdraw(&_RenExSettlement.TransactOpts, _trader, _token, amount)
-}
-
-// TraderCanWithdraw is a paid mutator transaction binding the contract method 0xa3bdaedc.
-//
-// Solidity: function traderCanWithdraw(_trader address, _token address, amount uint256) returns(bool)
-func (_RenExSettlement *RenExSettlementTransactorSession) TraderCanWithdraw(_trader common.Address, _token common.Address, amount *big.Int) (*types.Transaction, error) {
-	return _RenExSettlement.Contract.TraderCanWithdraw(&_RenExSettlement.TransactOpts, _trader, _token, amount)
-}
-
-// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
-//
-// Solidity: function transferOwnership(newOwner address) returns()
-func (_RenExSettlement *RenExSettlementTransactor) TransferOwnership(opts *bind.TransactOpts, newOwner common.Address) (*types.Transaction, error) {
-	return _RenExSettlement.contract.Transact(opts, "transferOwnership", newOwner)
-}
-
-// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
-//
-// Solidity: function transferOwnership(newOwner address) returns()
-func (_RenExSettlement *RenExSettlementSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
-	return _RenExSettlement.Contract.TransferOwnership(&_RenExSettlement.TransactOpts, newOwner)
-}
-
-// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
-//
-// Solidity: function transferOwnership(newOwner address) returns()
-func (_RenExSettlement *RenExSettlementTransactorSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
-	return _RenExSettlement.Contract.TransferOwnership(&_RenExSettlement.TransactOpts, newOwner)
-}
-
-// RenExSettlementDebugIterator is returned from FilterDebug and is used to iterate over the raw logs and unpacked data for Debug events raised by the RenExSettlement contract.
-type RenExSettlementDebugIterator struct {
-	Event *RenExSettlementDebug // Event containing the contract specifics and raw log
-
-	contract *bind.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
-
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
-}
-
-// Next advances the iterator to the subsequent event, returning whether there
-// are any more events found. In case of a retrieval or parsing error, false is
-// returned and Error() can be queried for the exact failure.
-func (it *RenExSettlementDebugIterator) Next() bool {
-	// If the iterator failed, stop iterating
-	if it.fail != nil {
-		return false
-	}
-	// If the iterator completed, deliver directly whatever's available
-	if it.done {
-		select {
-		case log := <-it.logs:
-			it.Event = new(RenExSettlementDebug)
-			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-				it.fail = err
-				return false
-			}
-			it.Event.Raw = log
-			return true
-
-		default:
-			return false
-		}
-	}
-	// Iterator still in progress, wait for either a data or an error event
-	select {
-	case log := <-it.logs:
-		it.Event = new(RenExSettlementDebug)
-		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-			it.fail = err
-			return false
-		}
-		it.Event.Raw = log
-		return true
-
-	case err := <-it.sub.Err():
-		it.done = true
-		it.fail = err
-		return it.Next()
-	}
-}
-
-// Error returns any retrieval or parsing error occurred during filtering.
-func (it *RenExSettlementDebugIterator) Error() error {
-	return it.fail
-}
-
-// Close terminates the iteration process, releasing any pending underlying
-// resources.
-func (it *RenExSettlementDebugIterator) Close() error {
-	it.sub.Unsubscribe()
-	return nil
-}
-
-// RenExSettlementDebug represents a Debug event raised by the RenExSettlement contract.
-type RenExSettlementDebug struct {
-	Msg string
-	Raw types.Log // Blockchain specific contextual infos
-}
-
-// FilterDebug is a free log retrieval operation binding the contract event 0x7cdb51e9dbbc205231228146c3246e7f914aa6d4a33170e43ecc8e3593481d1a.
-//
-// Solidity: event Debug(msg string)
-func (_RenExSettlement *RenExSettlementFilterer) FilterDebug(opts *bind.FilterOpts) (*RenExSettlementDebugIterator, error) {
-
-	logs, sub, err := _RenExSettlement.contract.FilterLogs(opts, "Debug")
-	if err != nil {
-		return nil, err
-	}
-	return &RenExSettlementDebugIterator{contract: _RenExSettlement.contract, event: "Debug", logs: logs, sub: sub}, nil
-}
-
-// WatchDebug is a free log subscription operation binding the contract event 0x7cdb51e9dbbc205231228146c3246e7f914aa6d4a33170e43ecc8e3593481d1a.
-//
-// Solidity: event Debug(msg string)
-func (_RenExSettlement *RenExSettlementFilterer) WatchDebug(opts *bind.WatchOpts, sink chan<- *RenExSettlementDebug) (event.Subscription, error) {
-
-	logs, sub, err := _RenExSettlement.contract.WatchLogs(opts, "Debug")
-	if err != nil {
-		return nil, err
-	}
-	return event.NewSubscription(func(quit <-chan struct{}) error {
-		defer sub.Unsubscribe()
-		for {
-			select {
-			case log := <-logs:
-				// New log arrived, parse the event and forward to the user
-				event := new(RenExSettlementDebug)
-				if err := _RenExSettlement.contract.UnpackLog(event, "Debug", log); err != nil {
-					return err
-				}
-				event.Raw = log
-
-				select {
-				case sink <- event:
-				case err := <-sub.Err():
-					return err
-				case <-quit:
-					return nil
-				}
-			case err := <-sub.Err():
-				return err
-			case <-quit:
-				return nil
-			}
-		}
-	}), nil
-}
-
-// RenExSettlementDebug256Iterator is returned from FilterDebug256 and is used to iterate over the raw logs and unpacked data for Debug256 events raised by the RenExSettlement contract.
-type RenExSettlementDebug256Iterator struct {
-	Event *RenExSettlementDebug256 // Event containing the contract specifics and raw log
-
-	contract *bind.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
-
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
-}
-
-// Next advances the iterator to the subsequent event, returning whether there
-// are any more events found. In case of a retrieval or parsing error, false is
-// returned and Error() can be queried for the exact failure.
-func (it *RenExSettlementDebug256Iterator) Next() bool {
-	// If the iterator failed, stop iterating
-	if it.fail != nil {
-		return false
-	}
-	// If the iterator completed, deliver directly whatever's available
-	if it.done {
-		select {
-		case log := <-it.logs:
-			it.Event = new(RenExSettlementDebug256)
-			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-				it.fail = err
-				return false
-			}
-			it.Event.Raw = log
-			return true
-
-		default:
-			return false
-		}
-	}
-	// Iterator still in progress, wait for either a data or an error event
-	select {
-	case log := <-it.logs:
-		it.Event = new(RenExSettlementDebug256)
-		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-			it.fail = err
-			return false
-		}
-		it.Event.Raw = log
-		return true
-
-	case err := <-it.sub.Err():
-		it.done = true
-		it.fail = err
-		return it.Next()
-	}
-}
-
-// Error returns any retrieval or parsing error occurred during filtering.
-func (it *RenExSettlementDebug256Iterator) Error() error {
-	return it.fail
-}
-
-// Close terminates the iteration process, releasing any pending underlying
-// resources.
-func (it *RenExSettlementDebug256Iterator) Close() error {
-	it.sub.Unsubscribe()
-	return nil
-}
-
-// RenExSettlementDebug256 represents a Debug256 event raised by the RenExSettlement contract.
-type RenExSettlementDebug256 struct {
-	Msg string
-	Num *big.Int
-	Raw types.Log // Blockchain specific contextual infos
-}
-
-// FilterDebug256 is a free log retrieval operation binding the contract event 0xf6dc30a995243b179ca51535b8ed46953d8dca6b3c3556e75af3dd0f21008ac3.
-//
-// Solidity: event Debug256(msg string, num uint256)
-func (_RenExSettlement *RenExSettlementFilterer) FilterDebug256(opts *bind.FilterOpts) (*RenExSettlementDebug256Iterator, error) {
-
-	logs, sub, err := _RenExSettlement.contract.FilterLogs(opts, "Debug256")
-	if err != nil {
-		return nil, err
-	}
-	return &RenExSettlementDebug256Iterator{contract: _RenExSettlement.contract, event: "Debug256", logs: logs, sub: sub}, nil
-}
-
-// WatchDebug256 is a free log subscription operation binding the contract event 0xf6dc30a995243b179ca51535b8ed46953d8dca6b3c3556e75af3dd0f21008ac3.
-//
-// Solidity: event Debug256(msg string, num uint256)
-func (_RenExSettlement *RenExSettlementFilterer) WatchDebug256(opts *bind.WatchOpts, sink chan<- *RenExSettlementDebug256) (event.Subscription, error) {
-
-	logs, sub, err := _RenExSettlement.contract.WatchLogs(opts, "Debug256")
-	if err != nil {
-		return nil, err
-	}
-	return event.NewSubscription(func(quit <-chan struct{}) error {
-		defer sub.Unsubscribe()
-		for {
-			select {
-			case log := <-logs:
-				// New log arrived, parse the event and forward to the user
-				event := new(RenExSettlementDebug256)
-				if err := _RenExSettlement.contract.UnpackLog(event, "Debug256", log); err != nil {
-					return err
-				}
-				event.Raw = log
-
-				select {
-				case sink <- event:
-				case err := <-sub.Err():
-					return err
-				case <-quit:
-					return nil
-				}
-			case err := <-sub.Err():
-				return err
-			case <-quit:
-				return nil
-			}
-		}
-	}), nil
-}
-
-// RenExSettlementDebugTupleIterator is returned from FilterDebugTuple and is used to iterate over the raw logs and unpacked data for DebugTuple events raised by the RenExSettlement contract.
-type RenExSettlementDebugTupleIterator struct {
-	Event *RenExSettlementDebugTuple // Event containing the contract specifics and raw log
-
-	contract *bind.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
-
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
-}
-
-// Next advances the iterator to the subsequent event, returning whether there
-// are any more events found. In case of a retrieval or parsing error, false is
-// returned and Error() can be queried for the exact failure.
-func (it *RenExSettlementDebugTupleIterator) Next() bool {
-	// If the iterator failed, stop iterating
-	if it.fail != nil {
-		return false
-	}
-	// If the iterator completed, deliver directly whatever's available
-	if it.done {
-		select {
-		case log := <-it.logs:
-			it.Event = new(RenExSettlementDebugTuple)
-			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-				it.fail = err
-				return false
-			}
-			it.Event.Raw = log
-			return true
-
-		default:
-			return false
-		}
-	}
-	// Iterator still in progress, wait for either a data or an error event
-	select {
-	case log := <-it.logs:
-		it.Event = new(RenExSettlementDebugTuple)
-		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-			it.fail = err
-			return false
-		}
-		it.Event.Raw = log
-		return true
-
-	case err := <-it.sub.Err():
-		it.done = true
-		it.fail = err
-		return it.Next()
-	}
-}
-
-// Error returns any retrieval or parsing error occurred during filtering.
-func (it *RenExSettlementDebugTupleIterator) Error() error {
-	return it.fail
-}
-
-// Close terminates the iteration process, releasing any pending underlying
-// resources.
-func (it *RenExSettlementDebugTupleIterator) Close() error {
-	it.sub.Unsubscribe()
-	return nil
-}
-
-// RenExSettlementDebugTuple represents a DebugTuple event raised by the RenExSettlement contract.
-type RenExSettlementDebugTuple struct {
-	Msg string
-	C   *big.Int
-	Q   *big.Int
-	Raw types.Log // Blockchain specific contextual infos
-}
-
-// FilterDebugTuple is a free log retrieval operation binding the contract event 0xcba13a4eb1f0c36e968037e864450906d920f185bb5ac0ea4803797b56de7358.
-//
-// Solidity: event DebugTuple(msg string, c uint256, q uint256)
-func (_RenExSettlement *RenExSettlementFilterer) FilterDebugTuple(opts *bind.FilterOpts) (*RenExSettlementDebugTupleIterator, error) {
-
-	logs, sub, err := _RenExSettlement.contract.FilterLogs(opts, "DebugTuple")
-	if err != nil {
-		return nil, err
-	}
-	return &RenExSettlementDebugTupleIterator{contract: _RenExSettlement.contract, event: "DebugTuple", logs: logs, sub: sub}, nil
-}
-
-// WatchDebugTuple is a free log subscription operation binding the contract event 0xcba13a4eb1f0c36e968037e864450906d920f185bb5ac0ea4803797b56de7358.
-//
-// Solidity: event DebugTuple(msg string, c uint256, q uint256)
-func (_RenExSettlement *RenExSettlementFilterer) WatchDebugTuple(opts *bind.WatchOpts, sink chan<- *RenExSettlementDebugTuple) (event.Subscription, error) {
-
-	logs, sub, err := _RenExSettlement.contract.WatchLogs(opts, "DebugTuple")
-	if err != nil {
-		return nil, err
-	}
-	return event.NewSubscription(func(quit <-chan struct{}) error {
-		defer sub.Unsubscribe()
-		for {
-			select {
-			case log := <-logs:
-				// New log arrived, parse the event and forward to the user
-				event := new(RenExSettlementDebugTuple)
-				if err := _RenExSettlement.contract.UnpackLog(event, "DebugTuple", log); err != nil {
-					return err
-				}
-				event.Raw = log
-
-				select {
-				case sink <- event:
-				case err := <-sub.Err():
-					return err
-				case <-quit:
-					return nil
-				}
-			case err := <-sub.Err():
-				return err
-			case <-quit:
-				return nil
-			}
-		}
-	}), nil
-}
-
-// RenExSettlementDebugTupleIIterator is returned from FilterDebugTupleI and is used to iterate over the raw logs and unpacked data for DebugTupleI events raised by the RenExSettlement contract.
-type RenExSettlementDebugTupleIIterator struct {
-	Event *RenExSettlementDebugTupleI // Event containing the contract specifics and raw log
-
-	contract *bind.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
-
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
-}
-
-// Next advances the iterator to the subsequent event, returning whether there
-// are any more events found. In case of a retrieval or parsing error, false is
-// returned and Error() can be queried for the exact failure.
-func (it *RenExSettlementDebugTupleIIterator) Next() bool {
-	// If the iterator failed, stop iterating
-	if it.fail != nil {
-		return false
-	}
-	// If the iterator completed, deliver directly whatever's available
-	if it.done {
-		select {
-		case log := <-it.logs:
-			it.Event = new(RenExSettlementDebugTupleI)
-			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-				it.fail = err
-				return false
-			}
-			it.Event.Raw = log
-			return true
-
-		default:
-			return false
-		}
-	}
-	// Iterator still in progress, wait for either a data or an error event
-	select {
-	case log := <-it.logs:
-		it.Event = new(RenExSettlementDebugTupleI)
-		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-			it.fail = err
-			return false
-		}
-		it.Event.Raw = log
-		return true
-
-	case err := <-it.sub.Err():
-		it.done = true
-		it.fail = err
-		return it.Next()
-	}
-}
-
-// Error returns any retrieval or parsing error occurred during filtering.
-func (it *RenExSettlementDebugTupleIIterator) Error() error {
-	return it.fail
-}
-
-// Close terminates the iteration process, releasing any pending underlying
-// resources.
-func (it *RenExSettlementDebugTupleIIterator) Close() error {
-	it.sub.Unsubscribe()
-	return nil
-}
-
-// RenExSettlementDebugTupleI represents a DebugTupleI event raised by the RenExSettlement contract.
-type RenExSettlementDebugTupleI struct {
-	Msg string
-	C   *big.Int
-	Q   *big.Int
-	Raw types.Log // Blockchain specific contextual infos
-}
-
-// FilterDebugTupleI is a free log retrieval operation binding the contract event 0x4c5f559d392450dadcf66c8c87dece2fc2a951b4676aed51fea635903c918254.
-//
-// Solidity: event DebugTupleI(msg string, c uint256, q int256)
-func (_RenExSettlement *RenExSettlementFilterer) FilterDebugTupleI(opts *bind.FilterOpts) (*RenExSettlementDebugTupleIIterator, error) {
-
-	logs, sub, err := _RenExSettlement.contract.FilterLogs(opts, "DebugTupleI")
-	if err != nil {
-		return nil, err
-	}
-	return &RenExSettlementDebugTupleIIterator{contract: _RenExSettlement.contract, event: "DebugTupleI", logs: logs, sub: sub}, nil
-}
-
-// WatchDebugTupleI is a free log subscription operation binding the contract event 0x4c5f559d392450dadcf66c8c87dece2fc2a951b4676aed51fea635903c918254.
-//
-// Solidity: event DebugTupleI(msg string, c uint256, q int256)
-func (_RenExSettlement *RenExSettlementFilterer) WatchDebugTupleI(opts *bind.WatchOpts, sink chan<- *RenExSettlementDebugTupleI) (event.Subscription, error) {
-
-	logs, sub, err := _RenExSettlement.contract.WatchLogs(opts, "DebugTupleI")
-	if err != nil {
-		return nil, err
-	}
-	return event.NewSubscription(func(quit <-chan struct{}) error {
-		defer sub.Unsubscribe()
-		for {
-			select {
-			case log := <-logs:
-				// New log arrived, parse the event and forward to the user
-				event := new(RenExSettlementDebugTupleI)
-				if err := _RenExSettlement.contract.UnpackLog(event, "DebugTupleI", log); err != nil {
-					return err
-				}
-				event.Raw = log
-
-				select {
-				case sink <- event:
-				case err := <-sub.Err():
-					return err
-				case <-quit:
-					return nil
-				}
-			case err := <-sub.Err():
-				return err
-			case <-quit:
-				return nil
-			}
-		}
-	}), nil
-}
-
-// RenExSettlementDebugi256Iterator is returned from FilterDebugi256 and is used to iterate over the raw logs and unpacked data for Debugi256 events raised by the RenExSettlement contract.
-type RenExSettlementDebugi256Iterator struct {
-	Event *RenExSettlementDebugi256 // Event containing the contract specifics and raw log
-
-	contract *bind.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
-
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
-}
-
-// Next advances the iterator to the subsequent event, returning whether there
-// are any more events found. In case of a retrieval or parsing error, false is
-// returned and Error() can be queried for the exact failure.
-func (it *RenExSettlementDebugi256Iterator) Next() bool {
-	// If the iterator failed, stop iterating
-	if it.fail != nil {
-		return false
-	}
-	// If the iterator completed, deliver directly whatever's available
-	if it.done {
-		select {
-		case log := <-it.logs:
-			it.Event = new(RenExSettlementDebugi256)
-			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-				it.fail = err
-				return false
-			}
-			it.Event.Raw = log
-			return true
-
-		default:
-			return false
-		}
-	}
-	// Iterator still in progress, wait for either a data or an error event
-	select {
-	case log := <-it.logs:
-		it.Event = new(RenExSettlementDebugi256)
-		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-			it.fail = err
-			return false
-		}
-		it.Event.Raw = log
-		return true
-
-	case err := <-it.sub.Err():
-		it.done = true
-		it.fail = err
-		return it.Next()
-	}
-}
-
-// Error returns any retrieval or parsing error occurred during filtering.
-func (it *RenExSettlementDebugi256Iterator) Error() error {
-	return it.fail
-}
-
-// Close terminates the iteration process, releasing any pending underlying
-// resources.
-func (it *RenExSettlementDebugi256Iterator) Close() error {
-	it.sub.Unsubscribe()
-	return nil
-}
-
-// RenExSettlementDebugi256 represents a Debugi256 event raised by the RenExSettlement contract.
-type RenExSettlementDebugi256 struct {
-	Msg string
-	Num *big.Int
-	Raw types.Log // Blockchain specific contextual infos
-}
-
-// FilterDebugi256 is a free log retrieval operation binding the contract event 0x3000edbd3cfcc6f1c67722513235e0b58874b3bca718da01bf1a5a6011a697f0.
-//
-// Solidity: event Debugi256(msg string, num int256)
-func (_RenExSettlement *RenExSettlementFilterer) FilterDebugi256(opts *bind.FilterOpts) (*RenExSettlementDebugi256Iterator, error) {
-
-	logs, sub, err := _RenExSettlement.contract.FilterLogs(opts, "Debugi256")
-	if err != nil {
-		return nil, err
-	}
-	return &RenExSettlementDebugi256Iterator{contract: _RenExSettlement.contract, event: "Debugi256", logs: logs, sub: sub}, nil
-}
-
-// WatchDebugi256 is a free log subscription operation binding the contract event 0x3000edbd3cfcc6f1c67722513235e0b58874b3bca718da01bf1a5a6011a697f0.
-//
-// Solidity: event Debugi256(msg string, num int256)
-func (_RenExSettlement *RenExSettlementFilterer) WatchDebugi256(opts *bind.WatchOpts, sink chan<- *RenExSettlementDebugi256) (event.Subscription, error) {
-
-	logs, sub, err := _RenExSettlement.contract.WatchLogs(opts, "Debugi256")
-	if err != nil {
-		return nil, err
-	}
-	return event.NewSubscription(func(quit <-chan struct{}) error {
-		defer sub.Unsubscribe()
-		for {
-			select {
-			case log := <-logs:
-				// New log arrived, parse the event and forward to the user
-				event := new(RenExSettlementDebugi256)
-				if err := _RenExSettlement.contract.UnpackLog(event, "Debugi256", log); err != nil {
-					return err
-				}
-				event.Raw = log
-
-				select {
-				case sink <- event:
-				case err := <-sub.Err():
-					return err
-				case <-quit:
-					return nil
-				}
-			case err := <-sub.Err():
-				return err
-			case <-quit:
-				return nil
-			}
-		}
-	}), nil
-}
-
-// RenExSettlementOwnershipTransferredIterator is returned from FilterOwnershipTransferred and is used to iterate over the raw logs and unpacked data for OwnershipTransferred events raised by the RenExSettlement contract.
-type RenExSettlementOwnershipTransferredIterator struct {
-	Event *RenExSettlementOwnershipTransferred // Event containing the contract specifics and raw log
-
-	contract *bind.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
-
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
-}
-
-// Next advances the iterator to the subsequent event, returning whether there
-// are any more events found. In case of a retrieval or parsing error, false is
-// returned and Error() can be queried for the exact failure.
-func (it *RenExSettlementOwnershipTransferredIterator) Next() bool {
-	// If the iterator failed, stop iterating
-	if it.fail != nil {
-		return false
-	}
-	// If the iterator completed, deliver directly whatever's available
-	if it.done {
-		select {
-		case log := <-it.logs:
-			it.Event = new(RenExSettlementOwnershipTransferred)
-			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-				it.fail = err
-				return false
-			}
-			it.Event.Raw = log
-			return true
-
-		default:
-			return false
-		}
-	}
-	// Iterator still in progress, wait for either a data or an error event
-	select {
-	case log := <-it.logs:
-		it.Event = new(RenExSettlementOwnershipTransferred)
-		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-			it.fail = err
-			return false
-		}
-		it.Event.Raw = log
-		return true
-
-	case err := <-it.sub.Err():
-		it.done = true
-		it.fail = err
-		return it.Next()
-	}
-}
-
-// Error returns any retrieval or parsing error occurred during filtering.
-func (it *RenExSettlementOwnershipTransferredIterator) Error() error {
-	return it.fail
-}
-
-// Close terminates the iteration process, releasing any pending underlying
-// resources.
-func (it *RenExSettlementOwnershipTransferredIterator) Close() error {
-	it.sub.Unsubscribe()
-	return nil
-}
-
-// RenExSettlementOwnershipTransferred represents a OwnershipTransferred event raised by the RenExSettlement contract.
-type RenExSettlementOwnershipTransferred struct {
-	PreviousOwner common.Address
-	NewOwner      common.Address
-	Raw           types.Log // Blockchain specific contextual infos
-}
-
-// FilterOwnershipTransferred is a free log retrieval operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
-//
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
-func (_RenExSettlement *RenExSettlementFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*RenExSettlementOwnershipTransferredIterator, error) {
-
-	var previousOwnerRule []interface{}
-	for _, previousOwnerItem := range previousOwner {
-		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
-	}
-	var newOwnerRule []interface{}
-	for _, newOwnerItem := range newOwner {
-		newOwnerRule = append(newOwnerRule, newOwnerItem)
-	}
-
-	logs, sub, err := _RenExSettlement.contract.FilterLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExSettlementOwnershipTransferredIterator{contract: _RenExSettlement.contract, event: "OwnershipTransferred", logs: logs, sub: sub}, nil
-}
-
-// WatchOwnershipTransferred is a free log subscription operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
-//
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
-func (_RenExSettlement *RenExSettlementFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *RenExSettlementOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
-
-	var previousOwnerRule []interface{}
-	for _, previousOwnerItem := range previousOwner {
-		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
-	}
-	var newOwnerRule []interface{}
-	for _, newOwnerItem := range newOwner {
-		newOwnerRule = append(newOwnerRule, newOwnerItem)
-	}
-
-	logs, sub, err := _RenExSettlement.contract.WatchLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
-	if err != nil {
-		return nil, err
-	}
-	return event.NewSubscription(func(quit <-chan struct{}) error {
-		defer sub.Unsubscribe()
-		for {
-			select {
-			case log := <-logs:
-				// New log arrived, parse the event and forward to the user
-				event := new(RenExSettlementOwnershipTransferred)
-				if err := _RenExSettlement.contract.UnpackLog(event, "OwnershipTransferred", log); err != nil {
-					return err
-				}
-				event.Raw = log
-
-				select {
-				case sink <- event:
-				case err := <-sub.Err():
-					return err
-				case <-quit:
-					return nil
-				}
-			case err := <-sub.Err():
-				return err
-			case <-quit:
-				return nil
-			}
-		}
-	}), nil
-}
-
-// RenExSettlementTransferIterator is returned from FilterTransfer and is used to iterate over the raw logs and unpacked data for Transfer events raised by the RenExSettlement contract.
-type RenExSettlementTransferIterator struct {
-	Event *RenExSettlementTransfer // Event containing the contract specifics and raw log
-
-	contract *bind.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
-
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
-}
-
-// Next advances the iterator to the subsequent event, returning whether there
-// are any more events found. In case of a retrieval or parsing error, false is
-// returned and Error() can be queried for the exact failure.
-func (it *RenExSettlementTransferIterator) Next() bool {
-	// If the iterator failed, stop iterating
-	if it.fail != nil {
-		return false
-	}
-	// If the iterator completed, deliver directly whatever's available
-	if it.done {
-		select {
-		case log := <-it.logs:
-			it.Event = new(RenExSettlementTransfer)
-			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-				it.fail = err
-				return false
-			}
-			it.Event.Raw = log
-			return true
-
-		default:
-			return false
-		}
-	}
-	// Iterator still in progress, wait for either a data or an error event
-	select {
-	case log := <-it.logs:
-		it.Event = new(RenExSettlementTransfer)
-		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-			it.fail = err
-			return false
-		}
-		it.Event.Raw = log
-		return true
-
-	case err := <-it.sub.Err():
-		it.done = true
-		it.fail = err
-		return it.Next()
-	}
-}
-
-// Error returns any retrieval or parsing error occurred during filtering.
-func (it *RenExSettlementTransferIterator) Error() error {
-	return it.fail
-}
-
-// Close terminates the iteration process, releasing any pending underlying
-// resources.
-func (it *RenExSettlementTransferIterator) Close() error {
-	it.sub.Unsubscribe()
-	return nil
-}
-
-// RenExSettlementTransfer represents a Transfer event raised by the RenExSettlement contract.
-type RenExSettlementTransfer struct {
-	From  common.Address
-	To    common.Address
-	Token uint32
-	Value *big.Int
-	Raw   types.Log // Blockchain specific contextual infos
-}
-
-// FilterTransfer is a free log retrieval operation binding the contract event 0xe6d64cac65c05a9715c20bfc2ed8851bfe1c155b6cd1ee42d313d0880fc48b9f.
-//
-// Solidity: event Transfer(from address, to address, token uint32, value uint256)
-func (_RenExSettlement *RenExSettlementFilterer) FilterTransfer(opts *bind.FilterOpts) (*RenExSettlementTransferIterator, error) {
-
-	logs, sub, err := _RenExSettlement.contract.FilterLogs(opts, "Transfer")
-	if err != nil {
-		return nil, err
-	}
-	return &RenExSettlementTransferIterator{contract: _RenExSettlement.contract, event: "Transfer", logs: logs, sub: sub}, nil
-}
-
-// WatchTransfer is a free log subscription operation binding the contract event 0xe6d64cac65c05a9715c20bfc2ed8851bfe1c155b6cd1ee42d313d0880fc48b9f.
-//
-// Solidity: event Transfer(from address, to address, token uint32, value uint256)
-func (_RenExSettlement *RenExSettlementFilterer) WatchTransfer(opts *bind.WatchOpts, sink chan<- *RenExSettlementTransfer) (event.Subscription, error) {
-
-	logs, sub, err := _RenExSettlement.contract.WatchLogs(opts, "Transfer")
-	if err != nil {
-		return nil, err
-	}
-	return event.NewSubscription(func(quit <-chan struct{}) error {
-		defer sub.Unsubscribe()
-		for {
-			select {
-			case log := <-logs:
-				// New log arrived, parse the event and forward to the user
-				event := new(RenExSettlementTransfer)
-				if err := _RenExSettlement.contract.UnpackLog(event, "Transfer", log); err != nil {
-					return err
-				}
-				event.Raw = log
-
-				select {
-				case sink <- event:
-				case err := <-sub.Err():
-					return err
-				case <-quit:
-					return nil
-				}
-			case err := <-sub.Err():
-				return err
-			case <-quit:
-				return nil
-			}
-		}
-	}), nil
-}
-
-// RenExTokensABI is the input ABI used to generate the binding from.
-const RenExTokensABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"_tokenCode\",\"type\":\"uint32\"}],\"name\":\"deregisterToken\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint32\"}],\"name\":\"tokenAddresses\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint32\"}],\"name\":\"tokenIsRegistered\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_tokenCode\",\"type\":\"uint32\"},{\"name\":\"_tokenAddress\",\"type\":\"address\"},{\"name\":\"_tokenDecimals\",\"type\":\"uint8\"}],\"name\":\"registerToken\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint32\"}],\"name\":\"tokenDecimals\",\"outputs\":[{\"name\":\"\",\"type\":\"uint8\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"}]"
-
-// RenExTokensBin is the compiled bytecode used for deploying new contracts.
-const RenExTokensBin = `0x608060405234801561001057600080fd5b5060008054600160a060020a0319163317905561037b806100326000396000f3006080604052600436106100825763ffffffff7c010000000000000000000000000000000000000000000000000000000060003504166325fc575a811461008757806329debc9f146100a7578063329ed381146100e15780638da5cb5b146101135780639e20a9a014610128578063c865992b14610158578063f2fde38b1461018c575b600080fd5b34801561009357600080fd5b506100a563ffffffff600435166101ad565b005b3480156100b357600080fd5b506100c563ffffffff600435166101e2565b60408051600160a060020a039092168252519081900360200190f35b3480156100ed57600080fd5b506100ff63ffffffff600435166101fd565b604080519115158252519081900360200190f35b34801561011f57600080fd5b506100c5610212565b34801561013457600080fd5b506100a563ffffffff60043516600160a060020a036024351660ff60443516610221565b34801561016457600080fd5b5061017663ffffffff600435166102a6565b6040805160ff9092168252519081900360200190f35b34801561019857600080fd5b506100a5600160a060020a03600435166102bb565b600054600160a060020a031633146101c457600080fd5b63ffffffff166000908152600360205260409020805460ff19169055565b600160205260009081526040902054600160a060020a031681565b60036020526000908152604090205460ff1681565b600054600160a060020a031681565b600054600160a060020a0316331461023857600080fd5b63ffffffff90921660009081526001602081815260408084208054600160a060020a0390961673ffffffffffffffffffffffffffffffffffffffff199096169590951790945560028152838320805460ff90961660ff19968716179055600390529190208054909216179055565b60026020526000908152604090205460ff1681565b600054600160a060020a031633146102d257600080fd5b600160a060020a03811615156102e757600080fd5b60008054604051600160a060020a03808516939216917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e091a36000805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a03929092169190911790555600a165627a7a723058200b05aa64af4c4fd54b6e534e5262d5cf9b4aca557e56fc883c351e0c4cfeb7100029`
-
-// DeployRenExTokens deploys a new Ethereum contract, binding an instance of RenExTokens to it.
-func DeployRenExTokens(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *RenExTokens, error) {
-	parsed, err := abi.JSON(strings.NewReader(RenExTokensABI))
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(RenExTokensBin), backend)
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	return address, tx, &RenExTokens{RenExTokensCaller: RenExTokensCaller{contract: contract}, RenExTokensTransactor: RenExTokensTransactor{contract: contract}, RenExTokensFilterer: RenExTokensFilterer{contract: contract}}, nil
-}
-
-// RenExTokens is an auto generated Go binding around an Ethereum contract.
-type RenExTokens struct {
-	RenExTokensCaller     // Read-only binding to the contract
-	RenExTokensTransactor // Write-only binding to the contract
-	RenExTokensFilterer   // Log filterer for contract events
-}
-
-// RenExTokensCaller is an auto generated read-only Go binding around an Ethereum contract.
-type RenExTokensCaller struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenExTokensTransactor is an auto generated write-only Go binding around an Ethereum contract.
-type RenExTokensTransactor struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenExTokensFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
-type RenExTokensFilterer struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenExTokensSession is an auto generated Go binding around an Ethereum contract,
-// with pre-set call and transact options.
-type RenExTokensSession struct {
-	Contract     *RenExTokens      // Generic contract binding to set the session for
-	CallOpts     bind.CallOpts     // Call options to use throughout this session
-	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
-}
-
-// RenExTokensCallerSession is an auto generated read-only Go binding around an Ethereum contract,
-// with pre-set call options.
-type RenExTokensCallerSession struct {
-	Contract *RenExTokensCaller // Generic contract caller binding to set the session for
-	CallOpts bind.CallOpts      // Call options to use throughout this session
-}
-
-// RenExTokensTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
-// with pre-set transact options.
-type RenExTokensTransactorSession struct {
-	Contract     *RenExTokensTransactor // Generic contract transactor binding to set the session for
-	TransactOpts bind.TransactOpts      // Transaction auth options to use throughout this session
-}
-
-// RenExTokensRaw is an auto generated low-level Go binding around an Ethereum contract.
-type RenExTokensRaw struct {
-	Contract *RenExTokens // Generic contract binding to access the raw methods on
-}
-
-// RenExTokensCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
-type RenExTokensCallerRaw struct {
-	Contract *RenExTokensCaller // Generic read-only contract binding to access the raw methods on
-}
-
-// RenExTokensTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
-type RenExTokensTransactorRaw struct {
-	Contract *RenExTokensTransactor // Generic write-only contract binding to access the raw methods on
-}
-
-// NewRenExTokens creates a new instance of RenExTokens, bound to a specific deployed contract.
-func NewRenExTokens(address common.Address, backend bind.ContractBackend) (*RenExTokens, error) {
-	contract, err := bindRenExTokens(address, backend, backend, backend)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExTokens{RenExTokensCaller: RenExTokensCaller{contract: contract}, RenExTokensTransactor: RenExTokensTransactor{contract: contract}, RenExTokensFilterer: RenExTokensFilterer{contract: contract}}, nil
-}
-
-// NewRenExTokensCaller creates a new read-only instance of RenExTokens, bound to a specific deployed contract.
-func NewRenExTokensCaller(address common.Address, caller bind.ContractCaller) (*RenExTokensCaller, error) {
-	contract, err := bindRenExTokens(address, caller, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExTokensCaller{contract: contract}, nil
-}
-
-// NewRenExTokensTransactor creates a new write-only instance of RenExTokens, bound to a specific deployed contract.
-func NewRenExTokensTransactor(address common.Address, transactor bind.ContractTransactor) (*RenExTokensTransactor, error) {
-	contract, err := bindRenExTokens(address, nil, transactor, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExTokensTransactor{contract: contract}, nil
-}
-
-// NewRenExTokensFilterer creates a new log filterer instance of RenExTokens, bound to a specific deployed contract.
-func NewRenExTokensFilterer(address common.Address, filterer bind.ContractFilterer) (*RenExTokensFilterer, error) {
-	contract, err := bindRenExTokens(address, nil, nil, filterer)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExTokensFilterer{contract: contract}, nil
-}
-
-// bindRenExTokens binds a generic wrapper to an already deployed contract.
-func bindRenExTokens(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(RenExTokensABI))
-	if err != nil {
-		return nil, err
-	}
-	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_RenExTokens *RenExTokensRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _RenExTokens.Contract.RenExTokensCaller.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_RenExTokens *RenExTokensRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _RenExTokens.Contract.RenExTokensTransactor.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_RenExTokens *RenExTokensRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _RenExTokens.Contract.RenExTokensTransactor.contract.Transact(opts, method, params...)
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_RenExTokens *RenExTokensCallerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _RenExTokens.Contract.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_RenExTokens *RenExTokensTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _RenExTokens.Contract.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_RenExTokens *RenExTokensTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _RenExTokens.Contract.contract.Transact(opts, method, params...)
-}
-
-// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
-//
-// Solidity: function owner() constant returns(address)
-func (_RenExTokens *RenExTokensCaller) Owner(opts *bind.CallOpts) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _RenExTokens.contract.Call(opts, out, "owner")
-	return *ret0, err
-}
-
-// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
-//
-// Solidity: function owner() constant returns(address)
-func (_RenExTokens *RenExTokensSession) Owner() (common.Address, error) {
-	return _RenExTokens.Contract.Owner(&_RenExTokens.CallOpts)
-}
-
-// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
-//
-// Solidity: function owner() constant returns(address)
-func (_RenExTokens *RenExTokensCallerSession) Owner() (common.Address, error) {
-	return _RenExTokens.Contract.Owner(&_RenExTokens.CallOpts)
-}
-
-// TokenAddresses is a free data retrieval call binding the contract method 0x29debc9f.
-//
-// Solidity: function tokenAddresses( uint32) constant returns(address)
-func (_RenExTokens *RenExTokensCaller) TokenAddresses(opts *bind.CallOpts, arg0 uint32) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _RenExTokens.contract.Call(opts, out, "tokenAddresses", arg0)
-	return *ret0, err
-}
-
-// TokenAddresses is a free data retrieval call binding the contract method 0x29debc9f.
-//
-// Solidity: function tokenAddresses( uint32) constant returns(address)
-func (_RenExTokens *RenExTokensSession) TokenAddresses(arg0 uint32) (common.Address, error) {
-	return _RenExTokens.Contract.TokenAddresses(&_RenExTokens.CallOpts, arg0)
-}
-
-// TokenAddresses is a free data retrieval call binding the contract method 0x29debc9f.
-//
-// Solidity: function tokenAddresses( uint32) constant returns(address)
-func (_RenExTokens *RenExTokensCallerSession) TokenAddresses(arg0 uint32) (common.Address, error) {
-	return _RenExTokens.Contract.TokenAddresses(&_RenExTokens.CallOpts, arg0)
-}
-
-// TokenDecimals is a free data retrieval call binding the contract method 0xc865992b.
-//
-// Solidity: function tokenDecimals( uint32) constant returns(uint8)
-func (_RenExTokens *RenExTokensCaller) TokenDecimals(opts *bind.CallOpts, arg0 uint32) (uint8, error) {
-	var (
-		ret0 = new(uint8)
-	)
-	out := ret0
-	err := _RenExTokens.contract.Call(opts, out, "tokenDecimals", arg0)
-	return *ret0, err
-}
-
-// TokenDecimals is a free data retrieval call binding the contract method 0xc865992b.
-//
-// Solidity: function tokenDecimals( uint32) constant returns(uint8)
-func (_RenExTokens *RenExTokensSession) TokenDecimals(arg0 uint32) (uint8, error) {
-	return _RenExTokens.Contract.TokenDecimals(&_RenExTokens.CallOpts, arg0)
-}
-
-// TokenDecimals is a free data retrieval call binding the contract method 0xc865992b.
-//
-// Solidity: function tokenDecimals( uint32) constant returns(uint8)
-func (_RenExTokens *RenExTokensCallerSession) TokenDecimals(arg0 uint32) (uint8, error) {
-	return _RenExTokens.Contract.TokenDecimals(&_RenExTokens.CallOpts, arg0)
-}
-
-// TokenIsRegistered is a free data retrieval call binding the contract method 0x329ed381.
-//
-// Solidity: function tokenIsRegistered( uint32) constant returns(bool)
-func (_RenExTokens *RenExTokensCaller) TokenIsRegistered(opts *bind.CallOpts, arg0 uint32) (bool, error) {
-	var (
-		ret0 = new(bool)
-	)
-	out := ret0
-	err := _RenExTokens.contract.Call(opts, out, "tokenIsRegistered", arg0)
-	return *ret0, err
-}
-
-// TokenIsRegistered is a free data retrieval call binding the contract method 0x329ed381.
-//
-// Solidity: function tokenIsRegistered( uint32) constant returns(bool)
-func (_RenExTokens *RenExTokensSession) TokenIsRegistered(arg0 uint32) (bool, error) {
-	return _RenExTokens.Contract.TokenIsRegistered(&_RenExTokens.CallOpts, arg0)
-}
-
-// TokenIsRegistered is a free data retrieval call binding the contract method 0x329ed381.
-//
-// Solidity: function tokenIsRegistered( uint32) constant returns(bool)
-func (_RenExTokens *RenExTokensCallerSession) TokenIsRegistered(arg0 uint32) (bool, error) {
-	return _RenExTokens.Contract.TokenIsRegistered(&_RenExTokens.CallOpts, arg0)
-}
-
-// DeregisterToken is a paid mutator transaction binding the contract method 0x25fc575a.
-//
-// Solidity: function deregisterToken(_tokenCode uint32) returns()
-func (_RenExTokens *RenExTokensTransactor) DeregisterToken(opts *bind.TransactOpts, _tokenCode uint32) (*types.Transaction, error) {
-	return _RenExTokens.contract.Transact(opts, "deregisterToken", _tokenCode)
-}
-
-// DeregisterToken is a paid mutator transaction binding the contract method 0x25fc575a.
-//
-// Solidity: function deregisterToken(_tokenCode uint32) returns()
-func (_RenExTokens *RenExTokensSession) DeregisterToken(_tokenCode uint32) (*types.Transaction, error) {
-	return _RenExTokens.Contract.DeregisterToken(&_RenExTokens.TransactOpts, _tokenCode)
-}
-
-// DeregisterToken is a paid mutator transaction binding the contract method 0x25fc575a.
-//
-// Solidity: function deregisterToken(_tokenCode uint32) returns()
-func (_RenExTokens *RenExTokensTransactorSession) DeregisterToken(_tokenCode uint32) (*types.Transaction, error) {
-	return _RenExTokens.Contract.DeregisterToken(&_RenExTokens.TransactOpts, _tokenCode)
-}
-
-// RegisterToken is a paid mutator transaction binding the contract method 0x9e20a9a0.
-//
-// Solidity: function registerToken(_tokenCode uint32, _tokenAddress address, _tokenDecimals uint8) returns()
-func (_RenExTokens *RenExTokensTransactor) RegisterToken(opts *bind.TransactOpts, _tokenCode uint32, _tokenAddress common.Address, _tokenDecimals uint8) (*types.Transaction, error) {
-	return _RenExTokens.contract.Transact(opts, "registerToken", _tokenCode, _tokenAddress, _tokenDecimals)
-}
-
-// RegisterToken is a paid mutator transaction binding the contract method 0x9e20a9a0.
-//
-// Solidity: function registerToken(_tokenCode uint32, _tokenAddress address, _tokenDecimals uint8) returns()
-func (_RenExTokens *RenExTokensSession) RegisterToken(_tokenCode uint32, _tokenAddress common.Address, _tokenDecimals uint8) (*types.Transaction, error) {
-	return _RenExTokens.Contract.RegisterToken(&_RenExTokens.TransactOpts, _tokenCode, _tokenAddress, _tokenDecimals)
-}
-
-// RegisterToken is a paid mutator transaction binding the contract method 0x9e20a9a0.
-//
-// Solidity: function registerToken(_tokenCode uint32, _tokenAddress address, _tokenDecimals uint8) returns()
-func (_RenExTokens *RenExTokensTransactorSession) RegisterToken(_tokenCode uint32, _tokenAddress common.Address, _tokenDecimals uint8) (*types.Transaction, error) {
-	return _RenExTokens.Contract.RegisterToken(&_RenExTokens.TransactOpts, _tokenCode, _tokenAddress, _tokenDecimals)
-}
-
-// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
-//
-// Solidity: function transferOwnership(newOwner address) returns()
-func (_RenExTokens *RenExTokensTransactor) TransferOwnership(opts *bind.TransactOpts, newOwner common.Address) (*types.Transaction, error) {
-	return _RenExTokens.contract.Transact(opts, "transferOwnership", newOwner)
-}
-
-// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
-//
-// Solidity: function transferOwnership(newOwner address) returns()
-func (_RenExTokens *RenExTokensSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
-	return _RenExTokens.Contract.TransferOwnership(&_RenExTokens.TransactOpts, newOwner)
-}
-
-// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
-//
-// Solidity: function transferOwnership(newOwner address) returns()
-func (_RenExTokens *RenExTokensTransactorSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
-	return _RenExTokens.Contract.TransferOwnership(&_RenExTokens.TransactOpts, newOwner)
-}
-
-// RenExTokensOwnershipTransferredIterator is returned from FilterOwnershipTransferred and is used to iterate over the raw logs and unpacked data for OwnershipTransferred events raised by the RenExTokens contract.
-type RenExTokensOwnershipTransferredIterator struct {
-	Event *RenExTokensOwnershipTransferred // Event containing the contract specifics and raw log
-
-	contract *bind.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
-
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
-}
-
-// Next advances the iterator to the subsequent event, returning whether there
-// are any more events found. In case of a retrieval or parsing error, false is
-// returned and Error() can be queried for the exact failure.
-func (it *RenExTokensOwnershipTransferredIterator) Next() bool {
-	// If the iterator failed, stop iterating
-	if it.fail != nil {
-		return false
-	}
-	// If the iterator completed, deliver directly whatever's available
-	if it.done {
-		select {
-		case log := <-it.logs:
-			it.Event = new(RenExTokensOwnershipTransferred)
-			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-				it.fail = err
-				return false
-			}
-			it.Event.Raw = log
-			return true
-
-		default:
-			return false
-		}
-	}
-	// Iterator still in progress, wait for either a data or an error event
-	select {
-	case log := <-it.logs:
-		it.Event = new(RenExTokensOwnershipTransferred)
-		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
-			it.fail = err
-			return false
-		}
-		it.Event.Raw = log
-		return true
-
-	case err := <-it.sub.Err():
-		it.done = true
-		it.fail = err
-		return it.Next()
-	}
-}
-
-// Error returns any retrieval or parsing error occurred during filtering.
-func (it *RenExTokensOwnershipTransferredIterator) Error() error {
-	return it.fail
-}
-
-// Close terminates the iteration process, releasing any pending underlying
-// resources.
-func (it *RenExTokensOwnershipTransferredIterator) Close() error {
-	it.sub.Unsubscribe()
-	return nil
-}
-
-// RenExTokensOwnershipTransferred represents a OwnershipTransferred event raised by the RenExTokens contract.
-type RenExTokensOwnershipTransferred struct {
-	PreviousOwner common.Address
-	NewOwner      common.Address
-	Raw           types.Log // Blockchain specific contextual infos
-}
-
-// FilterOwnershipTransferred is a free log retrieval operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
-//
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
-func (_RenExTokens *RenExTokensFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*RenExTokensOwnershipTransferredIterator, error) {
-
-	var previousOwnerRule []interface{}
-	for _, previousOwnerItem := range previousOwner {
-		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
-	}
-	var newOwnerRule []interface{}
-	for _, newOwnerItem := range newOwner {
-		newOwnerRule = append(newOwnerRule, newOwnerItem)
-	}
-
-	logs, sub, err := _RenExTokens.contract.FilterLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
-	if err != nil {
-		return nil, err
-	}
-	return &RenExTokensOwnershipTransferredIterator{contract: _RenExTokens.contract, event: "OwnershipTransferred", logs: logs, sub: sub}, nil
-}
-
-// WatchOwnershipTransferred is a free log subscription operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
-//
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
-func (_RenExTokens *RenExTokensFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *RenExTokensOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
-
-	var previousOwnerRule []interface{}
-	for _, previousOwnerItem := range previousOwner {
-		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
-	}
-	var newOwnerRule []interface{}
-	for _, newOwnerItem := range newOwner {
-		newOwnerRule = append(newOwnerRule, newOwnerItem)
-	}
-
-	logs, sub, err := _RenExTokens.contract.WatchLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
-	if err != nil {
-		return nil, err
-	}
-	return event.NewSubscription(func(quit <-chan struct{}) error {
-		defer sub.Unsubscribe()
-		for {
-			select {
-			case log := <-logs:
-				// New log arrived, parse the event and forward to the user
-				event := new(RenExTokensOwnershipTransferred)
-				if err := _RenExTokens.contract.UnpackLog(event, "OwnershipTransferred", log); err != nil {
-					return err
-				}
-				event.Raw = log
-
-				select {
-				case sink <- event:
-				case err := <-sub.Err():
-					return err
-				case <-quit:
-					return nil
-				}
-			case err := <-sub.Err():
-				return err
-			case <-quit:
-				return nil
-			}
-		}
-	}), nil
-}
-
-// RenLedgerABI is the input ABI used to generate the binding from.
-const RenLedgerABI = "[{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderConfirmer\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"buyOrder\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"buyOrders\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"openSellOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"sellOrders\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"openBuyOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"cancelOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"},{\"name\":\"_orderMatches\",\"type\":\"bytes32[]\"}],\"name\":\"confirmOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderBlockNumber\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_offset\",\"type\":\"uint256\"},{\"name\":\"_limit\",\"type\":\"uint256\"}],\"name\":\"getOrders\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32[]\"},{\"name\":\"\",\"type\":\"address[]\"},{\"name\":\"\",\"type\":\"uint8[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"sellOrder\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderDepth\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderBroker\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderState\",\"outputs\":[{\"name\":\"\",\"type\":\"uint8\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderMatch\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderTrader\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderPriority\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getOrdersCount\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"getOrder\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"fee\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_fee\",\"type\":\"uint256\"},{\"name\":\"_token\",\"type\":\"address\"},{\"name\":\"_registry\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"}]"
-
-// RenLedgerBin is the compiled bytecode used for deploying new contracts.
-const RenLedgerBin = `0x608060405234801561001057600080fd5b506040516060806113fc83398101604090815281516020830151919092015160049290925560058054600160a060020a03928316600160a060020a0319918216179091556006805492909316911617905561138c806100706000396000f3006080604052600436106101115763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416631107c3f7811461011657806322f85eaa1461014a57806335cea2881461017b57806339b0d677146101a55780634a8393f3146102025780635060340b1461021a578063574ed6c1146102755780637008b996146102d057806389895d531461032a5780638f72fc771461034257806397514d901461043b578063a188fcb814610453578063a51816611461046b578063aab14d0414610483578063af3e8a40146104b1578063b1a0801014610519578063b248e4e114610531578063b5b3b05114610549578063d09ef2411461055e578063ddca3f4314610576575b600080fd5b34801561012257600080fd5b5061012e60043561058b565b60408051600160a060020a039092168252519081900360200190f35b34801561015657600080fd5b506101626004356105ac565b6040805192835290151560208301528051918290030190f35b34801561018757600080fd5b506101936004356105e8565b60408051918252519081900360200190f35b3480156101b157600080fd5b506040805160206004803580820135601f810184900484028501840190955284845261020094369492936024939284019190819084018382808284375094975050933594506106079350505050565b005b34801561020e57600080fd5b50610193600435610658565b34801561022657600080fd5b506040805160206004803580820135601f810184900484028501840190955284845261020094369492936024939284019190819084018382808284375094975050933594506106669350505050565b34801561028157600080fd5b506040805160206004803580820135601f810184900484028501840190955284845261020094369492936024939284019190819084018382808284375094975050933594506106b59350505050565b3480156102dc57600080fd5b506040805160206004602480358281013584810280870186019097528086526102009684359636966044959194909101929182918501908490808284375094975061081b9650505050505050565b34801561033657600080fd5b50610193600435610ab7565b34801561034e57600080fd5b5061035d600435602435610acc565b60405180806020018060200180602001848103845287818151815260200191508051906020019060200280838360005b838110156103a557818101518382015260200161038d565b50505050905001848103835286818151815260200191508051906020019060200280838360005b838110156103e45781810151838201526020016103cc565b50505050905001848103825285818151815260200191508051906020019060200280838360005b8381101561042357818101518382015260200161040b565b50505050905001965050505050505060405180910390f35b34801561044757600080fd5b50610162600435610c7d565b34801561045f57600080fd5b50610193600435610ca4565b34801561047757600080fd5b5061012e600435610cdc565b34801561048f57600080fd5b5061049b600435610cfa565b6040805160ff9092168252519081900360200190f35b3480156104bd57600080fd5b506104c9600435610d23565b60408051602080825283518183015283519192839290830191858101910280838360005b838110156105055781810151838201526020016104ed565b505050509050019250505060405180910390f35b34801561052557600080fd5b5061012e600435610d89565b34801561053d57600080fd5b50610193600435610daa565b34801561055557600080fd5b50610193610dc0565b34801561056a57600080fd5b50610162600435610dcb565b34801561058257600080fd5b50610193610df2565b600081815260036020526040902060020154600160a060020a03165b919050565b60008054819083106105c3575060009050806105e3565b60008054849081106105d157fe5b90600052602060002001546001915091505b915091565b60008054829081106105f657fe5b600091825260209091200154905081565b6106118282610df8565b600180548082019091557fb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf60181905560008054918152600360208190526040909120015550565b60018054829081106105f657fe5b6106708282610df8565b600080546001810182557f290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563018290558054918152600360208190526040909120015550565b6000806001600084815260036020819052604090912054610100900460ff16908111156106de57fe5b14156107c757604080517f52657075626c69632050726f746f636f6c3a2063616e63656c3a200000000000602080830191909152603b80830187905283518084039091018152605b90920192839052815191929182918401908083835b6020831061075a5780518252601f19909201916020918201910161073b565b6001836020036101000a0380198251168184511680821785525050505050509050019150506040518091039020915061079382856110dc565b600084815260036020526040902054909150600160a060020a038083166201000090920416146107c257600080fd5b6107f4565b6000838152600360208190526040822054610100900460ff16908111156107ea57fe5b146107f457600080fd5b50506000908152600360205260409020805461ff0019166103001781554360049091015550565b600654604080517f4f5550fc000000000000000000000000000000000000000000000000000000008152336c0100000000000000000000000081026bffffffffffffffffffffffff191660048301529151600093600160a060020a031691634f5550fc91602480830192602092919082900301818887803b15801561089f57600080fd5b505af11580156108b3573d6000803e3d6000fd5b505050506040513d60208110156108c957600080fd5b505115156108d657600080fd5b6001600085815260036020819052604090912054610100900460ff16908111156108fc57fe5b1461090657600080fd5b600091505b825182101561096b57600160036000858581518110151561092857fe5b602090810290910181015182528101919091526040016000205460ff61010090910416600381111561095657fe5b1461096057600080fd5b60019091019061090b565b600091505b8251821015610a4957600260036000858581518110151561098d57fe5b60209081029091018101518252810191909152604001600020805461ff0019166101008360038111156109bc57fe5b0217905550604080516020810190915284815283516003906000908690869081106109e357fe5b60209081029091018101518252810191909152604001600020610a0d9160059091019060016112f9565b5043600360008585815181101515610a2157fe5b6020908102909101810151825281019190915260400160002060040155600190910190610970565b6000848152600360209081526040909120805461ff00191661020017815560028101805473ffffffffffffffffffffffffffffffffffffffff1916331790558451610a9c926005909201918601906112f9565b50505060009182525060036020526040902043600490910155565b60009081526003602052604090206004015490565b6060806060600060608060606000806002805490508b101515610aee57610c70565b6002548a96508b87011115610b06576002548b900395505b85604051908082528060200260200182016040528015610b30578160200160208202803883390190505b50945085604051908082528060200260200182016040528015610b5d578160200160208202803883390190505b50935085604051908082528060200260200182016040528015610b8a578160200160208202803883390190505b509250600091505b85821015610c665760028054838d01908110610baa57fe5b90600052602060002001549050808583815181101515610bc657fe5b602090810291909101810191909152600082815260039091526040902054845162010000909104600160a060020a031690859084908110610c0357fe5b600160a060020a0390921660209283029091018201526000828152600391829052604090205460ff6101009091041690811115610c3c57fe5b8383815181101515610c4a57fe5b60ff909216602092830290910190910152600190910190610b92565b8484849850985098505b5050505050509250925092565b60015460009081908310610c96575060009050806105e3565b60018054849081106105d157fe5b6000818152600360205260408120600401541515610cc4575060006105a7565b50600090815260036020526040902060040154430390565b600090815260036020526040902060010154600160a060020a031690565b6000818152600360208190526040822054610100900460ff1690811115610d1d57fe5b92915050565b600081815260036020908152604091829020600501805483518184028101840190945280845260609392830182828015610d7d57602002820191906000526020600020905b81548152600190910190602001808311610d68575b50505050509050919050565b600090815260036020526040902054620100009004600160a060020a031690565b6000908152600360208190526040909120015490565b600154600054015b90565b60025460009081908310610de4575060009050806105e3565b60028054849081106105d157fe5b60045481565b60048054600554604080517fdd62ed3e000000000000000000000000000000000000000000000000000000008152339481019490945230602485015251600093849392600160a060020a03169163dd62ed3e9160448082019260209290919082900301818887803b158015610e6c57600080fd5b505af1158015610e80573d6000803e3d6000fd5b505050506040513d6020811015610e9657600080fd5b50511015610ea357600080fd5b60055460048054604080517f23b872dd0000000000000000000000000000000000000000000000000000000081523393810193909352306024840152604483019190915251600160a060020a03909216916323b872dd916064808201926020929091908290030181600087803b158015610f1c57600080fd5b505af1158015610f30573d6000803e3d6000fd5b505050506040513d6020811015610f4657600080fd5b50511515610f5357600080fd5b6000838152600360208190526040822054610100900460ff1690811115610f7657fe5b14610f8057600080fd5b604080517f52657075626c69632050726f746f636f6c3a206f70656e3a2000000000000000602080830191909152603980830187905283518084039091018152605990920192839052815191929182918401908083835b60208310610ff65780518252601f199092019160209182019101610fd7565b6001836020036101000a0380198251168184511680821785525050505050509050019150506040518091039020915061102f82856110dc565b60008481526003602052604081208054600160a060020a0393909316620100000261ff00199093166101001775ffffffffffffffffffffffffffffffffffffffff000019169290921782556001808301805473ffffffffffffffffffffffffffffffffffffffff1916331790554360049093019290925560028054928301815590527f405787fa12a823e0f2b7631cc41b3ba8828b3321ca811111fa75cd3aa3bb5ace0192909255505050565b604080518082018252601c8082527f19457468657265756d205369676e6564204d6573736167653a0a333200000000602080840191825293516000948593849386938a9301918291908083835b602083106111485780518252601f199092019160209182019101611129565b51815160209384036101000a600019018019909216911617905292019384525060408051808503815293820190819052835193945092839250908401908083835b602083106111a85780518252601f199092019160209182019101611189565b6001836020036101000a038019825116818451168082178552505050505050905001915050604051809103902091508460408151811015156111e657fe5b016020015160f860020a90819004810204905060ff8116158061120c57508060ff166001145b1561121557601b015b6001828261122488600061129c565b61122f89602061129c565b60408051600080825260208083018085529790975260ff90951681830152606081019390935260808301919091525160a08083019493601f198301938390039091019190865af1158015611287573d6000803e3d6000fd5b5050604051601f190151979650505050505050565b600080805b60208110156112f15780600802858286601f01038151811015156112c157fe5b90602001015160f860020a900460f860020a0260f860020a90049060020a028201915080806001019150506112a1565b509392505050565b828054828255906000526020600020908101928215611336579160200282015b828111156113365782518255602090920191600190910190611319565b50611342929150611346565b5090565b610dc891905b80821115611342576000815560010161134c5600a165627a7a72305820562c171c633addecb58de572eadba02a13db102bc3870fdad8addb763a35c3310029`
-
-// DeployRenLedger deploys a new Ethereum contract, binding an instance of RenLedger to it.
-func DeployRenLedger(auth *bind.TransactOpts, backend bind.ContractBackend, _fee *big.Int, _token common.Address, _registry common.Address) (common.Address, *types.Transaction, *RenLedger, error) {
-	parsed, err := abi.JSON(strings.NewReader(RenLedgerABI))
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(RenLedgerBin), backend, _fee, _token, _registry)
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	return address, tx, &RenLedger{RenLedgerCaller: RenLedgerCaller{contract: contract}, RenLedgerTransactor: RenLedgerTransactor{contract: contract}, RenLedgerFilterer: RenLedgerFilterer{contract: contract}}, nil
-}
-
-// RenLedger is an auto generated Go binding around an Ethereum contract.
-type RenLedger struct {
-	RenLedgerCaller     // Read-only binding to the contract
-	RenLedgerTransactor // Write-only binding to the contract
-	RenLedgerFilterer   // Log filterer for contract events
-}
-
-// RenLedgerCaller is an auto generated read-only Go binding around an Ethereum contract.
-type RenLedgerCaller struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenLedgerTransactor is an auto generated write-only Go binding around an Ethereum contract.
-type RenLedgerTransactor struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenLedgerFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
-type RenLedgerFilterer struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenLedgerSession is an auto generated Go binding around an Ethereum contract,
-// with pre-set call and transact options.
-type RenLedgerSession struct {
-	Contract     *RenLedger        // Generic contract binding to set the session for
-	CallOpts     bind.CallOpts     // Call options to use throughout this session
-	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
-}
-
-// RenLedgerCallerSession is an auto generated read-only Go binding around an Ethereum contract,
-// with pre-set call options.
-type RenLedgerCallerSession struct {
-	Contract *RenLedgerCaller // Generic contract caller binding to set the session for
-	CallOpts bind.CallOpts    // Call options to use throughout this session
-}
-
-// RenLedgerTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
-// with pre-set transact options.
-type RenLedgerTransactorSession struct {
-	Contract     *RenLedgerTransactor // Generic contract transactor binding to set the session for
-	TransactOpts bind.TransactOpts    // Transaction auth options to use throughout this session
-}
-
-// RenLedgerRaw is an auto generated low-level Go binding around an Ethereum contract.
-type RenLedgerRaw struct {
-	Contract *RenLedger // Generic contract binding to access the raw methods on
-}
-
-// RenLedgerCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
-type RenLedgerCallerRaw struct {
-	Contract *RenLedgerCaller // Generic read-only contract binding to access the raw methods on
-}
-
-// RenLedgerTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
-type RenLedgerTransactorRaw struct {
-	Contract *RenLedgerTransactor // Generic write-only contract binding to access the raw methods on
-}
-
-// NewRenLedger creates a new instance of RenLedger, bound to a specific deployed contract.
-func NewRenLedger(address common.Address, backend bind.ContractBackend) (*RenLedger, error) {
-	contract, err := bindRenLedger(address, backend, backend, backend)
-	if err != nil {
-		return nil, err
-	}
-	return &RenLedger{RenLedgerCaller: RenLedgerCaller{contract: contract}, RenLedgerTransactor: RenLedgerTransactor{contract: contract}, RenLedgerFilterer: RenLedgerFilterer{contract: contract}}, nil
-}
-
-// NewRenLedgerCaller creates a new read-only instance of RenLedger, bound to a specific deployed contract.
-func NewRenLedgerCaller(address common.Address, caller bind.ContractCaller) (*RenLedgerCaller, error) {
-	contract, err := bindRenLedger(address, caller, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &RenLedgerCaller{contract: contract}, nil
-}
-
-// NewRenLedgerTransactor creates a new write-only instance of RenLedger, bound to a specific deployed contract.
-func NewRenLedgerTransactor(address common.Address, transactor bind.ContractTransactor) (*RenLedgerTransactor, error) {
-	contract, err := bindRenLedger(address, nil, transactor, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &RenLedgerTransactor{contract: contract}, nil
-}
-
-// NewRenLedgerFilterer creates a new log filterer instance of RenLedger, bound to a specific deployed contract.
-func NewRenLedgerFilterer(address common.Address, filterer bind.ContractFilterer) (*RenLedgerFilterer, error) {
-	contract, err := bindRenLedger(address, nil, nil, filterer)
-	if err != nil {
-		return nil, err
-	}
-	return &RenLedgerFilterer{contract: contract}, nil
-}
-
-// bindRenLedger binds a generic wrapper to an already deployed contract.
-func bindRenLedger(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(RenLedgerABI))
-	if err != nil {
-		return nil, err
-	}
-	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_RenLedger *RenLedgerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _RenLedger.Contract.RenLedgerCaller.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_RenLedger *RenLedgerRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _RenLedger.Contract.RenLedgerTransactor.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_RenLedger *RenLedgerRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _RenLedger.Contract.RenLedgerTransactor.contract.Transact(opts, method, params...)
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_RenLedger *RenLedgerCallerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _RenLedger.Contract.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_RenLedger *RenLedgerTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _RenLedger.Contract.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_RenLedger *RenLedgerTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _RenLedger.Contract.contract.Transact(opts, method, params...)
-}
-
-// BuyOrder is a free data retrieval call binding the contract method 0x22f85eaa.
-//
-// Solidity: function buyOrder(_index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCaller) BuyOrder(opts *bind.CallOpts, _index *big.Int) ([32]byte, bool, error) {
-	var (
-		ret0 = new([32]byte)
-		ret1 = new(bool)
-	)
-	out := &[]interface{}{
-		ret0,
-		ret1,
-	}
-	err := _RenLedger.contract.Call(opts, out, "buyOrder", _index)
-	return *ret0, *ret1, err
-}
-
-// BuyOrder is a free data retrieval call binding the contract method 0x22f85eaa.
-//
-// Solidity: function buyOrder(_index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerSession) BuyOrder(_index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.BuyOrder(&_RenLedger.CallOpts, _index)
-}
-
-// BuyOrder is a free data retrieval call binding the contract method 0x22f85eaa.
-//
-// Solidity: function buyOrder(_index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCallerSession) BuyOrder(_index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.BuyOrder(&_RenLedger.CallOpts, _index)
-}
-
-// BuyOrders is a free data retrieval call binding the contract method 0x35cea288.
-//
-// Solidity: function buyOrders( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerCaller) BuyOrders(opts *bind.CallOpts, arg0 *big.Int) ([32]byte, error) {
-	var (
-		ret0 = new([32]byte)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "buyOrders", arg0)
-	return *ret0, err
-}
-
-// BuyOrders is a free data retrieval call binding the contract method 0x35cea288.
-//
-// Solidity: function buyOrders( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerSession) BuyOrders(arg0 *big.Int) ([32]byte, error) {
-	return _RenLedger.Contract.BuyOrders(&_RenLedger.CallOpts, arg0)
-}
-
-// BuyOrders is a free data retrieval call binding the contract method 0x35cea288.
-//
-// Solidity: function buyOrders( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerCallerSession) BuyOrders(arg0 *big.Int) ([32]byte, error) {
-	return _RenLedger.Contract.BuyOrders(&_RenLedger.CallOpts, arg0)
-}
-
-// Fee is a free data retrieval call binding the contract method 0xddca3f43.
-//
-// Solidity: function fee() constant returns(uint256)
-func (_RenLedger *RenLedgerCaller) Fee(opts *bind.CallOpts) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "fee")
-	return *ret0, err
-}
-
-// Fee is a free data retrieval call binding the contract method 0xddca3f43.
-//
-// Solidity: function fee() constant returns(uint256)
-func (_RenLedger *RenLedgerSession) Fee() (*big.Int, error) {
-	return _RenLedger.Contract.Fee(&_RenLedger.CallOpts)
-}
-
-// Fee is a free data retrieval call binding the contract method 0xddca3f43.
-//
-// Solidity: function fee() constant returns(uint256)
-func (_RenLedger *RenLedgerCallerSession) Fee() (*big.Int, error) {
-	return _RenLedger.Contract.Fee(&_RenLedger.CallOpts)
-}
-
-// GetOrder is a free data retrieval call binding the contract method 0xd09ef241.
-//
-// Solidity: function getOrder(_index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCaller) GetOrder(opts *bind.CallOpts, _index *big.Int) ([32]byte, bool, error) {
-	var (
-		ret0 = new([32]byte)
-		ret1 = new(bool)
-	)
-	out := &[]interface{}{
-		ret0,
-		ret1,
-	}
-	err := _RenLedger.contract.Call(opts, out, "getOrder", _index)
-	return *ret0, *ret1, err
-}
-
-// GetOrder is a free data retrieval call binding the contract method 0xd09ef241.
-//
-// Solidity: function getOrder(_index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerSession) GetOrder(_index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.GetOrder(&_RenLedger.CallOpts, _index)
-}
-
-// GetOrder is a free data retrieval call binding the contract method 0xd09ef241.
-//
-// Solidity: function getOrder(_index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCallerSession) GetOrder(_index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.GetOrder(&_RenLedger.CallOpts, _index)
-}
-
-// GetOrders is a free data retrieval call binding the contract method 0x8f72fc77.
-//
-// Solidity: function getOrders(_offset uint256, _limit uint256) constant returns(bytes32[], address[], uint8[])
-func (_RenLedger *RenLedgerCaller) GetOrders(opts *bind.CallOpts, _offset *big.Int, _limit *big.Int) ([][32]byte, []common.Address, []uint8, error) {
-	var (
-		ret0 = new([][32]byte)
-		ret1 = new([]common.Address)
-		ret2 = new([]uint8)
-	)
-	out := &[]interface{}{
-		ret0,
-		ret1,
-		ret2,
-	}
-	err := _RenLedger.contract.Call(opts, out, "getOrders", _offset, _limit)
-	return *ret0, *ret1, *ret2, err
-}
-
-// GetOrders is a free data retrieval call binding the contract method 0x8f72fc77.
-//
-// Solidity: function getOrders(_offset uint256, _limit uint256) constant returns(bytes32[], address[], uint8[])
-func (_RenLedger *RenLedgerSession) GetOrders(_offset *big.Int, _limit *big.Int) ([][32]byte, []common.Address, []uint8, error) {
-	return _RenLedger.Contract.GetOrders(&_RenLedger.CallOpts, _offset, _limit)
-}
-
-// GetOrders is a free data retrieval call binding the contract method 0x8f72fc77.
-//
-// Solidity: function getOrders(_offset uint256, _limit uint256) constant returns(bytes32[], address[], uint8[])
-func (_RenLedger *RenLedgerCallerSession) GetOrders(_offset *big.Int, _limit *big.Int) ([][32]byte, []common.Address, []uint8, error) {
-	return _RenLedger.Contract.GetOrders(&_RenLedger.CallOpts, _offset, _limit)
-}
-
-// GetOrdersCount is a free data retrieval call binding the contract method 0xb5b3b051.
-//
-// Solidity: function getOrdersCount() constant returns(uint256)
-func (_RenLedger *RenLedgerCaller) GetOrdersCount(opts *bind.CallOpts) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "getOrdersCount")
-	return *ret0, err
-}
-
-// GetOrdersCount is a free data retrieval call binding the contract method 0xb5b3b051.
-//
-// Solidity: function getOrdersCount() constant returns(uint256)
-func (_RenLedger *RenLedgerSession) GetOrdersCount() (*big.Int, error) {
-	return _RenLedger.Contract.GetOrdersCount(&_RenLedger.CallOpts)
-}
-
-// GetOrdersCount is a free data retrieval call binding the contract method 0xb5b3b051.
-//
-// Solidity: function getOrdersCount() constant returns(uint256)
-func (_RenLedger *RenLedgerCallerSession) GetOrdersCount() (*big.Int, error) {
-	return _RenLedger.Contract.GetOrdersCount(&_RenLedger.CallOpts)
-}
-
-// OrderBlockNumber is a free data retrieval call binding the contract method 0x89895d53.
-//
-// Solidity: function orderBlockNumber(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerCaller) OrderBlockNumber(opts *bind.CallOpts, _orderId [32]byte) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderBlockNumber", _orderId)
-	return *ret0, err
-}
-
-// OrderBlockNumber is a free data retrieval call binding the contract method 0x89895d53.
-//
-// Solidity: function orderBlockNumber(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerSession) OrderBlockNumber(_orderId [32]byte) (*big.Int, error) {
-	return _RenLedger.Contract.OrderBlockNumber(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderBlockNumber is a free data retrieval call binding the contract method 0x89895d53.
-//
-// Solidity: function orderBlockNumber(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerCallerSession) OrderBlockNumber(_orderId [32]byte) (*big.Int, error) {
-	return _RenLedger.Contract.OrderBlockNumber(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderBroker is a free data retrieval call binding the contract method 0xa5181661.
-//
-// Solidity: function orderBroker(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerCaller) OrderBroker(opts *bind.CallOpts, _orderId [32]byte) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderBroker", _orderId)
-	return *ret0, err
-}
-
-// OrderBroker is a free data retrieval call binding the contract method 0xa5181661.
-//
-// Solidity: function orderBroker(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerSession) OrderBroker(_orderId [32]byte) (common.Address, error) {
-	return _RenLedger.Contract.OrderBroker(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderBroker is a free data retrieval call binding the contract method 0xa5181661.
-//
-// Solidity: function orderBroker(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerCallerSession) OrderBroker(_orderId [32]byte) (common.Address, error) {
-	return _RenLedger.Contract.OrderBroker(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderConfirmer is a free data retrieval call binding the contract method 0x1107c3f7.
-//
-// Solidity: function orderConfirmer(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerCaller) OrderConfirmer(opts *bind.CallOpts, _orderId [32]byte) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderConfirmer", _orderId)
-	return *ret0, err
-}
-
-// OrderConfirmer is a free data retrieval call binding the contract method 0x1107c3f7.
-//
-// Solidity: function orderConfirmer(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerSession) OrderConfirmer(_orderId [32]byte) (common.Address, error) {
-	return _RenLedger.Contract.OrderConfirmer(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderConfirmer is a free data retrieval call binding the contract method 0x1107c3f7.
-//
-// Solidity: function orderConfirmer(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerCallerSession) OrderConfirmer(_orderId [32]byte) (common.Address, error) {
-	return _RenLedger.Contract.OrderConfirmer(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderDepth is a free data retrieval call binding the contract method 0xa188fcb8.
-//
-// Solidity: function orderDepth(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerCaller) OrderDepth(opts *bind.CallOpts, _orderId [32]byte) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderDepth", _orderId)
-	return *ret0, err
-}
-
-// OrderDepth is a free data retrieval call binding the contract method 0xa188fcb8.
-//
-// Solidity: function orderDepth(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerSession) OrderDepth(_orderId [32]byte) (*big.Int, error) {
-	return _RenLedger.Contract.OrderDepth(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderDepth is a free data retrieval call binding the contract method 0xa188fcb8.
-//
-// Solidity: function orderDepth(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerCallerSession) OrderDepth(_orderId [32]byte) (*big.Int, error) {
-	return _RenLedger.Contract.OrderDepth(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderMatch is a free data retrieval call binding the contract method 0xaf3e8a40.
-//
-// Solidity: function orderMatch(_orderId bytes32) constant returns(bytes32[])
-func (_RenLedger *RenLedgerCaller) OrderMatch(opts *bind.CallOpts, _orderId [32]byte) ([][32]byte, error) {
-	var (
-		ret0 = new([][32]byte)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderMatch", _orderId)
-	return *ret0, err
-}
-
-// OrderMatch is a free data retrieval call binding the contract method 0xaf3e8a40.
-//
-// Solidity: function orderMatch(_orderId bytes32) constant returns(bytes32[])
-func (_RenLedger *RenLedgerSession) OrderMatch(_orderId [32]byte) ([][32]byte, error) {
-	return _RenLedger.Contract.OrderMatch(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderMatch is a free data retrieval call binding the contract method 0xaf3e8a40.
-//
-// Solidity: function orderMatch(_orderId bytes32) constant returns(bytes32[])
-func (_RenLedger *RenLedgerCallerSession) OrderMatch(_orderId [32]byte) ([][32]byte, error) {
-	return _RenLedger.Contract.OrderMatch(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderPriority is a free data retrieval call binding the contract method 0xb248e4e1.
-//
-// Solidity: function orderPriority(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerCaller) OrderPriority(opts *bind.CallOpts, _orderId [32]byte) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderPriority", _orderId)
-	return *ret0, err
-}
-
-// OrderPriority is a free data retrieval call binding the contract method 0xb248e4e1.
-//
-// Solidity: function orderPriority(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerSession) OrderPriority(_orderId [32]byte) (*big.Int, error) {
-	return _RenLedger.Contract.OrderPriority(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderPriority is a free data retrieval call binding the contract method 0xb248e4e1.
-//
-// Solidity: function orderPriority(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerCallerSession) OrderPriority(_orderId [32]byte) (*big.Int, error) {
-	return _RenLedger.Contract.OrderPriority(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderState is a free data retrieval call binding the contract method 0xaab14d04.
-//
-// Solidity: function orderState(_orderId bytes32) constant returns(uint8)
-func (_RenLedger *RenLedgerCaller) OrderState(opts *bind.CallOpts, _orderId [32]byte) (uint8, error) {
-	var (
-		ret0 = new(uint8)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderState", _orderId)
-	return *ret0, err
-}
-
-// OrderState is a free data retrieval call binding the contract method 0xaab14d04.
-//
-// Solidity: function orderState(_orderId bytes32) constant returns(uint8)
-func (_RenLedger *RenLedgerSession) OrderState(_orderId [32]byte) (uint8, error) {
-	return _RenLedger.Contract.OrderState(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderState is a free data retrieval call binding the contract method 0xaab14d04.
-//
-// Solidity: function orderState(_orderId bytes32) constant returns(uint8)
-func (_RenLedger *RenLedgerCallerSession) OrderState(_orderId [32]byte) (uint8, error) {
-	return _RenLedger.Contract.OrderState(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderTrader is a free data retrieval call binding the contract method 0xb1a08010.
-//
-// Solidity: function orderTrader(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerCaller) OrderTrader(opts *bind.CallOpts, _orderId [32]byte) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderTrader", _orderId)
-	return *ret0, err
-}
-
-// OrderTrader is a free data retrieval call binding the contract method 0xb1a08010.
-//
-// Solidity: function orderTrader(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerSession) OrderTrader(_orderId [32]byte) (common.Address, error) {
-	return _RenLedger.Contract.OrderTrader(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderTrader is a free data retrieval call binding the contract method 0xb1a08010.
-//
-// Solidity: function orderTrader(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerCallerSession) OrderTrader(_orderId [32]byte) (common.Address, error) {
-	return _RenLedger.Contract.OrderTrader(&_RenLedger.CallOpts, _orderId)
-}
-
-// SellOrder is a free data retrieval call binding the contract method 0x97514d90.
-//
-// Solidity: function sellOrder(_index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCaller) SellOrder(opts *bind.CallOpts, _index *big.Int) ([32]byte, bool, error) {
-	var (
-		ret0 = new([32]byte)
-		ret1 = new(bool)
-	)
-	out := &[]interface{}{
-		ret0,
-		ret1,
-	}
-	err := _RenLedger.contract.Call(opts, out, "sellOrder", _index)
-	return *ret0, *ret1, err
-}
-
-// SellOrder is a free data retrieval call binding the contract method 0x97514d90.
-//
-// Solidity: function sellOrder(_index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerSession) SellOrder(_index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.SellOrder(&_RenLedger.CallOpts, _index)
-}
-
-// SellOrder is a free data retrieval call binding the contract method 0x97514d90.
-//
-// Solidity: function sellOrder(_index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCallerSession) SellOrder(_index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.SellOrder(&_RenLedger.CallOpts, _index)
-}
-
-// SellOrders is a free data retrieval call binding the contract method 0x4a8393f3.
-//
-// Solidity: function sellOrders( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerCaller) SellOrders(opts *bind.CallOpts, arg0 *big.Int) ([32]byte, error) {
-	var (
-		ret0 = new([32]byte)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "sellOrders", arg0)
-	return *ret0, err
-}
-
-// SellOrders is a free data retrieval call binding the contract method 0x4a8393f3.
-//
-// Solidity: function sellOrders( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerSession) SellOrders(arg0 *big.Int) ([32]byte, error) {
-	return _RenLedger.Contract.SellOrders(&_RenLedger.CallOpts, arg0)
-}
-
-// SellOrders is a free data retrieval call binding the contract method 0x4a8393f3.
-//
-// Solidity: function sellOrders( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerCallerSession) SellOrders(arg0 *big.Int) ([32]byte, error) {
-	return _RenLedger.Contract.SellOrders(&_RenLedger.CallOpts, arg0)
-}
-
-// CancelOrder is a paid mutator transaction binding the contract method 0x574ed6c1.
-//
-// Solidity: function cancelOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerTransactor) CancelOrder(opts *bind.TransactOpts, _signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.contract.Transact(opts, "cancelOrder", _signature, _orderId)
-}
-
-// CancelOrder is a paid mutator transaction binding the contract method 0x574ed6c1.
-//
-// Solidity: function cancelOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerSession) CancelOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.CancelOrder(&_RenLedger.TransactOpts, _signature, _orderId)
-}
-
-// CancelOrder is a paid mutator transaction binding the contract method 0x574ed6c1.
-//
-// Solidity: function cancelOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerTransactorSession) CancelOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.CancelOrder(&_RenLedger.TransactOpts, _signature, _orderId)
-}
-
-// ConfirmOrder is a paid mutator transaction binding the contract method 0x7008b996.
-//
-// Solidity: function confirmOrder(_orderId bytes32, _orderMatches bytes32[]) returns()
-func (_RenLedger *RenLedgerTransactor) ConfirmOrder(opts *bind.TransactOpts, _orderId [32]byte, _orderMatches [][32]byte) (*types.Transaction, error) {
-	return _RenLedger.contract.Transact(opts, "confirmOrder", _orderId, _orderMatches)
-}
-
-// ConfirmOrder is a paid mutator transaction binding the contract method 0x7008b996.
-//
-// Solidity: function confirmOrder(_orderId bytes32, _orderMatches bytes32[]) returns()
-func (_RenLedger *RenLedgerSession) ConfirmOrder(_orderId [32]byte, _orderMatches [][32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.ConfirmOrder(&_RenLedger.TransactOpts, _orderId, _orderMatches)
-}
-
-// ConfirmOrder is a paid mutator transaction binding the contract method 0x7008b996.
-//
-// Solidity: function confirmOrder(_orderId bytes32, _orderMatches bytes32[]) returns()
-func (_RenLedger *RenLedgerTransactorSession) ConfirmOrder(_orderId [32]byte, _orderMatches [][32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.ConfirmOrder(&_RenLedger.TransactOpts, _orderId, _orderMatches)
-}
-
-// OpenBuyOrder is a paid mutator transaction binding the contract method 0x5060340b.
-//
-// Solidity: function openBuyOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerTransactor) OpenBuyOrder(opts *bind.TransactOpts, _signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.contract.Transact(opts, "openBuyOrder", _signature, _orderId)
-}
-
-// OpenBuyOrder is a paid mutator transaction binding the contract method 0x5060340b.
-//
-// Solidity: function openBuyOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerSession) OpenBuyOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.OpenBuyOrder(&_RenLedger.TransactOpts, _signature, _orderId)
-}
-
-// OpenBuyOrder is a paid mutator transaction binding the contract method 0x5060340b.
-//
-// Solidity: function openBuyOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerTransactorSession) OpenBuyOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.OpenBuyOrder(&_RenLedger.TransactOpts, _signature, _orderId)
-}
-
-// OpenSellOrder is a paid mutator transaction binding the contract method 0x39b0d677.
-//
-// Solidity: function openSellOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerTransactor) OpenSellOrder(opts *bind.TransactOpts, _signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.contract.Transact(opts, "openSellOrder", _signature, _orderId)
-}
-
-// OpenSellOrder is a paid mutator transaction binding the contract method 0x39b0d677.
-//
-// Solidity: function openSellOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerSession) OpenSellOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.OpenSellOrder(&_RenLedger.TransactOpts, _signature, _orderId)
-}
-
-// OpenSellOrder is a paid mutator transaction binding the contract method 0x39b0d677.
-//
-// Solidity: function openSellOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerTransactorSession) OpenSellOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.OpenSellOrder(&_RenLedger.TransactOpts, _signature, _orderId)
-}
-
 // RepublicTokenABI is the input ABI used to generate the binding from.
 const RepublicTokenABI = "[{\"constant\":true,\"inputs\":[],\"name\":\"name\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_spender\",\"type\":\"address\"},{\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"approve\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"totalSupply\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_from\",\"type\":\"address\"},{\"name\":\"_to\",\"type\":\"address\"},{\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"transferFrom\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"INITIAL_SUPPLY\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"decimals\",\"outputs\":[{\"name\":\"\",\"type\":\"uint8\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"unpause\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"burn\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"paused\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_spender\",\"type\":\"address\"},{\"name\":\"_subtractedValue\",\"type\":\"uint256\"}],\"name\":\"decreaseApproval\",\"outputs\":[{\"name\":\"success\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_owner\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"name\":\"balance\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"pause\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"symbol\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_to\",\"type\":\"address\"},{\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"transfer\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"beneficiary\",\"type\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"transferTokens\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_spender\",\"type\":\"address\"},{\"name\":\"_addedValue\",\"type\":\"uint256\"}],\"name\":\"increaseApproval\",\"outputs\":[{\"name\":\"success\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_owner\",\"type\":\"address\"},{\"name\":\"_spender\",\"type\":\"address\"}],\"name\":\"allowance\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"burner\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"Burn\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[],\"name\":\"Pause\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[],\"name\":\"Unpause\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"spender\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"Approval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"to\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"Transfer\",\"type\":\"event\"}]"
 
@@ -10276,6 +6904,355 @@ func (_RepublicToken *RepublicTokenFilterer) WatchUnpause(opts *bind.WatchOpts, 
 	}), nil
 }
 
+// RewardVaultABI is the input ABI used to generate the binding from.
+const RewardVaultABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"_nonce\",\"type\":\"uint256\"}],\"name\":\"finalize\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_nonce\",\"type\":\"uint256\"}],\"name\":\"challengeIds\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_challengeID\",\"type\":\"bytes32\"},{\"name\":\"_proof\",\"type\":\"bytes16\"},{\"name\":\"_rewardRoundNonce\",\"type\":\"uint256\"}],\"name\":\"withdraw\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_challenge\",\"type\":\"bytes\"},{\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"deposit\",\"outputs\":[],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_nonce\",\"type\":\"uint256\"},{\"name\":\"_proofs\",\"type\":\"bytes16[]\"}],\"name\":\"submitProof\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_nonce\",\"type\":\"uint256\"}],\"name\":\"isFinalizable\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"ETHEREUM\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_nonce\",\"type\":\"uint256\"}],\"name\":\"rewardees\",\"outputs\":[{\"name\":\"\",\"type\":\"address[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_rewardeeCount\",\"type\":\"uint256\"},{\"name\":\"_challengeCount\",\"type\":\"uint256\"},{\"name\":\"_threshold\",\"type\":\"uint256\"},{\"name\":\"_dnrAddress\",\"type\":\"address\"},{\"name\":\"_tokenAddress\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"}]"
+
+// RewardVaultBin is the compiled bytecode used for deploying new contracts.
+const RewardVaultBin = `0x608060405234801561001057600080fd5b5060405160a0806110a283398101604081815282516020808501518386015160608088015160809098015160e0880187526000885293870185905294860182905292959094929390929081018587028581151561006957fe5b0481526020808201869052600160a060020a03808616604080850191909152858216606094850181905285516000559285015160015584015160025591830151600355608083015160045560a083015160058054918416600160a060020a031992831617905560c0909301516006805491909316931692909217905573eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1461011b57600a8054600160a060020a031916600160a060020a0383161790555b5050505050610f738061012f6000396000f3006080604052600436106100745763ffffffff60e060020a60003504166305261aea811461007957806323f6bfb214610093578063251c9fac146100fb578063934055401461012c578063e25045271461017a578063e533cdf5146101d4578063f7cdf47c14610200578063f87770f514610231575b600080fd5b34801561008557600080fd5b50610091600435610249565b005b34801561009f57600080fd5b506100ab600435610257565b60408051602080825283518183015283519192839290830191858101910280838360005b838110156100e75781810151838201526020016100cf565b505050509050019250505060405180910390f35b34801561010757600080fd5b506100916004356fffffffffffffffffffffffffffffffff19602435166044356102db565b6040805160206004803580820135601f810184900484028501840190955284845261009194369492936024939284019190819084018382808284375094975050933594506103fb9350505050565b34801561018657600080fd5b506040805160206004602480358281013584810280870186019097528086526100919684359636966044959194909101929182918501908490808284375094975061058e9650505050505050565b3480156101e057600080fd5b506101ec60043561063d565b604080519115158252519081900360200190f35b34801561020c57600080fd5b50610215610676565b60408051600160a060020a039092168252519081900360200190f35b34801561023d57600080fd5b506100ab60043561068e565b61025460008261071a565b50565b60008181526009602052604090205460609060ff16151561027757600080fd5b600082815260096020908152604091829020600401805483518184028101840190945280845290918301828280156102cf57602002820191906000526020600020905b815481526001909101906020018083116102ba575b50505050509050919050565b6102e9600084848433610cf5565b15156102f457600080fd5b600654600160a060020a031673eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee141561034f57600354604051339180156108fc02916000818181858888f19350505050158015610349573d6000803e3d6000fd5b506103f6565b600a54600354604080517fa9059cbb000000000000000000000000000000000000000000000000000000008152336004820152602481019290925251600160a060020a039092169163a9059cbb916044808201926020929091908290030181600087803b1580156103bf57600080fd5b505af11580156103d3573d6000803e3d6000fd5b505050506040513d60208110156103e957600080fd5b505115156103f657600080fd5b505050565b600654600160a060020a031673eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee14156104335734811461042e57600080fd5b61057e565b600a54604080517fdd62ed3e00000000000000000000000000000000000000000000000000000000815233600482015230602482015290518392600160a060020a03169163dd62ed3e9160448083019260209291908290030181600087803b15801561049e57600080fd5b505af11580156104b2573d6000803e3d6000fd5b505050506040513d60208110156104c857600080fd5b5051146104d457600080fd5b600a54604080517f23b872dd000000000000000000000000000000000000000000000000000000008152336004820152306024820152604481018490529051600160a060020a03909216916323b872dd916064808201926020929091908290030181600087803b15801561054757600080fd5b505af115801561055b573d6000803e3d6000fd5b505050506040513d602081101561057157600080fd5b5051151561057e57600080fd5b61058a60008383610dc3565b5050565b6000828152600960205260408120548190819060ff1615156105af57600080fd5b6000858152600960205260409020845160049091018054909450146105d357600080fd5b600091505b82548210156106365761061a83838154811015156105f257fe5b9060005260206000200154858481518110151561060b57fe5b90602001906020020151610ea4565b905060018115151461062b57600080fd5b6001909101906105d8565b5050505050565b6004546000828152600960205260408120600201549091148015610670575060008281526009602052604090205460ff16155b92915050565b73eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee81565b60008181526009602052604090205460609060ff1615156106ae57600080fd5b600082815260096020908152604091829020600501805483518184028101840190945280845290918301828280156102cf57602002820191906000526020600020905b8154600160a060020a031681526001909101906020018083116106f15750505050509050919050565b600582015460048301546000838152600985016020526040812060020154600160a060020a0390931692909182916060918391829114801561076d5750600087815260098901602052604090205460ff16155b151561077857600080fd5b60008781526009890160205260409020600381015460019091015481151561079c57fe5b069450600093505b87600201548410156108df575b6000878152600789016020908152604080832088845290915290205460ff16156107e0578460010194506107b1565b600087815260098901602052604090206003810180546004909201918790811061080657fe5b90600052602060002001604051808280546001816001161561010002031660029004801561086b5780601f1061084957610100808354040283529182019161086b565b820191906000526020600020905b815481529060010190602001808311610857575b5050604080519182900390912084546001818101875560009687526020808820909201929092558c865260078e0181528286208b87528152828620805460ff1916831790558c865260098e0190529320600381015493015488019150508115156108d157fe5b0694506001909301926107a4565b85600160a060020a031663c8a8349b6040518163ffffffff1660e060020a028152600401600060405180830381600087803b15801561091d57600080fd5b505af1158015610931573d6000803e3d6000fd5b505050506040513d6000823e601f3d908101601f19168201604052602081101561095a57600080fd5b81019080805164010000000081111561097257600080fd5b8201602081018481111561098557600080fd5b81518560208202830111640100000000821117156109a257600080fd5b5050805160008c815260098e01602052604090206001015491975093509150508115156109cb57fe5b069450600093505b8760010154841015610cd1575b876008016000888760405160200180838152602001828152602001925050506040516020818303038152906040526040518082805190602001908083835b60208310610a3d5780518252601f199092019160209182019101610a1e565b51815160209384036101000a600019018019909216911617905260408051929094018290039091208652850195909552929092016000205460ff16159250610a8d915050578460010194506109e0565b85600160a060020a031663e487eb588487815181101515610aaa57fe5b60209081029091018101516040805160e060020a63ffffffff86160281526bffffffffffffffffffffffff19909216600483015251602480830193928290030181600087803b158015610afc57600080fd5b505af1158015610b10573d6000803e3d6000fd5b505050506040513d6020811015610b2657600080fd5b5051600088815260098a01602090815260408220600501805460018101825590835290822001805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a03841617905590925090505b8760020154811015610bfa5760008781526009890160208181526040808420600160a060020a03871685526006810183529084208b8552929091526004018054600193919085908110610bc757fe5b60009182526020808320919091015483528201929092526040019020805460ff1916911515919091179055600101610b78565b6001886008016000898860405160200180838152602001828152602001925050506040516020818303038152906040526040518082805190602001908083835b60208310610c595780518252601f199092019160209182019101610c3a565b51815160209384036101000a60001901801990921691161790526040805192909401829003909120865285810196909652509283016000908120805460ff191696151596909617909555505085518a845260098c01909252909120600101548601811515610cc357fe5b0694506001909301926109d3565b5050506000938452505050600990910160205260409020805460ff19166001179055565b600082815260098601602052604081205460ff161515610d1457600080fd5b60008381526009870160209081526040808320600160a060020a0386168452600601825280832088845290915290205460ff161515610d5557506000610dba565b610d5f8585610ea4565b1515610d6d57506000610dba565b5060038501546000838152600987016020908152604080832060028101805495909503909455600160a060020a038516835260069093018152828220878352905220805460ff1916905560015b95945050505050565b82546000908152600984016020908152604082206003018054600181018083559184529282902085519193610dfe9391019190860190610eac565b5050600483015483546000908152600985016020526040902060020154820110610e84576004830180548454600081815260098701602052604080822060029081015460019485018452828420908801959095039481019490945593548754825284822090930192909255855482529190206000194301409082015583540183556103f6565b825460009081526009840160205260409020600201805482019055505050565b600192915050565b828054600181600116156101000203166002900490600052602060002090601f016020900481019282601f10610eed57805160ff1916838001178555610f1a565b82800160010185558215610f1a579182015b82811115610f1a578251825591602001919060010190610eff565b50610f26929150610f2a565b5090565b610f4491905b80821115610f265760008155600101610f30565b905600a165627a7a72305820c7717bd4e50f4c862ca6259f1e3f9534afe7dbc48c8818cb8b545de98569cd4e0029`
+
+// DeployRewardVault deploys a new Ethereum contract, binding an instance of RewardVault to it.
+func DeployRewardVault(auth *bind.TransactOpts, backend bind.ContractBackend, _rewardeeCount *big.Int, _challengeCount *big.Int, _threshold *big.Int, _dnrAddress common.Address, _tokenAddress common.Address) (common.Address, *types.Transaction, *RewardVault, error) {
+	parsed, err := abi.JSON(strings.NewReader(RewardVaultABI))
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(RewardVaultBin), backend, _rewardeeCount, _challengeCount, _threshold, _dnrAddress, _tokenAddress)
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	return address, tx, &RewardVault{RewardVaultCaller: RewardVaultCaller{contract: contract}, RewardVaultTransactor: RewardVaultTransactor{contract: contract}, RewardVaultFilterer: RewardVaultFilterer{contract: contract}}, nil
+}
+
+// RewardVault is an auto generated Go binding around an Ethereum contract.
+type RewardVault struct {
+	RewardVaultCaller     // Read-only binding to the contract
+	RewardVaultTransactor // Write-only binding to the contract
+	RewardVaultFilterer   // Log filterer for contract events
+}
+
+// RewardVaultCaller is an auto generated read-only Go binding around an Ethereum contract.
+type RewardVaultCaller struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// RewardVaultTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type RewardVaultTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// RewardVaultFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type RewardVaultFilterer struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// RewardVaultSession is an auto generated Go binding around an Ethereum contract,
+// with pre-set call and transact options.
+type RewardVaultSession struct {
+	Contract     *RewardVault      // Generic contract binding to set the session for
+	CallOpts     bind.CallOpts     // Call options to use throughout this session
+	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
+}
+
+// RewardVaultCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// with pre-set call options.
+type RewardVaultCallerSession struct {
+	Contract *RewardVaultCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts      // Call options to use throughout this session
+}
+
+// RewardVaultTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// with pre-set transact options.
+type RewardVaultTransactorSession struct {
+	Contract     *RewardVaultTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts      // Transaction auth options to use throughout this session
+}
+
+// RewardVaultRaw is an auto generated low-level Go binding around an Ethereum contract.
+type RewardVaultRaw struct {
+	Contract *RewardVault // Generic contract binding to access the raw methods on
+}
+
+// RewardVaultCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type RewardVaultCallerRaw struct {
+	Contract *RewardVaultCaller // Generic read-only contract binding to access the raw methods on
+}
+
+// RewardVaultTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type RewardVaultTransactorRaw struct {
+	Contract *RewardVaultTransactor // Generic write-only contract binding to access the raw methods on
+}
+
+// NewRewardVault creates a new instance of RewardVault, bound to a specific deployed contract.
+func NewRewardVault(address common.Address, backend bind.ContractBackend) (*RewardVault, error) {
+	contract, err := bindRewardVault(address, backend, backend, backend)
+	if err != nil {
+		return nil, err
+	}
+	return &RewardVault{RewardVaultCaller: RewardVaultCaller{contract: contract}, RewardVaultTransactor: RewardVaultTransactor{contract: contract}, RewardVaultFilterer: RewardVaultFilterer{contract: contract}}, nil
+}
+
+// NewRewardVaultCaller creates a new read-only instance of RewardVault, bound to a specific deployed contract.
+func NewRewardVaultCaller(address common.Address, caller bind.ContractCaller) (*RewardVaultCaller, error) {
+	contract, err := bindRewardVault(address, caller, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &RewardVaultCaller{contract: contract}, nil
+}
+
+// NewRewardVaultTransactor creates a new write-only instance of RewardVault, bound to a specific deployed contract.
+func NewRewardVaultTransactor(address common.Address, transactor bind.ContractTransactor) (*RewardVaultTransactor, error) {
+	contract, err := bindRewardVault(address, nil, transactor, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &RewardVaultTransactor{contract: contract}, nil
+}
+
+// NewRewardVaultFilterer creates a new log filterer instance of RewardVault, bound to a specific deployed contract.
+func NewRewardVaultFilterer(address common.Address, filterer bind.ContractFilterer) (*RewardVaultFilterer, error) {
+	contract, err := bindRewardVault(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &RewardVaultFilterer{contract: contract}, nil
+}
+
+// bindRewardVault binds a generic wrapper to an already deployed contract.
+func bindRewardVault(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := abi.JSON(strings.NewReader(RewardVaultABI))
+	if err != nil {
+		return nil, err
+	}
+	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_RewardVault *RewardVaultRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
+	return _RewardVault.Contract.RewardVaultCaller.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_RewardVault *RewardVaultRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _RewardVault.Contract.RewardVaultTransactor.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_RewardVault *RewardVaultRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _RewardVault.Contract.RewardVaultTransactor.contract.Transact(opts, method, params...)
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_RewardVault *RewardVaultCallerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
+	return _RewardVault.Contract.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_RewardVault *RewardVaultTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _RewardVault.Contract.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_RewardVault *RewardVaultTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _RewardVault.Contract.contract.Transact(opts, method, params...)
+}
+
+// ETHEREUM is a free data retrieval call binding the contract method 0xf7cdf47c.
+//
+// Solidity: function ETHEREUM() constant returns(address)
+func (_RewardVault *RewardVaultCaller) ETHEREUM(opts *bind.CallOpts) (common.Address, error) {
+	var (
+		ret0 = new(common.Address)
+	)
+	out := ret0
+	err := _RewardVault.contract.Call(opts, out, "ETHEREUM")
+	return *ret0, err
+}
+
+// ETHEREUM is a free data retrieval call binding the contract method 0xf7cdf47c.
+//
+// Solidity: function ETHEREUM() constant returns(address)
+func (_RewardVault *RewardVaultSession) ETHEREUM() (common.Address, error) {
+	return _RewardVault.Contract.ETHEREUM(&_RewardVault.CallOpts)
+}
+
+// ETHEREUM is a free data retrieval call binding the contract method 0xf7cdf47c.
+//
+// Solidity: function ETHEREUM() constant returns(address)
+func (_RewardVault *RewardVaultCallerSession) ETHEREUM() (common.Address, error) {
+	return _RewardVault.Contract.ETHEREUM(&_RewardVault.CallOpts)
+}
+
+// ChallengeIds is a free data retrieval call binding the contract method 0x23f6bfb2.
+//
+// Solidity: function challengeIds(_nonce uint256) constant returns(bytes32[])
+func (_RewardVault *RewardVaultCaller) ChallengeIds(opts *bind.CallOpts, _nonce *big.Int) ([][32]byte, error) {
+	var (
+		ret0 = new([][32]byte)
+	)
+	out := ret0
+	err := _RewardVault.contract.Call(opts, out, "challengeIds", _nonce)
+	return *ret0, err
+}
+
+// ChallengeIds is a free data retrieval call binding the contract method 0x23f6bfb2.
+//
+// Solidity: function challengeIds(_nonce uint256) constant returns(bytes32[])
+func (_RewardVault *RewardVaultSession) ChallengeIds(_nonce *big.Int) ([][32]byte, error) {
+	return _RewardVault.Contract.ChallengeIds(&_RewardVault.CallOpts, _nonce)
+}
+
+// ChallengeIds is a free data retrieval call binding the contract method 0x23f6bfb2.
+//
+// Solidity: function challengeIds(_nonce uint256) constant returns(bytes32[])
+func (_RewardVault *RewardVaultCallerSession) ChallengeIds(_nonce *big.Int) ([][32]byte, error) {
+	return _RewardVault.Contract.ChallengeIds(&_RewardVault.CallOpts, _nonce)
+}
+
+// IsFinalizable is a free data retrieval call binding the contract method 0xe533cdf5.
+//
+// Solidity: function isFinalizable(_nonce uint256) constant returns(bool)
+func (_RewardVault *RewardVaultCaller) IsFinalizable(opts *bind.CallOpts, _nonce *big.Int) (bool, error) {
+	var (
+		ret0 = new(bool)
+	)
+	out := ret0
+	err := _RewardVault.contract.Call(opts, out, "isFinalizable", _nonce)
+	return *ret0, err
+}
+
+// IsFinalizable is a free data retrieval call binding the contract method 0xe533cdf5.
+//
+// Solidity: function isFinalizable(_nonce uint256) constant returns(bool)
+func (_RewardVault *RewardVaultSession) IsFinalizable(_nonce *big.Int) (bool, error) {
+	return _RewardVault.Contract.IsFinalizable(&_RewardVault.CallOpts, _nonce)
+}
+
+// IsFinalizable is a free data retrieval call binding the contract method 0xe533cdf5.
+//
+// Solidity: function isFinalizable(_nonce uint256) constant returns(bool)
+func (_RewardVault *RewardVaultCallerSession) IsFinalizable(_nonce *big.Int) (bool, error) {
+	return _RewardVault.Contract.IsFinalizable(&_RewardVault.CallOpts, _nonce)
+}
+
+// Rewardees is a free data retrieval call binding the contract method 0xf87770f5.
+//
+// Solidity: function rewardees(_nonce uint256) constant returns(address[])
+func (_RewardVault *RewardVaultCaller) Rewardees(opts *bind.CallOpts, _nonce *big.Int) ([]common.Address, error) {
+	var (
+		ret0 = new([]common.Address)
+	)
+	out := ret0
+	err := _RewardVault.contract.Call(opts, out, "rewardees", _nonce)
+	return *ret0, err
+}
+
+// Rewardees is a free data retrieval call binding the contract method 0xf87770f5.
+//
+// Solidity: function rewardees(_nonce uint256) constant returns(address[])
+func (_RewardVault *RewardVaultSession) Rewardees(_nonce *big.Int) ([]common.Address, error) {
+	return _RewardVault.Contract.Rewardees(&_RewardVault.CallOpts, _nonce)
+}
+
+// Rewardees is a free data retrieval call binding the contract method 0xf87770f5.
+//
+// Solidity: function rewardees(_nonce uint256) constant returns(address[])
+func (_RewardVault *RewardVaultCallerSession) Rewardees(_nonce *big.Int) ([]common.Address, error) {
+	return _RewardVault.Contract.Rewardees(&_RewardVault.CallOpts, _nonce)
+}
+
+// Deposit is a paid mutator transaction binding the contract method 0x93405540.
+//
+// Solidity: function deposit(_challenge bytes, _value uint256) returns()
+func (_RewardVault *RewardVaultTransactor) Deposit(opts *bind.TransactOpts, _challenge []byte, _value *big.Int) (*types.Transaction, error) {
+	return _RewardVault.contract.Transact(opts, "deposit", _challenge, _value)
+}
+
+// Deposit is a paid mutator transaction binding the contract method 0x93405540.
+//
+// Solidity: function deposit(_challenge bytes, _value uint256) returns()
+func (_RewardVault *RewardVaultSession) Deposit(_challenge []byte, _value *big.Int) (*types.Transaction, error) {
+	return _RewardVault.Contract.Deposit(&_RewardVault.TransactOpts, _challenge, _value)
+}
+
+// Deposit is a paid mutator transaction binding the contract method 0x93405540.
+//
+// Solidity: function deposit(_challenge bytes, _value uint256) returns()
+func (_RewardVault *RewardVaultTransactorSession) Deposit(_challenge []byte, _value *big.Int) (*types.Transaction, error) {
+	return _RewardVault.Contract.Deposit(&_RewardVault.TransactOpts, _challenge, _value)
+}
+
+// Finalize is a paid mutator transaction binding the contract method 0x05261aea.
+//
+// Solidity: function finalize(_nonce uint256) returns()
+func (_RewardVault *RewardVaultTransactor) Finalize(opts *bind.TransactOpts, _nonce *big.Int) (*types.Transaction, error) {
+	return _RewardVault.contract.Transact(opts, "finalize", _nonce)
+}
+
+// Finalize is a paid mutator transaction binding the contract method 0x05261aea.
+//
+// Solidity: function finalize(_nonce uint256) returns()
+func (_RewardVault *RewardVaultSession) Finalize(_nonce *big.Int) (*types.Transaction, error) {
+	return _RewardVault.Contract.Finalize(&_RewardVault.TransactOpts, _nonce)
+}
+
+// Finalize is a paid mutator transaction binding the contract method 0x05261aea.
+//
+// Solidity: function finalize(_nonce uint256) returns()
+func (_RewardVault *RewardVaultTransactorSession) Finalize(_nonce *big.Int) (*types.Transaction, error) {
+	return _RewardVault.Contract.Finalize(&_RewardVault.TransactOpts, _nonce)
+}
+
+// SubmitProof is a paid mutator transaction binding the contract method 0xe2504527.
+//
+// Solidity: function submitProof(_nonce uint256, _proofs bytes16[]) returns()
+func (_RewardVault *RewardVaultTransactor) SubmitProof(opts *bind.TransactOpts, _nonce *big.Int, _proofs [][16]byte) (*types.Transaction, error) {
+	return _RewardVault.contract.Transact(opts, "submitProof", _nonce, _proofs)
+}
+
+// SubmitProof is a paid mutator transaction binding the contract method 0xe2504527.
+//
+// Solidity: function submitProof(_nonce uint256, _proofs bytes16[]) returns()
+func (_RewardVault *RewardVaultSession) SubmitProof(_nonce *big.Int, _proofs [][16]byte) (*types.Transaction, error) {
+	return _RewardVault.Contract.SubmitProof(&_RewardVault.TransactOpts, _nonce, _proofs)
+}
+
+// SubmitProof is a paid mutator transaction binding the contract method 0xe2504527.
+//
+// Solidity: function submitProof(_nonce uint256, _proofs bytes16[]) returns()
+func (_RewardVault *RewardVaultTransactorSession) SubmitProof(_nonce *big.Int, _proofs [][16]byte) (*types.Transaction, error) {
+	return _RewardVault.Contract.SubmitProof(&_RewardVault.TransactOpts, _nonce, _proofs)
+}
+
+// Withdraw is a paid mutator transaction binding the contract method 0x251c9fac.
+//
+// Solidity: function withdraw(_challengeID bytes32, _proof bytes16, _rewardRoundNonce uint256) returns()
+func (_RewardVault *RewardVaultTransactor) Withdraw(opts *bind.TransactOpts, _challengeID [32]byte, _proof [16]byte, _rewardRoundNonce *big.Int) (*types.Transaction, error) {
+	return _RewardVault.contract.Transact(opts, "withdraw", _challengeID, _proof, _rewardRoundNonce)
+}
+
+// Withdraw is a paid mutator transaction binding the contract method 0x251c9fac.
+//
+// Solidity: function withdraw(_challengeID bytes32, _proof bytes16, _rewardRoundNonce uint256) returns()
+func (_RewardVault *RewardVaultSession) Withdraw(_challengeID [32]byte, _proof [16]byte, _rewardRoundNonce *big.Int) (*types.Transaction, error) {
+	return _RewardVault.Contract.Withdraw(&_RewardVault.TransactOpts, _challengeID, _proof, _rewardRoundNonce)
+}
+
+// Withdraw is a paid mutator transaction binding the contract method 0x251c9fac.
+//
+// Solidity: function withdraw(_challengeID bytes32, _proof bytes16, _rewardRoundNonce uint256) returns()
+func (_RewardVault *RewardVaultTransactorSession) Withdraw(_challengeID [32]byte, _proof [16]byte, _rewardRoundNonce *big.Int) (*types.Transaction, error) {
+	return _RewardVault.Contract.Withdraw(&_RewardVault.TransactOpts, _challengeID, _proof, _rewardRoundNonce)
+}
+
 // SafeMathABI is the input ABI used to generate the binding from.
 const SafeMathABI = "[]"
 
@@ -11063,165 +8040,4 @@ func (_StandardToken *StandardTokenFilterer) WatchTransfer(opts *bind.WatchOpts,
 			}
 		}
 	}), nil
-}
-
-// UtilsABI is the input ABI used to generate the binding from.
-const UtilsABI = "[]"
-
-// UtilsBin is the compiled bytecode used for deploying new contracts.
-const UtilsBin = `0x604c602c600b82828239805160001a60731460008114601c57601e565bfe5b5030600052607381538281f30073000000000000000000000000000000000000000030146080604052600080fd00a165627a7a723058209541f35ac6e52b1b5e65f28389eabdae95eb1a344a2af45c314ed06a221d3b160029`
-
-// DeployUtils deploys a new Ethereum contract, binding an instance of Utils to it.
-func DeployUtils(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *Utils, error) {
-	parsed, err := abi.JSON(strings.NewReader(UtilsABI))
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(UtilsBin), backend)
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	return address, tx, &Utils{UtilsCaller: UtilsCaller{contract: contract}, UtilsTransactor: UtilsTransactor{contract: contract}, UtilsFilterer: UtilsFilterer{contract: contract}}, nil
-}
-
-// Utils is an auto generated Go binding around an Ethereum contract.
-type Utils struct {
-	UtilsCaller     // Read-only binding to the contract
-	UtilsTransactor // Write-only binding to the contract
-	UtilsFilterer   // Log filterer for contract events
-}
-
-// UtilsCaller is an auto generated read-only Go binding around an Ethereum contract.
-type UtilsCaller struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// UtilsTransactor is an auto generated write-only Go binding around an Ethereum contract.
-type UtilsTransactor struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// UtilsFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
-type UtilsFilterer struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// UtilsSession is an auto generated Go binding around an Ethereum contract,
-// with pre-set call and transact options.
-type UtilsSession struct {
-	Contract     *Utils            // Generic contract binding to set the session for
-	CallOpts     bind.CallOpts     // Call options to use throughout this session
-	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
-}
-
-// UtilsCallerSession is an auto generated read-only Go binding around an Ethereum contract,
-// with pre-set call options.
-type UtilsCallerSession struct {
-	Contract *UtilsCaller  // Generic contract caller binding to set the session for
-	CallOpts bind.CallOpts // Call options to use throughout this session
-}
-
-// UtilsTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
-// with pre-set transact options.
-type UtilsTransactorSession struct {
-	Contract     *UtilsTransactor  // Generic contract transactor binding to set the session for
-	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
-}
-
-// UtilsRaw is an auto generated low-level Go binding around an Ethereum contract.
-type UtilsRaw struct {
-	Contract *Utils // Generic contract binding to access the raw methods on
-}
-
-// UtilsCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
-type UtilsCallerRaw struct {
-	Contract *UtilsCaller // Generic read-only contract binding to access the raw methods on
-}
-
-// UtilsTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
-type UtilsTransactorRaw struct {
-	Contract *UtilsTransactor // Generic write-only contract binding to access the raw methods on
-}
-
-// NewUtils creates a new instance of Utils, bound to a specific deployed contract.
-func NewUtils(address common.Address, backend bind.ContractBackend) (*Utils, error) {
-	contract, err := bindUtils(address, backend, backend, backend)
-	if err != nil {
-		return nil, err
-	}
-	return &Utils{UtilsCaller: UtilsCaller{contract: contract}, UtilsTransactor: UtilsTransactor{contract: contract}, UtilsFilterer: UtilsFilterer{contract: contract}}, nil
-}
-
-// NewUtilsCaller creates a new read-only instance of Utils, bound to a specific deployed contract.
-func NewUtilsCaller(address common.Address, caller bind.ContractCaller) (*UtilsCaller, error) {
-	contract, err := bindUtils(address, caller, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &UtilsCaller{contract: contract}, nil
-}
-
-// NewUtilsTransactor creates a new write-only instance of Utils, bound to a specific deployed contract.
-func NewUtilsTransactor(address common.Address, transactor bind.ContractTransactor) (*UtilsTransactor, error) {
-	contract, err := bindUtils(address, nil, transactor, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &UtilsTransactor{contract: contract}, nil
-}
-
-// NewUtilsFilterer creates a new log filterer instance of Utils, bound to a specific deployed contract.
-func NewUtilsFilterer(address common.Address, filterer bind.ContractFilterer) (*UtilsFilterer, error) {
-	contract, err := bindUtils(address, nil, nil, filterer)
-	if err != nil {
-		return nil, err
-	}
-	return &UtilsFilterer{contract: contract}, nil
-}
-
-// bindUtils binds a generic wrapper to an already deployed contract.
-func bindUtils(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(UtilsABI))
-	if err != nil {
-		return nil, err
-	}
-	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_Utils *UtilsRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _Utils.Contract.UtilsCaller.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_Utils *UtilsRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _Utils.Contract.UtilsTransactor.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_Utils *UtilsRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _Utils.Contract.UtilsTransactor.contract.Transact(opts, method, params...)
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_Utils *UtilsCallerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _Utils.Contract.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_Utils *UtilsTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _Utils.Contract.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_Utils *UtilsTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _Utils.Contract.contract.Transact(opts, method, params...)
 }

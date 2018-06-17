@@ -43,10 +43,7 @@ func writeKeystore(keystore crypto.Keystore) error {
 	}
 	defer file.Close()
 
-	if err := json.NewEncoder(file).Encode(keystore); err != nil {
-		return err
-	}
-	return nil
+	return json.NewEncoder(file).Encode(keystore)
 }
 
 func writeConfig(config map[string]interface{}) error {
@@ -56,8 +53,5 @@ func writeConfig(config map[string]interface{}) error {
 	}
 	defer file.Close()
 
-	if err := json.NewEncoder(file).Encode(config); err != nil {
-		return err
-	}
-	return nil
+	return json.NewEncoder(file).Encode(config)
 }

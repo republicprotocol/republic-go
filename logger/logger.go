@@ -59,7 +59,7 @@ func (logger *Logger) Log(l Log) {
 var StdoutLogger = func() *Logger {
 	logger, err := NewLogger(Options{
 		Plugins: []PluginOptions{
-			PluginOptions{File: &FilePluginOptions{Path: "stdout"}, WebSocket: nil},
+			PluginOptions{File: &FilePluginOptions{Path: "stdout"}},
 		},
 		FilterLevel: LevelWarn,
 	})
@@ -226,8 +226,7 @@ type Plugin interface {
 
 // PluginOptions are used to Unmarshal plugins from JSON.
 type PluginOptions struct {
-	File      *FilePluginOptions      `json:"file,omitempty"`
-	WebSocket *WebSocketPluginOptions `json:"websocket,omitempty"`
+	File *FilePluginOptions `json:"file,omitempty"`
 }
 
 func eventListToMap(events []EventType) map[EventType]struct{} {
@@ -254,10 +253,6 @@ func NewLogger(options Options) (*Logger, error) {
 			if err != nil {
 				return nil, err
 			}
-			logger.Plugins = append(logger.Plugins, plugin)
-		}
-		if options.Plugins[i].WebSocket != nil {
-			plugin := NewWebSocketPlugin(logger, *options.Plugins[i].WebSocket)
 			logger.Plugins = append(logger.Plugins, plugin)
 		}
 	}
