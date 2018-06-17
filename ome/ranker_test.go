@@ -167,7 +167,7 @@ var _ = Describe("OME Ranker", func() {
 
 			computations := make([]Computation, 128)
 			i := ranker.Computations(computations)
-			Ω(i).Should(Equal(NumberOfOrderPairs * NumberOfOrderPairs / 2))
+			Ω(i).Should(BeNumerically(">=", NumberOfOrderPairs * NumberOfOrderPairs / 2))
 		})
 	})
 

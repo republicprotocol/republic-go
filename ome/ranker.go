@@ -3,6 +3,7 @@ package ome
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"sort"
 	"sync"
 	"time"
@@ -94,8 +95,9 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 		coms = ranker.rankerPrevEpoch.insertChange(change)
 	}
 
-	// TODO: If the change is a remove, then we should also remove all
-	// respective Computations from ranker.computations.
+	if change.OrderStatus != order.Open {
+		ranker.removeComputations(change.OrderID)
+	}
 
 	ranker.insertComputations(coms)
 }
@@ -186,6 +188,27 @@ func (ranker *delegateRanker) insertComputation(com Computation) {
 	ranker.computations = append(
 		ranker.computations[:index],
 		append([]Computation{com}, ranker.computations[index:]...)...)
+
+	if err := ranker.storer.InsertComputation(com); err != nil {
+		logger.Error(fmt.Sprintf("cannot insert new computation %v: %v", com.ID, err))
+	}
+}
+
+func (ranker *delegateRanker) removeComputations(orderID order.ID) {
+	ranker.computationsMu.Lock()
+	defer ranker.computationsMu.Unlock()
+
+	numComputations := len(ranker.computations)
+	for i := 0; i < numComputations; i++ {
+		if orderID.Equal(ranker.computations[i].Buy) || orderID.Equal(ranker.computations[i].Sell) {
+			if i == len(ranker.computations)-1 {
+				ranker.computations = ranker.computations[:i]
+			} else {
+				ranker.computations = append(ranker.computations[:i], ranker.computations[i+1:]...)
+			}
+			i--
+		}
+	}
 }
 
 func (ranker *delegateRanker) posFromEpoch(epoch cal.Epoch) (int, int, error) {
@@ -243,13 +266,20 @@ func (ranker *epochRanker) insertBuyChange(change orderbook.Change) Computations
 		if change.Trader != "" && change.Trader == ranker.traders[sell] {
 			continue
 		}
+
 		priority := change.OrderPriority + sellPriority
-		if int(priority)%ranker.numberOfRankers != ranker.pos {
+		rankMod := int(math.Log2(float64(ranker.numberOfRankers)))
+		if rankMod < 1 {
+			rankMod = 1
+		}
+		if int(priority)%rankMod != ranker.pos%rankMod {
 			continue
 		}
+
 		priorityCom := NewComputation(change.OrderID, sell, ranker.epoch.Hash)
 		priorityCom.Priority = priority
 		priorityCom.Timestamp = time.Now()
+		priorityCom.State = ComputationStateNil
 		computations = append(computations, priorityCom)
 	}
 	return computations
@@ -269,13 +299,20 @@ func (ranker *epochRanker) insertSellChange(change orderbook.Change) Computation
 		if change.Trader != "" && change.Trader == ranker.traders[buy] {
 			continue
 		}
+
 		priority := change.OrderPriority + buyPriority
-		if int(priority)%ranker.numberOfRankers != ranker.pos {
+		rankMod := int(math.Log2(float64(ranker.numberOfRankers)))
+		if rankMod < 1 {
+			rankMod = 1
+		}
+		if int(priority)%rankMod != ranker.pos%rankMod {
 			continue
 		}
+
 		priorityCom := NewComputation(buy, change.OrderID, ranker.epoch.Hash)
 		priorityCom.Priority = priority
 		priorityCom.Timestamp = time.Now()
+		priorityCom.State = ComputationStateNil
 		computations = append(computations, priorityCom)
 	}
 	return computations

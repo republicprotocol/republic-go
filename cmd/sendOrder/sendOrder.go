@@ -118,6 +118,7 @@ func main() {
 					base64.StdEncoding.EncodeToString(encryptedFragment.MinimumVolume.Co),
 					base64.StdEncoding.EncodeToString(encryptedFragment.MinimumVolume.Exp),
 				}
+				marshaledOrdFragment.Nonce = base64.StdEncoding.EncodeToString(encryptedFragment.Nonce)
 				request.OrderFragmentMapping[hash] = append(request.OrderFragmentMapping[hash], marshaledOrdFragment)
 			}
 		}

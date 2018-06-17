@@ -30,9 +30,10 @@ func (client *orderbookClient) OpenOrder(ctx context.Context, multiAddr identity
 	request := &OpenOrderRequest{
 		OrderFragment: marshalEncryptedOrderFragment(orderFragment),
 	}
-	_, err = NewOrderbookServiceClient(conn.ClientConn).OpenOrder(ctx, request)
-
-	return err
+	return Backoff(ctx, func() error {
+		_, err := NewOrderbookServiceClient(conn.ClientConn).OpenOrder(ctx, request)
+		return err
+	})
 }
 
 // OrderbookService is a Service that implements the gRPC OrderbookService
