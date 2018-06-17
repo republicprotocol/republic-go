@@ -173,9 +173,7 @@ func (syncer *syncer) purge() ChangeSet {
 			func() {
 				// Purge all buy orders by iterating over them and reading
 				// their status and priority from the Ren Ledger
-				dispatch.CoForAll(syncer.buyOrders, func(key int) {
-					// FIXME: A CoForAll loop is likely to cause an overflow of
-					// goroutines. We should implement and use a ForAll loop.
+				dispatch.ForAll(syncer.buyOrders, func(key int) {
 					syncer.ordersMu.RLock()
 					buyOrder := syncer.buyOrders[key]
 					syncer.ordersMu.RUnlock()
@@ -214,9 +212,7 @@ func (syncer *syncer) purge() ChangeSet {
 			},
 			func() {
 				// Purge all sell orders
-				dispatch.CoForAll(syncer.sellOrders, func(key int) {
-					// FIXME: A CoForAll loop is likely to cause an overflow of
-					// goroutines. We should implement and use a ForAll loop.
+				dispatch.ForAll(syncer.sellOrders, func(key int) {
 					syncer.ordersMu.RLock()
 					sellOrder := syncer.sellOrders[key]
 					syncer.ordersMu.RUnlock()
