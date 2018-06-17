@@ -18,14 +18,14 @@ var (
 )
 
 var _ = Describe("Syncer", func() {
+	var (
+		renLedger   cal.RenLedger
+		storer      SyncStorer
+		syncer      Syncer
+		buys, sells []order.Order
+	)
 
 	Context("when syncing with the ledger", func() {
-		var (
-			renLedger   cal.RenLedger
-			storer      SyncStorer
-			syncer      Syncer
-			buys, sells []order.Order
-		)
 
 		BeforeEach(func() {
 			renLedger = testutils.NewRenLedger()
@@ -64,39 +64,47 @@ var _ = Describe("Syncer", func() {
 			}
 		})
 
-		// fixme: disable for now for ci, will finish this negative test after the ci past.
-		//It("should be able to sync confirming order events", func() {
-		//	// Open all the orders
-		//	for i := 0; i < NumberOfOrderPairs; i++ {
-		//		err := renLedger.OpenBuyOrder([65]byte{}, buys[i].ID)
-		//		Ω(err).ShouldNot(HaveOccurred())
-		//		err = renLedger.OpenSellOrder([65]byte{}, sells[i].ID)
-		//		Ω(err).ShouldNot(HaveOccurred())
-		//	}
-		//	changeSet, err := syncer.Sync()
-		//	Ω(err).ShouldNot(HaveOccurred())
-		//	//Ω(len(changeSet)).Should(Equal(NumberOfOrderPairs * 2))
-		//
-		//	// Confirm the orders in pair
-		//	for i := 0; i < NumberOfOrderPairs; i++ {
-		//		err = renLedger.ConfirmOrder(buys[i].ID, sells[i].ID)
-		//		Ω(err).ShouldNot(HaveOccurred())
-		//	}
-		//	changeSet, err = syncer.Sync()
-		//	Ω(err).ShouldNot(HaveOccurred())
-		//
-		//	Ω(len(changeSet)).Should(Equal(NumberOfOrderPairs * 2))
-		//
-		//	for i := range changeSet {
-		//		Ω(changeSet[i].OrderStatus)
-		//	}
-		//})
+		It("should be able to sync confirming order events", func() {
+			// Open orders
+			openOrders(renLedger, syncer, buys, sells)
+
+			// Confirm orders
+			for i := 0; i < NumberOfOrderPairs; i++ {
+				err := renLedger.ConfirmOrder(buys[i].ID, sells[i].ID)
+				Ω(err).ShouldNot(HaveOccurred())
+			}
+			changeSet, err := syncer.Sync()
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(len(changeSet)).Should(Equal(NumberOfOrderPairs * 2))
+			for i := range changeSet {
+				Ω(changeSet[i].OrderStatus).Should(Equal(order.Confirmed))
+			}
+		})
+
+		It("should be able to sync canceling order events", func() {
+			// Open orders
+			openOrders(renLedger, syncer, buys, sells)
+
+			// Cancel orders
+			for i := 0; i < NumberOfOrderPairs; i++ {
+				err := renLedger.CancelOrder([65]byte{}, buys[i].ID)
+				Ω(err).ShouldNot(HaveOccurred())
+				err = renLedger.CancelOrder([65]byte{}, sells[i].ID)
+				Ω(err).ShouldNot(HaveOccurred())
+			}
+			changeSet, err := syncer.Sync()
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(len(changeSet)).Should(Equal(NumberOfOrderPairs * 2))
+			for i := range changeSet {
+				Ω(changeSet[i].OrderStatus).Should(Equal(order.Canceled))
+			}
+		})
 	})
 })
 
 func generateOrderPairs(n int) ([]order.Order, []order.Order) {
-	buyOrders := make([]order.Order, n*2)
-	sellOrders := make([]order.Order, n*2)
+	buyOrders := make([]order.Order, n)
+	sellOrders := make([]order.Order, n)
 
 	for i := 0; i < n; i++ {
 		buyOrders[i] = testutils.RandomBuyOrder()
@@ -104,4 +112,20 @@ func generateOrderPairs(n int) ([]order.Order, []order.Order) {
 	}
 
 	return buyOrders, sellOrders
+}
+
+func openOrders(renLedger cal.RenLedger, syncer Syncer, buys, sells []order.Order) {
+	for i := 0; i < NumberOfOrderPairs; i++ {
+		err := renLedger.OpenBuyOrder([65]byte{}, buys[i].ID)
+		Ω(err).ShouldNot(HaveOccurred())
+		err = renLedger.OpenSellOrder([65]byte{}, sells[i].ID)
+		Ω(err).ShouldNot(HaveOccurred())
+	}
+	// Test the renLimit
+	for i := 0; i < NumberOfOrderPairs/RenLimit; i++ {
+		changeSet, err := syncer.Sync()
+		Ω(err).ShouldNot(HaveOccurred())
+		Ω(len(changeSet)).Should(Equal(RenLimit * 2))
+		Ω(changeSet[i].OrderStatus).Should(Equal(order.Open))
+	}
 }

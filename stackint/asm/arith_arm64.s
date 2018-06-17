@@ -33,9 +33,6 @@
 // This file provides fast assembly versions for the elementary
 // arithmetic operations on vectors implemented in arith.go.
 
-// TODO: Consider re-implementing using Advanced SIMD
-// once the assembler supports those instructions.
-
 // func MulWW(x, y Word) (z1, z0 Word)
 TEXT ·MulWW(SB),NOSPLIT,$0
 	MOVD	x+0(FP), R0

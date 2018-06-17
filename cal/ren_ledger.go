@@ -62,6 +62,6 @@ type RenLedger interface {
 	// numbers of sell orders.
 	SellOrders(offset, limit int) ([]order.ID, error)
 
-	// Trader returns the trader who submit the order
+	// Trader returns the trader who submits the order
 	Trader(orderID order.ID) (string, error)
 }

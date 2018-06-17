@@ -21,7 +21,7 @@ var _ = Describe("LevelDB storage", func() {
 
 	BeforeEach(func() {
 		for i := 0; i < 100; i++ {
-			ord := order.NewOrder(order.TypeMidpoint, order.ParityBuy, time.Now(), order.TokensETHREN, order.NewCoExp(200, 26), order.NewCoExp(200, 26), order.NewCoExp(200, 26), int64(i))
+			ord := order.NewOrder(order.TypeMidpoint, order.ParityBuy, order.SettlementRenEx, time.Now(), order.TokensETHREN, order.NewCoExp(200, 26), order.NewCoExp(200, 26), order.NewCoExp(200, 26), uint64(i))
 			ordFragments, err := ord.Split(3, 2)
 			Expect(err).ShouldNot(HaveOccurred())
 			orders[i] = ord
@@ -42,7 +42,7 @@ var _ = Describe("LevelDB storage", func() {
 			buyPointer, err := db.BuyPointer()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(buyPointer).Should(Equal(0))
-			sellPointer, err := db.BuyPointer()
+			sellPointer, err := db.SellPointer()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(sellPointer).Should(Equal(0))
 			err = db.Close()

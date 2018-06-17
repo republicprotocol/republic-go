@@ -48,12 +48,12 @@ func main() {
 	}
 	log.Printf("ethereum %v", auth.From.Hex())
 
-	nonce := rand.Int63()
+	nonce := rand.Uint64()
 	one := order.CoExp{
 		Co:  200,
 		Exp: 26,
 	}
-	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(time.Hour), order.TokensETHREN, one, one, one, nonce)
+	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, order.SettlementRenEx, time.Now().Add(time.Hour), order.TokensETHREN, one, one, one, nonce)
 
 	signatureData := crypto.Keccak256([]byte("Republic Protocol: open: "), ord.ID[:])
 	signatureData = crypto.Keccak256([]byte("\x19Ethereum Signed Message:\n32"), signatureData)
@@ -100,6 +100,7 @@ func main() {
 			marshaledOrdFragment.ID = base64.StdEncoding.EncodeToString(encryptedFragment.ID[:])
 			marshaledOrdFragment.OrderID = base64.StdEncoding.EncodeToString(encryptedFragment.OrderID[:])
 			marshaledOrdFragment.OrderParity = encryptedFragment.OrderParity
+			marshaledOrdFragment.OrderSettlement = encryptedFragment.OrderSettlement
 			marshaledOrdFragment.OrderType = encryptedFragment.OrderType
 			marshaledOrdFragment.OrderExpiry = encryptedFragment.OrderExpiry.Unix()
 			marshaledOrdFragment.Tokens = base64.StdEncoding.EncodeToString(encryptedFragment.Tokens)

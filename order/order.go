@@ -57,8 +57,9 @@ func (token Token) String() string {
 		return "ABC"
 	case TokenXYZ:
 		return "XYZ"
+	default:
+		return "unexpected token"
 	}
-	panic("unexpected token")
 }
 
 // Tokens are a numerical representation of the token pairings supported by
@@ -104,8 +105,9 @@ func (tokens Tokens) String() string {
 		return "ETH-REN"
 	case TokensDGXREN:
 		return "DGX-REN"
+	default:
+		return "unexpected tokens"
 	}
-	panic("unexpected tokens")
 }
 
 // A Type is a publicly bit of information that determines the type of
@@ -134,8 +136,32 @@ func (parity Parity) String() string {
 		return "buy"
 	case ParitySell:
 		return "sell"
+	default:
+		return "unexpected parity"
 	}
-	panic("unexpected parity")
+}
+
+// Settlement is a unique identifier for the settlement layer used by the
+// Order.
+type Settlement uint32
+
+// Values for Settlementt.
+const (
+	SettlementNil (Settlement) = iota
+	SettlementRenEx
+	SettlementRenExAtomic
+)
+
+// String implements the Stringer interface.
+func (settlement Settlement) String() string {
+	switch settlement {
+	case SettlementRenEx:
+		return "RenEx"
+	case SettlementRenExAtomic:
+		return "RenEx Atomic"
+	default:
+		return "unexpected order settlement"
+	}
 }
 
 // The Status shows what status the order is in.
@@ -160,35 +186,40 @@ func (status Status) String() string {
 		return "confirmed"
 	case Canceled:
 		return "canceled"
+	default:
+		return "unexpected order status"
 	}
-	panic("unexpected order status")
 }
 
 // An Order represents the want to perform a trade of assets.
 type Order struct {
-	Signature     Signature `json:"signature"`
-	ID            ID        `json:"id"`
-	Type          Type      `json:"type"`
-	Parity        Parity    `json:"parity"`
-	Expiry        time.Time `json:"expiry"`
-	Tokens        Tokens    `json:"tokens"`
-	Price         CoExp     `json:"price"`
-	Volume        CoExp     `json:"volume"`
-	MinimumVolume CoExp     `json:"minimumVolume"`
-	Nonce         int64     `json:"nonce"`
+	Signature  Signature  `json:"signature"`
+	ID         ID         `json:"id"`
+	Type       Type       `json:"type"`
+	Parity     Parity     `json:"parity"`
+	Settlement Settlement `json:"settlement"`
+	Expiry     time.Time  `json:"expiry"`
+
+	Tokens        Tokens `json:"tokens"`
+	Price         CoExp  `json:"price"`
+	Volume        CoExp  `json:"volume"`
+	MinimumVolume CoExp  `json:"minimumVolume"`
+	Nonce         uint64 `json:"nonce"`
 }
 
 // NewOrder returns a new Order and computes the ID.
-func NewOrder(ty Type, parity Parity, expiry time.Time, tokens Tokens, price, volume, minimumVolume CoExp, nonce int64) Order {
+func NewOrder(ty Type, parity Parity, settlement Settlement, expiry time.Time, tokens Tokens, price, volume, minimumVolume CoExp, nonce uint64) Order {
 	order := Order{
-		Type:          ty,
-		Parity:        parity,
-		Expiry:        expiry,
+		Type:       ty,
+		Parity:     parity,
+		Settlement: settlement,
+		Expiry:     expiry,
+
 		Tokens:        tokens,
 		Price:         price,
 		Volume:        volume,
 		MinimumVolume: minimumVolume,
-		Nonce:         nonce,
+		Nonce:         nonce % shamir.Prime,
 	}
 	order.ID = ID(order.Hash())
 	return order
@@ -229,10 +260,7 @@ func WriteOrdersToJSONFile(fileName string, orders []*Order) error {
 		return err
 	}
 	defer file.Close()
-	if err := json.NewEncoder(file).Encode(&orders); err != nil {
-		return err
-	}
-	return nil
+	return json.NewEncoder(file).Encode(&orders)
 }
 
 // Split the Order into n OrderFragments, where k OrderFragments are needed to
@@ -266,18 +294,27 @@ func (order *Order) Split(n, k int64) ([]Fragment, error) {
 	if err != nil {
 		return nil, err
 	}
+	nonces, err := shamir.Split(n, k, order.Nonce)
+	if err != nil {
+		return nil, err
+	}
 	fragments := make([]Fragment, n)
 	for i := range fragments {
-		fragments[i] = NewFragment(
+		fragments[i], err = NewFragment(
 			order.ID,
 			order.Type,
 			order.Parity,
+			order.Settlement,
 			order.Expiry,
 			tokens[i],
 			CoExpShare{Co: priceCos[i], Exp: priceExps[i]},
 			CoExpShare{Co: volumeCos[i], Exp: volumeExps[i]},
 			CoExpShare{Co: minimumVolumeCos[i], Exp: minimumVolumeExps[i]},
+			nonces[i],
 		)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return fragments, nil
 }
@@ -297,12 +334,13 @@ func (order *Order) Bytes() []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, order.Type)
 	binary.Write(buf, binary.BigEndian, order.Parity)
+	binary.Write(buf, binary.BigEndian, order.Settlement)
 	binary.Write(buf, binary.BigEndian, order.Expiry.Unix())
 	binary.Write(buf, binary.BigEndian, order.Tokens)
 	binary.Write(buf, binary.BigEndian, order.Price)
 	binary.Write(buf, binary.BigEndian, order.Volume)
 	binary.Write(buf, binary.BigEndian, order.MinimumVolume)
-	binary.Write(buf, binary.BigEndian, order.bytesFromNonce())
+	binary.Write(buf, binary.BigEndian, order.BytesFromNonce())
 	return buf.Bytes()
 }
 
@@ -311,6 +349,7 @@ func (order *Order) Equal(other *Order) bool {
 	return bytes.Equal(order.ID[:], other.ID[:]) &&
 		order.Type == other.Type &&
 		order.Parity == other.Parity &&
+		order.Settlement == other.Settlement &&
 		order.Expiry.Equal(other.Expiry) &&
 		order.Tokens == other.Tokens &&
 		order.Price == other.Price &&
@@ -319,7 +358,8 @@ func (order *Order) Equal(other *Order) bool {
 		order.Nonce == other.Nonce
 }
 
-func (order *Order) bytesFromNonce() []byte {
+// BytesFromNonce returns the uint64 nonce as a slice of bytes.
+func (order *Order) BytesFromNonce() []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, order.Nonce)
 	return crypto.Keccak256(buf.Bytes())
