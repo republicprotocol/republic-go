@@ -97,7 +97,7 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 
 	com.State = ComputationStateSettled
 	if err := settler.storer.InsertComputation(com); err != nil {
-		logger.Error(fmt.Sprintf("cannot settle buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buy.ID[:8]), base64.StdEncoding.EncodeToString(sell.ID[:8]), err))
+		logger.Error(fmt.Sprintf("cannot insert settled computation buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buy.ID[:8]), base64.StdEncoding.EncodeToString(sell.ID[:8]), err))
 		return
 	}
 
