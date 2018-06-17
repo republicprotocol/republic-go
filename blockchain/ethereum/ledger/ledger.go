@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -25,9 +26,10 @@ var ErrMismatchedOrderLengths = errors.New("mismatched order lengths")
 // been reached.
 const BlocksForConfirmation = 1
 
-// FIXME: Protect me with a mutex!
 // RenLedgerContract implements the cal.RenLedger interface
 type RenLedgerContract struct {
+	mu *sync.RWMutex
+
 	network      ethereum.Network
 	context      context.Context
 	conn         ethereum.Conn
@@ -45,6 +47,8 @@ func NewRenLedgerContract(ctx context.Context, conn ethereum.Conn, transactOpts 
 	}
 
 	return RenLedgerContract{
+		mu: new(sync.RWMutex),
+
 		network:      conn.Config.Network,
 		context:      ctx,
 		conn:         conn,
@@ -57,6 +61,9 @@ func NewRenLedgerContract(ctx context.Context, conn ethereum.Conn, transactOpts 
 
 // OpenOrders implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) OpenOrders(signatures [][65]byte, orderIDs []order.ID, orderParities []order.Parity) (int, error) {
+	ledger.mu.Lock()
+	defer ledger.mu.Unlock()
+
 	if len(signatures) != len(orderIDs) || len(signatures) != len(orderParities) {
 		return 0, ErrMismatchedOrderLengths
 	}
@@ -95,6 +102,9 @@ func (ledger *RenLedgerContract) OpenOrders(signatures [][65]byte, orderIDs []or
 
 // OpenBuyOrder implements the cal.RenLedger interface.
 func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) error {
+	ledger.mu.Lock()
+	defer ledger.mu.Unlock()
+
 	ledger.transactOpts.GasPrice = big.NewInt(int64(20000000000))
 	ledger.transactOpts.GasLimit = 3000000
 
@@ -108,6 +118,9 @@ func (ledger *RenLedgerContract) OpenBuyOrder(signature [65]byte, id order.ID) e
 
 // OpenSellOrder implements the cal.RenLedger interface.
 func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) error {
+	ledger.mu.Lock()
+	defer ledger.mu.Unlock()
+
 	ledger.transactOpts.GasPrice = big.NewInt(int64(20000000000))
 	ledger.transactOpts.GasLimit = 3000000
 
@@ -122,6 +135,9 @@ func (ledger *RenLedgerContract) OpenSellOrder(signature [65]byte, id order.ID) 
 
 // CancelOrder implements the cal.RenLedger interface.
 func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) error {
+	ledger.mu.Lock()
+	defer ledger.mu.Unlock()
+
 	tx, err := ledger.binding.CancelOrder(ledger.transactOpts, signature[:], id)
 	if err != nil {
 		return err
@@ -135,8 +151,10 @@ func (ledger *RenLedgerContract) CancelOrder(signature [65]byte, id order.ID) er
 
 // ConfirmOrder implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, match order.ID) error {
-	orderMatches := [][32]byte{match}
+	ledger.mu.Lock()
+	defer ledger.mu.Unlock()
 
+	orderMatches := [][32]byte{match}
 	before, err := ledger.binding.OrderDepth(ledger.callOpts, id)
 	if err != nil {
 		return err
@@ -164,6 +182,9 @@ func (ledger *RenLedgerContract) ConfirmOrder(id order.ID, match order.ID) error
 
 // Priority implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) Priority(id order.ID) (uint64, error) {
+	ledger.mu.RLock()
+	defer ledger.mu.RUnlock()
+
 	priority, err := ledger.binding.OrderPriority(ledger.callOpts, id)
 	if err != nil {
 		return 0, err
@@ -174,6 +195,9 @@ func (ledger *RenLedgerContract) Priority(id order.ID) (uint64, error) {
 
 // Status implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) Status(id order.ID) (order.Status, error) {
+	ledger.mu.RLock()
+	defer ledger.mu.RUnlock()
+
 	var orderID [32]byte
 	copy(orderID[:], id[:])
 	state, err := ledger.binding.OrderState(ledger.callOpts, orderID)
@@ -186,6 +210,8 @@ func (ledger *RenLedgerContract) Status(id order.ID) (order.Status, error) {
 
 // OrderMatch implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) OrderMatch(id order.ID) (order.ID, error) {
+	ledger.mu.RLock()
+	defer ledger.mu.RUnlock()
 
 	matches, err := ledger.binding.OrderMatch(ledger.callOpts, [32]byte(id))
 	if err != nil {
@@ -204,6 +230,9 @@ func (ledger *RenLedgerContract) OrderMatch(id order.ID) (order.ID, error) {
 
 // BuyOrders implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) BuyOrders(offset, limit int) ([]order.ID, error) {
+	ledger.mu.RLock()
+	defer ledger.mu.RUnlock()
+
 	orders := make([]order.ID, 0, limit)
 	for i := 0; i < limit; i++ {
 		ordID, ok, err := ledger.binding.BuyOrder(ledger.callOpts, big.NewInt(int64(offset+i)))
@@ -221,6 +250,9 @@ func (ledger *RenLedgerContract) BuyOrders(offset, limit int) ([]order.ID, error
 
 // SellOrders implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) SellOrders(offset, limit int) ([]order.ID, error) {
+	ledger.mu.RLock()
+	defer ledger.mu.RUnlock()
+
 	orders := make([]order.ID, 0, limit)
 	for i := 0; i < limit; i++ {
 		ordID, ok, err := ledger.binding.SellOrder(ledger.callOpts, big.NewInt(int64(offset+i)))
@@ -239,6 +271,9 @@ func (ledger *RenLedgerContract) SellOrders(offset, limit int) ([]order.ID, erro
 
 // Trader implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) Trader(id order.ID) (string, error) {
+	ledger.mu.RLock()
+	defer ledger.mu.RUnlock()
+
 	address, err := ledger.binding.OrderTrader(ledger.callOpts, id)
 	if err != nil {
 		return "", err
@@ -249,6 +284,9 @@ func (ledger *RenLedgerContract) Trader(id order.ID) (string, error) {
 
 // Broker returns the address of the broker who submitted the order
 func (ledger *RenLedgerContract) Broker(id order.ID) (common.Address, error) {
+	ledger.mu.RLock()
+	defer ledger.mu.RUnlock()
+
 	address, err := ledger.binding.OrderBroker(ledger.callOpts, id)
 	if err != nil {
 		return common.Address{}, err
@@ -259,6 +297,9 @@ func (ledger *RenLedgerContract) Broker(id order.ID) (common.Address, error) {
 
 // Confirmer returns the address of the confirmer who submitted the order
 func (ledger *RenLedgerContract) Confirmer(id order.ID) (common.Address, error) {
+	ledger.mu.RLock()
+	defer ledger.mu.RUnlock()
+
 	address, err := ledger.binding.OrderConfirmer(ledger.callOpts, id)
 	if err != nil {
 		return common.Address{}, err
@@ -269,11 +310,16 @@ func (ledger *RenLedgerContract) Confirmer(id order.ID) (common.Address, error) 
 
 // Fee implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) Fee() (*big.Int, error) {
+	ledger.mu.RLock()
+	defer ledger.mu.RUnlock()
+
 	return big.NewInt(0), nil
 }
 
 // Depth implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) Depth(orderID order.ID) (uint, error) {
+	ledger.mu.RLock()
+	defer ledger.mu.RUnlock()
 
 	depth, err := ledger.binding.OrderDepth(ledger.callOpts, orderID)
 	if err != nil {
@@ -285,6 +331,9 @@ func (ledger *RenLedgerContract) Depth(orderID order.ID) (uint, error) {
 
 // BlockNumber implements the cal.RenLedger interface
 func (ledger *RenLedgerContract) BlockNumber(orderID order.ID) (uint, error) {
+	ledger.mu.RLock()
+	defer ledger.mu.RUnlock()
+
 	blockNumber, err := ledger.binding.OrderBlockNumber(ledger.callOpts, orderID)
 	if err != nil {
 		return 0, err
@@ -295,6 +344,9 @@ func (ledger *RenLedgerContract) BlockNumber(orderID order.ID) (uint, error) {
 
 // OrderCounts returns the total number of orders in the ledger
 func (ledger *RenLedgerContract) OrderCounts() (uint64, error) {
+	ledger.mu.RLock()
+	defer ledger.mu.RUnlock()
+
 	counts, err := ledger.binding.GetOrdersCount(ledger.callOpts)
 	if err != nil {
 		return 0, err
@@ -305,6 +357,9 @@ func (ledger *RenLedgerContract) OrderCounts() (uint64, error) {
 
 // OrderID returns the order at a given index in the ledger
 func (ledger *RenLedgerContract) OrderID(index int) ([32]byte, error) {
+	ledger.mu.RLock()
+	defer ledger.mu.RUnlock()
+
 	i := big.NewInt(int64(index))
 	id, exist, err := ledger.binding.GetOrder(ledger.callOpts, i)
 	if !exist {
