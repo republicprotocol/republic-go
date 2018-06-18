@@ -60,7 +60,7 @@ func main() {
 		log.Printf("%d | %v | %v | %v", i, hexID, status, base64.StdEncoding.EncodeToString(orderID[:]))
 	}
 
-	log.Printf("Open Orders : %v, Confirmed Orders: %v, base64 : ", openCounts, confirmedCount)
+	log.Printf("Open Orders : %v, Confirmed Orders: %v", openCounts, confirmedCount)
 
 }
 

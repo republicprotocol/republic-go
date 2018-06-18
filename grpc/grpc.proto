@@ -54,7 +54,7 @@ message OpenOrderResponse {
 
 message EncryptedOrderFragment {
     bytes           orderId         = 1;
-	OrderType       orderType       = 2;
+    OrderType       orderType       = 2;
     OrderParity     orderParity     = 3;
     OrderSettlement orderSettlement = 4;
     int64           orderExpiry     = 5;
