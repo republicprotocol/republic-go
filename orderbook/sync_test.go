@@ -32,7 +32,7 @@ var _ = Describe("Syncer", func() {
 			storer = testutils.NewStorer()
 			buys, sells = generateOrderPairs(NumberOfOrderPairs)
 
-			syncer = NewSyncer(storer, renLedger, RenLimit)
+			syncer = NewSyncer(renLedger, RenLimit)
 			changeSet, err := syncer.Sync()
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(changeSet)).Should(Equal(0))

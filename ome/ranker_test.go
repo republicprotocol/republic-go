@@ -1,8 +1,6 @@
 package ome_test
 
 import (
-	"time"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ome"
@@ -23,7 +21,6 @@ var (
 )
 
 var _ = Describe("OME Ranker", func() {
-	var storer Storer
 	var ranker Ranker
 	var done chan struct{}
 	var epoch cal.Epoch
@@ -36,8 +33,7 @@ var _ = Describe("OME Ranker", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			epoch = newEpoch(0, addr)
 			done = make(chan struct{})
-			storer = testutils.NewStorer()
-			ranker, err = NewRanker(done, addr, storer, epoch)
+			ranker, err = NewRanker(done, addr, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -105,42 +101,12 @@ var _ = Describe("OME Ranker", func() {
 		})
 	})
 
-	Context("when loading stored computations from the storer", func() {
-		BeforeEach(func() {
-			addr, err = testutils.RandomAddress()
-			Ω(err).ShouldNot(HaveOccurred())
-			epoch = newEpoch(0, addr)
-			done = make(chan struct{})
-			storer = testutils.NewStorer()
-		})
-
-		AfterEach(func() {
-			close(done)
-		})
-
-		It("should insert computations from the storer when started", func() {
-			for i := 0; i < NumberOfOrderPairs; i++ {
-				comp := testutils.RandomComputation()
-				Ω(storer.InsertComputation(comp)).ShouldNot(HaveOccurred())
-			}
-
-			ranker, err = NewRanker(done, addr, storer, epoch)
-			Ω(err).ShouldNot(HaveOccurred())
-			time.Sleep(15 * time.Second)
-
-			computations := make([]Computation, 20)
-			i := ranker.Computations(computations)
-			Ω(i).Should(Equal(NumberOfOrderPairs))
-		})
-	})
-
 	Context(" when there are multiple rankers", func() {
 		BeforeEach(func() {
 			addr, err = testutils.RandomAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 			epoch = newEpoch(0, addr)
 			done = make(chan struct{})
-			storer = testutils.NewStorer()
 		})
 
 		It("should only generate computations meant for its position", func() {
@@ -154,7 +120,7 @@ var _ = Describe("OME Ranker", func() {
 			}
 			epoch.Pods = append(epoch.Pods, anotherPod)
 			epoch.Darknodes = append(epoch.Darknodes, another)
-			ranker, err = NewRanker(done, addr, storer, epoch)
+			ranker, err = NewRanker(done, addr, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < NumberOfOrderPairs; i++ {
@@ -167,7 +133,7 @@ var _ = Describe("OME Ranker", func() {
 
 			computations := make([]Computation, 128)
 			i := ranker.Computations(computations)
-			Ω(i).Should(BeNumerically(">=", NumberOfOrderPairs * NumberOfOrderPairs / 2))
+			Ω(i).Should(BeNumerically(">=", NumberOfOrderPairs*NumberOfOrderPairs/2))
 		})
 	})
 
@@ -177,8 +143,7 @@ var _ = Describe("OME Ranker", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			epoch = newEpoch(0, addr)
 			done = make(chan struct{})
-			storer = testutils.NewStorer()
-			ranker, err = NewRanker(done, addr, storer, epoch)
+			ranker, err = NewRanker(done, addr, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -278,7 +243,6 @@ var _ = Describe("OME Ranker", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			epoch = newEpoch(0, addr)
 			done = make(chan struct{})
-			storer = testutils.NewStorer()
 			wrongAddr, err = testutils.RandomAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 		})
@@ -288,12 +252,12 @@ var _ = Describe("OME Ranker", func() {
 		})
 
 		It("should error with a wrong epoch", func() {
-			ranker, err = NewRanker(done, wrongAddr, storer, epoch)
+			ranker, err = NewRanker(done, wrongAddr, epoch)
 			Ω(err).Should(HaveOccurred())
 		})
 
 		It("should ignore the epoch when the ranker is not in and print out an error message ", func() {
-			ranker, err = NewRanker(done, addr, storer, epoch)
+			ranker, err = NewRanker(done, addr, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
 			epoch := newEpoch(1, wrongAddr)
 			ranker.OnChangeEpoch(epoch)

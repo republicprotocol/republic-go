@@ -40,7 +40,6 @@ type Ranker interface {
 type delegateRanker struct {
 	done    <-chan struct{}
 	address identity.Address
-	storer  Storer
 
 	computationsMu *sync.Mutex
 	computations   Computations
@@ -59,11 +58,10 @@ type delegateRanker struct {
 // Computations. The Ranker will run background processes until the done
 // channel is closed, after which the Ranker will no longer consume
 // orderbook.Changeset or produce Computation.
-func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, epoch cal.Epoch) (Ranker, error) {
+func NewRanker(done <-chan struct{}, address identity.Address, epoch cal.Epoch) (Ranker, error) {
 	ranker := &delegateRanker{
 		done:    done,
 		address: address,
-		storer:  storer,
 
 		computationsMu: new(sync.Mutex),
 		computations:   Computations{},
@@ -72,7 +70,6 @@ func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, ep
 		rankerCurrEpoch: nil,
 		rankerPrevEpoch: nil,
 	}
-	ranker.insertStoredComputationsInBackground()
 
 	numberOfRankers, pos, err := ranker.posFromEpoch(epoch)
 	if err != nil {
@@ -139,31 +136,6 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
 	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos, epoch)
 }
 
-func (ranker *delegateRanker) insertStoredComputationsInBackground() {
-	go func() {
-		// Wait for long enough that the Ome has time to connect to the network
-		// for the current epoch before loading computations (approximately one
-		// block)
-		timer := time.NewTimer(14 * time.Second)
-
-		coms, err := ranker.storer.Computations()
-		if err != nil {
-			logger.Error(fmt.Sprintf("cannot load existing computations into ranker: %v", err))
-		}
-
-		select {
-		case <-ranker.done:
-			return
-		case <-timer.C:
-			for _, com := range coms {
-				if com.State != ComputationStateMismatched && com.State != ComputationStateRejected && com.State != ComputationStateSettled {
-					ranker.insertComputation(com)
-				}
-			}
-		}
-	}()
-}
-
 func (ranker *delegateRanker) insertComputations(coms Computations) {
 	ranker.computationsMu.Lock()
 	defer ranker.computationsMu.Unlock()
@@ -188,10 +160,6 @@ func (ranker *delegateRanker) insertComputation(com Computation) {
 	ranker.computations = append(
 		ranker.computations[:index],
 		append([]Computation{com}, ranker.computations[index:]...)...)
-
-	if err := ranker.storer.InsertComputation(com); err != nil {
-		logger.Error(fmt.Sprintf("cannot insert new computation %v: %v", com.ID, err))
-	}
 }
 
 func (ranker *delegateRanker) removeComputations(orderID order.ID) {
@@ -206,6 +174,7 @@ func (ranker *delegateRanker) removeComputations(orderID order.ID) {
 			} else {
 				ranker.computations = append(ranker.computations[:i], ranker.computations[i+1:]...)
 			}
+			numComputations--
 			i--
 		}
 	}

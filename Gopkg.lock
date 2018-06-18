@@ -81,12 +81,6 @@
   version = "v1.6.2"
 
 [[projects]]
-  name = "github.com/gorilla/websocket"
-  packages = ["."]
-  revision = "ea4d1f681babbce9545c9c5f3d5194a789c89f5b"
-  version = "v1.2.0"
-
-[[projects]]
   branch = "master"
   name = "github.com/gxed/hashland"
   packages = ["keccakpg"]
@@ -378,6 +372,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "742cc36f0590932e62fa597f3d410b5887b8cacc09394273467b027b44092f11"
+  inputs-digest = "046b8ad828be6aa4fdffa67a8647a0a12f206303bf4cf1f66565b3d7f8ece315"
   solver-name = "gps-cdcl"
   solver-version = 1
