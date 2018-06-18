@@ -134,7 +134,7 @@ func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 
 		// A background goroutine will handle the stream
 		logger.Network(logger.LevelDebug, fmt.Sprintf("connected to %v in network %v", addr, networkID))
-		go smpc.handleStream(addr, stream)
+		go smpc.handleStream(ctx, addr, stream)
 	})
 }
 
@@ -204,7 +204,20 @@ func (smpc *smpcer) query(addr identity.Address) (identity.MultiAddress, error) 
 	return multiAddr, nil
 }
 
-func (smpc *smpcer) handleStream(remoteAddr identity.Address, remoteStream stream.Stream) {
+func (smpc *smpcer) handleStream(ctx context.Context, remoteAddr identity.Address, remoteStream stream.Stream) {
+	defer func() {
+		if multiAddr, ok := smpc.lookup[remoteAddr]; ok {
+			stream, err := smpc.streamer.Open(ctx, multiAddr)
+			if err != nil {
+				log.Println(fmt.Errorf("cannot reconnect stream to smpc node %v: %v", remoteAddr, err))
+				return
+			}
+
+			// A background goroutine will handle the stream
+			logger.Network(logger.LevelDebug, fmt.Sprintf("reconnected to %v", remoteAddr))
+			go smpc.handleStream(ctx, remoteAddr, stream)
+		}
+	}()
 	for {
 		message := Message{}
 		if err := remoteStream.Recv(&message); err != nil {
