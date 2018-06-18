@@ -2,6 +2,7 @@ package smpc_test
 
 import (
 	"bytes"
+	"log"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -11,15 +12,20 @@ import (
 	"github.com/republicprotocol/republic-go/crypto"
 )
 
+var (
+	n = int64(24)
+	k = 2 * (n + 1) / 3
+)
+
 var _ = Describe("Messages", func() {
 
-	var n = int64(24)
-	var k = 2 * (n + 1) / 3
-
 	Context("when marshaling and unmarshaling message of type MessageTypeJoin", func() {
-		It("should equal itself after marshaling and unmarshaling to binary", func() {
-			messageJoins := generateMessageJoin(n, k)
-			messages := make([]Message, len(messageJoins))
+		var messageJoins []MessageJoin
+		var messages []Message
+
+		BeforeEach(func() {
+			messageJoins = generateMessageJoin(n, k)
+			messages = make([]Message, len(messageJoins))
 			for i := range messages {
 				messages[i] = Message{
 					MessageType:         MessageTypeJoin,
@@ -27,7 +33,9 @@ var _ = Describe("Messages", func() {
 					MessageJoinResponse: nil,
 				}
 			}
+		})
 
+		It("should equal itself after marshaling and unmarshaling to binary", func() {
 			for i := range messages {
 				data, err := messages[i].MarshalBinary()
 				Ω(err).ShouldNot(HaveOccurred())
@@ -45,11 +53,29 @@ var _ = Describe("Messages", func() {
 				}
 			}
 		})
+
+		It("should error if the messageType is wrong", func() {
+			for i := range messages {
+				messages[i].MessageType = MessageType(3)
+				_, err := messages[i].MarshalBinary()
+				log.Println(err)
+				Ω(err).Should(HaveOccurred())
+			}
+		})
+
+		It("should implements the stream.Message interface", func() {
+			for i := range messages {
+				messages[i].IsMessage()
+			}
+		})
 	})
 
 	Context("when marshaling and unmarshaling message of type MessageJoinResponse", func() {
-		It("should equal itself after marshaling and unmarshaling to binary", func() {
-			messageJoinResponses := generateMessageJoinResponse(n, k)
+		var messageJoinResponses []MessageJoinResponse
+		var messages []Message
+
+		BeforeEach(func() {
+			messageJoinResponses = generateMessageJoinResponse(n, k)
 			messages := make([]Message, len(messageJoinResponses))
 			for i := range messages {
 				messages[i] = Message{
@@ -58,7 +84,9 @@ var _ = Describe("Messages", func() {
 					MessageJoinResponse: &messageJoinResponses[i],
 				}
 			}
+		})
 
+		It("should equal itself after marshaling and unmarshaling to binary", func() {
 			for i := range messages {
 				data, err := messages[i].MarshalBinary()
 				Ω(err).ShouldNot(HaveOccurred())
@@ -76,8 +104,22 @@ var _ = Describe("Messages", func() {
 				}
 			}
 		})
-	})
 
+		It("should error if the messageType is wrong", func() {
+			for i := range messages {
+				messages[i].MessageType = MessageType(3)
+				_, err := messages[i].MarshalBinary()
+				log.Println(err)
+				Ω(err).Should(HaveOccurred())
+			}
+		})
+
+		It("should implements the stream.Message interface", func() {
+			for i := range messages {
+				messages[i].IsMessage()
+			}
+		})
+	})
 })
 
 func generateMessageJoin(n, k int64) []MessageJoin {

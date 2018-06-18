@@ -29,7 +29,6 @@ func main() {
 	keystoreParam := flag.String("keystore", "", "Optionally encrypted keystore file")
 	configParam := flag.String("config", "", "Ethereum configuration file")
 	passphraseParam := flag.String("passphrase", "", "Optional passphrase to decrypt the keystore file")
-	matched := flag.Bool("match", false, "send a random pair of matched order instead just one random order ")
 
 	flag.Parse()
 
@@ -47,7 +46,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot load smart contracts: %v", err)
 	}
-	log.Println(*matched)
 	onePrice := order.CoExp{
 		Co:  2,
 		Exp: 40,
@@ -56,8 +54,8 @@ func main() {
 		Co:  5,
 		Exp: 12,
 	}
-	buy := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(1*time.Hour), order.TokensDGXREN, onePrice, oneVol, oneVol, rand.Int63())
-	sell := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(1*time.Hour), order.TokensDGXREN, onePrice, oneVol, oneVol, rand.Int63())
+	buy := order.NewOrder(order.TypeLimit, order.ParityBuy, order.SettlementRenEx, time.Now().Add(1*time.Hour), order.TokensDGXREN, onePrice, oneVol, oneVol, rand.Uint64())
+	sell := order.NewOrder(order.TypeLimit, order.ParitySell, order.SettlementRenEx, time.Now().Add(1*time.Hour), order.TokensDGXREN, onePrice, oneVol, oneVol, rand.Uint64())
 	ords := []order.Order{buy, sell}
 
 	for _, ord := range ords {
@@ -104,6 +102,7 @@ func main() {
 				marshaledOrdFragment.ID = base64.StdEncoding.EncodeToString(encryptedFragment.ID[:])
 				marshaledOrdFragment.OrderID = base64.StdEncoding.EncodeToString(encryptedFragment.OrderID[:])
 				marshaledOrdFragment.OrderParity = encryptedFragment.OrderParity
+				marshaledOrdFragment.OrderSettlement = encryptedFragment.OrderSettlement
 				marshaledOrdFragment.OrderType = encryptedFragment.OrderType
 				marshaledOrdFragment.OrderExpiry = encryptedFragment.OrderExpiry.Unix()
 				marshaledOrdFragment.Tokens = base64.StdEncoding.EncodeToString(encryptedFragment.Tokens)
@@ -119,6 +118,7 @@ func main() {
 					base64.StdEncoding.EncodeToString(encryptedFragment.MinimumVolume.Co),
 					base64.StdEncoding.EncodeToString(encryptedFragment.MinimumVolume.Exp),
 				}
+				marshaledOrdFragment.Nonce = base64.StdEncoding.EncodeToString(encryptedFragment.Nonce)
 				request.OrderFragmentMapping[hash] = append(request.OrderFragmentMapping[hash], marshaledOrdFragment)
 			}
 		}

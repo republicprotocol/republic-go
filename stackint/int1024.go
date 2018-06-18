@@ -117,7 +117,6 @@ func FromString(number string) (Int1024, error) {
 		count++
 	}
 
-	// TODO: Replace with 10.Pow(blockSize)
 	shift := FromUint(uint(base))
 	blockSizeInt := FromUint(uint(blockSize))
 	shift = shift.Exp(&blockSizeInt)

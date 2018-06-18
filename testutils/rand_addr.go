@@ -6,6 +6,16 @@ import (
 )
 
 // RandomMultiAddress generates a random crypto.EcdsaKey and uses it to build
+// an identity.Address.
+func RandomAddress() (identity.Address, error) {
+	ecdsaKey, err := crypto.RandomEcdsaKey()
+	if err != nil {
+		return "", err
+	}
+	return identity.Address(ecdsaKey.Address()), nil
+}
+
+// RandomMultiAddress generates a random crypto.EcdsaKey and uses it to build
 // an identity.MultiAddress.
 func RandomMultiAddress() (identity.MultiAddress, error) {
 	ecdsaKey, err := crypto.RandomEcdsaKey()

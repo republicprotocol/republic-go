@@ -7,12 +7,13 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/dht"
 	. "github.com/republicprotocol/republic-go/grpc"
-	"github.com/republicprotocol/republic-go/swarm"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/swarm"
+	"github.com/republicprotocol/republic-go/testutils"
 )
 
 var _ = Describe("Swarming", func() {
@@ -31,7 +32,7 @@ var _ = Describe("Swarming", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		serviceDHT = dht.NewDHT(serviceClient.MultiAddress().Address(), 20)
-		service = NewSwarmService(swarm.NewServer(serviceClient, &serviceDHT))
+		service = NewSwarmService(swarm.NewServer(testutils.NewCrypter(), serviceClient, &serviceDHT))
 		serviceMultiAddr = serviceClient.MultiAddress()
 		server = NewServer()
 		service.Register(server)

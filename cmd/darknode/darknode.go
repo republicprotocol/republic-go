@@ -36,6 +36,9 @@ import (
 )
 
 func main() {
+	done := make(chan struct{})
+	defer close(done)
+
 	logger.SetFilterLevel(logger.LevelDebugLow)
 
 	// Parse command-line arguments
@@ -72,12 +75,6 @@ func main() {
 	// New crypter for signing and verification
 	crypter := registry.NewCrypter(config.Keystore, darkPool, 256, time.Minute)
 
-	user, err := exec.Command("whoami").Output()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Printf("user is %s", user)
 	// New database for persistent storage
 	store, err := leveldb.NewStore(*dataParam)
 	if err != nil {
@@ -95,9 +92,9 @@ func main() {
 	statusService.Register(server)
 
 	swarmClient := grpc.NewSwarmClient(multiAddr)
-	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmClient, &dht))
-	swarmService.Register(server)
+	swarmService := grpc.NewSwarmService(swarm.NewServer(&crypter, swarmClient, &dht))
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
+	swarmService.Register(server)
 
 	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(&store, renLedger, 32), &store)
 	orderbookService := grpc.NewOrderbookService(orderbook)
@@ -105,23 +102,15 @@ func main() {
 
 	streamClient := grpc.NewStreamClient(&crypter, config.Address)
 	streamService := grpc.NewStreamService(&crypter, config.Address)
-	streamService.Register(server)
 	streamer := stream.NewStreamRecycler(stream.NewStreamer(config.Address, streamClient, &streamService))
-
-	// New secure multi-party computer
-	smpcer := smpc.NewSmpcer(swarmer, streamer)
-
-	// New OME
-	ranker := ome.NewRanker(1, 0, &store)
-	matcher := ome.NewMatcher(&store, smpcer)
-	confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
-	settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
-	ome := ome.NewOme(ranker, matcher, confirmer, settler, &store, orderbook, smpcer)
+	streamService.Register(server)
 
 	// Start the secure order matching engine
 	go func() {
 		// Wait for the gRPC server to boot
 		time.Sleep(time.Second)
+
+		// FIXME: Wait until registration has been approved.
 
 		// Bootstrap into the network
 		fmtStr := "bootstrapping\n"
@@ -134,7 +123,23 @@ func main() {
 		}
 		log.Printf("connected to %v peers", len(dht.MultiAddresses()))
 
-		done := make(chan struct{})
+		// New secure multi-party computer
+		smpcer := smpc.NewSmpcer(swarmer, streamer)
+
+		// New OME
+		epoch, err := darkPool.Epoch()
+		if err != nil {
+			log.Fatalf("cannot get current epoch: %v", err)
+		}
+		ranker, err := ome.NewRanker(done, config.Address, &store, epoch)
+		if err != nil {
+			log.Fatalf("cannot create new ranker: %v", err)
+		}
+		matcher := ome.NewMatcher(&store, smpcer)
+		confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
+		settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
+		ome := ome.NewOme(config.Address, ranker, matcher, confirmer, settler, &store, orderbook, smpcer, epoch)
+
 		dispatch.CoBegin(func() {
 			// Synchronizing the OME
 			errs := ome.Run(done)
@@ -142,33 +147,27 @@ func main() {
 				logger.Error(fmt.Sprintf("error in running the ome: %v", err))
 			}
 		}, func() {
-			// Get the starting ξ
-			ξ, err := darkPool.Epoch()
-			if err != nil {
-				log.Fatalf("cannot sync epoch: %v", err)
-			}
-			ome.OnChangeEpoch(ξ)
 
 			// Periodically sync the next ξ
 			for {
 				time.Sleep(14 * time.Second)
 
 				// Get the epoch
-				nextξ, err := darkPool.Epoch()
+				nextEpoch, err := darkPool.Epoch()
 				if err != nil {
 					logger.Error(fmt.Sprintf("cannot sync epoch: %v", err))
 					continue
 				}
 
 				// Check whether or not ξ has changed
-				if ξ.Equal(&nextξ) {
+				if epoch.Equal(&nextEpoch) {
 					continue
 				}
-				ξ = nextξ
-				logger.Epoch(ξ.Hash)
+				epoch = nextEpoch
+				logger.Epoch(epoch.Hash)
 
 				// Notify the Ome
-				ome.OnChangeEpoch(ξ)
+				ome.OnChangeEpoch(epoch)
 			}
 		})
 	}()

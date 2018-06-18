@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ome"
+
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -21,14 +22,14 @@ var _ = Describe("Matcher", func() {
 			numMatches := 0
 			for i := 0; i < numTrials; i++ {
 				buy, sell := testutils.RandomOrderMatch()
-				com := NewComputation(buy.ID, sell.ID)
+				com := NewComputation(buy.ID, sell.ID, [32]byte{byte(i)})
 				com.Timestamp = time.Now()
 				com.State = ComputationStateNil
 				buyFragments, err := buy.Split(6, 4)
 				Expect(err).ShouldNot(HaveOccurred())
 				sellFragments, err := sell.Split(6, 4)
 				Expect(err).ShouldNot(HaveOccurred())
-				matcher.Resolve([32]byte{byte(i)}, com, buyFragments[0], sellFragments[0], func(com Computation) {
+				matcher.Resolve(com, buyFragments[0], sellFragments[0], func(com Computation) {
 					if com.Match {
 						numMatches++
 					}
@@ -48,14 +49,14 @@ var _ = Describe("Matcher", func() {
 			numMatches := 0
 			for i := 0; i < numTrials; i++ {
 				buy, sell := testutils.RandomOrderMatch()
-				com := NewComputation(buy.ID, sell.ID)
+				com := NewComputation(buy.ID, sell.ID, [32]byte{byte(i)})
 				com.Timestamp = time.Now()
 				com.State = ComputationStateNil
 				buyFragments, err := buy.Split(6, 4)
 				Expect(err).ShouldNot(HaveOccurred())
 				sellFragments, err := sell.Split(6, 4)
 				Expect(err).ShouldNot(HaveOccurred())
-				matcher.Resolve([32]byte{byte(i)}, com, buyFragments[0], sellFragments[0], func(com Computation) {
+				matcher.Resolve(com, buyFragments[0], sellFragments[0], func(com Computation) {
 					if com.Match {
 						numMatches++
 					}
@@ -75,14 +76,14 @@ var _ = Describe("Matcher", func() {
 			numMatches := 0
 			for i := 0; i < numTrials; i++ {
 				buy, sell := testutils.RandomOrderMatch()
-				com := NewComputation(buy.ID, sell.ID)
+				com := NewComputation(buy.ID, sell.ID, [32]byte{byte(i)})
 				com.Timestamp = time.Now()
 				com.State = ComputationStateNil
 				buyFragments, err := buy.Split(6, 4)
 				Expect(err).ShouldNot(HaveOccurred())
 				sellFragments, err := sell.Split(6, 4)
 				Expect(err).ShouldNot(HaveOccurred())
-				matcher.Resolve([32]byte{byte(i)}, com, buyFragments[0], sellFragments[0], func(com Computation) {
+				matcher.Resolve(com, buyFragments[0], sellFragments[0], func(com Computation) {
 					if com.Match {
 						numMatches++
 					}
@@ -92,5 +93,4 @@ var _ = Describe("Matcher", func() {
 			Expect(numMatches).Should(BeNumerically("<", numTrials))
 		})
 	})
-
 })

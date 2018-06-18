@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
+	"math/big"
 	"runtime"
 	"time"
 
@@ -189,4 +190,12 @@ func (darkpool *mockDarkpool) PublicKey(addr identity.Address) (rsa.PublicKey, e
 func (darkpool *mockDarkpool) IsRegistered(addr identity.Address) (bool, error) {
 	_, ok := darkpool.darknodes[addr]
 	return ok, nil
+}
+
+func (darkpool *mockDarkpool) NextEpoch() (cal.Epoch, error) {
+	panic("unimplemented")
+}
+
+func (darkpool *mockDarkpool) MinimumEpochInterval() (*big.Int, error) {
+	panic("unimplemented")
 }

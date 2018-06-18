@@ -46,10 +46,10 @@ var (
 
 // Contract addresses on Kovan
 var (
-	RepublicTokenAddressOnKovan    = common.HexToAddress("0xDB5a619B65feDD4171fB05671C62d188a1650496")
-	DarknodeRegistryAddressOnKovan = common.HexToAddress("0x693574a651641939d0E7A54AdbE99FAE537eFeB8")
-	RenLedgerAddressOnKovan        = common.HexToAddress("0xEc78FdA0D84164a0BaEF48F622163213340e1d2d")
-	RenExAccountsAddressOnKovan    = common.HexToAddress("0x271e3a2e9dcf1beccab2621aee3543f4c0de20b8")
+	RepublicTokenAddressOnKovan    = common.HexToAddress("0x6f429121a3bd3e6c1c17edbc676eec44cf117faf")
+	DarknodeRegistryAddressOnKovan = common.HexToAddress("0xf7b4360983A8fdd3E2ffb2e46cBeC65fA1b3075E")
+	RenLedgerAddressOnKovan        = common.HexToAddress("0x4782a0B10ad2EFEa1b488F53fDE2C25ceEd4a013")
+	RenExAccountsAddressOnKovan    = common.HexToAddress("0xd88C4f5162850B93c04EdEd90f7c552792c0B460")
 )
 
 // Config defines the different settings for connecting the Darknode
@@ -129,14 +129,11 @@ func Connect(config Config) (Conn, error) {
 		case NetworkKovan:
 			config.RenExAccountsAddress = RenExAccountsAddressOnKovan.String()
 		case NetworkRopsten:
-			panic("not deployed yet")
+			panic("the RenEx Accounts contract has not been deployed to Ropsten yet - please use Kovan")
 		default:
 			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}
 	}
-	// Fixme: hardcode the renex contract for now,
-	// need to update the address in therir config files
-	config.RenExAccountsAddress = RenExAccountsAddressOnKovan.String()
 
 	ethclient, err := ethclient.Dial(config.URI)
 	if err != nil {

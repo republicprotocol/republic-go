@@ -326,7 +326,7 @@ type BasicTokenTransfer struct {
 
 // FilterTransfer is a free log retrieval operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_BasicToken *BasicTokenFilterer) FilterTransfer(opts *bind.FilterOpts, from []common.Address, to []common.Address) (*BasicTokenTransferIterator, error) {
 
 	var fromRule []interface{}
@@ -347,7 +347,7 @@ func (_BasicToken *BasicTokenFilterer) FilterTransfer(opts *bind.FilterOpts, fro
 
 // WatchTransfer is a free log subscription operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_BasicToken *BasicTokenFilterer) WatchTransfer(opts *bind.WatchOpts, sink chan<- *BasicTokenTransfer, from []common.Address, to []common.Address) (event.Subscription, error) {
 
 	var fromRule []interface{}
@@ -722,7 +722,7 @@ type BurnableTokenBurn struct {
 
 // FilterBurn is a free log retrieval operation binding the contract event 0xcc16f5dbb4873280815c1ee09dbd06736cffcc184412cf7a71a0fdb75d397ca5.
 //
-// Solidity: event Burn(burner indexed address, value uint256)
+// Solidity: e Burn(burner indexed address, value uint256)
 func (_BurnableToken *BurnableTokenFilterer) FilterBurn(opts *bind.FilterOpts, burner []common.Address) (*BurnableTokenBurnIterator, error) {
 
 	var burnerRule []interface{}
@@ -739,7 +739,7 @@ func (_BurnableToken *BurnableTokenFilterer) FilterBurn(opts *bind.FilterOpts, b
 
 // WatchBurn is a free log subscription operation binding the contract event 0xcc16f5dbb4873280815c1ee09dbd06736cffcc184412cf7a71a0fdb75d397ca5.
 //
-// Solidity: event Burn(burner indexed address, value uint256)
+// Solidity: e Burn(burner indexed address, value uint256)
 func (_BurnableToken *BurnableTokenFilterer) WatchBurn(opts *bind.WatchOpts, sink chan<- *BurnableTokenBurn, burner []common.Address) (event.Subscription, error) {
 
 	var burnerRule []interface{}
@@ -856,7 +856,7 @@ type BurnableTokenTransfer struct {
 
 // FilterTransfer is a free log retrieval operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_BurnableToken *BurnableTokenFilterer) FilterTransfer(opts *bind.FilterOpts, from []common.Address, to []common.Address) (*BurnableTokenTransferIterator, error) {
 
 	var fromRule []interface{}
@@ -877,7 +877,7 @@ func (_BurnableToken *BurnableTokenFilterer) FilterTransfer(opts *bind.FilterOpt
 
 // WatchTransfer is a free log subscription operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_BurnableToken *BurnableTokenFilterer) WatchTransfer(opts *bind.WatchOpts, sink chan<- *BurnableTokenTransfer, from []common.Address, to []common.Address) (event.Subscription, error) {
 
 	var fromRule []interface{}
@@ -922,10 +922,10 @@ func (_BurnableToken *BurnableTokenFilterer) WatchTransfer(opts *bind.WatchOpts,
 }
 
 // DarknodeRegistryABI is the input ABI used to generate the binding from.
-const DarknodeRegistryABI = "[{\"constant\":true,\"inputs\":[],\"name\":\"numDarknodesNextEpoch\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"numDarknodes\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"isDeregistered\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"canDeregister\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"getPublicKey\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"},{\"name\":\"_publicKey\",\"type\":\"bytes\"},{\"name\":\"_bond\",\"type\":\"uint256\"}],\"name\":\"register\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"isRegistered\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"minimumEpochInterval\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"refund\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"getBond\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"currentEpoch\",\"outputs\":[{\"name\":\"epochhash\",\"type\":\"uint256\"},{\"name\":\"timestamp\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"epoch\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"minimumBond\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"minimumDarkPoolSize\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getDarknodes\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes20[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"isUnregistered\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"deregister\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"getOwner\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_token\",\"type\":\"address\"},{\"name\":\"_minimumBond\",\"type\":\"uint256\"},{\"name\":\"_minimumDarkPoolSize\",\"type\":\"uint256\"},{\"name\":\"_minimumEpochInterval\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"_darknodeID\",\"type\":\"bytes20\"},{\"indexed\":false,\"name\":\"_bond\",\"type\":\"uint256\"}],\"name\":\"DarknodeRegistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"DarknodeDeregistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"_owner\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"_amount\",\"type\":\"uint256\"}],\"name\":\"OwnerRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[],\"name\":\"NewEpoch\",\"type\":\"event\"}]"
+const DarknodeRegistryABI = "[{\"constant\":true,\"inputs\":[],\"name\":\"numDarknodesNextEpoch\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"numDarknodes\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"isDeregistered\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"canDeregister\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"getPublicKey\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"},{\"name\":\"_publicKey\",\"type\":\"bytes\"},{\"name\":\"_bond\",\"type\":\"uint256\"}],\"name\":\"register\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"isRegistered\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"minimumEpochInterval\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"refund\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"getBond\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"currentEpoch\",\"outputs\":[{\"name\":\"epochhash\",\"type\":\"uint256\"},{\"name\":\"blocknumber\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"epoch\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"minimumBond\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"minimumDarkPoolSize\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getDarknodes\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes20[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"isUnregistered\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"deregister\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"getOwner\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_token\",\"type\":\"address\"},{\"name\":\"_minimumBond\",\"type\":\"uint256\"},{\"name\":\"_minimumDarkPoolSize\",\"type\":\"uint256\"},{\"name\":\"_minimumEpochInterval\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"_darknodeID\",\"type\":\"bytes20\"},{\"indexed\":false,\"name\":\"_bond\",\"type\":\"uint256\"}],\"name\":\"DarknodeRegistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"_darknodeID\",\"type\":\"bytes20\"}],\"name\":\"DarknodeDeregistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"_owner\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"_amount\",\"type\":\"uint256\"}],\"name\":\"OwnerRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[],\"name\":\"NewEpoch\",\"type\":\"event\"}]"
 
 // DarknodeRegistryBin is the compiled bytecode used for deploying new contracts.
-const DarknodeRegistryBin = `0x608060405234801561001057600080fd5b5060405160808061112283398101604081815282516020808501518386015160609096015160008054600160a060020a03909516600160a060020a031990951694909417845560059190915560069590955560079490945581830190915243600019014080835242939092018390526008919091556009919091556003819055600455611080806100a26000396000f3006080604052600436106100fb5763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416630847e9fa81146101005780631460e60314610127578063171f6ea81461013c57806327c4b3271461017257806332ccd52f14610194578063375a8be31461022b5780634f5550fc1461029757806355cacda5146102b95780635a8f9b81146102ce57806368f209eb146102f05780637667180814610312578063900cf0cf14610340578063aa7517e114610355578063b31575d51461036a578063c8a8349b1461037f578063d3841c25146103e4578063e08b4c8a14610406578063e487eb5814610428575b600080fd5b34801561010c57600080fd5b50610115610466565b60408051918252519081900360200190f35b34801561013357600080fd5b5061011561046c565b34801561014857600080fd5b5061015e6001606060020a031960043516610472565b604080519115158252519081900360200190f35b34801561017e57600080fd5b5061015e6001606060020a0319600435166104c1565b3480156101a057600080fd5b506101b66001606060020a0319600435166104f4565b6040805160208082528351818301528351919283929083019185019080838360005b838110156101f05781810151838201526020016101d8565b50505050905090810190601f16801561021d5780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b34801561023757600080fd5b5060408051602060046024803582810135601f81018590048502860185019096528585526102959583356001606060020a03191695369560449491939091019190819084018382808284375094975050933594506105a29350505050565b005b3480156102a357600080fd5b5061015e6001606060020a03196004351661081a565b3480156102c557600080fd5b5061011561087a565b3480156102da57600080fd5b506102956001606060020a031960043516610880565b3480156102fc57600080fd5b506101156001606060020a031960043516610a86565b34801561031e57600080fd5b50610327610aa6565b6040805192835260208301919091528051918290030190f35b34801561034c57600080fd5b50610295610aaf565b34801561036157600080fd5b50610115610b24565b34801561037657600080fd5b50610115610b2a565b34801561038b57600080fd5b50610394610b30565b60408051602080825283518183015283519192839290830191858101910280838360005b838110156103d05781810151838201526020016103b8565b505050509050019250505060405180910390f35b3480156103f057600080fd5b5061015e6001606060020a031960043516610be8565b34801561041257600080fd5b506102956001606060020a031960043516610c08565b34801561043457600080fd5b5061044a6001606060020a031960043516610cbe565b60408051600160a060020a039092168252519081900360200190f35b60045481565b60035481565b6001606060020a03198116600090815260016020526040812060030154158015906104bb57506009546001606060020a0319831660009081526001602052604090206003015411155b92915050565b60006104cc8261081a565b80156104bb5750506001606060020a0319166000908152600160205260409020600301541590565b6001606060020a0319811660009081526001602081815260409283902060040180548451600294821615610100026000190190911693909304601f810183900483028401830190945283835260609390918301828280156105965780601f1061056b57610100808354040283529160200191610596565b820191906000526020600020905b81548152906001019060200180831161057957829003601f168201915b50505050509050919050565b826105ac81610be8565b15156105b757600080fd5b6005548210156105c657600080fd5b60008054604080517fdd62ed3e00000000000000000000000000000000000000000000000000000000815233600482015230602482015290518593600160a060020a039093169263dd62ed3e92604480820193602093909283900390910190829087803b15801561063657600080fd5b505af115801561064a573d6000803e3d6000fd5b505050506040513d602081101561066057600080fd5b5051101561066d57600080fd5b60008054604080517f23b872dd000000000000000000000000000000000000000000000000000000008152336004820152306024820152604481018690529051600160a060020a03909216926323b872dd926064808401936020939083900390910190829087803b1580156106e157600080fd5b505af11580156106f5573d6000803e3d6000fd5b505050506040513d602081101561070b57600080fd5b5051151561071857600080fd5b6040805160a081018252338152602080820185815260075460095401838501908152600060608501818152608086018a81526001606060020a03198c1683526001808752979092208651815473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a039091161781559351968401969096559051600283015593516003820155925180519293926107b79260048501920190610fb9565b509050506107c6600285610ce3565b600480546001019055604080516001606060020a0319861681526020810184905281517f964f77c16f29e1a7c974315f1fdc990a01866a66c8a3db959112bdfa14cb2d9d929181900390910190a150505050565b6001606060020a031981166000908152600160205260408120600201541580159061086357506009546001606060020a0319831660009081526001602052604090206002015411155b80156104bb575061087382610472565b1592915050565b60075481565b6001606060020a031981166000908152600160205260408120548290600160a060020a031633146108b057600080fd5b826108ba81610472565b15156108c557600080fd5b6001606060020a03198416600090815260016020819052604082200154935083116108ef57600080fd5b6108fa600285610d0e565b6040805160a081018252600080825260208083018281528385018381526060850184815286518085018852858152608087019081526001606060020a03198c1686526001808652979095208651815473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a03909116178155925196830196909655516002820155935160038501559051805192939261099b9260048501920190610fb9565b505060008054604080517fa9059cbb000000000000000000000000000000000000000000000000000000008152336004820152602481018890529051600160a060020a03909216935063a9059cbb9260448083019360209390929083900390910190829087803b158015610a0e57600080fd5b505af1158015610a22573d6000803e3d6000fd5b505050506040513d6020811015610a3857600080fd5b50511515610a4557600080fd5b604080513381526020810185905281517f8dce8f4eb4097fbdf948a109703513f52a7fabcc7e328ba7f29ad8165033e953929181900390910190a150505050565b6001606060020a0319166000908152600160208190526040909120015490565b60085460095482565b60075460095460009101421015610ac557600080fd5b5060408051808201825260001943014080825260075460098054909101602090930183905260088290559190915560045460035590517fe358419ca0dd7928a310d787a606dfae5d869f5071249efa6107105e7afc40bc90600090a150565b60055481565b60065481565b606080600080600354604051908082528060200260200182016040528015610b62578160200160208202803883390190505b50925060009150610b736002610e07565b90505b600354821015610be057610b898161081a565b1515610ba157610b9a600282610e2c565b9050610b76565b808383815181101515610bb057fe5b6001606060020a0319909216602092830290910190910152610bd3600282610e2c565b6001909201919050610b76565b509092915050565b6001606060020a0319166000908152600160205260409020600201541590565b80610c12816104c1565b1515610c1d57600080fd5b6001606060020a031982166000908152600160205260409020548290600160a060020a03163314610c4d57600080fd5b6007546009546001606060020a031985166000818152600160209081526040918290209390940160039093019290925560048054600019019055815190815290517fd261e3f9e22d65cdbecf9c4c79c684a7d4225282f1c80dcbfa6fec5c38a151d4929181900390910190a1505050565b6001606060020a031916600090815260016020526040902054600160a060020a031690565b610ced8282610e73565b15610cf757600080fd5b610d0a82610d0484610e93565b83610ebb565b5050565b600080610d1b8484610e73565b1515610d2657600080fd5b6001606060020a031983161515610d3c57610e01565b50506001606060020a03198082166000818152602085905260408082208054600180830180546c01000000000000000000000000610100948590048102808b168952878920909401805492820282810473ffffffffffffffffffffffffffffffffffffffff1994851617909155998a168852958720805496840490940274ffffffffffffffffffffffffffffffffffffffff00199096169590951790925594909352805474ffffffffffffffffffffffffffffffffffffffffff191690558154169055905b50505050565b600080805260209190915260409020600101546c010000000000000000000000000290565b6000610e388383610e73565b1515610e4357600080fd5b506001606060020a031916600090815260209190915260409020600101546c010000000000000000000000000290565b6001606060020a0319166000908152602091909152604090205460ff1690565b60008080526020829052604090205461010090046c0100000000000000000000000002919050565b6000610ec78483610e73565b15610ed157600080fd5b610edb8484610e73565b80610eee57506001606060020a03198316155b1515610ef957600080fd5b506001606060020a0319808316600090815260209490945260408085206001908101805485851680895284892080546c01000000000000000000000000998a900461010090810274ffffffffffffffffffffffffffffffffffffffff00199283161783558287018054958c028c810473ffffffffffffffffffffffffffffffffffffffff199788161790915586549b909a049a9094168a179094559690951688529287208054969093029516949094179055909252815460ff1916179055565b828054600181600116156101000203166002900490600052602060002090601f016020900481019282601f10610ffa57805160ff1916838001178555611027565b82800160010185558215611027579182015b8281111561102757825182559160200191906001019061100c565b50611033929150611037565b5090565b61105191905b80821115611033576000815560010161103d565b905600a165627a7a72305820e95027b8c861473e45b3ba0b0a9803c69705d876ea17e1ad10b835dc3c4f65980029`
+const DarknodeRegistryBin = `0x608060405234801561001057600080fd5b5060405160808061111583398101604081815282516020808501518386015160609096015160008054600160a060020a03909516600160a060020a0319909516949094178455600591909155600695909555600794909455818301909152436000198101408084529390920182905260089290925560095560038190556004556110768061009f6000396000f3006080604052600436106100fb5763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416630847e9fa81146101005780631460e60314610127578063171f6ea81461013c57806327c4b3271461017257806332ccd52f14610194578063375a8be31461022b5780634f5550fc1461029757806355cacda5146102b95780635a8f9b81146102ce57806368f209eb146102f05780637667180814610312578063900cf0cf14610340578063aa7517e114610355578063b31575d51461036a578063c8a8349b1461037f578063d3841c25146103e4578063e08b4c8a14610406578063e487eb5814610428575b600080fd5b34801561010c57600080fd5b50610115610466565b60408051918252519081900360200190f35b34801561013357600080fd5b5061011561046c565b34801561014857600080fd5b5061015e6001606060020a031960043516610472565b604080519115158252519081900360200190f35b34801561017e57600080fd5b5061015e6001606060020a0319600435166104c1565b3480156101a057600080fd5b506101b66001606060020a0319600435166104f4565b6040805160208082528351818301528351919283929083019185019080838360005b838110156101f05781810151838201526020016101d8565b50505050905090810190601f16801561021d5780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b34801561023757600080fd5b5060408051602060046024803582810135601f81018590048502860185019096528585526102959583356001606060020a03191695369560449491939091019190819084018382808284375094975050933594506105a29350505050565b005b3480156102a357600080fd5b5061015e6001606060020a03196004351661081a565b3480156102c557600080fd5b5061011561087a565b3480156102da57600080fd5b506102956001606060020a031960043516610880565b3480156102fc57600080fd5b506101156001606060020a031960043516610a86565b34801561031e57600080fd5b50610327610aa6565b6040805192835260208301919091528051918290030190f35b34801561034c57600080fd5b50610295610aaf565b34801561036157600080fd5b50610115610b1a565b34801561037657600080fd5b50610115610b20565b34801561038b57600080fd5b50610394610b26565b60408051602080825283518183015283519192839290830191858101910280838360005b838110156103d05781810151838201526020016103b8565b505050509050019250505060405180910390f35b3480156103f057600080fd5b5061015e6001606060020a031960043516610bde565b34801561041257600080fd5b506102956001606060020a031960043516610bfe565b34801561043457600080fd5b5061044a6001606060020a031960043516610cb4565b60408051600160a060020a039092168252519081900360200190f35b60045481565b60035481565b6001606060020a03198116600090815260016020526040812060030154158015906104bb57506009546001606060020a0319831660009081526001602052604090206003015411155b92915050565b60006104cc8261081a565b80156104bb5750506001606060020a0319166000908152600160205260409020600301541590565b6001606060020a0319811660009081526001602081815260409283902060040180548451600294821615610100026000190190911693909304601f810183900483028401830190945283835260609390918301828280156105965780601f1061056b57610100808354040283529160200191610596565b820191906000526020600020905b81548152906001019060200180831161057957829003601f168201915b50505050509050919050565b826105ac81610bde565b15156105b757600080fd5b6005548210156105c657600080fd5b60008054604080517fdd62ed3e00000000000000000000000000000000000000000000000000000000815233600482015230602482015290518593600160a060020a039093169263dd62ed3e92604480820193602093909283900390910190829087803b15801561063657600080fd5b505af115801561064a573d6000803e3d6000fd5b505050506040513d602081101561066057600080fd5b5051101561066d57600080fd5b60008054604080517f23b872dd000000000000000000000000000000000000000000000000000000008152336004820152306024820152604481018690529051600160a060020a03909216926323b872dd926064808401936020939083900390910190829087803b1580156106e157600080fd5b505af11580156106f5573d6000803e3d6000fd5b505050506040513d602081101561070b57600080fd5b5051151561071857600080fd5b6040805160a081018252338152602080820185815260075460095401838501908152600060608501818152608086018a81526001606060020a03198c1683526001808752979092208651815473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a039091161781559351968401969096559051600283015593516003820155925180519293926107b79260048501920190610faf565b509050506107c6600285610cd9565b600480546001019055604080516001606060020a0319861681526020810184905281517f964f77c16f29e1a7c974315f1fdc990a01866a66c8a3db959112bdfa14cb2d9d929181900390910190a150505050565b6001606060020a031981166000908152600160205260408120600201541580159061086357506009546001606060020a0319831660009081526001602052604090206002015411155b80156104bb575061087382610472565b1592915050565b60075481565b6001606060020a031981166000908152600160205260408120548290600160a060020a031633146108b057600080fd5b826108ba81610472565b15156108c557600080fd5b6001606060020a03198416600090815260016020819052604082200154935083116108ef57600080fd5b6108fa600285610d04565b6040805160a081018252600080825260208083018281528385018381526060850184815286518085018852858152608087019081526001606060020a03198c1686526001808652979095208651815473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a03909116178155925196830196909655516002820155935160038501559051805192939261099b9260048501920190610faf565b505060008054604080517fa9059cbb000000000000000000000000000000000000000000000000000000008152336004820152602481018890529051600160a060020a03909216935063a9059cbb9260448083019360209390929083900390910190829087803b158015610a0e57600080fd5b505af1158015610a22573d6000803e3d6000fd5b505050506040513d6020811015610a3857600080fd5b50511515610a4557600080fd5b604080513381526020810185905281517f8dce8f4eb4097fbdf948a109703513f52a7fabcc7e328ba7f29ad8165033e953929181900390910190a150505050565b6001606060020a0319166000908152600160208190526040909120015490565b60085460095482565b60075460095460009101431015610ac557600080fd5b50604080518082018252436000198101408083526020909201819052600882905560095560045460035590517fe358419ca0dd7928a310d787a606dfae5d869f5071249efa6107105e7afc40bc90600090a150565b60055481565b60065481565b606080600080600354604051908082528060200260200182016040528015610b58578160200160208202803883390190505b50925060009150610b696002610dfd565b90505b600354821015610bd657610b7f8161081a565b1515610b9757610b90600282610e22565b9050610b6c565b808383815181101515610ba657fe5b6001606060020a0319909216602092830290910190910152610bc9600282610e22565b6001909201919050610b6c565b509092915050565b6001606060020a0319166000908152600160205260409020600201541590565b80610c08816104c1565b1515610c1357600080fd5b6001606060020a031982166000908152600160205260409020548290600160a060020a03163314610c4357600080fd5b6007546009546001606060020a031985166000818152600160209081526040918290209390940160039093019290925560048054600019019055815190815290517fd261e3f9e22d65cdbecf9c4c79c684a7d4225282f1c80dcbfa6fec5c38a151d4929181900390910190a1505050565b6001606060020a031916600090815260016020526040902054600160a060020a031690565b610ce38282610e69565b15610ced57600080fd5b610d0082610cfa84610e89565b83610eb1565b5050565b600080610d118484610e69565b1515610d1c57600080fd5b6001606060020a031983161515610d3257610df7565b50506001606060020a03198082166000818152602085905260408082208054600180830180546c01000000000000000000000000610100948590048102808b168952878920909401805492820282810473ffffffffffffffffffffffffffffffffffffffff1994851617909155998a168852958720805496840490940274ffffffffffffffffffffffffffffffffffffffff00199096169590951790925594909352805474ffffffffffffffffffffffffffffffffffffffffff191690558154169055905b50505050565b600080805260209190915260409020600101546c010000000000000000000000000290565b6000610e2e8383610e69565b1515610e3957600080fd5b506001606060020a031916600090815260209190915260409020600101546c010000000000000000000000000290565b6001606060020a0319166000908152602091909152604090205460ff1690565b60008080526020829052604090205461010090046c0100000000000000000000000002919050565b6000610ebd8483610e69565b15610ec757600080fd5b610ed18484610e69565b80610ee457506001606060020a03198316155b1515610eef57600080fd5b506001606060020a0319808316600090815260209490945260408085206001908101805485851680895284892080546c01000000000000000000000000998a900461010090810274ffffffffffffffffffffffffffffffffffffffff00199283161783558287018054958c028c810473ffffffffffffffffffffffffffffffffffffffff199788161790915586549b909a049a9094168a179094559690951688529287208054969093029516949094179055909252815460ff1916179055565b828054600181600116156101000203166002900490600052602060002090601f016020900481019282601f10610ff057805160ff191683800117855561101d565b8280016001018555821561101d579182015b8281111561101d578251825591602001919060010190611002565b5061102992915061102d565b5090565b61104791905b808211156110295760008155600101611033565b905600a165627a7a723058203d88e090bdd1be688edb6de6dddcad608643c62a58e4f2fd7ab1d743feccae700029`
 
 // DeployDarknodeRegistry deploys a new Ethereum contract, binding an instance of DarknodeRegistry to it.
 func DeployDarknodeRegistry(auth *bind.TransactOpts, backend bind.ContractBackend, _token common.Address, _minimumBond *big.Int, _minimumDarkPoolSize *big.Int, _minimumEpochInterval *big.Int) (common.Address, *types.Transaction, *DarknodeRegistry, error) {
@@ -1110,14 +1110,14 @@ func (_DarknodeRegistry *DarknodeRegistryCallerSession) CanDeregister(_darknodeI
 
 // CurrentEpoch is a free data retrieval call binding the contract method 0x76671808.
 //
-// Solidity: function currentEpoch() constant returns(epochhash uint256, timestamp uint256)
+// Solidity: function currentEpoch() constant returns(epochhash uint256, blocknumber uint256)
 func (_DarknodeRegistry *DarknodeRegistryCaller) CurrentEpoch(opts *bind.CallOpts) (struct {
-	Epochhash *big.Int
-	Timestamp *big.Int
+	Epochhash   *big.Int
+	Blocknumber *big.Int
 }, error) {
 	ret := new(struct {
-		Epochhash *big.Int
-		Timestamp *big.Int
+		Epochhash   *big.Int
+		Blocknumber *big.Int
 	})
 	out := ret
 	err := _DarknodeRegistry.contract.Call(opts, out, "currentEpoch")
@@ -1126,20 +1126,20 @@ func (_DarknodeRegistry *DarknodeRegistryCaller) CurrentEpoch(opts *bind.CallOpt
 
 // CurrentEpoch is a free data retrieval call binding the contract method 0x76671808.
 //
-// Solidity: function currentEpoch() constant returns(epochhash uint256, timestamp uint256)
+// Solidity: function currentEpoch() constant returns(epochhash uint256, blocknumber uint256)
 func (_DarknodeRegistry *DarknodeRegistrySession) CurrentEpoch() (struct {
-	Epochhash *big.Int
-	Timestamp *big.Int
+	Epochhash   *big.Int
+	Blocknumber *big.Int
 }, error) {
 	return _DarknodeRegistry.Contract.CurrentEpoch(&_DarknodeRegistry.CallOpts)
 }
 
 // CurrentEpoch is a free data retrieval call binding the contract method 0x76671808.
 //
-// Solidity: function currentEpoch() constant returns(epochhash uint256, timestamp uint256)
+// Solidity: function currentEpoch() constant returns(epochhash uint256, blocknumber uint256)
 func (_DarknodeRegistry *DarknodeRegistryCallerSession) CurrentEpoch() (struct {
-	Epochhash *big.Int
-	Timestamp *big.Int
+	Epochhash   *big.Int
+	Blocknumber *big.Int
 }, error) {
 	return _DarknodeRegistry.Contract.CurrentEpoch(&_DarknodeRegistry.CallOpts)
 }
@@ -1615,7 +1615,7 @@ type DarknodeRegistryDarknodeDeregistered struct {
 
 // FilterDarknodeDeregistered is a free log retrieval operation binding the contract event 0xd261e3f9e22d65cdbecf9c4c79c684a7d4225282f1c80dcbfa6fec5c38a151d4.
 //
-// Solidity: event DarknodeDeregistered(_darknodeID bytes20)
+// Solidity: e DarknodeDeregistered(_darknodeID bytes20)
 func (_DarknodeRegistry *DarknodeRegistryFilterer) FilterDarknodeDeregistered(opts *bind.FilterOpts) (*DarknodeRegistryDarknodeDeregisteredIterator, error) {
 
 	logs, sub, err := _DarknodeRegistry.contract.FilterLogs(opts, "DarknodeDeregistered")
@@ -1627,7 +1627,7 @@ func (_DarknodeRegistry *DarknodeRegistryFilterer) FilterDarknodeDeregistered(op
 
 // WatchDarknodeDeregistered is a free log subscription operation binding the contract event 0xd261e3f9e22d65cdbecf9c4c79c684a7d4225282f1c80dcbfa6fec5c38a151d4.
 //
-// Solidity: event DarknodeDeregistered(_darknodeID bytes20)
+// Solidity: e DarknodeDeregistered(_darknodeID bytes20)
 func (_DarknodeRegistry *DarknodeRegistryFilterer) WatchDarknodeDeregistered(opts *bind.WatchOpts, sink chan<- *DarknodeRegistryDarknodeDeregistered) (event.Subscription, error) {
 
 	logs, sub, err := _DarknodeRegistry.contract.WatchLogs(opts, "DarknodeDeregistered")
@@ -1738,7 +1738,7 @@ type DarknodeRegistryDarknodeRegistered struct {
 
 // FilterDarknodeRegistered is a free log retrieval operation binding the contract event 0x964f77c16f29e1a7c974315f1fdc990a01866a66c8a3db959112bdfa14cb2d9d.
 //
-// Solidity: event DarknodeRegistered(_darknodeID bytes20, _bond uint256)
+// Solidity: e DarknodeRegistered(_darknodeID bytes20, _bond uint256)
 func (_DarknodeRegistry *DarknodeRegistryFilterer) FilterDarknodeRegistered(opts *bind.FilterOpts) (*DarknodeRegistryDarknodeRegisteredIterator, error) {
 
 	logs, sub, err := _DarknodeRegistry.contract.FilterLogs(opts, "DarknodeRegistered")
@@ -1750,7 +1750,7 @@ func (_DarknodeRegistry *DarknodeRegistryFilterer) FilterDarknodeRegistered(opts
 
 // WatchDarknodeRegistered is a free log subscription operation binding the contract event 0x964f77c16f29e1a7c974315f1fdc990a01866a66c8a3db959112bdfa14cb2d9d.
 //
-// Solidity: event DarknodeRegistered(_darknodeID bytes20, _bond uint256)
+// Solidity: e DarknodeRegistered(_darknodeID bytes20, _bond uint256)
 func (_DarknodeRegistry *DarknodeRegistryFilterer) WatchDarknodeRegistered(opts *bind.WatchOpts, sink chan<- *DarknodeRegistryDarknodeRegistered) (event.Subscription, error) {
 
 	logs, sub, err := _DarknodeRegistry.contract.WatchLogs(opts, "DarknodeRegistered")
@@ -1859,7 +1859,7 @@ type DarknodeRegistryNewEpoch struct {
 
 // FilterNewEpoch is a free log retrieval operation binding the contract event 0xe358419ca0dd7928a310d787a606dfae5d869f5071249efa6107105e7afc40bc.
 //
-// Solidity: event NewEpoch()
+// Solidity: e NewEpoch()
 func (_DarknodeRegistry *DarknodeRegistryFilterer) FilterNewEpoch(opts *bind.FilterOpts) (*DarknodeRegistryNewEpochIterator, error) {
 
 	logs, sub, err := _DarknodeRegistry.contract.FilterLogs(opts, "NewEpoch")
@@ -1871,7 +1871,7 @@ func (_DarknodeRegistry *DarknodeRegistryFilterer) FilterNewEpoch(opts *bind.Fil
 
 // WatchNewEpoch is a free log subscription operation binding the contract event 0xe358419ca0dd7928a310d787a606dfae5d869f5071249efa6107105e7afc40bc.
 //
-// Solidity: event NewEpoch()
+// Solidity: e NewEpoch()
 func (_DarknodeRegistry *DarknodeRegistryFilterer) WatchNewEpoch(opts *bind.WatchOpts, sink chan<- *DarknodeRegistryNewEpoch) (event.Subscription, error) {
 
 	logs, sub, err := _DarknodeRegistry.contract.WatchLogs(opts, "NewEpoch")
@@ -1982,7 +1982,7 @@ type DarknodeRegistryOwnerRefunded struct {
 
 // FilterOwnerRefunded is a free log retrieval operation binding the contract event 0x8dce8f4eb4097fbdf948a109703513f52a7fabcc7e328ba7f29ad8165033e953.
 //
-// Solidity: event OwnerRefunded(_owner address, _amount uint256)
+// Solidity: e OwnerRefunded(_owner address, _amount uint256)
 func (_DarknodeRegistry *DarknodeRegistryFilterer) FilterOwnerRefunded(opts *bind.FilterOpts) (*DarknodeRegistryOwnerRefundedIterator, error) {
 
 	logs, sub, err := _DarknodeRegistry.contract.FilterLogs(opts, "OwnerRefunded")
@@ -1994,7 +1994,7 @@ func (_DarknodeRegistry *DarknodeRegistryFilterer) FilterOwnerRefunded(opts *bin
 
 // WatchOwnerRefunded is a free log subscription operation binding the contract event 0x8dce8f4eb4097fbdf948a109703513f52a7fabcc7e328ba7f29ad8165033e953.
 //
-// Solidity: event OwnerRefunded(_owner address, _amount uint256)
+// Solidity: e OwnerRefunded(_owner address, _amount uint256)
 func (_DarknodeRegistry *DarknodeRegistryFilterer) WatchOwnerRefunded(opts *bind.WatchOpts, sink chan<- *DarknodeRegistryOwnerRefunded) (event.Subscription, error) {
 
 	logs, sub, err := _DarknodeRegistry.contract.WatchLogs(opts, "OwnerRefunded")
@@ -2033,7 +2033,7 @@ func (_DarknodeRegistry *DarknodeRegistryFilterer) WatchOwnerRefunded(opts *bind
 const ECDSAABI = "[]"
 
 // ECDSABin is the compiled bytecode used for deploying new contracts.
-const ECDSABin = `0x604c602c600b82828239805160001a60731460008114601c57601e565bfe5b5030600052607381538281f30073000000000000000000000000000000000000000030146080604052600080fd00a165627a7a723058207aa74cfedd19ba5d22460afa912eb3272132dd9bb943c725d439e1cb1092198a0029`
+const ECDSABin = `0x604c602c600b82828239805160001a60731460008114601c57601e565bfe5b5030600052607381538281f30073000000000000000000000000000000000000000030146080604052600080fd00a165627a7a72305820d4ccd123065a32e213a1462054d4859f319bb409491998312c2132acb1de15cd0029`
 
 // DeployECDSA deploys a new Ethereum contract, binding an instance of ECDSA to it.
 func DeployECDSA(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *ECDSA, error) {
@@ -2569,7 +2569,7 @@ type ERC20Approval struct {
 
 // FilterApproval is a free log retrieval operation binding the contract event 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925.
 //
-// Solidity: event Approval(owner indexed address, spender indexed address, value uint256)
+// Solidity: e Approval(owner indexed address, spender indexed address, value uint256)
 func (_ERC20 *ERC20Filterer) FilterApproval(opts *bind.FilterOpts, owner []common.Address, spender []common.Address) (*ERC20ApprovalIterator, error) {
 
 	var ownerRule []interface{}
@@ -2590,7 +2590,7 @@ func (_ERC20 *ERC20Filterer) FilterApproval(opts *bind.FilterOpts, owner []commo
 
 // WatchApproval is a free log subscription operation binding the contract event 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925.
 //
-// Solidity: event Approval(owner indexed address, spender indexed address, value uint256)
+// Solidity: e Approval(owner indexed address, spender indexed address, value uint256)
 func (_ERC20 *ERC20Filterer) WatchApproval(opts *bind.WatchOpts, sink chan<- *ERC20Approval, owner []common.Address, spender []common.Address) (event.Subscription, error) {
 
 	var ownerRule []interface{}
@@ -2711,7 +2711,7 @@ type ERC20Transfer struct {
 
 // FilterTransfer is a free log retrieval operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_ERC20 *ERC20Filterer) FilterTransfer(opts *bind.FilterOpts, from []common.Address, to []common.Address) (*ERC20TransferIterator, error) {
 
 	var fromRule []interface{}
@@ -2732,7 +2732,7 @@ func (_ERC20 *ERC20Filterer) FilterTransfer(opts *bind.FilterOpts, from []common
 
 // WatchTransfer is a free log subscription operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_ERC20 *ERC20Filterer) WatchTransfer(opts *bind.WatchOpts, sink chan<- *ERC20Transfer, from []common.Address, to []common.Address) (event.Subscription, error) {
 
 	var fromRule []interface{}
@@ -3087,7 +3087,7 @@ type ERC20BasicTransfer struct {
 
 // FilterTransfer is a free log retrieval operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_ERC20Basic *ERC20BasicFilterer) FilterTransfer(opts *bind.FilterOpts, from []common.Address, to []common.Address) (*ERC20BasicTransferIterator, error) {
 
 	var fromRule []interface{}
@@ -3108,7 +3108,7 @@ func (_ERC20Basic *ERC20BasicFilterer) FilterTransfer(opts *bind.FilterOpts, fro
 
 // WatchTransfer is a free log subscription operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_ERC20Basic *ERC20BasicFilterer) WatchTransfer(opts *bind.WatchOpts, sink chan<- *ERC20BasicTransfer, from []common.Address, to []common.Address) (event.Subscription, error) {
 
 	var fromRule []interface{}
@@ -3156,7 +3156,7 @@ func (_ERC20Basic *ERC20BasicFilterer) WatchTransfer(opts *bind.WatchOpts, sink 
 const LinkedListABI = "[{\"constant\":true,\"inputs\":[],\"name\":\"NULL\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes20\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}]"
 
 // LinkedListBin is the compiled bytecode used for deploying new contracts.
-const LinkedListBin = `0x60b361002f600b82828239805160001a6073146000811461001f57610021565bfe5b5030600052607381538281f300730000000000000000000000000000000000000000301460806040526004361060555763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663f26be3fc8114605a575b600080fd5b60606082565b604080516bffffffffffffffffffffffff199092168252519081900360200190f35b6000815600a165627a7a723058207a1a61baefab5b86f6ee689091c5db6aedabd33b5b63a9b1421277abd41a6b3c0029`
+const LinkedListBin = `0x60b361002f600b82828239805160001a6073146000811461001f57610021565bfe5b5030600052607381538281f300730000000000000000000000000000000000000000301460806040526004361060555763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663f26be3fc8114605a575b600080fd5b60606082565b604080516bffffffffffffffffffffffff199092168252519081900360200190f35b6000815600a165627a7a72305820ca029363dc9df8226763369221d63cc1095910665372c06d9f421014a5fe7f200029`
 
 // DeployLinkedList deploys a new Ethereum contract, binding an instance of LinkedList to it.
 func DeployLinkedList(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *LinkedList, error) {
@@ -3337,6 +3337,685 @@ func (_LinkedList *LinkedListSession) NULL() ([20]byte, error) {
 // Solidity: function NULL() constant returns(bytes20)
 func (_LinkedList *LinkedListCallerSession) NULL() ([20]byte, error) {
 	return _LinkedList.Contract.NULL(&_LinkedList.CallOpts)
+}
+
+// OrderbookABI is the input ABI used to generate the binding from.
+const OrderbookABI = "[{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderConfirmer\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"buyOrder\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"buyOrders\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"openSellOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"sellOrders\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"openBuyOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"cancelOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"},{\"name\":\"_orderMatches\",\"type\":\"bytes32[]\"}],\"name\":\"confirmOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderBlockNumber\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_offset\",\"type\":\"uint256\"},{\"name\":\"_limit\",\"type\":\"uint256\"}],\"name\":\"getOrders\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32[]\"},{\"name\":\"\",\"type\":\"address[]\"},{\"name\":\"\",\"type\":\"uint8[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"sellOrder\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderDepth\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderBroker\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderState\",\"outputs\":[{\"name\":\"\",\"type\":\"uint8\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderMatch\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderTrader\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderPriority\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getOrdersCount\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"getOrder\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"fee\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_fee\",\"type\":\"uint256\"},{\"name\":\"_token\",\"type\":\"address\"},{\"name\":\"_registry\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"}]"
+
+// OrderbookBin is the compiled bytecode used for deploying new contracts.
+const OrderbookBin = `0x608060405234801561001057600080fd5b506040516060806113fc83398101604090815281516020830151919092015160049290925560058054600160a060020a03928316600160a060020a0319918216179091556006805492909316911617905561138c806100706000396000f3006080604052600436106101115763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416631107c3f7811461011657806322f85eaa1461014a57806335cea2881461017b57806339b0d677146101a55780634a8393f3146102025780635060340b1461021a578063574ed6c1146102755780637008b996146102d057806389895d531461032a5780638f72fc771461034257806397514d901461043b578063a188fcb814610453578063a51816611461046b578063aab14d0414610483578063af3e8a40146104b1578063b1a0801014610519578063b248e4e114610531578063b5b3b05114610549578063d09ef2411461055e578063ddca3f4314610576575b600080fd5b34801561012257600080fd5b5061012e60043561058b565b60408051600160a060020a039092168252519081900360200190f35b34801561015657600080fd5b506101626004356105ac565b6040805192835290151560208301528051918290030190f35b34801561018757600080fd5b506101936004356105e8565b60408051918252519081900360200190f35b3480156101b157600080fd5b506040805160206004803580820135601f810184900484028501840190955284845261020094369492936024939284019190819084018382808284375094975050933594506106079350505050565b005b34801561020e57600080fd5b50610193600435610658565b34801561022657600080fd5b506040805160206004803580820135601f810184900484028501840190955284845261020094369492936024939284019190819084018382808284375094975050933594506106669350505050565b34801561028157600080fd5b506040805160206004803580820135601f810184900484028501840190955284845261020094369492936024939284019190819084018382808284375094975050933594506106b59350505050565b3480156102dc57600080fd5b506040805160206004602480358281013584810280870186019097528086526102009684359636966044959194909101929182918501908490808284375094975061081b9650505050505050565b34801561033657600080fd5b50610193600435610ab7565b34801561034e57600080fd5b5061035d600435602435610acc565b60405180806020018060200180602001848103845287818151815260200191508051906020019060200280838360005b838110156103a557818101518382015260200161038d565b50505050905001848103835286818151815260200191508051906020019060200280838360005b838110156103e45781810151838201526020016103cc565b50505050905001848103825285818151815260200191508051906020019060200280838360005b8381101561042357818101518382015260200161040b565b50505050905001965050505050505060405180910390f35b34801561044757600080fd5b50610162600435610c7d565b34801561045f57600080fd5b50610193600435610ca4565b34801561047757600080fd5b5061012e600435610cdc565b34801561048f57600080fd5b5061049b600435610cfa565b6040805160ff9092168252519081900360200190f35b3480156104bd57600080fd5b506104c9600435610d23565b60408051602080825283518183015283519192839290830191858101910280838360005b838110156105055781810151838201526020016104ed565b505050509050019250505060405180910390f35b34801561052557600080fd5b5061012e600435610d89565b34801561053d57600080fd5b50610193600435610daa565b34801561055557600080fd5b50610193610dc0565b34801561056a57600080fd5b50610162600435610dcb565b34801561058257600080fd5b50610193610df2565b600081815260036020526040902060020154600160a060020a03165b919050565b60008054819083106105c3575060009050806105e3565b60008054849081106105d157fe5b90600052602060002001546001915091505b915091565b60008054829081106105f657fe5b600091825260209091200154905081565b6106118282610df8565b6001805480820182557fb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6018290555460009182526003602081905260409092209091015550565b60018054829081106105f657fe5b6106708282610df8565b600080546001810182557f290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563018290558054918152600360208190526040909120015550565b6000806001600084815260036020819052604090912054610100900460ff16908111156106de57fe5b14156107c757604080517f52657075626c69632050726f746f636f6c3a2063616e63656c3a200000000000602080830191909152603b80830187905283518084039091018152605b90920192839052815191929182918401908083835b6020831061075a5780518252601f19909201916020918201910161073b565b6001836020036101000a0380198251168184511680821785525050505050509050019150506040518091039020915061079382856110dc565b600084815260036020526040902054909150600160a060020a038083166201000090920416146107c257600080fd5b6107f4565b6000838152600360208190526040822054610100900460ff16908111156107ea57fe5b146107f457600080fd5b50506000908152600360205260409020805461ff0019166103001781554360049091015550565b600654604080517f4f5550fc000000000000000000000000000000000000000000000000000000008152336c0100000000000000000000000081026bffffffffffffffffffffffff191660048301529151600093600160a060020a031691634f5550fc91602480830192602092919082900301818887803b15801561089f57600080fd5b505af11580156108b3573d6000803e3d6000fd5b505050506040513d60208110156108c957600080fd5b505115156108d657600080fd5b6001600085815260036020819052604090912054610100900460ff16908111156108fc57fe5b1461090657600080fd5b600091505b825182101561096b57600160036000858581518110151561092857fe5b602090810290910181015182528101919091526040016000205460ff61010090910416600381111561095657fe5b1461096057600080fd5b60019091019061090b565b600091505b8251821015610a4957600260036000858581518110151561098d57fe5b60209081029091018101518252810191909152604001600020805461ff0019166101008360038111156109bc57fe5b0217905550604080516020810190915284815283516003906000908690869081106109e357fe5b60209081029091018101518252810191909152604001600020610a0d9160059091019060016112f9565b5043600360008585815181101515610a2157fe5b6020908102909101810151825281019190915260400160002060040155600190910190610970565b6000848152600360209081526040909120805461ff00191661020017815560028101805473ffffffffffffffffffffffffffffffffffffffff1916331790558451610a9c926005909201918601906112f9565b50505060009182525060036020526040902043600490910155565b60009081526003602052604090206004015490565b6060806060600060608060606000806002805490508b101515610aee57610c70565b6002548a96508b87011115610b06576002548b900395505b85604051908082528060200260200182016040528015610b30578160200160208202803883390190505b50945085604051908082528060200260200182016040528015610b5d578160200160208202803883390190505b50935085604051908082528060200260200182016040528015610b8a578160200160208202803883390190505b509250600091505b85821015610c665760028054838d01908110610baa57fe5b90600052602060002001549050808583815181101515610bc657fe5b602090810291909101810191909152600082815260039091526040902054845162010000909104600160a060020a031690859084908110610c0357fe5b600160a060020a0390921660209283029091018201526000828152600391829052604090205460ff6101009091041690811115610c3c57fe5b8383815181101515610c4a57fe5b60ff909216602092830290910190910152600190910190610b92565b8484849850985098505b5050505050509250925092565b60015460009081908310610c96575060009050806105e3565b60018054849081106105d157fe5b6000818152600360205260408120600401541515610cc4575060006105a7565b50600090815260036020526040902060040154430390565b600090815260036020526040902060010154600160a060020a031690565b6000818152600360208190526040822054610100900460ff1690811115610d1d57fe5b92915050565b600081815260036020908152604091829020600501805483518184028101840190945280845260609392830182828015610d7d57602002820191906000526020600020905b81548152600190910190602001808311610d68575b50505050509050919050565b600090815260036020526040902054620100009004600160a060020a031690565b6000908152600360208190526040909120015490565b600154600054015b90565b60025460009081908310610de4575060009050806105e3565b60028054849081106105d157fe5b60045481565b60048054600554604080517fdd62ed3e000000000000000000000000000000000000000000000000000000008152339481019490945230602485015251600093849392600160a060020a03169163dd62ed3e9160448082019260209290919082900301818887803b158015610e6c57600080fd5b505af1158015610e80573d6000803e3d6000fd5b505050506040513d6020811015610e9657600080fd5b50511015610ea357600080fd5b60055460048054604080517f23b872dd0000000000000000000000000000000000000000000000000000000081523393810193909352306024840152604483019190915251600160a060020a03909216916323b872dd916064808201926020929091908290030181600087803b158015610f1c57600080fd5b505af1158015610f30573d6000803e3d6000fd5b505050506040513d6020811015610f4657600080fd5b50511515610f5357600080fd5b6000838152600360208190526040822054610100900460ff1690811115610f7657fe5b14610f8057600080fd5b604080517f52657075626c69632050726f746f636f6c3a206f70656e3a2000000000000000602080830191909152603980830187905283518084039091018152605990920192839052815191929182918401908083835b60208310610ff65780518252601f199092019160209182019101610fd7565b6001836020036101000a0380198251168184511680821785525050505050509050019150506040518091039020915061102f82856110dc565b60008481526003602052604081208054600160a060020a0393909316620100000261ff00199093166101001775ffffffffffffffffffffffffffffffffffffffff000019169290921782556001808301805473ffffffffffffffffffffffffffffffffffffffff1916331790554360049093019290925560028054928301815590527f405787fa12a823e0f2b7631cc41b3ba8828b3321ca811111fa75cd3aa3bb5ace0192909255505050565b604080518082018252601c8082527f19457468657265756d205369676e6564204d6573736167653a0a333200000000602080840191825293516000948593849386938a9301918291908083835b602083106111485780518252601f199092019160209182019101611129565b51815160209384036101000a600019018019909216911617905292019384525060408051808503815293820190819052835193945092839250908401908083835b602083106111a85780518252601f199092019160209182019101611189565b6001836020036101000a038019825116818451168082178552505050505050905001915050604051809103902091508460408151811015156111e657fe5b016020015160f860020a90819004810204905060ff8116158061120c57508060ff166001145b1561121557601b015b6001828261122488600061129c565b61122f89602061129c565b60408051600080825260208083018085529790975260ff90951681830152606081019390935260808301919091525160a08083019493601f198301938390039091019190865af1158015611287573d6000803e3d6000fd5b5050604051601f190151979650505050505050565b600080805b60208110156112f15780600802858286601f01038151811015156112c157fe5b90602001015160f860020a900460f860020a0260f860020a90049060020a028201915080806001019150506112a1565b509392505050565b828054828255906000526020600020908101928215611336579160200282015b828111156113365782518255602090920191600190910190611319565b50611342929150611346565b5090565b610dc891905b80821115611342576000815560010161134c5600a165627a7a72305820b39affacf5745e582823607671220bfbf394dd3b9fef58092e2fa7da1891e78d0029`
+
+// DeployOrderbook deploys a new Ethereum contract, binding an instance of Orderbook to it.
+func DeployOrderbook(auth *bind.TransactOpts, backend bind.ContractBackend, _fee *big.Int, _token common.Address, _registry common.Address) (common.Address, *types.Transaction, *Orderbook, error) {
+	parsed, err := abi.JSON(strings.NewReader(OrderbookABI))
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(OrderbookBin), backend, _fee, _token, _registry)
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	return address, tx, &Orderbook{OrderbookCaller: OrderbookCaller{contract: contract}, OrderbookTransactor: OrderbookTransactor{contract: contract}, OrderbookFilterer: OrderbookFilterer{contract: contract}}, nil
+}
+
+// Orderbook is an auto generated Go binding around an Ethereum contract.
+type Orderbook struct {
+	OrderbookCaller     // Read-only binding to the contract
+	OrderbookTransactor // Write-only binding to the contract
+	OrderbookFilterer   // Log filterer for contract events
+}
+
+// OrderbookCaller is an auto generated read-only Go binding around an Ethereum contract.
+type OrderbookCaller struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// OrderbookTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type OrderbookTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// OrderbookFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type OrderbookFilterer struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// OrderbookSession is an auto generated Go binding around an Ethereum contract,
+// with pre-set call and transact options.
+type OrderbookSession struct {
+	Contract     *Orderbook        // Generic contract binding to set the session for
+	CallOpts     bind.CallOpts     // Call options to use throughout this session
+	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
+}
+
+// OrderbookCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// with pre-set call options.
+type OrderbookCallerSession struct {
+	Contract *OrderbookCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts    // Call options to use throughout this session
+}
+
+// OrderbookTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// with pre-set transact options.
+type OrderbookTransactorSession struct {
+	Contract     *OrderbookTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts    // Transaction auth options to use throughout this session
+}
+
+// OrderbookRaw is an auto generated low-level Go binding around an Ethereum contract.
+type OrderbookRaw struct {
+	Contract *Orderbook // Generic contract binding to access the raw methods on
+}
+
+// OrderbookCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type OrderbookCallerRaw struct {
+	Contract *OrderbookCaller // Generic read-only contract binding to access the raw methods on
+}
+
+// OrderbookTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type OrderbookTransactorRaw struct {
+	Contract *OrderbookTransactor // Generic write-only contract binding to access the raw methods on
+}
+
+// NewOrderbook creates a new instance of Orderbook, bound to a specific deployed contract.
+func NewOrderbook(address common.Address, backend bind.ContractBackend) (*Orderbook, error) {
+	contract, err := bindOrderbook(address, backend, backend, backend)
+	if err != nil {
+		return nil, err
+	}
+	return &Orderbook{OrderbookCaller: OrderbookCaller{contract: contract}, OrderbookTransactor: OrderbookTransactor{contract: contract}, OrderbookFilterer: OrderbookFilterer{contract: contract}}, nil
+}
+
+// NewOrderbookCaller creates a new read-only instance of Orderbook, bound to a specific deployed contract.
+func NewOrderbookCaller(address common.Address, caller bind.ContractCaller) (*OrderbookCaller, error) {
+	contract, err := bindOrderbook(address, caller, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &OrderbookCaller{contract: contract}, nil
+}
+
+// NewOrderbookTransactor creates a new write-only instance of Orderbook, bound to a specific deployed contract.
+func NewOrderbookTransactor(address common.Address, transactor bind.ContractTransactor) (*OrderbookTransactor, error) {
+	contract, err := bindOrderbook(address, nil, transactor, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &OrderbookTransactor{contract: contract}, nil
+}
+
+// NewOrderbookFilterer creates a new log filterer instance of Orderbook, bound to a specific deployed contract.
+func NewOrderbookFilterer(address common.Address, filterer bind.ContractFilterer) (*OrderbookFilterer, error) {
+	contract, err := bindOrderbook(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &OrderbookFilterer{contract: contract}, nil
+}
+
+// bindOrderbook binds a generic wrapper to an already deployed contract.
+func bindOrderbook(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := abi.JSON(strings.NewReader(OrderbookABI))
+	if err != nil {
+		return nil, err
+	}
+	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_Orderbook *OrderbookRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
+	return _Orderbook.Contract.OrderbookCaller.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_Orderbook *OrderbookRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Orderbook.Contract.OrderbookTransactor.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_Orderbook *OrderbookRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _Orderbook.Contract.OrderbookTransactor.contract.Transact(opts, method, params...)
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_Orderbook *OrderbookCallerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
+	return _Orderbook.Contract.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_Orderbook *OrderbookTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Orderbook.Contract.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_Orderbook *OrderbookTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _Orderbook.Contract.contract.Transact(opts, method, params...)
+}
+
+// BuyOrder is a free data retrieval call binding the contract method 0x22f85eaa.
+//
+// Solidity: function buyOrder(_index uint256) constant returns(bytes32, bool)
+func (_Orderbook *OrderbookCaller) BuyOrder(opts *bind.CallOpts, _index *big.Int) ([32]byte, bool, error) {
+	var (
+		ret0 = new([32]byte)
+		ret1 = new(bool)
+	)
+	out := &[]interface{}{
+		ret0,
+		ret1,
+	}
+	err := _Orderbook.contract.Call(opts, out, "buyOrder", _index)
+	return *ret0, *ret1, err
+}
+
+// BuyOrder is a free data retrieval call binding the contract method 0x22f85eaa.
+//
+// Solidity: function buyOrder(_index uint256) constant returns(bytes32, bool)
+func (_Orderbook *OrderbookSession) BuyOrder(_index *big.Int) ([32]byte, bool, error) {
+	return _Orderbook.Contract.BuyOrder(&_Orderbook.CallOpts, _index)
+}
+
+// BuyOrder is a free data retrieval call binding the contract method 0x22f85eaa.
+//
+// Solidity: function buyOrder(_index uint256) constant returns(bytes32, bool)
+func (_Orderbook *OrderbookCallerSession) BuyOrder(_index *big.Int) ([32]byte, bool, error) {
+	return _Orderbook.Contract.BuyOrder(&_Orderbook.CallOpts, _index)
+}
+
+// BuyOrders is a free data retrieval call binding the contract method 0x35cea288.
+//
+// Solidity: function buyOrders( uint256) constant returns(bytes32)
+func (_Orderbook *OrderbookCaller) BuyOrders(opts *bind.CallOpts, arg0 *big.Int) ([32]byte, error) {
+	var (
+		ret0 = new([32]byte)
+	)
+	out := ret0
+	err := _Orderbook.contract.Call(opts, out, "buyOrders", arg0)
+	return *ret0, err
+}
+
+// BuyOrders is a free data retrieval call binding the contract method 0x35cea288.
+//
+// Solidity: function buyOrders( uint256) constant returns(bytes32)
+func (_Orderbook *OrderbookSession) BuyOrders(arg0 *big.Int) ([32]byte, error) {
+	return _Orderbook.Contract.BuyOrders(&_Orderbook.CallOpts, arg0)
+}
+
+// BuyOrders is a free data retrieval call binding the contract method 0x35cea288.
+//
+// Solidity: function buyOrders( uint256) constant returns(bytes32)
+func (_Orderbook *OrderbookCallerSession) BuyOrders(arg0 *big.Int) ([32]byte, error) {
+	return _Orderbook.Contract.BuyOrders(&_Orderbook.CallOpts, arg0)
+}
+
+// Fee is a free data retrieval call binding the contract method 0xddca3f43.
+//
+// Solidity: function fee() constant returns(uint256)
+func (_Orderbook *OrderbookCaller) Fee(opts *bind.CallOpts) (*big.Int, error) {
+	var (
+		ret0 = new(*big.Int)
+	)
+	out := ret0
+	err := _Orderbook.contract.Call(opts, out, "fee")
+	return *ret0, err
+}
+
+// Fee is a free data retrieval call binding the contract method 0xddca3f43.
+//
+// Solidity: function fee() constant returns(uint256)
+func (_Orderbook *OrderbookSession) Fee() (*big.Int, error) {
+	return _Orderbook.Contract.Fee(&_Orderbook.CallOpts)
+}
+
+// Fee is a free data retrieval call binding the contract method 0xddca3f43.
+//
+// Solidity: function fee() constant returns(uint256)
+func (_Orderbook *OrderbookCallerSession) Fee() (*big.Int, error) {
+	return _Orderbook.Contract.Fee(&_Orderbook.CallOpts)
+}
+
+// GetOrder is a free data retrieval call binding the contract method 0xd09ef241.
+//
+// Solidity: function getOrder(_index uint256) constant returns(bytes32, bool)
+func (_Orderbook *OrderbookCaller) GetOrder(opts *bind.CallOpts, _index *big.Int) ([32]byte, bool, error) {
+	var (
+		ret0 = new([32]byte)
+		ret1 = new(bool)
+	)
+	out := &[]interface{}{
+		ret0,
+		ret1,
+	}
+	err := _Orderbook.contract.Call(opts, out, "getOrder", _index)
+	return *ret0, *ret1, err
+}
+
+// GetOrder is a free data retrieval call binding the contract method 0xd09ef241.
+//
+// Solidity: function getOrder(_index uint256) constant returns(bytes32, bool)
+func (_Orderbook *OrderbookSession) GetOrder(_index *big.Int) ([32]byte, bool, error) {
+	return _Orderbook.Contract.GetOrder(&_Orderbook.CallOpts, _index)
+}
+
+// GetOrder is a free data retrieval call binding the contract method 0xd09ef241.
+//
+// Solidity: function getOrder(_index uint256) constant returns(bytes32, bool)
+func (_Orderbook *OrderbookCallerSession) GetOrder(_index *big.Int) ([32]byte, bool, error) {
+	return _Orderbook.Contract.GetOrder(&_Orderbook.CallOpts, _index)
+}
+
+// GetOrders is a free data retrieval call binding the contract method 0x8f72fc77.
+//
+// Solidity: function getOrders(_offset uint256, _limit uint256) constant returns(bytes32[], address[], uint8[])
+func (_Orderbook *OrderbookCaller) GetOrders(opts *bind.CallOpts, _offset *big.Int, _limit *big.Int) ([][32]byte, []common.Address, []uint8, error) {
+	var (
+		ret0 = new([][32]byte)
+		ret1 = new([]common.Address)
+		ret2 = new([]uint8)
+	)
+	out := &[]interface{}{
+		ret0,
+		ret1,
+		ret2,
+	}
+	err := _Orderbook.contract.Call(opts, out, "getOrders", _offset, _limit)
+	return *ret0, *ret1, *ret2, err
+}
+
+// GetOrders is a free data retrieval call binding the contract method 0x8f72fc77.
+//
+// Solidity: function getOrders(_offset uint256, _limit uint256) constant returns(bytes32[], address[], uint8[])
+func (_Orderbook *OrderbookSession) GetOrders(_offset *big.Int, _limit *big.Int) ([][32]byte, []common.Address, []uint8, error) {
+	return _Orderbook.Contract.GetOrders(&_Orderbook.CallOpts, _offset, _limit)
+}
+
+// GetOrders is a free data retrieval call binding the contract method 0x8f72fc77.
+//
+// Solidity: function getOrders(_offset uint256, _limit uint256) constant returns(bytes32[], address[], uint8[])
+func (_Orderbook *OrderbookCallerSession) GetOrders(_offset *big.Int, _limit *big.Int) ([][32]byte, []common.Address, []uint8, error) {
+	return _Orderbook.Contract.GetOrders(&_Orderbook.CallOpts, _offset, _limit)
+}
+
+// GetOrdersCount is a free data retrieval call binding the contract method 0xb5b3b051.
+//
+// Solidity: function getOrdersCount() constant returns(uint256)
+func (_Orderbook *OrderbookCaller) GetOrdersCount(opts *bind.CallOpts) (*big.Int, error) {
+	var (
+		ret0 = new(*big.Int)
+	)
+	out := ret0
+	err := _Orderbook.contract.Call(opts, out, "getOrdersCount")
+	return *ret0, err
+}
+
+// GetOrdersCount is a free data retrieval call binding the contract method 0xb5b3b051.
+//
+// Solidity: function getOrdersCount() constant returns(uint256)
+func (_Orderbook *OrderbookSession) GetOrdersCount() (*big.Int, error) {
+	return _Orderbook.Contract.GetOrdersCount(&_Orderbook.CallOpts)
+}
+
+// GetOrdersCount is a free data retrieval call binding the contract method 0xb5b3b051.
+//
+// Solidity: function getOrdersCount() constant returns(uint256)
+func (_Orderbook *OrderbookCallerSession) GetOrdersCount() (*big.Int, error) {
+	return _Orderbook.Contract.GetOrdersCount(&_Orderbook.CallOpts)
+}
+
+// OrderBlockNumber is a free data retrieval call binding the contract method 0x89895d53.
+//
+// Solidity: function orderBlockNumber(_orderId bytes32) constant returns(uint256)
+func (_Orderbook *OrderbookCaller) OrderBlockNumber(opts *bind.CallOpts, _orderId [32]byte) (*big.Int, error) {
+	var (
+		ret0 = new(*big.Int)
+	)
+	out := ret0
+	err := _Orderbook.contract.Call(opts, out, "orderBlockNumber", _orderId)
+	return *ret0, err
+}
+
+// OrderBlockNumber is a free data retrieval call binding the contract method 0x89895d53.
+//
+// Solidity: function orderBlockNumber(_orderId bytes32) constant returns(uint256)
+func (_Orderbook *OrderbookSession) OrderBlockNumber(_orderId [32]byte) (*big.Int, error) {
+	return _Orderbook.Contract.OrderBlockNumber(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderBlockNumber is a free data retrieval call binding the contract method 0x89895d53.
+//
+// Solidity: function orderBlockNumber(_orderId bytes32) constant returns(uint256)
+func (_Orderbook *OrderbookCallerSession) OrderBlockNumber(_orderId [32]byte) (*big.Int, error) {
+	return _Orderbook.Contract.OrderBlockNumber(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderBroker is a free data retrieval call binding the contract method 0xa5181661.
+//
+// Solidity: function orderBroker(_orderId bytes32) constant returns(address)
+func (_Orderbook *OrderbookCaller) OrderBroker(opts *bind.CallOpts, _orderId [32]byte) (common.Address, error) {
+	var (
+		ret0 = new(common.Address)
+	)
+	out := ret0
+	err := _Orderbook.contract.Call(opts, out, "orderBroker", _orderId)
+	return *ret0, err
+}
+
+// OrderBroker is a free data retrieval call binding the contract method 0xa5181661.
+//
+// Solidity: function orderBroker(_orderId bytes32) constant returns(address)
+func (_Orderbook *OrderbookSession) OrderBroker(_orderId [32]byte) (common.Address, error) {
+	return _Orderbook.Contract.OrderBroker(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderBroker is a free data retrieval call binding the contract method 0xa5181661.
+//
+// Solidity: function orderBroker(_orderId bytes32) constant returns(address)
+func (_Orderbook *OrderbookCallerSession) OrderBroker(_orderId [32]byte) (common.Address, error) {
+	return _Orderbook.Contract.OrderBroker(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderConfirmer is a free data retrieval call binding the contract method 0x1107c3f7.
+//
+// Solidity: function orderConfirmer(_orderId bytes32) constant returns(address)
+func (_Orderbook *OrderbookCaller) OrderConfirmer(opts *bind.CallOpts, _orderId [32]byte) (common.Address, error) {
+	var (
+		ret0 = new(common.Address)
+	)
+	out := ret0
+	err := _Orderbook.contract.Call(opts, out, "orderConfirmer", _orderId)
+	return *ret0, err
+}
+
+// OrderConfirmer is a free data retrieval call binding the contract method 0x1107c3f7.
+//
+// Solidity: function orderConfirmer(_orderId bytes32) constant returns(address)
+func (_Orderbook *OrderbookSession) OrderConfirmer(_orderId [32]byte) (common.Address, error) {
+	return _Orderbook.Contract.OrderConfirmer(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderConfirmer is a free data retrieval call binding the contract method 0x1107c3f7.
+//
+// Solidity: function orderConfirmer(_orderId bytes32) constant returns(address)
+func (_Orderbook *OrderbookCallerSession) OrderConfirmer(_orderId [32]byte) (common.Address, error) {
+	return _Orderbook.Contract.OrderConfirmer(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderDepth is a free data retrieval call binding the contract method 0xa188fcb8.
+//
+// Solidity: function orderDepth(_orderId bytes32) constant returns(uint256)
+func (_Orderbook *OrderbookCaller) OrderDepth(opts *bind.CallOpts, _orderId [32]byte) (*big.Int, error) {
+	var (
+		ret0 = new(*big.Int)
+	)
+	out := ret0
+	err := _Orderbook.contract.Call(opts, out, "orderDepth", _orderId)
+	return *ret0, err
+}
+
+// OrderDepth is a free data retrieval call binding the contract method 0xa188fcb8.
+//
+// Solidity: function orderDepth(_orderId bytes32) constant returns(uint256)
+func (_Orderbook *OrderbookSession) OrderDepth(_orderId [32]byte) (*big.Int, error) {
+	return _Orderbook.Contract.OrderDepth(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderDepth is a free data retrieval call binding the contract method 0xa188fcb8.
+//
+// Solidity: function orderDepth(_orderId bytes32) constant returns(uint256)
+func (_Orderbook *OrderbookCallerSession) OrderDepth(_orderId [32]byte) (*big.Int, error) {
+	return _Orderbook.Contract.OrderDepth(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderMatch is a free data retrieval call binding the contract method 0xaf3e8a40.
+//
+// Solidity: function orderMatch(_orderId bytes32) constant returns(bytes32[])
+func (_Orderbook *OrderbookCaller) OrderMatch(opts *bind.CallOpts, _orderId [32]byte) ([][32]byte, error) {
+	var (
+		ret0 = new([][32]byte)
+	)
+	out := ret0
+	err := _Orderbook.contract.Call(opts, out, "orderMatch", _orderId)
+	return *ret0, err
+}
+
+// OrderMatch is a free data retrieval call binding the contract method 0xaf3e8a40.
+//
+// Solidity: function orderMatch(_orderId bytes32) constant returns(bytes32[])
+func (_Orderbook *OrderbookSession) OrderMatch(_orderId [32]byte) ([][32]byte, error) {
+	return _Orderbook.Contract.OrderMatch(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderMatch is a free data retrieval call binding the contract method 0xaf3e8a40.
+//
+// Solidity: function orderMatch(_orderId bytes32) constant returns(bytes32[])
+func (_Orderbook *OrderbookCallerSession) OrderMatch(_orderId [32]byte) ([][32]byte, error) {
+	return _Orderbook.Contract.OrderMatch(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderPriority is a free data retrieval call binding the contract method 0xb248e4e1.
+//
+// Solidity: function orderPriority(_orderId bytes32) constant returns(uint256)
+func (_Orderbook *OrderbookCaller) OrderPriority(opts *bind.CallOpts, _orderId [32]byte) (*big.Int, error) {
+	var (
+		ret0 = new(*big.Int)
+	)
+	out := ret0
+	err := _Orderbook.contract.Call(opts, out, "orderPriority", _orderId)
+	return *ret0, err
+}
+
+// OrderPriority is a free data retrieval call binding the contract method 0xb248e4e1.
+//
+// Solidity: function orderPriority(_orderId bytes32) constant returns(uint256)
+func (_Orderbook *OrderbookSession) OrderPriority(_orderId [32]byte) (*big.Int, error) {
+	return _Orderbook.Contract.OrderPriority(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderPriority is a free data retrieval call binding the contract method 0xb248e4e1.
+//
+// Solidity: function orderPriority(_orderId bytes32) constant returns(uint256)
+func (_Orderbook *OrderbookCallerSession) OrderPriority(_orderId [32]byte) (*big.Int, error) {
+	return _Orderbook.Contract.OrderPriority(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderState is a free data retrieval call binding the contract method 0xaab14d04.
+//
+// Solidity: function orderState(_orderId bytes32) constant returns(uint8)
+func (_Orderbook *OrderbookCaller) OrderState(opts *bind.CallOpts, _orderId [32]byte) (uint8, error) {
+	var (
+		ret0 = new(uint8)
+	)
+	out := ret0
+	err := _Orderbook.contract.Call(opts, out, "orderState", _orderId)
+	return *ret0, err
+}
+
+// OrderState is a free data retrieval call binding the contract method 0xaab14d04.
+//
+// Solidity: function orderState(_orderId bytes32) constant returns(uint8)
+func (_Orderbook *OrderbookSession) OrderState(_orderId [32]byte) (uint8, error) {
+	return _Orderbook.Contract.OrderState(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderState is a free data retrieval call binding the contract method 0xaab14d04.
+//
+// Solidity: function orderState(_orderId bytes32) constant returns(uint8)
+func (_Orderbook *OrderbookCallerSession) OrderState(_orderId [32]byte) (uint8, error) {
+	return _Orderbook.Contract.OrderState(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderTrader is a free data retrieval call binding the contract method 0xb1a08010.
+//
+// Solidity: function orderTrader(_orderId bytes32) constant returns(address)
+func (_Orderbook *OrderbookCaller) OrderTrader(opts *bind.CallOpts, _orderId [32]byte) (common.Address, error) {
+	var (
+		ret0 = new(common.Address)
+	)
+	out := ret0
+	err := _Orderbook.contract.Call(opts, out, "orderTrader", _orderId)
+	return *ret0, err
+}
+
+// OrderTrader is a free data retrieval call binding the contract method 0xb1a08010.
+//
+// Solidity: function orderTrader(_orderId bytes32) constant returns(address)
+func (_Orderbook *OrderbookSession) OrderTrader(_orderId [32]byte) (common.Address, error) {
+	return _Orderbook.Contract.OrderTrader(&_Orderbook.CallOpts, _orderId)
+}
+
+// OrderTrader is a free data retrieval call binding the contract method 0xb1a08010.
+//
+// Solidity: function orderTrader(_orderId bytes32) constant returns(address)
+func (_Orderbook *OrderbookCallerSession) OrderTrader(_orderId [32]byte) (common.Address, error) {
+	return _Orderbook.Contract.OrderTrader(&_Orderbook.CallOpts, _orderId)
+}
+
+// SellOrder is a free data retrieval call binding the contract method 0x97514d90.
+//
+// Solidity: function sellOrder(_index uint256) constant returns(bytes32, bool)
+func (_Orderbook *OrderbookCaller) SellOrder(opts *bind.CallOpts, _index *big.Int) ([32]byte, bool, error) {
+	var (
+		ret0 = new([32]byte)
+		ret1 = new(bool)
+	)
+	out := &[]interface{}{
+		ret0,
+		ret1,
+	}
+	err := _Orderbook.contract.Call(opts, out, "sellOrder", _index)
+	return *ret0, *ret1, err
+}
+
+// SellOrder is a free data retrieval call binding the contract method 0x97514d90.
+//
+// Solidity: function sellOrder(_index uint256) constant returns(bytes32, bool)
+func (_Orderbook *OrderbookSession) SellOrder(_index *big.Int) ([32]byte, bool, error) {
+	return _Orderbook.Contract.SellOrder(&_Orderbook.CallOpts, _index)
+}
+
+// SellOrder is a free data retrieval call binding the contract method 0x97514d90.
+//
+// Solidity: function sellOrder(_index uint256) constant returns(bytes32, bool)
+func (_Orderbook *OrderbookCallerSession) SellOrder(_index *big.Int) ([32]byte, bool, error) {
+	return _Orderbook.Contract.SellOrder(&_Orderbook.CallOpts, _index)
+}
+
+// SellOrders is a free data retrieval call binding the contract method 0x4a8393f3.
+//
+// Solidity: function sellOrders( uint256) constant returns(bytes32)
+func (_Orderbook *OrderbookCaller) SellOrders(opts *bind.CallOpts, arg0 *big.Int) ([32]byte, error) {
+	var (
+		ret0 = new([32]byte)
+	)
+	out := ret0
+	err := _Orderbook.contract.Call(opts, out, "sellOrders", arg0)
+	return *ret0, err
+}
+
+// SellOrders is a free data retrieval call binding the contract method 0x4a8393f3.
+//
+// Solidity: function sellOrders( uint256) constant returns(bytes32)
+func (_Orderbook *OrderbookSession) SellOrders(arg0 *big.Int) ([32]byte, error) {
+	return _Orderbook.Contract.SellOrders(&_Orderbook.CallOpts, arg0)
+}
+
+// SellOrders is a free data retrieval call binding the contract method 0x4a8393f3.
+//
+// Solidity: function sellOrders( uint256) constant returns(bytes32)
+func (_Orderbook *OrderbookCallerSession) SellOrders(arg0 *big.Int) ([32]byte, error) {
+	return _Orderbook.Contract.SellOrders(&_Orderbook.CallOpts, arg0)
+}
+
+// CancelOrder is a paid mutator transaction binding the contract method 0x574ed6c1.
+//
+// Solidity: function cancelOrder(_signature bytes, _orderId bytes32) returns()
+func (_Orderbook *OrderbookTransactor) CancelOrder(opts *bind.TransactOpts, _signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _Orderbook.contract.Transact(opts, "cancelOrder", _signature, _orderId)
+}
+
+// CancelOrder is a paid mutator transaction binding the contract method 0x574ed6c1.
+//
+// Solidity: function cancelOrder(_signature bytes, _orderId bytes32) returns()
+func (_Orderbook *OrderbookSession) CancelOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _Orderbook.Contract.CancelOrder(&_Orderbook.TransactOpts, _signature, _orderId)
+}
+
+// CancelOrder is a paid mutator transaction binding the contract method 0x574ed6c1.
+//
+// Solidity: function cancelOrder(_signature bytes, _orderId bytes32) returns()
+func (_Orderbook *OrderbookTransactorSession) CancelOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _Orderbook.Contract.CancelOrder(&_Orderbook.TransactOpts, _signature, _orderId)
+}
+
+// ConfirmOrder is a paid mutator transaction binding the contract method 0x7008b996.
+//
+// Solidity: function confirmOrder(_orderId bytes32, _orderMatches bytes32[]) returns()
+func (_Orderbook *OrderbookTransactor) ConfirmOrder(opts *bind.TransactOpts, _orderId [32]byte, _orderMatches [][32]byte) (*types.Transaction, error) {
+	return _Orderbook.contract.Transact(opts, "confirmOrder", _orderId, _orderMatches)
+}
+
+// ConfirmOrder is a paid mutator transaction binding the contract method 0x7008b996.
+//
+// Solidity: function confirmOrder(_orderId bytes32, _orderMatches bytes32[]) returns()
+func (_Orderbook *OrderbookSession) ConfirmOrder(_orderId [32]byte, _orderMatches [][32]byte) (*types.Transaction, error) {
+	return _Orderbook.Contract.ConfirmOrder(&_Orderbook.TransactOpts, _orderId, _orderMatches)
+}
+
+// ConfirmOrder is a paid mutator transaction binding the contract method 0x7008b996.
+//
+// Solidity: function confirmOrder(_orderId bytes32, _orderMatches bytes32[]) returns()
+func (_Orderbook *OrderbookTransactorSession) ConfirmOrder(_orderId [32]byte, _orderMatches [][32]byte) (*types.Transaction, error) {
+	return _Orderbook.Contract.ConfirmOrder(&_Orderbook.TransactOpts, _orderId, _orderMatches)
+}
+
+// OpenBuyOrder is a paid mutator transaction binding the contract method 0x5060340b.
+//
+// Solidity: function openBuyOrder(_signature bytes, _orderId bytes32) returns()
+func (_Orderbook *OrderbookTransactor) OpenBuyOrder(opts *bind.TransactOpts, _signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _Orderbook.contract.Transact(opts, "openBuyOrder", _signature, _orderId)
+}
+
+// OpenBuyOrder is a paid mutator transaction binding the contract method 0x5060340b.
+//
+// Solidity: function openBuyOrder(_signature bytes, _orderId bytes32) returns()
+func (_Orderbook *OrderbookSession) OpenBuyOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _Orderbook.Contract.OpenBuyOrder(&_Orderbook.TransactOpts, _signature, _orderId)
+}
+
+// OpenBuyOrder is a paid mutator transaction binding the contract method 0x5060340b.
+//
+// Solidity: function openBuyOrder(_signature bytes, _orderId bytes32) returns()
+func (_Orderbook *OrderbookTransactorSession) OpenBuyOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _Orderbook.Contract.OpenBuyOrder(&_Orderbook.TransactOpts, _signature, _orderId)
+}
+
+// OpenSellOrder is a paid mutator transaction binding the contract method 0x39b0d677.
+//
+// Solidity: function openSellOrder(_signature bytes, _orderId bytes32) returns()
+func (_Orderbook *OrderbookTransactor) OpenSellOrder(opts *bind.TransactOpts, _signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _Orderbook.contract.Transact(opts, "openSellOrder", _signature, _orderId)
+}
+
+// OpenSellOrder is a paid mutator transaction binding the contract method 0x39b0d677.
+//
+// Solidity: function openSellOrder(_signature bytes, _orderId bytes32) returns()
+func (_Orderbook *OrderbookSession) OpenSellOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _Orderbook.Contract.OpenSellOrder(&_Orderbook.TransactOpts, _signature, _orderId)
+}
+
+// OpenSellOrder is a paid mutator transaction binding the contract method 0x39b0d677.
+//
+// Solidity: function openSellOrder(_signature bytes, _orderId bytes32) returns()
+func (_Orderbook *OrderbookTransactorSession) OpenSellOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
+	return _Orderbook.Contract.OpenSellOrder(&_Orderbook.TransactOpts, _signature, _orderId)
 }
 
 // OwnableABI is the input ABI used to generate the binding from.
@@ -3623,7 +4302,7 @@ type OwnableOwnershipTransferred struct {
 
 // FilterOwnershipTransferred is a free log retrieval operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
 //
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+// Solidity: e OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
 func (_Ownable *OwnableFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*OwnableOwnershipTransferredIterator, error) {
 
 	var previousOwnerRule []interface{}
@@ -3644,7 +4323,7 @@ func (_Ownable *OwnableFilterer) FilterOwnershipTransferred(opts *bind.FilterOpt
 
 // WatchOwnershipTransferred is a free log subscription operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
 //
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+// Solidity: e OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
 func (_Ownable *OwnableFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *OwnableOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
 
 	var previousOwnerRule []interface{}
@@ -4040,7 +4719,7 @@ type PausableOwnershipTransferred struct {
 
 // FilterOwnershipTransferred is a free log retrieval operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
 //
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+// Solidity: e OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
 func (_Pausable *PausableFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*PausableOwnershipTransferredIterator, error) {
 
 	var previousOwnerRule []interface{}
@@ -4061,7 +4740,7 @@ func (_Pausable *PausableFilterer) FilterOwnershipTransferred(opts *bind.FilterO
 
 // WatchOwnershipTransferred is a free log subscription operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
 //
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+// Solidity: e OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
 func (_Pausable *PausableFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *PausableOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
 
 	var previousOwnerRule []interface{}
@@ -4179,7 +4858,7 @@ type PausablePause struct {
 
 // FilterPause is a free log retrieval operation binding the contract event 0x6985a02210a168e66602d3235cb6db0e70f92b3ba4d376a33c0f3d9434bff625.
 //
-// Solidity: event Pause()
+// Solidity: e Pause()
 func (_Pausable *PausableFilterer) FilterPause(opts *bind.FilterOpts) (*PausablePauseIterator, error) {
 
 	logs, sub, err := _Pausable.contract.FilterLogs(opts, "Pause")
@@ -4191,7 +4870,7 @@ func (_Pausable *PausableFilterer) FilterPause(opts *bind.FilterOpts) (*Pausable
 
 // WatchPause is a free log subscription operation binding the contract event 0x6985a02210a168e66602d3235cb6db0e70f92b3ba4d376a33c0f3d9434bff625.
 //
-// Solidity: event Pause()
+// Solidity: e Pause()
 func (_Pausable *PausableFilterer) WatchPause(opts *bind.WatchOpts, sink chan<- *PausablePause) (event.Subscription, error) {
 
 	logs, sub, err := _Pausable.contract.WatchLogs(opts, "Pause")
@@ -4300,7 +4979,7 @@ type PausableUnpause struct {
 
 // FilterUnpause is a free log retrieval operation binding the contract event 0x7805862f689e2f13df9f062ff482ad3ad112aca9e0847911ed832e158c525b33.
 //
-// Solidity: event Unpause()
+// Solidity: e Unpause()
 func (_Pausable *PausableFilterer) FilterUnpause(opts *bind.FilterOpts) (*PausableUnpauseIterator, error) {
 
 	logs, sub, err := _Pausable.contract.FilterLogs(opts, "Unpause")
@@ -4312,7 +4991,7 @@ func (_Pausable *PausableFilterer) FilterUnpause(opts *bind.FilterOpts) (*Pausab
 
 // WatchUnpause is a free log subscription operation binding the contract event 0x7805862f689e2f13df9f062ff482ad3ad112aca9e0847911ed832e158c525b33.
 //
-// Solidity: event Unpause()
+// Solidity: e Unpause()
 func (_Pausable *PausableFilterer) WatchUnpause(opts *bind.WatchOpts, sink chan<- *PausableUnpause) (event.Subscription, error) {
 
 	logs, sub, err := _Pausable.contract.WatchLogs(opts, "Unpause")
@@ -4883,7 +5562,7 @@ type PausableTokenApproval struct {
 
 // FilterApproval is a free log retrieval operation binding the contract event 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925.
 //
-// Solidity: event Approval(owner indexed address, spender indexed address, value uint256)
+// Solidity: e Approval(owner indexed address, spender indexed address, value uint256)
 func (_PausableToken *PausableTokenFilterer) FilterApproval(opts *bind.FilterOpts, owner []common.Address, spender []common.Address) (*PausableTokenApprovalIterator, error) {
 
 	var ownerRule []interface{}
@@ -4904,7 +5583,7 @@ func (_PausableToken *PausableTokenFilterer) FilterApproval(opts *bind.FilterOpt
 
 // WatchApproval is a free log subscription operation binding the contract event 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925.
 //
-// Solidity: event Approval(owner indexed address, spender indexed address, value uint256)
+// Solidity: e Approval(owner indexed address, spender indexed address, value uint256)
 func (_PausableToken *PausableTokenFilterer) WatchApproval(opts *bind.WatchOpts, sink chan<- *PausableTokenApproval, owner []common.Address, spender []common.Address) (event.Subscription, error) {
 
 	var ownerRule []interface{}
@@ -5024,7 +5703,7 @@ type PausableTokenOwnershipTransferred struct {
 
 // FilterOwnershipTransferred is a free log retrieval operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
 //
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+// Solidity: e OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
 func (_PausableToken *PausableTokenFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*PausableTokenOwnershipTransferredIterator, error) {
 
 	var previousOwnerRule []interface{}
@@ -5045,7 +5724,7 @@ func (_PausableToken *PausableTokenFilterer) FilterOwnershipTransferred(opts *bi
 
 // WatchOwnershipTransferred is a free log subscription operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
 //
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+// Solidity: e OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
 func (_PausableToken *PausableTokenFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *PausableTokenOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
 
 	var previousOwnerRule []interface{}
@@ -5163,7 +5842,7 @@ type PausableTokenPause struct {
 
 // FilterPause is a free log retrieval operation binding the contract event 0x6985a02210a168e66602d3235cb6db0e70f92b3ba4d376a33c0f3d9434bff625.
 //
-// Solidity: event Pause()
+// Solidity: e Pause()
 func (_PausableToken *PausableTokenFilterer) FilterPause(opts *bind.FilterOpts) (*PausableTokenPauseIterator, error) {
 
 	logs, sub, err := _PausableToken.contract.FilterLogs(opts, "Pause")
@@ -5175,7 +5854,7 @@ func (_PausableToken *PausableTokenFilterer) FilterPause(opts *bind.FilterOpts) 
 
 // WatchPause is a free log subscription operation binding the contract event 0x6985a02210a168e66602d3235cb6db0e70f92b3ba4d376a33c0f3d9434bff625.
 //
-// Solidity: event Pause()
+// Solidity: e Pause()
 func (_PausableToken *PausableTokenFilterer) WatchPause(opts *bind.WatchOpts, sink chan<- *PausableTokenPause) (event.Subscription, error) {
 
 	logs, sub, err := _PausableToken.contract.WatchLogs(opts, "Pause")
@@ -5287,7 +5966,7 @@ type PausableTokenTransfer struct {
 
 // FilterTransfer is a free log retrieval operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_PausableToken *PausableTokenFilterer) FilterTransfer(opts *bind.FilterOpts, from []common.Address, to []common.Address) (*PausableTokenTransferIterator, error) {
 
 	var fromRule []interface{}
@@ -5308,7 +5987,7 @@ func (_PausableToken *PausableTokenFilterer) FilterTransfer(opts *bind.FilterOpt
 
 // WatchTransfer is a free log subscription operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_PausableToken *PausableTokenFilterer) WatchTransfer(opts *bind.WatchOpts, sink chan<- *PausableTokenTransfer, from []common.Address, to []common.Address) (event.Subscription, error) {
 
 	var fromRule []interface{}
@@ -5426,7 +6105,7 @@ type PausableTokenUnpause struct {
 
 // FilterUnpause is a free log retrieval operation binding the contract event 0x7805862f689e2f13df9f062ff482ad3ad112aca9e0847911ed832e158c525b33.
 //
-// Solidity: event Unpause()
+// Solidity: e Unpause()
 func (_PausableToken *PausableTokenFilterer) FilterUnpause(opts *bind.FilterOpts) (*PausableTokenUnpauseIterator, error) {
 
 	logs, sub, err := _PausableToken.contract.FilterLogs(opts, "Unpause")
@@ -5438,7 +6117,7 @@ func (_PausableToken *PausableTokenFilterer) FilterUnpause(opts *bind.FilterOpts
 
 // WatchUnpause is a free log subscription operation binding the contract event 0x7805862f689e2f13df9f062ff482ad3ad112aca9e0847911ed832e158c525b33.
 //
-// Solidity: event Unpause()
+// Solidity: e Unpause()
 func (_PausableToken *PausableTokenFilterer) WatchUnpause(opts *bind.WatchOpts, sink chan<- *PausableTokenUnpause) (event.Subscription, error) {
 
 	logs, sub, err := _PausableToken.contract.WatchLogs(opts, "Unpause")
@@ -5471,627 +6150,6 @@ func (_PausableToken *PausableTokenFilterer) WatchUnpause(opts *bind.WatchOpts, 
 			}
 		}
 	}), nil
-}
-
-// RenLedgerABI is the input ABI used to generate the binding from.
-const RenLedgerABI = "[{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderConfirmer\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"uint256\"}],\"name\":\"buyOrder\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"buyOrders\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"openSellOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"sellOrders\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"openBuyOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_signature\",\"type\":\"bytes\"},{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"cancelOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"},{\"name\":\"_orderMatches\",\"type\":\"bytes32[]\"}],\"name\":\"confirmOrder\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"uint256\"}],\"name\":\"sellOrder\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderDepth\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderBroker\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderState\",\"outputs\":[{\"name\":\"\",\"type\":\"uint8\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderMatch\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderTrader\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_orderId\",\"type\":\"bytes32\"}],\"name\":\"orderPriority\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getOrdersCount\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"uint256\"}],\"name\":\"getOrder\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"fee\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_fee\",\"type\":\"uint256\"},{\"name\":\"_token\",\"type\":\"address\"},{\"name\":\"_registry\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"}]"
-
-// RenLedgerBin is the compiled bytecode used for deploying new contracts.
-const RenLedgerBin = `0x608060405234801561001057600080fd5b5060405160608061109683398101604090815281516020830151919092015160049290925560058054600160a060020a03928316600160a060020a03199182161790915560068054929093169116179055611026806100706000396000f3006080604052600436106100fb5763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416631107c3f7811461010057806322f85eaa1461013457806335cea2881461016557806339b0d6771461018f5780634a8393f3146101ec5780635060340b14610204578063574ed6c11461025f5780637008b996146102ba57806397514d9014610314578063a188fcb81461032c578063a518166114610344578063aab14d041461035c578063af3e8a401461038a578063b1a08010146103f2578063b248e4e11461040a578063b5b3b05114610422578063d09ef24114610437578063ddca3f431461044f575b600080fd5b34801561010c57600080fd5b50610118600435610464565b60408051600160a060020a039092168252519081900360200190f35b34801561014057600080fd5b5061014c600435610485565b6040805192835290151560208301528051918290030190f35b34801561017157600080fd5b5061017d6004356104c1565b60408051918252519081900360200190f35b34801561019b57600080fd5b506040805160206004803580820135601f81018490048402850184019095528484526101ea94369492936024939284019190819084018382808284375094975050933594506104e09350505050565b005b3480156101f857600080fd5b5061017d600435610531565b34801561021057600080fd5b506040805160206004803580820135601f81018490048402850184019095528484526101ea943694929360249392840191908190840183828082843750949750509335945061053f9350505050565b34801561026b57600080fd5b506040805160206004803580820135601f81018490048402850184019095528484526101ea943694929360249392840191908190840183828082843750949750509335945061058e9350505050565b3480156102c657600080fd5b506040805160206004602480358281013584810280870186019097528086526101ea968435963696604495919490910192918291850190849080828437509497506106bf9650505050505050565b34801561032057600080fd5b5061014c600435610917565b34801561033857600080fd5b5061017d60043561093e565b34801561035057600080fd5b50610118600435610976565b34801561036857600080fd5b50610374600435610994565b6040805160ff9092168252519081900360200190f35b34801561039657600080fd5b506103a26004356109bd565b60408051602080825283518183015283519192839290830191858101910280838360005b838110156103de5781810151838201526020016103c6565b505050509050019250505060405180910390f35b3480156103fe57600080fd5b50610118600435610a23565b34801561041657600080fd5b5061017d600435610a44565b34801561042e57600080fd5b5061017d610a5a565b34801561044357600080fd5b5061014c600435610a65565b34801561045b57600080fd5b5061017d610a8c565b600081815260036020526040902060020154600160a060020a03165b919050565b600080548190831061049c575060009050806104bc565b60008054849081106104aa57fe5b90600052602060002001546001915091505b915091565b60008054829081106104cf57fe5b600091825260209091200154905081565b6104ea8282610a92565b600180548082019091557fb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf60181905560008054918152600360208190526040909120015550565b60018054829081106104cf57fe5b6105498282610a92565b600080546001810182557f290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563018290558054918152600360208190526040909120015550565b6000806001600084815260036020819052604090912054610100900460ff16908111156105b757fe5b146105c157600080fd5b604080517f52657075626c69632050726f746f636f6c3a2063616e63656c3a200000000000602080830191909152603b80830187905283518084039091018152605b90920192839052815191929182918401908083835b602083106106375780518252601f199092019160209182019101610618565b6001836020036101000a038019825116818451168082178552505050505050905001915050604051809103902091506106708285610d76565b600084815260036020526040902054909150600160a060020a0380831662010000909204161461069f57600080fd5b50506000908152600360205260409020805461ff00191661030017905550565b600654604080517f4f5550fc000000000000000000000000000000000000000000000000000000008152336c0100000000000000000000000081026bffffffffffffffffffffffff191660048301529151600093600160a060020a031691634f5550fc91602480830192602092919082900301818887803b15801561074357600080fd5b505af1158015610757573d6000803e3d6000fd5b505050506040513d602081101561076d57600080fd5b5051151561077a57600080fd5b6001600085815260036020819052604090912054610100900460ff16908111156107a057fe5b146107aa57600080fd5b600091505b825182101561080f5760016003600085858151811015156107cc57fe5b602090810290910181015182528101919091526040016000205460ff6101009091041660038111156107fa57fe5b1461080457600080fd5b6001909101906107af565b600091505b82518210156108bd57600260036000858581518110151561083157fe5b60209081029091018101518252810191909152604001600020805461ff00191661010083600381111561086057fe5b02179055506040805160208101909152848152835160039060009086908690811061088757fe5b602090810290910181015182528101919091526040016000206108b1916005909101906001610f93565b50600190910190610814565b6000848152600360209081526040909120805461ff00191661020017815560028101805473ffffffffffffffffffffffffffffffffffffffff191633179055845161091092600590920191860190610f93565b5050505050565b60015460009081908310610930575060009050806104bc565b60018054849081106104aa57fe5b600081815260036020526040812060040154151561095e57506000610480565b50600090815260036020526040902060040154430390565b600090815260036020526040902060010154600160a060020a031690565b6000818152600360208190526040822054610100900460ff16908111156109b757fe5b92915050565b600081815260036020908152604091829020600501805483518184028101840190945280845260609392830182828015610a1757602002820191906000526020600020905b81548152600190910190602001808311610a02575b50505050509050919050565b600090815260036020526040902054620100009004600160a060020a031690565b6000908152600360208190526040909120015490565b600154600054015b90565b60025460009081908310610a7e575060009050806104bc565b60028054849081106104aa57fe5b60045481565b60048054600554604080517fdd62ed3e000000000000000000000000000000000000000000000000000000008152339481019490945230602485015251600093849392600160a060020a03169163dd62ed3e9160448082019260209290919082900301818887803b158015610b0657600080fd5b505af1158015610b1a573d6000803e3d6000fd5b505050506040513d6020811015610b3057600080fd5b50511015610b3d57600080fd5b60055460048054604080517f23b872dd0000000000000000000000000000000000000000000000000000000081523393810193909352306024840152604483019190915251600160a060020a03909216916323b872dd916064808201926020929091908290030181600087803b158015610bb657600080fd5b505af1158015610bca573d6000803e3d6000fd5b505050506040513d6020811015610be057600080fd5b50511515610bed57600080fd5b6000838152600360208190526040822054610100900460ff1690811115610c1057fe5b14610c1a57600080fd5b604080517f52657075626c69632050726f746f636f6c3a206f70656e3a2000000000000000602080830191909152603980830187905283518084039091018152605990920192839052815191929182918401908083835b60208310610c905780518252601f199092019160209182019101610c71565b6001836020036101000a03801982511681845116808217855250505050505090500191505060405180910390209150610cc98285610d76565b60008481526003602052604081208054600160a060020a0393909316620100000261ff00199093166101001775ffffffffffffffffffffffffffffffffffffffff000019169290921782556001808301805473ffffffffffffffffffffffffffffffffffffffff1916331790554360049093019290925560028054928301815590527f405787fa12a823e0f2b7631cc41b3ba8828b3321ca811111fa75cd3aa3bb5ace0192909255505050565b604080518082018252601c8082527f19457468657265756d205369676e6564204d6573736167653a0a333200000000602080840191825293516000948593849386938a9301918291908083835b60208310610de25780518252601f199092019160209182019101610dc3565b51815160209384036101000a600019018019909216911617905292019384525060408051808503815293820190819052835193945092839250908401908083835b60208310610e425780518252601f199092019160209182019101610e23565b6001836020036101000a03801982511681845116808217855250505050505090500191505060405180910390209150846040815181101515610e8057fe5b016020015160f860020a90819004810204905060ff81161580610ea657508060ff166001145b15610eaf57601b015b60018282610ebe886000610f36565b610ec9896020610f36565b60408051600080825260208083018085529790975260ff90951681830152606081019390935260808301919091525160a08083019493601f198301938390039091019190865af1158015610f21573d6000803e3d6000fd5b5050604051601f190151979650505050505050565b600080805b6020811015610f8b5780600802858286601f0103815181101515610f5b57fe5b90602001015160f860020a900460f860020a0260f860020a90049060020a02820191508080600101915050610f3b565b509392505050565b828054828255906000526020600020908101928215610fd0579160200282015b82811115610fd05782518255602090920191600190910190610fb3565b50610fdc929150610fe0565b5090565b610a6291905b80821115610fdc5760008155600101610fe65600a165627a7a72305820fa65dda3b0f22bf919555eb8e55cbe6cb5795a333e5271d71bb5f3b8b42206f70029`
-
-// DeployRenLedger deploys a new Ethereum contract, binding an instance of RenLedger to it.
-func DeployRenLedger(auth *bind.TransactOpts, backend bind.ContractBackend, _fee *big.Int, _token common.Address, _registry common.Address) (common.Address, *types.Transaction, *RenLedger, error) {
-	parsed, err := abi.JSON(strings.NewReader(RenLedgerABI))
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(RenLedgerBin), backend, _fee, _token, _registry)
-	if err != nil {
-		return common.Address{}, nil, nil, err
-	}
-	return address, tx, &RenLedger{RenLedgerCaller: RenLedgerCaller{contract: contract}, RenLedgerTransactor: RenLedgerTransactor{contract: contract}, RenLedgerFilterer: RenLedgerFilterer{contract: contract}}, nil
-}
-
-// RenLedger is an auto generated Go binding around an Ethereum contract.
-type RenLedger struct {
-	RenLedgerCaller     // Read-only binding to the contract
-	RenLedgerTransactor // Write-only binding to the contract
-	RenLedgerFilterer   // Log filterer for contract events
-}
-
-// RenLedgerCaller is an auto generated read-only Go binding around an Ethereum contract.
-type RenLedgerCaller struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenLedgerTransactor is an auto generated write-only Go binding around an Ethereum contract.
-type RenLedgerTransactor struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenLedgerFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
-type RenLedgerFilterer struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
-}
-
-// RenLedgerSession is an auto generated Go binding around an Ethereum contract,
-// with pre-set call and transact options.
-type RenLedgerSession struct {
-	Contract     *RenLedger        // Generic contract binding to set the session for
-	CallOpts     bind.CallOpts     // Call options to use throughout this session
-	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
-}
-
-// RenLedgerCallerSession is an auto generated read-only Go binding around an Ethereum contract,
-// with pre-set call options.
-type RenLedgerCallerSession struct {
-	Contract *RenLedgerCaller // Generic contract caller binding to set the session for
-	CallOpts bind.CallOpts    // Call options to use throughout this session
-}
-
-// RenLedgerTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
-// with pre-set transact options.
-type RenLedgerTransactorSession struct {
-	Contract     *RenLedgerTransactor // Generic contract transactor binding to set the session for
-	TransactOpts bind.TransactOpts    // Transaction auth options to use throughout this session
-}
-
-// RenLedgerRaw is an auto generated low-level Go binding around an Ethereum contract.
-type RenLedgerRaw struct {
-	Contract *RenLedger // Generic contract binding to access the raw methods on
-}
-
-// RenLedgerCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
-type RenLedgerCallerRaw struct {
-	Contract *RenLedgerCaller // Generic read-only contract binding to access the raw methods on
-}
-
-// RenLedgerTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
-type RenLedgerTransactorRaw struct {
-	Contract *RenLedgerTransactor // Generic write-only contract binding to access the raw methods on
-}
-
-// NewRenLedger creates a new instance of RenLedger, bound to a specific deployed contract.
-func NewRenLedger(address common.Address, backend bind.ContractBackend) (*RenLedger, error) {
-	contract, err := bindRenLedger(address, backend, backend, backend)
-	if err != nil {
-		return nil, err
-	}
-	return &RenLedger{RenLedgerCaller: RenLedgerCaller{contract: contract}, RenLedgerTransactor: RenLedgerTransactor{contract: contract}, RenLedgerFilterer: RenLedgerFilterer{contract: contract}}, nil
-}
-
-// NewRenLedgerCaller creates a new read-only instance of RenLedger, bound to a specific deployed contract.
-func NewRenLedgerCaller(address common.Address, caller bind.ContractCaller) (*RenLedgerCaller, error) {
-	contract, err := bindRenLedger(address, caller, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &RenLedgerCaller{contract: contract}, nil
-}
-
-// NewRenLedgerTransactor creates a new write-only instance of RenLedger, bound to a specific deployed contract.
-func NewRenLedgerTransactor(address common.Address, transactor bind.ContractTransactor) (*RenLedgerTransactor, error) {
-	contract, err := bindRenLedger(address, nil, transactor, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &RenLedgerTransactor{contract: contract}, nil
-}
-
-// NewRenLedgerFilterer creates a new log filterer instance of RenLedger, bound to a specific deployed contract.
-func NewRenLedgerFilterer(address common.Address, filterer bind.ContractFilterer) (*RenLedgerFilterer, error) {
-	contract, err := bindRenLedger(address, nil, nil, filterer)
-	if err != nil {
-		return nil, err
-	}
-	return &RenLedgerFilterer{contract: contract}, nil
-}
-
-// bindRenLedger binds a generic wrapper to an already deployed contract.
-func bindRenLedger(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(RenLedgerABI))
-	if err != nil {
-		return nil, err
-	}
-	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_RenLedger *RenLedgerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _RenLedger.Contract.RenLedgerCaller.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_RenLedger *RenLedgerRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _RenLedger.Contract.RenLedgerTransactor.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_RenLedger *RenLedgerRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _RenLedger.Contract.RenLedgerTransactor.contract.Transact(opts, method, params...)
-}
-
-// Call invokes the (constant) contract method with params as input values and
-// sets the output to result. The result type might be a single field for simple
-// returns, a slice of interfaces for anonymous returns and a struct for named
-// returns.
-func (_RenLedger *RenLedgerCallerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
-	return _RenLedger.Contract.contract.Call(opts, result, method, params...)
-}
-
-// Transfer initiates a plain transaction to move funds to the contract, calling
-// its default method if one is available.
-func (_RenLedger *RenLedgerTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _RenLedger.Contract.contract.Transfer(opts)
-}
-
-// Transact invokes the (paid) contract method with params as input values.
-func (_RenLedger *RenLedgerTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _RenLedger.Contract.contract.Transact(opts, method, params...)
-}
-
-// BuyOrder is a free data retrieval call binding the contract method 0x22f85eaa.
-//
-// Solidity: function buyOrder(index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCaller) BuyOrder(opts *bind.CallOpts, index *big.Int) ([32]byte, bool, error) {
-	var (
-		ret0 = new([32]byte)
-		ret1 = new(bool)
-	)
-	out := &[]interface{}{
-		ret0,
-		ret1,
-	}
-	err := _RenLedger.contract.Call(opts, out, "buyOrder", index)
-	return *ret0, *ret1, err
-}
-
-// BuyOrder is a free data retrieval call binding the contract method 0x22f85eaa.
-//
-// Solidity: function buyOrder(index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerSession) BuyOrder(index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.BuyOrder(&_RenLedger.CallOpts, index)
-}
-
-// BuyOrder is a free data retrieval call binding the contract method 0x22f85eaa.
-//
-// Solidity: function buyOrder(index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCallerSession) BuyOrder(index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.BuyOrder(&_RenLedger.CallOpts, index)
-}
-
-// BuyOrders is a free data retrieval call binding the contract method 0x35cea288.
-//
-// Solidity: function buyOrders( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerCaller) BuyOrders(opts *bind.CallOpts, arg0 *big.Int) ([32]byte, error) {
-	var (
-		ret0 = new([32]byte)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "buyOrders", arg0)
-	return *ret0, err
-}
-
-// BuyOrders is a free data retrieval call binding the contract method 0x35cea288.
-//
-// Solidity: function buyOrders( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerSession) BuyOrders(arg0 *big.Int) ([32]byte, error) {
-	return _RenLedger.Contract.BuyOrders(&_RenLedger.CallOpts, arg0)
-}
-
-// BuyOrders is a free data retrieval call binding the contract method 0x35cea288.
-//
-// Solidity: function buyOrders( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerCallerSession) BuyOrders(arg0 *big.Int) ([32]byte, error) {
-	return _RenLedger.Contract.BuyOrders(&_RenLedger.CallOpts, arg0)
-}
-
-// Fee is a free data retrieval call binding the contract method 0xddca3f43.
-//
-// Solidity: function fee() constant returns(uint256)
-func (_RenLedger *RenLedgerCaller) Fee(opts *bind.CallOpts) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "fee")
-	return *ret0, err
-}
-
-// Fee is a free data retrieval call binding the contract method 0xddca3f43.
-//
-// Solidity: function fee() constant returns(uint256)
-func (_RenLedger *RenLedgerSession) Fee() (*big.Int, error) {
-	return _RenLedger.Contract.Fee(&_RenLedger.CallOpts)
-}
-
-// Fee is a free data retrieval call binding the contract method 0xddca3f43.
-//
-// Solidity: function fee() constant returns(uint256)
-func (_RenLedger *RenLedgerCallerSession) Fee() (*big.Int, error) {
-	return _RenLedger.Contract.Fee(&_RenLedger.CallOpts)
-}
-
-// GetOrder is a free data retrieval call binding the contract method 0xd09ef241.
-//
-// Solidity: function getOrder(index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCaller) GetOrder(opts *bind.CallOpts, index *big.Int) ([32]byte, bool, error) {
-	var (
-		ret0 = new([32]byte)
-		ret1 = new(bool)
-	)
-	out := &[]interface{}{
-		ret0,
-		ret1,
-	}
-	err := _RenLedger.contract.Call(opts, out, "getOrder", index)
-	return *ret0, *ret1, err
-}
-
-// GetOrder is a free data retrieval call binding the contract method 0xd09ef241.
-//
-// Solidity: function getOrder(index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerSession) GetOrder(index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.GetOrder(&_RenLedger.CallOpts, index)
-}
-
-// GetOrder is a free data retrieval call binding the contract method 0xd09ef241.
-//
-// Solidity: function getOrder(index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCallerSession) GetOrder(index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.GetOrder(&_RenLedger.CallOpts, index)
-}
-
-// GetOrdersCount is a free data retrieval call binding the contract method 0xb5b3b051.
-//
-// Solidity: function getOrdersCount() constant returns(uint256)
-func (_RenLedger *RenLedgerCaller) GetOrdersCount(opts *bind.CallOpts) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "getOrdersCount")
-	return *ret0, err
-}
-
-// GetOrdersCount is a free data retrieval call binding the contract method 0xb5b3b051.
-//
-// Solidity: function getOrdersCount() constant returns(uint256)
-func (_RenLedger *RenLedgerSession) GetOrdersCount() (*big.Int, error) {
-	return _RenLedger.Contract.GetOrdersCount(&_RenLedger.CallOpts)
-}
-
-// GetOrdersCount is a free data retrieval call binding the contract method 0xb5b3b051.
-//
-// Solidity: function getOrdersCount() constant returns(uint256)
-func (_RenLedger *RenLedgerCallerSession) GetOrdersCount() (*big.Int, error) {
-	return _RenLedger.Contract.GetOrdersCount(&_RenLedger.CallOpts)
-}
-
-// OrderBroker is a free data retrieval call binding the contract method 0xa5181661.
-//
-// Solidity: function orderBroker(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerCaller) OrderBroker(opts *bind.CallOpts, _orderId [32]byte) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderBroker", _orderId)
-	return *ret0, err
-}
-
-// OrderBroker is a free data retrieval call binding the contract method 0xa5181661.
-//
-// Solidity: function orderBroker(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerSession) OrderBroker(_orderId [32]byte) (common.Address, error) {
-	return _RenLedger.Contract.OrderBroker(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderBroker is a free data retrieval call binding the contract method 0xa5181661.
-//
-// Solidity: function orderBroker(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerCallerSession) OrderBroker(_orderId [32]byte) (common.Address, error) {
-	return _RenLedger.Contract.OrderBroker(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderConfirmer is a free data retrieval call binding the contract method 0x1107c3f7.
-//
-// Solidity: function orderConfirmer(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerCaller) OrderConfirmer(opts *bind.CallOpts, _orderId [32]byte) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderConfirmer", _orderId)
-	return *ret0, err
-}
-
-// OrderConfirmer is a free data retrieval call binding the contract method 0x1107c3f7.
-//
-// Solidity: function orderConfirmer(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerSession) OrderConfirmer(_orderId [32]byte) (common.Address, error) {
-	return _RenLedger.Contract.OrderConfirmer(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderConfirmer is a free data retrieval call binding the contract method 0x1107c3f7.
-//
-// Solidity: function orderConfirmer(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerCallerSession) OrderConfirmer(_orderId [32]byte) (common.Address, error) {
-	return _RenLedger.Contract.OrderConfirmer(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderDepth is a free data retrieval call binding the contract method 0xa188fcb8.
-//
-// Solidity: function orderDepth(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerCaller) OrderDepth(opts *bind.CallOpts, _orderId [32]byte) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderDepth", _orderId)
-	return *ret0, err
-}
-
-// OrderDepth is a free data retrieval call binding the contract method 0xa188fcb8.
-//
-// Solidity: function orderDepth(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerSession) OrderDepth(_orderId [32]byte) (*big.Int, error) {
-	return _RenLedger.Contract.OrderDepth(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderDepth is a free data retrieval call binding the contract method 0xa188fcb8.
-//
-// Solidity: function orderDepth(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerCallerSession) OrderDepth(_orderId [32]byte) (*big.Int, error) {
-	return _RenLedger.Contract.OrderDepth(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderMatch is a free data retrieval call binding the contract method 0xaf3e8a40.
-//
-// Solidity: function orderMatch(_orderId bytes32) constant returns(bytes32[])
-func (_RenLedger *RenLedgerCaller) OrderMatch(opts *bind.CallOpts, _orderId [32]byte) ([][32]byte, error) {
-	var (
-		ret0 = new([][32]byte)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderMatch", _orderId)
-	return *ret0, err
-}
-
-// OrderMatch is a free data retrieval call binding the contract method 0xaf3e8a40.
-//
-// Solidity: function orderMatch(_orderId bytes32) constant returns(bytes32[])
-func (_RenLedger *RenLedgerSession) OrderMatch(_orderId [32]byte) ([][32]byte, error) {
-	return _RenLedger.Contract.OrderMatch(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderMatch is a free data retrieval call binding the contract method 0xaf3e8a40.
-//
-// Solidity: function orderMatch(_orderId bytes32) constant returns(bytes32[])
-func (_RenLedger *RenLedgerCallerSession) OrderMatch(_orderId [32]byte) ([][32]byte, error) {
-	return _RenLedger.Contract.OrderMatch(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderPriority is a free data retrieval call binding the contract method 0xb248e4e1.
-//
-// Solidity: function orderPriority(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerCaller) OrderPriority(opts *bind.CallOpts, _orderId [32]byte) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderPriority", _orderId)
-	return *ret0, err
-}
-
-// OrderPriority is a free data retrieval call binding the contract method 0xb248e4e1.
-//
-// Solidity: function orderPriority(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerSession) OrderPriority(_orderId [32]byte) (*big.Int, error) {
-	return _RenLedger.Contract.OrderPriority(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderPriority is a free data retrieval call binding the contract method 0xb248e4e1.
-//
-// Solidity: function orderPriority(_orderId bytes32) constant returns(uint256)
-func (_RenLedger *RenLedgerCallerSession) OrderPriority(_orderId [32]byte) (*big.Int, error) {
-	return _RenLedger.Contract.OrderPriority(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderState is a free data retrieval call binding the contract method 0xaab14d04.
-//
-// Solidity: function orderState(_orderId bytes32) constant returns(uint8)
-func (_RenLedger *RenLedgerCaller) OrderState(opts *bind.CallOpts, _orderId [32]byte) (uint8, error) {
-	var (
-		ret0 = new(uint8)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderState", _orderId)
-	return *ret0, err
-}
-
-// OrderState is a free data retrieval call binding the contract method 0xaab14d04.
-//
-// Solidity: function orderState(_orderId bytes32) constant returns(uint8)
-func (_RenLedger *RenLedgerSession) OrderState(_orderId [32]byte) (uint8, error) {
-	return _RenLedger.Contract.OrderState(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderState is a free data retrieval call binding the contract method 0xaab14d04.
-//
-// Solidity: function orderState(_orderId bytes32) constant returns(uint8)
-func (_RenLedger *RenLedgerCallerSession) OrderState(_orderId [32]byte) (uint8, error) {
-	return _RenLedger.Contract.OrderState(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderTrader is a free data retrieval call binding the contract method 0xb1a08010.
-//
-// Solidity: function orderTrader(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerCaller) OrderTrader(opts *bind.CallOpts, _orderId [32]byte) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "orderTrader", _orderId)
-	return *ret0, err
-}
-
-// OrderTrader is a free data retrieval call binding the contract method 0xb1a08010.
-//
-// Solidity: function orderTrader(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerSession) OrderTrader(_orderId [32]byte) (common.Address, error) {
-	return _RenLedger.Contract.OrderTrader(&_RenLedger.CallOpts, _orderId)
-}
-
-// OrderTrader is a free data retrieval call binding the contract method 0xb1a08010.
-//
-// Solidity: function orderTrader(_orderId bytes32) constant returns(address)
-func (_RenLedger *RenLedgerCallerSession) OrderTrader(_orderId [32]byte) (common.Address, error) {
-	return _RenLedger.Contract.OrderTrader(&_RenLedger.CallOpts, _orderId)
-}
-
-// SellOrder is a free data retrieval call binding the contract method 0x97514d90.
-//
-// Solidity: function sellOrder(index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCaller) SellOrder(opts *bind.CallOpts, index *big.Int) ([32]byte, bool, error) {
-	var (
-		ret0 = new([32]byte)
-		ret1 = new(bool)
-	)
-	out := &[]interface{}{
-		ret0,
-		ret1,
-	}
-	err := _RenLedger.contract.Call(opts, out, "sellOrder", index)
-	return *ret0, *ret1, err
-}
-
-// SellOrder is a free data retrieval call binding the contract method 0x97514d90.
-//
-// Solidity: function sellOrder(index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerSession) SellOrder(index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.SellOrder(&_RenLedger.CallOpts, index)
-}
-
-// SellOrder is a free data retrieval call binding the contract method 0x97514d90.
-//
-// Solidity: function sellOrder(index uint256) constant returns(bytes32, bool)
-func (_RenLedger *RenLedgerCallerSession) SellOrder(index *big.Int) ([32]byte, bool, error) {
-	return _RenLedger.Contract.SellOrder(&_RenLedger.CallOpts, index)
-}
-
-// SellOrders is a free data retrieval call binding the contract method 0x4a8393f3.
-//
-// Solidity: function sellOrders( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerCaller) SellOrders(opts *bind.CallOpts, arg0 *big.Int) ([32]byte, error) {
-	var (
-		ret0 = new([32]byte)
-	)
-	out := ret0
-	err := _RenLedger.contract.Call(opts, out, "sellOrders", arg0)
-	return *ret0, err
-}
-
-// SellOrders is a free data retrieval call binding the contract method 0x4a8393f3.
-//
-// Solidity: function sellOrders( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerSession) SellOrders(arg0 *big.Int) ([32]byte, error) {
-	return _RenLedger.Contract.SellOrders(&_RenLedger.CallOpts, arg0)
-}
-
-// SellOrders is a free data retrieval call binding the contract method 0x4a8393f3.
-//
-// Solidity: function sellOrders( uint256) constant returns(bytes32)
-func (_RenLedger *RenLedgerCallerSession) SellOrders(arg0 *big.Int) ([32]byte, error) {
-	return _RenLedger.Contract.SellOrders(&_RenLedger.CallOpts, arg0)
-}
-
-// CancelOrder is a paid mutator transaction binding the contract method 0x574ed6c1.
-//
-// Solidity: function cancelOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerTransactor) CancelOrder(opts *bind.TransactOpts, _signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.contract.Transact(opts, "cancelOrder", _signature, _orderId)
-}
-
-// CancelOrder is a paid mutator transaction binding the contract method 0x574ed6c1.
-//
-// Solidity: function cancelOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerSession) CancelOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.CancelOrder(&_RenLedger.TransactOpts, _signature, _orderId)
-}
-
-// CancelOrder is a paid mutator transaction binding the contract method 0x574ed6c1.
-//
-// Solidity: function cancelOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerTransactorSession) CancelOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.CancelOrder(&_RenLedger.TransactOpts, _signature, _orderId)
-}
-
-// ConfirmOrder is a paid mutator transaction binding the contract method 0x7008b996.
-//
-// Solidity: function confirmOrder(_orderId bytes32, _orderMatches bytes32[]) returns()
-func (_RenLedger *RenLedgerTransactor) ConfirmOrder(opts *bind.TransactOpts, _orderId [32]byte, _orderMatches [][32]byte) (*types.Transaction, error) {
-	return _RenLedger.contract.Transact(opts, "confirmOrder", _orderId, _orderMatches)
-}
-
-// ConfirmOrder is a paid mutator transaction binding the contract method 0x7008b996.
-//
-// Solidity: function confirmOrder(_orderId bytes32, _orderMatches bytes32[]) returns()
-func (_RenLedger *RenLedgerSession) ConfirmOrder(_orderId [32]byte, _orderMatches [][32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.ConfirmOrder(&_RenLedger.TransactOpts, _orderId, _orderMatches)
-}
-
-// ConfirmOrder is a paid mutator transaction binding the contract method 0x7008b996.
-//
-// Solidity: function confirmOrder(_orderId bytes32, _orderMatches bytes32[]) returns()
-func (_RenLedger *RenLedgerTransactorSession) ConfirmOrder(_orderId [32]byte, _orderMatches [][32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.ConfirmOrder(&_RenLedger.TransactOpts, _orderId, _orderMatches)
-}
-
-// OpenBuyOrder is a paid mutator transaction binding the contract method 0x5060340b.
-//
-// Solidity: function openBuyOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerTransactor) OpenBuyOrder(opts *bind.TransactOpts, _signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.contract.Transact(opts, "openBuyOrder", _signature, _orderId)
-}
-
-// OpenBuyOrder is a paid mutator transaction binding the contract method 0x5060340b.
-//
-// Solidity: function openBuyOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerSession) OpenBuyOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.OpenBuyOrder(&_RenLedger.TransactOpts, _signature, _orderId)
-}
-
-// OpenBuyOrder is a paid mutator transaction binding the contract method 0x5060340b.
-//
-// Solidity: function openBuyOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerTransactorSession) OpenBuyOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.OpenBuyOrder(&_RenLedger.TransactOpts, _signature, _orderId)
-}
-
-// OpenSellOrder is a paid mutator transaction binding the contract method 0x39b0d677.
-//
-// Solidity: function openSellOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerTransactor) OpenSellOrder(opts *bind.TransactOpts, _signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.contract.Transact(opts, "openSellOrder", _signature, _orderId)
-}
-
-// OpenSellOrder is a paid mutator transaction binding the contract method 0x39b0d677.
-//
-// Solidity: function openSellOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerSession) OpenSellOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.OpenSellOrder(&_RenLedger.TransactOpts, _signature, _orderId)
-}
-
-// OpenSellOrder is a paid mutator transaction binding the contract method 0x39b0d677.
-//
-// Solidity: function openSellOrder(_signature bytes, _orderId bytes32) returns()
-func (_RenLedger *RenLedgerTransactorSession) OpenSellOrder(_signature []byte, _orderId [32]byte) (*types.Transaction, error) {
-	return _RenLedger.Contract.OpenSellOrder(&_RenLedger.TransactOpts, _signature, _orderId)
 }
 
 // RepublicTokenABI is the input ABI used to generate the binding from.
@@ -6776,7 +6834,7 @@ type RepublicTokenApproval struct {
 
 // FilterApproval is a free log retrieval operation binding the contract event 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925.
 //
-// Solidity: event Approval(owner indexed address, spender indexed address, value uint256)
+// Solidity: e Approval(owner indexed address, spender indexed address, value uint256)
 func (_RepublicToken *RepublicTokenFilterer) FilterApproval(opts *bind.FilterOpts, owner []common.Address, spender []common.Address) (*RepublicTokenApprovalIterator, error) {
 
 	var ownerRule []interface{}
@@ -6797,7 +6855,7 @@ func (_RepublicToken *RepublicTokenFilterer) FilterApproval(opts *bind.FilterOpt
 
 // WatchApproval is a free log subscription operation binding the contract event 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925.
 //
-// Solidity: event Approval(owner indexed address, spender indexed address, value uint256)
+// Solidity: e Approval(owner indexed address, spender indexed address, value uint256)
 func (_RepublicToken *RepublicTokenFilterer) WatchApproval(opts *bind.WatchOpts, sink chan<- *RepublicTokenApproval, owner []common.Address, spender []common.Address) (event.Subscription, error) {
 
 	var ownerRule []interface{}
@@ -6917,7 +6975,7 @@ type RepublicTokenBurn struct {
 
 // FilterBurn is a free log retrieval operation binding the contract event 0xcc16f5dbb4873280815c1ee09dbd06736cffcc184412cf7a71a0fdb75d397ca5.
 //
-// Solidity: event Burn(burner indexed address, value uint256)
+// Solidity: e Burn(burner indexed address, value uint256)
 func (_RepublicToken *RepublicTokenFilterer) FilterBurn(opts *bind.FilterOpts, burner []common.Address) (*RepublicTokenBurnIterator, error) {
 
 	var burnerRule []interface{}
@@ -6934,7 +6992,7 @@ func (_RepublicToken *RepublicTokenFilterer) FilterBurn(opts *bind.FilterOpts, b
 
 // WatchBurn is a free log subscription operation binding the contract event 0xcc16f5dbb4873280815c1ee09dbd06736cffcc184412cf7a71a0fdb75d397ca5.
 //
-// Solidity: event Burn(burner indexed address, value uint256)
+// Solidity: e Burn(burner indexed address, value uint256)
 func (_RepublicToken *RepublicTokenFilterer) WatchBurn(opts *bind.WatchOpts, sink chan<- *RepublicTokenBurn, burner []common.Address) (event.Subscription, error) {
 
 	var burnerRule []interface{}
@@ -7050,7 +7108,7 @@ type RepublicTokenOwnershipTransferred struct {
 
 // FilterOwnershipTransferred is a free log retrieval operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
 //
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+// Solidity: e OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
 func (_RepublicToken *RepublicTokenFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*RepublicTokenOwnershipTransferredIterator, error) {
 
 	var previousOwnerRule []interface{}
@@ -7071,7 +7129,7 @@ func (_RepublicToken *RepublicTokenFilterer) FilterOwnershipTransferred(opts *bi
 
 // WatchOwnershipTransferred is a free log subscription operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
 //
-// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+// Solidity: e OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
 func (_RepublicToken *RepublicTokenFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *RepublicTokenOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
 
 	var previousOwnerRule []interface{}
@@ -7189,7 +7247,7 @@ type RepublicTokenPause struct {
 
 // FilterPause is a free log retrieval operation binding the contract event 0x6985a02210a168e66602d3235cb6db0e70f92b3ba4d376a33c0f3d9434bff625.
 //
-// Solidity: event Pause()
+// Solidity: e Pause()
 func (_RepublicToken *RepublicTokenFilterer) FilterPause(opts *bind.FilterOpts) (*RepublicTokenPauseIterator, error) {
 
 	logs, sub, err := _RepublicToken.contract.FilterLogs(opts, "Pause")
@@ -7201,7 +7259,7 @@ func (_RepublicToken *RepublicTokenFilterer) FilterPause(opts *bind.FilterOpts) 
 
 // WatchPause is a free log subscription operation binding the contract event 0x6985a02210a168e66602d3235cb6db0e70f92b3ba4d376a33c0f3d9434bff625.
 //
-// Solidity: event Pause()
+// Solidity: e Pause()
 func (_RepublicToken *RepublicTokenFilterer) WatchPause(opts *bind.WatchOpts, sink chan<- *RepublicTokenPause) (event.Subscription, error) {
 
 	logs, sub, err := _RepublicToken.contract.WatchLogs(opts, "Pause")
@@ -7313,7 +7371,7 @@ type RepublicTokenTransfer struct {
 
 // FilterTransfer is a free log retrieval operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_RepublicToken *RepublicTokenFilterer) FilterTransfer(opts *bind.FilterOpts, from []common.Address, to []common.Address) (*RepublicTokenTransferIterator, error) {
 
 	var fromRule []interface{}
@@ -7334,7 +7392,7 @@ func (_RepublicToken *RepublicTokenFilterer) FilterTransfer(opts *bind.FilterOpt
 
 // WatchTransfer is a free log subscription operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_RepublicToken *RepublicTokenFilterer) WatchTransfer(opts *bind.WatchOpts, sink chan<- *RepublicTokenTransfer, from []common.Address, to []common.Address) (event.Subscription, error) {
 
 	var fromRule []interface{}
@@ -7452,7 +7510,7 @@ type RepublicTokenUnpause struct {
 
 // FilterUnpause is a free log retrieval operation binding the contract event 0x7805862f689e2f13df9f062ff482ad3ad112aca9e0847911ed832e158c525b33.
 //
-// Solidity: event Unpause()
+// Solidity: e Unpause()
 func (_RepublicToken *RepublicTokenFilterer) FilterUnpause(opts *bind.FilterOpts) (*RepublicTokenUnpauseIterator, error) {
 
 	logs, sub, err := _RepublicToken.contract.FilterLogs(opts, "Unpause")
@@ -7464,7 +7522,7 @@ func (_RepublicToken *RepublicTokenFilterer) FilterUnpause(opts *bind.FilterOpts
 
 // WatchUnpause is a free log subscription operation binding the contract event 0x7805862f689e2f13df9f062ff482ad3ad112aca9e0847911ed832e158c525b33.
 //
-// Solidity: event Unpause()
+// Solidity: e Unpause()
 func (_RepublicToken *RepublicTokenFilterer) WatchUnpause(opts *bind.WatchOpts, sink chan<- *RepublicTokenUnpause) (event.Subscription, error) {
 
 	logs, sub, err := _RepublicToken.contract.WatchLogs(opts, "Unpause")
@@ -8081,7 +8139,7 @@ type StandardTokenApproval struct {
 
 // FilterApproval is a free log retrieval operation binding the contract event 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925.
 //
-// Solidity: event Approval(owner indexed address, spender indexed address, value uint256)
+// Solidity: e Approval(owner indexed address, spender indexed address, value uint256)
 func (_StandardToken *StandardTokenFilterer) FilterApproval(opts *bind.FilterOpts, owner []common.Address, spender []common.Address) (*StandardTokenApprovalIterator, error) {
 
 	var ownerRule []interface{}
@@ -8102,7 +8160,7 @@ func (_StandardToken *StandardTokenFilterer) FilterApproval(opts *bind.FilterOpt
 
 // WatchApproval is a free log subscription operation binding the contract event 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925.
 //
-// Solidity: event Approval(owner indexed address, spender indexed address, value uint256)
+// Solidity: e Approval(owner indexed address, spender indexed address, value uint256)
 func (_StandardToken *StandardTokenFilterer) WatchApproval(opts *bind.WatchOpts, sink chan<- *StandardTokenApproval, owner []common.Address, spender []common.Address) (event.Subscription, error) {
 
 	var ownerRule []interface{}
@@ -8223,7 +8281,7 @@ type StandardTokenTransfer struct {
 
 // FilterTransfer is a free log retrieval operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_StandardToken *StandardTokenFilterer) FilterTransfer(opts *bind.FilterOpts, from []common.Address, to []common.Address) (*StandardTokenTransferIterator, error) {
 
 	var fromRule []interface{}
@@ -8244,7 +8302,7 @@ func (_StandardToken *StandardTokenFilterer) FilterTransfer(opts *bind.FilterOpt
 
 // WatchTransfer is a free log subscription operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+// Solidity: e Transfer(from indexed address, to indexed address, value uint256)
 func (_StandardToken *StandardTokenFilterer) WatchTransfer(opts *bind.WatchOpts, sink chan<- *StandardTokenTransfer, from []common.Address, to []common.Address) (event.Subscription, error) {
 
 	var fromRule []interface{}

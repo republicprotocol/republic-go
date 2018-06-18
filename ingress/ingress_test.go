@@ -28,8 +28,7 @@ var _ = Describe("Ingress", func() {
 	var ingress Ingress
 	var done chan struct{}
 	var errChSync <-chan error
-	var errChOpenOrders <-chan error
-	var errChOpenOrderFragments <-chan error
+	var errChProcess <-chan error
 
 	BeforeEach(func() {
 		var err error
@@ -43,13 +42,11 @@ var _ = Describe("Ingress", func() {
 		orderbookClient := mockOrderbookClient{}
 		ingress = NewIngress(&darkpool, &renLedger, &swarmer, &orderbookClient)
 		errChSync = ingress.Sync(done)
-		errChOpenOrders = ingress.OpenOrderProcess(done)
-		errChOpenOrderFragments = ingress.OpenOrderFragmentsProcess(done)
+		errChProcess = ingress.ProcessRequests(done)
 
 		// Consume errors in the background to allow progress when an event occurs
 		go captureErrorsFromErrorChannel(errChSync)
-		go captureErrorsFromErrorChannel(errChOpenOrderFragments)
-		go captureErrorsFromErrorChannel(errChOpenOrders)
+		go captureErrorsFromErrorChannel(errChProcess)
 
 		time.Sleep(time.Millisecond)
 	})
@@ -59,8 +56,7 @@ var _ = Describe("Ingress", func() {
 
 		// Wait for all errors to close
 		captureErrorsFromErrorChannel(errChSync)
-		captureErrorsFromErrorChannel(errChOpenOrderFragments)
-		captureErrorsFromErrorChannel(errChOpenOrders)
+		captureErrorsFromErrorChannel(errChProcess)
 
 		time.Sleep(time.Second)
 	})
@@ -202,7 +198,7 @@ var _ = Describe("Ingress", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		It("should not cancel orders that are not open", func() {
+		It("should cancel orders that are not open", func() {
 			ord, err := createOrder()
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -211,7 +207,7 @@ var _ = Describe("Ingress", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			err = ingress.CancelOrder(signature, ord.ID)
-			Expect(err).Should(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
 })
@@ -220,8 +216,8 @@ func createOrder() (order.Order, error) {
 	parity := order.ParityBuy
 	price := uint64(mathRand.Intn(2000))
 	volume := uint64(mathRand.Intn(2000))
-	nonce := int64(mathRand.Intn(1000000000))
-	return order.NewOrder(order.TypeLimit, parity, time.Now().Add(time.Hour), order.TokensETHREN, order.NewCoExp(price, 26), order.NewCoExp(volume, 26), order.NewCoExp(volume, 26), nonce), nil
+	nonce := uint64(mathRand.Intn(1000000000))
+	return order.NewOrder(order.TypeLimit, parity, order.SettlementRenEx, time.Now().Add(time.Hour), order.TokensETHREN, order.NewCoExp(price, 26), order.NewCoExp(volume, 26), order.NewCoExp(volume, 26), nonce), nil
 }
 
 type mockDarkpool struct {
@@ -256,6 +252,10 @@ func (darkpool *mockDarkpool) Darknodes() (identity.Addresses, error) {
 	return darknodes, nil
 }
 
+func (darkpool *mockDarkpool) NextEpoch() (cal.Epoch, error) {
+	return darkpool.Epoch()
+}
+
 func (darkpool *mockDarkpool) Epoch() (cal.Epoch, error) {
 	darknodes, err := darkpool.Darknodes()
 	if err != nil {
@@ -266,6 +266,10 @@ func (darkpool *mockDarkpool) Epoch() (cal.Epoch, error) {
 		Pods:      darkpool.pods,
 		Darknodes: darknodes,
 	}, nil
+}
+
+func (darkpool *mockDarkpool) MinimumEpochInterval() (*big.Int, error) {
+	return big.NewInt(1), nil
 }
 
 func (darkpool *mockDarkpool) Pods() ([]cal.Pod, error) {
@@ -294,6 +298,24 @@ func newMockRenLedger() mockRenLedger {
 		mu:          new(sync.Mutex),
 		orderStates: map[string]struct{}{},
 	}
+}
+
+func (renLedger *mockRenLedger) OpenOrders(signatures [][65]byte, orderIDs []order.ID, orderParities []order.Parity) (int, error) {
+	if len(signatures) != len(orderIDs) || len(signatures) != len(orderParities) {
+		return 0, errors.New("mismatched order lengths")
+	}
+	for i := range signatures {
+		if orderParities[i] == order.ParityBuy {
+			if err := renLedger.OpenBuyOrder(signatures[i], orderIDs[i]); err != nil {
+				return i, err
+			}
+		} else {
+			if err := renLedger.OpenSellOrder(signatures[i], orderIDs[i]); err != nil {
+				return i, err
+			}
+		}
+	}
+	return len(signatures), nil
 }
 
 func (renLedger *mockRenLedger) OpenBuyOrder(signature [65]byte, orderID order.ID) error {
@@ -380,6 +402,10 @@ func (renLedger *mockRenLedger) OrderMatch(order order.ID) (order.ID, error) {
 }
 
 func (renLedger *mockRenLedger) Trader(order order.ID) (string, error) {
+	panic("unimplemented")
+}
+
+func (renLedger *mockRenLedger) BlockNumber(order order.ID) (uint, error) {
 	panic("unimplemented")
 }
 

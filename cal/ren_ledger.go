@@ -13,6 +13,10 @@ const StatusCanceled = 3
 
 type RenLedger interface {
 
+	// OpenOrders on the Ren Ledger. Returns the number of orders successfully
+	// opened.
+	OpenOrders(signatures [][65]byte, orderIDs []order.ID, orderParities []order.Parity) (int, error)
+
 	// OpenBuyOrder on the Ren Ledger. The signature will be used to identify
 	// the trader that owns the order. The order must be in an undefined state
 	// to be opened.
@@ -43,6 +47,10 @@ type RenLedger interface {
 	// Priority will return the priority of the order
 	Priority(orderID order.ID) (uint64, error)
 
+	// BlockNumber will return the block number when the order status
+	// last mode modified
+	BlockNumber(orderID order.ID) (uint, error)
+
 	// Depth will return depth of confirmation blocks
 	Depth(orderID order.ID) (uint, error)
 
@@ -54,6 +62,6 @@ type RenLedger interface {
 	// numbers of sell orders.
 	SellOrders(offset, limit int) ([]order.ID, error)
 
-	// Trader returns the trader who submit the order
+	// Trader returns the trader who submits the order
 	Trader(orderID order.ID) (string, error)
 }

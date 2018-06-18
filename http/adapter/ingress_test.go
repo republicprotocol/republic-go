@@ -238,16 +238,12 @@ type mockIngress struct {
 	numCanceled int64
 }
 
+func (ingress *mockIngress) Sync(done <-chan struct{}) <-chan error {
+	return nil
+}
+
 func (ingress *mockIngress) OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMapping ingress.OrderFragmentMapping) error {
 	atomic.AddInt64(&ingress.numOpened, 1)
-	return nil
-}
-
-func (ingress *mockIngress) OpenOrderFragmentsProcess(done <-chan struct{}) <-chan error {
-	return nil
-}
-
-func (ingress *mockIngress) OpenOrderProcess(done <-chan struct{}) <-chan error {
 	return nil
 }
 
@@ -256,7 +252,7 @@ func (ingress *mockIngress) CancelOrder(signature [65]byte, orderID order.ID) er
 	return nil
 }
 
-func (ingress *mockIngress) Sync(done <-chan struct{}) <-chan error {
+func (ingress *mockIngress) ProcessRequests(done <-chan struct{}) <-chan error {
 	return nil
 }
 
@@ -264,6 +260,6 @@ func createOrder() (order.Order, error) {
 	parity := order.ParityBuy
 	price := uint64(mathRand.Intn(2000))
 	volume := uint64(mathRand.Intn(2000))
-	nonce := int64(mathRand.Intn(1000000000))
-	return order.NewOrder(order.TypeLimit, parity, time.Now().Add(time.Hour), order.TokensETHREN, order.NewCoExp(price, 26), order.NewCoExp(volume, 26), order.NewCoExp(volume, 26), nonce), nil
+	nonce := uint64(mathRand.Intn(1000000000))
+	return order.NewOrder(order.TypeLimit, parity, order.SettlementRenEx, time.Now().Add(time.Hour), order.TokensETHREN, order.NewCoExp(price, 26), order.NewCoExp(volume, 26), order.NewCoExp(volume, 26), nonce), nil
 }

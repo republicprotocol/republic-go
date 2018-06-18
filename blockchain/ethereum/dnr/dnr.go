@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,14 +18,16 @@ import (
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
-// ErrConnectionDenied is returned when the number of dark nodes are lesser than
-// the minimum number of dark nodes required to run a dark pool
-var ErrConnectionDenied = errors.New("connection denied")
+// ErrPodNotFound is returned when dark node address was not found in any pod
+var ErrPodNotFound = errors.New("cannot find node in any pod")
+
+// ErrLengthMismatch is returned when ID is not an expected 20 byte value
+var ErrLengthMismatch = errors.New("length mismatch")
 
 // Epoch contains a blockhash and a timestamp
 type Epoch struct {
-	Blockhash [32]byte
-	Timestamp stackint.Int1024
+	Blockhash   [32]byte
+	BlockNumber stackint.Int1024
 }
 
 // DarknodeRegistry is the dark node interface
@@ -63,7 +64,7 @@ func NewDarknodeRegistry(context context.Context, conn ethereum.Conn, transactOp
 	}, nil
 }
 
-// Register a new dark node
+// Register a new dark node with the dark node registrar
 func (darkNodeRegistry *DarknodeRegistry) Register(darkNodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
 	darkNodeIDByte, err := toByte(darkNodeID)
 	if err != nil {
@@ -72,7 +73,7 @@ func (darkNodeRegistry *DarknodeRegistry) Register(darkNodeID []byte, publicKey 
 
 	txn, err := darkNodeRegistry.binding.Register(darkNodeRegistry.transactOpts, darkNodeIDByte, publicKey, bond.ToBigInt())
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	_, err = darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, txn)
 	return txn, err
@@ -86,7 +87,7 @@ func (darkNodeRegistry *DarknodeRegistry) Deregister(darkNodeID []byte) (*types.
 	}
 	tx, err := darkNodeRegistry.binding.Deregister(darkNodeRegistry.transactOpts, darkNodeIDByte)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	_, err = darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, tx)
 	return tx, err
@@ -100,7 +101,7 @@ func (darkNodeRegistry *DarknodeRegistry) Refund(darkNodeID []byte) (*types.Tran
 	}
 	tx, err := darkNodeRegistry.binding.Refund(darkNodeRegistry.transactOpts, darkNodeIDByte)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	_, err = darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, tx)
 	return tx, err
@@ -119,7 +120,7 @@ func (darkNodeRegistry *DarknodeRegistry) GetBond(darkNodeID []byte) (stackint.I
 	return stackint.FromBigInt(bond)
 }
 
-// IsRegistered returns true if the node is registered
+// IsRegistered implements the cal.Darkpool interface
 func (darkNodeRegistry *DarknodeRegistry) IsRegistered(darknodeAddr identity.Address) (bool, error) {
 	darkNodeIDByte, err := toByte(darknodeAddr.ID())
 	if err != nil {
@@ -137,7 +138,7 @@ func (darkNodeRegistry *DarknodeRegistry) IsDeregistered(darkNodeID []byte) (boo
 	return darkNodeRegistry.binding.IsDeregistered(darkNodeRegistry.callOpts, darkNodeIDByte)
 }
 
-// ApproveRen doesn't actually talk to the DNR - instead it approved Ren to it
+// ApproveRen doesn't actually talk to the DNR - instead it approves Ren to it
 func (darkNodeRegistry *DarknodeRegistry) ApproveRen(value *stackint.Int1024) (*types.Transaction, error) {
 	txn, err := darkNodeRegistry.tokenBinding.Approve(darkNodeRegistry.transactOpts, darkNodeRegistry.DarknodeRegistryAddress, value.ToBigInt())
 	if err != nil {
@@ -153,7 +154,7 @@ func (darkNodeRegistry *DarknodeRegistry) CurrentEpoch() (Epoch, error) {
 	if err != nil {
 		return Epoch{}, err
 	}
-	timestamp, err := stackint.FromBigInt(epoch.Timestamp)
+	blocknumber, err := stackint.FromBigInt(epoch.Blocknumber)
 	if err != nil {
 		return Epoch{}, err
 	}
@@ -164,12 +165,19 @@ func (darkNodeRegistry *DarknodeRegistry) CurrentEpoch() (Epoch, error) {
 	}
 
 	return Epoch{
-		Blockhash: blockhash,
-		Timestamp: timestamp,
+		Blockhash:   blockhash,
+		BlockNumber: blocknumber,
 	}, nil
 }
 
-// Epoch updates the current Epoch if the Minimum Epoch Interval has passed since the previous Epoch
+// NextEpoch implements the cal.Darkpool interfacce.
+func (darkNodeRegistry *DarknodeRegistry) NextEpoch() (cal.Epoch, error) {
+	darkNodeRegistry.TriggerEpoch()
+	return darkNodeRegistry.Epoch()
+}
+
+// TriggerEpoch updates the current Epoch if the Minimum Epoch Interval has
+// passed since the previous Epoch
 func (darkNodeRegistry *DarknodeRegistry) TriggerEpoch() (*types.Transaction, error) {
 	tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
 	if err != nil {
@@ -177,77 +185,6 @@ func (darkNodeRegistry *DarknodeRegistry) TriggerEpoch() (*types.Transaction, er
 	}
 	_, err = darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, tx)
 	return tx, err
-}
-
-// TimeUntilEpoch calculates the time remaining until the next Epoch can be called
-func (darkNodeRegistry *DarknodeRegistry) TimeUntilEpoch() (time.Duration, error) {
-	epoch, err := darkNodeRegistry.CurrentEpoch()
-	if err != nil {
-		return 0, err
-	}
-
-	minInterval, err := darkNodeRegistry.MinimumEpochInterval()
-
-	nextTime := epoch.Timestamp.Add(&minInterval)
-	unix, err := nextTime.ToUint()
-	if err != nil {
-		// Either minInterval is really big, or unix epoch time has overflowed uint64s.
-		return 0, err
-	}
-
-	toWait := time.Second * time.Duration(int64(unix)-time.Now().Unix())
-
-	// Ensure toWait is at least 1
-	if toWait < 1*time.Second {
-		toWait = 1 * time.Second
-	}
-
-	// Try again within a minute
-	if toWait > time.Minute {
-		toWait = time.Minute
-	}
-
-	return toWait, nil
-
-}
-
-// WaitForEpoch guarantees that an Epoch as passed (and calls Epoch if connected to Ganache)
-func (darkNodeRegistry *DarknodeRegistry) WaitForEpoch() error {
-
-	previousEpoch, err := darkNodeRegistry.CurrentEpoch()
-	if err != nil {
-		return err
-	}
-
-	currentEpoch := previousEpoch
-
-	for currentEpoch.Blockhash == previousEpoch.Blockhash {
-
-		// Calculate how much time to sleep for
-		// If epoch can already be called, returns 1 second
-		toWait, err := darkNodeRegistry.TimeUntilEpoch()
-		if err != nil {
-			return err
-		}
-
-		time.Sleep(toWait)
-
-		// If on Ganache, have to call epoch manually
-		if darkNodeRegistry.network == ethereum.NetworkGanache {
-			tx, err := darkNodeRegistry.binding.Epoch(darkNodeRegistry.transactOpts)
-			if err != nil {
-				return err
-			}
-			darkNodeRegistry.conn.PatchedWaitMined(darkNodeRegistry.context, tx)
-		}
-
-		currentEpoch, err = darkNodeRegistry.CurrentEpoch()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // GetOwner gets the owner of the given dark node
@@ -259,7 +196,7 @@ func (darkNodeRegistry *DarknodeRegistry) GetOwner(darkNodeID []byte) (common.Ad
 	return darkNodeRegistry.binding.GetOwner(darkNodeRegistry.callOpts, darkNodeIDByte)
 }
 
-// PublicKey gets the public key of the goven dark node
+// PublicKey implements the cal.Darkpool interface
 func (darkNodeRegistry *DarknodeRegistry) PublicKey(darknodeAddr identity.Address) (rsa.PublicKey, error) {
 	darkNodeIDByte, err := toByte(darknodeAddr.ID())
 	if err != nil {
@@ -272,19 +209,7 @@ func (darkNodeRegistry *DarknodeRegistry) PublicKey(darknodeAddr identity.Addres
 	return crypto.RsaPublicKeyFromBytes(pubKeyBytes)
 }
 
-// GetAllNodes gets all dark nodes
-func (darkNodeRegistry *DarknodeRegistry) GetAllNodes() ([][]byte, error) {
-	ret, err := darkNodeRegistry.binding.GetDarknodes(darkNodeRegistry.callOpts)
-	if err != nil {
-		return nil, err
-	}
-	arr := make([][]byte, len(ret))
-	for i := range ret {
-		arr[i] = ret[i][:]
-	}
-	return arr, nil
-}
-
+// Darknodes implements the cal.Darkpool interface
 func (darkNodeRegistry *DarknodeRegistry) Darknodes() (identity.Addresses, error) {
 	ret, err := darkNodeRegistry.binding.GetDarknodes(darkNodeRegistry.callOpts)
 	if err != nil {
@@ -306,17 +231,13 @@ func (darkNodeRegistry *DarknodeRegistry) MinimumBond() (stackint.Int1024, error
 	return stackint.FromBigInt(bond)
 }
 
-// MinimumEpochInterval gets the minimum epoch interval
-func (darkNodeRegistry *DarknodeRegistry) MinimumEpochInterval() (stackint.Int1024, error) {
-	interval, err := darkNodeRegistry.binding.MinimumEpochInterval(darkNodeRegistry.callOpts)
-	if err != nil {
-		return stackint.Int1024{}, err
-	}
-	return stackint.FromBigInt(interval)
+// MinimumEpochInterval implements the cal.Darkpool interface
+func (darkNodeRegistry *DarknodeRegistry) MinimumEpochInterval() (*big.Int, error) {
+	return darkNodeRegistry.binding.MinimumEpochInterval(darkNodeRegistry.callOpts)
 }
 
-// MinimumDarkPoolSize gets the minimum dark pool size
-func (darkNodeRegistry *DarknodeRegistry) MinimumDarkPoolSize() (stackint.Int1024, error) {
+// MinimumPodSize gets the minimum pod size
+func (darkNodeRegistry *DarknodeRegistry) MinimumPodSize() (stackint.Int1024, error) {
 	interval, err := darkNodeRegistry.binding.MinimumDarkPoolSize(darkNodeRegistry.callOpts)
 	if err != nil {
 		return stackint.Int1024{}, err
@@ -329,28 +250,10 @@ func (darkNodeRegistry *DarknodeRegistry) SetGasLimit(limit uint64) {
 	darkNodeRegistry.transactOpts.GasLimit = limit
 }
 
-// WaitUntilRegistration waits until the registration is successful
-func (darkNodeRegistry *DarknodeRegistry) WaitUntilRegistration(darkNodeID []byte) error {
-	isRegistered := false
-	for !isRegistered {
-		var err error
-		isRegistered, err = darkNodeRegistry.IsRegistered(identity.ID(darkNodeID).Address())
-		if err != nil {
-			return err
-		}
-		if isRegistered {
-			return nil
-		}
-		darkNodeRegistry.WaitForEpoch()
-
-	}
-	return nil
-}
-
 func toByte(id []byte) ([20]byte, error) {
 	twentyByte := [20]byte{}
 	if len(id) != 20 {
-		return twentyByte, errors.New("length mismatch")
+		return twentyByte, ErrLengthMismatch
 	}
 	for i := range id {
 		twentyByte[i] = id[i]
@@ -358,22 +261,16 @@ func toByte(id []byte) ([20]byte, error) {
 	return twentyByte, nil
 }
 
+// Pods implements the cal.Darkpool interface
 func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
-	darknodeIDs, err := darkNodeRegistry.binding.GetDarknodes(darkNodeRegistry.callOpts)
-	if err != nil {
-		return nil, err
-	}
-	darknodeAddrs := make([]identity.Address, len(darknodeIDs))
-	for i := range darknodeIDs {
-		darknodeAddrs[i] = identity.ID(darknodeIDs[i][:]).Address()
-	}
+	darknodeAddrs, err := darkNodeRegistry.Darknodes()
 
-	numberOfNodesInPool, err := darkNodeRegistry.MinimumDarkPoolSize()
+	numberOfNodesInPod, err := darkNodeRegistry.MinimumPodSize()
 	if err != nil {
 		return []cal.Pod{}, err
 	}
-	if len(darknodeAddrs) < int(numberOfNodesInPool.ToBigInt().Int64()) {
-		return []cal.Pod{}, fmt.Errorf("degraded dark pool: expected at least %v addresses, got %v", int(numberOfNodesInPool.ToBigInt().Int64()), len(darknodeAddrs))
+	if len(darknodeAddrs) < int(numberOfNodesInPod.ToBigInt().Int64()) {
+		return []cal.Pod{}, fmt.Errorf("degraded pod: expected at least %v addresses, got %v", int(numberOfNodesInPod.ToBigInt().Int64()), len(darknodeAddrs))
 	}
 	epoch, err := darkNodeRegistry.binding.CurrentEpoch(darkNodeRegistry.callOpts)
 	if err != nil {
@@ -386,7 +283,7 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 	for i := 0; i < len(darknodeAddrs); i++ {
 		positionInOcean[i] = -1
 	}
-	pods := make([]cal.Pod, (len(darknodeAddrs) / int(numberOfNodesInPool.ToBigInt().Int64())))
+	pods := make([]cal.Pod, (len(darknodeAddrs) / int(numberOfNodesInPod.ToBigInt().Int64())))
 	for i := 0; i < len(darknodeAddrs); i++ {
 		isRegistered, err := darkNodeRegistry.IsRegistered(darknodeAddrs[x.Int64()])
 		if err != nil {
@@ -401,8 +298,8 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 			}
 		}
 		positionInOcean[x.Int64()] = i
-		poolID := i % (len(darknodeAddrs) / int(numberOfNodesInPool.ToBigInt().Int64()))
-		pods[poolID].Darknodes = append(pods[poolID].Darknodes, darknodeAddrs[x.Int64()])
+		podID := i % (len(darknodeAddrs) / int(numberOfNodesInPod.ToBigInt().Int64()))
+		pods[podID].Darknodes = append(pods[podID].Darknodes, darknodeAddrs[x.Int64()])
 		x.Mod(x.Add(x, epochVal), numberOfDarkNodes)
 	}
 
@@ -412,11 +309,12 @@ func (darkNodeRegistry *DarknodeRegistry) Pods() ([]cal.Pod, error) {
 			hashData = append(hashData, darknodeAddr.ID())
 		}
 		copy(pods[i].Hash[:], crypto.Keccak256(hashData...))
+		pods[i].Position = i
 	}
 	return pods, nil
 }
 
-// Epoch returns the current Epoch which includes the Pod configuration.
+// Epoch implements the cal.Darkpool interface
 func (darkNodeRegistry *DarknodeRegistry) Epoch() (cal.Epoch, error) {
 	epoch, err := darkNodeRegistry.CurrentEpoch()
 	if err != nil {
@@ -433,16 +331,20 @@ func (darkNodeRegistry *DarknodeRegistry) Epoch() (cal.Epoch, error) {
 		return cal.Epoch{}, err
 	}
 
+	blocknumber, err := epoch.BlockNumber.ToUint()
+	if err != nil {
+		return cal.Epoch{}, err
+	}
+
 	return cal.Epoch{
-		Hash:      epoch.Blockhash,
-		Pods:      pods,
-		Darknodes: darknodes,
+		Hash:        epoch.Blockhash,
+		Pods:        pods,
+		Darknodes:   darknodes,
+		BlockNumber: blocknumber,
 	}, nil
 }
 
-// Pod returns the Pod that contains the given identity.Address in the
-// current Epoch. It returns ErrPodNotFound if the identity.Address is not
-// registered in the current Epoch.
+// Pod implements the cal.Darkpool interface
 func (darkNodeRegistry *DarknodeRegistry) Pod(addr identity.Address) (cal.Pod, error) {
 	pods, err := darkNodeRegistry.Pods()
 	if err != nil {
@@ -457,5 +359,5 @@ func (darkNodeRegistry *DarknodeRegistry) Pod(addr identity.Address) (cal.Pod, e
 		}
 	}
 
-	return cal.Pod{}, errors.New("cannot find node in any pod")
+	return cal.Pod{}, ErrPodNotFound
 }

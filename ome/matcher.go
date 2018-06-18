@@ -62,10 +62,10 @@ type MatchCallback func(Computation)
 type Matcher interface {
 
 	// Resolve a Computation to determine whether or not the orders involved
-	// are a match. The ξ hash is used to define the ξ in which this
-	// Computation exists, and the MatchCallback is called when a result has
-	// be determined.
-	Resolve(ξ [32]byte, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback)
+	// are a match. The epoch hash of the Computation and is used to
+	// differentiate between the various networks required for SMPC. The
+	// MatchCallback is called when a result has be determined.
+	Resolve(com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback)
 }
 
 type matcher struct {
@@ -85,12 +85,29 @@ func NewMatcher(storer Storer, smpcer smpc.Smpcer) Matcher {
 }
 
 // Resolve implements the Matcher interface.
-func (matcher *matcher) Resolve(ξ [32]byte, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback) {
-	matcher.resolve(smpc.NetworkID(ξ), com, buyFragment, sellFragment, callback, ResolveStagePriceExp)
+func (matcher *matcher) Resolve(com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback) {
+	if buyFragment.OrderSettlement != sellFragment.OrderSettlement {
+		// Store the computation as a mismatch
+		com.State = ComputationStateMismatched
+		com.Match = false
+		if err := matcher.storer.InsertComputation(com); err != nil {
+			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
+		}
+		// Trigger the callback with a mismatch
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("✗ settlement => buy = %v, sell = %v", com.Buy, com.Sell))
+		callback(com)
+		return
+	}
+
+	matcher.resolve(smpc.NetworkID(com.EpochHash), com, buyFragment, sellFragment, callback, ResolveStagePriceExp)
 }
 
 func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback, stage ResolveStage) {
 	if isExpired(com, buyFragment, sellFragment) {
+		com.State = ComputationStateRejected
+		if err := matcher.storer.InsertComputation(com); err != nil {
+			logger.Error(fmt.Sprintf("cannot store expired computation buy = %v, sell = %v: %v", com.Buy, com.Sell, err))
+		}
 		return
 	}
 
@@ -99,9 +116,12 @@ func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, buyFr
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot build %v join: %v", stage, err))
 		return
 	}
-	matcher.smpcer.Join(networkID, join, func(joinID smpc.JoinID, values []uint64) {
+	err = matcher.smpcer.Join(networkID, join, func(joinID smpc.JoinID, values []uint64) {
 		matcher.resolveValues(values, networkID, com, buyFragment, sellFragment, callback, stage)
 	})
+	if err != nil {
+		logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve %v: cannot join computation = %v: %v", stage, com.ID, err))
+	}
 }
 
 func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback, stage ResolveStage) {
