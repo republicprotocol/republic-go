@@ -55,7 +55,6 @@ type syncer struct {
 	renLedger      cal.RenLedger
 	renLedgerLimit int
 
-	syncStorer      SyncStorer
 	syncBuyPointer  int
 	syncSellPointer int
 
@@ -67,13 +66,12 @@ type syncer struct {
 // NewSyncer returns a new Syncer that will sync a bounded number of orders
 // from a cal.RenLedger. It uses a SyncStorer to prevent re-syncing the entire
 // cal.RenLedger when it reboots.
-func NewSyncer(syncStorer SyncStorer, renLedger cal.RenLedger, renLedgerLimit int) Syncer {
+func NewSyncer(renLedger cal.RenLedger, renLedgerLimit int) Syncer {
 
 	syncer := &syncer{
 		renLedger:      renLedger,
 		renLedgerLimit: renLedgerLimit,
 
-		syncStorer:      syncStorer,
 		syncBuyPointer:  0,
 		syncSellPointer: 0,
 
@@ -82,13 +80,6 @@ func NewSyncer(syncStorer SyncStorer, renLedger cal.RenLedger, renLedgerLimit in
 		sellOrders: map[int]order.ID{},
 	}
 
-	var err error
-	if syncer.syncBuyPointer, err = syncer.syncStorer.BuyPointer(); err != nil {
-		logger.Error(fmt.Sprintf("cannot load buy pointer: %v", err))
-	}
-	if syncer.syncSellPointer, err = syncer.syncStorer.SellPointer(); err != nil {
-		logger.Error(fmt.Sprintf("cannot load sell pointer: %v", err))
-	}
 	logger.Info(fmt.Sprintf("buy pointer: %v", syncer.syncBuyPointer))
 	logger.Info(fmt.Sprintf("sell pointer: %v", syncer.syncSellPointer))
 
@@ -123,9 +114,6 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 			changeset = append(changeset, change)
 			syncer.buyOrders[syncer.syncBuyPointer] = ord
 		}
-		if err := syncer.syncStorer.InsertBuyPointer(syncer.syncBuyPointer); err != nil {
-			logger.Error("cannot insert buy pointer")
-		}
 	}
 
 	// Get new sell orders from the ledger
@@ -153,9 +141,6 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 			change := NewChange(ord, order.ParitySell, status, Priority(syncer.syncSellPointer), trader, blockNumber)
 			changeset = append(changeset, change)
 			syncer.sellOrders[syncer.syncSellPointer] = ord
-		}
-		if err := syncer.syncStorer.InsertSellPointer(syncer.syncSellPointer); err != nil {
-			logger.Error("cannot insert sell pointer")
 		}
 	}
 

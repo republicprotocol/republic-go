@@ -52,7 +52,7 @@ var _ = Describe("Ome", func() {
 			ledger = testutils.NewRenLedger()
 			accounts = testutils.NewDarkpoolAccounts()
 
-			ranker, err = NewRanker(done, addr, storer, epoch)
+			ranker, err = NewRanker(done, addr, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
 			matcher = NewMatcher(storer, smpcer)
 			confirmer = NewConfirmer(storer, ledger, PollInterval, Depth)

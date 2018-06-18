@@ -96,7 +96,7 @@ func main() {
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
 
-	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(&store, renLedger, 32), &store)
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(renLedger, 32), &store)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
@@ -131,7 +131,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("cannot get current epoch: %v", err)
 		}
-		ranker, err := ome.NewRanker(done, config.Address, &store, epoch)
+		ranker, err := ome.NewRanker(done, config.Address, epoch)
 		if err != nil {
 			log.Fatalf("cannot create new ranker: %v", err)
 		}
