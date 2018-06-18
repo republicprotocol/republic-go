@@ -89,6 +89,8 @@ func NewSyncer(syncStorer SyncStorer, renLedger cal.RenLedger, renLedgerLimit in
 	if syncer.syncSellPointer, err = syncer.syncStorer.SellPointer(); err != nil {
 		logger.Error(fmt.Sprintf("cannot load sell pointer: %v", err))
 	}
+	logger.Info(fmt.Sprintf("buy pointer: %v", syncer.syncBuyPointer))
+	logger.Info(fmt.Sprintf("sell pointer: %v", syncer.syncSellPointer))
 
 	return syncer
 }
@@ -157,6 +159,10 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 			logger.Error("cannot insert sell pointer")
 		}
 	}
+
+	logger.Info(fmt.Sprintf("updated buy pointer: %v", syncer.syncBuyPointer))
+	logger.Info(fmt.Sprintf("updated sell pointer: %v", syncer.syncSellPointer))
+
 	if buyErr != nil && sellErr != nil {
 		return changeset, fmt.Errorf("buy err = %v, sell err = %v", buyErr, sellErr)
 	}
