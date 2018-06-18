@@ -101,7 +101,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 
 	buyOrderIDs, buyErr := syncer.renLedger.BuyOrders(syncer.syncBuyPointer, syncer.renLedgerLimit)
 	if buyErr == nil {
-		for i, ord := range buyOrderIDs {
+		for _, ord := range buyOrderIDs {
 			status, err := syncer.renLedger.Status(ord)
 			if err != nil {
 				log.Println("cannot sync order status", err)
@@ -131,7 +131,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 	// Get new sell orders from the ledger
 	sellOrderIDs, sellErr := syncer.renLedger.SellOrders(syncer.syncSellPointer, syncer.renLedgerLimit)
 	if sellErr == nil {
-		for i, ord := range sellOrderIDs {
+		for _, ord := range sellOrderIDs {
 
 			status, err := syncer.renLedger.Status(ord)
 			if err != nil {
@@ -228,13 +228,13 @@ func (syncer *syncer) purge() ChangeSet {
 						return
 					}
 					if status == order.Open {
-						returnsellOrders
+						return
 					}
 
-					blockNumbesellOrderser.renLedger.BlockNumber(sellOrder)
-					if err != sellOrders
-						log.PrsellOrderssync order status", err)
-						returnsellOrders
+					blockNumber, err := syncer.renLedger.BlockNumber(sellOrder)
+					if err != nil {
+						log.Println("cannot sync order status", err)
+						return
 					}
 					priority, err := syncer.renLedger.Priority(sellOrder)
 					if err != nil {
