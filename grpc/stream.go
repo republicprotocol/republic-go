@@ -196,7 +196,6 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 
 	connector.mu.Lock()
 	defer connector.mu.Unlock()
-
 	if connector.streamsMu[addr] == nil {
 		connector.streamsMu[addr] = new(sync.Mutex)
 	}
@@ -225,6 +224,11 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 
 		connector.mu.Lock()
 		defer connector.mu.Unlock()
+		if connector.streamsMu[addr] == nil {
+			connector.streamsMu[addr] = new(sync.Mutex)
+		}
+		connector.streamsMu[addr].Lock()
+		defer connector.streamsMu[addr].Unlock()
 
 		connector.streamsRc[addr]--
 		if connector.streamsRc[addr] == 0 {
@@ -249,7 +253,6 @@ func (connector *concurrentStreamConnector) reconnect(multiAddr identity.MultiAd
 
 	connector.mu.Lock()
 	defer connector.mu.Unlock()
-
 	if connector.streamsMu[addr] == nil {
 		connector.streamsMu[addr] = new(sync.Mutex)
 	}
@@ -273,7 +276,6 @@ func (connector *concurrentStreamConnector) reconnect(multiAddr identity.MultiAd
 func (connector *concurrentStreamConnector) setConnection(addr identity.Address, stream *concurrentStream) {
 	connector.mu.Lock()
 	defer connector.mu.Unlock()
-
 	if connector.streamsMu[addr] == nil {
 		connector.streamsMu[addr] = new(sync.Mutex)
 	}
@@ -289,7 +291,6 @@ func (connector *concurrentStreamConnector) setConnection(addr identity.Address,
 func (connector *concurrentStreamConnector) connection(addr identity.Address) *concurrentStream {
 	connector.mu.Lock()
 	defer connector.mu.Unlock()
-
 	if connector.streamsMu[addr] == nil {
 		connector.streamsMu[addr] = new(sync.Mutex)
 	}
