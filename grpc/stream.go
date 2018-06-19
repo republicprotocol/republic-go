@@ -136,11 +136,11 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 
 	// Open a bidirectional stream
 	var grpcStream StreamService_ConnectClient
-	if err := Backoff(ctx, func() error {
+	if err := BackoffMax(ctx, func() error {
 		// On an error backoff and retry until the context.Context is done
 		grpcStream, err = NewStreamServiceClient(conn.ClientConn).Connect(ctx)
 		return err
-	}); err != nil {
+	}, 30000 /* 30s max backoff */); err != nil {
 		return nil, fmt.Errorf("cannot open stream: %v", err)
 	}
 

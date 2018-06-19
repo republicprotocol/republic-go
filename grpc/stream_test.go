@@ -65,7 +65,7 @@ var _ = Describe("Streaming", func() {
 
 			_, err := clientStreamer.Open(context.Background(), serviceMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
-		})
+		}, 30 /* 30 second timeout */)
 
 		It("should connect when the service is started after the connection request", func(done Done) {
 			defer close(done)
@@ -151,7 +151,7 @@ var _ = Describe("Streaming", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			ctx, cancel = context.WithCancel(context.Background())
-			serviceStream, err = serviceStreamer.Open(context.Background(), clientMultiAddr)
+			serviceStream, err = serviceStreamer.Open(ctx, clientMultiAddr)
 			serviceStreamCancel = cancel
 			Expect(err).ShouldNot(HaveOccurred())
 		})
@@ -213,9 +213,17 @@ func newStreamer() (*Streamer, identity.Address, error) {
 }
 
 func newStreamerService(clientAddr identity.Address) (*StreamerService, *Streamer, identity.Address, error) {
-	streamer, addr, err := newStreamer()
-	if err != nil {
-		return nil, streamer, addr, err
+	var streamer *Streamer
+	var addr identity.Address
+	var err error
+	for {
+		streamer, addr, err = newStreamer()
+		if err != nil {
+			return nil, streamer, addr, err
+		}
+		if addr > clientAddr {
+			break
+		}
 	}
 	service := NewStreamerService(crypto.NewEcdsaVerifier(clientAddr.String()), streamer)
 	return &service, streamer, addr, nil
