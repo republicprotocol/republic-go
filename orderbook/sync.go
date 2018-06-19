@@ -5,7 +5,6 @@ import (
 	"log"
 	"sync"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -52,7 +51,7 @@ type Syncer interface {
 }
 
 type syncer struct {
-	renLedger      cal.RenLedger
+	contract       ContractsBinder
 	renLedgerLimit int
 
 	syncStorer      SyncStorer
@@ -65,12 +64,12 @@ type syncer struct {
 }
 
 // NewSyncer returns a new Syncer that will sync a bounded number of orders
-// from a cal.RenLedger. It uses a SyncStorer to prevent re-syncing the entire
-// cal.RenLedger when it reboots.
-func NewSyncer(syncStorer SyncStorer, renLedger cal.RenLedger, renLedgerLimit int) Syncer {
+// from a RenLedger. It uses a SyncStorer to prevent re-syncing the entire
+// RenLedger when it reboots.
+func NewSyncer(syncStorer SyncStorer, contract ContractsBinder, renLedgerLimit int) Syncer {
 
 	syncer := &syncer{
-		renLedger:      renLedger,
+		contract:       contract,
 		renLedgerLimit: renLedgerLimit,
 
 		syncStorer:      syncStorer,
@@ -99,20 +98,20 @@ func NewSyncer(syncStorer SyncStorer, renLedger cal.RenLedger, renLedgerLimit in
 func (syncer *syncer) Sync() (ChangeSet, error) {
 	changeset := syncer.purge()
 
-	buyOrderIDs, buyErr := syncer.renLedger.BuyOrders(syncer.syncBuyPointer, syncer.renLedgerLimit)
+	buyOrderIDs, buyErr := syncer.contract.BuyOrders(syncer.syncBuyPointer, syncer.renLedgerLimit)
 	if buyErr == nil {
 		for _, ord := range buyOrderIDs {
-			status, err := syncer.renLedger.Status(ord)
+			status, err := syncer.contract.Status(ord)
 			if err != nil {
 				log.Println("cannot sync order status", err)
 				continue
 			}
-			blockNumber, err := syncer.renLedger.BlockNumber(ord)
+			blockNumber, err := syncer.contract.BlockNumber(ord)
 			if err != nil {
 				log.Println("cannot sync order blocknumber", err)
 				continue
 			}
-			trader, err := syncer.renLedger.Trader(ord)
+			trader, err := syncer.contract.Trader(ord)
 			if err != nil {
 				log.Println("cannot sync order owner", err)
 				continue
@@ -129,21 +128,21 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 	}
 
 	// Get new sell orders from the ledger
-	sellOrderIDs, sellErr := syncer.renLedger.SellOrders(syncer.syncSellPointer, syncer.renLedgerLimit)
+	sellOrderIDs, sellErr := syncer.contract.SellOrders(syncer.syncSellPointer, syncer.renLedgerLimit)
 	if sellErr == nil {
 		for _, ord := range sellOrderIDs {
 
-			status, err := syncer.renLedger.Status(ord)
+			status, err := syncer.contract.Status(ord)
 			if err != nil {
 				log.Println("cannot sync order status", err)
 				continue
 			}
-			blockNumber, err := syncer.renLedger.BlockNumber(ord)
+			blockNumber, err := syncer.contract.BlockNumber(ord)
 			if err != nil {
 				log.Println("cannot sync order blocknumber", err)
 				continue
 			}
-			trader, err := syncer.renLedger.Trader(ord)
+			trader, err := syncer.contract.Trader(ord)
 			if err != nil {
 				log.Println("cannot sync order owner", err)
 				continue
@@ -183,7 +182,7 @@ func (syncer *syncer) purge() ChangeSet {
 					buyOrder := syncer.buyOrders[key]
 					syncer.ordersMu.RUnlock()
 
-					status, err := syncer.renLedger.Status(buyOrder)
+					status, err := syncer.contract.Status(buyOrder)
 					if err != nil {
 						logger.Error(fmt.Sprintf("failed to check order status %v", err))
 						return
@@ -192,17 +191,17 @@ func (syncer *syncer) purge() ChangeSet {
 						return
 					}
 
-					blockNumber, err := syncer.renLedger.BlockNumber(buyOrder)
+					blockNumber, err := syncer.contract.BlockNumber(buyOrder)
 					if err != nil {
 						log.Println("cannot sync order status", err)
 						return
 					}
-					priority, err := syncer.renLedger.Priority(buyOrder)
+					priority, err := syncer.contract.Priority(buyOrder)
 					if err != nil {
 						logger.Error(fmt.Sprintf("failed to check order priority %v", err))
 						return
 					}
-					trader, err := syncer.renLedger.Trader(buyOrder)
+					trader, err := syncer.contract.Trader(buyOrder)
 					if err != nil {
 						log.Println("cannot sync order owner", err)
 						return
@@ -222,7 +221,7 @@ func (syncer *syncer) purge() ChangeSet {
 					sellOrder := syncer.sellOrders[key]
 					syncer.ordersMu.RUnlock()
 
-					status, err := syncer.renLedger.Status(sellOrder)
+					status, err := syncer.contract.Status(sellOrder)
 					if err != nil {
 						logger.Error(fmt.Sprintf("failed to check order status: %v", err))
 						return
@@ -231,17 +230,17 @@ func (syncer *syncer) purge() ChangeSet {
 						return
 					}
 
-					blockNumber, err := syncer.renLedger.BlockNumber(sellOrder)
+					blockNumber, err := syncer.contract.BlockNumber(sellOrder)
 					if err != nil {
 						log.Println("cannot sync order status", err)
 						return
 					}
-					priority, err := syncer.renLedger.Priority(sellOrder)
+					priority, err := syncer.contract.Priority(sellOrder)
 					if err != nil {
 						logger.Error(fmt.Sprintf("failed to check order priority: %v", err))
 						return
 					}
-					trader, err := syncer.renLedger.Trader(sellOrder)
+					trader, err := syncer.contract.Trader(sellOrder)
 					if err != nil {
 						log.Println("cannot sync order owner", err)
 						return
