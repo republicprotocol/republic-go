@@ -45,7 +45,7 @@ type Epoch struct {
 	BlockNumber stackint.Int1024
 }
 
-// Binder implements all methods to communicate with the smart contract
+// Binder implements all methods that will communicate with the smart contracts
 type Binder struct {
 	mu           *sync.RWMutex
 	network      Network
@@ -125,7 +125,7 @@ func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
 	return binder.submitMatch(buy, sell)
 }
 
-// Settle implements the registry.DarkpoolAccounts interface
+// Settle the order pair which gets confirmed by the RenLedger
 func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
@@ -231,7 +231,8 @@ func (binder *Binder) GetBond(darkNodeID []byte) (stackint.Int1024, error) {
 	return stackint.FromBigInt(bond)
 }
 
-// IsRegistered implements the registry.Darkpool interface
+// IsRegistered returns true if the identity.Address is a current
+// registered Darknode. Otherwise, it returns false.
 func (binder *Binder) IsRegistered(darknodeAddr identity.Address) (bool, error) {
 	darkNodeIDByte, err := toByte(darknodeAddr.ID())
 	if err != nil {
@@ -281,7 +282,8 @@ func (binder *Binder) CurrentEpoch() (Epoch, error) {
 	}, nil
 }
 
-// NextEpoch implements the registry.Darkpool interfacce.
+// NextEpoch will try to turn the Epoch and returns the resulting Epoch. If
+// the turning of the Epoch failed, the current Epoch is returned.
 func (binder *Binder) NextEpoch() (registry.Epoch, error) {
 	binder.TriggerEpoch()
 	return binder.Epoch()
@@ -307,7 +309,8 @@ func (binder *Binder) GetOwner(darkNodeID []byte) (common.Address, error) {
 	return binder.darknodeRegistry.GetOwner(binder.callOpts, darkNodeIDByte)
 }
 
-// PublicKey implements the registry.Darkpool interface
+// PublicKey returns the RSA public key of the Darknode registered with the
+// given identity.Address.
 func (binder *Binder) PublicKey(darknodeAddr identity.Address) (rsa.PublicKey, error) {
 	darkNodeIDByte, err := toByte(darknodeAddr.ID())
 	if err != nil {
@@ -320,7 +323,7 @@ func (binder *Binder) PublicKey(darknodeAddr identity.Address) (rsa.PublicKey, e
 	return crypto.RsaPublicKeyFromBytes(pubKeyBytes)
 }
 
-// Darknodes implements the registry.Darkpool interface
+// Darknodes registered in the pod.
 func (binder *Binder) Darknodes() (identity.Addresses, error) {
 	ret, err := binder.darknodeRegistry.GetDarknodes(binder.callOpts)
 	if err != nil {
@@ -342,7 +345,8 @@ func (binder *Binder) MinimumBond() (stackint.Int1024, error) {
 	return stackint.FromBigInt(bond)
 }
 
-// MinimumEpochInterval implements the registry.Darkpool interface
+// MinimumEpochInterval returns the minimum number of seconds between
+// epochs.
 func (binder *Binder) MinimumEpochInterval() (*big.Int, error) {
 	return binder.darknodeRegistry.MinimumEpochInterval(binder.callOpts)
 }
@@ -372,7 +376,7 @@ func toByte(id []byte) ([20]byte, error) {
 	return twentyByte, nil
 }
 
-// Pods implements the registry.Darkpool interface
+// Pods returns the Pod configuration for the current Epoch.
 func (binder *Binder) Pods() ([]registry.Pod, error) {
 	darknodeAddrs, err := binder.Darknodes()
 
@@ -425,7 +429,7 @@ func (binder *Binder) Pods() ([]registry.Pod, error) {
 	return pods, nil
 }
 
-// Epoch implements the registry.Darkpool interface
+// Epoch returns the current Epoch which includes the Pod configuration.
 func (binder *Binder) Epoch() (registry.Epoch, error) {
 	epoch, err := binder.CurrentEpoch()
 	if err != nil {
@@ -455,7 +459,9 @@ func (binder *Binder) Epoch() (registry.Epoch, error) {
 	}, nil
 }
 
-// Pod implements the registry.Darkpool interface
+// Pod returns the Pod that contains the given identity.Address in the
+// current Epoch. It returns ErrPodNotFound if the identity.Address is not
+// registered in the current Epoch.
 func (binder *Binder) Pod(addr identity.Address) (registry.Pod, error) {
 	pods, err := binder.Pods()
 	if err != nil {
@@ -473,7 +479,8 @@ func (binder *Binder) Pod(addr identity.Address) (registry.Pod, error) {
 	return registry.Pod{}, ErrPodNotFound
 }
 
-// OpenOrders implements the registry.RenLedger interface
+// OpenOrders on the Ren Ledger. Returns the number of orders successfully
+// opened.
 func (binder *Binder) OpenOrders(signatures [][65]byte, orderIDs []order.ID, orderParities []order.Parity) (int, error) {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
@@ -514,7 +521,9 @@ func (binder *Binder) OpenOrders(signatures [][65]byte, orderIDs []order.ID, ord
 	return len(txs), err
 }
 
-// OpenBuyOrder implements the registry.RenLedger interface.
+// OpenBuyOrder on the Ren Ledger. The signature will be used to identify
+// the trader that owns the order. The order must be in an undefined state
+// to be opened.
 func (binder *Binder) OpenBuyOrder(signature [65]byte, id order.ID) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
@@ -530,7 +539,9 @@ func (binder *Binder) OpenBuyOrder(signature [65]byte, id order.ID) error {
 	return binder.waitForOrderDepth(tx, id)
 }
 
-// OpenSellOrder implements the registry.RenLedger interface.
+// OpenSellOrder on the Ren Ledger. The signature will be used to identify
+// the trader that owns the order. The order must be in an undefined state
+// to be opened.
 func (binder *Binder) OpenSellOrder(signature [65]byte, id order.ID) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
@@ -547,7 +558,9 @@ func (binder *Binder) OpenSellOrder(signature [65]byte, id order.ID) error {
 	return binder.waitForOrderDepth(tx, id)
 }
 
-// CancelOrder implements the registry.RenLedger interface.
+// CancelOrder on the Ren Ledger. The signature will be used to verify that
+// the request was created by the trader that owns the order. The order
+// must be in the opened state to be canceled.
 func (binder *Binder) CancelOrder(signature [65]byte, id order.ID) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
@@ -563,7 +576,7 @@ func (binder *Binder) CancelOrder(signature [65]byte, id order.ID) error {
 	return nil
 }
 
-// ConfirmOrder implements the registry.RenLedger interface
+// ConfirmOrder match on the Ren Ledger.
 func (binder *Binder) ConfirmOrder(id order.ID, match order.ID) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
@@ -594,7 +607,7 @@ func (binder *Binder) ConfirmOrder(id order.ID, match order.ID) error {
 	}
 }
 
-// Priority implements the registry.RenLedger interface
+// Priority will return the priority of the order
 func (binder *Binder) Priority(id order.ID) (uint64, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -607,7 +620,7 @@ func (binder *Binder) Priority(id order.ID) (uint64, error) {
 	return priority.Uint64(), nil
 }
 
-// Status implements the registry.RenLedger interface
+// Status will return the status of the order
 func (binder *Binder) Status(id order.ID) (order.Status, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -622,7 +635,7 @@ func (binder *Binder) Status(id order.ID) (order.Status, error) {
 	return order.Status(state), nil
 }
 
-// OrderMatch implements the registry.RenLedger interface
+// OrderMatch of an order, if any.
 func (binder *Binder) OrderMatch(id order.ID) (order.ID, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -642,7 +655,8 @@ func (binder *Binder) OrderMatch(id order.ID) (order.ID, error) {
 	return orderIDs[0], nil
 }
 
-// BuyOrders implements the registry.RenLedger interface
+// BuyOrders in the Ren Ledger starting at an offset and returning limited
+// numbers of buy orders.
 func (binder *Binder) BuyOrders(offset, limit int) ([]order.ID, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -662,7 +676,8 @@ func (binder *Binder) BuyOrders(offset, limit int) ([]order.ID, error) {
 	return orders, nil
 }
 
-// SellOrders implements the registry.RenLedger interface
+// SellOrders in the Ren Ledger starting at an offset and returning limited
+// numbers of sell orders.
 func (binder *Binder) SellOrders(offset, limit int) ([]order.ID, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -683,7 +698,7 @@ func (binder *Binder) SellOrders(offset, limit int) ([]order.ID, error) {
 	return orders, nil
 }
 
-// Trader implements the registry.RenLedger interface
+// Trader returns the trader who submits the order
 func (binder *Binder) Trader(id order.ID) (string, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -722,7 +737,7 @@ func (binder *Binder) Confirmer(id order.ID) (common.Address, error) {
 	return address, nil
 }
 
-// Fee implements the registry.RenLedger interface
+// Fee required to open an order.
 func (binder *Binder) Fee() (*big.Int, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -730,7 +745,7 @@ func (binder *Binder) Fee() (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-// Depth implements the registry.RenLedger interface
+// Depth will return depth of confirmation blocks
 func (binder *Binder) Depth(orderID order.ID) (uint, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -743,7 +758,8 @@ func (binder *Binder) Depth(orderID order.ID) (uint, error) {
 	return uint(depth.Uint64()), nil
 }
 
-// BlockNumber implements the registry.RenLedger interface
+// BlockNumber will return the block number when the order status
+// last mode modified
 func (binder *Binder) BlockNumber(orderID order.ID) (uint, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
