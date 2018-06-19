@@ -88,3 +88,25 @@ func Backoff(ctx context.Context, f func() error) error {
 		}
 	}
 }
+
+// BackoffMax is the same as Backoff but it will not wait longer than the
+// maximum time in millisecond.
+func BackoffMax(ctx context.Context, f func() error, maxMs int64) error {
+	timeoutMs := time.Duration(1000)
+	for {
+		err := f()
+		if err == nil {
+			return nil
+		}
+		timer := time.NewTimer(time.Millisecond * timeoutMs)
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("backoff timeout = %v: %v", ctx.Err(), err)
+		case <-timer.C:
+			timeoutMs = time.Duration(float64(timeoutMs) * 1.6)
+			if int64(timeoutMs) > maxMs {
+				timeoutMs = time.Duration(maxMs)
+			}
+		}
+	}
+}

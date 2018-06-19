@@ -327,6 +327,13 @@ func (streamer *Streamer) Open(ctx context.Context, multiAddr identity.MultiAddr
 	var err error
 	if streamer.addr < multiAddr.Address() {
 		_, err = streamer.connector.connect(ctx, multiAddr)
+	} else {
+		err = BackoffMax(ctx, func() error {
+			if stream := streamer.connector.connection(multiAddr.Address()); stream == nil {
+				return ErrStreamDisconnected
+			}
+			return nil
+		}, 30000 /* Maximum backoff 30s */)
 	}
 	return newCtxStreamer(ctx, multiAddr, streamer), err
 }
@@ -424,10 +431,10 @@ type StreamerService struct {
 
 // NewStreamerService returns an implementation of the gRPC StreamService that
 // connects stream.Streams from clients to a Streamer.
-func NewStreamerService(verifier crypto.Verifier, addr identity.Address, streamer *Streamer) StreamerService {
+func NewStreamerService(verifier crypto.Verifier, streamer *Streamer) StreamerService {
 	return StreamerService{
 		verifier:  verifier,
-		addr:      addr,
+		addr:      streamer.addr,
 		connector: streamer.connector,
 	}
 }
