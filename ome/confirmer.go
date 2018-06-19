@@ -29,8 +29,8 @@ type confirmer struct {
 	storer Storer
 
 	contract              ContractsBinder
-	renLedgerPollInterval time.Duration
-	renLedgerBlockDepth   uint
+	orderbookPollInterval time.Duration
+	orderbookBlockDepth   uint
 
 	confirmingMu         *sync.Mutex
 	confirmingBuyOrders  map[order.ID]struct{}
@@ -38,17 +38,17 @@ type confirmer struct {
 }
 
 // NewConfirmer returns a Confirmer that submits Computations to the
-// RenLedger for confirmation. It polls the RenLedger on an interval
+// Orderbook for confirmation. It polls the Orderbook on an interval
 // and checks for consensus on confirmations by waiting until a submitted
 // Computation has been confirmed has the confirmation has passed the block
 // depth limit.
-func NewConfirmer(storer Storer, contract ContractsBinder, renLedgerPollInterval time.Duration, renLedgerBlockDepth uint) Confirmer {
+func NewConfirmer(storer Storer, contract ContractsBinder, orderbookPollInterval time.Duration, orderbookBlockDepth uint) Confirmer {
 	return &confirmer{
 		storer: storer,
 
 		contract:              contract,
-		renLedgerPollInterval: renLedgerPollInterval,
-		renLedgerBlockDepth:   renLedgerBlockDepth,
+		orderbookPollInterval: orderbookPollInterval,
+		orderbookBlockDepth:   orderbookBlockDepth,
 
 		confirmingMu:         new(sync.Mutex),
 		confirmingBuyOrders:  map[order.ID]struct{}{},
@@ -98,12 +98,12 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 		}
 	}()
 
-	// Periodically poll the RenLedger to observe the state of
+	// Periodically poll the orderbook to observe the state of
 	// confirmations that have passed the block depth limit
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTicker(confirmer.renLedgerPollInterval)
+		ticker := time.NewTicker(confirmer.orderbookPollInterval)
 		defer ticker.Stop()
 
 		for {
@@ -190,7 +190,7 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 	if err != nil {
 		return order.ID{}, err
 	}
-	if depth < confirmer.renLedgerBlockDepth {
+	if depth < confirmer.orderbookBlockDepth {
 		return order.ID{}, ErrOrderNotConfirmed
 	}
 
