@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/registry"
 )
 
 // A Ranker consumes orders and produces Computations that are prioritized
@@ -31,8 +31,8 @@ type Ranker interface {
 	// buffer.
 	Computations(Computations) int
 
-	// OnChangeEpoch should be called whenever a new cal.Epoch is observed.
-	OnChangeEpoch(epoch cal.Epoch)
+	// OnChangeEpoch should be called whenever a new Epoch is observed.
+	OnChangeEpoch(epoch registry.Epoch)
 }
 
 // delegateRanker delegates orders to specific epochRanker according to the
@@ -59,7 +59,7 @@ type delegateRanker struct {
 // Computations. The Ranker will run background processes until the done
 // channel is closed, after which the Ranker will no longer consume
 // orderbook.Changeset or produce Computation.
-func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, epoch cal.Epoch) (Ranker, error) {
+func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, epoch registry.Epoch) (Ranker, error) {
 	ranker := &delegateRanker{
 		done:    done,
 		address: address,
@@ -122,7 +122,7 @@ func (ranker *delegateRanker) Computations(buffer Computations) int {
 }
 
 // OnChangeEpoch implements the Ranker interface.
-func (ranker *delegateRanker) OnChangeEpoch(epoch cal.Epoch) {
+func (ranker *delegateRanker) OnChangeEpoch(epoch registry.Epoch) {
 	ranker.rankerMu.Lock()
 	defer ranker.rankerMu.Unlock()
 
@@ -211,7 +211,7 @@ func (ranker *delegateRanker) removeComputations(orderID order.ID) {
 	}
 }
 
-func (ranker *delegateRanker) posFromEpoch(epoch cal.Epoch) (int, int, error) {
+func (ranker *delegateRanker) posFromEpoch(epoch registry.Epoch) (int, int, error) {
 	pod, err := epoch.Pod(ranker.address)
 	if err != nil {
 		return 0, 0, err
@@ -223,7 +223,7 @@ func (ranker *delegateRanker) posFromEpoch(epoch cal.Epoch) (int, int, error) {
 // It only cares about orders from one dedicated epoch, so that we won't
 // cross match orders from different epoch.
 type epochRanker struct {
-	epoch           cal.Epoch
+	epoch           registry.Epoch
 	numberOfRankers int
 	pos             int
 	buys            map[order.ID]orderbook.Priority
@@ -231,7 +231,7 @@ type epochRanker struct {
 	traders         map[order.ID]string
 }
 
-func newEpochRanker(numberOfRankers, pos int, epoch cal.Epoch) *epochRanker {
+func newEpochRanker(numberOfRankers, pos int, epoch registry.Epoch) *epochRanker {
 	return &epochRanker{
 		epoch:           epoch,
 		numberOfRankers: numberOfRankers,

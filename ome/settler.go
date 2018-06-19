@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -25,17 +24,17 @@ type Settler interface {
 type settler struct {
 	storer   Storer
 	smpcer   smpc.Smpcer
-	accounts cal.DarkpoolAccounts
+	contract ContractsBinder
 }
 
 // NewSettler returns a Settler that settles orders by first using an
 // smpc.Smpcer to join all of the composing order.Fragments, and then submits
 // them to an Ethereum contract.
-func NewSettler(storer Storer, smpcer smpc.Smpcer, accounts cal.DarkpoolAccounts) Settler {
+func NewSettler(storer Storer, smpcer smpc.Smpcer, contract ContractsBinder) Settler {
 	return &settler{
 		storer:   storer,
 		smpcer:   smpcer,
-		accounts: accounts,
+		contract: contract,
 	}
 }
 
@@ -90,7 +89,7 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 }
 
 func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order) {
-	if err := settler.accounts.Settle(buy, sell); err != nil {
+	if err := settler.contract.Settle(buy, sell); err != nil {
 		logger.Error(fmt.Sprintf("cannot settle buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buy.ID[:8]), base64.StdEncoding.EncodeToString(sell.ID[:8]), err))
 		return
 	}

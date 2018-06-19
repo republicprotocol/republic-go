@@ -7,9 +7,9 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ome"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/testutils"
 )
@@ -24,12 +24,12 @@ var _ = Describe("Ome", func() {
 		done     chan struct{}
 		addr     identity.Address
 		err      error
-		epoch    cal.Epoch
+		epoch    registry.Epoch
 		storer   Storer
 		book     orderbook.Orderbook
 		smpcer   smpc.Smpcer
-		ledger   cal.RenLedger
-		accounts cal.DarkpoolAccounts
+		ledger   ContractsBinder
+		accounts ContractsBinder
 
 		// Ome components
 		ranker    Ranker
@@ -49,8 +49,8 @@ var _ = Describe("Ome", func() {
 			book, err = testutils.NewOrderbook()
 			Ω(err).ShouldNot(HaveOccurred())
 			smpcer = testutils.NewAlwaysMatchSmpc()
-			ledger = testutils.NewRenLedger()
-			accounts = testutils.NewDarkpoolAccounts()
+			// ledger = testutils.NewRenLedger()
+			// accounts = testutils.NewDarkpoolAccounts()
 
 			ranker, err = NewRanker(done, addr, storer, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -82,7 +82,7 @@ var _ = Describe("Ome", func() {
 		//		defer close(done)
 		//
 		//		time.Sleep(3 * time.Second)
-		//		epoch := cal.Epoch{}
+		//		epoch := Epoch{}
 		//		ome.OnChangeEpoch(epoch)
 		//		time.Sleep(3 * time.Second)
 		//	}()

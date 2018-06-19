@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -29,7 +28,7 @@ type Confirmer interface {
 type confirmer struct {
 	storer Storer
 
-	renLedger             cal.RenLedger
+	contract              ContractsBinder
 	renLedgerPollInterval time.Duration
 	renLedgerBlockDepth   uint
 
@@ -39,15 +38,15 @@ type confirmer struct {
 }
 
 // NewConfirmer returns a Confirmer that submits Computations to the
-// cal.RenLedger for confirmation. It polls the cal.RenLedger on an interval
+// RenLedger for confirmation. It polls the RenLedger on an interval
 // and checks for consensus on confirmations by waiting until a submitted
 // Computation has been confirmed has the confirmation has passed the block
 // depth limit.
-func NewConfirmer(storer Storer, renLedger cal.RenLedger, renLedgerPollInterval time.Duration, renLedgerBlockDepth uint) Confirmer {
+func NewConfirmer(storer Storer, contract ContractsBinder, renLedgerPollInterval time.Duration, renLedgerBlockDepth uint) Confirmer {
 	return &confirmer{
 		storer: storer,
 
-		renLedger:             renLedger,
+		contract:              contract,
 		renLedgerPollInterval: renLedgerPollInterval,
 		renLedgerBlockDepth:   renLedgerBlockDepth,
 
@@ -99,7 +98,7 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 		}
 	}()
 
-	// Periodically poll the cal.RenLedger to observe the state of
+	// Periodically poll the RenLedger to observe the state of
 	// confirmations that have passed the block depth limit
 	go func() {
 		defer wg.Done()
@@ -134,7 +133,7 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 }
 
 func (confirmer *confirmer) beginConfirmation(orderMatch Computation) error {
-	return confirmer.renLedger.ConfirmOrder(orderMatch.Buy, orderMatch.Sell)
+	return confirmer.contract.ConfirmOrder(orderMatch.Buy, orderMatch.Sell)
 }
 
 func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order.Parity, done <-chan struct{}, confirmations chan<- Computation, errs chan<- error) {
@@ -187,7 +186,7 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 
 func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orderParity order.Parity) (order.ID, error) {
 	// Ignore orders that are not pass the depth limit
-	depth, err := confirmer.renLedger.Depth(ord)
+	depth, err := confirmer.contract.Depth(ord)
 	if err != nil {
 		return order.ID{}, err
 	}
@@ -196,11 +195,11 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 	}
 
 	// Purge orders that are not confirmed
-	status, err := confirmer.renLedger.Status(ord)
+	status, err := confirmer.contract.Status(ord)
 	if err != nil {
 		return order.ID{}, err
 	}
-	if status != cal.StatusConfirmed {
+	if status != StatusConfirmed {
 		if orderParity == order.ParityBuy {
 			delete(confirmer.confirmingBuyOrders, ord)
 		} else {
@@ -209,7 +208,7 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 		return order.ID{}, ErrOrderNotConfirmed
 	}
 
-	match, err := confirmer.renLedger.OrderMatch(ord)
+	match, err := confirmer.contract.OrderMatch(ord)
 	if err != nil {
 		return order.ID{}, err
 	}

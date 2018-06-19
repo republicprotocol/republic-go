@@ -6,8 +6,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ome"
+	"github.com/republicprotocol/republic-go/registry"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -26,7 +26,7 @@ var _ = Describe("OME Ranker", func() {
 	var storer Storer
 	var ranker Ranker
 	var done chan struct{}
-	var epoch cal.Epoch
+	var epoch registry.Epoch
 	var addr identity.Address
 	var err error
 
@@ -147,7 +147,7 @@ var _ = Describe("OME Ranker", func() {
 			// add one more pod in the epoch
 			another, err := testutils.RandomAddress()
 			Ω(err).ShouldNot(HaveOccurred())
-			anotherPod := cal.Pod{
+			anotherPod := registry.Pod{
 				Position:  0,
 				Hash:      testutils.Random32Bytes(),
 				Darknodes: []identity.Address{another},
@@ -167,7 +167,7 @@ var _ = Describe("OME Ranker", func() {
 
 			computations := make([]Computation, 128)
 			i := ranker.Computations(computations)
-			Ω(i).Should(BeNumerically(">=", NumberOfOrderPairs * NumberOfOrderPairs / 2))
+			Ω(i).Should(BeNumerically(">=", NumberOfOrderPairs*NumberOfOrderPairs/2))
 		})
 	})
 
@@ -302,10 +302,10 @@ var _ = Describe("OME Ranker", func() {
 })
 
 // newEpoch returns a new epoch with only one pod and one darknode.
-func newEpoch(i int, node identity.Address) cal.Epoch {
-	return cal.Epoch{
+func newEpoch(i int, node identity.Address) registry.Epoch {
+	return registry.Epoch{
 		Hash: testutils.Random32Bytes(),
-		Pods: []cal.Pod{
+		Pods: []registry.Pod{
 			{
 				Position:  0,
 				Hash:      testutils.Random32Bytes(),

@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ome"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -15,12 +14,12 @@ var numberOfComputationsToTest = 100
 
 var _ = Describe("Confirmer", func() {
 	var confirmer Confirmer
-	var renLedger cal.RenLedger
+	var renLedger ContractsBinder
 	var storer Storer
 
 	BeforeEach(func() {
 		depth, pollInterval := uint(0), time.Second
-		renLedger = testutils.NewRenLedger()
+		// renLedger = testutils.NewRenLedger()
 		storer = testutils.NewStorer()
 		confirmer = NewConfirmer(storer, renLedger, pollInterval, depth)
 	})
@@ -41,10 +40,10 @@ var _ = Describe("Confirmer", func() {
 
 		// Open all the orders
 		for i := 0; i < numberOfComputationsToTest; i++ {
-			err := renLedger.OpenBuyOrder([65]byte{}, computations[i].Buy)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = renLedger.OpenSellOrder([65]byte{}, computations[i].Sell)
-			Expect(err).ShouldNot(HaveOccurred())
+			// err := renLedger.OpenBuyOrder([65]byte{}, computations[i].Buy)
+			// Expect(err).ShouldNot(HaveOccurred())
+			// err = renLedger.OpenSellOrder([65]byte{}, computations[i].Sell)
+			// Expect(err).ShouldNot(HaveOccurred())
 		}
 
 		go func() {
