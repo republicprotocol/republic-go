@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math/big"
 	"net"
 	"os"
 	"os/exec"
@@ -13,14 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/accounts"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
-	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/contracts"
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
@@ -66,14 +59,13 @@ func main() {
 	log.Printf("address %v", multiAddr)
 
 	// Get ethereum bindings
-	auth, darkPool, darkPoolAccounts, _, renLedger, err := getEthereumBindings(config.Keystore, config.Ethereum)
+	contractBindings, err := contracts.GetContractBindings(context.Background(), config.Keystore, config.Ethereum)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
-	log.Printf("ethereum %v", auth.From.Hex())
 
 	// New crypter for signing and verification
-	crypter := registry.NewCrypter(config.Keystore, darkPool, 256, time.Minute)
+	crypter := registry.NewCrypter(config.Keystore, &contractBindings, 256, time.Minute)
 
 	// New database for persistent storage
 	store, err := leveldb.NewStore(*dataParam)
@@ -96,7 +88,7 @@ func main() {
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
 
-	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(&store, renLedger, 32), &store)
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(&store, &contractBindings, 32), &store)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
@@ -127,7 +119,7 @@ func main() {
 		smpcer := smpc.NewSmpcer(swarmer, streamer)
 
 		// New OME
-		epoch, err := darkPool.Epoch()
+		epoch, err := contractBindings.Epoch()
 		if err != nil {
 			log.Fatalf("cannot get current epoch: %v", err)
 		}
@@ -136,8 +128,8 @@ func main() {
 			log.Fatalf("cannot create new ranker: %v", err)
 		}
 		matcher := ome.NewMatcher(&store, smpcer)
-		confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
-		settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
+		confirmer := ome.NewConfirmer(&store, &contractBindings, 14*time.Second, 1)
+		settler := ome.NewSettler(&store, smpcer, &contractBindings)
 		ome := ome.NewOme(config.Address, ranker, matcher, confirmer, settler, &store, orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
@@ -153,7 +145,7 @@ func main() {
 				time.Sleep(14 * time.Second)
 
 				// Get the epoch
-				nextEpoch, err := darkPool.Epoch()
+				nextEpoch, err := contractBindings.Epoch()
 				if err != nil {
 					logger.Error(fmt.Sprintf("cannot sync epoch: %v", err))
 					continue
@@ -195,33 +187,4 @@ func getIPAddress() (string, error) {
 	}
 
 	return string(out), nil
-}
-
-func getEthereumBindings(keystore crypto.Keystore, conf ethereum.Config) (*bind.TransactOpts, cal.Darkpool, cal.DarkpoolAccounts, cal.DarkpoolFees, cal.RenLedger, error) {
-	conn, err := ethereum.Connect(conf)
-	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("cannot connect to ethereum: %v", err)
-	}
-	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
-	auth.GasPrice = big.NewInt(1000000000)
-
-	darkpool, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
-	if err != nil {
-		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
-		return auth, nil, nil, nil, nil, err
-	}
-
-	renLedger, err := ledger.NewRenLedgerContract(context.Background(), conn, auth, &bind.CallOpts{})
-	if err != nil {
-		fmt.Println(fmt.Errorf("cannot bind to ren ledger: %v", err))
-		return auth, nil, nil, nil, nil, err
-	}
-
-	acts, err := accounts.NewRenExAccounts(context.Background(), conn, auth, &bind.CallOpts{})
-	if err != nil {
-		fmt.Println(fmt.Errorf("cannot bind to RenEx accounts: %v", err))
-		return auth, nil, nil, nil, nil, err
-	}
-
-	return auth, &darkpool, &acts, nil, &renLedger, nil
 }
