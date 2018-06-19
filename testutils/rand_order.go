@@ -120,8 +120,8 @@ func RandomConfigs(n int, b int) ([]config.Config, error) {
 				URI:                     "http://localhost:8545",
 				RepublicTokenAddress:    contracts.RepublicTokenAddressOnGanache.String(),
 				DarknodeRegistryAddress: contracts.DarknodeRegistryAddressOnGanache.String(),
-				RenLedgerAddress:        contracts.RenLedgerAddressOnGanache.String(),
-				RenExAccountsAddress:    contracts.RenExAccountsAddressOnGanache.String(),
+				OrderbookAddress:        contracts.OrderbookAddressOnGanache.String(),
+				RenExSettlementsAddress: contracts.RenExSettlementsAddressOnGanache.String(),
 			},
 		})
 	}
