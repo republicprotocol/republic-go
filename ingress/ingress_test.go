@@ -15,7 +15,6 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ingress"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
@@ -24,7 +23,8 @@ import (
 var _ = Describe("Ingress", func() {
 
 	var rsaKey crypto.RsaKey
-	var darkpool mockDarkpool
+	var contract ContractsBinder
+	// var darkpool mockDarkpool
 	var ingress Ingress
 	var done chan struct{}
 	var errChSync <-chan error
@@ -36,11 +36,11 @@ var _ = Describe("Ingress", func() {
 
 		rsaKey, err = crypto.RandomRsaKey()
 		Expect(err).ShouldNot(HaveOccurred())
-		darkpool = newMockDarkpool()
-		renLedger := newMockRenLedger()
+		// darkpool = newMockDarkpool()
+		// renLedger := newMockRenLedger()
 		swarmer := mockSwarmer{}
 		orderbookClient := mockOrderbookClient{}
-		ingress = NewIngress(&darkpool, &renLedger, &swarmer, &orderbookClient)
+		ingress = NewIngress(contract, &swarmer, &orderbookClient)
 		errChSync = ingress.Sync(done)
 		errChProcess = ingress.ProcessRequests(done)
 
@@ -70,7 +70,7 @@ var _ = Describe("Ingress", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			orderFragmentMappingIn := OrderFragmentMapping{}
-			pods, err := darkpool.Pods()
+			pods, err := contract.Pods()
 			Expect(err).ShouldNot(HaveOccurred())
 			orderFragmentMappingIn[pods[0].Hash] = []OrderFragment{}
 			for i, fragment := range fragments {
@@ -97,7 +97,7 @@ var _ = Describe("Ingress", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			orderFragmentMappingIn := OrderFragmentMapping{}
-			pods, err := darkpool.Pods()
+			pods, err := contract.Pods()
 			Expect(err).ShouldNot(HaveOccurred())
 			orderFragmentMappingIn[pods[0].Hash] = []OrderFragment{}
 			for i, fragment := range fragments {
@@ -122,7 +122,7 @@ var _ = Describe("Ingress", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			orderFragmentMappingIn := OrderFragmentMapping{}
-			pods, err := darkpool.Pods()
+			pods, err := contract.Pods()
 			Expect(err).ShouldNot(HaveOccurred())
 			orderFragmentMappingIn[pods[0].Hash] = make([]OrderFragment, 3)
 
@@ -174,7 +174,7 @@ var _ = Describe("Ingress", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			orderFragmentMappingIn := OrderFragmentMapping{}
-			pods, err := darkpool.Pods()
+			pods, err := contract.Pods()
 			Expect(err).ShouldNot(HaveOccurred())
 			orderFragmentMappingIn[pods[0].Hash] = []OrderFragment{}
 			for i, fragment := range fragments {
@@ -222,11 +222,11 @@ func createOrder() (order.Order, error) {
 
 type mockDarkpool struct {
 	numberOfDarknodes int
-	pods              []cal.Pod
+	pods              []Pod
 }
 
 func newMockDarkpool() mockDarkpool {
-	pod := cal.Pod{
+	pod := Pod{
 		Hash:      [32]byte{},
 		Darknodes: []identity.Address{},
 	}
@@ -240,7 +240,7 @@ func newMockDarkpool() mockDarkpool {
 	}
 	return mockDarkpool{
 		numberOfDarknodes: 6,
-		pods:              []cal.Pod{pod},
+		pods:              []Pod{pod},
 	}
 }
 
@@ -252,16 +252,16 @@ func (darkpool *mockDarkpool) Darknodes() (identity.Addresses, error) {
 	return darknodes, nil
 }
 
-func (darkpool *mockDarkpool) NextEpoch() (cal.Epoch, error) {
+func (darkpool *mockDarkpool) NextEpoch() (Epoch, error) {
 	return darkpool.Epoch()
 }
 
-func (darkpool *mockDarkpool) Epoch() (cal.Epoch, error) {
+func (darkpool *mockDarkpool) Epoch() (Epoch, error) {
 	darknodes, err := darkpool.Darknodes()
 	if err != nil {
-		return cal.Epoch{}, err
+		return Epoch{}, err
 	}
-	return cal.Epoch{
+	return Epoch{
 		Hash:      [32]byte{1},
 		Pods:      darkpool.pods,
 		Darknodes: darknodes,
@@ -272,11 +272,11 @@ func (darkpool *mockDarkpool) MinimumEpochInterval() (*big.Int, error) {
 	return big.NewInt(1), nil
 }
 
-func (darkpool *mockDarkpool) Pods() ([]cal.Pod, error) {
+func (darkpool *mockDarkpool) Pods() ([]Pod, error) {
 	return darkpool.pods, nil
 }
 
-func (darkpool *mockDarkpool) Pod(addr identity.Address) (cal.Pod, error) {
+func (darkpool *mockDarkpool) Pod(addr identity.Address) (Pod, error) {
 	panic("unimplemented")
 }
 
