@@ -32,24 +32,24 @@ const (
 var (
 	RepublicTokenAddressOnGanache    = common.HexToAddress("0x8DE2a0D285cd6fDB47ABAe34024a6EED79ef0E92")
 	DarknodeRegistryAddressOnGanache = common.HexToAddress("0xbF195E17802736Ff4E19275b961bb1c2D45f2c8D")
-	RenLedgerAddressOnGanache        = common.HexToAddress("0x01cbe20EA5A49649F5615A59FaA30E88584634a2")
-	RenExAccountsAddressOnGanache    = common.HexToAddress("0x9D174894dEa6470d25C0F6D847B94801EaE17Bc3")
+	OrderbookAddressOnGanache        = common.HexToAddress("0x01cbe20EA5A49649F5615A59FaA30E88584634a2")
+	RenExSettlementsAddressOnGanache = common.HexToAddress("0x9D174894dEa6470d25C0F6D847B94801EaE17Bc3")
 )
 
 // Contract addresses on Ropsten
 var (
 	RepublicTokenAddressOnRopsten    = common.HexToAddress("0x65d54eda5f032f2275caa557e50c029cfbccbb54")
 	DarknodeRegistryAddressOnRopsten = common.HexToAddress("0x69eb8d26157b9e12f959ea9f189A5D75991b59e3")
-	RenLedgerAddressOnRopsten        = common.HexToAddress("0x6235E09103bC7f205837237e4eAD855bC196E4D3")
-	RenExAccountsAddressOnRopsten    = common.HexToAddress("0x0111111111111111111111111111111111111111") //fixme
+	OrderbookAddressOnRopsten        = common.HexToAddress("0x6235E09103bC7f205837237e4eAD855bC196E4D3")
+	RenExSettlementsAddressOnRopsten = common.HexToAddress("0x0111111111111111111111111111111111111111") //fixme
 )
 
 // Contract addresses on Kovan
 var (
 	RepublicTokenAddressOnKovan    = common.HexToAddress("0x6f429121a3bd3e6c1c17edbc676eec44cf117faf")
 	DarknodeRegistryAddressOnKovan = common.HexToAddress("0xf7b4360983A8fdd3E2ffb2e46cBeC65fA1b3075E")
-	RenLedgerAddressOnKovan        = common.HexToAddress("0x4782a0B10ad2EFEa1b488F53fDE2C25ceEd4a013")
-	RenExAccountsAddressOnKovan    = common.HexToAddress("0xd88C4f5162850B93c04EdEd90f7c552792c0B460")
+	OrderbookAddressOnKovan        = common.HexToAddress("0x4782a0B10ad2EFEa1b488F53fDE2C25ceEd4a013")
+	RenExSettlementsAddressOnKovan = common.HexToAddress("0xd88C4f5162850B93c04EdEd90f7c552792c0B460")
 )
 
 // Config defines the different settings for connecting the Darknode
@@ -60,8 +60,8 @@ type Config struct {
 	URI                     string  `json:"uri"`
 	RepublicTokenAddress    string  `json:"republicTokenAddress"`
 	DarknodeRegistryAddress string  `json:"darknodeRegistryAddress"`
-	RenLedgerAddress        string  `json:"renLedgerAddress"`
-	RenExAccountsAddress    string  `json:"renExAccountsAddress"`
+	OrderbookAddress        string  `json:"orderbookAddress"`
+	RenExSettlementsAddress string  `json:"renExSettlementsAddress"`
 }
 
 // Conn contains the client and the contracts deployed to it
@@ -109,25 +109,25 @@ func Connect(config Config) (Conn, error) {
 			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}
 	}
-	if config.RenLedgerAddress == "" {
+	if config.OrderbookAddress == "" {
 		switch config.Network {
 		case NetworkGanache:
-			config.RenLedgerAddress = RenLedgerAddressOnGanache.String()
+			config.OrderbookAddress = OrderbookAddressOnGanache.String()
 		case NetworkKovan:
-			config.RenLedgerAddress = RenLedgerAddressOnKovan.String()
+			config.OrderbookAddress = OrderbookAddressOnKovan.String()
 		case NetworkRopsten:
-			config.RenLedgerAddress = RenLedgerAddressOnRopsten.String()
+			config.OrderbookAddress = OrderbookAddressOnRopsten.String()
 		default:
 			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
 		}
 	}
 
-	if config.RenExAccountsAddress == "" {
+	if config.RenExSettlementsAddress == "" {
 		switch config.Network {
 		case NetworkGanache:
-			config.RenExAccountsAddress = RenExAccountsAddressOnGanache.String()
+			config.RenExSettlementsAddress = RenExSettlementsAddressOnGanache.String()
 		case NetworkKovan:
-			config.RenExAccountsAddress = RenExAccountsAddressOnKovan.String()
+			config.RenExSettlementsAddress = RenExSettlementsAddressOnKovan.String()
 		case NetworkRopsten:
 			panic("the RenEx Accounts contract has not been deployed to Ropsten yet - please use Kovan")
 		default:

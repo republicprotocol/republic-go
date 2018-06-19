@@ -33,7 +33,7 @@ var ErrLengthMismatch = errors.New("length mismatch")
 var ErrMismatchedOrderLengths = errors.New("mismatched order lengths")
 
 // BlocksForConfirmation is the number of Ethereum blocks required to consider
-// changes to an order's status (Open, Canceled or Confirmed) in the Ledger to
+// changes to an order's status (Open, Canceled or Confirmed) in the orderbook to
 // be confirmed. The functions `OpenBuyOrder`, `OpenSellOrder`, `CancelOrder`
 // and `ConfirmOrder` return only after the required number of confirmations has
 // been reached.
@@ -56,9 +56,9 @@ type Binder struct {
 
 	republicToken    bindings.RepublicToken
 	darknodeRegistry bindings.DarknodeRegistry
-	renExSettlement  bindings.RenExSettlement
-	ledger           bindings.Orderbook
-	rewardsVault     bindings.RewardVault
+	orderbook        bindings.Orderbook
+
+	renExSettlement bindings.RenExSettlement
 }
 
 // GetContractBindings returns a Binder to communicate with contracts
@@ -82,13 +82,13 @@ func GetContractBindings(ctx context.Context, keystore crypto.Keystore, conf Con
 		return Binder{}, err
 	}
 
-	ledger, err := bindings.NewOrderbook(common.HexToAddress(conn.Config.RenLedgerAddress), bind.ContractBackend(conn.Client))
+	orderbook, err := bindings.NewOrderbook(common.HexToAddress(conn.Config.OrderbookAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
-		fmt.Println(fmt.Errorf("cannot bind to ren ledger: %v", err))
+		fmt.Println(fmt.Errorf("cannot bind to Orderbook: %v", err))
 		return Binder{}, err
 	}
 
-	renExSettlement, err := bindings.NewRenExSettlement(common.HexToAddress(conn.Config.RenExAccountsAddress), bind.ContractBackend(conn.Client))
+	renExSettlement, err := bindings.NewRenExSettlement(common.HexToAddress(conn.Config.RenExSettlementsAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to RenEx accounts: %v", err))
 		return Binder{}, err
@@ -105,8 +105,7 @@ func GetContractBindings(ctx context.Context, keystore crypto.Keystore, conf Con
 		republicToken:    *republicToken,
 		darknodeRegistry: *darknodeRegistry,
 		renExSettlement:  *renExSettlement,
-		ledger:           *ledger,
-		rewardsVault:     bindings.RewardVault{}}, nil
+		orderbook:        *orderbook}, nil
 }
 
 // SubmitOrder to the RenEx accounts
@@ -125,7 +124,7 @@ func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
 	return binder.submitMatch(buy, sell)
 }
 
-// Settle the order pair which gets confirmed by the RenLedger
+// Settle the order pair which gets confirmed by the Orderbook
 func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
@@ -176,13 +175,13 @@ func (binder *Binder) submitOrder(ord order.Order) error {
 }
 
 // Register a new dark node with the dark node registrar
-func (binder *Binder) Register(darkNodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
-	darkNodeIDByte, err := toByte(darkNodeID)
+func (binder *Binder) Register(darknodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
+	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return &types.Transaction{}, err
 	}
 
-	txn, err := binder.darknodeRegistry.Register(binder.transactOpts, darkNodeIDByte, publicKey, bond.ToBigInt())
+	txn, err := binder.darknodeRegistry.Register(binder.transactOpts, darknodeIDByte, publicKey, bond.ToBigInt())
 	if err != nil {
 		return nil, err
 	}
@@ -191,12 +190,12 @@ func (binder *Binder) Register(darkNodeID []byte, publicKey []byte, bond *stacki
 }
 
 // Deregister an existing dark node
-func (binder *Binder) Deregister(darkNodeID []byte) (*types.Transaction, error) {
-	darkNodeIDByte, err := toByte(darkNodeID)
+func (binder *Binder) Deregister(darknodeID []byte) (*types.Transaction, error) {
+	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return &types.Transaction{}, err
 	}
-	tx, err := binder.darknodeRegistry.Deregister(binder.transactOpts, darkNodeIDByte)
+	tx, err := binder.darknodeRegistry.Deregister(binder.transactOpts, darknodeIDByte)
 	if err != nil {
 		return nil, err
 	}
@@ -205,12 +204,12 @@ func (binder *Binder) Deregister(darkNodeID []byte) (*types.Transaction, error) 
 }
 
 // Refund withdraws the bond. Must be called before reregistering.
-func (binder *Binder) Refund(darkNodeID []byte) (*types.Transaction, error) {
-	darkNodeIDByte, err := toByte(darkNodeID)
+func (binder *Binder) Refund(darknodeID []byte) (*types.Transaction, error) {
+	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return &types.Transaction{}, err
 	}
-	tx, err := binder.darknodeRegistry.Refund(binder.transactOpts, darkNodeIDByte)
+	tx, err := binder.darknodeRegistry.Refund(binder.transactOpts, darknodeIDByte)
 	if err != nil {
 		return nil, err
 	}
@@ -219,12 +218,12 @@ func (binder *Binder) Refund(darkNodeID []byte) (*types.Transaction, error) {
 }
 
 // GetBond retrieves the bond of an existing dark node
-func (binder *Binder) GetBond(darkNodeID []byte) (stackint.Int1024, error) {
-	darkNodeIDByte, err := toByte(darkNodeID)
+func (binder *Binder) GetBond(darknodeID []byte) (stackint.Int1024, error) {
+	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return stackint.Int1024{}, err
 	}
-	bond, err := binder.darknodeRegistry.GetBond(binder.callOpts, darkNodeIDByte)
+	bond, err := binder.darknodeRegistry.GetBond(binder.callOpts, darknodeIDByte)
 	if err != nil {
 		return stackint.Int1024{}, err
 	}
@@ -234,20 +233,20 @@ func (binder *Binder) GetBond(darkNodeID []byte) (stackint.Int1024, error) {
 // IsRegistered returns true if the identity.Address is a current
 // registered Darknode. Otherwise, it returns false.
 func (binder *Binder) IsRegistered(darknodeAddr identity.Address) (bool, error) {
-	darkNodeIDByte, err := toByte(darknodeAddr.ID())
+	darknodeIDByte, err := toByte(darknodeAddr.ID())
 	if err != nil {
 		return false, err
 	}
-	return binder.darknodeRegistry.IsRegistered(binder.callOpts, darkNodeIDByte)
+	return binder.darknodeRegistry.IsRegistered(binder.callOpts, darknodeIDByte)
 }
 
 // IsDeregistered returns true if the node is deregistered
-func (binder *Binder) IsDeregistered(darkNodeID []byte) (bool, error) {
-	darkNodeIDByte, err := toByte(darkNodeID)
+func (binder *Binder) IsDeregistered(darknodeID []byte) (bool, error) {
+	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return false, err
 	}
-	return binder.darknodeRegistry.IsDeregistered(binder.callOpts, darkNodeIDByte)
+	return binder.darknodeRegistry.IsDeregistered(binder.callOpts, darknodeIDByte)
 }
 
 // ApproveRen doesn't actually talk to the DNR - instead it approves Ren to it
@@ -301,22 +300,22 @@ func (binder *Binder) TriggerEpoch() (*types.Transaction, error) {
 }
 
 // GetOwner gets the owner of the given dark node
-func (binder *Binder) GetOwner(darkNodeID []byte) (common.Address, error) {
-	darkNodeIDByte, err := toByte(darkNodeID)
+func (binder *Binder) GetOwner(darknodeID []byte) (common.Address, error) {
+	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return common.Address{}, err
 	}
-	return binder.darknodeRegistry.GetOwner(binder.callOpts, darkNodeIDByte)
+	return binder.darknodeRegistry.GetOwner(binder.callOpts, darknodeIDByte)
 }
 
 // PublicKey returns the RSA public key of the Darknode registered with the
 // given identity.Address.
 func (binder *Binder) PublicKey(darknodeAddr identity.Address) (rsa.PublicKey, error) {
-	darkNodeIDByte, err := toByte(darknodeAddr.ID())
+	darknodeIDByte, err := toByte(darknodeAddr.ID())
 	if err != nil {
 		return rsa.PublicKey{}, err
 	}
-	pubKeyBytes, err := binder.darknodeRegistry.GetPublicKey(binder.callOpts, darkNodeIDByte)
+	pubKeyBytes, err := binder.darknodeRegistry.GetPublicKey(binder.callOpts, darknodeIDByte)
 	if err != nil {
 		return rsa.PublicKey{}, err
 	}
@@ -392,8 +391,8 @@ func (binder *Binder) Pods() ([]registry.Pod, error) {
 		return []registry.Pod{}, err
 	}
 	epochVal := epoch.Epochhash
-	numberOfDarkNodes := big.NewInt(int64(len(darknodeAddrs)))
-	x := big.NewInt(0).Mod(epochVal, numberOfDarkNodes)
+	numberOfDarknodes := big.NewInt(int64(len(darknodeAddrs)))
+	x := big.NewInt(0).Mod(epochVal, numberOfDarknodes)
 	positionInOcean := make([]int, len(darknodeAddrs))
 	for i := 0; i < len(darknodeAddrs); i++ {
 		positionInOcean[i] = -1
@@ -406,7 +405,7 @@ func (binder *Binder) Pods() ([]registry.Pod, error) {
 		}
 		for !isRegistered || positionInOcean[x.Int64()] != -1 {
 			x.Add(x, big.NewInt(1))
-			x.Mod(x, numberOfDarkNodes)
+			x.Mod(x, numberOfDarknodes)
 			isRegistered, err = binder.IsRegistered(darknodeAddrs[x.Int64()])
 			if err != nil {
 				return []registry.Pod{}, err
@@ -415,7 +414,7 @@ func (binder *Binder) Pods() ([]registry.Pod, error) {
 		positionInOcean[x.Int64()] = i
 		podID := i % (len(darknodeAddrs) / int(numberOfNodesInPod.ToBigInt().Int64()))
 		pods[podID].Darknodes = append(pods[podID].Darknodes, darknodeAddrs[x.Int64()])
-		x.Mod(x.Add(x, epochVal), numberOfDarkNodes)
+		x.Mod(x.Add(x, epochVal), numberOfDarknodes)
 	}
 
 	for i := range pods {
@@ -479,7 +478,7 @@ func (binder *Binder) Pod(addr identity.Address) (registry.Pod, error) {
 	return registry.Pod{}, ErrPodNotFound
 }
 
-// OpenOrders on the Ren Ledger. Returns the number of orders successfully
+// OpenOrders on the Orderbook. Returns the number of orders successfully
 // opened.
 func (binder *Binder) OpenOrders(signatures [][65]byte, orderIDs []order.ID, orderParities []order.Parity) (int, error) {
 	binder.mu.Lock()
@@ -501,9 +500,9 @@ func (binder *Binder) OpenOrders(signatures [][65]byte, orderIDs []order.ID, ord
 
 		var tx *types.Transaction
 		if orderParities[i] == order.ParityBuy {
-			tx, err = binder.ledger.OpenBuyOrder(binder.transactOpts, signatures[i][:], orderIDs[i])
+			tx, err = binder.orderbook.OpenBuyOrder(binder.transactOpts, signatures[i][:], orderIDs[i])
 		} else {
-			tx, err = binder.ledger.OpenSellOrder(binder.transactOpts, signatures[i][:], orderIDs[i])
+			tx, err = binder.orderbook.OpenSellOrder(binder.transactOpts, signatures[i][:], orderIDs[i])
 		}
 		if err != nil {
 			break
@@ -521,7 +520,7 @@ func (binder *Binder) OpenOrders(signatures [][65]byte, orderIDs []order.ID, ord
 	return len(txs), err
 }
 
-// OpenBuyOrder on the Ren Ledger. The signature will be used to identify
+// OpenBuyOrder on the Orderbook. The signature will be used to identify
 // the trader that owns the order. The order must be in an undefined state
 // to be opened.
 func (binder *Binder) OpenBuyOrder(signature [65]byte, id order.ID) error {
@@ -531,7 +530,7 @@ func (binder *Binder) OpenBuyOrder(signature [65]byte, id order.ID) error {
 	binder.transactOpts.GasPrice = big.NewInt(int64(20000000000))
 	binder.transactOpts.GasLimit = 3000000
 
-	tx, err := binder.ledger.OpenBuyOrder(binder.transactOpts, signature[:], id)
+	tx, err := binder.orderbook.OpenBuyOrder(binder.transactOpts, signature[:], id)
 	if err != nil {
 		return err
 	}
@@ -539,7 +538,7 @@ func (binder *Binder) OpenBuyOrder(signature [65]byte, id order.ID) error {
 	return binder.waitForOrderDepth(tx, id)
 }
 
-// OpenSellOrder on the Ren Ledger. The signature will be used to identify
+// OpenSellOrder on the Orderbook. The signature will be used to identify
 // the trader that owns the order. The order must be in an undefined state
 // to be opened.
 func (binder *Binder) OpenSellOrder(signature [65]byte, id order.ID) error {
@@ -549,7 +548,7 @@ func (binder *Binder) OpenSellOrder(signature [65]byte, id order.ID) error {
 	binder.transactOpts.GasPrice = big.NewInt(int64(20000000000))
 	binder.transactOpts.GasLimit = 3000000
 
-	tx, err := binder.ledger.OpenSellOrder(binder.transactOpts, signature[:], id)
+	tx, err := binder.orderbook.OpenSellOrder(binder.transactOpts, signature[:], id)
 	if err != nil {
 		return err
 	}
@@ -558,14 +557,14 @@ func (binder *Binder) OpenSellOrder(signature [65]byte, id order.ID) error {
 	return binder.waitForOrderDepth(tx, id)
 }
 
-// CancelOrder on the Ren Ledger. The signature will be used to verify that
+// CancelOrder on the Orderbook. The signature will be used to verify that
 // the request was created by the trader that owns the order. The order
 // must be in the opened state to be canceled.
 func (binder *Binder) CancelOrder(signature [65]byte, id order.ID) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
-	tx, err := binder.ledger.CancelOrder(binder.transactOpts, signature[:], id)
+	tx, err := binder.orderbook.CancelOrder(binder.transactOpts, signature[:], id)
 	if err != nil {
 		return err
 	}
@@ -576,17 +575,17 @@ func (binder *Binder) CancelOrder(signature [65]byte, id order.ID) error {
 	return nil
 }
 
-// ConfirmOrder match on the Ren Ledger.
+// ConfirmOrder match on the Orderbook.
 func (binder *Binder) ConfirmOrder(id order.ID, match order.ID) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
 	orderMatches := [][32]byte{match}
-	before, err := binder.ledger.OrderDepth(binder.callOpts, id)
+	before, err := binder.orderbook.OrderDepth(binder.callOpts, id)
 	if err != nil {
 		return err
 	}
-	tx, err := binder.ledger.ConfirmOrder(binder.transactOpts, [32]byte(id), orderMatches)
+	tx, err := binder.orderbook.ConfirmOrder(binder.transactOpts, [32]byte(id), orderMatches)
 	if err != nil {
 		return err
 	}
@@ -596,7 +595,7 @@ func (binder *Binder) ConfirmOrder(id order.ID, match order.ID) error {
 	}
 
 	for {
-		depth, err := binder.ledger.OrderDepth(binder.callOpts, id)
+		depth, err := binder.orderbook.OrderDepth(binder.callOpts, id)
 		if err != nil {
 			return err
 		}
@@ -612,7 +611,7 @@ func (binder *Binder) Priority(id order.ID) (uint64, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	priority, err := binder.ledger.OrderPriority(binder.callOpts, id)
+	priority, err := binder.orderbook.OrderPriority(binder.callOpts, id)
 	if err != nil {
 		return 0, err
 	}
@@ -627,7 +626,7 @@ func (binder *Binder) Status(id order.ID) (order.Status, error) {
 
 	var orderID [32]byte
 	copy(orderID[:], id[:])
-	state, err := binder.ledger.OrderState(binder.callOpts, orderID)
+	state, err := binder.orderbook.OrderState(binder.callOpts, orderID)
 	if err != nil {
 		return order.Nil, err
 	}
@@ -640,7 +639,7 @@ func (binder *Binder) OrderMatch(id order.ID) (order.ID, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	matches, err := binder.ledger.OrderMatch(binder.callOpts, [32]byte(id))
+	matches, err := binder.orderbook.OrderMatch(binder.callOpts, [32]byte(id))
 	if err != nil {
 		return order.ID{}, err
 	}
@@ -655,7 +654,7 @@ func (binder *Binder) OrderMatch(id order.ID) (order.ID, error) {
 	return orderIDs[0], nil
 }
 
-// BuyOrders in the Ren Ledger starting at an offset and returning limited
+// BuyOrders in the Orderbook starting at an offset and returning limited
 // numbers of buy orders.
 func (binder *Binder) BuyOrders(offset, limit int) ([]order.ID, error) {
 	binder.mu.RLock()
@@ -663,7 +662,7 @@ func (binder *Binder) BuyOrders(offset, limit int) ([]order.ID, error) {
 
 	orders := make([]order.ID, 0, limit)
 	for i := 0; i < limit; i++ {
-		ordID, ok, err := binder.ledger.BuyOrder(binder.callOpts, big.NewInt(int64(offset+i)))
+		ordID, ok, err := binder.orderbook.BuyOrder(binder.callOpts, big.NewInt(int64(offset+i)))
 		if !ok {
 			return orders, nil
 		}
@@ -676,7 +675,7 @@ func (binder *Binder) BuyOrders(offset, limit int) ([]order.ID, error) {
 	return orders, nil
 }
 
-// SellOrders in the Ren Ledger starting at an offset and returning limited
+// SellOrders in the Orderbook starting at an offset and returning limited
 // numbers of sell orders.
 func (binder *Binder) SellOrders(offset, limit int) ([]order.ID, error) {
 	binder.mu.RLock()
@@ -684,7 +683,7 @@ func (binder *Binder) SellOrders(offset, limit int) ([]order.ID, error) {
 
 	orders := make([]order.ID, 0, limit)
 	for i := 0; i < limit; i++ {
-		ordID, ok, err := binder.ledger.SellOrder(binder.callOpts, big.NewInt(int64(offset+i)))
+		ordID, ok, err := binder.orderbook.SellOrder(binder.callOpts, big.NewInt(int64(offset+i)))
 		if !ok {
 			return orders, nil
 		}
@@ -703,7 +702,7 @@ func (binder *Binder) Trader(id order.ID) (string, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	address, err := binder.ledger.OrderTrader(binder.callOpts, id)
+	address, err := binder.orderbook.OrderTrader(binder.callOpts, id)
 	if err != nil {
 		return "", err
 	}
@@ -716,7 +715,7 @@ func (binder *Binder) Broker(id order.ID) (common.Address, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	address, err := binder.ledger.OrderBroker(binder.callOpts, id)
+	address, err := binder.orderbook.OrderBroker(binder.callOpts, id)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -729,7 +728,7 @@ func (binder *Binder) Confirmer(id order.ID) (common.Address, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	address, err := binder.ledger.OrderConfirmer(binder.callOpts, id)
+	address, err := binder.orderbook.OrderConfirmer(binder.callOpts, id)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -750,7 +749,7 @@ func (binder *Binder) Depth(orderID order.ID) (uint, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	depth, err := binder.ledger.OrderDepth(binder.callOpts, orderID)
+	depth, err := binder.orderbook.OrderDepth(binder.callOpts, orderID)
 	if err != nil {
 		return 0, err
 	}
@@ -764,7 +763,7 @@ func (binder *Binder) BlockNumber(orderID order.ID) (uint, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	blockNumber, err := binder.ledger.OrderBlockNumber(binder.callOpts, orderID)
+	blockNumber, err := binder.orderbook.OrderBlockNumber(binder.callOpts, orderID)
 	if err != nil {
 		return 0, err
 	}
@@ -772,12 +771,12 @@ func (binder *Binder) BlockNumber(orderID order.ID) (uint, error) {
 	return uint(blockNumber.Uint64()), nil
 }
 
-// OrderCounts returns the total number of orders in the ledger
+// OrderCounts returns the total number of orders in the orderbook
 func (binder *Binder) OrderCounts() (uint64, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	counts, err := binder.ledger.GetOrdersCount(binder.callOpts)
+	counts, err := binder.orderbook.GetOrdersCount(binder.callOpts)
 	if err != nil {
 		return 0, err
 	}
@@ -785,13 +784,13 @@ func (binder *Binder) OrderCounts() (uint64, error) {
 	return counts.Uint64(), nil
 }
 
-// OrderID returns the order at a given index in the ledger
+// OrderID returns the order at a given index in the orderbook
 func (binder *Binder) OrderID(index int) ([32]byte, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
 	i := big.NewInt(int64(index))
-	id, exist, err := binder.ledger.GetOrder(binder.callOpts, i)
+	id, exist, err := binder.orderbook.GetOrder(binder.callOpts, i)
 	if !exist {
 		return [32]byte{}, errors.New("order not exist")
 	}
@@ -809,7 +808,7 @@ func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID) erro
 	}
 
 	for {
-		depth, err := binder.ledger.OrderDepth(binder.callOpts, id)
+		depth, err := binder.orderbook.OrderDepth(binder.callOpts, id)
 		if err != nil {
 			return err
 		}
