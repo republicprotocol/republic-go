@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/republicprotocol/republic-go/registry"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ingress"
@@ -222,11 +224,11 @@ func createOrder() (order.Order, error) {
 
 type mockDarkpool struct {
 	numberOfDarknodes int
-	pods              []Pod
+	pods              []registry.Pod
 }
 
 func newMockDarkpool() mockDarkpool {
-	pod := Pod{
+	pod := registry.Pod{
 		Hash:      [32]byte{},
 		Darknodes: []identity.Address{},
 	}
@@ -240,7 +242,7 @@ func newMockDarkpool() mockDarkpool {
 	}
 	return mockDarkpool{
 		numberOfDarknodes: 6,
-		pods:              []Pod{pod},
+		pods:              []registry.Pod{pod},
 	}
 }
 
@@ -252,16 +254,16 @@ func (darkpool *mockDarkpool) Darknodes() (identity.Addresses, error) {
 	return darknodes, nil
 }
 
-func (darkpool *mockDarkpool) NextEpoch() (Epoch, error) {
+func (darkpool *mockDarkpool) NextEpoch() (registry.Epoch, error) {
 	return darkpool.Epoch()
 }
 
-func (darkpool *mockDarkpool) Epoch() (Epoch, error) {
+func (darkpool *mockDarkpool) Epoch() (registry.Epoch, error) {
 	darknodes, err := darkpool.Darknodes()
 	if err != nil {
-		return Epoch{}, err
+		return registry.Epoch{}, err
 	}
-	return Epoch{
+	return registry.Epoch{
 		Hash:      [32]byte{1},
 		Pods:      darkpool.pods,
 		Darknodes: darknodes,
@@ -272,11 +274,11 @@ func (darkpool *mockDarkpool) MinimumEpochInterval() (*big.Int, error) {
 	return big.NewInt(1), nil
 }
 
-func (darkpool *mockDarkpool) Pods() ([]Pod, error) {
+func (darkpool *mockDarkpool) Pods() ([]registry.Pod, error) {
 	return darkpool.pods, nil
 }
 
-func (darkpool *mockDarkpool) Pod(addr identity.Address) (Pod, error) {
+func (darkpool *mockDarkpool) Pod(addr identity.Address) (registry.Pod, error) {
 	panic("unimplemented")
 }
 
