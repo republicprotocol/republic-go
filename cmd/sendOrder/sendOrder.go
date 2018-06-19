@@ -179,19 +179,3 @@ func loadConfig(configFile string) (contracts.Config, error) {
 	}
 	return config, nil
 }
-
-// func loadSmartContracts(ethereumConfig ethereum.Config, keystore crypto.Keystore) (*bind.TransactOpts, cal.Darkpool, error) {
-// 	conn, err := ethereum.Connect(ethereumConfig)
-// 	if err != nil {
-// 		fmt.Println(fmt.Errorf("cannot connect to ethereum: %v", err))
-// 		return nil, nil, err
-// 	}
-// 	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
-
-// 	registry, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
-// 	if err != nil {
-// 		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
-// 		return auth, nil, err
-// 	}
-// 	return auth, &registry, nil
-// }
