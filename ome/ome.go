@@ -174,24 +174,28 @@ func (ome *ome) OnChangeEpoch(epoch cal.Epoch) {
 		return
 	}
 
-	// Replace the previous epoch
-	if ome.epochPrev != nil {
-		ome.smpcer.Disconnect(ome.epochPrev.Hash)
-	}
-	ome.epochPrev = ome.epochCurr
+	go func() {
+		// Connect to the new network
+		pod, err := epoch.Pod(ome.addr)
+		if err != nil {
+			logger.Error(fmt.Sprintf("cannot find pod: %v", err))
+			return
+		}
+		ome.smpcer.Connect(epoch.Hash, pod.Darknodes)
 
-	// Replace the current epoch
-	ome.epochCurr = &epoch
+		// Notify the Ranker
+		ome.ranker.OnChangeEpoch(epoch)
 
-	pod, err := epoch.Pod(ome.addr)
-	if err != nil {
-		logger.Error(fmt.Sprintf("cannot find pod: %v", err))
-		return
-	}
-	ome.smpcer.Connect(ome.epochCurr.Hash, pod.Darknodes)
+		// Wait for some time to allow for the connections to begin
+		time.Sleep(14 * time.Second)
 
-	// Notify the Ranker
-	ome.ranker.OnChangeEpoch(epoch)
+		// Replace the previous epoch and disconnect from it
+		if ome.epochPrev != nil {
+			ome.smpcer.Disconnect(ome.epochPrev.Hash)
+		}
+		ome.epochPrev = ome.epochCurr
+		ome.epochCurr = &epoch
+	}()
 }
 
 func (ome *ome) syncOrderbookToRanker(done <-chan struct{}, errs chan<- error) {

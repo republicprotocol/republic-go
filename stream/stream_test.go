@@ -175,6 +175,74 @@ var _ = Describe("Streaming", func() {
 			}
 		})
 	})
+
+	Context("regression test", func() {
+		It("should only have one stream for the client and server when trying connecting sequentially", func() {
+			multiAddrs := [numberOfNodes]identity.MultiAddress{}
+			clients := [numberOfNodes]mockClient{}
+			servers := [numberOfNodes]mockServer{}
+			streamers := [numberOfNodes]Streamer{}
+
+			var err error
+
+			for i := 0; i < numberOfNodes; i++ {
+				multiAddrs[i], err = testutils.RandomMultiAddress()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				clients[i] = newMockClient()
+				servers[i] = newMockServer()
+				streamers[i] = NewStreamRecycler(NewStreamer(multiAddrs[i].Address(), &clients[i], &servers[i]))
+			}
+
+			for i := 0; i < 1000; i++ {
+				stream, err := streamers[0].Open(context.Background(), multiAddrs[1])
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(stream).ShouldNot(BeNil())
+				stream.Send(&mockMessage{})
+			}
+			if multiAddrs[0].Address() < multiAddrs[1].Address() {
+				Expect(clients[0].streamsCounter).Should(Equal(1))
+			} else {
+				Expect(servers[0].streamsCounter).Should(Equal(1))
+			}
+		})
+
+		It("should only have one stream for the client and server when trying connecting concurrently", func() {
+			multiAddrs := [numberOfNodes]identity.MultiAddress{}
+			clients := [numberOfNodes]mockClient{}
+			servers := [numberOfNodes]mockServer{}
+			streamers := [numberOfNodes]Streamer{}
+
+			var err error
+
+			for i := 0; i < numberOfNodes; i++ {
+				multiAddrs[i], err = testutils.RandomMultiAddress()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				clients[i] = newMockClient()
+				servers[i] = newMockServer()
+				streamers[i] = NewStreamRecycler(NewStreamer(multiAddrs[i].Address(), &clients[i], &servers[i]))
+			}
+
+			wg := new(sync.WaitGroup)
+			for i := 0; i < 1000; i++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					stream, err := streamers[0].Open(context.Background(), multiAddrs[1])
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(stream).ShouldNot(BeNil())
+					stream.Send(&mockMessage{})
+				}()
+			}
+			wg.Wait()
+			if multiAddrs[0].Address() < multiAddrs[1].Address() {
+				Expect(clients[0].streamsCounter).Should(Equal(1))
+			} else {
+				Expect(servers[0].streamsCounter).Should(Equal(1))
+			}
+		})
+	})
 })
 
 type mockMessage []byte

@@ -67,10 +67,7 @@ func (crypter *Crypter) Verify(data []byte, signature []byte) error {
 	}
 	crypter.registryCacheMu.Lock()
 	defer crypter.registryCacheMu.Unlock()
-	if err := crypter.verifyAddress(addr); err != nil {
-		return err
-	}
-	return nil
+	return crypter.verifyAddress(addr)
 }
 
 // Encrypt plain text so that is can be securely sent to a specific address.

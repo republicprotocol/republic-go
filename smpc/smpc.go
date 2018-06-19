@@ -181,16 +181,13 @@ func (smpc *smpcer) Join(networkID NetworkID, join Join, callback Callback) erro
 		},
 	}
 
-	// FIXME: Use a more efficient architecture than launching a goroutine for
-	// every single message.
-	go func() {
+	func() {
 		smpc.networkMu.RLock()
 		defer smpc.networkMu.RUnlock()
 
 		for _, addr := range smpc.network[networkID] {
 			go smpc.sendMessage(addr, &message)
 		}
-
 	}()
 
 	return nil

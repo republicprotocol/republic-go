@@ -24,11 +24,11 @@ func RandomOrder() order.Order {
 	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
-	ord := order.NewOrder(order.TypeLimit, parity, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Int63())
+	ord := order.NewOrder(order.TypeLimit, parity, order.SettlementRenEx, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
 	return ord
 }
 
-// RandomOrder will generate a random buy order.
+// RandomBuyOrder will generate a random buy order.
 func RandomBuyOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensETHDGX,
@@ -37,7 +37,7 @@ func RandomBuyOrder() order.Order {
 	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
-	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Int63())
+	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, order.SettlementRenEx, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
 	return ord
 }
 
@@ -50,7 +50,7 @@ func RandomSellOrder() order.Order {
 	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
-	ord := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Int63())
+	ord := order.NewOrder(order.TypeLimit, order.ParitySell, order.SettlementRenEx, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
 	return ord
 }
 
@@ -63,8 +63,8 @@ func RandomOrderMatch() (order.Order, order.Order) {
 	}[rand.Intn(4)]
 	volume := RandomCoExp()
 
-	buy := order.NewOrder(order.TypeLimit, order.ParityBuy, time.Now().Add(24*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Int63())
-	sell := order.NewOrder(order.TypeLimit, order.ParitySell, time.Now().Add(24*time.Hour), tokens, buy.Price, buy.Volume, buy.MinimumVolume, buy.Nonce)
+	buy := order.NewOrder(order.TypeLimit, order.ParityBuy, order.SettlementRenEx, time.Now().Add(24*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
+	sell := order.NewOrder(order.TypeLimit, order.ParitySell, order.SettlementRenEx, time.Now().Add(24*time.Hour), tokens, buy.Price, buy.Volume, buy.MinimumVolume, buy.Nonce)
 	return buy, sell
 }
 
@@ -141,14 +141,19 @@ func RandomConfigs(n int, b int) ([]config.Config, error) {
 	return configs, nil
 }
 
-// RandomNetworkID generates a random [32]byte array
-func RandomNetworkID() [32]byte {
-	var networkID [32]byte
+// Random32Bytes creates a random [32]byte.
+func Random32Bytes() [32]byte {
+	var res [32]byte
 	i := fmt.Sprintf("%d", rand.Int())
 	hash := crypto.Keccak256([]byte(i))
-	copy(networkID[:], hash)
+	copy(res[:], hash)
 
-	return networkID
+	return res
+}
+
+// RandomNetworkID generates a random [32]byte array
+func RandomNetworkID() [32]byte {
+	return Random32Bytes()
 }
 
 // RandomComputation generates a random computation with empty epoch hash.

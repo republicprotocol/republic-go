@@ -33,7 +33,7 @@ type ComputationState int
 
 // Values for a ComputationState
 const (
-	ComputationStateNil = iota
+	ComputationStateNil ComputationState = iota
 	ComputationStateMatched
 	ComputationStateMismatched
 	ComputationStateAccepted
@@ -56,8 +56,9 @@ func (state ComputationState) String() string {
 		return "rejected"
 	case ComputationStateSettled:
 		return "settled"
+	default:
+		return "unsupported state"
 	}
-	panic("unexpected computation state")
 }
 
 // Computations is an alias type.

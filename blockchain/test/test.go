@@ -25,9 +25,9 @@ func SkipCIContext(description string, f func()) bool {
 		return ginkgo.PContext(description, func() {
 			ginkgo.It("SKIPPING LOCAL TESTS", func() {})
 		})
-	} else {
-		return ginkgo.Context(description, f)
 	}
+
+	return ginkgo.Context(description, f)
 }
 
 // SkipCIBeforeSuite skips the BeforeSuite, which runs even if there are no tests

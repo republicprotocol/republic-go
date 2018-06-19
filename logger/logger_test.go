@@ -527,7 +527,7 @@ func readTmp() (Log, error) {
 func initFileLogger() (*Logger, error) {
 	logger, err := NewLogger(Options{
 		Plugins: []PluginOptions{
-			PluginOptions{File: &FilePluginOptions{Path: tmpFile}, WebSocket: nil},
+			PluginOptions{File: &FilePluginOptions{Path: tmpFile}},
 		},
 		FilterLevel: LevelWarn,
 	})
