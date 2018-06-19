@@ -24,7 +24,7 @@ func main() {
 			URI:                     "https://ropsten.infura.io",
 			RepublicTokenAddress:    contracts.RepublicTokenAddressOnRopsten.String(),
 			DarknodeRegistryAddress: contracts.DarknodeRegistryAddressOnRopsten.String(),
-			RenLedgerAddress:        contracts.RenLedgerAddressOnKovan.String(),
+			OrderbookAddress:        contracts.OrderbookAddressOnKovan.String(),
 		},
 	}
 
