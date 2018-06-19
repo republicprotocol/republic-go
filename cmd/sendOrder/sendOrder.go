@@ -14,10 +14,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
-	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/contracts"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/http"
 	"github.com/republicprotocol/republic-go/http/adapter"
@@ -42,7 +39,7 @@ func main() {
 		log.Fatalf("cannot load config: %v", err)
 	}
 
-	_, darkpool, err := loadSmartContracts(config, keystore)
+	contractBindings, err := contracts.GetContractBindings(context.Background(), keystore, config)
 	if err != nil {
 		log.Fatalf("cannot load smart contracts: %v", err)
 	}
@@ -75,7 +72,7 @@ func main() {
 		}
 		log.Printf("order signature %v", request.Signature)
 
-		pods, err := darkpool.Pods()
+		pods, err := contractBindings.Pods()
 		if err != nil {
 			log.Fatalf("cannot get pods from darkpool: %v", err)
 		}
@@ -93,7 +90,7 @@ func main() {
 					Index: int64(i + 1),
 				}
 
-				pubKey, err := darkpool.PublicKey(pod.Darknodes[i])
+				pubKey, err := contractBindings.PublicKey(pod.Darknodes[i])
 				if err != nil {
 					log.Fatalf("cannot get public key of %v: %v", pod.Darknodes[i], err)
 				}
@@ -170,31 +167,31 @@ func loadKeystore(keystoreFile, passphrase string) (crypto.Keystore, error) {
 	return keystore, nil
 }
 
-func loadConfig(configFile string) (ethereum.Config, error) {
+func loadConfig(configFile string) (contracts.Config, error) {
 	file, err := os.Open(configFile)
 	if err != nil {
-		return ethereum.Config{}, err
+		return contracts.Config{}, err
 	}
 	defer file.Close()
-	config := ethereum.Config{}
+	config := contracts.Config{}
 	if err := json.NewDecoder(file).Decode(&config); err != nil {
-		return ethereum.Config{}, err
+		return contracts.Config{}, err
 	}
 	return config, nil
 }
 
-func loadSmartContracts(ethereumConfig ethereum.Config, keystore crypto.Keystore) (*bind.TransactOpts, cal.Darkpool, error) {
-	conn, err := ethereum.Connect(ethereumConfig)
-	if err != nil {
-		fmt.Println(fmt.Errorf("cannot connect to ethereum: %v", err))
-		return nil, nil, err
-	}
-	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
+// func loadSmartContracts(ethereumConfig ethereum.Config, keystore crypto.Keystore) (*bind.TransactOpts, cal.Darkpool, error) {
+// 	conn, err := ethereum.Connect(ethereumConfig)
+// 	if err != nil {
+// 		fmt.Println(fmt.Errorf("cannot connect to ethereum: %v", err))
+// 		return nil, nil, err
+// 	}
+// 	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
 
-	registry, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
-	if err != nil {
-		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
-		return auth, nil, err
-	}
-	return auth, &registry, nil
-}
+// 	registry, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
+// 	if err != nil {
+// 		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
+// 		return auth, nil, err
+// 	}
+// 	return auth, &registry, nil
+// }

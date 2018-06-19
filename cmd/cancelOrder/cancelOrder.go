@@ -10,7 +10,7 @@ import (
 	netHttp "net/http"
 	"os"
 
-	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/contracts"
 	"github.com/republicprotocol/republic-go/crypto"
 )
 
@@ -92,15 +92,15 @@ func loadKeystore(keystoreFile, passphrase string) (crypto.Keystore, error) {
 	return keystore, nil
 }
 
-func loadConfig(configFile string) (ethereum.Config, error) {
+func loadConfig(configFile string) (contracts.Config, error) {
 	file, err := os.Open(configFile)
 	if err != nil {
-		return ethereum.Config{}, err
+		return contracts.Config{}, err
 	}
 	defer file.Close()
-	config := ethereum.Config{}
+	config := contracts.Config{}
 	if err := json.NewDecoder(file).Decode(&config); err != nil {
-		return ethereum.Config{}, err
+		return contracts.Config{}, err
 	}
 	return config, nil
 }
