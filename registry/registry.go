@@ -1,13 +1,13 @@
 package registry
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
@@ -26,7 +26,7 @@ var ErrInvalidRegistration = errors.New("invalid registration")
 // The cache will be updated periodically, to ensure up-to-date information.
 type Crypter struct {
 	keystore crypto.Keystore
-	darkpool cal.Darkpool
+	contract ContractsBinder
 
 	registryCacheMu *sync.Mutex
 	registryCache   map[string]registryCacheEntry
@@ -41,10 +41,10 @@ type Crypter struct {
 // NewCrypter returns a new Crypter that uses a crypto.Keystore to identify
 // itself when signing and decrypting messages. It uses a cal.Darkpool to
 // identify others when verifying and encrypting messages.
-func NewCrypter(keystore crypto.Keystore, darkpool cal.Darkpool, cacheLimit int, cacheUpdatePeriod time.Duration) Crypter {
+func NewCrypter(keystore crypto.Keystore, contract ContractsBinder, cacheLimit int, cacheUpdatePeriod time.Duration) Crypter {
 	return Crypter{
 		keystore:          keystore,
-		darkpool:          darkpool,
+		contract:          contract,
 		registryCacheMu:   new(sync.Mutex),
 		registryCache:     map[string]registryCacheEntry{},
 		publicKeyCacheMu:  new(sync.Mutex),
@@ -96,6 +96,62 @@ func (crypter *Crypter) Keystore() *crypto.Keystore {
 	return &crypter.keystore
 }
 
+// TODO: separate this out to its own package??
+
+// ErrPodNotFound is returned when a Pod cannot be found for a given
+// identity.Address. This happens when an identity.Address is not registered in
+// the current Epoch.
+var ErrPodNotFound = errors.New("pod not found")
+
+// An Epoch represents the state of an epoch in the Pod. It stores the
+// epoch hash, an ordered list of Pods for the epoch, and all Darknode
+// identity.Addresses that are registered for the epoch.
+type Epoch struct {
+	Hash        [32]byte
+	Pods        []Pod
+	Darknodes   []identity.Address
+	BlockNumber uint
+}
+
+// Equal returns true if the hash of two Epochs is equal. Otherwise it returns
+// false.
+func (ξ *Epoch) Equal(arg *Epoch) bool {
+	return bytes.Equal(ξ.Hash[:], arg.Hash[:])
+}
+
+// Pod returns the Pod that contains the given identity.Address in this Epoch.
+// It returns ErrPodNotFound if the identity.Address is not registered in this
+// Epoch.
+func (ξ *Epoch) Pod(addr identity.Address) (Pod, error) {
+	for _, pod := range ξ.Pods {
+		for _, darknodeAddr := range pod.Darknodes {
+			if addr == darknodeAddr {
+				return pod, nil
+			}
+		}
+	}
+	return Pod{}, ErrPodNotFound
+}
+
+// A Pod stores its hash, the combined hash of all Darknodes, and an ordered
+// list of Darknode identity.Addresses.
+type Pod struct {
+	Position  int
+	Hash      [32]byte
+	Darknodes []identity.Address
+}
+
+// Size returns the number of Darknodes in the Pod.
+func (pod *Pod) Size() int {
+	return len(pod.Darknodes)
+}
+
+// Threshold returns the minimum number of Darknodes needed to run the order
+// matching engine. It is the ceiling of 2/3rds of the Pod size.
+func (pod *Pod) Threshold() int {
+	return (2 * (len(pod.Darknodes) + 1)) / 3
+}
+
 type registryCacheEntry struct {
 	timestamp    time.Time
 	isRegistered bool
@@ -120,7 +176,7 @@ func (crypter *Crypter) updateRegistryCache(addr string) error {
 	// Update the entry in the cache
 	entry, ok := crypter.registryCache[addr]
 	if !ok || entry.timestamp.Add(crypter.cacheUpdatePeriod).Before(time.Now()) {
-		isRegistered, err := crypter.darkpool.IsRegistered(identity.Address(addr))
+		isRegistered, err := crypter.contract.IsRegistered(identity.Address(addr))
 		if err != nil {
 			return err
 		}
@@ -159,7 +215,7 @@ func (crypter *Crypter) updatePublicKeyCache(addr string) error {
 	// Update the entry in the cache
 	entry, ok := crypter.publicKeyCache[addr]
 	if !ok || entry.timestamp.Add(crypter.cacheUpdatePeriod).Before(time.Now()) {
-		publicKey, err := crypter.darkpool.PublicKey(identity.Address(addr))
+		publicKey, err := crypter.contract.PublicKey(identity.Address(addr))
 		if err != nil {
 			return err
 		}
