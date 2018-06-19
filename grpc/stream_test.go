@@ -20,24 +20,29 @@ import (
 var _ = Describe("Streaming", func() {
 
 	var server *Server
-	var service *StreamService
+	var service *StreamerService
+	var serviceStreamer *Streamer
 	var serviceAddr identity.Address
 	var serviceMultiAddr identity.MultiAddress
-	var client stream.Client
+	var clientStreamer *Streamer
 	var clientAddr identity.Address
+	var clientMultiAddr identity.MultiAddress
 
 	BeforeEach(func() {
 		var err error
 
-		client, clientAddr, err = newStreamClient()
+		clientStreamer, clientAddr, err = newStreamer()
 		Expect(err).ShouldNot(HaveOccurred())
 
 		server = NewServer()
-		service, serviceAddr, err = newStreamService(clientAddr)
+		service, serviceStreamer, serviceAddr, err = newStreamerService(clientAddr)
 		Expect(err).ShouldNot(HaveOccurred())
 		service.Register(server)
 
 		serviceMultiAddr, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/18514/republic/%v", serviceAddr))
+		Expect(err).ShouldNot(HaveOccurred())
+
+		clientMultiAddr, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/18515/republic/%v", clientAddr))
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -58,7 +63,7 @@ var _ = Describe("Streaming", func() {
 			}()
 			time.Sleep(time.Millisecond)
 
-			_, err := client.Connect(context.Background(), serviceMultiAddr)
+			_, err := clientStreamer.Open(context.Background(), serviceMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -74,7 +79,7 @@ var _ = Describe("Streaming", func() {
 			}()
 			time.Sleep(time.Millisecond)
 
-			_, err := client.Connect(context.Background(), serviceMultiAddr)
+			_, err := clientStreamer.Open(context.Background(), serviceMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 
 		}, 30 /* 30 second timeout */)
@@ -94,10 +99,10 @@ var _ = Describe("Streaming", func() {
 		})
 
 		It("should connect when the client sends the connection request before the service is listening", func() {
-			_, err := client.Connect(context.Background(), serviceMultiAddr)
+			_, err := clientStreamer.Open(context.Background(), serviceMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			_, err = service.Listen(context.Background(), clientAddr)
+			_, err = serviceStreamer.Open(context.Background(), clientMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -108,12 +113,12 @@ var _ = Describe("Streaming", func() {
 				defer GinkgoRecover()
 				defer close(doneListening)
 
-				_, err := service.Listen(context.Background(), clientAddr)
+				_, err := serviceStreamer.Open(context.Background(), clientMultiAddr)
 				Expect(err).ShouldNot(HaveOccurred())
 			}()
 			time.Sleep(time.Millisecond)
 
-			_, err := client.Connect(context.Background(), serviceMultiAddr)
+			_, err := clientStreamer.Open(context.Background(), serviceMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			<-doneListening
@@ -141,12 +146,12 @@ var _ = Describe("Streaming", func() {
 			time.Sleep(time.Millisecond)
 
 			ctx, cancel := context.WithCancel(context.Background())
-			clientStream, err = client.Connect(ctx, serviceMultiAddr)
+			clientStream, err = clientStreamer.Open(ctx, serviceMultiAddr)
 			clientStreamCancel = cancel
 			Expect(err).ShouldNot(HaveOccurred())
 
 			ctx, cancel = context.WithCancel(context.Background())
-			serviceStream, err = service.Listen(context.Background(), clientAddr)
+			serviceStream, err = serviceStreamer.Open(context.Background(), clientMultiAddr)
 			serviceStreamCancel = cancel
 			Expect(err).ShouldNot(HaveOccurred())
 		})
@@ -198,24 +203,22 @@ var _ = Describe("Streaming", func() {
 	})
 })
 
-func newStreamClient() (stream.Client, identity.Address, error) {
+func newStreamer() (*Streamer, identity.Address, error) {
 	ecdsaKey, err := crypto.RandomEcdsaKey()
 	if err != nil {
 		return nil, identity.Address(""), err
 	}
 	addr := identity.Address(ecdsaKey.Address())
-	client := NewStreamClient(&ecdsaKey, addr)
-	return client, addr, nil
+	return NewStreamer(&ecdsaKey, addr), addr, nil
 }
 
-func newStreamService(clientAddr identity.Address) (*StreamService, identity.Address, error) {
-	ecdsaKey, err := crypto.RandomEcdsaKey()
+func newStreamerService(clientAddr identity.Address) (*StreamerService, *Streamer, identity.Address, error) {
+	streamer, addr, err := newStreamer()
 	if err != nil {
-		return nil, identity.Address(""), err
+		return nil, streamer, addr, err
 	}
-	addr := identity.Address(ecdsaKey.Address())
-	service := NewStreamService(crypto.NewEcdsaVerifier(clientAddr.String()), addr)
-	return &service, addr, nil
+	service := NewStreamerService(crypto.NewEcdsaVerifier(clientAddr.String()), streamer)
+	return &service, streamer, addr, nil
 }
 
 type mockStreamMessage struct {
