@@ -125,6 +125,7 @@ func (smpc *smpcer) Connect(networkID NetworkID, nodes identity.Addresses) {
 			log.Println(fmt.Errorf("cannot open stream to smpc node %v: %v", addr, err))
 			return
 		}
+
 		smpc.networkMu.Lock()
 		if _, ok := smpc.networkCancels[networkID]; !ok {
 			smpc.networkCancels[networkID] = make([]context.CancelFunc, 0, len(nodes))
@@ -211,12 +212,7 @@ func (smpc *smpcer) handleStream(ctx context.Context, remoteAddr identity.Addres
 			logger.Network(logger.LevelDebug, fmt.Sprintf("closing stream with %v: %v", remoteAddr, err))
 
 			time.Sleep(time.Second)
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				continue
-			}
+			continue
 		}
 
 		switch message.MessageType {

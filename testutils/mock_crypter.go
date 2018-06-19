@@ -9,9 +9,10 @@ func NewCrypter() *Crypter {
 	return &Crypter{}
 }
 
-// Sing will not do nothing and return the data directly.
+// Sign will not do nothing and return the data directly.
 func (crypter *Crypter) Sign(data []byte) ([]byte, error) {
-	return data, nil
+	sig := [65]byte{}
+	return sig[:], nil
 }
 
 // Verify always returns nil.
