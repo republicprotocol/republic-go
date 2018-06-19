@@ -44,7 +44,7 @@ func NewChange(id order.ID, parity order.Parity, status order.Status, priority P
 // storage.
 type Syncer interface {
 
-	// Sync orders and order states from the Ren Ledger to this local
+	// Sync orders and order states from the Orderbook to this local
 	// Orderbooker. Returns a list of changes that were made to this local
 	// Orderbooker during the synchronization.
 	Sync() (ChangeSet, error)
@@ -52,7 +52,7 @@ type Syncer interface {
 
 type syncer struct {
 	contract       ContractsBinder
-	renLedgerLimit int
+	orderbookLimit int
 
 	syncStorer      SyncStorer
 	syncBuyPointer  int
@@ -64,13 +64,13 @@ type syncer struct {
 }
 
 // NewSyncer returns a new Syncer that will sync a bounded number of orders
-// from a RenLedger. It uses a SyncStorer to prevent re-syncing the entire
-// RenLedger when it reboots.
-func NewSyncer(syncStorer SyncStorer, contract ContractsBinder, renLedgerLimit int) Syncer {
+// from the Orderbook. It uses a SyncStorer to prevent re-syncing the entire
+// orderbook when it reboots.
+func NewSyncer(syncStorer SyncStorer, contract ContractsBinder, orderbookLimit int) Syncer {
 
 	syncer := &syncer{
 		contract:       contract,
-		renLedgerLimit: renLedgerLimit,
+		orderbookLimit: orderbookLimit,
 
 		syncStorer:      syncStorer,
 		syncBuyPointer:  0,
@@ -98,7 +98,7 @@ func NewSyncer(syncStorer SyncStorer, contract ContractsBinder, renLedgerLimit i
 func (syncer *syncer) Sync() (ChangeSet, error) {
 	changeset := syncer.purge()
 
-	buyOrderIDs, buyErr := syncer.contract.BuyOrders(syncer.syncBuyPointer, syncer.renLedgerLimit)
+	buyOrderIDs, buyErr := syncer.contract.BuyOrders(syncer.syncBuyPointer, syncer.orderbookLimit)
 	if buyErr == nil {
 		for _, ord := range buyOrderIDs {
 			status, err := syncer.contract.Status(ord)
@@ -127,8 +127,8 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 		}
 	}
 
-	// Get new sell orders from the ledger
-	sellOrderIDs, sellErr := syncer.contract.SellOrders(syncer.syncSellPointer, syncer.renLedgerLimit)
+	// Get new sell orders from the orderbook
+	sellOrderIDs, sellErr := syncer.contract.SellOrders(syncer.syncSellPointer, syncer.orderbookLimit)
 	if sellErr == nil {
 		for _, ord := range sellOrderIDs {
 
@@ -176,7 +176,7 @@ func (syncer *syncer) purge() ChangeSet {
 		dispatch.CoBegin(
 			func() {
 				// Purge all buy orders by iterating over them and reading
-				// their status and priority from the Ren Ledger
+				// their status and priority from the Orderbook
 				dispatch.ForAll(syncer.buyOrders, func(key int) {
 					syncer.ordersMu.RLock()
 					buyOrder := syncer.buyOrders[key]
