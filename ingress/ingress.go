@@ -56,13 +56,13 @@ type Ingress interface {
 	// Sync the epoch.
 	Sync(<-chan struct{}) <-chan error
 
-	// OpenOrder on the Ren Ledger and on the Darkpool. A signature from the
+	// OpenOrder on the Orderbook and on the Darkpool. A signature from the
 	// trader identifies them as the owner, the order ID is submitted to the
-	// Ren Ledger along with the necessary fee, and the order fragment mapping
+	// Orderbook along with the necessary fee, and the order fragment mapping
 	// is used to send order fragments to pods in the Darkpool.
 	OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMapping OrderFragmentMapping) error
 
-	// CancelOrder on the Ren Ledger. A signature from the trader is needed to
+	// CancelOrder on the Orderbook. A signature from the trader is needed to
 	// verify the cancelation.
 	CancelOrder(signature [65]byte, orderID order.ID) error
 
@@ -171,7 +171,7 @@ func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
 
 func (ingress *ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMapping OrderFragmentMapping) error {
 	// TODO: Verify that the signature is valid before sending it to the
-	// RenLedger. This is not strictly necessary but it can save the Ingress
+	// Orderbook. This is not strictly necessary but it can save the Ingress
 	// some gas.
 	if err := ingress.verifyOrderFragmentMapping(orderFragmentMapping); err != nil {
 		return err
@@ -190,7 +190,7 @@ func (ingress *ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFra
 
 func (ingress *ingress) CancelOrder(signature [65]byte, orderID order.ID) error {
 	// TODO: Verify that the signature is valid beforNumBackgroundWorkerse sending it to the
-	// RenLedger. This is not strictly necessary but it can save the Ingress
+	// Orderbook. This is not strictly necessary but it can save the Ingress
 	// some gas.
 	go func() {
 		logger.Info(fmt.Sprintf("queueing cancelation of order %v", orderID))
