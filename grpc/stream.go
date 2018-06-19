@@ -7,7 +7,6 @@ import (
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/stream"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -22,35 +21,38 @@ var ErrUnverifiedConnection = errors.New("unverified connection")
 // for a connection.
 var ErrNilAuthentication = errors.New("nil authentication")
 
-// safeStream wraps a grpc.Stream and ensures that it is safe for concurrent
-// use. It prevents multiple concurrent writes, and multiple concurrent reads.
-// It allows a concurrent writer and reader.
-type safeStream struct {
-	grpc.Stream
+// ErrStreamDisconnected is returned when a stream.Stream is disconnected and
+// a connection cannot be re-established.
+var ErrStreamDisconnected = errors.New("stream disconnected")
 
+// concurrentStream is a grpc.Stream that is safe for concurrent reading and
+// writing and implements the stream.Stream interface.
+type concurrentStream struct {
 	done   chan struct{}
-	sendMu *sync.Mutex
-	recvMu *sync.Mutex
 	closed bool
+
+	grpcSendMu *sync.Mutex
+	grpcRecvMu *sync.Mutex
+	grpcStream grpc.Stream
 }
 
-func newSafeStream(stream grpc.Stream) *safeStream {
-	return &safeStream{
-		Stream: stream,
-
+func newConcurrentStream(grpcStream grpc.Stream) *concurrentStream {
+	return &concurrentStream{
 		done:   make(chan struct{}),
-		sendMu: new(sync.Mutex),
-		recvMu: new(sync.Mutex),
 		closed: false,
+
+		grpcSendMu: new(sync.Mutex),
+		grpcRecvMu: new(sync.Mutex),
+		grpcStream: grpcStream,
 	}
 }
 
 // Send implements the stream.Stream interface.
-func (str *safeStream) Send(message stream.Message) error {
-	str.sendMu.Lock()
-	defer str.sendMu.Unlock()
+func (concurrentStream *concurrentStream) Send(message stream.Message) error {
+	concurrentStream.grpcSendMu.Lock()
+	defer concurrentStream.grpcSendMu.Unlock()
 
-	if str.closed {
+	if concurrentStream.closed {
 		return stream.ErrSendOnClosedStream
 	}
 
@@ -58,114 +60,100 @@ func (str *safeStream) Send(message stream.Message) error {
 	if err != nil {
 		return err
 	}
-	return str.SendMsg(&StreamMessage{
+	return concurrentStream.grpcStream.SendMsg(&StreamMessage{
 		Data: data,
 	})
 }
 
 // Recv implements the stream.Stream interface.
-func (str *safeStream) Recv(message stream.Message) error {
-	str.recvMu.Lock()
-	defer str.recvMu.Unlock()
+func (concurrentStream *concurrentStream) Recv(message stream.Message) error {
+	concurrentStream.grpcRecvMu.Lock()
+	defer concurrentStream.grpcRecvMu.Unlock()
 
-	if str.closed {
+	if concurrentStream.closed {
 		return stream.ErrRecvOnClosedStream
 	}
 
 	data := StreamMessage{}
-	if err := str.RecvMsg(&data); err != nil {
+	if err := concurrentStream.grpcStream.RecvMsg(&data); err != nil {
 		return err
 	}
 	return message.UnmarshalBinary(data.Data)
 }
 
-// Close the stream.
-func (str *safeStream) Close() error {
-	str.sendMu.Lock()
-	str.recvMu.Lock()
-	defer str.sendMu.Unlock()
-	defer str.recvMu.Unlock()
+// Close the stream. This will close the done channel, and prevents future
+// sending and receiving on this stream.
+func (concurrentStream *concurrentStream) Close() error {
+	concurrentStream.grpcSendMu.Lock()
+	concurrentStream.grpcRecvMu.Lock()
+	defer concurrentStream.grpcSendMu.Unlock()
+	defer concurrentStream.grpcRecvMu.Unlock()
 
-	if str.closed {
+	if concurrentStream.closed {
 		return nil
 	}
-	str.closed = true
-	close(str.done)
+	concurrentStream.closed = true
+	close(concurrentStream.done)
 
-	if grpcClientStream, ok := str.Stream.(grpc.ClientStream); ok {
+	if grpcClientStream, ok := concurrentStream.grpcStream.(grpc.ClientStream); ok {
 		return grpcClientStream.CloseSend()
 	}
 	return nil
 }
 
-// clientStream wraps a safeStream and exposes a method to close the associated
-// grpc.ClientConn that is needed when creating a grpc.ClientStream.
-type clientStream struct {
-	*safeStream
-
-	conn *Conn
+// Done returns a read-only channel that can be used to wait for the stream to
+// be closed.
+func (concurrentStream *concurrentStream) Done() <-chan struct{} {
+	return concurrentStream.done
 }
 
-func newClientStream(stream grpc.ClientStream, conn *Conn) clientStream {
-	return clientStream{
-		safeStream: newSafeStream(stream),
-
-		conn: conn,
-	}
-}
-
-// Close the stream.
-func (str clientStream) Close() error {
-	if err := str.safeStream.Close(); err != nil {
-		return err
-	}
-	return str.conn.Close()
-}
-
+// streamClient implements the stream.Client by using gRPC to create
+// concurrentConnStreams.
 type streamClient struct {
 	signer crypto.Signer
 	addr   identity.Address
 }
 
-// NewStreamClient implements the stream.Client interface using a gRPC
-// bidirectional stream. It accepts a crypto.Signer used to authenticate
-// connections requests with the StreamService, and an identity.Address to
-// identify itself.
-func NewStreamClient(signer crypto.Signer, addr identity.Address) stream.Client {
+func newStreamClient(signer crypto.Signer, addr identity.Address) *streamClient {
 	return &streamClient{
 		signer: signer,
 		addr:   addr,
 	}
 }
 
+// Connect implements the stream.Client interface.
 func (client *streamClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (stream.Stream, error) {
-	// Establish a connection to the identity.MultiAddress
+	// Establish a connection to the identity.MultiAddress and clean the
+	// connection once the context.Context is done
 	conn, err := Dial(ctx, multiAddr)
 	if err != nil {
 		return nil, fmt.Errorf("cannot dial %v: %v", multiAddr, err)
 	}
+	go func() {
+		defer conn.Close()
+		<-ctx.Done()
+	}()
 
-	// Open a bidirectional stream and continue to backoff the connection
-	// until the context.Context is canceled
-	var stream StreamService_ConnectClient
+	// Open a bidirectional stream
+	var grpcStream StreamService_ConnectClient
 	if err := Backoff(ctx, func() error {
-		stream, err = NewStreamServiceClient(conn.ClientConn).Connect(ctx)
+		// On an error backoff and retry until the context.Context is done
+		grpcStream, err = NewStreamServiceClient(conn.ClientConn).Connect(ctx)
 		return err
 	}); err != nil {
 		return nil, fmt.Errorf("cannot open stream: %v", err)
 	}
 
-	// Sign an authentication message so that the StreamService can verify that
-	// the identity.Address of the StreamClient
+	// Sign an authentication message so that the StreamService can verify the
+	// identity.Address of the client
 	data := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", client.addr, multiAddr.Address()))
 	data = crypto.Keccak256(data)
 	dataSignature, err := client.signer.Sign(data)
 	if err != nil {
 		return nil, fmt.Errorf("cannot sign stream authentication: %v", err)
 	}
-
 	// Send the authentication message
-	if err := stream.Send(&StreamMessage{
+	if err := grpcStream.Send(&StreamMessage{
 		Authentication: &StreamAuthentication{
 			Signature: dataSignature,
 			Address:   client.addr.String(),
@@ -175,53 +163,283 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 		return nil, fmt.Errorf("cannot send stream address: %v", err)
 	}
 
-	// Return a grpc.ClientStream that implements the stream.Stream interface
-	// and is safe for concurrent use and will clean the grpc.ClientConn when
-	// it is no longer needed
-	clientStream := newClientStream(stream, conn)
-	go func() {
-		<-ctx.Done()
-		clientStream.Close()
-	}()
-	return clientStream, err
+	return newConcurrentStream(grpcStream), err
 }
 
-// StreamService implements the gRPC StreamService. It implements the
-// stream.Server interface by forwarding connections from the
-// StreamService.Connect RPC when calls to StreamService.Listen happen.
-type StreamService struct {
-	verifier crypto.Verifier
-	addr     identity.Address
+// concurrentStreamConnector connects and reconnects concurrentStreams.
+type concurrentStreamConnector struct {
+	client *streamClient
 
-	connsMu *sync.Mutex
-	conns   map[identity.Address]chan *safeStream
-	connsRc map[identity.Address]int
+	mu            *sync.Mutex
+	streamsMu     map[identity.Address]*sync.Mutex
+	streams       map[identity.Address]*concurrentStream
+	streamsCtx    map[identity.Address]context.Context
+	streamsCancel map[identity.Address]context.CancelFunc
+	streamsRc     map[identity.Address]int
 }
 
-// NewStreamService returns an implementation of the stream.Server interface
-// that uses gRPC for bidirectional streaming.
-func NewStreamService(verifier crypto.Verifier, addr identity.Address) StreamService {
-	return StreamService{
-		verifier: verifier,
-		addr:     addr,
+func newConcurrentStreamConnector(client *streamClient) *concurrentStreamConnector {
+	return &concurrentStreamConnector{
+		client: client,
 
-		connsMu: new(sync.Mutex),
-		conns:   map[identity.Address]chan *safeStream{},
-		connsRc: map[identity.Address]int{},
+		mu:            new(sync.Mutex),
+		streamsMu:     map[identity.Address]*sync.Mutex{},
+		streams:       map[identity.Address]*concurrentStream{},
+		streamsCtx:    map[identity.Address]context.Context{},
+		streamsCancel: map[identity.Address]context.CancelFunc{},
+		streamsRc:     map[identity.Address]int{},
 	}
 }
 
-// Register the StreamService to a Server.
-func (service *StreamService) Register(server *Server) {
+func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAddr identity.MultiAddress) (*concurrentStream, error) {
+	addr := multiAddr.Address()
+
+	connector.mu.Lock()
+	defer connector.mu.Unlock()
+
+	if connector.streamsMu[addr] == nil {
+		connector.streamsMu[addr] = new(sync.Mutex)
+	}
+	connector.streamsMu[addr].Lock()
+	defer connector.streamsMu[addr].Unlock()
+
+	if connector.streams[addr] == nil {
+
+		connector.mu.Unlock()
+		ctx, cancel := context.WithCancel(context.Background())
+		stream, err := connector.client.Connect(ctx, multiAddr)
+		connector.mu.Lock()
+
+		if err != nil {
+			cancel()
+			return nil, err
+		}
+
+		connector.streams[addr] = stream.(*concurrentStream)
+		connector.streamsCtx[addr] = ctx
+		connector.streamsCancel[addr] = cancel
+	}
+
+	go func() {
+		<-ctx.Done()
+
+		connector.mu.Lock()
+		defer connector.mu.Unlock()
+
+		connector.streamsRc[addr]--
+		if connector.streamsRc[addr] == 0 {
+
+			connector.streams[addr].Close()
+			connector.streamsCancel[addr]()
+
+			delete(connector.streamsMu, addr)
+			delete(connector.streams, addr)
+			delete(connector.streamsCtx, addr)
+			delete(connector.streamsCancel, addr)
+			delete(connector.streamsRc, addr)
+		}
+	}()
+
+	connector.streamsRc[addr]++
+	return connector.streams[addr], nil
+}
+
+func (connector *concurrentStreamConnector) reconnect(multiAddr identity.MultiAddress) (*concurrentStream, error) {
+	addr := multiAddr.Address()
+
+	connector.mu.Lock()
+	defer connector.mu.Unlock()
+
+	if connector.streamsMu[addr] == nil {
+		connector.streamsMu[addr] = new(sync.Mutex)
+	}
+	connector.streamsMu[addr].Lock()
+	defer connector.streamsMu[addr].Unlock()
+
+	if connector.streams[addr] != nil {
+		connector.streams[addr].Close()
+		connector.mu.Unlock()
+		stream, err := connector.client.Connect(connector.streamsCtx[addr], multiAddr)
+		connector.mu.Lock()
+		if err != nil {
+			return nil, err
+		}
+		connector.streams[addr] = stream.(*concurrentStream)
+	}
+
+	return connector.streams[addr], nil
+}
+
+func (connector *concurrentStreamConnector) setConnection(addr identity.Address, stream *concurrentStream) {
+	connector.mu.Lock()
+	defer connector.mu.Unlock()
+
+	if connector.streamsMu[addr] == nil {
+		connector.streamsMu[addr] = new(sync.Mutex)
+	}
+	connector.streamsMu[addr].Lock()
+	defer connector.streamsMu[addr].Unlock()
+
+	if connector.streams[addr] != nil {
+		connector.streams[addr].Close()
+	}
+	connector.streams[addr] = stream
+}
+
+func (connector *concurrentStreamConnector) connection(addr identity.Address) *concurrentStream {
+	connector.mu.Lock()
+	defer connector.mu.Unlock()
+
+	if connector.streamsMu[addr] == nil {
+		connector.streamsMu[addr] = new(sync.Mutex)
+	}
+	connector.streamsMu[addr].Lock()
+	defer connector.streamsMu[addr].Unlock()
+
+	return connector.streams[addr]
+}
+
+// Streamer implements the stream.Streamer interface by using gRPC to create
+// stream.Streams. Internally, it uses the concurrentStreamConnector to keep
+// stream.Streams alive until the opening context.Context is done. If a
+// bidirectional stream closes prematurely, the streamer will attempt to
+// reconnect without disruption.
+type Streamer struct {
+	addr      identity.Address
+	connector *concurrentStreamConnector
+}
+
+// NewStreamer returns an implementation of stream.Streamer that uses gRPC to
+// create bidirectional streams and keeps its stream.Streams alive until the
+// opening context.Context is done. The user does not need to explicitly
+// attempt to reconnect in the event of a fault.
+func NewStreamer(signer crypto.Signer, addr identity.Address) *Streamer {
+	return &Streamer{
+		addr:      addr,
+		connector: newConcurrentStreamConnector(newStreamClient(signer, addr)),
+	}
+}
+
+// Open implements the stream.Streamer interface. The stream.Stream returned is
+// valid when an error is returned and can be used to send and receive
+// stream.Messages.
+func (streamer *Streamer) Open(ctx context.Context, multiAddr identity.MultiAddress) (stream.Stream, error) {
+	var err error
+	if streamer.addr < multiAddr.Address() {
+		_, err = streamer.connector.connect(ctx, multiAddr)
+	}
+	return newCtxStreamer(ctx, multiAddr, streamer), err
+}
+
+type ctxStreamer struct {
+	*Streamer
+
+	ctx             context.Context
+	remoteMultiAddr identity.MultiAddress
+}
+
+func newCtxStreamer(ctx context.Context, remoteMultiAddr identity.MultiAddress, streamer *Streamer) *ctxStreamer {
+	return &ctxStreamer{
+		Streamer: streamer,
+
+		ctx:             ctx,
+		remoteMultiAddr: remoteMultiAddr,
+	}
+}
+
+// Send implements the stream.Stream interface.
+func (streamer *ctxStreamer) Send(message stream.Message) error {
+	var stream *concurrentStream
+	var err error
+
+	remoteAddr := streamer.remoteMultiAddr.Address()
+	if stream = streamer.connector.connection(remoteAddr); stream == nil {
+		if streamer.addr < remoteAddr {
+			stream, err = streamer.connector.connect(streamer.ctx, streamer.remoteMultiAddr)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	if stream == nil {
+		return ErrStreamDisconnected
+	}
+
+	if err := stream.Send(message); err != nil {
+		if streamer.addr < remoteAddr {
+			stream, err = streamer.connector.reconnect(streamer.remoteMultiAddr)
+		}
+		if err != nil {
+			return err
+		}
+		if stream == nil {
+			return ErrStreamDisconnected
+		}
+		return stream.Send(message)
+	}
+	return nil
+}
+
+// Recv implements the stream.Stream interface.
+func (streamer *ctxStreamer) Recv(message stream.Message) error {
+	var stream *concurrentStream
+	var err error
+
+	remoteAddr := streamer.remoteMultiAddr.Address()
+	if stream = streamer.connector.connection(remoteAddr); stream == nil {
+		if streamer.addr < remoteAddr {
+			stream, err = streamer.connector.connect(streamer.ctx, streamer.remoteMultiAddr)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	if stream == nil {
+		return ErrStreamDisconnected
+	}
+
+	if err := stream.Recv(message); err != nil {
+		if streamer.addr < remoteAddr {
+			stream, err = streamer.connector.reconnect(streamer.remoteMultiAddr)
+		}
+		if err != nil {
+			return err
+		}
+		if stream == nil {
+			return ErrStreamDisconnected
+		}
+		return stream.Recv(message)
+	}
+	return nil
+}
+
+// StreamerService implements the gRPC StreamService. After being registered to
+// a gRPC Server it will listen for requests to the StreamService.Connect RPC
+// and pass the connections to a Streamer.
+type StreamerService struct {
+	verifier  crypto.Verifier
+	addr      identity.Address
+	connector *concurrentStreamConnector
+}
+
+// NewStreamerService returns an implementation of the gRPC StreamService that
+// connects stream.Streams from clients to a Streamer.
+func NewStreamerService(verifier crypto.Verifier, addr identity.Address, streamer *Streamer) StreamerService {
+	return StreamerService{
+		verifier:  verifier,
+		addr:      addr,
+		connector: streamer.connector,
+	}
+}
+
+// Register the StreamerService to a Server.
+func (service *StreamerService) Register(server *Server) {
 	RegisterStreamServiceServer(server.Server, service)
 }
 
-// Connect implements the gRPC service for an abstract bidirectional stream of
-// messages.
-func (service *StreamService) Connect(stream StreamService_ConnectServer) error {
-
-	// Verify the stream address of this connection
-	message, err := stream.Recv()
+func (service *StreamerService) Connect(grpcStream StreamService_ConnectServer) error {
+	// Verify the address of this connection
+	message, err := grpcStream.Recv()
 	if err != nil {
 		return err
 	}
@@ -230,80 +448,28 @@ func (service *StreamService) Connect(stream StreamService_ConnectServer) error 
 		return err
 	}
 
-	streams := service.setupConn(addr)
-	defer service.teardownConn(addr)
+	// Establish a connection with the recycler so that the stream can be used
+	// outside of this service
+	concurrentStream := newConcurrentStream(grpcStream)
+	service.connector.setConnection(addr, concurrentStream)
 
-	// Send the stream to the listener or exit when the context is done
-	s := newSafeStream(stream)
+	// Wait until the client closes the connection or the stream itself is
+	// closed
 	select {
-	case <-stream.Context().Done():
-		return stream.Context().Err()
-	case streams <- s:
-	}
-
-	// Wait for an error response from the listener or exit when the context is
-	// done
-	select {
-	case <-stream.Context().Done():
-		logger.Network(logger.LevelDebugLow, "grpc connection closed by client")
-		return stream.Context().Err()
-	case <-s.done:
-		logger.Network(logger.LevelDebugLow, "grpc connection closed by service")
+	case <-grpcStream.Context().Done():
+		return grpcStream.Context().Err()
+	case <-concurrentStream.Done():
 		return nil
 	}
 }
 
-// Listen implements the stream.Server interface.
-func (service *StreamService) Listen(ctx context.Context, addr identity.Address) (stream.Stream, error) {
-	streams := service.setupConn(addr)
-	defer service.teardownConn(addr)
-
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case stream := <-streams:
-		go func() {
-			<-ctx.Done()
-			if err := stream.Close(); err != nil {
-				logger.Network(logger.LevelDebugLow, fmt.Sprintf("server error closing grpc stream: %v", err))
-			}
-		}()
-		return stream, nil
-	}
-}
-
-func (service *StreamService) verifyAuthentication(auth *StreamAuthentication) (identity.Address, error) {
-	if auth == nil || auth.GetAddress() == "" || auth.GetSignature() == nil {
+func (service *StreamerService) verifyAuthentication(auth *StreamAuthentication) (identity.Address, error) {
+	if auth == nil || auth.Address == "" || auth.Signature == nil || len(auth.Signature) != 65 {
 		return identity.Address(""), ErrNilAuthentication
 	}
 
-	addr := auth.GetAddress()
-	data := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", addr, service.addr))
+	data := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", auth.Address, service.addr))
 	data = crypto.Keccak256(data)
-	signature := auth.GetSignature()
 
-	return identity.Address(addr), service.verifier.Verify(data, signature)
-}
-
-func (service *StreamService) setupConn(addr identity.Address) chan *safeStream {
-	service.connsMu.Lock()
-	defer service.connsMu.Unlock()
-
-	if service.connsRc[addr] == 0 {
-		service.conns[addr] = make(chan *safeStream)
-	}
-	service.connsRc[addr]++
-
-	return service.conns[addr]
-}
-
-func (service *StreamService) teardownConn(addr identity.Address) {
-	service.connsMu.Lock()
-	defer service.connsMu.Unlock()
-
-	service.connsRc[addr]--
-	if service.connsRc[addr] == 0 {
-		delete(service.conns, addr)
-		delete(service.connsRc, addr)
-	}
+	return identity.Address(auth.Address), service.verifier.Verify(data, auth.Signature)
 }

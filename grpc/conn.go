@@ -72,16 +72,17 @@ func (conn *Conn) Close() error {
 
 // Backoff a function call until the context.Context is done, or the function
 // returns nil.
-func Backoff(ctx context.Context, f func() error) (err error) {
+func Backoff(ctx context.Context, f func() error) error {
 	timeoutMs := time.Duration(1000)
 	for {
-		if err = f(); err == nil {
-			return
+		err := f()
+		if err == nil {
+			return nil
 		}
 		timer := time.NewTimer(time.Millisecond * timeoutMs)
 		select {
 		case <-ctx.Done():
-			return
+			return fmt.Errorf("backoff timeout = %v: %v", ctx.Err(), err)
 		case <-timer.C:
 			timeoutMs = time.Duration(float64(timeoutMs) * 1.6)
 		}
