@@ -1,11 +1,19 @@
-package test
+package testutils
 
 import (
+	"fmt"
+	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/onsi/ginkgo"
+	"github.com/republicprotocol/republic-go/testutils/ganache"
 )
+
+const reset = "\x1b[0m"
+const green = "\x1b[32;1m"
+const yellow = "\x1b[33;1m"
 
 // GetCIEnv returns true if the CI environment variable is set
 func GetCIEnv() bool {
@@ -51,4 +59,21 @@ func SkipCIDescribe(d string, f func()) bool {
 		return ginkgo.Describe(d, f)
 	}
 	return false
+}
+
+func GanacheBeforeSuite(body interface{}, timeout ...float64) bool {
+	fmt.Printf("Ganache is listening on %shttp://localhost:8545%s...\n", green, reset)
+
+	ganache.Start()
+	time.Sleep(time.Duration(10) * time.Second)
+
+	conn, err := ganache.Connect("http://localhost:8545")
+	if err != nil {
+		log.Fatalf("cannot connect to ganache: %v", err)
+	}
+
+	if err := ganache.DeployContracts(conn); err != nil {
+		log.Fatalf("cannot deploy contracts to ganache: %v", err)
+	}
+	return ginkgo.BeforeSuite(body, timeout)
 }

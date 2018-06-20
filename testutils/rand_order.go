@@ -121,7 +121,9 @@ func RandomConfigs(n int, b int) ([]config.Config, error) {
 				RepublicTokenAddress:    contract.RepublicTokenAddressOnGanache.String(),
 				DarknodeRegistryAddress: contract.DarknodeRegistryAddressOnGanache.String(),
 				OrderbookAddress:        contract.OrderbookAddressOnGanache.String(),
-				RenExSettlementsAddress: contract.RenExSettlementsAddressOnGanache.String(),
+				RewardVaultAddress:      contract.RewardVaultAddressOnGanache.String(),
+				RenExBalancesAddress:    contract.RenExBalancesAddressOnGanache.String(),
+				RenExSettlementAddress:  contract.RenExSettlementAddressOnGanache.String(),
 			},
 		})
 	}

@@ -88,7 +88,7 @@ func NewBinder(ctx context.Context, keystore crypto.Keystore, conf Config) (Bind
 		return Binder{}, err
 	}
 
-	renExSettlement, err := bindings.NewRenExSettlement(common.HexToAddress(conn.Config.RenExSettlementsAddress), bind.ContractBackend(conn.Client))
+	renExSettlement, err := bindings.NewRenExSettlement(common.HexToAddress(conn.Config.RenExSettlementAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to RenEx accounts: %v", err))
 		return Binder{}, err
