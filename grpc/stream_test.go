@@ -200,6 +200,137 @@ var _ = Describe("Streaming", func() {
 				}
 			})
 		})
+
+		Context("when the client disconnects and reconnects", func() {
+			It("should send messages to the server without the server opening a new stream", func() {
+				var err error
+
+				// Disconnect
+				clientStreamCancel()
+				time.Sleep(time.Millisecond)
+
+				// Confirm that receiving returns an error
+				message := mockStreamMessage{}
+				err = serviceStream.Recv(&message)
+				Expect(err).Should(HaveOccurred())
+
+				// Reconnect
+				ctx, cancel := context.WithCancel(context.Background())
+				clientStream, err = clientStreamer.Open(ctx, serviceMultiAddr)
+				clientStreamCancel = cancel
+				Expect(err).ShouldNot(HaveOccurred())
+				time.Sleep(10 * time.Millisecond)
+
+				// Send a message from the client
+				go func() {
+					defer GinkgoRecover()
+					err := clientStream.Send(&mockStreamMessage{int64(420)})
+					Expect(err).ShouldNot(HaveOccurred())
+				}()
+
+				// Receive a message from the service without opening a new
+				// stream
+				err = serviceStream.Recv(&message)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(message.i).Should(Equal(int64(420)))
+			})
+
+			It("should receive messages from the server without the server opening a new stream", func() {
+				var err error
+
+				// Disconnect
+				clientStreamCancel()
+				time.Sleep(time.Millisecond)
+
+				// Confirm that sending and receiving returns an error
+				err = serviceStream.Send(&mockStreamMessage{int64(420)})
+				Expect(err).Should(HaveOccurred())
+
+				// Reconnect
+				ctx, cancel := context.WithCancel(context.Background())
+				clientStream, err = clientStreamer.Open(ctx, serviceMultiAddr)
+				clientStreamCancel = cancel
+				Expect(err).ShouldNot(HaveOccurred())
+				time.Sleep(10 * time.Millisecond)
+
+				// Send a message from the client
+				go func() {
+					defer GinkgoRecover()
+					err := serviceStream.Send(&mockStreamMessage{int64(420)})
+					Expect(err).ShouldNot(HaveOccurred())
+				}()
+
+				// Receive a message from the service without opening a new
+				// stream
+				message := mockStreamMessage{}
+				err = clientStream.Recv(&message)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(message.i).Should(Equal(int64(420)))
+			})
+		})
+
+		Context("when the server disconnects and reconnects", func() {
+			It("should send messages to the client without the client opening a new stream", func(done Done) {
+				defer close(done)
+
+				// Disconnect
+				serviceStreamCancel()
+				time.Sleep(time.Millisecond)
+
+				// Send a message from the service
+				go func() {
+					defer GinkgoRecover()
+
+					// Reconnect
+					ctx, cancel := context.WithCancel(context.Background())
+					serviceStream, err := serviceStreamer.Open(ctx, clientMultiAddr)
+					serviceStreamCancel = cancel
+					Expect(err).ShouldNot(HaveOccurred())
+					time.Sleep(10 * time.Millisecond)
+
+					err = serviceStream.Send(&mockStreamMessage{int64(420)})
+					Expect(err).ShouldNot(HaveOccurred())
+				}()
+
+				// Receive a message from the client without opening a new
+				// stream
+				message := mockStreamMessage{}
+				err := clientStream.Recv(&message)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(message.i).Should(Equal(int64(420)))
+
+			}, 30 /* 30s timeout */)
+
+			It("should receive messages from the client without the client opening a new stream", func(done Done) {
+				defer close(done)
+
+				// Disconnect
+				serviceStreamCancel()
+				time.Sleep(time.Millisecond)
+
+				// Send a message from the service
+				go func() {
+					defer GinkgoRecover()
+
+					err := clientStream.Send(&mockStreamMessage{int64(420)})
+					Expect(err).ShouldNot(HaveOccurred())
+				}()
+
+				// Reconnect
+				ctx, cancel := context.WithCancel(context.Background())
+				serviceStream, err := serviceStreamer.Open(ctx, clientMultiAddr)
+				serviceStreamCancel = cancel
+				Expect(err).ShouldNot(HaveOccurred())
+				time.Sleep(10 * time.Millisecond)
+
+				// Receive a message from the client without opening a new
+				// stream
+				message := mockStreamMessage{}
+				err = serviceStream.Recv(&message)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(message.i).Should(Equal(int64(420)))
+			}, 30 /* 30s timeout */)
+		})
 	})
 })
 

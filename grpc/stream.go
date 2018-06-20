@@ -3,6 +3,7 @@ package grpc
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -202,7 +203,7 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 	connector.streamsMu[addr].Lock()
 	defer connector.streamsMu[addr].Unlock()
 
-	if connector.streams[addr] == nil {
+	if connector.streamsRc[addr] == 0 {
 
 		connector.mu.Unlock()
 		ctx, cancel := context.WithCancel(context.Background())
@@ -243,6 +244,62 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 	return connector.streams[addr], nil
 }
 
+func (connector *concurrentStreamConnector) listen(ctx context.Context, multiAddr identity.MultiAddress) (*concurrentStream, error) {
+	addr := multiAddr.Address()
+	stream := func() *concurrentStream {
+
+		connector.mu.Lock()
+		defer connector.mu.Unlock()
+		if connector.streamsMu[addr] == nil {
+			connector.streamsMu[addr] = new(sync.Mutex)
+		}
+		connector.streamsMu[addr].Lock()
+		defer connector.streamsMu[addr].Unlock()
+
+		if connector.streamsRc[addr] == 0 {
+			ctx, cancel := context.WithCancel(context.Background())
+			connector.streamsCtx[addr] = ctx
+			connector.streamsCancel[addr] = cancel
+		}
+
+		go func() {
+			<-ctx.Done()
+
+			connector.mu.Lock()
+			defer connector.mu.Unlock()
+
+			connector.streamsRc[addr]--
+			if connector.streamsRc[addr] == 0 {
+
+				if connector.streams[addr] != nil {
+					connector.streams[addr].Close()
+				}
+				connector.streamsCancel[addr]()
+
+				delete(connector.streamsMu, addr)
+				delete(connector.streams, addr)
+				delete(connector.streamsCtx, addr)
+				delete(connector.streamsCancel, addr)
+				delete(connector.streamsRc, addr)
+			}
+		}()
+
+		connector.streamsRc[addr]++
+		return connector.streams[addr]
+	}()
+
+	if stream == nil {
+		err := BackoffMax(ctx, func() error {
+			if stream = connector.connection(addr); stream == nil {
+				return ErrStreamDisconnected
+			}
+			return nil
+		}, 30000 /* Maximum backoff 30s */)
+		return stream, err
+	}
+	return stream, nil
+}
+
 func (connector *concurrentStreamConnector) reconnect(multiAddr identity.MultiAddress) (*concurrentStream, error) {
 	addr := multiAddr.Address()
 
@@ -269,7 +326,7 @@ func (connector *concurrentStreamConnector) reconnect(multiAddr identity.MultiAd
 	return connector.streams[addr], nil
 }
 
-func (connector *concurrentStreamConnector) setConnection(addr identity.Address, stream *concurrentStream) {
+func (connector *concurrentStreamConnector) accept(addr identity.Address, stream *concurrentStream) {
 	connector.mu.Lock()
 	defer connector.mu.Unlock()
 	if connector.streamsMu[addr] == nil {
@@ -325,12 +382,7 @@ func (streamer *Streamer) Open(ctx context.Context, multiAddr identity.MultiAddr
 	if streamer.addr < multiAddr.Address() {
 		_, err = streamer.connector.connect(ctx, multiAddr)
 	} else {
-		err = BackoffMax(ctx, func() error {
-			if stream := streamer.connector.connection(multiAddr.Address()); stream == nil {
-				return ErrStreamDisconnected
-			}
-			return nil
-		}, 30000 /* Maximum backoff 30s */)
+		_, err = streamer.connector.listen(ctx, multiAddr)
 	}
 	return newCtxStreamer(ctx, multiAddr, streamer), err
 }
@@ -353,39 +405,15 @@ func newCtxStreamer(ctx context.Context, remoteMultiAddr identity.MultiAddress, 
 
 // Send implements the stream.Stream interface.
 func (streamer *ctxStreamer) Send(message stream.Message) error {
-	var stream *concurrentStream
-	var err error
-
-	remoteAddr := streamer.remoteMultiAddr.Address()
-	if stream = streamer.connector.connection(remoteAddr); stream == nil {
-		if streamer.addr < remoteAddr {
-			stream, err = streamer.connector.connect(streamer.ctx, streamer.remoteMultiAddr)
-		}
-	}
-	if err != nil {
-		return err
-	}
-	if stream == nil {
-		return ErrStreamDisconnected
-	}
-
-	if err := stream.Send(message); err != nil {
-		if streamer.addr < remoteAddr {
-			stream, err = streamer.connector.reconnect(streamer.remoteMultiAddr)
-		}
-		if err != nil {
-			return err
-		}
-		if stream == nil {
-			return ErrStreamDisconnected
-		}
-		return stream.Send(message)
-	}
-	return nil
+	return streamer.message(message, func(stream *concurrentStream, message stream.Message) error { return stream.Send(message) })
 }
 
 // Recv implements the stream.Stream interface.
 func (streamer *ctxStreamer) Recv(message stream.Message) error {
+	return streamer.message(message, func(stream *concurrentStream, message stream.Message) error { return stream.Recv(message) })
+}
+
+func (streamer *ctxStreamer) message(message stream.Message, f func(stream *concurrentStream, message stream.Message) error) error {
 	var stream *concurrentStream
 	var err error
 
@@ -393,18 +421,8 @@ func (streamer *ctxStreamer) Recv(message stream.Message) error {
 	if stream = streamer.connector.connection(remoteAddr); stream == nil {
 		if streamer.addr < remoteAddr {
 			stream, err = streamer.connector.connect(streamer.ctx, streamer.remoteMultiAddr)
-		}
-	}
-	if err != nil {
-		return err
-	}
-	if stream == nil {
-		return ErrStreamDisconnected
-	}
-
-	if err := stream.Recv(message); err != nil {
-		if streamer.addr < remoteAddr {
-			stream, err = streamer.connector.reconnect(streamer.remoteMultiAddr)
+		} else {
+			stream, err = streamer.connector.listen(streamer.ctx, streamer.remoteMultiAddr)
 		}
 		if err != nil {
 			return err
@@ -412,7 +430,24 @@ func (streamer *ctxStreamer) Recv(message stream.Message) error {
 		if stream == nil {
 			return ErrStreamDisconnected
 		}
-		return stream.Recv(message)
+	}
+
+	if err := f(stream, message); err != nil {
+		if streamer.addr < remoteAddr {
+			stream, err = streamer.connector.reconnect(streamer.remoteMultiAddr)
+		} else {
+			// There is no such this as "relistening" so if the connection dies
+			// all we can do is hope that the client will eventually attempt to
+			// reconnect and until then, we simply let the errors happen
+			log.Println("cannot relisten")
+		}
+		if err != nil {
+			return err
+		}
+		if stream == nil {
+			return ErrStreamDisconnected
+		}
+		return f(stream, message)
 	}
 	return nil
 }
@@ -455,7 +490,7 @@ func (service *StreamerService) Connect(grpcStream StreamService_ConnectServer) 
 	// Establish a connection with the recycler so that the stream can be used
 	// outside of this service
 	concurrentStream := newConcurrentStream(grpcStream)
-	service.connector.setConnection(addr, concurrentStream)
+	service.connector.accept(addr, concurrentStream)
 
 	// Wait until the client closes the connection or the stream itself is
 	// closed
