@@ -117,7 +117,7 @@ type mockDarkpool struct {
 	pods      []Pod
 }
 
-func newMockDarkpool() (ContractsBinder, map[identity.Address]crypto.Keystore, error) {
+func newMockDarkpool() (ContractBinder, map[identity.Address]crypto.Keystore, error) {
 	// darkpool := mockDarkpool{
 	// 	darknodes: map[identity.Address]crypto.Keystore{},
 	// 	pods:      []Pod{},

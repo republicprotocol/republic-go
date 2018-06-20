@@ -26,7 +26,7 @@ var ErrInvalidRegistration = errors.New("invalid registration")
 // The cache will be updated periodically, to ensure up-to-date information.
 type Crypter struct {
 	keystore crypto.Keystore
-	contract ContractsBinder
+	contract ContractBinder
 
 	registryCacheMu *sync.Mutex
 	registryCache   map[string]registryCacheEntry
@@ -41,7 +41,7 @@ type Crypter struct {
 // NewCrypter returns a new Crypter that uses a crypto.Keystore to identify
 // itself when signing and decrypting messages. It uses a cal.Darkpool to
 // identify others when verifying and encrypting messages.
-func NewCrypter(keystore crypto.Keystore, contract ContractsBinder, cacheLimit int, cacheUpdatePeriod time.Duration) Crypter {
+func NewCrypter(keystore crypto.Keystore, contract ContractBinder, cacheLimit int, cacheUpdatePeriod time.Duration) Crypter {
 	return Crypter{
 		keystore:          keystore,
 		contract:          contract,
