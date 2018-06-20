@@ -1,4 +1,4 @@
-package contracts
+package contract
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/republicprotocol/republic-go/contracts/bindings"
+	"github.com/republicprotocol/republic-go/contract/bindings"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
@@ -61,8 +61,8 @@ type Binder struct {
 	renExSettlement bindings.RenExSettlement
 }
 
-// GetContractBindings returns a Binder to communicate with contracts
-func GetContractBindings(ctx context.Context, keystore crypto.Keystore, conf Config) (Binder, error) {
+// NewBinder returns a Binder to communicate with contracts
+func NewBinder(ctx context.Context, keystore crypto.Keystore, conf Config) (Binder, error) {
 	conn, err := Connect(conf)
 	if err != nil {
 		return Binder{}, fmt.Errorf("cannot connect to ethereum: %v", err)
