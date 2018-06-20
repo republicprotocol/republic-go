@@ -62,10 +62,10 @@ type Binder struct {
 }
 
 // NewBinder returns a Binder to communicate with contracts
-func NewBinder(ctx context.Context, keystore crypto.Keystore, conf Config) (Binder, error) {
+func NewBinder(ctx context.Context, keystore crypto.Keystore, conf Config) (*bind.TransactOpts, Binder, error) {
 	conn, err := Connect(conf)
 	if err != nil {
-		return Binder{}, fmt.Errorf("cannot connect to ethereum: %v", err)
+		return nil, Binder{}, fmt.Errorf("cannot connect to ethereum: %v", err)
 	}
 	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
 	auth.GasPrice = big.NewInt(1000000000)
@@ -73,28 +73,28 @@ func NewBinder(ctx context.Context, keystore crypto.Keystore, conf Config) (Bind
 	darknodeRegistry, err := bindings.NewDarknodeRegistry(common.HexToAddress(conn.Config.DarknodeRegistryAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
-		return Binder{}, err
+		return nil, Binder{}, err
 	}
 
 	republicToken, err := bindings.NewRepublicToken(common.HexToAddress(conn.Config.RepublicTokenAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
-		return Binder{}, err
+		return nil, Binder{}, err
 	}
 
 	orderbook, err := bindings.NewOrderbook(common.HexToAddress(conn.Config.OrderbookAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to Orderbook: %v", err))
-		return Binder{}, err
+		return nil, Binder{}, err
 	}
 
 	renExSettlement, err := bindings.NewRenExSettlement(common.HexToAddress(conn.Config.RenExSettlementAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to RenEx accounts: %v", err))
-		return Binder{}, err
+		return nil, Binder{}, err
 	}
 
-	return Binder{
+	return auth, Binder{
 		mu:           new(sync.RWMutex),
 		network:      conn.Config.Network,
 		context:      ctx,

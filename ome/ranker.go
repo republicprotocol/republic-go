@@ -206,6 +206,7 @@ func (ranker *delegateRanker) removeComputations(orderID order.ID) {
 			} else {
 				ranker.computations = append(ranker.computations[:i], ranker.computations[i+1:]...)
 			}
+			numComputations--
 			i--
 		}
 	}

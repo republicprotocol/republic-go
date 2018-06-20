@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	netHttp "net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -14,9 +15,12 @@ import (
 
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/contract"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
+	"github.com/republicprotocol/republic-go/http"
+	"github.com/republicprotocol/republic-go/http/adapter"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/logger"
@@ -24,6 +28,7 @@ import (
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/smpc"
+	"github.com/republicprotocol/republic-go/status"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 )
@@ -59,7 +64,7 @@ func main() {
 	log.Printf("address %v", multiAddr)
 
 	// Get ethereum bindings
-	contractBinder, err := contract.NewBinder(context.Background(), config.Keystore, config.Ethereum)
+	auth, contractBinder, err := contract.NewBinder(context.Background(), config.Keystore, config.Ethereum)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
@@ -96,6 +101,30 @@ func main() {
 	streamService := grpc.NewStreamService(&crypter, config.Address)
 	streamer := stream.NewStreamRecycler(stream.NewStreamer(config.Address, streamClient, &streamService))
 	streamService.Register(server)
+
+	// Populate status information
+	statusProvider := status.NewProvider(&dht)
+	statusProvider.WriteNetwork(string(config.Ethereum.Network))
+	statusProvider.WriteMultiAddress(multiAddr)
+	statusProvider.WriteEthereumAddress(auth.From.Hex())
+
+	pk, err := crypto.BytesFromRsaPublicKey(&config.Keystore.RsaKey.PublicKey)
+	if err != nil {
+		log.Fatalf("could not determine public key: %v", err)
+	}
+	statusProvider.WritePublicKey(pk)
+
+	// Start the status server
+	go func() {
+		bindParam := "0.0.0.0"
+		portParam := "18515"
+		log.Printf("starting status server at %v:%v...", bindParam, portParam)
+
+		statusAdapter := adapter.NewStatusAdapter(statusProvider)
+		if err := netHttp.ListenAndServe(fmt.Sprintf("%v:%v", bindParam, portParam), http.NewStatusServer(statusAdapter)); err != nil {
+			log.Fatalf("error listening and serving: %v", err)
+		}
+	}()
 
 	// Start the secure order matching engine
 	go func() {

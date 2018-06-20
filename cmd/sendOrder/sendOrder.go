@@ -39,7 +39,7 @@ func main() {
 		log.Fatalf("cannot load config: %v", err)
 	}
 
-	contractBindings, err := contract.NewBinder(context.Background(), keystore, config)
+	_, contractBindings, err := contract.NewBinder(context.Background(), keystore, config)
 	if err != nil {
 		log.Fatalf("cannot load smart contract: %v", err)
 	}
