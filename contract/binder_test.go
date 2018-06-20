@@ -11,8 +11,8 @@ import (
 var _ = Describe("Contract Binder", func() {
 
 	testutils.GanacheBeforeSuite(func() {
-		
-	})
+
+	}, 1.0)
 
 	Context("when ", func() {
 

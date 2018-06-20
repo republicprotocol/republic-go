@@ -62,39 +62,37 @@ type Binder struct {
 }
 
 // NewBinder returns a Binder to communicate with contracts
-func NewBinder(ctx context.Context, keystore crypto.Keystore, conf Config) (*bind.TransactOpts, Binder, error) {
+func NewBinder(ctx context.Context, keystore crypto.Keystore, auth *bind.TransactOpts, conf Config) (Binder, error) {
 	conn, err := Connect(conf)
 	if err != nil {
-		return nil, Binder{}, fmt.Errorf("cannot connect to ethereum: %v", err)
+		return Binder{}, fmt.Errorf("cannot connect to ethereum: %v", err)
 	}
-	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
-	auth.GasPrice = big.NewInt(1000000000)
 
 	darknodeRegistry, err := bindings.NewDarknodeRegistry(common.HexToAddress(conn.Config.DarknodeRegistryAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
-		return nil, Binder{}, err
+		return Binder{}, err
 	}
 
 	republicToken, err := bindings.NewRepublicToken(common.HexToAddress(conn.Config.RepublicTokenAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
-		return nil, Binder{}, err
+		return Binder{}, err
 	}
 
 	orderbook, err := bindings.NewOrderbook(common.HexToAddress(conn.Config.OrderbookAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to Orderbook: %v", err))
-		return nil, Binder{}, err
+		return Binder{}, err
 	}
 
 	renExSettlement, err := bindings.NewRenExSettlement(common.HexToAddress(conn.Config.RenExSettlementAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to RenEx accounts: %v", err))
-		return nil, Binder{}, err
+		return Binder{}, err
 	}
 
-	return auth, Binder{
+	return Binder{
 		mu:           new(sync.RWMutex),
 		network:      conn.Config.Network,
 		context:      ctx,
@@ -504,7 +502,10 @@ func (binder *Binder) Pods() ([]registry.Pod, error) {
 }
 
 func (binder *Binder) pods() ([]registry.Pod, error) {
-	darknodeAddrs, err := binder.Darknodes()
+	darknodeAddrs, err := binder.darknodes()
+	if err != nil {
+		return []registry.Pod{}, err
+	}
 
 	numberOfNodesInPod, err := binder.minimumPodSize()
 	if err != nil {
