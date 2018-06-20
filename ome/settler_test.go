@@ -12,18 +12,18 @@ const NumberOfNodes = 24
 
 var _ = Describe("Settler", func() {
 	var (
-		storers [NumberOfNodes]Storer
-		smpcers [NumberOfNodes]*testutils.Smpc
-		// accounts [NumberOfNodes]*testutils.DarkpoolAccounts
-		settles [NumberOfNodes]Settler
+		storers   [NumberOfNodes]Storer
+		smpcers   [NumberOfNodes]*testutils.Smpc
+		contracts [NumberOfNodes]*omeBinder
+		settles   [NumberOfNodes]Settler
 	)
 
 	BeforeEach(func() {
 		for i := 0; i < NumberOfNodes; i++ {
 			storers[i] = testutils.NewStorer()
 			smpcers[i] = testutils.NewAlwaysMatchSmpc()
-			// accounts[i] = testutils.NewDarkpoolAccounts()
-			// settles[i] = NewSettler(storers[i], smpcers[i], accounts[i])
+			contracts[i] = newOmeBinder()
+			settles[i] = NewSettler(storers[i], smpcers[i], contracts[i])
 		}
 	})
 
@@ -45,7 +45,7 @@ var _ = Describe("Settler", func() {
 			}
 
 			for i := 0; i < NumberOfNodes; i++ {
-				// Ω(accounts[i].SettleCounts()).Should(Equal(1))
+				Ω(contracts[i].SettleCounts()).Should(Equal(1))
 			}
 		})
 	})
