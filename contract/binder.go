@@ -184,8 +184,8 @@ func (binder *Binder) settlementDetail(buy, sell order.ID) (*big.Int, *big.Int, 
 
 // Register a new dark node with the dark node registrar
 func (binder *Binder) Register(darknodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
-	binder.mu.RLock()
-	defer binder.mu.RUnlock()
+	binder.mu.Lock()
+	defer binder.mu.Unlock()
 
 	return binder.register(darknodeID, publicKey, bond)
 }
@@ -206,8 +206,8 @@ func (binder *Binder) register(darknodeID []byte, publicKey []byte, bond *stacki
 
 // Deregister an existing dark node
 func (binder *Binder) Deregister(darknodeID []byte) (*types.Transaction, error) {
-	binder.mu.RLock()
-	defer binder.mu.RUnlock()
+	binder.mu.Lock()
+	defer binder.mu.Unlock()
 
 	return binder.deregister(darknodeID)
 }
@@ -227,8 +227,8 @@ func (binder *Binder) deregister(darknodeID []byte) (*types.Transaction, error) 
 
 // Refund withdraws the bond. Must be called before reregistering.
 func (binder *Binder) Refund(darknodeID []byte) (*types.Transaction, error) {
-	binder.mu.RLock()
-	defer binder.mu.RUnlock()
+	binder.mu.Lock()
+	defer binder.mu.Unlock()
 
 	return binder.refund(darknodeID)
 }
@@ -301,8 +301,8 @@ func (binder *Binder) isDeregistered(darknodeID []byte) (bool, error) {
 
 // ApproveRen doesn't actually talk to the DNR - instead it approves Ren to it
 func (binder *Binder) ApproveRen(value *stackint.Int1024) (*types.Transaction, error) {
-	binder.mu.RLock()
-	defer binder.mu.RUnlock()
+	binder.mu.Lock()
+	defer binder.mu.Unlock()
 
 	return binder.approveRen(value)
 }
@@ -348,8 +348,8 @@ func (binder *Binder) currentEpoch() (Epoch, error) {
 // NextEpoch will try to turn the Epoch and returns the resulting Epoch. If
 // the turning of the Epoch failed, the current Epoch is returned.
 func (binder *Binder) NextEpoch() (registry.Epoch, error) {
-	binder.mu.RLock()
-	defer binder.mu.RUnlock()
+	binder.mu.Lock()
+	defer binder.mu.Unlock()
 
 	return binder.nextEpoch()
 }
@@ -362,8 +362,8 @@ func (binder *Binder) nextEpoch() (registry.Epoch, error) {
 // TriggerEpoch updates the current Epoch if the Minimum Epoch Interval has
 // passed since the previous Epoch
 func (binder *Binder) TriggerEpoch() (*types.Transaction, error) {
-	binder.mu.RLock()
-	defer binder.mu.RUnlock()
+	binder.mu.Lock()
+	defer binder.mu.Unlock()
 
 	return binder.triggerEpoch()
 }
