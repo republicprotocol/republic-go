@@ -7,7 +7,7 @@
 
 # Dep vendors
 # vendor
-# Gopkg.lock
+Gopkg.lock
 
 # Secrets
 cmd/secrets

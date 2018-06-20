@@ -20,24 +20,29 @@ import (
 var _ = Describe("Streaming", func() {
 
 	var server *Server
-	var service *StreamService
+	var service *StreamerService
+	var serviceStreamer *Streamer
 	var serviceAddr identity.Address
 	var serviceMultiAddr identity.MultiAddress
-	var client stream.Client
+	var clientStreamer *Streamer
 	var clientAddr identity.Address
+	var clientMultiAddr identity.MultiAddress
 
 	BeforeEach(func() {
 		var err error
 
-		client, clientAddr, err = newStreamClient()
+		clientStreamer, clientAddr, err = newStreamer()
 		Expect(err).ShouldNot(HaveOccurred())
 
 		server = NewServer()
-		service, serviceAddr, err = newStreamService(clientAddr)
+		service, serviceStreamer, serviceAddr, err = newStreamerService(clientAddr)
 		Expect(err).ShouldNot(HaveOccurred())
 		service.Register(server)
 
 		serviceMultiAddr, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/18514/republic/%v", serviceAddr))
+		Expect(err).ShouldNot(HaveOccurred())
+
+		clientMultiAddr, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/18515/republic/%v", clientAddr))
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -58,9 +63,9 @@ var _ = Describe("Streaming", func() {
 			}()
 			time.Sleep(time.Millisecond)
 
-			_, err := client.Connect(context.Background(), serviceMultiAddr)
+			_, err := clientStreamer.Open(context.Background(), serviceMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
-		})
+		}, 30 /* 30 second timeout */)
 
 		It("should connect when the service is started after the connection request", func(done Done) {
 			defer close(done)
@@ -74,7 +79,7 @@ var _ = Describe("Streaming", func() {
 			}()
 			time.Sleep(time.Millisecond)
 
-			_, err := client.Connect(context.Background(), serviceMultiAddr)
+			_, err := clientStreamer.Open(context.Background(), serviceMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 
 		}, 30 /* 30 second timeout */)
@@ -94,10 +99,10 @@ var _ = Describe("Streaming", func() {
 		})
 
 		It("should connect when the client sends the connection request before the service is listening", func() {
-			_, err := client.Connect(context.Background(), serviceMultiAddr)
+			_, err := clientStreamer.Open(context.Background(), serviceMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			_, err = service.Listen(context.Background(), clientAddr)
+			_, err = serviceStreamer.Open(context.Background(), clientMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -108,12 +113,12 @@ var _ = Describe("Streaming", func() {
 				defer GinkgoRecover()
 				defer close(doneListening)
 
-				_, err := service.Listen(context.Background(), clientAddr)
+				_, err := serviceStreamer.Open(context.Background(), clientMultiAddr)
 				Expect(err).ShouldNot(HaveOccurred())
 			}()
 			time.Sleep(time.Millisecond)
 
-			_, err := client.Connect(context.Background(), serviceMultiAddr)
+			_, err := clientStreamer.Open(context.Background(), serviceMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			<-doneListening
@@ -141,12 +146,12 @@ var _ = Describe("Streaming", func() {
 			time.Sleep(time.Millisecond)
 
 			ctx, cancel := context.WithCancel(context.Background())
-			clientStream, err = client.Connect(ctx, serviceMultiAddr)
+			clientStream, err = clientStreamer.Open(ctx, serviceMultiAddr)
 			clientStreamCancel = cancel
 			Expect(err).ShouldNot(HaveOccurred())
 
 			ctx, cancel = context.WithCancel(context.Background())
-			serviceStream, err = service.Listen(context.Background(), clientAddr)
+			serviceStream, err = serviceStreamer.Open(ctx, clientMultiAddr)
 			serviceStreamCancel = cancel
 			Expect(err).ShouldNot(HaveOccurred())
 		})
@@ -195,27 +200,164 @@ var _ = Describe("Streaming", func() {
 				}
 			})
 		})
+
+		Context("when the client disconnects and reconnects", func() {
+			It("should send messages to the server without the server opening a new stream", func() {
+				var err error
+
+				// Disconnect
+				clientStreamCancel()
+				time.Sleep(time.Millisecond)
+
+				// Confirm that receiving returns an error
+				message := mockStreamMessage{}
+				err = serviceStream.Recv(&message)
+				Expect(err).Should(HaveOccurred())
+
+				// Reconnect
+				ctx, cancel := context.WithCancel(context.Background())
+				clientStream, err = clientStreamer.Open(ctx, serviceMultiAddr)
+				clientStreamCancel = cancel
+				Expect(err).ShouldNot(HaveOccurred())
+				time.Sleep(10 * time.Millisecond)
+
+				// Send a message from the client
+				go func() {
+					defer GinkgoRecover()
+					err := clientStream.Send(&mockStreamMessage{int64(420)})
+					Expect(err).ShouldNot(HaveOccurred())
+				}()
+
+				// Receive a message from the service without opening a new
+				// stream
+				err = serviceStream.Recv(&message)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(message.i).Should(Equal(int64(420)))
+			})
+
+			It("should receive messages from the server without the server opening a new stream", func() {
+				var err error
+
+				// Disconnect
+				clientStreamCancel()
+				time.Sleep(time.Millisecond)
+
+				// Confirm that sending and receiving returns an error
+				err = serviceStream.Send(&mockStreamMessage{int64(420)})
+				Expect(err).Should(HaveOccurred())
+
+				// Reconnect
+				ctx, cancel := context.WithCancel(context.Background())
+				clientStream, err = clientStreamer.Open(ctx, serviceMultiAddr)
+				clientStreamCancel = cancel
+				Expect(err).ShouldNot(HaveOccurred())
+				time.Sleep(10 * time.Millisecond)
+
+				// Send a message from the client
+				go func() {
+					defer GinkgoRecover()
+					err := serviceStream.Send(&mockStreamMessage{int64(420)})
+					Expect(err).ShouldNot(HaveOccurred())
+				}()
+
+				// Receive a message from the service without opening a new
+				// stream
+				message := mockStreamMessage{}
+				err = clientStream.Recv(&message)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(message.i).Should(Equal(int64(420)))
+			})
+		})
+
+		Context("when the server disconnects and reconnects", func() {
+			It("should send messages to the client without the client opening a new stream", func(done Done) {
+				defer close(done)
+
+				// Disconnect
+				serviceStreamCancel()
+				time.Sleep(time.Millisecond)
+
+				// Send a message from the service
+				go func() {
+					defer GinkgoRecover()
+
+					// Reconnect
+					ctx, cancel := context.WithCancel(context.Background())
+					serviceStream, err := serviceStreamer.Open(ctx, clientMultiAddr)
+					serviceStreamCancel = cancel
+					Expect(err).ShouldNot(HaveOccurred())
+					time.Sleep(10 * time.Millisecond)
+
+					err = serviceStream.Send(&mockStreamMessage{int64(420)})
+					Expect(err).ShouldNot(HaveOccurred())
+				}()
+
+				// Receive a message from the client without opening a new
+				// stream
+				message := mockStreamMessage{}
+				err := clientStream.Recv(&message)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(message.i).Should(Equal(int64(420)))
+
+			}, 30 /* 30s timeout */)
+
+			It("should receive messages from the client without the client opening a new stream", func(done Done) {
+				defer close(done)
+
+				// Disconnect
+				serviceStreamCancel()
+				time.Sleep(time.Millisecond)
+
+				// Send a message from the service
+				go func() {
+					defer GinkgoRecover()
+
+					err := clientStream.Send(&mockStreamMessage{int64(420)})
+					Expect(err).ShouldNot(HaveOccurred())
+				}()
+
+				// Reconnect
+				ctx, cancel := context.WithCancel(context.Background())
+				serviceStream, err := serviceStreamer.Open(ctx, clientMultiAddr)
+				serviceStreamCancel = cancel
+				Expect(err).ShouldNot(HaveOccurred())
+				time.Sleep(10 * time.Millisecond)
+
+				// Receive a message from the client without opening a new
+				// stream
+				message := mockStreamMessage{}
+				err = serviceStream.Recv(&message)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(message.i).Should(Equal(int64(420)))
+			}, 30 /* 30s timeout */)
+		})
 	})
 })
 
-func newStreamClient() (stream.Client, identity.Address, error) {
+func newStreamer() (*Streamer, identity.Address, error) {
 	ecdsaKey, err := crypto.RandomEcdsaKey()
 	if err != nil {
 		return nil, identity.Address(""), err
 	}
 	addr := identity.Address(ecdsaKey.Address())
-	client := NewStreamClient(&ecdsaKey, addr)
-	return client, addr, nil
+	return NewStreamer(&ecdsaKey, addr), addr, nil
 }
 
-func newStreamService(clientAddr identity.Address) (*StreamService, identity.Address, error) {
-	ecdsaKey, err := crypto.RandomEcdsaKey()
-	if err != nil {
-		return nil, identity.Address(""), err
+func newStreamerService(clientAddr identity.Address) (*StreamerService, *Streamer, identity.Address, error) {
+	var streamer *Streamer
+	var addr identity.Address
+	var err error
+	for {
+		streamer, addr, err = newStreamer()
+		if err != nil {
+			return nil, streamer, addr, err
+		}
+		if addr > clientAddr {
+			break
+		}
 	}
-	addr := identity.Address(ecdsaKey.Address())
-	service := NewStreamService(crypto.NewEcdsaVerifier(clientAddr.String()), addr)
-	return &service, addr, nil
+	service := NewStreamerService(crypto.NewEcdsaVerifier(clientAddr.String()), streamer)
+	return &service, streamer, addr, nil
 }
 
 type mockStreamMessage struct {
