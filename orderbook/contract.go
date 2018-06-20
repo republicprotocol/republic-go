@@ -2,10 +2,10 @@ package orderbook
 
 import "github.com/republicprotocol/republic-go/order"
 
-// ContractsBinder will define all methods that the orderbook will
+// ContractBinder will define all methods that the orderbook will
 // require to communicate with smart contracts. All the methods will
-// be implemented in contracts.Binder
-type ContractsBinder interface {
+// be implemented in contract.Binder
+type ContractBinder interface {
 	BuyOrders(offset, limit int) ([]order.ID, error)
 
 	SellOrders(offset, limit int) ([]order.ID, error)

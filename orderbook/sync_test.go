@@ -18,7 +18,7 @@ var (
 
 var _ = Describe("Syncer", func() {
 	var (
-		renLedger   ContractsBinder
+		renLedger   ContractBinder
 		storer      SyncStorer
 		syncer      Syncer
 		buys, sells []order.Order
@@ -113,7 +113,7 @@ func generateOrderPairs(n int) ([]order.Order, []order.Order) {
 	return buyOrders, sellOrders
 }
 
-func openOrders(renLedger ContractsBinder, syncer Syncer, buys, sells []order.Order) {
+func openOrders(renLedger ContractBinder, syncer Syncer, buys, sells []order.Order) {
 	for i := 0; i < NumberOfOrderPairs; i++ {
 		// err := renLedger.OpenBuyOrder([65]byte{}, buys[i].ID)
 		// Ω(err).ShouldNot(HaveOccurred())

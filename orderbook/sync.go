@@ -51,7 +51,7 @@ type Syncer interface {
 }
 
 type syncer struct {
-	contract       ContractsBinder
+	contract       ContractBinder
 	orderbookLimit int
 
 	syncStorer      SyncStorer
@@ -66,7 +66,7 @@ type syncer struct {
 // NewSyncer returns a new Syncer that will sync a bounded number of orders
 // from the Orderbook. It uses a SyncStorer to prevent re-syncing the entire
 // orderbook when it reboots.
-func NewSyncer(syncStorer SyncStorer, contract ContractsBinder, orderbookLimit int) Syncer {
+func NewSyncer(syncStorer SyncStorer, contract ContractBinder, orderbookLimit int) Syncer {
 
 	syncer := &syncer{
 		contract:       contract,
