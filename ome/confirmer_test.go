@@ -14,14 +14,14 @@ var numberOfComputationsToTest = 100
 
 var _ = Describe("Confirmer", func() {
 	var confirmer Confirmer
-	var renLedger ContractBinder
+	var contract *omeBinder
 	var storer Storer
 
 	BeforeEach(func() {
 		depth, pollInterval := uint(0), time.Second
-		// renLedger = testutils.NewRenLedger()
+		contract = newOmeBinder()
 		storer = testutils.NewStorer()
-		confirmer = NewConfirmer(storer, renLedger, pollInterval, depth)
+		confirmer = NewConfirmer(storer, contract, pollInterval, depth)
 	})
 
 	It("should be able to confirm order on the ren ledger", func(d Done) {
@@ -40,10 +40,10 @@ var _ = Describe("Confirmer", func() {
 
 		// Open all the orders
 		for i := 0; i < numberOfComputationsToTest; i++ {
-			// err := renLedger.OpenBuyOrder([65]byte{}, computations[i].Buy)
-			// Expect(err).ShouldNot(HaveOccurred())
-			// err = renLedger.OpenSellOrder([65]byte{}, computations[i].Sell)
-			// Expect(err).ShouldNot(HaveOccurred())
+			err := contract.OpenBuyOrder([65]byte{}, computations[i].Buy)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = contract.OpenSellOrder([65]byte{}, computations[i].Sell)
+			Expect(err).ShouldNot(HaveOccurred())
 		}
 
 		go func() {

@@ -59,13 +59,13 @@ func main() {
 	log.Printf("address %v", multiAddr)
 
 	// Get ethereum bindings
-	contractBindings, err := contract.NewBinder(context.Background(), config.Keystore, config.Ethereum)
+	contractBinder, err := contract.NewBinder(context.Background(), config.Keystore, config.Ethereum)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
 
 	// New crypter for signing and verification
-	crypter := registry.NewCrypter(config.Keystore, &contractBindings, 256, time.Minute)
+	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
 
 	// New database for persistent storage
 	store, err := leveldb.NewStore(*dataParam)
@@ -88,7 +88,7 @@ func main() {
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
 
-	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(&store, &contractBindings, 32), &store)
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(&store, &contractBinder, 32), &store)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
@@ -119,7 +119,7 @@ func main() {
 		smpcer := smpc.NewSmpcer(swarmer, streamer)
 
 		// New OME
-		epoch, err := contractBindings.Epoch()
+		epoch, err := contractBinder.Epoch()
 		if err != nil {
 			log.Fatalf("cannot get current epoch: %v", err)
 		}
@@ -128,8 +128,8 @@ func main() {
 			log.Fatalf("cannot create new ranker: %v", err)
 		}
 		matcher := ome.NewMatcher(&store, smpcer)
-		confirmer := ome.NewConfirmer(&store, &contractBindings, 14*time.Second, 1)
-		settler := ome.NewSettler(&store, smpcer, &contractBindings)
+		confirmer := ome.NewConfirmer(&store, &contractBinder, 14*time.Second, 1)
+		settler := ome.NewSettler(&store, smpcer, &contractBinder)
 		ome := ome.NewOme(config.Address, ranker, matcher, confirmer, settler, &store, orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
@@ -145,7 +145,7 @@ func main() {
 				time.Sleep(14 * time.Second)
 
 				// Get the epoch
-				nextEpoch, err := contractBindings.Epoch()
+				nextEpoch, err := contractBinder.Epoch()
 				if err != nil {
 					logger.Error(fmt.Sprintf("cannot sync epoch: %v", err))
 					continue

@@ -19,7 +19,7 @@ type ContractBinder interface {
 
 	Status(orderID order.ID) (order.Status, error)
 
-	Settle(buy order.Order, sell order.Order) error
-
 	OrderMatch(order order.ID) (order.ID, error)
+
+	Settle(buy order.Order, sell order.Order) error
 }
