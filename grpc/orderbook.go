@@ -31,7 +31,7 @@ func (client *orderbookClient) OpenOrder(ctx context.Context, multiAddr identity
 		OrderFragment: marshalEncryptedOrderFragment(orderFragment),
 	}
 	return Backoff(ctx, func() error {
-		_, err := NewOrderbookServiceClient(conn.ClientConn).OpenOrder(ctx, request)
+		_, err := NewOrderbookServiceClient(conn).OpenOrder(ctx, request)
 		return err
 	})
 }
