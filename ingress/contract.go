@@ -7,10 +7,10 @@ import (
 	"github.com/republicprotocol/republic-go/registry"
 )
 
-// ContractsBinder will define all methods that the ingresser will
-// need to communicate with smart contracts. All the methods will
-// be implemented in contracts.Binder
-type ContractsBinder interface {
+// ContractBinder will define all methods that the ingresser will
+// require to communicate with smart contracts. All the methods will
+// be implemented in contract.Binder
+type ContractBinder interface {
 	OpenBuyOrder(signature [65]byte, orderID order.ID) error
 
 	OpenSellOrder(signature [65]byte, orderID order.ID) error

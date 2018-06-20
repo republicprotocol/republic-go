@@ -73,7 +73,7 @@ type Ingress interface {
 }
 
 type ingress struct {
-	contract        ContractsBinder
+	contract        ContractBinder
 	swarmer         swarm.Swarmer
 	orderbookClient orderbook.Client
 
@@ -87,7 +87,7 @@ type ingress struct {
 // NewIngress returns an Ingress. The background services of the Ingress must
 // be started separately by calling Ingress.OpenOrderProcess and
 // Ingress.OpenOrderFragmentsProcess.
-func NewIngress(contract ContractsBinder, swarmer swarm.Swarmer, orderbookClient orderbook.Client) Ingress {
+func NewIngress(contract ContractBinder, swarmer swarm.Swarmer, orderbookClient orderbook.Client) Ingress {
 	ingress := &ingress{
 		contract:        contract,
 		swarmer:         swarmer,
