@@ -116,6 +116,17 @@ func (binder *Binder) SubmitOrder(ord order.Order) error {
 	return binder.submitOrder(ord)
 }
 
+func (binder *Binder) submitOrder(ord order.Order) error {
+	nonceHash := big.NewInt(0).SetBytes(ord.BytesFromNonce())
+	log.Printf("[submit order] id: %v,tokens:%d, priceCo:%v, priceExp:%v, volumeCo:%v, volumeExp:%v, minVol:%v, minVolExp:%v", base64.StdEncoding.EncodeToString(ord.ID[:]), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp))
+	tx, err := binder.renExSettlement.SubmitOrder(binder.transactOpts, uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonceHash)
+	if err != nil {
+		return err
+	}
+	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
+	return err
+}
+
 // SubmitMatch will submit a matched order pair to the RenEx accounts
 func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
 	binder.mu.Lock()
@@ -124,11 +135,25 @@ func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
 	return binder.submitMatch(buy, sell)
 }
 
+func (binder *Binder) submitMatch(buy, sell order.ID) error {
+	binder.transactOpts.GasLimit = 500000
+	tx, err := binder.renExSettlement.SubmitMatch(binder.transactOpts, buy, sell)
+	if err != nil {
+		return err
+	}
+	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
+	return err
+}
+
 // Settle the order pair which gets confirmed by the Orderbook
 func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
+	return binder.settle(buy, sell)
+}
+
+func (binder *Binder) settle(buy order.Order, sell order.Order) error {
 	err := binder.submitOrder(buy)
 	if err != nil {
 		return err
@@ -146,6 +171,10 @@ func (binder *Binder) SettlementDetail(buy, sell order.ID) (*big.Int, *big.Int, 
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.settlementDetail(buy, sell)
+}
+
+func (binder *Binder) settlementDetail(buy, sell order.ID) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int, error) {
 	price, lowVolume, highVolume, lowFee, highFee, err := binder.renExSettlement.GetSettlementDetails(binder.callOpts, buy, sell)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
@@ -153,29 +182,15 @@ func (binder *Binder) SettlementDetail(buy, sell order.ID) (*big.Int, *big.Int, 
 	return price, lowVolume, highVolume, lowFee, highFee, nil
 }
 
-func (binder *Binder) submitMatch(buy, sell order.ID) error {
-	binder.transactOpts.GasLimit = 500000
-	tx, err := binder.renExSettlement.SubmitMatch(binder.transactOpts, buy, sell)
-	if err != nil {
-		return err
-	}
-	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
-	return err
-}
-
-func (binder *Binder) submitOrder(ord order.Order) error {
-	nonceHash := big.NewInt(0).SetBytes(ord.BytesFromNonce())
-	log.Printf("[submit order] id: %v,tokens:%d, priceCo:%v, priceExp:%v, volumeCo:%v, volumeExp:%v, minVol:%v, minVolExp:%v", base64.StdEncoding.EncodeToString(ord.ID[:]), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp))
-	tx, err := binder.renExSettlement.SubmitOrder(binder.transactOpts, uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonceHash)
-	if err != nil {
-		return err
-	}
-	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
-	return err
-}
-
 // Register a new dark node with the dark node registrar
 func (binder *Binder) Register(darknodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.register(darknodeID, publicKey, bond)
+}
+
+func (binder *Binder) register(darknodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
 	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return &types.Transaction{}, err
@@ -191,6 +206,13 @@ func (binder *Binder) Register(darknodeID []byte, publicKey []byte, bond *stacki
 
 // Deregister an existing dark node
 func (binder *Binder) Deregister(darknodeID []byte) (*types.Transaction, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.deregister(darknodeID)
+}
+
+func (binder *Binder) deregister(darknodeID []byte) (*types.Transaction, error) {
 	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return &types.Transaction{}, err
@@ -205,6 +227,13 @@ func (binder *Binder) Deregister(darknodeID []byte) (*types.Transaction, error) 
 
 // Refund withdraws the bond. Must be called before reregistering.
 func (binder *Binder) Refund(darknodeID []byte) (*types.Transaction, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.refund(darknodeID)
+}
+
+func (binder *Binder) refund(darknodeID []byte) (*types.Transaction, error) {
 	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return &types.Transaction{}, err
@@ -219,6 +248,13 @@ func (binder *Binder) Refund(darknodeID []byte) (*types.Transaction, error) {
 
 // GetBond retrieves the bond of an existing dark node
 func (binder *Binder) GetBond(darknodeID []byte) (stackint.Int1024, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.getBond(darknodeID)
+}
+
+func (binder *Binder) getBond(darknodeID []byte) (stackint.Int1024, error) {
 	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return stackint.Int1024{}, err
@@ -233,6 +269,13 @@ func (binder *Binder) GetBond(darknodeID []byte) (stackint.Int1024, error) {
 // IsRegistered returns true if the identity.Address is a current
 // registered Darknode. Otherwise, it returns false.
 func (binder *Binder) IsRegistered(darknodeAddr identity.Address) (bool, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.isRegistered(darknodeAddr)
+}
+
+func (binder *Binder) isRegistered(darknodeAddr identity.Address) (bool, error) {
 	darknodeIDByte, err := toByte(darknodeAddr.ID())
 	if err != nil {
 		return false, err
@@ -242,6 +285,13 @@ func (binder *Binder) IsRegistered(darknodeAddr identity.Address) (bool, error) 
 
 // IsDeregistered returns true if the node is deregistered
 func (binder *Binder) IsDeregistered(darknodeID []byte) (bool, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.isDeregistered(darknodeID)
+}
+
+func (binder *Binder) isDeregistered(darknodeID []byte) (bool, error) {
 	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return false, err
@@ -251,6 +301,13 @@ func (binder *Binder) IsDeregistered(darknodeID []byte) (bool, error) {
 
 // ApproveRen doesn't actually talk to the DNR - instead it approves Ren to it
 func (binder *Binder) ApproveRen(value *stackint.Int1024) (*types.Transaction, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.approveRen(value)
+}
+
+func (binder *Binder) approveRen(value *stackint.Int1024) (*types.Transaction, error) {
 	txn, err := binder.republicToken.Approve(binder.transactOpts, common.HexToAddress(binder.conn.Config.DarknodeRegistryAddress), value.ToBigInt())
 	if err != nil {
 		return nil, err
@@ -261,6 +318,13 @@ func (binder *Binder) ApproveRen(value *stackint.Int1024) (*types.Transaction, e
 
 // CurrentEpoch returns the current epoch
 func (binder *Binder) CurrentEpoch() (Epoch, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.currentEpoch()
+}
+
+func (binder *Binder) currentEpoch() (Epoch, error) {
 	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
 	if err != nil {
 		return Epoch{}, err
@@ -284,13 +348,27 @@ func (binder *Binder) CurrentEpoch() (Epoch, error) {
 // NextEpoch will try to turn the Epoch and returns the resulting Epoch. If
 // the turning of the Epoch failed, the current Epoch is returned.
 func (binder *Binder) NextEpoch() (registry.Epoch, error) {
-	binder.TriggerEpoch()
-	return binder.Epoch()
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.nextEpoch()
+}
+
+func (binder *Binder) nextEpoch() (registry.Epoch, error) {
+	binder.triggerEpoch()
+	return binder.epoch()
 }
 
 // TriggerEpoch updates the current Epoch if the Minimum Epoch Interval has
 // passed since the previous Epoch
 func (binder *Binder) TriggerEpoch() (*types.Transaction, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.triggerEpoch()
+}
+
+func (binder *Binder) triggerEpoch() (*types.Transaction, error) {
 	tx, err := binder.darknodeRegistry.Epoch(binder.transactOpts)
 	if err != nil {
 		return nil, err
@@ -301,6 +379,13 @@ func (binder *Binder) TriggerEpoch() (*types.Transaction, error) {
 
 // GetOwner gets the owner of the given dark node
 func (binder *Binder) GetOwner(darknodeID []byte) (common.Address, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.getOwner(darknodeID)
+}
+
+func (binder *Binder) getOwner(darknodeID []byte) (common.Address, error) {
 	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return common.Address{}, err
@@ -311,6 +396,13 @@ func (binder *Binder) GetOwner(darknodeID []byte) (common.Address, error) {
 // PublicKey returns the RSA public key of the Darknode registered with the
 // given identity.Address.
 func (binder *Binder) PublicKey(darknodeAddr identity.Address) (rsa.PublicKey, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.publicKey(darknodeAddr)
+}
+
+func (binder *Binder) publicKey(darknodeAddr identity.Address) (rsa.PublicKey, error) {
 	darknodeIDByte, err := toByte(darknodeAddr.ID())
 	if err != nil {
 		return rsa.PublicKey{}, err
@@ -324,6 +416,13 @@ func (binder *Binder) PublicKey(darknodeAddr identity.Address) (rsa.PublicKey, e
 
 // Darknodes registered in the pod.
 func (binder *Binder) Darknodes() (identity.Addresses, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.darknodes()
+}
+
+func (binder *Binder) darknodes() (identity.Addresses, error) {
 	ret, err := binder.darknodeRegistry.GetDarknodes(binder.callOpts)
 	if err != nil {
 		return nil, err
@@ -337,6 +436,13 @@ func (binder *Binder) Darknodes() (identity.Addresses, error) {
 
 // MinimumBond gets the minimum viable bond amount
 func (binder *Binder) MinimumBond() (stackint.Int1024, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.minimumBond()
+}
+
+func (binder *Binder) minimumBond() (stackint.Int1024, error) {
 	bond, err := binder.darknodeRegistry.MinimumBond(binder.callOpts)
 	if err != nil {
 		return stackint.Int1024{}, err
@@ -347,11 +453,25 @@ func (binder *Binder) MinimumBond() (stackint.Int1024, error) {
 // MinimumEpochInterval returns the minimum number of seconds between
 // epochs.
 func (binder *Binder) MinimumEpochInterval() (*big.Int, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.minimumEpochInterval()
+}
+
+func (binder *Binder) minimumEpochInterval() (*big.Int, error) {
 	return binder.darknodeRegistry.MinimumEpochInterval(binder.callOpts)
 }
 
 // MinimumPodSize gets the minimum pod size
 func (binder *Binder) MinimumPodSize() (stackint.Int1024, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.minimumPodSize()
+}
+
+func (binder *Binder) minimumPodSize() (stackint.Int1024, error) {
 	interval, err := binder.darknodeRegistry.MinimumDarkPoolSize(binder.callOpts)
 	if err != nil {
 		return stackint.Int1024{}, err
@@ -377,9 +497,16 @@ func toByte(id []byte) ([20]byte, error) {
 
 // Pods returns the Pod configuration for the current Epoch.
 func (binder *Binder) Pods() ([]registry.Pod, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.pods()
+}
+
+func (binder *Binder) pods() ([]registry.Pod, error) {
 	darknodeAddrs, err := binder.Darknodes()
 
-	numberOfNodesInPod, err := binder.MinimumPodSize()
+	numberOfNodesInPod, err := binder.minimumPodSize()
 	if err != nil {
 		return []registry.Pod{}, err
 	}
@@ -399,14 +526,14 @@ func (binder *Binder) Pods() ([]registry.Pod, error) {
 	}
 	pods := make([]registry.Pod, (len(darknodeAddrs) / int(numberOfNodesInPod.ToBigInt().Int64())))
 	for i := 0; i < len(darknodeAddrs); i++ {
-		isRegistered, err := binder.IsRegistered(darknodeAddrs[x.Int64()])
+		isRegistered, err := binder.isRegistered(darknodeAddrs[x.Int64()])
 		if err != nil {
 			return []registry.Pod{}, err
 		}
 		for !isRegistered || positionInOcean[x.Int64()] != -1 {
 			x.Add(x, big.NewInt(1))
 			x.Mod(x, numberOfDarknodes)
-			isRegistered, err = binder.IsRegistered(darknodeAddrs[x.Int64()])
+			isRegistered, err = binder.isRegistered(darknodeAddrs[x.Int64()])
 			if err != nil {
 				return []registry.Pod{}, err
 			}
@@ -430,17 +557,24 @@ func (binder *Binder) Pods() ([]registry.Pod, error) {
 
 // Epoch returns the current Epoch which includes the Pod configuration.
 func (binder *Binder) Epoch() (registry.Epoch, error) {
-	epoch, err := binder.CurrentEpoch()
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.epoch()
+}
+
+func (binder *Binder) epoch() (registry.Epoch, error) {
+	epoch, err := binder.currentEpoch()
 	if err != nil {
 		return registry.Epoch{}, err
 	}
 
-	pods, err := binder.Pods()
+	pods, err := binder.pods()
 	if err != nil {
 		return registry.Epoch{}, err
 	}
 
-	darknodes, err := binder.Darknodes()
+	darknodes, err := binder.darknodes()
 	if err != nil {
 		return registry.Epoch{}, err
 	}
@@ -462,7 +596,14 @@ func (binder *Binder) Epoch() (registry.Epoch, error) {
 // current Epoch. It returns ErrPodNotFound if the identity.Address is not
 // registered in the current Epoch.
 func (binder *Binder) Pod(addr identity.Address) (registry.Pod, error) {
-	pods, err := binder.Pods()
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.pod(addr)
+}
+
+func (binder *Binder) pod(addr identity.Address) (registry.Pod, error) {
+	pods, err := binder.pods()
 	if err != nil {
 		return registry.Pod{}, err
 	}
@@ -484,6 +625,10 @@ func (binder *Binder) OpenOrders(signatures [][65]byte, orderIDs []order.ID, ord
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
+	return binder.openOrders(signatures, orderIDs, orderParities)
+}
+
+func (binder *Binder) openOrders(signatures [][65]byte, orderIDs []order.ID, orderParities []order.Parity) (int, error) {
 	if len(signatures) != len(orderIDs) || len(signatures) != len(orderParities) {
 		return 0, ErrMismatchedOrderLengths
 	}
@@ -527,6 +672,10 @@ func (binder *Binder) OpenBuyOrder(signature [65]byte, id order.ID) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
+	return binder.openBuyOrder(signature, id)
+}
+
+func (binder *Binder) openBuyOrder(signature [65]byte, id order.ID) error {
 	binder.transactOpts.GasPrice = big.NewInt(int64(20000000000))
 	binder.transactOpts.GasLimit = 3000000
 
@@ -545,6 +694,10 @@ func (binder *Binder) OpenSellOrder(signature [65]byte, id order.ID) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
+	return binder.openSellOrder(signature, id)
+}
+
+func (binder *Binder) openSellOrder(signature [65]byte, id order.ID) error {
 	binder.transactOpts.GasPrice = big.NewInt(int64(20000000000))
 	binder.transactOpts.GasLimit = 3000000
 
@@ -564,6 +717,10 @@ func (binder *Binder) CancelOrder(signature [65]byte, id order.ID) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
+	return binder.cancelOrder(signature, id)
+}
+
+func (binder *Binder) cancelOrder(signature [65]byte, id order.ID) error {
 	tx, err := binder.orderbook.CancelOrder(binder.transactOpts, signature[:], id)
 	if err != nil {
 		return err
@@ -580,6 +737,10 @@ func (binder *Binder) ConfirmOrder(id order.ID, match order.ID) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
+	return binder.confirmOrder(id, match)
+}
+
+func (binder *Binder) confirmOrder(id order.ID, match order.ID) error {
 	orderMatches := [][32]byte{match}
 	before, err := binder.orderbook.OrderDepth(binder.callOpts, id)
 	if err != nil {
@@ -611,6 +772,10 @@ func (binder *Binder) Priority(id order.ID) (uint64, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.priority(id)
+}
+
+func (binder *Binder) priority(id order.ID) (uint64, error) {
 	priority, err := binder.orderbook.OrderPriority(binder.callOpts, id)
 	if err != nil {
 		return 0, err
@@ -624,6 +789,10 @@ func (binder *Binder) Status(id order.ID) (order.Status, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.status(id)
+}
+
+func (binder *Binder) status(id order.ID) (order.Status, error) {
 	var orderID [32]byte
 	copy(orderID[:], id[:])
 	state, err := binder.orderbook.OrderState(binder.callOpts, orderID)
@@ -639,6 +808,10 @@ func (binder *Binder) OrderMatch(id order.ID) (order.ID, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.orderMatch(id)
+}
+
+func (binder *Binder) orderMatch(id order.ID) (order.ID, error) {
 	matches, err := binder.orderbook.OrderMatch(binder.callOpts, [32]byte(id))
 	if err != nil {
 		return order.ID{}, err
@@ -660,6 +833,10 @@ func (binder *Binder) BuyOrders(offset, limit int) ([]order.ID, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.buyOrders(offset, limit)
+}
+
+func (binder *Binder) buyOrders(offset, limit int) ([]order.ID, error) {
 	orders := make([]order.ID, 0, limit)
 	for i := 0; i < limit; i++ {
 		ordID, ok, err := binder.orderbook.BuyOrder(binder.callOpts, big.NewInt(int64(offset+i)))
@@ -681,6 +858,10 @@ func (binder *Binder) SellOrders(offset, limit int) ([]order.ID, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.sellOrders(offset, limit)
+}
+
+func (binder *Binder) sellOrders(offset, limit int) ([]order.ID, error) {
 	orders := make([]order.ID, 0, limit)
 	for i := 0; i < limit; i++ {
 		ordID, ok, err := binder.orderbook.SellOrder(binder.callOpts, big.NewInt(int64(offset+i)))
@@ -702,6 +883,10 @@ func (binder *Binder) Trader(id order.ID) (string, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.trader(id)
+}
+
+func (binder *Binder) trader(id order.ID) (string, error) {
 	address, err := binder.orderbook.OrderTrader(binder.callOpts, id)
 	if err != nil {
 		return "", err
@@ -715,6 +900,10 @@ func (binder *Binder) Broker(id order.ID) (common.Address, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.broker(id)
+}
+
+func (binder *Binder) broker(id order.ID) (common.Address, error) {
 	address, err := binder.orderbook.OrderBroker(binder.callOpts, id)
 	if err != nil {
 		return common.Address{}, err
@@ -728,6 +917,10 @@ func (binder *Binder) Confirmer(id order.ID) (common.Address, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.confirmer(id)
+}
+
+func (binder *Binder) confirmer(id order.ID) (common.Address, error) {
 	address, err := binder.orderbook.OrderConfirmer(binder.callOpts, id)
 	if err != nil {
 		return common.Address{}, err
@@ -741,6 +934,10 @@ func (binder *Binder) Fee() (*big.Int, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.fee()
+}
+
+func (binder *Binder) fee() (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
@@ -749,6 +946,10 @@ func (binder *Binder) Depth(orderID order.ID) (uint, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.depth(orderID)
+}
+
+func (binder *Binder) depth(orderID order.ID) (uint, error) {
 	depth, err := binder.orderbook.OrderDepth(binder.callOpts, orderID)
 	if err != nil {
 		return 0, err
@@ -763,6 +964,10 @@ func (binder *Binder) BlockNumber(orderID order.ID) (uint, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.blockNumber(orderID)
+}
+
+func (binder *Binder) blockNumber(orderID order.ID) (uint, error) {
 	blockNumber, err := binder.orderbook.OrderBlockNumber(binder.callOpts, orderID)
 	if err != nil {
 		return 0, err
@@ -776,6 +981,10 @@ func (binder *Binder) OrderCounts() (uint64, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.orderCounts()
+}
+
+func (binder *Binder) orderCounts() (uint64, error) {
 	counts, err := binder.orderbook.GetOrdersCount(binder.callOpts)
 	if err != nil {
 		return 0, err
@@ -789,6 +998,10 @@ func (binder *Binder) OrderID(index int) ([32]byte, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.orderID(index)
+}
+
+func (binder *Binder) orderID(index int) ([32]byte, error) {
 	i := big.NewInt(int64(index))
 	id, exist, err := binder.orderbook.GetOrder(binder.callOpts, i)
 	if !exist {
