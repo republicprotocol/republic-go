@@ -28,7 +28,7 @@ package renLedger
 // 	if err != nil {
 // 		log.Fatalf("cannot connect to ethereum: %v", err)
 // 	}
-// 	contractBindings, err := contracts.GetContractBindings(context.Background(), *key, config)
+// 	contractBindings, err := contracts.NewBinder(context.Background(), *key, config)
 // 	if err != nil {
 // 		log.Fatal(err)
 // 	}

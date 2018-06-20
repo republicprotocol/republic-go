@@ -163,7 +163,7 @@ package registry
 // 		log.Fatal("fail to connect to ethereum")
 // 	}
 
-// 	return contracts.GetContractBindings(context.Background(), config, config)
+// 	return contracts.NewBinder(context.Background(), config, config)
 // }
 
 // func RegisterAll(registryContract contracts.Binder) error {

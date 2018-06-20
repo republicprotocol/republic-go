@@ -59,7 +59,7 @@ func main() {
 	log.Printf("address %v", multiAddr)
 
 	// Get ethereum bindings
-	contractBindings, err := contracts.GetContractBindings(context.Background(), config.Keystore, config.Ethereum)
+	contractBindings, err := contracts.NewBinder(context.Background(), config.Keystore, config.Ethereum)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
