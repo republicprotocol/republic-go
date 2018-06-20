@@ -232,7 +232,7 @@ type ingressBinder struct {
 	pods              []registry.Pod
 }
 
-// NewingressBinder returns a mock RenLedger.
+// newIngressBinder returns a mock ingressBinder.
 func newIngressBinder() *ingressBinder {
 	pod := registry.Pod{
 		Hash:      [32]byte{},
@@ -263,7 +263,7 @@ func newIngressBinder() *ingressBinder {
 	}
 }
 
-// OpenBuyOrder in the ledger.
+// OpenBuyOrder in the mock ingressBinder.
 func (binder *ingressBinder) OpenBuyOrder(signature [65]byte, orderID order.ID) error {
 	binder.ordersMu.Lock()
 	binder.buyOrdersMu.Lock()
@@ -280,7 +280,7 @@ func (binder *ingressBinder) OpenBuyOrder(signature [65]byte, orderID order.ID) 
 	return errors.New("cannot open order that is already open")
 }
 
-// OpenSellOrder in the ledger.
+// OpenSellOrder in the mock ingressBinder.
 func (binder *ingressBinder) OpenSellOrder(signature [65]byte, orderID order.ID) error {
 	binder.ordersMu.Lock()
 	binder.sellOrdersMu.Lock()
@@ -297,7 +297,7 @@ func (binder *ingressBinder) OpenSellOrder(signature [65]byte, orderID order.ID)
 	return ErrOpenOpenedOrder
 }
 
-// CancelOrder in the ledger.
+// CancelOrder in the mock ingressBinder.
 func (binder *ingressBinder) CancelOrder(signature [65]byte, orderID order.ID) error {
 	return binder.setOrderStatus(orderID, order.Canceled)
 }
