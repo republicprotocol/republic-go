@@ -28,6 +28,9 @@ package renLedger
 // 	if err != nil {
 // 		log.Fatalf("cannot connect to ethereum: %v", err)
 // 	}
+
+// auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
+// auth.GasPrice = big.NewInt(1000000000)
 // 	contractBindings, err := contract.NewBinder(context.Background(), *key, config)
 // 	if err != nil {
 // 		log.Fatal(err)

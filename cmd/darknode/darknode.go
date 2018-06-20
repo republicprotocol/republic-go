@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
 	"net"
 	netHttp "net/http"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
@@ -63,8 +65,11 @@ func main() {
 	}
 	log.Printf("address %v", multiAddr)
 
+	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
+	auth.GasPrice = big.NewInt(1000000000)
+
 	// Get ethereum bindings
-	auth, contractBinder, err := contract.NewBinder(context.Background(), config.Keystore, config.Ethereum)
+	contractBinder, err := contract.NewBinder(context.Background(), config.Keystore, auth config.Ethereum)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
