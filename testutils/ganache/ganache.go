@@ -47,6 +47,7 @@ func Start() bool {
 
 	globalGanacheCounter++
 	if globalGanacheCounter > 1 {
+		globalGanacheCounter--
 		return false
 	}
 
@@ -325,8 +326,8 @@ func snapshot(conn contract.Conn) (string, error) {
 }
 
 // RevertToSnapshot resets Ganache state to most recent snapshot
-func revertToSnapshot(conn contract.Conn, snaptshotID string) error {
+func revertToSnapshot(conn contract.Conn, snapshotID string) error {
 	var result bool
-	err := conn.RawClient.CallContext(context.Background(), &result, "evm_revert", snaptshotID)
+	err := conn.RawClient.CallContext(context.Background(), &result, "evm_revert", snapshotID)
 	return err
 }

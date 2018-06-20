@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/republicprotocol/republic-go/testutils/ganache"
@@ -61,24 +60,31 @@ func SkipCIDescribe(d string, f func()) bool {
 	return false
 }
 
-func GanacheBeforeSuite(body interface{}, timeout ...float64) bool {
+func GanacheBeforeSuite(body interface{}, timeout float64) bool {
 	fmt.Printf("Ganache is listening on %shttp://localhost:8545%s...\n", green, reset)
 
-	ganache.Start()
-	time.Sleep(time.Duration(10) * time.Second)
-
-	conn, err := ganache.Connect("http://localhost:8545")
+	_, err := ganache.StartAndConnect()
 	if err != nil {
 		log.Fatalf("cannot connect to ganache: %v", err)
 	}
 
-	if err := ganache.DeployContracts(conn); err != nil {
-		log.Fatalf("cannot deploy contracts to ganache: %v", err)
-	}
 	return ginkgo.BeforeSuite(body, timeout)
 }
 
-func GanacheAfterSuite(body interface{}, timeout ...float64) bool {
+func GanacheAfterSuite(body interface{}, timeout float64) bool {
 	ganache.Stop()
 	return ginkgo.AfterSuite(body, timeout)
+}
+
+func GanacheBeforeEach(body interface{}, timeout float64) bool {
+	_, err := ganache.StartAndConnect()
+	if err != nil {
+		log.Fatalf("cannot connect to ganache: %v", err)
+	}
+
+	return ginkgo.BeforeEach(body, timeout)
+}
+
+func GanacheAfterEach(body interface{}, timeout float64) bool {
+	return ginkgo.AfterEach(body, timeout)
 }
