@@ -28,8 +28,8 @@ var _ = Describe("Ome", func() {
 		storer   Storer
 		book     orderbook.Orderbook
 		smpcer   smpc.Smpcer
-		ledger   ContractsBinder
-		accounts ContractsBinder
+		ledger   ContractBinder
+		accounts ContractBinder
 
 		// Ome components
 		ranker    Ranker

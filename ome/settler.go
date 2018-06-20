@@ -24,13 +24,13 @@ type Settler interface {
 type settler struct {
 	storer   Storer
 	smpcer   smpc.Smpcer
-	contract ContractsBinder
+	contract ContractBinder
 }
 
 // NewSettler returns a Settler that settles orders by first using an
 // smpc.Smpcer to join all of the composing order.Fragments, and then submits
 // them to an Ethereum contract.
-func NewSettler(storer Storer, smpcer smpc.Smpcer, contract ContractsBinder) Settler {
+func NewSettler(storer Storer, smpcer smpc.Smpcer, contract ContractBinder) Settler {
 	return &settler{
 		storer:   storer,
 		smpcer:   smpcer,

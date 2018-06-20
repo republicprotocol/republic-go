@@ -28,7 +28,7 @@ type Confirmer interface {
 type confirmer struct {
 	storer Storer
 
-	contract              ContractsBinder
+	contract              ContractBinder
 	orderbookPollInterval time.Duration
 	orderbookBlockDepth   uint
 
@@ -42,7 +42,7 @@ type confirmer struct {
 // and checks for consensus on confirmations by waiting until a submitted
 // Computation has been confirmed has the confirmation has passed the block
 // depth limit.
-func NewConfirmer(storer Storer, contract ContractsBinder, orderbookPollInterval time.Duration, orderbookBlockDepth uint) Confirmer {
+func NewConfirmer(storer Storer, contract ContractBinder, orderbookPollInterval time.Duration, orderbookBlockDepth uint) Confirmer {
 	return &confirmer{
 		storer: storer,
 

@@ -9,10 +9,10 @@ const StatusOpen = 1
 const StatusConfirmed = 2
 const StatusCanceled = 3
 
-// ContractsBinder will define all methods that the order matching
+// ContractBinder will define all methods that the order matching
 // engine will require to communicate with smart contracts. All the
-// methods will be implemented in contracts.Binder
-type ContractsBinder interface {
+// methods will be implemented in contract.Binder
+type ContractBinder interface {
 	ConfirmOrder(buy order.ID, sell order.ID) error
 
 	Depth(orderID order.ID) (uint, error)

@@ -14,7 +14,7 @@ var numberOfComputationsToTest = 100
 
 var _ = Describe("Confirmer", func() {
 	var confirmer Confirmer
-	var renLedger ContractsBinder
+	var renLedger ContractBinder
 	var storer Storer
 
 	BeforeEach(func() {
