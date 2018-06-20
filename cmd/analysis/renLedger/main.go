@@ -5,7 +5,7 @@ package renLedger
 // 	"encoding/base64"
 // 	"log"
 
-// 	"github.com/republicprotocol/republic-go/contracts"
+// 	"github.com/republicprotocol/republic-go/contract"
 // 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 // 	"github.com/ethereum/go-ethereum/accounts/keystore"
 // 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -18,17 +18,17 @@ package renLedger
 // 		log.Fatal(err)
 // 	}
 // 	auth := bind.NewKeyedTransactor(key.PrivateKey)
-// 	config := contracts.Config{
-// 		Network:                 contracts.NetworkKovan,
+// 	config := contract.Config{
+// 		Network:                 contract.NetworkKovan,
 // 		URI:                     "https://kovan.infura.io",
-// 		RepublicTokenAddress:    contracts.RepublicTokenAddressOnKovan.String(),
-// 		DarknodeRegistryAddress: contracts.DarknodeRegistryAddressOnKovan.String(),
+// 		RepublicTokenAddress:    contract.RepublicTokenAddressOnKovan.String(),
+// 		DarknodeRegistryAddress: contract.DarknodeRegistryAddressOnKovan.String(),
 // 	}
-// 	conn, err := contracts.Connect(config)
+// 	conn, err := contract.Connect(config)
 // 	if err != nil {
 // 		log.Fatalf("cannot connect to ethereum: %v", err)
 // 	}
-// 	contractBindings, err := contracts.NewBinder(context.Background(), *key, config)
+// 	contractBindings, err := contract.NewBinder(context.Background(), *key, config)
 // 	if err != nil {
 // 		log.Fatal(err)
 // 	}

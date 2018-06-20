@@ -134,22 +134,22 @@ package registry
 // 	return key, err
 // }
 
-// func NewRegistry(c *cli.Context, key *keystore.Key) (contracts.Binder, error) {
-// 	var config contracts.Config
+// func NewRegistry(c *cli.Context, key *keystore.Key) (contract.Binder, error) {
+// 	var config contract.Config
 // 	switch c.GlobalString("network") {
 // 	case "ropsten":
-// 		config = contracts.Config{
-// 			Network:                 contracts.NetworkRopsten,
+// 		config = contract.Config{
+// 			Network:                 contract.NetworkRopsten,
 // 			URI:                     "https://ropsten.infura.io",
-// 			RepublicTokenAddress:    contracts.RepublicTokenAddressOnRopsten.String(),
-// 			DarknodeRegistryAddress: contracts.DarknodeRegistryAddressOnRopsten.String(),
+// 			RepublicTokenAddress:    contract.RepublicTokenAddressOnRopsten.String(),
+// 			DarknodeRegistryAddress: contract.DarknodeRegistryAddressOnRopsten.String(),
 // 		}
 // 	case "kovan":
-// 		config = contracts.Config{
-// 			Network:                 contracts.NetworkKovan,
+// 		config = contract.Config{
+// 			Network:                 contract.NetworkKovan,
 // 			URI:                     "https://kovan.infura.io",
-// 			RepublicTokenAddress:    contracts.RepublicTokenAddressOnKovan.String(),
-// 			DarknodeRegistryAddress: contracts.DarknodeRegistryAddressOnKovan.String(),
+// 			RepublicTokenAddress:    contract.RepublicTokenAddressOnKovan.String(),
+// 			DarknodeRegistryAddress: contract.DarknodeRegistryAddressOnKovan.String(),
 // 		}
 // 	default:
 // 		log.Fatal("unrecognized network name")
@@ -158,15 +158,15 @@ package registry
 // 	auth := bind.NewKeyedTransactor(key.PrivateKey)
 // 	auth.GasPrice = big.NewInt(5000000000)
 
-// 	client, err := contracts.Connect(config)
+// 	client, err := contract.Connect(config)
 // 	if err != nil {
 // 		log.Fatal("fail to connect to ethereum")
 // 	}
 
-// 	return contracts.NewBinder(context.Background(), config, config)
+// 	return contract.NewBinder(context.Background(), config, config)
 // }
 
-// func RegisterAll(registryContract contracts.Binder) error {
+// func RegisterAll(registryContract contract.Binder) error {
 
 // 	conf, err := loadConfig("./deployment.json")
 // 	if err != nil {
@@ -209,7 +209,7 @@ package registry
 // }
 
 // // DeregisterAll takes a slice of republic private keys and registers them
-// func DeregisterAll(addresses []string, registryContract contracts.Binder) error {
+// func DeregisterAll(addresses []string, registryContract contract.Binder) error {
 // 	conf, err := loadConfig("./deployment.json")
 // 	if err != nil {
 // 		return errors.New("could not read file deployment.json")
@@ -239,7 +239,7 @@ package registry
 // 	return nil
 // }
 
-// func Approve(registryContract contracts.Binder) error {
+// func Approve(registryContract contract.Binder) error {
 
 // 	bond, err := stackint.FromString("100000000000000000000000")
 // 	if err != nil {
@@ -255,7 +255,7 @@ package registry
 
 // // GetPool will get the index of the pool the node is in.
 // // The address should be the ethereum address
-// func GetPool(addresses []string, registryContract contracts.Binder) error {
+// func GetPool(addresses []string, registryContract contract.Binder) error {
 // 	if len(addresses) != 1 {
 // 		return fmt.Errorf("%sPlease provide one node address.%s\n", red, reset)
 // 	}
@@ -272,7 +272,7 @@ package registry
 
 // // CheckRegistration will check if the node with given address is registered with
 // // the darknode registryContract. The address will be the ethereum address.
-// func CheckRegistration(addresses []string, contract contracts.Binder) error {
+// func CheckRegistration(addresses []string, contract contract.Binder) error {
 // 	if len(addresses) != 1 {
 // 		return fmt.Errorf("%sPlease provide one node address.%s\n", red, reset)
 // 	}
@@ -286,7 +286,7 @@ package registry
 // 	return nil
 // }
 
-// func Refund(addresses []string, registryContract contracts.Binder) error {
+// func Refund(addresses []string, registryContract contract.Binder) error {
 // 	for i := range addresses {
 // 		address, err := republicAddressToEthAddress(addresses[i])
 // 		if err != nil {

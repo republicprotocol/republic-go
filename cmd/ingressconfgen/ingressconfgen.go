@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/republicprotocol/republic-go/contracts"
+	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 )
@@ -19,12 +19,12 @@ func main() {
 
 	config := map[string]interface{}{
 		"bootstrapMultiAddresses": identity.MultiAddresses{},
-		"ethereum": contracts.Config{
-			Network:                 contracts.NetworkRopsten,
+		"ethereum": contract.Config{
+			Network:                 contract.NetworkRopsten,
 			URI:                     "https://ropsten.infura.io",
-			RepublicTokenAddress:    contracts.RepublicTokenAddressOnRopsten.String(),
-			DarknodeRegistryAddress: contracts.DarknodeRegistryAddressOnRopsten.String(),
-			OrderbookAddress:        contracts.OrderbookAddressOnKovan.String(),
+			RepublicTokenAddress:    contract.RepublicTokenAddressOnRopsten.String(),
+			DarknodeRegistryAddress: contract.DarknodeRegistryAddressOnRopsten.String(),
+			OrderbookAddress:        contract.OrderbookAddressOnKovan.String(),
 		},
 	}
 

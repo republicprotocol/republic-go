@@ -14,7 +14,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/republicprotocol/republic-go/contracts"
+	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/http"
 	"github.com/republicprotocol/republic-go/http/adapter"
@@ -39,9 +39,9 @@ func main() {
 		log.Fatalf("cannot load config: %v", err)
 	}
 
-	contractBindings, err := contracts.NewBinder(context.Background(), keystore, config)
+	contractBindings, err := contract.NewBinder(context.Background(), keystore, config)
 	if err != nil {
-		log.Fatalf("cannot load smart contracts: %v", err)
+		log.Fatalf("cannot load smart contract: %v", err)
 	}
 	onePrice := order.CoExp{
 		Co:  2,
@@ -167,15 +167,15 @@ func loadKeystore(keystoreFile, passphrase string) (crypto.Keystore, error) {
 	return keystore, nil
 }
 
-func loadConfig(configFile string) (contracts.Config, error) {
+func loadConfig(configFile string) (contract.Config, error) {
 	file, err := os.Open(configFile)
 	if err != nil {
-		return contracts.Config{}, err
+		return contract.Config{}, err
 	}
 	defer file.Close()
-	config := contracts.Config{}
+	config := contract.Config{}
 	if err := json.NewDecoder(file).Decode(&config); err != nil {
-		return contracts.Config{}, err
+		return contract.Config{}, err
 	}
 	return config, nil
 }
