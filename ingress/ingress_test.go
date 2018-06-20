@@ -3,7 +3,6 @@ package ingress_test
 import (
 	"context"
 	"crypto/rand"
-	"crypto/rsa"
 	"errors"
 	"fmt"
 	"math/big"
@@ -25,8 +24,7 @@ import (
 var _ = Describe("Ingress", func() {
 
 	var rsaKey crypto.RsaKey
-	var contract ContractsBinder
-	// var darkpool mockDarkpool
+	var contract *ingressBinder
 	var ingress Ingress
 	var done chan struct{}
 	var errChSync <-chan error
@@ -38,8 +36,9 @@ var _ = Describe("Ingress", func() {
 
 		rsaKey, err = crypto.RandomRsaKey()
 		Expect(err).ShouldNot(HaveOccurred())
-		// darkpool = newMockDarkpool()
-		// renLedger := newMockRenLedger()
+
+		contract = newIngressBinder()
+
 		swarmer := mockSwarmer{}
 		orderbookClient := mockOrderbookClient{}
 		ingress = NewIngress(contract, &swarmer, &orderbookClient)
@@ -214,20 +213,27 @@ var _ = Describe("Ingress", func() {
 	})
 })
 
-func createOrder() (order.Order, error) {
-	parity := order.ParityBuy
-	price := uint64(mathRand.Intn(2000))
-	volume := uint64(mathRand.Intn(2000))
-	nonce := uint64(mathRand.Intn(1000000000))
-	return order.NewOrder(order.TypeLimit, parity, order.SettlementRenEx, time.Now().Add(time.Hour), order.TokensETHREN, order.NewCoExp(price, 26), order.NewCoExp(volume, 26), order.NewCoExp(volume, 26), nonce), nil
-}
+// ErrOpenOpenedOrder is returned when trying to open an opened order.
+var ErrOpenOpenedOrder = errors.New("cannot open order that is already open")
 
-type mockDarkpool struct {
+// ingressBinder is a mock implementation of ingress.ContractBinder.
+type ingressBinder struct {
+	buyOrdersMu *sync.Mutex
+	buyOrders   []order.ID
+
+	sellOrdersMu *sync.Mutex
+	sellOrders   []order.ID
+
+	ordersMu    *sync.Mutex
+	orders      map[order.ID]int
+	orderStatus map[order.ID]order.Status
+
 	numberOfDarknodes int
 	pods              []registry.Pod
 }
 
-func newMockDarkpool() mockDarkpool {
+// NewingressBinder returns a mock RenLedger.
+func newIngressBinder() *ingressBinder {
 	pod := registry.Pod{
 		Hash:      [32]byte{},
 		Darknodes: []identity.Address{},
@@ -240,175 +246,121 @@ func newMockDarkpool() mockDarkpool {
 		}
 		pod.Darknodes = append(pod.Darknodes, identity.Address(ecdsaKey.Address()))
 	}
-	return mockDarkpool{
+
+	return &ingressBinder{
+		buyOrdersMu: new(sync.Mutex),
+		buyOrders:   []order.ID{},
+
+		sellOrdersMu: new(sync.Mutex),
+		sellOrders:   []order.ID{},
+
+		ordersMu:    new(sync.Mutex),
+		orders:      map[order.ID]int{},
+		orderStatus: map[order.ID]order.Status{},
+
 		numberOfDarknodes: 6,
 		pods:              []registry.Pod{pod},
 	}
 }
 
-func (darkpool *mockDarkpool) Darknodes() (identity.Addresses, error) {
+// OpenBuyOrder in the ledger.
+func (binder *ingressBinder) OpenBuyOrder(signature [65]byte, orderID order.ID) error {
+	binder.ordersMu.Lock()
+	binder.buyOrdersMu.Lock()
+	defer binder.ordersMu.Unlock()
+	defer binder.buyOrdersMu.Unlock()
+
+	if _, ok := binder.orders[orderID]; !ok {
+		binder.orders[orderID] = len(binder.buyOrders)
+		binder.buyOrders = append(binder.buyOrders, orderID)
+		binder.orderStatus[orderID] = order.Open
+		return nil
+	}
+
+	return errors.New("cannot open order that is already open")
+}
+
+// OpenSellOrder in the ledger.
+func (binder *ingressBinder) OpenSellOrder(signature [65]byte, orderID order.ID) error {
+	binder.ordersMu.Lock()
+	binder.sellOrdersMu.Lock()
+	defer binder.ordersMu.Unlock()
+	defer binder.sellOrdersMu.Unlock()
+
+	if _, ok := binder.orders[orderID]; !ok {
+		binder.orders[orderID] = len(binder.sellOrders)
+		binder.sellOrders = append(binder.sellOrders, orderID)
+		binder.orderStatus[orderID] = order.Open
+		return nil
+	}
+
+	return ErrOpenOpenedOrder
+}
+
+// CancelOrder in the ledger.
+func (binder *ingressBinder) CancelOrder(signature [65]byte, orderID order.ID) error {
+	return binder.setOrderStatus(orderID, order.Canceled)
+}
+
+func (binder *ingressBinder) Darknodes() (identity.Addresses, error) {
 	darknodes := identity.Addresses{}
-	for _, pod := range darkpool.pods {
+	for _, pod := range binder.pods {
 		darknodes = append(darknodes, pod.Darknodes...)
 	}
 	return darknodes, nil
 }
 
-func (darkpool *mockDarkpool) NextEpoch() (registry.Epoch, error) {
-	return darkpool.Epoch()
+func (binder *ingressBinder) NextEpoch() (registry.Epoch, error) {
+	return binder.Epoch()
 }
 
-func (darkpool *mockDarkpool) Epoch() (registry.Epoch, error) {
-	darknodes, err := darkpool.Darknodes()
+func (binder *ingressBinder) Epoch() (registry.Epoch, error) {
+	darknodes, err := binder.Darknodes()
 	if err != nil {
 		return registry.Epoch{}, err
 	}
 	return registry.Epoch{
 		Hash:      [32]byte{1},
-		Pods:      darkpool.pods,
+		Pods:      binder.pods,
 		Darknodes: darknodes,
 	}, nil
 }
 
-func (darkpool *mockDarkpool) MinimumEpochInterval() (*big.Int, error) {
+func (binder *ingressBinder) MinimumEpochInterval() (*big.Int, error) {
 	return big.NewInt(1), nil
 }
 
-func (darkpool *mockDarkpool) Pods() ([]registry.Pod, error) {
-	return darkpool.pods, nil
+func (binder *ingressBinder) Pods() ([]registry.Pod, error) {
+	return binder.pods, nil
 }
 
-func (darkpool *mockDarkpool) Pod(addr identity.Address) (registry.Pod, error) {
-	panic("unimplemented")
-}
+func (binder *ingressBinder) setOrderStatus(orderID order.ID, status order.Status) error {
+	binder.ordersMu.Lock()
+	defer binder.ordersMu.Unlock()
 
-func (darkpool *mockDarkpool) PublicKey(addr identity.Address) (rsa.PublicKey, error) {
-	panic("unimplemented")
-}
-
-func (darkpool *mockDarkpool) IsRegistered(addr identity.Address) (bool, error) {
-	panic("unimplemented")
-}
-
-type mockRenLedger struct {
-	mu          *sync.Mutex
-	orderStates map[string]struct{}
-}
-
-func newMockRenLedger() mockRenLedger {
-	return mockRenLedger{
-		mu:          new(sync.Mutex),
-		orderStates: map[string]struct{}{},
-	}
-}
-
-func (renLedger *mockRenLedger) OpenOrders(signatures [][65]byte, orderIDs []order.ID, orderParities []order.Parity) (int, error) {
-	if len(signatures) != len(orderIDs) || len(signatures) != len(orderParities) {
-		return 0, errors.New("mismatched order lengths")
-	}
-	for i := range signatures {
-		if orderParities[i] == order.ParityBuy {
-			if err := renLedger.OpenBuyOrder(signatures[i], orderIDs[i]); err != nil {
-				return i, err
-			}
-		} else {
-			if err := renLedger.OpenSellOrder(signatures[i], orderIDs[i]); err != nil {
-				return i, err
-			}
+	switch status {
+	case order.Open:
+		binder.orderStatus[orderID] = order.Open
+	case order.Confirmed:
+		if binder.orderStatus[orderID] != order.Open {
+			return errors.New("order not open")
 		}
-	}
-	return len(signatures), nil
-}
-
-func (renLedger *mockRenLedger) OpenBuyOrder(signature [65]byte, orderID order.ID) error {
-	renLedger.mu.Lock()
-	defer renLedger.mu.Unlock()
-
-	if _, ok := renLedger.orderStates[string(orderID[:])]; !ok {
-		renLedger.orderStates[string(orderID[:])] = struct{}{}
-		return nil
-	}
-	return errors.New("cannot open order that is already open")
-}
-
-func (renLedger *mockRenLedger) OpenSellOrder(signature [65]byte, orderID order.ID) error {
-	renLedger.mu.Lock()
-	defer renLedger.mu.Unlock()
-
-	if _, ok := renLedger.orderStates[string(orderID[:])]; !ok {
-		renLedger.orderStates[string(orderID[:])] = struct{}{}
-		return nil
-	}
-	return errors.New("cannot open order that is already open")
-}
-
-func (renLedger *mockRenLedger) CancelOrder(signature [65]byte, orderID order.ID) error {
-	renLedger.mu.Lock()
-	defer renLedger.mu.Unlock()
-
-	if _, ok := renLedger.orderStates[string(orderID[:])]; ok {
-		delete(renLedger.orderStates, string(orderID[:]))
-		return nil
-	}
-	return errors.New("cannot cancel order that is not open")
-}
-
-func (renLedger *mockRenLedger) ConfirmOrder(id order.ID, match order.ID) error {
-	renLedger.mu.Lock()
-	defer renLedger.mu.Unlock()
-
-	if _, ok := renLedger.orderStates[string(id[:])]; ok {
-		delete(renLedger.orderStates, string(id[:]))
-		matches := []order.ID{match}
-		for _, matchID := range matches {
-			if _, ok := renLedger.orderStates[string(matchID[:])]; ok {
-				delete(renLedger.orderStates, string(matchID[:]))
-				continue
-			}
-			return errors.New("cannot confirm order that is not open")
+		binder.orderStatus[orderID] = order.Confirmed
+	case order.Canceled:
+		if binder.orderStatus[orderID] != order.Open {
+			return errors.New("order not open")
 		}
-		return nil
+		binder.orderStatus[orderID] = order.Canceled
 	}
-	return errors.New("cannot confirm order that is not open")
+	return nil
 }
 
-func (renLedger *mockRenLedger) Fee() (*big.Int, error) {
-	renLedger.mu.Lock()
-	defer renLedger.mu.Unlock()
-
-	return big.NewInt(0), nil
-}
-
-func (renLedger *mockRenLedger) Status(orderID order.ID) (order.Status, error) {
-	panic("unimplemented")
-}
-
-func (renLedger *mockRenLedger) Priority(orderID order.ID) (uint64, error) {
-	panic("unimplemented")
-}
-
-func (renLedger *mockRenLedger) Depth(orderID order.ID) (uint, error) {
-	panic("unimplemented")
-}
-
-func (renLedger *mockRenLedger) BuyOrders(offset, limit int) ([]order.ID, error) {
-	panic("unimplemented")
-}
-
-func (renLedger *mockRenLedger) SellOrders(offset, limit int) ([]order.ID, error) {
-	panic("unimplemented")
-}
-
-func (renLedger *mockRenLedger) OrderMatch(order order.ID) (order.ID, error) {
-	panic("unimplemented")
-}
-
-func (renLedger *mockRenLedger) Trader(order order.ID) (string, error) {
-	panic("unimplemented")
-}
-
-func (renLedger *mockRenLedger) BlockNumber(order order.ID) (uint, error) {
-	panic("unimplemented")
+func createOrder() (order.Order, error) {
+	parity := order.ParityBuy
+	price := uint64(mathRand.Intn(2000))
+	volume := uint64(mathRand.Intn(2000))
+	nonce := uint64(mathRand.Intn(1000000000))
+	return order.NewOrder(order.TypeLimit, parity, order.SettlementRenEx, time.Now().Add(time.Hour), order.TokensETHREN, order.NewCoExp(price, 26), order.NewCoExp(volume, 26), order.NewCoExp(volume, 26), nonce), nil
 }
 
 type mockSwarmer struct {
