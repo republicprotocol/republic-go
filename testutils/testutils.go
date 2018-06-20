@@ -1,10 +1,14 @@
 package testutils
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
+
+	"github.com/republicprotocol/republic-go/contract"
+	"github.com/republicprotocol/republic-go/crypto"
 
 	"github.com/onsi/ginkgo"
 	"github.com/republicprotocol/republic-go/testutils/ganache"
@@ -60,15 +64,23 @@ func SkipCIDescribe(d string, f func()) bool {
 	return false
 }
 
-func GanacheBeforeSuite(body interface{}, timeout float64) bool {
+func GanacheBeforeSuite(body interface{}, timeout float64) (contract.Binder, bool) {
 	fmt.Printf("Ganache is listening on %shttp://localhost:8545%s...\n", green, reset)
 
-	_, err := ganache.StartAndConnect()
+	conn, err := ganache.StartAndConnect()
 	if err != nil {
 		log.Fatalf("cannot connect to ganache: %v", err)
 	}
 
-	return ginkgo.BeforeSuite(body, timeout)
+	keystore, err := crypto.RandomKeystore()
+	if err != nil {
+		log.Fatalf("cannot create keystore: %v", err)
+	}
+
+	auth := ganache.GenesisTransactor()
+	binder, err := contract.NewBinder(context.Background(), keystore, &auth, conn.Config)
+
+	return binder, ginkgo.BeforeSuite(body, timeout)
 }
 
 func GanacheAfterSuite(body interface{}, timeout float64) bool {

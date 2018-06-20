@@ -116,14 +116,8 @@ func RandomConfigs(n int, b int) ([]config.Config, error) {
 				},
 			},
 			Ethereum: contract.Config{
-				Network:                 contract.NetworkGanache,
-				URI:                     "http://localhost:8545",
-				RepublicTokenAddress:    contract.RepublicTokenAddressOnGanache.String(),
-				DarknodeRegistryAddress: contract.DarknodeRegistryAddressOnGanache.String(),
-				OrderbookAddress:        contract.OrderbookAddressOnGanache.String(),
-				RewardVaultAddress:      contract.RewardVaultAddressOnGanache.String(),
-				RenExBalancesAddress:    contract.RenExBalancesAddressOnGanache.String(),
-				RenExSettlementAddress:  contract.RenExSettlementAddressOnGanache.String(),
+				Network: contract.NetworkGanache,
+				URI:     "http://localhost:8545",
 			},
 		})
 	}

@@ -124,6 +124,7 @@ func Connect(ganacheRPC string) (contract.Conn, error) {
 // StartAndConnect to a local Ganache instance and deploy all smart contracts.
 func StartAndConnect() (contract.Conn, error) {
 	firstConnection := Start()
+	time.Sleep(10 * time.Second)
 
 	conn, err := Connect("http://localhost:8545")
 	if err != nil {
@@ -132,7 +133,7 @@ func StartAndConnect() (contract.Conn, error) {
 
 	if firstConnection {
 		// Deploy contracts and take snapshot
-		if err := DeployContracts(conn); err != nil {
+		if err := DeployContracts(&conn); err != nil {
 			return conn, err
 		}
 		snapshot, err := snapshot(conn)
@@ -157,7 +158,7 @@ func StartAndConnect() (contract.Conn, error) {
 }
 
 // DeployContracts to Ganache deploys REN and DNR contracts using the genesis private key
-func DeployContracts(conn contract.Conn) error {
+func DeployContracts(conn *contract.Conn) error {
 	return deployContracts(conn, genesisTransactor)
 }
 
@@ -218,34 +219,34 @@ func genesis() (*ecdsa.PrivateKey, *bind.TransactOpts) {
 	return deployerKey, deployerAuth
 }
 
-func deployContracts(conn contract.Conn, transactor *bind.TransactOpts) error {
+func deployContracts(conn *contract.Conn, transactor *bind.TransactOpts) error {
 
-	_, republicTokenAddress, err := deployRepublicToken(context.Background(), conn, transactor)
+	_, republicTokenAddress, err := deployRepublicToken(context.Background(), *conn, transactor)
 	if err != nil {
 		panic(err)
 	}
 	conn.Config.RepublicTokenAddress = republicTokenAddress.String()
-	_, darknodeRegistryAddress, err := deployDarknodeRegistry(context.Background(), conn, transactor, republicTokenAddress)
+	_, darknodeRegistryAddress, err := deployDarknodeRegistry(context.Background(), *conn, transactor, republicTokenAddress)
 	if err != nil {
 		panic(err)
 	}
 	conn.Config.DarknodeRegistryAddress = darknodeRegistryAddress.String()
-	_, orderbookAddress, err := deployOrderbook(context.Background(), conn, transactor, republicTokenAddress, darknodeRegistryAddress)
+	_, orderbookAddress, err := deployOrderbook(context.Background(), *conn, transactor, republicTokenAddress, darknodeRegistryAddress)
 	if err != nil {
 		panic(err)
 	}
 	conn.Config.OrderbookAddress = orderbookAddress.String()
-	_, rewardVaultAddress, err := deployRewardVault(context.Background(), conn, transactor, darknodeRegistryAddress)
+	_, rewardVaultAddress, err := deployRewardVault(context.Background(), *conn, transactor, darknodeRegistryAddress)
 	if err != nil {
 		panic(err)
 	}
 	conn.Config.RewardVaultAddress = rewardVaultAddress.String()
-	_, renExBalancesAddress, err := deployRenExBalances(context.Background(), conn, transactor, rewardVaultAddress)
+	_, renExBalancesAddress, err := deployRenExBalances(context.Background(), *conn, transactor, rewardVaultAddress)
 	if err != nil {
 		panic(err)
 	}
 	conn.Config.RenExBalancesAddress = renExBalancesAddress.String()
-	_, renExSettlementAddress, err := deployRenExSettlement(context.Background(), conn, transactor, orderbookAddress, republicTokenAddress, renExBalancesAddress)
+	_, renExSettlementAddress, err := deployRenExSettlement(context.Background(), *conn, transactor, orderbookAddress, republicTokenAddress, renExBalancesAddress)
 	if err != nil {
 		panic(err)
 	}
