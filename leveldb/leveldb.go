@@ -13,56 +13,30 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-// Store is an implementation of the orderbook.Storer interface that uses
-// LevelDB to load and store data to persistent storage.
+// Store is an implementation of storage interfaces using LevelDB to load and
+// store data to persistent storage. It uses a single database instance and
+// high-order bytes for separating data into tables. LevelDB provides a basic
+// type of in-memory caching but has no optimisations that are specific to the
+// data.
 type Store struct {
-	orderFragments *leveldb.DB
-	orders         *leveldb.DB
-	computations   *leveldb.DB
-	sync           *leveldb.DB
+	db *leveldb.DB
 }
 
-// NewStore returns a LevelDB implementation of an orderbooker.Storer. It stores
-// and loads order fragments, and orders, using the specified directory.
+// NewStore returns a LevelDB implementation of storage interfaces. A call to
+// Store.Close is required to free resources allocated by the Store.
 func NewStore(dir string) (Store, error) {
-	orderFragments, err := leveldb.OpenFile(path.Join(dir, "orderFragments"), nil)
+	db, err := leveldb.OpenFile(path.Join(dir, "db"), nil)
 	if err != nil {
 		return Store{}, err
 	}
-	orders, err := leveldb.OpenFile(path.Join(dir, "orders"), nil)
-	if err != nil {
-		return Store{}, err
-	}
-	computations, err := leveldb.OpenFile(path.Join(dir, "computations"), nil)
-	if err != nil {
-		return Store{}, err
-	}
-	sync, err := leveldb.OpenFile(path.Join(dir, "sync"), nil)
-	if err != nil {
-		return Store{}, err
-	}
-
 	return Store{
-		orderFragments: orderFragments,
-		orders:         orders,
-		computations:   computations,
-		sync:           sync,
+		db: db,
 	}, nil
 }
 
-// Close the internal LevelDB handles. Resources will be leaked if this is not
-// called when the Store is no longer needed.
+// Close the internal LevelDB database.
 func (store *Store) Close() error {
-	if err := store.orderFragments.Close(); err != nil {
-		return err
-	}
-	if err := store.orders.Close(); err != nil {
-		return err
-	}
-	if err := store.computations.Close(); err != nil {
-		return err
-	}
-	return store.sync.Close()
+	return store.db.Close()
 }
 
 // InsertOrderFragment implements the orderbook.Storer interface.
