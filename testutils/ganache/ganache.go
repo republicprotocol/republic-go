@@ -20,7 +20,6 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/contract/bindings"
-	"github.com/republicprotocol/republic-go/testutils/test"
 )
 
 var genesisPrivateKey, genesisTransactor = genesis()
@@ -59,13 +58,6 @@ func Start() bool {
 	// cmd.Stderr = os.Stderr
 	globalGanacheCmd.Start()
 	go StopOnInterrupt()
-
-	// Wait for ganache to boot
-	if test.GetCIEnv() {
-		time.Sleep(10 * time.Second)
-	} else {
-		time.Sleep(4 * time.Second)
-	}
 
 	return true
 }
@@ -123,13 +115,7 @@ func Connect(ganacheRPC string) (contract.Conn, error) {
 		RawClient: raw,
 		Client:    ethclient,
 		Config: contract.Config{
-			Network:                 contract.NetworkGanache,
-			RepublicTokenAddress:    contract.RepublicTokenAddressOnGanache.String(),
-			DarknodeRegistryAddress: contract.DarknodeRegistryAddressOnGanache.String(),
-			OrderbookAddress:        contract.OrderbookAddressOnGanache.String(),
-			RewardVaultAddress:      contract.RewardVaultAddressOnGanache.String(),
-			RenExBalancesAddress:    contract.RenExBalancesAddressOnGanache.String(),
-			RenExSettlementAddress:  contract.RenExSettlementAddressOnGanache.String(),
+			Network: contract.NetworkGanache,
 		},
 	}, nil
 }
@@ -237,45 +223,32 @@ func deployContracts(conn contract.Conn, transactor *bind.TransactOpts) error {
 	if err != nil {
 		panic(err)
 	}
+	conn.Config.RepublicTokenAddress = republicTokenAddress.String()
 	_, darknodeRegistryAddress, err := deployDarknodeRegistry(context.Background(), conn, transactor, republicTokenAddress)
 	if err != nil {
 		panic(err)
 	}
+	conn.Config.DarknodeRegistryAddress = darknodeRegistryAddress.String()
 	_, orderbookAddress, err := deployOrderbook(context.Background(), conn, transactor, republicTokenAddress, darknodeRegistryAddress)
 	if err != nil {
 		panic(err)
 	}
+	conn.Config.OrderbookAddress = orderbookAddress.String()
 	_, rewardVaultAddress, err := deployRewardVault(context.Background(), conn, transactor, darknodeRegistryAddress)
 	if err != nil {
 		panic(err)
 	}
+	conn.Config.RewardVaultAddress = rewardVaultAddress.String()
 	_, renExBalancesAddress, err := deployRenExBalances(context.Background(), conn, transactor, rewardVaultAddress)
 	if err != nil {
 		panic(err)
 	}
+	conn.Config.RenExBalancesAddress = renExBalancesAddress.String()
 	_, renExSettlementAddress, err := deployRenExSettlement(context.Background(), conn, transactor, orderbookAddress, republicTokenAddress, renExBalancesAddress)
 	if err != nil {
 		panic(err)
 	}
-
-	if republicTokenAddress != contract.RepublicTokenAddressOnGanache {
-		return fmt.Errorf("RepublicToken address has changed: expected: %s, got: %s", contract.RepublicTokenAddressOnGanache.Hex(), republicTokenAddress.Hex())
-	}
-	if darknodeRegistryAddress != contract.DarknodeRegistryAddressOnGanache {
-		return fmt.Errorf("DarknodeRegistry address has changed: expected: %s, got: %s", contract.DarknodeRegistryAddressOnGanache.Hex(), darknodeRegistryAddress.Hex())
-	}
-	if orderbookAddress != contract.OrderbookAddressOnGanache {
-		return fmt.Errorf("Orderbook address has changed: expected: %s, got: %s", contract.OrderbookAddressOnGanache.Hex(), orderbookAddress.Hex())
-	}
-	if rewardVaultAddress != contract.RewardVaultAddressOnGanache {
-		return fmt.Errorf("RewardVault address has changed: expected: %s, got: %s", contract.RewardVaultAddressOnGanache.Hex(), rewardVaultAddress.Hex())
-	}
-	if renExBalancesAddress != contract.RenExBalancesAddressOnGanache {
-		return fmt.Errorf("RenExBalances address has changed: expected: %s, got: %s", contract.RenExBalancesAddressOnGanache.Hex(), renExBalancesAddress.Hex())
-	}
-	if renExSettlementAddress != contract.RenExSettlementAddressOnGanache {
-		return fmt.Errorf("RewardVaule address has changed: expected: %s, got: %s", contract.RenExSettlementAddressOnGanache.Hex(), renExSettlementAddress.Hex())
-	}
+	conn.Config.RenExSettlementAddress = renExSettlementAddress.String()
 
 	return nil
 }

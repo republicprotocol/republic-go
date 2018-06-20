@@ -77,3 +77,8 @@ func GanacheBeforeSuite(body interface{}, timeout ...float64) bool {
 	}
 	return ginkgo.BeforeSuite(body, timeout)
 }
+
+func GanacheAfterSuite(body interface{}, timeout ...float64) bool {
+	ganache.Stop()
+	return ginkgo.AfterSuite(body, timeout)
+}
