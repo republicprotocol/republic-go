@@ -134,7 +134,7 @@ package registry
 // 	return key, err
 // }
 
-// func NewRegistry(c *cli.Context, key *keystore.Key) (contract.Binder, error) {
+// func NewRegistry(c *cli.Context, key *keystore.Key) (*bind.TransactOpts, contract.Binder, error) {
 // 	var config contract.Config
 // 	switch c.GlobalString("network") {
 // 	case "ropsten":

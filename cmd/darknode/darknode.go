@@ -15,6 +15,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/contract"
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
@@ -63,7 +64,7 @@ func main() {
 	log.Printf("address %v", multiAddr)
 
 	// Get ethereum bindings
-	contractBinder, err := contract.NewBinder(context.Background(), config.Keystore, config.Ethereum)
+	auth, contractBinder, err := contract.NewBinder(context.Background(), config.Keystore, config.Ethereum)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
