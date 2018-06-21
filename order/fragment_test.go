@@ -91,7 +91,8 @@ var _ = Describe("Order fragments", func() {
 			rhs, err := NewFragment(orderID, TypeLimit, ParityBuy, SettlementRenEx, expiry, tokens, price, maxVolume, minVolume, nonce)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			Ω(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(true))
+			Ω(lhs.ID.Equal(rhs.ID)).Should(Equal(true))
+			Ω(lhs.ID.String()).Should(Equal(rhs.ID.String()))
 			Ω(lhs.Equal(&rhs)).Should(Equal(true))
 
 		})
@@ -104,9 +105,10 @@ var _ = Describe("Order fragments", func() {
 			copy(orderID[:], "newOrderID")
 
 			rhs, err := NewFragment(orderID, TypeLimit, ParityBuy, SettlementRenEx, time.Now(), tokens, price, maxVolume, minVolume, nonce)
-			Expect(err).ShouldNot(HaveOccurred()) 
+			Expect(err).ShouldNot(HaveOccurred())
 
-			Ω(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(false))
+			Ω(lhs.ID.Equal(rhs.ID)).Should(Equal(false))
+			Ω(lhs.ID.String()).ShouldNot(Equal(rhs.ID.String()))
 			Ω(lhs.Equal(&rhs)).Should(Equal(false))
 		})
 	})
