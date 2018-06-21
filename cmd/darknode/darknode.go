@@ -65,11 +65,17 @@ func main() {
 	}
 	log.Printf("address %v", multiAddr)
 
-	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
+	// Connect to Ethereum
+	conn, err := contract.Connect(config.Ethereum)
+	if err != nil {
+		log.Fatalf("cannot connect to ethereum: %v", err)
+	}
+
+	auth := bind.NewKeyedTransactor(config.Keystore.EcdsaKey.PrivateKey)
 	auth.GasPrice = big.NewInt(1000000000)
 
 	// Get ethereum bindings
-	contractBinder, err := contract.NewBinder(context.Background(), config.Keystore, auth config.Ethereum)
+	contractBinder, err := contract.NewBinder(context.Background(), auth, conn)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
