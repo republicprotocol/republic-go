@@ -37,7 +37,7 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress) (
 	}
 	response := &PingResponse{}
 	if err := Backoff(ctx, func() error {
-		response, err = NewSwarmServiceClient(conn.ClientConn).Ping(ctx, request)
+		response, err = NewSwarmServiceClient(conn).Ping(ctx, request)
 		return err
 	}); err != nil {
 		return identity.MultiAddress{}, err
@@ -74,7 +74,7 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 
 	var stream SwarmService_QueryClient
 	if err := Backoff(ctx, func() error {
-		stream, err = NewSwarmServiceClient(conn.ClientConn).Query(ctx, request)
+		stream, err = NewSwarmServiceClient(conn).Query(ctx, request)
 		return err
 	}); err != nil {
 		return identity.MultiAddresses{}, err

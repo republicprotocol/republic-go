@@ -31,7 +31,6 @@ import (
 	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/status"
-	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
@@ -107,10 +106,9 @@ func main() {
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
-	streamClient := grpc.NewStreamClient(&crypter, config.Address)
-	streamService := grpc.NewStreamService(&crypter, config.Address)
-	streamer := stream.NewStreamRecycler(stream.NewStreamer(config.Address, streamClient, &streamService))
-	streamService.Register(server)
+	streamer := grpc.NewStreamer(&crypter, config.Address)
+	streamerService := grpc.NewStreamerService(&crypter, streamer)
+	streamerService.Register(server)
 
 	// Populate status information
 	statusProvider := status.NewProvider(&dht)
