@@ -1,57 +1,165 @@
 package contract_test
 
 import (
-	"time"
+	"context"
+	"log"
+	"math/big"
 
+	"github.com/republicprotocol/republic-go/testutils/ganache"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/contract"
+	"github.com/republicprotocol/republic-go/identity"
 
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/stackint"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
 var _ = Describe("Contract Binder", func() {
 
-	binder, _ := testutils.GanacheBeforeSuite(func() {
-
+	conn, binder, _ := testutils.GanacheBeforeSuite(func() {
 	})
 
 	testutils.GanacheAfterSuite(func() {
-
 	})
+
 	Context("when interacting with ethereum smart contracts", func() {
 
 		It("should not return a nonce error", func() {
+			numberOfDarknodes := 24
+			numberOfOrderPairs := 10
 
-			// Trigger new Epoch
-			epoch, err := binder.NextEpoch()
+			/********************************************************/
+			/* Testing registration of darknodes 					*/
+			/********************************************************/
+
+			keystores := make([]crypto.Keystore, numberOfDarknodes)
+			for i := 0; i < numberOfDarknodes; i++ {
+				// Bond for the darknode
+				bond, err := stackint.FromString("0")
+				Expect(err).ShouldNot(HaveOccurred())
+
+				// Darknode address
+				keystores[i], err = crypto.RandomKeystore()
+				Expect(err).ShouldNot(HaveOccurred())
+				darknodeAddr := identity.Address(keystores[i].Address())
+
+				publicKey, err := crypto.BytesFromRsaPublicKey(&(keystores[i].RsaKey.PublicKey))
+
+				// Register darknode with the darknodeRegistry
+				_, err = binder.Register(darknodeAddr.ID(), publicKey, &bond)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				// Darknode will be waiting to be registered until a new
+				// epoch
+				tx, err := binder.IsRegistered(darknodeAddr)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(tx).To(BeFalse())
+			}
+
+			// Trigger new Epoch. This will complete registration of
+			// the darknode
+			_, err := binder.NextEpoch()
+			if numberOfDarknodes >= 24 {
+				Expect(err).ShouldNot(HaveOccurred())
+			}
+
+			for i := 0; i < numberOfDarknodes; i++ {
+				darknodeAddr := identity.Address(keystores[i].Address())
+
+				// Darknode should be registered
+				tx, err := binder.IsRegistered(darknodeAddr)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(tx).To(BeTrue())
+			}
+
+			/********************************************************/
+			/* Testing order matching								*/
+			/********************************************************/
+
+			orderpairs := make([]ome.Computation, numberOfOrderPairs)
+
+			for i := 0; i < numberOfOrderPairs; i++ {
+				orderpairs[i] = testutils.RandomComputation()
+
+				err := binder.OpenBuyOrder([65]byte{}, orderpairs[i].Buy)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				err = binder.OpenSellOrder([65]byte{}, orderpairs[i].Sell)
+				Expect(err).ShouldNot(HaveOccurred())
+			}
+
+			numberOfOrders, err := binder.OrderCounts()
 			Expect(err).ShouldNot(HaveOccurred())
+			Expect(numberOfOrders).To(Equal(uint64(2 * numberOfOrderPairs)))
 
-			// Bond for the darknode
-			bond, err := stackint.FromString("0")
+			// Create a transactOpts for a darknode to submit order confirmations
+			auth := bind.NewKeyedTransactor(keystores[0].EcdsaKey.PrivateKey)
+
+			// Transfer funds into the darknode
+			transOpts := ganache.GenesisTransactor()
+			value := big.NewInt(10)
+			value.Exp(value, big.NewInt(18), nil)
+			value.Mul(big.NewInt(10), value)
+			conn.TransferEth(context.Background(), &transOpts, auth.From, value)
+
+			// Get binder for the darknode
+			darknodeBinder, err := contract.NewBinder(context.Background(), auth, conn)
+			if err != nil {
+				log.Fatalf("cannot get ethereum bindings: %v", err)
+			}
+
+			for i := 0; i < numberOfOrderPairs; i++ {
+				err = darknodeBinder.ConfirmOrder(orderpairs[i].Buy, orderpairs[i].Sell)
+				Expect(err).ShouldNot(HaveOccurred())
+			}
+
+			numberOfOrders, err = binder.OrderCounts()
 			Expect(err).ShouldNot(HaveOccurred())
+			Expect(numberOfOrders).To(Equal(uint64(2 * numberOfOrderPairs)))
 
-			// Darknode address
-			darknodeAddr := identity.Address("8MK6bwP1ADVPaMQ4Gxfm85KYbEdJ6Y")
+			/********************************************************/
+			/* Testing deregistration of darknodes 					*/
+			/********************************************************/
 
-			// Keystore
-			keystore, err := crypto.RandomRsaKey()
-			Expect(err).ShouldNot(HaveOccurred())
-			publicKey, err := crypto.BytesFromRsaPublicKey(&(keystore.PublicKey))
+			for i := 0; i < numberOfDarknodes; i++ {
+				darknodeAddr := identity.Address(keystores[i].Address())
+				// Deregister darknode
+				_, err = binder.Deregister(darknodeAddr.ID())
+				Expect(err).ShouldNot(HaveOccurred())
+				// Darknode will be waiting to be deregistered until a
+				// new epoch
+				tx, err := binder.IsDeregistered(darknodeAddr.ID())
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(tx).To(BeFalse())
+			}
 
-			// Register darknode with the darknodeRegistry
-			_, err = binder.Register(darknodeAddr.ID(), publicKey, &bond)
-			Expect(err).ShouldNot(HaveOccurred())
+			// Trigger new Epoch. This will complete deregistration of
+			// the darknode
+			_, err = binder.NextEpoch()
+			Expect(err).Should(HaveOccurred())
 
-			time.Sleep(14 * time.Second)
+			for i := 0; i < numberOfDarknodes; i++ {
+				darknodeAddr := identity.Address(keystores[i].Address())
 
-			// Check if darknode has registered
-			tx, err := binder.IsDeregistered(darknodeAddr.ID())
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(tx).To(BeTrue())
+				// Darknode should be deregistered
+				tx, err := binder.IsDeregistered(darknodeAddr.ID())
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(tx).To(BeTrue())
 
+				// Deregister the same darknode should return an error
+				_, err = binder.Deregister(darknodeAddr.ID())
+				Expect(err).Should(HaveOccurred())
+
+				// Refund deregistered node should return an error since
+				// the darknode had a bond amount of 0
+				_, err = binder.Refund(darknodeAddr.ID())
+				Expect(err).Should(HaveOccurred())
+			}
 		})
 	})
 })

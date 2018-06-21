@@ -57,6 +57,8 @@ type Binder struct {
 
 // NewBinder returns a Binder to communicate with contracts
 func NewBinder(ctx context.Context, auth *bind.TransactOpts, conn Conn) (Binder, error) {
+	auth.GasPrice = big.NewInt(20000000000)
+
 	darknodeRegistry, err := bindings.NewDarknodeRegistry(common.HexToAddress(conn.Config.DarknodeRegistryAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
@@ -123,7 +125,6 @@ func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
 }
 
 func (binder *Binder) submitMatch(buy, sell order.ID) error {
-	binder.transactOpts.GasLimit = 500000
 	tx, err := binder.renExSettlement.SubmitMatch(binder.transactOpts, buy, sell)
 	if err != nil {
 		return err
@@ -202,7 +203,7 @@ func (binder *Binder) Deregister(darknodeID []byte) (*types.Transaction, error) 
 func (binder *Binder) deregister(darknodeID []byte) (*types.Transaction, error) {
 	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
-		return &types.Transaction{}, err
+		return nil, err
 	}
 	tx, err := binder.darknodeRegistry.Deregister(binder.transactOpts, darknodeIDByte)
 	if err != nil {
@@ -638,9 +639,6 @@ func (binder *Binder) OpenBuyOrder(signature [65]byte, id order.ID) error {
 }
 
 func (binder *Binder) openBuyOrder(signature [65]byte, id order.ID) error {
-	binder.transactOpts.GasPrice = big.NewInt(int64(20000000000))
-	binder.transactOpts.GasLimit = 3000000
-
 	tx, err := binder.orderbook.OpenBuyOrder(binder.transactOpts, signature[:], id)
 	if err != nil {
 		return err
@@ -660,14 +658,10 @@ func (binder *Binder) OpenSellOrder(signature [65]byte, id order.ID) error {
 }
 
 func (binder *Binder) openSellOrder(signature [65]byte, id order.ID) error {
-	binder.transactOpts.GasPrice = big.NewInt(int64(20000000000))
-	binder.transactOpts.GasLimit = 3000000
-
 	tx, err := binder.orderbook.OpenSellOrder(binder.transactOpts, signature[:], id)
 	if err != nil {
 		return err
 	}
-	binder.transactOpts.GasLimit = 0
 
 	return binder.waitForOrderDepth(tx, id)
 }
