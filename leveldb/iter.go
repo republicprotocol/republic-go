@@ -3,6 +3,7 @@ package leveldb
 import (
 	"encoding/json"
 
+	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/order"
 
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -109,4 +110,42 @@ func (iter *OrderFragmentIterator) Collect() ([]order.Fragment, error) {
 // Release implements the orderbook.OrderFragmentIterator interface.
 func (iter *OrderFragmentIterator) Release() {
 	iter.inner.Release()
+}
+
+// ComputationIterator implements the ome.ComputationIterator
+// interface using a LevelDB iterator.
+type ComputationIterator struct {
+	inner iterator.Iterator
+	next  bool
+}
+
+// Next implements the ome.ComputationIterator interface.
+func (iter *ComputationIterator) Next() bool {
+	return iter.inner.Next()
+}
+
+// Cursor implements the ome.ComputationIterator interface.
+func (iter *ComputationIterator) Cursor() (ome.Computation, error) {
+	computation := ome.Computation{}
+	if !iter.next {
+		return computation, ome.ErrCursorOutOfRange
+	}
+	data := iter.inner.Value()
+	if err := json.Unmarshal(data, &computation); err != nil {
+		return computation, err
+	}
+	return computation, iter.inner.Error()
+}
+
+// Collect implements the ome.ComputationIterator interface.
+func (iter *ComputationIterator) Collect() ([]ome.Computation, error) {
+	computations := []ome.Computation{}
+	for iter.Next() {
+		computation, err := iter.Cursor()
+		if err != nil {
+			return computations, err
+		}
+		computations = append(computations, computation)
+	}
+	return computations, iter.inner.Error()
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"path"
 
+	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -17,6 +18,7 @@ var (
 	TableOrderbookPointers  = []byte{0x01, 0x0, 0x0, 0x0}
 	TableOrderbookChanges   = []byte{0x02, 0x0, 0x0, 0x0}
 	TableOrderbookFragments = []byte{0x03, 0x0, 0x0, 0x0}
+	TableOmeComputations    = []byte{0x04, 0x0, 0x0, 0x0}
 )
 
 // Key postfixes used by iterators to define table ranges.
@@ -172,4 +174,51 @@ func (store *Store) OrderFragment(id order.ID) (order.Fragment, error) {
 func (store *Store) OrderFragments() (orderbook.OrderFragmentIterator, error) {
 	iter := store.db.NewIterator(&util.Range{Start: append(TableOrderbookFragments, TableIterStart...), Limit: append(TableOrderbookFragments, TableIterEnd...)}, nil)
 	return newOrderFragmentIterator(iter), nil
+}
+
+// PutComputation implements the ome.Storer interface.
+func (store *Store) PutComputation(computation ome.Computation) error {
+	data, err := json.Marshal(computation)
+	if err != nil {
+		return err
+	}
+	return store.db.Put(append(TableOmeComputations, computation.ID[:]...), data, nil)
+}
+
+// DeleteComputation implements the ome.Storer interface.
+func (store *Store) DeleteComputation(id ome.ComputationID) error {
+	return store.db.Delete(append(TableOmeComputations, id[:]...), nil)
+}
+
+// Computation implements the ome.Storer interface.
+func (store *Store) Computation(id ome.ComputationID) (ome.Computation, error) {
+	computation := ome.Computation{}
+	data, err := store.db.Get(append(TableOmeComputations, id[:]...), nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			err = ome.ErrComputationNotFound
+		}
+		return computation, err
+	}
+	if err := json.Unmarshal(data, &computation); err != nil {
+		return computation, err
+	}
+	return computation, nil
+}
+
+// Computations implements the ome.Storer interface.
+func (store *Store) Computations() (ome.Computations, error) {
+	coms := ome.Computations{}
+	iter := store.db.NewIterator(nil, nil)
+	defer iter.Release()
+	for iter.Next() {
+		data := iter.Value()
+
+		com := ome.Computation{}
+		if err := json.Unmarshal(data, &com); err != nil {
+			return coms, err
+		}
+		coms = append(coms, com)
+	}
+	return coms, iter.Error()
 }
