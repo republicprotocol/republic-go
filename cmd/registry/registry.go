@@ -171,8 +171,10 @@ func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error
 		config = ethereum.Config{
 			Network:                 ethereum.NetworkKovan,
 			URI:                     "https://kovan.infura.io",
-			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnKovan.String(),
-			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnKovan.String(),
+			RepublicTokenAddress:    "0x5e8148ab05ae724af7e6c2cbacdc65cca53ab3aa", // falconry contract address, remove this for federation zero
+			DarknodeRegistryAddress: "0x3aa3a8c5b2a4a2b0ee631650d88e9dc24f4c9254", // falconry contract address, remove this for federation zero
+			RenLedgerAddress:        "0x3DC8f53e3311750b4003BC535bea9a0bDAc172De", // falconry contract address, remove this for federation zero
+			RenExAccountsAddress:    "0x20b3cd8d1b9c7854f0efab0e774b9517e149a63b", // falconry contract address, remove this for federation zero
 		}
 	default:
 		log.Fatal("unrecognized network name")
