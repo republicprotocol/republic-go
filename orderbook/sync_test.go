@@ -2,9 +2,11 @@ package orderbook_test
 
 import (
 	"bytes"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/orderbook"
 
 	"github.com/republicprotocol/republic-go/cal"
@@ -20,7 +22,7 @@ var (
 var _ = Describe("Syncer", func() {
 	var (
 		renLedger   cal.RenLedger
-		storer      SyncStorer
+		storer      *leveldb.Store
 		syncer      Syncer
 		buys, sells []order.Order
 	)
@@ -28,14 +30,20 @@ var _ = Describe("Syncer", func() {
 	Context("when syncing with the ledger", func() {
 
 		BeforeEach(func() {
+			var err error
 			renLedger = testutils.NewRenLedger()
-			storer = testutils.NewStorer()
+			storer, err = leveldb.NewStore("./data.out")
+			Ω(err).ShouldNot(HaveOccurred())
 			buys, sells = generateOrderPairs(NumberOfOrderPairs)
 
 			syncer = NewSyncer(storer, renLedger, RenLimit)
 			changeSet, err := syncer.Sync()
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(changeSet)).Should(Equal(0))
+		})
+
+		AfterEach(func() {
+			os.RemoveAll("./data.out")
 		})
 
 		It("should be able to sync new opened orders", func() {
