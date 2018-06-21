@@ -36,8 +36,10 @@ func (iter *ChangeIterator) Cursor() (orderbook.Change, error) {
 		return change, orderbook.ErrCursorOutOfRange
 	}
 	data := iter.inner.Value()
-	err := json.Unmarshal(data, &change)
-	return change, err
+	if err := json.Unmarshal(data, &change); err != nil {
+		return change, err
+	}
+	return change, iter.inner.Error()
 }
 
 // Collect implements the orderbook.ChangeIterator interface.
@@ -85,8 +87,10 @@ func (iter *OrderFragmentIterator) Cursor() (order.Fragment, error) {
 		return fragment, orderbook.ErrCursorOutOfRange
 	}
 	data := iter.inner.Value()
-	err := json.Unmarshal(data, &fragment)
-	return fragment, err
+	if err := json.Unmarshal(data, &fragment); err != nil {
+		return fragment, err
+	}
+	return fragment, iter.inner.Error()
 }
 
 // Collect implements the orderbook.OrderFragmentIterator interface.
