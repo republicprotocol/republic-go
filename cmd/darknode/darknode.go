@@ -72,8 +72,7 @@ func main() {
 	}
 
 	auth := bind.NewKeyedTransactor(config.Keystore.EcdsaKey.PrivateKey)
-	auth.GasPrice = big.NewInt(1000000000)
-
+	
 	// Get ethereum bindings
 	contractBinder, err := contract.NewBinder(context.Background(), auth, conn)
 	if err != nil {
