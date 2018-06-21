@@ -207,7 +207,7 @@ var _ = Describe("Streaming", func() {
 
 				// Disconnect
 				clientStreamCancel()
-				time.Sleep(time.Millisecond)
+				time.Sleep(10 * time.Millisecond)
 
 				// Confirm that receiving returns an error
 				message := mockStreamMessage{}
@@ -240,7 +240,7 @@ var _ = Describe("Streaming", func() {
 
 				// Disconnect
 				clientStreamCancel()
-				time.Sleep(time.Millisecond)
+				time.Sleep(10 * time.Millisecond)
 
 				// Confirm that sending and receiving returns an error
 				err = serviceStream.Send(&mockStreamMessage{int64(420)})
@@ -275,7 +275,7 @@ var _ = Describe("Streaming", func() {
 
 				// Disconnect
 				serviceStreamCancel()
-				time.Sleep(time.Millisecond)
+				time.Sleep(10 * time.Millisecond)
 
 				// Send a message from the service
 				go func() {
@@ -306,7 +306,7 @@ var _ = Describe("Streaming", func() {
 
 				// Disconnect
 				serviceStreamCancel()
-				time.Sleep(time.Millisecond)
+				time.Sleep(10 * time.Millisecond)
 
 				// Send a message from the service
 				go func() {
