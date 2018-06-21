@@ -34,7 +34,7 @@ var _ = Describe("Contract Binder", func() {
 			numberOfOrderPairs := 10
 
 			/********************************************************/
-			/* Testing registration of darknodes 					*/
+			/* Testing registration of darknodes                    */
 			/********************************************************/
 
 			keystores := make([]crypto.Keystore, numberOfDarknodes)
@@ -78,7 +78,7 @@ var _ = Describe("Contract Binder", func() {
 			}
 
 			/********************************************************/
-			/* Testing order matching								*/
+			/* Testing order matching                               */
 			/********************************************************/
 
 			orderpairs := make([]ome.Computation, numberOfOrderPairs)
@@ -123,7 +123,7 @@ var _ = Describe("Contract Binder", func() {
 			Expect(numberOfOrders).To(Equal(uint64(2 * numberOfOrderPairs)))
 
 			/********************************************************/
-			/* Testing deregistration of darknodes 					*/
+			/* Testing deregistration of darknodes                  */
 			/********************************************************/
 
 			for i := 0; i < numberOfDarknodes; i++ {
