@@ -1,6 +1,7 @@
 package orderbook
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/republicprotocol/republic-go/cal"
@@ -37,6 +38,16 @@ func NewChange(id order.ID, parity order.Parity, status order.Status, priority P
 		Trader:        trader,
 		BlockNumber:   blockNumber,
 	}
+}
+
+// Equal returns an equality check between two Changes.
+func (change *Change) Equal(other *Change) bool {
+	return bytes.Equal(change.OrderID[:], other.OrderID[:]) &&
+		change.OrderParity == other.OrderParity &&
+		change.OrderStatus == other.OrderStatus &&
+		change.OrderPriority == other.OrderPriority &&
+		change.Trader == other.Trader &&
+		change.BlockNumber == other.BlockNumber
 }
 
 // A Syncer is used to synchronize orders, and changes to orders, to local
