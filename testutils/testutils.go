@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/big"
 	"os"
 	"strconv"
 
 	"github.com/republicprotocol/republic-go/contract"
-	"github.com/republicprotocol/republic-go/crypto"
 
 	"github.com/onsi/ginkgo"
 	"github.com/republicprotocol/republic-go/testutils/ganache"
@@ -64,7 +64,7 @@ func SkipCIDescribe(d string, f func()) bool {
 	return false
 }
 
-func GanacheBeforeSuite(body interface{}, timeout float64) (contract.Binder, bool) {
+func GanacheBeforeSuite(body interface{}, timeout ...float64) (contract.Binder, bool) {
 	fmt.Printf("Ganache is listening on %shttp://localhost:8545%s...\n", green, reset)
 
 	conn, err := ganache.StartAndConnect()
@@ -72,31 +72,27 @@ func GanacheBeforeSuite(body interface{}, timeout float64) (contract.Binder, boo
 		log.Fatalf("cannot connect to ganache: %v", err)
 	}
 
-	keystore, err := crypto.RandomKeystore()
-	if err != nil {
-		log.Fatalf("cannot create keystore: %v", err)
-	}
-
 	auth := ganache.GenesisTransactor()
-	binder, err := contract.NewBinder(context.Background(), keystore, &auth, conn.Config)
+	auth.GasPrice = big.NewInt(3000000)
+	binder, err := contract.NewBinder(context.Background(), &auth, conn)
 
-	return binder, ginkgo.BeforeSuite(body, timeout)
+	return binder, ginkgo.BeforeSuite(body, timeout...)
 }
 
-func GanacheAfterSuite(body interface{}, timeout float64) bool {
+func GanacheAfterSuite(body interface{}, timeout ...float64) bool {
 	ganache.Stop()
-	return ginkgo.AfterSuite(body, timeout)
+	return ginkgo.AfterSuite(body, timeout...)
 }
 
-func GanacheBeforeEach(body interface{}, timeout float64) bool {
+func GanacheBeforeEach(body interface{}, timeout ...float64) bool {
 	_, err := ganache.StartAndConnect()
 	if err != nil {
 		log.Fatalf("cannot connect to ganache: %v", err)
 	}
 
-	return ginkgo.BeforeEach(body, timeout)
+	return ginkgo.BeforeEach(body, timeout...)
 }
 
-func GanacheAfterEach(body interface{}, timeout float64) bool {
-	return ginkgo.AfterEach(body, timeout)
+func GanacheAfterEach(body interface{}, timeout ...float64) bool {
+	return ginkgo.AfterEach(body, timeout...)
 }
