@@ -158,6 +158,7 @@ func (ranker *delegateRanker) insertStoredComputationsInBackground() {
 			logger.Error(fmt.Sprintf("cannot build computations iterator for inserting: %v", err))
 			return
 		}
+		defer comsIter.Release()
 
 		coms, err := comsIter.Collect()
 		if err != nil {
