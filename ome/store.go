@@ -3,31 +3,44 @@ package ome
 import (
 	"errors"
 
-	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/order"
 )
 
 // ErrComputationNotFound is returned when the Storer cannot find a Computation
 // associated with a ComputationID.
 var ErrComputationNotFound = errors.New("computation not found")
 
-// A Storer for the Ome extends the orderbook.Storer by exposing the ability
-// to store and load a Computation.
+// ComputationStorer for the Computations that are synchronised.
+type ComputationStorer interface {
+	PutComputation(computation Computation) error
+	DeleteComputation(id ComputationID) error
+	Computation(id ComputationID) (Computation, error)
+	Computations() (ComputationIterator, error)
+}
+
+// ComputationIterator is used to iterate over a Computation collection.
+type ComputationIterator interface {
+
+	// Next progresses the cursor. Returns true if the new cursor is still in
+	// the range of the Computation collection, otherwise false.
+	Next() bool
+
+	// Cursor returns the Computation at the current cursor location. Returns
+	// an error if the cursor is out of range.
+	Cursor() (Computation, error)
+
+	// Collect all Computations in the iterator into a slice.
+	Collect() ([]Computation, error)
+}
+
+// OrderFragmentStorer for the order.Fragments that are received.
+type OrderFragmentStorer interface {
+	OrderFragment(id order.ID) (order.Fragment, error)
+}
+
+// Storer combines the ComputationStorer interface and the
+// OrderFragmentStorer interface into a unified set of storage functions.
 type Storer interface {
-	orderbook.Storer
-
-	// InsertComputation into the Storer. The primary use case for this is
-	// storing the state of the Computation so that the Ome does not attempt to
-	// redo a Computation when it reboots.
-	InsertComputation(Computation) error
-
-	// Computation returns a Computation associated with the ComputationID.
-	// Returns ErrComputationNotFound if the Computation does not exist in the
-	// Storer.
-	Computation(ComputationID) (Computation, error)
-
-	// Computations returns all Computations stored in the Storer.
-	Computations() (Computations, error)
-
-	// RemoveComputation from the Storer.
-	RemoveComputation(ComputationID) error
+	ComputationStorer
+	OrderFragmentStorer
 }
