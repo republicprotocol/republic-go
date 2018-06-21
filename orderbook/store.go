@@ -39,6 +39,9 @@ type ChangeIterator interface {
 
 	// Collect all Changes in the iterator into a slice.
 	Collect() ([]Change, error)
+
+	// Release the resources allocated by the iterator.
+	Release()
 }
 
 // OrderFragmentStorer for the order.Fragments that are received.
@@ -62,6 +65,9 @@ type OrderFragmentIterator interface {
 
 	// Collect all order.Fragments in the iterator into a slice.
 	Collect() ([]order.Fragment, error)
+
+	// Release the resources allocated by the iterator.
+	Release()
 }
 
 // PointerStorer for the synchronisation pointers used to track the progress

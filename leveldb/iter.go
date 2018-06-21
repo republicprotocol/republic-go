@@ -9,19 +9,33 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
+// ChangeIterator implements the orderbook.ChangeIterator interface using a
+// LevelDB iterator. It is not safe for concurrent use.
 type ChangeIterator struct {
 	inner iterator.Iterator
+	next  bool
+}
+
+func newChangeIterator(iter iterator.Iterator) *ChangeIterator {
+	return &ChangeIterator{
+		inner: iter,
+		next:  false,
+	}
 }
 
 // Next implements the orderbook.ChangeIterator interface.
 func (iter *ChangeIterator) Next() bool {
-	return iter.inner.Next()
+	iter.next = iter.inner.Next()
+	return iter.next
 }
 
 // Cursor implements the orderbook.ChangeIterator interface.
 func (iter *ChangeIterator) Cursor() (orderbook.Change, error) {
-	data := iter.Value()
 	change := orderbook.Change{}
+	if !iter.next {
+		return change, orderbook.ErrCursorOutOfRange
+	}
+	data := iter.inner.Value()
 	err := json.Unmarshal(data, &change)
 	return change, err
 }
@@ -29,48 +43,66 @@ func (iter *ChangeIterator) Cursor() (orderbook.Change, error) {
 // Collect implements the orderbook.ChangeIterator interface.
 func (iter *ChangeIterator) Collect() ([]orderbook.Change, error) {
 	changes := []orderbook.Change{}
-	iter := store.db.NewIterator(nil, nil)
-	defer iter.Release()
 	for iter.Next() {
-		data := iter.Value()
-		change := orderbook.Change{}
-		if err := json.Unmarshal(data, &change); err != nil {
+		change, err := iter.Cursor()
+		if err != nil {
 			return changes, err
 		}
 		changes = append(changes, change)
 	}
-	return changes, iter.Error()
+	return changes, iter.inner.Error()
 }
 
+// Release implements the orderbook.ChangeIterator interface.
+func (iter *ChangeIterator) Release() {
+	iter.inner.Release()
+}
+
+// OrderFragmentIterator implements the orderbook.OrderFragmentIterator
+// interface using a LevelDB iterator.
 type OrderFragmentIterator struct {
 	inner iterator.Iterator
+	next  bool
+}
+
+func newOrderFragmentIterator(iter iterator.Iterator) *OrderFragmentIterator {
+	return &OrderFragmentIterator{
+		inner: iter,
+		next:  false,
+	}
 }
 
 // Next implements the orderbook.OrderFragmentIterator interface.
 func (iter *OrderFragmentIterator) Next() bool {
-	return iter.inner.Next()
+	iter.next = iter.inner.Next()
+	return iter.next
 }
 
 // Cursor implements the orderbook.OrderFragmentIterator interface.
 func (iter *OrderFragmentIterator) Cursor() (order.Fragment, error) {
-	data := iter.Value()
 	fragment := order.Fragment{}
+	if !iter.next {
+		return fragment, orderbook.ErrCursorOutOfRange
+	}
+	data := iter.inner.Value()
 	err := json.Unmarshal(data, &fragment)
-	return change, err
+	return fragment, err
 }
 
 // Collect implements the orderbook.OrderFragmentIterator interface.
 func (iter *OrderFragmentIterator) Collect() ([]order.Fragment, error) {
 	fragments := []order.Fragment{}
-	iter := store.db.NewIterator(nil, nil)
-	defer iter.Release()
 	for iter.Next() {
-		data := iter.Value()
-		change := order.Fragment{}
-		if err := json.Unmarshal(data, &change); err != nil {
+		fragment, err := iter.Cursor()
+		if err != nil {
 			return fragments, err
 		}
-		fragments = append(fragments, change)
+		fragments = append(fragments, fragment)
 	}
-	return fragments, iter.Error()
+	return fragments, iter.inner.Error()
+}
+
+// Release implements the orderbook.OrderFragmentIterator interface.
+func (iter *OrderFragmentIterator) Release() {
+	iter.inner.Release()
 }
