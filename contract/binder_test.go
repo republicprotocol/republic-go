@@ -27,7 +27,7 @@ var _ = Describe("Contract Binder", func() {
 	testutils.GanacheAfterSuite(func() {
 	})
 
-	Context("when interacting with ethereum smart contracts", func() {
+	testutils.GanacheContext("when interacting with ethereum smart contracts", func() {
 
 		It("should not return a nonce error", func() {
 			numberOfDarknodes := 24
