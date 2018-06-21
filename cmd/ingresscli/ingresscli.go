@@ -14,6 +14,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/http"
@@ -38,7 +39,14 @@ func main() {
 		log.Fatalf("cannot load config: %v", err)
 	}
 
-	_, contractBindings, err := contract.NewBinder(context.Background(), keystore, config)
+	conn, err := contract.Connect(config)
+	if err != nil {
+		log.Fatalf("cannot connect to ethereum: %v", err)
+	}
+
+	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
+
+	contractBindings, err := contract.NewBinder(context.Background(), auth, conn)
 	if err != nil {
 		log.Fatalf("cannot load smart contract: %v", err)
 	}

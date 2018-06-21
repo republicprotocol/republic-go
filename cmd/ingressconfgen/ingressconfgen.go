@@ -20,11 +20,8 @@ func main() {
 	config := map[string]interface{}{
 		"bootstrapMultiAddresses": identity.MultiAddresses{},
 		"ethereum": contract.Config{
-			Network:                 contract.NetworkRopsten,
-			URI:                     "https://ropsten.infura.io",
-			RepublicTokenAddress:    contract.RepublicTokenAddressOnRopsten.String(),
-			DarknodeRegistryAddress: contract.DarknodeRegistryAddressOnRopsten.String(),
-			OrderbookAddress:        contract.OrderbookAddressOnKovan.String(),
+			Network: contract.NetworkRopsten,
+			URI:     "https://ropsten.infura.io",
 		},
 	}
 

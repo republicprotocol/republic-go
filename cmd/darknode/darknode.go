@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math/big"
 	"net"
 	netHttp "net/http"
 	"os"
@@ -71,7 +70,7 @@ func main() {
 	}
 
 	auth := bind.NewKeyedTransactor(config.Keystore.EcdsaKey.PrivateKey)
-	
+
 	// Get ethereum bindings
 	contractBinder, err := contract.NewBinder(context.Background(), auth, conn)
 	if err != nil {
