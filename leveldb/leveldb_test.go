@@ -127,6 +127,8 @@ var _ = Describe("LevelDB storage", func() {
 			for i := 0; i < 100; i++ {
 				err = db.PutChange(changes[i])
 				Expect(err).ShouldNot(HaveOccurred())
+				err = db.PutOrderFragment(orderFragments[i])
+				Expect(err).ShouldNot(HaveOccurred())
 				err = db.PutComputation(computations[i])
 				Expect(err).ShouldNot(HaveOccurred())
 			}
@@ -136,6 +138,13 @@ var _ = Describe("LevelDB storage", func() {
 			defer changesIter.Release()
 			chngs, err := changesIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
+
+			fragmentsIter, err := db.OrderFragments()
+			Expect(err).ShouldNot(HaveOccurred())
+			defer fragmentsIter.Release()
+			frgmnts, err := fragmentsIter.Collect()
+			Expect(err).ShouldNot(HaveOccurred())
+
 			comsIter, err := db.Computations()
 			Expect(err).ShouldNot(HaveOccurred())
 			defer comsIter.Release()
@@ -143,6 +152,7 @@ var _ = Describe("LevelDB storage", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(chngs).Should(HaveLen(len(changes)))
+			Expect(frgmnts).Should(HaveLen(len(orderFragments)))
 			Expect(coms).Should(HaveLen(len(computations)))
 
 			changesIter, err = db.Changes()
@@ -150,6 +160,13 @@ var _ = Describe("LevelDB storage", func() {
 			changesIter.Next()
 			changesCur, err := changesIter.Cursor()
 			Expect(err).ShouldNot(HaveOccurred())
+
+			fragmentsIter, err = db.OrderFragments()
+			Expect(err).ShouldNot(HaveOccurred())
+			fragmentsIter.Next()
+			fragmentsCur, err := fragmentsIter.Cursor()
+			Expect(err).ShouldNot(HaveOccurred())
+
 			comsIter, err = db.Computations()
 			Expect(err).ShouldNot(HaveOccurred())
 			comsIter.Next()
@@ -158,10 +175,14 @@ var _ = Describe("LevelDB storage", func() {
 
 			for i := 0; i < 100; i++ {
 				foundChange := false
+				foundFragment := false
 				foundCom := false
 				for j := 0; j < 100; j++ {
 					if foundChange || changesCur.Equal(&changes[j]) {
 						foundChange = true
+					}
+					if foundFragment || fragmentsCur.Equal(&orderFragments[j]) {
+						foundFragment = true
 					}
 					if foundCom || comsCur.Equal(&computations[j]) {
 						foundCom = true
@@ -170,9 +191,11 @@ var _ = Describe("LevelDB storage", func() {
 						break
 					}
 					changesIter.Next()
+					fragmentsIter.Next()
 					comsIter.Next()
 				}
 				Expect(foundChange).Should(BeTrue())
+				Expect(foundFragment).Should(BeTrue())
 				Expect(foundCom).Should(BeTrue())
 			}
 			err = db.Close()
