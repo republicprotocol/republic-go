@@ -146,7 +146,13 @@ func (ranker *delegateRanker) insertStoredComputationsInBackground() {
 		// block)
 		timer := time.NewTimer(14 * time.Second)
 
-		coms, err := ranker.storer.Computations()
+		comsIter, err := ranker.storer.Computations()
+		if err != nil {
+			logger.Error(fmt.Sprintf("cannot build computations iterator for inserting: %v", err))
+			return
+		}
+
+		coms, err := comsIter.Collect()
 		if err != nil {
 			logger.Error(fmt.Sprintf("cannot load existing computations into ranker: %v", err))
 		}
