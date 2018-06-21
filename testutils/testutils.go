@@ -27,16 +27,15 @@ func GetCIEnv() bool {
 	return ci
 }
 
-// SkipCIContext can be used instead of Context to skip tests when they are
+// GanacheContext can be used instead of Context to skip tests when they are
 // being run in a CI environment (to avoid getting flagged for running Bitcoin
-// mining software).
-func SkipCIContext(description string, f func()) bool {
+// mining software, and Ganache software).
+func GanacheContext(description string, f func()) bool {
 	if GetCIEnv() {
 		return ginkgo.PContext(description, func() {
-			ginkgo.It("SKIPPING LOCAL TESTS", func() {})
+			ginkgo.It("Skipping ganache tests...", func() {})
 		})
 	}
-
 	return ginkgo.Context(description, f)
 }
 
