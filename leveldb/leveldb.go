@@ -7,15 +7,20 @@ import (
 	"path"
 
 	"github.com/republicprotocol/republic-go/ome"
-	"github.com/republicprotocol/republic-go/orderbook"
-
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/syndtr/goleveldb/leveldb"
+)
+
+// Key prefixes to partition data into tables.
+const (
+	TableChanges = []byte{0x01, 0x0, 0x0, 0x0}
 )
 
 // Store is an implementation of storage interfaces using LevelDB to load and
 // store data to persistent storage. It uses a single database instance and
-// high-order bytes for separating data into tables. LevelDB provides a basic
+// high-order bytes for separating data into tables. All keys are 40 bytes
+// long, 8 table prefix bytes and a 32 byte key. LevelDB provides a basic type
 // type of in-memory caching but has no optimisations that are specific to the
 // data.
 type Store struct {
@@ -37,6 +42,41 @@ func NewStore(dir string) (Store, error) {
 // Close the internal LevelDB database.
 func (store *Store) Close() error {
 	return store.db.Close()
+}
+
+// PutChange implements the orderbook.ChangeStorer interface.
+func (store *Store) PutChange(change orderbook.Change) error {
+	data, err := json.Marshal(change)
+	if err != nil {
+		return err
+	}
+	return store.db.Put(append(TableChanges, change.OrderID[:]), data, nil)
+}
+
+// DeleteChange implements the orderbook.ChangeStorer interface.
+func (store *Store) DeleteChange(id order.ID) error {
+	return store.db.Delete(append(TableChanges, id[:]), nil)
+}
+
+// Change implements the orderbook.ChangeStorer interface.
+func (store *Store) Change(id order.ID) (orderbook.Change, error) {
+	change := orderbook.Change{}
+	data, err := store.db.Get(append(TableChanges, id[:]), nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			err = orderbook.ErrChangeNotFound
+		}
+		return change, err
+	}
+	if err := json.Unmarshal(data, &change); err != nil {
+		return change, err
+	}
+	return change, nil
+}
+
+// Changes implements the orderbook.ChangeStorer interface.
+func (store *Store) Changes() (orderbook.ChangeIterator, error) {
+
 }
 
 // InsertOrderFragment implements the orderbook.Storer interface.
@@ -101,7 +141,7 @@ func (store *Store) Order(id order.ID) (order.Order, error) {
 // Orders implements the orderbook.Storer interface.
 func (store *Store) Orders() ([]order.Order, error) {
 	ords := []order.Order{}
-	iter := store.orders.NewIterator(nil, nil)
+	iter := store.db.NewIterator(nil, nil)
 	defer iter.Release()
 	for iter.Next() {
 		data := iter.Value()
