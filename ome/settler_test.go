@@ -1,8 +1,12 @@
 package ome_test
 
 import (
+	"fmt"
+	"os"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/ome"
 
 	"github.com/republicprotocol/republic-go/testutils"
@@ -12,7 +16,7 @@ const NumberOfNodes = 24
 
 var _ = Describe("Settler", func() {
 	var (
-		storers   [NumberOfNodes]Storer
+		storers   [NumberOfNodes]*leveldb.Store
 		smpcers   [NumberOfNodes]*testutils.Smpc
 		contracts [NumberOfNodes]*omeBinder
 		settles   [NumberOfNodes]Settler
@@ -20,10 +24,18 @@ var _ = Describe("Settler", func() {
 
 	BeforeEach(func() {
 		for i := 0; i < NumberOfNodes; i++ {
-			storers[i] = testutils.NewStorer()
+			storer, err := leveldb.NewStore(fmt.Sprintf("./data-%v.out", i))
+			Ω(err).ShouldNot(HaveOccurred())
+			storers[i] = storer
 			smpcers[i] = testutils.NewAlwaysMatchSmpc()
 			contracts[i] = newOmeBinder()
 			settles[i] = NewSettler(storers[i], smpcers[i], contracts[i])
+		}
+	})
+
+	AfterEach(func() {
+		for i := 0; i < NumberOfNodes; i++ {
+			os.RemoveAll(fmt.Sprintf("./data-%v.out", i))
 		}
 	})
 
@@ -36,8 +48,8 @@ var _ = Describe("Settler", func() {
 			sellShares, err := sell.Split(int64(NumberOfNodes), int64(2*(NumberOfNodes+1)/3))
 			Ω(err).ShouldNot(HaveOccurred())
 			for i := 0; i < NumberOfNodes; i++ {
-				Ω(storers[i].InsertOrderFragment(buyShares[i])).ShouldNot(HaveOccurred())
-				Ω(storers[i].InsertOrderFragment(sellShares[i])).ShouldNot(HaveOccurred())
+				Ω(storers[i].PutOrderFragment(buyShares[i])).ShouldNot(HaveOccurred())
+				Ω(storers[i].PutOrderFragment(sellShares[i])).ShouldNot(HaveOccurred())
 			}
 
 			for i := 0; i < NumberOfNodes; i++ {

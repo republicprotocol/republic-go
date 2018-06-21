@@ -1,10 +1,12 @@
 package ome_test
 
 import (
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/ome"
 
 	"github.com/republicprotocol/republic-go/testutils"
@@ -15,13 +17,18 @@ var numberOfComputationsToTest = 100
 var _ = Describe("Confirmer", func() {
 	var confirmer Confirmer
 	var contract *omeBinder
-	var storer Storer
+	var storer *leveldb.Store
 
 	BeforeEach(func() {
+		var err error
 		depth, pollInterval := uint(0), time.Second
 		contract = newOmeBinder()
-		storer = testutils.NewStorer()
+		storer, err = leveldb.NewStore("./data.out")
 		confirmer = NewConfirmer(storer, contract, pollInterval, depth)
+	})
+
+	AfterEach(func() {
+		os.RemoveAll("./data.out")
 	})
 
 	It("should be able to confirm order on the ren ledger", func(d Done) {
@@ -35,7 +42,7 @@ var _ = Describe("Confirmer", func() {
 			computations[i] = testutils.RandomComputation()
 			orderIDs[computations[i].Buy] = struct{}{}
 			orderIDs[computations[i].Sell] = struct{}{}
-			storer.InsertComputation(computations[i])
+			storer.PutComputation(computations[i])
 		}
 
 		// Open all the orders

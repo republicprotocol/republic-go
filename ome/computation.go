@@ -67,14 +67,14 @@ type Computations []Computation
 // A Computation is a combination of a buy order.Order and a sell order.Order.
 type Computation struct {
 	ID        ComputationID      `json:"id"`
-	State     ComputationState   `json:"state"`
+	Buy       order.ID           `json:"buy"`
+	Sell      order.ID           `json:"sell"`
+	EpochHash [32]byte           `json:"epochHash"`
 	Priority  orderbook.Priority `json:"priority"`
-	Match     bool               `json:"match"`
-	Timestamp time.Time          `json:"timestamp"`
 
-	Buy       order.ID `json:"buy"`
-	Sell      order.ID `json:"sell"`
-	EpochHash [32]byte `json:"epochHash"`
+	Match     bool             `json:"match"`
+	State     ComputationState `json:"state"`
+	Timestamp time.Time        `json:"timestamp"`
 }
 
 // NewComputation returns a pending Computation between a buy order.Order and a

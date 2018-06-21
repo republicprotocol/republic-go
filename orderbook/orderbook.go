@@ -2,7 +2,6 @@ package orderbook
 
 import (
 	"context"
-	"encoding/base64"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -39,12 +38,12 @@ type orderbook struct {
 	crypto.RsaKey
 
 	syncer Syncer
-	storer Storer
+	storer OrderFragmentStorer
 }
 
 // NewOrderbook returns an Orderbok that uses a crypto.RsaKey to decrypt the
 // order.EncryptedFragments that it receives, and stores them in a Storer.
-func NewOrderbook(key crypto.RsaKey, syncer Syncer, storer Storer) Orderbook {
+func NewOrderbook(key crypto.RsaKey, syncer Syncer, storer OrderFragmentStorer) Orderbook {
 	return &orderbook{
 		RsaKey: key,
 
@@ -60,12 +59,12 @@ func (book *orderbook) OpenOrder(ctx context.Context, orderFragment order.Encryp
 		return err
 	}
 	if fragment.OrderParity == order.ParityBuy {
-		logger.BuyOrderReceived(logger.LevelDebugLow, base64.StdEncoding.EncodeToString(fragment.OrderID[:8]), base64.StdEncoding.EncodeToString(fragment.ID[:8]))
+		logger.BuyOrderReceived(logger.LevelDebugLow, fragment.OrderID.String(), fragment.ID.String())
 	} else {
-		logger.SellOrderReceived(logger.LevelDebugLow, base64.StdEncoding.EncodeToString(fragment.OrderID[:8]), base64.StdEncoding.EncodeToString(fragment.ID[:8]))
+		logger.SellOrderReceived(logger.LevelDebugLow, fragment.OrderID.String(), fragment.ID.String())
 	}
 
-	return book.storer.InsertOrderFragment(fragment)
+	return book.storer.PutOrderFragment(fragment)
 }
 
 // Sync implements the Syncer interface.

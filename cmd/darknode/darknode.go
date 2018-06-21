@@ -101,7 +101,7 @@ func main() {
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
 
-	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(&store, &contractBinder, 32), &store)
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(store, &contractBinder, 32), store)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
@@ -159,14 +159,14 @@ func main() {
 		if err != nil {
 			log.Fatalf("cannot get current epoch: %v", err)
 		}
-		ranker, err := ome.NewRanker(done, config.Address, &store, epoch)
+		ranker, err := ome.NewRanker(done, config.Address, store, store, epoch)
 		if err != nil {
 			log.Fatalf("cannot create new ranker: %v", err)
 		}
-		matcher := ome.NewMatcher(&store, smpcer)
-		confirmer := ome.NewConfirmer(&store, &contractBinder, 14*time.Second, 1)
-		settler := ome.NewSettler(&store, smpcer, &contractBinder)
-		ome := ome.NewOme(config.Address, ranker, matcher, confirmer, settler, &store, orderbook, smpcer, epoch)
+		matcher := ome.NewMatcher(store, smpcer)
+		confirmer := ome.NewConfirmer(store, &contractBinder, 14*time.Second, 1)
+		settler := ome.NewSettler(store, smpcer, &contractBinder)
+		ome := ome.NewOme(config.Address, ranker, matcher, confirmer, settler, store, orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
 			// Synchronizing the OME

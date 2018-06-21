@@ -15,6 +15,10 @@ import (
 	"github.com/republicprotocol/republic-go/registry"
 )
 
+type RankerStorer interface {
+	PutOrder(order order.ID)
+}
+
 // A Ranker consumes orders and produces Computations that are prioritized
 // based on the combined priorities of the involved orders.
 type Ranker interface {
@@ -38,9 +42,10 @@ type Ranker interface {
 // delegateRanker delegates orders to specific epochRanker according to the
 // epoch Hash and collects computations back from all the epochRankers.
 type delegateRanker struct {
-	done    <-chan struct{}
-	address identity.Address
-	storer  Storer
+	done        <-chan struct{}
+	address     identity.Address
+	storer      Storer
+	changeStore orderbook.ChangeStorer
 
 	computationsMu *sync.Mutex
 	computations   Computations
@@ -59,11 +64,12 @@ type delegateRanker struct {
 // Computations. The Ranker will run background processes until the done
 // channel is closed, after which the Ranker will no longer consume
 // orderbook.Changeset or produce Computation.
-func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, epoch registry.Epoch) (Ranker, error) {
+func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, changeStore orderbook.ChangeStorer, epoch registry.Epoch) (Ranker, error) {
 	ranker := &delegateRanker{
-		done:    done,
-		address: address,
-		storer:  storer,
+		done:        done,
+		address:     address,
+		storer:      storer,
+		changeStore: changeStore,
 
 		computationsMu: new(sync.Mutex),
 		computations:   Computations{},
@@ -78,7 +84,7 @@ func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, ep
 	if err != nil {
 		return &delegateRanker{}, fmt.Errorf("cannot get ranker position from epoch: %v", err)
 	}
-	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos, epoch)
+	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos, changeStore, epoch)
 
 	return ranker, nil
 }
@@ -88,15 +94,16 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 	ranker.rankerMu.Lock()
 	defer ranker.rankerMu.Unlock()
 
+	if change.OrderStatus != order.Open {
+		ranker.removeComputations(change.OrderID)
+		return
+	}
+
 	coms := Computations{}
 	if ranker.rankerCurrEpoch != nil && change.BlockNumber >= ranker.rankerCurrEpoch.epoch.BlockNumber {
 		coms = ranker.rankerCurrEpoch.insertChange(change)
 	} else if ranker.rankerPrevEpoch != nil && change.BlockNumber >= ranker.rankerPrevEpoch.epoch.BlockNumber {
 		coms = ranker.rankerPrevEpoch.insertChange(change)
-	}
-
-	if change.OrderStatus != order.Open {
-		ranker.removeComputations(change.OrderID)
 	}
 
 	ranker.insertComputations(coms)
@@ -136,7 +143,7 @@ func (ranker *delegateRanker) OnChangeEpoch(epoch registry.Epoch) {
 		logger.Error(fmt.Sprintf("cannot get ranker position from epoch: %v", err))
 		return
 	}
-	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos, epoch)
+	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos, ranker.changeStore, epoch)
 }
 
 func (ranker *delegateRanker) insertStoredComputationsInBackground() {
@@ -146,7 +153,14 @@ func (ranker *delegateRanker) insertStoredComputationsInBackground() {
 		// block)
 		timer := time.NewTimer(14 * time.Second)
 
-		coms, err := ranker.storer.Computations()
+		comsIter, err := ranker.storer.Computations()
+		if err != nil {
+			logger.Error(fmt.Sprintf("cannot build computations iterator for inserting: %v", err))
+			return
+		}
+		defer comsIter.Release()
+
+		coms, err := comsIter.Collect()
 		if err != nil {
 			logger.Error(fmt.Sprintf("cannot load existing computations into ranker: %v", err))
 		}
@@ -189,7 +203,7 @@ func (ranker *delegateRanker) insertComputation(com Computation) {
 		ranker.computations[:index],
 		append([]Computation{com}, ranker.computations[index:]...)...)
 
-	if err := ranker.storer.InsertComputation(com); err != nil {
+	if err := ranker.storer.PutComputation(com); err != nil {
 		logger.Error(fmt.Sprintf("cannot insert new computation %v: %v", com.ID, err))
 	}
 }
@@ -224,51 +238,59 @@ func (ranker *delegateRanker) posFromEpoch(epoch registry.Epoch) (int, int, erro
 // It only cares about orders from one dedicated epoch, so that we won't
 // cross match orders from different epoch.
 type epochRanker struct {
-	epoch           registry.Epoch
 	numberOfRankers int
 	pos             int
-	buys            map[order.ID]orderbook.Priority
-	sells           map[order.ID]orderbook.Priority
-	traders         map[order.ID]string
+	epoch           registry.Epoch
+	storer          orderbook.ChangeStorer
+
+	seen map[ComputationID]struct{}
 }
 
-func newEpochRanker(numberOfRankers, pos int, epoch registry.Epoch) *epochRanker {
+func newEpochRanker(numberOfRankers, pos int, storer orderbook.ChangeStorer, epoch registry.Epoch) *epochRanker {
 	return &epochRanker{
 		epoch:           epoch,
 		numberOfRankers: numberOfRankers,
 		pos:             pos,
-		buys:            map[order.ID]orderbook.Priority{},
-		sells:           map[order.ID]orderbook.Priority{},
-		traders:         map[order.ID]string{},
+		storer:          storer,
+
+		seen: map[ComputationID]struct{}{},
 	}
 }
 
 func (ranker *epochRanker) insertChange(change orderbook.Change) Computations {
-	if change.OrderParity == order.ParityBuy {
-		return ranker.insertBuyChange(change)
-	}
-	if change.OrderParity == order.ParitySell {
-		return ranker.insertSellChange(change)
-	}
-	return Computations{}
-}
-
-func (ranker *epochRanker) insertBuyChange(change orderbook.Change) Computations {
+	computations := Computations{}
 	if change.OrderStatus != order.Open {
-		delete(ranker.buys, change.OrderID)
-		delete(ranker.traders, change.OrderID)
-		return Computations{}
+		return computations
 	}
 
-	computations := make([]Computation, 0, len(ranker.sells)/2)
-	ranker.buys[change.OrderID] = change.OrderPriority
-	ranker.traders[change.OrderID] = change.Trader
-	for sell, sellPriority := range ranker.sells {
-		if change.Trader != "" && change.Trader == ranker.traders[sell] {
+	changeIter, err := ranker.storer.Changes()
+	if err != nil {
+		logger.Error(fmt.Sprintf("cannot build change iterator for ranking: %v", err))
+		return computations
+	}
+	defer changeIter.Release()
+
+	for changeIter.Next() {
+		otherChange, err := changeIter.Cursor()
+		if err != nil {
+			logger.Error(fmt.Sprintf("cannot get change iterator cursor for ranking: %v", err))
 			continue
 		}
 
-		priority := change.OrderPriority + sellPriority
+		if otherChange.BlockNumber < ranker.epoch.BlockNumber {
+			continue
+		}
+		if otherChange.OrderStatus != order.Open {
+			continue
+		}
+		if change.OrderParity == otherChange.OrderParity {
+			continue
+		}
+		if change.Trader == otherChange.Trader {
+			continue
+		}
+
+		priority := change.OrderPriority + otherChange.OrderPriority
 		rankMod := int(math.Log2(float64(ranker.numberOfRankers)))
 		if rankMod < 1 {
 			rankMod = 1
@@ -277,44 +299,21 @@ func (ranker *epochRanker) insertBuyChange(change orderbook.Change) Computations
 			continue
 		}
 
-		priorityCom := NewComputation(change.OrderID, sell, ranker.epoch.Hash)
-		priorityCom.Priority = priority
-		priorityCom.Timestamp = time.Now()
-		priorityCom.State = ComputationStateNil
-		computations = append(computations, priorityCom)
-	}
-	return computations
-}
-
-func (ranker *epochRanker) insertSellChange(change orderbook.Change) Computations {
-	if change.OrderStatus != order.Open {
-		delete(ranker.sells, change.OrderID)
-		delete(ranker.traders, change.OrderID)
-		return Computations{}
-	}
-
-	computations := make([]Computation, 0, len(ranker.buys)/2)
-	ranker.sells[change.OrderID] = change.OrderPriority
-	ranker.traders[change.OrderID] = change.Trader
-	for buy, buyPriority := range ranker.buys {
-		if change.Trader != "" && change.Trader == ranker.traders[buy] {
+		var com Computation
+		if change.OrderParity == order.ParityBuy {
+			com = NewComputation(change.OrderID, otherChange.OrderID, ranker.epoch.Hash)
+		} else {
+			com = NewComputation(otherChange.OrderID, change.OrderID, ranker.epoch.Hash)
+		}
+		if _, ok := ranker.seen[com.ID]; ok {
 			continue
 		}
-
-		priority := change.OrderPriority + buyPriority
-		rankMod := int(math.Log2(float64(ranker.numberOfRankers)))
-		if rankMod < 1 {
-			rankMod = 1
-		}
-		if int(priority)%rankMod != ranker.pos%rankMod {
-			continue
-		}
-
-		priorityCom := NewComputation(buy, change.OrderID, ranker.epoch.Hash)
-		priorityCom.Priority = priority
-		priorityCom.Timestamp = time.Now()
-		priorityCom.State = ComputationStateNil
-		computations = append(computations, priorityCom)
+		com.Priority = priority
+		com.Timestamp = time.Now()
+		com.State = ComputationStateNil
+		computations = append(computations, com)
+		ranker.seen[com.ID] = struct{}{}
 	}
+
 	return computations
 }

@@ -1,10 +1,12 @@
 package ome_test
 
 import (
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/registry"
 
@@ -23,7 +25,7 @@ var (
 )
 
 var _ = Describe("OME Ranker", func() {
-	var storer Storer
+	var storer *leveldb.Store
 	var ranker Ranker
 	var done chan struct{}
 	var epoch registry.Epoch
@@ -36,20 +38,26 @@ var _ = Describe("OME Ranker", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			epoch = newEpoch(0, addr)
 			done = make(chan struct{})
-			storer = testutils.NewStorer()
-			ranker, err = NewRanker(done, addr, storer, epoch)
+			storer, err = leveldb.NewStore("./data.out")
+			Ω(err).ShouldNot(HaveOccurred())
+			ranker, err = NewRanker(done, addr, storer, storer, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
 			close(done)
+			os.RemoveAll("./data.out")
 		})
 
-		It("should create computations with new opened orders ", func() {
+		It("should create computations with new opened orders", func() {
 			for i := 0; i < NumberOfOrderPairs; i++ {
 				buy, sell := testutils.RandomBuyOrder(), testutils.RandomSellOrder()
 				buyChange := newChange(buy, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
+				buyChange.Trader = "buyer"
+				Ω(storer.PutChange(buyChange)).ShouldNot(HaveOccurred())
 				sellChange := newChange(sell, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
+				sellChange.Trader = "seller"
+				Ω(storer.PutChange(sellChange)).ShouldNot(HaveOccurred())
 				ranker.InsertChange(buyChange)
 				ranker.InsertChange(sellChange)
 			}
@@ -62,13 +70,21 @@ var _ = Describe("OME Ranker", func() {
 			for i := 0; i < NumberOfOrderPairs; i++ {
 				buy, sell := testutils.RandomBuyOrder(), testutils.RandomSellOrder()
 				buyChange := newChange(buy, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
+				buyChange.Trader = "buyer"
+				Ω(storer.PutChange(buyChange)).ShouldNot(HaveOccurred())
 				ranker.InsertChange(buyChange)
 				cancelBuy := newChange(buy, order.Canceled, orderbook.Priority(i), EpochBlockNumbers[0])
+				cancelBuy.Trader = "buyer"
+				Ω(storer.PutChange(cancelBuy)).ShouldNot(HaveOccurred())
 				ranker.InsertChange(cancelBuy)
 
 				sellChange := newChange(sell, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
+				sellChange.Trader = "seller"
+				Ω(storer.PutChange(sellChange)).ShouldNot(HaveOccurred())
 				ranker.InsertChange(sellChange)
 				cancelSell := newChange(sell, order.Canceled, orderbook.Priority(i), EpochBlockNumbers[0])
+				cancelSell.Trader = "seller"
+				Ω(storer.PutChange(cancelBuy)).ShouldNot(HaveOccurred())
 				ranker.InsertChange(cancelSell)
 			}
 			computations := make([]Computation, 128)
@@ -76,11 +92,15 @@ var _ = Describe("OME Ranker", func() {
 			Ω(i).Should(BeZero())
 		})
 
-		It("should return number of computations no more the size of the given variable ", func() {
+		It("should return number of computations no more the size of the given variable", func() {
 			for i := 0; i < NumberOfOrderPairs; i++ {
 				buy, sell := testutils.RandomBuyOrder(), testutils.RandomSellOrder()
 				buyChange := newChange(buy, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
+				buyChange.Trader = "buyer"
+				Ω(storer.PutChange(buyChange)).ShouldNot(HaveOccurred())
 				sellChange := newChange(sell, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
+				sellChange.Trader = "seller"
+				Ω(storer.PutChange(sellChange)).ShouldNot(HaveOccurred())
 				ranker.InsertChange(buyChange)
 				ranker.InsertChange(sellChange)
 			}
@@ -89,13 +109,15 @@ var _ = Describe("OME Ranker", func() {
 			Ω(i).Should(Equal(len(computations)))
 		})
 
-		It("should create computations from orders from same trader ", func() {
+		It("should not create computations from orders from same trader", func() {
 			for i := 0; i < NumberOfOrderPairs; i++ {
 				buy, sell := testutils.RandomBuyOrder(), testutils.RandomSellOrder()
 				buyChange := newChange(buy, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
 				buyChange.Trader = "trader"
+				Ω(storer.PutChange(buyChange)).ShouldNot(HaveOccurred())
 				sellChange := newChange(sell, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
 				sellChange.Trader = "trader"
+				Ω(storer.PutChange(sellChange)).ShouldNot(HaveOccurred())
 				ranker.InsertChange(buyChange)
 				ranker.InsertChange(sellChange)
 			}
@@ -111,20 +133,22 @@ var _ = Describe("OME Ranker", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			epoch = newEpoch(0, addr)
 			done = make(chan struct{})
-			storer = testutils.NewStorer()
+			storer, err = leveldb.NewStore("./data.out")
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
 			close(done)
+			os.RemoveAll("./data.out")
 		})
 
 		It("should insert computations from the storer when started", func() {
 			for i := 0; i < NumberOfOrderPairs; i++ {
 				comp := testutils.RandomComputation()
-				Ω(storer.InsertComputation(comp)).ShouldNot(HaveOccurred())
+				Ω(storer.PutComputation(comp)).ShouldNot(HaveOccurred())
 			}
 
-			ranker, err = NewRanker(done, addr, storer, epoch)
+			ranker, err = NewRanker(done, addr, storer, storer, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
 			time.Sleep(15 * time.Second)
 
@@ -140,7 +164,13 @@ var _ = Describe("OME Ranker", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			epoch = newEpoch(0, addr)
 			done = make(chan struct{})
-			storer = testutils.NewStorer()
+			storer, err = leveldb.NewStore("./data.out")
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			close(done)
+			os.RemoveAll("./data.out")
 		})
 
 		It("should only generate computations meant for its position", func() {
@@ -154,13 +184,17 @@ var _ = Describe("OME Ranker", func() {
 			}
 			epoch.Pods = append(epoch.Pods, anotherPod)
 			epoch.Darknodes = append(epoch.Darknodes, another)
-			ranker, err = NewRanker(done, addr, storer, epoch)
+			ranker, err = NewRanker(done, addr, storer, storer, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < NumberOfOrderPairs; i++ {
 				buy, sell := testutils.RandomBuyOrder(), testutils.RandomSellOrder()
 				buyChange := newChange(buy, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
+				buyChange.Trader = "buyer"
+				Ω(storer.PutChange(buyChange)).ShouldNot(HaveOccurred())
 				sellChange := newChange(sell, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
+				sellChange.Trader = "seller"
+				Ω(storer.PutChange(sellChange)).ShouldNot(HaveOccurred())
 				ranker.InsertChange(buyChange)
 				ranker.InsertChange(sellChange)
 			}
@@ -177,13 +211,15 @@ var _ = Describe("OME Ranker", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			epoch = newEpoch(0, addr)
 			done = make(chan struct{})
-			storer = testutils.NewStorer()
-			ranker, err = NewRanker(done, addr, storer, epoch)
+			storer, err = leveldb.NewStore("./data.out")
+			Ω(err).ShouldNot(HaveOccurred())
+			ranker, err = NewRanker(done, addr, storer, storer, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
 			close(done)
+			os.RemoveAll("./data.out")
 		})
 
 		It("should ignore same epoch change event", func() {
@@ -191,7 +227,11 @@ var _ = Describe("OME Ranker", func() {
 			for i := 0; i < NumberOfOrderPairs/2; i++ {
 				buy, sell := testutils.RandomBuyOrder(), testutils.RandomSellOrder()
 				buyChange := newChange(buy, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
+				buyChange.Trader = "buyer"
+				Ω(storer.PutChange(buyChange)).ShouldNot(HaveOccurred())
 				sellChange := newChange(sell, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
+				sellChange.Trader = "seller"
+				Ω(storer.PutChange(sellChange)).ShouldNot(HaveOccurred())
 				ranker.InsertChange(buyChange)
 				ranker.InsertChange(sellChange)
 			}
@@ -199,7 +239,11 @@ var _ = Describe("OME Ranker", func() {
 			for i := NumberOfOrderPairs / 2; i < NumberOfOrderPairs; i++ {
 				buy, sell := testutils.RandomBuyOrder(), testutils.RandomSellOrder()
 				buyChange := newChange(buy, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
+				buyChange.Trader = "buyer"
+				Ω(storer.PutChange(buyChange)).ShouldNot(HaveOccurred())
 				sellChange := newChange(sell, order.Open, orderbook.Priority(i), EpochBlockNumbers[0])
+				sellChange.Trader = "seller"
+				Ω(storer.PutChange(sellChange)).ShouldNot(HaveOccurred())
 				ranker.InsertChange(buyChange)
 				ranker.InsertChange(sellChange)
 			}
@@ -210,16 +254,20 @@ var _ = Describe("OME Ranker", func() {
 		})
 
 		It("should not crash when epoch change", func() {
-			for i := 0; i < len(EpochBlockNumbers); i++ {
+			for i := 0; i < len(EpochBlockNumbers)-1; i++ {
 				for j := 0; j < NumberOfOrderPairs; j++ {
 					buy, sell := testutils.RandomBuyOrder(), testutils.RandomSellOrder()
 					buyChange := newChange(buy, order.Open, orderbook.Priority(j), EpochBlockNumbers[i])
+					buyChange.Trader = "buyer"
+					Ω(storer.PutChange(buyChange)).ShouldNot(HaveOccurred())
 					sellChange := newChange(sell, order.Open, orderbook.Priority(j), EpochBlockNumbers[i])
+					sellChange.Trader = "seller"
+					Ω(storer.PutChange(sellChange)).ShouldNot(HaveOccurred())
 					ranker.InsertChange(buyChange)
 					ranker.InsertChange(sellChange)
 				}
 
-				epoch := newEpoch(i, addr)
+				epoch := newEpoch(i+1, addr)
 				ranker.OnChangeEpoch(epoch)
 				computations := make([]Computation, 128)
 				n := ranker.Computations(computations)
@@ -235,7 +283,11 @@ var _ = Describe("OME Ranker", func() {
 				for j := 0; j < NumberOfOrderPairs; j++ {
 					buy, sell := testutils.RandomBuyOrder(), testutils.RandomSellOrder()
 					buyChange := newChange(buy, order.Open, orderbook.Priority(j), EpochBlockNumbers[i-1])
+					buyChange.Trader = "buyer"
+					Ω(storer.PutChange(buyChange)).ShouldNot(HaveOccurred())
 					sellChange := newChange(sell, order.Open, orderbook.Priority(j), EpochBlockNumbers[i-1])
+					sellChange.Trader = "seller"
+					Ω(storer.PutChange(sellChange)).ShouldNot(HaveOccurred())
 					ranker.InsertChange(buyChange)
 					ranker.InsertChange(sellChange)
 				}
@@ -257,7 +309,11 @@ var _ = Describe("OME Ranker", func() {
 				for j := 0; j < NumberOfOrderPairs; j++ {
 					buy, sell := testutils.RandomBuyOrder(), testutils.RandomSellOrder()
 					buyChange := newChange(buy, order.Open, orderbook.Priority(j), EpochBlockNumbers[i-2])
+					buyChange.Trader = "buyer"
+					Ω(storer.PutChange(buyChange)).ShouldNot(HaveOccurred())
 					sellChange := newChange(sell, order.Open, orderbook.Priority(j), EpochBlockNumbers[i-2])
+					sellChange.Trader = "buyer"
+					Ω(storer.PutChange(sellChange)).ShouldNot(HaveOccurred())
 					ranker.InsertChange(buyChange)
 					ranker.InsertChange(sellChange)
 				}
@@ -278,22 +334,24 @@ var _ = Describe("OME Ranker", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			epoch = newEpoch(0, addr)
 			done = make(chan struct{})
-			storer = testutils.NewStorer()
+			storer, err = leveldb.NewStore("./data.out")
+			Ω(err).ShouldNot(HaveOccurred())
 			wrongAddr, err = testutils.RandomAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
 			close(done)
+			os.RemoveAll("./data.out")
 		})
 
 		It("should error with a wrong epoch", func() {
-			ranker, err = NewRanker(done, wrongAddr, storer, epoch)
+			ranker, err = NewRanker(done, wrongAddr, storer, storer, epoch)
 			Ω(err).Should(HaveOccurred())
 		})
 
 		It("should ignore the epoch when the ranker is not in and print out an error message ", func() {
-			ranker, err = NewRanker(done, addr, storer, epoch)
+			ranker, err = NewRanker(done, addr, storer, storer, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
 			epoch := newEpoch(1, wrongAddr)
 			ranker.OnChangeEpoch(epoch)

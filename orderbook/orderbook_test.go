@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/orderbook"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -30,7 +32,11 @@ var _ = Describe("Orderbook", func() {
 
 			// Create mock syncer and storer
 			syncer := testutils.NewSyncer(numberOfOrders)
-			storer := testutils.NewStorer()
+			storer, err := leveldb.NewStore("./data.out")
+			Expect(err).ShouldNot(HaveOccurred())
+			defer func() {
+				os.RemoveAll("./data.out")
+			}()
 
 			// Create orderbook
 			orderbook := NewOrderbook(rsaKey, syncer, storer)
@@ -52,7 +58,13 @@ var _ = Describe("Orderbook", func() {
 				err = orderbook.OpenOrder(ctx, encryptedOrderFragments[i])
 				Ω(err).ShouldNot(HaveOccurred())
 			}
-			Ω(storer.NumOrderFragments()).Should(Equal(numberOfOrders))
+
+			iter, err := storer.OrderFragments()
+			Expect(err).ShouldNot(HaveOccurred())
+			defer iter.Release()
+			collection, err := iter.Collect()
+			Expect(err).ShouldNot(HaveOccurred())
+			Ω(len(collection)).Should(Equal(numberOfOrders))
 		})
 
 		It("should be able to sync with the ledger by the syncer", func() {
@@ -62,7 +74,11 @@ var _ = Describe("Orderbook", func() {
 
 			// Create mock syncer and storer
 			syncer := testutils.NewSyncer(numberOfOrders)
-			storer := testutils.NewStorer()
+			storer, err := leveldb.NewStore("./data.out")
+			Expect(err).ShouldNot(HaveOccurred())
+			defer func() {
+				os.RemoveAll("./data.out")
+			}()
 
 			// Create orderbook
 			orderbook := NewOrderbook(rsaKey, syncer, storer)

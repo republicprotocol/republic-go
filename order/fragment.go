@@ -3,6 +3,7 @@ package order
 import (
 	"bytes"
 	"crypto/rsa"
+	"encoding/base64"
 	"encoding/binary"
 	"time"
 
@@ -13,9 +14,14 @@ import (
 // An FragmentID is the Keccak256 hash of a Fragment.
 type FragmentID [32]byte
 
-// Equal returns an equality check between two orderFragment ID.
+// Equal returns an equality check between two FragmentIDs.
 func (id FragmentID) Equal(other FragmentID) bool {
 	return bytes.Equal(id[:], other[:])
+}
+
+// String returns a truncated base64 encoding of the FragmentID.
+func (id FragmentID) String() string {
+	return base64.StdEncoding.EncodeToString(id[:8])
 }
 
 // A Fragment is a secret share of an Order, created using Shamir's secret
@@ -54,7 +60,7 @@ func NewFragment(orderID ID, orderType Type, orderParity Parity, orderSettlement
 	if err != nil {
 		return Fragment{}, err
 	}
-	
+
 	fragment.ID = FragmentID(fragmentHash)
 	return fragment, nil
 }
