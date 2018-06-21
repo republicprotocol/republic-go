@@ -65,7 +65,7 @@ var _ = Describe("Streaming", func() {
 
 			_, err := clientStreamer.Open(context.Background(), serviceMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
-		}, 30 /* 30 second timeout */)
+		}, 60 /* 60 second timeout */)
 
 		It("should connect when the service is started after the connection request", func(done Done) {
 			defer close(done)
@@ -82,7 +82,7 @@ var _ = Describe("Streaming", func() {
 			_, err := clientStreamer.Open(context.Background(), serviceMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 
-		}, 30 /* 30 second timeout */)
+		}, 60 /* 60 second timeout */)
 
 	})
 
@@ -299,7 +299,7 @@ var _ = Describe("Streaming", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(message.i).Should(Equal(int64(420)))
 
-			}, 30 /* 30s timeout */)
+			}, 60 /* 60s timeout */)
 
 			It("should receive messages from the client without the client opening a new stream", func(done Done) {
 				defer close(done)
@@ -329,7 +329,7 @@ var _ = Describe("Streaming", func() {
 				err = serviceStream.Recv(&message)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(message.i).Should(Equal(int64(420)))
-			}, 30 /* 30s timeout */)
+			}, 60 /* 60s timeout */)
 		})
 	})
 })

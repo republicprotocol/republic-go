@@ -167,7 +167,7 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 				continue
 			}
 		}
-		if err := confirmer.storer.InsertComputation(com); err != nil {
+		if err := confirmer.storer.PutComputation(com); err != nil {
 			select {
 			case <-done:
 				return

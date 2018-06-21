@@ -12,6 +12,10 @@ import (
 // ErrOpenOpenedOrder is returned when trying to open an opened order.
 var ErrOpenOpenedOrder = errors.New("cannot open order that is already open")
 
+// ErrOrderNotFound is returnd when the ledger attempts to access an order that
+// cannot be found.
+var ErrOrderNotFound = errors.New("order not found")
+
 // Constant value of trader address for testing
 const (
 	GenesisBuyer  = "0x90e6572eF66a11690b09dd594a18f36Cf76055C8"

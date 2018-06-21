@@ -1,10 +1,12 @@
 package ome_test
 
 import (
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/ome"
 
 	"github.com/republicprotocol/republic-go/cal"
@@ -25,7 +27,7 @@ var _ = Describe("Ome", func() {
 		addr     identity.Address
 		err      error
 		epoch    cal.Epoch
-		storer   Storer
+		storer   *leveldb.Store
 		book     orderbook.Orderbook
 		smpcer   smpc.Smpcer
 		ledger   cal.RenLedger
@@ -45,14 +47,15 @@ var _ = Describe("Ome", func() {
 			addr, err = testutils.RandomAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 			epoch = newEpoch(0, addr)
-			storer = testutils.NewStorer()
+			storer, err = leveldb.NewStore("./data.out")
+			Ω(err).ShouldNot(HaveOccurred())
 			book, err = testutils.NewOrderbook()
 			Ω(err).ShouldNot(HaveOccurred())
 			smpcer = testutils.NewAlwaysMatchSmpc()
 			ledger = testutils.NewRenLedger()
 			accounts = testutils.NewDarkpoolAccounts()
 
-			ranker, err = NewRanker(done, addr, storer, epoch)
+			ranker, err = NewRanker(done, addr, storer, storer, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
 			matcher = NewMatcher(storer, smpcer)
 			confirmer = NewConfirmer(storer, ledger, PollInterval, Depth)
@@ -61,6 +64,7 @@ var _ = Describe("Ome", func() {
 
 		AfterEach(func() {
 			close(done)
+			os.RemoveAll("./data.out")
 		})
 
 		It("should be able to sync with the order book ", func() {

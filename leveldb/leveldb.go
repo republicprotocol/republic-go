@@ -7,144 +7,193 @@ import (
 	"path"
 
 	"github.com/republicprotocol/republic-go/ome"
-	"github.com/republicprotocol/republic-go/orderbook"
-
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-// Store is an implementation of the orderbook.Storer interface that uses
-// LevelDB to load and store data to persistent storage.
+// Key prefixes to partition data into tables.
+var (
+	TableOrderbookPointers  = []byte{0x01, 0x0, 0x0, 0x0}
+	TableOrderbookChanges   = []byte{0x02, 0x0, 0x0, 0x0}
+	TableOrderbookFragments = []byte{0x03, 0x0, 0x0, 0x0}
+	TableOmeComputations    = []byte{0x04, 0x0, 0x0, 0x0}
+)
+
+// Key postfixes used by iterators to define table ranges.
+var (
+	TableIterStart = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	TableIterEnd   = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
+)
+
+// Store is an implementation of storage interfaces using LevelDB to load and
+// store data to persistent storage. It uses a single database instance and
+// high-order bytes for separating data into tables. All keys are 40 bytes
+// long, 8 table prefix bytes and a 32 byte key. LevelDB provides a basic type
+// type of in-memory caching but has no optimisations that are specific to the
+// data.
 type Store struct {
-	orderFragments *leveldb.DB
-	orders         *leveldb.DB
-	computations   *leveldb.DB
-	sync           *leveldb.DB
+	db *leveldb.DB
 }
 
-// NewStore returns a LevelDB implementation of an orderbooker.Storer. It stores
-// and loads order fragments, and orders, using the specified directory.
-func NewStore(dir string) (Store, error) {
-	orderFragments, err := leveldb.OpenFile(path.Join(dir, "orderFragments"), nil)
+// NewStore returns a LevelDB implementation of storage interfaces. A call to
+// Store.Close is required to free resources allocated by the Store.
+func NewStore(dir string) (*Store, error) {
+	db, err := leveldb.OpenFile(path.Join(dir, "db"), nil)
 	if err != nil {
-		return Store{}, err
+		return nil, err
 	}
-	orders, err := leveldb.OpenFile(path.Join(dir, "orders"), nil)
-	if err != nil {
-		return Store{}, err
-	}
-	computations, err := leveldb.OpenFile(path.Join(dir, "computations"), nil)
-	if err != nil {
-		return Store{}, err
-	}
-	sync, err := leveldb.OpenFile(path.Join(dir, "sync"), nil)
-	if err != nil {
-		return Store{}, err
-	}
-
-	return Store{
-		orderFragments: orderFragments,
-		orders:         orders,
-		computations:   computations,
-		sync:           sync,
+	return &Store{
+		db: db,
 	}, nil
 }
 
-// Close the internal LevelDB handles. Resources will be leaked if this is not
-// called when the Store is no longer needed.
+// Close the internal LevelDB database.
 func (store *Store) Close() error {
-	if err := store.orderFragments.Close(); err != nil {
-		return err
-	}
-	if err := store.orders.Close(); err != nil {
-		return err
-	}
-	if err := store.computations.Close(); err != nil {
-		return err
-	}
-	return store.sync.Close()
+	return store.db.Close()
 }
 
-// InsertOrderFragment implements the orderbook.Storer interface.
-func (store *Store) InsertOrderFragment(orderFragment order.Fragment) error {
-	data, err := json.Marshal(orderFragment)
+// PutBuyPointer implements the orderbook.PointerStorer interface.
+func (store *Store) PutBuyPointer(pointer orderbook.Pointer) error {
+	buy := [32]byte{0}
+	data := [4]byte{}
+	binary.PutVarint(data[:], int64(pointer))
+	return store.db.Put(append(TableOrderbookPointers, buy[:]...), data[:], nil)
+}
+
+// BuyPointer implements the orderbook.PointerStorer interface.
+func (store *Store) BuyPointer() (orderbook.Pointer, error) {
+	buy := [32]byte{0}
+	data, err := store.db.Get(append(TableOrderbookPointers, buy[:]...), nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			return 0, nil
+		}
+		return 0, err
+	}
+	pointer, err := binary.ReadVarint(bytes.NewBuffer(data))
+	if err != nil {
+		return 0, err
+	}
+	return orderbook.Pointer(pointer), nil
+}
+
+// PutSellPointer implements the orderbook.PointerStorer interface.
+func (store *Store) PutSellPointer(pointer orderbook.Pointer) error {
+	sell := [32]byte{1}
+	data := [4]byte{}
+	binary.PutVarint(data[:], int64(pointer))
+	return store.db.Put(append(TableOrderbookPointers, sell[:]...), data[:], nil)
+}
+
+// SellPointer implements the orderbook.PointerStorer interface.
+func (store *Store) SellPointer() (orderbook.Pointer, error) {
+	sell := [32]byte{1}
+	data, err := store.db.Get(append(TableOrderbookPointers, sell[:]...), nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			return 0, nil
+		}
+		return 0, err
+	}
+	pointer, err := binary.ReadVarint(bytes.NewBuffer(data))
+	if err != nil {
+		return 0, err
+	}
+	return orderbook.Pointer(pointer), nil
+}
+
+// PutChange implements the orderbook.ChangeStorer interface.
+func (store *Store) PutChange(change orderbook.Change) error {
+	data, err := json.Marshal(change)
 	if err != nil {
 		return err
 	}
-	return store.orderFragments.Put(orderFragment.OrderID[:], data, nil)
+	return store.db.Put(append(TableOrderbookChanges, change.OrderID[:]...), data, nil)
 }
 
-// InsertOrder implements the orderbook.Storer interface.
-func (store *Store) InsertOrder(order order.Order) error {
-	data, err := json.Marshal(order)
+// DeleteChange implements the orderbook.ChangeStorer interface.
+func (store *Store) DeleteChange(id order.ID) error {
+	return store.db.Delete(append(TableOrderbookChanges, id[:]...), nil)
+}
+
+// Change implements the orderbook.ChangeStorer interface.
+func (store *Store) Change(id order.ID) (orderbook.Change, error) {
+	change := orderbook.Change{}
+	data, err := store.db.Get(append(TableOrderbookChanges, id[:]...), nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			err = orderbook.ErrChangeNotFound
+		}
+		return change, err
+	}
+	if err := json.Unmarshal(data, &change); err != nil {
+		return change, err
+	}
+	return change, nil
+}
+
+// Changes implements the orderbook.ChangeStorer interface.
+func (store *Store) Changes() (orderbook.ChangeIterator, error) {
+	iter := store.db.NewIterator(&util.Range{Start: append(TableOrderbookChanges, TableIterStart...), Limit: append(TableOrderbookChanges, TableIterEnd...)}, nil)
+	return newChangeIterator(iter), nil
+}
+
+// PutOrderFragment implements the orderbook.OrderFragmentStorer interface.
+func (store *Store) PutOrderFragment(fragment order.Fragment) error {
+	data, err := json.Marshal(fragment)
 	if err != nil {
 		return err
 	}
-	return store.orders.Put(order.ID[:], data, nil)
+	return store.db.Put(append(TableOrderbookFragments, fragment.OrderID[:]...), data, nil)
 }
 
-// InsertComputation implements the ome.Storer interface.
-func (store *Store) InsertComputation(computation ome.Computation) error {
-	data, err := json.Marshal(computation)
-	if err != nil {
-		return err
-	}
-	return store.computations.Put(computation.ID[:], data, nil)
+// DeleteOrderFragment implements the orderbook.OrderFragmentStorer interface.
+func (store *Store) DeleteOrderFragment(id order.ID) error {
+	return store.db.Delete(append(TableOrderbookFragments, id[:]...), nil)
 }
 
-// OrderFragment implements the orderbook.Storer interface.
+// OrderFragment implements the orderbook.OrderFragmentStorer interface.
 func (store *Store) OrderFragment(id order.ID) (order.Fragment, error) {
-	orderFragment := order.Fragment{}
-	data, err := store.orderFragments.Get(id[:], nil)
+	change := order.Fragment{}
+	data, err := store.db.Get(append(TableOrderbookFragments, id[:]...), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = orderbook.ErrOrderFragmentNotFound
 		}
-		return orderFragment, err
+		return change, err
 	}
-	if err := json.Unmarshal(data, &orderFragment); err != nil {
-		return orderFragment, err
+	if err := json.Unmarshal(data, &change); err != nil {
+		return change, err
 	}
-	return orderFragment, nil
+	return change, nil
 }
 
-// Order implements the orderbook.Storer interface.
-func (store *Store) Order(id order.ID) (order.Order, error) {
-	order := order.Order{}
-	data, err := store.orders.Get(id[:], nil)
+// OrderFragments implements the orderbook.OrderFragmentStorer interface.
+func (store *Store) OrderFragments() (orderbook.OrderFragmentIterator, error) {
+	iter := store.db.NewIterator(&util.Range{Start: append(TableOrderbookFragments, TableIterStart...), Limit: append(TableOrderbookFragments, TableIterEnd...)}, nil)
+	return newOrderFragmentIterator(iter), nil
+}
+
+// PutComputation implements the ome.Storer interface.
+func (store *Store) PutComputation(computation ome.Computation) error {
+	data, err := json.Marshal(computation)
 	if err != nil {
-		if err == leveldb.ErrNotFound {
-			err = orderbook.ErrOrderNotFound
-		}
-		return order, err
+		return err
 	}
-	if err := json.Unmarshal(data, &order); err != nil {
-		return order, err
-	}
-	return order, nil
+	return store.db.Put(append(TableOmeComputations, computation.ID[:]...), data, nil)
 }
 
-// Orders implements the orderbook.Storer interface.
-func (store *Store) Orders() ([]order.Order, error) {
-	ords := []order.Order{}
-	iter := store.orders.NewIterator(nil, nil)
-	defer iter.Release()
-	for iter.Next() {
-		data := iter.Value()
-
-		ord := order.Order{}
-		if err := json.Unmarshal(data, &ord); err != nil {
-			return ords, err
-		}
-		ords = append(ords, ord)
-	}
-	return ords, iter.Error()
+// DeleteComputation implements the ome.Storer interface.
+func (store *Store) DeleteComputation(id ome.ComputationID) error {
+	return store.db.Delete(append(TableOmeComputations, id[:]...), nil)
 }
 
 // Computation implements the ome.Storer interface.
 func (store *Store) Computation(id ome.ComputationID) (ome.Computation, error) {
 	computation := ome.Computation{}
-	data, err := store.computations.Get(id[:], nil)
+	data, err := store.db.Get(append(TableOmeComputations, id[:]...), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = ome.ErrComputationNotFound
@@ -158,79 +207,7 @@ func (store *Store) Computation(id ome.ComputationID) (ome.Computation, error) {
 }
 
 // Computations implements the ome.Storer interface.
-func (store *Store) Computations() (ome.Computations, error) {
-	coms := ome.Computations{}
-	iter := store.computations.NewIterator(nil, nil)
-	defer iter.Release()
-	for iter.Next() {
-		data := iter.Value()
-
-		com := ome.Computation{}
-		if err := json.Unmarshal(data, &com); err != nil {
-			return coms, err
-		}
-		coms = append(coms, com)
-	}
-	return coms, iter.Error()
-}
-
-// RemoveOrderFragment implements the orderbook.Storer interface.
-func (store *Store) RemoveOrderFragment(id order.ID) error {
-	return store.orderFragments.Delete(id[:], nil)
-}
-
-// RemoveOrder implements the orderbook.Storer interface.
-func (store *Store) RemoveOrder(id order.ID) error {
-	return store.orders.Delete(id[:], nil)
-}
-
-// RemoveComputation implements the ome.Storer interface.
-func (store *Store) RemoveComputation(id ome.ComputationID) error {
-	return store.computations.Delete(id[:], nil)
-}
-
-// InsertBuyPointer implements the orderbook.SyncStorer interface.
-func (store *Store) InsertBuyPointer(pointer orderbook.SyncPointer) error {
-	data := [4]byte{}
-	binary.PutVarint(data[:], int64(pointer))
-	return store.sync.Put([]byte("buy"), data[:], nil)
-}
-
-// InsertSellPointer implements the orderbook.SyncStorer interface.
-func (store *Store) InsertSellPointer(pointer orderbook.SyncPointer) error {
-	data := [4]byte{}
-	binary.PutVarint(data[:], int64(pointer))
-	return store.sync.Put([]byte("sell"), data[:], nil)
-}
-
-// BuyPointer implements the orderbook.SyncStorer interface.
-func (store *Store) BuyPointer() (orderbook.SyncPointer, error) {
-	data, err := store.sync.Get([]byte("buy"), nil)
-	if err != nil {
-		if err == leveldb.ErrNotFound {
-			return 0, nil
-		}
-		return 0, err
-	}
-	pointer, err := binary.ReadVarint(bytes.NewBuffer(data))
-	if err != nil {
-		return 0, err
-	}
-	return orderbook.SyncPointer(pointer), nil
-}
-
-// SellPointer implements the orderbook.SyncStorer interface.
-func (store *Store) SellPointer() (orderbook.SyncPointer, error) {
-	data, err := store.sync.Get([]byte("sell"), nil)
-	if err != nil {
-		if err == leveldb.ErrNotFound {
-			return 0, nil
-		}
-		return 0, err
-	}
-	pointer, err := binary.ReadVarint(bytes.NewBuffer(data))
-	if err != nil {
-		return 0, err
-	}
-	return orderbook.SyncPointer(pointer), nil
+func (store *Store) Computations() (ome.ComputationIterator, error) {
+	iter := store.db.NewIterator(&util.Range{Start: append(TableOmeComputations, TableIterStart...), Limit: append(TableOmeComputations, TableIterEnd...)}, nil)
+	return newComputationIterator(iter), nil
 }
