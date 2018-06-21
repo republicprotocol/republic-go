@@ -27,7 +27,29 @@ var _ = Describe("Syncer", func() {
 		buys, sells []order.Order
 	)
 
-	Context("when syncing with the ledger", func() {
+	Context("when comparing changes", func() {
+		It("should return true when comparing a change against itself", func() {
+			buy := testutils.RandomBuyOrder()
+			change := NewChange(buy.ID, buy.Parity, order.Open, Priority(0), "buyer", 0)
+			Expect(change.Equal(&change)).Should(BeTrue())
+		})
+
+		It("should return true when comparing a change against another equal change", func() {
+			buy := testutils.RandomBuyOrder()
+			change := NewChange(buy.ID, buy.Parity, order.Open, Priority(0), "buyer", 0)
+			otherChange := NewChange(buy.ID, buy.Parity, order.Open, Priority(0), "buyer", 0)
+			Expect(change.Equal(&otherChange)).Should(BeTrue())
+		})
+
+		It("should return false when comparing a change against another different change", func() {
+			buy, sell := testutils.RandomBuyOrder(), testutils.RandomSellOrder()
+			change := NewChange(buy.ID, buy.Parity, order.Open, Priority(0), "buyer", 0)
+			otherChange := NewChange(sell.ID, sell.Parity, order.Open, Priority(0), "seller", 0)
+			Expect(change.Equal(&otherChange)).Should(BeFalse())
+		})
+	})
+
+	Context("when syncing", func() {
 
 		BeforeEach(func() {
 			var err error
