@@ -255,9 +255,7 @@ func (ingress *ingress) processRequests(done <-chan struct{}, errs chan<- error)
 
 			switch req := request.(type) {
 			case EpochRequest:
-				// FIXME: Epochs are disabled until Epoch forwarding has been
-				// finalized.
-				// ingress.processEpochRequest(req, done, errs)
+				ingress.processEpochRequest(req, done, errs)
 			case OpenOrderRequest:
 				ingress.processOpenOrderRequest(req, done, errs)
 			case CancelOrderRequest:
@@ -270,12 +268,14 @@ func (ingress *ingress) processRequests(done <-chan struct{}, errs chan<- error)
 }
 
 func (ingress *ingress) processEpochRequest(req EpochRequest, done <-chan struct{}, errs chan<- error) {
-	if _, err := ingress.contract.NextEpoch(); err != nil {
-		select {
-		case <-done:
-		case errs <- err:
-		}
-	}
+	// FIXME: Epochs are disabled until Epoch forwarding has been
+	// finalized.
+	// if _, err := ingress.contract.NextEpoch(); err != nil {
+	// 	select {
+	// 	case <-done:
+	// 	case errs <- err:
+	// 	}
+	// }
 }
 
 func (ingress *ingress) processOpenOrderRequest(req OpenOrderRequest, done <-chan struct{}, errs chan<- error) {
