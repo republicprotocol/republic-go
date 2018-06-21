@@ -59,7 +59,7 @@ func Start() bool {
 	// cmd.Stderr = os.Stderr
 	globalGanacheCmd.Start()
 	go StopOnInterrupt()
-	time.Sleep(20 * time.Second)
+	time.Sleep(1 * time.Minute)
 	return true
 }
 
