@@ -157,7 +157,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("cannot get current epoch: %v", err)
 		}
-		ranker, err := ome.NewRanker(done, config.Address, &store, epoch)
+		ranker, err := ome.NewRanker(done, config.Address, &store, &store, epoch)
 		if err != nil {
 			log.Fatalf("cannot create new ranker: %v", err)
 		}
