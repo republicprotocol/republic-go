@@ -18,24 +18,12 @@ var ErrOrderNotFound = errors.New("order not found")
 // value outside the range of the iterator.
 var ErrCursorOutOfRange = errors.New("cursor out of range")
 
-// Storer for the orders and order fragments that are received by the
-// Orderbook.
-type Storer interface {
+// OrderStorer for the order.Orders that are synchronised.
+type OrderStorer interface {
 	PutOrder(order order.Order) error
 	DeleteOrder(id order.ID) error
 	Order(id order.ID) (order.Order, error)
 	Orders() (OrderIterator, error)
-
-	PutOrderFragment(orderFragment order.Fragment) error
-	DeleteOrderFragment(id order.ID) error
-	OrderFragment(id order.ID) (order.Fragment, error)
-	OrderFragments() (OrderFragmentIterator, error)
-
-	PutBuyPointer(pointer Pointer) error
-	BuyPointer() (Pointer, error)
-
-	PutOrderPointer(pointer Pointer) error
-	OrderPointer() (Pointer, error)
 }
 
 // OrderIterator is used to iterate over an order.order collection.
@@ -48,6 +36,17 @@ type OrderIterator interface {
 	// Cursor returns the order.Order at the current cursor location. Returns
 	// an error if the cursor is out of range.
 	Cursor() (order.Order, error)
+
+	// Collect all order.Orders in the iterator into a slice.
+	Collect() ([]order.Order, error)
+}
+
+// OrderFragmentStorer for the order.Fragments that are received.
+type OrderFragmentStorer interface {
+	PutOrderFragment(orderFragment order.Fragment) error
+	DeleteOrderFragment(id order.ID) error
+	OrderFragment(id order.ID) (order.Fragment, error)
+	OrderFragments() (OrderFragmentIterator, error)
 }
 
 // OrderFragmentIterator is used to iterate over an order.Fragment collection.
@@ -60,7 +59,28 @@ type OrderFragmentIterator interface {
 	// Cursor returns the order.Fragment at the current cursor location.
 	// Returns an error if the cursor is out of range.
 	Cursor() (order.Fragment, error)
+
+	// Collect all order.Fragments in the iterator into a slice.
+	Collect() ([]order.Fragment, error)
+}
+
+// PointerStorer for the synchronisation pointers used to track the progress
+// of synchronising order.Orders.
+type PointerStorer interface {
+	PutBuyPointer(pointer Pointer) error
+	BuyPointer() (Pointer, error)
+
+	PutSellPointer(pointer Pointer) error
+	SellPointer() (Pointer, error)
 }
 
 // Pointer points to the last order.Order that was successfully synchronised.
 type Pointer int
+
+// SyncStorer combines the OrderStorer interface and the PointerStorer
+// interface into a unified set of storage functions that are useful for
+// synchronisation.
+type SyncStorer interface {
+	OrderStorer
+	PointerStorer
+}

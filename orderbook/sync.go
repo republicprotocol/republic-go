@@ -3,7 +3,6 @@ package orderbook
 import (
 	"fmt"
 	"log"
-	"sync"
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -52,116 +51,106 @@ type Syncer interface {
 }
 
 type syncer struct {
+	storer SyncStorer
+
 	renLedger      cal.RenLedger
 	renLedgerLimit int
-
-	syncStorer      SyncStorer
-	syncBuyPointer  int
-	syncSellPointer int
-
-	ordersMu   *sync.RWMutex
-	buyOrders  map[int]order.ID
-	sellOrders map[int]order.ID
 }
 
 // NewSyncer returns a new Syncer that will sync a bounded number of orders
 // from a cal.RenLedger. It uses a SyncStorer to prevent re-syncing the entire
 // cal.RenLedger when it reboots.
-func NewSyncer(syncStorer SyncStorer, renLedger cal.RenLedger, renLedgerLimit int) Syncer {
+func NewSyncer(storer SyncStorer, renLedger cal.RenLedger, renLedgerLimit int) Syncer {
+	return &syncer{
+		storer: storer,
 
-	syncer := &syncer{
 		renLedger:      renLedger,
 		renLedgerLimit: renLedgerLimit,
-
-		syncStorer:      syncStorer,
-		syncBuyPointer:  0,
-		syncSellPointer: 0,
-
-		ordersMu:   new(sync.RWMutex),
-		buyOrders:  map[int]order.ID{},
-		sellOrders: map[int]order.ID{},
 	}
-
-	var err error
-	if syncer.syncBuyPointer, err = syncer.syncStorer.BuyPointer(); err != nil {
-		logger.Error(fmt.Sprintf("cannot load buy pointer: %v", err))
-	}
-	if syncer.syncSellPointer, err = syncer.syncStorer.SellPointer(); err != nil {
-		logger.Error(fmt.Sprintf("cannot load sell pointer: %v", err))
-	}
-	logger.Info(fmt.Sprintf("buy pointer: %v", syncer.syncBuyPointer))
-	logger.Info(fmt.Sprintf("sell pointer: %v", syncer.syncSellPointer))
-
-	return syncer
 }
 
 // Sync implements the Syncer interface.
 func (syncer *syncer) Sync() (ChangeSet, error) {
 	changeset := syncer.purge()
 
-	buyOrderIDs, buyErr := syncer.renLedger.BuyOrders(syncer.syncBuyPointer, syncer.renLedgerLimit)
+	buyPointer, err := syncer.storer.BuyPointer()
+	if err != nil {
+		return changeset, err
+	}
+	sellPointer, err := syncer.storer.SellPointer()
+	if err != nil {
+		return changeset, err
+	}
+
+	buyOrderIDs, buyErr := syncer.renLedger.BuyOrders(int(buyPointer), syncer.renLedgerLimit)
 	if buyErr == nil {
 		for _, ord := range buyOrderIDs {
 			status, err := syncer.renLedger.Status(ord)
 			if err != nil {
-				log.Println("cannot sync order status", err)
+				logger.Error(fmt.Sprintf("cannot sync order status: %v", err))
+				buyErr = err
 				continue
 			}
 			blockNumber, err := syncer.renLedger.BlockNumber(ord)
 			if err != nil {
-				log.Println("cannot sync order blocknumber", err)
+				logger.Error(fmt.Sprintf("cannot sync order block: %v", err))
+				buyErr = err
 				continue
 			}
 			trader, err := syncer.renLedger.Trader(ord)
 			if err != nil {
-				log.Println("cannot sync order owner", err)
+				logger.Error(fmt.Sprintf("cannot sync order trader: %v", err))
+				buyErr = err
 				continue
 			}
 
-			syncer.syncBuyPointer++
-			change := NewChange(ord, order.ParityBuy, status, Priority(syncer.syncBuyPointer), trader, blockNumber)
+			buyPointer++
+			change := NewChange(ord, order.ParityBuy, status, Priority(buyPointer), trader, blockNumber)
 			changeset = append(changeset, change)
-			syncer.buyOrders[syncer.syncBuyPointer] = ord
+			if err := syncer.storer.PutOrder(ord); err != nil {
+				logger.Error(fmt.Sprintf("cannot store synchronised order: %v", err))
+			}
 		}
-		if err := syncer.syncStorer.InsertBuyPointer(syncer.syncBuyPointer); err != nil {
-			logger.Error("cannot insert buy pointer")
+		if buyErr == nil {
+			syncer.storer.PutBuyPointer(buyPointer)
 		}
 	}
 
 	// Get new sell orders from the ledger
-	sellOrderIDs, sellErr := syncer.renLedger.SellOrders(syncer.syncSellPointer, syncer.renLedgerLimit)
+	sellOrderIDs, sellErr := syncer.renLedger.SellOrders(int(sellPointer), syncer.renLedgerLimit)
 	if sellErr == nil {
 		for _, ord := range sellOrderIDs {
 
 			status, err := syncer.renLedger.Status(ord)
 			if err != nil {
-				log.Println("cannot sync order status", err)
+				logger.Error(fmt.Sprintf("cannot sync order status: %v", err))
+				sellErr = err
 				continue
 			}
 			blockNumber, err := syncer.renLedger.BlockNumber(ord)
 			if err != nil {
-				log.Println("cannot sync order blocknumber", err)
+				logger.Error(fmt.Sprintf("cannot sync order block: %v", err))
+				sellErr = err
 				continue
 			}
 			trader, err := syncer.renLedger.Trader(ord)
 			if err != nil {
-				log.Println("cannot sync order owner", err)
+				logger.Error(fmt.Sprintf("cannot sync order trader: %v", err))
+				sellErr = err
 				continue
 			}
 
-			syncer.syncSellPointer++
-			change := NewChange(ord, order.ParitySell, status, Priority(syncer.syncSellPointer), trader, blockNumber)
+			sellPointer++
+			change := NewChange(ord, order.ParitySell, status, Priority(sellPointer), trader, blockNumber)
 			changeset = append(changeset, change)
-			syncer.sellOrders[syncer.syncSellPointer] = ord
+			if err := syncer.storer.PutOrder(ord); err != nil {
+				logger.Error(fmt.Sprintf("cannot store synchronised order: %v", err))
+			}
 		}
-		if err := syncer.syncStorer.InsertSellPointer(syncer.syncSellPointer); err != nil {
-			logger.Error("cannot insert sell pointer")
+		if sellErr == nil {
+			syncer.storer.PutSellPointer(sellPointer)
 		}
 	}
-
-	logger.Info(fmt.Sprintf("updated buy pointer: %v", syncer.syncBuyPointer))
-	logger.Info(fmt.Sprintf("updated sell pointer: %v", syncer.syncSellPointer))
-
 	if buyErr != nil && sellErr != nil {
 		return changeset, fmt.Errorf("buy err = %v, sell err = %v", buyErr, sellErr)
 	}
@@ -174,8 +163,22 @@ func (syncer *syncer) purge() ChangeSet {
 	go func() {
 		defer close(changes)
 
+		ordersIter, err := syncer.storer.Orders()
+		if err != nil {
+			logger.Error(fmt.Sprintf("cannot iterate orders for purging: %v", err))
+			return
+		}
+		orders, err := ordersIter.Collect()
+		if err != nil {
+			logger.Error(fmt.Sprintf("cannot collect orders for purging: %v", err))
+			return
+		}
+
 		dispatch.CoBegin(
 			func() {
+
+				orders
+
 				// Purge all buy orders by iterating over them and reading
 				// their status and priority from the Ren Ledger
 				dispatch.ForAll(syncer.buyOrders, func(key int) {
