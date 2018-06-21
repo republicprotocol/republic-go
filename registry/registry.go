@@ -19,6 +19,11 @@ import (
 // later.
 var ErrInvalidRegistration = errors.New("invalid registration")
 
+// ErrPodNotFound is returned when a Pod cannot be found for a given
+// identity.Address. This happens when an identity.Address is not registered in
+// the current Epoch.
+var ErrPodNotFound = errors.New("pod not found")
+
 // Crypter is an implementation of the crypto.Crypter interface. In addition to
 // standard signature verification, the Crypter uses a cal.Darkpool to verify
 // that the signatory is correctly registered to the network. It also uses the
@@ -95,13 +100,6 @@ func (crypter *Crypter) Decrypt(cipherText []byte) ([]byte, error) {
 func (crypter *Crypter) Keystore() *crypto.Keystore {
 	return &crypter.keystore
 }
-
-// TODO: separate this out to its own package??
-
-// ErrPodNotFound is returned when a Pod cannot be found for a given
-// identity.Address. This happens when an identity.Address is not registered in
-// the current Epoch.
-var ErrPodNotFound = errors.New("pod not found")
 
 // An Epoch represents the state of an epoch in the Pod. It stores the
 // epoch hash, an ordered list of Pods for the epoch, and all Darknode
