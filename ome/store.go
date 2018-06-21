@@ -10,6 +10,14 @@ import (
 // associated with a ComputationID.
 var ErrComputationNotFound = errors.New("computation not found")
 
+// ErrOrderFragmentNotFound is returned when attempting to read an order that
+// cannot be found.
+var ErrOrderFragmentNotFound = errors.New("order fragment not found")
+
+// ErrCursorOutOfRange is returned when an iterator cursor is used to read a
+// value outside the range of the iterator.
+var ErrCursorOutOfRange = errors.New("cursor out of range")
+
 // ComputationStorer for the Computations that are synchronised.
 type ComputationStorer interface {
 	PutComputation(computation Computation) error
