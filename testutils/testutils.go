@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/big"
 	"os"
 	"strconv"
 
@@ -64,7 +63,7 @@ func SkipCIDescribe(d string, f func()) bool {
 	return false
 }
 
-func GanacheBeforeSuite(body interface{}, timeout ...float64) (contract.Binder, bool) {
+func GanacheBeforeSuite(body interface{}, timeout ...float64) (contract.Conn, contract.Binder, bool) {
 	fmt.Printf("Ganache is listening on %shttp://localhost:8545%s...\n", green, reset)
 
 	conn, err := ganache.StartAndConnect()
@@ -73,10 +72,11 @@ func GanacheBeforeSuite(body interface{}, timeout ...float64) (contract.Binder, 
 	}
 
 	auth := ganache.GenesisTransactor()
-	auth.GasPrice = big.NewInt(3000000)
+	// GasLimit must not be set to 0 to avoid "Out Of Gas" errors
+	auth.GasLimit = 3000000
 	binder, err := contract.NewBinder(context.Background(), &auth, conn)
 
-	return binder, ginkgo.BeforeSuite(body, timeout...)
+	return conn, binder, ginkgo.BeforeSuite(body, timeout...)
 }
 
 func GanacheAfterSuite(body interface{}, timeout ...float64) bool {
