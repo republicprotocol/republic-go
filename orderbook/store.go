@@ -10,9 +10,9 @@ import (
 // cannot be found.
 var ErrOrderFragmentNotFound = errors.New("order fragment not found")
 
-// ErrOrderNotFound is returned whened attempting to read an order that cannot
+// ErrChangeNotFound is returned when attempting to read a change that cannot
 // be found.
-var ErrOrderNotFound = errors.New("order not found")
+var ErrChangeNotFound = errors.New("order not found")
 
 // ErrCursorOutOfRange is returned when an iterator cursor is used to read a
 // value outside the range of the iterator.

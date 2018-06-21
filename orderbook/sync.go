@@ -19,12 +19,12 @@ type Priority uint64
 // Change represents a change found by the Syncer. It stores all the relevant
 // information for the order.Order that was changed.
 type Change struct {
-	OrderID       order.ID
-	OrderParity   order.Parity
-	OrderStatus   order.Status
-	OrderPriority Priority
-	Trader        string
-	BlockNumber   uint
+	OrderID       order.ID     `json:"orderId"`
+	OrderParity   order.Parity `json:"orderParity"`
+	OrderStatus   order.Status `json:"orderStatus"`
+	OrderPriority Priority     `json:"orderPriority"`
+	Trader        string       `json:"trader"`
+	BlockNumber   uint         `json:"blockNumber"`
 }
 
 // NewChange returns a Change object with the respective data stored inside it.
