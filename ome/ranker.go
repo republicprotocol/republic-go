@@ -273,13 +273,13 @@ func (ranker *epochRanker) insertChange(change orderbook.Change) Computations {
 		if otherChange.BlockNumber < ranker.epoch.BlockNumber {
 			continue
 		}
-		if change.OrderID.Equal(otherChange.OrderID) {
-			continue
-		}
 		if change.OrderParity == otherChange.OrderParity {
 			continue
 		}
 		if change.Trader == otherChange.Trader {
+			continue
+		}
+		if change.OrderID.Equal(otherChange.OrderID) {
 			continue
 		}
 
