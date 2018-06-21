@@ -207,18 +207,7 @@ func (store *Store) Computation(id ome.ComputationID) (ome.Computation, error) {
 }
 
 // Computations implements the ome.Storer interface.
-func (store *Store) Computations() (ome.Computations, error) {
-	coms := ome.Computations{}
-	iter := store.db.NewIterator(nil, nil)
-	defer iter.Release()
-	for iter.Next() {
-		data := iter.Value()
-
-		com := ome.Computation{}
-		if err := json.Unmarshal(data, &com); err != nil {
-			return coms, err
-		}
-		coms = append(coms, com)
-	}
-	return coms, iter.Error()
+func (store *Store) Computations() (ome.ComputationIterator, error) {
+	iter := store.db.NewIterator(&util.Range{Start: append(TableOmeComputations, TableIterStart...), Limit: append(TableOmeComputations, TableIterEnd...)}, nil)
+	return newComputationIterator(iter), nil
 }

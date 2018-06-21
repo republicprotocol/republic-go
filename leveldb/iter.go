@@ -119,33 +119,46 @@ type ComputationIterator struct {
 	next  bool
 }
 
+func newComputationIterator(iter iterator.Iterator) *ComputationIterator {
+	return &ComputationIterator{
+		inner: iter,
+		next:  false,
+	}
+}
+
 // Next implements the ome.ComputationIterator interface.
 func (iter *ComputationIterator) Next() bool {
-	return iter.inner.Next()
+	iter.next = iter.inner.Next()
+	return iter.next
 }
 
 // Cursor implements the ome.ComputationIterator interface.
 func (iter *ComputationIterator) Cursor() (ome.Computation, error) {
-	computation := ome.Computation{}
+	com := ome.Computation{}
 	if !iter.next {
-		return computation, ome.ErrCursorOutOfRange
+		return com, ome.ErrCursorOutOfRange
 	}
 	data := iter.inner.Value()
-	if err := json.Unmarshal(data, &computation); err != nil {
-		return computation, err
+	if err := json.Unmarshal(data, &com); err != nil {
+		return com, err
 	}
-	return computation, iter.inner.Error()
+	return com, iter.inner.Error()
 }
 
 // Collect implements the ome.ComputationIterator interface.
 func (iter *ComputationIterator) Collect() ([]ome.Computation, error) {
-	computations := []ome.Computation{}
+	coms := []ome.Computation{}
 	for iter.Next() {
-		computation, err := iter.Cursor()
+		com, err := iter.Cursor()
 		if err != nil {
-			return computations, err
+			return coms, err
 		}
-		computations = append(computations, computation)
+		coms = append(coms, com)
 	}
-	return computations, iter.inner.Error()
+	return coms, iter.inner.Error()
+}
+
+// Release implements the ome.ComputationIterator interface.
+func (iter *ComputationIterator) Release() {
+	iter.inner.Release()
 }

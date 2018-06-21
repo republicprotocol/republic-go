@@ -39,6 +39,9 @@ type ComputationIterator interface {
 
 	// Collect all Computations in the iterator into a slice.
 	Collect() ([]Computation, error)
+
+	// Release the resources allocated by the iterator.
+	Release()
 }
 
 // OrderFragmentStorer for the order.Fragments that are received.
