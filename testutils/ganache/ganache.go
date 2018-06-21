@@ -59,7 +59,7 @@ func Start() bool {
 	// cmd.Stderr = os.Stderr
 	globalGanacheCmd.Start()
 	go StopOnInterrupt()
-
+	time.Sleep(20 * time.Second)
 	return true
 }
 
@@ -124,7 +124,6 @@ func Connect(ganacheRPC string) (contract.Conn, error) {
 // StartAndConnect to a local Ganache instance and deploy all smart contracts.
 func StartAndConnect() (contract.Conn, error) {
 	firstConnection := Start()
-	time.Sleep(10 * time.Second)
 
 	conn, err := Connect("http://localhost:8545")
 	if err != nil {
