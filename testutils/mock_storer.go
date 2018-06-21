@@ -28,8 +28,8 @@ type Storer struct {
 	orderFragments map[order.ID]order.Fragment
 	orders         map[order.ID]order.Order
 	computations   map[ome.ComputationID]ome.Computation
-	buyPointer     orderbook.SyncPointer
-	sellPointer    orderbook.SyncPointer
+	buyPointer     orderbook.Pointer
+	sellPointer    orderbook.Pointer
 }
 
 // NewStorer creates a new mock Storer.
@@ -39,8 +39,8 @@ func NewStorer() *Storer {
 		orderFragments: map[order.ID]order.Fragment{},
 		orders:         map[order.ID]order.Order{},
 		computations:   map[ome.ComputationID]ome.Computation{},
-		buyPointer:     orderbook.SyncPointer(0),
-		sellPointer:    orderbook.SyncPointer(0),
+		buyPointer:     orderbook.Pointer(0),
+		sellPointer:    orderbook.Pointer(0),
 	}
 }
 
@@ -148,7 +148,7 @@ func (storer *Storer) RemoveComputation(id ome.ComputationID) error {
 }
 
 // InsertBuyPointer implements orderbook.SyncStorer.
-func (storer *Storer) InsertBuyPointer(ptr orderbook.SyncPointer) error {
+func (storer *Storer) InsertBuyPointer(ptr orderbook.Pointer) error {
 	storer.mu.Lock()
 	defer storer.mu.Unlock()
 
@@ -157,7 +157,7 @@ func (storer *Storer) InsertBuyPointer(ptr orderbook.SyncPointer) error {
 }
 
 // InsertSellPointer implements orderbook.SyncStorer.
-func (storer *Storer) InsertSellPointer(ptr orderbook.SyncPointer) error {
+func (storer *Storer) InsertSellPointer(ptr orderbook.Pointer) error {
 	storer.mu.Lock()
 	defer storer.mu.Unlock()
 
@@ -166,7 +166,7 @@ func (storer *Storer) InsertSellPointer(ptr orderbook.SyncPointer) error {
 }
 
 // BuyPointer implements orderbook.SyncStorer.
-func (storer *Storer) BuyPointer() (orderbook.SyncPointer, error) {
+func (storer *Storer) BuyPointer() (orderbook.Pointer, error) {
 	storer.mu.Lock()
 	defer storer.mu.Unlock()
 
@@ -174,7 +174,7 @@ func (storer *Storer) BuyPointer() (orderbook.SyncPointer, error) {
 }
 
 // SellPointer implements orderbook.SyncStorer.
-func (storer *Storer) SellPointer() (orderbook.SyncPointer, error) {
+func (storer *Storer) SellPointer() (orderbook.Pointer, error) {
 	storer.mu.Lock()
 	defer storer.mu.Unlock()
 
