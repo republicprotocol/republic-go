@@ -178,6 +178,7 @@ func (syncer *syncer) purge() ChangeSet {
 			logger.Error(fmt.Sprintf("cannot build changes iterator for purging: %v", err))
 			return
 		}
+		defer changesIter.Release()
 		changesCollection, err := changesIter.Collect()
 		if err != nil {
 			logger.Error(fmt.Sprintf("cannot build changes collection for purging: %v", err))

@@ -133,10 +133,12 @@ var _ = Describe("LevelDB storage", func() {
 
 			changesIter, err := db.Changes()
 			Expect(err).ShouldNot(HaveOccurred())
+			defer changesIter.Release()
 			chngs, err := changesIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
 			comsIter, err := db.Computations()
 			Expect(err).ShouldNot(HaveOccurred())
+			defer comsIter.Release()
 			coms, err := comsIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
 
