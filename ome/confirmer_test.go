@@ -24,6 +24,7 @@ var _ = Describe("Confirmer", func() {
 		depth, pollInterval := uint(0), time.Second
 		contract = newOmeBinder()
 		storer, err = leveldb.NewStore("./data.out")
+		Expect(err).ShouldNot(HaveOccurred())
 		confirmer = NewConfirmer(storer, contract, pollInterval, depth)
 	})
 
