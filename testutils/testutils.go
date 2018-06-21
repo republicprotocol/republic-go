@@ -63,23 +63,28 @@ func SkipCIDescribe(d string, f func()) bool {
 }
 
 func GanacheBeforeSuite(body interface{}, timeout ...float64) (contract.Conn, contract.Binder, bool) {
-	fmt.Printf("Ganache is listening on %shttp://localhost:8545%s...\n", green, reset)
+	if !GetCIEnv() {
+		fmt.Printf("Ganache is listening on %shttp://localhost:8545%s...\n", green, reset)
 
-	conn, err := ganache.StartAndConnect()
-	if err != nil {
-		log.Fatalf("cannot connect to ganache: %v", err)
+		conn, err := ganache.StartAndConnect()
+		if err != nil {
+			log.Fatalf("cannot connect to ganache: %v", err)
+		}
+
+		auth := ganache.GenesisTransactor()
+		// GasLimit must not be set to 0 to avoid "Out Of Gas" errors
+		auth.GasLimit = 3000000
+		binder, err := contract.NewBinder(context.Background(), &auth, conn)
+
+		return conn, binder, ginkgo.BeforeSuite(body, timeout...)
 	}
-
-	auth := ganache.GenesisTransactor()
-	// GasLimit must not be set to 0 to avoid "Out Of Gas" errors
-	auth.GasLimit = 3000000
-	binder, err := contract.NewBinder(context.Background(), &auth, conn)
-
-	return conn, binder, ginkgo.BeforeSuite(body, timeout...)
+	return contract.Conn{}, contract.Binder{}, ginkgo.BeforeSuite(body, timeout...)
 }
 
 func GanacheAfterSuite(body interface{}, timeout ...float64) bool {
-	ganache.Stop()
+	if !GetCIEnv() {
+		ganache.Stop()
+	}
 	return ginkgo.AfterSuite(body, timeout...)
 }
 
