@@ -39,12 +39,6 @@ var ErrMismatchedOrderLengths = errors.New("mismatched order lengths")
 // been reached.
 const BlocksForConfirmation = 1
 
-// Epoch consists of the blockhash and number for the epoch
-type Epoch struct {
-	Blockhash   [32]byte
-	BlockNumber stackint.Int1024
-}
-
 // Binder implements all methods that will communicate with the smart contracts
 type Binder struct {
 	mu           *sync.RWMutex
@@ -62,12 +56,7 @@ type Binder struct {
 }
 
 // NewBinder returns a Binder to communicate with contracts
-func NewBinder(ctx context.Context, keystore crypto.Keystore, auth *bind.TransactOpts, conf Config) (Binder, error) {
-	conn, err := Connect(conf)
-	if err != nil {
-		return Binder{}, fmt.Errorf("cannot connect to ethereum: %v", err)
-	}
-
+func NewBinder(ctx context.Context, auth *bind.TransactOpts, conn Conn) (Binder, error) {
 	darknodeRegistry, err := bindings.NewDarknodeRegistry(common.HexToAddress(conn.Config.DarknodeRegistryAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
@@ -314,67 +303,6 @@ func (binder *Binder) approveRen(value *stackint.Int1024) (*types.Transaction, e
 	return txn, err
 }
 
-// CurrentEpoch returns the current epoch
-func (binder *Binder) CurrentEpoch() (Epoch, error) {
-	binder.mu.RLock()
-	defer binder.mu.RUnlock()
-
-	return binder.currentEpoch()
-}
-
-func (binder *Binder) currentEpoch() (Epoch, error) {
-	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
-	if err != nil {
-		return Epoch{}, err
-	}
-	blocknumber, err := stackint.FromBigInt(epoch.Blocknumber)
-	if err != nil {
-		return Epoch{}, err
-	}
-
-	var blockhash [32]byte
-	for i, b := range epoch.Epochhash.Bytes() {
-		blockhash[i] = b
-	}
-
-	return Epoch{
-		Blockhash:   blockhash,
-		BlockNumber: blocknumber,
-	}, nil
-}
-
-// NextEpoch will try to turn the Epoch and returns the resulting Epoch. If
-// the turning of the Epoch failed, the current Epoch is returned.
-func (binder *Binder) NextEpoch() (registry.Epoch, error) {
-	binder.mu.Lock()
-	defer binder.mu.Unlock()
-
-	return binder.nextEpoch()
-}
-
-func (binder *Binder) nextEpoch() (registry.Epoch, error) {
-	binder.triggerEpoch()
-	return binder.epoch()
-}
-
-// TriggerEpoch updates the current Epoch if the Minimum Epoch Interval has
-// passed since the previous Epoch
-func (binder *Binder) TriggerEpoch() (*types.Transaction, error) {
-	binder.mu.Lock()
-	defer binder.mu.Unlock()
-
-	return binder.triggerEpoch()
-}
-
-func (binder *Binder) triggerEpoch() (*types.Transaction, error) {
-	tx, err := binder.darknodeRegistry.Epoch(binder.transactOpts)
-	if err != nil {
-		return nil, err
-	}
-	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
-	return tx, err
-}
-
 // GetOwner gets the owner of the given dark node
 func (binder *Binder) GetOwner(darknodeID []byte) (common.Address, error) {
 	binder.mu.RLock()
@@ -565,9 +493,19 @@ func (binder *Binder) Epoch() (registry.Epoch, error) {
 }
 
 func (binder *Binder) epoch() (registry.Epoch, error) {
-	epoch, err := binder.currentEpoch()
+	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
 	if err != nil {
 		return registry.Epoch{}, err
+	}
+
+	epochBlocknumber, err := stackint.FromBigInt(epoch.Blocknumber)
+	if err != nil {
+		return registry.Epoch{}, err
+	}
+
+	var blockhash [32]byte
+	for i, b := range epoch.Epochhash.Bytes() {
+		blockhash[i] = b
 	}
 
 	pods, err := binder.pods()
@@ -580,17 +518,40 @@ func (binder *Binder) epoch() (registry.Epoch, error) {
 		return registry.Epoch{}, err
 	}
 
-	blocknumber, err := epoch.BlockNumber.ToUint()
+	blocknumber, err := epochBlocknumber.ToUint()
 	if err != nil {
 		return registry.Epoch{}, err
 	}
 
 	return registry.Epoch{
-		Hash:        epoch.Blockhash,
+		Hash:        blockhash,
 		Pods:        pods,
 		Darknodes:   darknodes,
 		BlockNumber: blocknumber,
 	}, nil
+}
+
+// NextEpoch will try to turn the Epoch and returns the resulting Epoch. If
+// the turning of the Epoch failed, the current Epoch is returned.
+func (binder *Binder) NextEpoch() (registry.Epoch, error) {
+	binder.mu.Lock()
+	defer binder.mu.Unlock()
+
+	return binder.nextEpoch()
+}
+
+func (binder *Binder) nextEpoch() (registry.Epoch, error) {
+	tx, err := binder.darknodeRegistry.Epoch(binder.transactOpts)
+	if err != nil {
+		return registry.Epoch{}, err
+	}
+
+	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
+	if err != nil {
+		return registry.Epoch{}, err
+	}
+
+	return binder.epoch()
 }
 
 // Pod returns the Pod that contains the given identity.Address in the
