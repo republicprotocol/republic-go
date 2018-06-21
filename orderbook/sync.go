@@ -2,7 +2,6 @@ package orderbook
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -107,7 +106,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 			buyPointer++
 			change := NewChange(ord, order.ParityBuy, status, Priority(buyPointer), trader, blockNumber)
 			changeset = append(changeset, change)
-			if err := syncer.storer.PutOrder(ord); err != nil {
+			if err := syncer.storer.PutChange(change); err != nil {
 				logger.Error(fmt.Sprintf("cannot store synchronised order: %v", err))
 			}
 		}
@@ -143,7 +142,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 			sellPointer++
 			change := NewChange(ord, order.ParitySell, status, Priority(sellPointer), trader, blockNumber)
 			changeset = append(changeset, change)
-			if err := syncer.storer.PutOrder(ord); err != nil {
+			if err := syncer.storer.PutChange(change); err != nil {
 				logger.Error(fmt.Sprintf("cannot store synchronised order: %v", err))
 			}
 		}
@@ -163,101 +162,43 @@ func (syncer *syncer) purge() ChangeSet {
 	go func() {
 		defer close(changes)
 
-		ordersIter, err := syncer.storer.Orders()
+		changesIter, err := syncer.storer.Changes()
 		if err != nil {
-			logger.Error(fmt.Sprintf("cannot iterate orders for purging: %v", err))
+			logger.Error(fmt.Sprintf("cannot build changes iterator for purging: %v", err))
 			return
 		}
-		orders, err := ordersIter.Collect()
+		changesCollection, err := changesIter.Collect()
 		if err != nil {
-			logger.Error(fmt.Sprintf("cannot collect orders for purging: %v", err))
+			logger.Error(fmt.Sprintf("cannot build changes collection for purging: %v", err))
 			return
 		}
 
-		dispatch.CoBegin(
-			func() {
+		dispatch.ForAll(changesCollection, func(i int) {
+			change := changesCollection[i]
 
-				orders
+			status, err := syncer.renLedger.Status(change.OrderID)
+			if err != nil {
+				logger.Error(fmt.Sprintf("cannot sync change status: %v", err))
+				return
+			}
+			if status == order.Open {
+				return
+			}
 
-				// Purge all buy orders by iterating over them and reading
-				// their status and priority from the Ren Ledger
-				dispatch.ForAll(syncer.buyOrders, func(key int) {
-					syncer.ordersMu.RLock()
-					buyOrder := syncer.buyOrders[key]
-					syncer.ordersMu.RUnlock()
+			blockNumber, err := syncer.renLedger.BlockNumber(change.OrderID)
+			if err != nil {
+				logger.Error(fmt.Sprintf("cannot sync change block: %v", err))
+				return
+			}
 
-					status, err := syncer.renLedger.Status(buyOrder)
-					if err != nil {
-						logger.Error(fmt.Sprintf("failed to check order status %v", err))
-						return
-					}
-					if status == order.Open {
-						return
-					}
+			change.OrderStatus = status
+			change.BlockNumber = blockNumber
+			changes <- change
 
-					blockNumber, err := syncer.renLedger.BlockNumber(buyOrder)
-					if err != nil {
-						log.Println("cannot sync order status", err)
-						return
-					}
-					priority, err := syncer.renLedger.Priority(buyOrder)
-					if err != nil {
-						logger.Error(fmt.Sprintf("failed to check order priority %v", err))
-						return
-					}
-					trader, err := syncer.renLedger.Trader(buyOrder)
-					if err != nil {
-						log.Println("cannot sync order owner", err)
-						return
-					}
-
-					changes <- NewChange(buyOrder, order.ParityBuy, status, Priority(priority), trader, blockNumber)
-
-					syncer.ordersMu.Lock()
-					delete(syncer.buyOrders, key)
-					syncer.ordersMu.Unlock()
-				})
-			},
-			func() {
-				// Purge all sell orders
-				dispatch.ForAll(syncer.sellOrders, func(key int) {
-					syncer.ordersMu.RLock()
-					sellOrder := syncer.sellOrders[key]
-					syncer.ordersMu.RUnlock()
-
-					status, err := syncer.renLedger.Status(sellOrder)
-					if err != nil {
-						logger.Error(fmt.Sprintf("failed to check order status: %v", err))
-						return
-					}
-					if status == order.Open {
-						return
-					}
-
-					blockNumber, err := syncer.renLedger.BlockNumber(sellOrder)
-					if err != nil {
-						log.Println("cannot sync order status", err)
-						return
-					}
-					priority, err := syncer.renLedger.Priority(sellOrder)
-					if err != nil {
-						logger.Error(fmt.Sprintf("failed to check order priority: %v", err))
-						return
-					}
-					trader, err := syncer.renLedger.Trader(sellOrder)
-					if err != nil {
-						log.Println("cannot sync order owner", err)
-						return
-					}
-
-					changes <- NewChange(sellOrder, order.ParitySell, status, Priority(priority), trader, blockNumber)
-
-					syncer.ordersMu.Lock()
-					delete(syncer.sellOrders, key)
-					syncer.ordersMu.Unlock()
-				})
-			},
-		)
+			if err := syncer.storer.DeleteChange(change.OrderID); err != nil {
+				logger.Error(fmt.Sprintf("cannot delete synchronised change: %v", err))
+			}
+		})
 	}()
 
 	changeset := make([]Change, 0, 128)

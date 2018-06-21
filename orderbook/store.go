@@ -18,27 +18,27 @@ var ErrOrderNotFound = errors.New("order not found")
 // value outside the range of the iterator.
 var ErrCursorOutOfRange = errors.New("cursor out of range")
 
-// OrderStorer for the order.Orders that are synchronised.
-type OrderStorer interface {
-	PutOrder(order order.Order) error
-	DeleteOrder(id order.ID) error
-	Order(id order.ID) (order.Order, error)
-	Orders() (OrderIterator, error)
+// ChangeStorer for the Changes that are synchronised.
+type ChangeStorer interface {
+	PutChange(change Change) error
+	DeleteChange(id order.ID) error
+	Change(id order.ID) (Change, error)
+	Changes() (ChangeIterator, error)
 }
 
-// OrderIterator is used to iterate over an order.order collection.
-type OrderIterator interface {
+// ChangeIterator is used to iterate over a Change collection.
+type ChangeIterator interface {
 
 	// Next progresses the cursor. Returns true if the new cursor is still in
-	// the range of the order.Order collection, otherwise false.
+	// the range of the Change collection, otherwise false.
 	Next() bool
 
-	// Cursor returns the order.Order at the current cursor location. Returns
+	// Cursor returns the Change at the current cursor location. Returns
 	// an error if the cursor is out of range.
-	Cursor() (order.Order, error)
+	Cursor() (Change, error)
 
-	// Collect all order.Orders in the iterator into a slice.
-	Collect() ([]order.Order, error)
+	// Collect all Changes in the iterator into a slice.
+	Collect() ([]Change, error)
 }
 
 // OrderFragmentStorer for the order.Fragments that are received.
@@ -77,10 +77,9 @@ type PointerStorer interface {
 // Pointer points to the last order.Order that was successfully synchronised.
 type Pointer int
 
-// SyncStorer combines the OrderStorer interface and the PointerStorer
-// interface into a unified set of storage functions that are useful for
-// synchronisation.
+// SyncStorer combines the ChangeStorer interface and the PointerStorer
+// interface into a unified interface that is convenient for synchronisation.
 type SyncStorer interface {
-	OrderStorer
+	ChangeStorer
 	PointerStorer
 }
