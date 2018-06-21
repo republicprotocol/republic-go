@@ -34,19 +34,7 @@ func main() {
 		log.Fatalf("cannot load keystore: %v", err)
 	}
 
-	config, err := loadConfig(*configParam)
-	if err != nil {
-		log.Fatalf("cannot load config: %v", err)
-	}
-
-	conn, err := contract.Connect(config)
-	if err != nil {
-		log.Fatalf("cannot connect to ethereum: %v", err)
-	}
-
-	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
-
-	contractBindings, err := contract.NewBinder(context.Background(), auth, conn)
+	contractBindings, err := loadContractBinder(*configParam, keystore)
 	if err != nil {
 		log.Fatalf("cannot load smart contract: %v", err)
 	}
@@ -180,4 +168,22 @@ func loadConfig(configFile string) (contract.Config, error) {
 		return contract.Config{}, err
 	}
 	return config, nil
+}
+
+func loadContractBinder(configFile string, keystore crypto.Keystore) (contract.Binder, error) {
+	config, err := loadConfig(configFile)
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot load config: %v", err))
+		return contract.Binder{}, err
+	}
+
+	conn, err := contract.Connect(config)
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot connect to ethereum: %v", err))
+		return contract.Binder{}, err
+	}
+
+	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
+
+	return contract.NewBinder(context.Background(), auth, conn)
 }
