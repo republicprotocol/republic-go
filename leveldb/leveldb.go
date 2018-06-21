@@ -39,12 +39,12 @@ type Store struct {
 
 // NewStore returns a LevelDB implementation of storage interfaces. A call to
 // Store.Close is required to free resources allocated by the Store.
-func NewStore(dir string) (Store, error) {
+func NewStore(dir string) (*Store, error) {
 	db, err := leveldb.OpenFile(path.Join(dir, "db"), nil)
 	if err != nil {
-		return Store{}, err
+		return nil, err
 	}
-	return Store{
+	return &Store{
 		db: db,
 	}, nil
 }

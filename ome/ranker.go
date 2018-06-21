@@ -66,9 +66,10 @@ type delegateRanker struct {
 // orderbook.Changeset or produce Computation.
 func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, changeStore orderbook.ChangeStorer, epoch cal.Epoch) (Ranker, error) {
 	ranker := &delegateRanker{
-		done:    done,
-		address: address,
-		storer:  storer,
+		done:        done,
+		address:     address,
+		storer:      storer,
+		changeStore: changeStore,
 
 		computationsMu: new(sync.Mutex),
 		computations:   Computations{},
@@ -93,15 +94,16 @@ func (ranker *delegateRanker) InsertChange(change orderbook.Change) {
 	ranker.rankerMu.Lock()
 	defer ranker.rankerMu.Unlock()
 
+	if change.OrderStatus != order.Open {
+		ranker.removeComputations(change.OrderID)
+		return
+	}
+
 	coms := Computations{}
 	if ranker.rankerCurrEpoch != nil && change.BlockNumber >= ranker.rankerCurrEpoch.epoch.BlockNumber {
 		coms = ranker.rankerCurrEpoch.insertChange(change)
 	} else if ranker.rankerPrevEpoch != nil && change.BlockNumber >= ranker.rankerPrevEpoch.epoch.BlockNumber {
 		coms = ranker.rankerPrevEpoch.insertChange(change)
-	}
-
-	if change.OrderStatus != order.Open {
-		ranker.removeComputations(change.OrderID)
 	}
 
 	ranker.insertComputations(coms)
@@ -239,6 +241,8 @@ type epochRanker struct {
 	pos             int
 	epoch           cal.Epoch
 	storer          orderbook.ChangeStorer
+
+	seen map[ComputationID]struct{}
 }
 
 func newEpochRanker(numberOfRankers, pos int, storer orderbook.ChangeStorer, epoch cal.Epoch) *epochRanker {
@@ -247,6 +251,8 @@ func newEpochRanker(numberOfRankers, pos int, storer orderbook.ChangeStorer, epo
 		numberOfRankers: numberOfRankers,
 		pos:             pos,
 		storer:          storer,
+
+		seen: map[ComputationID]struct{}{},
 	}
 }
 
@@ -273,13 +279,13 @@ func (ranker *epochRanker) insertChange(change orderbook.Change) Computations {
 		if otherChange.BlockNumber < ranker.epoch.BlockNumber {
 			continue
 		}
+		if otherChange.OrderStatus != order.Open {
+			continue
+		}
 		if change.OrderParity == otherChange.OrderParity {
 			continue
 		}
 		if change.Trader == otherChange.Trader {
-			continue
-		}
-		if change.OrderID.Equal(otherChange.OrderID) {
 			continue
 		}
 
@@ -298,10 +304,14 @@ func (ranker *epochRanker) insertChange(change orderbook.Change) Computations {
 		} else {
 			com = NewComputation(otherChange.OrderID, change.OrderID, ranker.epoch.Hash)
 		}
+		if _, ok := ranker.seen[com.ID]; ok {
+			continue
+		}
 		com.Priority = priority
 		com.Timestamp = time.Now()
 		com.State = ComputationStateNil
 		computations = append(computations, com)
+		ranker.seen[com.ID] = struct{}{}
 	}
 
 	return computations

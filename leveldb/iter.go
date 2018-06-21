@@ -62,7 +62,7 @@ func (iter *ChangeIterator) Release() {
 }
 
 // OrderFragmentIterator implements the orderbook.OrderFragmentIterator
-// interface using a LevelDB iterator.
+// interface using a LevelDB iterator. It is not safe for concurrent use.
 type OrderFragmentIterator struct {
 	inner iterator.Iterator
 	next  bool
@@ -113,7 +113,7 @@ func (iter *OrderFragmentIterator) Release() {
 }
 
 // ComputationIterator implements the ome.ComputationIterator
-// interface using a LevelDB iterator.
+// interface using a LevelDB iterator. It is not safe for concurrent use.
 type ComputationIterator struct {
 	inner iterator.Iterator
 	next  bool
