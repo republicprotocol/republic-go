@@ -14,22 +14,6 @@ import (
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
-// Network is used to represent a Republic Protocol network.
-type Network string
-
-const (
-	// NetworkMainnet represents the mainnet
-	NetworkMainnet Network = "mainnet"
-	// NetworkTestnet represents the internal F∅ testnet
-	NetworkTestnet Network = "testnet"
-	// NetworkFalcon represents the internal Falcon testnet
-	NetworkFalcon Network = "falcon"
-	// NetworkNightly represents the internal Nightly testnet
-	NetworkNightly Network = "nightly"
-	// NetworkLocal represents a local network
-	NetworkLocal Network = "local"
-)
-
 // Conn contains the client and the contracts deployed to it
 type Conn struct {
 	RawClient *ethrpc.Client
