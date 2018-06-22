@@ -124,7 +124,7 @@ func (binder *Binder) SendTx(f func () (*types.Transaction, error)) error {
 
 		return sendTx(f)
 	}()
-	_, err := binder.conn.PatchedWaitMined(context.Background(), tx)
+	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
 }
 
@@ -138,7 +138,10 @@ func (binder *Binder) sendTx(f func () (*types.Transaction, error)) (*types.Tran
 		binder.nonce.Sub(binder.nonce, big.NewInt(1))
 		return sendTx(f)
 	}
-	binder.nonce.Add(binder.nonce, big.NewInt(1))
+	if err == nil {
+		binder.nonce.Add(binder.nonce, big.NewInt(1))
+		return tx, nil
+	}
 	return tx, err
 }
 
