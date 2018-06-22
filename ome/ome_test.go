@@ -103,10 +103,6 @@ var _ = Describe("Ome", func() {
 // ErrOpenOpenedOrder is returned when trying to open an opened order.
 var ErrOpenOpenedOrder = errors.New("cannot open order that is already open")
 
-// ErrOrderNotFound is return when attempting to load an order that cannot be
-// found.
-var ErrOrderNotFound = errors.New("order not found")
-
 // omeBinder is a mock implementation of ome.ContractBinder.
 type omeBinder struct {
 	buyOrdersMu *sync.Mutex
