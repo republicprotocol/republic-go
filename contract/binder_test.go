@@ -5,18 +5,17 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/republicprotocol/republic-go/testutils/ganache"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/contract"
-	"github.com/republicprotocol/republic-go/identity"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/stackint"
 	"github.com/republicprotocol/republic-go/testutils"
+	"github.com/republicprotocol/republic-go/testutils/ganache"
 )
 
 var _ = Describe("Contract Binder", func() {
