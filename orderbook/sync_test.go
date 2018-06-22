@@ -15,7 +15,7 @@ import (
 
 var (
 	NumberOfOrderPairs = 40
-	RenLimit           = 10
+	Limit              = 10
 )
 
 var _ = Describe("Syncer", func() {
@@ -57,7 +57,7 @@ var _ = Describe("Syncer", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			buys, sells = generateOrderPairs(NumberOfOrderPairs)
 
-			syncer = NewSyncer(storer, contract, RenLimit)
+			syncer = NewSyncer(storer, contract, Limit)
 			changeSet, err := syncer.Sync()
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(changeSet)).Should(Equal(0))
@@ -151,10 +151,10 @@ func openOrders(contract *orderbookBinder, syncer Syncer, buys, sells []order.Or
 		Ω(err).ShouldNot(HaveOccurred())
 	}
 	// Test the renLimit
-	for i := 0; i < NumberOfOrderPairs/RenLimit; i++ {
+	for i := 0; i < NumberOfOrderPairs/Limit; i++ {
 		changeSet, err := syncer.Sync()
 		Ω(err).ShouldNot(HaveOccurred())
-		Ω(len(changeSet)).Should(Equal(RenLimit * 2))
+		Ω(len(changeSet)).Should(Equal(Limit * 2))
 		Ω(changeSet[i].OrderStatus).Should(Equal(order.Open))
 	}
 }

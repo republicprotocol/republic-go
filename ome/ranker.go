@@ -78,13 +78,13 @@ func NewRanker(done <-chan struct{}, address identity.Address, storer Storer, ch
 		rankerCurrEpoch: nil,
 		rankerPrevEpoch: nil,
 	}
-	ranker.insertStoredComputationsInBackground()
 
 	numberOfRankers, pos, err := ranker.posFromEpoch(epoch)
 	if err != nil {
 		return &delegateRanker{}, fmt.Errorf("cannot get ranker position from epoch: %v", err)
 	}
 	ranker.rankerCurrEpoch = newEpochRanker(numberOfRankers, pos, changeStore, epoch)
+	ranker.insertStoredComputationsInBackground()
 
 	return ranker, nil
 }

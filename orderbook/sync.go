@@ -60,21 +60,20 @@ type Syncer interface {
 }
 
 type syncer struct {
-	storer SyncStorer
-
-	contract       ContractBinder
-	renLedgerLimit int
+	storer   SyncStorer
+	contract ContractBinder
+	limit    int
 }
 
 // NewSyncer returns a new Syncer that will sync a bounded number of orders
 // from the ContractBinder. It uses a SyncStorer to prevent re-syncing the entire
 // ContractBinder when it reboots.
-func NewSyncer(storer SyncStorer, contract ContractBinder, renLedgerLimit int) Syncer {
+func NewSyncer(storer SyncStorer, contract ContractBinder, limit int) Syncer {
 	return &syncer{
 		storer: storer,
 
-		contract:       contract,
-		renLedgerLimit: renLedgerLimit,
+		contract: contract,
+		limit:    limit,
 	}
 }
 
@@ -91,7 +90,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 		return changeset, err
 	}
 
-	buyOrderIDs, buyErr := syncer.contract.BuyOrders(int(buyPointer), syncer.renLedgerLimit)
+	buyOrderIDs, buyErr := syncer.contract.BuyOrders(int(buyPointer), syncer.limit)
 	if buyErr == nil {
 		for _, ord := range buyOrderIDs {
 			status, err := syncer.contract.Status(ord)
@@ -126,7 +125,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 	}
 
 	// Get new sell orders from the ledger
-	sellOrderIDs, sellErr := syncer.contract.SellOrders(int(sellPointer), syncer.renLedgerLimit)
+	sellOrderIDs, sellErr := syncer.contract.SellOrders(int(sellPointer), syncer.limit)
 	if sellErr == nil {
 		for _, ord := range sellOrderIDs {
 
