@@ -215,7 +215,7 @@ func RegisterAll(contract contract.Binder) error {
 				return err
 			}
 
-			_, err = contract.Register(address.ID(), pk, &minimumBond)
+			err = contract.Register(address.ID(), pk, &minimumBond)
 			if err != nil {
 				return fmt.Errorf("[%v] %sCouldn't register node%s: %v\n", address, red, reset, err)
 			} else {
@@ -247,7 +247,7 @@ func DeregisterAll(addresses []string, contract contract.Binder) error {
 		}
 
 		if isRegistered {
-			_, err = contract.Deregister(address.ID())
+			err = contract.Deregister(address.ID())
 			if err != nil {
 				return fmt.Errorf("[%v] %sCouldn't deregister node%s: %v\n", address, red, reset, err)
 			} else {
@@ -267,7 +267,7 @@ func Approve(contract contract.Binder) error {
 	if err != nil {
 		return err
 	}
-	_, err = contract.ApproveRen(&bond)
+	err = contract.ApproveRen(&bond)
 	if err != nil {
 		return err
 	}
@@ -314,7 +314,7 @@ func Refund(addresses []string, contract contract.Binder) error {
 		if err != nil {
 			return err
 		}
-		_, err = contract.Refund(address.Bytes())
+		err = contract.Refund(address.Bytes())
 		if err != nil {
 			return err
 		}
