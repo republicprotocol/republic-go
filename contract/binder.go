@@ -13,6 +13,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/republicprotocol/republic-go/contract/bindings"
 	"github.com/republicprotocol/republic-go/crypto"
@@ -61,13 +62,13 @@ func NewBinder(ctx context.Context, auth *bind.TransactOpts, conn Conn) (Binder,
 
 	darknodeRegistry, err := bindings.NewDarknodeRegistry(common.HexToAddress(conn.Config.DarknodeRegistryAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
-		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
+		fmt.Println(fmt.Errorf("cannot bind to DarknodeRegistry: %v", err))
 		return Binder{}, err
 	}
 
 	republicToken, err := bindings.NewRepublicToken(common.HexToAddress(conn.Config.RepublicTokenAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
-		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
+		fmt.Println(fmt.Errorf("cannot bind to RepublicToken: %v", err))
 		return Binder{}, err
 	}
 
@@ -79,7 +80,7 @@ func NewBinder(ctx context.Context, auth *bind.TransactOpts, conn Conn) (Binder,
 
 	renExSettlement, err := bindings.NewRenExSettlement(common.HexToAddress(conn.Config.RenExSettlementAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
-		fmt.Println(fmt.Errorf("cannot bind to RenEx accounts: %v", err))
+		fmt.Println(fmt.Errorf("cannot bind to RenExSettlement: %v", err))
 		return Binder{}, err
 	}
 
@@ -118,19 +119,29 @@ func (binder *Binder) submitOrder(ord order.Order) error {
 
 // SubmitMatch will submit a matched order pair to the RenEx accounts
 func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
-	binder.mu.Lock()
-	defer binder.mu.Unlock()
+	tx, err := func() (*types.Transaction, error) {
+		binder.mu.Lock()
+		defer binder.mu.Unlock()
 
-	return binder.submitMatch(buy, sell)
+		return binder.submitMatch(buy, sell)
+	}()
+	_, err := binder.conn.PatchedWaitMined(context.Background(), tx)
+	return err
 }
 
-func (binder *Binder) submitMatch(buy, sell order.ID) error {
+func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error) {
 	tx, err := binder.renExSettlement.SubmitMatch(binder.transactOpts, buy, sell)
-	if err != nil {
-		return err
+	if err == core.ErrNonceTooLow || err core.ErrReplaceUnderpriced {
+		binder.nonce.Add(binder.nonce, big.NewInt(1))
+		return binder.submitMatch(buy, sell)
 	}
-	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
-	return err
+	if err == core.ErrNonceTooHigh {
+		binder.nonce.Sub(binder.nonce, big.NewInt(1))
+		return binder.submitMatch(buy, sell)
+	}
+	
+	binder.nonce.Add(binder.nonce, big.NewInt(1))
+	return tx, err
 }
 
 // Settle the order pair which gets confirmed by the Orderbook
@@ -192,7 +203,7 @@ func (binder *Binder) register(darknodeID []byte, publicKey []byte, bond *stacki
 	return txn, err
 }
 
-// Deregister an existing dark node
+// Deregister an existing dark node.
 func (binder *Binder) Deregister(darknodeID []byte) (*types.Transaction, error) {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
@@ -404,22 +415,6 @@ func (binder *Binder) minimumPodSize() (stackint.Int1024, error) {
 		return stackint.Int1024{}, err
 	}
 	return stackint.FromBigInt(interval)
-}
-
-// SetGasLimit sets the gas limit to use for transactions
-func (binder *Binder) SetGasLimit(limit uint64) {
-	binder.transactOpts.GasLimit = limit
-}
-
-func toByte(id []byte) ([20]byte, error) {
-	twentyByte := [20]byte{}
-	if len(id) != 20 {
-		return twentyByte, ErrLengthMismatch
-	}
-	for i := range id {
-		twentyByte[i] = id[i]
-	}
-	return twentyByte, nil
 }
 
 // Pods returns the Pod configuration for the current Epoch.
@@ -987,4 +982,15 @@ func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID) erro
 		}
 		time.Sleep(time.Second * 14)
 	}
+}
+
+func toByte(id []byte) ([20]byte, error) {
+	twentyByte := [20]byte{}
+	if len(id) != 20 {
+		return twentyByte, ErrLengthMismatch
+	}
+	for i := range id {
+		twentyByte[i] = id[i]
+	}
+	return twentyByte, nil
 }
